@@ -456,6 +456,8 @@ sp-abstract (restore-input slot) ls alloc ff wf =
 -- the frame ops are unemittable — `⊥` in `FrameFreeI`
 sp-abstract (instr-alloc-stack n)   ls alloc () wf
 sp-abstract (instr-dealloc-stack n) ls alloc () wf
+sp-abstract (instr-free-heap n)     ls alloc () wf
+sp-abstract (instr-room n)     ls alloc ff wf = wf
 sp-abstract (instr-push-frame cap)  ls alloc () wf
 sp-abstract instr-pop-frame         ls alloc () wf
 -- the case is unemittable since item 6 (`case` compiles to flat control)
@@ -586,6 +588,8 @@ flat-stack-ptr (instr-ctrl (c-branch-tag-zero m))     prog fs ff wf =
   sp-test (tag-test (flat-read-tag (floc fs))) m prog fs wf
 flat-stack-ptr (instr-alloc-stack n)   prog fs () wf
 flat-stack-ptr (instr-dealloc-stack n) prog fs () wf
+flat-stack-ptr (instr-free-heap n)     prog fs () wf
+flat-stack-ptr (instr-room n)     prog fs ff wf = sp-abstract (instr-room n) (floc fs) (falloc fs) ff wf
 flat-stack-ptr (instr-push-frame cap)  prog fs () wf
 flat-stack-ptr instr-pop-frame         prog fs () wf
 flat-stack-ptr mov-to-output            prog fs ff wf =

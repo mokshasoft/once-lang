@@ -102,6 +102,7 @@ open import Once.Format.Proof using (VerifiedFormatter; verifiedFormatter)
 open import Once.Inspect.Proof using (VerifiedInspector; verifiedInspector)
 open import Once.Extract.Names.Proof using (VerifiedLoader; verifiedLoader)
 open import Once.Adequacy.SpecCheck using (VerifiedChecker; verifiedChecker)
+open import Once.Implementation using (NoLeak)
 
 -- The correctness theorem, on the Spec (plan 0.121, D332): the compiler's own
 -- (`Compile.correctᵈ`, over its working language) carried to the Spec's source,
@@ -155,3 +156,16 @@ once-certified = record
   ; loader      = verifiedLoader
   ; checker     = verifiedChecker
   }
+
+-- Plan 0.123 B.0 — THE SECOND CLAIM, STATED AND OWED: the compiler emits no
+-- code that leaks (`Once.Implementation.NoLeak`: every allocation of every run of
+-- every linked program image is freed exactly once; a run that stops in an
+-- operation into `Void` is exempt).
+--
+-- It is a named statement here, not a hypothesis of `once-certified`, and not
+-- yet a field of `CertifiedBuild`. It is FALSE of today's compiler, which
+-- emits no free (M4 does): as a premise it would make `once-certified`
+-- vacuous, the D213 lesson, and `nonvacuous` could not model it. When it is
+-- proved, its proof becomes a field of `CertifiedBuild` beside `correctness`.
+once-no-leak : Set₁
+once-no-leak = NoLeak

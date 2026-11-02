@@ -108,6 +108,13 @@ data Instr : Set where
   beq    : Reg → Reg → Label → Instr  -- beq rs1, rs2, label
   bne    : Reg → Reg → Label → Instr  -- bne rs1, rs2, label
 
+  -- Plan 0.123 A.4 (D347): the room check's skip over its call of the Host's
+  -- `exhausted`, by GNU `as`'s local numeric label: `bgeu rs1, rs2, 1f` jumps
+  -- to the next `1:` when rs1 ≥ rs2 (unsigned), and `1:` marks it. No symbol
+  -- is defined or referenced.
+  bgeu-fwd : Reg → Reg → Instr        -- bgeu rs1, rs2, 1f
+  local-1  : Instr                    -- 1:
+
   -- Jumps
   jal    : Reg → Label → Instr        -- jal rd, label (rd = PC+4, jump)
   jalr   : Reg → Reg → ℕ → Instr      -- jalr rd, rs, offset (indirect)
@@ -206,6 +213,8 @@ instr-consumed-slots (lla-sym _ _)   = 0
 instr-consumed-slots (mv _ _)        = 0
 instr-consumed-slots (beq _ _ _)     = 0
 instr-consumed-slots (bne _ _ _)     = 0
+instr-consumed-slots (bgeu-fwd _ _)  = 0
+instr-consumed-slots local-1         = 0
 instr-consumed-slots (jal _ _)       = 0   -- call: return addr saved by callee
 instr-consumed-slots (jalr _ _ _)    = 0
 instr-consumed-slots (j _)           = 0

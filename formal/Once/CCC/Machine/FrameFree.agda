@@ -68,6 +68,7 @@ FrameFreeI (lea-slot _)              = ⊥
 -- the `FlatCorr` field relating the ghost `fret` to the machine stack.
 FrameFreeI (instr-ctrl (c-entry _ _)) = ⊥
 FrameFreeI (instr-ctrl (c-start _)) = ⊥  -- plan 0.107: it reserves the outermost frame
+FrameFreeI (instr-free-heap _)      = ⊥  -- plan 0.123 M2: not emitted yet, so inside no fence
 FrameFreeI (instr-ctrl (c-ret _))     = ⊥
 -- …and THE CALL joins them (D092): now that it is modelled, it pushes the
 -- caller's frame and enters one a slot down (`enter-call`), so it moves the
@@ -107,6 +108,9 @@ EmittableI (lea-slot _)              = ⊥
 -- plan 0.107: the program's START is not in any unit — it is the image's
 -- header (`ProgramImage.program-image`), at pc 0 only.
 EmittableI (instr-ctrl (c-start _))  = ⊥
+-- plan 0.123 M2: a free is in the instruction set before the compiler emits
+-- one (M4); until then no image holds it.
+EmittableI (instr-free-heap _)       = ⊥
 {-# CATCHALL #-}
 EmittableI _                         = ⊤
 
@@ -155,6 +159,8 @@ emittable-image (instr-ctrl (c-ret _)) e = e
 emittable-image (instr-ctrl (c-entry _ _)) e = e
 emittable-image (instr-ctrl c-leave) e = e
 emittable-image (instr-ctrl (c-start _)) ()
+emittable-image (instr-free-heap _) ()
+emittable-image (instr-room _) e = e
 
 -- …and the fence is WEAKER, so every consumer that only needs "no fossil"
 -- can still be fed a frame-free witness. ENUMERATED on the ⊥ set (the
@@ -167,6 +173,8 @@ frame-free-emittable instr-pop-frame           ()
 frame-free-emittable (lea-slot _)              ()
 frame-free-emittable (instr-ctrl (c-entry _ _)) ()
 frame-free-emittable (instr-ctrl (c-start _)) ()
+frame-free-emittable (instr-free-heap _)       ()
+frame-free-emittable (instr-room _)        _ = tt
 frame-free-emittable (instr-ctrl (c-call-fn _)) ()
 frame-free-emittable (instr-ctrl (c-ret _))     ()
 frame-free-emittable (instr-ctrl c-leave)                _ = tt
@@ -271,6 +279,8 @@ module _ {FS : FrameSemantics} where
     restore-input-alloc (stackMem s (current-frame alloc) k) s alloc
   exec-abstract-preserves-next-slot (instr-alloc-stack _)    s alloc ()
   exec-abstract-preserves-next-slot (instr-dealloc-stack _)  s alloc ()
+  exec-abstract-preserves-next-slot (instr-free-heap _)      s alloc ()
+  exec-abstract-preserves-next-slot (instr-room _)      s alloc _ = refl
   exec-abstract-preserves-next-slot (instr-reclaim-to _)     s alloc _ = refl
   exec-abstract-preserves-next-slot (instr-push-frame _)     s alloc ()
   exec-abstract-preserves-next-slot instr-pop-frame          s alloc ()
@@ -355,6 +365,8 @@ module _ {FS : FrameSemantics} where
     restore-input-state (stackMem s (current-frame alloc) j) s alloc _
   exec-abstract-state-nsi (instr-alloc-stack _)    s alloc k ()
   exec-abstract-state-nsi (instr-dealloc-stack _)  s alloc k ()
+  exec-abstract-state-nsi (instr-free-heap _)      s alloc k ()
+  exec-abstract-state-nsi (instr-room _)      s alloc k _ = refl
   exec-abstract-state-nsi (instr-reclaim-to _)     s alloc k _ = refl
   exec-abstract-state-nsi (instr-push-frame _)     s alloc k ()
   exec-abstract-state-nsi instr-pop-frame          s alloc k ()
@@ -395,6 +407,8 @@ module _ {FS : FrameSemantics} where
     restore-input-alloc-full (stackMem s (current-frame alloc) j) s alloc k
   exec-abstract-alloc-nsi (instr-alloc-stack _)    s alloc k ()
   exec-abstract-alloc-nsi (instr-dealloc-stack _)  s alloc k ()
+  exec-abstract-alloc-nsi (instr-free-heap _)      s alloc k ()
+  exec-abstract-alloc-nsi (instr-room _)      s alloc k _ = refl
   exec-abstract-alloc-nsi (instr-reclaim-to _)     s alloc k _ = refl
   exec-abstract-alloc-nsi (instr-push-frame _)     s alloc k ()
   exec-abstract-alloc-nsi instr-pop-frame          s alloc k ()

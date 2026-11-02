@@ -26,7 +26,7 @@ open FrameSemantics using (frame-word)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; CallI)
 open import Once.CCC.Label using (once; EntryId)
 open import Once.CCC.Target.X86-32.Syntax using
-  (slot-size; slots; Reg; reg; imm; mem; base; base+disp; esp; eax; ecx; edx; edi; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; label; mov-code; jmp-l; call-l)
+  (slot-size; slots; Reg; reg; imm; mem; base; base+disp; esp; eax; ecx; edx; edi; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; label; mov-code; jmp-l; call-l; jbe-fwd; local-1)
 open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -188,7 +188,7 @@ import Once.CCC.Target.X86-32.Semantics as X
 -- `using`: an unrestricted application copies all of the simulation (and
 -- the correspondence it re-exports) into this interface.
 open import Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation o FS word-eq fmt-eq
-  using ( CompiledCorr; b-cmp-reg-imm; code-eq; dataCorr
+  using ( CompiledCorr; b-cmp-reg-imm; code-eq; dataCorr; room-step-x86-32
         ; load-indirect-heap-empty-stuck; load-indirect-suc-heap-empty-stuck
         ; pc-off; ret-eq; x86-32-block-steps; x86-32-link-claim; xrreg
         ; module C; module CompiledCorr ) public
@@ -254,6 +254,8 @@ nonhalt-noncall prog s (push _)   eq hnh = refl
 nonhalt-noncall prog s (pop _)    eq hnh = refl
 nonhalt-noncall prog s nop        eq hnh = refl
 nonhalt-noncall prog s ud2        eq hnh = refl
+nonhalt-noncall prog s jbe-fwd    eq hnh = refl
+nonhalt-noncall prog s local-1    eq hnh = refl
 nonhalt-noncall prog s (mov-code _ _) eq hnh = refl
 nonhalt-noncall prog s (jmp-l _)  eq hnh = refl
 nonhalt-noncall prog s (label _)  eq hnh = refl
@@ -761,6 +763,7 @@ arith-sigop-contract {hv} env prog fs s si r t int cc ftq =
 x86-32-supply : EE.Supply
 x86-32-supply = record
   { bss = x86-32-block-steps ; sts = x86-32-stuck-steps
+  ; room-step = λ prog fs s k run cc h ft → room-step-x86-32 prog fs s k cc h ft (reg-range prog fs s XS.esi run cc)
   ; heap-room = heap-room ; stack-room = stack-room ; call-room = call-room
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits

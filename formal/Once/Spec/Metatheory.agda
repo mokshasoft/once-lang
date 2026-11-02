@@ -36,8 +36,9 @@
 --                   (the loop is the unfold at `K B ⊕ Id`), and the loop is
 --                   observed as its unrolling;
 --   * totality    — a definition cannot name itself or a later one; a stream
---                   and a server are typed, the server runs forever, and a
---                   silent loop is never observed doing anything.
+--                   and a server are typed, the server runs forever, a
+--                   silent loop is never observed doing anything, and no
+--                   run of the meaning ever runs out.
 ------------------------------------------------------------------------
 
 module Once.Spec.Metatheory where
@@ -67,7 +68,7 @@ open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Surface.Program using (Denotes)
 import Once.Spec.Effect as Effect
 import Once.Spec.Observation as Observation
-open import Once.Spec.Trace using (module Tr; _≈ᵗ⟨_⟩_; returned; Calls)
+open import Once.Spec.Trace using (module Tr; _≈ᵗ⟨_⟩_; returned; exhausted; Calls; Ends)
 import Once.Spec.Domain as Domain
 import Once.Spec.Equivalence as Equivalence
 import Once.Spec.Core.Typing as CoreTyping
@@ -368,6 +369,11 @@ record Totality : Set₁ where
     silent-typed : CoreTyping._⊩_⊢[_]_∷_!_ [] [] ∅ₖ ∅ [] silentLoop Void eff
     silent-never : ∀ fmt (δ : Meaning.DefSem [] fmt []) (w : World []) o
                  → ¬ (Tr.next (trace [] w [] (Meaning.⟦_⟧ [] fmt [] silent-typed δ noVars noResp tt)) ⇓ o)
+    -- a source run never runs out: the meaning has unlimited memory, so the
+    -- trace of every computation, in every world, never ends `exhausted`;
+    -- only a compiled run does (D347, D348)
+    never-exhausted : ∀ (Σ : Signature) (w : World Σ) h {X} (m : Effect.T∞ Σ X)
+                    → ¬ Ends (trace Σ w h m) exhausted
 
 ------------------------------------------------------------------------
 -- All of it

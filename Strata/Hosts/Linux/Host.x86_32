@@ -6,7 +6,7 @@
 # Host it is linked with (no name of a program has this symbol: a name's
 # symbol has a digit after `once_`). Its contract: calling it ends the run, and that
 # end is observed as `returned`. On Linux the run ends with exit status 0.
-# (`enter` is the kernel's process start: the state `_start` needs.)
+# `enter` is `_start` below: the region, then `once_main`.
 # ======================================================================
 
 .equ SYS_exit_group, 252
@@ -20,3 +20,56 @@ once_leave:
     int     $0x80
     # Does not return
 .size once_leave, .-once_leave
+
+# ----------------------------------------------------------------------
+# once_exhausted — the run ran out of memory (D347). The compiler calls it
+# when a room check fails; it never returns. Its contract: the run ends
+# `exhausted`. On Linux the process sends itself SIGABRT, as C's `abort()`
+# does: a parent sees death by a signal, distinct from every exit status
+# (which `exit@S` can all produce). If SIGABRT is blocked or ignored, the
+# run still ends: exit status 134 (128 + SIGABRT, a shell's reading).
+# ----------------------------------------------------------------------
+.equ SYS_getpid, 20
+.equ SYS_kill, 37
+.equ SIGABRT, 6
+
+.global once_exhausted
+.type once_exhausted, @function
+once_exhausted:
+    movl    $SYS_getpid, %eax
+    int     $0x80
+    movl    %eax, %ebx              # pid
+    movl    $SIGABRT, %ecx
+    movl    $SYS_kill, %eax
+    int     $0x80
+    movl    $SYS_exit_group, %eax
+    movl    $134, %ebx
+    int     $0x80
+    # Does not return
+.size once_exhausted, .-once_exhausted
+
+# ----------------------------------------------------------------------
+# _start — the Host's `enter` (D320; plan 0.123 C.5). The kernel starts the
+# process here. The Host owns the run's memory: one region, the cells at
+# its bottom growing up, the stack at its top growing down; running out is
+# the two meeting. It points the frontier register at the bottom and the
+# stack pointer at the top, and enters the program at `once_main` (the
+# compiler's portable entry, which knows no platform). On Linux the region
+# is in `.bss`: the kernel maps it zeroed and pages it in as it is touched.
+# ----------------------------------------------------------------------
+.equ ONCE_REGION_SIZE, 8388608          # 8 MiB
+
+.section .bss
+.balign 16
+once_region:
+    .skip ONCE_REGION_SIZE
+once_region_end:
+
+.text
+.global _start
+.type _start, @function
+_start:
+    movl    $once_region, %esi          # the frontier: the region's bottom
+    movl    $once_region_end, %esp      # the stack pointer: its top
+    jmp     once_main
+.size _start, .-_start

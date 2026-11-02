@@ -31,7 +31,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Observation Σ using (World; History; trace)
-open import Once.Spec.Trace using (End; returned; halted; EndRel; returned≈; halted≈)
+open import Once.Spec.Trace using (End; returned; halted; exhausted; EndRel; returned≈; halted≈; exhausted≈)
 open import Once.Spec.Delay using (_⇓_)
 open import Once.Spec.Equivalence Σ using (Observed)
 open import Once.Metatheory.Bisim Σ using (≈-sym)
@@ -54,6 +54,7 @@ module _ {X : Set} where
   EndRel-map : ∀ {R R′ : X → X → Set} → (∀ {x y} → R x y → R′ x y) → ∀ {e e′} → EndRel R e e′ → EndRel R′ e e′
   EndRel-map h (returned≈ r) = returned≈ (h r)
   EndRel-map h halted≈ = halted≈
+  EndRel-map h exhausted≈ = exhausted≈
 
   MaybeEnd-map : ∀ {R R′ : X → X → Set} → (∀ {x y} → R x y → R′ x y) → ∀ {e e′} → MaybeEnd R e e′ → MaybeEnd R′ e e′
   MaybeEnd-map h cut≈     = cut≈
@@ -63,12 +64,14 @@ module _ {X : Set} where
   MaybeEnd-flip cut≈ = cut≈
   MaybeEnd-flip (end≈ (returned≈ r)) = end≈ (returned≈ r)
   MaybeEnd-flip (end≈ halted≈) = end≈ halted≈
+  MaybeEnd-flip (end≈ exhausted≈) = end≈ exhausted≈
 
   MaybeEnd-trans : ∀ {R : X → X → Set} → (∀ {x y z} → R x y → R y z → R x z)
                  → ∀ {e₁ e₂ e₃} → MaybeEnd R e₁ e₂ → MaybeEnd R e₂ e₃ → MaybeEnd R e₁ e₃
   MaybeEnd-trans t cut≈ cut≈ = cut≈
   MaybeEnd-trans t (end≈ (returned≈ r)) (end≈ (returned≈ r′)) = end≈ (returned≈ (t r r′))
   MaybeEnd-trans t (end≈ halted≈) (end≈ halted≈) = end≈ halted≈
+  MaybeEnd-trans t (end≈ exhausted≈) (end≈ exhausted≈) = end≈ exhausted≈
 
 LayerEq-mono : ∀ (G : SFunctor) {X} {R R′ : X → X → Set} → (∀ {x y} → R x y → R′ x y)
              → ∀ {l l′} → LayerEq G R l l′ → LayerEq G R′ l l′
@@ -168,6 +171,7 @@ module _ {X : Set} {R : ℕ → X → X → Set} where
         go cut≈                 h = cut≈
         go (end≈ (returned≈ _)) h = end≈ (returned≈ λ k → unret (h k))
         go (end≈ halted≈)       h = end≈ halted≈
+        go (end≈ exhausted≈)    h = end≈ exhausted≈
 
   Sim-∀ : ∀ {m m′} → (∀ k → Sim (R k) m m′) → Sim (λ x y → ∀ k → R k x y) m m′
   Sim-∀ {m′ = m′} p w g n {d} {e} r = first (p 0 w g n r)
@@ -267,5 +271,6 @@ module _ {X : Set} where
                   unflip cut≈ = cut≈
                   unflip (end≈ (returned≈ r)) = end≈ (returned≈ r)
                   unflip (end≈ halted≈) = end≈ halted≈
+                  unflip (end≈ exhausted≈) = end≈ exhausted≈
           go : ∀ {o′} → Made w [] m′ n o′ → ∃[ o ] (_ ⇓ o × ObsR R o o′)
           go (d , e , refl , r) = fin (bwd p w [] n r)
