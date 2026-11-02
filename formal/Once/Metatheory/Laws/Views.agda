@@ -34,13 +34,14 @@ open import Once.Spec.Metatheory using (SameDefs; SameEnv)
 open import Once.Metatheory.Erase Σ using (toT∞-bindᵍ; toT∞-fmap; toT∞-bind)
 open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ; assoc)
 open import Once.Metatheory.Coherence.Relation Σ using (Related; Related-trans; Related-flip; Related-mono; ≈-Relatedˡ; ≈-Relatedʳ; bindRel)
-open import Once.Metatheory.Coherence.Layer Σ using (Rel; rel; runs)
+open import Once.Metatheory.Coherence.Layer Σ using (Rel; rel; runs; appMany)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans)
 open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree; Agree; restrict-∘)
 open import Once.Metatheory.Coherence.Fundamental Σ u fmt S using (module FL)
 open import Once.Metatheory.TermModel.Subst Σ S using (Thin; skip; keep; idθ; idθ-id; cid; cskip; ckeep; ren-⊢; θ*-id; ext-hρ; ⟦_⟧θ)
 open import Once.Metatheory.TermModel.Ren Σ fmt S using (ThinAgree; module RenSem)
-open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-trans; ⊑ᵘ-≡)
+open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-trans; ⊑ᵘ-≡; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-*One; ⊑ᵘ-*Many)
+open import Once.Metatheory.Laws.Strengthen Σ S using (str)
 open import Once.Metatheory.TermModel.Val Σ fmt S using (At; NZ; nz-mono; nz-single; slotVal; val; restrict-val; lookup-val)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
 
@@ -459,6 +460,21 @@ module FunV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
   ... | peeled (⊢sub-use _ _) _ () | _
   ... | peeled (⊢sub-eff _ _) _ () | _
 
+  -- An application at a `Many` arrow, the function's value known: the argument, then the call.
+  appMany~ : ∀ {Ψ₁ Ψ₂ A B π π₁ π₂ f x ef} {lhs : T∞ ⟦ B ⟨ σ ⟩ ⟧ᵛ} {fv′ : ⟦ (A ⇒[ mk-kind Many π ] B) ⟨ σ ⟩ ⟧ᵛ} {X : T∞ ⟦ A ⟨ σ ⟩ ⟧ᵛ}
+             (df : Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] B ! π₁) (dx : Δ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! π₂)
+           → AppSem Many lhs df dx ef
+           → _~_ {A ⇒[ mk-kind Many π ] B} (⟪ df ⟫ ef) (return∞ fv′)
+           → (∀ {ex} → Res ex → _~_ {A} (⟪ dx ⟫ ex) X)
+           → _~_ {B} lhs (X >>=∞ λ a → toT∞ π (fv′ a))
+  appMany~ {A = A} {B} {π} {fv′ = fv′} {X} df dx (ex , rx , eqA) rf hx =
+    ~trans {B} eqA (≈-Relatedʳ (≈-sym (idˡ fv′ K′))
+      (bindRel {f = λ h → ⟪ dx ⟫ ex >>=∞ λ a → toT∞ π (h a)} {g = K′} rf
+        (λ {h} {h′} sh → bindRel {f = λ a → toT∞ π (h a)} {g = λ a → toT∞ π (h′ a)} (hx rx)
+           (λ sa → runs (appMany {π} {A ⟨ σ ⟩} {B ⟨ σ ⟩} sh sa)))))
+    where K′ : _ → T∞ _
+          K′ h = X >>=∞ λ a → toT∞ π (h a)
+
   -- `wk t`, run in a restriction of an environment one binder longer.
   wkRelR : ∀ {A B q q′ Ψ₀ Ψ₁ Ψa π₁ πa t} (db : Δ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψ₁ ] wk t ∷ B ! π₁) {e₀ : Env σ Γ Ψ₀} → Res e₀
          → (w : Slot q′ ⟦ A ⟨ σ ⟩ ⟧ᵛ) (Pf : (q ∷ Ψ₁) ⊑ᵘ (q′ ∷ Ψ₀))
@@ -548,3 +564,39 @@ module ReadV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
 slotVal∘slot : ∀ {m} (σ : TySub m 0) q {X : Set} (x : X) (nz : NZ q) → slotVal σ q (slot q x) nz ≡ x
 slotVal∘slot σ One  x nz = refl
 slotVal∘slot σ Many x nz = refl
+
+------------------------------------------------------------------------
+-- The arms of a combinator: `let′ One e (let′ q (wk e₂) b)`, both read in Γ
+------------------------------------------------------------------------
+
+module ArmsV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
+             {n} {Γ : Ctx m n} {Ψ : Usage n} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) where
+  open Views δ sd σ r γ sγ
+
+  record Arms {Ψa T π₀ t} (d : Δ ⊩ Γ ⊢[ Ψa ] t ∷ T ! π₀) (e e₂ : Tm S m n) : Set where
+    constructor arms
+    field
+      {Ψe Ψg} : Usage n
+      {πe πg} : Purity
+      {E G}   : Ty m
+      de      : Δ ⊩ Γ ⊢[ Ψe ] e ∷ E ! πe
+      dg      : Δ ⊩ Γ ⊢[ Ψg ] e₂ ∷ G ! πg
+      Pe      : Ψe ⊑ᵘ Ψa
+      Pg      : Ψg ⊑ᵘ Ψa
+
+  armsLL : ∀ {Ψa T π₀ q e e₂ b} → (q ≡ One ⊎ q ≡ Many)
+         → (d : Δ ⊩ Γ ⊢[ Ψa ] let′ One e (let′ q (wk e₂) b) ∷ T ! π₀) → Arms d e e₂
+  armsLL {q = q} nz d with peel d
+  ... | peeled (⊢let {Ψ₁ = Ψe} {Ψ₂ = Ψb} de db) P _ with peel db
+  ...   | peeled (⊢let {Ψ₁ = qw ∷ Ψw} {Ψ₂ = ql ∷ Ψl} dw _) (_ ⊑∷ P′) _ =
+          arms de (str dw) (⊑ᵘ-trans (⊑ᵘ-trans (⊑ᵘ-*One Ψe) (⊑ᵘ-+ʳ Ψb (One *ᵘ Ψe))) P)
+                           (⊑ᵘ-trans (⊑ᵘ-trans (⊑ᵘ-trans (scale nz Ψw) (⊑ᵘ-+ʳ Ψl (q *ᵘ Ψw))) P′)
+                                     (⊑ᵘ-trans (⊑ᵘ-+ˡ Ψb (One *ᵘ Ψe)) P))
+    where
+      scale : (q ≡ One ⊎ q ≡ Many) → ∀ Ψw → Ψw ⊑ᵘ q *ᵘ Ψw
+      scale (inj₁ refl) Ψw = ⊑ᵘ-*One Ψw
+      scale (inj₂ refl) Ψw = ⊑ᵘ-*Many Ψw
+  ...   | peeled (⊢sub-use _ _) _ ()
+  ...   | peeled (⊢sub-eff _ _) _ ()
+  armsLL nz d | peeled (⊢sub-use _ _) _ ()
+  armsLL nz d | peeled (⊢sub-eff _ _) _ ()
