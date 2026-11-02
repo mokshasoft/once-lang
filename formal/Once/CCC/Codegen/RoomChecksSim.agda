@@ -75,3 +75,144 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   pcRel-ret : ∀ (r : ℕ) → PcRel r (ret-map r)
   pcRel-ret zero    = inj₁ refl
   pcRel-ret (suc c) = pcRel-after c
+
+  ------------------------------------------------------------------------
+  -- ONE STEP COMMUTES WITH THE LIFT. From the lift of `fs` at `φ t (fpc fs)`
+  -- (where the image with checks holds the same instruction, `fetch-room`), the
+  -- step lands on the lift of `fs`'s successor, at a pc that stands for the
+  -- successor's. Every straight-line step is `refl` — the lift does not touch
+  -- memory or frames — and every control step is the scan's commutation.
+  ------------------------------------------------------------------------
+  open import Once.CCC.Machine.SMCore
+    using ( mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot
+          ; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-dealloc-stack
+          ; instr-reclaim-to; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init
+          ; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr
+          ; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-reg-op; out-nz; instr-ctrl
+          ; instr-free-heap; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave
+          ; e-fn; e-thunk; SV-Ptr; SV-Tag; SV-Lit; SV-Code; readReg; Output; module LocState )
+  open import Once.CCC.Machine.Locations using (AtDynamic; AtStack)
+  open import Once.Memory.HeapAddress using (sucHL)
+  open import Once.Type using (fits-int; fits-float)
+
+  StepLift : FlatState → AbstractInstr → Set
+  StepLift fs i =
+    Σ ℕ (λ p → (flat-exec-instr i P′ (lift fs (φ t (fpc fs))) ≡ lift (flat-exec-instr i t fs) p)
+             × PcRel (fpc (flat-exec-instr i t fs)) p)
+
+  private
+    -- a step that only moves on
+    on : ∀ (fs : FlatState) (i : AbstractInstr)
+       → flat-exec-instr i P′ (lift fs (φ t (fpc fs))) ≡ lift (flat-exec-instr i t fs) (suc (φ t (fpc fs)))
+       → fpc (flat-exec-instr i t fs) ≡ suc (fpc fs)
+       → StepLift fs i
+    on fs i e pe rewrite pe = suc (φ t (fpc fs)) , e , pcRel-after (fpc fs)
+
+    -- a step that stays (it halted or faulted in place)
+    stay : ∀ (fs : FlatState) (i : AbstractInstr)
+         → flat-exec-instr i P′ (lift fs (φ t (fpc fs))) ≡ lift (flat-exec-instr i t fs) (φ t (fpc fs))
+         → fpc (flat-exec-instr i t fs) ≡ fpc fs
+         → StepLift fs i
+    stay fs i e pe rewrite pe = φ t (fpc fs) , e , inj₁ refl
+
+    -- a jump to what a scan found
+    jump-to : ∀ (fs : FlatState) (mj : Maybe ℕ)
+            → Σ ℕ (λ p → (do-jump (mmap (φ t) mj) (lift fs (φ t (fpc fs))) ≡ lift (do-jump mj fs) p)
+                       × PcRel (fpc (do-jump mj fs)) p)
+    jump-to fs (just j) = φ t j , refl , inj₁ refl
+    jump-to fs nothing  = φ t (fpc fs) , refl , inj₁ refl
+
+    -- a call to what a scan found
+    call-to : ∀ (fs : FlatState) (mj : Maybe ℕ)
+            → Σ ℕ (λ p → (do-call-at (mmap (φ t) mj) (lift fs (φ t (fpc fs))) ≡ lift (do-call-at mj fs) p)
+                       × PcRel (fpc (do-call-at mj fs)) p)
+    call-to fs (just j) = φ t j , refl , inj₁ refl
+    call-to fs nothing  = φ t (fpc fs) , refl , inj₁ refl
+
+    -- a return to what the stack holds
+    ret-to : ∀ (fs : FlatState) (rs : List ℕ)
+           → Σ ℕ (λ p → (do-ret (map ret-map rs) (lift fs (φ t (fpc fs))) ≡ lift (do-ret rs fs) p)
+                      × PcRel (fpc (do-ret rs fs)) p)
+    ret-to fs []       = φ t (fpc fs) , refl , inj₁ refl
+    ret-to fs (r ∷ rs) = ret-map r , refl , pcRel-ret r
+
+  private
+    -- the tag branch, by what its test found
+    branch-at : ∀ (fs : FlatState) (n : _) (mb : Maybe Bool)
+              → Σ ℕ (λ p → (do-branch-test mb n P′ (lift fs (φ t (fpc fs))) ≡ lift (do-branch-test mb n t fs) p)
+                         × PcRel (fpc (do-branch-test mb n t fs)) p)
+    branch-at fs n nothing      = φ t (fpc fs) , refl , inj₁ refl
+    branch-at fs n (just false) = suc (φ t (fpc fs)) , refl , pcRel-after (fpc fs)
+    branch-at fs n (just true)  with jump-to fs (find-label t n)
+    ... | p , e , r = p , trans (cong (λ z → do-jump z (lift fs (φ t (fpc fs)))) (find-label-room t n)) e , r
+
+    -- `out-nz`, by the value it reads
+    nz-at : ∀ (fs : FlatState) v
+          → Σ ℕ (λ p → (do-nz v (lift fs (φ t (fpc fs))) ≡ lift (do-nz v fs) p) × PcRel (fpc (do-nz v fs)) p)
+    nz-at fs (SV-Lit fits-int _)   = suc (φ t (fpc fs)) , refl , pcRel-after (fpc fs)
+    nz-at fs (SV-Lit fits-float _) = suc (φ t (fpc fs)) , refl , pcRel-after (fpc fs)
+    nz-at fs (SV-Tag _)            = suc (φ t (fpc fs)) , refl , pcRel-after (fpc fs)
+    nz-at fs (SV-Ptr _)            = suc (φ t (fpc fs)) , refl , pcRel-after (fpc fs)
+    nz-at fs (SV-Code _)           = suc (φ t (fpc fs)) , refl , pcRel-after (fpc fs)
+
+    -- the closure call, by the code cell it reads
+    code-at : ∀ (fs : FlatState) mv
+            → Σ ℕ (λ p → (do-call-code P′ mv (lift fs (φ t (fpc fs))) ≡ lift (do-call-code t mv fs) p)
+                       × PcRel (fpc (do-call-code t mv fs)) p)
+    code-at fs (just (SV-Code ℓ)) with call-to fs (find-entry t (e-thunk ℓ))
+    ... | p , e , r = p , trans (cong (λ z → do-call-at z (lift fs (φ t (fpc fs)))) (find-entry-room t (e-thunk ℓ))) e , r
+    code-at fs (just (SV-Tag _))   = φ t (fpc fs) , refl , inj₁ refl
+    code-at fs (just (SV-Lit _ _)) = φ t (fpc fs) , refl , inj₁ refl
+    code-at fs (just (SV-Ptr _))   = φ t (fpc fs) , refl , inj₁ refl
+    code-at fs nothing             = φ t (fpc fs) , refl , inj₁ refl
+
+    -- …and by the closure register it reads
+    sv-at : ∀ (fs : FlatState) v
+          → Σ ℕ (λ p → (do-call-sv P′ v (lift fs (φ t (fpc fs))) ≡ lift (do-call-sv t v fs) p)
+                     × PcRel (fpc (do-call-sv t v fs)) p)
+    sv-at fs (SV-Ptr (AtDynamic hl)) = code-at fs (LocState.heapMem (floc fs) (sucHL hl))
+    sv-at fs (SV-Ptr (AtStack _ _))  = φ t (fpc fs) , refl , inj₁ refl
+    sv-at fs (SV-Tag _)              = φ t (fpc fs) , refl , inj₁ refl
+    sv-at fs (SV-Lit _ _)            = φ t (fpc fs) , refl , inj₁ refl
+    sv-at fs (SV-Code _)             = φ t (fpc fs) , refl , inj₁ refl
+
+  step-lift : ∀ (fs : FlatState) (i : AbstractInstr) → StepLift fs i
+  step-lift fs i@mov-to-output = on fs i refl refl
+  step-lift fs i@mov-to-input = on fs i refl refl
+  step-lift fs i@load-indirect = on fs i refl refl
+  step-lift fs i@load-indirect-suc = on fs i refl refl
+  step-lift fs i@(load-from-slot _) = on fs i refl refl
+  step-lift fs i@(store-at-slot _) = on fs i refl refl
+  step-lift fs i@store-indirect = on fs i refl refl
+  step-lift fs i@store-indirect-suc = on fs i refl refl
+  step-lift fs i@(lea-slot _) = on fs i refl refl
+  step-lift fs i@(restore-input _) = on fs i refl refl
+  step-lift fs i@(instr-alloc-stack _) = on fs i refl refl
+  step-lift fs i@(instr-dealloc-stack _) = on fs i refl refl
+  step-lift fs i@(instr-reclaim-to _) = on fs i refl refl
+  step-lift fs i@(instr-push-frame _) = on fs i refl refl
+  step-lift fs i@instr-pop-frame = on fs i refl refl
+  step-lift fs instr-call-closure       = sv-at fs (fclosure fs)
+  step-lift fs i@(worklist-init _) = on fs i refl refl
+  step-lift fs i@(worklist-push _) = on fs i refl refl
+  step-lift fs i@(worklist-pop _) = on fs i refl refl
+  step-lift fs i@(worklist-check _) = on fs i refl refl
+  step-lift fs i@(instr-sigop _) = on fs i refl refl
+  step-lift fs i@(instr-load-const _ _) = on fs i refl refl
+  step-lift fs i@(instr-load-code-addr _) = on fs i refl refl
+  step-lift fs i@instr-save-closure-reg = on fs i refl refl
+  step-lift fs i@(instr-load-tag-lit _) = on fs i refl refl
+  step-lift fs i@(instr-alloc-heap _) = on fs i refl refl
+  step-lift fs (instr-reg-op out-nz)    = nz-at fs (readReg (LocState.regs (floc fs)) Output)
+  step-lift fs i@(instr-free-heap _) = on fs i refl refl
+  step-lift fs i@(instr-room _) = on fs i refl refl
+  step-lift fs i@(instr-ctrl (c-label _)) = on fs i refl refl
+  step-lift fs i@(instr-ctrl (c-entry _ _)) = on fs i refl refl
+  step-lift fs i@(instr-ctrl (c-start _)) = on fs i refl refl
+  step-lift fs i@(instr-ctrl c-leave) = stay fs i refl refl
+  step-lift fs (instr-ctrl (c-ret _))           = ret-to fs (fret fs)
+  step-lift fs (instr-ctrl (c-jmp n)) with jump-to fs (find-label t n)
+  ... | p , e , r = p , trans (cong (λ z → do-jump z (lift fs (φ t (fpc fs)))) (find-label-room t n)) e , r
+  step-lift fs (instr-ctrl (c-branch-tag-zero n)) = branch-at fs n (tag-test (flat-read-tag (floc fs)))
+  step-lift fs (instr-ctrl (c-call-fn f)) with call-to fs (find-entry t (e-fn f))
+  ... | p , e , r = p , trans (cong (λ z → do-call-at z (lift fs (φ t (fpc fs)))) (find-entry-room t (e-fn f))) e , r
