@@ -19,7 +19,8 @@ open import Data.Fin using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; mk-kind; Purity; pure; act; eff; _·p_; _⊑π_; ⊑-pure; ⊑-act; ⊑-eff; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type using (Ty; KCtx; Void; Unit; _*_; _+_; _⇒[_]_)
-open import Once.Spec.Context using (Ctx; _▸_; Usage; zeroUsage)
+open import Once.Spec.Context using (Ctx; _▸_; Usage; zeroUsage; _∷_; _⊑∷_)
+open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-refl)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived
 open import Once.Spec.Core.Typing Σ S
@@ -83,3 +84,12 @@ module _ {m : ℕ} {Δ : KCtx m} {n} {Γ : Ctx m n} where
          → Δ ⊩ Γ ⊢[ _ ] curryᶜ A B pure pure f ∷ A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C) ! _
   curryD df =
     ⊢let {q = One} df (⊢lam ω≤ω (⊢lam ω≤ω (⊢app {q = Many} (⊢var (suc (suc zero))) (⊢pair (⊢var (suc zero)) (⊢var zero)))))
+
+  caseD : ∀ {Ψf Ψg πf πg A B C π f g}
+        → Δ ⊩ Γ ⊢[ Ψf ] f ∷ A ⇒[ mk-kind Many π ] C ! πf → Δ ⊩ Γ ⊢[ Ψg ] g ∷ B ⇒[ mk-kind Many π ] C ! πg
+        → Δ ⊩ Γ ⊢[ _ ] caseᶜ A B π f g ∷ (A + B) ⇒[ mk-kind Many π ] C ! _
+  caseD {π = π} df dg =
+    ⊢let {q = One} df (⊢let {q = One} (wk-⊢ dg)
+      (⊢lam 1≤ω (⊢case {Ψ = Zero ∷ One ∷ One ∷ _} (⊢var zero)
+        (⊢sub-use (ω≤ω ⊑∷ 0≤q ⊑∷ 0≤q ⊑∷ 1≤1 ⊑∷ ⊑ᵘ-refl _) (⊢app {q = Many} (⊢var (suc (suc (suc zero)))) (⊢var zero)))
+        (⊢sub-use (ω≤ω ⊑∷ 0≤q ⊑∷ 1≤1 ⊑∷ 0≤q ⊑∷ ⊑ᵘ-refl _) (⊢app {q = Many} (⊢var (suc (suc zero))) (⊢var zero))))))

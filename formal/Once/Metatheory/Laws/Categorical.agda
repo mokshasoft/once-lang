@@ -42,7 +42,7 @@ open import Once.Metatheory.Laws.Views Σ u fmt S
 open import Once.Metatheory.Laws.Strengthen Σ S using (pure⊑)
 open import Once.Metatheory.Laws.Compose Σ u fmt S using (compᵛ; module CompV)
 open import Once.Metatheory.Laws.Combinators Σ u fmt S using (pairᵛ; module CombV)
-open import Once.Metatheory.Laws.Canon Σ S using (terminalD; initialD; inlD; inrD; fstD′; sndD′; applyD; composeD; pairD; curryD)
+open import Once.Metatheory.Laws.Canon Σ S using (terminalD; initialD; inlD; inrD; fstD′; sndD′; applyD; composeD; pairD; curryD; caseD)
 open import Once.Spec.Core.Derived using (terminalᶜ; initialᶜ; inlᶜ; inrᶜ; fstᶜ; sndᶜ; applyᶜ; pairᶜ; caseᶜ; curryᶜ)
 open import Once.Spec.Type using (Unit; Void; _*_; _+_)
 open import Once.Spec.Metatheory using (Pure)
@@ -224,3 +224,83 @@ module _ {m : ℕ} {Δ : KCtx m} where
                              (bindRel (pureRet df pp rf) (λ {fv} {fv′} sf₀ →
                                ≈-Relatedʳ (≈-sym (idʳ (⟪ d′ ⟫ γ)))
                                  (bindRel (runs (fl dg d′ rg base)) (λ {gv} {gv′} sg → returnRel (λ c c′ sc → sg c c′ sc)))))
+
+  case-inlᶜ : ∀ {n} {Γ : Ctx m n} {Ψ A B C π π₀ f g}
+       → Pure Σ fmt S Δ Γ g (B ⇒[ mk-kind Many π ] C)
+       → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A π (caseᶜ A B π f g) (inlᶜ A B π) ∷ A ⇒[ mk-kind Many π ] C ! π₀)
+         (d′ : Δ ⊩ Γ ⊢[ Ψ ] f ∷ A ⇒[ mk-kind Many π ] C ! π₀) → _≅_ Σ fmt S d d′
+  case-inlᶜ {Γ = Γ} {Ψ} {A} {B} {C} {π} {π₀} {f} {g} (_ , pp) d d′ δ sd σ r γ sγ = goA (AV.armsLL (inj₂ refl) d)
+    where
+      open Views δ sd σ r γ sγ
+      open ProdV δ sd σ r γ sγ using (pureRet)
+      module AV = ArmsV δ sd σ r γ sγ
+      T = A ⇒[ mk-kind Many π ] C
+      r₀ = resR base (zero⊑ Ψ)
+      injv = ⟦ inlD {Γ = Γ} A B π ⟧ δ σ r (restrict σ (zero⊑ Ψ) γ)
+      -- calling a function on the injected value is calling it at the injection
+      E : ∀ (h : ⟦ ((A + B) ⇒[ mk-kind Many π ] C) ⟨ σ ⟩ ⟧ᵛ) a → toT∞ π (bind π (injv a) h) ≈ toT∞ π (h (inj₁ a))
+      E h a = ≈-trans (toT∞-bind π (injv a) h) (≈-trans (≈-bind (toT∞-sub (pure⊑ π) (inj₁ a)) (λ _ → ≈-refl _)) (idˡ (inj₁ a) _))
+      CC : ∀ {cv cv′} → Same (((A + B) ⇒[ mk-kind Many π ] C) ⟨ σ ⟩) cv cv′ → Same (T ⟨ σ ⟩) (compᵛ π cv injv) (compᵛ π cv′ injv)
+      CC {cv} {cv′} scv a a′ sa = toObserved (≈-Relatedˡ (E cv a) (≈-Relatedʳ (E cv′ a′) (runs (appMany {π} {(A + B) ⟨ σ ⟩} {C ⟨ σ ⟩} scv {inj₁ a} {inj₁ a′} sa))))
+      goA : AV.Arms d (caseᶜ A B π f g) (inlᶜ A B π) → _
+      goA (AV.arms dc di Pc Pi) = goB (AV.armsLL (inj₁ refl) dc)
+        where
+          goB : AV.Arms dc f g → _
+          goB (AV.arms df dg Pf Pg) with ty-unique dg pp | ty-unique df d′
+          ... | refl | refl with ty-unique dc (caseD df dg)
+          ... | refl =
+            sameM {T ⟨ σ ⟩} {π₀}
+              (rel (~trans {T} (CompV.compSem δ sd σ r γ sγ d base dc rc (inlD A B π) r₀)
+                     (≈-Relatedˡ (≈-bind (≈-refl _) (λ cv → idˡ injv _))
+                       (~trans {T} (bindRel (CombV.caseSem δ sd σ r γ sγ dc rc df rf dg rg) (λ scv → returnRel (CC scv)))
+                         (≈-Relatedˡ (≈-trans (assoc _ _ _) (≈-bind (≈-refl _) λ fv → ≈-trans (assoc _ _ _) (≈-bind (≈-refl _) λ gv → idˡ _ _)))
+                           FIN)))))
+            where
+              rc = resR base Pc
+              rf = resR rc Pf
+              rg = resR rc Pg
+              FIN = ≈-Relatedʳ (≈-sym (idʳ (⟪ d′ ⟫ γ)))
+                      (bindRel (runs (fl df d′ rf base)) (λ {fv} {fv′} sf →
+                        ≈-Relatedʳ (≈-sym (idˡ (⟦ transfer pp dg ⟧ δ σ r (restrict σ Pg (restrict σ Pc γ))) (λ _ → return∞ fv′)))
+                          (bindRel (pureRet dg pp rg) (λ {gv} {gv′} _ → returnRel
+                             (λ a a′ sa → toObserved (≈-Relatedˡ (E [ fv , gv ]′ a) (runs (appMany {π} {A ⟨ σ ⟩} {C ⟨ σ ⟩} sf sa))))))))
+
+  case-inrᶜ : ∀ {n} {Γ : Ctx m n} {Ψ A B C π π₀ f g}
+       → Pure Σ fmt S Δ Γ f (A ⇒[ mk-kind Many π ] C)
+       → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ B π (caseᶜ A B π f g) (inrᶜ A B π) ∷ B ⇒[ mk-kind Many π ] C ! π₀)
+         (d′ : Δ ⊩ Γ ⊢[ Ψ ] g ∷ B ⇒[ mk-kind Many π ] C ! π₀) → _≅_ Σ fmt S d d′
+  case-inrᶜ {Γ = Γ} {Ψ} {A} {B} {C} {π} {π₀} {f} {g} (_ , pp) d d′ δ sd σ r γ sγ = goA (AV.armsLL (inj₂ refl) d)
+    where
+      open Views δ sd σ r γ sγ
+      open ProdV δ sd σ r γ sγ using (pureRet)
+      module AV = ArmsV δ sd σ r γ sγ
+      T = B ⇒[ mk-kind Many π ] C
+      r₀ = resR base (zero⊑ Ψ)
+      injv = ⟦ inrD {Γ = Γ} A B π ⟧ δ σ r (restrict σ (zero⊑ Ψ) γ)
+      -- calling a function on the injected value is calling it at the injection
+      E : ∀ (h : ⟦ ((A + B) ⇒[ mk-kind Many π ] C) ⟨ σ ⟩ ⟧ᵛ) a → toT∞ π (bind π (injv a) h) ≈ toT∞ π (h (inj₂ a))
+      E h a = ≈-trans (toT∞-bind π (injv a) h) (≈-trans (≈-bind (toT∞-sub (pure⊑ π) (inj₂ a)) (λ _ → ≈-refl _)) (idˡ (inj₂ a) _))
+      CC : ∀ {cv cv′} → Same (((A + B) ⇒[ mk-kind Many π ] C) ⟨ σ ⟩) cv cv′ → Same (T ⟨ σ ⟩) (compᵛ π cv injv) (compᵛ π cv′ injv)
+      CC {cv} {cv′} scv a a′ sa = toObserved (≈-Relatedˡ (E cv a) (≈-Relatedʳ (E cv′ a′) (runs (appMany {π} {(A + B) ⟨ σ ⟩} {C ⟨ σ ⟩} scv {inj₂ a} {inj₂ a′} sa))))
+      goA : AV.Arms d (caseᶜ A B π f g) (inrᶜ A B π) → _
+      goA (AV.arms dc di Pc Pi) = goB (AV.armsLL (inj₁ refl) dc)
+        where
+          goB : AV.Arms dc f g → _
+          goB (AV.arms df dg Pf Pg) with ty-unique df pp | ty-unique dg d′
+          ... | refl | refl with ty-unique dc (caseD df dg)
+          ... | refl =
+            sameM {T ⟨ σ ⟩} {π₀}
+              (rel (~trans {T} (CompV.compSem δ sd σ r γ sγ d base dc rc (inrD A B π) r₀)
+                     (≈-Relatedˡ (≈-bind (≈-refl _) (λ cv → idˡ injv _))
+                       (~trans {T} (bindRel (CombV.caseSem δ sd σ r γ sγ dc rc df rf dg rg) (λ scv → returnRel (CC scv)))
+                         (≈-Relatedˡ (≈-trans (assoc _ _ _) (≈-bind (≈-refl _) λ fv → ≈-trans (assoc _ _ _) (≈-bind (≈-refl _) λ gv → idˡ _ _)))
+                           FIN)))))
+            where
+              rc = resR base Pc
+              rf = resR rc Pf
+              rg = resR rc Pg
+              FIN = ≈-Relatedʳ (≈-sym (idˡ (⟦ transfer pp df ⟧ δ σ r (restrict σ Pf (restrict σ Pc γ))) (λ _ → ⟪ d′ ⟫ γ)))
+                      (bindRel (pureRet df pp rf) (λ {fv} {fv′} _ →
+                        ≈-Relatedʳ (≈-sym (idʳ (⟪ d′ ⟫ γ)))
+                          (bindRel (runs (fl dg d′ rg base)) (λ {gv} {gv′} sg → returnRel
+                             (λ b b′ sb → toObserved (≈-Relatedˡ (E [ fv , gv ]′ b) (runs (appMany {π} {B ⟨ σ ⟩} {C ⟨ σ ⟩} sg sb))))))))
