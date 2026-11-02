@@ -323,3 +323,86 @@ module _ {X : Set} {P : X → Set} (F : AbstractTrace → List X) (f : AbstractI
   All-fold-room t a =
     subst (All P) (sym (F-∷ (instr-room _) (checks (max-entry t) t)))
       (++⁺ (f-room _) (All-fold-checks (max-entry t) t a))
+
+------------------------------------------------------------------------
+-- THE BUDGET'S ARITHMETIC (plan 0.123 A.4 step 5): each check's `k` is what the
+-- code spends after it up to the next check, and an ordinary instruction's
+-- measure is its own spend plus its successor's.
+------------------------------------------------------------------------
+open import Once.CCC.Codegen.RoomChecks using (room?; till-check; need; spend; entry-frame)
+open import Data.List using (drop)
+open import Data.Nat using (_⊔_; _+_)
+
+-- the program image has no checks of its own
+NoRoom : AbstractTrace → Set
+NoRoom = All (λ i → room? i ≡ false)
+
+-- a check reserves no frame, so the largest entry frame is the same
+max-entry-room : ∀ (t : AbstractTrace) → max-entry (room-checks t) ≡ max-entry t
+max-entry-room = fold-room max-entry (λ i x → entry-frame i ⊔ x) (λ _ _ → refl) (λ _ _ → refl)
+
+private
+  till-after : ∀ (E : ℕ) (b : Bool) (k : ℕ) (C : AbstractTrace)
+             → till-check E (if b then instr-room k ∷ C else C) ≡ (if b then 0 else till-check E C)
+  till-after E true  k C = refl
+  till-after E false k C = refl
+
+  plus-if : ∀ (a : ℕ) (b : Bool) (x y : ℕ) → x ≡ y → a + (if b then 0 else x) ≡ a + (if b then 0 else y)
+  plus-if a b x y e = cong (λ z → a + (if b then 0 else z)) e
+    where open import Relation.Binary.PropositionalEquality using (cong)
+
+-- WHAT FOLLOWS A CHECK SPENDS ITS STRETCH
+till-checks : ∀ (E : ℕ) (t : AbstractTrace) → NoRoom t → till-check E (checks E t) ≡ stretch E t
+till-checks E []      []        = refl
+till-checks E (x ∷ t) (nr ∷ a) rewrite nr =
+  trans (cong (spend E x +_) (till-after E (boundary? x) (stretch E t) (checks E t)))
+        (plus-if (spend E x) (boundary? x) (till-check E (checks E t)) (stretch E t) (till-checks E t a))
+  where open import Relation.Binary.PropositionalEquality using (trans; cong)
+
+module CheckK {FS : FrameSemantics} where
+  open FlatMachine {FS} using (fetch)
+  open import Relation.Binary.PropositionalEquality using (trans; cong; sym)
+  open import Data.Maybe.Properties using (just-injective)
+  open import Data.Empty using (⊥; ⊥-elim)
+
+  private
+    room≢ : ∀ {x : AbstractInstr} {k : ℕ} → room? x ≡ false → x ≡ instr-room k → ⊥
+    room≢ () refl
+
+    -- in `checks`' branch after `x`: a check found there is the one just past `x`,
+    -- or one further on
+    k-after : ∀ (E : ℕ) (b : Bool) (t : AbstractTrace) (j k : ℕ) → NoRoom t
+            → (∀ j′ → fetch (checks E t) j′ ≡ just (instr-room k) → k ≡ till-check E (drop (suc j′) (checks E t)))
+            → fetch (if b then instr-room (stretch E t) ∷ checks E t else checks E t) j ≡ just (instr-room k)
+            → k ≡ till-check E (drop (suc j) (if b then instr-room (stretch E t) ∷ checks E t else checks E t))
+    k-after E true  t zero    k a ih refl = sym (till-checks E t a)
+    k-after E true  t (suc j) k a ih f = ih j f
+    k-after E false t j       k a ih f = ih j f
+
+  -- EVERY CHECK OF `checks E t` HOLDS THE MEASURE OF WHAT FOLLOWS IT
+  checks-k : ∀ (E : ℕ) (t : AbstractTrace) → NoRoom t → ∀ (j k : ℕ)
+           → fetch (checks E t) j ≡ just (instr-room k) → k ≡ till-check E (drop (suc j) (checks E t))
+  checks-k E (x ∷ t) (nr ∷ a) zero    k f = ⊥-elim (room≢ nr (just-injective f))
+  checks-k E (x ∷ t) (nr ∷ a) (suc j) k f =
+    k-after E (boundary? x) t j k a (λ j′ f′ → checks-k E t a j′ k f′) f
+
+  -- …and so does every check of the pass's output
+  check-k : ∀ (t : AbstractTrace) → NoRoom t → ∀ (pc k : ℕ)
+          → fetch (room-checks t) pc ≡ just (instr-room k) → k ≡ till-check (max-entry t) (drop (suc pc) (room-checks t))
+  check-k t a zero    k refl = sym (till-checks (max-entry t) t a)
+  check-k t a (suc pc) k f = checks-k (max-entry t) t a pc k f
+
+  -- what an ordinary instruction's measure is: its own spend, then its successor's
+  drop-fetch : ∀ (P : AbstractTrace) (pc : ℕ) {i : AbstractInstr} → fetch P pc ≡ just i
+             → drop pc P ≡ i ∷ drop (suc pc) P
+  drop-fetch (x ∷ P) zero    refl = refl
+  drop-fetch (x ∷ P) (suc pc) f   = drop-fetch P pc f
+
+  till-step : ∀ (E : ℕ) (P : AbstractTrace) (pc : ℕ) {i : AbstractInstr} → fetch P pc ≡ just i → room? i ≡ false
+            → till-check E (drop pc P) ≡ spend E i + till-check E (drop (suc pc) P)
+  till-step E P pc {i} f nr rewrite drop-fetch P pc f | nr = refl
+
+  -- …and at a check it is nothing
+  till-room : ∀ (E : ℕ) (P : AbstractTrace) (pc k : ℕ) → fetch P pc ≡ just (instr-room k)
+            → till-check E (drop pc P) ≡ 0
+  till-room E P pc k f rewrite drop-fetch P pc f = refl
