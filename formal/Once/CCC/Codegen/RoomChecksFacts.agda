@@ -236,3 +236,90 @@ module RoomFacts {FS : FrameSemantics} where
   ψ-next-nothing []      i       e  = refl
   ψ-next-nothing (y ∷ t) (suc i) e  =
     cong suc (trans (cong (bump (boundary? y)) (ψ-next-nothing t i e)) (bump-suc (boundary? y) (ψ t i)))
+
+------------------------------------------------------------------------
+-- WHAT HOLDS OF EVERY INSTRUCTION, OR OF SOME: the pass only inserts checks,
+-- so an `All` crosses it when the checks satisfy the predicate too, and an
+-- `Any` crosses it unconditionally.
+------------------------------------------------------------------------
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List.Relation.Unary.Any using (Any; here; there)
+
+private
+  all-after : ∀ {P : AbstractInstr → Set} (b : Bool) (k : ℕ) {C : AbstractTrace}
+            → P (instr-room k) → All P C → All P (if b then instr-room k ∷ C else C)
+  all-after true  k pk a = pk ∷ a
+  all-after false k pk a = a
+
+  any-after : ∀ {P : AbstractInstr → Set} (b : Bool) (k : ℕ) {C : AbstractTrace}
+            → Any P C → Any P (if b then instr-room k ∷ C else C)
+  any-after true  k a = there a
+  any-after false k a = a
+
+All-checks : ∀ {P : AbstractInstr → Set} (E : ℕ) (t : AbstractTrace)
+           → (∀ k → P (instr-room k)) → All P t → All P (checks E t)
+All-checks E []      pr []       = []
+All-checks E (x ∷ t) pr (px ∷ a) = px ∷ all-after (boundary? x) (stretch E t) (pr _) (All-checks E t pr a)
+
+All-room : ∀ {P : AbstractInstr → Set} (t : AbstractTrace)
+         → (∀ k → P (instr-room k)) → All P t → All P (room-checks t)
+All-room t pr a = pr _ ∷ All-checks (max-entry t) t pr a
+
+Any-checks : ∀ {P : AbstractInstr → Set} (E : ℕ) (t : AbstractTrace) → Any P t → Any P (checks E t)
+Any-checks E (x ∷ t) (here p)  = here p
+Any-checks E (x ∷ t) (there a) = there (any-after (boundary? x) (stretch E t) (Any-checks E t a))
+
+Any-room : ∀ {P : AbstractInstr → Set} (t : AbstractTrace) → Any P t → Any P (room-checks t)
+Any-room t a = there (Any-checks (max-entry t) t a)
+
+------------------------------------------------------------------------
+-- WHAT A TRACE DEFINES: a fold to which a check contributes nothing (a check
+-- defines no label, entry or symbol) folds the image with checks to the same.
+------------------------------------------------------------------------
+module _ {X : Set} (F : AbstractTrace → X) (g : AbstractInstr → X → X)
+         (F-∷ : ∀ i is → F (i ∷ is) ≡ g i (F is)) (g-room : ∀ k x → g (instr-room k) x ≡ x) where
+  open import Relation.Binary.PropositionalEquality using (trans; cong; sym)
+
+  private
+    fold-after : ∀ (b : Bool) (k : ℕ) (C : AbstractTrace) → F (if b then instr-room k ∷ C else C) ≡ F C
+    fold-after true  k C = trans (F-∷ (instr-room k) C) (g-room k (F C))
+    fold-after false k C = refl
+
+  fold-checks : ∀ (E : ℕ) (t : AbstractTrace) → F (checks E t) ≡ F t
+  fold-checks E []      = refl
+  fold-checks E (x ∷ t) =
+    trans (F-∷ x _) (trans (cong (g x) (trans (fold-after (boundary? x) (stretch E t) (checks E t)) (fold-checks E t)))
+                           (sym (F-∷ x t)))
+
+  fold-room : ∀ (t : AbstractTrace) → F (room-checks t) ≡ F t
+  fold-room t = trans (F-∷ (instr-room _) (checks (max-entry t) t))
+                      (trans (g-room _ _) (fold-checks (max-entry t) t))
+
+------------------------------------------------------------------------
+-- WHAT A TRACE REFERENCES: a check DOES reference something — the Host's
+-- `once_exhausted`, which it calls when there is no room. So a property of every
+-- reference crosses the pass when the check's references have it too.
+------------------------------------------------------------------------
+module _ {X : Set} {P : X → Set} (F : AbstractTrace → List X) (f : AbstractInstr → List X)
+         (F-∷ : ∀ i is → F (i ∷ is) ≡ f i Data.List.++ F is) (f-room : ∀ k → All P (f (instr-room k))) where
+  open import Data.List.Relation.Unary.All.Properties using (++⁺; ++⁻)
+  open import Relation.Binary.PropositionalEquality using (subst; sym)
+  open import Data.Product using (proj₁; proj₂)
+
+  private
+    all-fold-after : ∀ (b : Bool) (k : ℕ) (C : AbstractTrace) → All P (F C)
+                   → All P (F (if b then instr-room k ∷ C else C))
+    all-fold-after true  k C a = subst (All P) (sym (F-∷ (instr-room k) C)) (++⁺ (f-room k) a)
+    all-fold-after false k C a = a
+
+  All-fold-checks : ∀ (E : ℕ) (t : AbstractTrace) → All P (F t) → All P (F (checks E t))
+  All-fold-checks E []      a = a
+  All-fold-checks E (x ∷ t) a =
+    subst (All P) (sym (F-∷ x _))
+      (++⁺ (proj₁ split) (all-fold-after (boundary? x) (stretch E t) (checks E t) (All-fold-checks E t (proj₂ split))))
+    where split = ++⁻ (f x) (subst (All P) (F-∷ x t) a)
+
+  All-fold-room : ∀ (t : AbstractTrace) → All P (F t) → All P (F (room-checks t))
+  All-fold-room t a =
+    subst (All P) (sym (F-∷ (instr-room _) (checks (max-entry t) t)))
+      (++⁺ (f-room _) (All-fold-checks (max-entry t) t a))

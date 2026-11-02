@@ -86,7 +86,7 @@ HeapRoom =
   ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
     (s : X.State) (n : ℕ)
-  → RCx.RunAt o x86-32-frame-semantics refl prog fs
+  → RCx.RunLow o x86-32-frame-semantics refl prog fs
   → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {x86-32-frame-semantics} prog
       (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-alloc-heap n)
@@ -115,7 +115,7 @@ StackRoom =
   ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
     (s : X.State) (b : ℕ)
-  → RCx.RunAt o x86-32-frame-semantics refl prog fs
+  → RCx.RunLow o x86-32-frame-semantics refl prog fs
   → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
   → Σ EntryId (λ m → FlatMachine.fetch {x86-32-frame-semantics} prog (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-ctrl (c-entry m b)))
       ⊎ (FlatMachine.fetch {x86-32-frame-semantics} prog (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-ctrl (c-start b)))
@@ -140,7 +140,7 @@ CallRoom =
   ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
     (s : X.State) (c : AbstractInstr)
-  → RCx.RunAt o x86-32-frame-semantics refl prog fs
+  → RCx.RunLow o x86-32-frame-semantics refl prog fs
   → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {x86-32-frame-semantics} prog
       (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just c → CallI c
@@ -164,7 +164,7 @@ RegRange =
   ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
     (s : X.State) (r : Reg)
-  → RCx.RunAt o x86-32-frame-semantics refl prog fs
+  → RCx.RunLow o x86-32-frame-semantics refl prog fs
   → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
   → X.readReg (X.State.regs s) r < W.modulus
 
@@ -205,7 +205,7 @@ record AddrNoWrap : Set₁ where
       ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
         (s : X.State) (b : ℕ)
-      → RCx.RunAt o x86-32-frame-semantics refl prog fs
+      → RCx.RunLow o x86-32-frame-semantics refl prog fs
       → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {x86-32-frame-semantics} prog
           (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
@@ -240,7 +240,7 @@ record LitFits : Set₁ where
       ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
         (s : X.State) (n : ℕ)
-      → RCx.RunAt o x86-32-frame-semantics refl prog fs
+      → RCx.RunLow o x86-32-frame-semantics refl prog fs
       → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {x86-32-frame-semantics} prog
           (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-tag-lit n)
@@ -251,7 +251,7 @@ record LitFits : Set₁ where
       ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
         (s : X.State) (v : ℤ)
-      → RCx.RunAt o x86-32-frame-semantics refl prog fs
+      → RCx.RunLow o x86-32-frame-semantics refl prog fs
       → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {x86-32-frame-semantics} prog
           (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
@@ -275,7 +275,7 @@ float-fits :
   ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
     (s : X.State) (v : Decimal)
-  → RCx.RunAt o x86-32-frame-semantics refl prog fs
+  → RCx.RunLow o x86-32-frame-semantics refl prog fs
   → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {x86-32-frame-semantics} prog
       (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-const fits-float v)

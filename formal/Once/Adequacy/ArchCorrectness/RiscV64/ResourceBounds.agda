@@ -45,6 +45,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation as FSimr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
+import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLr
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; lea-slot; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
@@ -81,7 +82,7 @@ HeapRoom =
   ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (n : ℕ)
-  → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+  → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
   → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
       (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-alloc-heap n)
@@ -96,7 +97,7 @@ StackRoom =
   ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (b : ℕ)
-  → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+  → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
   → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → Σ EntryId (λ m → FlatMachine.fetch {rv64-frame-semantics} prog (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-entry m b)))
       ⊎ (FlatMachine.fetch {rv64-frame-semantics} prog (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-start b)))
@@ -111,7 +112,7 @@ CallRoom =
   ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (c : AbstractInstr)
-  → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+  → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
   → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
       (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just c → CallI c
@@ -146,7 +147,7 @@ SlotAddrNoWrap =
   ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (slot : ℕ)
-  → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+  → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
   → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
       (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (lea-slot slot)
@@ -166,7 +167,7 @@ RegRange =
   ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (r : Reg)
-  → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+  → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
   → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → R.readReg (R.State.regs s) r < R.W.modulus
 
@@ -187,7 +188,7 @@ record AddrNoWrap : Set₁ where
       ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
         (s : R.State) (b : ℕ)
-      → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+      → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
       → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {rv64-frame-semantics} prog
           (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
@@ -212,7 +213,7 @@ record LitFits : Set₁ where
       ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
         (s : R.State) (n : ℕ)
-      → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+      → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
       → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {rv64-frame-semantics} prog
           (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-tag-lit n)
@@ -222,7 +223,7 @@ record LitFits : Set₁ where
       ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
         (s : R.State) (v : ℤ)
-      → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+      → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
       → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {rv64-frame-semantics} prog
           (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
@@ -246,7 +247,7 @@ float-fits :
   ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (v : Decimal)
-  → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+  → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
   → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
       (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-const fits-float v)

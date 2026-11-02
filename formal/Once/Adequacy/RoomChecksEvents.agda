@@ -95,3 +95,13 @@ module RoomEvents {FS : FrameSemantics} (t : AbstractTrace) where
   ... | m , ee , ec with chk n fs p sp k fk m ee ec (LocState.halted (floc fs)) refl
   ...   | ee′ , ec′ = suc m , ee′ , ec′
 
+
+  -- THE BOOT'S FUEL: from a check state (the lowered start is one), the fuel
+  -- that matches the original's `suc n` is of the form `suc (suc N)` — the check
+  -- step, then the original's first step. (`ev-rel` hides that shape in a Σ.)
+  ev-boot : ∀ (n : ℕ) (fs : FlatState) (p : ℕ) → suc p ≡ φ t (fpc fs)
+          → ∀ (k : ℕ) → fetch P′ p ≡ just (instr-room k)
+          → Σ ℕ (λ N → Same (suc (suc N)) (lift fs p) (suc n) fs)
+  ev-boot n fs p sp k fk with ev-step n fs (LocState.halted (floc fs)) refl
+  ... | m , ee , ec with chk n fs p sp k fk (suc m) ee ec (LocState.halted (floc fs)) refl
+  ...   | ee′ , ec′ = m , ee′ , ec′

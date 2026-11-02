@@ -33,3 +33,8 @@ module Once.Adequacy.ArchCorrectness.X86-64.RunContext (o : CanonicalName)
   where
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq public
+
+-- D371: the run of the LOWERED image (`room-checks` of the program image), which
+-- the engine and every run-conditioned parameter speak of.
+open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq public
+  using (RunLow; mkRunLow; low-start)
