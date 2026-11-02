@@ -600,3 +600,18 @@ module ArmsV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
   ...   | peeled (⊢sub-eff _ _) _ ()
   armsLL nz d | peeled (⊢sub-use _ _) _ ()
   armsLL nz d | peeled (⊢sub-eff _ _) _ ()
+
+  record Arm1 {Ψa T π₀ t} (d : Δ ⊩ Γ ⊢[ Ψa ] t ∷ T ! π₀) (e : Tm S m n) : Set where
+    constructor arm1
+    field
+      {Ψe} : Usage n
+      {πe} : Purity
+      {E}  : Ty m
+      de   : Δ ⊩ Γ ⊢[ Ψe ] e ∷ E ! πe
+      Pe   : Ψe ⊑ᵘ Ψa
+
+  armL1 : ∀ {Ψa T π₀ e b} (d : Δ ⊩ Γ ⊢[ Ψa ] let′ One e b ∷ T ! π₀) → Arm1 d e
+  armL1 d with peel d
+  ... | peeled (⊢let {Ψ₁ = Ψe} {Ψ₂ = Ψb} de _) P _ = arm1 de (⊑ᵘ-trans (⊑ᵘ-trans (⊑ᵘ-*One Ψe) (⊑ᵘ-+ʳ Ψb (One *ᵘ Ψe))) P)
+  ... | peeled (⊢sub-use _ _) _ ()
+  ... | peeled (⊢sub-eff _ _) _ ()
