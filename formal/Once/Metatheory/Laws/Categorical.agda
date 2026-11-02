@@ -40,6 +40,12 @@ open import Once.Metatheory.Laws.Tools Σ u fmt S
 open import Once.Metatheory.Laws.Views Σ u fmt S
 open import Once.Metatheory.Laws.Strengthen Σ S using (pure⊑)
 open import Once.Metatheory.Laws.Compose Σ u fmt S using (compᵛ; module CompV)
+open import Once.Metatheory.Laws.Combinators Σ u fmt S using (pairᵛ; module CombV)
+open import Once.Metatheory.Laws.Canon Σ S using (terminalD; initialD; inlD; inrD; fstD′; sndD′; applyD; composeD; pairD; curryD)
+open import Once.Spec.Core.Derived using (terminalᶜ; initialᶜ; inlᶜ; inrᶜ; fstᶜ; sndᶜ; applyᶜ; pairᶜ; caseᶜ; curryᶜ)
+open import Once.Spec.Type using (Unit; Void; _*_; _+_)
+open import Once.Spec.Metatheory using (Pure)
+open import Data.Sum using (inj₁; inj₂; [_,_]′)
 
 -- Nothing is used below every usage.
 zero⊑ : ∀ {n} (Ψ : Usage n) → zeroUsage ⊑ᵘ Ψ
@@ -89,3 +95,57 @@ module _ {m : ℕ} {Δ : KCtx m} where
       SAME {fv} {fv′} sf a a′ sa = toObserved
         (≈-Relatedˡ (≈-trans (toT∞-bind π (idv a) fv) (≈-trans (≈-bind (toT∞-sub (pure⊑ π) a) (λ _ → ≈-refl _)) (idˡ a _)))
           (runs (appMany {π} {A ⟨ σ ⟩} {B ⟨ σ ⟩} sf sa)))
+
+  terminal-uniqueᶜ : ∀ {n} {Γ : Ctx m n} {Ψ A π₀ h}
+                   → Pure Σ fmt S Δ Γ h (A ⇒[ mk-kind Many pure ] Unit)
+                   → (d : Δ ⊩ Γ ⊢[ Ψ ] h ∷ A ⇒[ mk-kind Many pure ] Unit ! π₀)
+                     (d′ : Δ ⊩ Γ ⊢[ Ψ ] terminalᶜ A pure ∷ A ⇒[ mk-kind Many pure ] Unit ! π₀) → _≅_ Σ fmt S d d′
+  terminal-uniqueᶜ {Ψ = Ψ} {A} {π₀} (_ , ph) d d′ δ sd σ r γ sγ =
+    sameM {T ⟨ σ ⟩} {π₀}
+      (rel (~trans {T} (pureRet d ph base) (~trans {T} (returnRel SAME) (~sym {T} (runs (fl d′ (terminalD A pure) base r₀))))))
+    where
+      open Views δ sd σ r γ sγ
+      open ProdV δ sd σ r γ sγ using (pureRet)
+      T = A ⇒[ mk-kind Many pure ] Unit
+      r₀ = resR base (zero⊑ Ψ)
+      SAME : ∀ {hv tv} → Same (T ⟨ σ ⟩) hv tv
+      SAME a a′ sa = toObserved (returnRel tt)
+
+  initial-uniqueᶜ : ∀ {n} {Γ : Ctx m n} {Ψ A π π₀ h}
+                  → Pure Σ fmt S Δ Γ h (Void ⇒[ mk-kind Many π ] A)
+                  → (d : Δ ⊩ Γ ⊢[ Ψ ] h ∷ Void ⇒[ mk-kind Many π ] A ! π₀)
+                    (d′ : Δ ⊩ Γ ⊢[ Ψ ] initialᶜ A π ∷ Void ⇒[ mk-kind Many π ] A ! π₀) → _≅_ Σ fmt S d d′
+  initial-uniqueᶜ {Ψ = Ψ} {A} {π} {π₀} (_ , ph) d d′ δ sd σ r γ sγ =
+    sameM {T ⟨ σ ⟩} {π₀}
+      (rel (~trans {T} (pureRet d ph base) (~trans {T} (returnRel SAME) (~sym {T} (runs (fl d′ (initialD A π) base r₀))))))
+    where
+      open Views δ sd σ r γ sγ
+      open ProdV δ sd σ r γ sγ using (pureRet)
+      T = Void ⇒[ mk-kind Many π ] A
+      r₀ = resR base (zero⊑ Ψ)
+      SAME : ∀ {hv iv} → Same (T ⟨ σ ⟩) hv iv
+      SAME () a′ sa
+
+  case-ηᶜ : ∀ {n} {Γ : Ctx m n} {Ψ A B π π₀}
+            (d : Δ ⊩ Γ ⊢[ Ψ ] caseᶜ A B π (inlᶜ A B π) (inrᶜ A B π) ∷ (A + B) ⇒[ mk-kind Many π ] (A + B) ! π₀)
+            (d′ : Δ ⊩ Γ ⊢[ Ψ ] idᶜ (A + B) π ∷ (A + B) ⇒[ mk-kind Many π ] (A + B) ! π₀) → _≅_ Σ fmt S d d′
+  case-ηᶜ {Γ = Γ} {Ψ} {A} {B} {π} {π₀} d d′ δ sd σ r γ sγ =
+    sameM {T ⟨ σ ⟩} {π₀}
+      (rel (~trans {T} (CombV.caseSem δ sd σ r γ sγ d base (inlD A B π) r₀ (inrD A B π) r₀)
+             (≈-Relatedˡ (≈-trans (idˡ _ _) (idˡ _ _))
+               (~trans {T} (returnRel SAME) (~sym {T} (runs (fl d′ (idD (A + B) π) base r₀)))))))
+    where
+      open Views δ sd σ r γ sγ
+      T = (A + B) ⇒[ mk-kind Many π ] (A + B)
+      r₀ = resR base (zero⊑ Ψ)
+      e₀ = restrict σ (zero⊑ Ψ) γ
+      inlv = ⟦ inlD {Γ = Γ} A B π ⟧ δ σ r e₀
+      inrv = ⟦ inrD {Γ = Γ} A B π ⟧ δ σ r e₀
+      idv  = ⟦ idD {Γ = Γ} (A + B) π ⟧ δ σ r e₀
+      SAME : Same (T ⟨ σ ⟩) [ inlv , inrv ]′ idv
+      SAME (inj₁ a) (inj₁ a′) s = toObserved
+        (≈-Relatedˡ (toT∞-sub (pure⊑ π) (inj₁ a)) (≈-Relatedʳ (toT∞-sub (pure⊑ π) (inj₁ a′)) (returnRel s)))
+      SAME (inj₂ b) (inj₂ b′) s = toObserved
+        (≈-Relatedˡ (toT∞-sub (pure⊑ π) (inj₂ b)) (≈-Relatedʳ (toT∞-sub (pure⊑ π) (inj₂ b′)) (returnRel s)))
+      SAME (inj₁ _) (inj₂ _) ()
+      SAME (inj₂ _) (inj₁ _) ()
