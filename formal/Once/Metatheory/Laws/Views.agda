@@ -180,21 +180,21 @@ module Views {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
   ~sym : ∀ {A : Ty m} {x y : T∞ ⟦ A ⟨ σ ⟩ ⟧ᵛ} → _~_ {A} x y → _~_ {A} y x
   ~sym {A} p = Related-mono (Same-sym (A ⟨ σ ⟩)) (Related-flip p)
 
-  letEnd : ∀ q {Ψx ΨB Ψ₁ Ψ₂ A B πx πB π₁ π₂ e b} {lhs : T∞ ⟦ B ⟨ σ ⟩ ⟧ᵛ}
+  letEnd : ∀ q {q′ Ψx ΨB Ψ₁ Ψ₂ A B πx πB π₁ π₂ e b} {lhs : T∞ ⟦ B ⟨ σ ⟩ ⟧ᵛ}
              (dx : Δ ⊩ Γ ⊢[ Ψx ] e ∷ A ! πx) {ex : Env σ Γ Ψx} → Res ex
-         → (dB : Δ ⊩ (Γ ▸ A) ⊢[ q ∷ ΨB ] b ∷ B ! πB) {eB : Env σ Γ ΨB} → Res eB
+         → (dB : Δ ⊩ (Γ ▸ A) ⊢[ q′ ∷ ΨB ] b ∷ B ! πB) {eB : Env σ Γ ΨB} → Res eB
          → (de : Δ ⊩ Γ ⊢[ Ψ₁ ] e ∷ A ! positionGrade q π₁) (db : Δ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψ₂ ] b ∷ B ! π₂) {eb : Env σ Γ Ψ₂} → Res eb
          → LetSem q lhs de db eb
-         → _~_ {B} (⟪ dx ⟫ ex >>=∞ λ x → ⟪ dB ⟫▸ eB (slot q x)) lhs
-  letEnd Zero {A = A} {B} dx {ex} rx dB rB de db {eb} rb sem =
+         → _~_ {B} (⟪ dx ⟫ ex >>=∞ λ x → ⟪ dB ⟫▸ eB (slot q′ x)) lhs
+  letEnd Zero {q′} {A = A} {B} dx {ex} rx dB rB de db {eb} rb sem =
     ~trans {B} (≈-Relatedʳ (≈-sym (idˡ (⟦ px ⟧ δ σ r ex) (λ _ → ⟪ db ⟫▸ eb tt)))
-                           (bindRel (runs (fl dx px rx rx)) (λ _ → runs (fl▸ dB db rB rb tt))))
+                           (bindRel (runs (fl dx px rx rx)) (λ sv → runs (fl▸ dB db rB rb (slotAgree σ {A} q′ Zero sv)))))
                (~sym {B} sem)
     where px = transfer de dx
-  letEnd One  {A = A} {B} dx rx dB rB de db rb (ee , re , eqR) =
-    ~trans {B} (bindRel (runs (fl dx de rx re)) (λ sv → runs (fl▸ dB db rB rb (slotAgree σ {A} One One sv)))) (~sym {B} eqR)
-  letEnd Many {A = A} {B} dx rx dB rB de db rb (ee , re , eqR) =
-    ~trans {B} (bindRel (runs (fl dx de rx re)) (λ sv → runs (fl▸ dB db rB rb (slotAgree σ {A} Many Many sv)))) (~sym {B} eqR)
+  letEnd One  {q′} {A = A} {B} dx rx dB rB de db rb (ee , re , eqR) =
+    ~trans {B} (bindRel (runs (fl dx de rx re)) (λ sv → runs (fl▸ dB db rB rb (slotAgree σ {A} q′ One sv)))) (~sym {B} eqR)
+  letEnd Many {q′} {A = A} {B} dx rx dB rB de db rb (ee , re , eqR) =
+    ~trans {B} (bindRel (runs (fl dx de rx re)) (λ sv → runs (fl▸ dB db rB rb (slotAgree σ {A} q′ Many sv)))) (~sym {B} eqR)
 
   ----------------------------------------------------------------------
   -- var
