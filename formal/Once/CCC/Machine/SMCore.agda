@@ -1319,7 +1319,7 @@ data AbstractInstr : Set where
 
   -- Plan 0.123 M2: `instr-free-heap n` frees the `n`-cell heap block whose
   -- base `Input1` points at. The run's frees are what the no-leak claim
-  -- (`Once.Adequacy.NoLeak`, B.0) counts. Memory-non-destructive: no
+  -- (`Once.Implementation.NoLeak`, B.0) counts. Memory-non-destructive: no
   -- machine state changes (the bump allocator never reuses a block), and
   -- not emittable yet (`EmittableI`): the compiler emits it from M4 on.
   -- Added LAST for MAlonzo ctor-index stability.
@@ -2106,7 +2106,7 @@ module AbstractExec {FS : FrameSemantics} where
 
   -- instr-free-heap: memory-non-destructive (plan 0.123 M2). The bump
   -- allocator never reuses a block, so a free changes no state; what it
-  -- frees is read off the run by the no-leak claim (`Once.Adequacy.NoLeak`).
+  -- frees is read off the run by the no-leak claim (`Once.Implementation.NoLeak`).
   exec-abstract (instr-free-heap n) s alloc = s , alloc
 
   -- instr-room: a no-op on the unbounded abstract memory (plan 0.123 A.4).

@@ -2,8 +2,17 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.NoLeak — the compiler emits no code that leaks (plan 0.123
--- B.0, D6).
+-- Once.Implementation — the implementation Spec (plan 0.138 §5, plan 0.123
+-- B.0.9): the claims that constrain the compiler but not the meaning, stated
+-- beside `correct`. STATEMENTS ONLY: nothing here is proved or postulated,
+-- and nothing but `Once.Certified` imports it (`make implementation-gate`).
+-- A claim's proof lives elsewhere and becomes a field of `CertifiedBuild`.
+--
+-- The claims: `NoLeak` (below). Next: plan 0.138's layout claim.
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- NoLeak — the compiler emits no code that leaks (plan 0.123 B.0, D6).
 --
 -- A claim about the compiler beside `correct`, not in `Once.Spec`: the Spec's
 -- model has unlimited memory, so leaking is invisible to it. It is stated on
@@ -29,7 +38,7 @@
 -- Ownership (D6) is how the compiler meets the claim, not part of it.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.NoLeak where
+module Once.Implementation where
 
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List)
