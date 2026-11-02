@@ -273,11 +273,9 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
       (γ : Env σ Γ Ψ) → SameEnv Σ fmt S σ Γ Ψ γ
     → SameM π (A ⟨ σ ⟩) (⟦ d ⟧ δ σ r γ) (⟦ d′ ⟧ δ σ r γ)
 
-  -- `t` is effect-free within the usage `Ψ`: it has a derivation at grade
-  -- `pure` using no more than the law's own judgment does. (Within `Ψ`, so
-  -- that the variables it reads are the ones the law's environment holds.)
-  Pure : ∀ {m n} (Δ : KCtx m) (Γ : Ctx m n) → Usage n → Tm S m n → Ty m → Set
-  Pure Δ Γ Ψ t A = Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! pure
+  -- `t` is effect-free: it has a derivation at grade `pure`.
+  Pure : ∀ {m n} (Δ : KCtx m) (Γ : Ctx m n) → Tm S m n → Ty m → Set
+  Pure Δ Γ t A = ∃[ Ψ ] (Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! pure)
 
   -- The structure, by its universal properties (β and η together are each
   -- one): a category at every grade; coproducts and the initial object at
@@ -299,50 +297,50 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
                     → d ≅ d′
 
       fst-pairᶜ     : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π₀ f g}
-                    → Pure Δ Γ Ψ g (C ⇒[ mk-kind Many pure ] B)
+                    → Pure Δ Γ g (C ⇒[ mk-kind Many pure ] B)
                     → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ C pure (fstᶜ A B pure) (pairᶜ C pure f g) ∷ C ⇒[ mk-kind Many pure ] A ! π₀)
                       (d′ : Δ ⊩ Γ ⊢[ Ψ ] f ∷ C ⇒[ mk-kind Many pure ] A ! π₀) → d ≅ d′
       snd-pairᶜ     : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π₀ f g}
-                    → Pure Δ Γ Ψ f (C ⇒[ mk-kind Many pure ] A)
+                    → Pure Δ Γ f (C ⇒[ mk-kind Many pure ] A)
                     → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ C pure (sndᶜ A B pure) (pairᶜ C pure f g) ∷ C ⇒[ mk-kind Many pure ] B ! π₀)
                       (d′ : Δ ⊩ Γ ⊢[ Ψ ] g ∷ C ⇒[ mk-kind Many pure ] B ! π₀) → d ≅ d′
       pair-ηᶜ       : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π₀ h}
-                    → Pure Δ Γ Ψ h (C ⇒[ mk-kind Many pure ] (A * B))
+                    → Pure Δ Γ h (C ⇒[ mk-kind Many pure ] (A * B))
                     → (d : Δ ⊩ Γ ⊢[ Ψ ] pairᶜ C pure (composeᶜ C pure (fstᶜ A B pure) h)
                                                      (composeᶜ C pure (sndᶜ A B pure) h)
                                          ∷ C ⇒[ mk-kind Many pure ] (A * B) ! π₀)
                       (d′ : Δ ⊩ Γ ⊢[ Ψ ] h ∷ C ⇒[ mk-kind Many pure ] (A * B) ! π₀) → d ≅ d′
       terminal-uniqueᶜ : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A π₀ h}
-                    → Pure Δ Γ Ψ h (A ⇒[ mk-kind Many pure ] Unit)
+                    → Pure Δ Γ h (A ⇒[ mk-kind Many pure ] Unit)
                     → (d : Δ ⊩ Γ ⊢[ Ψ ] h ∷ A ⇒[ mk-kind Many pure ] Unit ! π₀)
                       (d′ : Δ ⊩ Γ ⊢[ Ψ ] terminalᶜ A pure ∷ A ⇒[ mk-kind Many pure ] Unit ! π₀) → d ≅ d′
 
       case-inlᶜ     : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π π₀ f g}
-                    → Pure Δ Γ Ψ g (B ⇒[ mk-kind Many π ] C)
+                    → Pure Δ Γ g (B ⇒[ mk-kind Many π ] C)
                     → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A π (caseᶜ A B π f g) (inlᶜ A B π) ∷ A ⇒[ mk-kind Many π ] C ! π₀)
                       (d′ : Δ ⊩ Γ ⊢[ Ψ ] f ∷ A ⇒[ mk-kind Many π ] C ! π₀) → d ≅ d′
       case-inrᶜ     : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π π₀ f g}
-                    → Pure Δ Γ Ψ f (A ⇒[ mk-kind Many π ] C)
+                    → Pure Δ Γ f (A ⇒[ mk-kind Many π ] C)
                     → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ B π (caseᶜ A B π f g) (inrᶜ A B π) ∷ B ⇒[ mk-kind Many π ] C ! π₀)
                       (d′ : Δ ⊩ Γ ⊢[ Ψ ] g ∷ B ⇒[ mk-kind Many π ] C ! π₀) → d ≅ d′
       case-ηᶜ       : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B π π₀}
                       (d : Δ ⊩ Γ ⊢[ Ψ ] caseᶜ A B π (inlᶜ A B π) (inrᶜ A B π) ∷ (A + B) ⇒[ mk-kind Many π ] (A + B) ! π₀)
                       (d′ : Δ ⊩ Γ ⊢[ Ψ ] idᶜ (A + B) π ∷ (A + B) ⇒[ mk-kind Many π ] (A + B) ! π₀) → d ≅ d′
       initial-uniqueᶜ : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A π π₀ h}
-                    → Pure Δ Γ Ψ h (Void ⇒[ mk-kind Many π ] A)
+                    → Pure Δ Γ h (Void ⇒[ mk-kind Many π ] A)
                     → (d : Δ ⊩ Γ ⊢[ Ψ ] h ∷ Void ⇒[ mk-kind Many π ] A ! π₀)
                       (d′ : Δ ⊩ Γ ⊢[ Ψ ] initialᶜ A π ∷ Void ⇒[ mk-kind Many π ] A ! π₀) → d ≅ d′
 
       -- apply ∘ ⟨ curry f ∘ fst , snd ⟩ = f, and the closure of `h`'s calls is `h`.
       curry-βᶜ      : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π₀ f}
-                    → Pure Δ Γ Ψ f ((A * B) ⇒[ mk-kind Many pure ] C)
+                    → Pure Δ Γ f ((A * B) ⇒[ mk-kind Many pure ] C)
                     → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (A * B) pure (applyᶜ B C)
                                           (pairᶜ (A * B) pure (composeᶜ (A * B) pure (curryᶜ A B pure pure f) (fstᶜ A B pure))
                                                               (sndᶜ A B pure))
                                          ∷ (A * B) ⇒[ mk-kind Many pure ] C ! π₀)
                       (d′ : Δ ⊩ Γ ⊢[ Ψ ] f ∷ (A * B) ⇒[ mk-kind Many pure ] C ! π₀) → d ≅ d′
       curry-ηᶜ      : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π₀ h}
-                    → Pure Δ Γ Ψ h (A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C))
+                    → Pure Δ Γ h (A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C))
                     → (d : Δ ⊩ Γ ⊢[ Ψ ] curryᶜ A B pure pure
                                           (composeᶜ (A * B) pure (applyᶜ B C)
                                             (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure)))
@@ -358,7 +356,7 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
                   (d′ : Δ ⊩ Γ ⊢[ Ψ ] let′ q u t ∷ B ! π) → d ≅ d′
       -- … and an effect-free function is the λ of its calls (η).
       lam-η     : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B q π π′ f}
-                → Pure Δ Γ Ψ f (A ⇒[ mk-kind q π′ ] B)
+                → Pure Δ Γ f (A ⇒[ mk-kind q π′ ] B)
                 → (d : Δ ⊩ Γ ⊢[ Ψ ] lam A q π′ (app (wk f) (var zero)) ∷ A ⇒[ mk-kind q π′ ] B ! π)
                   (d′ : Δ ⊩ Γ ⊢[ Ψ ] f ∷ A ⇒[ mk-kind q π′ ] B ! π) → d ≅ d′
 
@@ -373,27 +371,27 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
                 → d ≅ d′
       -- … and an effect-free computation whose result is unused is dropped.
       let-drop  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B q π t u}
-                → Pure Δ Γ Ψ t A
+                → Pure Δ Γ t A
                 → (d : Δ ⊩ Γ ⊢[ Ψ ] let′ q t (wk u) ∷ B ! π)
                   (d′ : Δ ⊩ Γ ⊢[ Ψ ] u ∷ B ! π) → d ≅ d′
 
       -- × : a projection of a pair whose other side is effect-free, and an
       -- effect-free pair is the pair of its projections.
       fst-pair  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B π a b}
-                → Pure Δ Γ Ψ b B
+                → Pure Δ Γ b B
                 → (d : Δ ⊩ Γ ⊢[ Ψ ] fst (pair a b) ∷ A ! π)
                   (d′ : Δ ⊩ Γ ⊢[ Ψ ] a ∷ A ! π) → d ≅ d′
       snd-pair  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B π a b}
-                → Pure Δ Γ Ψ a A
+                → Pure Δ Γ a A
                 → (d : Δ ⊩ Γ ⊢[ Ψ ] snd (pair a b) ∷ B ! π)
                   (d′ : Δ ⊩ Γ ⊢[ Ψ ] b ∷ B ! π) → d ≅ d′
       pair-η    : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B π p}
-                → Pure Δ Γ Ψ p (A * B)
+                → Pure Δ Γ p (A * B)
                 → (d : Δ ⊩ Γ ⊢[ Ψ ] pair (fst p) (snd p) ∷ A * B ! π)
                   (d′ : Δ ⊩ Γ ⊢[ Ψ ] p ∷ A * B ! π) → d ≅ d′
       -- Unit is terminal for effect-free terms.
       unit-η    : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ π t}
-                → Pure Δ Γ Ψ t Unit
+                → Pure Δ Γ t Unit
                 → (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ Unit ! π)
                   (d′ : Δ ⊩ Γ ⊢[ Ψ ] unit ∷ Unit ! π) → d ≅ d′
 
