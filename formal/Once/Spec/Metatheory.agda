@@ -42,7 +42,7 @@
 
 module Once.Spec.Metatheory where
 
-open import Data.Fin using (Fin)
+open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; length)
 open import Data.List.Relation.Binary.Subset.Propositional using (_⊆_)
 open import Data.Nat using (ℕ)
@@ -54,14 +54,17 @@ open import Relation.Nullary using (¬_)
 open import Once.Spec.Grade using (Quantity; Purity; Finite; fin; actᶠ; pure; act; eff; Many; mk-kind; _⊑π_; _·p_; positionGrade; Zero; One)
 open import Once.Spec.Name using (CanonicalName; NotGenerator)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; Unit; Void; Id; ν; _+_; _⇒[_]_)
+open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; Unit; Void; Id; ν; _+_; _*_; _⇒[_]_)
 open import Once.Spec.Delay using (_⇓_)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Signature using (Signature; OneName; WellFormed; Layer; call; Op; op; _∶_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF; μS; inS; sfmap)
 open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _+ᵘ_; _*ᵘ_; _⟨_⟩ᶜ)
-open import Once.Spec.Core.Syntax using (Defs; []; Tm; let′; _[_]; _⟪_⟫ₜ; _!!_; module Schema)
+open import Once.Spec.Core.Syntax
+  using (Defs; []; Tm; var; lam; app; let′; unit; pair; fst; snd; inl; inr; case; absurd; ren; ext; wk; _[_]; _⟪_⟫ₜ; _!!_; module Schema)
+open import Once.Spec.Core.Derived
+  using (idᶜ; terminalᶜ; initialᶜ; fstᶜ; sndᶜ; inlᶜ; inrᶜ; applyᶜ; composeᶜ; pairᶜ; caseᶜ; curryᶜ)
 open Schema using (type)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Surface.Program using (Denotes)
@@ -239,6 +242,174 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
                  → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ ] t ⟪ σ ⟫ₜ ∷ A ⟨ σ ⟩ ! π
 
 ------------------------------------------------------------------------
+-- The equational theory: the laws a program may be rewritten by
+------------------------------------------------------------------------
+
+-- Reasoning about a Once program is equational (GOAL.md): a term may be
+-- replaced by one equal to it by a law, and the program means the same. The
+-- laws are the core's (a call-by-value λ-calculus whose `let` is the effect
+-- structure's bind); the categorical combinators are λ-terms of the core
+-- (`Core.Derived`), so their laws follow, and are stated too. Each law relates
+-- two derivations of ONE judgment; where a law would drop, duplicate or reorder
+-- an effect, it asks for the term concerned to be effect-free.
+
+module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
+  open CoreTyping Σ S
+  open Meaning Σ fmt S using (⟦_⟧; DefSem; Env)
+  open Equivalence Σ using (SameM)
+
+  -- Two derivations of one judgment mean the same: at every instance of the
+  -- type variables, every meaning of the definitions and every environment,
+  -- their computations are the same up to what is observed.
+  _≅_ : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ t t′ A π}
+      → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ ] t′ ∷ A ! π → Set
+  _≅_ {m} {Δ = Δ} {Γ} {Ψ} {A = A} {π} d d′ =
+    ∀ (δ : DefSem) → SameDefs Σ fmt S δ → (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
+      (γ : Env σ Γ Ψ) → SameEnv Σ fmt S σ Γ Ψ γ
+    → SameM π (A ⟨ σ ⟩) (⟦ d ⟧ δ σ r γ) (⟦ d′ ⟧ δ σ r γ)
+
+  -- `t` is effect-free: it has a derivation at grade `pure`.
+  Pure : ∀ {m n} (Δ : KCtx m) (Γ : Ctx m n) → Tm S m n → Ty m → Set
+  Pure Δ Γ t A = ∃[ Ψ ] (Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! pure)
+
+  record Laws : Set where
+    field
+      -- → : a call is a `let` of its argument (β, by value) …
+      app-lam   : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B q π π′ t u}
+                  (d : Δ ⊩ Γ ⊢[ Ψ ] app (lam A q π′ t) u ∷ B ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] let′ q u t ∷ B ! π) → d ≅ d′
+      -- … and an effect-free function is the λ of its calls (η).
+      lam-η     : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B q π π′ f}
+                → Pure Δ Γ f (A ⇒[ mk-kind q π′ ] B)
+                → (d : Δ ⊩ Γ ⊢[ Ψ ] lam A q π′ (app (wk f) (var zero)) ∷ A ⇒[ mk-kind q π′ ] B ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] f ∷ A ⇒[ mk-kind q π′ ] B ! π) → d ≅ d′
+
+      -- `let` is bind: right unit and associativity (`TermModel.let-β` is the
+      -- left unit, for an effect-free term) …
+      let-unit  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A q π t}
+                  (d : Δ ⊩ Γ ⊢[ Ψ ] let′ q t (var zero) ∷ A ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π) → d ≅ d′
+      let-assoc : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ C q₁ q₂ π t u v}
+                  (d : Δ ⊩ Γ ⊢[ Ψ ] let′ q₂ (let′ q₁ t u) v ∷ C ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] let′ q₁ t (let′ q₂ u (ren (ext {S = S} {m = m} suc) v)) ∷ C ! π)
+                → d ≅ d′
+      -- … and an effect-free computation whose result is unused is dropped.
+      let-drop  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B q π t u}
+                → Pure Δ Γ t A
+                → (d : Δ ⊩ Γ ⊢[ Ψ ] let′ q t (wk u) ∷ B ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] u ∷ B ! π) → d ≅ d′
+
+      -- × : a projection of a pair whose other side is effect-free, and an
+      -- effect-free pair is the pair of its projections.
+      fst-pair  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B π a b}
+                → Pure Δ Γ b B
+                → (d : Δ ⊩ Γ ⊢[ Ψ ] fst (pair a b) ∷ A ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] a ∷ A ! π) → d ≅ d′
+      snd-pair  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B π a b}
+                → Pure Δ Γ a A
+                → (d : Δ ⊩ Γ ⊢[ Ψ ] snd (pair a b) ∷ B ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] b ∷ B ! π) → d ≅ d′
+      pair-η    : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B π p}
+                → Pure Δ Γ p (A * B)
+                → (d : Δ ⊩ Γ ⊢[ Ψ ] pair (fst p) (snd p) ∷ A * B ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] p ∷ A * B ! π) → d ≅ d′
+      -- Unit is terminal for effect-free terms.
+      unit-η    : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ π t}
+                → Pure Δ Γ t Unit
+                → (d : Δ ⊩ Γ ⊢[ Ψ ] t ∷ Unit ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] unit ∷ Unit ! π) → d ≅ d′
+
+      -- + : β for any scrutinee (its effects run, then one arm), η, and a
+      -- `let` around a `case` moves into its arms.
+      case-inl  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ B C qℓ qr π a l r}
+                  (d : Δ ⊩ Γ ⊢[ Ψ ] case qℓ qr (inl B a) l r ∷ C ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] let′ qℓ a l ∷ C ! π) → d ≅ d′
+      case-inr  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A C qℓ qr π b l r}
+                  (d : Δ ⊩ Γ ⊢[ Ψ ] case qℓ qr (inr A b) l r ∷ C ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] let′ qr b r ∷ C ! π) → d ≅ d′
+      case-η    : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B qℓ qr π s}
+                  (d : Δ ⊩ Γ ⊢[ Ψ ] case qℓ qr s (inl B (var zero)) (inr A (var zero)) ∷ A + B ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] s ∷ A + B ! π) → d ≅ d′
+      let-case  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ D q qℓ qr π s l r v}
+                  (d : Δ ⊩ Γ ⊢[ Ψ ] let′ q (case qℓ qr s l r) v ∷ D ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] case qℓ qr s (let′ q l (ren (ext {S = S} {m = m} suc) v))
+                                                 (let′ q r (ren (ext {S = S} {m = m} suc) v)) ∷ D ! π)
+                → d ≅ d′
+      -- Void is initial: once a Void is computed, nothing after it runs.
+      absurd-η  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A q π e t}
+                  (d : Δ ⊩ Γ ⊢[ Ψ ] let′ q e t ∷ A ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] absurd A e ∷ A ! π) → d ≅ d′
+
+  -- The same laws, read on the combinators a program writes (`Core.Derived`):
+  -- a category (any grade); products, the terminal object and exponentials
+  -- (effect-free arrows); coproducts and the initial object (any grade). An
+  -- arm whose result a law drops must be effect-free to evaluate.
+  record CombinatorLaws : Set where
+    field
+      compose-idˡ   : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B π π₀ f}
+                      (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A π (idᶜ B π) f ∷ A ⇒[ mk-kind Many π ] B ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] f ∷ A ⇒[ mk-kind Many π ] B ! π₀) → d ≅ d′
+      compose-idʳ   : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B π π₀ f}
+                      (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A π f (idᶜ A π) ∷ A ⇒[ mk-kind Many π ] B ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] f ∷ A ⇒[ mk-kind Many π ] B ! π₀) → d ≅ d′
+      -- `h` then `g` then `f`, evaluated and applied in the same order on both sides.
+      compose-assoc : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B D π π₀ f g h}
+                      (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A π f (composeᶜ A π g h) ∷ A ⇒[ mk-kind Many π ] D ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A π (composeᶜ B π f g) h ∷ A ⇒[ mk-kind Many π ] D ! π₀)
+                    → d ≅ d′
+
+      fst-pairᶜ     : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π₀ f g}
+                    → Pure Δ Γ g (C ⇒[ mk-kind Many pure ] B)
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ C pure (fstᶜ A B pure) (pairᶜ C pure f g) ∷ C ⇒[ mk-kind Many pure ] A ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] f ∷ C ⇒[ mk-kind Many pure ] A ! π₀) → d ≅ d′
+      snd-pairᶜ     : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π₀ f g}
+                    → Pure Δ Γ f (C ⇒[ mk-kind Many pure ] A)
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ C pure (sndᶜ A B pure) (pairᶜ C pure f g) ∷ C ⇒[ mk-kind Many pure ] B ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] g ∷ C ⇒[ mk-kind Many pure ] B ! π₀) → d ≅ d′
+      pair-ηᶜ       : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π₀ h}
+                    → Pure Δ Γ h (C ⇒[ mk-kind Many pure ] (A * B))
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] pairᶜ C pure (composeᶜ C pure (fstᶜ A B pure) h)
+                                                     (composeᶜ C pure (sndᶜ A B pure) h)
+                                         ∷ C ⇒[ mk-kind Many pure ] (A * B) ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] h ∷ C ⇒[ mk-kind Many pure ] (A * B) ! π₀) → d ≅ d′
+      terminal-uniqueᶜ : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A π₀ h}
+                    → Pure Δ Γ h (A ⇒[ mk-kind Many pure ] Unit)
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] h ∷ A ⇒[ mk-kind Many pure ] Unit ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] terminalᶜ A pure ∷ A ⇒[ mk-kind Many pure ] Unit ! π₀) → d ≅ d′
+
+      case-inlᶜ     : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π π₀ f g}
+                    → Pure Δ Γ g (B ⇒[ mk-kind Many π ] C)
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A π (caseᶜ A B π f g) (inlᶜ A B π) ∷ A ⇒[ mk-kind Many π ] C ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] f ∷ A ⇒[ mk-kind Many π ] C ! π₀) → d ≅ d′
+      case-inrᶜ     : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π π₀ f g}
+                    → Pure Δ Γ f (A ⇒[ mk-kind Many π ] C)
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ B π (caseᶜ A B π f g) (inrᶜ A B π) ∷ B ⇒[ mk-kind Many π ] C ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] g ∷ B ⇒[ mk-kind Many π ] C ! π₀) → d ≅ d′
+      case-ηᶜ       : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B π π₀}
+                      (d : Δ ⊩ Γ ⊢[ Ψ ] caseᶜ A B π (inlᶜ A B π) (inrᶜ A B π) ∷ (A + B) ⇒[ mk-kind Many π ] (A + B) ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] idᶜ (A + B) π ∷ (A + B) ⇒[ mk-kind Many π ] (A + B) ! π₀) → d ≅ d′
+      initial-uniqueᶜ : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A π π₀ h}
+                    → Pure Δ Γ h (Void ⇒[ mk-kind Many π ] A)
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] h ∷ Void ⇒[ mk-kind Many π ] A ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] initialᶜ A π ∷ Void ⇒[ mk-kind Many π ] A ! π₀) → d ≅ d′
+
+      -- apply ∘ ⟨ curry f ∘ fst , snd ⟩ = f, and the closure of `h`'s calls is `h`.
+      curry-βᶜ      : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π₀ f}
+                    → Pure Δ Γ f ((A * B) ⇒[ mk-kind Many pure ] C)
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (A * B) pure (applyᶜ B C)
+                                          (pairᶜ (A * B) pure (composeᶜ (A * B) pure (curryᶜ A B pure pure f) (fstᶜ A B pure))
+                                                              (sndᶜ A B pure))
+                                         ∷ (A * B) ⇒[ mk-kind Many pure ] C ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] f ∷ (A * B) ⇒[ mk-kind Many pure ] C ! π₀) → d ≅ d′
+      curry-ηᶜ      : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π₀ h}
+                    → Pure Δ Γ h (A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C))
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] curryᶜ A B pure pure
+                                          (composeᶜ (A * B) pure (applyᶜ B C)
+                                            (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure)))
+                                         ∷ A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C) ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] h ∷ A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C) ! π₀) → d ≅ d′
+
+------------------------------------------------------------------------
 -- Effects form a Freyd category, up to what is observed
 ------------------------------------------------------------------------
 
@@ -382,6 +553,8 @@ record Metatheory : Set₁ where
     sameness   : ∀ (Σ : Signature) → Sameness Σ
     coherence  : ∀ (Σ : Signature) → OneName Σ → ∀ (fmt : TargetNum) {s} (S : Defs s) → Coherence Σ fmt S
     term-model : ∀ (Σ : Signature) → OneName Σ → ∀ (fmt : TargetNum) {s} (S : Defs s) → TermModel Σ fmt S
+    laws       : ∀ (Σ : Signature) → OneName Σ → ∀ (fmt : TargetNum) {s} (S : Defs s) → Laws Σ fmt S
+    combinator-laws : ∀ (Σ : Signature) → OneName Σ → ∀ (fmt : TargetNum) {s} (S : Defs s) → CombinatorLaws Σ fmt S
     freyd      : ∀ (Σ : Signature) → Freyd Σ
     recursion  : ∀ (Σ : Signature) → Recursion Σ
     totality   : Totality
