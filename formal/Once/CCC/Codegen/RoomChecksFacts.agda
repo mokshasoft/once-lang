@@ -230,3 +230,9 @@ module RoomFacts {FS : FrameSemantics} where
   check-at E (y ∷ t) zero    refl bnd = check-here (boundary? y) (stretch E t) (checks E t) bnd
   check-at E (y ∷ t) (suc i) e    bnd =
     fetch-after-suc (boundary? y) (stretch E t) (checks E t) (ψ t i) (check-at E t i e bnd)
+
+  -- …and past the end of the image the map just counts on.
+  ψ-next-nothing : ∀ (t : AbstractTrace) (i : ℕ) → fetch t i ≡ nothing → ψ t (suc i) ≡ suc (ψ t i)
+  ψ-next-nothing []      i       e  = refl
+  ψ-next-nothing (y ∷ t) (suc i) e  =
+    cong suc (trans (cong (bump (boundary? y)) (ψ-next-nothing t i e)) (bump-suc (boundary? y) (ψ t i)))
