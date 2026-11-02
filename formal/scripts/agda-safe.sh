@@ -33,6 +33,7 @@
 # Usage:
 #   formal/scripts/agda-safe.sh MODULE=Once/CCC/Machine/IR/PairStackWF.agda
 #   formal/scripts/agda-safe.sh malonzo MODULE=Once/CCC/Machine/IR/SimpleWF.agda
+#   formal/scripts/agda-safe.sh --exec agda Foo.agda   (any command, cwd kept)
 #
 # Environment overrides:
 #   AGDA_SAFE_MEM_MAX=4G       (default 5500M)
@@ -47,12 +48,20 @@ set -u
 MEM_MAX="${AGDA_SAFE_MEM_MAX:-5500M}"
 SWAP_MAX="${AGDA_SAFE_SWAP_MAX:-2G}"
 
-cd "$(dirname "$0")/.." || exit 2
-
-# If no target given, default to `agda`.
-case "${1:-}" in
-  ""|MODULE=*) set -- agda "$@" ;;
-esac
+# `--exec CMD…` runs CMD itself in the scope instead of `make …`, keeping
+# the caller's working directory and file descriptors. The Makefile's
+# AGDA_CMD uses it so EVERY agda invocation, from any target, is capped.
+if [ "${1:-}" = "--exec" ]; then
+  shift
+  RUN=()
+else
+  cd "$(dirname "$0")/.." || exit 2
+  # If no target given, default to `agda`.
+  case "${1:-}" in
+    ""|MODULE=*) set -- agda "$@" ;;
+  esac
+  RUN=(make)
+fi
 
 cgroup_available() {
   [ -z "${AGDA_SAFE_NO_CGROUP:-}" ] \
@@ -97,8 +106,8 @@ if cgroup_available; then
         echo 1000 > /proc/self/oom_score_adj 2>/dev/null || true
       fi
       export AGDA_SAFE_ACTIVE=1
-      exec make "$@"
-    ' bash "$@"
+      exec "$@"
+    ' bash "${RUN[@]}" "$@"
 fi
 
 # --- Legacy fallback: ulimit only -----------------------------------
@@ -110,4 +119,4 @@ if [ -w /proc/self/oom_score_adj ]; then
   echo 1000 > /proc/self/oom_score_adj 2>/dev/null || true
 fi
 ulimit -v "$LIMIT_KB" 2>/dev/null || true
-exec make "$@"
+exec "${RUN[@]}" "$@"

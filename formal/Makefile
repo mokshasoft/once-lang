@@ -38,8 +38,14 @@
 define AGDA_CMD
 STD_LIB=$$(find /nix/store -maxdepth 2 -name "standard-library.agda-lib" 2>/dev/null | head -1); \
 if [ -z "$$STD_LIB" ]; then echo "Error: standard-library not found in Nix store"; exit 1; fi; \
-unset AGDA_DIR; agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
+AGDA_RUN=; \
+if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then AGDA_RUN="$(CURDIR)/scripts/agda-safe.sh --exec"; fi; \
+unset AGDA_DIR; $$AGDA_RUN agda --library-file=<(echo "$$STD_LIB"; echo "Once.agda-lib")
 endef
+# Every agda run goes through scripts/agda-safe.sh (a cgroup memory cap), so a
+# runaway type-check from ANY target can only kill agda — never the session
+# that launched it. Set AGDA_SAFE_DISABLE=1 to opt out (e.g. CI with its own
+# memory controls). AGDA_SAFE_ACTIVE=1 means "already inside a scope".
 
 #-----------------------------------------------------------------------------
 # Default target
@@ -228,9 +234,6 @@ metatheory-gate:
 
 .PHONY: malonzo
 malonzo:
-	@if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then \
-	  exec $(CURDIR)/scripts/agda-safe.sh malonzo; \
-	fi
 	@echo "Extracting compiler via MAlonzo..."
 	@mkdir -p _build/malonzo
 	@# Extract from Once/Extract/Root.agda: what the CLI runs, and nothing else
@@ -349,9 +352,6 @@ denot-safe:
 # until those are parameterised away / discharged. Run to see the residual list.
 .PHONY: denot-safe-strict
 denot-safe-strict:
-	@if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then \
-	  exec $(CURDIR)/scripts/agda-safe.sh denot-safe-strict; \
-	fi
 	@echo "Type-checking the denotational meaning (Once.Denotation.DenotTrace) under --safe..."
 	@sh -c '$(AGDA_CMD) --safe Once.Denotation.DenotTrace.agda'
 
@@ -359,19 +359,10 @@ denot-safe-strict:
 # Utilities
 #-----------------------------------------------------------------------------
 
-# `make agda` and `make malonzo` are the heaviest targets and can OOM
-# the box (see scripts/agda-safe.sh for context). When invoked directly
-# (AGDA_SAFE_ACTIVE unset), they re-exec themselves through the
-# cgroup-based safety wrapper so a runaway type-check can only kill its
-# own subtree — not the claude-code harness. The wrapper exports
-# AGDA_SAFE_ACTIVE=1 to break the recursion. Set AGDA_SAFE_DISABLE=1 to
-# opt out (e.g. on CI with its own memory controls).
+# Memory safety for this (and every agda target) lives in AGDA_CMD above.
 .PHONY: agda
 agda:
 	@if [ -z "$(MODULE)" ]; then echo "Usage: make agda MODULE=Once/Path/To/File.agda"; exit 1; fi
-	@if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then \
-	  exec $(CURDIR)/scripts/agda-safe.sh agda MODULE=$(MODULE); \
-	fi
 	@echo "Type-checking $(MODULE)..."
 	@sh -c '$(AGDA_CMD) $(MODULE)'
 
