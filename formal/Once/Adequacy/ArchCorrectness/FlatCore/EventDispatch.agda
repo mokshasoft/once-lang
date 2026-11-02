@@ -679,8 +679,7 @@ module Dispatch (sup : Supply) where
                            (trans (CFC.in1-eq dc) (cong (CFC.enc-sv hv) i-eq))
           rd-heap : memory s (rreg s in1-reg + 0) ≡ just (CFC.enc-sv hv v)
           rd-heap = trans (cong (memory s) addr-val)
-                          (trans (CFC.heap-eq dc hl (CFC.dom-written dc hl r-eq))
-                                 (cong (CFC.enc-maybe hv) r-eq))
+                          (CFC.heap-eq dc hl r-eq)
       -- STACK (the probe's route): the pointer denotes `slot-addr f k'`; the
       -- live-pair theorem pins it to the current frame's live window, where
       -- `sp-eq` + `stack-eq` relate exactly that cell.
@@ -722,9 +721,9 @@ module Dispatch (sup : Supply) where
 
   -- MEMORY load-indirect (D073: every route is a theorem now). The load-site
   -- discipline (`load-indirect-target-wf`) hands the pointer + dynamic
-  -- in-bounds witnesses; a WRITTEN cell is the PROVEN block-step, an EMPTY
-  -- cell halts both machines (`*-empty-stuck` + `run-events-stuck` — the
-  -- concrete read is unmapped via `dom-sized`+`heap-eq` / `stack-eq`).
+  -- in-bounds witnesses; a WRITTEN cell is the PROVEN block-step, and an EMPTY
+  -- cell is unreachable: reading one faults, and the run never faults
+  -- (`RunWF.heap-load-written`, plan 0.123 A.4 step 4).
   load-indirect-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                          prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                      → fetch prog (fpc fs) ≡ just load-indirect

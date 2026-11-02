@@ -534,7 +534,7 @@ block-step-load-indirect {hv} prog fs s hl w cc h ft i-eq live-hl h-eq =
     rdi-val : xreadReg (xregs s) ecx ≡ haddr hv hl
     rdi-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
     rd : X.readMem (memory s) (X.effectiveAddr s (base ecx)) ≡ just (C.enc-sv hv w)
-    rd = trans (cong (X.readMem (memory s)) rdi-val) (trans (C.heap-eq dc hl live-hl) (cong (C.enc-maybe hv) h-eq))
+    rd = trans (cong (X.readMem (memory s)) rdi-val) (C.heap-eq dc hl h-eq)
     post : X.State
     post = record s { regs = xwriteReg (xregs s) eax (C.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
@@ -567,7 +567,7 @@ block-step-load-indirect-suc {hv} prog fs s hl w cc h ft i-eq live-shl h-eq =
     addr-eq : X.effectiveAddr s (base+disp ecx slot-size) ≡ haddr hv (sucHL hl)
     addr-eq = trans (cong (_+ slot-size) rdi-val) (sym (C.haddr-suc hv hl))
     rd : X.readMem (memory s) (X.effectiveAddr s (base+disp ecx slot-size)) ≡ just (C.enc-sv hv w)
-    rd = trans (cong (X.readMem (memory s)) addr-eq) (trans (C.heap-eq dc (sucHL hl) live-shl) (cong (C.enc-maybe hv) h-eq))
+    rd = trans (cong (X.readMem (memory s)) addr-eq) (C.heap-eq dc (sucHL hl) h-eq)
     post : X.State
     post = record s { regs = xwriteReg (xregs s) eax (C.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
@@ -975,9 +975,8 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
     rd : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp ebx slot-size))
        ≡ just (blk-off prog j)
     rd = trans (cong (X.readMem (X.State.memory s)) cell-addr)
-        (trans (C.heap-eq dc (sucHL hl) live)
-        (trans (cong (C.enc-maybe hv) heq)
-               (cong just (code-eq cc ℓ (blk-off prog j) conc-res))))
+        (trans (C.heap-eq dc (sucHL hl) heq)
+               (cong just (code-eq cc ℓ (blk-off prog j) conc-res)))
     retAddr : ℕ
     retAddr = X.State.pc s + 1
     post : X.State
