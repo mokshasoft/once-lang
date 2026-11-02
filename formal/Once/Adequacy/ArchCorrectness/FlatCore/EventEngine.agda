@@ -105,10 +105,17 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
        xpc (List Instr) compile-trace find-label blk-off blk-len exec modulus
   public
 
+-- D371: the machine runs the LOWERED image (`room-checks` of the program
+-- image), so the run context the engine carries is `RunLow` — a lift of the
+-- image's own run (`RunContext.RunAt`, which `RunWF` speaks of). Exported under
+-- the engine's name for it, `RunAt`: "the run of the program the machine runs".
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
+  hiding (RunAt; module RunAt; mkRunAt; run-tbl; run-ir; run-emit; run-linked; run-reach; run-sound; run-emitted)
   public
-open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
-  using (run-step-pc-pos)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
+  using (module RunLow; mkRunLow; run-src; run-at; run-p; run-prog; run-img; run-lift; run-pc; low-step-past; low-start; low-sound)
+  renaming (RunLow to RunAt)
+  public
 
 -- …and the data correspondence itself, which `CompiledCorrespondence` keeps
 -- private (an instance re-opened publicly would clash with the `C` every arch
@@ -164,10 +171,11 @@ record FlatInv (ev : RT.EvExtractor) (env : RT.ArithEnv)
     inv-ev      : ev ≡ ev-arch
     inv-env     : ArithTable prog env
     inv-run     : RunAt prog fs
-    -- plan 0.107: the correspondence runs AFTER the start (pc 0), which the
-    -- per-arch start lemma covers on its own; no step returns there
-    -- (`RunWF.run-step-pc-pos`).
-    inv-started : fpc fs ≡ 0 → ⊥
+    -- plan 0.107: the correspondence runs AFTER the start, which the per-arch
+    -- start lemma covers on its own; no step returns there. D371: said of the
+    -- image's own run the lowered run lifts (its start is pc 0 there, while the
+    -- lowered image has the start's check first) — `RunWF.run-step-pc-pos`.
+    inv-started : fpc (run-at inv-run) ≡ 0 → ⊥
     -- D320: the run has not left — `left` is set only by `c-leave`, after
     -- which the machine is halted and the induction stops.
     inv-left    : LocState.left (floc fs) ≡ false
@@ -183,12 +191,11 @@ flat-inv-step i prog fs ftq h lf inv = record
   ; inv-closure = cl-step i prog fs (inv-wf inv) (inv-closure inv)
   ; inv-ev      = inv-ev inv
   ; inv-env     = inv-env inv
-  ; inv-run     = mkRunAt (run-tbl (inv-run inv)) (run-ir (inv-run inv)) (run-emit (inv-run inv))
-                          (run-linked (inv-run inv))
-                          (reach-step i fs (run-reach (inv-run inv)) ftq h)
-  ; inv-started = run-step-pc-pos prog fs i (inv-run inv) ftq
+  ; inv-run     = proj₁ nxt
+  ; inv-started = proj₂ nxt
   ; inv-left    = trans (LeftPres.flat-exec-instr-left i lf prog fs) (inv-left inv)
   }
+  where nxt = low-step-past prog fs i (inv-run inv) ftq h (inv-started inv)
 
 ------------------------------------------------------------------------
 -- WITNESS-FREE BLOCK CHAINING: if `exec L` reaches a NON-halted `s'`, then
