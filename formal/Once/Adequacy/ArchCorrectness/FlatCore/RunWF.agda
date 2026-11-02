@@ -698,7 +698,7 @@ pcView (instr-ctrl (c-ret bb))                _ = pv-ret bb refl
 pcView (instr-alloc-stack _)                  ()
 pcView (instr-dealloc-stack _)                ()
 pcView (instr-free-heap _)                    ()
-pcView (instr-room _)                    _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-room _)                    ()
 pcView (instr-push-frame _)                   ()
 pcView instr-pop-frame                        ()
 pcView (lea-slot _)                           ()

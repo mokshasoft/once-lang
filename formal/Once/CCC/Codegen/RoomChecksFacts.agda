@@ -406,3 +406,52 @@ module CheckK {FS : FrameSemantics} where
   till-room : ∀ (E : ℕ) (P : AbstractTrace) (pc k : ℕ) → fetch P pc ≡ just (instr-room k)
             → till-check E (drop pc P) ≡ 0
   till-room E P pc k f rewrite drop-fetch P pc f = refl
+
+------------------------------------------------------------------------
+-- A PROGRAM IMAGE HAS NO CHECKS OF ITS OWN: every image instruction is
+-- `ImageI` (`ProgramImageFacts.image-frame-free`), and a check is not (D371:
+-- the pass adds them after the image).
+------------------------------------------------------------------------
+open import Once.CCC.Machine.FrameFree using (ImageI)
+open import Once.CCC.Machine.SMCore
+  using ( mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot
+        ; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-dealloc-stack
+        ; instr-reclaim-to; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init
+        ; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr
+        ; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-reg-op; instr-ctrl; instr-free-heap )
+
+imageI-noroom : ∀ (i : AbstractInstr) → ImageI i → room? i ≡ false
+imageI-noroom mov-to-output            _ = refl
+imageI-noroom mov-to-input             _ = refl
+imageI-noroom load-indirect            _ = refl
+imageI-noroom load-indirect-suc        _ = refl
+imageI-noroom (load-from-slot _)       _ = refl
+imageI-noroom (store-at-slot _)        _ = refl
+imageI-noroom store-indirect           _ = refl
+imageI-noroom store-indirect-suc       _ = refl
+imageI-noroom (lea-slot _)             _ = refl
+imageI-noroom (restore-input _)        _ = refl
+imageI-noroom (instr-alloc-stack _)    _ = refl
+imageI-noroom (instr-dealloc-stack _)  _ = refl
+imageI-noroom (instr-reclaim-to _)     _ = refl
+imageI-noroom (instr-push-frame _)     _ = refl
+imageI-noroom instr-pop-frame          _ = refl
+imageI-noroom instr-call-closure       _ = refl
+imageI-noroom (worklist-init _)        _ = refl
+imageI-noroom (worklist-push _)        _ = refl
+imageI-noroom (worklist-pop _)         _ = refl
+imageI-noroom (worklist-check _)       _ = refl
+imageI-noroom (instr-sigop _)          _ = refl
+imageI-noroom (instr-load-const _ _)   _ = refl
+imageI-noroom (instr-load-code-addr _) _ = refl
+imageI-noroom instr-save-closure-reg   _ = refl
+imageI-noroom (instr-load-tag-lit _)   _ = refl
+imageI-noroom (instr-alloc-heap _)     _ = refl
+imageI-noroom (instr-reg-op _)         _ = refl
+imageI-noroom (instr-ctrl _)           _ = refl
+imageI-noroom (instr-free-heap _)      _ = refl
+imageI-noroom (instr-room _)           ()
+
+image-noroom : ∀ (t : AbstractTrace) → All ImageI t → NoRoom t
+image-noroom []      []       = []
+image-noroom (i ∷ t) (p ∷ a) = imageI-noroom i p ∷ image-noroom t a

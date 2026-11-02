@@ -1161,7 +1161,7 @@ module Dispatch (sup : Supply) where
     -- THE FOUR FRAME OPS ARE UNREACHABLE (plan 0.54 rung D, item 2): `ir-to-trace`
     -- emits none of them, and `FlatInv` carries `Emitted prog`. See `FrameFree`.
     events-running-fetch {hv} n ev env prog fs s (instr-alloc-stack k) cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-alloc-stack k) (inv-run wf) ftq)
+      ⊥-elim (frame-op-absurd prog fs (instr-alloc-stack k) (inv-run wf) ftq (λ _ ()))
     events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc wf h ftq =
       ccc-step-bs n (events-agree n) ev env prog fs s (instr-alloc-heap k)
         (bs-alloc-heap bss prog fs s k cc h ftq
@@ -1172,15 +1172,15 @@ module Dispatch (sup : Supply) where
            (heap-room prog fs s k (inv-run wf) cc ftq)
            (reg-range prog fs s sp-reg (inv-run wf) cc)) wf ftq h refl tt tt h
     events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (inv-run wf) ftq)
+      ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (inv-run wf) ftq (λ _ ()))
     events-running-fetch {hv} n ev env prog fs s (instr-free-heap k) cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-free-heap k) (inv-run wf) ftq)
+      ⊥-elim (frame-op-absurd prog fs (instr-free-heap k) (inv-run wf) ftq (λ _ ()))
     events-running-fetch {hv} n ev env prog fs s (instr-room k) cc wf h ftq =
       room-check-step n (events-agree n) ev env prog fs s k cc wf h ftq
     events-running-fetch {hv} n ev env prog fs s (instr-push-frame k) cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-push-frame k) (inv-run wf) ftq)
+      ⊥-elim (frame-op-absurd prog fs (instr-push-frame k) (inv-run wf) ftq (λ _ ()))
     events-running-fetch {hv} n ev env prog fs s instr-pop-frame cc wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs instr-pop-frame (inv-run wf) ftq)
+      ⊥-elim (frame-op-absurd prog fs instr-pop-frame (inv-run wf) ftq (λ _ ()))
     events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-int v) cc wf h ftq =
       ccc-step-bs {hv} n (events-agree n) ev env prog fs s (instr-load-const fits-int v)
         (bs-load-const bss prog fs s v cc h ftq
