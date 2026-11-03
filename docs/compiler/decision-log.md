@@ -20769,3 +20769,36 @@ Those traces are what the `IRObsCorrect` proofs run step by step at exact positi
   targets) instead of being known from the IR.
 * The per-check cost is the same on either route (add, compare, a never-taken branch); performance is
   placement, which the pass can change cheaply.
+
+## D372 — A ROOM CHECK COMPARES THE ROOM, NOT THE SUM (2026-11-03)
+
+**Refines** D371 and plan 0.123 A.4 step 5 (the budget). **Decided** by Claude while proving the budget;
+the user can revisit it.
+
+### Context
+The budget invariant (`FlatCore.Budget`) is re-armed at each check by what the check's compare found:
+`frontier + 8k ≤ sp`. The first lowering computed the SUM `frontier + 8k` and compared it with the stack
+pointer. On riscv64 (`add`) and x86-32 (`addl`) that sum is modular: when `frontier + 8k` wraps past the
+word, the wrapped value can be at or below `sp` and the check PASSES when there is no room. Nothing about
+the run rules that out (it needs `8k ≥ 2^w − frontier`: practically impossible at 64 bits, merely unlikely
+at 32), so the compare's result could not be read as the inequality without a new runtime assumption.
+
+### Decision
+* **Compare the room `sp − frontier` with the need `8k`.** The frontier is never above the stack pointer (the
+  layout separation `sep`), so the difference cannot borrow, and the compare is exact.
+  * riscv64: `sub t1, sp, s2 ; li t2, 8k ; bgeu t1, t2, 1f ; call once_exhausted ; 1:` (same length as before;
+    `t2`, like `t1`, is no role's).
+  * x86-32 (every register has a role, no `neg`/`jae` in the model): `subl %esp, %esi ; subl $1, %esi ;
+    cmpl $(2³²−4k−1), %esi ; jbe 1f ; call once_exhausted ; 1: addl $1, %esi ; addl %esp, %esi`. The
+    compared value is exactly `2³² − D − 1` for the room `D` (`WidthLaws.room-word`), at every `D` including
+    0 (where `esi − esp` alone is 0 and cannot tell no room from a whole word of it); the frontier register
+    is restored by `⊖⊕-cancel`. One instruction more than before.
+  * x86-64 keeps `leaq 8k(%r15), %r11 ; cmpq %rsp, %r11 ; jbe`: the model's `lea` sums exactly, and on the
+    hardware a disp32 added to a canonical address cannot wrap.
+* **The need is a literal**, so `slots k < modulus` joins the literal seam (`LitFits.room-fits`, riscv64 and
+  x86-32), the same class as `tag-fits`; no apex parameter is added.
+
+### Consequences
+* Every arch's room check proves `frontier + 8k ≤ sp` on its skip path, and the budget then gives every
+  spending instruction its room: `HeapRoom`, `StackRoom` and `CallRoom` (nine apex parameters) are gone.
+* The cost is unchanged on riscv64 and x86-64 and one instruction on x86-32.

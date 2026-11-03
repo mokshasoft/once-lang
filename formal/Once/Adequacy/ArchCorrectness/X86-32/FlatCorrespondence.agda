@@ -74,6 +74,21 @@ keeps-esi-x86 s v w fl p weq = record { kr-role = kr ; kr-mem = refl ; kr-halt =
     kr role-out     = refl
     kr role-in1     = refl
 
+-- D372: the wrap-free room check writes the frontier register four times
+-- (the room's complement, then back); the last value is the frontier again.
+keeps-esi4-x86 : ∀ (s : X.State) (v₁ v₂ v₃ w : Word) (fl : X.Flags) (p : ℕ) → w ≡ rreg s esi
+  → KeepsRoles s (mkstate (xwriteReg (xwriteReg (xwriteReg (xwriteReg (xregs s) esi v₁) esi v₂) esi v₃) esi w)
+                          (memory s) fl p (xhalted s))
+keeps-esi4-x86 s v₁ v₂ v₃ w fl p weq = record { kr-role = kr ; kr-mem = refl ; kr-halt = refl }
+  where
+    kr : ∀ ρ → X.readReg (xwriteReg (xwriteReg (xwriteReg (xwriteReg (xregs s) esi v₁) esi v₂) esi v₃) esi w) (reg-of ρ)
+             ≡ rreg s (reg-of ρ)
+    kr role-sp      = refl
+    kr role-clos    = refl
+    kr role-heap    = weq
+    kr role-out     = refl
+    kr role-in1     = refl
+
 ------------------------------------------------------------------------
 -- x86-32 REALISES `SetsRole`: the state that writes one role's register and
 -- leaves memory, the halt flag and the other four roles alone.

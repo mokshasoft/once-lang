@@ -48,7 +48,7 @@ open import Once.Spec.Float.Decimal using (round)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
 open import Once.CCC.Target.RiscV64.Syntax
-  using (zero; ra; sp; fp; a0; s1; s2; t0; t1; ld; sd; add; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; bgeu-fwd; local-1; label; once; callee; e-fn; Program; slot-size; slots)
+  using (zero; ra; sp; fp; a0; s1; s2; t0; t1; t2; ld; sd; add; sub; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; bgeu-fwd; local-1; label; once; callee; e-fn; Program; slot-size; slots)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
@@ -247,15 +247,18 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
--- instr-room k (plan 0.123 A.4): the next k words fit iff the frontier plus
--- them is at or below the stack pointer; if not, call the Host's `once_exhausted`,
--- which ends the run. t1 is no role's; `li` because `addi`'s 12-bit
+-- instr-room k (plan 0.123 A.4): the next k words fit iff the room between the
+-- frontier and the stack pointer holds them; if not, call the Host's
+-- `once_exhausted`, which ends the run. The room `sp − s2` is computed, not the
+-- sum `s2 + 8k`: the frontier is never above the stack pointer, so the
+-- difference cannot borrow, where the sum could wrap and pass a check that
+-- must fail (D372). t1 and t2 are no role's; `li` because `addi`'s 12-bit
 -- immediate cannot hold every k.
--- riscv64: li t1, 8k ; add t1, s2, t1 ; bgeu sp, t1, 1f ; call once_exhausted ; 1:
+-- riscv64: sub t1, sp, s2 ; li t2, 8k ; bgeu t1, t2, 1f ; call once_exhausted ; 1:
 compile-abstract (instr-room k) =
-  li t1 (+ slots k) ∷
-  add t1 s2 t1 ∷
-  bgeu-fwd sp t1 ∷
+  sub t1 sp s2 ∷
+  li t2 (+ slots k) ∷
+  bgeu-fwd t1 t2 ∷
   call-sym host-exhausted-symbol ∷
   local-1 ∷ []
 

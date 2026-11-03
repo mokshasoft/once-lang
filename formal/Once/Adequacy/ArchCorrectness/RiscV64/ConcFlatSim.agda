@@ -38,7 +38,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLr
 import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Machine.SMCore using
-  (AbstractTrace; lea-slot; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
+  (AbstractTrace; lea-slot; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; instr-load-tag-lit; instr-load-const; instr-room; AbstractInstr; CallI)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.RiscV64.Syntax using (sp; s3; s4; slots) renaming (Reg to Reg')
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
@@ -80,8 +80,8 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
      → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (lea-slot slot)
      → RS.readReg (RS.State.regs s) sp + slot-to-disp slot < RS.W.modulus)
   -- …AND THE REST OF THE FAMILY (plan 0.65 G2). Bundled as the two records
-  -- `RiscV64/ResourceBounds` defines plus the three loose ones, exactly as
-  -- x86-64 threads them: resource bounds are PARAMETERS, never postulates
+  -- `RiscV64/ResourceBounds` defines, exactly as x86-64 threads them (the three
+  -- room bounds left with plan 0.123 A.4 step 5): resource bounds are PARAMETERS, never postulates
   -- (D087) — a linker that sizes the image discharges them, and a parameter is
   -- what leaves room for that.
   --
@@ -89,28 +89,6 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   -- (it is what keeps this file reachable from the four clusters), so naming
   -- its types here is a cycle. x86-64 does the same, and its apex is where the
   -- two meet.
-  (heap-room : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
-                 (fs : FlatMachine.FlatState {FS}) (s : RS.State) (n : ℕ)
-             → RLr.RunLow o FS slot-size word-eq prog fs
-             → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-                 ≡ just (instr-alloc-heap n)
-             → FCr.hfront hv + slots n ≤ RS.readReg (RS.State.regs s) sp)
-  (stack-room : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
-                  (fs : FlatMachine.FlatState {FS}) (s : RS.State)
-                  (b : ℕ)
-              → RLr.RunLow o FS slot-size word-eq prog fs
-              → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-              → Σ EntryId (λ m → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-entry m b)))
-      ⊎ (FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-start b)))
-              → FCr.hfront hv + slots b ≤ RS.readReg (RS.State.regs s) sp)
-  (call-room : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
-                 (fs : FlatMachine.FlatState {FS}) (s : RS.State) (c : AbstractInstr)
-             → RLr.RunLow o FS slot-size word-eq prog fs
-             → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-                 ≡ just c → CallI c
-             → FCr.hfront hv + slot-size ≤ RS.readReg (RS.State.regs s) sp)
   (reg-range : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (r : Reg')
              → RLr.RunLow o FS slot-size word-eq prog fs
@@ -145,6 +123,15 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
               → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-float v < RS.W.modulus)
+  -- D372: a room check's need, `8k`, is an emitted immediate (`li t2, 8k`)
+  -- and fits a word — the literal seam, as `tag-fits`.
+  (room-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
+                 (fs : FlatMachine.FlatState {FS}) (s : RS.State) (k : ℕ)
+             → RLr.RunLow o FS slot-size word-eq prog fs
+             → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
+             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+                 ≡ just (instr-room k)
+             → slots k < RS.W.modulus)
   where
 
 open import Data.Nat using (ℕ; suc; _+_)
@@ -611,8 +598,8 @@ arith-sigop-contract {hv} env prog fs s si r t int cc ftq =
 riscv64-supply : EE.Supply
 riscv64-supply = record
   { bss = riscv64-block-steps ; sts = riscv64-stuck-steps
-  ; room-step = λ prog fs s k _ → room-step-riscv64 prog fs s k
-  ; heap-room = heap-room ; stack-room = stack-room ; call-room = call-room
+  ; room-step = λ prog fs s k run cc h ft → room-step-riscv64 prog fs s k cc h ft
+      (reg-range prog fs s sp run cc) (room-fits prog fs s k run cc ft)
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
   ; arith-sigop-contract = arith-sigop-contract

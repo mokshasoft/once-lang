@@ -53,7 +53,7 @@ import Once.Word as W32L
 module W = W32.Width 32
 module WL = W32L.WidthLaws 32
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-load-tag-lit; instr-load-const; instr-room; AbstractInstr; CallI)
 open import Once.CCC.Label using (EntryId)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Spec.Float.Dyadic using (binary32)
@@ -68,84 +68,10 @@ x86-32-frame-semantics : FrameSemantics
 x86-32-frame-semantics = x86-32-frame-semantics-at ι
 
 ------------------------------------------------------------------------
--- HEAP EXHAUSTION: at an emitted `instr-alloc-heap n` the bump does not run
--- the heap frontier up into the stack pointer (plan 0.123 A.4 step 4: no longer
--- the high-water mark, since `heap-eq` claims only written cells).
---
--- CONDITIONED on the run context (`RunAt`) and the correspondence
--- (`CompiledCorr`) — unconditioned it is REFUTABLE (a view with
--- `lo ≡ hfront` kills it), which is the 2026-07-30 vacuity lesson, and why
--- `RunAt` had to move to `RunContext` in the first place.
---
--- This is the honest kind of assumption: a property of the running program
--- that a linker could one day discharge by sizing the heap and stack for the
--- compiled program. A PARAMETER is exactly the shape such a proof slots
--- into — a postulate could only be deleted and re-plumbed.
-------------------------------------------------------------------------
-HeapRoom : Set₁
-HeapRoom =
-  ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
-    (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
-    (s : X.State) (n : ℕ)
-  → RLx.RunLow o x86-32-frame-semantics slot-size refl prog fs
-  → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
-  → FlatMachine.fetch {x86-32-frame-semantics} prog
-      (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-alloc-heap n)
-  → FCx.hfront hv + slots n ≤ X.readReg (X.State.regs s) esp
-
-------------------------------------------------------------------------
--- STACK EXHAUSTION: at an emitted `c-thunk m b` the body's reservation does
--- not run `%esp` down into the heap's allocation frontier.
---
--- THE EXACT MIRROR OF `HeapRoom`, and deliberately so — the two bounds say
--- the same thing about the two ends of the same virgin region `[hfront, lo)`:
--- an allocation must not consume it from below, a frame reservation must not
--- consume it from above. Same conditioning (`RunAt` + `CompiledCorr` + the
--- site), same class, same reason it is a PARAMETER (D087): a linker sizing
--- pass discharges it, and a parameter is the hole that proof slots into.
---
--- WHY `hfront + slots b ≤ %esp` AND NOT THE TWO CONSEQUENCES SEPARATELY. The
--- `c-thunk` block-step needs `slots b ≤ %esp` (the `sub` does not underflow)
--- and `hfront ≤ %esp ∸ slots b` (the reserved frame stays above the heap).
--- Truncated subtraction makes the second NOT imply the first, so stating them
--- apart would be two parameters where the additive form is one — and the
--- additive form is also the one a sizing pass would actually establish.
-------------------------------------------------------------------------
-StackRoom : Set₁
-StackRoom =
-  ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
-    (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
-    (s : X.State) (b : ℕ)
-  → RLx.RunLow o x86-32-frame-semantics slot-size refl prog fs
-  → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
-  → Σ EntryId (λ m → FlatMachine.fetch {x86-32-frame-semantics} prog (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-ctrl (c-entry m b)))
-      ⊎ (FlatMachine.fetch {x86-32-frame-semantics} prog (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-ctrl (c-start b)))
-  → FCx.hfront hv + slots b ≤ X.readReg (X.State.regs s) esp
-
-------------------------------------------------------------------------
--- CALL DEPTH: at an emitted `instr-call-closure` there is room for the ONE
--- slot the call spends on the return address.
---
--- The third of the same family, and the smallest: ONE slot, the one a call
--- spends on the return address (D086 — the body's `c-thunk` reserves the
--- rest). So this is stack exhaustion measured per CALL rather than per frame.
--- Same conditioning, same class, same reason it is a parameter (D087).
---
--- ADDITIVE, for `StackRoom`'s reason: the block-step needs both `slot-size ≤
--- %esp` (the push does not underflow) and `hfront ≤ %esp ∸ slot-size` (the
--- pushed cell stays above the heap), and truncated subtraction makes the
--- second not imply the first.
-------------------------------------------------------------------------
-CallRoom : Set₁
-CallRoom =
-  ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
-    (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
-    (s : X.State) (c : AbstractInstr)
-  → RLx.RunLow o x86-32-frame-semantics slot-size refl prog fs
-  → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
-  → FlatMachine.fetch {x86-32-frame-semantics} prog
-      (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just c → CallI c
-  → FCx.hfront hv + slot-size ≤ X.readReg (X.State.regs s) esp
+-- (HEAP EXHAUSTION, STACK EXHAUSTION and CALL DEPTH — `HeapRoom`, `StackRoom`,
+-- `CallRoom` — stood here as resource parameters. Plan 0.123 A.4 step 5 retired
+-- them: the emitted room checks make running out observable, and the budget
+-- they re-arm (`FlatCore.Budget`) gives every spending instruction its room.)
 
 ------------------------------------------------------------------------
 -- THE MACHINE IS FINITE (plan 0.70 phase C).
@@ -257,6 +183,17 @@ record LitFits : Set₁ where
       → FlatMachine.fetch {x86-32-frame-semantics} prog
           (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
       → Once.CCC.Machine.SMCore.AbstractExec.lit-value {x86-32-frame-semantics} fits-int v < W.modulus
+
+    -- D372: a room check's need `4k`, in the compare's immediate `2³² − 4k − 1`.
+    room-fits :
+      ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
+        (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
+        (s : X.State) (k : ℕ)
+      → RLx.RunLow o x86-32-frame-semantics slot-size refl prog fs
+      → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
+      → FlatMachine.fetch {x86-32-frame-semantics} prog
+          (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-room k)
+      → slots k < W.modulus
 
 
 ------------------------------------------------------------------------

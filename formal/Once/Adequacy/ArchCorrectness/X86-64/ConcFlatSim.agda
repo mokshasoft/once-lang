@@ -65,50 +65,8 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   -- where the emitter's `round binary64` and the machine's `float-format FS`
   -- have to be shown to be the same number.
   (fmt-eq : FrameSemantics.float-format FS ≡ binary64)
-  -- MEMORY EXHAUSTION, as a PARAMETER rather than a postulate (2026-08-05).
-  -- The honest runtime bound: at an emitted `instr-alloc-heap n` the bump does
-  -- not run the heap up into the stack's high-water mark. Same class as the
-  -- apex's `conc-fuel`, and now stated in the same place — which is what lets
-  -- the correspondence carry NO resource postulate at all, and what `--safe`
-  -- requires (it rejects every postulate outright).
-  --
-  -- Conditioned on `RunAt` and `CompiledCorr`: without them it is REFUTABLE
-  -- (a view with `lo ≡ hfront` kills it), which is the 2026-07-30 vacuity
-  -- lesson. That conditioning is why `RunAt` had to move to `RunContext`.
-  (heap-room : ∀ {hv : FC.HeapView FS word-eq}
-                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                 (s : X.State) (n : ℕ)
-             → RL.RunLow o FS slot-size word-eq prog fs
-             → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-               ≡ just (instr-alloc-heap n)
-             -- (record projections INFER the module params from the record's own
-             -- type, so these take `hv` directly — unlike `RunAt`/`CompiledCorr`,
-             -- which telescope them explicitly)
-             → FC.hfront hv + slots n ≤ X.readReg (X.State.regs s) rsp)
-  -- STACK EXHAUSTION, the exact mirror (2026-08-06). At an emitted `c-thunk`
-  -- the body's reservation does not run `%rsp` down into the heap frontier.
-  -- Same class, same conditioning, same reason it is a parameter — see
-  -- `…X86-64.ResourceBounds.StackRoom`, which is where the statement lives.
-  (stack-room : ∀ {hv : FC.HeapView FS word-eq}
-                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                  (s : X.State) (b : ℕ)
-              → RL.RunLow o FS slot-size word-eq prog fs
-              → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-              → Σ EntryId (λ m → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-entry m b)))
-      ⊎ (FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-start b)))
-              → FC.hfront hv + slots b ≤ X.readReg (X.State.regs s) rsp)
-  -- CALL DEPTH (D098), the third of the family and the smallest: room for the
-  -- ONE slot a call spends on the return address. See `ResourceBounds.CallRoom`.
-  (call-room : ∀ {hv : FC.HeapView FS word-eq}
-                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS}) (s : X.State) (c : AbstractInstr)
-             → RL.RunLow o FS slot-size word-eq prog fs
-             → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-               ≡ just c → CallI c
-             → FC.hfront hv + slot-size ≤ X.readReg (X.State.regs s) rsp)
   -- PLAN 0.70 PHASE C: the machine is finite. Both D087-class. Spelled out
-  -- against this module's own `FS`, exactly as the three rooms are — the
+  -- against this module's own `FS`, as the bounds below are — the
   -- `…X86-64.ResourceBounds` copies pin `x86-64-frame-semantics` and are the
   -- types the APEX threads, which is a different job.
   (reg-range : ∀ {hv : FC.HeapView FS word-eq}
@@ -715,7 +673,6 @@ x86-64-supply : EE.Supply
 x86-64-supply = record
   { bss = x86-64-block-steps ; sts = x86-64-stuck-steps
   ; room-step = λ prog fs s k _ → room-step-x86 prog fs s k
-  ; heap-room = heap-room ; stack-room = stack-room ; call-room = call-room
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
   ; arith-sigop-contract = arith-sigop-contract

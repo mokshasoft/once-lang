@@ -25,22 +25,16 @@ import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 open import Once.Compile using (entry-owner)
 
 module Once.Compiler
-  (x86-64-heap-room : ∀ ι → RB.HeapRoom entry-owner ι) (x86-64-stack-room : ∀ ι → RB.StackRoom entry-owner ι)
-  (x86-64-call-room : ∀ ι → RB.CallRoom entry-owner ι)
   (x86-64-reg-range : ∀ ι → RB.RegRange entry-owner ι)
   (x86-64-addr-no-wrap : ∀ ι → RB.AddrNoWrap entry-owner ι)
   (x86-64-lit-fits : ∀ ι → RB.LitFits entry-owner ι)
-  (riscv64-heap-room : ∀ ι → RBr.HeapRoom entry-owner ι) (riscv64-stack-room : ∀ ι → RBr.StackRoom entry-owner ι)
-  (riscv64-call-room : ∀ ι → RBr.CallRoom entry-owner ι)
   (riscv64-reg-range : ∀ ι → RBr.RegRange entry-owner ι)
   (riscv64-slot-addr-no-wrap : ∀ ι → RBr.SlotAddrNoWrap entry-owner ι)
   (riscv64-addr-no-wrap : ∀ ι → RBr.AddrNoWrap entry-owner ι)
   (riscv64-lit-fits : ∀ ι → RBr.LitFits entry-owner ι)
-  -- …and x86-32's six (plan 0.66 X3): the arch had none while its simulation
+  -- …and x86-32's three (plan 0.66 X3): the arch had none while its simulation
   -- was a whole-cloth postulate, which is precisely what a deleted apex
   -- postulate makes visible — the resources a running program needs.
-  (x86-32-heap-room : ∀ ι → RB32.HeapRoom entry-owner ι) (x86-32-stack-room : ∀ ι → RB32.StackRoom entry-owner ι)
-  (x86-32-call-room : ∀ ι → RB32.CallRoom entry-owner ι)
   (x86-32-reg-range : ∀ ι → RB32.RegRange entry-owner ι)
   (x86-32-addr-no-wrap : ∀ ι → RB32.AddrNoWrap entry-owner ι)
   (x86-32-lit-fits : ∀ ι → RB32.LitFits entry-owner ι) where
@@ -51,19 +45,17 @@ module Once.Compiler
 -- this assembly point. `Once.Adequacy.Compile.WithCPU` itself stays
 -- free of those imports.
 open import Once.Adequacy.CPU using ()
-open import Once.Adequacy.ArchCorrectness x86-64-heap-room x86-64-stack-room x86-64-call-room
+open import Once.Adequacy.ArchCorrectness
        x86-64-reg-range x86-64-addr-no-wrap x86-64-lit-fits
-       riscv64-heap-room riscv64-stack-room riscv64-call-room
        riscv64-reg-range riscv64-slot-addr-no-wrap
        riscv64-addr-no-wrap riscv64-lit-fits
-       x86-32-heap-room x86-32-stack-room x86-32-call-room
        x86-32-reg-range x86-32-addr-no-wrap x86-32-lit-fits
        using (arch-correctness)
 -- plan 0.92, and an honest note on its cost: `public` here is NOT convenience.
 -- `Once.Certified` builds its apex from `arch-correctness`, and to name it one
 -- level up it must be re-exported here. That propagation is exactly the
 -- property that makes `public` expensive — but the alternative (Certified
--- re-importing `ArchCorrectness` with its full nineteen-parameter telescope) is
+-- re-importing `ArchCorrectness` with its full ten-parameter telescope) is
 -- worse.
        public
 -- The CLI is extracted from `Once.Extract.Root`; the correctness theorem over

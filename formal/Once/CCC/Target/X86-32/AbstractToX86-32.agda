@@ -25,7 +25,7 @@
 
 module Once.CCC.Target.X86-32.AbstractToX86-32 where
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; suc; _∸_)
 import Data.Nat as ℕ
 open import Data.List using ([]; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -194,20 +194,28 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
--- instr-room k (plan 0.123 A.4): the next k words fit iff the frontier plus
--- them is at or below the stack pointer; if not, call the Host's `once_exhausted`,
--- which ends the run. Every register has a role or is the frame pointer, so
--- the frontier itself carries the sum and is restored past the skip (the
--- call never returns, so only the fitting path needs it back).
--- x86-32: addl $4k, %esi ; cmpl %esp, %esi ; jbe 1f ; call once_exhausted ;
---         1: subl $4k, %esi
+-- instr-room k (plan 0.123 A.4): the next k words fit iff the room between the
+-- frontier and the stack pointer holds them; if not, call the Host's
+-- `once_exhausted`, which ends the run. Every register has a role or is the
+-- frame pointer, so the frontier register itself carries the comparison and is
+-- restored past the skip (the call never returns, so only the fitting path
+-- needs it back).
+--
+-- D372: the ROOM is compared, never the sum `frontier + 4k`, which can wrap and
+-- pass a check that must fail. With D = esp − esi (no borrow: the frontier is
+-- not above the stack pointer), `esi − esp − 1` is exactly 2³² − D − 1, so
+-- `jbe` against 2³² − 4k − 1 skips iff D ≥ 4k — at every D, none included.
+-- x86-32: subl %esp, %esi ; subl $1, %esi ; cmpl $(2³²−4k−1), %esi ; jbe 1f ;
+--         call once_exhausted ; 1: addl $1, %esi ; addl %esp, %esi
 compile-abstract (instr-room k) =
-  add (reg esi) (imm (slots k)) ∷
-  cmp (reg esi) (reg esp) ∷
+  sub (reg esi) (reg esp) ∷
+  sub (reg esi) (imm 1) ∷
+  cmp (reg esi) (imm (IntW.modulus ∸ suc (slots k))) ∷
   jbe-fwd ∷
   call-sym host-exhausted-symbol ∷
   local-1 ∷
-  sub (reg esi) (imm (slots k)) ∷ []
+  add (reg esi) (imm 1) ∷
+  add (reg esi) (reg esp) ∷ []
 
 -- Plan 0.11: name-agnostic SigOp codegen.
 -- Emit a single symbolic call; linker resolves the name at build time

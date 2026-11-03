@@ -28,11 +28,11 @@ module Once.Adequacy.ArchCorrectness.X86-64
   (o : CanonicalName) (tbl : List IRFun)
   -- Plan 0.105: the interpretation the program runs against.
   (ι : Interp)
-  (x86-64-heap-room : RB.HeapRoom o ι) (x86-64-stack-room : RB.StackRoom o ι)
-  (x86-64-call-room : RB.CallRoom o ι)
-  -- PLAN 0.70 PHASE C: the machine is finite. Same class and same threading as
-  -- the three rooms (D087) — a fact about the running program that a loader or
-  -- the emitter establishes, and a parameter is the hole its proof slots into.
+  -- (`HeapRoom`, `StackRoom`, `CallRoom` stood here until plan 0.123 A.4 step 5:
+  -- the room checks and their budget, `FlatCore.Budget`, retired them.)
+  -- PLAN 0.70 PHASE C: the machine is finite (D087) — a fact about the running
+  -- program that a loader or the emitter establishes, and a parameter is the
+  -- hole its proof slots into.
   (x86-64-reg-range : RB.RegRange o ι)
   -- …and the emitted `add` sites' range obligations, bundled: `add` computes
   -- `W.⊕` unconditionally (D054 — wraparound is correct, defined semantics, so
@@ -195,11 +195,8 @@ import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FCx
 import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation as FSimx
 import Once.Adequacy.ArchCorrectness.X86-64.RunContext as RCx
 
--- (`x86-64-heap-room` is now a module PARAMETER — see
--- `…X86-64.ResourceBounds.HeapRoom`, D087: resource bounds are parameters.)
-
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
-  x86-64-frame-semantics refl refl x86-64-heap-room x86-64-stack-room x86-64-call-room
+  x86-64-frame-semantics refl refl
   x86-64-reg-range
   (RB.AddrNoWrap.ret-no-wrap x86-64-addr-no-wrap)
   (RB.LitFits.tag-fits x86-64-lit-fits) (RB.LitFits.lit-fits x86-64-lit-fits) (RB.float-fits o ι)

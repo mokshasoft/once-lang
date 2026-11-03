@@ -42,7 +42,7 @@ open import Once.Spec.Float.Dyadic using (binary32)
 open import Once.Spec.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; instr-load-tag-lit; instr-load-const)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; instr-load-tag-lit; instr-load-const; instr-room)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.CCC.Target.X86-32.Semantics as X
 import Once.Adequacy.ArchCorrectness.X86-32.FlatCorrespondence as FC
@@ -66,50 +66,8 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   -- where the emitter's `round binary32` and the machine's `float-format FS`
   -- have to be shown to be the same number.
   (fmt-eq : FrameSemantics.float-format FS ≡ binary32)
-  -- MEMORY EXHAUSTION, as a PARAMETER rather than a postulate (2026-08-05).
-  -- The honest runtime bound: at an emitted `instr-alloc-heap n` the bump does
-  -- not run the heap up into the stack's high-water mark. Same class as the
-  -- apex's `conc-fuel`, and now stated in the same place — which is what lets
-  -- the correspondence carry NO resource postulate at all, and what `--safe`
-  -- requires (it rejects every postulate outright).
-  --
-  -- Conditioned on `RunAt` and `CompiledCorr`: without them it is REFUTABLE
-  -- (a view with `lo ≡ hfront` kills it), which is the 2026-07-30 vacuity
-  -- lesson. That conditioning is why `RunAt` had to move to `RunContext`.
-  (heap-room : ∀ {hv : FC.HeapView FS word-eq}
-                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                 (s : X.State) (n : ℕ)
-             → RL.RunLow o FS slot-size word-eq prog fs
-             → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-               ≡ just (instr-alloc-heap n)
-             -- (record projections INFER the module params from the record's own
-             -- type, so these take `hv` directly — unlike `RunAt`/`CompiledCorr`,
-             -- which telescope them explicitly)
-             → FC.hfront hv + slots n ≤ X.readReg (X.State.regs s) esp)
-  -- STACK EXHAUSTION, the exact mirror (2026-08-06). At an emitted `c-thunk`
-  -- the body's reservation does not run `%esp` down into the heap frontier.
-  -- Same class, same conditioning, same reason it is a parameter — see
-  -- `…X86-32.ResourceBounds.StackRoom`, which is where the statement lives.
-  (stack-room : ∀ {hv : FC.HeapView FS word-eq}
-                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                  (s : X.State) (b : ℕ)
-              → RL.RunLow o FS slot-size word-eq prog fs
-              → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-              → Σ EntryId (λ m → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-entry m b)))
-      ⊎ (FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-start b)))
-              → FC.hfront hv + slots b ≤ X.readReg (X.State.regs s) esp)
-  -- CALL DEPTH (D098), the third of the family and the smallest: room for the
-  -- ONE slot a call spends on the return address. See `ResourceBounds.CallRoom`.
-  (call-room : ∀ {hv : FC.HeapView FS word-eq}
-                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS}) (s : X.State) (c : AbstractInstr)
-             → RL.RunLow o FS slot-size word-eq prog fs
-             → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-               ≡ just c → CallI c
-             → FC.hfront hv + slot-size ≤ X.readReg (X.State.regs s) esp)
   -- PLAN 0.70 PHASE C: the machine is finite. Both D087-class. Spelled out
-  -- against this module's own `FS`, exactly as the three rooms are — the
+  -- against this module's own `FS`, as the bounds below are — the
   -- `…X86-32.ResourceBounds` copies pin `x86-32-frame-semantics` and are the
   -- types the APEX threads, which is a different job.
   (reg-range : ∀ {hv : FC.HeapView FS word-eq}
@@ -165,6 +123,16 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
               → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-float v < X.W.modulus)
+  -- D372: a room check's need `4k` is an emitted immediate (in the compare's
+  -- `2³² − 4k − 1`) and fits a word — the literal seam, as `tag-fits`.
+  (room-fits : ∀ {hv : FC.HeapView FS word-eq}
+                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
+                 (s : X.State) (k : ℕ)
+             → RL.RunLow o FS slot-size word-eq prog fs
+             → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
+             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+                 ≡ just (instr-room k)
+             → slots k < X.W.modulus)
   where
 
 open import Data.Maybe using (Maybe; just; nothing)
@@ -732,7 +700,7 @@ x86-32-supply : EE.Supply
 x86-32-supply = record
   { bss = x86-32-block-steps ; sts = x86-32-stuck-steps
   ; room-step = λ prog fs s k run cc h ft → room-step-x86-32 prog fs s k cc h ft (reg-range prog fs s XS.esi run cc)
-  ; heap-room = heap-room ; stack-room = stack-room ; call-room = call-room
+      (reg-range prog fs s XS.esp run cc) (room-fits prog fs s k run cc ft)
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
   ; arith-sigop-contract = arith-sigop-contract
