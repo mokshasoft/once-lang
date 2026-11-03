@@ -87,10 +87,10 @@ put-k-am : ∀ kd n s b o′ → AllocMinTrace (put-k kd n s b o′)
 put-k-am kd n s b o′ = put-k-All {AllocMinI} kd n s b o′ tt tt tt (λ _ → tt) (λ _ → tt)
 
 get-am : ∀ X k → AllocMinTrace (get X k)
-get-am X k = get-All {AllocMinI} X k (λ _ → tt) (λ _ → tt)
+get-am X k = get-All {AllocMinI} X k (λ _ → tt) (λ _ → tt) tt
 
 get-k-am : ∀ kd n k → AllocMinTrace (get-k kd n k)
-get-k-am kd n k = get-k-All {AllocMinI} kd n k (λ _ → tt) (λ _ → tt)
+get-k-am kd n k = get-k-All {AllocMinI} kd n k (λ _ → tt) (λ _ → tt) tt
 
 inj-am : ∀ t P S n → AllocMinTrace (inj-trace t P S n)
 inj-am t P S n = tt ∷ tt ∷ am⊔ (size S) ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-am P n (suc n) 1) (tt ∷ [])

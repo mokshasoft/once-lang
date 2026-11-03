@@ -171,11 +171,11 @@ readTyped-adequate {prog = prog} (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} {_}
   rewrite sumtag-eq tg =
   trans (cong (Data.Maybe.map inj₂) (readTyped-cell-adequate {prog = prog} rB iB {alloc = alloc} (cell-inline {cell-loc = sucLoc loc} {s = s} rep rl)))
         (cong just (cong (forgetᵇ (b-+ iA iB)) (sym (subst-⊎₂ (cohᴰ A) (cohᴰ B) b))))
-readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} (valid-inl-flat-wf {a = a} _ _ tg _ va)
+readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} (valid-inl-flat-wf {a = a} _ _ tg _ _ va)
   rewrite sumtag-eq tg =
   trans (cong (Data.Maybe.map inj₁) (readTyped-adequate rA iA va))
         (cong just (cong (forgetᵇ (b-+ iA iB)) (sym (subst-⊎₁ (cohᴰ A) (cohᴰ B) a))))
-readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} (valid-inr-flat-wf {b = b} _ _ tg _ vb)
+readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} (valid-inr-flat-wf {b = b} _ _ tg _ _ vb)
   rewrite sumtag-eq tg =
   trans (cong (Data.Maybe.map inj₂) (readTyped-adequate rB iB vb))
         (cong just (cong (forgetᵇ (b-+ iA iB)) (sym (subst-⊎₂ (cohᴰ A) (cohᴰ B) b))))
@@ -190,5 +190,5 @@ readTyped-cell-adequate r-float b-Float (cell-inline (rep-prim fits-float) r) re
 readTyped-cell-adequate r-unit b-Unit (cell-inline (rep-prim ()) _)
 readTyped-cell-adequate (r-pair _ _) _ (cell-inline (rep-prim ()) _)
 readTyped-cell-adequate (r-sum _ _) _ (cell-inline (rep-prim ()) _)
-readTyped-cell-adequate r ib (cell-flat _ v) = readTyped-adequate r ib v
+readTyped-cell-adequate r ib (cell-flat _ _ v) = readTyped-adequate r ib v
 readTyped-cell-adequate r-void  _ {c = ()} _

@@ -25,7 +25,7 @@ open import Once.Spec.Type using (Ty; Fun; var)
 import Once.Spec.Type as T
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; restore-input; load-from-slot; load-at; store-at; addr-at)
+  using (AbstractInstr; AbstractTrace; restore-input; load-from-slot; load-at; store-at; addr-at; mov-to-output)
 
 data Kind : Set where
   word flat : Kind
@@ -59,12 +59,12 @@ put X = put-k (kind X) (size X)
 
 -- the component at word `k` of the flat value whose address is in `Input1`, into
 -- `Output`: a word kind is its word, a flat kind its address. A 0-word component
--- reads nothing, so any cell of the block is its address: it takes the
--- container's own (word 0 — always in the block, so `addr-at` never points past
--- it, D379).
+-- reads nothing, so any address will do: it takes the container's own, by
+-- copying the pointer (`mov-to-output`, D381) — no offset, so nothing to check
+-- against the block (a 0-word container's address need not be a cell of it).
 get-k : Kind → ℕ → ℕ → AbstractTrace
 get-k word _       k = load-at k ∷ []
-get-k flat zero    k = addr-at 0 ∷ []
+get-k flat zero    k = mov-to-output ∷ []
 get-k flat (suc _) k = addr-at k ∷ []
 
 get : IRTy → ℕ → AbstractTrace
@@ -99,12 +99,12 @@ module _ {P : AbstractInstr → Set} where
           → All P (put X stash blk off)
   put-All X = put-k-All (kind X) (size X)
 
-  get-k-All : ∀ kd n k → (∀ j → P (load-at j)) → (∀ j → P (addr-at j)) → All P (get-k kd n k)
-  get-k-All word n       k pl pa = pl k ∷ []
-  get-k-All flat zero    k pl pa = pa 0 ∷ []
-  get-k-All flat (suc _) k pl pa = pa k ∷ []
+  get-k-All : ∀ kd n k → (∀ j → P (load-at j)) → (∀ j → P (addr-at j)) → P mov-to-output → All P (get-k kd n k)
+  get-k-All word n       k pl pa pm = pl k ∷ []
+  get-k-All flat zero    k pl pa pm = pm ∷ []
+  get-k-All flat (suc _) k pl pa pm = pa k ∷ []
 
-  get-All : ∀ X k → (∀ j → P (load-at j)) → (∀ j → P (addr-at j)) → All P (get X k)
+  get-All : ∀ X k → (∀ j → P (load-at j)) → (∀ j → P (addr-at j)) → P mov-to-output → All P (get X k)
   get-All X = get-k-All (kind X) (size X)
 
 ------------------------------------------------------------------------

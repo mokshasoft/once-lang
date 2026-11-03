@@ -19,9 +19,10 @@ open import Once.CCC.Machine.SMCore using (AbstractTrace)
 
 module Once.CCC.Machine.ValueRelocate {FS : FrameSemantics} {prog : AbstractTrace} where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _⊔_; z≤n; s≤s)
-open import Data.Nat.Properties using (+-assoc; +-suc; m≤m+n; m≤n⊔m; m≤m⊔n; ≤-trans; +-monoˡ-≤)
+open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_; _⊔_; z≤n; s≤s)
+open import Data.Nat.Properties using (+-assoc; +-suc; m≤m+n; m≤n⊔m; m≤m⊔n; ≤-trans; +-monoˡ-≤; +-monoʳ-≤; +-comm)
 open import Data.Maybe using (just)
+open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Memory.HeapAddress using (HeapRef; heap-loc)
 import Once.Memory.HeapAddress
@@ -66,9 +67,35 @@ module Relocate {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
   (dst-live : ∀ o → Live a₂ (AtDynamic (heap-loc rd o)))
   -- … and every cell the old one held is unchanged (the copy wrote a fresh block)
   (keep : ∀ l → Live a₁ l → readLoc s₂ l ≡ readLoc s₁ l)
-  (bft : ∀ l → Live a₁ l → Live a₂ l) where
+  (bft : ∀ l → Live a₁ l → Live a₂ l)
+  (ibt : BlocksKept a₁ a₂)
+  -- D381: the destination block has `N` words, each a cell of it
+  (N : ℕ)
+  (dst-in : ∀ o → o < N → InBlk a₂ (AtDynamic (heap-loc rd o))) where
 
-  open Transport (Live a₁) (λ _ b → b) keep bft using (v-tr)
+  open Transport (Live a₁) (λ _ b → b) keep bft ibt using (v-tr)
+
+  private
+    -- a value of `c > 0` words fitting from `od` starts inside
+    starts-in : ∀ {od c} → 0 < c → od + c ≤ N → od < N
+    starts-in {od} {c} p f = ≤-trans (subst (_≤ od + c) (+-comm od 1) (+-monoʳ-≤ od p)) f
+
+    -- a pair's parts fit where it does
+    fits-fst : ∀ {od a b} → od + (a + b) ≤ N → od + a ≤ N
+    fits-fst {od} {a} {b} f = ≤-trans (+-monoʳ-≤ od (m≤m+n a b)) f
+
+    fits-snd : ∀ {od a b} → od + (a + b) ≤ N → (a + od) + b ≤ N
+    fits-snd {od} {a} {b} f =
+      subst (_≤ N) (trans (sym (+-assoc od a b)) (cong (_+ b) (+-comm od a))) f
+
+    -- a payload after its tag fits where the sum does
+    fits-pay-l : ∀ {od a b} → od + suc (a ⊔ b) ≤ N → suc od + a ≤ N
+    fits-pay-l {od} {a} {b} f =
+      ≤-trans (s≤s (+-monoʳ-≤ od (m≤m⊔n a b))) (subst (_≤ N) (+-suc od (a ⊔ b)) f)
+
+    fits-pay-r : ∀ {od a b} → od + suc (a ⊔ b) ≤ N → suc od + b ≤ N
+    fits-pay-r {od} {a} {b} f =
+      ≤-trans (s≤s (+-monoʳ-≤ od (m≤n⊔m a b))) (subst (_≤ N) (+-suc od (a ⊔ b)) f)
 
   -- word `j` of the destination is word `j` of the source, over `n` words
   Agree : ℕ → ℕ → ℕ → Set
@@ -112,46 +139,51 @@ module Relocate {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
 
   mutual
     -- a flat value, relocated
-    reloc-v : ∀ (C : IRTy) {m v} (os od : ℕ) → Agree (size C) os od → IsFlat C
+    reloc-v : ∀ (C : IRTy) {m v} (os od : ℕ) → Agree (size C) os od → IsFlat C → od + size C ≤ N
             → ValidAtWF m a₁ {C} v (AtDynamic (heap-loc rs os)) s₁
             → ValidAtWF m a₂ {C} v (AtDynamic (heap-loc rd od)) s₂
-    reloc-v Unit os od ag _ valid-unit-wf = valid-unit-wf
-    reloc-v (A * B) os od ag _ (valid-pair-wf lmm slb c₁ c₂) =
+    reloc-v Unit os od ag _ _ valid-unit-wf = valid-unit-wf
+    reloc-v (A * B) os od ag _ f (valid-pair-wf lmm slb c₁ c₂) =
       valid-pair-wf (lmm-move lmm) (dst-live _)
-        (reloc-cell A os od (agree-fst {size A} {size B} ag) c₁)
-        (reloc-cell B (size A + os) (size A + od) (agree-snd {size A} {size B} ag) c₂)
-    reloc-v (A +ᵀ B) os od ag _ (valid-inl-wf nd lmm tg pp pb slb pv) =
+        (reloc-cell A os od (agree-fst {size A} {size B} ag) (fits-fst {od} {size A} {size B} f) c₁)
+        (reloc-cell B (size A + os) (size A + od) (agree-snd {size A} {size B} ag) (fits-snd {od} {size A} {size B} f) c₂)
+    reloc-v (A +ᵀ B) os od ag _ _ (valid-inl-wf nd lmm tg pp pb slb pv) =
       valid-inl-wf nd (lmm-move lmm) (tag-move (ag 0 (s≤s z≤n)) tg) (trans (ag 1 (s≤s (s≤s′ nd))) pp) (bft _ pb) (dst-live _)
         (v-tr A pb pv)
       where s≤s′ : IsNode A → 0 < size A ⊔ size B
             s≤s′ nd′ = ≤-trans (subst (0 <_) (sym (node-size nd′)) (s≤s z≤n)) (m≤m⊔n (size A) (size B))
-    reloc-v (A +ᵀ B) os od ag _ (valid-inr-wf nd lmm tg pp pb slb pv) =
+    reloc-v (A +ᵀ B) os od ag _ _ (valid-inr-wf nd lmm tg pp pb slb pv) =
       valid-inr-wf nd (lmm-move lmm) (tag-move (ag 0 (s≤s z≤n)) tg) (trans (ag 1 (s≤s (s≤s′ nd))) pp) (bft _ pb) (dst-live _)
         (v-tr B pb pv)
       where s≤s′ : IsNode B → 0 < size A ⊔ size B
             s≤s′ nd′ = ≤-trans (subst (0 <_) (sym (node-size nd′)) (s≤s z≤n)) (m≤n⊔m (size A) (size B))
-    reloc-v (A +ᵀ B) os od ag _ (valid-inl-reg-wf lmm tg (rep-prim fit) rl slb) =
+    reloc-v (A +ᵀ B) os od ag _ _ (valid-inl-reg-wf lmm tg (rep-prim fit) rl slb) =
       valid-inl-reg-wf (lmm-move lmm) (tag-move (ag 0 (s≤s z≤n)) tg) (rep-prim fit)
         (trans (ag 1 (s≤s (≤-trans (subst (0 <_) (sym (scalar-size fit)) (s≤s z≤n)) (m≤m⊔n (size A) (size B))))) rl)
         (dst-live _)
-    reloc-v (A +ᵀ B) os od ag _ (valid-inr-reg-wf lmm tg (rep-prim fit) rl slb) =
+    reloc-v (A +ᵀ B) os od ag _ _ (valid-inr-reg-wf lmm tg (rep-prim fit) rl slb) =
       valid-inr-reg-wf (lmm-move lmm) (tag-move (ag 0 (s≤s z≤n)) tg) (rep-prim fit)
         (trans (ag 1 (s≤s (≤-trans (subst (0 <_) (sym (scalar-size fit)) (s≤s z≤n)) (m≤n⊔m (size A) (size B))))) rl)
         (dst-live _)
-    reloc-v (A +ᵀ B) os od ag _ (valid-inl-flat-wf fl lmm tg slb pv) =
+    reloc-v (A +ᵀ B) os od ag _ f (valid-inl-flat-wf fl lmm tg slb ib pv) =
       valid-inl-flat-wf fl (lmm-move lmm) (tag-move (ag 0 (s≤s z≤n)) tg) (dst-live _)
-        (reloc-v A (suc os) (suc od) (agree-max-l {size A} {size B} (agree-tail ag)) fl pv)
-    reloc-v (A +ᵀ B) os od ag _ (valid-inr-flat-wf fl lmm tg slb pv) =
+        (λ p → dst-in (suc od) (starts-in p (fits-pay-l {od} {size A} {size B} f)))
+        (reloc-v A (suc os) (suc od) (agree-max-l {size A} {size B} (agree-tail ag)) fl
+                 (fits-pay-l {od} {size A} {size B} f) pv)
+    reloc-v (A +ᵀ B) os od ag _ f (valid-inr-flat-wf fl lmm tg slb ib pv) =
       valid-inr-flat-wf fl (lmm-move lmm) (tag-move (ag 0 (s≤s z≤n)) tg) (dst-live _)
-        (reloc-v B (suc os) (suc od) (agree-max-r {size A} {size B} (agree-tail ag)) fl pv)
+        (λ p → dst-in (suc od) (starts-in p (fits-pay-r {od} {size A} {size B} f)))
+        (reloc-v B (suc os) (suc od) (agree-max-r {size A} {size B} (agree-tail ag)) fl
+                 (fits-pay-r {od} {size A} {size B} f) pv)
 
     -- a component's cell, relocated: a node's pointer and a scalar are their
     -- word, a compound its words
-    reloc-cell : ∀ (C : IRTy) {c} (os od : ℕ) → Agree (size C) os od
+    reloc-cell : ∀ (C : IRTy) {c} (os od : ℕ) → Agree (size C) os od → od + size C ≤ N
                → CellAt a₁ C c (AtDynamic (heap-loc rs os)) s₁
                → CellAt a₂ C c (AtDynamic (heap-loc rd od)) s₂
-    reloc-cell C os od ag (cell-ptr nd r bf v) =
+    reloc-cell C os od ag f (cell-ptr nd r bf v) =
       cell-ptr nd (trans (ag 0 (subst (0 <_) (sym (node-size nd)) (s≤s z≤n))) r) (bft _ bf) (v-tr C bf v)
-    reloc-cell C os od ag (cell-inline (rep-prim fit) r) =
+    reloc-cell C os od ag f (cell-inline (rep-prim fit) r) =
       cell-inline (rep-prim fit) (trans (ag 0 (subst (0 <_) (sym (scalar-size fit)) (s≤s z≤n))) r)
-    reloc-cell C os od ag (cell-flat fl v) = cell-flat fl (reloc-v C os od ag fl v)
+    reloc-cell C os od ag f (cell-flat fl hr v) =
+      cell-flat fl (λ p → dst-live _ , dst-in od (starts-in p f)) (reloc-v C os od ag fl f v)

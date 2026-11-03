@@ -206,10 +206,10 @@ module CataIRSlotStable {FS : FrameSemantics} where
   put-k-st kd n s b o′ = put-k-All kd n s b o′ tt tt tt (λ _ → tt) (λ _ → tt)
 
   get-st : ∀ X k → AllSlotStable (get X k)
-  get-st X k = get-All X k (λ _ → tt) (λ _ → tt)
+  get-st X k = get-All X k (λ _ → tt) (λ _ → tt) tt
 
   getμ-st : ∀ G k → AllSlotStable (getμ G k)
-  getμ-st G k = get-k-All (lkind G word) (lsz G 1) k (λ _ → tt) (λ _ → tt)
+  getμ-st G k = get-k-All (lkind G word) (lsz G 1) k (λ _ → tt) (λ _ → tt) tt
 
   wrap-st : ∀ tag pk ps ss s → AllSlotStable (wrap-sum tag pk ps ss s)
   wrap-st tag pk ps ss s =

@@ -286,6 +286,20 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
              → Live alloc (sucLoc l) → Live alloc (offsetLoc l n)
   live-shift (AtDynamic (heap-loc r o)) n (BeforeFrontier.heap-before p) = BeforeFrontier.heap-before p
 
+  -- D381: a cell of its block (D379's test, at this allocator's block sizes)…
+  InBlk : AllocState {FS} → ValueLocation FS → Set
+  InBlk alloc l = ExecFinal.in-block? {FS} (AllocState.block-size alloc) l ≡ true
+
+  -- …and a LIVE one: where an embedded value with words starts, so the
+  -- `addr-at` that takes its address stays in its block.
+  Here : AllocState {FS} → ValueLocation FS → Set
+  Here alloc l = Live alloc l × InBlk alloc l
+
+  -- a witness moves to another allocator only if every live block keeps its
+  -- size (an allocation sizes only the fresh, dead, ref)
+  BlocksKept : AllocState {FS} → AllocState {FS} → Set
+  BlocksKept a₁ a₂ = ∀ l → Live a₁ l → InBlk a₁ l → InBlk a₂ l
+
   -- D187: where a compound's component lives — a pointer to a cell valid at
   -- the component's type, or the component inline.
   data CellAtP {C : IRTy} (VC : VTy C) (alloc : AllocState {FS}) :
@@ -301,10 +315,12 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
                     {s : LocState FS} (rep : InlineRep C) →
                readLoc s cell-loc ≡ just (inline-sv rep c) →
                CellAtP {C} VC alloc c cell-loc s
-    -- plan 0.123 B.4 α: a compound component, embedded at the cell itself
+    -- plan 0.123 B.4 α: a compound component, embedded at the cell itself;
+    -- D381: when it has words, its first is a live cell of its block
     cell-flat : ∀ {c : ⟦ C ⟧} {cell-loc : ValueLocation FS}
                   {s : LocState FS} {mC : AllocMode} →
                IsFlat C →
+               (0 < size C → Here alloc cell-loc) →
                VC mC alloc c cell-loc s →
                CellAtP {C} VC alloc c cell-loc s
 
@@ -371,6 +387,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       LocMatchesMode m sum-loc →
       SumTag m 0 s sum-loc →
       Live alloc (sucLoc sum-loc) →
+      (0 < size A → InBlk alloc (sucLoc sum-loc)) →
       VA mA alloc a (sucLoc sum-loc) s →
       SumV {A} {B} VA VB m alloc (inj₁ a) sum-loc s
     inr-flat-wf : ∀ {m} {b : ⟦ B ⟧} {alloc : AllocState {FS}}
@@ -379,6 +396,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       LocMatchesMode m sum-loc →
       SumTag m 1 s sum-loc →
       Live alloc (sucLoc sum-loc) →
+      (0 < size B → InBlk alloc (sucLoc sum-loc)) →
       VB mB alloc b (sucLoc sum-loc) s →
       SumV {A} {B} VA VB m alloc (inj₂ b) sum-loc s
 
@@ -764,8 +782,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       lay (G ⊕ H) (inr-wf nd lmm tg pp pb slb pv) = inr-wf nd lmm tg pp pb slb (lay H pv)
       lay (G ⊕ H) (inl-reg-wf lmm tg rep pp slb) = inl-reg-wf lmm tg rep pp slb
       lay (G ⊕ H) (inr-reg-wf lmm tg rep pp slb) = inr-reg-wf lmm tg rep pp slb
-      lay (G ⊕ H) (inl-flat-wf fl lmm tg slb pv) = inl-flat-wf fl lmm tg slb (lay G pv)
-      lay (G ⊕ H) (inr-flat-wf fl lmm tg slb pv) = inr-flat-wf fl lmm tg slb (lay H pv)
+      lay (G ⊕ H) (inl-flat-wf fl lmm tg slb ib pv) = inl-flat-wf fl lmm tg slb ib (lay G pv)
+      lay (G ⊕ H) (inr-flat-wf fl lmm tg slb ib pv) = inr-flat-wf fl lmm tg slb ib (lay H pv)
       lay (G ⊗ H) (pair-wf lmm slb c₁ c₂) = pair-wf lmm slb (cell G c₁) (cell H c₂)
 
       cell : ∀ (G : IRFunctor) {a c cl s}
@@ -773,7 +791,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
            → CellAtP {⟦ G ⟧TI (ν-type F)} (LayerV G {ν-type F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′)) a c cl s
       cell G (cell-ptr nd r bf v) = cell-ptr nd r bf (lay G v)
       cell G (cell-inline rep r) = cell-inline rep r
-      cell G (cell-flat fl v) = cell-flat fl (lay G v)
+      cell G (cell-flat fl hr v) = cell-flat fl hr (lay G v)
 
   ------------------------------------------------------------------------
   -- THE RELATION. Structural on the type; no pragma.
@@ -807,10 +825,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     wrap (inl-reg-wf {m = m} {a = a} {sum-loc = sum-loc} lmm tg rep pp slb)
   pattern valid-inr-reg-wf {m} {b} {sum-loc} lmm tg rep pp slb =
     wrap (inr-reg-wf {m = m} {b = b} {sum-loc = sum-loc} lmm tg rep pp slb)
-  pattern valid-inl-flat-wf {m} {a} {sum-loc} {mA} fl lmm tg slb pv =
-    wrap (inl-flat-wf {m = m} {a = a} {sum-loc = sum-loc} {mA = mA} fl lmm tg slb pv)
-  pattern valid-inr-flat-wf {m} {b} {sum-loc} {mB} fl lmm tg slb pv =
-    wrap (inr-flat-wf {m = m} {b = b} {sum-loc = sum-loc} {mB = mB} fl lmm tg slb pv)
+  pattern valid-inl-flat-wf {m} {a} {sum-loc} {mA} fl lmm tg slb ib pv =
+    wrap (inl-flat-wf {m = m} {a = a} {sum-loc = sum-loc} {mA = mA} fl lmm tg slb ib pv)
+  pattern valid-inr-flat-wf {m} {b} {sum-loc} {mB} fl lmm tg slb ib pv =
+    wrap (inr-flat-wf {m = m} {b = b} {sum-loc = sum-loc} {mB = mB} fl lmm tg slb ib pv)
   pattern valid-closure-wf {f} {closure-loc} {env-loc} lmm ep cp eb slb fd runs =
     wrap (closure-wf {f = f} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
   pattern valid-closure-reg-wf {f} {env} {closure-loc} lmm rep ep cp slb fd runs =
@@ -834,8 +852,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     fo→valid (fo-sum (inr-wf nd lmm tg pp pb slb pv)) = valid-inr-wf nd lmm tg pp pb slb (fo→valid pv)
     fo→valid (fo-sum (inl-reg-wf lmm tg rep pp slb)) = valid-inl-reg-wf lmm tg rep pp slb
     fo→valid (fo-sum (inr-reg-wf lmm tg rep pp slb)) = valid-inr-reg-wf lmm tg rep pp slb
-    fo→valid (fo-sum (inl-flat-wf fl lmm tg slb pv)) = valid-inl-flat-wf fl lmm tg slb (fo→valid pv)
-    fo→valid (fo-sum (inr-flat-wf fl lmm tg slb pv)) = valid-inr-flat-wf fl lmm tg slb (fo→valid pv)
+    fo→valid (fo-sum (inl-flat-wf fl lmm tg slb ib pv)) = valid-inl-flat-wf fl lmm tg slb ib (fo→valid pv)
+    fo→valid (fo-sum (inr-flat-wf fl lmm tg slb ib pv)) = valid-inr-flat-wf fl lmm tg slb ib (fo→valid pv)
     fo→valid (fo-int i) = wrap i
     fo→valid (fo-float f) = wrap f
     fo→valid w@(fo-μwf _ _ _ _) = wrap w
@@ -844,7 +862,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     fo→cell : ∀ {alloc C c cl s} → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) alloc c cl s → CellAt alloc C c cl s
     fo→cell (cell-ptr nd r bf v) = cell-ptr nd r bf (fo→valid v)
     fo→cell (cell-inline rep r) = cell-inline rep r
-    fo→cell (cell-flat fl v) = cell-flat fl (fo→valid v)
+    fo→cell (cell-flat fl hr v) = cell-flat fl hr (fo→valid v)
 
   mutual
     valid→fo : ∀ {m alloc A v loc s} → FOTy A → ValidAtWF m alloc {A} v loc s → ValidFO m alloc {A} v loc s
@@ -858,14 +876,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     valid→fo (fo-+ fa fb) (valid-inr-wf nd lmm tg pp pb slb pv) = fo-sum (inr-wf nd lmm tg pp pb slb (valid→fo fb pv))
     valid→fo (fo-+ fa fb) (valid-inl-reg-wf lmm tg rep pp slb) = fo-sum (inl-reg-wf lmm tg rep pp slb)
     valid→fo (fo-+ fa fb) (valid-inr-reg-wf lmm tg rep pp slb) = fo-sum (inr-reg-wf lmm tg rep pp slb)
-    valid→fo (fo-+ fa fb) (valid-inl-flat-wf fl lmm tg slb pv) = fo-sum (inl-flat-wf fl lmm tg slb (valid→fo fa pv))
-    valid→fo (fo-+ fa fb) (valid-inr-flat-wf fl lmm tg slb pv) = fo-sum (inr-flat-wf fl lmm tg slb (valid→fo fb pv))
+    valid→fo (fo-+ fa fb) (valid-inl-flat-wf fl lmm tg slb ib pv) = fo-sum (inl-flat-wf fl lmm tg slb ib (valid→fo fa pv))
+    valid→fo (fo-+ fa fb) (valid-inr-flat-wf fl lmm tg slb ib pv) = fo-sum (inr-flat-wf fl lmm tg slb ib (valid→fo fb pv))
     valid→fo fo-μ (wrap w) = w
 
     cell→fo : ∀ {alloc C c cl s} → FOTy C → CellAt alloc C c cl s → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) alloc c cl s
     cell→fo fc (cell-ptr nd r bf v) = cell-ptr nd r bf (valid→fo fc v)
     cell→fo fc (cell-inline rep r) = cell-inline rep r
-    cell→fo fc (cell-flat fl v) = cell-flat fl (valid→fo fc v)
+    cell→fo fc (cell-flat fl hr v) = cell-flat fl hr (valid→fo fc v)
 
   -- The μ layer, read and written through the bridge: at an UNBOXED functor
   -- the layer is valid where the μ is.
@@ -896,7 +914,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
            → ∀ {alloc c cl s} → CellAtP {C} V alloc c cl s → CellAtP {C} W alloc c cl s
   cell-map f (cell-ptr nd r bf v) = cell-ptr nd r bf (f v)
   cell-map f (cell-inline rep r) = cell-inline rep r
-  cell-map f (cell-flat fl v) = cell-flat fl (f v)
+  cell-map f (cell-flat fl hr v) = cell-flat fl hr (f v)
 
   pair-map : ∀ {A B} {VA WA : VTy A} {VB WB : VTy B}
            → (∀ {m a c l s} → VA m a c l s → WA m a c l s)
@@ -911,8 +929,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   sum-map f g (inl-wf nd lmm tg pp pb slb pv) = inl-wf nd lmm tg pp pb slb (f pv)
   sum-map f g (inr-wf nd lmm tg pp pb slb pv) = inr-wf nd lmm tg pp pb slb (g pv)
   sum-map f g (inl-reg-wf lmm tg rep pp slb) = inl-reg-wf lmm tg rep pp slb
-  sum-map f g (inl-flat-wf fl lmm tg slb pv) = inl-flat-wf fl lmm tg slb (f pv)
-  sum-map f g (inr-flat-wf fl lmm tg slb pv) = inr-flat-wf fl lmm tg slb (g pv)
+  sum-map f g (inl-flat-wf fl lmm tg slb ib pv) = inl-flat-wf fl lmm tg slb ib (f pv)
+  sum-map f g (inr-flat-wf fl lmm tg slb ib pv) = inr-flat-wf fl lmm tg slb ib (g pv)
   sum-map f g (inr-reg-wf lmm tg rep pp slb) = inr-reg-wf lmm tg rep pp slb
 
   -- A forced layer IS a valid value of the layer type, and back where the
@@ -1290,7 +1308,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   decomposeInlWF (valid-inl-reg-wf {a = a} lmm _ fit pp slb) = record
     { a = a ; sucLoc-before = live→bf slb
     ; payload = payload-in-reg fit pp ; v-is-inl = refl }
-  decomposeInlWF (valid-inl-flat-wf {a = a} {mA = mA} fl lmm _ slb pv) = record
+  decomposeInlWF (valid-inl-flat-wf {a = a} {mA = mA} fl lmm _ slb _ pv) = record
     { a = a ; sucLoc-before = live→bf slb
     ; payload = payload-flat {mA = mA} fl pv ; v-is-inl = refl }
 
@@ -1302,7 +1320,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   decomposeInrWF (valid-inr-reg-wf {b = b} lmm _ fit pp slb) = record
     { b = b ; sucLoc-before = live→bf slb
     ; payload = payload-in-reg fit pp ; v-is-inr = refl }
-  decomposeInrWF (valid-inr-flat-wf {b = b} {mB = mB} fl lmm _ slb pv) = record
+  decomposeInrWF (valid-inr-flat-wf {b = b} {mB = mB} fl lmm _ slb _ pv) = record
     { b = b ; sucLoc-before = live→bf slb
     ; payload = payload-flat {mA = mB} fl pv ; v-is-inr = refl }
 
@@ -1335,7 +1353,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
            (Q : ValueLocation FS → Set)
            (q-bf : ∀ l → Live a₁ l → Q l)
            (rd : ∀ l → Q l → readLoc s₂ l ≡ readLoc s₁ l)
-           (bft : ∀ l → Live a₁ l → Live a₂ l) where
+           (bft : ∀ l → Live a₁ l → Live a₂ l)
+           (ibt : BlocksKept a₁ a₂) where
+
+    here-tr : ∀ {l} → Here a₁ l → Here a₂ l
+    here-tr (lv , ib) = bft _ lv , ibt _ lv ib
 
     mutual
       fo-tr : ∀ {m A v loc} → Q loc → ValidFO m a₁ {A} v loc s₁ → ValidFO m a₂ {A} v loc s₂
@@ -1352,10 +1374,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
         fo-sum (inl-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb))
       fo-tr q (fo-sum (inr-reg-wf lmm tg rep pp slb)) =
         fo-sum (inr-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb))
-      fo-tr q (fo-sum (inl-flat-wf fl lmm tg slb pv)) =
-        fo-sum (inl-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (fo-tr (q-bf _ slb) pv))
-      fo-tr q (fo-sum (inr-flat-wf fl lmm tg slb pv)) =
-        fo-sum (inr-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (fo-tr (q-bf _ slb) pv))
+      fo-tr q (fo-sum (inl-flat-wf fl lmm tg slb ib pv)) =
+        fo-sum (inl-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (λ p → ibt _ slb (ib p)) (fo-tr (q-bf _ slb) pv))
+      fo-tr q (fo-sum (inr-flat-wf fl lmm tg slb ib pv)) =
+        fo-sum (inr-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (λ p → ibt _ slb (ib p)) (fo-tr (q-bf _ slb) pv))
       fo-tr q (fo-int (int-wf bf rl)) = fo-int (int-wf (bft _ bf) (trans (rd _ q) rl))
       fo-tr q (fo-float (float-wf bf rl)) = fo-float (float-wf (bft _ bf) (trans (rd _ q) rl))
       fo-tr q (fo-μwf ub wf x lv) = fo-μwf ub wf x (fo-tr q lv)
@@ -1365,7 +1387,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
               → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) a₂ c cl s₂
       fo-cell q (cell-ptr nd r bf v) = cell-ptr nd (trans (rd _ q) r) (bft _ bf) (fo-tr (q-bf _ bf) v)
       fo-cell q (cell-inline rep r) = cell-inline rep (trans (rd _ q) r)
-      fo-cell q (cell-flat fl v) = cell-flat fl (fo-tr q v)
+      fo-cell q (cell-flat fl hr v) = cell-flat fl (λ p → here-tr (hr p)) (fo-tr q v)
 
     runs-tr : ∀ {A B} {VA : VTy A} {VB : VTy B} {cloc j f} → Q cloc
             → CallRuns {A} {B} VA VB a₁ s₁ cloc j f → CallRuns {A} {B} VA VB a₂ s₂ cloc j f
@@ -1409,10 +1431,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
         valid-inl-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb)
       v-tr (A + B) q (valid-inr-reg-wf lmm tg rep pp slb) =
         valid-inr-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb)
-      v-tr (A + B) q (valid-inl-flat-wf fl lmm tg slb pv) =
-        valid-inl-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (v-tr A (q-bf _ slb) pv)
-      v-tr (A + B) q (valid-inr-flat-wf fl lmm tg slb pv) =
-        valid-inr-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (v-tr B (q-bf _ slb) pv)
+      v-tr (A + B) q (valid-inl-flat-wf fl lmm tg slb ib pv) =
+        valid-inl-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (λ p → ibt _ slb (ib p)) (v-tr A (q-bf _ slb) pv)
+      v-tr (A + B) q (valid-inr-flat-wf fl lmm tg slb ib pv) =
+        valid-inr-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (λ p → ibt _ slb (ib p)) (v-tr B (q-bf _ slb) pv)
       v-tr (A ⇛ B) q (valid-closure-wf lmm ep cp eb slb fd runs) =
         valid-closure-wf lmm (trans (rd _ q) ep) (trans (rd _ (q-bf _ slb)) cp) (bft _ eb) (bft _ slb)
                          fd (runs-tr q runs)
@@ -1427,7 +1449,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       v-cell : ∀ C {c cl} → Q cl → CellAt a₁ C c cl s₁ → CellAt a₂ C c cl s₂
       v-cell C q (cell-ptr nd r bf v) = cell-ptr nd (trans (rd _ q) r) (bft _ bf) (v-tr C (q-bf _ bf) v)
       v-cell C q (cell-inline rep r) = cell-inline rep (trans (rd _ q) r)
-      v-cell C q (cell-flat fl v) = cell-flat fl (v-tr C q v)
+      v-cell C q (cell-flat fl hr v) = cell-flat fl (λ p → here-tr (hr p)) (v-tr C q v)
 
   -- The general transport, by its three facts.
   validityWF-transport : ∀ {m A} {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
@@ -1435,10 +1457,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     (∀ l → BeforeFrontier a₁ l → Q l) →
     (∀ l → Q l → readLoc s₂ l ≡ readLoc s₁ l) →
     (∀ l → BeforeFrontier a₁ l → BeforeFrontier a₂ l) →
+    BlocksKept a₁ a₂ →
     ∀ (v : ⟦ A ⟧) loc → Q loc →
     ValidAtWF m a₁ {A} v loc s₁ → ValidAtWF m a₂ {A} v loc s₂
-  validityWF-transport {A = A} Q q-bf rd bft _ _ q =
-    Transport.v-tr Q (λ l b → q-bf l (live→bf b)) rd (λ l b → bf→live (live-heap b) (bft l (live→bf b))) A q
+  validityWF-transport {A = A} Q q-bf rd bft bk _ _ q =
+    Transport.v-tr Q (λ l b → q-bf l (live→bf b)) rd (λ l b → bf→live (live-heap b) (bft l (live→bf b))) bk A q
 
   -- plan 0.135 S2: …and since a value's cells are heap cells, only the HEAP
   -- frontier and heap memory matter. This is what crosses a call and a return.
@@ -1447,24 +1470,28 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     (∀ l → Live a₁ l → Q l) →
     (∀ l → Q l → readLoc s₂ l ≡ readLoc s₁ l) →
     (∀ l → Live a₁ l → Live a₂ l) →
+    BlocksKept a₁ a₂ →
     ∀ (v : ⟦ A ⟧) loc → Q loc →
     ValidAtWF m a₁ {A} v loc s₁ → ValidAtWF m a₂ {A} v loc s₂
-  validityWF-heap-transport {A = A} Q q-bf rd bft _ _ q = Transport.v-tr Q q-bf rd bft A q
+  validityWF-heap-transport {A = A} Q q-bf rd bft bk _ _ q = Transport.v-tr Q q-bf rd bft bk A q
 
   cellWF-heap-transport : ∀ {C} {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
     (Q : ValueLocation FS → Set) →
     (∀ l → Live a₁ l → Q l) →
     (∀ l → Q l → readLoc s₂ l ≡ readLoc s₁ l) →
     (∀ l → Live a₁ l → Live a₂ l) →
+    BlocksKept a₁ a₂ →
     ∀ (c : ⟦ C ⟧) cl → Q cl →
     CellAt a₁ C c cl s₁ → CellAt a₂ C c cl s₂
-  cellWF-heap-transport {C} Q q-bf rd bft _ _ q = Transport.v-cell Q q-bf rd bft C q
+  cellWF-heap-transport {C} Q q-bf rd bft bk _ _ q = Transport.v-cell Q q-bf rd bft bk C q
 
   private
     all : ValueLocation FS → Set
     all _ = ⊤
     same-alloc : ∀ {a : AllocState {FS}} l → BeforeFrontier a l → BeforeFrontier a l
     same-alloc _ b = b
+    same-blocks : ∀ {a : AllocState {FS}} → BlocksKept a a
+    same-blocks _ _ ib = ib
 
   -- ValidAtWF only depends on memory, not registers.
   validityWF-mem-only : ∀ {m alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
@@ -1472,7 +1499,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     heapMem s₂ ≡ heapMem s₁ →
     ValidAtWF m alloc {A} v loc s₁ → ValidAtWF m alloc {A} v loc s₂
   validityWF-mem-only v loc s₁ s₂ se he =
-    validityWF-transport all (λ _ _ → tt) (λ l _ → readLoc-stack-heap-eq s₂ s₁ l se he) same-alloc v loc tt
+    validityWF-transport all (λ _ _ → tt) (λ l _ → readLoc-stack-heap-eq s₂ s₁ l se he) same-alloc same-blocks v loc tt
 
   validityWF-write-at-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (val : ValueLocation FS) →
@@ -1481,7 +1508,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     ValidAtWF m alloc {A} v loc (write-loc s (AtStack (current-frame alloc) (next-slot alloc)) val)
   validityWF-write-at-frontier {alloc = alloc} v loc s val lb =
     validityWF-transport (BeforeFrontier alloc) (λ _ b → b)
-      (λ l b → write-at-frontier-preserves-before s alloc l val b) same-alloc v loc lb
+      (λ l b → write-at-frontier-preserves-before s alloc l val b) same-alloc same-blocks v loc lb
 
   validityWF-write-at-suc-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (val : ValueLocation FS) →
@@ -1490,7 +1517,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     ValidAtWF m alloc {A} v loc (write-loc s (AtStack (current-frame alloc) (suc (next-slot alloc))) val)
   validityWF-write-at-suc-frontier {alloc = alloc} v loc s val lb =
     validityWF-transport (BeforeFrontier alloc) (λ _ b → b)
-      (λ l b → write-at-suc-frontier-preserves-before s alloc l val b) same-alloc v loc lb
+      (λ l b → write-at-suc-frontier-preserves-before s alloc l val b) same-alloc same-blocks v loc lb
 
   validityWF-write-sv-at-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (stored : StoredValue FS) →
@@ -1499,7 +1526,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     ValidAtWF m alloc {A} v loc (writeLoc s (AtStack (current-frame alloc) (next-slot alloc)) stored)
   validityWF-write-sv-at-frontier {alloc = alloc} v loc s stored lb =
     validityWF-transport (BeforeFrontier alloc) (λ _ b → b)
-      (λ l b → write-sv-at-frontier-preserves-before s alloc l stored b) same-alloc v loc lb
+      (λ l b → write-sv-at-frontier-preserves-before s alloc l stored b) same-alloc same-blocks v loc lb
 
   validityWF-write-sv-at-suc-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (stored : StoredValue FS) →
@@ -1508,31 +1535,33 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     ValidAtWF m alloc {A} v loc (writeLoc s (AtStack (current-frame alloc) (suc (next-slot alloc))) stored)
   validityWF-write-sv-at-suc-frontier {alloc = alloc} v loc s stored lb =
     validityWF-transport (BeforeFrontier alloc) (λ _ b → b)
-      (λ l b → write-sv-at-suc-frontier-preserves-before s alloc l stored b) same-alloc v loc lb
+      (λ l b → write-sv-at-suc-frontier-preserves-before s alloc l stored b) same-alloc same-blocks v loc lb
 
   validityWF-with-bf-transfer : ∀ {m A} (v : ⟦ A ⟧) loc (s : LocState FS)
     (a₁ a₂ : AllocState {FS})
     (bf-transfer : ∀ loc' → BeforeFrontier a₁ loc' → BeforeFrontier a₂ loc') →
+    BlocksKept a₁ a₂ →
     ValidAtWF m a₁ {A} v loc s →
     ValidAtWF m a₂ {A} v loc s
-  validityWF-with-bf-transfer v loc s a₁ a₂ bft =
-    validityWF-transport all (λ _ _ → tt) (λ _ _ → refl) bft v loc tt
+  validityWF-with-bf-transfer v loc s a₁ a₂ bft bk =
+    validityWF-transport all (λ _ _ → tt) (λ _ _ → refl) bft bk v loc tt
 
   validityWF-alloc-advance : ∀ {m alloc A} (v : ⟦ A ⟧) loc s (n : ℕ) →
     ValidAtWF m alloc {A} v loc s →
     let alloc' = record alloc { next-slot = next-slot alloc ℕ.+ n }
     in ValidAtWF m alloc' v loc s
   validityWF-alloc-advance {alloc = alloc} v loc s n =
-    validityWF-with-bf-transfer v loc s _ _ (stack-alloc-advances alloc n)
+    validityWF-with-bf-transfer v loc s _ _ (stack-alloc-advances alloc n) (λ _ _ ib → ib)
 
   validityWF-frontier-advance : ∀ {m alloc alloc' A} (v : ⟦ A ⟧) loc (s : LocState FS) →
     current-frame alloc' ≡ current-frame alloc →
     next-slot alloc ≤ next-slot alloc' →
     next-heap-ref alloc ≤ next-heap-ref alloc' →
+    BlocksKept alloc alloc' →
     ValidAtWF m alloc {A} v loc s →
     ValidAtWF m alloc' v loc s
-  validityWF-frontier-advance {alloc = alloc} {alloc' = alloc'} v loc s cf-eq slot-≤ heap-≤ =
-    validityWF-with-bf-transfer v loc s _ _ (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤)
+  validityWF-frontier-advance {alloc = alloc} {alloc' = alloc'} v loc s cf-eq slot-≤ heap-≤ bk =
+    validityWF-with-bf-transfer v loc s _ _ (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤) bk
 
   validityWF-mem-preserved : ∀ {m alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
     BeforeFrontier alloc loc →
@@ -1540,7 +1569,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     ValidAtWF m alloc {A} v loc s₁ →
     ValidAtWF m alloc {A} v loc s₂
   validityWF-mem-preserved {alloc = alloc} v loc s₁ s₂ lb mem-eq =
-    validityWF-transport (BeforeFrontier alloc) (λ _ b → b) mem-eq same-alloc v loc lb
+    validityWF-transport (BeforeFrontier alloc) (λ _ b → b) mem-eq same-alloc same-blocks v loc lb
 
 
   inputPlace-transport : ∀ {A m alloc alloc'} {x : ⟦ A ⟧} {s s'}
@@ -1548,18 +1577,19 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     → current-frame alloc' ≡ current-frame alloc
     → next-slot alloc ≤ next-slot alloc'
     → next-heap-ref alloc ≤ next-heap-ref alloc'
+    → BlocksKept alloc alloc'
     → (∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc)
     → readReg (regs s') Input1 ≡ input-sv ip
     → InputPlace {A} m alloc' x s'
   inputPlace-transport {x = x} {s = s} {s' = s'}
-      (in-at-loc loc valid before _) cf-eq slot-≤ heap-≤ mem-eq eq' =
+      (in-at-loc loc valid before _) cf-eq slot-≤ heap-≤ bk mem-eq eq' =
     in-at-loc loc
-      (validityWF-frontier-advance x loc s' cf-eq slot-≤ heap-≤
+      (validityWF-frontier-advance x loc s' cf-eq slot-≤ heap-≤ bk
         (validityWF-mem-preserved x loc s s' before mem-eq valid))
       (frontier-monotone _ _ (sym cf-eq) slot-≤ heap-≤ loc before)
       eq'
-  inputPlace-transport (in-at-reg fit _) _ _ _ _ eq' = in-at-reg fit eq'
-  inputPlace-transport (in-unit u)       _ _ _ _ _   = in-unit u
+  inputPlace-transport (in-at-reg fit _) _ _ _ _ _ eq' = in-at-reg fit eq'
+  inputPlace-transport (in-unit u)       _ _ _ _ _ _   = in-unit u
 
   -- (D270: the memory-gap validity transfers — `validityWF-mem-preserved-
   -- excluding`/`-in-regions`/`-in-regions-strong`, `LocInRegions`/
@@ -1612,7 +1642,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     ValidAtWF m alloc {A} v loc s →
     ValidAtWF m (reclaim-alloc alloc reclaim-slot) v loc s
   validityWF-reclaim {m} {alloc} v loc s rs mono loc-bf valid =
-    validityWF-frontier-advance v loc s refl mono ≤-refl valid
+    validityWF-frontier-advance v loc s refl mono ≤-refl (λ _ _ ib → ib) valid
     where
       open import Data.Nat.Properties using (≤-refl)
 
@@ -1815,10 +1845,10 @@ pattern valid-inl-reg-wf {m} {a} {sum-loc} lmm tg rep pp slb =
   wrap (inl-reg-wf {m = m} {a = a} {sum-loc = sum-loc} lmm tg rep pp slb)
 pattern valid-inr-reg-wf {m} {b} {sum-loc} lmm tg rep pp slb =
   wrap (inr-reg-wf {m = m} {b = b} {sum-loc = sum-loc} lmm tg rep pp slb)
-pattern valid-inl-flat-wf {m} {a} {sum-loc} {mA} fl lmm tg slb pv =
-  wrap (inl-flat-wf {m = m} {a = a} {sum-loc = sum-loc} {mA = mA} fl lmm tg slb pv)
-pattern valid-inr-flat-wf {m} {b} {sum-loc} {mB} fl lmm tg slb pv =
-  wrap (inr-flat-wf {m = m} {b = b} {sum-loc = sum-loc} {mB = mB} fl lmm tg slb pv)
+pattern valid-inl-flat-wf {m} {a} {sum-loc} {mA} fl lmm tg slb ib pv =
+  wrap (inl-flat-wf {m = m} {a = a} {sum-loc = sum-loc} {mA = mA} fl lmm tg slb ib pv)
+pattern valid-inr-flat-wf {m} {b} {sum-loc} {mB} fl lmm tg slb ib pv =
+  wrap (inr-flat-wf {m = m} {b = b} {sum-loc = sum-loc} {mB = mB} fl lmm tg slb ib pv)
 pattern valid-closure-wf {f} {closure-loc} {env-loc} lmm ep cp eb slb fd runs =
   wrap (closure-wf {f = f} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
 pattern valid-closure-reg-wf {f} {env} {closure-loc} lmm rep ep cp slb fd runs =

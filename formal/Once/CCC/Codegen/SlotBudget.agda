@@ -106,10 +106,10 @@ put-k-SB kd n s blk o′ ps pb =
             (λ _ → nn refl refl) (λ _ → nn refl refl)
 
 get-SB : ∀ {b} X k → All (SB b) (get X k)
-get-SB X k = get-All X k (λ _ → nn refl refl) (λ _ → nn refl refl)
+get-SB X k = get-All X k (λ _ → nn refl refl) (λ _ → nn refl refl) (nn refl refl)
 
 get-k-SB : ∀ {b} kd n k → All (SB b) (get-k kd n k)
-get-k-SB kd n k = get-k-All kd n k (λ _ → nn refl refl) (λ _ → nn refl refl)
+get-k-SB kd n k = get-k-All kd n k (λ _ → nn refl refl) (λ _ → nn refl refl) (nn refl refl)
 
 segok-get : ∀ {b} X k → SegOK b (get X k)
 segok-get X k = segok-SB _ (get-SB X k)
@@ -450,7 +450,7 @@ Idle : AbstractInstr → Set
 Idle i = is-id? (seg-action i) ≡ true
 
 getμ-idle : ∀ (G : Fun 0) k → All Idle (get-k (lkind G word) (lsz G 1) k)
-getμ-idle G k = get-k-All (lkind G word) (lsz G 1) k (λ _ → refl) (λ _ → refl)
+getμ-idle G k = get-k-All (lkind G word) (lsz G 1) k (λ _ → refl) (λ _ → refl) refl
 
 push2-idle : ∀ t v b′ → All Idle (push2 t v b′)
 push2-idle t v b′ = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []

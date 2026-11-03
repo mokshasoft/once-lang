@@ -21333,3 +21333,39 @@ cannot lay out `E * A`.
 * `instr-call-closure`, the code word at word 1, and every target's lowering are unchanged.
 * A ν suspension, `[seed-word, code]`, is the same shape and needs nothing: forcing hands the block the
   seed word, which is the seed's register form.
+
+## D381 — A 0-WORD COMPONENT IS READ BY COPYING THE POINTER; AN EMBEDDED VALUE RECORDS THAT IT IS IN ITS BLOCK (2026-11-03)
+
+**Decided** in plan 0.123 B.4 α2, found while restating `fst`/`snd` against D379's checked `addr-at`.
+
+### Context
+D379 makes `addr-at k` fault when the address would not be a cell of its block. That is what keeps
+every pointer in its block (`PtrB`), but the value relation said nothing about blocks, so the proof
+of a `get` could not show that its `addr-at` does not fault. Two cases differ:
+* A component of one or more words starts at its own first word, and that word is in the block the
+  constructor allocated (`2 ⊔ size` words, D375).
+* A 0-word component (`Unit`, or a product of such) has no word. `get` took the container's address
+  (`addr-at 0`), but a 0-word container need not have a cell of its own either: `(Int * Int) *
+  (Unit * Unit)` fills its 2-word block, so its second component would start past the end.
+
+### Decision
+* `FlatLayout.get` reads a 0-word component with `mov-to-output`: its address is the container's
+  pointer, copied. No offset is formed, so there is nothing to check. A 0-word value's validity does
+  not depend on where it is, so any address will do.
+* An embedded value records that its address is a live cell of its block, when it has words:
+  `cell-flat` and `inl-/inr-flat-wf` carry `0 < size C → Here alloc loc` (`Live` and D379's
+  in-block test). The constructors supply it from the size they allocated, the copy
+  (`ValueRelocate`) from the destination's.
+* Block sizes stay with the allocator (`AllocState.block-size`), where a reusing allocator (γ) keeps
+  them too. A witness moves to another allocator only if every LIVE block keeps its size
+  (`BlocksKept`): the transports take it, and a run guarantees it (an allocation sizes only the fresh,
+  dead, ref). Rejected: a ghost size inside the heap reference, which makes in-block a fact about the
+  pointer alone, but makes two references to one reused block distinct cells of the abstract memory.
+
+### Consequences
+* Every `addr-at` an emitted `get` runs is on a value of at least one word, so it is in its block by
+  the value's own witness.
+* The structural lemmas over `get` take a third instruction (`mov-to-output`), which every fence
+  already admits.
+* `ValueRealized` and the callee's contract (`CalleeRunP`) gain the blocks-kept field, beside
+  `bf-mono`.
