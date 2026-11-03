@@ -36,7 +36,7 @@ open import Once.CCC.Label using (LabelId; ℓ)
 
 module Once.CCC.Codegen.SlotBudget (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
+open import Data.Nat using (ℕ; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_; _⊔_)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-comm; +-assoc; +-suc;
    *-suc; *-monoʳ-≤; m≤n⇒m≤1+n)
@@ -50,12 +50,12 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type; fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod) renaming (_+_ to _+ᵀ_)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (Fun)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
 open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; store-at-slot; load-from-slot; store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit; instr-ctrl; c-ret; c-label; c-jmp; restore-input; load-indirect; load-indirect-suc; c-branch-tag-zero; c-leave)
+  (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; store-at-slot; load-from-slot; store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit; instr-ctrl; c-ret; c-label; c-jmp; restore-input; load-indirect; load-indirect-suc; c-branch-tag-zero; c-leave; store-at; load-at; addr-at; lea-slot)
 open import Once.CCC.Machine.Locations using (Slot)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
@@ -64,14 +64,58 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; ir-stack-budget; resuspend-layer; ir-to-trace-lab; ir-stack-budget-from; ir-to-unit; sigop-budget; sigop-code; CataStrategy; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; in-trace; in-next; out-trace; fsize; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body)
+  (ir-to-trace'; ir-to-trace; ir-stack-budget; resuspend-layer; ir-to-trace-lab; ir-stack-budget-from; ir-to-unit; sigop-budget; sigop-code; CataStrategy; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; in-trace; in-next; out-trace; fsize; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body; cata-call-setup; cata-call-from; env-entry; env-prologue; inj-trace)
 
 -- the o-independent segment machinery (`SlotBelow`, `SegState`, `AllSeg`,
 -- `SegOK`, …), split out so a program image shares one `AllSeg`
 open import Once.CCC.Codegen.SlotSeg
+open import Once.CCC.Codegen.FlatLayout
+  using (Kind; word; flat; kind; put; put-k; get; get-k; put-All; put-k-All; get-All; get-k-All; lkind; lsz)
+open import Once.CCC.Codegen.Size using (size)
+import Data.List.Relation.Unary.All as All
 open SegOK using (ok-all; ok-neu)
 open SegState using (cur)
 open SlotBelow using (below)
+
+------------------------------------------------------------------------
+-- plan 0.123 B.4 α: a straight-line piece is OK when each instruction is below
+-- the frontier AND leaves the segment alone (`SB`); the flat layout's code is
+-- such a piece once its two stash slots are below the frontier.
+------------------------------------------------------------------------
+SB : ℕ → AbstractInstr → Set
+SB b i = SlotBelow b i × (is-id? (seg-action i) ≡ true)
+
+segok-SB : ∀ {b} (t : AbstractTrace) → All (SB b) t → SegOK b t
+segok-SB t p = segok-idle t (idle-All t (All.map proj₂ p)) (All.map proj₁ p)
+
+nn : ∀ {b i} → slot-of i ≡ nothing → is-id? (seg-action i) ≡ true → SB b i
+nn e i = sb-none e , i
+
+ss : ∀ {b k i} → slot-of i ≡ just k → k < b → (∀ slot → i ≡ lea-slot slot → suc slot < b)
+   → is-id? (seg-action i) ≡ true → SB b i
+ss e p q i = sb-slot e p q , i
+
+put-SB : ∀ {b} X s blk o′ → s < b → blk < b → All (SB b) (put X s blk o′)
+put-SB X s blk o′ ps pb =
+  put-All X s blk o′ (ss refl ps (λ _ ()) refl) (ss refl pb (λ _ ()) refl) (ss refl ps (λ _ ()) refl)
+          (λ _ → nn refl refl) (λ _ → nn refl refl)
+
+put-k-SB : ∀ {b} kd n s blk o′ → s < b → blk < b → All (SB b) (put-k kd n s blk o′)
+put-k-SB kd n s blk o′ ps pb =
+  put-k-All kd n s blk o′ (ss refl ps (λ _ ()) refl) (ss refl pb (λ _ ()) refl) (ss refl ps (λ _ ()) refl)
+            (λ _ → nn refl refl) (λ _ → nn refl refl)
+
+get-SB : ∀ {b} X k → All (SB b) (get X k)
+get-SB X k = get-All X k (λ _ → nn refl refl) (λ _ → nn refl refl)
+
+get-k-SB : ∀ {b} kd n k → All (SB b) (get-k kd n k)
+get-k-SB kd n k = get-k-All kd n k (λ _ → nn refl refl) (λ _ → nn refl refl)
+
+segok-get : ∀ {b} X k → SegOK b (get X k)
+segok-get X k = segok-SB _ (get-SB X k)
+
+segok-put : ∀ {b} X s blk o′ → s < b → blk < b → SegOK b (put X s blk o′)
+segok-put X s blk o′ ps pb = segok-SB _ (put-SB X s blk o′ ps pb)
 
 -- the two projections of `ir-to-trace'`'s 4-tuple this module reads (record
 -- patterns, so they reduce under eta — IRToTrace's own are private)
@@ -94,11 +138,11 @@ cata-trace-of (_ , _ , t) = t
 -- D099 / C1: every strategy now also reserves the call's two slots (`cl`, `k`),
 -- and `strat-const` — which used to splice the algebra inline and reserve
 -- nothing — goes through the same call, so it reserves two as well.
-cata-mono : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
-          → n1 ≤ cata-budget-of (cata-dispatch st bb n1 l1 at)
-cata-mono strat-const         bb n1 l1 at = m≤m+n n1 4
-cata-mono strat-box           bb n1 l1 at = m≤m+n n1 4
-cata-mono (strat-branching F) bb n1 l1 at =
+cata-mono : ∀ (E A : IRTy) (G : Fun 0) (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
+          → n1 ≤ cata-budget-of (cata-dispatch E A G st bb n1 l1 at)
+cata-mono E A G strat-const         bb n1 l1 at = m≤m+n n1 4
+cata-mono E A G strat-box           bb n1 l1 at = m≤m+n n1 4
+cata-mono E A G (strat-branching F) bb n1 l1 at =
   ≤-trans (m≤m+n n1 7)
     (≤-trans (m≤m+n (n1 + 7) (4 * fsize F))
       (≤-trans (m≤m+n ((n1 + 7) + 4 * fsize F) 4)
@@ -140,7 +184,7 @@ frontier-mono (out-μ _)   n l = ≤-refl
 -- C1: the algebra runs in its OWN frame (generated at frontier 0), so the
 -- caller's frontier is not advanced by it at all — the dispatch takes `n`
 -- directly and only the cata's own scratch is added.
-frontier-mono (Cata {F} _ alg) n l = cata-mono (cata-strategy ⌈ F ⌉F) _ _ _ _
+frontier-mono (Cata {F} _ {E} {A} alg) n l = cata-mono E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) _ _ _ _
 frontier-mono (Out _)        n l = ≤-refl
 -- D189: the same two-cell build as `Ana`, with `id` as the block.
 frontier-mono (in-ν _)     n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
@@ -183,23 +227,32 @@ cata-body-below bl el bb at bok =
 -- stash `k`. Everything else in setup/call is slot-free, and
 -- `instr-call-closure` is segment-idle (the same reason `slots-below apply`
 -- is one `segok-idle`).
-cata-const-below : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace) → SegOK bb at
-                 → SegOK (cata-budget-of (cata-dispatch strat-const bb n1 l1 at))
-                         (cata-trace-of (cata-dispatch strat-const bb n1 l1 at))
-cata-const-below bb n1 l1 at bok =
-  segok-++ (segok-idle _ refl
-      (-- setup (13) then call (15), one flat list as before
-       sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
-       sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ sb-slot refl cl<b (λ _ ()) ∷
-       sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-       sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
-       sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷
-       sb-none refl ∷ sb-slot refl pr<b (λ _ ()) ∷ sb-none refl ∷
-       sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
-       sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
-       sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
-       sb-slot refl pr<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ []))
-    (cata-body-below _ _ bb at bok)
+-- plan 0.123 B.4 α: the setup and the call, at slots `cl`/`k`/`ev`/`pr`
+-- below `b` (the environment and the layer `put` into the argument pair).
+setup-SB : ∀ {b} E cl k ev bl → cl < b → k < b → ev < b → All (SB b) (cata-call-setup E cl k ev bl)
+setup-SB E cl k ev bl pc pk pe =
+  ++⁺ (get-SB E 0)
+      (ss refl pe (λ _ ()) refl ∷ nn refl refl ∷ ss refl pk (λ _ ()) refl ∷ nn refl refl ∷
+       ss refl pc (λ _ ()) refl ∷ nn refl refl ∷ nn refl refl ∷ nn refl refl ∷ nn refl refl ∷
+       nn refl refl ∷ ss refl pk (λ _ ()) refl ∷ nn refl refl ∷ [])
+
+call-SB : ∀ {b} i0 → SB b i0 → ∀ E lk ls cl k ev pr → cl < b → k < b → ev < b → pr < b
+        → All (SB b) (cata-call-from i0 E lk ls cl k ev pr)
+call-SB i0 p0 E lk ls cl k ev pr pc pk pe pp =
+  p0 ∷ ss refl pk (λ _ ()) refl ∷ nn refl refl ∷ ss refl pp (λ _ ()) refl ∷
+  ++⁺ (put-SB E ev pr 0 pe pp)
+      (++⁺ (put-k-SB lk ls k pr _ pk pp)
+           (ss refl pc (λ _ ()) refl ∷ nn refl refl ∷ nn refl refl ∷
+            ss refl pp (λ _ ()) refl ∷ nn refl refl ∷ nn refl refl ∷ []))
+
+cata-const-below : ∀ (E A : IRTy) (G : Fun 0) (bb n1 l1 : ℕ) (at : AbstractTrace) → SegOK bb at
+                 → SegOK (cata-budget-of (cata-dispatch E A G strat-const bb n1 l1 at))
+                         (cata-trace-of (cata-dispatch E A G strat-const bb n1 l1 at))
+cata-const-below E A G bb n1 l1 at bok =
+  segok-++ (segok-SB _ (setup-SB E n1 (n1 + 1) (n1 + 2) l1 cl<b k<b ev<b))
+    (segok-++ (segok-SB _ (call-SB _ (nn refl refl) E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3)
+                                   cl<b k<b ev<b pr<b))
+              (cata-body-below _ _ bb at bok))
   where
     -- D131: four slots now — `cl`/`k` as before, plus `ev` (the fold's
     -- environment) and `pr` (each call's fresh argument pair). `suc (n1 + j) ≡
@@ -216,30 +269,21 @@ cata-const-below bb n1 l1 at bok =
     pr<b = bnd 3 (s≤s (s≤s (s≤s (s≤s z≤n))))
 
 push2-below : ∀ (topSlot tv tb b : ℕ) → topSlot < b → tv < b → tb < b
-            → All (SlotBelow b) (push2 topSlot tv tb)
+            → All (SB b) (push2 topSlot tv tb)
 push2-below topSlot tv tb b pt pv pb =
-  sb-slot refl pv (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pb (λ _ ()) ∷
-  sb-none refl ∷ sb-slot refl pv (λ _ ()) ∷ sb-none refl ∷
-  sb-slot refl pt (λ _ ()) ∷ sb-none refl ∷
-  sb-slot refl pb (λ _ ()) ∷ sb-slot refl pt (λ _ ()) ∷ []
+  ss refl pv (λ _ ()) refl ∷ nn refl refl ∷ ss refl pb (λ _ ()) refl ∷
+  nn refl refl ∷ ss refl pv (λ _ ()) refl ∷ nn refl refl ∷
+  ss refl pt (λ _ ()) refl ∷ nn refl refl ∷
+  ss refl pb (λ _ ()) refl ∷ ss refl pt (λ _ ()) refl ∷ []
 
-cata-box-below : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace) → SegOK bb at
-                 → SegOK (cata-budget-of (cata-dispatch strat-box bb n1 l1 at))
-                         (cata-trace-of (cata-dispatch strat-box bb n1 l1 at))
-cata-box-below bb n1 l1 at bok =
-  segok-++ (segok-idle _ refl
-      (-- setup (13) then call (15), one flat list as before
-       sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
-       sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ sb-slot refl cl<b (λ _ ()) ∷
-       sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-       sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
-       sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷
-       sb-none refl ∷ sb-slot refl pr<b (λ _ ()) ∷ sb-none refl ∷
-       sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
-       sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
-       sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
-       sb-slot refl pr<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ []))
-    (cata-body-below _ _ bb at bok)
+cata-box-below : ∀ (E A : IRTy) (G : Fun 0) (bb n1 l1 : ℕ) (at : AbstractTrace) → SegOK bb at
+                 → SegOK (cata-budget-of (cata-dispatch E A G strat-box bb n1 l1 at))
+                         (cata-trace-of (cata-dispatch E A G strat-box bb n1 l1 at))
+cata-box-below E A G bb n1 l1 at bok =
+  segok-++ (segok-SB _ (setup-SB E n1 (n1 + 1) (n1 + 2) l1 cl<b k<b ev<b))
+    (segok-++ (segok-SB _ (call-SB _ (nn refl refl) E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3)
+                                   cl<b k<b ev<b pr<b))
+              (cata-body-below _ _ bb at bok))
   where
     -- D131: four slots now — `cl`/`k` as before, plus `ev` (the fold's
     -- environment) and `pr` (each call's fresh argument pair). `suc (n1 + j) ≡
@@ -256,36 +300,43 @@ cata-box-below bb n1 l1 at bok =
     pr<b = bnd 3 (s≤s (s≤s (s≤s (s≤s z≤n))))
 
 -- pop it: one addressed slot
-pop2-below : ∀ (topSlot b : ℕ) → topSlot < b → All (SlotBelow b) (pop2 topSlot)
+pop2-below : ∀ (topSlot b : ℕ) → topSlot < b → All (SB b) (pop2 topSlot)
 pop2-below topSlot b pt =
-  sb-slot refl pt (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
-  sb-slot refl pt (λ _ ()) ∷ sb-none refl ∷ []
+  ss refl pt (λ _ ()) refl ∷ nn refl refl ∷ nn refl refl ∷
+  ss refl pt (λ _ ()) refl ∷ nn refl refl ∷ []
 
 -- wrap the payload into a sum node: two addressed slots (item 6 made this a
 -- MAIN-trace segment — it used to hide inside a nested `⊕` branch)
-wrap-sum-below : ∀ (tag s b : ℕ) → s < b → suc s < b
-               → All (SlotBelow b) (wrap-sum tag s)
-wrap-sum-below tag s b ps pss =
-  sb-slot refl ps (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pss (λ _ ()) ∷
-  sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-  sb-slot refl ps (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pss (λ _ ()) ∷ []
+wrap-sum-below : ∀ (tag : ℕ) pk ps ss′ (s b : ℕ) → s < b → suc s < b
+               → All (SB b) (wrap-sum tag pk ps ss′ s)
+wrap-sum-below tag pk ps ss′ s b p-s pss =
+  ss refl p-s (λ _ ()) refl ∷ nn refl refl ∷ ss refl pss (λ _ ()) refl ∷
+  nn refl refl ∷ nn refl refl ∷ nn refl refl ∷
+  ++⁺ (put-k-SB pk ps s (suc s) 1 p-s pss) (ss refl pss (λ _ ()) refl ∷ [])
+
+getμ-SB : ∀ {b} (G : Fun 0) k → All (SB b) (get-k (lkind G word) (lsz G 1) k)
+getμ-SB G k = get-k-SB (lkind G word) (lsz G 1) k
 
 -- the VISIT walk: `Id` is a push (fixed slots), `⊕` one case instruction,
 -- `⊗` owns `s` and recurses at `s+4`
 visit-below : ∀ (F : Fun 0) (todo tv tb s lb b : ℕ)
             → todo < b → tv < b → tb < b → s + 4 * fsize F ≤ b
-            → All (SlotBelow b) (visit-walk todo tv tb F s lb)
+            → All (SB b) (visit-walk todo tv tb F s lb)
 visit-below (K _) todo tv tb s lb b pt pv pb h = []
 visit-below Id    todo tv tb s lb b pt pv pb h =
-  sb-none refl ∷ push2-below todo tv tb b pt pv pb
+  nn refl refl ∷ push2-below todo tv tb b pt pv pb
 -- item 6: the ⊕ dispatch is FLAT — branch prologues/joins are label/ctrl
 -- instructions (slot-free), the branch walks are inline splices.
 visit-below (F ⊕ G) todo tv tb s lb b pt pv pb h =
-  ++⁺ (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+  ++⁺ (nn refl refl ∷ [])
+      (++⁺ (getμ-SB G 1)
+      (++⁺ (nn refl refl ∷ [])
       (++⁺ (visit-below G todo tv tb (s + 4) _ b pt pv pb recG)
-           (++⁺ (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
-                (++⁺ (visit-below F todo tv tb (s + 4) _ b pt pv pb recF)
-                     (sb-none refl ∷ []))))
+      (++⁺ (nn refl refl ∷ nn refl refl ∷ [])
+      (++⁺ (getμ-SB F 1)
+      (++⁺ (nn refl refl ∷ [])
+      (++⁺ (visit-below F todo tv tb (s + 4) _ b pt pv pb recF)
+           (nn refl refl ∷ []))))))))
   where
     recF : s + 4 + 4 * fsize F ≤ b
     recF = ≤-trans (≤-reflexive (+-assoc s 4 (4 * fsize F)))
@@ -296,10 +347,14 @@ visit-below (F ⊕ G) todo tv tb s lb b pt pv pb h =
            (≤-trans (+-monoʳ-≤ s (+-monoʳ-≤ 4 (*-monoʳ-≤ 4 (m≤n+m (fsize G) (fsize F)))))
            (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
 visit-below (F ⊗ G) todo tv tb s lb b pt pv pb h =
-  ++⁺ (sb-none refl ∷ sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
+  ++⁺ (nn refl refl ∷ ss refl s<b (λ _ ()) refl ∷ [])
+      (++⁺ (getμ-SB F 0)
+      (++⁺ (nn refl refl ∷ [])
       (++⁺ (visit-below F todo tv tb (s + 4) _ b pt pv pb recF)
-           (++⁺ (sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
-                (visit-below G todo tv tb (s + 4) _ b pt pv pb recG)))
+      (++⁺ (ss refl s<b (λ _ ()) refl ∷ [])
+      (++⁺ (getμ-SB G (lsz F 1))
+      (++⁺ (nn refl refl ∷ [])
+           (visit-below G todo tv tb (s + 4) _ b pt pv pb recG)))))))
   where
     room4 : s + 4 ≤ b
     room4 = ≤-trans (+-monoʳ-≤ s (subst (4 ≤_) (sym (*-suc 4 (fsize F + fsize G)))
@@ -317,20 +372,24 @@ visit-below (F ⊗ G) todo tv tb s lb b pt pv pb h =
 
 -- the REBUILD walk: `Id` is a pop (the value slot), `⊕` one case instruction
 -- (`wrap-sum` lives inside its branches), `⊗` owns `[s, s+3]`
-rebuild-below : ∀ (F : Fun 0) (val tv tb s lb b : ℕ)
+rebuild-below : ∀ (ck : Kind) (cs : ℕ) (F : Fun 0) (val tv tb s lb b : ℕ)
               → val < b → s + 4 * fsize F ≤ b
-              → All (SlotBelow b) (rebuild-walk val tv tb F s lb)
-rebuild-below (K _) val tv tb s lb b pt h = sb-none refl ∷ []
-rebuild-below Id    val tv tb s lb b pt h = pop2-below val b pt
+              → All (SB b) (rebuild-walk val tv tb ck cs F s lb)
+rebuild-below ck cs (K _) val tv tb s lb b pt h = nn refl refl ∷ []
+rebuild-below ck cs Id    val tv tb s lb b pt h = pop2-below val b pt
 -- item 6: flat ⊕ — the `wrap-sum`s are main-trace segments now.
-rebuild-below (F ⊕ G) val tv tb s lb b pt h =
-  ++⁺ (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
-      (++⁺ (rebuild-below G val tv tb (s + 4) _ b pt recG)
-           (++⁺ (wrap-sum-below 1 s b s<b b-ss)
-                (++⁺ (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
-                     (++⁺ (rebuild-below F val tv tb (s + 4) _ b pt recF)
-                          (++⁺ (wrap-sum-below 0 s b s<b b-ss)
-                               (sb-none refl ∷ []))))))
+rebuild-below ck cs (F ⊕ G) val tv tb s lb b pt h =
+  ++⁺ (nn refl refl ∷ [])
+      (++⁺ (getμ-SB G 1)
+      (++⁺ (nn refl refl ∷ [])
+      (++⁺ (rebuild-below ck cs G val tv tb (s + 4) _ b pt recG)
+      (++⁺ (wrap-sum-below 1 (lkind G ck) (lsz G cs) (lsz (F ⊕ G) cs) s b s<b b-ss)
+      (++⁺ (nn refl refl ∷ nn refl refl ∷ [])
+      (++⁺ (getμ-SB F 1)
+      (++⁺ (nn refl refl ∷ [])
+      (++⁺ (rebuild-below ck cs F val tv tb (s + 4) _ b pt recF)
+      (++⁺ (wrap-sum-below 0 (lkind F ck) (lsz F cs) (lsz (F ⊕ G) cs) s b s<b b-ss)
+           (nn refl refl ∷ []))))))))))
   where
     room4 : s + 4 ≤ b
     room4 = ≤-trans (+-monoʳ-≤ s (subst (4 ≤_) (sym (*-suc 4 (fsize F + fsize G)))
@@ -347,17 +406,19 @@ rebuild-below (F ⊕ G) val tv tb s lb b pt h =
     recG = ≤-trans (≤-reflexive (+-assoc s 4 (4 * fsize G)))
            (≤-trans (+-monoʳ-≤ s (+-monoʳ-≤ 4 (*-monoʳ-≤ 4 (m≤n+m (fsize G) (fsize F)))))
            (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
-rebuild-below (F ⊗ G) val tv tb s lb b pt h =
-  ++⁺ (sb-none refl ∷ sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
-      (++⁺ (rebuild-below G val tv tb (s + 4) _ b pt recG)
-           (++⁺ (sb-slot refl b-s2 (λ _ ()) ∷ sb-slot refl s<b (λ _ ()) ∷
-                 sb-none refl ∷ sb-none refl ∷ [])
-                (++⁺ (rebuild-below F val tv tb (s + 4) _ b pt recF)
-                     (sb-slot refl b-ss (λ _ ()) ∷ sb-none refl ∷
-                      sb-slot refl b-s3 (λ _ ()) ∷ sb-none refl ∷
-                      sb-slot refl b-ss (λ _ ()) ∷ sb-none refl ∷
-                      sb-slot refl b-s2 (λ _ ()) ∷ sb-none refl ∷
-                      sb-slot refl b-s3 (λ _ ()) ∷ []))))
+rebuild-below ck cs (F ⊗ G) val tv tb s lb b pt h =
+  ++⁺ (nn refl refl ∷ ss refl s<b (λ _ ()) refl ∷ [])
+      (++⁺ (getμ-SB G (lsz F 1))
+      (++⁺ (nn refl refl ∷ [])
+      (++⁺ (rebuild-below ck cs G val tv tb (s + 4) _ b pt recG)
+      (++⁺ (ss refl b-s2 (λ _ ()) refl ∷ ss refl s<b (λ _ ()) refl ∷ [])
+      (++⁺ (getμ-SB F 0)
+      (++⁺ (nn refl refl ∷ [])
+      (++⁺ (rebuild-below ck cs F val tv tb (s + 4) _ b pt recF)
+      (++⁺ (ss refl b-ss (λ _ ()) refl ∷ nn refl refl ∷ ss refl b-s3 (λ _ ()) refl ∷ [])
+      (++⁺ (put-k-SB (lkind F ck) (lsz F cs) (suc s) (s + 3) 0 b-ss b-s3)
+      (++⁺ (put-k-SB (lkind G ck) (lsz G cs) (s + 2) (s + 3) (lsz F cs) b-s2 b-s3)
+           (ss refl b-s3 (λ _ ()) refl ∷ [])))))))))))
   where
     room4 : s + 4 ≤ b
     room4 = ≤-trans (+-monoʳ-≤ s (subst (4 ≤_) (sym (*-suc 4 (fsize F + fsize G)))
@@ -383,42 +444,13 @@ rebuild-below (F ⊗ G) val tv tb s lb b pt h =
            (≤-trans (+-monoʳ-≤ s (+-monoʳ-≤ 4 (*-monoʳ-≤ 4 (m≤n+m (fsize G) (fsize F)))))
            (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
 
--- THE COMPILE-TIME WALKS EMIT NO MARKER. `seg-idle?` cannot reduce on a stuck
--- functor (unlike the fixed skeletons, where it is `refl`), so both walks need
--- their own induction on `F`.
-visit-idle : ∀ (F : Fun 0) (todo tv tb s lb : ℕ)
-           → seg-idle? (visit-walk todo tv tb F s lb) ≡ true
-visit-idle (K _)   todo tv tb s lb = refl
-visit-idle Id      todo tv tb s lb = refl
-visit-idle (F ⊕ G) todo tv tb s lb =
-  idle-++ (visit-walk todo tv tb G (s + 4) (suc (suc lb) + lsize F)) _
-    (visit-idle G todo tv tb (s + 4) (suc (suc lb) + lsize F))
-    (idle-++ (visit-walk todo tv tb F (s + 4) (suc (suc lb))) _
-      (visit-idle F todo tv tb (s + 4) (suc (suc lb))) refl)
-visit-idle (F ⊗ G) todo tv tb s lb =
-  idle-++ (visit-walk todo tv tb F (s + 4) lb) _
-    (visit-idle F todo tv tb (s + 4) lb)
-    (visit-idle G todo tv tb (s + 4) (lb + lsize F))
+-- (The walks' segment-idleness is part of `SB` now: `visit-idle` /
+-- `rebuild-idle` are subsumed.)
 
-rebuild-idle : ∀ (F : Fun 0) (val tv tb s lb : ℕ)
-             → seg-idle? (rebuild-walk val tv tb F s lb) ≡ true
-rebuild-idle (K _)   val tv tb s lb = refl
-rebuild-idle Id      val tv tb s lb = refl
-rebuild-idle (F ⊕ G) val tv tb s lb =
-  idle-++ (rebuild-walk val tv tb G (s + 4) (suc (suc lb) + lsize F)) _
-    (rebuild-idle G val tv tb (s + 4) (suc (suc lb) + lsize F))
-    (idle-++ (rebuild-walk val tv tb F (s + 4) (suc (suc lb))) _
-      (rebuild-idle F val tv tb (s + 4) (suc (suc lb))) refl)
-rebuild-idle (F ⊗ G) val tv tb s lb =
-  idle-++ (rebuild-walk val tv tb G (s + 4) (lb + lsize F)) _
-    (rebuild-idle G val tv tb (s + 4) (lb + lsize F))
-    (idle-++ (rebuild-walk val tv tb F (s + 4) lb) _
-      (rebuild-idle F val tv tb (s + 4) lb) refl)
-
-cata-branching-below : ∀ (F : Fun 0) (bb n1 l1 : ℕ) (at : AbstractTrace)
+cata-branching-below : ∀ (E A : IRTy) (G F : Fun 0) (bb n1 l1 : ℕ) (at : AbstractTrace)
                      → SegOK bb at
-                     → SegOK (cata-budget-of (cata-dispatch (strat-branching F) bb n1 l1 at))
-                             (cata-trace-of (cata-dispatch (strat-branching F) bb n1 l1 at))
+                     → SegOK (cata-budget-of (cata-dispatch E A G (strat-branching F) bb n1 l1 at))
+                             (cata-trace-of (cata-dispatch E A G (strat-branching F) bb n1 l1 at))
 -- Plan 0.63 (iii): `I₁ ++ at ++ I₂`. I₁ absorbs init, flatten and the fold's
 -- prefix (so it carries BOTH functor walks); I₂ is the fold's tail plus the
 -- final read.
@@ -426,11 +458,12 @@ cata-branching-below : ∀ (F : Fun 0) (bb n1 l1 : ℕ) (at : AbstractTrace)
 -- the pre-C1 budget `b`, and `segok-weaken` lifts it the two extra slots the
 -- call path takes. Only the body/setup/call blocks are new, and the algebra's
 -- weakening (`at'`, now unused) is gone: it lives in its own frame.
-cata-branching-below F bb n1 l1 at bok =
-  segok-++ (segok-idle _ refl setup)
-   (segok-++ (segok-weaken b≤b2 (segok-idle _ I₁-idle I₁-all))
-    (segok-++ (segok-idle _ refl call)
-     (segok-++ (segok-weaken b≤b2 (segok-idle _ refl I₂-all))
+cata-branching-below E A G F bb n1 l1 at bok =
+  segok-++ (segok-SB _ (setup-SB E b (b + 1) (b + 2) _ cl<b2 k<b2 ev<b2))
+   (segok-++ (segok-weaken b≤b2 (segok-SB _ I₁-all))
+    (segok-++ (segok-SB _ (call-SB _ (nn refl refl) E (lkind F (kind A)) (lsz F (size A)) b (b + 1) (b + 2) (b + 3)
+                                   cl<b2 k<b2 ev<b2 pr<b2))
+     (segok-++ (segok-weaken b≤b2 (segok-SB _ I₂-all))
                (cata-body-below _ _ bb at bok))))
   where
     b = n1 + 7 + 4 * fsize F + 4
@@ -447,18 +480,6 @@ cata-branching-below F bb n1 l1 at bok =
     ev<b2 = bnd 2 (s≤s (s≤s (s≤s z≤n)))
     pr<b2 : b + 3 < b + 4
     pr<b2 = bnd 3 (s≤s (s≤s (s≤s (s≤s z≤n))))
-    setup : All (SlotBelow (b + 4)) _
-    setup = sb-none refl ∷ sb-slot refl ev<b2 (λ _ ()) ∷ sb-none refl ∷
-            sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷ sb-slot refl cl<b2 (λ _ ()) ∷
-            sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-            sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷ []
-    call : All (SlotBelow (b + 4)) _
-    call = sb-none refl ∷ sb-slot refl k<b2 (λ _ ()) ∷
-           sb-none refl ∷ sb-slot refl pr<b2 (λ _ ()) ∷ sb-none refl ∷
-           sb-slot refl ev<b2 (λ _ ()) ∷ sb-none refl ∷
-           sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷
-           sb-slot refl cl<b2 (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
-           sb-slot refl pr<b2 (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ []
     fixed7 : n1 + 7 ≤ b
     fixed7 = ≤-trans (m≤m+n (n1 + 7) (4 * fsize F)) (m≤m+n (n1 + 7 + 4 * fsize F) 4)
     fixed7' : 7 + n1 ≤ b
@@ -482,38 +503,33 @@ cata-branching-below F bb n1 l1 at bok =
     q6 = ≤-trans (subst (λ z → suc z ≤ 7 + n1) (+-comm 6 n1) ≤-refl) fixed7'
     walk-room : n1 + 7 + 4 * fsize F ≤ b
     walk-room = m≤m+n (n1 + 7 + 4 * fsize F) 4
-    I₁-idle : seg-idle? (cata-br-I₁ F n1 l1) ≡ true
-    I₁-idle = idle-++ (visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4)) _
-                (visit-idle F n1 (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4))
-                (idle-++ (rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4 + lsize F)) _
-                  (rebuild-idle F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4 + lsize F)) refl)
-    I₁-all : All (SlotBelow b) (cata-br-I₁ F n1 l1)
+    I₁-all : All (SB b) (cata-br-I₁ (kind A) (size A) F n1 l1)
     I₁-all =
-      ++⁺ (sb-none refl ∷ sb-slot refl q3 (λ _ ()) ∷
-           sb-none refl ∷ sb-slot refl q6 (λ _ ()) ∷ sb-none refl ∷
-           sb-none refl ∷ sb-none refl ∷
-           sb-slot refl q6 (λ _ ()) ∷ sb-slot refl q1 (λ _ ()) ∷
-           sb-slot refl q6 (λ _ ()) ∷ sb-slot refl q2 (λ _ ()) ∷
-           sb-slot refl q6 (λ _ ()) ∷ sb-slot refl q0 (λ _ ()) ∷
-           sb-slot refl q3 (λ _ ()) ∷ [])
+      ++⁺ (nn refl refl ∷ ss refl q3 (λ _ ()) refl ∷
+           nn refl refl ∷ ss refl q6 (λ _ ()) refl ∷ nn refl refl ∷
+           nn refl refl ∷ nn refl refl ∷
+           ss refl q6 (λ _ ()) refl ∷ ss refl q1 (λ _ ()) refl ∷
+           ss refl q6 (λ _ ()) refl ∷ ss refl q2 (λ _ ()) refl ∷
+           ss refl q6 (λ _ ()) refl ∷ ss refl q0 (λ _ ()) refl ∷
+           ss refl q3 (λ _ ()) refl ∷ [])
       (++⁺ (push2-below n1 (n1 + 4) (n1 + 5) b q0 q4 q5)
-      (++⁺ (sb-none refl ∷ sb-slot refl q0 (λ _ ()) ∷ sb-none refl ∷
-            sb-none refl ∷ sb-none refl ∷ sb-slot refl q0 (λ _ ()) ∷
-            sb-none refl ∷ sb-none refl ∷ sb-slot refl q3 (λ _ ()) ∷
-            sb-slot refl q3 (λ _ ()) ∷ [])
+      (++⁺ (nn refl refl ∷ ss refl q0 (λ _ ()) refl ∷ nn refl refl ∷
+            nn refl refl ∷ nn refl refl ∷ ss refl q0 (λ _ ()) refl ∷
+            nn refl refl ∷ nn refl refl ∷ ss refl q3 (λ _ ()) refl ∷
+            ss refl q3 (λ _ ()) refl ∷ [])
       (++⁺ (push2-below (suc n1) (n1 + 4) (n1 + 5) b q1 q4 q5)
-      (++⁺ (sb-slot refl q3 (λ _ ()) ∷ sb-none refl ∷ [])
+      (++⁺ (ss refl q3 (λ _ ()) refl ∷ nn refl refl ∷ [])
       (++⁺ (visit-below F n1 (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4) b q0 q4 q5 walk-room)
-      (++⁺ (sb-none refl ∷ sb-none refl ∷ [])
-      (++⁺ (sb-none refl ∷ sb-slot refl q1 (λ _ ()) ∷ sb-none refl ∷
-            sb-none refl ∷ sb-none refl ∷ sb-slot refl q1 (λ _ ()) ∷
-            sb-none refl ∷ sb-none refl ∷ [])
-      (++⁺ (rebuild-below F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4 + lsize F) b q2 walk-room)
-           (sb-none refl ∷ [])))))))))
-    I₂-all : All (SlotBelow b) (cata-br-I₂ n1 l1)
+      (++⁺ (nn refl refl ∷ nn refl refl ∷ [])
+      (++⁺ (nn refl refl ∷ ss refl q1 (λ _ ()) refl ∷ nn refl refl ∷
+            nn refl refl ∷ nn refl refl ∷ ss refl q1 (λ _ ()) refl ∷
+            nn refl refl ∷ nn refl refl ∷ [])
+      (++⁺ (rebuild-below (kind A) (size A) F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4 + lsize F) b q2 walk-room)
+           (nn refl refl ∷ [])))))))))
+    I₂-all : All (SB b) (cata-br-I₂ n1 l1)
     I₂-all = ++⁺ (push2-below (n1 + 2) (n1 + 4) (n1 + 5) b q2 q4 q5)
-                 (sb-none refl ∷ sb-none refl ∷
-                  sb-slot refl q2 (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
+                 (nn refl refl ∷ nn refl refl ∷
+                  ss refl q2 (λ _ ()) refl ∷ nn refl refl ∷ nn refl refl ∷ [])
 
 
 
@@ -534,13 +550,13 @@ out-below mu-box  n = segok-idle _ refl (sb-none refl ∷ [])
 out-below mu-unit n = segok-idle _ refl (sb-none refl ∷ [])
 out-below mu-ptr  n = segok-idle _ refl (sb-none refl ∷ [])
 
-cata-slots-below : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
+cata-slots-below : ∀ (E A : IRTy) (G : Fun 0) (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
                  → SegOK bb at
-                 → SegOK (cata-budget-of (cata-dispatch st bb n1 l1 at))
-                         (cata-trace-of (cata-dispatch st bb n1 l1 at))
-cata-slots-below strat-const         bb n1 l1 at bok = cata-const-below bb n1 l1 at bok
-cata-slots-below strat-box           bb n1 l1 at bok = cata-box-below bb n1 l1 at bok
-cata-slots-below (strat-branching F) bb n1 l1 at bok = cata-branching-below F bb n1 l1 at bok
+                 → SegOK (cata-budget-of (cata-dispatch E A G st bb n1 l1 at))
+                         (cata-trace-of (cata-dispatch E A G st bb n1 l1 at))
+cata-slots-below E A G strat-const         bb n1 l1 at bok = cata-const-below E A G bb n1 l1 at bok
+cata-slots-below E A G strat-box           bb n1 l1 at bok = cata-box-below E A G bb n1 l1 at bok
+cata-slots-below E A G (strat-branching F) bb n1 l1 at bok = cata-branching-below E A G F bb n1 l1 at bok
 
 ------------------------------------------------------------------------
 -- THE INDUCTION: every instruction of the emitted MAIN trace addresses a slot
@@ -554,41 +570,40 @@ cata-slots-below (strat-branching F) bb n1 l1 at bok = cata-branching-below F bb
 -- returns, so its budget obligation needs the frontier to GROW — which is what
 -- `resuspend-mono` says, and the only arithmetic the witness below needs.
 
-resuspend-mono : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
-               → n ≤ proj₁ (resuspend-layer n l lbl env wf)
-resuspend-mono n l lbl env (wf-K _) = ≤-refl
-resuspend-mono n l lbl env wf-Id    = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
-resuspend-mono n l lbl env (wf-Prod wfF wfG) =
-  ≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
-    (≤-trans (resuspend-mono (suc (suc (suc n))) l lbl env wfF)
-             (resuspend-mono (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
-                             (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)))
+resuspend-mono : ∀ (H : IRFunctor) (E A : IRTy) (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+               → n ≤ proj₁ (resuspend-layer H E A n l lbl env wf)
+resuspend-mono H E A n l lbl env (wf-K _) = ≤-refl
+resuspend-mono H E A n l lbl env wf-Id    = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
+-- plan 0.123 B.4 α: four slots (`src`, `dst`, two parts) before the parts
+resuspend-mono H E A n l lbl env (wf-Prod wfF wfG) =
+  ≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))
+    (≤-trans (resuspend-mono H E A (suc (suc (suc (suc n)))) l lbl env wfF)
+             (resuspend-mono H E A (proj₁ (resuspend-layer H E A (suc (suc (suc (suc n)))) l lbl env wfF))
+                             (proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc (suc n)))) l lbl env wfF)))
                              lbl env wfG))
-resuspend-mono n l lbl env (wf-Sum wfF wfG) =
+resuspend-mono H E A n l lbl env (wf-Sum wfF wfG) =
   ≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
-    (≤-trans (resuspend-mono (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
-             (resuspend-mono (proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
-                             (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)))
+    (≤-trans (resuspend-mono H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+             (resuspend-mono H E A (proj₁ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
+                             (proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)))
                              lbl env wfG))
 
-resuspend-below : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+resuspend-below : ∀ (H : IRFunctor) (E A : IRTy) (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
                 → env < n
-                → SegOK (proj₁ (resuspend-layer n l lbl env wf))
-                        (proj₂ (proj₂ (resuspend-layer n l lbl env wf)))
-resuspend-below n l lbl env (wf-K _) e<n = segok-idle _ refl []
--- Budget `n + 4`: the seed `a'` and its pair `q` at `n`, `suc n` (D273), then
--- the `Ana` site's two stashes; the environment pair is READ at `env < n`.
-resuspend-below n l lbl env wf-Id e<n =
-  segok-idle _ refl
-    (sb-slot refl n0 (λ _ ()) ∷ sb-none refl ∷
-     sb-slot refl n1 (λ _ ()) ∷ sb-slot refl e<B (λ _ ()) ∷ sb-none refl ∷
-     sb-slot refl n1 (λ _ ()) ∷ sb-none refl ∷
-     sb-slot refl n0 (λ _ ()) ∷ sb-none refl ∷ sb-slot refl n1 (λ _ ()) ∷
-     sb-slot refl n2 (λ _ ()) ∷ sb-none refl ∷
-     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷
-     sb-slot refl n2 (λ _ ()) ∷ sb-none refl ∷
-     sb-none refl ∷ sb-none refl ∷
-     sb-slot refl ≤-refl (λ _ ()) ∷ [])
+                → SegOK (proj₁ (resuspend-layer H E A n l lbl env wf))
+                        (proj₂ (proj₂ (resuspend-layer H E A n l lbl env wf)))
+resuspend-below H E A n l lbl env (wf-K _) e<n = segok-idle _ refl []
+-- Budget `n + 4`: the seed `a'`, the environment's form, the seed pair `q`, and
+-- the suspension; the environment pair is READ at `env < n`.
+resuspend-below H E A n l lbl env wf-Id e<n =
+  segok-SB _
+    (++⁺ (ss refl n0 (λ _ ()) refl ∷ ss refl e<B (λ _ ()) refl ∷ [])
+    (++⁺ (get-SB E 0)
+    (++⁺ (ss refl n1 (λ _ ()) refl ∷ nn refl refl ∷ ss refl n2 (λ _ ()) refl ∷ [])
+    (++⁺ (put-SB E (suc n) (suc (suc n)) 0 n1 n2)
+    (++⁺ (put-SB A n (suc (suc n)) _ n0 n2)
+         (nn refl refl ∷ ss refl ≤-refl (λ _ ()) refl ∷ nn refl refl ∷ ss refl n2 (λ _ ()) refl ∷
+          nn refl refl ∷ nn refl refl ∷ nn refl refl ∷ ss refl ≤-refl (λ _ ()) refl ∷ []))))))
   where
     n2 : suc (suc n) < suc (suc (suc (suc n)))
     n2 = m≤n⇒m≤1+n ≤-refl
@@ -598,61 +613,58 @@ resuspend-below n l lbl env wf-Id e<n =
     n0 = m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))
     e<B : env < suc (suc (suc (suc n)))
     e<B = ≤-trans e<n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))
--- Three stashes per container level — source, destination, and the child being
--- carried across the allocation — so the children start at `n + 3` and the
--- budget bound for every one of them comes from a single `base`.
-resuspend-below n l lbl env (wf-Prod wfF wfG) e<n =
-  segok-pre (store-at-slot n ∷ restore-input n ∷ load-indirect ∷ []) refl
-    (sb-slot refl n<B (λ _ ()) ∷ sb-slot refl n<B (λ _ ()) ∷ sb-none refl ∷ [])
-    (segok-++ (segok-weaken mid (resuspend-below (suc (suc (suc n))) l lbl env wfF e<3n))
-      (segok-pre (store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
-                  store-at-slot (suc n) ∷ mov-to-input ∷
-                  load-from-slot (suc (suc n)) ∷ store-indirect ∷
-                  restore-input n ∷ load-indirect-suc ∷ []) refl
-        (sb-slot refl base (λ _ ()) ∷ sb-none refl ∷
-         sb-slot refl sn<B (λ _ ()) ∷ sb-none refl ∷
-         sb-slot refl base (λ _ ()) ∷ sb-none refl ∷
-         sb-slot refl n<B (λ _ ()) ∷ sb-none refl ∷ [])
-        (segok-++ (resuspend-below n2 l2 lbl env wfG e<n2)
-          (segok-idle _ refl
-            (sb-slot refl base (λ _ ()) ∷ sb-slot refl sn<B (λ _ ()) ∷
-             sb-slot refl base (λ _ ()) ∷ sb-none refl ∷
-             sb-slot refl sn<B (λ _ ()) ∷ [])))))
+-- plan 0.123 B.4 α: four stashes per product level — source, destination and
+-- the two transformed parts — so the parts start at `n + 4`.
+resuspend-below H E A n l lbl env (wf-Prod {F} {G} wfF wfG) e<n =
+  segok-++ (segok-SB _ (ss refl n<B (λ _ ()) refl ∷ ss refl n<B (λ _ ()) refl ∷ []))
+  (segok-++ (segok-get (⟦ F ⟧TI A) 0)
+  (segok-++ (segok-weaken mid (resuspend-below H E A (suc (suc (suc (suc n)))) l lbl env wfF e<4n))
+  (segok-++ (segok-SB _ (ss refl t1<B (λ _ ()) refl ∷ ss refl n<B (λ _ ()) refl ∷ []))
+  (segok-++ (segok-get (⟦ G ⟧TI A) _)
+  (segok-++ (resuspend-below H E A n2 l2 lbl env wfG e<n2)
+            (segok-SB _
+              (++⁺ (ss refl base (λ _ ()) refl ∷ nn refl refl ∷ ss refl d<B (λ _ ()) refl ∷ [])
+              (++⁺ (put-SB (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 0 t1<B d<B)
+              (++⁺ (put-SB (⟦ G ⟧TI (ν-type H)) (suc (suc (suc n))) (suc n) _ base d<B)
+                   (ss refl d<B (λ _ ()) refl ∷ []))))))))))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
-    B  = proj₁ (resuspend-layer n2 l2 lbl env wfG)
+    n2 = proj₁ (resuspend-layer H E A (suc (suc (suc (suc n)))) l lbl env wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc (suc n)))) l lbl env wfF))
+    B  = proj₁ (resuspend-layer H E A n2 l2 lbl env wfG)
     mid : n2 ≤ B
-    mid = resuspend-mono n2 l2 lbl env wfG
-    base : suc (suc (suc n)) ≤ B
-    base = ≤-trans (resuspend-mono (suc (suc (suc n))) l lbl env wfF) mid
-    sn<B : suc (suc n) ≤ B
-    sn<B = ≤-trans (m≤n⇒m≤1+n ≤-refl) base
+    mid = resuspend-mono H E A n2 l2 lbl env wfG
+    base : suc (suc (suc (suc n))) ≤ B
+    base = ≤-trans (resuspend-mono H E A (suc (suc (suc (suc n)))) l lbl env wfF) mid
+    t1<B : suc (suc (suc n)) ≤ B
+    t1<B = ≤-trans (m≤n⇒m≤1+n ≤-refl) base
+    d<B : suc (suc n) ≤ B
+    d<B = ≤-trans (m≤n⇒m≤1+n ≤-refl) t1<B
     n<B : suc n ≤ B
-    n<B = ≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) base
-    e<3n : env < suc (suc (suc n))
-    e<3n = ≤-trans e<n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
+    n<B = ≤-trans (m≤n⇒m≤1+n ≤-refl) d<B
+    e<4n : env < suc (suc (suc (suc n)))
+    e<4n = ≤-trans e<n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))))
     e<n2 : env < n2
-    e<n2 = ≤-trans e<3n (resuspend-mono (suc (suc (suc n))) l lbl env wfF)
-resuspend-below n l lbl env (wf-Sum wfF wfG) e<n =
+    e<n2 = ≤-trans e<4n (resuspend-mono H E A (suc (suc (suc (suc n)))) l lbl env wfF)
+resuspend-below H E A n l lbl env (wf-Sum {F} {G} wfF wfG) e<n =
   segok-pre (store-at-slot n ∷ restore-input n ∷
              instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ []) refl
     (sb-slot refl n<B (λ _ ()) ∷ sb-slot refl n<B (λ _ ()) ∷ sb-none refl ∷ [])
-    (segok-++ (arm 1 (resuspend-below n2 l2 lbl env wfG e<n2))
+    (segok-++ (arm G (resuspend-below H E A n2 l2 lbl env wfG e<n2) {sz′ = sz})
       (segok-pre (instr-ctrl (c-jmp (ℓ o (suc l))) ∷
                   instr-ctrl (c-label (ℓ o l)) ∷ []) refl
         (sb-none refl ∷ sb-none refl ∷ [])
-        (segok-++ (arm 0 (segok-weaken mid
-                            (resuspend-below (suc (suc (suc n))) (suc (suc l)) lbl env wfF e<3n)))
+        (segok-++ (arm F (segok-weaken mid
+                            (resuspend-below H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF e<3n)) {sz′ = sz})
           (segok-idle _ refl (sb-none refl ∷ [])))))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
-    B  = proj₁ (resuspend-layer n2 l2 lbl env wfG)
+    sz = size (⟦ F ⟧TI (ν-type H) +ᵀ ⟦ G ⟧TI (ν-type H))
+    n2 = proj₁ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
+    B  = proj₁ (resuspend-layer H E A n2 l2 lbl env wfG)
     mid : n2 ≤ B
-    mid = resuspend-mono n2 l2 lbl env wfG
+    mid = resuspend-mono H E A n2 l2 lbl env wfG
     base : suc (suc (suc n)) ≤ B
-    base = ≤-trans (resuspend-mono (suc (suc (suc n))) (suc (suc l)) lbl env wfF) mid
+    base = ≤-trans (resuspend-mono H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF) mid
     sn<B : suc (suc n) ≤ B
     sn<B = ≤-trans (m≤n⇒m≤1+n ≤-refl) base
     n<B : suc n ≤ B
@@ -660,23 +672,24 @@ resuspend-below n l lbl env (wf-Sum wfF wfG) e<n =
     e<3n : env < suc (suc (suc n))
     e<3n = ≤-trans e<n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
     e<n2 : env < n2
-    e<n2 = ≤-trans e<3n (resuspend-mono (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
-    arm : ∀ (tag : ℕ) {t} → SegOK B t
-        → SegOK B (restore-input n ∷ load-indirect-suc ∷
-                   t ++ (store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
-                         store-at-slot (suc n) ∷ mov-to-input ∷
-                         load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷
-                         instr-load-tag-lit tag ∷ store-indirect ∷
-                         load-from-slot (suc n) ∷ []))
-    arm tag ok =
-      segok-pre (restore-input n ∷ load-indirect-suc ∷ []) refl
-        (sb-slot refl n<B (λ _ ()) ∷ sb-none refl ∷ [])
-        (segok-++ ok (segok-idle _ refl
-          (sb-slot refl base (λ _ ()) ∷ sb-none refl ∷
-           sb-slot refl sn<B (λ _ ()) ∷ sb-none refl ∷
-           sb-slot refl base (λ _ ()) ∷ sb-none refl ∷
-           sb-none refl ∷ sb-none refl ∷
-           sb-slot refl sn<B (λ _ ()) ∷ [])))
+    e<n2 = ≤-trans e<3n (resuspend-mono H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+    -- plan 0.123 B.4 α: the payload read at word 1, transformed, put at word 1
+    arm : ∀ (P : IRFunctor) {t} → SegOK B t → ∀ {tag sz′}
+        → SegOK B ((restore-input n ∷ []) ++ get (⟦ P ⟧TI A) 1 ++ t ++
+                   (store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ sz′) ∷
+                    store-at-slot (suc n) ∷ mov-to-input ∷
+                    instr-load-tag-lit tag ∷ store-at 0 ∷ []) ++
+                   put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
+                   (load-from-slot (suc n) ∷ []))
+    arm P ok =
+      segok-++ (segok-SB _ (ss refl n<B (λ _ ()) refl ∷ []))
+      (segok-++ (segok-get (⟦ P ⟧TI A) 1)
+      (segok-++ ok
+        (segok-SB _
+          (++⁺ (ss refl base (λ _ ()) refl ∷ nn refl refl ∷ ss refl sn<B (λ _ ()) refl ∷
+                nn refl refl ∷ nn refl refl ∷ nn refl refl ∷ [])
+          (++⁺ (put-SB (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 base sn<B)
+               (ss refl sn<B (λ _ ()) refl ∷ []))))))
 
 sigop-below : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp)
             → SegOK (sigop-budget n m) (sigop-code si n m)
@@ -684,13 +697,24 @@ sigop-below si n nothing  = segok-idle _ refl (sb-none refl ∷ [])
 sigop-below si n (just _) = segok-idle _ refl
   (sb-none refl ∷ sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷
-  sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
+  sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
+
+-- plan 0.123 B.4 α: an injection — the payload and the block in slots `n`,
+-- `suc n`, the payload `put` at word 1 after the tag
+inj-below : ∀ (t : ℕ) (P S : IRTy) (n : ℕ) → SegOK (suc (suc n)) (inj-trace t P S n)
+inj-below t P S n =
+  segok-SB _
+    (nn refl refl ∷ ss refl n< (λ _ ()) refl ∷ nn refl refl ∷ ss refl ≤-refl (λ _ ()) refl ∷
+     nn refl refl ∷ nn refl refl ∷ nn refl refl ∷
+     ++⁺ (put-SB P n (suc n) 1 n< ≤-refl) (ss refl ≤-refl (λ _ ()) refl ∷ []))
+  where n< : n < suc (suc n)
+        n< = m≤n⇒m≤1+n ≤-refl
 
 slots-below : ∀ {A B} (ir : IR A B) (n l : ℕ)
             → SegOK (budget-of (ir-to-trace' n l ir)) (trace-of (ir-to-trace' n l ir))
 slots-below id       n l = segok-idle _ refl (sb-none refl ∷ [])
-slots-below fst      n l = segok-idle _ refl (sb-none refl ∷ [])
-slots-below snd      n l = segok-idle _ refl (sb-none refl ∷ [])
+slots-below (fst {A} {B}) n l = segok-get A 0
+slots-below (snd {A} {B}) n l = segok-get B (size A)
 slots-below terminal n l = segok-idle _ refl []
 slots-below initial  n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (g ∘ f)  n l =
@@ -698,7 +722,7 @@ slots-below (g ∘ f)  n l =
       (segok-pre _ refl (sb-none refl ∷ []) (slots-below g _ _))
 -- Stage G: the stack-shape clause that stood here collapsed onto this
 -- same LHS when the pair's mode was dropped, and shadowed the heap one.
-slots-below (⟨ f , g ⟩) n l =
+slots-below (⟨_,_⟩ {A} {B} {C} f g) n l =
   segok-pre _ refl
     (sb-none refl ∷ sb-slot refl (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))) h) (λ _ ()) ∷ [])
   (segok-++ (segok-weaken (frontier-mono g _ _) (slots-below f _ l))
@@ -706,18 +730,17 @@ slots-below (⟨ f , g ⟩) n l =
         (sb-slot refl (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) h) (λ _ ()) ∷
          sb-slot refl (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl))) h) (λ _ ()) ∷ [])
        (segok-++ (slots-below g _ _)
-           (segok-idle _ refl
-            (sb-slot refl (≤-trans (m≤n⇒m≤1+n ≤-refl) h) (λ _ ()) ∷
-            sb-none refl ∷
-            sb-slot refl h (λ _ ()) ∷
-            sb-none refl ∷
-            sb-slot refl (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) h) (λ _ ()) ∷
-            sb-none refl ∷
-            sb-slot refl (≤-trans (m≤n⇒m≤1+n ≤-refl) h) (λ _ ()) ∷
-            sb-none refl ∷
-            sb-slot refl h (λ _ ()) ∷ [])))))
-  where h : suc (suc (suc (suc n))) ≤ budget-of (ir-to-trace' n l (⟨ f , g ⟩))
+           (segok-SB _
+            (++⁺ (ss refl (≤-trans (m≤n⇒m≤1+n ≤-refl) h) (λ _ ()) refl ∷
+                  nn refl refl ∷
+                  ss refl h (λ _ ()) refl ∷ [])
+            (++⁺ (put-SB B (suc n) (suc (suc (suc n))) 0 f< h)
+            (++⁺ (put-SB C (suc (suc n)) (suc (suc (suc n))) _ (≤-trans (m≤n⇒m≤1+n ≤-refl) h) h)
+                 (ss refl h (λ _ ()) refl ∷ []))))))))
+  where h : suc (suc (suc (suc n))) ≤ budget-of (ir-to-trace' n l (⟨_,_⟩ {A} {B} {C} f g))
         h = ≤-trans (frontier-mono f _ l) (frontier-mono g _ _)
+        f< : suc n < budget-of (ir-to-trace' n l (⟨_,_⟩ {A} {B} {C} f g))
+        f< = ≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) h
 -- THE FLIP: the closure construction, then the body's own segment.
 -- D159: the ENTRY BLOCK only. The body is a named block now, so its `SegOK`
 -- is discharged at the block, AT ITS OWN BUDGET, rather than being folded into
@@ -729,36 +752,40 @@ slots-below (curry b) n l =
     (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
      sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷
      sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
-slots-below apply n l = segok-idle _ refl
-  (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
-  sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-  sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷
-  sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-  sb-slot refl (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
-slots-below inl n l = segok-idle _ refl
-  (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-  sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
-slots-below inr n l = segok-idle _ refl
-  (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-  sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
+-- D380: the call pair `[env-word, arg…]`, the argument `put` at word 1.
+slots-below (apply {A} {B}) n l =
+  segok-++ (segok-get A 1)
+    (segok-SB _
+      (++⁺ (ss refl a< (λ _ ()) refl ∷ nn refl refl ∷ nn refl refl ∷ nn refl refl ∷ nn refl refl ∷
+            ss refl e< (λ _ ()) refl ∷ nn refl refl ∷ ss refl ≤-refl (λ _ ()) refl ∷ nn refl refl ∷
+            ss refl e< (λ _ ()) refl ∷ nn refl refl ∷ [])
+      (++⁺ (put-SB A n (suc (suc n)) 1 a< ≤-refl)
+           (ss refl ≤-refl (λ _ ()) refl ∷ nn refl refl ∷ nn refl refl ∷ []))))
+  where a< : n < suc (suc (suc n))
+        a< = m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)
+        e< : suc n < suc (suc (suc n))
+        e< = m≤n⇒m≤1+n ≤-refl
+slots-below (inl {A} {B}) n l = inj-below 0 A (A +ᵀ B) n
+slots-below (inr {A} {B}) n l = inj-below 1 B (A +ᵀ B) n
 -- item 6: case is FLAT CONTROL — the branches are main-trace splices, bounded
 -- by their own inductions (f weakened through g's frontier, like `∘`).
-slots-below (case f g) n l =
-  segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+slots-below (case {A} {B} f g) n l =
+  segok-pre _ refl (sb-none refl ∷ [])
+   (segok-++ (segok-get B 1)
+    (segok-pre _ refl (sb-none refl ∷ [])
       (segok-++ (slots-below g _ _)
-           (segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+           (segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ [])
+            (segok-++ (segok-get A 1)
+             (segok-pre _ refl (sb-none refl ∷ [])
                 (segok-++ (segok-weaken (frontier-mono g _ _) (slots-below f n (suc (suc l))))
-                     (segok-idle _ refl (sb-none refl ∷ [])))))
+                     (segok-idle _ refl (sb-none refl ∷ [])))))))))
 slots-below (In {F} _)    n l = in-below (mu-rep F) n
 slots-below (out-μ {F} _) n l = out-below (mu-rep F) n
 -- C1: the algebra is generated at frontier 0 — its slots are its own frame's,
 -- so its witness is taken there and `segok-thunk` (inside `cata-body-below`)
 -- carries it across the frame change.
-slots-below (Cata {F} _ alg) n l =
-  cata-slots-below (cata-strategy ⌈ F ⌉F) _ _ _ _ (slots-below alg 0 l)
+slots-below (Cata {F} _ {E} {A} alg) n l =
+  cata-slots-below E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) _ _ _ _ (slots-below alg 0 l)
 slots-below (Out _)        n l =
   segok-idle _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
 slots-below (in-ν _) n l =
@@ -773,19 +800,24 @@ slots-below (Ana _ c) n l =
      sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
 -- the loop: the environment stash, the round (its own frontier is the loop's
 -- budget), then the branch and the next pair through the two stashes.
-slots-below (Iter b) n l =
-  segok-pre _ refl (sb-none refl ∷ sb-slot refl e< (λ _ ()) ∷ sb-none refl ∷ [])
+-- plan 0.123 B.4 α: the environment's form kept, the next pair `put` together.
+slots-below (Iter {E} {A} {B} b) n l =
+  segok-++ (segok-get E 0)
+   (segok-pre _ refl (sb-slot refl e< (λ _ ()) ∷ sb-none refl ∷ [])
     (segok-++ (slots-below b _ _)
-      (segok-idle _ refl
-        (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl s2< (λ _ ()) ∷
-         sb-none refl ∷ sb-slot refl h (λ _ ()) ∷ sb-none refl ∷ sb-slot refl e< (λ _ ()) ∷
-         sb-none refl ∷ sb-slot refl s2< (λ _ ()) ∷ sb-none refl ∷ sb-slot refl h (λ _ ()) ∷
-         sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])))
-  where h : suc (suc (suc (suc n))) ≤ budget-of (ir-to-trace' n l (Iter b))
+     (segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ [])
+      (segok-++ (segok-get A 1)
+       (segok-SB _
+          (++⁺ (ss refl s2< (λ _ ()) refl ∷ nn refl refl ∷ ss refl h (λ _ ()) refl ∷ [])
+          (++⁺ (put-SB E (suc n) (suc (suc (suc n))) 0 e< h)
+          (++⁺ (put-SB A (suc (suc n)) (suc (suc (suc n))) _ s2< h)
+          (++⁺ (ss refl h (λ _ ()) refl ∷ nn refl refl ∷ nn refl refl ∷ nn refl refl ∷ [])
+               (get-SB B 1))))))))))
+  where h : suc (suc (suc (suc n))) ≤ budget-of (ir-to-trace' n l (Iter {E} {A} {B} b))
         h = frontier-mono b _ _
-        s2< : suc (suc (suc n)) ≤ budget-of (ir-to-trace' n l (Iter b))
+        s2< : suc (suc (suc n)) ≤ budget-of (ir-to-trace' n l (Iter {E} {A} {B} b))
         s2< = ≤-trans (m≤n⇒m≤1+n ≤-refl) h
-        e< : suc (suc n) ≤ budget-of (ir-to-trace' n l (Iter b))
+        e< : suc (suc n) ≤ budget-of (ir-to-trace' n l (Iter {E} {A} {B} b))
         e< = ≤-trans (m≤n⇒m≤1+n ≤-refl) s2<
 slots-below (SigOp si)     n l = sigop-below si n (cmp-of (sem si))
 slots-below (Call _)      n l = segok-idle _ refl (sb-none refl ∷ [])
@@ -799,6 +831,31 @@ slots-below (const fits-float _) n l = segok-idle _ refl (sb-none refl ∷ [])
 -- list, and together they are what the linked program needs — the entry's
 -- budget no longer being claimed to govern a body that has its own.
 ------------------------------------------------------------------------
+-- D380: a closure body's entry. A word environment adds nothing; a flat one
+-- rebuilds the input in slots 0–3, and the body's own slots start at 4.
+env-prologue-below : ∀ (E A : IRTy) → SegOK 4 (env-prologue E A)
+env-prologue-below E A =
+  segok-SB _
+    (nn refl refl ∷ ss refl p0 (λ _ ()) refl ∷ nn refl refl ∷ ss refl p1 (λ _ ()) refl ∷
+     ss refl p0 (λ _ ()) refl ∷
+     ++⁺ (get-SB A 1)
+         (ss refl p2 (λ _ ()) refl ∷ nn refl refl ∷ ss refl ≤-refl (λ _ ()) refl ∷
+          ++⁺ (put-SB E 1 3 0 p1 ≤-refl)
+              (++⁺ (put-SB A 2 3 _ p2 ≤-refl) (ss refl ≤-refl (λ _ ()) refl ∷ nn refl refl ∷ []))))
+  where p0 : 0 < 4
+        p0 = s≤s z≤n
+        p1 : 1 < 4
+        p1 = s≤s (s≤s z≤n)
+        p2 : 2 < 4
+        p2 = s≤s (s≤s (s≤s z≤n))
+
+curry-body-below : ∀ (kd : Kind) (E A : IRTy) {X Y} (b : IR X Y) (l : ℕ)
+                 → SegOK (budget-of (ir-to-trace' (proj₁ (env-entry kd E A)) l b))
+                         (proj₂ (env-entry kd E A) ++ trace-of (ir-to-trace' (proj₁ (env-entry kd E A)) l b))
+curry-body-below word E A b l = slots-below b 0 l
+curry-body-below flat E A b l =
+  segok-++ (segok-weaken (frontier-mono b 4 l) (env-prologue-below E A)) (slots-below b 4 l)
+
 bodies-of : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
           → List (LabelId × ℕ × AbstractTrace)
 bodies-of (_ , _ , _ , bs) = bs
@@ -813,8 +870,8 @@ blocks-below initial             n l = []
 blocks-below (g ∘ f)             n l = ++⁺ (blocks-below f n l) (blocks-below g _ _)
 blocks-below (⟨ f , g ⟩)         n l = ++⁺ (blocks-below f _ l) (blocks-below g _ _)
 -- the two shapes that CREATE a block
-blocks-below (curry b)      n l = slots-below b 0 (suc (suc l))
-                                     ∷ blocks-below b 0 (suc (suc l))
+blocks-below (curry {E} {A} b) n l = curry-body-below (kind E) E A b (suc (suc l))
+                                     ∷ blocks-below b _ (suc (suc l))
 blocks-below apply               n l = []
 blocks-below inl                 n l = []
 blocks-below inr                 n l = []
@@ -829,17 +886,17 @@ blocks-below (in-ν _)          n l = segok-idle _ refl (sb-none refl ∷ []) �
 -- D199: the block is `coalg ++ re-suspension`, and the budget is the pass's
 -- final frontier — so the coalgebra's own witness weakens up to it.
 -- D273: behind the prologue that keeps the seed pair in slot 0.
-blocks-below (Ana wf c)          n l =
+blocks-below (Ana {F} wf {E} {A} c) n l =
   segok-pre (mov-to-output ∷ store-at-slot 0 ∷ []) refl
     (sb-none refl ∷ sb-slot refl (≤-trans 0<cb mono) (λ _ ()) ∷ [])
     (segok-++ (segok-weaken mono (slots-below c 1 (suc l)))
-              (resuspend-below cb (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c))) (ℓ o l) 0 wf 0<cb))
+              (resuspend-below F E A cb (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c))) (ℓ o l) 0 wf 0<cb))
     ∷ blocks-below c 1 (suc l)
   where
     cb = proj₁ (ir-to-trace' 1 (suc l) c)
     0<cb : 0 < cb
     0<cb = frontier-mono c 1 (suc l)
-    mono = resuspend-mono cb (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c))) (ℓ o l) 0 wf
+    mono = resuspend-mono F E A cb (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c))) (ℓ o l) 0 wf
 blocks-below (SigOp _)           n l = []
 blocks-below (Call _)           n l = []
 blocks-below (const fits-int _)  n l = []
