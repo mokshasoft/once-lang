@@ -71,7 +71,7 @@ open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module 
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open MemOps {FS} using (readLoc)
-open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?)
+open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
 open import Once.Memory.HeapAddress using (offsetHL)
 open import Data.Bool using (T)
 open import Data.Nat.Properties using (<ᵇ⇒<)
@@ -1692,6 +1692,41 @@ store-at-in-block prog fs k hl r h ftq i-eq = ib _ refl
     ib false e = ⊥-elim (true≢false
       (at (λ b → LocState.faulted (exec-store-in-block b (AtDynamic (offsetHL hl k))
                                      (readReg (regs (floc fs)) Output) (floc fs))) e ok))
+
+-- plan 0.123 B.4 α (D379): an address at an offset is a cell of its block, or
+-- the step faults — so at an emitted `addr-at` it is.
+addr-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
+                   → fetch prog (fpc fs) ≡ just (addr-at k)
+                   → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+addr-at-target-ptr prog fs k r h ftq =
+  in1-ptr fs (λ ml → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k ml (floc fs))) refl
+          (step-ok prog fs (addr-at k) r h ftq)
+
+addr-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
+                 → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (addr-at k)
+                 → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                 → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+addr-at-in-block prog fs k hl r h ftq i-eq = ib _ refl
+  where
+    ok : LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (just (AtDynamic hl)) (floc fs)) ≡ false
+    ok = at (λ v → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (sv-as-loc v) (floc fs))) i-eq
+            (step-ok prog fs (addr-at k) r h ftq)
+    ib : ∀ b → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ b
+       → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+    ib true  e = e
+    ib false e = ⊥-elim (true≢false
+      (at (λ b → LocState.faulted (exec-addr-in-block b (AtDynamic (offsetHL hl k)) (floc fs))) e ok))
+
+addr-at-inbounds : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
+                 → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (addr-at k)
+                 → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                 → heap-offset (offsetHL hl k) < block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k)))
+addr-at-inbounds prog fs k hl r h ftq i-eq =
+  <ᵇ⇒< (heap-offset (offsetHL hl k)) (block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k))))
+       (T-of (addr-at-in-block prog fs k hl r h ftq i-eq))
+  where
+    T-of : ∀ {b : Bool} → b ≡ true → T b
+    T-of refl = tt
 
 store-at-inbounds : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
                   → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (store-at k)

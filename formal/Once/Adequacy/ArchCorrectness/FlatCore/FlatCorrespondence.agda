@@ -145,7 +145,7 @@ open MemOps {FS} using (writeLoc; writeLocToHeap; writeLocToStack; writeHeapMem
                        ; readLoc; writeLoc-read-same-stack; writeLoc-preserves-other)
 open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value
                           ; exec-store-via-resolved; exec-store-suc-via-resolved
-                          ; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?)
+                          ; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open FrameSemantics FS using (shift-frame)
@@ -1378,6 +1378,30 @@ sim-load-at {hv} k hl w fs s s' corr i-eq h-eq st =
     floc-eq = trans (cong (λ m → exec-load-at-resolved k Output m (floc fs)) (cong sv-as-loc i-eq))
                     (cong (λ mv → exec-load-with-value Output mv (floc fs)) h-eq)
     reduces : flat-exec-instr (load-at k) [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr hv cleanFlat s'
+    corr-clean = record
+      { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
+      ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
+
+-- plan 0.123 B.4 α: `addr-at k` writes the cell's ADDRESS to the Output role.
+sim-addr-at : {hv : HeapView} (k : ℕ) (hl : HeapLocation) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+  → SetsRole s s' role-out (enc-sv hv (SV-Ptr (AtDynamic (offsetHL hl k))))
+  → FlatCorr hv (flat-exec-instr (addr-at k) [] fs) s'
+sim-addr-at {hv} k hl fs s s' corr i-eq ib st =
+  subst (λ z → FlatCorr hv z s') (sym reduces) corr-clean
+  where
+    p = SV-Ptr (AtDynamic (offsetHL hl k))
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output p }
+                          ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-addr-at-resolved (block-size (falloc fs)) k (sv-as-loc (readReg (regs (floc fs)) Input1)) (floc fs)
+              ≡ record (floc fs) { regs = writeReg (regs (floc fs)) Output p }
+    floc-eq = trans (cong (λ m → exec-addr-at-resolved (block-size (falloc fs)) k m (floc fs)) (cong sv-as-loc i-eq))
+                    (cong (λ b → exec-addr-in-block b (AtDynamic (offsetHL hl k)) (floc fs)) ib)
+    reduces : flat-exec-instr (addr-at k) [] fs ≡ cleanFlat
     reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
     corr-clean : FlatCorr hv cleanFlat s'
     corr-clean = record
