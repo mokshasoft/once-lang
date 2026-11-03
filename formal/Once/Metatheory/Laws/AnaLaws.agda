@@ -34,7 +34,7 @@ open import Once.Spec.Polynomial using (sfmap)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (_≅_; Pure)
 open import Once.Metatheory.Bisim Σ using (≈-sym; ≈-trans; ≈-bind; ≈-refl; idˡ; idʳ)
-open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
+open import Once.Metatheory.Coherence.Relation Σ using (LayerEq-mono; Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
 open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; module Functor; LayerEq-∀)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans; SameNu-trans)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
@@ -247,7 +247,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
 
       -- Forcing the same streams: the same layers.
       outResp : ∀ {v v′} → Same (N ⟨ σ ⟩) v v′ → Same (FN ⟨ σ ⟩) (NV.outᵛ F v) (NV.outᵛ F v′)
-      outResp s = Fn.fromL-same wf N (LayerEq-∀ GS (λ n → returnRel⁻ (fromObserved (s (suc n)))))
+      outResp s = Fn.fromL-same wf N (LayerEq-mono GS (Fn.sameν→ wf) (LayerEq-∀ GS (λ n → returnRel⁻ (fromObserved (Fn.sameν← wf s (suc n))))))
 
       GO : Shape A pure TT (outᶜ F) h → AV.Arms e (outᶜ F) h
          → Shape A pure TT (layerᶜ F A N h) c → AV.Arms e′ (layerᶜ F A N h) c
@@ -359,7 +359,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
           NU (suc n) {x} {x′} s = toObserved (returnRel (STEP n GS (HYPx s)
                                     (Fn.toL-same wf A (fromSameP σ {X = A} {Y = FA} spc (sameRefl (A ⟨ σ ⟩) (Same-sym (A ⟨ σ ⟩) s))))))
           STEP n (SK B) p q = trans p q
-          STEP n SId p q = SameNu-trans pureᶠ GS n (p n) (NU n q)
+          STEP n SId p q = SameNu-trans pureᶠ GS n (Fn.sameν← wf p n) (NU n q)
           STEP n (H₁ S⊕ H₂) {inj₁ u} {inj₁ l} {inj₁ l′} p q = STEP n H₁ p q
           STEP n (H₁ S⊕ H₂) {inj₂ u} {inj₂ l} {inj₂ l′} p q = STEP n H₂ p q
           STEP n (H₁ S⊕ H₂) {inj₁ u} {inj₁ l} {inj₂ l′} p ()
@@ -369,4 +369,4 @@ module _ {m : ℕ} {Δ : KCtx m} where
           STEP n (H₁ S⊗ H₂) {u₁ , u₂} {l₁ , l₂} {l₁′ , l₂′} (p₁ , p₂) (q₁ , q₂) = STEP n H₁ p₁ q₁ , STEP n H₂ p₂ q₂
 
           UNIQUE : Same (NT ⟨ σ ⟩) hv av
-          UNIQUE = toSameP σ {X = A} {Y = N} (λ s n → NU n s)
+          UNIQUE = toSameP σ {X = A} {Y = N} (λ s → Fn.sameν→ wf (λ n → NU n s))

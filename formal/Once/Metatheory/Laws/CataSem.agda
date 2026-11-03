@@ -51,7 +51,8 @@ module CataV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
   cataResp : ∀ {F : Fun m} {A : Ty m} → WFFun Δ F → ∀ {g g′}
            → Same ((⟦ F ⟧F A ⇒[ mk-kind Many pure ] A) ⟨ σ ⟩) g g′
            → Same ((μ F ⇒[ mk-kind Many pure ] A) ⟨ σ ⟩) (cataᵛ F A g) (cataᵛ F A g′)
-  cataResp {F} {A} wf {g} {g′} sg v .v refl = toObserved (returnRel
+  cataResp {F} {A} wf {g} {g′} sg v v′ s with Fn.sameμ wf s
+  ... | refl = toObserved (returnRel
     (returnRel⁻ (runs (Fold.foldRel pure (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ l → g (fromL σ F A l)) (λ l → g′ (fromL σ F A l))
                          (λ p → rel (fromObserved (sg _ _ (Fn.fromL-same wf A p)))) v))))
 
@@ -96,7 +97,7 @@ module CataV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
                   (≈-Relatedʳ (≈-sym (≈-trans (idˡ g′ _) (idˡ v′ _)))
                     (bindRel {g = λ g₀ → return∞ v′ >>=∞ λ w → return∞ (cataᵛ F A g₀ w)} (MV.Reads.rd Rg da ra′) (λ {g₀} {g₀′} sg₀ →
                       bindRel {g = λ w → return∞ (cataᵛ F A g₀′ w)} (MV.Reads.rd Rv dv rt′) (λ {w} {w′} sw →
-                        returnRel (FOLD sg₀ sw)))))
+                        returnRel (FOLD sg₀ (Fn.sameμ wf sw))))))
                 where
                   FOLD : ∀ {g₀ g₀′} → Same (AT ⟨ σ ⟩) g₀ g₀′ → ∀ {w w′} → w ≡ w′ → Same (A ⟨ σ ⟩) (cataᵛ F A g₀ w) (cataᵛ F A g₀′ w′)
                   FOLD {g₀} {g₀′} sg₀ {w} refl =

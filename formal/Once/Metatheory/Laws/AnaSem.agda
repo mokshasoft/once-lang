@@ -34,7 +34,7 @@ open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_�
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (SameDefs; SameEnv; Pure)
 open import Once.Metatheory.Bisim Σ using (≈-sym; ≈-trans; idˡ)
-open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
+open import Once.Metatheory.Coherence.Relation Σ using (LayerEq-mono; Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
 open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; module Functor; module Ana; relatedFmap; outRel; LayerEq-∀)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
@@ -58,7 +58,7 @@ module AnaV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
   anaRelP : ∀ {F : Fun m} {A : Ty m} → WFFun Δ F → ∀ {g g′}
           → Same ((A ⇒[ mk-kind Many pure ] ⟦ F ⟧F A) ⟨ σ ⟩) g g′
           → ∀ {a a′} → Same (A ⟨ σ ⟩) a a′ → Same ((ν F pureᶠ) ⟨ σ ⟩) (anaᵛ F A g a) (anaᵛ F A g′ a′)
-  anaRelP {F} {A} wf {g} {g′} sg sa n =
+  anaRelP {F} {A} wf {g} {g′} sg sa = Fn.sameν→ wf λ n →
     Ana.anaRel pureᶠ (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ y → toL σ F A (g y)) (λ y → toL σ F A (g′ y))
       (λ s → returnRel (Fn.toL-same wf A (returnRel⁻ (fromObserved (sg _ _ s))))) n sa
 
@@ -143,4 +143,4 @@ module AnaV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
                 (≈-Relatedʳ (≈-sym (idˡ v′ _))
                   (bindRel {g = λ w′ → return∞ (outᵛ F w′)} (MV.Reads.rd Rv dv r₁) (λ {w} {w′} sw →
                     ≈-Relatedʳ (≈-sym (idˡ (νM.outν w′) _))
-                      (relatedFmap (outRel pureᶠ G sw) (λ p → Fn.fromL-same wfA N (LayerEq-∀ G p))))))
+                      (relatedFmap (outRel pureᶠ G (Fn.sameν← wfA sw)) (λ p → Fn.fromL-same wfA N (LayerEq-mono G (Fn.sameν→ wfA) (LayerEq-∀ G p)))))))

@@ -33,7 +33,7 @@ open import Once.Spec.Polynomial using (inS; sfmap)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (_≅_; Pure)
 open import Once.Metatheory.Bisim Σ using (≈-sym; ≈-trans; ≈-bind; ≈-refl; idˡ; idʳ)
-open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
+open import Once.Metatheory.Coherence.Relation Σ using (LayerEq-mono; Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
 open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; module Functor)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
@@ -178,7 +178,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
             where
               S1 : Same (A ⟨ σ ⟩) (hv (inv x)) (sub lf (hvE (sub lg (inv x))))
               S1 = subst₂′ {X = A} refl (trans (cong (λ y → sub lf (hvE y)) (subPure lg (inv x))) (subPure lf (hvE (inv x))))
-                     (fromSameP σ {X = μ F} {Y = A} (Same-sym (MA ⟨ σ ⟩) sEh) refl)
+                     (fromSameP σ {X = μ F} {Y = A} (Same-sym (MA ⟨ σ ⟩) sEh) (Fn.reflμ wf (inv x)))
               sx′ : Same (L ⟨ σ ⟩) x′ x′
               sx′ = Same-trans (L ⟨ σ ⟩) (Same-sym (L ⟨ σ ⟩) sx) sx
               tm = subst V (sym (layerTy F (μ F))) x′
@@ -200,10 +200,10 @@ module _ {m : ℕ} {Δ : KCtx m} where
           hyp : ∀ w → Same (A ⟨ σ ⟩) (hv (inS w)) (alg′ (sfmap (code (F ⟨ σ ⟩F)) hv w))
           hyp w = subst₂′ {X = A} (cong (λ y → hv (inS y)) (sym (LS.toLfromL F (μ F) w)))
                     (cong pa (sym (LS.layerFromL F hv w)))
-                    (HYPx (Fn.fromL-same wf (μ F) (eqLayer (code (F ⟨ σ ⟩F)) w)))
+                    (HYPx (Fn.fromL-same wf (μ F) (LayerEq-mono (code (F ⟨ σ ⟩F)) (Fn.≡→sameμ wf) (eqLayer (code (F ⟨ σ ⟩F)) w))))
 
           module U = Unique (code (F ⟨ σ ⟩F)) (Same (A ⟨ σ ⟩)) (Same-trans (A ⟨ σ ⟩)) alg′
                        (λ p → fromSameP σ {X = FA} {Y = A} spa (Fn.fromL-same wf A p)) hv hyp
 
           UNIQUE : Same (MA ⟨ σ ⟩) hv cv
-          UNIQUE = toSameP σ {X = μ F} {Y = A} λ { {v} {.v} refl → U.unique v }
+          UNIQUE = toSameP σ {X = μ F} {Y = A} λ {v} {v′} s → subst (λ w → Same (A ⟨ σ ⟩) (hv v) (cv w)) (Fn.sameμ wf s) (U.unique v)

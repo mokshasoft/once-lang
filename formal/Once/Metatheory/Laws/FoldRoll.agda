@@ -34,7 +34,7 @@ open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (_≅_; Pure)
 open import Once.Metatheory.Bisim Σ using (≈-sym; ≈-trans; ≈-bind; ≈-refl; idˡ; idʳ; assoc)
 open import Once.Metatheory.Laws.Compose Σ u fmt S using (≡→≈)
-open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
+open import Once.Metatheory.Coherence.Relation Σ using (LayerEq-mono; Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
 open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; module Functor)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
@@ -257,7 +257,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
           LHS = ~trans {FN} eqO
             (≈-Relatedʳ (≈-sym (≈-trans (assoc _ _ _) (≈-bind (≈-refl _) (λ x → ≈-trans (idˡ (av x) _) (idˡ (νM.outν (av x)) _)))))
               (bindRel {g = λ v → return∞ (νM.outν v) >>=∞ λ l → return∞ (fromL σ F N l)} UNF
-                (λ sv → relatedFmap (outRel pureᶠ GS sv) (λ p → Fn.fromL-same wfA N (LayerEq-∀ GS p)))))
+                (λ sv → relatedFmap (outRel pureᶠ GS (Fn.sameν← wfA sv)) (λ p → Fn.fromL-same wfA N (LayerEq-mono GS (Fn.sameν→ wfA) (LayerEq-∀ GS p))))))
 
           dLT = subst (λ Z → Δ ⊩ Γ ⊢[ ΨL ] layerᶜ F A N (anaᶜ F A pure c) ∷ Z ! πL) eTT dL
           cv  = MT.covD (layerT F) dLT
