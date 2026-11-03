@@ -18,14 +18,38 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 open import Once.Spec.Grade using (pure)
+
 open import Once.Spec.Type using (Ty; Fun; KCtx; ∅ₖ; Respects; Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+;
                                   WFFun; wf-K; wf-Id; wf-⊕; wf-⊗; var; _*_; _+_; μ; K; Id; _⊕_; _⊗_;
                                   ⟦_⟧F; TySub; _⟨_⟩; _⟨_⟩F; at₀; shiftᵗ)
-open import Once.Spec.Polynomial using (μS; inS)
+open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; sfmap; μS; inS)
+open import Once.Spec.Effect Σ using (LayerEq)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM; layerM)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Metatheory.Laws.LayerTy using (shift-at₀; layerT; layerTy)
 open import Once.Metatheory.Laws.MapSem Σ using (module MapAt; p-var; p-+ˡ; p-+ʳ; p-*ˡ; p-*ʳ)
+
+-- A map that commutes with the constructor is the fold, up to a transitive
+-- relation the algebra respects (pure folds: `μ` values are finite trees).
+module Unique (G : SFunctor) {X : Set} (R : X → X → Set) (R-trans : ∀ {x y z} → R x y → R y z → R x z)
+              (alg : ⟦ G ⟧SF X → X) (algResp : ∀ {l l′} → LayerEq G R l l′ → R (alg l) (alg l′))
+              (h : μS G → X) (hyp : ∀ w → R (h (inS w)) (alg (sfmap G h w))) where
+  unique : ∀ v → R (h v) (foldM pure G alg v)
+  layer  : ∀ H (w : ⟦ H ⟧SF (μS G)) → LayerEq H R (sfmap H h w) (layerM pure G H alg w)
+  unique (inS w) = R-trans (hyp w) (algResp (layer G w))
+  layer (SK B)     w        = refl
+  layer SId        w        = unique w
+  layer (H₁ S⊕ H₂) (inj₁ w) = layer H₁ w
+  layer (H₁ S⊕ H₂) (inj₂ w) = layer H₂ w
+  layer (H₁ S⊗ H₂) (w , w′) = layer H₁ w , layer H₂ w′
+
+-- Equal layers are related by equality, part by part.
+eqLayer : ∀ (G : SFunctor) {X : Set} (w : ⟦ G ⟧SF X) → LayerEq G _≡_ w w
+eqLayer (SK B)   w        = refl
+eqLayer SId      w        = refl
+eqLayer (G S⊕ H) (inj₁ w) = eqLayer G w
+eqLayer (G S⊕ H) (inj₂ w) = eqLayer H w
+eqLayer (G S⊗ H) (w , w′) = eqLayer G w , eqLayer H w′
 
 module LayerSem {m : ℕ} (σ : TySub m 0) where
 
@@ -99,6 +123,23 @@ module LayerSem {m : ℕ} (σ : TySub m 0) where
     agree (F ⊗ G) (wf-⊗ wF wG) (c₁ , c₂) Φ φ h {v₁ , v₂} {w₁ , w₂} (s₁ , s₂) =
       sameRw {Z = ⟦ F ⊗ G ⟧F Y} (substPair (layerTy F Y) (layerTy G Y) _ _) (cong (LAYER (F ⊗ G) φ) (substPair (layerTy F X) (layerTy G X) w₁ w₂))
         (agree F wF c₁ (λ o → Φ (p-*ˡ o)) φ (λ o → h (p-*ˡ o)) s₁ , agree G wG c₂ (λ o → Φ (p-*ʳ o)) φ (λ o → h (p-*ʳ o)) s₂)
+
+  -- Reading a code layer at `⟦ F ⟧F` and back.
+  toLfromL : ∀ F X (w : ⟦ code (F ⟨ σ ⟩F) ⟧SF (V X)) → toL σ F X (fromL σ F X w) ≡ w
+  toLfromL (K C)   X w        = refl
+  toLfromL Id      X w        = refl
+  toLfromL (F ⊕ G) X (inj₁ w) = cong inj₁ (toLfromL F X w)
+  toLfromL (F ⊕ G) X (inj₂ w) = cong inj₂ (toLfromL G X w)
+  toLfromL (F ⊗ G) X (w , w′) = cong₂ _,_ (toLfromL F X w) (toLfromL G X w′)
+
+  -- `F`'s action on a layer read from a code layer: the code functor's.
+  layerFromL : ∀ F {X Y : Ty m} (φ : V X → V Y) (w : ⟦ code (F ⟨ σ ⟩F) ⟧SF (V X))
+             → LAYER F φ (fromL σ F X w) ≡ fromL σ F Y (sfmap (code (F ⟨ σ ⟩F)) φ w)
+  layerFromL (K C)   φ w        = refl
+  layerFromL Id      φ w        = refl
+  layerFromL (F ⊕ G) φ (inj₁ w) = cong inj₁ (layerFromL F φ w)
+  layerFromL (F ⊕ G) φ (inj₂ w) = cong inj₂ (layerFromL G φ w)
+  layerFromL (F ⊗ G) φ (w , w′) = cong₂ _,_ (layerFromL F φ w) (layerFromL G φ w′)
 
   -- The Spec's fold maps a layer's recursive positions by the fold itself.
   foldLayer : ∀ (G : Fun m) {A : Ty m} (alg : _) H (x : V (⟦ H ⟧F (μ G)))
