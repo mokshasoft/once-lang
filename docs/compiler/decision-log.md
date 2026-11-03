@@ -21239,3 +21239,23 @@ the argument register(s), in the compiler's value representation"), written befo
 * The emitters marshal at a `call-sym`: from the internal layout to the convention's registers or memory,
   and the answer back. Every Interpretation's per-arch code changes to take its arguments the C way (S4);
   an Interpretation can then be written in C.
+
+## D377 — THE BOUNDARY LAYOUT IS PART OF WHAT `correct` OBSERVES (2026-11-03)
+
+**Decided** by the user 2026-11-03 (plan 0.138 S2). Refines plan 0.138 §0.3 (the layout invariant in an
+implementation Spec).
+
+### Decision
+* The event extractor (`ev-arch`, per arch: what the machine's state at an external call is observed as)
+  reads the call's argument by `Spec.ABI`: the words at the passing rules' locations (D376), decoded by
+  `Layout` (D375). The answer is written back the same way.
+* So the apex's correctness (the run's events are the meaning's) itself says that every external call
+  receives the meaning's argument laid out and passed as `Spec.ABI` says. No separate layout claim in
+  `Once.Implementation`; it keeps `NoLeak`.
+* Inside, the value relation's base-type cases are defined by `Spec.ABI` (plan 0.138 S3): how the claim
+  is proved, not part of it.
+
+### Consequences
+* Nothing about the observation of a call is trusted beyond the Spec.
+* Plan 0.138 S3–S4 change `ev-arch` and `ret-call` per arch together with the emitters' marshalling at a
+  `call-sym` and the Interpretations' code.
