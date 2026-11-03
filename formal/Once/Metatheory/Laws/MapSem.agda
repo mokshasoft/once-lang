@@ -6,7 +6,9 @@
 -- Once.Metatheory.Laws.MapSem — what `Core.Derived.mapᶜ` means, on values: a
 -- type's action in its 0th variable on a function, by the type's structure.
 -- An arrow type is mapped by post-composition only when the variable is not
--- in its domain (`Cov`), the only case `mapᶜ` types. The function is asked
+-- in its domain (`Cov`), the only case `mapᶜ` types; a functor's constants
+-- are base types at both ends (as typing has them), so that `μ` values and
+-- stream layers, compared by `≡`, compare as their parts do. The function is asked
 -- for only where the variable occurs (`Occurs zero T`): where it does not,
 -- typing does not fix the mapped arrow's type to `A → B`.
 ------------------------------------------------------------------------
@@ -22,7 +24,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind; fin)
-open import Once.Spec.Type using (Ty; Fun; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_;
+open import Once.Spec.Type using (Ty; Fun; KCtx; Base; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_;
                                   TySub; _⟨_⟩; _⟨_⟩F; at₀;
                                   Occurs; OccursF; o-var; o-*ˡ; o-*ʳ; o-+ˡ; o-+ʳ; o-⇒ʳ; o-μ; o-ν; o-K; o-⊕ˡ; o-⊕ʳ; o-⊗ˡ; o-⊗ʳ)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF; μS; inS)
@@ -30,7 +32,7 @@ open import Once.Spec.Effect Σ using (M; fmap; νM; ana)
 open νM using (outν)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code)
 
-module _ {m : ℕ} (σ : TySub m 0) (A B : Ty m) where
+module MapAt {m : ℕ} (Δ : KCtx m) (σ : TySub m 0) (A B : Ty m) where
 
   -- The variable is not in the domain of any arrow type `T` maps through.
   Cov  : Ty (suc m) → Set
@@ -45,7 +47,7 @@ module _ {m : ℕ} (σ : TySub m 0) (A B : Ty m) where
   Cov (T₁ ⇒[ k ] T₂)          = (T₁ ⟨ at₀ A ⟩ ≡ T₁ ⟨ at₀ B ⟩) × Cov T₂
   Cov (μ G)                   = CovF G
   Cov (ν G f)                 = CovF G
-  CovF (K C)   = Cov C
+  CovF (K C)   = Cov C × Base Δ (C ⟨ at₀ A ⟩) × Base Δ (C ⟨ at₀ B ⟩)
   CovF Id      = ⊤
   CovF (F ⊕ G) = CovF F × CovF G
   CovF (F ⊗ G) = CovF F × CovF G
@@ -90,7 +92,7 @@ module _ {m : ℕ} (σ : TySub m 0) (A B : Ty m) where
 
     muLayer : ∀ G H → CovF G → FnF G → CovF H → FnF H
             → ⟦ CA H ⟧SF (μS (CA G)) → ⟦ CB H ⟧SF (μS (CB G))
-    muLayer G (K C)     cG φG cH φ y = mapS C cH (λ o → φ (o-K o)) y
+    muLayer G (K C)     cG φG cH φ y = mapS C (proj₁ cH) (λ o → φ (o-K o)) y
     muLayer G Id        cG φG cH φ y = muMap G cG φG y
     muLayer G (H₁ ⊕ H₂) cG φG (c₁ , c₂) φ (inj₁ y) = inj₁ (muLayer G H₁ cG φG c₁ (λ o → φ (o-⊕ˡ o)) y)
     muLayer G (H₁ ⊕ H₂) cG φG (c₁ , c₂) φ (inj₂ y) = inj₂ (muLayer G H₂ cG φG c₂ (λ o → φ (o-⊕ʳ o)) y)
@@ -99,7 +101,7 @@ module _ {m : ℕ} (σ : TySub m 0) (A B : Ty m) where
 
     -- ν: each forced layer's constants mapped, its recursive positions kept as seeds.
     nuLayer : ∀ H → CovF H → FnF H → ∀ {X : Set} → ⟦ CA H ⟧SF X → ⟦ CB H ⟧SF X
-    nuLayer (K C)     cH φ y = mapS C cH (λ o → φ (o-K o)) y
+    nuLayer (K C)     cH φ y = mapS C (proj₁ cH) (λ o → φ (o-K o)) y
     nuLayer Id        cH φ y = y
     nuLayer (H₁ ⊕ H₂) (c₁ , c₂) φ (inj₁ y) = inj₁ (nuLayer H₁ c₁ (λ o → φ (o-⊕ˡ o)) y)
     nuLayer (H₁ ⊕ H₂) (c₁ , c₂) φ (inj₂ y) = inj₂ (nuLayer H₂ c₂ (λ o → φ (o-⊕ʳ o)) y)
