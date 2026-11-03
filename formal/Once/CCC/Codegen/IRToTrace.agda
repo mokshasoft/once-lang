@@ -90,14 +90,17 @@ open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; t
 -- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (Fun)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; IRTy)
+  renaming (_*_ to _*ᵀ_; _+_ to _+ᵀ_)
+open import Once.CCC.Codegen.Size using (size)
+open import Once.CCC.Codegen.FlatLayout using (put; get)
 import Once.Type as Ty
 open import Once.Spec.Type using (Int; Float)
 open import Data.Bool using (Bool; true; false)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; CompUnit; unit; link; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; restore-input; instr-alloc-heap; instr-call-closure; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-ctrl; c-label; c-jmp; c-thunk; c-call-fn; c-ret; c-branch-tag-zero; out-nz)
+  using (AbstractInstr; AbstractTrace; CompUnit; unit; link; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; restore-input; instr-alloc-heap; instr-call-closure; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-ctrl; c-label; c-jmp; c-thunk; c-call-fn; c-ret; c-branch-tag-zero; out-nz; store-at; load-at; addr-at)
 
 ------------------------------------------------------------------------
 -- IR → AbstractTrace, state-passing
@@ -676,6 +679,22 @@ out-trace mu-box  = load-indirect ∷ []
 out-trace mu-unit = mov-to-output ∷ []
 out-trace mu-ptr  = mov-to-output ∷ []
 
+-- plan 0.123 B.4 α (D375): an injection with tag `t` of a payload of type `P`
+-- (in `Input1`) into a sum of type `S`: a block of `2 ⊔ size S` words, the tag
+-- at word 0, the payload's words from word 1 (`FlatLayout.put`). Two stash
+-- slots, `n` (the payload) and `suc n` (the block).
+inj-trace : ℕ → IRTy → IRTy → ℕ → AbstractTrace
+inj-trace t P S n =
+  mov-to-output ∷
+  store-at-slot n ∷
+  instr-alloc-heap (2 ⊔ size S) ∷
+  store-at-slot (suc n) ∷
+  mov-to-input ∷
+  instr-load-tag-lit t ∷
+  store-at 0 ∷
+  put P n (suc n) 1 ++
+  load-from-slot (suc n) ∷ []
+
 ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
               → ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
 
@@ -694,8 +713,11 @@ ir-to-trace' n l id        = n , l , (mov-to-output ∷ []) , []
 -- postulates. Future: type-driven split for register-fittable
 -- primitive args, layered as an optimization pass on top of the
 -- uniform packed base.
-ir-to-trace' n l fst       = n , l , (load-indirect ∷ []) , []
-ir-to-trace' n l snd       = n , l , (load-indirect-suc ∷ []) , []
+-- plan 0.123 B.4 α (D375): a product is flat — the first component at word 0,
+-- the second after the first's words; a word kind is loaded, a flat kind is
+-- addressed (`FlatLayout.get`).
+ir-to-trace' n l (fst {A} {B}) = n , l , get A 0 , []
+ir-to-trace' n l (snd {A} {B}) = n , l , get B (size A) , []
 -- Plan 0.2.4.5 D1 (Unit erasure): terminal produces a Unit value
 -- which carries no information — emit no instructions. Matches
 -- run-terminal's empty-trace WF spec.
@@ -733,7 +755,10 @@ ir-to-trace' n l (g ∘ f)   =
 -- `FlatStackPtr`'s "there is no stack pointer" invariant stand unchanged and
 -- the flat<->concrete correspondence is not reopened. Moving pair I/O to the
 -- stack is plan 0.87.
-ir-to-trace' n l ⟨ f , g ⟩ =
+-- plan 0.123 B.4 α (D375): the block holds BOTH components' words, the second
+-- after the first's (`FlatLayout.put`: a word kind its word, a flat kind a copy
+-- of its words). At least 2 words (`AllocMin`).
+ir-to-trace' n l (⟨_,_⟩ {A} {B} {C} f g) =
   let backup-slot = n
       fst-stash   = suc backup-slot
       snd-stash   = suc fst-stash
@@ -747,13 +772,10 @@ ir-to-trace' n l ⟨ f , g ⟩ =
       store-at-slot fst-stash ∷ restore-input backup-slot ∷
       gt ++
       store-at-slot snd-stash ∷
-      instr-alloc-heap 2 ∷
+      instr-alloc-heap (2 ⊔ size (B *ᵀ C)) ∷
       store-at-slot pair-stash ∷
-      mov-to-input ∷
-      load-from-slot fst-stash ∷
-      store-indirect ∷
-      load-from-slot snd-stash ∷
-      store-indirect-suc ∷
+      put B fst-stash pair-stash 0 ++
+      put C snd-stash pair-stash (size B) ++
       load-from-slot pair-stash ∷ []) ,
      (fb ++ gb)
 
@@ -917,39 +939,10 @@ ir-to-trace' n l (const fits-float v) = n , l , (instr-load-const Ty.fits-float 
 -- Bump-allocate a 2-cell heap block, write [tag, payload-ptr].
 -- Mirrors SumInlAllocWF.inl-heap-trace / SumInrAllocWF.inr-heap-trace.
 -- Uses 2 scratch slots for stashing: payload-stash = n, sum-stash = n+1.
-ir-to-trace' n l inl =
-  let payload-stash = n
-      sum-stash     = suc payload-stash
-      next          = suc sum-stash
-  in next , l ,
-     (mov-to-output ∷
-      store-at-slot payload-stash ∷
-      instr-alloc-heap 2 ∷
-      store-at-slot sum-stash ∷
-      mov-to-input ∷
-      instr-load-tag-lit 0 ∷
-      store-indirect ∷
-      load-from-slot payload-stash ∷
-      store-indirect-suc ∷
-      load-from-slot sum-stash ∷ []) ,
-     []
-
-ir-to-trace' n l inr =
-  let payload-stash = n
-      sum-stash     = suc payload-stash
-      next          = suc sum-stash
-  in next , l ,
-     (mov-to-output ∷
-      store-at-slot payload-stash ∷
-      instr-alloc-heap 2 ∷
-      store-at-slot sum-stash ∷
-      mov-to-input ∷
-      instr-load-tag-lit 1 ∷
-      store-indirect ∷
-      load-from-slot payload-stash ∷
-      store-indirect-suc ∷
-      load-from-slot sum-stash ∷ []) ,
-     []
+-- plan 0.123 B.4 α (D375): the block is the tag, then the payload's words
+-- (`FlatLayout.put` at word 1), sized for the larger alternative.
+ir-to-trace' n l (inl {A} {B}) = suc (suc n) , l , inj-trace 0 A (A +ᵀ B) n , []
+ir-to-trace' n l (inr {A} {B}) = suc (suc n) , l , inj-trace 1 B (A +ᵀ B) n , []
 
 -- ────────────────────────────────────────────────────────────────────
 -- case f g — sum elimination (Plan 0.13.1 Phase 4; FLAT since Plan 0.54
@@ -970,17 +963,18 @@ ir-to-trace' n l inr =
 -- deleted by plan 0.135, with `instr-loop` and `lea-indexed`).
 -- ────────────────────────────────────────────────────────────────────
 
-ir-to-trace' n l (case f g) =
+-- plan 0.123 B.4 α: each arm's input is the payload at word 1 (`get`).
+ir-to-trace' n l (case {A} {B} f g) =
   let l-inl = l
       l-end = suc l
       (n1 , l1 , ft , fb) = ir-to-trace' n  (suc (suc l)) f
       (n2 , l2 , gt , gb) = ir-to-trace' n1 l1 g
   in n2 , l2 ,
-     (instr-ctrl (c-branch-tag-zero (ℓ o l-inl)) ∷
-      load-indirect-suc ∷ mov-to-input ∷ []) ++
+     (instr-ctrl (c-branch-tag-zero (ℓ o l-inl)) ∷ []) ++
+     get B 1 ++ (mov-to-input ∷ []) ++
      gt ++
-     (instr-ctrl (c-jmp (ℓ o l-end)) ∷ instr-ctrl (c-label (ℓ o l-inl)) ∷
-      load-indirect-suc ∷ mov-to-input ∷ []) ++
+     (instr-ctrl (c-jmp (ℓ o l-end)) ∷ instr-ctrl (c-label (ℓ o l-inl)) ∷ []) ++
+     get A 1 ++ (mov-to-input ∷ []) ++
      ft ++
      (instr-ctrl (c-label (ℓ o l-end)) ∷ []) ,
      (fb ++ gb)

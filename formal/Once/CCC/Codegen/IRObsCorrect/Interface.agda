@@ -99,7 +99,7 @@ module Core {FS : FrameSemantics} where
   -- now (the arrow case states a callee run in it).
   open ClosureWellFormedBase {FS}
     using (runAt; eventsAt; resultAt; stopsAt; ⟪_⟫_
-          ; prim-sv; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv
+          ; prim-sv; cell-ptr; cell-inline; cell-flat; IsNode; IsFlat; InlineRep; rep-prim; inline-sv
           ; ValidFO; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy; LayerV
           ; Live; live→bf; live-heap; live-lift; live-ns) public
 
