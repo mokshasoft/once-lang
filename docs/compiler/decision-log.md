@@ -20870,3 +20870,25 @@ value; `Float` its target-format encoding); `Unit` none; `A * B` A's words then 
   values IS this layout, stated in `Once.Implementation` and kept by the value relation, so a value crosses
   a boundary as it is.
 * The Interpretations that read nested 2-word cells (Linux `Syscalls`, `Math`, seL4) change to read it (S4).
+
+## D376 — A VALUE CROSSES A BOUNDARY BY THE PLATFORM'S C CALLING CONVENTION (2026-11-03)
+
+**Decided** by the user 2026-11-03 (plan 0.138 S2, plan 0.111). Refines plan 0.111 §2.1 ("the argument is in
+the argument register(s), in the compiler's value representation"), written before `Spec.ABI`.
+
+### Decision
+* An argument and an answer of a base type cross a boundary exactly as C passes the struct `Spec.ABI`
+  lays out (D375), under each target's procedure-call standard: x86-64 System V, riscv64 LP64(D), i386
+  System V. Scalars and small structs in registers (by class: an `Int` word or a tag is an integer word, a
+  `Float` a floating-point one), larger structs as the standard says (in memory on x86-64 and i386, by a
+  pointer to a copy on riscv64), an answer in the return registers or through the caller's buffer.
+* Not "by reference uniformly", which is what the Interpretations do today (a pointer to nested cells in
+  the argument register): that would make a C function taking a struct by value uncallable, and a library
+  export (plan 0.137) uncallable from C.
+
+### Consequences
+* `Spec.ABI` gains the passing rules per target (a Spec patch, for approval), and plan 0.138 S2's claim is
+  stated against them at every external call.
+* The emitters marshal at a `call-sym`: from the internal layout to the convention's registers or memory,
+  and the answer back. Every Interpretation's per-arch code changes to take its arguments the C way (S4);
+  an Interpretation can then be written in C.
