@@ -1656,17 +1656,30 @@ module AbstractExec {FS : FrameSemantics} where
   readTyped-sum cA cB (just (SV-Code _))            mp = nothing
   readTyped-sum cA cB nothing                       mp = nothing
 
+  -- plan 0.123 B.4 α (D375): a base value's size in words — Unit 0, a scalar
+  -- 1, a product the sum, a sum a tag and the larger payload (`Spec.ABI.words`).
+  tsize : Type → ℕ
+  tsize Unit       = 0
+  tsize Ty.Void    = 0
+  tsize Int        = 1
+  tsize Float      = 1
+  tsize (A * B)    = tsize A + tsize B
+  tsize (A Ty.+ B) = suc (tsize A ℕ.⊔ tsize B)
+  {-# CATCHALL #-}
+  tsize _          = 1
+
+  -- plan 0.123 B.4 α: THE FLAT READER. A base value is its words in place (D375):
+  -- a product's second component after the first's words, a sum's payload
+  -- after its tag (a scalar payload is its word there, Unit none). No pointer
+  -- is followed: a base value holds none.
   readTyped : (A : Type) → ValueLocation FS → LocState FS → Maybe ⟦ A ⟧
   readTyped Unit    loc s = just tt
   readTyped Int     loc s = readTyped-int (readLoc s loc)
   readTyped (A * B) loc s =
-    readTyped-pair (λ l → readTyped A l s) (λ l → readTyped B l s)
-      (readReg-typed A) (readReg-typed B)
-      (readLoc s loc) (readLoc s (sucLoc loc))
+    combine-typed (readTyped A loc s) (readTyped B (offsetLoc loc (tsize A)) s)
   readTyped Float   loc s = readTyped-float (readLoc s loc)
   readTyped (A Ty.+ B) loc s =
-    readTyped-sum (readTyped-cell (λ l → readTyped A l s) (readReg-typed A))
-                  (readTyped-cell (λ l → readTyped B l s) (readReg-typed B))
+    readTyped-sum (λ _ → readTyped A (sucLoc loc) s) (λ _ → readTyped B (sucLoc loc) s)
       (readLoc s loc) (readLoc s (sucLoc loc))
   {-# CATCHALL #-}
   readTyped _       loc s = nothing
