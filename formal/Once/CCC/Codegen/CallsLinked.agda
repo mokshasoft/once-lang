@@ -70,10 +70,10 @@ put-k-cl : ∀ kd n s b o′ → CLTrace (put-k kd n s b o′)
 put-k-cl kd n s b o′ = put-k-All {P} kd n s b o′ tt tt tt (λ _ → tt) (λ _ → tt)
 
 get-cl : ∀ X k → CLTrace (get X k)
-get-cl X k = get-All {P} X k (λ _ → tt) (λ _ → tt)
+get-cl X k = get-All {P} X k (λ _ → tt) (λ _ → tt) tt
 
 get-k-cl : ∀ kd n k → CLTrace (get-k kd n k)
-get-k-cl kd n k = get-k-All {P} kd n k (λ _ → tt) (λ _ → tt)
+get-k-cl kd n k = get-k-All {P} kd n k (λ _ → tt) (λ _ → tt) tt
 
 inj-cl : ∀ t P′ S n → CLTrace (inj-trace t P′ S n)
 inj-cl t P′ S n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-cl P′ n (suc n) 1) (tt ∷ [])

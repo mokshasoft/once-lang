@@ -158,10 +158,10 @@ module Scope {FS : FrameSemantics} where
   put-k-nt kd n s b o′ = put-k-All kd n s b o′ refl refl refl (λ _ → refl) (λ _ → refl)
 
   get-nt : ∀ X k → NoThunkT (get X k)
-  get-nt X k = get-All X k (λ _ → refl) (λ _ → refl)
+  get-nt X k = get-All X k (λ _ → refl) (λ _ → refl) refl
 
   get-k-nt : ∀ kd n k → NoThunkT (get-k kd n k)
-  get-k-nt kd n k = get-k-All kd n k (λ _ → refl) (λ _ → refl)
+  get-k-nt kd n k = get-k-All kd n k (λ _ → refl) (λ _ → refl) refl
 
   getμ-nt : ∀ G k → NoThunkT (getμ G k)
   getμ-nt G k = get-k-nt (lkind G word) (lsz G 1) k

@@ -96,10 +96,10 @@ put-k-nolab : ∀ kd n s b o′ → NoLab (put-k kd n s b o′)
 put-k-nolab kd n s b o′ = put-k-All kd n s b o′ refl refl refl (λ _ → refl) (λ _ → refl)
 
 get-nolab : ∀ X k → NoLab (get X k)
-get-nolab X k = get-All X k (λ _ → refl) (λ _ → refl)
+get-nolab X k = get-All X k (λ _ → refl) (λ _ → refl) refl
 
 get-k-nolab : ∀ kd n k → NoLab (get-k kd n k)
-get-k-nolab kd n k = get-k-All kd n k (λ _ → refl) (λ _ → refl)
+get-k-nolab kd n k = get-k-All kd n k (λ _ → refl) (λ _ → refl) refl
 
 nolab-ls : ∀ {lo hi} {t} → NoLab t → LabelsIn lo hi t
 nolab-ls []       = []
@@ -921,7 +921,7 @@ record CataSplit (bb l1 : ℕ) (at t : AbstractTrace) : Set where
 -- so their idleness is `idle-All`, not `refl`.
 setup-idle : ∀ (E : IT.IRTy) (cl k ev bl : ℕ) → seg-idle? (cata-call-setup E cl k ev bl) ≡ true
 setup-idle E cl k ev bl =
-  idle-All _ (++⁺ (get-All E 0 (λ _ → refl) (λ _ → refl))
+  idle-All _ (++⁺ (get-All E 0 (λ _ → refl) (λ _ → refl) refl)
                   (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
 
 call-idle : ∀ i0 → is-id? (seg-action i0) ≡ true → ∀ E lk ls (cl k ev pr : ℕ)
@@ -1235,7 +1235,7 @@ iter-pieces {E} {A} {B} b n l =
     hdL : LabelsIn l (suc (suc l)) (get E 0 ++ hd₀)
     hdL = ++⁺ (get-ls E 0) (li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ [])
     hd-idle : seg-idle? (get E 0 ++ hd₀) ≡ true
-    hd-idle = idle-All (get E 0 ++ hd₀) (++⁺ (get-All E 0 (λ _ → refl) (λ _ → refl)) (refl ∷ refl ∷ []))
+    hd-idle = idle-All (get E 0 ++ hd₀) (++⁺ (get-All E 0 (λ _ → refl) (λ _ → refl) refl) (refl ∷ refl ∷ []))
     tl : AbstractTrace
     tl = (mov-to-input ∷ instr-ctrl (c-branch-tag-zero (ℓ o (suc l))) ∷ []) ++
          get A 1 ++
@@ -1248,12 +1248,12 @@ iter-pieces {E} {A} {B} b n l =
          get B 1
     tl-ls : All (λ i → is-id? (seg-action i) ≡ true) tl
     tl-ls = ++⁺ (refl ∷ refl ∷ [])
-            (++⁺ (get-All A 1 (λ _ → refl) (λ _ → refl))
+            (++⁺ (get-All A 1 (λ _ → refl) (λ _ → refl) refl)
             (++⁺ (refl ∷ refl ∷ refl ∷ [])
             (++⁺ (put-All E _ _ 0 refl refl refl (λ _ → refl) (λ _ → refl))
             (++⁺ (put-All A _ _ _ refl refl refl (λ _ → refl) (λ _ → refl))
             (++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ [])
-                 (get-All B 1 (λ _ → refl) (λ _ → refl)))))))
+                 (get-All B 1 (λ _ → refl) (λ _ → refl) refl))))))
     tl-idle : seg-idle? tl ≡ true
     tl-idle = idle-All tl tl-ls
     tailL : LabelsIn l (suc (suc l)) tl
@@ -1290,14 +1290,14 @@ case-pieces {A} {B} f g n l =
     hdL = li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ ++⁺ (get-ls B 1) (li-none refl ∷ [])
     hd-idle : seg-idle? (instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ (get B 1 ++ (mov-to-input ∷ []))) ≡ true
     hd-idle = idle-All (instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ (get B 1 ++ (mov-to-input ∷ [])))
-                       (refl ∷ ++⁺ (get-All B 1 (λ _ → refl) (λ _ → refl)) (refl ∷ []))
+                       (refl ∷ ++⁺ (get-All B 1 (λ _ → refl) (λ _ → refl) refl) (refl ∷ []))
     midL : LabelsIn l (suc (suc l))
              (instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷ (get A 1 ++ (mov-to-input ∷ [])))
     midL = li-lab refl (n≤1+n l) ≤-refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷
            ++⁺ (get-ls A 1) (li-none refl ∷ [])
     mid-idle : seg-idle? (instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷ (get A 1 ++ (mov-to-input ∷ []))) ≡ true
     mid-idle = idle-All (instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷ (get A 1 ++ (mov-to-input ∷ [])))
-                        (refl ∷ refl ∷ ++⁺ (get-All A 1 (λ _ → refl) (λ _ → refl)) (refl ∷ []))
+                        (refl ∷ refl ∷ ++⁺ (get-All A 1 (λ _ → refl) (λ _ → refl) refl) (refl ∷ []))
     tailL : LabelsIn l (suc (suc l)) _
     tailL = li-lab refl (n≤1+n l) ≤-refl ∷ []
 
@@ -1381,17 +1381,17 @@ resuspend-idleA : ∀ (H : IT.IRFunctor) (E A : IT.IRTy) (n l : ℕ) (lbl : Labe
 resuspend-idleA H E A n l lbl env (wf-K _) = []
 resuspend-idleA H E A n l lbl env wf-Id =
   ++⁺ (refl ∷ refl ∷ [])
-      (++⁺ (get-All E 0 (λ _ → refl) (λ _ → refl))
+      (++⁺ (get-All E 0 (λ _ → refl) (λ _ → refl) refl)
       (++⁺ (refl ∷ refl ∷ refl ∷ [])
       (++⁺ (put-All E _ _ 0 refl refl refl (λ _ → refl) (λ _ → refl))
       (++⁺ (put-All A _ _ _ refl refl refl (λ _ → refl) (λ _ → refl))
            (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])))))
 resuspend-idleA H E A n l lbl env (wf-Prod {F} {G} wfF wfG) =
   ++⁺ (refl ∷ refl ∷ [])
-      (++⁺ (get-All (⟦ F ⟧TI A) 0 (λ _ → refl) (λ _ → refl))
+      (++⁺ (get-All (⟦ F ⟧TI A) 0 (λ _ → refl) (λ _ → refl) refl)
       (++⁺ (resuspend-idleA H E A (suc (suc (suc (suc n)))) l lbl env wfF)
       (++⁺ (refl ∷ refl ∷ [])
-      (++⁺ (get-All (⟦ G ⟧TI A) _ (λ _ → refl) (λ _ → refl))
+      (++⁺ (get-All (⟦ G ⟧TI A) _ (λ _ → refl) (λ _ → refl) refl)
       (++⁺ (resuspend-idleA H E A _ _ lbl env wfG)
       (++⁺ (refl ∷ refl ∷ refl ∷ [])
       (++⁺ (put-All (⟦ F ⟧TI (ν-type H)) _ _ 0 refl refl refl (λ _ → refl) (λ _ → refl))
@@ -1412,7 +1412,7 @@ resuspend-idleA H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
                     put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                     (load-from-slot (suc n) ∷ []))
     arm P p =
-      ++⁺ (refl ∷ []) (++⁺ (get-All (⟦ P ⟧TI A) 1 (λ _ → refl) (λ _ → refl))
+      ++⁺ (refl ∷ []) (++⁺ (get-All (⟦ P ⟧TI A) 1 (λ _ → refl) (λ _ → refl) refl)
       (++⁺ p (++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
       (++⁺ (put-All (⟦ P ⟧TI (ν-type H)) _ _ 1 refl refl refl (λ _ → refl) (λ _ → refl)) (refl ∷ [])))))
 

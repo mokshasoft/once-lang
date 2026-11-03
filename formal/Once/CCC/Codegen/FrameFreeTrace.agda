@@ -104,10 +104,10 @@ put-k-ff : ∀ kd n s b o′ → FrameFreeTrace (put-k kd n s b o′)
 put-k-ff kd n s b o′ = put-k-All {EmittableI} kd n s b o′ tt tt tt (λ _ → tt) (λ _ → tt)
 
 get-ff : ∀ X k → FrameFreeTrace (get X k)
-get-ff X k = get-All {EmittableI} X k (λ _ → tt) (λ _ → tt)
+get-ff X k = get-All {EmittableI} X k (λ _ → tt) (λ _ → tt) tt
 
 get-k-ff : ∀ kd n k → FrameFreeTrace (get-k kd n k)
-get-k-ff kd n k = get-k-All {EmittableI} kd n k (λ _ → tt) (λ _ → tt)
+get-k-ff kd n k = get-k-All {EmittableI} kd n k (λ _ → tt) (λ _ → tt) tt
 
 inj-ff : ∀ t P S n → FrameFreeTrace (inj-trace t P S n)
 inj-ff t P S n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-ff P n (suc n) 1) (tt ∷ [])

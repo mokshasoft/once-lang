@@ -56,10 +56,10 @@ module Seg {P : AbstractInstr → Set}
   put-k-P kd n s b o′ = put-k-All kd n s b o′ (p-ri s) (p-ri b) (p-lfs s) p-la p-sa
 
   get-P : ∀ X k → All P (get X k)
-  get-P X k = get-All X k p-la p-aa
+  get-P X k = get-All X k p-la p-aa p-mo
 
   get-k-P : ∀ kd n k → All P (get-k kd n k)
-  get-k-P kd n k = get-k-All kd n k p-la p-aa
+  get-k-P kd n k = get-k-All kd n k p-la p-aa p-mo
 
   getμ-P : ∀ G k → All P (getμ G k)
   getμ-P G k = get-k-P (lkind G word) (lsz G 1) k

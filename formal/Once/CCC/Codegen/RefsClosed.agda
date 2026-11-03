@@ -121,10 +121,10 @@ put-k-noref : ∀ kd n s b o′ → NoRef (put-k kd n s b o′)
 put-k-noref kd n s b o′ = put-k-All kd n s b o′ refl refl refl (λ _ → refl) (λ _ → refl)
 
 get-noref : ∀ X k → NoRef (get X k)
-get-noref X k = get-All X k (λ _ → refl) (λ _ → refl)
+get-noref X k = get-All X k (λ _ → refl) (λ _ → refl) refl
 
 get-k-noref : ∀ kd n k → NoRef (get-k kd n k)
-get-k-noref kd n k = get-k-All kd n k (λ _ → refl) (λ _ → refl)
+get-k-noref kd n k = get-k-All kd n k (λ _ → refl) (λ _ → refl) refl
 
 getμ-noref : ∀ G k → NoRef (getμ G k)
 getμ-noref G k = get-k-noref (lkind G word) (lsz G 1) k
