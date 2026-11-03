@@ -21196,3 +21196,24 @@ time. Now I think values that could go to the stack should go there"), with D373
 * The value relation's stack case (`Live`, `CellAt` at `AtStack`) and the pointer invariants
   (`FlatStackPtr`, `PtrBoundsWF`) are re-stated; the correspondence is re-proved with stack pointers live
   on all three arches (plan 0.87 D).
+
+## D375 — THE BOUNDARY LAYOUT OF A BASE VALUE IS IN THE SPEC: `Spec.ABI` (2026-11-03)
+
+**Lands** plan 0.138 S1. **Approved** by the user 2026-11-03 (Spec patch, padding unspecified).
+
+### Decision
+`Once.Spec.ABI` states what a base value occupies where it crosses a boundary (an Interpretation's
+operation, a library's export), in target words, lowest address first: `Int` and `Float` one word (the
+value; `Float` its target-format encoding); `Unit` none; `A * B` A's words then B's (a flat C struct);
+`A + B` a tag word (0 `inl`, 1 `inr`) then the payload, padded to the larger alternative (`Bool` one word);
+`Void` none. `words` is a base type's static size; `Layout b v ws` says `v` occupies exactly `ws`.
+* **The padding of a sum's shorter alternative is unspecified** (user): any words, never read. The
+  compiler never writes padding.
+* Every scalar is one word on all three targets, so there are no alignment gaps; a target where that is
+  false would add alignment to this module.
+
+### Consequences
+* Plan 0.138 S2–S3 (with plans 0.87 and 0.123 B on branch `0.123-heap-2`): Once's internal layout of base
+  values IS this layout, stated in `Once.Implementation` and kept by the value relation, so a value crosses
+  a boundary as it is.
+* The Interpretations that read nested 2-word cells (Linux `Syscalls`, `Math`, seL4) change to read it (S4).

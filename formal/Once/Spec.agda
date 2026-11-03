@@ -61,6 +61,9 @@ import Once.Spec.Surface.Typing      -- which expressions are typed, and their c
 import Once.Spec.Surface.Program     -- the program a module denotes
 import Once.Spec.Source              -- what a source text denotes
 
+-- What a value looks like where it crosses a boundary (plan 0.138, D375).
+import Once.Spec.ABI                 -- the layout of a base value, in target words
+
 -- What a correct compiler is, and what the language promises about itself.
 import Once.Spec.Correct
 import Once.Spec.Examples
