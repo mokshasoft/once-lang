@@ -20958,3 +20958,31 @@ PAIR (its cell and the next). That is the old 2-word cell shape, and it is what 
   frame.
 * `InstrWF (store-at k)` carries the in-block fact; the constructors' proofs supply it from the size they
   allocated.
+
+## D380 — A CLOSURE CALL PASSES `[env-word, arg]`; A FLAT ENVIRONMENT IS REBUILT BY THE BODY (2026-11-03)
+
+**Decided** in plan 0.123 B.4 α2, from the relation already in place (`CallRuns`, D184's opaque environment).
+
+### Context
+Products are flat (D375): a body `IR (E * A) B` reads its argument at word `size E` of its input. But
+`apply : IR ((A ⇛ B) * A) B` does not know `E` (a closure's environment type is not in its type), so it
+cannot lay out `E * A`.
+
+### Decision
+* A closure node stays two words, `[env-word, code]`. The environment word is the environment's
+  register form: the word itself for a word kind, the address of its words for a flat kind (D375). The
+  environment's words are not copied (it stays opaque, D184; it is kept valid by the caller's guarantee
+  that every live cell still reads the same).
+* `apply` builds the CALL PAIR `[env-word, arg]` in a fresh block of `2 ⊔ (1 + size A)` words. It knows
+  `A`, so the argument is `FlatLayout.put` at word 1 (a flat argument's words are copied). This is
+  `CallRuns` as stated: the argument's cell is at word 1.
+* When `E` is a word kind, the call pair IS the body's flat `E * A` input. When `E` is flat, the body
+  (which knows `E` and `A`) begins with a prologue: it allocates `E * A`, copies the environment's
+  words from the env-word's address to word 0, and copies the argument from word 1 of the call pair to
+  word `size E`. That is the only layout-dependent code in the calling convention, and it sits where
+  the type is known.
+
+### Consequences
+* `instr-call-closure`, the code word at word 1, and every target's lowering are unchanged.
+* A ν suspension, `[seed-word, code]`, is the same shape and needs nothing: forcing hands the block the
+  seed word, which is the seed's register form.

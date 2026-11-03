@@ -93,7 +93,7 @@ open import Once.Spec.Type using (Fun)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; IRTy)
   renaming (_*_ to _*ᵀ_; _+_ to _+ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
-open import Once.CCC.Codegen.FlatLayout using (put; get)
+open import Once.CCC.Codegen.FlatLayout using (put; get; Kind; word; flat; kind)
 import Once.Type as Ty
 open import Once.Spec.Type using (Int; Float)
 open import Data.Bool using (Bool; true; false)
@@ -695,6 +695,28 @@ inj-trace t P S n =
   put P n (suc n) 1 ++
   load-from-slot (suc n) ∷ []
 
+-- D380: a closure body's entry. The call pair is `[env-word, arg…]`; with a
+-- WORD environment that is already the body's flat input `E * A`, so nothing
+-- runs and the body's slots start at 0. With a FLAT environment the body
+-- rebuilds `E * A` (slots 0–3: the call pair, the environment's address, the
+-- argument, the new block) and its own slots start at 4.
+env-prologue : IRTy → IRTy → AbstractTrace
+env-prologue E A =
+  mov-to-output ∷ store-at-slot 0 ∷        -- the call pair
+  load-at 0 ∷ store-at-slot 1 ∷            -- the environment's address
+  restore-input 0 ∷
+  get A 1 ++                               -- the argument (its word, or its address)
+  store-at-slot 2 ∷
+  instr-alloc-heap (2 ⊔ size (E *ᵀ A)) ∷
+  store-at-slot 3 ∷
+  put E 1 3 0 ++
+  put A 2 3 (size E) ++
+  load-from-slot 3 ∷ mov-to-input ∷ []
+
+env-entry : Kind → IRTy → IRTy → ℕ × AbstractTrace
+env-entry word E A = 0 , []
+env-entry flat E A = 4 , env-prologue E A
+
 ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
               → ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
 
@@ -832,23 +854,27 @@ ir-to-trace' n l (⟨_,_⟩ {A} {B} {C} f g) =
 -- anyway (the elaborator threads `Heap`; the only pass that claimed to select
 -- it, `Once.Escape`, was a header comment rather than code and is now
 -- deleted). This is the heap lowering, unchanged.
-ir-to-trace' n l (curry body) =
+-- D380: the node is `[env-word, code]`; a body whose environment is FLAT starts
+-- by rebuilding its flat input from the call pair (`env-entry`).
+ir-to-trace' n l (curry {E} {A} body) =
   let this-label    = l
       end-label     = suc l
       l1            = suc (suc l)
       env-stash     = n
       closure-stash = suc env-stash
       next          = suc closure-stash
-      (body-budget , l2 , body-trace , body-bodies) = ir-to-trace' 0 l1 body
+      (body-start , prologue) = env-entry (kind E) E A
+      (body-budget , l2 , body-trace₀ , body-bodies) = ir-to-trace' body-start l1 body
+      body-trace  = prologue ++ body-trace₀
       this-trace  = (mov-to-output ∷
                      store-at-slot env-stash ∷
                      instr-alloc-heap 2 ∷
                      store-at-slot closure-stash ∷
                      mov-to-input ∷
                      load-from-slot env-stash ∷
-                     store-indirect ∷
+                     store-at 0 ∷
                      instr-load-code-addr (ℓ o this-label) ∷
-                     store-indirect-suc ∷
+                     store-at 1 ∷
                      load-from-slot closure-stash ∷ [])
       -- D159: see the Stack clause — the body is a named block.
       all-bodies  = (ℓ o this-label , body-budget , body-trace) ∷ body-bodies
@@ -878,27 +904,28 @@ ir-to-trace' n l (curry body) =
 -- transient stack cell that is reused once the frame is popped — the x86-32
 -- `arith-lambda-2` dangling read (x86-64/riscv64 only survived by luck). We are
 -- heap-only, so build it on the heap (mirrors the `⟨ f , g ⟩ Heap` clause).
-ir-to-trace' n l apply =
+-- D380: the call pair is `[env-word, arg]`, the argument `put` at word 1 (its
+-- words copied when it is flat). The input pair is `[closure, arg…]`.
+ir-to-trace' n l (apply {A} {B}) =
   let arg-stash  = n
       env-stash  = suc arg-stash
       pair-stash = suc env-stash
   in (suc pair-stash) , l ,
-     (load-indirect-suc ∷                -- Output := arg-loc from input pair
+     (get A 1 ++                         -- Output := the arg (its word, or its address)
       store-at-slot arg-stash ∷          -- stash arg
-      load-indirect ∷                    -- Output := closure-loc from input pair
-      mov-to-input ∷                     -- Input1 := closure-loc
+      load-at 0 ∷                        -- Output := the closure, from the input pair
+      mov-to-input ∷                     -- Input1 := closure
       instr-save-closure-reg ∷           -- closure-reg := closure (survives below)
-      load-indirect ∷                    -- Output := env-loc from closure[0]
+      load-at 0 ∷                        -- Output := env-word, closure[0]
       store-at-slot env-stash ∷          -- stash env
-      instr-alloc-heap 2 ∷               -- Output := fresh heap pair
+      instr-alloc-heap (2 ⊔ suc (size A)) ∷  -- Output := fresh call pair
       store-at-slot pair-stash ∷
-      mov-to-input ∷                     -- Input1 := heap pair
+      mov-to-input ∷                     -- Input1 := call pair
       load-from-slot env-stash ∷
-      store-indirect ∷                   -- heap-pair[0] := env
-      load-from-slot arg-stash ∷
-      store-indirect-suc ∷               -- heap-pair[1] := arg
-      load-from-slot pair-stash ∷        -- Output := &heap-pair
-      mov-to-input ∷                     -- Input1 := &heap-pair
+      store-at 0 ∷                       -- call-pair[0] := env-word
+      put A arg-stash pair-stash 1 ++    -- call-pair[1…] := arg
+      load-from-slot pair-stash ∷        -- Output := &call-pair
+      mov-to-input ∷                     -- Input1 := &call-pair
       instr-call-closure ∷ []) ,
      []
 
