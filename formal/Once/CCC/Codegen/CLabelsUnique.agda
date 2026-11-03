@@ -21,7 +21,7 @@ open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.CLabelsUnique (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _≤_; _<_; z≤n; s≤s)
 open import Data.Nat.Properties
   using (≤-refl; ≤-trans; <⇒≢; n≤1+n; m≤m+n; <-≤-trans; +-suc; +-assoc; +-cancelʳ-≡; n<1+n; ≤-reflexive; +-identityʳ; +-comm; +-monoʳ-<; +-monoʳ-≤)
 open import Data.List using (List; []; _∷_; _++_; map)
@@ -37,6 +37,32 @@ open import Once.CCC.Label using (LabelId; ℓ)
 open import Once.CCC.Machine.SMCore
 
 open import Once.CCC.Codegen.LabelDefs
+open import Once.CCC.Codegen.LayoutAll o using (module Seg)
+
+------------------------------------------------------------------------
+-- plan 0.123 B.4 α: the layout segments (`put`, `get`, …) define no control
+-- label and no function entry, whatever their length.
+------------------------------------------------------------------------
+NC : AbstractTrace → Set
+NC = All (λ i → clab-of i ≡ nothing)
+
+clabs-nc : ∀ {t} → NC t → clabs t ≡ []
+clabs-nc {[]}     []       = refl
+clabs-nc {i ∷ is} (e ∷ es) rewrite e = clabs-nc es
+
+clabs-skip : ∀ (a b : AbstractTrace) → NC a → clabs (a ++ b) ≡ clabs b
+clabs-skip a b na = trans (clabs-++ a b) (cong (_++ clabs b) (clabs-nc na))
+
+nf-all : ∀ {t} → All (λ i → fdef-of i ≡ []) t → NoFn t
+nf-all {[]}     []       = refl
+nf-all {i ∷ is} (e ∷ es) rewrite e = nf-all es
+
+module SC = Seg {λ i → clab-of i ≡ nothing}
+  (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl)
+  refl refl (λ _ → refl) (λ _ → refl) refl refl
+module SF = Seg {λ i → fdef-of i ≡ []}
+  (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ → refl)
+  refl refl (λ _ → refl) (λ _ → refl) refl refl
 
 ------------------------------------------------------------------------
 -- THE CASE SHAPE: a branch's labels `k` (entry of the second arm) and
@@ -82,7 +108,11 @@ open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (Fun)
 open import Once.IRTy using (WellFormedFI; wf-K; wf-Id; wf-Prod; wf-Sum)
 open import Once.CCC.Codegen.IRToTrace o
-  using (visit-walk; rebuild-walk; lsize; resuspend-layer)
+  using (visit-walk; rebuild-walk; lsize; resuspend-layer; getμ; wrap-sum)
+open import Once.CCC.Codegen.FlatLayout using (Kind; word; put; put-k; get; kind; lkind; lsz)
+open import Once.CCC.Codegen.Size using (size)
+open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type) renaming (_+_ to _+ᵀ_)
+open import Data.Nat using (_⊔_)
 open import Once.CCC.Codegen.LabelRange o using (resuspend-label-mono)
 
 private
@@ -123,7 +153,10 @@ visit-cl (F ⊕ G) todo tv tb s lb =
     vF = visit-walk todo tv tb F (s + 4) (suc (suc lb))
     vG = visit-walk todo tv tb G (s + 4) (suc (suc lb) + lsize F)
     eq : clabs (visit-walk todo tv tb (F ⊕ G) s lb) ≡ clabs vG ++ (lb ∷ (clabs vF ++ (suc lb ∷ [])))
-    eq = trans (clabs-++ vG _) (cong (λ z → clabs vG ++ (lb ∷ z)) (clabs-++ vF _))
+    eq = trans (clabs-skip (getμ G 1) _ (SC.getμ-P G 1))
+           (trans (clabs-++ vG _)
+                  (cong (λ z → clabs vG ++ (lb ∷ z))
+                        (trans (clabs-skip (getμ F 1) _ (SC.getμ-P F 1)) (clabs-++ vF _))))
 visit-cl (F ⊗ G) todo tv tb s lb =
   subst (λ z → Dst z × Win lb (lb + lsize (F ⊗ G)) z) (sym eq)
     (seq-step lb (lsize F) (lsize G)
@@ -133,30 +166,53 @@ visit-cl (F ⊗ G) todo tv tb s lb =
     vF = visit-walk todo tv tb F (s + 4) lb
     vG = visit-walk todo tv tb G (s + 4) (lb + lsize F)
     eq : clabs (visit-walk todo tv tb (F ⊗ G) s lb) ≡ clabs vF ++ clabs vG
-    eq = clabs-++ vF _
+    eq = trans (clabs-skip (getμ F 0) _ (SC.getμ-P F 0))
+           (trans (clabs-++ vF _)
+                  (cong (clabs vF ++_) (clabs-skip (getμ G (lsz F 1)) _ (SC.getμ-P G (lsz F 1)))))
 
-rebuild-cl : ∀ (F : Fun 0) (val tv tb s lb : ℕ)
-           → Dst (clabs (rebuild-walk val tv tb F s lb)) × Win lb (lb + lsize F) (clabs (rebuild-walk val tv tb F s lb))
-rebuild-cl (K _)   val tv tb s lb = [] , []
-rebuild-cl Id      val tv tb s lb = [] , []
-rebuild-cl (F ⊕ G) val tv tb s lb =
+rebuild-cl : ∀ (F : Fun 0) (val tv tb : ℕ) (ck : Kind) (cs s lb : ℕ)
+           → Dst (clabs (rebuild-walk val tv tb ck cs F s lb)) × Win lb (lb + lsize F) (clabs (rebuild-walk val tv tb ck cs F s lb))
+rebuild-cl (K _)   val tv tb ck cs s lb = [] , []
+rebuild-cl Id      val tv tb ck cs s lb = [] , []
+rebuild-cl (F ⊕ G) val tv tb ck cs s lb =
   subst (λ z → Dst z × Win lb (lb + lsize (F ⊕ G)) z) (sym eq)
     (case-step lb (lsize F) (lsize G)
-      (rebuild-cl F val tv tb (s + 4) (suc (suc lb)))
-      (rebuild-cl G val tv tb (s + 4) (suc (suc lb) + lsize F)))
+      (rebuild-cl F val tv tb ck cs (s + 4) (suc (suc lb)))
+      (rebuild-cl G val tv tb ck cs (s + 4) (suc (suc lb) + lsize F)))
   where
-    rF = rebuild-walk val tv tb F (s + 4) (suc (suc lb))
-    rG = rebuild-walk val tv tb G (s + 4) (suc (suc lb) + lsize F)
-    eq : clabs (rebuild-walk val tv tb (F ⊕ G) s lb) ≡ clabs rG ++ (lb ∷ (clabs rF ++ (suc lb ∷ [])))
-    eq = trans (clabs-++ rG _) (cong (λ z → clabs rG ++ (lb ∷ z)) (clabs-++ rF _))
-rebuild-cl (F ⊗ G) val tv tb s lb =
+    rF = rebuild-walk val tv tb ck cs F (s + 4) (suc (suc lb))
+    rG = rebuild-walk val tv tb ck cs G (s + 4) (suc (suc lb) + lsize F)
+    wG = wrap-sum 1 (lkind G ck) (lsz G cs) (lsz (F ⊕ G) cs) s
+    wF = wrap-sum 0 (lkind F ck) (lsz F cs) (lsz (F ⊕ G) cs) s
+    eq : clabs (rebuild-walk val tv tb ck cs (F ⊕ G) s lb) ≡ clabs rG ++ (lb ∷ (clabs rF ++ (suc lb ∷ [])))
+    eq = trans (clabs-skip (getμ G 1) _ (SC.getμ-P G 1))
+           (trans (clabs-++ rG _)
+             (cong (clabs rG ++_)
+               (trans (clabs-skip wG _ (SC.wrap-P 1 (lkind G ck) (lsz G cs) (lsz (F ⊕ G) cs) s))
+                 (cong (lb ∷_)
+                   (trans (clabs-skip (getμ F 1) _ (SC.getμ-P F 1))
+                     (trans (clabs-++ rF _)
+                       (cong (clabs rF ++_) (clabs-skip wF _ (SC.wrap-P 0 (lkind F ck) (lsz F cs) (lsz (F ⊕ G) cs) s)))))))))
+rebuild-cl (F ⊗ G) val tv tb ck cs s lb =
   subst (λ z → Dst z × Win lb (lb + lsize (F ⊗ G)) z) (sym eq)
-    (seq-swap (rebuild-cl F val tv tb (s + 4) lb) (rebuild-cl G val tv tb (s + 4) (lb + lsize F)))
+    (seq-swap (rebuild-cl F val tv tb ck cs (s + 4) lb) (rebuild-cl G val tv tb ck cs (s + 4) (lb + lsize F)))
   where
-    rF = rebuild-walk val tv tb F (s + 4) lb
-    rG = rebuild-walk val tv tb G (s + 4) (lb + lsize F)
-    eq : clabs (rebuild-walk val tv tb (F ⊗ G) s lb) ≡ clabs rG ++ clabs rF
-    eq = trans (clabs-++ rG _) (cong (clabs rG ++_) (trans (clabs-++ rF _) (++-identityʳ (clabs rF))))
+    rF = rebuild-walk val tv tb ck cs F (s + 4) lb
+    rG = rebuild-walk val tv tb ck cs G (s + 4) (lb + lsize F)
+    pF = put-k (lkind F ck) (lsz F cs) (suc s) (s + 3) 0
+    pG = put-k (lkind G ck) (lsz G cs) (s + 2) (s + 3) (lsz F cs)
+    tl : NC (store-at-slot (suc s) ∷ instr-alloc-heap (2 ⊔ lsz (F ⊗ G) cs) ∷ store-at-slot (s + 3) ∷
+             (pF ++ (pG ++ (load-from-slot (s + 3) ∷ []))))
+    tl = refl ∷ refl ∷ refl ∷
+         All-++⁺ (SC.put-k-P (lkind F ck) (lsz F cs) (suc s) (s + 3) 0)
+                 (All-++⁺ (SC.put-k-P (lkind G ck) (lsz G cs) (s + 2) (s + 3) (lsz F cs)) (refl ∷ []))
+    eq : clabs (rebuild-walk val tv tb ck cs (F ⊗ G) s lb) ≡ clabs rG ++ clabs rF
+    eq = trans (clabs-skip (getμ G (lsz F 1)) _ (SC.getμ-P G (lsz F 1)))
+           (trans (clabs-++ rG _)
+             (cong (clabs rG ++_)
+               (trans (clabs-skip (getμ F 0) _ (SC.getμ-P F 0))
+                 (trans (clabs-++ rF _)
+                   (trans (cong (clabs rF ++_) (clabs-nc tl)) (++-identityʳ (clabs rF)))))))
     seq-swap : Dst (clabs rF) × Win lb (lb + lsize F) (clabs rF)
              → Dst (clabs rG) × Win (lb + lsize F) (lb + lsize F + lsize G) (clabs rG)
              → Dst (clabs rG ++ clabs rF) × Win lb (lb + lsize (F ⊗ G)) (clabs rG ++ clabs rF)
@@ -166,50 +222,90 @@ rebuild-cl (F ⊗ G) val tv tb s lb =
           (All-++⁺ (win-weaken (m≤m+n lb (lsize F)) ≤-refl wG) (win-weaken ≤-refl (m≤m+n _ (lsize G)) wF))
 
 -- the re-suspension pass: labels in `[l, l′)`, distinct
-rs-label : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F) → ℕ
-rs-label n l lbl env wf = proj₁ (proj₂ (resuspend-layer n l lbl env wf))
+rs-label : ∀ (H : IRFunctor) (E A : IRTy) (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F) → ℕ
+rs-label H E A n l lbl env wf = proj₁ (proj₂ (resuspend-layer H E A n l lbl env wf))
 
-rs-trace : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F) → AbstractTrace
-rs-trace n l lbl env wf = proj₂ (proj₂ (resuspend-layer n l lbl env wf))
+rs-trace : ∀ (H : IRFunctor) (E A : IRTy) (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F) → AbstractTrace
+rs-trace H E A n l lbl env wf = proj₂ (proj₂ (resuspend-layer H E A n l lbl env wf))
 
-resusp-cl : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
-          → Dst (clabs (rs-trace n l lbl env wf)) × Win l (rs-label n l lbl env wf) (clabs (rs-trace n l lbl env wf))
-resusp-cl n l lbl env (wf-K _) = [] , []
-resusp-cl n l lbl env wf-Id    = [] , []
-resusp-cl n l lbl env (wf-Prod wfF wfG) =
+resusp-cl : ∀ (H : IRFunctor) (E A : IRTy) (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+          → Dst (clabs (rs-trace H E A n l lbl env wf)) × Win l (rs-label H E A n l lbl env wf) (clabs (rs-trace H E A n l lbl env wf))
+resusp-cl H E A n l lbl env (wf-K _) = [] , []
+resusp-cl H E A n l lbl env wf-Id    =
+  subst (λ z → Dst z × Win l l z) (sym (clabs-nc nc)) ([] , [])
+  where
+    nc : NC (rs-trace H E A n l lbl env wf-Id)
+    nc = refl ∷ refl ∷
+         All-++⁺ (SC.get-P E 0)
+           (refl ∷ refl ∷ refl ∷
+            All-++⁺ (SC.put-P E (suc n) (suc (suc n)) 0)
+              (All-++⁺ (SC.put-P A n (suc (suc n)) (size E))
+                (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])))
+resusp-cl H E A n l lbl env (wf-Prod {F} {G} wfF wfG) =
   subst (λ z → Dst z × Win l l3 z) (sym eq)
     (dst-++ (proj₁ iF) (proj₁ iG) (dj-win (proj₂ iF) (proj₂ iG) ≤-refl)
-    , All-++⁺ (win-weaken ≤-refl (resuspend-label-mono n2 l2 lbl env wfG) (proj₂ iF))
-              (win-weaken (resuspend-label-mono (suc (suc (suc n))) l lbl env wfF) ≤-refl (proj₂ iG)))
+    , All-++⁺ (win-weaken ≤-refl (resuspend-label-mono H E A n2 l2 lbl env wfG) (proj₂ iF))
+              (win-weaken (resuspend-label-mono H E A (suc (suc (suc (suc n)))) l lbl env wfF) ≤-refl (proj₂ iG)))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)
-    l2 = rs-label (suc (suc (suc n))) l lbl env wfF
-    l3 = rs-label n2 l2 lbl env wfG
-    tF = rs-trace (suc (suc (suc n))) l lbl env wfF
-    tG = rs-trace n2 l2 lbl env wfG
-    iF = resusp-cl (suc (suc (suc n))) l lbl env wfF
-    iG = resusp-cl n2 l2 lbl env wfG
-    eq : clabs (rs-trace n l lbl env (wf-Prod wfF wfG)) ≡ clabs tF ++ clabs tG
-    eq = trans (clabs-++ tF _) (cong (clabs tF ++_) (trans (clabs-++ tG _) (++-identityʳ (clabs tG))))
-resusp-cl n l lbl env (wf-Sum wfF wfG) =
+    n2 = proj₁ (resuspend-layer H E A (suc (suc (suc (suc n)))) l lbl env wfF)
+    l2 = rs-label H E A (suc (suc (suc (suc n)))) l lbl env wfF
+    l3 = rs-label H E A n2 l2 lbl env wfG
+    tF = rs-trace H E A (suc (suc (suc (suc n)))) l lbl env wfF
+    tG = rs-trace H E A n2 l2 lbl env wfG
+    iF = resusp-cl H E A (suc (suc (suc (suc n)))) l lbl env wfF
+    iG = resusp-cl H E A n2 l2 lbl env wfG
+    pF = put (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 0
+    pG = put (⟦ G ⟧TI (ν-type H)) (suc (suc (suc n))) (suc n) (size (⟦ F ⟧TI (ν-type H)))
+    tl : NC (store-at-slot (suc (suc (suc n))) ∷
+             instr-alloc-heap (2 ⊔ size (⟦ F ⟧TI (ν-type H) Once.IRTy.* ⟦ G ⟧TI (ν-type H))) ∷
+             store-at-slot (suc n) ∷ (pF ++ (pG ++ (load-from-slot (suc n) ∷ []))))
+    tl = refl ∷ refl ∷ refl ∷
+         All-++⁺ (SC.put-P (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 0)
+                 (All-++⁺ (SC.put-P (⟦ G ⟧TI (ν-type H)) (suc (suc (suc n))) (suc n) (size (⟦ F ⟧TI (ν-type H))))
+                          (refl ∷ []))
+    eq : clabs (rs-trace H E A n l lbl env (wf-Prod wfF wfG)) ≡ clabs tF ++ clabs tG
+    eq = trans (clabs-skip (get (⟦ F ⟧TI A) 0) _ (SC.get-P (⟦ F ⟧TI A) 0))
+           (trans (clabs-++ tF _)
+             (cong (clabs tF ++_)
+               (trans (clabs-skip (get (⟦ G ⟧TI A) (size (⟦ F ⟧TI A))) _ (SC.get-P (⟦ G ⟧TI A) (size (⟦ F ⟧TI A))))
+                 (trans (clabs-++ tG _)
+                   (trans (cong (clabs tG ++_) (clabs-nc tl)) (++-identityʳ (clabs tG)))))))
+resusp-cl H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
   subst (λ z → Dst z × Win l l3 z) (sym eq)
     (case-dst ssl≤l2 (proj₁ iF) (proj₁ iG) (proj₂ iF) (proj₂ iG)
-    , case-win ssl≤l2 (resuspend-label-mono n2 l2 lbl env wfG) (proj₂ iF) (proj₂ iG))
+    , case-win ssl≤l2 (resuspend-label-mono H E A n2 l2 lbl env wfG) (proj₂ iF) (proj₂ iG))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
-    l2 = rs-label (suc (suc (suc n))) (suc (suc l)) lbl env wfF
-    l3 = rs-label n2 l2 lbl env wfG
-    tF = rs-trace (suc (suc (suc n))) (suc (suc l)) lbl env wfF
-    tG = rs-trace n2 l2 lbl env wfG
-    iF = resusp-cl (suc (suc (suc n))) (suc (suc l)) lbl env wfF
-    iG = resusp-cl n2 l2 lbl env wfG
+    n2 = proj₁ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+    l2 = rs-label H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF
+    l3 = rs-label H E A n2 l2 lbl env wfG
+    tF = rs-trace H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF
+    tG = rs-trace H E A n2 l2 lbl env wfG
+    iF = resusp-cl H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF
+    iG = resusp-cl H E A n2 l2 lbl env wfG
     ssl≤l2 : suc (suc l) ≤ l2
-    ssl≤l2 = resuspend-label-mono (suc (suc (suc n))) (suc (suc l)) lbl env wfF
-    eq : clabs (rs-trace n l lbl env (wf-Sum wfF wfG)) ≡ clabs tG ++ (l ∷ (clabs tF ++ (suc l ∷ [])))
-    eq = trans (clabs-++ (tG ++ _) _)
-           (cong₂ _++_ (trans (clabs-++ tG _) (++-identityʳ (clabs tG)))
-                       (cong (l ∷_) (trans (clabs-++ (tF ++ _) _)
-                                           (cong (_++ (suc l ∷ [])) (trans (clabs-++ tF _) (++-identityʳ (clabs tF)))))))
+    ssl≤l2 = resuspend-label-mono H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF
+    sz = size (⟦ F ⟧TI (ν-type H) +ᵀ ⟦ G ⟧TI (ν-type H))
+    -- an arm: its labels are its sub-pass's
+    arm : IRFunctor → AbstractTrace → ℕ → AbstractTrace
+    arm P t tag = (restore-input n ∷ []) ++ get (⟦ P ⟧TI A) 1 ++ t ++
+                  (store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ sz) ∷ store-at-slot (suc n) ∷
+                   mov-to-input ∷ instr-load-tag-lit tag ∷ store-at 0 ∷ []) ++
+                  put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++ (load-from-slot (suc n) ∷ [])
+    arm-eq : ∀ (P : IRFunctor) (t : AbstractTrace) (tag : ℕ) → clabs (arm P t tag) ≡ clabs t
+    arm-eq P t tag =
+      trans (clabs-skip (get (⟦ P ⟧TI A) 1) _ (SC.get-P (⟦ P ⟧TI A) 1))
+        (trans (clabs-++ t _)
+          (trans (cong (clabs t ++_)
+                   (clabs-nc {t = store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ sz) ∷ store-at-slot (suc n) ∷
+                                  mov-to-input ∷ instr-load-tag-lit tag ∷ store-at 0 ∷
+                                  (put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++ (load-from-slot (suc n) ∷ []))}
+                     (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+                      All-++⁺ (SC.put-P (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (refl ∷ []))))
+                 (++-identityʳ (clabs t))))
+    eq : clabs (rs-trace H E A n l lbl env (wf-Sum wfF wfG)) ≡ clabs tG ++ (l ∷ (clabs tF ++ (suc l ∷ [])))
+    eq = trans (clabs-++ (arm G tG 1) _)
+           (cong₂ _++_ (arm-eq G tG 1)
+                       (cong (l ∷_) (trans (clabs-++ (arm F tF 0) _) (cong (_++ (suc l ∷ [])) (arm-eq F tF 0)))))
 
 
 ------------------------------------------------------------------------
@@ -226,7 +322,7 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
-  using (ir-to-trace'; sigop-code; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; in-trace; out-trace)
+  using (ir-to-trace'; sigop-code; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; in-trace; out-trace; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; inj-trace; env-entry; cata-body)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Codegen.LabelRange o using (label-of; label-mono; cata-label-of)
 open import Once.CCC.Codegen.LabelScope o using (trace-of)
@@ -337,10 +433,10 @@ offsets-below Kb ks {w} = toWitness w
 ------------------------------------------------------------------------
 
 
-CataOK : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) (ab : List (LabelId × ℕ × AbstractTrace)) (lo : ℕ) → Set
-CataOK st bb n1 l1 at ab lo =
-  Facts (clabs (proj₂ (proj₂ (cata-dispatch st bb n1 l1 at)))) (clabs (blocks-layout ab))
-  × Win lo (cata-label-of (cata-dispatch st bb n1 l1 at)) (clabs (proj₂ (proj₂ (cata-dispatch st bb n1 l1 at))))
+CataOK : ∀ (E A : IRTy) (G : Fun 0) (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) (ab : List (LabelId × ℕ × AbstractTrace)) (lo : ℕ) → Set
+CataOK E A G st bb n1 l1 at ab lo =
+  Facts (clabs (proj₂ (proj₂ (cata-dispatch E A G st bb n1 l1 at)))) (clabs (blocks-layout ab))
+  × Win lo (cata-label-of (cata-dispatch E A G st bb n1 l1 at)) (clabs (proj₂ (proj₂ (cata-dispatch E A G st bb n1 l1 at))))
 
 private
   -- a strategy whose skeleton offsets `ks` (with the algebra spliced after `S1`)
@@ -355,12 +451,15 @@ private
     , cata-win {S1 = S1} {E = E} lo≤l1 (subst (l1 ≤_) (sym (sucs-+ Kb l1)) (m≤n+m l1 Kb))
                (subst (Win l1 (sucs Kb l1)) (sym eq) (sucs-win l1 Kb bks)) wA
 
-cata-frag : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) (ab : List (LabelId × ℕ × AbstractTrace)) {lo}
+cata-frag : ∀ (E A : IRTy) (G : Fun 0) (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) (ab : List (LabelId × ℕ × AbstractTrace)) {lo}
           → lo ≤ l1 → Facts (clabs at) (clabs (blocks-layout ab)) → Win lo l1 (clabs at) → Win lo l1 (clabs (blocks-layout ab))
-          → CataOK st bb n1 l1 at ab lo
-cata-frag strat-const bb n1 l1 at ab {lo} lo≤l1 f wA wC =
+          → CataOK E A G st bb n1 l1 at ab lo
+cata-frag E A G strat-const bb n1 l1 at ab {lo} lo≤l1 f wA wC =
   subst (λ T → Facts T (clabs (blocks-layout ab)) × Win lo (l1 + 2) T)
-    (sym (cong (l1 ∷_) (clabs-++ at _)))
+    (sym (trans (clabs-skip (cata-call-setup E n1 (n1 + 1) (n1 + 2) l1) _ (SC.setup-P E n1 (n1 + 1) (n1 + 2) l1))
+           (trans (clabs-skip (cata-call E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3)) _
+                              (SC.call-P mov-to-output refl E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3)))
+                  (cong (l1 ∷_) (clabs-++ at _)))))
     ( cata-gen {S1 = l1 ∷ []} {E = l1 + 1 ∷ []} (((λ eq → <⇒≢ l1<l1+1 eq) ∷ []) ∷ [] ∷ [])
                (≤-refl ∷ m≤m+n l1 1 ∷ []) f wA wC
     , cata-win {S1 = l1 ∷ []} {E = l1 + 1 ∷ []} lo≤l1 (m≤m+n l1 2)
@@ -369,9 +468,12 @@ cata-frag strat-const bb n1 l1 at ab {lo} lo≤l1 f wA wC =
   where
     l1<l1+1 : l1 < l1 + 1
     l1<l1+1 = subst (_< l1 + 1) (+-identityʳ l1) (+-monoʳ-< l1 (s≤s z≤n))
-cata-frag strat-box bb n1 l1 at ab {lo} lo≤l1 f wA wC =
+cata-frag E A G strat-box bb n1 l1 at ab {lo} lo≤l1 f wA wC =
   subst (λ T → Facts T (clabs (blocks-layout ab)) × Win lo (l1 + 2) T)
-    (sym (cong (l1 ∷_) (clabs-++ at _)))
+    (sym (trans (clabs-skip (cata-call-setup E n1 (n1 + 1) (n1 + 2) l1) _ (SC.setup-P E n1 (n1 + 1) (n1 + 2) l1))
+           (trans (clabs-skip (cata-call-box E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3)) _
+                              (SC.call-P (load-at 0) refl E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3)))
+                  (cong (l1 ∷_) (clabs-++ at _)))))
     ( cata-gen {S1 = l1 ∷ []} {E = l1 + 1 ∷ []} (((λ eq → <⇒≢ l1<l1+1 eq) ∷ []) ∷ [] ∷ [])
                (≤-refl ∷ m≤m+n l1 1 ∷ []) f wA wC
     , cata-win {S1 = l1 ∷ []} {E = l1 + 1 ∷ []} lo≤l1 (m≤m+n l1 2)
@@ -380,35 +482,48 @@ cata-frag strat-box bb n1 l1 at ab {lo} lo≤l1 f wA wC =
   where
     l1<l1+1 : l1 < l1 + 1
     l1<l1+1 = subst (_< l1 + 1) (+-identityʳ l1) (+-monoʳ-< l1 (s≤s z≤n))
-cata-frag (strat-branching F) bb n1 l1 at ab {lo} lo≤l1 f wA wC =
+cata-frag E A G (strat-branching F) bb n1 l1 at ab {lo} lo≤l1 f wA wC =
   subst (λ T → Facts T (clabs (blocks-layout ab)) × Win lo (BLb + 2) T)
-    (sym (cong (l1 ∷_) eq))
-    ( cata-gen {S1 = S1} {E = E ∷ []} dSE aSE f wA wC
-    , cata-win {S1 = S1} {E = E ∷ []} lo≤l1 (≤-trans (m≤m+n l1 4) (≤-trans 4≤V (≤-trans V≤R (m≤m+n BLb 2)))) wSE wA )
+    (sym eqT)
+    ( cata-gen {S1 = S1} {E = E′ ∷ []} dSE aSE f wA wC
+    , cata-win {S1 = S1} {E = E′ ∷ []} lo≤l1 (≤-trans (m≤m+n l1 4) (≤-trans 4≤V (≤-trans V≤R (m≤m+n BLb 2)))) wSE wA )
   where
     lF = lsize F
     vw = visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4)
-    rw = rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4 + lF)
+    rw = rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) (kind A) (size A) F (n1 + 7) (l1 + 4 + lF)
     V  = clabs vw
     R  = clabs rw
     BLb = l1 + 4 + lF + lF
-    E  = BLb + 1
+    E′ = BLb + 1
     REST = V ++ (suc l1 ∷ (l1 + 2) ∷ (R ++ ((l1 + 3) ∷ BLb ∷ [])))
     S1 = l1 ∷ REST
+    B0 = n1 + 7 + (4 * fsize F) + 4
 
-    shape : ∀ (V R A Es : List ℕ) (b c d t : ℕ)
-          → (V ++ (b ∷ c ∷ (R ++ []))) ++ (d ∷ t ∷ (A ++ Es)) ≡ (V ++ (b ∷ c ∷ (R ++ (d ∷ t ∷ [])))) ++ (A ++ Es)
-    shape V R A Es b c d t =
+    shape : ∀ (V R Z : List ℕ) (b c d t : ℕ)
+          → (V ++ (b ∷ c ∷ R)) ++ (d ∷ t ∷ Z) ≡ (V ++ (b ∷ c ∷ (R ++ (d ∷ t ∷ [])))) ++ Z
+    shape V R Z b c d t =
       trans (++-assoc V _ _)
-        (trans (cong (λ z → V ++ (b ∷ c ∷ z)) (trans (cong (_++ (d ∷ t ∷ (A ++ Es))) (++-identityʳ R))
-                                                       (sym (++-assoc R (d ∷ t ∷ []) (A ++ Es)))))
-               (sym (++-assoc V _ _)))
+        (trans (cong (λ z → V ++ (b ∷ c ∷ z)) (sym (++-assoc R (d ∷ t ∷ []) Z)))
+               (sym (++-assoc V _ Z)))
 
-    eq : clabs ((vw ++ _) ++ _) ≡ REST ++ (clabs at ++ (E ∷ []))
-    eq = trans (clabs-++ (vw ++ _) _)
-           (trans (cong₂ _++_ (trans (clabs-++ vw _) (cong (λ z → V ++ (suc l1 ∷ (l1 + 2) ∷ z)) (clabs-++ rw _)))
-                              (cong (λ z → (l1 + 3) ∷ BLb ∷ z) (clabs-++ at _)))
-                  (shape V R (clabs at) (E ∷ []) (suc l1) (l1 + 2) (l1 + 3) BLb))
+    -- the setup and the call carry no label; `I₁` the init/flatten/fold labels
+    -- around the two walks, `I₂` its one, the body its two around `at`
+    eqI₁ : clabs (cata-br-I₁ (kind A) (size A) F n1 l1) ≡ l1 ∷ (V ++ (suc l1 ∷ (l1 + 2) ∷ R))
+    eqI₁ = cong (l1 ∷_) (trans (clabs-++ vw _)
+                          (cong (λ z → V ++ (suc l1 ∷ (l1 + 2) ∷ z)) (trans (clabs-++ rw _) (++-identityʳ R))))
+
+    eqT : clabs (proj₂ (proj₂ (cata-dispatch E A G (strat-branching F) bb n1 l1 at)))
+        ≡ l1 ∷ (REST ++ (clabs at ++ (E′ ∷ [])))
+    eqT = trans (clabs-skip (cata-call-setup E B0 (B0 + 1) (B0 + 2) BLb) _ (SC.setup-P E B0 (B0 + 1) (B0 + 2) BLb))
+            (trans (clabs-++ (cata-br-I₁ (kind A) (size A) F n1 l1) _)
+              (trans (cong₂ _++_ eqI₁
+                        (trans (clabs-skip (cata-call E (lkind F (kind A)) (lsz F (size A)) B0 (B0 + 1) (B0 + 2) (B0 + 3)) _
+                                           (SC.call-P mov-to-output refl E (lkind F (kind A)) (lsz F (size A))
+                                                      B0 (B0 + 1) (B0 + 2) (B0 + 3)))
+                               (clabs-++ (cata-br-I₂ n1 l1) (cata-body BLb (BLb + 1) bb at))))
+                (cong (l1 ∷_)
+                  (trans (cong (λ z → (V ++ (suc l1 ∷ (l1 + 2) ∷ R)) ++ ((l1 + 3) ∷ BLb ∷ z)) (clabs-++ at (instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label (ℓ o (BLb + 1))) ∷ [])))
+                         (shape V R (clabs at ++ (E′ ∷ [])) (suc l1) (l1 + 2) (l1 + 3) BLb)))))
 
     -- the windows, in numeric order
     lt : ∀ {i j} → i < j → l1 + i < l1 + j
@@ -422,13 +537,13 @@ cata-frag (strat-branching F) bb n1 l1 at ab {lo} lo≤l1 f wA wC =
     wV : Win (l1 + 4) (l1 + 4 + lF) V
     wV = proj₂ (visit-cl F n1 (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4))
     wR : Win (l1 + 4 + lF) BLb R
-    wR = proj₂ (rebuild-cl F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4 + lF))
+    wR = proj₂ (rebuild-cl F (n1 + 2) (n1 + 4) (n1 + 5) (kind A) (size A) (n1 + 7) (l1 + 4 + lF))
     wT : Win BLb (BLb + 1) (BLb ∷ [])
     wT = (≤-refl , subst (_< BLb + 1) (+-identityʳ BLb) (+-monoʳ-< BLb (s≤s z≤n))) ∷ []
-    wE : Win (BLb + 1) (BLb + 2) (E ∷ [])
+    wE : Win (BLb + 1) (BLb + 2) (E′ ∷ [])
     wE = (≤-refl , +-monoʳ-< BLb (s≤s (s≤s z≤n))) ∷ []
     dV = proj₁ (visit-cl F n1 (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4))
-    dR = proj₁ (rebuild-cl F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4 + lF))
+    dR = proj₁ (rebuild-cl F (n1 + 2) (n1 + 4) (n1 + 5) (kind A) (size A) (n1 + 7) (l1 + 4 + lF))
 
     4≤V  : l1 + 4 ≤ l1 + 4 + lF
     4≤V  = m≤m+n (l1 + 4) lF
@@ -481,12 +596,12 @@ cata-frag (strat-branching F) bb n1 l1 at ab {lo} lo≤l1 f wA wC =
     l1<1 = subst (_< l1 + 1) (+-identityʳ l1) (lt (s≤s z≤n))
     wS1 : Win l1 (BLb + 1) S1
     wS1 = (≤-refl , ≤-trans l1<1 (≤-trans (toBL (s≤s z≤n)) BL≤)) ∷ win-weaken (m≤m+n l1 1) ≤-refl wREST
-    dSE : Dst (S1 ++ (E ∷ []))
+    dSE : Dst (S1 ++ (E′ ∷ []))
     dSE = dst-++ (fresh-below l1<1 wREST ∷ D4) ([] ∷ []) (dj-win wS1 wE ≤-refl)
-    wSE : Win l1 (BLb + 2) (S1 ++ (E ∷ []))
+    wSE : Win l1 (BLb + 2) (S1 ++ (E′ ∷ []))
     wSE = All-++⁺ (win-weaken ≤-refl (+-monoʳ-≤ BLb (s≤s z≤n)) wS1)
                   (win-weaken (≤-trans (m≤m+n l1 4) (≤-trans 4≤V (≤-trans V≤R BL≤))) ≤-refl wE)
-    aSE : All (l1 ≤_) (S1 ++ (E ∷ []))
+    aSE : All (l1 ≤_) (S1 ++ (E′ ∷ []))
     aSE = All-map proj₁ wSE
 
 ------------------------------------------------------------------------
@@ -503,6 +618,10 @@ private
   none : ∀ {lo hi} → FragP lo hi [] []
   none = ([] , [] , []) , [] , []
 
+  -- plan 0.123 B.4 α: a label-free trace whose length a type decides
+  none-nc : ∀ {lo hi} (t : AbstractTrace) → NC t → FragP lo hi (clabs t) []
+  none-nc t nc = transport {P = FragP _ _} (clabs-nc nc) refl none
+
 -- D366: `In`'s three shapes and `out-μ`'s carry no control label.
 in-frag : ∀ {lo hi} (r : MuRep) (n : ℕ) → FragP lo hi (clabs (in-trace r n)) []
 in-frag mu-box  n = none
@@ -516,8 +635,8 @@ out-frag mu-ptr  = none
 
 frag : ∀ {A B} (ir : IR A B) (n l : ℕ) → Frag ir n l
 frag id       n l = none
-frag fst      n l = none
-frag snd      n l = none
+frag (fst {A} {B}) n l = none-nc (get A 0) (SC.get-P A 0)
+frag (snd {A} {B}) n l = none-nc (get B (size A)) (SC.get-P B (size A))
 frag terminal n l = none
 frag initial  n l = none
 frag (g ∘ f)  n l =
@@ -532,9 +651,12 @@ frag (g ∘ f)  n l =
     l2 = HI g n1 l1
     Ff = frag f n l
     Fg = frag g n1 l1
-frag ⟨ f , g ⟩ n l =
+frag (⟨_,_⟩ {A} {B} {C} f g) n l =
   transport {P = FragP l l2}
-    (trans (clabs-++ (trace-of Xf) _) (cong (TL f n4 l ++_) (trans (clabs-++ (trace-of Xg) _) (++-identityʳ _))))
+    (trans (clabs-++ (trace-of Xf) _)
+      (cong (TL f n4 l ++_)
+        (trans (clabs-++ (trace-of Xg) _)
+          (trans (cong (TL g n1 l1 ++_) (clabs-nc tl)) (++-identityʳ _)))))
     (bl-++ (bodies-of Xf) _)
     ( seq-frag (proj₁ Ff) (proj₁ Fg) (proj₁ (proj₂ Ff)) (proj₂ (proj₂ Ff)) (proj₁ (proj₂ Fg)) (proj₂ (proj₂ Fg))
     , seq-win (label-mono f n4 l) (label-mono g n1 l1) (proj₁ (proj₂ Ff)) (proj₁ (proj₂ Fg))
@@ -548,31 +670,50 @@ frag ⟨ f , g ⟩ n l =
     l2 = HI g n1 l1
     Ff = frag f n4 l
     Fg = frag g n1 l1
-frag (curry b) n l =
+    pB = put B (suc n) (suc (suc (suc n))) 0
+    pC = put C (suc (suc n)) (suc (suc (suc n))) (size B)
+    tl : NC (store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ size (B Once.IRTy.* C)) ∷
+             store-at-slot (suc (suc (suc n))) ∷ (pB ++ (pC ++ (load-from-slot (suc (suc (suc n))) ∷ []))))
+    tl = refl ∷ refl ∷ refl ∷
+         All-++⁺ (SC.put-P B (suc n) (suc (suc (suc n))) 0)
+                 (All-++⁺ (SC.put-P C (suc (suc n)) (suc (suc (suc n))) (size B)) (refl ∷ []))
+frag (curry {E} {A} b) n l =
   transport {P = FragP l l2} refl
-    (cong (l ∷_) (trans (clabs-++ (trace-of Xb ++ _) _) (cong (_++ BL b 0 ssl) (trans (clabs-++ (trace-of Xb) _) (++-identityʳ _)))))
+    (cong (l ∷_) (trans (clabs-++ ((pro ++ trace-of Xb) ++ _) _)
+                        (cong (_++ BL b bs ssl)
+                              (trans (clabs-++ (pro ++ trace-of Xb) _)
+                                     (trans (++-identityʳ _) (clabs-skip pro (trace-of Xb) (SC.entry-P (kind E) E A)))))))
     ( ([] , (fresh-below l<ssl wX ∷ dX) , [])
     , []
-    , ((≤-refl , <-≤-trans l<ssl (label-mono b 0 ssl)) ∷ win-weaken (≤-trans (n≤1+n l) (n≤1+n (suc l))) ≤-refl wX) )
+    , ((≤-refl , <-≤-trans l<ssl (label-mono b bs ssl)) ∷ win-weaken (≤-trans (n≤1+n l) (n≤1+n (suc l))) ≤-refl wX) )
   where
     ssl = suc (suc l)
-    Xb = ir-to-trace' 0 ssl b
-    l2 = HI b 0 ssl
-    Fb = frag b 0 ssl
+    bs = proj₁ (env-entry (kind E) E A)
+    pro = proj₂ (env-entry (kind E) E A)
+    Xb = ir-to-trace' bs ssl b
+    l2 = HI b bs ssl
+    Fb = frag b bs ssl
     dX = dst-++ (proj₁ (proj₁ Fb)) (proj₁ (proj₂ (proj₁ Fb))) (proj₂ (proj₂ (proj₁ Fb)))
     wX = All-++⁺ (proj₁ (proj₂ Fb)) (proj₂ (proj₂ Fb))
     l<ssl : l < ssl
     l<ssl = ≤-trans (n<1+n l) (n≤1+n (suc l))
-frag apply n l = none
+frag (apply {A} {B}) n l =
+  none-nc (trace-of (ir-to-trace' n l (apply {A} {B})))
+    (All-++⁺ (SC.get-P A 1)
+      (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+       All-++⁺ (SC.put-P A n (suc (suc n)) 1) (refl ∷ refl ∷ refl ∷ [])))
 frag (SigOp si) n l = sig-frag si n l (cmp-of (sem si))
 frag (Call _) n l = none
 frag (const fits-int _)   n l = none
 frag (const fits-float _) n l = none
-frag inl n l = none
-frag inr n l = none
-frag (case f g) n l =
+frag (inl {A} {B}) n l = none-nc (inj-trace 0 A (A +ᵀ B) n) (SC.inj-P 0 A (A +ᵀ B) n)
+frag (inr {A} {B}) n l = none-nc (inj-trace 1 B (A +ᵀ B) n) (SC.inj-P 1 B (A +ᵀ B) n)
+frag (case {A} {B} f g) n l =
   transport {P = FragP l l2}
-    (trans (clabs-++ (trace-of Xg) _) (cong (λ z → TL g n1 l1 ++ (l ∷ z)) (clabs-++ (trace-of Xf) _)))
+    (trans (clabs-skip (get B 1) _ (SC.get-P B 1))
+      (trans (clabs-++ (trace-of Xg) _)
+        (cong (λ z → TL g n1 l1 ++ (l ∷ z))
+          (trans (clabs-skip (get A 1) _ (SC.get-P A 1)) (clabs-++ (trace-of Xf) _)))))
     (bl-++ (bodies-of Xf) _)
     ( ( case-dst ssl≤l1 dTf dTg wTf wTg
       , dst-++ dBf dBg (dj-win wBf wBg ≤-refl)
@@ -603,8 +744,11 @@ frag (case f g) n l =
     wTg = proj₁ (proj₂ Fg) ; wBg = proj₂ (proj₂ Fg)
 -- the loop defines `l` (its top) before the round and `suc l` (its exit) after
 -- it; the round's labels and blocks sit at `suc (suc l)` and above.
-frag (Iter b) n l =
-  transport {P = FragP l lb} (cong (l ∷_) (clabs-++ (trace-of Xb) _)) refl
+frag (Iter {E} {A} {B} b) n l =
+  transport {P = FragP l lb}
+    (trans (clabs-skip (get E 0) _ (SC.get-P E 0))
+      (cong (l ∷_) (trans (clabs-++ (trace-of Xb) _) (cong (TL b (suc (suc (suc (suc n)))) ssl ++_) tl))))
+    refl
     ( ( All-++⁺ (fresh-below l<ssl wTb) (fresh-below (n<1+n l) w1)
         ∷ dst-++ dTb ([] ∷ []) (dj-sym (dj-win w1 wTb ≤-refl))
       , dBb
@@ -625,19 +769,34 @@ frag (Iter b) n l =
     Fb = frag b (suc (suc (suc (suc n)))) ssl
     dTb = proj₁ (proj₁ Fb) ; dBb = proj₁ (proj₂ (proj₁ Fb)) ; jb = proj₂ (proj₂ (proj₁ Fb))
     wTb = proj₁ (proj₂ Fb) ; wBb = proj₂ (proj₂ Fb)
+    pE = put E (suc n) (suc (suc (suc n))) 0
+    pA = put A (suc (suc n)) (suc (suc (suc n))) (size E)
+    -- after the round: the exit test, the next pair (label-free), the back
+    -- edge and the exit label, then the exit's read
+    tl : clabs (mov-to-input ∷ instr-ctrl (c-branch-tag-zero (ℓ o (suc l))) ∷
+                (get A 1 ++ (store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ size (E Once.IRTy.* A)) ∷
+                              store-at-slot (suc (suc (suc n))) ∷
+                              (pE ++ (pA ++ (load-from-slot (suc (suc (suc n))) ∷ mov-to-input ∷
+                                             instr-ctrl (c-jmp (ℓ o l)) ∷ instr-ctrl (c-label (ℓ o (suc l))) ∷
+                                             get B 1))))))
+       ≡ suc l ∷ []
+    tl = trans (clabs-skip (get A 1) _ (SC.get-P A 1))
+           (trans (clabs-skip pE _ (SC.put-P E (suc n) (suc (suc (suc n))) 0))
+             (trans (clabs-skip pA _ (SC.put-P A (suc (suc n)) (suc (suc (suc n))) (size E)))
+                    (cong (suc l ∷_) (clabs-nc (SC.get-P B 1)))))
 frag (In {F} _)    n l = in-frag (mu-rep F) n
 frag (out-μ {F} _) n l = out-frag (mu-rep F)
-frag (Cata {F} _ alg) n l =
-  proj₁ cf , proj₂ cf , win-weaken ≤-refl (cata-label-mono st (proj₁ XA) n (label-of XA) (trace-of XA)) (proj₂ (proj₂ FA))
+frag (Cata {F} _ {E} {A} alg) n l =
+  proj₁ cf , proj₂ cf , win-weaken ≤-refl (cata-label-mono E A ⌈ F ⌉F st (proj₁ XA) n (label-of XA) (trace-of XA)) (proj₂ (proj₂ FA))
   where
     XA = ir-to-trace' 0 l alg
     st = cata-strategy ⌈ F ⌉F
     FA = frag alg 0 l
-    cf = cata-frag st (proj₁ XA) n (label-of XA) (trace-of XA) (bodies-of XA) (label-mono alg 0 l)
+    cf = cata-frag E A ⌈ F ⌉F st (proj₁ XA) n (label-of XA) (trace-of XA) (bodies-of XA) (label-mono alg 0 l)
            (proj₁ FA) (proj₁ (proj₂ FA)) (proj₂ (proj₂ FA))
 frag (Out _)    n l = none
 frag (in-ν _)   n l = ([] , ([] ∷ []) , []) , [] , ((≤-refl , n<1+n l) ∷ [])
-frag (Ana wf c) n l =
+frag (Ana {F} wf {E} {A} c) n l =
   transport {P = FragP l l3} refl (cong (l ∷_) eq)
     ( ([] , (fresh-below (n<1+n l) wAll ∷ dB) , [])
     , []
@@ -646,15 +805,15 @@ frag (Ana wf c) n l =
     Xc = ir-to-trace' 1 (suc l) c
     ct = trace-of Xc
     l2 = label-of Xc
-    rt = rs-trace (proj₁ Xc) l2 (ℓ o l) 0 wf
-    l3 = rs-label (proj₁ Xc) l2 (ℓ o l) 0 wf
+    rt = rs-trace F E A (proj₁ Xc) l2 (ℓ o l) 0 wf
+    l3 = rs-label F E A (proj₁ Xc) l2 (ℓ o l) 0 wf
     l2≤l3 : l2 ≤ l3
-    l2≤l3 = resuspend-label-mono (proj₁ Xc) l2 (ℓ o l) 0 wf
+    l2≤l3 = resuspend-label-mono F E A (proj₁ Xc) l2 (ℓ o l) 0 wf
     Fc = frag c 1 (suc l)
     dCT = proj₁ (proj₁ Fc) ; dCB = proj₁ (proj₂ (proj₁ Fc)) ; jC = proj₂ (proj₂ (proj₁ Fc))
     wCT = proj₁ (proj₂ Fc) ; wCB = proj₂ (proj₂ Fc)
-    dRT = proj₁ (resusp-cl (proj₁ Xc) l2 (ℓ o l) 0 wf)
-    wRT = proj₂ (resusp-cl (proj₁ Xc) l2 (ℓ o l) 0 wf)
+    dRT = proj₁ (resusp-cl F E A (proj₁ Xc) l2 (ℓ o l) 0 wf)
+    wRT = proj₂ (resusp-cl F E A (proj₁ Xc) l2 (ℓ o l) 0 wf)
     dB : Dst ((clabs ct ++ clabs rt) ++ BL c 1 (suc l))
     dB = dst-++ (dst-++ dCT dRT (dj-win wCT wRT ≤-refl)) dCB (dj-++ˡ jC (dj-sym (dj-win wCB wRT ≤-refl)))
     wAll : Win (suc l) l3 ((clabs ct ++ clabs rt) ++ BL c 1 (suc l))
@@ -683,49 +842,106 @@ visit-nf : ∀ (F : Fun 0) (todo tv tb s lb : ℕ) → NoFn (visit-walk todo tv 
 visit-nf (K _)   todo tv tb s lb = refl
 visit-nf Id      todo tv tb s lb = refl
 visit-nf (F ⊕ G) todo tv tb s lb =
-  nf (visit-walk todo tv tb G (s + 4) (suc (suc lb) + lsize F)) _ (visit-nf G todo tv tb (s + 4) (suc (suc lb) + lsize F))
-     (nf (visit-walk todo tv tb F (s + 4) (suc (suc lb))) _ (visit-nf F todo tv tb (s + 4) (suc (suc lb))) refl)
+  nf (getμ G 1) _ (nf-all (SF.getμ-P G 1))
+    (nf (visit-walk todo tv tb G (s + 4) (suc (suc lb) + lsize F)) _ (visit-nf G todo tv tb (s + 4) (suc (suc lb) + lsize F))
+      (nf (getμ F 1) _ (nf-all (SF.getμ-P F 1))
+        (nf (visit-walk todo tv tb F (s + 4) (suc (suc lb))) _ (visit-nf F todo tv tb (s + 4) (suc (suc lb))) refl)))
 visit-nf (F ⊗ G) todo tv tb s lb =
-  nf (visit-walk todo tv tb F (s + 4) lb) _ (visit-nf F todo tv tb (s + 4) lb) (visit-nf G todo tv tb (s + 4) (lb + lsize F))
+  nf (getμ F 0) _ (nf-all (SF.getμ-P F 0))
+    (nf (visit-walk todo tv tb F (s + 4) lb) _ (visit-nf F todo tv tb (s + 4) lb)
+      (nf (getμ G (lsz F 1)) _ (nf-all (SF.getμ-P G (lsz F 1))) (visit-nf G todo tv tb (s + 4) (lb + lsize F))))
 
-rebuild-nf : ∀ (F : Fun 0) (val tv tb s lb : ℕ) → NoFn (rebuild-walk val tv tb F s lb)
-rebuild-nf (K _)   val tv tb s lb = refl
-rebuild-nf Id      val tv tb s lb = refl
-rebuild-nf (F ⊕ G) val tv tb s lb =
-  nf (rebuild-walk val tv tb G (s + 4) (suc (suc lb) + lsize F)) _ (rebuild-nf G val tv tb (s + 4) (suc (suc lb) + lsize F))
-     (nf (rebuild-walk val tv tb F (s + 4) (suc (suc lb))) _ (rebuild-nf F val tv tb (s + 4) (suc (suc lb))) refl)
-rebuild-nf (F ⊗ G) val tv tb s lb =
-  nf (rebuild-walk val tv tb G (s + 4) (lb + lsize F)) _ (rebuild-nf G val tv tb (s + 4) (lb + lsize F))
-     (nf (rebuild-walk val tv tb F (s + 4) lb) _ (rebuild-nf F val tv tb (s + 4) lb) refl)
+rebuild-nf : ∀ (F : Fun 0) (val tv tb : ℕ) (ck : Kind) (cs s lb : ℕ) → NoFn (rebuild-walk val tv tb ck cs F s lb)
+rebuild-nf (K _)   val tv tb ck cs s lb = refl
+rebuild-nf Id      val tv tb ck cs s lb = refl
+rebuild-nf (F ⊕ G) val tv tb ck cs s lb =
+  nf (getμ G 1) _ (nf-all (SF.getμ-P G 1))
+    (nf (rebuild-walk val tv tb ck cs G (s + 4) (suc (suc lb) + lsize F)) _
+        (rebuild-nf G val tv tb ck cs (s + 4) (suc (suc lb) + lsize F))
+      (nf (wrap-sum 1 (lkind G ck) (lsz G cs) (lsz (F ⊕ G) cs) s) _
+          (nf-all (SF.wrap-P 1 (lkind G ck) (lsz G cs) (lsz (F ⊕ G) cs) s))
+        (nf (getμ F 1) _ (nf-all (SF.getμ-P F 1))
+          (nf (rebuild-walk val tv tb ck cs F (s + 4) (suc (suc lb))) _
+              (rebuild-nf F val tv tb ck cs (s + 4) (suc (suc lb)))
+            (nf (wrap-sum 0 (lkind F ck) (lsz F cs) (lsz (F ⊕ G) cs) s) _
+                (nf-all (SF.wrap-P 0 (lkind F ck) (lsz F cs) (lsz (F ⊕ G) cs) s)) refl)))))
+rebuild-nf (F ⊗ G) val tv tb ck cs s lb =
+  nf (getμ G (lsz F 1)) _ (nf-all (SF.getμ-P G (lsz F 1)))
+    (nf (rebuild-walk val tv tb ck cs G (s + 4) (lb + lsize F)) _ (rebuild-nf G val tv tb ck cs (s + 4) (lb + lsize F))
+      (nf (getμ F 0) _ (nf-all (SF.getμ-P F 0))
+        (nf (rebuild-walk val tv tb ck cs F (s + 4) lb) _ (rebuild-nf F val tv tb ck cs (s + 4) lb)
+          (nf (put-k (lkind F ck) (lsz F cs) (suc s) (s + 3) 0) _
+              (nf-all (SF.put-k-P (lkind F ck) (lsz F cs) (suc s) (s + 3) 0))
+            (nf (put-k (lkind G ck) (lsz G cs) (s + 2) (s + 3) (lsz F cs)) _
+                (nf-all (SF.put-k-P (lkind G ck) (lsz G cs) (s + 2) (s + 3) (lsz F cs))) refl)))))
 
-resusp-nf : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F) → NoFn (rs-trace n l lbl env wf)
-resusp-nf n l lbl env (wf-K _) = refl
-resusp-nf n l lbl env wf-Id    = refl
-resusp-nf n l lbl env (wf-Prod wfF wfG) =
-  nf (rs-trace (suc (suc (suc n))) l lbl env wfF) _ (resusp-nf (suc (suc (suc n))) l lbl env wfF)
-     (nf (rs-trace (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)) (rs-label (suc (suc (suc n))) l lbl env wfF) lbl env wfG) _
-         (resusp-nf (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)) (rs-label (suc (suc (suc n))) l lbl env wfF) lbl env wfG) refl)
-resusp-nf n l lbl env (wf-Sum wfF wfG) =
-  nf (tG ++ _) _ (nf tG _ (resusp-nf n2 l2 lbl env wfG) refl)
-     (nf (tF ++ _) _ (nf tF _ (resusp-nf (suc (suc (suc n))) (suc (suc l)) lbl env wfF) refl) refl)
+resusp-nf : ∀ (H : IRFunctor) (E A : IRTy) (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+          → NoFn (rs-trace H E A n l lbl env wf)
+resusp-nf H E A n l lbl env (wf-K _) = refl
+resusp-nf H E A n l lbl env wf-Id    =
+  nf (get E 0) _ (nf-all (SF.get-P E 0))
+    (nf (put E (suc n) (suc (suc n)) 0) _ (nf-all (SF.put-P E (suc n) (suc (suc n)) 0))
+      (nf (put A n (suc (suc n)) (size E)) _ (nf-all (SF.put-P A n (suc (suc n)) (size E))) refl))
+resusp-nf H E A n l lbl env (wf-Prod {F} {G} wfF wfG) =
+  nf (get (⟦ F ⟧TI A) 0) _ (nf-all (SF.get-P (⟦ F ⟧TI A) 0))
+    (nf tF _ (resusp-nf H E A (suc (suc (suc (suc n)))) l lbl env wfF)
+      (nf (get (⟦ G ⟧TI A) (size (⟦ F ⟧TI A))) _ (nf-all (SF.get-P (⟦ G ⟧TI A) (size (⟦ F ⟧TI A))))
+        (nf tG _ (resusp-nf H E A n2 l2 lbl env wfG)
+          (nf (put (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 0) _
+              (nf-all (SF.put-P (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 0))
+            (nf (put (⟦ G ⟧TI (ν-type H)) (suc (suc (suc n))) (suc n) (size (⟦ F ⟧TI (ν-type H)))) _
+                (nf-all (SF.put-P (⟦ G ⟧TI (ν-type H)) (suc (suc (suc n))) (suc n) (size (⟦ F ⟧TI (ν-type H))))) refl)))))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
-    l2 = rs-label (suc (suc (suc n))) (suc (suc l)) lbl env wfF
-    tF = rs-trace (suc (suc (suc n))) (suc (suc l)) lbl env wfF
-    tG = rs-trace n2 l2 lbl env wfG
+    n2 = proj₁ (resuspend-layer H E A (suc (suc (suc (suc n)))) l lbl env wfF)
+    l2 = rs-label H E A (suc (suc (suc (suc n)))) l lbl env wfF
+    tF = rs-trace H E A (suc (suc (suc (suc n)))) l lbl env wfF
+    tG = rs-trace H E A n2 l2 lbl env wfG
+resusp-nf H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
+  nf (arm G tG 1) _ (arm-nf G tG 1 (resusp-nf H E A n2 l2 lbl env wfG))
+     (nf (arm F tF 0) _ (arm-nf F tF 0 (resusp-nf H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)) refl)
+  where
+    n2 = proj₁ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+    l2 = rs-label H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF
+    tF = rs-trace H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF
+    tG = rs-trace H E A n2 l2 lbl env wfG
+    sz = size (⟦ F ⟧TI (ν-type H) +ᵀ ⟦ G ⟧TI (ν-type H))
+    arm : IRFunctor → AbstractTrace → ℕ → AbstractTrace
+    arm P t tag = (restore-input n ∷ []) ++ get (⟦ P ⟧TI A) 1 ++ t ++
+                  (store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ sz) ∷ store-at-slot (suc n) ∷
+                   mov-to-input ∷ instr-load-tag-lit tag ∷ store-at 0 ∷ []) ++
+                  put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++ (load-from-slot (suc n) ∷ [])
+    arm-nf : ∀ (P : IRFunctor) (t : AbstractTrace) (tag : ℕ) → NoFn t → NoFn (arm P t tag)
+    arm-nf P t tag ht =
+      nf (get (⟦ P ⟧TI A) 1) _ (nf-all (SF.get-P (⟦ P ⟧TI A) 1))
+        (nf t _ ht (nf (put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) _
+                       (nf-all (SF.put-P (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1)) refl))
 
 private
-  cata-nf : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) → NoFn at
-          → NoFn (proj₂ (proj₂ (cata-dispatch st bb n1 l1 at)))
-  cata-nf strat-const  bb n1 l1 at h = nf at _ h refl
-  cata-nf strat-box    bb n1 l1 at h = nf at _ h refl
-  cata-nf (strat-branching F) bb n1 l1 at h =
-    nf (vw ++ _) _ (nf vw _ (visit-nf F n1 (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4))
-                           (nf rw _ (rebuild-nf F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4 + lsize F)) refl))
-                   (nf at _ h refl)
+  cata-nf : ∀ (E A : IRTy) (G : Fun 0) (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) → NoFn at
+          → NoFn (proj₂ (proj₂ (cata-dispatch E A G st bb n1 l1 at)))
+  cata-nf E A G strat-const  bb n1 l1 at h =
+    nf (cata-call-setup E n1 (n1 + 1) (n1 + 2) l1) _ (nf-all (SF.setup-P E n1 (n1 + 1) (n1 + 2) l1))
+      (nf (cata-call E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3)) _
+          (nf-all (SF.call-P mov-to-output refl E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3)))
+        (nf at _ h refl))
+  cata-nf E A G strat-box    bb n1 l1 at h =
+    nf (cata-call-setup E n1 (n1 + 1) (n1 + 2) l1) _ (nf-all (SF.setup-P E n1 (n1 + 1) (n1 + 2) l1))
+      (nf (cata-call-box E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3)) _
+          (nf-all (SF.call-P (load-at 0) refl E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3)))
+        (nf at _ h refl))
+  cata-nf E A G (strat-branching F) bb n1 l1 at h =
+    nf (cata-call-setup E B0 (B0 + 1) (B0 + 2) Lb) _ (nf-all (SF.setup-P E B0 (B0 + 1) (B0 + 2) Lb))
+      (nf (cata-br-I₁ (kind A) (size A) F n1 l1) _
+          (nf vw _ (visit-nf F n1 (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4))
+                   (nf rw _ (rebuild-nf F (n1 + 2) (n1 + 4) (n1 + 5) (kind A) (size A) (n1 + 7) (l1 + 4 + lsize F)) refl))
+        (nf (cata-call E (lkind F (kind A)) (lsz F (size A)) B0 (B0 + 1) (B0 + 2) (B0 + 3)) _
+            (nf-all (SF.call-P mov-to-output refl E (lkind F (kind A)) (lsz F (size A)) B0 (B0 + 1) (B0 + 2) (B0 + 3)))
+          (nf at _ h refl)))
     where
+      B0 = n1 + 7 + (4 * fsize F) + 4
+      Lb = l1 + 4 + lsize F + lsize F
       vw = visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4)
-      rw = rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4 + lsize F)
+      rw = rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) (kind A) (size A) F (n1 + 7) (l1 + 4 + lsize F)
 
   sig-nf : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → NoFn (sigop-code si n m)
   sig-nf si n nothing  = refl
@@ -744,48 +960,70 @@ out-nf mu-ptr  = refl
 frag-nf : ∀ {A B} (ir : IR A B) (n l : ℕ)
         → NoFn (trace-of (ir-to-trace' n l ir)) × NoFn (blocks-layout (bodies-of (ir-to-trace' n l ir)))
 frag-nf id       n l = refl , refl
-frag-nf fst      n l = refl , refl
-frag-nf snd      n l = refl , refl
+frag-nf (fst {A} {B}) n l = nf-all (SF.get-P A 0) , refl
+frag-nf (snd {A} {B}) n l = nf-all (SF.get-P B (size A)) , refl
 frag-nf terminal n l = refl , refl
 frag-nf initial  n l = refl , refl
 frag-nf (g ∘ f)  n l =
   nf (trace-of Xf) _ (proj₁ (frag-nf f n l)) (proj₁ (frag-nf g _ _))
   , nf-bl (bodies-of Xf) _ (proj₂ (frag-nf f n l)) (proj₂ (frag-nf g _ _))
   where Xf = ir-to-trace' n l f
-frag-nf ⟨ f , g ⟩ n l =
-  nf (trace-of Xf) _ (proj₁ (frag-nf f _ l)) (nf (trace-of (ir-to-trace' (proj₁ Xf) (label-of Xf) g)) _ (proj₁ (frag-nf g _ _)) refl)
+frag-nf (⟨_,_⟩ {A} {B} {C} f g) n l =
+  nf (trace-of Xf) _ (proj₁ (frag-nf f _ l))
+     (nf (trace-of (ir-to-trace' (proj₁ Xf) (label-of Xf) g)) _ (proj₁ (frag-nf g _ _))
+       (nf (put B (suc n) (suc (suc (suc n))) 0) _ (nf-all (SF.put-P B (suc n) (suc (suc (suc n))) 0))
+         (nf (put C (suc (suc n)) (suc (suc (suc n))) (size B)) _
+             (nf-all (SF.put-P C (suc (suc n)) (suc (suc (suc n))) (size B))) refl)))
   , nf-bl (bodies-of Xf) _ (proj₂ (frag-nf f _ l)) (proj₂ (frag-nf g _ _))
   where Xf = ir-to-trace' (suc (suc (suc (suc n)))) l f
-frag-nf (curry b) n l =
-  refl , nf (trace-of Xb ++ _) _ (nf (trace-of Xb) _ (proj₁ (frag-nf b 0 _)) refl) (proj₂ (frag-nf b 0 _))
-  where Xb = ir-to-trace' 0 (suc (suc l)) b
-frag-nf apply n l = refl , refl
+frag-nf (curry {E} {A} b) n l =
+  refl , nf ((pro ++ trace-of Xb) ++ _) _
+            (nf (pro ++ trace-of Xb) _ (nf pro _ (nf-all (SF.entry-P (kind E) E A)) (proj₁ (frag-nf b _ _))) refl)
+            (proj₂ (frag-nf b _ _))
+  where
+    pro = proj₂ (env-entry (kind E) E A)
+    Xb = ir-to-trace' (proj₁ (env-entry (kind E) E A)) (suc (suc l)) b
+frag-nf (apply {A} {B}) n l =
+  nf-all {t = trace-of (ir-to-trace' n l (apply {A} {B}))}
+    (All-++⁺ (SF.get-P A 1)
+      (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+       All-++⁺ (SF.put-P A n (suc (suc n)) 1) (refl ∷ refl ∷ refl ∷ [])))
+  , refl
 frag-nf (SigOp si) n l = sig-nf si n (cmp-of (sem si)) , refl
 frag-nf (Call _) n l = refl , refl
 frag-nf (const fits-int _)   n l = refl , refl
 frag-nf (const fits-float _) n l = refl , refl
-frag-nf inl n l = refl , refl
-frag-nf inr n l = refl , refl
-frag-nf (case f g) n l =
-  nf (trace-of (ir-to-trace' (proj₁ Xf) (label-of Xf) g)) _ (proj₁ (frag-nf g _ _))
-     (nf (trace-of Xf) _ (proj₁ (frag-nf f _ _)) refl)
+frag-nf (inl {A} {B}) n l = nf-all (SF.inj-P 0 A (A +ᵀ B) n) , refl
+frag-nf (inr {A} {B}) n l = nf-all (SF.inj-P 1 B (A +ᵀ B) n) , refl
+frag-nf (case {A} {B} f g) n l =
+  nf (get B 1) _ (nf-all (SF.get-P B 1))
+     (nf (trace-of (ir-to-trace' (proj₁ Xf) (label-of Xf) g)) _ (proj₁ (frag-nf g _ _))
+       (nf (get A 1) _ (nf-all (SF.get-P A 1))
+         (nf (trace-of Xf) _ (proj₁ (frag-nf f _ _)) refl)))
   , nf-bl (bodies-of Xf) _ (proj₂ (frag-nf f _ _)) (proj₂ (frag-nf g _ _))
   where Xf = ir-to-trace' n (suc (suc l)) f
-frag-nf (Iter b) n l =
-  nf (trace-of Xb) _ (proj₁ (frag-nf b _ _)) refl , proj₂ (frag-nf b _ _)
+frag-nf (Iter {E} {A} {B} b) n l =
+  nf (get E 0) _ (nf-all (SF.get-P E 0))
+     (nf (trace-of Xb) _ (proj₁ (frag-nf b _ _))
+       (nf (get A 1) _ (nf-all (SF.get-P A 1))
+         (nf (put E (suc n) (suc (suc (suc n))) 0) _ (nf-all (SF.put-P E (suc n) (suc (suc (suc n))) 0))
+           (nf (put A (suc (suc n)) (suc (suc (suc n))) (size E)) _
+               (nf-all (SF.put-P A (suc (suc n)) (suc (suc (suc n))) (size E)))
+             (nf-all (SF.get-P B 1))))))
+  , proj₂ (frag-nf b _ _)
   where Xb = ir-to-trace' (suc (suc (suc (suc n)))) (suc (suc l)) b
 frag-nf (In {F} _)    n l = in-nf (mu-rep F) n , refl
 frag-nf (out-μ {F} _) n l = out-nf (mu-rep F) , refl
-frag-nf (Cata {F} _ alg) n l =
-  cata-nf (cata-strategy ⌈ F ⌉F) (proj₁ XA) n (label-of XA) (trace-of XA) (proj₁ (frag-nf alg 0 l))
+frag-nf (Cata {F} _ {E} {A} alg) n l =
+  cata-nf E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) (proj₁ XA) n (label-of XA) (trace-of XA) (proj₁ (frag-nf alg 0 l))
   , proj₂ (frag-nf alg 0 l)
   where XA = ir-to-trace' 0 l alg
 frag-nf (Out _)    n l = refl , refl
 frag-nf (in-ν _)   n l = refl , refl
-frag-nf (Ana wf c) n l =
-  refl , nf ((ct ++ rt) ++ _) _ (nf (ct ++ rt) _ (nf ct rt (proj₁ (frag-nf c 1 (suc l))) (resusp-nf (proj₁ Xc) (label-of Xc) (ℓ o l) 0 wf)) refl)
+frag-nf (Ana {F} wf {E} {A} c) n l =
+  refl , nf ((ct ++ rt) ++ _) _ (nf (ct ++ rt) _ (nf ct rt (proj₁ (frag-nf c 1 (suc l))) (resusp-nf F E A (proj₁ Xc) (label-of Xc) (ℓ o l) 0 wf)) refl)
                                  (proj₂ (frag-nf c 1 (suc l)))
   where
     Xc = ir-to-trace' 1 (suc l) c
     ct = trace-of Xc
-    rt = rs-trace (proj₁ Xc) (label-of Xc) (ℓ o l) 0 wf
+    rt = rs-trace F E A (proj₁ Xc) (label-of Xc) (ℓ o l) 0 wf
