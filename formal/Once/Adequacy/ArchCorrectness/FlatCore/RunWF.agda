@@ -706,19 +706,19 @@ pcView (instr-dealloc-stack _)                ()
 pcView (instr-free-heap _)                    ()
 pcView (load-at _)                            _ = pv-suc tt tt (λ _ _ → refl)
 pcView (store-at _)                           _ = pv-suc tt tt (λ _ _ → refl)
-pcView (addr-at _)                    ()
+pcView (addr-at _)                            _ = pv-suc tt tt (λ _ _ → refl)
 pcView (instr-room _)                    ()
 pcView (instr-push-frame _)                   ()
 pcView instr-pop-frame                        ()
 pcView (lea-slot _)                           ()
 pcView mov-to-output                          _ = pv-suc tt tt (λ _ _ → refl)
 pcView mov-to-input                           _ = pv-suc tt tt (λ _ _ → refl)
-pcView load-indirect                          _ = pv-suc tt tt (λ _ _ → refl)
-pcView load-indirect-suc                      _ = pv-suc tt tt (λ _ _ → refl)
+pcView load-indirect                          ()
+pcView load-indirect-suc                      ()
 pcView (load-from-slot _)                     _ = pv-suc tt tt (λ _ _ → refl)
 pcView (store-at-slot _)                      _ = pv-suc tt tt (λ _ _ → refl)
-pcView store-indirect                         _ = pv-suc tt tt (λ _ _ → refl)
-pcView store-indirect-suc                     _ = pv-suc tt tt (λ _ _ → refl)
+pcView store-indirect                         ()
+pcView store-indirect-suc                     ()
 pcView (restore-input _)                      _ = pv-suc tt tt (λ _ _ → refl)
 pcView (instr-reclaim-to _)                   _ = pv-suc tt tt (λ _ _ → refl)
 pcView instr-call-closure                     _ = pv-call refl
@@ -1179,7 +1179,7 @@ stack-ptr-step (instr-dealloc-stack n) prog fs r ftq () wf
 stack-ptr-step (instr-free-heap n)     prog fs r ftq () wf
 stack-ptr-step (load-at n)     prog fs r ftq ff wf = flat-stack-ptr (load-at n) prog fs ff wf
 stack-ptr-step (store-at n)     prog fs r ftq ff wf = flat-stack-ptr (store-at n) prog fs ff wf
-stack-ptr-step (addr-at n)     prog fs r ftq () wf
+stack-ptr-step (addr-at n)     prog fs r ftq ff wf = flat-stack-ptr (addr-at n) prog fs ff wf
 stack-ptr-step (instr-room n)     prog fs r ftq ff wf = flat-stack-ptr (instr-room n) prog fs ff wf
 stack-ptr-step (instr-push-frame cap)  prog fs r ftq () wf
 stack-ptr-step instr-pop-frame         prog fs r ftq () wf
@@ -1439,7 +1439,7 @@ ptr-bounds-step (instr-dealloc-stack n) prog fs r ftq () wfS wf
 ptr-bounds-step (instr-free-heap n)     prog fs r ftq () wfS wf
 ptr-bounds-step (load-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (load-at n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (store-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (store-at n) prog fs ff (λ { _ () }) wfS wf
-ptr-bounds-step (addr-at n)     prog fs r ftq () wfS wf
+ptr-bounds-step (addr-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (addr-at n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-room n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (instr-room n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-push-frame cap)  prog fs r ftq () wfS wf
 ptr-bounds-step instr-pop-frame         prog fs r ftq () wfS wf
@@ -1803,8 +1803,11 @@ store-indirect-suc-inbounds : ∀ prog (fs : FlatState) (hl : HeapLocation) → 
                             → fetch prog (fpc fs) ≡ just store-indirect-suc
                             → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                             → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))
+-- plan 0.123 B.4 α: the four fixed-offset forms are retired (out of both
+-- fences), so an emitted program never fetches one — and `PtrB` no longer says
+-- anything about the next cell.
 store-indirect-suc-inbounds prog fs hl r ftq eq =
-  ptr-bounds-suc fs Input1 hl (run-ptr-bounds prog fs r) eq
+  ⊥-elim (frame-op-absurd prog fs store-indirect-suc (run-emitted r) ftq)
 
 load-indirect-target-wf : ∀ prog (fs : FlatState) → RunAt prog fs → halted (floc fs) ≡ false
                         → fetch prog (fpc fs) ≡ just load-indirect
@@ -1823,10 +1826,8 @@ load-indirect-suc-target-wf : ∀ prog (fs : FlatState) → RunAt prog fs → ha
                                 (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
                                 × (∀ hl → loc ≡ AtDynamic hl
                                    → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))))
-load-indirect-suc-target-wf prog fs r h ftq with load-indirect-suc-target-ptr prog fs r h ftq
-... | loc , eq = loc , eq ,
-  λ hl leq → ptr-bounds-suc fs Input1 hl (run-ptr-bounds prog fs r)
-               (trans eq (cong SV-Ptr leq))
+load-indirect-suc-target-wf prog fs r h ftq =
+  ⊥-elim (frame-op-absurd prog fs load-indirect-suc (run-emitted r) ftq)
 
 
 ------------------------------------------------------------------------
