@@ -19,7 +19,7 @@ open import Data.Fin using () renaming (zero to fz; suc to fs)
 open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Once.Spec.Grade using (Many; mk-kind; pure)
-open import Once.Spec.Type using (Ty; Fun; KCtx; TySub; Respects; ∅ₖ; _⟨_⟩; _⟨_⟩F; _⇒[_]_; μ; ⟦_⟧F)
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; TySub; Respects; ∅ₖ; _⟨_⟩; _⟨_⟩F; _⇒[_]_; μ; ⟦_⟧F)
 open import Once.Spec.Context using (Ctx; _▸_; _∷_)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived using (cataᶜ; inᶜ)
@@ -46,6 +46,14 @@ module CataV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
   -- The Spec's fold of an algebra value.
   cataᵛ : ∀ (F : Fun m) (A : Ty m) → ⟦ (⟦ F ⟧F A ⇒[ mk-kind Many pure ] A) ⟨ σ ⟩ ⟧ᵛ → ⟦ (μ F ⇒[ mk-kind Many pure ] A) ⟨ σ ⟩ ⟧ᵛ
   cataᵛ F A g v = foldM pure (code (F ⟨ σ ⟩F)) (λ l → g (fromL σ F A l)) v
+
+  -- The folds of the same algebras: the same closures.
+  cataResp : ∀ {F : Fun m} {A : Ty m} → WFFun Δ F → ∀ {g g′}
+           → Same ((⟦ F ⟧F A ⇒[ mk-kind Many pure ] A) ⟨ σ ⟩) g g′
+           → Same ((μ F ⇒[ mk-kind Many pure ] A) ⟨ σ ⟩) (cataᵛ F A g) (cataᵛ F A g′)
+  cataResp {F} {A} wf {g} {g′} sg v .v refl = toObserved (returnRel
+    (returnRel⁻ (runs (Fold.foldRel pure (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ l → g (fromL σ F A l)) (λ l → g′ (fromL σ F A l))
+                         (λ p → rel (fromObserved (sg _ _ (Fn.fromL-same wf A p)))) v))))
 
   cataSem : ∀ {n} {Γ : Ctx m n} {Ψ} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) {F A Ψa π₀ alg}
               (d : Δ ⊩ Γ ⊢[ Ψa ] cataᶜ F pure alg ∷ μ F ⇒[ mk-kind Many pure ] A ! π₀) {γa}
