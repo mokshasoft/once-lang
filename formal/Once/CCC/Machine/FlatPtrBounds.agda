@@ -290,6 +290,31 @@ pb-store-suc-resolved : ∀ (bs : ℕ → ℕ) (ls : LocState FS)
 pb-store-suc-resolved bs ls nothing    v ok wf = pb-fault bs ls wf
 pb-store-suc-resolved bs ls (just loc) v ok wf = pb-write-mem bs ls (sucLoc loc) v ok wf
 
+-- plan 0.123 B.4 α: the offset forms move a stored value like the others
+pb-load-at-resolved : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (k : ℕ) (dst : AbstractReg)
+                        (ml : Maybe (ValueLocation FS))
+                    → PBInv bs ls
+                    → PBInv bs (exec-load-at-resolved k dst ml ls)
+pb-load-at-resolved bs ls k dst nothing    wf = pb-fault bs ls wf
+pb-load-at-resolved bs ls k dst (just loc) wf =
+  pb-load-value bs ls dst (readLoc ls (offsetLoc loc k))
+                (pb-read-loc bs ls wf (offsetLoc loc k)) wf
+
+pb-store-in-block : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (ok : Bool)
+                      (loc : ValueLocation FS) (v : StoredValue FS)
+                  → PtrB bs v → PBInv bs ls
+                  → PBInv bs (exec-store-in-block ok loc v ls)
+pb-store-in-block bs ls true  loc v ok wf = pb-write-mem bs ls loc v ok wf
+pb-store-in-block bs ls false loc v ok wf = pb-fault bs ls wf
+
+pb-store-at-resolved : ∀ (bs bs′ : ℕ → ℕ) (ls : LocState FS) (k : ℕ)
+                         (ml : Maybe (ValueLocation FS)) (v : StoredValue FS)
+                     → PtrB bs v → PBInv bs ls
+                     → PBInv bs (exec-store-at-resolved bs′ k ml v ls)
+pb-store-at-resolved bs bs′ ls k nothing    v ok wf = pb-fault bs ls wf
+pb-store-at-resolved bs bs′ ls k (just loc) v ok wf =
+  pb-store-in-block bs ls (in-block? bs′ (offsetLoc loc k)) (offsetLoc loc k) v ok wf
+
 pb-from-slot : ∀ (ls : LocState FS) (alloc : AllocState {FS}) (mv : Maybe (StoredValue FS))
              → PtrB? (block-size alloc) mv
              → PBInv (block-size alloc) ls
@@ -414,8 +439,11 @@ pb-abstract (restore-input slot) ls alloc ff am wfS wf =
 pb-abstract (instr-alloc-stack n)   ls alloc () am wfS wf
 pb-abstract (instr-dealloc-stack n) ls alloc () am wfS wf
 pb-abstract (instr-free-heap n)     ls alloc () am wfS wf
-pb-abstract (load-at n)     ls alloc () am wfS wf
-pb-abstract (store-at n)     ls alloc () am wfS wf
+pb-abstract (load-at n)     ls alloc ff am wfS wf =
+  pb-load-at-resolved _ ls n Output (sv-as-loc (readReg (regs ls) Input1)) wf
+pb-abstract (store-at n)     ls alloc ff am wfS wf =
+  pb-store-at-resolved _ _ ls n (sv-as-loc (readReg (regs ls) Input1))
+                       (readReg (regs ls) Output) (pb-regs wf Output) wf
 pb-abstract (addr-at n)     ls alloc () am wfS wf
 pb-abstract (instr-room n)     ls alloc ff am wfS wf = wf
 pb-abstract (instr-push-frame cap)  ls alloc () am wfS wf
@@ -564,8 +592,10 @@ flat-ptr-bounds (instr-ctrl (c-branch-tag-zero m))     prog fs ff am wfS wf =
 flat-ptr-bounds (instr-alloc-stack n)   prog fs () am wfS wf
 flat-ptr-bounds (instr-dealloc-stack n) prog fs () am wfS wf
 flat-ptr-bounds (instr-free-heap n)     prog fs () am wfS wf
-flat-ptr-bounds (load-at n)     prog fs () am wfS wf
-flat-ptr-bounds (store-at n)     prog fs () am wfS wf
+flat-ptr-bounds (load-at n)     prog fs ff am wfS wf =
+  pb-abstract (load-at n) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (store-at n)     prog fs ff am wfS wf =
+  pb-abstract (store-at n) (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (addr-at n)     prog fs () am wfS wf
 flat-ptr-bounds (instr-room n)     prog fs ff am wfS wf = pb-abstract (instr-room n) (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (instr-push-frame cap)  prog fs () am wfS wf

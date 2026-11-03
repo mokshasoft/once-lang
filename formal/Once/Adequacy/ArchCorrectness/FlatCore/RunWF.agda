@@ -71,7 +71,10 @@ open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module 
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open MemOps {FS} using (readLoc)
-open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved)
+open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?)
+open import Once.Memory.HeapAddress using (offsetHL)
+open import Data.Bool using (T)
+open import Data.Nat.Properties using (<ᵇ⇒<)
 open AbstractExec {FS} using (exec-load-from-slot-with-value; exec-restore-input-with-value)
 open FrameSemantics FS using (Frame)
 open import Once.CCC.Machine.Flat
@@ -701,8 +704,8 @@ pcView (instr-ctrl (c-ret bb))                _ = pv-ret bb refl
 pcView (instr-alloc-stack _)                  ()
 pcView (instr-dealloc-stack _)                ()
 pcView (instr-free-heap _)                    ()
-pcView (load-at _)                    ()
-pcView (store-at _)                    ()
+pcView (load-at _)                            _ = pv-suc tt tt (λ _ _ → refl)
+pcView (store-at _)                           _ = pv-suc tt tt (λ _ _ → refl)
 pcView (addr-at _)                    ()
 pcView (instr-room _)                    ()
 pcView (instr-push-frame _)                   ()
@@ -1174,8 +1177,8 @@ stack-ptr-step (lea-slot slot) prog fs r ftq () wf
 stack-ptr-step (instr-alloc-stack n)   prog fs r ftq () wf
 stack-ptr-step (instr-dealloc-stack n) prog fs r ftq () wf
 stack-ptr-step (instr-free-heap n)     prog fs r ftq () wf
-stack-ptr-step (load-at n)     prog fs r ftq () wf
-stack-ptr-step (store-at n)     prog fs r ftq () wf
+stack-ptr-step (load-at n)     prog fs r ftq ff wf = flat-stack-ptr (load-at n) prog fs ff wf
+stack-ptr-step (store-at n)     prog fs r ftq ff wf = flat-stack-ptr (store-at n) prog fs ff wf
 stack-ptr-step (addr-at n)     prog fs r ftq () wf
 stack-ptr-step (instr-room n)     prog fs r ftq ff wf = flat-stack-ptr (instr-room n) prog fs ff wf
 stack-ptr-step (instr-push-frame cap)  prog fs r ftq () wf
@@ -1434,8 +1437,8 @@ ptr-bounds-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog f
 ptr-bounds-step (instr-alloc-stack n)   prog fs r ftq () wfS wf
 ptr-bounds-step (instr-dealloc-stack n) prog fs r ftq () wfS wf
 ptr-bounds-step (instr-free-heap n)     prog fs r ftq () wfS wf
-ptr-bounds-step (load-at n)     prog fs r ftq () wfS wf
-ptr-bounds-step (store-at n)     prog fs r ftq () wfS wf
+ptr-bounds-step (load-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (load-at n) prog fs ff (λ { _ () }) wfS wf
+ptr-bounds-step (store-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (store-at n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (addr-at n)     prog fs r ftq () wfS wf
 ptr-bounds-step (instr-room n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (instr-room n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-push-frame cap)  prog fs r ftq () wfS wf
@@ -1643,6 +1646,63 @@ store-indirect-suc-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs → 
 store-indirect-suc-target-ptr prog fs r h ftq =
   in1-ptr fs (λ ml → LocState.faulted (exec-store-suc-via-resolved ml (readReg (regs (floc fs)) Output) (floc fs))) refl
           (step-ok prog fs store-indirect-suc r h ftq)
+
+-- plan 0.123 B.4 α: THE OFFSET FORMS' SITES, by the same route. A load at an
+-- offset reads a written cell (so a mapped one, `dom-written`); a store at an
+-- offset writes a cell of its block (D379: anything else faults), so a mapped
+-- one (`dom-sized`).
+load-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
+                   → fetch prog (fpc fs) ≡ just (load-at k)
+                   → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+load-at-target-ptr prog fs k r h ftq =
+  in1-ptr fs (λ ml → LocState.faulted (exec-load-at-resolved k Output ml (floc fs))) refl
+          (step-ok prog fs (load-at k) r h ftq)
+
+heap-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
+                     → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (load-at k)
+                     → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                     → heapMem (floc fs) (offsetHL hl k) ≡ nothing → ⊥
+heap-load-at-written prog fs k hl r h ftq i-eq empty =
+  true≢false (at (λ mv → LocState.faulted (exec-load-with-value Output mv (floc fs))) empty
+                 (at (λ v → LocState.faulted (exec-load-at-resolved k Output (sv-as-loc v) (floc fs))) i-eq
+                     (step-ok prog fs (load-at k) r h ftq)))
+
+store-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
+                    → fetch prog (fpc fs) ≡ just (store-at k)
+                    → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+store-at-target-ptr prog fs k r h ftq =
+  in1-ptr fs (λ ml → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k ml
+                                         (readReg (regs (floc fs)) Output) (floc fs))) refl
+          (step-ok prog fs (store-at k) r h ftq)
+
+store-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
+                  → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (store-at k)
+                  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                  → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+store-at-in-block prog fs k hl r h ftq i-eq = ib _ refl
+  where
+    ok : LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (just (AtDynamic hl))
+                             (readReg (regs (floc fs)) Output) (floc fs)) ≡ false
+    ok = at (λ v → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (sv-as-loc v)
+                                       (readReg (regs (floc fs)) Output) (floc fs))) i-eq
+            (step-ok prog fs (store-at k) r h ftq)
+    ib : ∀ b → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ b
+       → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+    ib true  e = e
+    ib false e = ⊥-elim (true≢false
+      (at (λ b → LocState.faulted (exec-store-in-block b (AtDynamic (offsetHL hl k))
+                                     (readReg (regs (floc fs)) Output) (floc fs))) e ok))
+
+store-at-inbounds : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
+                  → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (store-at k)
+                  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                  → heap-offset (offsetHL hl k) < block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k)))
+store-at-inbounds prog fs k hl r h ftq i-eq =
+  <ᵇ⇒< (heap-offset (offsetHL hl k)) (block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k))))
+       (T-of (store-at-in-block prog fs k hl r h ftq i-eq))
+  where
+    T-of : ∀ {b : Bool} → b ≡ true → T b
+    T-of refl = tt
 
 -- plan 0.108 / D367: AT AN EMITTED `out-nz`, OUTPUT HOLDS AN `Int` WORD — the
 -- comparison's arith block just wrote it; anything else faults (`do-nz`).

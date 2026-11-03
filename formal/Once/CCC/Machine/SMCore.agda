@@ -25,7 +25,7 @@ module Once.CCC.Machine.SMCore where
 open import Relation.Binary.Definitions using (DecidableEquality)
 open import Once.Spec.Type using (Base; b-Float; b-Int; b-Unit; ∅ₖ)
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _>_; _≥_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _>_; _≥_; _<ᵇ_)
 open import Data.Nat.Properties using (_≟_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; true; false; if_then_else_)
@@ -829,9 +829,22 @@ module ExecFinal {FS : FrameSemantics} where
   exec-load-at-resolved k dst (just loc) s = exec-load-with-value dst (readLoc s (offsetLoc loc k)) s
   exec-load-at-resolved k dst nothing    s = record s { halted = true ; faulted = true }
 
-  exec-store-at-resolved : ℕ → Maybe (ValueLocation FS) → StoredValue FS → LocState FS → LocState FS
-  exec-store-at-resolved k (just loc) v s = writeLoc s (offsetLoc loc k) v
-  exec-store-at-resolved k nothing    _ s = record s { halted = true ; faulted = true }
+  -- D379: a store at an offset writes a cell OF ITS BLOCK, or faults (D367: a
+  -- target cannot follow a store past its block — it would write another
+  -- block's words). The pointer's own cell is in bounds by `PtrB`; the words
+  -- after it are not, so the offset store checks. A stack location is not
+  -- checked: no register holds one (`StackPtrWF`) until frames hold values (β).
+  in-block? : (ℕ → ℕ) → ValueLocation FS → Bool
+  in-block? bs (AtStack _ _)  = true
+  in-block? bs (AtDynamic hl) = heap-offset hl <ᵇ bs (ref-id (heap-ref hl))
+
+  exec-store-in-block : Bool → ValueLocation FS → StoredValue FS → LocState FS → LocState FS
+  exec-store-in-block true  loc v s = writeLoc s loc v
+  exec-store-in-block false _   _ s = record s { halted = true ; faulted = true }
+
+  exec-store-at-resolved : (ℕ → ℕ) → ℕ → Maybe (ValueLocation FS) → StoredValue FS → LocState FS → LocState FS
+  exec-store-at-resolved bs k (just loc) v s = exec-store-in-block (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v s
+  exec-store-at-resolved bs k nothing    _ s = record s { halted = true ; faulted = true }
 
   exec-addr-at-resolved : ℕ → Maybe (ValueLocation FS) → LocState FS → LocState FS
   exec-addr-at-resolved k (just loc) s = record s { regs = writeReg (regs s) Output (SV-Ptr (offsetLoc loc k)) }
@@ -1939,7 +1952,7 @@ module AbstractExec {FS : FrameSemantics} where
 
   -- load-at / store-at / addr-at: the offset forms (plan 0.123 B.4 R1).
   exec-abstract (load-at k) s alloc  = exec-load-at-resolved k Output (sv-as-loc (readReg (regs s) Input1)) s , alloc
-  exec-abstract (store-at k) s alloc = exec-store-at-resolved k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s , alloc
+  exec-abstract (store-at k) s alloc = exec-store-at-resolved (block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s , alloc
   exec-abstract (addr-at k) s alloc  = exec-addr-at-resolved k (sv-as-loc (readReg (regs s) Input1)) s , alloc
 
   -- instr-reclaim-to: a NO-OP on alloc too (D150), for the same reason as

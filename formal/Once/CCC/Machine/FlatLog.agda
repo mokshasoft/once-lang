@@ -83,9 +83,13 @@ module LogPres {FS : FrameSemantics} where
   load-at-log k dst (just loc) s = load-with-log dst (readLoc s (offsetLoc loc k)) s
   load-at-log k dst nothing    s = refl
 
-  store-at-log : ∀ k (ml : Maybe (ValueLocation FS)) v s → log (exec-store-at-resolved k ml v s) ≡ log s
-  store-at-log k (just loc) v s = writeLoc-log s (offsetLoc loc k) v
-  store-at-log k nothing    v s = refl
+  store-in-block-log : ∀ ok (loc : ValueLocation FS) v s → log (exec-store-in-block ok loc v s) ≡ log s
+  store-in-block-log true  loc v s = writeLoc-log s loc v
+  store-in-block-log false loc v s = refl
+
+  store-at-log : ∀ bs k (ml : Maybe (ValueLocation FS)) v s → log (exec-store-at-resolved bs k ml v s) ≡ log s
+  store-at-log bs k (just loc) v s = store-in-block-log (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v s
+  store-at-log bs k nothing    v s = refl
 
   addr-at-log : ∀ k (ml : Maybe (ValueLocation FS)) s → log (exec-addr-at-resolved k ml s) ≡ log s
   addr-at-log k (just loc) s = refl
@@ -133,7 +137,7 @@ module LogPres {FS : FrameSemantics} where
   exec-abstract-log (instr-free-heap n)      _ s alloc = refl
   exec-abstract-log (instr-room n)      _ s alloc = refl
   exec-abstract-log (load-at k)              _ s alloc = load-at-log k Output (sv-as-loc (readReg (regs s) Input1)) s
-  exec-abstract-log (store-at k)             _ s alloc = store-at-log k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
+  exec-abstract-log (store-at k)             _ s alloc = store-at-log (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
   exec-abstract-log (addr-at k)              _ s alloc = addr-at-log k (sv-as-loc (readReg (regs s) Input1)) s
   exec-abstract-log (instr-ctrl c)           _ s alloc = refl
 

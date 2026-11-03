@@ -532,6 +532,9 @@ data InstrEffect : Set where
                                     -- abstract semantics inspects it).
                                     --   load-indirect, load-indirect-suc,
                                     --   store-indirect, store-indirect-suc.
+  eff-heap-checked   : InstrEffect  -- a store at an offset, checked against
+                                    -- the allocator's block sizes (D379).
+                                    --   store-at.
   eff-frame-op       : InstrEffect  -- push/pop frame.
                                     --   instr-push-frame, instr-pop-frame.
   eff-control        : InstrEffect  -- jump / sigop.
@@ -557,7 +560,7 @@ instr-effect load-indirect-suc       = eff-heap-indirect
 instr-effect store-indirect          = eff-heap-indirect
 instr-effect store-indirect-suc      = eff-heap-indirect
 instr-effect (load-at _)             = eff-heap-indirect
-instr-effect (store-at _)            = eff-heap-indirect
+instr-effect (store-at _)            = eff-heap-checked
 instr-effect (addr-at _)             = eff-heap-indirect   -- faults unless Input1 is a pointer
 instr-effect (instr-alloc-stack _)   = eff-stack-frontier
 instr-effect (instr-dealloc-stack _) = eff-stack-frontier
@@ -586,6 +589,7 @@ EffectPreservesNextHeapRef eff-stack-frontier = ⊤
 EffectPreservesNextHeapRef eff-heap-alloc     = ⊥
   where open import Data.Empty using (⊥)
 EffectPreservesNextHeapRef eff-heap-indirect  = ⊤   -- writes via pointer, doesn't bump counter
+EffectPreservesNextHeapRef eff-heap-checked   = ⊤
 EffectPreservesNextHeapRef eff-frame-op       = ⊤
 EffectPreservesNextHeapRef eff-control        = ⊤   -- today's controls don't allocate;
                                                     -- revisit if a future SigOp bumps heap.
@@ -604,6 +608,8 @@ EffectStateOnlyDependsOnFrame eff-heap-alloc     = ⊥   -- writes SV-Ptr (AtDyn
                                                        -- with the new heap-ref to Output.
   where open import Data.Empty using (⊥)
 EffectStateOnlyDependsOnFrame eff-heap-indirect  = ⊤
+EffectStateOnlyDependsOnFrame eff-heap-checked   = ⊥   -- reads `block-size`
+  where open import Data.Empty using (⊥)
 EffectStateOnlyDependsOnFrame eff-frame-op       = ⊤
 EffectStateOnlyDependsOnFrame eff-control        = ⊤
 
@@ -1106,7 +1112,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-same-frame (instr-free-heap _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (instr-room _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (load-at _) s alloc₁ alloc₂ _ _ = refl
-  exec-abstract-same-frame (store-at _) s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (store-at _) s alloc₁ alloc₂ () _
   exec-abstract-same-frame (addr-at _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (instr-ctrl _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame mov-to-input s alloc₁ alloc₂ _ _ = refl
@@ -1579,6 +1585,8 @@ module TraceComposition {FS : FrameSemantics} where
 module TracePrimitives {FS : FrameSemantics} where
   open MemOps {FS}
   open AbstractExec {FS}
+  open ExecFinal {FS} using (in-block?)
+  open AllocState using (block-size)
   open InstrPrimitives {FS}
   open MemoryOps {FS}
   open TraceComposition {FS}
@@ -2278,9 +2286,11 @@ module TracePrimitives {FS : FrameSemantics} where
     ∃-syntax (λ (loc : ValueLocation FS) →
       (sv-as-loc (readReg (regs s) Input1) ≡ just loc) ×
       ∃-syntax (λ (v : StoredValue FS) → readLoc s (offsetLoc loc k) ≡ just v))
-  InstrWF s _     (store-at _)             =
+  -- D379: and the written cell is one of its block's
+  InstrWF s alloc (store-at k)             =
     ∃-syntax (λ (loc : ValueLocation FS) →
-      sv-as-loc (readReg (regs s) Input1) ≡ just loc)
+      (sv-as-loc (readReg (regs s) Input1) ≡ just loc) ×
+      (in-block? (block-size alloc) (offsetLoc loc k) ≡ true))
   InstrWF s _     (addr-at _)              =
     ∃-syntax (λ (loc : ValueLocation FS) →
       sv-as-loc (readReg (regs s) Input1) ≡ just loc)
@@ -2350,9 +2360,11 @@ module TracePrimitives {FS : FrameSemantics} where
   ... | .(just loc) | refl
     with readLoc s (offsetLoc loc k) | read-eq
   ... | .(just v) | refl = h-eq
-  exec-abstract-preserves-halted-WF (store-at k)            s alloc h-eq (loc , rdi-eq)
+  exec-abstract-preserves-halted-WF (store-at k)            s alloc h-eq (loc , rdi-eq , ib)
     with sv-as-loc (readReg (regs s) Input1) | rdi-eq
-  ... | .(just loc) | refl = trans (writeLoc-halted s (offsetLoc loc k) (readReg (regs s) Output)) h-eq
+  ... | .(just loc) | refl
+    with in-block? (block-size alloc) (offsetLoc loc k) | ib
+  ... | .true | refl = trans (writeLoc-halted s (offsetLoc loc k) (readReg (regs s) Output)) h-eq
   exec-abstract-preserves-halted-WF (addr-at k)             s alloc h-eq (loc , rdi-eq)
     with sv-as-loc (readReg (regs s) Input1) | rdi-eq
   ... | .(just loc) | refl = h-eq
@@ -2479,7 +2491,7 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-state-frame-eq (instr-free-heap _)     s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-room _)     s _ _ _ _ = refl
   exec-abstract-state-frame-eq (load-at _)             s _ _ _ _ = refl
-  exec-abstract-state-frame-eq (store-at _)            s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (store-at _)            s _ _ () _
   exec-abstract-state-frame-eq (addr-at _)             s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-ctrl _)        s _ _ _ _ = refl
   exec-abstract-state-frame-eq mov-to-input            s _ _ _ _ = refl

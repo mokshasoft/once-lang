@@ -247,11 +247,16 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
--- load-at / store-at / addr-at: no code yet (plan 0.123 B.4 R1: outside
--- `EmittableI`, so never emitted; the joint rewrite gives them their code)
-compile-abstract (load-at n) = []
-compile-abstract (store-at n) = []
-compile-abstract (addr-at n) = []
+-- plan 0.123 B.4 α: a flat value's word k, by its offset from Input1.
+-- riscv64: ld a0, 8k(t0) ; sd a0, 8k(t0) ; addi a0, t0, 8k (the offset is
+-- unbounded in the model, as a slot's is; beyond the 12-bit immediate the
+-- assembler needs an add first, which the slot accesses share)
+compile-abstract (load-at n) =
+  ld a0 t0 (slot-to-disp n) ∷ []
+compile-abstract (store-at n) =
+  sd a0 t0 (slot-to-disp n) ∷ []
+compile-abstract (addr-at n) =
+  addi a0 t0 (+ (slot-to-disp n)) ∷ []
 -- instr-room k (plan 0.123 A.4): the next k words fit iff the room between the
 -- frontier and the stack pointer holds them; if not, call the Host's
 -- `once_exhausted`, which ends the run. The room `sp − s2` is computed, not the

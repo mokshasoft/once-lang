@@ -65,7 +65,9 @@ open import Once.CCC.Machine.SMCore
 open AllocState using (frame-slots; current-frame; saved-frames; next-heap-ref)
 open LocState using (stackMem; halted; regs; heapMem)
 open import Once.CCC.Machine.Locations using (Slot; AtDynamic; AtStack)
-open import Once.Memory.HeapAddress using (module HeapLocation; module HeapRef)
+open import Once.Memory.HeapAddress using (module HeapLocation; module HeapRef; offsetHL)
+open ExecFinal {FS} using (in-block?)
+open AllocState using (block-size)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Data.Unit using (tt)
@@ -1737,6 +1739,84 @@ block-step-store-indirect-suc {hv} prog fs s hl cc h ft i-eq live-shl guard =
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr store-indirect-suc prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) store-indirect-suc ft))
 
+-- plan 0.123 B.4 α: load-at k ↔ `mov eax, [ecx + 4k]`; the address is the
+-- slot law iterated (`C.haddr-offset`).
+block-step-load-at : ∀ {hv : HeapView} prog fs s k hl w → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (load-at k)
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → HDom hv (offsetHL hl k)
+  → heapMem (floc fs) (offsetHL hl k) ≡ just w
+  → BlockStep hv prog fs s (load-at k)
+block-step-load-at {hv} prog fs s k hl w cc h ft i-eq live h-eq =
+  post , exec-eq , record { dataCorr = C.sim-load-at k hl w fs s _ dc i-eq h-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg eax) (mem (base+disp ecx (slot-to-disp k))))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (load-at k) ft)
+    rdi-val : xreadReg (xregs s) ecx ≡ haddr hv hl
+    rdi-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
+    addr-eq : X.effectiveAddr s (base+disp ecx (slot-to-disp k)) ≡ haddr hv (offsetHL hl k)
+    addr-eq = trans (cong (_+ slot-to-disp k) rdi-val) (sym (C.haddr-offset hv hl k))
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp ecx (slot-to-disp k))) ≡ just (C.enc-sv hv w)
+    rd = trans (cong (X.readMem (memory s)) addr-eq) (C.heap-eq dc (offsetHL hl k) h-eq)
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) eax (C.enc-sv hv w) ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-rm {compile-trace prog} {s} {eax} {base+disp ecx (slot-to-disp k)} {C.enc-sv hv w} fetch-x86 rd
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (load-at k) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (load-at k) ft))
+
+-- plan 0.123 B.4 α: store-at k ↔ `mov [ecx + 4k], eax`, a cell of its block.
+block-step-store-at : ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (store-at k)
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → HDom hv (offsetHL hl k)
+  → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+  → writeLoc (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)
+    ≡ writeLocToHeap (floc fs) (offsetHL hl k) (readReg (regs (floc fs)) Output)
+  → BlockStep hv prog fs s (store-at k)
+block-step-store-at {hv} prog fs s k hl cc h ft i-eq live ib guard =
+  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
+                          ; ret-eq = subst (λ m → C.RetAddrs (blk-off prog) m
+                                                    (λ ad w → m ad ≡ just w) (flink fs)
+                                                    (C.frames-of (falloc fs)) (fret fs))
+                                           (cong₂ (writeMem (memory s)) (sym addr-val) refl)
+                                           (ret-heap-store prog fs s (haddr hv (offsetHL hl k)) _ cc
+                                              (≤-trans (C.dom-below hv live) (C.front-lo hv)))
+                          ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (mem (base+disp ecx (slot-to-disp k))) (reg eax))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (store-at k) ft)
+    rdi-val : xreadReg (xregs s) ecx ≡ haddr hv hl
+    rdi-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
+    addr-val : xreadReg (xregs s) ecx + slot-to-disp k ≡ haddr hv (offsetHL hl k)
+    addr-val = trans (cong (_+ slot-to-disp k) rdi-val) (sym (C.haddr-offset hv hl k))
+    post : X.State
+    post = record s { memory = writeMem (memory s) (X.effectiveAddr s (base+disp ecx (slot-to-disp k))) (xreadReg (xregs s) eax)
+                    ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-mr {compile-trace prog} {s} {base+disp ecx (slot-to-disp k)} {eax} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    post-eq : post ≡ mkstate (xregs s) (writeMem (memory s) (haddr hv (offsetHL hl k)) (C.enc-sv hv (readReg (regs (floc fs)) Output)))
+                             (flags s) (pc s + 1) (xhalted s)
+    post-eq = cong (λ m → mkstate (xregs s) m (flags s) (pc s + 1) (xhalted s))
+                   (cong₂ (writeMem (memory s)) addr-val (C.out-eq dc))
+    dataPost : C.FlatCorr hv (flat-exec-instr (store-at k) prog fs) post
+    dataPost = subst (C.FlatCorr hv (flat-exec-instr (store-at k) prog fs)) (sym post-eq)
+                     (C.sim-store-at k hl fs s _ dc i-eq live ib guard (C.sets-mem-x86 s _ _ _ _))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (store-at k) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (store-at k) ft))
+
 -- store-at-slot: stack[current-frame, slot] := Output ↔ `mov [esp+disp], eax`.
 -- step-mov-mr writes the RAW eax; sim-store-at-slot's post has enc-sv Output —
 -- bridge via out-eq (the address is esp+disp, definitional, no register bridge).
@@ -2512,6 +2592,8 @@ x86-32-block-steps = record
   ; bs-store-indirect           = block-step-store-indirect
   ; bs-store-indirect-stack     = block-step-store-indirect-stack
   ; bs-store-indirect-suc       = block-step-store-indirect-suc
+  ; bs-load-at                  = block-step-load-at
+  ; bs-store-at                 = block-step-store-at
   ; bs-store-indirect-suc-stack = block-step-store-indirect-suc-stack
   ; bs-c-jmp                    = block-step-c-jmp
   ; bs-c-branch-tag-zero        = block-step-c-branch-tag-zero

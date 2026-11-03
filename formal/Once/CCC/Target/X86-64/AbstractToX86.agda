@@ -185,11 +185,16 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
--- load-at / store-at / addr-at: no code yet (plan 0.123 B.4 R1: outside
--- `EmittableI`, so never emitted; the joint rewrite gives them their code)
-compile-abstract (load-at n) = []
-compile-abstract (store-at n) = []
-compile-abstract (addr-at n) = []
+-- plan 0.123 B.4 α: a flat value's word k, by its offset from Input1.
+-- load-at k:  Output := *(Input1 + k)      x86: mov rax, [rdi + 8k]
+-- store-at k: *(Input1 + k) := Output      x86: mov [rdi + 8k], rax
+-- addr-at k:  Output := Input1 + k         x86: lea rax, [rdi + 8k]
+compile-abstract (load-at n) =
+  mov (reg rax) (mem (base+disp rdi (slot-to-disp n))) ∷ []
+compile-abstract (store-at n) =
+  mov (mem (base+disp rdi (slot-to-disp n))) (reg rax) ∷ []
+compile-abstract (addr-at n) =
+  lea rax (base+disp rdi (slot-to-disp n)) ∷ []
 -- instr-room k (plan 0.123 A.4): the next k words fit iff the frontier plus
 -- them is at or below the stack pointer; if not, call the Host's `once_exhausted`,
 -- which ends the run. r11 is no role's, and `jbe 1f` skips the call.
