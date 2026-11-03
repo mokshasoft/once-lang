@@ -39,19 +39,20 @@ open Tr
 -- Weak bisimilarity
 ------------------------------------------------------------------------
 
--- Two ends: the same way, the values related.
-data EndRel {X : Set} (R : X → X → Set) : End X → End X → Set where
+-- Two ends: the same way, the values related. (Between two value sets: the
+-- runs of one program at two instances of its types are compared too.)
+data EndRel {X Y : Set} (R : X → Y → Set) : End X → End Y → Set where
   returned≈ : ∀ {x y} → R x y → EndRel R (returned x) (returned y)
   halted≈   : EndRel R halted halted
 
 -- Two visible steps: related ends, or the same call and related rests.
-StepRel : ∀ {X : Set} → (X → X → Set) → (Tr X → Tr X → Set) → End X ⊎ (Event × Tr X) → End X ⊎ (Event × Tr X) → Set
+StepRel : ∀ {X Y : Set} → (X → Y → Set) → (Tr X → Tr Y → Set) → End X ⊎ (Event × Tr X) → End Y ⊎ (Event × Tr Y) → Set
 StepRel R S (inj₁ e)       (inj₁ e′)        = EndRel R e e′
 StepRel R S (inj₂ (v , t)) (inj₂ (v′ , t′)) = v ≡ v′ × S t t′
 StepRel R S (inj₁ _)       (inj₂ _)         = ⊥
 StepRel R S (inj₂ _)       (inj₁ _)         = ⊥
 
-record _≈ᵗ⟨_⟩_ {X : Set} (t : Tr X) (R : X → X → Set) (t′ : Tr X) : Set where
+record _≈ᵗ⟨_⟩_ {X Y : Set} (t : Tr X) (R : X → Y → Set) (t′ : Tr Y) : Set where
   coinductive
   field same : next t ≈⟨ StepRel R (λ u u′ → u ≈ᵗ⟨ R ⟩ u′) ⟩ next t′
 open _≈ᵗ⟨_⟩_

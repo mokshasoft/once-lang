@@ -107,14 +107,35 @@ ana actᶠ  = anaA
 -- recursive positions
 ------------------------------------------------------------------------
 
+-- Two functors of one shape, a relation between their constants at each
+-- constant position.
+data SRel : SFunctor → SFunctor → Set₁ where
+  rK   : ∀ {B B′} → (B → B′ → Set) → SRel (SK B) (SK B′)
+  rId  : SRel SId SId
+  _r⊕_ : ∀ {G G′ H H′} → SRel G G′ → SRel H H′ → SRel (G S⊕ H) (G′ S⊕ H′)
+  _r⊗_ : ∀ {G G′ H H′} → SRel G G′ → SRel H H′ → SRel (G S⊗ H) (G′ S⊗ H′)
+
+-- Two layers: the same shape, the constants related by `r`, the recursive
+-- positions by `R`.
+LayerRel : ∀ {G G′} → SRel G G′ → ∀ {X Y : Set} → (X → Y → Set) → ⟦ G ⟧SF X → ⟦ G′ ⟧SF Y → Set
+LayerRel (rK Q)    R x y = Q x y
+LayerRel rId       R x y = R x y
+LayerRel (g r⊕ h)  R (inj₁ x) (inj₁ y) = LayerRel g R x y
+LayerRel (g r⊕ h)  R (inj₂ x) (inj₂ y) = LayerRel h R x y
+LayerRel (g r⊕ h)  R (inj₁ _) (inj₂ _) = ⊥
+LayerRel (g r⊕ h)  R (inj₂ _) (inj₁ _) = ⊥
+LayerRel (g r⊗ h)  R (x , x′) (y , y′) = LayerRel g R x y × LayerRel h R x′ y′
+
+-- Equal constants.
+eqRel : ∀ (G : SFunctor) → SRel G G
+eqRel (SK B)   = rK _≡_
+eqRel SId      = rId
+eqRel (G S⊕ H) = eqRel G r⊕ eqRel H
+eqRel (G S⊗ H) = eqRel G r⊗ eqRel H
+
+-- Two layers of one functor: equal constants.
 LayerEq : ∀ (G : SFunctor) {X : Set} → (X → X → Set) → ⟦ G ⟧SF X → ⟦ G ⟧SF X → Set
-LayerEq (SK B)   R x y = x ≡ y
-LayerEq SId      R x y = R x y
-LayerEq (G S⊕ H) R (inj₁ x) (inj₁ y) = LayerEq G R x y
-LayerEq (G S⊕ H) R (inj₂ x) (inj₂ y) = LayerEq H R x y
-LayerEq (G S⊕ H) R (inj₁ _) (inj₂ _) = ⊥
-LayerEq (G S⊕ H) R (inj₂ _) (inj₁ _) = ⊥
-LayerEq (G S⊗ H) R (x , x′) (y , y′) = LayerEq G R x y × LayerEq H R x′ y′
+LayerEq G = LayerRel (eqRel G)
 
 -- Two blocks: the same calls, related layers where they end.
 data BlockEq {Z : Set} (R : Z → Z → Set) : T Z → T Z → Set where

@@ -20755,3 +20755,36 @@ None in the compiler or the binary (metatheory only).
 ### Checks
 public-gate, pragma-gate, metatheory-gate, spec-gate OK; `Once.Metatheory.Laws` type-checks under `--safe`.
 To run before merging: `backstop` and `certified` (`make merge-gate`).
+
+## D370 — ONE DEFINITION OF SAMENESS: EACH TYPE FORMER'S RELATION, BETWEEN TWO VALUE SETS (2026-11-03)
+
+**Decision** (plan 0.141 P1, part a of its Spec patch; user, 2026-11-03: the Spec does not define the
+same idea twice). The relation each type former puts on its values is defined once, between two value
+sets, so that one program read at two instances of its types can be compared (parametricity, part b):
+`RelM` (computations, observed), `RelPair`, `RelSum`, `RelFun`, `RelMu` (trees: the same shape, related
+constants and subtrees), `RelStream` (agreement to every depth); a functor's constants are related by an
+`SRel` and layers by `LayerRel` (`Spec.Effect`); traces, ends and steps relate two value sets
+(`Spec.Trace`). `Same` is the fold of a closed type with these formers; the open reading (a relation per
+type variable, part b) is the same fold, differing only at variables. `LayerEq`, `OneLayer`, `SameNu`,
+`SameStream` stay, as the equal-constants instances. `Sameness`'s stream claims are stated for any
+relation of the constants.
+
+**What changes in `Same`.** Trees are related structurally, their constants by `Same`, instead of by `≡`;
+streams' constants by `Same` instead of `≡`. For well-formed functors (constants are base types) these
+are the same relations; for others, `Same` no longer compares functions inside data by `≡`. No program's
+meaning changes.
+
+**Why not `Same` as the open reading at no variables.** An open type's values are read through a
+substitution (`⟦ A ⟨ σ ⟩ ⟧ᵛ`), and a closed `A ⟨ σ ⟩` is `A` only up to a lemma; defining `Same` that way
+would transport along it, and `Same (A * B)` would no longer compute to a product.
+
+### Spec
+`Spec.Trace` (`EndRel`, `StepRel`, `_≈ᵗ⟨_⟩_` heterogeneous), `Spec.Effect` (`SRel`, `LayerRel`, `eqRel`;
+`LayerEq` its instance), `Spec.Equivalence` (the formers; `Same` on them), `Spec.Metatheory`
+(`Sameness` over `RelStream`).
+
+### Cost
+None in the compiler or the binary.
+
+### Checks
+The Spec type-checks. The metatheory is red until repaired against the new `Same` (plan 0.141 step 4).
