@@ -18,8 +18,10 @@ module Once.Spec.Core.Derived where
 
 open import Data.Nat using (ℕ; suc)
 open import Data.Fin using (zero; suc)
-open import Once.Spec.Grade using (Purity; pure; act; eff; pureᶠ; actᶠ; mk-kind; One; Many)
-open import Once.Spec.Type using (Ty; Fun; Unit; Void; _*_; _+_; _⇒[_]_; ⟦_⟧F; μ; ν)
+open import Once.Spec.Grade using (Purity; pure; act; eff; fin; pureᶠ; actᶠ; mk-kind; One; Many)
+open import Once.Spec.Type
+  using (Ty; var; Fun; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; ⟦_⟧F; μ; ν;
+         _⟨_⟩; _⟨_⟩F; at₀; shiftᵗ)
 open import Once.Spec.Core.Syntax
 
 module _ {s} {S : Defs s} {m : ℕ} where
@@ -82,6 +84,52 @@ module _ {s} {S : Defs s} {m : ℕ} where
   -- `ana coalg` into `ν F`: the stream stores the coalgebra.
   anaᶜ : ∀ {n} → Fun m → Ty m → Purity → Tm S m n → Tm S m n
   anaᶜ F A π₀ c = lam A Many π₀ (unfold F (wk c) v0)
+
+  -- `map T f`: a type is a functor in its 0th variable, and `map T f : T⟨A⟩ → T⟨B⟩`
+  -- is its action on an EFFECT-FREE arrow `f : A → B`, by the type's structure
+  -- (plan 0.79 D4; docs/decisions/language.md). Running an effectful `f` across
+  -- a structure is a traversal, and a tree has several lawful ones: library
+  -- code, not this. `f` is evaluated once. The variable itself is `f`, another
+  -- variable or a base type is left alone, a product and a sum go by their
+  -- parts, `μ` is the fold that maps each layer, `ν` the unfold that maps each
+  -- forced layer, and an arrow is post-composed (when the variable is not in
+  -- its domain, the only case it types).
+  mapᶜ : ∀ {n} → Ty (suc m) → Ty m → Ty m → Tm S m n → Tm S m n
+  mapᶜ T A B f = let′ Many f (lam (T ⟨ at₀ A ⟩) Many pure (mapAt T v1 v0))
+    where
+      mutual
+        -- `h` the arrow, `x` a value of `T⟨A⟩` (a variable or its projections).
+        mapAt : ∀ {n} → Ty (suc m) → Tm S m n → Tm S m n → Tm S m n
+        mapAt (var zero)    h x = app h x
+        mapAt (var (suc i)) h x = x
+        mapAt Unit          h x = x
+        mapAt Void          h x = x
+        mapAt Int           h x = x
+        mapAt Float         h x = x
+        mapAt (T₁ * T₂)     h x = pair (mapAt T₁ h (fst x)) (mapAt T₂ h (snd x))
+        mapAt (T₁ + T₂)     h x = case Many Many x (inl (T₂ ⟨ at₀ B ⟩) (mapAt T₁ (wk h) v0))
+                                                   (inr (T₁ ⟨ at₀ B ⟩) (mapAt T₂ (wk h) v0))
+        mapAt (T₁ ⇒[ mk-kind q π ] T₂) h x =
+          lam (T₁ ⟨ at₀ A ⟩) q π (let′ Many (app (wk x) v0) (mapAt T₂ (wk (wk h)) v0))
+        mapAt (μ G) h x =
+          fold (G ⟨ at₀ A ⟩F) (lam (⟦ G ⟨ at₀ A ⟩F ⟧F R) Many pure (roll (G ⟨ at₀ B ⟩F) (mapLayer R G (wk h) v0))) x
+          where R = μ (G ⟨ at₀ B ⟩F)
+        mapAt (ν G f) h x =
+          unfold (G ⟨ at₀ B ⟩F) (lam R Many (fin f) (let′ One (out v0) (mapLayer R G (wk (wk h)) v0))) x
+          where R = ν (G ⟨ at₀ A ⟩F) f
+
+        -- One layer of `G`: the constants mapped, the recursive positions (`R`) kept.
+        mapLayer : ∀ {n} → Ty m → Fun (suc m) → Tm S m n → Tm S m n → Tm S m n
+        mapLayer R (K C)   h y = mapAt C h y
+        mapLayer R Id      h y = y
+        mapLayer R (F ⊕ G) h y = case Many Many y (inl (⟦ G ⟨ at₀ B ⟩F ⟧F R) (mapLayer R F (wk h) v0))
+                                                  (inr (⟦ F ⟨ at₀ B ⟩F ⟧F R) (mapLayer R G (wk h) v0))
+        mapLayer R (F ⊗ G) h y = pair (mapLayer R F h (fst y)) (mapLayer R G h (snd y))
+
+  -- `F`'s own action on arrows, one layer: `map` at `⟦ F ⟧F x`, the recursive
+  -- position as the variable (what the fold and unfold laws are stated with).
+  layerᶜ : ∀ {n} → Fun m → Ty m → Ty m → Tm S m n → Tm S m n
+  layerᶜ F A B f = mapᶜ (⟦ F ⟨ shiftᵗ ⟩F ⟧F (var zero)) A B f
 
   -- Applying an effectful arrow builds a suspension `Unit ⇒[ π ] B`; the head
   -- and the argument are evaluated when it runs.

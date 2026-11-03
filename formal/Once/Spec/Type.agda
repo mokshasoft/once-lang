@@ -21,8 +21,8 @@
 
 module Once.Spec.Type where
 
-open import Data.Nat using (ℕ)
-open import Data.Fin using (Fin)
+open import Data.Nat using (ℕ; suc)
+open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Grade using (ArrowKind; Finite)
 
@@ -118,6 +118,16 @@ mutual
   (F ⊗ G) ⟨ σ ⟩F = F ⟨ σ ⟩F ⊗ G ⟨ σ ⟩F
 
 infixl 60 _⟨_⟩ _⟨_⟩F
+
+-- One variable singled out, the 0th: `T ⟨ at₀ A ⟩` is `T` with `A` there and
+-- the others kept, and `⟨ shiftᵗ ⟩` makes room for it (a type is a functor in
+-- that variable, `Core.Derived.mapᶜ`).
+at₀ : ∀ {m} → Ty m → TySub (suc m) m
+at₀ A zero    = A
+at₀ A (suc i) = var i
+
+shiftᵗ : ∀ {m} → TySub m (suc m)
+shiftᵗ i = var (suc i)
 
 -- An instance RESPECTS the kinds when each base variable becomes a base type.
 Respects : ∀ {m k} → KCtx m → KCtx k → TySub m k → Set

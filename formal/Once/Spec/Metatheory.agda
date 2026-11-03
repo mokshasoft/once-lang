@@ -51,10 +51,10 @@ open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Grade using (Quantity; Purity; Finite; fin; actᶠ; pure; act; eff; Many; mk-kind; _⊑π_; _·p_; positionGrade; Zero; One)
+open import Once.Spec.Grade using (Quantity; Purity; Finite; fin; pureᶠ; actᶠ; pure; act; eff; Many; mk-kind; _⊑π_; _·p_; positionGrade; Zero; One)
 open import Once.Spec.Name using (CanonicalName; NotGenerator)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; Unit; Void; Id; ν; _+_; _*_; _⇒[_]_)
+open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; Unit; Void; Id; μ; ν; _+_; _*_; _⇒[_]_; ⟦_⟧F; at₀)
 open import Once.Spec.Delay using (_⇓_)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Signature using (Signature; OneName; WellFormed; Layer; call; Op; op; _∶_)
@@ -62,9 +62,10 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF; μS; inS; sfmap)
 open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _+ᵘ_; _*ᵘ_; _⟨_⟩ᶜ)
 open import Once.Spec.Core.Syntax
-  using (Defs; []; Tm; var; lam; app; let′; unit; pair; fst; snd; inl; inr; case; absurd; ren; ext; wk; _[_]; _⟪_⟫ₜ; _!!_; module Schema)
+  using (Defs; []; Tm; var; lam; app; let′; unit; pair; fst; snd; inl; inr; case; absurd; roll; fold; unfold; out; ren; ext; wk; _[_]; _⟪_⟫ₜ; _!!_; module Schema)
 open import Once.Spec.Core.Derived
-  using (idᶜ; terminalᶜ; initialᶜ; fstᶜ; sndᶜ; inlᶜ; inrᶜ; applyᶜ; composeᶜ; pairᶜ; caseᶜ; curryᶜ)
+  using (idᶜ; terminalᶜ; initialᶜ; fstᶜ; sndᶜ; inlᶜ; inrᶜ; applyᶜ; composeᶜ; pairᶜ; caseᶜ; curryᶜ;
+         inᶜ; outᶜ; cataᶜ; anaᶜ; mapᶜ; layerᶜ)
 open Schema using (type)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Surface.Program using (Denotes)
@@ -280,8 +281,13 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
   -- The structure, by its universal properties (β and η together are each
   -- one): a category at every grade; coproducts and the initial object at
   -- every grade; products, the terminal object and exponentials on the
-  -- effect-free arrows. An arm whose result a law drops must be effect-free
-  -- to evaluate.
+  -- effect-free arrows. Each type is a functor in a variable on the
+  -- effect-free arrows (`mapᶜ`; an effectful one would be a traversal, and
+  -- which one is a program's choice, not the language's); `μ F` is the
+  -- initial F-algebra and `ν F` with effect-free layers the final
+  -- F-coalgebra, stated with `F`'s own action (`layerᶜ`). An arm whose result
+  -- a law drops, or that a law evaluates twice, must be effect-free to
+  -- evaluate.
   record Categorical : Set where
     field
       compose-idˡ   : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B π π₀ f}
@@ -346,6 +352,53 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
                                             (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure)))
                                          ∷ A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C) ! π₀)
                       (d′ : Δ ⊩ Γ ⊢[ Ψ ] h ∷ A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C) ! π₀) → d ≅ d′
+
+      -- A type is a functor in its 0th variable, on the effect-free arrows (`mapᶜ`).
+      map-idᶜ       : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ T A π₀}
+                      (d : Δ ⊩ Γ ⊢[ Ψ ] mapᶜ T A A (idᶜ A pure) ∷ T ⟨ at₀ A ⟩ ⇒[ mk-kind Many pure ] T ⟨ at₀ A ⟩ ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] idᶜ (T ⟨ at₀ A ⟩) pure ∷ T ⟨ at₀ A ⟩ ⇒[ mk-kind Many pure ] T ⟨ at₀ A ⟩ ! π₀)
+                    → d ≅ d′
+      map-composeᶜ  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ T A B C π₀ f g}
+                      (d : Δ ⊩ Γ ⊢[ Ψ ] mapᶜ T A C (composeᶜ A pure f g) ∷ T ⟨ at₀ A ⟩ ⇒[ mk-kind Many pure ] T ⟨ at₀ C ⟩ ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (T ⟨ at₀ A ⟩) pure (mapᶜ T B C f) (mapᶜ T A B g)
+                                         ∷ T ⟨ at₀ A ⟩ ⇒[ mk-kind Many pure ] T ⟨ at₀ C ⟩ ! π₀)
+                    → d ≅ d′
+      -- `μ F` is the initial F-algebra: `cata alg` is an algebra map from `in` (β) …
+      cata-βᶜ       : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ F A π₀ alg}
+                    → Pure Δ Γ alg (⟦ F ⟧F A ⇒[ mk-kind Many pure ] A)
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure (cataᶜ F pure alg) (inᶜ F)
+                                         ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure alg (layerᶜ F (μ F) A (cataᶜ F pure alg))
+                                         ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π₀)
+                    → d ≅ d′
+      -- … and the only one.
+      cata-uniqueᶜ  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ Ψ′ F A π₀ π′ alg h}
+                    → Pure Δ Γ alg (⟦ F ⟧F A ⇒[ mk-kind Many pure ] A) → Pure Δ Γ h (μ F ⇒[ mk-kind Many pure ] A)
+                    → (e : Δ ⊩ Γ ⊢[ Ψ′ ] composeᶜ (⟦ F ⟧F (μ F)) pure h (inᶜ F) ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π′)
+                      (e′ : Δ ⊩ Γ ⊢[ Ψ′ ] composeᶜ (⟦ F ⟧F (μ F)) pure alg (layerᶜ F (μ F) A h)
+                                          ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π′)
+                    → e ≅ e′
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] h ∷ μ F ⇒[ mk-kind Many pure ] A ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] cataᶜ F pure alg ∷ μ F ⇒[ mk-kind Many pure ] A ! π₀)
+                    → d ≅ d′
+      -- `ν F` (layers effect-free) is the final F-coalgebra: `ana c` is a coalgebra map to `out` (β) …
+      ana-βᶜ        : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ F A π₀ c}
+                    → Pure Δ Γ c (A ⇒[ mk-kind Many pure ] ⟦ F ⟧F A)
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (outᶜ F) (anaᶜ F A pure c)
+                                         ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (layerᶜ F A (ν F pureᶠ) (anaᶜ F A pure c)) c
+                                         ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π₀)
+                    → d ≅ d′
+      -- … and the only one.
+      ana-uniqueᶜ   : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ Ψ′ F A π₀ π′ c h}
+                    → Pure Δ Γ c (A ⇒[ mk-kind Many pure ] ⟦ F ⟧F A) → Pure Δ Γ h (A ⇒[ mk-kind Many pure ] ν F pureᶠ)
+                    → (e : Δ ⊩ Γ ⊢[ Ψ′ ] composeᶜ A pure (outᶜ F) h ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π′)
+                      (e′ : Δ ⊩ Γ ⊢[ Ψ′ ] composeᶜ A pure (layerᶜ F A (ν F pureᶠ) h) c
+                                          ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π′)
+                    → e ≅ e′
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] h ∷ A ⇒[ mk-kind Many pure ] ν F pureᶠ ! π₀)
+                      (d′ : Δ ⊩ Γ ⊢[ Ψ ] anaᶜ F A pure c ∷ A ⇒[ mk-kind Many pure ] ν F pureᶠ ! π₀)
+                    → d ≅ d′
 
   -- The internal language: the laws of the core.
   record Equations : Set where
@@ -415,6 +468,18 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
       absurd-η  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A q π e t}
                   (d : Δ ⊩ Γ ⊢[ Ψ ] let′ q e t ∷ A ! π)
                   (d′ : Δ ⊩ Γ ⊢[ Ψ ] absurd A e ∷ A ! π) → d ≅ d′
+      -- μ, ν: a fold of a `roll` folds the children, then applies the algebra;
+      -- forcing an unfold runs the coalgebra, then unfolds the children.
+      fold-roll : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ F A π alg t}
+                → Pure Δ Γ alg (⟦ F ⟧F A ⇒[ mk-kind Many pure ] A)
+                → (d : Δ ⊩ Γ ⊢[ Ψ ] fold F alg (roll F t) ∷ A ! π)
+                  (d′ : Δ ⊩ Γ ⊢[ Ψ ] app alg (app (layerᶜ F (μ F) A (cataᶜ F pure alg)) t) ∷ A ! π)
+                → d ≅ d′
+      out-unfold : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ F A π c a}
+                 → Pure Δ Γ c (A ⇒[ mk-kind Many pure ] ⟦ F ⟧F A)
+                 → (d : Δ ⊩ Γ ⊢[ Ψ ] out (unfold F c a) ∷ ⟦ F ⟧F (ν F pureᶠ) ! π)
+                   (d′ : Δ ⊩ Γ ⊢[ Ψ ] app (layerᶜ F A (ν F pureᶠ) (anaᶜ F A pure c)) (app c a) ∷ ⟦ F ⟧F (ν F pureᶠ) ! π)
+                 → d ≅ d′
 
 ------------------------------------------------------------------------
 -- Effects form a Freyd category, up to what is observed
