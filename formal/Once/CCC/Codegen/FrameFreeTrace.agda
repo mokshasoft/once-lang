@@ -65,7 +65,8 @@ open import Once.CCC.Machine.FrameFree using
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.HeapModed using (HeapModed)
 open import Once.CCC.Codegen.FlatLayout
-  using (Kind; word; flat; kind; put; put-k; get; get-k; put-All; put-k-All; get-All; get-k-All; lkind; lsz)
+  using (Kind; word; flat; kind; put; put-k; get; get-k; fill; put-All; put-k-All; get-All; get-k-All; fill-All; lkind; lsz)
+open import Once.CCC.Codegen.Size using (size)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
@@ -109,8 +110,11 @@ get-ff X k = get-All {EmittableI} X k (λ _ → tt) (λ _ → tt) tt
 get-k-ff : ∀ kd n k → FrameFreeTrace (get-k kd n k)
 get-k-ff kd n k = get-k-All {EmittableI} kd n k (λ _ → tt) (λ _ → tt) tt
 
+fill-ff : ∀ from c → FrameFreeTrace (fill from c)
+fill-ff from c = fill-All {EmittableI} from c tt (λ _ → tt)
+
 inj-ff : ∀ t P S n → FrameFreeTrace (inj-trace t P S n)
-inj-ff t P S n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-ff P n (suc n) 1) (tt ∷ [])
+inj-ff t P S n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-ff P n (suc n) 1) (++⁺ (fill-ff _ _) (tt ∷ []))
 
 -- D380: a closure body's entry
 env-entry-ff : ∀ kd E A → FrameFreeTrace (proj₂ (env-entry kd E A))
@@ -132,7 +136,7 @@ pop2-ff topSlot = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 wrap-sum-ff : ∀ tag pk ps ss s → FrameFreeTrace (wrap-sum tag pk ps ss s)
 wrap-sum-ff tag pk ps ss s =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-k-ff pk ps s (suc s) 1) (tt ∷ [])
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-k-ff pk ps s (suc s) 1) (++⁺ (fill-ff _ _) (tt ∷ []))
 
 getμ-ff : ∀ (G : Fun 0) k → FrameFreeTrace (get-k (lkind G word) (lsz G 1) k)
 getμ-ff G k = get-k-ff (lkind G word) (lsz G 1) k
@@ -409,7 +413,7 @@ resuspend-ff H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
   where
     n2 = proj₁ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
     l2 = proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
-    arm : ∀ (P : IRFunctor) {t} → FrameFreeTrace t → ∀ {tag sz}
+    arm : ∀ (P : IRFunctor) {t} → FrameFreeTrace t → ∀ {tag sz c}
         → FrameFreeTrace ((Once.CCC.Machine.SMCore.restore-input n ∷ []) ++ get (⟦ P ⟧TI A) 1 ++ t ++
                           (Once.CCC.Machine.SMCore.store-at-slot (suc (suc n)) ∷
                            Once.CCC.Machine.SMCore.instr-alloc-heap sz ∷
@@ -418,13 +422,14 @@ resuspend-ff H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
                            Once.CCC.Machine.SMCore.instr-load-tag-lit tag ∷
                            Once.CCC.Machine.SMCore.store-at 0 ∷ []) ++
                           put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
+                          fill (suc (size (⟦ P ⟧TI (ν-type H)))) c ++
                           (Once.CCC.Machine.SMCore.load-from-slot (suc n) ∷ []))
     arm P ff =
       ++⁺ (tt ∷ [])
           (++⁺ (get-ff (⟦ P ⟧TI A) 1)
           (++⁺ ff
           (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-          (++⁺ (put-ff (⟦ P ⟧TI (ν-type H)) _ _ 1) (tt ∷ [])))))
+          (++⁺ (put-ff (⟦ P ⟧TI (ν-type H)) _ _ 1) (++⁺ (fill-ff _ _) (tt ∷ []))))))
 
 frame-free-blocks' : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) (n l : ℕ)
                    → All BlockFrameFree (ffbds (ir-to-trace' n l ir))

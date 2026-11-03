@@ -93,7 +93,7 @@ open import Once.Spec.Type using (Fun)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; IRTy; IRFunctor; ⟦_⟧TI; ν-type)
   renaming (_*_ to _*ᵀ_; _+_ to _+ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
-open import Once.CCC.Codegen.FlatLayout using (put; put-k; get; get-k; Kind; word; flat; kind; lkind; lsz)
+open import Once.CCC.Codegen.FlatLayout using (put; put-k; get; get-k; fill; Kind; word; flat; kind; lkind; lsz)
 import Once.Type as Ty
 open import Once.Spec.Type using (Int; Float)
 open import Data.Bool using (Bool; true; false)
@@ -347,6 +347,7 @@ wrap-sum tag pk ps ss s =
   store-at-slot s ∷ instr-alloc-heap (2 ⊔ ss) ∷ store-at-slot (suc s) ∷ mov-to-input ∷
   instr-load-tag-lit tag ∷ store-at 0 ∷
   put-k pk ps s (suc s) 1 ++
+  fill (suc ps) (ss ℕ.∸ suc ps) ++
   load-from-slot (suc s) ∷ []
 
 -- plan 0.123 B.4 α: the walks read a layer `⟦ G ⟧ X` at its flat offsets:
@@ -635,6 +636,7 @@ resuspend-layer H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
                            instr-load-tag-lit tag ∷
                            store-at 0 ∷ []) ++
                           put (⟦ P ⟧TI (ν-type H)) tmp dst 1 ++
+                          fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ℕ.∸ suc (size (⟦ P ⟧TI (ν-type H)))) ++
                           (load-from-slot dst ∷ [])
   in n3 , l3 ,
      (store-at-slot src ∷
@@ -715,6 +717,7 @@ inj-trace t P S n =
   instr-load-tag-lit t ∷
   store-at 0 ∷
   put P n (suc n) 1 ++
+  fill (suc (size P)) (size S ℕ.∸ suc (size P)) ++
   load-from-slot (suc n) ∷ []
 
 -- D380: a closure body's entry. The call pair is `[env-word, arg…]`; with a

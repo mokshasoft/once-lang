@@ -26,7 +26,7 @@ open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.RefsClosed (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; suc; _+_; _*_; _⊔_)
+open import Data.Nat using (ℕ; suc; _+_; _*_; _⊔_; _∸_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -59,7 +59,7 @@ open import Once.CCC.Codegen.IRToTrace o using
    cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; wrap-sum; resuspend-layer;
    cata-call-from; inj-trace; env-entry; getμ; push2)
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; kind; lkind; lsz;
-  put-All; put-k-All; get-All; get-k-All)
+  put-All; put-k-All; get-All; get-k-All; fill; fill-All)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type) renaming (_*_ to _*ᵀ_; _+_ to _+ᵀ_)
 open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
@@ -129,13 +129,16 @@ get-k-noref kd n k = get-k-All kd n k (λ _ → refl) (λ _ → refl) refl
 getμ-noref : ∀ G k → NoRef (getμ G k)
 getμ-noref G k = get-k-noref (lkind G word) (lsz G 1) k
 
+fill-noref : ∀ from c → NoRef (fill from c)
+fill-noref from c = fill-All from c refl (λ _ → refl)
+
 wrap-noref : ∀ tag pk ps ss s → NoRef (wrap-sum tag pk ps ss s)
 wrap-noref tag pk ps ss s =
-  refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-k-noref pk ps s (suc s) 1) (refl ∷ [])
+  refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-k-noref pk ps s (suc s) 1) (++⁺ (fill-noref _ _) (refl ∷ []))
 
 inj-noref : ∀ t P S n → NoRef (inj-trace t P S n)
 inj-noref t P S n =
-  refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-noref P n (suc n) 1) (refl ∷ [])
+  refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-noref P n (suc n) 1) (++⁺ (fill-noref _ _) (refl ∷ []))
 
 call-noref : ∀ i0 E lk ls cl k ev pr → instr-refs i0 ≡ [] → NoRef (cata-call-from i0 E lk ls cl k ev pr)
 call-noref i0 E lk ls cl k ev pr e0 =
@@ -351,7 +354,9 @@ module _ (G : String → Set) where
       arm P t tag = (restore-input n ∷ []) ++ get (⟦ P ⟧TI A) 1 ++ t ++
                     (store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ sz) ∷ store-at-slot (suc n) ∷
                      mov-to-input ∷ instr-load-tag-lit tag ∷ store-at 0 ∷ []) ++
-                    put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++ (load-from-slot (suc n) ∷ [])
+                    put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
+                    fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H)))) ++
+                    (load-from-slot (suc n) ∷ [])
       armG = arm G tG 1
       armF = arm F tF 0
       arm-closes : ∀ {D′} (P : IRFunctor) (t : AbstractTrace) (tag : ℕ) → Closes D′ t → Closes D′ (arm P t tag)
@@ -360,7 +365,9 @@ module _ (G : String → Set) where
           (closes-++ t _ ct
             (closes-++ (put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) _
                (noref-closes (put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1)
-                             (put-noref (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1)) []))
+                             (put-noref (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1))
+               (closes-++ (fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H))))) _
+                  (noref-closes (fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H))))) (fill-noref _ _)) [])))
       W = proj₂ (proj₂ (resuspend-layer H E A n l lbl env (wf-Sum wfF wfG)))
       inl∈ : instr-ctrl (c-label (ℓ o l)) ∈ W
       inl∈ = there (there (there (∈-++⁺ʳ armG (there (here refl)))))

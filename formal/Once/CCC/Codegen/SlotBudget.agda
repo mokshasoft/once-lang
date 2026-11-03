@@ -70,7 +70,7 @@ open import Once.CCC.Codegen.IRToTrace o using
 -- `SegOK`, …), split out so a program image shares one `AllSeg`
 open import Once.CCC.Codegen.SlotSeg
 open import Once.CCC.Codegen.FlatLayout
-  using (Kind; word; flat; kind; put; put-k; get; get-k; put-All; put-k-All; get-All; get-k-All; lkind; lsz)
+  using (Kind; word; flat; kind; put; put-k; get; get-k; fill; put-All; put-k-All; get-All; get-k-All; fill-All; lkind; lsz)
 open import Once.CCC.Codegen.Size using (size)
 import Data.List.Relation.Unary.All as All
 open SegOK using (ok-all; ok-neu)
@@ -110,6 +110,10 @@ get-SB X k = get-All X k (λ _ → nn refl refl) (λ _ → nn refl refl) (nn ref
 
 get-k-SB : ∀ {b} kd n k → All (SB b) (get-k kd n k)
 get-k-SB kd n k = get-k-All kd n k (λ _ → nn refl refl) (λ _ → nn refl refl) (nn refl refl)
+
+-- D382: a sum's padding fill touches no slot
+fill-SB : ∀ {b} from c → All (SB b) (fill from c)
+fill-SB from c = fill-All from c (nn refl refl) (λ _ → nn refl refl)
 
 segok-get : ∀ {b} X k → SegOK b (get X k)
 segok-get X k = segok-SB _ (get-SB X k)
@@ -312,7 +316,7 @@ wrap-sum-below : ∀ (tag : ℕ) pk ps ss′ (s b : ℕ) → s < b → suc s < b
 wrap-sum-below tag pk ps ss′ s b p-s pss =
   ss refl p-s (λ _ ()) refl ∷ nn refl refl ∷ ss refl pss (λ _ ()) refl ∷
   nn refl refl ∷ nn refl refl ∷ nn refl refl ∷
-  ++⁺ (put-k-SB pk ps s (suc s) 1 p-s pss) (ss refl pss (λ _ ()) refl ∷ [])
+  ++⁺ (put-k-SB pk ps s (suc s) 1 p-s pss) (++⁺ (fill-SB _ _) (ss refl pss (λ _ ()) refl ∷ []))
 
 getμ-SB : ∀ {b} (G : Fun 0) k → All (SB b) (get-k (lkind G word) (lsz G 1) k)
 getμ-SB G k = get-k-SB (lkind G word) (lsz G 1) k
@@ -483,7 +487,8 @@ rebuild-idleA ck cs (F ⊕ G) val tv tb s lb =
   (++⁺ (rebuild-idleA ck cs F val tv tb (s + 4) _) (++⁺ (ws (lkind F ck) (lsz F cs) 0) (refl ∷ []))))))))))
   where ws : ∀ pk ps tag → All Idle (wrap-sum tag pk ps (lsz (F ⊕ G) cs) s)
         ws pk ps tag = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                       ++⁺ (put-k-All pk ps s (suc s) 1 refl refl refl (λ _ → refl) (λ _ → refl)) (refl ∷ [])
+                       ++⁺ (put-k-All pk ps s (suc s) 1 refl refl refl (λ _ → refl) (λ _ → refl))
+                           (++⁺ (fill-All _ _ refl (λ _ → refl)) (refl ∷ []))
 rebuild-idleA ck cs (F ⊗ G) val tv tb s lb =
   ++⁺ (refl ∷ refl ∷ []) (++⁺ (getμ-idle G _) (++⁺ (refl ∷ [])
   (++⁺ (rebuild-idleA ck cs G val tv tb (s + 4) _) (++⁺ (refl ∷ refl ∷ [])
@@ -724,12 +729,13 @@ resuspend-below H E A n l lbl env (wf-Sum {F} {G} wfF wfG) e<n =
     e<n2 : env < n2
     e<n2 = ≤-trans e<3n (resuspend-mono H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
     -- plan 0.123 B.4 α: the payload read at word 1, transformed, put at word 1
-    arm : ∀ (P : IRFunctor) {t} → SegOK B t → ∀ {tag sz′}
+    arm : ∀ (P : IRFunctor) {t} → SegOK B t → ∀ {tag sz′ c}
         → SegOK B ((restore-input n ∷ []) ++ get (⟦ P ⟧TI A) 1 ++ t ++
                    (store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ sz′) ∷
                     store-at-slot (suc n) ∷ mov-to-input ∷
                     instr-load-tag-lit tag ∷ store-at 0 ∷ []) ++
                    put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
+                   fill (suc (size (⟦ P ⟧TI (ν-type H)))) c ++
                    (load-from-slot (suc n) ∷ []))
     arm P ok =
       segok-++ (segok-SB _ (ss refl n<B (λ _ ()) refl ∷ []))
@@ -739,7 +745,7 @@ resuspend-below H E A n l lbl env (wf-Sum {F} {G} wfF wfG) e<n =
           (++⁺ (ss refl base (λ _ ()) refl ∷ nn refl refl ∷ ss refl sn<B (λ _ ()) refl ∷
                 nn refl refl ∷ nn refl refl ∷ nn refl refl ∷ [])
           (++⁺ (put-SB (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 base sn<B)
-               (ss refl sn<B (λ _ ()) refl ∷ []))))))
+               (++⁺ (fill-SB _ _) (ss refl sn<B (λ _ ()) refl ∷ [])))))))
 
 sigop-below : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp)
             → SegOK (sigop-budget n m) (sigop-code si n m)
@@ -756,7 +762,7 @@ inj-below t P S n =
   segok-SB _
     (nn refl refl ∷ ss refl n< (λ _ ()) refl ∷ nn refl refl ∷ ss refl ≤-refl (λ _ ()) refl ∷
      nn refl refl ∷ nn refl refl ∷ nn refl refl ∷
-     ++⁺ (put-SB P n (suc n) 1 n< ≤-refl) (ss refl ≤-refl (λ _ ()) refl ∷ []))
+     ++⁺ (put-SB P n (suc n) 1 n< ≤-refl) (++⁺ (fill-SB _ _) (ss refl ≤-refl (λ _ ()) refl ∷ [])))
   where n< : n < suc (suc n)
         n< = m≤n⇒m≤1+n ≤-refl
 

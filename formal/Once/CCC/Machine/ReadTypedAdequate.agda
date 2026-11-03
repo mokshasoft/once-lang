@@ -161,21 +161,21 @@ readTyped-adequate r-int b-Int (valid-int-wf bf rl) rewrite rl = refl
 readTyped-adequate r-float b-Float (valid-float-wf bf rl) rewrite rl = refl
 readTyped-adequate r-void  _ {v = ()} _
 -- A sum: the tag selects the injection; the payload is embedded after it.
-readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) (valid-inl-wf nd _ _ _ _ _ _) = ⊥-elim (base-not-node iA nd)
-readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) (valid-inr-wf nd _ _ _ _ _ _) = ⊥-elim (base-not-node iB nd)
-readTyped-adequate {prog = prog} (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} {_} {alloc} (valid-inl-reg-wf {a = a} _ tg rep rl _)
+readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) (valid-inl-wf nd _ _ _ _ _ _ _) = ⊥-elim (base-not-node iA nd)
+readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) (valid-inr-wf nd _ _ _ _ _ _ _) = ⊥-elim (base-not-node iB nd)
+readTyped-adequate {prog = prog} (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} {_} {alloc} (valid-inl-reg-wf {a = a} _ tg rep rl _ _)
   rewrite sumtag-eq tg =
   trans (cong (Data.Maybe.map inj₁) (readTyped-cell-adequate {prog = prog} rA iA {alloc = alloc} (cell-inline {cell-loc = sucLoc loc} {s = s} rep rl)))
         (cong just (cong (forgetᵇ (b-+ iA iB)) (sym (subst-⊎₁ (cohᴰ A) (cohᴰ B) a))))
-readTyped-adequate {prog = prog} (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} {_} {alloc} (valid-inr-reg-wf {b = b} _ tg rep rl _)
+readTyped-adequate {prog = prog} (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} {_} {alloc} (valid-inr-reg-wf {b = b} _ tg rep rl _ _)
   rewrite sumtag-eq tg =
   trans (cong (Data.Maybe.map inj₂) (readTyped-cell-adequate {prog = prog} rB iB {alloc = alloc} (cell-inline {cell-loc = sucLoc loc} {s = s} rep rl)))
         (cong just (cong (forgetᵇ (b-+ iA iB)) (sym (subst-⊎₂ (cohᴰ A) (cohᴰ B) b))))
-readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} (valid-inl-flat-wf {a = a} _ _ tg _ _ va)
+readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} (valid-inl-flat-wf {a = a} _ _ tg _ _ _ va)
   rewrite sumtag-eq tg =
   trans (cong (Data.Maybe.map inj₁) (readTyped-adequate rA iA va))
         (cong just (cong (forgetᵇ (b-+ iA iB)) (sym (subst-⊎₁ (cohᴰ A) (cohᴰ B) a))))
-readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} (valid-inr-flat-wf {b = b} _ _ tg _ _ vb)
+readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) {loc} {s} (valid-inr-flat-wf {b = b} _ _ tg _ _ _ vb)
   rewrite sumtag-eq tg =
   trans (cong (Data.Maybe.map inj₂) (readTyped-adequate rB iB vb))
         (cong just (cong (forgetᵇ (b-+ iA iB)) (sym (subst-⊎₂ (cohᴰ A) (cohᴰ B) b))))

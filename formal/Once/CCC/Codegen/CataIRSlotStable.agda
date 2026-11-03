@@ -57,7 +57,7 @@ open import Once.CCC.Codegen.IRToTrace o
          cata-body; cata-call-setup; cata-call; cata-trace-const; fsize;
          cata-call-from; inj-trace; env-entry; getμ; wrap-sum; push2)
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; kind; lkind; lsz;
-  put-All; put-k-All; get-All; get-k-All)
+  put-All; put-k-All; get-All; get-k-All; fill; fill-All)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type) renaming (_+_ to _+ᵀ_)
 open import Once.Spec.Type using (Fun)
@@ -211,13 +211,16 @@ module CataIRSlotStable {FS : FrameSemantics} where
   getμ-st : ∀ G k → AllSlotStable (getμ G k)
   getμ-st G k = get-k-All (lkind G word) (lsz G 1) k (λ _ → tt) (λ _ → tt) tt
 
+  fill-st : ∀ from c → AllSlotStable (fill from c)
+  fill-st from c = fill-All from c tt (λ _ → tt)
+
   wrap-st : ∀ tag pk ps ss s → AllSlotStable (wrap-sum tag pk ps ss s)
   wrap-st tag pk ps ss s =
-    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ ++⁺ (put-k-st pk ps s (suc s) 1) (tt ∷ᴬ []ᴬ)
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ ++⁺ (put-k-st pk ps s (suc s) 1) (++⁺ (fill-st _ _) (tt ∷ᴬ []ᴬ))
 
   inj-st : ∀ t P S n → AllSlotStable (inj-trace t P S n)
   inj-st t P S n =
-    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ ++⁺ (put-st P n (suc n) 1) (tt ∷ᴬ []ᴬ)
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ ++⁺ (put-st P n (suc n) 1) (++⁺ (fill-st _ _) (tt ∷ᴬ []ᴬ))
 
   call-st : ∀ i0 E lk ls cl k ev pr → SlotStable i0 → AllSlotStable (cata-call-from i0 E lk ls cl k ev pr)
   call-st i0 E lk ls cl k ev pr s0 =
@@ -471,12 +474,12 @@ module CataIRSlotStable {FS : FrameSemantics} where
     ++⁺ (tt ∷ᴬ ++⁺ (get-st (⟦ G ⟧TI A) 1)
                    (++⁺ (resuspend-stable H E A n2 l2 lbl env wfG)
                         (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-                         ++⁺ (put-st (⟦ G ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (tt ∷ᴬ []ᴬ))))
+                         ++⁺ (put-st (⟦ G ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (++⁺ (fill-st _ _) (tt ∷ᴬ []ᴬ)))))
         (tt ∷ᴬ tt ∷ᴬ
          ++⁺ (tt ∷ᴬ ++⁺ (get-st (⟦ F ⟧TI A) 1)
                         (++⁺ (resuspend-stable H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
                              (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-                              ++⁺ (put-st (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (tt ∷ᴬ []ᴬ))))
+                              ++⁺ (put-st (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (++⁺ (fill-st _ _) (tt ∷ᴬ []ᴬ)))))
              (tt ∷ᴬ []ᴬ))
     where
       n2 = proj₁ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)

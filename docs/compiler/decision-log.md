@@ -21022,3 +21022,28 @@ of a `get` could not show that its `addr-at` does not fault. Two cases differ:
   already admits.
 * `ValueRealized` and the callee's contract (`CalleeRunP`) gain the blocks-kept field, beside
   `bf-mono`.
+
+## D382 — A SUM'S PADDING IS WRITTEN WHEN THE SUM IS BUILT (2026-11-04)
+
+**Decided** in plan 0.123 B.4 α2, found while stating the copy of a flat component (`put`).
+
+### Context
+A sum `A + B` has `1 + (size A ⊔ size B)` words (D375). A value of the smaller alternative leaves the
+words after its payload unwritten: allocation writes no cell. Embedding a value copies all of its
+words (`FlatLayout.put` = `copy-from`), and in the abstract machine a load of an unwritten cell
+faults (D367). So copying such a sum into a pair, an environment or a layer would fault, although the
+concrete machine would merely copy garbage.
+
+### Decision
+* Every sum construction (`inj-trace`, the rebuilt layers' `wrap-sum`, the re-suspension's sum arms)
+  writes its padding after the payload: `FlatLayout.fill from c`, one `instr-load-tag-lit 0` /
+  `store-at` pair per padding word. A comparison's `Bool` has no padding.
+* The value relation records it: a valid sum's padding words are written, so every word of a valid
+  flat value is (its tag, its payload's words, its padding). That is the premise of `FlatCopy.copy-run`.
+* Rejected: zero-filling every block at allocation (the abstract machine would then claim cells the
+  concrete one does not set, and every allocation would pay); a tag-dispatched copy that copies only the
+  live alternative (branching code inside every copy).
+
+### Consequences
+* An injection into an unequal sum costs two instructions per padding word.
+* The structural lemmas take one more segment (`fill-All`).

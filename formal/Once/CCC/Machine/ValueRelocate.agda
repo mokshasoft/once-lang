@@ -19,10 +19,10 @@ open import Once.CCC.Machine.SMCore using (AbstractTrace)
 
 module Once.CCC.Machine.ValueRelocate {FS : FrameSemantics} {prog : AbstractTrace} where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_; _⊔_; z≤n; s≤s)
-open import Data.Nat.Properties using (+-assoc; +-suc; m≤m+n; m≤n⊔m; m≤m⊔n; ≤-trans; +-monoˡ-≤; +-monoʳ-≤; +-comm)
+open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_; _⊔_; _∸_; z≤n; s≤s)
+open import Data.Nat.Properties using (+-assoc; +-suc; m≤m+n; m≤n⊔m; m≤m⊔n; ≤-trans; +-monoˡ-≤; +-monoʳ-≤; +-comm; +-monoʳ-<; m+[n∸m]≡n)
 open import Data.Maybe using (just)
-open import Data.Product using (_,_)
+open import Data.Product using (_,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Memory.HeapAddress using (HeapRef; heap-loc)
 import Once.Memory.HeapAddress
@@ -137,6 +137,18 @@ module Relocate {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
     agree-max-r : ∀ {a b os od} → Agree (a ⊔ b) os od → Agree b os od
     agree-max-r {a} {b} ag j j<b = ag j (≤-trans j<b (m≤n⊔m a b))
 
+  private
+    -- D382: padding word `j` after an `m`-word payload is a word of the sum
+    pad-bound : ∀ m n j → m ≤ n → j < n ∸ m → suc m + j < suc n
+    pad-bound m n j m≤n p = s≤s (subst (m + j <_) (m+[n∸m]≡n m≤n) (+-monoʳ-< m p))
+
+    -- …so it moves with the copy
+    pad-move : ∀ {m n os od} → m ≤ n → Agree (suc n) os od
+             → Pad s₁ (AtDynamic (heap-loc rs os)) (suc m) (n ∸ m)
+             → Pad s₂ (AtDynamic (heap-loc rd od)) (suc m) (n ∸ m)
+    pad-move {m} {n} m≤n ag pd j j<c =
+      proj₁ (pd j j<c) , trans (ag (suc m + j) (pad-bound m n j m≤n j<c)) (proj₂ (pd j j<c))
+
   mutual
     -- a flat value, relocated
     reloc-v : ∀ (C : IRTy) {m v} (os od : ℕ) → Agree (size C) os od → IsFlat C → od + size C ≤ N
@@ -147,32 +159,36 @@ module Relocate {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
       valid-pair-wf (lmm-move lmm) (dst-live _)
         (reloc-cell A os od (agree-fst {size A} {size B} ag) (fits-fst {od} {size A} {size B} f) c₁)
         (reloc-cell B (size A + os) (size A + od) (agree-snd {size A} {size B} ag) (fits-snd {od} {size A} {size B} f) c₂)
-    reloc-v (A +ᵀ B) os od ag _ _ (valid-inl-wf nd lmm tg pp pb slb pv) =
+    reloc-v (A +ᵀ B) os od ag _ _ (valid-inl-wf nd lmm tg pp pb slb pd pv) =
       valid-inl-wf nd (lmm-move lmm) (tag-move (ag 0 (s≤s z≤n)) tg) (trans (ag 1 (s≤s (s≤s′ nd))) pp) (bft _ pb) (dst-live _)
+        (pad-move (m≤m⊔n (size A) (size B)) ag pd)
         (v-tr A pb pv)
       where s≤s′ : IsNode A → 0 < size A ⊔ size B
             s≤s′ nd′ = ≤-trans (subst (0 <_) (sym (node-size nd′)) (s≤s z≤n)) (m≤m⊔n (size A) (size B))
-    reloc-v (A +ᵀ B) os od ag _ _ (valid-inr-wf nd lmm tg pp pb slb pv) =
+    reloc-v (A +ᵀ B) os od ag _ _ (valid-inr-wf nd lmm tg pp pb slb pd pv) =
       valid-inr-wf nd (lmm-move lmm) (tag-move (ag 0 (s≤s z≤n)) tg) (trans (ag 1 (s≤s (s≤s′ nd))) pp) (bft _ pb) (dst-live _)
+        (pad-move (m≤n⊔m (size A) (size B)) ag pd)
         (v-tr B pb pv)
       where s≤s′ : IsNode B → 0 < size A ⊔ size B
             s≤s′ nd′ = ≤-trans (subst (0 <_) (sym (node-size nd′)) (s≤s z≤n)) (m≤n⊔m (size A) (size B))
-    reloc-v (A +ᵀ B) os od ag _ _ (valid-inl-reg-wf lmm tg (rep-prim fit) rl slb) =
+    reloc-v (A +ᵀ B) os od ag _ _ (valid-inl-reg-wf lmm tg (rep-prim fit) rl slb pd) =
       valid-inl-reg-wf (lmm-move lmm) (tag-move (ag 0 (s≤s z≤n)) tg) (rep-prim fit)
         (trans (ag 1 (s≤s (≤-trans (subst (0 <_) (sym (scalar-size fit)) (s≤s z≤n)) (m≤m⊔n (size A) (size B))))) rl)
-        (dst-live _)
-    reloc-v (A +ᵀ B) os od ag _ _ (valid-inr-reg-wf lmm tg (rep-prim fit) rl slb) =
+        (dst-live _) (pad-move (m≤m⊔n (size A) (size B)) ag pd)
+    reloc-v (A +ᵀ B) os od ag _ _ (valid-inr-reg-wf lmm tg (rep-prim fit) rl slb pd) =
       valid-inr-reg-wf (lmm-move lmm) (tag-move (ag 0 (s≤s z≤n)) tg) (rep-prim fit)
         (trans (ag 1 (s≤s (≤-trans (subst (0 <_) (sym (scalar-size fit)) (s≤s z≤n)) (m≤n⊔m (size A) (size B))))) rl)
-        (dst-live _)
-    reloc-v (A +ᵀ B) os od ag _ f (valid-inl-flat-wf fl lmm tg slb ib pv) =
+        (dst-live _) (pad-move (m≤n⊔m (size A) (size B)) ag pd)
+    reloc-v (A +ᵀ B) os od ag _ f (valid-inl-flat-wf fl lmm tg slb ib pd pv) =
       valid-inl-flat-wf fl (lmm-move lmm) (tag-move (ag 0 (s≤s z≤n)) tg) (dst-live _)
         (λ p → dst-in (suc od) (starts-in p (fits-pay-l {od} {size A} {size B} f)))
+        (pad-move (m≤m⊔n (size A) (size B)) ag pd)
         (reloc-v A (suc os) (suc od) (agree-max-l {size A} {size B} (agree-tail ag)) fl
                  (fits-pay-l {od} {size A} {size B} f) pv)
-    reloc-v (A +ᵀ B) os od ag _ f (valid-inr-flat-wf fl lmm tg slb ib pv) =
+    reloc-v (A +ᵀ B) os od ag _ f (valid-inr-flat-wf fl lmm tg slb ib pd pv) =
       valid-inr-flat-wf fl (lmm-move lmm) (tag-move (ag 0 (s≤s z≤n)) tg) (dst-live _)
         (λ p → dst-in (suc od) (starts-in p (fits-pay-r {od} {size A} {size B} f)))
+        (pad-move (m≤n⊔m (size A) (size B)) ag pd)
         (reloc-v B (suc os) (suc od) (agree-max-r {size A} {size B} (agree-tail ag)) fl
                  (fits-pay-r {od} {size A} {size B} f) pv)
 
