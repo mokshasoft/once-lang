@@ -561,7 +561,7 @@ instr-effect store-indirect          = eff-heap-indirect
 instr-effect store-indirect-suc      = eff-heap-indirect
 instr-effect (load-at _)             = eff-heap-indirect
 instr-effect (store-at _)            = eff-heap-checked
-instr-effect (addr-at _)             = eff-heap-indirect   -- faults unless Input1 is a pointer
+instr-effect (addr-at _)             = eff-heap-checked    -- D379: checked against the block sizes
 instr-effect (instr-alloc-stack _)   = eff-stack-frontier
 instr-effect (instr-dealloc-stack _) = eff-stack-frontier
 instr-effect (instr-reclaim-to _)    = eff-stack-frontier
@@ -713,6 +713,8 @@ module InstrPrimitives {FS : FrameSemantics} where
   open MemOps {FS}
   open AbstractExec {FS}
   open MemoryOps {FS}
+  open ExecFinal {FS} using (in-block?)
+  open AllocState using (block-size)
   open FrameSemantics FS using (_≺_)
   -- (A) DETERMINISM
   -- If two states agree on what an instruction reads (memory and registers),
@@ -938,8 +940,10 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-heapMem (load-at k) s alloc nhw-load-at | nothing = refl
   exec-abstract-preserves-heapMem (addr-at k) s alloc nhw-addr-at
     with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc = refl
-  ... | nothing  = refl
+  ... | just loc with in-block? (block-size alloc) (offsetLoc loc k)
+  ...   | true  = refl
+  ...   | false = refl
+  exec-abstract-preserves-heapMem (addr-at k) s alloc nhw-addr-at | nothing = refl
   exec-abstract-preserves-heapMem (instr-ctrl _) s alloc nhw-instr-ctrl = refl
   exec-abstract-preserves-heapMem mov-to-input s alloc nhw-mov-to-input = refl
   exec-abstract-preserves-heapMem load-indirect s alloc nhw-load-indirect
@@ -1015,8 +1019,10 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-stack-slot (load-at k) s alloc f slot _ _ | nothing = refl
   exec-abstract-preserves-stack-slot (addr-at k) s alloc f slot _ _
     with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc = refl
-  ... | nothing  = refl
+  ... | just loc with in-block? (block-size alloc) (offsetLoc loc k)
+  ...   | true  = refl
+  ...   | false = refl
+  exec-abstract-preserves-stack-slot (addr-at k) s alloc f slot _ _ | nothing = refl
   exec-abstract-preserves-stack-slot (instr-ctrl _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot mov-to-input s alloc f slot _ _ = refl
   -- Plan 0.13.2: load-indirect/-suc case-split on sv-as-loc; both
@@ -1113,7 +1119,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-same-frame (instr-room _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (load-at _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (store-at _) s alloc₁ alloc₂ () _
-  exec-abstract-same-frame (addr-at _) s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (addr-at _) s alloc₁ alloc₂ () _
   exec-abstract-same-frame (instr-ctrl _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame mov-to-input s alloc₁ alloc₂ _ _ = refl
   -- Plan 0.13.2: case-split on sv-as-loc; both branches independent of alloc.
@@ -2291,9 +2297,11 @@ module TracePrimitives {FS : FrameSemantics} where
     ∃-syntax (λ (loc : ValueLocation FS) →
       (sv-as-loc (readReg (regs s) Input1) ≡ just loc) ×
       (in-block? (block-size alloc) (offsetLoc loc k) ≡ true))
-  InstrWF s _     (addr-at _)              =
+  -- D379: and the addressed cell is one of its block's
+  InstrWF s alloc (addr-at k)              =
     ∃-syntax (λ (loc : ValueLocation FS) →
-      sv-as-loc (readReg (regs s) Input1) ≡ just loc)
+      (sv-as-loc (readReg (regs s) Input1) ≡ just loc) ×
+      (in-block? (block-size alloc) (offsetLoc loc k) ≡ true))
   -- D270: a SigOp MAY halt (its `EffectShape`), a case runs a sub-trace and
   -- a loop can run out of fuel — so for these three the witness IS the
   -- fact that this step does not halt, owed by whoever runs it. (They were
@@ -2365,9 +2373,11 @@ module TracePrimitives {FS : FrameSemantics} where
   ... | .(just loc) | refl
     with in-block? (block-size alloc) (offsetLoc loc k) | ib
   ... | .true | refl = trans (writeLoc-halted s (offsetLoc loc k) (readReg (regs s) Output)) h-eq
-  exec-abstract-preserves-halted-WF (addr-at k)             s alloc h-eq (loc , rdi-eq)
+  exec-abstract-preserves-halted-WF (addr-at k)             s alloc h-eq (loc , rdi-eq , ib)
     with sv-as-loc (readReg (regs s) Input1) | rdi-eq
-  ... | .(just loc) | refl = h-eq
+  ... | .(just loc) | refl
+    with in-block? (block-size alloc) (offsetLoc loc k) | ib
+  ... | .true | refl = h-eq
   exec-abstract-preserves-halted-WF (instr-ctrl _)        s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF mov-to-input            s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF (store-at-slot slot)    s alloc h-eq _ =
@@ -2492,7 +2502,7 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-state-frame-eq (instr-room _)     s _ _ _ _ = refl
   exec-abstract-state-frame-eq (load-at _)             s _ _ _ _ = refl
   exec-abstract-state-frame-eq (store-at _)            s _ _ () _
-  exec-abstract-state-frame-eq (addr-at _)             s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (addr-at _)             s _ _ () _
   exec-abstract-state-frame-eq (instr-ctrl _)        s _ _ _ _ = refl
   exec-abstract-state-frame-eq mov-to-input            s _ _ _ _ = refl
   exec-abstract-state-frame-eq (store-at-slot slot)    s alloc alloc' _ fe =

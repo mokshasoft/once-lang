@@ -136,7 +136,7 @@ flat-same-frames (instr-dealloc-stack n) prog fs ()
 flat-same-frames (instr-free-heap n) prog fs ()
 flat-same-frames (load-at n) prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (store-at n) prog fs ff = mkSameFrames refl refl refl
-flat-same-frames (addr-at n) prog fs ()
+flat-same-frames (addr-at n) prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (instr-room n) prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (instr-push-frame cap)  prog fs ()
 flat-same-frames instr-pop-frame         prog fs ()

@@ -53,7 +53,7 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
-open import Once.Memory.HeapAddress using (HeapLocation; _≟HL_)
+open import Once.Memory.HeapAddress using (HeapLocation; _≟HL_; offsetHL)
 import Once.Allocator.AbstractInstance as AI
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; Answers; semM)
 open import Once.Res using (Res; stopped; returns)
@@ -348,6 +348,24 @@ sp-store-in-block : ∀ (cf : Frame) (ls : LocState FS) (ok : Bool)
 sp-store-in-block cf ls true  loc v ok wf = sp-write-mem cf ls loc v ok wf
 sp-store-in-block cf ls false loc v ok wf = sp-fault cf ls wf
 
+-- an address at an offset from a HEAP pointer is a heap pointer; a stack
+-- pointer in `Input1` is refuted by the invariant itself
+sp-addr-in-block : ∀ (cf : Frame) (ls : LocState FS) (ok : Bool) (loc : ValueLocation FS)
+                 → StackPtrOK (SV-Ptr loc) → SPInv ls
+                 → SPInv (exec-addr-in-block ok loc ls)
+sp-addr-in-block cf ls true  loc okp wf = sp-write-reg cf ls Output (SV-Ptr loc) okp wf
+sp-addr-in-block cf ls false loc okp wf = sp-fault cf ls wf
+
+sp-addr-at : ∀ (cf : Frame) (bs : ℕ → ℕ) (ls : LocState FS) (k : ℕ) (v : StoredValue FS)
+           → StackPtrOK v → SPInv ls
+           → SPInv (exec-addr-at-resolved bs k (sv-as-loc v) ls)
+sp-addr-at cf bs ls k (SV-Ptr (AtStack _ _)) () wf
+sp-addr-at cf bs ls k (SV-Ptr (AtDynamic hl)) _ wf =
+  sp-addr-in-block cf ls (in-block? bs (AtDynamic (offsetHL hl k))) (AtDynamic (offsetHL hl k)) tt wf
+sp-addr-at cf bs ls k (SV-Tag _)   _ wf = sp-fault cf ls wf
+sp-addr-at cf bs ls k (SV-Lit _ _) _ wf = sp-fault cf ls wf
+sp-addr-at cf bs ls k (SV-Code _)  _ wf = sp-fault cf ls wf
+
 sp-store-at-resolved : ∀ (cf : Frame) (bs : ℕ → ℕ) (ls : LocState FS) (k : ℕ)
                          (ml : Maybe (ValueLocation FS)) (v : StoredValue FS)
                      → StackPtrOK v → SPInv ls
@@ -487,7 +505,8 @@ sp-abstract (load-at n)     ls alloc ff wf =
 sp-abstract (store-at n)     ls alloc ff wf =
   sp-store-at-resolved (current-frame alloc) _ ls n (sv-as-loc (readReg (regs ls) Input1))
                        (readReg (regs ls) Output) (sp-regs wf Output) wf
-sp-abstract (addr-at n)     ls alloc () wf
+sp-abstract (addr-at n)     ls alloc ff wf =
+  sp-addr-at (current-frame alloc) _ ls n (readReg (regs ls) Input1) (sp-regs wf Input1) wf
 sp-abstract (instr-room n)     ls alloc ff wf = wf
 sp-abstract (instr-push-frame cap)  ls alloc () wf
 sp-abstract instr-pop-frame         ls alloc () wf
@@ -624,7 +643,8 @@ flat-stack-ptr (load-at n)     prog fs ff wf =
   sp-abstract (load-at n) (floc fs) (falloc fs) ff wf
 flat-stack-ptr (store-at n)     prog fs ff wf =
   sp-abstract (store-at n) (floc fs) (falloc fs) ff wf
-flat-stack-ptr (addr-at n)     prog fs () wf
+flat-stack-ptr (addr-at n)     prog fs ff wf =
+  sp-abstract (addr-at n) (floc fs) (falloc fs) ff wf
 flat-stack-ptr (instr-room n)     prog fs ff wf = sp-abstract (instr-room n) (floc fs) (falloc fs) ff wf
 flat-stack-ptr (instr-push-frame cap)  prog fs () wf
 flat-stack-ptr instr-pop-frame         prog fs () wf

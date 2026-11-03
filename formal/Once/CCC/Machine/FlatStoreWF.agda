@@ -303,12 +303,18 @@ wf-store-at-resolved {n} {ls} bs k (just loc) v wf b bv =
   wf-store-in-block (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v wf (offsetLoc-below n loc k b) bv
 wf-store-at-resolved bs k nothing v wf _ _ = wf-fault wf
 
-wf-addr-at-resolved : ∀ {n ls} (k : ℕ) (mloc : Maybe (ValueLocation FS))
+wf-addr-in-block : ∀ {n ls} (ok : Bool) (loc : ValueLocation FS)
+                 → StoreWF n ls → loc-below n loc
+                 → StoreWF n (exec-addr-in-block ok loc ls)
+wf-addr-in-block true  loc wf b = wf-write-reg Output (SV-Ptr loc) wf b
+wf-addr-in-block false loc wf _ = wf-fault wf
+
+wf-addr-at-resolved : ∀ {n ls} (bs : ℕ → ℕ) (k : ℕ) (mloc : Maybe (ValueLocation FS))
                     → StoreWF n ls → mloc-below (n) mloc
-                    → StoreWF n (exec-addr-at-resolved k mloc ls)
-wf-addr-at-resolved {n} k (just loc) wf b =
-  wf-write-reg Output (SV-Ptr (offsetLoc loc k)) wf (offsetLoc-below n loc k b)
-wf-addr-at-resolved k nothing wf _ = wf-fault wf
+                    → StoreWF n (exec-addr-at-resolved bs k mloc ls)
+wf-addr-at-resolved {n} bs k (just loc) wf b =
+  wf-addr-in-block (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) wf (offsetLoc-below n loc k b)
+wf-addr-at-resolved bs k nothing wf _ = wf-fault wf
 
 
 -- load-from-slot / restore-input share this shape (they also thread `alloc`).
@@ -440,7 +446,7 @@ mutual
     wf-store-at-resolved (AllocState.block-size alloc) k (sv-as-loc (readReg (regs ls) Input1)) (readReg (regs ls) Output) wf
       (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1)) (wf-regs wf Output) , ≤-refl
   wf-abstract (addr-at k) ls alloc wf =
-    wf-addr-at-resolved k (sv-as-loc (readReg (regs ls) Input1)) wf
+    wf-addr-at-resolved (AllocState.block-size alloc) k (sv-as-loc (readReg (regs ls) Input1)) wf
       (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1)) , ≤-refl
   wf-abstract (instr-reclaim-to n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-push-frame cap) ls alloc wf = wf , ≤-refl
