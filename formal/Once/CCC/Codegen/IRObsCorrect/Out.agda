@@ -17,9 +17,10 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Out (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; instr-save-closure-reg; load-indirect; mov-to-input; readReg; Input1; SV-Ptr; writeReg-same; Output; sucLoc; SV-Code; instr-call-closure; sv-as-loc; module LocState)
+open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; instr-save-closure-reg; load-indirect; load-at; mov-to-input; readReg; Input1; SV-Ptr; writeReg-same; Output; sucLoc; SV-Code; instr-call-closure; sv-as-loc; module LocState)
 open LocState using (regs; halted)
 open import Once.IRTy using (WellFormedFI; ν-type; ⟦_⟧TI)
 
@@ -51,7 +52,7 @@ module OutC {FS : FrameSemantics} where
     b0 b1 b2 b3 : FlatState
     b0 = entry-flat base s alloc cl rs
     b1 = flat-exec-instr instr-save-closure-reg prog b0
-    b2 = flat-exec-instr load-indirect          prog b1
+    b2 = flat-exec-instr (load-at 0)            prog b1
     b3 = flat-exec-instr mov-to-input           prog b2
 
     -- Every proof below is `abstract`: each is a `trans`-chain used only for
@@ -64,7 +65,7 @@ module OutC {FS : FrameSemantics} where
              → SMCore.MemOps.readLoc (floc b3) loc ≡ SMCore.MemOps.readLoc s loc
      mem-pres loc =
       trans (mem-untouched mov-to-input (floc b2) (falloc b2) loc nhw-mov-to-input refl)
-            (mem-untouched load-indirect (floc b1) (falloc b1) loc nhw-load-indirect refl)
+            (mem-untouched (load-at 0) (floc b1) (falloc b1) loc nhw-load-at refl)
 
      -- The closure register holds the ν pointer: row 1 copies `Input1` into it
      -- before row 3 overwrites `Input1` with the seed. That is what the register
@@ -73,6 +74,15 @@ module OutC {FS : FrameSemantics} where
                 → readReg (regs s) Input1 ≡ SV-Ptr ν-loc
                 → fclosure b3 ≡ SV-Ptr ν-loc
      closure-reg ν-loc rdi = rdi
+
+     -- plan 0.123 B.4 α: row 2 is `load-at 0` — the seed word, at the ν's own address
+     step2 : ∀ (ν-loc : ValueLocation FS) (sv : StoredValue FS)
+           → readReg (regs s) Input1 ≡ SV-Ptr ν-loc
+           → SMCore.MemOps.readLoc s ν-loc ≡ just sv
+           → b2 ≡ GetC.setOut {FS} b1 sv
+     step2 ν-loc sv rdi cell =
+       GetC.load-at-step {FS} prog b1 0 ν-loc sv rdi
+         (subst (λ z → SMCore.MemOps.readLoc s z ≡ just sv) (sym (GetC.offset-zero {FS} ν-loc)) cell)
 
      -- …and `Input1` ends up holding the SEED CELL's contents, whatever their
      -- representation — which makes the callee's `InputAt` a read-off of the ν's
@@ -83,7 +93,9 @@ module OutC {FS : FrameSemantics} where
               → readReg (regs (floc b3)) Input1 ≡ sv
      input1-b3 ν-loc sv rdi cell =
       trans (writeReg-same (regs (floc b2)) Input1 (readReg (regs (floc b2)) Output))
-            (exec-abstract-load-indirect-output (floc b1) (falloc b1) ν-loc sv rdi cell)
+            (trans (cong (λ fs → readReg (regs (floc fs)) Output) (step2 ν-loc sv rdi cell))
+                   (writeReg-same (regs (floc b1)) Output sv))
+
 
   obs-correct-Out : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (Out wf)
   -- A ν is a two-cell heap object: it fits no register, and it is not `Unit`.
@@ -167,15 +179,14 @@ module OutC {FS : FrameSemantics} where
                          (λ p → CalleeRun.frame-pres crun (trans res-eq p) alloc (cong falloc call-eq))
                          bf-mono-out
                          (λ p → CalleeRun.frames-pres crun (trans res-eq p) alloc (cong falloc call-eq))
+                         (λ nc → CalleeRun.blocks-kept crun (nc′ nc) alloc (cong falloc call-eq))
             ; traces-agree = trc
             }
             where
               nh1 : halted (floc OSP.b1) ≡ false
               nh1 = nh
               nh2 : halted (floc OSP.b2) ≡ false
-              nh2 = exec-abstract-preserves-halted-WF load-indirect
-                      (floc OSP.b1) (falloc OSP.b1) nh1
-                      (ν-loc , cong sv-as-loc rdi , seed-sv , c0)
+              nh2 = trans (cong (λ fs → halted (floc fs)) (OSP.step2 ν-loc seed-sv rdi c0)) nh1
               nh3 : halted (floc OSP.b3) ≡ false
               nh3 = exec-abstract-preserves-halted-WF mov-to-input
                       (floc OSP.b2) (falloc OSP.b2) nh2 tt
@@ -192,6 +203,7 @@ module OutC {FS : FrameSemantics} where
                        (trans (cong falloc call-eq) refl)
                        n≤
                        (λ _ b → b)
+                       (λ _ _ ib → ib)
                        (λ l _ → trans (cong (λ st → SMCore.MemOps.readLoc (floc st) l) call-eq) (OSP.mem-pres l))
                        (subst (λ st → readReg (regs st) Input1 ≡ seed-sv)
                               (sym (cong floc call-eq)) (OSP.input1-b3 ν-loc seed-sv rdi c0)))
