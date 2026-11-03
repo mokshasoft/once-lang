@@ -18,13 +18,14 @@ module Once.CCC.Codegen.FlatLayout where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_)
 open import Data.List using ([]; _∷_)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float; ⌈_⌉) renaming (_+_ to _+ᵀ_)
 open import Once.Spec.Type using (Ty; Fun; var)
 import Once.Spec.Type as T
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; restore-input; load-from-slot; load-at; store-at; addr-at)
+  using (AbstractInstr; AbstractTrace; restore-input; load-from-slot; load-at; store-at; addr-at)
 
 data Kind : Set where
   word flat : Kind
@@ -68,6 +69,43 @@ get-k flat (suc _) k = addr-at k ∷ []
 
 get : IRTy → ℕ → AbstractTrace
 get X = get-k (kind X) (size X)
+
+------------------------------------------------------------------------
+-- WHAT THE LAYOUT CODE IS MADE OF, for the structural facts about emitted
+-- code (fences, slot budgets, labels, …): `copy-from`/`put` use only the two
+-- stash slots' restores and loads and the offset load/store, `get` only the
+-- offset load or address. A property of those instructions is a property of
+-- every such trace.
+------------------------------------------------------------------------
+module _ {P : AbstractInstr → Set} where
+  copy-from-All : ∀ src blk off i k
+                → P (restore-input src) → P (restore-input blk)
+                → (∀ j → P (load-at j)) → (∀ j → P (store-at j))
+                → All P (copy-from src blk off i k)
+  copy-from-All src blk off i zero    rs rb pl ps = []
+  copy-from-All src blk off i (suc k) rs rb pl ps =
+    rs ∷ pl i ∷ rb ∷ ps (off + i) ∷ copy-from-All src blk off (suc i) k rs rb pl ps
+
+  put-k-All : ∀ kd n stash blk off
+            → P (restore-input stash) → P (restore-input blk) → P (load-from-slot stash)
+            → (∀ j → P (load-at j)) → (∀ j → P (store-at j))
+            → All P (put-k kd n stash blk off)
+  put-k-All word n stash blk off rs rb ls pl ps = rb ∷ ls ∷ ps off ∷ []
+  put-k-All flat n stash blk off rs rb ls pl ps = copy-from-All stash blk off 0 n rs rb pl ps
+
+  put-All : ∀ X stash blk off
+          → P (restore-input stash) → P (restore-input blk) → P (load-from-slot stash)
+          → (∀ j → P (load-at j)) → (∀ j → P (store-at j))
+          → All P (put X stash blk off)
+  put-All X = put-k-All (kind X) (size X)
+
+  get-k-All : ∀ kd n k → (∀ j → P (load-at j)) → (∀ j → P (addr-at j)) → All P (get-k kd n k)
+  get-k-All word n       k pl pa = pl k ∷ []
+  get-k-All flat zero    k pl pa = pa 0 ∷ []
+  get-k-All flat (suc _) k pl pa = pa k ∷ []
+
+  get-All : ∀ X k → (∀ j → P (load-at j)) → (∀ j → P (addr-at j)) → All P (get X k)
+  get-All X = get-k-All (kind X) (size X)
 
 ------------------------------------------------------------------------
 -- THE SAME RULE ON SPEC TYPES, for the walks indexed by a Spec functor (the
