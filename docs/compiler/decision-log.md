@@ -20829,3 +20829,23 @@ value through a free list now, move the statically sized ones to frames later (p
 * The servers stay red until the frame move and the cell heap both land.
 * D364's "values are heap-only" (`Live (AtStack _ _) = ⊥`) must be restated for frame-resident values
   before plan 0.87's re-proof (plan 0.138 §5's note: "inside the memory this run was given").
+
+## D374 — VALUES THAT CAN LIVE ON THE STACK DO; D364'S "HEAP-ONLY" WAS A SHORTCUT (2026-11-03)
+
+**Revises** D364's "values are heap-only". **Decided** by the user 2026-11-03 ("that was a short cut at that
+time. Now I think values that could go to the stack should go there"), with D373.
+
+### Decision
+* A value whose type fixes its size lives in a frame slot (its caller's, for a result: destination passing,
+  D147), not on the heap. D364's `Live (AtStack _ _) = ⊥` goes: a location inside a value may be a stack slot
+  of a live frame.
+* What makes that sound is what D364's rule bought for free: no value outlives the frame that holds it.
+  Destination passing gives it (a result's slot is in a frame that outlives the callee), and a closure that
+  captures a stack value moves it to the cell heap (plan 0.87 F).
+
+### Consequences
+* Plan 0.87 (stack-resident I/O) is no longer in conflict with D364; it is the next step of plan 0.123 B
+  (D373), with plan 0.138's layout.
+* The value relation's stack case (`Live`, `CellAt` at `AtStack`) and the pointer invariants
+  (`FlatStackPtr`, `PtrBoundsWF`) are re-stated; the correspondence is re-proved with stack pointers live
+  on all three arches (plan 0.87 D).
