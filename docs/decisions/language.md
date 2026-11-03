@@ -262,7 +262,11 @@ entry updates the rule it changes here, in the same commit.
   finite number of layers (the final coalgebra of a polynomial functor is the
   limit of its terminal sequence) (`Spec.Equivalence`); it is a partial
   equivalence respected by `>>=`. Bisimulation-to-equality is not
-  assumed. (D318 ← D317, D201, plan 0.116 D0)
+  assumed. Each type former's relation is defined once, between two value
+  sets (computations, pairs, sums, functions, trees, streams), and sameness is
+  their fold over a closed type: two trees are the same when they have the
+  same shape and the same constants and subtrees, never compared by `≡`.
+  (D370, D318 ← D317, D201, plan 0.116 D0)
 
 ## 6. Subtyping
 
