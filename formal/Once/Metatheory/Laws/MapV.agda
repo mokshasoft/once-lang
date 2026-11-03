@@ -37,7 +37,8 @@ open import Once.Spec.Grade using (Finite; fin)
 open import Once.Spec.Equivalence Σ using (Same; SameM)
 open import Once.Spec.Metatheory using (SameDefs; SameEnv)
 open import Once.Metatheory.Bisim Σ using (≈-sym; ≈-trans; ≈-bind; ≈-refl; idˡ; assoc)
-open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
+open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved; LayerEq-mono)
+open import Once.Metatheory.Laws.MapLaws Σ using (module CovWF)
 open import Once.Metatheory.Coherence.Layer Σ using (appZero; rel; runs; module Functor; module Fold; module Ana; outRel; LayerEq-∀; relatedFmap)
 open import Once.Metatheory.Erase Σ using (toT∞-fmap; toT∞-bindᵍ)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym)
@@ -501,8 +502,8 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
                                   (idˡ xv (λ v → return∞ (foldM pure (CA G) (λ l → alg₀ (fromL σ GA R l)) v)))))
         (bindRel {g = λ g → return∞ xv >>=∞ λ v → return∞ (foldM pure (CA G) (λ l → g (fromL σ GA R l)) v)} eqL (λ {g} {g′} sg →
           bindRel {g = λ v → return∞ (foldM pure (CA G) (λ l → g′ (fromL σ GA R l)) v)} (rd Rx dt rT) (λ {v} {v′} sv →
-            returnRel (FOLDREL sg sv)))))
-      (returnRel (foldEq xv)))
+            returnRel (FOLDREL sg (Fn.sameμ wf sv))))))
+      (returnRel (Fn.≡→sameμ wfGB (foldEq xv))))
     where
       module W = Views δ sd σ r γ sγ
       GA = G ⟨ at₀ A ⟩F
@@ -513,10 +514,11 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
       φμ o = φ (p-μ o)
       alg₀ = ⟦ ⊢lam le dl ⟧ δ σ r e₀
       module Fn = Functor σ r
+      wfGB = CovWF.wfB {Δ = Δ} σ A B G c
 
       -- The folds of the same algebras: the same trees.
       FOLDREL : ∀ {g g′} → Same ((L ⇒[ mk-kind Many pure ] R) ⟨ σ ⟩) g g′ → ∀ {v v′ : μS (CA G)} → v ≡ v′
-              → foldM pure (CA G) (λ l → g (fromL σ GA R l)) v ≡ foldM pure (CA G) (λ l → g′ (fromL σ GA R l)) v′
+              → Same (R ⟨ σ ⟩) (foldM pure (CA G) (λ l → g (fromL σ GA R l)) v) (foldM pure (CA G) (λ l → g′ (fromL σ GA R l)) v′)
       FOLDREL {g} {g′} sg {v} refl =
         returnRel⁻ (runs (Fold.foldRel pure (CA G) (R ⟨ σ ⟩) (λ l → g (fromL σ GA R l)) (λ l → g′ (fromL σ GA R l))
                             (λ p → rel (fromObserved (sg _ _ (Fn.fromL-same wf R p)))) v))
@@ -527,13 +529,13 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
         where sγ₁ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψ₀} {A = L} q′ (W.sameEnvOf r₀) (slotAgree σ {L} q′ q′ (sameRefl (L ⟨ σ ⟩) sw))
       ... | FoldR.rollView wfB dm r₁ eqR =
         trans (FunV.lamCall δ sd σ r γ sγ le dl e₀ w)
-          (returnRel⁻ (Views.~trans δ sd σ r {Γ = Γ ▸ L} {Ψ = q′ ∷ Ψ₀} (e₀ , slot q′ w) sγ₁ {R} eqR
+          (Fn.sameμ wfB (returnRel⁻ (Views.~trans δ sd σ r {Γ = Γ ▸ L} {Ψ = q′ ∷ Ψ₀} (e₀ , slot q′ w) sγ₁ {R} eqR
             (≈-Relatedʳ (≈-sym (idˡ (layerS R G c φμ w′) (λ l → return∞ (inS (toL σ GB R l)))))
               (bindRel {f = λ l → return∞ (inS (toL σ GB R l))} {g = λ l → return∞ (inS (toL σ GB R l))}
                 (layerMap (e₀ , slot q′ w) sγ₁ R G c (readsWk γ sγ r₀ (slot q′ w) sγ₁ Rh)
                    (readsVar (e₀ , slot q′ w) sγ₁ (valAt0 σ {Γ = Γ} {A = L} q′ {γ = e₀} sw)) (sameSelf L sw)
                    (λ o → Hc (p-μ o)) dm r₁)
-                (λ s → returnRel (Fn.roll-same wfB s))))))
+                (λ s → returnRel (Fn.roll-same wfB s)))))))
         where sγ₁ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψ₀} {A = L} q′ (W.sameEnvOf r₀) (slotAgree σ {L} q′ q′ (sameRefl (L ⟨ σ ⟩) sw))
 
       alg′ : ⟦ CA G ⟧SF ⟦ R ⟨ σ ⟩ ⟧ᵛ → ⟦ R ⟨ σ ⟩ ⟧ᵛ
@@ -545,7 +547,7 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
               → toL σ (H ⟨ at₀ B ⟩F) R (layerS R H cH φH (fromL σ (H ⟨ at₀ A ⟩F) R (layerM pure (CA G) (CA H) alg′ l)))
                 ≡ muLayer G H c φμ cH φH l
       foldEq (inS l) =
-        trans (ALG _ _ (Fn.fromL-same wf R (eqLayer (CA G) (λ x → refl) (layerM pure (CA G) (CA G) alg′ l))))
+        trans (ALG _ _ (Fn.fromL-same wf R (eqLayer (CA G) (λ x → Fn.reflμ wfGB x) (layerM pure (CA G) (CA G) alg′ l))))
               (cong inS (layerEq G c φμ l))
       layerEq (K C)     cH φH l = refl
       layerEq Id        cH φH l = foldEq l
@@ -563,10 +565,10 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
       (≈-Relatedʳ (≈-sym (≈-trans (idˡ co₀ (λ g → return∞ xv >>=∞ λ v → return∞ (anaT g v))) (idˡ xv (λ v → return∞ (anaT co₀ v)))))
         (bindRel {g = λ g → return∞ xv >>=∞ λ v → return∞ (anaT g v)} eqL (λ {g} {g′} sg →
           bindRel {g = λ v → return∞ (anaT g′ v)} (rd Rx dt rT) (λ {v} {v′} sv →
-            returnRel (λ n → Ana.anaRel f (CB G) (R ⟨ σ ⟩) (λ y → fmap (fin f) (toL σ GB R) (g y)) (λ y → fmap (fin f) (toL σ GB R) (g′ y))
+            returnRel (Fn.sameν→ wfB λ n → Ana.anaRel f (CB G) (R ⟨ σ ⟩) (λ y → fmap (fin f) (toL σ GB R) (g y)) (λ y → fmap (fin f) (toL σ GB R) (g′ y))
               (λ {a} {a′} sa → ≈-Relatedˡ (toT∞-fmap (fin f) _ (g a)) (≈-Relatedʳ (toT∞-fmap (fin f) _ (g′ a′))
                  (relatedFmap (fromObserved (sg _ _ sa)) (Fn.toL-same wfB R)))) n sv)))))
-      (returnRel (λ n → Ana.anaRel f (CB G) (R ⟨ σ ⟩) (λ y → fmap (fin f) (toL σ GB R) (co₀ y))
+      (returnRel (Fn.sameν→ wfB λ n → Ana.anaRel f (CB G) (R ⟨ σ ⟩) (λ y → fmap (fin f) (toL σ GB R) (co₀ y))
                          (λ y → fmap (fin f) (nuLayer G c φν {νM f (CA G)}) (outν y)) STEP n sx)))
     where
       module W = Views δ sd σ r γ sγ
@@ -610,7 +612,7 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
                 (bindRel {g = λ w′ → return∞ (layerS R G c φν w′)}
                   (W1.~trans {⟦ GA ⟧F R} eqO (≈-Relatedʳ (≈-sym (idˡ y′ _))
                     (bindRel (rd Ry₀ dv r₀′) (λ sv →
-                      relatedFmap (outRel f (CA G) sv) (λ p → Fn.fromL-same wfA R (LayerEq-∀ (CA G) p))))))
+                      relatedFmap (outRel f (CA G) (Fn.sameν← wfA sv)) (λ p → Fn.fromL-same wfA R (LayerEq-mono (CA G) (Fn.sameν→ wfA) (LayerEq-∀ (CA G) p)))))))
                   (λ {w} {w′} sw →
                     layerMap (eb , w) (sγ₂ sw) R G c (readsWk γ₁ sγ₁ rb w (sγ₂ sw) (readsWk γ sγ r₀ (slot q′ y) sγ₁ Rh))
                       (readsVar (eb , w) (sγ₂ sw) (valAt0 σ {Γ = Γ ▸ R} {A = ⟦ GA ⟧F R} One {γ = eb} sw))
