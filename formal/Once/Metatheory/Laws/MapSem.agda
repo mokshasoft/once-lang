@@ -24,7 +24,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind; fin)
-open import Once.Spec.Type using (Ty; Fun; KCtx; Base; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_;
+open import Once.Spec.Type using (Ty; Fun; KCtx; Base; ⟦_⟧F; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_;
                                   TySub; _⟨_⟩; _⟨_⟩F; at₀;
                                   Occurs; OccursF; o-var; o-*ˡ; o-*ʳ; o-+ˡ; o-+ʳ; o-⇒ʳ; o-μ; o-ν; o-K; o-⊕ˡ; o-⊕ʳ; o-⊗ˡ; o-⊗ʳ)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF; μS; inS)
@@ -106,3 +106,12 @@ module MapAt {m : ℕ} (Δ : KCtx m) (σ : TySub m 0) (A B : Ty m) where
     nuLayer (H₁ ⊕ H₂) (c₁ , c₂) φ (inj₁ y) = inj₁ (nuLayer H₁ c₁ (λ o → φ (o-⊕ˡ o)) y)
     nuLayer (H₁ ⊕ H₂) (c₁ , c₂) φ (inj₂ y) = inj₂ (nuLayer H₂ c₂ (λ o → φ (o-⊕ʳ o)) y)
     nuLayer (H₁ ⊗ H₂) (c₁ , c₂) φ (y , z)  = nuLayer H₁ c₁ (λ o → φ (o-⊗ˡ o)) y , nuLayer H₂ c₂ (λ o → φ (o-⊗ʳ o)) z
+
+  -- One layer of `H` at the value level (`mapLayerᶜ`): the constants mapped,
+  -- the recursive positions, of type `R`, kept.
+  layerS : ∀ (R : Ty m) H → CovF H → FnF H → ⟦ (⟦ H ⟨ at₀ A ⟩F ⟧F R) ⟨ σ ⟩ ⟧ᵛ → ⟦ (⟦ H ⟨ at₀ B ⟩F ⟧F R) ⟨ σ ⟩ ⟧ᵛ
+  layerS R (K C)     c φ y = mapS C (proj₁ c) (λ o → φ (o-K o)) y
+  layerS R Id        c φ y = y
+  layerS R (H₁ ⊕ H₂) (c₁ , c₂) φ (inj₁ y) = inj₁ (layerS R H₁ c₁ (λ o → φ (o-⊕ˡ o)) y)
+  layerS R (H₁ ⊕ H₂) (c₁ , c₂) φ (inj₂ y) = inj₂ (layerS R H₂ c₂ (λ o → φ (o-⊕ʳ o)) y)
+  layerS R (H₁ ⊗ H₂) (c₁ , c₂) φ (y , z)  = layerS R H₁ c₁ (λ o → φ (o-⊗ˡ o)) y , layerS R H₂ c₂ (λ o → φ (o-⊗ʳ o)) z
