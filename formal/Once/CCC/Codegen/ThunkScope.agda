@@ -59,7 +59,13 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
-open import Once.CCC.Codegen.IRToTrace o using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; out-trace; cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; push2; pop2; wrap-sum; resuspend-layer)
+open import Once.CCC.Codegen.IRToTrace o using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; out-trace; cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; push2; pop2; wrap-sum; resuspend-layer;
+  cata-call-from; inj-trace; env-entry; getμ)
+open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; kind; lkind; lsz;
+  put-All; put-k-All; get-All; get-k-All)
+open import Once.CCC.Codegen.Size using (size)
+open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type) renaming (_+_ to _+ᵀ_)
+open import Once.CCC.Machine.SMCore using (mov-to-output; load-at)
 open import Once.CCC.Codegen.LabelRange o using (label-of; label-mono; cata-label-of; cata-label-mono; resuspend-label-mono)
 open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
@@ -144,6 +150,48 @@ module Scope {FS : FrameSemantics} where
   ts-from-nt []         = []
   ts-from-nt (px ∷ pxs) = thunk-none-in _ px ∷ ts-from-nt pxs
 
+  -- plan 0.123 B.4 α: the layout code mints no marker, whatever the type.
+  put-nt : ∀ X s b o′ → NoThunkT (put X s b o′)
+  put-nt X s b o′ = put-All X s b o′ refl refl refl (λ _ → refl) (λ _ → refl)
+
+  put-k-nt : ∀ kd n s b o′ → NoThunkT (put-k kd n s b o′)
+  put-k-nt kd n s b o′ = put-k-All kd n s b o′ refl refl refl (λ _ → refl) (λ _ → refl)
+
+  get-nt : ∀ X k → NoThunkT (get X k)
+  get-nt X k = get-All X k (λ _ → refl) (λ _ → refl)
+
+  get-k-nt : ∀ kd n k → NoThunkT (get-k kd n k)
+  get-k-nt kd n k = get-k-All kd n k (λ _ → refl) (λ _ → refl)
+
+  getμ-nt : ∀ G k → NoThunkT (getμ G k)
+  getμ-nt G k = get-k-nt (lkind G word) (lsz G 1) k
+
+  wrap-nt : ∀ tag pk ps ss s → NoThunkT (wrap-sum tag pk ps ss s)
+  wrap-nt tag pk ps ss s =
+    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-k-nt pk ps s (suc s) 1) (refl ∷ [])
+
+  inj-nt : ∀ t P S n → NoThunkT (inj-trace t P S n)
+  inj-nt t P S n =
+    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nt P n (suc n) 1) (refl ∷ [])
+
+  call-nt : ∀ i0 E lk ls cl k ev pr → thunk-of? i0 ≡ nothing → NoThunkT (cata-call-from i0 E lk ls cl k ev pr)
+  call-nt i0 E lk ls cl k ev pr e0 =
+    e0 ∷ refl ∷ refl ∷ refl ∷
+    ++⁺ (put-nt E ev pr 0)
+        (++⁺ (put-k-nt lk ls k pr (size E)) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
+
+  setup-nt : ∀ E cl k ev bl → NoThunkT (cata-call-setup E cl k ev bl)
+  setup-nt E cl k ev bl =
+    ++⁺ (get-nt E 0) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+
+  entry-nt : ∀ kd E A → NoThunkT (proj₂ (env-entry kd E A))
+  entry-nt word E A = []
+  entry-nt flat E A =
+    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+    ++⁺ (get-nt A 1)
+        (refl ∷ refl ∷ refl ∷
+         ++⁺ (put-nt E 1 3 0) (++⁺ (put-nt A 2 3 (size E)) (refl ∷ refl ∷ [])))
+
   -- Range weakening, `ls-weaken`'s twin (LabelScope.agda:126).
   ts-weaken : ∀ {lo lo' hi hi'} {t} → lo' ≤ lo → hi ≤ hi' → ThunksIn lo hi t → ThunksIn lo' hi' t
   ts-weaken lo≤ hi≤ = All-map (λ ti → mkThunkIn λ m teq →
@@ -162,30 +210,43 @@ module Scope {FS : FrameSemantics} where
   -- `c-thunk` — the block entry it points at was minted by `Ana` itself. Same
   -- induction `resuspend-label-mono` runs over `WellFormedFI`.
   ------------------------------------------------------------------------
-  resuspend-nt : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
-               → NoThunkT (proj₂ (proj₂ (resuspend-layer n l lbl env wf)))
-  resuspend-nt n l lbl env (wf-K _) = []
-  resuspend-nt n l lbl env wf-Id    = nt-dec _ refl
-  resuspend-nt n l lbl env (wf-Prod wfF wfG) =
-    refl ∷ refl ∷ refl ∷ 
-    ++⁺ (resuspend-nt (suc (suc (suc n))) l lbl env wfF)
-        (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
-         ++⁺ (resuspend-nt (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
-                           (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)))
-                           lbl env wfG)
-             (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
-  -- `arm t tag` is `(2 ∷) ++ t ++ (9 ∷)`, so each arm splits LEFT-nested
-  -- against the rest of the trace — `(t ++ 9list) ++ …`, not `t ++ …`.
-  resuspend-nt n l lbl env (wf-Sum wfF wfG) =
-    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
-    ++⁺ (++⁺ (resuspend-nt (proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
-                           (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)))
-                           lbl env wfG)
-             (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
-        (refl ∷ refl ∷ refl ∷ refl ∷ 
-         ++⁺ (++⁺ (resuspend-nt (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
-                  (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
+  resuspend-nt : ∀ (H : IRFunctor) (E A : IRTy) (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+               → NoThunkT (proj₂ (proj₂ (resuspend-layer H E A n l lbl env wf)))
+  resuspend-nt H E A n l lbl env (wf-K _) = []
+  resuspend-nt H E A n l lbl env wf-Id    =
+    refl ∷ refl ∷
+    ++⁺ (get-nt E 0)
+        (refl ∷ refl ∷ refl ∷
+         ++⁺ (put-nt E (suc n) (suc (suc n)) 0)
+             (++⁺ (put-nt A n (suc (suc n)) (size E))
+                  (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])))
+  resuspend-nt H E A n l lbl env (wf-Prod {F} {G} wfF wfG) =
+    refl ∷ refl ∷
+    ++⁺ (get-nt (⟦ F ⟧TI A) 0)
+        (++⁺ (resuspend-nt H E A (suc (suc (suc (suc n)))) l lbl env wfF)
+             (refl ∷ refl ∷
+              ++⁺ (get-nt (⟦ G ⟧TI A) (size (⟦ F ⟧TI A)))
+                  (++⁺ (resuspend-nt H E A (proj₁ RF) (proj₁ (proj₂ RF)) lbl env wfG)
+                       (refl ∷ refl ∷ refl ∷
+                        ++⁺ (put-nt (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 0)
+                            (++⁺ (put-nt (⟦ G ⟧TI (ν-type H)) (suc (suc (suc n))) (suc n) (size (⟦ F ⟧TI (ν-type H))))
+                                 (refl ∷ []))))))
+    where RF = resuspend-layer H E A (suc (suc (suc (suc n)))) l lbl env wfF
+  -- each arm is `restore ∷ get ++ t ++ (6 rows) ++ put ++ (1 row)`
+  resuspend-nt H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
+    refl ∷ refl ∷ refl ∷
+    ++⁺ (refl ∷ ++⁺ (get-nt (⟦ G ⟧TI A) 1)
+                    (++⁺ (resuspend-nt H E A (proj₁ RF) (proj₁ (proj₂ RF)) lbl env wfG)
+                         (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+                          ++⁺ (put-nt (⟦ G ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (refl ∷ []))))
+        (refl ∷ refl ∷
+         ++⁺ (refl ∷ ++⁺ (get-nt (⟦ F ⟧TI A) 1)
+                         (++⁺ (resuspend-nt H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+                              (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+                               ++⁺ (put-nt (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (refl ∷ []))))
              (refl ∷ []))
+    where
+      RF = resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF
 
   ------------------------------------------------------------------------
   -- THE COMPILE-TIME FUNCTOR WALKS. These recurse on `F`, so no decider closes
@@ -199,39 +260,57 @@ module Scope {FS : FrameSemantics} where
   visit-walk-nt todoSlot tv tb Id      s lb =
     refl ∷ nt-dec (push2 todoSlot tv tb) refl
   visit-walk-nt todoSlot tv tb (F ⊕ G) s lb =
-    refl ∷ refl ∷ refl ∷ 
-    ++⁺ (visit-walk-nt todoSlot tv tb G (s + 4) (suc (suc lb) + lsize F))
-        (refl ∷ refl ∷ refl ∷ refl ∷ 
-         ++⁺ (visit-walk-nt todoSlot tv tb F (s + 4) (suc (suc lb)))
-             (refl ∷ []))
-  visit-walk-nt todoSlot tv tb (F ⊗ G) s lb =
-    refl ∷ refl ∷ refl ∷ refl ∷ 
-    ++⁺ (visit-walk-nt todoSlot tv tb F (s + 4) lb)
-        (refl ∷ refl ∷ refl ∷ 
-         visit-walk-nt todoSlot tv tb G (s + 4) (lb + lsize F))
-
-  rebuild-walk-nt : ∀ (valSlot tv tb : ℕ) (F : Fun 0) (s lb : ℕ)
-                  → NoThunkT (rebuild-walk valSlot tv tb F s lb)
-  rebuild-walk-nt valSlot tv tb (K _)   s lb = refl ∷ []
-  rebuild-walk-nt valSlot tv tb Id      s lb = nt-dec (pop2 valSlot) refl
-  rebuild-walk-nt valSlot tv tb (F ⊕ G) s lb =
-    refl ∷ refl ∷ refl ∷ 
-    ++⁺ (rebuild-walk-nt valSlot tv tb G (s + 4) (suc (suc lb) + lsize F))
-        (++⁺ (nt-dec (wrap-sum 1 s) refl)
-             (refl ∷ refl ∷ refl ∷ refl ∷ 
-              ++⁺ (rebuild-walk-nt valSlot tv tb F (s + 4) (suc (suc lb)))
-                  (++⁺ (nt-dec (wrap-sum 0 s) refl)
+    refl ∷
+    ++⁺ (getμ-nt G 1)
+        (refl ∷
+         ++⁺ (visit-walk-nt todoSlot tv tb G (s + 4) (suc (suc lb) + lsize F))
+             (refl ∷ refl ∷
+              ++⁺ (getμ-nt F 1)
+                  (refl ∷
+                   ++⁺ (visit-walk-nt todoSlot tv tb F (s + 4) (suc (suc lb)))
                        (refl ∷ []))))
-  rebuild-walk-nt valSlot tv tb (F ⊗ G) s lb =
-    refl ∷ refl ∷ refl ∷ refl ∷ 
-    ++⁺ (rebuild-walk-nt valSlot tv tb G (s + 4) (lb + lsize F))
-        (refl ∷ refl ∷ refl ∷ refl ∷ 
-         ++⁺ (rebuild-walk-nt valSlot tv tb F (s + 4) lb)
-             (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
+  visit-walk-nt todoSlot tv tb (F ⊗ G) s lb =
+    refl ∷ refl ∷
+    ++⁺ (getμ-nt F 0)
+        (refl ∷
+         ++⁺ (visit-walk-nt todoSlot tv tb F (s + 4) lb)
+             (refl ∷
+              ++⁺ (getμ-nt G (lsz F 1))
+                  (refl ∷ visit-walk-nt todoSlot tv tb G (s + 4) (lb + lsize F))))
+
+  rebuild-walk-nt : ∀ (valSlot tv tb : ℕ) (ck : Kind) (cs : ℕ) (F : Fun 0) (s lb : ℕ)
+                  → NoThunkT (rebuild-walk valSlot tv tb ck cs F s lb)
+  rebuild-walk-nt valSlot tv tb ck cs (K _)   s lb = refl ∷ []
+  rebuild-walk-nt valSlot tv tb ck cs Id      s lb = nt-dec (pop2 valSlot) refl
+  rebuild-walk-nt valSlot tv tb ck cs (F ⊕ G) s lb =
+    refl ∷
+    ++⁺ (getμ-nt G 1)
+        (refl ∷
+         ++⁺ (rebuild-walk-nt valSlot tv tb ck cs G (s + 4) (suc (suc lb) + lsize F))
+             (++⁺ (wrap-nt 1 (lkind G ck) (lsz G cs) (lsz (F ⊕ G) cs) s)
+                  (refl ∷ refl ∷
+                   ++⁺ (getμ-nt F 1)
+                       (refl ∷
+                        ++⁺ (rebuild-walk-nt valSlot tv tb ck cs F (s + 4) (suc (suc lb)))
+                            (++⁺ (wrap-nt 0 (lkind F ck) (lsz F cs) (lsz (F ⊕ G) cs) s)
+                                 (refl ∷ []))))))
+  rebuild-walk-nt valSlot tv tb ck cs (F ⊗ G) s lb =
+    refl ∷ refl ∷
+    ++⁺ (getμ-nt G (lsz F 1))
+        (refl ∷
+         ++⁺ (rebuild-walk-nt valSlot tv tb ck cs G (s + 4) (lb + lsize F))
+             (refl ∷ refl ∷
+              ++⁺ (getμ-nt F 0)
+                  (refl ∷
+                   ++⁺ (rebuild-walk-nt valSlot tv tb ck cs F (s + 4) lb)
+                       (refl ∷ refl ∷ refl ∷
+                        ++⁺ (put-k-nt (lkind F ck) (lsz F cs) (suc s) (s + 3) 0)
+                            (++⁺ (put-k-nt (lkind G ck) (lsz G cs) (s + 2) (s + 3) (lsz F cs))
+                                 (refl ∷ []))))))
 
   -- `cata-br-I₁` splices both walks between literal, marker-free chunks.
-  br-I₁-nt : ∀ (F : Fun 0) (n1 l1 : ℕ) → NoThunkT (cata-br-I₁ F n1 l1)
-  br-I₁-nt F n1 l1 =
+  br-I₁-nt : ∀ (ck : Kind) (cs : ℕ) (F : Fun 0) (n1 l1 : ℕ) → NoThunkT (cata-br-I₁ ck cs F n1 l1)
+  br-I₁-nt ck cs F n1 l1 =
     refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
     ++⁺ (nt-dec (push2 n1 (n1 + 4) (n1 + 5)) refl)
         (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
@@ -239,14 +318,14 @@ module Scope {FS : FrameSemantics} where
              (refl ∷ refl ∷ 
               ++⁺ (visit-walk-nt n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4))
                   (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
-                   ++⁺ (rebuild-walk-nt (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4 + lsize F))
+                   ++⁺ (rebuild-walk-nt (n1 + 2) (n1 + 4) (n1 + 5) ck cs F (n1 + 7) (l1 + 4 + lsize F))
                        (refl ∷ []))))
 
-  cata-thunks-in : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) {lo : ℕ}
+  cata-thunks-in : ∀ (E A : IRTy) (G : Fun 0) (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) {lo : ℕ}
                  → lo ≤ l1
                  → ThunksIn lo l1 at
-                 → ThunksIn lo (cata-label-of (cata-dispatch st bb n1 l1 at))
-                              (cata-trace-of (cata-dispatch st bb n1 l1 at))
+                 → ThunksIn lo (cata-label-of (cata-dispatch E A G st bb n1 l1 at))
+                              (cata-trace-of (cata-dispatch E A G st bb n1 l1 at))
 
   -- The marker `cata-body` splices, at `ℓ o l1`: `idx (ℓ o l1)` is `l1`
   -- definitionally, so it sits at the bottom of the window.
@@ -314,13 +393,16 @@ module Scope {FS : FrameSemantics} where
   thunks-in : ∀ {A B} (ir : IR A B) (n l : ℕ)
             → ThunksIn l (label-of (ir-to-trace' n l ir)) (trace-of (ir-to-trace' n l ir))
   thunks-in id n l = all-no-thunk-in _ refl
-  thunks-in fst        n l = all-no-thunk-in _ refl
-  thunks-in snd        n l = all-no-thunk-in _ refl
-  thunks-in inl        n l = all-no-thunk-in _ refl
-  thunks-in inr        n l = all-no-thunk-in _ refl
+  thunks-in (fst {A} {B}) n l = ts-from-nt (get-nt A 0)
+  thunks-in (snd {A} {B}) n l = ts-from-nt (get-nt B (size A))
+  thunks-in (inl {A} {B}) n l = ts-from-nt (inj-nt 0 A (A +ᵀ B) n)
+  thunks-in (inr {A} {B}) n l = ts-from-nt (inj-nt 1 B (A +ᵀ B) n)
   thunks-in terminal   n l = all-no-thunk-in _ refl
   thunks-in initial    n l = all-no-thunk-in _ refl
-  thunks-in apply      n l = all-no-thunk-in _ refl
+  thunks-in (apply {A} {B}) n l =
+    ts-from-nt (++⁺ (get-nt A 1)
+                    (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+                     ++⁺ (put-nt A n (suc (suc n)) 1) (refl ∷ refl ∷ refl ∷ [])))
   thunks-in (curry b)  n l = all-no-thunk-in _ refl
   thunks-in (In {F} x)    n l = in-nt (mu-rep F) n
   thunks-in (out-μ {F} x) n l = out-nt (mu-rep F)
@@ -334,37 +416,47 @@ module Scope {FS : FrameSemantics} where
   thunks-in (Call _)  n l = all-no-thunk-in _ refl
   thunks-in (Ana x c)  n l = all-no-thunk-in _ refl
   -- the loop mints only `c-label`s; the round sits above its two.
-  thunks-in (Iter b)   n l =
-    thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷
-    ++⁺ (ts-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) ≤-refl (thunks-in b _ _))
-        (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ [])
+  thunks-in (Iter {E} {A} {B} b) n l =
+    ++⁺ (ts-from-nt (get-nt E 0))
+        (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷
+         ++⁺ (ts-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) ≤-refl (thunks-in b _ _))
+             (ts-from-nt (refl ∷ refl ∷
+                          ++⁺ (get-nt A 1)
+                              (refl ∷ refl ∷ refl ∷
+                               ++⁺ (put-nt E (suc n) (suc (suc (suc n))) 0)
+                                   (++⁺ (put-nt A (suc (suc n)) (suc (suc (suc n))) (size E))
+                                        (refl ∷ refl ∷ refl ∷ refl ∷ get-nt B 1))))))
   thunks-in (g ∘ f)    n l =
     ++⁺ (ts-weaken ≤-refl (label-mono g _ _) (thunks-in f n l))
         (thunk-none-in _ refl ∷ ts-weaken (label-mono f n l) ≤-refl (thunks-in g _ _))
-  thunks-in ⟨ f , g ⟩  n l =
+  thunks-in (⟨_,_⟩ {A} {B} {C} f g) n l =
     thunk-none-in _ refl ∷ thunk-none-in _ refl ∷
     ++⁺ (ts-weaken ≤-refl (label-mono g _ _) (thunks-in f _ l))
         (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷
          ++⁺ (ts-weaken (label-mono f _ l) ≤-refl (thunks-in g _ _))
-             (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷
-              thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷
-              thunk-none-in _ refl ∷ []))
+             (ts-from-nt (refl ∷ refl ∷ refl ∷
+                          ++⁺ (put-nt B (suc n) (suc (suc (suc n))) 0)
+                              (++⁺ (put-nt C (suc (suc n)) (suc (suc (suc n))) (size B)) (refl ∷ [])))))
   -- `case` mints only `c-label`s, so every marker slot here is thunk-free; the
   -- structure is `labels-in`'s (LabelScope.agda:586) with the range witnesses
   -- replaced by vacuous ones.
-  thunks-in (case f g) n l =
-    ++⁺ (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ [])
-        (++⁺ (ts-weaken (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (label-mono f n (suc (suc l)))) ≤-refl (thunks-in g _ _))
-             (++⁺ (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ [])
-                  (++⁺ (ts-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (label-mono g _ _) (thunks-in f n (suc (suc l))))
+  thunks-in (case {A} {B} f g) n l =
+    thunk-none-in _ refl ∷
+    ++⁺ (ts-from-nt (get-nt B 1))
+        (thunk-none-in _ refl ∷
+         ++⁺ (ts-weaken (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (label-mono f n (suc (suc l)))) ≤-refl (thunks-in g _ _))
+             (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷
+              ++⁺ (ts-from-nt (get-nt A 1))
+                  (thunk-none-in _ refl ∷
+                   ++⁺ (ts-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (label-mono g _ _) (thunks-in f n (suc (suc l))))
                        (thunk-none-in _ refl ∷ []))))
   -- THE ONE CONSTRUCTOR THAT EMITS A MARKER. `cata-body` (IRToTrace.agda:262-267)
   -- splices `c-thunk (ℓ o body-label) bb` inline, for all four strategies, so
   -- this is the only clause with real content — and it needs the per-strategy
   -- range arithmetic `cata-label-mono` (LabelRange.agda:77) already does for the
   -- `once` namespace. Named separately for that reason.
-  thunks-in (Cata {F} x a) n l =
-    cata-thunks-in (cata-strategy ⌈ F ⌉F)
+  thunks-in (Cata {F} x {E} {A} a) n l =
+    cata-thunks-in E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F)
                    (proj₁ (ir-to-trace' 0 l a)) n
                    (proj₁ (proj₂ (ir-to-trace' 0 l a)))
                    (trace-of (ir-to-trace' 0 l a))
@@ -424,9 +516,9 @@ module Scope {FS : FrameSemantics} where
   blocks-thunks-in (Iter b) n l =
     All-map (λ {bk} → bts-weaken bk (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) ≤-refl) (blocks-thunks-in b _ _)
   -- The window widens to the DISPATCH's outgoing counter, not the algebra's.
-  blocks-thunks-in (Cata {F} _ alg) n l =
+  blocks-thunks-in (Cata {F} _ {E} {A} alg) n l =
     All-map (λ {b} → bts-weaken b ≤-refl
-              (cata-label-mono (cata-strategy ⌈ F ⌉F)
+              (cata-label-mono E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F)
                                (proj₁ (ir-to-trace' 0 l alg)) n
                                (proj₁ (proj₂ (ir-to-trace' 0 l alg)))
                                (trace-of (ir-to-trace' 0 l alg))))
@@ -434,29 +526,30 @@ module Scope {FS : FrameSemantics} where
   -- THE THREE THAT MINT. Each puts its entry at `ℓ o l` — `idx (ℓ o l)` is `l`
   -- definitionally — so the label sits at the BOTTOM of its own window, and the
   -- body's markers come from the trace-channel induction.
-  blocks-thunks-in (curry b) n l =
-    ((≤-refl , ≤-trans (m≤n⇒m≤1+n ≤-refl) (label-mono b 0 (suc (suc l))))
-      , ts-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) ≤-refl (thunks-in b 0 (suc (suc l))))
+  blocks-thunks-in (curry {E} {A} b) n l =
+    ((≤-refl , ≤-trans (m≤n⇒m≤1+n ≤-refl) (label-mono b _ (suc (suc l))))
+      , ++⁺ (ts-from-nt (entry-nt (kind E) E A))
+            (ts-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) ≤-refl (thunks-in b _ (suc (suc l)))))
     ∷ All-map (λ {b} → bts-weaken b (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) ≤-refl)
-              (blocks-thunks-in b 0 (suc (suc l)))
+              (blocks-thunks-in b _ (suc (suc l)))
   -- `in-ν`'s block is the singleton `mov-to-output ∷ []` — no markers at all.
   blocks-thunks-in (in-ν _) n l =
     ((≤-refl , ≤-refl) , all-no-thunk-in _ refl) ∷ []
-  blocks-thunks-in (Ana wf c) n l =
+  blocks-thunks-in (Ana {F} wf {E} {A} c) n l =
     ((≤-refl , ≤-trans (label-mono c 1 (suc l))
-                 (resuspend-label-mono (proj₁ (ir-to-trace' 1 (suc l) c))
+                 (resuspend-label-mono F E A (proj₁ (ir-to-trace' 1 (suc l) c))
                                        (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
                                        (ℓ o l) 0 wf))
       , ++⁺ (ts-from-nt (nt-dec (AbstractInstr.mov-to-output ∷ AbstractInstr.store-at-slot 0 ∷ []) refl)) (++⁺ (ts-weaken (m≤n⇒m≤1+n ≤-refl)
-               (resuspend-label-mono (proj₁ (ir-to-trace' 1 (suc l) c))
+               (resuspend-label-mono F E A (proj₁ (ir-to-trace' 1 (suc l) c))
                                      (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
                                      (ℓ o l) 0 wf)
                (thunks-in c 1 (suc l)))
-            (ts-from-nt (resuspend-nt (proj₁ (ir-to-trace' 1 (suc l) c))
+            (ts-from-nt (resuspend-nt F E A (proj₁ (ir-to-trace' 1 (suc l) c))
                                       (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
                                       (ℓ o l) 0 wf))))
     ∷ All-map (λ {b} → bts-weaken b (m≤n⇒m≤1+n ≤-refl)
-                (resuspend-label-mono (proj₁ (ir-to-trace' 1 (suc l) c))
+                (resuspend-label-mono F E A (proj₁ (ir-to-trace' 1 (suc l) c))
                                       (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
                                       (ℓ o l) 0 wf))
               (blocks-thunks-in c 1 (suc l))
@@ -464,24 +557,24 @@ module Scope {FS : FrameSemantics} where
   -- the `cata-call`s and the `I` fragments carry no `c-thunk`) followed by ONE
   -- `cata-body`, whose marker is the body label. So the four clauses differ
   -- only in how the prelude is bracketed and in the label arithmetic.
-  cata-thunks-in strat-const bb n1 l1 at lo≤ ats =
-    ++⁺ (all-no-thunk-in (cata-call-setup n1 (n1 + 1) (n1 + 2) l1) refl)
-        (++⁺ (all-no-thunk-in (cata-call n1 (n1 + 1) (n1 + 2) (n1 + 3)) refl)
+  cata-thunks-in E A G strat-const bb n1 l1 at lo≤ ats =
+    ++⁺ (ts-from-nt (setup-nt E n1 (n1 + 1) (n1 + 2) l1))
+        (++⁺ (ts-from-nt (call-nt mov-to-output E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3) refl))
              (cata-body-in l1 (l1 + 1) bb at lo≤ (m<m+2 l1)
                 (ts-weaken ≤-refl (m≤m+n l1 2) ats)))
-  cata-thunks-in strat-box bb n1 l1 at lo≤ ats =
-    ++⁺ (all-no-thunk-in (cata-call-setup n1 (n1 + 1) (n1 + 2) l1) refl)
-        (++⁺ (all-no-thunk-in (cata-call-box n1 (n1 + 1) (n1 + 2) (n1 + 3)) refl)
+  cata-thunks-in E A G strat-box bb n1 l1 at lo≤ ats =
+    ++⁺ (ts-from-nt (setup-nt E n1 (n1 + 1) (n1 + 2) l1))
+        (++⁺ (ts-from-nt (call-nt (load-at 0) E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3) refl))
              (cata-body-in l1 (l1 + 1) bb at lo≤ (m<m+2 l1)
                 (ts-weaken ≤-refl (m≤m+n l1 2) ats)))
-  cata-thunks-in (strat-branching F) bb n1 l1 at lo≤ ats =
-    ++⁺ (all-no-thunk-in (cata-call-setup B (B + 1) (B + 2) L) refl)
-        (++⁺ (ts-from-nt (br-I₁-nt F n1 l1))
-             (++⁺ (all-no-thunk-in (cata-call B (B + 1) (B + 2) (B + 3)) refl)
+  cata-thunks-in E A G (strat-branching F) bb n1 l1 at lo≤ ats =
+    ++⁺ (ts-from-nt (setup-nt E B (B + 1) (B + 2) L))
+        (++⁺ (ts-from-nt (br-I₁-nt (kind A) (size A) F n1 l1))
+             (++⁺ (ts-from-nt (call-nt mov-to-output E (lkind F (kind A)) (lsz F (size A)) B (B + 1) (B + 2) (B + 3) refl))
                   (++⁺ (all-no-thunk-in (cata-br-I₂ n1 l1) refl)
                        (cata-body-in L (L + 1) bb at
                           (≤-trans lo≤ low) (m<m+2 L)
-                          (ts-weaken ≤-refl (cata-label-mono (strat-branching F) bb n1 l1 at) ats)))))
+                          (ts-weaken ≤-refl (cata-label-mono E A G (strat-branching F) bb n1 l1 at) ats)))))
     where
       B : ℕ
       B = n1 + 7 + (4 ℕ.* fsize F) + 4
