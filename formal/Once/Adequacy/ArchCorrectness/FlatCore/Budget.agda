@@ -99,7 +99,7 @@ straight-frame i fs = cong frame-base (exec-abstract-preserves-frame i (floc fs)
 record Budget (hv : HeapView) (prog : AbstractTrace) (fs : FlatState) : Set where
   constructor mkBudget
   field budget-le : hfront hv + slots (need prog (fpc fs)) ≤ fbase fs
-open Budget public
+open Budget
 
 ------------------------------------------------------------------------
 -- THE MEASURE, step by step
