@@ -846,9 +846,15 @@ module ExecFinal {FS : FrameSemantics} where
   exec-store-at-resolved bs k (just loc) v s = exec-store-in-block (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v s
   exec-store-at-resolved bs k nothing    _ s = record s { halted = true ; faulted = true }
 
-  exec-addr-at-resolved : ℕ → Maybe (ValueLocation FS) → LocState FS → LocState FS
-  exec-addr-at-resolved k (just loc) s = record s { regs = writeReg (regs s) Output (SV-Ptr (offsetLoc loc k)) }
-  exec-addr-at-resolved k nothing    s = record s { halted = true ; faulted = true }
+  -- D379: an address at an offset is a cell OF ITS BLOCK, or the step faults:
+  -- a heap pointer always addresses a cell of its block (`PtrB`).
+  exec-addr-in-block : Bool → ValueLocation FS → LocState FS → LocState FS
+  exec-addr-in-block true  loc s = record s { regs = writeReg (regs s) Output (SV-Ptr loc) }
+  exec-addr-in-block false _   s = record s { halted = true ; faulted = true }
+
+  exec-addr-at-resolved : (ℕ → ℕ) → ℕ → Maybe (ValueLocation FS) → LocState FS → LocState FS
+  exec-addr-at-resolved bs k (just loc) s = exec-addr-in-block (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) s
+  exec-addr-at-resolved bs k nothing    s = record s { halted = true ; faulted = true }
 
   exec : Instr FS → LocState FS → LocState FS
 
@@ -1966,7 +1972,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- load-at / store-at / addr-at: the offset forms (plan 0.123 B.4 R1).
   exec-abstract (load-at k) s alloc  = exec-load-at-resolved k Output (sv-as-loc (readReg (regs s) Input1)) s , alloc
   exec-abstract (store-at k) s alloc = exec-store-at-resolved (block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s , alloc
-  exec-abstract (addr-at k) s alloc  = exec-addr-at-resolved k (sv-as-loc (readReg (regs s) Input1)) s , alloc
+  exec-abstract (addr-at k) s alloc  = exec-addr-at-resolved (block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s , alloc
 
   -- instr-reclaim-to: a NO-OP on alloc too (D150), for the same reason as
   -- `instr-alloc-stack`, and with an even blunter piece of evidence: ALL THREE

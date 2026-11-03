@@ -91,9 +91,13 @@ module LogPres {FS : FrameSemantics} where
   store-at-log bs k (just loc) v s = store-in-block-log (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v s
   store-at-log bs k nothing    v s = refl
 
-  addr-at-log : ∀ k (ml : Maybe (ValueLocation FS)) s → log (exec-addr-at-resolved k ml s) ≡ log s
-  addr-at-log k (just loc) s = refl
-  addr-at-log k nothing    s = refl
+  addr-in-block-log : ∀ ok (loc : ValueLocation FS) s → log (exec-addr-in-block ok loc s) ≡ log s
+  addr-in-block-log true  loc s = refl
+  addr-in-block-log false loc s = refl
+
+  addr-at-log : ∀ bs k (ml : Maybe (ValueLocation FS)) s → log (exec-addr-at-resolved bs k ml s) ≡ log s
+  addr-at-log bs k (just loc) s = addr-in-block-log (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) s
+  addr-at-log bs k nothing    s = refl
 
 
   load-slot-log : ∀ (mv : Maybe (StoredValue FS)) s alloc → log (proj₁ (exec-load-from-slot-with-value mv s alloc)) ≡ log s
@@ -138,7 +142,7 @@ module LogPres {FS : FrameSemantics} where
   exec-abstract-log (instr-room n)      _ s alloc = refl
   exec-abstract-log (load-at k)              _ s alloc = load-at-log k Output (sv-as-loc (readReg (regs s) Input1)) s
   exec-abstract-log (store-at k)             _ s alloc = store-at-log (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
-  exec-abstract-log (addr-at k)              _ s alloc = addr-at-log k (sv-as-loc (readReg (regs s) Input1)) s
+  exec-abstract-log (addr-at k)              _ s alloc = addr-at-log (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s
   exec-abstract-log (instr-ctrl c)           _ s alloc = refl
 
   -- The control helpers of the flat machine, by their own cases.

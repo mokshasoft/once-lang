@@ -93,9 +93,13 @@ module LeftPres {FS : FrameSemantics} where
   store-at-left bs k (just loc) v s = store-in-block-left (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v s
   store-at-left bs k nothing    v s = refl
 
-  addr-at-left : ∀ k (ml : Maybe (ValueLocation FS)) s → lft (exec-addr-at-resolved k ml s) ≡ lft s
-  addr-at-left k (just loc) s = refl
-  addr-at-left k nothing    s = refl
+  addr-in-block-left : ∀ ok (loc : ValueLocation FS) s → lft (exec-addr-in-block ok loc s) ≡ lft s
+  addr-in-block-left true  loc s = refl
+  addr-in-block-left false loc s = refl
+
+  addr-at-left : ∀ bs k (ml : Maybe (ValueLocation FS)) s → lft (exec-addr-at-resolved bs k ml s) ≡ lft s
+  addr-at-left bs k (just loc) s = addr-in-block-left (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) s
+  addr-at-left bs k nothing    s = refl
 
 
   load-slot-left : ∀ (mv : Maybe (StoredValue FS)) s alloc → lft (proj₁ (exec-load-from-slot-with-value mv s alloc)) ≡ lft s
@@ -146,7 +150,7 @@ module LeftPres {FS : FrameSemantics} where
   abs-left (instr-room n) s alloc = refl
   abs-left (load-at k) s alloc = load-at-left k Output (sv-as-loc (readReg (regs s) Input1)) s
   abs-left (store-at k) s alloc = store-at-left (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
-  abs-left (addr-at k) s alloc = addr-at-left k (sv-as-loc (readReg (regs s) Input1)) s
+  abs-left (addr-at k) s alloc = addr-at-left (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s
   abs-left (instr-ctrl c) s alloc = refl
 
   exec-abstract-left : ∀ (i : AbstractInstr) → LeftFree i → ∀ s alloc → lft (proj₁ (exec-abstract i s alloc)) ≡ lft s
@@ -312,10 +316,15 @@ module FaultPres {FS : FrameSemantics} where
   store-at-fault bs k (just loc) v s h = store-in-block-fault (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v s h
   store-at-fault bs k nothing    v s ()
 
-  addr-at-fault : ∀ k (ml : Maybe (ValueLocation FS)) s → hlt (exec-addr-at-resolved k ml s) ≡ false
-                → flt (exec-addr-at-resolved k ml s) ≡ flt s
-  addr-at-fault k (just loc) s _ = refl
-  addr-at-fault k nothing    s ()
+  addr-in-block-fault : ∀ ok (loc : ValueLocation FS) s → hlt (exec-addr-in-block ok loc s) ≡ false
+                      → flt (exec-addr-in-block ok loc s) ≡ flt s
+  addr-in-block-fault true  loc s _ = refl
+  addr-in-block-fault false loc s ()
+
+  addr-at-fault : ∀ bs k (ml : Maybe (ValueLocation FS)) s → hlt (exec-addr-at-resolved bs k ml s) ≡ false
+                → flt (exec-addr-at-resolved bs k ml s) ≡ flt s
+  addr-at-fault bs k (just loc) s h = addr-in-block-fault (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) s h
+  addr-at-fault bs k nothing    s ()
 
   load-slot-fault : ∀ (mv : Maybe (StoredValue FS)) s alloc → hlt (proj₁ (exec-load-from-slot-with-value mv s alloc)) ≡ false
                   → flt (proj₁ (exec-load-from-slot-with-value mv s alloc)) ≡ flt s
@@ -359,7 +368,7 @@ module FaultPres {FS : FrameSemantics} where
   abs-fault (instr-room n) s alloc _ = refl
   abs-fault (load-at k) s alloc h = load-at-fault k Output (sv-as-loc (readReg (regs s) Input1)) s h
   abs-fault (store-at k) s alloc h = store-at-fault (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s h
-  abs-fault (addr-at k) s alloc h = addr-at-fault k (sv-as-loc (readReg (regs s) Input1)) s h
+  abs-fault (addr-at k) s alloc h = addr-at-fault (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s h
   abs-fault (instr-reg-op op) s alloc _ = refl
   abs-fault (instr-ctrl c) s alloc _ = refl
 
