@@ -200,7 +200,7 @@ module RenSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
     relBindᵍ (renSem θ ρ h c dt (r3≡ c (envʳ-restrict σ _ _ _) (envʳ-restrict σ _ _ _) ag)) λ {v} {v′} sv →
     subst (λ w → Rel π π (A ⟨ σ ⟩) (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v)
                                      (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg′ (fromL σ F A l)) w))
-          (sameμ sv)
+          (Functor.sameμ σ r wf sv)
           (Fold.foldRel π (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) _ _ (λ le → appMany salg (Functor.fromL-same σ r wf A le)) v)
   renSem θ ρ h c (⊢unfold {f = f} {F = F} {A} wf dc da) ag =
     relBindᵍ (renSem θ ρ h c dc (r3≡ c (env*Many-envˡ-restrict σ _ _ _) (env*Many-envˡ-restrict σ _ _ _) ag)) λ {c₁} {c₂} sc →

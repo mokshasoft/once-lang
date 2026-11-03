@@ -218,7 +218,7 @@ module SubSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
     relBindᵍ (subSem σS dt ss₂ ag₂) λ {v} {v′} sv →
     subst (λ w → Rel π π (A ⟨ σ ⟩) (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v)
                                      (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg′ (fromL σ F A l)) w))
-          (sameμ sv)
+          (Functor.sameμ σ r wf sv)
           (Fold.foldRel π (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) _ _ (λ le → appMany salg (Functor.fromL-same σ r wf A le)) v)
   subSem σS (⊢unfold {f = f} {F = F} {A} wf dc da) ss ag =
     let (ss₁ , ag₁) = sr≡ σS (env*Many-envˡ-restrict σ _ _ _) (env*Many-envˡ-restrict σ _ _ _) ss ag ; (ss₂ , ag₂) = sr≡ σS (envʳ-restrict σ _ _ _) (envʳ-restrict σ _ _ _) ss ag in

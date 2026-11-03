@@ -50,19 +50,21 @@ aWorld = record { answer = λ o h a p → inhabitant (Op.ans o) p }
 -- Ends
 ------------------------------------------------------------------------
 
-module _ {X : Set} where
-  EndRel-map : ∀ {R R′ : X → X → Set} → (∀ {x y} → R x y → R′ x y) → ∀ {e e′} → EndRel R e e′ → EndRel R′ e e′
+module _ {X Y : Set} where
+  EndRel-map : ∀ {R R′ : X → Y → Set} → (∀ {x y} → R x y → R′ x y) → ∀ {e e′} → EndRel R e e′ → EndRel R′ e e′
   EndRel-map h (returned≈ r) = returned≈ (h r)
   EndRel-map h halted≈ = halted≈
 
-  MaybeEnd-map : ∀ {R R′ : X → X → Set} → (∀ {x y} → R x y → R′ x y) → ∀ {e e′} → MaybeEnd R e e′ → MaybeEnd R′ e e′
+  MaybeEnd-map : ∀ {R R′ : X → Y → Set} → (∀ {x y} → R x y → R′ x y) → ∀ {e e′} → MaybeEnd R e e′ → MaybeEnd R′ e e′
   MaybeEnd-map h cut≈     = cut≈
   MaybeEnd-map h (end≈ r) = end≈ (EndRel-map h r)
 
-  MaybeEnd-flip : ∀ {R : X → X → Set} {e e′} → MaybeEnd R e e′ → MaybeEnd (flip R) e′ e
+  MaybeEnd-flip : ∀ {R : X → Y → Set} {e e′} → MaybeEnd R e e′ → MaybeEnd (flip R) e′ e
   MaybeEnd-flip cut≈ = cut≈
   MaybeEnd-flip (end≈ (returned≈ r)) = end≈ (returned≈ r)
   MaybeEnd-flip (end≈ halted≈) = end≈ halted≈
+
+module _ {X : Set} where
 
   MaybeEnd-trans : ∀ {R : X → X → Set} → (∀ {x y z} → R x y → R y z → R x z)
                  → ∀ {e₁ e₂ e₃} → MaybeEnd R e₁ e₂ → MaybeEnd R e₂ e₃ → MaybeEnd R e₁ e₃
@@ -85,27 +87,67 @@ LayerEq-mono (G S⊗ H) h (p , q) = LayerEq-mono G h p , LayerEq-mono H h q
 ------------------------------------------------------------------------
 
 -- Every run of `m` is matched by a run of `m′`: the same calls, a related end.
-Sim : ∀ {X : Set} → (X → X → Set) → T∞ X → T∞ X → Set
+-- (Between two value sets.)
+Sim : ∀ {X Y : Set} → (X → Y → Set) → T∞ X → T∞ Y → Set
 Sim R m m′ = ∀ w h n {d e} → Run w h m n d e → ∃[ e′ ] (Run w h m′ n d e′ × MaybeEnd R e e′)
 
-record Related {X : Set} (R : X → X → Set) (m m′ : T∞ X) : Set where
+record Related {X Y : Set} (R : X → Y → Set) (m : T∞ X) (m′ : T∞ Y) : Set where
   constructor related
   field
     fwdᴿ : Sim R m m′
     bwdᴿ : Sim (flip R) m′ m
 
-fwd : ∀ {X : Set} {R : X → X → Set} {m m′} → Related R m m′ → Sim R m m′
+fwd : ∀ {X Y : Set} {R : X → Y → Set} {m m′} → Related R m m′ → Sim R m m′
 fwd = Related.fwdᴿ
 
-bwd : ∀ {X : Set} {R : X → X → Set} {m m′} → Related R m m′ → Sim (flip R) m′ m
+bwd : ∀ {X Y : Set} {R : X → Y → Set} {m m′} → Related R m m′ → Sim (flip R) m′ m
 bwd = Related.bwdᴿ
+
+module _ {X Y : Set} where
+  private
+    Sim-mono : ∀ {R R′ : X → Y → Set} → (∀ {x y} → R x y → R′ x y) → ∀ {m m′} → Sim R m m′ → Sim R′ m m′
+    Sim-mono h s w g n r = go (s w g n r)
+      where go : ∀ {m′ : T∞ Y} {n d e} → ∃[ e′ ] (Run w g m′ n d e′ × MaybeEnd _ e e′) → ∃[ e′ ] (Run w g m′ n d e′ × MaybeEnd _ e e′)
+            go (e′ , r′ , er) = e′ , r′ , MaybeEnd-map h er
+    Sim-mono′ : ∀ {R R′ : X → Y → Set} → (∀ {x y} → R x y → R′ x y) → ∀ {m m′} → Sim (flip R) m′ m → Sim (flip R′) m′ m
+    Sim-mono′ h s w g n r = go (s w g n r)
+      where go : ∀ {m : T∞ X} {n d e} → ∃[ e′ ] (Run w g m n d e′ × MaybeEnd _ e e′) → ∃[ e′ ] (Run w g m n d e′ × MaybeEnd _ e e′)
+            go (e′ , r′ , er) = e′ , r′ , MaybeEnd-map h er
+    Sim-≈ˡ : ∀ {Z W : Set} {R : Z → W → Set} {m m₀ : T∞ Z} {m′ : T∞ W} → m ≈ m₀ → Sim R m₀ m′ → Sim R m m′
+    Sim-≈ˡ p s w g n r = s w g n (run-≈ w p r)
+    Sim-≈ʳ : ∀ {Z W : Set} {R : Z → W → Set} {m : T∞ Z} {m′ m₀ : T∞ W} → m′ ≈ m₀ → Sim R m m₀ → Sim R m m′
+    Sim-≈ʳ p s w g n r = go (s w g n r)
+      where go : ∀ {d e} → ∃[ e′ ] (Run w g _ n d e′ × MaybeEnd _ e e′) → ∃[ e′ ] (Run w g _ n d e′ × MaybeEnd _ e e′)
+            go (e′ , r′ , er) = e′ , run-≈ w (≈-sym p) r′ , er
+
+  Related-mono : ∀ {R R′ : X → Y → Set} → (∀ {x y} → R x y → R′ x y) → ∀ {m m′} → Related R m m′ → Related R′ m m′
+  Related-mono h (related f b) = related (Sim-mono h f) (Sim-mono′ h b)
+
+  Related-flip : ∀ {R : X → Y → Set} {m m′} → Related R m m′ → Related (flip R) m′ m
+  Related-flip (related f b) = related b f
+
+  -- Bisimilar computations may replace each other, on either side.
+  ≈-Relatedˡ : ∀ {R : X → Y → Set} {m m₀ m′} → m ≈ m₀ → Related R m₀ m′ → Related R m m′
+  ≈-Relatedˡ p (related f b) = related (Sim-≈ˡ p f) (Sim-≈ʳ p b)
+
+  ≈-Relatedʳ : ∀ {R : X → Y → Set} {m m′ m₀} → m′ ≈ m₀ → Related R m m₀ → Related R m m′
+  ≈-Relatedʳ p (related f b) = related (Sim-≈ʳ p f) (Sim-≈ˡ p b)
+
+  -- Returns are related exactly when their values are (a world always exists).
+  returnRel : ∀ {R : X → Y → Set} {x y} → R x y → Related R (return∞ x) (return∞ y)
+  returnRel {R} r = related (ret r) (ret r)
+    where
+      ret : ∀ {Z W : Set} {S : Z → W → Set} {x y} → S x y → Sim S (return∞ x) (return∞ y)
+      ret s w g n (run rb-cut) = nothing , run rb-cut , cut≈
+      ret s w g n (run rb-ret) = just (returned _) , run rb-ret , end≈ (returned≈ s)
+
+  returnRel⁻ : ∀ {R : X → Y → Set} {x y} → Related R (return∞ x) (return∞ y) → R x y
+  returnRel⁻ p = un (fwd p aWorld [] 1 (run rb-ret))
+    where un : ∀ {R : X → Y → Set} {x y} → ∃[ e′ ] (Run aWorld [] (return∞ y) 1 [] e′ × MaybeEnd R (just (returned x)) e′) → R x y
+          un (_ , run rb-ret , end≈ (returned≈ r)) = r
 
 module _ {X : Set} where
   private
-    Sim-mono : ∀ {R R′ : X → X → Set} → (∀ {x y} → R x y → R′ x y) → ∀ {m m′} → Sim R m m′ → Sim R′ m m′
-    Sim-mono h s w g n r = go (s w g n r)
-      where go : ∀ {m′ n d e} → ∃[ e′ ] (Run w g m′ n d e′ × MaybeEnd _ e e′) → ∃[ e′ ] (Run w g m′ n d e′ × MaybeEnd _ e e′)
-            go (e′ , r′ , er) = e′ , r′ , MaybeEnd-map h er
     Sim-trans : ∀ {R : X → X → Set} → (∀ {x y z} → R x y → R y z → R x z) → ∀ {m₁ m₂ m₃}
               → Sim R m₁ m₂ → Sim R m₂ m₃ → Sim R m₁ m₃
     Sim-trans t s₁ s₂ w g n r = step₁ (s₁ w g n r)
@@ -114,18 +156,6 @@ module _ {X : Set} where
         step₂ er₁ (e₃ , r₃ , er₂) = e₃ , r₃ , MaybeEnd-trans t er₁ er₂
         step₁ : ∃[ e₂ ] (Run w g _ n _ e₂ × MaybeEnd _ _ e₂) → _
         step₁ (e₂ , r₂ , er₁) = step₂ er₁ (s₂ w g n r₂)
-    Sim-≈ˡ : ∀ {R : X → X → Set} {m m₀ m′} → m ≈ m₀ → Sim R m₀ m′ → Sim R m m′
-    Sim-≈ˡ p s w g n r = s w g n (run-≈ w p r)
-    Sim-≈ʳ : ∀ {R : X → X → Set} {m m′ m₀} → m′ ≈ m₀ → Sim R m m₀ → Sim R m m′
-    Sim-≈ʳ p s w g n r = go (s w g n r)
-      where go : ∀ {d e} → ∃[ e′ ] (Run w g _ n d e′ × MaybeEnd _ e e′) → ∃[ e′ ] (Run w g _ n d e′ × MaybeEnd _ e e′)
-            go (e′ , r′ , er) = e′ , run-≈ w (≈-sym p) r′ , er
-
-  Related-mono : ∀ {R R′ : X → X → Set} → (∀ {x y} → R x y → R′ x y) → ∀ {m m′} → Related R m m′ → Related R′ m m′
-  Related-mono h (related f b) = related (Sim-mono h f) (Sim-mono h b)
-
-  Related-flip : ∀ {R : X → X → Set} {m m′} → Related R m m′ → Related (flip R) m′ m
-  Related-flip (related f b) = related b f
 
   Related-trans : ∀ {R : X → X → Set} → (∀ {x y z} → R x y → R y z → R x z) → ∀ {m₁ m₂ m₃}
                 → Related R m₁ m₂ → Related R m₂ m₃ → Related R m₁ m₃
@@ -135,29 +165,9 @@ module _ {X : Set} where
   Related-self : ∀ {R : X → X → Set} {m} → (∀ {w h n d e} → Run w h m n d e → MaybeEnd R e e) → Related R m m
   Related-self p = related (λ w g n r → _ , r , p r) (λ w g n r → _ , r , MaybeEnd-flip (p r))
 
-  -- Bisimilar computations may replace each other, on either side.
-  ≈-Relatedˡ : ∀ {R : X → X → Set} {m m₀ m′} → m ≈ m₀ → Related R m₀ m′ → Related R m m′
-  ≈-Relatedˡ p (related f b) = related (Sim-≈ˡ p f) (Sim-≈ʳ p b)
-
-  ≈-Relatedʳ : ∀ {R : X → X → Set} {m m′ m₀} → m′ ≈ m₀ → Related R m m₀ → Related R m m′
-  ≈-Relatedʳ p (related f b) = related (Sim-≈ʳ p f) (Sim-≈ˡ p b)
-
-  -- Returns are related exactly when their values are (a world always exists).
-  returnRel : ∀ {R : X → X → Set} {x y} → R x y → Related R (return∞ x) (return∞ y)
-  returnRel {R} r = related (ret r) (ret r)
-    where
-      ret : ∀ {S : X → X → Set} {x y} → S x y → Sim S (return∞ x) (return∞ y)
-      ret s w g n (run rb-cut) = nothing , run rb-cut , cut≈
-      ret s w g n (run rb-ret) = just (returned _) , run rb-ret , end≈ (returned≈ s)
-
-  returnRel⁻ : ∀ {R : X → X → Set} {x y} → Related R (return∞ x) (return∞ y) → R x y
-  returnRel⁻ p = un (fwd p aWorld [] 1 (run rb-ret))
-    where un : ∀ {R : X → X → Set} {x y} → ∃[ e′ ] (Run aWorld [] (return∞ y) 1 [] e′ × MaybeEnd R (just (returned x)) e′) → R x y
-          un (_ , run rb-ret , end≈ (returned≈ r)) = r
-
 -- Related at each of a family of relations is related at their meet: a run's
 -- end is determined, so the matching run is the same for every member.
-module _ {X : Set} {R : ℕ → X → X → Set} where
+module _ {X Y : Set} {R : ℕ → X → Y → Set} where
   private
     MaybeEnd-∀ : ∀ {e e′} → (∀ k → MaybeEnd (R k) e e′) → MaybeEnd (λ x y → ∀ k → R k x y) e e′
     MaybeEnd-∀ h = go (h 0) h
@@ -177,16 +187,16 @@ module _ {X : Set} {R : ℕ → X → X → Set} where
         where align : ∀ {k} → ∃[ e″ ] (Run w g m′ n d e″ × MaybeEnd (R k) e e″) → MaybeEnd (R k) e e′
               align {k} (e″ , r″ , er) = subst (MaybeEnd (R k) e) (sym (run-det w r′ r″)) er
 
-Related-∀ : ∀ {X : Set} {R : ℕ → X → X → Set} {m m′} → (∀ k → Related (R k) m m′) → Related (λ x y → ∀ k → R k x y) m m′
+Related-∀ : ∀ {X Y : Set} {R : ℕ → X → Y → Set} {m m′} → (∀ k → Related (R k) m m′) → Related (λ x y → ∀ k → R k x y) m m′
 Related-∀ p = related (Sim-∀ λ k → fwd (p k)) (Sim-∀ λ k → bwd (p k))
 
 ------------------------------------------------------------------------
 -- Sequencing
 ------------------------------------------------------------------------
 
-module _ {X Y : Set} {R : X → X → Set} {R′ : Y → Y → Set} where
+module _ {X X′ Y Y′ : Set} {R : X → X′ → Set} {R′ : Y → Y′ → Set} where
   private
-    retCase : ∀ {w h n d₁ d₂ x} {m′ : T∞ X} {f : X → T∞ Y} {g : X → T∞ Y} {e : Maybe (End Y)}
+    retCase : ∀ {w h n d₁ d₂ x} {m′ : T∞ X′} {f : X → T∞ Y} {g : X′ → T∞ Y′} {e : Maybe (End Y)}
             → (∀ {x y} → R x y → Sim R′ (f x) (g y))
             → ∃[ e′ ] (Run w h m′ n d₁ e′ × MaybeEnd R (just (returned x)) e′)
             → Run w (h ++ d₁) (f x) (n ∸ length d₁) d₂ e
@@ -195,25 +205,25 @@ module _ {X Y : Set} {R : X → X → Set} {R′ : Y → Y → Set} where
       where cont : ∀ {d₂ e} → ∃[ e′ ] (Run w (h ++ d₁) (g y) (n ∸ length d₁) d₂ e′ × MaybeEnd R′ e e′) → _
             cont (e′ , q′ , er) = e′ , Seq.bind-ret w g p′ q′ , er
 
-    stopCase : ∀ {w h n d} {m′ : T∞ X} {g : X → T∞ Y} {e₀ : Maybe (End X)} {e : Maybe (End Y)}
+    stopCase : ∀ {w h n d} {m′ : T∞ X′} {g : X′ → T∞ Y′} {e₀ : Maybe (End X)} {e : Maybe (End Y)}
              → Stops e₀ e → ∃[ e₀′ ] (Run w h m′ n d e₀′ × MaybeEnd R e₀ e₀′)
              → ∃[ e′ ] (Run w h (m′ >>=∞ g) n d e′ × MaybeEnd R′ e e′)
     stopCase {w} {g = g} halts (_ , p′ , end≈ halted≈) = just halted , Seq.bind-stop w g halts p′ , end≈ halted≈
     stopCase {w} {g = g} cuts  (_ , p′ , cut≈)         = nothing , Seq.bind-stop w g cuts p′ , cut≈
 
-    caseSplit : ∀ {w h n d} {m m′ : T∞ X} {f g : X → T∞ Y} {e : Maybe (End Y)}
+    caseSplit : ∀ {w h n d} {m : T∞ X} {m′ : T∞ X′} {f : X → T∞ Y} {g : X′ → T∞ Y′} {e : Maybe (End Y)}
               → Sim R m m′ → (∀ {x y} → R x y → Sim R′ (f x) (g y))
               → Seq.Split w f (Run w h m n) h n d e
               → ∃[ e′ ] (Run w h (m′ >>=∞ g) n d e′ × MaybeEnd R′ e e′)
     caseSplit {w} {h} {n} s k (Seq.returns refl p q) = retCase k (s w h n p) (run q)
     caseSplit {w} {h} {n} s k (Seq.stops st p)       = stopCase st (s w h n p)
 
-  bindSim : ∀ {m m′ : T∞ X} {f g : X → T∞ Y}
+  bindSim : ∀ {m : T∞ X} {m′ : T∞ X′} {f : X → T∞ Y} {g : X′ → T∞ Y′}
           → Sim R m m′ → (∀ {x y} → R x y → Sim R′ (f x) (g y)) → Sim R′ (m >>=∞ f) (m′ >>=∞ g)
   bindSim {m} {f = f} s k w h n r = caseSplit s k (Seq.split w f m r)
 
 -- Binding related computations with related continuations.
-bindRel : ∀ {X Y} {R : X → X → Set} {R′ : Y → Y → Set} {m m′ : T∞ X} {f g : X → T∞ Y}
+bindRel : ∀ {X X′ Y Y′} {R : X → X′ → Set} {R′ : Y → Y′ → Set} {m : T∞ X} {m′ : T∞ X′} {f : X → T∞ Y} {g : X′ → T∞ Y′}
         → Related R m m′ → (∀ {x y} → R x y → Related R′ (f x) (g y)) → Related R′ (m >>=∞ f) (m′ >>=∞ g)
 bindRel p k = related (bindSim (fwd p) λ r → fwd (k r)) (bindSim (bwd p) λ r → bwd (k r))
 
@@ -221,21 +231,21 @@ bindRel p k = related (bindSim (fwd p) λ r → fwd (k r)) (bindSim (bwd p) λ r
 -- What the Spec observes
 ------------------------------------------------------------------------
 
-module _ {X : Set} where
+module _ {X Y : Set} where
   private
-    atWorld : ∀ (h : History) {w} {m : T∞ X} {n d e} → Run w h m n d e → Run w (h ++ []) m n d e
+    atWorld : ∀ {Z : Set} (h : History) {w} {m : T∞ Z} {n d e} → Run w h m n d e → Run w (h ++ []) m n d e
     atWorld h {w} {m} r = subst (λ g → Run w g m _ _ _) (sym (++-identityʳ h)) r
 
-    land : ∀ {R : X → X → Set} w h {m′ : T∞ X} {n d e o′} → Made (w ⇑ h) [] m′ n o′ → d ≡ proj₁ o′ → MaybeEnd R e (proj₂ o′)
+    land : ∀ {R : X → Y → Set} w h {m′ : T∞ Y} {n d e o′} → Made (w ⇑ h) [] m′ n o′ → d ≡ proj₁ o′ → MaybeEnd R e (proj₂ o′)
          → ∃[ e′ ] (Run w h m′ n d e′ × MaybeEnd R e e′)
     land w h {m′} (d′ , e′ , refl , r′) refl er = e′ , subst (λ g → Run w g m′ _ _ _) (++-identityʳ h) (unshift w h r′) , er
 
-    land′ : ∀ {R : X → X → Set} w h {m : T∞ X} {n d e′ o} → Made (w ⇑ h) [] m n o → proj₁ o ≡ d → MaybeEnd R (proj₂ o) e′
+    land′ : ∀ {R : X → Y → Set} w h {m : T∞ X} {n d e′ o} → Made (w ⇑ h) [] m n o → proj₁ o ≡ d → MaybeEnd R (proj₂ o) e′
           → ∃[ e ] (Run w h m n d e × MaybeEnd (flip R) e′ e)
     land′ w h {m} (d₀ , e₀ , refl , r₀) refl er = e₀ , subst (λ g → Run w g m _ _ _) (++-identityʳ h) (unshift w h r₀) , MaybeEnd-flip er
 
   -- Weakly bisimilar traces in every world are related runs.
-  fromObserved : ∀ {R : X → X → Set} {m m′ : T∞ X} → Observed R m m′ → Related R m m′
+  fromObserved : ∀ {R : X → Y → Set} {m : T∞ X} {m′ : T∞ Y} → Observed R m m′ → Related R m m′
   fromObserved {R} {m} {m′} obs = related fw bw
     where
       fw : Sim R m m′
@@ -248,7 +258,7 @@ module _ {X : Set} where
               back (o , a , eq , er) = land′ w h (run-complete (w ⇑ h) [] m n a) eq er
 
   -- Related runs are weakly bisimilar traces in every world.
-  toObserved : ∀ {R : X → X → Set} {m m′ : T∞ X} → Related R m m′ → Observed R m m′
+  toObserved : ∀ {R : X → Y → Set} {m : T∞ X} {m′ : T∞ Y} → Related R m m′ → Observed R m m′
   toObserved {R} {m} {m′} p w = fromDepth λ n → fw n , bw n
     where
       fw : ∀ n o → _ ⇓ o → ∃[ o′ ] (_ ⇓ o′ × ObsR R o o′)

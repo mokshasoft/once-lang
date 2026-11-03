@@ -33,7 +33,7 @@ sameness = record
       toObserved (≈-Relatedˡ (toT∞-bindᵍ π₁ π₂ m f)
                    (≈-Relatedʳ (toT∞-bindᵍ π₁ π₂ m′ f′)
                      (bindRel (fromObserved s) λ r → fromObserved (k r))))
-  ; stream-out   = λ f G → StreamSame.same-out Σ f G
-  ; stream-in    = λ f G → StreamSame.same-in Σ f G
-  ; stream-coind = λ f G → StreamSame.same-coind Σ f G
+  ; stream-out   = λ f r → StreamSame.same-out Σ f r
+  ; stream-in    = λ f r → StreamSame.same-in Σ f r
+  ; stream-coind = λ f r → StreamSame.same-coind Σ f r
   }

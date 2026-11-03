@@ -38,23 +38,23 @@ open import Once.Metatheory.Bisim Σ using (return≈)
 -- Re-grading codata
 ------------------------------------------------------------------------
 
-module _ (G : SFunctor) where
+module _ {G : SFunctor} (q : SRel G G) where
   -- The coalgebra of the `pure → act` coercion: each layer, as a block with no call.
   private
     up : νM pureᶠ G → T (⟦ G ⟧SF (νM pureᶠ G))
     up u = returnT (outν u)
 
-  lpaRel : ∀ H {R R′} → (∀ {x y} → R x y → R′ (subν ⊑-pa G x) (subν ⊑-pa G y)) → ∀ {l l′}
-         → LayerEq H R l l′ → LayerEq H R′ (mapA G H up l) (mapA G H up l′)
-  lpaRel (SK B)     h p = p
-  lpaRel SId        h p = h p
-  lpaRel (H₁ S⊕ H₂) h {inj₁ x} {inj₁ y} p = lpaRel H₁ h p
-  lpaRel (H₁ S⊕ H₂) h {inj₂ x} {inj₂ y} p = lpaRel H₂ h p
-  lpaRel (H₁ S⊕ H₂) h {inj₁ x} {inj₂ y} ()
-  lpaRel (H₁ S⊕ H₂) h {inj₂ x} {inj₁ y} ()
-  lpaRel (H₁ S⊗ H₂) h (p , q) = lpaRel H₁ h p , lpaRel H₂ h q
+  lpaRel : ∀ {H} (k : SRel H H) {R R′} → (∀ {x y} → R x y → R′ (subν ⊑-pa G x) (subν ⊑-pa G y)) → ∀ {l l′}
+         → LayerRel k R l l′ → LayerRel k R′ (mapA G H up l) (mapA G H up l′)
+  lpaRel (rK Q)   h p = p
+  lpaRel rId      h p = h p
+  lpaRel (k₁ r⊕ k₂) h {inj₁ x} {inj₁ y} p = lpaRel k₁ h p
+  lpaRel (k₁ r⊕ k₂) h {inj₂ x} {inj₂ y} p = lpaRel k₂ h p
+  lpaRel (k₁ r⊕ k₂) h {inj₁ x} {inj₂ y} ()
+  lpaRel (k₁ r⊕ k₂) h {inj₂ x} {inj₁ y} ()
+  lpaRel (k₁ r⊗ k₂) h (p , p′) = lpaRel k₁ h p , lpaRel k₂ h p′
 
-  subνUp : ∀ {f f′} (g : fin f ⊑π fin f′) n {v v′} → SameNu f G n v v′ → SameNu f′ G n (subν g G v) (subν g G v′)
+  subνUp : ∀ {f f′} (g : fin f ⊑π fin f′) n {v v′} → RelNu f q n v v′ → RelNu f′ q n (subν g G v) (subν g G v′)
 
   private
     -- The re-graded layer computation is the old one, mapped.
@@ -65,7 +65,7 @@ module _ (G : SFunctor) where
   subνUp ⊑-act  n p = p
   subνUp ⊑-pa zero    p = tt
   subνUp ⊑-pa (suc n) {v} {v′} p =
-    toObserved (≈-Relatedˡ (pa≈ v) (≈-Relatedʳ (pa≈ v′) (relatedFmap (fromObserved p) (lpaRel G (subνUp ⊑-pa n)))))
+    toObserved (≈-Relatedˡ (pa≈ v) (≈-Relatedʳ (pa≈ v′) (relatedFmap (fromObserved p) (lpaRel q (subνUp ⊑-pa n)))))
 
 ------------------------------------------------------------------------
 -- Coercions
@@ -96,4 +96,4 @@ convSame σ (sub-+ a b) {inj₂ x} {inj₂ y} s = convSame σ b s
 convSame σ (sub-+ a b) {inj₁ x} {inj₂ y} ()
 convSame σ (sub-+ a b) {inj₂ x} {inj₁ y} ()
 convSame σ sub-μ s = s
-convSame σ (sub-ν {F = F} g) s = λ n → subνUp (code (F ⟨ σ ⟩F)) g n (s n)
+convSame σ (sub-ν {F = F} g) s = λ n → subνUp (SameF (F ⟨ σ ⟩F)) g n (s n)

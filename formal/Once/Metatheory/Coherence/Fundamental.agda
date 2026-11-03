@@ -166,7 +166,7 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
     relBindᵍ (FL dt dt′ refl (rr≡ (envʳ-restrict σ (Many *ᵘ Ψa) Ψt _) (envʳ-restrict σ (Many *ᵘ Ψa′) Ψt′ _) ag)) λ {v} {v′} sv →
     subst (λ w → Rel π π (A ⟨ σ ⟩) (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg (fromL σ F A l)) v)
                                      (foldM π (code (F ⟨ σ ⟩F)) (λ l → alg′ (fromL σ F A l)) w))
-          (sameμ sv)
+          (Functor.sameμ σ r wf sv)
           (Fold.foldRel π (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) _ _
              (λ le → appMany salg (Functor.fromL-same σ r wf A le)) v)
 

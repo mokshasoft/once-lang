@@ -34,6 +34,7 @@ open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM; layerM)
 open import Once.Spec.Equivalence Σ
 open import Once.Metatheory.Bisim Σ using (≈-refl)
+open import Once.Metatheory.Trace using (WB-mono)
 open import Once.Metatheory.Erase Σ
 open import Once.Metatheory.Unfold Σ using (module Unfold)
 open import Once.Metatheory.Coherence.Relation Σ
@@ -169,10 +170,6 @@ reflBase (b-* a b) (x , y) = reflBase a x , reflBase b y
 reflBase (b-+ a b) (inj₁ x) = reflBase a x
 reflBase (b-+ a b) (inj₂ y) = reflBase b y
 
--- A μ value is the same only as itself.
-sameμ : ∀ {F} {x y : ⟦ μ F ⟧ᵛ} → Same (μ F) x y → x ≡ y
-sameμ s = s
-
 ------------------------------------------------------------------------
 -- Layers
 ------------------------------------------------------------------------
@@ -206,7 +203,62 @@ LayerEq-≡ (G S⊕ H) {l = inj₁ x} {inj₂ y} ()
 LayerEq-≡ (G S⊕ H) {l = inj₂ x} {inj₁ y} ()
 LayerEq-≡ (G S⊗ H) (p , q) = cong₂ _,_ (LayerEq-≡ G p) (LayerEq-≡ H q)
 
+-- One relation of constants inside another.
+_⊆ᶜ_ : ∀ {G G′} → SRel G G′ → SRel G G′ → Set
+rK Q     ⊆ᶜ rK Q′      = ∀ {x y} → Q x y → Q′ x y
+rId      ⊆ᶜ rId        = ⊤
+(g r⊕ h) ⊆ᶜ (g′ r⊕ h′) = (g ⊆ᶜ g′) × (h ⊆ᶜ h′)
+(g r⊗ h) ⊆ᶜ (g′ r⊗ h′) = (g ⊆ᶜ g′) × (h ⊆ᶜ h′)
+
+LayerRel-mono : ∀ {G G′} (q q′ : SRel G G′) → q ⊆ᶜ q′ → ∀ {X Y} {R R′ : X → Y → Set} → (∀ {x y} → R x y → R′ x y)
+              → ∀ {l l′} → LayerRel q R l l′ → LayerRel q′ R′ l l′
+LayerRel-mono (rK Q)   (rK Q′)    c h p = c p
+LayerRel-mono rId      rId        c h p = h p
+LayerRel-mono (g r⊕ k) (g′ r⊕ k′) (c , d) h {inj₁ x} {inj₁ y} p = LayerRel-mono g g′ c h p
+LayerRel-mono (g r⊕ k) (g′ r⊕ k′) (c , d) h {inj₂ x} {inj₂ y} p = LayerRel-mono k k′ d h p
+LayerRel-mono (g r⊕ k) (g′ r⊕ k′) c h {inj₁ x} {inj₂ y} ()
+LayerRel-mono (g r⊕ k) (g′ r⊕ k′) c h {inj₂ x} {inj₁ y} ()
+LayerRel-mono (g r⊗ k) (g′ r⊗ k′) (c , d) h (p , p′) = LayerRel-mono g g′ c h p , LayerRel-mono k k′ d h p′
+
+RelNu-mono : ∀ f {G G′} (q q′ : SRel G G′) → q ⊆ᶜ q′ → ∀ n {v w} → RelNu f q n v w → RelNu f q′ n v w
+RelNu-mono f q q′ c zero    p = tt
+RelNu-mono f q q′ c (suc n) p w = WB-mono (LayerRel-mono q q′ c (RelNu-mono f q q′ c n)) (p w)
+
 module Functor {m} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) where
+
+  -- A well-formed functor's constants (base types): the same exactly when equal.
+  same⊆eq : ∀ {F} (wf : WFFun Δ F) → SameF (F ⟨ σ ⟩F) ⊆ᶜ eqRel (code (F ⟨ σ ⟩F))
+  same⊆eq (wf-K b)   = sameBase (base-⟨⟩ r b)
+  same⊆eq wf-Id      = tt
+  same⊆eq (wf-⊕ f g) = same⊆eq f , same⊆eq g
+  same⊆eq (wf-⊗ f g) = same⊆eq f , same⊆eq g
+
+  eq⊆same : ∀ {F} (wf : WFFun Δ F) → eqRel (code (F ⟨ σ ⟩F)) ⊆ᶜ SameF (F ⟨ σ ⟩F)
+  eq⊆same (wf-K b)   {x} refl = reflBase (base-⟨⟩ r b) x
+  eq⊆same wf-Id      = tt
+  eq⊆same (wf-⊕ f g) = eq⊆same f , eq⊆same g
+  eq⊆same (wf-⊗ f g) = eq⊆same f , eq⊆same g
+
+  -- A tree of a well-formed functor is the same as itself; equal trees are the same.
+  reflμ      : ∀ {F} (wf : WFFun Δ F) x → Same ((μ F) ⟨ σ ⟩) x x
+  layerReflμ : ∀ {F G} (wf : WFFun Δ F) (wg : WFFun Δ G) l → LayerRel (SameF (G ⟨ σ ⟩F)) (Same ((μ F) ⟨ σ ⟩)) l l
+  reflμ wf (inS l) = inR (layerReflμ wf wf l)
+  layerReflμ wf (wf-K b)   l        = reflBase (base-⟨⟩ r b) l
+  layerReflμ wf wf-Id      l        = reflμ wf l
+  layerReflμ wf (wf-⊕ f g) (inj₁ l) = layerReflμ wf f l
+  layerReflμ wf (wf-⊕ f g) (inj₂ l) = layerReflμ wf g l
+  layerReflμ wf (wf-⊗ f g) (l , l′) = layerReflμ wf f l , layerReflμ wf g l′
+
+  ≡→sameμ : ∀ {F} (wf : WFFun Δ F) {x y} → x ≡ y → Same ((μ F) ⟨ σ ⟩) x y
+  ≡→sameμ wf {x} refl = reflμ wf x
+
+  -- So the streams of a well-formed functor are the same exactly when they are
+  -- the same with equal constants.
+  sameν→ : ∀ {F f} (wf : WFFun Δ F) {v w} → SameStream f (code (F ⟨ σ ⟩F)) v w → Same ((ν F f) ⟨ σ ⟩) v w
+  sameν→ {F} {f} wf s n = RelNu-mono f _ _ (eq⊆same wf) n (s n)
+
+  sameν← : ∀ {F f} (wf : WFFun Δ F) {v w} → Same ((ν F f) ⟨ σ ⟩) v w → SameStream f (code (F ⟨ σ ⟩F)) v w
+  sameν← {F} {f} wf s n = RelNu-mono f _ _ (same⊆eq wf) n (s n)
 
   toL-same : ∀ {F} (wf : WFFun Δ F) (X : Ty m) {l l′}
            → Same ((⟦ F ⟧F X) ⟨ σ ⟩) l l′ → LayerEq (code (F ⟨ σ ⟩F)) (Same (X ⟨ σ ⟩)) (toL σ F X l) (toL σ F X l′)
@@ -228,10 +280,34 @@ module Functor {m} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) wh
   fromL-same (wf-⊕ f g) X {inj₂ x} {inj₁ y} ()
   fromL-same (wf-⊗ f g) X (p , q) = fromL-same f X p , fromL-same g X q
 
+  -- The same layers, read as code layers: related constants and positions.
+  toL-sameR : ∀ {F} (wf : WFFun Δ F) (X : Ty m) {l l′}
+            → Same ((⟦ F ⟧F X) ⟨ σ ⟩) l l′ → LayerRel (SameF (F ⟨ σ ⟩F)) (Same (X ⟨ σ ⟩)) (toL σ F X l) (toL σ F X l′)
+  toL-sameR (wf-K b) X s = s
+  toL-sameR wf-Id    X s = s
+  toL-sameR (wf-⊕ f g) X {inj₁ x} {inj₁ y} s = toL-sameR f X s
+  toL-sameR (wf-⊕ f g) X {inj₂ x} {inj₂ y} s = toL-sameR g X s
+  toL-sameR (wf-⊕ f g) X {inj₁ x} {inj₂ y} ()
+  toL-sameR (wf-⊕ f g) X {inj₂ x} {inj₁ y} ()
+  toL-sameR (wf-⊗ f g) X (s , t) = toL-sameR f X s , toL-sameR g X t
+
   -- Rolling the same layers gives the same tree.
   roll-same : ∀ {F} (wf : WFFun Δ F) {l l′}
-            → Same ((⟦ F ⟧F (μ F)) ⟨ σ ⟩) l l′ → inS (toL σ F (μ F) l) ≡ inS (toL σ F (μ F) l′)
-  roll-same {F} wf s = cong (inS {F = code (F ⟨ σ ⟩F)}) (LayerEq-≡ (code (F ⟨ σ ⟩F)) (LayerEq-mono (code (F ⟨ σ ⟩F)) sameμ (toL-same wf (μ F) s)))
+            → Same ((⟦ F ⟧F (μ F)) ⟨ σ ⟩) l l′ → Same ((μ F) ⟨ σ ⟩) (inS (toL σ F (μ F) l)) (inS (toL σ F (μ F) l′))
+  roll-same {F} wf s = inR (toL-sameR wf (μ F) s)
+
+  -- A tree of a well-formed functor (base constants) is the same only as itself.
+  sameμ   : ∀ {F} (wf : WFFun Δ F) {x y} → Same ((μ F) ⟨ σ ⟩) x y → x ≡ y
+  layerμ≡ : ∀ {F G} (wf : WFFun Δ F) (wg : WFFun Δ G) {l l′}
+          → LayerRel (SameF (G ⟨ σ ⟩F)) (Same ((μ F) ⟨ σ ⟩)) l l′ → l ≡ l′
+  sameμ wf (inR p) = cong inS (layerμ≡ wf wf p)
+  layerμ≡ wf (wf-K b) p = sameBase (base-⟨⟩ r b) p
+  layerμ≡ wf wf-Id    p = sameμ wf p
+  layerμ≡ wf (wf-⊕ f g) {inj₁ x} {inj₁ y} p = cong inj₁ (layerμ≡ wf f p)
+  layerμ≡ wf (wf-⊕ f g) {inj₂ x} {inj₂ y} p = cong inj₂ (layerμ≡ wf g p)
+  layerμ≡ wf (wf-⊕ f g) {inj₁ x} {inj₂ y} ()
+  layerμ≡ wf (wf-⊕ f g) {inj₂ x} {inj₁ y} ()
+  layerμ≡ wf (wf-⊗ f g) (p , q) = cong₂ _,_ (layerμ≡ wf f p) (layerμ≡ wf g q)
 
 ------------------------------------------------------------------------
 -- The fold

@@ -21,24 +21,40 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 open import Once.Spec.Grade using (Purity; Zero; One; Many; mk-kind; fin)
-open import Once.Spec.Type using (Ty; Type; Fun; KCtx; Base; ∅ₖ; Respects; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν;
+open import Once.Spec.Type using (Ty; Type; Fun; KCtx; Base; WFFun; wf-K; wf-Id; wf-⊕; wf-⊗; ∅ₖ; Respects; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν;
                                   K; Id; _⊕_; _⊗_; TySub; _⟨_⟩; _⟨_⟩F; at₀)
 open import Once.Spec.Type.Substitution using (base-⟨⟩)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF; μS; inS)
 open import Once.Spec.Effect Σ using (M; fmap; νM; ana; LayerEq; T∞; _>>=∞_; return∞; _≈_; toT∞)
 open νM using (outν)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code)
-open import Once.Spec.Equivalence Σ using (Same; SameM; SameNu)
+open import Once.Spec.Equivalence Σ using (Same; SameM; SameNu; SameStream)
 open import Once.Spec.Polynomial using (sfmap)
 open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ; idʳ; assoc)
 open import Once.Metatheory.Unfold Σ using (module Unfold)
 open import Once.Metatheory.Erase Σ using (toT∞-fmap)
-open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; toObserved; fromObserved)
-open import Once.Metatheory.Coherence.Layer Σ using (sameBase; reflBase; relatedFmap; LayerEq-∀; outRel; module Ana)
+open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; toObserved; fromObserved; LayerEq-mono)
+open import Once.Metatheory.Coherence.Layer Σ using (sameBase; reflBase; relatedFmap; LayerEq-∀; outRel; module Ana; module Functor)
 open import Once.Metatheory.Laws.MapSem Σ using (module MapAt; Occ; OccF; p-var; p-*ˡ; p-*ʳ; p-+ˡ; p-+ʳ; p-⇒ʳ; p-μ; p-ν; p-K; p-⊕ˡ; p-⊕ʳ; p-⊗ˡ; p-⊗ʳ)
+
+-- A map's cover knows each functor constant is a base type at both ends.
+module CovWF {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (X Y : Ty m) where
+  open MapAt Δ σ X Y using (CovF)
+  wfA : ∀ G → CovF G → WFFun Δ (G ⟨ at₀ X ⟩F)
+  wfA (K C)   (_ , bA , _) = wf-K bA
+  wfA Id      _            = wf-Id
+  wfA (F ⊕ G) (c , d)      = wf-⊕ (wfA F c) (wfA G d)
+  wfA (F ⊗ G) (c , d)      = wf-⊗ (wfA F c) (wfA G d)
+  wfB : ∀ G → CovF G → WFFun Δ (G ⟨ at₀ Y ⟩F)
+  wfB (K C)   (_ , _ , bB) = wf-K bB
+  wfB Id      _            = wf-Id
+  wfB (F ⊕ G) (c , d)      = wf-⊕ (wfB F c) (wfB G d)
+  wfB (F ⊗ G) (c , d)      = wf-⊗ (wfB F c) (wfB G d)
 
 module MapResp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) (A B : Ty m) where
   open MapAt Δ σ A B
+  open CovWF {Δ = Δ} σ A B
+  private module Fn = Functor σ r
 
   -- Two functions that take the same arguments to the same results.
   SameFn : ∀ {P : Set} → (P → ⟦ A ⟨ σ ⟩ ⟧ᵛ → ⟦ B ⟨ σ ⟩ ⟧ᵛ) → (P → ⟦ A ⟨ σ ⟩ ⟧ᵛ → ⟦ B ⟨ σ ⟩ ⟧ᵛ) → Set
@@ -78,15 +94,16 @@ module MapResp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ 
     resp (T₁ ⇒[ mk-kind Many π ] T₂) (e , c) (e′ , c′) h {g} {g′} s y y′ sy = toObserved
       (≈-Relatedˡ (toT∞-fmap π _ (g _)) (≈-Relatedʳ (toT∞-fmap π _ (g′ _))
         (relatedFmap (fromObserved (s _ _ (substSame e e′ sy))) (resp T₂ c c′ (λ o → h (p-⇒ʳ o))))))
-    resp (μ G) c c′ h {x} refl = muResp G c c′ (λ o → h (p-μ o)) x
-    resp (ν G f) c c′ h {x} {x′} s n = Ana.anaRel f (CB G) ((ν (G ⟨ at₀ A ⟩F) f) ⟨ σ ⟩) _ _ coalg n s
+    resp (μ G) c c′ h {x} {x′} s with Fn.sameμ (wfA G c) s
+    ... | refl = Fn.≡→sameμ (wfB G c) (muResp G c c′ (λ o → h (p-μ o)) x)
+    resp (ν G f) c c′ h {x} {x′} s = Fn.sameν→ (wfB G c) (λ n → Ana.anaRel f (CB G) ((ν (G ⟨ at₀ A ⟩F) f) ⟨ σ ⟩) _ _ coalg n s)
       where
         coalg : ∀ {a a′} → Same ((ν (G ⟨ at₀ A ⟩F) f) ⟨ σ ⟩) a a′
               → Related (LayerEq (CB G) (Same ((ν (G ⟨ at₀ A ⟩F) f) ⟨ σ ⟩))) _ _
         coalg {a} {a′} sa =
           ≈-Relatedˡ (toT∞-fmap (fin f) _ (outν a)) (≈-Relatedʳ (toT∞-fmap (fin f) _ (outν a′))
-            (relatedFmap (outRel f (CA G) sa)
-              (λ p → nuResp G c c′ (λ o → h (p-ν o)) (LayerEq-∀ (CA G) p))))
+            (relatedFmap (outRel f (CA G) (Fn.sameν← (wfA G c) sa))
+              (λ p → LayerEq-mono (CB G) (Fn.sameν→ (wfA G c)) (nuResp G c c′ (λ o → h (p-ν o)) (LayerEq-∀ (CA G) p)))))
 
     muResp : ∀ G (c c′ : CovF G) {φ φ′ : FnF G} → SameFn φ φ′ → ∀ x → muMap G c φ x ≡ muMap G c′ φ′ x
     muResp G c c′ h (inS l) = cong inS (muLayerResp G G c c′ h c c′ h l)
@@ -123,6 +140,8 @@ fmap² π f g m = ≈-trans (toT∞-fmap π f (fmap π g m))
 
 module MapId {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) (A : Ty m) where
   open MapAt Δ σ A A
+  open CovWF {Δ = Δ} σ A A
+  private module Fn = Functor σ r
 
   -- A function that takes each argument to the same one.
   IsId : ∀ {P : Set} → (P → ⟦ A ⟨ σ ⟩ ⟧ᵛ → ⟦ A ⟨ σ ⟩ ⟧ᵛ) → Set
@@ -156,8 +175,9 @@ module MapId {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ
     mid (T₁ ⇒[ mk-kind Zero π ] T₂) (e , c) h s = funId π (mid T₂ c (λ o → h (p-⇒ʳ o))) s
     mid (T₁ ⇒[ mk-kind One π ] T₂) (e , c) h s y y′ sy = funId π (mid T₂ c (λ o → h (p-⇒ʳ o))) (s _ _ (substId e sy))
     mid (T₁ ⇒[ mk-kind Many π ] T₂) (e , c) h s y y′ sy = funId π (mid T₂ c (λ o → h (p-⇒ʳ o))) (s _ _ (substId e sy))
-    mid (μ G) c h {x} refl = muId G c (λ o → h (p-μ o)) x
-    mid (ν G f) c h s n = nuId G f c (λ o → h (p-ν o)) n s
+    mid (μ G) c h {x} {x′} s with Fn.sameμ (wfA G c) s
+    ... | refl = Fn.≡→sameμ (wfA G c) (muId G c (λ o → h (p-μ o)) x)
+    mid (ν G f) c h s = Fn.sameν→ (wfA G c) (λ n → nuId G f c (λ o → h (p-ν o)) n (Fn.sameν← (wfA G c) s))
 
     muId : ∀ G (c : CovF G) {φ : FnF G} → IsId φ → ∀ x → muMap G c φ x ≡ x
     muId G c h (inS l) = cong inS (muLayerId G G c h c h l)
@@ -173,7 +193,7 @@ module MapId {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ
       cong₂ _,_ (muLayerId G H₁ cG hG c₁ (λ o → h (p-⊗ˡ o)) l₁) (muLayerId G H₂ cG hG c₂ (λ o → h (p-⊗ʳ o)) l₂)
 
     -- ν: at every depth, by the layers.
-    nuId : ∀ G f (c : CovF G) {φ : FnF G} → IsId φ → ∀ n {a a′} → Same ((ν (G ⟨ at₀ A ⟩F) f) ⟨ σ ⟩) a a′
+    nuId : ∀ G f (c : CovF G) {φ : FnF G} → IsId φ → ∀ n {a a′} → SameStream f (CA G) a a′
          → SameNu f (CA G) n (ana f (CA G) (λ y → fmap (fin f) (nuLayer G c φ {νM f (CA G)}) (outν y)) a) a′
     nuId G f c h zero    s = tt
     nuId G f c {φ} h (suc n) {a} {a′} s = toObserved
@@ -183,7 +203,7 @@ module MapId {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ
       where k = λ y → fmap (fin f) (nuLayer G c φ {νM f (CA G)}) (outν y)
 
     nuLayerId : ∀ G f (cG : CovF G) {φG : FnF G} → IsId φG → ∀ H (cH : CovF H) {φ : FnF H} → IsId φ → ∀ n {l l′}
-              → LayerEq (CA H) (Same ((ν (G ⟨ at₀ A ⟩F) f) ⟨ σ ⟩)) l l′
+              → LayerEq (CA H) (SameStream f (CA G)) l l′
               → LayerEq (CA H) (SameNu f (CA G) n)
                   (sfmap (CA H) (ana f (CA G) (λ y → fmap (fin f) (nuLayer G cG φG {νM f (CA G)}) (outν y))) (nuLayer H cH φ l)) l′
     nuLayerId G f cG hG (K C) (cC , bA , _) h n {l} refl =
@@ -200,6 +220,8 @@ module MapComp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ 
   module AB = MapAt Δ σ A B
   module BC = MapAt Δ σ B C
   module AC = MapAt Δ σ A C
+  module WAC = CovWF {Δ = Δ} σ A C
+  private module Fn = Functor σ r
 
   -- `φ₃` is `φ₂` after `φ₁`.
   IsComp : ∀ {P : Set} → (P → ⟦ A ⟨ σ ⟩ ⟧ᵛ → ⟦ C ⟨ σ ⟩ ⟧ᵛ) → (P → ⟦ B ⟨ σ ⟩ ⟧ᵛ → ⟦ C ⟨ σ ⟩ ⟧ᵛ)
@@ -240,8 +262,10 @@ module MapComp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ 
       funComp π (comp T₂ c₃ c₂ c₁ (λ o → h (p-⇒ʳ o))) (s _ _ (substComp e₃ e₁ e₂ sy))
     comp (T₁ ⇒[ mk-kind Many π ] T₂) (e₃ , c₃) (e₂ , c₂) (e₁ , c₁) h s y y′ sy =
       funComp π (comp T₂ c₃ c₂ c₁ (λ o → h (p-⇒ʳ o))) (s _ _ (substComp e₃ e₁ e₂ sy))
-    comp (μ G) c₃ c₂ c₁ h {x} refl = muComp G c₃ c₂ c₁ (λ o → h (p-μ o)) x
-    comp (ν G f) c₃ c₂ c₁ h s n = nuComp G f c₃ c₂ c₁ (λ o → h (p-ν o)) n s
+    comp (μ G) c₃ c₂ c₁ h {x} {x′} s with Fn.sameμ (WAC.wfA G c₃) s
+    ... | refl = Fn.≡→sameμ (WAC.wfB G c₃) (muComp G c₃ c₂ c₁ (λ o → h (p-μ o)) x)
+    comp (ν G f) c₃ c₂ c₁ h s =
+      Fn.sameν→ (WAC.wfB G c₃) (λ n → nuComp G f c₃ c₂ c₁ (λ o → h (p-ν o)) n (Fn.sameν← (WAC.wfA G c₃) s))
 
     muComp : ∀ G (c₃ : AC.CovF G) (c₂ : BC.CovF G) (c₁ : AB.CovF G) {φ₃ : AC.FnF G} {φ₂ : BC.FnF G} {φ₁ : AB.FnF G}
            → IsComp φ₃ φ₂ φ₁ → ∀ x → AC.muMap G c₃ φ₃ x ≡ BC.muMap G c₂ φ₂ (AB.muMap G c₁ φ₁ x)
@@ -265,7 +289,7 @@ module MapComp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ 
 
     -- ν: at every depth, by the layers.
     nuComp : ∀ G f (c₃ : AC.CovF G) (c₂ : BC.CovF G) (c₁ : AB.CovF G) {φ₃ : AC.FnF G} {φ₂ : BC.FnF G} {φ₁ : AB.FnF G}
-           → IsComp φ₃ φ₂ φ₁ → ∀ n {a a′} → Same ((ν (G ⟨ at₀ A ⟩F) f) ⟨ σ ⟩) a a′
+           → IsComp φ₃ φ₂ φ₁ → ∀ n {a a′} → SameStream f (AC.CA G) a a′
            → SameNu f (AC.CB G) n
                (ana f (AC.CB G) (λ y → fmap (fin f) (AC.nuLayer G c₃ φ₃ {νM f (AC.CA G)}) (outν y)) a)
                (ana f (BC.CB G) (λ y → fmap (fin f) (BC.nuLayer G c₂ φ₂ {νM f (BC.CA G)}) (outν y))
@@ -288,7 +312,7 @@ module MapComp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ 
                   {ψ₃ : AC.FnF G} {ψ₂ : BC.FnF G} {ψ₁ : AB.FnF G} → IsComp ψ₃ ψ₂ ψ₁
                 → ∀ H (c₃ : AC.CovF H) (c₂ : BC.CovF H) (c₁ : AB.CovF H)
                   {φ₃ : AC.FnF H} {φ₂ : BC.FnF H} {φ₁ : AB.FnF H} → IsComp φ₃ φ₂ φ₁ → ∀ n {l l′}
-                → LayerEq (AC.CA H) (Same ((ν (G ⟨ at₀ A ⟩F) f) ⟨ σ ⟩)) l l′
+                → LayerEq (AC.CA H) (SameStream f (AC.CA G)) l l′
                 → LayerEq (AC.CB H) (SameNu f (AC.CB G) n)
                     (sfmap (AC.CB H) (ana f (AC.CB G) (λ y → fmap (fin f) (AC.nuLayer G g₃ ψ₃ {νM f (AC.CA G)}) (outν y)))
                        (AC.nuLayer H c₃ φ₃ l))

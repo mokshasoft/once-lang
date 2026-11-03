@@ -107,12 +107,13 @@ module _ {X : Set} {R : X → X → Set} where
     transStep (calls p q) = refl , WB-trans p q
 
 -- Weakly bisimilar at a relation implies at a larger one.
-module _ {X : Set} {R R′ : X → X → Set} (h : ∀ {x y} → R x y → R′ x y) where
-  WB-mono  : ∀ {t t′ : Tr X} → t ≈ᵗ⟨ R ⟩ t′ → t ≈ᵗ⟨ R′ ⟩ t′
-  monoStep : ∀ {o o′ : S X} → StepRel R (λ u u′ → u ≈ᵗ⟨ R ⟩ u′) o o′ → StepRel R′ (λ u u′ → u ≈ᵗ⟨ R′ ⟩ u′) o o′
+-- (Between two value sets.)
+module _ {X Y : Set} {R R′ : X → Y → Set} (h : ∀ {x y} → R x y → R′ x y) where
+  WB-mono  : ∀ {t : Tr X} {t′ : Tr Y} → t ≈ᵗ⟨ R ⟩ t′ → t ≈ᵗ⟨ R′ ⟩ t′
+  monoStep : ∀ {o : S X} {o′ : S Y} → StepRel R (λ u u′ → u ≈ᵗ⟨ R ⟩ u′) o o′ → StepRel R′ (λ u u′ → u ≈ᵗ⟨ R′ ⟩ u′) o o′
   same (WB-mono p) = (λ o a → go (proj₁ (same p) o a)) , (λ o a → go′ (proj₂ (same p) o a))
     where
-      go : ∀ {d : Delay (S X)} {o} → ∃[ o′ ] (d ⇓ o′ × StepRel R _ o o′) → ∃[ o′ ] (d ⇓ o′ × StepRel R′ _ o o′)
+      go : ∀ {d : Delay (S Y)} {o} → ∃[ o′ ] (d ⇓ o′ × StepRel R _ o o′) → ∃[ o′ ] (d ⇓ o′ × StepRel R′ _ o o′)
       go (o′ , a , r) = o′ , a , monoStep r
       go′ : ∀ {d : Delay (S X)} {o′} → ∃[ o ] (d ⇓ o × StepRel R _ o o′) → ∃[ o ] (d ⇓ o × StepRel R′ _ o o′)
       go′ (o , a , r) = o , a , monoStep r
@@ -187,14 +188,14 @@ pre (suc n) t = bindD (next t) (preStep n)
 preStep n (inj₁ e)       = now ([] , just e)
 preStep n (inj₂ (v , t)) = bindD (pre n t) λ o → now (v ∷ proj₁ o , proj₂ o)
 
-data MaybeEnd {X : Set} (R : X → X → Set) : Maybe (End X) → Maybe (End X) → Set where
+data MaybeEnd {X Y : Set} (R : X → Y → Set) : Maybe (End X) → Maybe (End Y) → Set where
   cut≈  : MaybeEnd R nothing nothing
   end≈  : ∀ {e e′} → EndRel R e e′ → MaybeEnd R (just e) (just e′)
 
-ObsR : ∀ {X} → (X → X → Set) → Obs X → Obs X → Set
+ObsR : ∀ {X Y} → (X → Y → Set) → Obs X → Obs Y → Set
 ObsR R o o′ = proj₁ o ≡ proj₁ o′ × MaybeEnd R (proj₂ o) (proj₂ o′)
 
-Depth : ∀ {X} → (X → X → Set) → Tr X → Tr X → Set
+Depth : ∀ {X Y} → (X → Y → Set) → Tr X → Tr Y → Set
 Depth R t t′ = ∀ n → pre n t ≈⟨ ObsR R ⟩ pre n t′
 
 ------------------------------------------------------------------------
@@ -243,9 +244,9 @@ shallower {X} {t} {v} {t₁} {n} a o′⇓ = go (bind⇓⁻ (next t) (preStep n)
     go : ∀ {o′} → ∃[ s ] (next t ⇓ s × preStep n s ⇓ o′) → ∃[ o ] (pre n t₁ ⇓ o × o′ ≡ (v ∷ proj₁ o , proj₂ o))
     go (s , a′ , p) = sameS (⇓-det a a′) p
 
-module _ {X : Set} {R : X → X → Set} where
+module _ {X Y : Set} {R : X → Y → Set} where
   -- After the same call on both sides, the rests agree at every depth.
-  restDepth : ∀ {t t′ : Tr X} {v t₁ t₁′} → Depth R t t′ → next t ⇓ inj₂ (v , t₁) → next t′ ⇓ inj₂ (v , t₁′)
+  restDepth : ∀ {t : Tr X} {t′ : Tr Y} {v t₁ t₁′} → Depth R t t′ → next t ⇓ inj₂ (v , t₁) → next t′ ⇓ inj₂ (v , t₁′)
             → Depth R t₁ t₁′
   restDepth {t} {t′} {v} {t₁} {t₁′} p a a′ n = fw , bw
     where
@@ -267,10 +268,10 @@ module _ {X : Set} {R : X → X → Set} where
           step₁ (o″ , o″⇓ , r) = fin r (shallower {t = t} a o″⇓)
 
   -- An end on one side: the same kind of end on the other.
-  endMatch : ∀ {t t′ : Tr X} {e} → Depth R t t′ → next t ⇓ inj₁ e → ∃[ e′ ] (next t′ ⇓ inj₁ e′ × EndRel R e e′)
+  endMatch : ∀ {t : Tr X} {t′ : Tr Y} {e} → Depth R t t′ → next t ⇓ inj₁ e → ∃[ e′ ] (next t′ ⇓ inj₁ e′ × EndRel R e e′)
   endMatch {t} {t′} {e} p a = one (seeFirst {t = t} (inj₁ e) a)
     where
-      decide : ∀ {o′} (s′ : S X) → next t′ ⇓ s′ → FirstIs s′ o′ → ObsR R ([] , just e) o′
+      decide : ∀ {o′} (s′ : S Y) → next t′ ⇓ s′ → FirstIs s′ o′ → ObsR R ([] , just e) o′
              → ∃[ e′ ] (next t′ ⇓ inj₁ e′ × EndRel R e e′)
       decide (inj₁ e′)      a′ refl (_ , end≈ r) = e′ , a′ , r
       decide (inj₂ (v , _)) a′ refl (eq , _)     = []≢∷ eq
@@ -282,11 +283,11 @@ module _ {X : Set} {R : X → X → Set} where
       one (o , o⇓ , refl) = two (proj₁ (p 1) _ o⇓)
 
   -- A call on one side: the same call on the other, the rests agreeing.
-  emitMatch : ∀ {t t′ : Tr X} {v t₁} → Depth R t t′ → next t ⇓ inj₂ (v , t₁)
+  emitMatch : ∀ {t : Tr X} {t′ : Tr Y} {v t₁} → Depth R t t′ → next t ⇓ inj₂ (v , t₁)
             → ∃[ t₁′ ] (next t′ ⇓ inj₂ (v , t₁′) × Depth R t₁ t₁′)
   emitMatch {t} {t′} {v} {t₁} p a = one (seeFirst {t = t} (inj₂ (v , t₁)) a)
     where
-      decide : ∀ {o′} (s′ : S X) → next t′ ⇓ s′ → FirstIs s′ o′ → ObsR R (v ∷ [] , nothing) o′
+      decide : ∀ {o′} (s′ : S Y) → next t′ ⇓ s′ → FirstIs s′ o′ → ObsR R (v ∷ [] , nothing) o′
              → ∃[ t₁′ ] (next t′ ⇓ inj₂ (v , t₁′) × Depth R t₁ t₁′)
       decide (inj₁ e′)         a′ refl (eq , _) = []≢∷ (sym eq)
       decide (inj₂ (v′ , t₁′)) a′ refl (eq , _) = fin (proj₁ (∷-inj eq)) a′
@@ -301,19 +302,19 @@ module _ {X : Set} {R : X → X → Set} where
 
 -- Symmetry of the depth relation.
 private
-  EndRel-flip : ∀ {X} {R : X → X → Set} {e e′} → EndRel R e e′ → EndRel (flip R) e′ e
+  EndRel-flip : ∀ {X Y} {R : X → Y → Set} {e e′} → EndRel R e e′ → EndRel (flip R) e′ e
   EndRel-flip (returned≈ r) = returned≈ r
   EndRel-flip halted≈ = halted≈
-  EndRel-unflip : ∀ {X} {R : X → X → Set} {e e′} → EndRel (flip R) e′ e → EndRel R e e′
+  EndRel-unflip : ∀ {X Y} {R : X → Y → Set} {e e′} → EndRel (flip R) e′ e → EndRel R e e′
   EndRel-unflip (returned≈ r) = returned≈ r
   EndRel-unflip halted≈ = halted≈
-  MaybeEnd-flip : ∀ {X} {R : X → X → Set} {e e′} → MaybeEnd R e e′ → MaybeEnd (flip R) e′ e
+  MaybeEnd-flip : ∀ {X Y} {R : X → Y → Set} {e e′} → MaybeEnd R e e′ → MaybeEnd (flip R) e′ e
   MaybeEnd-flip cut≈ = cut≈
   MaybeEnd-flip (end≈ r) = end≈ (EndRel-flip r)
-  ObsR-flip : ∀ {X} {R : X → X → Set} {o o′} → ObsR R o o′ → ObsR (flip R) o′ o
+  ObsR-flip : ∀ {X Y} {R : X → Y → Set} {o o′} → ObsR R o o′ → ObsR (flip R) o′ o
   ObsR-flip (eq , me) = sym eq , MaybeEnd-flip me
 
-Depth-sym : ∀ {X} {R : X → X → Set} {t t′ : Tr X} → Depth R t t′ → Depth (flip R) t′ t
+Depth-sym : ∀ {X Y} {R : X → Y → Set} {t : Tr X} {t′ : Tr Y} → Depth R t t′ → Depth (flip R) t′ t
 Depth-sym {R = R} {t} {t′} p n = (λ o o⇓ → turn₁ (proj₂ (p n) o o⇓)) , (λ o o⇓ → turn₂ (proj₁ (p n) o o⇓))
   where
     turn₁ : ∀ {o} → ∃[ o₁ ] (pre n t ⇓ o₁ × ObsR R o₁ o) → ∃[ o₁ ] (pre n t ⇓ o₁ × ObsR (flip R) o o₁)
@@ -323,10 +324,10 @@ Depth-sym {R = R} {t} {t′} p n = (λ o o⇓ → turn₁ (proj₂ (p n) o o⇓)
 
 -- THE CONVERSION: agreement at every depth gives weak bisimilarity. The
 -- corecursive call sits directly under the pairs.
-fromDepth : ∀ {X} {R : X → X → Set} {t t′ : Tr X} → Depth R t t′ → t ≈ᵗ⟨ R ⟩ t′
-fwdD : ∀ {X} {R : X → X → Set} {t t′ : Tr X} → Depth R t t′ → ∀ o → next t ⇓ o
+fromDepth : ∀ {X Y} {R : X → Y → Set} {t : Tr X} {t′ : Tr Y} → Depth R t t′ → t ≈ᵗ⟨ R ⟩ t′
+fwdD : ∀ {X Y} {R : X → Y → Set} {t : Tr X} {t′ : Tr Y} → Depth R t t′ → ∀ o → next t ⇓ o
      → ∃[ o′ ] (next t′ ⇓ o′ × StepRel R (λ u u′ → u ≈ᵗ⟨ R ⟩ u′) o o′)
-bwdD : ∀ {X} {R : X → X → Set} {t t′ : Tr X} → Depth R t t′ → ∀ o′ → next t′ ⇓ o′
+bwdD : ∀ {X Y} {R : X → Y → Set} {t : Tr X} {t′ : Tr Y} → Depth R t t′ → ∀ o′ → next t′ ⇓ o′
      → ∃[ o ] (next t ⇓ o × StepRel R (λ u u′ → u ≈ᵗ⟨ R ⟩ u′) o o′)
 same (fromDepth p) = (λ o a → fwdD p o a) , (λ o′ a′ → bwdD p o′ a′)
 fwdD p (inj₁ e) a = inj₁ (proj₁ (endMatch p a)) , proj₁ (proj₂ (endMatch p a)) , proj₂ (proj₂ (endMatch p a))
@@ -339,14 +340,14 @@ bwdD p (inj₂ (v , t₁′)) a′ =
   , fromDepth (Depth-sym (proj₂ (proj₂ (emitMatch (Depth-sym p) a′))))
 
 -- And back: weak bisimilarity gives agreement at every depth.
-toDepth : ∀ {X} {R : X → X → Set} {t t′ : Tr X} → t ≈ᵗ⟨ R ⟩ t′ → Depth R t t′
-toDepth {X} {R} {t} {t′} w zero = (λ o o⇓ → base (nowInv o⇓)) , (λ o o⇓ → base′ (nowInv o⇓))
+toDepth : ∀ {X Y} {R : X → Y → Set} {t : Tr X} {t′ : Tr Y} → t ≈ᵗ⟨ R ⟩ t′ → Depth R t t′
+toDepth {X} {Y} {R} {t} {t′} w zero = (λ o o⇓ → base (nowInv o⇓)) , (λ o o⇓ → base′ (nowInv o⇓))
   where
     base : ∀ {o} → ([] , nothing) ≡ o → ∃[ o′ ] (pre zero t′ ⇓ o′ × ObsR R o o′)
     base refl = _ , now⇓ refl , refl , cut≈
     base′ : ∀ {o} → ([] , nothing) ≡ o → ∃[ o′ ] (pre zero t ⇓ o′ × ObsR R o′ o)
     base′ refl = _ , now⇓ refl , refl , cut≈
-toDepth {X} {R} {t} {t′} w (suc n) = fw , bw
+toDepth {X} {Y} {R} {t} {t′} w (suc n) = fw , bw
   where
     fw : ∀ o → pre (suc n) t ⇓ o → ∃[ o′ ] (pre (suc n) t′ ⇓ o′ × ObsR R o o′)
     fw o o⇓ = split (bind⇓⁻ (next t) (preStep n) o⇓)
