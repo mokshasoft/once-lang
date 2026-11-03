@@ -71,7 +71,7 @@ module NuForceC {FS : FrameSemantics} where
                     {prog fs ret-pc rs} {c c′ : T∞ ValueDomain.⟦ B ⟧ᴰᴵ} {k}
                 → runAt (floc fs) (⟪ c′ ⟫ k) ≡ runAt (floc fs) (⟪ c ⟫ k)
                 → CalleeRunP {prog = prog} {B} R fs ret-pc rs c k → CalleeRunP {prog = prog} {B} R fs ret-pc rs c′ k
-  crun-retarget {fs = fs} {k = k} e (callee-run st se om ca ru li re sp nr nl pl ev lg pr mp fp bm fsp) =
+  crun-retarget {fs = fs} {k = k} e (callee-run st se om ca ru li re sp nr nl pl ev lg pr mp fp bm fsp bk) =
     callee-run st se om ca ru
       (λ p → li (trans (cong is-stopped (sym er)) p))
       (λ p → re (trans (sym er) p))
@@ -86,6 +86,7 @@ module NuForceC {FS : FrameSemantics} where
       (λ p → fp (trans (sym er) p))
       (λ p → bm (subst NotCut er p))
       (λ p → fsp (trans (sym er) p))
+      (λ p → bk (subst NotCut er p))
     where
       er = cong proj₂ e
       ee = cong proj₁ e
@@ -150,7 +151,7 @@ module NuForceC {FS : FrameSemantics} where
   ------------------------------------------------------------------------
   SeedKept : AllocState {FS} → LocState FS → AllocState {FS} → LocState FS → Set
   SeedKept alloc s alloc′ s′ =
-    (∀ l′ → Live alloc l′ → Live alloc′ l′) × (∀ l′ → Live alloc l′ → readLoc s′ l′ ≡ readLoc s l′)
+    (∀ l′ → Live alloc l′ → Live alloc′ l′) × BlocksKept alloc alloc′ × (∀ l′ → Live alloc l′ → readLoc s′ l′ ≡ readLoc s l′)
 
   force-layer : ∀ {F} (wf : WellFormedFI F) (l : ℕ) (prog : AbstractTrace) (j : ℕ) (mIn : AllocMode)
                   (x : ValueDomain.⟦ ⟦ F ⟧TI (ν-type F) ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS})
@@ -161,8 +162,8 @@ module NuForceC {FS : FrameSemantics} where
               → ∀ alloc′ s′ seed → SeedKept alloc s alloc′ s′ → seed ≡ readReg (regs s) Input1
               → ForceRuns {prog = prog} {F} (λ m′ a′ v′ l′ s″ → NuV {prog = prog} {F} m′ a′ v′ l′ s″)
                   alloc′ s′ seed j (retVal (evalᴰ (in-ν wf) x))
-  force-layer {F} wf l prog j mIn x s alloc ss cr sp lab inp alloc′ s′ seed (incl₀ , agree₀) seq
-              wf′ fs pre ret-pc k rs pc nh fr fa ns incl agree i1 =
+  force-layer {F} wf l prog j mIn x s alloc ss cr sp lab inp alloc′ s′ seed (incl₀ , bk₀ , agree₀) seq
+              wf′ fs pre ret-pc k rs pc nh fr fa ns incl bk agree i1 =
     crun-map {prog = prog} (rp-map {prog = prog} (valid→layer {prog = prog} wf {ν-type F} unν))
       (crun-retarget (cong (runAt (floc fs)) (out-in-ν wf wf′ x k))
         (BC.block-call (id {⟦ F ⟧TI (ν-type F)}) obs-correct-id (suc l) prog (ℓ o l) 0 j ss cr sp [] lab
@@ -186,6 +187,9 @@ module NuForceC {FS : FrameSemantics} where
           (validityWF-heap-transport (Live alloc) (λ _ b → b)
              (λ l′ b → trans (BC.callee-heap 0 fs l′ (live-pre l′ b)) (trans (agree l′ (incl₀ l′ b)) (agree₀ l′ b)))
              (λ l′ b → BC.live-callee 0 fs pre fa l′ (live-pre l′ b))
+             (bk-trans {a = alloc} {b = pre} {c = BC.callee-alloc 0 fs}
+                (bk-trans {a = alloc} {b = alloc′} {c = pre} bk₀ bk incl₀)
+                (BC.bk-enter 0 fs pre fa) live-pre)
              x loc bf valid)
           (BC.live-callee 0 fs pre fa loc (live-pre loc bf))
           (trans in1 e)
