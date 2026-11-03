@@ -101,7 +101,7 @@ module Core {FS : FrameSemantics} where
     using (runAt; eventsAt; resultAt; stopsAt; ⟪_⟫_
           ; prim-sv; cell-ptr; cell-inline; cell-flat; IsNode; IsFlat; InlineRep; rep-prim; inline-sv
           ; ValidFO; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy; LayerV
-          ; Live; live→bf; live-heap; live-lift; live-ns) public
+          ; Live; live→bf; live-heap; live-lift; live-ns; InBlk; Here; BlocksKept) public
 
   -- A run depends on the state only through its log.
   runAt-≡ : ∀ {X} {st st′ : LocState FS} {m m′ : TM.T X}
@@ -593,6 +593,11 @@ module Core {FS : FrameSemantics} where
       -- structured instruction touches it (`exec-abstract-preserves-saved`),
       -- and a call that returns pops what it pushed.
       frames-pres : ∀ {v r} → resultAt s (⟪ evalᴰ ir x ⟫ k) ≡ returns (done v r) → saved-frames (falloc settle) ≡ saved-frames alloc
+
+      -- D381: …and every block the caller had live keeps its size (an
+      -- allocation sizes only the fresh ref), so an embedded value's
+      -- in-block witness survives the run.
+      blocks-kept : NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k)) → BlocksKept alloc (falloc settle)
 
   -- D208: the combined form, DERIVED once rather than assumed per clause.
   -- Consumers that do not care which half they are using (`valid-transport`,
