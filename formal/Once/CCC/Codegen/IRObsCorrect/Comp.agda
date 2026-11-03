@@ -307,7 +307,7 @@ module CompC {FS : FrameSemantics} where
          → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl rs k
       -- ── `f` RAN TO ITS END ────────────────────────────────────────────
       go (returns (done vf r′)) rfeq
-         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF sfF) tf =
+         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF sfF bkF) tf =
         record
           { value-realized =
               realized (kf + suc (VR.steps vg)) (VR.settle vg)
@@ -326,6 +326,7 @@ module CompC {FS : FrameSemantics} where
                        (λ p → trans (VR.frame-pres vg (to-g-res p)) (cfF rfeq))
                        bf-mono-comp
                        (λ p → trans (VR.frames-pres vg (to-g-res p)) (sfF rfeq))
+                       (λ nc → bk-trans {a = alloc} {b = falloc fsF} {c = falloc (VR.settle vg)} (bkF ncF) (VR.blocks-kept vg (to-g-nc nc)) (live-mono (bfF ncF)))
           ; traces-agree = traces
           }
         where
@@ -489,7 +490,7 @@ module CompC {FS : FrameSemantics} where
       -- composite's machine run IS `f`'s run, and the three fields describing
       -- a fragment which REACHED ITS END are vacuous.
       go stopped rfeq
-         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF sfF) tf =
+         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF sfF bkF) tf =
         record
           { value-realized =
               realized kf fsF mOutf caf chainF
@@ -500,6 +501,7 @@ module CompC {FS : FrameSemantics} where
                        (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chainF) (sym res-comp) (m≤m+n k _))
                        (λ _ → spF ncF) (λ _ → hpF ncF) (λ p → case trans (sym res-comp) p of λ ()) (λ _ → bfF ncF)
                        (λ p → case trans (sym res-comp) p of λ ())
+                       (λ _ → bkF ncF)
           ; traces-agree = trans tf (sym ev-comp)
           }
         where
@@ -525,7 +527,7 @@ module CompC {FS : FrameSemantics} where
       -- The budget ran out inside `f`: `g` never runs, the composite is cut
       -- where `f` is, and the machine is still running there.
       go (returns cut) rfeq
-         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF sfF) tf =
+         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF logF placeF progF spF hpF cfF bfF sfF bkF) tf =
         record
           { value-realized =
               realized kf fsF mOutf caf chainF
@@ -538,6 +540,7 @@ module CompC {FS : FrameSemantics} where
                        (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chainF) (sym res-comp) (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chainF) rfeq progF))
                        (cut-absurd res-comp) (cut-absurd res-comp) (λ p → case trans (sym res-comp) p of λ ()) (cut-absurd res-comp)
                        (λ p → case trans (sym res-comp) p of λ ())
+                       (cut-absurd res-comp)
           ; traces-agree = trans tf (sym ev-comp)
           }
         where
