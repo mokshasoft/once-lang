@@ -21149,3 +21149,30 @@ at 32), so the compare's result could not be read as the inequality without a ne
 * Every arch's room check proves `frontier + 8k ≤ sp` on its skip path, and the budget then gives every
   spending instruction its room: `HeapRoom`, `StackRoom` and `CallRoom` (nine apex parameters) are gone.
 * The cost is unchanged on riscv64 and x86-64 and one instruction on x86-32.
+
+## D373 — RECLAIMING IS DONE PROPERLY FROM THE START: FRAMES FIRST, NO INTERIM FREE LIST (2026-11-03)
+
+**Refines** plan 0.123 B.1 (D7's "Order, therefore: cells first") and B.0.9. **Decided** by the user
+2026-11-03, after plan 0.138 S0 measured that every value today is one 2-word heap cell.
+
+### Context
+D7 splits memory in two: values whose type fixes their size die in reverse order of allocation, so they
+are frame slots (the pop heap is the stack, destination passing D147); what does not die in stack order (μ
+and ν structures a fold builds, closures that outlive their frame) goes to a cell heap behind the allocator
+interface (D1–D4). Because every value is a heap cell today, the plan had ordered "cells first": put every
+value through a free list now, move the statically sized ones to frames later (plan 0.87), and prove
+`NoLeak` twice.
+
+### Decision
+* **No interim free list for everything.** Putting statically sized values through the allocator is a
+  detour: their reclamation is the frame's end, not a `free`.
+* **Frames first.** Statically sized values move to frame slots (plans 0.87 and 0.138) before Part B places
+  any `free`; only then is the cell heap wired, and only μ/ν structures and escaping closures use it.
+* **No GC** (D6 unchanged): every free is placed by the compiler; nothing is tracked at run time.
+
+### Consequences
+* `NoLeak` is proved once, over the final shape: implicit frees for frame values, explicit placed frees
+  for cell-heap values.
+* The servers stay red until the frame move and the cell heap both land.
+* D364's "values are heap-only" (`Live (AtStack _ _) = ⊥`) must be restated for frame-resident values
+  before plan 0.87's re-proof (plan 0.138 §5's note: "inside the memory this run was given").
