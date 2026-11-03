@@ -456,9 +456,9 @@ stuck-result ev env lg (suc n) prog fs s i hpost lpost ev-eq st =
 -- dispatch's mutual members each carry the telescope, and the telescope is
 -- what the typechecker's memory is spent on.
 --
--- The nine bounds are D087-class PARAMETERS, not postulates — honest runtime
--- facts (this program does not exhaust memory; the machine is finite) that the
--- apex constrains. The two SigOp contracts are the per-(SigOp × target)
+-- The bounds are D087-class PARAMETERS, not postulates — honest runtime facts
+-- (the machine is finite; an emitted immediate fits) that the apex constrains.
+-- Memory exhaustion is no longer one of them (plan 0.123 A.4 step 5). The two SigOp contracts are the per-(SigOp × target)
 -- trusted base (D061); they are postulates at x86-64 today and passing them as
 -- fields makes them what they always were.
 ------------------------------------------------------------------------
@@ -468,10 +468,16 @@ stuck-result ev env lg (suc n) prog fs s i hpost lpost ev-eq st =
 -- is there, and some run of the check lands in the correspondence past it (the
 -- flat step is a no-op), or it is not, and the check reaches, still running,
 -- the call of the Host's `once_exhausted`, which ends the run.
+--
+-- The room branch also says WHAT the compare found: `frontier + k words ≤ sp`.
+-- That is what re-arms the budget (`Budget.bg-room`): the check's `k` is what
+-- the code spends before the next check, so from here to there no room is
+-- assumed.
 RoomStep : HeapView → AbstractTrace → FlatState → State → ℕ → Set
 RoomStep hv prog fs s k =
     Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
-                × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'))
+                × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'
+                × (CFC.hfront hv + slots k ≤ rreg s sp-reg)))
   ⊎ Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
                 × mfetch (compile-trace prog) (xpc s') ≡ just (sigop-call host-exhausted-symbol)))
@@ -486,23 +492,11 @@ record Supply : Set₁ where
              → fetch prog (fpc fs) ≡ just (instr-room k)
              → RoomStep hv prog fs s k
     sts : StuckSteps
-    -- MEMORY / STACK / CALL-DEPTH EXHAUSTION, conditioned on `RunAt` and the
-    -- correspondence — without them they are REFUTABLE (the 2026-07-30 vacuity
-    -- lesson), which is why the run context had to exist before this did.
-    heap-room : ∀ {hv : HeapView} prog fs s n → RunAt prog fs
-             → CompiledCorr hv prog fs s
-             → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
-             → CFC.hfront hv + slots n ≤ rreg s sp-reg
-    stack-room : ∀ {hv : HeapView} prog fs s b → RunAt prog fs
-              → CompiledCorr hv prog fs s
-              → Σ EntryId (λ m → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry m b)))
-      ⊎ (fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b)))
-              → CFC.hfront hv + slots b ≤ rreg s sp-reg
-    -- D245: at EITHER call, closure or direct: both spend one slot.
-    call-room : ∀ {hv : HeapView} prog fs s (c : AbstractInstr) → RunAt prog fs
-             → CompiledCorr hv prog fs s
-             → fetch prog (fpc fs) ≡ just c → CallI c
-             → CFC.hfront hv + slot-size ≤ rreg s sp-reg
+    -- (MEMORY / STACK / CALL-DEPTH EXHAUSTION — `heap-room`, `stack-room`,
+    -- `call-room` — stood here as resource parameters. Plan 0.123 A.4 step 5
+    -- retired them: the room checks make running out observable, and the
+    -- budget the checks re-arm (`FlatCore.Budget`) is what gives each spending
+    -- instruction its room, `Budget.room-of`.)
     -- THE MACHINE IS FINITE, and the emitted `add` sites do not wrap (plan 0.70).
     reg-range : ∀ {hv : HeapView} prog fs s r → RunAt prog fs
              → CompiledCorr hv prog fs s → rreg s r < modulus

@@ -39,7 +39,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
-open import Once.CCC.Codegen.RoomChecks using (room-checks)
+open import Once.CCC.Codegen.RoomChecks using (room-checks; need)
 open import Once.CCC.Codegen.RoomChecksFacts using (φ; module RoomFacts)
 open RoomFacts {FS} using (fetch-room)
 open import Once.CCC.Codegen.RoomChecksSim using (module RoomSim)
@@ -453,3 +453,43 @@ low-step-image .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow s
     (mkRunAt (run-tbl r) (run-ir r) (run-emit r) (run-linked r) (reach-step i fs₀ (run-reach r) fi h))
     e pr′
   , RW.run-step-pc-pos src fs₀ i r fi
+
+-- A RETURN LANDS ON A CHECK (plan 0.123 A.4 step 5, the budget): the base run's
+-- return addresses are one past a call (`RetMatch`, D094), the lift maps one past
+-- a call to one past its image, and the pass put a check right there.
+ret-lands-check : ∀ prog (fs : FlatState) → RunLow prog fs → ∀ rpc rest → fret fs ≡ rpc ∷ rest
+                → Σ ℕ (λ k → fetch prog rpc ≡ just (instr-room k))
+ret-lands-check .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) rpc rest req
+  = go (fret fs₀) (saved-frames (falloc fs₀)) (RW.SegWF.seg-stack (RW.run-seg-wf src fs₀ r)) req
+  where
+    open import Once.CCC.Codegen.RoomChecksFacts using (module NeedFacts)
+    open NeedFacts {FS} using (boundary-next; call-boundary)
+    go : ∀ (rs : List ℕ) (frs : List (Frame × ℕ)) → RW.RetMatch src 0 frs rs → map (L.ret-map src) rs ≡ rpc ∷ rest
+       → Σ ℕ (λ k → fetch (room-checks src) rpc ≡ just (instr-room k))
+    go .(_ ∷ _) .(_ ∷ _) (RW.rm-∷ _ (q , refl , c , fq , ci) _) e =
+      subst (λ z → Σ ℕ (λ k → fetch (room-checks src) z ≡ just (instr-room k))) (cong head′ e)
+        (boundary-next src (φ src q) (trans (fetch-room src q) fq) (call-boundary c ci))
+      where head′ : List ℕ → ℕ
+            head′ []      = 0
+            head′ (x ∷ _) = x
+
+-- A CHECK COVERS EXACTLY WHAT FOLLOWS IT (plan 0.123 A.4 step 5): the run's image
+-- is a program image, which has no checks of its own (`image-noroom`), so every
+-- check of the lowered image holds the measure past it (`check-k`).
+check-need : ∀ prog (fs : FlatState) → RunLow prog fs → ∀ k
+           → fetch prog (fpc fs) ≡ just (instr-room k)
+           → k ≡ need prog (suc (fpc fs))
+check-need .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) k f =
+  trans (check-k src noroom p k f)
+        (cong (λ E → till-check E (Data.List.drop (suc p) (room-checks src))) (sym (max-entry-room src)))
+  where
+    import Data.List
+    open import Data.List.Relation.Unary.All using (All)
+    open import Once.CCC.Machine.FrameFree using (ImageI)
+    open import Once.CCC.Codegen.RoomChecks using (till-check; max-entry)
+    open import Once.CCC.Codegen.RoomChecksFacts using (module CheckK; image-noroom; max-entry-room; NoRoom)
+    open CheckK {FS} using (check-k)
+    open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free)
+    noroom : NoRoom src
+    noroom = image-noroom src (subst (All ImageI) (sym (RunAt.run-emit r))
+                                     (image-frame-free (RunAt.run-tbl r) (RunAt.run-ir r)))

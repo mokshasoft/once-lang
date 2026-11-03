@@ -455,3 +455,91 @@ imageI-noroom (instr-room _)           ()
 image-noroom : ∀ (t : AbstractTrace) → All ImageI t → NoRoom t
 image-noroom []      []       = []
 image-noroom (i ∷ t) (p ∷ a) = imageI-noroom i p ∷ image-noroom t a
+
+------------------------------------------------------------------------
+-- THE BUDGET'S LANDINGS (plan 0.123 A.4 step 5). Control that arrives other
+-- than by falling through lands ON a boundary instruction (a jump on its label,
+-- a call on its entry) or one past one (a return, past its call) — and the pass
+-- puts a check right after every boundary instruction. So the measure at a
+-- landing is the boundary's own spend, and one past it, 0.
+------------------------------------------------------------------------
+module NeedFacts {FS : FrameSemantics} where
+  open FlatMachine {FS} using (fetch)
+  open import Data.Product using (Σ; _,_)
+  open import Data.Nat using (_≤_; _⊔_)
+  open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m; ≤-trans)
+  open import Once.CCC.Machine.SMCore using (instr-ctrl; c-entry; EntryId)
+  open import Once.CCC.Codegen.RoomChecks using (entry-frame)
+
+  private
+    next-in : ∀ (E : ℕ) (b : Bool) (t : AbstractTrace) (j : ℕ) {i : AbstractInstr}
+            → (∀ (j′ : ℕ) {i′ : AbstractInstr} → fetch (checks E t) j′ ≡ just i′ → boundary? i′ ≡ true
+               → Σ ℕ (λ k → fetch (checks E t) (suc j′) ≡ just (instr-room k)))
+            → fetch (if b then instr-room (stretch E t) ∷ checks E t else checks E t) j ≡ just i
+            → boundary? i ≡ true
+            → Σ ℕ (λ k → fetch (if b then instr-room (stretch E t) ∷ checks E t else checks E t) (suc j)
+                           ≡ just (instr-room k))
+    next-in E true  t zero    ih refl ()
+    next-in E true  t (suc j) ih f    bd = ih j f bd
+    next-in E false t j       ih f    bd = ih j f bd
+
+  checks-next : ∀ (E : ℕ) (t : AbstractTrace) (j : ℕ) {i : AbstractInstr}
+              → fetch (checks E t) j ≡ just i → boundary? i ≡ true
+              → Σ ℕ (λ k → fetch (checks E t) (suc j) ≡ just (instr-room k))
+  checks-next E (x ∷ t) zero    refl bd rewrite bd = stretch E t , refl
+  checks-next E (x ∷ t) (suc j) f    bd =
+    next-in E (boundary? x) t j (λ j′ f′ bd′ → checks-next E t j′ f′ bd′) f bd
+
+  -- RIGHT AFTER EVERY BOUNDARY INSTRUCTION OF THE PASS'S OUTPUT, A CHECK
+  boundary-next : ∀ (t : AbstractTrace) (j : ℕ) {i : AbstractInstr}
+                → fetch (room-checks t) j ≡ just i → boundary? i ≡ true
+                → Σ ℕ (λ k → fetch (room-checks t) (suc j) ≡ just (instr-room k))
+  boundary-next t zero    refl ()
+  boundary-next t (suc j) f    bd = checks-next (max-entry t) t j f bd
+
+  -- an entry reserves at most the largest frame (what a call's spend covers)
+  entry-le : ∀ (P : AbstractTrace) (j : ℕ) (m : EntryId) (b : ℕ)
+           → fetch P j ≡ just (instr-ctrl (c-entry m b)) → b ≤ max-entry P
+  entry-le (x ∷ P) zero    m b refl = m≤m⊔n b (max-entry P)
+  entry-le (x ∷ P) (suc j) m b f    = ≤-trans (entry-le P j m b f) (m≤n⊔m (entry-frame x) (max-entry P))
+
+  -- a call is a boundary instruction (the pass checks past every one)
+  open import Once.CCC.Machine.SMCore using (CallI; c-label; c-jmp; c-branch-tag-zero; c-ret; c-call-fn; c-start; c-leave)
+  call-boundary : ∀ (c : AbstractInstr) → CallI c → boundary? c ≡ true
+  call-boundary instr-call-closure                 _  = refl
+  call-boundary (instr-ctrl (c-call-fn _))         _  = refl
+  call-boundary (instr-ctrl (c-label _))           ()
+  call-boundary (instr-ctrl (c-jmp _))             ()
+  call-boundary (instr-ctrl (c-branch-tag-zero _)) ()
+  call-boundary (instr-ctrl (c-entry _ _))         ()
+  call-boundary (instr-ctrl (c-ret _))             ()
+  call-boundary (instr-ctrl (c-start _))           ()
+  call-boundary (instr-ctrl c-leave)               ()
+  call-boundary mov-to-output            ()
+  call-boundary mov-to-input             ()
+  call-boundary load-indirect            ()
+  call-boundary load-indirect-suc        ()
+  call-boundary (load-from-slot _)       ()
+  call-boundary (store-at-slot _)        ()
+  call-boundary store-indirect           ()
+  call-boundary store-indirect-suc       ()
+  call-boundary (lea-slot _)             ()
+  call-boundary (restore-input _)        ()
+  call-boundary (instr-alloc-stack _)    ()
+  call-boundary (instr-dealloc-stack _)  ()
+  call-boundary (instr-reclaim-to _)     ()
+  call-boundary (instr-push-frame _)     ()
+  call-boundary instr-pop-frame          ()
+  call-boundary (worklist-init _)        ()
+  call-boundary (worklist-push _)        ()
+  call-boundary (worklist-pop _)         ()
+  call-boundary (worklist-check _)       ()
+  call-boundary (instr-sigop _)          ()
+  call-boundary (instr-load-const _ _)   ()
+  call-boundary (instr-load-code-addr _) ()
+  call-boundary instr-save-closure-reg   ()
+  call-boundary (instr-load-tag-lit _)   ()
+  call-boundary (instr-alloc-heap _)     ()
+  call-boundary (instr-reg-op _)         ()
+  call-boundary (instr-free-heap _)      ()
+  call-boundary (instr-room _)           ()
