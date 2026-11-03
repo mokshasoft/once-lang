@@ -457,6 +457,9 @@ sp-abstract (restore-input slot) ls alloc ff wf =
 sp-abstract (instr-alloc-stack n)   ls alloc () wf
 sp-abstract (instr-dealloc-stack n) ls alloc () wf
 sp-abstract (instr-free-heap n)     ls alloc () wf
+sp-abstract (load-at n)     ls alloc () wf
+sp-abstract (store-at n)     ls alloc () wf
+sp-abstract (addr-at n)     ls alloc () wf
 sp-abstract (instr-room n)     ls alloc ff wf = wf
 sp-abstract (instr-push-frame cap)  ls alloc () wf
 sp-abstract instr-pop-frame         ls alloc () wf
@@ -589,6 +592,9 @@ flat-stack-ptr (instr-ctrl (c-branch-tag-zero m))     prog fs ff wf =
 flat-stack-ptr (instr-alloc-stack n)   prog fs () wf
 flat-stack-ptr (instr-dealloc-stack n) prog fs () wf
 flat-stack-ptr (instr-free-heap n)     prog fs () wf
+flat-stack-ptr (load-at n)     prog fs () wf
+flat-stack-ptr (store-at n)     prog fs () wf
+flat-stack-ptr (addr-at n)     prog fs () wf
 flat-stack-ptr (instr-room n)     prog fs ff wf = sp-abstract (instr-room n) (floc fs) (falloc fs) ff wf
 flat-stack-ptr (instr-push-frame cap)  prog fs () wf
 flat-stack-ptr instr-pop-frame         prog fs () wf

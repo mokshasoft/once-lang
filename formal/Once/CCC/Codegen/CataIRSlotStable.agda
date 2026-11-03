@@ -45,7 +45,7 @@ open import Once.CCC.Label using (ℓ)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
-open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-reg-op; instr-free-heap; instr-room; instr-ctrl)
+open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; instr-ctrl)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo)
 open SigOpInfo using (sem)
@@ -121,6 +121,9 @@ module CataIRSlotStable {FS : FrameSemantics} where
   stable?-sound (instr-alloc-heap _)    _ = tt
   stable?-sound (instr-reg-op _)        _ = tt
   stable?-sound (instr-free-heap _)     _ = tt
+  stable?-sound (load-at _)     _ = tt
+  stable?-sound (store-at _)     _ = tt
+  stable?-sound (addr-at _)     _ = tt
   stable?-sound (instr-room _)     _ = tt
   stable?-sound (instr-ctrl _)          _ = tt
   all-stable?-sound []       _  = []ᴬ
@@ -174,6 +177,9 @@ module CataIRSlotStable {FS : FrameSemantics} where
   stable?-complete (instr-alloc-heap _)    _ = refl
   stable?-complete (instr-reg-op _)        _ = refl
   stable?-complete (instr-free-heap _)     _ = refl
+  stable?-complete (load-at _)     _ = refl
+  stable?-complete (store-at _)     _ = refl
+  stable?-complete (addr-at _)     _ = refl
   stable?-complete (instr-room _)     _ = refl
   stable?-complete (instr-ctrl _)          _ = refl
   all-stable?-complete []       _          = refl

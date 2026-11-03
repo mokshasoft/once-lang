@@ -824,6 +824,19 @@ module ExecFinal {FS : FrameSemantics} where
   exec-store-suc-via-resolved (just loc) v s = writeLoc s (sucLoc loc) v
   exec-store-suc-via-resolved nothing    _ s = record s { halted = true ; faulted = true }
 
+  -- Plan 0.123 B.4 R1: the offset forms, `with`-free for the same reason.
+  exec-load-at-resolved : ℕ → AbstractReg → Maybe (ValueLocation FS) → LocState FS → LocState FS
+  exec-load-at-resolved k dst (just loc) s = exec-load-with-value dst (readLoc s (offsetLoc loc k)) s
+  exec-load-at-resolved k dst nothing    s = record s { halted = true ; faulted = true }
+
+  exec-store-at-resolved : ℕ → Maybe (ValueLocation FS) → StoredValue FS → LocState FS → LocState FS
+  exec-store-at-resolved k (just loc) v s = writeLoc s (offsetLoc loc k) v
+  exec-store-at-resolved k nothing    _ s = record s { halted = true ; faulted = true }
+
+  exec-addr-at-resolved : ℕ → Maybe (ValueLocation FS) → LocState FS → LocState FS
+  exec-addr-at-resolved k (just loc) s = record s { regs = writeReg (regs s) Output (SV-Ptr (offsetLoc loc k)) }
+  exec-addr-at-resolved k nothing    s = record s { halted = true ; faulted = true }
+
   exec : Instr FS → LocState FS → LocState FS
 
   exec (load dst src) s =
@@ -1206,6 +1219,16 @@ data AbstractInstr : Set where
   -- is the concrete one. Not emittable yet (`EmittableI`). Added LAST for
   -- MAlonzo ctor-index stability.
   instr-room : ℕ → AbstractInstr
+
+  -- Plan 0.123 B.4 R1 (D375): a FLAT value is its `Spec.ABI` words at
+  -- consecutive locations, so a field is a word at an OFFSET from the value's
+  -- address. `load-at k`: Output := *(Input1 + k); `store-at k`:
+  -- *(Input1 + k) := Output; `addr-at k`: Output := Input1 + k (a field's own
+  -- address, for a multi-word field). Each faults when Input1 is not a
+  -- pointer, as `load-indirect` does. They generalise the `-indirect` and
+  -- `-indirect-suc` pairs (offsets 0 and 1). Not emittable yet (`EmittableI`):
+  -- the joint rewrite emits them. Added LAST for MAlonzo ctor-index stability.
+  load-at store-at addr-at : ℕ → AbstractInstr
 
 -- | A trace is a sequence of abstract instructions
 -- D245: the two CALLS, a closure call and a direct call of a program function.
@@ -1913,6 +1936,11 @@ module AbstractExec {FS : FrameSemantics} where
 
   -- instr-room: a no-op on the unbounded abstract memory (plan 0.123 A.4).
   exec-abstract (instr-room k) s alloc = s , alloc
+
+  -- load-at / store-at / addr-at: the offset forms (plan 0.123 B.4 R1).
+  exec-abstract (load-at k) s alloc  = exec-load-at-resolved k Output (sv-as-loc (readReg (regs s) Input1)) s , alloc
+  exec-abstract (store-at k) s alloc = exec-store-at-resolved k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s , alloc
+  exec-abstract (addr-at k) s alloc  = exec-addr-at-resolved k (sv-as-loc (readReg (regs s) Input1)) s , alloc
 
   -- instr-reclaim-to: a NO-OP on alloc too (D150), for the same reason as
   -- `instr-alloc-stack`, and with an even blunter piece of evidence: ALL THREE

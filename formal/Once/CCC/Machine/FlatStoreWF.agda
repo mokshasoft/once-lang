@@ -281,6 +281,29 @@ wf-store-suc-resolved {n} {ls} (just loc) v wf b bv =
   wf-write-loc (sucLoc loc) v wf (sucLoc-below (n) loc b) bv
 wf-store-suc-resolved nothing v wf _ _ = wf-fault wf
 
+-- Plan 0.123 B.4 R1: the offset forms (same block ⇒ same ref-id).
+wf-load-at-resolved : ∀ {n ls} (k : ℕ) (dst : AbstractReg) (mloc : Maybe (ValueLocation FS))
+                    → StoreWF n ls → mloc-below (n) mloc
+                    → StoreWF n (exec-load-at-resolved k dst mloc ls)
+wf-load-at-resolved {n} {ls} k dst (just loc) wf b =
+  wf-load-value dst (readLoc ls (offsetLoc loc k)) wf (readLoc-below (offsetLoc loc k) wf)
+wf-load-at-resolved k dst nothing wf _ = wf-fault wf
+
+wf-store-at-resolved : ∀ {n ls} (k : ℕ) (mloc : Maybe (ValueLocation FS)) (v : StoredValue FS)
+                     → StoreWF n ls → mloc-below (n) mloc
+                     → sv-below (n) v
+                     → StoreWF n (exec-store-at-resolved k mloc v ls)
+wf-store-at-resolved {n} {ls} k (just loc) v wf b bv =
+  wf-write-loc (offsetLoc loc k) v wf (offsetLoc-below n loc k b) bv
+wf-store-at-resolved k nothing v wf _ _ = wf-fault wf
+
+wf-addr-at-resolved : ∀ {n ls} (k : ℕ) (mloc : Maybe (ValueLocation FS))
+                    → StoreWF n ls → mloc-below (n) mloc
+                    → StoreWF n (exec-addr-at-resolved k mloc ls)
+wf-addr-at-resolved {n} k (just loc) wf b =
+  wf-write-reg Output (SV-Ptr (offsetLoc loc k)) wf (offsetLoc-below n loc k b)
+wf-addr-at-resolved k nothing wf _ = wf-fault wf
+
 
 -- load-from-slot / restore-input share this shape (they also thread `alloc`).
 wf-slot-load : ∀ {n ls} (dst : AbstractReg) (mv : Maybe (StoredValue FS))
@@ -404,6 +427,15 @@ mutual
   wf-abstract (instr-dealloc-stack n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-free-heap n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-room n) ls alloc wf = wf , ≤-refl
+  wf-abstract (load-at k) ls alloc wf =
+    wf-load-at-resolved k Output (sv-as-loc (readReg (regs ls) Input1)) wf
+      (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1)) , ≤-refl
+  wf-abstract (store-at k) ls alloc wf =
+    wf-store-at-resolved k (sv-as-loc (readReg (regs ls) Input1)) (readReg (regs ls) Output) wf
+      (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1)) (wf-regs wf Output) , ≤-refl
+  wf-abstract (addr-at k) ls alloc wf =
+    wf-addr-at-resolved k (sv-as-loc (readReg (regs ls) Input1)) wf
+      (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1)) , ≤-refl
   wf-abstract (instr-reclaim-to n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-push-frame cap) ls alloc wf = wf , ≤-refl
   wf-abstract instr-pop-frame ls alloc wf = wf , ≤-refl
@@ -641,6 +673,9 @@ cl-step (instr-alloc-heap k)     prog fs wf b = sv-mono (fclosure fs) (proj₂ (
 cl-step (instr-reg-op out-nz)    prog fs wf b = cl-nz (readReg (regs (floc fs)) Output) fs wf b
 cl-step (instr-free-heap n)      prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-free-heap n) (floc fs) (falloc fs) wf)) b
 cl-step (instr-room n)           prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-room n) (floc fs) (falloc fs) wf)) b
+cl-step (load-at n)           prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (load-at n) (floc fs) (falloc fs) wf)) b
+cl-step (store-at n)           prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (store-at n) (floc fs) (falloc fs) wf)) b
+cl-step (addr-at n)           prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (addr-at n) (floc fs) (falloc fs) wf)) b
 
 -- ONE flat step preserves store well-formedness. Control flow only moves the
 -- pc (or halts); everything else is `exec-abstract`, i.e. `wf-abstract`.
@@ -697,3 +732,6 @@ flat-wf-step (instr-alloc-heap k)     prog fs wf = proj₁ (wf-abstract (instr-a
 flat-wf-step (instr-reg-op out-nz)    prog fs wf = wf-nz (readReg (regs (floc fs)) Output) fs wf
 flat-wf-step (instr-free-heap n)      prog fs wf = proj₁ (wf-abstract (instr-free-heap n) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-room n)           prog fs wf = proj₁ (wf-abstract (instr-room n) (floc fs) (falloc fs) wf)
+flat-wf-step (load-at n)           prog fs wf = proj₁ (wf-abstract (load-at n) (floc fs) (falloc fs) wf)
+flat-wf-step (store-at n)           prog fs wf = proj₁ (wf-abstract (store-at n) (floc fs) (falloc fs) wf)
+flat-wf-step (addr-at n)           prog fs wf = proj₁ (wf-abstract (addr-at n) (floc fs) (falloc fs) wf)

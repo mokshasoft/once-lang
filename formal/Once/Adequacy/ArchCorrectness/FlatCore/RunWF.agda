@@ -461,6 +461,9 @@ ff→seg-id (restore-input _)                   _ = refl
 ff→seg-id (instr-alloc-stack _)               _ = refl
 ff→seg-id (instr-dealloc-stack _)             _ = refl
 ff→seg-id (instr-free-heap _)                 _ = refl
+ff→seg-id (load-at _)                 _ = refl
+ff→seg-id (store-at _)                 _ = refl
+ff→seg-id (addr-at _)                 _ = refl
 ff→seg-id (instr-room _)                 _ = refl
 ff→seg-id (instr-reclaim-to _)                _ = refl
 ff→seg-id (instr-push-frame _)                _ = refl
@@ -698,6 +701,9 @@ pcView (instr-ctrl (c-ret bb))                _ = pv-ret bb refl
 pcView (instr-alloc-stack _)                  ()
 pcView (instr-dealloc-stack _)                ()
 pcView (instr-free-heap _)                    ()
+pcView (load-at _)                    ()
+pcView (store-at _)                    ()
+pcView (addr-at _)                    ()
 pcView (instr-room _)                    ()
 pcView (instr-push-frame _)                   ()
 pcView instr-pop-frame                        ()
@@ -1168,6 +1174,9 @@ stack-ptr-step (lea-slot slot) prog fs r ftq () wf
 stack-ptr-step (instr-alloc-stack n)   prog fs r ftq () wf
 stack-ptr-step (instr-dealloc-stack n) prog fs r ftq () wf
 stack-ptr-step (instr-free-heap n)     prog fs r ftq () wf
+stack-ptr-step (load-at n)     prog fs r ftq () wf
+stack-ptr-step (store-at n)     prog fs r ftq () wf
+stack-ptr-step (addr-at n)     prog fs r ftq () wf
 stack-ptr-step (instr-room n)     prog fs r ftq ff wf = flat-stack-ptr (instr-room n) prog fs ff wf
 stack-ptr-step (instr-push-frame cap)  prog fs r ftq () wf
 stack-ptr-step instr-pop-frame         prog fs r ftq () wf
@@ -1425,6 +1434,9 @@ ptr-bounds-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog f
 ptr-bounds-step (instr-alloc-stack n)   prog fs r ftq () wfS wf
 ptr-bounds-step (instr-dealloc-stack n) prog fs r ftq () wfS wf
 ptr-bounds-step (instr-free-heap n)     prog fs r ftq () wfS wf
+ptr-bounds-step (load-at n)     prog fs r ftq () wfS wf
+ptr-bounds-step (store-at n)     prog fs r ftq () wfS wf
+ptr-bounds-step (addr-at n)     prog fs r ftq () wfS wf
 ptr-bounds-step (instr-room n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (instr-room n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-push-frame cap)  prog fs r ftq () wfS wf
 ptr-bounds-step instr-pop-frame         prog fs r ftq () wfS wf
