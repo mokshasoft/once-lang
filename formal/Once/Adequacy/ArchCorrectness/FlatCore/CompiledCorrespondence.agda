@@ -510,6 +510,18 @@ record BlockSteps : Set₁ where
       → writeLoc (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)
         ≡ writeLocToHeap (floc fs) (offsetHL hl k) (readReg (regs (floc fs)) Output)
       → BlockStep hv prog fs s (store-at k)
+    -- plan 0.123 B.4 α: an address at an offset, a cell of its block (D379),
+    -- so a mapped one; the run is handed over for an arch whose address is a
+    -- real add (riscv64's `addi`: its no-wrap is the frontier's register range).
+    bs-addr-at :
+      ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (addr-at k)
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+      → HDom hv (offsetHL hl k)
+      → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+      → CRL.RunLow prog fs
+      → BlockStep hv prog fs s (addr-at k)
     ------------------------------------------------------------------
     -- GROUP 3b, the band's other half — CONTROL, `out-nz`, and the two frame
     -- markers.

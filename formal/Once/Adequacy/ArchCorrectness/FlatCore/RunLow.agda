@@ -285,6 +285,30 @@ store-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunLow prog fs →
 store-at-target-ptr prog fs k =
   lift-site (store-at k) (λ _ ()) _ (λ src fs₀ → RW.store-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
 
+addr-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunLow prog fs → LocState.halted (floc fs) ≡ false
+                   → fetch prog (fpc fs) ≡ just (addr-at k)
+                   → Σ (ValueLocation FS) (λ loc → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
+addr-at-target-ptr prog fs k =
+  lift-site (addr-at k) (λ _ ()) _ (λ src fs₀ → RW.addr-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
+
+addr-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunLow prog fs
+                 → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (addr-at k)
+                 → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                 → ExecFinal.in-block? {FS} (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+addr-at-in-block prog fs k hl =
+  lift-site (addr-at k) (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                                       → ExecFinal.in-block? {FS} (block-size (falloc g)) (AtDynamic (offsetHL hl k)) ≡ true)
+    (λ src fs₀ r h f → RW.addr-at-in-block src fs₀ k hl r h f) (λ _ _ _ c → c) prog fs
+
+addr-at-inbounds : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunLow prog fs
+                 → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (addr-at k)
+                 → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                 → heap-offset (offsetHL hl k) < block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k)))
+addr-at-inbounds prog fs k hl =
+  lift-site (addr-at k) (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                                       → heap-offset (offsetHL hl k) < block-size (falloc g) (ref-id (heap-ref (offsetHL hl k))))
+    (λ src fs₀ r h f → RW.addr-at-inbounds src fs₀ k hl r h f) (λ _ _ _ c → c) prog fs
+
 store-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunLow prog fs
                   → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (store-at k)
                   → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)

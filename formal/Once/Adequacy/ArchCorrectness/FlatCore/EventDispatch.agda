@@ -172,9 +172,9 @@ open FrameSemantics FS using (Frame)
 -- D371: the site facts the engine uses are the LOWERED run's (`RunLow`), each
 -- `RunWF`'s at the image state the lift is of.
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
-  hiding (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok; load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds)
+  hiding (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok; load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
-  using (load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
+  using (load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds; slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
   renaming (RunLow to RunAt)
 open SegWF using (seg-stack)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
@@ -702,7 +702,7 @@ module Dispatch (sup : Supply) where
              (trans rd (cong just (proj₂ pz))))
           (λ _ → bg-plain bg ftq refl refl pc′ (cong (FrameSemantics.frame-base FS) fb′)) wf ftq h refl tt tt hpost
         where pz = pos-suc {CFC.haddr hv hl′}
-                     (CFC.dom-pos hv (CFC.dom-sized dc hl′ (≤-trans (n≤1+n _) pb)))
+                     (CFC.dom-pos hv (CFC.dom-sized dc hl′ pb))
               hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
               hpost rewrite i-eq | r-eq = h
               pc′ : fpc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ suc (fpc fs)
@@ -1076,6 +1076,31 @@ module Dispatch (sup : Supply) where
           go-loc (AtStack f j)  i-eq =
             ⊥-elim (stack-ptr-live fs Input1 f j (run-stack-ptr prog fs (inv-run wf)) i-eq)
 
+  -- plan 0.123 B.4 α: addr-at k. The address is a cell of its block (D379), so
+  -- a mapped one (`dom-sized`); the arch writes it to the Output role.
+  addr-at-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
+                   prog fs s (k : ℕ) → CompiledCorr hv prog fs s → Budget hv prog fs → FlatInv ev env prog fs → halted (floc fs) ≡ false
+               → fetch prog (fpc fs) ≡ just (addr-at k)
+               → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                     (event-of (addr-at k) fs ▹ flat-events n prog (flat-exec-instr (addr-at k) prog fs)) (ctrl-of (addr-at k) + flat-ctrls n prog (flat-exec-instr (addr-at k) prog fs)) M)
+  addr-at-step {hv} n IH ev env prog fs s k cc bg wf h ftq =
+    go-loc (proj₁ wits) (proj₂ wits)
+    where wits = addr-at-target-ptr prog fs k (inv-run wf) h ftq
+          go-loc : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                       (event-of (addr-at k) fs ▹ flat-events n prog (flat-exec-instr (addr-at k) prog fs)) (ctrl-of (addr-at k) + flat-ctrls n prog (flat-exec-instr (addr-at k) prog fs)) M)
+          go-loc (AtDynamic hl) i-eq =
+            ccc-step-bs {hv} n IH ev env prog fs s (addr-at k)
+              (bs-addr-at bss prog fs s k hl cc h ftq i-eq
+                 (CFC.dom-sized (dataCorr cc) (offsetHL hl k) (addr-at-inbounds prog fs k hl (inv-run wf) h ftq i-eq))
+                 ib (inv-run wf))
+              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
+            where ib = addr-at-in-block prog fs k hl (inv-run wf) h ftq i-eq
+                  hpost : halted (floc (flat-exec-instr (addr-at k) prog fs)) ≡ false
+                  hpost rewrite i-eq | ib = h
+          go-loc (AtStack f j)  i-eq =
+            ⊥-elim (stack-ptr-live fs Input1 f j (run-stack-ptr prog fs (inv-run wf)) i-eq)
+
   -- plan 0.123 B.4 α: MEMORY store-at k. A heap pointer's offset cell is OF ITS
   -- BLOCK (D379: anything else faults), so mapped (`dom-sized`).
   store-at-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
@@ -1302,7 +1327,7 @@ module Dispatch (sup : Supply) where
     events-running-fetch {hv} n ev env prog fs s (store-at k) cc bg wf h ftq =
       store-at-step n (events-agree n) ev env prog fs s k cc bg wf h ftq
     events-running-fetch {hv} n ev env prog fs s (addr-at k) cc bg wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (addr-at k) (inv-run wf) ftq (λ _ ()))
+      addr-at-step n (events-agree n) ev env prog fs s k cc bg wf h ftq
     events-running-fetch {hv} n ev env prog fs s (instr-room k) cc bg wf h ftq =
       room-check-step n (events-agree n) ev env prog fs s k cc bg wf h ftq
     events-running-fetch {hv} n ev env prog fs s (instr-push-frame k) cc bg wf h ftq =
