@@ -598,13 +598,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
                  → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
       frames-pres : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
                   → saved-frames (falloc settle) ≡ saved-frames pre
+      -- D381: every block the caller had live keeps its size
+      blocks-kept : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
+                  → BlocksKept pre (falloc settle)
 
   -- A run is a run whatever is said about where its result is.
   crun-map : ∀ {B} {R R′ : AllocMode → AllocState {FS} → AllocState {FS} → ⟦ B ⟧ → LocState FS → Set}
            → (∀ {m a₁ a₂ v s} → R m a₁ a₂ v s → R′ m a₁ a₂ v s)
            → ∀ {fs ret-pc rs comp k} → CalleeRunP {B} R fs ret-pc rs comp k → CalleeRunP {B} R′ fs ret-pc rs comp k
-  crun-map f (callee-run st se om ca ru li re sp nr nl pl ev lg pr mp fp bm fsp) =
-    callee-run st se om ca ru li re sp nr nl (λ e → f (pl e)) ev lg pr mp fp bm fsp
+  crun-map f (callee-run st se om ca ru li re sp nr nl pl ev lg pr mp fp bm fsp bk) =
+    callee-run st se om ca ru li re sp nr nl (λ e → f (pl e)) ev lg pr mp fp bm fsp bk
 
   ------------------------------------------------------------------------
   -- plan 0.135 S1: WHAT A CLOSURE DOES, as a fact about the value.
@@ -628,6 +631,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     → falloc fs ≡ enter-call pre
     → next-slot pre ≡ 0
     → (∀ l → Live alloc l → Live pre l)
+    → BlocksKept alloc pre
     → (∀ l → Live alloc l → readLoc (floc fs) l ≡ readLoc s l)
     → readReg (regs (floc fs)) Input1 ≡ SV-Ptr pair-loc
     → Live pre pair-loc
@@ -698,6 +702,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     → falloc fs ≡ enter-call pre
     → next-slot pre ≡ 0
     → (∀ l → Live alloc l → Live pre l)
+    → BlocksKept alloc pre
     → (∀ l → Live alloc l → readLoc (floc fs) l ≡ readLoc s l)
     → readReg (regs (floc fs)) Input1 ≡ seed
     → CalleeRunP {⟦ F ⟧TI (ν-type F)}
@@ -756,16 +761,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       nu-cell1 (coind p) = NuStep.st-cell1 (step p)
       nu-live1 (coind p) = NuStep.st-live1 (step p)
       nu-code  (coind p) = NuStep.st-code  (step p)
-      nu-force (coind p) wf fs pre ret-pc k rs pc nh fr fa ns incl agree i1 =
-        crun-conv (NuStep.st-force (step p) wf fs pre ret-pc k rs pc nh fr fa ns incl agree i1)
+      nu-force (coind p) wf fs pre ret-pc k rs pc nh fr fa ns incl bk agree i1 =
+        crun-conv (NuStep.st-force (step p) wf fs pre ret-pc k rs pc nh fr fa ns incl bk agree i1)
 
       crun-conv : ∀ {fs ret-pc rs comp k}
                 → CalleeRunP {⟦ F ⟧TI (ν-type F)} (ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} P)) fs ret-pc rs comp k
                 → CalleeRunP {⟦ F ⟧TI (ν-type F)}
                     (ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′)))
                     fs ret-pc rs comp k
-      crun-conv (callee-run st se om ca ru li re sp nr nl pl ev lg pr mp fp bm fsp) =
-        callee-run st se om ca ru li re sp nr nl (λ e → rp-conv (pl e)) ev lg pr mp fp bm fsp
+      crun-conv (callee-run st se om ca ru li re sp nr nl pl ev lg pr mp fp bm fsp bk) =
+        callee-run st se om ca ru li re sp nr nl (λ e → rp-conv (pl e)) ev lg pr mp fp bm fsp bk
 
       rp-conv : ∀ {m a₁ a₂ v s}
               → ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} P) m a₁ a₂ v s
@@ -1391,9 +1396,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
 
     runs-tr : ∀ {A B} {VA : VTy A} {VB : VTy B} {cloc j f} → Q cloc
             → CallRuns {A} {B} VA VB a₁ s₁ cloc j f → CallRuns {A} {B} VA VB a₂ s₂ cloc j f
-    runs-tr q r fs pre a pl ret-pc k rs pc nh fr fa ns incl agree i1 lmm slb c0 c1 =
+    runs-tr q r fs pre a pl ret-pc k rs pc nh fr fa ns incl bk agree i1 lmm slb c0 c1 =
       r fs pre a pl ret-pc k rs pc nh fr fa ns
         (λ l b → incl l (bft l b))
+        (λ l lv ib → bk l (bft l lv) (ibt l lv ib))
         (λ l b → trans (agree l (bft l b)) (rd l (q-bf l b)))
         i1 lmm slb (trans c0 (rd _ q)) c1
 
@@ -1409,9 +1415,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     nu-cell1 (nu-tr q n) = trans (rd _ (q-bf _ (nu-live1 n))) (nu-cell1 n)
     nu-live1 (nu-tr q n) = bft _ (nu-live1 n)
     nu-code  (nu-tr q n) = nu-code n
-    nu-force (nu-tr q n) wf fs pre ret-pc k rs pc nh fr fa ns incl agree i1 =
+    nu-force (nu-tr q n) wf fs pre ret-pc k rs pc nh fr fa ns incl bk agree i1 =
       nu-force n wf fs pre ret-pc k rs pc nh fr fa ns
         (λ l b → incl l (bft l b))
+        (λ l lv ib → bk l (bft l lv) (ibt l lv ib))
         (λ l b → trans (agree l (bft l b)) (rd l (q-bf l b)))
         i1
 
