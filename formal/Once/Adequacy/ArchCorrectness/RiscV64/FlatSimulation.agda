@@ -95,7 +95,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (role-sp; role-clos; role-heap; role-out; role-in1)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace; compile-abstract; slot-to-disp)
 open import Relation.Binary.PropositionalEquality using (subst₂)
-open import Data.Nat.Properties using (+-monoʳ-<; *-monoˡ-<; ≤-<-trans; ≤-trans; <-≤-trans; <⇒≢
+open import Data.Nat.Properties using (+-monoʳ-<; *-monoˡ-<; ≤-<-trans; ≤-trans; <-trans; <-≤-trans; <⇒≢
                                       ; m∸n+n≡m; m≤o∸n⇒m+n≤o)
 open import Data.Empty using (⊥)
 open import Once.CCC.FrameSemantics using (module FrameSemantics)
@@ -1023,6 +1023,67 @@ block-step-load-at {hv} prog fs s k hl w cc h ft i-eq live h-eq =
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (load-at k) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (load-at k) ft))
+
+-- plan 0.123 B.4 α: addr-at k ↔ `addi a0, t0, 8k` — a real add, so (as
+-- `lea-slot`) the block-step takes the ADDRESS NO-WRAP fact; the arch's
+-- `ConcFlatSim` supplies it (the address is a mapped cell's, below the frontier).
+block-step-addr-at : ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (addr-at k)
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+  → R.readReg (R.State.regs s) t0 + slot-to-disp k < R.W.modulus
+  → BlockStep hv prog fs s (addr-at k)
+block-step-addr-at {hv} prog fs s k hl cc h ft i-eq ib no-wrap =
+  post , exec-eq , record { dataCorr = C.sim-addr-at k hl fs s post dc i-eq ib (C.sets-role-riscv64 s role-out _ _)
+                          ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-rv : R.fetch (compile-trace prog) (R.State.pc s)
+             ≡ just (addi a0 t0 (ℤ.+ (slot-to-disp k)))
+    fetch-rv = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) (addr-at k) ft)
+    t0-val : R.readReg (R.State.regs s) t0 ≡ haddr hv hl
+    t0-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
+    addr-eq : R.readReg (R.State.regs s) t0 R.W.⊕ R.W.fromℤ (ℤ.+ (slot-to-disp k))
+            ≡ haddr hv (offsetHL hl k)
+    addr-eq = trans (R.WL.⊕-normʳ (R.readReg (R.State.regs s) t0) (slot-to-disp k))
+                    (trans (R.WL.⊕≡+ (R.readReg (R.State.regs s) t0) (slot-to-disp k) no-wrap)
+                           (trans (cong (_+ slot-to-disp k) t0-val) (sym (C.haddr-offset hv hl k))))
+    post : R.State
+    post = record s { regs = R.writeReg (R.State.regs s) a0 (haddr hv (offsetHL hl k))
+                    ; pc = R.State.pc s + 1 }
+    snh : R.step-not-halted (compile-trace prog) s ≡ just post
+    snh = subst (λ w → R.step-not-halted (compile-trace prog) s
+                       ≡ just (record s { regs = R.writeReg (R.State.regs s) a0 w
+                                        ; pc = R.State.pc s + 1 }))
+                addr-eq
+                (step-addi {compile-trace prog} {s} {a0} {t0} {ℤ.+ (slot-to-disp k)} fetch-rv)
+    exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (addr-at k) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (addr-at k) ft))
+
+-- …and the no-wrap fact, from what the run already gives: the address is a
+-- mapped cell's (`HDom`), so it is below the frontier, which is a register's
+-- value, so a word (`RegRange`).
+addr-at-no-wrap : ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv prog fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → HDom hv (offsetHL hl k)
+  → (∀ r → R.readReg (R.State.regs s) r < R.W.modulus)
+  → R.readReg (R.State.regs s) t0 + slot-to-disp k < R.W.modulus
+addr-at-no-wrap {hv} prog fs s k hl cc i-eq live rr =
+  subst (_< R.W.modulus) (sym eq) (<-trans (C.dom-below hv live) fr)
+  where
+    dc = dataCorr cc
+    t0-val : R.readReg (R.State.regs s) t0 ≡ haddr hv hl
+    t0-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
+    eq : R.readReg (R.State.regs s) t0 + slot-to-disp k ≡ haddr hv (offsetHL hl k)
+    eq = trans (cong (_+ slot-to-disp k) t0-val) (sym (C.haddr-offset hv hl k))
+    fr : C.hfront hv < R.W.modulus
+    fr = subst (_< R.W.modulus) (C.frontier-eq dc) (rr s2)
 
 -- plan 0.123 B.4 α: store-at k ↔ `sd a0, 8k(t0)`, a cell of its block.
 block-step-store-at : ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv prog fs s

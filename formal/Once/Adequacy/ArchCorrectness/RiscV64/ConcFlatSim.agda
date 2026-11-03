@@ -338,7 +338,9 @@ open EE using (FlatInv; mkFlatInv; flat-inv-step; block-run-exec
 open import Once.CCC.Machine.SMCore hiding (Instr)
 open LocState using (halted; regs; heapMem)
 open import Once.CCC.Machine.Locations using (AtDynamic)
-open FlatMachine {FS} using (fpc; floc; fetch; find-label; flat-exec-instr)
+open FlatMachine {FS} using (fpc; floc; falloc; fetch; find-label; flat-exec-instr)
+open ExecFinal {FS} using (in-block?)
+open AllocState using (block-size)
 open MemOps {FS} using (readLoc)
 open import Once.CCC.Label using (once)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
@@ -383,7 +385,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fm
   ; block-step-store-at-slot; block-step-worklist-push
   ; block-step-store-indirect; block-step-store-indirect-stack
   ; block-step-store-indirect-suc; block-step-store-indirect-suc-stack
-  ; block-step-load-at; block-step-store-at
+  ; block-step-load-at; block-step-store-at; block-step-addr-at; addr-at-no-wrap
   ; block-step-c-jmp
   ; block-step-c-branch-tag-zero; block-step-c-branch-tag-nz
   ; block-step-c-thunk; block-step-c-start; block-step-out-nz; block-step-c-ret
@@ -409,6 +411,21 @@ riscv64-lea-slot : ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog f
 riscv64-lea-slot prog fs s slot cc h ft run =
   block-step-lea-slot prog fs s slot cc h ft
     (slot-addr-no-wrap prog fs s slot run cc ft)
+
+-- plan 0.123 B.4 α (D379): `addr-at k` is `addi t0, t0, 8k`; its no-wrap
+-- fact comes from the target being a mapped cell (below the frontier, which
+-- `reg-range` bounds as the heap register's value).
+riscv64-addr-at : ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (addr-at k)
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → FCr.HDom hv (offsetHL hl k)
+  → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+  → RLr.RunLow o FS slot-size word-eq prog fs
+  → BlockStep hv prog fs s (addr-at k)
+riscv64-addr-at prog fs s k hl cc h ft i-eq live ib run =
+  block-step-addr-at prog fs s k hl cc h ft i-eq ib
+    (addr-at-no-wrap prog fs s k hl cc i-eq live (λ r → reg-range prog fs s r run cc))
 
 ------------------------------------------------------------------------
 -- THE TWO STUCK ROUTES (plan 0.65 G2).
@@ -520,6 +537,7 @@ riscv64-block-steps = record
   ; bs-store-indirect-suc       = block-step-store-indirect-suc
   ; bs-load-at                  = block-step-load-at
   ; bs-store-at                 = block-step-store-at
+  ; bs-addr-at                  = riscv64-addr-at
   ; bs-store-indirect-suc-stack = block-step-store-indirect-suc-stack
   ; bs-c-jmp                    = block-step-c-jmp
   ; bs-c-branch-tag-zero        = block-step-c-branch-tag-zero
