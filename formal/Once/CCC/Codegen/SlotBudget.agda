@@ -444,8 +444,58 @@ rebuild-below ck cs (F ⊗ G) val tv tb s lb b pt h =
            (≤-trans (+-monoʳ-≤ s (+-monoʳ-≤ 4 (*-monoʳ-≤ 4 (m≤n+m (fsize G) (fsize F)))))
            (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
 
--- (The walks' segment-idleness is part of `SB` now: `visit-idle` /
--- `rebuild-idle` are subsumed.)
+-- THE COMPILE-TIME WALKS EMIT NO MARKER, at any slots (for the label proofs,
+-- which need idleness without a frontier).
+Idle : AbstractInstr → Set
+Idle i = is-id? (seg-action i) ≡ true
+
+getμ-idle : ∀ (G : Fun 0) k → All Idle (get-k (lkind G word) (lsz G 1) k)
+getμ-idle G k = get-k-All (lkind G word) (lsz G 1) k (λ _ → refl) (λ _ → refl)
+
+push2-idle : ∀ t v b′ → All Idle (push2 t v b′)
+push2-idle t v b′ = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
+
+visit-idleA : ∀ (F : Fun 0) (todo tv tb s lb : ℕ) → All Idle (visit-walk todo tv tb F s lb)
+visit-idleA (K _)   todo tv tb s lb = []
+visit-idleA Id      todo tv tb s lb = refl ∷ push2-idle todo tv tb
+visit-idleA (F ⊕ G) todo tv tb s lb =
+  ++⁺ (refl ∷ []) (++⁺ (getμ-idle G 1) (++⁺ (refl ∷ [])
+  (++⁺ (visit-idleA G todo tv tb (s + 4) _) (++⁺ (refl ∷ refl ∷ [])
+  (++⁺ (getμ-idle F 1) (++⁺ (refl ∷ [])
+  (++⁺ (visit-idleA F todo tv tb (s + 4) _) (refl ∷ []))))))))
+visit-idleA (F ⊗ G) todo tv tb s lb =
+  ++⁺ (refl ∷ refl ∷ []) (++⁺ (getμ-idle F 0) (++⁺ (refl ∷ [])
+  (++⁺ (visit-idleA F todo tv tb (s + 4) _) (++⁺ (refl ∷ [])
+  (++⁺ (getμ-idle G _) (++⁺ (refl ∷ []) (visit-idleA G todo tv tb (s + 4) _)))))))
+
+visit-idle : ∀ (F : Fun 0) (todo tv tb s lb : ℕ)
+           → seg-idle? (visit-walk todo tv tb F s lb) ≡ true
+visit-idle F todo tv tb s lb = idle-All _ (visit-idleA F todo tv tb s lb)
+
+rebuild-idleA : ∀ (ck : Kind) (cs : ℕ) (F : Fun 0) (val tv tb s lb : ℕ)
+              → All Idle (rebuild-walk val tv tb ck cs F s lb)
+rebuild-idleA ck cs (K _)   val tv tb s lb = refl ∷ []
+rebuild-idleA ck cs Id      val tv tb s lb = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
+rebuild-idleA ck cs (F ⊕ G) val tv tb s lb =
+  ++⁺ (refl ∷ []) (++⁺ (getμ-idle G 1) (++⁺ (refl ∷ [])
+  (++⁺ (rebuild-idleA ck cs G val tv tb (s + 4) _) (++⁺ (ws (lkind G ck) (lsz G cs) 1)
+  (++⁺ (refl ∷ refl ∷ []) (++⁺ (getμ-idle F 1) (++⁺ (refl ∷ [])
+  (++⁺ (rebuild-idleA ck cs F val tv tb (s + 4) _) (++⁺ (ws (lkind F ck) (lsz F cs) 0) (refl ∷ []))))))))))
+  where ws : ∀ pk ps tag → All Idle (wrap-sum tag pk ps (lsz (F ⊕ G) cs) s)
+        ws pk ps tag = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+                       ++⁺ (put-k-All pk ps s (suc s) 1 refl refl refl (λ _ → refl) (λ _ → refl)) (refl ∷ [])
+rebuild-idleA ck cs (F ⊗ G) val tv tb s lb =
+  ++⁺ (refl ∷ refl ∷ []) (++⁺ (getμ-idle G _) (++⁺ (refl ∷ [])
+  (++⁺ (rebuild-idleA ck cs G val tv tb (s + 4) _) (++⁺ (refl ∷ refl ∷ [])
+  (++⁺ (getμ-idle F 0) (++⁺ (refl ∷ [])
+  (++⁺ (rebuild-idleA ck cs F val tv tb (s + 4) _) (++⁺ (refl ∷ refl ∷ refl ∷ [])
+  (++⁺ (put-k-All (lkind F ck) (lsz F cs) (suc s) (s + 3) 0 refl refl refl (λ _ → refl) (λ _ → refl))
+  (++⁺ (put-k-All (lkind G ck) (lsz G cs) (s + 2) (s + 3) _ refl refl refl (λ _ → refl) (λ _ → refl))
+       (refl ∷ [])))))))))))
+
+rebuild-idle : ∀ (ck : Kind) (cs : ℕ) (F : Fun 0) (val tv tb s lb : ℕ)
+             → seg-idle? (rebuild-walk val tv tb ck cs F s lb) ≡ true
+rebuild-idle ck cs F val tv tb s lb = idle-All _ (rebuild-idleA ck cs F val tv tb s lb)
 
 cata-branching-below : ∀ (E A : IRTy) (G F : Fun 0) (bb n1 l1 : ℕ) (at : AbstractTrace)
                      → SegOK bb at
