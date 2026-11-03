@@ -72,9 +72,9 @@ copy-one src blk off i k s alloc sh dh w h rs rw rb ib rewrite h | rs | h | rw |
 
 ------------------------------------------------------------------------
 -- ONE HEAP WRITE (its value abstract): it keeps the run going, leaves the
--- stack, and changes one cell.
+-- stack, and changes one cell. (Exported: `FlatPut` writes words too.)
 ------------------------------------------------------------------------
-private
+module _ where
   wl-halted : ∀ (s : LocState FS) (hl : HeapLocation) (w : StoredValue FS)
             → halted (writeLoc s (AtDynamic hl) w) ≡ halted s
   wl-halted s hl (SV-Ptr (AtStack _ _))  = refl
