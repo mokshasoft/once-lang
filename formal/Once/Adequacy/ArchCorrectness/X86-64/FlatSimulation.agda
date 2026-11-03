@@ -1774,6 +1774,40 @@ block-step-load-at {hv} prog fs s k hl w cc h ft i-eq live h-eq =
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (load-at k) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (load-at k) ft))
 
+-- plan 0.123 B.4 α: addr-at k ↔ `lea rax, [rdi + 8k]`, the address of a cell of
+-- its block (`lea` is not an add, so nothing wraps — as `lea-slot`).
+block-step-addr-at : ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (addr-at k)
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → HDom hv (offsetHL hl k)
+  → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+  → BlockStep hv prog fs s (addr-at k)
+block-step-addr-at {hv} prog fs s k hl cc h ft i-eq live ib =
+  post , exec-eq , record { dataCorr = C.sim-addr-at k hl fs s post dc i-eq ib (C.sets-role-x86 s role-out _ _ _)
+                          ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (lea rax (base+disp rdi (slot-to-disp k)))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (addr-at k) ft)
+    rdi-val : xreadReg (xregs s) rdi ≡ haddr hv hl
+    rdi-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
+    addr-eq : X.effectiveAddr s (base+disp rdi (slot-to-disp k)) ≡ haddr hv (offsetHL hl k)
+    addr-eq = trans (cong (_+ slot-to-disp k) rdi-val) (sym (C.haddr-offset hv hl k))
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rax (haddr hv (offsetHL hl k)) ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = subst (λ w → X.step-not-halted (compile-trace prog) s
+                       ≡ just (record s { regs = xwriteReg (xregs s) rax w ; pc = pc s + 1 }))
+                addr-eq
+                (step-lea {compile-trace prog} {s} {rax} {rdi} {slot-to-disp k} fetch-x86)
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (addr-at k) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (addr-at k) ft))
+
 -- plan 0.123 B.4 α: store-at k ↔ `mov [rdi + 8k], rax`, a cell of its block.
 block-step-store-at : ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (store-at k)
@@ -2525,6 +2559,7 @@ x86-64-block-steps = record
   ; bs-store-indirect-suc       = block-step-store-indirect-suc
   ; bs-load-at                  = block-step-load-at
   ; bs-store-at                 = block-step-store-at
+  ; bs-addr-at                  = λ prog fs s k hl cc h ft i-eq live ib _ → block-step-addr-at prog fs s k hl cc h ft i-eq live ib
   ; bs-store-indirect-suc-stack = block-step-store-indirect-suc-stack
   ; bs-c-jmp                    = block-step-c-jmp
   ; bs-c-branch-tag-zero        = block-step-c-branch-tag-zero
