@@ -21259,3 +21259,21 @@ implementation Spec).
 * Nothing about the observation of a call is trusted beyond the Spec.
 * Plan 0.138 S3–S4 change `ev-arch` and `ret-call` per arch together with the emitters' marshalling at a
   `call-sym` and the Interpretations' code.
+
+## D378 — μ AND ν NODES ARE FLAT, SIZED PER TYPE (2026-11-03)
+
+**Decided** by the user 2026-11-03 (plan 0.123 B.4). Refines D7's "Once's cells are almost all 2 words".
+
+### Decision
+* A μ or ν node is its layer laid out as `Spec.ABI` lays out a struct (D375), with each recursive position,
+  and each closure or ν inside it, one pointer word. `List Int` (`Unit + Int * Id`): `[tag, int, next]`, one
+  3-word node, instead of today's `[tag, ptr→[int, next]]` (two 2-word cells).
+* The cell heap therefore has several block sizes, all static (one per node type of the program): one
+  fixed-size free list per size, alloc and free still inline (pop/push), no search, no coalescing.
+* Base values are flat everywhere (frame, node, boundary): one layout rule.
+
+### Consequences
+* Fewer allocations and less pointer chasing per node; the cell heap's allocator interface (D1–D4) is
+  per size class.
+* A flat value never holds a stack pointer, so storing one into a node copies its words (never a pointer
+  into a frame): the heap holds no stack pointer (plan 0.123 B.4 R2's ordering).
