@@ -88,6 +88,10 @@ module GetC {FS : FrameSemantics} where
   setOut fs w = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
                           ; fpc  = suc (fpc fs) }
 
+  -- what a read leaves: memory (a register write is invisible to `readLoc`)
+  out-mem : ∀ (fs : FlatState) (w : StoredValue FS) l → readLoc (floc (setOut fs w)) l ≡ readLoc (floc fs) l
+  out-mem fs w l = readLoc-stack-heap-eq (floc (setOut fs w)) (floc fs) l refl refl
+
   load-at-step : ∀ (prog : AbstractTrace) (fs : FlatState) k (loc : ValueLocation FS) (w : StoredValue FS)
                → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
                → readLoc (floc fs) (offsetLoc loc k) ≡ just w
@@ -163,10 +167,11 @@ module GetC {FS : FrameSemantics} where
     ------------------------------------------------------------------------
     record GetOut (C : IRTy) (c : ⟦ C ⟧) (fs : FlatState) : Set where
       field
-        out   : StoredValue FS
-        mode  : AllocMode
-        step  : FlatSteps prog 1 fs (setOut fs out)
-        place : ResultPlace {prog = prog} C mode (falloc fs) (falloc fs) c (floc (setOut fs out))
+        out    : StoredValue FS
+        mode   : AllocMode
+        step   : FlatSteps prog 1 fs (setOut fs out)
+        silent : chain-events step ≡ []
+        place  : ResultPlace {prog = prog} C mode (falloc fs) (falloc fs) c (floc (setOut fs out))
 
     -- validity survives a register write
     val-out : ∀ {m C c l} (fs : FlatState) (w : StoredValue FS)
@@ -177,6 +182,23 @@ module GetC {FS : FrameSemantics} where
     one-step : ∀ (fs : FlatState) {i fs′} → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just i
              → flat-exec-instr i prog fs ≡ fs′ → FlatSteps prog 1 fs fs′
     one-step fs {i} {fs′} nh f e = (nh , f) ∷ subst (λ x → FlatSteps prog 0 x fs′) (sym e) []
+
+    -- a silent instruction's step emits nothing
+    one-step-silent : ∀ (fs : FlatState) {i fs′} (nh : halted (floc fs) ≡ false) (f : fetch prog (fpc fs) ≡ just i)
+                    (e : flat-exec-instr i prog fs ≡ fs′) → event-of i fs ≡ []
+                    → chain-events (one-step fs nh f e) ≡ []
+    one-step-silent fs {i} nh f refl ev rewrite ev = refl
+
+    -- the read, from its one step: the chain, its silence, and the place
+    mk : ∀ {C : IRTy} {c : ⟦ C ⟧} (fs : FlatState) {i} (w : StoredValue FS) (m : AllocMode)
+       → halted (floc fs) ≡ false
+       → fetch prog (fpc fs) ≡ just i
+       → flat-exec-instr i prog fs ≡ setOut fs w
+       → event-of i fs ≡ []
+       → ResultPlace {prog = prog} C m (falloc fs) (falloc fs) c (floc (setOut fs w))
+       → GetOut C c fs
+    mk fs w m nh f e ev pl = record
+      { out = w ; mode = m ; step = one-step fs nh f e ; silent = one-step-silent fs nh f e ev ; place = pl }
 
     -- a 0-word component: `Output` := the container's pointer, where the
     -- component is valid too
@@ -190,12 +212,11 @@ module GetC {FS : FrameSemantics} where
              → size C ≡ 0
              → GetOut C c fs
     get-zero C k fs (AtStack _ _) nh at i1 () fl v z
-    get-zero C k {mC = mC} fs (AtDynamic (heap-loc r o)) nh at i1 lv fl v z = record
-      { out   = SV-Ptr (AtDynamic (heap-loc r o))
-      ; mode  = mC
-      ; step  = one-step fs nh (fetch-of {prog = prog} {pc = fpc fs} (get-flat0 k (flat-kind fl) z) at) (mov-out-step prog fs _ i1)
-      ; place = at-loc _ (val-out fs _ (zero-v C r o fl z lv v)) lv (writeReg-same (regs (floc fs)) Output _)
-                         (val-out fs _ (zero-v C r o fl z lv v)) lv }
+    get-zero C k {mC = mC} fs (AtDynamic (heap-loc r o)) nh at i1 lv fl v z =
+      mk fs (SV-Ptr (AtDynamic (heap-loc r o))) mC nh
+         (fetch-of {prog = prog} {pc = fpc fs} (get-flat0 k (flat-kind fl) z) at) (mov-out-step prog fs _ i1) refl
+         (at-loc _ v′ lv (writeReg-same (regs (floc fs)) Output _) v′ lv)
+      where v′ = val-out fs _ (zero-v C r o fl z lv v)
 
     get-run : ∀ (C : IRTy) (k : ℕ) {c : ⟦ C ⟧} (fs : FlatState) (loc : ValueLocation FS)
             → halted (floc fs) ≡ false
@@ -204,26 +225,39 @@ module GetC {FS : FrameSemantics} where
             → Live (falloc fs) loc
             → CellAt {prog = prog} (falloc fs) C c (offsetLoc loc k) (floc fs)
             → GetOut C c fs
-    get-run C k fs loc nh at i1 lv (cell-ptr {comp-loc = cl} {mC = mC} nd r clv v) = record
-      { out   = SV-Ptr cl
-      ; mode  = mC
-      ; step  = one-step fs nh (fetch-of {prog = prog} {pc = fpc fs} (get-word k (node-kind nd)) at) (load-at-step prog fs k loc _ i1 r)
-      ; place = at-loc cl (val-out fs _ v) clv (writeReg-same (regs (floc fs)) Output _) (val-out fs _ v) clv }
-    get-run C k {c} fs loc nh at i1 lv (cell-inline (rep-prim fit) r) = record
-      { out   = _
-      ; mode  = Heap
-      ; step  = one-step fs nh (fetch-of {prog = prog} {pc = fpc fs} (get-word k (scalar-kind fit)) at) (load-at-step prog fs k loc _ i1 r)
-      ; place = at-reg fit (writeReg-same (regs (floc fs)) Output _) }
+    -- a node: its pointer word
+    get-run C k fs loc nh at i1 lv (cell-ptr {comp-loc = cl} {mC = mC} nd r clv v) =
+      mk fs (SV-Ptr cl) mC nh (fetch-of {prog = prog} {pc = fpc fs} (get-word k (node-kind nd)) at)
+         (load-at-step prog fs k loc _ i1 r) refl
+         (at-loc cl (val-out fs _ v) clv (writeReg-same (regs (floc fs)) Output _) (val-out fs _ v) clv)
+    -- a scalar: its word
+    get-run C k fs loc nh at i1 lv (cell-inline (rep-prim fit) r) =
+      mk fs _ Heap nh (fetch-of {prog = prog} {pc = fpc fs} (get-word k (scalar-kind fit)) at)
+         (load-at-step prog fs k loc _ i1 r) refl
+         (at-reg fit (writeReg-same (regs (floc fs)) Output _))
+    -- a flat component: its address (words), or the container's (none)
     get-run C k fs loc nh at i1 lv (cell-flat {mC = mC} fl hr v) = by-size (size C) refl
       where
         by-size : ∀ (n : ℕ) → size C ≡ n → GetOut C _ fs
-        -- no words: the container's pointer
-        by-size zero z = get-zero C k fs loc nh at i1 lv fl v z
-        -- words: the component's own address, in its block
-        by-size (suc n) z = record
-          { out   = SV-Ptr (offsetLoc loc k)
-          ; mode  = mC
-          ; step  = one-step fs nh (fetch-of {prog = prog} {pc = fpc fs} (get-flat+ k n (flat-kind fl) z) at)
-                             (addr-at-step prog fs k loc i1 (proj₂ (hr pos)))
-          ; place = at-loc _ (val-out fs _ v) (proj₁ (hr pos)) (writeReg-same (regs (floc fs)) Output _) (val-out fs _ v) (proj₁ (hr pos)) }
+        by-size zero    z = get-zero C k fs loc nh at i1 lv fl v z
+        by-size (suc n) z =
+          mk fs (SV-Ptr (offsetLoc loc k)) mC nh
+             (fetch-of {prog = prog} {pc = fpc fs} (get-flat+ k n (flat-kind fl) z) at)
+             (addr-at-step prog fs k loc i1 (proj₂ (hr pos))) refl
+             (at-loc _ (val-out fs _ v) (proj₁ (hr pos)) (writeReg-same (regs (floc fs)) Output _)
+                       (val-out fs _ v) (proj₁ (hr pos)))
           where pos = subst (0 <_) (sym z) (s≤s z≤n)
+
+
+  -- the first component is at the container's own address
+  offset-zero : ∀ (l : ValueLocation FS) → offsetLoc l 0 ≡ l
+  offset-zero (AtStack f k)             = refl
+  offset-zero (AtDynamic (heap-loc r o)) = refl
+
+  get-len : ∀ (C : IRTy) k → length (get C k) ≡ 1
+  get-len C k = len (kind C) (size C)
+    where
+      len : ∀ kd n → length (get-k kd n k) ≡ 1
+      len word _       = refl
+      len flat zero    = refl
+      len flat (suc _) = refl
