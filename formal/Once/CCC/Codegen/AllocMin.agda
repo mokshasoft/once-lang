@@ -53,7 +53,7 @@ open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-a
 import Once.CCC.Machine.SMCore as SM
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatLayout
-  using (Kind; word; flat; kind; put; put-k; get; get-k; put-All; put-k-All; get-All; get-k-All; lkind; lsz)
+  using (Kind; word; flat; kind; put; put-k; get; get-k; fill; put-All; put-k-All; get-All; get-k-All; fill-All; lkind; lsz)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
@@ -92,8 +92,11 @@ get-am X k = get-All {AllocMinI} X k (λ _ → tt) (λ _ → tt) tt
 get-k-am : ∀ kd n k → AllocMinTrace (get-k kd n k)
 get-k-am kd n k = get-k-All {AllocMinI} kd n k (λ _ → tt) (λ _ → tt) tt
 
+fill-am : ∀ from c → AllocMinTrace (fill from c)
+fill-am from c = fill-All {AllocMinI} from c tt (λ _ → tt)
+
 inj-am : ∀ t P S n → AllocMinTrace (inj-trace t P S n)
-inj-am t P S n = tt ∷ tt ∷ am⊔ (size S) ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-am P n (suc n) 1) (tt ∷ [])
+inj-am t P S n = tt ∷ tt ∷ am⊔ (size S) ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-am P n (suc n) 1) (++⁺ (fill-am _ _) (tt ∷ []))
 
 -- D380: a closure body's entry
 env-entry-am : ∀ kd E A → AllocMinTrace (proj₂ (env-entry kd E A))
@@ -115,7 +118,7 @@ pop2-am topSlot = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 wrap-sum-am : ∀ tag pk ps ss s → AllocMinTrace (wrap-sum tag pk ps ss s)
 wrap-sum-am tag pk ps ss s =
-  tt ∷ am⊔ ss ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-k-am pk ps s (suc s) 1) (tt ∷ [])
+  tt ∷ am⊔ ss ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-k-am pk ps s (suc s) 1) (++⁺ (fill-am _ _) (tt ∷ []))
 
 getμ-am : ∀ (G : Fun 0) k → AllocMinTrace (get-k (lkind G word) (lsz G 1) k)
 getμ-am G k = get-k-am (lkind G word) (lsz G 1) k
@@ -353,7 +356,7 @@ resuspend-am H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
     sz = size (⟦ F ⟧TI (ν-type H) +ᵀ ⟦ G ⟧TI (ν-type H))
     n2 = proj₁ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
     l2 = proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
-    arm : ∀ (P : IRFunctor) {t} → AllocMinTrace t → ∀ {tag sz}
+    arm : ∀ (P : IRFunctor) {t} → AllocMinTrace t → ∀ {tag sz c}
         → AllocMinTrace ((SM.restore-input n ∷ []) ++ get (⟦ P ⟧TI A) 1 ++ t ++
                          (SM.store-at-slot (suc (suc n)) ∷
                           SM.instr-alloc-heap (2 ⊔ sz) ∷
@@ -362,13 +365,14 @@ resuspend-am H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
                           SM.instr-load-tag-lit tag ∷
                           SM.store-at 0 ∷ []) ++
                          put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
+                         fill (suc (size (⟦ P ⟧TI (ν-type H)))) c ++
                          (SM.load-from-slot (suc n) ∷ []))
     arm P am {sz = sz} =
       ++⁺ (tt ∷ [])
           (++⁺ (get-am (⟦ P ⟧TI A) 1)
           (++⁺ am
           (++⁺ (tt ∷ am⊔ sz ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-          (++⁺ (put-am (⟦ P ⟧TI (ν-type H)) _ _ 1) (tt ∷ [])))))
+          (++⁺ (put-am (⟦ P ⟧TI (ν-type H)) _ _ 1) (++⁺ (fill-am _ _) (tt ∷ []))))))
 
 alloc-min-blocks : ∀ {A B} (ir : IR A B) (n l : ℕ)
                  → AllocMinTrace (blocks-layout (bodies-of (ir-to-trace' n l ir)))

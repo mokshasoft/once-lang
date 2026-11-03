@@ -300,6 +300,14 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
   BlocksKept : AllocState {FS} → AllocState {FS} → Set
   BlocksKept a₁ a₂ = ∀ l → Live a₁ l → InBlk a₁ l → InBlk a₂ l
 
+  -- D382: a cell that holds a word, and a sum's padding — `c` words from word
+  -- `from` — each holding one, so every word of a flat value is written
+  Written : LocState FS → ValueLocation FS → Set
+  Written s l = ∃[ w ] (readLoc s l ≡ just w)
+
+  Pad : LocState FS → ValueLocation FS → (from c : ℕ) → Set
+  Pad s l from c = ∀ j → j < c → Written s (offsetLoc l (from ℕ.+ j))
+
   -- D187: where a compound's component lives — a pointer to a cell valid at
   -- the component's type, or the component inline.
   data CellAtP {C : IRTy} (VC : VTy C) (alloc : AllocState {FS}) :
@@ -351,6 +359,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
       Live alloc payload-loc →
       Live alloc (sucLoc sum-loc) →
+      Pad s sum-loc (suc (size A)) (size A ℕ.⊔ size B ℕ.∸ size A) →
       VA mA alloc a payload-loc s →
       SumV {A} {B} VA VB m alloc (inj₁ a) sum-loc s
     inr-wf : ∀ {m} {b : ⟦ B ⟧} {alloc : AllocState {FS}}
@@ -361,6 +370,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
       Live alloc payload-loc →
       Live alloc (sucLoc sum-loc) →
+      Pad s sum-loc (suc (size B)) (size A ℕ.⊔ size B ℕ.∸ size B) →
       VB mB alloc b payload-loc s →
       SumV {A} {B} VA VB m alloc (inj₂ b) sum-loc s
     -- Stage F: an inline payload has no cell of its own to be valid at.
@@ -371,6 +381,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       (rep : InlineRep A) →
       readLoc s (sucLoc sum-loc) ≡ just (inline-sv rep a) →
       Live alloc (sucLoc sum-loc) →
+      Pad s sum-loc (suc (size A)) (size A ℕ.⊔ size B ℕ.∸ size A) →
       SumV {A} {B} VA VB m alloc (inj₁ a) sum-loc s
     inr-reg-wf : ∀ {m} {b : ⟦ B ⟧} {alloc : AllocState {FS}}
       {sum-loc : ValueLocation FS} {s : LocState FS} →
@@ -379,6 +390,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       (rep : InlineRep B) →
       readLoc s (sucLoc sum-loc) ≡ just (inline-sv rep b) →
       Live alloc (sucLoc sum-loc) →
+      Pad s sum-loc (suc (size B)) (size A ℕ.⊔ size B ℕ.∸ size B) →
       SumV {A} {B} VA VB m alloc (inj₂ b) sum-loc s
     -- plan 0.123 B.4 α: a compound payload, embedded after the tag (Unit: none)
     inl-flat-wf : ∀ {m} {a : ⟦ A ⟧} {alloc : AllocState {FS}}
@@ -388,6 +400,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       SumTag m 0 s sum-loc →
       Live alloc (sucLoc sum-loc) →
       (0 < size A → InBlk alloc (sucLoc sum-loc)) →
+      Pad s sum-loc (suc (size A)) (size A ℕ.⊔ size B ℕ.∸ size A) →
       VA mA alloc a (sucLoc sum-loc) s →
       SumV {A} {B} VA VB m alloc (inj₁ a) sum-loc s
     inr-flat-wf : ∀ {m} {b : ⟦ B ⟧} {alloc : AllocState {FS}}
@@ -397,6 +410,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       SumTag m 1 s sum-loc →
       Live alloc (sucLoc sum-loc) →
       (0 < size B → InBlk alloc (sucLoc sum-loc)) →
+      Pad s sum-loc (suc (size B)) (size A ℕ.⊔ size B ℕ.∸ size B) →
       VB mB alloc b (sucLoc sum-loc) s →
       SumV {A} {B} VA VB m alloc (inj₂ b) sum-loc s
 
@@ -783,12 +797,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
           → LayerV G {ν-type F} P m a v l s → LayerV G {ν-type F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′) m a v l s
       lay (K A) lv = lv
       lay Id    lv = coind lv
-      lay (G ⊕ H) (inl-wf nd lmm tg pp pb slb pv) = inl-wf nd lmm tg pp pb slb (lay G pv)
-      lay (G ⊕ H) (inr-wf nd lmm tg pp pb slb pv) = inr-wf nd lmm tg pp pb slb (lay H pv)
-      lay (G ⊕ H) (inl-reg-wf lmm tg rep pp slb) = inl-reg-wf lmm tg rep pp slb
-      lay (G ⊕ H) (inr-reg-wf lmm tg rep pp slb) = inr-reg-wf lmm tg rep pp slb
-      lay (G ⊕ H) (inl-flat-wf fl lmm tg slb ib pv) = inl-flat-wf fl lmm tg slb ib (lay G pv)
-      lay (G ⊕ H) (inr-flat-wf fl lmm tg slb ib pv) = inr-flat-wf fl lmm tg slb ib (lay H pv)
+      lay (G ⊕ H) (inl-wf nd lmm tg pp pb slb pd pv) = inl-wf nd lmm tg pp pb slb pd (lay G pv)
+      lay (G ⊕ H) (inr-wf nd lmm tg pp pb slb pd pv) = inr-wf nd lmm tg pp pb slb pd (lay H pv)
+      lay (G ⊕ H) (inl-reg-wf lmm tg rep pp slb pd) = inl-reg-wf lmm tg rep pp slb pd
+      lay (G ⊕ H) (inr-reg-wf lmm tg rep pp slb pd) = inr-reg-wf lmm tg rep pp slb pd
+      lay (G ⊕ H) (inl-flat-wf fl lmm tg slb ib pd pv) = inl-flat-wf fl lmm tg slb ib pd (lay G pv)
+      lay (G ⊕ H) (inr-flat-wf fl lmm tg slb ib pd pv) = inr-flat-wf fl lmm tg slb ib pd (lay H pv)
       lay (G ⊗ H) (pair-wf lmm slb c₁ c₂) = pair-wf lmm slb (cell G c₁) (cell H c₂)
 
       cell : ∀ (G : IRFunctor) {a c cl s}
@@ -822,18 +836,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
 
   pattern valid-unit-wf = wrap unit-wf
   pattern valid-pair-wf {pair-loc} lmm slb c₁ c₂ = wrap (pair-wf {pair-loc = pair-loc} lmm slb c₁ c₂)
-  pattern valid-inl-wf {m} {a} {sum-loc} {payload-loc} {mA} nd lmm tg pp pb slb pv =
-    wrap (inl-wf {m = m} {a = a} {sum-loc = sum-loc} {payload-loc = payload-loc} {mA = mA} nd lmm tg pp pb slb pv)
-  pattern valid-inr-wf {m} {b} {sum-loc} {payload-loc} {mB} nd lmm tg pp pb slb pv =
-    wrap (inr-wf {m = m} {b = b} {sum-loc = sum-loc} {payload-loc = payload-loc} {mB = mB} nd lmm tg pp pb slb pv)
-  pattern valid-inl-reg-wf {m} {a} {sum-loc} lmm tg rep pp slb =
-    wrap (inl-reg-wf {m = m} {a = a} {sum-loc = sum-loc} lmm tg rep pp slb)
-  pattern valid-inr-reg-wf {m} {b} {sum-loc} lmm tg rep pp slb =
-    wrap (inr-reg-wf {m = m} {b = b} {sum-loc = sum-loc} lmm tg rep pp slb)
-  pattern valid-inl-flat-wf {m} {a} {sum-loc} {mA} fl lmm tg slb ib pv =
-    wrap (inl-flat-wf {m = m} {a = a} {sum-loc = sum-loc} {mA = mA} fl lmm tg slb ib pv)
-  pattern valid-inr-flat-wf {m} {b} {sum-loc} {mB} fl lmm tg slb ib pv =
-    wrap (inr-flat-wf {m = m} {b = b} {sum-loc = sum-loc} {mB = mB} fl lmm tg slb ib pv)
+  pattern valid-inl-wf {m} {a} {sum-loc} {payload-loc} {mA} nd lmm tg pp pb slb pd pv =
+    wrap (inl-wf {m = m} {a = a} {sum-loc = sum-loc} {payload-loc = payload-loc} {mA = mA} nd lmm tg pp pb slb pd pv)
+  pattern valid-inr-wf {m} {b} {sum-loc} {payload-loc} {mB} nd lmm tg pp pb slb pd pv =
+    wrap (inr-wf {m = m} {b = b} {sum-loc = sum-loc} {payload-loc = payload-loc} {mB = mB} nd lmm tg pp pb slb pd pv)
+  pattern valid-inl-reg-wf {m} {a} {sum-loc} lmm tg rep pp slb pd =
+    wrap (inl-reg-wf {m = m} {a = a} {sum-loc = sum-loc} lmm tg rep pp slb pd)
+  pattern valid-inr-reg-wf {m} {b} {sum-loc} lmm tg rep pp slb pd =
+    wrap (inr-reg-wf {m = m} {b = b} {sum-loc = sum-loc} lmm tg rep pp slb pd)
+  pattern valid-inl-flat-wf {m} {a} {sum-loc} {mA} fl lmm tg slb ib pd pv =
+    wrap (inl-flat-wf {m = m} {a = a} {sum-loc = sum-loc} {mA = mA} fl lmm tg slb ib pd pv)
+  pattern valid-inr-flat-wf {m} {b} {sum-loc} {mB} fl lmm tg slb ib pd pv =
+    wrap (inr-flat-wf {m = m} {b = b} {sum-loc = sum-loc} {mB = mB} fl lmm tg slb ib pd pv)
   pattern valid-closure-wf {f} {closure-loc} {env-loc} lmm ep cp eb slb fd runs =
     wrap (closure-wf {f = f} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
   pattern valid-closure-reg-wf {f} {env} {closure-loc} lmm rep ep cp slb fd runs =
@@ -853,12 +867,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     fo→valid (fo-unit u) = wrap u
     fo→valid (fo-pair (pair-wf lmm slb c₁ c₂)) =
       valid-pair-wf lmm slb (fo→cell c₁) (fo→cell c₂)
-    fo→valid (fo-sum (inl-wf nd lmm tg pp pb slb pv)) = valid-inl-wf nd lmm tg pp pb slb (fo→valid pv)
-    fo→valid (fo-sum (inr-wf nd lmm tg pp pb slb pv)) = valid-inr-wf nd lmm tg pp pb slb (fo→valid pv)
-    fo→valid (fo-sum (inl-reg-wf lmm tg rep pp slb)) = valid-inl-reg-wf lmm tg rep pp slb
-    fo→valid (fo-sum (inr-reg-wf lmm tg rep pp slb)) = valid-inr-reg-wf lmm tg rep pp slb
-    fo→valid (fo-sum (inl-flat-wf fl lmm tg slb ib pv)) = valid-inl-flat-wf fl lmm tg slb ib (fo→valid pv)
-    fo→valid (fo-sum (inr-flat-wf fl lmm tg slb ib pv)) = valid-inr-flat-wf fl lmm tg slb ib (fo→valid pv)
+    fo→valid (fo-sum (inl-wf nd lmm tg pp pb slb pd pv)) = valid-inl-wf nd lmm tg pp pb slb pd (fo→valid pv)
+    fo→valid (fo-sum (inr-wf nd lmm tg pp pb slb pd pv)) = valid-inr-wf nd lmm tg pp pb slb pd (fo→valid pv)
+    fo→valid (fo-sum (inl-reg-wf lmm tg rep pp slb pd)) = valid-inl-reg-wf lmm tg rep pp slb pd
+    fo→valid (fo-sum (inr-reg-wf lmm tg rep pp slb pd)) = valid-inr-reg-wf lmm tg rep pp slb pd
+    fo→valid (fo-sum (inl-flat-wf fl lmm tg slb ib pd pv)) = valid-inl-flat-wf fl lmm tg slb ib pd (fo→valid pv)
+    fo→valid (fo-sum (inr-flat-wf fl lmm tg slb ib pd pv)) = valid-inr-flat-wf fl lmm tg slb ib pd (fo→valid pv)
     fo→valid (fo-int i) = wrap i
     fo→valid (fo-float f) = wrap f
     fo→valid w@(fo-μwf _ _ _ _) = wrap w
@@ -877,12 +891,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     valid→fo fo-Float (wrap f) = fo-float f
     valid→fo (fo-* fa fb) (valid-pair-wf lmm slb c₁ c₂) =
       fo-pair (pair-wf lmm slb (cell→fo fa c₁) (cell→fo fb c₂))
-    valid→fo (fo-+ fa fb) (valid-inl-wf nd lmm tg pp pb slb pv) = fo-sum (inl-wf nd lmm tg pp pb slb (valid→fo fa pv))
-    valid→fo (fo-+ fa fb) (valid-inr-wf nd lmm tg pp pb slb pv) = fo-sum (inr-wf nd lmm tg pp pb slb (valid→fo fb pv))
-    valid→fo (fo-+ fa fb) (valid-inl-reg-wf lmm tg rep pp slb) = fo-sum (inl-reg-wf lmm tg rep pp slb)
-    valid→fo (fo-+ fa fb) (valid-inr-reg-wf lmm tg rep pp slb) = fo-sum (inr-reg-wf lmm tg rep pp slb)
-    valid→fo (fo-+ fa fb) (valid-inl-flat-wf fl lmm tg slb ib pv) = fo-sum (inl-flat-wf fl lmm tg slb ib (valid→fo fa pv))
-    valid→fo (fo-+ fa fb) (valid-inr-flat-wf fl lmm tg slb ib pv) = fo-sum (inr-flat-wf fl lmm tg slb ib (valid→fo fb pv))
+    valid→fo (fo-+ fa fb) (valid-inl-wf nd lmm tg pp pb slb pd pv) = fo-sum (inl-wf nd lmm tg pp pb slb pd (valid→fo fa pv))
+    valid→fo (fo-+ fa fb) (valid-inr-wf nd lmm tg pp pb slb pd pv) = fo-sum (inr-wf nd lmm tg pp pb slb pd (valid→fo fb pv))
+    valid→fo (fo-+ fa fb) (valid-inl-reg-wf lmm tg rep pp slb pd) = fo-sum (inl-reg-wf lmm tg rep pp slb pd)
+    valid→fo (fo-+ fa fb) (valid-inr-reg-wf lmm tg rep pp slb pd) = fo-sum (inr-reg-wf lmm tg rep pp slb pd)
+    valid→fo (fo-+ fa fb) (valid-inl-flat-wf fl lmm tg slb ib pd pv) = fo-sum (inl-flat-wf fl lmm tg slb ib pd (valid→fo fa pv))
+    valid→fo (fo-+ fa fb) (valid-inr-flat-wf fl lmm tg slb ib pd pv) = fo-sum (inr-flat-wf fl lmm tg slb ib pd (valid→fo fb pv))
     valid→fo fo-μ (wrap w) = w
 
     cell→fo : ∀ {alloc C c cl s} → FOTy C → CellAt alloc C c cl s → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) alloc c cl s
@@ -931,12 +945,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
           → (∀ {m a c l s} → VA m a c l s → WA m a c l s)
           → (∀ {m a c l s} → VB m a c l s → WB m a c l s)
           → ∀ {m alloc v loc s} → SumV {A} {B} VA VB m alloc v loc s → SumV {A} {B} WA WB m alloc v loc s
-  sum-map f g (inl-wf nd lmm tg pp pb slb pv) = inl-wf nd lmm tg pp pb slb (f pv)
-  sum-map f g (inr-wf nd lmm tg pp pb slb pv) = inr-wf nd lmm tg pp pb slb (g pv)
-  sum-map f g (inl-reg-wf lmm tg rep pp slb) = inl-reg-wf lmm tg rep pp slb
-  sum-map f g (inl-flat-wf fl lmm tg slb ib pv) = inl-flat-wf fl lmm tg slb ib (f pv)
-  sum-map f g (inr-flat-wf fl lmm tg slb ib pv) = inr-flat-wf fl lmm tg slb ib (g pv)
-  sum-map f g (inr-reg-wf lmm tg rep pp slb) = inr-reg-wf lmm tg rep pp slb
+  sum-map f g (inl-wf nd lmm tg pp pb slb pd pv) = inl-wf nd lmm tg pp pb slb pd (f pv)
+  sum-map f g (inr-wf nd lmm tg pp pb slb pd pv) = inr-wf nd lmm tg pp pb slb pd (g pv)
+  sum-map f g (inl-reg-wf lmm tg rep pp slb pd) = inl-reg-wf lmm tg rep pp slb pd
+  sum-map f g (inl-flat-wf fl lmm tg slb ib pd pv) = inl-flat-wf fl lmm tg slb ib pd (f pv)
+  sum-map f g (inr-flat-wf fl lmm tg slb ib pd pv) = inr-flat-wf fl lmm tg slb ib pd (g pv)
+  sum-map f g (inr-reg-wf lmm tg rep pp slb pd) = inr-reg-wf lmm tg rep pp slb pd
 
   -- A forced layer IS a valid value of the layer type, and back where the
   -- functor is well formed (the constant positions are first-order).
@@ -1307,25 +1321,25 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
 
   decomposeInlWF : ∀ {m alloc A B} {a : ⟦ A ⟧} {loc s} →
     ValidAtWF m alloc {A + B} (inj₁ a) loc s → InlValidWF alloc {A} {B} (inj₁ a) loc s
-  decomposeInlWF (valid-inl-wf {a = a} {payload-loc = pl} {mA = mA} _ lmm _ pp pb slb pv) = record
+  decomposeInlWF (valid-inl-wf {a = a} {payload-loc = pl} {mA = mA} _ lmm _ pp pb slb pd pv) = record
     { a = a ; sucLoc-before = live→bf slb
     ; payload = payload-at-loc {mA = mA} pl pp (live→bf pb) pv ; v-is-inl = refl }
-  decomposeInlWF (valid-inl-reg-wf {a = a} lmm _ fit pp slb) = record
+  decomposeInlWF (valid-inl-reg-wf {a = a} lmm _ fit pp slb _) = record
     { a = a ; sucLoc-before = live→bf slb
     ; payload = payload-in-reg fit pp ; v-is-inl = refl }
-  decomposeInlWF (valid-inl-flat-wf {a = a} {mA = mA} fl lmm _ slb _ pv) = record
+  decomposeInlWF (valid-inl-flat-wf {a = a} {mA = mA} fl lmm _ slb _ _ pv) = record
     { a = a ; sucLoc-before = live→bf slb
     ; payload = payload-flat {mA = mA} fl pv ; v-is-inl = refl }
 
   decomposeInrWF : ∀ {m alloc A B} {b : ⟦ B ⟧} {loc s} →
     ValidAtWF m alloc {A + B} (inj₂ b) loc s → InrValidWF alloc {A} {B} (inj₂ b) loc s
-  decomposeInrWF (valid-inr-wf {b = b} {payload-loc = pl} {mB = mB} _ lmm _ pp pb slb pv) = record
+  decomposeInrWF (valid-inr-wf {b = b} {payload-loc = pl} {mB = mB} _ lmm _ pp pb slb pd pv) = record
     { b = b ; sucLoc-before = live→bf slb
     ; payload = payload-at-loc {mA = mB} pl pp (live→bf pb) pv ; v-is-inr = refl }
-  decomposeInrWF (valid-inr-reg-wf {b = b} lmm _ fit pp slb) = record
+  decomposeInrWF (valid-inr-reg-wf {b = b} lmm _ fit pp slb _) = record
     { b = b ; sucLoc-before = live→bf slb
     ; payload = payload-in-reg fit pp ; v-is-inr = refl }
-  decomposeInrWF (valid-inr-flat-wf {b = b} {mB = mB} fl lmm _ slb _ pv) = record
+  decomposeInrWF (valid-inr-flat-wf {b = b} {mB = mB} fl lmm _ slb _ _ pv) = record
     { b = b ; sucLoc-before = live→bf slb
     ; payload = payload-flat {mA = mB} fl pv ; v-is-inr = refl }
 
@@ -1364,25 +1378,30 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     here-tr : ∀ {l} → Here a₁ l → Here a₂ l
     here-tr (lv , ib) = bft _ lv , ibt _ lv ib
 
+    -- D382: a sum's padding is in its (live) block, so it reads the same
+    pad-tr : ∀ {l from c} → Live a₁ (sucLoc l) → Pad s₁ l from c → Pad s₂ l from c
+    pad-tr {l} slb pd j j<c =
+      proj₁ (pd j j<c) , trans (rd _ (q-bf _ (live-shift l _ slb))) (proj₂ (pd j j<c))
+
     mutual
       fo-tr : ∀ {m A v loc} → Q loc → ValidFO m a₁ {A} v loc s₁ → ValidFO m a₂ {A} v loc s₂
       fo-tr q (fo-unit unit-wf) = fo-unit unit-wf
       fo-tr q (fo-pair (pair-wf lmm slb c₁ c₂)) =
         fo-pair (pair-wf lmm (bft _ slb) (fo-cell q c₁) (fo-cell (q-bf _ (live-shift _ _ slb)) c₂))
-      fo-tr q (fo-sum (inl-wf nd lmm tg pp pb slb pv)) =
+      fo-tr q (fo-sum (inl-wf nd lmm tg pp pb slb pd pv)) =
         fo-sum (inl-wf nd lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (q-bf _ slb)) pp)
-                             (bft _ pb) (bft _ slb) (fo-tr (q-bf _ pb) pv))
-      fo-tr q (fo-sum (inr-wf nd lmm tg pp pb slb pv)) =
+                             (bft _ pb) (bft _ slb) (pad-tr slb pd) (fo-tr (q-bf _ pb) pv))
+      fo-tr q (fo-sum (inr-wf nd lmm tg pp pb slb pd pv)) =
         fo-sum (inr-wf nd lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (q-bf _ slb)) pp)
-                             (bft _ pb) (bft _ slb) (fo-tr (q-bf _ pb) pv))
-      fo-tr q (fo-sum (inl-reg-wf lmm tg rep pp slb)) =
-        fo-sum (inl-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb))
-      fo-tr q (fo-sum (inr-reg-wf lmm tg rep pp slb)) =
-        fo-sum (inr-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb))
-      fo-tr q (fo-sum (inl-flat-wf fl lmm tg slb ib pv)) =
-        fo-sum (inl-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (λ p → ibt _ slb (ib p)) (fo-tr (q-bf _ slb) pv))
-      fo-tr q (fo-sum (inr-flat-wf fl lmm tg slb ib pv)) =
-        fo-sum (inr-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (λ p → ibt _ slb (ib p)) (fo-tr (q-bf _ slb) pv))
+                             (bft _ pb) (bft _ slb) (pad-tr slb pd) (fo-tr (q-bf _ pb) pv))
+      fo-tr q (fo-sum (inl-reg-wf lmm tg rep pp slb pd)) =
+        fo-sum (inl-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb) (pad-tr slb pd))
+      fo-tr q (fo-sum (inr-reg-wf lmm tg rep pp slb pd)) =
+        fo-sum (inr-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb) (pad-tr slb pd))
+      fo-tr q (fo-sum (inl-flat-wf fl lmm tg slb ib pd pv)) =
+        fo-sum (inl-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (λ p → ibt _ slb (ib p)) (pad-tr slb pd) (fo-tr (q-bf _ slb) pv))
+      fo-tr q (fo-sum (inr-flat-wf fl lmm tg slb ib pd pv)) =
+        fo-sum (inr-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (λ p → ibt _ slb (ib p)) (pad-tr slb pd) (fo-tr (q-bf _ slb) pv))
       fo-tr q (fo-int (int-wf bf rl)) = fo-int (int-wf (bft _ bf) (trans (rd _ q) rl))
       fo-tr q (fo-float (float-wf bf rl)) = fo-float (float-wf (bft _ bf) (trans (rd _ q) rl))
       fo-tr q (fo-μwf ub wf x lv) = fo-μwf ub wf x (fo-tr q lv)
@@ -1428,20 +1447,20 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       v-tr Void q (wrap ())
       v-tr (A * B) q (valid-pair-wf lmm slb c₁ c₂) =
         valid-pair-wf lmm (bft _ slb) (v-cell A q c₁) (v-cell B (q-bf _ (live-shift _ _ slb)) c₂)
-      v-tr (A + B) q (valid-inl-wf nd lmm tg pp pb slb pv) =
+      v-tr (A + B) q (valid-inl-wf nd lmm tg pp pb slb pd pv) =
         valid-inl-wf nd lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (q-bf _ slb)) pp)
-                     (bft _ pb) (bft _ slb) (v-tr A (q-bf _ pb) pv)
-      v-tr (A + B) q (valid-inr-wf nd lmm tg pp pb slb pv) =
+                     (bft _ pb) (bft _ slb) (pad-tr slb pd) (v-tr A (q-bf _ pb) pv)
+      v-tr (A + B) q (valid-inr-wf nd lmm tg pp pb slb pd pv) =
         valid-inr-wf nd lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (q-bf _ slb)) pp)
-                     (bft _ pb) (bft _ slb) (v-tr B (q-bf _ pb) pv)
-      v-tr (A + B) q (valid-inl-reg-wf lmm tg rep pp slb) =
-        valid-inl-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb)
-      v-tr (A + B) q (valid-inr-reg-wf lmm tg rep pp slb) =
-        valid-inr-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb)
-      v-tr (A + B) q (valid-inl-flat-wf fl lmm tg slb ib pv) =
-        valid-inl-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (λ p → ibt _ slb (ib p)) (v-tr A (q-bf _ slb) pv)
-      v-tr (A + B) q (valid-inr-flat-wf fl lmm tg slb ib pv) =
-        valid-inr-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (λ p → ibt _ slb (ib p)) (v-tr B (q-bf _ slb) pv)
+                     (bft _ pb) (bft _ slb) (pad-tr slb pd) (v-tr B (q-bf _ pb) pv)
+      v-tr (A + B) q (valid-inl-reg-wf lmm tg rep pp slb pd) =
+        valid-inl-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb) (pad-tr slb pd)
+      v-tr (A + B) q (valid-inr-reg-wf lmm tg rep pp slb pd) =
+        valid-inr-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb) (pad-tr slb pd)
+      v-tr (A + B) q (valid-inl-flat-wf fl lmm tg slb ib pd pv) =
+        valid-inl-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (λ p → ibt _ slb (ib p)) (pad-tr slb pd) (v-tr A (q-bf _ slb) pv)
+      v-tr (A + B) q (valid-inr-flat-wf fl lmm tg slb ib pd pv) =
+        valid-inr-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (λ p → ibt _ slb (ib p)) (pad-tr slb pd) (v-tr B (q-bf _ slb) pv)
       v-tr (A ⇛ B) q (valid-closure-wf lmm ep cp eb slb fd runs) =
         valid-closure-wf lmm (trans (rd _ q) ep) (trans (rd _ (q-bf _ slb)) cp) (bft _ eb) (bft _ slb)
                          fd (runs-tr q runs)
@@ -1844,18 +1863,18 @@ open ClosureWellFormedBase using (wrap; unit-wf; pair-wf; inl-wf; inr-wf; inl-re
 open ClosureWellFormedDef using (closure-wf; closure-reg-wf)
 pattern valid-unit-wf = wrap unit-wf
 pattern valid-pair-wf {pair-loc} lmm slb c₁ c₂ = wrap (pair-wf {pair-loc = pair-loc} lmm slb c₁ c₂)
-pattern valid-inl-wf {m} {a} {sum-loc} {payload-loc} {mA} nd lmm tg pp pb slb pv =
-  wrap (inl-wf {m = m} {a = a} {sum-loc = sum-loc} {payload-loc = payload-loc} {mA = mA} nd lmm tg pp pb slb pv)
-pattern valid-inr-wf {m} {b} {sum-loc} {payload-loc} {mB} nd lmm tg pp pb slb pv =
-  wrap (inr-wf {m = m} {b = b} {sum-loc = sum-loc} {payload-loc = payload-loc} {mB = mB} nd lmm tg pp pb slb pv)
-pattern valid-inl-reg-wf {m} {a} {sum-loc} lmm tg rep pp slb =
-  wrap (inl-reg-wf {m = m} {a = a} {sum-loc = sum-loc} lmm tg rep pp slb)
-pattern valid-inr-reg-wf {m} {b} {sum-loc} lmm tg rep pp slb =
-  wrap (inr-reg-wf {m = m} {b = b} {sum-loc = sum-loc} lmm tg rep pp slb)
-pattern valid-inl-flat-wf {m} {a} {sum-loc} {mA} fl lmm tg slb ib pv =
-  wrap (inl-flat-wf {m = m} {a = a} {sum-loc = sum-loc} {mA = mA} fl lmm tg slb ib pv)
-pattern valid-inr-flat-wf {m} {b} {sum-loc} {mB} fl lmm tg slb ib pv =
-  wrap (inr-flat-wf {m = m} {b = b} {sum-loc = sum-loc} {mB = mB} fl lmm tg slb ib pv)
+pattern valid-inl-wf {m} {a} {sum-loc} {payload-loc} {mA} nd lmm tg pp pb slb pd pv =
+  wrap (inl-wf {m = m} {a = a} {sum-loc = sum-loc} {payload-loc = payload-loc} {mA = mA} nd lmm tg pp pb slb pd pv)
+pattern valid-inr-wf {m} {b} {sum-loc} {payload-loc} {mB} nd lmm tg pp pb slb pd pv =
+  wrap (inr-wf {m = m} {b = b} {sum-loc = sum-loc} {payload-loc = payload-loc} {mB = mB} nd lmm tg pp pb slb pd pv)
+pattern valid-inl-reg-wf {m} {a} {sum-loc} lmm tg rep pp slb pd =
+  wrap (inl-reg-wf {m = m} {a = a} {sum-loc = sum-loc} lmm tg rep pp slb pd)
+pattern valid-inr-reg-wf {m} {b} {sum-loc} lmm tg rep pp slb pd =
+  wrap (inr-reg-wf {m = m} {b = b} {sum-loc = sum-loc} lmm tg rep pp slb pd)
+pattern valid-inl-flat-wf {m} {a} {sum-loc} {mA} fl lmm tg slb ib pd pv =
+  wrap (inl-flat-wf {m = m} {a = a} {sum-loc = sum-loc} {mA = mA} fl lmm tg slb ib pd pv)
+pattern valid-inr-flat-wf {m} {b} {sum-loc} {mB} fl lmm tg slb ib pd pv =
+  wrap (inr-flat-wf {m = m} {b = b} {sum-loc = sum-loc} {mB = mB} fl lmm tg slb ib pd pv)
 pattern valid-closure-wf {f} {closure-loc} {env-loc} lmm ep cp eb slb fd runs =
   wrap (closure-wf {f = f} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
 pattern valid-closure-reg-wf {f} {env} {closure-loc} lmm rep ep cp slb fd runs =

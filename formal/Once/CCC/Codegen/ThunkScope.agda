@@ -62,7 +62,7 @@ open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep
 open import Once.CCC.Codegen.IRToTrace o using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; out-trace; cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; push2; pop2; wrap-sum; resuspend-layer;
   cata-call-from; inj-trace; env-entry; getμ)
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; kind; lkind; lsz;
-  put-All; put-k-All; get-All; get-k-All)
+  put-All; put-k-All; get-All; get-k-All; fill; fill-All)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type) renaming (_+_ to _+ᵀ_)
 open import Once.CCC.Machine.SMCore using (mov-to-output; load-at)
@@ -166,13 +166,16 @@ module Scope {FS : FrameSemantics} where
   getμ-nt : ∀ G k → NoThunkT (getμ G k)
   getμ-nt G k = get-k-nt (lkind G word) (lsz G 1) k
 
+  fill-nt : ∀ from c → NoThunkT (fill from c)
+  fill-nt from c = fill-All from c refl (λ _ → refl)
+
   wrap-nt : ∀ tag pk ps ss s → NoThunkT (wrap-sum tag pk ps ss s)
   wrap-nt tag pk ps ss s =
-    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-k-nt pk ps s (suc s) 1) (refl ∷ [])
+    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-k-nt pk ps s (suc s) 1) (++⁺ (fill-nt _ _) (refl ∷ []))
 
   inj-nt : ∀ t P S n → NoThunkT (inj-trace t P S n)
   inj-nt t P S n =
-    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nt P n (suc n) 1) (refl ∷ [])
+    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nt P n (suc n) 1) (++⁺ (fill-nt _ _) (refl ∷ []))
 
   call-nt : ∀ i0 E lk ls cl k ev pr → thunk-of? i0 ≡ nothing → NoThunkT (cata-call-from i0 E lk ls cl k ev pr)
   call-nt i0 E lk ls cl k ev pr e0 =
@@ -238,12 +241,12 @@ module Scope {FS : FrameSemantics} where
     ++⁺ (refl ∷ ++⁺ (get-nt (⟦ G ⟧TI A) 1)
                     (++⁺ (resuspend-nt H E A (proj₁ RF) (proj₁ (proj₂ RF)) lbl env wfG)
                          (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                          ++⁺ (put-nt (⟦ G ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (refl ∷ []))))
+                          ++⁺ (put-nt (⟦ G ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (++⁺ (fill-nt _ _) (refl ∷ [])))))
         (refl ∷ refl ∷
          ++⁺ (refl ∷ ++⁺ (get-nt (⟦ F ⟧TI A) 1)
                          (++⁺ (resuspend-nt H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
                               (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                               ++⁺ (put-nt (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (refl ∷ []))))
+                               ++⁺ (put-nt (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (++⁺ (fill-nt _ _) (refl ∷ [])))))
              (refl ∷ []))
     where
       RF = resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF

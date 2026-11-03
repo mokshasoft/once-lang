@@ -25,7 +25,7 @@ open import Once.Spec.Type using (Ty; Fun; var)
 import Once.Spec.Type as T
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; restore-input; load-from-slot; load-at; store-at; addr-at; mov-to-output)
+  using (AbstractInstr; AbstractTrace; restore-input; load-from-slot; load-at; store-at; addr-at; mov-to-output; instr-load-tag-lit)
 
 data Kind : Set where
   word flat : Kind
@@ -48,6 +48,14 @@ copy-from src blk off i zero    = []
 copy-from src blk off i (suc k) =
   restore-input src ∷ load-at i ∷ restore-input blk ∷ store-at (off + i) ∷
   copy-from src blk off (suc i) k
+
+-- D382: a sum's PADDING (the words past a smaller alternative's payload) is
+-- written too — `c` words from word `from` of the block in `Input1` — so every
+-- word of a flat value is written and a copy of it reads no unwritten cell
+-- (D367). The word is any; the tag literal 0 is at hand.
+fill : (from c : ℕ) → AbstractTrace
+fill from zero    = []
+fill from (suc c) = instr-load-tag-lit 0 ∷ store-at from ∷ fill (suc from) c
 
 -- a component, stashed in slot `stash`, into the block in slot `blk` at `off`
 put-k : Kind → ℕ → (stash blk off : ℕ) → AbstractTrace
@@ -106,6 +114,10 @@ module _ {P : AbstractInstr → Set} where
 
   get-All : ∀ X k → (∀ j → P (load-at j)) → (∀ j → P (addr-at j)) → P mov-to-output → All P (get X k)
   get-All X = get-k-All (kind X) (size X)
+
+  fill-All : ∀ from c → P (instr-load-tag-lit 0) → (∀ j → P (store-at j)) → All P (fill from c)
+  fill-All from zero    pt ps = []
+  fill-All from (suc c) pt ps = pt ∷ ps from ∷ fill-All (suc from) c pt ps
 
 ------------------------------------------------------------------------
 -- THE SAME RULE ON SPEC TYPES, for the walks indexed by a Spec functor (the

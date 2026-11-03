@@ -43,7 +43,7 @@ open import Once.Denotation.Program using (Leaves)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.FlatLayout
-  using (Kind; word; flat; kind; put; put-k; get; get-k; put-All; put-k-All; get-All; get-k-All; lkind; lsz)
+  using (Kind; word; flat; kind; put; put-k; get; get-k; fill; put-All; put-k-All; get-All; get-k-All; fill-All; lkind; lsz)
 open import Once.CCC.Codegen.IRToTrace o using
   (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-call-from; cata-trace-const; fsize; resuspend-layer; env-entry; env-prologue; inj-trace)
 open import Once.CCC.Codegen.FrameFreeTrace o using (trace-of; cata-trace-of)
@@ -75,8 +75,11 @@ get-cl X k = get-All {P} X k (λ _ → tt) (λ _ → tt) tt
 get-k-cl : ∀ kd n k → CLTrace (get-k kd n k)
 get-k-cl kd n k = get-k-All {P} kd n k (λ _ → tt) (λ _ → tt) tt
 
+fill-cl : ∀ from c → CLTrace (fill from c)
+fill-cl from c = fill-All {P} from c tt (λ _ → tt)
+
 inj-cl : ∀ t P′ S n → CLTrace (inj-trace t P′ S n)
-inj-cl t P′ S n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-cl P′ n (suc n) 1) (tt ∷ [])
+inj-cl t P′ S n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-cl P′ n (suc n) 1) (++⁺ (fill-cl _ _) (tt ∷ []))
 
 env-entry-cl : ∀ kd E A → CLTrace (proj₂ (env-entry kd E A))
 env-entry-cl word E A = []
@@ -94,7 +97,7 @@ pop2-cl topSlot = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 wrap-sum-cl : ∀ tag pk ps ss s → CLTrace (wrap-sum tag pk ps ss s)
 wrap-sum-cl tag pk ps ss s =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-k-cl pk ps s (suc s) 1) (tt ∷ [])
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-k-cl pk ps s (suc s) 1) (++⁺ (fill-cl _ _) (tt ∷ []))
 
 getμ-cl : ∀ (G : Fun 0) k → CLTrace (get-k (lkind G word) (lsz G 1) k)
 getμ-cl G k = get-k-cl (lkind G word) (lsz G 1) k
@@ -283,16 +286,17 @@ resuspend-cl H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
   where
     n2 = proj₁ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
     l2 = proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
-    arm : ∀ (P′ : IRFunctor) {t} → CLTrace t → ∀ {tag sz}
+    arm : ∀ (P′ : IRFunctor) {t} → CLTrace t → ∀ {tag sz c}
         → CLTrace ((SM.restore-input n ∷ []) ++ get (⟦ P′ ⟧TI A) 1 ++ t ++
                    (SM.store-at-slot (suc (suc n)) ∷ SM.instr-alloc-heap sz ∷
                     SM.store-at-slot (suc n) ∷ SM.mov-to-input ∷
                     SM.instr-load-tag-lit tag ∷ SM.store-at 0 ∷ []) ++
                    put (⟦ P′ ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
+                   fill (suc (Once.CCC.Codegen.Size.size (⟦ P′ ⟧TI (ν-type H)))) c ++
                    (SM.load-from-slot (suc n) ∷ []))
     arm P′ ih =
       ++⁺ (tt ∷ []) (++⁺ (get-cl (⟦ P′ ⟧TI A) 1) (++⁺ ih
-      (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) (++⁺ (put-cl (⟦ P′ ⟧TI (ν-type H)) _ _ 1) (tt ∷ [])))))
+      (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) (++⁺ (put-cl (⟦ P′ ⟧TI (ν-type H)) _ _ 1) (++⁺ (fill-cl _ _) (tt ∷ []))))))
 
 calls-blocks : ∀ {A B} (ir : IR A B) (n l : ℕ) → LK ir
              → CLTrace (blocks-layout (bodies-of (ir-to-trace' n l ir)))

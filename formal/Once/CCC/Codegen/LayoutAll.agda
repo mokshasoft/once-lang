@@ -29,7 +29,7 @@ open import Once.CCC.Machine.SMCore
          instr-alloc-heap; mov-to-input; mov-to-output; instr-load-tag-lit; instr-load-code-addr;
          instr-save-closure-reg; instr-call-closure)
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; lkind; lsz;
-  put-All; put-k-All; get-All; get-k-All)
+  put-All; put-k-All; get-All; get-k-All; fill; fill-All)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.IRToTrace o using (wrap-sum; inj-trace; cata-call-from; cata-call-setup; env-entry; getμ)
 
@@ -55,6 +55,9 @@ module Seg {P : AbstractInstr → Set}
   put-k-P : ∀ kd n s b o′ → All P (put-k kd n s b o′)
   put-k-P kd n s b o′ = put-k-All kd n s b o′ (p-ri s) (p-ri b) (p-lfs s) p-la p-sa
 
+  fill-P : ∀ from c → All P (fill from c)
+  fill-P from c = fill-All from c (p-tag 0) p-sa
+
   get-P : ∀ X k → All P (get X k)
   get-P X k = get-All X k p-la p-aa p-mo
 
@@ -67,12 +70,12 @@ module Seg {P : AbstractInstr → Set}
   wrap-P : ∀ tag pk ps ss s → All P (wrap-sum tag pk ps ss s)
   wrap-P tag pk ps ss s =
     p-sas s ∷ p-alloc _ ∷ p-sas (suc s) ∷ p-mi ∷ p-tag tag ∷ p-sa 0 ∷
-    ++⁺ (put-k-P pk ps s (suc s) 1) (p-lfs (suc s) ∷ [])
+    ++⁺ (put-k-P pk ps s (suc s) 1) (++⁺ (fill-P (suc ps) _) (p-lfs (suc s) ∷ []))
 
   inj-P : ∀ t Q S n → All P (inj-trace t Q S n)
   inj-P t Q S n =
     p-mo ∷ p-sas n ∷ p-alloc _ ∷ p-sas (suc n) ∷ p-mi ∷ p-tag t ∷ p-sa 0 ∷
-    ++⁺ (put-P Q n (suc n) 1) (p-lfs (suc n) ∷ [])
+    ++⁺ (put-P Q n (suc n) 1) (++⁺ (fill-P (suc (size Q)) _) (p-lfs (suc n) ∷ []))
 
   call-P : ∀ i0 → P i0 → ∀ E lk ls cl k ev pr → All P (cata-call-from i0 E lk ls cl k ev pr)
   call-P i0 p0 E lk ls cl k ev pr =
