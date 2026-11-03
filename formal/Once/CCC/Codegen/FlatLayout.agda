@@ -16,9 +16,12 @@
 
 module Once.CCC.Codegen.FlatLayout where
 
-open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_)
 open import Data.List using ([]; _∷_)
-open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float) renaming (_+_ to _+ᵀ_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float; ⌈_⌉) renaming (_+_ to _+ᵀ_)
+open import Once.Spec.Type using (Ty; Fun; var)
+import Once.Spec.Type as T
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; restore-input; load-from-slot; load-at; store-at; addr-at)
@@ -65,3 +68,67 @@ get-k flat (suc _) k = addr-at k ∷ []
 
 get : IRTy → ℕ → AbstractTrace
 get X = get-k (kind X) (size X)
+
+------------------------------------------------------------------------
+-- THE SAME RULE ON SPEC TYPES, for the walks indexed by a Spec functor (the
+-- cata's `Fun 0`): a type's size and kind, and a LAYER's `⟦ G ⟧ X` at a
+-- carrier of kind `ck` and size `cs` (a μ carrier: a word of size 1).
+------------------------------------------------------------------------
+ssize : ∀ {m} → Ty m → ℕ
+ssize (var _)        = 1
+ssize T.Unit         = 0
+ssize T.Void         = 0
+ssize (A T.* B)      = ssize A + ssize B
+ssize (A T.+ B)      = suc (ssize A ⊔ ssize B)
+ssize (_ T.⇒[ _ ] _) = 1
+ssize (T.μ _)        = 1
+ssize (T.ν _ _)      = 1
+ssize T.Int          = 1
+ssize T.Float        = 1
+
+skind : ∀ {m} → Ty m → Kind
+skind (var _)        = word
+skind T.Unit         = flat
+skind T.Void         = flat
+skind (_ T.* _)      = flat
+skind (_ T.+ _)      = flat
+skind (_ T.⇒[ _ ] _) = word
+skind (T.μ _)        = word
+skind (T.ν _ _)      = word
+skind T.Int          = word
+skind T.Float        = word
+
+lkind : Fun 0 → Kind → Kind
+lkind (T.K A)   ck = skind A
+lkind T.Id      ck = ck
+lkind (_ T.⊕ _) ck = flat
+lkind (_ T.⊗ _) ck = flat
+
+lsz : Fun 0 → ℕ → ℕ
+lsz (T.K A)   cs = ssize A
+lsz T.Id      cs = cs
+lsz (F T.⊕ G) cs = suc (lsz F cs ⊔ lsz G cs)
+lsz (F T.⊗ G) cs = lsz F cs + lsz G cs
+
+-- on the image of `⌈_⌉`, the two rules agree
+size-ssize : ∀ (A : IRTy) → size A ≡ ssize ⌈ A ⌉
+size-ssize Unit       = refl
+size-ssize Void       = refl
+size-ssize (A * B)    = cong₂ _+_ (size-ssize A) (size-ssize B)
+size-ssize (A +ᵀ B)   = cong suc (cong₂ _⊔_ (size-ssize A) (size-ssize B))
+size-ssize (A ⇛ B)    = refl
+size-ssize (μ-type F) = refl
+size-ssize (ν-type F) = refl
+size-ssize Int        = refl
+size-ssize Float      = refl
+
+kind-skind : ∀ (A : IRTy) → kind A ≡ skind ⌈ A ⌉
+kind-skind Unit       = refl
+kind-skind Void       = refl
+kind-skind (A * B)    = refl
+kind-skind (A +ᵀ B)   = refl
+kind-skind (A ⇛ B)    = refl
+kind-skind (μ-type F) = refl
+kind-skind (ν-type F) = refl
+kind-skind Int        = refl
+kind-skind Float      = refl
