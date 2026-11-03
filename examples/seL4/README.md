@@ -9,9 +9,10 @@ assembly of the seL4 Interpretations and Host ([plan 0.127](../../plans/0.127-se
 ## Run it
 
 ```sh
-nix build .#echo-test -L     # build compiler, kernel and image; boot under QEMU; check the output
-nix build .#numbers-check -L # check every seL4 number in the Strata against the kernel
-nix flake check              # both
+nix build .#echo-test -L      # build compiler, kernel and image; boot under QEMU; check the output
+nix build .#exhausted-test -L # a root task that allocates without bound ends `exhausted`
+nix build .#numbers-check -L  # check every seL4 number in the Strata against the kernel
+nix flake check               # all three
 nix run .#simulate           # boot it interactively (Ctrl-A X quits QEMU)
 ```
 
@@ -39,19 +40,26 @@ The image holds three Once programs (`Echo/`), each with its own `main`, its own
 | 1, the server | `Server.once` | forever: `seL4_Recv` on the endpoint, `seL4_Reply` with the first message word |
 | 2, the client | `Client.once` | for 65 to 90: `seL4_Call` the server, print the answer with `seL4_DebugPutChar` |
 
-`link-image.sh` builds each program alone and links them into one ELF: program 0 keeps `_start`;
-program n's `_start` (its only global symbol) is renamed `once_program_<n>`, which the seL4 Host's
-program table names. `I.SeL4.Program.start` starts program n on a thread at that address, on the
-stack the Host keeps for it.
+`link-image.sh` builds each program alone and links them into one ELF: program 0 keeps `once_main`
+(the compiler's portable entry); program n's `once_main` (its only global symbol) is renamed
+`once_program_<n>`, which the seL4 Host's program table names. `I.SeL4.Program.start` starts program
+n on a thread at the Host's `once_sel4_program_enter`, with the stack pointer at the top of the
+region the Host keeps for it; that points the heap at the region's bottom and jumps to the program.
+
+Each program's region is 1 MiB, its cells growing up from the bottom and its stack down from the
+top (plan 0.123 C.5). When the two would meet, a room check in the program calls the Host's
+`once_exhausted`, which prints `Once: exhausted` and suspends the thread (`Exhausted/Root.once`,
+`exhausted-test`).
 
 The programs share the root task's address space and CSpace for now; giving each its own CNode
 (and later VSpace) is the step towards isolation.
 
 ## The pieces
 
-- `Strata/Hosts/SeL4/Host.x86_64` — the seL4 Host: the root task's entry (a stack, the bootinfo
-  pointer saved, then the compiler's `_start`), the program table and stacks, and `leave` (print a
-  line, suspend the thread). `Host.x86_64.ld` names the entry for the link.
+- `Strata/Hosts/SeL4/Host.x86_64` — the seL4 Host: the root task's entry (its region's stack and
+  heap, the bootinfo pointer saved, then the compiler's `once_main`), the program table, regions and
+  entry, and `leave` and `exhausted` (print a line, suspend the thread). `Host.x86_64.ld` names the
+  entry for the link.
 - `Strata/Interpretations/SeL4/` — `BootInfo`, `Untyped`, `TCB`, `CNode`, `IPC`, `Notification`,
   `Debug`, `Program`, x86_64 only. The Host holds their shared routines (reading a tuple argument,
   building a tuple answer, an object invocation).
@@ -61,14 +69,15 @@ The programs share the root task's address space and CSpace for now; giving each
   pinned kernel's own headers and fails on any difference. (It found `seL4_SlotBits` and the read
   and write rights wrong, besides the syscall numbers.)
 - `flake.nix` — the kernel (`seL4-kernel-x86_64`: pc99, debug, printing, seL4's own simulation
-  settings), the image (`echo-image`), the checks (`echo-test`, `numbers-check`) and `simulate`.
+  settings), the images (`echo-image`, `exhausted-image`), the checks (`echo-test`,
+  `exhausted-test`, `numbers-check`) and `simulate`.
 
 ## Not yet
 
 - Other architectures: riscv64 and x86_32 (plan 0.127 C); arm64 once there is an ARM64 backend.
-- `CNode` and `Notification` are number-checked but not yet run: `Caps/Root.once` tests them, but a
-  root task alone runs out of its 64 KiB heap into its stack before it starts (nothing reclaims the
-  heap yet, and running out is not yet detected: plan 0.123). In the echo image the root task's
-  heap overflows into the server's and client's unused heaps, which is why that test passes.
+- `CNode` and `Notification` are number-checked but not yet run: `Caps/Root.once` tests them, but it
+  ran out of its old 64 KiB heap before it started. Running out is now detected (`exhausted`), and
+  the region is 1 MiB; the test is not yet wired into the flake (plan 0.127). Nothing reclaims the
+  heap yet (plan 0.123 Part B).
 - Isolation between the programs (own CNode, own VSpace).
 - Message lengths beyond the four register words (needs an IPC buffer per thread).
