@@ -43,12 +43,13 @@ open import Once.CCC.Machine.SMPrimitives using (module MemoryOps)
 open MemoryOps {FS} using (readLoc-writeLoc-same)
 open AllocState using (current-frame)
 open LocState using (halted; regs)
+open ExecFinal {FS} using (in-block?)
+open AllocState using (block-size)
+open import Once.CCC.Codegen.FlatLayout using (copy-from) public
 
-copy-from : (src blk off i k : ℕ) → AbstractTrace
-copy-from src blk off i zero    = []
-copy-from src blk off i (suc k) =
-  restore-input src ∷ load-at i ∷ restore-input blk ∷ store-at (off + i) ∷
-  copy-from src blk off (suc i) k
+-- D379: each destination word is a cell of the destination's block
+InBlock : AllocState {FS} → HeapLocation → ℕ → Set
+InBlock alloc dh n = in-block? (block-size alloc) (AtDynamic (offsetHL dh n)) ≡ true
 
 -- the state after one word: the three register writes, then the one heap write
 one-word : ∀ (s : LocState FS) (sh dh : HeapLocation) (w : StoredValue FS) (off i : ℕ) → LocState FS
@@ -64,9 +65,10 @@ copy-one : ∀ (src blk off i k : ℕ) (s : LocState FS) (alloc : AllocState {FS
          → readLoc s (AtStack (current-frame alloc) src) ≡ just (SV-Ptr (AtDynamic sh))
          → readLoc s (AtDynamic (offsetHL sh i)) ≡ just w
          → readLoc s (AtStack (current-frame alloc) blk) ≡ just (SV-Ptr (AtDynamic dh))
+         → InBlock alloc dh (off + i)
          → exec-trace (copy-from src blk off i (suc k)) s alloc
            ≡ exec-trace (copy-from src blk off (suc i) k) (one-word s sh dh w off i) alloc
-copy-one src blk off i k s alloc sh dh w h rs rw rb rewrite h | rs | h | rw | rb = refl
+copy-one src blk off i k s alloc sh dh w h rs rw rb ib rewrite h | rs | h | rw | rb | ib = refl
 
 ------------------------------------------------------------------------
 -- ONE HEAP WRITE (its value abstract): it keeps the run going, leaves the
@@ -126,10 +128,11 @@ copy-run : ∀ (src blk off i k : ℕ) (s : LocState FS) (alloc : AllocState {FS
          → readLoc s (AtStack (current-frame alloc) src) ≡ just (SV-Ptr (AtDynamic sh))
          → readLoc s (AtStack (current-frame alloc) blk) ≡ just (SV-Ptr (AtDynamic dh))
          → (∀ j → j < k → Σ (StoredValue FS) (λ w → readLoc s (AtDynamic (offsetHL sh (i + j))) ≡ just w))
+         → (∀ j → j < k → InBlock alloc dh (off + (i + j)))
          → CopyOut off i k sh dh s alloc (exec-trace (copy-from src blk off i k) s alloc)
-copy-run src blk off i zero s alloc sh dh ne h rs rb wr =
+copy-run src blk off i zero s alloc sh dh ne h rs rb wr ibs =
   refl , h , (λ j ()) , (λ loc _ → refl)
-copy-run src blk off i (suc k) s alloc sh dh ne h rs rb wr =
+copy-run src blk off i (suc k) s alloc sh dh ne h rs rb wr ibs =
   subst (CopyOut off i (suc k) sh dh s alloc) (sym eq) out
   where
     w  = proj₁ (wr 0 (s≤s z≤n))
@@ -141,6 +144,7 @@ copy-run src blk off i (suc k) s alloc sh dh ne h rs rb wr =
     eq : exec-trace (copy-from src blk off i (suc k)) s alloc
        ≡ exec-trace (copy-from src blk off (suc i) k) s₁ alloc
     eq = copy-one src blk off i k s alloc sh dh w h rs rw rb
+           (subst (λ x → InBlock alloc dh (off + x)) (+-identityʳ i) (ibs 0 (s≤s z≤n)))
     -- what the one write leaves
     s₁-other : ∀ loc → loc ≢ AtDynamic (offsetHL dh (off + i)) → readLoc s₁ loc ≡ readLoc s loc
     s₁-other loc ne′ = trans (writeLoc-preserves-other s₀ _ loc w (λ e → ne′ (sym e))) (regs-mem s _ loc)
@@ -152,6 +156,7 @@ copy-run src blk off i (suc k) s alloc sh dh ne h rs rb wr =
                     , trans (s₁-other _ (blk-ne sh dh (suc (i + j)) (off + i) ne))
                             (subst (λ x → readLoc s (AtDynamic (offsetHL sh x)) ≡ just (proj₁ (wr (suc j) (s≤s j<k))))
                                    (+-suc i j) (proj₂ (wr (suc j) (s≤s j<k)))))
+           (λ j j<k → subst (λ x → InBlock alloc dh (off + x)) (+-suc i j) (ibs (suc j) (s≤s j<k)))
     r = exec-trace (copy-from src blk off (suc i) k) s₁ alloc
     out : CopyOut off i (suc k) sh dh s alloc r
     out = proj₁ ih , proj₁ (proj₂ ih) , copied , other
