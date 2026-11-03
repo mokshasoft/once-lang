@@ -22,7 +22,7 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong; cong₂)
 open import Once.Spec.Grade using (Purity; Zero; One; Many; mk-kind; fin)
 open import Once.Spec.Type using (Ty; Type; Fun; KCtx; Base; ∅ₖ; Respects; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν;
-                                  K; Id; _⊕_; _⊗_; TySub; _⟨_⟩; _⟨_⟩F; at₀; Occurs; OccursF; o-var; o-*ˡ; o-*ʳ; o-+ˡ; o-+ʳ; o-⇒ʳ; o-μ; o-ν; o-K; o-⊕ˡ; o-⊕ʳ; o-⊗ˡ; o-⊗ʳ)
+                                  K; Id; _⊕_; _⊗_; TySub; _⟨_⟩; _⟨_⟩F; at₀)
 open import Once.Spec.Type.Substitution using (base-⟨⟩)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF; μS; inS)
 open import Once.Spec.Effect Σ using (M; fmap; νM; ana; LayerEq; T∞; _>>=∞_; return∞; _≈_; toT∞)
@@ -35,7 +35,7 @@ open import Once.Metatheory.Unfold Σ using (module Unfold)
 open import Once.Metatheory.Erase Σ using (toT∞-fmap)
 open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; toObserved; fromObserved)
 open import Once.Metatheory.Coherence.Layer Σ using (sameBase; reflBase; relatedFmap; LayerEq-∀; outRel; module Ana)
-open import Once.Metatheory.Laws.MapSem Σ using (module MapAt)
+open import Once.Metatheory.Laws.MapSem Σ using (module MapAt; Occ; OccF; p-var; p-*ˡ; p-*ʳ; p-+ˡ; p-+ʳ; p-⇒ʳ; p-μ; p-ν; p-K; p-⊕ˡ; p-⊕ʳ; p-⊗ˡ; p-⊗ʳ)
 
 module MapResp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) (A B : Ty m) where
   open MapAt Δ σ A B
@@ -57,28 +57,28 @@ module MapResp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ 
   mutual
     resp : ∀ T (c c′ : Cov T) {φ φ′ : Fn T} → SameFn φ φ′
          → ∀ {x x′} → Same (T ⟨ at₀ A ⟩ ⟨ σ ⟩) x x′ → Same (T ⟨ at₀ B ⟩ ⟨ σ ⟩) (mapS T c φ x) (mapS T c′ φ′ x′)
-    resp (var fz)      c c′ h s = h o-var _ _ s
+    resp (var fz)      c c′ h s = h p-var _ _ s
     resp (var (fs i))  c c′ h s = s
     resp Unit          c c′ h s = s
     resp Void          c c′ h s = s
     resp Int           c c′ h s = s
     resp Float         c c′ h s = s
     resp (T₁ * T₂) (c₁ , c₂) (c₁′ , c₂′) h {x₁ , x₂} {y₁ , y₂} (s₁ , s₂) =
-      resp T₁ c₁ c₁′ (λ o → h (o-*ˡ o)) s₁ , resp T₂ c₂ c₂′ (λ o → h (o-*ʳ o)) s₂
-    resp (T₁ + T₂) (c₁ , c₂) (c₁′ , c₂′) h {inj₁ x} {inj₁ y} s = resp T₁ c₁ c₁′ (λ o → h (o-+ˡ o)) s
-    resp (T₁ + T₂) (c₁ , c₂) (c₁′ , c₂′) h {inj₂ x} {inj₂ y} s = resp T₂ c₂ c₂′ (λ o → h (o-+ʳ o)) s
+      resp T₁ c₁ c₁′ (λ o → h (p-*ˡ o)) s₁ , resp T₂ c₂ c₂′ (λ o → h (p-*ʳ o)) s₂
+    resp (T₁ + T₂) (c₁ , c₂) (c₁′ , c₂′) h {inj₁ x} {inj₁ y} s = resp T₁ c₁ c₁′ (λ o → h (p-+ˡ o)) s
+    resp (T₁ + T₂) (c₁ , c₂) (c₁′ , c₂′) h {inj₂ x} {inj₂ y} s = resp T₂ c₂ c₂′ (λ o → h (p-+ʳ o)) s
     resp (T₁ + T₂) c c′ h {inj₁ x} {inj₂ y} ()
     resp (T₁ + T₂) c c′ h {inj₂ x} {inj₁ y} ()
     resp (T₁ ⇒[ mk-kind Zero π ] T₂) (e , c) (e′ , c′) h {g} {g′} s = toObserved
       (≈-Relatedˡ (toT∞-fmap π _ (g _)) (≈-Relatedʳ (toT∞-fmap π _ (g′ _))
-        (relatedFmap (fromObserved s) (resp T₂ c c′ (λ o → h (o-⇒ʳ o))))))
+        (relatedFmap (fromObserved s) (resp T₂ c c′ (λ o → h (p-⇒ʳ o))))))
     resp (T₁ ⇒[ mk-kind One π ] T₂) (e , c) (e′ , c′) h {g} {g′} s y y′ sy = toObserved
       (≈-Relatedˡ (toT∞-fmap π _ (g _)) (≈-Relatedʳ (toT∞-fmap π _ (g′ _))
-        (relatedFmap (fromObserved (s _ _ (substSame e e′ sy))) (resp T₂ c c′ (λ o → h (o-⇒ʳ o))))))
+        (relatedFmap (fromObserved (s _ _ (substSame e e′ sy))) (resp T₂ c c′ (λ o → h (p-⇒ʳ o))))))
     resp (T₁ ⇒[ mk-kind Many π ] T₂) (e , c) (e′ , c′) h {g} {g′} s y y′ sy = toObserved
       (≈-Relatedˡ (toT∞-fmap π _ (g _)) (≈-Relatedʳ (toT∞-fmap π _ (g′ _))
-        (relatedFmap (fromObserved (s _ _ (substSame e e′ sy))) (resp T₂ c c′ (λ o → h (o-⇒ʳ o))))))
-    resp (μ G) c c′ h {x} refl = muResp G c c′ (λ o → h (o-μ o)) x
+        (relatedFmap (fromObserved (s _ _ (substSame e e′ sy))) (resp T₂ c c′ (λ o → h (p-⇒ʳ o))))))
+    resp (μ G) c c′ h {x} refl = muResp G c c′ (λ o → h (p-μ o)) x
     resp (ν G f) c c′ h {x} {x′} s n = Ana.anaRel f (CB G) ((ν (G ⟨ at₀ A ⟩F) f) ⟨ σ ⟩) _ _ coalg n s
       where
         coalg : ∀ {a a′} → Same ((ν (G ⟨ at₀ A ⟩F) f) ⟨ σ ⟩) a a′
@@ -86,7 +86,7 @@ module MapResp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ 
         coalg {a} {a′} sa =
           ≈-Relatedˡ (toT∞-fmap (fin f) _ (outν a)) (≈-Relatedʳ (toT∞-fmap (fin f) _ (outν a′))
             (relatedFmap (outRel f (CA G) sa)
-              (λ p → nuResp G c c′ (λ o → h (o-ν o)) (LayerEq-∀ (CA G) p))))
+              (λ p → nuResp G c c′ (λ o → h (p-ν o)) (LayerEq-∀ (CA G) p))))
 
     muResp : ∀ G (c c′ : CovF G) {φ φ′ : FnF G} → SameFn φ φ′ → ∀ x → muMap G c φ x ≡ muMap G c′ φ′ x
     muResp G c c′ h (inS l) = cong inS (muLayerResp G G c c′ h c c′ h l)
@@ -95,25 +95,25 @@ module MapResp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ 
                 → (cH cH′ : CovF H) {φ φ′ : FnF H} → SameFn φ φ′
                 → ∀ l → muLayer G H cG φG cH φ l ≡ muLayer G H cG′ φG′ cH′ φ′ l
     muLayerResp G (K C) cG cG′ hG (cC , bA , bB) (cC′ , _ , _) h l =
-      baseEq {C = C} bB (resp C cC cC′ (λ o → h (o-K o)) (reflBase (base-⟨⟩ r bA) l))
+      baseEq {C = C} bB (resp C cC cC′ (λ o → h (p-K o)) (reflBase (base-⟨⟩ r bA) l))
     muLayerResp G Id cG cG′ hG cH cH′ h l = muResp G cG cG′ hG l
     muLayerResp G (H₁ ⊕ H₂) cG cG′ hG (c₁ , c₂) (c₁′ , c₂′) h (inj₁ l) =
-      cong inj₁ (muLayerResp G H₁ cG cG′ hG c₁ c₁′ (λ o → h (o-⊕ˡ o)) l)
+      cong inj₁ (muLayerResp G H₁ cG cG′ hG c₁ c₁′ (λ o → h (p-⊕ˡ o)) l)
     muLayerResp G (H₁ ⊕ H₂) cG cG′ hG (c₁ , c₂) (c₁′ , c₂′) h (inj₂ l) =
-      cong inj₂ (muLayerResp G H₂ cG cG′ hG c₂ c₂′ (λ o → h (o-⊕ʳ o)) l)
+      cong inj₂ (muLayerResp G H₂ cG cG′ hG c₂ c₂′ (λ o → h (p-⊕ʳ o)) l)
     muLayerResp G (H₁ ⊗ H₂) cG cG′ hG (c₁ , c₂) (c₁′ , c₂′) h (l₁ , l₂) =
-      cong₂ _,_ (muLayerResp G H₁ cG cG′ hG c₁ c₁′ (λ o → h (o-⊗ˡ o)) l₁) (muLayerResp G H₂ cG cG′ hG c₂ c₂′ (λ o → h (o-⊗ʳ o)) l₂)
+      cong₂ _,_ (muLayerResp G H₁ cG cG′ hG c₁ c₁′ (λ o → h (p-⊗ˡ o)) l₁) (muLayerResp G H₂ cG cG′ hG c₂ c₂′ (λ o → h (p-⊗ʳ o)) l₂)
 
     nuResp : ∀ H (c c′ : CovF H) {φ φ′ : FnF H} → SameFn φ φ′
            → ∀ {X} {R : X → X → Set} {l l′} → LayerEq (CA H) R l l′ → LayerEq (CB H) R (nuLayer H c φ l) (nuLayer H c′ φ′ l′)
     nuResp (K C) (cC , bA , bB) (cC′ , _ , _) h {l = l} refl =
-      baseEq {C = C} bB (resp C cC cC′ (λ o → h (o-K o)) (reflBase (base-⟨⟩ r bA) l))
+      baseEq {C = C} bB (resp C cC cC′ (λ o → h (p-K o)) (reflBase (base-⟨⟩ r bA) l))
     nuResp Id c c′ h p = p
-    nuResp (H₁ ⊕ H₂) (c₁ , c₂) (c₁′ , c₂′) h {l = inj₁ x} {inj₁ y} p = nuResp H₁ c₁ c₁′ (λ o → h (o-⊕ˡ o)) p
-    nuResp (H₁ ⊕ H₂) (c₁ , c₂) (c₁′ , c₂′) h {l = inj₂ x} {inj₂ y} p = nuResp H₂ c₂ c₂′ (λ o → h (o-⊕ʳ o)) p
+    nuResp (H₁ ⊕ H₂) (c₁ , c₂) (c₁′ , c₂′) h {l = inj₁ x} {inj₁ y} p = nuResp H₁ c₁ c₁′ (λ o → h (p-⊕ˡ o)) p
+    nuResp (H₁ ⊕ H₂) (c₁ , c₂) (c₁′ , c₂′) h {l = inj₂ x} {inj₂ y} p = nuResp H₂ c₂ c₂′ (λ o → h (p-⊕ʳ o)) p
     nuResp (H₁ ⊕ H₂) c c′ h {l = inj₁ x} {inj₂ y} ()
     nuResp (H₁ ⊕ H₂) c c′ h {l = inj₂ x} {inj₁ y} ()
-    nuResp (H₁ ⊗ H₂) (c₁ , c₂) (c₁′ , c₂′) h (p₁ , p₂) = nuResp H₁ c₁ c₁′ (λ o → h (o-⊗ˡ o)) p₁ , nuResp H₂ c₂ c₂′ (λ o → h (o-⊗ʳ o)) p₂
+    nuResp (H₁ ⊗ H₂) (c₁ , c₂) (c₁′ , c₂′) h (p₁ , p₂) = nuResp H₁ c₁ c₁′ (λ o → h (p-⊗ˡ o)) p₁ , nuResp H₂ c₂ c₂′ (λ o → h (p-⊗ʳ o)) p₂
 
 -- Two maps in a row are one bind.
 fmap² : ∀ π {X Y Z : Set} (f : Y → Z) (g : X → Y) (m : M π X)
@@ -141,23 +141,23 @@ module MapId {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ
   mutual
     mid : ∀ T (c : Cov T) {φ : Fn T} → IsId φ
         → ∀ {x x′} → Same (T ⟨ at₀ A ⟩ ⟨ σ ⟩) x x′ → Same (T ⟨ at₀ A ⟩ ⟨ σ ⟩) (mapS T c φ x) x′
-    mid (var fz)      c h s = h o-var _ _ s
+    mid (var fz)      c h s = h p-var _ _ s
     mid (var (fs i))  c h s = s
     mid Unit          c h s = s
     mid Void          c h s = s
     mid Int           c h s = s
     mid Float         c h s = s
     mid (T₁ * T₂) (c₁ , c₂) h {x₁ , x₂} {y₁ , y₂} (s₁ , s₂) =
-      mid T₁ c₁ (λ o → h (o-*ˡ o)) s₁ , mid T₂ c₂ (λ o → h (o-*ʳ o)) s₂
-    mid (T₁ + T₂) (c₁ , c₂) h {inj₁ x} {inj₁ y} s = mid T₁ c₁ (λ o → h (o-+ˡ o)) s
-    mid (T₁ + T₂) (c₁ , c₂) h {inj₂ x} {inj₂ y} s = mid T₂ c₂ (λ o → h (o-+ʳ o)) s
+      mid T₁ c₁ (λ o → h (p-*ˡ o)) s₁ , mid T₂ c₂ (λ o → h (p-*ʳ o)) s₂
+    mid (T₁ + T₂) (c₁ , c₂) h {inj₁ x} {inj₁ y} s = mid T₁ c₁ (λ o → h (p-+ˡ o)) s
+    mid (T₁ + T₂) (c₁ , c₂) h {inj₂ x} {inj₂ y} s = mid T₂ c₂ (λ o → h (p-+ʳ o)) s
     mid (T₁ + T₂) c h {inj₁ x} {inj₂ y} ()
     mid (T₁ + T₂) c h {inj₂ x} {inj₁ y} ()
-    mid (T₁ ⇒[ mk-kind Zero π ] T₂) (e , c) h s = funId π (mid T₂ c (λ o → h (o-⇒ʳ o))) s
-    mid (T₁ ⇒[ mk-kind One π ] T₂) (e , c) h s y y′ sy = funId π (mid T₂ c (λ o → h (o-⇒ʳ o))) (s _ _ (substId e sy))
-    mid (T₁ ⇒[ mk-kind Many π ] T₂) (e , c) h s y y′ sy = funId π (mid T₂ c (λ o → h (o-⇒ʳ o))) (s _ _ (substId e sy))
-    mid (μ G) c h {x} refl = muId G c (λ o → h (o-μ o)) x
-    mid (ν G f) c h s n = nuId G f c (λ o → h (o-ν o)) n s
+    mid (T₁ ⇒[ mk-kind Zero π ] T₂) (e , c) h s = funId π (mid T₂ c (λ o → h (p-⇒ʳ o))) s
+    mid (T₁ ⇒[ mk-kind One π ] T₂) (e , c) h s y y′ sy = funId π (mid T₂ c (λ o → h (p-⇒ʳ o))) (s _ _ (substId e sy))
+    mid (T₁ ⇒[ mk-kind Many π ] T₂) (e , c) h s y y′ sy = funId π (mid T₂ c (λ o → h (p-⇒ʳ o))) (s _ _ (substId e sy))
+    mid (μ G) c h {x} refl = muId G c (λ o → h (p-μ o)) x
+    mid (ν G f) c h s n = nuId G f c (λ o → h (p-ν o)) n s
 
     muId : ∀ G (c : CovF G) {φ : FnF G} → IsId φ → ∀ x → muMap G c φ x ≡ x
     muId G c h (inS l) = cong inS (muLayerId G G c h c h l)
@@ -165,12 +165,12 @@ module MapId {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ
     muLayerId : ∀ G H (cG : CovF G) {φG : FnF G} → IsId φG → (cH : CovF H) {φ : FnF H} → IsId φ
               → ∀ l → muLayer G H cG φG cH φ l ≡ l
     muLayerId G (K C) cG hG (cC , bA , _) h l =
-      sameBase (base-⟨⟩ r bA) (mid C cC (λ o → h (o-K o)) (reflBase (base-⟨⟩ r bA) l))
+      sameBase (base-⟨⟩ r bA) (mid C cC (λ o → h (p-K o)) (reflBase (base-⟨⟩ r bA) l))
     muLayerId G Id cG hG cH h l = muId G cG hG l
-    muLayerId G (H₁ ⊕ H₂) cG hG (c₁ , c₂) h (inj₁ l) = cong inj₁ (muLayerId G H₁ cG hG c₁ (λ o → h (o-⊕ˡ o)) l)
-    muLayerId G (H₁ ⊕ H₂) cG hG (c₁ , c₂) h (inj₂ l) = cong inj₂ (muLayerId G H₂ cG hG c₂ (λ o → h (o-⊕ʳ o)) l)
+    muLayerId G (H₁ ⊕ H₂) cG hG (c₁ , c₂) h (inj₁ l) = cong inj₁ (muLayerId G H₁ cG hG c₁ (λ o → h (p-⊕ˡ o)) l)
+    muLayerId G (H₁ ⊕ H₂) cG hG (c₁ , c₂) h (inj₂ l) = cong inj₂ (muLayerId G H₂ cG hG c₂ (λ o → h (p-⊕ʳ o)) l)
     muLayerId G (H₁ ⊗ H₂) cG hG (c₁ , c₂) h (l₁ , l₂) =
-      cong₂ _,_ (muLayerId G H₁ cG hG c₁ (λ o → h (o-⊗ˡ o)) l₁) (muLayerId G H₂ cG hG c₂ (λ o → h (o-⊗ʳ o)) l₂)
+      cong₂ _,_ (muLayerId G H₁ cG hG c₁ (λ o → h (p-⊗ˡ o)) l₁) (muLayerId G H₂ cG hG c₂ (λ o → h (p-⊗ʳ o)) l₂)
 
     -- ν: at every depth, by the layers.
     nuId : ∀ G f (c : CovF G) {φ : FnF G} → IsId φ → ∀ n {a a′} → Same ((ν (G ⟨ at₀ A ⟩F) f) ⟨ σ ⟩) a a′
@@ -187,14 +187,14 @@ module MapId {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ
               → LayerEq (CA H) (SameNu f (CA G) n)
                   (sfmap (CA H) (ana f (CA G) (λ y → fmap (fin f) (nuLayer G cG φG {νM f (CA G)}) (outν y))) (nuLayer H cH φ l)) l′
     nuLayerId G f cG hG (K C) (cC , bA , _) h n {l} refl =
-      sameBase (base-⟨⟩ r bA) (mid C cC (λ o → h (o-K o)) (reflBase (base-⟨⟩ r bA) l))
+      sameBase (base-⟨⟩ r bA) (mid C cC (λ o → h (p-K o)) (reflBase (base-⟨⟩ r bA) l))
     nuLayerId G f cG hG Id cH h n p = nuId G f cG hG n p
-    nuLayerId G f cG hG (H₁ ⊕ H₂) (c₁ , c₂) h n {inj₁ x} {inj₁ y} p = nuLayerId G f cG hG H₁ c₁ (λ o → h (o-⊕ˡ o)) n p
-    nuLayerId G f cG hG (H₁ ⊕ H₂) (c₁ , c₂) h n {inj₂ x} {inj₂ y} p = nuLayerId G f cG hG H₂ c₂ (λ o → h (o-⊕ʳ o)) n p
+    nuLayerId G f cG hG (H₁ ⊕ H₂) (c₁ , c₂) h n {inj₁ x} {inj₁ y} p = nuLayerId G f cG hG H₁ c₁ (λ o → h (p-⊕ˡ o)) n p
+    nuLayerId G f cG hG (H₁ ⊕ H₂) (c₁ , c₂) h n {inj₂ x} {inj₂ y} p = nuLayerId G f cG hG H₂ c₂ (λ o → h (p-⊕ʳ o)) n p
     nuLayerId G f cG hG (H₁ ⊕ H₂) c h n {inj₁ x} {inj₂ y} ()
     nuLayerId G f cG hG (H₁ ⊕ H₂) c h n {inj₂ x} {inj₁ y} ()
     nuLayerId G f cG hG (H₁ ⊗ H₂) (c₁ , c₂) h n (p₁ , p₂) =
-      nuLayerId G f cG hG H₁ c₁ (λ o → h (o-⊗ˡ o)) n p₁ , nuLayerId G f cG hG H₂ c₂ (λ o → h (o-⊗ʳ o)) n p₂
+      nuLayerId G f cG hG H₁ c₁ (λ o → h (p-⊗ˡ o)) n p₁ , nuLayerId G f cG hG H₂ c₂ (λ o → h (p-⊗ʳ o)) n p₂
 
 module MapComp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) (A B C : Ty m) where
   module AB = MapAt Δ σ A B
@@ -222,26 +222,26 @@ module MapComp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ 
     comp : ∀ T (c₃ : AC.Cov T) (c₂ : BC.Cov T) (c₁ : AB.Cov T) {φ₃ : AC.Fn T} {φ₂ : BC.Fn T} {φ₁ : AB.Fn T}
          → IsComp φ₃ φ₂ φ₁ → ∀ {x x′} → Same (T ⟨ at₀ A ⟩ ⟨ σ ⟩) x x′
          → Same (T ⟨ at₀ C ⟩ ⟨ σ ⟩) (AC.mapS T c₃ φ₃ x) (BC.mapS T c₂ φ₂ (AB.mapS T c₁ φ₁ x′))
-    comp (var fz)      c₃ c₂ c₁ h s = h o-var _ _ s
+    comp (var fz)      c₃ c₂ c₁ h s = h p-var _ _ s
     comp (var (fs i))  c₃ c₂ c₁ h s = s
     comp Unit          c₃ c₂ c₁ h s = s
     comp Void          c₃ c₂ c₁ h s = s
     comp Int           c₃ c₂ c₁ h s = s
     comp Float         c₃ c₂ c₁ h s = s
     comp (T₁ * T₂) (a₃ , b₃) (a₂ , b₂) (a₁ , b₁) h {x₁ , x₂} {y₁ , y₂} (s₁ , s₂) =
-      comp T₁ a₃ a₂ a₁ (λ o → h (o-*ˡ o)) s₁ , comp T₂ b₃ b₂ b₁ (λ o → h (o-*ʳ o)) s₂
-    comp (T₁ + T₂) (a₃ , b₃) (a₂ , b₂) (a₁ , b₁) h {inj₁ x} {inj₁ y} s = comp T₁ a₃ a₂ a₁ (λ o → h (o-+ˡ o)) s
-    comp (T₁ + T₂) (a₃ , b₃) (a₂ , b₂) (a₁ , b₁) h {inj₂ x} {inj₂ y} s = comp T₂ b₃ b₂ b₁ (λ o → h (o-+ʳ o)) s
+      comp T₁ a₃ a₂ a₁ (λ o → h (p-*ˡ o)) s₁ , comp T₂ b₃ b₂ b₁ (λ o → h (p-*ʳ o)) s₂
+    comp (T₁ + T₂) (a₃ , b₃) (a₂ , b₂) (a₁ , b₁) h {inj₁ x} {inj₁ y} s = comp T₁ a₃ a₂ a₁ (λ o → h (p-+ˡ o)) s
+    comp (T₁ + T₂) (a₃ , b₃) (a₂ , b₂) (a₁ , b₁) h {inj₂ x} {inj₂ y} s = comp T₂ b₃ b₂ b₁ (λ o → h (p-+ʳ o)) s
     comp (T₁ + T₂) c₃ c₂ c₁ h {inj₁ x} {inj₂ y} ()
     comp (T₁ + T₂) c₃ c₂ c₁ h {inj₂ x} {inj₁ y} ()
     comp (T₁ ⇒[ mk-kind Zero π ] T₂) (e₃ , c₃) (e₂ , c₂) (e₁ , c₁) h s =
-      funComp π (comp T₂ c₃ c₂ c₁ (λ o → h (o-⇒ʳ o))) s
+      funComp π (comp T₂ c₃ c₂ c₁ (λ o → h (p-⇒ʳ o))) s
     comp (T₁ ⇒[ mk-kind One π ] T₂) (e₃ , c₃) (e₂ , c₂) (e₁ , c₁) h s y y′ sy =
-      funComp π (comp T₂ c₃ c₂ c₁ (λ o → h (o-⇒ʳ o))) (s _ _ (substComp e₃ e₁ e₂ sy))
+      funComp π (comp T₂ c₃ c₂ c₁ (λ o → h (p-⇒ʳ o))) (s _ _ (substComp e₃ e₁ e₂ sy))
     comp (T₁ ⇒[ mk-kind Many π ] T₂) (e₃ , c₃) (e₂ , c₂) (e₁ , c₁) h s y y′ sy =
-      funComp π (comp T₂ c₃ c₂ c₁ (λ o → h (o-⇒ʳ o))) (s _ _ (substComp e₃ e₁ e₂ sy))
-    comp (μ G) c₃ c₂ c₁ h {x} refl = muComp G c₃ c₂ c₁ (λ o → h (o-μ o)) x
-    comp (ν G f) c₃ c₂ c₁ h s n = nuComp G f c₃ c₂ c₁ (λ o → h (o-ν o)) n s
+      funComp π (comp T₂ c₃ c₂ c₁ (λ o → h (p-⇒ʳ o))) (s _ _ (substComp e₃ e₁ e₂ sy))
+    comp (μ G) c₃ c₂ c₁ h {x} refl = muComp G c₃ c₂ c₁ (λ o → h (p-μ o)) x
+    comp (ν G f) c₃ c₂ c₁ h s n = nuComp G f c₃ c₂ c₁ (λ o → h (p-ν o)) n s
 
     muComp : ∀ G (c₃ : AC.CovF G) (c₂ : BC.CovF G) (c₁ : AB.CovF G) {φ₃ : AC.FnF G} {φ₂ : BC.FnF G} {φ₁ : AB.FnF G}
            → IsComp φ₃ φ₂ φ₁ → ∀ x → AC.muMap G c₃ φ₃ x ≡ BC.muMap G c₂ φ₂ (AB.muMap G c₁ φ₁ x)
@@ -253,15 +253,15 @@ module MapComp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ 
                   {φ₃ : AC.FnF H} {φ₂ : BC.FnF H} {φ₁ : AB.FnF H} → IsComp φ₃ φ₂ φ₁
                 → ∀ l → AC.muLayer G H g₃ ψ₃ c₃ φ₃ l ≡ BC.muLayer G H g₂ ψ₂ c₂ φ₂ (AB.muLayer G H g₁ ψ₁ c₁ φ₁ l)
     muLayerComp G (K D) g₃ g₂ g₁ hG (d₃ , bA , bC) (d₂ , _ , _) (d₁ , _ , _) h l =
-      sameBase (base-⟨⟩ r bC) (comp D d₃ d₂ d₁ (λ o → h (o-K o)) (reflBase (base-⟨⟩ r bA) l))
+      sameBase (base-⟨⟩ r bC) (comp D d₃ d₂ d₁ (λ o → h (p-K o)) (reflBase (base-⟨⟩ r bA) l))
     muLayerComp G Id g₃ g₂ g₁ hG c₃ c₂ c₁ h l = muComp G g₃ g₂ g₁ hG l
     muLayerComp G (H₁ ⊕ H₂) g₃ g₂ g₁ hG (a₃ , b₃) (a₂ , b₂) (a₁ , b₁) h (inj₁ l) =
-      cong inj₁ (muLayerComp G H₁ g₃ g₂ g₁ hG a₃ a₂ a₁ (λ o → h (o-⊕ˡ o)) l)
+      cong inj₁ (muLayerComp G H₁ g₃ g₂ g₁ hG a₃ a₂ a₁ (λ o → h (p-⊕ˡ o)) l)
     muLayerComp G (H₁ ⊕ H₂) g₃ g₂ g₁ hG (a₃ , b₃) (a₂ , b₂) (a₁ , b₁) h (inj₂ l) =
-      cong inj₂ (muLayerComp G H₂ g₃ g₂ g₁ hG b₃ b₂ b₁ (λ o → h (o-⊕ʳ o)) l)
+      cong inj₂ (muLayerComp G H₂ g₃ g₂ g₁ hG b₃ b₂ b₁ (λ o → h (p-⊕ʳ o)) l)
     muLayerComp G (H₁ ⊗ H₂) g₃ g₂ g₁ hG (a₃ , b₃) (a₂ , b₂) (a₁ , b₁) h (l₁ , l₂) =
-      cong₂ _,_ (muLayerComp G H₁ g₃ g₂ g₁ hG a₃ a₂ a₁ (λ o → h (o-⊗ˡ o)) l₁)
-                (muLayerComp G H₂ g₃ g₂ g₁ hG b₃ b₂ b₁ (λ o → h (o-⊗ʳ o)) l₂)
+      cong₂ _,_ (muLayerComp G H₁ g₃ g₂ g₁ hG a₃ a₂ a₁ (λ o → h (p-⊗ˡ o)) l₁)
+                (muLayerComp G H₂ g₃ g₂ g₁ hG b₃ b₂ b₁ (λ o → h (p-⊗ʳ o)) l₂)
 
     -- ν: at every depth, by the layers.
     nuComp : ∀ G f (c₃ : AC.CovF G) (c₂ : BC.CovF G) (c₁ : AB.CovF G) {φ₃ : AC.FnF G} {φ₂ : BC.FnF G} {φ₁ : AB.FnF G}
@@ -297,13 +297,13 @@ module MapComp {m : ℕ} {Δ : KCtx m} (σ : TySub m 0) (r : Respects Δ ∅ₖ 
                          (sfmap (AB.CB H) (ana f (AB.CB G) (λ y → fmap (fin f) (AB.nuLayer G g₁ ψ₁ {νM f (AB.CA G)}) (outν y)))
                             (AB.nuLayer H c₁ φ₁ l′))))
     nuLayerComp G f g₃ g₂ g₁ hG (K D) (d₃ , bA , bC) (d₂ , _ , _) (d₁ , _ , _) h n {l} refl =
-      sameBase (base-⟨⟩ r bC) (comp D d₃ d₂ d₁ (λ o → h (o-K o)) (reflBase (base-⟨⟩ r bA) l))
+      sameBase (base-⟨⟩ r bC) (comp D d₃ d₂ d₁ (λ o → h (p-K o)) (reflBase (base-⟨⟩ r bA) l))
     nuLayerComp G f g₃ g₂ g₁ hG Id c₃ c₂ c₁ h n p = nuComp G f g₃ g₂ g₁ hG n p
     nuLayerComp G f g₃ g₂ g₁ hG (H₁ ⊕ H₂) (a₃ , b₃) (a₂ , b₂) (a₁ , b₁) h n {inj₁ x} {inj₁ y} p =
-      nuLayerComp G f g₃ g₂ g₁ hG H₁ a₃ a₂ a₁ (λ o → h (o-⊕ˡ o)) n p
+      nuLayerComp G f g₃ g₂ g₁ hG H₁ a₃ a₂ a₁ (λ o → h (p-⊕ˡ o)) n p
     nuLayerComp G f g₃ g₂ g₁ hG (H₁ ⊕ H₂) (a₃ , b₃) (a₂ , b₂) (a₁ , b₁) h n {inj₂ x} {inj₂ y} p =
-      nuLayerComp G f g₃ g₂ g₁ hG H₂ b₃ b₂ b₁ (λ o → h (o-⊕ʳ o)) n p
+      nuLayerComp G f g₃ g₂ g₁ hG H₂ b₃ b₂ b₁ (λ o → h (p-⊕ʳ o)) n p
     nuLayerComp G f g₃ g₂ g₁ hG (H₁ ⊕ H₂) c₃ c₂ c₁ h n {inj₁ x} {inj₂ y} ()
     nuLayerComp G f g₃ g₂ g₁ hG (H₁ ⊕ H₂) c₃ c₂ c₁ h n {inj₂ x} {inj₁ y} ()
     nuLayerComp G f g₃ g₂ g₁ hG (H₁ ⊗ H₂) (a₃ , b₃) (a₂ , b₂) (a₁ , b₁) h n (p₁ , p₂) =
-      nuLayerComp G f g₃ g₂ g₁ hG H₁ a₃ a₂ a₁ (λ o → h (o-⊗ˡ o)) n p₁ , nuLayerComp G f g₃ g₂ g₁ hG H₂ b₃ b₂ b₁ (λ o → h (o-⊗ʳ o)) n p₂
+      nuLayerComp G f g₃ g₂ g₁ hG H₁ a₃ a₂ a₁ (λ o → h (p-⊗ˡ o)) n p₁ , nuLayerComp G f g₃ g₂ g₁ hG H₂ b₃ b₂ b₁ (λ o → h (p-⊗ʳ o)) n p₂

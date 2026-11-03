@@ -35,7 +35,7 @@ open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
 open import Once.Metatheory.Laws.Views Σ u fmt S
 open import Once.Metatheory.Laws.Compose Σ u fmt S using (valAt0; valAt▸; ≡→≈)
-open import Once.Metatheory.Laws.MapSem Σ using (module MapAt)
+open import Once.Metatheory.Laws.MapSem Σ using (module MapAt; Occ; OccF; p-var; p-*ˡ; p-*ʳ; p-+ˡ; p-+ʳ; p-⇒ʳ; p-μ; p-ν; p-K; p-⊕ˡ; p-⊕ʳ; p-⊗ˡ; p-⊗ʳ)
 open import Once.Metatheory.Laws.MapCov Σ S using (letInv; lamInv; cod≡; module Covs)
 open import Once.Metatheory.Laws.MapV Σ u fmt S using (module MapV)
 

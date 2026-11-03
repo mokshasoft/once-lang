@@ -22,7 +22,7 @@ open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; mk-kind; Purity; pure; positionGrade; 0≤q; _·p_)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; ⟦_⟧F; _⟨_⟩F; K; Id; _⊕_; _⊗_; TySub; Respects; ∅ₖ; _⟨_⟩; _⇒[_]_; _*_; _+_; var; Unit; Void; Int; Float; μ; ν;
-                                  at₀; Occurs; OccursF; o-var; o-*ˡ; o-*ʳ; o-+ˡ; o-+ʳ; o-⇒ʳ; o-μ; o-ν; o-K; o-⊕ˡ; o-⊕ʳ; o-⊗ˡ; o-⊗ʳ)
+                                  at₀)
 open import Once.Spec.Context using (Ctx; _▸_; _∷_; Usage; lookup; _⊑ᵘ_; _⊑∷_)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived using (mapAtᶜ; mapLayerᶜ)
@@ -46,7 +46,7 @@ open import Once.Metatheory.Laws.Views Σ u fmt S
 open import Once.Metatheory.Laws.Strengthen Σ S using (varTy; str)
 open import Once.Metatheory.Laws.Compose Σ u fmt S using (ValAt; valAt0; module CompV; ≡→≈)
 open import Once.Metatheory.Laws.ComposeG Σ u fmt S using (callRel)
-open import Once.Metatheory.Laws.MapSem Σ using (module MapAt)
+open import Once.Metatheory.Laws.MapSem Σ using (module MapAt; Occ; OccF; p-var; p-*ˡ; p-*ʳ; p-+ˡ; p-+ʳ; p-⇒ʳ; p-μ; p-ν; p-K; p-⊕ˡ; p-⊕ʳ; p-⊗ˡ; p-⊗ʳ)
 
 module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
             (A B : Ty m) where
@@ -320,14 +320,14 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
     where
       module W  = Views δ sd σ r γ sγ
       module WF = FunV δ sd σ r γ sγ
-      goA : WF.AppView db γa → Related (Same (B ⟨ σ ⟩)) (W.⟪ db ⟫ γa) (return∞ (φ o-var xv))
+      goA : WF.AppView db γa → Related (Same (B ⟨ σ ⟩)) (W.⟪ db ⟫ γa) (return∞ (φ p-var xv))
       goA (WF.appView {q = Zero} {πl = πl} df dx rf eq) with ty Rh df | ty Rx dx
       ... | refl | refl =
         W.~trans {B} eq (W.~trans {B}
           (≈-Relatedʳ (≈-sym (idˡ hv (λ fv → toT∞ πl (fv tt))))
             (bindRel {f = λ fv → toT∞ πl (fv tt)} {g = λ fv → toT∞ πl (fv tt)} (rd Rh df rf)
               (λ sf → callRel Zero {πl} {A ⟨ σ ⟩} {B ⟨ σ ⟩} sf sx)))
-          (Hc o-var refl xv xv sx))
+          (Hc p-var refl xv xv sx))
       goA (WF.appView {q = One} {πl = πl} df dx rf (ex , rx , eq)) with ty Rh df | ty Rx dx
       ... | refl | refl =
         W.~trans {B} eq (W.~trans {B}
@@ -336,7 +336,7 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
               (rd Rh df rf) (λ {fv} {fv′} sf →
                 bindRel {f = λ a → toT∞ πl (fv a)} {g = λ a → toT∞ πl (fv′ a)} (rd Rx dx rx)
                   (λ sa → callRel One {πl} {A ⟨ σ ⟩} {B ⟨ σ ⟩} sf sa))))
-          (Hc o-var refl xv xv sx))
+          (Hc p-var refl xv xv sx))
       goA (WF.appView {q = Many} {πl = πl} df dx rf (ex , rx , eq)) with ty Rh df | ty Rx dx
       ... | refl | refl =
         W.~trans {B} eq (W.~trans {B}
@@ -345,7 +345,7 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
               (rd Rh df rf) (λ {fv} {fv′} sf →
                 bindRel {f = λ a → toT∞ πl (fv a)} {g = λ a → toT∞ πl (fv′ a)} (rd Rx dx rx)
                   (λ sa → callRel Many {πl} {A ⟨ σ ⟩} {B ⟨ σ ⟩} sf sa))))
-          (Hc o-var refl xv xv sx))
+          (Hc p-var refl xv xv sx))
   bodyMap γ sγ (var (fs i)) c Rh Rx sx Hc db ra = rd Rx db ra
   bodyMap γ sγ Unit  c Rh Rx sx Hc db ra = rd Rx db ra
   bodyMap γ sγ Void  c Rh Rx sx Hc db ra = rd Rx db ra
@@ -355,8 +355,8 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
   ... | ProdV.pairView da db′ ra′ rb′ eq =
     Views.~trans δ sd σ r γ sγ {(T₁ * T₂) ⟨ at₀ B ⟩} eq
       (≈-Relatedʳ (≈-sym (≈-trans (idˡ _ _) (idˡ _ _)))
-        (bindRel (bodyMap γ sγ T₁ c₁ Rh (readsFst γ sγ Rx) (proj₁ sx) (λ o → Hc (o-*ˡ o)) da ra′) (λ s₁ →
-          bindRel (bodyMap γ sγ T₂ c₂ Rh (readsSnd γ sγ Rx) (proj₂ sx) (λ o → Hc (o-*ʳ o)) db′ rb′) (λ s₂ →
+        (bindRel (bodyMap γ sγ T₁ c₁ Rh (readsFst γ sγ Rx) (proj₁ sx) (λ o → Hc (p-*ˡ o)) da ra′) (λ s₁ →
+          bindRel (bodyMap γ sγ T₂ c₂ Rh (readsSnd γ sγ Rx) (proj₂ sx) (λ o → Hc (p-*ʳ o)) db′ rb′) (λ s₂ →
             returnRel (s₁ , s₂)))))
   bodyMap {Γ = Γ} γ sγ (T₁ + T₂) (c₁ , c₂) {φ} {xv = xv} Rh Rx sx Hc db ra with Views.viewCase δ sd σ r γ sγ db ra
   ... | Views.caseView {Ψc = Ψc} ds dl dr {ec = ec} rs rc eq with ty Rx ds
@@ -375,20 +375,20 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
         where se₁ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψc} {A = TA₁} Many (W.sameEnvOf rc) (slotAgree σ {TA₁} Many Many (sameRefl (TA₁ ⟨ σ ⟩) s))
       ... | Views.inlView da r₀ eq₁ =
         W.~trans {T₁ ⟨ at₀ B ⟩ + T₂ ⟨ at₀ B ⟩} eq₁
-          (≈-Relatedʳ (≈-sym (idˡ (mapS T₁ c₁ (λ o → φ (o-+ˡ o)) a′) (λ v → return∞ (inj₁ v))))
+          (≈-Relatedʳ (≈-sym (idˡ (mapS T₁ c₁ (λ o → φ (p-+ˡ o)) a′) (λ v → return∞ (inj₁ v))))
           (bindRel {f = λ v → return∞ (inj₁ v)} {g = λ v → return∞ (inj₁ v)} (bodyMap (ec , slot Many a) se₁ T₁ c₁ (readsWk γ sγ rc (slot Many a) se₁ Rh)
                       (readsVar (ec , slot Many a) se₁ (valAt0 σ {Γ = Γ} {A = TA₁} Many {γ = ec} s))
-                      (sameSelf TA₁ s) (λ o → Hc (o-+ˡ o)) da r₀)
+                      (sameSelf TA₁ s) (λ o → Hc (p-+ˡ o)) da r₀)
                    (λ sv → returnRel sv)))
         where se₁ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψc} {A = TA₁} Many (W.sameEnvOf rc) (slotAgree σ {TA₁} Many Many (sameRefl (TA₁ ⟨ σ ⟩) s))
       BR {inj₂ b} {inj₂ b′} s with Views.viewInr δ sd σ r (ec , slot Many b) se₂ dr (Views.base δ sd σ r (ec , slot Many b) se₂)
         where se₂ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψc} {A = TA₂} Many (W.sameEnvOf rc) (slotAgree σ {TA₂} Many Many (sameRefl (TA₂ ⟨ σ ⟩) s))
       ... | Views.inrView db₂ r₀ eq₂ =
         W.~trans {T₁ ⟨ at₀ B ⟩ + T₂ ⟨ at₀ B ⟩} eq₂
-          (≈-Relatedʳ (≈-sym (idˡ (mapS T₂ c₂ (λ o → φ (o-+ʳ o)) b′) (λ v → return∞ (inj₂ v))))
+          (≈-Relatedʳ (≈-sym (idˡ (mapS T₂ c₂ (λ o → φ (p-+ʳ o)) b′) (λ v → return∞ (inj₂ v))))
           (bindRel {f = λ v → return∞ (inj₂ v)} {g = λ v → return∞ (inj₂ v)} (bodyMap (ec , slot Many b) se₂ T₂ c₂ (readsWk γ sγ rc (slot Many b) se₂ Rh)
                       (readsVar (ec , slot Many b) se₂ (valAt0 σ {Γ = Γ} {A = TA₂} Many {γ = ec} s))
-                      (sameSelf TA₂ s) (λ o → Hc (o-+ʳ o)) db₂ r₀)
+                      (sameSelf TA₂ s) (λ o → Hc (p-+ʳ o)) db₂ r₀)
                    (λ sv → returnRel sv)))
         where se₂ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψc} {A = TA₂} Many (W.sameEnvOf rc) (slotAgree σ {TA₂} Many Many (sameRefl (TA₂ ⟨ σ ⟩) s))
       BR {inj₁ a} {inj₂ b′} ()
@@ -405,17 +405,17 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
       sγ₁ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψ₀} {A = TA₁} Zero (W.sameEnvOf r₀) tt
       γ₁ = e₀ , tt
       module W1 = Views δ sd σ r {Γ = Γ ▸ TA₁} {Ψ = Zero ∷ Ψ₀} γ₁ sγ₁
-      INNER : Related (Same (T₂ ⟨ at₀ B ⟩ ⟨ σ ⟩)) (W1.⟪ dt ⟫ γ₁) (toT∞ π (fmap π (mapS T₂ c (λ o → φ (o-⇒ʳ o))) (xv tt)))
+      INNER : Related (Same (T₂ ⟨ at₀ B ⟩ ⟨ σ ⟩)) (W1.⟪ dt ⟫ γ₁) (toT∞ π (fmap π (mapS T₂ c (λ o → φ (p-⇒ʳ o))) (xv tt)))
       INNER with W1.viewLet dt W1.base
       ... | W1.letView {Ψ₂ = Ψ₂} de db₂ {eb} rb (ee , re , eq₂)
             with appRead0 γ₁ sγ₁ {X = TA₁} {Y = TA₂} (readsWk γ sγ r₀ tt sγ₁ Rx) de re
       ...   | retC rl =
               W1.~trans {T₂ ⟨ at₀ B ⟩} eq₂ (≈-Relatedʳ (toT∞-fmap π _ (xv tt))
-                (bindRel {g = λ v′ → return∞ (mapS T₂ c (λ o → φ (o-⇒ʳ o)) v′)} rl (λ {v} {v′} sv →
+                (bindRel {g = λ v′ → return∞ (mapS T₂ c (λ o → φ (p-⇒ʳ o)) v′)} rl (λ {v} {v′} sv →
                   bodyMap (eb , v) (sγ₂ sv) T₂ c
                     (readsWk γ₁ sγ₁ rb v (sγ₂ sv) (readsWk γ sγ r₀ tt sγ₁ Rh))
                     (readsVar (eb , v) (sγ₂ sv) (valAt0 σ {Γ = Γ ▸ TA₁} {A = TA₂} Many {γ = eb} sv))
-                    (sameSelf TA₂ sv) (λ o → Hc (o-⇒ʳ o)) db₂ (Views.base δ sd σ r (eb , v) (sγ₂ sv)))))
+                    (sameSelf TA₂ sv) (λ o → Hc (p-⇒ʳ o)) db₂ (Views.base δ sd σ r (eb , v) (sγ₂ sv)))))
         where
           sγ₂ : ∀ {v v′} → Same (TA₂ ⟨ σ ⟩) v v′ → SameEnv Σ fmt S σ (Γ ▸ TA₁ ▸ TA₂) (Many ∷ Ψ₂) (eb , v)
           sγ₂ sv = sameEnv▸ σ {Γ = Γ ▸ TA₁} {Ψ = Ψ₂} {A = TA₂} Many (W1.sameEnvOf rb) (slotAgree σ {TA₂} Many Many (sameRefl (TA₂ ⟨ σ ⟩) sv))
@@ -441,18 +441,18 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
           sγ₁ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψ₀} {A = TA₁} q′ (W.sameEnvOf r₀) (slotAgree σ {TA₁} q′ q′ (sameRefl (TA₁ ⟨ σ ⟩) sa))
           γ₁ = e₀ , slot q′ a
           module W1 = Views δ sd σ r {Γ = Γ ▸ TA₁} {Ψ = q′ ∷ Ψ₀} γ₁ sγ₁
-          INNER : Related (Same (T₂ ⟨ at₀ B ⟩ ⟨ σ ⟩)) (W1.⟪ dt ⟫ γ₁) (toT∞ π (fmap π (mapS T₂ c (λ o → φ (o-⇒ʳ o))) (xv a′)))
+          INNER : Related (Same (T₂ ⟨ at₀ B ⟩ ⟨ σ ⟩)) (W1.⟪ dt ⟫ γ₁) (toT∞ π (fmap π (mapS T₂ c (λ o → φ (p-⇒ʳ o))) (xv a′)))
           INNER with W1.viewLet dt W1.base
           ... | W1.letView {Ψ₂ = Ψ₂} de db₂ {eb} rb (ee , re , eq₂)
                 with appRead γ₁ sγ₁ {X = TA₁} {Y = TA₂} p1 (readsWk γ sγ r₀ (slot q′ a) sγ₁ Rx)
                        (readsVar γ₁ sγ₁ (valAt0 σ {Γ = Γ} {A = TA₁} q′ {γ = e₀} sa)) de re
           ...   | retC rl =
                   W1.~trans {T₂ ⟨ at₀ B ⟩} eq₂ (≈-Relatedʳ (toT∞-fmap π _ (xv a′))
-                    (bindRel {g = λ v′ → return∞ (mapS T₂ c (λ o → φ (o-⇒ʳ o)) v′)} rl (λ {v} {v′} sv →
+                    (bindRel {g = λ v′ → return∞ (mapS T₂ c (λ o → φ (p-⇒ʳ o)) v′)} rl (λ {v} {v′} sv →
                       bodyMap (eb , v) (sγ₂ sv) T₂ c
                         (readsWk γ₁ sγ₁ rb v (sγ₂ sv) (readsWk γ sγ r₀ (slot q′ a) sγ₁ Rh))
                         (readsVar (eb , v) (sγ₂ sv) (valAt0 σ {Γ = Γ ▸ TA₁} {A = TA₂} Many {γ = eb} sv))
-                        (sameSelf TA₂ sv) (λ o → Hc (o-⇒ʳ o)) db₂ (Views.base δ sd σ r (eb , v) (sγ₂ sv)))))
+                        (sameSelf TA₂ sv) (λ o → Hc (p-⇒ʳ o)) db₂ (Views.base δ sd σ r (eb , v) (sγ₂ sv)))))
             where
               sγ₂ : ∀ {v v′} → Same (TA₂ ⟨ σ ⟩) v v′ → SameEnv Σ fmt S σ (Γ ▸ TA₁ ▸ TA₂) (Many ∷ Ψ₂) (eb , v)
               sγ₂ sv = sameEnv▸ σ {Γ = Γ ▸ TA₁} {Ψ = Ψ₂} {A = TA₂} Many (W1.sameEnvOf rb) (slotAgree σ {TA₂} Many Many (sameRefl (TA₂ ⟨ σ ⟩) sv))
@@ -476,18 +476,18 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
           sγ₁ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψ₀} {A = TA₁} q′ (W.sameEnvOf r₀) (slotAgree σ {TA₁} q′ q′ (sameRefl (TA₁ ⟨ σ ⟩) sa))
           γ₁ = e₀ , slot q′ a
           module W1 = Views δ sd σ r {Γ = Γ ▸ TA₁} {Ψ = q′ ∷ Ψ₀} γ₁ sγ₁
-          INNER : Related (Same (T₂ ⟨ at₀ B ⟩ ⟨ σ ⟩)) (W1.⟪ dt ⟫ γ₁) (toT∞ π (fmap π (mapS T₂ c (λ o → φ (o-⇒ʳ o))) (xv a′)))
+          INNER : Related (Same (T₂ ⟨ at₀ B ⟩ ⟨ σ ⟩)) (W1.⟪ dt ⟫ γ₁) (toT∞ π (fmap π (mapS T₂ c (λ o → φ (p-⇒ʳ o))) (xv a′)))
           INNER with W1.viewLet dt W1.base
           ... | W1.letView {Ψ₂ = Ψ₂} de db₂ {eb} rb (ee , re , eq₂)
                 with appRead γ₁ sγ₁ {X = TA₁} {Y = TA₂} pω (readsWk γ sγ r₀ (slot q′ a) sγ₁ Rx)
                        (readsVar γ₁ sγ₁ (valAt0 σ {Γ = Γ} {A = TA₁} q′ {γ = e₀} sa)) de re
           ...   | retC rl =
                   W1.~trans {T₂ ⟨ at₀ B ⟩} eq₂ (≈-Relatedʳ (toT∞-fmap π _ (xv a′))
-                    (bindRel {g = λ v′ → return∞ (mapS T₂ c (λ o → φ (o-⇒ʳ o)) v′)} rl (λ {v} {v′} sv →
+                    (bindRel {g = λ v′ → return∞ (mapS T₂ c (λ o → φ (p-⇒ʳ o)) v′)} rl (λ {v} {v′} sv →
                       bodyMap (eb , v) (sγ₂ sv) T₂ c
                         (readsWk γ₁ sγ₁ rb v (sγ₂ sv) (readsWk γ sγ r₀ (slot q′ a) sγ₁ Rh))
                         (readsVar (eb , v) (sγ₂ sv) (valAt0 σ {Γ = Γ ▸ TA₁} {A = TA₂} Many {γ = eb} sv))
-                        (sameSelf TA₂ sv) (λ o → Hc (o-⇒ʳ o)) db₂ (Views.base δ sd σ r (eb , v) (sγ₂ sv)))))
+                        (sameSelf TA₂ sv) (λ o → Hc (p-⇒ʳ o)) db₂ (Views.base δ sd σ r (eb , v) (sγ₂ sv)))))
             where
               sγ₂ : ∀ {v v′} → Same (TA₂ ⟨ σ ⟩) v v′ → SameEnv Σ fmt S σ (Γ ▸ TA₁ ▸ TA₂) (Many ∷ Ψ₂) (eb , v)
               sγ₂ sv = sameEnv▸ σ {Γ = Γ ▸ TA₁} {Ψ = Ψ₂} {A = TA₂} Many (W1.sameEnvOf rb) (slotAgree σ {TA₂} Many Many (sameRefl (TA₂ ⟨ σ ⟩) sv))
@@ -510,7 +510,7 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
       R  = μ GB
       L  = ⟦ GA ⟧F R
       φμ : FnF G
-      φμ o = φ (o-μ o)
+      φμ o = φ (p-μ o)
       alg₀ = ⟦ ⊢lam le dl ⟧ δ σ r e₀
       module Fn = Functor σ r
 
@@ -532,7 +532,7 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
               (bindRel {f = λ l → return∞ (inS (toL σ GB R l))} {g = λ l → return∞ (inS (toL σ GB R l))}
                 (layerMap (e₀ , slot q′ w) sγ₁ R G c (readsWk γ sγ r₀ (slot q′ w) sγ₁ Rh)
                    (readsVar (e₀ , slot q′ w) sγ₁ (valAt0 σ {Γ = Γ} {A = L} q′ {γ = e₀} sw)) (sameSelf L sw)
-                   (λ o → Hc (o-μ o)) dm r₁)
+                   (λ o → Hc (p-μ o)) dm r₁)
                 (λ s → returnRel (Fn.roll-same wfB s))))))
         where sγ₁ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψ₀} {A = L} q′ (W.sameEnvOf r₀) (slotAgree σ {L} q′ q′ (sameRefl (L ⟨ σ ⟩) sw))
 
@@ -549,10 +549,10 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
               (cong inS (layerEq G c φμ l))
       layerEq (K C)     cH φH l = refl
       layerEq Id        cH φH l = foldEq l
-      layerEq (H₁ ⊕ H₂) (c₁ , c₂) φH (inj₁ l) = cong inj₁ (layerEq H₁ c₁ (λ o → φH (o-⊕ˡ o)) l)
-      layerEq (H₁ ⊕ H₂) (c₁ , c₂) φH (inj₂ l) = cong inj₂ (layerEq H₂ c₂ (λ o → φH (o-⊕ʳ o)) l)
+      layerEq (H₁ ⊕ H₂) (c₁ , c₂) φH (inj₁ l) = cong inj₁ (layerEq H₁ c₁ (λ o → φH (p-⊕ˡ o)) l)
+      layerEq (H₁ ⊕ H₂) (c₁ , c₂) φH (inj₂ l) = cong inj₂ (layerEq H₂ c₂ (λ o → φH (p-⊕ʳ o)) l)
       layerEq (H₁ ⊗ H₂) (c₁ , c₂) φH (l₁ , l₂) =
-        cong₂ _,_ (layerEq H₁ c₁ (λ o → φH (o-⊗ˡ o)) l₁) (layerEq H₂ c₂ (λ o → φH (o-⊗ʳ o)) l₂)
+        cong₂ _,_ (layerEq H₁ c₁ (λ o → φH (p-⊗ˡ o)) l₁) (layerEq H₂ c₂ (λ o → φH (p-⊗ʳ o)) l₂)
   bodyMap {Γ = Γ} γ sγ (ν G f) c {φ} {xv = xv} Rh Rx sx Hc db {γa} ra with FoldR.viewUnfold γ sγ db ra
   ... | FoldR.unfoldView wfB dc dt {ec} {et} rC rT eq with ty Rx dt
   ...   | refl with FunV.viewLam δ sd σ r γ sγ dc rC
@@ -576,7 +576,7 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
       RB = ν GB f
       L  = ⟦ GB ⟧F R
       φν : FnF G
-      φν o = φ (o-ν o)
+      φν o = φ (p-ν o)
       co₀ = ⟦ ⊢lam le dl ⟧ δ σ r e₀
       module Fn = Functor σ r
       anaT : (⟦ R ⟨ σ ⟩ ⟧ᵛ → _) → ⟦ R ⟨ σ ⟩ ⟧ᵛ → νM f (CB G)
@@ -586,9 +586,9 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
            → toL σ (H ⟨ at₀ B ⟩F) R (layerS R H cH φH (fromL σ (H ⟨ at₀ A ⟩F) R l)) ≡ nuLayer H cH φH l
       nuEq (K C)     cH φH l = refl
       nuEq Id        cH φH l = refl
-      nuEq (H₁ ⊕ H₂) (c₁ , c₂) φH (inj₁ l) = cong inj₁ (nuEq H₁ c₁ (λ o → φH (o-⊕ˡ o)) l)
-      nuEq (H₁ ⊕ H₂) (c₁ , c₂) φH (inj₂ l) = cong inj₂ (nuEq H₂ c₂ (λ o → φH (o-⊕ʳ o)) l)
-      nuEq (H₁ ⊗ H₂) (c₁ , c₂) φH (l₁ , l₂) = cong₂ _,_ (nuEq H₁ c₁ (λ o → φH (o-⊗ˡ o)) l₁) (nuEq H₂ c₂ (λ o → φH (o-⊗ʳ o)) l₂)
+      nuEq (H₁ ⊕ H₂) (c₁ , c₂) φH (inj₁ l) = cong inj₁ (nuEq H₁ c₁ (λ o → φH (p-⊕ˡ o)) l)
+      nuEq (H₁ ⊕ H₂) (c₁ , c₂) φH (inj₂ l) = cong inj₂ (nuEq H₂ c₂ (λ o → φH (p-⊕ʳ o)) l)
+      nuEq (H₁ ⊗ H₂) (c₁ , c₂) φH (l₁ , l₂) = cong₂ _,_ (nuEq H₁ c₁ (λ o → φH (p-⊗ˡ o)) l₁) (nuEq H₂ c₂ (λ o → φH (p-⊗ʳ o)) l₂)
 
       -- The coalgebra, at a seed: the seed forced, its layer mapped.
       COALG : ∀ y y′ → Same (R ⟨ σ ⟩) y y′
@@ -614,7 +614,7 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
                   (λ {w} {w′} sw →
                     layerMap (eb , w) (sγ₂ sw) R G c (readsWk γ₁ sγ₁ rb w (sγ₂ sw) (readsWk γ sγ r₀ (slot q′ y) sγ₁ Rh))
                       (readsVar (eb , w) (sγ₂ sw) (valAt0 σ {Γ = Γ ▸ R} {A = ⟦ GA ⟧F R} One {γ = eb} sw))
-                      (sameSelf (⟦ GA ⟧F R) sw) (λ o → Hc (o-ν o)) db₂ (Views.base δ sd σ r (eb , w) (sγ₂ sw)))))
+                      (sameSelf (⟦ GA ⟧F R) sw) (λ o → Hc (p-ν o)) db₂ (Views.base δ sd σ r (eb , w) (sγ₂ sw)))))
             where
               sγ₂ : ∀ {w w′} → Same ((⟦ GA ⟧F R) ⟨ σ ⟩) w w′ → SameEnv Σ fmt S σ (Γ ▸ R ▸ ⟦ GA ⟧F R) (One ∷ Ψ₂) (eb , w)
               sγ₂ sw = sameEnv▸ σ {Γ = Γ ▸ R} {Ψ = Ψ₂} {A = ⟦ GA ⟧F R} One (W1.sameEnvOf rb)
@@ -629,14 +629,14 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
                         (≈-sym (≈-trans (assoc _ _ _) (≈-bind (≈-refl _) (λ l → ≈-trans (idˡ _ _) (≡→≈ (cong return∞ (nuEq G c φν l))))))))
             (bindRel {g = λ w → return∞ (toL σ GB R w)} (COALG a a′ sa) (λ s → returnRel (Fn.toL-same wfB R s))))
 
-  layerMap γ sγ R (K C) c Rh Ry sy Hc d ra = bodyMap γ sγ C (proj₁ c) Rh Ry sy (λ o → Hc (o-K o)) d ra
+  layerMap γ sγ R (K C) c Rh Ry sy Hc d ra = bodyMap γ sγ C (proj₁ c) Rh Ry sy (λ o → Hc (p-K o)) d ra
   layerMap γ sγ R Id    c Rh Ry sy Hc d ra = rd Ry d ra
   layerMap γ sγ R (H₁ ⊗ H₂) (c₁ , c₂) {φ} {wv = xv} Rh Rx sx Hc db ra with ProdV.viewPair δ sd σ r γ sγ db ra
   ... | ProdV.pairView da db′ ra′ rb′ eq =
     Views.~trans δ sd σ r γ sγ {⟦ (H₁ ⊗ H₂) ⟨ at₀ B ⟩F ⟧F R} eq
       (≈-Relatedʳ (≈-sym (≈-trans (idˡ _ _) (idˡ _ _)))
-        (bindRel (layerMap γ sγ R H₁ c₁ Rh (readsFst γ sγ Rx) (proj₁ sx) (λ o → Hc (o-⊗ˡ o)) da ra′) (λ s₁ →
-          bindRel (layerMap γ sγ R H₂ c₂ Rh (readsSnd γ sγ Rx) (proj₂ sx) (λ o → Hc (o-⊗ʳ o)) db′ rb′) (λ s₂ →
+        (bindRel (layerMap γ sγ R H₁ c₁ Rh (readsFst γ sγ Rx) (proj₁ sx) (λ o → Hc (p-⊗ˡ o)) da ra′) (λ s₁ →
+          bindRel (layerMap γ sγ R H₂ c₂ Rh (readsSnd γ sγ Rx) (proj₂ sx) (λ o → Hc (p-⊗ʳ o)) db′ rb′) (λ s₂ →
             returnRel (s₁ , s₂)))))
   layerMap {Γ = Γ} γ sγ R (H₁ ⊕ H₂) (c₁ , c₂) {φ} {wv = xv} Rh Rx sx Hc db ra with Views.viewCase δ sd σ r γ sγ db ra
   ... | Views.caseView {Ψc = Ψc} ds dl dr {ec = ec} rs rc eq with ty Rx ds
@@ -655,20 +655,20 @@ module MapV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
         where se₁ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψc} {A = TA₁} Many (W.sameEnvOf rc) (slotAgree σ {TA₁} Many Many (sameRefl (TA₁ ⟨ σ ⟩) s))
       ... | Views.inlView da r₀ eq₁ =
         W.~trans {⟦ H₁ ⟨ at₀ B ⟩F ⟧F R + ⟦ H₂ ⟨ at₀ B ⟩F ⟧F R} eq₁
-          (≈-Relatedʳ (≈-sym (idˡ (layerS R H₁ c₁ (λ o → φ (o-⊕ˡ o)) a′) (λ v → return∞ (inj₁ v))))
+          (≈-Relatedʳ (≈-sym (idˡ (layerS R H₁ c₁ (λ o → φ (p-⊕ˡ o)) a′) (λ v → return∞ (inj₁ v))))
           (bindRel {f = λ v → return∞ (inj₁ v)} {g = λ v → return∞ (inj₁ v)} (layerMap (ec , slot Many a) se₁ R H₁ c₁ (readsWk γ sγ rc (slot Many a) se₁ Rh)
                       (readsVar (ec , slot Many a) se₁ (valAt0 σ {Γ = Γ} {A = TA₁} Many {γ = ec} s))
-                      (sameSelf TA₁ s) (λ o → Hc (o-⊕ˡ o)) da r₀)
+                      (sameSelf TA₁ s) (λ o → Hc (p-⊕ˡ o)) da r₀)
                    (λ sv → returnRel sv)))
         where se₁ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψc} {A = TA₁} Many (W.sameEnvOf rc) (slotAgree σ {TA₁} Many Many (sameRefl (TA₁ ⟨ σ ⟩) s))
       BR {inj₂ b} {inj₂ b′} s with Views.viewInr δ sd σ r (ec , slot Many b) se₂ dr (Views.base δ sd σ r (ec , slot Many b) se₂)
         where se₂ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψc} {A = TA₂} Many (W.sameEnvOf rc) (slotAgree σ {TA₂} Many Many (sameRefl (TA₂ ⟨ σ ⟩) s))
       ... | Views.inrView db₂ r₀ eq₂ =
         W.~trans {⟦ H₁ ⟨ at₀ B ⟩F ⟧F R + ⟦ H₂ ⟨ at₀ B ⟩F ⟧F R} eq₂
-          (≈-Relatedʳ (≈-sym (idˡ (layerS R H₂ c₂ (λ o → φ (o-⊕ʳ o)) b′) (λ v → return∞ (inj₂ v))))
+          (≈-Relatedʳ (≈-sym (idˡ (layerS R H₂ c₂ (λ o → φ (p-⊕ʳ o)) b′) (λ v → return∞ (inj₂ v))))
           (bindRel {f = λ v → return∞ (inj₂ v)} {g = λ v → return∞ (inj₂ v)} (layerMap (ec , slot Many b) se₂ R H₂ c₂ (readsWk γ sγ rc (slot Many b) se₂ Rh)
                       (readsVar (ec , slot Many b) se₂ (valAt0 σ {Γ = Γ} {A = TA₂} Many {γ = ec} s))
-                      (sameSelf TA₂ s) (λ o → Hc (o-⊕ʳ o)) db₂ r₀)
+                      (sameSelf TA₂ s) (λ o → Hc (p-⊕ʳ o)) db₂ r₀)
                    (λ sv → returnRel sv)))
         where se₂ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψc} {A = TA₂} Many (W.sameEnvOf rc) (slotAgree σ {TA₂} Many Many (sameRefl (TA₂ ⟨ σ ⟩) s))
       BR {inj₁ a} {inj₂ b′} ()

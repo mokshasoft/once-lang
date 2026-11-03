@@ -35,7 +35,7 @@ open import Once.Metatheory.Coherence.Layer Σ using (rel; runs)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
 open import Once.Metatheory.Laws.Views Σ u fmt S
 open import Once.Metatheory.Laws.Categorical Σ u fmt S using (zero⊑; toSameP; fromSameP; idD)
-open import Once.Metatheory.Laws.MapSem Σ using (module MapAt)
+open import Once.Metatheory.Laws.MapSem Σ using (module MapAt; Occ; OccF; p-var; p-*ˡ; p-*ʳ; p-+ˡ; p-+ʳ; p-⇒ʳ; p-μ; p-ν; p-K; p-⊕ˡ; p-⊕ʳ; p-⊗ˡ; p-⊗ʳ)
 open import Once.Metatheory.Laws.MapLaws Σ using (module MapId)
 open import Once.Metatheory.Laws.MapTop Σ u fmt S using (module MapTopV)
 open import Once.Metatheory.Laws.MapV Σ u fmt S using (module MapV)
