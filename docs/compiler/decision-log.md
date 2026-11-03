@@ -20691,11 +20691,13 @@ internal language as metatheorems, carried by `CertifiedBuild.language`:
   `terminal-uniqueᶜ`, `curry-βᶜ`, `curry-ηᶜ`).
 - `Equations` (15 laws of the core): β and η for functions, products, `Unit` and sums; `let`'s unit and
   associativity, an effect-free `let` dropped; `case` commuting with `let`; `absurd`'s η.
+- Plus the functor and recursion-scheme laws below (8 more, plan 0.79 D4).
 
 A law is `d ≅ d′`: two derivations of one judgment (context, usage, type, grade) whose meanings are
 `SameM` at every instance, definitions' meaning and environment. Where a law would drop, duplicate or
 reorder an effect it asks the term concerned to be `Pure` (a derivation at grade `pure`, at any usage).
-Proved axiom-free in `Once/Metatheory/Laws` (`Once.Metatheory.Laws` assembles both records).
+Proved axiom-free in `Once/Metatheory/Laws` (`Once.Metatheory.Laws` assembles both records: 19
+`Categorical` and 17 `Equations` laws).
 
 **Why.** GOAL.md promises equational reasoning about programs. D347 deleted `Category.Laws`, stated over
 a rejected model; its claim was owed and is now stated over the Spec's own meaning, with the Spec's
@@ -20718,12 +20720,34 @@ the fold/unfold laws are stated with) and a data type's element map are its inst
 them; they are library code in `Strata/Derived`. Named `map` (`mapᶜ` in the Spec), not `fmap`: a
 category theorist writes `F f`, and Once's `map` is the general action from the start.
 
-**Not yet stated**: `mapᶜ` and the term-level fold/unfold laws (plan 0.79 D4, a Spec patch to come),
-and naturality of polymorphic definitions (D5).
+**Functors and recursion schemes** (plan 0.79 D4, its Spec patch approved). `Core.Derived.mapᶜ T A B f`
+is a type's action on an effect-free arrow `f : A → B` in its 0th variable (`Type.at₀`, `shiftᵗ`), by
+the type's structure (`μ`/`ν` through `fold`/`unfold`); its helpers `mapAtᶜ`, `mapLayerᶜ` are top level
+so the metatheory can name them. `layerᶜ F` is its instance at `⟦ F ⟧F x`, `F`'s own action on a layer.
+Eight more laws, proved:
+- `Categorical`: `map-idᶜ`, `map-composeᶜ` (every type is a functor on effect-free arrows); `μ F` is the
+  initial F-algebra (`cata-βᶜ`: `cata alg ∘ in ≅ alg ∘ layer (cata alg)`; `cata-uniqueᶜ`: an `h` with
+  `h ∘ in ≅ alg ∘ layer h` is `cata alg`), `ν F pureᶠ` the final F-coalgebra (`ana-βᶜ`, `ana-uniqueᶜ`).
+  Algebras, coalgebras and `h` are `Pure`.
+- `Equations`: `fold-roll` (`fold alg (roll t) ≅ alg (layer (cata alg) t)`), `out-unfold`
+  (`out (unfold c a) ≅ layer (ana c) (c a)`).
+
+Uniqueness is proved by induction on trees (`Laws.LayerSem.Unique`) and, for streams, on the observation
+depth: `h` agrees with the unfold to every depth.
+
+**Rejected: the uniqueness hypothesis at another usage.** As first approved, `cata-uniqueᶜ` and
+`ana-uniqueᶜ` took the equation `h ∘ in ≅ alg ∘ layer h` at a usage `Ψ′` unrelated to the conclusion's.
+That is false: with `Γ = x : Void` the equation at `[One]` holds vacuously (no environment can fill `x`),
+while at `[Zero]`, with `h = const (inr unit)` and `alg = const (inl unit)` over `Bool`, `h` is not the
+fold. The approved fix states the equation at the conclusion's usage. A conditional law's hypothesis is
+stated where its conclusion is.
+
+**Not yet stated**: naturality of polymorphic definitions (D5, its own plan).
 
 ### Spec
 `Once.Spec.Metatheory`: `_≅_`, `Pure`, `Categorical`, `Equations`; fields `categorical`, `equations` of
-`Metatheory`. Statements only; the meaning of the language is unchanged.
+`Metatheory`. `Once.Spec.Type`: `at₀`, `shiftᵗ`. `Once.Spec.Core.Derived`: `mapᶜ`, `mapAtᶜ`, `mapLayerᶜ`,
+`layerᶜ`. Statements and derived terms only; the meaning of the language is unchanged.
 
 ### Cost
 None in the compiler or the binary (metatheory only).

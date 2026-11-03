@@ -114,8 +114,10 @@ entry updates the rule it changes here, in the same commit.
   language is the call-by-value λ-calculus whose `let` is bind (β, η, `let`
   unit and associativity, `case` commuting with `let`). Two derivations of one
   judgment are equal when their meanings are `SameM`; a law that drops,
-  duplicates or reorders an effect asks for an effect-free term. Term-level
-  fold/unfold laws and naturality are not yet stated. (D369 ← D347)
+  duplicates or reorders an effect asks for an effect-free term. Every type is
+  a functor on effect-free arrows (`map`), `μ F` is the initial F-algebra and
+  `ν F` the final F-coalgebra (β and uniqueness of `cata`/`ana`, `fold` of a
+  `roll`, `out` of an `unfold`). Naturality is not yet stated. (D369 ← D347)
 - **The extension path is dependent types with QTT grades** (OCP-0009); a
   refinement `{x : A | P x}` is a Σ-type with an erased proof, not a separate
   type system. (OCP-0009 ← D017)

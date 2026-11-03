@@ -7,9 +7,12 @@
 -- language (`Spec.Metatheory.Categorical`, `Equations`), proved.
 --
 --   Categorical   Laws.Categorical, Laws.Assoc (with Compose, ComposeG,
---                 ComposeShape, Combinators, Canon)
+--                 ComposeShape, Combinators, Canon); the functors and the
+--                 recursion schemes: Laws.MapFun, Laws.CataLaws,
+--                 Laws.CataUnique, Laws.AnaLaws (with MapSem, MapLaws,
+--                 MapV, MapCov, MapTop, LayerTy, LayerSem, CataSem, AnaSem)
 --   Equations     Laws.Funs, Laws.Lets, Laws.LetAssoc, Laws.LetCase,
---                 Laws.Products, Laws.Sums
+--                 Laws.Products, Laws.Sums, Laws.FoldRoll
 --   toolkit       Laws.Tools, Laws.Views, Laws.Strengthen
 ------------------------------------------------------------------------
 
@@ -29,6 +32,11 @@ import Once.Metatheory.Laws.LetAssoc Σ u fmt S as LA
 import Once.Metatheory.Laws.LetCase Σ u fmt S as LC
 import Once.Metatheory.Laws.Products Σ u fmt S as P
 import Once.Metatheory.Laws.Sums Σ u fmt S as Su
+import Once.Metatheory.Laws.MapFun Σ u fmt S as MF
+import Once.Metatheory.Laws.CataLaws Σ u fmt S as CL
+import Once.Metatheory.Laws.CataUnique Σ u fmt S as CU
+import Once.Metatheory.Laws.AnaLaws Σ u fmt S as AL
+import Once.Metatheory.Laws.FoldRoll Σ u fmt S as FR
 
 categorical : Categorical Σ fmt S
 categorical = record
@@ -45,6 +53,12 @@ categorical = record
   ; initial-uniqueᶜ  = C.initial-uniqueᶜ
   ; curry-βᶜ         = C.curry-βᶜ
   ; curry-ηᶜ         = C.curry-ηᶜ
+  ; map-idᶜ          = MF.map-idᶜ
+  ; map-composeᶜ     = MF.map-composeᶜ
+  ; cata-βᶜ          = CL.cata-βᶜ
+  ; cata-uniqueᶜ     = CU.cata-uniqueᶜ
+  ; ana-βᶜ           = AL.ana-βᶜ
+  ; ana-uniqueᶜ      = AL.ana-uniqueᶜ
   }
 
 equations : Equations Σ fmt S
@@ -63,4 +77,6 @@ equations = record
   ; case-η    = Su.case-η
   ; let-case  = LC.let-case
   ; absurd-η  = L.absurd-η
+  ; fold-roll  = FR.fold-roll
+  ; out-unfold = FR.out-unfold
   }
