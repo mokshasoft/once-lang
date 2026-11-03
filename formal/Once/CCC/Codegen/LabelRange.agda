@@ -42,7 +42,8 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List)
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.IRTy using (IRTy; IRFunctor; fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Spec.Type using (Fun)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace)
 open import Once.CCC.Codegen.IRToTrace o using
@@ -68,11 +69,11 @@ cata-label-of (_ , l , _) = l
 -- D099 / C1: every strategy also takes the body label and its jump-over join,
 -- so each window grows by two — `strat-const` included, since it now emits a
 -- called body rather than splicing the algebra inline.
-cata-label-mono : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
-                → l1 ≤ cata-label-of (cata-dispatch st bb n1 l1 at)
-cata-label-mono strat-const         bb n1 l1 at = m≤m+n l1 2
-cata-label-mono strat-box           bb n1 l1 at = m≤m+n l1 2
-cata-label-mono (strat-branching F) bb n1 l1 at =
+cata-label-mono : ∀ (E A : IRTy) (G : Fun 0) (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
+                → l1 ≤ cata-label-of (cata-dispatch E A G st bb n1 l1 at)
+cata-label-mono E A G strat-const         bb n1 l1 at = m≤m+n l1 2
+cata-label-mono E A G strat-box           bb n1 l1 at = m≤m+n l1 2
+cata-label-mono E A G (strat-branching F) bb n1 l1 at =
   ≤-trans (m≤m+n l1 4)
     (≤-trans (m≤m+n (l1 + 4) (lsize F))
       (≤-trans (m≤m+n ((l1 + 4) + lsize F) (lsize F))
@@ -85,22 +86,22 @@ cata-label-mono (strat-branching F) bb n1 l1 at =
 -- `c-branch-tag-zero` target and the join — so the counter advances through it
 -- too, and `Ana`'s window now ends where the PASS left it, not where the
 -- coalgebra did.
-resuspend-label-mono : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
-                     → l ≤ proj₁ (proj₂ (resuspend-layer n l lbl env wf))
-resuspend-label-mono n l lbl env (wf-K _) = ≤-refl
-resuspend-label-mono n l lbl env wf-Id    = ≤-refl
-resuspend-label-mono n l lbl env (wf-Prod wfF wfG) =
-  ≤-trans (resuspend-label-mono (suc (suc (suc n))) l lbl env wfF)
-          (resuspend-label-mono (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
-                                (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)))
+resuspend-label-mono : ∀ (H : IRFunctor) (E A : IRTy) (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+                     → l ≤ proj₁ (proj₂ (resuspend-layer H E A n l lbl env wf))
+resuspend-label-mono H E A n l lbl env (wf-K _) = ≤-refl
+resuspend-label-mono H E A n l lbl env wf-Id    = ≤-refl
+resuspend-label-mono H E A n l lbl env (wf-Prod wfF wfG) =
+  ≤-trans (resuspend-label-mono H E A (suc (suc (suc (suc n)))) l lbl env wfF)
+          (resuspend-label-mono H E A (proj₁ (resuspend-layer H E A (suc (suc (suc (suc n)))) l lbl env wfF))
+                                (proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc (suc n)))) l lbl env wfF)))
                                 lbl env wfG)
-resuspend-label-mono n l lbl env (wf-Sum wfF wfG) =
+resuspend-label-mono H E A n l lbl env (wf-Sum wfF wfG) =
   ≤-trans (n≤1+n l)
     (≤-trans (n≤1+n (suc l))
-      (≤-trans (resuspend-label-mono (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
-               (resuspend-label-mono
-                  (proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
-                  (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)))
+      (≤-trans (resuspend-label-mono H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+               (resuspend-label-mono H E A
+                  (proj₁ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
+                  (proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)))
                   lbl env wfG)))
 
 label-mono : ∀ {A B} (ir : IR A B) (n l : ℕ) → l ≤ label-of (ir-to-trace' n l ir)
@@ -120,7 +121,7 @@ label-mono (⟨ f , g ⟩) n l = ≤-trans (label-mono f _ l) (label-mono g _ _)
 -- at `suc (suc l)`. (Pre-flip this was one label; the proof shape is unchanged,
 -- which is why this brick was worth landing ahead of the flip.)
 label-mono (curry b)  n l =
-  ≤-trans (n≤1+n l) (≤-trans (n≤1+n (suc l)) (label-mono b 0 (suc (suc l))))
+  ≤-trans (n≤1+n l) (≤-trans (n≤1+n (suc l)) (label-mono b _ (suc (suc l))))
 label-mono apply n l = ≤-refl
 label-mono inl n l = ≤-refl
 label-mono inr n l = ≤-refl
@@ -133,18 +134,18 @@ label-mono (In _)    n l = ≤-refl
 label-mono (out-μ _)   n l = ≤-refl
 -- C1: the algebra is generated at frontier 0, so its own label advance is
 -- taken there; the skeleton then advances further from `l1`.
-label-mono (Cata {F} _ alg) n l =
-  ≤-trans (label-mono alg 0 l) (cata-label-mono (cata-strategy ⌈ F ⌉F) _ _ _ _)
+label-mono (Cata {F} _ {E} {A} alg) n l =
+  ≤-trans (label-mono alg 0 l) (cata-label-mono E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) _ _ _ _)
 label-mono (Out _)        n l = ≤-refl
 -- D189: the same two-cell build as `Ana`, with `id` as the block.
 label-mono (in-ν _)     n l = n≤1+n l
 -- D189: the ν suspension is `curry`'s closure record cell for cell, so
 -- its walk clause is `curry`'s. The coalgebra is a named block, like the
 -- closure body, emitted at frontier 0 under the ν's own label.
-label-mono (Ana wf c)     n l =
+label-mono (Ana {F} wf {E} {A} c)     n l =
   ≤-trans (n≤1+n l)
     (≤-trans (label-mono c 1 (suc l))
-             (resuspend-label-mono (proj₁ (ir-to-trace' 1 (suc l) c))
+             (resuspend-label-mono F E A (proj₁ (ir-to-trace' 1 (suc l) c))
                                    (proj₁ (proj₂ (ir-to-trace' 1 (suc l) c)))
                                    (ℓ o l) 0 wf))
 -- the loop takes two (its top and its exit), then the round's.
