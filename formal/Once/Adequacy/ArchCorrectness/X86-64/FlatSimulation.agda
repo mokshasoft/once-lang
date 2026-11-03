@@ -2072,12 +2072,18 @@ private
   room-a5 : ∀ p → suc (((p + 1) + 1) + 1) + 1 ≡ p + 5
   room-a5 zero    = refl
   room-a5 (suc p) = cong suc (room-a5 p)
+  -- the skip's flags (`jbe`: carry or zero) say below-or-equal, unsigned
+  be-≤ : ∀ a b → (a <ᵇ b) ∨ (a ≡ᵇ b) ≡ true → a ≤ b
+  be-≤ zero    b       _ = z≤n
+  be-≤ (suc a) zero    ()
+  be-≤ (suc a) (suc b) e = s≤s (be-≤ a b e)
 
 room-step-x86 : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-room k)
   → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c (compile-trace prog) s ≡ just s')
-                × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'))
+                × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'
+                × (C.hfront hv + slots k ≤ X.readReg (xregs s) rsp)))
     ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c (compile-trace prog) s ≡ just s')
                 × xhalted s' ≡ false
                 × X.fetch (compile-trace prog) (pc s') ≡ just (call-sym host-exhausted-symbol)))
@@ -2115,17 +2121,25 @@ room-step-x86 {hv} prog fs s k cc h ft = go (X.Flags.cf (flags s2) ∨ X.Flags.z
     to2 = trans (exec-1 {cp} {1} {s} {s1} halt-s st0 halt-s) (exec-1 {cp} {0} {s1} {s2} halt-s st1 halt-s)
     go : ∀ b → (X.Flags.cf (flags s2) ∨ X.Flags.zf (flags s2)) ≡ b
        → Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c cp s ≡ just s')
-                × CompiledCorr hv prog (flat-exec-instr i prog fs) s'))
+                × CompiledCorr hv prog (flat-exec-instr i prog fs) s'
+                × (C.hfront hv + slots k ≤ X.readReg (xregs s) rsp)))
          ⊎ Σ ℕ (λ c → Σ X.State (λ s' → (X.exec c cp s ≡ just s')
                 × xhalted s' ≡ false
                 × X.fetch cp (pc s') ≡ just (call-sym host-exhausted-symbol)))
+    -- THE SKIP: `frontier + 8k ≤ %rsp` (the model's `lea` sums exactly; the
+    -- emitted displacement is a disp32, and the frontier and stack pointer are
+    -- canonical, so the hardware's sum does not wrap either)
     go true be = inj₁ (4 , s4 , exec4 , record
       { dataCorr = record { in1-eq = C.in1-eq d ; out-eq = C.out-eq d
                           ; clos-eq = C.clos-eq d ; halt-eq = C.halt-eq d ; heap-eq = C.heap-eq d
                           ; sp-eq = C.sp-eq d ; frontier-eq = C.frontier-eq d ; dom-fresh = C.dom-fresh d ; dom-written = C.dom-written d ; dom-sized = C.dom-sized d
                           ; lo-le = C.lo-le d ; stack-eq = C.stack-eq d }
-      ; pc-off = pco ; ret-eq = ret-eq cc ; code-eq = code-eq cc })
+      ; pc-off = pco ; ret-eq = ret-eq cc ; code-eq = code-eq cc } , le)
       where
+        -- `%r15` is the frontier (`frontier-eq`)
+        le : C.hfront hv + slots k ≤ X.readReg (xregs s) rsp
+        le = subst (λ z → z + slots k ≤ X.readReg (xregs s) rsp) (C.frontier-eq dc)
+                   (be-≤ (xreadReg (xregs s1) r11) (xreadReg (xregs s1) rsp) be)
         s3 : X.State
         s3 = record s2 { pc = suc (pc s2 + 1) }
         s4 : X.State

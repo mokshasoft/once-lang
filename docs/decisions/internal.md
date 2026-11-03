@@ -142,7 +142,8 @@ decision-log entry updates the rule it changes here, in the same commit.
   no floor**: a callee's frame is new for every caller, the lowest included
   (`shift-≺`: a shift of at least one slot is strictly below; `shift-below`:
   shifting a frame already below another keeps it below). Running out of stack
-  is the concrete machine's outcome (`StackRoom`/`CallRoom`, plan 0.123).
+  is the concrete machine's outcome, observed by its room checks (plan 0.123,
+  D371/D372; the budget `FlatCore.Budget` replaced `StackRoom`/`CallRoom`).
   (D362)
 - **The stack pointer is represented once, on the frame.** (D084)
 - **The call window's head row is per-arch**; RISC-V spills its link onto the

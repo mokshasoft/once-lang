@@ -248,6 +248,24 @@ step-sub-ri : ∀ {prog s r n}
                                ; pc = pc s + 1 })
 step-sub-ri ft rewrite ft = refl
 
+-- D372: sub reg, reg and add reg, reg — the room check's difference and its
+-- restore. Modular (`⊖`, `⊕`), with the flags of the result.
+step-sub-rr : ∀ {prog s r r'}
+            → fetch prog (pc s) ≡ just (sub (reg r) (reg r'))
+            → step-not-halted prog s
+              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r W.⊖ readReg (regs s) r')
+                               ; flags = updateFlags (readReg (regs s) r W.⊖ readReg (regs s) r')
+                               ; pc = pc s + 1 })
+step-sub-rr ft rewrite ft = refl
+
+step-add-rr : ∀ {prog s r r'}
+            → fetch prog (pc s) ≡ just (add (reg r) (reg r'))
+            → step-not-halted prog s
+              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r W.⊕ readReg (regs s) r')
+                               ; flags = updateFlags (readReg (regs s) r W.⊕ readReg (regs s) r')
+                               ; pc = pc s + 1 })
+step-add-rr ft rewrite ft = refl
+
 -- cmp reg, imm: sets flags, touches no register.
 step-cmp-ri : ∀ {prog s r n}
             → fetch prog (pc s) ≡ just (cmp (reg r) (imm n))

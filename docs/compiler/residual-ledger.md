@@ -279,6 +279,7 @@ deferred proofs sharing one missing piece: the return-address component.
 |---|----------|-------|-------|----------------|
 | — | `program-bound` | (was ×3 arches) | invariant | **DONE** — one parameter threaded `Certified → Compiler → ArchCorrectness → arches` |
 | — | `x86-64-heap-room` | (was apex) | invariant | **DONE** — parameter; type named in `…X86-64/ResourceBounds.HeapRoom` |
+| — | `HeapRoom`/`StackRoom`/`CallRoom` ×3 arches | (was apex, 9 parameters) | invariant | **DISCHARGED 2026-11-03** (plan 0.123 A.4 step 5, D371/D372) — the emitted room checks make running out observable (`exhausted`), and the budget they re-arm (`FlatCore.Budget`) gives every spending instruction its room (`Budget.room-of`). The need's literal seam is `LitFits.room-fits` (riscv64, x86-32). |
 | — | `entry-frame` | (was `FlatFromObs`) | — | **DONE** — parameter; each arch supplies its own |
 | — | `entry-frame-base` | (was apex) | — | **DONE, DISCHARGED** — x86-64's frame IS the loader `%rsp`, so `refl` |
 | 1 | `stack-top-in-stack` | `…ArchCorrectness.X86-64` | axiom-ish | the residue of the two above: the loader's `%rsp` lies in the stack region. Could fold into `stack-top`'s own postulate by giving it type `StackPointer` instead of `Word` |

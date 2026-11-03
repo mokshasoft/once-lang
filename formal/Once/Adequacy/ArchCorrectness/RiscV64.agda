@@ -39,9 +39,8 @@ module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (tbl : List IRF
   -- Plan 0.65: the resource bounds, as PARAMETERS threaded from the apex (D087),
   -- symmetric with x86-64. G3 (2026-08-17) is where they finally get CONSUMED:
   -- until the simulation was whole-cloth nothing below had asked for them, and
-  -- three of the twelve were all that had been written down.
-  (riscv64-heap-room : RBr.HeapRoom o ι) (riscv64-stack-room : RBr.StackRoom o ι)
-  (riscv64-call-room : RBr.CallRoom o ι)
+  -- three of the twelve were all that had been written down. (The three room
+  -- bounds left with plan 0.123 A.4 step 5: the checks and their budget.)
   (riscv64-reg-range : RBr.RegRange o ι)
   (riscv64-slot-addr-no-wrap : RBr.SlotAddrNoWrap o ι)
   (riscv64-addr-no-wrap : RBr.AddrNoWrap o ι)
@@ -170,11 +169,10 @@ asR = arch-semantics riscv64
 ------------------------------------------------------------------------
 open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   rv64-frame-semantics refl refl riscv64-slot-addr-no-wrap
-  riscv64-heap-room riscv64-stack-room riscv64-call-room
   riscv64-reg-range
   (RBr.AddrNoWrap.ret-no-wrap riscv64-addr-no-wrap)
   (RBr.LitFits.tag-fits riscv64-lit-fits) (RBr.LitFits.lit-fits riscv64-lit-fits)
-  (RBr.float-fits o ι)
+  (RBr.float-fits o ι) (RBr.LitFits.room-fits riscv64-lit-fits)
   using (events-agree-start; events-agree-boot; AgreeAt; CompiledCorr; EntryLike; reach-start)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o rv64-frame-semantics slot-size refl using (mkRunAt)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o rv64-frame-semantics slot-size refl using (RunLow; low-start)

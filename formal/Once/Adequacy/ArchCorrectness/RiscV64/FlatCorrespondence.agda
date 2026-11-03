@@ -39,7 +39,7 @@ open import Data.Empty using (⊥-elim)
 import Once.CCC.Target.RiscV64.Semantics as R
 open R using (mkstate) renaming (writeReg to rwriteReg)
 open R.State using (memory) renaming (regs to rregs; halted to rhalted)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; ra; t1)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; ra; t1; t2)
 open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
@@ -106,6 +106,19 @@ keeps-t1-riscv64 : ∀ (s : R.State) (v w : Word) (p : ℕ)
 keeps-t1-riscv64 s v w p = record { kr-role = kr ; kr-mem = refl ; kr-halt = refl }
   where
     kr : ∀ ρ → R.readReg (rwriteReg (rwriteReg (rregs s) t1 v) t1 w) (reg-of ρ) ≡ rreg s (reg-of ρ)
+    kr role-sp      = refl
+    kr role-clos    = refl
+    kr role-heap    = refl
+    kr role-out     = refl
+    kr role-in1     = refl
+
+-- D372: the room check computes the room in `t1` and the need in `t2`, neither
+-- a role's.
+keeps-t1-t2-riscv64 : ∀ (s : R.State) (v w : Word) (p : ℕ)
+  → KeepsRoles s (mkstate (rwriteReg (rwriteReg (rregs s) t1 v) t2 w) (memory s) p (rhalted s))
+keeps-t1-t2-riscv64 s v w p = record { kr-role = kr ; kr-mem = refl ; kr-halt = refl }
+  where
+    kr : ∀ ρ → R.readReg (rwriteReg (rwriteReg (rregs s) t1 v) t2 w) (reg-of ρ) ≡ rreg s (reg-of ρ)
     kr role-sp      = refl
     kr role-clos    = refl
     kr role-heap    = refl

@@ -34,11 +34,11 @@ module Once.Adequacy.ArchCorrectness.X86-32
   (o : CanonicalName) (tbl : List IRFun)
   -- Plan 0.105: the interpretation the program runs against.
   (ι : Interp)
-  (x86-32-heap-room : RB.HeapRoom o ι) (x86-32-stack-room : RB.StackRoom o ι)
-  (x86-32-call-room : RB.CallRoom o ι)
-  -- PLAN 0.70 PHASE C: the machine is finite. Same class and same threading as
-  -- the three rooms (D087) — a fact about the running program that a loader or
-  -- the emitter establishes, and a parameter is the hole its proof slots into.
+  -- (`HeapRoom`, `StackRoom`, `CallRoom` stood here until plan 0.123 A.4 step 5:
+  -- the room checks and their budget, `FlatCore.Budget`, retired them.)
+  -- PLAN 0.70 PHASE C: the machine is finite (D087) — a fact about the running
+  -- program that a loader or the emitter establishes, and a parameter is the
+  -- hole its proof slots into.
   (x86-32-reg-range : RB.RegRange o ι)
   -- …and the emitted `add` sites' range obligations, bundled: `add` computes
   -- `W.⊕` unconditionally (D054 — wraparound is correct, defined semantics, so
@@ -201,14 +201,12 @@ import Once.Adequacy.ArchCorrectness.X86-32.FlatCorrespondence as FCx
 import Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation as FSimx
 import Once.Adequacy.ArchCorrectness.X86-32.RunContext as RCx
 
--- (`x86-32-heap-room` is now a module PARAMETER — see
--- `…X86-32.ResourceBounds.HeapRoom`, D087: resource bounds are parameters.)
-
 open import Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim o
-  x86-32-frame-semantics refl refl x86-32-heap-room x86-32-stack-room x86-32-call-room
+  x86-32-frame-semantics refl refl
   x86-32-reg-range
   (RB.AddrNoWrap.ret-no-wrap x86-32-addr-no-wrap)
   (RB.LitFits.tag-fits x86-32-lit-fits) (RB.LitFits.lit-fits x86-32-lit-fits) (RB.float-fits o ι)
+  (RB.LitFits.room-fits x86-32-lit-fits)
   using (events-agree-start; events-agree-boot; AgreeAt; CompiledCorr; HeapView; EntryLike; reach-start; RunAt; mkRunAt)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o x86-32-frame-semantics slot-size refl using (RunLow; low-start)
 open import Once.CCC.Machine.FlatStoreWF x86-32-frame-semantics using (FlatWF; sv-below)
