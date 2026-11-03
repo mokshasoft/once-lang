@@ -9,7 +9,9 @@
 # answers which program the calling thread runs.
 #
 # `start` is seL4_TCB_WriteRegisters on the thread with resume_target = 1
-# and two registers, rip and rsp (seL4_UserContext's first two): message
+# and two registers, rip and rsp (seL4_UserContext's first two; rip is the
+# Host's `once_sel4_program_enter`, which sets the program's heap and jumps
+# to its start, plan 0.123 C.5): message
 # words resume/arch flags, count, rip, rsp — four words, so no IPC buffer.
 # The seL4 numbers are the kernel's names, checked against the pinned
 # kernel by examples/seL4 `check-numbers.sh`.
@@ -60,9 +62,10 @@ start:
     cmpq    $PROGRAM_SLOTS, %r12
     jae     1f
     leaq    once_sel4_program_entry(%rip), %rcx
-    movq    (%rcx,%r12,8), %r9          # rip: the program's start
+    movq    (%rcx,%r12,8), %r9          # the program's start (0: none)
     testq   %r9, %r9
     jz      1f
+    leaq    once_sel4_program_enter(%rip), %r9  # rip: the Host's entry, which sets the heap
     leaq    once_sel4_program_sp(%rip), %rcx
     movq    (%rcx,%r12,8), %r15         # rsp: the program's stack
     leaq    once_sel4_program_tcb(%rip), %rcx

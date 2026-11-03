@@ -3,19 +3,26 @@
 #
 # A Host is how a platform runs a program: `enter ; main ; leave`.
 #
+# THE HOST OWNS EACH RUN'S MEMORY (plan 0.123 C.5): one region per program,
+# its cells at the bottom growing up (the frontier register `%r15`), its
+# stack at the top growing down. Running out is the two meeting, which the
+# compiled program's room checks see first: they call `once_exhausted`.
+#
 # `enter` (`once_sel4_enter`, the ELF entry: `Host.x86_64.ld`). The kernel
 # starts the root task at the ELF entry with the bootinfo pointer in `rdi`
-# and no stack (seL4 `create_initial_thread`). `_start` needs a stack, so
-# `enter` sets `%rsp` to a static stack, saves the bootinfo pointer for the
-# Interpretations (`once_sel4_bootinfo`), and jumps to `_start`. This is
-# what seL4's own runtime does for C (`sel4runtime`, `_sel4_start`).
+# and no stack (seL4 `create_initial_thread`). `enter` points `%rsp` at the
+# top of the root task's region and `%r15` at its bottom, saves the bootinfo
+# pointer for the Interpretations (`once_sel4_bootinfo`), and jumps to the
+# compiler's portable entry `once_main`. This is what seL4's own runtime
+# does for C (`sel4runtime`, `_sel4_start`), plus the heap.
 #
 # An image may hold further programs (plan 0.127 B.1): program 0 is the
-# root task; programs 1-3 are linked beside it with their `_start`
+# root task; programs 1-3 are linked beside it with their `once_main`
 # renamed `once_program_<n>` (weak here: an image without them links).
-# `I.SeL4.Program.start` starts one on a thread at its start, on its
-# stack below; its `_start` sets its own heap. `once_sel4_self` answers
-# which program the calling thread runs, from its stack pointer.
+# `I.SeL4.Program.start` starts one on a thread at `once_sel4_program_enter`
+# with the stack pointer at the top of its region; that points `%r15` at the
+# region's bottom and jumps to the program. `once_sel4_self` answers which
+# program the calling thread runs, from its stack pointer.
 #
 # The Interpretations' shared routines are here too, since every seL4
 # program links this Host: `once_sel4_flatten` / `once_sel4_build` (a
@@ -48,27 +55,27 @@
 .equ IPC_CAPS, 976                  # = offsetof(seL4_IPCBuffer, caps_or_badges)
 # end seL4 numbers
 
-.equ ROOT_STACK_SIZE,         65536
+.equ ROOT_REGION_SIZE,        1048576     # 1 MiB
 .equ PROGRAM_SLOTS,           4
-.equ PROGRAM_STACK_SIZE,      65536
-.equ PROGRAM_STACK_SHIFT,     16          # log2 PROGRAM_STACK_SIZE
+.equ PROGRAM_REGION_SIZE,     1048576     # 1 MiB
+.equ PROGRAM_REGION_SHIFT,    20          # log2 PROGRAM_REGION_SIZE
 
 .bss
 .align 16
-once_sel4_stack:
-    .space ROOT_STACK_SIZE
-once_sel4_stack_top:
+once_sel4_root_region:
+    .space ROOT_REGION_SIZE
+once_sel4_root_region_end:
 
 .global once_sel4_bootinfo
 .align 8
 once_sel4_bootinfo:
     .space 8
 
-# Programs 1..PROGRAM_SLOTS-1: one stack each
+# Programs 1..PROGRAM_SLOTS-1: one region each (cells up, stack down)
 .align 16
-once_sel4_program_stacks:
-    .space (PROGRAM_SLOTS - 1) * PROGRAM_STACK_SIZE
-once_sel4_program_stacks_end:
+once_sel4_program_regions:
+    .space (PROGRAM_SLOTS - 1) * PROGRAM_REGION_SIZE
+once_sel4_program_regions_end:
 
 # Per program: the TCB and the Int it was started with (0: root task)
 .global once_sel4_program_tcb
@@ -93,27 +100,47 @@ once_sel4_program_entry:
     .quad once_program_2
     .quad once_program_3
 
-# Per program: its initial stack pointer (the top of its stack, less 16)
+# Per program: its initial stack pointer (the top of its region, less 16)
 .global once_sel4_program_sp
 once_sel4_program_sp:
     .quad 0
-    .quad once_sel4_program_stacks + 1 * PROGRAM_STACK_SIZE - 16
-    .quad once_sel4_program_stacks + 2 * PROGRAM_STACK_SIZE - 16
-    .quad once_sel4_program_stacks + 3 * PROGRAM_STACK_SIZE - 16
+    .quad once_sel4_program_regions + 1 * PROGRAM_REGION_SIZE - 16
+    .quad once_sel4_program_regions + 2 * PROGRAM_REGION_SIZE - 16
+    .quad once_sel4_program_regions + 3 * PROGRAM_REGION_SIZE - 16
 
 .section .rodata
 once_sel4_leave_line:
     .ascii "Once: returned\n"
 once_sel4_leave_line_end:
+once_sel4_exhausted_line:
+    .ascii "Once: exhausted\n"
+once_sel4_exhausted_line_end:
 
 .text
 .global once_sel4_enter
 .type once_sel4_enter, @function
 once_sel4_enter:
-    leaq    once_sel4_stack_top(%rip), %rsp
+    leaq    once_sel4_root_region_end(%rip), %rsp   # the stack: the region's top
+    leaq    once_sel4_root_region(%rip), %r15       # the frontier: its bottom
     movq    %rdi, once_sel4_bootinfo(%rip)
-    jmp     _start
+    jmp     once_main
 .size once_sel4_enter, .-once_sel4_enter
+
+# once_sel4_program_enter: where `I.SeL4.Program.start` starts program n
+# (1..PROGRAM_SLOTS-1), its stack pointer at the top of region n. Points the
+# frontier at the region's bottom and jumps to the program's `once_main`.
+.global once_sel4_program_enter
+.type once_sel4_program_enter, @function
+once_sel4_program_enter:
+    call    once_sel4_self              # n, in rax
+    movq    %rax, %r15
+    decq    %r15
+    shlq    $PROGRAM_REGION_SHIFT, %r15
+    leaq    once_sel4_program_regions(%rip), %rcx
+    addq    %rcx, %r15                  # the frontier: region n's bottom
+    leaq    once_sel4_program_entry(%rip), %rcx
+    jmp     *(%rcx,%rax,8)
+.size once_sel4_program_enter, .-once_sel4_program_enter
 
 # once_sel4_self: the program the calling thread runs, in rax (0 for the
 # root task: a stack pointer outside the programs' stacks). Preserves
@@ -122,14 +149,14 @@ once_sel4_enter:
 .type once_sel4_self, @function
 once_sel4_self:
     pushq   %rcx
-    leaq    once_sel4_program_stacks(%rip), %rcx
+    leaq    once_sel4_program_regions(%rip), %rcx
     movq    %rsp, %rax
     subq    %rcx, %rax
-    jb      1f                          # below the programs' stacks
-    leaq    once_sel4_program_stacks_end(%rip), %rcx
+    jb      1f                          # below the programs' regions
+    leaq    once_sel4_program_regions_end(%rip), %rcx
     cmpq    %rcx, %rsp
     jae     1f                          # above them
-    shrq    $PROGRAM_STACK_SHIFT, %rax
+    shrq    $PROGRAM_REGION_SHIFT, %rax
     incq    %rax
     popq    %rcx
     ret
@@ -223,6 +250,25 @@ once_sel4_invoke:
 once_leave:
     leaq    once_sel4_leave_line(%rip), %r12
     leaq    once_sel4_leave_line_end(%rip), %r13
+    jmp     once_sel4_end
+.size once_leave, .-once_leave
+
+# once_exhausted — the run ran out of memory (D347, plan 0.123): a room check
+# found no room. It never returns. Its contract: the run ends `exhausted`.
+# On seL4 the thread prints the out-of-memory line on the debug console and
+# suspends, as `leave` does with its own line: the console tells the two
+# ends apart.
+.global once_exhausted
+.type once_exhausted, @function
+once_exhausted:
+    leaq    once_sel4_exhausted_line(%rip), %r12
+    leaq    once_sel4_exhausted_line_end(%rip), %r13
+    jmp     once_sel4_end
+.size once_exhausted, .-once_exhausted
+
+# once_sel4_end: print the line [r12, r13) and suspend the calling thread.
+.type once_sel4_end, @function
+once_sel4_end:
 1:  cmpq    %r13, %r12
     je      2f
     movzbq  (%r12), %rdi
@@ -251,4 +297,4 @@ once_leave:
     syscall
     movq    %rbx, %rsp
     jmp     4b
-.size once_leave, .-once_leave
+.size once_sel4_end, .-once_sel4_end

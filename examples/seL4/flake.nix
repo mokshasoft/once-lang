@@ -134,14 +134,45 @@
           cp console.txt $out/
         '';
 
+        # Plan 0.123 A.5: a root task that allocates without bound ends
+        # `exhausted` — the Host's out-of-memory line, not a corrupted stack
+        exhausted-image = pkgs.runCommand "seL4-once-exhausted-image" {
+          nativeBuildInputs = [ onceCompiler pkgs.binutils pkgs.bash ];
+        } ''
+          mkdir -p $out
+          bash ${./link-image.sh} once ${strata} $out/exhausted-image ${./Exhausted/Root.once}
+        '';
+
+        exhausted-test = pkgs.runCommand "seL4-once-exhausted-test" {
+          nativeBuildInputs = [ pkgs.qemu pkgs.gnugrep pkgs.coreutils ];
+        } ''
+          serial=$PWD/serial.txt
+          timeout 60 qemu-system-x86_64 ${qemuFlags} -serial file:$serial \
+            -kernel ${seL4-kernel-x86_64}/kernel32.elf \
+            -initrd ${exhausted-image}/exhausted-image &
+          qemu=$!
+          for _ in $(seq 120); do
+            grep -q 'Once: exhausted' $serial 2>/dev/null && break
+            sleep 0.5
+          done
+          sleep 1
+          kill $qemu 2>/dev/null || true
+          tr -d '\r' < $serial > console.txt
+          cat console.txt
+          grep -qx 'Once: exhausted' console.txt
+          mkdir -p $out
+          cp console.txt $out/
+        '';
+
       in {
         packages = {
-          inherit seL4-kernel-x86_64 echo-image echo-test numbers-check simulate;
+          inherit seL4-kernel-x86_64 echo-image echo-test exhausted-image exhausted-test numbers-check simulate;
           default = echo-test;
         };
 
         checks = {
           echo = echo-test;
+          exhausted = exhausted-test;
           numbers = numbers-check;
         };
 
