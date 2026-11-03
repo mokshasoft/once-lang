@@ -18,16 +18,16 @@ open import Once.Spec.Core.Syntax using (Defs)
 module Once.Metatheory.Laws.FoldRoll (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
 open import Data.Product using (_×_; _,_; Σ-syntax)
-open import Data.Sum using (inj₂)
+open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
-open import Once.Spec.Grade using (Quantity; Many; mk-kind; Purity; pure; _⊑π_; ⊑-pure)
-open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; TySub; Respects; ∅ₖ; _⟨_⟩; _⟨_⟩F; _⇒[_]_; μ; ⟦_⟧F; at₀)
-open import Once.Spec.Context using (Ctx)
+open import Once.Spec.Grade using (Quantity; Many; mk-kind; Purity; pure; pureᶠ; Finite; fin; _⊑π_; ⊑-pure)
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; TySub; Respects; ∅ₖ; _⟨_⟩; _⟨_⟩F; _⇒[_]_; μ; ν; ⟦_⟧F; at₀; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Context using (Ctx; Usage; _∷_)
 open import Once.Spec.Core.Syntax
-open import Once.Spec.Core.Derived using (composeᶜ; cataᶜ; inᶜ; layerᶜ; mapᶜ)
+open import Once.Spec.Core.Derived using (cataᶜ; anaᶜ; layerᶜ; mapᶜ)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
-open import Once.Spec.Effect Σ using (M; sub; T∞; _>>=∞_; return∞; toT∞)
+open import Once.Spec.Effect Σ using (M; sub; T∞; _>>=∞_; return∞; toT∞; νM)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM)
 open import Once.Spec.Polynomial using (inS; sfmap)
 open import Once.Spec.Equivalence Σ using (Same)
@@ -49,9 +49,11 @@ open import Once.Metatheory.Laws.LayerSem Σ using (module LayerSem)
 open import Once.Metatheory.Laws.CataSem Σ u fmt S using (module CataV)
 open import Once.Metatheory.Laws.CataLaws Σ u fmt S using (cataTy; kind≡; module Transport)
 open import Once.Metatheory.Laws.MapCov Σ S using (letInv; lamInv; foldInv; dom≡; cod≡)
-open import Once.Metatheory.Laws.Strengthen Σ S using (varTy)
+open import Once.Metatheory.Laws.Strengthen Σ S using (varTy; str)
+open import Once.Metatheory.Laws.AnaSem Σ u fmt S using (module AnaV)
+open import Once.Metatheory.Laws.AnaLaws Σ u fmt S using (anaTy)
 open import Once.Metatheory.Laws.MapV Σ u fmt S using (module MapV)
-open import Once.Metatheory.Coherence.Layer Σ using (appMany)
+open import Once.Metatheory.Coherence.Layer Σ using (appMany; relatedFmap; outRel; LayerEq-∀)
 
 module _ {m : ℕ} {Δ : KCtx m} where
 
@@ -63,6 +65,23 @@ module _ {m : ℕ} {Δ : KCtx m} where
   ... | E , _ , _ , _ , _ , dalg , db with lamInv db
   ...   | W′ , _ , _ , refl , dt with foldInv dt
   ...     | wf , _ , _ , _ , dv = cod≡ {Δ = Δ} (trans (varTy dv) (ty-unique dalg dp))
+
+  -- An unfold is at `ν F f`, its coalgebra at `A′ ⇒ ⟦ F ⟧F A′` (its grade `f`).
+  unfTy : ∀ {n} {Γ : Ctx m n} {Ψ F c t Z π} → Δ ⊩ Γ ⊢[ Ψ ] unfold F c t ∷ Z ! π
+        → Σ[ f ∈ Finite ] Σ[ A′ ∈ Ty m ] Σ[ Ψc ∈ Usage n ] Σ[ π₁ ∈ Purity ]
+            (Z ≡ ν F f) × (Δ ⊩ Γ ⊢[ Ψc ] c ∷ A′ ⇒[ mk-kind Many (fin f) ] ⟦ F ⟧F A′ ! π₁)
+  unfTy (⊢unfold wf dc dt) = _ , _ , _ , _ , refl , dc
+  unfTy (⊢sub-use _ d) = unfTy d
+  unfTy (⊢sub-eff _ d) = unfTy d
+
+  -- An `anaᶜ` of an effect-free coalgebra returns `ν F pureᶠ`.
+  anaCod : ∀ {n} {Γ : Ctx m n} {Ψ π W F A c Ψp}
+         → Δ ⊩ Γ ⊢[ Ψ ] anaᶜ F A pure c ∷ A ⇒[ mk-kind Many pure ] W ! π
+         → Δ ⊩ Γ ⊢[ Ψp ] c ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F A ! pure → W ≡ ν F pureᶠ
+  anaCod d dp with lamInv d
+  ... | W′ , _ , _ , refl , dt with unfTy dt
+  ...   | f , A′ , (_ ∷ _) , π₁ , refl , dc with ty-unique (str dc) dp
+  ...     | refl = refl
 
   -- Folding a rolled layer: the algebra, after the layer map of the fold.
   fold-roll : ∀ {n} {Γ : Ctx m n} {Ψ F A π alg t}
@@ -171,3 +190,128 @@ module _ {m : ℕ} {Δ : KCtx m} where
 
           MID : _~_ {A} (⟪ dt ⟫ e₀ >>=∞ λ l → return∞ (pa (LS.LAYER F cv l))) (⟪ dt ⟫ e₀ >>=∞ λ l → return∞ (pa₁ (lv l)))
           MID = bindRel {g = λ l′ → return∞ (pa₁ (lv l′))} (runs (fl dt dt rt rt)) (λ sl → returnRel (CORE sl))
+
+  -- Forcing an unfold: the layer map of the unfold, after the coalgebra.
+  out-unfold : ∀ {n} {Γ : Ctx m n} {Ψ F A π c a}
+             → Pure Σ fmt S Δ Γ c (A ⇒[ mk-kind Many pure ] ⟦ F ⟧F A)
+             → (d : Δ ⊩ Γ ⊢[ Ψ ] out (unfold F c a) ∷ ⟦ F ⟧F (ν F pureᶠ) ! π)
+               (d′ : Δ ⊩ Γ ⊢[ Ψ ] app (layerᶜ F A (ν F pureᶠ) (anaᶜ F A pure c)) (app c a) ∷ ⟦ F ⟧F (ν F pureᶠ) ! π)
+             → _≅_ Σ fmt S d d′
+  out-unfold {Γ = Γ} {Ψ} {F} {A} {π} {c} {a} (Ψp , dp) d d′ δ sd σ r γ sγ = sameM {FN ⟨ σ ⟩} {π} (rel GO)
+    where
+      open Views δ sd σ r γ sγ
+      open ProdV δ sd σ r γ sγ using (pureRet)
+      module NV = AnaV δ sd σ r
+      module MT = MapTopV δ sd σ r A (ν F pureᶠ)
+      module LS = LayerSem σ
+      module Fn = Functor σ r
+      module FR = MapV.FoldR δ sd σ r A A γ sγ
+      module FV = FunV δ sd σ r γ sγ
+      open Transport δ σ r
+      N  = ν F pureᶠ
+      FN = ⟦ F ⟧F N
+      FA = ⟦ F ⟧F A
+      CT = A ⇒[ mk-kind Many pure ] FA
+      NT = A ⇒[ mk-kind Many pure ] N
+      GS = code (F ⟨ σ ⟩F)
+      eTT : (FA ⇒[ mk-kind Many pure ] FN) ≡ (layerT F ⟨ at₀ A ⟩ ⇒[ mk-kind Many pure ] layerT F ⟨ at₀ N ⟩)
+      eTT = cong₂ (λ P Q → P ⇒[ mk-kind Many pure ] Q) (sym (layerTy F A)) (sym (layerTy F N))
+
+      GO : _~_ {FN} (⟪ d ⟫ γ) (⟪ d′ ⟫ γ)
+      GO with FR.viewOut d base | FV.viewApp d′ base
+      ... | FR.outView wfA dv {γ₀} r₀ eqX eqO | FV.appView {Ψ₁ = ΨL} {π₁ = πL} dL dx₁ {eL} rL sem₁ with unfTy dv
+      ...   | (_ , _ , _ , _ , refl , _) with FR.viewUnfold dv r₀
+      ...     | FR.unfoldView wf dc dt {ec} {et} rc rt eqU with ty-unique dc dp
+      ...       | refl with eqX
+      ...         | refl with MT.mapTy (layerT F) dL
+      ...           | (W , eqL) with kind≡ {Δ = Δ} eqL
+      ...             | refl , refl with trans (dom≡ {Δ = Δ} eqL) (layerTy F A)
+      ...               | refl with viewLet dL rL
+      ...                 | letView de db {eb} rb (ee , re , eqLet) with anaTy de
+      ...                   | (W₀ , refl) with anaCod de dp
+      ...                     | refl = ~trans {FN} LHS (~trans {FN} MID (~sym {FN} RHS))
+        where
+          fromLtoL : ∀ (H : Fun m) X (y : V (⟦ H ⟧F X)) → fromL σ H X (toL σ H X y) ≡ y
+          fromLtoL (K C)     X y        = refl
+          fromLtoL Id        X y        = refl
+          fromLtoL (H₁ ⊕ H₂) X (inj₁ y) = cong inj₁ (fromLtoL H₁ X y)
+          fromLtoL (H₁ ⊕ H₂) X (inj₂ y) = cong inj₂ (fromLtoL H₂ X y)
+          fromLtoL (H₁ ⊗ H₂) X (y , y′) = cong₂ _,_ (fromLtoL H₁ X y) (fromLtoL H₂ X y′)
+
+          pc = ⟦ transfer dp dc ⟧ δ σ r ec
+          spc : Same (CT ⟨ σ ⟩) pc pc
+          spc = returnRel⁻ (runs (fl (transfer dp dc) (transfer dp dc) rc rc))
+          Rc = NV.readsPure γ sγ A A dp dc rc
+          av = NV.anaᵛ F A pc
+          c′ = λ y → toL σ F A (pc y)
+
+          -- The unfold: the coalgebra's value, then the seed.
+          UNF : _~_ {N} (⟪ dv ⟫ γ₀) (⟪ dt ⟫ et >>=∞ λ x → return∞ (av x))
+          UNF = ~trans {N} eqU
+            (≈-Relatedʳ (≈-sym (idˡ pc _))
+              (bindRel {g = λ g → ⟪ dt ⟫ et >>=∞ λ x → return∞ (NV.anaᵛ F A g x)} (pureRet dc dp rc)
+                (λ {g} {g′} sg → bindRel {g = λ x → return∞ (NV.anaᵛ F A g′ x)} (runs (fl dt dt rt rt))
+                  (λ sx → returnRel (NV.anaRelP wf sg sx)))))
+
+          LHS : _~_ {FN} (⟪ d ⟫ γ) (⟪ dt ⟫ et >>=∞ λ x → return∞ (NV.outᵛ F (av x)))
+          LHS = ~trans {FN} eqO
+            (≈-Relatedʳ (≈-sym (≈-trans (assoc _ _ _) (≈-bind (≈-refl _) (λ x → ≈-trans (idˡ (av x) _) (idˡ (νM.outν (av x)) _)))))
+              (bindRel {g = λ v → return∞ (νM.outν v) >>=∞ λ l → return∞ (fromL σ F N l)} UNF
+                (λ sv → relatedFmap (outRel pureᶠ GS sv) (λ p → Fn.fromL-same wfA N (LayerEq-∀ GS p)))))
+
+          dLT = subst (λ Z → Δ ⊩ Γ ⊢[ ΨL ] layerᶜ F A N (anaᶜ F A pure c) ∷ Z ! πL) eTT dL
+          cv  = MT.covD (layerT F) dLT
+          Φ   = MT.Φcall (layerT F) {X = A} {Y = N} {q = Many} (λ _ → refl) (λ _ → refl)
+          CL : V NT → V (layerT F ⟨ at₀ A ⟩ ⇒[ mk-kind Many pure ] layerT F ⟨ at₀ N ⟩)
+          CL gv x = MapAt.mapS Δ σ A N (layerT F) cv (Φ gv) x
+          lv = subst V (sym eTT) (CL av)
+
+          ANA : _~_ {NT} (⟪ de ⟫ ee) (return∞ av)
+          ANA = NV.anaSem γ sγ de re Rc
+
+          LAYERED : _~_ {FA ⇒[ mk-kind Many pure ] FN} (⟪ dL ⟫ eL) (return∞ lv)
+          LAYERED = ~trans {FA ⇒[ mk-kind Many pure ] FN}
+            (relBack {π = πL} eTT {mv = ⟦ dL ⟧ δ σ r eL}
+               (subst (λ m₀ → Related (Same ((layerT F ⟨ at₀ A ⟩ ⇒[ mk-kind Many pure ] layerT F ⟨ at₀ N ⟩) ⟨ σ ⟩)) (toT∞ πL m₀)
+                                (⟪ de ⟫ ee >>=∞ λ gv → return∞ (CL gv)))
+                  (meaningSubst eTT dL eL)
+               (MT.mapSem γ sγ (layerT F) dLT rL de re Φ (MT.HΦcall (layerT F) {X = A} {Y = N} {q = Many} (λ _ → refl) (λ _ → refl)))))
+            (≈-Relatedʳ (≈-sym (≈-trans (≈-bind (idˡ av _) (λ _ → ≈-refl _)) (idˡ (CL av) _)))
+              (bindRel {g = λ v → return∞ (subst V (sym eTT) v)}
+                (bindRel {g = λ gv → return∞ (CL gv)} ANA (λ {gv} {gv′} sg → returnRel
+                  (toSameP σ {X = layerT F ⟨ at₀ A ⟩} {Y = layerT F ⟨ at₀ N ⟩}
+                    (λ sx → MapResp.resp σ r A N (layerT F) cv cv
+                              (MT.ΦcallResp (layerT F) {X = A} {Y = N} {q = Many} (λ _ → refl) (λ _ → refl) sg) sx))))
+                (λ sv → returnRel (sameSubst (sym eTT) sv))))
+
+          -- The argument `app c a`: the seed, then the coalgebra.
+          INNER : ∀ {ex} → Res ex → _~_ {FA} (⟪ dx₁ ⟫ ex) (⟪ dt ⟫ et >>=∞ λ x → return∞ (pc x))
+          INNER rx with FV.viewApp dx₁ rx
+          ... | FV.appView dc₂ da₂ rc₂ sem₂ with ty-unique dc₂ dp
+          ...   | refl = FV.appMany~ dc₂ da₂ sem₂ (MapV.Reads.rd Rc dc₂ rc₂) (λ rx′ → runs (fl da₂ dt rx′ rt))
+
+          RHS : _~_ {FN} (⟪ d′ ⟫ γ) (⟪ dt ⟫ et >>=∞ λ x → return∞ (lv (pc x)))
+          RHS = ≈-Relatedʳ (≈-sym (≈-trans (assoc _ _ _) (≈-bind (≈-refl _) (λ x → idˡ (pc x) _))))
+                  (FV.appMany~ dL dx₁ sem₁ LAYERED INNER)
+
+          CORE : ∀ {x x′} → Same (A ⟨ σ ⟩) x x′ → Same (FN ⟨ σ ⟩) (NV.outᵛ F (av x)) (lv (pc x′))
+          CORE {x} {x′} sx = Same-trans (FN ⟨ σ ⟩)
+                               (Fn.fromL-same wfA N (NV.mapPRel wfA spc GS (Fn.toL-same wfA A (fromSameP σ {X = A} {Y = FA} spc sx))))
+                               (Same-sym (FN ⟨ σ ⟩) (subst₂′ {X = FN} e₂ (sym e₃) AGREE))
+            where
+              y′ = pc x′
+              tm = subst V (sym (layerTy F A)) y′
+              e₂ : lv y′ ≡ LS.tr F N (CL av tm)
+              e₂ = trans (funBack (sym (layerTy F A)) (sym (layerTy F N)) (CL av) y′) (symsym (layerTy F N) (CL av tm))
+              sy : Same (FA ⟨ σ ⟩) y′ y′
+              sy = sameRefl (FA ⟨ σ ⟩) (Same-sym (FA ⟨ σ ⟩) (fromSameP σ {X = A} {Y = FA} spc sx))
+              AGREE : Same (FN ⟨ σ ⟩) (LS.tr F N (CL av tm)) (LS.LAYER F av (LS.tr F A tm))
+              AGREE = LS.agree {Δ = Δ} r A N F wfA cv (Φ av) av
+                        (λ o b b′ sb → fromSameP σ {X = A} {Y = N} (NV.anaResp wfA spc) sb)
+                        (sameSubst (sym (layerTy F A)) sy)
+              e₃ : LS.LAYER F av (LS.tr F A tm) ≡ fromL σ F N (sfmap GS av (c′ x′))
+              e₃ = trans (cong (LS.LAYER F av) (substSym (layerTy F A) y′))
+                     (trans (cong (LS.LAYER F av) (sym (fromLtoL F A y′))) (LS.layerFromL F av (c′ x′)))
+
+          MID : _~_ {FN} (⟪ dt ⟫ et >>=∞ λ x → return∞ (NV.outᵛ F (av x))) (⟪ dt ⟫ et >>=∞ λ x → return∞ (lv (pc x)))
+          MID = bindRel {g = λ x′ → return∞ (lv (pc x′))} (runs (fl dt dt rt rt)) (λ sx → returnRel (CORE sx))
