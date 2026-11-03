@@ -89,7 +89,7 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
           ; instr-reclaim-to; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init
           ; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr
           ; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-reg-op; out-nz; instr-ctrl
-          ; instr-free-heap; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave
+          ; instr-free-heap; load-at; store-at; addr-at; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave
           ; e-fn; e-thunk; SV-Ptr; SV-Tag; SV-Lit; SV-Code; readReg; Output; module LocState )
   open import Once.CCC.Machine.Locations using (AtDynamic; AtStack)
   open import Once.Memory.HeapAddress using (sucHL)
@@ -205,6 +205,9 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   step-lift fs i@(instr-alloc-heap _) = on fs i refl refl
   step-lift fs (instr-reg-op out-nz)    = nz-at fs (readReg (LocState.regs (floc fs)) Output)
   step-lift fs i@(instr-free-heap _) = on fs i refl refl
+  step-lift fs i@(load-at _) = on fs i refl refl
+  step-lift fs i@(store-at _) = on fs i refl refl
+  step-lift fs i@(addr-at _) = on fs i refl refl
   step-lift fs i@(instr-room _) = on fs i refl refl
   step-lift fs i@(instr-ctrl (c-label _)) = on fs i refl refl
   step-lift fs i@(instr-ctrl (c-entry _ _)) = on fs i refl refl

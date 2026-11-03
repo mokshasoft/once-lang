@@ -418,7 +418,8 @@ open import Once.CCC.Machine.SMCore
         ; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-dealloc-stack
         ; instr-reclaim-to; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init
         ; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr
-        ; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-reg-op; instr-ctrl; instr-free-heap )
+        ; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-reg-op; instr-ctrl; instr-free-heap
+        ; load-at; store-at; addr-at )
 
 imageI-noroom : ∀ (i : AbstractInstr) → ImageI i → room? i ≡ false
 imageI-noroom mov-to-output            _ = refl
@@ -450,6 +451,9 @@ imageI-noroom (instr-alloc-heap _)     _ = refl
 imageI-noroom (instr-reg-op _)         _ = refl
 imageI-noroom (instr-ctrl _)           _ = refl
 imageI-noroom (instr-free-heap _)      _ = refl
+imageI-noroom (load-at _)      _ = refl
+imageI-noroom (store-at _)      _ = refl
+imageI-noroom (addr-at _)      _ = refl
 imageI-noroom (instr-room _)           ()
 
 image-noroom : ∀ (t : AbstractTrace) → All ImageI t → NoRoom t
@@ -542,4 +546,7 @@ module NeedFacts {FS : FrameSemantics} where
   call-boundary (instr-alloc-heap _)     ()
   call-boundary (instr-reg-op _)         ()
   call-boundary (instr-free-heap _)      ()
+  call-boundary (load-at _)      ()
+  call-boundary (store-at _)      ()
+  call-boundary (addr-at _)      ()
   call-boundary (instr-room _)           ()

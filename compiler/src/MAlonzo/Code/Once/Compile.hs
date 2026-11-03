@@ -2197,7 +2197,7 @@ d_printFile_1388 v0
 -- Once.Compile.image-of
 d_image'45'of_1390 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_652 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2086]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2134]
 d_image'45'of_1390 v0
   = coe
       MAlonzo.Code.Once.CCC.Codegen.RoomChecks.d_room'45'checks_60
@@ -2243,7 +2243,7 @@ d_emit'45'x86'45'64_1402 v0
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
          (coe
-            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.du_compile'45'trace'45'cnt_72
+            MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.du_compile'45'trace'45'cnt_78
             (coe (0 :: Integer)) (coe d_image'45'of_1390 (coe v0))))
       (coe
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe (0 :: Integer)))
@@ -2287,7 +2287,7 @@ d_emit'45'x86'45'32_1414 v0
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
          (coe
-            MAlonzo.Code.Once.CCC.Target.X86Z45Z32.AbstractToX86Z45Z32.du_compile'45'trace'45'cnt_122
+            MAlonzo.Code.Once.CCC.Target.X86Z45Z32.AbstractToX86Z45Z32.du_compile'45'trace'45'cnt_128
             (coe (0 :: Integer)) (coe d_image'45'of_1390 (coe v0))))
       (coe
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe (0 :: Integer)))
@@ -2331,7 +2331,7 @@ d_emit'45'riscv64_1426 v0
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
          (coe
-            MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.du_compile'45'trace'45'cnt_148
+            MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.du_compile'45'trace'45'cnt_154
             (coe (0 :: Integer)) (coe d_image'45'of_1390 (coe v0))))
       (coe
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe (0 :: Integer)))
@@ -2353,7 +2353,7 @@ d_emitProgram_1432 v0
 -- Once.Compile.lib-image
 d_lib'45'image_1434 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2086]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2134]
 d_lib'45'image_1434 v0
   = coe
       MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_fns'45'image_20
@@ -2384,7 +2384,7 @@ d_emitLibrary_1448 v0 v1
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.du_compile'45'trace'45'cnt_72
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.AbstractToX86.du_compile'45'trace'45'cnt_78
                    (coe (0 :: Integer)) (coe d_lib'45'image_1434 (coe v1))))
              (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
              (coe
@@ -2417,7 +2417,7 @@ d_emitLibrary_1448 v0 v1
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.AbstractToX86Z45Z32.du_compile'45'trace'45'cnt_122
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.AbstractToX86Z45Z32.du_compile'45'trace'45'cnt_128
                    (coe (0 :: Integer)) (coe d_lib'45'image_1434 (coe v1))))
              (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
              (coe
@@ -2450,7 +2450,7 @@ d_emitLibrary_1448 v0 v1
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.du_compile'45'trace'45'cnt_148
+                   MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.du_compile'45'trace'45'cnt_154
                    (coe (0 :: Integer)) (coe d_lib'45'image_1434 (coe v1))))
              (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
              (coe

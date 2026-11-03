@@ -54,4 +54,7 @@ slot-of (instr-alloc-heap _)   = nothing
 slot-of (instr-reg-op _)       = nothing
 slot-of (instr-free-heap _)    = nothing
 slot-of (instr-room _)    = nothing
+slot-of (load-at _)    = nothing
+slot-of (store-at _)    = nothing
+slot-of (addr-at _)    = nothing
 slot-of (instr-ctrl _)         = nothing
