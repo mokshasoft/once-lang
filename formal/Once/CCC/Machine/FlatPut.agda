@@ -23,7 +23,7 @@ open import Once.CCC.Machine.SMCore using (AbstractTrace)
 module Once.CCC.Machine.FlatPut {FS : FrameSemantics} {prog : AbstractTrace} where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_; z≤n; s≤s)
-open import Data.Nat.Properties using (+-identityʳ; +-comm; +-monoʳ-≤; ≤-trans; +-suc)
+open import Data.Nat.Properties using (+-identityʳ; +-comm; +-monoʳ-≤; ≤-trans; +-suc; +-cancelˡ-≡)
 open import Data.List using ([]; _∷_)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -222,3 +222,68 @@ module _ (C : IRTy) {c : ⟦ C ⟧} (stash blk off : ℕ) (s : LocState FS) (all
         subst (λ z → readLoc s′ (AtDynamic (heap-loc rd z)) ≡ readLoc s (AtDynamic (heap-loc r (j + o))))
               (trans (+-identityʳ (off + j)) (+-comm off j))
               (proj₁ (proj₂ (proj₂ co)) j j<)
+
+------------------------------------------------------------------------
+-- D382: THE PADDING FILL, `c` words from `from` of the block in `Input1`
+------------------------------------------------------------------------
+open import Once.CCC.Codegen.FlatLayout using (fill)
+
+record FillOut (from c : ℕ) (rd : HeapRef) (s : LocState FS) (alloc : AllocState {FS})
+               (r : LocState FS × AllocState {FS}) : Set where
+  field
+    alloc-eq : proj₂ r ≡ alloc
+    live     : halted (proj₁ r) ≡ false
+    input1   : readReg (regs (proj₁ r)) Input1 ≡ readReg (regs s) Input1
+    written  : ∀ j → j < c → Written (proj₁ r) (dst rd from j)
+    other    : ∀ loc → (∀ j → j < c → loc ≢ dst rd from j) → readLoc (proj₁ r) loc ≡ readLoc s loc
+
+fill-exec : ∀ (from c : ℕ) (s : LocState FS) (alloc : AllocState {FS}) (rd : HeapRef)
+          → halted s ≡ false
+          → readReg (regs s) Input1 ≡ SV-Ptr (AtDynamic (heap-loc rd 0))
+          → (∀ j → j < c → InBlk alloc (dst rd from j))
+          → FillOut from c rd s alloc (exec-trace (fill from c) s alloc)
+fill-exec from zero s alloc rd h i1 ib =
+  record { alloc-eq = refl ; live = h ; input1 = refl ; written = λ _ () ; other = λ _ _ → refl }
+fill-exec from (suc c) s alloc rd h i1 ib =
+  subst (FillOut from (suc c) rd s alloc) (sym step) out
+  where
+    tag = SV-Tag {FS} 0
+    s₀  = record s { regs = writeReg (regs s) Output tag }
+    here = AtDynamic (offsetHL (heap-loc rd 0) from)
+    s₁  = writeLoc s₀ here tag
+    eq0 : dst rd from 0 ≡ here
+    eq0 = cong (λ z → AtDynamic (offsetHL (heap-loc rd 0) z)) (+-identityʳ from)
+    ib0 : InBlk alloc here
+    ib0 = subst (InBlk alloc) eq0 (ib 0 (s≤s z≤n))
+    step : exec-trace (fill from (suc c)) s alloc ≡ exec-trace (fill (suc from) c) s₁ alloc
+    step rewrite h | h | i1 | ib0 = refl
+    h₁ : halted s₁ ≡ false
+    h₁ = trans (wl-halted s₀ (offsetHL (heap-loc rd 0) from) tag) h
+    i1₁ : readReg (regs s₁) Input1 ≡ SV-Ptr (AtDynamic (heap-loc rd 0))
+    i1₁ = i1
+    shift : ∀ j → dst rd (suc from) j ≡ dst rd from (suc j)
+    shift j = cong (λ z → AtDynamic (offsetHL (heap-loc rd 0) z)) (sym (+-suc from j))
+    ih = fill-exec (suc from) c s₁ alloc rd h₁ i1₁ (λ j j< → subst (InBlk alloc) (sym (shift j)) (ib (suc j) (s≤s j<)))
+    s₁-other : ∀ loc → loc ≢ here → readLoc s₁ loc ≡ readLoc s loc
+    s₁-other loc ne = trans (writeLoc-preserves-other s₀ here loc tag (λ e → ne (sym e))) (regs-mem s _ loc)
+    later : ∀ j → j < c → here ≢ dst rd (suc from) j
+    later j _ e = 0≢s (+-cancelˡ-≡ from 0 (suc j) (trans (+-identityʳ from) (off-inj (trans e (shift j)))))
+      where
+        off-of : ValueLocation FS → ℕ
+        off-of (AtDynamic (heap-loc _ o)) = o
+        off-of (AtStack _ _)              = 0
+        off-inj : ∀ {a b} → AtDynamic {FS} (offsetHL (heap-loc rd 0) a) ≡ AtDynamic (offsetHL (heap-loc rd 0) b) → a ≡ b
+        off-inj {a} {b} q = trans (sym (+-identityʳ a)) (trans (cong off-of q) (+-identityʳ b))
+        0≢s : 0 ≡ suc j → ⊥
+        0≢s ()
+    out : FillOut from (suc c) rd s alloc (exec-trace (fill (suc from) c) s₁ alloc)
+    out = record
+      { alloc-eq = FillOut.alloc-eq ih
+      ; live     = FillOut.live ih
+      ; input1   = FillOut.input1 ih
+      ; written  = λ { zero _ → _ , trans (FillOut.other ih (dst rd from 0) (λ j j< e → later j j< (trans (sym eq0) e)))
+                                         (trans (cong (readLoc s₁) eq0) (readLoc-writeLoc-same s₀ here tag))
+                     ; (suc j) (s≤s j<) → subst (Written (proj₁ (exec-trace (fill (suc from) c) s₁ alloc))) (shift j) (FillOut.written ih j j<) }
+      ; other    = λ loc nd → trans (FillOut.other ih loc (λ j j< e → nd (suc j) (s≤s j<) (trans e (shift j))))
+                                    (s₁-other loc (λ e → nd 0 (s≤s z≤n) (trans e (sym eq0))))
+      }
