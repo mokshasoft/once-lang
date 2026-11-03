@@ -20705,8 +20705,21 @@ observation as equality (no `funext`, no bisimulation-to-`≡`).
 review): the approved form is usable as is, because a term's meaning does not depend on the grade or the
 usage its derivation is at (`Laws.Tools.transfer`).
 
-**Not yet stated** (plan 0.79 D4, D5): term-level fold/unfold laws (they need a term-level functor
-action `mapᶜ`), and naturality of polymorphic definitions.
+**Ordering, stated once** (user, 2026-11-03). The language has one ordering convention: independent
+effects run in reading order, and data flow orders the rest. `let` is sequencing itself; `pair`'s arms
+and `app`'s head and argument are independent (the Freyd category is premonoidal, so a call-by-value
+language must pick an order); `fold` adds no choice of its own (children before parent is data flow,
+siblings are `pair`'s order, D286). No rule changes; D286 is this convention applied to folds.
+
+**`map` is pure** (user, 2026-11-03; plan 0.79 D4, option B). The Spec will define `map` as a type's
+action on arrows in a covariant variable, on effect-free arrows only; the layer map of `⟦ F ⟧F` (which
+the fold/unfold laws are stated with) and a data type's element map are its instances. An effectful
+`map` would be a traversal, and a tree has several lawful ones with no data flow to choose between
+them; they are library code in `Strata/Derived`. Named `map` (`mapᶜ` in the Spec), not `fmap`: a
+category theorist writes `F f`, and Once's `map` is the general action from the start.
+
+**Not yet stated**: `mapᶜ` and the term-level fold/unfold laws (plan 0.79 D4, a Spec patch to come),
+and naturality of polymorphic definitions (D5).
 
 ### Spec
 `Once.Spec.Metatheory`: `_≅_`, `Pure`, `Categorical`, `Equations`; fields `categorical`, `equations` of

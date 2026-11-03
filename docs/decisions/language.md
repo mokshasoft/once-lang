@@ -153,6 +153,20 @@ entry updates the rule it changes here, in the same commit.
   (D314 ← D311 ← D222 ← D219, D066)
 - **Effects follow data flow, and reading order where there is none**: an
   effectful fold runs a product layer left first. (D286 ← D221)
+  This is the language's one ordering convention. `let` is sequencing itself
+  (no choice). Two independent computations (`pair`'s arms, `app`'s head and
+  argument) have two possible orders, as in any call-by-value language (the
+  Freyd category is premonoidal); reading order picks one. `fold` adds no
+  choice of its own: children before parent is data flow, siblings are
+  `pair`'s order. (D369)
+- **`map` is the functor's action on pure arrows only.** A type is a functor
+  in its covariant variables, and `map f` is its action on an effect-free `f`
+  (the layer map of `⟦ F ⟧F` and a data type's element map are instances).
+  Running an effectful `f` across a structure is a traversal, and a tree has
+  several lawful ones (pre-, in-, post-order, breadth-first) with no data flow
+  to choose between them: they are library code (`Strata/Derived`), not the
+  language. Named `map`, not `fmap`: it is the general action from the start.
+  (plan 0.79 D4)
 - **Applying an effectful closure with `apply`** gives the suspension
   `Unit ⇒[π] B` at the closure's grade `π` (`act` or `eff`). (D313, D294)
 - **No exceptions.** Failure is a value (a sum) or an effect (a halt).
