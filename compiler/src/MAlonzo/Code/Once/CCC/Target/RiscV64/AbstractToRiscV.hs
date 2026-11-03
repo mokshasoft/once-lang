@@ -579,23 +579,23 @@ d_compile'45'abstract_64 v0
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
-                MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_li_24
+                MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_sub_18
                 (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_t1_44)
-                (coe
-                   MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.d_slots_76 (coe v1)))
+                (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_sp_14)
+                (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_s2_36))
              (coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_add_16
-                   (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_t1_44)
-                   (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_s2_36)
-                   (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_t1_44))
+                   MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_li_24
+                   (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_t2_46)
+                   (coe
+                      MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.d_slots_76 (coe v1)))
                 (coe
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                    (coe
                       MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_bgeu'45'fwd_38
-                      (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_sp_14)
-                      (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_t1_44))
+                      (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_t1_44)
+                      (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_t2_46))
                    (coe
                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                       (coe
