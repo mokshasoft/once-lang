@@ -204,17 +204,17 @@ module RenSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
           (Fold.foldRel π (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) _ _ (λ le → appMany salg (Functor.fromL-same σ r wf A le)) v)
   renSem θ ρ h c (⊢unfold {f = f} {F = F} {A} wf dc da) ag =
     relBindᵍ (renSem θ ρ h c dc (r3≡ c (env*Many-envˡ-restrict σ _ _ _) (env*Many-envˡ-restrict σ _ _ _) ag)) λ {c₁} {c₂} sc →
-    relFmap (renSem θ ρ h c da (r3≡ c (envʳ-restrict σ _ _ _) (envʳ-restrict σ _ _ _) ag)) λ sa n →
+    relFmap (renSem θ ρ h c da (r3≡ c (envʳ-restrict σ _ _ _) (envʳ-restrict σ _ _ _) ag)) λ sa → Functor.sameν→ σ r wf (λ n →
       Ana.anaRel f (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ x → fmap (fin f) (toL σ F A) (c₁ x)) (λ x → fmap (fin f) (toL σ F A) (c₂ x))
         (λ {a} {a′} s → ≈-Relatedˡ (toT∞-fmap (fin f) (toL σ F A) (c₁ a)) (≈-Relatedʳ (toT∞-fmap (fin f) (toL σ F A) (c₂ a′))
                           (relatedFmap (runs (appMany {π = fin f} sc s)) (Functor.toL-same σ r wf A))))
-        n sa
+        n sa)
   renSem θ ρ h c (⊢out {f = f} {F = F} wf d) ag =
     relBindᵍ (renSem θ ρ h c d ag) λ {v} {v′} sv → rel (
       ≈-Relatedˡ (toT∞-fmap (fin f) (fromL σ F (ν F f)) (outν v))
         (≈-Relatedʳ (toT∞-fmap (fin f) (fromL σ F (ν F f)) (outν v′))
-          (relatedFmap (outRel f (code (F ⟨ σ ⟩F)) sv)
-                    (λ k → Functor.fromL-same σ r wf (ν F f) (LayerEq-∀ (code (F ⟨ σ ⟩F)) k)))))
+          (relatedFmap (outRel f (code (F ⟨ σ ⟩F)) (Functor.sameν← σ r wf sv))
+                    (λ k → Functor.fromL-same σ r wf (ν F f) (LayerEq-mono (code (F ⟨ σ ⟩F)) (Functor.sameν→ σ r wf) (LayerEq-∀ (code (F ⟨ σ ⟩F)) k))))))
   renSem θ ρ h c (⊢iter {A = A} {B} df ds) ag =
     relBindᵍ (renSem θ ρ h c df (r3≡ c (env*Many-envˡ-restrict σ _ _ _) (env*Many-envˡ-restrict σ _ _ _) ag)) λ {f} {f′} sf →
     relBindᵍ (renSem θ ρ h c ds (r3≡ c (envʳ-restrict σ _ _ _) (envʳ-restrict σ _ _ _) ag)) λ sa →

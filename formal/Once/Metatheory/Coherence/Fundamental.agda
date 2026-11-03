@@ -179,11 +179,11 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
           → Rel _ _ (ν F f ⟨ σ ⟩) (⟦ ⊢unfold wf dc da ⟧ δ σ r γ) (⟦ ⊢unfold wf′ dc′ da′ ⟧ δ σ r′ γ′)
   unfoldH {Ψc = Ψc} {Ψs} {Ψc′} {Ψs′} {f} {F = F} {A} refl wf dc da wf′ dc′ da′ ag =
     relBindᵍ (FL dc dc′ refl (rr≡ (env*Many-envˡ-restrict σ Ψc Ψs _) (env*Many-envˡ-restrict σ Ψc′ Ψs′ _) ag)) λ {c} {c′} sc →
-    relFmap (FL da da′ refl (rr≡ (envʳ-restrict σ (Many *ᵘ Ψc) Ψs _) (envʳ-restrict σ (Many *ᵘ Ψc′) Ψs′ _) ag)) λ sa n →
+    relFmap (FL da da′ refl (rr≡ (envʳ-restrict σ (Many *ᵘ Ψc) Ψs _) (envʳ-restrict σ (Many *ᵘ Ψc′) Ψs′ _) ag)) λ sa → Functor.sameν→ σ r wf (λ n →
       Ana.anaRel f (code (F ⟨ σ ⟩F)) (A ⟨ σ ⟩) (λ x → fmap (fin f) (toL σ F A) (c x)) (λ x → fmap (fin f) (toL σ F A) (c′ x))
         (λ {a} {a′} s → ≈-Relatedˡ (toT∞-fmap (fin f) (toL σ F A) (c a)) (≈-Relatedʳ (toT∞-fmap (fin f) (toL σ F A) (c′ a′))
                           (relatedFmap (runs (appMany {π = fin f} sc s)) (Functor.toL-same σ r wf A))))
-        n sa
+        n sa)
 
   outH : ∀ {n} {Γ : Ctx m n} {Ψ Ψ′ f f′ π₁ π₁′ F F′ t}
        → ν F f ≡ ν F′ f′ → (eq : ⟦ F′ ⟧F (ν F′ f′) ≡ ⟦ F ⟧F (ν F f))
@@ -194,8 +194,8 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
     relBindᵍ (FL d d′ refl ag) λ {v} {v′} sv → rel (
       ≈-Relatedˡ (toT∞-fmap (fin f) (fromL σ F (ν F f)) (outν v))
         (≈-Relatedʳ (toT∞-fmap (fin f) (fromL σ F (ν F f)) (outν v′))
-          (relatedFmap (outRel f (code (F ⟨ σ ⟩F)) sv)
-                    (λ h → Functor.fromL-same σ r wf (ν F f) (LayerEq-∀ (code (F ⟨ σ ⟩F)) h)))))
+          (relatedFmap (outRel f (code (F ⟨ σ ⟩F)) (Functor.sameν← σ r wf sv))
+                    (λ h → Functor.fromL-same σ r wf (ν F f) (LayerEq-mono (code (F ⟨ σ ⟩F)) (Functor.sameν→ σ r wf) (LayerEq-∀ (code (F ⟨ σ ⟩F)) h))))))
 
   iterH : ∀ {n} {Γ : Ctx m n} {Ψf Ψs Ψf′ Ψs′ π₁ π₂ π₁′ π₂′ A A′ B f a}
         → (A ⇒[ mk-kind Many act ] (B + A)) ≡ (A′ ⇒[ mk-kind Many act ] (B + A′))
