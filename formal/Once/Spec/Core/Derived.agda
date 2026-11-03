@@ -94,37 +94,41 @@ module _ {s} {S : Defs s} {m : ℕ} where
   -- parts, `μ` is the fold that maps each layer, `ν` the unfold that maps each
   -- forced layer, and an arrow is post-composed (when the variable is not in
   -- its domain, the only case it types).
-  mapᶜ : ∀ {n} → Ty (suc m) → Ty m → Ty m → Tm S m n → Tm S m n
-  mapᶜ T A B f = let′ Many f (lam (T ⟨ at₀ A ⟩) Many pure (mapAt T v1 v0))
-    where
-      mutual
-        -- `h` the arrow, `x` a value of `T⟨A⟩` (a variable or its projections).
-        mapAt : ∀ {n} → Ty (suc m) → Tm S m n → Tm S m n → Tm S m n
-        mapAt (var zero)    h x = app h x
-        mapAt (var (suc i)) h x = x
-        mapAt Unit          h x = x
-        mapAt Void          h x = x
-        mapAt Int           h x = x
-        mapAt Float         h x = x
-        mapAt (T₁ * T₂)     h x = pair (mapAt T₁ h (fst x)) (mapAt T₂ h (snd x))
-        mapAt (T₁ + T₂)     h x = case Many Many x (inl (T₂ ⟨ at₀ B ⟩) (mapAt T₁ (wk h) v0))
-                                                   (inr (T₁ ⟨ at₀ B ⟩) (mapAt T₂ (wk h) v0))
-        mapAt (T₁ ⇒[ mk-kind q π ] T₂) h x =
-          lam (T₁ ⟨ at₀ A ⟩) q π (let′ Many (app (wk x) v0) (mapAt T₂ (wk (wk h)) v0))
-        mapAt (μ G) h x =
-          fold (G ⟨ at₀ A ⟩F) (lam (⟦ G ⟨ at₀ A ⟩F ⟧F R) Many pure (roll (G ⟨ at₀ B ⟩F) (mapLayer R G (wk h) v0))) x
-          where R = μ (G ⟨ at₀ B ⟩F)
-        mapAt (ν G f) h x =
-          unfold (G ⟨ at₀ B ⟩F) (lam R Many (fin f) (let′ One (out v0) (mapLayer R G (wk (wk h)) v0))) x
-          where R = ν (G ⟨ at₀ A ⟩F) f
+  --
+  -- Its body, from `A` to `B` (`h` the arrow, `x` a value of `T⟨A⟩`: a
+  -- variable or its projections), and one layer of `G` (the constants mapped,
+  -- the recursive positions `R` kept), named so they can be reasoned about.
+  mutual
+    mapAtᶜ : ∀ {n} → Ty m → Ty m → Ty (suc m) → Tm S m n → Tm S m n → Tm S m n
+    mapAtᶜ A B (var zero)    h x = app h x
+    mapAtᶜ A B (var (suc i)) h x = x
+    mapAtᶜ A B Unit          h x = x
+    mapAtᶜ A B Void          h x = x
+    mapAtᶜ A B Int           h x = x
+    mapAtᶜ A B Float         h x = x
+    mapAtᶜ A B (T₁ * T₂)     h x = pair (mapAtᶜ A B T₁ h (fst x)) (mapAtᶜ A B T₂ h (snd x))
+    mapAtᶜ A B (T₁ + T₂)     h x = case Many Many x (inl (T₂ ⟨ at₀ B ⟩) (mapAtᶜ A B T₁ (wk h) v0))
+                                                    (inr (T₁ ⟨ at₀ B ⟩) (mapAtᶜ A B T₂ (wk h) v0))
+    mapAtᶜ A B (T₁ ⇒[ mk-kind q π ] T₂) h x =
+      lam (T₁ ⟨ at₀ A ⟩) q π (let′ Many (app (wk x) v0) (mapAtᶜ A B T₂ (wk (wk h)) v0))
+    mapAtᶜ A B (μ G) h x =
+      fold (G ⟨ at₀ A ⟩F)
+           (lam (⟦ G ⟨ at₀ A ⟩F ⟧F (μ (G ⟨ at₀ B ⟩F))) Many pure
+                (roll (G ⟨ at₀ B ⟩F) (mapLayerᶜ A B (μ (G ⟨ at₀ B ⟩F)) G (wk h) v0))) x
+    mapAtᶜ A B (ν G f) h x =
+      unfold (G ⟨ at₀ B ⟩F)
+             (lam (ν (G ⟨ at₀ A ⟩F) f) Many (fin f)
+                  (let′ One (out v0) (mapLayerᶜ A B (ν (G ⟨ at₀ A ⟩F) f) G (wk (wk h)) v0))) x
 
-        -- One layer of `G`: the constants mapped, the recursive positions (`R`) kept.
-        mapLayer : ∀ {n} → Ty m → Fun (suc m) → Tm S m n → Tm S m n → Tm S m n
-        mapLayer R (K C)   h y = mapAt C h y
-        mapLayer R Id      h y = y
-        mapLayer R (F ⊕ G) h y = case Many Many y (inl (⟦ G ⟨ at₀ B ⟩F ⟧F R) (mapLayer R F (wk h) v0))
-                                                  (inr (⟦ F ⟨ at₀ B ⟩F ⟧F R) (mapLayer R G (wk h) v0))
-        mapLayer R (F ⊗ G) h y = pair (mapLayer R F h (fst y)) (mapLayer R G h (snd y))
+    mapLayerᶜ : ∀ {n} → Ty m → Ty m → Ty m → Fun (suc m) → Tm S m n → Tm S m n → Tm S m n
+    mapLayerᶜ A B R (K C)   h y = mapAtᶜ A B C h y
+    mapLayerᶜ A B R Id      h y = y
+    mapLayerᶜ A B R (F ⊕ G) h y = case Many Many y (inl (⟦ G ⟨ at₀ B ⟩F ⟧F R) (mapLayerᶜ A B R F (wk h) v0))
+                                                   (inr (⟦ F ⟨ at₀ B ⟩F ⟧F R) (mapLayerᶜ A B R G (wk h) v0))
+    mapLayerᶜ A B R (F ⊗ G) h y = pair (mapLayerᶜ A B R F h (fst y)) (mapLayerᶜ A B R G h (snd y))
+
+  mapᶜ : ∀ {n} → Ty (suc m) → Ty m → Ty m → Tm S m n → Tm S m n
+  mapᶜ T A B f = let′ Many f (lam (T ⟨ at₀ A ⟩) Many pure (mapAtᶜ A B T v1 v0))
 
   -- `F`'s own action on arrows, one layer: `map` at `⟦ F ⟧F x`, the recursive
   -- position as the variable (what the fold and unfold laws are stated with).
