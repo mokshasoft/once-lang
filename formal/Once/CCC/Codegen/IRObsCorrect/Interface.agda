@@ -613,6 +613,20 @@ module Core {FS : FrameSemantics} where
   vr-mem-pres vr nc (AtStack fr j) bf = ValueRealized.stack-pres vr nc fr j bf
   vr-mem-pres vr nc (AtDynamic hl) bf = ValueRealized.heap-pres  vr nc hl bf
 
+  -- D381: a frontier that only grows keeps what was live live…
+  live-mono : ∀ {a b : AllocState {FS}}
+            → (∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record a { next-slot = m }) loc
+                                                → BeforeFrontier (record b { next-slot = m }) loc)
+            → ∀ l → Live a l → Live b l
+  live-mono f (AtStack _ _) ()
+  live-mono f (AtDynamic hl) (BeforeFrontier.heap-before p) with f 0 (AtDynamic hl) (BeforeFrontier.heap-before p)
+  ... | BeforeFrontier.heap-before q = BeforeFrontier.heap-before q
+
+  -- …and two runs that keep live blocks' sizes keep them together.
+  bk-trans : ∀ {a b c : AllocState {FS}} → BlocksKept a b → BlocksKept b c
+           → (∀ l → Live a l → Live b l) → BlocksKept a c
+  bk-trans ab bc lv l la ib = bc l (lv l la) (ab l la ib)
+
   record MachineRefinesObsF (prog : AbstractTrace) (base : ℕ)
                              {A B} (n l : ℕ) (ir : IR A B) (x : ValueDomain.⟦ A ⟧ᴰᴵ)
                              (s : LocState FS) (alloc : AllocState {FS})
