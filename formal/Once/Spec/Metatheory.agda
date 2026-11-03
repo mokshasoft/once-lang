@@ -371,11 +371,12 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
                       (d′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure alg (layerᶜ F (μ F) A (cataᶜ F pure alg))
                                          ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π₀)
                     → d ≅ d′
-      -- … and the only one.
-      cata-uniqueᶜ  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ Ψ′ F A π₀ π′ alg h}
+      -- … and the only one (the equation at the conclusion's usage: at another, a
+      -- context entry no environment can fill would make it hold vacuously).
+      cata-uniqueᶜ  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ F A π₀ π′ alg h}
                     → Pure Δ Γ alg (⟦ F ⟧F A ⇒[ mk-kind Many pure ] A) → Pure Δ Γ h (μ F ⇒[ mk-kind Many pure ] A)
-                    → (e : Δ ⊩ Γ ⊢[ Ψ′ ] composeᶜ (⟦ F ⟧F (μ F)) pure h (inᶜ F) ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π′)
-                      (e′ : Δ ⊩ Γ ⊢[ Ψ′ ] composeᶜ (⟦ F ⟧F (μ F)) pure alg (layerᶜ F (μ F) A h)
+                    → (e : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure h (inᶜ F) ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π′)
+                      (e′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure alg (layerᶜ F (μ F) A h)
                                           ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π′)
                     → e ≅ e′
                     → (d : Δ ⊩ Γ ⊢[ Ψ ] h ∷ μ F ⇒[ mk-kind Many pure ] A ! π₀)
@@ -390,10 +391,10 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
                                          ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π₀)
                     → d ≅ d′
       -- … and the only one.
-      ana-uniqueᶜ   : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ Ψ′ F A π₀ π′ c h}
+      ana-uniqueᶜ   : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ F A π₀ π′ c h}
                     → Pure Δ Γ c (A ⇒[ mk-kind Many pure ] ⟦ F ⟧F A) → Pure Δ Γ h (A ⇒[ mk-kind Many pure ] ν F pureᶠ)
-                    → (e : Δ ⊩ Γ ⊢[ Ψ′ ] composeᶜ A pure (outᶜ F) h ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π′)
-                      (e′ : Δ ⊩ Γ ⊢[ Ψ′ ] composeᶜ A pure (layerᶜ F A (ν F pureᶠ) h) c
+                    → (e : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (outᶜ F) h ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π′)
+                      (e′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (layerᶜ F A (ν F pureᶠ) h) c
                                           ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π′)
                     → e ≅ e′
                     → (d : Δ ⊩ Γ ⊢[ Ψ ] h ∷ A ⇒[ mk-kind Many pure ] ν F pureᶠ ! π₀)
