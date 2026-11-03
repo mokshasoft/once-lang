@@ -194,11 +194,14 @@ compile-abstract (instr-reclaim-to n) = []
 -- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
 -- reuses a block; the free-list and pop code come with M3)
 compile-abstract (instr-free-heap n) = []
--- load-at / store-at / addr-at: no code yet (plan 0.123 B.4 R1: outside
--- `EmittableI`, so never emitted; the joint rewrite gives them their code)
-compile-abstract (load-at n) = []
-compile-abstract (store-at n) = []
-compile-abstract (addr-at n) = []
+-- plan 0.123 B.4 α: a flat value's word k, by its offset from Input1.
+-- x86-32: mov eax, [ecx + 4k] ; mov [ecx + 4k], eax ; lea eax, [ecx + 4k]
+compile-abstract (load-at n) =
+  mov (reg eax) (mem (base+disp ecx (slot-to-disp n))) ∷ []
+compile-abstract (store-at n) =
+  mov (mem (base+disp ecx (slot-to-disp n))) (reg eax) ∷ []
+compile-abstract (addr-at n) =
+  lea eax (base+disp ecx (slot-to-disp n)) ∷ []
 -- instr-room k (plan 0.123 A.4): the next k words fit iff the room between the
 -- frontier and the stack pointer holds them; if not, call the Host's
 -- `once_exhausted`, which ends the run. Every register has a role or is the

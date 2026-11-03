@@ -101,7 +101,10 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; fret; falloc; fclosure; flink)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open FlatMachine {FS} using (floc; fetch)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; module HeapRef; module HeapLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; offsetHL; module HeapRef; module HeapLocation)
+open ExecFinal {FS} using (in-block?)
+open AllocState using (block-size)
+open import Data.Bool using (true)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Data.Nat using (zero; suc; _+_; _*_; _∸_; _≤_; _<_)
@@ -485,6 +488,28 @@ record BlockSteps : Set₁ where
       → suc k < frame-slots (falloc fs)
       → (∀ hl' → HDom hv hl' → (rreg s sp-reg + suc k * slot-size ≡ haddr hv hl') → ⊥)
       → BlockStep hv prog fs s store-indirect-suc
+    -- plan 0.123 B.4 α: THE OFFSET FORMS, heap only (a register never holds a
+    -- stack pointer, `StackPtrWF`). A load reads a written, so mapped, cell; a
+    -- store writes a cell of its block (D379), so a mapped one, and the
+    -- abstract step is the write (`in-block?` holds).
+    bs-load-at :
+      ∀ {hv : HeapView} prog fs s k hl w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (load-at k)
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+      → HDom hv (offsetHL hl k)
+      → heapMem (floc fs) (offsetHL hl k) ≡ just w
+      → BlockStep hv prog fs s (load-at k)
+    bs-store-at :
+      ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (store-at k)
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+      → HDom hv (offsetHL hl k)
+      → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+      → writeLoc (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)
+        ≡ writeLocToHeap (floc fs) (offsetHL hl k) (readReg (regs (floc fs)) Output)
+      → BlockStep hv prog fs s (store-at k)
     ------------------------------------------------------------------
     -- GROUP 3b, the band's other half — CONTROL, `out-nz`, and the two frame
     -- markers.

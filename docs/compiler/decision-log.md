@@ -20930,3 +20930,31 @@ implementation Spec).
   per size class.
 * A flat value never holds a stack pointer, so storing one into a node copies its words (never a pointer
   into a frame): the heap holds no stack pointer (plan 0.123 B.4 R2's ordering).
+
+## D379 — AN OFFSET STORE WRITES A CELL OF ITS BLOCK, OR FAULTS (2026-11-03)
+
+**Decided** in plan 0.123 B.4 α (α-instr), by D367's rule.
+
+### Context
+The flat layout (D375, D378) reaches a component by an offset from its value's pointer: `load-at k`,
+`store-at k`, `addr-at k`. The run's pointer invariant `PtrB` says a heap pointer addresses an in-bounds
+PAIR (its cell and the next). That is the old 2-word cell shape, and it is what bounds today's
+`store-indirect-suc`. It says nothing about word `k`.
+
+### Decision
+* `store-at k` writes the cell only when it lies in the pointer's block (`ExecFinal.in-block?`, against
+  `AllocState.block-size`), and faults otherwise. A target cannot follow a store past its block: it would
+  write another block's words (D367). The run never faults, so at every emitted `store-at` the cell is in
+  bounds (`RunWF.store-at-inbounds`), hence mapped (`dom-sized`). The obligation lands where the
+  constructor writes a block it has just allocated, at a known size.
+* `load-at k` needs no check: reading an unwritten cell already faults (D367), and a written cell is
+  mapped (`dom-written`).
+* `addr-at k` stays outside the fences until α retires `load-/store-indirect-suc`. At that point `PtrB`
+  becomes "a heap pointer addresses a cell of its block", and `addr-at` faults when it would point
+  outside its block. An emitter never needs the address of a 0-word component.
+
+### Consequences
+* `store-at` has its own effect class (`eff-heap-checked`): its result reads the block map, not only the
+  frame.
+* `InstrWF (store-at k)` carries the in-block fact; the constructors' proofs supply it from the size they
+  allocated.

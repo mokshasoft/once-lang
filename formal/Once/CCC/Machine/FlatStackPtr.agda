@@ -331,6 +331,31 @@ sp-store-suc-resolved : ∀ (cf : Frame) (ls : LocState FS)
 sp-store-suc-resolved cf ls nothing    v ok wf = sp-fault cf ls wf
 sp-store-suc-resolved cf ls (just loc) v ok wf = sp-write-mem cf ls (sucLoc loc) v ok wf
 
+-- plan 0.123 B.4 α: the offset forms move a stored value like the others
+sp-load-at-resolved : ∀ (cf : Frame) (ls : LocState FS) (k : ℕ) (dst : AbstractReg)
+                        (ml : Maybe (ValueLocation FS))
+                    → SPInv ls
+                    → SPInv (exec-load-at-resolved k dst ml ls)
+sp-load-at-resolved cf ls k dst nothing    wf = sp-fault cf ls wf
+sp-load-at-resolved cf ls k dst (just loc) wf =
+  sp-load-value cf ls dst (readLoc ls (offsetLoc loc k))
+                (sp-read-loc cf ls wf (offsetLoc loc k)) wf
+
+sp-store-in-block : ∀ (cf : Frame) (ls : LocState FS) (ok : Bool)
+                      (loc : ValueLocation FS) (v : StoredValue FS)
+                  → StackPtrOK v → SPInv ls
+                  → SPInv (exec-store-in-block ok loc v ls)
+sp-store-in-block cf ls true  loc v ok wf = sp-write-mem cf ls loc v ok wf
+sp-store-in-block cf ls false loc v ok wf = sp-fault cf ls wf
+
+sp-store-at-resolved : ∀ (cf : Frame) (bs : ℕ → ℕ) (ls : LocState FS) (k : ℕ)
+                         (ml : Maybe (ValueLocation FS)) (v : StoredValue FS)
+                     → StackPtrOK v → SPInv ls
+                     → SPInv (exec-store-at-resolved bs k ml v ls)
+sp-store-at-resolved cf bs ls k nothing    v ok wf = sp-fault cf ls wf
+sp-store-at-resolved cf bs ls k (just loc) v ok wf =
+  sp-store-in-block cf ls (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v ok wf
+
 -- the two slot reads (`load-from-slot` / `worklist-pop`, and `restore-input`):
 -- a register write on a hit, a halt on an empty cell. Stated with the anchor
 -- `current-frame alloc` and the FULL pair, so the conclusion matches
@@ -457,8 +482,11 @@ sp-abstract (restore-input slot) ls alloc ff wf =
 sp-abstract (instr-alloc-stack n)   ls alloc () wf
 sp-abstract (instr-dealloc-stack n) ls alloc () wf
 sp-abstract (instr-free-heap n)     ls alloc () wf
-sp-abstract (load-at n)     ls alloc () wf
-sp-abstract (store-at n)     ls alloc () wf
+sp-abstract (load-at n)     ls alloc ff wf =
+  sp-load-at-resolved (current-frame alloc) ls n Output (sv-as-loc (readReg (regs ls) Input1)) wf
+sp-abstract (store-at n)     ls alloc ff wf =
+  sp-store-at-resolved (current-frame alloc) _ ls n (sv-as-loc (readReg (regs ls) Input1))
+                       (readReg (regs ls) Output) (sp-regs wf Output) wf
 sp-abstract (addr-at n)     ls alloc () wf
 sp-abstract (instr-room n)     ls alloc ff wf = wf
 sp-abstract (instr-push-frame cap)  ls alloc () wf
@@ -592,8 +620,10 @@ flat-stack-ptr (instr-ctrl (c-branch-tag-zero m))     prog fs ff wf =
 flat-stack-ptr (instr-alloc-stack n)   prog fs () wf
 flat-stack-ptr (instr-dealloc-stack n) prog fs () wf
 flat-stack-ptr (instr-free-heap n)     prog fs () wf
-flat-stack-ptr (load-at n)     prog fs () wf
-flat-stack-ptr (store-at n)     prog fs () wf
+flat-stack-ptr (load-at n)     prog fs ff wf =
+  sp-abstract (load-at n) (floc fs) (falloc fs) ff wf
+flat-stack-ptr (store-at n)     prog fs ff wf =
+  sp-abstract (store-at n) (floc fs) (falloc fs) ff wf
 flat-stack-ptr (addr-at n)     prog fs () wf
 flat-stack-ptr (instr-room n)     prog fs ff wf = sp-abstract (instr-room n) (floc fs) (falloc fs) ff wf
 flat-stack-ptr (instr-push-frame cap)  prog fs () wf

@@ -144,7 +144,8 @@ open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; Slot)
 open MemOps {FS} using (writeLoc; writeLocToHeap; writeLocToStack; writeHeapMem
                        ; readLoc; writeLoc-read-same-stack; writeLoc-preserves-other)
 open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value
-                          ; exec-store-via-resolved; exec-store-suc-via-resolved)
+                          ; exec-store-via-resolved; exec-store-suc-via-resolved
+                          ; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open FrameSemantics FS using (shift-frame)
@@ -1346,6 +1347,73 @@ sim-store-indirect-suc {hv} hl fs s s' corr i-eq live-shl guard sm =
       ; heap-eq = store-heap-eq hv (sucHL hl) v s s' (floc fs) sm live-shl (dom-written corr) (heap-eq corr)
       ; lo-le = mkeep-lo-le corr sm
       ; stack-eq = windows-heap-store (sucHL hl) (enc-sv hv v) live-shl corr sm }
+
+------------------------------------------------------------------------
+-- plan 0.123 B.4 α: THE OFFSET FORMS. The address law at any offset is the
+-- slot law iterated (a block is contiguous); the value correspondences are the
+-- `-suc` ones at `offsetHL hl k`.
+------------------------------------------------------------------------
+haddr-offset : ∀ (hv : HeapView) (hl : HeapLocation) (k : ℕ)
+             → haddr hv (offsetHL hl k) ≡ haddr hv hl + k * slot-size
+haddr-offset hv (heap-loc r o) zero    = sym (+-identityʳ (haddr hv (heap-loc r o)))
+haddr-offset hv (heap-loc r o) (suc k) =
+  trans (haddr-suc hv (heap-loc r (k + o)))
+        (trans (cong (_+ slot-size) (haddr-offset hv (heap-loc r o) k))
+               (trans (+-assoc (haddr hv (heap-loc r o)) (k * slot-size) slot-size)
+                      (cong (haddr hv (heap-loc r o) +_) (+-comm (k * slot-size) slot-size))))
+
+sim-load-at : {hv : HeapView} (k : ℕ) (hl : HeapLocation) (w : StoredValue FS) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → heapMem (floc fs) (offsetHL hl k) ≡ just w
+  → SetsRole s s' role-out (enc-sv hv w)
+  → FlatCorr hv (flat-exec-instr (load-at k) [] fs) s'
+sim-load-at {hv} k hl w fs s s' corr i-eq h-eq st =
+  subst (λ z → FlatCorr hv z s') (sym reduces) corr-clean
+  where
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+                          ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-load-at-resolved k Output (sv-as-loc (readReg (regs (floc fs)) Input1)) (floc fs)
+              ≡ record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+    floc-eq = trans (cong (λ m → exec-load-at-resolved k Output m (floc fs)) (cong sv-as-loc i-eq))
+                    (cong (λ mv → exec-load-with-value Output mv (floc fs)) h-eq)
+    reduces : flat-exec-instr (load-at k) [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr hv cleanFlat s'
+    corr-clean = record
+      { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
+      ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
+
+sim-store-at : {hv : HeapView} (k : ℕ) (hl : HeapLocation) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → HDom hv (offsetHL hl k)
+  → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+  → writeLoc (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)
+    ≡ writeLocToHeap (floc fs) (offsetHL hl k) (readReg (regs (floc fs)) Output)
+  → SetsMem s s' (haddr hv (offsetHL hl k)) (enc-sv hv (readReg (regs (floc fs)) Output))
+  → FlatCorr hv (flat-exec-instr (store-at k) [] fs) s'
+sim-store-at {hv} k hl fs s s' corr i-eq live guard-ib guard sm =
+  subst (λ z → FlatCorr hv z s') (sym reduces) corr-clean
+  where
+    v = readReg (regs (floc fs)) Output
+    bs = block-size (falloc fs)
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = writeLocToHeap (floc fs) (offsetHL hl k) v ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-store-at-resolved bs k (sv-as-loc (readReg (regs (floc fs)) Input1)) v (floc fs)
+              ≡ writeLocToHeap (floc fs) (offsetHL hl k) v
+    floc-eq = trans (cong (λ m → exec-store-at-resolved bs k m v (floc fs)) (cong sv-as-loc i-eq))
+                    (trans (cong (λ b → exec-store-in-block b (AtDynamic (offsetHL hl k)) v (floc fs)) guard-ib) guard)
+    reduces : flat-exec-instr (store-at k) [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr hv cleanFlat s'
+    corr-clean = record
+      { in1-eq = mkeep-in1 corr sm ; out-eq = mkeep-out corr sm
+      ; clos-eq = mkeep-clos corr sm ; halt-eq = mkeep-halt corr sm ; sp-eq = mkeep-sp corr sm ; frontier-eq = mkeep-heap-reg corr sm ; dom-fresh = dom-fresh corr
+      ; dom-written = store-dom-written hv (offsetHL hl k) v (floc fs) live (dom-written corr)
+      ; dom-sized = dom-sized corr
+      ; heap-eq = store-heap-eq hv (offsetHL hl k) v s s' (floc fs) sm live (dom-written corr) (heap-eq corr)
+      ; lo-le = mkeep-lo-le corr sm
+      ; stack-eq = windows-heap-store (offsetHL hl k) (enc-sv hv v) live corr sm }
 
 ------------------------------------------------------------------------
 -- STACK RESTORE: `restore-input slot` (Input1 := stack[current-frame, slot]) ↔

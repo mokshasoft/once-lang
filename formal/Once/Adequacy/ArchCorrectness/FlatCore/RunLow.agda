@@ -116,7 +116,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq as RW
 open import Data.List using (List; []; _∷_; map)
 open import Data.Maybe using () renaming (map to mmap)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack; Slot)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; module HeapLocation; module HeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; offsetHL; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open import Once.CCC.Label using (LabelId; EntryId)
@@ -262,6 +262,46 @@ store-indirect-suc-inbounds prog fs hl =
   lift-site′ store-indirect-suc (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
                                               → heap-offset (sucHL hl) < block-size (falloc g) (ref-id (heap-ref (sucHL hl))))
     (λ src fs₀ r f → RW.store-indirect-suc-inbounds src fs₀ hl r f) (λ _ _ _ c → c) prog fs
+
+-- plan 0.123 B.4 α: the offset forms' sites
+load-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunLow prog fs → LocState.halted (floc fs) ≡ false
+                   → fetch prog (fpc fs) ≡ just (load-at k)
+                   → Σ (ValueLocation FS) (λ loc → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
+load-at-target-ptr prog fs k =
+  lift-site (load-at k) (λ _ ()) _ (λ src fs₀ → RW.load-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
+
+heap-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunLow prog fs
+                     → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (load-at k)
+                     → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                     → LocState.heapMem (floc fs) (offsetHL hl k) ≡ nothing → ⊥
+heap-load-at-written prog fs k hl =
+  lift-site (load-at k) (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                                       → LocState.heapMem (floc g) (offsetHL hl k) ≡ nothing → ⊥)
+    (λ src fs₀ r h f → RW.heap-load-at-written src fs₀ k hl r h f) (λ _ _ _ c → c) prog fs
+
+store-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunLow prog fs → LocState.halted (floc fs) ≡ false
+                    → fetch prog (fpc fs) ≡ just (store-at k)
+                    → Σ (ValueLocation FS) (λ loc → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
+store-at-target-ptr prog fs k =
+  lift-site (store-at k) (λ _ ()) _ (λ src fs₀ → RW.store-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
+
+store-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunLow prog fs
+                  → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (store-at k)
+                  → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                  → ExecFinal.in-block? {FS} (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+store-at-in-block prog fs k hl =
+  lift-site (store-at k) (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                                        → ExecFinal.in-block? {FS} (block-size (falloc g)) (AtDynamic (offsetHL hl k)) ≡ true)
+    (λ src fs₀ r h f → RW.store-at-in-block src fs₀ k hl r h f) (λ _ _ _ c → c) prog fs
+
+store-at-inbounds : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunLow prog fs
+                  → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (store-at k)
+                  → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                  → heap-offset (offsetHL hl k) < block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k)))
+store-at-inbounds prog fs k hl =
+  lift-site (store-at k) (λ _ ()) (λ g → readReg (LocState.regs (floc g)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                                        → heap-offset (offsetHL hl k) < block-size (falloc g) (ref-id (heap-ref (offsetHL hl k))))
+    (λ src fs₀ r h f → RW.store-at-inbounds src fs₀ k hl r h f) (λ _ _ _ c → c) prog fs
 
 ------------------------------------------------------------------------
 -- THE FRAME, LINK AND RETURN FACTS. The lift maps the return stack and the

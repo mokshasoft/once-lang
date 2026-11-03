@@ -289,13 +289,19 @@ wf-load-at-resolved {n} {ls} k dst (just loc) wf b =
   wf-load-value dst (readLoc ls (offsetLoc loc k)) wf (readLoc-below (offsetLoc loc k) wf)
 wf-load-at-resolved k dst nothing wf _ = wf-fault wf
 
-wf-store-at-resolved : ∀ {n ls} (k : ℕ) (mloc : Maybe (ValueLocation FS)) (v : StoredValue FS)
+wf-store-in-block : ∀ {n ls} (ok : Bool) (loc : ValueLocation FS) (v : StoredValue FS)
+                  → StoreWF n ls → loc-below n loc → sv-below (n) v
+                  → StoreWF n (exec-store-in-block ok loc v ls)
+wf-store-in-block true  loc v wf b bv = wf-write-loc loc v wf b bv
+wf-store-in-block false loc v wf _ _  = wf-fault wf
+
+wf-store-at-resolved : ∀ {n ls} (bs : ℕ → ℕ) (k : ℕ) (mloc : Maybe (ValueLocation FS)) (v : StoredValue FS)
                      → StoreWF n ls → mloc-below (n) mloc
                      → sv-below (n) v
-                     → StoreWF n (exec-store-at-resolved k mloc v ls)
-wf-store-at-resolved {n} {ls} k (just loc) v wf b bv =
-  wf-write-loc (offsetLoc loc k) v wf (offsetLoc-below n loc k b) bv
-wf-store-at-resolved k nothing v wf _ _ = wf-fault wf
+                     → StoreWF n (exec-store-at-resolved bs k mloc v ls)
+wf-store-at-resolved {n} {ls} bs k (just loc) v wf b bv =
+  wf-store-in-block (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v wf (offsetLoc-below n loc k b) bv
+wf-store-at-resolved bs k nothing v wf _ _ = wf-fault wf
 
 wf-addr-at-resolved : ∀ {n ls} (k : ℕ) (mloc : Maybe (ValueLocation FS))
                     → StoreWF n ls → mloc-below (n) mloc
@@ -431,7 +437,7 @@ mutual
     wf-load-at-resolved k Output (sv-as-loc (readReg (regs ls) Input1)) wf
       (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1)) , ≤-refl
   wf-abstract (store-at k) ls alloc wf =
-    wf-store-at-resolved k (sv-as-loc (readReg (regs ls) Input1)) (readReg (regs ls) Output) wf
+    wf-store-at-resolved (AllocState.block-size alloc) k (sv-as-loc (readReg (regs ls) Input1)) (readReg (regs ls) Output) wf
       (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1)) (wf-regs wf Output) , ≤-refl
   wf-abstract (addr-at k) ls alloc wf =
     wf-addr-at-resolved k (sv-as-loc (readReg (regs ls) Input1)) wf
