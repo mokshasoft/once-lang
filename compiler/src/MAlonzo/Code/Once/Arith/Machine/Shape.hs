@@ -168,24 +168,67 @@ du_'8970'_'8971''7486'_114 v0 v1
                     (coe du_'8970'_'8971''7486'_114 (coe v7) (coe v5))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Arith.Machine.Shape.shape-size
+d_shape'45'size_120 :: T_InputShape_8 -> Integer
+d_shape'45'size_120 v0
+  = case coe v0 of
+      C_shape'45'unit_10 -> coe (0 :: Integer)
+      C_shape'45'int_12 -> coe (1 :: Integer)
+      C_shape'45'float_14 -> coe (1 :: Integer)
+      C_shape'45'pair_16 v1 v2
+        -> coe
+             addInt (coe d_shape'45'size_120 (coe v1))
+             (coe d_shape'45'size_120 (coe v2))
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Arith.Machine.Shape.flat-off
+d_flat'45'off_130 ::
+  T_InputShape_8 ->
+  MAlonzo.Code.Once.Arith.Type.T_NumType_6 -> T_Path_68 -> Integer
+d_flat'45'off_130 v0 ~v1 v2 = du_flat'45'off_130 v0 v2
+du_flat'45'off_130 :: T_InputShape_8 -> T_Path_68 -> Integer
+du_flat'45'off_130 v0 v1
+  = case coe v1 of
+      C_here'45'int_70 -> coe (0 :: Integer)
+      C_here'45'flt_72 -> coe (0 :: Integer)
+      C_go'45'fst_80 v5
+        -> case coe v0 of
+             C_shape'45'pair_16 v6 v7
+               -> coe du_flat'45'off_130 (coe v6) (coe v5)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_go'45'snd_88 v5
+        -> case coe v0 of
+             C_shape'45'pair_16 v6 v7
+               -> coe
+                    addInt (coe du_flat'45'off_130 (coe v7) (coe v5))
+                    (coe d_shape'45'size_120 (coe v6))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Arith.Machine.Shape.flat-addr
+d_flat'45'addr_142 ::
+  Integer -> Integer -> [T_Side_24] -> Integer -> Integer
+d_flat'45'addr_142 v0 v1 v2 v3
+  = case coe v2 of
+      [] -> coe v1
+      (:) v4 v5 -> coe addInt (coe mulInt (coe v0) (coe v3)) (coe v1)
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Machine.Shape.project-path
-d_project'45'path_126 ::
+d_project'45'path_162 ::
   T_InputShape_8 ->
   T_Path_68 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_project'45'path_126 = erased
+d_project'45'path_162 = erased
 -- Once.Arith.Machine.Shape.projectF-path
-d_projectF'45'path_144 ::
+d_projectF'45'path_180 ::
   T_InputShape_8 ->
   T_Path_68 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_projectF'45'path_144 = erased
+d_projectF'45'path_180 = erased
 -- Once.Arith.Machine.Shape.typePath?
-d_typePath'63'_160 ::
+d_typePath'63'_196 ::
   T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
   [T_Side_24] -> Maybe T_Path_68
-d_typePath'63'_160 v0 v1 v2
+d_typePath'63'_196 v0 v1 v2
   = case coe v0 of
       C_shape'45'unit_10
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -221,11 +264,11 @@ d_typePath'63'_160 v0 v1 v2
                     C_Fst_26
                       -> coe
                            MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_go'45'fst_80)
-                           (d_typePath'63'_160 (coe v3) (coe v1) (coe v6))
+                           (d_typePath'63'_196 (coe v3) (coe v1) (coe v6))
                     C_Snd_28
                       -> coe
                            MAlonzo.Code.Data.Maybe.Base.du_map_64 (coe C_go'45'snd_88)
-                           (d_typePath'63'_160 (coe v4) (coe v1) (coe v6))
+                           (d_typePath'63'_196 (coe v4) (coe v1) (coe v6))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
