@@ -224,20 +224,21 @@ module ResuspBaseC {FS : FrameSemantics} where
     LV : (G : IRFunctor) → VTy (⟦ G ⟧TI X)
     LV G = LayerV G {X} R
 
-    -- A RESULT THAT SURVIVES whatever keeps its footprint: the layer is
+    -- A RESULT THAT SURVIVES whatever keeps what was live: the layer is
     -- valid at every later state that keeps live what was live, keeps its
-    -- blocks, and leaves the footprint alone.
-    data ROut (G : IRFunctor) (m : AllocMode) (b : AllocState {FS}) (h : ℕ) (a : AllocState {FS})
+    -- blocks, and leaves those cells alone (the flat emitter allocates every
+    -- block it writes after the runs whose results it holds).
+    data ROut (G : IRFunctor) (m : AllocMode) (a : AllocState {FS})
               (s : LocState FS) (v : ValueDomain.⟦ ⟦ G ⟧TI X ⟧ᴰᴵ) : Set where
-      ro-unit : ⟦ G ⟧TI X ≡ IRTy′.Unit → ROut G m b h a s v
-      ro-reg  : (fit : FitsInRegI (⟦ G ⟧TI X)) → readReg (regs s) Output ≡ prim-sv fit v → ROut G m b h a s v
+      ro-unit : ⟦ G ⟧TI X ≡ IRTy′.Unit → ROut G m a s v
+      ro-reg  : (fit : FitsInRegI (⟦ G ⟧TI X)) → readReg (regs s) Output ≡ prim-sv fit v → ROut G m a s v
       ro-loc  : (loc : ValueLocation FS) → Live a loc → readReg (regs s) Output ≡ SV-Ptr loc
               → (∀ {a′ s′} → (∀ l → Live a l → Live a′ l) → BlocksKept a a′
-                 → (∀ l → Prot b h a l → readLoc s′ l ≡ readLoc s l)
+                 → (∀ l → Live a l → readLoc s′ l ≡ readLoc s l)
                  → LV G m a′ v loc s′)
-              → ROut G m b h a s v
+              → ROut G m a s v
 
-    ro→rp : ∀ {G m b h a s v} → ROut G m b h a s v → ResultPlaceP {⟦ G ⟧TI X} (LV G) m a a v s
+    ro→rp : ∀ {G m a s v} → ROut G m a s v → ResultPlaceP {⟦ G ⟧TI X} (LV G) m a a v s
     ro→rp (ro-unit u) = rp-unit u
     ro→rp (ro-reg fit rax) = rp-reg fit rax
     ro→rp (ro-loc loc lv rax f) =
@@ -257,7 +258,7 @@ module ResuspBaseC {FS : FrameSemantics} where
         log      : LocState.ev-log (floc settle) ≡ LocState.ev-log (floc σ)
         left     : ending (floc settle) ≡ ending (floc σ)
         out-mode : AllocMode
-        rout     : ROut G out-mode b (next-heap-ref (falloc σ)) (falloc settle) (floc settle) (rsd wG y)
+        rout     : ROut G out-mode (falloc settle) (floc settle) (rsd wG y)
         seg      : Seg n σ settle
         -- D381: the blocks live at the start keep their sizes
         bk       : BlocksKept (falloc σ) (falloc settle)
@@ -311,9 +312,9 @@ module ResuspBaseC {FS : FrameSemantics} where
 
     -- a re-suspended layer, read at a later state that keeps its footprint,
     -- as a value to put
-    rout→src : ∀ {G} (wG : WellFormedFI G) {m b h a s v a′ s′}
-             → ROut G m b h a s v
-             → (∀ l → Live a l → Live a′ l) → BlocksKept a a′ → (∀ l → Prot b h a l → readLoc s′ l ≡ readLoc s l)
+    rout→src : ∀ {G} (wG : WellFormedFI G) {m a s v a′ s′}
+             → ROut G m a s v
+             → (∀ l → Live a l → Live a′ l) → BlocksKept a a′ → (∀ l → Live a l → readLoc s′ l ≡ readLoc s l)
              → LSrc a′ s′ wG v (readReg (regs s) Output)
     rout→src wG (ro-unit u) bft bk rd = ls-unit u (unit-lay wG u)
     rout→src wG {s = s} {v = v} {a′} {s′} (ro-reg fit rax) bft bk rd =
