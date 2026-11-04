@@ -16,7 +16,7 @@
 
 module Once.Arith.Machine.Shape where
 
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; _+_; _*_)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (Maybe; just; nothing) renaming (map to mapᴹ)
 open import Data.List using (List; []; _∷_)
@@ -137,6 +137,30 @@ readLeaf (go-snd p) (_ , y) = readLeaf p y
 ⌊ here-flt  ⌋ᴾ = []
 ⌊ go-fst p  ⌋ᴾ = Fst ∷ ⌊ p ⌋ᴾ
 ⌊ go-snd p  ⌋ᴾ = Snd ∷ ⌊ p ⌋ᴾ
+
+-- | D385: WHERE A LEAF IS, in the flat layout (D375). A compound input is a
+-- pointer to its words; a component is embedded, so a leaf is one word at the
+-- sum of its left siblings' sizes along the path. A whole-input scalar (`[]`)
+-- is its register, as before.
+shape-size : InputShape → ℕ
+shape-size shape-unit       = 0
+shape-size shape-int        = 1
+shape-size shape-float      = 1
+shape-size (shape-pair l r) = shape-size l + shape-size r
+
+-- the word offset of a typed path's leaf (left siblings' sizes, along the path)
+flat-off : ∀ {sh n} → Path sh n → ℕ
+flat-off here-int            = 0
+flat-off here-flt            = 0
+flat-off (go-fst p)          = flat-off p
+flat-off (go-snd {l = l} p)  = shape-size l + flat-off p
+
+-- the address a target reads a leaf from, for a word of `w` bytes: the input
+-- pointer `base` itself for `[]` (as the arch models have it), else one word
+-- at the leaf's offset
+flat-addr : (w base : ℕ) → InputPath → ℕ → ℕ
+flat-addr w base []      k = base
+flat-addr w base (_ ∷ _) k = base + w * k
 
 -- | …and the two bridges that retire the defaults: along an erased typed path
 -- the old projections are `just`, so `maybe-zero` provably never fires.

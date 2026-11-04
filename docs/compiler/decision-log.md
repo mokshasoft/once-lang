@@ -21095,3 +21095,31 @@ A pointer environment keeps `closure-wf` (its block stays live).
 * `curry` takes `closure-reg-wf` for a scalar and for a `Unit` environment alike; `apply` reads the
   word.
 * No transport changes: the witness was passed through opaquely everywhere.
+
+## D385 — A SIGOP BLOCK READS ITS INPUT FLAT: ONE LOAD PER LEAF, AT ITS WORD OFFSET (2026-11-04)
+
+**Decided** in plan 0.123 B.4 α, found by `cabal test` after the apex went green: every program whose
+arith SigOp block takes a pair input crashed (87 of 922 tests, all three arches).
+
+### Context
+D375 made a compound value its flat words, a component embedded. The arith block's input reader
+(`Xmov-arg`/`Xmov-farg`, the per-arch `path-load-text`) still walked the input path by the old cell
+layout: each `Fst`/`Snd` step loaded a word at +0/+word and dereferenced it. On the flat layout that
+dereferences a scalar. The proofs did not see it: the arch-level arith simulations take the input's
+memory layout as a precondition (`R-input`, `HeapChase`), and that precondition said the old layout.
+
+### Decision
+A leaf of the block's input is one word at its offset in the flat input: the sum of its left siblings'
+sizes along the path (`Shape.flat-off` on the typed path; `shape-size` is the D375 size of a shape).
+`compile-go` computes it from the `ainput`'s typed path and carries it on `load-input`/`load-finput`
+into `Xmov-arg`/`Xmov-farg`; the abstract semantics still reads by the path. Each target emits one load
+at `word·k` from its input pointer (`%rdi`, `%ecx`, `t0`; riscv64 forms an offset past the 12-bit
+immediate in the destination register). The concrete models (`Shape.flat-addr`, `ArithSimPathLoad`,
+`ArithSimPathLoadRegion`, the x86-64 CPU model) read one address, and `R-input`/`HeapChase` state the
+flat layout. `LoadOK` records that the offset is the typed path's.
+
+### Consequences
+* A whole-input scalar (path `[]`) is unchanged: the emitters move the input register, the models read
+  memory at the input pointer — a pre-existing disagreement, not touched here.
+* `R-input`/`HeapChase` stay preconditions (the call site's layout is not proved to meet them); the
+  call-site link is the gap that let this through, open.

@@ -42,8 +42,9 @@ import Once.Spec.Float.Arith as FA
 ------------------------------------------------------------------------
 
 data AbstractInstr : Set where
-  -- | `load-input p r` : reg r := project sh p input.
-  load-input  : InputPath → ℕ → AbstractInstr
+  -- | `load-input p k r` : reg r := project sh p input. `k` is the leaf's word
+  -- offset in the flat input (D385: `Shape.flat-off`), what the target reads.
+  load-input  : InputPath → ℕ → ℕ → AbstractInstr
 
   -- | `load-imm z r` : reg r := just z.
   load-imm    : ℤ → ℕ → AbstractInstr
@@ -115,7 +116,7 @@ data AbstractInstr : Set where
 
   -- | `load-finput p r` : reg r := the FLOAT leaf at `p` (no `fromℤ` — a
   -- float leaf is already a pattern).
-  load-finput : InputPath → ℕ → AbstractInstr
+  load-finput : InputPath → ℕ → ℕ → AbstractInstr
 
   -- | `load-fimm d r` : reg r := `round F d`. The payload is the `Decimal`
   -- (D117), so the ONE rounding happens here, at the target's format.
@@ -188,7 +189,7 @@ module Exec (bits : ℕ) (F : FloatFormat) where
 
   -- | One abstract step.
   step : ∀ {sh} → AbstractInstr → ArithAbsState sh → ArithAbsState sh
-  step {sh} (load-input p r) s = record s
+  step {sh} (load-input p _ r) s = record s
     { regs = ArithAbsState.regs s [ r ↦
         just (fromℤ (maybe-zero (project sh p (ArithAbsState.input s)))) ] }
   step (load-imm z r) s = record s
@@ -238,7 +239,7 @@ module Exec (bits : ℕ) (F : FloatFormat) where
   -- The float steps. Each reads `Once.Spec.Float.Arith` at `F` — the SAME
   -- functions `block-semM` and `eval-arith-W` call, so the abstract machine
   -- and the denotation cannot drift.
-  step {sh} (load-finput p r) s = record s
+  step {sh} (load-finput p _ r) s = record s
     { regs = ArithAbsState.regs s [ r ↦
         just (maybe-zero-f (projectF sh p (ArithAbsState.input s))) ] }
   step (load-fimm d r) s = record s

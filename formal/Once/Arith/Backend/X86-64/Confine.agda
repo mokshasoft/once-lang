@@ -41,7 +41,7 @@ writes (Xmov-imm dst _)         = arith-reg dst ∷ []
 writes (Xmov-rr dst _)          = arith-reg dst ∷ []
 writes (Xmov-r-m _ _)           = []                            -- scratch memory only
 writes (Xmov-m-r dst _)         = arith-reg dst ∷ []
-writes (Xmov-arg dst _)         = arith-reg dst ∷ rax ∷ []      -- multi-hop walks via %rax
+writes (Xmov-arg dst _ _)       = arith-reg dst ∷ rax ∷ []      -- multi-hop walks via %rax
 writes (Xadd-rr dst _)          = arith-reg dst ∷ []
 writes (Xsub-rr dst _)          = arith-reg dst ∷ []
 writes (Ximul-rr dst _)         = arith-reg dst ∷ []
@@ -71,7 +71,7 @@ writes (Xfsubr-rr dst _)        = arith-reg dst ∷ []
 writes (Xfneg-r dst)            = arith-reg dst ∷ []
 writes (Xi2f-r dst _)           = arith-reg dst ∷ []
 writes (Xmov-fimm dst _)        = arith-reg dst ∷ []
-writes (Xmov-farg dst _)        = arith-reg dst ∷ []
+writes (Xmov-farg dst _ _)       = arith-reg dst ∷ []
 writes (Xmov-out _)             = rax ∷ []
 
 ------------------------------------------------------------------------
@@ -97,7 +97,7 @@ confined (Xmov-imm dst _)         = arith-notccc dst ∷ []
 confined (Xmov-rr dst _)          = arith-notccc dst ∷ []
 confined (Xmov-r-m _ _)           = []
 confined (Xmov-m-r dst _)         = arith-notccc dst ∷ []
-confined (Xmov-arg dst _)         = arith-notccc dst ∷ rax-notccc ∷ []
+confined (Xmov-arg dst _ _)       = arith-notccc dst ∷ rax-notccc ∷ []
 confined (Xadd-rr dst _)          = arith-notccc dst ∷ []
 confined (Xsub-rr dst _)          = arith-notccc dst ∷ []
 confined (Ximul-rr dst _)         = arith-notccc dst ∷ []
@@ -117,7 +117,7 @@ confined (Xfsubr-rr dst _)        = arith-notccc dst ∷ []
 confined (Xfneg-r dst)            = arith-notccc dst ∷ []
 confined (Xi2f-r dst _)           = arith-notccc dst ∷ []
 confined (Xmov-fimm dst _)        = arith-notccc dst ∷ []
-confined (Xmov-farg dst _)        = arith-notccc dst ∷ []
+confined (Xmov-farg dst _ _)       = arith-notccc dst ∷ []
 confined (Xmov-out _)             = rax-notccc ∷ []
 
 ------------------------------------------------------------------------

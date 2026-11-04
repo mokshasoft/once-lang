@@ -71,8 +71,8 @@ emit : AbstractInstr → XProgram
 emit (load-imm z r) with abs-reg r
 ... | just xr = Xmov-imm xr z ∷ []
 ... | nothing = []
-emit (load-input p r) with abs-reg r
-... | just xr = Xmov-arg xr p ∷ []
+emit (load-input p k r) with abs-reg r
+... | just xr = Xmov-arg xr p k ∷ []
 ... | nothing = []
 -- | `add-rrr dst a b` = `dst := a + b`. Addition is commutative, so
 -- when `dst ≡ a` or `dst ≡ b` the move is unnecessary; in both
@@ -163,8 +163,8 @@ emit (neg-rr dst a) with abs-reg dst | abs-reg a
 emit (load-fimm d r) with abs-reg r
 ... | just xr = Xmov-fimm xr d ∷ []
 ... | nothing = []
-emit (load-finput p r) with abs-reg r
-... | just xr = Xmov-farg xr p ∷ []
+emit (load-finput p k r) with abs-reg r
+... | just xr = Xmov-farg xr p k ∷ []
 ... | nothing = []
 emit (fadd-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | just xd | just xa | just xb        with xd ≟x xa
