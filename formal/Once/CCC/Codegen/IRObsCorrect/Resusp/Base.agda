@@ -218,12 +218,13 @@ module ResuspBaseC {FS : FrameSemantics} where
   live-from : ∀ (a a′ : AllocState {FS}) → next-heap-ref a ≤ next-heap-ref a′ → ∀ l → Live a l → Live a′ l
   live-from a a′ hr (AtDynamic _) (BeforeFrontier.heap-before r) = BeforeFrontier.heap-before (<-≤-trans r hr)
 
-  -- Everything live stays live and reads the same.
+  -- Everything live stays live, keeps its block (D381), and reads the same.
   Kp : AllocState {FS} → LocState FS → AllocState {FS} → LocState FS → Set
-  Kp a s a′ s′ = (∀ l → Live a l → Live a′ l) × (∀ l → Live a l → readLoc s′ l ≡ readLoc s l)
+  Kp a s a′ s′ = (∀ l → Live a l → Live a′ l) × BlocksKept a a′ × (∀ l → Live a l → readLoc s′ l ≡ readLoc s l)
 
   kp-∘ : ∀ {a s a′ s′ a″ s″} → Kp a s a′ s′ → Kp a′ s′ a″ s″ → Kp a s a″ s″
-  kp-∘ (b₁ , r₁) (b₂ , r₂) = (λ l x → b₂ l (b₁ l x)) , (λ l x → trans (r₂ l (b₁ l x)) (r₁ l x))
+  kp-∘ {a} {s} {a′} {s′} {a″} (b₁ , k₁ , r₁) (b₂ , k₂ , r₂) =
+    (λ l x → b₂ l (b₁ l x)) , bk-trans {a = a} {b = a′} {c = a″} k₁ k₂ b₁ , (λ l x → trans (r₂ l (b₁ l x)) (r₁ l x))
 
   ------------------------------------------------------------------------
   -- A SEGMENT of a run, at frontier `n`, measured against a BASE allocator
@@ -480,7 +481,7 @@ module ResuspBaseC {FS : FrameSemantics} where
 
     -- the inputs, carried along a segment at the same base
     kp-base : ∀ {b a₀ n fs fs′} → (∀ l → Live b l → Live a₀ l) → SegA a₀ n fs fs′ → Kp b (floc fs) b (floc fs′)
-    kp-base bl p = (λ _ x → x) , (λ l x → seg-live-read p l (bl l x))
+    kp-base bl p = (λ _ x → x) , (λ _ _ ib → ib) , (λ l x → seg-live-read p l (bl l x))
 
   ------------------------------------------------------------------------
   -- STASH AND RESTORE: `store-at-slot k ; restore-input j` — Output kept in
