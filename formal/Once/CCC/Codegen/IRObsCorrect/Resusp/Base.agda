@@ -4,19 +4,20 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.IRObsCorrect.Resusp.Base
 --
--- plan 0.135 S3: the vocabulary the re-suspension's proof (`Resusp`) is
--- stated in, split out so each case of the induction can live in its own
--- module.
+-- plan 0.135 S3 / plan 0.123 α2: the vocabulary the re-suspension's proof
+-- (`Resusp`) is stated in, split out so each case of the induction can live
+-- in its own module.
 --
---   * `Seg n σ σ′`: what a run from `σ` to `σ′` leaves alone at frontier
---     `n` (below-frontier memory, the frame, the stack frontier) and that
---     the heap frontier only grows. Segments compose.
---   * `RRuns′`: `Resusp.RRuns` with the segment in place of the three
---     frontier fields — STRONGER, because it also says the stack frontier
---     comes back unchanged, which the induction needs (a product's second
---     component is run after the first, at `next-slot ≡ 0` again).
---   * the transports of a forced layer (`lay-tr`) and the cell lemmas that
---     turn "Output held it, and it was stored there" into a `CellAt`.
+--   * `SegA a₀ n σ σ′`: what a run from `σ` to `σ′` leaves alone at frontier
+--     `n`, measured against a base allocator (below-frontier memory, the
+--     frame, the stack frontier) and that the heap frontier only grows.
+--     Segments compose.
+--   * `RRuns′`: `Resusp.RRuns` with the segment in place of the frontier
+--     fields, and its result as an `ROut` — a re-suspended layer that stays
+--     valid at every later state keeping its footprint (`Prot`), which is
+--     what a later `put` of it needs.
+--   * the bridges into the flat puts: an input layer as a `FlatPut.Src`, a
+--     re-suspended one as a `FlatPutLay.LSrc`.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -32,26 +33,24 @@ open import Once.CCC.Codegen.IRToTrace o using (resuspend-layer)
 import Once.CCC.Machine.SMCore as SMCore
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue
-        ; readReg; Output; Input1; SV-Code; SV-Ptr; SV-Tag; sucLoc; writeReg-preserves; writeReg-same
-        ; store-at-slot; restore-input; load-from-slot; load-indirect; load-indirect-suc; store-indirect
-        ; store-indirect-suc; mov-to-input; instr-alloc-heap; instr-load-code-addr; instr-load-tag-lit; sv-as-loc)
+        ; readReg; Output; Input1; SV-Code; SV-Ptr; sucLoc)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Label using (ℓ)
-open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; wf-K; wf-Id; wf-Sum; wf-Prod
+                            ; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 import Once.IRTy as IRTy′
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.CCC.Machine.ValueRel as CWF
-open import Once.CCC.Machine.SMPrimitives using (module RecSchemeSemantics; nhw-store-at-slot; nhw-restore-input)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (Σ)
-open import Data.List.Properties using (++-identityʳ)
-open import Once.CCC.Machine.FlatLog using (LogFree)
-open import Data.Nat using (z≤n)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
+import Once.CCC.Machine.FlatPut as FlatPut
+import Once.CCC.Machine.FlatPutLay as FlatPutLay
+open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
 
 module ResuspBaseC {FS : FrameSemantics} where
 
@@ -63,146 +62,8 @@ module ResuspBaseC {FS : FrameSemantics} where
   open LocState using (regs; halted)
   open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
   open NuForceC {FS} using (module AnaDen)
-  open CWF.ClosureWellFormedBase {FS}
-    using (CellAtP; fo-base; pair-wf; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; transport-SumTag; SumTag; SumV)
-  open RecSchemeSemantics {FS} using (exec-abstract-restore-input-sets-input)
-
-  ------------------------------------------------------------------------
-  -- ONE STRAIGHT STEP, and what it does to the registers, the slots and the
-  -- heap. Stated over the structured machine (`exec-abstract i s a`), which
-  -- is what `flat-step-straight` threads.
-  ------------------------------------------------------------------------
-  St : AbstractInstr → FlatState → FlatState
-  St = flat-step-straight
-
-  X : AbstractInstr → LocState FS → AllocState {FS} → LocState FS
-  X i s a = proj₁ (exec-abstract i s a)
-
-  -- registers
-  reg-store : ∀ k s a r → readReg (regs (X (store-at-slot k) s a)) r ≡ readReg (regs s) r
-  reg-store k s a r = cong (λ q → readReg q r) (SMCore.MemOps.writeLoc-regs s (AtStack (current-frame a) k) (readReg (regs s) Output))
-
-  in-alloc : ∀ m s a → readReg (regs (X (instr-alloc-heap m) s a)) Input1 ≡ readReg (regs s) Input1
-  in-alloc m s a = writeReg-preserves (regs s) Output Input1 (SV-Ptr (AtDynamic (heap-loc (mkHeapRef (next-heap-ref a)) 0))) (λ ())
-
-  out-alloc : ∀ m s a → readReg (regs (X (instr-alloc-heap m) s a)) Output
-            ≡ SV-Ptr (AtDynamic (heap-loc (mkHeapRef (next-heap-ref a)) 0))
-  out-alloc m s a = writeReg-same (regs s) Output (SV-Ptr (AtDynamic (heap-loc (mkHeapRef (next-heap-ref a)) 0)))
-
-  in-restore : ∀ k s a v → readLoc s (AtStack (current-frame a) k) ≡ just v
-             → readReg (regs (X (restore-input k) s a)) Input1 ≡ v
-  in-restore k s a v r = exec-abstract-restore-input-sets-input k s a v r
-
-  out-restore : ∀ k s a v → readLoc s (AtStack (current-frame a) k) ≡ just v
-              → readReg (regs (X (restore-input k) s a)) Output ≡ readReg (regs s) Output
-  out-restore k s a v r with readLoc s (AtStack (current-frame a) k) | r
-  ... | .(just v) | refl = writeReg-preserves (regs s) Input1 Output v (λ ())
-
-  out-lind : ∀ s a loc v → readReg (regs s) Input1 ≡ SV-Ptr loc → readLoc s loc ≡ just v
-           → readReg (regs (X load-indirect s a)) Output ≡ v
-  out-lind s a loc v e r = exec-abstract-load-indirect-output s a loc v e r
-
-  out-lind-suc : ∀ s a loc v → readReg (regs s) Input1 ≡ SV-Ptr loc → readLoc s (sucLoc loc) ≡ just v
-               → readReg (regs (X load-indirect-suc s a)) Output ≡ v
-  out-lind-suc s a loc v e r = exec-abstract-load-indirect-suc-output s a loc v e r
-
-  out-lslot : ∀ k s a v → readLoc s (AtStack (current-frame a) k) ≡ just v
-            → readReg (regs (X (load-from-slot k) s a)) Output ≡ v
-  out-lslot k s a v r = load-slot-result k s a v r
-
-  in-lslot : ∀ k s a v → readLoc s (AtStack (current-frame a) k) ≡ just v
-           → readReg (regs (X (load-from-slot k) s a)) Input1 ≡ readReg (regs s) Input1
-  in-lslot k s a v r = load-slot-preserves-input k s a v r
-
-  in-sind : ∀ s a loc → sv-as-loc (readReg (regs s) Input1) ≡ just loc
-          → readReg (regs (X store-indirect s a)) Input1 ≡ readReg (regs s) Input1
-  in-sind s a loc e = store-ind-preserves-input s a loc e
-
-  in-sind-suc : ∀ s a loc → sv-as-loc (readReg (regs s) Input1) ≡ just loc
-              → readReg (regs (X store-indirect-suc s a)) Input1 ≡ readReg (regs s) Input1
-  in-sind-suc s a loc e with sv-as-loc (readReg (regs s) Input1) | e
-  ... | .(just loc) | refl =
-    cong (λ r → readReg r Input1) (SMCore.MemOps.writeLoc-regs s (sucLoc loc) (readReg (regs s) Output))
-
-  in-movin : ∀ s a → readReg (regs (X mov-to-input s a)) Input1 ≡ readReg (regs s) Output
-  in-movin s a = writeReg-same (regs s) Input1 (readReg (regs s) Output)
-
-  in-code : ∀ lb s a → readReg (regs (X (instr-load-code-addr lb) s a)) Input1 ≡ readReg (regs s) Input1
-  in-code lb s a = writeReg-preserves (regs s) Output Input1 (SV-Code lb) (λ ())
-
-  out-code : ∀ lb s a → readReg (regs (X (instr-load-code-addr lb) s a)) Output ≡ SV-Code lb
-  out-code lb s a = writeReg-same (regs s) Output (SV-Code lb)
-
-  in-tag : ∀ t s a → readReg (regs (X (instr-load-tag-lit t) s a)) Input1 ≡ readReg (regs s) Input1
-  in-tag t s a = writeReg-preserves (regs s) Output Input1 (SV-Tag t) (λ ())
-
-  out-tag : ∀ t s a → readReg (regs (X (instr-load-tag-lit t) s a)) Output ≡ SV-Tag t
-  out-tag t s a = writeReg-same (regs s) Output (SV-Tag t)
-
-  -- slots, read at a frame `f` the run never leaves
-  slot-idx : ValueLocation FS → ℕ
-  slot-idx (AtStack _ k) = k
-  slot-idx (AtDynamic _) = 0
-
-  sl-same : ∀ k s a f → current-frame a ≡ f
-          → readLoc (X (store-at-slot k) s a) (AtStack f k) ≡ just (readReg (regs s) Output)
-  sl-same k s a f refl = SMCore.MemOps.writeLoc-read-same-stack s (current-frame a) k (readReg (regs s) Output)
-
-  sl-other : ∀ k j s a f → j ≢ k
-           → readLoc (X (store-at-slot k) s a) (AtStack f j) ≡ readLoc s (AtStack f j)
-  sl-other k j s a f j≢k =
-    SMCore.MemOps.writeLoc-preserves-other s (AtStack (current-frame a) k) (AtStack f j) (readReg (regs s) Output) (λ eq → j≢k (sym (cong slot-idx eq)))
-
-  sl-keep : ∀ i s a f j → InstrNoHeapWrite i → instr-writes-slot i ≡ nothing
-          → readLoc (X i s a) (AtStack f j) ≡ readLoc s (AtStack f j)
-  sl-keep i s a f j nhw nws = exec-abstract-preserves-stack-slot i s a f j nhw nws
-
-  sl-sind : ∀ s a hl f j → sv-as-loc (readReg (regs s) Input1) ≡ just (AtDynamic hl)
-          → readLoc (X store-indirect s a) (AtStack f j) ≡ readLoc s (AtStack f j)
-  sl-sind s a hl f j e = store-ind-preserves-slot s a hl j e
-
-  sl-sind-suc : ∀ s a hl f j → sv-as-loc (readReg (regs s) Input1) ≡ just (AtDynamic hl)
-              → readLoc (X store-indirect-suc s a) (AtStack f j) ≡ readLoc s (AtStack f j)
-  sl-sind-suc s a hl f j e = store-ind-suc-preserves-slot s a hl j e
-
-  -- a slot fact at the run's frame, re-read at the step's own frame
-  at-cf : ∀ (s : LocState FS) (a : AllocState {FS}) {f k v} → current-frame a ≡ f
-        → readLoc s (AtStack f k) ≡ just v → readLoc s (AtStack (current-frame a) k) ≡ just v
-  at-cf s a refl r = r
-
-  -- heap cells
-  hp-keep : ∀ i s a hl → InstrNoHeapWrite i → readLoc (X i s a) (AtDynamic hl) ≡ readLoc s (AtDynamic hl)
-  hp-keep i s a hl nhw = heap-untouched i s a hl nhw
-
-  hp-sind-other : ∀ s a hl hl′ → sv-as-loc (readReg (regs s) Input1) ≡ just (AtDynamic hl)
-                → AtDynamic {FS} hl ≢ AtDynamic hl′
-                → readLoc (X store-indirect s a) (AtDynamic hl′) ≡ readLoc s (AtDynamic hl′)
-  hp-sind-other s a hl hl′ e ne with sv-as-loc (readReg (regs s) Input1) | e
-  ... | .(just (AtDynamic hl)) | refl =
-    SMCore.MemOps.writeLoc-preserves-other s (AtDynamic hl) (AtDynamic hl′) (readReg (regs s) Output) ne
-
-  ------------------------------------------------------------------------
-  -- A SILENT RUN: a chain with its two bookkeeping facts — it emits no
-  -- events and leaves the log alone — built one named step at a time, so
-  -- neither fact ever evaluates the chain.
-  ------------------------------------------------------------------------
-  SRun : AbstractTrace → ℕ → FlatState → FlatState → Set
-  SRun prog k fs fs′ =
-    Σ (FlatSteps prog k fs fs′) (λ r → (chain-events r ≡ []) × (LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)))
-
-  s-nil : ∀ {prog fs} → SRun prog 0 fs fs
-  s-nil {prog} {fs} = [] , chain-events-nil {prog} {fs} , refl
-
-  s-at : ∀ {prog fs k fs″} {i : AbstractInstr} (fs′ : FlatState)
-       → (halted (floc fs) ≡ false × fetch prog (fpc fs) ≡ just i)
-       → flat-exec-instr i prog fs ≡ fs′
-       → event-of i fs ≡ [] → LogFree i
-       → SRun prog k fs′ fs″ → SRun prog (suc k) fs fs″
-  s-at {prog} {fs} {i = i} fs′ h eq e lf (r , ev , lg) =
-    step-at fs′ h eq r
-    , trans (cong (event-of i fs ++_) (chain-events-subst-start (sym eq) r)) (trans (cong (_++ chain-events r) e) ev)
-    , trans lg (trans (cong (λ z → LocState.ev-log (floc z)) (sym eq))
-                      (trans (log-step i lf prog fs) (++-identityʳ (LocState.ev-log (floc fs)))))
+  open CWF.ClosureWellFormedBase {FS} using (CellAtP; fo-base; fo-unit; unit-wf)
+  private module IC = InjC {FS}
 
   ------------------------------------------------------------------------
   -- LIVENESS. A live location is a heap cell below the heap frontier, so it
@@ -331,18 +192,28 @@ module ResuspBaseC {FS : FrameSemantics} where
                (coalg : IR (E IRTy′.* A) (⟦ F ⟧TI A)) (e : ValueDomain.⟦ E ⟧ᴰᴵ)
                (prog : AbstractTrace) (lbl-n : ℕ)
                (R : VTy (ν-type F))
-               (mk-child : ∀ {alloc ν-loc s} (a′ : ValueDomain.⟦ A ⟧ᴰᴵ)
+               -- a fresh suspension: cell 0 the seed pair's pointer, cell 1 this block's code
+               (mk-child : ∀ {alloc ν-loc s pl′} (a′ : ValueDomain.⟦ A ⟧ᴰᴵ)
                          → LocMatchesMode Heap ν-loc
+                         → readLoc s ν-loc ≡ just (SV-Ptr pl′) → Live alloc pl′
+                         → ValidAtWF {prog = prog} Heap alloc {E IRTy′.* A} (e , a′) pl′ s
                          → readLoc s (sucLoc ν-loc) ≡ just (SV-Code (ℓ o lbl-n))
                          → Live alloc (sucLoc ν-loc)
-                         → CellAt {prog = prog} alloc (E IRTy′.* A) (e , a′) ν-loc s
                          → R Heap alloc (retVal (evalᴰ (Ana wf coalg) (e , a′))) ν-loc s)
+               -- …and stays one while what was live stays live, unchanged, its blocks kept
+               (R-tr : ∀ {a a′ : AllocState {FS}} {s s′ : LocState FS}
+                     → (∀ l → Live a l → Live a′ l) → (∀ l → Live a l → readLoc s′ l ≡ readLoc s l)
+                     → BlocksKept a a′
+                     → ∀ {m v l} → R m a v l s → R m a′ v l s′)
                where
+
+    X : IRTy
+    X = ν-type F
 
     rsd = AnaDen.rsd wf coalg e
 
     rtrace : ∀ {G : IRFunctor} → WellFormedFI G → ℕ → ℕ → AbstractTrace
-    rtrace wG n l = proj₂ (proj₂ (resuspend-layer n l (ℓ o lbl-n) 0 wG))
+    rtrace wG n l = proj₂ (proj₂ (resuspend-layer F E A n l (ℓ o lbl-n) 0 wG))
 
     data OutAt′ {C : IRTy} (alloc : AllocState {FS}) (c : ValueDomain.⟦ C ⟧ᴰᴵ) (st : LocState FS) : Set where
       out-loc  : ∀ {m} (loc : ValueLocation FS) → ValidAtWF {prog = prog} m alloc {C} c loc st → Live alloc loc
@@ -350,34 +221,27 @@ module ResuspBaseC {FS : FrameSemantics} where
       out-reg  : (fit : FitsInRegI C) → readReg (regs st) Output ≡ prim-sv fit c → OutAt′ alloc c st
       out-unit : C ≡ IRTy′.Unit → OutAt′ alloc c st
 
-    LV : (G : IRFunctor) → VTy (⟦ G ⟧TI (ν-type F))
-    LV G = LayerV G {ν-type F} R
+    LV : (G : IRFunctor) → VTy (⟦ G ⟧TI X)
+    LV G = LayerV G {X} R
 
     -- A RESULT THAT SURVIVES whatever keeps its footprint: the layer is
-    -- valid at every later state that keeps live what was live and leaves
-    -- the footprint alone.
+    -- valid at every later state that keeps live what was live, keeps its
+    -- blocks, and leaves the footprint alone.
     data ROut (G : IRFunctor) (m : AllocMode) (b : AllocState {FS}) (h : ℕ) (a : AllocState {FS})
-              (s : LocState FS) (v : ValueDomain.⟦ ⟦ G ⟧TI (ν-type F) ⟧ᴰᴵ) : Set where
-      ro-unit : ⟦ G ⟧TI (ν-type F) ≡ IRTy′.Unit → ROut G m b h a s v
-      ro-reg  : (fit : FitsInRegI (⟦ G ⟧TI (ν-type F))) → readReg (regs s) Output ≡ prim-sv fit v → ROut G m b h a s v
+              (s : LocState FS) (v : ValueDomain.⟦ ⟦ G ⟧TI X ⟧ᴰᴵ) : Set where
+      ro-unit : ⟦ G ⟧TI X ≡ IRTy′.Unit → ROut G m b h a s v
+      ro-reg  : (fit : FitsInRegI (⟦ G ⟧TI X)) → readReg (regs s) Output ≡ prim-sv fit v → ROut G m b h a s v
       ro-loc  : (loc : ValueLocation FS) → Live a loc → readReg (regs s) Output ≡ SV-Ptr loc
-              → (∀ {a′ s′} → (∀ l → Live a l → Live a′ l) → (∀ l → Prot b h a l → readLoc s′ l ≡ readLoc s l)
+              → (∀ {a′ s′} → (∀ l → Live a l → Live a′ l) → BlocksKept a a′
+                 → (∀ l → Prot b h a l → readLoc s′ l ≡ readLoc s l)
                  → LV G m a′ v loc s′)
               → ROut G m b h a s v
 
-    ro→rp : ∀ {G m b h a s v} → ROut G m b h a s v → ResultPlaceP {⟦ G ⟧TI (ν-type F)} (LV G) m a a v s
+    ro→rp : ∀ {G m b h a s v} → ROut G m b h a s v → ResultPlaceP {⟦ G ⟧TI X} (LV G) m a a v s
     ro→rp (ro-unit u) = rp-unit u
     ro→rp (ro-reg fit rax) = rp-reg fit rax
-    ro→rp (ro-loc loc lv rax f) = rp-loc loc (f (λ _ x → x) (λ _ _ → refl)) lv rax (f (λ _ x → x) (λ _ _ → refl)) lv
-
-    -- …and stored at `q`, a cell of a later state
-    ro→cell : ∀ {G m b h a s v a′ s′ q} → ROut G m b h a s v
-            → (∀ l → Live a l → Live a′ l) → (∀ l → Prot b h a l → readLoc s′ l ≡ readLoc s l)
-            → readLoc s′ q ≡ just (readReg (regs s) Output)
-            → CellAtP {⟦ G ⟧TI (ν-type F)} (LV G) a′ v q s′
-    ro→cell {s = s} (ro-unit u) bft rd eq = cell-inline (rep-unit u (readReg (regs s) Output)) eq
-    ro→cell (ro-reg fit rax) bft rd eq = cell-inline (rep-prim fit) (trans eq (cong just rax))
-    ro→cell (ro-loc loc lv rax f) bft rd eq = cell-ptr (trans eq (cong just rax)) (bft _ lv) (f bft rd)
+    ro→rp (ro-loc loc lv rax f) =
+      rp-loc loc (f (λ _ x → x) (λ _ _ ib → ib) (λ _ _ → refl)) lv rax (f (λ _ x → x) (λ _ _ ib → ib) (λ _ _ → refl)) lv
 
     record RRuns′ {G : IRFunctor} (wG : WellFormedFI G) (n l : ℕ) (σ : FlatState)
                   (y : ValueDomain.⟦ ⟦ G ⟧TI A ⟧ᴰᴵ) (b : AllocState {FS}) : Set where
@@ -395,14 +259,16 @@ module ResuspBaseC {FS : FrameSemantics} where
         out-mode : AllocMode
         rout     : ROut G out-mode b (next-heap-ref (falloc σ)) (falloc settle) (floc settle) (rsd wG y)
         seg      : Seg n σ settle
+        -- D381: the blocks live at the start keep their sizes
+        bk       : BlocksKept (falloc σ) (falloc settle)
 
     -- THE CASE STATEMENT, one functor at a time. The inputs are valid at a
-    -- BASE `b` no later than the start, and the result's footprint is what
-    -- is live at `b` plus what the run allocates.
+    -- BASE `b` no later than the start (its blocks kept), and the result's
+    -- footprint is what is live at `b` plus what the run allocates.
     Resusp′ : ∀ {G : IRFunctor} → WellFormedFI G → Set
     Resusp′ {G} wG =
       ∀ (n l : ℕ) (σ : FlatState) (y : ValueDomain.⟦ ⟦ G ⟧TI A ⟧ᴰᴵ) (pl : ValueLocation FS)
-        (b : AllocState {FS}) → next-heap-ref b ≤ next-heap-ref (falloc σ)
+        (b : AllocState {FS}) → next-heap-ref b ≤ next-heap-ref (falloc σ) → BlocksKept b (falloc σ)
       → SpanAt prog (fpc σ) (rtrace wG n l)
       → LabelsAt prog (fpc σ) (rtrace wG n l)
       → halted (floc σ) ≡ false → flink σ ≡ nothing
@@ -414,52 +280,57 @@ module ResuspBaseC {FS : FrameSemantics} where
       → RRuns′ wG n l σ y b
 
     ----------------------------------------------------------------------
-    -- TRANSPORTS AND CELLS.
+    -- BRIDGES INTO THE PUTS.
     ----------------------------------------------------------------------
-    v-tr : ∀ {a a′ s s′} → Kp a s a′ s′ → ∀ {m C} {c : ValueDomain.⟦ C ⟧ᴰᴵ} {loc} → Live a loc
-         → ValidAtWF {prog = prog} m a {C} c loc s → ValidAtWF {prog = prog} m a′ {C} c loc s′
-    v-tr {a} (bft , rd) {c = c} {loc} q v = validityWF-heap-transport (Live a) (λ _ b → b) rd bft c loc q v
+    -- an input value, where a read or the caller left it, as a value to put
+    out→src : ∀ {C : IRTy} {a s} {c : ValueDomain.⟦ C ⟧ᴰᴵ} → OutAt′ {C} a c s
+            → FlatPut.Src {FS} {prog} a s C c (readReg (regs s) Output)
+    out→src {C} {a} {s} {c} (out-loc loc v lv rax) = subst (FlatPut.Src {FS} {prog} a s C c) (sym rax) (IC.src-loc {prog} C v lv)
+    out→src {C} {a} {s} {c} (out-reg fit rax) = subst (FlatPut.Src {FS} {prog} a s C c) (sym rax) (FlatPut.src-scalar fit)
+    out→src (out-unit refl) = FlatPut.src-unit
 
-    cell-sv : ∀ {a C c cl st} → CellAt {prog = prog} a C c cl st → StoredValue FS
-    cell-sv (cell-ptr {comp-loc = cl′} _ _ _) = SV-Ptr cl′
-    cell-sv (cell-inline {c = c} rep _)       = inline-sv rep c
+    -- a read's result, as an input
+    place→out : ∀ {C : IRTy} {m a ca s} {c : ValueDomain.⟦ C ⟧ᴰᴵ} → ResultPlace {prog = prog} C m a ca c s → OutAt′ {C} a c s
+    place→out (at-loc loc v lv rax _ _) = out-loc loc v lv rax
+    place→out (at-reg fit rax) = out-reg fit rax
+    place→out unit-result = out-unit refl
 
-    cell-read : ∀ {a C c cl st} (ce : CellAt {prog = prog} a C c cl st) → readLoc st cl ≡ just (cell-sv ce)
-    cell-read (cell-ptr r _ _)    = r
-    cell-read (cell-inline rep r) = r
+    open FlatPutLay.PutLay {FS} {prog} R R-tr public using (LSrc; ls-node; ls-scalar; ls-flat; ls-unit; PutOutL; module PutOutL; put-lay-run)
 
-    -- a cell copied verbatim to `q`
-    cell-copy : ∀ {a s a′ s′ C c cl q} → Kp a s a′ s′ → readLoc s′ q ≡ readLoc s cl
-              → CellAt {prog = prog} a C c cl s → CellAt {prog = prog} a′ C c q s′
-    cell-copy k@(bft , rd) eq (cell-ptr r bf v) = cell-ptr (trans eq r) (bft _ bf) (v-tr k bf v)
-    cell-copy k eq (cell-inline rep r) = cell-inline rep (trans eq r)
+    -- a `Unit` layer is valid anywhere
+    unit-lay : ∀ {G} (wG : WellFormedFI G) {v} → ⟦ G ⟧TI X ≡ IRTy′.Unit → ∀ {m a l s} → LV G m a v l s
+    unit-lay (wf-K base-Unit) refl = fo-unit unit-wf
+    unit-lay (wf-K base-Void) ()
+    unit-lay (wf-K base-Int) ()
+    unit-lay (wf-K base-Float) ()
+    unit-lay (wf-K (base-Prod _ _)) ()
+    unit-lay (wf-K (base-Sum _ _)) ()
+    unit-lay wf-Id ()
+    unit-lay (wf-Sum _ _) ()
+    unit-lay (wf-Prod _ _) ()
 
-    -- a cell, loaded into Output
-    cell→out : ∀ {a s a′ s′ C c cl} → Kp a s a′ s′ → (ce : CellAt {prog = prog} a C c cl s)
-             → readReg (regs s′) Output ≡ cell-sv ce → OutAt′ {C} a′ c s′
-    cell→out k@(bft , rd) (cell-ptr {comp-loc = cl′} r bf v) o = out-loc cl′ (v-tr k bf v) (bft _ bf) o
-    cell→out k (cell-inline (rep-prim fit) r) o = out-reg fit o
-    cell→out k (cell-inline (rep-unit eq _) r) o = out-unit eq
-
-    -- what was in Output, stored at `q`
-    out→cell : ∀ {a s a′ s′ C c q} → Kp a s a′ s′ → OutAt′ {C} a c s
-             → readLoc s′ q ≡ just (readReg (regs s) Output) → CellAt {prog = prog} a′ C c q s′
-    out→cell k@(bft , rd) (out-loc loc v bf rax) eq = cell-ptr (trans eq (cong just rax)) (bft _ bf) (v-tr k bf v)
-    out→cell k (out-reg fit rax) eq = cell-inline (rep-prim fit) (trans eq (cong just rax))
-    out→cell {s = s} k (out-unit u) eq = cell-inline (rep-unit u (readReg (regs s) Output)) eq
-
-    -- a sum node from its payload cell
-    cell→inl : ∀ {G₁ G₂ : IRFunctor} {a v loc s} → CellAtP {⟦ G₁ ⟧TI (ν-type F)} (LV G₁) a v (sucLoc loc) s
-             → LocMatchesMode Heap loc → SumTag Heap 0 s loc → Live a (sucLoc loc)
-             → SumV {⟦ G₁ ⟧TI (ν-type F)} {⟦ G₂ ⟧TI (ν-type F)} (LV G₁) (LV G₂) Heap a (inj₁ v) loc s
-    cell→inl (cell-ptr r bf v) lmm tg slb = inl-wf lmm tg r bf slb v
-    cell→inl (cell-inline rep r) lmm tg slb = inl-reg-wf lmm tg rep r slb
-
-    cell→inr : ∀ {G₁ G₂ : IRFunctor} {a v loc s} → CellAtP {⟦ G₂ ⟧TI (ν-type F)} (LV G₂) a v (sucLoc loc) s
-             → LocMatchesMode Heap loc → SumTag Heap 1 s loc → Live a (sucLoc loc)
-             → SumV {⟦ G₁ ⟧TI (ν-type F)} {⟦ G₂ ⟧TI (ν-type F)} (LV G₁) (LV G₂) Heap a (inj₂ v) loc s
-    cell→inr (cell-ptr r bf v) lmm tg slb = inr-wf lmm tg r bf slb v
-    cell→inr (cell-inline rep r) lmm tg slb = inr-reg-wf lmm tg rep r slb
+    -- a re-suspended layer, read at a later state that keeps its footprint,
+    -- as a value to put
+    rout→src : ∀ {G} (wG : WellFormedFI G) {m b h a s v a′ s′}
+             → ROut G m b h a s v
+             → (∀ l → Live a l → Live a′ l) → BlocksKept a a′ → (∀ l → Prot b h a l → readLoc s′ l ≡ readLoc s l)
+             → LSrc a′ s′ wG v (readReg (regs s) Output)
+    rout→src wG (ro-unit u) bft bk rd = ls-unit u (unit-lay wG u)
+    rout→src wG {s = s} {v = v} {a′} {s′} (ro-reg fit rax) bft bk rd =
+      subst (LSrc a′ s′ wG v) (sym rax) (ls-scalar fit)
+    rout→src wG {s = s} {v = v} {a′} {s′} (ro-loc loc lv rax f) bft bk rd =
+      subst (LSrc a′ s′ wG v) (sym rax) (by wG (f bft bk rd))
+      where
+        by : ∀ {G} (wG : WellFormedFI G) {m v} → LV G m a′ v loc s′ → LSrc a′ s′ wG v (SV-Ptr loc)
+        by wf-Id r = ls-node tt (bft loc lv) r
+        by (wf-K base-Unit) r = ls-flat tt (bft loc lv) r
+        by (wf-K base-Void) {v = ()} r
+        by (wf-K base-Int) (CWF.ClosureWellFormedBase.fo-int ())
+        by (wf-K base-Float) (CWF.ClosureWellFormedBase.fo-float ())
+        by (wf-K (base-Prod _ _)) r = ls-flat tt (bft loc lv) r
+        by (wf-K (base-Sum _ _)) r = ls-flat tt (bft loc lv) r
+        by (wf-Sum _ _) r = ls-flat tt (bft loc lv) r
+        by (wf-Prod _ _) r = ls-flat tt (bft loc lv) r
 
     -- the inputs, carried along a segment at the same base
     kp-base : ∀ {b a₀ n fs fs′} → (∀ l → Live b l → Live a₀ l) → SegA a₀ n fs fs′ → Kp b (floc fs) b (floc fs′)
