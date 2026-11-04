@@ -32,7 +32,7 @@ open import Once.Spec.Type
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; inS; sfmap)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM; layerM)
-open import Once.Spec.Equivalence Σ hiding (Rel; RelF; rel)
+open import Once.Spec.Equivalence Σ hiding (Rel; RelF)
 open import Once.Metatheory.Bisim Σ using (≈-refl)
 open import Once.Metatheory.Trace using (WB-mono)
 open import Once.Metatheory.Erase Σ

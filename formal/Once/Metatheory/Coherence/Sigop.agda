@@ -35,7 +35,7 @@ open import Once.Spec.Signature
 import Once.Spec.Signature as S
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; toB; fromB)
-open import Once.Spec.Equivalence Σ hiding (Rel; RelF; rel)
+open import Once.Spec.Equivalence Σ hiding (Rel; RelF)
 open import Once.Spec.Observation Σ using (World)
 open import Once.Spec.Trace using (returned; halted; EndRel; returned≈; halted≈)
 open import Once.Metatheory.Trace using (MaybeEnd; cut≈; end≈)

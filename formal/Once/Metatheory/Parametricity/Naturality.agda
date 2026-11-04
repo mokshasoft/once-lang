@@ -55,7 +55,7 @@ module Core {m : ℕ} (Δ : KCtx m) (σ : TySub m 0) (A B : Ty m) {q′ : Quanti
   R₀ : ⟦ A ⟨ σ ⟩ ⟧ᵛ → ⟦ B ⟨ σ ⟩ ⟧ᵛ → Set
   R₀ a b = Same (A ⟨ σ ⟩) a a × Same (B ⟨ σ ⟩) (callᵛ q′ hvL a) b
 
-  open Graph Δ σ A B R₀ public
+  open Graph Δ σ A B R₀
 
   -- The map's function, from a value of `f`.
   φ : ∀ {T} → ⟦ (A ⇒[ mk-kind q′ pure ] B) ⟨ σ ⟩ ⟧ᵛ → Fn T
@@ -235,20 +235,21 @@ naturality {m} {n} {Δ} {Γ} {Ψ} {Ψf} {A} {B} {q} {q′} {π} {π₀} {πf} {f
               toObserved (≈-Relatedˡ NL (≈-Relatedʳ NR (fromObserved (C.core F G q π spF spG cF cG RV sx))))
               where
                 module C = Core Δ σ A B hv hv′ sh
-                e₁ : ∀ j → τA j ⟨ σ ⟩ ≡ τ j ⟨ C.σA ⟩
+                module CGr = Graph Δ σ A B C.R₀
+                e₁ : ∀ j → τA j ⟨ σ ⟩ ≡ τ j ⟨ CGr.σA ⟩
                 e₁ j = ⟨⟩-∘ (τ j) (at₀ A) σ
-                e₂ : ∀ j → τB j ⟨ σ ⟩ ≡ τ j ⟨ C.σB ⟩
+                e₂ : ∀ j → τB j ⟨ σ ⟩ ≡ τ j ⟨ CGr.σB ⟩
                 e₂ j = ⟨⟩-∘ (τ j) (at₀ B) σ
-                PD = pd e (λ i → τA i ⟨ σ ⟩) (λ i → τB i ⟨ σ ⟩) (respects-∘ rd r) (respects-∘ rd′ r) (ρ∘τ τ C.ρ₀ e₁ e₂)
-                RV : C.RelT (F ⇒[ mk-kind q π ] G) vA vB
-                RV = subst₂ (Rel (F ⇒[ mk-kind q π ] G) C.ρ₀)
-                       (trans (coe-trans (E e₁ ty) (cong (_⟨ C.σA ⟩) eqT) dA)
-                              (sym (coe₃ (sym (⟨⟩-∘ ty τA σ)) (cong (_⟨ σ ⟩) (tyG dref)) (C.pA (F ⇒[ mk-kind q π ] G))
-                                         (trans (E e₁ ty) (cong (_⟨ C.σA ⟩) eqT)) dA)))
-                       (trans (coe-trans (E e₂ ty) (cong (_⟨ C.σB ⟩) eqT) dB)
-                              (sym (coe₃ (sym (⟨⟩-∘ ty τB σ)) (cong (_⟨ σ ⟩) (tyF′ dref′)) (C.pB (F ⇒[ mk-kind q π ] G))
-                                         (trans (E e₂ ty) (cong (_⟨ C.σB ⟩) eqT)) dB)))
-                       (Rel-≡ eqT C.ρ₀ (rel-sub→ τ C.ρ₀ e₁ e₂ ty PD))
+                PD = pd e (λ i → τA i ⟨ σ ⟩) (λ i → τB i ⟨ σ ⟩) (respects-∘ rd r) (respects-∘ rd′ r) (ρ∘τ τ CGr.ρ₀ e₁ e₂)
+                RV : CGr.RelT (F ⇒[ mk-kind q π ] G) vA vB
+                RV = subst₂ (Rel (F ⇒[ mk-kind q π ] G) CGr.ρ₀)
+                       (trans (coe-trans (E e₁ ty) (cong (_⟨ CGr.σA ⟩) eqT) dA)
+                              (sym (coe₃ (sym (⟨⟩-∘ ty τA σ)) (cong (_⟨ σ ⟩) (tyG dref)) (CGr.pA (F ⇒[ mk-kind q π ] G))
+                                         (trans (E e₁ ty) (cong (_⟨ CGr.σA ⟩) eqT)) dA)))
+                       (trans (coe-trans (E e₂ ty) (cong (_⟨ CGr.σB ⟩) eqT) dB)
+                              (sym (coe₃ (sym (⟨⟩-∘ ty τB σ)) (cong (_⟨ σ ⟩) (tyF′ dref′)) (CGr.pB (F ⇒[ mk-kind q π ] G))
+                                         (trans (E e₂ ty) (cong (_⟨ CGr.σB ⟩) eqT)) dB)))
+                       (Rel-≡ eqT CGr.ρ₀ (rel-sub→ τ CGr.ρ₀ e₁ e₂ ty PD))
                 NL : toT∞ π (closL hv x) ≈ toT∞ π (fmap π (mapS G cG (C.φ hv)) (callᵛ q vA x))
                 NL = ≈-trans (toT∞-bind π _ _) (≈-trans (≈-bind (toT∞-sub lg _) (λ y → toT∞-sub lf _)) (≈-sym (toT∞-fmap π _ _)))
                 NR : toT∞ π (closR hv′ x′) ≈ toT∞ π (callᵛ q vB (mapS F cF (C.φ hv′) x′))

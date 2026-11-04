@@ -156,7 +156,7 @@ SameF (F ⊗ G) = SameF F r⊗ SameF G
 record RelSub {m} (σ σ′ : TySub m 0) : Set₁ where
   constructor relSub
   field rel : ∀ (i : Fin m) → ⟦ σ i ⟧ᵛ → ⟦ σ′ i ⟧ᵛ → Set
-open RelSub public
+open RelSub
 
 -- The values of an open type at two instances, related: a variable by its
 -- relation, every other former as `Same` relates it.

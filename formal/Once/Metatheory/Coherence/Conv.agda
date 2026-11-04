@@ -26,7 +26,7 @@ open import Once.Spec.Sub
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ
-open import Once.Spec.Equivalence Σ hiding (Rel; RelF; rel)
+open import Once.Spec.Equivalence Σ hiding (Rel; RelF)
 open import Once.Metatheory.Coherence.Relation Σ
 open import Once.Metatheory.Coherence.Layer Σ
 

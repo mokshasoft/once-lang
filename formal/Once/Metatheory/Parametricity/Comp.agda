@@ -43,7 +43,7 @@ open νM using (outν)
 record RC (π π′ : Purity) {X Y : Set} (R : X → Y → Set) (m : M π X) (m′ : M π′ Y) : Set where
   constructor rc
   field runsᶜ : Related R (toT∞ π m) (toT∞ π′ m′)
-open RC public
+open RC
 
 module _ {X Y : Set} {R : X → Y → Set} where
   rcPure : ∀ {x y} → R x y → RC pure pure R x y
