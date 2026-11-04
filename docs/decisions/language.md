@@ -276,8 +276,8 @@ entry updates the rule it changes here, in the same commit.
   case), and a derivation's meanings at two instances are related by it (the
   abstraction theorem), given definitions that are themselves parametric, as
   a program's are. So a definition of type `∀a. F a → G a`, `F` and `G`
-  strictly positive in `a`, is natural: it commutes with `map f`, its own
-  effects kept in place. A construct that cases on
+  strictly positive in `a`, is natural: it commutes with `map f` for an
+  effect-free arrow `f`, its own effects kept in place. A construct that cases on
   types (an eliminator on a universe's codes, a type-indexed primitive) may
   only take them at grade `𝟘` (erased), or is a decision of its own; under
   dependent types (OCP-0009) `∀a` is `(a :𝟘 U) → …`. (D371)
