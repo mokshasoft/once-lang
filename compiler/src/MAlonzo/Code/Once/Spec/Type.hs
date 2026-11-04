@@ -145,29 +145,47 @@ d__'10216'_'10217'F_160 v0 v1 v2 v3
              (coe d__'10216'_'10217'F_160 (coe v0) (coe v1) (coe v4) (coe v3))
              (coe d__'10216'_'10217'F_160 (coe v0) (coe v1) (coe v5) (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Spec.Type.at₀
+d_at'8320'_224 ::
+  Integer -> T_Ty_8 -> MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Ty_8
+d_at'8320'_224 ~v0 v1 v2 = du_at'8320'_224 v1 v2
+du_at'8320'_224 ::
+  T_Ty_8 -> MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Ty_8
+du_at'8320'_224 v0 v1
+  = case coe v1 of
+      MAlonzo.Code.Data.Fin.Base.C_zero_12 -> coe v0
+      MAlonzo.Code.Data.Fin.Base.C_suc_16 v3 -> coe C_var_16 (coe v3)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Spec.Type.shiftᵗ
+d_shift'7511'_234 ::
+  Integer -> MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Ty_8
+d_shift'7511'_234 ~v0 v1 = du_shift'7511'_234 v1
+du_shift'7511'_234 :: MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Ty_8
+du_shift'7511'_234 v0
+  = coe C_var_16 (coe MAlonzo.Code.Data.Fin.Base.C_suc_16 v0)
 -- Once.Spec.Type.Respects
-d_Respects_226 ::
+d_Respects_242 ::
   Integer ->
   Integer ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Kind_70) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Kind_70) ->
   (MAlonzo.Code.Data.Fin.Base.T_Fin_10 -> T_Ty_8) -> ()
-d_Respects_226 = erased
+d_Respects_242 = erased
 -- Once.Spec.Type.Occurs
-d_Occurs_240 a0 a1 a2 = ()
-data T_Occurs_240
-  = C_o'45'var_250 | C_o'45''42''737'_256 T_Occurs_240 |
-    C_o'45''42''691'_262 T_Occurs_240 |
-    C_o'45''43''737'_268 T_Occurs_240 |
-    C_o'45''43''691'_274 T_Occurs_240 |
-    C_o'45''8658''737'_282 T_Occurs_240 |
-    C_o'45''8658''691'_290 T_Occurs_240 | C_o'45'μ_294 T_OccursF_246 |
-    C_o'45'ν_300 T_OccursF_246
+d_Occurs_256 a0 a1 a2 = ()
+data T_Occurs_256
+  = C_o'45'var_266 | C_o'45''42''737'_272 T_Occurs_256 |
+    C_o'45''42''691'_278 T_Occurs_256 |
+    C_o'45''43''737'_284 T_Occurs_256 |
+    C_o'45''43''691'_290 T_Occurs_256 |
+    C_o'45''8658''737'_298 T_Occurs_256 |
+    C_o'45''8658''691'_306 T_Occurs_256 | C_o'45'μ_310 T_OccursF_262 |
+    C_o'45'ν_316 T_OccursF_262
 -- Once.Spec.Type.OccursF
-d_OccursF_246 a0 a1 a2 = ()
-data T_OccursF_246
-  = C_o'45'K_306 T_Occurs_240 |
-    C_o'45''8853''737'_312 T_OccursF_246 |
-    C_o'45''8853''691'_318 T_OccursF_246 |
-    C_o'45''8855''737'_324 T_OccursF_246 |
-    C_o'45''8855''691'_330 T_OccursF_246
+d_OccursF_262 a0 a1 a2 = ()
+data T_OccursF_262
+  = C_o'45'K_322 T_Occurs_256 |
+    C_o'45''8853''737'_328 T_OccursF_262 |
+    C_o'45''8853''691'_334 T_OccursF_262 |
+    C_o'45''8855''737'_340 T_OccursF_262 |
+    C_o'45''8855''691'_346 T_OccursF_262
