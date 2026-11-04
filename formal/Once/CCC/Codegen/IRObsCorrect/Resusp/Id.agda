@@ -56,6 +56,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module Resusp
 open import Data.Nat using (_⊔_; z≤n; s≤s)
 open import Data.Nat.Properties using (m≤n⊔m)
 open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.List.Properties using (++-identityʳ)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
 
@@ -431,3 +432,117 @@ module ResuspIdC {FS : FrameSemantics} where
 
       href : next-heap-ref a ≤ next-heap-ref A₂
       href = ≤-trans (n≤1+n _) (n≤1+n _)
+
+    ------------------------------------------------------------------
+    -- THE CASE
+    ------------------------------------------------------------------
+    resusp-Id : Resusp′ wf-Id
+    resusp-Id n l σ y pl b hb bkb span lab nh lk ns n≥1 sl0 lpl cE oA = record
+      { steps    = 2 + (1 + DL.length (T2 n))
+      ; settle   = B.settle
+      ; run      = run
+      ; nh       = B.hfin
+      ; pc       = sym (trans (cong (λ z → (2 + z) + fpc σ)
+                                    (trans (length-++ (get E 0) {T2 n}) (cong (_+ DL.length (T2 n)) (get-len E 0))))
+                              (arith (DL.length (T2 n)) (fpc σ)))
+      ; ret      = refl
+      ; lnk      = lk
+      ; ev       = ev
+      ; log      = trans (log-of run ev) (++-identityʳ _)
+      ; left     = chain-left run B.hfin
+      ; out-mode = Heap
+      ; rout     = B.rout
+      ; seg      = record { mem = λ loc bf → trans (B.below loc bf) (mem1 loc bf) ; cf = refl ; sf = refl ; ns = refl ; href = B.href }
+      ; bk       = B.bk
+      }
+      where
+        s  = floc σ
+        a  = falloc σ
+        cf = current-frame a
+        wA = readReg (regs s) Output
+
+        arith : ∀ t f → (2 + (1 + t)) + f ≡ t + suc (suc (suc f))
+        arith = solve 2 (λ t f → (con 2 :+ (con 1 :+ t)) :+ f := t :+ (con 3 :+ f)) refl
+
+        -- the stash and the seed pair's pointer
+        s₁ = proj₁ (exec-abstract (store-at-slot n) s a)
+        s₂ = record s₁ { regs = writeReg (regs s₁) Input1 (SV-Ptr pl) }
+
+        r0 : readLoc s₁ (AtStack cf 0) ≡ just (SV-Ptr pl)
+        r0 = trans (writeLoc-preserves-other s (AtStack cf n) (AtStack cf 0) wA
+                     (λ e′ → <-irrefl (sym (cong slot-of e′)) n≥1))
+                   sl0
+
+        t1-eq : exec-trace (T1 n) s a ≡ (s₂ , a)
+        t1-eq = trans (exec-trace-cons (store-at-slot n) _ s a nh)
+               (trans (exec-trace-cons (restore-input 0) [] s₁ a nh)
+                      (cong (λ mv → exec-trace [] (proj₁ (exec-restore-input-with-value mv s₁ a))
+                                                  (proj₂ (exec-restore-input-with-value mv s₁ a))) r0))
+
+        σ₁ : FlatState
+        σ₁ = record σ { floc = s₂ ; falloc = a ; fpc = 2 + fpc σ }
+
+        sts1 : All StraightStep (T1 n)
+        sts1 = (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
+        evs1 : All (λ i → ∀ fs′ → event-of i fs′ ≡ []) (T1 n)
+        evs1 = (λ _ → refl) ∷ (λ _ → refl) ∷ []
+
+        at1 : SR.At prog (fpc σ) (T1 n)
+        at1 = span-take prog (T1 n) {get E 0 DL.++ T2 n} (fpc σ) span
+
+        he1 : halted (proj₁ (exec-trace (T1 n) s a)) ≡ false
+        he1 = trans (cong (λ r → halted (proj₁ r)) t1-eq) nh
+
+        run1₀ = SR.straight-steps {prog} (T1 n) σ sts1 at1 nh he1
+
+        eq1 : SR.after (T1 n) σ ≡ σ₁
+        eq1 = cong (λ r → record σ { floc = proj₁ r ; falloc = proj₂ r ; fpc = 2 + fpc σ }) t1-eq
+
+        run1 : FlatSteps prog 2 σ σ₁
+        run1 = subst (FlatSteps prog 2 σ) eq1 run1₀
+
+        sil1 : chain-events run1 ≡ []
+        sil1 = trans (chain-events-subst eq1 run1₀) (SR.straight-silent {prog} (T1 n) σ sts1 at1 nh he1 evs1)
+
+        -- the environment, read
+        sp2 : SpanAt prog (2 + fpc σ) (get E 0 DL.++ T2 n)
+        sp2 = span-drop prog (T1 n) {get E 0 DL.++ T2 n} (fpc σ) span
+
+        atG : ∀ i → fetch (get E 0) 0 ≡ just i → fetch prog (fpc σ₁) ≡ just i
+        atG i e′ = sp2 0 i (fetch-++-left (get E 0) (T2 n) 0 i e′)
+
+        cell1 : CellAt {prog = prog} a E e (offsetLoc pl 0) s₂
+        cell1 = subst (λ z → CellAt {prog = prog} a E e z s₂) (sym (offset-zero pl))
+                  (cellWF-heap-transport (Live b) (λ _ x → x) (λ { (AtDynamic hl) _ → refl })
+                     (live-from b a hb) bkb e pl lpl cE)
+
+        g : GetOut {prog = prog} E e σ₁
+        g = get-run E 0 σ₁ pl nh atG refl (live-from b a hb pl lpl) cell1
+
+        gs : FlatState
+        gs = setOut σ₁ (GetOut.out g)
+
+        -- the build
+        sp3 : SR.At prog (fpc gs) (T2 n)
+        sp3 = subst (λ z → SpanAt prog (z + (2 + fpc σ)) (T2 n)) (get-len E 0)
+                    (span-drop prog (get E 0) {T2 n} (2 + fpc σ) sp2)
+
+        srcA : Src b (floc gs) A y wA
+        srcA = src-tr (λ { (AtDynamic hl) _ → refl }) (out→src oA)
+
+        rsA : readLoc (floc gs) (AtStack cf n) ≡ just wA
+        rsA = writeLoc-read-same-stack s cf n wA
+
+        module B = Build n gs sp3 nh b (live-from b a hb) bkb wA srcA rsA (out→src (place→out (GetOut.place g)))
+
+        run : FlatSteps prog (2 + (1 + DL.length (T2 n))) σ B.settle
+        run = FlatSteps-++ run1 (FlatSteps-++ (GetOut.step g) B.run)
+
+        ev : chain-events run ≡ []
+        ev = trans (chain-events-++ run1 (FlatSteps-++ (GetOut.step g) B.run))
+                   (cong₂ DL._++_ sil1 (trans (chain-events-++ (GetOut.step g) B.run)
+                                              (cong₂ DL._++_ (GetOut.silent g) B.silent)))
+
+        mem1 : ∀ loc → BeforeFrontier (record a { next-slot = n }) loc → readLoc (floc gs) loc ≡ readLoc s loc
+        mem1 loc bf = trans (readLoc-stack-heap-eq (floc gs) s₁ loc refl refl)
+                            (store-slot-preserves-before n s (record a { next-slot = n }) a loc refl ≤-refl bf)
