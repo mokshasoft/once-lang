@@ -49,7 +49,7 @@ open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; kind; put; put-
 open import Once.CCC.Machine.ValueRel
 open ClosureWellFormedBase {FS}
 open ClosureWellFormedDef {FS} {prog} using (ValidAtWF; CellAt; validityWF-heap-transport)
-open import Once.CCC.Machine.FlatCopy {FS} using (copy-run; CopyOut; InBlock; wl-halted; regs-mem)
+open import Once.CCC.Machine.FlatCopy {FS} using (copy-run; copy-input1; CopyOut; InBlock; wl-halted; regs-mem)
 open import Once.CCC.Machine.ValueRelocate {FS} {prog} using (module Relocate)
 open import Once.CCC.Machine.FlatWords {FS} {prog} using (words)
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
@@ -65,6 +65,16 @@ data Src (a₀ : AllocState {FS}) (s : LocState FS) : (C : IRTy) → ⟦ C ⟧ �
              → ValidAtWF m a₀ {C} c (AtDynamic (heap-loc r o)) s → Src a₀ s C c (SV-Ptr (AtDynamic (heap-loc r o)))
   src-unit   : ∀ {w} → Src a₀ s Unit tt w
 
+-- the value stays valid while the cells `a₀` had live read the same
+src-tr : ∀ {a₀ : AllocState {FS}} {s s′ : LocState FS} {C c w}
+       → (∀ l → Live a₀ l → readLoc s′ l ≡ readLoc s l) → Src a₀ s C c w → Src a₀ s′ C c w
+src-tr keep (src-node nd lv v) =
+  src-node nd lv (validityWF-heap-transport (Live _) (λ _ b → b) keep (λ _ b → b) (λ _ _ ib → ib) _ _ lv v)
+src-tr keep (src-scalar fit) = src-scalar fit
+src-tr keep (src-flat fl lv v) =
+  src-flat fl lv (validityWF-heap-transport (Live _) (λ _ b → b) keep (λ _ b → b) (λ _ _ ib → ib) _ _ lv v)
+src-tr keep src-unit = src-unit
+
 -- the destination's word `j`, from `off`, of the block `rd`
 dst : HeapRef → ℕ → ℕ → ValueLocation FS
 dst rd off j = AtDynamic (offsetHL (heap-loc rd 0) (off + j))
@@ -76,6 +86,9 @@ record PutOut (C : IRTy) (c : ⟦ C ⟧) (off : ℕ) (rd : HeapRef)
     live     : halted (proj₁ r) ≡ false
     other    : ∀ loc → (∀ j → j < size C → loc ≢ dst rd off j) → readLoc (proj₁ r) loc ≡ readLoc s loc
     cell     : CellAt alloc C c (AtDynamic (offsetHL (heap-loc rd 0) off)) (proj₁ r)
+    -- `Input1` stays at the block, if that is where it was
+    input1   : readReg (regs s) Input1 ≡ SV-Ptr (AtDynamic (heap-loc rd 0))
+             → readReg (regs (proj₁ r)) Input1 ≡ SV-Ptr (AtDynamic (heap-loc rd 0))
 
 private
   node-kind : ∀ {C : IRTy} → IsNode C → kind C ≡ word
@@ -170,7 +183,8 @@ module _ (C : IRTy) {c : ⟦ C ⟧} (stash blk off : ℕ) (s : LocState FS) (all
                                         (regs-mem s _ loc)
           ; cell     = mk (readLoc-writeLoc-same s₁ (AtDynamic (offsetHL (heap-loc rd 0) off)) w)
                           (λ l lv → trans (writeLoc-preserves-other s₁ _ l w (λ e → not-dst l lv 0 (trans (sym e) (sym eq0))))
-                                          (regs-mem s _ l)) })
+                                          (regs-mem s _ l))
+          ; input1   = λ _ → cong (λ q → readReg q Input1) (writeLoc-regs s₁ (AtDynamic (offsetHL (heap-loc rd 0) off)) w) })
     where
       p0 : 0 < size C
       p0 = subst (0 <_) (sym sz) (s≤s z≤n)
@@ -192,7 +206,8 @@ module _ (C : IRTy) {c : ⟦ C ⟧} (stash blk off : ℕ) (s : LocState FS) (all
                          r)
   -- Unit: nothing
   put-run src-unit = record
-    { alloc-eq = refl ; live = h ; other = λ _ _ → refl ; cell = cell-flat {mC = Heap} tt (λ ()) valid-unit-wf }
+    { alloc-eq = refl ; live = h ; other = λ _ _ → refl ; cell = cell-flat {mC = Heap} tt (λ ()) valid-unit-wf
+    ; input1 = λ i1 → i1 }
   -- a flat value: its words, copied
   put-run (src-flat {m = m} {r = r} {o = o} fl lv v) =
     subst (λ t → PutOut C c off rd s alloc (exec-trace t s alloc)) (sym (put-flat stash blk off (flat-kind fl)))
@@ -204,6 +219,8 @@ module _ (C : IRTy) {c : ⟦ C ⟧} (stash blk off : ℕ) (s : LocState FS) (all
                        (λ p → dlive _ , subst (λ z → InBlk alloc (AtDynamic (offsetHL (heap-loc rd 0) z))) (+-identityʳ off) (din′ 0 p))
                        (subst (λ z → ValidAtWF m alloc {C} c (AtDynamic z) s′) (sym (off0 off))
                           (RL.reloc-v C o off agree fl fits v))
+        ; input1   = copy-input1 stash blk off 0 (size C) s alloc sh dh ne h rs rb
+                       (λ j j< → words C fl v j j<) (λ j j< → din′ j j<)
         }
     where
       sh = heap-loc r o
