@@ -66,9 +66,9 @@ module TwoCellC {FS : FrameSemantics} where
   obs-correct-curry : ∀ {A B C} (body : IR (A * B) C) → IRObsCorrectF body → IRObsCorrectF (curry body)
   obs-correct-curry {A} {B} {C} body ihb n l prog base ss cr span ((j , feq , sp , lab) ∷ bl′) _ mIn x s alloc cl ns0 nh inp k rs =
     record
-      { traces-agree   = sym (denot-[] k)
+      { traces-agree   = trans TCR.silent (sym (denot-[] k))
       ; value-realized =
-          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run (sym (denot-[] k))) (λ { refl → place })
+          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run (trans TCR.silent (sym (denot-[] k)))) (λ { refl → place })
                    (m≤m+n k _)
                    (λ _ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
                    (λ _ hl bf' → TCB.mem-pres (AtDynamic hl) bf')
@@ -77,6 +77,7 @@ module TwoCellC {FS : FrameSemantics} where
                                      (record alloc { next-slot = m })
                                      (record (falloc TCR.fs10) { next-slot = m })
                                      (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf') (λ _ → TCB.sf-fs10)
+                   (λ _ → TCB.blocks-kept)
       }
     where
       -- D359: the old premise, from the invariant.
@@ -237,9 +238,9 @@ module TwoCellC {FS : FrameSemantics} where
                   → IRObsCorrectF coalg → IRObsCorrectF (Ana wf coalg)
   obs-correct-Ana {F} wf {E} {A} coalg ihc n l prog base ss cr span ((j , feq , sp , lab) ∷ bl′) _ mIn x s alloc cl ns0 nh inp k rs =
     record
-      { traces-agree   = sym (denot-[] k)
+      { traces-agree   = trans TCR.silent (sym (denot-[] k))
       ; value-realized =
-          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run (sym (denot-[] k))) (λ { refl → place })
+          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run (trans TCR.silent (sym (denot-[] k)))) (λ { refl → place })
                    (m≤m+n k _)
                    (λ _ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
                    (λ _ hl bf' → TCB.mem-pres (AtDynamic hl) bf')
@@ -248,6 +249,7 @@ module TwoCellC {FS : FrameSemantics} where
                                      (record alloc { next-slot = m })
                                      (record (falloc TCR.fs10) { next-slot = m })
                                      (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf') (λ _ → TCB.sf-fs10)
+                   (λ _ → TCB.blocks-kept)
       }
     where
       -- D359: the old premise, from the invariant.
@@ -298,9 +300,9 @@ module TwoCellC {FS : FrameSemantics} where
   obs-correct-in-ν : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (in-ν wf)
   obs-correct-in-ν {F} wf n l prog base ss cr span ((j , feq , sp , lab) ∷ []) _ mIn x s alloc cl ns0 nh inp k rs =
     record
-      { traces-agree   = sym (denot-[] k)
+      { traces-agree   = trans TCR.silent (sym (denot-[] k))
       ; value-realized =
-          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run (sym (denot-[] k))) (λ { refl → place })
+          realized 10 TCR.fs10 Heap (falloc TCR.fs10) TCR.run (λ _ → TCR.nh10) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-of TCR.run (trans TCR.silent (sym (denot-[] k)))) (λ { refl → place })
                    (m≤m+n k _)
                    (λ _ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
                    (λ _ hl bf' → TCB.mem-pres (AtDynamic hl) bf')
@@ -309,6 +311,7 @@ module TwoCellC {FS : FrameSemantics} where
                                      (record alloc { next-slot = m })
                                      (record (falloc TCR.fs10) { next-slot = m })
                                      (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf') (λ _ → TCB.sf-fs10)
+                   (λ _ → TCB.blocks-kept)
       }
     where
       -- D359: the old premise, from the invariant.
