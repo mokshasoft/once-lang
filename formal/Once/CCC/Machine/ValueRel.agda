@@ -414,20 +414,14 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       VB mB alloc b (sucLoc sum-loc) s →
       SumV {A} {B} VA VB m alloc (inj₂ b) sum-loc s
 
-  -- Plan 0.54 Phase B rung A: the stored value IS the semantic value.
+  -- D383: a scalar has NO memory residence. In the flat layout a scalar is
+  -- its word — in a register (`at-reg`/`in-reg`), or inline in a compound's
+  -- cell (`cell-inline`) — never a value at a location, so these are empty
+  -- (as `VoidV` is). A pointer to a scalar would be stored by `put` as the
+  -- pointer, not the scalar's word.
   data IntV : AllocMode → AllocState {FS} → ⟦ Int ⟧ → ValueLocation FS → LocState FS → Set where
-    int-wf : ∀ {m} {n : ⟦ Int ⟧} {alloc : AllocState {FS}}
-      {loc : ValueLocation FS} {s : LocState FS} →
-      Live alloc loc →
-      readLoc s loc ≡ just (prim-sv fits-int n) →
-      IntV m alloc n loc s
 
   data FloatV : AllocMode → AllocState {FS} → ⟦ Float ⟧ → ValueLocation FS → LocState FS → Set where
-    float-wf : ∀ {m} {x : ⟦ Float ⟧} {alloc : AllocState {FS}}
-      {loc : ValueLocation FS} {s : LocState FS} →
-      Live alloc loc →
-      readLoc s loc ≡ just (prim-sv fits-float x) →
-      FloatV m alloc x loc s
 
   -- Where a result is, for a validity `VB` (the arrow case's callee result).
   -- `ResultPlace` (ClosureWellFormedDef) is the same at `ValidAtWF`, as an
@@ -853,8 +847,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   pattern valid-closure-reg-wf {f} {env} {closure-loc} lmm rep ep cp slb fd runs =
     wrap (closure-reg-wf {f = f} {env = env} {closure-loc = closure-loc} lmm rep ep cp slb fd runs)
   pattern valid-ν-wf nv = wrap nv
-  pattern valid-int-wf {loc} bf rl = wrap (int-wf {loc = loc} bf rl)
-  pattern valid-float-wf {loc} bf rl = wrap (float-wf {loc = loc} bf rl)
   pattern valid-μ-wf ub wf x lv = wrap (fo-μwf ub wf x lv)
   pattern valid-μbox-wf bx wf x c = wrap (fo-μbox bx wf x c)
 
@@ -978,25 +970,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   rp-map f (rp-reg fit rax) = rp-reg fit rax
 
 
-  --------------------------------------------------------------------
-  -- valid-primitive-wf: Dispatch on FitsInReg evidence
-  --
-  -- For register-fittable primitive types, ValidAtWF only needs
-  -- BeforeFrontier. Plan 0.2.4.5: legacy IsPrimitive retired —
-  -- Unit is erased (no slot), Str/Buffer are 2-slot compounds with
-  -- their own valid-str-wf / valid-buffer-wf witnesses. The only
-  -- inhabitants left are Int and Float.
-  --------------------------------------------------------------------
-
-  valid-primitive-wf : ∀ {m} {B : IRTy} {v : ⟦ B ⟧}
-    {alloc : AllocState {FS}}
-    {loc : ValueLocation FS} {s : LocState FS} →
-    (fit : FitsInRegI B) →
-    Live alloc loc →
-    readLoc s loc ≡ just (prim-sv fit v) →
-    ValidAtWF m alloc {B} v loc s
-  valid-primitive-wf fits-int   bf rl = valid-int-wf bf rl
-  valid-primitive-wf fits-float bf rl = valid-float-wf bf rl
+  -- (D383: `valid-primitive-wf` is gone — a scalar is never valid at a
+  -- location.)
 
   --------------------------------------------------------------------
   -- IRResultAWF: Mode-indexed IR execution result
@@ -1402,8 +1377,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
         fo-sum (inl-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (λ p → ibt _ slb (ib p)) (pad-tr slb pd) (fo-tr (q-bf _ slb) pv))
       fo-tr q (fo-sum (inr-flat-wf fl lmm tg slb ib pd pv)) =
         fo-sum (inr-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ slb) (λ p → ibt _ slb (ib p)) (pad-tr slb pd) (fo-tr (q-bf _ slb) pv))
-      fo-tr q (fo-int (int-wf bf rl)) = fo-int (int-wf (bft _ bf) (trans (rd _ q) rl))
-      fo-tr q (fo-float (float-wf bf rl)) = fo-float (float-wf (bft _ bf) (trans (rd _ q) rl))
+      fo-tr q (fo-int ())
+      fo-tr q (fo-float ())
       fo-tr q (fo-μwf ub wf x lv) = fo-μwf ub wf x (fo-tr q lv)
       fo-tr q (fo-μbox bx wf x c) = fo-μbox bx wf x (fo-cell q c)
 
@@ -1469,8 +1444,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
                              fd (runs-tr q runs)
       v-tr (μ-type F) q (wrap w) = wrap (fo-tr q w)
       v-tr (ν-type F) q (valid-ν-wf n) = valid-ν-wf (nu-tr q n)
-      v-tr Int q (valid-int-wf bf rl) = valid-int-wf (bft _ bf) (trans (rd _ q) rl)
-      v-tr Float q (valid-float-wf bf rl) = valid-float-wf (bft _ bf) (trans (rd _ q) rl)
+      v-tr Int q (wrap ())
+      v-tr Float q (wrap ())
 
       v-cell : ∀ C {c cl} → Q cl → CellAt a₁ C c cl s₁ → CellAt a₂ C c cl s₂
       v-cell C q (cell-ptr nd r bf v) = cell-ptr nd (trans (rd _ q) r) (bft _ bf) (v-tr C (q-bf _ bf) v)
@@ -1859,7 +1834,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
 -- unsolved. Declared here, at the top level, where there is no parameter to
 -- abstract over (the constructors' own `FS` and `prog` are fixed by the
 -- expected type).
-open ClosureWellFormedBase using (wrap; unit-wf; pair-wf; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; inl-flat-wf; inr-flat-wf; int-wf; float-wf; fo-μwf; fo-μbox)
+open ClosureWellFormedBase using (wrap; unit-wf; pair-wf; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; inl-flat-wf; inr-flat-wf; fo-μwf; fo-μbox)
 open ClosureWellFormedDef using (closure-wf; closure-reg-wf)
 pattern valid-unit-wf = wrap unit-wf
 pattern valid-pair-wf {pair-loc} lmm slb c₁ c₂ = wrap (pair-wf {pair-loc = pair-loc} lmm slb c₁ c₂)
@@ -1880,7 +1855,5 @@ pattern valid-closure-wf {f} {closure-loc} {env-loc} lmm ep cp eb slb fd runs =
 pattern valid-closure-reg-wf {f} {env} {closure-loc} lmm rep ep cp slb fd runs =
   wrap (closure-reg-wf {f = f} {env = env} {closure-loc = closure-loc} lmm rep ep cp slb fd runs)
 pattern valid-ν-wf nv = wrap nv
-pattern valid-int-wf {loc} bf rl = wrap (int-wf {loc = loc} bf rl)
-pattern valid-float-wf {loc} bf rl = wrap (float-wf {loc = loc} bf rl)
 pattern valid-μ-wf ub wf x lv = wrap (fo-μwf ub wf x lv)
 pattern valid-μbox-wf bx wf x c = wrap (fo-μbox bx wf x c)

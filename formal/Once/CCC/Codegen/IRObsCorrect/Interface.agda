@@ -172,7 +172,7 @@ module Core {FS : FrameSemantics} where
   open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
   open FrontierInvariant {FS} using (BeforeFrontier; frontier-monotone) public
   open ClosureWellFormedDef {FS}
-    using (ValidAtWF; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result
+    using (ValidAtWF; ResultPlace; at-loc; at-reg; unit-result
           ; CalleeRunP; module CalleeRunP; callee-run; crun-map; CallRuns; VAt; rp→place
           ; NuV; module NuV; ForceRuns; NuStep; module NuStep; module NuCoind
           -- plan 0.135 S3: where a fragment's input is (beside `ResultPlace`)

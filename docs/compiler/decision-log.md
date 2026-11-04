@@ -21394,3 +21394,29 @@ concrete machine would merely copy garbage.
 ### Consequences
 * An injection into an unequal sum costs two instructions per padding word.
 * The structural lemmas take one more segment (`fill-All`).
+* The padding is filled BEFORE the payload is put: the put's cell is then the last write to the block,
+  and the fill finds `Input1` at the block (the `mov-to-input` just before it).
+
+## D383 — A SCALAR HAS NO MEMORY RESIDENCE; A COPY'S SOURCE IS ANY LOCATION (2026-11-04)
+
+**Decided** in plan 0.123 B.4 α2, found while proving the injection (`inl`/`inr`) against `put`.
+
+### Context
+`FlatLayout.put` stores a word-kind component (a node, a scalar) as the word in `Input1`. For a scalar
+held in memory (`InputAt.in-loc` at `Int`), that word is a POINTER, so the sum's payload cell would hold
+a pointer where the relation (`cell-inline`) wants the scalar — the obligation was false there. And a
+flat component held in a frame slot (D374: values that can live on the stack do) was outside the copy
+lemmas, which assumed a heap source.
+
+### Decision
+* `IntV`/`FloatV` are empty (as `VoidV` is): a scalar is its word — in a register (`at-reg`/`in-reg`)
+  or inline in a compound's cell — never a value at a location. Every producer already places a scalar
+  in a register (a SigOp's result, a `get` of a scalar component), so nothing loses a witness; a scalar
+  `in-loc`/`at-loc` is refuted by its own validity. `valid-primitive-wf` is deleted.
+* `FlatCopy.copy-run` and `ValueRelocate.Relocate` take the source as any location, disjoint from the
+  destination block (`Disj`: a frame slot always is; another heap block by its ref). A copy is a
+  Heap-mode value wherever its source was.
+
+### Consequences
+* `FlatPut.src-flat` accepts a flat value at any live location, so `put` serves a stack-resident
+  component (D374) as it does a heap one.
