@@ -14,7 +14,7 @@
 -- with the FLATTEN loop (`flatTxt`)
 --
 --     ℓ l1:  load todo · mov-to-input · branch-tag-zero (ℓ (l1+1))     the head (10
---            load-indirect-suc · store todo · load-indirect ·            rows, `headTxt`)
+--            load-at 1 · store todo · load-at 0 ·                        rows, `headTxt`)
 --            mov-to-input · store tmp · load tmp
 --            push2 eval                                               10 rows
 --            load tmp · mov-to-input                                   2 rows
@@ -45,14 +45,19 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRToTrace o
   using (rec-count; cata-strategy; CataStrategy; strat-const; strat-branching; cata-dispatch; cata-trace-branching; const-strategy; box-fun
-        ; cata-call-setup; cata-call; cata-body; cata-br-I₂; push2; visit-walk; rebuild-walk; fsize; lsize)
+        ; cata-call-setup; cata-call; cata-body; cata-br-I₁; cata-br-I₂; push2; visit-walk; rebuild-walk; fsize; lsize)
+open import Once.CCC.Codegen.IRObsCorrect.CataConst.Call o tbl using (module CataCallC)
+open import Once.CCC.Codegen.IRObsCorrect.CataBr.Build o tbl using (lkind-gen; lsz-gen)
+open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (visit-ls)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-ctrl; c-jmp; c-label; c-branch-tag-zero; load-from-slot; store-at-slot; mov-to-input; mov-to-output
-        ; load-indirect; load-indirect-suc; store-indirect; instr-alloc-heap; instr-load-tag-lit)
+        ; load-at; store-at; instr-alloc-heap; instr-load-tag-lit; instr-load-code-addr; instr-call-closure)
+open import Once.CCC.Codegen.FlatLayout using (Kind; kind; lkind; lsz; get-i; get-one)
+open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Label using (ℓ; LabelId; module LabelId)
 open LabelId using (idx)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; wf-K; wf-Id; wf-Sum; wf-Prod)
@@ -94,7 +99,7 @@ init-rows : ℕ → AbstractTrace
 init-rows n =
   mov-to-output ∷ store-at-slot (n ℕ.+ 3) ∷
   instr-alloc-heap 2 ∷ store-at-slot (n ℕ.+ 6) ∷ mov-to-input ∷
-  instr-load-tag-lit 0 ∷ store-indirect ∷
+  instr-load-tag-lit 0 ∷ store-at 0 ∷
   load-from-slot (n ℕ.+ 6) ∷ store-at-slot (suc n) ∷
   load-from-slot (n ℕ.+ 6) ∷ store-at-slot (n ℕ.+ 2) ∷
   load-from-slot (n ℕ.+ 6) ∷ store-at-slot n ∷
@@ -163,32 +168,49 @@ module Pieces (G : Fun 0) (n l1 : ℕ) where
   cslot = n ℕ.+ 7 ℕ.+ (4 ℕ.* fsize G) ℕ.+ 4
   bodyL = l1 ℕ.+ 4 ℕ.+ lsize G ℕ.+ lsize G
 
-  setupTxt initTxt rootTxt headTxt pushTxt reloadTxt visitTxt exitTxt foldTxt flatTxt : AbstractTrace
-  setupTxt = cata-call-setup cslot (cslot ℕ.+ 1) (cslot ℕ.+ 2) bodyL
+  initTxt rootTxt headTxt pushTxt reloadTxt visitTxt exitTxt flatTxt : AbstractTrace
   initTxt = init-rows n
   rootTxt = push2 n (n ℕ.+ 4) (n ℕ.+ 5)
   headTxt =
     instr-ctrl (c-label (ℓ o l1)) ∷
     load-from-slot n ∷ mov-to-input ∷
     instr-ctrl (c-branch-tag-zero (ℓ o (suc l1))) ∷
-    load-indirect-suc ∷ store-at-slot n ∷
-    load-indirect ∷ mov-to-input ∷ store-at-slot (n ℕ.+ 3) ∷
+    load-at 1 ∷ store-at-slot n ∷
+    load-at 0 ∷ mov-to-input ∷ store-at-slot (n ℕ.+ 3) ∷
     load-from-slot (n ℕ.+ 3) ∷ []
   pushTxt = push2 (suc n) (n ℕ.+ 4) (n ℕ.+ 5)
   reloadTxt = load-from-slot (n ℕ.+ 3) ∷ mov-to-input ∷ []
   visitTxt = visit-walk n (n ℕ.+ 4) (n ℕ.+ 5) G (n ℕ.+ 7) (l1 ℕ.+ 4)
   exitTxt = instr-ctrl (c-jmp (ℓ o l1)) ∷ instr-ctrl (c-label (ℓ o (suc l1))) ∷ []
+
+  -- the flatten loop, head label to exit label
+  flatTxt = headTxt ++ (pushTxt ++ (reloadTxt ++ (visitTxt ++ exitTxt)))
+
+-- …and the pieces that depend on the environment's type `E` (the setup) and
+-- on the carrier's kind and size (the rebuild, in the fold's prefix)
+module PiecesAt (E : IRTy) (ck : Kind) (cs : ℕ) (G : Fun 0) (n l1 : ℕ) where
+
+  open Pieces G n l1 public
+
+  -- the setup's first row reads the environment (`get E 0`, one row: `get-one`)
+  setupRest setupTxt foldTxt : AbstractTrace
+  setupRest =
+    store-at-slot (cslot ℕ.+ 2) ∷ load-at (size E) ∷ store-at-slot (cslot ℕ.+ 1) ∷ instr-alloc-heap 2 ∷ store-at-slot cslot ∷
+    mov-to-input ∷ instr-load-tag-lit 0 ∷ store-at 0 ∷ instr-load-code-addr (ℓ o bodyL) ∷ store-at 1 ∷
+    load-from-slot (cslot ℕ.+ 1) ∷ mov-to-input ∷ []
+  setupTxt = get-i E 0 ∷ setupRest
+
+  setup-eq : cata-call-setup E cslot (cslot ℕ.+ 1) (cslot ℕ.+ 2) bodyL ≡ setupTxt
+  setup-eq = cong (λ t → t ++ setupRest) (get-one E 0)
+
   foldTxt =
     (instr-ctrl (c-label (ℓ o (l1 ℕ.+ 2))) ∷
      load-from-slot (suc n) ∷ mov-to-input ∷
      instr-ctrl (c-branch-tag-zero (ℓ o (l1 ℕ.+ 3))) ∷
-     load-indirect-suc ∷ store-at-slot (suc n) ∷
-     load-indirect ∷ mov-to-input ∷ []) ++
-    rebuild-walk (n ℕ.+ 2) (n ℕ.+ 4) (n ℕ.+ 5) G (n ℕ.+ 7) (l1 ℕ.+ 4 ℕ.+ lsize G) ++
+     load-at 1 ∷ store-at-slot (suc n) ∷
+     load-at 0 ∷ mov-to-input ∷ []) ++
+    rebuild-walk (n ℕ.+ 2) (n ℕ.+ 4) (n ℕ.+ 5) ck cs G (n ℕ.+ 7) (l1 ℕ.+ 4 ℕ.+ lsize G) ++
     (mov-to-input ∷ [])
-
-  -- the flatten loop, head label to exit label
-  flatTxt = headTxt ++ (pushTxt ++ (reloadTxt ++ (visitTxt ++ exitTxt)))
 
   -- the first 37 rows (all literal)
   pre37 : AbstractTrace
@@ -207,6 +229,8 @@ module CataBrTextC {FS : FrameSemantics} where
   open ResuspBaseC {FS} using (span-take; span-drop)
   open Resolve {FS} using (NoLabel; noLabel-outside; fl-hit; found-in-window)
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
+  open CataCallC {FS} using (callK; call-shape)
+  open CataVisitC {FS} using (ngi)
 
   module Text {F : IRFunctor} (wf : WellFormedFI F) {E C : IRTy} (alg : IR (E IRTy′.* ⟦ F ⟧TI C) C) (n l : ℕ) where
 
@@ -220,36 +244,50 @@ module CataBrTextC {FS : FrameSemantics} where
     G : Fun 0
     G = ⌈ F ⌉F
 
-    module Pc = Pieces G n l1
+    module Pc = PiecesAt E (kind C) (size C) G n l1
     open Pc
+
+    -- the layer the algebra takes
+    L : IRTy
+    L = ⟦ F ⟧TI C
+
+    -- the call, as `CataConst.Call` runs it (`callK`, then the call row)
+    callTxt : AbstractTrace
+    callTxt = callK mov-to-output E L cslot ++ (instr-call-closure ∷ [])
+
+    call-eq : cata-call E (lkind G (kind C)) (lsz G (size C)) cslot (cslot ℕ.+ 1) (cslot ℕ.+ 2) (cslot ℕ.+ 3) ≡ callTxt
+    call-eq = call-shape mov-to-output E L (lkind G (kind C)) (lsz G (size C)) cslot (sym (lkind-gen F C)) (sym (lsz-gen F C))
 
     -- what follows `cata-br-I₁`: the call, `I₂`, the body
     tailTxt : AbstractTrace
-    tailTxt = cata-call cslot (cslot ℕ.+ 1) (cslot ℕ.+ 2) (cslot ℕ.+ 3) ++ (cata-br-I₂ n l1 ++ cata-body bodyL (bodyL ℕ.+ 1) bb at)
+    tailTxt = callTxt ++ (cata-br-I₂ n l1 ++ cata-body bodyL (bodyL ℕ.+ 1) bb at)
 
     R : AbstractTrace
     R = restTxt tailTxt
 
     text : AbstractTrace
-    text = proj₂ (proj₂ (cata-trace-branching G bb n l1 at))
+    text = proj₂ (proj₂ (cata-trace-branching E C G bb n l1 at))
 
     -- the same text, cut at the flatten loop
     text′ : AbstractTrace
     text′ = pre37 ++ (flatTxt ++ R)
 
     text-eq : text ≡ text′
-    text-eq = cong (λ z → setupTxt ++ (initTxt ++ (rootTxt ++ (headTxt ++ (pushTxt ++ (reloadTxt ++ z))))))
-                   (trans (++-assoc visitTxt (exitTxt ++ foldTxt) tailTxt)
-                          (sym (++-assoc visitTxt exitTxt (foldTxt ++ tailTxt))))
+    text-eq =
+      trans (cong₂ (λ st ct → st ++ (cata-br-I₁ (kind C) (size C) G n l1 ++ (ct ++ (cata-br-I₂ n l1 ++ cata-body bodyL (bodyL ℕ.+ 1) bb at))))
+                   setup-eq call-eq)
+            (cong (λ z → setupTxt ++ (initTxt ++ (rootTxt ++ (headTxt ++ (pushTxt ++ (reloadTxt ++ z))))))
+                  (trans (++-assoc visitTxt (exitTxt ++ foldTxt) tailTxt)
+                         (sym (++-assoc visitTxt exitTxt (foldTxt ++ tailTxt)))))
 
     -- `ir-to-trace'`'s dispatch, at the strategy this case is about
     emitted-eq : ∀ {H : Fun 0} → cata-strategy ⌈ F ⌉F ≡ strat-branching H → emitted n l (Cata wf alg) ≡ text′
     emitted-eq {H} eq = trans e₁ (trans e₂ text-eq)
       where
-        e₁ : emitted n l (Cata wf alg) ≡ proj₂ (proj₂ (cata-trace-branching H bb n l1 at))
-        e₁ = cong (λ st → proj₂ (proj₂ (cata-dispatch st bb n l1 at))) eq
-        e₂ : proj₂ (proj₂ (cata-trace-branching H bb n l1 at)) ≡ text
-        e₂ = cong (λ K → proj₂ (proj₂ (cata-trace-branching K bb n l1 at))) {H} {G} (br-fun G eq)
+        e₁ : emitted n l (Cata wf alg) ≡ proj₂ (proj₂ (cata-trace-branching E C H bb n l1 at))
+        e₁ = cong (λ st → proj₂ (proj₂ (cata-dispatch E C ⌈ F ⌉F st bb n l1 at))) eq
+        e₂ : proj₂ (proj₂ (cata-trace-branching E C H bb n l1 at)) ≡ text
+        e₂ = cong (λ K → proj₂ (proj₂ (cata-trace-branching E C K bb n l1 at))) {H} {G} (br-fun G eq)
 
     ------------------------------------------------------------------
     -- LABELS: the loop's two, and the visit walk's window.
@@ -279,23 +317,31 @@ module CataBrTextC {FS : FrameSemantics} where
       nl-visit-exit : NoLabel (ℓ o (suc l1)) visitTxt
       nl-visit-exit = noLabel-outside (ℓ o (suc l1)) visitTxt vls (λ w → <-irrefl refl (<-≤-trans (lt4 l1) (proj₁ w)))
 
+    -- the 37 rows before the flatten loop define no label (the setup's first
+    -- row reads the environment: `get-i`)
+    nl-pre37 : ∀ (m : LabelId) → NoLabel m pre37
+    nl-pre37 m = ngi E 0 m ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ []ᴬ
+
+    pre-skip : ∀ (m : LabelId) → find-label text′ m ≡ fl-go (flatTxt ++ R) m 37
+    pre-skip m = fl-go-skip pre37 (flatTxt ++ R) m 0 (nl-pre37 m)
+
     head-scan : find-label text′ (ℓ o l1) ≡ just 37
-    head-scan = fl-hit (ℓ o l1) _ 37
+    head-scan = trans (pre-skip (ℓ o l1)) (fl-hit (ℓ o l1) _ 37)
 
     exit-scan : find-label text′ (ℓ o (suc l1)) ≡ just (suc (59 ℕ.+ length visitTxt))
     exit-scan =
-      trans (fl-go-skip (headTxt ++ (pushTxt ++ reloadTxt)) ((visitTxt ++ exitTxt) ++ R) (ℓ o (suc l1)) 37 (nl-pre (ℓ o (suc l1)) sl1≢l1))
+      trans (pre-skip (ℓ o (suc l1))) (trans (fl-go-skip (headTxt ++ (pushTxt ++ reloadTxt)) ((visitTxt ++ exitTxt) ++ R) (ℓ o (suc l1)) 37 (nl-pre (ℓ o (suc l1)) sl1≢l1))
       (trans (cong (λ t → fl-go t (ℓ o (suc l1)) 59) (++-assoc visitTxt exitTxt R))
       (trans (fl-go-skip visitTxt (exitTxt ++ R) (ℓ o (suc l1)) 59 nl-visit-exit)
-             (fl-hit (ℓ o (suc l1)) R (suc (59 ℕ.+ length visitTxt)))))
+             (fl-hit (ℓ o (suc l1)) R (suc (59 ℕ.+ length visitTxt))))))
 
     -- a label the visit walk resolves, the cata resolves 59 rows on
     visit-scan : ∀ (m : LabelId) (j : ℕ) → find-label visitTxt m ≡ just j → find-label text′ m ≡ just (j ℕ.+ 59)
     visit-scan m j eq =
-      trans (fl-go-skip (headTxt ++ (pushTxt ++ reloadTxt)) ((visitTxt ++ exitTxt) ++ R) m 37 (nl-pre m ne))
+      trans (pre-skip m) (trans (fl-go-skip (headTxt ++ (pushTxt ++ reloadTxt)) ((visitTxt ++ exitTxt) ++ R) m 37 (nl-pre m ne))
       (trans (cong (λ t → fl-go t m 59) (++-assoc visitTxt exitTxt R))
       (trans (fl-go-shift (visitTxt ++ (exitTxt ++ R)) m 59 0)
-             (cong (mmapT (ℕ._+ 59)) (fl-go-prefix visitTxt (exitTxt ++ R) m 0 j eq))))
+             (cong (mmapT (ℕ._+ 59)) (fl-go-prefix visitTxt (exitTxt ++ R) m 0 j eq)))))
       where
         win = found-in-window visitTxt m j eq vls
         ne : idx m ≢ l1
