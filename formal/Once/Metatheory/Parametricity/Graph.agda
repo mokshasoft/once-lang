@@ -25,7 +25,7 @@ module Once.Metatheory.Parametricity.Graph (Σ : Signature) where
 
 open import Data.Empty using (⊥-elim)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
@@ -37,7 +37,7 @@ open import Once.Spec.Type
          at₀; shiftᵗ; Occurs; OccursF; o-var; o-*ˡ; o-*ʳ; o-+ˡ; o-+ʳ; o-⇒ˡ; o-⇒ʳ; o-μ; o-ν; o-K; o-⊕ˡ; o-⊕ʳ; o-⊗ˡ; o-⊗ʳ)
 open import Once.Spec.Type.Substitution using (⟨⟩-∘; ⟨⟩F-∘)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF; μS; inS; sfmap)
-open import Once.Spec.Effect Σ using (M; T∞; toT∞; fmap; _>>=∞_; return∞; SRel; rK; rId; _r⊕_; _r⊗_; LayerRel; νM; ana)
+open import Once.Spec.Effect Σ using (M; T∞; toT∞; fmap; _>>=∞_; return∞; _≈_; SRel; rK; rId; _r⊕_; _r⊗_; LayerRel; νM; ana)
 open νM using (outν)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code)
 open import Once.Spec.Equivalence Σ
@@ -238,3 +238,126 @@ module Graph {m : ℕ} (Δ : KCtx m) (σ : TySub m 0) (A B : Ty m) (R₀ : ⟦ A
 
     no→ : ∀ {x y} → Same (T ⟨ at₀ B ⟩ ⟨ σ ⟩) (coeσ e x) y → RelT T x y
     no→ {x} {y} s = fromSame (subst (λ z → Same (T′ ⟨ σ ⟩) z (coe qB y)) (viaB x) (Same-coe qB s))
+
+  ----------------------------------------------------------------------
+  -- The lemma, both ways
+  ----------------------------------------------------------------------
+
+  -- The map's function is the graph's, where the variable occurs.
+  H→ : ∀ T → Fn T → Set
+  H→ T φ = ∀ (o : Occ T) {a a′} → Same (A ⟨ σ ⟩) a a′ → R₀ a (φ o a′)
+  H← : ∀ T → Fn T → Set
+  H← T φ = ∀ (o : Occ T) {a b} → R₀ a b → Same (B ⟨ σ ⟩) (φ o a) b
+  HF→ : ∀ H → FnF H → Set
+  HF→ H φ = ∀ (o : OccF H) {a a′} → Same (A ⟨ σ ⟩) a a′ → R₀ a (φ o a′)
+  HF← : ∀ H → FnF H → Set
+  HF← H φ = ∀ (o : OccF H) {a b} → R₀ a b → Same (B ⟨ σ ⟩) (φ o a) b
+
+  -- A stream's map: each forced layer mapped.
+  cν : ∀ (f : Finite) G → CovF G → FnF G → νM f (CA G) → M (fin f) (⟦ CB G ⟧SF (νM f (CA G)))
+  cν f G c φ y = fmap (fin f) (nuLayer G c φ {νM f (CA G)}) (outν y)
+
+  private
+    module UB (G : Fun (suc m)) = Unfold (CB G)
+    module UA (G : Fun (suc m)) = Unfold (CA G)
+
+    -- forcing a mapped stream: its layer computation, mapped twice
+    outAna : ∀ (f : Finite) G (c : CovF G) (φ : FnF G) (x : νM f (CA G))
+           → toT∞ (fin f) (outν (ana f (CB G) (cν f G c φ) x))
+             ≈ (toT∞ (fin f) (outν x) >>=∞ λ l → return∞ (sfmap (CB G) (ana f (CB G) (cν f G c φ)) (nuLayer G c φ l)))
+    outAna f G c φ x =
+      ≈-trans (UB.unfold-out≈ G f (cν f G c φ) x)
+        (≈-trans (toT∞-fmap (fin f) (sfmap (CB G) (ana f (CB G) (cν f G c φ))) (cν f G c φ x))
+          (≈-trans (≈-bind (toT∞-fmap (fin f) (nuLayer G c φ) (outν x)) (λ _ → ≈-refl _))
+            (≈-trans (assoc (toT∞ (fin f) (outν x)) _ _) (≈-bind (≈-refl _) (λ l → idˡ (nuLayer G c φ l) _)))))
+
+  -- An arrow's domain: related arguments are the same, once the map's
+  -- argument is read back across the instances' equality.
+  dom : ∀ T (n : ¬ Occurs zero T) (e : T ⟨ at₀ A ⟩ ≡ T ⟨ at₀ B ⟩) {a a′}
+      → Rel T ρ₀ a a′ → Same (T ⟨ at₀ A ⟩ ⟨ σ ⟩) (coe (sym (pA T)) a) (coeσ (sym e) (coe (sym (pB T)) a′))
+  dom T n e {a} {a′} r =
+    subst (λ z → Same (T ⟨ at₀ A ⟩ ⟨ σ ⟩) z (coeσ (sym e) (coe (sym (pB T)) a′))) (sym-coeσ e (coe (sym (pA T)) a))
+      (Same-coeσ (sym e) (NoOcc.no← T n e (subst₂ (Rel T ρ₀) (sym (coe-sym (pA T) a)) (sym (coe-sym (pB T) a′)) r)))
+
+  gl→   : ∀ T → StrictlyPositive T → (c : Cov T) (φ : Fn T) → H→ T φ
+        → ∀ {x x′} → Same (T ⟨ at₀ A ⟩ ⟨ σ ⟩) x x′ → RelT T x (mapS T c φ x′)
+  muGL→ : ∀ G → StrictlyPositiveF G → (c : CovF G) (φ : FnF G) → HF→ G φ
+        → ∀ {x x′} → RelMu (SameF (G ⟨ at₀ A ⟩F ⟨ σ ⟩F)) x x′ → RelMu (qG G) x (muMap G c φ x′)
+  lyGL→ : ∀ G H → StrictlyPositiveF G → (cG : CovF G) (φG : FnF G) → HF→ G φG
+        → StrictlyPositiveF H → (cH : CovF H) (φH : FnF H) → HF→ H φH
+        → ∀ {l l′} → LayerRel (SameF (H ⟨ at₀ A ⟩F ⟨ σ ⟩F)) (RelMu (SameF (G ⟨ at₀ A ⟩F ⟨ σ ⟩F))) l l′
+        → LayerRel (qG H) (RelMu (qG G)) l (muLayer G H cG φG cH φH l′)
+  nuGL→ : ∀ (f : Finite) G → StrictlyPositiveF G → (c : CovF G) (φ : FnF G) → HF→ G φ
+        → ∀ n {x x′} → RelStream f (SameF (G ⟨ at₀ A ⟩F ⟨ σ ⟩F)) x x′ → RelNu f (qG G) n x (ana f (CB G) (cν f G c φ) x′)
+  lyNu→ : ∀ (f : Finite) G H → StrictlyPositiveF G → (cG : CovF G) (φG : FnF G) → HF→ G φG
+        → StrictlyPositiveF H → (cH : CovF H) (φH : FnF H) → HF→ H φH → ∀ n
+        → ∀ {l l′} → LayerRel (SameF (H ⟨ at₀ A ⟩F ⟨ σ ⟩F)) (RelStream f (SameF (G ⟨ at₀ A ⟩F ⟨ σ ⟩F))) l l′
+        → LayerRel (qG H) (RelNu f (qG G) n) l (sfmap (CB H) (ana f (CB G) (cν f G cG φG)) (nuLayer H cH φH l′))
+
+  gl→ (var zero)    sp-var c φ h s = h p-var s
+  gl→ (var (suc i)) sp-var c φ h s = s
+  gl→ Unit  sp-Unit  c φ h s = tt
+  gl→ Void  sp-Void  c φ h {()}
+  gl→ Int   sp-Int   c φ h s = s
+  gl→ Float sp-Float c φ h s = s
+  gl→ (T₁ * T₂) (sp-* s₁ s₂) (c₁ , c₂) φ h {x₁ , x₂} {x₁′ , x₂′} (r₁ , r₂) =
+    subst₂ (Rel (T₁ * T₂) ρ₀) (sym (fwd-* (pA T₁) (pA T₂) x₁ x₂)) (sym (fwd-* (pB T₁) (pB T₂) _ _))
+      (gl→ T₁ s₁ c₁ (λ o → φ (p-*ˡ o)) (λ o → h (p-*ˡ o)) r₁ , gl→ T₂ s₂ c₂ (λ o → φ (p-*ʳ o)) (λ o → h (p-*ʳ o)) r₂)
+  gl→ (T₁ + T₂) (sp-+ s₁ s₂) (c₁ , c₂) φ h {inj₁ x} {inj₁ x′} r =
+    subst₂ (Rel (T₁ + T₂) ρ₀) (sym (fwd-+₁ (pA T₁) (pA T₂) x)) (sym (fwd-+₁ (pB T₁) (pB T₂) _))
+      (gl→ T₁ s₁ c₁ (λ o → φ (p-+ˡ o)) (λ o → h (p-+ˡ o)) r)
+  gl→ (T₁ + T₂) (sp-+ s₁ s₂) (c₁ , c₂) φ h {inj₂ x} {inj₂ x′} r =
+    subst₂ (Rel (T₁ + T₂) ρ₀) (sym (fwd-+₂ (pA T₁) (pA T₂) x)) (sym (fwd-+₂ (pB T₁) (pB T₂) _))
+      (gl→ T₂ s₂ c₂ (λ o → φ (p-+ʳ o)) (λ o → h (p-+ʳ o)) r)
+  gl→ (T₁ + T₂) (sp-+ s₁ s₂) c φ h {inj₁ x} {inj₂ x′} ()
+  gl→ (T₁ + T₂) (sp-+ s₁ s₂) c φ h {inj₂ x} {inj₁ x′} ()
+  gl→ (T₁ ⇒[ mk-kind Zero π ] T₂) (sp-⇒ n s₂) (e , c₂) φ h {g} {g′} s =
+    subst₂ (λ u u′ → Observed (Rel T₂ ρ₀) (toT∞ π u) (toT∞ π u′))
+      (sym (app-fwd₀ π (pA T₁) (pA T₂) g _))
+      (sym (app-fwd₀ π (pB T₁) (pB T₂) (mapS (T₁ ⇒[ mk-kind Zero π ] T₂) (e , c₂) φ g′) _))
+      (obs-subst π (pA T₂) (pB T₂) (obs-fmapʳ π (Observed-mono (gl→ T₂ s₂ c₂ (λ o → φ (p-⇒ʳ o)) (λ o → h (p-⇒ʳ o))) s)))
+  gl→ (T₁ ⇒[ mk-kind One π ] T₂) (sp-⇒ n s₂) (e , c₂) φ h {g} {g′} s a a′ ra =
+    subst₂ (λ u u′ → Observed (Rel T₂ ρ₀) (toT∞ π u) (toT∞ π u′))
+      (sym (app-fwd₁ π (pA T₁) (pA T₂) g a))
+      (sym (app-fwd₁ π (pB T₁) (pB T₂) (mapS (T₁ ⇒[ mk-kind One π ] T₂) (e , c₂) φ g′) a′))
+      (obs-subst π (pA T₂) (pB T₂) (obs-fmapʳ π (Observed-mono (gl→ T₂ s₂ c₂ (λ o → φ (p-⇒ʳ o)) (λ o → h (p-⇒ʳ o)))
+        (s _ _ (dom T₁ n e ra)))))
+  gl→ (T₁ ⇒[ mk-kind Many π ] T₂) (sp-⇒ n s₂) (e , c₂) φ h {g} {g′} s a a′ ra =
+    subst₂ (λ u u′ → Observed (Rel T₂ ρ₀) (toT∞ π u) (toT∞ π u′))
+      (sym (app-fwd π (pA T₁) (pA T₂) g a))
+      (sym (app-fwd π (pB T₁) (pB T₂) (mapS (T₁ ⇒[ mk-kind Many π ] T₂) (e , c₂) φ g′) a′))
+      (obs-subst π (pA T₂) (pB T₂) (obs-fmapʳ π (Observed-mono (gl→ T₂ s₂ c₂ (λ o → φ (p-⇒ʳ o)) (λ o → h (p-⇒ʳ o)))
+        (s _ _ (dom T₁ n e ra)))))
+  gl→ (μ G) (sp-μ spG) c φ h s = castμ (pAF G) (pBF G) (fitsQ G) (muGL→ G spG c (λ o → φ (p-μ o)) (λ o → h (p-μ o)) s)
+  gl→ (ν G f) (sp-ν spG) c φ h s = castν f (pAF G) (pBF G) (fitsQ G) (λ n → nuGL→ f G spG c (λ o → φ (p-ν o)) (λ o → h (p-ν o)) n s)
+
+  muGL→ G sp c φ h {inS l} {inS l′} (inR p) = inR (lyGL→ G G sp c φ h sp c φ h p)
+
+  lyGL→ G (K C) spG cG φG hG (sp-K sC) (cC , _ , _) φH hH p = gl→ C sC cC (λ o → φH (p-K o)) (λ o → hH (p-K o)) p
+  lyGL→ G Id spG cG φG hG sp-Id cH φH hH p = muGL→ G spG cG φG hG p
+  lyGL→ G (H₁ ⊕ H₂) spG cG φG hG (sp-⊕ s₁ s₂) (c₁ , c₂) φH hH {inj₁ x} {inj₁ y} p =
+    lyGL→ G H₁ spG cG φG hG s₁ c₁ (λ o → φH (p-⊕ˡ o)) (λ o → hH (p-⊕ˡ o)) p
+  lyGL→ G (H₁ ⊕ H₂) spG cG φG hG (sp-⊕ s₁ s₂) (c₁ , c₂) φH hH {inj₂ x} {inj₂ y} p =
+    lyGL→ G H₂ spG cG φG hG s₂ c₂ (λ o → φH (p-⊕ʳ o)) (λ o → hH (p-⊕ʳ o)) p
+  lyGL→ G (H₁ ⊕ H₂) spG cG φG hG (sp-⊕ s₁ s₂) (c₁ , c₂) φH hH {inj₁ x} {inj₂ y} ()
+  lyGL→ G (H₁ ⊕ H₂) spG cG φG hG (sp-⊕ s₁ s₂) (c₁ , c₂) φH hH {inj₂ x} {inj₁ y} ()
+  lyGL→ G (H₁ ⊗ H₂) spG cG φG hG (sp-⊗ s₁ s₂) (c₁ , c₂) φH hH {x , x′} {y , y′} (p , p′) =
+    lyGL→ G H₁ spG cG φG hG s₁ c₁ (λ o → φH (p-⊗ˡ o)) (λ o → hH (p-⊗ˡ o)) p ,
+    lyGL→ G H₂ spG cG φG hG s₂ c₂ (λ o → φH (p-⊗ʳ o)) (λ o → hH (p-⊗ʳ o)) p′
+
+  nuGL→ f G sp c φ h zero    s = tt
+  nuGL→ f G sp c φ h (suc n) {x} {x′} s =
+    toObserved (≈-Relatedˡ (≈-sym (idʳ (toT∞ (fin f) (outν x)))) (≈-Relatedʳ (outAna f G c φ x′)
+      (bindRel (outRelR f (SameF (G ⟨ at₀ A ⟩F ⟨ σ ⟩F)) s) λ r → returnRel (lyNu→ f G G sp c φ h sp c φ h n r))))
+
+  lyNu→ f G (K C) spG cG φG hG (sp-K sC) (cC , _ , _) φH hH n p = gl→ C sC cC (λ o → φH (p-K o)) (λ o → hH (p-K o)) p
+  lyNu→ f G Id spG cG φG hG sp-Id cH φH hH n p = nuGL→ f G spG cG φG hG n p
+  lyNu→ f G (H₁ ⊕ H₂) spG cG φG hG (sp-⊕ s₁ s₂) (c₁ , c₂) φH hH n {inj₁ x} {inj₁ y} p =
+    lyNu→ f G H₁ spG cG φG hG s₁ c₁ (λ o → φH (p-⊕ˡ o)) (λ o → hH (p-⊕ˡ o)) n p
+  lyNu→ f G (H₁ ⊕ H₂) spG cG φG hG (sp-⊕ s₁ s₂) (c₁ , c₂) φH hH n {inj₂ x} {inj₂ y} p =
+    lyNu→ f G H₂ spG cG φG hG s₂ c₂ (λ o → φH (p-⊕ʳ o)) (λ o → hH (p-⊕ʳ o)) n p
+  lyNu→ f G (H₁ ⊕ H₂) spG cG φG hG (sp-⊕ s₁ s₂) (c₁ , c₂) φH hH n {inj₁ x} {inj₂ y} ()
+  lyNu→ f G (H₁ ⊕ H₂) spG cG φG hG (sp-⊕ s₁ s₂) (c₁ , c₂) φH hH n {inj₂ x} {inj₁ y} ()
+  lyNu→ f G (H₁ ⊗ H₂) spG cG φG hG (sp-⊗ s₁ s₂) (c₁ , c₂) φH hH n {x , x′} {y , y′} (p , p′) =
+    lyNu→ f G H₁ spG cG φG hG s₁ c₁ (λ o → φH (p-⊗ˡ o)) (λ o → hH (p-⊗ˡ o)) n p ,
+    lyNu→ f G H₂ spG cG φG hG s₂ c₂ (λ o → φH (p-⊗ʳ o)) (λ o → hH (p-⊗ʳ o)) n p′
