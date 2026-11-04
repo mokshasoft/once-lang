@@ -92,8 +92,8 @@ module ResuspSumC {FS : FrameSemantics} where
     open RBase wf coalg e prog lbl-n R mk-child R-tr
 
     Fν Gν : IRTy
-    Fν = ⟦ G₁ ⟧TI X
-    Gν = ⟦ G₂ ⟧TI X
+    Fν = ⟦ G₁ ⟧TI Xν
+    Gν = ⟦ G₂ ⟧TI Xν
 
     -- the layer's sum, from an arm's block
     sum-l : ∀ {a v D s} → CellAtP {Fν} (LV G₁) a v (sucLoc D) s → SumTag Heap 0 s D → Live a (sucLoc D)

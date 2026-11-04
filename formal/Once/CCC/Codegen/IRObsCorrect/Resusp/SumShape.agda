@@ -80,8 +80,8 @@ module ResuspSumShapeC {FS : FrameSemantics} where
     lbl : LabelId
     lbl = ℓ o lbl-n
 
-    X : IRTy
-    X = ν-type F
+    Xν : IRTy
+    Xν = ν-type F
 
     dst tmp nF : ℕ
     dst = suc n
@@ -89,8 +89,8 @@ module ResuspSumShapeC {FS : FrameSemantics} where
     nF  = suc tmp
 
     Fν Gν : IRTy
-    Fν = ⟦ G₁ ⟧TI X
-    Gν = ⟦ G₂ ⟧TI X
+    Fν = ⟦ G₁ ⟧TI Xν
+    Gν = ⟦ G₂ ⟧TI Xν
 
     sz : ℕ
     sz = size (Fν +ᵀ Gν)
