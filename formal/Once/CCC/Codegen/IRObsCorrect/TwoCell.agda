@@ -18,12 +18,12 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.TwoCell (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (LocState; readReg; Input1; writeReg-same; Output; SV-Ptr; module LocState; AbstractTrace; AllocState; sucLoc; StoredValue)
+open import Once.CCC.Machine.SMCore using (LocState; readReg; Input1; writeReg-same; Output; SV-Ptr; module LocState; AbstractTrace; AllocState; sucLoc; StoredValue; block-layout; e-thunk; offsetLoc)
 open LocState using (regs; halted)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Label using (ℓ)
-open import Once.IRTy using (_*_; WellFormedFI; ⟦_⟧TI; ν-type)
+open import Once.IRTy using (_*_; WellFormedFI; ⟦_⟧TI; ν-type; IRTy)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -40,6 +40,14 @@ open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Build o tbl
 open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl
 open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl
 open import Once.CCC.Codegen.IRObsCorrect.AnaForce o tbl
+open import Once.CCC.Codegen.IRObsCorrect.CurryPro o tbl using (module CurryProC)
+open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
+import Once.CCC.Machine.FlatPut as FlatPut
+open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; kind)
+open import Once.CCC.Codegen.Size using (size)
+open import Once.CCC.Codegen.IRToTrace o using (env-entry; env-prologue)
+open import Data.Product using (Σ)
+open import Once.Memory.HeapAddress using (heap-loc)
 open import Data.List.Relation.Unary.All using (_∷_; [])
 
 module TwoCellC {FS : FrameSemantics} where
@@ -59,6 +67,8 @@ module TwoCellC {FS : FrameSemantics} where
   module NF = NuForceC {FS}
   open NF using (SeedKept)
   module AF = AnaForceC {FS}
+  module CP = CurryProC {FS}
+  module InjC′ = InjC {FS}
 
   -- plan 0.135 S3: the closure's `runs` is PROVED, from the body's own
   -- correctness (`ihb`) through the block-call lemma (S2). The block is the
@@ -92,94 +102,152 @@ module TwoCellC {FS : FrameSemantics} where
       denot-[] k = refl
 
       -- ── THE THREE INPUT RESIDENCES. The env cell receives whatever `Input1`
-      -- held, so each residence picks the matching closure witness: a POINTER
-      -- env gets `valid-closure-wf`, a register literal and a unit env get
-      -- D181's `valid-closure-reg-wf`. Without that constructor the last two —
-      -- and a unit env is `main`'s — would be unprovable.
-      -- THE CLOSURE'S RUN. Every call of the block (`CallRuns`' premises) is
-      -- a block call of `body` on the pair `(x , a)`: cell 1 is the argument
-      -- the caller supplies, cell 0 holds what this closure's env cell holds,
-      -- and `mk` says why that is a valid `x` there (one per residence).
-      EnvCell : Set
-      EnvCell = ∀ (fs : FlatState) (pre : AllocState {FS}) (pl : ValueLocation FS)
-              → falloc fs ≡ enter-call pre
-              → (∀ l′ → Live (falloc TCR.fs10) l′ → Live pre l′)
-              → (∀ l′ → Live (falloc TCR.fs10) l′ → readLoc (floc fs) l′ ≡ readLoc (floc TCR.fs10) l′)
-              → Live pre pl
-              → readLoc (floc fs) pl ≡ readLoc (floc TCR.fs10) TCR.obj-loc
-              → CellAt {prog = prog} (BC.callee-alloc _ fs) A x pl (BC.callee-loc _ fs)
+      -- held; at a call, that word is handed on (D380) and is the
+      -- environment's register form: a node's pointer or a flat value's
+      -- address (`in-loc`), a scalar (`in-reg`), or anything at all for a
+      -- `Unit` (`in-unit`). `EnvSrc` is that word as a value to put (D384).
+      EnvSrc : Set
+      EnvSrc = ∀ (bb : ℕ) (fs : FlatState) (pre : AllocState {FS}) (pl : ValueLocation FS)
+             → falloc fs ≡ enter-call pre
+             → (∀ l′ → Live (falloc TCR.fs10) l′ → Live pre l′)
+             → BlocksKept (falloc TCR.fs10) pre
+             → (∀ l′ → Live (falloc TCR.fs10) l′ → readLoc (floc fs) l′ ≡ readLoc (floc TCR.fs10) l′)
+             → Live pre pl
+             → readLoc (floc fs) pl ≡ readLoc (floc TCR.fs10) TCR.obj-loc
+             → Σ (StoredValue FS) (λ w → readLoc (BC.callee-loc bb fs) pl ≡ just w
+                                       × FlatPut.Src {FS} {prog} (BC.callee-alloc bb fs) (BC.callee-loc bb fs) A x w)
 
-      runs-from : EnvCell
+      word-size : kind A ≡ word → size A ≡ 1
+      word-size = ws A
+        where ws : ∀ (T′ : IRTy) → kind T′ ≡ word → size T′ ≡ 1
+              ws (_ IRTy′.⇛ _) _ = refl
+              ws (IRTy′.μ-type _) _ = refl
+              ws (IRTy′.ν-type _) _ = refl
+              ws IRTy′.Int _ = refl
+              ws IRTy′.Float _ = refl
+              ws IRTy′.Unit ()
+              ws IRTy′.Void ()
+              ws (_ IRTy′.* _) ()
+              ws (_ IRTy′.+ _) ()
+
+      -- a word-kind environment is its cell
+      src→cell : ∀ {a st w pl} → kind A ≡ word → readLoc st pl ≡ just w
+               → FlatPut.Src {FS} {prog} a st A x w → CellAt {prog = prog} a A x pl st
+      src→cell kw r (FlatPut.src-node nd lv v) = cell-ptr nd r lv v
+      src→cell kw r (FlatPut.src-scalar fit)   = cell-inline (rep-prim fit) r
+      src→cell kw r (FlatPut.src-flat fl _ _)  = ⊥-elim (flat≠word fl kw)
+        where flat≠word : ∀ {T′ : IRTy} → IsFlat T′ → kind T′ ≡ word → ⊥
+              flat≠word {IRTy′.Unit} _ ()
+              flat≠word {_ IRTy′.* _} _ ()
+              flat≠word {_ IRTy′.+ _} _ ()
+      src→cell kw r FlatPut.src-unit           = ⊥-elim (unit≠word kw)
+        where unit≠word : kind IRTy′.Unit ≡ word → ⊥
+              unit≠word ()
+
+      l1 = suc (suc l)
+      ENT : Kind → ℕ × AbstractTrace
+      ENT kd = env-entry kd A B
+      BT : Kind → AbstractTrace
+      BT kd = proj₂ (ENT kd) DL.++ emitted (proj₁ (ENT kd)) l1 body
+      BB : Kind → ℕ
+      BB kd = proj₁ (ir-to-trace' (proj₁ (ENT kd)) l1 body)
+
+      -- THE CLOSURE'S RUN, by the environment's kind: a word environment's
+      -- call pair IS the body's input; a flat one's is rebuilt (`CurryPro`).
+      runs-from : EnvSrc
                 → CallRuns {prog = prog} {B} {C} (VAt {prog = prog} B) (VAt {prog = prog} C)
                     (falloc TCR.fs10) (floc TCR.fs10) TCR.obj-loc j (λ arg → evalᴰ body (x , arg))
-      runs-from mk fs pre a pl ret-pc k′ rs′ pc nh′ fr fa ns incl agree i1 lpl slb c0 c1 =
-        BC.block-call body ihb (suc (suc l)) prog (ℓ o l) _ j ss cr sp bl′ lab fs pre Heap (x , a) ret-pc k′ rs′ pc nh′ fr fa ns
-          (in-loc pl (valid-pair-wf (live-heap lpl) (BC.live-callee _ fs pre fa _ slb) (mk fs pre pl fa incl agree lpl c0) c1′)
-                  (BC.live-callee _ fs pre fa pl lpl) i1)
+      runs-from mk fs pre a pl ret-pc k′ rs′ pc nh′ fr fa ns incl bkp agree i1 lpl slb c0 c1 =
+        by (kind A) refl sp lab bl′
         where
-          c1′ = cellWF-heap-transport (Live pre) (λ _ b → b) (λ l′ b → BC.callee-heap _ fs l′ b)
-                  (BC.live-callee _ fs pre fa) a (sucLoc pl) slb c1
+          lplC : ∀ bb → Live (BC.callee-alloc bb fs) pl
+          lplC bb = BC.live-callee bb fs pre fa pl lpl
+          ms = λ bb → mk bb fs pre pl fa incl bkp agree lpl c0
+          w  = λ bb → proj₁ (ms bb)
+          c0′ = λ bb → proj₁ (proj₂ (ms bb))
+          srcE = λ bb → proj₂ (proj₂ (ms bb))
+          c1′ = λ bb → cellWF-heap-transport (Live pre) (λ _ b → b) (λ l′ b → BC.callee-heap bb fs l′ b)
+                  (BC.live-callee bb fs pre fa) (BC.bk-enter bb fs pre fa) a (sucLoc pl) slb c1
+
+          by : ∀ (kd : Kind) → kind A ≡ kd
+             → SpanAt prog j (block-layout (ℓ o l , BB (kind A) , BT (kind A)))
+             → LabelsAt prog (suc j) (BT (kind A))
+             → BlocksAt prog (blocks (proj₁ (ENT (kind A))) l1 body)
+             → CalleeRunP {prog = prog} {C} (ResultPlaceP {C} (VAt {prog = prog} C)) fs ret-pc rs′ (evalᴰ body (x , a)) k′
+          by word kw sp′ lab′ bl″ =
+            BC.block-call body ihb l1 prog (ℓ o l) _ j ss cr
+              (subst (λ kd → SpanAt prog j (block-layout (ℓ o l , BB kd , BT kd))) kw sp′)
+              (subst (λ kd → BlocksAt prog (blocks (proj₁ (ENT kd)) l1 body)) kw bl″)
+              (subst (λ kd → LabelsAt prog (suc j) (BT kd)) kw lab′)
+              fs pre Heap (x , a) ret-pc k′ rs′ pc nh′ fr fa ns
+              (in-loc pl (valid-pair-wf (live-heap lpl) (BC.live-callee _ fs pre fa _ slb)
+                            (src→cell kw (c0′ (BB word)) (srcE (BB word)))
+                            (subst (λ z → CellAt {prog = prog} _ B a z _) (sym (off1 lpl (word-size kw))) (c1′ (BB word))))
+                      (lplC (BB word)) i1)
+            where
+              off1 : ∀ {l′} → Live pre l′ → size A ≡ 1 → offsetLoc l′ (size A) ≡ sucLoc l′
+              off1 {AtDynamic (heap-loc r o′)} _ e = cong (λ z → AtDynamic (heap-loc r (z + o′))) e
+          by flat kf sp′ lab′ bl″ =
+            BC.entry-call-gen {C} {ResultPlace {prog = prog} C} {ResultPlaceP {C} (VAt {prog = prog} C)} BC.place-across
+              (env-prologue A B DL.++ emitted 4 l1 body) (evalᴰ body (x , a)) prog (e-thunk (ℓ o l)) (BB flat) j sp″ fs pre ret-pc k′ rs′ pc nh′ fr fa
+              (CP.Pro.body-runs body ihb l1 prog ss cr j (BC.Layout.body-span prog (e-thunk (ℓ o l)) (BB flat) j (env-prologue A B DL.++ emitted 4 l1 body) sp″)
+                 (subst (λ kd → BlocksAt prog (blocks (proj₁ (ENT kd)) l1 body)) kf bl″)
+                 (subst (λ kd → LabelsAt prog (suc j) (BT kd)) kf lab′)
+                 (BC.callee-loc (BB flat) fs) (BC.callee-alloc (BB flat) fs) (fclosure fs) (ret-pc ∷ rs′) k′ x a
+                 (trans (cong AllocState.next-slot fa) ns) nh′ i1 (lplC (BB flat)) (c0′ (BB flat)) (srcE (BB flat))
+                 (c1′ (BB flat)))
+            where
+              sp″ = subst (λ kd → SpanAt prog j (block-layout (ℓ o l , BB kd , BT kd))) kf sp′
 
       place-of : InputAt mIn alloc x s
                → ResultPlace (B IRTy′.⇛ C) Heap (falloc TCR.fs10) (falloc TCR.fs10)
                              (retVal (evalᴰ (curry body) x)) (floc TCR.fs10)
       place-of (in-reg fit eq) =
-        at-loc TCR.obj-loc (mk-valid eq) TCB.before TCB.out-eq (mk-valid eq) TCB.before
+        at-loc TCR.obj-loc mk-valid TCB.before TCB.out-eq mk-valid TCB.before
         where
-          ev≡in : TCR.cell0v ≡ readReg (regs s) Input1
-          ev≡in = writeReg-same (regs s) Output (readReg (regs s) Input1)
+          cell0 : readLoc (floc TCR.fs10) TCR.obj-loc ≡ just (prim-sv fit x)
+          cell0 = trans TCB.cell0-fs10 (cong just (trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) eq))
 
-          mk-valid : ∀ (e : readReg (regs s) Input1 ≡ prim-sv fit x)
-                   → ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {B IRTy′.⇛ C}
+          mk : EnvSrc
+          mk bb fs pre pl fa incl bkp agree lpl c0 =
+            prim-sv fit x , trans (BC.callee-heap bb fs pl lpl) (trans c0 cell0) , FlatPut.src-scalar fit
+
+          mk-valid : ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {B IRTy′.⇛ C}
                        (retVal (evalᴰ (curry body) x)) TCR.obj-loc (floc TCR.fs10)
-          mk-valid e =
-            valid-closure-reg-wf tt
-              (trans TCB.cell0-fs10 (cong just (trans ev≡in e))) TCB.code-fs10 TCB.before-suc
-              feq (runs-from mk)
-            where
-              mk : EnvCell
-              mk fs pre pl fa incl agree lpl c0 =
-                cell-inline (rep-prim fit)
-                  (trans (BC.callee-heap _ fs pl lpl) (trans c0 (trans TCB.cell0-fs10 (cong just (trans ev≡in e)))))
+          mk-valid = valid-closure-reg-wf tt cell0 TCB.code-fs10 TCB.before-suc feq (runs-from mk)
       place-of (in-unit refl) =
         at-loc TCR.obj-loc mk-valid TCB.before TCB.out-eq mk-valid TCB.before
         where
+          mk : EnvSrc
+          mk bb fs pre pl fa incl bkp agree lpl c0 =
+            TCR.cell0v , trans (BC.callee-heap bb fs pl lpl) (trans c0 TCB.cell0-fs10) , FlatPut.src-unit
+
           mk-valid : ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {B IRTy′.⇛ C}
                        (retVal (evalᴰ (curry body) x)) TCR.obj-loc (floc TCR.fs10)
-          mk-valid =
-            valid-closure-reg-wf tt
-              TCB.cell0-fs10 TCB.code-fs10 TCB.before-suc
-              feq (runs-from mk)
-            where
-              mk : EnvCell
-              mk fs pre pl fa incl agree lpl c0 =
-                cell-flat {mC = Heap} tt (λ ()) valid-unit-wf
+          mk-valid = valid-closure-reg-wf tt TCB.cell0-fs10 TCB.code-fs10 TCB.before-suc feq (runs-from mk)
       place-of (in-loc loc valid bf eq) =
-        at-loc TCR.obj-loc (mk-valid eq) TCB.before TCB.out-eq (mk-valid eq) TCB.before
+        at-loc TCR.obj-loc mk-valid TCB.before TCB.out-eq mk-valid TCB.before
         where
-          ev≡ptr : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc) → TCR.cell0v ≡ SV-Ptr loc
-          ev≡ptr e = trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) e
+          cell0 : readLoc (floc TCR.fs10) TCR.obj-loc ≡ just (SV-Ptr loc)
+          cell0 = trans TCB.cell0-fs10 (cong just (trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) eq))
 
-          mk-valid : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc)
-                   → ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {B IRTy′.⇛ C}
+          lb : Live (falloc TCR.fs10) loc
+          lb = live-lift TCB.bf-advance bf
+
+          mk : EnvSrc
+          mk bb fs pre pl fa incl bkp agree lpl c0 =
+            SV-Ptr loc , trans (BC.callee-heap bb fs pl lpl) (trans c0 cell0) ,
+            InjC′.src-loc {prog} A
+              (validityWF-heap-transport (Live (falloc TCR.fs10)) (λ _ b → b)
+                 (λ l′ b → trans (BC.callee-heap bb fs l′ (incl l′ b)) (agree l′ b))
+                 (λ l′ b → BC.live-callee bb fs pre fa l′ (incl l′ b))
+                 (bk-trans {a = falloc TCR.fs10} {b = pre} {c = BC.callee-alloc bb fs} bkp (BC.bk-enter bb fs pre fa) incl)
+                 x loc lb (TCB.valid-transport x loc (live→bf bf) valid))
+              (BC.live-callee bb fs pre fa loc (incl loc lb))
+
+          mk-valid : ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {B IRTy′.⇛ C}
                        (retVal (evalᴰ (curry body) x)) TCR.obj-loc (floc TCR.fs10)
-          mk-valid e =
-            valid-closure-wf tt
-              (trans TCB.cell0-fs10 (cong just (ev≡ptr e))) TCB.code-fs10
-              (live-lift TCB.bf-advance bf) TCB.before-suc
-              feq (runs-from mk)
-            where
-              lb : Live (falloc TCR.fs10) loc
-              lb = live-lift TCB.bf-advance bf
-
-              mk : EnvCell
-              mk fs pre pl fa incl agree lpl c0 =
-                cell-ptr (trans (BC.callee-heap _ fs pl lpl) (trans c0 (trans TCB.cell0-fs10 (cong just (ev≡ptr e)))))
-                         (BC.live-callee _ fs pre fa loc (incl loc lb))
-                         (validityWF-heap-transport (Live (falloc TCR.fs10)) (λ _ b → b)
-                            (λ l′ b → trans (BC.callee-heap _ fs l′ (incl l′ b)) (agree l′ b))
-                            (λ l′ b → BC.live-callee _ fs pre fa l′ (incl l′ b))
-                            x loc lb (TCB.valid-transport x loc (live→bf bf) valid))
+          mk-valid = valid-closure-wf tt cell0 TCB.code-fs10 lb TCB.before-suc feq (runs-from mk)
 
       place : ResultPlace (B IRTy′.⇛ C) Heap (falloc TCR.fs10) (falloc TCR.fs10)
                           (retVal (evalᴰ (curry body) x)) (floc TCR.fs10)
@@ -194,7 +262,7 @@ module TwoCellC {FS : FrameSemantics} where
     module TCB = TwoCellBuild n l prog base s alloc cl rs n≤ nh span
 
     kept : SeedKept alloc s (falloc TCR.fs10) (floc TCR.fs10)
-    kept = (λ _ b → live-lift TCB.bf-advance b) , (λ l′ b → TCB.mem-pres l′ (live-ns n b))
+    kept = (λ _ b → live-lift TCB.bf-advance b) , TCB.blocks-kept , (λ l′ b → TCB.mem-pres l′ (live-ns n b))
 
     cell0v≡in : TCR.cell0v ≡ readReg (regs s) Input1
     cell0v≡in = writeReg-same (regs s) Output (readReg (regs s) Input1)
