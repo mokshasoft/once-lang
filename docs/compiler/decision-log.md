@@ -20833,15 +20833,19 @@ so no law changes meaning. New claim `Parametricity.param-tele`: a program's def
   environments related by `RelEnv`, under `ParamDefs`, are related by `RelM π (Rel A ρ)`. The
   definition may be effectful: computations are related by observation (`RelM`).
 - `naturality`: for a definition `e` of type `F ⇒ G` in variable 0 (at `τ`), `map G f ∘ e⟨A⟩` and
-  `e⟨B⟩ ∘ map F f` are the same (`≅ₚ`: `≅` under `ParamDefs`), for an effect-free `f : A → B`, with `F`
-  and `G` strictly positive in the variable (`StrictlyPositive`: never in an arrow's domain).
+  `e⟨B⟩ ∘ map F f` are the same (`≅ₚ`: `≅` under `ParamDefs`), with `F` and `G` strictly positive in
+  the variable (`StrictlyPositive`: never in an arrow's domain). Nothing is asked of `f`: `map`'s typing
+  makes it an effect-free arrow `A → B` wherever the variable occurs, and evaluating it runs once on
+  each side, in the same place (the definition is a value).
 
 **Why each hypothesis.**
 - `ParamDefs`, not `SameDefs`: under `SameDefs` a definition's instances at different types are
   unrelated, and a `δ` that answers `reverse` at `Int` and `id` elsewhere satisfies it; naturality fails
   for it.
-- `f` effect-free: `map` is defined only for effect-free arrows (D369), and the two sides evaluate the
-  definition and `map f` in opposite orders.
+- No hypothesis on `f` (an earlier draft asked it to be effect-free, 2026-11-04, removed the same night:
+  no counterexample needs it). `map` is defined only on effect-free arrows (D369), which its typing
+  enforces where the variable occurs; evaluating `f` may have effects, and both sides run them once,
+  first (a reference to a definition is a value, so the two sides' orders differ only in it).
 - Strict positivity: `mapᶜ` maps an arrow by post-composition, so with the variable in a domain it types
   only when `A = B`, and there naturality is false: `t g = g ∘ g` at `(a ⇒ a) ⇒ (a ⇒ a)` gives
   `f ∘ g ∘ g` on one side and `f ∘ g ∘ f ∘ g` on the other.

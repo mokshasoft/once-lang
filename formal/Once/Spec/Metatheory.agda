@@ -585,14 +585,14 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
       -- a program's definitions are parametric, whatever the world's model
       param-tele  : ∀ (mo : Model) (tl : Tele S) → ParamDefs Σ fmt S (teleSem fmt mo tl)
       -- naturality: a definition of type `∀a. F a → G a`, at instances that
-      -- differ only at `a`, commutes with `map f` for an effect-free `f`
-      -- (`F`, `G` strictly positive in `a`; the definition may be effectful,
-      -- and its effects run where they ran)
+      -- differ only at `a`, commutes with `map f` (`F`, `G` strictly
+      -- positive in `a`). The definition may be effectful, and its effects
+      -- run where they ran; `f` is evaluated once on each side, and `map`'s
+      -- typing makes it an effect-free arrow `A → B` wherever `a` occurs.
       naturality  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B q π π₀ f}
                       (e : Fin s) (τ : TySub (arity (S !! e)) (suc m)) {F G : Ty (suc m)}
                   → type (S !! e) ⟨ τ ⟩ ≡ F ⇒[ mk-kind q π ] G
                   → StrictlyPositive F → StrictlyPositive G
-                  → Pure Σ fmt S Δ Γ f (A ⇒[ mk-kind Many pure ] B)
                   → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (F ⟨ at₀ A ⟩) π (mapᶜ G A B f) (ref e (λ i → τ i ⟨ at₀ A ⟩))
                                        ∷ F ⟨ at₀ A ⟩ ⇒[ mk-kind Many π ] G ⟨ at₀ B ⟩ ! π₀)
                     (d′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (F ⟨ at₀ A ⟩) π (ref e (λ i → τ i ⟨ at₀ B ⟩)) (mapᶜ F A B f)
