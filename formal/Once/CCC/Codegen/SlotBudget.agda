@@ -36,7 +36,7 @@ open import Once.CCC.Label using (LabelId; ℓ)
 
 module Once.CCC.Codegen.SlotBudget (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_; _⊔_)
+open import Data.Nat using (ℕ; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_; _⊔_; _∸_)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-comm; +-assoc; +-suc;
    *-suc; *-monoʳ-≤; m≤n⇒m≤1+n)
@@ -316,7 +316,7 @@ wrap-sum-below : ∀ (tag : ℕ) pk ps ss′ (s b : ℕ) → s < b → suc s < b
 wrap-sum-below tag pk ps ss′ s b p-s pss =
   ss refl p-s (λ _ ()) refl ∷ nn refl refl ∷ ss refl pss (λ _ ()) refl ∷
   nn refl refl ∷ nn refl refl ∷ nn refl refl ∷
-  ++⁺ (put-k-SB pk ps s (suc s) 1 p-s pss) (++⁺ (fill-SB _ _) (ss refl pss (λ _ ()) refl ∷ []))
+  ++⁺ (fill-SB _ (ss′ ∸ suc ps)) (++⁺ (put-k-SB pk ps s (suc s) 1 p-s pss) (ss refl pss (λ _ ()) refl ∷ []))
 
 getμ-SB : ∀ {b} (G : Fun 0) k → All (SB b) (get-k (lkind G word) (lsz G 1) k)
 getμ-SB G k = get-k-SB (lkind G word) (lsz G 1) k
@@ -487,8 +487,8 @@ rebuild-idleA ck cs (F ⊕ G) val tv tb s lb =
   (++⁺ (rebuild-idleA ck cs F val tv tb (s + 4) _) (++⁺ (ws (lkind F ck) (lsz F cs) 0) (refl ∷ []))))))))))
   where ws : ∀ pk ps tag → All Idle (wrap-sum tag pk ps (lsz (F ⊕ G) cs) s)
         ws pk ps tag = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                       ++⁺ (put-k-All pk ps s (suc s) 1 refl refl refl (λ _ → refl) (λ _ → refl))
-                           (++⁺ (fill-All _ _ refl (λ _ → refl)) (refl ∷ []))
+                       ++⁺ (fill-All _ (lsz (F ⊕ G) cs ∸ suc ps) refl (λ _ → refl))
+                           (++⁺ (put-k-All pk ps s (suc s) 1 refl refl refl (λ _ → refl) (λ _ → refl)) (refl ∷ []))
 rebuild-idleA ck cs (F ⊗ G) val tv tb s lb =
   ++⁺ (refl ∷ refl ∷ []) (++⁺ (getμ-idle G _) (++⁺ (refl ∷ [])
   (++⁺ (rebuild-idleA ck cs G val tv tb (s + 4) _) (++⁺ (refl ∷ refl ∷ [])
@@ -704,12 +704,12 @@ resuspend-below H E A n l lbl env (wf-Sum {F} {G} wfF wfG) e<n =
   segok-pre (store-at-slot n ∷ restore-input n ∷
              instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ []) refl
     (sb-slot refl n<B (λ _ ()) ∷ sb-slot refl n<B (λ _ ()) ∷ sb-none refl ∷ [])
-    (segok-++ (arm G (resuspend-below H E A n2 l2 lbl env wfG e<n2) {sz′ = sz})
+    (segok-++ (arm G (resuspend-below H E A n2 l2 lbl env wfG e<n2) {sz′ = sz} {c = sz ∸ suc (size (⟦ G ⟧TI (ν-type H)))})
       (segok-pre (instr-ctrl (c-jmp (ℓ o (suc l))) ∷
                   instr-ctrl (c-label (ℓ o l)) ∷ []) refl
         (sb-none refl ∷ sb-none refl ∷ [])
         (segok-++ (arm F (segok-weaken mid
-                            (resuspend-below H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF e<3n)) {sz′ = sz})
+                            (resuspend-below H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF e<3n)) {sz′ = sz} {c = sz ∸ suc (size (⟦ F ⟧TI (ν-type H)))})
           (segok-idle _ refl (sb-none refl ∷ [])))))
   where
     sz = size (⟦ F ⟧TI (ν-type H) +ᵀ ⟦ G ⟧TI (ν-type H))
@@ -734,18 +734,18 @@ resuspend-below H E A n l lbl env (wf-Sum {F} {G} wfF wfG) e<n =
                    (store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ sz′) ∷
                     store-at-slot (suc n) ∷ mov-to-input ∷
                     instr-load-tag-lit tag ∷ store-at 0 ∷ []) ++
-                   put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                    fill (suc (size (⟦ P ⟧TI (ν-type H)))) c ++
+                   put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                    (load-from-slot (suc n) ∷ []))
-    arm P ok =
+    arm P ok {c = c} =
       segok-++ (segok-SB _ (ss refl n<B (λ _ ()) refl ∷ []))
       (segok-++ (segok-get (⟦ P ⟧TI A) 1)
       (segok-++ ok
         (segok-SB _
           (++⁺ (ss refl base (λ _ ()) refl ∷ nn refl refl ∷ ss refl sn<B (λ _ ()) refl ∷
                 nn refl refl ∷ nn refl refl ∷ nn refl refl ∷ [])
-          (++⁺ (put-SB (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 base sn<B)
-               (++⁺ (fill-SB _ _) (ss refl sn<B (λ _ ()) refl ∷ [])))))))
+          (++⁺ (fill-SB _ c)
+               (++⁺ (put-SB (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 base sn<B) (ss refl sn<B (λ _ ()) refl ∷ [])))))))
 
 sigop-below : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp)
             → SegOK (sigop-budget n m) (sigop-code si n m)
@@ -762,7 +762,7 @@ inj-below t P S n =
   segok-SB _
     (nn refl refl ∷ ss refl n< (λ _ ()) refl ∷ nn refl refl ∷ ss refl ≤-refl (λ _ ()) refl ∷
      nn refl refl ∷ nn refl refl ∷ nn refl refl ∷
-     ++⁺ (put-SB P n (suc n) 1 n< ≤-refl) (++⁺ (fill-SB _ _) (ss refl ≤-refl (λ _ ()) refl ∷ [])))
+     ++⁺ (fill-SB _ (size S ∸ suc (size P))) (++⁺ (put-SB P n (suc n) 1 n< ≤-refl) (ss refl ≤-refl (λ _ ()) refl ∷ [])))
   where n< : n < suc (suc n)
         n< = m≤n⇒m≤1+n ≤-refl
 

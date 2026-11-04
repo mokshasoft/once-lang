@@ -290,8 +290,8 @@ resusp-cl H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
     arm P t tag = (restore-input n ∷ []) ++ get (⟦ P ⟧TI A) 1 ++ t ++
                   (store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ sz) ∷ store-at-slot (suc n) ∷
                    mov-to-input ∷ instr-load-tag-lit tag ∷ store-at 0 ∷ []) ++
-                  put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                   fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H)))) ++
+                  put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                   (load-from-slot (suc n) ∷ [])
     arm-eq : ∀ (P : IRFunctor) (t : AbstractTrace) (tag : ℕ) → clabs (arm P t tag) ≡ clabs t
     arm-eq P t tag =
@@ -300,12 +300,12 @@ resusp-cl H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
           (trans (cong (clabs t ++_)
                    (clabs-nc {t = store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ sz) ∷ store-at-slot (suc n) ∷
                                   mov-to-input ∷ instr-load-tag-lit tag ∷ store-at 0 ∷
-                                  (put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
-                                   fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H)))) ++
+                                  (fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H)))) ++
+                                   put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                                    (load-from-slot (suc n) ∷ []))}
                      (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                      All-++⁺ (SC.put-P (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1)
-                              (All-++⁺ (SC.fill-P _ _) (refl ∷ [])))))
+                      All-++⁺ (SC.fill-P _ (sz ∸ suc (size (⟦ P ⟧TI (ν-type H)))))
+                              (All-++⁺ (SC.put-P (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (refl ∷ [])))))
                  (++-identityʳ (clabs t))))
     eq : clabs (rs-trace H E A n l lbl env (wf-Sum wfF wfG)) ≡ clabs tG ++ (l ∷ (clabs tF ++ (suc l ∷ [])))
     eq = trans (clabs-++ (arm G tG 1) _)
@@ -914,16 +914,16 @@ resusp-nf H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
     arm P t tag = (restore-input n ∷ []) ++ get (⟦ P ⟧TI A) 1 ++ t ++
                   (store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ sz) ∷ store-at-slot (suc n) ∷
                    mov-to-input ∷ instr-load-tag-lit tag ∷ store-at 0 ∷ []) ++
-                  put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                   fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H)))) ++
+                  put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                   (load-from-slot (suc n) ∷ [])
     arm-nf : ∀ (P : IRFunctor) (t : AbstractTrace) (tag : ℕ) → NoFn t → NoFn (arm P t tag)
     arm-nf P t tag ht =
       nf (get (⟦ P ⟧TI A) 1) _ (nf-all (SF.get-P (⟦ P ⟧TI A) 1))
-        (nf t _ ht (nf (put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) _
-                       (nf-all (SF.put-P (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1))
-                       (nf (fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H))))) _
-                           (nf-all (SF.fill-P (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H)))))) refl)))
+        (nf t _ ht (nf (fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H))))) _
+                       (nf-all (SF.fill-P (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H))))))
+                       (nf (put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) _
+                           (nf-all (SF.put-P (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1)) refl)))
 
 private
   cata-nf : ∀ (E A : IRTy) (G : Fun 0) (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) → NoFn at

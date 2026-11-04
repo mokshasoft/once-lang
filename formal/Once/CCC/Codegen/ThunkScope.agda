@@ -171,11 +171,11 @@ module Scope {FS : FrameSemantics} where
 
   wrap-nt : ∀ tag pk ps ss s → NoThunkT (wrap-sum tag pk ps ss s)
   wrap-nt tag pk ps ss s =
-    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-k-nt pk ps s (suc s) 1) (++⁺ (fill-nt _ _) (refl ∷ []))
+    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (fill-nt _ (ss ℕ.∸ suc ps)) (++⁺ (put-k-nt pk ps s (suc s) 1) (refl ∷ []))
 
   inj-nt : ∀ t P S n → NoThunkT (inj-trace t P S n)
   inj-nt t P S n =
-    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nt P n (suc n) 1) (++⁺ (fill-nt _ _) (refl ∷ []))
+    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (fill-nt _ (size S ℕ.∸ suc (size P))) (++⁺ (put-nt P n (suc n) 1) (refl ∷ []))
 
   call-nt : ∀ i0 E lk ls cl k ev pr → thunk-of? i0 ≡ nothing → NoThunkT (cata-call-from i0 E lk ls cl k ev pr)
   call-nt i0 E lk ls cl k ev pr e0 =
@@ -241,15 +241,17 @@ module Scope {FS : FrameSemantics} where
     ++⁺ (refl ∷ ++⁺ (get-nt (⟦ G ⟧TI A) 1)
                     (++⁺ (resuspend-nt H E A (proj₁ RF) (proj₁ (proj₂ RF)) lbl env wfG)
                          (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                          ++⁺ (put-nt (⟦ G ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (++⁺ (fill-nt _ _) (refl ∷ [])))))
+                          ++⁺ (fill-nt _ (c-of G)) (++⁺ (put-nt (⟦ G ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (refl ∷ [])))))
         (refl ∷ refl ∷
          ++⁺ (refl ∷ ++⁺ (get-nt (⟦ F ⟧TI A) 1)
                          (++⁺ (resuspend-nt H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
                               (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                               ++⁺ (put-nt (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (++⁺ (fill-nt _ _) (refl ∷ [])))))
+                               ++⁺ (fill-nt _ (c-of F)) (++⁺ (put-nt (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (refl ∷ [])))))
              (refl ∷ []))
     where
       RF = resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF
+      c-of : IRFunctor → ℕ
+      c-of P = size (⟦ F ⟧TI (ν-type H) +ᵀ ⟦ G ⟧TI (ν-type H)) ℕ.∸ suc (size (⟦ P ⟧TI (ν-type H)))
 
   ------------------------------------------------------------------------
   -- THE COMPILE-TIME FUNCTOR WALKS. These recurse on `F`, so no decider closes

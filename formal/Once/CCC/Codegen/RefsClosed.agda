@@ -134,11 +134,11 @@ fill-noref from c = fill-All from c refl (λ _ → refl)
 
 wrap-noref : ∀ tag pk ps ss s → NoRef (wrap-sum tag pk ps ss s)
 wrap-noref tag pk ps ss s =
-  refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-k-noref pk ps s (suc s) 1) (++⁺ (fill-noref _ _) (refl ∷ []))
+  refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (fill-noref _ (ss ∸ suc ps)) (++⁺ (put-k-noref pk ps s (suc s) 1) (refl ∷ []))
 
 inj-noref : ∀ t P S n → NoRef (inj-trace t P S n)
 inj-noref t P S n =
-  refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-noref P n (suc n) 1) (++⁺ (fill-noref _ _) (refl ∷ []))
+  refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (fill-noref _ (size S ∸ suc (size P))) (++⁺ (put-noref P n (suc n) 1) (refl ∷ []))
 
 call-noref : ∀ i0 E lk ls cl k ev pr → instr-refs i0 ≡ [] → NoRef (cata-call-from i0 E lk ls cl k ev pr)
 call-noref i0 E lk ls cl k ev pr e0 =
@@ -354,8 +354,8 @@ module _ (G : String → Set) where
       arm P t tag = (restore-input n ∷ []) ++ get (⟦ P ⟧TI A) 1 ++ t ++
                     (store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ sz) ∷ store-at-slot (suc n) ∷
                      mov-to-input ∷ instr-load-tag-lit tag ∷ store-at 0 ∷ []) ++
-                    put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                     fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H)))) ++
+                    put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                     (load-from-slot (suc n) ∷ [])
       armG = arm G tG 1
       armF = arm F tF 0
@@ -363,11 +363,11 @@ module _ (G : String → Set) where
       arm-closes P t tag ct =
         closes-++ (get (⟦ P ⟧TI A) 1) _ (noref-closes (get (⟦ P ⟧TI A) 1) (get-noref (⟦ P ⟧TI A) 1))
           (closes-++ t _ ct
-            (closes-++ (put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) _
-               (noref-closes (put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1)
-                             (put-noref (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1))
-               (closes-++ (fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H))))) _
-                  (noref-closes (fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H))))) (fill-noref _ _)) [])))
+            (closes-++ (fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H))))) _
+               (noref-closes (fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ∸ suc (size (⟦ P ⟧TI (ν-type H))))) (fill-noref _ _))
+               (closes-++ (put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) _
+                  (noref-closes (put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1)
+                                (put-noref (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1)) [])))
       W = proj₂ (proj₂ (resuspend-layer H E A n l lbl env (wf-Sum wfF wfG)))
       inl∈ : instr-ctrl (c-label (ℓ o l)) ∈ W
       inl∈ = there (there (there (∈-++⁺ʳ armG (there (here refl)))))

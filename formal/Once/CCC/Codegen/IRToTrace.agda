@@ -346,8 +346,8 @@ wrap-sum : (tag : ℕ) → Kind → (ps ss s : ℕ) → AbstractTrace
 wrap-sum tag pk ps ss s =
   store-at-slot s ∷ instr-alloc-heap (2 ⊔ ss) ∷ store-at-slot (suc s) ∷ mov-to-input ∷
   instr-load-tag-lit tag ∷ store-at 0 ∷
-  put-k pk ps s (suc s) 1 ++
   fill (suc ps) (ss ℕ.∸ suc ps) ++
+  put-k pk ps s (suc s) 1 ++
   load-from-slot (suc s) ∷ []
 
 -- plan 0.123 B.4 α: the walks read a layer `⟦ G ⟧ X` at its flat offsets:
@@ -635,8 +635,8 @@ resuspend-layer H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
                            mov-to-input ∷
                            instr-load-tag-lit tag ∷
                            store-at 0 ∷ []) ++
-                          put (⟦ P ⟧TI (ν-type H)) tmp dst 1 ++
                           fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ℕ.∸ suc (size (⟦ P ⟧TI (ν-type H)))) ++
+                          put (⟦ P ⟧TI (ν-type H)) tmp dst 1 ++
                           (load-from-slot dst ∷ [])
   in n3 , l3 ,
      (store-at-slot src ∷
@@ -716,8 +716,8 @@ inj-trace t P S n =
   mov-to-input ∷
   instr-load-tag-lit t ∷
   store-at 0 ∷
-  put P n (suc n) 1 ++
   fill (suc (size P)) (size S ℕ.∸ suc (size P)) ++
+  put P n (suc n) 1 ++
   load-from-slot (suc n) ∷ []
 
 -- D380: a closure body's entry. The call pair is `[env-word, arg…]`; with a

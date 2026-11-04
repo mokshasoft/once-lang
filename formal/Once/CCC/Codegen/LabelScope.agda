@@ -35,7 +35,7 @@ module Once.CCC.Codegen.LabelScope (o : CanonicalName) where
 
 open import Once.CCC.Label using (LabelId; ℓ; module LabelId)
 open LabelId using (idx)
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_; _⊔_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_; _⊔_; _∸_)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; +-monoʳ-≤; +-assoc; m≤n⇒m≤1+n; <-≤-trans; +-suc)
 open import Data.Bool using (true)
@@ -124,7 +124,7 @@ fill-nolab from c = fill-All from c refl (λ _ → refl)
 inj-ls : ∀ {lo hi} (t : ℕ) (P S : IT.IRTy) (n : ℕ) → LabelsIn lo hi (inj-trace t P S n)
 inj-ls t P S n =
   nolab-ls (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-            ++⁺ (put-nolab P n (suc n) 1) (++⁺ (fill-nolab _ _) (refl ∷ [])))
+            ++⁺ (fill-nolab _ (size S ∸ suc (size P))) (++⁺ (put-nolab P n (suc n) 1) (refl ∷ [])))
 
 push2-ls : ∀ (lo hi topSlot tv tb : ℕ) → LabelsIn lo hi (push2 topSlot tv tb)
 push2-ls lo hi topSlot tv tb =
@@ -137,7 +137,7 @@ pop2-ls lo hi topSlot =
 
 wrap-sum-ls : ∀ (lo hi tag : ℕ) pk ps ss (s : ℕ) → LabelsIn lo hi (wrap-sum tag pk ps ss s)
 wrap-sum-ls lo hi tag pk ps ss s =
-  nolab-ls (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-k-nolab pk ps s (suc s) 1) (++⁺ (fill-nolab _ _) (refl ∷ [])))
+  nolab-ls (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (fill-nolab _ (ss ∸ suc ps)) (++⁺ (put-k-nolab pk ps s (suc s) 1) (refl ∷ [])))
 
 ------------------------------------------------------------------------
 -- THE TWO COMPILE-TIME WALKS. A `⊕` level owns `[lb, lb+1]` and recurses at
@@ -1195,10 +1195,10 @@ seg-agree (apply {A} {B}) n l =
                          ++⁺ (put-nolab A _ _ 1) (refl ∷ refl ∷ refl ∷ [])))
 seg-agree (inl {A} {B}) n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                    ++⁺ (put-nolab A n (suc n) 1) (++⁺ (fill-nolab _ _) (refl ∷ [])))
+                    ++⁺ (fill-nolab _ (size (A IT.+ B) ∸ suc (size A))) (++⁺ (put-nolab A n (suc n) 1) (refl ∷ [])))
 seg-agree (inr {A} {B}) n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                    ++⁺ (put-nolab B n (suc n) 1) (++⁺ (fill-nolab _ _) (refl ∷ [])))
+                    ++⁺ (fill-nolab _ (size (A IT.+ B) ∸ suc (size B))) (++⁺ (put-nolab B n (suc n) 1) (refl ∷ [])))
 seg-agree (g ∘ f) n l =
   segagree-++' _ _ l (label-of (ir-to-trace' n l f)) (label-of (ir-to-trace' n l f)) _
     (labels-in f n l) (li-none refl ∷ labels-in g _ _)
@@ -1403,24 +1403,26 @@ resuspend-idleA H E A n l lbl env (wf-Prod {F} {G} wfF wfG) =
            (refl ∷ [])))))))))
 resuspend-idleA H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
   ++⁺ (refl ∷ refl ∷ refl ∷ [])
-      (++⁺ (arm G (resuspend-idleA H E A _ _ lbl env wfG))
+      (++⁺ (arm G (resuspend-idleA H E A _ _ lbl env wfG) {c = c-of G})
       (++⁺ (refl ∷ refl ∷ [])
-      (++⁺ (arm F (resuspend-idleA H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
+      (++⁺ (arm F (resuspend-idleA H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF) {c = c-of F})
            (refl ∷ []))))
   where
+    c-of : IT.IRFunctor → ℕ
+    c-of P = size (⟦ F ⟧TI (ν-type H) IT.+ ⟦ G ⟧TI (ν-type H)) ∸ suc (size (⟦ P ⟧TI (ν-type H)))
     arm : ∀ (P : IT.IRFunctor) {t} → All Idle t → ∀ {tag sz c}
         → All Idle ((restore-input n ∷ []) ++ get (⟦ P ⟧TI A) 1 ++ t ++
                     (store-at-slot (suc (suc n)) ∷ instr-alloc-heap sz ∷
                      store-at-slot (suc n) ∷ mov-to-input ∷
                      instr-load-tag-lit tag ∷ store-at 0 ∷ []) ++
-                    put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                     fill (suc (size (⟦ P ⟧TI (ν-type H)))) c ++
+                    put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                     (load-from-slot (suc n) ∷ []))
-    arm P p =
+    arm P p {c = c} =
       ++⁺ (refl ∷ []) (++⁺ (get-All (⟦ P ⟧TI A) 1 (λ _ → refl) (λ _ → refl) refl)
       (++⁺ p (++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-      (++⁺ (put-All (⟦ P ⟧TI (ν-type H)) _ _ 1 refl refl refl (λ _ → refl) (λ _ → refl))
-           (++⁺ (fill-All _ _ refl (λ _ → refl)) (refl ∷ []))))))
+      (++⁺ (fill-All _ c refl (λ _ → refl))
+           (++⁺ (put-All (⟦ P ⟧TI (ν-type H)) _ _ 1 refl refl refl (λ _ → refl) (λ _ → refl)) (refl ∷ []))))))
 
 resuspend-idle : ∀ (H : IT.IRFunctor) (E A : IT.IRTy) (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
                → seg-idle? (proj₂ (proj₂ (resuspend-layer H E A n l lbl env wf))) ≡ true
@@ -1457,13 +1459,15 @@ resuspend-labels-in lo hi H E A n l lbl env (wf-Prod {F} {G} wfF wfG) lo≤ ≤h
 resuspend-labels-in lo hi H E A n l lbl env (wf-Sum {F} {G} wfF wfG) lo≤ ≤hi =
   ++⁺ (li-none refl ∷ li-none refl ∷ li-lab refl lo≤ l<hi ∷ [])
       (++⁺ (arm G (resuspend-labels-in lo hi H E A n2 l2 lbl env wfG
-                    (≤-trans lo≤ (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) upF)) ≤hi))
+                    (≤-trans lo≤ (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) upF)) ≤hi) {c = c-of G})
       (++⁺ (li-lab refl (≤-trans lo≤ (n≤1+n l)) sl<hi ∷ li-lab refl lo≤ l<hi ∷ [])
       (++⁺ (arm F (resuspend-labels-in lo hi H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF
                     (≤-trans lo≤ (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
-                    (≤-trans (resuspend-label-mono H E A n2 l2 lbl env wfG) ≤hi)))
+                    (≤-trans (resuspend-label-mono H E A n2 l2 lbl env wfG) ≤hi)) {c = c-of F})
            (li-lab refl (≤-trans lo≤ (n≤1+n l)) sl<hi ∷ []))))
   where
+    c-of : IT.IRFunctor → ℕ
+    c-of P = size (⟦ F ⟧TI (ν-type H) IT.+ ⟦ G ⟧TI (ν-type H)) ∸ suc (size (⟦ P ⟧TI (ν-type H)))
     n2 = proj₁ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
     l2 = proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
     upF : suc (suc l) ≤ l2
@@ -1479,13 +1483,13 @@ resuspend-labels-in lo hi H E A n l lbl env (wf-Sum {F} {G} wfF wfG) lo≤ ≤hi
                           (store-at-slot (suc (suc n)) ∷ instr-alloc-heap sz ∷
                            store-at-slot (suc n) ∷ mov-to-input ∷
                            instr-load-tag-lit tag ∷ store-at 0 ∷ []) ++
-                          put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                           fill (suc (size (⟦ P ⟧TI (ν-type H)))) c ++
+                          put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                           (load-from-slot (suc n) ∷ []))
-    arm P ls =
+    arm P ls {c = c} =
       ++⁺ (li-none refl ∷ []) (++⁺ (get-ls (⟦ P ⟧TI A) 1)
       (++⁺ ls (++⁺ (nolab-ls (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
-      (++⁺ (put-ls (⟦ P ⟧TI (ν-type H)) _ _ 1) (++⁺ (nolab-ls (fill-nolab _ _)) (li-none refl ∷ []))))))
+      (++⁺ (nolab-ls (fill-nolab _ c)) (++⁺ (put-ls (⟦ P ⟧TI (ν-type H)) _ _ 1) (li-none refl ∷ []))))))
 
 scope-ok : ∀ {A B} (ir : IR A B) (n l : ℕ)
          → ScopeOK (trace-of (ir-to-trace' n l ir))
