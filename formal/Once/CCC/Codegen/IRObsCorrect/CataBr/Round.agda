@@ -37,13 +37,16 @@ open import Once.CCC.Codegen.IRObsCorrect.CataConst.Meaning o using (μ-layer-va
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC)
+open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
+open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
+import Once.CCC.Machine.FlatPut as FlatPut
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Layer o using (kidsI; pushAllV)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Text o tbl using (module Pieces; module SlotArith; module OffArith)
 open import Once.CCC.Codegen.IRToTrace o using (push2; visit-walk; fsize)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; SV-Tag; sv-as-loc; store-at-slot; load-from-slot; load-indirect; load-indirect-suc; mov-to-input
+        ; SV-Ptr; SV-Tag; sv-as-loc; store-at-slot; load-from-slot; load-at; mov-to-input; writeReg-same; offsetLoc
         ; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; writeReg-preserves)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
@@ -71,7 +74,9 @@ module CataRoundC {FS : FrameSemantics} where
   open CataStepsC {FS}
   open CataStackC {FS}
   open CataWalkC {FS}
-  open CataVisitC {FS} using (module Visit)
+  open CataVisitC {FS} using (module Visit; bk-id; load-bk; load-al)
+  open GetC {FS} using (setOut; out-mem; offset-zero; load-at-step)
+  open import Once.CCC.Machine.FlatWords {FS} using (offset-1)
   open FlatStepsAPI {FS} using (flat-tag-branch-yes; flat-tag-branch-not)
   open LocState using (regs; halted)
   open AllocState using (next-slot; next-heap-ref; current-frame)
@@ -84,9 +89,9 @@ module CataRoundC {FS : FrameSemantics} where
   -- (D366: at an UNBOXED functor — every functor with a recursive position)
   μ-word : ∀ {prog a F} (wf : WellFormedFI F) → Unboxed F → ∀ {t w s}
          → WordAt prog a (μ-type F) t w s → WordAt prog a (⟦ F ⟧TI (μ-type F)) (μ-layer-val wf t) w s
-  μ-word wf ub (w-ptr loc e lv val) = w-ptr loc e lv (μ-layer {wf = wf} ub val)
-  μ-word wf ub (w-inl (rep-prim ()) e)
-  μ-word wf ub (w-inl (rep-unit () _) e)
+  μ-word {prog} {F = F} wf ub (FlatPut.src-node nd lv val) = InjC.src-loc {FS} {prog} (⟦ F ⟧TI (μ-type F)) (μ-layer {wf = wf} ub val) lv
+  μ-word wf ub (FlatPut.src-scalar ())
+  μ-word wf ub (FlatPut.src-flat () _ _)
 
   -- a control step as a segment
   seg-ctrl : ∀ {a₀ : AllocState {FS}} {n : ℕ} (t : FlatState) (k : ℕ) → SegA a₀ n t (record t { fpc = k })
@@ -181,7 +186,8 @@ module CataRoundC {FS : FrameSemantics} where
       in3 = trans (in-movin (floc h2) (falloc h2)) (out-lslot n s₀ a₀ _ (StackAt.slot st))
 
       kp3 : Kp a₀ s₀ (falloc h3) (floc h3)
-      kp3 = kp-∘ (kp-q (load-from-slot n) h1 nhw-load-from-slot refl tt tt) (kp-q mov-to-input h2 nhw-mov-to-input refl tt tt)
+      bk2 = load-bk n s₀ a₀ (StackAt.slot st)
+      kp3 = kp-∘ (kp-q (load-from-slot n) h1 nhw-load-from-slot refl tt tt bk2) (kp-q mov-to-input h2 nhw-mov-to-input refl tt tt bk-id)
       cf3 : current-frame (falloc h3) ≡ f₀
       cf3 = trans (exec-abstract-preserves-frame mov-to-input (floc h2) (falloc h2))
                   (exec-abstract-preserves-frame (load-from-slot n) s₀ a₀)
@@ -204,8 +210,8 @@ module CataRoundC {FS : FrameSemantics} where
       walk : Walk prog n K σ (3 + fpc σ) (λ _ → ⊤)
       walk =
         walk-∘ {prog} {n} {K} {σ} (walk-ctrl {Q = λ _ → ⊤} σ (instr-ctrl (c-label (ℓ o l1))) (suc (fpc σ)) nh (span′ 0 _ refl) refl refl tt tt)
-        (walk-∘ {prog} {n} {K} {h1} (walk-q {Q = λ _ → ⊤} h1 (load-from-slot n) refl nh (span′ 1 _ refl) wf2 nhw-load-from-slot refl tt tt refl tt tt)
-                (walk-q {Q = λ _ → ⊤} h2 mov-to-input refl nh2 (span′ 2 _ refl) tt nhw-mov-to-input refl tt tt refl tt tt))
+        (walk-∘ {prog} {n} {K} {h1} (walk-q {Q = λ _ → ⊤} h1 (load-from-slot n) refl nh (span′ 1 _ refl) wf2 nhw-load-from-slot refl tt tt refl tt bk2 tt)
+                (walk-q {Q = λ _ → ⊤} h2 mov-to-input refl nh2 (span′ 2 _ refl) tt nhw-mov-to-input refl tt tt refl tt bk-id tt))
 
     --------------------------------------------------------------------
     -- THE EXIT: todo is empty, the branch jumps out.
@@ -261,11 +267,17 @@ module CataRoundC {FS : FrameSemantics} where
         tmp : ℕ
         tmp = n + 3
 
+        ptp pnb : StoredValue FS
+        ptp = SV-Ptr (AtDynamic tp)
+        pnb = SV-Ptr (AtDynamic nb)
+
+        -- the two reads of the top block are `load-at`s (D375): `Output`
+        -- written, nothing else
         h4 p1 p2 p3 p4 p5 p6 : FlatState
         h4 = record h3 { fpc = suc (fpc h3) }
-        p1 = St load-indirect-suc h4
+        p1 = setOut h4 pnb
         p2 = St (store-at-slot n) p1
-        p3 = St load-indirect p2
+        p3 = setOut p2 w
         p4 = St mov-to-input p3
         p5 = St (store-at-slot tmp) p4
         p6 = St (load-from-slot tmp) p5
@@ -281,68 +293,64 @@ module CataRoundC {FS : FrameSemantics} where
            → readLoc (floc (St i q)) (AtDynamic hl) ≡ readLoc (floc q) (AtDynamic hl)
         hk i q hl nhw = hp-keep i (floc q) (falloc q) hl nhw
 
+        -- a read as a segment
+        seg-set : ∀ {a₀′ : AllocState {FS}} {n′ : ℕ} (q : FlatState) (v : StoredValue FS) → SegA a₀′ n′ q (setOut q v)
+        seg-set q v = record { mem = λ loc _ → out-mem q v loc ; cf = refl ; sf = refl ; ns = refl ; href = ≤-refl }
+
         -- the branch falls through: the top element is a node, not the tag
         cond-no : tag-test (flat-read-tag (floc h3)) ≡ just false
         cond-no = cond
 
         c0-3 : readLoc (floc h3) (AtDynamic tp) ≡ just w
         c0-3 = trans (hk3 tp) c0
-        c1-3 : readLoc (floc h3) (AtDynamic (sucHL tp)) ≡ just (SV-Ptr (AtDynamic nb))
+        c1-3 : readLoc (floc h3) (AtDynamic (sucHL tp)) ≡ just pnb
         c1-3 = trans (hk3 (sucHL tp)) c1
 
-        -- row 4: Output := next
-        wf-p1 : InstrWF (floc h4) (falloc h4) load-indirect-suc
-        wf-p1 = AtDynamic tp , cong sv-as-loc in3 , SV-Ptr (AtDynamic nb) , c1-3
-        nh-p1 : halted (floc p1) ≡ false
-        nh-p1 = exec-abstract-preserves-halted-WF load-indirect-suc (floc h4) (falloc h4) nh3 wf-p1
-        out-p1 : Oup p1 ≡ SV-Ptr (AtDynamic nb)
-        out-p1 = out-lind-suc (floc h4) (falloc h4) (AtDynamic tp) _ in3 c1-3
-        in-p1 : Inp p1 ≡ SV-Ptr (AtDynamic tp)
-        in-p1 = trans (load-ind-suc-preserves-input (floc h4) (falloc h4) (AtDynamic tp) _ (cong sv-as-loc in3) c1-3) in3
-        cf-p1 : current-frame (falloc p1) ≡ f₀
-        cf-p1 = trans (exec-abstract-preserves-frame load-indirect-suc (floc h4) (falloc h4)) cf3
+        -- row 4: Output := next (word 1)
+        r1 : readLoc (floc h4) (offsetLoc (AtDynamic tp) 1) ≡ just pnb
+        r1 = trans (cong (readLoc (floc h4)) (offset-1 {prog = prog} (AtDynamic tp))) c1-3
+        in-p1 : Inp p1 ≡ ptp
+        in-p1 = trans (writeReg-preserves (regs (floc h4)) Output Input1 pnb (λ ())) in3
+        out-p1 : Oup p1 ≡ pnb
+        out-p1 = writeReg-same (regs (floc h4)) Output pnb
 
         -- row 5: todo := next
         nh-p2 : halted (floc p2) ≡ false
-        nh-p2 = exec-abstract-preserves-halted-WF (store-at-slot n) (floc p1) (falloc p1) nh-p1 tt
-        td-p2 : sl p2 n ≡ just (SV-Ptr (AtDynamic nb))
-        td-p2 = trans (sl-same n (floc p1) (falloc p1) f₀ cf-p1) (cong just out-p1)
-        in-p2 : Inp p2 ≡ SV-Ptr (AtDynamic tp)
+        nh-p2 = exec-abstract-preserves-halted-WF (store-at-slot n) (floc p1) (falloc p1) nh3 tt
+        td-p2 : sl p2 n ≡ just pnb
+        td-p2 = trans (sl-same n (floc p1) (falloc p1) f₀ cf3) (cong just out-p1)
+        in-p2 : Inp p2 ≡ ptp
         in-p2 = trans (reg-store n (floc p1) (falloc p1) Input1) in-p1
         cf-p2 : current-frame (falloc p2) ≡ f₀
-        cf-p2 = trans (exec-abstract-preserves-frame (store-at-slot n) (floc p1) (falloc p1)) cf-p1
+        cf-p2 = trans (exec-abstract-preserves-frame (store-at-slot n) (floc p1) (falloc p1)) cf3
 
         c0-p2 : readLoc (floc p2) (AtDynamic tp) ≡ just w
-        c0-p2 = trans (hk (store-at-slot n) p1 tp nhw-store-at-slot) (trans (hk load-indirect-suc h4 tp nhw-load-indirect-suc) c0-3)
+        c0-p2 = trans (hk (store-at-slot n) p1 tp nhw-store-at-slot) (trans (out-mem h4 pnb (AtDynamic tp)) c0-3)
 
-        -- row 6: Output := the node
-        wf-p3 : InstrWF (floc p2) (falloc p2) load-indirect
-        wf-p3 = AtDynamic tp , cong sv-as-loc in-p2 , w , c0-p2
-        nh-p3 : halted (floc p3) ≡ false
-        nh-p3 = exec-abstract-preserves-halted-WF load-indirect (floc p2) (falloc p2) nh-p2 wf-p3
+        -- row 6: Output := the node (word 0)
+        r0 : readLoc (floc p2) (offsetLoc (AtDynamic tp) 0) ≡ just w
+        r0 = trans (cong (readLoc (floc p2)) (offset-zero (AtDynamic tp))) c0-p2
         out-p3 : Oup p3 ≡ w
-        out-p3 = out-lind (floc p2) (falloc p2) (AtDynamic tp) w in-p2 c0-p2
-        td-p3 : sl p3 n ≡ just (SV-Ptr (AtDynamic nb))
-        td-p3 = trans (sl-keep load-indirect (floc p2) (falloc p2) f₀ n nhw-load-indirect refl) td-p2
-        cf-p3 : current-frame (falloc p3) ≡ f₀
-        cf-p3 = trans (exec-abstract-preserves-frame load-indirect (floc p2) (falloc p2)) cf-p2
+        out-p3 = writeReg-same (regs (floc p2)) Output w
+        td-p3 : sl p3 n ≡ just pnb
+        td-p3 = trans (out-mem p2 w (AtStack f₀ n)) td-p2
 
         -- row 7: Input1 := the node
         nh-p4 : halted (floc p4) ≡ false
-        nh-p4 = exec-abstract-preserves-halted-WF mov-to-input (floc p3) (falloc p3) nh-p3 tt
+        nh-p4 = exec-abstract-preserves-halted-WF mov-to-input (floc p3) (falloc p3) nh-p2 tt
         out-p4 : Oup p4 ≡ w
         out-p4 = trans (writeReg-preserves (regs (floc p3)) Input1 Output (readReg (regs (floc p3)) Output) (λ ())) out-p3
-        td-p4 : sl p4 n ≡ just (SV-Ptr (AtDynamic nb))
+        td-p4 : sl p4 n ≡ just pnb
         td-p4 = trans (sl-keep mov-to-input (floc p3) (falloc p3) f₀ n nhw-mov-to-input refl) td-p3
         cf-p4 : current-frame (falloc p4) ≡ f₀
-        cf-p4 = trans (exec-abstract-preserves-frame mov-to-input (floc p3) (falloc p3)) cf-p3
+        cf-p4 = trans (exec-abstract-preserves-frame mov-to-input (floc p3) (falloc p3)) cf-p2
 
         -- row 8: tmp := the node
         nh-p5 : halted (floc p5) ≡ false
         nh-p5 = exec-abstract-preserves-halted-WF (store-at-slot tmp) (floc p4) (falloc p4) nh-p4 tt
         tmp-p5 : sl p5 tmp ≡ just w
         tmp-p5 = trans (sl-same tmp (floc p4) (falloc p4) f₀ cf-p4) (cong just out-p4)
-        td-p5 : sl p5 n ≡ just (SV-Ptr (AtDynamic nb))
+        td-p5 : sl p5 n ≡ just pnb
         td-p5 = trans (sl-other tmp n (floc p4) (falloc p4) f₀ (off0-≢ (λ ()))) td-p4
         cf-p5 : current-frame (falloc p5) ≡ f₀
         cf-p5 = trans (exec-abstract-preserves-frame (store-at-slot tmp) (floc p4) (falloc p4)) cf-p4
@@ -354,7 +362,7 @@ module CataRoundC {FS : FrameSemantics} where
         nh-p6 = exec-abstract-preserves-halted-WF (load-from-slot tmp) (floc p5) (falloc p5) nh-p5 wf-p6
         out-p6 : Oup p6 ≡ w
         out-p6 = out-lslot tmp (floc p5) (falloc p5) w (proj₂ wf-p6)
-        td-p6 : sl p6 n ≡ just (SV-Ptr (AtDynamic nb))
+        td-p6 : sl p6 n ≡ just pnb
         td-p6 = trans (sl-keep (load-from-slot tmp) (floc p5) (falloc p5) f₀ n nhw-load-from-slot refl) td-p5
         tmp-p6 : sl p6 tmp ≡ just w
         tmp-p6 = trans (sl-keep (load-from-slot tmp) (floc p5) (falloc p5) f₀ tmp nhw-load-from-slot refl) tmp-p5
@@ -367,9 +375,9 @@ module CataRoundC {FS : FrameSemantics} where
           trans (sl-keep (load-from-slot tmp) (floc p5) (falloc p5) f₀ j nhw-load-from-slot refl)
           (trans (sl-other tmp j (floc p4) (falloc p4) f₀ j≢t)
           (trans (sl-keep mov-to-input (floc p3) (falloc p3) f₀ j nhw-mov-to-input refl)
-          (trans (sl-keep load-indirect (floc p2) (falloc p2) f₀ j nhw-load-indirect refl)
+          (trans (out-mem p2 w (AtStack f₀ j))
           (trans (sl-other n j (floc p1) (falloc p1) f₀ j≢n)
-          (trans (sl-keep load-indirect-suc (floc h4) (falloc h4) f₀ j nhw-load-indirect-suc refl) (sl3 j))))))
+          (trans (out-mem h4 pnb (AtStack f₀ j)) (sl3 j))))))
 
         runA : SRun prog 10 σ p6
         runA =
@@ -377,10 +385,10 @@ module CataRoundC {FS : FrameSemantics} where
           s-at h2 (nh , span′ 1 _ refl) refl refl tt (
           s-at h3 (nh2 , span′ 2 _ refl) refl refl tt (
           s-at h4 (nh3 , span′ 3 _ refl) (flat-tag-branch-not prog h3 (ℓ o (suc l1)) cond-no) refl tt (
-          s-at p1 (nh3 , span′ 4 _ refl) refl refl tt (
-          s-at p2 (nh-p1 , span′ 5 _ refl) refl refl tt (
-          s-at p3 (nh-p2 , span′ 6 _ refl) refl refl tt (
-          s-at p4 (nh-p3 , span′ 7 _ refl) refl refl tt (
+          s-at p1 (nh3 , span′ 4 _ refl) (load-at-step prog h4 1 (AtDynamic tp) pnb in3 r1) refl tt (
+          s-at p2 (nh3 , span′ 5 _ refl) refl refl tt (
+          s-at p3 (nh-p2 , span′ 6 _ refl) (load-at-step prog p2 0 (AtDynamic tp) w in-p2 r0) refl tt (
+          s-at p4 (nh-p2 , span′ 7 _ refl) refl refl tt (
           s-at p5 (nh-p4 , span′ 8 _ refl) refl refl tt (
           s-at p6 (nh-p5 , span′ 9 _ refl) refl refl tt s-nil)))))))))
 
@@ -391,25 +399,32 @@ module CataRoundC {FS : FrameSemantics} where
             (segA-∘ (seg-q (load-from-slot n) h1 nhw-load-from-slot refl tt tt)
             (segA-∘ (seg-q mov-to-input h2 nhw-mov-to-input refl tt tt)
             (segA-∘ (seg-ctrl h3 (suc (fpc h3)))
-            (segA-∘ (seg-q load-indirect-suc h4 nhw-load-indirect-suc refl tt tt)
-            (segA-∘ (seg-store n p1 cf-p1 ≤-refl)
-            (segA-∘ (seg-q load-indirect p2 nhw-load-indirect refl tt tt)
+            (segA-∘ (seg-set h4 pnb)
+            (segA-∘ (seg-store n p1 cf3 ≤-refl)
+            (segA-∘ (seg-set p2 w)
             (segA-∘ (seg-q mov-to-input p3 nhw-mov-to-input refl tt tt)
             (segA-∘ (seg-store tmp p4 cf-p4 (m≤m+n n 3))
                     (seg-q (load-from-slot tmp) p5 nhw-load-from-slot refl tt tt)))))))))
 
+        -- the two slot loads keep the allocator
+        allocA : falloc p6 ≡ a₀
+        allocA = trans (load-al tmp (floc p5) (falloc p5) (proj₂ wf-p6)) (load-al n s₀ a₀ (StackAt.slot st))
+
+        bkA : BlocksKept a₀ (falloc p6)
+        bkA = subst (BlocksKept a₀) (sym allocA) bk-id
+
         kp6 : Kp a₀ s₀ (falloc p6) (floc p6)
-        kp6 = seg-kp segA
+        kp6 = seg-kp segA bkA
 
         wA : Walk prog n K σ (10 + fpc σ) (λ _ → ⊤)
         wA = record
-          { τ = p6 ; steps = 10 ; run = runA ; seg = segA ; nh = nh-p6 ; pc = refl ; ret = refl ; clo = refl ; lnk = refl
+          { τ = p6 ; steps = 10 ; run = runA ; seg = segA ; bk = bkA ; nh = nh-p6 ; pc = refl ; ret = refl ; clo = refl ; lnk = refl
           ; cf = cf-p6 ; slots = λ j kj → slots6 j (k≢n j kj) (k≢3 j kj) ; post = tt }
 
         -- the stacks at p6
         todo6 : StackAt NE (falloc p6) (floc p6) n sn ts
         todo6 = stack-at nb (at-cf (floc p6) (falloc p6) cf-p6 td-p6) (chain-tr node-tr kp6 rest)
-                  (trans (proj₂ kp6 _ (StackAt.sent-live st)) (StackAt.sent st)) (proj₁ kp6 _ (StackAt.sent-live st))
+                  (trans (proj₂ (proj₂ kp6) _ (StackAt.sent-live st)) (StackAt.sent st)) (proj₁ kp6 _ (StackAt.sent-live st))
         eval6 : StackAt NE (falloc p6) (floc p6) (suc n) sn es
         eval6 = stack-keep node-tr kp6 cf-p6 (slots6 (suc n) s≢n (λ e → off-≢ {1} {3} (λ ()) (trans (sym suc-is) e))) se
 
@@ -429,7 +444,7 @@ module CataRoundC {FS : FrameSemantics} where
 
         τ7 = Push2Out.τ pu
         kp7 : Kp (falloc p6) (floc p6) (falloc τ7) (floc τ7)
-        kp7 = seg-kp (Push2Out.seg pu)
+        kp7 = seg-kp (Push2Out.seg pu) (Push2Out.bk pu)
 
         sl7 : ∀ j → j ≢ suc n → j ≢ n + 4 → j ≢ n + 5
             → readLoc (floc τ7) (AtStack (current-frame (falloc τ7)) j) ≡ readLoc (floc p6) (AtStack (current-frame (falloc p6)) j)
@@ -466,7 +481,8 @@ module CataRoundC {FS : FrameSemantics} where
         in-q2 = trans (in-movin (floc q1) (falloc q1)) (out-lslot tmp (floc τ7) (falloc τ7) w tmp7)
 
         kpq : Kp (falloc τ7) (floc τ7) (falloc q2) (floc q2)
-        kpq = kp-∘ (kp-q (load-from-slot tmp) τ7 nhw-load-from-slot refl tt tt) (kp-q mov-to-input q1 nhw-mov-to-input refl tt tt)
+        bk-q1 = load-bk tmp (floc τ7) (falloc τ7) tmp7
+        kpq = kp-∘ (kp-q (load-from-slot tmp) τ7 nhw-load-from-slot refl tt tt bk-q1) (kp-q mov-to-input q1 nhw-mov-to-input refl tt tt bk-id)
         cfq : current-frame (falloc q2) ≡ current-frame (falloc τ7)
         cfq = trans (exec-abstract-preserves-frame mov-to-input (floc q1) (falloc q1))
                     (exec-abstract-preserves-frame (load-from-slot tmp) (floc τ7) (falloc τ7))
@@ -483,8 +499,8 @@ module CataRoundC {FS : FrameSemantics} where
 
         wC : Walk prog n K τ7 (fpc q2) (λ _ → ⊤)
         wC = walk-∘ {prog} {n} {K} {τ7}
-               (walk-q {Q = λ _ → ⊤} τ7 (load-from-slot tmp) refl (Push2Out.nh pu) (ft-q 0 refl) wf-q1 nhw-load-from-slot refl tt tt refl tt tt)
-               (walk-q {Q = λ _ → ⊤} q1 mov-to-input refl nh-q1 (ft-q 1 refl) tt nhw-mov-to-input refl tt tt refl tt tt)
+               (walk-q {Q = λ _ → ⊤} τ7 (load-from-slot tmp) refl (Push2Out.nh pu) (ft-q 0 refl) wf-q1 nhw-load-from-slot refl tt tt refl tt bk-q1 tt)
+               (walk-q {Q = λ _ → ⊤} q1 mov-to-input refl nh-q1 (ft-q 1 refl) tt nhw-mov-to-input refl tt tt refl tt bk-id tt)
 
         todo-q : StackAt NE (falloc q2) (floc q2) n sn ts
         todo-q = stack-keep node-tr kpq cfq (slq n) todo7
