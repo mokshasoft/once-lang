@@ -12,11 +12,13 @@ and skips the modules that import a failed one.
 
 Usage (from formal/):
     scripts/agda-keepgoing.py [ROOT.agda] [--max N] [--only PREFIX]
-Prints one block per failing module and a summary. Runs Agda under the same
+Prints a progress line per module (`[n/total] ok|FAIL|skip M (secs)`, flushed, so a
+run redirected to a file can be followed with `tail -f`), one block per failing module and a
+summary. Runs Agda under the same
 memory cap as agda-safe.sh (systemd-run scope); if Agda dies it is restarted
 and the pass continues.
 """
-import json, os, re, subprocess, sys, glob
+import json, os, re, subprocess, sys, glob, time
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT_DIR)
@@ -99,11 +101,16 @@ def main():
     agda = Agda(lib)
     failed, skipped, ok = {}, set(), 0
     deps = {m: imports(m) for m in order}
+    total = len(order)
+    def progress(n, tag, m, t=None):
+        print(f'[{n+1}/{total}] {tag:4} {m}' + (f' ({t:.0f}s)' if t is not None else ''), flush=True)
     for n, m in enumerate(order):
         if only and not m.startswith(only): continue
         if any(d in failed or d in skipped for d in deps[m]):
-            skipped.add(m); continue
+            skipped.add(m); progress(n, 'skip', m); continue
+        t0 = time.monotonic()
         res = agda.load(modpath(m))
+        progress(n, 'ok' if res == [] else 'FAIL', m, time.monotonic() - t0)
         if res is None:
             failed[m] = ['(agda died — out of memory?)']
             agda = Agda(lib)
@@ -115,7 +122,7 @@ def main():
         else:
             ok += 1
     agda.close()
-    print(f'=== SUMMARY: {len(order)} modules in cone, {ok} ok, {len(failed)} failed, {len(skipped)} skipped (import a failure)')
+    print(f'=== SUMMARY: {len(order)} modules in cone, {ok} ok, {len(failed)} failed, {len(skipped)} skipped (import a failure)', flush=True)
     sys.exit(1 if failed else 0)
 
 if __name__ == '__main__':
