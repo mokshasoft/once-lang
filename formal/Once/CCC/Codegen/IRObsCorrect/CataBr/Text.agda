@@ -190,7 +190,20 @@ module Pieces (G : Fun 0) (n l1 : ℕ) where
 -- on the carrier's kind and size (the rebuild, in the fold's prefix)
 module PiecesAt (E : IRTy) (ck : Kind) (cs : ℕ) (G : Fun 0) (n l1 : ℕ) where
 
-  open Pieces G n l1 public
+  -- the flatten pieces, by name (no re-export: plan 0.92 §2)
+  module P = Pieces G n l1
+  cslot bodyL : ℕ
+  cslot = P.cslot
+  bodyL = P.bodyL
+  initTxt rootTxt headTxt pushTxt reloadTxt visitTxt exitTxt flatTxt : AbstractTrace
+  initTxt = P.initTxt
+  rootTxt = P.rootTxt
+  headTxt = P.headTxt
+  pushTxt = P.pushTxt
+  reloadTxt = P.reloadTxt
+  visitTxt = P.visitTxt
+  exitTxt = P.exitTxt
+  flatTxt = P.flatTxt
 
   -- the setup's first row reads the environment (`get E 0`, one row: `get-one`)
   setupRest setupTxt foldTxt : AbstractTrace

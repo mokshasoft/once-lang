@@ -65,9 +65,7 @@ module PairC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  module PBC where
-    open PairBuildC {FS} public
-    open FlatPut {FS} using (src-tr) public
+  module PBC = PairBuildC {FS}
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel)
 
@@ -710,7 +708,7 @@ module PairC {FS : FrameSemantics} where
     bkB : BlocksKept (falloc fsF) (falloc fsG)
     bkB = subst (λ a′ → BlocksKept a′ (falloc fsG)) alloc-m2 (VR.blocks-kept vrg ncG)
 
-    srcB = PBC.src-tr {prog} keepFG (PBC.src-of-place {prog} (VR.place vrf sfeq))
+    srcB = FlatPut.src-tr {FS} {prog} keepFG (PBC.src-of-place {prog} (VR.place vrf sfeq))
     srcC = PBC.src-of-place {prog} (VR.place vrg sgeq)
 
     rsB : SMCore.MemOps.readLoc (floc fsG) (AtStack (current-frame (falloc fsG)) (suc n)) ≡ just fv
