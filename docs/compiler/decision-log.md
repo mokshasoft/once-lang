@@ -20871,3 +20871,23 @@ as no such construct exists; OCP-0009's kernel has no eliminator on `U`.
 ### Cost
 None in the compiler or the binary (`Spec.Equivalence` and `Spec.Metatheory` are outside the extraction).
 
+**Proof** (`Once/Metatheory/Parametricity/`). Identity extension by recursion on the type, both ways at
+once (`Identity`); `SameDefs`' three consumers (`Coherence.Fundamental`, `TermModel.SubSem`,
+`TermModel.Ren`, the `ref` case) read it through `rel-same`. The abstraction theorem is the fundamental
+lemma between two instances (`Abstraction`): each former's case the congruence of its semantic operation
+for any relation (`Comp`: computations, fold, unfold and forcing over an `SRel`, no well-formedness
+needed; `Env`; `Values`: `toL`/`fromL`, conversions, the signature's leaves); `Coherence.Loop`,
+`Conv.subνUp` and `Layer.relatedFmap` were generalized to two value sets in place. The `ref` case needs
+`Rel` to commute with substitution (`Subst`), across the transport `⟨⟩-∘` of the meaning, stated for
+instances equal to the composed ones pointwise (`Transport`: a value transported along a former's `cong`
+is its parts transported; with K any two such proofs agree). `param-tele` by induction along the
+telescope (`Tele`). Naturality: `ParamDefs` at the meaning's own instances with the graph of `f` at the
+variable, carried to `F ⇒ G` (`Subst`, `Rel-≡`), then the graph lemma (`Graph`: a value is related to its
+map, a related pair is a value and its map, for strictly positive types; an arrow's domain, where the
+variable does not occur, is a shifted type whose reading is sameness), read through the composites'
+derivations with the law tools (`Naturality`).
+
+### Checks
+2026-11-05: `Once.Metatheory` (112 modules, the new field included); metatheory-gate, spec-gate,
+public-gate, pragma-gate, lint-pragmas OK.
+
