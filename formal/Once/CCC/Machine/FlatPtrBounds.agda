@@ -41,6 +41,7 @@ open import Once.CCC.Label using (LabelId)
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≟_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-trans; n≤1+n; <⇒≢; <ᵇ⇒<)
 open import Data.Bool using (Bool; true; false; T)
+open import Data.Bool using () renaming (_∨_ to _∨_)
 open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
@@ -187,11 +188,11 @@ pb-write-reg bs ls x v ok wf = record
     go r (inj₂ eq) rewrite eq = pb-regs wf r
 
 pb-write-reg-halt : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (x : AbstractReg)
-                      (v : StoredValue FS) (b : Bool) (es : List SigOpEvent)
+                      (v : StoredValue FS) (b fl : Bool) (es : List SigOpEvent)
                   → PtrB bs v → PBInv bs ls
-                  → PBInv bs (record ls { regs = writeReg (regs ls) x v ; halted = b ; ev-log = es })
+                  → PBInv bs (record ls { regs = writeReg (regs ls) x v ; halted = b ; faulted = fl ; ev-log = es })
 -- The invariant reads no flag and no log, so its fields carry over as they are.
-pb-write-reg-halt bs ls x v b es ok wf =
+pb-write-reg-halt bs ls x v b fl es ok wf =
   let w = pb-write-reg bs ls x v ok wf in
   record { pb-regs = pb-regs w ; pb-heap = pb-heap w ; pb-stack = pb-stack w }
 
@@ -468,7 +469,7 @@ pb-abstract (worklist-pop slot)   ls alloc ff am wfS wf =
                (pb-read-loc _ ls wf (AtStack (current-frame alloc) slot)) wf
 pb-abstract (worklist-check slot) ls alloc ff am wfS wf = wf
 pb-abstract (instr-sigop si) ls alloc ff am wfS wf =
-  pb-write-reg-halt _ ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (ev-log ls ++ sigop-events si ls)
+  pb-write-reg-halt _ ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls)
                     (sigop-output-pb _ si ls) wf
 pb-abstract (instr-load-const p v)   ls alloc ff am wfS wf =
   pb-write-reg _ ls Output (SV-Lit p (lit-value p v)) tt wf

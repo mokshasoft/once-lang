@@ -21123,3 +21123,28 @@ flat layout. `LoadOK` records that the offset is the typed path's.
   memory at the input pointer — a pre-existing disagreement, not touched here.
 * `R-input`/`HeapChase` stay preconditions (the call site's layout is not proved to meet them); the
   call-site link is the gap that let this through, open.
+
+## D386 — A PURE SIGOP WHOSE ARGUMENT DOES NOT DECODE FAULTS (2026-11-04)
+
+**Decided** in plan 0.123 α′ (b), on the way to proving `arith-sigop-run` (ledger row 3).
+
+### Context
+The abstract machine runs a Pure SigOp by decoding its argument from `Input1` (`decode-at`, the flat
+`readTyped`) and writing `semM` of it to `Output`; an argument that did not decode took a sentinel
+(`unit-storedvalue`) and the run went on. The compiled arith block computes from the words it finds, so
+on an undecodable argument the two disagree, and nothing a run carries says the argument decoded: the
+arch layer's site facts come from a run's not faulting (`RunWF.load-at-target-ptr` and kin), and a
+SigOp never faulted.
+
+### Decision
+`exec-abstract (instr-sigop si)` halts AND faults when `si` is Pure and its argument does not decode
+(`exec-sigop-faults`, `unread?`); `exec-sigop-halts-of Pure` is that flag. Every other effect class is
+unchanged. The meaning of a compiled program does not change: `IRObsCorrect` already shows the argument
+decodes for every Pure SigOp it emits (`SigOp.arg-agree`, from `InputAt`), so a run of compiled code never
+takes the fault; the proofs that read "a pure SigOp does not halt" definitionally (`SigOp.build`'s
+ending, `Compare`) now read it from that decode.
+
+### Consequences
+* "The argument decodes" is a site fact of a non-faulting run, as `load-at`'s target is — the premise
+  `arith-sigop-run`'s proof needs.
+* `FlatLeft.abs-fault`: a SigOp that does not halt does not fault (`sigop-fault`).

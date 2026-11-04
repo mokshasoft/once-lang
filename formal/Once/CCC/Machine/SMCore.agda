@@ -28,7 +28,7 @@ open import Once.Spec.Type using (Base; b-Float; b-Int; b-Unit; ∅ₖ)
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _>_; _≥_; _<ᵇ_)
 open import Data.Nat.Properties using (_≟_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -1842,12 +1842,31 @@ module AbstractExec {FS : FrameSemantics} where
   exec-sigop-output si s = exec-sigop-output-of (effect si) si s
 
   -- | Shape-direct halt-flag dispatch.
+  -- D386: a PURE SigOp whose argument does not decode FAULTS (as D379's
+  -- `store-at` outside its block): it has no meaning there, and a fault is what
+  -- lets a run's not faulting say that the argument decoded (a site fact, as
+  -- `load-at`'s). Aux-style (an explicit `Maybe`), so a consumer's `rewrite` of
+  -- the decode reduces it.
+  unread? : ∀ {X : Set} → Maybe X → Bool
+  unread? (just _) = false
+  unread? nothing  = true
+
+  exec-sigop-faults-of : ∀ {A B} → EffectShape B → SigOpInfo A B →
+                         LocState FS → Bool
+  exec-sigop-faults-of Pure      si s = unread? (decode-at (baseA si) (readReg (regs s) Input1) s)
+  exec-sigop-faults-of (Halts _) _  _ = false
+  exec-sigop-faults-of (Emits _) _  _ = false
+  exec-sigop-faults-of Answers   _  _ = false
+
+  exec-sigop-faults : ∀ {A B} → SigOpInfo A B → LocState FS → Bool
+  exec-sigop-faults si s = exec-sigop-faults-of (effect si) si s
+
   exec-sigop-halts-of : ∀ {A B} → EffectShape B → SigOpInfo A B →
                         LocState FS → Bool
-  exec-sigop-halts-of (Halts _) _ _ = true
-  exec-sigop-halts-of Pure      _ _ = false
-  exec-sigop-halts-of (Emits _) _ _ = false
-  exec-sigop-halts-of Answers   _ _ = false
+  exec-sigop-halts-of (Halts _) _  _ = true
+  exec-sigop-halts-of Pure      si s = exec-sigop-faults-of Pure si s
+  exec-sigop-halts-of (Emits _) _  _ = false
+  exec-sigop-halts-of Answers   _  _ = false
 
   -- | Dispatch-derived halt-flag (wrapper).
   exec-sigop-halts : ∀ {A B} → SigOpInfo A B → LocState FS → Bool
@@ -2052,9 +2071,10 @@ module AbstractExec {FS : FrameSemantics} where
   -- the silent wildcard-payload leak as named, audit-visible
   -- postulates.
   exec-abstract (instr-sigop si) s alloc =
-    record s { regs   = writeReg (regs s) Output (exec-sigop-output si s)
-             ; halted = exec-sigop-halts si s
-             ; ev-log = ev-log s ++ sigop-events si s }
+    record s { regs    = writeReg (regs s) Output (exec-sigop-output si s)
+             ; halted  = exec-sigop-halts si s
+             ; faulted = exec-sigop-faults si s ∨ faulted s
+             ; ev-log  = ev-log s ++ sigop-events si s }
     , alloc
 
   -- Plan 0.13.2: load a primitive constant into Output as `SV-Lit`.
