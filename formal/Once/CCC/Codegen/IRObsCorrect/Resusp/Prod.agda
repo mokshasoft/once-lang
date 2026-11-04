@@ -107,8 +107,8 @@ module ResuspProdC {FS : FrameSemantics} where
     open RBase wf coalg e prog lbl-n R mk-child R-tr
 
     Fν Gν : IRTy
-    Fν = ⟦ F₁ ⟧TI X
-    Gν = ⟦ G₁ ⟧TI X
+    Fν = ⟦ F₁ ⟧TI Xν
+    Gν = ⟦ G₁ ⟧TI Xν
 
     P3 : ℕ → AbstractTrace
     P3 n = store-at-slot (suc (suc (suc n))) ∷ instr-alloc-heap (2 ⊔ size (Fν *ᵀ Gν)) ∷ store-at-slot (suc n) ∷

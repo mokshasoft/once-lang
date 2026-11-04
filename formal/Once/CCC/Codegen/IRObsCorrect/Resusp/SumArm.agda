@@ -104,7 +104,7 @@ module ResuspSumArmC {FS : FrameSemantics} where
 
     Pa Pν : IRTy
     Pa = ⟦ P ⟧TI A
-    Pν = ⟦ P ⟧TI X
+    Pν = ⟦ P ⟧TI Xν
 
     dst tmp : ℕ
     dst = suc n
