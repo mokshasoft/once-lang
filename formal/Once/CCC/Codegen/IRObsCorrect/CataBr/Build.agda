@@ -40,9 +40,10 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc)
-open import Once.IRTy using (IRTy) renaming (_*_ to _*ᵀ_; _+_ to _+ᵀ_)
+open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ⌈_⌉F) renaming (_*_ to _*ᵀ_; _+_ to _+ᵀ_)
+import Once.IRTy as I
 open import Once.CCC.Codegen.Size using (size)
-open import Once.CCC.Codegen.FlatLayout using (kind; put; fill; put-All; fill-All)
+open import Once.CCC.Codegen.FlatLayout using (kind; lkind; lsz; kind-skind; size-ssize; put; fill; put-All; fill-All)
 open import Data.List.Properties using (++-identityʳ)
 open import Data.Nat using (_⊔_; z≤n; s≤s)
 open import Data.Sum using (inj₁; inj₂)
@@ -52,6 +53,19 @@ open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 import Once.CCC.Machine.SMPrimitives
+
+-- the layer's kind and size at any carrier, by the IR's rule and by the Spec functor's
+lkind-gen : ∀ (G : IRFunctor) (X : IRTy) → kind (⟦ G ⟧TI X) ≡ lkind ⌈ G ⌉F (kind X)
+lkind-gen (I.K A)   X = kind-skind A
+lkind-gen I.Id      X = refl
+lkind-gen (F I.⊕ G) X = refl
+lkind-gen (F I.⊗ G) X = refl
+
+lsz-gen : ∀ (G : IRFunctor) (X : IRTy) → size (⟦ G ⟧TI X) ≡ lsz ⌈ G ⌉F (size X)
+lsz-gen (I.K A)   X = size-ssize A
+lsz-gen I.Id      X = refl
+lsz-gen (F I.⊕ G) X = cong suc (cong₂ _⊔_ (lsz-gen F X) (lsz-gen G X))
+lsz-gen (F I.⊗ G) X = cong₂ _+_ (lsz-gen F X) (lsz-gen G X)
 
 -- the pair build's text
 pair-text : (k₁ k₂ kb : ℕ) (B C : IRTy) → AbstractTrace
