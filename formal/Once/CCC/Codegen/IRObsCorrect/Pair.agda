@@ -9,7 +9,7 @@
 -- The clusters the clause is made of live under `Pair/`:
 --   * `Pair.Chain` — the run's states: the prologue (`PairChain`), what
 --     follows `f` (`PairChainF`) and what follows `g` (`PairChainG`);
---   * `Pair.Place` — the heap node and `ResultPlace`;
+--   * `Pair.Build` — the tail: both components put into one block (D375);
 --   * `Pair.Pres`  — the D206/D208/D210 preservation quartet and the
 --     five-segment event splice;
 --   * `Pair.Proof` — the clause's binders and `f`'s half (`PairProof`).

@@ -125,7 +125,7 @@ module IterRoundsC {FS : FrameSemantics} where
           ; events = trans ev-chainB (sym evs)
           ; log = trans (VR.log vb) (cong (h DL.++_) (sym evs))
           ; progress = subst (λ ρ → r ≤ budgetLeft r ρ + chain-ctrls chainB) (sym res) (m≤m+n r _)
-          ; mem0 = λ _ → NC.mem00 nc ; frame = λ p → case trans (sym res) p of λ () ; frames = λ p → case trans (sym res) p of λ () ; bf0 = λ _ → NC.bf00 nc
+          ; mem0 = λ _ → NC.mem00 nc ; frame = λ p → case trans (sym res) p of λ () ; frames = λ p → case trans (sym res) p of λ () ; bf0 = λ _ → NC.bf00 nc ; bk0 = λ _ → NC.bk00 nc
           }
           where
             RE′ : runAt (floc σ) (⟪ loopFrom e a ⟫ r) ≡ (es₁ , stopped)
@@ -145,7 +145,7 @@ module IterRoundsC {FS : FrameSemantics} where
                      → ResultPlace {prog = prog} (B IRT.+ A) (VR.out-mode vb) (falloc S0) (VR.cont-alloc vb) (inj₂ a′) (floc S0)
                      → RoundsRun Z prog σ a r
             cont-run a′ r″ q (at-loc loc vS bef rax _ _) = record
-              { steps = VR.steps vb + (15 + RoundsRun.steps rr) ; settle = RoundsRun.settle rr
+              { steps = VR.steps vb + (_ + RoundsRun.steps rr) ; settle = RoundsRun.settle rr
               ; out-mode = RoundsRun.out-mode rr ; cont-alloc = RoundsRun.cont-alloc rr
               ; run = FlatSteps-++ chainB (FlatSteps-++ C.chain (RoundsRun.run rr))
               ; live = λ p → RoundsRun.live rr (trans (cong is-stopped (sym res)) p)
@@ -176,6 +176,7 @@ module IterRoundsC {FS : FrameSemantics} where
               ; frame = λ p → RoundsRun.frame rr (trans (sym res) p)
               ; frames = λ p → RoundsRun.frames rr (trans (sym res) p)
               ; bf0 = λ nc′ → RoundsRun.bf0 rr (subst NotCut res nc′)
+              ; bk0 = λ nc′ → RoundsRun.bk0 rr (subst NotCut res nc′)
               }
               where
                 nc : NotCut ρ₁
@@ -184,7 +185,7 @@ module IterRoundsC {FS : FrameSemantics} where
                 ns = cong is-stopped q
                 module C = Cont body n l prog base span la Z S0 a′ (Live.nh0 ns) (pc0-of q)
                              (cf0-of q) (sf0-of q) ns0 (NC.hr0 nc) (NC.memF0 nc) (NC.env0 nc) (ret0-of q) (NC.lnk0 nc)
-                             (NC.mem00 nc) (NC.bf00 nc) (Live.left0 ns) loc vS bef rax
+                             (NC.mem00 nc) (NC.bf00 nc) (Live.left0 ns) (NC.bkF0 nc) (NC.bk00 nc) loc vS bef rax
                 lt : suc r″ ≤ r
                 lt = done-≤ ιᶠ h r (round e a) q
                 rr : RoundsRun Z prog C.σ′ a′ r″
@@ -213,20 +214,20 @@ module IterRoundsC {FS : FrameSemantics} where
                          (subst (λ m → r ≤ 0 + m) (sym ctrls-chainB)
                            (subst (λ x → r ≤ x + chain-ctrls (VR.run vb)) bl0
                              (subst (λ ρ′ → r ≤ budgetLeft r ρ′ + chain-ctrls (VR.run vb)) q (VR.progress vb))))
-          ; mem0 = cut-absurd res ; frame = (λ p → case trans (sym res) p of λ ()) ; frames = (λ p → case trans (sym res) p of λ ()) ; bf0 = cut-absurd res
+          ; mem0 = cut-absurd res ; frame = (λ p → case trans (sym res) p of λ ()) ; frames = (λ p → case trans (sym res) p of λ ()) ; bf0 = cut-absurd res ; bk0 = cut-absurd res
           }
           where
             res = cong proj₂ RE′
             evs = cong proj₁ RE′
 
         exit-run b r′ q (at-loc loc vS bef rax _ _) = record
-          { steps = VR.steps vb + 4 ; settle = XE.s4 ; out-mode = proj₁ X.placeB ; cont-alloc = falloc XE.s4
+          { steps = VR.steps vb + 4 ; settle = X.s4 ; out-mode = proj₁ X.placeB ; cont-alloc = falloc X.s4
           ; run = FlatSteps-++ chainB X.chain
           ; live = λ _ → X.nh4
           ; at-end = λ _ → X.pc-end
           ; stops = λ p → case trans (sym (cong is-stopped res)) p of λ ()
           ; no-ret = λ _ → ret0-of q ; no-link = λ _ → NC.lnk0 nc
-          ; place = λ p → subst (λ w → ResultPlace {prog = prog} B (proj₁ X.placeB) (falloc XE.s4) (falloc XE.s4) w (floc XE.s4))
+          ; place = λ p → subst (λ w → ResultPlace {prog = prog} B (proj₁ X.placeB) (falloc X.s4) (falloc X.s4) w (floc X.s4))
                                 (done-value (trans (sym res) p)) (proj₂ X.placeB)
           ; events = trans (chain-events-++ chainB X.chain)
                        (trans (cong₂ DL._++_ ev-chainB X.ev-chain) (trans (DLP.++-identityʳ es₁) (sym evs)))
@@ -238,7 +239,7 @@ module IterRoundsC {FS : FrameSemantics} where
           ; mem0 = λ _ lc bf → trans (X.mem4 lc) (NC.mem00 nc lc bf)
           ; frame = λ _ → cf0-of q
           ; frames = λ _ → sf0-of q
-          ; bf0 = λ _ → NC.bf00 nc
+          ; bf0 = λ _ → NC.bf00 nc ; bk0 = λ _ → NC.bk00 nc
           }
           where
             nc : NotCut ρ₁
