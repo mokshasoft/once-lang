@@ -26,7 +26,7 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldInv o tbl using (module Cat
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.Res using (Res; returns; stopped; is-stopped)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenAp; run-approx-bind)
@@ -58,6 +58,13 @@ module CataFoldBindC {FS : FrameSemantics} where
   ------------------------------------------------------------------------
   -- RUNS COMPOSE ALONG A BIND.
   ------------------------------------------------------------------------
+  -- a frontier carried along carries what was live
+  bf→live : ∀ {a b : AllocState {FS}}
+          → (∀ loc → BeforeFrontier (record a { next-slot = 0 }) loc → BeforeFrontier (record b { next-slot = 0 }) loc)
+          → ∀ l → Live a l → Live b l
+  bf→live f (AtDynamic hl) (BeforeFrontier.heap-before p) with f (AtDynamic hl) (BeforeFrontier.heap-before p)
+  ... | BeforeFrontier.heap-before p′ = BeforeFrontier.heap-before p′
+
   module Bind {prog : AbstractTrace} {n : ℕ} {σ : FlatState} {X Y : Set} {m : T∞ X} {f : X → T∞ Y} {k : ℕ}
               {P : X → FlatState → Set} {Q : Y → FlatState → Set}
               (R : RoundRun prog n σ m k P)
@@ -126,6 +133,7 @@ module CataFoldBindC {FS : FrameSemantics} where
         ; no-link = λ nc → R2.no-link (nc₂ nc)
         ; mem = λ nc loc b → trans (R2.mem (nc₂ nc) loc (R.bf nc₁ n loc b)) (R.mem nc₁ loc b)
         ; bf = λ nc mm loc b → R2.bf (nc₂ nc) mm loc (R.bf nc₁ mm loc b)
+        ; bk = λ nc → bk-trans {a = falloc σ} {b = falloc R.τ} {c = falloc R2.τ} (R.bk nc₁) (R2.bk (nc₂ nc)) (bf→live (R.bf nc₁ 0))
         ; same = λ p → record
             { ret = trans (Same.ret (R2.same (trans (sym res-eq) p))) (Same.ret (R.same eq))
             ; cf = trans (Same.cf (R2.same (trans (sym res-eq) p))) (Same.cf (R.same eq))
@@ -155,6 +163,7 @@ module CataFoldBindC {FS : FrameSemantics} where
         ; no-link = λ _ → R.no-link nc₁
         ; mem = λ _ → R.mem nc₁
         ; bf = λ _ → R.bf nc₁
+        ; bk = λ _ → R.bk nc₁
         ; same = λ p → ⊥-elim (st≢ret (trans (sym res-eq) p))
         ; post = λ p → ⊥-elim (st≢ret (trans (sym res-eq) p)) }
 
@@ -182,6 +191,7 @@ module CataFoldBindC {FS : FrameSemantics} where
         ; no-link = λ nc → ⊥-elim (no-nc nc)
         ; mem = λ nc → ⊥-elim (no-nc nc)
         ; bf = λ nc → ⊥-elim (no-nc nc)
+        ; bk = λ nc → ⊥-elim (no-nc nc)
         ; same = λ p → ⊥-elim (cut≢ret (trans (sym res-eq) p))
         ; post = λ p → ⊥-elim (cut≢ret (trans (sym res-eq) p)) }
 
@@ -216,6 +226,7 @@ module CataFoldBindC {FS : FrameSemantics} where
     ; no-link = λ _ → lk
     ; mem = λ _ _ _ → refl
     ; bf = λ _ _ _ b → b
+    ; bk = λ _ _ _ ib → ib
     ; same = λ _ → record { ret = refl ; cf = refl ; sf = refl }
     ; post = λ p → subst (λ z → Q z σ) (done-inj p) q }
     where
