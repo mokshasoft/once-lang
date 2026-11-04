@@ -169,7 +169,7 @@ module Core {FS : FrameSemantics} where
            → SMCore.LocState.ev-log (floc (flat-exec-instr i prog fs)) ≡ SMCore.LocState.ev-log (floc fs) DL.++ DL.[]
   log-step i lf prog fs = trans (LP.flat-exec-instr-log i lf prog fs) (log-pure {floc fs})
   open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; step-at; exec-flat-steps; FlatSteps-++; FlatSteps-prefix; FlatSteps-reloc) public
-  open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
+  open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-faults; exec-sigop-faults-of; unread?; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
   open FrontierInvariant {FS} using (BeforeFrontier; frontier-monotone) public
   open ClosureWellFormedDef {FS}
     using (ValidAtWF; ResultPlace; at-loc; at-reg; unit-result

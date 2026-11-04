@@ -43,6 +43,7 @@ open import Once.CCC.Label using (LabelId)
 open import Data.Nat using (ℕ; zero; suc; _≟_)
 import Data.Nat.Properties
 open import Data.Bool using (Bool; true; false)
+open import Data.Bool using () renaming (_∨_ to _∨_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
@@ -209,12 +210,12 @@ sp-write-reg cf ls x v ok wf = record
 -- …and the SigOp shape: the same write with the halt flag set in the same
 -- record update.
 sp-write-reg-halt : ∀ (cf : Frame) (ls : LocState FS) (x : AbstractReg)
-                      (v : StoredValue FS) (b : Bool) (es : List SigOpEvent)
+                      (v : StoredValue FS) (b fl : Bool) (es : List SigOpEvent)
                   → StackPtrOK v
                   → SPInv ls
-                  → SPInv (record ls { regs = writeReg (regs ls) x v ; halted = b ; ev-log = es })
+                  → SPInv (record ls { regs = writeReg (regs ls) x v ; halted = b ; faulted = fl ; ev-log = es })
 -- The invariant reads no flag and no log, so its fields carry over as they are.
-sp-write-reg-halt cf ls x v b es ok wf =
+sp-write-reg-halt cf ls x v b fl es ok wf =
   let w = sp-write-reg cf ls x v ok wf in
   record { sp-regs = sp-regs w ; sp-heap = sp-heap w ; sp-stack = sp-stack w }
 
@@ -522,7 +523,7 @@ sp-abstract (worklist-pop slot)   ls alloc ff wf =
                (sp-read-loc (current-frame alloc) ls wf (AtStack (current-frame alloc) slot)) wf
 sp-abstract (worklist-check slot) ls alloc ff wf = wf
 sp-abstract (instr-sigop si) ls alloc ff wf =
-  sp-write-reg-halt (current-frame alloc) ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (ev-log ls ++ sigop-events si ls)
+  sp-write-reg-halt (current-frame alloc) ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls)
                     (sigop-output-ok si ls) wf
 sp-abstract (instr-load-const p v)   ls alloc ff wf =
   sp-write-reg (current-frame alloc) ls Output (SV-Lit p (lit-value p v)) tt wf

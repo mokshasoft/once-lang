@@ -80,7 +80,7 @@ module CompareC {FS : FrameSemantics} where
   open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
   open FlatEventTrace {FS} using (chain-events-subst)
   module SR = StraightRunAPI {FS}
-  open SigOpC {FS} using (argOf; resOf; E₀; evalᴰ-at; output-at; pure-input; obs-correct-sigop-nc)
+  open SigOpC {FS} using (argOf; resOf; E₀; evalᴰ-at; output-at; pure-input; obs-correct-sigop-nc; arg-agree)
 
   private
     fmt = Once.CCC.FrameSemantics.fs-numerics FS
@@ -242,7 +242,7 @@ module CompareC {FS : FrameSemantics} where
 
       -- the SigOp step is pure: its contract is `primV`'s block, which does not halt
       nh2 : halted u ≡ false
-      nh2 = refl
+      nh2 = cong unread? (arg-agree (baseA si′) x s inp)
 
       h₇ : halted t₇ ≡ false
       h₇ = trans (SMCore.MemOps.writeLoc-halted t₅ L tvu) nh2
@@ -317,7 +317,7 @@ module CompareC {FS : FrameSemantics} where
       ev-subst refl c = refl
 
       run : FlatSteps prog 9 fs0 fs11
-      run = (nh , span′ 0 _ refl) ∷ (refl , span′ 1 _ refl)
+      run = (nh , span′ 0 _ refl) ∷ (nh2 , span′ 1 _ refl)
           ∷ subst (λ z → FlatSteps prog 7 z fs11) (sym nz-eq) run₂
 
       ev-run : chain-events run ≡ chain-events run₂

@@ -27,6 +27,7 @@ module Once.CCC.Machine.FlatStoreWF (FS : FrameSemantics) where
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≟_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; <-irrefl; n≤1+n)
 open import Data.Bool using (Bool; true; false)
+open import Data.Bool using () renaming (_∨_ to _∨_)
 open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -173,10 +174,10 @@ wf-leave wf = record { wf-regs = wf-regs wf ; wf-heap = wf-heap wf
 
 -- the SigOp shape: one register write AND a halt-flag update.
 -- (The SigOp step also extends the event log, which holds no pointer.)
-wf-write-reg-halt : ∀ {n ls} (x : AbstractReg) (v : StoredValue FS) (b : Bool) (es : List SigOpEvent)
+wf-write-reg-halt : ∀ {n ls} (x : AbstractReg) (v : StoredValue FS) (b fl : Bool) (es : List SigOpEvent)
                   → StoreWF n ls → sv-below (n) v
-                  → StoreWF n (record ls { regs = writeReg (regs ls) x v ; halted = b ; ev-log = es })
-wf-write-reg-halt {n} {ls} x v b es wf bv = record
+                  → StoreWF n (record ls { regs = writeReg (regs ls) x v ; halted = b ; faulted = fl ; ev-log = es })
+wf-write-reg-halt {n} {ls} x v b fl es wf bv = record
   { wf-regs  = λ y → rw-below (n) (regs ls) x y v bv (wf-regs wf y)
   ; wf-heap  = wf-heap wf ; wf-stack = wf-stack wf ; wf-fresh = wf-fresh wf }
 
@@ -461,7 +462,7 @@ mutual
       (readLoc-below (AtStack (current-frame alloc) slot) wf)
   wf-abstract (worklist-check slot) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-sigop si) ls alloc wf =
-    wf-write-reg-halt Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (ev-log ls ++ sigop-events si ls) wf
+    wf-write-reg-halt Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls) wf
       (sigop-output-below (next-heap-ref alloc) si ls) , ≤-refl
   -- D113: `exec-abstract` MATERIALISES the literal (`lit-value`), so the cell
   -- holds the target's representation, not the payload. Mirrors the machine.

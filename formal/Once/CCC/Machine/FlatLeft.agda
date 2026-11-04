@@ -21,7 +21,8 @@ open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; _∨_)
+open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Halts; Emits; Answers)
 open import Once.Type using (fits-int; fits-float)
 open import Data.Product using (proj₁; proj₂)
 open import Data.Nat using (zero; suc)
@@ -336,6 +337,18 @@ module FaultPres {FS : FrameSemantics} where
   restore-fault (just v) s alloc _ = refl
   restore-fault nothing  s alloc ()
 
+  -- D386: a Pure SigOp faults exactly when it halts, so one that does not halt
+  -- does not fault either
+  sigop-fault : ∀ {A B} (si : SigOpInfo A B) (s : LocState FS) → exec-sigop-halts si s ≡ false
+              → (exec-sigop-faults si s ∨ flt s) ≡ flt s
+  sigop-fault {B = B} si s h = go (effect si) h
+    where
+      go : (e : EffectShape B) → exec-sigop-halts-of e si s ≡ false → (exec-sigop-faults-of e si s ∨ flt s) ≡ flt s
+      go Pure      h′ rewrite h′ = refl
+      go (Halts _) ()
+      go (Emits _) _  = refl
+      go Answers   _  = refl
+
   abs-fault : ∀ (i : AbstractInstr) (s : LocState FS) alloc → hlt (proj₁ (exec-abstract i s alloc)) ≡ false
             → flt (proj₁ (exec-abstract i s alloc)) ≡ flt s
   abs-fault mov-to-output s alloc _ = refl
@@ -358,7 +371,7 @@ module FaultPres {FS : FrameSemantics} where
   abs-fault (worklist-push slot) s alloc _ = writeLoc-fault s (AtStack (current-frame alloc) slot) (readReg (regs s) Output)
   abs-fault (worklist-pop slot) s alloc h = load-slot-fault (readLoc s (AtStack (current-frame alloc) slot)) s alloc h
   abs-fault (worklist-check slot) s alloc _ = refl
-  abs-fault (instr-sigop si) s alloc _ = refl
+  abs-fault (instr-sigop si) s alloc h = sigop-fault si s h
   abs-fault (instr-load-const p v) s alloc _ = refl
   abs-fault (instr-load-code-addr n) s alloc _ = refl
   abs-fault instr-save-closure-reg s alloc _ = refl
