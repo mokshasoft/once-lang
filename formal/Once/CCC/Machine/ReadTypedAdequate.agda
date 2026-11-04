@@ -49,7 +49,7 @@ open import Once.CCC.Machine.ValueRel
 open ClosureWellFormedDef {FS}
   using (ValidAtWF; CellAt)
 open ClosureWellFormedBase {FS}
-  using (SumTag; cell-ptr; cell-inline; cell-flat; InlineRep; rep-prim; inline-sv; IsNode)
+  using (SumTag; cell-ptr; cell-inline; cell-flat; InlineRep; rep-prim; inline-sv; IsNode; wrap)
 open import Once.CCC.Codegen.Size using (size)
 open import Data.Empty using (⊥; ⊥-elim)
 import Data.Nat
@@ -157,8 +157,8 @@ readTyped-adequate : ∀ {prog : AbstractTrace} {A} (r : Readable A) (ib : Base 
                    → ValidAtWF {prog = prog} m alloc {⌊ A ⌋} v loc s
                    → readTyped A loc s ≡ just (forgetᵇ ib (subst id (cohᴰ A) v))
 readTyped-adequate r-unit b-Unit valid-unit-wf = refl
-readTyped-adequate r-int b-Int (valid-int-wf bf rl) rewrite rl = refl
-readTyped-adequate r-float b-Float (valid-float-wf bf rl) rewrite rl = refl
+readTyped-adequate r-int b-Int (wrap ())
+readTyped-adequate r-float b-Float (wrap ())
 readTyped-adequate r-void  _ {v = ()} _
 -- A sum: the tag selects the injection; the payload is embedded after it.
 readTyped-adequate (r-sum {A} {B} rA rB) (b-+ iA iB) (valid-inl-wf nd _ _ _ _ _ _ _) = ⊥-elim (base-not-node iA nd)

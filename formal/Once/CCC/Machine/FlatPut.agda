@@ -49,7 +49,7 @@ open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; kind; put; put-
 open import Once.CCC.Machine.ValueRel
 open ClosureWellFormedBase {FS}
 open ClosureWellFormedDef {FS} {prog} using (ValidAtWF; CellAt; validityWF-heap-transport)
-open import Once.CCC.Machine.FlatCopy {FS} using (copy-run; copy-input1; CopyOut; InBlock; wl-halted; regs-mem)
+open import Once.CCC.Machine.FlatCopy {FS} using (copy-run; copy-input1; CopyOut; InBlock; wl-halted; regs-mem; Disj; heap-disj; stack-disj)
 open import Once.CCC.Machine.ValueRelocate {FS} {prog} using (module Relocate)
 open import Once.CCC.Machine.FlatWords {FS} {prog} using (words)
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
@@ -61,8 +61,9 @@ open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_
 data Src (a₀ : AllocState {FS}) (s : LocState FS) : (C : IRTy) → ⟦ C ⟧ → StoredValue FS → Set where
   src-node   : ∀ {C c cl m} → IsNode C → Live a₀ cl → ValidAtWF m a₀ {C} c cl s → Src a₀ s C c (SV-Ptr cl)
   src-scalar : ∀ {C c} (fit : FitsInRegI C) → Src a₀ s C c (prim-sv fit c)
-  src-flat   : ∀ {C c m r o} → IsFlat C → Live a₀ (AtDynamic (heap-loc r o))
-             → ValidAtWF m a₀ {C} c (AtDynamic (heap-loc r o)) s → Src a₀ s C c (SV-Ptr (AtDynamic (heap-loc r o)))
+  -- (anywhere live: a heap block's cell or a frame slot, D374)
+  src-flat   : ∀ {C c m sl} → IsFlat C → Live a₀ sl
+             → ValidAtWF m a₀ {C} c sl s → Src a₀ s C c (SV-Ptr sl)
   src-unit   : ∀ {w} → Src a₀ s Unit tt w
 
 -- the value stays valid while the cells `a₀` had live read the same
@@ -209,7 +210,7 @@ module _ (C : IRTy) {c : ⟦ C ⟧} (stash blk off : ℕ) (s : LocState FS) (all
     { alloc-eq = refl ; live = h ; other = λ _ _ → refl ; cell = cell-flat {mC = Heap} tt (λ ()) valid-unit-wf
     ; input1 = λ i1 → i1 }
   -- a flat value: its words, copied
-  put-run (src-flat {m = m} {r = r} {o = o} fl lv v) =
+  put-run (src-flat {sl = sl} fl lv v) =
     subst (λ t → PutOut C c off rd s alloc (exec-trace t s alloc)) (sym (put-flat stash blk off (flat-kind fl)))
       record
         { alloc-eq = proj₁ co
@@ -217,26 +218,31 @@ module _ (C : IRTy) {c : ⟦ C ⟧} (stash blk off : ℕ) (s : LocState FS) (all
         ; other    = proj₂ (proj₂ (proj₂ co))
         ; cell     = cell-flat fl
                        (λ p → dlive _ , subst (λ z → InBlk alloc (AtDynamic (offsetHL (heap-loc rd 0) z))) (+-identityʳ off) (din′ 0 p))
-                       (subst (λ z → ValidAtWF m alloc {C} c (AtDynamic z) s′) (sym (off0 off))
-                          (RL.reloc-v C o off agree fl fits v))
-        ; input1   = copy-input1 stash blk off 0 (size C) s alloc sh dh ne h rs rb
+                       (subst (λ z → ValidAtWF Heap alloc {C} c (AtDynamic z) s′) (sym (off0 off))
+                          (RL.reloc-v C sl off agree fl fits v))
+        ; input1   = copy-input1 stash blk off 0 (size C) s alloc sl dh ne h rs rb
                        (λ j j< → words C fl v j j<) (λ j j< → din′ j j<)
         }
     where
-      sh = heap-loc r o
       dh = heap-loc rd 0
-      ne : r ≡ rd → ⊥
-      ne e = fresh o (subst (λ z → Live a₀ (AtDynamic (heap-loc z o))) e lv)
-      co = copy-run stash blk off 0 (size C) s alloc sh dh ne h rs rb
+      -- the source is no word of the fresh block
+      ne : Disj sl dh
+      ne = disj sl lv
+        where
+          disj : ∀ l → Live a₀ l → Disj l dh
+          disj (AtStack f k) _ = stack-disj f k dh
+          disj (AtDynamic (heap-loc r o)) lv′ =
+            heap-disj (heap-loc r o) dh (λ e → fresh o (subst (λ z → Live a₀ (AtDynamic (heap-loc z o))) e lv′))
+      co = copy-run stash blk off 0 (size C) s alloc sl dh ne h rs rb
              (λ j j< → words C fl v j j<)
              (λ j j< → din′ j j<)
       s′ = proj₁ (exec-trace (copy-from stash blk off 0 (size C)) s alloc)
       keep : ∀ l → Live a₀ l → readLoc s′ l ≡ readLoc s l
       keep l b = proj₂ (proj₂ (proj₂ co)) l (λ j _ → not-dst l b j)
-      module RL = Relocate {a₀} {alloc} {s} {s′} r rd dlive keep bft bk N din
-      agree : RL.Agree (size C) o off
-      agree j j< =
-        subst (λ z → readLoc s′ (AtDynamic (heap-loc rd z)) ≡ readLoc s (AtDynamic (heap-loc r (j + o))))
+      module RL = Relocate {a₀} {alloc} {s} {s′} rd dlive keep bft bk N din
+      agree : RL.Agree (size C) sl off
+      agree = RL.mk-agree λ j j< →
+        subst (λ z → readLoc s′ (AtDynamic (heap-loc rd z)) ≡ readLoc s (offsetLoc sl j))
               (trans (+-identityʳ (off + j)) (+-comm off j))
               (proj₁ (proj₂ (proj₂ co)) j j<)
 
