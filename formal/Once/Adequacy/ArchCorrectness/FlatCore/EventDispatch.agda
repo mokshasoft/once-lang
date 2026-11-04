@@ -1180,6 +1180,7 @@ module Dispatch (sup : Supply) where
           route (inj₁ int) = suc (proj₁ rec) , goal
             where eqe = internal-pure int
                   contract = arith-sigop-contract env prog fs s si (inv-run wf) (inv-env wf) int cc ftq
+                               (room-of bg (dataCorr cc) ftq refl) h
                   pl  = proj₁ contract
                   rec = IH ev env prog (flat-exec-instr (instr-sigop si) prog fs)
                           (dispatchArith pl s) (proj₂ (proj₂ contract))
