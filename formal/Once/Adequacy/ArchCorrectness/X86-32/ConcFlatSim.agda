@@ -159,7 +159,7 @@ open import Once.CCC.Machine.FlatStoreWF FS using
 open C using (HeapView; haddr; HDom; hfront; lo) public
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂; uncurry)
 open import Once.Adequacy.ArchCorrectness.X86-32.FlatComposition FS
-  using (fetch-block-head; find-label-none-corr; fetch-block-2nd; is-label?; skip-law; label-hit; label-miss; headView)
+  using (blk-off; blk-len; blk-off-suc; fetch-block-head; find-label-none-corr; fetch-block-2nd; is-label?; skip-law; label-hit; label-miss; headView)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace; compile-abstract)
 open import Once.CCC.Machine.FlatStackPtr FS using
   ()
@@ -189,6 +189,15 @@ open SigOpInfo using (sem)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
 open import Once.Arith.Backend.X86-32.Dispatch using (dispatch-arith)
+-- plan 0.123 α′ (e): the arch-free frame lemma of an arith SigOp's run
+open import Once.Adequacy.ArchCorrectness.X86-32.RegRoles using (x86-32-roles)
+open import Once.Adequacy.ArchCorrectness.FlatCore.SigOpFrame
+       o FS slot-size word-eq Reg x86-32-roles X.State xrreg X.State.memory X.State.halted
+       x86-32-link-claim X.State.pc Once.CCC.Target.X86-32.Syntax.Program compile-trace X.find-label blk-off blk-len X.exec
+       X.W.modulus
+  using (ArithRun; sigop-arith-step)
+open import Once.CCC.Codegen.RoomChecks using (spend; max-entry)
+open import Data.Nat.Properties using (+-comm)
 
 -- NON-HALTING ⇒ NON-CALL: `call-sym` is the ONLY instruction `matchCall` accepts,
 -- and `execInstr (call-sym _)` always sets `halted := true`. So any step that
@@ -608,12 +617,20 @@ postulate
   -- `emitted-thunk-guarded` induction for the body's existence.
   -- Plan 0.129 B5: the RUN half — the named block's code simulates the SigOp.
   -- WHICH block (`env sym ≡ just pl`) is the theorem `arith-sigop-lookup` below.
-  arith-sigop-run : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)) prog fs s {A B} (si : SigOpInfo A B)
-                  → RunLow prog fs
-                  → x86-32-arith-table prog env
-                  → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                  → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
-                  → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-x86-32) pl s)
+  -- Plan 0.123 α′ (e): what is LEFT of it is the block's subroutine as the
+  -- frame lemma (`FlatCore.SigOpFrame`) sees it — the result in `eax`, the
+  -- role registers kept, memory written only inside its frame (D388) — and
+  -- the rest of `arith-sigop-run` is the theorem below.
+  arith-dispatch-run : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)) prog fs s {A B} (si : SigOpInfo A B)
+                     → RunLow prog fs
+                     → x86-32-arith-table prog env
+                     → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                     → hfront hv + C.slots (spend (max-entry prog) (instr-sigop si)) ≤ xrreg s esp
+                     → LocState.halted (floc fs) ≡ false
+                     → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
+                     → ArithRun s (uncurry (dispatch-arith val-x86-32) pl s)
+                                (C.slots (spend (max-entry prog) (instr-sigop si)))
+                                (C.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs)))
 
   -- EXTERNAL SIGOP (Emits/Halts) interpretation contract — the value-carrying observable,
   -- the honest per-(SigOp×target) TrustedBase (D061). Bundles: env maps the symbol to
@@ -637,6 +654,24 @@ postulate
                                    (LocState.ev-log (FlatMachine.floc {FS} fs)) (once-symbol-path (SigOpInfo.name si)) s)
 
 ------------------------------------------------------------------------
+-- Plan 0.123 α′ (e): THE RUN HALF, from the frame lemma — the link, the halt
+-- flag and the decode come from the run, the pc from the block offsets.
+------------------------------------------------------------------------
+arith-sigop-run : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)) prog fs s {A B} (si : SigOpInfo A B)
+                → RunLow prog fs
+                → x86-32-arith-table prog env
+                → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                → hfront hv + C.slots (spend (max-entry prog) (instr-sigop si)) ≤ xrreg s esp
+                → LocState.halted (floc fs) ≡ false
+                → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
+                → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-x86-32) pl s)
+arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit =
+  sigop-arith-step prog fs s (uncurry (dispatch-arith val-x86-32) pl s) si r int cc ftq h room
+    (arith-dispatch-run {hv} env prog fs s si r t int cc ftq room h pl hit) refl
+    (trans (cong suc (pc-off cc))
+           (sym (trans (blk-off-suc prog (fpc fs) (instr-sigop si) ftq) (+-comm (blk-off prog (fpc fs)) 1))))
+
+------------------------------------------------------------------------
 -- Plan 0.129 B5: THE LOOKUP HALF IS A THEOREM. A compiler-owned SigOp of the
 -- image names a block of the program (`BlockTable.image-owned`), the file's
 -- table keeps that block's symbol (`table-has`), and `block-env` finds it.
@@ -654,11 +689,13 @@ arith-sigop-contract : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-32 (answe
                      → RunLow prog fs
                      → x86-32-arith-table prog env
                      → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                     → hfront hv + C.slots (spend (max-entry prog) (instr-sigop si)) ≤ xrreg s esp
+                     → LocState.halted (floc fs) ≡ false
                      → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                          × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-x86-32) pl s))
-arith-sigop-contract {hv} env prog fs s si r t int cc ftq =
+arith-sigop-contract {hv} env prog fs s si r t int cc ftq room h =
   let (pl , hit) = arith-sigop-lookup env prog fs si t int ftq
-  in pl , hit , arith-sigop-run {hv} env prog fs s si r t int cc ftq pl hit
+  in pl , hit , arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit
 
 ------------------------------------------------------------------------
 -- THE FLAT MACHINE'S WELL-FORMEDNESS LAYER IS ARCH-GENERIC (Plan 0.65 G1d).

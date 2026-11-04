@@ -402,6 +402,16 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fm
   ; dataCorr; pc-off; CompiledCorr) public
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence FS word-eq using
   (HeapView)
+-- plan 0.123 α′ (e): the arch-free frame lemma of an arith SigOp's run
+module CFr = FCr FS word-eq
+open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS using (blk-off; blk-len; blk-off-suc)
+open import Once.Adequacy.ArchCorrectness.FlatCore.SigOpFrame
+       o FS slot-size word-eq Reg riscv64-roles R.State (FSimr.rreg' o FS word-eq fmt-eq) R.State.memory R.State.halted
+       (FSimr.riscv64-link-claim o FS word-eq fmt-eq) R.State.pc Once.CCC.Target.RiscV64.Syntax.Program compile-trace
+       R.find-label blk-off blk-len R.exec R.W.modulus
+  using (ArithRun; sigop-arith-step)
+open import Once.CCC.Codegen.RoomChecks using (spend; max-entry)
+open import Data.Nat.Properties using (+-comm)
 
 riscv64-lea-slot : ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
                  → halted (floc fs) ≡ false
@@ -566,12 +576,20 @@ riscv64-block-steps = record
 postulate
   -- Plan 0.129 B5: the RUN half — the named block's code simulates the SigOp.
   -- WHICH block (`env sym ≡ just pl`) is the theorem `arith-sigop-lookup` below.
-  arith-sigop-run : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B} (si : SigOpInfo A B)
-                  → RLr.RunLow o FS slot-size word-eq prog fs
-                  → riscv64-arith-table prog env
-                  → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                  → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
-                  → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-riscv64) pl s)
+  -- Plan 0.123 α′ (e): what is LEFT of it is the block's subroutine as the
+  -- frame lemma (`FlatCore.SigOpFrame`) sees it — the result in `a0`, the
+  -- role registers kept, memory written only inside its frame (D388) — and
+  -- the rest of `arith-sigop-run` is the theorem below.
+  arith-dispatch-run : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B} (si : SigOpInfo A B)
+                     → RLr.RunLow o FS slot-size word-eq prog fs
+                     → riscv64-arith-table prog env
+                     → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                     → CFr.hfront hv + CFr.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
+                     → LocState.halted (floc fs) ≡ false
+                     → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
+                     → ArithRun s (uncurry (dispatch-arith val-riscv64) pl s)
+                                (CFr.slots (spend (max-entry prog) (instr-sigop si)))
+                                (CFr.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs)))
 
   external-sigop-contract : ∀ {hv : HeapView} (ev : EE.RT.EvExtractor) (env : EE.RT.ArithEnv)
                               prog fs s {A B} (si : SigOpInfo A B)
@@ -588,6 +606,24 @@ postulate
                                 (flat-exec-instr (instr-sigop si) prog fs)
                                 (RTr.ret-call (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-riscv64)
                                    (LocState.ev-log (FlatMachine.floc {FS} fs)) (once-symbol-path (SigOpInfo.name si)) s)
+
+------------------------------------------------------------------------
+-- Plan 0.123 α′ (e): THE RUN HALF, from the frame lemma — the link, the halt
+-- flag and the decode come from the run, the pc from the block offsets.
+------------------------------------------------------------------------
+arith-sigop-run : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B} (si : SigOpInfo A B)
+                → RLr.RunLow o FS slot-size word-eq prog fs
+                → riscv64-arith-table prog env
+                → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                → CFr.hfront hv + CFr.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
+                → LocState.halted (floc fs) ≡ false
+                → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
+                → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-riscv64) pl s)
+arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit =
+  sigop-arith-step prog fs s (uncurry (dispatch-arith val-riscv64) pl s) si r int cc ftq h room
+    (arith-dispatch-run {hv} env prog fs s si r t int cc ftq room h pl hit) refl
+    (trans (cong suc (pc-off cc))
+           (sym (trans (blk-off-suc prog (fpc fs) (instr-sigop si) ftq) (+-comm (blk-off prog (fpc fs)) 1))))
 
 ------------------------------------------------------------------------
 -- Plan 0.129 B5: THE LOOKUP HALF IS A THEOREM. A compiler-owned SigOp of the
@@ -607,11 +643,13 @@ arith-sigop-contract : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B
                      → RLr.RunLow o FS slot-size word-eq prog fs
                      → riscv64-arith-table prog env
                      → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                     → CFr.hfront hv + CFr.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
+                     → LocState.halted (floc fs) ≡ false
                      → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                          × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-riscv64) pl s))
-arith-sigop-contract {hv} env prog fs s si r t int cc ftq =
+arith-sigop-contract {hv} env prog fs s si r t int cc ftq room h =
   let (pl , hit) = arith-sigop-lookup env prog fs si t int ftq
-  in pl , hit , arith-sigop-run {hv} env prog fs s si r t int cc ftq pl hit
+  in pl , hit , arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit
 
 ------------------------------------------------------------------------
 -- …AND THE WHOLE SUPPLY, which is what opens the dispatch.

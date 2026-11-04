@@ -50,7 +50,7 @@ abstract one — read it off the signature: does it mention `X.State` /
       transfer already exists (`FlatComposition.find-thunk-pres`).
 
     correspondence-located, CPU-MODEL caused (3):
-      arith-sigop-run, external-sigop-contract, conc-fuel
+      arith-dispatch-run, external-sigop-contract, conc-fuel
       (see THE CPU-MODEL ROOT below)
 
     THE UNBOUNDED-REGISTER MODEL — NAMED 2026-08-13, CLOSED 2026-08-13 by
@@ -233,7 +233,7 @@ abstract one — read it off the signature: does it mention `X.State` /
     EMITTER, so riscv64 and x86-32 would otherwise each have had to declare
     their own copy and this table would have grown threefold for facts that are
     one fact. Assumed once in the core, they are discharged once for all three
-    arches. `arith-sigop-run` and `external-sigop-contract` (rows 3, 4)
+    arches. `arith-dispatch-run` and `external-sigop-contract` (rows 3, 4)
     stayed in `ConcFlatSim` — both quantify over `HeapView` and the x86-64
     arith runtime, so they really are x86-64's.
 
@@ -284,7 +284,7 @@ deferred proofs sharing one missing piece: the return-address component.
 | — | `entry-frame-base` | (was apex) | — | **DONE, DISCHARGED** — x86-64's frame IS the loader `%rsp`, so `refl` |
 | 1 | `stack-top-in-stack` | `…ArchCorrectness.X86-64` | axiom-ish | the residue of the two above: the loader's `%rsp` lies in the stack region. Could fold into `stack-top`'s own postulate by giving it type `StackPointer` instead of `Word` |
 | 2 | `entry-size` | `FlatFromObs` | invariant | → parameter, same pattern as `heap-room` |
-| 3 | `arith-sigop-run` | `ConcFlatSim` | **stub** | the RUN half of `arith-sigop-contract`, now a theorem (D351): which block a compiler-owned SigOp names (`env sym ≡ just pl`) is PROVED (`arith-sigop-lookup`); assumed is that running that payload simulates the instruction. HISTORY: was all of `arith-sigop-contract`, and the lookup half was false for a primitive the arith pass left bare (a float operation over a `Float` input did not link) |
+| 3 | `arith-dispatch-run` | `ConcFlatSim` | **stub** | what is left of the RUN half of `arith-sigop-contract`. Which block a compiler-owned SigOp names is PROVED (`arith-sigop-lookup`, D351); `arith-sigop-run` is a theorem (plan 0.123 α′ (e)) from the arch-free frame lemma `FlatCore.SigOpFrame.sigop-arith-step`: link, halt, decode and pc from the run, the frame from the room (D387). Assumed is `ArithRun` of the block's subroutine (D388): the result in the out register is the encoded SigOp output, the role registers are kept, memory changes only inside `[sp − W, sp)`. HISTORY: was `arith-sigop-run`, which hid 87 test failures after D375 (the block read its input by the old layout, D385) and was false near the frontier (the room check did not cover the block's frame, D387) and under the old dispatch model (scratch in the caller's frame, D388). HISTORY: was all of `arith-sigop-contract`, and the lookup half was false for a primitive the arith pass left bare (a float operation over a `Float` input did not link) |
 | 4 | `external-sigop-contract` | `ConcFlatSim` | **stub** | same root: conclusions are about `arith-env-x86-64` AND `ev-x86-64`, both undefined |
 | — | `emitted-shape-check` | (was `FlatCore.RunWF`) | — | **GONE (D367) — it was FALSE**: `c-start` drops every claim, so `terminal ∘ ⟨ id , id ⟩` fails the check under every label environment and the postulate derived `⊥`. Its consumers' site facts are THEOREMS now, read off the program's own run, which never faults (`FlatFromObs.start-sound`, from `ir-obs-correct`) |
 | — | `run-meets` | (was `FlatCore.RunWF`) | — | **GONE (D367)** with the shape checker it was stated over (`ShapeTable`, `ShapeAt` deleted) |

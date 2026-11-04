@@ -271,6 +271,7 @@ block-run-exec ev env h (suc L) rest cprog s {s'} eq hs' = go-h (xhalted s) refl
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; event-of; flat-events-halted; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of; ctrl-≤1)
 open import Data.Nat.Properties using (≤-trans; ≤-reflexive; +-identityʳ)
+open import Once.CCC.Codegen.RoomChecks using (spend; max-entry)
 open import Data.Nat using (s≤s; z≤n)
 
 -- PROGRAM END: the abstract fetch runs out, so the concrete pc — which `pc-off`
@@ -533,6 +534,10 @@ record Supply : Set₁ where
                         -- FFI contract is `Pure` and external.
                         → Internal (sem si) → CompiledCorr hv prog fs s
                         → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                        -- D387: the room the check before it left for the
+                        -- block's frame, and the run has not stopped
+                        → CFC.hfront hv + slots (spend (max-entry prog) (instr-sigop si)) ≤ rreg s sp-reg
+                        → LocState.halted (floc fs) ≡ false
                         → Σ Payload (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                             × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)
                                 (dispatchArith pl s))
