@@ -118,6 +118,10 @@ open import Data.Maybe using () renaming (map to mmap)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack; Slot)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; offsetHL; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-offset; heap-ref)
+open import Once.SigOp.Info using (SigOpInfo; effect; Pure)
+open SigOpInfo using (baseA)
+open import Data.Product using (∃)
+open AbstractExec {FS} using (decode-at)
 open HeapRef using (ref-id)
 open import Once.CCC.Label using (LabelId; EntryId)
 open import Once.Spec.Name using () renaming (CanonicalName to CN)
@@ -269,6 +273,15 @@ load-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunLow prog fs → 
                    → Σ (ValueLocation FS) (λ loc → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
 load-at-target-ptr prog fs k =
   lift-site (load-at k) (λ _ ()) _ (λ src fs₀ → RW.load-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
+
+-- D386: a non-faulting Pure SigOp's argument decoded
+sigop-decodes : ∀ prog (fs : FlatState) {A B} (si : SigOpInfo A B) → RunLow prog fs → LocState.halted (floc fs) ≡ false
+              → fetch prog (fpc fs) ≡ just (instr-sigop si) → effect si ≡ Pure
+              → ∃ (λ a → decode-at (baseA si) (readReg (LocState.regs (floc fs)) Input1) (floc fs) ≡ just a)
+sigop-decodes prog fs si r h f pe =
+  lift-site (instr-sigop si) (λ _ ())
+    (λ g → ∃ (λ a → decode-at (baseA si) (readReg (LocState.regs (floc g)) Input1) (floc g) ≡ just a))
+    (λ src fs₀ r′ h′ f′ → RW.sigop-decodes src fs₀ si r′ h′ f′ pe) (λ _ _ _ c → c) prog fs r h f
 
 heap-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunLow prog fs
                      → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (load-at k)

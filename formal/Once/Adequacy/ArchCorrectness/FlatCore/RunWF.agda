@@ -59,7 +59,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.RunWF
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.Nat using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst; subst₂)
 
@@ -75,7 +75,7 @@ open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-lo
 open import Once.Memory.HeapAddress using (offsetHL)
 open import Data.Bool using (T)
 open import Data.Nat.Properties using (<ᵇ⇒<)
-open AbstractExec {FS} using (exec-load-from-slot-with-value; exec-restore-input-with-value)
+open AbstractExec {FS} using (exec-load-from-slot-with-value; exec-restore-input-with-value; unread?; exec-sigop-faults-of; decode-at)
 open FrameSemantics FS using (Frame)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
@@ -102,7 +102,8 @@ open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-
 import Once.CCC.Codegen.ImageInstrs as IIn
 open import Data.List.Relation.Unary.All using () renaming (map to All-mapL)
 open import Once.CCC.Codegen.CallOK using (InstrOK; Calls; calls-⊤)
-open import Once.SigOp.Info using (module SigOpInfo)
+open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo; effect; Pure)
+open SigOpInfo using (baseA)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Relation.Unary.Any.Properties using () renaming (++⁺ˡ to Any++⁺ˡ; ++⁺ʳ to Any++⁺ʳ)
@@ -1657,6 +1658,24 @@ load-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → h
 load-at-target-ptr prog fs k r h ftq =
   in1-ptr fs (λ ml → LocState.faulted (exec-load-at-resolved k Output ml (floc fs))) refl
           (step-ok prog fs (load-at k) r h ftq)
+
+-- D386: A PURE SIGOP'S ARGUMENT DECODED, at a non-faulting step — the site fact
+-- `arith-sigop-run` reads its input from (its block computes from the words).
+private
+  ∨-false-l : ∀ a b → (a ∨ b) ≡ false → a ≡ false
+  ∨-false-l false b _ = refl
+  ∨-false-l true  b ()
+
+  read-of : ∀ {X : Set} (m : Maybe X) → unread? m ≡ false → ∃ (λ x → m ≡ just x)
+  read-of (just x) _ = x , refl
+  read-of nothing ()
+
+sigop-decodes : ∀ prog (fs : FlatState) {A B} (si : SigOpInfo A B) → RunAt prog fs → halted (floc fs) ≡ false
+              → fetch prog (fpc fs) ≡ just (instr-sigop si) → effect si ≡ Pure
+              → ∃ (λ a → decode-at (baseA si) (readReg (regs (floc fs)) Input1) (floc fs) ≡ just a)
+sigop-decodes prog fs si r h ftq pe =
+  read-of _ (subst (λ e → exec-sigop-faults-of e si (floc fs) ≡ false) pe
+              (∨-false-l _ _ (step-ok prog fs (instr-sigop si) r h ftq)))
 
 heap-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
                      → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (load-at k)
