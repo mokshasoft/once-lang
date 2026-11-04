@@ -31,12 +31,12 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; subst; subst₂)
 open import Once.Spec.Grade using (fin; Zero; One; Many; Purity; pure; act; eff; mk-kind; 0≤q; 1≤1; 1≤ω; ω≤ω; positionGrade; _·p_)
 open import Once.Spec.Type
   using (Ty; KCtx; ∅ₖ; TySub; Respects; WFFun; _⟨_⟩; _⟨_⟩F; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
 open import Once.Spec.Context using (Ctx; _▸_; Usage; _∷_; _⊑ᵘ_; _+ᵘ_; _*ᵘ_)
-open import Once.Spec.Type.Substitution using (respects-∘)
+open import Once.Spec.Type.Substitution using (respects-∘; ⟨⟩-∘)
 open import Once.Spec.Core.Syntax
 open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Typing Σ S
@@ -59,7 +59,8 @@ open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.Parametricity.Comp Σ
 open import Once.Metatheory.Parametricity.Env Σ fmt S
 open import Once.Metatheory.Parametricity.Values Σ
-open import Once.Metatheory.Parametricity.Subst Σ using (rel-sub→; ρ∘τ)
+open import Once.Metatheory.Parametricity.Subst Σ using (rel-sub→; ρ∘τ; E)
+open import Once.Metatheory.Parametricity.Transport Σ using (uip)
 open Names u
 
 open DefSem
@@ -264,8 +265,17 @@ module AL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (pd : ParamDefs Σ fmt S δ)
   AL (⊢prim p d) (⊢prim .p d′) refl ag = rcFmap (AL d d′ refl ag) (primRel ρ {fmt} {s} {S} p)
   AL (⊢sigop mem) (⊢sigop mem′) refl ag = sigopH mem mem′
   AL (⊢ref d τ rd) (⊢ref .d .τ rd′) refl ag =
-    rcPure (rel-sub→ τ ρ (type (S !! d))
-              (pd d (λ i → τ i ⟨ σ ⟩) (λ i → τ i ⟨ σ′ ⟩) (respects-∘ rd r) (respects-∘ rd′ r′) (ρ∘τ τ ρ)))
+    rcPure (subst₂ (Rel (type (S !! d) ⟨ τ ⟩) ρ)
+              (cong (λ e → subst ⟦_⟧ᵛ e x) (uip (E e₁ (type (S !! d))) (sym (⟨⟩-∘ (type (S !! d)) τ σ))))
+              (cong (λ e → subst ⟦_⟧ᵛ e x′) (uip (E e₂ (type (S !! d))) (sym (⟨⟩-∘ (type (S !! d)) τ σ′))))
+              (rel-sub→ τ ρ e₁ e₂ (type (S !! d)) (pd d (λ i → τ i ⟨ σ ⟩) (λ i → τ i ⟨ σ′ ⟩) (respects-∘ rd r) (respects-∘ rd′ r′) (ρ∘τ τ ρ e₁ e₂))))
+    where
+      e₁ : ∀ j → τ j ⟨ σ ⟩ ≡ τ j ⟨ σ ⟩
+      e₁ j = refl
+      e₂ : ∀ j → τ j ⟨ σ′ ⟩ ≡ τ j ⟨ σ′ ⟩
+      e₂ j = refl
+      x  = defs δ d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd r)
+      x′ = defs δ d (λ i → τ i ⟨ σ′ ⟩) (respects-∘ rd′ r′)
 
 ------------------------------------------------------------------------
 -- The theorem
