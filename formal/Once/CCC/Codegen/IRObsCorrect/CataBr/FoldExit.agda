@@ -9,7 +9,7 @@
 -- text:
 --
 --     head (3 rows) · branch → ℓ (l1+3) · the label ·
---     load val · mov-to-input · load-indirect          Output := v's word
+--     load val · mov-to-input · load-at 0              Output := v's word
 --     c-jmp ℓ (bodyL+1) · the end label                 over the body
 --
 -- a silent `Walk` ending at `length text′ + base` with `Output` holding a
@@ -33,7 +33,11 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldPop o tbl using (module Cat
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldInv o tbl using (module CataFoldInvC)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; sv-as-loc; load-from-slot; load-indirect; mov-to-input; instr-ctrl; c-jmp; c-label)
+        ; SV-Ptr; sv-as-loc; load-from-slot; load-at; mov-to-input; instr-ctrl; c-jmp; c-label; writeReg-same; offsetLoc)
+open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC)
+open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
+import Once.CCC.Machine.FlatPut as FlatPut
+open import Data.List.Properties using (++-identityʳ)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
@@ -54,15 +58,22 @@ module CataFoldExitC {FS : FrameSemantics} where
   open CataFoldTextC {FS} using (module FoldAt)
   open CataFoldPopC {FS} using (module FoldHead; KH)
   open CataFoldInvC {FS} using (module Inv)
+  open CataVisitC {FS} using (bk-id; load-bk; kp-set)
+  open GetC {FS} using (setOut; out-mem; offset-zero; load-at-step)
   open LocState using (regs; halted)
   open AllocState using (next-slot; next-heap-ref; current-frame)
 
   -- a valid word in `Output` is a result place, at the word's own mode
+  word→place′ : ∀ {prog a B v s w} → FlatPut.Src {FS} {prog} a s B v w → readReg (regs s) Output ≡ w
+              → Σ AllocMode (λ m → ResultPlace {prog = prog} B m a a v s)
+  word→place′ (FlatPut.src-node {cl = cl} {m = m} nd lv val) e = m , at-loc cl val lv e val lv
+  word→place′ (FlatPut.src-flat {m = m} {sl = sl} fl lv val) e = m , at-loc sl val lv e val lv
+  word→place′ (FlatPut.src-scalar fit) e                       = Heap , at-reg fit e
+  word→place′ FlatPut.src-unit e                               = Heap , unit-result
+
   word→place : ∀ {prog a B v s} → WordAt prog a B v (readReg (regs s) Output) s
              → Σ AllocMode (λ m → ResultPlace {prog = prog} B m a a v s)
-  word→place (w-ptr {m} loc e lv val)   = m , at-loc loc val lv e val lv
-  word→place (w-inl (rep-prim fit) e)   = Heap , at-reg fit e
-  word→place (w-inl (rep-unit refl _) e) = Heap , unit-result
+  word→place w = word→place′ w refl
 
   module Exit (prog : AbstractTrace) {F : IRFunctor} (wf : WellFormedFI F) {E C : IRTy} (alg : IR (E IRTy′.* ⟦ F ⟧TI C) C)
               (n l base : ℕ)
@@ -71,7 +82,7 @@ module CataFoldExitC {FS : FrameSemantics} where
               (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
-    open FA using (X; Y; span-hd; exit-label; exitL; endL; fetch-exit; fetch-ld; fetch-mti2; fetch-li; fetch-jmp-end; end-label; fetch-end)
+    open FA using (X; Y; Z; span-hd; exit-label; exitL; endL; fetch-exit; fetch-ld; fetch-mti2; fetch-li; fetch-jmp-end; end-label; fetch-end)
 
     c bodyL l1 : ℕ
     c = FA.T.Pc.cslot
@@ -83,24 +94,24 @@ module CataFoldExitC {FS : FrameSemantics} where
 
     open Inv prog F E C n c bodyL X sn hc e env-sv
 
-    module FH = FoldHead prog F C n l1 sn (26 + Y) exit-label
+    module FH = FoldHead prog F C n l1 sn (11 + Z) exit-label
 
     -- the end of the cata's text
     END : ℕ
-    END = (34 + length at) + Y
+    END = (19 + length at) + Z
 
     OutQ : ⟦ C ⟧ → FlatState → Set
     OutQ v τ = WordAt prog (falloc τ) C v (readReg (regs (floc τ)) Output) (floc τ)
 
     -- from the exit label on, over an abstract state
-    module Tail (v : ⟦ C ⟧) (vs : List ⟦ C ⟧) (x0 : FlatState) (pc0 : fpc x0 ≡ 26 + Y) (nh0 : halted (floc x0) ≡ false)
+    module Tail (v : ⟦ C ⟧) (vs : List ⟦ C ⟧) (x0 : FlatState) (pc0 : fpc x0 ≡ 11 + Z) (nh0 : halted (floc x0) ≡ false)
                 (sv0 : StackAt (ValE prog C) (falloc x0) (floc x0) (n + 2) sn (v ∷ vs)) where
 
       x1 : FlatState
-      x1 = record x0 { fpc = 27 + Y }
+      x1 = record x0 { fpc = 12 + Z }
 
-      w1 : Walk prog n (λ _ → ⊥) x0 (27 + Y) (λ _ → ⊤)
-      w1 = walk-ctrl x0 (instr-ctrl (c-label exitL)) (27 + Y) nh0
+      w1 : Walk prog n (λ _ → ⊥) x0 (12 + Z) (λ _ → ⊤)
+      w1 = walk-ctrl x0 (instr-ctrl (c-label exitL)) (12 + Z) nh0
              (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-label exitL))) (sym pc0) fetch-exit)
              (cong (λ z → record x0 { fpc = suc z }) pc0) refl tt tt
 
@@ -118,7 +129,7 @@ module CataFoldExitC {FS : FrameSemantics} where
         x2 x3 x4 : FlatState
         x2 = St (load-from-slot (n + 2)) x1
         x3 = St mov-to-input x2
-        x4 = St load-indirect x3
+        x4 = setOut x3 w
 
         wf2 : InstrWF (floc x1) (falloc x1) (load-from-slot (n + 2))
         wf2 = SV-Ptr (AtDynamic tp) , StackAt.slot sv0
@@ -133,32 +144,48 @@ module CataFoldExitC {FS : FrameSemantics} where
         r0-3 = trans (hp-keep mov-to-input (floc x2) (falloc x2) tp nhw-mov-to-input)
                      (trans (hp-keep (load-from-slot (n + 2)) (floc x1) (falloc x1) tp nhw-load-from-slot) r0)
 
-        wf4 : InstrWF (floc x3) (falloc x3) load-indirect
-        wf4 = AtDynamic tp , cong sv-as-loc in3 , w , r0-3
+        -- the value's word, `load-at 0` (D375)
+        r0′ : readLoc (floc x3) (offsetLoc (AtDynamic tp) 0) ≡ just w
+        r0′ = trans (cong (readLoc (floc x3)) (offset-zero (AtDynamic tp))) r0-3
         nh4 : halted (floc x4) ≡ false
-        nh4 = exec-abstract-preserves-halted-WF load-indirect (floc x3) (falloc x3) nh3 wf4
+        nh4 = nh3
         out4 : readReg (regs (floc x4)) Output ≡ w
-        out4 = out-lind (floc x3) (falloc x3) (AtDynamic tp) w in3 r0-3
+        out4 = writeReg-same (regs (floc x3)) Output w
 
+        bk2 = load-bk (n + 2) (floc x1) (falloc x1) (StackAt.slot sv0)
         kp4 : Kp (falloc x1) (floc x1) (falloc x4) (floc x4)
-        kp4 = kp-∘ (kp-q (load-from-slot (n + 2)) x1 nhw-load-from-slot refl tt tt)
-                   (kp-∘ (kp-q mov-to-input x2 nhw-mov-to-input refl tt tt) (kp-q load-indirect x3 nhw-load-indirect refl tt tt))
+        kp4 = kp-∘ (kp-q (load-from-slot (n + 2)) x1 nhw-load-from-slot refl tt tt bk2)
+                   (kp-∘ (kp-q mov-to-input x2 nhw-mov-to-input refl tt tt bk-id) (kp-set x3 w))
 
         q4 : OutQ v x4
         q4 = subst (λ z → WordAt prog (falloc x4) C v z (floc x4)) (sym out4) (word-tr kp4 ew)
 
-        w2 : Walk prog n (λ _ → ⊥) x1 (30 + Y) (OutQ v)
+        -- the read, as a one-step walk: only `Output` moves
+        eq4 : flat-exec-instr (load-at 0) prog x3 ≡ x4
+        eq4 = load-at-step prog x3 0 (AtDynamic tp) w in3 r0′
+        st4 : FlatSteps prog 1 x3 x4
+        st4 = step-at x4 (nh3 , fetch-li) eq4 []
+        sil4 : chain-events st4 ≡ []
+        sil4 = chain-events-subst-start (sym eq4) []
+        w-la : Walk prog n (λ _ → ⊥) x3 (suc (fpc x3)) (OutQ v)
+        w-la = record
+          { τ = x4 ; steps = 1 ; run = st4 , sil4 , trans (log-of st4 sil4) (++-identityʳ _)
+          ; seg = record { mem = λ loc _ → out-mem x3 w loc ; cf = refl ; sf = refl ; ns = refl ; href = ≤-refl }
+          ; bk = λ _ _ ib → ib ; nh = nh3 ; pc = refl ; ret = refl ; clo = refl ; lnk = refl ; cf = refl
+          ; slots = λ j _ → out-mem x3 w (AtStack (current-frame (falloc x3)) j) ; post = q4 }
+
+        w2 : Walk prog n (λ _ → ⊥) x1 (15 + Z) (OutQ v)
         w2 = walk-∘ {prog} {n} {λ _ → ⊥} {x1}
-               (walk-q {Q = λ _ → ⊤} x1 (load-from-slot (n + 2)) refl nh0 fetch-ld wf2 nhw-load-from-slot refl tt tt refl tt tt)
+               (walk-q {Q = λ _ → ⊤} x1 (load-from-slot (n + 2)) refl nh0 fetch-ld wf2 nhw-load-from-slot refl tt tt refl tt bk2 tt)
                (walk-∘ {prog} {n} {λ _ → ⊥} {x2}
-                 (walk-q {Q = λ _ → ⊤} x2 mov-to-input refl nh2 fetch-mti2 tt nhw-mov-to-input refl tt tt refl tt tt)
-                 (walk-q x3 load-indirect refl nh3 fetch-li wf4 nhw-load-indirect refl tt tt refl tt q4))
+                 (walk-q {Q = λ _ → ⊤} x2 mov-to-input refl nh2 fetch-mti2 tt nhw-mov-to-input refl tt tt refl tt bk-id tt)
+                 w-la)
 
         x5 : FlatState
-        x5 = record x4 { fpc = (33 + length at) + Y }
+        x5 = record x4 { fpc = (18 + length at) + Z }
 
-        w3 : Walk prog n (λ _ → ⊥) x4 ((33 + length at) + Y) (OutQ v)
-        w3 = walk-ctrl x4 (instr-ctrl (c-jmp endL)) ((33 + length at) + Y) nh4 fetch-jmp-end
+        w3 : Walk prog n (λ _ → ⊥) x4 ((18 + length at) + Z) (OutQ v)
+        w3 = walk-ctrl x4 (instr-ctrl (c-jmp endL)) ((18 + length at) + Z) nh4 fetch-jmp-end
                (cong (λ mj → do-jump mj x4) end-label) refl tt q4
 
         w4 : Walk prog n (λ _ → ⊥) x5 END (OutQ v)
@@ -178,7 +205,7 @@ module CataFoldExitC {FS : FrameSemantics} where
 
       module H = HeadAt h
 
-      wE : Walk prog n (KH n) σ (26 + Y) (λ τ → StackAt (ValE prog C) (falloc τ) (floc τ) (n + 2) sn (v ∷ vs))
+      wE : Walk prog n (KH n) σ (11 + Z) (λ τ → StackAt (ValE prog C) (falloc τ) (floc τ) (n + 2) sn (v ∷ vs))
       wE = FH.Exit.out σ (v ∷ vs) (subst (λ b → SpanAt prog b FH.hd8) (sym H.pc) span-hd) H.nh H.eval H.val
 
       abstract
