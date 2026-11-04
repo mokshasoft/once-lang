@@ -31,7 +31,8 @@ open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Machine.ValueRel
 open ClosureWellFormedBase {FS}
-open ClosureWellFormedDef {FS} {prog} using (ValidAtWF; CellAt)
+open ClosureWellFormedDef {FS} {prog} using (ValidAtWF; CellAt; fo→valid)
+open import Once.IRTy using (IRFunctor; WellFormedFI; ⟦_⟧TI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open MemOps {FS} using (readLoc)
 
 ------------------------------------------------------------------------
@@ -136,3 +137,62 @@ mutual
   cell-words C {cl = cl} {s} (cell-ptr nd r _ _) = one-word {s = s} {l = cl} (_ , r) (node-size nd)
   cell-words C {cl = cl} {s} (cell-inline (rep-prim fit) r) = one-word {s = s} {l = cl} (_ , r) (scalar-size fit)
   cell-words C (cell-flat fl _ v)             = words C fl v
+
+------------------------------------------------------------------------
+-- plan 0.123 α2: …and so is every word of a FORCED LAYER (`LayerV`), whose
+-- constant positions are first-order values and whose recursive positions
+-- are pointer words.
+------------------------------------------------------------------------
+module LayWords {F : IRFunctor} (R : VTy (ν-type F)) where
+  private
+    X = ν-type F
+
+  mutual
+    lay-words : ∀ {G} (wG : WellFormedFI G) {m alloc c} {l : ValueLocation FS} {s} → IsFlat (⟦ G ⟧TI X)
+              → LayerV G {X} R m alloc c l s
+              → ∀ j → j < size (⟦ G ⟧TI X) → Written s (offsetLoc l j)
+    lay-words (wf-K ib) fl v = words _ fl (fo→valid v)
+    lay-words wf-Id () v
+    lay-words (wf-Prod {G₁} {G₂} w₁ w₂) {l = l} {s} _ (pair-wf lmm slb c₁ c₂) j j< with j <? size (⟦ G₁ ⟧TI X)
+    ... | yes j<A = lay-cell-words w₁ c₁ j j<A
+    ... | no ¬j<A =
+      subst (Written s) (trans (offset-+ l (size (⟦ G₁ ⟧TI X)) (j ∸ size (⟦ G₁ ⟧TI X)))
+                               (cong (offsetLoc l) (m+[n∸m]≡n (≮⇒≥ ¬j<A))))
+            (lay-cell-words w₂ c₂ (j ∸ size (⟦ G₁ ⟧TI X))
+               (subst (j ∸ size (⟦ G₁ ⟧TI X) <_) (m+[n∸m]≡n′ (size (⟦ G₁ ⟧TI X)) (size (⟦ G₂ ⟧TI X)))
+                      (∸-monoˡ-< j< (≮⇒≥ ¬j<A))))
+      where
+        m+[n∸m]≡n′ : ∀ a b → a + b ∸ a ≡ b
+        m+[n∸m]≡n′ zero    b = refl
+        m+[n∸m]≡n′ (suc a) b = m+[n∸m]≡n′ a b
+    lay-words (wf-Sum w₁ w₂) {l = l} _ (inl-wf nd lmm tg pp pb slb pd pv) zero _ = subst (Written _) (sym (offset-0 l)) (tag-written tg)
+    lay-words (wf-Sum {G₁} {G₂} w₁ w₂) {l = l} {s} _ (inl-wf nd lmm tg pp pb slb pd pv) (suc j) (s≤s j<) =
+      sum-tail {s = s} {l = l} (size (⟦ G₁ ⟧TI X)) _ (m≤m⊔n (size (⟦ G₁ ⟧TI X)) (size (⟦ G₂ ⟧TI X)))
+        (λ i i< → shift-1 {l = l} (one-word {l = sucLoc l} (_ , pp) (node-size nd)) i i<) pd j j<
+    lay-words (wf-Sum w₁ w₂) {l = l} _ (inr-wf nd lmm tg pp pb slb pd pv) zero _ = subst (Written _) (sym (offset-0 l)) (tag-written tg)
+    lay-words (wf-Sum {G₁} {G₂} w₁ w₂) {l = l} {s} _ (inr-wf nd lmm tg pp pb slb pd pv) (suc j) (s≤s j<) =
+      sum-tail {s = s} {l = l} (size (⟦ G₂ ⟧TI X)) _ (m≤n⊔m (size (⟦ G₁ ⟧TI X)) (size (⟦ G₂ ⟧TI X)))
+        (λ i i< → shift-1 {l = l} (one-word {l = sucLoc l} (_ , pp) (node-size nd)) i i<) pd j j<
+    lay-words (wf-Sum w₁ w₂) {l = l} _ (inl-reg-wf lmm tg (rep-prim fit) pp slb pd) zero _ = subst (Written _) (sym (offset-0 l)) (tag-written tg)
+    lay-words (wf-Sum {G₁} {G₂} w₁ w₂) {l = l} {s} _ (inl-reg-wf lmm tg (rep-prim fit) pp slb pd) (suc j) (s≤s j<) =
+      sum-tail {s = s} {l = l} (size (⟦ G₁ ⟧TI X)) _ (m≤m⊔n (size (⟦ G₁ ⟧TI X)) (size (⟦ G₂ ⟧TI X)))
+        (λ i i< → shift-1 {l = l} (one-word {l = sucLoc l} (_ , pp) (scalar-size fit)) i i<) pd j j<
+    lay-words (wf-Sum w₁ w₂) {l = l} _ (inr-reg-wf lmm tg (rep-prim fit) pp slb pd) zero _ = subst (Written _) (sym (offset-0 l)) (tag-written tg)
+    lay-words (wf-Sum {G₁} {G₂} w₁ w₂) {l = l} {s} _ (inr-reg-wf lmm tg (rep-prim fit) pp slb pd) (suc j) (s≤s j<) =
+      sum-tail {s = s} {l = l} (size (⟦ G₂ ⟧TI X)) _ (m≤n⊔m (size (⟦ G₁ ⟧TI X)) (size (⟦ G₂ ⟧TI X)))
+        (λ i i< → shift-1 {l = l} (one-word {l = sucLoc l} (_ , pp) (scalar-size fit)) i i<) pd j j<
+    lay-words (wf-Sum w₁ w₂) {l = l} _ (inl-flat-wf fl lmm tg slb ib pd pv) zero _ = subst (Written _) (sym (offset-0 l)) (tag-written tg)
+    lay-words (wf-Sum {G₁} {G₂} w₁ w₂) {l = l} {s} _ (inl-flat-wf fl lmm tg slb ib pd pv) (suc j) (s≤s j<) =
+      sum-tail {s = s} {l = l} (size (⟦ G₁ ⟧TI X)) _ (m≤m⊔n (size (⟦ G₁ ⟧TI X)) (size (⟦ G₂ ⟧TI X)))
+        (shift-1 {l = l} (lay-words w₁ fl pv)) pd j j<
+    lay-words (wf-Sum w₁ w₂) {l = l} _ (inr-flat-wf fl lmm tg slb ib pd pv) zero _ = subst (Written _) (sym (offset-0 l)) (tag-written tg)
+    lay-words (wf-Sum {G₁} {G₂} w₁ w₂) {l = l} {s} _ (inr-flat-wf fl lmm tg slb ib pd pv) (suc j) (s≤s j<) =
+      sum-tail {s = s} {l = l} (size (⟦ G₂ ⟧TI X)) _ (m≤n⊔m (size (⟦ G₁ ⟧TI X)) (size (⟦ G₂ ⟧TI X)))
+        (shift-1 {l = l} (lay-words w₂ fl pv)) pd j j<
+
+    lay-cell-words : ∀ {G} (wG : WellFormedFI G) {alloc c} {cl : ValueLocation FS} {s}
+                   → CellAtP {⟦ G ⟧TI X} (LayerV G {X} R) alloc c cl s
+                   → ∀ j → j < size (⟦ G ⟧TI X) → Written s (offsetLoc cl j)
+    lay-cell-words wG {cl = cl} {s} (cell-ptr nd r _ _) = one-word {s = s} {l = cl} (_ , r) (node-size nd)
+    lay-cell-words wG {cl = cl} {s} (cell-inline (rep-prim fit) r) = one-word {s = s} {l = cl} (_ , r) (scalar-size fit)
+    lay-cell-words wG (cell-flat fl _ v) = lay-words wG fl v
