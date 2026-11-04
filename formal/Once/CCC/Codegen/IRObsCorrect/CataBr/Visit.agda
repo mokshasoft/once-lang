@@ -61,7 +61,7 @@ open import Once.CCC.Codegen.LabelSeg using (LabelsIn; LabelIn; li-lab; li-none;
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; SV-Tag; sv-as-loc; sucLoc; store-at-slot; restore-input; load-indirect; load-indirect-suc; mov-to-input; mov-to-output
+        ; SV-Ptr; SV-Tag; sv-as-loc; sucLoc; store-at-slot; restore-input; load-from-slot; load-indirect; load-indirect-suc; mov-to-input; mov-to-output
         ; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; writeReg-preserves; offsetLoc)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -165,6 +165,15 @@ module CataVisitC {FS : FrameSemantics} where
 
   bk-id : ∀ {a : AllocState {FS}} → BlocksKept a a
   bk-id _ _ ib = ib
+
+  -- a slot load keeps the allocator once the slot it reads is known
+  load-al : ∀ (k : ℕ) (s : LocState FS) (a : AllocState {FS}) {v} → readLoc s (AtStack (current-frame a) k) ≡ just v
+          → proj₂ (exec-abstract (load-from-slot k) s a) ≡ a
+  load-al k s a r = cong (λ mv → proj₂ (SMCore.AbstractExec.exec-load-from-slot-with-value {FS} mv s a)) r
+
+  load-bk : ∀ (k : ℕ) (s : LocState FS) (a : AllocState {FS}) {v} → readLoc s (AtStack (current-frame a) k) ≡ just v
+          → BlocksKept a (proj₂ (exec-abstract (load-from-slot k) s a))
+  load-bk k s a r = subst (BlocksKept a) (sym (load-al k s a r)) bk-id
 
   -- a read keeps everything but `Output`
   kp-set : ∀ (fs : FlatState) (w : StoredValue FS) → Kp (falloc fs) (floc fs) (falloc (setOut fs w)) (floc (setOut fs w))
