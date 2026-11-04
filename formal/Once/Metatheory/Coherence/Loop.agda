@@ -47,7 +47,8 @@ loopBlock : ∀ {A B : Set} → (A → T (B ⊎ A)) → T (B ⊎ A) → T (B ⊎
 loopBlock {B = B} c t = treeA (SK B S⊕ SId) c t
 
 -- The relation on a round's end: the loop's result, or the next state.
-SumR : ∀ {A B : Set} → (B → B → Set) → (A → A → Set) → B ⊎ A → B ⊎ A → Set
+-- (Between two value sets.)
+SumR : ∀ {A A′ B B′ : Set} → (B → B′ → Set) → (A → A′ → Set) → B ⊎ A → B′ ⊎ A′ → Set
 SumR RB RA (inj₁ b) (inj₁ b′) = RB b b′
 SumR RB RA (inj₂ a) (inj₂ a′) = RA a a′
 SumR RB RA (inj₁ _) (inj₂ _)  = ⊥
@@ -108,7 +109,7 @@ module Rounds (w : World) {A B : Set} (c : A → T (B ⊎ A)) where
 -- Loops over related rounds
 ------------------------------------------------------------------------
 
-module _ {A B : Set} (RA : A → A → Set) (RB : B → B → Set) (f f′ : A → T (B ⊎ A))
+module _ {A A′ B B′ : Set} (RA : A → A′ → Set) (RB : B → B′ → Set) (f : A → T (B ⊎ A)) (f′ : A′ → T (B′ ⊎ A′))
          (hf : ∀ {a a′} → RA a a′ → Sim (SumR RB RA) (embed (f a)) (embed (f′ a′))) where
 
   module Go (w : World) where
@@ -117,11 +118,11 @@ module _ {A B : Set} (RA : A → A → Set) (RB : B → B → Set) (f f′ : A �
 
     -- What the round `t` has left to do, matched against the whole round
     -- `t′₀` it is part of, which started at `h₀`, `n₀` and has made `dpre`.
-    Pend : History → T (B ⊎ A) → ℕ → History → History → T (B ⊎ A) → ℕ → Set
+    Pend : History → T (B′ ⊎ A′) → ℕ → History → History → T (B ⊎ A) → ℕ → Set
     Pend h₀ t′₀ n₀ dpre h t n = ∀ {d e} → RunB w h (mapT inj₁ t) n d e
                               → ∃[ e′ ] (RunB w h₀ (mapT inj₁ t′₀) n₀ (dpre ++ d) e′ × MaybeEnd (SumR RB RA) e e′)
 
-    Out : History → T (B ⊎ A) → ℕ → History → Maybe (End B) → Set
+    Out : History → T (B′ ⊎ A′) → ℕ → History → Maybe (End B) → Set
     Out h₀ t′₀ n₀ d e = ∃[ e′ ] (RunB w h₀ (loopBlock f′ t′₀) n₀ d e′ × MaybeEnd RB e e′)
 
     private
@@ -129,7 +130,7 @@ module _ {A B : Set} (RA : A → A → Set) (RB : B → B → Set) (f f′ : A �
          → RunB w (h₀ ++ dpre) t (n₀ ∸ length dpre) d e
       at refl refl r = r
 
-      noCalls : ∀ {h₀ t′₀ n₀ dpre} {e′ : Maybe (End (B ⊎ A))} → RunB w h₀ (mapT inj₁ t′₀) n₀ (dpre ++ []) e′ → RunB w h₀ (mapT inj₁ t′₀) n₀ dpre e′
+      noCalls : ∀ {h₀ t′₀ n₀ dpre} {e′ : Maybe (End (B′ ⊎ A′))} → RunB w h₀ (mapT inj₁ t′₀) n₀ (dpre ++ []) e′ → RunB w h₀ (mapT inj₁ t′₀) n₀ dpre e′
       noCalls {dpre = dpre} r = subst (λ x → RunB w _ _ _ x _) (++-identityʳ dpre) r
 
       deeper : ∀ (n₀ : ℕ) (dpre : History) v {n} → n₀ ∸ length dpre ≡ suc n → n₀ ∸ length (dpre ++ [ v ]) ≡ n
@@ -202,7 +203,7 @@ module _ {A B : Set} (RA : A → A → Set) (RB : B → B → Set) (f f′ : A �
           fin (e′ , r′ , er) = e′ , run r′ , er
 
 -- Both ways round.
-loopRel : ∀ {A B : Set} (RA : A → A → Set) (RB : B → B → Set) (f f′ : A → T (B ⊎ A))
+loopRel : ∀ {A A′ B B′ : Set} (RA : A → A′ → Set) (RB : B → B′ → Set) (f : A → T (B ⊎ A)) (f′ : A′ → T (B′ ⊎ A′))
         → (∀ {a a′} → RA a a′ → Related (SumR RB RA) (embed (f a)) (embed (f′ a′)))
         → ∀ {a a′} → RA a a′ → Related RB (loop f a) (loop f′ a′)
 loopRel RA RB f f′ hf s =

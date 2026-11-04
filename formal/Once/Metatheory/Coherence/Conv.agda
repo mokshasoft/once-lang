@@ -26,7 +26,7 @@ open import Once.Spec.Sub
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ
-open import Once.Spec.Equivalence Σ
+open import Once.Spec.Equivalence Σ hiding (Rel; RelF; rel)
 open import Once.Metatheory.Coherence.Relation Σ
 open import Once.Metatheory.Coherence.Layer Σ
 
@@ -38,14 +38,19 @@ open import Once.Metatheory.Bisim Σ using (return≈)
 -- Re-grading codata
 ------------------------------------------------------------------------
 
-module _ {G : SFunctor} (q : SRel G G) where
-  -- The coalgebra of the `pure → act` coercion: each layer, as a block with no call.
-  private
-    up : νM pureᶠ G → T (⟦ G ⟧SF (νM pureᶠ G))
-    up u = returnT (outν u)
+-- The coalgebra of the `pure → act` coercion: each layer, as a block with no call.
+private
+  up : ∀ {G : SFunctor} → νM pureᶠ G → T (⟦ G ⟧SF (νM pureᶠ G))
+  up u = returnT (outν u)
 
-  lpaRel : ∀ {H} (k : SRel H H) {R R′} → (∀ {x y} → R x y → R′ (subν ⊑-pa G x) (subν ⊑-pa G y)) → ∀ {l l′}
-         → LayerRel k R l l′ → LayerRel k R′ (mapA G H up l) (mapA G H up l′)
+  -- The re-graded layer computation is the old one, mapped.
+  pa≈ : ∀ {G : SFunctor} (v : νM pureᶠ G) → toT∞ act (outν (subν ⊑-pa G v)) ≈ (toT∞ pure (outν v) >>=∞ λ l → return∞ (mapA G G up l))
+  force≈ (pa≈ v) = return≈
+
+-- (Between two functors' streams.)
+module _ {G G′ : SFunctor} (q : SRel G G′) where
+  lpaRel : ∀ {H H′} (k : SRel H H′) {R R′} → (∀ {x y} → R x y → R′ (subν ⊑-pa G x) (subν ⊑-pa G′ y)) → ∀ {l l′}
+         → LayerRel k R l l′ → LayerRel k R′ (mapA G H up l) (mapA G′ H′ up l′)
   lpaRel (rK Q)   h p = p
   lpaRel rId      h p = h p
   lpaRel (k₁ r⊕ k₂) h {inj₁ x} {inj₁ y} p = lpaRel k₁ h p
@@ -54,13 +59,7 @@ module _ {G : SFunctor} (q : SRel G G) where
   lpaRel (k₁ r⊕ k₂) h {inj₂ x} {inj₁ y} ()
   lpaRel (k₁ r⊗ k₂) h (p , p′) = lpaRel k₁ h p , lpaRel k₂ h p′
 
-  subνUp : ∀ {f f′} (g : fin f ⊑π fin f′) n {v v′} → RelNu f q n v v′ → RelNu f′ q n (subν g G v) (subν g G v′)
-
-  private
-    -- The re-graded layer computation is the old one, mapped.
-    pa≈ : ∀ (v : νM pureᶠ G) → toT∞ act (outν (subν ⊑-pa G v)) ≈ (toT∞ pure (outν v) >>=∞ λ l → return∞ (mapA G G up l))
-    force≈ (pa≈ v) = return≈
-
+  subνUp : ∀ {f f′} (g : fin f ⊑π fin f′) n {v v′} → RelNu f q n v v′ → RelNu f′ q n (subν g G v) (subν g G′ v′)
   subνUp ⊑-pure n p = p
   subνUp ⊑-act  n p = p
   subνUp ⊑-pa zero    p = tt

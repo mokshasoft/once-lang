@@ -56,6 +56,7 @@ import Once.Spec.Word as Word
 open import Once.Metatheory.Types using (<:-unique; ⊑π-unique)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Metatheory.Erase Σ using (toT∞-fmap)
+open import Once.Metatheory.Parametricity.Identity Σ using (rel-same)
 open import Once.Metatheory.Coherence.Relation Σ
 open import Once.Metatheory.Coherence.Layer Σ
 open import Once.Metatheory.Coherence.Loop Σ using (loopSame)
@@ -280,7 +281,7 @@ module FL {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ 
   FL (⊢sigop mem) (⊢sigop mem′) refl ag = sigopH mem mem′
   FL (⊢ref d τ rd) (⊢ref .d .τ rd′) refl ag =
     relPure (substSame (sym (⟨⟩-∘ (type (S !! d)) τ σ))
-                       (sd d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd r) (respects-∘ rd′ r′)))
+                       (rel-same (type (S !! d)) (λ i → τ i ⟨ σ ⟩) (sd d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd r) (respects-∘ rd′ r′))))
 
 ------------------------------------------------------------------------
 -- Coherence

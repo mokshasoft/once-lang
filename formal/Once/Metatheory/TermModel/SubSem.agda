@@ -49,6 +49,7 @@ open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree; selfAgree; 
          envˡ-restrict; envʳ-restrict; env*One-envʳ-restrict; env*Many-envʳ-restrict; env*Many-envˡ-restrict)
 open import Once.Metatheory.Coherence.Leaves Σ fmt S using (sigopRefl; primSame; substSame; slotSame; caseRel)
 open import Once.Metatheory.Coherence.Fundamental Σ u fmt S using (module FL)
+open import Once.Metatheory.Parametricity.Identity Σ using (rel-same)
 open import Once.Metatheory.TermModel.Usage
 open import Once.Metatheory.TermModel.Subst Σ S
 open import Once.Metatheory.TermModel.Ren Σ fmt S using (module RenSem)
@@ -246,7 +247,7 @@ module SubSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
   subSem σS (⊢sigop {c = c₀} {t} mem) ss ag = relPure (sigopRefl σ c₀ t mem (model δ))
   subSem σS (⊢ref d τ rd) ss ag =
     relPure (substSame (sym (⟨⟩-∘ (type (S !! d)) τ σ))
-                       (sd d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd r) (respects-∘ rd r)))
+                       (rel-same (type (S !! d)) (λ i → τ i ⟨ σ ⟩) (sd d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd r) (respects-∘ rd r))))
   subSem σS (⊢sub-use p d) {γ} ss ag =
     subSem σS d (selfSame-restrict σ (·ᵐ-mono (usage σS) p) {γ = γ} ss) (subRestrict₁ σS (·ᵐ-mono (usage σS) p) p ag)
   subSem σS (⊢sub-eff g d) ss ag = relSubˡ g (relSubʳ g (subSem σS d ss ag))

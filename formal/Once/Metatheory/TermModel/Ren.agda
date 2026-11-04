@@ -47,6 +47,7 @@ open import Once.Metatheory.Coherence.Env Σ fmt S
 open import Once.Metatheory.Coherence.Leaves Σ fmt S using (sigopRefl; primSame; substSame; slotSame; caseRel)
 open import Once.Metatheory.TermModel.Usage
 open import Once.Metatheory.TermModel.Subst Σ S
+open import Once.Metatheory.Parametricity.Identity Σ using (rel-same)
 
 open DefSem
 
@@ -226,6 +227,6 @@ module RenSem {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) 
   renSem θ ρ h c (⊢sigop {c = c₀} {t} mem) ag = relPure (sigopRefl σ c₀ t mem (model δ))
   renSem θ ρ h c (⊢ref d τ rd) ag =
     relPure (substSame (sym (⟨⟩-∘ (type (S !! d)) τ σ))
-                       (sd d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd r) (respects-∘ rd r)))
+                       (rel-same (type (S !! d)) (λ i → τ i ⟨ σ ⟩) (sd d (λ i → τ i ⟨ σ ⟩) (respects-∘ rd r) (respects-∘ rd r))))
   renSem θ ρ h c (⊢sub-use p d) ag = renSem θ ρ h c d (thinRestrictʳ σ c p (thinRestrictˡ σ c (θ*-mono θ p) ag))
   renSem θ ρ h c (⊢sub-eff g d) ag = relSubˡ g (relSubʳ g (renSem θ ρ h c d ag))

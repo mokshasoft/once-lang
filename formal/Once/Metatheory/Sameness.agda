@@ -11,6 +11,8 @@
 -- binding related runs to related continuations relates the results, and the
 -- graded bind is `>>=∞` up to bisimilarity. Sameness of streams is the
 -- greatest fixed point of one layer (`Once.Metatheory.Coherence.StreamSame`).
+-- Sameness is the relational reading's identity case
+-- (`Once.Metatheory.Parametricity.Identity`).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
@@ -24,6 +26,7 @@ open import Once.Metatheory.Bisim Σ using (≈-sym)
 open import Once.Metatheory.Coherence.Relation Σ using (≈-Relatedˡ; ≈-Relatedʳ; bindRel; fromObserved; toObserved)
 import Once.Metatheory.Coherence.PER as PER
 import Once.Metatheory.Coherence.StreamSame as StreamSame
+import Once.Metatheory.Parametricity.Identity as Identity
 
 sameness : Sameness Σ
 sameness = record
@@ -36,4 +39,6 @@ sameness = record
   ; stream-out   = λ f r → StreamSame.same-out Σ f r
   ; stream-in    = λ f r → StreamSame.same-in Σ f r
   ; stream-coind = λ f r → StreamSame.same-coind Σ f r
+  ; rel-same     = Identity.rel-same Σ
+  ; same-rel     = Identity.same-rel Σ
   }

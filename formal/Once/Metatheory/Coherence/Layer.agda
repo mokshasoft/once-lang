@@ -32,7 +32,7 @@ open import Once.Spec.Type
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; inS; sfmap)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM; layerM)
-open import Once.Spec.Equivalence Σ
+open import Once.Spec.Equivalence Σ hiding (Rel; RelF; rel)
 open import Once.Metatheory.Bisim Σ using (≈-refl)
 open import Once.Metatheory.Trace using (WB-mono)
 open import Once.Metatheory.Erase Σ
@@ -84,7 +84,7 @@ relFmap {π} {π′} {m = m} {m′} {f} {f′} p h =
   rel (≈-Relatedˡ (toT∞-fmap π f m) (≈-Relatedʳ (toT∞-fmap π′ f′ m′) (bindRel (runs p) λ s → returnRel (h s))))
 
 -- Related computations mapped by functions that relate values to a new relation.
-relatedFmap : ∀ {X Y} {R : X → X → Set} {R′ : Y → Y → Set} {t t′ : T∞ X} {f f′ : X → Y}
+relatedFmap : ∀ {X X′ Y Y′} {R : X → X′ → Set} {R′ : Y → Y′ → Set} {t : T∞ X} {t′ : T∞ X′} {f : X → Y} {f′ : X′ → Y′}
             → Related R t t′ → (∀ {x x′} → R x x′ → R′ (f x) (f′ x′))
             → Related R′ (t >>=∞ λ x → return∞ (f x)) (t′ >>=∞ λ x → return∞ (f′ x))
 relatedFmap p h = bindRel p λ r → returnRel (h r)
