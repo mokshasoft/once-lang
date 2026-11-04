@@ -22,7 +22,7 @@ module Once.Arith.Backend.X86-64.Dispatch where
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
-open import Data.Nat using (ℕ; suc; _+_; _<_)
+open import Data.Nat using (ℕ; suc; _+_; _*_; _∸_)
 open import Data.List using (List)
 open import Data.List.Relation.Unary.All using (All)
 open import Data.Product using (_×_; _,_)
@@ -33,10 +33,9 @@ open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
 open import Once.Target.X86-64.PhysReg using (Reg; rsp)
 open import Once.CCC.Target.X86-64.Syntax using (Program; Instr; call-sym)
 open import Once.CCC.Target.X86-64.Semantics
-  using (State; readReg; fetch; execInstr; Word)
+  using (State; readReg; writeReg; writeMem; fetch; execInstr; Word)
 open State
-open import Once.Arith.Backend.X86-64.StatePreserve using (PreservesCCCState; mkPresState)
-open import Once.Arith.Backend.X86-64.ExecArith using (exec-arith-block; exec-arith-block-preserves; InFrame)
+open import Once.Arith.Backend.X86-64.ExecArith using (exec-arith-block)
 
 module _ (val : XInstr → State → Reg → Word) where
 
@@ -44,9 +43,24 @@ module _ (val : XInstr → State → Reg → Word) where
   ArithEnv : Set
   ArithEnv = String → Maybe (List XInstr × ℕ)
 
-  -- Dispatch a `call once_arith.block.*`: run the block, return past the call.
+  -- D388: what `call <block>` and the block's prologue do before its body —
+  -- the call pushes the return address (`pc + 1`, as `execInstr`'s `call`
+  -- does) and `subq $8n, %rsp` reserves the scratch frame below it, so the
+  -- body's `8·slot(%rsp)` lands in `[sp − 8 − 8n, sp − 8)`, never at or above
+  -- the caller's stack pointer.
+  call-frame : ℕ → State → State
+  call-frame n s = record s { regs   = writeReg (regs s) rsp (ra ∸ 8 * n)
+                            ; memory = writeMem (memory s) ra (suc (pc s)) }
+    where ra = readReg (regs s) rsp ∸ 8
+
+  -- Dispatch a `call once_arith.block.*`: enter the frame, run the body, and
+  -- the epilogue's `addq $8n, %rsp` + `ret` give the caller back its stack
+  -- pointer and the instruction after the call (the body writes only below
+  -- the return address, `InFrame`).
   dispatch-arith : List XInstr → ℕ → State → State
-  dispatch-arith blk N s = record (exec-arith-block val N blk s) { pc = suc (pc s) }
+  dispatch-arith blk n s =
+    let s′ = exec-arith-block val (8 * n) blk (call-frame n s)
+    in record s′ { regs = writeReg (regs s′) rsp (readReg (regs s) rsp) ; pc = suc (pc s) }
 
   -- Resolve one fetched instruction: arith-block call → dispatch; else CCC.
   step-instr : ArithEnv → Program → State → Instr → Maybe State
@@ -61,21 +75,3 @@ module _ (val : XInstr → State → Reg → Word) where
   step-wp env prog s with fetch prog (pc s)
   ... | just i  = step-instr env prog s i
   ... | nothing = just (record s { halted = true })
-
-  ------------------------------------------------------------------------
-  -- Dispatching to an arith block preserves CCC state.
-  -- `dispatch-arith` = `exec-arith-block` with a transparent `pc` update, so
-  -- its regs/memory equal the block's, and `exec-arith-block-preserves` applies.
-  -- With additive addressing the frontier is `rsp + N` and the block's in-frame
-  -- witness `All (InFrame N) blk` is a premise (like riscv64), not vacuous.
-  ------------------------------------------------------------------------
-
-  dispatch-arith-preserves : ∀ blk N s → 0 < readReg (regs s) rsp + N → All (InFrame N) blk →
-                             PreservesCCCState (readReg (regs s) rsp + N) s (dispatch-arith blk N s)
-  dispatch-arith-preserves blk N s 0<fr allInf =
-    mkPresState (PreservesCCCState.regs≈ P) (PreservesCCCState.mem≈ P)
-    where
-      -- regs/memory of `dispatch-arith blk N s` equal the block's (pc is transparent),
-      -- so the fields transport even though the record TYPE is indexed by full State.
-      P : PreservesCCCState (readReg (regs s) rsp + N) s (exec-arith-block val N blk s)
-      P = exec-arith-block-preserves val N blk (readReg (regs s) rsp + N) s refl 0<fr allInf

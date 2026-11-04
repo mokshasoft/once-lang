@@ -21173,3 +21173,31 @@ gives the block its room below `sp` at the call.
 * The room check before a SigOp's block covers its whole stack use; the run of the block gets that room
   from `Budget` + `FlatCorr` (`room-of`), the premise step (e) needs.
 * `EventDispatch`'s SigOp cases (`sigop-external`, the pure step) carry the budget by `bg-spent-str`.
+
+## D388 — AN ARITH SIGOP'S DISPATCH ENTERS THE BLOCK'S FRAME, AS THE EMITTED CALL DOES (2026-11-04)
+
+**Decided** in plan 0.123 α′ (e), on the way to proving `arith-sigop-run`. A change to the trusted
+machine model, toward the code: the model was not what the emitted subroutine does.
+
+### Context
+`dispatch-arith` — the whole-program step at a `call once_arith.block.*`, part of each arch's machine
+(`Arith/Backend/*/Dispatch`) — ran the block's body on the CALLER's state and bumped `pc`. The body
+addresses its scratch at `w·slot(sp)` from the stack pointer, so the model put the scratch at
+`[sp, sp + w·n)`: the caller's live frame. The emitted subroutine (`Emit.emit-payload`) first lets the call
+push the return address (x86) or link it in `ra` (riscv64), pushes the borrowed registers (x86-32:
+%ebx %esi %edx %edi), and lowers the stack pointer by the scratch size; its epilogue undoes that. Against
+the old model `arith-sigop-run` (the caller's frame is kept) was false whenever a block spills; the
+postulate hid it. x86-32's table also dropped the block's frame size.
+
+### Decision
+Each arch's `dispatch-arith blk n s` is the subroutine: `call-frame n s` (the pushes, written to memory
+below `sp`, or `ra` written; the stack pointer lowered past them and `w·n` scratch bytes), the body
+`exec-arith-block`, then the epilogue: the stack pointer back to the caller's, x86-32's four borrowed
+registers back, `pc` past the call. The pops and `ret` are modelled as returning what was pushed: the
+body writes only inside its frame (`InFrame`, which the proof shows). x86-32's arith table carries
+`(block, n)` like the other two (`block-env` returns the file's payload). The unused
+`dispatch-arith-preserves` (stated against the old frame) is removed.
+
+### Consequences
+* The block's writes all land in `[sp − D387's spend, sp)`, the room the check before it guarantees.
+* The emitted code does not change.

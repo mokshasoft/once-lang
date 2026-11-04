@@ -157,7 +157,7 @@ open import Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation o FS word-eq fmt
 open import Once.CCC.Machine.FlatStoreWF FS using
   ()
 open C using (HeapView; haddr; HDom; hfront; lo) public
-open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
+open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂; uncurry)
 open import Once.Adequacy.ArchCorrectness.X86-32.FlatComposition FS
   using (fetch-block-head; find-label-none-corr; fetch-block-2nd; is-label?; skip-law; label-hit; label-miss; headView)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace; compile-abstract)
@@ -378,24 +378,20 @@ x86-32-machine = record
 -- Plan 0.107: THE ARITH TABLE IS THE FILE'S — the block table `Once.Compile`
 -- emits for the program whose image this is. It was the postulated
 -- `arith-env-x86-32`, "read off the code"; the code does not hold it, the file does.
-x86-32-arith-table : AbstractTrace → (String → Maybe (List XInstr)) → Set
+x86-32-arith-table : AbstractTrace → (String → Maybe (List XInstr × ℕ)) → Set
 x86-32-arith-table prog env =
   Σ IRProgram (λ p → (prog ≡ Cmp.image-of p) × (env ≡ block-env (Cmp.blocks-x86-32 p)))
 
 x86-32-traceloop : EI.TraceLoop FS Reg x86-32-emitter x86-32-machine
--- THE ARITH PAYLOAD CARRIES NO FUEL HERE. x86-64's `dispatch-arith` takes a
--- step count `N` (its `exec-arith-block` is fuelled), so its payload is
--- `List XInstr × ℕ` and the field is `uncurry`'d; x86-32's block executes
--- without one, so the payload is just the block. The engine is parameterised
--- over `Payload` precisely so this is a choice an arch makes rather than a
--- shape it inherits.
+-- THE ARITH PAYLOAD is the block and its scratch words, as on the other two
+-- arches (D388: the dispatch enters the block's frame, so it needs its size).
 x86-32-traceloop = record
-  { Payload = List XInstr
+  { Payload = List XInstr × ℕ
   ; matchCall = RTx.matchCall
   -- plan 0.105: an external call returns with the world's answer in `eax`, the
   -- world being the frame semantics' interpretation.
   ; ret-call = RTx.ret-call (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)
-  ; dispatchArith = dispatch-arith val-x86-32
+  ; dispatchArith = uncurry (dispatch-arith val-x86-32)
   ; ev-arch = ev-x86-32 ; ArithTable = x86-32-arith-table
   ; sigop-call = call-sym ; sigop-lowering = λ _ → refl ; sigop-matchCall = λ _ → refl
   ; leave-lowering = refl
@@ -616,8 +612,8 @@ postulate
                   → RunLow prog fs
                   → x86-32-arith-table prog env
                   → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                  → ∀ (pl : List XInstr) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
-                  → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (dispatch-arith val-x86-32 pl s)
+                  → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
+                  → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-x86-32) pl s)
 
   -- EXTERNAL SIGOP (Emits/Halts) interpretation contract — the value-carrying observable,
   -- the honest per-(SigOp×target) TrustedBase (D061). Bundles: env maps the symbol to
@@ -647,19 +643,19 @@ postulate
 ------------------------------------------------------------------------
 arith-sigop-lookup : ∀ (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)) prog fs {A B} (si : SigOpInfo A B)
                    → x86-32-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                   → Σ (List XInstr) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl)
+                   → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl)
 arith-sigop-lookup .(block-env (Cmp.blocks-x86-32 p)) .(Cmp.image-of p) fs si (p , refl , refl) int ftq
   with fetch-All {k = fpc fs} (BT.image-owned p) ftq int
 ... | b , m , e =
-  subst (λ n → Σ (List XInstr) (λ pl → block-env (Cmp.blocks-x86-32 p) (once-symbol-path n) ≡ just pl)) (sym e)
+  subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (Cmp.blocks-x86-32 p) (once-symbol-path n) ≡ just pl)) (sym e)
         (block-env-hit (Cmp.blocks-x86-32 p) _ (BT.table-has AE.arith-block-symbol AE.block-payload (Cmp.program-blocks p) m))
 
 arith-sigop-contract : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)) prog fs s {A B} (si : SigOpInfo A B)
                      → RunLow prog fs
                      → x86-32-arith-table prog env
                      → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                     → Σ (List XInstr) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
-                         × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (dispatch-arith val-x86-32 pl s))
+                     → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
+                         × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-x86-32) pl s))
 arith-sigop-contract {hv} env prog fs s si r t int cc ftq =
   let (pl , hit) = arith-sigop-lookup env prog fs si t int ftq
   in pl , hit , arith-sigop-run {hv} env prog fs s si r t int cc ftq pl hit
