@@ -27,6 +27,11 @@ The analysis must cover each of the following.
   reverse. Every hunk that touches it needs a written justification. "The proof needed it" is
   never a justification. Legitimate reasons are a language-level decision in the decision log,
   or a pure addition that defines a new observable.
+- The user's approval of a Spec patch (`make spec-approve`) records that it was reviewed; it never
+  justifies it. The analysis judges each hunk on its mathematics: what structure or claim it
+  states, why that is the standard and true one, why each hypothesis is needed (a counterexample
+  without it), and why the statement is neither stronger nor weaker than the truth. "It was
+  approved" is never the justification.
 - The Spec is the directory `formal/Once/Spec` (D306): it imports only itself, re-exports nothing
   and owns its definitions. Diff it as a directory:
   `git diff master..HEAD --stat -- formal/Once/Spec`
@@ -46,7 +51,8 @@ The analysis must cover each of the following.
 show what changed for a programmer, so analyse their diff against master as well:
 
 ```
-git diff master..HEAD --name-status -- compiler/test tests examples formal/Once/Parser/Tests.agda
+git diff master..HEAD --name-status -- compiler/test tests examples formal/Once/Parser/Tests.agda \
+  formal/Once/SpecTests
 ```
 
 Classify every test change and judge it from first principles: is the language better, more
