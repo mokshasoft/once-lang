@@ -29,7 +29,7 @@
 --   Simple     id, terminal, initial, free-heap, fst, snd, out-μ, const
 --   InMu       In (D366: the emitter boxes an inline layer)
 --   SigOp      the SigOp clause
---   Sum        inl, inr
+--   Inj        inl, inr (the flat layout: tag, padding, payload put)
 --   TwoCell    curry, Ana, in-ν (the shared ten-instruction build)
 --   Apply      apply
 --   Out        Out  (D199)
@@ -57,7 +57,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Codegen.IRObsCorrect.Simple  o tbl
 open import Once.CCC.Codegen.IRObsCorrect.SigOp   o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Compare o tbl
-open import Once.CCC.Codegen.IRObsCorrect.Sum     o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Inj     o tbl using (module InjC)
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Apply   o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Out     o tbl
@@ -82,7 +82,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   open Simp     {FS} public
   open SigOpC   {FS} public
   open CompareC {FS} public
-  open SumC     {FS} public
+  open InjC     {FS} public using (obs-correct-inl; obs-correct-inr)
   open TwoCellC {FS} public
   open ApplyC   {FS} public
   open OutC     {FS} public
