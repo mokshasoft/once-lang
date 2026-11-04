@@ -23,6 +23,10 @@
 --                   model: no observation is vacuous;
 --   * sameness    — a partial equivalence, respected by `>>=` (the kernel of
 --                   observation);
+--   * parametricity — a derivation's meanings at two instances of its type
+--                   variables are related by its type's relational reading
+--                   (the abstraction theorem), so a polymorphic definition is
+--                   natural;
 --   * coherence   — a core term's meaning is a function of its judgment, not
 --                   of the derivation chosen for it; a coercion along `refl`
 --                   is the identity and along a composite the composite;
@@ -45,7 +49,7 @@ module Once.Spec.Metatheory where
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; length)
 open import Data.List.Relation.Binary.Subset.Propositional using (_⊆_)
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; suc)
 open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
@@ -54,7 +58,7 @@ open import Relation.Nullary using (¬_)
 open import Once.Spec.Grade using (Quantity; Purity; Finite; fin; pureᶠ; actᶠ; pure; act; eff; Many; mk-kind; _⊑π_; _·p_; positionGrade; Zero; One)
 open import Once.Spec.Name using (CanonicalName; NotGenerator)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; Unit; Void; Int; Id; μ; ν; _+_; _*_; _⇒[_]_; ⟦_⟧F; at₀)
+open import Once.Spec.Type using (Ty; Type; Fun; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; var; Unit; Void; Int; Float; K; Id; _⊕_; _⊗_; μ; ν; _+_; _*_; _⇒[_]_; ⟦_⟧F; at₀; Occurs)
 open import Once.Spec.Delay using (_⇓_)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Signature using (Signature; OneName; WellFormed; Layer; call; Op; op; _∶_)
@@ -62,11 +66,11 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF; μS; inS; sfmap)
 open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _+ᵘ_; _*ᵘ_; _⟨_⟩ᶜ)
 open import Once.Spec.Core.Syntax
-  using (Defs; []; Tm; var; lam; app; let′; unit; pair; fst; snd; inl; inr; case; absurd; roll; fold; unfold; out; ren; ext; wk; _[_]; _⟪_⟫ₜ; _!!_; module Schema)
+  using (Defs; []; Tm; var; lam; app; let′; unit; pair; fst; snd; inl; inr; case; absurd; roll; fold; unfold; out; ref; ren; ext; wk; _[_]; _⟪_⟫ₜ; _!!_; module Schema)
 open import Once.Spec.Core.Derived
   using (idᶜ; terminalᶜ; initialᶜ; fstᶜ; sndᶜ; inlᶜ; inrᶜ; applyᶜ; composeᶜ; pairᶜ; caseᶜ; curryᶜ;
          inᶜ; outᶜ; cataᶜ; anaᶜ; mapᶜ; layerᶜ)
-open Schema using (type)
+open Schema using (type; arity)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Surface.Program using (Denotes)
 import Once.Spec.Effect as Effect
@@ -169,7 +173,7 @@ record Inhabited (Σ : Signature) : Set where
 record Sameness (Σ : Signature) : Set₁ where
   open Effect Σ using (M; bindᵍ; νM; module νM; toT∞; LayerEq)
   open Domain Σ using (⟦_⟧ᵛ)
-  open Equivalence Σ using (Same; SameM; RelStream; OneLayerR)
+  open Equivalence Σ using (Same; SameM; RelStream; OneLayerR; Rel; sameSub)
   open Effect Σ using (SRel)
   field
     Same-sym   : ∀ (A : Type) {x y} → Same A x y → Same A y x
@@ -186,6 +190,11 @@ record Sameness (Σ : Signature) : Set₁ where
     -- … and the greatest: every relation that one layer preserves lies inside it
     stream-coind : ∀ f {G G′ : SFunctor} (r : SRel G G′) (R : νM f G → νM f G′ → Set) → (∀ {v w} → R v w → OneLayerR f r R v w)
                  → ∀ {v w} → R v w → RelStream f r v w
+    -- `Same` is the relational reading's identity case: an open type, read at
+    -- one instance with each variable related by sameness, relates exactly
+    -- what sameness of the instance relates (identity extension)
+    rel-same : ∀ {m} (A : Ty m) (σ : TySub m 0) {x y} → Rel A (sameSub σ) x y → Same (A ⟨ σ ⟩) x y
+    same-rel : ∀ {m} (A : Ty m) (σ : TySub m 0) {x y} → Same (A ⟨ σ ⟩) x y → Rel A (sameSub σ) x y
 
 ------------------------------------------------------------------------
 -- Coherence, and the term model
@@ -196,13 +205,30 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
   open Meaning Σ fmt S using (⟦_⟧; DefSem; module DefSem; Env)
   open DefSem using (defs)
   open Domain Σ using (⟦_⟧ᵛ; conv)
-  open Equivalence Σ using (Same; SameM; _≃_)
+  open Equivalence Σ using (Same; SameM; _≃_; Rel; RelSub; sameSub)
   open Effect Σ using (toT∞)
 
-  -- The definitions' meanings are each the same as itself, whichever proof
-  -- shows its instance respects the kinds.
+  -- The definitions' meanings are parametric: at any two instances of a
+  -- definition's type variables, with any relation for each, its two meanings
+  -- are related by the relational reading of its type (whichever proofs show
+  -- the instances respect the kinds).
+  ParamDefs : DefSem → Set₁
+  ParamDefs δ = ∀ d (τ τ′ : TySub (arity (S !! d)) 0) r r′ (ρ : RelSub τ τ′)
+              → Rel (type (S !! d)) ρ (defs δ d τ r) (defs δ d τ′ r′)
+
+  -- Its identity case: each meaning is related to itself, at one instance
+  -- with each variable related by sameness (by `Sameness.rel-same`, the same
+  -- as itself).
   SameDefs : DefSem → Set
-  SameDefs δ = ∀ d τ r r′ → Same (type (S !! d) ⟨ τ ⟩) (defs δ d τ r) (defs δ d τ r′)
+  SameDefs δ = ∀ d τ r r′ → Rel (type (S !! d)) (sameSub τ) (defs δ d τ r) (defs δ d τ r′)
+
+  -- Two environments at two instances, their values related by the
+  -- relational reading of their types.
+  RelEnv : ∀ {m n} {σ σ′ : TySub m 0} (ρ : RelSub σ σ′) (Γ : Ctx m n) (Ψ : Usage n) → Env σ Γ Ψ → Env σ′ Γ Ψ → Set
+  RelEnv ρ ∅       []         _        _          = ⊤
+  RelEnv ρ (Γ ▸ A) (Zero ∷ Ψ) (γ , _) (γ′ , _)  = RelEnv ρ Γ Ψ γ γ′
+  RelEnv ρ (Γ ▸ A) (One  ∷ Ψ) (γ , v) (γ′ , v′) = RelEnv ρ Γ Ψ γ γ′ × Rel A ρ v v′
+  RelEnv ρ (Γ ▸ A) (Many ∷ Ψ) (γ , v) (γ′ , v′) = RelEnv ρ Γ Ψ γ γ′ × Rel A ρ v v′
 
   -- An environment whose values are each the same as itself.
   SameEnv : ∀ {m n} (σ : TySub m 0) (Γ : Ctx m n) (Ψ : Usage n) → Env σ Γ Ψ → Set
@@ -495,6 +521,85 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
                  → d ≅ d′
 
 ------------------------------------------------------------------------
+-- Parametricity: a type argument is never inspected
+------------------------------------------------------------------------
+
+-- Type variable 0 is STRICTLY POSITIVE in a type: it never occurs in an
+-- arrow's domain. The type is then a functor in it whose action `mapᶜ` maps
+-- each occurrence forwards; in a domain the variable would have to be mapped
+-- backwards, and naturality fails there (`(a ⇒ a) ⇒ (a ⇒ a)`, `g ↦ g ∘ g`).
+data StrictlyPositive  {m} : Ty (suc m) → Set
+data StrictlyPositiveF {m} : Fun (suc m) → Set
+data StrictlyPositive where
+  sp-var   : ∀ {i} → StrictlyPositive (var i)
+  sp-Unit  : StrictlyPositive Unit
+  sp-Void  : StrictlyPositive Void
+  sp-Int   : StrictlyPositive Int
+  sp-Float : StrictlyPositive Float
+  sp-*     : ∀ {A B} → StrictlyPositive A → StrictlyPositive B → StrictlyPositive (A * B)
+  sp-+     : ∀ {A B} → StrictlyPositive A → StrictlyPositive B → StrictlyPositive (A + B)
+  sp-⇒     : ∀ {A k B} → ¬ Occurs zero A → StrictlyPositive B → StrictlyPositive (A ⇒[ k ] B)
+  sp-μ     : ∀ {F} → StrictlyPositiveF F → StrictlyPositive (μ F)
+  sp-ν     : ∀ {F f} → StrictlyPositiveF F → StrictlyPositive (ν F f)
+data StrictlyPositiveF where
+  sp-K  : ∀ {A} → StrictlyPositive A → StrictlyPositiveF (K A)
+  sp-Id : StrictlyPositiveF Id
+  sp-⊕  : ∀ {F G} → StrictlyPositiveF F → StrictlyPositiveF G → StrictlyPositiveF (F ⊕ G)
+  sp-⊗  : ∀ {F G} → StrictlyPositiveF F → StrictlyPositiveF G → StrictlyPositiveF (F ⊗ G)
+
+-- A polymorphic definition cannot look at the values its type variables
+-- stand for, so it treats every instance alike (Reynolds' abstraction
+-- theorem): its meanings at two instances, with any relation between each
+-- variable's two types, are related by its type's relational reading
+-- (`Equivalence.Rel`), given definitions that are themselves parametric. A
+-- program's own definitions are. Naturality follows: a definition of type
+-- `∀a. F a → G a` commutes with `map`.
+
+module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
+  open CoreTyping Σ S
+  open Meaning Σ fmt S using (⟦_⟧; DefSem; Env)
+  open Equivalence Σ using (SameM; RelM; Rel; RelSub)
+  open Observation Σ using (Model)
+  open CoreProgram Σ using (Tele; teleSem)
+
+  -- Two derivations of one judgment mean the same for every parametric
+  -- meaning of the definitions (`_≅_` asks only `SameDefs`, its identity case).
+  _≅ₚ_ : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ t t′ A π}
+       → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π → Δ ⊩ Γ ⊢[ Ψ ] t′ ∷ A ! π → Set₁
+  _≅ₚ_ {m} {Δ = Δ} {Γ} {Ψ} {A = A} {π} d d′ =
+    ∀ (δ : DefSem) → ParamDefs Σ fmt S δ → (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
+      (γ : Env σ Γ Ψ) → SameEnv Σ fmt S σ Γ Ψ γ
+    → SameM π (A ⟨ σ ⟩) (⟦ d ⟧ δ σ r γ) (⟦ d′ ⟧ δ σ r γ)
+
+  record Parametricity : Set₁ where
+    field
+      -- the abstraction theorem: at two instances of the type variables, with
+      -- a relation for each, in environments related by their types, two
+      -- derivations of one judgment are related by the relational reading of
+      -- its type
+      abstraction : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ t A π} (d d′ : Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ! π)
+                      (δ : DefSem) → ParamDefs Σ fmt S δ
+                  → (σ σ′ : TySub m 0) (r : Respects Δ ∅ₖ σ) (r′ : Respects Δ ∅ₖ σ′) (ρ : RelSub σ σ′)
+                      (γ : Env σ Γ Ψ) (γ′ : Env σ′ Γ Ψ) → RelEnv Σ fmt S ρ Γ Ψ γ γ′
+                  → RelM π (Rel A ρ) (⟦ d ⟧ δ σ r γ) (⟦ d′ ⟧ δ σ′ r′ γ′)
+      -- a program's definitions are parametric, whatever the world's model
+      param-tele  : ∀ (mo : Model) (tl : Tele S) → ParamDefs Σ fmt S (teleSem fmt mo tl)
+      -- naturality: a definition of type `∀a. F a → G a`, at instances that
+      -- differ only at `a`, commutes with `map f` for an effect-free `f`
+      -- (`F`, `G` strictly positive in `a`; the definition may be effectful,
+      -- and its effects run where they ran)
+      naturality  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B q π π₀ f}
+                      (e : Fin s) (τ : TySub (arity (S !! e)) (suc m)) {F G : Ty (suc m)}
+                  → type (S !! e) ⟨ τ ⟩ ≡ F ⇒[ mk-kind q π ] G
+                  → StrictlyPositive F → StrictlyPositive G
+                  → Pure Σ fmt S Δ Γ f (A ⇒[ mk-kind Many pure ] B)
+                  → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (F ⟨ at₀ A ⟩) π (mapᶜ G A B f) (ref e (λ i → τ i ⟨ at₀ A ⟩))
+                                       ∷ F ⟨ at₀ A ⟩ ⇒[ mk-kind Many π ] G ⟨ at₀ B ⟩ ! π₀)
+                    (d′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (F ⟨ at₀ A ⟩) π (ref e (λ i → τ i ⟨ at₀ B ⟩)) (mapᶜ F A B f)
+                                       ∷ F ⟨ at₀ A ⟩ ⇒[ mk-kind Many π ] G ⟨ at₀ B ⟩ ! π₀)
+                  → d ≅ₚ d′
+
+------------------------------------------------------------------------
 -- Effects form a Freyd category, up to what is observed
 ------------------------------------------------------------------------
 
@@ -640,6 +745,7 @@ record Metatheory : Set₁ where
     term-model : ∀ (Σ : Signature) → OneName Σ → ∀ (fmt : TargetNum) {s} (S : Defs s) → TermModel Σ fmt S
     categorical : ∀ (Σ : Signature) → OneName Σ → ∀ (fmt : TargetNum) {s} (S : Defs s) → Categorical Σ fmt S
     equations  : ∀ (Σ : Signature) → OneName Σ → ∀ (fmt : TargetNum) {s} (S : Defs s) → Equations Σ fmt S
+    parametricity : ∀ (Σ : Signature) → OneName Σ → ∀ (fmt : TargetNum) {s} (S : Defs s) → Parametricity Σ fmt S
     freyd      : ∀ (Σ : Signature) → Freyd Σ
     recursion  : ∀ (Σ : Signature) → Recursion Σ
     totality   : Totality

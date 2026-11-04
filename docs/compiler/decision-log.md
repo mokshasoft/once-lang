@@ -20808,3 +20808,59 @@ witness that D369's free-usage uniqueness law is false (it needs typed derivatio
 (public, pragma, metatheory, spec, backstop 773 modules, certified); lint-pragmas, lint-imports,
 check-extraction-sync clean. After `observes`: `Once.Metatheory`, the certified check and the fast gates
 rerun (lint-imports and the backstop not rerun: every touched module is rechecked under `-W error`).
+
+## D371 — POLYMORPHISM IS PARAMETRIC: THE ABSTRACTION THEOREM, AND NATURALITY (2026-11-04)
+
+**Decision** (plan 0.142, decisions P1–P5 taken by the user 2026-11-03). The language states and proves
+that a type argument is never inspected (Reynolds' abstraction theorem), and derives naturality from it,
+the one reasoning principle of GOAL.md not stated before (D369 split it off: each of its laws relates one
+judgment to itself at one instance; naturality relates a definition at two).
+
+**The relational reading** (`Spec.Equivalence`, P1). `Rel A ρ` relates the values of an open type at two
+instances `σ`, `σ′`, given a relation `ρ` per type variable (`RelSub σ σ′`): a variable by its relation,
+every other former by D370's relation for it. It is the same fold as `Same`, differing only at
+variables. New claim `Sameness.rel-same`/`same-rel` (identity extension): at one instance with each
+variable related by sameness (`sameSub σ`), `Rel A` relates exactly what `Same (A ⟨ σ ⟩)` does.
+
+**The hypothesis on definitions** (P2). `ParamDefs δ`: each definition's meanings at any two instances,
+with any relations, are related by `Rel` of its schema's type. `SameDefs` is now its identity case
+(`Rel (type) (sameSub τ)`), not a separate statement: by identity extension it says what it said before,
+so no law changes meaning. New claim `Parametricity.param-tele`: a program's definitions
+(`teleSem`) are parametric.
+
+**The claims** (P3, P4; `Spec.Metatheory.Parametricity`).
+- `abstraction`: two derivations of one judgment, at two instances with a relation per variable, in
+  environments related by `RelEnv`, under `ParamDefs`, are related by `RelM π (Rel A ρ)`. The
+  definition may be effectful: computations are related by observation (`RelM`).
+- `naturality`: for a definition `e` of type `F ⇒ G` in variable 0 (at `τ`), `map G f ∘ e⟨A⟩` and
+  `e⟨B⟩ ∘ map F f` are the same (`≅ₚ`: `≅` under `ParamDefs`), for an effect-free `f : A → B`, with `F`
+  and `G` strictly positive in the variable (`StrictlyPositive`: never in an arrow's domain).
+
+**Why each hypothesis.**
+- `ParamDefs`, not `SameDefs`: under `SameDefs` a definition's instances at different types are
+  unrelated, and a `δ` that answers `reverse` at `Int` and `id` elsewhere satisfies it; naturality fails
+  for it.
+- `f` effect-free: `map` is defined only for effect-free arrows (D369), and the two sides evaluate the
+  definition and `map f` in opposite orders.
+- Strict positivity: `mapᶜ` maps an arrow by post-composition, so with the variable in a domain it types
+  only when `A = B`, and there naturality is false: `t g = g ∘ g` at `(a ⇒ a) ⇒ (a ⇒ a)` gives
+  `f ∘ g ∘ g` on one side and `f ∘ g ∘ f ∘ g` on the other.
+
+**Why stated for a definition, not for any term over a type variable.** In the core, polymorphism
+lives in definitions (`ref e τ`); the judgment's type variables are the enclosing definition's. A term
+form (`t ⟪ at₀ A ⟫ₜ`) would also need a semantic type-substitution lemma, which the abstraction theorem
+already covers for definitions through `ParamDefs`.
+
+**The type-case rule** (P5). Recorded in `language.md`: a type argument is parametric; a construct that
+cases on types (an eliminator on universe codes, a type-indexed primitive) may only take them at grade
+`𝟘`, or is a decision of its own. The theorem is stated externally, over derivations, so it holds as long
+as no such construct exists; OCP-0009's kernel has no eliminator on `U`.
+
+### Spec
+`Spec.Equivalence` (`RelSub`, `Rel`, `RelF`, `sameSub`), `Spec.Metatheory` (`Sameness.rel-same`/`same-rel`;
+`ParamDefs`, `SameDefs` its identity case, `RelEnv`; `StrictlyPositive`; `_≅ₚ_`; `Parametricity`:
+`abstraction`, `param-tele`, `naturality`; the `Metatheory` field `parametricity`).
+
+### Cost
+None in the compiler or the binary (`Spec.Equivalence` and `Spec.Metatheory` are outside the extraction).
+

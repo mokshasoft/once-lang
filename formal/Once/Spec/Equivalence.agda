@@ -25,7 +25,11 @@
 --
 -- Each type former's relation is defined once (`RelPair`, `RelSum`,
 -- `RelFun`, `RelMu`, `RelStream`, `RelM`), between two value sets; `Same` is
--- their fold over a closed type (plan 0.141 P1).
+-- their fold over a closed type (plan 0.141 P1), and `Rel` their fold over an
+-- open type, given a relation for each type variable between two instances
+-- (the relational reading of types, plan 0.142). The two folds differ only
+-- at a variable; at sameness of each variable they agree
+-- (`Spec.Metatheory.Sameness`).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
@@ -35,12 +39,13 @@ module Once.Spec.Equivalence (Σ : Signature) where
 open import Data.Empty using (⊥)
 open import Data.List using ([])
 open import Data.Nat using (ℕ; zero; suc)
+open import Data.Fin using (Fin)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Grade using (Finite; fin; Purity; mk-kind; Zero; One; Many)
-open import Once.Spec.Type using (Type; Fun; K; Id; _⊕_; _⊗_; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν)
+open import Once.Spec.Type using (Ty; Type; Fun; K; Id; _⊕_; _⊗_; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; TySub; _⟨_⟩; _⟨_⟩F)
 open import Once.Spec.Polynomial using (SFunctor; μS; inS)
 open import Once.Spec.Effect Σ using (M; T∞; toT∞; νM; module νM; LayerEq; SRel; rK; rId; _r⊕_; _r⊗_; LayerRel; eqRel)
 open νM using (outν)
@@ -142,3 +147,39 @@ SameF (K A)   = rK (Same A)
 SameF Id      = rId
 SameF (F ⊕ G) = SameF F r⊕ SameF G
 SameF (F ⊗ G) = SameF F r⊗ SameF G
+
+------------------------------------------------------------------------
+-- The relational reading of an open type
+------------------------------------------------------------------------
+
+-- A relation for each type variable, between its values at two instances.
+record RelSub {m} (σ σ′ : TySub m 0) : Set₁ where
+  constructor relSub
+  field rel : ∀ (i : Fin m) → ⟦ σ i ⟧ᵛ → ⟦ σ′ i ⟧ᵛ → Set
+open RelSub public
+
+-- The values of an open type at two instances, related: a variable by its
+-- relation, every other former as `Same` relates it.
+Rel  : ∀ {m} (A : Ty m) {σ σ′ : TySub m 0} → RelSub σ σ′ → ⟦ A ⟨ σ ⟩ ⟧ᵛ → ⟦ A ⟨ σ′ ⟩ ⟧ᵛ → Set
+-- A functor's constants, related.
+RelF : ∀ {m} (F : Fun m) {σ σ′ : TySub m 0} → RelSub σ σ′ → SRel (code (F ⟨ σ ⟩F)) (code (F ⟨ σ′ ⟩F))
+Rel (var i) ρ = rel ρ i
+Rel Unit    ρ _ _ = ⊤
+Rel Void    ρ _ _ = ⊤
+Rel Int     ρ x y = x ≡ y
+Rel Float   ρ x y = x ≡ y
+Rel (μ F)   ρ = RelMu (RelF F ρ)
+Rel (A * B) ρ = RelPair (Rel A ρ) (Rel B ρ)
+Rel (A + B) ρ = RelSum (Rel A ρ) (Rel B ρ)
+Rel (A ⇒[ mk-kind Zero π ] B) ρ f g = RelM π (Rel B ρ) (f _) (g _)
+Rel (A ⇒[ mk-kind One  π ] B) ρ = RelFun π (Rel A ρ) (Rel B ρ)
+Rel (A ⇒[ mk-kind Many π ] B) ρ = RelFun π (Rel A ρ) (Rel B ρ)
+Rel (ν F f) ρ = RelStream f (RelF F ρ)
+RelF (K A)   ρ = rK (Rel A ρ)
+RelF Id      ρ = rId
+RelF (F ⊕ G) ρ = RelF F ρ r⊕ RelF G ρ
+RelF (F ⊗ G) ρ = RelF F ρ r⊗ RelF G ρ
+
+-- The identity case: one instance, each variable related by sameness.
+sameSub : ∀ {m} (σ : TySub m 0) → RelSub σ σ
+sameSub σ = relSub (λ i → Same (σ i))

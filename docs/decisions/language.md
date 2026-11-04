@@ -270,6 +270,17 @@ entry updates the rule it changes here, in the same commit.
   apart (a program with a hole, observed at `Int`, has the same trace
   whichever of two same values fills it).
   (D370, D318 ← D317, D201, plan 0.116 D0)
+- **Polymorphism is parametric**: a type argument is never inspected. Each
+  type is also read as a relation between two instances, given a relation per
+  type variable (`Rel`, the same formers' fold; sameness is its identity
+  case), and a derivation's meanings at two instances are related by it (the
+  abstraction theorem), given definitions that are themselves parametric, as
+  a program's are. So a definition of type `∀a. F a → G a`, `F` and `G`
+  strictly positive in `a`, is natural: it commutes with `map f` for an
+  effect-free `f`, its own effects kept in place. A construct that cases on
+  types (an eliminator on a universe's codes, a type-indexed primitive) may
+  only take them at grade `𝟘` (erased), or is a decision of its own; under
+  dependent types (OCP-0009) `∀a` is `(a :𝟘 U) → …`. (D371)
 
 ## 6. Subtyping
 
