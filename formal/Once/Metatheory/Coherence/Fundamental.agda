@@ -291,4 +291,5 @@ coherence = record
   { coherent = λ {m} {n} {Δ} {Γ} {Ψ} {t} {A} {π} d d′ δ sd σ r r′ γ sγ →
       toObserved (runs (FL.FL δ sd σ r r′ d d′ refl (selfAgree σ Γ Ψ γ sγ)))
   ; conv-id = λ σ p s → Conversions.conv-id σ p s
-  ; conv-∘  = λ σ p q r s → Conversions.conv-∘ σ p q r s }
+  ; conv-∘  = λ σ p q r s → Conversions.conv-∘ σ p q r s
+  ; observes = λ d δ sd σ r sxy → toObserved (runs (FL.FL δ sd σ r r d d refl (tt , sxy))) }

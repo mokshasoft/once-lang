@@ -20786,5 +20786,25 @@ would transport along it, and `Same (A * B)` would no longer compute to a produc
 ### Cost
 None in the compiler or the binary.
 
+**Sameness is bounded from above (plan 0.141 step 4b; user-approved 2026-11-04).** Every sameness claim
+before this one says what must be the same (the PER, `SameM-bind`, the stream fixed point, `coherent`,
+the laws), so a `Same` that related too much would satisfy them all and make the laws vacuous.
+`coherent` bounds it only through `RelFun` being right: it relates a derivation to itself in one
+environment. New claim `Coherence.observes`: a program with a hole of type `A`, observed at `Int`, has
+the same trace (`≃`) whichever of two `Same` values fills the hole. It is stated by traces, not by
+`Same`'s clauses, so it catches a too-permissive former (`inl` and `inr` the same would give
+`return 0 ≃ return 1` through a `case`). It is what the `Sameness` header always said ("the kernel of
+observation"). Proof: the fundamental lemma (`FL`) at two related environments; `Same Int` is `≡`.
+
+**Witnesses** (`formal/Once/SpecTests/Derived.agda`): what general claims cannot pin, checked by
+computation: `at₀`/`shiftᵗ` on small types, `mapAtᶜ` at variable 0 (applied), at another variable and at
+a base type (left alone), at a product (by its parts), and `layerᶜ` at the list functor. A `map` that
+ignored its function would satisfy both functor laws; these do not hold for it. Positive sameness
+witnesses are left out (the laws and `coherent` claim them). Deferred to the plan that takes part b: a
+witness that D369's free-usage uniqueness law is false (it needs typed derivations of the combinators).
+
 ### Checks
-The Spec type-checks. The metatheory is red until repaired against the new `Same` (plan 0.141 step 4).
+2026-11-04: certified closure 752/752 against part a (`scripts/agda-keepgoing.py`); `make merge-gate` OK
+(public, pragma, metatheory, spec, backstop 773 modules, certified); lint-pragmas, lint-imports,
+check-extraction-sync clean. After `observes`: `Once.Metatheory`, the certified check and the fast gates
+rerun (lint-imports and the backstop not rerun: every touched module is rechecked under `-W error`).

@@ -54,7 +54,7 @@ open import Relation.Nullary using (¬_)
 open import Once.Spec.Grade using (Quantity; Purity; Finite; fin; pureᶠ; actᶠ; pure; act; eff; Many; mk-kind; _⊑π_; _·p_; positionGrade; Zero; One)
 open import Once.Spec.Name using (CanonicalName; NotGenerator)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; Unit; Void; Id; μ; ν; _+_; _*_; _⇒[_]_; ⟦_⟧F; at₀)
+open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; Unit; Void; Int; Id; μ; ν; _+_; _*_; _⇒[_]_; ⟦_⟧F; at₀)
 open import Once.Spec.Delay using (_⇓_)
 open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Signature using (Signature; OneName; WellFormed; Layer; call; Op; op; _∶_)
@@ -196,7 +196,8 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
   open Meaning Σ fmt S using (⟦_⟧; DefSem; module DefSem; Env)
   open DefSem using (defs)
   open Domain Σ using (⟦_⟧ᵛ; conv)
-  open Equivalence Σ using (Same; SameM)
+  open Equivalence Σ using (Same; SameM; _≃_)
+  open Effect Σ using (toT∞)
 
   -- The definitions' meanings are each the same as itself, whichever proof
   -- shows its instance respects the kinds.
@@ -222,6 +223,16 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
               → Same (A ⟨ σ ⟩) x x′ → Same (A ⟨ σ ⟩) (conv σ p x) x′
       conv-∘  : ∀ {m} (σ : TySub m 0) {A B C : Ty m} (p : A <: B) (q : B <: C) (r : A <: C) {x x′}
               → Same (A ⟨ σ ⟩) x x′ → Same (C ⟨ σ ⟩) (conv σ r x) (conv σ q (conv σ p x′))
+      -- sameness is the kernel of observation: no program tells two same
+      -- values apart. A program with a hole of type `A`, observed at `Int`,
+      -- has the same trace whichever of two same values fills the hole. This
+      -- bounds `Same` from above (the claims above only say what must be the
+      -- same, so a `Same` that related too much would satisfy them all), and
+      -- it is stated by traces, not by `Same`'s clauses.
+      observes : ∀ {m} {Δ : KCtx m} {A t π} (d : Δ ⊩ (∅ ▸ A) ⊢[ Many ∷ [] ] t ∷ Int ! π)
+                   (δ : DefSem) → SameDefs δ → (σ : TySub m 0) (r : Respects Δ ∅ₖ σ) → ∀ {x y}
+               → Same (A ⟨ σ ⟩) x y
+               → toT∞ π (⟦ d ⟧ δ σ r (tt , x)) ≃ toT∞ π (⟦ d ⟧ δ σ r (tt , y))
 
   record TermModel : Set where
     field

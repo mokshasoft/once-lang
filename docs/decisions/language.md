@@ -266,6 +266,9 @@ entry updates the rule it changes here, in the same commit.
   sets (computations, pairs, sums, functions, trees, streams), and sameness is
   their fold over a closed type: two trees are the same when they have the
   same shape and the same constants and subtrees, never compared by `≡`.
+  Sameness is the kernel of observation: no program tells two same values
+  apart (a program with a hole, observed at `Int`, has the same trace
+  whichever of two same values fills it).
   (D370, D318 ← D317, D201, plan 0.116 D0)
 
 ## 6. Subtyping
