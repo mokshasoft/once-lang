@@ -46,7 +46,7 @@ open AllocState using (current-frame)
 open LocState using (halted; regs)
 open ExecFinal {FS} using (in-block?)
 open AllocState using (block-size)
-open import Once.CCC.Codegen.FlatLayout using (copy-from) public
+open import Once.CCC.Codegen.FlatLayout using (copy-from)
 
 -- D379: each destination word is a cell of the destination's block
 InBlock : AllocState {FS} → HeapLocation → ℕ → Set
