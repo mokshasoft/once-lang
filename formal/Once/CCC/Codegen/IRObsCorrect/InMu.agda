@@ -25,8 +25,8 @@
 --     fresh cell.
 --   * `obs-correct-In-box` — seven rows: stash the layer's word, allocate,
 --     write the word into the block's first cell, hand back the pointer. The
---     cell holds the layer (a literal, `in-reg`) or a pointer to it
---     (`in-loc`), which is exactly the box relation (`valid-μbox`).
+--     cell holds the layer (a literal, `in-reg` — D383: a scalar is never
+--     at a location), which is exactly the box relation (`valid-μbox`).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -37,11 +37,14 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.InMu (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+import Once.CCC.Machine.FlatAlloc as FlatAlloc
+open import Data.Nat using (s≤s; z≤n)
+import Once.CCC.Machine.SMPrimitives
 open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl using (module NuForceC)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
-open import Once.CCC.Machine.SMCore using (load-from-slot; mov-to-output; store-at-slot; instr-alloc-heap; mov-to-input; store-indirect; sv-as-loc; readReg; Input1; StoredValue; Output; writeReg-same; SV-Ptr; writeReg; module LocState; module AllocState)
+open import Once.CCC.Machine.SMCore using (load-from-slot; mov-to-output; store-at-slot; instr-alloc-heap; mov-to-input; store-at; sv-as-loc; readReg; Input1; StoredValue; Output; writeReg-same; SV-Ptr; writeReg; module LocState; module AllocState)
 open AllocState using (next-heap-ref; current-frame; saved-frames; next-slot)
 open LocState using (regs; halted)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
@@ -97,6 +100,11 @@ module InMuC {FS : FrameSemantics} where
       e = ⌈⟧TI-commute F (μ-type F)
       w = wf-⌈⌉ wf
 
+  -- D383: a scalar has no memory residence
+  scalar-nowhere : ∀ {prog C m a c l s} → FitsInRegI C → ValidAtWF {prog = prog} m a {C} c l s → ⊥
+  scalar-nowhere fits-int   (ClosureWellFormedBase.wrap ())
+  scalar-nowhere fits-float (ClosureWellFormedBase.wrap ())
+
   -- a layer's validity, read as the validity of `out-μ` of the μ built from it
   layer-of : ∀ {F} (wf : WellFormedFI F) (x : ValueDomain.⟦ ⟦ F ⟧TI (μ-type F) ⟧ᴰᴵ) {prog m a loc st}
            → ValidAtWF {prog = prog} m a {⟦ F ⟧TI (μ-type F)} x loc st
@@ -121,7 +129,7 @@ module InMuC {FS : FrameSemantics} where
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ (cong (λ t → fetch t 0) (teq n l))) ∷ []) (λ _ → nh)
                    (λ _ → cong (λ t → length t + base) (sym (teq n l))) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
-                   (λ { refl → place rdi-eq }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl)
+                   (λ { refl → place rdi-eq }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl) (λ _ _ _ ib → ib)
       }
     where
       regs' = writeReg (regs s) Output (readReg (regs s) Input1)
@@ -170,7 +178,7 @@ module InMuC {FS : FrameSemantics} where
                                      (record alloc { next-slot = m })
                                      (record (falloc fs₁) { next-slot = m })
                                      (sym cf₁) ≤-refl heapref-≤ loc' bf'))
-                   (λ _ → sf₁)
+                   (λ _ → sf₁) (λ _ → FlatAlloc.alloc-bk {FS} 2 alloc)
       }
     where
       wf : WellFormedFI (IRTy′.K Unit)
@@ -215,7 +223,7 @@ module InMuC {FS : FrameSemantics} where
   -- THE BOX: `In` at `K Int` / `K Float` is `in-box-trace n`,
   --
   --     mov-to-output · store n · alloc 2 · mov-to-input ·
-  --       load n · store-indirect · mov-to-output
+  --       load n · store-at 0 · mov-to-output
   --
   -- The block's first cell ends holding the layer's word, `Output` its
   -- pointer, and nothing older is written (the slot is at the frontier, the
@@ -237,7 +245,7 @@ module InMuC {FS : FrameSemantics} where
                                      (record alloc { next-slot = m })
                                      (record (falloc fs7) { next-slot = m })
                                      (sym cf-fs7) ≤-refl heapref-≤ loc' bf'))
-                   (λ _ → sf-fs7)
+                   (λ _ → sf-fs7) (λ _ → bk7)
       }
     where
       -- D359: the old premise, from the invariant.
@@ -256,7 +264,7 @@ module InMuC {FS : FrameSemantics} where
       fs3 = flat-exec-instr (instr-alloc-heap 2) prog fs2
       fs4 = flat-exec-instr mov-to-input         prog fs3
       fs5 = flat-exec-instr (load-from-slot n)   prog fs4
-      fs6 = flat-exec-instr store-indirect       prog fs5
+      fs6 = flat-exec-instr (store-at 0)         prog fs5
       fs7 = flat-exec-instr mov-to-output        prog fs6
 
       denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (In wf) x ⟫ k) ≡ []
@@ -304,22 +312,36 @@ module InMuC {FS : FrameSemantics} where
       rdi-fs5 : sv-as-loc (readReg (regs (floc fs5)) Input1) ≡ just box
       rdi-fs5 = cong sv-as-loc input-fs5
 
-      wf-store : InstrWF (floc fs5) (falloc fs5) store-indirect
-      wf-store = box , rdi-fs5
+      -- the slot load keeps the allocator (it read a value: `wf-load`)
+      alloc5 : falloc fs5 ≡ falloc fs4
+      alloc5 = cong (λ mv → proj₂ (SMCore.AbstractExec.exec-load-from-slot-with-value {FS} mv (floc fs4) (falloc fs4)))
+                    (proj₂ wf-load)
+
+      -- D379: the box's first cell is one of its block's (the block is the
+      -- allocation's, two cells)
+      ib5 : InBlk (falloc fs5) box
+      ib5 = subst (λ a → InBlk a box) (sym alloc5) (FlatAlloc.alloc-in {FS} 2 (falloc fs2) 0 (s≤s z≤n))
+
+      -- Row 5 is one write, of `Output`, at the box
+      eq6 : floc fs6 ≡ SMCore.MemOps.writeLoc (floc fs5) box (readReg (regs (floc fs5)) Output)
+      eq6 rewrite rdi-fs5 | ib5 = refl
+
+      wf-store : InstrWF (floc fs5) (falloc fs5) (store-at 0)
+      wf-store = box , rdi-fs5 , ib5
 
       out-fs5 : readReg (regs (floc fs5)) Output ≡ pv
       out-fs5 = load-slot-result n (floc fs4) (falloc fs4) pv (proj₂ wf-load)
 
       -- Row 5 writes the word into the box's first cell; row 6 is a register move.
       cell-fs6 : readLoc (floc fs6) box ≡ just pv
-      cell-fs6 = trans (store-ind-result (floc fs5) (falloc fs5) box-hl rdi-fs5) (cong just out-fs5)
+      cell-fs6 = trans (cong (λ z → readLoc z box) eq6) (trans (Once.CCC.Machine.SMPrimitives.MemoryOps.readLoc-writeLoc-same {FS} (floc fs5) box (readReg (regs (floc fs5)) Output)) (cong just out-fs5))
 
       cell-fs7 : readLoc (floc fs7) box ≡ just pv
       cell-fs7 = trans (mem-untouched mov-to-output (floc fs6) (falloc fs6) box nhw-mov-to-output refl) cell-fs6
 
       out-eq : readReg (regs (floc fs7)) Output ≡ SV-Ptr box
       out-eq = trans (writeReg-same (regs (floc fs6)) Output (readReg (regs (floc fs6)) Input1))
-                     (trans (store-ind-preserves-input (floc fs5) (falloc fs5) box rdi-fs5) input-fs5)
+                     (trans (trans (cong (λ z → readReg (regs z) Input1) eq6) (cong (λ q → readReg q Input1) (SMCore.MemOps.writeLoc-regs (floc fs5) box (readReg (regs (floc fs5)) Output)))) input-fs5)
 
       nh1 : halted (floc fs1) ≡ false
       nh1 = exec-abstract-preserves-halted-WF mov-to-output (floc fs0) (falloc fs0) nh tt
@@ -332,7 +354,7 @@ module InMuC {FS : FrameSemantics} where
       nh5 : halted (floc fs5) ≡ false
       nh5 = exec-abstract-preserves-halted-WF (load-from-slot n) (floc fs4) (falloc fs4) nh4 wf-load
       nh6 : halted (floc fs6) ≡ false
-      nh6 = exec-abstract-preserves-halted-WF store-indirect (floc fs5) (falloc fs5) nh5 wf-store
+      nh6 = exec-abstract-preserves-halted-WF (store-at 0) (floc fs5) (falloc fs5) nh5 wf-store
       nh7 : halted (floc fs7) ≡ false
       nh7 = exec-abstract-preserves-halted-WF mov-to-output (floc fs6) (falloc fs6) nh6 tt
 
@@ -345,7 +367,7 @@ module InMuC {FS : FrameSemantics} where
       heapref-fs7 : next-heap-ref (falloc fs7) ≡ suc (next-heap-ref (falloc fs2))
       heapref-fs7 =
         trans (exec-abstract-preserves-heap-ref mov-to-output (floc fs6) (falloc fs6) tt)
-       (trans (exec-abstract-preserves-heap-ref store-indirect (floc fs5) (falloc fs5) tt)
+       (trans (exec-abstract-preserves-heap-ref (store-at 0) (floc fs5) (falloc fs5) tt)
        (trans (exec-abstract-preserves-heap-ref (load-from-slot n) (floc fs4) (falloc fs4) tt)
               (exec-abstract-preserves-heap-ref mov-to-input (floc fs3) (falloc fs3) tt)))
 
@@ -367,7 +389,7 @@ module InMuC {FS : FrameSemantics} where
       cf-fs7 : current-frame (falloc fs7) ≡ current-frame alloc
       cf-fs7 =
         trans (exec-abstract-preserves-frame mov-to-output (floc fs6) (falloc fs6))
-       (trans (exec-abstract-preserves-frame store-indirect (floc fs5) (falloc fs5))
+       (trans (exec-abstract-preserves-frame (store-at 0) (floc fs5) (falloc fs5))
        (trans (exec-abstract-preserves-frame (load-from-slot n) (floc fs4) (falloc fs4))
        (trans cf-fs4
               (exec-abstract-preserves-frame mov-to-output (floc fs0) (falloc fs0)))))
@@ -375,7 +397,7 @@ module InMuC {FS : FrameSemantics} where
       sf-fs7 : saved-frames (falloc fs7) ≡ saved-frames alloc
       sf-fs7 =
         trans (exec-abstract-preserves-saved mov-to-output (floc fs6) (falloc fs6))
-       (trans (exec-abstract-preserves-saved store-indirect (floc fs5) (falloc fs5))
+       (trans (exec-abstract-preserves-saved (store-at 0) (floc fs5) (falloc fs5))
        (trans (exec-abstract-preserves-saved (load-from-slot n) (floc fs4) (falloc fs4))
        (trans (exec-abstract-preserves-saved mov-to-input (floc fs3) (falloc fs3))
        (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs2) (falloc fs2))
@@ -385,7 +407,7 @@ module InMuC {FS : FrameSemantics} where
       nextslot-fs7 : next-slot (falloc fs7) ≡ next-slot alloc
       nextslot-fs7 =
         trans (exec-abstract-preserves-next-slot mov-to-output (floc fs6) (falloc fs6) tt)
-       (trans (exec-abstract-preserves-next-slot store-indirect (floc fs5) (falloc fs5) tt)
+       (trans (exec-abstract-preserves-next-slot (store-at 0) (floc fs5) (falloc fs5) tt)
        (trans (exec-abstract-preserves-next-slot (load-from-slot n) (floc fs4) (falloc fs4) tt)
        (trans (exec-abstract-preserves-next-slot mov-to-input (floc fs3) (falloc fs3) tt)
        (trans (exec-abstract-preserves-next-slot (instr-alloc-heap 2) (floc fs2) (falloc fs2) tt)
@@ -410,12 +432,27 @@ module InMuC {FS : FrameSemantics} where
       cf-fs5 : current-frame (falloc fs5) ≡ current-frame alloc
       cf-fs5 = trans (exec-abstract-preserves-frame (load-from-slot n) (floc fs4) (falloc fs4)) (trans cf-fs4 cf-fs1)
 
+      -- …which nothing the caller had live is
+      not-box : ∀ loc → BeforeFrontier (record alloc { next-slot = n }) loc → box ≡ loc → ⊥
+      not-box loc bf e with subst (BeforeFrontier (record alloc { next-slot = n })) (sym e) bf
+      ... | BeforeFrontier.heap-before p = <-irrefl refl (<-≤-trans p fresh)
+
+      -- D381: the one allocation sizes only the fresh block
+      live02 : ∀ l → Live alloc l → Live (falloc fs2) l
+      live02 (AtDynamic hl) (BeforeFrontier.heap-before p) =
+        BeforeFrontier.heap-before (<-≤-trans p (≤-reflexive (sym heapref-fs2)))
+
+      bk7 : BlocksKept alloc (falloc fs7)
+      bk7 = subst (BlocksKept alloc) (sym alloc5)
+              (bk-trans {a = alloc} {b = falloc fs2} {c = FlatAlloc.alloc-after {FS} 2 (falloc fs2)}
+                        (λ _ _ ib → ib) (FlatAlloc.alloc-bk {FS} 2 (falloc fs2)) live02)
+
       -- What the seven rows leave alone: everything below `n` and the old heap.
       mem-pres : (loc : ValueLocation FS) → BeforeFrontier (record alloc { next-slot = n }) loc
                → readLoc (floc fs7) loc ≡ readLoc s loc
       mem-pres loc bf =
         trans (mem-untouched mov-to-output (floc fs6) (falloc fs6) loc nhw-mov-to-output refl)
-       (trans (store-ind-preserves-before (floc fs5) (record alloc { next-slot = n }) (falloc fs5) box-hl loc rdi-fs5 fresh bf)
+       (trans (trans (cong (λ z → readLoc z loc) eq6) (SMCore.MemOps.writeLoc-preserves-other {FS} (floc fs5) box loc (readReg (regs (floc fs5)) Output) (not-box loc bf)))
        (trans (mem-untouched (load-from-slot n) (floc fs4) (falloc fs4) loc nhw-load-from-slot refl)
        (trans (mem-untouched mov-to-input (floc fs3) (falloc fs3) loc nhw-mov-to-input refl)
        (trans (mem-untouched (instr-alloc-heap 2) (floc fs2) (falloc fs2) loc nhw-instr-alloc-heap refl)
@@ -440,17 +477,8 @@ module InMuC {FS : FrameSemantics} where
         cell-inline (rep-prim fit′)
           (trans cell-fs7 (cong just (trans pv≡in (trans eq (cong (prim-sv fit′) (sym L≡x))))))
       cell-of (in-unit u) = ⊥-elim (fit-not-unit fit u)
-      cell-of (in-loc il valid bf eq) =
-        cell-ptr (trans cell-fs7 (cong just (trans pv≡in eq))) (live-lift bf-advance bf) valid′
-        where
-          valid′ : ValidAtWF mIn (falloc fs7) L il (floc fs7)
-          valid′ =
-            subst (λ z → ValidAtWF mIn (falloc fs7) z il (floc fs7)) (sym L≡x)
-              (validityWF-frontier-advance x il (floc fs7) cf-fs7 nextslot-≤ heapref-≤
-                (validityWF-mem-preserved x il s (floc fs7) (live→bf bf)
-                   (λ loc' bf' → mem-pres loc' (frontier-monotone alloc (record alloc { next-slot = n })
-                                                  refl n≤ ≤-refl loc' bf'))
-                   valid))
+      -- (D383: a scalar layer is never at a location)
+      cell-of (in-loc il valid bf eq) = ⊥-elim (scalar-nowhere fit valid)
 
       v : ValidAtWF Heap (falloc fs7) X box (floc fs7)
       v = valid-μbox bx wf X (cell-of inp)
