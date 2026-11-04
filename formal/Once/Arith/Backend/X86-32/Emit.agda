@@ -90,36 +90,21 @@ canon-nan-32 dst =
   "1:\n" ++
   "    movd %xmm0, " ++ dst ++ "\n"
 
+-- D385: a leaf of the flat input (D375) is ONE word at its offset `k` from the
+-- input pointer `%ecx`; a whole-input scalar (`[]`) is `%ecx` itself. (A float
+-- leaf is loaded exactly as an integer one is.)
+arg-load-text : XReg → InputPath → ℕ → String
+arg-load-text dst [] _      = "    movl %ecx, " ++ reg-text dst ++ "\n"
+arg-load-text dst (_ ∷ _) k = "    movl " ++ showℕ (4 * k) ++ "(%ecx), " ++ reg-text dst ++ "\n"
+
 instr-text : XInstr → String
 instr-text (Xmov-imm dst z)   = "    movl $" ++ showℤ z ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xmov-rr dst src)  = "    movl " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xmov-r-m s src)   = "    movl " ++ reg-text src ++ ", " ++ scratch-text s ++ "\n"
 instr-text (Xmov-m-r dst s)   = "    movl " ++ scratch-text s ++ ", " ++ reg-text dst ++ "\n"
 -- A float leaf is loaded exactly as an integer one is.
-instr-text (Xmov-farg dst path) = instr-text (Xmov-arg dst path)
-instr-text (Xmov-arg dst path) = path-load-text dst path
-  where
-    side-offset : Side → String
-    side-offset Fst = "0"
-    side-offset Snd = "4"
-
-    walk-eax-rest : XReg → InputPath → String
-    walk-eax-rest dst (s ∷ []) =
-      "    movl " ++ side-offset s ++ "(%eax), " ++ reg-text dst ++ "\n"
-    {-# CATCHALL #-}
-    walk-eax-rest dst (s ∷ ss) =
-      "    movl " ++ side-offset s ++ "(%eax), %eax\n" ++ walk-eax-rest dst ss
-    walk-eax-rest dst []       = ""
-
-    path-load-text : XReg → InputPath → String
-    path-load-text dst []         =
-      "    movl %ecx, " ++ reg-text dst ++ "\n"
-    path-load-text dst (s ∷ [])   =
-      "    movl " ++ side-offset s ++ "(%ecx), " ++ reg-text dst ++ "\n"
-    {-# CATCHALL #-}
-    path-load-text dst (s ∷ rest) =
-      "    movl " ++ side-offset s ++ "(%ecx), %eax\n" ++
-      walk-eax-rest dst rest
+instr-text (Xmov-farg dst path k) = arg-load-text dst path k
+instr-text (Xmov-arg dst path k)  = arg-load-text dst path k
 instr-text (Xadd-rr dst src)  = "    addl " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xsub-rr dst src)  = "    subl " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Ximul-rr dst src) = "    imull " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"

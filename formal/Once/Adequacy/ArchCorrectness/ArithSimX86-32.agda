@@ -79,22 +79,22 @@ def nothing  = 0
 scratch-addr : State → XScratch → Word
 scratch-addr s sc = readReg (regs s) esp + (4 * XScratch.slot sc)
 
-side-off : Side → Word
-side-off Fst = 0
-side-off Snd = 4
+-- D385: a leaf is one word at its offset
+word-bytes : Word
+word-bytes = 4
 
-open import Once.Adequacy.ArchCorrectness.ArithSimPathLoad State memory def side-off
+open import Once.Adequacy.ArchCorrectness.ArithSimPathLoad State memory def word-bytes
   using (path-load-go; plg-mem-cong)
 
-path-load : State → InputPath → Word
-path-load s p = path-load-go s (readReg (regs s) ecx) p
+path-load : State → InputPath → Word → Word
+path-load s p k = path-load-go s (readReg (regs s) ecx) p k
 
 val-x86-32 : XInstr → State → Reg → Word
 val-x86-32 (XI.Xmov-imm d z)          s _ = W.fromℤ z
 val-x86-32 (XI.Xmov-rr d src)         s _ = rd s src
 val-x86-32 (XI.Xmov-r-m sc src)       s _ = rd s src
 val-x86-32 (XI.Xmov-m-r d sc)         s _ = def (readMem (memory s) (scratch-addr s sc))
-val-x86-32 (XI.Xmov-arg d p)          s _ = path-load s p
+val-x86-32 (XI.Xmov-arg d p kₒ)          s _ = path-load s p kₒ
 val-x86-32 (XI.Xadd-rr d src)         s _ = rd s d W.⊕ rd s src
 val-x86-32 (XI.Xsub-rr d src)         s _ = rd s d W.⊖ rd s src
 val-x86-32 (XI.Ximul-rr d src)        s _ = rd s d W.⊗ rd s src
@@ -120,7 +120,7 @@ val-x86-32 (XI.Xfsubr-rr d src)          s _ = FA.fsub binary32 (rd s src) (rd s
 val-x86-32 (XI.Xfneg-r d)                s _ = FA.fneg binary32 (rd s d)
 val-x86-32 (XI.Xi2f-r d src)             s _ = FA.i2f binary32 (W.toℤ (rd s src))
 val-x86-32 (XI.Xmov-fimm d dc)           s _ = round binary32 dc
-val-x86-32 (XI.Xmov-farg d p)            s _ = path-load s p
+val-x86-32 (XI.Xmov-farg d p kₒ)            s _ = path-load s p kₒ
 val-x86-32 (XI.Xmov-out src)          s _ = rd s src
 
 ------------------------------------------------------------------------
@@ -181,9 +181,9 @@ rf-other : ∀ i s x → (∀ d → tgt i ≡ just d → ¬ (x ≡ d))
 rf-other (XI.Xmov-imm d z) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xmov-imm d z) s) (¬d≡x d x h)
 rf-other (XI.Xmov-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xmov-rr d src) s) (¬d≡x d x h)
 rf-other (XI.Xmov-m-r d sc) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xmov-m-r d sc) s) (¬d≡x d x h)
-rf-other (XI.Xmov-arg d p) s x h =
-  trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) (V (XI.Xmov-arg d p) s)) x (V (XI.Xmov-arg d p) s))
-        (readReg-wr-arith-other (regs s) d x (V (XI.Xmov-arg d p) s) (¬d≡x d x h))
+rf-other (XI.Xmov-arg d p kₒ) s x h =
+  trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) (V (XI.Xmov-arg d p kₒ) s)) x (V (XI.Xmov-arg d p kₒ) s))
+        (readReg-wr-arith-other (regs s) d x (V (XI.Xmov-arg d p kₒ) s) (¬d≡x d x h))
 rf-other (XI.Xadd-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xadd-rr d src) s) (¬d≡x d x h)
 rf-other (XI.Xsub-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xsub-rr d src) s) (¬d≡x d x h)
 rf-other (XI.Ximul-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Ximul-rr d src) s) (¬d≡x d x h)
@@ -216,7 +216,7 @@ rf-other (XI.Xfsubr-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI
 rf-other (XI.Xfneg-r d) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfneg-r d) s) (¬d≡x d x h)
 rf-other (XI.Xi2f-r d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xi2f-r d src) s) (¬d≡x d x h)
 rf-other (XI.Xmov-fimm d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xmov-fimm d src) s) (¬d≡x d x h)
-rf-other (XI.Xmov-farg d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xmov-farg d src) s) (¬d≡x d x h)
+rf-other (XI.Xmov-farg d src kₒ) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xmov-farg d src kₒ) s) (¬d≡x d x h)
 rf-other (XI.Xmov-r-m sc src) s x h = refl
 rf-other (XI.Xmov-out src) s x h = readReg-wr-eax-arith (regs s) x (V (XI.Xmov-out src) s)
 
@@ -248,9 +248,9 @@ safe-inv : (R : Reg)
 safe-inv R wa we (XI.Xmov-imm d z) s = wa (regs s) d (V (XI.Xmov-imm d z) s)
 safe-inv R wa we (XI.Xmov-rr d src) s = wa (regs s) d (V (XI.Xmov-rr d src) s)
 safe-inv R wa we (XI.Xmov-m-r d sc) s = wa (regs s) d (V (XI.Xmov-m-r d sc) s)
-safe-inv R wa we (XI.Xmov-arg d p) s =
-  trans (we (writeReg (regs s) (arith-reg d) (V (XI.Xmov-arg d p) s)) (V (XI.Xmov-arg d p) s))
-        (wa (regs s) d (V (XI.Xmov-arg d p) s))
+safe-inv R wa we (XI.Xmov-arg d p kₒ) s =
+  trans (we (writeReg (regs s) (arith-reg d) (V (XI.Xmov-arg d p kₒ) s)) (V (XI.Xmov-arg d p kₒ) s))
+        (wa (regs s) d (V (XI.Xmov-arg d p kₒ) s))
 safe-inv R wa we (XI.Xadd-rr d src) s = wa (regs s) d (V (XI.Xadd-rr d src) s)
 safe-inv R wa we (XI.Xsub-rr d src) s = wa (regs s) d (V (XI.Xsub-rr d src) s)
 safe-inv R wa we (XI.Ximul-rr d src) s = wa (regs s) d (V (XI.Ximul-rr d src) s)
@@ -262,7 +262,7 @@ safe-inv R wa we (XI.Xfsubr-rr d src2) s = wa (regs s) d (V (XI.Xfsubr-rr d src2
 safe-inv R wa we (XI.Xfneg-r d) s = wa (regs s) d (V (XI.Xfneg-r d) s)
 safe-inv R wa we (XI.Xi2f-r d src2) s = wa (regs s) d (V (XI.Xi2f-r d src2) s)
 safe-inv R wa we (XI.Xmov-fimm d src2) s = wa (regs s) d (V (XI.Xmov-fimm d src2) s)
-safe-inv R wa we (XI.Xmov-farg d src2) s = wa (regs s) d (V (XI.Xmov-farg d src2) s)
+safe-inv R wa we (XI.Xmov-farg d src2 kₒ) s = wa (regs s) d (V (XI.Xmov-farg d src2 kₒ) s)
 safe-inv R wa we (XI.Xneg-r d) s = wa (regs s) d (V (XI.Xneg-r d) s)
 safe-inv R wa we (XI.Xshl-rri d src imm) s = wa (regs s) d (V (XI.Xshl-rri d src imm) s)
 safe-inv R wa we (XI.Xdiv-rrr d a b) s =
@@ -293,7 +293,7 @@ mem-keep : ∀ i s addr → NonSpill i → readMem (memory (EA.exec1 val-x86-32 
 mem-keep (XI.Xmov-imm _ _)         s addr _ = refl
 mem-keep (XI.Xmov-rr _ _)          s addr _ = refl
 mem-keep (XI.Xmov-m-r _ _)         s addr _ = refl
-mem-keep (XI.Xmov-arg _ _)         s addr _ = refl
+mem-keep (XI.Xmov-arg _ _ _)         s addr _ = refl
 mem-keep (XI.Xadd-rr _ _)          s addr _ = refl
 mem-keep (XI.Xsub-rr _ _)          s addr _ = refl
 mem-keep (XI.Ximul-rr _ _)         s addr _ = refl
@@ -314,7 +314,7 @@ mem-keep (XI.Xfsubr-rr _ _)          s addr _ = refl
 mem-keep (XI.Xfneg-r _)              s addr _ = refl
 mem-keep (XI.Xi2f-r _ _)             s addr _ = refl
 mem-keep (XI.Xmov-fimm _ _)          s addr _ = refl
-mem-keep (XI.Xmov-farg _ _)          s addr _ = refl
+mem-keep (XI.Xmov-farg _ _ _)          s addr _ = refl
 mem-keep (XI.Xmov-out _)           s addr _ = refl
 
 mem-spill-hit : ∀ sc' src s
@@ -332,26 +332,25 @@ mem-spill-miss sc' src s addr ne =
 -- memory untouched (non-spill); spill = disjointness residual.
 ------------------------------------------------------------------------
 
-pl-inv-ns : ∀ i s p → memory (EA.exec1 val-x86-32 i s) ≡ memory s
-          → path-load (EA.exec1 val-x86-32 i s) p ≡ path-load s p
-pl-inv-ns i s p meq =
-  trans (cong (λ a → path-load-go (EA.exec1 val-x86-32 i s) a p) (safe-inv ecx wr-arith-ecx wr-eax-ecx i s))
-        (plg-mem-cong (EA.exec1 val-x86-32 i s) s (readReg (regs s) ecx) p meq)
+pl-inv-ns : ∀ i s p k → memory (EA.exec1 val-x86-32 i s) ≡ memory s
+          → path-load (EA.exec1 val-x86-32 i s) p k ≡ path-load s p k
+pl-inv-ns i s p k meq =
+  trans (cong (λ a → path-load-go (EA.exec1 val-x86-32 i s) a p k) (safe-inv ecx wr-arith-ecx wr-eax-ecx i s))
+        (plg-mem-cong (EA.exec1 val-x86-32 i s) s (readReg (regs s) ecx) p k meq)
 
 -- The GLOBAL region model (RuntimeContract linker guarantee) at the x86-32 layout.
 open import Once.CCC.Target.X86-32.Layout using (InStack; InHeap; stackAddr-write-preserves-heap)
 open import Once.Adequacy.ArchCorrectness.ArithSimPathLoadRegion
-  InStack InHeap stackAddr-write-preserves-heap def side-off
+  InStack InHeap stackAddr-write-preserves-heap def word-bytes
   using (plg; HeapChase; plg-stack-write-invisible; heapchase-agree)
 open import Data.Product using (_×_; _,_)
 
 -- LayoutWF: scratch is in-stack; the input value is heap-resident (frame contract).
 WF : State → Set
-WF s = (∀ sc → InStack (scratch-addr s sc)) × (∀ p → HeapChase (memory s) (readReg (regs s) ecx) p)
+WF s = (∀ sc → InStack (scratch-addr s sc)) × (∀ p k → HeapChase (memory s) (readReg (regs s) ecx) p k)
 
-pathloadgo≡plg : ∀ s addr p → path-load-go s addr p ≡ plg (memory s) addr p
-pathloadgo≡plg s addr []          = refl
-pathloadgo≡plg s addr (sd ∷ rest) = pathloadgo≡plg s (def (readMem (memory s) (addr + side-off sd))) rest
+pathloadgo≡plg : ∀ s addr p k → path-load-go s addr p k ≡ plg (memory s) addr p k
+pathloadgo≡plg s addr p k = refl
 
 mem-agree-heap : ∀ i s → (∀ sc → InStack (scratch-addr s sc)) → ∀ a → InHeap a
                → readMem (memory (EA.exec1 val-x86-32 i s)) a ≡ readMem (memory s) a
@@ -360,7 +359,7 @@ mem-agree-heap (XI.Xmov-r-m sc src) s inStk a inH =
 mem-agree-heap (XI.Xmov-imm d z) s inStk a inH = mem-keep (XI.Xmov-imm d z) s a tt
 mem-agree-heap (XI.Xmov-rr d src) s inStk a inH = mem-keep (XI.Xmov-rr d src) s a tt
 mem-agree-heap (XI.Xmov-m-r d sc) s inStk a inH = mem-keep (XI.Xmov-m-r d sc) s a tt
-mem-agree-heap (XI.Xmov-arg d p) s inStk a inH = mem-keep (XI.Xmov-arg d p) s a tt
+mem-agree-heap (XI.Xmov-arg d p kₒ) s inStk a inH = mem-keep (XI.Xmov-arg d p kₒ) s a tt
 mem-agree-heap (XI.Xadd-rr d src) s inStk a inH = mem-keep (XI.Xadd-rr d src) s a tt
 mem-agree-heap (XI.Xsub-rr d src) s inStk a inH = mem-keep (XI.Xsub-rr d src) s a tt
 mem-agree-heap (XI.Ximul-rr d src) s inStk a inH = mem-keep (XI.Ximul-rr d src) s a tt
@@ -372,7 +371,7 @@ mem-agree-heap (XI.Xfsubr-rr d src2) s inStk a inH = mem-keep (XI.Xfsubr-rr d sr
 mem-agree-heap (XI.Xfneg-r d) s inStk a inH = mem-keep (XI.Xfneg-r d) s a tt
 mem-agree-heap (XI.Xi2f-r d src2) s inStk a inH = mem-keep (XI.Xi2f-r d src2) s a tt
 mem-agree-heap (XI.Xmov-fimm d src2) s inStk a inH = mem-keep (XI.Xmov-fimm d src2) s a tt
-mem-agree-heap (XI.Xmov-farg d src2) s inStk a inH = mem-keep (XI.Xmov-farg d src2) s a tt
+mem-agree-heap (XI.Xmov-farg d src2 kₒ) s inStk a inH = mem-keep (XI.Xmov-farg d src2 kₒ) s a tt
 mem-agree-heap (XI.Xneg-r d) s inStk a inH = mem-keep (XI.Xneg-r d) s a tt
 mem-agree-heap (XI.Xshl-rri d src imm) s inStk a inH = mem-keep (XI.Xshl-rri d src imm) s a tt
 mem-agree-heap (XI.Xdiv-rrr d x y) s inStk a inH = mem-keep (XI.Xdiv-rrr d x y) s a tt
@@ -386,42 +385,42 @@ mem-agree-heap (XI.Xmov-out src) s inStk a inH = mem-keep (XI.Xmov-out src) s a 
 wf-e1 : ∀ i s → WF s → WF (EA.exec1 val-x86-32 i s)
 wf-e1 i s (inStk , inHp) =
   (λ sc → subst InStack (sym (sa-inv i s sc)) (inStk sc)) ,
-  (λ p → subst (λ ptr → HeapChase (memory (EA.exec1 val-x86-32 i s)) ptr p)
+  (λ p k → subst (λ ptr → HeapChase (memory (EA.exec1 val-x86-32 i s)) ptr p k)
                (sym (safe-inv ecx wr-arith-ecx wr-eax-ecx i s))
-               (heapchase-agree (memory s) (memory (EA.exec1 val-x86-32 i s)) (readReg (regs s) ecx) p
-                                (mem-agree-heap i s inStk) (inHp p)))
+               (heapchase-agree (memory s) (memory (EA.exec1 val-x86-32 i s)) (readReg (regs s) ecx) p k
+                                (mem-agree-heap i s inStk) (inHp p k)))
 
-pl-inv : ∀ i s → WF s → ∀ p → path-load (EA.exec1 val-x86-32 i s) p ≡ path-load s p
-pl-inv (XI.Xmov-imm d z) s wf p = pl-inv-ns (XI.Xmov-imm d z) s p refl
-pl-inv (XI.Xmov-rr d src) s wf p = pl-inv-ns (XI.Xmov-rr d src) s p refl
-pl-inv (XI.Xmov-m-r d sc) s wf p = pl-inv-ns (XI.Xmov-m-r d sc) s p refl
-pl-inv (XI.Xmov-arg d q) s wf p = pl-inv-ns (XI.Xmov-arg d q) s p refl
-pl-inv (XI.Xadd-rr d src) s wf p = pl-inv-ns (XI.Xadd-rr d src) s p refl
-pl-inv (XI.Xsub-rr d src) s wf p = pl-inv-ns (XI.Xsub-rr d src) s p refl
-pl-inv (XI.Ximul-rr d src) s wf p = pl-inv-ns (XI.Ximul-rr d src) s p refl
-pl-inv (XI.Xfadd-rr d src2) s wf p = pl-inv-ns (XI.Xfadd-rr d src2) s p refl
-pl-inv (XI.Xfsub-rr d src2) s wf p = pl-inv-ns (XI.Xfsub-rr d src2) s p refl
-pl-inv (XI.Xfmul-rr d src2) s wf p = pl-inv-ns (XI.Xfmul-rr d src2) s p refl
-pl-inv (XI.Xfdiv-rrr d a b) s wf p = pl-inv-ns (XI.Xfdiv-rrr d a b) s p refl
-pl-inv (XI.Xfsubr-rr d src2) s wf p = pl-inv-ns (XI.Xfsubr-rr d src2) s p refl
-pl-inv (XI.Xfneg-r d) s wf p = pl-inv-ns (XI.Xfneg-r d) s p refl
-pl-inv (XI.Xi2f-r d src2) s wf p = pl-inv-ns (XI.Xi2f-r d src2) s p refl
-pl-inv (XI.Xmov-fimm d src2) s wf p = pl-inv-ns (XI.Xmov-fimm d src2) s p refl
-pl-inv (XI.Xmov-farg d src2) s wf p = pl-inv-ns (XI.Xmov-farg d src2) s p refl
-pl-inv (XI.Xneg-r d) s wf p = pl-inv-ns (XI.Xneg-r d) s p refl
-pl-inv (XI.Xshl-rri d src imm) s wf p = pl-inv-ns (XI.Xshl-rri d src imm) s p refl
-pl-inv (XI.Xdiv-rrr d a b) s wf p = pl-inv-ns (XI.Xdiv-rrr d a b) s p refl
-pl-inv (XI.Xrem-rrr d a b) s wf p = pl-inv-ns (XI.Xrem-rrr d a b) s p refl
-pl-inv (XI.Xcmp-rrr o d a b) s wf p = pl-inv-ns (XI.Xcmp-rrr o d a b) s p refl
-pl-inv (XI.Xdiv-safe-rrr d a b) s wf p = pl-inv-ns (XI.Xdiv-safe-rrr d a b) s p refl
-pl-inv (XI.Xrem-safe-rrr d a b) s wf p = pl-inv-ns (XI.Xrem-safe-rrr d a b) s p refl
-pl-inv (XI.Xsdiv-pow2-rri d src imm) s wf p = pl-inv-ns (XI.Xsdiv-pow2-rri d src imm) s p refl
-pl-inv (XI.Xmov-out src) s wf p = pl-inv-ns (XI.Xmov-out src) s p refl
-pl-inv (XI.Xmov-r-m sc' src) s (inStk , inHp) p =
-  trans (pathloadgo≡plg (EA.exec1 val-x86-32 (XI.Xmov-r-m sc' src) s) (readReg (regs s) ecx) p)
+pl-inv : ∀ i s → WF s → ∀ p k → path-load (EA.exec1 val-x86-32 i s) p k ≡ path-load s p k
+pl-inv (XI.Xmov-imm d z) s wf p k = pl-inv-ns (XI.Xmov-imm d z) s p k refl
+pl-inv (XI.Xmov-rr d src) s wf p k = pl-inv-ns (XI.Xmov-rr d src) s p k refl
+pl-inv (XI.Xmov-m-r d sc) s wf p k = pl-inv-ns (XI.Xmov-m-r d sc) s p k refl
+pl-inv (XI.Xmov-arg d q kₒ) s wf p k = pl-inv-ns (XI.Xmov-arg d q kₒ) s p k refl
+pl-inv (XI.Xadd-rr d src) s wf p k = pl-inv-ns (XI.Xadd-rr d src) s p k refl
+pl-inv (XI.Xsub-rr d src) s wf p k = pl-inv-ns (XI.Xsub-rr d src) s p k refl
+pl-inv (XI.Ximul-rr d src) s wf p k = pl-inv-ns (XI.Ximul-rr d src) s p k refl
+pl-inv (XI.Xfadd-rr d src2) s wf p k = pl-inv-ns (XI.Xfadd-rr d src2) s p k refl
+pl-inv (XI.Xfsub-rr d src2) s wf p k = pl-inv-ns (XI.Xfsub-rr d src2) s p k refl
+pl-inv (XI.Xfmul-rr d src2) s wf p k = pl-inv-ns (XI.Xfmul-rr d src2) s p k refl
+pl-inv (XI.Xfdiv-rrr d a b) s wf p k = pl-inv-ns (XI.Xfdiv-rrr d a b) s p k refl
+pl-inv (XI.Xfsubr-rr d src2) s wf p k = pl-inv-ns (XI.Xfsubr-rr d src2) s p k refl
+pl-inv (XI.Xfneg-r d) s wf p k = pl-inv-ns (XI.Xfneg-r d) s p k refl
+pl-inv (XI.Xi2f-r d src2) s wf p k = pl-inv-ns (XI.Xi2f-r d src2) s p k refl
+pl-inv (XI.Xmov-fimm d src2) s wf p k = pl-inv-ns (XI.Xmov-fimm d src2) s p k refl
+pl-inv (XI.Xmov-farg d src2 kₒ) s wf p k = pl-inv-ns (XI.Xmov-farg d src2 kₒ) s p k refl
+pl-inv (XI.Xneg-r d) s wf p k = pl-inv-ns (XI.Xneg-r d) s p k refl
+pl-inv (XI.Xshl-rri d src imm) s wf p k = pl-inv-ns (XI.Xshl-rri d src imm) s p k refl
+pl-inv (XI.Xdiv-rrr d a b) s wf p k = pl-inv-ns (XI.Xdiv-rrr d a b) s p k refl
+pl-inv (XI.Xrem-rrr d a b) s wf p k = pl-inv-ns (XI.Xrem-rrr d a b) s p k refl
+pl-inv (XI.Xcmp-rrr o d a b) s wf p k = pl-inv-ns (XI.Xcmp-rrr o d a b) s p k refl
+pl-inv (XI.Xdiv-safe-rrr d a b) s wf p k = pl-inv-ns (XI.Xdiv-safe-rrr d a b) s p k refl
+pl-inv (XI.Xrem-safe-rrr d a b) s wf p k = pl-inv-ns (XI.Xrem-safe-rrr d a b) s p k refl
+pl-inv (XI.Xsdiv-pow2-rri d src imm) s wf p k = pl-inv-ns (XI.Xsdiv-pow2-rri d src imm) s p k refl
+pl-inv (XI.Xmov-out src) s wf p k = pl-inv-ns (XI.Xmov-out src) s p k refl
+pl-inv (XI.Xmov-r-m sc' src) s (inStk , inHp) p k =
+  trans (pathloadgo≡plg (EA.exec1 val-x86-32 (XI.Xmov-r-m sc' src) s) (readReg (regs s) ecx) p k)
         (trans (plg-stack-write-invisible (memory s) (scratch-addr s sc') (readReg (regs s) (arith-reg src))
-                  (readReg (regs s) ecx) p (inStk sc') (inHp p))
-               (sym (pathloadgo≡plg s (readReg (regs s) ecx) p)))
+                  (readReg (regs s) ecx) p k (inStk sc') (inHp p k))
+               (sym (pathloadgo≡plg s (readReg (regs s) ecx) p k)))
 
 ------------------------------------------------------------------------
 -- The instance.
@@ -444,12 +443,12 @@ open Core
   (λ d src s  → readReg-wr-arith-same (regs s) d _)
   (λ d sc s   → readReg-wr-arith-same (regs s) d _)
   -- rt-arg (peel eax)
-  (λ d p s    → trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) _) d _)
+  (λ d p k s  → trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) _) d _)
                       (readReg-wr-arith-same (regs s) d _))
   -- rt-farg — the SAME memory read, discharged the same way. A float load is
   -- a load; only the abstract reading of the bytes differed, and the typed
   -- path decides that now.
-  (λ d p s    → trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) _) d _)
+  (λ d p k s  → trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) _) d _)
                       (readReg-wr-arith-same (regs s) d _))
   -- rt-add rt-sub rt-imul
   (λ d src s  → readReg-wr-arith-same (regs s) d _)

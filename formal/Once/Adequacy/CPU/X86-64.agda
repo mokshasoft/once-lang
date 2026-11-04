@@ -67,7 +67,7 @@ open import Once.Spec.Float.Decimal using (round)
 open import Once.Spec.Float.Dyadic using (binary64)
 open import Once.Target.X86-64.PhysReg using (Reg; rsp; rdi)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
-open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
+open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd; flat-addr)
 import Once.Arith.Backend.X86-64.RunTrace as RT
 open X64 using (State; readReg; readMem)
 open X64.State using (regs; memory)
@@ -118,26 +118,17 @@ def nothing  = 0
 scratch-addr : State → XScratch → X64.Word
 scratch-addr s sc = readReg (regs s) rsp ℕ.+ (8 * XScratch.slot sc)
 
-side-off : Side → X64.Word
-side-off Fst = 0
-side-off Snd = 8
-
--- Chase the input path from an address through memory (each Fst/Snd hop
--- offsets then dereferences; the final leaf is the value at the address).
-path-load-go : State → X64.Word → InputPath → X64.Word
-path-load-go s addr []          = def (readMem (memory s) addr)
-path-load-go s addr (sd ∷ rest) =
-  path-load-go s (def (readMem (memory s) (addr ℕ.+ side-off sd))) rest
-
-path-load : State → InputPath → X64.Word
-path-load s p = path-load-go s (readReg (regs s) rdi) p
+-- D385: a leaf of the flat input (D375) is ONE word at its offset `k` from the
+-- input pointer (`Shape.flat-addr`).
+path-load : State → InputPath → ℕ → X64.Word
+path-load s p k = def (readMem (memory s) (flat-addr 8 (readReg (regs s) rdi) p k))
 
 val-x86-64 : XInstr → X64.State → Reg → X64.Word
 val-x86-64 (XI.Xmov-imm d z)          s _ = W.fromℤ z
 val-x86-64 (XI.Xmov-rr d src)         s _ = rd s src
 val-x86-64 (XI.Xmov-r-m sc src)       s _ = rd s src            -- writes = []; unused
 val-x86-64 (XI.Xmov-m-r d sc)         s _ = def (readMem (memory s) (scratch-addr s sc))
-val-x86-64 (XI.Xmov-arg d p)          s _ = path-load s p
+val-x86-64 (XI.Xmov-arg d p k)        s _ = path-load s p k
 val-x86-64 (XI.Xadd-rr d src)         s _ = rd s d W.⊕ rd s src
 val-x86-64 (XI.Xsub-rr d src)         s _ = rd s d W.⊖ rd s src
 val-x86-64 (XI.Ximul-rr d src)        s _ = rd s d W.⊗ rd s src
@@ -162,7 +153,7 @@ val-x86-64 (XI.Xfsubr-rr d src)        s _ = FA.fsub binary64 (rd s src) (rd s d
 val-x86-64 (XI.Xfneg-r d)              s _ = FA.fneg binary64 (rd s d)
 val-x86-64 (XI.Xi2f-r d src)           s _ = FA.i2f binary64 (W.toℤ (rd s src))
 val-x86-64 (XI.Xmov-fimm d dc)         s _ = round binary64 dc
-val-x86-64 (XI.Xmov-farg d p)          s _ = path-load s p
+val-x86-64 (XI.Xmov-farg d p k)        s _ = path-load s p k
 val-x86-64 (XI.Xmov-out src)          s _ = rd s src
 
 postulate
