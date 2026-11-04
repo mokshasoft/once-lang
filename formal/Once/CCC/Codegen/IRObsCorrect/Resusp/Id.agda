@@ -371,10 +371,10 @@ module ResuspIdC {FS : FrameSemantics} where
       -- was live stays put
       rout : ROut IRTy′.Id Heap A₂ sfin (rsd wf-Id y)
       rout = ro-loc V lvV refl
-               (λ {a′} {s′} bft bk keep →
-                  mk-child y tt (trans (keep V lvV) cell0) (bft Q lvQ)
-                    (validityWF-heap-transport (Live A₂) (λ _ x → x) keep bft bk (e , y) Q lvQ valQ)
-                    (trans (keep V1 lvV1) cell1) (bft V1 lvV1))
+               (λ {s′} keep →
+                  mk-child y tt (trans (keep V lvV) cell0) lvQ
+                    (validityWF-heap-transport (Live A₂) (λ _ x → x) keep (λ _ x → x) (λ _ _ ib → ib) (e , y) Q lvQ valQ)
+                    (trans (keep V1 lvV1) cell1) lvV1)
 
       ------------------------------------------------------------------
       -- the chain

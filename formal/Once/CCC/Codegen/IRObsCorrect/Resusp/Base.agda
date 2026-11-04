@@ -225,24 +225,23 @@ module ResuspBaseC {FS : FrameSemantics} where
     LV G = LayerV G {X} R
 
     -- A RESULT THAT SURVIVES whatever keeps what was live: the layer is
-    -- valid at every later state that keeps live what was live, keeps its
-    -- blocks, and leaves those cells alone (the flat emitter allocates every
-    -- block it writes after the runs whose results it holds).
+    -- valid at every later state that leaves the cells live at its making
+    -- alone (the flat emitter allocates every block it writes after the runs
+    -- whose results it holds; a put takes the result at its own allocator).
     data ROut (G : IRFunctor) (m : AllocMode) (a : AllocState {FS})
               (s : LocState FS) (v : ValueDomain.⟦ ⟦ G ⟧TI X ⟧ᴰᴵ) : Set where
       ro-unit : ⟦ G ⟧TI X ≡ IRTy′.Unit → ROut G m a s v
       ro-reg  : (fit : FitsInRegI (⟦ G ⟧TI X)) → readReg (regs s) Output ≡ prim-sv fit v → ROut G m a s v
       ro-loc  : (loc : ValueLocation FS) → Live a loc → readReg (regs s) Output ≡ SV-Ptr loc
-              → (∀ {a′ s′} → (∀ l → Live a l → Live a′ l) → BlocksKept a a′
-                 → (∀ l → Live a l → readLoc s′ l ≡ readLoc s l)
-                 → LV G m a′ v loc s′)
+              → (∀ {s′} → (∀ l → Live a l → readLoc s′ l ≡ readLoc s l)
+                 → LV G m a v loc s′)
               → ROut G m a s v
 
     ro→rp : ∀ {G m a s v} → ROut G m a s v → ResultPlaceP {⟦ G ⟧TI X} (LV G) m a a v s
     ro→rp (ro-unit u) = rp-unit u
     ro→rp (ro-reg fit rax) = rp-reg fit rax
     ro→rp (ro-loc loc lv rax f) =
-      rp-loc loc (f (λ _ x → x) (λ _ _ ib → ib) (λ _ _ → refl)) lv rax (f (λ _ x → x) (λ _ _ ib → ib) (λ _ _ → refl)) lv
+      rp-loc loc (f (λ _ _ → refl)) lv rax (f (λ _ _ → refl)) lv
 
     record RRuns′ {G : IRFunctor} (wG : WellFormedFI G) (n l : ℕ) (σ : FlatState)
                   (y : ValueDomain.⟦ ⟦ G ⟧TI A ⟧ᴰᴵ) (b : AllocState {FS}) : Set where
@@ -312,26 +311,26 @@ module ResuspBaseC {FS : FrameSemantics} where
 
     -- a re-suspended layer, read at a later state that keeps its footprint,
     -- as a value to put
-    rout→src : ∀ {G} (wG : WellFormedFI G) {m a s v a′ s′}
+    rout→src : ∀ {G} (wG : WellFormedFI G) {m a s v s′}
              → ROut G m a s v
-             → (∀ l → Live a l → Live a′ l) → BlocksKept a a′ → (∀ l → Live a l → readLoc s′ l ≡ readLoc s l)
-             → LSrc a′ s′ wG v (readReg (regs s) Output)
-    rout→src wG (ro-unit u) bft bk rd = ls-unit u (unit-lay wG u)
-    rout→src wG {s = s} {v = v} {a′} {s′} (ro-reg fit rax) bft bk rd =
-      subst (LSrc a′ s′ wG v) (sym rax) (ls-scalar fit)
-    rout→src wG {s = s} {v = v} {a′} {s′} (ro-loc loc lv rax f) bft bk rd =
-      subst (LSrc a′ s′ wG v) (sym rax) (by wG (f bft bk rd))
+             → (∀ l → Live a l → readLoc s′ l ≡ readLoc s l)
+             → LSrc a s′ wG v (readReg (regs s) Output)
+    rout→src wG (ro-unit u) rd = ls-unit u (unit-lay wG u)
+    rout→src wG {a = a} {s = s} {v = v} {s′} (ro-reg fit rax) rd =
+      subst (LSrc a s′ wG v) (sym rax) (ls-scalar fit)
+    rout→src wG {a = a} {s = s} {v = v} {s′} (ro-loc loc lv rax f) rd =
+      subst (LSrc a s′ wG v) (sym rax) (by wG (f rd))
       where
-        by : ∀ {G} (wG : WellFormedFI G) {m v} → LV G m a′ v loc s′ → LSrc a′ s′ wG v (SV-Ptr loc)
-        by wf-Id r = ls-node tt (bft loc lv) r
-        by (wf-K base-Unit) r = ls-flat tt (bft loc lv) r
+        by : ∀ {G} (wG : WellFormedFI G) {m v} → LV G m a v loc s′ → LSrc a s′ wG v (SV-Ptr loc)
+        by wf-Id r = ls-node tt lv r
+        by (wf-K base-Unit) r = ls-flat tt lv r
         by (wf-K base-Void) {v = ()} r
         by (wf-K base-Int) (CWF.ClosureWellFormedBase.fo-int ())
         by (wf-K base-Float) (CWF.ClosureWellFormedBase.fo-float ())
-        by (wf-K (base-Prod _ _)) r = ls-flat tt (bft loc lv) r
-        by (wf-K (base-Sum _ _)) r = ls-flat tt (bft loc lv) r
-        by (wf-Sum _ _) r = ls-flat tt (bft loc lv) r
-        by (wf-Prod _ _) r = ls-flat tt (bft loc lv) r
+        by (wf-K (base-Prod _ _)) r = ls-flat tt lv r
+        by (wf-K (base-Sum _ _)) r = ls-flat tt lv r
+        by (wf-Sum _ _) r = ls-flat tt lv r
+        by (wf-Prod _ _) r = ls-flat tt lv r
 
     -- the inputs, carried along a segment at the same base
     kp-base : ∀ {b a₀ n fs fs′} → (∀ l → Live b l → Live a₀ l) → SegA a₀ n fs fs′ → Kp b (floc fs) b (floc fs′)
