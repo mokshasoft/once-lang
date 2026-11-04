@@ -112,78 +112,6 @@ module PairPresC {FS : FrameSemantics} where
     gs : FlatState
     gs = VR.settle vrG
 
-    -- The nine-instruction heap build, measured against `g`'s OWN allocator
-    -- (see the header note): both of `NineStepPres`'s premises are then `refl`.
-    tail-alloc : AllocState {FS}
-    tail-alloc = record (falloc gs) { next-slot = snd-stash }
-
-    -- the literal arguments `WithG` names the tail at (see there)
-    module NSP = NineStepPres (suc (suc n))
-                   (load-from-slot (suc n))        -- i6: the fst component
-                   (load-from-slot (suc (suc n)))  -- i8: the snd component
-                   (VR.settle vrG) (floc gs) tail-alloc refl refl
-
-    settle : FlatState
-    settle = NSP.u10
-
-    pair-hl : HeapLocation
-    pair-hl = NSP.hl
-
-    ------------------------------------------------------------------
-    -- The two allocator chains the frame/frontier arguments need. Neither
-    -- reduces: `falloc NSP.u10` is a nest of nine `exec-abstract`s and the
-    -- `with`-blocks inside the loads and the indirect stores block it.
-    ------------------------------------------------------------------
-    -- `abstract` (profile 2026-09-29): consumers need only the TYPE; unfolding
-    -- the body at every use (through `PairAssemble`'s application of this
-    -- module) re-derived the nine-step state and cost gigabytes.
-    abstract
-      cf-tail : current-frame (falloc NSP.u10) ≡ current-frame (falloc gs)
-      cf-tail =
-        trans (exec-abstract-preserves-frame (load-from-slot pair-stash) (floc NSP.u9) (falloc NSP.u9))
-       (trans (exec-abstract-preserves-frame store-indirect-suc (floc NSP.u8) (falloc NSP.u8))
-       (trans (exec-abstract-preserves-frame (load-from-slot snd-stash) (floc NSP.u7) (falloc NSP.u7))
-       (trans (exec-abstract-preserves-frame store-indirect (floc NSP.u6) (falloc NSP.u6))
-       (trans (exec-abstract-preserves-frame (load-from-slot fst-stash) (floc NSP.u5) (falloc NSP.u5))
-       (trans (exec-abstract-preserves-frame mov-to-input (floc NSP.u4) (falloc NSP.u4))
-       (trans (exec-abstract-preserves-frame (store-at-slot pair-stash) (floc NSP.u3) (falloc NSP.u3))
-       (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc NSP.u2) (falloc NSP.u2))
-              (exec-abstract-preserves-frame (store-at-slot snd-stash) (floc gs) (falloc gs)))))))))
-
-      sf-tail : saved-frames (falloc NSP.u10) ≡ saved-frames (falloc gs)
-      sf-tail =
-        trans (exec-abstract-preserves-saved (load-from-slot pair-stash) (floc NSP.u9) (falloc NSP.u9))
-       (trans (exec-abstract-preserves-saved store-indirect-suc (floc NSP.u8) (falloc NSP.u8))
-       (trans (exec-abstract-preserves-saved (load-from-slot snd-stash) (floc NSP.u7) (falloc NSP.u7))
-       (trans (exec-abstract-preserves-saved store-indirect (floc NSP.u6) (falloc NSP.u6))
-       (trans (exec-abstract-preserves-saved (load-from-slot fst-stash) (floc NSP.u5) (falloc NSP.u5))
-       (trans (exec-abstract-preserves-saved mov-to-input (floc NSP.u4) (falloc NSP.u4))
-       (trans (exec-abstract-preserves-saved (store-at-slot pair-stash) (floc NSP.u3) (falloc NSP.u3))
-       (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc NSP.u2) (falloc NSP.u2))
-              (exec-abstract-preserves-saved (store-at-slot snd-stash) (floc gs) (falloc gs)))))))))
-
-    -- Rows 4-10 do not allocate, so the heap frontier they leave is the one
-    -- `instr-alloc-heap 2` set at row 3 — one above `u2`'s.
-    -- `abstract` (profile 2026-09-29): consumers need only the TYPE; unfolding
-    -- the body at every use (through `PairAssemble`'s application of this
-    -- module) re-derived the nine-step state and cost gigabytes.
-    abstract
-      heapref-tail : next-heap-ref (falloc NSP.u10) ≡ suc (next-heap-ref (falloc NSP.u2))
-      heapref-tail =
-        trans (exec-abstract-preserves-heap-ref (load-from-slot pair-stash) (floc NSP.u9) (falloc NSP.u9) tt)
-       (trans (exec-abstract-preserves-heap-ref store-indirect-suc (floc NSP.u8) (falloc NSP.u8) tt)
-       (trans (exec-abstract-preserves-heap-ref (load-from-slot snd-stash) (floc NSP.u7) (falloc NSP.u7) tt)
-       (trans (exec-abstract-preserves-heap-ref store-indirect (floc NSP.u6) (falloc NSP.u6) tt)
-       (trans (exec-abstract-preserves-heap-ref (load-from-slot fst-stash) (floc NSP.u5) (falloc NSP.u5) tt)
-       (trans (exec-abstract-preserves-heap-ref mov-to-input (floc NSP.u4) (falloc NSP.u4) tt)
-              (exec-abstract-preserves-heap-ref (store-at-slot pair-stash) (floc NSP.u3) (falloc NSP.u3) tt))))))
-
-    heapref-gs≤ : next-heap-ref (falloc gs) ≤ next-heap-ref (falloc NSP.u10)
-    heapref-gs≤ =
-      ≤-trans (≤-reflexive (sym NSP.heapref-u2))
-              (≤-trans (n≤1+n (next-heap-ref (falloc NSP.u2)))
-                       (≤-reflexive (sym heapref-tail)))
-
     -- The two mid rows: a stack write and a stack read. Neither allocates and
     -- neither is a frame op.
     cf-mid : current-frame (falloc m2) ≡ current-frame (falloc fsF)
@@ -246,53 +174,6 @@ module PairPresC {FS : FrameSemantics} where
              → BeforeFrontier (record (falloc gs) { next-slot = m }) loc
     bf-to-gs m loc b = bf-after-g m loc (bf-to-m2 m loc b)
 
-    -- `abstract` (profile 2026-09-29): consumers need only the TYPE; unfolding
-    -- the body at every use (through `PairAssemble`'s application of this
-    -- module) re-derived the nine-step state and cost gigabytes.
-    abstract
-      bf-tail : ∀ (m : ℕ) (loc : ValueLocation FS)
-              → BeforeFrontier (record (falloc gs) { next-slot = m }) loc
-              → BeforeFrontier (record (falloc NSP.u10) { next-slot = m }) loc
-      bf-tail m = frontier-monotone (record (falloc gs) { next-slot = m })
-                                    (record (falloc NSP.u10) { next-slot = m })
-                                    (sym cf-tail) ≤-refl heapref-gs≤
-
-    ------------------------------------------------------------------
-    -- D210: FRAMEPRES. The frame does not move: nine rows of it in the tail,
-    -- `g`'s own `frame-pres`, two rows in the mid, `f`'s own `frame-pres`.
-    -- (The prologue's two rows are already inside `f`'s hypothesis, whose
-    -- `alloc` index IS the caller's — `falloc p2` reduces to `alloc`.)
-    ------------------------------------------------------------------
-    frame-pres-pair : ∀ {vG rG} → resultAt (floc (pair-m2 prog n (ValueRealized.settle vrF))) (⟪ evalᴰ g xg ⟫ kg) ≡ returns (done vG rG)
-                    → current-frame (falloc NSP.u10) ≡ current-frame alloc
-    frame-pres-pair rgG =
-      trans cf-tail (trans (VR.frame-pres vrG rgG) (trans cf-mid (VR.frame-pres vrF rfF)))
-
-    -- D358: the frame STACK, by the same four pieces.
-    frames-pres-pair : ∀ {vG rG} → resultAt (floc (pair-m2 prog n (ValueRealized.settle vrF))) (⟪ evalᴰ g xg ⟫ kg) ≡ returns (done vG rG)
-                     → saved-frames (falloc NSP.u10) ≡ saved-frames alloc
-    frames-pres-pair rgG =
-      trans sf-tail (trans (VR.frames-pres vrG rgG) (trans sf-mid (VR.frames-pres vrF rfF)))
-
-    ------------------------------------------------------------------
-    -- D206: BFMONO, at an ARBITRARY slot bound `m` — which is exactly why
-    -- each hypothesis' own `bf-mono` is stated that way: they chain.
-    ------------------------------------------------------------------
-    bf-mono-pair : ∀ (m : ℕ) (loc : ValueLocation FS)
-                 → BeforeFrontier (record alloc { next-slot = m }) loc
-                 → BeforeFrontier (record (falloc NSP.u10) { next-slot = m }) loc
-    bf-mono-pair m loc b = bf-tail m loc (bf-to-gs m loc b)
-
-    ------------------------------------------------------------------
-    -- D208: STACKPRES / HEAPPRES. The two halves of ONE five-segment `trans`
-    -- chain, so they are derived from it rather than proved twice.
-    --
-    -- The two freshness read-backs `rdi6`/`rdi8` are the only thing the
-    -- memory argument needs that this cluster does not prove: they say the
-    -- pointer the two indirect stores write through IS the block row 3
-    -- allocated. They are register facts about `NSP.u6`/`NSP.u8` and belong
-    -- with the `place` cluster, so they enter here as parameters.
-    ------------------------------------------------------------------
     ------------------------------------------------------------------
     -- plan 0.97: THE SAME CHAIN, STOPPED SHORT. If `g` ends the program the
     -- nine-row tail never executes, so the preservation argument is needed at
@@ -338,12 +219,37 @@ module PairPresC {FS : FrameSemantics} where
     frame-pres-to-gs rgG =
       trans (VR.frame-pres vrG rgG) (trans cf-mid (VR.frame-pres vrF rfF))
 
-    module Fill
-      (rdi6 : sv-as-loc (readReg (regs (floc NSP.u6)) Input1) ≡ just (AtDynamic NSP.hl))
-      (rdi8 : sv-as-loc (readReg (regs (floc NSP.u8)) Input1) ≡ just (AtDynamic NSP.hl))
+    ------------------------------------------------------------------
+    -- THE WHOLE PAIR: the four segments above, then the tail (`Pair.Build`),
+    -- which leaves the slots below `snd-stash` and the heap before its fresh
+    -- block alone, keeps the frame and only grows the frontier.
+    ------------------------------------------------------------------
+    module WithTail
+      (settleT : FlatState)
+      (cf-t : current-frame (falloc settleT) ≡ current-frame (falloc gs))
+      (sf-t : saved-frames (falloc settleT) ≡ saved-frames (falloc gs))
+      (bf-t : ∀ (m : ℕ) (loc : ValueLocation FS)
+            → BeforeFrontier (record (falloc gs) { next-slot = m }) loc
+            → BeforeFrontier (record (falloc settleT) { next-slot = m }) loc)
+      (mem-t : ∀ (loc : ValueLocation FS)
+             → BeforeFrontier (record (falloc gs) { next-slot = snd-stash }) loc
+             → SMCore.MemOps.readLoc (floc settleT) loc ≡ SMCore.MemOps.readLoc (floc gs) loc)
       where
 
-      -- the window, at the two allocators the two sub-arguments speak of
+      frame-pres-pair : ∀ {vG rG} → resultAt (floc (pair-m2 prog n (ValueRealized.settle vrF))) (⟪ evalᴰ g xg ⟫ kg) ≡ returns (done vG rG)
+                      → current-frame (falloc settleT) ≡ current-frame alloc
+      frame-pres-pair rgG = trans cf-t (frame-pres-to-gs rgG)
+
+      frames-pres-pair : ∀ {vG rG} → resultAt (floc (pair-m2 prog n (ValueRealized.settle vrF))) (⟪ evalᴰ g xg ⟫ kg) ≡ returns (done vG rG)
+                       → saved-frames (falloc settleT) ≡ saved-frames alloc
+      frames-pres-pair rgG =
+        trans sf-t (trans (VR.frames-pres vrG rgG) (trans sf-mid (VR.frames-pres vrF rfF)))
+
+      bf-mono-pair : ∀ (m : ℕ) (loc : ValueLocation FS)
+                   → BeforeFrontier (record alloc { next-slot = m }) loc
+                   → BeforeFrontier (record (falloc settleT) { next-slot = m }) loc
+      bf-mono-pair m loc b = bf-t m loc (bf-to-gs m loc b)
+
       w-gs : ∀ (loc : ValueLocation FS)
            → BeforeFrontier (record alloc { next-slot = n }) loc
            → BeforeFrontier (record (falloc gs) { next-slot = snd-stash }) loc
@@ -353,63 +259,23 @@ module PairPresC {FS : FrameSemantics} where
                           refl (≤-trans (n≤1+n n) (n≤1+n (suc n))) ≤-refl
                           loc (bf-to-gs n loc b)
 
-      w-g : ∀ (loc : ValueLocation FS)
-          → BeforeFrontier (record alloc { next-slot = n }) loc
-          → BeforeFrontier (record (falloc m2) { next-slot = n1 }) loc
-      w-g loc b =
-        frontier-monotone (record (falloc m2) { next-slot = n })
-                          (record (falloc m2) { next-slot = n1 })
-                          refl n≤n1 ≤-refl
-                          loc (bf-to-m2 n loc b)
-
       mem-pres-pair : ∀ (loc : ValueLocation FS)
                     → BeforeFrontier (record alloc { next-slot = n }) loc
-                    → SMCore.MemOps.readLoc (floc NSP.u10) loc ≡ SMCore.MemOps.readLoc s loc
-      mem-pres-pair loc b =
-        -- (5) the nine-instruction tail: two stack writes at `snd-stash` and
-        --     `pair-stash`, two heap writes into the block it just allocated.
-        trans (NSP.mem-pres-from
-                 nhw-load-from-slot refl nhw-load-from-slot refl
-                 ≤-refl rdi6 rdi8 loc (w-gs loc b))
-        -- (4) `g`'s run, at `g`'s own emission frontier `n1`
-       (trans (vr-mem-pres vrG ncG loc (w-g loc b))
-        -- (3b) `restore-input backup` — a register write; no memory at all
-       (trans (mem-untouched (restore-input backup) (floc m1) (falloc m1) loc
-                 Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
-        -- (3a) `store-at-slot fst-stash` — slot `suc n`, ABOVE the window
-       (trans (store-slot-preserves-before fst-stash (floc fsF)
-                 (record alloc { next-slot = n }) (falloc fsF) loc
-                 (VR.frame-pres vrF rfF) (n≤1+n n) b)
-        -- (2) `f`'s run, at `f`'s own emission frontier `f-start = n + 4`
-       (trans (vr-mem-pres vrF ncF loc (bf-f loc b))
-        -- (1b) `store-at-slot backup` — slot `n`, the window's own bound
-       (trans (store-slot-preserves-before backup (floc p1)
-                 (record alloc { next-slot = n }) (falloc p1) loc
-                 (exec-abstract-preserves-frame mov-to-output s alloc) ≤-refl b)
-        -- (1a) `mov-to-output` — a register write
-              (mem-untouched mov-to-output s alloc loc nhw-mov-to-output refl))))))
+                    → SMCore.MemOps.readLoc (floc settleT) loc ≡ SMCore.MemOps.readLoc s loc
+      mem-pres-pair loc b = trans (mem-t loc (w-gs loc b)) (mem-pres-to-gs loc b)
 
       stack-pres-pair : ∀ (fr : FrameSemantics.Frame FS) (j : ℕ)
                       → BeforeFrontier (record alloc { next-slot = n }) (AtStack fr j)
-                      → SMCore.MemOps.readLoc (floc NSP.u10) (AtStack fr j)
+                      → SMCore.MemOps.readLoc (floc settleT) (AtStack fr j)
                         ≡ SMCore.MemOps.readLoc s (AtStack fr j)
       stack-pres-pair fr j = mem-pres-pair (AtStack fr j)
 
       heap-pres-pair : ∀ (hl : HeapLocation)
                      → BeforeFrontier (record alloc { next-slot = n }) (AtDynamic hl)
-                     → SMCore.MemOps.readLoc (floc NSP.u10) (AtDynamic hl)
+                     → SMCore.MemOps.readLoc (floc settleT) (AtDynamic hl)
                        ≡ SMCore.MemOps.readLoc s (AtDynamic hl)
       heap-pres-pair hl = mem-pres-pair (AtDynamic hl)
 
-  ----------------------------------------------------------------------
-  -- THE TRACE HALF's machine side: the five-segment SPLICE.
-  --
-  -- The emitted trace is `pre ++ ft ++ mid ++ gt ++ tail`, and every row
-  -- outside the two sub-IR fragments is a register/memory op, emitting
-  -- nothing — so the pair's events are `f`'s followed by `g`'s. (Plan 0.105:
-  -- the denotation's side is the run of the two binds, `PairAssemble`; the
-  -- budget arithmetic that used to live here is gone with the budget.)
-  ----------------------------------------------------------------------
   module PairTrace where
     open import Data.List.Properties using (++-identityʳ)
 

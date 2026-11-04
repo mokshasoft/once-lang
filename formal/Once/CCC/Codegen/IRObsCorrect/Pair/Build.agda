@@ -39,7 +39,7 @@ open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 import Once.CCC.Machine.SMPrimitives
-open import Once.CCC.Machine.FlatCopy using (regs-mem)
+open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
 
 open import Data.Nat using (_⊔_; z≤n; s≤s)
 open import Data.Nat.Properties using (m≤n⊔m)
@@ -54,12 +54,23 @@ module PairBuildC {FS : FrameSemantics} where
   open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
   open FlatEventTrace {FS} using (chain-events-subst)
   module SR = StraightRunAPI {FS}
+  private module IC = InjC {FS}
 
   tail-text : ℕ → IRTy → IRTy → AbstractTrace
   tail-text n B C =
     store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ size (B *ᵀ C)) ∷ store-at-slot (suc (suc (suc n))) ∷
     (put B (suc n) (suc (suc (suc n))) 0 ++ put C (suc (suc n)) (suc (suc (suc n))) (size B) ++
      load-from-slot (suc (suc (suc n))) ∷ [])
+
+  -- a result, where its run placed it, as a value to put
+  src-of-place : ∀ {prog} {C : IRTy} {m a ca} {c : ⟦ C ⟧} {s : LocState FS}
+               → ResultPlace {prog = prog} C m a ca c s
+               → FlatPut.Src {FS} {prog} a s C c (readReg (regs s) Output)
+  src-of-place {prog} {C} {a = a} {c = c} {s} (at-loc loc v lv rax _ _) =
+    subst (FlatPut.Src {FS} {prog} a s C c) (sym rax) (IC.src-loc {prog} C v lv)
+  src-of-place {prog} {C} {a = a} {c = c} {s} (at-reg fit rax) =
+    subst (FlatPut.Src {FS} {prog} a s C c) (sym rax) (FlatPut.src-scalar fit)
+  src-of-place unit-result = FlatPut.src-unit
 
   private
     slot-of : ValueLocation FS → ℕ
