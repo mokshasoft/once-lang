@@ -417,7 +417,7 @@ d_path'45'at_466 v0 v1 v2
         -> coe
              du_unop_124 (coe MAlonzo.Code.Once.Arith.Machine.IR.C_ainput_20)
              (coe
-                MAlonzo.Code.Once.Arith.Machine.Shape.d_typePath'63'_160 (coe v0)
+                MAlonzo.Code.Once.Arith.Machine.Shape.d_typePath'63'_196 (coe v0)
                 (coe v1) (coe v3))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError

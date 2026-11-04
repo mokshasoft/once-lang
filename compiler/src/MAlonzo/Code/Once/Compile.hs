@@ -2197,7 +2197,7 @@ d_printFile_1388 v0
 -- Once.Compile.image-of
 d_image'45'of_1390 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_652 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2134]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2174]
 d_image'45'of_1390 v0
   = coe
       MAlonzo.Code.Once.CCC.Codegen.RoomChecks.d_room'45'checks_60
@@ -2218,7 +2218,7 @@ d_blocks'45'x86'45'64_1394 v0
               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
               (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v1))
               (coe
-                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Emit.d_block'45'payload_192
+                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Emit.d_block'45'payload_170
                  (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v1)))))
       (coe
          d_dedup'45'blocks_1346
@@ -2229,7 +2229,7 @@ d_blocks'45'x86'45'64_1394 v0
                   coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Emit.d_arith'45'block'45'symbol_224
+                       MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Emit.d_arith'45'block'45'symbol_202
                        (coe v1))
                     (coe v1)))
             (coe d_program'45'blocks_1328 (coe v0))))
@@ -2262,7 +2262,7 @@ d_blocks'45'x86'45'32_1406 v0
               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
               (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v1))
               (coe
-                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_block'45'payload_192
+                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_block'45'payload_170
                  (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v1)))))
       (coe
          d_dedup'45'blocks_1346
@@ -2273,7 +2273,7 @@ d_blocks'45'x86'45'32_1406 v0
                   coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'block'45'symbol_224
+                       MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'block'45'symbol_202
                        (coe v1))
                     (coe v1)))
             (coe d_program'45'blocks_1328 (coe v0))))
@@ -2306,7 +2306,7 @@ d_blocks'45'riscv64_1418 v0
               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
               (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v1))
               (coe
-                 MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_block'45'payload_210
+                 MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_block'45'payload_200
                  (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v1)))))
       (coe
          d_dedup'45'blocks_1346
@@ -2317,7 +2317,7 @@ d_blocks'45'riscv64_1418 v0
                   coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
-                       MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_arith'45'block'45'symbol_242
+                       MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_arith'45'block'45'symbol_232
                        (coe v1))
                     (coe v1)))
             (coe d_program'45'blocks_1328 (coe v0))))
@@ -2353,7 +2353,7 @@ d_emitProgram_1432 v0
 -- Once.Compile.lib-image
 d_lib'45'image_1434 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2134]
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2174]
 d_lib'45'image_1434 v0
   = coe
       MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_fns'45'image_20
@@ -2395,7 +2395,7 @@ d_emitLibrary_1448 v0 v1
                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                         (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v2))
                         (coe
-                           MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Emit.d_block'45'payload_192
+                           MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Emit.d_block'45'payload_170
                            (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v2)))))
                 (coe
                    d_dedup'45'blocks_1346
@@ -2406,7 +2406,7 @@ d_emitLibrary_1448 v0 v1
                             coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Emit.d_arith'45'block'45'symbol_224
+                                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Emit.d_arith'45'block'45'symbol_202
                                  (coe v2))
                               (coe v2)))
                       (coe d_lib'45'blocks_1442 (coe v1)))))
@@ -2428,7 +2428,7 @@ d_emitLibrary_1448 v0 v1
                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                         (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v2))
                         (coe
-                           MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_block'45'payload_192
+                           MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_block'45'payload_170
                            (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v2)))))
                 (coe
                    d_dedup'45'blocks_1346
@@ -2439,7 +2439,7 @@ d_emitLibrary_1448 v0 v1
                             coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'block'45'symbol_224
+                                 MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_arith'45'block'45'symbol_202
                                  (coe v2))
                               (coe v2)))
                       (coe d_lib'45'blocks_1442 (coe v1)))))
@@ -2461,7 +2461,7 @@ d_emitLibrary_1448 v0 v1
                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                         (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v2))
                         (coe
-                           MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_block'45'payload_210
+                           MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_block'45'payload_200
                            (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v2)))))
                 (coe
                    d_dedup'45'blocks_1346
@@ -2472,7 +2472,7 @@ d_emitLibrary_1448 v0 v1
                             coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_arith'45'block'45'symbol_242
+                                 MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_arith'45'block'45'symbol_232
                                  (coe v2))
                               (coe v2)))
                       (coe d_lib'45'blocks_1442 (coe v1)))))

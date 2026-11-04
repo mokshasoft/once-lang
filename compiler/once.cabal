@@ -77,10 +77,12 @@ library
       MAlonzo.Code.Once.Arith.SigOp.Builders
       MAlonzo.Code.Once.Arith.SigOp.Compare
       MAlonzo.Code.Once.Arith.Type
+      MAlonzo.Code.Once.CCC.Codegen.FlatLayout
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace
       MAlonzo.Code.Once.CCC.Codegen.NodesOK
       MAlonzo.Code.Once.CCC.Codegen.ProgramImage
       MAlonzo.Code.Once.CCC.Codegen.RoomChecks
+      MAlonzo.Code.Once.CCC.Codegen.Size
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.CCC.Label
       MAlonzo.Code.Once.CCC.Machine.Locations
@@ -103,7 +105,10 @@ library
       MAlonzo.Code.Once.Compile
       MAlonzo.Code.Once.Inspect
       MAlonzo.Code.Once.Principal
+      MAlonzo.Code.Once.Spec.ABI
       MAlonzo.Code.Once.Spec.Context
+      MAlonzo.Code.Once.Spec.Domain
+      MAlonzo.Code.Once.Spec.Effect
       MAlonzo.Code.Once.Spec.Grade
       MAlonzo.Code.Once.Spec.Signature
       MAlonzo.Code.Once.Spec.Sub
