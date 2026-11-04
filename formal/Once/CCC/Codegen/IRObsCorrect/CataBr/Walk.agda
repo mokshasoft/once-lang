@@ -26,6 +26,9 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
+open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
+open import Data.List.Properties using (++-identityʳ)
+open import Once.IRTy using (IRTy)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; readReg; Output)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -43,6 +46,7 @@ module CataWalkC {FS : FrameSemantics} where
   open ResuspBaseC {FS} using (St; SegA; Seg; SRun; s-at; s-nil; segA-∘; seg-rebase; segA-pc; Kp; sl-keep; live-from)
   open CataStepsC {FS} using (s-++; seg-q)
   open CataStackC {FS}
+  open GetC {FS} using (GetOut; module GetOut; setOut; out-mem)
   open LocState using (regs; halted)
   open AllocState using (next-slot; next-heap-ref; current-frame)
 
@@ -188,3 +192,19 @@ module CataWalkC {FS : FrameSemantics} where
     ; ret = Pop2Out.ret p ; clo = Pop2Out.clo p ; lnk = Pop2Out.lnk p ; cf = Pop2Out.cf p
     ; slots = λ j kj → Pop2Out.slots p j (f j kj)
     ; post = record { word = Pop2Out.word p ; out = Pop2Out.out p ; elem = Pop2Out.elem p ; stack = Pop2Out.stack p } }
+
+  ------------------------------------------------------------------------
+  -- plan 0.123 α2: a component READ (`Get.get-run`), as a one-step walk:
+  -- only `Output` moves.
+  ------------------------------------------------------------------------
+  get-walk : ∀ {prog n K Q} (σ : FlatState) {C : IRTy} {c : ⟦ C ⟧} (g : GetOut {prog = prog} C c σ)
+           → halted (floc σ) ≡ false
+           → Q (setOut σ (GetOut.out g))
+           → Walk prog n K σ (suc (fpc σ)) Q
+  get-walk {prog} σ g nh q = record
+    { τ = setOut σ (GetOut.out g) ; steps = 1
+    ; run = GetOut.step g , GetOut.silent g , trans (log-of (GetOut.step g) (GetOut.silent g)) (++-identityʳ _)
+    ; seg = record { mem = λ loc _ → out-mem σ (GetOut.out g) loc ; cf = refl ; sf = refl ; ns = refl ; href = ≤-refl }
+    ; bk = λ _ _ ib → ib ; nh = nh ; pc = refl ; ret = refl ; clo = refl ; lnk = refl ; cf = refl
+    ; slots = λ j _ → out-mem σ (GetOut.out g) (AtStack (current-frame (falloc σ)) j)
+    ; post = q }
