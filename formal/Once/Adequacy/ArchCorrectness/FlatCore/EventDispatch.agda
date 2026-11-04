@@ -122,7 +122,7 @@ open CFC using (HeapView; slots; haddr)
 -- plan 0.123 A.4 step 5: THE BUDGET the room checks re-arm, carried beside the
 -- correspondence; it is where every spending instruction's room comes from.
 open import Once.Adequacy.ArchCorrectness.FlatCore.Budget o FS slot-size word-eq Reg roles State rreg memory xhalted
-  using (Budget; fbase-shift; straight-frame; need-room; room-of; call-room-of; bg-view; bg-land; bg-plain; bg-str; bg-alloc; bg-start
+  using (Budget; fbase-shift; straight-frame; need-room; room-of; call-room-of; bg-view; bg-land; bg-plain; bg-str; bg-spent-str; bg-alloc; bg-start
         ; bg-call; bg-room; bg-boundary; bg-label; bg-ret)
 
 ------------------------------------------------------------------------
@@ -1141,7 +1141,7 @@ module Dispatch (sup : Supply) where
           lbl = once-symbol-path (SigOpInfo.name si)
           rec = IH ev env prog (flat-exec-instr (instr-sigop si) prog fs)
                   (ret-call (LocState.ev-log (floc fs)) lbl s) (proj₂ (proj₂ contract))
-                  (bg-str _ bg ftq refl refl)
+                  (bg-spent-str _ bg ftq refl)
                   (flat-inv-step (instr-sigop si) prog fs ftq h tt wf)
           -- plan 0.105: both logs grow by the call's event — the flat one by
           -- definition, the concrete one by the event the contract pins.
@@ -1183,7 +1183,7 @@ module Dispatch (sup : Supply) where
                   pl  = proj₁ contract
                   rec = IH ev env prog (flat-exec-instr (instr-sigop si) prog fs)
                           (dispatchArith pl s) (proj₂ (proj₂ contract))
-                          (bg-str _ bg ftq refl refl)
+                          (bg-spent-str _ bg ftq refl)
                           (flat-inv-step (instr-sigop si) prog fs ftq h tt wf)
                   goal : AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) (suc (proj₁ rec)) (compile-trace prog) s)
                                  (event-of (instr-sigop si) fs ▹ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs))

@@ -59,7 +59,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.Budget
   where
 
 open import Data.Nat.Properties
-  using (≤-trans; ≤-reflexive; +-identityʳ; +-assoc; +-comm; *-distribʳ-+; *-monoˡ-≤; +-monoʳ-≤; m≤m+n; m+n≤o⇒m≤o∸n)
+  using (≤-trans; ≤-reflexive; +-identityʳ; +-assoc; +-comm; *-distribʳ-+; *-monoˡ-≤; +-monoʳ-≤; +-monoˡ-≤; m≤m+n; m+n≤o⇒m≤o∸n)
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; AllocState; module AllocState; instr-room; instr-alloc-heap
         ; instr-ctrl; c-start; c-entry; c-label; EntryId)
@@ -194,6 +194,16 @@ bg-plain {hv} {prog} {fs} {fs′} {i} bg f nr z pc′ fb′ =
                  (trans (cong (λ m → hfront hv + slots m) z) (+-identityʳ (hfront hv))))
            (bg-split {hv} {prog} {fs} bg f nr))
 
+-- D387: a step that SPENDS but moves neither the frontier nor the frame base (a
+-- SigOp's call: its stack use is transient) keeps the budget — the measure only falls
+bg-spent : ∀ {hv : HeapView} {prog : AbstractTrace} {fs fs′ : FlatState} {i : AbstractInstr}
+         → Budget hv prog fs → fetch prog (fpc fs) ≡ just i → room? i ≡ false
+         → fpc fs′ ≡ suc (fpc fs) → fbase fs′ ≡ fbase fs → Budget hv prog fs′
+bg-spent {hv} {prog} {fs} {fs′} {i} bg f nr pc′ fb′ =
+  bg-move {hv} {prog} {fs′} pc′ fb′
+    (≤-trans (+-monoˡ-≤ (slots (need prog (suc (fpc fs)))) (m≤m+n (hfront hv) (slots (spend (max-entry prog) i))))
+             (bg-split {hv} {prog} {fs} bg f nr))
+
 -- an allocation: the frontier rises by what the measure falls
 bg-alloc : ∀ {hv hv′ : HeapView} {prog : AbstractTrace} {fs fs′ : FlatState} {n : ℕ}
          → Budget hv prog fs → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
@@ -279,6 +289,13 @@ bg-str : ∀ {hv : HeapView} {prog : AbstractTrace} {fs : FlatState} (i : Abstra
        → Budget hv prog (flat-step-straight i fs)
 bg-str {hv} {prog} {fs} i bg f nr z =
   bg-plain {hv} {prog} {fs} {flat-step-straight i fs} {i} bg f nr z refl (straight-frame i fs)
+
+-- …as a straight step
+bg-spent-str : ∀ {hv : HeapView} {prog : AbstractTrace} {fs : FlatState} (i : AbstractInstr)
+             → Budget hv prog fs → fetch prog (fpc fs) ≡ just i → room? i ≡ false
+             → Budget hv prog (flat-step-straight i fs)
+bg-spent-str {hv} {prog} {fs} i bg f nr =
+  bg-spent {hv} {prog} {fs} {flat-step-straight i fs} {i} bg f nr refl (straight-frame i fs)
 
 -- a call's own slot: its spend is that slot and the largest entry frame
 call-room-of : ∀ {hv : HeapView} {prog : AbstractTrace} {fs : FlatState} {s : State} {c : AbstractInstr}

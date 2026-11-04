@@ -21495,3 +21495,28 @@ ending, `Compare`) now read it from that decode.
 * "The argument decodes" is a site fact of a non-faulting run, as `load-at`'s target is — the premise
   `arith-sigop-run`'s proof needs.
 * `FlatLeft.abs-fault`: a SigOp that does not halt does not fault (`sigop-fault`).
+
+## D387 — A SIGOP'S STACK USE IS ROOM-CHECKED: WHAT ITS CALL PUSHES PLUS ITS BLOCK'S SCRATCH (2026-11-04)
+
+**Decided** in plan 0.123 α′, found while stating step (e) of the `arith-sigop-run` discharge.
+
+### Context
+A SigOp is a `call` into its block: the call pushes a return address (x86-64, x86-32), the x86-32 block
+pushes the four registers it borrows, and an arith block spills to `required-scratch` words below that. The room checks (`RoomChecks.spend`) charged `instr-sigop` nothing,
+so a SigOp at a frontier one word from the stack bottom ran its call into the heap — `arith-sigop-run`,
+which concludes the heap is untouched, was false there, and the postulate hid it.
+
+### Decision
+`spend E (instr-sigop si) = sigop-call-words + sigop-scratch (sem si)`: `sigop-call-words = 5`, the most
+any arch's call pushes (x86-32: the return address and %ebx %esi %edx %edi; x86-64 pushes one word,
+riscv64 none — the room check stays arch-generic and is exact on x86-32), plus the block's scratch,
+`block-scratch e` (`required-scratch (normalize e)` for an Int block — the emitted body is the normalized
+one — and `required-scratch e` for a Float block); a SigOp without an arith block spends the call words
+alone. The stack use is transient — the frame base and the frontier stand still across the
+step — so the budget only loses the spent term (`Budget.bg-spent`, `bg-spent-str`), and `room-of`
+gives the block its room below `sp` at the call.
+
+### Consequences
+* The room check before a SigOp's block covers its whole stack use; the run of the block gets that room
+  from `Budget` + `FlatCorr` (`room-of`), the premise step (e) needs.
+* `EventDispatch`'s SigOp cases (`sigop-external`, the pure step) carry the budget by `bg-spent-str`.

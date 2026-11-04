@@ -34,8 +34,12 @@ open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_)
 open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_)
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; instr-ctrl; instr-room; instr-alloc-heap; instr-call-closure
+  using (AbstractInstr; AbstractTrace; instr-ctrl; instr-room; instr-alloc-heap; instr-call-closure; instr-sigop
         ; c-label; c-entry; c-start; c-call-fn)
+open import Once.SigOp.Info using (SigOpSem; blockV; module SigOpInfo)
+open import Once.Arith.Machine.IR using (MArithIR)
+open import Once.Arith.Machine.Compile using (required-scratch; normalize)
+open import Once.Arith.Type using (NInt; NFloat)
 
 -- the frame an entry reserves (0 for anything that is not one)
 entry-frame : AbstractInstr → ℕ
@@ -48,6 +52,23 @@ max-entry : AbstractTrace → ℕ
 max-entry []      = 0
 max-entry (i ∷ t) = entry-frame i ⊔ max-entry t
 
+-- D387: the scratch words an arith block reserves (Int blocks are normalized
+-- before they are compiled; Float blocks are not — `block-payload`)
+block-scratch : ∀ {sh n} → MArithIR sh n → ℕ
+block-scratch {n = NInt}   e = required-scratch (normalize e)
+block-scratch {n = NFloat} e = required-scratch e
+
+-- D387: the words an arith block's call pushes before its scratch, on the arch
+-- that pushes most — x86-32: the return address and the four borrowed registers
+-- (%ebx %esi %edx %edi); x86-64 pushes one, riscv64 none
+sigop-call-words : ℕ
+sigop-call-words = 5
+
+sigop-scratch : ∀ {A B} → SigOpSem A B → ℕ
+sigop-scratch (blockV e _ _) = block-scratch e
+{-# CATCHALL #-}
+sigop-scratch _              = 0
+
 -- what one instruction spends, in words, given the largest entry frame `E`
 spend : ℕ → AbstractInstr → ℕ
 spend E (instr-alloc-heap n)        = n
@@ -55,6 +76,10 @@ spend E (instr-ctrl (c-start b))    = b
 spend E (instr-ctrl (c-entry _ b))  = b
 spend E (instr-ctrl (c-call-fn _))  = suc E
 spend E instr-call-closure          = suc E
+-- D387: a SigOp is a call too — what its block pushes, and an arith block's own
+-- scratch frame below the stack pointer (what its code reserves, as each arch's
+-- `block-payload` computes it)
+spend E (instr-sigop si)            = sigop-call-words + sigop-scratch (SigOpInfo.sem si)
 {-# CATCHALL #-}
 spend E _                           = 0
 
