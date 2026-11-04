@@ -40,6 +40,12 @@ open import Once.CCC.Label using (module LabelId)
 open LabelId using (idx)
 open import Data.Nat.Properties using (1+n≰n)
 open import Data.Nat using (s≤s)
+open import Once.CCC.Codegen.IRObsCorrect.Pair.Build o tbl using (module PairBuildC)
+open import Once.CCC.Codegen.Size using (size)
+open import Once.CCC.Codegen.FlatLayout using (put)
+import Once.CCC.Machine.FlatPut as FlatPut
+open import Data.Nat using (_⊔_)
+open import Once.IRTy using () renaming (_*_ to _*ᵀ_)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con)
 
@@ -59,6 +65,9 @@ module PairC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
+  module PBC where
+    open PairBuildC {FS} public
+    open FlatPut {FS} using (src-tr) public
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel)
 
@@ -189,14 +198,12 @@ module PairC {FS : FrameSemantics} where
     pre mid tail : AbstractTrace
     pre  = mov-to-output ∷ store-at-slot backup ∷ []
     mid  = store-at-slot fst-stash ∷ restore-input backup ∷ []
-    tail = instr-alloc-heap 2 ∷
+    -- plan 0.123 B.4 α: the block, both components put into it (`Pair.Build`)
+    tail = instr-alloc-heap (2 ⊔ size (B *ᵀ C)) ∷
            store-at-slot pair-stash ∷
-           mov-to-input ∷
-           load-from-slot fst-stash ∷
-           store-indirect ∷
-           load-from-slot snd-stash ∷
-           store-indirect-suc ∷
-           load-from-slot pair-stash ∷ []
+           (put B fst-stash pair-stash 0 ++
+            put C snd-stash pair-stash (size B) ++
+            load-from-slot pair-stash ∷ [])
 
     -- THE DECOMPOSITION. `refl`: this is the emitter's own `let`, spelled out.
     -- (`store-at-slot snd-stash` heads the tail in the emitter; it is written
@@ -360,7 +367,7 @@ module PairC {FS : FrameSemantics} where
     -- (`pre`, `mid`) and the nine-instruction tail contribute definitionally;
     -- only the two sub-traces need `length-++`.
     len-emitted : length (emitted n l ⟨ f , g ⟩)
-                ≡ suc (suc (length PS.ft + suc (suc (length PS.gt + 9))))
+                ≡ suc (suc (length PS.ft + suc (suc (length PS.gt + length tail-text))))
     len-emitted =
       cong (λ z → suc (suc z))
         (trans (length-++ PS.ft {rest-after-ft})
@@ -547,6 +554,11 @@ module PairC {FS : FrameSemantics} where
     nhM2 = exec-abstract-preserves-halted-WF (restore-input PS.backup)
              (floc m1) (falloc m1) nhM1 wf-restore
 
+    -- the restore found its slot, so it moved no allocator
+    alloc-m2 : falloc m2 ≡ falloc fsF
+    alloc-m2 = cong (λ mv → proj₂ (SMCore.AbstractExec.exec-restore-input-with-value {FS} mv (floc m1) (falloc m1)))
+                    (proj₂ wf-restore)
+
     -- `g` is emitted at `2 + length ft + 2 + base`, which is where the
     -- machine now is — so this state is `g`'s entry state.
     bg : ℕ
@@ -645,278 +657,6 @@ module PairC {FS : FrameSemantics} where
     read-fst-fsG =
       trans (VR.stack-pres vrg ncG (current-frame alloc) PS.fst-stash bf-fst-g)
             read-fst-m2
-
-    ----------------------------------------------------------------
-    -- THE TAIL: the nine-instruction heap build, at pair's own stashes
-    -- (`NineStepPres`'s shape with `n := snd-stash`). Written out with
-    -- `flat-step-straight` exactly as that module defines it, so the two
-    -- families of states are definitionally the same.
-    ----------------------------------------------------------------
-    -- Named THROUGH `NineSteps` (profile 2026-09-29), at the arguments
-    -- `PairPres`' `NineStepPres` is applied at, so the two families are
-    -- the same names rather than two definitionally-equal chains.
-    u1 : FlatState
-    u1 = fsG
-    -- …and at LITERAL arguments (profile 2026-09-30): `PS.snd-stash`,
-    -- `PairPlace.snd-stash` and `PairPres.gs`/`fsG` are equal only by
-    -- unfolding, and conversion unfolds the nine steps before it gets to
-    -- the arguments. Every instantiation spells the same four terms.
-    open NineSteps (suc (suc n)) (load-from-slot (suc n)) (load-from-slot (suc (suc n))) (VR.settle vrg)
-      using (u2; u3; u4; u5; u6; u7; u8; u9; u10)
-
-    -- the pair node, as the bump allocator hands it out at `u3`.
-    hl : HeapLocation
-    hl = heap-loc (mkHeapRef (next-heap-ref (falloc u2))) 0
-
-    -- the frame, carried forward row by row.
-    cf-u2 : current-frame (falloc u2) ≡ current-frame alloc
-    cf-u2 = trans (exec-abstract-preserves-frame (store-at-slot PS.snd-stash)
-                     (floc u1) (falloc u1)) cf-fsG
-    cf-u3 : current-frame (falloc u3) ≡ current-frame alloc
-    cf-u3 = trans (exec-abstract-preserves-frame (instr-alloc-heap 2)
-                     (floc u2) (falloc u2)) cf-u2
-    cf-u4 : current-frame (falloc u4) ≡ current-frame alloc
-    cf-u4 = trans (exec-abstract-preserves-frame (store-at-slot PS.pair-stash)
-                     (floc u3) (falloc u3)) cf-u3
-    cf-u5 : current-frame (falloc u5) ≡ current-frame alloc
-    cf-u5 = trans (exec-abstract-preserves-frame mov-to-input
-                     (floc u4) (falloc u4)) cf-u4
-    cf-u6 : current-frame (falloc u6) ≡ current-frame alloc
-    cf-u6 = trans (exec-abstract-preserves-frame (load-from-slot PS.fst-stash)
-                     (floc u5) (falloc u5)) cf-u5
-    cf-u7 : current-frame (falloc u7) ≡ current-frame alloc
-    cf-u7 = trans (exec-abstract-preserves-frame store-indirect
-                     (floc u6) (falloc u6)) cf-u6
-    cf-u8 : current-frame (falloc u8) ≡ current-frame alloc
-    cf-u8 = trans (exec-abstract-preserves-frame (load-from-slot PS.snd-stash)
-                     (floc u7) (falloc u7)) cf-u7
-    cf-u9 : current-frame (falloc u9) ≡ current-frame alloc
-    cf-u9 = trans (exec-abstract-preserves-frame store-indirect-suc
-                     (floc u8) (falloc u8)) cf-u8
-
-    -- The two windows the stash reads are measured in. A stash at or
-    -- above `n` is NOT before the caller's frontier, so the preservation
-    -- lemmas are spent against a frontier raised to the next stash.
-    aS aP : AllocState {FS}
-    aS = record alloc { next-slot = PS.snd-stash }
-    aP = record alloc { next-slot = PS.pair-stash }
-
-    bf-fst-S : BeforeFrontier aS (AtStack (current-frame alloc) PS.fst-stash)
-    bf-fst-S = BeforeFrontier.stack-before refl (n<1+n (suc n))
-
-    bf-snd-P : BeforeFrontier aP (AtStack (current-frame alloc) PS.snd-stash)
-    bf-snd-P = BeforeFrontier.stack-before refl (n<1+n (suc (suc n)))
-
-    ----------------------------------------------------------------
-    -- (i) `fst-stash` survives to `u5`, where `i6` loads it.
-    ----------------------------------------------------------------
-    read-fst-u2 : SMCore.MemOps.readLoc (floc u2)
-                    (AtStack (current-frame alloc) PS.fst-stash) ≡ just fv
-    read-fst-u2 =
-      trans (store-slot-preserves-before PS.snd-stash (floc u1) aS (falloc u1)
-               (AtStack (current-frame alloc) PS.fst-stash) cf-fsG ≤-refl bf-fst-S)
-            read-fst-fsG
-
-    read-fst-u3 : SMCore.MemOps.readLoc (floc u3)
-                    (AtStack (current-frame alloc) PS.fst-stash) ≡ just fv
-    read-fst-u3 =
-      trans (mem-untouched (instr-alloc-heap 2) (floc u2) (falloc u2)
-               (AtStack (current-frame alloc) PS.fst-stash) nhw-instr-alloc-heap refl)
-            read-fst-u2
-
-    read-fst-u4 : SMCore.MemOps.readLoc (floc u4)
-                    (AtStack (current-frame alloc) PS.fst-stash) ≡ just fv
-    read-fst-u4 =
-      trans (store-slot-preserves-before PS.pair-stash (floc u3) aS (falloc u3)
-               (AtStack (current-frame alloc) PS.fst-stash) cf-u3
-               (n≤1+n PS.snd-stash) bf-fst-S)
-            read-fst-u3
-
-    read-fst-u5 : SMCore.MemOps.readLoc (floc u5)
-                    (AtStack (current-frame alloc) PS.fst-stash) ≡ just fv
-    read-fst-u5 =
-      trans (mem-untouched mov-to-input (floc u4) (falloc u4)
-               (AtStack (current-frame alloc) PS.fst-stash) nhw-mov-to-input refl)
-            read-fst-u4
-
-    wf-load-fst : InstrWF (floc u5) (falloc u5) (load-from-slot PS.fst-stash)
-    wf-load-fst =
-      fv , subst (λ fr → SMCore.MemOps.readLoc (floc u5) (AtStack fr PS.fst-stash) ≡ just fv)
-                 (sym cf-u5) read-fst-u5
-
-    ----------------------------------------------------------------
-    -- (ii) the pointer in `Input1`, before and after `i6`.
-    ----------------------------------------------------------------
-    rdi5 : sv-as-loc (readReg (regs (floc u5)) Input1) ≡ just (AtDynamic hl)
-    rdi5 = refl
-
-    rdi6 : sv-as-loc (readReg (regs (floc u6)) Input1) ≡ just (AtDynamic hl)
-    rdi6 = trans (cong sv-as-loc
-                    (load-slot-preserves-input PS.fst-stash (floc u5) (falloc u5)
-                       fv (proj₂ wf-load-fst)))
-                 rdi5
-
-    wf-store-ind : InstrWF (floc u6) (falloc u6) store-indirect
-    wf-store-ind = AtDynamic hl , rdi6
-
-    ----------------------------------------------------------------
-    -- (iii) `snd-stash`, written by the tail's own first row.
-    ----------------------------------------------------------------
-    sv : StoredValue FS
-    sv = readReg (regs (floc u1)) Output
-
-    read-snd-u2 : SMCore.MemOps.readLoc (floc u2)
-                    (AtStack (current-frame (falloc u1)) PS.snd-stash) ≡ just sv
-    read-snd-u2 =
-      SMCore.MemOps.writeLoc-read-same-stack (floc u1)
-        (current-frame (falloc u1)) PS.snd-stash sv
-
-    read-snd-u2' : SMCore.MemOps.readLoc (floc u2)
-                     (AtStack (current-frame alloc) PS.snd-stash) ≡ just sv
-    read-snd-u2' =
-      subst (λ fr → SMCore.MemOps.readLoc (floc u2) (AtStack fr PS.snd-stash) ≡ just sv)
-            cf-fsG read-snd-u2
-
-    read-snd-u3 : SMCore.MemOps.readLoc (floc u3)
-                    (AtStack (current-frame alloc) PS.snd-stash) ≡ just sv
-    read-snd-u3 =
-      trans (mem-untouched (instr-alloc-heap 2) (floc u2) (falloc u2)
-               (AtStack (current-frame alloc) PS.snd-stash) nhw-instr-alloc-heap refl)
-            read-snd-u2'
-
-    read-snd-u4 : SMCore.MemOps.readLoc (floc u4)
-                    (AtStack (current-frame alloc) PS.snd-stash) ≡ just sv
-    read-snd-u4 =
-      trans (store-slot-preserves-before PS.pair-stash (floc u3) aP (falloc u3)
-               (AtStack (current-frame alloc) PS.snd-stash) cf-u3 ≤-refl bf-snd-P)
-            read-snd-u3
-
-    read-snd-u5 : SMCore.MemOps.readLoc (floc u5)
-                    (AtStack (current-frame alloc) PS.snd-stash) ≡ just sv
-    read-snd-u5 =
-      trans (mem-untouched mov-to-input (floc u4) (falloc u4)
-               (AtStack (current-frame alloc) PS.snd-stash) nhw-mov-to-input refl)
-            read-snd-u4
-
-    read-snd-u6 : SMCore.MemOps.readLoc (floc u6)
-                    (AtStack (current-frame alloc) PS.snd-stash) ≡ just sv
-    read-snd-u6 =
-      trans (mem-untouched (load-from-slot PS.fst-stash) (floc u5) (falloc u5)
-               (AtStack (current-frame alloc) PS.snd-stash) nhw-load-from-slot refl)
-            read-snd-u5
-
-    read-snd-u7 : SMCore.MemOps.readLoc (floc u7)
-                    (AtStack (current-frame alloc) PS.snd-stash) ≡ just sv
-    read-snd-u7 =
-      trans (store-ind-preserves-slot (floc u6) (falloc u6) hl PS.snd-stash rdi6)
-            read-snd-u6
-
-    wf-load-snd : InstrWF (floc u7) (falloc u7) (load-from-slot PS.snd-stash)
-    wf-load-snd =
-      sv , subst (λ fr → SMCore.MemOps.readLoc (floc u7) (AtStack fr PS.snd-stash) ≡ just sv)
-                 (sym cf-u7) read-snd-u7
-
-    rdi8 : sv-as-loc (readReg (regs (floc u8)) Input1) ≡ just (AtDynamic hl)
-    rdi8 =
-      trans (cong sv-as-loc
-               (trans (load-slot-preserves-input PS.snd-stash (floc u7) (falloc u7)
-                         sv (proj₂ wf-load-snd))
-                      (store-ind-preserves-input (floc u6) (falloc u6)
-                         (AtDynamic hl) rdi6)))
-            rdi6
-
-    wf-store-ind-suc : InstrWF (floc u8) (falloc u8) store-indirect-suc
-    wf-store-ind-suc = AtDynamic hl , rdi8
-
-    ----------------------------------------------------------------
-    -- (iv) `pair-stash`, the pointer the run hands back.
-    ----------------------------------------------------------------
-    pv : StoredValue FS
-    pv = readReg (regs (floc u3)) Output
-
-    read-pair-u4 : SMCore.MemOps.readLoc (floc u4)
-                     (AtStack (current-frame (falloc u3)) PS.pair-stash) ≡ just pv
-    read-pair-u4 =
-      SMCore.MemOps.writeLoc-read-same-stack (floc u3)
-        (current-frame (falloc u3)) PS.pair-stash pv
-
-    read-pair-u4' : SMCore.MemOps.readLoc (floc u4)
-                      (AtStack (current-frame alloc) PS.pair-stash) ≡ just pv
-    read-pair-u4' =
-      subst (λ fr → SMCore.MemOps.readLoc (floc u4) (AtStack fr PS.pair-stash) ≡ just pv)
-            cf-u3 read-pair-u4
-
-    read-pair-u5 : SMCore.MemOps.readLoc (floc u5)
-                     (AtStack (current-frame alloc) PS.pair-stash) ≡ just pv
-    read-pair-u5 =
-      trans (mem-untouched mov-to-input (floc u4) (falloc u4)
-               (AtStack (current-frame alloc) PS.pair-stash) nhw-mov-to-input refl)
-            read-pair-u4'
-
-    read-pair-u6 : SMCore.MemOps.readLoc (floc u6)
-                     (AtStack (current-frame alloc) PS.pair-stash) ≡ just pv
-    read-pair-u6 =
-      trans (mem-untouched (load-from-slot PS.fst-stash) (floc u5) (falloc u5)
-               (AtStack (current-frame alloc) PS.pair-stash) nhw-load-from-slot refl)
-            read-pair-u5
-
-    read-pair-u7 : SMCore.MemOps.readLoc (floc u7)
-                     (AtStack (current-frame alloc) PS.pair-stash) ≡ just pv
-    read-pair-u7 =
-      trans (store-ind-preserves-slot (floc u6) (falloc u6) hl PS.pair-stash rdi6)
-            read-pair-u6
-
-    read-pair-u8 : SMCore.MemOps.readLoc (floc u8)
-                     (AtStack (current-frame alloc) PS.pair-stash) ≡ just pv
-    read-pair-u8 =
-      trans (mem-untouched (load-from-slot PS.snd-stash) (floc u7) (falloc u7)
-               (AtStack (current-frame alloc) PS.pair-stash) nhw-load-from-slot refl)
-            read-pair-u7
-
-    read-pair-u9 : SMCore.MemOps.readLoc (floc u9)
-                     (AtStack (current-frame alloc) PS.pair-stash) ≡ just pv
-    read-pair-u9 =
-      trans (store-ind-suc-preserves-slot (floc u8) (falloc u8) hl PS.pair-stash rdi8)
-            read-pair-u8
-
-    wf-load-pair : InstrWF (floc u9) (falloc u9) (load-from-slot PS.pair-stash)
-    wf-load-pair =
-      pv , subst (λ fr → SMCore.MemOps.readLoc (floc u9) (AtStack fr PS.pair-stash) ≡ just pv)
-                 (sym cf-u9) read-pair-u9
-
-    ----------------------------------------------------------------
-    -- THE NINE `halted ≡ false` OBLIGATIONS. Rows 1-4 are
-    -- unconditional; rows 5-9 each spend a witness an EARLIER row of
-    -- this same chain established.
-    ----------------------------------------------------------------
-    nhU2 : halted (floc u2) ≡ false
-    nhU2 = exec-abstract-preserves-halted-WF (store-at-slot PS.snd-stash)
-             (floc u1) (falloc u1) liveG tt
-    nhU3 : halted (floc u3) ≡ false
-    nhU3 = exec-abstract-preserves-halted-WF (instr-alloc-heap 2)
-             (floc u2) (falloc u2) nhU2 tt
-    nhU4 : halted (floc u4) ≡ false
-    nhU4 = exec-abstract-preserves-halted-WF (store-at-slot PS.pair-stash)
-             (floc u3) (falloc u3) nhU3 tt
-    nhU5 : halted (floc u5) ≡ false
-    nhU5 = exec-abstract-preserves-halted-WF mov-to-input
-             (floc u4) (falloc u4) nhU4 tt
-    nhU6 : halted (floc u6) ≡ false
-    nhU6 = exec-abstract-preserves-halted-WF (load-from-slot PS.fst-stash)
-             (floc u5) (falloc u5) nhU5 wf-load-fst
-    nhU7 : halted (floc u7) ≡ false
-    nhU7 = exec-abstract-preserves-halted-WF store-indirect
-             (floc u6) (falloc u6) nhU6 wf-store-ind
-    nhU8 : halted (floc u8) ≡ false
-    nhU8 = exec-abstract-preserves-halted-WF (load-from-slot PS.snd-stash)
-             (floc u7) (falloc u7) nhU7 wf-load-snd
-    nhU9 : halted (floc u9) ≡ false
-    nhU9 = exec-abstract-preserves-halted-WF store-indirect-suc
-             (floc u8) (falloc u8) nhU8 wf-store-ind-suc
-    nhU10 : halted (floc u10) ≡ false
-    nhU10 = exec-abstract-preserves-halted-WF (load-from-slot PS.pair-stash)
-              (floc u9) (falloc u9) nhU9 wf-load-pair
-
     ----------------------------------------------------------------
     -- THE TAIL'S FETCHES. The nine rows begin at
     -- `2 + length ft + 2 + length gt` in the emitted text, which is
@@ -946,30 +686,52 @@ module PairC {FS : FrameSemantics} where
     tfetch k i eq =
       subst (λ m → fetch prog (k + m) ≡ just i) (sym endG) (tail-span k i eq)
 
-    tail-chain : FlatSteps prog 9 fsG u10
-    -- Every link lands on its NAMED state `uₖ` (`step-at`), so no link's
-    -- state is re-derived by conversion (profile 2026-09-29: this chain
-    -- was 52% of `PairAssemble.agda`'s checking).
-    tail-chain =
-        step-at u2  (liveG , tfetch 0 (store-at-slot PS.snd-stash)   refl) refl
-      ( step-at u3  (nhU2  , tfetch 1 (instr-alloc-heap 2)           refl) refl
-      ( step-at u4  (nhU3  , tfetch 2 (store-at-slot PS.pair-stash)  refl) refl
-      ( step-at u5  (nhU4  , tfetch 3 mov-to-input                   refl) refl
-      ( step-at u6  (nhU5  , tfetch 4 (load-from-slot PS.fst-stash)  refl) refl
-      ( step-at u7  (nhU6  , tfetch 5 store-indirect                 refl) refl
-      ( step-at u8  (nhU7  , tfetch 6 (load-from-slot PS.snd-stash)  refl) refl
-      ( step-at u9  (nhU8  , tfetch 7 store-indirect-suc             refl) refl
-      ( step-at u10 (nhU9  , tfetch 8 (load-from-slot PS.pair-stash) refl) refl
-        [] ))))))))
+    ----------------------------------------------------------------
+    -- THE TAIL (`Pair.Build`): `f`'s result, valid where `f` placed it and
+    -- kept by `g`'s run, and `g`'s, put into a fresh block.
+    ----------------------------------------------------------------
+    -- what `f`'s allocator held live, `g`'s run kept (it is heap: the two
+    -- mid rows touch the stack and the registers only)
+    live-m2 : ∀ l → Live (falloc fsF) l → Live (falloc m2) l
+    live-m2 l lv = subst (λ a′ → Live a′ l) (sym alloc-m2) lv
+
+    bftB : ∀ l → Live (falloc fsF) l → Live (falloc fsG) l
+    bftB (AtDynamic hl) lv with live-m2 (AtDynamic hl) lv
+    ... | BeforeFrontier.heap-before p with VR.bf-mono vrg ncG 0 (AtDynamic hl) (BeforeFrontier.heap-before p)
+    ...   | BeforeFrontier.heap-before q = BeforeFrontier.heap-before q
+
+    keepFG : ∀ l → Live (falloc fsF) l → SMCore.MemOps.readLoc (floc fsG) l ≡ SMCore.MemOps.readLoc (floc fsF) l
+    keepFG (AtDynamic hl) lv with live-m2 (AtDynamic hl) lv
+    ... | BeforeFrontier.heap-before p =
+      trans (VR.heap-pres vrg ncG hl (BeforeFrontier.heap-before p))
+            (mem-untouched (restore-input PS.backup) (floc m1) (falloc m1) (AtDynamic hl)
+               Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
+
+    bkB : BlocksKept (falloc fsF) (falloc fsG)
+    bkB = subst (λ a′ → BlocksKept a′ (falloc fsG)) alloc-m2 (VR.blocks-kept vrg ncG)
+
+    srcB = PBC.src-tr {prog} keepFG (PBC.src-of-place {prog} (VR.place vrf sfeq))
+    srcC = PBC.src-of-place {prog} (VR.place vrg sgeq)
+
+    rsB : SMCore.MemOps.readLoc (floc fsG) (AtStack (current-frame (falloc fsG)) (suc n)) ≡ just fv
+    rsB = subst (λ fr → SMCore.MemOps.readLoc (floc fsG) (AtStack fr (suc n)) ≡ just fv) (sym cf-fsG) read-fst-fsG
+
+    module T = PBC.Tail {prog} n B C fsG tfetch liveG fv (falloc fsF) bftB bkB srcB rsB srcC
+
+    tail-chain : FlatSteps prog (length tail-text) fsG T.settle
+    tail-chain = T.run
+
+    tail-silent : chain-events tail-chain ≡ []
+    tail-silent = T.silent
 
     ----------------------------------------------------------------
     -- ══ THE SEVEN FIELDS ══
     ----------------------------------------------------------------
     STEPS : ℕ
-    STEPS = 2 + (VR.steps vrf + (2 + (VR.steps vrg + 9)))
+    STEPS = 2 + (VR.steps vrf + (2 + (VR.steps vrg + length tail-text)))
 
     SETTLE : FlatState
-    SETTLE = u10
+    SETTLE = T.settle
 
     RUN : FlatSteps prog STEPS (entry-flat base s alloc cl rs) SETTLE
     RUN = FlatSteps-++ pre-chain
@@ -986,20 +748,20 @@ module PairC {FS : FrameSemantics} where
              (ctrls-5 pre-chain chainF mid-chain chainG tail-chain)
 
     LIVE : halted (floc SETTLE) ≡ false
-    LIVE = nhU10
+    LIVE = T.hfin
 
-    at-end-arith : ∀ (a b b0 : ℕ)
-                 → 9 + (b + suc (suc (a + suc (suc b0))))
-                   ≡ suc (suc (a + suc (suc (b + 9)))) + b0
-    at-end-arith a b b0 = solve 3 (λ x y w →
-        con 9 :+ (y :+ (con 1 :+ (con 1 :+ (x :+ (con 1 :+ (con 1 :+ w))))))
-      , con 1 :+ (con 1 :+ (x :+ (con 1 :+ (con 1 :+ (y :+ con 9))))) :+ w)
-      refl a b b0
+    at-end-arith : ∀ (a b c b0 : ℕ)
+                 → c + (b + suc (suc (a + suc (suc b0))))
+                   ≡ suc (suc (a + suc (suc (b + c)))) + b0
+    at-end-arith a b c b0 = solve 4 (λ x y z w →
+        z :+ (y :+ (con 1 :+ (con 1 :+ (x :+ (con 1 :+ (con 1 :+ w))))))
+      , con 1 :+ (con 1 :+ (x :+ (con 1 :+ (con 1 :+ (y :+ z))))) :+ w)
+      refl a b c b0
 
     ATEND : fpc SETTLE ≡ length (emitted n l ⟨ f , g ⟩) + base
     ATEND =
-      trans (cong (9 +_) endG)
-      (trans (at-end-arith (length PS.ft) (length PS.gt) base)
+      trans (cong (length tail-text +_) endG)
+      (trans (at-end-arith (length PS.ft) (length PS.gt) (length tail-text) base)
              (cong (_+ base) (sym len-emitted)))
 
     NORET : fret SETTLE ≡ rs
