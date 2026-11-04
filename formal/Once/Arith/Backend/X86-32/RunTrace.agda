@@ -10,10 +10,8 @@
 -- supplies the x86-32 telescope (State/Program/Instr, fetch/execInstr, the
 -- `call-sym` classifier, `ret-past`) + the arith payload.
 --
--- Unlike x86-64/riscv64 the payload is `List XInstr` (no reserved-frame size `N`):
--- x86-32's `dispatch-arith` runs its self-contained borrow/restore
--- `exec-arith-block val blk s` (edx/edi are CCC-borrowed, restored by the block's
--- own push/pop), so no frame size is threaded into the dispatch.
+-- As on x86-64/riscv64 the payload is the block and its scratch words (D388:
+-- the dispatch enters the block's frame — pushes, borrowed registers, scratch).
 ------------------------------------------------------------------------
 
 module Once.Arith.Backend.X86-32.RunTrace where
@@ -21,7 +19,8 @@ module Once.Arith.Backend.X86-32.RunTrace where
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (true)
 open import Data.String using (String)
-open import Data.Nat using (suc)
+open import Data.Nat using (ℕ; suc)
+open import Data.Product using (_×_; uncurry)
 open import Data.List using (List)
 
 open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
@@ -59,8 +58,8 @@ ret-call : (List SigOpEvent → String → State → Maybe Word) → List SigOpE
 ret-call answer h lbl s = ret-with (answer h lbl s) s
 
 module _ (val : XInstr → State → Reg → Word) (answer : List SigOpEvent → String → State → Maybe Word) where
-  open Core.RunTrace State Program Instr (List XInstr)
-    halted pc fetch execInstr matchCall (ret-call answer) (dispatch-arith val) public
+  open Core.RunTrace State Program Instr (List XInstr × ℕ)
+    halted pc fetch execInstr matchCall (ret-call answer) (uncurry (dispatch-arith val)) public
   -- D320: the same machine as a machine whose trace is read off by corecursion.
-  module Run = RTM.RunMachine State Program Instr (List XInstr)
-    halted pc fetch execInstr matchCall (ret-call answer) (dispatch-arith val)
+  module Run = RTM.RunMachine State Program Instr (List XInstr × ℕ)
+    halted pc fetch execInstr matchCall (ret-call answer) (uncurry (dispatch-arith val))

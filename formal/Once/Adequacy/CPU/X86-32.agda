@@ -68,9 +68,9 @@ postulate
 -- answered by `ι`, and the answer lands in the return register.
 -- Plan 0.107: the arith blocks are IN THE FILE, so which block a symbol names is
 -- a lookup, not a postulate (it was `arith-env-x86-32`).
-block-env : List (String × RF.Payload) → String → Maybe (List XInstr)
+block-env : List (String × RF.Payload) → String → Maybe RF.Payload
 block-env []              _ = nothing
-block-env ((s′ , p) ∷ bs) s = if s′ == s then just (proj₁ p) else block-env bs s
+block-env ((s′ , p) ∷ bs) s = if s′ == s then just p else block-env bs s
 
 -- Plan 0.129 B5: a symbol that is in the table is found.
 block-env-hit : ∀ (bs : List (String × RF.Payload)) (s : String) → Any (λ x → proj₁ x ≡ s) bs
@@ -79,8 +79,8 @@ block-env-hit []              s ()
 block-env-hit ((s′ , p) ∷ bs) s a = go (s′ ≟ s) a
   where
     go : (d : Dec (s′ ≡ s)) → Any (λ x → proj₁ x ≡ s) ((s′ , p) ∷ bs)
-       → Σ _ (λ pl → (if isYes d then just (proj₁ p) else block-env bs s) ≡ just pl)
-    go (yes _)  _            = (proj₁ p) , refl
+       → Σ _ (λ pl → (if isYes d then just p else block-env bs s) ≡ just pl)
+    go (yes _)  _            = p , refl
     go (no ¬e)  (here e)  = ⊥-elim (¬e e)
     go (no _)   (there a) = block-env-hit bs s a
 
