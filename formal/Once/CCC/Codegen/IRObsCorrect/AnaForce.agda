@@ -88,11 +88,11 @@ module AnaForceC {FS : FrameSemantics} where
     -- plan 0.123 α2: cell 0 holds the seed PAIR's pointer — the pair is flat,
     -- in its own block — exactly what the forced block receives in Input1.
     data AnaP : AllocMode → AllocState {FS} → ValueDomain.⟦ ν-type F ⟧ᴰᴵ → ValueLocation FS → LocState FS → Set where
-      ana-p : ∀ {alloc ν-loc s pl} (x : ValueDomain.⟦ E IRTy′.* A ⟧ᴰᴵ)
+      ana-p : ∀ {alloc ν-loc s pl m′} (x : ValueDomain.⟦ E IRTy′.* A ⟧ᴰᴵ)
             → LocMatchesMode Heap ν-loc
             → readLoc s ν-loc ≡ just (SV-Ptr pl)
             → Live alloc pl
-            → ValidAtWF {prog = prog} Heap alloc {E IRTy′.* A} x pl s
+            → ValidAtWF {prog = prog} m′ alloc {E IRTy′.* A} x pl s
             → readLoc s (sucLoc ν-loc) ≡ just (SV-Code (ℓ o l))
             → Live alloc (sucLoc ν-loc)
             → AnaP Heap alloc (retVal (evalᴰ (Ana wf coalg) x)) ν-loc s
@@ -467,14 +467,14 @@ module AnaForceC {FS : FrameSemantics} where
       ana-body x fs pre mIn ret-pc k rs nh fa ns (in-unit ())
 
       -- ONE FORCE: the block call, its body's run, and what that run means.
-      ana-force : ∀ {alloc st pl} (x : ValueDomain.⟦ E IRTy′.* A ⟧ᴰᴵ)
-                  (lpl : Live alloc pl) (pv : ValidAtWF {prog = prog} Heap alloc {E IRTy′.* A} x pl st)
+      ana-force : ∀ {alloc st pl m′} (x : ValueDomain.⟦ E IRTy′.* A ⟧ᴰᴵ)
+                  (lpl : Live alloc pl) (pv : ValidAtWF {prog = prog} m′ alloc {E IRTy′.* A} x pl st)
                 → ForceRuns {prog = prog} {F} AP alloc st (SV-Ptr pl) j (retVal (evalᴰ (Ana wf coalg) x))
-      ana-force {alloc} {st} {pl} x lpl pv wf′ fs pre ret-pc k rs pc nh fr fa ns incl bkp agree i1 =
+      ana-force {alloc} {st} {pl} {m′} x lpl pv wf′ fs pre ret-pc k rs pc nh fr fa ns incl bkp agree i1 =
         crun-retarget (AnaDen.out-ana wf coalg (proj₁ x) wf′ (proj₂ x) k (floc fs))
           (BC.block-call-gen {⟦ F ⟧TI (ν-type F)} across body (fmap∞ (AnaDen.rsd wf coalg (proj₁ x) wf) (evalᴰ coalg x))
              prog (ℓ o l) bb j sp fs pre ret-pc k rs pc nh fr fa
-             (ana-body x fs pre Heap ret-pc k rs nh fa ns
+             (ana-body x fs pre m′ ret-pc k rs nh fa ns
                 (in-loc pl
                    (validityWF-heap-transport (Live alloc) (λ _ b → b)
                       (λ l′ b → trans (BC.callee-heap bb fs l′ (incl l′ b)) (agree l′ b))

@@ -133,7 +133,7 @@ module TwoCellC {FS : FrameSemantics} where
                    → ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {B IRTy′.⇛ C}
                        (retVal (evalᴰ (curry body) x)) TCR.obj-loc (floc TCR.fs10)
           mk-valid e =
-            valid-closure-reg-wf {env = x} tt (rep-prim fit)
+            valid-closure-reg-wf tt
               (trans TCB.cell0-fs10 (cong just (trans ev≡in e))) TCB.code-fs10 TCB.before-suc
               feq (runs-from mk)
             where
@@ -147,13 +147,13 @@ module TwoCellC {FS : FrameSemantics} where
           mk-valid : ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {B IRTy′.⇛ C}
                        (retVal (evalᴰ (curry body) x)) TCR.obj-loc (floc TCR.fs10)
           mk-valid =
-            valid-closure-reg-wf {env = x} tt (rep-unit refl TCR.cell0v)
+            valid-closure-reg-wf tt
               TCB.cell0-fs10 TCB.code-fs10 TCB.before-suc
               feq (runs-from mk)
             where
               mk : EnvCell
               mk fs pre pl fa incl agree lpl c0 =
-                cell-inline (rep-unit refl TCR.cell0v) (trans (BC.callee-heap _ fs pl lpl) (trans c0 TCB.cell0-fs10))
+                cell-flat {mC = Heap} tt (λ ()) valid-unit-wf
       place-of (in-loc loc valid bf eq) =
         at-loc TCR.obj-loc (mk-valid eq) TCB.before TCB.out-eq (mk-valid eq) TCB.before
         where
@@ -271,17 +271,17 @@ module TwoCellC {FS : FrameSemantics} where
       module AB  = AF.AnaBlock wf coalg ihc l prog ss cr
       module ABB = AB.Block j feq sp lab bl′
 
-      -- the seed cell, one clause per input residence
-      seed-cell : InputAt mIn alloc x s → CellAt {prog = prog} (falloc TCR.fs10) (E IRTy′.* A) x TCR.obj-loc (floc TCR.fs10)
-      seed-cell (in-reg fit e) = cell-inline (rep-prim fit) (trans TCB.cell0-fs10 (cong just (trans cell0v≡in e)))
-      seed-cell (in-unit e)    = cell-inline (rep-unit e TCR.cell0v) TCB.cell0-fs10
-      seed-cell (in-loc loc valid bf e) =
-        cell-ptr (trans TCB.cell0-fs10 (cong just (trans cell0v≡in e))) (live-lift TCB.bf-advance bf)
-                 (TCB.valid-transport x loc (live→bf bf) valid)
+      -- plan 0.123 α2: the seed is a pair, so it is in memory; cell 0 is its pointer
+      seed : InputAt mIn alloc x s → AB.AnaP Heap (falloc TCR.fs10) (retVal (evalᴰ (Ana wf coalg) x)) TCR.obj-loc (floc TCR.fs10)
+      seed (in-loc loc valid bf e) =
+        AB.ana-p x tt (trans TCB.cell0-fs10 (cong just (trans cell0v≡in e))) (live-lift TCB.bf-advance bf)
+                 (TCB.valid-transport x loc (live→bf bf) valid) TCB.code-fs10 TCB.before-suc
+      seed (in-reg () _)
+      seed (in-unit ())
 
       mk-valid : ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {ν-type F}
                    (retVal (evalᴰ (Ana wf coalg) x)) TCR.obj-loc (floc TCR.fs10)
-      mk-valid = valid-ν-wf (ABB.ana-nu (AB.ana-p x tt TCB.code-fs10 TCB.before-suc (seed-cell inp)))
+      mk-valid = valid-ν-wf (ABB.ana-nu (seed inp))
 
       place : ResultPlace (ν-type F) Heap (falloc TCR.fs10) (falloc TCR.fs10)
                           (retVal (evalᴰ (Ana wf coalg) x)) (floc TCR.fs10)

@@ -21420,3 +21420,25 @@ lemmas, which assumed a heap source.
 ### Consequences
 * `FlatPut.src-flat` accepts a flat value at any live location, so `put` serves a stack-resident
   component (D374) as it does a heap one.
+
+## D384 — A NON-POINTER CLOSURE ENVIRONMENT IS THE WORD ITS CELL HOLDS (2026-11-04)
+
+**Decided** in plan 0.123 B.4 α2, found while re-proving `curry` after D375 removed `rep-unit`.
+
+### Context
+A closure's env cell receives whatever `Input1` held when it was built (D190's ten rows). For a scalar
+environment that is the scalar's word; for a `Unit` environment it is an arbitrary word (`in-unit` puts
+no constraint on `Input1`). `closure-reg-wf` described the cell by an `InlineRep` of the environment's
+type, and since D375 only a scalar has one, so `curry` over a `Unit` environment — every closure made
+from a unit input — had no witness.
+
+### Decision
+`closure-reg-wf` says only that the env cell holds a word `w` (`readLoc s closure-loc ≡ just w`); the
+environment's type and value are gone from it. Nothing read them: the environment is opaque (D184), and
+a call passes the env cell's word on to the body (`CallRuns`). `EnvAt.env-in-cell` is likewise the word.
+A pointer environment keeps `closure-wf` (its block stays live).
+
+### Consequences
+* `curry` takes `closure-reg-wf` for a scalar and for a `Unit` environment alike; `apply` reads the
+  word.
+* No transport changes: the witness was passed through opaquely everywhere.
