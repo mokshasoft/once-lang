@@ -84,7 +84,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   open CompareC {FS} public
   open InjC     {FS} public using (obs-correct-inl; obs-correct-inr)
   open TwoCellC {FS} public
-  open ApplyC   {FS} public
+  open ApplyC   {FS} public hiding (module SR)
   open OutC     {FS} public
   open CompC    {FS} public
   open CaseC    {FS} public
