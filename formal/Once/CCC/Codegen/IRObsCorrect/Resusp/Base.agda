@@ -32,7 +32,8 @@ open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl
 open import Once.CCC.Codegen.IRToTrace o using (resuspend-layer)
 import Once.CCC.Machine.SMCore as SMCore
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue
+  using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; writeReg
+        ; store-at-slot; restore-input; module MemOps; module AbstractExec
         ; readReg; Output; Input1; SV-Code; SV-Ptr; sucLoc)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
@@ -51,6 +52,8 @@ open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatPutLay as FlatPutLay
 open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
+open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
+open import Data.List.Relation.Unary.All using ([]; _∷_)
 
 module ResuspBaseC {FS : FrameSemantics} where
 
@@ -335,3 +338,78 @@ module ResuspBaseC {FS : FrameSemantics} where
     -- the inputs, carried along a segment at the same base
     kp-base : ∀ {b a₀ n fs fs′} → (∀ l → Live b l → Live a₀ l) → SegA a₀ n fs fs′ → Kp b (floc fs) b (floc fs′)
     kp-base bl p = (λ _ x → x) , (λ l x → seg-live-read p l (bl l x))
+
+  ------------------------------------------------------------------------
+  -- STASH AND RESTORE: `store-at-slot k ; restore-input j` — Output kept in
+  -- slot `k`, Input1 set from slot `j` (which holds `v` after the store).
+  ------------------------------------------------------------------------
+  module Stash {prog : AbstractTrace} (fs : FlatState) (k j : ℕ) (v : StoredValue FS)
+               (h : halted (floc fs) ≡ false)
+               (at : StraightRunAPI.At {FS} prog (fpc fs) (store-at-slot k ∷ restore-input j ∷ []))
+               (rj : readLoc (proj₁ (exec-abstract (store-at-slot k) (floc fs) (falloc fs)))
+                             (AtStack (current-frame (falloc fs)) j) ≡ just v) where
+    private module SR = StraightRunAPI {FS}
+    open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-restore-input-with-value)
+    open FlatEventTrace {FS} using (chain-events-subst)
+
+    T : AbstractTrace
+    T = store-at-slot k ∷ restore-input j ∷ []
+
+    s₁ = proj₁ (exec-abstract (store-at-slot k) (floc fs) (falloc fs))
+    s₂ = record s₁ { regs = writeReg (regs s₁) Input1 v }
+
+    fs′ : FlatState
+    fs′ = record fs { floc = s₂ ; fpc = 2 + fpc fs }
+
+    t-eq : exec-trace T (floc fs) (falloc fs) ≡ (s₂ , falloc fs)
+    t-eq = trans (exec-trace-cons (store-at-slot k) _ (floc fs) (falloc fs) h)
+          (trans (exec-trace-cons (restore-input j) [] s₁ (falloc fs) h)
+                 (cong (λ mv → exec-trace [] (proj₁ (exec-restore-input-with-value mv s₁ (falloc fs)))
+                                             (proj₂ (exec-restore-input-with-value mv s₁ (falloc fs)))) rj))
+
+    private
+      sts : All StraightStep T
+      sts = (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
+      evs : All (λ i → ∀ fs″ → event-of i fs″ ≡ []) T
+      evs = (λ _ → refl) ∷ (λ _ → refl) ∷ []
+      he : halted (proj₁ (exec-trace T (floc fs) (falloc fs))) ≡ false
+      he = trans (cong (λ r → halted (proj₁ r)) t-eq) h
+      run₀ = SR.straight-steps {prog} T fs sts at h he
+      eq : SR.after T fs ≡ fs′
+      eq = cong (λ r → record fs { floc = proj₁ r ; falloc = proj₂ r ; fpc = 2 + fpc fs }) t-eq
+
+    run : FlatSteps prog 2 fs fs′
+    run = subst (FlatSteps prog 2 fs) eq run₀
+
+    silent : chain-events run ≡ []
+    silent = trans (chain-events-subst eq run₀) (SR.straight-silent {prog} T fs sts at h he evs)
+
+    nh : halted (floc fs′) ≡ false
+    nh = h
+
+    in1 : readReg (regs (floc fs′)) Input1 ≡ v
+    in1 = refl
+
+    slot : readLoc (floc fs′) (AtStack (current-frame (falloc fs)) k) ≡ just (readReg (regs (floc fs)) Output)
+    slot = MemOps.writeLoc-read-same-stack {FS} (floc fs) (current-frame (falloc fs)) k (readReg (regs (floc fs)) Output)
+
+    out : readReg (regs (floc fs′)) Output ≡ readReg (regs (floc fs)) Output
+    out = cong (λ r → readReg r Output)
+               (MemOps.writeLoc-regs {FS} (floc fs) (AtStack (current-frame (falloc fs)) k) (readReg (regs (floc fs)) Output))
+
+    -- the stack write leaves the heap, and every slot but `k`
+    heap : ∀ hl → readLoc (floc fs′) (AtDynamic hl) ≡ readLoc (floc fs) (AtDynamic hl)
+    heap hl = refl
+
+    other : ∀ i → i ≢ k → readLoc (floc fs′) (AtStack (current-frame (falloc fs)) i) ≡ readLoc (floc fs) (AtStack (current-frame (falloc fs)) i)
+    other i ne = MemOps.writeLoc-preserves-other {FS} (floc fs) (AtStack (current-frame (falloc fs)) k)
+                   (AtStack (current-frame (falloc fs)) i) (readReg (regs (floc fs)) Output) (λ e′ → ne (sym (cong slot-idx e′)))
+      where slot-idx : ValueLocation FS → ℕ
+            slot-idx (AtStack _ x) = x
+            slot-idx (AtDynamic _) = 0
+
+    seg : ∀ (n : ℕ) → n ≤ k → SegA (falloc fs) n fs fs′
+    seg n le = record
+      { mem  = λ loc bf → trans (readLoc-stack-heap-eq s₂ s₁ loc refl refl)
+                                (store-slot-preserves-before k (floc fs) (record (falloc fs) { next-slot = n }) (falloc fs) loc refl le bf)
+      ; cf = refl ; sf = refl ; ns = refl ; href = ≤-refl }
