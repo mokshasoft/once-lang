@@ -32,7 +32,12 @@ module Once.CCC.Codegen.IRObsCorrect.Compare (o : CanonicalName) (tbl : DL.List 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; module HeapRef; module HeapLocation)
+open import Once.CCC.Machine.SMCore using (store-at; AbstractTrace; writeReg)
+import Once.CCC.Machine.FlatAlloc as FlatAlloc
+open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
+open import Data.Nat using (z≤n; s≤s)
+open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Once.CCC.Codegen.IRObsCorrect.SigOp o tbl using (module SigOpC)
 import Once.Type.Core as SpecTy
 import Once.Spec.Type as SpecTy
@@ -71,7 +76,10 @@ module CompareC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open AbstractExec {FS} using (exec-sigop-output)
+  open AbstractExec {FS} using (exec-sigop-output; exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
+  open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
+  open FlatEventTrace {FS} using (chain-events-subst)
+  module SR = StraightRunAPI {FS}
   open SigOpC {FS} using (argOf; resOf; E₀; evalᴰ-at; output-at; pure-input; obs-correct-sigop-nc)
 
   private
@@ -96,26 +104,25 @@ module CompareC {FS : FrameSemantics} where
           → sem si ≡ primV (p-cmp op) → IRObsCorrectF (SigOp si)
   cmp-obs si op e n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
     record
-      { traces-agree   = trans ev-run (sym (cong proj₁ ER))
+      { traces-agree   = trans ev-run (trans silent₂ (sym (cong proj₁ ER)))
       ; value-realized =
-          realized 11 fs11 Heap (falloc fs11) run (λ _ → nh11)
+          realized 9 fs11 Heap A₁ run (λ _ → h₇)
                    (λ _ → cong (λ t → DL.length t + base) (sym em≡))
                    (λ st → case trans (sym (cong (λ ρ → is-stopped (proj₂ ρ)) ER)) st of λ ())
                    (λ _ → refl) (λ _ → refl)
-                   (log-of run (trans ev-run (sym (cong proj₁ ER))))
+                   (log-of run (trans ev-run (trans silent₂ (sym (cong proj₁ ER)))))
                    (λ p → place (done-tag (resultAt s (E₀ si x)) (trans (sym (cong proj₂ (RE k))) p)))
                    (subst (λ ρ → k ≤ budgetLeft k (proj₂ ρ) + chain-ctrls run) (sym ER) (m≤m+n k _))
                    (λ _ fr j bf' → mem-pres (AtStack fr j) bf')
                    (λ _ hl bf' → mem-pres (AtDynamic hl) bf')
-                   (λ _ → cf-fs11)
+                   (λ _ → refl)
                    (λ _ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
-                                     (record (falloc fs11) { next-slot = m })
-                                     (sym cf-fs11) ≤-refl heapref-≤ loc' bf') (λ _ → sf-fs11)
+                                     (record A₁ { next-slot = m })
+                                     refl ≤-refl (n≤1+n _) loc' bf') (λ _ → refl)
+                   (λ _ → FlatAlloc.alloc-bk {FS} 2 alloc)
       }
     where
-      -- D359: the old premise, from the invariant.
-      n≤ = ns≤ {alloc} n ns0
 
       tag-stash sum-stash : ℕ
       tag-stash = n
@@ -185,13 +192,6 @@ module CompareC {FS : FrameSemantics} where
                  InstrNoHeapWrite.nhw-instr-reg-op refl)
               (mem-untouched (instr-sigop si′) s alloc loc nhw-instr-sigop refl)
 
-      module NSP = NineStepPres n (load-from-slot tag-stash) (instr-load-tag-lit 0)
-                                fs2 s alloc heapref-fs2 cf-fs2
-
-      fs3 fs4 fs5 fs6 fs7 fs8 fs9 fs10 fs11 : FlatState
-      fs3  = NSP.u2 ; fs4 = NSP.u3 ; fs5 = NSP.u4 ; fs6 = NSP.u5 ; fs7 = NSP.u6
-      fs8  = NSP.u7 ; fs9 = NSP.u8 ; fs10 = NSP.u9 ; fs11 = NSP.u10
-
       -- ── THE TAG. The block leaves the 0/1 word; `out-nz` makes it a tag.
       out1 : readReg (regs (floc fs1)) Output ≡ SV-Lit fits-intˢ t
       out1 =
@@ -208,278 +208,168 @@ module CompareC {FS : FrameSemantics} where
         trans (writeReg-same (regs (floc fs1)) Output (sv-nz (readReg (regs (floc fs1)) Output)))
        (trans (cong sv-nz out1) (cong SV-Tag (nz-bit c)))
 
-      -- The tag, stashed at fs2→fs3 and read back at fs6→fs7. The only stack
-      -- write in between targets `suc n`.
-      read-tag-fs3 : SMCore.MemOps.readLoc (floc fs3)
-                       (AtStack (current-frame (falloc fs2)) tag-stash)
-                     ≡ just (readReg (regs (floc fs2)) Output)
-      read-tag-fs3 =
-        SMCore.MemOps.writeLoc-read-same-stack (floc fs2) (current-frame (falloc fs2)) tag-stash
-          (readReg (regs (floc fs2)) Output)
-
-      read-tag-fs6 : SMCore.MemOps.readLoc (floc fs6)
-                       (AtStack (current-frame (falloc fs2)) tag-stash)
-                     ≡ just (readReg (regs (floc fs2)) Output)
-      read-tag-fs6 =
-        trans (exec-abstract-preserves-stack-slot mov-to-input (floc fs5) (falloc fs5)
-                 (current-frame (falloc fs2)) tag-stash nhw-mov-to-input refl)
-       (trans (store-at-slot-preserves-below tag-stash sum-stash (floc fs4) (falloc fs4) (n<1+n _))
-       (trans (exec-abstract-preserves-stack-slot (instr-alloc-heap 2) (floc fs3) (falloc fs3)
-                 (current-frame (falloc fs2)) tag-stash nhw-instr-alloc-heap refl)
-              read-tag-fs3))
-
-      cf-fs6 : current-frame (falloc fs6) ≡ current-frame (falloc fs2)
-      cf-fs6 =
-        trans (exec-abstract-preserves-frame mov-to-input (floc fs5) (falloc fs5))
-       (trans (exec-abstract-preserves-frame (store-at-slot sum-stash) (floc fs4) (falloc fs4))
-       (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs3) (falloc fs3))
-              (exec-abstract-preserves-frame (store-at-slot tag-stash) (floc fs2) (falloc fs2))))
-
-      sf-fs6 : saved-frames (falloc fs6) ≡ saved-frames (falloc fs2)
-      sf-fs6 =
-        trans (exec-abstract-preserves-saved mov-to-input (floc fs5) (falloc fs5))
-       (trans (exec-abstract-preserves-saved (store-at-slot sum-stash) (floc fs4) (falloc fs4))
-       (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs3) (falloc fs3))
-              (exec-abstract-preserves-saved (store-at-slot tag-stash) (floc fs2) (falloc fs2))))
-
-      wf-load-tag : InstrWF (floc fs6) (falloc fs6) (load-from-slot tag-stash)
-      wf-load-tag =
-        readReg (regs (floc fs2)) Output
-        , subst (λ f → SMCore.MemOps.readLoc (floc fs6) (AtStack f tag-stash)
-                         ≡ just (readReg (regs (floc fs2)) Output))
-                (sym cf-fs6) read-tag-fs6
-
-      -- ── THE SUM BLOCK, as the allocator hands it out at fs3→fs4.
-      sum-hl : HeapLocation
-      sum-hl = NSP.hl
-
-      sum-loc : ValueLocation FS
-      sum-loc = AtDynamic sum-hl
-
-      rdi-fs6 : sv-as-loc (readReg (regs (floc fs6)) Input1) ≡ just sum-loc
-      rdi-fs6 = refl
-
-      rdi-fs7 : sv-as-loc (readReg (regs (floc fs7)) Input1) ≡ just sum-loc
-      rdi-fs7 = trans (cong sv-as-loc (load-slot-preserves-input tag-stash (floc fs6) (falloc fs6)
-                                         (proj₁ wf-load-tag) (proj₂ wf-load-tag)))
-                      rdi-fs6
-
-      wf-store-ind : InstrWF (floc fs7) (falloc fs7) store-indirect
-      wf-store-ind = sum-loc , rdi-fs7
-
-      input-fs8 : readReg (regs (floc fs8)) Input1 ≡ readReg (regs (floc fs7)) Input1
-      input-fs8 = store-ind-preserves-input (floc fs7) (falloc fs7) sum-loc rdi-fs7
-
-      rdi-fs9 : sv-as-loc (readReg (regs (floc fs9)) Input1) ≡ just sum-loc
-      rdi-fs9 = trans (cong sv-as-loc input-fs8) rdi-fs7
-
-      wf-store-ind-suc : InstrWF (floc fs9) (falloc fs9) store-indirect-suc
-      wf-store-ind-suc = sum-loc , rdi-fs9
-
-      -- The SUM pointer, stashed at fs4→fs5 and read back at fs10→fs11.
-      sv : StoredValue FS
-      sv = readReg (regs (floc fs4)) Output
-
-      read-sum-fs5 : SMCore.MemOps.readLoc (floc fs5)
-                       (AtStack (current-frame (falloc fs4)) sum-stash) ≡ just sv
-      read-sum-fs5 =
-        SMCore.MemOps.writeLoc-read-same-stack (floc fs4) (current-frame (falloc fs4)) sum-stash sv
-
-      read-sum-fs10 : SMCore.MemOps.readLoc (floc fs10)
-                        (AtStack (current-frame (falloc fs4)) sum-stash) ≡ just sv
-      read-sum-fs10 =
-        trans (store-ind-suc-preserves-slot (floc fs9) (falloc fs9) sum-hl sum-stash rdi-fs9)
-       (trans (exec-abstract-preserves-stack-slot (instr-load-tag-lit 0) (floc fs8) (falloc fs8)
-                 (current-frame (falloc fs4)) sum-stash nhw-instr-load-tag-lit refl)
-       (trans (store-ind-preserves-slot (floc fs7) (falloc fs7) sum-hl sum-stash rdi-fs7)
-       (trans (exec-abstract-preserves-stack-slot (load-from-slot tag-stash) (floc fs6) (falloc fs6)
-                 (current-frame (falloc fs4)) sum-stash nhw-load-from-slot refl)
-       (trans (exec-abstract-preserves-stack-slot mov-to-input (floc fs5) (falloc fs5)
-                 (current-frame (falloc fs4)) sum-stash nhw-mov-to-input refl)
-              read-sum-fs5))))
-
-      cf-fs10 : current-frame (falloc fs10) ≡ current-frame (falloc fs4)
-      cf-fs10 =
-        trans (exec-abstract-preserves-frame store-indirect-suc (floc fs9) (falloc fs9))
-       (trans (exec-abstract-preserves-frame (instr-load-tag-lit 0) (floc fs8) (falloc fs8))
-       (trans (exec-abstract-preserves-frame store-indirect (floc fs7) (falloc fs7))
-       (trans (exec-abstract-preserves-frame (load-from-slot tag-stash) (floc fs6) (falloc fs6))
-       (trans (exec-abstract-preserves-frame mov-to-input (floc fs5) (falloc fs5))
-              (exec-abstract-preserves-frame (store-at-slot sum-stash) (floc fs4) (falloc fs4))))))
-
-      sf-fs10 : saved-frames (falloc fs10) ≡ saved-frames (falloc fs4)
-      sf-fs10 =
-        trans (exec-abstract-preserves-saved store-indirect-suc (floc fs9) (falloc fs9))
-       (trans (exec-abstract-preserves-saved (instr-load-tag-lit 0) (floc fs8) (falloc fs8))
-       (trans (exec-abstract-preserves-saved store-indirect (floc fs7) (falloc fs7))
-       (trans (exec-abstract-preserves-saved (load-from-slot tag-stash) (floc fs6) (falloc fs6))
-       (trans (exec-abstract-preserves-saved mov-to-input (floc fs5) (falloc fs5))
-              (exec-abstract-preserves-saved (store-at-slot sum-stash) (floc fs4) (falloc fs4))))))
-
-      wf-load-sum : InstrWF (floc fs10) (falloc fs10) (load-from-slot sum-stash)
-      wf-load-sum =
-        sv , subst (λ f → SMCore.MemOps.readLoc (floc fs10) (AtStack f sum-stash) ≡ just sv)
-                   (sym cf-fs10) read-sum-fs10
-
-      -- ── THE ELEVEN `halted ≡ false` obligations. The SigOp step is pure —
-      -- its contract is `primV`'s block, which does not halt.
-      nh0 : halted (floc fs0) ≡ false
-      nh0 = nh
-      nh1 : halted (floc fs1) ≡ false
-      nh1 = refl
-      nh2 : halted (floc fs2) ≡ false
-      nh2 = exec-abstract-preserves-halted-WF (instr-reg-op out-nz) (floc fs1) (falloc fs1) nh1 tt
-      nh3 : halted (floc fs3) ≡ false
-      nh3 = exec-abstract-preserves-halted-WF (store-at-slot tag-stash) (floc fs2) (falloc fs2) nh2 tt
-      nh4 : halted (floc fs4) ≡ false
-      nh4 = exec-abstract-preserves-halted-WF (instr-alloc-heap 2) (floc fs3) (falloc fs3) nh3 tt
-      nh5 : halted (floc fs5) ≡ false
-      nh5 = exec-abstract-preserves-halted-WF (store-at-slot sum-stash) (floc fs4) (falloc fs4) nh4 tt
-      nh6 : halted (floc fs6) ≡ false
-      nh6 = exec-abstract-preserves-halted-WF mov-to-input (floc fs5) (falloc fs5) nh5 tt
-      nh7 : halted (floc fs7) ≡ false
-      nh7 = exec-abstract-preserves-halted-WF (load-from-slot tag-stash) (floc fs6) (falloc fs6) nh6 wf-load-tag
-      nh8 : halted (floc fs8) ≡ false
-      nh8 = exec-abstract-preserves-halted-WF store-indirect (floc fs7) (falloc fs7) nh7 wf-store-ind
-      nh9 : halted (floc fs9) ≡ false
-      nh9 = exec-abstract-preserves-halted-WF (instr-load-tag-lit 0) (floc fs8) (falloc fs8) nh8 tt
-      nh10 : halted (floc fs10) ≡ false
-      nh10 = exec-abstract-preserves-halted-WF store-indirect-suc (floc fs9) (falloc fs9) nh9 wf-store-ind-suc
-      nh11 : halted (floc fs11) ≡ false
-      nh11 = exec-abstract-preserves-halted-WF (load-from-slot sum-stash) (floc fs10) (falloc fs10) nh10 wf-load-sum
-
       nz-eq : flat-exec-instr (instr-reg-op out-nz) prog fs1 ≡ fs2
       nz-eq = cong (λ v → do-nz v fs1) out1
 
-      ev-subst : ∀ {a b : FlatState} (e : a ≡ b) (c : FlatSteps prog 9 b fs11)
-               → chain-events (subst (λ z → FlatSteps prog 9 z fs11) (sym e) c) ≡ chain-events c
+      -- ── THE BUILD: seven straight rows (a Bool is its tag; a Unit payload
+      -- has no words, so there is neither payload nor padding).
+      B7 R6 R5 R4 R3 R2 R1 : AbstractTrace
+      R1 = load-from-slot (suc n) ∷ []
+      R2 = store-at 0 ∷ R1
+      R3 = load-from-slot n ∷ R2
+      R4 = mov-to-input ∷ R3
+      R5 = store-at-slot (suc n) ∷ R4
+      R6 = instr-alloc-heap 2 ∷ R5
+      B7 = store-at-slot n ∷ R6
+
+      u   = floc fs2
+      tvu = readReg (regs u) Output
+      A₁  = FlatAlloc.alloc-after {FS} 2 alloc
+      rd  = FlatAlloc.fresh-ref {FS} alloc
+      L : ValueLocation FS
+      L   = AtDynamic (heap-loc rd 0)
+      blk : StoredValue FS
+      blk = SV-Ptr L
+      cf  = current-frame alloc
+
+      t₁ = proj₁ (exec-abstract (store-at-slot n) u alloc)
+      t₂ = proj₁ (exec-abstract (instr-alloc-heap 2) t₁ alloc)
+      t₃ = proj₁ (exec-abstract (store-at-slot (suc n)) t₂ A₁)
+      t₄ = proj₁ (exec-abstract mov-to-input t₃ A₁)
+      t₅ = record t₄ { regs = writeReg (regs t₄) Output tvu }
+      t₆ = SMCore.MemOps.writeLoc t₅ L tvu
+      t₇ = record t₆ { regs = writeReg (regs t₆) Output blk }
+
+      -- the SigOp step is pure: its contract is `primV`'s block, which does not halt
+      nh2 : halted u ≡ false
+      nh2 = refl
+
+      h₇ : halted t₇ ≡ false
+      h₇ = trans (SMCore.MemOps.writeLoc-halted t₅ L tvu) nh2
+
+      slot-n₄ : SMCore.MemOps.readLoc t₄ (AtStack cf n) ≡ just tvu
+      slot-n₄ =
+        trans (SMCore.MemOps.writeLoc-preserves-other t₂ (AtStack cf (suc n)) (AtStack cf n) blk
+                 (λ e → <-irrefl (sym (cong slot-of e)) (n<1+n n)))
+              (SMCore.MemOps.writeLoc-read-same-stack u cf n tvu)
+        where
+          slot-of : ValueLocation FS → ℕ
+          slot-of (AtStack _ j) = j
+          slot-of (AtDynamic _) = 0
+
+      slot-b₆ : SMCore.MemOps.readLoc t₆ (AtStack cf (suc n)) ≡ just blk
+      slot-b₆ =
+        trans (SMCore.MemOps.writeLoc-preserves-other t₅ L (AtStack cf (suc n)) tvu (λ ()))
+              (SMCore.MemOps.writeLoc-read-same-stack t₂ cf (suc n) blk)
+
+      ib0 : InBlk A₁ L
+      ib0 = FlatAlloc.alloc-in {FS} 2 alloc 0 (s≤s z≤n)
+
+      st-eq : exec-abstract (store-at 0) t₅ A₁ ≡ (t₆ , A₁)
+      st-eq = cong (λ b → (SMCore.ExecFinal.exec-store-in-block {FS} b L tvu t₅ , A₁)) ib0
+
+      seg : exec-trace B7 u alloc ≡ (t₇ , A₁)
+      seg =
+        trans (exec-trace-cons (store-at-slot n) R6 u alloc nh2)
+       (trans (exec-trace-cons (instr-alloc-heap 2) R5 t₁ alloc nh2)
+       (trans (exec-trace-cons (store-at-slot (suc n)) R4 t₂ A₁ nh2)
+       (trans (exec-trace-cons mov-to-input R3 t₃ A₁ nh2)
+       (trans (exec-trace-cons (load-from-slot n) R2 t₄ A₁ nh2)
+       (trans (cong (λ mv → exec-trace R2
+                              (proj₁ (exec-load-from-slot-with-value mv t₄ A₁))
+                              (proj₂ (exec-load-from-slot-with-value mv t₄ A₁))) slot-n₄)
+       (trans (exec-trace-cons (store-at 0) R1 t₅ A₁ nh2)
+       (trans (cong (λ r → exec-trace R1 (proj₁ r) (proj₂ r)) st-eq)
+       (trans (exec-trace-cons (load-from-slot (suc n)) [] t₆ A₁ h₇)
+              (cong (λ mv → exec-load-from-slot-with-value mv t₆ A₁) slot-b₆)))))))))
+
+      -- ── THE CHAIN: the two register steps, then the build as one segment.
+      fs11 : FlatState
+      fs11 = record fs2 { floc = t₇ ; falloc = A₁ ; fpc = length B7 + fpc fs2 }
+
+      sp₂ : SR.At prog (fpc fs2) B7
+      sp₂ k i f = subst (λ p → fetch prog p ≡ just i)
+                        (sym (trans (+-suc k (suc base)) (cong suc (+-suc k base))))
+                        (span′ (suc (suc k)) i f)
+
+      he : halted (proj₁ (exec-trace B7 u alloc)) ≡ false
+      he = trans (cong (λ r → halted (proj₁ r)) seg) h₇
+
+      sts : All StraightStep B7
+      sts = (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
+            (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
+
+      evs : All (λ i → ∀ fs′ → event-of i fs′ ≡ []) B7
+      evs = (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷
+            (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ []
+
+      run₂₀ = SR.straight-steps {prog} B7 fs2 sts sp₂ nh2 he
+      eq₂ : SR.after B7 fs2 ≡ fs11
+      eq₂ = cong (λ r → record fs2 { floc = proj₁ r ; falloc = proj₂ r ; fpc = length B7 + fpc fs2 }) seg
+      run₂ : FlatSteps prog 7 fs2 fs11
+      run₂ = subst (FlatSteps prog 7 fs2) eq₂ run₂₀
+
+      silent₂ : chain-events run₂ ≡ []
+      silent₂ = trans (chain-events-subst eq₂ run₂₀) (SR.straight-silent {prog} B7 fs2 sts sp₂ nh2 he evs)
+
+      ev-subst : ∀ {a b : FlatState} (e : a ≡ b) (c : FlatSteps prog 7 b fs11)
+               → chain-events (subst (λ z → FlatSteps prog 7 z fs11) (sym e) c) ≡ chain-events c
       ev-subst refl c = refl
 
-      run₂ : FlatSteps prog 9 fs2 fs11
-      run₂ = (nh2 , span′ 2 _ refl)
-          ∷ (nh3 , span′ 3 _ refl) ∷ (nh4 , span′ 4 _ refl) ∷ (nh5 , span′ 5 _ refl)
-          ∷ (nh6 , span′ 6 _ refl) ∷ (nh7 , span′ 7 _ refl) ∷ (nh8 , span′ 8 _ refl)
-          ∷ (nh9 , span′ 9 _ refl) ∷ (nh10 , span′ 10 _ refl) ∷ []
-
-      run : FlatSteps prog 11 fs0 fs11
-      run = (nh0 , span′ 0 _ refl) ∷ (nh1 , span′ 1 _ refl)
-          ∷ subst (λ z → FlatSteps prog 9 z fs11) (sym nz-eq) run₂
+      run : FlatSteps prog 9 fs0 fs11
+      run = (nh , span′ 0 _ refl) ∷ (refl , span′ 1 _ refl)
+          ∷ subst (λ z → FlatSteps prog 7 z fs11) (sym nz-eq) run₂
 
       ev-run : chain-events run ≡ chain-events run₂
       ev-run = cong (λ l → event-of (instr-sigop si′) fs0 DL.++ (event-of (instr-reg-op out-nz) fs1 DL.++ l))
                     (ev-subst nz-eq run₂)
 
-      -- ── THE FRONTIER: the allocation at fs3→fs4 moves it past the block.
-      heapref-fs11 : next-heap-ref (falloc fs11) ≡ suc (next-heap-ref (falloc fs3))
-      heapref-fs11 =
-        trans (exec-abstract-preserves-heap-ref (load-from-slot sum-stash) (floc fs10) (falloc fs10) tt)
-       (trans (exec-abstract-preserves-heap-ref store-indirect-suc (floc fs9) (falloc fs9) tt)
-       (trans (exec-abstract-preserves-heap-ref (instr-load-tag-lit 0) (floc fs8) (falloc fs8) tt)
-       (trans (exec-abstract-preserves-heap-ref store-indirect (floc fs7) (falloc fs7) tt)
-       (trans (exec-abstract-preserves-heap-ref (load-from-slot tag-stash) (floc fs6) (falloc fs6) tt)
-       (trans (exec-abstract-preserves-heap-ref mov-to-input (floc fs5) (falloc fs5) tt)
-              (exec-abstract-preserves-heap-ref (store-at-slot sum-stash) (floc fs4) (falloc fs4) tt))))))
+      -- ── WHAT THE RUN LEAVES ALONE: two slots at and above `n`, the fresh block.
+      B = record alloc { next-slot = n }
 
-      before : BeforeFrontier (falloc fs11) sum-loc
-      before = BeforeFrontier.heap-before
-                 (subst (λ m → next-heap-ref (falloc fs3) < m) (sym heapref-fs11) (n<1+n _))
-
-      before-suc : BeforeFrontier (falloc fs11) (sucLoc sum-loc)
-      before-suc = BeforeFrontier.heap-before
-                     (subst (λ m → next-heap-ref (falloc fs3) < m) (sym heapref-fs11) (n<1+n _))
-
-      -- ── THE TAG CELL, written at fs7→fs8 from the slot.
-      tagout-fs7 : readReg (regs (floc fs7)) Output ≡ tv
-      tagout-fs7 = trans (load-slot-result tag-stash (floc fs6) (falloc fs6)
-                            (proj₁ wf-load-tag) (proj₂ wf-load-tag))
-                         out2
-
-      tag-fs8 : SMCore.MemOps.readLoc (floc fs8) sum-loc ≡ just tv
-      tag-fs8 = trans (store-ind-result (floc fs7) (falloc fs7) sum-hl rdi-fs7)
-                      (cong just tagout-fs7)
-
-      tag-fs11 : SMCore.MemOps.readLoc (floc fs11) sum-loc ≡ just tv
-      tag-fs11 =
-        trans (heap-untouched (load-from-slot sum-stash) (floc fs10) (falloc fs10)
-                 sum-hl nhw-load-from-slot)
-       (trans (store-ind-suc-preserves-heap (floc fs9) (falloc fs9) sum-hl sum-hl
-                 rdi-fs9 (sucHL-≢ sum-hl))
-       (trans (heap-untouched (instr-load-tag-lit 0) (floc fs8) (falloc fs8)
-                 sum-hl nhw-instr-load-tag-lit)
-              tag-fs8))
-
-      -- ── THE PAYLOAD CELL: a unit, so any word (D074); the build writes 0.
-      pv : StoredValue FS
-      pv = SV-Tag 0
-
-      pay-fs11 : SMCore.MemOps.readLoc (floc fs11) (sucLoc sum-loc) ≡ just pv
-      pay-fs11 =
-        trans (heap-untouched (load-from-slot sum-stash) (floc fs10) (falloc fs10)
-                 (sucHL sum-hl) nhw-load-from-slot)
-              (store-ind-suc-result (floc fs9) (falloc fs9) sum-hl rdi-fs9)
-
-      -- ── THE RESULT POINTER.
-      sv≡ptr : sv ≡ SV-Ptr sum-loc
-      sv≡ptr = writeReg-same (regs (floc fs3)) Output (SV-Ptr (AtDynamic sum-hl))
-
-      out-eq : readReg (regs (floc fs11)) Output ≡ SV-Ptr sum-loc
-      out-eq = trans (load-slot-result sum-stash (floc fs10) (falloc fs10) sv
-                        (proj₂ wf-load-sum)) sv≡ptr
-
-      -- ── WHAT THE RUN LEAVES ALONE: the nine, then the two register steps.
       mem-pres : ∀ (loc : ValueLocation FS)
-               → BeforeFrontier (record alloc { next-slot = n }) loc
-               → SMCore.MemOps.readLoc (floc fs11) loc ≡ SMCore.MemOps.readLoc s loc
-      mem-pres loc bf =
-        trans (NSP.mem-pres-from nhw-load-from-slot refl nhw-instr-load-tag-lit refl n≤
-                 rdi-fs7 rdi-fs9 loc bf)
-              (mem-fs2 loc)
-
-      cf-fs11 : current-frame (falloc fs11) ≡ current-frame alloc
-      cf-fs11 =
-        trans (exec-abstract-preserves-frame (load-from-slot sum-stash) (floc fs10) (falloc fs10))
-       (trans cf-fs10
-       (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs3) (falloc fs3))
-       (trans (exec-abstract-preserves-frame (store-at-slot tag-stash) (floc fs2) (falloc fs2))
-              cf-fs2)))
-
-      sf-fs11 : saved-frames (falloc fs11) ≡ saved-frames alloc
-      sf-fs11 =
-        trans (exec-abstract-preserves-saved (load-from-slot sum-stash) (floc fs10) (falloc fs10))
-       (trans sf-fs10
-       (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs3) (falloc fs3))
-       (trans (exec-abstract-preserves-saved (store-at-slot tag-stash) (floc fs2) (falloc fs2))
-              sf-fs2)))
-
-      heapref-≤ : next-heap-ref alloc ≤ next-heap-ref (falloc fs11)
-      heapref-≤ = subst (λ m → next-heap-ref alloc ≤ m) (sym heapref-fs11)
-                        (subst (λ m → m ≤ suc (next-heap-ref (falloc fs3)))
-                               (trans (exec-abstract-preserves-heap-ref (store-at-slot tag-stash)
-                                         (floc fs2) (falloc fs2) tt) heapref-fs2)
-                               (n≤1+n _))
+               → BeforeFrontier B loc
+               → SMCore.MemOps.readLoc t₇ loc ≡ SMCore.MemOps.readLoc s loc
+      mem-pres (AtDynamic hl) (BeforeFrontier.heap-before p) =
+        trans (SMCore.MemOps.writeLoc-preserves-other t₅ L (AtDynamic hl) tvu
+                 (λ e → <-irrefl (sym (cong (λ z → HeapRef.ref-id (HeapLocation.heap-ref (hl-of z))) e)) p))
+              (mem-fs2 (AtDynamic hl))
+        where
+          hl-of : ValueLocation FS → HeapLocation
+          hl-of (AtDynamic h) = h
+          hl-of (AtStack _ _) = hl
+      mem-pres (AtStack fr j) bf =
+        trans (SMCore.MemOps.writeLoc-preserves-other t₅ L (AtStack fr j) tvu (λ ()))
+       (trans (store-slot-preserves-before (suc n) t₂ B A₁ (AtStack fr j) refl (n≤1+n n) bf)
+       (trans (store-slot-preserves-before n u B alloc (AtStack fr j) refl ≤-refl bf)
+              (mem-fs2 (AtStack fr j))))
 
       -- ── THE PLACE: the sum the denotation returns, by the tag.
-      place-at : ∀ (b : Bool) → SMCore.MemOps.readLoc (floc fs11) sum-loc ≡ just (SV-Tag (if b then 1 else 0))
-               → ResultPlace {prog = prog} (Once.IRTy._+_ Once.IRTy.Unit Once.IRTy.Unit) Heap (falloc fs11) (falloc fs11)
-                             (resOf si (EvV.eraseᵍ (bool b))) (floc fs11)
+      tag₇ : SMCore.MemOps.readLoc t₇ L ≡ just tv
+      tag₇ = trans (readLoc-writeLoc-same t₅ L tvu) (cong just out2)
+
+      live-L : Live A₁ L
+      live-L = FlatAlloc.alloc-live {FS} 2 alloc 0
+
+      live-suc : Live A₁ (sucLoc L)
+      live-suc = FlatAlloc.alloc-live {FS} 2 alloc 1
+
+      place-at : ∀ (b : Bool) → SMCore.MemOps.readLoc t₇ L ≡ just (SV-Tag (if b then 1 else 0))
+               → ResultPlace {prog = prog} (Once.IRTy._+_ Once.IRTy.Unit Once.IRTy.Unit) Heap A₁ A₁
+                             (resOf si (EvV.eraseᵍ (bool b))) t₇
       place-at true  tg rewrite bt-UU (conB si) =
-        at-loc sum-loc
-          (valid-inr-reg-wf tt tg (rep-unit refl pv) pay-fs11 before-suc)
-          before out-eq
-          (valid-inr-reg-wf tt tg (rep-unit refl pv) pay-fs11 before-suc)
-          before
+        at-loc L (valid-inr-flat-wf {mB = Heap} tt tt tg live-suc (λ ()) (λ _ ()) valid-unit-wf) live-L refl
+                 (valid-inr-flat-wf {mB = Heap} tt tt tg live-suc (λ ()) (λ _ ()) valid-unit-wf) live-L
       place-at false tg rewrite bt-UU (conB si) =
-        at-loc sum-loc
-          (valid-inl-reg-wf tt tg (rep-unit refl pv) pay-fs11 before-suc)
-          before out-eq
-          (valid-inl-reg-wf tt tg (rep-unit refl pv) pay-fs11 before-suc)
-          before
+        at-loc L (valid-inl-flat-wf {mA = Heap} tt tt tg live-suc (λ ()) (λ _ ()) valid-unit-wf) live-L refl
+                 (valid-inl-flat-wf {mA = Heap} tt tt tg live-suc (λ ()) (λ _ ()) valid-unit-wf) live-L
 
       place : ∀ {v} → resultAt s (E₀ si x) ≡ returns v
-            → ResultPlace {prog = prog} _ Heap (falloc fs11) (falloc fs11) v (floc fs11)
-      place p = subst (λ v → ResultPlace {prog = prog} _ Heap (falloc fs11) (falloc fs11) v (floc fs11))
+            → ResultPlace {prog = prog} _ Heap A₁ A₁ v t₇
+      place p = subst (λ v → ResultPlace {prog = prog} _ Heap A₁ A₁ v t₇)
                   (returns-inj (trans (sym (cong (resultAt s) E≡)) p))
-                  (place-at c tag-fs11)
+                  (place-at c tag₇)
+
 
   ------------------------------------------------------------------------
   -- THE ROUTING. Enumerated on the contract (no catch-all): a comparison is
