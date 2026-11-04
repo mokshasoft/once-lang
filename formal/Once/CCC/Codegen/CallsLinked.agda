@@ -21,7 +21,7 @@ open import Once.SigOp.Info using (SigOpInfo)
 module Once.CCC.Codegen.CallsLinked (o : CanonicalName) {I : Set}
   (C : I → CanonicalName → IRTy → IRTy → Set) (i : I) (Q : ∀ {A B} → SigOpInfo A B → Set) where
 
-open import Data.Nat using (ℕ; suc; _+_; _*_; _⊔_)
+open import Data.Nat using (ℕ; suc; _+_; _*_; _⊔_; _∸_)
 open import Data.Unit using (tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
@@ -79,7 +79,7 @@ fill-cl : ∀ from c → CLTrace (fill from c)
 fill-cl from c = fill-All {P} from c tt (λ _ → tt)
 
 inj-cl : ∀ t P′ S n → CLTrace (inj-trace t P′ S n)
-inj-cl t P′ S n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-cl P′ n (suc n) 1) (++⁺ (fill-cl _ _) (tt ∷ []))
+inj-cl t P′ S n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (fill-cl _ (Once.CCC.Codegen.Size.size S ∸ suc (Once.CCC.Codegen.Size.size P′))) (++⁺ (put-cl P′ n (suc n) 1) (tt ∷ []))
 
 env-entry-cl : ∀ kd E A → CLTrace (proj₂ (env-entry kd E A))
 env-entry-cl word E A = []
@@ -97,7 +97,7 @@ pop2-cl topSlot = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 wrap-sum-cl : ∀ tag pk ps ss s → CLTrace (wrap-sum tag pk ps ss s)
 wrap-sum-cl tag pk ps ss s =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-k-cl pk ps s (suc s) 1) (++⁺ (fill-cl _ _) (tt ∷ []))
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (fill-cl _ (ss ∸ suc ps)) (++⁺ (put-k-cl pk ps s (suc s) 1) (tt ∷ []))
 
 getμ-cl : ∀ (G : Fun 0) k → CLTrace (get-k (lkind G word) (lsz G 1) k)
 getμ-cl G k = get-k-cl (lkind G word) (lsz G 1) k
@@ -280,10 +280,13 @@ resuspend-cl H E A n l lbl env (wf-Prod {F} {G} wfF wfG) =
     l2 = proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc (suc n)))) l lbl env wfF))
 resuspend-cl H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
   ++⁺ (tt ∷ tt ∷ tt ∷ [])
-      (++⁺ (arm G (resuspend-cl H E A n2 l2 lbl env wfG))
+      (++⁺ (arm G (resuspend-cl H E A n2 l2 lbl env wfG) {c = c-of G})
       (++⁺ (tt ∷ tt ∷ [])
-      (++⁺ (arm F (resuspend-cl H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)) (tt ∷ []))))
+      (++⁺ (arm F (resuspend-cl H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF) {c = c-of F}) (tt ∷ []))))
   where
+    Sz = Once.CCC.Codegen.Size.size
+    c-of : IRFunctor → ℕ
+    c-of P = Sz (⟦ F ⟧TI (ν-type H) +ᵀ ⟦ G ⟧TI (ν-type H)) ∸ suc (Sz (⟦ P ⟧TI (ν-type H)))
     n2 = proj₁ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
     l2 = proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
     arm : ∀ (P′ : IRFunctor) {t} → CLTrace t → ∀ {tag sz c}
@@ -291,12 +294,12 @@ resuspend-cl H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
                    (SM.store-at-slot (suc (suc n)) ∷ SM.instr-alloc-heap sz ∷
                     SM.store-at-slot (suc n) ∷ SM.mov-to-input ∷
                     SM.instr-load-tag-lit tag ∷ SM.store-at 0 ∷ []) ++
-                   put (⟦ P′ ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                    fill (suc (Once.CCC.Codegen.Size.size (⟦ P′ ⟧TI (ν-type H)))) c ++
+                   put (⟦ P′ ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                    (SM.load-from-slot (suc n) ∷ []))
-    arm P′ ih =
+    arm P′ ih {c = c} =
       ++⁺ (tt ∷ []) (++⁺ (get-cl (⟦ P′ ⟧TI A) 1) (++⁺ ih
-      (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) (++⁺ (put-cl (⟦ P′ ⟧TI (ν-type H)) _ _ 1) (++⁺ (fill-cl _ _) (tt ∷ []))))))
+      (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) (++⁺ (fill-cl _ c) (++⁺ (put-cl (⟦ P′ ⟧TI (ν-type H)) _ _ 1) (tt ∷ []))))))
 
 calls-blocks : ∀ {A B} (ir : IR A B) (n l : ℕ) → LK ir
              → CLTrace (blocks-layout (bodies-of (ir-to-trace' n l ir)))

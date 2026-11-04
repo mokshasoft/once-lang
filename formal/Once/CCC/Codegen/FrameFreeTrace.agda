@@ -43,7 +43,7 @@ open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.FrameFreeTrace (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; suc; _+_; _*_)
+open import Data.Nat using (ℕ; suc; _+_; _*_; _∸_)
 open import Data.Unit using (tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Once.CCC.Label using (ℓ)
@@ -114,7 +114,7 @@ fill-ff : ∀ from c → FrameFreeTrace (fill from c)
 fill-ff from c = fill-All {EmittableI} from c tt (λ _ → tt)
 
 inj-ff : ∀ t P S n → FrameFreeTrace (inj-trace t P S n)
-inj-ff t P S n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-ff P n (suc n) 1) (++⁺ (fill-ff _ _) (tt ∷ []))
+inj-ff t P S n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (fill-ff _ (size S ∸ suc (size P))) (++⁺ (put-ff P n (suc n) 1) (tt ∷ []))
 
 -- D380: a closure body's entry
 env-entry-ff : ∀ kd E A → FrameFreeTrace (proj₂ (env-entry kd E A))
@@ -136,7 +136,7 @@ pop2-ff topSlot = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 wrap-sum-ff : ∀ tag pk ps ss s → FrameFreeTrace (wrap-sum tag pk ps ss s)
 wrap-sum-ff tag pk ps ss s =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-k-ff pk ps s (suc s) 1) (++⁺ (fill-ff _ _) (tt ∷ []))
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (fill-ff _ (ss ∸ suc ps)) (++⁺ (put-k-ff pk ps s (suc s) 1) (tt ∷ []))
 
 getμ-ff : ∀ (G : Fun 0) k → FrameFreeTrace (get-k (lkind G word) (lsz G 1) k)
 getμ-ff G k = get-k-ff (lkind G word) (lsz G 1) k
@@ -406,13 +406,15 @@ resuspend-ff H E A n l lbl env (wf-Prod {F} {G} wfF wfG) =
     l2 = proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc (suc n)))) l lbl env wfF))
 resuspend-ff H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
   ++⁺ (tt ∷ tt ∷ tt ∷ [])
-      (++⁺ (arm G (resuspend-ff H E A n2 l2 lbl env wfG))
+      (++⁺ (arm G (resuspend-ff H E A n2 l2 lbl env wfG) {c = c-of G})
       (++⁺ (tt ∷ tt ∷ [])
-      (++⁺ (arm F (resuspend-ff H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
+      (++⁺ (arm F (resuspend-ff H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF) {c = c-of F})
            (tt ∷ []))))
   where
     n2 = proj₁ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
     l2 = proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
+    c-of : IRFunctor → ℕ
+    c-of P = size (⟦ F ⟧TI (ν-type H) +ᵀ ⟦ G ⟧TI (ν-type H)) ∸ suc (size (⟦ P ⟧TI (ν-type H)))
     arm : ∀ (P : IRFunctor) {t} → FrameFreeTrace t → ∀ {tag sz c}
         → FrameFreeTrace ((Once.CCC.Machine.SMCore.restore-input n ∷ []) ++ get (⟦ P ⟧TI A) 1 ++ t ++
                           (Once.CCC.Machine.SMCore.store-at-slot (suc (suc n)) ∷
@@ -421,15 +423,15 @@ resuspend-ff H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
                            Once.CCC.Machine.SMCore.mov-to-input ∷
                            Once.CCC.Machine.SMCore.instr-load-tag-lit tag ∷
                            Once.CCC.Machine.SMCore.store-at 0 ∷ []) ++
-                          put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                           fill (suc (size (⟦ P ⟧TI (ν-type H)))) c ++
+                          put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                           (Once.CCC.Machine.SMCore.load-from-slot (suc n) ∷ []))
-    arm P ff =
+    arm P ff {c = c} =
       ++⁺ (tt ∷ [])
           (++⁺ (get-ff (⟦ P ⟧TI A) 1)
           (++⁺ ff
           (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-          (++⁺ (put-ff (⟦ P ⟧TI (ν-type H)) _ _ 1) (++⁺ (fill-ff _ _) (tt ∷ []))))))
+          (++⁺ (fill-ff _ c) (++⁺ (put-ff (⟦ P ⟧TI (ν-type H)) _ _ 1) (tt ∷ []))))))
 
 frame-free-blocks' : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) (n l : ℕ)
                    → All BlockFrameFree (ffbds (ir-to-trace' n l ir))

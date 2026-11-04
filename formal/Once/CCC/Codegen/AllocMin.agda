@@ -31,7 +31,7 @@ open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.AllocMin (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; suc; _+_; _≤_; s≤s; z≤n; _*_; _⊔_)
+open import Data.Nat using (ℕ; suc; _+_; _≤_; s≤s; z≤n; _*_; _⊔_; _∸_)
 open import Data.Nat.Properties using (m≤m⊔n)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -96,7 +96,7 @@ fill-am : ∀ from c → AllocMinTrace (fill from c)
 fill-am from c = fill-All {AllocMinI} from c tt (λ _ → tt)
 
 inj-am : ∀ t P S n → AllocMinTrace (inj-trace t P S n)
-inj-am t P S n = tt ∷ tt ∷ am⊔ (size S) ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-am P n (suc n) 1) (++⁺ (fill-am _ _) (tt ∷ []))
+inj-am t P S n = tt ∷ tt ∷ am⊔ (size S) ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (fill-am _ (size S ∸ suc (size P))) (++⁺ (put-am P n (suc n) 1) (tt ∷ []))
 
 -- D380: a closure body's entry
 env-entry-am : ∀ kd E A → AllocMinTrace (proj₂ (env-entry kd E A))
@@ -118,7 +118,7 @@ pop2-am topSlot = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 wrap-sum-am : ∀ tag pk ps ss s → AllocMinTrace (wrap-sum tag pk ps ss s)
 wrap-sum-am tag pk ps ss s =
-  tt ∷ am⊔ ss ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-k-am pk ps s (suc s) 1) (++⁺ (fill-am _ _) (tt ∷ []))
+  tt ∷ am⊔ ss ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (fill-am _ (ss ∸ suc ps)) (++⁺ (put-k-am pk ps s (suc s) 1) (tt ∷ []))
 
 getμ-am : ∀ (G : Fun 0) k → AllocMinTrace (get-k (lkind G word) (lsz G 1) k)
 getμ-am G k = get-k-am (lkind G word) (lsz G 1) k
@@ -348,9 +348,9 @@ resuspend-am H E A n l lbl env (wf-Prod {F} {G} wfF wfG) =
     l2 = proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc (suc n)))) l lbl env wfF))
 resuspend-am H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
   ++⁺ (tt ∷ tt ∷ tt ∷ [])
-      (++⁺ (arm G (resuspend-am H E A n2 l2 lbl env wfG) {sz = sz})
+      (++⁺ (arm G (resuspend-am H E A n2 l2 lbl env wfG) {sz = sz} {c = sz ∸ suc (size (⟦ G ⟧TI (ν-type H)))})
       (++⁺ (tt ∷ tt ∷ [])
-      (++⁺ (arm F (resuspend-am H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF) {sz = sz})
+      (++⁺ (arm F (resuspend-am H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF) {sz = sz} {c = sz ∸ suc (size (⟦ F ⟧TI (ν-type H)))})
            (tt ∷ []))))
   where
     sz = size (⟦ F ⟧TI (ν-type H) +ᵀ ⟦ G ⟧TI (ν-type H))
@@ -364,15 +364,15 @@ resuspend-am H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
                           SM.mov-to-input ∷
                           SM.instr-load-tag-lit tag ∷
                           SM.store-at 0 ∷ []) ++
-                         put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                          fill (suc (size (⟦ P ⟧TI (ν-type H)))) c ++
+                         put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
                          (SM.load-from-slot (suc n) ∷ []))
-    arm P am {sz = sz} =
+    arm P am {sz = sz} {c = c} =
       ++⁺ (tt ∷ [])
           (++⁺ (get-am (⟦ P ⟧TI A) 1)
           (++⁺ am
           (++⁺ (tt ∷ am⊔ sz ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-          (++⁺ (put-am (⟦ P ⟧TI (ν-type H)) _ _ 1) (++⁺ (fill-am _ _) (tt ∷ []))))))
+          (++⁺ (fill-am _ c) (++⁺ (put-am (⟦ P ⟧TI (ν-type H)) _ _ 1) (tt ∷ []))))))
 
 alloc-min-blocks : ∀ {A B} (ir : IR A B) (n l : ℕ)
                  → AllocMinTrace (blocks-layout (bodies-of (ir-to-trace' n l ir)))

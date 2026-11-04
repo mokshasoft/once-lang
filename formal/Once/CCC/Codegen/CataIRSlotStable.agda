@@ -216,11 +216,11 @@ module CataIRSlotStable {FS : FrameSemantics} where
 
   wrap-st : ∀ tag pk ps ss s → AllSlotStable (wrap-sum tag pk ps ss s)
   wrap-st tag pk ps ss s =
-    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ ++⁺ (put-k-st pk ps s (suc s) 1) (++⁺ (fill-st _ _) (tt ∷ᴬ []ᴬ))
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ ++⁺ (fill-st _ (ss ℕ.∸ suc ps)) (++⁺ (put-k-st pk ps s (suc s) 1) (tt ∷ᴬ []ᴬ))
 
   inj-st : ∀ t P S n → AllSlotStable (inj-trace t P S n)
   inj-st t P S n =
-    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ ++⁺ (put-st P n (suc n) 1) (++⁺ (fill-st _ _) (tt ∷ᴬ []ᴬ))
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ ++⁺ (fill-st _ (size S ℕ.∸ suc (size P))) (++⁺ (put-st P n (suc n) 1) (tt ∷ᴬ []ᴬ))
 
   call-st : ∀ i0 E lk ls cl k ev pr → SlotStable i0 → AllSlotStable (cata-call-from i0 E lk ls cl k ev pr)
   call-st i0 E lk ls cl k ev pr s0 =
@@ -474,16 +474,18 @@ module CataIRSlotStable {FS : FrameSemantics} where
     ++⁺ (tt ∷ᴬ ++⁺ (get-st (⟦ G ⟧TI A) 1)
                    (++⁺ (resuspend-stable H E A n2 l2 lbl env wfG)
                         (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-                         ++⁺ (put-st (⟦ G ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (++⁺ (fill-st _ _) (tt ∷ᴬ []ᴬ)))))
+                         ++⁺ (fill-st _ (c-of G)) (++⁺ (put-st (⟦ G ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (tt ∷ᴬ []ᴬ)))))
         (tt ∷ᴬ tt ∷ᴬ
          ++⁺ (tt ∷ᴬ ++⁺ (get-st (⟦ F ⟧TI A) 1)
                         (++⁺ (resuspend-stable H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
                              (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-                              ++⁺ (put-st (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (++⁺ (fill-st _ _) (tt ∷ᴬ []ᴬ)))))
+                              ++⁺ (fill-st _ (c-of F)) (++⁺ (put-st (⟦ F ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1) (tt ∷ᴬ []ᴬ)))))
              (tt ∷ᴬ []ᴬ))
     where
       n2 = proj₁ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
       l2 = proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
+      c-of : IRFunctor → ℕ
+      c-of P = size (⟦ F ⟧TI (ν-type H) +ᵀ ⟦ G ⟧TI (ν-type H)) ℕ.∸ suc (size (⟦ P ⟧TI (ν-type H)))
 
   ir-blocks-stable : ∀ {A B} (ir : IR A B) (n l : ℕ)
                    → All BlockStable (bds (ir-to-trace' n l ir))

@@ -18,7 +18,7 @@ open import Once.Spec.Name using (CanonicalName)
 
 module Once.CCC.Codegen.LayoutAll (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; suc; _∸_)
 open import Data.List using ([]; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
@@ -70,12 +70,12 @@ module Seg {P : AbstractInstr → Set}
   wrap-P : ∀ tag pk ps ss s → All P (wrap-sum tag pk ps ss s)
   wrap-P tag pk ps ss s =
     p-sas s ∷ p-alloc _ ∷ p-sas (suc s) ∷ p-mi ∷ p-tag tag ∷ p-sa 0 ∷
-    ++⁺ (put-k-P pk ps s (suc s) 1) (++⁺ (fill-P (suc ps) _) (p-lfs (suc s) ∷ []))
+    ++⁺ (fill-P (suc ps) (ss ∸ suc ps)) (++⁺ (put-k-P pk ps s (suc s) 1) (p-lfs (suc s) ∷ []))
 
   inj-P : ∀ t Q S n → All P (inj-trace t Q S n)
   inj-P t Q S n =
     p-mo ∷ p-sas n ∷ p-alloc _ ∷ p-sas (suc n) ∷ p-mi ∷ p-tag t ∷ p-sa 0 ∷
-    ++⁺ (put-P Q n (suc n) 1) (++⁺ (fill-P (suc (size Q)) _) (p-lfs (suc n) ∷ []))
+    ++⁺ (fill-P (suc (size Q)) (size S ∸ suc (size Q))) (++⁺ (put-P Q n (suc n) 1) (p-lfs (suc n) ∷ []))
 
   call-P : ∀ i0 → P i0 → ∀ E lk ls cl k ev pr → All P (cata-call-from i0 E lk ls cl k ev pr)
   call-P i0 p0 E lk ls cl k ev pr =
