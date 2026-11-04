@@ -98,6 +98,7 @@ module CataSetupC {FS : FrameSemantics} where
       -- the environment, as a value to put (valid at the caller's allocator)
       src    : FlatPut.Src {FS} {prog} (falloc σ) (floc u) E env env-sv
       code   : readLoc (floc u) (AtDynamic (sucHL hc)) ≡ just (SV-Code (ℓ o l1))
+      lhc    : Live (falloc u) (AtDynamic (sucHL hc))
       cf     : current-frame (falloc u) ≡ current-frame (falloc σ)
       hr     : next-heap-ref (falloc u) ≡ suc (next-heap-ref (falloc σ))
       -- D381: the caller's blocks keep their sizes; the record's block is fresh
@@ -304,6 +305,7 @@ module CataSetupC {FS : FrameSemantics} where
       ; src    = FlatPut.src-tr {FS} {prog} (λ l lv → trans (keepU l lv) (sym (out-mem σ wE l)))
                    (PairBuildC.src-of-place {FS} {prog} (GetOut.place g))
       ; code   = readLoc-writeLoc-same v9 H1 code
+      ; lhc    = FlatAlloc.alloc-live {FS} 2 a 1
       ; cf     = refl
       ; hr     = refl
       ; bk     = FlatAlloc.alloc-bk {FS} 2 a
