@@ -136,6 +136,8 @@ module CataCallC {FS : FrameSemantics} where
       lhp    : Live (falloc w) (AtDynamic hp)
       code   : readLoc (floc w) (AtDynamic (sucHL hc)) ≡ just (SV-Code lbl)
       cl     : readLoc (floc w) (AtStack (current-frame (falloc σ)) n) ≡ just (SV-Ptr (AtDynamic hc))
+      -- the environment's slot is only read
+      ev     : readLoc (floc w) (AtStack (current-frame (falloc σ)) (n ℕ.+ 2)) ≡ readLoc (floc σ) (AtStack (current-frame (falloc σ)) (n ℕ.+ 2))
       bk     : BlocksKept (falloc σ) (falloc w)
       keep   : ∀ l → Live (falloc σ) l → readLoc (floc w) l ≡ readLoc (floc σ) l
 
@@ -425,6 +427,9 @@ module CataCallC {FS : FrameSemantics} where
       ; lhp    = FlatAlloc.alloc-live {FS} N a 0
       ; code   = trans (keepAll _ lhc) code0
       ; cl     = trans (keepZ (AtStack cf n)) cSlotL
+      ; ev     = trans (keepZ (AtStack cf ev))
+                   (trans (PL.other (AtStack cf ev) (λ j _ ()))
+                   (trans (PE.other (AtStack cf ev) (λ j _ ())) (trans eSlot₃ (sym ev0))))
       ; bk     = FlatAlloc.alloc-bk {FS} N a
       ; keep   = keepAll
       }
