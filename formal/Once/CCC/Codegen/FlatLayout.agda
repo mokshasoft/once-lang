@@ -75,8 +75,27 @@ get-k word _       k = load-at k ∷ []
 get-k flat zero    k = mov-to-output ∷ []
 get-k flat (suc _) k = addr-at k ∷ []
 
+-- …it is ONE instruction (`get-ik`), whatever the type, and a construct that
+-- reads a component at a fixed row (`case`'s arms) emits it as that
+-- instruction (`get-one`: the same code).
+get-ik : Kind → ℕ → ℕ → AbstractInstr
+get-ik word _       k = load-at k
+get-ik flat zero    k = mov-to-output
+get-ik flat (suc _) k = addr-at k
+
+get-i : IRTy → ℕ → AbstractInstr
+get-i X = get-ik (kind X) (size X)
+
+get-k-one : ∀ kd n k → get-k kd n k ≡ get-ik kd n k ∷ []
+get-k-one word    _       k = refl
+get-k-one flat    zero    k = refl
+get-k-one flat    (suc _) k = refl
+
 get : IRTy → ℕ → AbstractTrace
 get X = get-k (kind X) (size X)
+
+get-one : ∀ X k → get X k ≡ get-i X k ∷ []
+get-one X = get-k-one (kind X) (size X)
 
 ------------------------------------------------------------------------
 -- WHAT THE LAYOUT CODE IS MADE OF, for the structural facts about emitted
@@ -114,6 +133,14 @@ module _ {P : AbstractInstr → Set} where
 
   get-All : ∀ X k → (∀ j → P (load-at j)) → (∀ j → P (addr-at j)) → P mov-to-output → All P (get X k)
   get-All X = get-k-All (kind X) (size X)
+
+  get-ik-P : ∀ kd n k → (∀ j → P (load-at j)) → (∀ j → P (addr-at j)) → P mov-to-output → P (get-ik kd n k)
+  get-ik-P word n       k pl pa pm = pl k
+  get-ik-P flat zero    k pl pa pm = pm
+  get-ik-P flat (suc _) k pl pa pm = pa k
+
+  get-i-P : ∀ X k → (∀ j → P (load-at j)) → (∀ j → P (addr-at j)) → P mov-to-output → P (get-i X k)
+  get-i-P X = get-ik-P (kind X) (size X)
 
   fill-All : ∀ from c → P (instr-load-tag-lit 0) → (∀ j → P (store-at j)) → All P (fill from c)
   fill-All from zero    pt ps = []

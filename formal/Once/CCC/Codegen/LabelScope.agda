@@ -925,7 +925,7 @@ record CataSplit (bb l1 : ℕ) (at t : AbstractTrace) : Set where
 -- so their idleness is `idle-All`, not `refl`.
 setup-idle : ∀ (E : IT.IRTy) (cl k ev bl : ℕ) → seg-idle? (cata-call-setup E cl k ev bl) ≡ true
 setup-idle E cl k ev bl =
-  idle-All _ (++⁺ (get-All E 0 (λ _ → refl) (λ _ → refl) refl)
+  idle-All (cata-call-setup E cl k ev bl) (++⁺ {xs = get E 0} (get-All E 0 (λ _ → refl) (λ _ → refl) refl)
                   (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
 
 call-idle : ∀ i0 → is-id? (seg-action i0) ≡ true → ∀ E lk ls (cl k ev pr : ℕ)

@@ -219,12 +219,15 @@ module _ (G : String → Set) where
   visit-closes todo tv tb Id      s lb d = []
   visit-closes todo tv tb (F ⊕ G) s lb {D} d =
     inj₁ (lab∈ (ℓ o lb) d lb∈) ∷
-    closes-++ gG _ (noref-closes gG (getμ-noref G 1))
-      (closes-++ VG _ (visit-closes todo tv tb G (s + 4) (suc (suc lb) + lsize F) (defd-⊆ VG⊆ d))
+    closes-++ gG (mov-to-input ∷ VG ++ tailG) (noref-closes gG (getμ-noref G 1))
+      (closes-++ VG tailG (visit-closes todo tv tb G (s + 4) (suc (suc lb) + lsize F) (defd-⊆ VG⊆ d))
         (inj₁ (lab∈ (ℓ o (suc lb)) d slb∈) ∷
-         closes-++ gF _ (noref-closes gF (getμ-noref F 1))
-           (closes-++ VF _ (visit-closes todo tv tb F (s + 4) (suc (suc lb)) (defd-⊆ VF⊆ d)) [])))
+         closes-++ gF tailF (noref-closes gF (getμ-noref F 1))
+           (closes-++ VF (instr-ctrl (c-label (ℓ o (suc lb))) ∷ []) (visit-closes todo tv tb F (s + 4) (suc (suc lb)) (defd-⊆ VF⊆ d)) [])))
     where
+      tailF tailG : AbstractTrace
+      tailF = mov-to-input ∷ visit-walk todo tv tb F (s + 4) (suc (suc lb)) ++ (instr-ctrl (c-label (ℓ o (suc lb))) ∷ [])
+      tailG = instr-ctrl (c-jmp (ℓ o (suc lb))) ∷ instr-ctrl (c-label (ℓ o lb)) ∷ getμ F 1 ++ tailF
       gG = getμ G 1
       gF = getμ F 1
       VG = visit-walk todo tv tb G (s + 4) (suc (suc lb) + lsize F)
