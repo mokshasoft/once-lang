@@ -181,3 +181,43 @@ copy-run src blk off i (suc k) s alloc sh dh ne h rs rb wr ibs =
           trans (proj₂ (proj₂ (proj₂ ih)) loc
                    (λ j′ j′<k → subst (λ x → loc ≢ AtDynamic (offsetHL dh (off + x))) (+-suc i j′) (nr (suc j′) (s≤s j′<k))))
                 (s₁-other loc (subst (λ x → loc ≢ AtDynamic (offsetHL dh (off + x))) (+-identityʳ i) (nr 0 (s≤s z≤n))))
+
+------------------------------------------------------------------------
+-- …and a copy leaves `Input1` at the destination, if that is where it was
+-- (each word ends with `restore-input blk`)
+------------------------------------------------------------------------
+copy-input1 : ∀ (src blk off i k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) (sh dh : HeapLocation)
+            → ¬ (heap-ref sh ≡ heap-ref dh)
+            → halted s ≡ false
+            → readLoc s (AtStack (current-frame alloc) src) ≡ just (SV-Ptr (AtDynamic sh))
+            → readLoc s (AtStack (current-frame alloc) blk) ≡ just (SV-Ptr (AtDynamic dh))
+            → (∀ j → j < k → Σ (StoredValue FS) (λ w → readLoc s (AtDynamic (offsetHL sh (i + j))) ≡ just w))
+            → (∀ j → j < k → InBlock alloc dh (off + (i + j)))
+            → readReg (regs s) Input1 ≡ SV-Ptr (AtDynamic dh)
+            → readReg (regs (proj₁ (exec-trace (copy-from src blk off i k) s alloc))) Input1 ≡ SV-Ptr (AtDynamic dh)
+copy-input1 src blk off i zero s alloc sh dh ne h rs rb wr ibs i1 = i1
+copy-input1 src blk off i (suc k) s alloc sh dh ne h rs rb wr ibs i1 =
+  subst (λ r → readReg (regs (proj₁ r)) Input1 ≡ SV-Ptr (AtDynamic dh)) (sym eq)
+    (copy-input1 src blk off (suc i) k s₁ alloc sh dh ne
+       (trans (wl-halted s₀ (offsetHL dh (off + i)) w) h)
+       (trans (wl-stack s₀ (offsetHL dh (off + i)) w _ src) rs)
+       (trans (wl-stack s₀ (offsetHL dh (off + i)) w _ blk) rb)
+       (λ j j<k → proj₁ (wr (suc j) (s≤s j<k))
+                , trans (s₁-other _ (blk-ne sh dh (suc (i + j)) (off + i) ne))
+                        (subst (λ x → readLoc s (AtDynamic (offsetHL sh x)) ≡ just (proj₁ (wr (suc j) (s≤s j<k))))
+                               (+-suc i j) (proj₂ (wr (suc j) (s≤s j<k)))))
+       (λ j j<k → subst (λ x → InBlock alloc dh (off + x)) (+-suc i j) (ibs (suc j) (s≤s j<k)))
+       (trans (cong (λ q → readReg q Input1) (writeLoc-regs s₀ (AtDynamic (offsetHL dh (off + i))) w)) refl))
+  where
+    w  = proj₁ (wr 0 (s≤s z≤n))
+    rw : readLoc s (AtDynamic (offsetHL sh i)) ≡ just w
+    rw = subst (λ x → readLoc s (AtDynamic (offsetHL sh x)) ≡ just w) (+-identityʳ i) (proj₂ (wr 0 (s≤s z≤n)))
+    s₀ = record s { regs = writeReg (writeReg (writeReg (regs s) Input1 (SV-Ptr (AtDynamic sh)))
+                                     Output w) Input1 (SV-Ptr (AtDynamic dh)) }
+    s₁ = one-word s sh dh w off i
+    eq : exec-trace (copy-from src blk off i (suc k)) s alloc
+       ≡ exec-trace (copy-from src blk off (suc i) k) s₁ alloc
+    eq = copy-one src blk off i k s alloc sh dh w h rs rw rb
+           (subst (λ x → InBlock alloc dh (off + x)) (+-identityʳ i) (ibs 0 (s≤s z≤n)))
+    s₁-other : ∀ loc → loc ≢ AtDynamic (offsetHL dh (off + i)) → readLoc s₁ loc ≡ readLoc s loc
+    s₁-other loc ne′ = trans (writeLoc-preserves-other s₀ _ loc w (λ e → ne′ (sym e))) (regs-mem s _ loc)
