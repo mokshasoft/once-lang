@@ -665,13 +665,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       find-thunk prog body-label ≡ just j →
       CallRuns {A} {B} VA VB alloc s closure-loc j f →
       ArrowV {A} {B} VA VB Heap alloc f closure-loc s
-    closure-reg-wf : ∀ {EnvType} {f : ⟦ A ⇛ B ⟧} {env : ⟦ EnvType ⟧}
+    -- D384: an environment that is not a pointer to a live block (a scalar,
+    -- or a Unit, whose register word is arbitrary) is just the WORD the env
+    -- cell holds: the call passes that word on (`CallRuns`), and nothing
+    -- else reads it.
+    closure-reg-wf : ∀ {f : ⟦ A ⇛ B ⟧} {w : StoredValue FS}
       {alloc : AllocState {FS}}
       {closure-loc : ValueLocation FS} {s : LocState FS}
       {body-label : LabelId} {j : ℕ} →
       LocMatchesMode Heap closure-loc →
-      (rep : InlineRep EnvType) →
-      readLoc s closure-loc ≡ just (inline-sv rep env) →
+      readLoc s closure-loc ≡ just w →
       readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label) →
       Live alloc (sucLoc closure-loc) →
       find-thunk prog body-label ≡ just j →
@@ -844,8 +847,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     wrap (inr-flat-wf {m = m} {b = b} {sum-loc = sum-loc} {mB = mB} fl lmm tg slb ib pd pv)
   pattern valid-closure-wf {f} {closure-loc} {env-loc} lmm ep cp eb slb fd runs =
     wrap (closure-wf {f = f} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
-  pattern valid-closure-reg-wf {f} {env} {closure-loc} lmm rep ep cp slb fd runs =
-    wrap (closure-reg-wf {f = f} {env = env} {closure-loc = closure-loc} lmm rep ep cp slb fd runs)
+  pattern valid-closure-reg-wf {f} {w} {closure-loc} lmm ep cp slb fd runs =
+    wrap (closure-reg-wf {f = f} {w = w} {closure-loc = closure-loc} lmm ep cp slb fd runs)
   pattern valid-ν-wf nv = wrap nv
   pattern valid-μ-wf ub wf x lv = wrap (fo-μwf ub wf x lv)
   pattern valid-μbox-wf bx wf x c = wrap (fo-μbox bx wf x c)
@@ -1103,8 +1106,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
                 → readLoc s closure-loc ≡ just (SV-Ptr env-loc)
                 → BeforeFrontier alloc env-loc
                 → EnvAt alloc env closure-loc s
-    env-in-cell : (rep : InlineRep E)
-                → readLoc s closure-loc ≡ just (inline-sv rep env)
+    env-in-cell : (w : StoredValue FS)
+                → readLoc s closure-loc ≡ just w
                 → EnvAt alloc env closure-loc s
 
   record ClosureValidWF (alloc : AllocState {FS}) {A B : IRTy}
@@ -1130,9 +1133,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     { EnvType = Unit ; env = tt ; body-label = _ ; loc-mode = lmm
     ; env-at = env-at-loc el ep (live→bf eb) ; code-ptr = cp ; sucLoc-before = live→bf slb
     ; code-j = _ ; code-found = fd ; runs = rn }
-  decomposeClosureWF (valid-closure-reg-wf {env = env} lmm rep ep cp slb fd rn) = record
-    { EnvType = _ ; env = env ; body-label = _ ; loc-mode = lmm
-    ; env-at = env-in-cell rep ep ; code-ptr = cp ; sucLoc-before = live→bf slb
+  decomposeClosureWF (valid-closure-reg-wf {w = w} lmm ep cp slb fd rn) = record
+    { EnvType = Unit ; env = tt ; body-label = _ ; loc-mode = lmm
+    ; env-at = env-in-cell w ep ; code-ptr = cp ; sucLoc-before = live→bf slb
     ; code-j = _ ; code-found = fd ; runs = rn }
 
   data Place : Set where
@@ -1439,8 +1442,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       v-tr (A ⇛ B) q (valid-closure-wf lmm ep cp eb slb fd runs) =
         valid-closure-wf lmm (trans (rd _ q) ep) (trans (rd _ (q-bf _ slb)) cp) (bft _ eb) (bft _ slb)
                          fd (runs-tr q runs)
-      v-tr (A ⇛ B) q (valid-closure-reg-wf {env = env} lmm rep ep cp slb fd runs) =
-        valid-closure-reg-wf {env = env} lmm rep (trans (rd _ q) ep) (trans (rd _ (q-bf _ slb)) cp) (bft _ slb)
+      v-tr (A ⇛ B) q (valid-closure-reg-wf {w = w} lmm ep cp slb fd runs) =
+        valid-closure-reg-wf {w = w} lmm (trans (rd _ q) ep) (trans (rd _ (q-bf _ slb)) cp) (bft _ slb)
                              fd (runs-tr q runs)
       v-tr (μ-type F) q (wrap w) = wrap (fo-tr q w)
       v-tr (ν-type F) q (valid-ν-wf n) = valid-ν-wf (nu-tr q n)
@@ -1852,8 +1855,8 @@ pattern valid-inr-flat-wf {m} {b} {sum-loc} {mB} fl lmm tg slb ib pd pv =
   wrap (inr-flat-wf {m = m} {b = b} {sum-loc = sum-loc} {mB = mB} fl lmm tg slb ib pd pv)
 pattern valid-closure-wf {f} {closure-loc} {env-loc} lmm ep cp eb slb fd runs =
   wrap (closure-wf {f = f} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
-pattern valid-closure-reg-wf {f} {env} {closure-loc} lmm rep ep cp slb fd runs =
-  wrap (closure-reg-wf {f = f} {env = env} {closure-loc = closure-loc} lmm rep ep cp slb fd runs)
+pattern valid-closure-reg-wf {f} {w} {closure-loc} lmm ep cp slb fd runs =
+  wrap (closure-reg-wf {f = f} {w = w} {closure-loc = closure-loc} lmm ep cp slb fd runs)
 pattern valid-ν-wf nv = wrap nv
 pattern valid-μ-wf ub wf x lv = wrap (fo-μwf ub wf x lv)
 pattern valid-μbox-wf bx wf x c = wrap (fo-μbox bx wf x c)

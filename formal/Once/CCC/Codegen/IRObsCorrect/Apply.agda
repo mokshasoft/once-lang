@@ -140,7 +140,7 @@ module ApplyC {FS : FrameSemantics} where
 
           env-sv-of : EnvAt {prog = prog} alloc {E} env fst-loc s → StoredValue FS
           env-sv-of (env-at-loc el _ _) = SV-Ptr el
-          env-sv-of (env-in-cell rep _) = inline-sv rep env
+          env-sv-of (env-in-cell w _) = w
 
           env-cell-of : (ea : EnvAt {prog = prog} alloc {E} env fst-loc s)
                       → SMCore.MemOps.readLoc s fst-loc ≡ just (env-sv-of ea)
