@@ -21297,3 +21297,65 @@ not decode, so the step faults (D386). At a non-faulting step a scalar argument 
 ### Consequences
 * The arith block's `R-input` for a scalar input is the input register's word (`in1-eq`).
 * No emitted code changes: no producer puts a scalar behind a pointer.
+
+## D393 — β: ESCAPES COPY FIRST, THEN VALUES MOVE INTO FRAMES (2026-11-05)
+
+**Decided** for plan 0.123 β, working unattended (the user asked for principled choices overnight). The
+choices that are new are marked **for the user's review**. The rest follows from D373 (frames first), D7,
+D147, D378, and R1/R2 of plan 0.123 B.4.
+
+### Context
+β moves flat values (products and sums of statically sized types) out of heap blocks into frame slots. A
+value in a frame is sound only if nothing reads it after its frame ends, and nothing overwrites its slots
+while it is live. Today every compound value is a heap block that is never freed, so neither question
+comes up. The two servers of Layer5Spec ("a server never ends") allocate only flat values per round: a
+pair, an `inr`, and `Iter`'s next state. So β alone bounds their memory, and γ is needed only for nodes.
+
+Tracing where a value can outlive its frame, or be overwritten while live, gives five routes:
+1. **A function's result.** A body returns the address of its result, which may lie in the body's own
+   frame.
+2. **A closure's environment.** `curry` stores the environment's word in the closure node. For a flat
+   environment that word is the environment's address.
+3. **A ν suspension's seed.** `Ana` and `in-ν` store the seed's address in cell 0.
+4. **A μ node built from a pointer layer.** `In` at `mu-ptr` passes the layer's block through as the
+   node (`mov-to-output`).
+5. **`Iter`'s state across rounds.** Rounds reuse the loop's slots. The next state may alias the
+   current one (a body returning a part of its input), so building it in place can overwrite words
+   before they are read.
+
+### Decision
+β is a sequence of green steps. The copies go in while every value is still on the heap, so each step
+holds without any stack pointer. Then stack pointers are admitted, and only after that do producers
+move.
+* **β1, nodes copy their layer.** `In` at a pointer layer copies the layer's words into a fresh node.
+  `Ana` and `in-ν` copy the seed's words into a fresh block whose address is cell 0.
+* **β2, a closure copies its environment.** A flat environment's words go into a fresh block, and its
+  address is the closure's environment word. The node stays `[env-word, code]` (D380).
+  **For the user's review:** a separate block, not embedded in the node. This keeps the node's shape and
+  every proof about it; γ's walk frees both blocks.
+* **β3, results by destination.** At a call whose result has words (a compound), the caller passes a
+  destination in `Output` (R1). The callee keeps it in a slot of its frame. At its return, it copies its
+  result's words there and returns the destination.
+  **For the user's review:** the callee copies at its return. The alternative is threading a `Place`
+  into every clause so the last producer writes directly. That is an optimization of the same contract,
+  and it can come later without changing it. Until β5 the caller's destination is a heap block.
+* **β4, `Iter` copies down.** The state's place is reserved once, before the loop. Each round builds the
+  next state in a scratch place and copies it into the state's place. Until β5 both places are heap
+  blocks.
+* **β5, live stack pointers.** `lea-slot` enters the fences. The state invariant becomes R2's
+  `StackPtrWF`:
+  * a stack pointer addresses a live frame's reserved slot;
+  * one stored in a frame targets that frame or an older one;
+  * no memory word outside the frames holds one.
+
+  The three arches' correspondence is re-proved with stack pointers live (R3, plan 0.87 D).
+* **β6, producers move.** The pair, the injections, apply's call pair, `Iter`'s two places and the
+  call-site destinations reserve frame slots (`lea-slot`) in place of `instr-alloc-heap`. Nodes and
+  closures stay on the heap; γ reclaims them.
+
+### Consequences
+* Until β6 the copies cost time and heap; β6 removes the heap side.
+* After β6 the servers' rounds allocate nothing on the heap. The test "a server never ends" turns green
+  before γ.
+* A flat word never holds a stack pointer, since words are scalars, tags or node pointers. So only
+  registers and frame slots hold stack pointers, which is what makes R2's ordering provable.
