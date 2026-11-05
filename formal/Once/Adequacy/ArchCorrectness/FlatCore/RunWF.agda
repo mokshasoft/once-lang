@@ -321,15 +321,14 @@ postulate
   -- frontier and the stack's high-water mark; the
   -- disjointness facts that used to be postulated are derived from the carried
   -- `sep` these keep true. A real runtime failure mode (OOM / stack overflow),
-  -- not a claim about addresses — the same class as the `conc-fuel` step budget.
+  -- not a claim about addresses.
   -- Plan 0.54 rung D step 3: the heap's room is measured against the stack's
   -- HIGH-WATER MARK, not the current `%rsp` — a region the stack has already
   -- visited keeps its (dead) contents, so only the VIRGIN part of the gap is
   -- available. That is also what discharges the fresh block's freshness on the
   -- concrete side, which is why `alloc-heap-fresh-x86` is gone.
   -- (`heap-room` is a MODULE PARAMETER now — see the header. It was the one
-  -- resource bound stated inside the correspondence rather than at the apex
-  -- beside `conc-fuel`.)
+  -- resource bound stated inside the correspondence rather than at the apex.)
   -- RETIRED 2026-07-31 (plan 0.54 rung D, item 2): `stack-room` / `frame-room` /
   -- `pop-room`, and the alloc-stack FRESH-FRAME pair `alloc-stack-fresh-{abs,x86}`
   -- together with `alloc-stack-entry`, all conditioned a frame-op site — and an

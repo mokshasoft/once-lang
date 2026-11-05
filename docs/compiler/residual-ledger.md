@@ -49,9 +49,10 @@ abstract one — read it off the signature: does it mention `X.State` /
       its ~37-site ripple in `FlatSimulation`. The concrete half of the
       transfer already exists (`FlatComposition.find-thunk-pres`).
 
-    correspondence-located, CPU-MODEL caused (2):
-      external-sigop-contract, conc-fuel  (arith-block-value DISCHARGED 2026-11-05, row 3)
-      (see THE CPU-MODEL ROOT below)
+    correspondence-located, at the external-call boundary (1):
+      external-sigop-contract (row 4; discharged by plan 0.123 R5)
+      (arith-block-value DISCHARGED 2026-11-05, row 3; conc-fuel DELETED by D4a, row 11;
+      see THE CPU-MODEL ROOT below)
 
     THE UNBOUNDED-REGISTER MODEL — NAMED 2026-08-13, CLOSED 2026-08-13 by
     plan 0.70. Kept here (rather than deleted) because the entry is what makes
@@ -285,7 +286,7 @@ deferred proofs sharing one missing piece: the return-address component.
 | 1 | `stack-top-in-stack` | `…ArchCorrectness.X86-64` | axiom-ish | the residue of the two above: the loader's `%rsp` lies in the stack region. Could fold into `stack-top`'s own postulate by giving it type `StackPointer` instead of `Word` |
 | 2 | `entry-size` | `FlatFromObs` | invariant | → parameter, same pattern as `heap-room` |
 | 3 | `arith-block-value` | (was `*/ConcFlatSim` ×3) | — | **DISCHARGED 2026-11-05 on all three arches** (plan 0.123 α′ (f3), `*/ArithBlockValue`). x86-64 first (plan 0.123 α′ (f3), `X86-64.ArithBlockValue`): the decoded argument is the block's input at its entry state — a scalar the literal in `rdi` (D392), a compound the heap words at `rdi + 8k` below the frame (`FlatLeaf.leaf-at`, `heap-eq`, the room, D387) — its `Int` leaves are words (the store invariant, D391), and the Core (`ArithSimX86-64.block-value-x86-64`, through `normalize-preserves`) gives `rax` as the SigOp's output (`FlatCore.ArithOutput`). riscv64 (`t0`, frame `8n` below `sp`) and x86-32 (`ecx`, frame `20 + 4n` below `esp`) the same way: their ArithSim layout moved from the static link layout (`InStack`/`InHeap`) to the dispatch's (inputs outside the frame, spills inside). So plan 0.67's `arith-sigop-run` is a theorem with no residual. Before: what was left of the RUN half of `arith-sigop-contract`: the VALUE in the out register. `arith-dispatch-run` (the block's `ArithRun`) is a theorem (plan 0.123 α′ (f2)) but for that field: `*/ArithFrame` proves the subroutine keeps every role register but the result's and writes memory only in its frame, each spill slot below `required-scratch` (`XInstr.SpillBound`). Which block a compiler-owned SigOp names is PROVED (`arith-sigop-lookup`, D351); `arith-sigop-run` is a theorem (plan 0.123 α′ (e)) from the arch-free frame lemma `FlatCore.SigOpFrame.sigop-arith-step`: link, halt, decode and pc from the run, the frame from the room (D387). Which payload the call runs is PROVED to be the SigOp's own block (`arith-sigop-block`: `Named` carries `BlockOf`, and one symbol is one block, `DigestInjective.block-symbol-injective`, D389). Assumed is only that THAT block's result in the out register is the encoded SigOp output. HISTORY: was `arith-sigop-run`, which hid 87 test failures after D375 (the block read its input by the old layout, D385) and was false near the frontier (the room check did not cover the block's frame, D387) and under the old dispatch model (scratch in the caller's frame, D388). HISTORY: was all of `arith-sigop-contract`, and the lookup half was false for a primitive the arith pass left bare (a float operation over a `Float` input did not link) |
-| 4 | `external-sigop-contract` | `ConcFlatSim` | **stub** | same root: conclusions are about `arith-env-x86-64` AND `ev-x86-64`, both undefined |
+| 4 | `external-sigop-contract` | `*/ConcFlatSim` ×3 | **stub** | conclusions are about `ev-<arch>` and `call-at-<arch>`, postulated in `…CPU.<arch>` (the binary's label→SigOp resolution and argument decoding). Its `env` half is a lookup now (`block-env`, plan 0.107; was `arith-env-x86-64`). **Discharged in plan 0.123 R5** (user, 2026-11-05): R5 rewrites `ev-arch`/`ret-call` to read and write by `Spec.ABI`, so a proof against today's register-based extractor would be redone there |
 | — | `emitted-shape-check` | (was `FlatCore.RunWF`) | — | **GONE (D367) — it was FALSE**: `c-start` drops every claim, so `terminal ∘ ⟨ id , id ⟩` fails the check under every label environment and the postulate derived `⊥`. Its consumers' site facts are THEOREMS now, read off the program's own run, which never faults (`FlatFromObs.start-sound`, from `ir-obs-correct`) |
 | — | `run-meets` | (was `FlatCore.RunWF`) | — | **GONE (D367)** with the shape checker it was stated over (`ShapeTable`, `ShapeAt` deleted) |
 | 7 | `main-heap-moded` | apex | deferred proof | induction over the elaborator: building with `C.Heap` yields only `Heap` modes |
@@ -293,52 +294,31 @@ deferred proofs sharing one missing piece: the return-address component.
 | 9 | `ret-site-owes` + `ret-budget-matches` | `FlatCore.RunWF` | deferred proof | REPLACED `events-running-ret` 2026-08-06 (D095), now the THEOREM `ret-step` over the proven `block-step-c-ret`. Neither mentions `X.State`. (1) a reachable `c-ret` owes a return — route: static segment depth = `fret` depth + `SlotBudget` bracket neutrality; (2) the released budget IS the reservation in force — the emitter writes one `bb` twice. Both belong in the `emitted-thunk-guarded` induction. HISTORY: THE COMPONENT LANDED (D093): `CompiledCorr.ret-eq` says every ghost `fret` entry is really in memory, at its frame's window end. Three inputs left, all designed in D093 — the exact one-slot gap (as a `GapNext` conjunct in `RetAddrs`), `C.sim-ret`, and the `c-thunk`/`c-ret` bracket fact. ROUND TRIP: deleted 2026-08-06 (D091 — no reachable state fetched a `c-ret`, so its clause became `⊥` by collision with the theorem `run-no-ret`), restored the same day when D092 MODELLED THE CALL. `run-no-ret` is false and deleted, `ret-site-owes` is gone, and the route is live. No longer a model gap — what is missing is the `CompiledCorr` return-address component, preservable now that `enter-call` pins the entered frame's window END on the pushed cell |
 | 10 | `call-site-shape` | `FlatCore.RunWF` | deferred proof | REPLACED `events-running-call` 2026-08-06 (D098), now the THEOREM `call-step`. At an emitted call the closure register holds a live heap pointer whose second cell holds a code address naming a body that exists — every conjunct is what `ir-to-trace'`'s `curry` clause arranges. No `X.State`; same class and route as the D073 dataflow disciplines. Its resource half is the `x86-64-call-room` PARAMETER. HISTORY: was THE LAST CORRESPONDENCE GAP. Blocker LOCATED (D095): `effectiveAddr s (rip+label n) ≡ idx n` is a FICTION — a code address encodes as the label NUMBER while the concrete `call` jumps to the compiled address, and `idx ℓ ≡ x86-off prog j` is false. Fix (more faithful, not less — a real linker resolves that operand): resolve `lea … (rip+label ℓ)` through `X.find-label prog (thunk ℓ)`, then `find-thunk-pres` bridges. Costs one Semantics clause, a code map through the encoding (~56 + ~37 mechanical sites), the call's block-step (it writes the pushed address, EXTENDING `RetAddrs`), and one `StackRoom`-class resource premise. WAS the model gap; CLOSED as such by D092 (2026-08-06). `flat-exec-instr instr-call-closure` now transfers control the way `call *0x8(%r12)` does — pushes `fret`/`saved-frames`, enters `enter-call`'s frame, resolves the body with `find-thunk`. The concrete side of the transfer is already proven (`FlatComposition.find-thunk-pres`); what remains is the same return-address component as #9 |
 | 13 | `emitted-thunk-guarded` | `FlatCore.RunWF` | deferred proof | REPLACED `thunk-entry-empty` 2026-08-06 (D094), which is now the THEOREM `SegWF.seg-entry` — every way of arriving at a body entry is refuted (fall-through by this guard, jump by `find-label-sound`, return by `RetMatch`'s new call provenance, entry by position 0), leaving the call, which reserves nothing. What is left is the emitter's own statement: in an emitted trace a `c-thunk` sits at `suc q` with a `c-jmp` at `q` — the guard `ir-to-trace'` emits to stop the parent falling into the body. CODEGEN-class: only `ir-to-trace` in the type. Route: the structural induction over `ir-to-trace'` (`FrameFreeTrace`/`LabelScope` mould) — a `NoThunks`-decides-it helper collapses the clauses that emit no body entry, an append lemma handles the splices, and the one interesting adjacency (`c-jmp end ∷ c-thunk`) is inside a single literal list in the `curry` clauses |
-| 11 | `conc-fuel` | apex | **stub** | asserts adequacy of `step-budget-x86-64`, an UNDEFINED postulated budget in `…CPU.X86-64` (siblings: `ev-x86-64`, `arith-env-x86-64`). D268: it now reads the run (`bs → code → s → ℕ → ℕ`) — no `ℕ → ℕ` could be pinned, event-free prefixes are unboundedly long. Pin `step-budget` to a definition, then prove it. NOT a resource bound — do not launder it into a parameter |
+| 11 | `conc-fuel` | (was apex) | — | **DELETED (D4a, D320)**: the apex is over traces, and the binary's trace is read off the machine with no fuel (`run-trace-<arch>`), so the `step-budget-<arch>` postulates and `conc-fuel` went with the fuel. HISTORY: asserted adequacy of an undefined budget; D268 made it read the run, since no `ℕ → ℕ` could be pinned |
 | 12 | `x86-64-loader-faithful` | apex | **axiom** | STAYS — but NARROWED 2026-08-09 (D100): it now carries `DistinctLabels x86-64 m`. Without that premise it was not merely trusted, it was FALSE for every program the emitter duplicated (`as` refuses the text, so its LHS is the trace of nothing). Same edit on the x86-32 / riscv64 twins, via the shared `AsmTraceCorrect` |
 | 12b | `as-faithful-<arch>` | apex | **axiom — INCONSISTENT AS STATED (D272)** | `decode (assemble (print F)) ≡ just F` for every `AsmWF F` needs `print` injective on `AsmWF`; it drops `externs` (⊥ shown) and `AsmWF` admits symbols that forge text. Fix = lexical symbol validity in `AsmWF` + printed externs — part of the plan 0.107 phase-d symbol-namespace design |
 | 14 | `program-labels-distinct` | `Once.Adequacy.LabelClash` | deferred proof / codegen | NEW 2026-08-09 (D100). The apex's supply of `DistinctLabels arch m` = `AllPairs _≢_ (C.moduleLabels arch Heap false m)`, the `.L…` sibling of `DistinctSymbols`/`program-no-clash`. **TRUE of the emitter as of 2026-08-11** (D101/C1 emits the algebra once, as a called body) — was FALSE while `cata-dispatch` used the IH for its algebra trace TWICE at one label range (D099), the defect that shipped the 61-test regression. Still OWED as a proof. Route: `LabelRange`'s disjoint-range argument at every splice (counter monotonicity DONE, `LabelScope` containment DONE incl. the cata's `segagree-curry` case, uniqueness next). SCOPE: covers the non-linear `ir-to-trace'` walk; the per-arch `compile-trace-cnt` labels are inside the range but not in the list — that walk is linear, so a `LabelRange`-shaped one-liner each |
 
-Only #12 is permanent. #11 lives in the CPU layer, not the correspondence.
+Only #12 is permanent.
 NOTHING in this cone is a model gap any more — D092 closed the last one.
 
 RESOURCE PARAMETERS now carried (not postulates, D087): `program-bound`,
 `x86-64-heap-room`, `x86-64-stack-room`, `x86-64-call-room`, `entry-frame`. All
 five thread `Certified → Compiler → ArchCorrectness → the arches`.
 
-## THE CPU-MODEL ROOT — three definitions unlock four residuals
+## THE CPU-MODEL ROOT — closed (plan 0.67, 2026-11-05)
 
-`Once/Adequacy/CPU/X86-64.agda` postulates three FUNCTIONS that are never
-defined:
+Three undefined functions in `Once/Adequacy/CPU/X86-64.agda` once conditioned rows #3, #4 and #11. Of them:
 
-    postulate
-      step-budget-x86-64 : List (String × RF.Payload) → X64S.Program → X64.State → ℕ → ℕ   -- D268
-      ev-x86-64          : RT.EvExtractor val-x86-64
-      arith-env-x86-64   : X64S.Program → RT.ArithEnv val-x86-64
+- `arith-env-x86-64` is DEFINED as a lookup over the image's block table (`block-env`, plan 0.107), and the
+  lookup half (`arith-sigop-lookup`, D351) and the run (`arith-block-value`, row 3) are theorems on all
+  three arches.
+- `step-budget-x86-64` is DELETED with `conc-fuel` (D4a): the binary's trace needs no fuel.
+- `ev-<arch>` and `call-at-<arch>` remain postulated: they are the binary's label→SigOp resolution and
+  argument decoding at an external call. `external-sigop-contract` (row 4) is about them, and plan 0.123 R5
+  defines them by `Spec.ABI` and discharges it.
 
-Residuals #3, #4 and #11 are all conditioned on these (`env ≡ arith-env-x86-64
-(compile-trace prog)`, `ev ≡ ev-x86-64`) and their CONCLUSIONS are claims about
-them — `env sym ≡ just pl`, `ev sym s ≡ event-of …`, "this fuel map is
-adequate". None of those is provable about a function with no definition, so all
-three must be assumed. **This is not a SigOp problem and not an arith problem**;
-the arith proofs themselves are postulate-free on all three arches.
-
-The conditioning is CORRECT and must stay: it was added 2026-07-30 because over
-an arbitrary `env`/`ev` the claims are refutable (`λ _ → nothing`, `λ _ _ → []`)
-— the vacuity lesson. What it exposes is that the functions were never written.
-
-So the highest-leverage move on this board is a DEFINITION task, not a proof
-task:
-
-- `arith-env-x86-64` — look up the emitted arith block by its
-  `once-symbol-path` symbol in the compiled `Program`. The emitter already puts
-  it there (Plan 0.20 Phase G, `arith.block.<digest>`).
-- `ev-x86-64` — read the observable value out of the argument registers at a
-  `call-sym`, matching abstract `event-of`.
-- `step-budget-x86-64` — the event-count ↦ machine-step fuel map.
-
-Once each reduces, the corresponding residual becomes provable rather than
-assumed. `decode-x86-64` is a FOURTH undefined function there, but it is honest
-toolchain-boundary work (Intel SDM byte encoding), not a correspondence gap.
+`decode-x86-64` is honest toolchain-boundary work (Intel SDM byte encoding), not a correspondence gap.
 
 ## Not in this cone
 

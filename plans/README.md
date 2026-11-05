@@ -11,7 +11,6 @@ This index is a map and was last re-derived from the code on 2026-10-11 (the Spe
 |---|---|---|
 | 0.11 parameterized trusted base | A done (D302) | B `ArchModel`, C world/resources, D models, E `--safe` cone, F one concrete instance |
 | 0.88 discharge obs-correct | open | `obs-correct-sigop-rest` (structured codomains; split it by reason); `obs-correct-In` was false and is proved (D366, `In` boxes an inline layer); `cata-correct` proved (D363, D364) |
-| 0.67 wire arith proofs | route obsolete | owns `arith-sigop-run` ×3 (the lookup half is a theorem, D351); `ev`/`step-budget` definitions |
 | 0.110 start state assumes less | not started | boot registers/flags |
 | 0.111 interpretation ABI in the Spec | not started | the calling-convention obligation; 0.113's A3 runtime test |
 | 0.89 relocatable compilation units | property delivered at the emitter and link; kept | C (`SpanAt` → block-map inclusion; plan 0.135 kept the relation, so C stays here); B (the machine runs units, ~1700 sites) do-or-drop decision; F optional; E done by D364 |
