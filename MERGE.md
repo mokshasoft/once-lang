@@ -40,6 +40,8 @@ The analysis must cover each of the following.
   implementation meets the claim; it is not part of the claim. A proof added to the Spec stops
   the merge. Properties of the language go in `Once.Spec.Metatheory` as statements, proved under
   `Once/Metatheory`.
+  A new law or claim in `Once.Spec.Metatheory` comes with its instance in `LawsApply` (plan 0.143);
+  a law whose premises cannot be instantiated at an empty context does not merge.
   The one exemption is `Once.Spec.Type.Substitution` (D335): substitution is functorial, and the
   meaning of a reference to a polymorphic definition is not well-typed without it. Nothing may be
   added to it, and no other Spec module may prove anything.
