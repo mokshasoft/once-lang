@@ -20981,4 +20981,7 @@ under a binder by `wk-⊢`), the hypothesis `e ≅ e′` of the uniqueness laws 
 at `return∞`, recursion at `SK ⊤`.
 
 ### Checks
-2026-11-05: `Once.Spec.Metatheory`, `Once.Metatheory.LawsApply` OK.
+2026-11-05: `Once.Spec.Metatheory`, `Once.Metatheory.LawsApply` OK; `make certified` OK; public-, pragma-,
+metatheory- and spec-gate (after `spec-approve`) and lint-pragmas clean; backstop OK (787 modules) at
+`AGDA_SAFE_MEM_MAX=6G`: loading every interface in one process now exceeds the default 4.8 GB heap
+(all interfaces were up to date; nothing failed to check).
