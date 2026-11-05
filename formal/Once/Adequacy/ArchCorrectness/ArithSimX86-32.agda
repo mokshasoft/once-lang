@@ -38,7 +38,7 @@ open import Once.Arith.CmpOp using (cmp-bit)
 open import Once.Spec.Float.Decimal using (round)
 open import Once.Spec.Float.Dyadic using (binary32)
 open XI using (XR0; XR1)
-open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
+open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd; ⌊_⌋ᴾ; flat-off)
 open import Once.Target.X86-32.PhysReg using (Reg; eax; ecx; esp)
 open import Once.Arith.Backend.X86-32.Emit using (arith-reg)
 import Once.CCC.Target.X86-32.Semantics as X32
@@ -436,8 +436,8 @@ open Core
   (EA.exec1 val-x86-32) (EA.exec-arith-block val-x86-32)
   (λ _ → refl) (λ _ _ _ → refl)
   sa-inv sa-inj mem-keep mem-spill-hit mem-spill-miss
-  WF wf-e1
-  (λ _ → ⊤) (λ i s wf _ → pl-inv i s wf)
+  (λ _ → WF) (λ i s → wf-e1 i s)
+  (λ _ → ⊤) (λ i s wf _ p → pl-inv i s wf ⌊ p ⌋ᴾ (flat-off p))
   rf-other
   -- rt-mov-imm rt-mov-rr rt-reload
   (λ d z s   → readReg-wr-arith-same (regs s) d _)

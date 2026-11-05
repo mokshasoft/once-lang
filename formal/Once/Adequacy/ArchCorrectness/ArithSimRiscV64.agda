@@ -42,7 +42,7 @@ open import Once.Arith.CmpOp using (cmp-bit)
 open import Once.Spec.Float.Decimal using (round)
 open import Once.Spec.Float.Dyadic using (binary64)
 open XI using (XR0; XR1)
-open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
+open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd; ⌊_⌋ᴾ; flat-off)
 open import Once.Target.RiscV64.PhysReg using (Reg; a0; sp; t0)
 open import Once.Arith.Backend.RiscV64.Emit using (arith-reg)
 import Once.CCC.Target.RiscV64.Semantics as RV
@@ -411,8 +411,8 @@ module _ (N : ℕ) where
     (EA.exec1 val-riscv64 N) (EA.exec-arith-block val-riscv64 N)
     (λ _ → refl) (λ _ _ _ → refl)
     sa-inv sa-inj mem-keep mem-spill-hit mem-spill-miss
-    WF wf-e1
-    (λ _ → ⊤) (λ i s wf _ → pl-inv i s wf)
+    (λ _ → WF) (λ i s → wf-e1 i s)
+    (λ _ → ⊤) (λ i s wf _ p → pl-inv i s wf ⌊ p ⌋ᴾ (flat-off p))
     rf-other
     -- rt-mov-imm rt-mov-rr rt-reload
     (λ d z s   → readReg-wr-arith-same (regs s) d _)

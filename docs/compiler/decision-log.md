@@ -21623,3 +21623,24 @@ Going beyond the target's word is another type's business (D054's `BigInt`), not
 ### Consequences
 * Every `Int`/`Float` value in a run is the target's; the arith block proof uses it for its inputs.
 * The emitted code does not change: the answer register already holds the target's word.
+
+## D392 — A SCALAR SIGOP ARGUMENT IS ITS REGISTER, IN THE MACHINE TOO (2026-11-05)
+
+**Decided** in plan 0.123 α′ (f3c), found while stating `R-input` at an arith block's entry.
+
+### Context
+D383 says a scalar has no memory residence: at the IR level a scalar `Input1` is `in-reg`, and an
+`in-loc` at `Int`/`Float` is refuted by its validity. D390 made the arith models read a scalar block's
+input as the input register itself, as the emitted code does. But the abstract machine's `decode-at`
+still decoded a scalar argument through a pointer (its `SV-Ptr` catch-all read `readTyped Int loc`). So
+a run fact could not tell the block's code that `Input1` holds the value: at a pointer the machine would
+compute from the pointee, the code from the address.
+
+### Decision
+`decode-at` follows a pointer only for a compound base (`b-*`, `b-+`); a pointer at a scalar base does
+not decode, so the step faults (D386). At a non-faulting step a scalar argument is the literal in
+`Input1`. `IRObsCorrect.SigOp.arg-agree` refutes the scalar `in-loc` case by D383 (`scalar-nowhere`).
+
+### Consequences
+* The arith block's `R-input` for a scalar input is the input register's word (`in1-eq`).
+* No emitted code changes: no producer puts a scalar behind a pointer.

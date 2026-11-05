@@ -23,7 +23,7 @@
 module Once.CCC.Machine.SMCore where
 
 open import Relation.Binary.Definitions using (DecidableEquality)
-open import Once.Spec.Type using (Base; b-Float; b-Int; b-Unit; ∅ₖ)
+open import Once.Spec.Type using (Base; b-Float; b-Int; b-Unit; b-*; b-+; ∅ₖ)
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _>_; _≥_; _<ᵇ_)
 open import Data.Nat.Properties using (_≟_)
@@ -1715,11 +1715,15 @@ module AbstractExec {FS : FrameSemantics} where
   -- ⟦ A ⟧`, which gave `⊥` at `b-Void` once an interpretation was
   -- inhabited, and decoded a boxed value from the pointer alone.)
   decode-at : ∀ {A} → Base ∅ₖ A → StoredValue FS → LocState FS → Maybe ⟦ A ⟧
+  -- D392: a SCALAR argument is its register (D383: a scalar has no memory
+  -- residence), so a pointer at a scalar base does not decode — the step
+  -- faults (D386), as the block's code, which takes the register itself as
+  -- the value (D390), would compute from an address.
   decode-at b-Unit  _                      _ = just tt
   decode-at b-Int   (SV-Lit fits-int   v)  _ = just v
   decode-at b-Float (SV-Lit fits-float v)  _ = just v
-  {-# CATCHALL #-}
-  decode-at {A} _      (SV-Ptr loc)           s = readTyped A loc s
+  decode-at {A} (b-* _ _) (SV-Ptr loc)    s = readTyped A loc s
+  decode-at {A} (b-+ _ _) (SV-Ptr loc)    s = readTyped A loc s
   {-# CATCHALL #-}
   decode-at _          _                      _ = nothing
 

@@ -375,8 +375,10 @@ module At (tn : TargetNum) where
     -- the stack pointer nor the input region) and threaded through Rf so the
     -- memory-layout obligations (pl-inv's spill case; sa-inj) discharge from the
     -- GLOBAL region model rather than being postulated. Supplied by the frame.
-    (WF           : St → Set)
-    (wf-e1        : ∀ i s → WF s → WF (e1 i s))
+    -- plan 0.123 α′ (f3c): indexed by the INPUT SHAPE — a layout fact is about
+    -- the cells the block's input occupies (its typed leaves), not every offset.
+    (WF           : InputShape → St → Set)
+    (wf-e1        : ∀ {sh} i s → WF sh s → WF sh (e1 i s))
     -- PATH-LOAD invariance: no instruction changes the concrete input read (the
     -- input pointer is never written; spill's write is disjoint from the input,
     -- which `WF s` witnesses via the region model).
@@ -384,7 +386,8 @@ module At (tn : TargetNum) where
     -- the state's WF — x86-64 needs a spill's slot inside the block's frame to
     -- keep it off an input the caller's stack holds; riscv64/x86-32 ask nothing.
     (IOk          : XInstr → Set)
-    (pl-inv       : ∀ i s → WF s → IOk i → ∀ p k → pl (e1 i s) p k ≡ pl s p k)
+    (pl-inv       : ∀ {sh} i s → WF sh s → IOk i → ∀ {n} (p : Path sh n)
+                  → pl (e1 i s) ⌊ p ⌋ᴾ (flat-off p) ≡ pl s ⌊ p ⌋ᴾ (flat-off p))
     -- READ-FRAME: reading a non-target arith register is unchanged by `i`.
     (rf-other : ∀ i s x → (∀ d → tgt i ≡ just d → ¬ (x ≡ d))
               → rr (e1 i s) (arith-reg x) ≡ rr s (arith-reg x))
@@ -608,7 +611,7 @@ module At (tn : TargetNum) where
     -- Rf = R × R-scratch × R-input — the FULL relation and block simulation.
     ----------------------------------------------------------------------
     Rf : ∀ {sh} → ArithAbsState sh → St → Set
-    Rf s-abs s-conc = R s-abs s-conc × R-scratch s-abs s-conc × R-input s-abs s-conc × WF s-conc
+    Rf {sh} s-abs s-conc = R s-abs s-conc × R-scratch s-abs s-conc × R-input s-abs s-conc × WF sh s-conc
 
     -- The per-instruction step, TOTAL over XInstr. UNIFORM: the `yes` (x ≡ target)
     -- branch combines the abstract value inversion with `rt-<i>`; the `no` branch
@@ -731,9 +734,9 @@ module At (tn : TargetNum) where
     -- The INPUT frame — R-input preservation. PROVED from `pl-inv` (the concrete
     -- input read is unchanged) + `input-unchanged` (the abstract input is unchanged).
     input-frame : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
-                → WF s-conc → IOk i → R-input s-abs s-conc → R-input (exec-xinstr i s-abs) (e1 i s-conc)
+                → WF sh s-conc → IOk i → R-input s-abs s-conc → R-input (exec-xinstr i s-abs) (e1 i s-conc)
     input-frame i s-abs s-conc wf ok rin p =
-      trans (pl-inv i s-conc wf ok ⌊ p ⌋ᴾ (flat-off p))
+      trans (pl-inv i s-conc wf ok p)
             (trans (rin p) (cong (leafWord p) (sym (input-unchanged i s-abs))))
 
     -- Same slot ⇒ same scratch address (XScratch eta: `sc = mk-scratch (slot sc)`).
@@ -824,7 +827,7 @@ module At (tn : TargetNum) where
     R-scratch-init env s-conc sc w eq = ⊥-elim (n≢j eq)
 
     Rf-init : ∀ {sh} (env : ⟦ sh ⟧S) (s-conc : St)
-            → WF s-conc → R-input (init env) s-conc → Rf (init env) s-conc
+            → WF sh s-conc → R-input (init env) s-conc → Rf (init env) s-conc
     Rf-init env s-conc wf ri = R-init env s-conc , R-scratch-init env s-conc , ri , wf
 
     ----------------------------------------------------------------------
@@ -869,7 +872,7 @@ module At (tn : TargetNum) where
                      (sym (trans (cong (λ t → rr t out-reg) ebk≡) (rt-out XR0 cPre)))
 
     arith-block-correct : ∀ {sh n} (e : MArithIR sh n) (env : ⟦ sh ⟧S) (s-conc : St)
-      → WF s-conc
+      → WF sh s-conc
       → IOksWF (emit-program (compile-abs e))
       → R-input (init env) s-conc
       → rr (eb (emit-program (compile-abs e)) s-conc) out-reg
