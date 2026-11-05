@@ -132,16 +132,12 @@ module SigOpC {FS : FrameSemantics} where
   -- Every base type is `Readable` (D258: `Str`/`Buffer` are removed), so no
   -- argument is left undecoded.
   ------------------------------------------------------------------------
-  -- Behind a pointer, every base type is read by `readTyped` (`Unit` reads `tt`
-  -- either way).
-  decode-ptr : ∀ {A : Type} (bt : Base ∅ₖ A) (loc : ValueLocation FS) (s : LocState FS)
-             → decode-at bt (SV-Ptr loc) s ≡ readTyped A loc s
-  decode-ptr b-Unit       _ _ = refl
-  decode-ptr b-Void       _ _ = refl
-  decode-ptr b-Int        _ _ = refl
-  decode-ptr b-Float      _ _ = refl
-  decode-ptr (b-* _ _) _ _ = refl
-  decode-ptr (b-+ _ _)  _ _ = refl
+  -- Behind a pointer, a compound base type is read by `readTyped`; a scalar is
+  -- never behind one (D383: it has no memory residence), and does not decode
+  -- from one (D392).
+  scalar-nowhere : ∀ {prog C m a c l s} → FitsInRegI C → ValidAtWF {prog = prog} m a {C} c l s → ⊥
+  scalar-nowhere fits-int   (ClosureWellFormedBase.wrap ())
+  scalar-nowhere fits-float (ClosureWellFormedBase.wrap ())
 
   -- A register holds an `Int` or a `Float`, nothing else.
   arg-reg : ∀ {A : Type} (bt : Base ∅ₖ A) (fit : FitsInRegI ⌊ A ⌋)
@@ -161,9 +157,10 @@ module SigOpC {FS : FrameSemantics} where
             → decode-at bt (readReg (regs s) Input1) s ≡ just (forgetᵇ bt (subst idᶠ (cohᴰ A) x))
   arg-agree b-Unit  x  s inp = refl
   arg-agree b-Void  () s inp
-  {-# CATCHALL #-}
-  arg-agree bt x s (in-loc loc v _ eq) rewrite eq =
-    trans (decode-ptr bt loc s) (readTyped-adequate (readable-base bt) bt v)
+  arg-agree b-Int   x s (in-loc loc v _ eq) = ⊥-elim (scalar-nowhere fits-int v)
+  arg-agree b-Float x s (in-loc loc v _ eq) = ⊥-elim (scalar-nowhere fits-float v)
+  arg-agree (b-* p q) x s (in-loc loc v _ eq) rewrite eq = readTyped-adequate (readable-base (b-* p q)) (b-* p q) v
+  arg-agree (b-+ p q) x s (in-loc loc v _ eq) rewrite eq = readTyped-adequate (readable-base (b-+ p q)) (b-+ p q) v
   {-# CATCHALL #-}
   arg-agree bt x s (in-reg fit eq) = arg-reg bt fit x s eq
   arg-agree b-Int        x s (in-unit ())
