@@ -157,6 +157,7 @@ import Once.Arith.Backend.RiscV64.Emit as AE
 open import Once.Adequacy.CPU.RiscV64 using (block-env-hit; block-env-sound)
 open import Once.Adequacy.RewriteOwned using (BlockOf; is-block)
 import Once.Adequacy.ArchCorrectness.RiscV64.ArithFrame as AF
+import Once.Adequacy.ArchCorrectness.RiscV64.ArithBlockValue o FS word-eq fmt-eq as ABV
 open import Once.Arith.Backend.XInstr.SpillBound using (SpillsWF; block-spills)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
@@ -164,7 +165,7 @@ open import Once.Arith.Machine.IR using (mk-block)
 open import Once.Arith.Type using (NInt; NFloat)
 open import Once.CCC.Codegen.RoomChecks using (sigop-scratch)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (role-sp; role-clos; role-heap; role-in1; role-out)
-open import Data.Nat.Properties using (*-distribʳ-+; *-comm; m≤n+m; m+n≤o⇒n≤o; ≤-reflexive)
+open import Data.Nat.Properties using (*-distribʳ-+; *-comm; m≤n+m; m+n≤o⇒n≤o; ≤-reflexive; ≤-trans; +-monoʳ-≤)
 open import Data.Nat using (_*_)
 open import Data.Empty using (⊥-elim)
 open import Once.Arith.Machine.IR using (ArithBlock)
@@ -587,24 +588,6 @@ riscv64-block-steps = record
 -- an arbitrary `ev` the emission claim is refuted by `λ _ _ → []`.
 ------------------------------------------------------------------------
 postulate
-  -- Plan 0.129 B5: the RUN half — the named block's code simulates the SigOp.
-  -- WHICH block (`env sym ≡ just pl`) is the theorem `arith-sigop-lookup` below.
-  -- Plan 0.123 α′ (e): what is LEFT of it is the block's subroutine as the
-  -- frame lemma (`FlatCore.SigOpFrame`) sees it — the result in `a0`, the
-  -- role registers kept, memory written only inside its frame (D388) — and
-  -- the rest of `arith-sigop-run` is the theorem below.
-  arith-block-value  : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
-                     → RLr.RunLow o FS slot-size word-eq prog fs
-                     → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                     → CFr.hfront hv + CFr.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
-                     → LocState.halted (floc fs) ≡ false
-                     -- plan 0.123 α′ (f1): the block run is the SigOp's own (`arith-sigop-block`)
-                     → ∀ (b : ArithBlock) → BlockOf si b
-                     -- plan 0.123 α′ (f2): the frame half is the theorem `arith-dispatch-run`;
-                     -- what is left is the VALUE in the out register
-                     → FSimr.rreg' o FS word-eq fmt-eq (uncurry (dispatch-arith val-riscv64) (AE.block-payload b) s) a0
-                       ≡ CFr.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs))
-
   external-sigop-contract : ∀ {hv : HeapView} (ev : EE.RT.EvExtractor) (env : EE.RT.ArithEnv)
                               prog fs s {A B} (si : SigOpInfo A B)
                           → RLr.RunLow o FS slot-size word-eq prog fs
@@ -670,6 +653,31 @@ private
     ; ar-mem  = Sub.sub-mem
     ; ar-halt = Sub.sub-halt }
     where module Sub = AF.Sub val-riscv64 n blk s W ok fits room
+
+-- Plan 0.129 B5 / plan 0.123 α′ (f3): THE VALUE half of the block's run — a
+-- theorem (`RiscV64.ArithBlockValue`, x86-64's twin): the decoded argument is
+-- the block's input at its entry state (D385, D392), its `Int` leaves words
+-- (D391), so the dispatch's `a0` is the block's meaning, the SigOp's output.
+arith-block-value  : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
+                   → RLr.RunLow o FS slot-size word-eq prog fs
+                   → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                   → CFr.hfront hv + CFr.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
+                   → LocState.halted (floc fs) ≡ false
+                   → ∀ (b : ArithBlock) → BlockOf si b
+                   → FSimr.rreg' o FS word-eq fmt-eq (uncurry (dispatch-arith val-riscv64) (AE.block-payload b) s) a0
+                     ≡ CFr.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs))
+arith-block-value {hv} prog fs s si r int cc ftq room h .(mk-block _ NInt e) (is-block {n = NInt} e refl refl eq) =
+  ABV.value-int prog fs s si e eq r int cc ftq h
+    (≤-trans (+-monoʳ-≤ (CFr.hfront hv)
+               (subst (8 * required-scratch (normalize e) ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq))
+                      (fits-W (required-scratch (normalize e)))))
+             room)
+arith-block-value {hv} prog fs s si r int cc ftq room h .(mk-block _ NFloat e) (is-block {n = NFloat} e refl refl eq) =
+  ABV.value-flt prog fs s si e eq r int cc ftq h
+    (≤-trans (+-monoʳ-≤ (CFr.hfront hv)
+               (subst (8 * required-scratch e ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq))
+                      (fits-W (required-scratch e))))
+             room)
 
 arith-dispatch-run : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
                    → RLr.RunLow o FS slot-size word-eq prog fs
