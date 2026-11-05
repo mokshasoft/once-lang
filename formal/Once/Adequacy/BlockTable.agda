@@ -42,7 +42,19 @@ open import Once.CCC.Codegen.RoomChecksFacts using (All-room)
 open import Once.Denotation.Program using (IRProgram)
 open import Once.CCC.Codegen.CallOK using (InstrOK)
 import Once.CCC.Codegen.ImageInstrs as II
-open import Once.Adequacy.RewriteOwned using (Named; program-owned)
+open import Once.Adequacy.RewriteOwned using (Named; BlockOf; program-owned)
+open import Once.Arith.SigOp.DigestInjective using (block-symbol-injective)
+open import Once.Arith.SigOp.Block using (block-name)
+open import Once.Arith.Machine.IR using (mk-block)
+open Once.Arith.Machine.IR.ArithBlock using (block-body)
+open import Once.Compile using (block-symbol)
+open import Once.SigOp.Info using (SigOpInfo; Internal; module SigOpInfo)
+open SigOpInfo using (name; sem)
+open import Once.Target.Symbol using (once-symbol-path)
+open import Once.Spec.Name using (bare)
+open import Data.Product using (Σ)
+open import Data.List.Relation.Unary.Any.Properties using (map⁻)
+open import Relation.Binary.PropositionalEquality using (refl; trans)
 
 ------------------------------------------------------------------------
 -- The image's SigOps name blocks.
@@ -87,3 +99,48 @@ table-has : ∀ {P : Set} (symb : ArithBlock → String) (pay : ArithBlock → P
           → Any (λ x → proj₁ x ≡ symb b) (map (λ sb → proj₁ sb , pay (proj₂ sb)) (dedup-blocks (map (λ b′ → symb b′ , b′) bs)))
 table-has symb pay bs {b} m =
   map⁺ (dedup-keeps _ (symb b) (map⁺ (Any.map (λ e → cong symb (sym e)) m)))
+
+------------------------------------------------------------------------
+-- plan 0.123 α′ (f1): …and every entry of the table is a block of the
+-- program, under its own symbol — `dedup-blocks` only drops.
+------------------------------------------------------------------------
+
+private
+  dedup-sub : ∀ {Q : String × ArithBlock → Set} (seen : List String) (xs : List (String × ArithBlock))
+            → Any Q (dedup-go seen xs) → Any Q xs
+  dedup-sub seen []             ()
+  dedup-sub seen ((s′ , b) ∷ xs) a with BLA.any (λ x → x == s′) seen
+  ... | true  = there (dedup-sub seen xs a)
+  ... | false with a
+  ...   | here q  = here q
+  ...   | there m = there (dedup-sub (s′ ∷ seen) xs m)
+
+table-sound : ∀ {P : Set} (symb : ArithBlock → String) (pay : ArithBlock → P) (bs : List ArithBlock)
+                {Q : String → P → Set}
+            → Any (λ x → Q (proj₁ x) (proj₂ x)) (map (λ sb → proj₁ sb , pay (proj₂ sb)) (dedup-blocks (map (λ b′ → symb b′ , b′) bs)))
+            → Σ ArithBlock (λ b → b ∈ bs × Q (symb b) (pay b))
+table-sound {P} symb pay bs {Q} a = from bs (dedup-sub [] (map (λ b′ → symb b′ , b′) bs) (map⁻ a))
+  where
+    R : String × ArithBlock → Set
+    R sb = Q (proj₁ sb) (pay (proj₂ sb))
+    from : ∀ (cs : List ArithBlock) → Any R (map (λ b′ → symb b′ , b′) cs) → Σ ArithBlock (λ b → b ∈ cs × Q (symb b) (pay b))
+    from (c ∷ cs) (here q)  = c , here refl , q
+    from (c ∷ cs) (there m) = let (b , i , q) = from cs m in b , there i , q
+
+-- THE BLOCK A SYMBOL NAMES. A compiler-owned SigOp names a block of the
+-- program whose body is its contract (`Named`); the table entry found under
+-- its symbol is some block with that symbol; one symbol is one block
+-- (`block-symbol-injective`, D389) — so the payload found is the payload of
+-- the SigOp's own block.
+which-block : ∀ {P : Set} (pay : ArithBlock → P) (bs : List ArithBlock) {X Y} (si : SigOpInfo X Y) {pl : P}
+            → Σ ArithBlock (λ b₀ → b₀ ∈ bs × name si ≡ bare (block-name (block-body b₀)) × BlockOf si b₀)
+            → Any (λ x → proj₁ x ≡ once-symbol-path (name si) × proj₂ x ≡ pl)
+                  (map (λ sb → proj₁ sb , pay (proj₂ sb)) (dedup-blocks (map (λ b′ → block-symbol b′ , b′) bs)))
+            → Σ ArithBlock (λ b → b ∈ bs × BlockOf si b × pl ≡ pay b)
+which-block pay bs si nd a
+  with nd | table-sound block-symbol pay bs {Q = λ s p → s ≡ once-symbol-path (name si) × p ≡ _} a
+... | b₀ , m₀ , nm , bo | b , m , s≡ , p≡ = b₀ , m₀ , bo , trans (sym p≡) (cong pay (same b b₀ (trans s≡ (cong once-symbol-path nm))))
+  where
+    same : ∀ (b b₀ : ArithBlock) → block-symbol b ≡ once-symbol-path (bare (block-name (block-body b₀))) → b ≡ b₀
+    same (mk-block sh n e) (mk-block sh₀ n₀ e₀) eq with block-symbol-injective e e₀ eq
+    ... | refl = refl
