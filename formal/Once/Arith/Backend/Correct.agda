@@ -45,8 +45,8 @@ open import Once.Arith.Backend.XInstr.CodeGen using (emit; emit-program; abs-reg
 -- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
 -- no lowering here yet; saying so in the type means the gate sees the gap
 -- instead of a float tree silently taking the integer path.
-open import Once.Arith.Type using (NInt)
-open import Once.Arith.Machine.IR using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg; acmp)
+open import Once.Arith.Type using (NInt; NFloat)
+open import Once.Arith.Machine.IR using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
 open import Once.Arith.Machine.Compile
   using (compile-go; compile-abs; mul-op; mul-choose; div-op; div-choose; rem-op;
          div-instr; rem-instr; safe-divisor?; pow2?)
@@ -809,25 +809,44 @@ All-bound-++ : ∀ (xs ys : List AbstractInstr) → All-bound xs → All-bound y
 All-bound-++ []       ys _          by = by
 All-bound-++ (i ∷ is) ys (bi , bis) by = bi , All-bound-++ is ys bis by
 
-compile-go-bound : ∀ {sh} (d : ℕ) (e : MArithIR sh NInt) → All-bound (compile-go d e)
+-- plan 0.123 α′ (f3b): both kinds — a Float block's code is register-bounded as an Int one's is.
+compile-go-bound : ∀ {sh n} (d : ℕ) (e : MArithIR sh n) → All-bound (compile-go d e)
 compile-go-bound d (alit z)   = bound0 , tt
-compile-go-bound d (ainput p) = bound0 , tt
-compile-go-bound d (aadd a b) =
+compile-go-bound d (aflit dc) = bound0 , tt
+compile-go-bound {n = NInt}   d (ainput p) = bound0 , tt
+compile-go-bound {n = NFloat} d (ainput p) = bound0 , tt
+compile-go-bound {n = NInt} d (aadd a b) =
   All-bound-++ (compile-go d a) _ (compile-go-bound d a)
     (bound0 , All-bound-++ (compile-go (suc d) b) _ (compile-go-bound (suc d) b)
                 (bound1 , (bound0 , bound1 , bound0) , tt))
-compile-go-bound d (asub a b) =
+compile-go-bound {n = NFloat} d (aadd a b) =
   All-bound-++ (compile-go d a) _ (compile-go-bound d a)
     (bound0 , All-bound-++ (compile-go (suc d) b) _ (compile-go-bound (suc d) b)
                 (bound1 , (bound0 , bound1 , bound0) , tt))
-compile-go-bound d (amul a b) =
+compile-go-bound {n = NInt} d (asub a b) =
+  All-bound-++ (compile-go d a) _ (compile-go-bound d a)
+    (bound0 , All-bound-++ (compile-go (suc d) b) _ (compile-go-bound (suc d) b)
+                (bound1 , (bound0 , bound1 , bound0) , tt))
+compile-go-bound {n = NFloat} d (asub a b) =
+  All-bound-++ (compile-go d a) _ (compile-go-bound d a)
+    (bound0 , All-bound-++ (compile-go (suc d) b) _ (compile-go-bound (suc d) b)
+                (bound1 , (bound0 , bound1 , bound0) , tt))
+compile-go-bound {n = NInt} d (amul a b) =
   All-bound-++ (compile-go d a) _ (compile-go-bound d a)
     (bound0 , All-bound-++ (compile-go (suc d) b) _ (compile-go-bound (suc d) b)
                 (bound1 , mul-op-bound b , tt))
-compile-go-bound d (adiv a b) =
+compile-go-bound {n = NFloat} d (amul a b) =
+  All-bound-++ (compile-go d a) _ (compile-go-bound d a)
+    (bound0 , All-bound-++ (compile-go (suc d) b) _ (compile-go-bound (suc d) b)
+                (bound1 , (bound0 , bound1 , bound0) , tt))
+compile-go-bound {n = NInt} d (adiv a b) =
   All-bound-++ (compile-go d a) _ (compile-go-bound d a)
     (bound0 , All-bound-++ (compile-go (suc d) b) _ (compile-go-bound (suc d) b)
                 (bound1 , div-op-bound b , tt))
+compile-go-bound {n = NFloat} d (adiv a b) =
+  All-bound-++ (compile-go d a) _ (compile-go-bound d a)
+    (bound0 , All-bound-++ (compile-go (suc d) b) _ (compile-go-bound (suc d) b)
+                (bound1 , (bound0 , bound1 , bound0) , tt))
 compile-go-bound d (amod a b) =
   All-bound-++ (compile-go d a) _ (compile-go-bound d a)
     (bound0 , All-bound-++ (compile-go (suc d) b) _ (compile-go-bound (suc d) b)
@@ -836,10 +855,14 @@ compile-go-bound d (acmp o a b) =
   All-bound-++ (compile-go d a) _ (compile-go-bound d a)
     (bound0 , All-bound-++ (compile-go (suc d) b) _ (compile-go-bound (suc d) b)
                 (bound1 , (bound0 , bound1 , bound0) , tt))
-compile-go-bound d (aneg a) =
+compile-go-bound {n = NInt}   d (aneg a) =
+  All-bound-++ (compile-go d a) _ (compile-go-bound d a) ((bound0 , bound0) , tt)
+compile-go-bound {n = NFloat} d (aneg a) =
+  All-bound-++ (compile-go d a) _ (compile-go-bound d a) ((bound0 , bound0) , tt)
+compile-go-bound d (ai2f a) =
   All-bound-++ (compile-go d a) _ (compile-go-bound d a) ((bound0 , bound0) , tt)
 
-compile-abs-bound : ∀ {sh} (e : MArithIR sh NInt) → All-bound (compile-abs e)
+compile-abs-bound : ∀ {sh n} (e : MArithIR sh n) → All-bound (compile-abs e)
 compile-abs-bound e = All-bound-++ (compile-go 0 e) _ (compile-go-bound 0 e) (bound0 , tt)
 
 ------------------------------------------------------------------------
@@ -849,7 +872,7 @@ compile-abs-bound e = All-bound-++ (compile-go 0 e) _ (compile-go-bound 0 e) (bo
 -- over the reg-bounded compile-abs) with the abstract validity.
 ------------------------------------------------------------------------
 
-block-correct : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) →
+block-correct : ∀ {sh n} (e : MArithIR sh n) (env : ⟦ sh ⟧S) →
   output-of (exec-xprog (emit-program (compile-abs e)) (init env)) ≡ just (eval-arith-W e env)
 block-correct e env =
   trans (proj₁ (proj₂ (proj₂ (refine-program (compile-abs e) (compile-abs-bound e) (init env)))))

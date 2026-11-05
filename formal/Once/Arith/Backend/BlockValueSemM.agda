@@ -47,7 +47,7 @@ module _ (tn : TargetNum) where
   open Correct (int-bits tn) (float-format tn) using (exec-xprog; block-correct)
 
   -- The abstract machine's output = `block-semM` of the Word-image of the input.
-  block-value-semM : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S)
+  block-value-semM : ∀ {sh n} (e : MArithIR sh n) (env : ⟦ sh ⟧S)
                    → output-of (exec-xprog (emit-program (compile-abs e)) (init env))
                        ≡ just (block-semM e tn (toWord tn sh env))
   block-value-semM e env = trans (block-correct e env) (cong just (eval≡semM tn e env))

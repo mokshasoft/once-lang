@@ -31,7 +31,7 @@ open import Data.Nat.Properties using (≡⇒≡ᵇ)
 open import Data.Bool using (true; false; T)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using ([]; _∷_)
-open import Data.Unit using (tt)
+open import Data.Unit using (tt; ⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
@@ -412,7 +412,7 @@ module _ (N : ℕ) where
     (λ _ → refl) (λ _ _ _ → refl)
     sa-inv sa-inj mem-keep mem-spill-hit mem-spill-miss
     WF wf-e1
-    pl-inv
+    (λ _ → ⊤) (λ i s wf _ → pl-inv i s wf)
     rf-other
     -- rt-mov-imm rt-mov-rr rt-reload
     (λ d z s   → readReg-wr-arith-same (regs s) d _)
