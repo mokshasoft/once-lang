@@ -14,7 +14,8 @@
 
 open import Data.Nat using (ℕ; _+_)
 open import Data.Maybe using (Maybe)
-open import Relation.Binary.PropositionalEquality using (_≡_; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; cong; refl)
+open import Data.List using ([]; _∷_)
 
 open import Once.Arith.Machine.Shape using (InputPath; flat-addr)
 
@@ -25,11 +26,15 @@ module Once.Adequacy.ArchCorrectness.ArithSimPathLoad
   (word : ℕ)                         -- the arch's word, in bytes
   where
 
--- D385: a leaf of the flat input (D375) is one read, at `flat-addr`
+-- D385: a leaf of the flat input (D375) is one read, at `flat-addr`. D390: the
+-- empty path is the input ITSELF — a scalar block's input is register-resident,
+-- and the emitted load is a register move (`movq %rdi` / `movl %ecx` / `mv t0`).
 path-load-go : St → ℕ → InputPath → ℕ → ℕ
-path-load-go s base p k = def (mem s (flat-addr word base p k))
+path-load-go s base []      k = base
+path-load-go s base (x ∷ p) k = def (mem s (flat-addr word base (x ∷ p) k))
 
 -- path-load-go depends on the state ONLY through its memory. Every `pl-inv`
 -- non-spill case rides this with a `refl` memory-eq.
 plg-mem-cong : ∀ A B base p k → mem A ≡ mem B → path-load-go A base p k ≡ path-load-go B base p k
-plg-mem-cong A B base p k meq = cong (λ m → def (m (flat-addr word base p k))) meq
+plg-mem-cong A B base []      k meq = refl
+plg-mem-cong A B base (x ∷ p) k meq = cong (λ m → def (m (flat-addr word base (x ∷ p) k))) meq

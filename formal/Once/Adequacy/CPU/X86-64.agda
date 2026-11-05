@@ -120,8 +120,10 @@ scratch-addr s sc = readReg (regs s) rsp ℕ.+ (8 * XScratch.slot sc)
 
 -- D385: a leaf of the flat input (D375) is ONE word at its offset `k` from the
 -- input pointer (`Shape.flat-addr`).
+-- D390: the empty path is the input itself, register-resident (`movq %rdi, …`)
 path-load : State → InputPath → ℕ → X64.Word
-path-load s p k = def (readMem (memory s) (flat-addr 8 (readReg (regs s) rdi) p k))
+path-load s []      k = readReg (regs s) rdi
+path-load s (x ∷ p) k = def (readMem (memory s) (flat-addr 8 (readReg (regs s) rdi) (x ∷ p) k))
 
 val-x86-64 : XInstr → X64.State → Reg → X64.Word
 val-x86-64 (XI.Xmov-imm d z)          s _ = W.fromℤ z

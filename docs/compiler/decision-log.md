@@ -21569,3 +21569,23 @@ shape and the tree, so one symbol is one block.
 ### Consequences
 * Every block symbol gains its shape prefix; nothing outside the compiler names one.
 * Regression test `arith-shape-collide` (exit 44, all three arches).
+
+## D390 — A SCALAR BLOCK'S INPUT IS ITS INPUT REGISTER, IN THE MODEL AS IN THE CODE (2026-11-05)
+
+**Decided** in plan 0.123 α′ (f3), stating the value an arith block's subroutine returns.
+
+### Context
+A block over a scalar (`Int`, `Float`) reads its one leaf at the empty path. Its input is
+register-resident — `Input1` holds the value, not a pointer (plan 0.54 rung A) — and all three emitters
+print a register move for it (`movq %rdi, …`, `movl %ecx, …`, `mv …, t0`). The three trusted CPU models of
+an arith instruction (`val-x86-64`, `val-riscv64`, `val-x86-32`) read MEMORY at the input register for
+every path, the empty one included: the model computed `f (mem[x])` where the code computes `f x`. Proved
+against the model, an `Int → Int` block's value claim would have been false.
+
+### Decision
+The empty path's load is the input register itself (`path-load s [] k = rdi`, and `path-load-go` / `plg`
+for riscv64 and x86-32); a non-empty path is the one memory read at its flat offset (D385). `HeapChase`
+asks nothing of the empty path (it reads no memory).
+
+### Consequences
+* The model is the code at every arith load; the emitted code does not change.

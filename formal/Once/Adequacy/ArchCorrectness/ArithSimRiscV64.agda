@@ -97,7 +97,8 @@ open import Data.Product using (_×_; _,_)
 -- Bridge the (St-based) shared path-load-go to the (bare-memory) region plg
 -- (identical folds; both stuck on the path variable, so a small induction).
 pathloadgo≡plg : ∀ s addr p k → path-load-go s addr p k ≡ plg (memory s) addr p k
-pathloadgo≡plg s addr p k = refl
+pathloadgo≡plg s addr []      k = refl
+pathloadgo≡plg s addr (x ∷ p) k = refl
 
 -- LayoutWF: scratch is in-stack; the input value is heap-resident. The frame's
 -- calling-convention contract (discharges pl-inv-spill via the region model).

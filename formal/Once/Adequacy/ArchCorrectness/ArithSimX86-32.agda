@@ -350,7 +350,8 @@ WF : State → Set
 WF s = (∀ sc → InStack (scratch-addr s sc)) × (∀ p k → HeapChase (memory s) (readReg (regs s) ecx) p k)
 
 pathloadgo≡plg : ∀ s addr p k → path-load-go s addr p k ≡ plg (memory s) addr p k
-pathloadgo≡plg s addr p k = refl
+pathloadgo≡plg s addr []      k = refl
+pathloadgo≡plg s addr (x ∷ p) k = refl
 
 mem-agree-heap : ∀ i s → (∀ sc → InStack (scratch-addr s sc)) → ∀ a → InHeap a
                → readMem (memory (EA.exec1 val-x86-32 i s)) a ≡ readMem (memory s) a
