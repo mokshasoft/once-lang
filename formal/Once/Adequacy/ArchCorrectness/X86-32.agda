@@ -364,7 +364,7 @@ conc-tr :
   ∀ (p : IRProgram) (ir : IR Unit Unit)
     (lk : LinkedProgram (sig ι) (irProgram tbl ir))
   → room-checks (FFOx.image ir) ≡ C.image-of p
-  → Machine.trace (RTx.Run.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p))
+  → Machine.trace (RTx.Run.δ val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p))
                      (compile-trace (room-checks (FFOx.image ir)))) ([] , X.initState)
     ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics x86-32) ι
 conc-tr p ir lk img =
@@ -372,7 +372,7 @@ conc-tr p ir lk img =
   where
     -- D371: the machine runs the image WITH its room checks (see the x86-64 apex)
     P′ = room-checks (FFOx.image ir)
-    δc = RTx.Run.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace P′)
+    δc = RTx.Run.δ val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace P′)
     run₀ : RunLow P′ FFOx.start-flat
     run₀ = low-start (FFOx.image ir) FFOx.start-flat
              (mkRunAt tbl ir refl lk (reach-start FFOx.start-flat (entry-like 0) refl
@@ -380,8 +380,8 @@ conc-tr p ir lk img =
              refl
     fact : BudgetFact⊑ δc ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir))
     fact k = budget-fact-of δc ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir)) k (proj₁ agree) _ _ _
-               (RTx.Run.runN-events val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace P′) (proj₁ agree) [] X.initState)
-               (cong (RTx.Run.outObs val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace P′)) (FFOx.flat-ends ir-obs-correct ir lk k))
+               (RTx.Run.runN-events val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace P′) (proj₁ agree) [] X.initState)
+               (cong (RTx.Run.outObs val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace P′)) (FFOx.flat-ends ir-obs-correct ir lk k))
                (FFOx.flat-cut ir-obs-correct ir lk k)
                (proj₂ agree)
       where
@@ -420,7 +420,7 @@ file-tr-x86-32 doOpt m F eq ir mi oq teq lk =
   subst (λ G → run-trace-x86-32 ι G (X.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))
                ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-32) ι)
         (sym (file-is-emit-at doOpt x86-32 m F ir eq mi))
-        (subst (λ cd → Machine.trace (RTx.Run.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) cd) ([] , X.initState)
+        (subst (λ cd → Machine.trace (RTx.Run.δ val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) cd) ([] , X.initState)
                        ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics x86-32) ι)
                (sym code-eq) (conc-tr p ir′ lk img))
   where

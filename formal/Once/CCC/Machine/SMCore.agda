@@ -61,6 +61,7 @@ import Once.Type as Ty
 import Once.Type.Core as Ty
 import Once.Spec.Type as Ty
 open import Once.Semantics.Machine using (⟦_⟧; LitPayload)
+open import Once.IR.Semantics.Boundary using (atTarget)
 open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts; Answers; module SigOpInfo)
 open SigOpInfo using (name; baseA)
 open import Once.Res using (Res; stopped; returns)
@@ -1744,8 +1745,9 @@ module AbstractExec {FS : FrameSemantics} where
   call-sigop-ans-at : ∀ {A B} (si : SigOpInfo A B) → LocState FS → FitsInReg B
                     → callKey (callOp (name si) A (baseA si) B) ∈ calls (fs-interp FS)
                     → Maybe ⟦ A ⟧ → StoredValue FS
+  -- D391: the answer is read at the target
   call-sigop-ans-at {A} {B} si s fitB p (just a) =
-    SV-Lit fitB (answer (fs-interp FS) (ev-log s) (callOp (name si) A (baseA si) B) p a)
+    SV-Lit fitB (atTarget (fs-numerics FS) B (answer (fs-interp FS) (ev-log s) (callOp (name si) A (baseA si) B) p a))
   call-sigop-ans-at si s fitB p nothing = unit-storedvalue
 
   call-sigop-ans : ∀ {A B} (si : SigOpInfo A B) → LocState FS → FitsInReg B

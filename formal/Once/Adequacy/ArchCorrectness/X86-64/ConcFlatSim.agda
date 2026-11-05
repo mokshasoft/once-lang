@@ -395,7 +395,7 @@ x86-64-traceloop = record
   ; matchCall = RTx.matchCall
   -- plan 0.105: an external call returns with the world's answer in `rax`, the
   -- world being the frame semantics' interpretation.
-  ; ret-call = RTx.ret-call (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)
+  ; ret-call = RTx.ret-call (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)
   ; dispatchArith = uncurry (dispatch-arith val-x86-64)
   ; ev-arch = ev-x86-64 ; ArithTable = x86-64-arith-table
   ; sigop-call = call-sym ; sigop-lowering = λ _ → refl ; sigop-matchCall = λ _ → refl
@@ -520,9 +520,9 @@ stuck-c-jmp : ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs
   → find-label prog m ≡ nothing
   → EE.StuckAt ev env (compile-trace prog) s
 stuck-c-jmp ev env prog fs s m cc h ftq fl-eq = λ lg →
-  2 , trans (RTx.run-events-noncall val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 1 (compile-trace prog) s
+  2 , trans (RTx.run-events-noncall val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 1 (compile-trace prog) s
                (jmp (once m)) halt-s fetch-x86 refl step-eq)
-            (RTx.run-events-halted val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 0 (compile-trace prog) s' refl)
+            (RTx.run-events-halted val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 0 (compile-trace prog) s' refl)
   where
     halt-s : X.State.halted s ≡ false
     halt-s = trans (C.halt-eq (dataCorr cc)) h
@@ -545,11 +545,11 @@ stuck-c-branch-tag-zero : ∀ {hv : HeapView} ev env prog fs s m loc → Compile
   → find-label prog m ≡ nothing
   → EE.StuckAt ev env (compile-trace prog) s
 stuck-c-branch-tag-zero ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq = λ lg →
-  3 , trans (RTx.run-events-noncall val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 2 (compile-trace prog) s
+  3 , trans (RTx.run-events-noncall val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 2 (compile-trace prog) s
                (cmp (mem (base+disp rdi 0)) (imm 0)) halt-s fetch-cmp refl step-cmp)
-      (trans (RTx.run-events-noncall val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 1 (compile-trace prog) post-cmp
+      (trans (RTx.run-events-noncall val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 1 (compile-trace prog) post-cmp
                (je (once m)) halt-s fetch-je refl step-je)
-             (RTx.run-events-halted val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 0 (compile-trace prog) post-je refl))
+             (RTx.run-events-halted val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 0 (compile-trace prog) post-je refl))
   where
     dc = dataCorr cc
     halt-s : X.State.halted s ≡ false
@@ -629,7 +629,7 @@ postulate
   -- abstract `event-of` (`ev ≡ machine-event` — matching the observable value); and the
   -- concrete post-call state (ret-past) is the CompiledCorr of the flat post-state.
   -- `sigop-external` proves the run-events emission mechanics AROUND this.
-  external-sigop-contract : ∀ {hv : HeapView} (ev : RTx.EvExtractor val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64))
+  external-sigop-contract : ∀ {hv : HeapView} (ev : RTx.EvExtractor val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64))
                               prog fs s {A B} (si : SigOpInfo A B)
                           → RunLow prog fs
                           -- THE REAL EXTRACTOR AND ENV (2026-07-30): over arbitrary
@@ -641,7 +641,7 @@ postulate
                           → (env (once-symbol-path (SigOpInfo.name si)) ≡ nothing)
                             × (ev (once-symbol-path (SigOpInfo.name si)) s ≡ event-of (instr-sigop si) fs)
                             × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)
-                                (RTx.ret-call (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)
+                                (RTx.ret-call (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)
                                    (LocState.ev-log (FlatMachine.floc {FS} fs)) (once-symbol-path (SigOpInfo.name si)) s)
 
 ------------------------------------------------------------------------
@@ -649,7 +649,7 @@ postulate
 -- image names a block of the program (`BlockTable.image-owned`), the file's
 -- table keeps that block's symbol (`table-has`), and `block-env` finds it.
 ------------------------------------------------------------------------
-arith-sigop-lookup : ∀ (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs {A B} (si : SigOpInfo A B)
+arith-sigop-lookup : ∀ (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs {A B} (si : SigOpInfo A B)
                    → x86-64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
                    → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl)
 arith-sigop-lookup .(block-env (Cmp.blocks-x86-64 p)) .(Cmp.image-of p) fs si (p , refl , refl) int ftq
@@ -661,7 +661,7 @@ arith-sigop-lookup .(block-env (Cmp.blocks-x86-64 p)) .(Cmp.image-of p) fs si (p
 -- plan 0.123 α′ (f1): …and what it finds is the SigOp's OWN block — the
 -- table entry under its symbol is a program block with that symbol, and one
 -- symbol is one block (`BlockTable.which-block`, D389).
-arith-sigop-block : ∀ (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs {A B} (si : SigOpInfo A B)
+arith-sigop-block : ∀ (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs {A B} (si : SigOpInfo A B)
                   → x86-64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
                   → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                   → Σ ArithBlock (λ b → BlockOf si b × pl ≡ AE.block-payload b)
@@ -722,7 +722,7 @@ arith-dispatch-run {hv} prog fs s si r int cc ftq room h .(mk-block _ NFloat e) 
 -- Plan 0.123 α′ (e): THE RUN HALF, from the frame lemma — the link, the halt
 -- flag and the decode come from the run, the pc from the block offsets.
 ------------------------------------------------------------------------
-arith-sigop-run : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs s {A B} (si : SigOpInfo A B)
+arith-sigop-run : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs s {A B} (si : SigOpInfo A B)
                 → RunLow prog fs
                 → x86-64-arith-table prog env
                 → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
@@ -738,7 +738,7 @@ arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit
     (trans (cong suc (pc-off cc))
            (sym (trans (blk-off-suc prog (fpc fs) (instr-sigop si) ftq) (+-comm (blk-off prog (fpc fs)) 1))))
 
-arith-sigop-contract : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs s {A B} (si : SigOpInfo A B)
+arith-sigop-contract : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs s {A B} (si : SigOpInfo A B)
                      → RunLow prog fs
                      → x86-64-arith-table prog env
                      → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)

@@ -293,7 +293,7 @@ conc-tr :
   ∀ (p : IRProgram) (ir : IR Unit Unit)
     (lk : LinkedProgram (sig ι) (irProgram tbl ir))
   → room-checks (FFOr.image ir) ≡ C.image-of p
-  → Machine.trace (RTr.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p))
+  → Machine.trace (RTr.Run.δ val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p))
                      (compile-trace (room-checks (FFOr.image ir)))) ([] , RS.initState)
     ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics riscv64) ι
 conc-tr p ir lk img =
@@ -301,7 +301,7 @@ conc-tr p ir lk img =
   where
     -- D371: the machine runs the image WITH its room checks (see the x86-64 apex)
     P′ = room-checks (FFOr.image ir)
-    δc = RTr.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace P′)
+    δc = RTr.Run.δ val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace P′)
     run₀ : RunLow P′ FFOr.start-flat
     run₀ = low-start (FFOr.image ir) FFOr.start-flat
              (mkRunAt tbl ir refl lk (reach-start FFOr.start-flat (entry-like 0) refl
@@ -309,8 +309,8 @@ conc-tr p ir lk img =
              refl
     fact : BudgetFact⊑ δc ([] , RS.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir))
     fact k = budget-fact-of δc ([] , RS.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir)) k (proj₁ agree) _ _ _
-               (RTr.Run.runN-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace P′) (proj₁ agree) [] RS.initState)
-               (cong (RTr.Run.outObs val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace P′)) (FFOr.flat-ends ir-obs-correct ir lk k))
+               (RTr.Run.runN-events val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace P′) (proj₁ agree) [] RS.initState)
+               (cong (RTr.Run.outObs val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace P′)) (FFOr.flat-ends ir-obs-correct ir lk k))
                (FFOr.flat-cut ir-obs-correct ir lk k)
                (proj₂ agree)
       where
@@ -349,7 +349,7 @@ file-tr-riscv64 doOpt m F eq ir mi oq teq lk =
   subst (λ G → run-trace-riscv64 ι G (RS.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))
                ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics riscv64) ι)
         (sym (file-is-emit-at doOpt riscv64 m F ir eq mi))
-        (subst (λ cd → Machine.trace (RTr.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) cd) ([] , RS.initState)
+        (subst (λ cd → Machine.trace (RTr.Run.δ val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) cd) ([] , RS.initState)
                        ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics riscv64) ι)
                (sym code-eq) (conc-tr p ir′ lk img))
   where

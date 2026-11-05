@@ -46,6 +46,7 @@ open import Once.Spec.Trace using (Tr)
 open import Once.Adequacy.MachineTrace using (module Machine)
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.IR.Semantics.Trace using (Interp)
+open import Once.Target.Arch using (arch-numerics; riscv64)
 open import Once.Arith.Backend.CallAnswer using (CallResolver; answer-at)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 
@@ -113,7 +114,7 @@ block-env-sound ((s′ , p) ∷ bs) s {pl} eq = go (s′ ≟ s) eq
 -- `MachineTrace`): no fuel, so a run that never calls again never arrives.
 run-trace-riscv64 : Interp → RF.Image → RV.State → Tr ⊤
 run-trace-riscv64 ι P s =
-  Machine.trace (RT.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
+  Machine.trace (RT.Run.δ val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
 
 postulate
   -- The CPU's decoder (the ISA's encoding) — only ever used through
