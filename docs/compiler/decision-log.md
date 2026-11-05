@@ -21201,3 +21201,24 @@ body writes only inside its frame (`InFrame`, which the proof shows). x86-32's a
 ### Consequences
 * The block's writes all land in `[sp − D387's spend, sp)`, the room the check before it guarantees.
 * The emitted code does not change.
+
+## D389 — AN ARITH BLOCK'S NAME CARRIES ITS INPUT SHAPE (2026-11-05)
+
+**Decided** in plan 0.123 α′ (e), found while stating which block a SigOp's symbol names.
+
+### Context
+A block's symbol is `arith.block.` ++ the serialisation of its tree, and an input leaf serialised as its
+side-path (`I` ++ `show-path`). Since D385 the block loads a leaf at its flat word offset
+(`Shape.flat-off`), which the whole input shape decides: `snd p + 1` loads word 1 of an `Int * Int` and
+word 2 of an `(Int * Int) * Int`. Both trees serialised to `AISZL1_`, `dedup-blocks` kept one body per
+symbol, and both calls ran it: `f (1, 2) + g ((3, 4), 40)` exited 42, not 44 (x86_64). The postulate
+`arith-sigop-run` covered it: "the block the symbol names is this SigOp's block" was false.
+
+### Decision
+`block-digest {sh} e = show-shape sh ++ show-arith-ir e`, the shape in prefix-free Polish notation
+(`u`, `i`, `f`, `p a b`; lower case, so it never reads as a tree letter). The digest is injective in the
+shape and the tree, so one symbol is one block.
+
+### Consequences
+* Every block symbol gains its shape prefix; nothing outside the compiler names one.
+* Regression test `arith-shape-collide` (exit 44, all three arches).

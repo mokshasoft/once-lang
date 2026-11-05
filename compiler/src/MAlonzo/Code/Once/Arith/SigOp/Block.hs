@@ -215,30 +215,53 @@ du_show'45'cmp_74 v0
       MAlonzo.Code.Once.Arith.CmpOp.C_c'45'ne_18
         -> coe ("5" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Arith.SigOp.Block.show-shape
+d_show'45'shape_76 ::
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_show'45'shape_76 v0
+  = case coe v0 of
+      MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'unit_10
+        -> coe ("u" :: Data.Text.Text)
+      MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'int_12
+        -> coe ("i" :: Data.Text.Text)
+      MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'float_14
+        -> coe ("f" :: Data.Text.Text)
+      MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'pair_16 v1 v2
+        -> coe
+             MAlonzo.Code.Data.String.Base.d__'43''43'__20
+             ("p" :: Data.Text.Text)
+             (coe
+                MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                (d_show'45'shape_76 (coe v1)) (d_show'45'shape_76 (coe v2)))
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.SigOp.Block.block-digest
-d_block'45'digest_80 ::
+d_block'45'digest_86 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_block'45'digest_80 v0 v1 v2
-  = coe d_show'45'arith'45'ir_30 (coe v0) (coe v1) (coe v2)
+d_block'45'digest_86 v0 v1 v2
+  = coe
+      MAlonzo.Code.Data.String.Base.d__'43''43'__20
+      (d_show'45'shape_76 (coe v0))
+      (d_show'45'arith'45'ir_30 (coe v0) (coe v1) (coe v2))
 -- Once.Arith.SigOp.Block.block-name
-d_block'45'name_88 ::
+d_block'45'name_96 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_block'45'name_88 v0 v1 v2
+d_block'45'name_96 v0 v1 v2
   = coe
       MAlonzo.Code.Data.String.Base.d__'43''43'__20
       ("arith.block." :: Data.Text.Text)
-      (d_block'45'digest_80 (coe v0) (coe v1) (coe v2))
+      (d_block'45'digest_86 (coe v0) (coe v1) (coe v2))
 -- Once.Arith.SigOp.Block.shape-as-type-base
-d_shape'45'as'45'type'45'base_94 ::
+d_shape'45'as'45'type'45'base_102 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Base_84
-d_shape'45'as'45'type'45'base_94 v0
+d_shape'45'as'45'type'45'base_102 v0
   = case coe v0 of
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'unit_10
         -> coe MAlonzo.Code.Once.Spec.Type.C_b'45'Unit_94
@@ -249,14 +272,14 @@ d_shape'45'as'45'type'45'base_94 v0
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'pair_16 v1 v2
         -> coe
              MAlonzo.Code.Once.Spec.Type.C_b'45''42'_106
-             (d_shape'45'as'45'type'45'base_94 (coe v1))
-             (d_shape'45'as'45'type'45'base_94 (coe v2))
+             (d_shape'45'as'45'type'45'base_102 (coe v1))
+             (d_shape'45'as'45'type'45'base_102 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.SigOp.Block.numtype-as-type-base
-d_numtype'45'as'45'type'45'base_102 ::
+d_numtype'45'as'45'type'45'base_110 ::
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
   MAlonzo.Code.Once.Spec.Type.T_Base_84
-d_numtype'45'as'45'type'45'base_102 v0
+d_numtype'45'as'45'type'45'base_110 v0
   = case coe v0 of
       MAlonzo.Code.Once.Arith.Type.C_NInt_8
         -> coe MAlonzo.Code.Once.Spec.Type.C_b'45'Int_98
@@ -264,17 +287,17 @@ d_numtype'45'as'45'type'45'base_102 v0
         -> coe MAlonzo.Code.Once.Spec.Type.C_b'45'Float_100
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.SigOp.Block.block-info
-d_block'45'info_108 ::
+d_block'45'info_116 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102
-d_block'45'info_108 v0 v1 v2
+d_block'45'info_116 v0 v1 v2
   = coe
       MAlonzo.Code.Once.SigOp.Info.C_mk'45'info''_124
       (coe
          MAlonzo.Code.Once.Spec.Name.d_bare_14
-         (coe d_block'45'name_88 (coe v0) (coe v1) (coe v2)))
+         (coe d_block'45'name_96 (coe v0) (coe v1) (coe v2)))
       (coe MAlonzo.Code.Once.SigOp.Info.C_blockV_86 v0 v1 v2)
-      (coe d_shape'45'as'45'type'45'base_94 (coe v0))
-      (coe d_numtype'45'as'45'type'45'base_102 (coe v1))
+      (coe d_shape'45'as'45'type'45'base_102 (coe v0))
+      (coe d_numtype'45'as'45'type'45'base_110 (coe v1))
