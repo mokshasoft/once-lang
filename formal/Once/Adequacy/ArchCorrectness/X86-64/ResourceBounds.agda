@@ -15,13 +15,6 @@
 -- body, so the statement needs a home outside both. Naming it here also
 -- means the bound is stated ONCE; the thread above is `HeapRoom o` at every
 -- level and cannot drift.
---
--- WHAT THIS IS NOT: a place for stubs. `conc-fuel` does NOT belong here —
--- it asserts the adequacy of `step-budget-x86-64`, which is an UNDEFINED
--- postulated `ℕ → ℕ` in `Once.Adequacy.CPU.X86-64`. That is a hole in the
--- implementation, not a fact about the world, and dressing it as a resource
--- parameter would freeze it as one. It becomes provable when `step-budget`
--- is pinned to a definition.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)

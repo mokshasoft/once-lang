@@ -192,8 +192,8 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {x86-32-frame-semantics} using (flat-events)
 
 -- THE MEMORY BOUND, now supplied HERE rather than postulated inside the
--- correspondence (2026-08-05). It is the same class as `conc-fuel` below — a
--- statement that a finite resource does not run out — so it belongs with it,
+-- correspondence (2026-08-05): a statement that a finite resource does not
+-- run out belongs at the apex,
 -- and moving it means the correspondence carries NO resource postulate at all.
 -- The unapplied imports let the statement be written before `ConcFlatSim` is
 -- instantiated (it is one of its arguments).
