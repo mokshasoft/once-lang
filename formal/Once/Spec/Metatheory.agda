@@ -42,6 +42,9 @@
 --   * totality    — a definition cannot name itself or a later one; a stream
 --                   and a server are typed, the server runs forever, and a
 --                   silent loop is never observed doing anything.
+--   * laws apply  — every law, and every claim with premises, has an
+--                   instance: a closed program meeting all its premises,
+--                   with two different sides (no law is vacuous).
 ------------------------------------------------------------------------
 
 module Once.Spec.Metatheory where
@@ -53,7 +56,7 @@ open import Data.Nat using (ℕ; suc)
 open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Grade using (Quantity; Purity; Finite; fin; pureᶠ; actᶠ; pure; act; eff; Many; mk-kind; _⊑π_; _·p_; positionGrade; Zero; One)
 open import Once.Spec.Name using (CanonicalName; NotGenerator)
@@ -732,6 +735,222 @@ record Totality : Set₁ where
                  → ¬ (Tr.next (trace [] w [] (Meaning.⟦_⟧ [] fmt [] silent-typed δ noVars noResp tt)) ⇓ o)
 
 ------------------------------------------------------------------------
+-- Every law applies to some program
+------------------------------------------------------------------------
+
+-- A law is a promise with premises: given derivations and side conditions,
+-- the two sides mean the same. If its premises can never be met together,
+-- it is proved and says nothing (D369's first fold uniqueness: an
+-- environment no context entry could fill made its hypothesis hold for any
+-- `h`). So each law, and each claim with premises, has an INSTANCE: one
+-- concrete choice of its arguments meeting every premise (plan 0.143).
+--
+-- The instances are programs with no operations and no definitions (one
+-- definition for naturality), no type variables, and an empty context
+-- (`Γ = ∅`), so `≅` quantifies over something: the one empty environment, the
+-- one instance of no type variables, and a meaning of the definitions
+-- (`meaning₀`). The two sides of an instance are different terms, so it is
+-- not one term related to itself.
+
+-- No operations, no definitions.
+noOps : Signature
+noOps = []
+
+noDefs : Defs 0
+noDefs = []
+
+-- Two different closed terms, each derivable at one judgment in the empty
+-- context: the two sides of an instance of a law `d ≅ d′`.
+module _ (Σ : Signature) {s} (S : Defs s) where
+  open CoreTyping Σ S
+
+  record Sides (t t′ : Tm S 0 0) (A : Ty 0) (π : Purity) : Set where
+    field
+      left   : ∅ₖ ⊩ ∅ ⊢[ [] ] t  ∷ A ! π
+      right  : ∅ₖ ⊩ ∅ ⊢[ [] ] t′ ∷ A ! π
+      differ : t ≢ t′
+
+  -- a closed term's derivation
+  Closed : Tm S 0 0 → Ty 0 → Purity → Set
+  Closed t A π = ∅ₖ ⊩ ∅ ⊢[ [] ] t ∷ A ! π
+
+module _ (fmt : TargetNum) where
+  private
+    Σ₀ = noOps
+  open CoreTyping Σ₀ noDefs
+  open Meaning Σ₀ fmt noDefs using (DefSem)
+  open Domain Σ₀ using (⟦_⟧ᵛ; traverseM)
+  open Equivalence Σ₀ using (Same; RelSub; _≃_)
+  open Effect Σ₀
+
+  private
+    Sides₀ : Tm noDefs 0 0 → Tm noDefs 0 0 → Ty 0 → Purity → Set
+    Sides₀ = Sides Σ₀ noDefs
+    Pure₀ : Tm noDefs 0 0 → Ty 0 → Set
+    Pure₀ = Pure Σ₀ fmt noDefs ∅ₖ ∅
+    _⇒_ : ∀ {m} → Ty m → Ty m → Ty m
+    A ⇒ B = A ⇒[ mk-kind Many pure ] B
+    infixr 5 _⇒_
+    -- the same judgment, both sides, with no requirement that they differ
+    Both : Tm noDefs 0 0 → Tm noDefs 0 0 → Ty 0 → Purity → Set
+    Both t t′ A π = (∅ₖ ⊩ ∅ ⊢[ [] ] t ∷ A ! π) × (∅ₖ ⊩ ∅ ⊢[ [] ] t′ ∷ A ! π)
+
+  record LawsApply : Set₁ where
+    field
+      -- `≅`'s quantifier over the definitions' meanings is not empty
+      meaning₀ : Σ[ δ ∈ DefSem ] SameDefs Σ₀ fmt noDefs δ
+
+      -- Categorical: the arguments of each law, in its order.
+      compose-idˡ   : ∃[ A ] ∃[ B ] ∃[ π ] ∃[ π₀ ] ∃[ f ]
+                      Sides₀ (composeᶜ A π (idᶜ B π) f) f (A ⇒[ mk-kind Many π ] B) π₀
+      compose-idʳ   : ∃[ A ] ∃[ B ] ∃[ π ] ∃[ π₀ ] ∃[ f ]
+                      Sides₀ (composeᶜ A π f (idᶜ A π)) f (A ⇒[ mk-kind Many π ] B) π₀
+      compose-assoc : ∃[ A ] ∃[ B ] ∃[ D ] ∃[ π ] ∃[ π₀ ] ∃[ f ] ∃[ g ] ∃[ h ]
+                      Sides₀ (composeᶜ A π f (composeᶜ A π g h)) (composeᶜ A π (composeᶜ B π f g) h)
+                             (A ⇒[ mk-kind Many π ] D) π₀
+      fst-pairᶜ     : ∃[ A ] ∃[ B ] ∃[ C ] ∃[ π₀ ] ∃[ f ] ∃[ g ]
+                      Pure₀ g (C ⇒ B) × Sides₀ (composeᶜ C pure (fstᶜ A B pure) (pairᶜ C pure f g)) f (C ⇒ A) π₀
+      snd-pairᶜ     : ∃[ A ] ∃[ B ] ∃[ C ] ∃[ π₀ ] ∃[ f ] ∃[ g ]
+                      Pure₀ f (C ⇒ A) × Sides₀ (composeᶜ C pure (sndᶜ A B pure) (pairᶜ C pure f g)) g (C ⇒ B) π₀
+      pair-ηᶜ       : ∃[ A ] ∃[ B ] ∃[ C ] ∃[ π₀ ] ∃[ h ]
+                      Pure₀ h (C ⇒ (A * B))
+                      × Sides₀ (pairᶜ C pure (composeᶜ C pure (fstᶜ A B pure) h) (composeᶜ C pure (sndᶜ A B pure) h))
+                               h (C ⇒ (A * B)) π₀
+      terminal-uniqueᶜ : ∃[ A ] ∃[ π₀ ] ∃[ h ]
+                      Pure₀ h (A ⇒ Unit) × Sides₀ h (terminalᶜ A pure) (A ⇒ Unit) π₀
+      case-inlᶜ     : ∃[ A ] ∃[ B ] ∃[ C ] ∃[ π ] ∃[ π₀ ] ∃[ f ] ∃[ g ]
+                      Pure₀ g (B ⇒[ mk-kind Many π ] C)
+                      × Sides₀ (composeᶜ A π (caseᶜ A B π f g) (inlᶜ A B π)) f (A ⇒[ mk-kind Many π ] C) π₀
+      case-inrᶜ     : ∃[ A ] ∃[ B ] ∃[ C ] ∃[ π ] ∃[ π₀ ] ∃[ f ] ∃[ g ]
+                      Pure₀ f (A ⇒[ mk-kind Many π ] C)
+                      × Sides₀ (composeᶜ B π (caseᶜ A B π f g) (inrᶜ A B π)) g (B ⇒[ mk-kind Many π ] C) π₀
+      case-ηᶜ       : ∃[ A ] ∃[ B ] ∃[ π ] ∃[ π₀ ]
+                      Sides₀ (caseᶜ A B π (inlᶜ A B π) (inrᶜ A B π)) (idᶜ (A + B) π) ((A + B) ⇒[ mk-kind Many π ] (A + B)) π₀
+      initial-uniqueᶜ : ∃[ A ] ∃[ π ] ∃[ π₀ ] ∃[ h ]
+                      Pure₀ h (Void ⇒[ mk-kind Many π ] A) × Sides₀ h (initialᶜ A π) (Void ⇒[ mk-kind Many π ] A) π₀
+      curry-βᶜ      : ∃[ A ] ∃[ B ] ∃[ C ] ∃[ π₀ ] ∃[ f ]
+                      Pure₀ f ((A * B) ⇒ C)
+                      × Sides₀ (composeᶜ (A * B) pure (applyᶜ B C)
+                                 (pairᶜ (A * B) pure (composeᶜ (A * B) pure (curryᶜ A B pure pure f) (fstᶜ A B pure))
+                                                     (sndᶜ A B pure)))
+                               f ((A * B) ⇒ C) π₀
+      curry-ηᶜ      : ∃[ A ] ∃[ B ] ∃[ C ] ∃[ π₀ ] ∃[ h ]
+                      Pure₀ h (A ⇒ (B ⇒ C))
+                      × Sides₀ (curryᶜ A B pure pure (composeᶜ (A * B) pure (applyᶜ B C)
+                                 (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure))))
+                               h (A ⇒ (B ⇒ C)) π₀
+      map-idᶜ       : ∃[ T ] ∃[ A ] ∃[ π₀ ]
+                      Sides₀ (mapᶜ T A A (idᶜ A pure)) (idᶜ (T ⟨ at₀ A ⟩) pure) (T ⟨ at₀ A ⟩ ⇒ T ⟨ at₀ A ⟩) π₀
+      map-composeᶜ  : ∃[ T ] ∃[ A ] ∃[ B ] ∃[ C ] ∃[ π₀ ] ∃[ f ] ∃[ g ]
+                      Sides₀ (mapᶜ T A C (composeᶜ A pure f g)) (composeᶜ (T ⟨ at₀ A ⟩) pure (mapᶜ T B C f) (mapᶜ T A B g))
+                             (T ⟨ at₀ A ⟩ ⇒ T ⟨ at₀ C ⟩) π₀
+      cata-βᶜ       : ∃[ F ] ∃[ A ] ∃[ π₀ ] ∃[ alg ]
+                      Pure₀ alg (⟦ F ⟧F A ⇒ A)
+                      × Sides₀ (composeᶜ (⟦ F ⟧F (μ F)) pure (cataᶜ F pure alg) (inᶜ F))
+                               (composeᶜ (⟦ F ⟧F (μ F)) pure alg (layerᶜ F (μ F) A (cataᶜ F pure alg)))
+                               (⟦ F ⟧F (μ F) ⇒ A) π₀
+      -- (the hypothesis `e ≅ e′` holds, at the empty context)
+      cata-uniqueᶜ  : ∃[ F ] ∃[ A ] ∃[ π₀ ] ∃[ π′ ] ∃[ alg ] ∃[ h ]
+                      Pure₀ alg (⟦ F ⟧F A ⇒ A) × Pure₀ h (μ F ⇒ A)
+                      × (Σ[ ee ∈ Both (composeᶜ (⟦ F ⟧F (μ F)) pure h (inᶜ F))
+                                       (composeᶜ (⟦ F ⟧F (μ F)) pure alg (layerᶜ F (μ F) A h))
+                                       (⟦ F ⟧F (μ F) ⇒ A) π′ ]
+                           _≅_ Σ₀ fmt noDefs (proj₁ ee) (proj₂ ee))
+                      × Sides₀ h (cataᶜ F pure alg) (μ F ⇒ A) π₀
+      ana-βᶜ        : ∃[ F ] ∃[ A ] ∃[ π₀ ] ∃[ c ]
+                      Pure₀ c (A ⇒ ⟦ F ⟧F A)
+                      × Sides₀ (composeᶜ A pure (outᶜ F) (anaᶜ F A pure c))
+                               (composeᶜ A pure (layerᶜ F A (ν F pureᶠ) (anaᶜ F A pure c)) c)
+                               (A ⇒ ⟦ F ⟧F (ν F pureᶠ)) π₀
+      ana-uniqueᶜ   : ∃[ F ] ∃[ A ] ∃[ π₀ ] ∃[ π′ ] ∃[ c ] ∃[ h ]
+                      Pure₀ c (A ⇒ ⟦ F ⟧F A) × Pure₀ h (A ⇒ ν F pureᶠ)
+                      × (Σ[ ee ∈ Both (composeᶜ A pure (outᶜ F) h)
+                                       (composeᶜ A pure (layerᶜ F A (ν F pureᶠ) h) c)
+                                       (A ⇒ ⟦ F ⟧F (ν F pureᶠ)) π′ ]
+                           _≅_ Σ₀ fmt noDefs (proj₁ ee) (proj₂ ee))
+                      × Sides₀ h (anaᶜ F A pure c) (A ⇒ ν F pureᶠ) π₀
+
+      -- Equations.
+      app-lam   : ∃[ A ] ∃[ B ] ∃[ q ] ∃[ π ] ∃[ π′ ] ∃[ t ] ∃[ u ]
+                  Sides₀ (app (lam A q π′ t) u) (let′ q u t) B π
+      lam-η     : ∃[ A ] ∃[ B ] ∃[ q ] ∃[ π ] ∃[ π′ ] ∃[ f ]
+                  Pure₀ f (A ⇒[ mk-kind q π′ ] B)
+                  × Sides₀ (lam A q π′ (app (wk f) (var zero))) f (A ⇒[ mk-kind q π′ ] B) π
+      let-unit  : ∃[ A ] ∃[ q ] ∃[ π ] ∃[ t ]
+                  Sides₀ (let′ q t (var zero)) t A π
+      let-assoc : ∃[ C ] ∃[ q₁ ] ∃[ q₂ ] ∃[ π ] ∃[ t ] ∃[ u ] ∃[ v ]
+                  Sides₀ (let′ q₂ (let′ q₁ t u) v) (let′ q₁ t (let′ q₂ u (ren (ext {S = noDefs} {m = 0} suc) v))) C π
+      let-drop  : ∃[ A ] ∃[ B ] ∃[ q ] ∃[ π ] ∃[ t ] ∃[ u ]
+                  Pure₀ t A × Sides₀ (let′ q t (wk u)) u B π
+      fst-pair  : ∃[ A ] ∃[ B ] ∃[ π ] ∃[ a ] ∃[ b ]
+                  Pure₀ b B × Sides₀ (fst (pair a b)) a A π
+      snd-pair  : ∃[ A ] ∃[ B ] ∃[ π ] ∃[ a ] ∃[ b ]
+                  Pure₀ a A × Sides₀ (snd (pair a b)) b B π
+      pair-η    : ∃[ A ] ∃[ B ] ∃[ π ] ∃[ p ]
+                  Pure₀ p (A * B) × Sides₀ (pair (fst p) (snd p)) p (A * B) π
+      unit-η    : ∃[ π ] ∃[ t ]
+                  Pure₀ t Unit × Sides₀ t unit Unit π
+      case-inl  : ∃[ B ] ∃[ C ] ∃[ qℓ ] ∃[ qr ] ∃[ π ] ∃[ a ] ∃[ l ] ∃[ r ]
+                  Sides₀ (case qℓ qr (inl B a) l r) (let′ qℓ a l) C π
+      case-inr  : ∃[ A ] ∃[ C ] ∃[ qℓ ] ∃[ qr ] ∃[ π ] ∃[ b ] ∃[ l ] ∃[ r ]
+                  Sides₀ (case qℓ qr (inr A b) l r) (let′ qr b r) C π
+      case-η    : ∃[ A ] ∃[ B ] ∃[ qℓ ] ∃[ qr ] ∃[ π ] ∃[ s ]
+                  Sides₀ (case qℓ qr s (inl B (var zero)) (inr A (var zero))) s (A + B) π
+      let-case  : ∃[ D ] ∃[ q ] ∃[ qℓ ] ∃[ qr ] ∃[ π ] ∃[ s ] ∃[ l ] ∃[ r ] ∃[ v ]
+                  Sides₀ (let′ q (case qℓ qr s l r) v)
+                         (case qℓ qr s (let′ q l (ren (ext {S = noDefs} {m = 0} suc) v)) (let′ q r (ren (ext {S = noDefs} {m = 0} suc) v))) D π
+      absurd-η  : ∃[ A ] ∃[ q ] ∃[ π ] ∃[ e ] ∃[ t ]
+                  Sides₀ (let′ q e t) (absurd A e) A π
+      fold-roll : ∃[ F ] ∃[ A ] ∃[ π ] ∃[ alg ] ∃[ t ]
+                  Pure₀ alg (⟦ F ⟧F A ⇒ A)
+                  × Sides₀ (fold F alg (roll F t)) (app alg (app (layerᶜ F (μ F) A (cataᶜ F pure alg)) t)) A π
+      out-unfold : ∃[ F ] ∃[ A ] ∃[ π ] ∃[ c ] ∃[ a ]
+                  Pure₀ c (A ⇒ ⟦ F ⟧F A)
+                  × Sides₀ (out (unfold F c a)) (app (layerᶜ F A (ν F pureᶠ) (anaᶜ F A pure c)) (app c a))
+                           (⟦ F ⟧F (ν F pureᶠ)) π
+
+      -- Coherence: a program with a hole, and two values that are the same.
+      observes  : ∃[ A ] ∃[ t ] ∃[ π ] (∅ₖ ⊩ (∅ ▸ A) ⊢[ Many ∷ [] ] t ∷ Int ! π)
+                  × Σ[ x ∈ ⟦ A ⟧ᵛ ] Σ[ y ∈ ⟦ A ⟧ᵛ ] Same A x y
+      -- The term model: a pure `let` and its substitution.
+      let-β     : ∃[ A ] ∃[ B ] ∃[ q ] ∃[ π ] ∃[ t ] ∃[ u ]
+                  (∅ₖ ⊩ (∅ ▸ A) ⊢[ q ∷ [] ] t ∷ B ! π) × (∅ₖ ⊩ ∅ ⊢[ [] ] u ∷ A ! pure)
+                  × Sides₀ (t [ u ]) (let′ q u t) B π
+
+      -- Parametricity: a polymorphic term (one type variable, empty context)
+      -- at two instances related by a relation, with parametric definitions …
+      abstraction : Σ[ Δ ∈ KCtx 1 ] ∃[ t ] ∃[ A ] ∃[ π ] (Δ ⊩ ∅ ⊢[ [] ] t ∷ A ! π)
+                    × (Σ[ δ ∈ DefSem ] ParamDefs Σ₀ fmt noDefs δ)
+                    × Σ[ σ ∈ TySub 1 0 ] Σ[ σ′ ∈ TySub 1 0 ] Respects Δ ∅ₖ σ × Respects Δ ∅ₖ σ′ × RelSub σ σ′
+      -- … and a definition of type `∀a. F a → G a`, `F`, `G` strictly
+      -- positive, with `f`, and a parametric meaning of the definitions.
+      naturality : ∃[ s ] Σ[ S ∈ Defs s ]
+                   ∃[ e ] Σ[ τ ∈ TySub (arity (S !! e)) 1 ] ∃[ F ] ∃[ G ] ∃[ q ] ∃[ q′ ] ∃[ π ] ∃[ π₀ ] ∃[ πf ]
+                   ∃[ A ] ∃[ B ] ∃[ f ]
+                     (type (S !! e) ⟨ τ ⟩ ≡ F ⇒[ mk-kind q π ] G)
+                   × StrictlyPositive F × StrictlyPositive G
+                   × Closed Σ₀ S f (A ⇒[ mk-kind q′ pure ] B) πf
+                   × (Σ[ δ ∈ Meaning.DefSem Σ₀ fmt S ] ParamDefs Σ₀ fmt S δ)
+                   × Sides Σ₀ S (composeᶜ (F ⟨ at₀ A ⟩) π (mapᶜ G A B f) (ref e (λ i → τ i ⟨ at₀ A ⟩)))
+                               (composeᶜ (F ⟨ at₀ A ⟩) π (ref e (λ i → τ i ⟨ at₀ B ⟩)) (mapᶜ F A B f))
+                               (F ⟨ at₀ A ⟩ ⇒[ mk-kind Many π ] G ⟨ at₀ B ⟩) π₀
+
+      -- Freyd: a central computation, one that may be dropped, and the
+      -- pairings' arms.
+      central      : ∃[ Y ] Σ[ m ∈ T∞ Y ] Central Σ₀ m
+      discardable  : ∃[ Y ] Σ[ m ∈ T∞ Y ] (∀ {W : Set} (k : T∞ W) → (m >>=∞ λ _ → k) ≃ k)
+      central-arms : ∃[ X ] ∃[ Z ] Σ[ g ∈ (X → T∞ Z) ] X × (∀ x → Central Σ₀ (g x))
+
+      -- Recursion: a map the fold's equation holds of, a function commuting
+      -- with two algebras, a map the unfold's equation holds of.
+      fold-eq      : ∃[ π ] ∃[ G ] ∃[ X ] Σ[ alg ∈ (⟦ G ⟧SF X → M π X) ] Σ[ h ∈ (μS G → M π X) ]
+                       μS G × (∀ x → EqM π (h (inS x)) (bind π (traverseM π G h x) alg))
+      fusion       : ∃[ π ] ∃[ G ] ∃[ X ] ∃[ Y ] Σ[ alg ∈ (⟦ G ⟧SF X → M π X) ] Σ[ alg′ ∈ (⟦ G ⟧SF Y → M π Y) ]
+                     Σ[ g ∈ (X → Y) ] μS G × (∀ l → EqM π (fmap π g (alg l)) (alg′ (sfmap G g l)))
+      unfold-eq    : ∃[ f ] ∃[ G ] ∃[ X ] Σ[ c ∈ (X → Mᶠ f (⟦ G ⟧SF X)) ] Σ[ g ∈ (X → νM f G) ]
+                       X × (∀ x → EqLayer f (LayerEq G _≈ν_) (νM.outν (g x)) (fmap (fin f) (sfmap G g) (c x)))
+
+------------------------------------------------------------------------
 -- All of it
 ------------------------------------------------------------------------
 
@@ -749,4 +968,5 @@ record Metatheory : Set₁ where
     parametricity : ∀ (Σ : Signature) → OneName Σ → ∀ (fmt : TargetNum) {s} (S : Defs s) → Parametricity Σ fmt S
     freyd      : ∀ (Σ : Signature) → Freyd Σ
     recursion  : ∀ (Σ : Signature) → Recursion Σ
+    laws-apply : ∀ (fmt : TargetNum) → LawsApply fmt
     totality   : Totality

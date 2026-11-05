@@ -20931,3 +20931,54 @@ full-tree run exceeded its time cap). Not run: check-extraction-sync (the extrac
 master's tree at `6e2580439`): trust base 52 → 52; PROVED 725 → 736 modules, the 11 joining are
 `Metatheory/Parametricity*`; RUNS 3039 unchanged, RUNS ∖ PROVED 85, all declared, 0 gaps.
 
+
+## D372 — EVERY LAW OF THE LANGUAGE APPLIES TO SOME PROGRAM (2026-11-05)
+
+**Decision** (plan 0.143, decisions L1–L4 taken by the user 2026-11-05). A law of `Once.Spec.Metatheory`
+is a promise with premises. If its premises can never be met together it is proved and says nothing, and
+no gate notices: D369's first `cata-uniqueᶜ` was such a law (its hypothesis at a free usage held
+vacuously for a context entry no environment fills), caught by review. The Spec now states, as the claim
+`laws-apply` (record `LawsApply`), that every law and every claim with premises has an INSTANCE, and
+`Once.Metatheory.LawsApply` proves it.
+
+**What an instance is** (L1). One concrete choice of all the law's arguments such that
+- every premise holds: each side condition (`Pure …`), each hypothesis (`e ≅ e′` for the two uniqueness
+  laws), both derivations;
+- the program is closed: no operations (`noOps`), no definitions (`noDefs`; one for naturality), no type
+  variables (one for `abstraction`), and the empty context `Γ = ∅`. So `≅` quantifies over something: the
+  one empty environment, the one instance of no type variables, and a meaning of the definitions (field
+  `meaning₀`; for naturality and `abstraction`, a parametric one). D369's failure mode cannot occur;
+- the two sides are different terms (`Sides.differ`), so no instance relates a term to itself.
+For the semantic claims (Freyd, recursion) an instance is a choice meeting the premise, with an inhabitant
+of the domain the premise quantifies over (a premise `∀ x → …` over an empty type would hold vacuously).
+
+**Where** (L2). `LawsApply` in `Once.Spec.Metatheory`, a field of `Metatheory`, carried by
+`CertifiedBuild.language` like every claim (D304). The reviewer reads the statement once instead of
+judging each law's premises satisfiable.
+
+**Scope** (L3). The 19 laws of `Categorical` and the 16 of `Equations`; `Coherence.observes` (a program
+with a hole and two same values); `TermModel.let-β`; `Parametricity.abstraction` (a polymorphic term at
+two instances with a relation, under parametric definitions) and `naturality` (`id : ∀a. a ⇒ a`, `F = G =
+a`, both strictly positive); Freyd's premises (a central computation, a discardable one, central arms);
+recursion's (a map meeting the fold's equation, a function commuting with two algebras, a map meeting the
+unfold's). Claims whose premises are only types or computations of any shape (`types`, `effects`,
+`sameness`, `surface`, `coherent`, the typing lemmas of `TermModel`) need none: each premise is met by
+any value of its type, which exists.
+
+**The merge rule** (L4, MERGE.md §1, *The Spec*): a new law or claim comes with its instance in
+`LawsApply`; a law whose premises cannot be instantiated at an empty context does not merge. The build
+cannot see a law with no field; that part is the review's.
+
+**What it does not say.** An instance shows a law is about something, not that it is strong: the
+instances are small (at `Unit`, the identity, the one-leaf functor `K Unit`), and at `Unit` both sides of
+an equation are trivially the same. Strength is the job of the rejection witnesses
+(`SpecTests.Metatheory`, D371): each restriction is needed (not too weak), and each law applies (not
+empty).
+
+**Proof.** `Once.Metatheory.LawsApply`: closed derivations of the combinators built by hand (a closed term
+under a binder by `wk-⊢`), the hypothesis `e ≅ e′` of the uniqueness laws at codomain `Unit` (where
+`Same` is `⊤`), `absurd-η` at the silent loop (`Totality.silent-typed`, the one closed `Void` term), Freyd
+at `return∞`, recursion at `SK ⊤`.
+
+### Checks
+2026-11-05: `Once.Spec.Metatheory`, `Once.Metatheory.LawsApply` OK.

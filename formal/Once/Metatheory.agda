@@ -17,6 +17,7 @@
 --   totality    Once.Metatheory.Totality (and Run, RunLaws, Trace)
 --   laws        Once.Metatheory.Laws (categorical structure, equations)
 --   parametricity Once.Metatheory.Parametricity (abstraction, naturality)
+--   laws-apply  Once.Metatheory.LawsApply (an instance of every law: none is vacuous)
 ------------------------------------------------------------------------
 
 module Once.Metatheory where
@@ -34,6 +35,7 @@ import Once.Metatheory.Freyd as Freyd
 import Once.Metatheory.Recursion as Recursion
 import Once.Metatheory.Laws as Laws
 import Once.Metatheory.Parametricity as Parametricity
+import Once.Metatheory.LawsApply as LawsApply
 
 metatheory : Metatheory
 metatheory = record
@@ -50,4 +52,5 @@ metatheory = record
   ; categorical = λ Σ u fmt S → Laws.categorical Σ u fmt S
   ; equations  = λ Σ u fmt S → Laws.equations Σ u fmt S
   ; parametricity = λ Σ u fmt S → Parametricity.parametricity Σ u fmt S
+  ; laws-apply = λ fmt → LawsApply.lawsApply fmt
   }

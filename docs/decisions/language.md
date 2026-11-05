@@ -436,6 +436,10 @@ entry updates the rule it changes here, in the same commit.
   resources — is a hypothesis visible in the apex's type, never a postulate;
   the apex carries models showing the hypotheses satisfiable. Facts about our
   own code are proved. (D302 ← D087)
+- **No vacuous law**: every law the language states about itself, and every
+  claim with premises, has an instance — a closed program meeting all its
+  premises, with two different sides — stated in the Spec (`LawsApply`) and
+  proved. A new law merges only with its instance. (D372)
 - **Trust only `as`**: the one trusted translation is the assembler's; the
   emitted code is the verified image, and `_start` is proved code; how the
   run ends is the Host's `leave` (D320). A
