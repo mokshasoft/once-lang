@@ -22,6 +22,8 @@
 -- or a sum) routes to `obs-correct-sigop-rest`.
 ------------------------------------------------------------------------
 
+open import Once.IR.Semantics.Boundary using (atTarget)
+open import Once.Res using (mapRes)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Type using (Base; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; ∅ₖ)
 import Once.CCC.Machine.SMCore as SMCore
@@ -298,10 +300,11 @@ module SigOpC {FS : FrameSemantics} where
                                   × (DT.sigOpSemT fmt φ si c a ≡ TM.ret w)
   pure-agree si (blockV e refl refl) _ _ a = _ , refl , refl
   pure-agree si (primV p)  _ _ a = _ , refl , refl
+  -- D391: both read the world's value at the target
   pure-agree {A} {B} si ffiV _ d a =
-    TM.pure ιᶠ k (proj₁ y) a
-    , cong (λ dd → TM.pureHalf-at ιᶠ k dd a) (proj₂ y)
-    , cong (λ dd → TM.resT (TM.pureHalf-at ιᶠ k dd a)) (proj₂ y)
+    atTarget fmt B (TM.pure ιᶠ k (proj₁ y) a)
+    , cong (λ dd → mapRes (atTarget fmt B) (TM.pureHalf-at ιᶠ k dd a)) (proj₂ y)
+    , cong (λ dd → TM.resT (mapRes (atTarget fmt B) (TM.pureHalf-at ιᶠ k dd a))) (proj₂ y)
     where k = key (showCanonical (name si)) A B
           y = yes-of d
   pure-agree si (emitsV _) () _ a
@@ -390,9 +393,10 @@ module SigOpC {FS : FrameSemantics} where
       p₀ = proj₁ y
       ans = TM.answer ιᶠ (SMCore.LocState.ev-log s) op p₀ (argOf si x)
       -- the run of the call node, at the decided `yes`
-      run-call : TM.run ιᶠ (SMCore.LocState.ev-log s) (TM.fmapT (resOf si) (TM.call op (argOf si x) TM.ret))
-               ≡ (TM.callEvent op (argOf si x) DL.∷ DL.[] , returns (resOf si ans))
-      run-call = cong (TM.run-call ιᶠ (SMCore.LocState.ev-log s) op (argOf si x) (λ b → TM.ret (resOf si b))) ans-eq
+      -- D391: the answer is read at the target, by the denotation and the machine alike
+      run-call : TM.run ιᶠ (SMCore.LocState.ev-log s) (TM.fmapT (resOf si) (TM.call op (argOf si x) (λ b → TM.ret (atTarget fmt B b))))
+               ≡ (TM.callEvent op (argOf si x) DL.∷ DL.[] , returns (resOf si (atTarget fmt B ans)))
+      run-call = cong (TM.run-call ιᶠ (SMCore.LocState.ev-log s) op (argOf si x) (λ b → TM.ret (resOf si (atTarget fmt B b)))) ans-eq
         where
           -- an answering call's result fits a register, so it is not `Unit`:
           -- the implementation answers it, at the decided `yes`
@@ -402,18 +406,18 @@ module SigOpC {FS : FrameSemantics} where
                      → TM.callAnswer-at ιᶠ (SMCore.LocState.ev-log s) op (argOf si x) du (TM.callKey op ∈K? TM.calls ιᶠ) ≡ just ans
                   go (yes u) = ⊥-elim (fits-not-unit fit u)
                   go (no nu) = cong (TM.callAnswer-at ιᶠ (SMCore.LocState.ev-log s) op (argOf si x) (no nu)) (proj₂ y)
-      res-call : resultAt s (TM.fmapT (resOf si) (TM.call op (argOf si x) TM.ret)) ≡ returns (resOf si ans)
+      res-call : resultAt s (TM.fmapT (resOf si) (TM.call op (argOf si x) (λ b → TM.ret (atTarget fmt B b)))) ≡ returns (resOf si (atTarget fmt B ans))
       res-call = cong proj₂ run-call
       ev-eq : sigop-events si s ≡ eventsAt s (E₀ si x)
       ev-eq = trans (events-at si callsV e s)
                 (trans (event-agree si x s inp)
                   (trans (sym (cong proj₁ run-call)) (sym (cong (eventsAt s) E≡))))
-      out≡ : ∀ (f : FitsInReg B) → call-sigop-val si s (just f) ≡ prim-sv (fits-erase f) (resOf si ans)
+      out≡ : ∀ (f : FitsInReg B) → call-sigop-val si s (just f) ≡ prim-sv (fits-erase f) (resOf si (atTarget fmt B ans))
       out≡ f = trans (cong (λ dd → call-sigop-ans si s f dd) (proj₂ y))
                 (trans (cong (call-sigop-ans-at si s f p₀)
                            (arg-agree (baseA si) x s inp))
-                     (res-reg f (conB si) ans))
-      out-fit : ∀ (f : FitsInReg B) → call-sigop-output si s ≡ prim-sv (fits-erase f) (resOf si ans)
+                     (res-reg f (conB si) (atTarget fmt B ans)))
+      out-fit : ∀ (f : FitsInReg B) → call-sigop-output si s ≡ prim-sv (fits-erase f) (resOf si (atTarget fmt B ans))
       out-fit fits-intˢ   = out≡ fits-intˢ
       out-fit fits-floatˢ = out≡ fits-floatˢ
       place : ∀ {v} → resultAt s (E₀ si x) ≡ returns v

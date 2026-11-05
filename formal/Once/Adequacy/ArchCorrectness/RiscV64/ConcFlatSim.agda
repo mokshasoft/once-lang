@@ -316,7 +316,7 @@ riscv64-traceloop = record
   ; matchCall = RTr.matchCall
   -- plan 0.105: an external call returns with the world's answer in `a0`, the
   -- world being the frame semantics' interpretation.
-  ; ret-call = RTr.ret-call (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-riscv64)
+  ; ret-call = RTr.ret-call (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-riscv64)
   ; dispatchArith = uncurry (dispatch-arith val-riscv64)
   ; ev-arch = ev-riscv64 ; ArithTable = riscv64-arith-table
   ; sigop-call = call-sym ; sigop-lowering = λ _ → refl ; sigop-matchCall = λ _ → refl
@@ -618,7 +618,7 @@ postulate
                                 ≡ event-of (instr-sigop si) fs)
                             × CompiledCorr hv prog
                                 (flat-exec-instr (instr-sigop si) prog fs)
-                                (RTr.ret-call (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-riscv64)
+                                (RTr.ret-call (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-riscv64)
                                    (LocState.ev-log (FlatMachine.floc {FS} fs)) (once-symbol-path (SigOpInfo.name si)) s)
 
 ------------------------------------------------------------------------

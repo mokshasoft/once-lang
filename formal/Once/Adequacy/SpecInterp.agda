@@ -27,6 +27,9 @@ open import Data.List using (List; []; _∷_; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Product using (_×_; _,_)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.Spec.Boundary using (readAt)
+open import Once.IR.Semantics.Boundary using (atTarget)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.String using (String)
@@ -94,6 +97,17 @@ fromB-toB S.float x = refl
 fromB-toB (a S.* b) (x , y) = cong₂ _,_ (fromB-toB a x) (fromB-toB b y)
 fromB-toB (a S.+ b) (inj₁ x) = cong inj₁ (fromB-toB a x)
 fromB-toB (a S.+ b) (inj₂ y) = cong inj₂ (fromB-toB b y)
+
+-- D391: reading a world value at the target commutes with taking it in — the
+-- implementation's `atTarget` is the Spec's `readAt`, leaf by leaf.
+fromB-at : ∀ (tn : TargetNum) b (v : S.⟦ b ⟧ᵇ) → atTarget tn ⌞ b ⌟ (fromB b v) ≡ fromB b (readAt tn b v)
+fromB-at tn S.unit  v = refl
+fromB-at tn S.void  v = refl
+fromB-at tn S.int   v = refl
+fromB-at tn S.float v = refl
+fromB-at tn (a S.* b) (x , y)  = cong₂ _,_ (fromB-at tn a x) (fromB-at tn b y)
+fromB-at tn (a S.+ b) (inj₁ x) = cong inj₁ (fromB-at tn a x)
+fromB-at tn (a S.+ b) (inj₂ y) = cong inj₂ (fromB-at tn b y)
 
 ------------------------------------------------------------------------
 -- The contract a declaration owes

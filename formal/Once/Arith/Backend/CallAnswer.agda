@@ -43,15 +43,18 @@ open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.IR.Semantics.Trace using (Interp; CallOp; callKey; calls; pures; answer; pure)
 open Once.IR.Semantics.Trace.CallOp using (ccod; cdom)
 open import Once.Contract using (Key; key; kdom; kcod; _∈K?_)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Boundary using (atTarget)
 open import Relation.Nullary using (Dec; yes; no)
 open import Data.List.Membership.Propositional using (_∈_)
 
 -- The register word of a value of `B`, as the flat machine places it.
-answer-word : (B : Type) → M.⟦ B ⟧ → ℕ
-answer-word Int   v = v
-answer-word Float v = v
+-- D391: the answer is read at the target — the register is the target's word
+answer-word : TargetNum → (B : Type) → M.⟦ B ⟧ → ℕ
+answer-word tn Int   v = atTarget tn {0} Int v
+answer-word tn Float v = atTarget tn {0} Float v
 {-# CATCHALL #-}
-answer-word _     _ = 0
+answer-word _ _     _ = 0
 
 -- What an external call a label is at a state resolves to, with its argument:
 -- an ANSWERING call (the world answers it, given the calls before it), or a
@@ -70,24 +73,24 @@ CallResolver State = String → State → Maybe ResolvedCall
 -- The word a resolved call leaves in the return register: the implementation's
 -- answer for a SigOp the interpretation declares; the sentinel for one it does
 -- not (unreachable for a program linked against its signatures).
-answering-word : (ι : Interp) → List SigOpEvent → (o : CallOp) → M.⟦ cdom o ⟧
+answering-word : TargetNum → (ι : Interp) → List SigOpEvent → (o : CallOp) → M.⟦ cdom o ⟧
                → Dec (callKey o ∈ calls ι) → ℕ
-answering-word ι h o a (yes p) = answer-word (ccod o) (answer ι h o p a)
-answering-word ι h o a (no _)  = 0
+answering-word tn ι h o a (yes p) = answer-word tn (ccod o) (answer ι h o p a)
+answering-word tn ι h o a (no _)  = 0
 
-value-word : (ι : Interp) (k : Key) → M.⟦ kdom k ⟧ → Dec (k ∈ pures ι) → ℕ
-value-word ι k a (yes p) = answer-word (kcod k) (pure ι k p a)
-value-word ι k a (no _)  = 0
+value-word : TargetNum → (ι : Interp) (k : Key) → M.⟦ kdom k ⟧ → Dec (k ∈ pures ι) → ℕ
+value-word tn ι k a (yes p) = answer-word tn (kcod k) (pure ι k p a)
+value-word tn ι k a (no _)  = 0
 
 -- A halting call has no answer: the call does not return (D320).
-resolved-word : Interp → List SigOpEvent → ResolvedCall → Maybe ℕ
-resolved-word ι h (answering o a)     = just (answering-word ι h o a (callKey o ∈K? calls ι))
-resolved-word ι h (pure-ffi nm A B a) = just (value-word ι (key (showCanonical nm) A B) a (key (showCanonical nm) A B ∈K? pures ι))
-resolved-word ι h halting             = nothing
+resolved-word : TargetNum → Interp → List SigOpEvent → ResolvedCall → Maybe ℕ
+resolved-word tn ι h (answering o a)     = just (answering-word tn ι h o a (callKey o ∈K? calls ι))
+resolved-word tn ι h (pure-ffi nm A B a) = just (value-word tn ι (key (showCanonical nm) A B) a (key (showCanonical nm) A B ∈K? pures ι))
+resolved-word tn ι h halting             = nothing
 
 -- What the world answers there, as the word the callee leaves behind; a label
 -- that resolves to no value-returning call (an emitting one) leaves the
 -- sentinel, and a halting call has no answer at all.
-answer-at : ∀ {State : Set} → Interp → CallResolver State
+answer-at : ∀ {State : Set} → TargetNum → Interp → CallResolver State
           → List SigOpEvent → String → State → Maybe ℕ
-answer-at ι res h lbl s = maybe′ (resolved-word ι h) (just 0) (res lbl s)
+answer-at tn ι res h lbl s = maybe′ (resolved-word tn ι h) (just 0) (res lbl s)

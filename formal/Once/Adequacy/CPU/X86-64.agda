@@ -38,6 +38,7 @@ open import Once.Spec.Trace using (Tr)
 open import Once.Adequacy.MachineTrace using (module Machine)
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.IR.Semantics.Trace using (Interp)
+open import Once.Target.Arch using (arch-numerics; x86-64)
 open import Once.Arith.Backend.CallAnswer using (CallResolver; answer-at)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 
@@ -203,7 +204,7 @@ block-env-sound ((s′ , p) ∷ bs) s {pl} eq = go (s′ ≟ s) eq
 -- `MachineTrace`): no fuel, so a run that never calls again never arrives.
 run-trace-x86-64 : Interp → RF.Image → X64.State → Tr ⊤
 run-trace-x86-64 ι P s =
-  Machine.trace (RT.Run.δ val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
+  Machine.trace (RT.Run.δ val-x86-64 (answer-at (arch-numerics x86-64) ι call-at-x86-64) ev-x86-64 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
 
 postulate
   -- decode-x86-64 — POSTULATED. Concrete byte-encoder/decoder per the

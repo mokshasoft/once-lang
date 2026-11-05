@@ -21242,3 +21242,37 @@ asks nothing of the empty path (it reads no memory).
 
 ### Consequences
 * The model is the code at every arith load; the emitted code does not change.
+
+## D391 — WHAT THE WORLD GIVES IS READ AT THE TARGET (2026-11-05)
+
+**Decided** with the user, in plan 0.123 α′ (f3), proving an arith block's value. **Spec change.**
+
+### Context
+D054/D113: `Int` and `Float` mean what the target provides. The carrier is width-free (`Carrier = ℕ`)
+and the target enters through the operations — `norm` at the word's width, rounding to the format — so
+every value a program computes is the target's. A value the WORLD gives is the one the program does not
+compute: an interpretation is width-free, so a model value or a call's answer is a bare carrier. The
+Spec took it in unread (`Core.Meaning.sigopᵛ`: `fromB σ b`), and so did the implementation
+(`SigOp.Info.semM-of`, `DenotTrace.sigOpSemT` at `ffiV`/`callsV`, the abstract machine's answering
+output, `CallAnswer.answer-word`). So an `Int` could be a number that is no word at the target — and the
+operations are defined on words: `Word`'s `/ˢ` compares raw carriers with `intMin`/`negOne`, and the
+arith blocks' `normalize` folds `x / −1` to `⊝ x` on that basis. Proving a block's value needs its input
+words to be words.
+
+### Decision
+Where a world value crosses into the program it is read at the target, as the CPU reads the register it
+arrives in: an `int` as the word at the target's width (`norm`), a `float` as a pattern of the target's
+format (its width's residue), a compound value leaf by leaf.
+* Spec: `Once.Spec.Boundary.readAt`; `Core.Meaning.fromW b = fromB σ b ∘ readAt fmt b` at every
+  constant, value and operation answer.
+* Implementation: `IR.Semantics.Boundary.atTarget` (the same reading over `M.⟦_⟧`) in `semM-of` and
+  `sigOpSemT` (`ffiV`, `callsV`), the abstract machine's `call-sigop-ans-at`, and the concrete answer
+  word (`answer-word`/`answer-at` take the target).
+* Bridges: `SpecInterp.fromB-at` (the two readings commute with taking the value in); `SpecSig`,
+  `SpecCore.Cases`, `IRObsCorrect.SigOp` restated.
+
+Going beyond the target's word is another type's business (D054's `BigInt`), not a wider `Int`.
+
+### Consequences
+* Every `Int`/`Float` value in a run is the target's; the arith block proof uses it for its inputs.
+* The emitted code does not change: the answer register already holds the target's word.
