@@ -193,10 +193,11 @@ sigop-calls : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → Cal
 sigop-calls si n nothing  q = q ∷ []
 sigop-calls si n (just _) q = q ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
-in-cl : ∀ (r : MuRep) (n : ℕ) → CLTrace (in-trace r n)
-in-cl mu-box  n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-in-cl mu-unit n = tt ∷ []
-in-cl mu-ptr  n = tt ∷ []
+in-cl : ∀ (r : MuRep) kd L (n : ℕ) → CLTrace (in-trace r kd L n)
+in-cl mu-box  kd L n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+in-cl mu-unit kd L n = tt ∷ []
+in-cl mu-ptr  word L n = tt ∷ []
+in-cl mu-ptr  flat L n = tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-cl L n (suc n) 0) (tt ∷ [])
 
 out-cl : ∀ (r : MuRep) → CLTrace (out-trace r)
 out-cl mu-box  = tt ∷ []
@@ -231,7 +232,7 @@ calls-trace' (case {A} {B} f g) n l (lf , lg) =
   (++⁺ (calls-trace' g _ _ lg) (++⁺ (tt ∷ tt ∷ [])
   (++⁺ (get-cl A 1) (++⁺ (tt ∷ [])
   (++⁺ (calls-trace' f _ _ lf) (tt ∷ []))))))))
-calls-trace' (In {F} _) n l _ = in-cl (mu-rep F) n
+calls-trace' (In {F} _) n l _ = in-cl (mu-rep F) _ _ n
 calls-trace' (out-μ {F} _) n l _ = out-cl (mu-rep F)
 calls-trace' (Cata {F} _ {E} {A} alg) n l la =
   cata-dispatch-cl E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) _ _ _ _ (calls-trace' alg 0 l la)

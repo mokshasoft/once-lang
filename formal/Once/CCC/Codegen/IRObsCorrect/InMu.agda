@@ -51,7 +51,10 @@ open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; mo
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep; Unboxed; box-fit; fit-not-unit)
-open import Once.CCC.Codegen.IRToTrace o using (in-box-trace)
+open import Once.CCC.Codegen.IRToTrace o using (in-box-trace; node-copy-trace)
+open import Once.CCC.Codegen.IRObsCorrect.NodeCopy o tbl using (module NodeCopyC)
+open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
+open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
 open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type; ⌈_⌉; ⌈_⌉F; ⌈⟧TI-commute; wf-K; wf-Id; wf-Sum; wf-Prod;
                              base-Int; base-Float; base-Unit; base-Void; base-Prod; base-Sum; Unit)
 import Once.IRTy as IRTy′
@@ -63,6 +66,7 @@ open import Once.Spec.Type using (WFFun; ∅ₖ)
 import Once.Spec.Type as TW
 import Once.Semantics.Machine as Val
 open import Data.Sum using (inj₁; inj₂)
+open import Data.Product using (Σ)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -77,6 +81,9 @@ module InMuC {FS : FrameSemantics} where
   open Core {FS}
   open Mach {FS}
   open NuForceC {FS} using (base-rt; cf-rt)
+  module SR = StraightRunAPI {FS}
+  open SMCore.AbstractExec {FS} using (exec-trace)
+  open FlatEventTrace {FS} using (chain-events-subst)
 
   ------------------------------------------------------------------------
   -- `out-μ` UNDOES `In`: the coercions around the layer are inverse (the
@@ -487,15 +494,83 @@ module InMuC {FS : FrameSemantics} where
       place = at-loc box v before out-eq v before
 
   ------------------------------------------------------------------------
+  -- D393 (β1): THE FLAT LAYER, COPIED. `In` copies the layer's words into a
+  -- fresh node (`node-copy-trace`), so the μ is valid at the node: its layer
+  -- is, by the copy (`NodeCopy.Run`, `FlatPut`). The layer is flat, so its
+  -- cell is an embedded one (`cell-flat`); the other two forms are refuted by
+  -- the caller's facts (`nnode`, `nreg`).
+  ------------------------------------------------------------------------
+  obs-correct-In-copy : ∀ {F} (wf : WellFormedFI F) → Unboxed F
+                      → (∀ n l → emitted n l (In wf) ≡ node-copy-trace (⟦ F ⟧TI (μ-type F)) n)
+                      → (IsNode (⟦ F ⟧TI (μ-type F)) → ⊥)
+                      → (FitsInRegI (⟦ F ⟧TI (μ-type F)) → ⊥)
+                      → IRObsCorrectF (In wf)
+  obs-correct-In-copy {F} wf ub teq nnode nreg n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
+    record
+      { traces-agree   = trans silent (sym (denot-[] k))
+      ; value-realized =
+          realized (length T) settle (proj₁ fin) R.A₁ run (λ _ → R.hfin src) (λ _ → at-end′) (λ ()) (λ _ → refl) (λ _ → refl)
+                   (log-of run (trans silent (sym (denot-[] k))))
+                   (λ { refl → at-loc R.Nd (proj₂ fin) (R.live-Nd src) refl (proj₂ fin) (R.live-Nd src) })
+                   (m≤m+n k _)
+                   (λ _ fr j bf → R.keep-bf src (AtStack fr j) bf) (λ _ hl bf → R.keep-bf src (AtDynamic hl) bf)
+                   (λ _ → refl) (λ _ → R.bf-mono′ src) (λ _ → refl) (λ _ → FlatAlloc.alloc-bk {FS} R.N alloc)
+      }
+    where
+      Lt = ⟦ F ⟧TI (μ-type F)
+      T  = node-copy-trace Lt n
+      module R = NodeCopyC.Run {FS} {prog} Lt n s alloc nh
+      src = InjC.mk-src {FS} {prog} Lt inp
+
+      denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (In wf) x ⟫ k) ≡ []
+      denot-[] k = refl
+
+      fs₀ = entry-flat base s alloc cl rs
+      settle = record fs₀ { floc = R.sfin src ; falloc = R.A₁ ; fpc = length T + base }
+
+      at-end′ : fpc settle ≡ length (emitted n l (In wf)) + base
+      at-end′ = cong (λ t → length t + base) (sym (teq n l))
+
+      he : halted (proj₁ (exec-trace T s alloc)) ≡ false
+      he = trans (cong (λ r → halted (proj₁ r)) (R.whole src)) (R.hfin src)
+
+      cspan : SpanAt prog base T
+      cspan j i e = span j i (trans (cong (λ t → fetch t j) (teq n l)) e)
+
+      run₀ = SR.straight-steps {prog} T fs₀ (NodeCopyC.node-copy-straight {FS} Lt n) cspan nh he
+      eq : SR.after T fs₀ ≡ settle
+      eq = cong (λ r → record fs₀ { floc = proj₁ r ; falloc = proj₂ r ; fpc = length T + base }) (R.whole src)
+      run = subst (FlatSteps prog (length T) fs₀) eq run₀
+
+      silent : chain-events run ≡ []
+      silent = trans (chain-events-subst eq run₀)
+                     (SR.straight-silent {prog} T fs₀ (NodeCopyC.node-copy-straight {FS} Lt n) cspan nh he
+                        (NodeCopyC.node-copy-silent {FS} Lt n))
+
+      X : ValueDomain.⟦ μ-type F ⟧ᴰᴵ
+      X = retVal (evalᴰ (In wf) x)
+
+      -- the layer, at the node
+      lay : CellAt {prog = prog} R.A₁ Lt x R.Nd (R.sp src) → Σ AllocMode (λ m → ValidAtWF {prog = prog} m R.A₁ x R.Nd (R.sp src))
+      lay (cell-ptr nd _ _ _) = ⊥-elim (nnode nd)
+      lay (cell-inline (rep-prim fit) _) = ⊥-elim (nreg fit)
+      lay (cell-flat {mC = m} _ _ v) = m , v
+
+      fin : Σ AllocMode (λ m → ValidAtWF {prog = prog} m R.A₁ X R.Nd (R.sfin src))
+      fin = proj₁ (lay (R.cell-p src)) ,
+            validityWF-mem-only X R.Nd (R.sp src) (R.sfin src) refl refl
+              (valid-μ ub wf X (layer-of wf x (proj₂ (lay (R.cell-p src)))))
+
+  ------------------------------------------------------------------------
   -- THE CLAUSE, by the functor's representation (`MuRep`).
   ------------------------------------------------------------------------
   obs-correct-In : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (In wf)
   obs-correct-In wf@(wf-K base-Int)        = obs-correct-In-box wf refl (λ _ _ → refl)
   obs-correct-In wf@(wf-K base-Float)      = obs-correct-In-box wf refl (λ _ _ → refl)
   obs-correct-In (wf-K base-Unit)          = obs-correct-In-unit
-  obs-correct-In wf@(wf-K base-Void)       = obs-correct-In-ptr wf tt (λ _ _ → refl) (λ ()) (λ ())
-  obs-correct-In wf@(wf-K (base-Prod a b)) = obs-correct-In-ptr wf tt (λ _ _ → refl) (λ ()) (λ ())
-  obs-correct-In wf@(wf-K (base-Sum a b))  = obs-correct-In-ptr wf tt (λ _ _ → refl) (λ ()) (λ ())
+  obs-correct-In wf@(wf-K base-Void)       = obs-correct-In-copy wf tt (λ _ _ → refl) (λ ()) (λ ())
+  obs-correct-In wf@(wf-K (base-Prod a b)) = obs-correct-In-copy wf tt (λ _ _ → refl) (λ ()) (λ ())
+  obs-correct-In wf@(wf-K (base-Sum a b))  = obs-correct-In-copy wf tt (λ _ _ → refl) (λ ()) (λ ())
   obs-correct-In wf@wf-Id                  = obs-correct-In-ptr wf tt (λ _ _ → refl) (λ ()) (λ ())
-  obs-correct-In wf@(wf-Sum f g)           = obs-correct-In-ptr wf tt (λ _ _ → refl) (λ ()) (λ ())
-  obs-correct-In wf@(wf-Prod f g)          = obs-correct-In-ptr wf tt (λ _ _ → refl) (λ ()) (λ ())
+  obs-correct-In wf@(wf-Sum f g)           = obs-correct-In-copy wf tt (λ _ _ → refl) (λ ()) (λ ())
+  obs-correct-In wf@(wf-Prod f g)          = obs-correct-In-copy wf tt (λ _ _ → refl) (λ ()) (λ ())

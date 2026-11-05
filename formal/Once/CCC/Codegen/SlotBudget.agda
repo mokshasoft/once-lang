@@ -158,10 +158,11 @@ sigop-mono n nothing  = ≤-refl
 sigop-mono n (just _) = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 
 -- D366: `In`'s box takes one slot.
-in-mono : ∀ (r : MuRep) (n : ℕ) → n ≤ in-next r n
-in-mono mu-box  n = n≤1+n n
-in-mono mu-unit n = ≤-refl
-in-mono mu-ptr  n = ≤-refl
+in-mono : ∀ (r : MuRep) kd (n : ℕ) → n ≤ in-next r kd n
+in-mono mu-box  kd n = n≤1+n n
+in-mono mu-unit kd n = ≤-refl
+in-mono mu-ptr  word n = ≤-refl
+in-mono mu-ptr  flat n = m≤n⇒m≤1+n (n≤1+n n)
 
 frontier-mono : ∀ {A B} (ir : IR A B) (n l : ℕ) → n ≤ budget-of (ir-to-trace' n l ir)
 frontier-mono id       n l = ≤-refl
@@ -183,7 +184,7 @@ frontier-mono inl n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono inr n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono (case f g)  n l =
   ≤-trans (frontier-mono f n (suc (suc l))) (frontier-mono g _ _)
-frontier-mono (In {F} _) n l = in-mono (mu-rep F) n
+frontier-mono (In {F} _) n l = in-mono (mu-rep F) _ n
 frontier-mono (out-μ _)   n l = ≤-refl
 -- C1: the algebra runs in its OWN frame (generated at frontier 0), so the
 -- caller's frontier is not advanced by it at all — the dispatch takes `n`
@@ -593,12 +594,19 @@ cata-branching-below E A G F bb n1 l1 at bok =
 -- and its own witness.
 -- D366: `In`'s box stashes the layer in slot `n` and reads it back; `out-μ`
 -- touches no slot.
-in-below : ∀ (r : MuRep) (n : ℕ) → SegOK (in-next r n) (in-trace r n)
-in-below mu-box  n = segok-idle _ refl
+in-below : ∀ (r : MuRep) kd L (n : ℕ) → SegOK (in-next r kd n) (in-trace r kd L n)
+in-below mu-box  kd L n = segok-idle _ refl
   (sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
    sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
-in-below mu-unit n = segok-idle _ refl (sb-none refl ∷ [])
-in-below mu-ptr  n = segok-idle _ refl (sb-none refl ∷ [])
+in-below mu-unit kd L n = segok-idle _ refl (sb-none refl ∷ [])
+in-below mu-ptr  word L n = segok-idle _ refl (sb-none refl ∷ [])
+-- D393 (β1): the copy into a fresh node, two slots
+in-below mu-ptr  flat L n =
+  segok-SB _
+    (nn refl refl ∷ ss refl n< (λ _ ()) refl ∷ nn refl refl ∷ ss refl ≤-refl (λ _ ()) refl ∷
+     ++⁺ (put-SB L n (suc n) 0 n< ≤-refl) (ss refl ≤-refl (λ _ ()) refl ∷ []))
+  where n< : n < suc (suc n)
+        n< = m≤n⇒m≤1+n ≤-refl
 
 out-below : ∀ (r : MuRep) (n : ℕ) → SegOK n (out-trace r)
 out-below mu-box  n = segok-idle _ refl (sb-none refl ∷ [])
@@ -835,7 +843,7 @@ slots-below (case {A} {B} f g) n l =
              (segok-pre _ refl (sb-none refl ∷ [])
                 (segok-++ (segok-weaken (frontier-mono g _ _) (slots-below f n (suc (suc l))))
                      (segok-idle _ refl (sb-none refl ∷ [])))))))))
-slots-below (In {F} _)    n l = in-below (mu-rep F) n
+slots-below (In {F} _)    n l = in-below (mu-rep F) _ _ n
 slots-below (out-μ {F} _) n l = out-below (mu-rep F) n
 -- C1: the algebra is generated at frontier 0 — its slots are its own frame's,
 -- so its witness is taken there and `segok-thunk` (inside `cata-body-below`)

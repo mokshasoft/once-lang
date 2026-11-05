@@ -415,11 +415,12 @@ sigop-labels si n l nothing  = li-none refl ∷ []
 sigop-labels si n l (just _) = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 
 -- D366: `In`'s three shapes and `out-μ`'s mention no label.
-in-ls : ∀ {lo hi} (r : MuRep) (n : ℕ) → LabelsIn lo hi (in-trace r n)
-in-ls mu-box  n = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+in-ls : ∀ {lo hi} (r : MuRep) kd L (n : ℕ) → LabelsIn lo hi (in-trace r kd L n)
+in-ls mu-box  kd L n = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
                   li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-in-ls mu-unit n = li-none refl ∷ []
-in-ls mu-ptr  n = li-none refl ∷ []
+in-ls mu-unit kd L n = li-none refl ∷ []
+in-ls mu-ptr  word L n = li-none refl ∷ []
+in-ls mu-ptr  flat L n = nolab-ls (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nolab L n (suc n) 0) (refl ∷ []))
 
 out-ls : ∀ {lo hi} (r : MuRep) → LabelsIn lo hi (out-trace r)
 out-ls mu-box  = li-none refl ∷ []
@@ -479,7 +480,7 @@ labels-in (case {A} {B} f g) n l =
     case-l<hi = ≤-trans (m≤n⇒m≤1+n ≤-refl) up
     case-sl<hi : suc l < label-of (ir-to-trace' n l (case {A} {B} f g))
     case-sl<hi = up
-labels-in (In {F} _)    n l = in-ls (mu-rep F) n
+labels-in (In {F} _)    n l = in-ls (mu-rep F) _ _ n
 labels-in (out-μ {F} _) n l = out-ls (mu-rep F)
 -- C1: the algebra is generated at frontier 0 (its own frame).
 labels-in (Cata {F} _ {E} {A} alg) n l =
@@ -1139,10 +1140,11 @@ sigop-seg : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → SegAg
 sigop-seg si n nothing  = segagree-nolab _ (refl ∷ [])
 sigop-seg si n (just _) = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
 -- D366: `In`'s three shapes and `out-μ`'s define no label.
-in-sa : ∀ (r : MuRep) (n : ℕ) → SegAgree (in-trace r n)
-in-sa mu-box  n = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-in-sa mu-unit n = segagree-nolab _ (refl ∷ [])
-in-sa mu-ptr  n = segagree-nolab _ (refl ∷ [])
+in-sa : ∀ (r : MuRep) kd L (n : ℕ) → SegAgree (in-trace r kd L n)
+in-sa mu-box  kd L n = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+in-sa mu-unit kd L n = segagree-nolab _ (refl ∷ [])
+in-sa mu-ptr  word L n = segagree-nolab _ (refl ∷ [])
+in-sa mu-ptr  flat L n = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nolab L n (suc n) 0) (refl ∷ []))
 
 out-sa : ∀ (r : MuRep) → SegAgree (out-trace r)
 out-sa mu-box  = segagree-nolab _ (refl ∷ [])
@@ -1167,7 +1169,7 @@ seg-agree (fst {A} {B}) n l = segagree-nolab _ (get-nolab A 0)
 seg-agree (snd {A} {B}) n l = segagree-nolab _ (get-nolab B _)
 seg-agree terminal n l = segagree-nolab _ []
 seg-agree initial n l = segagree-nolab _ (refl ∷ [])
-seg-agree (In {F} w) n l = in-sa (mu-rep F) n
+seg-agree (In {F} w) n l = in-sa (mu-rep F) _ _ n
 seg-agree (out-μ {F} w) n l = out-sa (mu-rep F)
 seg-agree (Out w) n l = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ [])
 seg-agree (in-ν w) n l =

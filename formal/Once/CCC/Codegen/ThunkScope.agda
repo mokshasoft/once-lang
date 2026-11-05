@@ -385,10 +385,11 @@ module Scope {FS : FrameSemantics} where
   sigop-thunks si n l (just _) = all-no-thunk-in _ refl
 
   -- D366: `In`'s three shapes and `out-μ`'s carry no marker.
-  in-nt : ∀ {lo hi} (r : MuRep) (n : ℕ) → ThunksIn lo hi (in-trace r n)
-  in-nt mu-box  n = all-no-thunk-in _ refl
-  in-nt mu-unit n = all-no-thunk-in _ refl
-  in-nt mu-ptr  n = all-no-thunk-in _ refl
+  in-nt : ∀ {lo hi} (r : MuRep) kd L (n : ℕ) → ThunksIn lo hi (in-trace r kd L n)
+  in-nt mu-box  kd L n = all-no-thunk-in _ refl
+  in-nt mu-unit kd L n = all-no-thunk-in _ refl
+  in-nt mu-ptr  word L n = all-no-thunk-in _ refl
+  in-nt mu-ptr  flat L n = ts-from-nt (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nt L n (suc n) 0) (refl ∷ []))
 
   out-nt : ∀ {lo hi} (r : MuRep) → ThunksIn lo hi (out-trace r)
   out-nt mu-box  = all-no-thunk-in _ refl
@@ -409,7 +410,7 @@ module Scope {FS : FrameSemantics} where
                     (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
                      ++⁺ (put-nt A n (suc (suc n)) 1) (refl ∷ refl ∷ refl ∷ [])))
   thunks-in (curry b)  n l = all-no-thunk-in _ refl
-  thunks-in (In {F} x)    n l = in-nt (mu-rep F) n
+  thunks-in (In {F} x)    n l = in-nt (mu-rep F) _ _ n
   thunks-in (out-μ {F} x) n l = out-nt (mu-rep F)
   thunks-in (Out x)    n l = all-no-thunk-in _ refl
   thunks-in (in-ν x)   n l = all-no-thunk-in _ refl

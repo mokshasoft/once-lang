@@ -31,7 +31,8 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; lkind; lsz;
   put-All; put-k-All; get-All; get-k-All; fill; fill-All)
 open import Once.CCC.Codegen.Size using (size)
-open import Once.CCC.Codegen.IRToTrace o using (wrap-sum; inj-trace; cata-call-from; cata-call-setup; env-entry; getμ)
+open import Once.CCC.Codegen.IRToTrace o using (wrap-sum; inj-trace; cata-call-from; cata-call-setup; env-entry; getμ; in-trace; node-copy-trace)
+open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr)
 
 module Seg {P : AbstractInstr → Set}
   (p-ri    : ∀ k → P (restore-input k))
@@ -76,6 +77,17 @@ module Seg {P : AbstractInstr → Set}
   inj-P t Q S n =
     p-mo ∷ p-sas n ∷ p-alloc _ ∷ p-sas (suc n) ∷ p-mi ∷ p-tag t ∷ p-sa 0 ∷
     ++⁺ (fill-P (suc (size Q)) (size S ∸ suc (size Q))) (++⁺ (put-P Q n (suc n) 1) (p-lfs (suc n) ∷ []))
+
+  -- D393 (β1): a flat layer's copy into a fresh node
+  node-copy-P : ∀ L n → All P (node-copy-trace L n)
+  node-copy-P L n = p-mo ∷ p-sas n ∷ p-alloc _ ∷ p-sas (suc n) ∷ ++⁺ (put-P L n (suc n) 0) (p-lfs (suc n) ∷ [])
+
+  -- `In`'s shapes (D366, D393)
+  in-P : ∀ r kd L n → All P (in-trace r kd L n)
+  in-P mu-box  kd   L n = p-mo ∷ p-sas n ∷ p-alloc 2 ∷ p-mi ∷ p-lfs n ∷ p-sa 0 ∷ p-mo ∷ []
+  in-P mu-unit kd   L n = p-alloc 2 ∷ []
+  in-P mu-ptr  word L n = p-mo ∷ []
+  in-P mu-ptr  flat L n = node-copy-P L n
 
   call-P : ∀ i0 → P i0 → ∀ E lk ls cl k ev pr → All P (cata-call-from i0 E lk ls cl k ev pr)
   call-P i0 p0 E lk ls cl k ev pr =

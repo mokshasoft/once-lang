@@ -90,7 +90,7 @@ open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; t
 -- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (Fun)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; IRTy; IRFunctor; ⟦_⟧TI; ν-type)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; IRTy; IRFunctor; ⟦_⟧TI; ν-type; μ-type)
   renaming (_*_ to _*ᵀ_; _+_ to _+ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (put; put-k; get; get-k; fill; Kind; word; flat; kind; lkind; lsz)
@@ -688,15 +688,36 @@ in-box-trace n =
   mov-to-output ∷ store-at-slot n ∷ instr-alloc-heap 2 ∷ mov-to-input ∷
   load-from-slot n ∷ store-at 0 ∷ mov-to-output ∷ []
 
-in-trace : MuRep → ℕ → AbstractTrace
-in-trace mu-box  n = in-box-trace n
-in-trace mu-unit n = instr-alloc-heap 2 ∷ []
-in-trace mu-ptr  n = mov-to-output ∷ []
+-- D393 (β1): a flat layer becomes the node by a COPY of its words into a fresh
+-- block, so a node never shares its words with the layer it was built from
+-- (which, after β6, may lie in a frame). Two slots: `n` the layer, `suc n` the
+-- node. A word layer (`Id`: a μ pointer) is already a node and passes through.
+node-copy-trace : IRTy → ℕ → AbstractTrace
+node-copy-trace L n =
+  mov-to-output ∷
+  store-at-slot n ∷
+  instr-alloc-heap (2 ⊔ size L) ∷
+  store-at-slot (suc n) ∷
+  put L n (suc n) 0 ++
+  load-from-slot (suc n) ∷ []
 
-in-next : MuRep → ℕ → ℕ
-in-next mu-box  n = suc n
-in-next mu-unit n = n
-in-next mu-ptr  n = n
+in-ptr-trace : Kind → IRTy → ℕ → AbstractTrace
+in-ptr-trace word L n = mov-to-output ∷ []
+in-ptr-trace flat L n = node-copy-trace L n
+
+in-ptr-next : Kind → ℕ → ℕ
+in-ptr-next word n = n
+in-ptr-next flat n = suc (suc n)
+
+in-trace : MuRep → Kind → IRTy → ℕ → AbstractTrace
+in-trace mu-box  kd L n = in-box-trace n
+in-trace mu-unit kd L n = instr-alloc-heap 2 ∷ []
+in-trace mu-ptr  kd L n = in-ptr-trace kd L n
+
+in-next : MuRep → Kind → ℕ → ℕ
+in-next mu-box  kd n = suc n
+in-next mu-unit kd n = n
+in-next mu-ptr  kd n = in-ptr-next kd n
 
 out-trace : MuRep → AbstractTrace
 out-trace mu-box  = load-at 0 ∷ []
@@ -1033,12 +1054,15 @@ ir-to-trace' n l (case {A} {B} f g) =
 
 -- In: μ Lambek constructor. A μ value is a HEAP POINTER (D366), so what `In`
 -- emits depends on how its layer arrives (`MuRep`): a layer that is already a
--- pointer (sum, product, μ) IS the node — `mov-to-output` passes it through;
+-- μ pointer (`Id`) IS the node — `mov-to-output` passes it through; a flat
+-- one (sum, product) is copied into a fresh node (D393, β1);
 -- an `Int`/`Float` layer is BOXED into a fresh block (`in-box-trace`); a
 -- `Unit` layer has no residence, so `In` allocates a block and writes
 -- nothing. (Before D366 every `In` was `mov-to-output`, which left a literal,
 -- or nothing, where the value relation demands a pointer.)
-ir-to-trace' n l (In {F} _)    = in-next (mu-rep F) n , l , in-trace (mu-rep F) n , []
+ir-to-trace' n l (In {F} _)    =
+  in-next (mu-rep F) (kind (⟦ F ⟧TI (μ-type F))) n , l ,
+  in-trace (mu-rep F) (kind (⟦ F ⟧TI (μ-type F))) (⟦ F ⟧TI (μ-type F)) n , []
 -- out-μ: the inverse. A pointer layer IS the node (`mov-to-output`); a boxed
 -- one is the box's cell (`load-indirect`); a `Unit` layer is anything.
 ir-to-trace' n l (out-μ {F} _) = n , l , out-trace (mu-rep F) , []

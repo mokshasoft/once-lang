@@ -55,7 +55,7 @@ import Once.CCC.Codegen.NodesOK
 open Once.CCC.Codegen.NodesOK using (sigop-syms)
 open import Once.CCC.Codegen.IRToTrace o using
   (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy;
-   strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; out-trace;
+   strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; node-copy-trace; out-trace;
    cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; wrap-sum; resuspend-layer;
    cata-call-from; inj-trace; env-entry; getμ; push2)
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; kind; lkind; lsz;
@@ -477,10 +477,11 @@ module _ (G : String → Set) where
   sigop-closes si n (just c) (g ∷ []) = inj₂ g ∷ []
 
   -- D366: `In`'s three shapes and `out-μ`'s reference nothing.
-  in-closes : ∀ {D} (r : MuRep) (n : ℕ) → Closes D (in-trace r n)
-  in-closes mu-box  n = []
-  in-closes mu-unit n = []
-  in-closes mu-ptr  n = []
+  in-closes : ∀ {D} (r : MuRep) kd L (n : ℕ) → Closes D (in-trace r kd L n)
+  in-closes mu-box  kd L n = []
+  in-closes mu-unit kd L n = []
+  in-closes mu-ptr  word L n = []
+  in-closes mu-ptr  flat L n = noref-closes (node-copy-trace L n) (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-noref L n (suc n) 0) (refl ∷ []))
 
   out-closes : ∀ {D} (r : MuRep) → Closes D (out-trace r)
   out-closes mu-box  = []
@@ -501,7 +502,7 @@ module _ (G : String → Set) where
     closes-++ (get A 1) _ (noref-closes (get A 1) (get-noref A 1))
       (closes-++ (put A n (suc (suc n)) 1) _ (noref-closes (put A n (suc (suc n)) 1) (put-noref A n (suc (suc n)) 1)) [])
     , []
-  close (In {F} _)    n l d ok = in-closes (mu-rep F) n , []
+  close (In {F} _)    n l d ok = in-closes (mu-rep F) _ _ n , []
   close (out-μ {F} _) n l d ok = out-closes (mu-rep F) , []
   close (Out _)   n l d ok = [] , []
   close (const fits-int   v) n l d ok = [] , []
