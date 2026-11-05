@@ -34,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Relation.Nullary using (¬_)
 
 open import Once.Arith.Machine.AbsState using (ArithAbsState; init; output-of; _[_↦_]; _[_]; store-write-same; store-write-other)
-open import Once.Arith.Machine.Shape using (⟦_⟧S; project; projectF; Path; readLeaf; ⌊_⌋ᴾ; project-path; projectF-path)
+open import Once.Arith.Machine.Shape using (⟦_⟧S; project; projectF; Path; readLeaf; ⌊_⌋ᴾ; project-path; projectF-path; IntsBelow; readLeaf-below)
 open import Once.Arith.Machine.AbsInstr
   using (fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; AbstractInstr; add-rrr; sub-rrr; mul-rrr; div-rrr; rem-rrr; cmp-rrr; div-safe-rrr; neg-rr; spill; reload; move-to-out; maybe-zero; maybe-zero-f; bin-op; un-op; module Exec)
 open Exec bits F using (step; run-abstract)
@@ -185,7 +185,7 @@ run-abstract-app (i ∷ is) ys s = run-abstract-app is ys (step i s)
 -- the node that produced the instruction.
 eval-arith-W-ainput :
   ∀ {sh} (p : Path sh NInt) (inp : ⟦ sh ⟧S) →
-  eval-arith-W {sh} {NInt} (ainput p) inp ≡ fromℤ (maybe-zero (project sh ⌊ p ⌋ᴾ inp))
+  eval-arith-W {sh} {NInt} (ainput p) inp ≡ maybe-zero (project sh ⌊ p ⌋ᴾ inp)
 eval-arith-W-ainput {sh} p inp rewrite project-path p inp = refl
 
 -- PLAN 0.75 F4: the float twin. Both branches are `refl` — there is no `fromℤ`
@@ -756,19 +756,20 @@ abs-validity {sh} e env =
 module _ (b : ℕ) (eqb : bits ≡ suc b) where
 
   -- every arith value lands in `[0, modulus)` (needed for `/ˢ negOne = ⊝`).
-  eval-in-range : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) → eval-arith-W e env < modulus
-  eval-in-range (alit z)   env = fromℤ-in-range z
-  -- One case, not two: the read is total, so there is no default to bound.
-  eval-in-range (ainput p) env = fromℤ-in-range (readLeaf p env)
-  eval-in-range (aadd a c) env = m%n<n _ modulus
-  eval-in-range (asub a c) env = m%n<n _ modulus
-  eval-in-range (amul a c) env = m%n<n _ modulus
-  eval-in-range (adiv a c) env =
+  -- D391: the input's `Int` leaves are words (`IntsBelow`), so is every value.
+  eval-in-range : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) → IntsBelow modulus sh env
+                → eval-arith-W e env < modulus
+  eval-in-range (alit z)   env _ = fromℤ-in-range z
+  eval-in-range (ainput p) env h = readLeaf-below p env h
+  eval-in-range (aadd a c) env _ = m%n<n _ modulus
+  eval-in-range (asub a c) env _ = m%n<n _ modulus
+  eval-in-range (amul a c) env _ = m%n<n _ modulus
+  eval-in-range (adiv a c) env _ =
     /ˢ-in-range b eqb (eval-arith-W a env) (eval-arith-W c env)
-  eval-in-range (amod a c) env =
-    %ˢ-in-range b eqb (eval-arith-W a env) (eval-arith-W c env) (eval-in-range a env)
-  eval-in-range (aneg a)   env = m%n<n _ modulus
-  eval-in-range (acmp o a c) env =
+  eval-in-range (amod a c) env h =
+    %ˢ-in-range b eqb (eval-arith-W a env) (eval-arith-W c env) (eval-in-range a env h)
+  eval-in-range (aneg a)   env _ = m%n<n _ modulus
+  eval-in-range (acmp o a c) env _ =
     bit<modulus (cmp-word bits o (eval-arith-W a env) (eval-arith-W c env))
     where
       1<modulus : 1 < modulus
@@ -820,24 +821,24 @@ module _ (b : ℕ) (eqb : bits ≡ suc b) where
   fold-mod-preserves a (aneg _)   env = refl
   fold-mod-preserves a (acmp _ _ _) env = refl
 
-  normalize-preserves : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) →
+  normalize-preserves : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) → IntsBelow modulus sh env →
     eval-arith-W (normalize e) env ≡ eval-arith-W e env
-  normalize-preserves (alit z)   env = refl
-  normalize-preserves (ainput p) env = refl
-  normalize-preserves (aadd a c) env =
-    cong₂ _⊕_ (normalize-preserves a env) (normalize-preserves c env)
-  normalize-preserves (asub a c) env =
-    cong₂ _⊖_ (normalize-preserves a env) (normalize-preserves c env)
-  normalize-preserves (amul a c) env =
-    cong₂ _⊗_ (normalize-preserves a env) (normalize-preserves c env)
-  normalize-preserves (aneg a)   env = cong ⊝_ (normalize-preserves a env)
-  normalize-preserves (adiv a c) env =
+  normalize-preserves (alit z)   env _ = refl
+  normalize-preserves (ainput p) env h = refl
+  normalize-preserves (aadd a c) env h =
+    cong₂ _⊕_ (normalize-preserves a env h) (normalize-preserves c env h)
+  normalize-preserves (asub a c) env h =
+    cong₂ _⊖_ (normalize-preserves a env h) (normalize-preserves c env h)
+  normalize-preserves (amul a c) env h =
+    cong₂ _⊗_ (normalize-preserves a env h) (normalize-preserves c env h)
+  normalize-preserves (aneg a)   env h = cong ⊝_ (normalize-preserves a env h)
+  normalize-preserves (adiv a c) env h =
     trans (fold-div-preserves (normalize a) (normalize c) env
-             (eval-in-range (normalize a) env))
-          (cong₂ _/ˢ_ (normalize-preserves a env) (normalize-preserves c env))
-  normalize-preserves (acmp o a c) env =
+             (eval-in-range (normalize a) env h))
+          (cong₂ _/ˢ_ (normalize-preserves a env h) (normalize-preserves c env h))
+  normalize-preserves (acmp o a c) env h =
     cong₂ (cmp-bit bits o)
-          (normalize-preserves a env) (normalize-preserves c env)
-  normalize-preserves (amod a c) env =
+          (normalize-preserves a env h) (normalize-preserves c env h)
+  normalize-preserves (amod a c) env h =
     trans (fold-mod-preserves (normalize a) (normalize c) env)
-          (cong₂ _%ˢ_ (normalize-preserves a env) (normalize-preserves c env))
+          (cong₂ _%ˢ_ (normalize-preserves a env h) (normalize-preserves c env h))

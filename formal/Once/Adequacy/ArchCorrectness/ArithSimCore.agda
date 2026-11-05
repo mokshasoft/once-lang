@@ -538,17 +538,16 @@ module At (tn : TargetNum) where
     ----------------------------------------------------------------------
     -- R-input — the input correspondence (for arg).
     ----------------------------------------------------------------------
-    -- | The machine word a TYPED leaf holds. `Int` leaves narrow through
-    -- `fromℤ` (the leaf carries a spec integer); a float leaf is already a
-    -- pattern. No `Maybe`, so no default to be false about.
+    -- | The machine word a TYPED leaf holds: the leaf itself, an `Int` word
+    -- (D391) or a float pattern. No `Maybe`, so no default to be false about.
     leafWord : ∀ {sh n} → Path sh n → ⟦ sh ⟧S → ℕ
-    leafWord here-int   z       = fromℤ z
+    leafWord here-int   z       = z
     leafWord here-flt   w       = w
     leafWord (go-fst p) (x , _) = leafWord p x
     leafWord (go-snd p) (_ , y) = leafWord p y
 
     leafWord-int : ∀ {sh} (tp : Path sh NInt) (inp : ⟦ sh ⟧S)
-                 → leafWord tp inp ≡ fromℤ (readLeaf tp inp)
+                 → leafWord tp inp ≡ readLeaf tp inp
     leafWord-int here-int   z       = refl
     leafWord-int (go-fst p) (x , _) = leafWord-int p x
     leafWord-int (go-snd p) (_ , y) = leafWord-int p y
@@ -585,7 +584,7 @@ module At (tn : TargetNum) where
           sym (trans (rt-arg d ⌊ tp ⌋ᴾ (flat-off tp) s-conc)
               (trans (ri tp)
               (trans (leafWord-int tp (ArithAbsState.input s-abs))
-              (trans (sym (cong (λ m → fromℤ (maybe-zero m)) (project-path tp (ArithAbsState.input s-abs))))
+              (trans (sym (cong maybe-zero (project-path tp (ArithAbsState.input s-abs))))
                      (just-injective (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))))))
     ... | no ¬eq = step-other (XI.Xmov-arg d ⌊ tp ⌋ᴾ (flat-off tp)) d x w s-abs s-conc refl r ¬eq eq
 

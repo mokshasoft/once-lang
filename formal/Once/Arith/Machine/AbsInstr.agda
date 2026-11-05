@@ -160,11 +160,10 @@ un-op _ nothing  = nothing
 -- `Once.Arith.Machine.IR.eval-arith`). A well-formed IR (paths
 -- match the input shape) never sees this default; the recognition
 -- pass produces well-formed IRs by construction. The projected value
--- is the ℤ spec input; `load-input` applies `fromℤ` to land it in a
--- (modular `Word`) register.
-maybe-zero : Maybe ℤ → ℤ
+-- is the input WORD (D391), loaded as it is.
+maybe-zero : Maybe ℕ → ℕ
 maybe-zero (just z) = z
-maybe-zero nothing  = + 0
+maybe-zero nothing  = 0
 
 -- | …and the FLOAT leaf's default (plan 0.75 F4). A separate function because
 -- the carriers differ: a float leaf is already a pattern (`ℕ`), so there is no
@@ -191,7 +190,7 @@ module Exec (bits : ℕ) (F : FloatFormat) where
   step : ∀ {sh} → AbstractInstr → ArithAbsState sh → ArithAbsState sh
   step {sh} (load-input p _ r) s = record s
     { regs = ArithAbsState.regs s [ r ↦
-        just (fromℤ (maybe-zero (project sh p (ArithAbsState.input s)))) ] }
+        just (maybe-zero (project sh p (ArithAbsState.input s))) ] }
   step (load-imm z r) s = record s
     { regs = ArithAbsState.regs s [ r ↦ just (fromℤ z) ] }
   step (add-rrr dst a b) s = record s

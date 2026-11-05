@@ -89,7 +89,7 @@ exec-xinstr (Xmov-imm d z)    s = record s { regs = ArithAbsState.regs s [ xreg-
 exec-xinstr (Xmov-rr d src)   s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ ArithAbsState.regs s [ xreg-idx src ] ] }
 exec-xinstr (Xmov-r-m sc src) s = record s { scratch = ArithAbsState.scratch s [ XScratch.slot sc ↦ ArithAbsState.regs s [ xreg-idx src ] ] }
 exec-xinstr (Xmov-m-r d sc)   s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ ArithAbsState.scratch s [ XScratch.slot sc ] ] }
-exec-xinstr (Xmov-arg d p _)  s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ just (fromℤ (maybe-zero (project _ p (ArithAbsState.input s)))) ] }
+exec-xinstr (Xmov-arg d p _)  s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ just (maybe-zero (project _ p (ArithAbsState.input s))) ] }
 exec-xinstr (Xadd-rr d src)   s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op _⊕_ (ArithAbsState.regs s [ xreg-idx d ]) (ArithAbsState.regs s [ xreg-idx src ]) ] }
 exec-xinstr (Xsub-rr d src)   s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op _⊖_ (ArithAbsState.regs s [ xreg-idx d ]) (ArithAbsState.regs s [ xreg-idx src ]) ] }
 exec-xinstr (Ximul-rr d src)  s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op _⊗_ (ArithAbsState.regs s [ xreg-idx d ]) (ArithAbsState.regs s [ xreg-idx src ]) ] }
@@ -180,7 +180,7 @@ double-write σ i A B j with i ≟ j
 refine-load-input : ∀ {sh} (p : InputPath) (k r : ℕ) (xr : XReg) → abs-reg r ≡ just xr →
   (s : ArithAbsState sh) → exec-xprog (emit (load-input p k r)) s ≡ step (load-input p k r) s
 refine-load-input p k r xr eq s rewrite eq =
-  cong (λ i → record s { regs = ArithAbsState.regs s [ i ↦ just (fromℤ (maybe-zero (project _ p (ArithAbsState.input s)))) ] })
+  cong (λ i → record s { regs = ArithAbsState.regs s [ i ↦ just (maybe-zero (project _ p (ArithAbsState.input s))) ] })
        (abs-reg-idx r xr eq)
 
 refine-spill : ∀ {sh} (src slot : ℕ) (xs : XReg) → abs-reg src ≡ just xs →
@@ -515,7 +515,7 @@ exec-xinstr-cong (Xmov-imm d z)    (rc , sc , oc , ic) = store-cong2 rc (xreg-id
 exec-xinstr-cong (Xmov-rr d src)   (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (rc (xreg-idx src)) , sc , oc , ic
 exec-xinstr-cong (Xmov-r-m sc' src)(rc , sc , oc , ic) = rc , store-cong2 sc (XScratch.slot sc') (rc (xreg-idx src)) , oc , ic
 exec-xinstr-cong (Xmov-m-r d sc')  (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (sc (XScratch.slot sc')) , sc , oc , ic
-exec-xinstr-cong (Xmov-arg d p _)  (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong (λ inp → just (fromℤ (maybe-zero (project _ p inp)))) ic) , sc , oc , ic
+exec-xinstr-cong (Xmov-arg d p _)  (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong (λ inp → just (maybe-zero (project _ p inp))) ic) , sc , oc , ic
 exec-xinstr-cong (Xadd-rr d src)   (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op _⊕_) (rc (xreg-idx d)) (rc (xreg-idx src))) , sc , oc , ic
 exec-xinstr-cong (Xsub-rr d src)   (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op _⊖_) (rc (xreg-idx d)) (rc (xreg-idx src))) , sc , oc , ic
 exec-xinstr-cong (Ximul-rr d src)  (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op _⊗_) (rc (xreg-idx d)) (rc (xreg-idx src))) , sc , oc , ic
@@ -541,7 +541,7 @@ exec-xinstr-cong (Xmov-farg d p _) (rc , sc , oc , ic) = store-cong2 rc (xreg-id
 exec-xinstr-cong (Xmov-out src)    (rc , sc , oc , ic) = rc , sc , rc (xreg-idx src) , ic
 
 step-cong : ∀ {sh} (i : AbstractInstr) {s₁ s₂ : ArithAbsState sh} → s₁ ~ s₂ → step i s₁ ~ step i s₂
-step-cong (load-input p _ r) (rc , sc , oc , ic) = store-cong2 rc r (cong (λ inp → just (fromℤ (maybe-zero (project _ p inp)))) ic) , sc , oc , ic
+step-cong (load-input p _ r) (rc , sc , oc , ic) = store-cong2 rc r (cong (λ inp → just (maybe-zero (project _ p inp))) ic) , sc , oc , ic
 step-cong (load-imm z r)   (rc , sc , oc , ic) = store-cong2 rc r refl , sc , oc , ic
 step-cong (add-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op _⊕_) (rc a) (rc b)) , sc , oc , ic
 step-cong (sub-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op _⊖_) (rc a) (rc b)) , sc , oc , ic
