@@ -20862,6 +20862,25 @@ already covers for definitions through `ParamDefs`.
 cases on types (an eliminator on universe codes, a type-indexed primitive) may only take them at grade
 `𝟘`, or is a decision of its own. The theorem is stated externally, over derivations, so it holds as long
 as no such construct exists; OCP-0009's kernel has no eliminator on `U`.
+Read on 2026-11-03 (branch `origin/plan-ref`): `bootstrap/DirectedHoTT/Spec/Syntax.agda` has `U`/`El` and
+codes but no eliminator on `U` (`PLAN-BIDI.md`: "`U` has no eliminator, so codes cannot be cased on").
+Two things there bear on the rule: the earlier PoC took `U = μ UF` as data (`poc/OCP0009/NbEPCwF.agda`)
+and OCP-0009 Rung 1 proposes letting `Cata` compute over types, a type-case that breaks parametricity
+over `U` unless the code argument is erased; and the kernel deliberately does not carry naturality in its
+hom-types (`ARCHITECTURE.md` §G8, refuted at `U` by `SpikeHomNatU`), so naturality stays an external
+theorem about definable terms. QTT erasure (`NbEPQTT.erase-irrelevant`, PoC only) gives "a `𝟘` index
+does not affect the result", a stepping stone, not the relational statement. Today's `∀a` maps to
+`(a :𝟘 U) → …` on that path.
+
+**Audit: nothing in the core inspects a type variable** (plan 0.141, 2026-11-03; what the proof then
+confirmed). In `Spec.Core.{Syntax,Typing,Meaning}`, `Spec.{Domain,Sub,Signature}` and the surface
+typing: types in terms are annotations (`lam`, `inl`, `inr`, `absurd`, `coerce`, the functors of
+`roll`/`fold`/`unfold`) whose meaning is uniform in a variable (`toL`/`fromL` at `K`, `conv` at `sub-var`
+is the identity); `lit`, `prim` and `sigop` are at closed types, with no polymorphic primitive (the
+surface's comparisons are `Int`/`Float` prims); kinds only restrict instances (`Respects`), and no rule
+computes with one; `ref d τ` is the one place an instance enters a meaning, which is why the hypothesis
+is on the definitions (`ParamDefs`); the surface picks instances statically (`c-poly`, `d-poly`), which is
+elaboration, not a run-time test.
 
 ### Spec
 `Spec.Equivalence` (`RelSub`, `Rel`, `RelF`, `sameSub`), `Spec.Metatheory` (`Sameness.rel-same`/`same-rel`;
