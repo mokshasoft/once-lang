@@ -417,7 +417,7 @@ d_path'45'at_466 v0 v1 v2
         -> coe
              du_unop_124 (coe MAlonzo.Code.Once.Arith.Machine.IR.C_ainput_20)
              (coe
-                MAlonzo.Code.Once.Arith.Machine.Shape.d_typePath'63'_196 (coe v0)
+                MAlonzo.Code.Once.Arith.Machine.Shape.d_typePath'63'_244 (coe v0)
                 (coe v1) (coe v3))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -936,7 +936,7 @@ d_recognise_818 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_166
+  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_56
 d_recognise_818 v0 v1 v2 v3 v4
   = case coe v1 of
       MAlonzo.Code.Once.Arith.Type.C_NInt_8
@@ -950,7 +950,7 @@ d_recognise_818 v0 v1 v2 v3 v4
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe
-                          MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_180 (coe v0)
+                          MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_70 (coe v0)
                           (coe v1) (coe v6))
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
                 _ -> MAlonzo.RTE.mazUnreachableError)
@@ -965,7 +965,7 @@ d_recognise_818 v0 v1 v2 v3 v4
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe
-                          MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_180 (coe v0)
+                          MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_70 (coe v0)
                           (coe v1) (coe v6))
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
                 _ -> MAlonzo.RTE.mazUnreachableError)

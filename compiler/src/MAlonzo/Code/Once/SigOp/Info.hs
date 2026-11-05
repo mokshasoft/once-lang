@@ -27,6 +27,7 @@ import qualified MAlonzo.Code.Once.Arith.Prim
 import qualified MAlonzo.Code.Once.Arith.SigOp.BlockSem
 import qualified MAlonzo.Code.Once.Arith.Type
 import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.IR.Semantics.Boundary
 import qualified MAlonzo.Code.Once.IR.Semantics.Polynomial
 import qualified MAlonzo.Code.Once.IR.Semantics.Value
 import qualified MAlonzo.Code.Once.Res
@@ -299,13 +300,29 @@ d_semM'45'of_130 v0 v1 v2 v3 v4
                   (coe
                      MAlonzo.Code.Once.IR.Semantics.Value.du_erase'7501'_112
                      (coe
-                        MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_164
+                        MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_54
                         (coe v6))
                      (coe
                         MAlonzo.Code.Once.Arith.SigOp.BlockSem.d_block'45'semP_282 v5 v6 v7
                         v10 v11)))
-      C_ffiV_88 -> coe (\ v5 -> coe v2 v3 v0 v1)
-      C_callsV_90 -> coe (\ v5 -> coe v2 v3 v0 v1)
+      C_ffiV_88
+        -> coe
+             (\ v5 v6 ->
+                coe
+                  MAlonzo.Code.Once.Res.du_mapRes_22
+                  (coe
+                     MAlonzo.Code.Once.IR.Semantics.Boundary.du_atTarget_62 (coe v5)
+                     (coe v1))
+                  (coe v2 v3 v0 v1 v6))
+      C_callsV_90
+        -> coe
+             (\ v5 v6 ->
+                coe
+                  MAlonzo.Code.Once.Res.du_mapRes_22
+                  (coe
+                     MAlonzo.Code.Once.IR.Semantics.Boundary.du_atTarget_62 (coe v5)
+                     (coe v1))
+                  (coe v2 v3 v0 v1 v6))
       C_emitsV_92
         -> coe
              (\ v6 v7 ->

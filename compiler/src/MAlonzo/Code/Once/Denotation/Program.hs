@@ -141,7 +141,7 @@ d_tableEnv'45'at_42 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                                then coe
                                                       seq (coe v16)
                                                       (coe
-                                                         MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_120
+                                                         MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_122
                                                          (coe v0)
                                                          (coe
                                                             d_tableEnv_26 (coe v0) (coe v1)
@@ -409,7 +409,7 @@ d_runIR_664 ::
   MAlonzo.Code.Once.IR.Semantics.Iterative.T_T'8734'_60
 d_runIR_664 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_120 (coe v0)
+      MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_122 (coe v0)
       (coe d_tableEnv_26 (coe v0) (coe v1) (coe d_table_658 (coe v2)))
       (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
       (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe d_main_660 (coe v2))
