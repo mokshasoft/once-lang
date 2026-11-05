@@ -831,11 +831,11 @@ d_program'45'text_194 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.RiscV64.Emit.block-payload
 d_block'45'payload_200 ::
-  MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_166 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_56 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_block'45'payload_200 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_180 v1 v2 v3
+      MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_70 v1 v2 v3
         -> case coe v2 of
              MAlonzo.Code.Once.Arith.Type.C_NInt_8
                -> coe
@@ -908,7 +908,7 @@ d_emit'45'payload_214 v0 v1
 -- Once.Arith.Backend.RiscV64.Emit.emit-arith-block
 d_emit'45'arith'45'block_226 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_166 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_56 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_emit'45'arith'45'block_226 v0 v1
   = coe
@@ -916,7 +916,7 @@ d_emit'45'arith'45'block_226 v0 v1
       (coe d_block'45'payload_200 (coe v1))
 -- Once.Arith.Backend.RiscV64.Emit.arith-block-symbol
 d_arith'45'block'45'symbol_232 ::
-  MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_166 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_56 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_arith'45'block'45'symbol_232 v0
   = coe
@@ -924,14 +924,14 @@ d_arith'45'block'45'symbol_232 v0
       (coe
          MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'name_96
          (coe
-            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'shape_174 (coe v0))
+            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'shape_64 (coe v0))
          (coe
-            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'kind_176 (coe v0))
+            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'kind_66 (coe v0))
          (coe
-            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_178 (coe v0)))
+            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_68 (coe v0)))
 -- Once.Arith.Backend.RiscV64.Emit.emit-arith-blocks
 d_emit'45'arith'45'blocks_236 ::
-  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_166] ->
+  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_56] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_emit'45'arith'45'blocks_236 v0
   = case coe v0 of

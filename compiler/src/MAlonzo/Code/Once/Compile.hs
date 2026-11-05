@@ -2008,7 +2008,7 @@ d_rewrite'45'program_1318 v0
 -- Once.Compile.table-blocks
 d_table'45'blocks_1322 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
-  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_166]
+  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_56]
 d_table'45'blocks_1322 v0
   = case coe v0 of
       [] -> coe v0
@@ -2027,7 +2027,7 @@ d_table'45'blocks_1322 v0
 -- Once.Compile.program-blocks
 d_program'45'blocks_1328 ::
   MAlonzo.Code.Once.Denotation.Program.T_IRProgram_652 ->
-  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_166]
+  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_56]
 d_program'45'blocks_1328 v0
   = coe
       MAlonzo.Code.Data.List.Base.du__'43''43'__32
@@ -2081,7 +2081,7 @@ d_dedup'45'blocks_1346
       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
 -- Once.Compile.block-symbol
 d_block'45'symbol_1348 ::
-  MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_166 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_56 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_block'45'symbol_1348 v0
   = coe
@@ -2089,14 +2089,14 @@ d_block'45'symbol_1348 v0
       (coe
          MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'name_96
          (coe
-            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'shape_174 (coe v0))
+            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'shape_64 (coe v0))
          (coe
-            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'kind_176 (coe v0))
+            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'kind_66 (coe v0))
          (coe
-            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_178 (coe v0)))
+            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_68 (coe v0)))
 -- Once.Compile.block-syms
 d_block'45'syms_1352 ::
-  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_166] ->
+  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_56] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 d_block'45'syms_1352 v0
   = coe
@@ -2369,7 +2369,7 @@ d_lib'45'program_1438 v0
 -- Once.Compile.lib-blocks
 d_lib'45'blocks_1442 ::
   [MAlonzo.Code.Once.Denotation.Program.T_IRFun_6] ->
-  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_166]
+  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_56]
 d_lib'45'blocks_1442 v0
   = coe d_program'45'blocks_1328 (coe d_lib'45'program_1438 (coe v0))
 -- Once.Compile.emitLibrary

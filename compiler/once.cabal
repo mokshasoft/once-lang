@@ -106,6 +106,7 @@ library
       MAlonzo.Code.Once.Inspect
       MAlonzo.Code.Once.Principal
       MAlonzo.Code.Once.Spec.ABI
+      MAlonzo.Code.Once.Spec.Boundary
       MAlonzo.Code.Once.Spec.Context
       MAlonzo.Code.Once.Spec.Domain
       MAlonzo.Code.Once.Spec.Effect
@@ -125,6 +126,7 @@ library
       MAlonzo.Code.Once.IR
       MAlonzo.Code.Once.IR.Ref
       MAlonzo.Code.Once.IR.Show
+      MAlonzo.Code.Once.IR.Semantics.Boundary
       MAlonzo.Code.Once.IR.Semantics.Event
       MAlonzo.Code.Once.IR.Semantics.FunctorMeaning
       MAlonzo.Code.Once.IR.Semantics.Iterative

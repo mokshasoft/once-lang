@@ -115,15 +115,12 @@ d_step_112 v0 v1 v2 v3
                      (coe
                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                         (coe
-                           MAlonzo.Code.Once.Spec.Word.d_fromℤ_22 (coe v0)
+                           d_maybe'45'zero_72
                            (coe
-                              d_maybe'45'zero_72
+                              MAlonzo.Code.Once.Arith.Machine.Shape.d_project_34 (coe v2)
+                              (coe v4)
                               (coe
-                                 MAlonzo.Code.Once.Arith.Machine.Shape.d_project_34 (coe v2)
-                                 (coe v4)
-                                 (coe
-                                    MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148
-                                    (coe v7)))))))
+                                 MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v7))))))
                   (coe
                      MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v7))
                   (coe
