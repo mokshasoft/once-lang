@@ -436,6 +436,12 @@ slot-read-in-frame .(room-checks src) .(L.lift src fs₀ p) slot i (mkRunLow src
 run-stack-ptr : ∀ prog (fs : FlatState) → RunLow prog fs → StackPtrWF fs
 run-stack-ptr .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) = RW.run-stack-ptr src fs₀ r
 
+-- the store invariant (no forward pointer; every stored Int a word, D391)
+run-flat-wf : ∀ prog (fs : FlatState) → RunLow prog fs → FlatWF fs
+run-flat-wf .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) =
+  Data.Product.proj₁ (RW.run-wf-ptr-bounds src fs₀ r)
+  where import Data.Product
+
 run-ptr-bounds : ∀ prog (fs : FlatState) → RunLow prog fs → PtrBoundsWF fs
 run-ptr-bounds .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) = RW.run-ptr-bounds src fs₀ r
 
