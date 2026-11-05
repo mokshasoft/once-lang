@@ -96,6 +96,19 @@ block-env-hit ((s′ , p) ∷ bs) s a = go (s′ ≟ s) a
     go (no ¬e)  (here e)  = ⊥-elim (¬e e)
     go (no _)   (there a) = block-env-hit bs s a
 
+-- plan 0.123 α′ (f1): …and what is found is an entry under that symbol.
+open import Data.Maybe.Properties using (just-injective)
+open import Data.Product using (proj₂)
+block-env-sound : ∀ (bs : List (String × RF.Payload)) (s : String) {pl : RF.Payload} → block-env bs s ≡ just pl
+                → Any (λ x → proj₁ x ≡ s × proj₂ x ≡ pl) bs
+block-env-sound []              s ()
+block-env-sound ((s′ , p) ∷ bs) s {pl} eq = go (s′ ≟ s) eq
+  where
+    go : (d : Dec (s′ ≡ s)) → (if isYes d then just p else block-env bs s) ≡ just pl
+       → Any (λ x → proj₁ x ≡ s × proj₂ x ≡ pl) ((s′ , p) ∷ bs)
+    go (yes e) eq′ = here (e , just-injective eq′)
+    go (no _)  eq′ = there (block-env-sound bs s eq′)
+
 -- D320: the binary's TRACE — the machine read off step by step (`RT.Run.δ`,
 -- `MachineTrace`): no fuel, so a run that never calls again never arrives.
 run-trace-riscv64 : Interp → RF.Image → RV.State → Tr ⊤

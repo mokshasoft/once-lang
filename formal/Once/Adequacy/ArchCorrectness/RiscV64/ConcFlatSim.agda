@@ -154,7 +154,20 @@ open import Once.Adequacy.CPU.RiscV64 using (ev-riscv64; block-env; call-at-risc
 import Once.Compile as Cmp
 import Once.Adequacy.BlockTable as BT
 import Once.Arith.Backend.RiscV64.Emit as AE
-open import Once.Adequacy.CPU.RiscV64 using (block-env-hit)
+open import Once.Adequacy.CPU.RiscV64 using (block-env-hit; block-env-sound)
+open import Once.Adequacy.RewriteOwned using (BlockOf; is-block)
+import Once.Adequacy.ArchCorrectness.RiscV64.ArithFrame as AF
+open import Once.Arith.Backend.XInstr.SpillBound using (SpillsWF; block-spills)
+open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
+open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
+open import Once.Arith.Machine.IR using (mk-block)
+open import Once.Arith.Type using (NInt; NFloat)
+open import Once.CCC.Codegen.RoomChecks using (sigop-scratch)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (role-sp; role-clos; role-heap; role-in1; role-out)
+open import Data.Nat.Properties using (*-distribʳ-+; *-comm; m≤n+m; m+n≤o⇒n≤o; ≤-reflexive)
+open import Data.Nat using (_*_)
+open import Data.Empty using (⊥-elim)
+open import Once.Arith.Machine.IR using (ArithBlock)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Data.String using (String)
 open import Data.Product using (Σ)
@@ -580,16 +593,17 @@ postulate
   -- frame lemma (`FlatCore.SigOpFrame`) sees it — the result in `a0`, the
   -- role registers kept, memory written only inside its frame (D388) — and
   -- the rest of `arith-sigop-run` is the theorem below.
-  arith-dispatch-run : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B} (si : SigOpInfo A B)
+  arith-block-value  : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
                      → RLr.RunLow o FS slot-size word-eq prog fs
-                     → riscv64-arith-table prog env
                      → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
                      → CFr.hfront hv + CFr.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
                      → LocState.halted (floc fs) ≡ false
-                     → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
-                     → ArithRun s (uncurry (dispatch-arith val-riscv64) pl s)
-                                (CFr.slots (spend (max-entry prog) (instr-sigop si)))
-                                (CFr.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs)))
+                     -- plan 0.123 α′ (f1): the block run is the SigOp's own (`arith-sigop-block`)
+                     → ∀ (b : ArithBlock) → BlockOf si b
+                     -- plan 0.123 α′ (f2): the frame half is the theorem `arith-dispatch-run`;
+                     -- what is left is the VALUE in the out register
+                     → FSimr.rreg' o FS word-eq fmt-eq (uncurry (dispatch-arith val-riscv64) (AE.block-payload b) s) a0
+                       ≡ CFr.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs))
 
   external-sigop-contract : ∀ {hv : HeapView} (ev : EE.RT.EvExtractor) (env : EE.RT.ArithEnv)
                               prog fs s {A B} (si : SigOpInfo A B)
@@ -608,6 +622,79 @@ postulate
                                    (LocState.ev-log (FlatMachine.floc {FS} fs)) (once-symbol-path (SigOpInfo.name si)) s)
 
 ------------------------------------------------------------------------
+-- Plan 0.129 B5: THE LOOKUP HALF IS A THEOREM. A compiler-owned SigOp of the
+-- image names a block of the program (`BlockTable.image-owned`), the file's
+-- table keeps that block's symbol (`table-has`), and `block-env` finds it.
+------------------------------------------------------------------------
+arith-sigop-lookup : ∀ (env : EE.RT.ArithEnv) prog fs {A B} (si : SigOpInfo A B)
+                   → riscv64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                   → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl)
+arith-sigop-lookup .(block-env (Cmp.blocks-riscv64 p)) .(Cmp.image-of p) fs si (p , refl , refl) int ftq
+  with FlatMachine.fetch-All {FS} {k = fpc fs} (BT.image-owned p) ftq int
+... | b , m , e , _ =
+  subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (Cmp.blocks-riscv64 p) (once-symbol-path n) ≡ just pl)) (sym e)
+        (block-env-hit (Cmp.blocks-riscv64 p) _ (BT.table-has AE.arith-block-symbol AE.block-payload (Cmp.program-blocks p) m))
+
+-- plan 0.123 α′ (f1): …and what it finds is the SigOp's OWN block — the
+-- table entry under its symbol is a program block with that symbol, and one
+-- symbol is one block (`BlockTable.which-block`, D389).
+arith-sigop-block : ∀ (env : EE.RT.ArithEnv) prog fs {A B} (si : SigOpInfo A B)
+                  → riscv64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                  → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
+                  → Σ ArithBlock (λ b → BlockOf si b × pl ≡ AE.block-payload b)
+arith-sigop-block .(block-env (Cmp.blocks-riscv64 p)) .(Cmp.image-of p) fs si (p , refl , refl) int ftq pl hit =
+  let (b , _ , bo , e) = BT.which-block AE.block-payload (Cmp.program-blocks p) si
+                           (FlatMachine.fetch-All {FS} {k = fpc fs} (BT.image-owned p) ftq int)
+                           (block-env-sound (Cmp.blocks-riscv64 p) _ hit)
+  in b , bo , e
+
+------------------------------------------------------------------------
+-- Plan 0.123 α′ (f2): THE FRAME HALF of the block's run is a theorem
+-- (`RiscV64.ArithFrame`): the subroutine keeps every role register but the
+-- result's, and writes only what its call pushes and its spills — each slot
+-- below what its tree asks for (`SpillBound`), which the room check charged
+-- (D387).
+------------------------------------------------------------------------
+private
+  fits-W : ∀ n → 8 * n ≤ (5 + n) * 8
+  fits-W n = subst (8 * n ≤_) (sym (trans (*-distribʳ-+ 8 5 n) (cong (40 +_) (*-comm n 8)))) (m≤n+m (8 * n) 40)
+
+  frame-run : ∀ s (n : ℕ) (blk : List XInstr) (W v : ℕ)
+            → SpillsWF n blk → 8 * n ≤ W → W ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
+            → FSimr.rreg' o FS word-eq fmt-eq (dispatch-arith val-riscv64 blk n s) a0 ≡ v
+            → ArithRun s (dispatch-arith val-riscv64 blk n s) W v
+  frame-run s n blk W v ok fits room out = record
+    { ar-out  = out
+    ; ar-role = λ { role-sp _ → Sub.sub-sp ; role-clos _ → Sub.sub-s1 ; role-heap _ → Sub.sub-s2
+                  ; role-in1 _ → Sub.sub-t0 ; role-out ne → ⊥-elim (ne refl) }
+    ; ar-mem  = Sub.sub-mem
+    ; ar-halt = Sub.sub-halt }
+    where module Sub = AF.Sub val-riscv64 n blk s W ok fits room
+
+arith-dispatch-run : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
+                   → RLr.RunLow o FS slot-size word-eq prog fs
+                   → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                   → CFr.hfront hv + CFr.slots (spend (max-entry prog) (instr-sigop si)) ≤ FSimr.rreg' o FS word-eq fmt-eq s sp
+                   → LocState.halted (floc fs) ≡ false
+                   -- plan 0.123 α′ (f1): the block run is the SigOp's own (`arith-sigop-block`)
+                   → ∀ (b : ArithBlock) → BlockOf si b
+                   → ArithRun s (uncurry (dispatch-arith val-riscv64) (AE.block-payload b) s)
+                              (CFr.slots (spend (max-entry prog) (instr-sigop si)))
+                              (CFr.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs)))
+arith-dispatch-run {hv} prog fs s si r int cc ftq room h .(mk-block _ NInt e) bo@(is-block {n = NInt} e eA eB eq) =
+  frame-run s (required-scratch (normalize e)) (emit-program (compile-abs (normalize e))) _ _
+    (block-spills (normalize e))
+    (subst (8 * required-scratch (normalize e) ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq)) (fits-W (required-scratch (normalize e))))
+    (m+n≤o⇒n≤o (CFr.hfront hv) room)
+    (arith-block-value {hv} prog fs s si r int cc ftq room h _ bo)
+arith-dispatch-run {hv} prog fs s si r int cc ftq room h .(mk-block _ NFloat e) bo@(is-block {n = NFloat} e eA eB eq) =
+  frame-run s (required-scratch e) (emit-program (compile-abs e)) _ _
+    (block-spills e)
+    (subst (8 * required-scratch e ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq)) (fits-W (required-scratch e)))
+    (m+n≤o⇒n≤o (CFr.hfront hv) room)
+    (arith-block-value {hv} prog fs s si r int cc ftq room h _ bo)
+
+------------------------------------------------------------------------
 -- Plan 0.123 α′ (e): THE RUN HALF, from the frame lemma — the link, the halt
 -- flag and the decode come from the run, the pc from the block offsets.
 ------------------------------------------------------------------------
@@ -619,25 +706,13 @@ arith-sigop-run : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B} (si
                 → LocState.halted (floc fs) ≡ false
                 → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                 → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-riscv64) pl s)
-arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit =
-  sigop-arith-step prog fs s (uncurry (dispatch-arith val-riscv64) pl s) si r int cc ftq h room
-    (arith-dispatch-run {hv} env prog fs s si r t int cc ftq room h pl hit) refl
+arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit
+  with arith-sigop-block env prog fs si t int ftq pl hit
+... | b , bo , refl =
+  sigop-arith-step prog fs s (uncurry (dispatch-arith val-riscv64) (AE.block-payload b) s) si r int cc ftq h room
+    (arith-dispatch-run {hv} prog fs s si r int cc ftq room h b bo) refl
     (trans (cong suc (pc-off cc))
            (sym (trans (blk-off-suc prog (fpc fs) (instr-sigop si) ftq) (+-comm (blk-off prog (fpc fs)) 1))))
-
-------------------------------------------------------------------------
--- Plan 0.129 B5: THE LOOKUP HALF IS A THEOREM. A compiler-owned SigOp of the
--- image names a block of the program (`BlockTable.image-owned`), the file's
--- table keeps that block's symbol (`table-has`), and `block-env` finds it.
-------------------------------------------------------------------------
-arith-sigop-lookup : ∀ (env : EE.RT.ArithEnv) prog fs {A B} (si : SigOpInfo A B)
-                   → riscv64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                   → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl)
-arith-sigop-lookup .(block-env (Cmp.blocks-riscv64 p)) .(Cmp.image-of p) fs si (p , refl , refl) int ftq
-  with FlatMachine.fetch-All {FS} {k = fpc fs} (BT.image-owned p) ftq int
-... | b , m , e =
-  subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (Cmp.blocks-riscv64 p) (once-symbol-path n) ≡ just pl)) (sym e)
-        (block-env-hit (Cmp.blocks-riscv64 p) _ (BT.table-has AE.arith-block-symbol AE.block-payload (Cmp.program-blocks p) m))
 
 arith-sigop-contract : ∀ {hv : HeapView} (env : EE.RT.ArithEnv) prog fs s {A B} (si : SigOpInfo A B)
                      → RLr.RunLow o FS slot-size word-eq prog fs
