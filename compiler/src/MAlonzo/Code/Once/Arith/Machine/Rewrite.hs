@@ -149,7 +149,7 @@ du_block'45'as'45'ir_46 v0 v1 v2
          MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_164
          (coe v1))
       (coe
-         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_108 (coe v0)
+         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_116 (coe v0)
          (coe v1) (coe v2))
 -- Once.Arith.Machine.Rewrite.try-lift
 d_try'45'lift_64 ::
@@ -280,7 +280,7 @@ d_bare'45'sigop_208 v0 v1 v2 v3 v4 v5
                    MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_164
                    (coe v7))
                 (coe
-                   MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_108 (coe v6)
+                   MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_116 (coe v6)
                    (coe v7) (coe v8)))
              (coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22

@@ -2087,7 +2087,7 @@ d_block'45'symbol_1348 v0
   = coe
       MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'own_62
       (coe
-         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'name_88
+         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'name_96
          (coe
             MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'shape_174 (coe v0))
          (coe
@@ -2200,7 +2200,7 @@ d_image'45'of_1390 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2174]
 d_image'45'of_1390 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.RoomChecks.d_room'45'checks_60
+      MAlonzo.Code.Once.CCC.Codegen.RoomChecks.d_room'45'checks_84
       (coe
          MAlonzo.Code.Once.CCC.Codegen.ProgramImage.d_program'45'image_36
          (coe d_entry'45'owner_1382)
