@@ -210,7 +210,7 @@ open import Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim o
   using (events-agree-start; events-agree-boot; AgreeAt; CompiledCorr; HeapView; EntryLike; reach-start; RunAt; mkRunAt)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o x86-32-frame-semantics slot-size refl using (RunLow; low-start)
 open import Once.CCC.Machine.FlatStoreWF x86-32-frame-semantics using (FlatWF; sv-below)
-open import Once.CCC.Machine.SMCore using (AbstractReg; AbstractTrace; Input1; Output; readReg; SV-Ptr; module LocState)
+open import Once.CCC.Machine.SMCore using (AbstractReg; AbstractTrace; Input1; Output; readReg; SV-Ptr; SV-Lit; module LocState)
 open LocState using (regs)
 
 -- The heap address map is CARRIED by the correspondence and EXTENDED at each
@@ -346,6 +346,7 @@ entry-wf B = record
 -- NB `frame-slots ≡ 0` is GONE from `EntryLike`: the loader hands `main` a frame the
 -- prologue already reserved (`ir-stack-budget`), which is exactly what makes the
 -- slot residuals dischargeable instead of false. See the note in `FlatFromObs`.
+open import Once.Type using (FitsInReg)
 entry-like : ∀ (B : ℕ) → EntryLike (mkFlat FFOx.entry-s (FFOx.entry-alloc B) 0)
 entry-like B = refl , refl , refl , refl , refl
              , (λ _ → refl) , (λ _ _ → refl) , (λ _ → refl)
@@ -354,10 +355,16 @@ entry-like B = refl , refl , refl , refl , refl
              , no-ptr
              -- the entry state is not inside a call window (plan 0.65 G2)
              , refl
+             -- no register holds a literal either (D391's word range starts)
+             , no-lit
   where no-ptr : ∀ (r : AbstractReg) loc
                → readReg (regs FFOx.entry-s) r ≡ SV-Ptr loc → ⊥
         no-ptr Input1  loc ()
         no-ptr Output  loc ()
+        no-lit : ∀ (r : AbstractReg) {A} (p : FitsInReg A) v
+               → readReg (regs FFOx.entry-s) r ≡ SV-Lit p v → ⊥
+        no-lit Input1  p v ()
+        no-lit Output  p v ()
 
 -- D320 / plan 0.119 D5: THE BINARY'S TRACE, budget by budget (see the x86-64 instance).
 conc-tr :

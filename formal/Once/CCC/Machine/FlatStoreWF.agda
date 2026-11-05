@@ -37,6 +37,11 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 open import Once.CCC.Label using (LabelId)
+open import Once.Spec.Type using (Type; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float)
+open import Once.SigOp.Words using (Words; LitWord; ResWord; IM; atTarget-word; semM-of-word)
+open import Once.SigOp.Info using (module SigOpInfo)
+open import Once.Word using (module WidthLaws)
+open import Data.Nat.Properties using (m^n>0)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; _≟HL_; module HeapRef; module HeapLocation)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
@@ -44,7 +49,7 @@ open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; 
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.Res using (Res; stopped; returns)
 open import Once.Type using (FitsInReg; fits-in-reg?; fits-int; fits-float)
-open import Once.Semantics.Machine using (⟦_⟧)
+open import Once.Semantics.Machine using (⟦_⟧; LitPayload)
 open import Once.CCC.Machine.SMCore
 open AllocState using (next-heap-ref; current-frame)
 open LocState using (regs; heapMem; stackMem; halted; ev-log)
@@ -60,6 +65,14 @@ open FlatMachine {FS}
 -- "Below the allocation frontier": a value/location references no block the
 -- allocator has not handed out yet. Non-pointers are unconstrained.
 ------------------------------------------------------------------------
+-- the target's `Int` modulus, `2 ^ (8 · frame-word)`
+IMfs : ℕ
+IMfs = IM (fs-numerics FS)
+
+0<IMfs : 0 < IMfs
+0<IMfs = m^n>0 2 (8 Data.Nat.* FrameSemantics.frame-word FS)
+  where import Data.Nat
+
 loc-below : ℕ → ValueLocation FS → Set
 loc-below n (AtDynamic hl)  = ref-id (heap-ref hl) < n
 loc-below n (AtStack _ _)   = ⊤
@@ -67,8 +80,15 @@ loc-below n (AtStack _ _)   = ⊤
 sv-below : ℕ → StoredValue FS → Set
 sv-below n (SV-Ptr loc)   = loc-below n loc
 sv-below n (SV-Tag _)     = ⊤
-sv-below n (SV-Lit _ _)   = ⊤
+-- D391: a literal is a WORD — an `Int` below the target's modulus (its ops
+-- `norm`, its literals are `fromℤ`, the world's answers are read at the
+-- target). An arith block's `/ −1` and `%` read their dividend as one.
+sv-below n (SV-Lit p v)   = LitWord IMfs p v
 sv-below n (SV-Code _)    = ⊤
+
+-- the unit sentinel (`SV-Lit fits-int 0`) is a word
+unit-below : ∀ (n : ℕ) → sv-below n unit-storedvalue
+unit-below n = 0<IMfs
 
 svm-below : ℕ → Maybe (StoredValue FS) → Set
 svm-below n (just v) = sv-below n v
@@ -86,7 +106,7 @@ loc-mono (AtStack _ _)  _   _  = tt
 sv-mono : ∀ {m n} (v : StoredValue FS) → m ≤ n → sv-below m v → sv-below n v
 sv-mono (SV-Ptr loc) m≤n b = loc-mono loc m≤n b
 sv-mono (SV-Tag _)   _   _ = tt
-sv-mono (SV-Lit _ _) _   _ = tt
+sv-mono (SV-Lit _ _) _   b = b
 sv-mono (SV-Code _)  _   _ = tt
 
 svm-mono : ∀ {m n} (mv : Maybe (StoredValue FS)) → m ≤ n → svm-below m mv → svm-below n mv
@@ -336,33 +356,94 @@ postulate
     → sv-below n (structured-pure-sigop-output si ls)
 
 -- plan 0.98: a Pure SigOp's output is `res-sv fitB (semM …)`, and `res-sv`
--- dispatches on the `Res` — so the output value is no longer a literal on the
--- nose and `tt` alone is stuck. Both branches ARE unconstrained (`SV-Lit` and
--- `unit-storedvalue` hold no pointer), so splitting the result restores it.
+-- dispatches on the `Res`. D391: a returned value is a word when the SigOp's
+-- value is (`SigOp.Words.semM-of-word`); the unit sentinel is one.
 res-sv-below : ∀ (n : ℕ) {B} (fitB : FitsInReg B) (r : Res ⟦ B ⟧)
-             → sv-below n (res-sv fitB r)
-res-sv-below n fitB (returns v) = tt
-res-sv-below n fitB stopped     = tt
+             → ResWord IMfs fitB r → sv-below n (res-sv fitB r)
+res-sv-below n fitB (returns v) w = w
+res-sv-below n fitB stopped     _ = unit-below n
+
+-- a value read from the store, its `Int` leaves words
+WordsM : (A : Type) → Maybe ⟦ A ⟧ → Set
+WordsM A (just v) = Words IMfs A v
+WordsM A nothing  = ⊤
 
 pure-out-val-below : ∀ (n : ℕ) {A B} (si : SigOpInfo A B) (fitB : FitsInReg B) (ma : Maybe ⟦ A ⟧)
-                   → sv-below n (pure-sigop-out-val si fitB ma)
-pure-out-val-below n si fitB (just a) =
+                   → WordsM A ma → sv-below n (pure-sigop-out-val si fitB ma)
+pure-out-val-below n si fitB (just a) w =
   res-sv-below n fitB (semM (fs-ffi FS) si (fs-numerics FS) a)
-pure-out-val-below n si fitB nothing  = tt
+    (semM-of-word (fs-numerics FS) (fs-ffi FS) (SigOpInfo.name si) (SigOpInfo.sem si) fitB a w)
+pure-out-val-below n si fitB nothing  _ = unit-below n
+
+-- READS KEEP WORDS: what the flat reader returns from a well-formed store
+private
+  int-words : ∀ {n} (m : Maybe (StoredValue FS)) → svm-below n m → WordsM Int (readTyped-int m)
+  int-words (just (SV-Lit fits-int v))   b = b
+  int-words (just (SV-Lit fits-float _)) _ = tt
+  int-words (just (SV-Ptr _))            _ = tt
+  int-words (just (SV-Tag _))            _ = tt
+  int-words (just (SV-Code _))           _ = tt
+  int-words nothing                      _ = tt
+
+  float-words : ∀ (m : Maybe ⟦ Float {0} ⟧) → WordsM Float m
+  float-words (just _) = tt
+  float-words nothing  = tt
+
+  sum-words : ∀ {A B : Type} (m : Maybe ⟦ A + B ⟧) → WordsM (A + B) m
+  sum-words (just _) = tt
+  sum-words nothing  = tt
+
+  pair-words : ∀ {A B : Type} (ma : Maybe ⟦ A ⟧) (mb : Maybe ⟦ B ⟧)
+             → WordsM A ma → WordsM B mb → WordsM (A * B) (combine-typed ma mb)
+  pair-words (just a) (just b) wa wb = wa , wb
+  pair-words (just a) nothing  _  _  = tt
+  pair-words nothing  _        _  _  = tt
+
+readTyped-words : ∀ {n ls} → StoreWF n ls → ∀ (A : Type) (loc : ValueLocation FS)
+                → WordsM A (readTyped A loc ls)
+readTyped-words wf Unit       loc = tt
+readTyped-words {ls = ls} wf Int loc = int-words (readLoc ls loc) (readLoc-below loc wf)
+readTyped-words {ls = ls} wf Float loc = float-words (readTyped-float (readLoc ls loc))
+readTyped-words {ls = ls} wf (A * B) loc =
+  pair-words (readTyped A loc ls) (readTyped B (offsetLoc loc (tsize A)) ls)
+    (readTyped-words wf A loc) (readTyped-words wf B (offsetLoc loc (tsize A)))
+readTyped-words {ls = ls} wf (A + B) loc = sum-words {A} {B} (readTyped (A + B) loc ls)
+readTyped-words wf (var _)    loc = tt
+readTyped-words wf Void       loc = tt
+readTyped-words wf (_ ⇒[ _ ] _) loc = tt
+readTyped-words wf (μ _)      loc = tt
+readTyped-words wf (ν _ _)    loc = tt
+
+readReg-words : ∀ {n} (A : Type) (v : StoredValue FS) → sv-below n v → WordsM A (readReg-typed A v)
+readReg-words Unit  v                       _ = tt
+readReg-words Int   (SV-Lit fits-int w)     b = b
+readReg-words Int   (SV-Lit fits-float _)   _ = tt
+readReg-words Int   (SV-Ptr _)              _ = tt
+readReg-words Int   (SV-Tag _)              _ = tt
+readReg-words Int   (SV-Code _)             _ = tt
+readReg-words Float v                       _ = float-words (readReg-typed Float v)
+readReg-words (A * B) v                     _ = tt
+readReg-words (A + B) v                     _ = tt
+readReg-words (var _) v                     _ = tt
+readReg-words Void  v                       _ = tt
+readReg-words (_ ⇒[ _ ] _) v                _ = tt
+readReg-words (μ _) v                       _ = tt
+readReg-words (ν _ _) v                     _ = tt
 
 sigop-output-below : ∀ (n : ℕ) {A B} (si : SigOpInfo A B) (ls : LocState FS)
-                   → sv-below n (exec-sigop-output si ls)
-sigop-output-below n {A} {B} si ls = go (effect si)
+                   → StoreWF n ls → sv-below n (exec-sigop-output si ls)
+sigop-output-below n {A} {B} si ls wf = go (effect si)
   where
     aux : ∀ (mf : Maybe (FitsInReg B)) (ml : Maybe (ValueLocation FS))
         → sv-below n (pure-sigop-out-aux si ls mf ml)
-    aux (just fitB) (just in-loc) = pure-out-val-below n si fitB (readTyped A in-loc ls)
+    aux (just fitB) (just in-loc) = pure-out-val-below n si fitB (readTyped A in-loc ls) (readTyped-words wf A in-loc)
     aux (just fitB) nothing       = pure-out-val-below n si fitB (readReg-typed A (readReg (regs ls) Input1))
+                                      (readReg-words A (readReg (regs ls) Input1) (wf-regs wf Input1))
     aux nothing     _             = structured-pure-sigop-below n si ls
     go : ∀ (e : EffectShape B) → sv-below n (exec-sigop-output-of e si ls)
     go Pure      = aux (fits-in-reg? B) (sv-as-loc (readReg (regs ls) Input1))
-    go (Emits _) = tt
-    go (Halts _) = tt
+    go (Emits _) = unit-below n
+    go (Halts _) = unit-below n
     go Answers   = call-below (fits-in-reg? B)
       where
         call-below : ∀ (mf : Maybe (FitsInReg B)) → sv-below n (call-sigop-val si ls mf)
@@ -370,10 +451,11 @@ sigop-output-below n {A} {B} si ls = go (effect si)
           where ans : ∀ d → sv-below n (call-sigop-ans si ls f d)
                 ans (yes p) = at (decode-at (SigOpInfo.baseA si) (readReg (regs ls) Input1) ls)
                   where at : ∀ ma → sv-below n (call-sigop-ans-at si ls f p ma)
-                        at (just _) = tt
-                        at nothing  = tt
-                ans (no _)  = tt
-        call-below nothing  = tt
+                        -- D391: the answer is read at the target
+                        at (just _) = atTarget-word (fs-numerics FS) f _
+                        at nothing  = unit-below n
+                ans (no _)  = unit-below n
+        call-below nothing  = unit-below n
 
 ------------------------------------------------------------------------
 -- Slot loads (they thread `alloc` through, so they need their own shape).
@@ -403,6 +485,12 @@ Preserves : (ls : LocState FS) (alloc : AllocState {FS})
           → LocState FS × AllocState {FS} → Set
 Preserves ls alloc (ls' , alloc') =
   StoreWF (next-heap-ref alloc') ls' × (next-heap-ref alloc ≤ next-heap-ref alloc')
+
+-- D113/D054: the machine materialises a literal at its own width (`fromℤ`)
+lit-word : ∀ {A} (p : FitsInReg A) (v : LitPayload p) → LitWord IMfs p (lit-value p v)
+lit-word fits-int   z = WidthLaws.fromℤ-in-range (8 Data.Nat.* FrameSemantics.frame-word FS) z
+  where import Data.Nat
+lit-word fits-float d = tt
 
 mutual
   wf-abstract : ∀ (i : AbstractInstr) (ls : LocState FS) (alloc : AllocState {FS})
@@ -463,11 +551,11 @@ mutual
   wf-abstract (worklist-check slot) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-sigop si) ls alloc wf =
     wf-write-reg-halt Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls) wf
-      (sigop-output-below (next-heap-ref alloc) si ls) , ≤-refl
+      (sigop-output-below (next-heap-ref alloc) si ls wf) , ≤-refl
   -- D113: `exec-abstract` MATERIALISES the literal (`lit-value`), so the cell
   -- holds the target's representation, not the payload. Mirrors the machine.
   wf-abstract (instr-load-const p v) ls alloc wf =
-    wf-write-reg Output (SV-Lit p (lit-value p v)) wf tt , ≤-refl
+    wf-write-reg Output (SV-Lit p (lit-value p v)) wf (lit-word p v) , ≤-refl
   wf-abstract (instr-load-code-addr n) ls alloc wf = wf-write-reg Output (SV-Code n) wf tt , ≤-refl
   wf-abstract instr-save-closure-reg ls alloc wf = wf , ≤-refl
   wf-abstract (instr-load-tag-lit n) ls alloc wf = wf-write-reg Output (SV-Tag n) wf tt , ≤-refl
