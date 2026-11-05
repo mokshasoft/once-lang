@@ -20887,6 +20887,22 @@ map, a related pair is a value and its map, for strictly positive types; an arro
 variable does not occur, is a shifted type whose reading is sameness), read through the composites'
 derivations with the law tools (`Naturality`).
 
+**Witnesses** (`formal/Once/SpecTests/Metatheory.agda`, plan 0.142 step 6). Each takes a law, lifts one
+restriction, and refutes the result at a small program, by computing its meaning:
+- *The fold's uniqueness with its hypothesis at another usage* (D369's `cata-uniqueᶜ`, the witness D370
+  deferred). `Γ = x : Void`, `F = K Unit`, `alg = const true`, `h = const false`: at usage `[One]` no
+  environment exists, so `h ∘ in = alg ∘ F h` holds vacuously; at `[Zero]` the empty one does, and at the
+  leaf `h` gives false, the fold true.
+- *An effectful `map`* (D369: `map` is effect-free). `mapᶜ`'s body at grade `act`, at `T = a * a`, over
+  two operations `f, g : Unit → Unit`: `map (f ∘ g)` calls `g, f, g, f`, `map f ∘ map g` calls
+  `g, g, f, f`; the first has a complete run (`Metatheory.Run`) the second cannot match, so
+  `map-composeᶜ` fails.
+- *Naturality without strict positivity.* `twice : ∀a. (a ⇒ a) ⇒ (a ⇒ a)`, `g ↦ g ∘ g`. In an arrow's
+  domain `map` keeps the type, so `map f` types at `(a ⇒ a)` only for `f : A → A`, and is post-composition.
+  At `Bool`, `f = not`, `g = id`: `map f (twice g) = not`, `twice (map f g) = not ∘ not`. The hypothesis
+  `ParamDefs` is met (`twice` is parametric, proved directly: related `g`, `g′` give related `g ∘ g`,
+  `g′ ∘ g′`), so the failure is the missing `StrictlyPositive`, not the definitions.
+
 ### Checks
 2026-11-05: `Once.Metatheory` (112 modules, the new field included); `make certified` OK;
 metatheory-gate, spec-gate, public-gate, pragma-gate, lint-pragmas OK. Not run: the backstop,
