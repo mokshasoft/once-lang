@@ -20888,6 +20888,8 @@ variable does not occur, is a shifted type whose reading is sameness), read thro
 derivations with the law tools (`Naturality`).
 
 ### Checks
-2026-11-05: `Once.Metatheory` (112 modules, the new field included); metatheory-gate, spec-gate,
-public-gate, pragma-gate, lint-pragmas OK.
+2026-11-05: `Once.Metatheory` (112 modules, the new field included); `make certified` OK;
+metatheory-gate, spec-gate, public-gate, pragma-gate, lint-pragmas OK. Not run: the backstop,
+lint-imports, check-extraction-sync (the extraction cone is unchanged: `Spec.Equivalence` and
+`Spec.Metatheory` are not extracted).
 
