@@ -20924,7 +20924,10 @@ restriction, and refutes the result at a small program, by computing its meaning
 
 ### Checks
 2026-11-05: `Once.Metatheory` (112 modules, the new field included); `make certified` OK;
-metatheory-gate, spec-gate, public-gate, pragma-gate, lint-pragmas OK. Not run: the backstop,
-lint-imports, check-extraction-sync (the extraction cone is unchanged: `Spec.Equivalence` and
-`Spec.Metatheory` are not extracted).
+metatheory-gate, spec-gate, public-gate, pragma-gate, lint-pragmas OK; the backstop OK (786 modules,
+`SpecTests.Metatheory` included); lint-imports over the 65 changed and dependent modules clean (the
+full-tree run exceeded its time cap). Not run: check-extraction-sync (the extraction cone is unchanged:
+`Spec.Equivalence` and `Spec.Metatheory` are not extracted). Reachability (MERGE.md §6, against
+master's tree at `6e2580439`): trust base 52 → 52; PROVED 725 → 736 modules, the 11 joining are
+`Metatheory/Parametricity*`; RUNS 3039 unchanged, RUNS ∖ PROVED 85, all declared, 0 gaps.
 
