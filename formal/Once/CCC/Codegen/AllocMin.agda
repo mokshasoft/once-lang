@@ -241,10 +241,11 @@ sigop-alloc-min : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) →
 sigop-alloc-min si n nothing  = tt ∷ []
 sigop-alloc-min si n (just _) = tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
-in-am : ∀ (r : MuRep) (n : ℕ) → AllocMinTrace (in-trace r n)
-in-am mu-box  n = tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-in-am mu-unit n = am2 ∷ []
-in-am mu-ptr  n = tt ∷ []
+in-am : ∀ (r : MuRep) kd L (n : ℕ) → AllocMinTrace (in-trace r kd L n)
+in-am mu-box  kd L n = tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+in-am mu-unit kd L n = am2 ∷ []
+in-am mu-ptr  word L n = tt ∷ []
+in-am mu-ptr  flat L n = tt ∷ tt ∷ am⊔ (size L) ∷ tt ∷ ++⁺ (put-am L n (suc n) 0) (tt ∷ [])
 
 out-am : ∀ (r : MuRep) → AllocMinTrace (out-trace r)
 out-am mu-box  = tt ∷ []
@@ -295,7 +296,7 @@ alloc-min-trace' (Iter {E} {A} {B} b) n l =
       (++⁺ (put-am A _ _ _)
       (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
            (get-am B 1)))))))))
-alloc-min-trace' (In {F} _) n l = in-am (mu-rep F) n
+alloc-min-trace' (In {F} _) n l = in-am (mu-rep F) _ _ n
 alloc-min-trace' (out-μ {F} _) n l = out-am (mu-rep F)
 alloc-min-trace' (Cata {F} _ {E} {A} alg) n l =
   cata-dispatch-am E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) _ _ _ _ (alloc-min-trace' alg 0 l)

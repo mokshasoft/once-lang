@@ -110,6 +110,7 @@ open import Once.IRTy using (WellFormedFI; wf-K; wf-Id; wf-Prod; wf-Sum)
 open import Once.CCC.Codegen.IRToTrace o
   using (visit-walk; rebuild-walk; lsize; resuspend-layer; getμ; wrap-sum)
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; put; put-k; get; fill; kind; lkind; lsz)
+import Once.CCC.Codegen.FlatLayout as FLK
 open import Once.CCC.Codegen.Size using (size)
 open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type) renaming (_+_ to _+ᵀ_)
 open import Data.Nat using (_⊔_; _∸_)
@@ -327,7 +328,7 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
-  using (ir-to-trace'; sigop-code; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; in-trace; out-trace; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; inj-trace; env-entry; cata-body)
+  using (ir-to-trace'; sigop-code; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; in-trace; node-copy-trace; out-trace; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; inj-trace; env-entry; cata-body)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Codegen.LabelRange o using (label-of; label-mono; cata-label-of)
 open import Once.CCC.Codegen.LabelScope o using (trace-of)
@@ -628,10 +629,11 @@ private
   none-nc t nc = transport {P = FragP _ _} (clabs-nc nc) refl none
 
 -- D366: `In`'s three shapes and `out-μ`'s carry no control label.
-in-frag : ∀ {lo hi} (r : MuRep) (n : ℕ) → FragP lo hi (clabs (in-trace r n)) []
-in-frag mu-box  n = none
-in-frag mu-unit n = none
-in-frag mu-ptr  n = none
+in-frag : ∀ {lo hi} (r : MuRep) kd L (n : ℕ) → FragP lo hi (clabs (in-trace r kd L n)) []
+in-frag mu-box  kd L n = none
+in-frag mu-unit kd L n = none
+in-frag mu-ptr  word L n = none
+in-frag mu-ptr  FLK.flat L n = none-nc (node-copy-trace L n) (SC.node-copy-P L n)
 
 out-frag : ∀ {lo hi} (r : MuRep) → FragP lo hi (clabs (out-trace r)) []
 out-frag mu-box  = none
@@ -789,7 +791,7 @@ frag (Iter {E} {A} {B} b) n l =
            (trans (clabs-skip pE _ (SC.put-P E (suc n) (suc (suc (suc n))) 0))
              (trans (clabs-skip pA _ (SC.put-P A (suc (suc n)) (suc (suc (suc n))) (size E)))
                     (cong (suc l ∷_) (clabs-nc (SC.get-P B 1)))))
-frag (In {F} _)    n l = in-frag (mu-rep F) n
+frag (In {F} _)    n l = in-frag (mu-rep F) _ _ n
 frag (out-μ {F} _) n l = out-frag (mu-rep F)
 frag (Cata {F} _ {E} {A} alg) n l =
   proj₁ cf , proj₂ cf , win-weaken ≤-refl (cata-label-mono E A ⌈ F ⌉F st (proj₁ XA) n (label-of XA) (trace-of XA)) (proj₂ (proj₂ FA))
@@ -956,10 +958,11 @@ private
   sig-nf si n nothing  = refl
   sig-nf si n (just _) = refl
 
-in-nf : ∀ (r : MuRep) (n : ℕ) → NoFn (in-trace r n)
-in-nf mu-box  n = refl
-in-nf mu-unit n = refl
-in-nf mu-ptr  n = refl
+in-nf : ∀ (r : MuRep) kd L (n : ℕ) → NoFn (in-trace r kd L n)
+in-nf mu-box  kd L n = refl
+in-nf mu-unit kd L n = refl
+in-nf mu-ptr  word L n = refl
+in-nf mu-ptr  FLK.flat L n = nf-all (SF.node-copy-P L n)
 
 out-nf : ∀ (r : MuRep) → NoFn (out-trace r)
 out-nf mu-box  = refl
@@ -1021,7 +1024,7 @@ frag-nf (Iter {E} {A} {B} b) n l =
              (nf-all (SF.get-P B 1))))))
   , proj₂ (frag-nf b _ _)
   where Xb = ir-to-trace' (suc (suc (suc (suc n)))) (suc (suc l)) b
-frag-nf (In {F} _)    n l = in-nf (mu-rep F) n , refl
+frag-nf (In {F} _)    n l = in-nf (mu-rep F) _ _ n , refl
 frag-nf (out-μ {F} _) n l = out-nf (mu-rep F) , refl
 frag-nf (Cata {F} _ {E} {A} alg) n l =
   cata-nf E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) (proj₁ XA) n (label-of XA) (trace-of XA) (proj₁ (frag-nf alg 0 l))

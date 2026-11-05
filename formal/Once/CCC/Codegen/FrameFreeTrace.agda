@@ -278,10 +278,11 @@ sigop-frame-free si n nothing  = tt ∷ []
 sigop-frame-free si n (just _) = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 -- D366: `In`'s three shapes and `out-μ`'s.
-in-ff : ∀ (r : MuRep) (n : ℕ) → FrameFreeTrace (in-trace r n)
-in-ff mu-box  n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-in-ff mu-unit n = tt ∷ []
-in-ff mu-ptr  n = tt ∷ []
+in-ff : ∀ (r : MuRep) kd L (n : ℕ) → FrameFreeTrace (in-trace r kd L n)
+in-ff mu-box  kd L n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+in-ff mu-unit kd L n = tt ∷ []
+in-ff mu-ptr  word L n = tt ∷ []
+in-ff mu-ptr  flat L n = tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-ff L n (suc n) 0) (tt ∷ [])
 
 out-ff : ∀ (r : MuRep) → FrameFreeTrace (out-trace r)
 out-ff mu-box  = tt ∷ []
@@ -334,7 +335,7 @@ frame-free-trace' (Iter {E} {A} {B} b) hb n l =
       (++⁺ (put-ff A _ _ _)
       (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
            (get-ff B 1)))))))))
-frame-free-trace' (In {F} _) hm n l = in-ff (mu-rep F) n
+frame-free-trace' (In {F} _) hm n l = in-ff (mu-rep F) _ _ n
 frame-free-trace' (out-μ {F} _) hm n l = out-ff (mu-rep F)
 -- C1: the algebra is generated at frontier 0 (its own frame), so its IH is
 -- taken there rather than at the caller's `n`.

@@ -336,10 +336,11 @@ module CataIRSlotStable {FS : FrameSemantics} where
                            (tt ∷ᴬ []ᴬ))))
 
   -- D366: `In`'s three shapes and `out-μ`'s.
-  in-stable : ∀ (r : MuRep) (n : ℕ) → AllSlotStable (in-trace r n)
-  in-stable mu-box  n = all-stable?-sound _ refl
-  in-stable mu-unit n = all-stable?-sound _ refl
-  in-stable mu-ptr  n = all-stable?-sound _ refl
+  in-stable : ∀ (r : MuRep) kd L (n : ℕ) → AllSlotStable (in-trace r kd L n)
+  in-stable mu-box  kd L n = all-stable?-sound _ refl
+  in-stable mu-unit kd L n = all-stable?-sound _ refl
+  in-stable mu-ptr  word L n = all-stable?-sound _ refl
+  in-stable mu-ptr  flat L n = tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ ++⁺ (put-st L n (suc n) 0) (tt ∷ᴬ []ᴬ)
 
   out-stable : ∀ (r : MuRep) → AllSlotStable (out-trace r)
   out-stable mu-box  = all-stable?-sound _ refl
@@ -386,7 +387,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-stable (const fits-float _) n l = all-stable?-sound _ refl
   ir-stable (inl {A} {B})   n l = inj-st 0 A (A +ᵀ B) n
   ir-stable (inr {A} {B})   n l = inj-st 1 B (A +ᵀ B) n
-  ir-stable (In {F} _)      n l = in-stable (mu-rep F) n
+  ir-stable (In {F} _)      n l = in-stable (mu-rep F) _ _ n
   ir-stable (out-μ {F} _)   n l = out-stable (mu-rep F)
   ir-stable (Out _)         n l = all-stable?-sound _ refl
   ir-stable (in-ν _)      n l = all-stable?-sound _ refl

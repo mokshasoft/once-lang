@@ -60,8 +60,8 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
-  using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; cata-body; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; in-trace; out-trace; inj-trace; env-entry)
-open import Once.CCC.Codegen.FlatLayout using (word; put; get; kind; lkind; lsz)
+  using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; cata-body; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; in-trace; node-copy-trace; out-trace; inj-trace; env-entry)
+open import Once.CCC.Codegen.FlatLayout using (word; flat; put; get; kind; lkind; lsz)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.IRTy using (IRTy) renaming (_*_ to _*ᵀ_; _+_ to _+ᵀ_)
 open import Once.Spec.Type using (Fun)
@@ -434,10 +434,11 @@ module Unique {FS : FrameSemantics} where
   sigop-defs si n (just _) = []
 
   -- D366: `In`'s three shapes and `out-μ`'s define no marker.
-  in-du : ∀ (r : MuRep) (n : ℕ) → AllPairs _≢_ (thunk-labels (in-trace r n) ++ [])
-  in-du mu-box  n = []
-  in-du mu-unit n = []
-  in-du mu-ptr  n = []
+  in-du : ∀ (r : MuRep) kd L (n : ℕ) → AllPairs _≢_ (thunk-labels (in-trace r kd L n) ++ [])
+  in-du mu-box  kd L n = []
+  in-du mu-unit kd L n = []
+  in-du mu-ptr  word L n = []
+  in-du mu-ptr  flat L n = subst (λ z → AllPairs _≢_ (z ++ [])) (sym (tl-nil (node-copy-trace L n) (refl ∷ refl ∷ refl ∷ refl ∷ All-++⁺ (put-nt L n (suc n) 0) (refl ∷ [])))) []
 
   out-du : ∀ (r : MuRep) → AllPairs _≢_ (thunk-labels (out-trace r) ++ [])
   out-du mu-box  = []
@@ -461,7 +462,7 @@ module Unique {FS : FrameSemantics} where
       (All-++⁺ (get-nt A 1)
            (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
             All-++⁺ (put-nt A n (suc (suc n)) 1) (refl ∷ refl ∷ refl ∷ [])))
-  defs-uniq (In {F} _)            n l = in-du (mu-rep F) n
+  defs-uniq (In {F} _)            n l = in-du (mu-rep F) _ _ n
   defs-uniq (out-μ {F} _)         n l = out-du (mu-rep F)
   defs-uniq (Out _)               n l = []
   defs-uniq (const fits-int   v)  n l = []
