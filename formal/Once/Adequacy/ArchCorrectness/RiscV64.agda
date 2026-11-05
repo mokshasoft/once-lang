@@ -182,7 +182,7 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {rv64-frame-semantics} using (flat-events)
 open import Once.CCC.Machine.FlatStoreWF rv64-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.SMCore using
-  (AbstractReg; AbstractTrace; Input1; Output; readReg; SV-Ptr; module LocState)
+  (AbstractReg; AbstractTrace; Input1; Output; readReg; SV-Ptr; SV-Lit; module LocState)
 open LocState using (regs)
 
 ------------------------------------------------------------------------
@@ -278,15 +278,21 @@ entry-wf B = record
 -- the loader's state is a legitimate starting state: first instruction, running,
 -- nothing allocated, no block sized, no register holding a pointer, and — plan
 -- 0.65 G2 — no unspilled return, since the entry state is not in a call window.
+open import Once.Type using (FitsInReg)
 entry-like : ∀ (B : ℕ) → EntryLike (mkFlat FFOr.entry-s (FFOr.entry-alloc B) 0)
 entry-like B = refl , refl , refl , refl , refl
              , (λ _ → refl) , (λ _ _ → refl) , (λ _ → refl)
              , no-ptr
              , refl
+             , no-lit
   where
     no-ptr : ∀ (r : AbstractReg) (loc : _) → readReg (regs FFOr.entry-s) r ≡ SV-Ptr loc → _
     no-ptr Input1  loc ()
     no-ptr Output  loc ()
+    -- no register holds a literal either (D391's word range starts)
+    no-lit : ∀ (r : AbstractReg) {A} (p : FitsInReg A) v → readReg (regs FFOr.entry-s) r ≡ SV-Lit p v → _
+    no-lit Input1  p v ()
+    no-lit Output  p v ()
 
 -- D320 / plan 0.119 D5: THE BINARY'S TRACE, budget by budget (see the x86-64 instance).
 conc-tr :

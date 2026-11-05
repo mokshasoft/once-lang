@@ -1260,7 +1260,7 @@ entry-ptr-bounds fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _) = record
         go r (SV-Code c)   eq rewrite eq = tt
 
 entry-flat-wf : ∀ (fs : FlatState) → EntryLike fs → FlatWF fs
-entry-flat-wf fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _) = record
+entry-flat-wf fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _ , nolit) = record
   { wf-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
   ; wf-heap  = λ hl → subst (svm-below _) (sym (hemp hl)) tt
   ; wf-stack = λ f k → subst (svm-below _) (sym (semp f k)) tt
@@ -1269,7 +1269,7 @@ entry-flat-wf fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _) = record
            → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) r)
         go r (SV-Ptr loc)  eq = ⊥-elim (noptr r loc eq)
         go r (SV-Tag t)    eq rewrite eq = tt
-        go r (SV-Lit p v)  eq rewrite eq = tt
+        go r (SV-Lit p v)  eq = ⊥-elim (nolit r p v eq)
         go r (SV-Code c)   eq rewrite eq = tt
 
 -- Plan 0.107: NO STEP LANDS ON THE START. A fall-through lands one past
@@ -1928,7 +1928,7 @@ run-link-at-thunk prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
 
     go : ∀ (fs' : FlatState) → Reachable prog 0 fs'
        → ∀ {r : ℕ} → flink fs' ≡ just r → Goal fs'
-    go fs' (reach-start .fs' (_ , _ , _ , _ , _ , _ , _ , _ , _ , fl) _ _) lk =
+    go fs' (reach-start .fs' (_ , _ , _ , _ , _ , _ , _ , _ , _ , fl , _) _ _) lk =
       ⊥-elim (nothing≢justℕ (trans (sym fl) lk))
     go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) {r} lk =
       step (flinkView i)
