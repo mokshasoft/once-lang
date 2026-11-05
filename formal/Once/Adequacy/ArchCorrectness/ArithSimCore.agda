@@ -159,7 +159,7 @@ module At (tn : TargetNum) where
     trans (cong (emit i ++_) (emit-program-++ is ys))
           (sym (++-assoc (emit i) (emit-program is) (emit-program ys)))
 
-  block-shape : ∀ {sh} (e : MArithIR sh NInt)
+  block-shape : ∀ {sh n} (e : MArithIR sh n)
               → emit-program (compile-abs e) ≡ emit-program (compile-go 0 e) ++ (XI.Xmov-out XR0 ∷ [])
   block-shape e = emit-program-++ (compile-go 0 e) (move-to-out 0 ∷ [])
 
@@ -380,7 +380,11 @@ module At (tn : TargetNum) where
     -- PATH-LOAD invariance: no instruction changes the concrete input read (the
     -- input pointer is never written; spill's write is disjoint from the input,
     -- which `WF s` witnesses via the region model).
-    (pl-inv       : ∀ i s → WF s → ∀ p k → pl (e1 i s) p k ≡ pl s p k)
+    -- plan 0.123 α′ (f3c): what the PROGRAM guarantees of an instruction, beside
+    -- the state's WF — x86-64 needs a spill's slot inside the block's frame to
+    -- keep it off an input the caller's stack holds; riscv64/x86-32 ask nothing.
+    (IOk          : XInstr → Set)
+    (pl-inv       : ∀ i s → WF s → IOk i → ∀ p k → pl (e1 i s) p k ≡ pl s p k)
     -- READ-FRAME: reading a non-target arith register is unchanged by `i`.
     (rf-other : ∀ i s x → (∀ d → tgt i ≡ just d → ¬ (x ≡ d))
               → rr (e1 i s) (arith-reg x) ≡ rr s (arith-reg x))
@@ -728,9 +732,9 @@ module At (tn : TargetNum) where
     -- The INPUT frame — R-input preservation. PROVED from `pl-inv` (the concrete
     -- input read is unchanged) + `input-unchanged` (the abstract input is unchanged).
     input-frame : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
-                → WF s-conc → R-input s-abs s-conc → R-input (exec-xinstr i s-abs) (e1 i s-conc)
-    input-frame i s-abs s-conc wf rin p =
-      trans (pl-inv i s-conc wf ⌊ p ⌋ᴾ (flat-off p))
+                → WF s-conc → IOk i → R-input s-abs s-conc → R-input (exec-xinstr i s-abs) (e1 i s-conc)
+    input-frame i s-abs s-conc wf ok rin p =
+      trans (pl-inv i s-conc wf ok ⌊ p ⌋ᴾ (flat-off p))
             (trans (rin p) (cong (leafWord p) (sym (input-unchanged i s-abs))))
 
     -- Same slot ⇒ same scratch address (XScratch eta: `sc = mk-scratch (slot sc)`).
@@ -794,21 +798,25 @@ module At (tn : TargetNum) where
     scratch-frame (XI.Xmov-farg a b k) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-farg a b k) tt s-abs s-conc rsc
     scratch-frame (XI.Xmov-out src) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-out src) tt s-abs s-conc rsc
 
-    Rf-step : ∀ {sh} (i : XInstr) → LoadOK sh i → (s-abs : ArithAbsState sh) (s-conc : St)
+    Rf-step : ∀ {sh} (i : XInstr) → LoadOK sh i → IOk i → (s-abs : ArithAbsState sh) (s-conc : St)
             → Rf s-abs s-conc → Rf (exec-xinstr i s-abs) (e1 i s-conc)
-    Rf-step i lok s-abs s-conc rf@(rr₀ , rsc , rin , wf) =
+    Rf-step i lok ok s-abs s-conc rf@(rr₀ , rsc , rin , wf) =
       R-step-full i lok s-abs s-conc rf , scratch-frame i s-abs s-conc rr₀ rsc
-      , input-frame i s-abs s-conc wf rin , wf-e1 i s-conc wf
+      , input-frame i s-abs s-conc wf ok rin , wf-e1 i s-conc wf
+
+    IOksWF : List XInstr → Set
+    IOksWF []       = ⊤
+    IOksWF (i ∷ is) = IOk i × IOksWF is
 
     -- The fold carries the program's `LoadsWF` and peels one `LoadOK` per
     -- instruction — the only place the program fact is consumed.
-    Rf-sim : ∀ {sh} (xs : List XInstr) → LoadsWF sh xs
+    Rf-sim : ∀ {sh} (xs : List XInstr) → LoadsWF sh xs → IOksWF xs
            → (s-abs : ArithAbsState sh) (s-conc : St)
            → Rf s-abs s-conc
            → Rf (exec-xprog xs s-abs) (eb xs s-conc)
-    Rf-sim []       lw s-abs s-conc rf rewrite eb-nil s-conc = rf
-    Rf-sim (i ∷ is) (lok , lw) s-abs s-conc rf rewrite eb-cons i is s-conc =
-      Rf-sim is lw (exec-xinstr i s-abs) (e1 i s-conc) (Rf-step i lok s-abs s-conc rf)
+    Rf-sim []       lw _ s-abs s-conc rf rewrite eb-nil s-conc = rf
+    Rf-sim (i ∷ is) (lok , lw) (ok , oks) s-abs s-conc rf rewrite eb-cons i is s-conc =
+      Rf-sim is lw oks (exec-xinstr i s-abs) (e1 i s-conc) (Rf-step i lok ok s-abs s-conc rf)
 
     ----------------------------------------------------------------------
     -- Rf at block entry (`init env`).
@@ -834,7 +842,7 @@ module At (tn : TargetNum) where
     -- result register holds the abstract output — PROVED: the final Xmov-out's
     -- concrete out-reg = arith-reg XR0's read (rt-out), which R ties to the
     -- abstract reg 0 = the block output (block-value-semM makes it defined).
-    output-extract : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) (s-conc : St)
+    output-extract : ∀ {sh n} (e : MArithIR sh n) (env : ⟦ sh ⟧S) (s-conc : St)
       → R (exec-xprog (emit-program (compile-abs e)) (init env))
           (eb (emit-program (compile-abs e)) s-conc)
       → output-of (exec-xprog (emit-program (compile-abs e)) (init env))
@@ -861,13 +869,14 @@ module At (tn : TargetNum) where
         body = trans (trans rr-eq (rf-other (XI.Xmov-out XR0) cPre XR0 (no-tgt-hyp (XI.Xmov-out XR0) refl)))
                      (sym (trans (cong (λ t → rr t out-reg) ebk≡) (rt-out XR0 cPre)))
 
-    arith-block-correct : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) (s-conc : St)
+    arith-block-correct : ∀ {sh n} (e : MArithIR sh n) (env : ⟦ sh ⟧S) (s-conc : St)
       → WF s-conc
+      → IOksWF (emit-program (compile-abs e))
       → R-input (init env) s-conc
       → rr (eb (emit-program (compile-abs e)) s-conc) out-reg
           ≡ block-semM e tn (toWord tn sh env)
-    arith-block-correct e env s-conc wf ri =
+    arith-block-correct e env s-conc wf oks ri =
       just-injective
         (trans (sym (output-extract e env s-conc
-                       (proj₁ (Rf-sim (emit-program (compile-abs e)) (compile-loads-abs e) (init env) s-conc (Rf-init env s-conc wf ri)))))
+                       (proj₁ (Rf-sim (emit-program (compile-abs e)) (compile-loads-abs e) oks (init env) s-conc (Rf-init env s-conc wf ri)))))
                (block-value-semM tn e env))
