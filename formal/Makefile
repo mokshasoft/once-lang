@@ -91,6 +91,15 @@ backstop:
 merge-gate: public-gate pragma-gate metatheory-gate spec-gate backstop certified
 	@echo "merge-gate: OK"
 
+# Per-module cost: wall time and peak memory, one Agda process per module,
+# leaves first, on a staged copy of HEAD (your _build is untouched). Resumes;
+# `make profile-report` prints the worst offenders. Hours for the whole tree.
+.PHONY: profile profile-report
+profile:
+	@scripts/agda-profile.py
+profile-report:
+	@scripts/agda-profile.py --report
+
 .PHONY: lint-pragmas
 lint-pragmas:
 	@$(CURDIR)/scripts/lint-pragmas.sh
