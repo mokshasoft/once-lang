@@ -46,7 +46,7 @@ Contention: if another agda process is running (another session), the profiler
 WAITS for it before starting each module, and logs that it waited. Two Agda
 processes at once on this machine distort every number (and kill each other).
 """
-import hashlib, os, re, shutil, subprocess, sys, time
+import glob, hashlib, os, re, shutil, subprocess, sys, time
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HOME = os.path.expanduser('~')
@@ -177,6 +177,10 @@ def run_one(froot, lib, m, logdir, rung):
     rts = f'-M{cap - 700}m -s{stats}' + (' -c' if rung == 'c' else '')
     env = dict(os.environ, GHCRTS=rts)
     env.pop('AGDA_DIR', None)
+    # The module itself is always checked from scratch: an interface left by a manual check in
+    # the work tree would otherwise be loaded, and the row would record the load, not the check.
+    for agdai in glob.glob(os.path.join(froot, '_build', '*', 'agda', modpath(m)[:-len('.agda')] + '.agdai')):
+        os.remove(agdai)
     cmd = ['systemd-run', '--user', '--scope', '--quiet', '-p', f'MemoryMax={mem}',
            '-p', f'MemorySwapMax={swap}', '--',
            '/usr/bin/time', '-o', timef, '-f', '%e %M',
