@@ -6,7 +6,7 @@
 -- Once.Metatheory.Laws — the categorical structure and its internal
 -- language (`Spec.Metatheory.Categorical`, `Equations`), proved.
 --
---   Categorical   Laws.Categorical, Laws.Assoc (with Compose, ComposeG,
+--   Categorical   Laws.Categorical(.Products), Laws.Assoc (with Compose, ComposeG,
 --                 ComposeShape, Combinators, Canon); the functors and the
 --                 recursion schemes: Laws.MapFun, Laws.CataLaws,
 --                 Laws.CataUnique, Laws.AnaLaws (with MapSem, MapLaws,
@@ -25,6 +25,7 @@ module Once.Metatheory.Laws (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) 
 
 open import Once.Spec.Metatheory using (Categorical; Equations)
 import Once.Metatheory.Laws.Categorical Σ u fmt S as C
+import Once.Metatheory.Laws.Categorical.Products Σ u fmt S as CP
 import Once.Metatheory.Laws.Assoc Σ u fmt S as A
 import Once.Metatheory.Laws.Funs Σ u fmt S as F
 import Once.Metatheory.Laws.Lets Σ u fmt S as L
@@ -43,16 +44,16 @@ categorical = record
   { compose-idˡ      = C.compose-idˡ
   ; compose-idʳ      = C.compose-idʳ
   ; compose-assoc    = A.compose-assoc
-  ; fst-pairᶜ        = C.fst-pairᶜ
-  ; snd-pairᶜ        = C.snd-pairᶜ
-  ; pair-ηᶜ          = C.pair-ηᶜ
+  ; fst-pairᶜ        = CP.fst-pairᶜ
+  ; snd-pairᶜ        = CP.snd-pairᶜ
+  ; pair-ηᶜ          = CP.pair-ηᶜ
   ; terminal-uniqueᶜ = C.terminal-uniqueᶜ
   ; case-inlᶜ        = C.case-inlᶜ
   ; case-inrᶜ        = C.case-inrᶜ
   ; case-ηᶜ          = C.case-ηᶜ
   ; initial-uniqueᶜ  = C.initial-uniqueᶜ
-  ; curry-βᶜ         = C.curry-βᶜ
-  ; curry-ηᶜ         = C.curry-ηᶜ
+  ; curry-βᶜ         = CP.curry-βᶜ
+  ; curry-ηᶜ         = CP.curry-ηᶜ
   ; map-idᶜ          = MF.map-idᶜ
   ; map-composeᶜ     = MF.map-composeᶜ
   ; cata-βᶜ          = CL.cata-βᶜ

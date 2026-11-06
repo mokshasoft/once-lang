@@ -40,7 +40,7 @@ open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans; SameNu
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
 open import Once.Metatheory.Laws.Views Σ u fmt S
-open import Once.Metatheory.Laws.Categorical Σ u fmt S using (toSameP; fromSameP)
+open import Once.Metatheory.Laws.Categorical.Tools Σ u fmt S using (toSameP; fromSameP)
 open import Once.Metatheory.Laws.ComposeShape Σ u fmt S using (Shape; shape; compShape)
 open import Once.Metatheory.Laws.ComposeG Σ u fmt S using (liftᵛ; module CompGV)
 open import Once.Metatheory.Laws.Compose Σ u fmt S using (compᵛ)

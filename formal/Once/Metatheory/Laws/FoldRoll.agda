@@ -40,7 +40,7 @@ open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
 open import Once.Metatheory.Laws.Views Σ u fmt S
-open import Once.Metatheory.Laws.Categorical Σ u fmt S using (toSameP; fromSameP)
+open import Once.Metatheory.Laws.Categorical.Tools Σ u fmt S using (toSameP; fromSameP)
 open import Once.Metatheory.Laws.MapSem Σ using (module MapAt)
 open import Once.Metatheory.Laws.MapLaws Σ using (module MapResp)
 open import Once.Metatheory.Laws.MapTop Σ u fmt S using (module MapTopV)
