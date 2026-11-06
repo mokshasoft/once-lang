@@ -662,7 +662,7 @@ module PairC {FS : FrameSemantics} where
     -- unfolding, and conversion unfolds the nine steps before it gets to
     -- the arguments. Every instantiation spells the same four terms.
     open NineSteps (suc (suc n)) (load-from-slot (suc n)) (load-from-slot (suc (suc n))) (VR.settle vrg)
-      using (u2; u3; u4; u5; u6; u7; u8; u9; u10)
+      using (u2; u3; u4; u5; u6; u7; u8; u9; u10; u10ᵒ; u10ᵒ-def)
 
     -- the pair node, as the bump allocator hands it out at `u3`.
     hl : HeapLocation
@@ -970,6 +970,11 @@ module PairC {FS : FrameSemantics} where
 
     SETTLE : FlatState
     SETTLE = u10
+
+    -- `SETTLE` at the opaque name `Pair` meets `Pair.Place`/`Pair.Pres` at
+    -- (`NineSteps.u10ᵒ`, plan 0.144).
+    SETTLE≡ᵒ : SETTLE ≡ u10ᵒ
+    SETTLE≡ᵒ = sym u10ᵒ-def
 
     RUN : FlatSteps prog STEPS (entry-flat base s alloc cl rs) SETTLE
     RUN = FlatSteps-++ pre-chain

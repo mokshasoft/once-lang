@@ -367,6 +367,21 @@ module Mach {FS : FrameSemantics} where
     u9  = flat-step-straight store-indirect-suc       u8
     u10 = flat-step-straight (load-from-slot (suc n)) u9
 
+    -- THE END STATE BEHIND A NAME AGDA WILL NOT UNFOLD (plan 0.144; the
+    -- `context-form-mismatch-opaque` pattern). Two families that build the
+    -- nine rows separately (`Pair.Chain`'s run, `Pair.Place`, `Pair.Pres`)
+    -- reach `u10` at syntactically different forms, and deciding them equal
+    -- evaluated all nine rows (~100 s each, profile 2026-11-06). Two copies of
+    -- `u10ᵒ` compare by their arguments alone; `u10ᵒ-def` crosses back.
+    opaque
+      u10ᵒ : FlatState
+      u10ᵒ = u10
+
+    opaque
+      unfolding u10ᵒ
+      u10ᵒ-def : u10ᵒ ≡ u10
+      u10ᵒ-def = refl
+
   module NineStepPres
     (n : ℕ) (i6 i8 : AbstractInstr)
     (u1 : FlatState) (s : LocState FS) (alloc : AllocState {FS})

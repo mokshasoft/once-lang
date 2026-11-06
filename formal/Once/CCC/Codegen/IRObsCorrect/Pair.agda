@@ -192,16 +192,18 @@ module PairAsm {FS : FrameSemantics} where
 
               -- THE SETTLE STATE HAS THREE NAMES: `PCG.SETTLE` (the run's),
               -- `PPlace.u10` (the placement's) and `PPresG.NSP.u10` (the
-              -- preservation facts'). Agda identifies any two of them only by
-              -- evaluating all nine rows, ~100 s each (profile 2026-11-06, plan
-              -- 0.144). So each identification is decided ONCE, here, and every
-              -- field from `PairPlace`/`PairPres` is transported along it by
+              -- preservation facts'). Agda identifies any two of them directly
+              -- only by evaluating all nine rows, ~100 s each (profile
+              -- 2026-11-06, plan 0.144). So they are identified through the
+              -- OPAQUE end state `NineSteps.u10ᵒ`, whose copies compare by their
+              -- arguments (the `context-form-mismatch-opaque` pattern), and every
+              -- field from `PairPlace`/`PairPres` is transported along that by
               -- `subst`, whose motive Agda checks by name.
               settle≡place : PCG.SETTLE ≡ PPlace.u10
-              settle≡place = refl
+              settle≡place = trans PCG.SETTLE≡ᵒ PPlace.NSP.u10ᵒ-def
 
               settle≡pres : PCG.SETTLE ≡ PPresG.NSP.u10
-              settle≡pres = refl
+              settle≡pres = trans PCG.SETTLE≡ᵒ PPresG.NSP.u10ᵒ-def
 
               at-settle : ∀ {P : FlatState → Set} → P PPresG.NSP.u10 → P PCG.SETTLE
               at-settle {P} = subst P (sym settle≡pres)
