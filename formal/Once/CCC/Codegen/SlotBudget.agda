@@ -50,7 +50,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
-open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type; fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod) renaming (_+_ to _+ᵀ_)
+open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type; fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod) renaming (_+_ to _+ᵀ_; _*_ to _*ᵀ_)
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (Fun)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
@@ -64,7 +64,7 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; ir-stack-budget; resuspend-layer; ir-to-trace-lab; ir-stack-budget-from; ir-to-unit; sigop-budget; sigop-code; CataStrategy; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; in-trace; in-next; out-trace; fsize; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body; cata-call-setup; cata-call-from; env-entry; env-prologue; inj-trace)
+  (ir-to-trace'; ir-to-trace; ir-stack-budget; resuspend-layer; ir-to-trace-lab; ir-stack-budget-from; ir-to-unit; sigop-budget; sigop-code; CataStrategy; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; in-trace; with-copy; two-cell; copy-next; in-next; out-trace; fsize; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body; cata-call-setup; cata-call-from; env-entry; env-prologue; inj-trace)
 
 -- the o-independent segment machinery (`SlotBelow`, `SegState`, `AllSeg`,
 -- `SegOK`, …), split out so a program image shares one `AllSeg`
@@ -164,6 +164,11 @@ in-mono mu-unit kd n = ≤-refl
 in-mono mu-ptr  word n = ≤-refl
 in-mono mu-ptr  flat n = m≤n⇒m≤1+n (n≤1+n n)
 
+-- D393: the copy takes two more slots
+cn-mono : ∀ kd n → n ≤ suc (suc (copy-next kd n))
+cn-mono word n = ≤-trans (n≤1+n n) (n≤1+n (suc n))
+cn-mono flat n = ≤-trans (n≤1+n n) (≤-trans (n≤1+n _) (≤-trans (n≤1+n _) (n≤1+n _)))
+
 frontier-mono : ∀ {A B} (ir : IR A B) (n l : ℕ) → n ≤ budget-of (ir-to-trace' n l ir)
 frontier-mono id       n l = ≤-refl
 frontier-mono fst      n l = ≤-refl
@@ -178,7 +183,7 @@ frontier-mono (⟨ f , g ⟩) n l =
             (≤-trans (n≤1+n (suc n))
               (≤-trans (n≤1+n (suc (suc n))) (n≤1+n (suc (suc (suc n)))))))
           (≤-trans (frontier-mono f _ l) (frontier-mono g _ _))
-frontier-mono (curry b)  n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
+frontier-mono (curry {E} b)  n l = cn-mono (kind E) n
 frontier-mono apply n l = ≤-trans (n≤1+n n) (≤-trans (n≤1+n (suc n)) (n≤1+n (suc (suc n))))
 frontier-mono inl n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono inr n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
@@ -192,11 +197,11 @@ frontier-mono (out-μ _)   n l = ≤-refl
 frontier-mono (Cata {F} _ {E} {A} alg) n l = cata-mono E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) _ _ _ _
 frontier-mono (Out _)        n l = ≤-refl
 -- D189: the same two-cell build as `Ana`, with `id` as the block.
-frontier-mono (in-ν _)     n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
+frontier-mono (in-ν {F} _)     n l = cn-mono (kind (⟦ F ⟧TI (ν-type F))) n
 -- D189: the ν suspension is `curry`'s closure record cell for cell, so
 -- its walk clause is `curry`'s. The coalgebra is a named block, like the
 -- closure body, emitted at frontier 0 under the ν's own label.
-frontier-mono (Ana _ c)      n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
+frontier-mono (Ana _ c)      n l = cn-mono flat n
 -- the loop's two stashes, then the round above them.
 frontier-mono (Iter b)       n l =
   ≤-trans (n≤1+n n) (≤-trans (n≤1+n (suc n)) (≤-trans (n≤1+n (suc (suc n))) (≤-trans (n≤1+n (suc (suc (suc n)))) (frontier-mono b _ _))))
@@ -774,6 +779,26 @@ inj-below t P S n =
   where n< : n < suc (suc n)
         n< = m≤n⇒m≤1+n ≤-refl
 
+-- D393: a kept value's copy, then the two-cell build
+wc-sb : ∀ kd E n c → SegOK (suc (suc (copy-next kd n))) (with-copy kd E n (λ m → two-cell m c))
+wc-sb word E n c = segok-idle _ refl
+    (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷
+     sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
+wc-sb flat E n c = segok-SB _
+  (++⁺ (nn refl refl ∷ ss refl b0 (λ _ ()) refl ∷ nn refl refl ∷ ss refl b1 (λ _ ()) refl ∷
+        ++⁺ (put-SB E n (suc n) 0 b0 b1) (ss refl b1 (λ _ ()) refl ∷ []))
+       (nn refl refl ∷
+        nn refl refl ∷ ss refl b2 (λ _ ()) refl ∷ nn refl refl ∷ ss refl ≤-refl (λ _ ()) refl ∷
+        nn refl refl ∷ ss refl b2 (λ _ ()) refl ∷ nn refl refl ∷ nn refl refl ∷ nn refl refl ∷
+        ss refl ≤-refl (λ _ ()) refl ∷ []))
+  where b2 : suc (suc n) < suc (suc (suc (suc n)))
+        b2 = m≤n⇒m≤1+n ≤-refl
+        b1 : suc n < suc (suc (suc (suc n)))
+        b1 = ≤-trans (n≤1+n _) b2
+        b0 : n < suc (suc (suc (suc n)))
+        b0 = ≤-trans (n≤1+n _) b1
+
 slots-below : ∀ {A B} (ir : IR A B) (n l : ℕ)
             → SegOK (budget-of (ir-to-trace' n l ir)) (trace-of (ir-to-trace' n l ir))
 slots-below id       n l = segok-idle _ refl (sb-none refl ∷ [])
@@ -811,11 +836,7 @@ slots-below (⟨_,_⟩ {A} {B} {C} f g) n l =
 -- the parent's segment here. That is the point: `SegOK (ir-stack-budget ir)`
 -- applied the entry block's budget to the whole program, which is wrong for
 -- any program with a body.
-slots-below (curry b) n l =
-  segok-idle _ refl
-    (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷
-     sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
+slots-below (curry {E} b) n l = wc-sb (kind E) E n _
 -- D380: the call pair `[env-word, arg…]`, the argument `put` at word 1.
 slots-below (apply {A} {B}) n l =
   segok-++ (segok-get A 1)
@@ -852,16 +873,8 @@ slots-below (Cata {F} _ {E} {A} alg) n l =
   cata-slots-below E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) _ _ _ _ (slots-below alg 0 l)
 slots-below (Out _)        n l =
   segok-idle _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
-slots-below (in-ν _) n l =
-  segok-idle _ refl
-    (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷
-     sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
-slots-below (Ana _ c) n l =
-  segok-idle _ refl
-    (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷
-     sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
+slots-below (in-ν {F} _) n l = wc-sb (kind (⟦ F ⟧TI (ν-type F))) _ n _
+slots-below (Ana {F} _ {E} {A} c) n l = wc-sb flat (E *ᵀ A) n _
 -- the loop: the environment stash, the round (its own frontier is the loop's
 -- budget), then the branch and the next pair through the two stashes.
 -- plan 0.123 B.4 α: the environment's form kept, the next pair `put` together.

@@ -64,7 +64,7 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label; CataStrategy; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; out-trace; fsize; resuspend-layer; cata-call-from; inj-trace; env-entry; env-prologue)
+  (sigop-code; ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label; CataStrategy; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; with-copy; two-cell; out-trace; fsize; resuspend-layer; cata-call-from; inj-trace; env-entry; env-prologue)
 open import Once.CCC.Codegen.FlatLayout
   using (Kind; word; flat; kind; put; put-k; get; get-k; fill; put-All; put-k-All; get-All; get-k-All; fill-All; lkind; lsz)
 open import Once.CCC.Codegen.Size using (size)
@@ -426,6 +426,12 @@ out-ls : ∀ {lo hi} (r : MuRep) → LabelsIn lo hi (out-trace r)
 out-ls mu-box  = li-none refl ∷ []
 out-ls mu-unit = li-none refl ∷ []
 out-ls mu-ptr  = li-none refl ∷ []
+-- D393: a kept value's copy, then the two-cell build
+wc-ls : ∀ kd E n c → ∀ {lo hi} → LabelsIn lo hi (with-copy kd E n (λ m → two-cell m c))
+wc-ls word E n c = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+wc-ls flat E n c = nolab-ls (++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nolab E n (suc n) 0) (refl ∷ [])) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
+
 
 labels-in : ∀ {A B} (ir : IR A B) (n l : ℕ)
           → LabelsIn l (label-of (ir-to-trace' n l ir)) (trace-of (ir-to-trace' n l ir))
@@ -450,9 +456,7 @@ labels-in (⟨_,_⟩ {A} {B} {C} f g) n l =
 -- over the inlined body and its landing `c-label` were the only two, and both
 -- existed solely because the body was spliced in. The body marker and the code
 -- address stay invisible as they always did — `thunk` provenance (D082).
-labels-in (curry b) n l =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+labels-in (curry {E} b) n l = wc-ls (kind E) E n _
 labels-in (apply {A} {B}) n l =
   nolab-ls (++⁺ (get-nolab A 1)
                 (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
@@ -488,15 +492,11 @@ labels-in (Cata {F} _ {E} {A} alg) n l =
 labels-in (Out _)        n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 -- D189: the same two-cell build as `Ana`, with `id` as the block.
-labels-in (in-ν _) n l =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+labels-in (in-ν {F} _) n l = wc-ls (kind (IT.⟦ F ⟧TI (IT.ν-type F))) _ n _
 -- D189: the ν suspension is `curry`'s closure record cell for cell, so
 -- its walk clause is `curry`'s. The coalgebra is a named block, like the
 -- closure body, emitted at frontier 0 under the ν's own label.
-labels-in (Ana _ c) n l =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+labels-in (Ana {F} _ {E} {A} c) n l = wc-ls flat (E IT.* A) n _
 -- the loop owns `l` (its top) and `suc l` (its exit); the round is compiled
 -- above them.
 labels-in (Iter {E} {A} {B} b) n l =
@@ -1151,6 +1151,11 @@ out-sa mu-box  = segagree-nolab _ (refl ∷ [])
 out-sa mu-unit = segagree-nolab _ (refl ∷ [])
 out-sa mu-ptr  = segagree-nolab _ (refl ∷ [])
 
+-- D393: a kept value's copy, then the two-cell build
+wc-sa : ∀ kd E n c → SegAgree (with-copy kd E n (λ m → two-cell m c))
+wc-sa word E n c = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+wc-sa flat E n c = segagree-nolab _ (++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nolab E n (suc n) 0) (refl ∷ [])) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
+
 seg-agree   : ∀ {A B} (ir : IR A B) (n l : ℕ) → SegAgree (trace-of (ir-to-trace' n l ir))
 pair-agree-heap : ∀ {A B C} (f : IR A B) (g : IR A C) (n l : ℕ)
             → SegAgree (trace-of (ir-to-trace' n l (⟨ f , g ⟩)))
@@ -1172,12 +1177,8 @@ seg-agree initial n l = segagree-nolab _ (refl ∷ [])
 seg-agree (In {F} w) n l = in-sa (mu-rep F) _ _ n
 seg-agree (out-μ {F} w) n l = out-sa (mu-rep F)
 seg-agree (Out w) n l = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree (in-ν w) n l =
-  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree (Ana w c) n l =
-  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+seg-agree (in-ν {F} w) n l = wc-sa (kind (IT.⟦ F ⟧TI (IT.ν-type F))) _ n _
+seg-agree (Ana {F} w {E} {A} c) n l = wc-sa flat (E IT.* A) n _
 seg-agree (SigOp w) n l = sigop-seg w n (cmp-of (sem w))
 seg-agree (Call _) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (const fits-int v) n l = segagree-nolab _ (refl ∷ [])
@@ -1188,9 +1189,7 @@ seg-agree (const fits-float v) n l = segagree-nolab _ (refl ∷ [])
 -- D159: the entry block is now LABEL-FREE straight-line code — no jump over a
 -- body, no landing label — so the bracket combinator `segagree-curry` is not
 -- needed here at all. The body's own agreement moved to the block.
-seg-agree (curry bd)  n l =
-  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+seg-agree (curry {E} bd)  n l = wc-sa (kind E) E n _
 seg-agree (apply {A} {B}) n l =
   segagree-nolab _ (++⁺ (get-nolab A 1)
                         (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
@@ -1536,6 +1535,11 @@ env-entry-nolab flat E A =
       (refl ∷ refl ∷ refl ∷
        ++⁺ (put-nolab E 1 3 0) (++⁺ (put-nolab A 2 3 _) (refl ∷ refl ∷ [])))
 
+-- D393: a kept value's copy, then the two-cell build, is label-free
+wc-nl : ∀ kd E n c → NoLab (with-copy kd E n (λ m → two-cell m c))
+wc-nl word E n c = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
+wc-nl flat E n c = ++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nolab E n (suc n) 0) (refl ∷ [])) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+
 scope-ok id                  n l = scope-nil _ _ _
 scope-ok fst                 n l = scope-nil _ _ _
 scope-ok snd                 n l = scope-nil _ _ _
@@ -1549,7 +1553,7 @@ scope-ok (out-μ _)           n l = scope-nil _ _ _
 scope-ok (Out _)             n l = scope-nil _ _ _
 scope-ok (in-ν {F} _) n l =
   scope-nolab _ _ l _
-    (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+    (wc-nl (kind (⟦ F ⟧TI (ν-type F))) _ n _)
     (body-bl-in [] [] 0 (id {⟦ F ⟧TI (ν-type F)}) n l (suc l) (n≤1+n l) (scope-nil _ _ _))
     (body-bl-agree [] [] 0 (id {⟦ F ⟧TI (ν-type F)}) n l (suc l) (scope-nil _ _ _))
 -- D199: `body-bl-in`/`body-bl-agree` no longer apply — they are hardwired to a
@@ -1560,7 +1564,7 @@ scope-ok (in-ν {F} _) n l =
 -- `nocross-win` rather than new reasoning.
 scope-ok (Ana {F} wf {E} {A} c) n l =
   scope-nolab _ _ l _
-    (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+    (wc-nl flat (E IT.* A) n _)
     ana-bl-in ana-bl-agree
   where
     lb = suc l
@@ -1643,7 +1647,7 @@ scope-ok (const fits-float _) n l = scope-nil _ _ _
 -- ── the closure clauses: the body IS the block, and the entry has no label
 scope-ok (curry {E} {A} bd) n l =
   scope-nolab _ _ l _
-    (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+    (wc-nl (kind E) E n _)
     (body-bl-in _ (env-entry-nolab (kind E) E A) _ bd n l (suc (suc l)) (m≤n⇒m≤1+n (n≤1+n l))
                 (scope-ok bd _ (suc (suc l))))
     (body-bl-agree _ (env-entry-nolab (kind E) E A) _ bd n l (suc (suc l)) (scope-ok bd _ (suc (suc l))))

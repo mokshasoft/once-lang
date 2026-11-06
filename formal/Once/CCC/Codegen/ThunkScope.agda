@@ -59,7 +59,7 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
-open import Once.CCC.Codegen.IRToTrace o using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; out-trace; cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; push2; pop2; wrap-sum; resuspend-layer;
+open import Once.CCC.Codegen.IRToTrace o using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; with-copy; two-cell; out-trace; cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; push2; pop2; wrap-sum; resuspend-layer;
   cata-call-from; inj-trace; env-entry; getμ)
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; kind; lkind; lsz;
   put-All; put-k-All; get-All; get-k-All; fill; fill-All)
@@ -396,6 +396,11 @@ module Scope {FS : FrameSemantics} where
   out-nt mu-unit = all-no-thunk-in _ refl
   out-nt mu-ptr  = all-no-thunk-in _ refl
 
+  -- D393: a kept value's copy, then the two-cell build
+  wc-nt : ∀ kd E n c → NoThunkT (with-copy kd E n (λ m → two-cell m c))
+  wc-nt word E n c = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
+  wc-nt flat E n c = ++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nt E n (suc n) 0) (refl ∷ [])) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+
   thunks-in : ∀ {A B} (ir : IR A B) (n l : ℕ)
             → ThunksIn l (label-of (ir-to-trace' n l ir)) (trace-of (ir-to-trace' n l ir))
   thunks-in id n l = all-no-thunk-in _ refl
@@ -409,18 +414,18 @@ module Scope {FS : FrameSemantics} where
     ts-from-nt (++⁺ (get-nt A 1)
                     (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
                      ++⁺ (put-nt A n (suc (suc n)) 1) (refl ∷ refl ∷ refl ∷ [])))
-  thunks-in (curry b)  n l = all-no-thunk-in _ refl
+  thunks-in (curry {E} b)  n l = ts-from-nt (wc-nt (kind E) E n _)
   thunks-in (In {F} x)    n l = in-nt (mu-rep F) _ _ n
   thunks-in (out-μ {F} x) n l = out-nt (mu-rep F)
   thunks-in (Out x)    n l = all-no-thunk-in _ refl
-  thunks-in (in-ν x)   n l = all-no-thunk-in _ refl
+  thunks-in (in-ν {F} x)   n l = ts-from-nt (wc-nt (kind (⟦ F ⟧TI (ν-type F))) _ n _)
   -- `const` splits on its `FitsInRegI` witness (IRToTrace.agda:958-959), so
   -- the trace only reduces once that is matched.
   thunks-in (const fits-int   v) n l = all-no-thunk-in _ refl
   thunks-in (const fits-float v) n l = all-no-thunk-in _ refl
   thunks-in (SigOp x)  n l = sigop-thunks x n l (cmp-of (sem x))
   thunks-in (Call _)  n l = all-no-thunk-in _ refl
-  thunks-in (Ana x c)  n l = all-no-thunk-in _ refl
+  thunks-in (Ana {F} x {E} {A} c)  n l = ts-from-nt (wc-nt flat (Once.IRTy._*_ E A) n _)
   -- the loop mints only `c-label`s; the round sits above its two.
   thunks-in (Iter {E} {A} {B} b) n l =
     ++⁺ (ts-from-nt (get-nt E 0))

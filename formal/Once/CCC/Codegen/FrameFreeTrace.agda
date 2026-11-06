@@ -55,7 +55,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
-open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type; fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod) renaming (_+_ to _+ᵀ_)
+open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type; fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod) renaming (_+_ to _+ᵀ_; _*_ to _*ᵀ_)
 open import Once.Spec.Type using (Fun; K; Id; _⊕_; _⊗_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (blocks-layout; link-top)
@@ -72,7 +72,7 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-call-from; cata-trace-const; fsize; resuspend-layer; env-entry; env-prologue; inj-trace)
+  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; with-copy; two-cell; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-call-from; cata-trace-const; fsize; resuspend-layer; env-entry; env-prologue; inj-trace)
 
 -- third projection of `ir-to-trace'`'s 4-tuple / of `cata-dispatch`'s 3-tuple
 -- (record patterns, so they reduce under eta — unlike IRToTrace's own
@@ -289,6 +289,11 @@ out-ff mu-box  = tt ∷ []
 out-ff mu-unit = tt ∷ []
 out-ff mu-ptr  = tt ∷ []
 
+-- D393: a kept value's copy, then the two-cell build
+wc-ff : ∀ kd E n c → FrameFreeTrace (with-copy kd E n (λ m → two-cell m c))
+wc-ff word E n c = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+wc-ff flat E n c = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-ff E n (suc n) 0) (tt ∷ [])) (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+
 frame-free-trace' : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) (n l : ℕ)
                   → FrameFreeTrace (trace-of (ir-to-trace' n l ir))
 frame-free-trace' id       hm n l = tt ∷ []
@@ -306,8 +311,7 @@ frame-free-trace' (⟨_,_⟩ {A} {B} {C} f g) (hf , hg) n l =
        ++⁺ (frame-free-trace' g hg _ _)
            (tt ∷ tt ∷ tt ∷
             ++⁺ (put-ff B _ _ 0) (++⁺ (put-ff C _ _ _) (tt ∷ []))))
-frame-free-trace' (curry b)  hb n l =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+frame-free-trace' (curry {E} b)  hb n l = wc-ff (kind E) E n _
 frame-free-trace' (apply {A} {B}) hm n l =
   ++⁺ (get-ff A 1)
       (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
@@ -343,13 +347,11 @@ frame-free-trace' (Cata {F} _ {E} {A} alg) hm n l =
   cata-dispatch-ff E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) _ _ _ _ (frame-free-trace' alg hm 0 l)
 frame-free-trace' (Out _)        hm n l = tt ∷ tt ∷ tt ∷ tt ∷ []
 -- D189: the same two-cell build as `Ana`, with `id` as the block.
-frame-free-trace' (in-ν _)     hm n l =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+frame-free-trace' (in-ν {F} _)     hm n l = wc-ff (kind (⟦ F ⟧TI (ν-type F))) _ n _
 -- D189: the ν suspension is `curry`'s closure record cell for cell, so
 -- its walk clause is `curry`'s. The coalgebra is a named block, like the
 -- closure body, emitted at frontier 0 under the ν's own label.
-frame-free-trace' (Ana _ c)      hm n l =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+frame-free-trace' (Ana {F} _ {E} {A} c)      hm n l = wc-ff flat (E *ᵀ A) n _
 frame-free-trace' (SigOp si)     hm n l = sigop-frame-free si n (cmp-of (sem si))
 frame-free-trace' (Call _)      hm n l = tt ∷ []
 frame-free-trace' (const fits-int _)   hm n l = tt ∷ []

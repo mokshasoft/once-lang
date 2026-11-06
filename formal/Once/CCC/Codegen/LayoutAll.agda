@@ -31,7 +31,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; lkind; lsz;
   put-All; put-k-All; get-All; get-k-All; fill; fill-All)
 open import Once.CCC.Codegen.Size using (size)
-open import Once.CCC.Codegen.IRToTrace o using (wrap-sum; inj-trace; cata-call-from; cata-call-setup; env-entry; getμ; in-trace; node-copy-trace)
+open import Once.CCC.Codegen.IRToTrace o using (wrap-sum; inj-trace; cata-call-from; cata-call-setup; env-entry; getμ; in-trace; node-copy-trace; with-copy; two-cell)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr)
 
 module Seg {P : AbstractInstr → Set}
@@ -81,6 +81,18 @@ module Seg {P : AbstractInstr → Set}
   -- D393 (β1): a flat layer's copy into a fresh node
   node-copy-P : ∀ L n → All P (node-copy-trace L n)
   node-copy-P L n = p-mo ∷ p-sas n ∷ p-alloc _ ∷ p-sas (suc n) ∷ ++⁺ (put-P L n (suc n) 0) (p-lfs (suc n) ∷ [])
+
+  -- the two-cell build (D190)
+  two-cell-P : ∀ m c → All P (two-cell m c)
+  two-cell-P m c = p-mo ∷ p-sas m ∷ p-alloc 2 ∷ p-sas (suc m) ∷ p-mi ∷ p-lfs m ∷ p-sa 0 ∷ p-code c ∷ p-sa 1 ∷ p-lfs (suc m) ∷ []
+
+  -- D393: a kept value's copy, then the rest
+  with-copy-P : ∀ kd E n (k : ℕ → _) → (∀ m → All P (k m)) → All P (with-copy kd E n k)
+  with-copy-P word E n k pk = pk n
+  with-copy-P flat E n k pk = ++⁺ (node-copy-P E n) (p-mi ∷ pk (suc (suc n)))
+
+  wc2-P : ∀ kd E n c → All P (with-copy kd E n (λ m → two-cell m c))
+  wc2-P kd E n c = with-copy-P kd E n (λ m → two-cell m c) (λ m → two-cell-P m c)
 
   -- `In`'s shapes (D366, D393)
   in-P : ∀ r kd L n → All P (in-trace r kd L n)

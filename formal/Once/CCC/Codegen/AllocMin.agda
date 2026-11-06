@@ -59,7 +59,7 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-call-from; cata-trace-const; fsize; resuspend-layer; env-entry; env-prologue; inj-trace)
+  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; with-copy; two-cell; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-call-from; cata-trace-const; fsize; resuspend-layer; env-entry; env-prologue; inj-trace)
 open import Once.CCC.Codegen.FrameFreeTrace o using (trace-of; cata-trace-of)
 
 AllocMinI : AbstractInstr → Set
@@ -252,6 +252,11 @@ out-am mu-box  = tt ∷ []
 out-am mu-unit = tt ∷ []
 out-am mu-ptr  = tt ∷ []
 
+-- D393: a kept value's copy, then the two-cell build
+wc-am : ∀ kd E n c → AllocMinTrace (with-copy kd E n (λ m → two-cell m c))
+wc-am word E n c = tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+wc-am flat E n c = ++⁺ (tt ∷ tt ∷ am⊔ (size E) ∷ tt ∷ ++⁺ (put-am E n (suc n) 0) (tt ∷ [])) (tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+
 alloc-min-trace' : ∀ {A B} (ir : IR A B) (n l : ℕ)
                  → AllocMinTrace (trace-of (ir-to-trace' n l ir))
 alloc-min-trace' id       n l = tt ∷ []
@@ -268,8 +273,7 @@ alloc-min-trace' (⟨_,_⟩ {A} {B} {C} f g) n l =
        ++⁺ (alloc-min-trace' g _ _)
            (tt ∷ am⊔ (size (B *ᵀ C)) ∷ tt ∷
             ++⁺ (put-am B _ _ 0) (++⁺ (put-am C _ _ _) (tt ∷ []))))
-alloc-min-trace' (curry b)  n l =
-  tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+alloc-min-trace' (curry {E} b)  n l = wc-am (kind E) E n _
 alloc-min-trace' (apply {A} {B}) n l =
   ++⁺ (get-am A 1)
       (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ am⊔ (suc (size A)) ∷ tt ∷ tt ∷ tt ∷ tt ∷
@@ -301,10 +305,8 @@ alloc-min-trace' (out-μ {F} _) n l = out-am (mu-rep F)
 alloc-min-trace' (Cata {F} _ {E} {A} alg) n l =
   cata-dispatch-am E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) _ _ _ _ (alloc-min-trace' alg 0 l)
 alloc-min-trace' (Out _)        n l = tt ∷ tt ∷ tt ∷ tt ∷ []
-alloc-min-trace' (in-ν _)     n l =
-  tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-alloc-min-trace' (Ana _ c)      n l =
-  tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+alloc-min-trace' (in-ν {F} _)     n l = wc-am (kind (⟦ F ⟧TI (ν-type F))) _ n _
+alloc-min-trace' (Ana {F} _ {E} {A} c)      n l = wc-am flat (E *ᵀ A) n _
 alloc-min-trace' (SigOp si)     n l = sigop-alloc-min si n (cmp-of (sem si))
 alloc-min-trace' (Call _)      n l = tt ∷ []
 alloc-min-trace' (const fits-int _)   n l = tt ∷ []
