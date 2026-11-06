@@ -21359,3 +21359,46 @@ move.
   before γ.
 * A flat word never holds a stack pointer, since words are scalars, tags or node pointers. So only
   registers and frame slots hold stack pointers, which is what makes R2's ordering provable.
+
+## D394 — LIVE MEANS IN SCOPE: A VALUE'S CELLS ARE ITS FOOTPRINT, NOT THE FRONTIER (2026-11-06)
+
+**Decided with the user** (2026-11-06), for plan 0.123 β3–β6 and γ.
+
+### Context
+`ValueRel.Transport` keeps a value valid across a state change only if the new state agrees on
+EVERY live cell, and "live" is the allocation frontier: a cell, once allocated, is live forever. β3
+(a callee writes its caller's destination), β4 (`Iter` overwrites its state's place), β6 (rounds reuse
+frame slots) and γ (a freed block is reused) all write cells that are allocated but hold no value in
+scope. The code is right; the proof's notion of "live" cannot see it. The frontier cannot express it
+either: a destination reserved before a result is built lies below the result's blocks, so no
+frontier contains the result and excludes the destination.
+
+### Decision
+* **Live means in scope.** The cells a value uses are its FOOTPRINT, read off its validity witness:
+  the blocks it occupies, and what its components' footprints use. A closure's environment and a ν's
+  seed are opaque (their types are hidden), so the witness carries their footprint. The cells live at
+  a point of the program are the union of the footprints of the values in scope there. There is no
+  separate live set, at run time or in the proof: the compiler knows statically when a value goes out
+  of scope, and the proof uses exactly that.
+* **Transport is by footprint.** A value stays valid across any change that keeps its footprint:
+  the cells read the same, its blocks stay allocated, and keep their sizes. A closure's callee premise
+  (`CallRuns`) and a ν's force premise (`ForceRuns`) ask for agreement on the environment's or seed's
+  footprint only.
+* **What may be written.** A footprint lies in allocated blocks. A fresh block (above the frontier
+  today; from the free list after γ, which is run-time data, not bookkeeping) is outside every value's
+  footprint, so a value is kept across any write to a block reserved after it. β3's destination, β4's
+  place, β6's slots and γ's reused blocks are such writes.
+* **The three invariants** of memory use, all derived from scope:
+  1. every allocation is freed (`NoLeak`, γ / M7);
+  2. no cell is read before it is written (D382: `Written`, `Pad`);
+  3. **the compiler adds no dead stores of its own**: every write is read later, or belongs to a
+     value the IR itself discards (`terminal`, the dropped half of `fst`/`snd`, an environment
+     component the body does not use). Waste is then visible in the program, and the optimizer's
+     job is to shrink those discards. A sum's padding words are a case to check.
+  1 and 2 are done with γ; 3 is its own item after γ.
+
+### Consequences
+* The frontier-based transport API (`validityWF-*`) stays, as an instance: a footprint lies below the
+  frontier, so agreeing on everything live still keeps it. Existing proofs are untouched.
+* Step L1: footprints and the footprint transport core. Step L2: closures and νs carry their
+  environment's or seed's footprint. Then β3 (D393, the callee's `mem-pres` exempts the destination).
