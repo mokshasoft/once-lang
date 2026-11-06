@@ -379,6 +379,8 @@ module ApplyC {FS : FrameSemantics} where
                                  (trans (+-suc (length S2) _) (cong suc (trans (+-suc (length S2) _) (cong suc (+-suc (length S2) base)))))))))
 
               j   = ClosureValidWF.code-j cvw
+              -- D394: the environment's footprint is what the call keeps
+              EL  = ClosureValidWF.env-foot-live cvw
               feq = ClosureValidWF.code-found cvw
 
               code-S : readLoc v₉ (sucLoc fst-loc) ≡ just (SV-Code blbl)
@@ -421,9 +423,9 @@ module ApplyC {FS : FrameSemantics} where
                        (cong fret call-eq)
                        (cong falloc call-eq)
                        n≤
-                       (FlatAlloc.alloc-bft {FS} N alloc)
-                       (FlatAlloc.alloc-bk {FS} N alloc)
-                       (λ l b → at-call (λ st → readLoc st l ≡ readLoc s l) (keepS l b))
+                       (λ l e → FlatAlloc.alloc-bft {FS} N alloc l (EL l e))
+                       (λ l e → FlatAlloc.alloc-bk {FS} N alloc l (EL l e))
+                       (λ l e → at-call (λ st → readLoc st l ≡ readLoc s l) (keepS l (EL l e)))
                        (at-call (λ st → readReg (regs st) Input1 ≡ SV-Ptr L) refl)
                        (FlatAlloc.alloc-live {FS} N alloc 0)
                        (FlatAlloc.alloc-live {FS} N alloc 1)

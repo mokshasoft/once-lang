@@ -202,7 +202,7 @@ module OutC {FS : FrameSemantics} where
                        (trans (cong fret call-eq) refl)
                        (trans (cong falloc call-eq) refl)
                        n≤
-                       (λ _ b → b)
+                       (nu-fp-live nv)
                        (λ _ _ ib → ib)
                        (λ l _ → trans (cong (λ st → SMCore.MemOps.readLoc (floc st) l) call-eq) (OSP.mem-pres l))
                        (subst (λ st → readReg (regs st) Input1 ≡ seed-sv)
