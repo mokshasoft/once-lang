@@ -354,18 +354,18 @@ module CataRebuildC {FS : FrameSemantics} where
 
     runA : SRun prog 5 σ u5
     runA =
-      s-at u1 (nh0 , span 0 _ refl) refl refl tt (
-      s-at u2 (nh1 , span 1 _ refl) refl refl tt (
-      s-at u3 (nh2 , span 2 _ refl) refl refl tt (
-      s-at u4 (nh3 , span 3 _ refl) refl refl tt (
-      s-at u5 (nh4 , span 4 _ refl) (Q5.flat prog u4) (Q5.ev u4) Q5.lf s-nil))))
+      s-at {prog} {σ} {4} {u5} u1 (nh0 , span 0 _ refl) refl refl tt (
+      s-at {prog} {u1} {3} {u5} u2 (nh1 , span 1 _ refl) refl refl tt (
+      s-at {prog} {u2} {2} {u5} u3 (nh2 , span 2 _ refl) refl refl tt (
+      s-at {prog} {u3} {1} {u5} u4 (nh3 , span 3 _ refl) refl refl tt (
+      s-at {prog} {u4} {0} {u5} u5 (nh4 , span 4 _ refl) (Q5.flat prog u4) (Q5.ev u4) Q5.lf s-nil))))
 
     runB : SRun prog 4 u5 u9
     runB =
-      s-at u6 (nh5 , span 5 _ refl) refl refl tt (
-      s-at u7 (nh6 , span 6 _ refl) refl refl tt (
-      s-at u8 (nh7 , span 7 _ refl) refl refl tt (
-      s-at u9 (nh8 , span 8 _ refl) refl refl tt s-nil)))
+      s-at {prog} {u5} {3} {u9} u6 (nh5 , span 5 _ refl) refl refl tt (
+      s-at {prog} {u6} {2} {u9} u7 (nh6 , span 6 _ refl) refl refl tt (
+      s-at {prog} {u7} {1} {u9} u8 (nh7 , span 7 _ refl) refl refl tt (
+      s-at {prog} {u8} {0} {u9} u9 (nh8 , span 8 _ refl) refl refl tt s-nil)))
 
     abstract
       seg : SegA a₀ n σ u9

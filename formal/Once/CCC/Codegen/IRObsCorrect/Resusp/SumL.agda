@@ -144,10 +144,10 @@ module ResuspSumLC {FS : FrameSemantics} where
               (sloc , cong sv-as-loc U.inx2 , _ , rsp)
 
       branchS : SRun prog 4 p2 U.x3
-      branchS = s-at i1 (nhp2 , span 2 _ refl) eqbr refl tt
-               (s-at U.x1 (nhp2 , AT.spLab 0 _ refl) refl refl tt
-               (s-at U.x2 (nhp2 , AT.spLab 1 _ refl) refl refl tt
-               (s-at U.x3 (U.nhx2 , AT.spLab 2 _ refl) refl refl tt s-nil)))
+      branchS = s-at {prog} {p2} {3} {U.x3} i1 (nhp2 , span 2 _ refl) eqbr refl tt
+               (s-at {prog} {i1} {2} {U.x3} U.x1 (nhp2 , AT.spLab 0 _ refl) refl refl tt
+               (s-at {prog} {U.x1} {1} {U.x3} U.x2 (nhp2 , AT.spLab 1 _ refl) refl refl tt
+               (s-at {prog} {U.x2} {0} {U.x3} U.x3 (U.nhx2 , AT.spLab 2 _ refl) refl refl tt s-nil)))
 
       branch : FlatSteps prog 4 p2 U.x3
       branch = proj₁ branchS

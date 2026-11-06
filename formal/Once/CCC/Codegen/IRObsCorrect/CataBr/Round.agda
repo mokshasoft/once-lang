@@ -373,16 +373,16 @@ module CataRoundC {FS : FrameSemantics} where
 
         runA : SRun prog 10 σ p6
         runA =
-          s-at h1 (nh , span′ 0 _ refl) refl refl tt (
-          s-at h2 (nh , span′ 1 _ refl) refl refl tt (
-          s-at h3 (nh2 , span′ 2 _ refl) refl refl tt (
-          s-at h4 (nh3 , span′ 3 _ refl) (flat-tag-branch-not prog h3 (ℓ o (suc l1)) cond-no) refl tt (
-          s-at p1 (nh3 , span′ 4 _ refl) refl refl tt (
-          s-at p2 (nh-p1 , span′ 5 _ refl) refl refl tt (
-          s-at p3 (nh-p2 , span′ 6 _ refl) refl refl tt (
-          s-at p4 (nh-p3 , span′ 7 _ refl) refl refl tt (
-          s-at p5 (nh-p4 , span′ 8 _ refl) refl refl tt (
-          s-at p6 (nh-p5 , span′ 9 _ refl) refl refl tt s-nil)))))))))
+          s-at {prog} {σ} {9} {p6} h1 (nh , span′ 0 _ refl) refl refl tt (
+          s-at {prog} {h1} {8} {p6} h2 (nh , span′ 1 _ refl) refl refl tt (
+          s-at {prog} {h2} {7} {p6} h3 (nh2 , span′ 2 _ refl) refl refl tt (
+          s-at {prog} {h3} {6} {p6} h4 (nh3 , span′ 3 _ refl) (flat-tag-branch-not prog h3 (ℓ o (suc l1)) cond-no) refl tt (
+          s-at {prog} {h4} {5} {p6} p1 (nh3 , span′ 4 _ refl) refl refl tt (
+          s-at {prog} {p1} {4} {p6} p2 (nh-p1 , span′ 5 _ refl) refl refl tt (
+          s-at {prog} {p2} {3} {p6} p3 (nh-p2 , span′ 6 _ refl) refl refl tt (
+          s-at {prog} {p3} {2} {p6} p4 (nh-p3 , span′ 7 _ refl) refl refl tt (
+          s-at {prog} {p4} {1} {p6} p5 (nh-p4 , span′ 8 _ refl) refl refl tt (
+          s-at {prog} {p5} {0} {p6} p6 (nh-p5 , span′ 9 _ refl) refl refl tt s-nil)))))))))
 
         abstract
           segA : SegA a₀ n σ p6

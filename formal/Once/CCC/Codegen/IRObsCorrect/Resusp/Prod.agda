@@ -230,8 +230,8 @@ module ResuspProdC {FS : FrameSemantics} where
         }
 
       preS : SRun prog 3 σ p3
-      preS = s-at p1 (nh0 , span 0 _ refl) refl refl tt (s-at p2 (nhp1 , span 1 _ refl) refl refl tt
-               (s-at p3 (nhp2 , span 2 _ refl) refl refl tt s-nil))
+      preS = s-at {prog} {σ} {2} {p3} p1 (nh0 , span 0 _ refl) refl refl tt (s-at {prog} {p1} {1} {p3} p2 (nhp1 , span 1 _ refl) refl refl tt
+               (s-at {prog} {p2} {0} {p3} p3 (nhp2 , span 2 _ refl) refl refl tt s-nil))
 
       preRun : FlatSteps prog 3 σ p3
       preRun = proj₁ preS
@@ -465,14 +465,14 @@ module ResuspProdC {FS : FrameSemantics} where
 
       midS : SRun prog 8 sF q8
       midS =
-        s-at q1 (RF.nh , spanR1 0 _ refl) refl refl tt (
-        s-at q2 (nhq1 , spanR1 1 _ refl) refl refl tt (
-        s-at q3 (nhq2 , spanR1 2 _ refl) refl refl tt (
-        s-at q4 (nhq3 , spanR1 3 _ refl) refl refl tt (
-        s-at q5 (nhq4 , spanR1 4 _ refl) refl refl tt (
-        s-at q6 (nhq5 , spanR1 5 _ refl) refl refl tt (
-        s-at q7 (nhq6 , spanR1 6 _ refl) refl refl tt (
-        s-at q8 (nhq7 , spanR1 7 _ refl) refl refl tt (
+        s-at {prog} {sF} {7} {q8} q1 (RF.nh , spanR1 0 _ refl) refl refl tt (
+        s-at {prog} {q1} {6} {q8} q2 (nhq1 , spanR1 1 _ refl) refl refl tt (
+        s-at {prog} {q2} {5} {q8} q3 (nhq2 , spanR1 2 _ refl) refl refl tt (
+        s-at {prog} {q3} {4} {q8} q4 (nhq3 , spanR1 3 _ refl) refl refl tt (
+        s-at {prog} {q4} {3} {q8} q5 (nhq4 , spanR1 4 _ refl) refl refl tt (
+        s-at {prog} {q5} {2} {q8} q6 (nhq5 , spanR1 5 _ refl) refl refl tt (
+        s-at {prog} {q6} {1} {q8} q7 (nhq6 , spanR1 6 _ refl) refl refl tt (
+        s-at {prog} {q7} {0} {q8} q8 (nhq7 , spanR1 7 _ refl) refl refl tt (
         s-nil))))))))
 
       midRun : FlatSteps prog 8 sF q8
@@ -662,11 +662,11 @@ module ResuspProdC {FS : FrameSemantics} where
 
       endS : SRun prog 5 sG e5
       endS =
-        s-at e1 (RG.nh , spanE 0 _ refl) refl refl tt (
-        s-at e2 (nhe1 , spanE 1 _ refl) refl refl tt (
-        s-at e3 (nhe2 , spanE 2 _ refl) refl refl tt (
-        s-at e4 (nhe3 , spanE 3 _ refl) refl refl tt (
-        s-at e5 (nhe4 , spanE 4 _ refl) refl refl tt (
+        s-at {prog} {sG} {4} {e5} e1 (RG.nh , spanE 0 _ refl) refl refl tt (
+        s-at {prog} {e1} {3} {e5} e2 (nhe1 , spanE 1 _ refl) refl refl tt (
+        s-at {prog} {e2} {2} {e5} e3 (nhe2 , spanE 2 _ refl) refl refl tt (
+        s-at {prog} {e3} {1} {e5} e4 (nhe3 , spanE 3 _ refl) refl refl tt (
+        s-at {prog} {e4} {0} {e5} e5 (nhe4 , spanE 4 _ refl) refl refl tt (
         s-nil)))))
 
       endRun : FlatSteps prog 5 sG e5

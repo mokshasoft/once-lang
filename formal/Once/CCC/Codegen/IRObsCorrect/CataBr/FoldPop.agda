@@ -243,14 +243,14 @@ module CataFoldPopC {FS : FrameSemantics} where
 
         runA : SRun prog 8 σ p4
         runA =
-          s-at h1 (nh , span 0 _ refl) refl refl tt (
-          s-at h2 (nh , span 1 _ refl) refl refl tt (
-          s-at h3 (nh2 , span 2 _ refl) refl refl tt (
-          s-at h4 (nh3 , span 3 _ refl) (flat-tag-branch-not prog h3 (ℓ o (l1 + 3)) cond) refl tt (
-          s-at p1 (nh3 , span 4 _ refl) refl refl tt (
-          s-at p2 (nh-p1 , span 5 _ refl) refl refl tt (
-          s-at p3 (nh-p2 , span 6 _ refl) refl refl tt (
-          s-at p4 (nh-p3 , span 7 _ refl) refl refl tt s-nil)))))))
+          s-at {prog} {σ} {7} {p4} h1 (nh , span 0 _ refl) refl refl tt (
+          s-at {prog} {h1} {6} {p4} h2 (nh , span 1 _ refl) refl refl tt (
+          s-at {prog} {h2} {5} {p4} h3 (nh2 , span 2 _ refl) refl refl tt (
+          s-at {prog} {h3} {4} {p4} h4 (nh3 , span 3 _ refl) (flat-tag-branch-not prog h3 (ℓ o (l1 + 3)) cond) refl tt (
+          s-at {prog} {h4} {3} {p4} p1 (nh3 , span 4 _ refl) refl refl tt (
+          s-at {prog} {p1} {2} {p4} p2 (nh-p1 , span 5 _ refl) refl refl tt (
+          s-at {prog} {p2} {1} {p4} p3 (nh-p2 , span 6 _ refl) refl refl tt (
+          s-at {prog} {p3} {0} {p4} p4 (nh-p3 , span 7 _ refl) refl refl tt s-nil)))))))
 
         abstract
           segA : SegA a₀ n σ p4

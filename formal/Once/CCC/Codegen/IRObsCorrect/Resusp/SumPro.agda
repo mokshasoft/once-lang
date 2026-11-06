@@ -196,7 +196,7 @@ module ResuspSumProC {FS : FrameSemantics} where
               (trans (lgx (restore-input n) p1 tt) (lgx (store-at-slot n) σ tt)))
 
       pre2S : SRun prog 2 σ p2
-      pre2S = s-at p1 (nh0 , span 0 _ refl) refl refl tt (s-at p2 (nhp1 , span 1 _ refl) refl refl tt s-nil)
+      pre2S = s-at {prog} {σ} {1} {p2} p1 (nh0 , span 0 _ refl) refl refl tt (s-at {prog} {p1} {0} {p2} p2 (nhp1 , span 1 _ refl) refl refl tt s-nil)
 
       pre2 : FlatSteps prog 2 σ p2
       pre2 = proj₁ pre2S

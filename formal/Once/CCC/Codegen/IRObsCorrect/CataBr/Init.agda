@@ -360,23 +360,23 @@ module CataInitC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     runA : SRun prog 7 σ u7
     runA =
-      s-at u1 (nh0 , span 0 _ refl) refl refl tt (
-      s-at u2 (nh1 , span 1 _ refl) refl refl tt (
-      s-at u3 (nh2 , span 2 _ refl) refl refl tt (
-      s-at u4 (nh3 , span 3 _ refl) refl refl tt (
-      s-at u5 (nh4 , span 4 _ refl) refl refl tt (
-      s-at u6 (nh5 , span 5 _ refl) refl refl tt (
-      s-at u7 (nh6 , span 6 _ refl) refl refl tt s-nil))))))
+      s-at {prog} {σ} {6} {u7} u1 (nh0 , span 0 _ refl) refl refl tt (
+      s-at {prog} {u1} {5} {u7} u2 (nh1 , span 1 _ refl) refl refl tt (
+      s-at {prog} {u2} {4} {u7} u3 (nh2 , span 2 _ refl) refl refl tt (
+      s-at {prog} {u3} {3} {u7} u4 (nh3 , span 3 _ refl) refl refl tt (
+      s-at {prog} {u4} {2} {u7} u5 (nh4 , span 4 _ refl) refl refl tt (
+      s-at {prog} {u5} {1} {u7} u6 (nh5 , span 5 _ refl) refl refl tt (
+      s-at {prog} {u6} {0} {u7} u7 (nh6 , span 6 _ refl) refl refl tt s-nil))))))
 
     runB : SRun prog 7 u7 u14
     runB =
-      s-at u8 (nh7 , span 7 _ refl) refl refl tt (
-      s-at u9 (nh8 , span 8 _ refl) refl refl tt (
-      s-at u10 (nh9 , span 9 _ refl) refl refl tt (
-      s-at u11 (nh10 , span 10 _ refl) refl refl tt (
-      s-at u12 (nh11 , span 11 _ refl) refl refl tt (
-      s-at u13 (nh12 , span 12 _ refl) refl refl tt (
-      s-at u14 (nh13 , span 13 _ refl) refl refl tt s-nil))))))
+      s-at {prog} {u7} {6} {u14} u8 (nh7 , span 7 _ refl) refl refl tt (
+      s-at {prog} {u8} {5} {u14} u9 (nh8 , span 8 _ refl) refl refl tt (
+      s-at {prog} {u9} {4} {u14} u10 (nh9 , span 9 _ refl) refl refl tt (
+      s-at {prog} {u10} {3} {u14} u11 (nh10 , span 10 _ refl) refl refl tt (
+      s-at {prog} {u11} {2} {u14} u12 (nh11 , span 11 _ refl) refl refl tt (
+      s-at {prog} {u12} {1} {u14} u13 (nh12 , span 12 _ refl) refl refl tt (
+      s-at {prog} {u13} {0} {u14} u14 (nh13 , span 13 _ refl) refl refl tt s-nil))))))
 
     abstract
       segA : SegA a₀ n σ u7

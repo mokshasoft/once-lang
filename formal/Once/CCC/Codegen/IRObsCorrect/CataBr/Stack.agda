@@ -398,19 +398,19 @@ module CataStackC {FS : FrameSemantics} where
 
     runA : SRun prog 5 σ u5
     runA =
-      s-at u1 (nh0 , span 0 _ refl) refl refl tt (
-      s-at u2 (nh1 , span 1 _ refl) refl refl tt (
-      s-at u3 (nh2 , span 2 _ refl) refl refl tt (
-      s-at u4 (nh3 , span 3 _ refl) refl refl tt (
-      s-at u5 (nh4 , span 4 _ refl) refl refl tt s-nil))))
+      s-at {prog} {σ} {4} {u5} u1 (nh0 , span 0 _ refl) refl refl tt (
+      s-at {prog} {u1} {3} {u5} u2 (nh1 , span 1 _ refl) refl refl tt (
+      s-at {prog} {u2} {2} {u5} u3 (nh2 , span 2 _ refl) refl refl tt (
+      s-at {prog} {u3} {1} {u5} u4 (nh3 , span 3 _ refl) refl refl tt (
+      s-at {prog} {u4} {0} {u5} u5 (nh4 , span 4 _ refl) refl refl tt s-nil))))
 
     runB : SRun prog 5 u5 u10
     runB =
-      s-at u6 (nh5 , span 5 _ refl) refl refl tt (
-      s-at u7 (nh6 , span 6 _ refl) refl refl tt (
-      s-at u8 (nh7 , span 7 _ refl) refl refl tt (
-      s-at u9 (nh8 , span 8 _ refl) refl refl tt (
-      s-at u10 (nh9 , span 9 _ refl) refl refl tt s-nil))))
+      s-at {prog} {u5} {4} {u10} u6 (nh5 , span 5 _ refl) refl refl tt (
+      s-at {prog} {u6} {3} {u10} u7 (nh6 , span 6 _ refl) refl refl tt (
+      s-at {prog} {u7} {2} {u10} u8 (nh7 , span 7 _ refl) refl refl tt (
+      s-at {prog} {u8} {1} {u10} u9 (nh8 , span 8 _ refl) refl refl tt (
+      s-at {prog} {u9} {0} {u10} u10 (nh9 , span 9 _ refl) refl refl tt s-nil))))
 
     abstract
       seg : SegA a₀ n σ u10
@@ -598,11 +598,11 @@ module CataStackC {FS : FrameSemantics} where
 
       run5 : SRun prog 5 σ p5
       run5 =
-        s-at p1 (nh0 , span 0 _ refl) refl refl tt (
-        s-at p2 (nh1 , span 1 _ refl) refl refl tt (
-        s-at p3 (nh2 , span 2 _ refl) refl refl tt (
-        s-at p4 (nh3 , span 3 _ refl) refl refl tt (
-        s-at p5 (nh4 , span 4 _ refl) refl refl tt s-nil))))
+        s-at {prog} {σ} {4} {p5} p1 (nh0 , span 0 _ refl) refl refl tt (
+        s-at {prog} {p1} {3} {p5} p2 (nh1 , span 1 _ refl) refl refl tt (
+        s-at {prog} {p2} {2} {p5} p3 (nh2 , span 2 _ refl) refl refl tt (
+        s-at {prog} {p3} {1} {p5} p4 (nh3 , span 3 _ refl) refl refl tt (
+        s-at {prog} {p4} {0} {p5} p5 (nh4 , span 4 _ refl) refl refl tt s-nil))))
 
       abstract
         seg : SegA a₀ n σ p5

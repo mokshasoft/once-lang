@@ -141,9 +141,9 @@ module ResuspSumRC {FS : FrameSemantics} where
               (sloc , cong sv-as-loc U.inx2 , _ , rsp)
 
       branchS : SRun prog 3 p2 U.x3
-      branchS = s-at U.x1 (nhp2 , span 2 _ refl) eqbr refl tt
-               (s-at U.x2 (nhp2 , span 3 _ refl) refl refl tt
-               (s-at U.x3 (U.nhx2 , span 4 _ refl) refl refl tt s-nil))
+      branchS = s-at {prog} {p2} {2} {U.x3} U.x1 (nhp2 , span 2 _ refl) eqbr refl tt
+               (s-at {prog} {U.x1} {1} {U.x3} U.x2 (nhp2 , span 3 _ refl) refl refl tt
+               (s-at {prog} {U.x2} {0} {U.x3} U.x3 (U.nhx2 , span 4 _ refl) refl refl tt s-nil))
 
       branch : FlatSteps prog 3 p2 U.x3
       branch = proj₁ branchS

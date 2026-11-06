@@ -251,15 +251,15 @@ module ResuspSumTailC {FS : FrameSemantics} where
 
     sr : SRun prog 9 fs w9
     sr =
-      s-at w1 (nh , sp 0 _ refl) refl refl tt (
-      s-at w2 (nhw1 , sp 1 _ refl) refl refl tt (
-      s-at w3 (nhw2 , sp 2 _ refl) refl refl tt (
-      s-at w4 (nhw3 , sp 3 _ refl) refl refl tt (
-      s-at w5 (nhw4 , sp 4 _ refl) refl refl tt (
-      s-at w6 (nhw5 , sp 5 _ refl) refl refl tt (
-      s-at w7 (nhw6 , sp 6 _ refl) refl refl tt (
-      s-at w8 (nhw7 , sp 7 _ refl) refl refl tt (
-      s-at w9 (nhw8 , sp 8 _ refl) refl refl tt (
+      s-at {prog} {fs} {8} {w9} w1 (nh , sp 0 _ refl) refl refl tt (
+      s-at {prog} {w1} {7} {w9} w2 (nhw1 , sp 1 _ refl) refl refl tt (
+      s-at {prog} {w2} {6} {w9} w3 (nhw2 , sp 2 _ refl) refl refl tt (
+      s-at {prog} {w3} {5} {w9} w4 (nhw3 , sp 3 _ refl) refl refl tt (
+      s-at {prog} {w4} {4} {w9} w5 (nhw4 , sp 4 _ refl) refl refl tt (
+      s-at {prog} {w5} {3} {w9} w6 (nhw5 , sp 5 _ refl) refl refl tt (
+      s-at {prog} {w6} {2} {w9} w7 (nhw6 , sp 6 _ refl) refl refl tt (
+      s-at {prog} {w7} {1} {w9} w8 (nhw7 , sp 7 _ refl) refl refl tt (
+      s-at {prog} {w8} {0} {w9} w9 (nhw8 , sp 8 _ refl) refl refl tt (
       s-nil)))))))))
 
     run : FlatSteps prog 9 fs w9

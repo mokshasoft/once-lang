@@ -314,22 +314,22 @@ module CataSetupC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     runA : SRun prog 6 σ u6
     runA =
-      s-at u1 (nh0 , span 0 _ refl) refl refl tt (
-      s-at u2 (nh1 , span 1 _ refl) refl refl tt (
-      s-at u3 (nh2 , span 2 _ refl) refl refl tt (
-      s-at u4 (nh3 , span 3 _ refl) refl refl tt (
-      s-at u5 (nh4 , span 4 _ refl) refl refl tt (
-      s-at u6 (nh5 , span 5 _ refl) refl refl tt s-nil)))))
+      s-at {prog} {σ} {5} {u6} u1 (nh0 , span 0 _ refl) refl refl tt (
+      s-at {prog} {u1} {4} {u6} u2 (nh1 , span 1 _ refl) refl refl tt (
+      s-at {prog} {u2} {3} {u6} u3 (nh2 , span 2 _ refl) refl refl tt (
+      s-at {prog} {u3} {2} {u6} u4 (nh3 , span 3 _ refl) refl refl tt (
+      s-at {prog} {u4} {1} {u6} u5 (nh4 , span 4 _ refl) refl refl tt (
+      s-at {prog} {u5} {0} {u6} u6 (nh5 , span 5 _ refl) refl refl tt s-nil)))))
 
     runB : SRun prog 7 u6 u13
     runB =
-      s-at u7 (nh6 , span 6 _ refl) refl refl tt (
-      s-at u8 (nh7 , span 7 _ refl) refl refl tt (
-      s-at u9 (nh8 , span 8 _ refl) refl refl tt (
-      s-at u10 (nh9 , span 9 _ refl) refl refl tt (
-      s-at u11 (nh10 , span 10 _ refl) refl refl tt (
-      s-at u12 (nh11 , span 11 _ refl) refl refl tt (
-      s-at u13 (nh12 , span 12 _ refl) refl refl tt s-nil))))))
+      s-at {prog} {u6} {6} {u13} u7 (nh6 , span 6 _ refl) refl refl tt (
+      s-at {prog} {u7} {5} {u13} u8 (nh7 , span 7 _ refl) refl refl tt (
+      s-at {prog} {u8} {4} {u13} u9 (nh8 , span 8 _ refl) refl refl tt (
+      s-at {prog} {u9} {3} {u13} u10 (nh9 , span 9 _ refl) refl refl tt (
+      s-at {prog} {u10} {2} {u13} u11 (nh10 , span 10 _ refl) refl refl tt (
+      s-at {prog} {u11} {1} {u13} u12 (nh11 , span 11 _ refl) refl refl tt (
+      s-at {prog} {u12} {0} {u13} u13 (nh12 , span 12 _ refl) refl refl tt s-nil))))))
 
     -- composed here, where the states have their own names
     runS : SRun prog 13 σ u13
