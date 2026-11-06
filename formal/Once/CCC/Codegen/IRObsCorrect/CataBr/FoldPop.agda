@@ -180,7 +180,7 @@ module CataFoldPopC {FS : FrameSemantics} where
         ptp = SV-Ptr (AtDynamic tp)
         pnb = SV-Ptr (AtDynamic nb)
 
-        -- the two reads of the top block are `load-at`s (D375)
+        -- the two reads of the top block are `load-at`s (D380)
         h4 p1 p2 p3 p4 : FlatState
         h4 = record h3 { fpc = suc (fpc h3) }
         p1 = setOut h4 pnb

@@ -10,7 +10,7 @@
 --   * `block-semM`   (Block, over the Word-valued input tree
 --     `M.⟦ shape-as-type sh ⟧`) — the value the FLAT machine computes (rung A)
 --     and the concrete `val` produces.
--- D391: both trees hold words at their leaves, so the bridge `toWord` is the
+-- D396: both trees hold words at their leaves, so the bridge `toWord` is the
 -- identity leaf by leaf (it only re-indexes the tree by `shape-as-type`).
 -- At `bits = 64` the two evaluators use the SAME `Word64` operations.
 --
@@ -64,12 +64,12 @@ module _ (tn : TargetNum) where
   module WL = OnceWordL.WidthLaws (int-bits tn)
 
   ------------------------------------------------------------------------
-  -- The input representation bridge: the same words, re-indexed (D391).
+  -- The input representation bridge: the same words, re-indexed (D396).
   ------------------------------------------------------------------------
 
   toWord : ∀ (sh : InputShape) → ⟦ sh ⟧S → M.⟦ shape-as-type sh ⟧
   toWord shape-unit       tt      = tt
-  -- the IDENTITY on both leaves: an `Int` leaf is the word (D054, D391), a
+  -- the IDENTITY on both leaves: an `Int` leaf is the word (D054, D396), a
   -- float leaf the bit pattern (D113), and `M.⟦_⟧` holds the same `Carrier`.
   toWord shape-int        z       = z
   toWord shape-float      w       = w

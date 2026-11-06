@@ -468,7 +468,7 @@ module AnaForceC {FS : FrameSemantics} where
       ana-body x fs pre mIn ret-pc k rs nh fa ns (in-unit ())
 
       -- ONE FORCE: the block call, its body's run, and what that run means.
-      -- D394: the seed is kept by its footprint (`seed-foot`), all the force asks.
+      -- D399: the seed is kept by its footprint (`seed-foot`), all the force asks.
       seed-foot : ∀ {alloc st pl m′} {x : ValueDomain.⟦ E IRTy′.* A ⟧ᴰᴵ}
                 → ValidAtWF {prog = prog} m′ alloc {E IRTy′.* A} x pl st → Foot
       seed-foot {pl = pl} pv = pl ∷ foot (E IRTy′.* A) pl pv

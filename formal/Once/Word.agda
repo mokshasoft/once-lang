@@ -526,7 +526,7 @@ module WidthLaws (bits : ℕ) where
   norm-range : ∀ (n : ℕ) → norm n < modulus
   norm-range n = m%n<n n modulus
 
-  -- D372: SUBTRACT THEN ADD is the identity too, wrap or not — how x86-32's
+  -- D377: SUBTRACT THEN ADD is the identity too, wrap or not — how x86-32's
   -- room check gives the frontier register back.
   ⊖⊕-cancel : ∀ (x y : Word) → x < modulus → y ℕ.≤ modulus → (x ⊖ y) ⊕ y ≡ x
   ⊖⊕-cancel x y x<m y≤m =
@@ -535,7 +535,7 @@ module WidthLaws (bits : ℕ) where
    (trans (cong (λ z → norm (x ℕ.+ z)) (m∸n+n≡m y≤m))
    (trans ([m+n]%n≡m%n x modulus) (m<n⇒m%n≡m x<m))))
 
-  -- D372: x86-32's WRAP-FREE room check computes `a ⊖ b ⊖ 1` from the frontier
+  -- D377: x86-32's WRAP-FREE room check computes `a ⊖ b ⊖ 1` from the frontier
   -- `a` and the stack pointer `b` (the frontier is not above it). That borrows,
   -- and exactly: the result is `modulus ∸ suc (b ∸ a)`, the room's complement
   -- less one — at every room, none included (where `a ⊖ b` alone is 0 and could

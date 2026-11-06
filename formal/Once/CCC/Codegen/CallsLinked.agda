@@ -204,7 +204,7 @@ out-cl mu-box  = tt ∷ []
 out-cl mu-unit = tt ∷ []
 out-cl mu-ptr  = tt ∷ []
 
--- D393: a kept value's copy, then the two-cell build
+-- D398: a kept value's copy, then the two-cell build
 wc-cl : ∀ kd E n c → CLTrace (with-copy kd E n (λ m → two-cell m c))
 wc-cl word E n c = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 wc-cl flat E n c = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-cl E n (suc n) 0) (tt ∷ [])) (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
@@ -330,7 +330,7 @@ calls-blocks (SigOp _)      n l _ = []
 calls-blocks (Call _)      n l _ = []
 calls-blocks (const fits-int _)   n l _ = []
 calls-blocks (const fits-float _) n l _ = []
--- D380: the body starts with its environment's entry.
+-- D385: the body starts with its environment's entry.
 calls-blocks (curry {E} {A} b) n l lb =
   ++⁺ (tt ∷ ++⁺ (++⁺ (env-entry-cl (kind E) E A) (calls-trace' b _ (suc (suc l)) lb)) (tt ∷ []))
       (calls-blocks b _ (suc (suc l)) lb)

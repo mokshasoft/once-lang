@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Machine.FlatCopy — COPYING A FLAT VALUE'S WORDS (plan 0.123 B.4 α).
 --
--- A compound component is EMBEDDED in its container (D375, D378): building a
+-- A compound component is EMBEDDED in its container (D380, D383): building a
 -- pair, a sum or a node copies the component's words into the new block
 -- instead of storing a pointer. The copy is the same everywhere, so it is one
 -- trace and one run, used by every construct:
@@ -15,7 +15,7 @@
 --     restore-input src ; load-at i ; restore-input blk ; store-at (off + i)
 --
 -- `copy-run`: given the slots hold the two addresses — the source ANY location
--- (a heap block's cell, or a frame slot: D374), none of whose words is a word
+-- (a heap block's cell, or a frame slot: D379), none of whose words is a word
 -- of the destination block — and the source's words are written, the copy
 -- runs (no fault), moves no allocator, and leaves word `off + i + j` of the
 -- block equal to word `i + j` of the source; nothing else changes.
@@ -48,7 +48,7 @@ open ExecFinal {FS} using (in-block?)
 open AllocState using (block-size)
 open import Once.CCC.Codegen.FlatLayout using (copy-from)
 
--- D379: each destination word is a cell of the destination's block
+-- D384: each destination word is a cell of the destination's block
 InBlock : AllocState {FS} → HeapLocation → ℕ → Set
 InBlock alloc dh n = in-block? (block-size alloc) (AtDynamic (offsetHL dh n)) ≡ true
 

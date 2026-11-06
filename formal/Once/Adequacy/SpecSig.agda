@@ -362,7 +362,7 @@ val-R ψ refl {D} c b x v p h = go (key (showCanonical c) D ⌞ b ⌟ ∈K? valu
     go : (d : Dec (key (showCanonical c) D ⌞ b ⌟ ∈ valueKeys (toISig Σ)))
        → RelGM G.pure (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v))
                (embed (LTr.fmapT (injectᵇ (⌜⌝-base b)) (LTr.resT (mapRes (atTarget fmt ⌞ b ⌟) (LTr.pureHalf-at ι′ (key (showCanonical c) D ⌞ b ⌟) d x)))))
-    -- D391: the world's value, read at the target, is the Spec's read value
+    -- D396: the world's value, read at the target, is the Spec's read value
     forceR (go (yes p₀)) = ret (left (subst (λ z → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v)) (injectᵇ (⌜⌝-base b) (atTarget fmt ⌞ b ⌟ z))) (sym (h p₀))
                                         (subst (λ w → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v)) (injectᵇ (⌜⌝-base b) w)) (sym (SI.fromB-at fmt b v))
                                                (fromB-R b (readAt fmt b v)))))

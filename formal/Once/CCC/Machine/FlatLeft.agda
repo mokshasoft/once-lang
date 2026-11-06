@@ -337,7 +337,7 @@ module FaultPres {FS : FrameSemantics} where
   restore-fault (just v) s alloc _ = refl
   restore-fault nothing  s alloc ()
 
-  -- D386: a Pure SigOp faults exactly when it halts, so one that does not halt
+  -- D391: a Pure SigOp faults exactly when it halts, so one that does not halt
   -- does not fault either
   sigop-fault : ∀ {A B} (si : SigOpInfo A B) (s : LocState FS) → exec-sigop-halts si s ≡ false
               → (exec-sigop-faults si s ∨ flt s) ≡ flt s

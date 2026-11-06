@@ -10,7 +10,7 @@
 -- supplies the x86-32 telescope (State/Program/Instr, fetch/execInstr, the
 -- `call-sym` classifier, `ret-past`) + the arith payload.
 --
--- As on x86-64/riscv64 the payload is the block and its scratch words (D388:
+-- As on x86-64/riscv64 the payload is the block and its scratch words (D393:
 -- the dispatch enters the block's frame — pushes, borrowed registers, scratch).
 ------------------------------------------------------------------------
 

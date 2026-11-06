@@ -5,9 +5,9 @@
 -- Once.CCC.Machine.FlatLeaf  (plan 0.123 α′ (f3c))
 --
 -- A DECODED BLOCK INPUT IS ITS LEAVES, IN PLACE. When the flat reader
--- (`readTyped`, D375) reads an arith block's input shape at `loc`, each typed
+-- (`readTyped`, D380) reads an arith block's input shape at `loc`, each typed
 -- leaf `p` of the value it returns is the literal in the cell `flat-off p`
--- words past `loc` — the cell the block's code loads (D385's `Xmov-arg … k`).
+-- words past `loc` — the cell the block's code loads (D390's `Xmov-arg … k`).
 -- This is the abstract half of the block's `R-input`; the concrete half is
 -- the correspondence of those cells (`FlatCorr.heap-eq` / `stack-eq`).
 ------------------------------------------------------------------------

@@ -719,7 +719,7 @@ externs-of : IRProgram → List String
 externs-of p = DL.filter (is-extern? p) (calls-of (rewrite-program p))
 
 -- D320: a PROGRAM also calls the Host's `leave` (`c-leave`); a library does not.
--- D371: …and its `exhausted` (every room check calls it when there is no room).
+-- D376: …and its `exhausted` (every room check calls it when there is no room).
 prog-externs : IRProgram → List String
 prog-externs p = host-leave-symbol ∷ host-exhausted-symbol ∷ externs-of p
 
@@ -746,7 +746,7 @@ printFile x86-64  = X64F.print
 printFile x86-32  = X32F.print
 printFile riscv64 = RVF.print
 
--- D371 (plan 0.123 A.4 step 5): the image the backends lower is the program image
+-- D376 (plan 0.123 A.4 step 5): the image the backends lower is the program image
 -- with its room checks (`RoomChecks.room-checks`): a check at the start and after
 -- every label, entry and call, each for what its stretch spends.
 image-of : IRProgram → AbstractTrace

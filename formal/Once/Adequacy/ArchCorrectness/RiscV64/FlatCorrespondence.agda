@@ -112,7 +112,7 @@ keeps-t1-riscv64 s v w p = record { kr-role = kr ; kr-mem = refl ; kr-halt = ref
     kr role-out     = refl
     kr role-in1     = refl
 
--- D372: the room check computes the room in `t1` and the need in `t2`, neither
+-- D377: the room check computes the room in `t1` and the need in `t2`, neither
 -- a role's.
 keeps-t1-t2-riscv64 : ∀ (s : R.State) (v w : Word) (p : ℕ)
   → KeepsRoles s (mkstate (rwriteReg (rwriteReg (rregs s) t1 v) t2 w) (memory s) p (rhalted s))

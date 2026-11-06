@@ -85,7 +85,7 @@ data MArithIR (sh : InputShape) : NumType → Set where
 -- Denotational semantics
 ------------------------------------------------------------------------
 
--- (D391: the legacy ℤ evaluator `eval-arith` is gone — `Int` is a word (D054),
+-- (D396: the legacy ℤ evaluator `eval-arith` is gone — `Int` is a word (D054),
 -- the block's input leaves are words, and the meaning is `eval-arith-W`.)
 
 -- (The machine-level modular-`Word` evaluator `eval-arith-W` is now in

@@ -80,7 +80,7 @@ def nothing  = 0
 scratch-addr : State → XScratch → Word
 scratch-addr s sc = readReg (regs s) sp + (8 * XScratch.slot sc)
 
--- D385: a leaf is one word at its offset
+-- D390: a leaf is one word at its offset
 word-bytes : Word
 word-bytes = 8
 
@@ -328,8 +328,8 @@ module _ (N : ℕ) where
   sp-inv : ∀ i s → readReg (regs (EA.exec1 val-riscv64 N i s)) sp ≡ readReg (regs s) sp
   sp-inv i s = sym (a-sp (step-of-preserves i (val-riscv64 i s) (regs s)))
 
-  -- plan 0.123 α′ (f3c): THE DISPATCH'S LAYOUT (D388), as x86-64's: every input
-  -- leaf the block reads (a typed path, D385) is outside its frame `[sp, sp + N)`
+  -- plan 0.123 α′ (f3c): THE DISPATCH'S LAYOUT (D393), as x86-64's: every input
+  -- leaf the block reads (a typed path, D390) is outside its frame `[sp, sp + N)`
   -- — the heap below it, a caller's stack above — and every spill inside it.
   Out : State → InputPath → ℕ → Set
   Out s []      k = ⊤
@@ -447,9 +447,9 @@ module _ (N : ℕ) where
 
 ------------------------------------------------------------------------
 -- plan 0.123 α′ (f3c): THE BLOCK'S ENTRY STATE. The dispatch enters the
--- block's frame (`call-frame`, D388): `ra` linked, `sp` lowered by `8n`, no
+-- block's frame (`call-frame`, D393): `ra` linked, `sp` lowered by `8n`, no
 -- memory written. Each typed leaf of the input is the input register `t0` (a
--- scalar, D390/D392) or the word at `t0 + 8k` (D385) below that frame.
+-- scalar, D395/D397) or the word at `t0 + 8k` (D390) below that frame.
 ------------------------------------------------------------------------
 open import Once.Arith.Backend.RiscV64.Dispatch using (call-frame; dispatch-arith)
 open import Once.Arith.Machine.Shape using (⟦_⟧S; IntsBelow)

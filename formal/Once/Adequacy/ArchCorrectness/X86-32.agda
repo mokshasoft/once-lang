@@ -355,7 +355,7 @@ entry-like B = refl , refl , refl , refl , refl
              , no-ptr
              -- the entry state is not inside a call window (plan 0.65 G2)
              , refl
-             -- no register holds a literal either (D391's word range starts)
+             -- no register holds a literal either (D396's word range starts)
              , no-lit
   where no-ptr : ∀ (r : AbstractReg) loc
                → readReg (regs FFOx.entry-s) r ≡ SV-Ptr loc → ⊥
@@ -377,7 +377,7 @@ conc-tr :
 conc-tr p ir lk img =
   budget-apex-⊑ δc ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir)) fact
   where
-    -- D371: the machine runs the image WITH its room checks (see the x86-64 apex)
+    -- D376: the machine runs the image WITH its room checks (see the x86-64 apex)
     P′ = room-checks (FFOx.image ir)
     δc = RTx.Run.δ val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (C.blocks-x86-32 p)) (compile-trace P′)
     run₀ : RunLow P′ FFOx.start-flat

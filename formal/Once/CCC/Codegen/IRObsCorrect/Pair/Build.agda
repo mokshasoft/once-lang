@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.IRObsCorrect.Pair.Build
 --
--- plan 0.123 B.4 α: the TAIL of `⟨ f , g ⟩` on the flat layout (D375). After
+-- plan 0.123 B.4 α: the TAIL of `⟨ f , g ⟩` on the flat layout (D380). After
 -- `g` has run, `f`'s result is in slot `suc n` and `g`'s in `Output`; the tail
 --
 --   store-at-slot (n+2) ; instr-alloc-heap (2 ⊔ size (B * C)) ; store-at-slot (n+3)

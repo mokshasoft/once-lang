@@ -106,7 +106,7 @@ EntryLike fs = (fpc fs ≡ 0)
              -- the base case of `run-link-at-thunk`: without it a "start"
              -- state could claim a pending return that no call ever made.
              × (flink fs ≡ nothing)
-             -- …and NO REGISTER holds a literal (D391): the entry registers are
+             -- …and NO REGISTER holds a literal (D396): the entry registers are
              -- the tag filler, so the store-WF invariant's word range (every
              -- stored `Int` below the modulus) starts off too (`entry-flat-wf`).
              × (∀ (r : AbstractReg) {A} (p : FitsInReg A) (v : ⟦ A ⟧)

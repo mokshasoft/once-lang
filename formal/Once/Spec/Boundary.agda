@@ -3,7 +3,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Spec.Boundary — A VALUE FROM OUTSIDE, READ AT THE TARGET (D391).
+-- Once.Spec.Boundary — A VALUE FROM OUTSIDE, READ AT THE TARGET (D396).
 --
 -- SPEC. `Int` and `Float` mean what the target provides (D054, D113): the
 -- carrier is width-free and the target enters through the operations — `norm`

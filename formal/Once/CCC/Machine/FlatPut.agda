@@ -61,7 +61,7 @@ open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_
 data Src (a₀ : AllocState {FS}) (s : LocState FS) : (C : IRTy) → ⟦ C ⟧ → StoredValue FS → Set where
   src-node   : ∀ {C c cl m} → IsNode C → Live a₀ cl → ValidAtWF m a₀ {C} c cl s → Src a₀ s C c (SV-Ptr cl)
   src-scalar : ∀ {C c} (fit : FitsInRegI C) → Src a₀ s C c (prim-sv fit c)
-  -- (anywhere live: a heap block's cell or a frame slot, D374)
+  -- (anywhere live: a heap block's cell or a frame slot, D379)
   src-flat   : ∀ {C c m sl} → IsFlat C → Live a₀ sl
              → ValidAtWF m a₀ {C} c sl s → Src a₀ s C c (SV-Ptr sl)
   src-unit   : ∀ {w} → Src a₀ s Unit tt w
@@ -278,7 +278,7 @@ module _ (C : IRTy) {c : ⟦ C ⟧} (stash blk off : ℕ) (s : LocState FS) (all
                   (trans (eqd j j<) (proj₁ (proj₂ (proj₂ co)) j j<))
 
 ------------------------------------------------------------------------
--- D382: THE PADDING FILL, `c` words from `from` of the block in `Input1`
+-- D387: THE PADDING FILL, `c` words from `from` of the block in `Input1`
 ------------------------------------------------------------------------
 open import Once.CCC.Codegen.FlatLayout using (fill)
 

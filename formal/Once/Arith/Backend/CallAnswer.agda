@@ -49,7 +49,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Data.List.Membership.Propositional using (_∈_)
 
 -- The register word of a value of `B`, as the flat machine places it.
--- D391: the answer is read at the target — the register is the target's word
+-- D396: the answer is read at the target — the register is the target's word
 answer-word : TargetNum → (B : Type) → M.⟦ B ⟧ → ℕ
 answer-word tn Int   v = atTarget tn {0} Int v
 answer-word tn Float v = atTarget tn {0} Float v

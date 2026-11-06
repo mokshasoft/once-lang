@@ -80,7 +80,7 @@ loc-below n (AtStack _ _)   = ⊤
 sv-below : ℕ → StoredValue FS → Set
 sv-below n (SV-Ptr loc)   = loc-below n loc
 sv-below n (SV-Tag _)     = ⊤
--- D391: a literal is a WORD — an `Int` below the target's modulus (its ops
+-- D396: a literal is a WORD — an `Int` below the target's modulus (its ops
 -- `norm`, its literals are `fromℤ`, the world's answers are read at the
 -- target). An arith block's `/ −1` and `%` read their dividend as one.
 sv-below n (SV-Lit p v)   = LitWord IMfs p v
@@ -356,7 +356,7 @@ postulate
     → sv-below n (structured-pure-sigop-output si ls)
 
 -- plan 0.98: a Pure SigOp's output is `res-sv fitB (semM …)`, and `res-sv`
--- dispatches on the `Res`. D391: a returned value is a word when the SigOp's
+-- dispatches on the `Res`. D396: a returned value is a word when the SigOp's
 -- value is (`SigOp.Words.semM-of-word`); the unit sentinel is one.
 res-sv-below : ∀ (n : ℕ) {B} (fitB : FitsInReg B) (r : Res ⟦ B ⟧)
              → ResWord IMfs fitB r → sv-below n (res-sv fitB r)
@@ -451,7 +451,7 @@ sigop-output-below n {A} {B} si ls wf = go (effect si)
           where ans : ∀ d → sv-below n (call-sigop-ans si ls f d)
                 ans (yes p) = at (decode-at (SigOpInfo.baseA si) (readReg (regs ls) Input1) ls)
                   where at : ∀ ma → sv-below n (call-sigop-ans-at si ls f p ma)
-                        -- D391: the answer is read at the target
+                        -- D396: the answer is read at the target
                         at (just _) = atTarget-word (fs-numerics FS) f _
                         at nothing  = unit-below n
                 ans (no _)  = unit-below n

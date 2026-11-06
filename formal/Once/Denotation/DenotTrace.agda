@@ -157,7 +157,7 @@ sigOpSemT fmt ans si (blockV e refl refl) x = ret (Val.eraseᵍ (block-semP e fm
 sigOpSemT fmt ans si (primV p)     x = ret (Val.eraseᵍ (primSem p fmt x))
 sigOpSemT fmt ans {A} si (emitsV refl) x = call (callOp (name si) A (baseA si) Unit) x (λ _ → ret tt)
 sigOpSemT fmt ans {A} si (haltsV refl) x = halt (haltOp (name si) A (baseA si)) x
--- D391: what the world gives is read at the target
+-- D396: what the world gives is read at the target
 sigOpSemT fmt ans {A} {B} si ffiV  x = resT (mapRes (atTarget fmt B) (ans (name si) A B x))
 sigOpSemT fmt ans {A} {B} si callsV x = call (callOp (name si) A (baseA si) B) x (λ b → ret (atTarget fmt B b))
 

@@ -43,7 +43,7 @@ import Once.Spec.Float.Arith as FA
 
 data AbstractInstr : Set where
   -- | `load-input p k r` : reg r := project sh p input. `k` is the leaf's word
-  -- offset in the flat input (D385: `Shape.flat-off`), what the target reads.
+  -- offset in the flat input (D390: `Shape.flat-off`), what the target reads.
   load-input  : InputPath → ℕ → ℕ → AbstractInstr
 
   -- | `load-imm z r` : reg r := just z.
@@ -160,7 +160,7 @@ un-op _ nothing  = nothing
 -- `Once.Arith.Machine.IR.eval-arith`). A well-formed IR (paths
 -- match the input shape) never sees this default; the recognition
 -- pass produces well-formed IRs by construction. The projected value
--- is the input WORD (D391), loaded as it is.
+-- is the input WORD (D396), loaded as it is.
 maybe-zero : Maybe ℕ → ℕ
 maybe-zero (just z) = z
 maybe-zero nothing  = 0

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.RoomChecksEvents — the room checks emit nothing (D371).
+-- Once.Adequacy.RoomChecksEvents — the room checks emit nothing (D376).
 --
 -- Plan 0.123 A.4 step 5. What the flat run of `room-checks t` shows, from a
 -- lifted state, is what the flat run of `t` shows: at every fuel `n` of the

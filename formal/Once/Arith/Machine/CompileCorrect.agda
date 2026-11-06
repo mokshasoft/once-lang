@@ -756,7 +756,7 @@ abs-validity {sh} e env =
 module _ (b : ℕ) (eqb : bits ≡ suc b) where
 
   -- every arith value lands in `[0, modulus)` (needed for `/ˢ negOne = ⊝`).
-  -- D391: the input's `Int` leaves are words (`IntsBelow`), so is every value.
+  -- D396: the input's `Int` leaves are words (`IntsBelow`), so is every value.
   eval-in-range : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) → IntsBelow modulus sh env
                 → eval-arith-W e env < modulus
   eval-in-range (alit z)   env _ = fromℤ-in-range z

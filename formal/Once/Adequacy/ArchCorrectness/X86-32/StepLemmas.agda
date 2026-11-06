@@ -248,7 +248,7 @@ step-sub-ri : ∀ {prog s r n}
                                ; pc = pc s + 1 })
 step-sub-ri ft rewrite ft = refl
 
--- D372: sub reg, reg and add reg, reg — the room check's difference and its
+-- D377: sub reg, reg and add reg, reg — the room check's difference and its
 -- restore. Modular (`⊖`, `⊕`), with the flags of the result.
 step-sub-rr : ∀ {prog s r r'}
             → fetch prog (pc s) ≡ just (sub (reg r) (reg r'))

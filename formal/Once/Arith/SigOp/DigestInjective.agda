@@ -2,13 +2,13 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Arith.SigOp.DigestInjective  (plan 0.123 α′ (f1), D389)
+-- Once.Arith.SigOp.DigestInjective  (plan 0.123 α′ (f1), D394)
 --
 -- ONE DIGEST IS ONE BLOCK. A block's symbol is its digest (`block-digest`:
 -- the input shape, then the tree), and the file's table keeps one body per
 -- symbol (`dedup-blocks`), so which body a SigOp's call runs is "the block
 -- whose digest is this one" — a function only if equal digests mean equal
--- blocks. D389 is what made that true (the shape was missing).
+-- blocks. D394 is what made that true (the shape was missing).
 --
 -- The proof reads the digest as characters: every rendering is prefix-free —
 -- a tree node is one letter and its children, a path ends in `Z`, a number in

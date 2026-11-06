@@ -189,7 +189,7 @@ record LitFits : Set₁ where
           (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
       → Once.CCC.Machine.SMCore.AbstractExec.lit-value {rv64-frame-semantics} fits-int v < R.W.modulus
 
-    -- D372: a room check's need `8k` is the `li t2, 8k` immediate.
+    -- D377: a room check's need `8k` is the `li t2, 8k` immediate.
     room-fits :
       ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})

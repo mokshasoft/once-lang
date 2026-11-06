@@ -74,7 +74,7 @@ keeps-esi-x86 s v w fl p weq = record { kr-role = kr ; kr-mem = refl ; kr-halt =
     kr role-out     = refl
     kr role-in1     = refl
 
--- D372: the wrap-free room check writes the frontier register four times
+-- D377: the wrap-free room check writes the frontier register four times
 -- (the room's complement, then back); the last value is the frontier again.
 keeps-esi4-x86 : ∀ (s : X.State) (v₁ v₂ v₃ w : Word) (fl : X.Flags) (p : ℕ) → w ≡ rreg s esi
   → KeepsRoles s (mkstate (xwriteReg (xwriteReg (xwriteReg (xwriteReg (xregs s) esi v₁) esi v₂) esi v₃) esi w)

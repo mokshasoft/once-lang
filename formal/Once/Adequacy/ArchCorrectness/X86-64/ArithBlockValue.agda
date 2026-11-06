@@ -5,13 +5,13 @@
 -- Once.Adequacy.ArchCorrectness.X86-64.ArithBlockValue  (plan 0.123 α′ (f3c, f3d))
 --
 -- THE ARITH BLOCK'S VALUE, at the call site. At a non-faulting arith SigOp
--- the argument decoded (D386): a scalar is the literal in `Input1`, so in
--- `rdi` (D392, `in1-eq`); a compound is a heap pointer (never a stack one,
+-- the argument decoded (D391): a scalar is the literal in `Input1`, so in
+-- `rdi` (D397, `in1-eq`); a compound is a heap pointer (never a stack one,
 -- `StackPtrWF`) whose typed leaves are written cells at their flat offsets
 -- (`FlatLeaf.leaf-at`), so the words at `rdi + 8k` (`heap-eq`,
 -- `haddr-offset`), below the frontier and so below the block's frame (the
--- room check, D387). That is the block's `R-input` at its entry state; its
--- `Int` leaves are words (the store invariant, D391). The Core then gives the
+-- room check, D392). That is the block's `R-input` at its entry state; its
+-- `Int` leaves are words (the store invariant, D396). The Core then gives the
 -- out register: the block's meaning, which is the SigOp's output.
 ------------------------------------------------------------------------
 

@@ -6,7 +6,7 @@
 --
 -- EVERY SPILL FITS THE FRAME. A block's code spills only to scratch slots
 -- below `required-scratch` of the tree it was compiled from — the size its
--- prologue reserves (`block-payload`) and the room check charges (D387). So
+-- prologue reserves (`block-payload`) and the room check charges (D392). So
 -- the block writes memory only inside its own frame.
 --
 -- `compile-go d e` spills at depth `d` and compiles its right operand one

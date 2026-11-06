@@ -215,7 +215,7 @@ module CataInitC {FS : FrameSemantics} where
 
     rdi7 : sv-as-loc (Inp u6) ≡ just (AtDynamic sn)
     rdi7 = cong sv-as-loc in6
-    -- D379: the tag's cell is one of the fresh block's
+    -- D384: the tag's cell is one of the fresh block's
     ib6 : InBlk (falloc u6) (AtDynamic sn)
     ib6 = subst (λ r → InBlk (falloc u6) (AtDynamic (heap-loc (mkHeapRef r) 0))) hr2 (FlatAlloc.alloc-in {FS} 2 (falloc u2) 0 (s≤s z≤n))
     -- row 7 is one write, of `Output`, at the sentinel
@@ -428,7 +428,7 @@ module CataInitC {FS : FrameSemantics} where
       seg14 = segA-∘ segA segB
 
     -- the slot loads keep the allocator (each read a value); the one
-    -- allocation keeps every block (D381)
+    -- allocation keeps every block (D386)
     ld-al : ∀ k (t : FlatState) {v} → readLoc (floc t) (AtStack (current-frame (falloc t)) k) ≡ just v
           → proj₂ (exec-abstract (load-from-slot k) (floc t) (falloc t)) ≡ falloc t
     ld-al k t r = cong (λ mv → proj₂ (AbstractExec.exec-load-from-slot-with-value {FS} mv (floc t) (falloc t))) r

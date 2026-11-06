@@ -488,7 +488,7 @@ module _ (G : String → Set) where
   out-closes mu-unit = []
   out-closes mu-ptr  = []
 
-  -- D393: a kept value's copy, then the two-cell build: the copy names nothing
+  -- D398: a kept value's copy, then the two-cell build: the copy names nothing
   wc-closes : ∀ {D} kd E n c → (Closes D (two-cell 0 c)) → Closes D (with-copy kd E n (λ m → two-cell m c))
   wc-closes word E n c r = r
   wc-closes flat E n c r =

@@ -102,7 +102,7 @@ module Core {FS : FrameSemantics} where
           ; prim-sv; cell-ptr; cell-inline; cell-flat; IsNode; IsFlat; InlineRep; rep-prim; inline-sv
           ; ValidFO; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy; LayerV
           ; Live; live→bf; live-heap; live-lift; live-ns; InBlk; Here; BlocksKept
-          -- D394: footprints
+          -- D399: footprints
           ; Foot; _∈ᶠ_; SameBlk; blk-refl; blk-live; blk-live0) public
 
   -- A run depends on the state only through its log.
@@ -181,7 +181,7 @@ module Core {FS : FrameSemantics} where
           ; InputAt; in-loc; in-reg; in-unit
           ; rp-map; valid→layer; ν-layer-place; fo→valid; valid→fo; μ-layer; valid-μ; μ-box-cell; valid-μbox
           ; validityWF-heap-transport; cellWF-heap-transport; validityWF-mem-only
-          -- D394: a value is kept by any change that keeps its footprint
+          -- D399: a value is kept by any change that keeps its footprint
           ; foot; foot-cell; foot-live; foot-cell-live; module FootTransport
           -- Plan 0.68 step 1: the class-A discharges move the value witness
           -- across a REGISTER write. `ValueLocation` is `AtStack`/`AtDynamic`
@@ -598,7 +598,7 @@ module Core {FS : FrameSemantics} where
       -- and a call that returns pops what it pushed.
       frames-pres : ∀ {v r} → resultAt s (⟪ evalᴰ ir x ⟫ k) ≡ returns (done v r) → saved-frames (falloc settle) ≡ saved-frames alloc
 
-      -- D381: …and every block the caller had live keeps its size (an
+      -- D386: …and every block the caller had live keeps its size (an
       -- allocation sizes only the fresh ref), so an embedded value's
       -- in-block witness survives the run.
       blocks-kept : NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k)) → BlocksKept alloc (falloc settle)
@@ -617,7 +617,7 @@ module Core {FS : FrameSemantics} where
   vr-mem-pres vr nc (AtStack fr j) bf = ValueRealized.stack-pres vr nc fr j bf
   vr-mem-pres vr nc (AtDynamic hl) bf = ValueRealized.heap-pres  vr nc hl bf
 
-  -- D381: a frontier that only grows keeps what was live live…
+  -- D386: a frontier that only grows keeps what was live live…
   live-mono : ∀ {a b : AllocState {FS}}
             → (∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record a { next-slot = m }) loc
                                                 → BeforeFrontier (record b { next-slot = m }) loc)

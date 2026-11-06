@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.CCC.Codegen.IRObsCorrect.NodeCopy   (D393, plan 0.123 β1)
+-- Once.CCC.Codegen.IRObsCorrect.NodeCopy   (D398, plan 0.123 β1)
 --
 -- A FLAT VALUE COPIED INTO A FRESH NODE. `IRToTrace.node-copy-trace L n`:
 --

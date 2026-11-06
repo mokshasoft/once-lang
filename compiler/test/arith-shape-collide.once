@@ -1,9 +1,9 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- D389: the same arith tree over two input SHAPES is two blocks. `snd p + 1`
+-- D394: the same arith tree over two input SHAPES is two blocks. `snd p + 1`
 -- reads word 1 of an `Int * Int` and word 2 of an `(Int * Int) * Int` (the
--- flat layout, D385), so a block name without the shape linked both calls to
+-- flat layout, D390), so a block name without the shape linked both calls to
 -- one body and `f (1, 2)` read past its pair.
 --
 -- f (1, 2) + g ((3, 4), 40) = 3 + 41.

@@ -130,7 +130,7 @@ table-sound {P} symb pay bs {Q} a = from bs (dedup-sub [] (map (λ b′ → symb
 -- THE BLOCK A SYMBOL NAMES. A compiler-owned SigOp names a block of the
 -- program whose body is its contract (`Named`); the table entry found under
 -- its symbol is some block with that symbol; one symbol is one block
--- (`block-symbol-injective`, D389) — so the payload found is the payload of
+-- (`block-symbol-injective`, D394) — so the payload found is the payload of
 -- the SigOp's own block.
 which-block : ∀ {P : Set} (pay : ArithBlock → P) (bs : List ArithBlock) {X Y} (si : SigOpInfo X Y) {pl : P}
             → Σ ArithBlock (λ b₀ → b₀ ∈ bs × name si ≡ bare (block-name (block-body b₀)) × BlockOf si b₀)

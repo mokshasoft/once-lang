@@ -367,7 +367,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   sigop-stable si nothing  n l = all-stable?-sound _ refl
   sigop-stable si (just c) n l = all-stable?-sound _ refl
 
-  -- D393: a kept value's copy, then the two-cell build
+  -- D398: a kept value's copy, then the two-cell build
   wc-st : ∀ kd E n c → AllSlotStable (with-copy kd E n (λ m → two-cell m c))
   wc-st word E n c = tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ []ᴬ
   wc-st flat E n c = ++⁺ (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ ++⁺ (put-st E n (suc n) 0) (tt ∷ᴬ []ᴬ)) (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ []ᴬ)

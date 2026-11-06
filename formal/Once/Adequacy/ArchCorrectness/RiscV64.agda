@@ -289,7 +289,7 @@ entry-like B = refl , refl , refl , refl , refl
     no-ptr : ∀ (r : AbstractReg) (loc : _) → readReg (regs FFOr.entry-s) r ≡ SV-Ptr loc → _
     no-ptr Input1  loc ()
     no-ptr Output  loc ()
-    -- no register holds a literal either (D391's word range starts)
+    -- no register holds a literal either (D396's word range starts)
     no-lit : ∀ (r : AbstractReg) {A} (p : FitsInReg A) v → readReg (regs FFOr.entry-s) r ≡ SV-Lit p v → _
     no-lit Input1  p v ()
     no-lit Output  p v ()
@@ -305,7 +305,7 @@ conc-tr :
 conc-tr p ir lk img =
   budget-apex-⊑ δc ([] , RS.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir)) fact
   where
-    -- D371: the machine runs the image WITH its room checks (see the x86-64 apex)
+    -- D376: the machine runs the image WITH its room checks (see the x86-64 apex)
     P′ = room-checks (FFOr.image ir)
     δc = RTr.Run.δ val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace P′)
     run₀ : RunLow P′ FFOr.start-flat

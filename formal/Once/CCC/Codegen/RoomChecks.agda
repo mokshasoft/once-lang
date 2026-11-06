@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.CCC.Codegen.RoomChecks — the room checks, a late pass (D371).
+-- Once.CCC.Codegen.RoomChecks — the room checks, a late pass (D376).
 --
 -- Plan 0.123 A.4 step 5. `room-checks` takes the finished abstract image and
 -- puts `instr-room k` (an abstract no-op; per arch, `frontier + k words ≤ stack
@@ -52,13 +52,13 @@ max-entry : AbstractTrace → ℕ
 max-entry []      = 0
 max-entry (i ∷ t) = entry-frame i ⊔ max-entry t
 
--- D387: the scratch words an arith block reserves (Int blocks are normalized
+-- D392: the scratch words an arith block reserves (Int blocks are normalized
 -- before they are compiled; Float blocks are not — `block-payload`)
 block-scratch : ∀ {sh n} → MArithIR sh n → ℕ
 block-scratch {n = NInt}   e = required-scratch (normalize e)
 block-scratch {n = NFloat} e = required-scratch e
 
--- D387: the words an arith block's call pushes before its scratch, on the arch
+-- D392: the words an arith block's call pushes before its scratch, on the arch
 -- that pushes most — x86-32: the return address and the four borrowed registers
 -- (%ebx %esi %edx %edi); x86-64 pushes one, riscv64 none
 sigop-call-words : ℕ
@@ -76,7 +76,7 @@ spend E (instr-ctrl (c-start b))    = b
 spend E (instr-ctrl (c-entry _ b))  = b
 spend E (instr-ctrl (c-call-fn _))  = suc E
 spend E instr-call-closure          = suc E
--- D387: a SigOp is a call too — what its block pushes, and an arith block's own
+-- D392: a SigOp is a call too — what its block pushes, and an arith block's own
 -- scratch frame below the stack pointer (what its code reserves, as each arch's
 -- `block-payload` computes it)
 spend E (instr-sigop si)            = sigop-call-words + sigop-scratch (SigOpInfo.sem si)

@@ -762,7 +762,7 @@ prog-unique-at T tn ir =
     img = C.image-of p
     fs = fdefs img
     fs≡ : Data.List.map once-symbol-path fs ≡ Entries.EF T tn
-    -- D371: the image is the program image with its room checks, which define
+    -- D376: the image is the program image with its room checks, which define
     -- no function and no closure label (`fold-room`)
     fs≡ = cong (Data.List.map once-symbol-path)
                (trans (fold-room fdefs (λ i xs → fdef-of i ++ xs) (λ _ _ → refl) (λ _ _ → refl) (program-image C.entry-owner q))

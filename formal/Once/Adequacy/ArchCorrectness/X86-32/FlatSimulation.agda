@@ -2171,7 +2171,7 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wfcl wf-heap wf-stack fresh-a
     pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (blk-off prog (fpc fs)) 1 1))
                  (sym (blk-off-suc prog (fpc fs) (instr-alloc-heap n) ft))
 
--- Plan 0.123 A.4 (D372): THE ROOM CHECK, `subl %esp, %esi ; subl $1, %esi ;
+-- Plan 0.123 A.4 (D377): THE ROOM CHECK, `subl %esp, %esi ; subl $1, %esi ;
 -- cmpl $(2³²−4k−1), %esi ; jbe 1f ; call once_exhausted ; 1: addl $1, %esi ;
 -- addl %esp, %esi`. The flat step is a no-op. With D = esp − esi (no borrow:
 -- the frontier is not above the stack pointer, `sep`), the compared value is

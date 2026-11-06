@@ -101,7 +101,7 @@ module CataSetupC {FS : FrameSemantics} where
       lhc    : Live (falloc u) (AtDynamic (sucHL hc))
       cf     : current-frame (falloc u) ≡ current-frame (falloc σ)
       hr     : next-heap-ref (falloc u) ≡ suc (next-heap-ref (falloc σ))
-      -- D381: the caller's blocks keep their sizes; the record's block is fresh
+      -- D386: the caller's blocks keep their sizes; the record's block is fresh
       bk     : BlocksKept (falloc σ) (falloc u)
       keep   : ∀ l → Live (falloc σ) l → readLoc (floc u) l ≡ readLoc (floc σ) l
 

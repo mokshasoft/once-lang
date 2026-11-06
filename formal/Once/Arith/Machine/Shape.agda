@@ -38,7 +38,7 @@ data InputShape : Set where
   shape-int   : InputShape
   -- PLAN 0.75 F4: a FLOAT leaf. Its spec value is the target's BIT PATTERN,
   -- not an exact number — D113 removed the exact value level from `Float`
-  -- exactly as D054 removed it from `Int`. D391: so both leaves are WORDS —
+  -- exactly as D054 removed it from `Int`. D396: so both leaves are WORDS —
   -- the `Int` leaf is the machine word `Int` denotes (D054), not a ℤ that
   -- `fromℤ` narrows; a block computes on exactly the words its SigOp does.
   shape-float : InputShape
@@ -113,7 +113,7 @@ data Path : InputShape → NumType → Set where
   go-fst   : ∀ {l r n} → Path l n → Path (shape-pair l r) n
   go-snd   : ∀ {l r n} → Path r n → Path (shape-pair l r) n
 
--- | What a leaf of each kind holds: a word (D391) — the `Int`'s two's
+-- | What a leaf of each kind holds: a word (D396) — the `Int`'s two's
 -- complement residue, the float's bit pattern.
 LeafVal : NumType → Set
 LeafVal NInt   = ℕ
@@ -126,7 +126,7 @@ readLeaf here-flt   w       = w
 readLeaf (go-fst p) (x , _) = readLeaf p x
 readLeaf (go-snd p) (_ , y) = readLeaf p y
 
--- | D391: the input's `Int` leaves are words — each below the target's modulus
+-- | D396: the input's `Int` leaves are words — each below the target's modulus
 -- `m`. A value the program holds is the target's (its ops `norm`, its literals
 -- are elaborated words, the world's answers are read at the target), and the
 -- block's code computes on the word as it is (`lit-word` is the identity).
@@ -150,7 +150,7 @@ readLeaf-below (go-snd p) (_ , y) (_ , h) = readLeaf-below p y h
 ⌊ go-fst p  ⌋ᴾ = Fst ∷ ⌊ p ⌋ᴾ
 ⌊ go-snd p  ⌋ᴾ = Snd ∷ ⌊ p ⌋ᴾ
 
--- | D385: WHERE A LEAF IS, in the flat layout (D375). A compound input is a
+-- | D390: WHERE A LEAF IS, in the flat layout (D380). A compound input is a
 -- pointer to its words; a component is embedded, so a leaf is one word at the
 -- sum of its left siblings' sizes along the path. A whole-input scalar (`[]`)
 -- is its register, as before.

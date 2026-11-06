@@ -26,7 +26,7 @@ module Once.Adequacy.ArchCorrectness.ArithSimPathLoad
   (word : ℕ)                         -- the arch's word, in bytes
   where
 
--- D385: a leaf of the flat input (D375) is one read, at `flat-addr`. D390: the
+-- D390: a leaf of the flat input (D380) is one read, at `flat-addr`. D395: the
 -- empty path is the input ITSELF — a scalar block's input is register-resident,
 -- and the emitted load is a register move (`movq %rdi` / `movl %ecx` / `mv t0`).
 path-load-go : St → ℕ → InputPath → ℕ → ℕ

@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunLow — the run of the LOWERED image.
 --
--- Plan 0.123 A.4 step 5 (D371). The backends lower `room-checks t`, the image
+-- Plan 0.123 A.4 step 5 (D376). The backends lower `room-checks t`, the image
 -- with the room checks, not `t`. `RunAt` (`RunContext`) and every fact in
 -- `RunWF` stay what they were: facts about the run of `t`. A state of the
 -- lowered image's run is the LIFT of a state of `t`'s run (`RoomChecksSim`):
@@ -274,7 +274,7 @@ load-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunLow prog fs → 
 load-at-target-ptr prog fs k =
   lift-site (load-at k) (λ _ ()) _ (λ src fs₀ → RW.load-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
 
--- D386: a non-faulting Pure SigOp's argument decoded
+-- D391: a non-faulting Pure SigOp's argument decoded
 sigop-decodes : ∀ prog (fs : FlatState) {A B} (si : SigOpInfo A B) → RunLow prog fs → LocState.halted (floc fs) ≡ false
               → fetch prog (fpc fs) ≡ just (instr-sigop si) → effect si ≡ Pure
               → ∃ (λ a → decode-at (baseA si) (readReg (LocState.regs (floc fs)) Input1) (floc fs) ≡ just a)
@@ -436,7 +436,7 @@ slot-read-in-frame .(room-checks src) .(L.lift src fs₀ p) slot i (mkRunLow src
 run-stack-ptr : ∀ prog (fs : FlatState) → RunLow prog fs → StackPtrWF fs
 run-stack-ptr .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) = RW.run-stack-ptr src fs₀ r
 
--- the store invariant (no forward pointer; every stored Int a word, D391)
+-- the store invariant (no forward pointer; every stored Int a word, D396)
 run-flat-wf : ∀ prog (fs : FlatState) → RunLow prog fs → FlatWF fs
 run-flat-wf .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) =
   Data.Product.proj₁ (RW.run-wf-ptr-bounds src fs₀ r)

@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.FlatLayout — HOW A COMPONENT GOES INTO A BLOCK (plan 0.123
--- B.4 α, D375, D378).
+-- B.4 α, D380, D383).
 --
 -- A value is one of two kinds, by its type alone:
 --   word — a scalar (Int, Float) or a node (μ, ν, a closure): ONE word, held in
@@ -49,7 +49,7 @@ copy-from src blk off i (suc k) =
   restore-input src ∷ load-at i ∷ restore-input blk ∷ store-at (off + i) ∷
   copy-from src blk off (suc i) k
 
--- D382: a sum's PADDING (the words past a smaller alternative's payload) is
+-- D387: a sum's PADDING (the words past a smaller alternative's payload) is
 -- written too — `c` words from word `from` of the block in `Input1` — so every
 -- word of a flat value is written and a copy of it reads no unwritten cell
 -- (D367). The word is any; the tag literal 0 is at hand.
@@ -68,7 +68,7 @@ put X = put-k (kind X) (size X)
 -- the component at word `k` of the flat value whose address is in `Input1`, into
 -- `Output`: a word kind is its word, a flat kind its address. A 0-word component
 -- reads nothing, so any address will do: it takes the container's own, by
--- copying the pointer (`mov-to-output`, D381) — no offset, so nothing to check
+-- copying the pointer (`mov-to-output`, D386) — no offset, so nothing to check
 -- against the block (a 0-word container's address need not be a cell of it).
 get-k : Kind → ℕ → ℕ → AbstractTrace
 get-k word _       k = load-at k ∷ []

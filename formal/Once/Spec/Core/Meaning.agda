@@ -149,7 +149,7 @@ module _ {m : ℕ} (σ : TySub m 0) where
   -- one call, a block
   ----------------------------------------------------------------------
 
-  -- D391: what the world gives — a model value or a call's answer — is read at
+  -- D396: what the world gives — a model value or a call's answer — is read at
   -- the target (`Boundary.readAt`), as the CPU reads the register it arrives
   -- in; every other value is the target's already, being computed by its ops.
   fromW : ∀ b → Once.Spec.Signature.⟦ b ⟧ᵇ → ⟦ Once.Spec.Signature.⌜ b ⌝ ⟨ σ ⟩ ⟧ᵛ

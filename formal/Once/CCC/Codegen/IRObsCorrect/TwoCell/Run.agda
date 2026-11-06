@@ -5,7 +5,7 @@
 -- Once.CCC.Codegen.IRObsCorrect.TwoCell.Run
 --
 -- The TEN-ROW RUN of the two-cell build (`curry`, `in-ν`, `Ana` — D190): a
--- node `[cell 0, code]`, cell 0 the word in `Input1` (D380: a closure's
+-- node `[cell 0, code]`, cell 0 the word in `Input1` (D385: a closure's
 -- environment word). plan 0.123 B.4 α: the cells are written by `store-at`
 -- into the fresh block, so the run is one straight segment, its effect
 -- `exec-trace`'s (the two stores in their block, `FlatAlloc.alloc-in`) and its

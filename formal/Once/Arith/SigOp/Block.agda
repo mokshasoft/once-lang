@@ -118,8 +118,8 @@ show-arith-ir (acmp o a b) = "K" ++ show-cmp o ++ show-arith-ir a ++ show-arith-
         show-cmp c-eq = "4"
         show-cmp c-ne = "5"
 
--- | D389: the block's INPUT SHAPE, prefix-free (Polish notation, lower case so
--- it never reads as a tree letter). Since D385 a leaf's load is at its flat
+-- | D394: the block's INPUT SHAPE, prefix-free (Polish notation, lower case so
+-- it never reads as a tree letter). Since D390 a leaf's load is at its flat
 -- word offset (`Shape.flat-off`), which the whole shape decides, not the
 -- side-path alone: `snd + 1` over `Int * Int` loads word 1 and over
 -- `(Int * Int) * Int` word 2. Without the shape the two named one block, and

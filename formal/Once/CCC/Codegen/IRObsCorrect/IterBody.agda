@@ -162,7 +162,7 @@ module IterBodyC {FS : FrameSemantics} where
       lnk0 : flink S0 ≡ nothing
       lnk0 = VR.no-link vb nc
 
-      -- D381: the blocks kept, through the round
+      -- D386: the blocks kept, through the round
       liveF : ∀ l → Live (falloc fsF) l → Live (falloc σ) l
       liveF (AtDynamic hl) lv with bfσ (AtDynamic hl) lv
       ... | BeforeFrontier.heap-before q = BeforeFrontier.heap-before q

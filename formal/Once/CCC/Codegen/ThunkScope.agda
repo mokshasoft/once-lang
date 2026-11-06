@@ -396,7 +396,7 @@ module Scope {FS : FrameSemantics} where
   out-nt mu-unit = all-no-thunk-in _ refl
   out-nt mu-ptr  = all-no-thunk-in _ refl
 
-  -- D393: a kept value's copy, then the two-cell build
+  -- D398: a kept value's copy, then the two-cell build
   wc-nt : ∀ kd E n c → NoThunkT (with-copy kd E n (λ m → two-cell m c))
   wc-nt word E n c = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
   wc-nt flat E n c = ++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nt E n (suc n) 0) (refl ∷ [])) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])

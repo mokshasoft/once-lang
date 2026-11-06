@@ -98,7 +98,7 @@ fromB-toB (a S.* b) (x , y) = cong₂ _,_ (fromB-toB a x) (fromB-toB b y)
 fromB-toB (a S.+ b) (inj₁ x) = cong inj₁ (fromB-toB a x)
 fromB-toB (a S.+ b) (inj₂ y) = cong inj₂ (fromB-toB b y)
 
--- D391: reading a world value at the target commutes with taking it in — the
+-- D396: reading a world value at the target commutes with taking it in — the
 -- implementation's `atTarget` is the Spec's `readAt`, leaf by leaf.
 fromB-at : ∀ (tn : TargetNum) b (v : S.⟦ b ⟧ᵇ) → atTarget tn ⌞ b ⌟ (fromB b v) ≡ fromB b (readAt tn b v)
 fromB-at tn S.unit  v = refl

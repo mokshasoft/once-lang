@@ -25,7 +25,7 @@
 --     fresh cell.
 --   * `obs-correct-In-box` — seven rows: stash the layer's word, allocate,
 --     write the word into the block's first cell, hand back the pointer. The
---     cell holds the layer (a literal, `in-reg` — D383: a scalar is never
+--     cell holds the layer (a literal, `in-reg` — D388: a scalar is never
 --     at a location), which is exactly the box relation (`valid-μbox`).
 ------------------------------------------------------------------------
 
@@ -107,7 +107,7 @@ module InMuC {FS : FrameSemantics} where
       e = ⌈⟧TI-commute F (μ-type F)
       w = wf-⌈⌉ wf
 
-  -- D383: a scalar has no memory residence
+  -- D388: a scalar has no memory residence
   scalar-nowhere : ∀ {prog C m a c l s} → FitsInRegI C → ValidAtWF {prog = prog} m a {C} c l s → ⊥
   scalar-nowhere fits-int   (ClosureWellFormedBase.wrap ())
   scalar-nowhere fits-float (ClosureWellFormedBase.wrap ())
@@ -324,7 +324,7 @@ module InMuC {FS : FrameSemantics} where
       alloc5 = cong (λ mv → proj₂ (SMCore.AbstractExec.exec-load-from-slot-with-value {FS} mv (floc fs4) (falloc fs4)))
                     (proj₂ wf-load)
 
-      -- D379: the box's first cell is one of its block's (the block is the
+      -- D384: the box's first cell is one of its block's (the block is the
       -- allocation's, two cells)
       ib5 : InBlk (falloc fs5) box
       ib5 = subst (λ a → InBlk a box) (sym alloc5) (FlatAlloc.alloc-in {FS} 2 (falloc fs2) 0 (s≤s z≤n))
@@ -444,7 +444,7 @@ module InMuC {FS : FrameSemantics} where
       not-box loc bf e with subst (BeforeFrontier (record alloc { next-slot = n })) (sym e) bf
       ... | BeforeFrontier.heap-before p = <-irrefl refl (<-≤-trans p fresh)
 
-      -- D381: the one allocation sizes only the fresh block
+      -- D386: the one allocation sizes only the fresh block
       live02 : ∀ l → Live alloc l → Live (falloc fs2) l
       live02 (AtDynamic hl) (BeforeFrontier.heap-before p) =
         BeforeFrontier.heap-before (<-≤-trans p (≤-reflexive (sym heapref-fs2)))
@@ -484,7 +484,7 @@ module InMuC {FS : FrameSemantics} where
         cell-inline (rep-prim fit′)
           (trans cell-fs7 (cong just (trans pv≡in (trans eq (cong (prim-sv fit′) (sym L≡x))))))
       cell-of (in-unit u) = ⊥-elim (fit-not-unit fit u)
-      -- (D383: a scalar layer is never at a location)
+      -- (D388: a scalar layer is never at a location)
       cell-of (in-loc il valid bf eq) = ⊥-elim (scalar-nowhere fit valid)
 
       v : ValidAtWF Heap (falloc fs7) X box (floc fs7)
@@ -494,7 +494,7 @@ module InMuC {FS : FrameSemantics} where
       place = at-loc box v before out-eq v before
 
   ------------------------------------------------------------------------
-  -- D393 (β1): THE FLAT LAYER, COPIED. `In` copies the layer's words into a
+  -- D398 (β1): THE FLAT LAYER, COPIED. `In` copies the layer's words into a
   -- fresh node (`node-copy-trace`), so the μ is valid at the node: its layer
   -- is, by the copy (`NodeCopy.Run`, `FlatPut`). The layer is flat, so its
   -- cell is an embedded one (`cell-flat`); the other two forms are refuted by

@@ -118,7 +118,7 @@ module IterInvC {FS : FrameSemantics} where
           bf0  : ∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record alloc₀ { next-slot = m }) loc
                → BeforeFrontier (record (falloc σ) { next-slot = m }) loc
           left : ending (floc σ) ≡ ending s₀
-          -- D381: the blocks `e`'s allocator had, and the caller's, keep their sizes
+          -- D386: the blocks `e`'s allocator had, and the caller's, keep their sizes
           bkF  : BlocksKept (falloc fsF) (falloc σ)
           bk0  : BlocksKept alloc₀ (falloc σ)
 
@@ -151,5 +151,5 @@ module IterInvC {FS : FrameSemantics} where
           bf0        : NotCut (resultAt (floc σ) (⟪ loopFrom e a ⟫ r))
                      → ∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record alloc₀ { next-slot = m }) loc
                      → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
-          -- D381: every block the caller had live keeps its size
+          -- D386: every block the caller had live keeps its size
           bk0        : NotCut (resultAt (floc σ) (⟪ loopFrom e a ⟫ r)) → BlocksKept alloc₀ (falloc settle)

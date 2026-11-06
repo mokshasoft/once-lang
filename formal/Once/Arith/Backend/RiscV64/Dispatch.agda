@@ -6,7 +6,7 @@
 --
 -- riscv64 whole-program dispatch. Mirrors x86-64: the ArithEnv maps a call
 -- label to (block, n), n its scratch words; the dispatch enters the block's
--- frame below the caller's sp (D388).
+-- frame below the caller's sp (D393).
 ------------------------------------------------------------------------
 
 module Once.Arith.Backend.RiscV64.Dispatch where
@@ -33,7 +33,7 @@ module _ (val : XInstr → State → Reg → Word) where
   ArithEnv : Set
   ArithEnv = String → Maybe (List XInstr × ℕ)
 
-  -- D388: what `call <block>` and the block's prologue do before its body —
+  -- D393: what `call <block>` and the block's prologue do before its body —
   -- `call` links the return address into `ra` (as `execInstr`'s `call` does)
   -- and `addi sp, sp, −8n` reserves the scratch frame, so the body's
   -- `8·slot(sp)` lands in `[sp − 8n, sp)`, never at or above the caller's sp.

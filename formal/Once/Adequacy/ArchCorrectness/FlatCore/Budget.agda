@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.Adequacy.ArchCorrectness.FlatCore.Budget — THE BUDGET INVARIANT
--- (plan 0.123 A.4 step 5, D371).
+-- (plan 0.123 A.4 step 5, D376).
 --
 -- The room checks make memory exhaustion OBSERVABLE; this makes the rest of the
 -- run need no resource parameter. The invariant, carried by the engine beside
@@ -194,7 +194,7 @@ bg-plain {hv} {prog} {fs} {fs′} {i} bg f nr z pc′ fb′ =
                  (trans (cong (λ m → hfront hv + slots m) z) (+-identityʳ (hfront hv))))
            (bg-split {hv} {prog} {fs} bg f nr))
 
--- D387: a step that SPENDS but moves neither the frontier nor the frame base (a
+-- D392: a step that SPENDS but moves neither the frontier nor the frame base (a
 -- SigOp's call: its stack use is transient) keeps the budget — the measure only falls
 bg-spent : ∀ {hv : HeapView} {prog : AbstractTrace} {fs fs′ : FlatState} {i : AbstractInstr}
          → Budget hv prog fs → fetch prog (fpc fs) ≡ just i → room? i ≡ false

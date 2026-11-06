@@ -11,7 +11,7 @@
 --   t                                        -- re-suspended (IH)
 --   store-at-slot tmp ; alloc (2 ⊔ sz) ; store-at-slot dst ; mov-to-input
 --   load-tag-lit tag ; store-at 0            -- the tag
---   fill (1 + |Pν|) (sz ∸ (1 + |Pν|))        -- the padding (D382)
+--   fill (1 + |Pν|) (sz ∸ (1 + |Pν|))        -- the padding (D387)
 --   put Pν tmp dst 1 ; load-from-slot dst    -- the payload, after the tag
 --
 -- The build is `Inj`'s, its put `FlatPutLay`'s. What the arm leaves is the

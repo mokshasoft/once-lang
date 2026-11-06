@@ -115,7 +115,7 @@ module SigOpC {FS : FrameSemantics} where
            → exec-sigop-halts si s ≡ exec-sigop-halts-of (effect-of c) si s
   halts-at si c e s = cong (λ c′ → exec-sigop-halts-of (effect-of c′) si s) e
 
-  -- D386: the fault flag, by the contract class (a Pure one faults only on an
+  -- D391: the fault flag, by the contract class (a Pure one faults only on an
   -- argument that does not decode)
   faults-at : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → ∀ s
             → exec-sigop-faults si s ≡ exec-sigop-faults-of (effect-of c) si s
@@ -133,8 +133,8 @@ module SigOpC {FS : FrameSemantics} where
   -- argument is left undecoded.
   ------------------------------------------------------------------------
   -- Behind a pointer, a compound base type is read by `readTyped`; a scalar is
-  -- never behind one (D383: it has no memory residence), and does not decode
-  -- from one (D392).
+  -- never behind one (D388: it has no memory residence), and does not decode
+  -- from one (D397).
   scalar-nowhere : ∀ {prog C m a c l s} → FitsInRegI C → ValidAtWF {prog = prog} m a {C} c l s → ⊥
   scalar-nowhere fits-int   (ClosureWellFormedBase.wrap ())
   scalar-nowhere fits-float (ClosureWellFormedBase.wrap ())
@@ -297,7 +297,7 @@ module SigOpC {FS : FrameSemantics} where
                                   × (DT.sigOpSemT fmt φ si c a ≡ TM.ret w)
   pure-agree si (blockV e refl refl) _ _ a = _ , refl , refl
   pure-agree si (primV p)  _ _ a = _ , refl , refl
-  -- D391: both read the world's value at the target
+  -- D396: both read the world's value at the target
   pure-agree {A} {B} si ffiV _ d a =
     atTarget fmt B (TM.pure ιᶠ k (proj₁ y) a)
     , cong (λ dd → mapRes (atTarget fmt B) (TM.pureHalf-at ιᶠ k dd a)) (proj₂ y)
@@ -390,7 +390,7 @@ module SigOpC {FS : FrameSemantics} where
       p₀ = proj₁ y
       ans = TM.answer ιᶠ (SMCore.LocState.ev-log s) op p₀ (argOf si x)
       -- the run of the call node, at the decided `yes`
-      -- D391: the answer is read at the target, by the denotation and the machine alike
+      -- D396: the answer is read at the target, by the denotation and the machine alike
       run-call : TM.run ιᶠ (SMCore.LocState.ev-log s) (TM.fmapT (resOf si) (TM.call op (argOf si x) (λ b → TM.ret (atTarget fmt B b))))
                ≡ (TM.callEvent op (argOf si x) DL.∷ DL.[] , returns (resOf si (atTarget fmt B ans)))
       run-call = cong (TM.run-call ιᶠ (SMCore.LocState.ev-log s) op (argOf si x) (λ b → TM.ret (resOf si (atTarget fmt B b)))) ans-eq

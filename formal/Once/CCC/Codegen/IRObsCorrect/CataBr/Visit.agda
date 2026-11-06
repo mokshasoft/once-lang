@@ -13,7 +13,7 @@
 --
 --   K      nothing
 --   Id     `mov-to-output` + `push2` — the child's word is `Input1`
---   ⊗      stash the pair at slot `s`, read the left part (`get`, D375: at
+--   ⊗      stash the pair at slot `s`, read the left part (`get`, D380: at
 --          word 0) into `Input1`, walk it at `s+4`; restore, read the right
 --          part (at the words after the left part's), walk it
 --   ⊕      `c-branch-tag-zero` on the sum block's tag: `inl` (tag 0) jumps
@@ -312,7 +312,7 @@ module CataVisitC {FS : FrameSemantics} where
       mid = restore-input s ∷ get-i X₂ (size X₁) ∷ mov-to-input ∷ []
       VB = VW b (s + 4) (lb + lF)
 
-      -- the text with its two reads as rows (D375: cell 0, then the words
+      -- the text with its two reads as rows (D380: cell 0, then the words
       -- after the first part)
       shape : VW (wf-Prod a b) s lb ≡ pre ++ VA ++ mid ++ VB
       shape = cong₂ (λ g h → (mov-to-output ∷ store-at-slot s ∷ []) ++ g ++ (mov-to-input ∷ []) ++ VA ++

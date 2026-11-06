@@ -449,7 +449,7 @@ module Unique {FS : FrameSemantics} where
   none-nt : ∀ (t : AbstractTrace) → NoThunkT t → AllPairs _≢_ (thunk-labels t ++ [])
   none-nt t nt = subst (λ z → AllPairs _≢_ (z ++ [])) (sym (tl-nil t nt)) []
 
-  -- D393: a kept value's copy, then the two-cell build, defines no marker (`wc-nt`)
+  -- D398: a kept value's copy, then the two-cell build, defines no marker (`wc-nt`)
   wc-du : ∀ kd E n c (bs : Blocks) → AllPairs _≢_ (block-defs bs)
         → AllPairs _≢_ (thunk-labels (with-copy kd E n (λ m → two-cell m c)) ++ block-defs bs)
   wc-du kd E n c bs p = subst (λ z → AllPairs _≢_ (z ++ block-defs bs)) (sym (tl-nil _ (wc-nt kd E n c))) p

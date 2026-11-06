@@ -80,7 +80,7 @@ def nothing  = 0
 scratch-addr : State → XScratch → Word
 scratch-addr s sc = readReg (regs s) esp + (4 * XScratch.slot sc)
 
--- D385: a leaf is one word at its offset
+-- D390: a leaf is one word at its offset
 word-bytes : Word
 word-bytes = 4
 
@@ -352,8 +352,8 @@ pathloadgo≡plg s addr []      k = refl
 pathloadgo≡plg s addr (x ∷ p) k = refl
 
 ------------------------------------------------------------------------
--- plan 0.123 α′ (f3c): THE DISPATCH'S LAYOUT (D388), as x86-64's: every input
--- leaf the block reads (a typed path, D385) is outside its frame
+-- plan 0.123 α′ (f3c): THE DISPATCH'S LAYOUT (D393), as x86-64's: every input
+-- leaf the block reads (a typed path, D390) is outside its frame
 -- `[esp, esp + N)`, and every spill inside it.
 ------------------------------------------------------------------------
 InFrame : ℕ → XInstr → Set
@@ -481,10 +481,10 @@ module _ (N : ℕ) where
 
 ------------------------------------------------------------------------
 -- plan 0.123 α′ (f3c): THE BLOCK'S ENTRY STATE. The dispatch enters the
--- block's frame (`call-frame`, D388): the return address and the four borrowed
+-- block's frame (`call-frame`, D393): the return address and the four borrowed
 -- registers pushed below `esp`, then `4n` of scratch. Each typed leaf of the
--- input is the input register `ecx` (a scalar, D390/D392) or the word at
--- `ecx + 4k` (D385) below that frame.
+-- input is the input register `ecx` (a scalar, D395/D397) or the word at
+-- `ecx + 4k` (D390) below that frame.
 ------------------------------------------------------------------------
 open import Once.Arith.Backend.X86-32.Dispatch using (call-frame; dispatch-arith)
 open import Once.Arith.Machine.Shape using (⟦_⟧S; IntsBelow)

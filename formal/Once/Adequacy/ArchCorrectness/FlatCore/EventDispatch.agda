@@ -169,7 +169,7 @@ open FrameSemantics FS using (Frame)
 -- that mention no machine at all, and that the dispatch leans on constantly —
 -- `slot-read-in-frame`, `load-indirect-target-wf`, `stack-ptr-current`,
 -- `frame-op-absurd`, `call-site-shape`, `ret-site-owes`, …
--- D371: the site facts the engine uses are the LOWERED run's (`RunLow`), each
+-- D376: the site facts the engine uses are the LOWERED run's (`RunLow`), each
 -- `RunWF`'s at the image state the lift is of.
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
   hiding (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok; load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds)
@@ -1076,7 +1076,7 @@ module Dispatch (sup : Supply) where
           go-loc (AtStack f j)  i-eq =
             ⊥-elim (stack-ptr-live fs Input1 f j (run-stack-ptr prog fs (inv-run wf)) i-eq)
 
-  -- plan 0.123 B.4 α: addr-at k. The address is a cell of its block (D379), so
+  -- plan 0.123 B.4 α: addr-at k. The address is a cell of its block (D384), so
   -- a mapped one (`dom-sized`); the arch writes it to the Output role.
   addr-at-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                    prog fs s (k : ℕ) → CompiledCorr hv prog fs s → Budget hv prog fs → FlatInv ev env prog fs → halted (floc fs) ≡ false
@@ -1102,7 +1102,7 @@ module Dispatch (sup : Supply) where
             ⊥-elim (stack-ptr-live fs Input1 f j (run-stack-ptr prog fs (inv-run wf)) i-eq)
 
   -- plan 0.123 B.4 α: MEMORY store-at k. A heap pointer's offset cell is OF ITS
-  -- BLOCK (D379: anything else faults), so mapped (`dom-sized`).
+  -- BLOCK (D384: anything else faults), so mapped (`dom-sized`).
   store-at-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
                     prog fs s (k : ℕ) → CompiledCorr hv prog fs s → Budget hv prog fs → FlatInv ev env prog fs → halted (floc fs) ≡ false
                 → fetch prog (fpc fs) ≡ just (store-at k)
@@ -1460,7 +1460,7 @@ module Dispatch (sup : Supply) where
                       (reg-range prog fs s sp-reg run cc) h0 nf
       -- the post-start invariant, from the flat-machine theorems; the start
       -- is behind it now (its pc is one past)
-      -- D371: the start is an image instruction, so the base run moves past pc 0
+      -- D376: the start is an image instruction, so the base run moves past pc 0
       nxt = low-step-image prog fs i run ftq h (λ _ ())
       inv₁ : FlatInv ev env prog (flat-exec-instr i prog fs)
       inv₁ = record
@@ -1488,7 +1488,7 @@ module Dispatch (sup : Supply) where
             → flat-ctrls (suc N) prog fs ≤ suc (blk-len i + proj₁ rec)
       bound b = ≤-trans (≤-reflexive step-ctrls) (≤-trans (+-mono-≤ (ctrl-le i) b) (≤-reflexive (+-suc (blk-len i) (proj₁ rec))))
 
-  -- D371: THE BOOT — the start's check, then the start. The lowered image holds
+  -- D376: THE BOOT — the start's check, then the start. The lowered image holds
   -- the check for the whole first stretch at pc 0 and the start right after.
   -- Room: the check's run lands in the correspondence one past it, where the
   -- start is (`events-agree-start`); the flat check emits nothing and counts no

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.IR.Semantics.Boundary — the implementation's side of D391.
+-- Once.IR.Semantics.Boundary — the implementation's side of D396.
 --
 -- `Spec.Boundary.readAt` reads what the world gives at the target, over the
 -- Spec's answer types. This is the same reading over the implementation's

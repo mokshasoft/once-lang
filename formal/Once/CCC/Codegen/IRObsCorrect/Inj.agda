@@ -4,14 +4,14 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.IRObsCorrect.Inj
 --
--- plan 0.123 B.4 α: `inl` and `inr` on the flat layout (D375). An injection
+-- plan 0.123 B.4 α: `inl` and `inr` on the flat layout (D380). An injection
 -- with tag `t` of a payload `P` into a sum `S` is one straight segment
 -- (`IRToTrace.inj-trace`):
 --
 --   mov-to-output ; store-at-slot n            -- the payload, stashed
 --   instr-alloc-heap (2 ⊔ size S) ; store-at-slot (suc n) ; mov-to-input
 --   instr-load-tag-lit t ; store-at 0          -- the tag
---   fill (suc (size P)) (size S ∸ suc (size P))    -- the padding (D382)
+--   fill (suc (size P)) (size S ∸ suc (size P))    -- the padding (D387)
 --   put P n (suc n) 1                          -- the payload's words
 --   load-from-slot (suc n)                     -- the block, the result
 --
@@ -316,7 +316,7 @@ module InjC {FS : FrameSemantics} where
 
   ------------------------------------------------------------------------
   -- The input, as a value to put: a node or a flat value where it lies, a
-  -- scalar in its register (D383: a scalar has no memory residence), a unit
+  -- scalar in its register (D388: a scalar has no memory residence), a unit
   -- anyhow.
   ------------------------------------------------------------------------
   module _ {prog : AbstractTrace} where

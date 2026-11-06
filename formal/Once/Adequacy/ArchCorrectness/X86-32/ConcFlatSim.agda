@@ -123,7 +123,7 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
               → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-float v < X.W.modulus)
-  -- D372: a room check's need `4k` is an emitted immediate (in the compare's
+  -- D377: a room check's need `4k` is an emitted immediate (in the compare's
   -- `2³² − 4k − 1`) and fits a word — the literal seam, as `tag-fits`.
   (room-fits : ∀ {hv : FC.HeapView FS word-eq}
                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
@@ -329,7 +329,7 @@ open import Data.List using ()   -- for `EntryLike`'s empty frame stack
 -- can be MODULE PARAMETERS here rather than postulates. See that module.)
 open import Once.Adequacy.ArchCorrectness.X86-32.RunContext o FS word-eq
   using ( EntryLike; Reachable; RunAt; mkRunAt; reach-start; module RunAt ) public
--- D371: the LOWERED run, which the engine and the run-conditioned parameters speak of
+-- D376: the LOWERED run, which the engine and the run-conditioned parameters speak of
 open RL o FS slot-size word-eq using (RunLow)
 
 ------------------------------------------------------------------------
@@ -407,7 +407,7 @@ x86-32-arith-table prog env =
 
 x86-32-traceloop : EI.TraceLoop FS Reg x86-32-emitter x86-32-machine
 -- THE ARITH PAYLOAD is the block and its scratch words, as on the other two
--- arches (D388: the dispatch enters the block's frame, so it needs its size).
+-- arches (D393: the dispatch enters the block's frame, so it needs its size).
 x86-32-traceloop = record
   { Payload = List XInstr × ℕ
   ; matchCall = RTx.matchCall
@@ -667,7 +667,7 @@ arith-sigop-lookup .(block-env (Cmp.blocks-x86-32 p)) .(Cmp.image-of p) fs si (p
 
 -- plan 0.123 α′ (f1): …and what it finds is the SigOp's OWN block — the
 -- table entry under its symbol is a program block with that symbol, and one
--- symbol is one block (`BlockTable.which-block`, D389).
+-- symbol is one block (`BlockTable.which-block`, D394).
 arith-sigop-block : ∀ (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)) prog fs {A B} (si : SigOpInfo A B)
                   → x86-32-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
                   → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
@@ -683,7 +683,7 @@ arith-sigop-block .(block-env (Cmp.blocks-x86-32 p)) .(Cmp.image-of p) fs si (p 
 -- (`X86-32.ArithFrame`): the subroutine keeps every role register but the
 -- result's, and writes only what its call pushes and its spills — each slot
 -- below what its tree asks for (`SpillBound`), which the room check charged
--- (D387).
+-- (D392).
 ------------------------------------------------------------------------
 private
   fits-W : ∀ n → 20 + 4 * n ≤ (5 + n) * 4
@@ -703,8 +703,8 @@ private
 
 -- Plan 0.129 B5 / plan 0.123 α′ (f3): THE VALUE half of the block's run — a
 -- theorem (`X86-32.ArithBlockValue`, x86-64's twin): the decoded argument is
--- the block's input at its entry state (D385, D392), its `Int` leaves words
--- (D391), so the dispatch's `eax` is the block's meaning, the SigOp's output.
+-- the block's input at its entry state (D390, D397), its `Int` leaves words
+-- (D396), so the dispatch's `eax` is the block's meaning, the SigOp's output.
 arith-block-value  : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
                    → RunLow prog fs
                    → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)

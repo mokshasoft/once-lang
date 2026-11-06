@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Adequacy.ArchCorrectness.X86-64.ArithFrame  (plan 0.123 α′ (f2))
 --
--- WHAT AN ARITH BLOCK'S SUBROUTINE LEAVES ALONE, on x86-64 (D388's dispatch):
+-- WHAT AN ARITH BLOCK'S SUBROUTINE LEAVES ALONE, on x86-64 (D393's dispatch):
 -- every register but its result's and the arith working set — so the
 -- stack pointer (restored), the input pointer `%rdi` (no arith instruction
 -- writes it), the closure and frontier registers (`AgreeCCC`) — and all of
@@ -180,7 +180,7 @@ module _ (val : XInstr → State → Reg → Word) (N : ℕ) where
                   , (λ hi → <-irrefl refl (<-≤-trans (subst (_< sp + 8 * n) (sym eq) (+-monoʳ-< sp (*-monoʳ-< 8 lt))) hi)) ]′ out
 
 ------------------------------------------------------------------------
--- THE SUBROUTINE (D388): the call's return address, then the block in the
+-- THE SUBROUTINE (D393): the call's return address, then the block in the
 -- frame below it; the caller's `%rsp` back after.
 ------------------------------------------------------------------------
 

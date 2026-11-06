@@ -5,7 +5,7 @@
 -- Once.CCC.Machine.FlatAlloc
 --
 -- plan 0.123 B.4 α: WHAT AN ALLOCATION OF `n` WORDS DOES to the allocator, in
--- the vocabulary of the value relation (D381): the fresh block was not live,
+-- the vocabulary of the value relation (D386): the fresh block was not live,
 -- is live after, has `n` cells (each in it), and every block live before
 -- keeps its size and stays live.
 ------------------------------------------------------------------------

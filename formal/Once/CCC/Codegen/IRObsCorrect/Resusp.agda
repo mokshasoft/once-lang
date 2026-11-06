@@ -111,7 +111,7 @@ module ResuspC {FS : FrameSemantics} where
         sf       : saved-frames (falloc settle) ≡ saved-frames (falloc σ)
         bf-mono  : ∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record (falloc σ) { next-slot = m }) loc
                  → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
-        -- D381: the blocks live at the start keep their sizes
+        -- D386: the blocks live at the start keep their sizes
         bk       : BlocksKept (falloc σ) (falloc settle)
 
     ----------------------------------------------------------------------

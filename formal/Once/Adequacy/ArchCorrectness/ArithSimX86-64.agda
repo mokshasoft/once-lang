@@ -9,8 +9,8 @@
 -- (`Adequacy.CPU.X86-64`). riscv64 and x86-32 have theirs; this one had none,
 -- so x86-64's arith blocks were proved nowhere.
 --
--- Its layout condition `WF` is the one the dispatch supplies (D388): every
--- input read (a non-empty path, D390) is below the stack pointer, and every
+-- Its layout condition `WF` is the one the dispatch supplies (D393): every
+-- input read (a non-empty path, D395) is below the stack pointer, and every
 -- spill at or above it — so no spill reaches the input. (riscv64's and x86-32's
 -- state theirs over a static link layout, `InStack`/`InHeap`.)
 ------------------------------------------------------------------------
@@ -92,7 +92,7 @@ sa-inj s sc sc' = additive-sa-inj (readReg (regs s) rsp) 8 (XScratch.slot sc) (X
 
 module _ (N : ℕ) where
 
-  -- the layout the dispatch supplies (D388): every input read is outside the
+  -- the layout the dispatch supplies (D393): every input read is outside the
   -- block's frame `[rsp, rsp + N)` — the heap below it, the caller's stack above
   -- (plan 0.123 α′ (f3c): at the input's own leaves — its typed paths — not at
   -- every offset: a block's input occupies `shape-size` words, no more.)
@@ -324,9 +324,9 @@ module _ (N : ℕ) where
 
 ------------------------------------------------------------------------
 -- plan 0.123 α′ (f3c): THE BLOCK'S ENTRY STATE. The dispatch enters the
--- block's frame (`call-frame`, D388): the return address at `sp − 8`, the
+-- block's frame (`call-frame`, D393): the return address at `sp − 8`, the
 -- stack pointer `8n` below it. Each typed leaf of the input is either the input
--- register (a scalar, D390/D392) or the word at `rdi + 8k` (D385) below that
+-- register (a scalar, D395/D397) or the word at `rdi + 8k` (D390) below that
 -- frame; then the Core's `R-input` and `WF` hold at the entry state.
 ------------------------------------------------------------------------
 open import Once.Arith.Backend.X86-64.Dispatch using (call-frame; dispatch-arith)
@@ -367,7 +367,7 @@ entry-at n s {sh} env leaf = ri , wf
 ------------------------------------------------------------------------
 -- plan 0.123 α′ (f3d): THE VALUE. The dispatch's result register is the
 -- block's meaning: the Core runs the NORMALIZED block (the emitted one), and
--- `normalize` keeps the meaning on word inputs (D391).
+-- `normalize` keeps the meaning on word inputs (D396).
 ------------------------------------------------------------------------
 open import Once.Arith.Machine.IR using (MArithIR)
 open import Once.Arith.Type using (NInt)

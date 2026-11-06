@@ -4,13 +4,13 @@
 ------------------------------------------------------------------------
 -- Once.Adequacy.ArchCorrectness.X86-32.ArithFrame  (plan 0.123 α′ (f2))
 --
--- WHAT AN ARITH BLOCK'S SUBROUTINE LEAVES ALONE, on x86-32 (D388's dispatch):
+-- WHAT AN ARITH BLOCK'S SUBROUTINE LEAVES ALONE, on x86-32 (D393's dispatch):
 -- the body writes only `%edx`, `%edi` (its working registers) and `%eax`;
 -- the epilogue gives back `%esp` and the four borrowed registers — so every
 -- role register but the result's is kept — and memory changes only in its
 -- frame: the five pushed words at `[sp − 20, sp)` and the spills at
 -- `[sp − 20 − 4n, sp − 20)`, each slot below `n` (`SpillBound`). The room
--- check charges exactly that (`sigop-call-words = 5`, D387).
+-- check charges exactly that (`sigop-call-words = 5`, D392).
 ------------------------------------------------------------------------
 
 module Once.Adequacy.ArchCorrectness.X86-32.ArithFrame where
@@ -204,7 +204,7 @@ module _ (val : XInstr → State → Reg → Word) where
                   , (λ hi → <-irrefl refl (<-≤-trans (subst (_< sp + 4 * n) (sym eq) (+-monoʳ-< sp (*-monoʳ-< 4 lt))) hi)) ]′ out
 
 ------------------------------------------------------------------------
--- THE SUBROUTINE (D388)
+-- THE SUBROUTINE (D393)
 ------------------------------------------------------------------------
 
 private

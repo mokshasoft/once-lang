@@ -43,7 +43,7 @@ module _ (val : XInstr → State → Reg → Word) where
   ArithEnv : Set
   ArithEnv = String → Maybe (List XInstr × ℕ)
 
-  -- D388: what `call <block>` and the block's prologue do before its body —
+  -- D393: what `call <block>` and the block's prologue do before its body —
   -- the call pushes the return address (`pc + 1`, as `execInstr`'s `call`
   -- does) and `subq $8n, %rsp` reserves the scratch frame below it, so the
   -- body's `8·slot(%rsp)` lands in `[sp − 8 − 8n, sp − 8)`, never at or above

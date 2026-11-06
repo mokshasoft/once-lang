@@ -7,10 +7,10 @@
 -- WHAT AN ARITH SIGOP'S RUN MUST DO, arch-free. The abstract step writes the
 -- SigOp's result to `Output` and changes nothing else a correspondence reads
 -- (`exec-abstract (instr-sigop si)`: alloc, memory, `Input1`, the frames and the
--- link all stand). The concrete run — the block's subroutine (D388) — may write
+-- link all stand). The concrete run — the block's subroutine (D393) — may write
 -- its result to the out register, and memory only inside its own frame
 -- `[sp − W, sp)` below the stack pointer. With the room `hfront + W ≤ sp` the
--- room check guarantees (D387), that frame is above every live heap cell and
+-- room check guarantees (D392), that frame is above every live heap cell and
 -- below every live frame, so the whole compiled correspondence carries over.
 --
 -- The arch owes `ArithRun` of its dispatch (its registers, its frame) and the
@@ -177,7 +177,7 @@ sigop-arith-corr {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = rec
 ------------------------------------------------------------------------
 -- …at a compiler-owned SigOp of a run. What the frame lemma asks of the
 -- abstract side, the run supplies: no link is pending there (it is not an
--- entry), and its Pure argument decoded (D386), so it does not halt.
+-- entry), and its Pure argument decoded (D391), so it does not halt.
 ------------------------------------------------------------------------
 private
   module CRL = RL o FS slot-size word-eq

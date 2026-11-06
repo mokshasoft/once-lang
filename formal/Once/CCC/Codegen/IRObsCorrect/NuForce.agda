@@ -154,7 +154,7 @@ module NuForceC {FS : FrameSemantics} where
   SeedKept alloc s alloc′ s′ =
     (∀ l′ → Live alloc l′ → Live alloc′ l′) × BlocksKept alloc alloc′ × (∀ l′ → Live alloc l′ → readLoc s′ l′ ≡ readLoc s l′)
 
-  -- D394: an input's footprint (a register or Unit input uses no cell)
+  -- D399: an input's footprint (a register or Unit input uses no cell)
   in-foot : ∀ {prog A mIn alloc x s} → InputAt {prog} {A} mIn alloc x s → Foot
   in-foot {A = A} (in-loc loc v _ _) = loc ∷ foot A loc v
   in-foot (in-reg _ _) = []
@@ -189,7 +189,7 @@ module NuForceC {FS : FrameSemantics} where
       in1 : readReg (regs (floc fs)) Input1 ≡ readReg (regs s) Input1
       in1 = trans i1 seq
 
-      -- D394: what the force is told is kept is the input's footprint
+      -- D399: what the force is told is kept is the input's footprint
       callee-input : (i : InputAt {prog} {⟦ F ⟧TI (ν-type F)} mIn alloc x s)
                    → (∀ l′ → l′ ∈ᶠ in-foot i → Live pre l′)
                    → (∀ l′ → l′ ∈ᶠ in-foot i → InBlk alloc′ l′ → InBlk pre l′)

@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.IRObsCorrect.CataBr.Build   (plan 0.123 B.4 α2)
 --
--- THE REBUILD'S TWO BUILDS, on the flat layout (D375), as `Walk`s:
+-- THE REBUILD'S TWO BUILDS, on the flat layout (D380), as `Walk`s:
 --
 --   * `BuildPair`: `pair-text k₁ k₂ kb B C` — the first part's word (in
 --     `Output`) to slot `k₁`, a fresh block of `2 ⊔ size (B * C)` words at

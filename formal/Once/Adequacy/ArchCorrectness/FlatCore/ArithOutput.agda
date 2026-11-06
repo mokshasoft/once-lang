@@ -5,10 +5,10 @@
 -- Once.Adequacy.ArchCorrectness.FlatCore.ArithOutput  (plan 0.123 α′ (f3c, f3d))
 --
 -- WHAT AN ARITH SIGOP'S STEP WRITES, arch-free. At a non-faulting step the
--- argument decoded (D386); a scalar one is the literal in `Input1` (D392), a
+-- argument decoded (D391); a scalar one is the literal in `Input1` (D397), a
 -- compound one the value behind its pointer. The Pure output is then the
 -- block's meaning at that value (`block-output`), and the value's `Int` leaves
--- are words (`input-words`, from the store invariant, D391).
+-- are words (`input-words`, from the store invariant, D396).
 ------------------------------------------------------------------------
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi)
@@ -91,7 +91,7 @@ block-output-flt {sh} si e eq ls {a} d =
            (cong (λ s′ → res-sv fits-float (semM-of (fs-ffi FS) (name si) s′ (fs-numerics FS) a)) eq))
 
 ------------------------------------------------------------------------
--- The decoded argument's `Int` leaves are words (the store invariant, D391).
+-- The decoded argument's `Int` leaves are words (the store invariant, D396).
 ------------------------------------------------------------------------
 input-words : ∀ {n ls} → StoreWF n ls → ∀ {A} (bt : Base ∅ₖ A) (sv : StoredValue FS)
             → readReg (regs ls) Input1 ≡ sv → ∀ {a}

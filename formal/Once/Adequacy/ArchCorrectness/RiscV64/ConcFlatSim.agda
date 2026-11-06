@@ -123,7 +123,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
               → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-float v < RS.W.modulus)
-  -- D372: a room check's need, `8k`, is an emitted immediate (`li t2, 8k`)
+  -- D377: a room check's need, `8k`, is an emitted immediate (`li t2, 8k`)
   -- and fits a word — the literal seam, as `tag-fits`.
   (room-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (k : ℕ)
@@ -436,7 +436,7 @@ riscv64-lea-slot prog fs s slot cc h ft run =
   block-step-lea-slot prog fs s slot cc h ft
     (slot-addr-no-wrap prog fs s slot run cc ft)
 
--- plan 0.123 B.4 α (D379): `addr-at k` is `addi t0, t0, 8k`; its no-wrap
+-- plan 0.123 B.4 α (D384): `addr-at k` is `addi t0, t0, 8k`; its no-wrap
 -- fact comes from the target being a mapped cell (below the frontier, which
 -- `reg-range` bounds as the heap register's value).
 riscv64-addr-at : ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv prog fs s
@@ -620,7 +620,7 @@ arith-sigop-lookup .(block-env (Cmp.blocks-riscv64 p)) .(Cmp.image-of p) fs si (
 
 -- plan 0.123 α′ (f1): …and what it finds is the SigOp's OWN block — the
 -- table entry under its symbol is a program block with that symbol, and one
--- symbol is one block (`BlockTable.which-block`, D389).
+-- symbol is one block (`BlockTable.which-block`, D394).
 arith-sigop-block : ∀ (env : EE.RT.ArithEnv) prog fs {A B} (si : SigOpInfo A B)
                   → riscv64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
                   → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
@@ -636,7 +636,7 @@ arith-sigop-block .(block-env (Cmp.blocks-riscv64 p)) .(Cmp.image-of p) fs si (p
 -- (`RiscV64.ArithFrame`): the subroutine keeps every role register but the
 -- result's, and writes only what its call pushes and its spills — each slot
 -- below what its tree asks for (`SpillBound`), which the room check charged
--- (D387).
+-- (D392).
 ------------------------------------------------------------------------
 private
   fits-W : ∀ n → 8 * n ≤ (5 + n) * 8
@@ -656,8 +656,8 @@ private
 
 -- Plan 0.129 B5 / plan 0.123 α′ (f3): THE VALUE half of the block's run — a
 -- theorem (`RiscV64.ArithBlockValue`, x86-64's twin): the decoded argument is
--- the block's input at its entry state (D385, D392), its `Int` leaves words
--- (D391), so the dispatch's `a0` is the block's meaning, the SigOp's output.
+-- the block's input at its entry state (D390, D397), its `Int` leaves words
+-- (D396), so the dispatch's `a0` is the block's meaning, the SigOp's output.
 arith-block-value  : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
                    → RLr.RunLow o FS slot-size word-eq prog fs
                    → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)

@@ -132,7 +132,7 @@ module BlockCallC {FS : FrameSemantics} where
   live-leave a (AtDynamic hl) (BeforeFrontier.heap-before r<h) =
     BeforeFrontier.heap-before (subst (_ <_) (sym (leave-frame-heap-ref a)) r<h)
 
-  -- D381: entering a call and leaving it move frames, never block sizes
+  -- D386: entering a call and leaving it move frames, never block sizes
   bk-enter : ∀ (bb : ℕ) (fs : FlatState) (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
            → BlocksKept pre (callee-alloc bb fs)
   bk-enter bb fs pre fa l _ ib =
@@ -296,7 +296,7 @@ module BlockCallC {FS : FrameSemantics} where
       mem-body nc pre′ m fa′ loc bf =
         trans (VR.mem-pres nc loc (callee-bf bb fs pre′ fa′ m 0 loc bf)) (thunk-keeps bb fs pre′ fa′ m loc bf)
 
-      -- D381: the caller's live blocks keep their sizes through the body
+      -- D386: the caller's live blocks keep their sizes through the body
       bk-body : NotCut (resultAt s′ (⟪ comp ⟫ k)) → ∀ (pre′ : AllocState {FS}) → falloc fs ≡ enter-call pre′
               → BlocksKept pre′ (falloc VR.settle)
       bk-body nc pre′ fa′ = bk-trans {a = pre′} {b = callee-alloc bb fs} {c = falloc VR.settle} (bk-enter bb fs pre′ fa′) (VR.blocks-kept nc) (live-callee bb fs pre′ fa′)

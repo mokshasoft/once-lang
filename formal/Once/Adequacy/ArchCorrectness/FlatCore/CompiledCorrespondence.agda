@@ -490,7 +490,7 @@ record BlockSteps : Set₁ where
       → BlockStep hv prog fs s store-indirect-suc
     -- plan 0.123 B.4 α: THE OFFSET FORMS, heap only (a register never holds a
     -- stack pointer, `StackPtrWF`). A load reads a written, so mapped, cell; a
-    -- store writes a cell of its block (D379), so a mapped one, and the
+    -- store writes a cell of its block (D384), so a mapped one, and the
     -- abstract step is the write (`in-block?` holds).
     bs-load-at :
       ∀ {hv : HeapView} prog fs s k hl w → CompiledCorr hv prog fs s
@@ -510,7 +510,7 @@ record BlockSteps : Set₁ where
       → writeLoc (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)
         ≡ writeLocToHeap (floc fs) (offsetHL hl k) (readReg (regs (floc fs)) Output)
       → BlockStep hv prog fs s (store-at k)
-    -- plan 0.123 B.4 α: an address at an offset, a cell of its block (D379),
+    -- plan 0.123 B.4 α: an address at an offset, a cell of its block (D384),
     -- so a mapped one; the run is handed over for an arch whose address is a
     -- real add (riscv64's `addi`: its no-wrap is the frontier's register range).
     bs-addr-at :

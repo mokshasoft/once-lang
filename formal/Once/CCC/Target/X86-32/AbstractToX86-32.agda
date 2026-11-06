@@ -209,7 +209,7 @@ compile-abstract (addr-at n) =
 -- restored past the skip (the call never returns, so only the fitting path
 -- needs it back).
 --
--- D372: the ROOM is compared, never the sum `frontier + 4k`, which can wrap and
+-- D377: the ROOM is compared, never the sum `frontier + 4k`, which can wrap and
 -- pass a check that must fail. With D = esp − esi (no borrow: the frontier is
 -- not above the stack pointer), `esi − esp − 1` is exactly 2³² − D − 1, so
 -- `jbe` against 2³² − 4k − 1 skips iff D ≥ 4k — at every D, none included.

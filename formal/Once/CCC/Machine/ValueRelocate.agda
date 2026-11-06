@@ -6,7 +6,7 @@
 -- (plan 0.123 B.4 α).
 --
 -- Embedding a compound component copies its words (`FlatCopy`); this says the
--- copy is the value. A value of a flat type is its words in place (D375), so it
+-- copy is the value. A value of a flat type is its words in place (D380), so it
 -- is valid at the destination when the destination's words are the source's,
 -- word for word over its size. Its NODE components (μ, ν, closures) are pointer
 -- words, copied too; the nodes they point to do not move, and stay valid by
@@ -61,7 +61,7 @@ private
   shift : ∀ (l : ValueLocation FS) j → offsetLoc (sucLoc l) j ≡ offsetLoc l (suc j)
   shift l j = trans (cong (λ z → offsetLoc z j) (sym (offset-1 l))) (offset-+ l 1 j)
 
--- The source is ANY location (a heap block's cell, or a frame slot: D374);
+-- The source is ANY location (a heap block's cell, or a frame slot: D379);
 -- the destination a heap block, so the copy is a Heap-mode value.
 module Relocate {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
   -- the destination's block
@@ -72,7 +72,7 @@ module Relocate {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
   (keep : ∀ l → Live a₁ l → readLoc s₂ l ≡ readLoc s₁ l)
   (bft : ∀ l → Live a₁ l → Live a₂ l)
   (ibt : BlocksKept a₁ a₂)
-  -- D381: the destination block has `N` words, each a cell of it
+  -- D386: the destination block has `N` words, each a cell of it
   (N : ℕ)
   (dst-in : ∀ o → o < N → InBlk a₂ (AtDynamic (heap-loc rd o))) where
 
@@ -131,7 +131,7 @@ module Relocate {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
     agree-max-r {a} {b} ag = mk-agree λ j j<b → at ag j (≤-trans j<b (m≤n⊔m a b))
 
   private
-    -- D382: padding word `j` after an `m`-word payload is a word of the sum
+    -- D387: padding word `j` after an `m`-word payload is a word of the sum
     pad-bound : ∀ m n j → m ≤ n → j < n ∸ m → suc m + j < suc n
     pad-bound m n j m≤n p = s≤s (subst (m + j <_) (m+[n∸m]≡n m≤n) (+-monoʳ-< m p))
 

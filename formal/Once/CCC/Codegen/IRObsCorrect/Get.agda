@@ -9,8 +9,8 @@
 -- `get C k` reads the component at word `k` of the flat value whose address
 -- is in `Input1` into `Output`, in its register form: a node's or a scalar's
 -- word (`load-at k`), a flat component's address (`addr-at k`, in its block
--- by the component's own witness, D381), or for a 0-word component the
--- container's pointer itself (`mov-to-output`, D381). Every clause that reads
+-- by the component's own witness, D386), or for a 0-word component the
+-- container's pointer itself (`mov-to-output`, D386). Every clause that reads
 -- a component — `fst`, `snd`, `case`'s arms, `Iter`, `apply`, the cata setup,
 -- the re-suspension — runs this one step and gets the component's
 -- `ResultPlace` from it.
@@ -117,7 +117,7 @@ module GetC {FS : FrameSemantics} where
 
   ------------------------------------------------------------------------
   -- A 0-WORD VALUE IS VALID AT ANY LIVE HEAP ADDRESS: it has no word to be
-  -- at (D381). Its components are 0-word too, so embedded (`cell-flat`) with
+  -- at (D386). Its components are 0-word too, so embedded (`cell-flat`) with
   -- a vacuous in-block witness.
   ------------------------------------------------------------------------
   live-any : ∀ {alloc : AllocState {FS}} {r o o′}

@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.RoomChecksFacts — where the room-check pass puts things.
 --
--- Plan 0.123 A.4 step 5 (D371). The pass (`RoomChecks.room-checks`) only ever
+-- Plan 0.123 A.4 step 5 (D376). The pass (`RoomChecks.room-checks`) only ever
 -- INSERTS `instr-room` instructions, so every instruction of the image keeps
 -- its order and moves to a later index. This module names that index map and
 -- proves what the transparency simulation needs of it:
@@ -409,7 +409,7 @@ module CheckK {FS : FrameSemantics} where
 
 ------------------------------------------------------------------------
 -- A PROGRAM IMAGE HAS NO CHECKS OF ITS OWN: every image instruction is
--- `ImageI` (`ProgramImageFacts.image-frame-free`), and a check is not (D371:
+-- `ImageI` (`ProgramImageFacts.image-frame-free`), and a check is not (D376:
 -- the pass adds them after the image).
 ------------------------------------------------------------------------
 open import Once.CCC.Machine.FrameFree using (ImageI)

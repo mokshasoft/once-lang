@@ -7,7 +7,7 @@
 -- x86-32 whole-program arith dispatch (the value half). `run-events`, on a
 -- `call once_arith.block.*`, runs the block and returns past the call.
 --
--- D388: the dispatch is the WHOLE subroutine the emitter prints
+-- D393: the dispatch is the WHOLE subroutine the emitter prints
 -- (`Emit.emit-payload`): `call` pushes the return address, the prologue pushes
 -- the four borrowed registers (%ebx %esi %edx %edi) and `subl $4n, %esp`
 -- reserves the scratch frame; the body runs there; the epilogue's `addl`, pops

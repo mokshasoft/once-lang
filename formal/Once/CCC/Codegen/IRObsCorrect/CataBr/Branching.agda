@@ -144,7 +144,7 @@ module CataBranchC {FS : FrameSemantics} where
     -- 1. entry → the fold head
     ------------------------------------------------------------------
     -- the two fields are taken directly, not through `module B = Build …`: applying the whole
-    -- module copies every definition in it, which ran out of heap (D394's richer witnesses)
+    -- module copies every definition in it, which ran out of heap (D399's richer witnesses)
     env-sv : StoredValue FS
     env-sv = Build.env-sv wf alg st n l prog base span la alg₀ x s alloc cl rs nh pl rdi lpl cE μhl mC rdμ lμ vμ
 
@@ -247,7 +247,7 @@ module CataBranchC {FS : FrameSemantics} where
     lv-R nc (AtDynamic hl) (BeforeFrontier.heap-before p) with bf-R nc 0 (AtDynamic hl) (BeforeFrontier.heap-before p)
     ... | BeforeFrontier.heap-before p′ = BeforeFrontier.heap-before p′
 
-    -- D381: every block survives the cata
+    -- D386: every block survives the cata
     bk-R : NotCut ρ → BlocksKept alloc (falloc RR.τ)
     bk-R nc = bk-trans {a = alloc} {b = falloc TF.τ} {c = falloc RR.τ} TF.bk (RR.bk (ncR nc))
                 (live-from alloc (falloc TF.τ) (SegA.href TF.seg))

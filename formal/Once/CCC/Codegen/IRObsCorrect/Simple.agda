@@ -191,10 +191,10 @@ module Simp {FS : FrameSemantics} where
   -- `store-at-slot` goes through `flat-step-straight`, so it is definitional.
 
   -- ── `fst` / `snd` — DISCHARGED (D178), and since plan 0.123 B.4 α ONE `get` of the input pair's
-  -- component (`IRObsCorrect.Get`). The pair is flat (D375): the first
+  -- component (`IRObsCorrect.Get`). The pair is flat (D380): the first
   -- component at word 0, the second after the first's words, each in its
   -- register form (a node's or scalar's word, a flat component's address, a
-  -- 0-word component's container pointer, D381). `get-run` runs the step and
+  -- 0-word component's container pointer, D386). `get-run` runs the step and
   -- says where the component is; the record is the step's frame.
   obs-correct-fst : ∀ {A B} → IRObsCorrectF (fst {A} {B})
   obs-correct-fst {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl _ nh inp k rs = mr-of inp

@@ -200,14 +200,14 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
   --     stance as `in-unit` and `unit-result`: Unit has NO residence.
   ------------------------------------------------------------------------
   -- plan 0.123 B.4 α: only a SCALAR is inline; a Unit component occupies no
-  -- word (D375), so the old `rep-unit` (a junk cell standing for Unit) went.
+  -- word (D380), so the old `rep-unit` (a junk cell standing for Unit) went.
   data InlineRep (A : IRTy) : Set where
     rep-prim : FitsInRegI A → InlineRep A
 
   inline-sv : ∀ {A : IRTy} → InlineRep A → ⟦ A ⟧ → StoredValue FS
   inline-sv (rep-prim fit)  a = prim-sv fit a
 
-  -- plan 0.123 B.4 α (D375, D378): WHAT A COMPONENT'S CELL IS, BY ITS TYPE. A
+  -- plan 0.123 B.4 α (D380, D383): WHAT A COMPONENT'S CELL IS, BY ITS TYPE. A
   -- node (μ, ν, a closure) is a pointer word to its own block; a scalar is its
   -- word; a compound (a product, a sum, Unit) is EMBEDDED: its own words, in
   -- place (Unit: none). The layout is a function of the type, so a consumer's
@@ -288,7 +288,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
              → Live alloc (sucLoc l) → Live alloc (offsetLoc l n)
   live-shift (AtDynamic (heap-loc r o)) n (BeforeFrontier.heap-before p) = BeforeFrontier.heap-before p
 
-  -- D381: a cell of its block (D379's test, at this allocator's block sizes)…
+  -- D386: a cell of its block (D384's test, at this allocator's block sizes)…
   InBlk : AllocState {FS} → ValueLocation FS → Set
   InBlk alloc l = ExecFinal.in-block? {FS} (AllocState.block-size alloc) l ≡ true
 
@@ -302,7 +302,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
   BlocksKept : AllocState {FS} → AllocState {FS} → Set
   BlocksKept a₁ a₂ = ∀ l → Live a₁ l → InBlk a₁ l → InBlk a₂ l
 
-  -- D382: a cell that holds a word, and a sum's padding — `c` words from word
+  -- D387: a cell that holds a word, and a sum's padding — `c` words from word
   -- `from` — each holding one, so every word of a flat value is written
   Written : LocState FS → ValueLocation FS → Set
   Written s l = ∃[ w ] (readLoc s l ≡ just w)
@@ -310,7 +310,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
   Pad : LocState FS → ValueLocation FS → (from c : ℕ) → Set
   Pad s l from c = ∀ j → j < c → Written s (offsetLoc l (from ℕ.+ j))
 
-  -- D394: LIVE MEANS IN SCOPE. A FOOTPRINT is a set of cells a value uses;
+  -- D399: LIVE MEANS IN SCOPE. A FOOTPRINT is a set of cells a value uses;
   -- `foot` (below) reads it off the value's witness, and the cells live at a
   -- point are the footprints of the values in scope there. A value is kept by
   -- any change that keeps its footprint (`FootTransport`), so a write to a
@@ -381,7 +381,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
                readLoc s cell-loc ≡ just (inline-sv rep c) →
                CellAtP {C} VC alloc c cell-loc s
     -- plan 0.123 B.4 α: a compound component, embedded at the cell itself;
-    -- D381: when it has words, its first is a live cell of its block
+    -- D386: when it has words, its first is a live cell of its block
     cell-flat : ∀ {c : ⟦ C ⟧} {cell-loc : ValueLocation FS}
                   {s : LocState FS} {mC : AllocMode} →
                IsFlat C →
@@ -471,7 +471,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       VB mB alloc b (sucLoc sum-loc) s →
       SumV {A} {B} VA VB m alloc (inj₂ b) sum-loc s
 
-  -- D383: a scalar has NO memory residence. In the flat layout a scalar is
+  -- D388: a scalar has NO memory residence. In the flat layout a scalar is
   -- its word — in a register (`at-reg`/`in-reg`), or inline in a compound's
   -- cell (`cell-inline`) — never a value at a location, so these are empty
   -- (as `VoidV` is). A pointer to a scalar would be stored by `put` as the
@@ -663,7 +663,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
                  → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
       frames-pres : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
                   → saved-frames (falloc settle) ≡ saved-frames pre
-      -- D381: every block the caller had live keeps its size
+      -- D386: every block the caller had live keeps its size
       blocks-kept : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
                   → BlocksKept pre (falloc settle)
 
@@ -683,7 +683,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   -- (`CalleeRunP`). The environment stays opaque: its type is hidden in the
   -- closure, so its validity is not a subterm of `A ⇛ B`. What makes it still
   -- valid at the call is the caller's guarantee that the environment's
-  -- FOOTPRINT `E` (D394: the cells it uses, which the closure carries since
+  -- FOOTPRINT `E` (D399: the cells it uses, which the closure carries since
   -- the environment's type is hidden) still reads the same, is still live
   -- and keeps its blocks. `curry` proves this from its body's correctness
   -- (S3); `apply` spends it.
@@ -724,7 +724,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       find-thunk prog body-label ≡ just j →
       CallRuns {A} {B} VA VB alloc s E closure-loc j f →
       ArrowV {A} {B} VA VB Heap alloc f closure-loc s
-    -- D384: an environment that is not a pointer to a live block (a scalar,
+    -- D389: an environment that is not a pointer to a live block (a scalar,
     -- or a Unit, whose register word is arbitrary) is just the WORD the env
     -- cell holds: the call passes that word on (`CallRuns`), and nothing
     -- else reads it.
@@ -793,7 +793,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       nu-cell1 : readLoc s (sucLoc ν-loc) ≡ just (SV-Code nu-lbl)
       nu-live1 : Live alloc (sucLoc ν-loc)
       nu-code  : find-thunk prog nu-lbl ≡ just nu-j
-      -- D394: the seed's footprint (its type is hidden, as an environment's is)
+      -- D399: the seed's footprint (its type is hidden, as an environment's is)
       nu-fp    : Foot
       nu-fp-live : ∀ l → l ∈ᶠ nu-fp → Live alloc l
       nu-force : ForceRuns {F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′) alloc s nu-fp nu-seed nu-j v
@@ -924,7 +924,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   CellAt alloc C = CellAtP {C} (VAt C) alloc
 
   ------------------------------------------------------------------------
-  -- D394: A VALUE'S FOOTPRINT, read off its witness: its block, what its
+  -- D399: A VALUE'S FOOTPRINT, read off its witness: its block, what its
   -- pointers reach, an environment's or a seed's carried footprint. The
   -- value's own location is read too, and is asked for separately (a Unit
   -- reads nothing). `foot-live`: a footprint is live, so the frontier-based
@@ -1164,7 +1164,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   rp-map f (rp-reg fit rax) = rp-reg fit rax
 
 
-  -- (D383: `valid-primitive-wf` is gone — a scalar is never valid at a
+  -- (D388: `valid-primitive-wf` is gone — a scalar is never valid at a
   -- location.)
 
   --------------------------------------------------------------------
@@ -1316,7 +1316,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       -- plan 0.135 S1: the label resolves, and the block computes `f`.
       code-j : ℕ
       code-found : find-thunk prog body-label ≡ just code-j
-      -- D394: the environment's footprint, and it is live
+      -- D399: the environment's footprint, and it is live
       env-foot : Foot
       env-foot-live : ∀ l → l ∈ᶠ env-foot → Live alloc l
       runs : CallRuns {A} {B} (VAt A) (VAt B) alloc s env-foot closure-loc code-j f
@@ -1533,7 +1533,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   ------------------------------------------------------------------------
   -- plan 0.135 S1: ONE TRANSPORT. Every `validityWF-*` below is an instance.
   --
-  -- D394: by FOOTPRINT. A witness reads only its own location (`Q loc`) and
+  -- D399: by FOOTPRINT. A witness reads only its own location (`Q loc`) and
   -- its footprint (`foot`). So it moves to any state that agrees on a set `Q`
   -- covering both, and to any allocator that keeps `Q`'s live cells live and
   -- their blocks' sizes. Proved once by recursion on the type (`v-tr`) and
@@ -1551,7 +1551,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     here-tr : ∀ {l} → Q l → Here a₁ l → Here a₂ l
     here-tr q (lv , ib) = bft _ q lv , ibt _ q lv ib
 
-    -- D382: a sum's padding is in its block, so it reads the same
+    -- D387: a sum's padding is in its block, so it reads the same
     pad-tr : ∀ {l from c} → Live a₁ (sucLoc l) → (∀ x → SameBlk l x → Q x) → Pad s₁ l from c → Pad s₂ l from c
     pad-tr {l} slb qb pd j j<c =
       proj₁ (pd j j<c) , trans (rd _ (qb _ (blk-off l _ slb))) (proj₂ (pd j j<c))

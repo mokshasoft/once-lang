@@ -4,10 +4,10 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Machine.FlatWords
 --
--- plan 0.123 B.4 α (D382): EVERY WORD OF A VALID FLAT VALUE IS WRITTEN.
+-- plan 0.123 B.4 α (D387): EVERY WORD OF A VALID FLAT VALUE IS WRITTEN.
 --
 -- A pair's words are its components'; a sum's are its tag, its payload's and
--- its padding (written when the sum was built, D382); a node or a scalar is
+-- its padding (written when the sum was built, D387); a node or a scalar is
 -- one written word. So a copy of a flat value (`FlatCopy.copy-run`) reads no
 -- unwritten cell, which in the abstract machine would fault (D367).
 ------------------------------------------------------------------------

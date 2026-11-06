@@ -12,7 +12,7 @@
 -- FAILS until plan 0.123 Part B (the proven allocators reclaim): each round
 -- allocates its next state on the bump heap, which nothing reclaims, so the
 -- heap fills after a few thousand rounds; a room check sees it and the run
--- ends `exhausted` (the Host's SIGABRT, plan 0.123 D371) instead of running on.
+-- ends `exhausted` (the Host's SIGABRT, plan 0.123 D376) instead of running on.
 
 next : Int -> Void + Int
 next n = inr (n + 1)

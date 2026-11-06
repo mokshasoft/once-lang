@@ -16,7 +16,7 @@
 --          node's, carried along)
 --   Id     `pop2 val`: the popped result
 --   ⊗      the right part first (read at the words after the left part's,
---          D375), rebuilt at `s+4`, its word stashed at `s+2`; the left part
+--          D380), rebuilt at `s+4`, its word stashed at `s+2`; the left part
 --          (word 0); a fresh flat pair, both parts `put` (`Build.BuildPair`)
 --   ⊕      branch on the tag as `visit-walk` does; the payload (word 1)
 --          rebuilt at `s+4`, then a fresh flat sum block (`Build.BuildSum`).

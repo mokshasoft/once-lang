@@ -141,7 +141,7 @@ module Prog (σ : ISig) (p : IRProgram) (lk₀ : LinkedProgram σ p) where
   D   = prog-defs p
   ext = prog-externs p
   img = C.image-of p
-  -- D371: the image is the program image with its room checks; the closure
+  -- D376: the image is the program image with its room checks; the closure
   -- below is the program image's, and crosses the pass at the end (a check
   -- defines nothing and references only the Host's `once_exhausted`)
   img₀ = program-image eo rp

@@ -177,7 +177,7 @@ record LitFits : Set₁ where
           (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
       → Once.CCC.Machine.SMCore.AbstractExec.lit-value {x86-32-frame-semantics} fits-int v < W.modulus
 
-    -- D372: a room check's need `4k`, in the compare's immediate `2³² − 4k − 1`.
+    -- D377: a room check's need `4k`, in the compare's immediate `2³² − 4k − 1`.
     room-fits :
       ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})

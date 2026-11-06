@@ -98,7 +98,7 @@ fill-am from c = fill-All {AllocMinI} from c tt (λ _ → tt)
 inj-am : ∀ t P S n → AllocMinTrace (inj-trace t P S n)
 inj-am t P S n = tt ∷ tt ∷ am⊔ (size S) ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (fill-am _ (size S ∸ suc (size P))) (++⁺ (put-am P n (suc n) 1) (tt ∷ []))
 
--- D380: a closure body's entry
+-- D385: a closure body's entry
 env-entry-am : ∀ kd E A → AllocMinTrace (proj₂ (env-entry kd E A))
 env-entry-am word E A = []
 env-entry-am flat E A =
@@ -252,7 +252,7 @@ out-am mu-box  = tt ∷ []
 out-am mu-unit = tt ∷ []
 out-am mu-ptr  = tt ∷ []
 
--- D393: a kept value's copy, then the two-cell build
+-- D398: a kept value's copy, then the two-cell build
 wc-am : ∀ kd E n c → AllocMinTrace (with-copy kd E n (λ m → two-cell m c))
 wc-am word E n c = tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 wc-am flat E n c = ++⁺ (tt ∷ tt ∷ am⊔ (size E) ∷ tt ∷ ++⁺ (put-am E n (suc n) 0) (tt ∷ [])) (tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
@@ -402,7 +402,7 @@ alloc-min-blocks (SigOp _)      n l = []
 alloc-min-blocks (Call _)      n l = []
 alloc-min-blocks (const fits-int _)   n l = []
 alloc-min-blocks (const fits-float _) n l = []
--- D380: the body starts with its environment's entry.
+-- D385: the body starts with its environment's entry.
 alloc-min-blocks (curry {E} {A} b) n l =
   ++⁺ (tt ∷ ++⁺ (++⁺ (env-entry-am (kind E) E A) (alloc-min-trace' b _ (suc (suc l)))) (tt ∷ []))
       (alloc-min-blocks b _ (suc (suc l)))

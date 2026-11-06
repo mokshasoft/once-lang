@@ -97,7 +97,7 @@ module CataFoldInvC {FS : FrameSemantics} where
       bf       : NotCut (resultAt (floc σ) (⟪ comp ⟫ k)) → ∀ (m : ℕ) (loc : ValueLocation FS)
                → BeforeFrontier (record (falloc σ) { next-slot = m }) loc
                → BeforeFrontier (record (falloc τ) { next-slot = m }) loc
-      -- D381: every block survives the run
+      -- D386: every block survives the run
       bk       : NotCut (resultAt (floc σ) (⟪ comp ⟫ k)) → BlocksKept (falloc σ) (falloc τ)
       same     : ∀ {v r} → resultAt (floc σ) (⟪ comp ⟫ k) ≡ returns (done v r) → Same σ τ
       post     : ∀ {v r} → resultAt (floc σ) (⟪ comp ⟫ k) ≡ returns (done v r) → Post v τ

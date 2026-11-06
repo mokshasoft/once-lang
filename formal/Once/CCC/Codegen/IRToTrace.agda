@@ -688,7 +688,7 @@ in-box-trace n =
   mov-to-output ∷ store-at-slot n ∷ instr-alloc-heap 2 ∷ mov-to-input ∷
   load-from-slot n ∷ store-at 0 ∷ mov-to-output ∷ []
 
--- D393 (β1): a flat layer becomes the node by a COPY of its words into a fresh
+-- D398 (β1): a flat layer becomes the node by a COPY of its words into a fresh
 -- block, so a node never shares its words with the layer it was built from
 -- (which, after β6, may lie in a frame). Two slots: `n` the layer, `suc n` the
 -- node. A word layer (`Id`: a μ pointer) is already a node and passes through.
@@ -719,7 +719,7 @@ in-next mu-box  kd n = suc n
 in-next mu-unit kd n = n
 in-next mu-ptr  kd n = in-ptr-next kd n
 
--- D393 (β1, β2): what a node KEEPS in cell 0 — a closure's environment, a
+-- D398 (β1, β2): what a node KEEPS in cell 0 — a closure's environment, a
 -- suspension's seed, an `in-ν` layer — is a copy when it is flat: the value is
 -- copied into a fresh block (`node-copy-trace`, slots `n` and `suc n`), its
 -- address moved to `Input1`, and the build continues at `suc (suc n)`. A word
@@ -751,7 +751,7 @@ out-trace mu-box  = load-at 0 ∷ []
 out-trace mu-unit = mov-to-output ∷ []
 out-trace mu-ptr  = mov-to-output ∷ []
 
--- plan 0.123 B.4 α (D375): an injection with tag `t` of a payload of type `P`
+-- plan 0.123 B.4 α (D380): an injection with tag `t` of a payload of type `P`
 -- (in `Input1`) into a sum of type `S`: a block of `2 ⊔ size S` words, the tag
 -- at word 0, the payload's words from word 1 (`FlatLayout.put`). Two stash
 -- slots, `n` (the payload) and `suc n` (the block).
@@ -768,7 +768,7 @@ inj-trace t P S n =
   put P n (suc n) 1 ++
   load-from-slot (suc n) ∷ []
 
--- D380: a closure body's entry. The call pair is `[env-word, arg…]`; with a
+-- D385: a closure body's entry. The call pair is `[env-word, arg…]`; with a
 -- WORD environment that is already the body's flat input `E * A`, so nothing
 -- runs and the body's slots start at 0. With a FLAT environment the body
 -- rebuilds `E * A` (slots 0–3: the call pair, the environment's address, the
@@ -808,7 +808,7 @@ ir-to-trace' n l id        = n , l , (mov-to-output ∷ []) , []
 -- postulates. Future: type-driven split for register-fittable
 -- primitive args, layered as an optimization pass on top of the
 -- uniform packed base.
--- plan 0.123 B.4 α (D375): a product is flat — the first component at word 0,
+-- plan 0.123 B.4 α (D380): a product is flat — the first component at word 0,
 -- the second after the first's words; a word kind is loaded, a flat kind is
 -- addressed (`FlatLayout.get`).
 ir-to-trace' n l (fst {A} {B}) = n , l , get A 0 , []
@@ -850,7 +850,7 @@ ir-to-trace' n l (g ∘ f)   =
 -- `FlatStackPtr`'s "there is no stack pointer" invariant stand unchanged and
 -- the flat<->concrete correspondence is not reopened. Moving pair I/O to the
 -- stack is plan 0.87.
--- plan 0.123 B.4 α (D375): the block holds BOTH components' words, the second
+-- plan 0.123 B.4 α (D380): the block holds BOTH components' words, the second
 -- after the first's (`FlatLayout.put`: a word kind its word, a flat kind a copy
 -- of its words). At least 2 words (`AllocMin`).
 ir-to-trace' n l (⟨_,_⟩ {A} {B} {C} f g) =
@@ -927,7 +927,7 @@ ir-to-trace' n l (⟨_,_⟩ {A} {B} {C} f g) =
 -- anyway (the elaborator threads `Heap`; the only pass that claimed to select
 -- it, `Once.Escape`, was a header comment rather than code and is now
 -- deleted). This is the heap lowering, unchanged.
--- D380: the node is `[env-word, code]`; a body whose environment is FLAT starts
+-- D385: the node is `[env-word, code]`; a body whose environment is FLAT starts
 -- by rebuilding its flat input from the call pair (`env-entry`).
 ir-to-trace' n l (curry {E} {A} body) =
   let this-label    = l
@@ -937,7 +937,7 @@ ir-to-trace' n l (curry {E} {A} body) =
       (body-start , prologue) = env-entry (kind E) E A
       (body-budget , l2 , body-trace₀ , body-bodies) = ir-to-trace' body-start l1 body
       body-trace  = prologue ++ body-trace₀
-      -- D393 (β2): a flat environment is copied first
+      -- D398 (β2): a flat environment is copied first
       this-trace  = with-copy (kind E) E n (λ m → two-cell m (ℓ o this-label))
       -- D159: see the Stack clause — the body is a named block.
       all-bodies  = (ℓ o this-label , body-budget , body-trace) ∷ body-bodies
@@ -967,7 +967,7 @@ ir-to-trace' n l (curry {E} {A} body) =
 -- transient stack cell that is reused once the frame is popped — the x86-32
 -- `arith-lambda-2` dangling read (x86-64/riscv64 only survived by luck). We are
 -- heap-only, so build it on the heap (mirrors the `⟨ f , g ⟩ Heap` clause).
--- D380: the call pair is `[env-word, arg]`, the argument `put` at word 1 (its
+-- D385: the call pair is `[env-word, arg]`, the argument `put` at word 1 (its
 -- words copied when it is flat). The input pair is `[closure, arg…]`.
 ir-to-trace' n l (apply {A} {B}) =
   let arg-stash  = n
@@ -1029,7 +1029,7 @@ ir-to-trace' n l (const fits-float v) = n , l , (instr-load-const Ty.fits-float 
 -- Bump-allocate a 2-cell heap block, write [tag, payload-ptr].
 -- Mirrors SumInlAllocWF.inl-heap-trace / SumInrAllocWF.inr-heap-trace.
 -- Uses 2 scratch slots for stashing: payload-stash = n, sum-stash = n+1.
--- plan 0.123 B.4 α (D375): the block is the tag, then the payload's words
+-- plan 0.123 B.4 α (D380): the block is the tag, then the payload's words
 -- (`FlatLayout.put` at word 1), sized for the larger alternative.
 ir-to-trace' n l (inl {A} {B}) = suc (suc n) , l , inj-trace 0 A (A +ᵀ B) n , []
 ir-to-trace' n l (inr {A} {B}) = suc (suc n) , l , inj-trace 1 B (A +ᵀ B) n , []
@@ -1072,7 +1072,7 @@ ir-to-trace' n l (case {A} {B} f g) =
 -- In: μ Lambek constructor. A μ value is a HEAP POINTER (D366), so what `In`
 -- emits depends on how its layer arrives (`MuRep`): a layer that is already a
 -- μ pointer (`Id`) IS the node — `mov-to-output` passes it through; a flat
--- one (sum, product) is copied into a fresh node (D393, β1);
+-- one (sum, product) is copied into a fresh node (D398, β1);
 -- an `Int`/`Float` layer is BOXED into a fresh block (`in-box-trace`); a
 -- `Unit` layer has no residence, so `In` allocates a block and writes
 -- nothing. (Before D366 every `In` was `mov-to-output`, which left a literal,
@@ -1127,7 +1127,7 @@ ir-to-trace' n l (in-ν {F} _) =
       -- recursing on a term that is not a subterm of `in-ν` is exactly what
       -- the termination checker refuses (`scope-ok` is mutual with the
       -- block lemmas). `mov-to-output` IS `ir-to-trace' 0 l1 id`'s trace.
-      -- D393 (β1): a flat layer is copied first
+      -- D398 (β1): a flat layer is copied first
       this-trace  = with-copy (kind (⟦ F ⟧TI (ν-type F))) (⟦ F ⟧TI (ν-type F)) n (λ m → two-cell m (ℓ o this-label))
       all-bodies  = (ℓ o this-label , 0 , mov-to-output ∷ []) ∷ []
   in next , l1 , this-trace , all-bodies
@@ -1165,7 +1165,7 @@ ir-to-trace' n l (Ana {F} wf {E} {A} coalg) =
       -- frame, so they start where the coalgebra's frontier ended.
       (block-budget , l3 , resusp-trace) =
         resuspend-layer F E A coalg-budget l2 (ℓ o this-label) 0 wf
-      -- D393 (β1): the seed pair is copied first
+      -- D398 (β1): the seed pair is copied first
       this-trace  = with-copy flat (E *ᵀ A) n (λ m → two-cell m (ℓ o this-label))
       all-bodies  = (ℓ o this-label , block-budget ,
                      mov-to-output ∷ store-at-slot 0 ∷ coalg-trace ++ resusp-trace) ∷ coalg-bodies

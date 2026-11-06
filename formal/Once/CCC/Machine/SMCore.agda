@@ -830,7 +830,7 @@ module ExecFinal {FS : FrameSemantics} where
   exec-load-at-resolved k dst (just loc) s = exec-load-with-value dst (readLoc s (offsetLoc loc k)) s
   exec-load-at-resolved k dst nothing    s = record s { halted = true ; faulted = true }
 
-  -- D379: a store at an offset writes a cell OF ITS BLOCK, or faults (D367: a
+  -- D384: a store at an offset writes a cell OF ITS BLOCK, or faults (D367: a
   -- target cannot follow a store past its block — it would write another
   -- block's words). The pointer's own cell is in bounds by `PtrB`; the words
   -- after it are not, so the offset store checks. A stack location is not
@@ -847,7 +847,7 @@ module ExecFinal {FS : FrameSemantics} where
   exec-store-at-resolved bs k (just loc) v s = exec-store-in-block (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v s
   exec-store-at-resolved bs k nothing    _ s = record s { halted = true ; faulted = true }
 
-  -- D379: an address at an offset is a cell OF ITS BLOCK, or the step faults:
+  -- D384: an address at an offset is a cell OF ITS BLOCK, or the step faults:
   -- a heap pointer always addresses a cell of its block (`PtrB`).
   exec-addr-in-block : Bool → ValueLocation FS → LocState FS → LocState FS
   exec-addr-in-block true  loc s = record s { regs = writeReg (regs s) Output (SV-Ptr loc) }
@@ -1232,7 +1232,7 @@ data AbstractInstr : Set where
   -- Added LAST for MAlonzo ctor-index stability.
   instr-free-heap : ℕ → AbstractInstr
 
-  -- Plan 0.123 A.4 (D368): `instr-room k` checks that the next `k` words fit
+  -- Plan 0.123 A.4 (D373): `instr-room k` checks that the next `k` words fit
   -- between the cell frontier and the stack, and ends the run `exhausted` (a
   -- call of the Host's `once_exhausted`) when they do not. The abstract
   -- machine has unbounded memory, so here it is a no-op; the run that ends
@@ -1240,7 +1240,7 @@ data AbstractInstr : Set where
   -- MAlonzo ctor-index stability.
   instr-room : ℕ → AbstractInstr
 
-  -- Plan 0.123 B.4 R1 (D375): a FLAT value is its `Spec.ABI` words at
+  -- Plan 0.123 B.4 R1 (D380): a FLAT value is its `Spec.ABI` words at
   -- consecutive locations, so a field is a word at an OFFSET from the value's
   -- address. `load-at k`: Output := *(Input1 + k); `store-at k`:
   -- *(Input1 + k) := Output; `addr-at k`: Output := Input1 + k (a field's own
@@ -1663,7 +1663,7 @@ module AbstractExec {FS : FrameSemantics} where
   readTyped-sum cA cB (just (SV-Code _))            mp = nothing
   readTyped-sum cA cB nothing                       mp = nothing
 
-  -- plan 0.123 B.4 α (D375): a base value's size in words — Unit 0, a scalar
+  -- plan 0.123 B.4 α (D380): a base value's size in words — Unit 0, a scalar
   -- 1, a product the sum, a sum a tag and the larger payload (`Spec.ABI.words`).
   tsize : Type → ℕ
   tsize Unit       = 0
@@ -1675,7 +1675,7 @@ module AbstractExec {FS : FrameSemantics} where
   {-# CATCHALL #-}
   tsize _          = 1
 
-  -- plan 0.123 B.4 α: THE FLAT READER. A base value is its words in place (D375):
+  -- plan 0.123 B.4 α: THE FLAT READER. A base value is its words in place (D380):
   -- a product's second component after the first's words, a sum's payload
   -- after its tag (a scalar payload is its word there, Unit none). No pointer
   -- is followed: a base value holds none.
@@ -1715,10 +1715,10 @@ module AbstractExec {FS : FrameSemantics} where
   -- ⟦ A ⟧`, which gave `⊥` at `b-Void` once an interpretation was
   -- inhabited, and decoded a boxed value from the pointer alone.)
   decode-at : ∀ {A} → Base ∅ₖ A → StoredValue FS → LocState FS → Maybe ⟦ A ⟧
-  -- D392: a SCALAR argument is its register (D383: a scalar has no memory
+  -- D397: a SCALAR argument is its register (D388: a scalar has no memory
   -- residence), so a pointer at a scalar base does not decode — the step
-  -- faults (D386), as the block's code, which takes the register itself as
-  -- the value (D390), would compute from an address.
+  -- faults (D391), as the block's code, which takes the register itself as
+  -- the value (D395), would compute from an address.
   decode-at b-Unit  _                      _ = just tt
   decode-at b-Int   (SV-Lit fits-int   v)  _ = just v
   decode-at b-Float (SV-Lit fits-float v)  _ = just v
@@ -1749,7 +1749,7 @@ module AbstractExec {FS : FrameSemantics} where
   call-sigop-ans-at : ∀ {A B} (si : SigOpInfo A B) → LocState FS → FitsInReg B
                     → callKey (callOp (name si) A (baseA si) B) ∈ calls (fs-interp FS)
                     → Maybe ⟦ A ⟧ → StoredValue FS
-  -- D391: the answer is read at the target
+  -- D396: the answer is read at the target
   call-sigop-ans-at {A} {B} si s fitB p (just a) =
     SV-Lit fitB (atTarget (fs-numerics FS) B (answer (fs-interp FS) (ev-log s) (callOp (name si) A (baseA si) B) p a))
   call-sigop-ans-at si s fitB p nothing = unit-storedvalue
@@ -1848,7 +1848,7 @@ module AbstractExec {FS : FrameSemantics} where
   exec-sigop-output si s = exec-sigop-output-of (effect si) si s
 
   -- | Shape-direct halt-flag dispatch.
-  -- D386: a PURE SigOp whose argument does not decode FAULTS (as D379's
+  -- D391: a PURE SigOp whose argument does not decode FAULTS (as D384's
   -- `store-at` outside its block): it has no meaning there, and a fault is what
   -- lets a run's not faulting say that the argument decoded (a site fact, as
   -- `load-at`'s). Aux-style (an explicit `Maybe`), so a consumer's `rewrite` of

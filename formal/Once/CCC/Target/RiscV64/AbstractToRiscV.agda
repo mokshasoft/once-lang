@@ -262,7 +262,7 @@ compile-abstract (addr-at n) =
 -- `once_exhausted`, which ends the run. The room `sp − s2` is computed, not the
 -- sum `s2 + 8k`: the frontier is never above the stack pointer, so the
 -- difference cannot borrow, where the sum could wrap and pass a check that
--- must fail (D372). t1 and t2 are no role's; `li` because `addi`'s 12-bit
+-- must fail (D377). t1 and t2 are no role's; `li` because `addi`'s 12-bit
 -- immediate cannot hold every k.
 -- riscv64: sub t1, sp, s2 ; li t2, 8k ; bgeu t1, t2, 1f ; call once_exhausted ; 1:
 compile-abstract (instr-room k) =

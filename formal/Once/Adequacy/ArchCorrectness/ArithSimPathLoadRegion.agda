@@ -33,7 +33,7 @@ module Once.Adequacy.ArchCorrectness.ArithSimPathLoadRegion
   (word : ℕ)
   where
 
--- D385: the leaf read over a bare memory (= `path-load-go` with `mem s = m`): one
+-- D390: the leaf read over a bare memory (= `path-load-go` with `mem s = m`): one
 -- read at `flat-addr`.
 plg : Memory → ℕ → InputPath → ℕ → ℕ
 plg m base []      k = base
@@ -41,7 +41,7 @@ plg m base (x ∷ p) k = def (readMem m (flat-addr word base (x ∷ p) k))
 
 -- The address the read touches is in the heap — the input value is heap-resident
 -- (the frame's calling-convention contract; NOT proved here).
--- (D390: the empty path reads no memory)
+-- (D395: the empty path reads no memory)
 HeapChase : Memory → ℕ → InputPath → ℕ → Set
 HeapChase m base []      k = ⊤
 HeapChase m base (x ∷ p) k = InHeap (flat-addr word base (x ∷ p) k)

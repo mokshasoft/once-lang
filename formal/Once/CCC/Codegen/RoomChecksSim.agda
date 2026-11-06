@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.CCC.Codegen.RoomChecksSim — the room checks are transparent (D371).
+-- Once.CCC.Codegen.RoomChecksSim — the room checks are transparent (D376).
 --
 -- Plan 0.123 A.4 step 5. The flat machine running `room-checks t` follows the
 -- flat machine running `t`: a check is a no-op step, and every other step is

@@ -105,7 +105,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
        xpc (List Instr) compile-trace find-label blk-off blk-len exec modulus
   public
 
--- D371: the machine runs the LOWERED image (`room-checks` of the program
+-- D376: the machine runs the LOWERED image (`room-checks` of the program
 -- image), so the run context the engine carries is `RunLow` — a lift of the
 -- image's own run (`RunContext.RunAt`, which `RunWF` speaks of). Exported under
 -- the engine's name for it, `RunAt`: "the run of the program the machine runs".
@@ -171,7 +171,7 @@ record FlatInv (ev : RT.EvExtractor) (env : RT.ArithEnv)
     inv-env     : ArithTable prog env
     inv-run     : RunAt prog fs
     -- plan 0.107: the correspondence runs AFTER the start, which the per-arch
-    -- start lemma covers on its own; no step returns there. D371: said of the
+    -- start lemma covers on its own; no step returns there. D376: said of the
     -- image's own run the lowered run lifts (its start is pc 0 there, while the
     -- lowered image has the start's check first) — `RunWF.run-step-pc-pos`.
     inv-started : fpc (RunLow.run-at inv-run) ≡ 0 → ⊥
@@ -534,7 +534,7 @@ record Supply : Set₁ where
                         -- FFI contract is `Pure` and external.
                         → Internal (sem si) → CompiledCorr hv prog fs s
                         → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                        -- D387: the room the check before it left for the
+                        -- D392: the room the check before it left for the
                         -- block's frame, and the run has not stopped
                         → CFC.hfront hv + slots (spend (max-entry prog) (instr-sigop si)) ≤ rreg s sp-reg
                         → LocState.halted (floc fs) ≡ false

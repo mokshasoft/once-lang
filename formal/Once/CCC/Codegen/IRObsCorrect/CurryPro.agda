@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.IRObsCorrect.CurryPro
 --
--- plan 0.123 α2 (D380): a closure body over a FLAT environment begins with
+-- plan 0.123 α2 (D385): a closure body over a FLAT environment begins with
 -- `env-prologue`, which rebuilds the body's flat input `E * A` from the call
 -- pair `[env-word, arg]`:
 --

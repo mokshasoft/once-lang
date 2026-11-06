@@ -9,9 +9,9 @@
 --
 -- The correspondence needs a pointer's pointee to be mapped (the tag branch
 -- on a node pointer, `FlatCorr.dom-sized`). A store at an offset checks its
--- own cell (D379), and a load at one reads a written, so mapped, cell.
+-- own cell (D384), and a load at one reads a written, so mapped, cell.
 --
--- plan 0.123 B.4 α (D379): it was the PAIR form (the cell AND the next one),
+-- plan 0.123 B.4 α (D384): it was the PAIR form (the cell AND the next one),
 -- true while every pointer was a 2-cell block's start. A flat value's
 -- component is addressed INSIDE its container (`addr-at`), possibly at the
 -- block's last word, so the invariant is the cell alone; `addr-at` keeps it by
@@ -121,7 +121,7 @@ ptr-bounds-cell : ∀ (fs : FlatState) (r : AbstractReg) (hl : HeapLocation)
                 → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))
 ptr-bounds-cell fs r hl wf eq = subst (PtrB _) eq (pb-regs wf r)
 
--- D379: what `in-block?` accepts is a cell of its block
+-- D384: what `in-block?` accepts is a cell of its block
 in-block-ptrb : ∀ (bs : ℕ → ℕ) (loc : ValueLocation FS) → in-block? bs loc ≡ true → PtrB bs (SV-Ptr loc)
 in-block-ptrb bs (AtStack _ _)  _ = tt
 in-block-ptrb bs (AtDynamic hl) e = <ᵇ⇒< (heap-offset hl) (bs (ref-id (heap-ref hl))) (subst T (sym e) tt)
@@ -309,7 +309,7 @@ pb-store-at-resolved bs bs′ ls k nothing    v ok wf = pb-fault bs ls wf
 pb-store-at-resolved bs bs′ ls k (just loc) v ok wf =
   pb-store-in-block bs ls (in-block? bs′ (offsetLoc loc k)) (offsetLoc loc k) v ok wf
 
--- D379: an address at an offset is a cell of its block, or a fault
+-- D384: an address at an offset is a cell of its block, or a fault
 pb-addr-in-block : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (ok : Bool) (loc : ValueLocation FS)
                  → ok ≡ in-block? bs loc → PBInv bs ls
                  → PBInv bs (exec-addr-in-block ok loc ls)

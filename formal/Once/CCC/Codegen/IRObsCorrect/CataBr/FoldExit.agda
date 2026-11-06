@@ -144,7 +144,7 @@ module CataFoldExitC {FS : FrameSemantics} where
         r0-3 = trans (hp-keep mov-to-input (floc x2) (falloc x2) tp nhw-mov-to-input)
                      (trans (hp-keep (load-from-slot (n + 2)) (floc x1) (falloc x1) tp nhw-load-from-slot) r0)
 
-        -- the value's word, `load-at 0` (D375)
+        -- the value's word, `load-at 0` (D380)
         r0′ : readLoc (floc x3) (offsetLoc (AtDynamic tp) 0) ≡ just w
         r0′ = trans (cong (readLoc (floc x3)) (offset-zero (AtDynamic tp))) r0-3
         nh4 : halted (floc x4) ≡ false

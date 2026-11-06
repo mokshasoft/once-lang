@@ -77,7 +77,7 @@ data Layout : ∀ {A : Type} (b : Base ∅ₖ A) → ⟦ A ⟧ᵛ → List Carri
           → Layout (b-+ a b) (inj₂ y) (1 ∷ vs ++ pad)
 
 ------------------------------------------------------------------------
--- PASSING (D376): how an argument and an answer of a base type cross a call —
+-- PASSING (D381): how an argument and an answer of a base type cross a call —
 -- exactly as C passes the struct above, under the target's procedure-call
 -- standard. An operation takes one argument and gives one answer, so the
 -- standard's rules reduce to: where each WORD of the layout goes.

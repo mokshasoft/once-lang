@@ -356,7 +356,7 @@ module At (tn : TargetNum) where
     (def      : Maybe ℕ → ℕ)
     (def-just : ∀ w → def (just w) ≡ w)
     (sa       : St → XScratch → ℕ)               -- scratch-addr
-    (pl       : St → InputPath → ℕ → ℕ)          -- path-load (D385: the leaf's word offset)
+    (pl       : St → InputPath → ℕ → ℕ)          -- path-load (D390: the leaf's word offset)
     (e1       : XInstr → St → St)                -- concrete step (opaque)
     (eb       : List XInstr → St → St)           -- concrete block fold (opaque)
     (eb-nil   : ∀ s → eb [] s ≡ s)
@@ -542,7 +542,7 @@ module At (tn : TargetNum) where
     -- R-input — the input correspondence (for arg).
     ----------------------------------------------------------------------
     -- | The machine word a TYPED leaf holds: the leaf itself, an `Int` word
-    -- (D391) or a float pattern. No `Maybe`, so no default to be false about.
+    -- (D396) or a float pattern. No `Maybe`, so no default to be false about.
     leafWord : ∀ {sh n} → Path sh n → ⟦ sh ⟧S → ℕ
     leafWord here-int   z       = z
     leafWord here-flt   w       = w

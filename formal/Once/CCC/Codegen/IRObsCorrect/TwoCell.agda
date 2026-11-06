@@ -75,10 +75,10 @@ module TwoCellC {FS : FrameSemantics} where
   module InjC′ = InjC {FS}
   module CTC = CopyTwoCellC {FS}
 
-  -- D393 (β2): where the closure's ENVIRONMENT is, in the build's end state:
+  -- D398 (β2): where the closure's ENVIRONMENT is, in the build's end state:
   -- the word in cell 0 is a scalar (`env-reg`), anything for a `Unit`
   -- (`env-unit`), or the address of a value valid there (`env-loc`) — the
-  -- caller's value (a word environment, D380) or its copy (a flat one, D393).
+  -- caller's value (a word environment, D385) or its copy (a flat one, D398).
   data EnvRes {prog : AbstractTrace} (A : IRTy) (x : ⟦ A ⟧) (aE : AllocState {FS}) (sE : LocState FS)
               : StoredValue FS → Set where
     env-reg  : (fit : FitsInRegI A) → EnvRes A x aE sE (prim-sv fit x)
@@ -88,7 +88,7 @@ module TwoCellC {FS : FrameSemantics} where
   -- plan 0.135 S3: the closure's `runs` is PROVED, from the body's own
   -- correctness (`ihb`) through the block-call lemma (S2). The block is the
   -- head of this fragment's `BlocksAt`; the body's blocks are its tail.
-  -- D393: stated over the build's END STATE (`fsE`), whichever build it was.
+  -- D398: stated over the build's END STATE (`fsE`), whichever build it was.
   module CurryCore {A B C} (body : IR (A * B) C) (ihb : IRObsCorrectF body)
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ) (ss : AllSlotStable prog) (cr : BlockRuns prog)
     (j : ℕ) (feq : find-thunk prog (ℓ o l) ≡ just j)
@@ -122,7 +122,7 @@ module TwoCellC {FS : FrameSemantics} where
     denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (curry body) x ⟫ k) ≡ []
     denot-[] k = refl
 
-    -- D394: the environment's footprint, which the closure carries
+    -- D399: the environment's footprint, which the closure carries
     env-foot : ∀ {cv′} → EnvRes {prog} A x (falloc fsE) (floc fsE) cv′ → Foot
     env-foot (env-reg _)  = []
     env-foot (env-unit _) = []
@@ -137,7 +137,7 @@ module TwoCellC {FS : FrameSemantics} where
     EF : Foot
     EF = env-foot env
 
-    -- ── `EnvSrc`: the env word, handed on at a call (D380), as a value to put (D384).
+    -- ── `EnvSrc`: the env word, handed on at a call (D385), as a value to put (D389).
     EnvSrc : Set
     EnvSrc = ∀ (bb : ℕ) (fs : FlatState) (pre : AllocState {FS}) (pl : ValueLocation FS)
            → falloc fs ≡ enter-call pre
@@ -325,7 +325,7 @@ module TwoCellC {FS : FrameSemantics} where
                         TCB.mem-pres TCB.cf-fs10 TCB.heapref-≤ TCB.sf-fs10 TCB.blocks-kept
                         TCR.obj-hl TCR.cell0v TCB.cell0-fs10 TCB.code-fs10 TCB.before TCB.before-suc TCB.out-eq
                         (envr refl inp)
-      -- D393 (β2): a FLAT environment is copied first; cell 0 is the copy
+      -- D398 (β2): a FLAT environment is copied first; cell 0 is the copy
       by-kind flat kf = CC.result
         where
           span′ : SpanAt prog base (CTC.copy-two-cell-trace A n l)
@@ -352,7 +352,7 @@ module TwoCellC {FS : FrameSemantics} where
     cell0v≡in : TCR.cell0v ≡ readReg (regs s) Input1
     cell0v≡in = writeReg-same (regs s) Output (readReg (regs s) Input1)
 
-    -- D394: with the seed's footprint, which the force is told is kept
+    -- D399: with the seed's footprint, which the force is told is kept
     susp : ∀ {F} {v : ⟦ ν-type F ⟧} (j : ℕ) → find-thunk prog (ℓ o l) ≡ just j
          → (E : Foot) → (∀ l′ → l′ ∈ᶠ E → Live (falloc TCR.fs10) l′)
          → ForceRuns {prog = prog} {F} (λ m′ a′ v′ l′ s″ → NuV {prog = prog} {F} m′ a′ v′ l′ s″)
@@ -412,7 +412,7 @@ module TwoCellC {FS : FrameSemantics} where
       -- D359: the old premise, from the invariant.
       n≤ = ns≤ {alloc} n ns0
 
-      -- D393 (β1): the seed pair is copied first; cell 0 is the copy
+      -- D398 (β1): the seed pair is copied first; cell 0 is the copy
       module CR = CTC.CopyRun (E IRTy′.* A) refl n l prog base s alloc cl rs n≤ nh span (InjC′.mk-src {prog} (E IRTy′.* A) inp)
 
       -- Building a suspension RUNS NOTHING: the coalgebra is stored, not
@@ -491,7 +491,7 @@ module TwoCellC {FS : FrameSemantics} where
           place : ResultPlace (ν-type F) Heap (falloc TCR.fs10) (falloc TCR.fs10)
                               (retVal (evalᴰ (in-ν wf) x)) (floc TCR.fs10)
           place = at-loc TCR.obj-loc mk-valid TCB.before TCB.out-eq mk-valid TCB.before
-      -- D393 (β1): a FLAT layer is copied first; the suspension keeps the copy
+      -- D398 (β1): a FLAT layer is copied first; the suspension keeps the copy
       by-kind flat kf = record
         { traces-agree   = trans CR.silent (sym (denot-[] k))
         ; value-realized =

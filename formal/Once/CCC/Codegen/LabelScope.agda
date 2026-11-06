@@ -117,7 +117,7 @@ get-ls X k = nolab-ls (get-nolab X k)
 getμ-ls : ∀ {lo hi} (G : Fun 0) k → LabelsIn lo hi (get-k (lkind G word) (lsz G 1) k)
 getμ-ls G k = nolab-ls (get-k-nolab (lkind G word) (lsz G 1) k)
 
--- D382: a sum's padding fill mentions no label
+-- D387: a sum's padding fill mentions no label
 fill-nolab : ∀ from c → NoLab (fill from c)
 fill-nolab from c = fill-All from c refl (λ _ → refl)
 
@@ -426,7 +426,7 @@ out-ls : ∀ {lo hi} (r : MuRep) → LabelsIn lo hi (out-trace r)
 out-ls mu-box  = li-none refl ∷ []
 out-ls mu-unit = li-none refl ∷ []
 out-ls mu-ptr  = li-none refl ∷ []
--- D393: a kept value's copy, then the two-cell build
+-- D398: a kept value's copy, then the two-cell build
 wc-ls : ∀ kd E n c → ∀ {lo hi} → LabelsIn lo hi (with-copy kd E n (λ m → two-cell m c))
 wc-ls word E n c = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
@@ -1151,7 +1151,7 @@ out-sa mu-box  = segagree-nolab _ (refl ∷ [])
 out-sa mu-unit = segagree-nolab _ (refl ∷ [])
 out-sa mu-ptr  = segagree-nolab _ (refl ∷ [])
 
--- D393: a kept value's copy, then the two-cell build
+-- D398: a kept value's copy, then the two-cell build
 wc-sa : ∀ kd E n c → SegAgree (with-copy kd E n (λ m → two-cell m c))
 wc-sa word E n c = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
 wc-sa flat E n c = segagree-nolab _ (++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nolab E n (suc n) 0) (refl ∷ [])) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
@@ -1507,7 +1507,7 @@ scope-ok : ∀ {A B} (ir : IR A B) (n l : ℕ)
 -- For `in-ν` the block is a fixed one-instruction stub, not a sub-IR, so its
 -- scope is `scope-nil` outright — and taking it as an argument is what keeps
 -- `scope-ok` from calling itself at a term that is not a subterm of its own.
--- plan 0.123 B.4 α (D380): a body block is a LABEL-FREE prologue `pre` (a flat
+-- plan 0.123 B.4 α (D385): a body block is a LABEL-FREE prologue `pre` (a flat
 -- environment's rebuild; `[]` otherwise) then the body at frontier `m`.
 body-bl-in : ∀ {X C} (pre : AbstractTrace) → NoLab pre → (m : ℕ) (bd : IR X C) (n l lb : ℕ) → l ≤ lb
             → ScopeOK (trace-of (ir-to-trace' m lb bd))
@@ -1526,7 +1526,7 @@ body-bl-agree : ∀ {X C} (pre : AbstractTrace) → NoLab pre → (m : ℕ) (bd 
                            , pre ++ trace-of (ir-to-trace' m lb bd))
                     ∷ bodies-of (ir-to-trace' m lb bd)))
 
--- D380: the prologue is label-free
+-- D385: the prologue is label-free
 env-entry-nolab : ∀ (kd : Kind) (E A : IT.IRTy) → NoLab (proj₂ (env-entry kd E A))
 env-entry-nolab word E A = []
 env-entry-nolab flat E A =
@@ -1535,7 +1535,7 @@ env-entry-nolab flat E A =
       (refl ∷ refl ∷ refl ∷
        ++⁺ (put-nolab E 1 3 0) (++⁺ (put-nolab A 2 3 _) (refl ∷ refl ∷ [])))
 
--- D393: a kept value's copy, then the two-cell build, is label-free
+-- D398: a kept value's copy, then the two-cell build, is label-free
 wc-nl : ∀ kd E n c → NoLab (with-copy kd E n (λ m → two-cell m c))
 wc-nl word E n c = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
 wc-nl flat E n c = ++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nolab E n (suc n) 0) (refl ∷ [])) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])

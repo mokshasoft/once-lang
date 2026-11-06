@@ -5,7 +5,7 @@
 -- Once.CCC.Codegen.IRObsCorrect.Apply
 --
 -- D200: `apply` — the setup, the call, and the hand-off to the closure's own
--- `runs` (plan 0.135 S1). plan 0.123 B.4 α / D380: the setup builds the call
+-- `runs` (plan 0.135 S1). plan 0.123 B.4 α / D385: the setup builds the call
 -- pair `[env-word, arg…]` on the flat layout:
 --
 --   get A 1 ; store-at-slot n ; load-at 0 ; mov-to-input      -- arg; closure
@@ -379,7 +379,7 @@ module ApplyC {FS : FrameSemantics} where
                                  (trans (+-suc (length S2) _) (cong suc (trans (+-suc (length S2) _) (cong suc (+-suc (length S2) base)))))))))
 
               j   = ClosureValidWF.code-j cvw
-              -- D394: the environment's footprint is what the call keeps
+              -- D399: the environment's footprint is what the call keeps
               EL  = ClosureValidWF.env-foot-live cvw
               feq = ClosureValidWF.code-found cvw
 

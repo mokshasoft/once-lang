@@ -79,7 +79,7 @@ scratch-text record { slot = s } =
 -- Per-instruction text
 ------------------------------------------------------------------------
 
--- D385: a leaf of the flat input (D375) is ONE doubleword at its offset `k` from
+-- D390: a leaf of the flat input (D380) is ONE doubleword at its offset `k` from
 -- the input pointer `t0`; a whole-input scalar (`[]`) is `t0` itself. An offset
 -- past the 12-bit immediate is formed in `dst` (no other register written).
 arg-load-text : XReg → InputPath → ℕ → String

@@ -46,7 +46,7 @@ module Sem (bits : ℕ) (F : FloatFormat) where
   eval-arith-W {sh} (alit z)   _   = fromℤ z
   eval-arith-W {sh} (aflit d)  _   = round F d
   -- Both reads are TOTAL — the path proves which leaf it lands on — and both
-  -- leaves are words (D391): the read IS the value.
+  -- leaves are words (D396): the read IS the value.
   eval-arith-W {sh} {NInt}   (ainput p) inp = readLeaf p inp
   eval-arith-W {sh} {NFloat} (ainput p) inp = readLeaf p inp
   -- The op DISPATCHES ON THE KIND. `Once.Word`'s modular ops for `Int`,

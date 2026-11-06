@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Adequacy.ArchCorrectness.RiscV64.ArithFrame  (plan 0.123 α′ (f2))
 --
--- WHAT AN ARITH BLOCK'S SUBROUTINE LEAVES ALONE, on riscv64 (D388's dispatch):
+-- WHAT AN ARITH BLOCK'S SUBROUTINE LEAVES ALONE, on riscv64 (D393's dispatch):
 -- every register but its result's, `ra` (the call links it; no role) and the
 -- arith working set — so the stack pointer (restored), the input pointer `t0`
 -- (no arith instruction writes it), the closure and frontier registers
@@ -186,7 +186,7 @@ module _ (val : XInstr → State → Reg → Word) (N : ℕ) where
                   , (λ hi → <-irrefl refl (<-≤-trans (subst (_< bp + 8 * n) (sym eq) (+-monoʳ-< bp (*-monoʳ-< 8 lt))) hi)) ]′ out
 
 ------------------------------------------------------------------------
--- THE SUBROUTINE (D388): `call` links `ra`, the block runs in the frame
+-- THE SUBROUTINE (D393): `call` links `ra`, the block runs in the frame
 -- below the caller's `sp`, and the caller's `sp` comes back.
 ------------------------------------------------------------------------
 

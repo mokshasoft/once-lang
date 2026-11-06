@@ -314,7 +314,7 @@ open import Data.List using ()   -- for `EntryLike`'s empty frame stack
 -- can be MODULE PARAMETERS here rather than postulates. See that module.)
 open import Once.Adequacy.ArchCorrectness.X86-64.RunContext o FS word-eq
   using ( EntryLike; Reachable; RunAt; mkRunAt; reach-start; module RunAt ) public
--- D371: the LOWERED run, which the engine and the run-conditioned parameters speak of
+-- D376: the LOWERED run, which the engine and the run-conditioned parameters speak of
 open RL o FS slot-size word-eq using (RunLow)
 
 ------------------------------------------------------------------------
@@ -643,7 +643,7 @@ arith-sigop-lookup .(block-env (Cmp.blocks-x86-64 p)) .(Cmp.image-of p) fs si (p
 
 -- plan 0.123 α′ (f1): …and what it finds is the SigOp's OWN block — the
 -- table entry under its symbol is a program block with that symbol, and one
--- symbol is one block (`BlockTable.which-block`, D389).
+-- symbol is one block (`BlockTable.which-block`, D394).
 arith-sigop-block : ∀ (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs {A B} (si : SigOpInfo A B)
                   → x86-64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
                   → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
@@ -659,7 +659,7 @@ arith-sigop-block .(block-env (Cmp.blocks-x86-64 p)) .(Cmp.image-of p) fs si (p 
 -- (`X86-64.ArithFrame`): the subroutine keeps every role register but the
 -- result's, and writes only its return address and its spills — each slot
 -- below what its tree asks for (`SpillBound`), which the room check charged
--- (D387).
+-- (D392).
 ------------------------------------------------------------------------
 private
   fits-W : ∀ n → 8 + 8 * n ≤ (5 + n) * 8
@@ -680,7 +680,7 @@ private
 
 -- Plan 0.129 B5 / plan 0.123 α′ (f3): THE VALUE half of the block's run — a
 -- theorem (`X86-64.ArithBlockValue`): the decoded argument is the block's input
--- at its entry state (D385, D392), its `Int` leaves words (D391), so the
+-- at its entry state (D390, D397), its `Int` leaves words (D396), so the
 -- dispatch's `rax` is the block's meaning, which is the SigOp's output.
 arith-block-value  : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
                    → RunLow prog fs

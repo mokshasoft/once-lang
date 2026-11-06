@@ -1649,7 +1649,7 @@ store-indirect-suc-target-ptr prog fs r h ftq =
 
 -- plan 0.123 B.4 α: THE OFFSET FORMS' SITES, by the same route. A load at an
 -- offset reads a written cell (so a mapped one, `dom-written`); a store at an
--- offset writes a cell of its block (D379: anything else faults), so a mapped
+-- offset writes a cell of its block (D384: anything else faults), so a mapped
 -- one (`dom-sized`).
 load-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just (load-at k)
@@ -1658,7 +1658,7 @@ load-at-target-ptr prog fs k r h ftq =
   in1-ptr fs (λ ml → LocState.faulted (exec-load-at-resolved k Output ml (floc fs))) refl
           (step-ok prog fs (load-at k) r h ftq)
 
--- D386: A PURE SIGOP'S ARGUMENT DECODED, at a non-faulting step — the site fact
+-- D391: A PURE SIGOP'S ARGUMENT DECODED, at a non-faulting step — the site fact
 -- `arith-sigop-run` reads its input from (its block computes from the words).
 private
   ∨-false-l : ∀ a b → (a ∨ b) ≡ false → a ≡ false
@@ -1711,7 +1711,7 @@ store-at-in-block prog fs k hl r h ftq i-eq = ib _ refl
       (at (λ b → LocState.faulted (exec-store-in-block b (AtDynamic (offsetHL hl k))
                                      (readReg (regs (floc fs)) Output) (floc fs))) e ok))
 
--- plan 0.123 B.4 α (D379): an address at an offset is a cell of its block, or
+-- plan 0.123 B.4 α (D384): an address at an offset is a cell of its block, or
 -- the step faults — so at an emitted `addr-at` it is.
 addr-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just (addr-at k)

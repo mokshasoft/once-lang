@@ -116,7 +116,7 @@ fill-ff from c = fill-All {EmittableI} from c tt (λ _ → tt)
 inj-ff : ∀ t P S n → FrameFreeTrace (inj-trace t P S n)
 inj-ff t P S n = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (fill-ff _ (size S ∸ suc (size P))) (++⁺ (put-ff P n (suc n) 1) (tt ∷ []))
 
--- D380: a closure body's entry
+-- D385: a closure body's entry
 env-entry-ff : ∀ kd E A → FrameFreeTrace (proj₂ (env-entry kd E A))
 env-entry-ff word E A = []
 env-entry-ff flat E A =
@@ -289,7 +289,7 @@ out-ff mu-box  = tt ∷ []
 out-ff mu-unit = tt ∷ []
 out-ff mu-ptr  = tt ∷ []
 
--- D393: a kept value's copy, then the two-cell build
+-- D398: a kept value's copy, then the two-cell build
 wc-ff : ∀ kd E n c → FrameFreeTrace (with-copy kd E n (λ m → two-cell m c))
 wc-ff word E n c = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 wc-ff flat E n c = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-ff E n (suc n) 0) (tt ∷ [])) (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
@@ -447,7 +447,7 @@ frame-free-blocks' (g ∘ f)  (hf , hg) n l =
   ++⁺ (frame-free-blocks' f hf n l) (frame-free-blocks' g hg _ _)
 frame-free-blocks' ⟨ f , g ⟩ (hf , hg) n l =
   ++⁺ (frame-free-blocks' f hf _ l) (frame-free-blocks' g hg _ _)
--- D380: the body starts with its environment's entry.
+-- D385: the body starts with its environment's entry.
 frame-free-blocks' (curry {E} {A} b)  hb n l =
   ++⁺ (env-entry-ff (kind E) E A) (frame-free-trace' b hb _ (suc (suc l)))
   ∷ frame-free-blocks' b hb _ (suc (suc l))

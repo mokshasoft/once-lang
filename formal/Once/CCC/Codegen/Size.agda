@@ -3,16 +3,16 @@
 
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.Size — every value's STATIC size in words (plan 0.123 B.4,
--- D375, D378).
+-- D380, D383).
 --
 -- A base value is its `Spec.ABI` words; a μ or ν node, or a closure, is one
--- pointer word to its cell-heap block (D378: nodes are flat, sized per type,
+-- pointer word to its cell-heap block (D383: nodes are flat, sized per type,
 -- with each recursive position a pointer). So every type has a size fixed by
 -- the type alone, and the emitter's one rule follows: size 0 is nowhere, size
 -- 1 is its word in a register, size ≥ 2 is its words at an address.
 --
 -- `size-words`: on a base type it IS `Spec.ABI.words`, so the internal layout
--- of a base value is the boundary's (D377: `correct` observes it there).
+-- of a base value is the boundary's (D382: `correct` observes it there).
 ------------------------------------------------------------------------
 
 module Once.CCC.Codegen.Size where

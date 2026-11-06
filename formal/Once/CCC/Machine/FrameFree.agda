@@ -69,7 +69,7 @@ FrameFreeI (lea-slot _)              = ⊥
 FrameFreeI (instr-ctrl (c-entry _ _)) = ⊥
 FrameFreeI (instr-ctrl (c-start _)) = ⊥  -- plan 0.107: it reserves the outermost frame
 FrameFreeI (instr-free-heap _)      = ⊥  -- plan 0.123 M2: not emitted yet, so inside no fence
-FrameFreeI (instr-room _)           = ⊥  -- D371: the room-check pass adds checks AFTER the image
+FrameFreeI (instr-room _)           = ⊥  -- D376: the room-check pass adds checks AFTER the image
 -- plan 0.123 B.4 α: the four fixed-offset forms are retired — the flat layout
 -- reads and writes at `load-at`/`store-at`/`addr-at` offsets, so no emitter
 -- produces them
@@ -119,7 +119,7 @@ EmittableI (instr-ctrl (c-start _))  = ⊥
 -- plan 0.123 M2: a free is in the instruction set before the compiler emits
 -- one (M4); until then no image holds it.
 EmittableI (instr-free-heap _)       = ⊥
--- D371: the image holds no check of its own; the room-check pass
+-- D376: the image holds no check of its own; the room-check pass
 -- (`RoomChecks.room-checks`) adds them after it, to the lowered image.
 EmittableI (instr-room _)            = ⊥
 -- plan 0.123 B.4 α: the four fixed-offset forms are retired (no emitter

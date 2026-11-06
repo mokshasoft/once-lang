@@ -221,7 +221,7 @@ semM-of ans n (blockV e refl refl) = λ tn x → returns (M.eraseᵍ (block-semP
 semM-of ans n (emitsV refl) = λ _ _ → returns tt
 semM-of ans n (haltsV refl) = λ _ _ → stopped
 semM-of ans n (primV p)     = λ tn x → returns (M.eraseᵍ (primSem p tn x))
--- D391: a world value is read at the target (`Boundary.atTarget`)
+-- D396: a world value is read at the target (`Boundary.atTarget`)
 semM-of {A} {B} ans n ffiV   = λ tn x → mapRes (atTarget tn B) (ans n A B x)
 semM-of {A} {B} ans n callsV = λ tn x → mapRes (atTarget tn B) (ans n A B x)
 

@@ -218,7 +218,7 @@ module ResuspBaseC {FS : FrameSemantics} where
   live-from : ∀ (a a′ : AllocState {FS}) → next-heap-ref a ≤ next-heap-ref a′ → ∀ l → Live a l → Live a′ l
   live-from a a′ hr (AtDynamic _) (BeforeFrontier.heap-before r) = BeforeFrontier.heap-before (<-≤-trans r hr)
 
-  -- Everything live stays live, keeps its block (D381), and reads the same.
+  -- Everything live stays live, keeps its block (D386), and reads the same.
   Kp : AllocState {FS} → LocState FS → AllocState {FS} → LocState FS → Set
   Kp a s a′ s′ = (∀ l → Live a l → Live a′ l) × BlocksKept a a′ × (∀ l → Live a l → readLoc s′ l ≡ readLoc s l)
 
@@ -406,7 +406,7 @@ module ResuspBaseC {FS : FrameSemantics} where
         out-mode : AllocMode
         rout     : ROut G out-mode (falloc settle) (floc settle) (rsd wG y)
         seg      : Seg n σ settle
-        -- D381: the blocks live at the start keep their sizes
+        -- D386: the blocks live at the start keep their sizes
         bk       : BlocksKept (falloc σ) (falloc settle)
 
     -- THE CASE STATEMENT, one functor at a time. The inputs are valid at a

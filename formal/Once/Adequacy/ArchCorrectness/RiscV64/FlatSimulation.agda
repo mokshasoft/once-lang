@@ -473,7 +473,7 @@ block-step-store-at-slot {hv} prog fs s slot cc h ft slot<ns disj =
     pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (store-at-slot slot) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (store-at-slot slot) ft))
 
--- Plan 0.123 A.4 (D372): THE ROOM CHECK, `sub t1, sp, s2 ; li t2, 8k ;
+-- Plan 0.123 A.4 (D377): THE ROOM CHECK, `sub t1, sp, s2 ; li t2, 8k ;
 -- bgeu t1, t2, 1f ; call once_exhausted ; 1:`. The flat step is a no-op. The
 -- room `sp − s2` does not borrow (the frontier is at or below the stack
 -- pointer, `sep`) and `8k` is a word (`room-fits`), so the unsigned compare is

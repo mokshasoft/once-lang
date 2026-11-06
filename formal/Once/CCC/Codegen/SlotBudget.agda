@@ -111,7 +111,7 @@ get-SB X k = get-All X k (λ _ → nn refl refl) (λ _ → nn refl refl) (nn ref
 get-k-SB : ∀ {b} kd n k → All (SB b) (get-k kd n k)
 get-k-SB kd n k = get-k-All kd n k (λ _ → nn refl refl) (λ _ → nn refl refl) (nn refl refl)
 
--- D382: a sum's padding fill touches no slot
+-- D387: a sum's padding fill touches no slot
 fill-SB : ∀ {b} from c → All (SB b) (fill from c)
 fill-SB from c = fill-All from c (nn refl refl) (λ _ → nn refl refl)
 
@@ -164,7 +164,7 @@ in-mono mu-unit kd n = ≤-refl
 in-mono mu-ptr  word n = ≤-refl
 in-mono mu-ptr  flat n = m≤n⇒m≤1+n (n≤1+n n)
 
--- D393: the copy takes two more slots
+-- D398: the copy takes two more slots
 cn-mono : ∀ kd n → n ≤ suc (suc (copy-next kd n))
 cn-mono word n = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 cn-mono flat n = ≤-trans (n≤1+n n) (≤-trans (n≤1+n _) (≤-trans (n≤1+n _) (n≤1+n _)))
@@ -605,7 +605,7 @@ in-below mu-box  kd L n = segok-idle _ refl
    sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
 in-below mu-unit kd L n = segok-idle _ refl (sb-none refl ∷ [])
 in-below mu-ptr  word L n = segok-idle _ refl (sb-none refl ∷ [])
--- D393 (β1): the copy into a fresh node, two slots
+-- D398 (β1): the copy into a fresh node, two slots
 in-below mu-ptr  flat L n =
   segok-SB _
     (nn refl refl ∷ ss refl n< (λ _ ()) refl ∷ nn refl refl ∷ ss refl ≤-refl (λ _ ()) refl ∷
@@ -779,7 +779,7 @@ inj-below t P S n =
   where n< : n < suc (suc n)
         n< = m≤n⇒m≤1+n ≤-refl
 
--- D393: a kept value's copy, then the two-cell build
+-- D398: a kept value's copy, then the two-cell build
 wc-sb : ∀ kd E n c → SegOK (suc (suc (copy-next kd n))) (with-copy kd E n (λ m → two-cell m c))
 wc-sb word E n c = segok-idle _ refl
     (sb-none refl ∷ sb-slot refl (m≤n⇒m≤1+n ≤-refl) (λ _ ()) ∷ sb-none refl ∷
@@ -837,7 +837,7 @@ slots-below (⟨_,_⟩ {A} {B} {C} f g) n l =
 -- applied the entry block's budget to the whole program, which is wrong for
 -- any program with a body.
 slots-below (curry {E} b) n l = wc-sb (kind E) E n _
--- D380: the call pair `[env-word, arg…]`, the argument `put` at word 1.
+-- D385: the call pair `[env-word, arg…]`, the argument `put` at word 1.
 slots-below (apply {A} {B}) n l =
   segok-++ (segok-get A 1)
     (segok-SB _
@@ -908,7 +908,7 @@ slots-below (const fits-float _) n l = segok-idle _ refl (sb-none refl ∷ [])
 -- list, and together they are what the linked program needs — the entry's
 -- budget no longer being claimed to govern a body that has its own.
 ------------------------------------------------------------------------
--- D380: a closure body's entry. A word environment adds nothing; a flat one
+-- D385: a closure body's entry. A word environment adds nothing; a flat one
 -- rebuilds the input in slots 0–3, and the body's own slots start at 4.
 env-prologue-below : ∀ (E A : IRTy) → SegOK 4 (env-prologue E A)
 env-prologue-below E A =

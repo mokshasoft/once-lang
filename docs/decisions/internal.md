@@ -123,7 +123,7 @@ decision-log entry updates the rule it changes here, in the same commit.
   and its proofs do not see them; one compare (`frontier + k ≤ stack
   pointer`, else the Host's `once_exhausted`) covers heap and stack, and the
   budget "room ≥ spend until the next check" replaces the per-arch room
-  parameters. Placement (C.2, then toward C.1) is the pass's alone. (D371)
+  parameters. Placement (C.2, then toward C.1) is the pass's alone. (D376)
 - **`--alloc` selects the allocator** behind dynamic calls (bump, malloc,
   mempool, arena), not a placement mode; it is parsed but unwired until the
   allocator subsystem (plan 0.123 Part B) is. (D142 ← D014)
@@ -143,7 +143,7 @@ decision-log entry updates the rule it changes here, in the same commit.
   (`shift-≺`: a shift of at least one slot is strictly below; `shift-below`:
   shifting a frame already below another keeps it below). Running out of stack
   is the concrete machine's outcome, observed by its room checks (plan 0.123,
-  D371/D372; the budget `FlatCore.Budget` replaced `StackRoom`/`CallRoom`).
+  D376/D377; the budget `FlatCore.Budget` replaced `StackRoom`/`CallRoom`).
   (D362)
 - **The stack pointer is represented once, on the frame.** (D084)
 - **The call window's head row is per-arch**; RISC-V spills its link onto the

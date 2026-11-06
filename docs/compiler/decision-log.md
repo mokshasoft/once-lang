@@ -20989,7 +20989,7 @@ metatheory- and spec-gate (after `spec-approve`) and lint-pragmas clean; backsto
 52→52; PROVED 736→737 (`Metatheory/LawsApply` joined); RUNS 3039, RUNS∖PROVED 85, all declared; 0 gaps.
 The dump needed `HEAP=12G COMPACT=-c30` (`Resusp.Id` and `Metatheory.Laws.*` exceed the default 5G).
 
-## D368 — RUNNING OUT IS AN END: A COMPILED RUN FOLLOWS ITS MEANING UP TO RUNNING OUT (2026-10-28)
+## D373 — RUNNING OUT IS AN END: A COMPILED RUN FOLLOWS ITS MEANING UP TO RUNNING OUT (2026-10-28)
 
 **Refines** D318 (behaviour is a trace, compared by weak bisimilarity) and D320 (the Host). **Decided** by the
 user 2026-10-28 (plan 0.123 A, its A.6 draft): "Lets make the Spec change". Found by plan 0.127: an seL4 root
@@ -21028,15 +21028,15 @@ outcome, never undefined behaviour."
 * Still to come (plan 0.123 A): the room checks (one per loop round, closure entry and program start, Part
   C), the Host-supplied region, the Hosts' `once_exhausted`, the per-arch proof's split at a check, and the
   nine room hypotheses leaving the apex. "A source trace never ends `exhausted`" goes in `Spec.Metatheory`
-  (D369).
+  (D374).
 
-## D369 — A RUN OF THE MEANING NEVER RUNS OUT (2026-10-29)
+## D374 — A RUN OF THE MEANING NEVER RUNS OUT (2026-10-29)
 
-**Completes** D368. **Decided** by the user 2026-10-29: handled as the silent loop is (`Totality.silent-never`):
+**Completes** D373. **Decided** by the user 2026-10-29: handled as the silent loop is (`Totality.silent-never`):
 the Spec states it, `Once.Metatheory` proves it.
 
 ### Context
-D368 put `exhausted` in `Spec.Trace`'s `End`, which both sides of the claim share, and said only a compiled
+D373 put `exhausted` in `Spec.Trace`'s `End`, which both sides of the claim share, and said only a compiled
 run ends there. That was prose: nothing in the Spec said that the meaning's traces never do.
 
 ### Decision
@@ -21054,7 +21054,7 @@ run ends there. That was prose: nothing in the Spec said that the meaning's trac
 * A separate source trace type with no `exhausted` was considered (nothing to prove) and set aside: it
   doubles `Tr`, `EndRel` and the trace metatheory for no observable difference.
 
-## D370 — THE HOST OWNS THE PROCESS ENTRY AND THE REGION; THE COMPILER KNOWS NO PLATFORM (2026-10-29)
+## D375 — THE HOST OWNS THE PROCESS ENTRY AND THE REGION; THE COMPILER KNOWS NO PLATFORM (2026-10-29)
 
 **Refines** D320 (the Host: `enter ; main ; leave`). **Decided** by the user 2026-10-29 (plan 0.123 C.5): "the
 compiler has to be portable, so it should not know anything Linux specific. If this is Linux (or specific to
@@ -21082,7 +21082,7 @@ while the heap ran off its end.
 * One region, two frontiers growing toward each other: the room check (plan 0.123 C.1) is one comparison.
 * The model's `stack-top` (the stack pointer at entry) is now the Host's region top.
 
-## D371 — THE ROOM CHECKS ARE A LATE PASS OVER THE ABSTRACT IMAGE (2026-11-02)
+## D376 — THE ROOM CHECKS ARE A LATE PASS OVER THE ABSTRACT IMAGE (2026-11-02)
 
 **Refines** plan 0.123 A.4 step 5 and Part C. **Decided** by the user 2026-11-02, choosing route (B) over
 emitting the checks inside `IRToTrace` (A), after asking what each costs in run time and in principle and
@@ -21102,7 +21102,7 @@ Those traces are what the `IRObsCorrect` proofs run step by step at exact positi
   without (pcs and return addresses mapped past the inserted no-ops), for checks at ANY positions. The budget:
   at every pc, room ≥ what the code spends until the next check (heap allocations, frame reservations,
   return-address pushes), Part C.3's invariant, which replaces the nine parameters.
-* **One check covers heap and stack.** They share the Host's region (D370), so running out of either is the
+* **One check covers heap and stack.** They share the Host's region (D375), so running out of either is the
   two frontiers meeting, and stack overflow ends `exhausted` like heap exhaustion.
 * **Placement starts at C.2** (a check after every label and every call: the simplest budget proof) and is
   tightened toward C.1 (back-edge targets, closure entries, program start, adjacent checks merged) in the
@@ -21117,9 +21117,9 @@ Those traces are what the `IRObsCorrect` proofs run step by step at exact positi
 * The per-check cost is the same on either route (add, compare, a never-taken branch); performance is
   placement, which the pass can change cheaply.
 
-## D372 — A ROOM CHECK COMPARES THE ROOM, NOT THE SUM (2026-11-03)
+## D377 — A ROOM CHECK COMPARES THE ROOM, NOT THE SUM (2026-11-03)
 
-**Refines** D371 and plan 0.123 A.4 step 5 (the budget). **Decided** by Claude while proving the budget;
+**Refines** D376 and plan 0.123 A.4 step 5 (the budget). **Decided** by Claude while proving the budget;
 the user can revisit it.
 
 ### Context
@@ -21150,7 +21150,7 @@ at 32), so the compare's result could not be read as the inequality without a ne
   spending instruction its room: `HeapRoom`, `StackRoom` and `CallRoom` (nine apex parameters) are gone.
 * The cost is unchanged on riscv64 and x86-64 and one instruction on x86-32.
 
-## D373 — RECLAIMING IS DONE PROPERLY FROM THE START: FRAMES FIRST, NO INTERIM FREE LIST (2026-11-03)
+## D378 — RECLAIMING IS DONE PROPERLY FROM THE START: FRAMES FIRST, NO INTERIM FREE LIST (2026-11-03)
 
 **Refines** plan 0.123 B.1 (D7's "Order, therefore: cells first") and B.0.9. **Decided** by the user
 2026-11-03, after plan 0.138 S0 measured that every value today is one 2-word heap cell.
@@ -21177,10 +21177,10 @@ value through a free list now, move the statically sized ones to frames later (p
 * D364's "values are heap-only" (`Live (AtStack _ _) = ⊥`) must be restated for frame-resident values
   before plan 0.87's re-proof (plan 0.138 §5's note: "inside the memory this run was given").
 
-## D374 — VALUES THAT CAN LIVE ON THE STACK DO; D364'S "HEAP-ONLY" WAS A SHORTCUT (2026-11-03)
+## D379 — VALUES THAT CAN LIVE ON THE STACK DO; D364'S "HEAP-ONLY" WAS A SHORTCUT (2026-11-03)
 
 **Revises** D364's "values are heap-only". **Decided** by the user 2026-11-03 ("that was a short cut at that
-time. Now I think values that could go to the stack should go there"), with D373.
+time. Now I think values that could go to the stack should go there"), with D378.
 
 ### Decision
 * A value whose type fixes its size lives in a frame slot (its caller's, for a result: destination passing,
@@ -21192,12 +21192,12 @@ time. Now I think values that could go to the stack should go there"), with D373
 
 ### Consequences
 * Plan 0.87 (stack-resident I/O) is no longer in conflict with D364; it is the next step of plan 0.123 B
-  (D373), with plan 0.138's layout.
+  (D378), with plan 0.138's layout.
 * The value relation's stack case (`Live`, `CellAt` at `AtStack`) and the pointer invariants
   (`FlatStackPtr`, `PtrBoundsWF`) are re-stated; the correspondence is re-proved with stack pointers live
   on all three arches (plan 0.87 D).
 
-## D375 — THE BOUNDARY LAYOUT OF A BASE VALUE IS IN THE SPEC: `Spec.ABI` (2026-11-03)
+## D380 — THE BOUNDARY LAYOUT OF A BASE VALUE IS IN THE SPEC: `Spec.ABI` (2026-11-03)
 
 **Lands** plan 0.138 S1. **Approved** by the user 2026-11-03 (Spec patch, padding unspecified).
 
@@ -21218,14 +21218,14 @@ value; `Float` its target-format encoding); `Unit` none; `A * B` A's words then 
   a boundary as it is.
 * The Interpretations that read nested 2-word cells (Linux `Syscalls`, `Math`, seL4) change to read it (S4).
 
-## D376 — A VALUE CROSSES A BOUNDARY BY THE PLATFORM'S C CALLING CONVENTION (2026-11-03)
+## D381 — A VALUE CROSSES A BOUNDARY BY THE PLATFORM'S C CALLING CONVENTION (2026-11-03)
 
 **Decided** by the user 2026-11-03 (plan 0.138 S2, plan 0.111). Refines plan 0.111 §2.1 ("the argument is in
 the argument register(s), in the compiler's value representation"), written before `Spec.ABI`.
 
 ### Decision
 * An argument and an answer of a base type cross a boundary exactly as C passes the struct `Spec.ABI`
-  lays out (D375), under each target's procedure-call standard: x86-64 System V, riscv64 LP64(D), i386
+  lays out (D380), under each target's procedure-call standard: x86-64 System V, riscv64 LP64(D), i386
   System V. Scalars and small structs in registers (by class: an `Int` word or a tag is an integer word, a
   `Float` a floating-point one), larger structs as the standard says (in memory on x86-64 and i386, by a
   pointer to a copy on riscv64), an answer in the return registers or through the caller's buffer.
@@ -21240,15 +21240,15 @@ the argument register(s), in the compiler's value representation"), written befo
   and the answer back. Every Interpretation's per-arch code changes to take its arguments the C way (S4);
   an Interpretation can then be written in C.
 
-## D377 — THE BOUNDARY LAYOUT IS PART OF WHAT `correct` OBSERVES (2026-11-03)
+## D382 — THE BOUNDARY LAYOUT IS PART OF WHAT `correct` OBSERVES (2026-11-03)
 
 **Decided** by the user 2026-11-03 (plan 0.138 S2). Refines plan 0.138 §0.3 (the layout invariant in an
 implementation Spec).
 
 ### Decision
 * The event extractor (`ev-arch`, per arch: what the machine's state at an external call is observed as)
-  reads the call's argument by `Spec.ABI`: the words at the passing rules' locations (D376), decoded by
-  `Layout` (D375). The answer is written back the same way.
+  reads the call's argument by `Spec.ABI`: the words at the passing rules' locations (D381), decoded by
+  `Layout` (D380). The answer is written back the same way.
 * So the apex's correctness (the run's events are the meaning's) itself says that every external call
   receives the meaning's argument laid out and passed as `Spec.ABI` says. No separate layout claim in
   `Once.Implementation`; it keeps `NoLeak`.
@@ -21260,12 +21260,12 @@ implementation Spec).
 * Plan 0.138 S3–S4 change `ev-arch` and `ret-call` per arch together with the emitters' marshalling at a
   `call-sym` and the Interpretations' code.
 
-## D378 — μ AND ν NODES ARE FLAT, SIZED PER TYPE (2026-11-03)
+## D383 — μ AND ν NODES ARE FLAT, SIZED PER TYPE (2026-11-03)
 
 **Decided** by the user 2026-11-03 (plan 0.123 B.4). Refines D7's "Once's cells are almost all 2 words".
 
 ### Decision
-* A μ or ν node is its layer laid out as `Spec.ABI` lays out a struct (D375), with each recursive position,
+* A μ or ν node is its layer laid out as `Spec.ABI` lays out a struct (D380), with each recursive position,
   and each closure or ν inside it, one pointer word. `List Int` (`Unit + Int * Id`): `[tag, int, next]`, one
   3-word node, instead of today's `[tag, ptr→[int, next]]` (two 2-word cells).
 * The cell heap therefore has several block sizes, all static (one per node type of the program): one
@@ -21278,12 +21278,12 @@ implementation Spec).
 * A flat value never holds a stack pointer, so storing one into a node copies its words (never a pointer
   into a frame): the heap holds no stack pointer (plan 0.123 B.4 R2's ordering).
 
-## D379 — AN OFFSET STORE WRITES A CELL OF ITS BLOCK, OR FAULTS (2026-11-03)
+## D384 — AN OFFSET STORE WRITES A CELL OF ITS BLOCK, OR FAULTS (2026-11-03)
 
 **Decided** in plan 0.123 B.4 α (α-instr), by D367's rule.
 
 ### Context
-The flat layout (D375, D378) reaches a component by an offset from its value's pointer: `load-at k`,
+The flat layout (D380, D383) reaches a component by an offset from its value's pointer: `load-at k`,
 `store-at k`, `addr-at k`. The run's pointer invariant `PtrB` says a heap pointer addresses an in-bounds
 PAIR (its cell and the next). That is the old 2-word cell shape, and it is what bounds today's
 `store-indirect-suc`. It says nothing about word `k`.
@@ -21306,18 +21306,18 @@ PAIR (its cell and the next). That is the old 2-word cell shape, and it is what 
 * `InstrWF (store-at k)` carries the in-block fact; the constructors' proofs supply it from the size they
   allocated.
 
-## D380 — A CLOSURE CALL PASSES `[env-word, arg]`; A FLAT ENVIRONMENT IS REBUILT BY THE BODY (2026-11-03)
+## D385 — A CLOSURE CALL PASSES `[env-word, arg]`; A FLAT ENVIRONMENT IS REBUILT BY THE BODY (2026-11-03)
 
 **Decided** in plan 0.123 B.4 α2, from the relation already in place (`CallRuns`, D184's opaque environment).
 
 ### Context
-Products are flat (D375): a body `IR (E * A) B` reads its argument at word `size E` of its input. But
+Products are flat (D380): a body `IR (E * A) B` reads its argument at word `size E` of its input. But
 `apply : IR ((A ⇛ B) * A) B` does not know `E` (a closure's environment type is not in its type), so it
 cannot lay out `E * A`.
 
 ### Decision
 * A closure node stays two words, `[env-word, code]`. The environment word is the environment's
-  register form: the word itself for a word kind, the address of its words for a flat kind (D375). The
+  register form: the word itself for a word kind, the address of its words for a flat kind (D380). The
   environment's words are not copied (it stays opaque, D184; it is kept valid by the caller's guarantee
   that every live cell still reads the same).
 * `apply` builds the CALL PAIR `[env-word, arg]` in a fresh block of `2 ⊔ (1 + size A)` words. It knows
@@ -21334,16 +21334,16 @@ cannot lay out `E * A`.
 * A ν suspension, `[seed-word, code]`, is the same shape and needs nothing: forcing hands the block the
   seed word, which is the seed's register form.
 
-## D381 — A 0-WORD COMPONENT IS READ BY COPYING THE POINTER; AN EMBEDDED VALUE RECORDS THAT IT IS IN ITS BLOCK (2026-11-03)
+## D386 — A 0-WORD COMPONENT IS READ BY COPYING THE POINTER; AN EMBEDDED VALUE RECORDS THAT IT IS IN ITS BLOCK (2026-11-03)
 
-**Decided** in plan 0.123 B.4 α2, found while restating `fst`/`snd` against D379's checked `addr-at`.
+**Decided** in plan 0.123 B.4 α2, found while restating `fst`/`snd` against D384's checked `addr-at`.
 
 ### Context
-D379 makes `addr-at k` fault when the address would not be a cell of its block. That is what keeps
+D384 makes `addr-at k` fault when the address would not be a cell of its block. That is what keeps
 every pointer in its block (`PtrB`), but the value relation said nothing about blocks, so the proof
 of a `get` could not show that its `addr-at` does not fault. Two cases differ:
 * A component of one or more words starts at its own first word, and that word is in the block the
-  constructor allocated (`2 ⊔ size` words, D375).
+  constructor allocated (`2 ⊔ size` words, D380).
 * A 0-word component (`Unit`, or a product of such) has no word. `get` took the container's address
   (`addr-at 0`), but a 0-word container need not have a cell of its own either: `(Int * Int) *
   (Unit * Unit)` fills its 2-word block, so its second component would start past the end.
@@ -21353,7 +21353,7 @@ of a `get` could not show that its `addr-at` does not fault. Two cases differ:
   pointer, copied. No offset is formed, so there is nothing to check. A 0-word value's validity does
   not depend on where it is, so any address will do.
 * An embedded value records that its address is a live cell of its block, when it has words:
-  `cell-flat` and `inl-/inr-flat-wf` carry `0 < size C → Here alloc loc` (`Live` and D379's
+  `cell-flat` and `inl-/inr-flat-wf` carry `0 < size C → Here alloc loc` (`Live` and D384's
   in-block test). The constructors supply it from the size they allocated, the copy
   (`ValueRelocate`) from the destination's.
 * Block sizes stay with the allocator (`AllocState.block-size`), where a reusing allocator (γ) keeps
@@ -21370,12 +21370,12 @@ of a `get` could not show that its `addr-at` does not fault. Two cases differ:
 * `ValueRealized` and the callee's contract (`CalleeRunP`) gain the blocks-kept field, beside
   `bf-mono`.
 
-## D382 — A SUM'S PADDING IS WRITTEN WHEN THE SUM IS BUILT (2026-11-04)
+## D387 — A SUM'S PADDING IS WRITTEN WHEN THE SUM IS BUILT (2026-11-04)
 
 **Decided** in plan 0.123 B.4 α2, found while stating the copy of a flat component (`put`).
 
 ### Context
-A sum `A + B` has `1 + (size A ⊔ size B)` words (D375). A value of the smaller alternative leaves the
+A sum `A + B` has `1 + (size A ⊔ size B)` words (D380). A value of the smaller alternative leaves the
 words after its payload unwritten: allocation writes no cell. Embedding a value copies all of its
 words (`FlatLayout.put` = `copy-from`), and in the abstract machine a load of an unwritten cell
 faults (D367). So copying such a sum into a pair, an environment or a layer would fault, although the
@@ -21397,7 +21397,7 @@ concrete machine would merely copy garbage.
 * The padding is filled BEFORE the payload is put: the put's cell is then the last write to the block,
   and the fill finds `Input1` at the block (the `mov-to-input` just before it).
 
-## D383 — A SCALAR HAS NO MEMORY RESIDENCE; A COPY'S SOURCE IS ANY LOCATION (2026-11-04)
+## D388 — A SCALAR HAS NO MEMORY RESIDENCE; A COPY'S SOURCE IS ANY LOCATION (2026-11-04)
 
 **Decided** in plan 0.123 B.4 α2, found while proving the injection (`inl`/`inr`) against `put`.
 
@@ -21405,7 +21405,7 @@ concrete machine would merely copy garbage.
 `FlatLayout.put` stores a word-kind component (a node, a scalar) as the word in `Input1`. For a scalar
 held in memory (`InputAt.in-loc` at `Int`), that word is a POINTER, so the sum's payload cell would hold
 a pointer where the relation (`cell-inline`) wants the scalar — the obligation was false there. And a
-flat component held in a frame slot (D374: values that can live on the stack do) was outside the copy
+flat component held in a frame slot (D379: values that can live on the stack do) was outside the copy
 lemmas, which assumed a heap source.
 
 ### Decision
@@ -21419,17 +21419,17 @@ lemmas, which assumed a heap source.
 
 ### Consequences
 * `FlatPut.src-flat` accepts a flat value at any live location, so `put` serves a stack-resident
-  component (D374) as it does a heap one.
+  component (D379) as it does a heap one.
 
-## D384 — A NON-POINTER CLOSURE ENVIRONMENT IS THE WORD ITS CELL HOLDS (2026-11-04)
+## D389 — A NON-POINTER CLOSURE ENVIRONMENT IS THE WORD ITS CELL HOLDS (2026-11-04)
 
-**Decided** in plan 0.123 B.4 α2, found while re-proving `curry` after D375 removed `rep-unit`.
+**Decided** in plan 0.123 B.4 α2, found while re-proving `curry` after D380 removed `rep-unit`.
 
 ### Context
 A closure's env cell receives whatever `Input1` held when it was built (D190's ten rows). For a scalar
 environment that is the scalar's word; for a `Unit` environment it is an arbitrary word (`in-unit` puts
 no constraint on `Input1`). `closure-reg-wf` described the cell by an `InlineRep` of the environment's
-type, and since D375 only a scalar has one, so `curry` over a `Unit` environment — every closure made
+type, and since D380 only a scalar has one, so `curry` over a `Unit` environment — every closure made
 from a unit input — had no witness.
 
 ### Decision
@@ -21443,13 +21443,13 @@ A pointer environment keeps `closure-wf` (its block stays live).
   word.
 * No transport changes: the witness was passed through opaquely everywhere.
 
-## D385 — A SIGOP BLOCK READS ITS INPUT FLAT: ONE LOAD PER LEAF, AT ITS WORD OFFSET (2026-11-04)
+## D390 — A SIGOP BLOCK READS ITS INPUT FLAT: ONE LOAD PER LEAF, AT ITS WORD OFFSET (2026-11-04)
 
 **Decided** in plan 0.123 B.4 α, found by `cabal test` after the apex went green: every program whose
 arith SigOp block takes a pair input crashed (87 of 922 tests, all three arches).
 
 ### Context
-D375 made a compound value its flat words, a component embedded. The arith block's input reader
+D380 made a compound value its flat words, a component embedded. The arith block's input reader
 (`Xmov-arg`/`Xmov-farg`, the per-arch `path-load-text`) still walked the input path by the old cell
 layout: each `Fst`/`Snd` step loaded a word at +0/+word and dereferenced it. On the flat layout that
 dereferences a scalar. The proofs did not see it: the arch-level arith simulations take the input's
@@ -21457,7 +21457,7 @@ memory layout as a precondition (`R-input`, `HeapChase`), and that precondition 
 
 ### Decision
 A leaf of the block's input is one word at its offset in the flat input: the sum of its left siblings'
-sizes along the path (`Shape.flat-off` on the typed path; `shape-size` is the D375 size of a shape).
+sizes along the path (`Shape.flat-off` on the typed path; `shape-size` is the D380 size of a shape).
 `compile-go` computes it from the `ainput`'s typed path and carries it on `load-input`/`load-finput`
 into `Xmov-arg`/`Xmov-farg`; the abstract semantics still reads by the path. Each target emits one load
 at `word·k` from its input pointer (`%rdi`, `%ecx`, `t0`; riscv64 forms an offset past the 12-bit
@@ -21471,7 +21471,7 @@ flat layout. `LoadOK` records that the offset is the typed path's.
 * `R-input`/`HeapChase` stay preconditions (the call site's layout is not proved to meet them); the
   call-site link is the gap that let this through, open.
 
-## D386 — A PURE SIGOP WHOSE ARGUMENT DOES NOT DECODE FAULTS (2026-11-04)
+## D391 — A PURE SIGOP WHOSE ARGUMENT DOES NOT DECODE FAULTS (2026-11-04)
 
 **Decided** in plan 0.123 α′ (b), on the way to proving `arith-sigop-run` (ledger row 3).
 
@@ -21496,7 +21496,7 @@ ending, `Compare`) now read it from that decode.
   `arith-sigop-run`'s proof needs.
 * `FlatLeft.abs-fault`: a SigOp that does not halt does not fault (`sigop-fault`).
 
-## D387 — A SIGOP'S STACK USE IS ROOM-CHECKED: WHAT ITS CALL PUSHES PLUS ITS BLOCK'S SCRATCH (2026-11-04)
+## D392 — A SIGOP'S STACK USE IS ROOM-CHECKED: WHAT ITS CALL PUSHES PLUS ITS BLOCK'S SCRATCH (2026-11-04)
 
 **Decided** in plan 0.123 α′, found while stating step (e) of the `arith-sigop-run` discharge.
 
@@ -21521,7 +21521,7 @@ gives the block its room below `sp` at the call.
   from `Budget` + `FlatCorr` (`room-of`), the premise step (e) needs.
 * `EventDispatch`'s SigOp cases (`sigop-external`, the pure step) carry the budget by `bg-spent-str`.
 
-## D388 — AN ARITH SIGOP'S DISPATCH ENTERS THE BLOCK'S FRAME, AS THE EMITTED CALL DOES (2026-11-04)
+## D393 — AN ARITH SIGOP'S DISPATCH ENTERS THE BLOCK'S FRAME, AS THE EMITTED CALL DOES (2026-11-04)
 
 **Decided** in plan 0.123 α′ (e), on the way to proving `arith-sigop-run`. A change to the trusted
 machine model, toward the code: the model was not what the emitted subroutine does.
@@ -21546,16 +21546,16 @@ body writes only inside its frame (`InFrame`, which the proof shows). x86-32's a
 `dispatch-arith-preserves` (stated against the old frame) is removed.
 
 ### Consequences
-* The block's writes all land in `[sp − D387's spend, sp)`, the room the check before it guarantees.
+* The block's writes all land in `[sp − D392's spend, sp)`, the room the check before it guarantees.
 * The emitted code does not change.
 
-## D389 — AN ARITH BLOCK'S NAME CARRIES ITS INPUT SHAPE (2026-11-05)
+## D394 — AN ARITH BLOCK'S NAME CARRIES ITS INPUT SHAPE (2026-11-05)
 
 **Decided** in plan 0.123 α′ (e), found while stating which block a SigOp's symbol names.
 
 ### Context
 A block's symbol is `arith.block.` ++ the serialisation of its tree, and an input leaf serialised as its
-side-path (`I` ++ `show-path`). Since D385 the block loads a leaf at its flat word offset
+side-path (`I` ++ `show-path`). Since D390 the block loads a leaf at its flat word offset
 (`Shape.flat-off`), which the whole input shape decides: `snd p + 1` loads word 1 of an `Int * Int` and
 word 2 of an `(Int * Int) * Int`. Both trees serialised to `AISZL1_`, `dedup-blocks` kept one body per
 symbol, and both calls ran it: `f (1, 2) + g ((3, 4), 40)` exited 42, not 44 (x86_64). The postulate
@@ -21570,7 +21570,7 @@ shape and the tree, so one symbol is one block.
 * Every block symbol gains its shape prefix; nothing outside the compiler names one.
 * Regression test `arith-shape-collide` (exit 44, all three arches).
 
-## D390 — A SCALAR BLOCK'S INPUT IS ITS INPUT REGISTER, IN THE MODEL AS IN THE CODE (2026-11-05)
+## D395 — A SCALAR BLOCK'S INPUT IS ITS INPUT REGISTER, IN THE MODEL AS IN THE CODE (2026-11-05)
 
 **Decided** in plan 0.123 α′ (f3), stating the value an arith block's subroutine returns.
 
@@ -21584,13 +21584,13 @@ against the model, an `Int → Int` block's value claim would have been false.
 
 ### Decision
 The empty path's load is the input register itself (`path-load s [] k = rdi`, and `path-load-go` / `plg`
-for riscv64 and x86-32); a non-empty path is the one memory read at its flat offset (D385). `HeapChase`
+for riscv64 and x86-32); a non-empty path is the one memory read at its flat offset (D390). `HeapChase`
 asks nothing of the empty path (it reads no memory).
 
 ### Consequences
 * The model is the code at every arith load; the emitted code does not change.
 
-## D391 — WHAT THE WORLD GIVES IS READ AT THE TARGET (2026-11-05)
+## D396 — WHAT THE WORLD GIVES IS READ AT THE TARGET (2026-11-05)
 
 **Decided** with the user, in plan 0.123 α′ (f3), proving an arith block's value. **Spec change.**
 
@@ -21624,13 +21624,13 @@ Going beyond the target's word is another type's business (D054's `BigInt`), not
 * Every `Int`/`Float` value in a run is the target's; the arith block proof uses it for its inputs.
 * The emitted code does not change: the answer register already holds the target's word.
 
-## D392 — A SCALAR SIGOP ARGUMENT IS ITS REGISTER, IN THE MACHINE TOO (2026-11-05)
+## D397 — A SCALAR SIGOP ARGUMENT IS ITS REGISTER, IN THE MACHINE TOO (2026-11-05)
 
 **Decided** in plan 0.123 α′ (f3c), found while stating `R-input` at an arith block's entry.
 
 ### Context
-D383 says a scalar has no memory residence: at the IR level a scalar `Input1` is `in-reg`, and an
-`in-loc` at `Int`/`Float` is refuted by its validity. D390 made the arith models read a scalar block's
+D388 says a scalar has no memory residence: at the IR level a scalar `Input1` is `in-reg`, and an
+`in-loc` at `Int`/`Float` is refuted by its validity. D395 made the arith models read a scalar block's
 input as the input register itself, as the emitted code does. But the abstract machine's `decode-at`
 still decoded a scalar argument through a pointer (its `SV-Ptr` catch-all read `readTyped Int loc`). So
 a run fact could not tell the block's code that `Input1` holds the value: at a pointer the machine would
@@ -21638,18 +21638,18 @@ compute from the pointee, the code from the address.
 
 ### Decision
 `decode-at` follows a pointer only for a compound base (`b-*`, `b-+`); a pointer at a scalar base does
-not decode, so the step faults (D386). At a non-faulting step a scalar argument is the literal in
-`Input1`. `IRObsCorrect.SigOp.arg-agree` refutes the scalar `in-loc` case by D383 (`scalar-nowhere`).
+not decode, so the step faults (D391). At a non-faulting step a scalar argument is the literal in
+`Input1`. `IRObsCorrect.SigOp.arg-agree` refutes the scalar `in-loc` case by D388 (`scalar-nowhere`).
 
 ### Consequences
 * The arith block's `R-input` for a scalar input is the input register's word (`in1-eq`).
 * No emitted code changes: no producer puts a scalar behind a pointer.
 
-## D393 — β: ESCAPES COPY FIRST, THEN VALUES MOVE INTO FRAMES (2026-11-05)
+## D398 — β: ESCAPES COPY FIRST, THEN VALUES MOVE INTO FRAMES (2026-11-05)
 
 **Decided** for plan 0.123 β, working unattended (the user asked for principled choices overnight). The
-choices that are new are marked **for the user's review**. The rest follows from D373 (frames first), D7,
-D147, D378, and R1/R2 of plan 0.123 B.4.
+choices that are new are marked **for the user's review**. The rest follows from D378 (frames first), D7,
+D147, D383, and R1/R2 of plan 0.123 B.4.
 
 ### Context
 β moves flat values (products and sums of statically sized types) out of heap blocks into frame slots. A
@@ -21677,7 +21677,7 @@ move.
 * **β1, nodes copy their layer.** `In` at a pointer layer copies the layer's words into a fresh node.
   `Ana` and `in-ν` copy the seed's words into a fresh block whose address is cell 0.
 * **β2, a closure copies its environment.** A flat environment's words go into a fresh block, and its
-  address is the closure's environment word. The node stays `[env-word, code]` (D380).
+  address is the closure's environment word. The node stays `[env-word, code]` (D385).
   **For the user's review:** a separate block, not embedded in the node. This keeps the node's shape and
   every proof about it; γ's walk frees both blocks.
 * **β3, results by destination.** At a call whose result has words (a compound), the caller passes a
@@ -21707,7 +21707,7 @@ move.
 * A flat word never holds a stack pointer, since words are scalars, tags or node pointers. So only
   registers and frame slots hold stack pointers, which is what makes R2's ordering provable.
 
-## D394 — LIVE MEANS IN SCOPE: A VALUE'S CELLS ARE ITS FOOTPRINT, NOT THE FRONTIER (2026-11-06)
+## D399 — LIVE MEANS IN SCOPE: A VALUE'S CELLS ARE ITS FOOTPRINT, NOT THE FRONTIER (2026-11-06)
 
 **Decided with the user** (2026-11-06), for plan 0.123 β3–β6 and γ.
 
@@ -21737,7 +21737,7 @@ frontier contains the result and excludes the destination.
   place, β6's slots and γ's reused blocks are such writes.
 * **The three invariants** of memory use, all derived from scope:
   1. every allocation is freed (`NoLeak`, γ / M7);
-  2. no cell is read before it is written (D382: `Written`, `Pad`);
+  2. no cell is read before it is written (D387: `Written`, `Pad`);
   3. **the compiler adds no dead stores of its own**: every write is read later, or belongs to a
      value the IR itself discards (`terminal`, the dropped half of `fst`/`snd`, an environment
      component the body does not use). Waste is then visible in the program, and the optimizer's
@@ -21748,17 +21748,17 @@ frontier contains the result and excludes the destination.
 * The frontier-based transport API (`validityWF-*`) stays, as an instance: a footprint lies below the
   frontier, so agreeing on everything live still keeps it. Existing proofs are untouched.
 * Step L1: footprints and the footprint transport core. Step L2: closures and νs carry their
-  environment's or seed's footprint. Then β3 (D393, the callee's `mem-pres` exempts the destination).
+  environment's or seed's footprint. Then β3 (D398, the callee's `mem-pres` exempts the destination).
 
-## D395 — β3: A FLAT RESULT IS RETURNED INTO THE CALLER'S DESTINATION; A RESULT USES ONLY ITS INPUT'S CELLS AND ITS OWN (2026-11-06)
+## D400 — β3: A FLAT RESULT IS RETURNED INTO THE CALLER'S DESTINATION; A RESULT USES ONLY ITS INPUT'S CELLS AND ITS OWN (2026-11-06)
 
-**For the user's review** (chosen unattended, per D393/D394).
+**For the user's review** (chosen unattended, per D398/D399).
 
 ### Context
-β3 (D393): a callee whose result is flat copies it into a destination its caller reserved, so that
+β3 (D398): a callee whose result is flat copies it into a destination its caller reserved, so that
 β6 can move results into frames (a callee's own frame is popped at its return). The callee writes the
 destination at its exit, after its body ran. The copy reads the result while it writes the
-destination, and the result must stay valid across those writes: by D394 that holds when the
+destination, and the result must stay valid across those writes: by D399 that holds when the
 destination is outside the result's footprint. Nothing says so today. A fragment's result is "valid
 at some live location"; which cells it uses is not stated, so the proof cannot rule out that it uses
 the destination, although the code never can (the body has no value that reaches it).
@@ -21776,14 +21776,14 @@ the destination, although the code never can (the body has no value that reaches
   the entry frontier). It is a field of the IR obligation (`ValueRealized`) and of the callee
   contract (`CalleeRunP`), proved clause by clause: a composition chains it, a pair joins its halves'
   with its own block, `fst`/`snd` and `case` take a component's (within the input's), `curry` its
-  block and the environment's (D394's carried footprint), `apply` the callee's (the call pair and the
+  block and the environment's (D399's carried footprint), `apply` the callee's (the call pair and the
   environment), SigOps and literals use no input cell.
 * Then the callee's `mem-pres` exempts the destination block, and its `place` is the destination:
   the destination is in neither the input's footprint (the caller's premise) nor a block the callee
   allocated, so by L3 it is outside the result's, and the copy keeps the result.
 
 ### Consequences
-* L3 is D394's scope made a theorem: what a value can reach is what was in scope where it was built.
+* L3 is D399's scope made a theorem: what a value can reach is what was in scope where it was built.
   γ's frees need the same fact (a freed block is in no live value's footprint), so it is not β3's
   alone.
 * The order in plan 0.123 becomes L1, L2 (done), L3, β3.

@@ -90,7 +90,7 @@ canon-nan-32 dst =
   "1:\n" ++
   "    movd %xmm0, " ++ dst ++ "\n"
 
--- D385: a leaf of the flat input (D375) is ONE word at its offset `k` from the
+-- D390: a leaf of the flat input (D380) is ONE word at its offset `k` from the
 -- input pointer `%ecx`; a whole-input scalar (`[]`) is `%ecx` itself. (A float
 -- leaf is loaded exactly as an integer one is.)
 arg-load-text : XReg → InputPath → ℕ → String

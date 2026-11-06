@@ -533,7 +533,7 @@ data InstrEffect : Set where
                                     --   load-indirect, load-indirect-suc,
                                     --   store-indirect, store-indirect-suc.
   eff-heap-checked   : InstrEffect  -- a store at an offset, checked against
-                                    -- the allocator's block sizes (D379).
+                                    -- the allocator's block sizes (D384).
                                     --   store-at.
   eff-frame-op       : InstrEffect  -- push/pop frame.
                                     --   instr-push-frame, instr-pop-frame.
@@ -561,7 +561,7 @@ instr-effect store-indirect          = eff-heap-indirect
 instr-effect store-indirect-suc      = eff-heap-indirect
 instr-effect (load-at _)             = eff-heap-indirect
 instr-effect (store-at _)            = eff-heap-checked
-instr-effect (addr-at _)             = eff-heap-checked    -- D379: checked against the block sizes
+instr-effect (addr-at _)             = eff-heap-checked    -- D384: checked against the block sizes
 instr-effect (instr-alloc-stack _)   = eff-stack-frontier
 instr-effect (instr-dealloc-stack _) = eff-stack-frontier
 instr-effect (instr-reclaim-to _)    = eff-stack-frontier
@@ -2292,12 +2292,12 @@ module TracePrimitives {FS : FrameSemantics} where
     ∃-syntax (λ (loc : ValueLocation FS) →
       (sv-as-loc (readReg (regs s) Input1) ≡ just loc) ×
       ∃-syntax (λ (v : StoredValue FS) → readLoc s (offsetLoc loc k) ≡ just v))
-  -- D379: and the written cell is one of its block's
+  -- D384: and the written cell is one of its block's
   InstrWF s alloc (store-at k)             =
     ∃-syntax (λ (loc : ValueLocation FS) →
       (sv-as-loc (readReg (regs s) Input1) ≡ just loc) ×
       (in-block? (block-size alloc) (offsetLoc loc k) ≡ true))
-  -- D379: and the addressed cell is one of its block's
+  -- D384: and the addressed cell is one of its block's
   InstrWF s alloc (addr-at k)              =
     ∃-syntax (λ (loc : ValueLocation FS) →
       (sv-as-loc (readReg (regs s) Input1) ≡ just loc) ×

@@ -5,7 +5,7 @@
 -- Once.SigOp.Words  (plan 0.123 α′ (f3c, A))
 --
 -- A SIGOP'S VALUE IS A WORD. `Int` is the target's word (D054): every
--- operation `norm`s, every literal is `fromℤ`, and since D391 the world's
+-- operation `norm`s, every literal is `fromℤ`, and since D396 the world's
 -- answers are read at the target (`atTarget`). So whatever a Pure or answering
 -- SigOp returns at an `Int` is below the target's modulus, given that its
 -- `Int` inputs are (a block's `/ −1`, `%` read their dividend as a word).
@@ -87,7 +87,7 @@ module _ (tn : TargetNum) where
   IM : ℕ
   IM = 2 ^ bits
 
-  -- the world's value, read at the target, is a word (D391)
+  -- the world's value, read at the target, is a word (D396)
   atTarget-word : ∀ {B} (f : FitsInReg B) (v : M.⟦ B ⟧) → LitWord IM f (atTarget tn B v)
   atTarget-word fits-int   v = m%n<n v IM
   atTarget-word fits-float v = tt

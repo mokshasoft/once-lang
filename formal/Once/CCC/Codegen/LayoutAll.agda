@@ -78,7 +78,7 @@ module Seg {P : AbstractInstr → Set}
     p-mo ∷ p-sas n ∷ p-alloc _ ∷ p-sas (suc n) ∷ p-mi ∷ p-tag t ∷ p-sa 0 ∷
     ++⁺ (fill-P (suc (size Q)) (size S ∸ suc (size Q))) (++⁺ (put-P Q n (suc n) 1) (p-lfs (suc n) ∷ []))
 
-  -- D393 (β1): a flat layer's copy into a fresh node
+  -- D398 (β1): a flat layer's copy into a fresh node
   node-copy-P : ∀ L n → All P (node-copy-trace L n)
   node-copy-P L n = p-mo ∷ p-sas n ∷ p-alloc _ ∷ p-sas (suc n) ∷ ++⁺ (put-P L n (suc n) 0) (p-lfs (suc n) ∷ [])
 
@@ -86,7 +86,7 @@ module Seg {P : AbstractInstr → Set}
   two-cell-P : ∀ m c → All P (two-cell m c)
   two-cell-P m c = p-mo ∷ p-sas m ∷ p-alloc 2 ∷ p-sas (suc m) ∷ p-mi ∷ p-lfs m ∷ p-sa 0 ∷ p-code c ∷ p-sa 1 ∷ p-lfs (suc m) ∷ []
 
-  -- D393: a kept value's copy, then the rest
+  -- D398: a kept value's copy, then the rest
   with-copy-P : ∀ kd E n (k : ℕ → _) → (∀ m → All P (k m)) → All P (with-copy kd E n k)
   with-copy-P word E n k pk = pk n
   with-copy-P flat E n k pk = ++⁺ (node-copy-P E n) (p-mi ∷ pk (suc (suc n)))
@@ -94,7 +94,7 @@ module Seg {P : AbstractInstr → Set}
   wc2-P : ∀ kd E n c → All P (with-copy kd E n (λ m → two-cell m c))
   wc2-P kd E n c = with-copy-P kd E n (λ m → two-cell m c) (λ m → two-cell-P m c)
 
-  -- `In`'s shapes (D366, D393)
+  -- `In`'s shapes (D366, D398)
   in-P : ∀ r kd L n → All P (in-trace r kd L n)
   in-P mu-box  kd   L n = p-mo ∷ p-sas n ∷ p-alloc 2 ∷ p-mi ∷ p-lfs n ∷ p-sa 0 ∷ p-mo ∷ []
   in-P mu-unit kd   L n = p-alloc 2 ∷ []
