@@ -21402,3 +21402,41 @@ frontier contains the result and excludes the destination.
   frontier, so agreeing on everything live still keeps it. Existing proofs are untouched.
 * Step L1: footprints and the footprint transport core. Step L2: closures and νs carry their
   environment's or seed's footprint. Then β3 (D393, the callee's `mem-pres` exempts the destination).
+
+## D395 — β3: A FLAT RESULT IS RETURNED INTO THE CALLER'S DESTINATION; A RESULT USES ONLY ITS INPUT'S CELLS AND ITS OWN (2026-11-06)
+
+**For the user's review** (chosen unattended, per D393/D394).
+
+### Context
+β3 (D393): a callee whose result is flat copies it into a destination its caller reserved, so that
+β6 can move results into frames (a callee's own frame is popped at its return). The callee writes the
+destination at its exit, after its body ran. The copy reads the result while it writes the
+destination, and the result must stay valid across those writes: by D394 that holds when the
+destination is outside the result's footprint. Nothing says so today. A fragment's result is "valid
+at some live location"; which cells it uses is not stated, so the proof cannot rule out that it uses
+the destination, although the code never can (the body has no value that reaches it).
+
+### Decision
+* **Units with a flat result** (a `Call` block, a closure body, an `Ana` block, the `in-ν` block, a
+  cata algebra): at entry `store-at-slot 0` keeps the destination the caller passed in `Output`, and
+  the body is emitted at frontier 1; at exit the result's words are copied to it (`copy-from`) and
+  `Output` is the destination. Call sites of such units (`apply`, `Call f`, `Out`, the cata's
+  algebra call) reserve the destination last before the call: a heap block (`2 ⊔ size B`) until β6,
+  frame slots after. The destination's slot is the callee frame's slot 0 (below the body: the body's
+  interface states only what it keeps below its start).
+* **Step L3, the footprint frame: a result uses only its input's cells and its own.** Every
+  fragment's result footprint lies in its input's footprint and the blocks the run allocated (above
+  the entry frontier). It is a field of the IR obligation (`ValueRealized`) and of the callee
+  contract (`CalleeRunP`), proved clause by clause: a composition chains it, a pair joins its halves'
+  with its own block, `fst`/`snd` and `case` take a component's (within the input's), `curry` its
+  block and the environment's (D394's carried footprint), `apply` the callee's (the call pair and the
+  environment), SigOps and literals use no input cell.
+* Then the callee's `mem-pres` exempts the destination block, and its `place` is the destination:
+  the destination is in neither the input's footprint (the caller's premise) nor a block the callee
+  allocated, so by L3 it is outside the result's, and the copy keeps the result.
+
+### Consequences
+* L3 is D394's scope made a theorem: what a value can reach is what was in scope where it was built.
+  γ's frees need the same fact (a freed block is in no live value's footprint), so it is not β3's
+  alone.
+* The order in plan 0.123 becomes L1, L2 (done), L3, β3.
