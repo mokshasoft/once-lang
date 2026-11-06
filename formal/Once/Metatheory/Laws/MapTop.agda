@@ -42,11 +42,13 @@ open import Once.Metatheory.Laws.MapCov Σ S using (letInv; lamInv; cod≡; modu
 open import Once.Metatheory.Laws.ComposeG Σ u fmt S using (callRel)
 
 open import Once.Metatheory.Laws.MapV Σ u fmt S using (module MapV)
+open import Once.Metatheory.Laws.MapV.Map Σ u fmt S using (module MapVMap)
 
 module MapTopV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (σ : TySub m 0) (r : Respects Δ ∅ₖ σ)
                (A B : Ty m) where
   open MapAt Δ σ A B
   open MapV δ sd σ r A B
+  open MapVMap δ sd σ r A B using (bodyMap)
   open Covs {m} {Δ} {σ} A B using (covOf; occTy)
 
   -- The coverage a derivation of `mapᶜ T A B f` fixes.
