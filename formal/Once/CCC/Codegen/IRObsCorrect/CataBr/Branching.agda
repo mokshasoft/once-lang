@@ -143,13 +143,13 @@ module CataBranchC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     -- 1. entry → the fold head
     ------------------------------------------------------------------
-    module B = Build wf alg st n l prog base span la alg₀ x s alloc cl rs nh pl rdi lpl cE μhl mC rdμ lμ vμ
-
+    -- the two fields are taken directly, not through `module B = Build …`: applying the whole
+    -- module copies every definition in it, which ran out of heap (D394's richer witnesses)
     env-sv : StoredValue FS
-    env-sv = B.env-sv
+    env-sv = Build.env-sv wf alg st n l prog base span la alg₀ x s alloc cl rs nh pl rdi lpl cE μhl mC rdμ lμ vμ
 
     tf : ToFoldOut prog n c bodyL X σ wf alg₀ C root E e env-sv
-    tf = B.out
+    tf = Build.out wf alg st n l prog base span la alg₀ x s alloc cl rs nh pl rdi lpl cE μhl mC rdμ lμ vμ
     module TF = ToFoldOut tf
 
     open Inv prog F E C n c bodyL X TF.sn TF.hc e env-sv

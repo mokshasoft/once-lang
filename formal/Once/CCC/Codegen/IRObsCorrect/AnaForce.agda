@@ -26,6 +26,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl
 open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl
 open import Once.CCC.Codegen.IRToTrace o using (resuspend-layer)
+open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; StoredValue; readReg; Input1; Output; writeReg-same; writeReg-preserves; SV-Code; SV-Ptr; sucLoc
         ; mov-to-output; store-at-slot; block-layout; e-thunk)
@@ -467,25 +468,37 @@ module AnaForceC {FS : FrameSemantics} where
       ana-body x fs pre mIn ret-pc k rs nh fa ns (in-unit ())
 
       -- ONE FORCE: the block call, its body's run, and what that run means.
+      -- D394: the seed is kept by its footprint (`seed-foot`), all the force asks.
+      seed-foot : ∀ {alloc st pl m′} {x : ValueDomain.⟦ E IRTy′.* A ⟧ᴰᴵ}
+                → ValidAtWF {prog = prog} m′ alloc {E IRTy′.* A} x pl st → Foot
+      seed-foot {pl = pl} pv = pl ∷ foot (E IRTy′.* A) pl pv
+
+      seed-foot-live : ∀ {alloc st pl m′} {x : ValueDomain.⟦ E IRTy′.* A ⟧ᴰᴵ}
+                     → Live alloc pl → (pv : ValidAtWF {prog = prog} m′ alloc {E IRTy′.* A} x pl st)
+                     → ∀ l′ → l′ ∈ᶠ seed-foot pv → Live alloc l′
+      seed-foot-live {pl = pl} lpl pv l′ (here b) = blk-live0 pl lpl b
+      seed-foot-live {pl = pl} lpl pv l′ (there f) = foot-live (E IRTy′.* A) pl pv l′ f
+
       ana-force : ∀ {alloc st pl m′} (x : ValueDomain.⟦ E IRTy′.* A ⟧ᴰᴵ)
                   (lpl : Live alloc pl) (pv : ValidAtWF {prog = prog} m′ alloc {E IRTy′.* A} x pl st)
-                → ForceRuns {prog = prog} {F} AP alloc st (SV-Ptr pl) j (retVal (evalᴰ (Ana wf coalg) x))
+                → ForceRuns {prog = prog} {F} AP alloc st (seed-foot pv) (SV-Ptr pl) j (retVal (evalᴰ (Ana wf coalg) x))
       ana-force {alloc} {st} {pl} {m′} x lpl pv wf′ fs pre ret-pc k rs pc nh fr fa ns incl bkp agree i1 =
         crun-retarget (AnaDen.out-ana wf coalg (proj₁ x) wf′ (proj₂ x) k (floc fs))
           (BC.block-call-gen {⟦ F ⟧TI (ν-type F)} across body (fmap∞ (AnaDen.rsd wf coalg (proj₁ x) wf) (evalᴰ coalg x))
              prog (ℓ o l) bb j sp fs pre ret-pc k rs pc nh fr fa
              (ana-body x fs pre m′ ret-pc k rs nh fa ns
                 (in-loc pl
-                   (validityWF-heap-transport (Live alloc) (λ _ b → b)
-                      (λ l′ b → trans (BC.callee-heap bb fs l′ (incl l′ b)) (agree l′ b))
-                      live-pre bk-pre x pl lpl pv)
-                   (live-pre pl lpl) i1)))
+                   (FT.v-tr (E IRTy′.* A) pv (here (blk-refl pl)) (λ l′ f → there f))
+                   (live-pre pl (here (blk-refl pl))) i1)))
         where
-          live-pre : ∀ l′ → Live alloc l′ → Live (BC.callee-alloc bb fs) l′
-          live-pre l′ b = BC.live-callee bb fs pre fa l′ (incl l′ b)
+          live-pre : ∀ l′ → l′ ∈ᶠ seed-foot pv → Live (BC.callee-alloc bb fs) l′
+          live-pre l′ e = BC.live-callee bb fs pre fa l′ (incl l′ e)
 
-          bk-pre : BlocksKept alloc (BC.callee-alloc bb fs)
-          bk-pre = bk-trans {a = alloc} {b = pre} {c = BC.callee-alloc bb fs} bkp (BC.bk-enter bb fs pre fa) incl
+          module FT = FootTransport {prog = prog} {a₁ = alloc} {a₂ = BC.callee-alloc bb fs} {s₁ = st} {s₂ = BC.callee-loc bb fs}
+                        (_∈ᶠ seed-foot pv)
+                        (λ l′ e → trans (BC.callee-heap bb fs l′ (incl l′ e)) (agree l′ e))
+                        (λ l′ e _ → live-pre l′ e)
+                        (λ l′ e _ ib → BC.bk-enter bb fs pre fa l′ (incl l′ e) (bkp l′ e ib))
 
       ana-step : ∀ {m a v lc st} → AnaP m a v lc st → NuStep {prog = prog} {F} AP m a v lc st
       ana-step (ana-p {pl = pl} x lmm c0 lpl pv cp slb) = record
@@ -498,6 +511,8 @@ module AnaForceC {FS : FrameSemantics} where
         ; st-cell1 = cp
         ; st-live1 = slb
         ; st-code  = feq
+        ; st-fp    = seed-foot pv
+        ; st-fp-live = seed-foot-live lpl pv
         ; st-force = ana-force x lpl pv
         }
 

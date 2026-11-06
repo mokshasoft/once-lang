@@ -101,7 +101,9 @@ module Core {FS : FrameSemantics} where
     using (runAt; eventsAt; resultAt; stopsAt; ⟪_⟫_
           ; prim-sv; cell-ptr; cell-inline; cell-flat; IsNode; IsFlat; InlineRep; rep-prim; inline-sv
           ; ValidFO; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy; LayerV
-          ; Live; live→bf; live-heap; live-lift; live-ns; InBlk; Here; BlocksKept) public
+          ; Live; live→bf; live-heap; live-lift; live-ns; InBlk; Here; BlocksKept
+          -- D394: footprints
+          ; Foot; _∈ᶠ_; SameBlk; blk-refl; blk-live; blk-live0) public
 
   -- A run depends on the state only through its log.
   runAt-≡ : ∀ {X} {st st′ : LocState FS} {m m′ : TM.T X}
@@ -179,6 +181,8 @@ module Core {FS : FrameSemantics} where
           ; InputAt; in-loc; in-reg; in-unit
           ; rp-map; valid→layer; ν-layer-place; fo→valid; valid→fo; μ-layer; valid-μ; μ-box-cell; valid-μbox
           ; validityWF-heap-transport; cellWF-heap-transport; validityWF-mem-only
+          -- D394: a value is kept by any change that keeps its footprint
+          ; foot; foot-cell; foot-live; foot-cell-live; module FootTransport
           -- Plan 0.68 step 1: the class-A discharges move the value witness
           -- across a REGISTER write. `ValueLocation` is `AtStack`/`AtDynamic`
           -- only — there is no register location — so `readLoc` cannot see a

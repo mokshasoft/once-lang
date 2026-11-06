@@ -22,6 +22,7 @@ open import Once.CCC.Machine.SMCore using (LocState; readReg; Input1; writeReg-s
 open LocState using (regs; halted)
 open AllocState using (current-frame; next-heap-ref; saved-frames)
 open import Once.Memory.HeapAddress using (HeapLocation)
+open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Label using (ℓ)
@@ -121,13 +122,28 @@ module TwoCellC {FS : FrameSemantics} where
     denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (curry body) x ⟫ k) ≡ []
     denot-[] k = refl
 
+    -- D394: the environment's footprint, which the closure carries
+    env-foot : ∀ {cv′} → EnvRes {prog} A x (falloc fsE) (floc fsE) cv′ → Foot
+    env-foot (env-reg _)  = []
+    env-foot (env-unit _) = []
+    env-foot (env-loc {loc = loc} _ v) = loc ∷ foot A loc v
+
+    env-foot-live : ∀ {cv′} (r : EnvRes {prog} A x (falloc fsE) (floc fsE) cv′) → ∀ l′ → l′ ∈ᶠ env-foot r → Live (falloc fsE) l′
+    env-foot-live (env-reg _)  l′ ()
+    env-foot-live (env-unit _) l′ ()
+    env-foot-live (env-loc {loc = loc} lb v) l′ (here b) = blk-live0 loc lb b
+    env-foot-live (env-loc {loc = loc} lb v) l′ (there f) = foot-live A loc v l′ f
+
+    EF : Foot
+    EF = env-foot env
+
     -- ── `EnvSrc`: the env word, handed on at a call (D380), as a value to put (D384).
     EnvSrc : Set
     EnvSrc = ∀ (bb : ℕ) (fs : FlatState) (pre : AllocState {FS}) (pl : ValueLocation FS)
            → falloc fs ≡ enter-call pre
-           → (∀ l′ → Live (falloc fsE) l′ → Live pre l′)
-           → BlocksKept (falloc fsE) pre
-           → (∀ l′ → Live (falloc fsE) l′ → readLoc (floc fs) l′ ≡ readLoc (floc fsE) l′)
+           → (∀ l′ → l′ ∈ᶠ EF → Live pre l′)
+           → (∀ l′ → l′ ∈ᶠ EF → InBlk (falloc fsE) l′ → InBlk pre l′)
+           → (∀ l′ → l′ ∈ᶠ EF → readLoc (floc fs) l′ ≡ readLoc (floc fsE) l′)
            → Live pre pl
            → readLoc (floc fs) pl ≡ readLoc (floc fsE) obj-loc
            → Σ (StoredValue FS) (λ w → readLoc (BC.callee-loc bb fs) pl ≡ just w
@@ -172,7 +188,7 @@ module TwoCellC {FS : FrameSemantics} where
     -- call pair IS the body's input; a flat one's is rebuilt (`CurryPro`).
     runs-from : EnvSrc
               → CallRuns {prog = prog} {B} {C} (VAt {prog = prog} B) (VAt {prog = prog} C)
-                  (falloc fsE) (floc fsE) obj-loc j (λ arg → evalᴰ body (x , arg))
+                  (falloc fsE) (floc fsE) EF obj-loc j (λ arg → evalᴰ body (x , arg))
     runs-from mk fs pre a pl ret-pc k′ rs′ pc nh′ fr fa ns incl bkp agree i1 lpl slb c0 c1 =
       by (kind A) refl sp lab bl′
       where
@@ -216,23 +232,34 @@ module TwoCellC {FS : FrameSemantics} where
             sp″ = subst (λ kd → SpanAt prog j (block-layout (ℓ o l , BB kd , BT kd))) kf sp′
 
     -- the env word, from where the environment is
-    mk : EnvSrc
-    mk bb fs pre pl fa incl bkp agree lpl c0 = go env cell0
-      where
-        go : ∀ {cv′} → EnvRes {prog} A x (falloc fsE) (floc fsE) cv′ → readLoc (floc fsE) obj-loc ≡ just cv′
+    mk-gen : ∀ {cv′} (r : EnvRes {prog} A x (falloc fsE) (floc fsE) cv′) → readLoc (floc fsE) obj-loc ≡ just cv′
+           → ∀ (bb : ℕ) (fs : FlatState) (pre : AllocState {FS}) (pl : ValueLocation FS)
+           → falloc fs ≡ enter-call pre
+           → (∀ l′ → l′ ∈ᶠ env-foot r → Live pre l′)
+           → (∀ l′ → l′ ∈ᶠ env-foot r → InBlk (falloc fsE) l′ → InBlk pre l′)
+           → (∀ l′ → l′ ∈ᶠ env-foot r → readLoc (floc fs) l′ ≡ readLoc (floc fsE) l′)
+           → Live pre pl
+           → readLoc (floc fs) pl ≡ readLoc (floc fsE) obj-loc
            → Σ (StoredValue FS) (λ w → readLoc (BC.callee-loc bb fs) pl ≡ just w
                                      × FlatPut.Src {FS} {prog} (BC.callee-alloc bb fs) (BC.callee-loc bb fs) A x w)
-        go (env-reg fit) c = prim-sv fit x , trans (BC.callee-heap bb fs pl lpl) (trans c0 c) , FlatPut.src-scalar fit
-        go {cv′} (env-unit refl) c = cv′ , trans (BC.callee-heap bb fs pl lpl) (trans c0 c) , FlatPut.src-unit
-        go (env-loc {loc = loc} lb v) c =
-          SV-Ptr loc , trans (BC.callee-heap bb fs pl lpl) (trans c0 c) ,
-          InjC′.src-loc {prog} A
-            (validityWF-heap-transport (Live (falloc fsE)) (λ _ b → b)
-               (λ l′ b → trans (BC.callee-heap bb fs l′ (incl l′ b)) (agree l′ b))
-               (λ l′ b → BC.live-callee bb fs pre fa l′ (incl l′ b))
-               (bk-trans {a = falloc fsE} {b = pre} {c = BC.callee-alloc bb fs} bkp (BC.bk-enter bb fs pre fa) incl)
-               x loc lb v)
-            (BC.live-callee bb fs pre fa loc (incl loc lb))
+    mk-gen (env-reg fit) c bb fs pre pl fa incl bkp agree lpl c0 =
+      prim-sv fit x , trans (BC.callee-heap bb fs pl lpl) (trans c0 c) , FlatPut.src-scalar fit
+    mk-gen {cv′} (env-unit refl) c bb fs pre pl fa incl bkp agree lpl c0 =
+      cv′ , trans (BC.callee-heap bb fs pl lpl) (trans c0 c) , FlatPut.src-unit
+    mk-gen r@(env-loc {loc = loc} lb v) c bb fs pre pl fa incl bkp agree lpl c0 =
+      SV-Ptr loc , trans (BC.callee-heap bb fs pl lpl) (trans c0 c) ,
+      InjC′.src-loc {prog} A (FT.v-tr A v (here (blk-refl loc)) (λ l′ f → there f))
+        (BC.live-callee bb fs pre fa loc (incl loc (here (blk-refl loc))))
+      where
+        module FT = FootTransport {prog = prog} {a₁ = falloc fsE} {a₂ = BC.callee-alloc bb fs}
+                      {s₁ = floc fsE} {s₂ = BC.callee-loc bb fs}
+                      (_∈ᶠ env-foot r)
+                      (λ l′ q → trans (BC.callee-heap bb fs l′ (incl l′ q)) (agree l′ q))
+                      (λ l′ q _ → BC.live-callee bb fs pre fa l′ (incl l′ q))
+                      (λ l′ q _ ib → BC.bk-enter bb fs pre fa l′ (incl l′ q) (bkp l′ q ib))
+
+    mk : EnvSrc
+    mk = mk-gen env cell0
 
     mk-valid : ValidAtWF {prog = prog} Heap (falloc fsE) {B IRTy′.⇛ C}
                  (retVal (evalᴰ (curry body) x)) obj-loc (floc fsE)
@@ -240,9 +267,9 @@ module TwoCellC {FS : FrameSemantics} where
       where
         by-env : ∀ {cv′} → EnvRes {prog} A x (falloc fsE) (floc fsE) cv′ → readLoc (floc fsE) obj-loc ≡ just cv′
                → ValidAtWF {prog = prog} Heap (falloc fsE) {B IRTy′.⇛ C} (retVal (evalᴰ (curry body) x)) obj-loc (floc fsE)
-        by-env (env-reg fit)        c = valid-closure-reg-wf tt c code before-suc feq (runs-from mk)
-        by-env (env-unit _)         c = valid-closure-reg-wf tt c code before-suc feq (runs-from mk)
-        by-env (env-loc lb _)       c = valid-closure-wf tt c code lb before-suc feq (runs-from mk)
+        by-env (env-reg fit)        c = valid-closure-reg-wf tt c code before-suc (env-foot-live env) feq (runs-from mk)
+        by-env (env-unit _)         c = valid-closure-reg-wf tt c code before-suc (env-foot-live env) feq (runs-from mk)
+        by-env (env-loc lb _)       c = valid-closure-wf tt c code lb before-suc (env-foot-live env) feq (runs-from mk)
 
     place : ResultPlace (B IRTy′.⇛ C) Heap (falloc fsE) (falloc fsE)
                         (retVal (evalᴰ (curry body) x)) (floc fsE)
@@ -325,11 +352,13 @@ module TwoCellC {FS : FrameSemantics} where
     cell0v≡in : TCR.cell0v ≡ readReg (regs s) Input1
     cell0v≡in = writeReg-same (regs s) Output (readReg (regs s) Input1)
 
+    -- D394: with the seed's footprint, which the force is told is kept
     susp : ∀ {F} {v : ⟦ ν-type F ⟧} (j : ℕ) → find-thunk prog (ℓ o l) ≡ just j
+         → (E : Foot) → (∀ l′ → l′ ∈ᶠ E → Live (falloc TCR.fs10) l′)
          → ForceRuns {prog = prog} {F} (λ m′ a′ v′ l′ s″ → NuV {prog = prog} {F} m′ a′ v′ l′ s″)
-             (falloc TCR.fs10) (floc TCR.fs10) TCR.cell0v j v
+             (falloc TCR.fs10) (floc TCR.fs10) E TCR.cell0v j v
          → ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {ν-type F} v TCR.obj-loc (floc TCR.fs10)
-    susp j feq fr = valid-ν-wf nv
+    susp j feq E el fr = valid-ν-wf nv
       where
         nv : NuV _ _ _ _ _
         nu-mode  nv = refl
@@ -341,6 +370,8 @@ module TwoCellC {FS : FrameSemantics} where
         nu-cell1 nv = TCB.code-fs10
         nu-live1 nv = TCB.before-suc
         nu-code  nv = feq
+        nu-fp    nv = E
+        nu-fp-live nv = el
         nu-force nv = fr
 
   -- D189: `Ana` — DISCHARGED, and it is `obs-correct-curry` with the other
@@ -453,7 +484,7 @@ module TwoCellC {FS : FrameSemantics} where
 
           mk-valid : ValidAtWF {prog = prog} Heap (falloc TCR.fs10) {ν-type F}
                        (retVal (evalᴰ (in-ν wf) x)) TCR.obj-loc (floc TCR.fs10)
-          mk-valid = SU.susp j feq
+          mk-valid = SU.susp j feq (NF.in-foot inp) (λ l′ e → proj₁ SU.kept l′ (NF.in-foot-live inp l′ e))
             (NF.force-layer wf l prog j mIn x s alloc ss cr sp lab inp
                (falloc TCR.fs10) (floc TCR.fs10) TCR.cell0v SU.kept SU.cell0v≡in)
 
@@ -483,7 +514,7 @@ module TwoCellC {FS : FrameSemantics} where
 
           mk-valid : ValidAtWF {prog = prog} Heap (falloc CR.fsF) {ν-type F}
                        (retVal (evalᴰ (in-ν wf) x)) CR.obj-loc (floc CR.fsF)
-          mk-valid = SU.susp j feq
+          mk-valid = SU.susp j feq (NF.in-foot CR.copy-input₂) (λ l′ e → proj₁ SU.kept l′ (NF.in-foot-live CR.copy-input₂ l′ e))
             (NF.force-layer wf l prog j CR.copy-mode x CR.s₂ CR.A₁ ss cr sp lab CR.copy-input₂
                (falloc CR.fsF) (floc CR.fsF) SU.TCR.cell0v SU.kept SU.cell0v≡in)
 
