@@ -67,7 +67,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
           → Res es′ → Res ec′
           → _~_ {D} rhs (⟪ ds′ ⟫ es′ >>=∞ [ (λ a → ⟪ dl′ ⟫▸ ec′ (slot qℓ a)) , (λ b → ⟪ dr′ ⟫▸ ec′ (slot qr b)) ]′)
           → _~_ {D} lhs rhs
-      fin Zero {A = A} {B} {C} {eb} {es′} {ec′} de db rb sem ds′ dl′ dr′ rs′ rc′ eqR = goP (peel de)
+      fin Zero {A = A} {B} {C} {eb} {es′} {ec′} {lhs = lhs} {rhs = rhs} de db rb sem ds′ dl′ dr′ rs′ rc′ eqR = goP (peel de)
         where
           K′ : _ → T∞ _
           K′ = [ (λ a → ⟪ dl′ ⟫▸ ec′ (slot qℓ a)) , (λ b → ⟪ dr′ ⟫▸ ec′ (slot qr b)) ]′
@@ -76,7 +76,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
           Kcong {inj₂ b} {inj₂ b′} s = runs (fl▸ dr′ dr′ rc′ rc′ (slotAgree σ {B} qr qr s))
           Kcong {inj₁ _} {inj₂ _} ()
           Kcong {inj₂ _} {inj₁ _} ()
-          goP : Peeled de → _
+          goP : Peeled de → _~_ {D} lhs rhs
           goP (peeled (⊢case {π₁ = πs} {π₂ = πa} ds₀ dl₀ dr₀) _ _ {grd}) with ty-unique ds₀ ds′ | ·p-pureˡ πs πa (⊑pure grd)
           ... | refl | refl =
             ~trans {D} sem
@@ -94,25 +94,25 @@ module _ {m : ℕ} {Δ : KCtx m} where
                 where
                   module W = Views δ sd σ r {Γ = Γ ▸ A} {Ψ = qℓ ∷ _} (ec′ , slot qℓ a)
                                    (sameEnv▸ σ qℓ (sameEnvOf rc′) (slotAgree σ {A} qℓ qℓ sa))
-                  goW : W.LetView dl′ (ec′ , slot qℓ a) → _
+                  goW : W.LetView dl′ (ec′ , slot qℓ a) → _~_ {D} (K′ (inj₁ a)) (⟪ db ⟫▸ eb tt)
                   goW (W.letView {Ψ₂ = _ ∷ _} de″ db″ (W.res P₂ refl) sem″) with ty-unique dl₀ de″
                   ... | refl = ~trans {D} sem″ (renUp db rb tt tt db″ rc′ (slot qℓ a) P₂ tt tt)
               armV (inj₂ b) sb = goW (W.viewLet dr′ W.base)
                 where
                   module W = Views δ sd σ r {Γ = Γ ▸ B} {Ψ = qr ∷ _} (ec′ , slot qr b)
                                    (sameEnv▸ σ qr (sameEnvOf rc′) (slotAgree σ {B} qr qr sb))
-                  goW : W.LetView dr′ (ec′ , slot qr b) → _
+                  goW : W.LetView dr′ (ec′ , slot qr b) → _~_ {D} (K′ (inj₂ b)) (⟪ db ⟫▸ eb tt)
                   goW (W.letView {Ψ₂ = _ ∷ _} de″ db″ (W.res P₂ refl) sem″) with ty-unique dr₀ de″
                   ... | refl = ~trans {D} sem″ (renUp db rb tt tt db″ rc′ (slot qr b) P₂ tt tt)
           goP (peeled (⊢sub-use _ _) _ ())
           goP (peeled (⊢sub-eff _ _) _ ())
-      fin One {A = A} {B} {C} {eb} {es′} {ec′} de db rb (ee , re , eqL) ds′ dl′ dr′ rs′ rc′ eqR = goC (viewCase de re)
+      fin One {A = A} {B} {C} {eb} {es′} {ec′} {lhs = lhs} {rhs = rhs} de db rb (ee , re , eqL) ds′ dl′ dr′ rs′ rc′ eqR = goC (viewCase de re)
         where
           K′ : _ → T∞ _
           K′ = [ (λ a → ⟪ dl′ ⟫▸ ec′ (slot qℓ a)) , (λ b → ⟪ dr′ ⟫▸ ec′ (slot qr b)) ]′
           V : _ → T∞ _
           V y = ⟪ db ⟫▸ eb y
-          goC : CaseView de ee → _ 
+          goC : CaseView de ee → _~_ {D} lhs rhs
           goC (caseView {A = A₀} {B₀} ds dl dr {es} {ec} rs rc eqC) with ty-unique ds ds′
           ... | refl =
             ~trans {D} eqL
@@ -127,7 +127,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
                 where
                   module W = Views δ sd σ r {Γ = Γ ▸ A} {Ψ = qℓ ∷ _} (ec′ , slot qℓ a′)
                                    (sameEnv▸ σ qℓ (sameEnvOf rc′) (slotAgree σ {A} qℓ qℓ (sameRefl (A ⟨ σ ⟩) (Same-sym (A ⟨ σ ⟩) sa))))
-                  goW : W.LetView dl′ (ec′ , slot qℓ a′) → _
+                  goW : W.LetView dl′ (ec′ , slot qℓ a′) → _~_ {D} (K (inj₁ a) >>=∞ V) (K′ (inj₁ a′))
                   goW (W.letView {Ψ₁ = _ ∷ _} {Ψ₂ = _ ∷ _} de″ db″ (W.res P₂ refl) (ee″ , W.res Pe refl , eq″)) with ty-unique dl de″
                   ... | refl =
                     ~trans {D} (bindRel (runs (FL.FL δ sd σ r r dl de″ refl (agreeExtR {q₁ = qℓ} rc rc′ sa Pe)))
@@ -139,7 +139,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
                 where
                   module W = Views δ sd σ r {Γ = Γ ▸ B} {Ψ = qr ∷ _} (ec′ , slot qr b′)
                                    (sameEnv▸ σ qr (sameEnvOf rc′) (slotAgree σ {B} qr qr (sameRefl (B ⟨ σ ⟩) (Same-sym (B ⟨ σ ⟩) sb))))
-                  goW : W.LetView dr′ (ec′ , slot qr b′) → _
+                  goW : W.LetView dr′ (ec′ , slot qr b′) → _~_ {D} (K (inj₂ b) >>=∞ V) (K′ (inj₂ b′))
                   goW (W.letView {Ψ₁ = _ ∷ _} {Ψ₂ = _ ∷ _} de″ db″ (W.res P₂ refl) (ee″ , W.res Pe refl , eq″)) with ty-unique dr de″
                   ... | refl =
                     ~trans {D} (bindRel (runs (FL.FL δ sd σ r r dr de″ refl (agreeExtR {q₁ = qr} rc rc′ sb Pe)))
@@ -151,13 +151,13 @@ module _ {m : ℕ} {Δ : KCtx m} where
               arm {inj₂ b} {inj₂ b′} s = armR s
               arm {inj₁ _} {inj₂ _} ()
               arm {inj₂ _} {inj₁ _} ()
-      fin Many {A = A} {B} {C} {eb} {es′} {ec′} de db rb (ee , re , eqL) ds′ dl′ dr′ rs′ rc′ eqR = goC (viewCase de re)
+      fin Many {A = A} {B} {C} {eb} {es′} {ec′} {lhs = lhs} {rhs = rhs} de db rb (ee , re , eqL) ds′ dl′ dr′ rs′ rc′ eqR = goC (viewCase de re)
         where
           K′ : _ → T∞ _
           K′ = [ (λ a → ⟪ dl′ ⟫▸ ec′ (slot qℓ a)) , (λ b → ⟪ dr′ ⟫▸ ec′ (slot qr b)) ]′
           V : _ → T∞ _
           V y = ⟪ db ⟫▸ eb y
-          goC : CaseView de ee → _ 
+          goC : CaseView de ee → _~_ {D} lhs rhs
           goC (caseView {A = A₀} {B₀} ds dl dr {es} {ec} rs rc eqC) with ty-unique ds ds′
           ... | refl =
             ~trans {D} eqL
@@ -172,7 +172,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
                 where
                   module W = Views δ sd σ r {Γ = Γ ▸ A} {Ψ = qℓ ∷ _} (ec′ , slot qℓ a′)
                                    (sameEnv▸ σ qℓ (sameEnvOf rc′) (slotAgree σ {A} qℓ qℓ (sameRefl (A ⟨ σ ⟩) (Same-sym (A ⟨ σ ⟩) sa))))
-                  goW : W.LetView dl′ (ec′ , slot qℓ a′) → _
+                  goW : W.LetView dl′ (ec′ , slot qℓ a′) → _~_ {D} (K (inj₁ a) >>=∞ V) (K′ (inj₁ a′))
                   goW (W.letView {Ψ₁ = _ ∷ _} {Ψ₂ = _ ∷ _} de″ db″ (W.res P₂ refl) (ee″ , W.res Pe refl , eq″)) with ty-unique dl de″
                   ... | refl =
                     ~trans {D} (bindRel (runs (FL.FL δ sd σ r r dl de″ refl (agreeExtR {q₁ = qℓ} rc rc′ sa Pe)))
@@ -184,7 +184,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
                 where
                   module W = Views δ sd σ r {Γ = Γ ▸ B} {Ψ = qr ∷ _} (ec′ , slot qr b′)
                                    (sameEnv▸ σ qr (sameEnvOf rc′) (slotAgree σ {B} qr qr (sameRefl (B ⟨ σ ⟩) (Same-sym (B ⟨ σ ⟩) sb))))
-                  goW : W.LetView dr′ (ec′ , slot qr b′) → _
+                  goW : W.LetView dr′ (ec′ , slot qr b′) → _~_ {D} (K (inj₂ b) >>=∞ V) (K′ (inj₂ b′))
                   goW (W.letView {Ψ₁ = _ ∷ _} {Ψ₂ = _ ∷ _} de″ db″ (W.res P₂ refl) (ee″ , W.res Pe refl , eq″)) with ty-unique dr de″
                   ... | refl =
                     ~trans {D} (bindRel (runs (FL.FL δ sd σ r r dr de″ refl (agreeExtR {q₁ = qr} rc rc′ sb Pe)))
