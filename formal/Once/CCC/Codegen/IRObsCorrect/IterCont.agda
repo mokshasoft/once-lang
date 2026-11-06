@@ -152,7 +152,7 @@ module IterContC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     -- the payload `a′`, read at word 1 of the sum (`Get.get-run`)
     ------------------------------------------------------------------
-    gA : GetOut {prog = prog} A a′ c2
+    gA : GetOut {prog = prog} A a′ c2 _
     gA = get-run A 1 c2 loc nh1 (λ i e → subst (λ z → fetch prog z ≡ just i) (sym pc2) (at-geta i e))
                  rd1 bef (payload-r v1)
 

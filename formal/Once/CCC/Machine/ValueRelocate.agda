@@ -35,10 +35,14 @@ open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Machine.ValueRel
 open ClosureWellFormedBase {FS}
-open ClosureWellFormedDef {FS} {prog} using (ValidAtWF; CellAt; module Transport; fo→valid; valid→fo)
+open ClosureWellFormedDef {FS} {prog} using (ValidAtWF; CellAt; module Transport; fo→valid; valid→fo; foot; foot-cell)
 open import Once.IRTy using (IRFunctor; WellFormedFI; ⟦_⟧TI; wf-K; wf-Id; wf-Sum; wf-Prod; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum)
 open import Once.CCC.Machine.FlatWords {FS} {prog} using (offset-+; offset-0; offset-1)
 open import Data.Unit using (tt)
+open import Data.List using (_∷_; [])
+open import Data.List.Relation.Unary.Any using (here; there)
+open import Data.List.Relation.Unary.Any.Properties using (++⁺ˡ; ++⁺ʳ; ++⁻)
+open import Data.Sum using (inj₁; inj₂)
 
 private
   -- a node and a scalar are one word
@@ -76,7 +80,7 @@ module Relocate {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
   (N : ℕ)
   (dst-in : ∀ o → o < N → InBlk a₂ (AtDynamic (heap-loc rd o))) where
 
-  open Transport (Live a₁) (λ _ b → b) keep bft ibt using (v-tr)
+  open Transport (Live a₁) (λ _ b → b) keep bft ibt using (v-tr; v-tr-foot)
 
   private
     -- a value of `c > 0` words fitting from `od` starts inside
@@ -207,6 +211,58 @@ module Relocate {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
       cell-inline (rep-prim fit) (trans (w0 (subst (0 <_) (sym (scalar-size fit)) (s≤s z≤n)) ag) r)
     reloc-cell C sl od ag f (cell-flat fl hr v) =
       cell-flat fl (λ p → dst-live _ , dst-in od (starts-in p f)) (reloc-v C sl od ag fl f v)
+
+  -- D395: a relocated value uses the destination block and what the source's
+  -- pointers use
+  private
+    rd0 : ValueLocation FS
+    rd0 = AtDynamic (heap-loc rd 0)
+
+  mutual
+    reloc-v-foot : ∀ (C : IRTy) {m v} (sl : ValueLocation FS) (od : ℕ) (ag : Agree (size C) sl od) (fl : IsFlat C)
+                     (f : od + size C ≤ N) (w : ValidAtWF m a₁ {C} v sl s₁)
+                 → foot C (AtDynamic (heap-loc rd od)) (reloc-v C sl od ag fl f w) ⊆ᶠ (rd0 ∷ foot C sl w)
+    reloc-v-foot Unit sl od ag _ _ valid-unit-wf = ⊆ᶠ-[]
+    reloc-v-foot (A * B) sl od ag _ f (valid-pair-wf lmm slb c₁ c₂) x (here b) =
+      here (blk-trans {AtDynamic (heap-loc rd 0)} {AtDynamic (heap-loc rd od)} refl b)
+    reloc-v-foot (A * B) sl od ag _ f (valid-pair-wf lmm slb c₁ c₂) x (there m)
+      with ++⁻ (foot-cell A (reloc-cell A sl od (agree-fst {size A} {size B} ag) (fits-fst {od} {size A} {size B} f) c₁)) m
+    ... | inj₁ p = in-tail (reloc-cell-foot A sl od (agree-fst {size A} {size B} ag) (fits-fst {od} {size A} {size B} f) c₁ x p) ++⁺ˡ
+      where
+        in-tail : ∀ {X Y : Foot} → x ∈ᶠ (rd0 ∷ X) → (x ∈ᶠ X → x ∈ᶠ Y) → x ∈ᶠ (rd0 ∷ (sl ∷ Y))
+        in-tail (here b) _ = here b
+        in-tail (there m′) g = there (there (g m′))
+    ... | inj₂ p = in-tail (reloc-cell-foot B (offsetLoc sl (size A)) (size A + od) (agree-snd {size A} {size B} ag) (fits-snd {od} {size A} {size B} f) c₂ x p)
+                           (++⁺ʳ (foot-cell A c₁))
+      where
+        in-tail : ∀ {X Y : Foot} → x ∈ᶠ (rd0 ∷ X) → (x ∈ᶠ X → x ∈ᶠ Y) → x ∈ᶠ (rd0 ∷ (sl ∷ Y))
+        in-tail (here b) _ = here b
+        in-tail (there m′) g = there (there (g m′))
+    reloc-v-foot (A +ᵀ B) sl od ag _ _ (valid-inl-wf {payload-loc = pl} nd lmm tg pp pb slb pd pv) =
+      ⊆ᶠ-head refl (⊆ᶠ-there (⊆ᶠ-cons (⊆ᶠ-≡ (v-tr-foot A pb pv))))
+    reloc-v-foot (A +ᵀ B) sl od ag _ _ (valid-inr-wf {payload-loc = pl} nd lmm tg pp pb slb pd pv) =
+      ⊆ᶠ-head refl (⊆ᶠ-there (⊆ᶠ-cons (⊆ᶠ-≡ (v-tr-foot B pb pv))))
+    reloc-v-foot (A +ᵀ B) sl od ag _ _ (valid-inl-reg-wf lmm tg (rep-prim fit) rl slb pd) = ⊆ᶠ-head refl ⊆ᶠ-[]
+    reloc-v-foot (A +ᵀ B) sl od ag _ _ (valid-inr-reg-wf lmm tg (rep-prim fit) rl slb pd) = ⊆ᶠ-head refl ⊆ᶠ-[]
+    reloc-v-foot (A +ᵀ B) sl od ag _ f (valid-inl-flat-wf fl lmm tg slb ib pd pv) x (here b) =
+      here (blk-trans {AtDynamic (heap-loc rd 0)} {AtDynamic (heap-loc rd od)} refl b)
+    reloc-v-foot (A +ᵀ B) sl od ag _ f (valid-inl-flat-wf fl lmm tg slb ib pd pv) x (there m)
+      with reloc-v-foot A (sucLoc sl) (suc od) (agree-max-l {size A} {size B} (agree-tail ag)) fl (fits-pay-l {od} {size A} {size B} f) pv x m
+    ... | here b = here b
+    ... | there m′ = there (there m′)
+    reloc-v-foot (A +ᵀ B) sl od ag _ f (valid-inr-flat-wf fl lmm tg slb ib pd pv) x (here b) =
+      here (blk-trans {AtDynamic (heap-loc rd 0)} {AtDynamic (heap-loc rd od)} refl b)
+    reloc-v-foot (A +ᵀ B) sl od ag _ f (valid-inr-flat-wf fl lmm tg slb ib pd pv) x (there m)
+      with reloc-v-foot B (sucLoc sl) (suc od) (agree-max-r {size A} {size B} (agree-tail ag)) fl (fits-pay-r {od} {size A} {size B} f) pv x m
+    ... | here b = here b
+    ... | there m′ = there (there m′)
+
+    reloc-cell-foot : ∀ (C : IRTy) {c} (sl : ValueLocation FS) (od : ℕ) (ag : Agree (size C) sl od) (f : od + size C ≤ N)
+                        (x : CellAt a₁ C c sl s₁)
+                    → foot-cell C (reloc-cell C sl od ag f x) ⊆ᶠ (rd0 ∷ foot-cell C x)
+    reloc-cell-foot C sl od ag f (cell-ptr nd r bf v) = ⊆ᶠ-there (⊆ᶠ-cons (⊆ᶠ-≡ (v-tr-foot C bf v)))
+    reloc-cell-foot C sl od ag f (cell-inline (rep-prim fit) r) = ⊆ᶠ-[]
+    reloc-cell-foot C sl od ag f (cell-flat fl hr v) = reloc-v-foot C sl od ag fl f v
 
   ----------------------------------------------------------------------
   -- plan 0.123 α2: A FORCED LAYER, relocated (the re-suspension's puts,

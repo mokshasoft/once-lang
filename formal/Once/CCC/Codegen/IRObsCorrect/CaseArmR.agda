@@ -104,7 +104,7 @@ module ArmRC {FS : FrameSemantics} where
       module VR = ValueRealized
 
       -- the payload, read at word 1 of the sum
-      gr : GetOut {prog = prog} B Bv P.r1
+      gr : GetOut {prog = prog} B Bv P.r1 _
       gr = get-run B 1 P.r1 loc nh at-unpack-r rd lv (payload-r vd)
       module PR = P.R gr
 

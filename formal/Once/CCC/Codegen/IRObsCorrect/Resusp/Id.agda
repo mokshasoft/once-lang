@@ -516,7 +516,7 @@ module ResuspIdC {FS : FrameSemantics} where
                   (cellWF-heap-transport (Live b) (λ _ x → x) (λ { (AtDynamic hl) _ → refl })
                      (live-from b a hb) bkb e pl lpl cE)
 
-        g : GetOut {prog = prog} E e σ₁
+        g : GetOut {prog = prog} E e σ₁ _
         g = get-run E 0 σ₁ pl nh atG refl (live-from b a hb pl lpl) cell1
 
         gs : FlatState

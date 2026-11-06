@@ -48,7 +48,8 @@ open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; kind; put; put-k; copy-from)
 open import Once.CCC.Machine.ValueRel
 open ClosureWellFormedBase {FS}
-open ClosureWellFormedDef {FS} {prog} using (ValidAtWF; CellAt; validityWF-heap-transport)
+open ClosureWellFormedDef {FS} {prog} using (ValidAtWF; CellAt; validityWF-heap-transport; foot; foot-cell; foot-heap-transport)
+open import Data.List.Relation.Unary.Any using () renaming (here to hereᶠ; there to thereᶠ)
 open import Once.CCC.Machine.FlatCopy {FS} using (copy-run; copy-input1; CopyOut; InBlock; wl-halted; regs-mem; Disj; heap-disj; stack-disj)
 open import Once.CCC.Machine.ValueRelocate {FS} {prog} using (module Relocate)
 open import Once.CCC.Machine.FlatWords {FS} {prog} using (words)
@@ -76,12 +77,35 @@ src-tr keep (src-flat fl lv v) =
   src-flat fl lv (validityWF-heap-transport (Live _) (λ _ b → b) keep (λ _ b → b) (λ _ _ ib → ib) _ _ lv v)
 src-tr keep src-unit = src-unit
 
+-- D395: what the value uses (a scalar's or a unit's word, nothing)
+src-foot : ∀ {a₀ : AllocState {FS}} {s C c w} → Src a₀ s C c w → Foot
+src-foot (src-node {C = C} {cl = cl} nd lv v) = cl ∷ foot C cl v
+src-foot (src-scalar fit) = []
+src-foot (src-flat {C = C} {sl = sl} fl lv v) = sl ∷ foot C sl v
+src-foot src-unit = []
+
+src-tr-foot : ∀ {a₀ : AllocState {FS}} {s s′ : LocState FS} {C c w}
+            → (keep : ∀ l → Live a₀ l → readLoc s′ l ≡ readLoc s l) (src : Src a₀ s C c w)
+            → src-foot (src-tr keep src) ≡ src-foot src
+src-tr-foot keep (src-node {cl = cl} nd lv v) =
+  cong (cl ∷_) (foot-heap-transport (Live _) (λ _ b → b) keep (λ _ b → b) (λ _ _ ib → ib) _ _ lv v)
+src-tr-foot keep (src-scalar fit) = refl
+src-tr-foot keep (src-flat {sl = sl} fl lv v) =
+  cong (sl ∷_) (foot-heap-transport (Live _) (λ _ b → b) keep (λ _ b → b) (λ _ _ ib → ib) _ _ lv v)
+src-tr-foot keep src-unit = refl
+
+-- moving a witness's location along an equation keeps its footprint
+foot-loc-subst : ∀ {m alloc C c s} {h h′ : HeapLocation} (eq : h ≡ h′) (w : ValidAtWF m alloc {C} c (AtDynamic h) s)
+               → foot C (AtDynamic h′) (subst (λ z → ValidAtWF m alloc {C} c (AtDynamic z) s) eq w) ≡ foot C (AtDynamic h) w
+foot-loc-subst refl w = refl
+
 -- the destination's word `j`, from `off`, of the block `rd`
 dst : HeapRef → ℕ → ℕ → ValueLocation FS
 dst rd off j = AtDynamic (offsetHL (heap-loc rd 0) (off + j))
 
+-- D395: `S` is what the value put uses; the written cell uses the block and that
 record PutOut (C : IRTy) (c : ⟦ C ⟧) (off : ℕ) (rd : HeapRef) (a₀ : AllocState {FS})
-              (s : LocState FS) (alloc : AllocState {FS}) (r : LocState FS × AllocState {FS}) : Set where
+              (s : LocState FS) (alloc : AllocState {FS}) (S : Foot) (r : LocState FS × AllocState {FS}) : Set where
   field
     alloc-eq : proj₂ r ≡ alloc
     live     : halted (proj₁ r) ≡ false
@@ -97,6 +121,8 @@ record PutOut (C : IRTy) (c : ⟦ C ⟧) (off : ℕ) (rd : HeapRef) (a₀ : Allo
     -- `Input1` stays at the block, if that is where it was
     input1   : readReg (regs s) Input1 ≡ SV-Ptr (AtDynamic (heap-loc rd 0))
              → readReg (regs (proj₁ r)) Input1 ≡ SV-Ptr (AtDynamic (heap-loc rd 0))
+    cell-foot    : foot-cell C cell ⊆ᶠ (AtDynamic (heap-loc rd 0) ∷ S)
+    cell-at-foot : ∀ s″ eqd keep″ → foot-cell C (cell-at s″ eqd keep″) ⊆ᶠ (AtDynamic (heap-loc rd 0) ∷ S)
 
 private
   node-kind : ∀ {C : IRTy} → IsNode C → kind C ≡ word
@@ -176,13 +202,14 @@ module _ (C : IRTy) {c : ⟦ C ⟧} (stash blk off : ℕ) (s : LocState FS) (all
     not-dst l lv j e = fresh _ (subst (Live a₀) (trans e (cong AtDynamic (off0 (off + j)))) lv)
 
   -- a word kind: one write
-  put-word-out : kind C ≡ word → size C ≡ 1
-               → (∀ {s′} → readLoc s′ (AtDynamic (offsetHL (heap-loc rd 0) off)) ≡ just w → (∀ l → Live a₀ l → readLoc s′ l ≡ readLoc s l)
+  put-word-out : ∀ {S} → kind C ≡ word → size C ≡ 1
+               → (mk : ∀ {s′} → readLoc s′ (AtDynamic (offsetHL (heap-loc rd 0) off)) ≡ just w → (∀ l → Live a₀ l → readLoc s′ l ≡ readLoc s l)
                          → CellAt alloc C c (AtDynamic (offsetHL (heap-loc rd 0) off)) s′)
-               → PutOut C c off rd a₀ s alloc (exec-trace (put C stash blk off) s alloc)
-  put-word-out kw sz mk =
-    subst (λ t → PutOut C c off rd a₀ s alloc (exec-trace t s alloc)) (sym (put-word stash blk off kw))
-      (subst (PutOut C c off rd a₀ s alloc) (sym (word-exec stash blk off s alloc rd w h rs rb
+               → (∀ {s′} (r : _) (k : _) → foot-cell C (mk {s′} r k) ⊆ᶠ (AtDynamic (heap-loc rd 0) ∷ S))
+               → PutOut C c off rd a₀ s alloc S (exec-trace (put C stash blk off) s alloc)
+  put-word-out {S} kw sz mk mkf =
+    subst (λ t → PutOut C c off rd a₀ s alloc S (exec-trace t s alloc)) (sym (put-word stash blk off kw))
+      (subst (PutOut C c off rd a₀ s alloc S) (sym (word-exec stash blk off s alloc rd w h rs rb
                                                  (subst (InBlk alloc) eq0 (din′ 0 p0))))
         record
           { alloc-eq = refl
@@ -197,7 +224,9 @@ module _ (C : IRTy) {c : ⟦ C ⟧} (stash blk off : ℕ) (s : LocState FS) (all
                                eq0 (eqd 0 p0))
                         (readLoc-writeLoc-same s₁ (AtDynamic (offsetHL (heap-loc rd 0) off)) w))
                  keep″
-          ; input1   = λ _ → cong (λ q → readReg q Input1) (writeLoc-regs s₁ (AtDynamic (offsetHL (heap-loc rd 0) off)) w) })
+          ; input1   = λ _ → cong (λ q → readReg q Input1) (writeLoc-regs s₁ (AtDynamic (offsetHL (heap-loc rd 0) off)) w)
+          ; cell-foot = mkf _ _
+          ; cell-at-foot = λ _ _ _ → mkf _ _ })
     where
       p0 : 0 < size C
       p0 = subst (0 <_) (sym sz) (s≤s z≤n)
@@ -205,26 +234,28 @@ module _ (C : IRTy) {c : ⟦ C ⟧} (stash blk off : ℕ) (s : LocState FS) (all
       eq0 = cong (λ z → AtDynamic (offsetHL (heap-loc rd 0) z)) (+-identityʳ off)
       s₁ = record s { regs = writeReg (writeReg (regs s) Input1 (SV-Ptr (AtDynamic (heap-loc rd 0)))) Output w }
 
-  put-run : Src a₀ s C c w → PutOut C c off rd a₀ s alloc (exec-trace (put C stash blk off) s alloc)
+  put-run : (src : Src a₀ s C c w) → PutOut C c off rd a₀ s alloc (src-foot src) (exec-trace (put C stash blk off) s alloc)
   -- a node: its pointer word; the node stays where it is
   put-run (src-node {cl = cl} nd lv v) =
     put-word-out (node-kind nd) (node-size nd)
       (λ {s′} r keep → cell-ptr nd r
                          (bft cl lv)
                          (validityWF-heap-transport (Live a₀) (λ _ b → b) keep bft bk _ cl lv v))
+      (λ {s′} r keep → ⊆ᶠ-there (⊆ᶠ-cons (⊆ᶠ-≡ (foot-heap-transport (Live a₀) (λ _ b → b) keep bft bk _ cl lv v))))
   -- a scalar: its word
   put-run (src-scalar fit) =
     put-word-out (scalar-kind fit) (scalar-size fit)
       (λ {s′} r keep → cell-inline (rep-prim fit)
                          r)
+      (λ _ _ → ⊆ᶠ-[])
   -- Unit: nothing
   put-run src-unit = record
     { alloc-eq = refl ; live = h ; other = λ _ _ → refl ; cell = cell-flat {mC = Heap} tt (λ ()) valid-unit-wf
     ; cell-at = λ _ _ _ → cell-flat {mC = Heap} tt (λ ()) valid-unit-wf
-    ; input1 = λ i1 → i1 }
+    ; input1 = λ i1 → i1 ; cell-foot = ⊆ᶠ-[] ; cell-at-foot = λ _ _ _ → ⊆ᶠ-[] }
   -- a flat value: its words, copied
   put-run (src-flat {sl = sl} fl lv v) =
-    subst (λ t → PutOut C c off rd a₀ s alloc (exec-trace t s alloc)) (sym (put-flat stash blk off (flat-kind fl)))
+    subst (λ t → PutOut C c off rd a₀ s alloc (sl ∷ foot C sl v) (exec-trace t s alloc)) (sym (put-flat stash blk off (flat-kind fl)))
       record
         { alloc-eq = proj₁ co
         ; live     = proj₁ (proj₂ co)
@@ -236,6 +267,9 @@ module _ (C : IRTy) {c : ⟦ C ⟧} (stash blk off : ℕ) (s : LocState FS) (all
         ; cell-at  = cell-at′
         ; input1   = copy-input1 stash blk off 0 (size C) s alloc sl dh ne h rs rb
                        (λ j j< → words C fl v j j<) (λ j j< → din′ j j<)
+        ; cell-foot = λ x m → in-src (RL.reloc-v-foot C sl off agree fl fits v x
+                        (⊆ᶠ-≡ (foot-loc-subst (sym (off0 off)) (RL.reloc-v C sl off agree fl fits v)) x m))
+        ; cell-at-foot = cell-at-foot′
         }
     where
       dh = heap-loc rd 0
@@ -269,6 +303,23 @@ module _ (C : IRTy) {c : ⟦ C ⟧} (stash blk off : ℕ) (s : LocState FS) (all
           (λ p → dlive _ , subst (λ z → InBlk alloc (AtDynamic (offsetHL (heap-loc rd 0) z))) (+-identityʳ off) (din′ 0 p))
           (subst (λ z → ValidAtWF Heap alloc {C} c (AtDynamic z) s″) (sym (off0 off))
              (RL″.reloc-v C sl off agree″ fl fits v))
+        where
+          module RL″ = Relocate {a₀} {alloc} {s} {s″} rd dlive keep″ bft bk N din
+          agree″ : RL″.Agree (size C) sl off
+          agree″ = RL″.mk-agree λ j j< →
+            subst (λ z → readLoc s″ (AtDynamic (heap-loc rd z)) ≡ readLoc s (offsetLoc sl j))
+                  (trans (+-identityʳ (off + j)) (+-comm off j))
+                  (trans (eqd j j<) (proj₁ (proj₂ (proj₂ co)) j j<))
+
+      -- D395: the copy uses its block and what the source's pointers use
+      in-src : ∀ {x} → x ∈ᶠ (AtDynamic (heap-loc rd 0) ∷ foot C sl v) → x ∈ᶠ (AtDynamic (heap-loc rd 0) ∷ (sl ∷ foot C sl v))
+      in-src (hereᶠ b) = hereᶠ b
+      in-src (thereᶠ m) = thereᶠ (thereᶠ m)
+
+      cell-at-foot′ : ∀ s″ eqd keep″ → foot-cell C (cell-at′ s″ eqd keep″) ⊆ᶠ (AtDynamic (heap-loc rd 0) ∷ (sl ∷ foot C sl v))
+      cell-at-foot′ s″ eqd keep″ x m =
+        in-src (RL″.reloc-v-foot C sl off agree″ fl fits v x
+          (⊆ᶠ-≡ (foot-loc-subst (sym (off0 off)) (RL″.reloc-v C sl off agree″ fl fits v)) x m))
         where
           module RL″ = Relocate {a₀} {alloc} {s} {s″} rd dlive keep″ bft bk N din
           agree″ : RL″.Agree (size C) sl off

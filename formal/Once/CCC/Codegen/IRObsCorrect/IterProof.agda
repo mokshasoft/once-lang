@@ -75,7 +75,7 @@ module IterProofC {FS : FrameSemantics} where
     fs0 = entry-flat base s alloc cl rs
 
     -- `e`, read at word 0 of the pair (`Get.get-run`)
-    g : GetOut {prog = prog} E e fs0
+    g : GetOut {prog = prog} E e fs0 _
     g = get-run E 0 fs0 pl nh at-get rd bfp
           (subst (λ z → CellAt {prog = prog} alloc E e z s) (sym (offset-zero pl))
                  (PairValidWF.fst-cell (decomposePairWF pv)))

@@ -51,6 +51,7 @@ import Once.CCC.Machine.SMPrimitives
 open import Data.Nat using (_⊔_; z≤n; s≤s)
 open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n; +-monoʳ-<; m+[n∸m]≡n; +-cancelˡ-≡)
 open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Product using (Σ)
 open import Data.Sum using (inj₁; inj₂)
 
@@ -340,6 +341,30 @@ module InjC {FS : FrameSemantics} where
     mk-src C {alloc = alloc} {s} {c} (in-reg fit eq)    = subst (Src alloc s C c) (sym eq) (src-scalar fit)
     mk-src C (in-unit refl) = src-unit
 
+    -- D395: the value put uses what the input does
+    private
+      src-subst : ∀ {a s C c} {w w′ : StoredValue FS} (e : w ≡ w′) (x : FlatPut.Src {FS} {prog} a s C c w)
+                → FlatPut.src-foot {FS} {prog} (subst (FlatPut.Src {FS} {prog} a s C c) e x) ≡ FlatPut.src-foot {FS} {prog} x
+      src-subst refl x = refl
+
+      src-loc-foot : ∀ (C : IRTy) {alloc s c m l} (v : ValidAtWF {prog = prog} m alloc {C} c l s) (lv : Live alloc l)
+                   → FlatPut.src-foot {FS} {prog} (src-loc C v lv) ≡ l ∷ foot C l v
+      src-loc-foot Unit       v lv = refl
+      src-loc-foot (A * B)    v lv = refl
+      src-loc-foot (A +ᵀ B)   v lv = refl
+      src-loc-foot (μ-type F) v lv = refl
+      src-loc-foot (ν-type F) v lv = refl
+      src-loc-foot (A ⇛ B)    v lv = refl
+      src-loc-foot Int        (wrap ()) _
+      src-loc-foot Float      (wrap ()) _
+      src-loc-foot Void       {c = ()} _ _
+
+    mk-src-foot : ∀ (C : IRTy) {mIn alloc s} {c : ⟦ C ⟧} (inp : InputAt {prog} {C} mIn alloc c s)
+                → FlatPut.src-foot {FS} {prog} (mk-src C inp) ⊆ᶠ in-foot inp
+    mk-src-foot C (in-loc l v lv eq) = ⊆ᶠ-≡ (trans (src-subst (sym eq) (src-loc C v lv)) (src-loc-foot C v lv))
+    mk-src-foot C (in-reg fit eq) = ⊆ᶠ-trans (⊆ᶠ-≡ (src-subst (sym eq) (src-scalar fit))) ⊆ᶠ-[]
+    mk-src-foot C (in-unit refl) = ⊆ᶠ-[]
+
   ------------------------------------------------------------------------
   -- `inl` and `inr`
   ------------------------------------------------------------------------
@@ -354,6 +379,7 @@ module InjC {FS : FrameSemantics} where
                    (m≤m+n k _)
                    (λ _ fr j bf → R.keep-bf src (AtStack fr j) bf) (λ _ hl bf → R.keep-bf src (AtDynamic hl) bf)
                    (λ _ → refl) (λ _ → R.bf-mono′ src) (λ _ → refl) (λ _ → FlatAlloc.alloc-bk {FS} R.N alloc)
+                   (λ { refl → framed-fresh R.L (fresh-blk (R.fresh)) incl })
       }
     where
       T = inj-trace 0 A (A +ᵀ B) n
@@ -386,6 +412,20 @@ module InjC {FS : FrameSemantics} where
 
       val = validityWF-mem-only (inj₁ x) R.L (R.sp src) (R.sfin src) refl refl (sum-of (R.cell-p src))
 
+      -- D395: the sum is its fresh block around the payload's cell
+      sum-of-foot : (c : CellAt {prog = prog} R.A₁ A x (sucLoc R.L) (R.sp src)) → foot (A +ᵀ B) R.L (sum-of c) ≡ R.L ∷ foot-cell A c
+      sum-of-foot (cell-ptr nd r lv v) = refl
+      sum-of-foot (cell-inline rep r)  = refl
+      sum-of-foot (cell-flat fl hr v)  = refl
+
+      incl : foot (A +ᵀ B) R.L val ⊆ᶠ (R.L ∷ in-foot inp)
+      incl y m with ⊆ᶠ-≡ (trans (foot-mem-only (inj₁ x) R.L (R.sp src) (R.sfin src) refl refl (sum-of (R.cell-p src)))
+                                (sum-of-foot (R.cell-p src))) y m
+      ... | here b = here b
+      ... | there m′ with FlatPut.PutOut.cell-foot {FS} {prog} (R.Pt src) y m′
+      ...   | here b = here b
+      ...   | there m″ = there (mk-src-foot A inp y (⊆ᶠ-≡ (FlatPut.src-tr-foot {FS} {prog} R.keepf src) y m″))
+
   obs-correct-inr : ∀ {A B} → IRObsCorrectF (inr {A} {B})
   obs-correct-inr {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
     record
@@ -397,6 +437,7 @@ module InjC {FS : FrameSemantics} where
                    (m≤m+n k _)
                    (λ _ fr j bf → R.keep-bf src (AtStack fr j) bf) (λ _ hl bf → R.keep-bf src (AtDynamic hl) bf)
                    (λ _ → refl) (λ _ → R.bf-mono′ src) (λ _ → refl) (λ _ → FlatAlloc.alloc-bk {FS} R.N alloc)
+                   (λ { refl → framed-fresh R.L (fresh-blk (R.fresh)) incl })
       }
     where
       T = inj-trace 1 B (A +ᵀ B) n
@@ -428,3 +469,17 @@ module InjC {FS : FrameSemantics} where
       sum-of (cell-flat fl hr v)  = valid-inr-flat-wf fl tt (R.tag-p src) (R.live-suc src) (R.in-suc src) (R.pad-p src) v
 
       val = validityWF-mem-only (inj₂ x) R.L (R.sp src) (R.sfin src) refl refl (sum-of (R.cell-p src))
+
+      -- D395: the sum is its fresh block around the payload's cell
+      sum-of-foot : (c : CellAt {prog = prog} R.A₁ B x (sucLoc R.L) (R.sp src)) → foot (A +ᵀ B) R.L (sum-of c) ≡ R.L ∷ foot-cell B c
+      sum-of-foot (cell-ptr nd r lv v) = refl
+      sum-of-foot (cell-inline rep r)  = refl
+      sum-of-foot (cell-flat fl hr v)  = refl
+
+      incl : foot (A +ᵀ B) R.L val ⊆ᶠ (R.L ∷ in-foot inp)
+      incl y m with ⊆ᶠ-≡ (trans (foot-mem-only (inj₂ x) R.L (R.sp src) (R.sfin src) refl refl (sum-of (R.cell-p src)))
+                                (sum-of-foot (R.cell-p src))) y m
+      ... | here b = here b
+      ... | there m′ with FlatPut.PutOut.cell-foot {FS} {prog} (R.Pt src) y m′
+      ...   | here b = here b
+      ...   | there m″ = there (mk-src-foot B inp y (⊆ᶠ-≡ (FlatPut.src-tr-foot {FS} {prog} R.keepf src) y m″))

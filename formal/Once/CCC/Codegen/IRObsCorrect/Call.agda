@@ -61,6 +61,10 @@ module CallC {FS : FrameSemantics} where
                  (λ nc m loc bf → CalleeRun.bf-mono crun (nc′ nc) alloc m (cong falloc call-eq) loc bf)
                  (λ p → CalleeRun.frames-pres crun (trans res-eq p) alloc (cong falloc call-eq))
                  (λ nc → CalleeRun.blocks-kept crun (nc′ nc) alloc (cong falloc call-eq))
+                 -- D395: the callee's frame, read at the caller
+                 (λ p → framed-intro _ (λ l′ m lv → ⊆ᶠ-≡ (in-foot-subst {f = floc} (sym call-eq) inp) l′
+                    (framed-at (CalleeRun.frame crun (trans res-eq p)) l′ m
+                       (subst (λ a → Live a l′) (sym (cong falloc call-eq)) (live-enter alloc l′ lv)))))
     ; traces-agree = trc
     }
     where
@@ -82,6 +86,7 @@ module CallC {FS : FrameSemantics} where
       post = flat-exec-instr (instr-ctrl (c-call-fn f)) prog e0
 
       crun : CalleeRun prog post (suc base) rs B (tableCalls (Once.CCC.FrameSemantics.fs-numerics FS) (TM.pureHalf ιᶠ) tbl f A B x) k
+               (in-foot (subst (λ st → InputAt {prog = prog} {A} mIn alloc x (floc st)) (sym call-eq) inp))
       -- the argument stays where the caller left it: the call writes no memory.
       crun = runner post alloc x (suc base) k rs mIn
                (cong fpc call-eq)

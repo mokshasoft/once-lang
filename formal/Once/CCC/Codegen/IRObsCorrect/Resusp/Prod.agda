@@ -391,7 +391,7 @@ module ResuspProdC {FS : FrameSemantics} where
                      (cellWF-heap-transport (Live b) (λ _ x → x) keepσ₁ (live-from b a hb) bkb y₁ ploc plv
                         (PairValidWF.fst-cell pvd))
 
-          gF : GetOut {prog = prog} Fa y₁ σ₁
+          gF : GetOut {prog = prog} Fa y₁ σ₁ _
           gF = get-run Fa 0 σ₁ ploc nh (λ i e′ → sp1 0 i (fetch-++-left (get Fa 0) REST1 0 i e′)) refl
                  (live-from b a hb ploc plv) cellF0
           gsF = setOut σ₁ (GetOut.out gF)
@@ -478,7 +478,7 @@ module ResuspProdC {FS : FrameSemantics} where
           cellG0 = cellWF-heap-transport (Live b) (λ _ x → x) keepB₂ (live-from b aF hbF) bkbF y₂
                      (offsetLoc ploc (size Fa)) (live-off (size Fa) plv) (PairValidWF.snd-cell pvd)
 
-          gG : GetOut {prog = prog} Ga y₂ σ₂
+          gG : GetOut {prog = prog} Ga y₂ σ₂ _
           gG = get-run Ga (size Fa) σ₂ ploc RF.nh
                  (λ i e′ → sp4 0 i (fetch-++-left (get Ga (size Fa)) (tG DL.++ P3 n) 0 i e′)) refl
                  (live-from b aF hbF ploc plv) cellG0

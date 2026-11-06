@@ -364,7 +364,7 @@ module CataRebuildC {FS : FrameSemantics} where
       cell₂ : CellAt {prog = prog} (falloc p2) Y₂ y (offsetLoc (AtDynamic hl) (size Y₁)) (floc p2)
       cell₂ = cell-kp kp2 y _ (live-off (size Y₁) lv) (PairValidWF.snd-cell pv)
 
-      g₂ : GetOut {prog = prog} Y₂ y p2
+      g₂ : GetOut {prog = prog} Y₂ y p2 _
       g₂ = get-run Y₂ (size Y₁) p2 (AtDynamic hl) nh2 (get-fetch {prog} {fpc p2} Y₂ (size Y₁) (span′ 2 _ refl)) in2
              (proj₁ kp2 _ lv) cell₂
 
@@ -446,7 +446,7 @@ module CataRebuildC {FS : FrameSemantics} where
       cell₁ = subst (λ z → CellAt {prog = prog} (falloc m2) Y₁ x z (floc m2)) (sym (offset-zero (AtDynamic hl)))
                 (cell-kp kpbm2 x (AtDynamic hl) lv (PairValidWF.fst-cell pv))
 
-      g₁ : GetOut {prog = prog} Y₁ x m2
+      g₁ : GetOut {prog = prog} Y₁ x m2 _
       g₁ = get-run Y₁ 0 m2 (AtDynamic hl) nh-m2 (get-fetch {prog} {fpc m2} Y₁ 0 (fm 2 refl)) in-m2 (proj₁ kpbm2 _ lv) cell₁
 
       m3 = setOut m2 (GetOut.out g₁)
@@ -701,7 +701,7 @@ module CataRebuildC {FS : FrameSemantics} where
                     (st0 : StackAt VE (falloc q0) (floc q0) val sn vs)
                     (f1 : fetch prog (fpc q0) ≡ just (get-i A 1))
                     (f2 : fetch prog (suc (fpc q0)) ≡ just mov-to-input) where
-        g : GetOut {prog = prog} A v q0
+        g : GetOut {prog = prog} A v q0 _
         g = get-run A 1 q0 (AtDynamic hl) nh0 (get-fetch {prog} {fpc q0} A 1 f1) in0 lv0 cell
         q1 = setOut q0 (GetOut.out g)
         q2 = St mov-to-input q1

@@ -98,7 +98,7 @@ module ArmLC {FS : FrameSemantics} where
       module VR = ValueRealized
 
       -- the payload, read at word 1 of the sum
-      gl : GetOut {prog = prog} A Av P.i2
+      gl : GetOut {prog = prog} A Av P.i2 _
       gl = get-run A 1 P.i2 loc nh at-unpack-l rd lv (payload-l vd)
       module PL = P.L gl
 

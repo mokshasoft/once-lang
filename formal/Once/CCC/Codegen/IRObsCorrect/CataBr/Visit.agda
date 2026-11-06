@@ -397,7 +397,7 @@ module CataVisitC {FS : FrameSemantics} where
       cell₁ = subst (λ z → CellAt {prog = prog} (falloc p2) X₁ x z (floc p2)) (sym (offset-zero (AtDynamic hl)))
                 (cell-kp kp2 x (AtDynamic hl) lv (PairValidWF.fst-cell pv))
 
-      g₁ : GetOut {prog = prog} X₁ x p2
+      g₁ : GetOut {prog = prog} X₁ x p2 _
       g₁ = get-run X₁ 0 p2 (AtDynamic hl) nh2 (get-fetch {prog} {fpc p2} X₁ 0 (span′ 2 _ refl)) in2 (proj₁ kp2 _ lv) cell₁
 
       p3 = setOut p2 (GetOut.out g₁)
@@ -467,7 +467,7 @@ module CataVisitC {FS : FrameSemantics} where
       cell₂ : CellAt {prog = prog} (falloc m1) X₂ y (offsetLoc (AtDynamic hl) (size X₁)) (floc m1)
       cell₂ = cell-kp (kp-∘ kpa kpr) y _ (live-off (size X₁) lv) (PairValidWF.snd-cell pv)
 
-      g₂ : GetOut {prog = prog} X₂ y m1
+      g₂ : GetOut {prog = prog} X₂ y m1 _
       g₂ = get-run X₂ (size X₁) m1 (AtDynamic hl) nh-m1 (get-fetch {prog} {fpc m1} X₂ (size X₁) (fa 1 refl)) in-m1
              (proj₁ (kp-∘ kpa kpr) _ lv) cell₂
 
@@ -642,7 +642,7 @@ module CataVisitC {FS : FrameSemantics} where
                     (st0 : StackAt NE (falloc q0) (floc q0) todo sn ts)
                     (f1 : fetch prog (fpc q0) ≡ just (get-i A 1))
                     (f2 : fetch prog (suc (fpc q0)) ≡ just mov-to-input) where
-        g : GetOut {prog = prog} A v q0
+        g : GetOut {prog = prog} A v q0 _
         g = get-run A 1 q0 (AtDynamic hl) nh0 (get-fetch {prog} {fpc q0} A 1 f1) in0 lv0 cell
         q1 = setOut q0 (GetOut.out g)
         q2 = St mov-to-input q1

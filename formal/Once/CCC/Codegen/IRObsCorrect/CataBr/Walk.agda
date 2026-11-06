@@ -197,7 +197,7 @@ module CataWalkC {FS : FrameSemantics} where
   -- plan 0.123 α2: a component READ (`Get.get-run`), as a one-step walk:
   -- only `Output` moves.
   ------------------------------------------------------------------------
-  get-walk : ∀ {prog n K Q} (σ : FlatState) {C : IRTy} {c : ⟦ C ⟧} (g : GetOut {prog = prog} C c σ)
+  get-walk : ∀ {prog n K Q} (σ : FlatState) {C : IRTy} {c : ⟦ C ⟧} {KG} (g : GetOut {prog = prog} C c σ KG)
            → halted (floc σ) ≡ false
            → Q (setOut σ (GetOut.out g))
            → Walk prog n K σ (suc (fpc σ)) Q

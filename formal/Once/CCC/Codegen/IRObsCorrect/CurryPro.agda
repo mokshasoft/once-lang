@@ -209,7 +209,7 @@ module CurryProC {FS : FrameSemantics} where
       where live-suc : ∀ {l} → Live alloc l → Live alloc (sucLoc l)
             live-suc {AtDynamic (heap-loc r′ o″)} (BeforeFrontier.heap-before p′) = BeforeFrontier.heap-before p′
 
-    gA : GetOut {prog = prog} A a σ₁
+    gA : GetOut {prog = prog} A a σ₁ _
     gA = get-run A 1 σ₁ pl nh (λ i e′ → spR1 0 i (fetch-++-left (get A 1) (TT DL.++ mov-to-input ∷ []) 0 i e′)) refl lpl cellA1
     gs = setOut σ₁ (GetOut.out gA)
 

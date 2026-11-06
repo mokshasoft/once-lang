@@ -130,7 +130,7 @@ module CataSetupC {FS : FrameSemantics} where
           load-from-slot k ∷ mov-to-input ∷ []
 
     -- (1) the environment, read
-    g : GetOut {prog = prog} E env σ
+    g : GetOut {prog = prog} E env σ _
     g = get-run E 0 σ pl nh0 (λ i e′ → span 0 i (fetch-++-left (get E 0) T12 0 i e′)) rdi lpl cE
     gs = setOut σ (GetOut.out g)
     wE = GetOut.out g

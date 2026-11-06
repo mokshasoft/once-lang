@@ -22,6 +22,8 @@ module Once.CCC.Codegen.IRObsCorrect.Simple (o : CanonicalName) (tbl : DL.List I
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Once.CCC.Codegen.Size using (size)
+open import Data.List.Relation.Unary.Any using (here; there)
+open import Data.List.Relation.Unary.All using ([])
 open import Once.CCC.Codegen.FlatLayout using (get)
 open import Once.CCC.Machine.SMCore using (load-at)
 open import Once.CCC.Machine.SMCore using (writeReg; Output; readReg; Input1; mov-to-output; SV-Ptr; writeReg-same; load-indirect; load-indirect-suc; sucLoc; instr-load-const; SV-Lit; module LocState)
@@ -76,6 +78,7 @@ module Simp {FS : FrameSemantics} where
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
                    (λ { refl → place rdi-eq }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl) (λ _ _ _ ib → ib)
+                   (λ { refl → frame rdi-eq })
       }
     where
       -- The post-`mov` register file and the intermediate flat state. `run-eq`
@@ -144,6 +147,13 @@ module Simp {FS : FrameSemantics} where
       place (in-reg fit eq)  = at-reg fit (out-lit fit eq)
       place (in-unit refl)   = unit-result
 
+      -- D395: the result IS the input
+      frame : (inp : InputAt mIn alloc x s) → Framed alloc (in-foot inp) (rp-foot (place inp))
+      frame (in-loc il v bf eq) =
+        framed-⊆ (λ l m → there (⊆ᶠ-≡ (foot-mem-preserved x il s (floc fs₁) (live→bf bf) (λ loc' _ → mem-eq loc') v) l m))
+      frame (in-reg fit eq) = []
+      frame (in-unit refl)  = []
+
   -- ── `terminal` — DISCHARGED. The emitter emits NOTHING for it
   -- (`ir-to-trace terminal = []`), which is right: the codomain is `Unit`, the
   -- erased type, so there is no value to place and no event to emit. `fetch []`
@@ -155,7 +165,7 @@ module Simp {FS : FrameSemantics} where
     record
       { traces-agree = sym (denot-[] k)
       ; value-realized =
-          realized 0 (entry-flat base s alloc cl rs) mIn alloc [] (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s}) (λ { refl → unit-result }) (m≤m+n k _) (λ _ → (λ _ _ _ → refl)) (λ _ → (λ _ _ → refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl) (λ _ _ _ ib → ib)
+          realized 0 (entry-flat base s alloc cl rs) mIn alloc [] (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s}) (λ { refl → unit-result }) (m≤m+n k _) (λ _ → (λ _ _ _ → refl)) (λ _ → (λ _ _ → refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl) (λ _ _ _ ib → ib) (λ { refl → [] })
       }
     where
       ev-[] : ∀ pc i → fetch (emitted n l (terminal {A})) pc ≡ just i → ∀ fs → event-of i fs ≡ []
@@ -204,9 +214,9 @@ module Simp {FS : FrameSemantics} where
       denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (fst {A} {B}) x ⟫ k) ≡ []
       denot-[] k = refl
 
-      done : GetC.GetOut {FS} {prog} A (proj₁ x) fs₀
-           → MachineRefinesObsF prog base n l (fst {A} {B}) x s alloc cl rs k
-      done g = record
+      done : ∀ {K I} → GetC.GetOut {FS} {prog} A (proj₁ x) fs₀ K → K ⊆ᶠ I
+           → MachineRefinesObsF prog base n l (fst {A} {B}) x s alloc cl rs k I
+      done g ki = record
         { traces-agree = trans (GetOut.silent g) (sym (denot-[] k))
         ; value-realized =
             realized 1 (setOut fs₀ (GetOut.out g)) (GetOut.mode g) alloc (GetOut.step g)
@@ -216,13 +226,16 @@ module Simp {FS : FrameSemantics} where
               (m≤m+n k _)
               (λ _ fr j _ → out-mem fs₀ (GetOut.out g) (AtStack fr j)) (λ _ hl _ → out-mem fs₀ (GetOut.out g) (AtDynamic hl))
               (λ _ → refl) (λ _ _ _ bf → bf) (λ _ → refl) (λ _ _ _ ib → ib)
+              (λ { refl → framed-⊆ (λ l m → ki l (GetOut.in-K g l m)) })
         }
 
-      mr-of : InputAt mIn alloc x s → MachineRefinesObsF prog base n l (fst {A} {B}) x s alloc cl rs k
+      mr-of : (inp : InputAt mIn alloc x s) → MachineRefinesObsF prog base n l (fst {A} {B}) x s alloc cl rs k (in-foot inp)
       mr-of (in-loc pair-loc pv lv eq) =
         done (get-run A 0 fs₀ pair-loc nh (λ i f → span 0 i f) eq lv
                (subst (λ z → CellAt {prog = prog} alloc A (proj₁ x) z s) (sym (offset-zero pair-loc))
                       (PairValidWF.fst-cell (decomposePairWF pv))))
+             (⊆ᶠ-cons (λ l m → fst-cell-foot pv l
+                (⊆ᶠ-≡ (foot-cell-subst (sym (offset-zero pair-loc)) (PairValidWF.fst-cell (decomposePairWF pv))) l m)))
       mr-of (in-reg () _)
       mr-of (in-unit ())
 
@@ -234,9 +247,9 @@ module Simp {FS : FrameSemantics} where
       denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (snd {A} {B}) x ⟫ k) ≡ []
       denot-[] k = refl
 
-      done : GetC.GetOut {FS} {prog} B (proj₂ x) fs₀
-           → MachineRefinesObsF prog base n l (snd {A} {B}) x s alloc cl rs k
-      done g = record
+      done : ∀ {K I} → GetC.GetOut {FS} {prog} B (proj₂ x) fs₀ K → K ⊆ᶠ I
+           → MachineRefinesObsF prog base n l (snd {A} {B}) x s alloc cl rs k I
+      done g ki = record
         { traces-agree = trans (GetOut.silent g) (sym (denot-[] k))
         ; value-realized =
             realized 1 (setOut fs₀ (GetOut.out g)) (GetOut.mode g) alloc (GetOut.step g)
@@ -246,12 +259,14 @@ module Simp {FS : FrameSemantics} where
               (m≤m+n k _)
               (λ _ fr j _ → out-mem fs₀ (GetOut.out g) (AtStack fr j)) (λ _ hl _ → out-mem fs₀ (GetOut.out g) (AtDynamic hl))
               (λ _ → refl) (λ _ _ _ bf → bf) (λ _ → refl) (λ _ _ _ ib → ib)
+              (λ { refl → framed-⊆ (λ l m → ki l (GetOut.in-K g l m)) })
         }
 
-      mr-of : InputAt mIn alloc x s → MachineRefinesObsF prog base n l (snd {A} {B}) x s alloc cl rs k
+      mr-of : (inp : InputAt mIn alloc x s) → MachineRefinesObsF prog base n l (snd {A} {B}) x s alloc cl rs k (in-foot inp)
       mr-of (in-loc pair-loc pv lv eq) =
         done (get-run B (size A) fs₀ pair-loc nh (λ i f → span 0 i f) eq lv
                (PairValidWF.snd-cell (decomposePairWF pv)))
+             (⊆ᶠ-cons (snd-cell-foot pv))
       mr-of (in-reg () _)
       mr-of (in-unit ())
 
@@ -276,6 +291,7 @@ module Simp {FS : FrameSemantics} where
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ (cong (λ t → fetch t 0) (teq n l))) ∷ []) (λ _ → nh)
                    (λ _ → cong (λ t → length t + base) (sym (teq n l))) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
                    (λ { refl → place rdi-eq }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-eq (AtStack fr j))) (λ _ → (λ hl _ → mem-eq (AtDynamic hl))) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl) (λ _ _ _ ib → ib)
+                   (λ { refl → frame rdi-eq })
       }
     where
       regs' = writeReg (regs s) Output (readReg (regs s) Input1)
@@ -324,6 +340,14 @@ module Simp {FS : FrameSemantics} where
       place (in-reg () _)
       place (in-unit ())
 
+      -- D395: the layer is the μ's own
+      frame : (inp : InputAt mIn alloc x s) → Framed alloc (in-foot inp) (rp-foot (place inp))
+      frame (in-loc il v bf eq) =
+        framed-⊆ (λ l m → there (⊆ᶠ-≡ (foot-mem-preserved x il s (floc fs₁) (live→bf bf) (λ loc' _ → mem-eq loc') v) l
+                                  (⊆ᶠ-≡ (μ-layer-foot {wf = wf} ub (valid' il (live→bf bf) v)) l m)))
+      frame (in-reg () _)
+      frame (in-unit ())
+
   -- D366: at a BOXED functor (`K Int`/`K Float`) the μ is a block whose first
   -- word holds the layer, a scalar, so `out-μ` is `load-at 0` — `get` of the
   -- layer at word 0 (plan 0.123 B.4 α), and its proof is `fst`'s.
@@ -347,9 +371,9 @@ module Simp {FS : FrameSemantics} where
       at i f = span 0 i (trans (cong (λ t → fetch t 0) (teq n l))
                                (trans (cong (λ t → fetch t 0) (sym (get-word 0 (scalar-kind fit)))) f))
 
-      done : GetC.GetOut {FS} {prog} L v fs₀
-           → MachineRefinesObsF prog base n l (out-μ wf) x s alloc cl rs k
-      done g = record
+      done : ∀ {K I} → GetC.GetOut {FS} {prog} L v fs₀ K → K ⊆ᶠ I
+           → MachineRefinesObsF prog base n l (out-μ wf) x s alloc cl rs k I
+      done g ki = record
         { traces-agree = trans (GetOut.silent g) (sym (denot-[] k))
         ; value-realized =
             realized 1 (setOut fs₀ (GetOut.out g)) (GetOut.mode g) alloc (GetOut.step g)
@@ -359,14 +383,17 @@ module Simp {FS : FrameSemantics} where
               (m≤m+n k _)
               (λ _ fr j _ → out-mem fs₀ (GetOut.out g) (AtStack fr j)) (λ _ hl _ → out-mem fs₀ (GetOut.out g) (AtDynamic hl))
               (λ _ → refl) (λ _ _ _ bf → bf) (λ _ → refl) (λ _ _ _ ib → ib)
+              (λ { refl → framed-⊆ (λ l m → ki l (GetOut.in-K g l m)) })
         }
 
-      mr-of : InputAt mIn alloc x s
-            → MachineRefinesObsF prog base n l (out-μ wf) x s alloc cl rs k
+      mr-of : (inp : InputAt mIn alloc x s)
+            → MachineRefinesObsF prog base n l (out-μ wf) x s alloc cl rs k (in-foot inp)
       mr-of (in-loc box-loc pv lv eq) =
         done (get-run L 0 fs₀ box-loc nh at eq lv
                (subst (λ z → CellAt {prog = prog} alloc L v z s) (sym (offset-zero box-loc))
                       (μ-box-cell {wf = wf} bx pv)))
+             (⊆ᶠ-cons (λ l m → ⊆ᶠ-≡ (μ-box-cell-foot {wf = wf} bx pv) l
+                (⊆ᶠ-≡ (foot-cell-subst (sym (offset-zero box-loc)) (μ-box-cell {wf = wf} bx pv)) l m)))
       mr-of (in-reg () _)
       mr-of (in-unit ())
 
@@ -416,7 +443,7 @@ module Simp {FS : FrameSemantics} where
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
                    (λ { refl → at-reg fits-int out-lit }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-untouched (instr-load-const fits-intˢ v) s alloc (AtStack fr j) nhw-instr-load-const refl))
-                   (λ _ → (λ hl _ → mem-untouched (instr-load-const fits-intˢ v) s alloc (AtDynamic hl) nhw-instr-load-const refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl) (λ _ _ _ ib → ib)
+                   (λ _ → (λ hl _ → mem-untouched (instr-load-const fits-intˢ v) s alloc (AtDynamic hl) nhw-instr-load-const refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl) (λ _ _ _ ib → ib) (λ { refl → [] })
       }
     where
       instr = instr-load-const fits-intˢ v
@@ -448,7 +475,7 @@ module Simp {FS : FrameSemantics} where
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) (λ _ → refl) (λ _ → refl) (log-pure {s})
                    (λ { refl → at-reg fits-float out-lit }) (m≤m+n k _) (λ _ → (λ fr j _ → mem-untouched (instr-load-const fits-floatˢ v) s alloc (AtStack fr j) nhw-instr-load-const refl))
-                   (λ _ → (λ hl _ → mem-untouched (instr-load-const fits-floatˢ v) s alloc (AtDynamic hl) nhw-instr-load-const refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl) (λ _ _ _ ib → ib)
+                   (λ _ → (λ hl _ → mem-untouched (instr-load-const fits-floatˢ v) s alloc (AtDynamic hl) nhw-instr-load-const refl)) (λ _ → refl) (λ _ → (λ _ _ bf → bf)) (λ _ → refl) (λ _ _ _ ib → ib) (λ { refl → [] })
       }
     where
       instr = instr-load-const fits-floatˢ v

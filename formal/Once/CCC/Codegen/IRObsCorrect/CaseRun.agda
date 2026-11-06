@@ -180,7 +180,7 @@ module RunC {FS : FrameSemantics} where
       i2 = record i1  { fpc = suc (inl-at + base) }
 
       -- ── the `inr` arm: the branch falls through.
-      module R {b : ⟦ B ⟧} (gr : GetOut {prog = prog} B b r1) where
+      module R {b : ⟦ B ⟧} {KG} (gr : GetOut {prog = prog} B b r1 KG) where
         r2 r3 : FlatState
         r2 = setOut r1 (GetOut.out gr)
         r3 = flat-exec-instr mov-to-input prog r2

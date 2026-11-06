@@ -102,7 +102,7 @@ module IterExitC {FS : FrameSemantics} where
       cond = tag-inl v1 rd1
 
       -- the result, read at word 1 of the sum (`Get.get-run`)
-      g : GetOut {prog = prog} B b s3
+      g : GetOut {prog = prog} B b s3 _
       g = get-run B 1 s3 loc nh1 at-out rd1 bef (payload-l v1)
 
       s4 : FlatState

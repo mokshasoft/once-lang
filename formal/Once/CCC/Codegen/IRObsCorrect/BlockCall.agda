@@ -197,6 +197,34 @@ module BlockCallC {FS : FrameSemantics} where
     where va′ = validityWF-heap-transport {prog = prog} (λ _ → ⊤) (λ _ _ → tt) (λ _ _ → refl) bft bk _ loc tt va
   place-across′ bft bk (at-reg fit rax) = at-reg fit rax
 
+  -- D395: the moves keep the footprint
+  place-across-foot : ∀ {prog : AbstractTrace} {B m a ca v s} {a′ : AllocState {FS}}
+                      (bft : ∀ l → Live a l → Live a′ l) (bk : BlocksKept a a′)
+                      (x : ResultPlace {prog = prog} B m a ca v s)
+                    → rpF (foot B) (place-across bft bk x) ≡ rp-foot x
+  place-across-foot bft bk unit-result = refl
+  place-across-foot {prog = prog} {B} bft bk (at-loc loc va lv rax _ _) =
+    foot-heap-transport {prog = prog} (λ _ → ⊤) (λ _ _ → tt) (λ _ _ → refl) bft bk _ loc tt va
+  place-across-foot bft bk (at-reg fit rax) = refl
+
+  place-across′-foot : ∀ {prog : AbstractTrace} {B m a ca v s} {a′ : AllocState {FS}}
+                       (bft : ∀ l → Live a l → Live a′ l) (bk : BlocksKept a a′)
+                       (x : ResultPlace {prog = prog} B m a ca v s)
+                     → rp-foot (place-across′ bft bk x) ≡ rp-foot x
+  place-across′-foot bft bk unit-result = refl
+  place-across′-foot {prog = prog} {B} bft bk (at-loc loc va lv rax _ _) =
+    foot-heap-transport {prog = prog} (λ _ → ⊤) (λ _ _ → tt) (λ _ _ → refl) bft bk _ loc tt va
+  place-across′-foot bft bk (at-reg fit rax) = refl
+
+  -- …and the callee's heap frontier is the caller's
+  live-cal : ∀ (bb : ℕ) (fs : FlatState) (l : ValueLocation FS) → Live (falloc fs) l → Live (callee-alloc bb fs) l
+  live-cal bb fs (AtDynamic hl) (BeforeFrontier.heap-before p) = BeforeFrontier.heap-before p
+
+  -- a body's frame, read at the caller (its result moved by `across`)
+  frame-at-caller : ∀ {a₀ a₁ : AllocState {FS}} {I R R′ : Foot}
+                  → (∀ l → Live a₀ l → Live a₁ l) → R′ ≡ R → Framed a₁ I R → Framed a₀ I R′
+  frame-at-caller lv eq fr = framed-intro _ (λ l m l0 → framed-at fr l (⊆ᶠ-≡ eq l m) (lv l l0))
+
   -- …and a caller's input is the callee's: its cells are heap cells, which
   -- the marker neither moves nor clears, and the registers are untouched.
   input-callee : ∀ {prog : AbstractTrace} {A} {mIn : AllocMode} {x : ValueDomain.⟦ A ⟧ᴰᴵ}
@@ -210,6 +238,16 @@ module BlockCallC {FS : FrameSemantics} where
   input-callee bb fs pre fa (in-reg fit rd) = in-reg fit rd
   input-callee bb fs pre fa (in-unit eq) = in-unit eq
 
+  input-callee-foot : ∀ {prog : AbstractTrace} {A} {mIn : AllocMode} {x : ValueDomain.⟦ A ⟧ᴰᴵ}
+                        (bb : ℕ) (fs : FlatState) (pre : AllocState {FS}) (fa : falloc fs ≡ enter-call pre)
+                        (inp : InputAt {prog = prog} mIn pre x (floc fs))
+                    → in-foot (input-callee bb fs pre fa inp) ≡ in-foot inp
+  input-callee-foot {prog = prog} {A} {mIn} {x} bb fs pre fa (in-loc loc va lv rd) =
+    cong (loc ∷_) (foot-heap-transport {prog = prog} {mIn} {A} (Live pre) (λ _ l → l)
+                     (λ l q → callee-heap bb fs {pre} l q) (live-callee bb fs pre fa) (bk-enter bb fs pre fa) x loc lv va)
+  input-callee-foot bb fs pre fa (in-reg fit rd) = refl
+  input-callee-foot bb fs pre fa (in-unit eq) = refl
+
   ----------------------------------------------------------------------
   -- WHAT A BLOCK BODY OWES, for any body text `t`, computation `comp` and
   -- result relation `R`: a `ValueRealized` (at frontier 0, `length t`) with
@@ -219,6 +257,7 @@ module BlockCallC {FS : FrameSemantics} where
   ----------------------------------------------------------------------
   record BodyRuns (prog : AbstractTrace) (base len : ℕ) {B : IRTy}
                   (R : AllocMode → AllocState {FS} → AllocState {FS} → ValueDomain.⟦ B ⟧ᴰᴵ → LocState FS → Set)
+                  (Fr : ∀ {m a ca v s} → R m a ca v s → Set)
                   (comp : T∞ ValueDomain.⟦ B ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS})
                   (cl : StoredValue FS) (rs : List ℕ) (k : ℕ) : Set where
     constructor body-runs
@@ -244,14 +283,17 @@ module BlockCallC {FS : FrameSemantics} where
                  → BeforeFrontier (record alloc { next-slot = m }) loc → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
       frames-pres : ∀ {v r} → resultAt s (⟪ comp ⟫ k) ≡ returns (done v r) → saved-frames (falloc settle) ≡ saved-frames alloc
       blocks-kept : NotCut (resultAt s (⟪ comp ⟫ k)) → BlocksKept alloc (falloc settle)
+      -- D395
+      frame      : ∀ {v r} (e : resultAt s (⟪ comp ⟫ k) ≡ returns (done v r)) → Fr (place e)
 
-  mro→body : ∀ {prog base A B l} {ir : IR A B} {x s alloc cl rs k}
-           → MachineRefinesObsF prog base 0 l ir x s alloc cl rs k
-           → BodyRuns prog base (length (emitted 0 l ir)) {B} (ResultPlace {prog = prog} B) (evalᴰ ir x) s alloc cl rs k
+  mro→body : ∀ {prog base A B l} {ir : IR A B} {x s alloc cl rs k I}
+           → MachineRefinesObsF prog base 0 l ir x s alloc cl rs k I
+           → BodyRuns prog base (length (emitted 0 l ir)) {B} (ResultPlace {prog = prog} B) (λ x → Framed alloc I (rp-foot x))
+                      (evalᴰ ir x) s alloc cl rs k
   mro→body {B = B} mro =
     body-runs VR.steps VR.settle VR.out-mode VR.cont-alloc VR.run VR.live VR.at-end VR.stops VR.no-ret VR.no-link
               VR.log VR.place VR.progress (MachineRefinesObsF.traces-agree mro) (vr-mem-pres vr)
-              VR.frame-pres VR.bf-mono VR.frames-pres VR.blocks-kept
+              VR.frame-pres VR.bf-mono VR.frames-pres VR.blocks-kept VR.frame
     where
       vr = MachineRefinesObsF.value-realized mro
       module VR = ValueRealized {B = B} vr
@@ -259,16 +301,19 @@ module BlockCallC {FS : FrameSemantics} where
   entry-call-gen : ∀ {B : IRTy}
       {R  : AllocMode → AllocState {FS} → AllocState {FS} → ValueDomain.⟦ B ⟧ᴰᴵ → LocState FS → Set}
       {R′ : AllocMode → AllocState {FS} → AllocState {FS} → ValueDomain.⟦ B ⟧ᴰᴵ → LocState FS → Set}
-    → (∀ {m a ca v s} {a′ : AllocState {FS}} → (∀ l → Live a l → Live a′ l) → BlocksKept a a′ → R m a ca v s → R′ m a′ a′ v s)
+      {Fr : ∀ {m a ca v s} → R m a ca v s → Set} {Fr′ : ∀ {m a ca v s} → R′ m a ca v s → Set}
+    → (across : ∀ {m a ca v s} {a′ : AllocState {FS}} → (∀ l → Live a l → Live a′ l) → BlocksKept a a′ → R m a ca v s → R′ m a′ a′ v s)
+    → (∀ {m a ca v s} {a′ : AllocState {FS}} (bft : ∀ l → Live a l → Live a′ l) (bk : BlocksKept a a′) (x : R m a ca v s)
+       → Fr x → Fr′ (across bft bk x))
     → ∀ (t : AbstractTrace) (comp : T∞ ValueDomain.⟦ B ⟧ᴰᴵ)
         (prog : AbstractTrace) (eid : EntryId) (bb j : ℕ)
     → SpanAt prog j (entry-layout eid bb t)
     → ∀ (fs : FlatState) (pre : AllocState {FS}) (ret-pc k : ℕ) (rs : List ℕ)
     → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
     → falloc fs ≡ enter-call pre
-    → BodyRuns prog (suc j) (length t) {B} R comp (callee-loc bb fs) (callee-alloc bb fs) (fclosure fs) (ret-pc ∷ rs) k
-    → CalleeRunP {prog = prog} {B} R′ fs ret-pc rs comp k
-  entry-call-gen {B} {R} {R′} across t comp prog eid bb j sp fs pre ret-pc k rs pc nh fr fa br =
+    → BodyRuns prog (suc j) (length t) {B} R Fr comp (callee-loc bb fs) (callee-alloc bb fs) (fclosure fs) (ret-pc ∷ rs) k
+    → CalleeRunP {prog = prog} {B} R′ Fr′ fs ret-pc rs comp k
+  entry-call-gen {B} {R} {R′} {Fr} {Fr′} across across-fr t comp prog eid bb j sp fs pre ret-pc k rs pc nh fr fa br =
     go (resultAt s′ (⟪ comp ⟫ k)) refl
     where
       open Layout prog eid bb j t sp
@@ -277,7 +322,7 @@ module BlockCallC {FS : FrameSemantics} where
       a′ = callee-alloc bb fs
       cl = fclosure fs
 
-      module VR = BodyRuns {B = B} {R = R} br
+      module VR = BodyRuns {B = B} {R = R} {Fr = Fr} br
 
       -- the marker step, landing on the body's entry
       te = thunk-entry bb j (ret-pc ∷ rs) fs pc fr
@@ -303,7 +348,7 @@ module BlockCallC {FS : FrameSemantics} where
 
       stuck : ∀ {ρ} → resultAt s′ (⟪ comp ⟫ k) ≡ ρ
             → (∀ {v r} → ρ ≡ returns (done v r) → ⊥)
-            → CalleeRunP {prog = prog} {B} R′ fs ret-pc rs comp k
+            → CalleeRunP {prog = prog} {B} R′ Fr′ fs ret-pc rs comp k
       stuck eq nr = record
         { steps      = suc VR.steps
         ; settle     = VR.settle
@@ -324,10 +369,11 @@ module BlockCallC {FS : FrameSemantics} where
         ; bf-mono    = λ nc pre′ m fa′ loc bf → VR.bf-mono nc m loc (callee-bf bb fs pre′ fa′ m m loc bf)
         ; frames-pres = λ p → ⊥-elim (nr (trans (sym eq) p))
         ; blocks-kept = λ nc pre′ fa′ → bk-body nc pre′ fa′
+        ; frame      = λ p → ⊥-elim (nr (trans (sym eq) p))
         }
 
       go : (ρ : Res (Ap ValueDomain.⟦ B ⟧ᴰᴵ)) → resultAt s′ (⟪ comp ⟫ k) ≡ ρ
-         → CalleeRunP {prog = prog} {B} R′ fs ret-pc rs comp k
+         → CalleeRunP {prog = prog} {B} R′ Fr′ fs ret-pc rs comp k
       -- RETURNED: one more step, the `c-ret`.
       go (returns (done v r)) eq = record
         { steps      = suc (VR.steps + 1)
@@ -351,6 +397,7 @@ module BlockCallC {FS : FrameSemantics} where
         ; blocks-kept = λ nc pre′ fa′ →
             bk-trans {a = pre′} {b = falloc VR.settle} {c = leave-frame (falloc VR.settle)} (bk-body nc pre′ fa′) (bk-leave (falloc VR.settle))
                      (λ l lv → live-mono (λ m loc bf → VR.bf-mono nc m loc (callee-bf bb fs pre′ fa′ m m loc bf)) l lv)
+        ; frame      = λ p → across-fr (live-leave (falloc VR.settle)) (bk-leave (falloc VR.settle)) (VR.place p) (VR.frame p)
         }
         where
           retd : resultAt s′ (⟪ comp ⟫ k) ≡ returns (done v r)
@@ -406,16 +453,19 @@ module BlockCallC {FS : FrameSemantics} where
   block-call-gen : ∀ {B : IRTy}
       {R  : AllocMode → AllocState {FS} → AllocState {FS} → ValueDomain.⟦ B ⟧ᴰᴵ → LocState FS → Set}
       {R′ : AllocMode → AllocState {FS} → AllocState {FS} → ValueDomain.⟦ B ⟧ᴰᴵ → LocState FS → Set}
-    → (∀ {m a ca v s} {a′ : AllocState {FS}} → (∀ l → Live a l → Live a′ l) → BlocksKept a a′ → R m a ca v s → R′ m a′ a′ v s)
+      {Fr : ∀ {m a ca v s} → R m a ca v s → Set} {Fr′ : ∀ {m a ca v s} → R′ m a ca v s → Set}
+    → (across : ∀ {m a ca v s} {a′ : AllocState {FS}} → (∀ l → Live a l → Live a′ l) → BlocksKept a a′ → R m a ca v s → R′ m a′ a′ v s)
+    → (∀ {m a ca v s} {a′ : AllocState {FS}} (bft : ∀ l → Live a l → Live a′ l) (bk : BlocksKept a a′) (x : R m a ca v s)
+       → Fr x → Fr′ (across bft bk x))
     → ∀ (t : AbstractTrace) (comp : T∞ ValueDomain.⟦ B ⟧ᴰᴵ)
         (prog : AbstractTrace) (lbl : LabelId) (bb j : ℕ)
     → SpanAt prog j (block-layout (lbl , bb , t))
     → ∀ (fs : FlatState) (pre : AllocState {FS}) (ret-pc k : ℕ) (rs : List ℕ)
     → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
     → falloc fs ≡ enter-call pre
-    → BodyRuns prog (suc j) (length t) {B} R comp (callee-loc bb fs) (callee-alloc bb fs) (fclosure fs) (ret-pc ∷ rs) k
-    → CalleeRunP {prog = prog} {B} R′ fs ret-pc rs comp k
-  block-call-gen across t comp prog lbl = entry-call-gen across t comp prog (e-thunk lbl)
+    → BodyRuns prog (suc j) (length t) {B} R Fr comp (callee-loc bb fs) (callee-alloc bb fs) (fclosure fs) (ret-pc ∷ rs) k
+    → CalleeRunP {prog = prog} {B} R′ Fr′ fs ret-pc rs comp k
+  block-call-gen across across-fr t comp prog lbl = entry-call-gen across across-fr t comp prog (e-thunk lbl)
 
   -- …and a compiled IR's entry, of either kind.
   entry-call : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
@@ -428,10 +478,13 @@ module BlockCallC {FS : FrameSemantics} where
         (ret-pc k : ℕ) (rs : List ℕ)
     → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
     → falloc fs ≡ enter-call pre → next-slot pre ≡ 0
-    → InputAt {prog = prog} mIn (callee-alloc bb fs) x (callee-loc bb fs)
-    → CalleeRunP {prog = prog} {B} (ResultPlaceP {B} (VAt {prog = prog} B)) fs ret-pc rs (evalᴰ ir x) k
+    → (inp : InputAt {prog = prog} mIn (callee-alloc bb fs) x (callee-loc bb fs))
+    → CalleeRunP {prog = prog} {B} (ResultPlaceP {B} (VAt {prog = prog} B))
+        (λ y → Framed (falloc fs) (in-foot inp) (rpF (foot B) y)) fs ret-pc rs (evalᴰ ir x) k
   entry-call {A} {B} ir ioc l prog eid bb j ss cr sp bl la fs pre mIn x ret-pc k rs pc nh fr fa ns inp =
-    entry-call-gen {B} {ResultPlace {prog = prog} B} {ResultPlaceP {B} (VAt {prog = prog} B)} place-across (emitted 0 l ir) (evalᴰ ir x) prog eid bb j sp fs pre ret-pc k rs pc nh fr fa
+    entry-call-gen {B} {ResultPlace {prog = prog} B} {ResultPlaceP {B} (VAt {prog = prog} B)} place-across
+      (λ bft bk y f → frame-at-caller (live-cal bb fs) (place-across-foot bft bk y) f)
+      (emitted 0 l ir) (evalᴰ ir x) prog eid bb j sp fs pre ret-pc k rs pc nh fr fa
       (mro→body {prog} {suc j} {A} {B} {l} {ir} (ioc 0 l prog (suc j) ss cr (Layout.body-span prog eid bb j (emitted 0 l ir) sp) bl la mIn x
                    (callee-loc bb fs) (callee-alloc bb fs) (fclosure fs) (trans (cong next-slot fa) ns) nh inp k (ret-pc ∷ rs)))
 
@@ -445,8 +498,9 @@ module BlockCallC {FS : FrameSemantics} where
         (ret-pc k : ℕ) (rs : List ℕ)
     → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
     → falloc fs ≡ enter-call pre → next-slot pre ≡ 0
-    → InputAt {prog = prog} mIn (callee-alloc bb fs) x (callee-loc bb fs)
-    → CalleeRunP {prog = prog} {B} (ResultPlaceP {B} (VAt {prog = prog} B)) fs ret-pc rs (evalᴰ ir x) k
+    → (inp : InputAt {prog = prog} mIn (callee-alloc bb fs) x (callee-loc bb fs))
+    → CalleeRunP {prog = prog} {B} (ResultPlaceP {B} (VAt {prog = prog} B))
+        (λ y → Framed (falloc fs) (in-foot inp) (rpF (foot B) y)) fs ret-pc rs (evalᴰ ir x) k
   block-call ir ioc l prog lbl = entry-call ir ioc l prog (e-thunk lbl)
 
   -- plan 0.135 S3: A FUNCTION's entry, as `FnRuns` asks for it — the input
@@ -461,10 +515,14 @@ module BlockCallC {FS : FrameSemantics} where
         (ret-pc k : ℕ) (rs : List ℕ) (mIn : AllocMode)
     → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
     → falloc fs ≡ enter-call pre → next-slot pre ≡ 0
-    → InputAt {prog = prog} mIn pre x (floc fs)
-    → CalleeRunP {prog = prog} {B} (ResultPlace {prog = prog} B) fs ret-pc rs (evalᴰ ir x) k
+    → (inp : InputAt {prog = prog} mIn pre x (floc fs))
+    → CalleeRunP {prog = prog} {B} (ResultPlace {prog = prog} B)
+        (λ y → Framed (falloc fs) (in-foot inp) (rp-foot y)) fs ret-pc rs (evalᴰ ir x) k
   fn-call {A} {B} ir ioc l prog eid bb j ss cr sp bl la fs pre x ret-pc k rs mIn pc nh fr fa ns inp =
-    entry-call-gen {B} {ResultPlace {prog = prog} B} {ResultPlace {prog = prog} B} place-across′ (emitted 0 l ir) (evalᴰ ir x) prog eid bb j sp fs pre ret-pc k rs pc nh fr fa
+    entry-call-gen {B} {ResultPlace {prog = prog} B} {ResultPlace {prog = prog} B} place-across′
+      (λ bft bk y f → frame-at-caller (live-cal bb fs) (place-across′-foot bft bk y)
+                        (subst (λ I → Framed (callee-alloc bb fs) I (rp-foot y)) (input-callee-foot bb fs pre fa inp) f))
+      (emitted 0 l ir) (evalᴰ ir x) prog eid bb j sp fs pre ret-pc k rs pc nh fr fa
       (mro→body {prog} {suc j} {A} {B} {l} {ir} (ioc 0 l prog (suc j) ss cr (Layout.body-span prog eid bb j (emitted 0 l ir) sp) bl la mIn x
                    (callee-loc bb fs) (callee-alloc bb fs) (fclosure fs) (trans (cong next-slot fa) ns) nh
                    (input-callee {prog = prog} {A} {mIn} {x} bb fs pre fa inp) k (ret-pc ∷ rs)))

@@ -176,7 +176,7 @@ module ResuspSumArmC {FS : FrameSemantics} where
       keep₁ : ∀ l → Live b l → readLoc s₁ l ≡ readLoc s l
       keep₁ (AtDynamic hl) _ = refl
 
-      gP : GetOut {prog = prog} Pa yP fs₁
+      gP : GetOut {prog = prog} Pa yP fs₁ _
       gP = get-run Pa 1 fs₁ sloc h (λ i e′ → sp1 0 i (fetch-++-left (get Pa 1) (t DL.++ ST) 0 i e′)) refl
              (live-from b a hb sloc lsl)
              (cellWF-heap-transport (Live b) (λ _ x → x) keep₁ (live-from b a hb) bkb yP (offsetLoc sloc 1)

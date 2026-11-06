@@ -103,7 +103,10 @@ module Core {FS : FrameSemantics} where
           ; ValidFO; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy; LayerV
           ; Live; live→bf; live-heap; live-lift; live-ns; InBlk; Here; BlocksKept
           -- D394: footprints
-          ; Foot; _∈ᶠ_; SameBlk; blk-refl; blk-live; blk-live0) public
+          ; Foot; _∈ᶠ_; SameBlk; blk-refl; blk-live; blk-live0
+          -- D395: the frame
+          ; Framed; framed-at; framed-intro; framed-sub; _⊆ᶠ_; ⊆ᶠ-cons; ⊆ᶠ-[]; ⊆ᶠ-refl; ∈ᶠ-blk; blk-sym; blk-trans
+          ; ∈ᶠ-++-map; All-++ˡ; All-++ʳ; FootOf; cellF; rpF; framed-⊆; ⊆ᶠ-≡; ⊆ᶠ-head; ⊆ᶠ-there; ⊆ᶠ-++; ⊆ᶠ-trans; framed-fresh; fresh-blk) public
 
   -- A run depends on the state only through its log.
   runAt-≡ : ∀ {X} {st st′ : LocState FS} {m m′ : TM.T X}
@@ -183,6 +186,10 @@ module Core {FS : FrameSemantics} where
           ; validityWF-heap-transport; cellWF-heap-transport; validityWF-mem-only
           -- D394: a value is kept by any change that keeps its footprint
           ; foot; foot-cell; foot-live; foot-cell-live; module FootTransport
+          ; in-foot; in-foot-live; rp-foot; foot-vt; fst-cell-foot; snd-cell-foot; foot-cell-subst
+          ; foot-transport; foot-heap-transport; foot-mem-only; foot-with-bf-transfer; foot-frontier-advance; foot-mem-preserved
+          ; fo→valid-foot; fo→cell-foot; μ-layer-foot; μ-box-cell-foot
+          ; valid→fo-foot; unν; valid→layer-framed; rp-map-framed; nuFramedRP; nuFramedL; nuFramedC
           -- Plan 0.68 step 1: the class-A discharges move the value witness
           -- across a REGISTER write. `ValueLocation` is `AtStack`/`AtDynamic`
           -- only — there is no register location — so `readLoc` cannot see a
@@ -430,7 +437,7 @@ module Core {FS : FrameSemantics} where
   record ValueRealized (prog : AbstractTrace) (base : ℕ)
                        {A B} (n l : ℕ) (ir : IR A B) (x : ValueDomain.⟦ A ⟧ᴰᴵ)
                        (s : LocState FS) (alloc : AllocState {FS})
-                       (cl : StoredValue FS) (rs : List ℕ) (k : ℕ) : Set where
+                       (cl : StoredValue FS) (rs : List ℕ) (k : ℕ) (I : Foot) : Set where
     constructor realized
     field
       steps      : ℕ
@@ -603,12 +610,19 @@ module Core {FS : FrameSemantics} where
       -- in-block witness survives the run.
       blocks-kept : NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k)) → BlocksKept alloc (falloc settle)
 
+      -- D395 (L3): THE FRAME. What the result uses that was live at the entry,
+      -- its input used (`I`, the input's footprint); everything else it uses,
+      -- the run allocated. This is what lets a caller's destination, which is
+      -- in neither, be written while the result is read (β3), and a block go
+      -- out of scope be freed (γ).
+      frame : ∀ {v r} (e : resultAt s (⟪ evalᴰ ir x ⟫ k) ≡ returns (done v r)) → Framed alloc I (rp-foot (place e))
+
   -- D208: the combined form, DERIVED once rather than assumed per clause.
   -- Consumers that do not care which half they are using (`valid-transport`,
   -- the call-site compositions) keep asking for this; the split is visible
   -- only to whoever needs to know that the heap half is contingent.
-  vr-mem-pres : ∀ {prog base A B n l} {ir : IR A B} {x s alloc cl rs k}
-              → (vr : ValueRealized prog base n l ir x s alloc cl rs k)
+  vr-mem-pres : ∀ {prog base A B n l} {ir : IR A B} {x s alloc cl rs k I}
+              → (vr : ValueRealized prog base n l ir x s alloc cl rs k I)
               → NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k))
               → ∀ (loc : ValueLocation FS)
               → BeforeFrontier (record alloc { next-slot = n }) loc
@@ -626,6 +640,16 @@ module Core {FS : FrameSemantics} where
   live-mono f (AtDynamic hl) (BeforeFrontier.heap-before p) with f 0 (AtDynamic hl) (BeforeFrontier.heap-before p)
   ... | BeforeFrontier.heap-before q = BeforeFrontier.heap-before q
 
+  -- D395: a call moves frames, not the heap frontier
+  live-enter : ∀ (a : AllocState {FS}) l → Live a l → Live (enter-call a) l
+  live-enter a (AtDynamic hl) (BeforeFrontier.heap-before p) = BeforeFrontier.heap-before p
+
+  -- …and an input moved along a state equation uses what it did
+  in-foot-subst : ∀ {prog A mIn alloc x} {X : Set} {f : X → LocState FS} {st st′ : X} (eq : st ≡ st′)
+                    (inp : InputAt {prog} {A} mIn alloc x (f st))
+                → in-foot (subst (λ z → InputAt {prog} {A} mIn alloc x (f z)) eq inp) ≡ in-foot inp
+  in-foot-subst refl inp = refl
+
   -- …and two runs that keep live blocks' sizes keep them together.
   bk-trans : ∀ {a b c : AllocState {FS}} → BlocksKept a b → BlocksKept b c
            → (∀ l → Live a l → Live b l) → BlocksKept a c
@@ -634,7 +658,7 @@ module Core {FS : FrameSemantics} where
   record MachineRefinesObsF (prog : AbstractTrace) (base : ℕ)
                              {A B} (n l : ℕ) (ir : IR A B) (x : ValueDomain.⟦ A ⟧ᴰᴵ)
                              (s : LocState FS) (alloc : AllocState {FS})
-                             (cl : StoredValue FS) (rs : List ℕ) (k : ℕ) : Set where
+                             (cl : StoredValue FS) (rs : List ℕ) (k : ℕ) (I : Foot) : Set where
     field
       -- NO completion fields (M3, D058: "productivity — not termination").
       -- `run-halts` ("the run halts") is exactly what excludes `Ana`; instead,
@@ -646,7 +670,7 @@ module Core {FS : FrameSemantics} where
       -- correctly in `evalᴰ`, observed by the `take k` event-prefix.)
       -- D158/D159: the value half comes FIRST, because the trace half is
       -- stated along ITS chain.
-      value-realized : ValueRealized prog base n l ir x s alloc cl rs k
+      value-realized : ValueRealized prog base n l ir x s alloc cl rs k I
       -- …and the trace half, BOUNDED BY THAT CHAIN rather than by a fuel.
       --
       -- The old form was `∀ k → ∃ f` over `flat-events f (emitted n l ir)` —
@@ -729,8 +753,10 @@ module Core {FS : FrameSemantics} where
   -- plan 0.135 S1: the record moved to `ClosureWellFormedDef.CalleeRunP`
   -- (the arrow case of `ValidAtWF` states a callee's run), parameterised by
   -- where the result is. This is it at `ResultPlace`; fields unchanged.
-  CalleeRun : AbstractTrace → FlatState → ℕ → DL.List ℕ → (B : IRTy) → T∞ ⟦ B ⟧ → ℕ → Set
-  CalleeRun prog fs ret-pc rs B comp k = CalleeRunP {prog = prog} {B} (ResultPlace {prog = prog} B) fs ret-pc rs comp k
+  -- D395: `I`, what the callee's input uses, bounds what its result uses.
+  CalleeRun : AbstractTrace → FlatState → ℕ → DL.List ℕ → (B : IRTy) → T∞ ⟦ B ⟧ → ℕ → Foot → Set
+  CalleeRun prog fs ret-pc rs B comp k I =
+    CalleeRunP {prog = prog} {B} (ResultPlace {prog = prog} B) (λ x → Framed (falloc fs) I (rp-foot x)) fs ret-pc rs comp k
   module CalleeRun = CalleeRunP
 
   -- plan 0.135 S1: `CalleeRuns` (D188, the closure half of the block table)
@@ -762,8 +788,8 @@ module Core {FS : FrameSemantics} where
            → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
            → falloc fs ≡ enter-call pre-alloc
            → next-slot pre-alloc ≡ 0
-           → InputAt {prog} {A} mIn' pre-alloc x (floc fs)
-           → CalleeRun prog fs ret-pc rs B (comp x) k))
+           → (inp : InputAt {prog} {A} mIn' pre-alloc x (floc fs))
+           → CalleeRun prog fs ret-pc rs B (comp x) k (in-foot inp)))
 
   FnRuns : AbstractTrace → Set
   FnRuns prog =
@@ -878,7 +904,7 @@ module Core {FS : FrameSemantics} where
     -- D153: ONE residence premise, carrying its own evidence. The separate
     -- `input-loc` / `ValidAtWF` / `BeforeFrontier` triple is gone — it made
     -- the `in-reg` case unusable.
-    InputAt {prog} {A} mIn alloc x s →
+    (inp : InputAt {prog} {A} mIn alloc x s) →
     -- The OBSERVATION DEPTH, quantified OUTSIDE the witness (D058's "∃ fuel
     -- per depth" shape, now carried by the statement instead of a field). The
     -- machine run does not depend on it; asking for one run that works at
@@ -887,7 +913,7 @@ module Core {FS : FrameSemantics} where
     ∀ (k : ℕ) →
     -- D357: over every return stack the fragment may be entered on.
     ∀ (rs : List ℕ) →
-    MachineRefinesObsF prog base n l ir x s alloc cl rs k
+    MachineRefinesObsF prog base n l ir x s alloc cl rs k (in-foot inp)
 
   -- `cata-correct`: the cata's obligation is this same `IRObsCorrectF`; the
   -- record FIELDS (`value-realized`, `traces-agree`) are what the proof in
