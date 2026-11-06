@@ -190,6 +190,22 @@ module PairAsm {FS : FrameSemantics} where
 
               module PPresF = PPresG.Fill PPlace.rdi-u6 PPlace.rdi-u8
 
+              -- THE SETTLE STATE HAS THREE NAMES: `PCG.SETTLE` (the run's),
+              -- `PPlace.u10` (the placement's) and `PPresG.NSP.u10` (the
+              -- preservation facts'). Agda identifies any two of them only by
+              -- evaluating all nine rows, ~100 s each (profile 2026-11-06, plan
+              -- 0.144). So each identification is decided ONCE, here, and every
+              -- field from `PairPlace`/`PairPres` is transported along it by
+              -- `subst`, whose motive Agda checks by name.
+              settle≡place : PCG.SETTLE ≡ PPlace.u10
+              settle≡place = refl
+
+              settle≡pres : PCG.SETTLE ≡ PPresG.NSP.u10
+              settle≡pres = refl
+
+              at-settle : ∀ {P : FlatState → Set} → P PPresG.NSP.u10 → P PCG.SETTLE
+              at-settle {P} = subst P (sym settle≡pres)
+
               -- The record's fields, each NAMED AT ITS TYPE: the expected types
               -- mention `PCG.SETTLE`/`PCG.RUN`, the suppliers their own states,
               -- and stating each once keeps the conversion between them in
@@ -206,21 +222,30 @@ module PairAsm {FS : FrameSemantics} where
               -- plan 0.98: the premise binds `v`; `res-pair` says what the pair
               -- actually returned, and `done-value` identifies the two.
               field-place : ∀ {v r} → resultAt s E ≡ returns (done v r)
-                          → ResultPlace (B IRTy′.* C) PPlace.out-mode (falloc PCG.SETTLE)
+                          → ResultPlace {prog = prog} (B IRTy′.* C) PPlace.out-mode (falloc PCG.SETTLE)
                               PPlace.cont-alloc v (floc PCG.SETTLE)
-              field-place p = subst (λ w → ResultPlace _ _ _ _ w _)
-                                    (done-value (trans (sym res-pair) p))
-                                    PPlace.place
+              field-place {v} p =
+                subst (λ st → ResultPlace {prog = prog} (B IRTy′.* C) PPlace.out-mode (falloc st) PPlace.cont-alloc v (floc st))
+                      (sym settle≡place)
+                      (subst (λ w → ResultPlace {prog = prog} (B IRTy′.* C) PPlace.out-mode (falloc PPlace.u10) PPlace.cont-alloc w (floc PPlace.u10))
+                             (done-value (trans (sym res-pair) p))
+                             PPlace.place)
 
               field-stack : ∀ (fr : FrameSemantics.Frame FS) (j : ℕ)
                           → BeforeFrontier (record alloc { next-slot = n }) (AtStack fr j)
                           → SMCore.MemOps.readLoc (floc PCG.SETTLE) (AtStack fr j) ≡ SMCore.MemOps.readLoc s (AtStack fr j)
-              field-stack = PPresF.stack-pres-pair
+              field-stack = at-settle {λ st → ∀ (fr : FrameSemantics.Frame FS) (j : ℕ)
+                                       → BeforeFrontier (record alloc { next-slot = n }) (AtStack fr j)
+                                       → SMCore.MemOps.readLoc (floc st) (AtStack fr j) ≡ SMCore.MemOps.readLoc s (AtStack fr j)}
+                              PPresF.stack-pres-pair
 
               field-heap : ∀ (hl : HeapLocation)
                          → BeforeFrontier (record alloc { next-slot = n }) (AtDynamic hl)
                          → SMCore.MemOps.readLoc (floc PCG.SETTLE) (AtDynamic hl) ≡ SMCore.MemOps.readLoc s (AtDynamic hl)
-              field-heap = PPresF.heap-pres-pair
+              field-heap = at-settle {λ st → ∀ (hl : HeapLocation)
+                                      → BeforeFrontier (record alloc { next-slot = n }) (AtDynamic hl)
+                                      → SMCore.MemOps.readLoc (floc st) (AtDynamic hl) ≡ SMCore.MemOps.readLoc s (AtDynamic hl)}
+                             PPresF.heap-pres-pair
 
               -- the SAME chain names `PCG.RUN` is built from (`PCF.chainF`,
               -- `PCG.chainG`), so the conclusion matches `RUN` after one
@@ -239,6 +264,22 @@ module PairAsm {FS : FrameSemantics} where
                          (subst (λ ρ → rB ≤ budgetLeft rB ρ + chain-ctrls (VR.run vrg)) rgeq (VR.progress vrg))
                          PCG.RUN-ctrls)
 
+              field-frame : current-frame (falloc PCG.SETTLE) ≡ current-frame alloc
+              field-frame = at-settle {λ st → current-frame (falloc st) ≡ current-frame alloc}
+                              (PPresG.frame-pres-pair rgeq)
+
+              field-frames : saved-frames (falloc PCG.SETTLE) ≡ saved-frames alloc
+              field-frames = at-settle {λ st → saved-frames (falloc st) ≡ saved-frames alloc}
+                               (PPresG.frames-pres-pair rgeq)
+
+              field-bf : ∀ (m : ℕ) (loc : ValueLocation FS)
+                       → BeforeFrontier (record alloc { next-slot = m }) loc
+                       → BeforeFrontier (record (falloc PCG.SETTLE) { next-slot = m }) loc
+              field-bf = at-settle {λ st → ∀ (m : ℕ) (loc : ValueLocation FS)
+                                     → BeforeFrontier (record alloc { next-slot = m }) loc
+                                     → BeforeFrontier (record (falloc st) { next-slot = m }) loc}
+                           PPresG.bf-mono-pair
+
               result : MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl rs k
               result = record
                 { value-realized =
@@ -248,7 +289,7 @@ module PairAsm {FS : FrameSemantics} where
                              (λ _ → PCG.NORET) (λ _ → PCG.NOLINK)
                              field-log field-place field-progress
                              (λ _ → field-stack) (λ _ → field-heap)
-                             (λ _ → PPresG.frame-pres-pair rgeq) (λ _ → PPresG.bf-mono-pair) (λ _ → PPresG.frames-pres-pair rgeq)
+                             (λ _ → field-frame) (λ _ → field-bf) (λ _ → field-frames)
                 ; traces-agree = field-traces
                 }
 
