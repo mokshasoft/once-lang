@@ -134,8 +134,16 @@ def stage(ref, work):
                          check=True).stdout.strip()
     if os.path.exists(stamp) and open(stamp).read().strip() == sha:
         return os.path.join(tree, 'formal'), sha, True
-    if os.path.exists(tree): shutil.rmtree(tree)
-    os.makedirs(tree)
+    # A new ref is extracted OVER the old tree, keeping `_build`: Agda keys interfaces by source
+    # hash, so unchanged modules stay built, and their rows stay valid (same key). Old sources are
+    # removed first so a deleted module cannot linger. Wipe the work directory to start cold.
+    src = os.path.join(tree, 'formal')
+    if os.path.isdir(src):
+        for d, _, fs in os.walk(src):
+            if '_build' in d.split(os.sep): continue
+            for f in fs:
+                if f.endswith('.agda'): os.remove(os.path.join(d, f))
+    os.makedirs(tree, exist_ok=True)
     a = subprocess.Popen(['git', '-C', REPO, 'archive', sha, 'formal'], stdout=subprocess.PIPE)
     subprocess.run(['tar', '-x', '-C', tree], stdin=a.stdout, check=True)
     a.wait()
