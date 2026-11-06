@@ -20985,3 +20985,6 @@ at `return∞`, recursion at `SK ⊤`.
 metatheory- and spec-gate (after `spec-approve`) and lint-pragmas clean; backstop OK (787 modules) at
 `AGDA_SAFE_MEM_MAX=6G`: loading every interface in one process now exceeds the default 4.8 GB heap
 (all interfaces were up to date; nothing failed to check).
+2026-11-06: reachability (MERGE.md §6, against the 0.142 dumps, `formal/` identical to master): trust base
+52→52; PROVED 736→737 (`Metatheory/LawsApply` joined); RUNS 3039, RUNS∖PROVED 85, all declared; 0 gaps.
+The dump needed `HEAP=12G COMPACT=-c30` (`Resusp.Id` and `Metatheory.Laws.*` exceed the default 5G).
