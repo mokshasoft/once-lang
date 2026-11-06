@@ -175,12 +175,13 @@ module _ {m : ℕ} {Δ : KCtx m} where
       open ProdV δ sd σ r γ sγ using (pureRet)
       module AV = ArmsV δ sd σ r γ sγ
       T = C ⇒[ mk-kind Many pure ] A
+      GOAL = SameM π₀ (T ⟨ σ ⟩) (⟦ d ⟧ δ σ r γ) (⟦ d′ ⟧ δ σ r γ)
       r₀ = resR base (zero⊑ Ψ)
       projv = ⟦ fstD′ {Γ = Γ} A B pure ⟧ δ σ r (restrict σ (zero⊑ Ψ) γ)
-      goA : AV.Arms d (fstᶜ A B pure) (pairᶜ C pure f g) → _
+      goA : AV.Arms d (fstᶜ A B pure) (pairᶜ C pure f g) → GOAL
       goA (AV.arms dfst dp Pfst Pp) = goB (AV.armsLL (inj₁ refl) dp)
         where
-          goB : AV.Arms dp f g → _
+          goB : AV.Arms dp f g → GOAL
           goB (AV.arms df dg Pf Pg) with ty-unique dg pp | ty-unique df d′
           ... | refl | refl with ty-unique dp (pairD df dg)
           ... | refl =
@@ -212,12 +213,13 @@ module _ {m : ℕ} {Δ : KCtx m} where
       open ProdV δ sd σ r γ sγ using (pureRet)
       module AV = ArmsV δ sd σ r γ sγ
       T = C ⇒[ mk-kind Many pure ] B
+      GOAL = SameM π₀ (T ⟨ σ ⟩) (⟦ d ⟧ δ σ r γ) (⟦ d′ ⟧ δ σ r γ)
       r₀ = resR base (zero⊑ Ψ)
       projv = ⟦ sndD′ {Γ = Γ} A B pure ⟧ δ σ r (restrict σ (zero⊑ Ψ) γ)
-      goA : AV.Arms d (sndᶜ A B pure) (pairᶜ C pure f g) → _
+      goA : AV.Arms d (sndᶜ A B pure) (pairᶜ C pure f g) → GOAL
       goA (AV.arms dfst dp Pfst Pp) = goB (AV.armsLL (inj₁ refl) dp)
         where
-          goB : AV.Arms dp f g → _
+          goB : AV.Arms dp f g → GOAL
           goB (AV.arms df dg Pf Pg) with ty-unique df pp | ty-unique dg d′
           ... | refl | refl with ty-unique dp (pairD df dg)
           ... | refl =
@@ -249,6 +251,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
       open ProdV δ sd σ r γ sγ using (pureRet)
       module AV = ArmsV δ sd σ r γ sγ
       T = A ⇒[ mk-kind Many π ] C
+      GOAL = SameM π₀ (T ⟨ σ ⟩) (⟦ d ⟧ δ σ r γ) (⟦ d′ ⟧ δ σ r γ)
       r₀ = resR base (zero⊑ Ψ)
       injv = ⟦ inlD {Γ = Γ} A B π ⟧ δ σ r (restrict σ (zero⊑ Ψ) γ)
       -- calling a function on the injected value is calling it at the injection
@@ -256,10 +259,10 @@ module _ {m : ℕ} {Δ : KCtx m} where
       E h a = ≈-trans (toT∞-bind π (injv a) h) (≈-trans (≈-bind (toT∞-sub (pure⊑ π) (inj₁ a)) (λ _ → ≈-refl _)) (idˡ (inj₁ a) _))
       CC : ∀ {cv cv′} → Same (((A + B) ⇒[ mk-kind Many π ] C) ⟨ σ ⟩) cv cv′ → Same (T ⟨ σ ⟩) (compᵛ π cv injv) (compᵛ π cv′ injv)
       CC {cv} {cv′} scv a a′ sa = toObserved (≈-Relatedˡ (E cv a) (≈-Relatedʳ (E cv′ a′) (runs (appMany {π} {(A + B) ⟨ σ ⟩} {C ⟨ σ ⟩} scv {inj₁ a} {inj₁ a′} sa))))
-      goA : AV.Arms d (caseᶜ A B π f g) (inlᶜ A B π) → _
+      goA : AV.Arms d (caseᶜ A B π f g) (inlᶜ A B π) → GOAL
       goA (AV.arms dc di Pc Pi) = goB (AV.armsLL (inj₁ refl) dc)
         where
-          goB : AV.Arms dc f g → _
+          goB : AV.Arms dc f g → GOAL
           goB (AV.arms df dg Pf Pg) with ty-unique dg pp | ty-unique df d′
           ... | refl | refl with ty-unique dc (caseD df dg)
           ... | refl =
@@ -289,6 +292,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
       open ProdV δ sd σ r γ sγ using (pureRet)
       module AV = ArmsV δ sd σ r γ sγ
       T = B ⇒[ mk-kind Many π ] C
+      GOAL = SameM π₀ (T ⟨ σ ⟩) (⟦ d ⟧ δ σ r γ) (⟦ d′ ⟧ δ σ r γ)
       r₀ = resR base (zero⊑ Ψ)
       injv = ⟦ inrD {Γ = Γ} A B π ⟧ δ σ r (restrict σ (zero⊑ Ψ) γ)
       -- calling a function on the injected value is calling it at the injection
@@ -296,10 +300,10 @@ module _ {m : ℕ} {Δ : KCtx m} where
       E h a = ≈-trans (toT∞-bind π (injv a) h) (≈-trans (≈-bind (toT∞-sub (pure⊑ π) (inj₂ a)) (λ _ → ≈-refl _)) (idˡ (inj₂ a) _))
       CC : ∀ {cv cv′} → Same (((A + B) ⇒[ mk-kind Many π ] C) ⟨ σ ⟩) cv cv′ → Same (T ⟨ σ ⟩) (compᵛ π cv injv) (compᵛ π cv′ injv)
       CC {cv} {cv′} scv a a′ sa = toObserved (≈-Relatedˡ (E cv a) (≈-Relatedʳ (E cv′ a′) (runs (appMany {π} {(A + B) ⟨ σ ⟩} {C ⟨ σ ⟩} scv {inj₂ a} {inj₂ a′} sa))))
-      goA : AV.Arms d (caseᶜ A B π f g) (inrᶜ A B π) → _
+      goA : AV.Arms d (caseᶜ A B π f g) (inrᶜ A B π) → GOAL
       goA (AV.arms dc di Pc Pi) = goB (AV.armsLL (inj₁ refl) dc)
         where
-          goB : AV.Arms dc f g → _
+          goB : AV.Arms dc f g → GOAL
           goB (AV.arms df dg Pf Pg) with ty-unique df pp | ty-unique dg d′
           ... | refl | refl with ty-unique dc (caseD df dg)
           ... | refl =
@@ -330,16 +334,17 @@ module _ {m : ℕ} {Δ : KCtx m} where
       open ProdV δ sd σ r γ sγ using (pureRet)
       module AV = ArmsV δ sd σ r γ sγ
       T = C ⇒[ mk-kind Many pure ] (A * B)
+      GOAL = SameM π₀ (T ⟨ σ ⟩) (⟦ d ⟧ δ σ r γ) (⟦ d′ ⟧ δ σ r γ)
       r₀ = resR base (zero⊑ Ψ)
       e₀ = restrict σ (zero⊑ Ψ) γ
       fstv = ⟦ fstD′ {Γ = Γ} A B pure ⟧ δ σ r e₀
       sndv = ⟦ sndD′ {Γ = Γ} A B pure ⟧ δ σ r e₀
       rr : ∀ {X : Ty m} {x x′} → SameM pure (X ⟨ σ ⟩) x x′ → Same (X ⟨ σ ⟩) x x′
       rr s = returnRel⁻ (fromObserved s)
-      goA : AV.Arms d (composeᶜ C pure (fstᶜ A B pure) h) (composeᶜ C pure (sndᶜ A B pure) h) → _
+      goA : AV.Arms d (composeᶜ C pure (fstᶜ A B pure) h) (composeᶜ C pure (sndᶜ A B pure) h) → GOAL
       goA (AV.arms dc₁ dc₂ P₁ P₂) = goB (AV.armsLL (inj₂ refl) dc₁) (AV.armsLL (inj₂ refl) dc₂)
         where
-          goB : AV.Arms dc₁ (fstᶜ A B pure) h → AV.Arms dc₂ (sndᶜ A B pure) h → _
+          goB : AV.Arms dc₁ (fstᶜ A B pure) h → AV.Arms dc₂ (sndᶜ A B pure) h → GOAL
           goB (AV.arms _ dh₁ _ Ph₁) (AV.arms _ dh₂ _ Ph₂) with ty-unique dh₁ ph | ty-unique dh₂ ph
           ... | refl | refl with ty-unique dc₁ (composeD (fstD′ A B pure) dh₁) | ty-unique dc₂ (composeD (sndD′ A B pure) dh₂)
           ... | refl | refl =
@@ -387,6 +392,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
       open ProdV δ sd σ r γ sγ using (pureRet)
       module AV = ArmsV δ sd σ r γ sγ
       T  = (A * B) ⇒[ mk-kind Many pure ] C
+      GOAL = SameM π₀ (T ⟨ σ ⟩) (⟦ d ⟧ δ σ r γ) (⟦ d′ ⟧ δ σ r γ)
       BC = B ⇒[ mk-kind Many pure ] C
       r₀ = resR base (zero⊑ Ψ)
       e₀ = restrict σ (zero⊑ Ψ) γ
@@ -394,19 +400,19 @@ module _ {m : ℕ} {Δ : KCtx m} where
       sndv = ⟦ sndD′ {Γ = Γ} A B pure ⟧ δ σ r e₀
       apv  = ⟦ applyD {Γ = Γ} B C ⟧ δ σ r (restrict σ (zero⊑ω Ψ) γ)
       rA = resR base (zero⊑ω Ψ)
-      goA : AV.Arms d (applyᶜ B C) (pairᶜ (A * B) pure (composeᶜ (A * B) pure (curryᶜ A B pure pure f) (fstᶜ A B pure)) (sndᶜ A B pure)) → _
+      goA : AV.Arms d (applyᶜ B C) (pairᶜ (A * B) pure (composeᶜ (A * B) pure (curryᶜ A B pure pure f) (fstᶜ A B pure)) (sndᶜ A B pure)) → GOAL
       goA (AV.arms _ dpr _ Ppr) = goB (AV.armsLL (inj₁ refl) dpr)
         where
           rpr = resR base Ppr
-          goB : AV.Arms dpr (composeᶜ (A * B) pure (curryᶜ A B pure pure f) (fstᶜ A B pure)) (sndᶜ A B pure) → _
+          goB : AV.Arms dpr (composeᶜ (A * B) pure (curryᶜ A B pure pure f) (fstᶜ A B pure)) (sndᶜ A B pure) → GOAL
           goB (AV.arms dcm _ Pcm _) = goC (AV.armsLL (inj₂ refl) dcm)
             where
               rcm = resR rpr Pcm
-              goC : AV.Arms dcm (curryᶜ A B pure pure f) (fstᶜ A B pure) → _
+              goC : AV.Arms dcm (curryᶜ A B pure pure f) (fstᶜ A B pure) → GOAL
               goC (AV.arms dcu _ Pcu _) = goD (AV.armL1 dcu)
                 where
                   rcu = resR rcm Pcu
-                  goD : AV.Arm1 dcu f → _
+                  goD : AV.Arm1 dcu f → GOAL
                   goD (AV.arm1 dfa Pfa) with ty-unique dfa pf
                   ... | refl with ty-unique dcu (curryD dfa)
                   ... | refl with ty-unique dcm (composeD dcu (fstD′ A B pure))
@@ -459,25 +465,26 @@ module _ {m : ℕ} {Δ : KCtx m} where
       module AV = ArmsV δ sd σ r γ sγ
       BC = B ⇒[ mk-kind Many pure ] C
       T  = A ⇒[ mk-kind Many pure ] BC
+      GOAL = SameM π₀ (T ⟨ σ ⟩) (⟦ d ⟧ δ σ r γ) (⟦ d′ ⟧ δ σ r γ)
       r₀ = resR base (zero⊑ Ψ)
       e₀ = restrict σ (zero⊑ Ψ) γ
       fstv = ⟦ fstD′ {Γ = Γ} A B pure ⟧ δ σ r e₀
       sndv = ⟦ sndD′ {Γ = Γ} A B pure ⟧ δ σ r e₀
       apv  = ⟦ applyD {Γ = Γ} B C ⟧ δ σ r (restrict σ (zero⊑ω Ψ) γ)
       rA = resR base (zero⊑ω Ψ)
-      goA : AV.Arm1 d (composeᶜ (A * B) pure (applyᶜ B C) (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure))) → _
+      goA : AV.Arm1 d (composeᶜ (A * B) pure (applyᶜ B C) (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure))) → GOAL
       goA (AV.arm1 dce Pce) = goB (AV.armsLL (inj₂ refl) dce)
         where
           rce = resR base Pce
-          goB : AV.Arms dce (applyᶜ B C) (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure)) → _
+          goB : AV.Arms dce (applyᶜ B C) (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure)) → GOAL
           goB (AV.arms _ dpr _ Ppr) = goC (AV.armsLL (inj₁ refl) dpr)
             where
               rpr = resR rce Ppr
-              goC : AV.Arms dpr (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure) → _
+              goC : AV.Arms dpr (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure) → GOAL
               goC (AV.arms dcm _ Pcm _) = goD (AV.armsLL (inj₂ refl) dcm)
                 where
                   rcm = resR rpr Pcm
-                  goD : AV.Arms dcm h (fstᶜ A B pure) → _
+                  goD : AV.Arms dcm h (fstᶜ A B pure) → GOAL
                   goD (AV.arms dh _ Ph _) with ty-unique dh ph
                   ... | refl with ty-unique dcm (composeD dh (fstD′ A B pure))
                   ... | refl with ty-unique dpr (pairD dcm (sndD′ A B pure))
