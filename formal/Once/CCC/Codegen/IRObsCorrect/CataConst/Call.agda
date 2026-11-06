@@ -442,27 +442,30 @@ module CataCallC {FS : FrameSemantics} where
              hr3)))))))))
 
     ------------------------------------------------------------------
-    -- THE RUN, silent, and what it leaves alone.
+    -- THE RUN, silent, and what it leaves alone. Every link names its
+    -- states (`{prog} {from} {k} {to}`): left as metas, they are solved
+    -- through `SRun`'s log fact, which reduces the machine state — one link
+    -- after `do-save-closure` took 35 s that way, 40 ms pinned (plan 0.144).
     ------------------------------------------------------------------
     runA : SRun prog 6 σ w6
     runA =
-      s-at w1 (nh0 , span 0 _ refl) (HeadOK.step hd) (HeadOK.ev hd) (HeadOK.lf hd) (
-      s-at w2 (nh1 , span 1 _ refl) refl refl tt (
-      s-at w3 (nh2 , span 2 _ refl) refl refl tt (
-      s-at w4 (nh3 , span 3 _ refl) refl refl tt (
-      s-at w5 (nh4 , span 4 _ refl) refl refl tt (
-      s-at w6 (nh5 , span 5 _ refl) refl refl tt s-nil)))))
+      s-at {prog} {σ} {5} {w6} w1 (nh0 , span 0 _ refl) (HeadOK.step hd) (HeadOK.ev hd) (HeadOK.lf hd) (
+      s-at {prog} {w1} {4} {w6} w2 (nh1 , span 1 _ refl) refl refl tt (
+      s-at {prog} {w2} {3} {w6} w3 (nh2 , span 2 _ refl) refl refl tt (
+      s-at {prog} {w3} {2} {w6} w4 (nh3 , span 3 _ refl) refl refl tt (
+      s-at {prog} {w4} {1} {w6} w5 (nh4 , span 4 _ refl) refl refl tt (
+      s-at {prog} {w5} {0} {w6} w6 (nh5 , span 5 _ refl) refl refl tt s-nil)))))
 
     runB : SRun prog 8 w6 w14
     runB =
-      s-at w7 (nh6 , span 6 _ refl) refl refl tt (
-      s-at w8 (nh7 , span 7 _ refl) refl refl tt (
-      s-at w9 (nh8 , span 8 _ refl) refl refl tt (
-      s-at w10 (nh9 , span 9 _ refl) refl refl tt (
-      s-at w11 (nh10 , span 10 _ refl) refl refl tt (
-      s-at w12 (nh11 , span 11 _ refl) refl refl tt (
-      s-at w13 (nh11 , span 12 _ refl) refl refl tt (
-      s-at w14 (nh13 , span 13 _ refl) refl refl tt s-nil)))))))
+      s-at {prog} {w6} {7} {w14} w7 (nh6 , span 6 _ refl) refl refl tt (
+      s-at {prog} {w7} {6} {w14} w8 (nh7 , span 7 _ refl) refl refl tt (
+      s-at {prog} {w8} {5} {w14} w9 (nh8 , span 8 _ refl) refl refl tt (
+      s-at {prog} {w9} {4} {w14} w10 (nh9 , span 9 _ refl) refl refl tt (
+      s-at {prog} {w10} {3} {w14} w11 (nh10 , span 10 _ refl) refl refl tt (
+      s-at {prog} {w11} {2} {w14} w12 (nh11 , span 11 _ refl) refl refl tt (
+      s-at {prog} {w12} {1} {w14} w13 (nh11 , span 12 _ refl) refl refl tt (
+      s-at {prog} {w13} {0} {w14} w14 (nh13 , span 13 _ refl) refl refl tt s-nil)))))))
 
     runK : SRun prog 14 σ w14
     runK = s-++ {prog} {6} {8} {σ} {w6} {w14} runA runB
