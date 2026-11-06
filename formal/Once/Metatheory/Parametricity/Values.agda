@@ -39,6 +39,7 @@ open import Once.Spec.Core.Syntax using (Prim; primDom; primCod;
   p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-lt; p-le; p-gt; p-ge; p-eq; p-ne; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toB; fromB; toL; fromL; conv)
+open import Once.Spec.Boundary using (readAt)
 open import Once.Spec.Equivalence Σ using (Rel; RelF; RelSub)
 open import Once.Spec.Observation Σ using (Model; module Model)
 open import Once.Spec.Trace using (returned≈; halted≈)
@@ -144,24 +145,27 @@ module _ {m : ℕ} {σ σ′ : TySub m 0} (ρ : RelSub σ σ′) where
   fromB-rel (a S.+ b) (inj₂ y) = fromB-rel b y
 
   private
-    valueRel : ∀ {c a q b} (mem : (c ∶ value a q b) ∈ Σ) (mo : Model) {u u′} → u ≡ u′
-             → Rel ⌜ b ⌝ ρ (fromB σ b (Model.valueᵐ mo mem u)) (fromB σ′ b (Model.valueᵐ mo mem u′))
-    valueRel {b = b} mem mo refl = fromB-rel b _
+    -- D396: a value from the world is read at the target (`readAt`), the same
+    -- way at both instances
+    valueRel : ∀ {c a q b} fmt (mem : (c ∶ value a q b) ∈ Σ) (mo : Model) {u u′} → u ≡ u′
+             → Rel ⌜ b ⌝ ρ (fromB σ b (readAt fmt b (Model.valueᵐ mo mem u))) (fromB σ′ b (readAt fmt b (Model.valueᵐ mo mem u′)))
+    valueRel {b = b} fmt mem mo refl = fromB-rel b _
 
-    opRel : ∀ {c a q b} (mem : (c ∶ operation a q b) ∈ Σ) {v v′} → v ≡ v′
-          → RC act act (Rel ⌜ b ⌝ ρ) (performT (call (op mem) v (fromB σ b))) (performT (call (op mem) v′ (fromB σ′ b)))
-    opRel {b = b} mem refl = rc (callRel (fromB-rel b))
+    opRel : ∀ {c a q b} fmt (mem : (c ∶ operation a q b) ∈ Σ) {v v′} → v ≡ v′
+          → RC act act (Rel ⌜ b ⌝ ρ) (performT (call (op mem) v (λ w → fromB σ b (readAt fmt b w))))
+                                     (performT (call (op mem) v′ (λ w → fromB σ′ b (readAt fmt b w))))
+    opRel {b = b} fmt mem refl = rc (callRel (λ w → fromB-rel b (readAt fmt b w)))
 
   -- An operation or a value of the signature.
   sigopRel : ∀ {fmt s S} c t (mem : (c ∶ t) ∈ Σ) (mo : Model)
            → Rel ⌜ t ⌝ᵈ ρ (Meaning.sigopᵛ Σ fmt {s} S σ c t mem mo) (Meaning.sigopᵛ Σ fmt {s} S σ′ c t mem mo)
   sigopRel c (constant b) mem mo = fromB-rel b _
   sigopRel c (value a Zero b) mem mo = obsRC (rcPure (fromB-rel b _))
-  sigopRel c (value a One  b) mem mo x x′ s = obsRC (rcPure (valueRel mem mo (relB→ a s)))
-  sigopRel c (value a Many b) mem mo x x′ s = obsRC (rcPure (valueRel mem mo (relB→ a s)))
-  sigopRel c (operation a Zero b) mem mo = obsRC (opRel mem refl)
-  sigopRel c (operation a One  b) mem mo x x′ s = obsRC (opRel mem (relB→ a s))
-  sigopRel c (operation a Many b) mem mo x x′ s = obsRC (opRel mem (relB→ a s))
+  sigopRel {fmt} c (value a One  b) mem mo x x′ s = obsRC (rcPure (valueRel fmt mem mo (relB→ a s)))
+  sigopRel {fmt} c (value a Many b) mem mo x x′ s = obsRC (rcPure (valueRel fmt mem mo (relB→ a s)))
+  sigopRel {fmt} c (operation a Zero b) mem mo = obsRC (opRel fmt mem refl)
+  sigopRel {fmt} c (operation a One  b) mem mo x x′ s = obsRC (opRel fmt mem (relB→ a s))
+  sigopRel {fmt} c (operation a Many b) mem mo x x′ s = obsRC (opRel fmt mem (relB→ a s))
 
   -- An arithmetic primitive: equal arguments, equal results.
   private
