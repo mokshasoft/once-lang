@@ -8,10 +8,10 @@
 --
 -- The clusters the clause is made of live under `Pair/`:
 --   * `Pair.Chain` — the run's states: the prologue (`PairChain`), what
---     follows `f` (`PairChainF`) and what follows `g` (`PairChainG`);
+--     follows `f` (`PairChainF`) and what follows `g` (`PairChainG`), and
+--     the five-segment event splice (`PairTrace`, `PairChainG.RUN-events`);
 --   * `Pair.Place` — the heap node and `ResultPlace`;
---   * `Pair.Pres`  — the D206/D208/D210 preservation quartet and the
---     five-segment event splice;
+--   * `Pair.Pres`  — the D206/D208/D210 preservation quartet;
 --   * `Pair.Proof` — the clause's binders and `f`'s half (`PairProof`).
 -- This module is the rest of the WIRING: `g`'s half and the dispatch.
 --
@@ -32,9 +32,19 @@
 --     `ValueRealized` field and nowhere in the tree; derivable from `bf-mono`
 --     alone, at a synthetic reference one below the caller's frontier.
 --
--- WHY SPLIT. Each file must check within the 30 s per-module cap, and one
--- pass over all the clusters plus the fifteen-field record does not; split,
--- each cluster is read back from its interface.
+-- WHY SPLIT. Each file must check within the per-module limit (plan 0.144:
+-- 50 s and 3 GB), and one pass over all the clusters plus the fifteen-field
+-- record does not; split, each cluster is read back from its interface.
+--
+-- WHAT KEEPS IT FAST (plan 0.144, 739 s → 48 s; profile per definition):
+--   * the settle state is met through the OPAQUE `NineSteps.u10ᵒ`
+--     (`settle≡place`, `settle≡pres`) and the clusters' facts are moved along
+--     those two equalities by `subst`; met directly, the three families'
+--     spellings of it are identified by evaluating the nine rows (~100 s each);
+--   * every implicit that would be solved against a computed term is pinned
+--     (`field-place`'s `{prog = prog}`: >20 min unpinned);
+--   * facts about `PCG.RUN` are stated in `Pair.Chain`, where `RUN`'s pieces
+--     are its own names (`RUN-events`; the straight segments' `[]`s).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)

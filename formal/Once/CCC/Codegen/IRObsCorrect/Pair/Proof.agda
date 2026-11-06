@@ -9,7 +9,7 @@
 -- `Pair.agda` proves the four clusters the clause is made of — `PairChain`
 -- (the five-segment run and the seven control fields), `PairPlace` (the heap
 -- node and `ResultPlace`), `PairPres` (the D206/D208/D210 preservation
--- quartet) and `PairTrace` (the two-bind trace split). This module is the
+-- quartet) and `PairTrace` (the two-bind trace split, in `Pair.Chain`). This module is the
 -- fifteenth thing: the WIRING between them.
 --
 -- What is written here and in none of the clusters:

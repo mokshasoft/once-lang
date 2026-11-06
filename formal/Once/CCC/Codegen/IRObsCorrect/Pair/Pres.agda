@@ -4,7 +4,8 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.IRObsCorrect.Pair.Pres
 --
--- D207: what the pair's run LEAVES ALONE, and the five-segment event splice.
+-- D207: what the pair's run LEAVES ALONE. (The five-segment event splice,
+-- `PairTrace`, moved to `Pair.Chain` beside the run it splits: plan 0.144.)
 -- Split from `Pair` for the per-module check cap.
 ------------------------------------------------------------------------
 
