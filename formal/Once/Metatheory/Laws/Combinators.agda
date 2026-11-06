@@ -55,12 +55,12 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
         → ValAt σ γ (suc (suc zero)) fv′ → ValAt σ γ (suc zero) gv′ → ValAt σ γ zero c′
         → (dt : Δ ⊩ _ ⊢[ Ψ ] pair (app (var (suc (suc zero))) (var zero)) (app (var (suc zero)) (var zero)) ∷ A * B ! πt)
         → Related (Same ((A * B) ⟨ σ ⟩)) (toT∞ πt (⟦ dt ⟧ δ σ r γ)) (toT∞ π (pairᵛ π fv′ gv′ c′))
-  bodyP {A = A} {B} {C} {π} γ sγ {fv′} {gv′} {c′} h2 h1 h0 dt = goP (WP.viewPair dt W.base)
+  bodyP {A = A} {B} {C} {π} {πt} γ sγ {fv′} {gv′} {c′} h2 h1 h0 dt = goP (WP.viewPair dt W.base)
     where
       module W  = Views δ sd σ r γ sγ
       module WF = FunV δ sd σ r γ sγ
       module WP = ProdV δ sd σ r γ sγ
-      goP : WP.PairView dt γ → _
+      goP : WP.PairView dt γ → Related (Same ((A * B) ⟨ σ ⟩)) (toT∞ πt (⟦ dt ⟧ δ σ r γ)) (toT∞ π (pairᵛ π fv′ gv′ c′))
       goP (WP.pairView da db {ea} {eb} ra rb eqP) =
         W.~trans {A * B} eqP
           (≈-Relatedʳ NORM
@@ -87,12 +87,12 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
        → (dl : Δ ⊩ _ ⊢[ Ψ ] lam C Many π (pair (app (var (suc (suc zero))) (var zero)) (app (var (suc zero)) (var zero)))
                  ∷ C ⇒[ mk-kind Many π ] (A * B) ! πl)
        → Related (Same ((C ⇒[ mk-kind Many π ] (A * B)) ⟨ σ ⟩)) (toT∞ πl (⟦ dl ⟧ δ σ r γ)) (return∞ (pairᵛ π fv′ gv′))
-  lamP {Γ = Γ} {A = A} {B} {C} {π} γ sγ {fv′} {gv′} h1 h0 dl = goL (WF.viewLam dl W.base)
+  lamP {Γ = Γ} {A = A} {B} {C} {π} {πl} γ sγ {fv′} {gv′} h1 h0 dl = goL (WF.viewLam dl W.base)
     where
       module W  = Views δ sd σ r γ sγ
       module WF = FunV δ sd σ r γ sγ
       Γ′ = Γ ▸ (C ⇒[ mk-kind Many π ] A) ▸ (C ⇒[ mk-kind Many π ] B)
-      goL : WF.LamView dl γ → _
+      goL : WF.LamView dl γ → Related (Same ((C ⇒[ mk-kind Many π ] (A * B)) ⟨ σ ⟩)) (toT∞ πl (⟦ dl ⟧ δ σ r γ)) (return∞ (pairᵛ π fv′ gv′))
       goL (WF.lamView {q′ = q′} {Ψ₀} le dt {e₀} (W.res P₁ refl) refl eqL) =
         W.~trans {C ⇒[ mk-kind Many π ] (A * B)} eqL (returnRel SAME)
         where
@@ -114,7 +114,7 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
           → (dg : Δ ⊩ Γ ⊢[ Ψg ] g ∷ C ⇒[ mk-kind Many π ] B ! πg) {eg : Env σ Γ Ψg} → Views.Res δ sd σ r γ sγ eg
           → Related (Same ((C ⇒[ mk-kind Many π ] (A * B)) ⟨ σ ⟩)) (toT∞ π₀ (⟦ d ⟧ δ σ r γa))
               (toT∞ πf (⟦ df ⟧ δ σ r ef) >>=∞ λ fv → toT∞ πg (⟦ dg ⟧ δ σ r eg) >>=∞ λ gv → return∞ (pairᵛ π fv gv))
-  pairSem {Γ = Γ} γ sγ {A = A} {B} {C} {π} d {γa} ra df {ef} rf dg {eg} rg = go (W.viewLet d ra)
+  pairSem {Γ = Γ} γ sγ {A = A} {B} {C} {π} {π₀} {πf} {πg} d {γa} ra df {ef} rf dg {eg} rg = go (W.viewLet d ra)
     where
       module W  = Views δ sd σ r γ sγ
       module WF = FunV δ sd σ r γ sγ
@@ -122,7 +122,7 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
       F = C ⇒[ mk-kind Many π ] A
       G = C ⇒[ mk-kind Many π ] B
 
-      go : W.LetView d γa → _
+      go : W.LetView d γa → Related (Same ((C ⇒[ mk-kind Many π ] (A * B)) ⟨ σ ⟩)) (toT∞ π₀ (⟦ d ⟧ δ σ r γa)) (toT∞ πf (⟦ df ⟧ δ σ r ef) >>=∞ λ fv → toT∞ πg (⟦ dg ⟧ δ σ r eg) >>=∞ λ gv → return∞ (pairᵛ π fv gv))
       go (W.letView {Ψ₂ = Ψb} de db {eb} rb (ee , re , eq1)) with ty-unique de df
       ... | refl = W.~trans {T} eq1 (bindRel (runs (W.fl de df re rf)) (λ {fv} {fv′} sf → inner sf))
         where
@@ -132,7 +132,7 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
             where
               se₁ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψb} {A = F} One (W.sameEnvOf rb) (sameRefl (F ⟨ σ ⟩) sf)
               module W1 = Views δ sd σ r {Γ = Γ ▸ F} {Ψ = One ∷ Ψb} (eb , fv) se₁
-              goW : W1.LetView db (eb , fv) → _
+              goW : W1.LetView db (eb , fv) → W._~_ {T} (W.⟪ db ⟫▸ eb fv) (W.⟪ dg ⟫ eg >>=∞ λ gv → return∞ (pairᵛ π fv′ gv))
               goW (W1.letView {Ψ₁ = _ ∷ _} {Ψ₂ = Ψl} dwg dl {eb₂} (W1.res P₂ refl) (eg′ , W1.res Pg refl , eq2)) with ty-unique (wk-⊢ dg) dwg
               ... | refl = W.~trans {T} eq2 (bindRel (WF.wkRelR dwg rb fv Pg dg rg) (λ {gv} {gv′} sg →
                              lamP (e₂ , gv) (se₂ sg) (valAt▸ σ {Γ = Γ ▸ F} {A = G} {q = One} P₂ {γ = eb , fv} gv (valAt0 σ {Γ = Γ} {A = F} One {γ = eb} sf))
@@ -151,12 +151,12 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
         → ValAt σ γ (suc (suc zero)) fv′ → ValAt σ γ (suc zero) a′ → ValAt σ γ zero b′
         → (dt : Δ ⊩ _ ⊢[ Ψ ] app (var (suc (suc zero))) (pair (var (suc zero)) (var zero)) ∷ C ! πt)
         → Related (Same (C ⟨ σ ⟩)) (toT∞ πt (⟦ dt ⟧ δ σ r γ)) (return∞ (fv′ (a′ , b′)))
-  bodyC {A = A} {B} {C} γ sγ {fv′} {a′} {b′} h2 h1 h0 dt = goA (WF.viewApp dt W.base)
+  bodyC {A = A} {B} {C} {πt} γ sγ {fv′} {a′} {b′} h2 h1 h0 dt = goA (WF.viewApp dt W.base)
     where
       module W  = Views δ sd σ r γ sγ
       module WF = FunV δ sd σ r γ sγ
       module WP = ProdV δ sd σ r γ sγ
-      goA : WF.AppView dt γ → _
+      goA : WF.AppView dt γ → Related (Same (C ⟨ σ ⟩)) (toT∞ πt (⟦ dt ⟧ δ σ r γ)) (return∞ (fv′ (a′ , b′)))
       goA (WF.appView df₃ dx₃ {ef₃} rf₃ sem₃) with varTy df₃
       ... | refl = ≈-Relatedʳ (≈-sym (idˡ (a′ , b′) (λ p → return∞ (fv′ p))))
                      (WF.appMany~ df₃ dx₃ sem₃ (readAt γ sγ df₃ rf₃ h2) (λ rx → pairV (WP.viewPair dx₃ rx)))
@@ -174,12 +174,12 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
         → (dl : Δ ⊩ _ ⊢[ Ψ ] lam B Many pure (app (var (suc (suc zero))) (pair (var (suc zero)) (var zero)))
                   ∷ B ⇒[ mk-kind Many pure ] C ! πl)
         → Related (Same ((B ⇒[ mk-kind Many pure ] C) ⟨ σ ⟩)) (toT∞ πl (⟦ dl ⟧ δ σ r γ)) (return∞ (λ b → fv′ (a′ , b)))
-  lamC2 {Γ = Γ} {A = A} {B} {C} γ sγ {fv′} {a′} h1 h0 dl = goL (WF.viewLam dl W.base)
+  lamC2 {Γ = Γ} {A = A} {B} {C} {πl} γ sγ {fv′} {a′} h1 h0 dl = goL (WF.viewLam dl W.base)
     where
       module W  = Views δ sd σ r γ sγ
       module WF = FunV δ sd σ r γ sγ
       Γ′ = Γ ▸ ((A * B) ⇒[ mk-kind Many pure ] C) ▸ A
-      goL : WF.LamView dl γ → _
+      goL : WF.LamView dl γ → Related (Same ((B ⇒[ mk-kind Many pure ] C) ⟨ σ ⟩)) (toT∞ πl (⟦ dl ⟧ δ σ r γ)) (return∞ (λ b → fv′ (a′ , b)))
       goL (WF.lamView {q′ = q′} {Ψ₀} le dt {e₀} (W.res P₁ refl) refl eqL) =
         W.~trans {B ⇒[ mk-kind Many pure ] C} eqL (returnRel SAME)
         where
@@ -200,12 +200,12 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
                   ∷ A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C) ! πl)
         → Related (Same ((A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)) ⟨ σ ⟩)) (toT∞ πl (⟦ dl ⟧ δ σ r γ))
                   (return∞ (λ a b → fv′ (a , b)))
-  lamC1 {Γ = Γ} {A = A} {B} {C} γ sγ {fv′} h0 dl = goL (WF.viewLam dl W.base)
+  lamC1 {Γ = Γ} {A = A} {B} {C} {πl} γ sγ {fv′} h0 dl = goL (WF.viewLam dl W.base)
     where
       module W  = Views δ sd σ r γ sγ
       module WF = FunV δ sd σ r γ sγ
       Γ′ = Γ ▸ ((A * B) ⇒[ mk-kind Many pure ] C)
-      goL : WF.LamView dl γ → _
+      goL : WF.LamView dl γ → Related (Same ((A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)) ⟨ σ ⟩)) (toT∞ πl (⟦ dl ⟧ δ σ r γ)) (return∞ (λ a b → fv′ (a , b)))
       goL (WF.lamView {q′ = q′} {Ψ₀} le dt {e₀} (W.res P₁ refl) refl eqL) =
         W.~trans {A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)} eqL (returnRel SAME)
         where
@@ -225,11 +225,11 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
            → (df : Δ ⊩ Γ ⊢[ Ψf ] f ∷ (A * B) ⇒[ mk-kind Many pure ] C ! πf) {ef : Env σ Γ Ψf} → Views.Res δ sd σ r γ sγ ef
            → Related (Same ((A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)) ⟨ σ ⟩)) (toT∞ π₀ (⟦ d ⟧ δ σ r γa))
                (toT∞ πf (⟦ df ⟧ δ σ r ef) >>=∞ λ fv → return∞ (λ a b → fv (a , b)))
-  currySem {Γ = Γ} γ sγ {A = A} {B} {C} d {γa} ra df {ef} rf = go (W.viewLet d ra)
+  currySem {Γ = Γ} γ sγ {A = A} {B} {C} {π₀} {πf} d {γa} ra df {ef} rf = go (W.viewLet d ra)
     where
       module W = Views δ sd σ r γ sγ
       F = (A * B) ⇒[ mk-kind Many pure ] C
-      go : W.LetView d γa → _
+      go : W.LetView d γa → Related (Same ((A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)) ⟨ σ ⟩)) (toT∞ π₀ (⟦ d ⟧ δ σ r γa)) (toT∞ πf (⟦ df ⟧ δ σ r ef) >>=∞ λ fv → return∞ (λ a b → fv (a , b)))
       go (W.letView {Ψ₂ = Ψb} de db {eb} rb (ee , re , eq1)) with ty-unique de df
       ... | refl = W.~trans {A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)} eq1
                      (bindRel (runs (W.fl de df re rf)) (λ {fv} {fv′} sf →
@@ -247,11 +247,11 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
           → ValAt σ γ (suc (suc (suc zero))) hv′ → ValAt σ γ zero x′
           → (dt : Δ ⊩ _ ⊢[ Ψ ] app (var (suc (suc (suc zero)))) (var zero) ∷ C ! πt)
           → Related (Same (C ⟨ σ ⟩)) (toT∞ πt (⟦ dt ⟧ δ σ r γ)) (toT∞ π (hv′ x′))
-  armL {A = A} {B} {C} {π} γ sγ {hv′} {x′} hh h0 dt = goA (WF.viewApp dt W.base)
+  armL {A = A} {B} {C} {π} {πt} γ sγ {hv′} {x′} hh h0 dt = goA (WF.viewApp dt W.base)
     where
       module W  = Views δ sd σ r γ sγ
       module WF = FunV δ sd σ r γ sγ
-      goA : WF.AppView dt γ → _
+      goA : WF.AppView dt γ → Related (Same (C ⟨ σ ⟩)) (toT∞ πt (⟦ dt ⟧ δ σ r γ)) (toT∞ π (hv′ x′))
       goA (WF.appView df₃ dx₃ {ef₃} rf₃ sem₃) with varTy df₃
       ... | refl = ≈-Relatedʳ (≈-sym (idˡ x′ (λ a → toT∞ π (hv′ a))))
                      (WF.appMany~ df₃ dx₃ sem₃ (readAt γ sγ df₃ rf₃ hh) (λ rx → readAt γ sγ dx₃ rx h0))
@@ -263,11 +263,11 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
           → ValAt σ γ (suc (suc zero)) hv′ → ValAt σ γ zero x′
           → (dt : Δ ⊩ _ ⊢[ Ψ ] app (var (suc (suc zero))) (var zero) ∷ C ! πt)
           → Related (Same (C ⟨ σ ⟩)) (toT∞ πt (⟦ dt ⟧ δ σ r γ)) (toT∞ π (hv′ x′))
-  armR {A = A} {B} {C} {π} γ sγ {hv′} {x′} hh h0 dt = goA (WF.viewApp dt W.base)
+  armR {A = A} {B} {C} {π} {πt} γ sγ {hv′} {x′} hh h0 dt = goA (WF.viewApp dt W.base)
     where
       module W  = Views δ sd σ r γ sγ
       module WF = FunV δ sd σ r γ sγ
-      goA : WF.AppView dt γ → _
+      goA : WF.AppView dt γ → Related (Same (C ⟨ σ ⟩)) (toT∞ πt (⟦ dt ⟧ δ σ r γ)) (toT∞ π (hv′ x′))
       goA (WF.appView df₃ dx₃ {ef₃} rf₃ sem₃) with varTy df₃
       ... | refl = ≈-Relatedʳ (≈-sym (idˡ x′ (λ a → toT∞ π (hv′ a))))
                      (WF.appMany~ df₃ dx₃ sem₃ (readAt γ sγ df₃ rf₃ hh) (λ rx → readAt γ sγ dx₃ rx h0))
@@ -279,11 +279,11 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
         → (dt : Δ ⊩ _ ⊢[ Ψ ] case Many Many (var zero) (app (var (suc (suc (suc zero)))) (var zero))
                                                        (app (var (suc (suc zero))) (var zero)) ∷ C ! πt)
         → Related (Same (C ⟨ σ ⟩)) (toT∞ πt (⟦ dt ⟧ δ σ r γ)) (toT∞ π ([ fv′ , gv′ ]′ x′))
-  bodyK {Γ = Γ} {A = A} {B} {C} {π} γ sγ {fv′} {gv′} {x′} h2 h1 h0 dt = goC (W.viewCase dt W.base)
+  bodyK {Γ = Γ} {A = A} {B} {C} {π} {πt} γ sγ {fv′} {gv′} {x′} h2 h1 h0 dt = goC (W.viewCase dt W.base)
     where
       module W = Views δ sd σ r γ sγ
       Γ′ = Γ ▸ (A ⇒[ mk-kind Many π ] C) ▸ (B ⇒[ mk-kind Many π ] C) ▸ (A + B)
-      goC : W.CaseView dt γ → _
+      goC : W.CaseView dt γ → Related (Same (C ⟨ σ ⟩)) (toT∞ πt (⟦ dt ⟧ δ σ r γ)) (toT∞ π ([ fv′ , gv′ ]′ x′))
       goC (W.caseView {Ψc = Ψc} ds dl dr {es} {ec} rs (W.res Pc refl) eqC) with varTy ds
       ... | refl = W.~trans {C} eqC (≈-Relatedʳ (≈-sym (idˡ x′ (λ z → toT∞ π ([ fv′ , gv′ ]′ z))))
                      (bindRel (readAt γ sγ ds rs h0) (λ {x} {y} sxy → arm {x} {y} sxy)))
@@ -307,12 +307,12 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
                                                                      (app (var (suc (suc zero))) (var zero)))
                  ∷ (A + B) ⇒[ mk-kind Many π ] C ! πl)
        → Related (Same (((A + B) ⇒[ mk-kind Many π ] C) ⟨ σ ⟩)) (toT∞ πl (⟦ dl ⟧ δ σ r γ)) (return∞ [ fv′ , gv′ ]′)
-  lamK {Γ = Γ} {A = A} {B} {C} {π} γ sγ {fv′} {gv′} h1 h0 dl = goL (WF.viewLam dl W.base)
+  lamK {Γ = Γ} {A = A} {B} {C} {π} {πl} γ sγ {fv′} {gv′} h1 h0 dl = goL (WF.viewLam dl W.base)
     where
       module W  = Views δ sd σ r γ sγ
       module WF = FunV δ sd σ r γ sγ
       Γ′ = Γ ▸ (A ⇒[ mk-kind Many π ] C) ▸ (B ⇒[ mk-kind Many π ] C)
-      goL : WF.LamView dl γ → _
+      goL : WF.LamView dl γ → Related (Same (((A + B) ⇒[ mk-kind Many π ] C) ⟨ σ ⟩)) (toT∞ πl (⟦ dl ⟧ δ σ r γ)) (return∞ [ fv′ , gv′ ]′)
       goL (WF.lamView {q′ = q′} {Ψ₀} le dt {e₀} (W.res P₁ refl) refl eqL) =
         W.~trans {(A + B) ⇒[ mk-kind Many π ] C} eqL (returnRel SAME)
         where
@@ -334,7 +334,7 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
           → (dg : Δ ⊩ Γ ⊢[ Ψg ] g ∷ B ⇒[ mk-kind Many π ] C ! πg) {eg : Env σ Γ Ψg} → Views.Res δ sd σ r γ sγ eg
           → Related (Same (((A + B) ⇒[ mk-kind Many π ] C) ⟨ σ ⟩)) (toT∞ π₀ (⟦ d ⟧ δ σ r γa))
               (toT∞ πf (⟦ df ⟧ δ σ r ef) >>=∞ λ fv → toT∞ πg (⟦ dg ⟧ δ σ r eg) >>=∞ λ gv → return∞ [ fv , gv ]′)
-  caseSem {Γ = Γ} γ sγ {A = A} {B} {C} {π} d {γa} ra df {ef} rf dg {eg} rg = go (W.viewLet d ra)
+  caseSem {Γ = Γ} γ sγ {A = A} {B} {C} {π} {π₀} {πf} {πg} d {γa} ra df {ef} rf dg {eg} rg = go (W.viewLet d ra)
     where
       module W  = Views δ sd σ r γ sγ
       module WF = FunV δ sd σ r γ sγ
@@ -342,7 +342,7 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
       F = A ⇒[ mk-kind Many π ] C
       G = B ⇒[ mk-kind Many π ] C
 
-      go : W.LetView d γa → _
+      go : W.LetView d γa → Related (Same (((A + B) ⇒[ mk-kind Many π ] C) ⟨ σ ⟩)) (toT∞ π₀ (⟦ d ⟧ δ σ r γa)) (toT∞ πf (⟦ df ⟧ δ σ r ef) >>=∞ λ fv → toT∞ πg (⟦ dg ⟧ δ σ r eg) >>=∞ λ gv → return∞ [ fv , gv ]′)
       go (W.letView {Ψ₂ = Ψb} de db {eb} rb (ee , re , eq1)) with ty-unique de df
       ... | refl = W.~trans {T} eq1 (bindRel (runs (W.fl de df re rf)) (λ {fv} {fv′} sf → inner sf))
         where
@@ -352,7 +352,7 @@ module CombV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
             where
               se₁ = sameEnv▸ σ {Γ = Γ} {Ψ = Ψb} {A = F} One (W.sameEnvOf rb) (sameRefl (F ⟨ σ ⟩) sf)
               module W1 = Views δ sd σ r {Γ = Γ ▸ F} {Ψ = One ∷ Ψb} (eb , fv) se₁
-              goW : W1.LetView db (eb , fv) → _
+              goW : W1.LetView db (eb , fv) → W._~_ {T} (W.⟪ db ⟫▸ eb fv) (W.⟪ dg ⟫ eg >>=∞ λ gv → return∞ [ fv′ , gv ]′)
               goW (W1.letView {Ψ₁ = _ ∷ _} {Ψ₂ = Ψl} dwg dl {eb₂} (W1.res P₂ refl) (eg′ , W1.res Pg refl , eq2)) with ty-unique (wk-⊢ dg) dwg
               ... | refl = W.~trans {T} eq2 (bindRel (WF.wkRelR dwg rb fv Pg dg rg) (λ {gv} {gv′} sg →
                              lamK (e₂ , gv) (se₂ sg) (valAt▸ σ {Γ = Γ ▸ F} {A = G} {q = One} P₂ {γ = eb , fv} gv (valAt0 σ {Γ = Γ} {A = F} One {γ = eb} sf))
