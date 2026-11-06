@@ -256,8 +256,7 @@ module PairAsm {FS : FrameSemantics} where
               -- `RUN` split by its OWN pieces (`PCG.RUN-*`), not by `Proof`'s
               -- copies of them (plan 0.144, the `context-form-mismatch` pattern).
               ft-run : chain-events PCG.RUN ≡ chain-events PCG.RUN-F ++ chain-events PCG.chainG
-              ft-run = PT.pair-chain-events PCG.RUN-pre PCG.RUN-F PCG.RUN-mid
-                                            PCG.chainG PCG.tail-chain PCG.RUN-pre[] PCG.RUN-mid[] PCG.tail[]
+              ft-run = PCG.RUN-events
 
               ft-calls : chain-events PCG.RUN-F ++ chain-events PCG.chainG ≡ esF ++ esG
               ft-calls = cong₂ _++_ tf tg

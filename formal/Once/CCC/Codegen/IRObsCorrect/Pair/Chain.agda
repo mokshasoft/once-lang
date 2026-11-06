@@ -584,6 +584,81 @@ module PairC {FS : FrameSemantics} where
             read-fst-m1'
 
 
+  ----------------------------------------------------------------------
+  -- THE TRACE HALF's machine side: the five-segment SPLICE.
+  --
+  -- The emitted trace is `pre ++ ft ++ mid ++ gt ++ tail`, and every row
+  -- outside the two sub-IR fragments is a register/memory op, emitting
+  -- nothing — so the pair's events are `f`'s followed by `g`'s. (Plan 0.105:
+  -- the denotation's side is the run of the two binds, `PairAssemble`; the
+  -- budget arithmetic that used to live here is gone with the budget.)
+  ----------------------------------------------------------------------
+  module PairTrace where
+    open import Data.List.Properties using (++-identityʳ)
+
+    pair-chain-events :
+      ∀ {prog : AbstractTrace} {kP kF kM kG kT : ℕ}
+        {e0 s1 s2 s3 s4 : FlatState}
+        (preS  : FlatSteps prog kP e0 s1)
+        (cF    : FlatSteps prog kF s1 s2)
+        (midS  : FlatSteps prog kM s2 s3)
+        (cG    : FlatSteps prog kG s3 s4)
+        {s5 : FlatState}
+        (tailS : FlatSteps prog kT s4 s5)
+      → chain-events preS  ≡ []
+      → chain-events midS  ≡ []
+      → chain-events tailS ≡ []
+      → chain-events (FlatSteps-++ preS (FlatSteps-++ cF (FlatSteps-++ midS (FlatSteps-++ cG tailS))))
+        ≡ chain-events cF ++ chain-events cG
+    pair-chain-events preS cF midS cG tailS pre[] mid[] tail[] =
+      trans (chain-events-++ preS after-pre)
+            (trans (cong (_++ chain-events after-pre) pre[]) ev-after-pre)
+      where
+        after-g = FlatSteps-++ cG tailS
+
+        ev-after-g : chain-events after-g ≡ chain-events cG
+        ev-after-g =
+          trans (chain-events-++ cG tailS)
+                (trans (cong (chain-events cG ++_) tail[])
+                       (++-identityʳ (chain-events cG)))
+
+        after-f = FlatSteps-++ midS after-g
+
+        ev-after-f : chain-events after-f ≡ chain-events cG
+        ev-after-f =
+          trans (chain-events-++ midS after-g)
+                (trans (cong (_++ chain-events after-g) mid[]) ev-after-g)
+
+        after-pre = FlatSteps-++ cF after-f
+
+        ev-after-pre : chain-events after-pre ≡ chain-events cF ++ chain-events cG
+        ev-after-pre =
+          trans (chain-events-++ cF after-f)
+                (cong (chain-events cF ++_) ev-after-f)
+
+    -- The two shorter runs: `g` stopped (no tail), `f` stopped (no mid, no `g`).
+    pair-chain-events-g :
+      ∀ {prog : AbstractTrace} {kP kF kM kG : ℕ} {e0 s1 s2 s3 s4 : FlatState}
+        (preS : FlatSteps prog kP e0 s1) (cF : FlatSteps prog kF s1 s2)
+        (midS : FlatSteps prog kM s2 s3) (cG : FlatSteps prog kG s3 s4)
+      → chain-events preS ≡ [] → chain-events midS ≡ []
+      → chain-events (FlatSteps-++ preS (FlatSteps-++ cF (FlatSteps-++ midS cG)))
+        ≡ chain-events cF ++ chain-events cG
+    pair-chain-events-g preS cF midS cG pre[] mid[] =
+      trans (chain-events-++ preS (FlatSteps-++ cF (FlatSteps-++ midS cG)))
+      (trans (cong (_++ chain-events (FlatSteps-++ cF (FlatSteps-++ midS cG))) pre[])
+      (trans (chain-events-++ cF (FlatSteps-++ midS cG))
+             (cong (chain-events cF ++_)
+                   (trans (chain-events-++ midS cG) (cong (_++ chain-events cG) mid[])))))
+
+    pair-chain-events-f :
+      ∀ {prog : AbstractTrace} {kP kF : ℕ} {e0 s1 s2 : FlatState}
+        (preS : FlatSteps prog kP e0 s1) (cF : FlatSteps prog kF s1 s2)
+      → chain-events preS ≡ []
+      → chain-events (FlatSteps-++ preS cF) ≡ chain-events cF
+    pair-chain-events-f preS cF pre[] =
+      trans (chain-events-++ preS cF) (cong (_++ chain-events cF) pre[])
+
   ------------------------------------------------------------------
   -- `g`'s run.
   ------------------------------------------------------------------
@@ -1002,6 +1077,12 @@ module PairC {FS : FrameSemantics} where
 
     tail[] : chain-events tail-chain ≡ []
     tail[] = refl
+
+    -- `RUN`'s events, split HERE, where `RUN`'s body is literally the splice:
+    -- in `Pair` the same lemma met `PCG.RUN` against the spelled-out splice
+    -- and unfolded `FlatSteps-++` over the step chains (9 s, plan 0.144).
+    RUN-events : chain-events RUN ≡ chain-events RUN-F ++ chain-events chainG
+    RUN-events = PairTrace.pair-chain-events RUN-pre RUN-F RUN-mid chainG tail-chain RUN-pre[] RUN-mid[] tail[]
 
     -- plan 0.119 D5: the pair's control steps cover `f`'s and `g`'s.
     RUN-ctrls : chain-ctrls (VR.run vrf) + chain-ctrls (VR.run vrg) ≤ chain-ctrls RUN
