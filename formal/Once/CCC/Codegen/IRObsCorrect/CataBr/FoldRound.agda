@@ -123,8 +123,6 @@ module CataFoldRoundC {FS : FrameSemantics} where
     bb = FA.T.bb
 
     open Inv prog F E C n c bodyL X sn hc e env-sv
-    module PR = Pre prog wf ub alg n l base span la sn hc e env-sv
-    module BK = Back prog wf alg n l base span la sn hc e env-sv
 
     j : ℕ
     j = 31 + Y
@@ -138,7 +136,7 @@ module CataFoldRoundC {FS : FrameSemantics} where
               (h : HeadAt σ (t ∷ ns) vs) (k : ℕ) where
 
       po : PreOut prog F E C n c bodyL Y sn hc e env-sv σ ns rest L
-      po = PR.Go.out σ t ns vs L rest fq h
+      po = Pre.Go.out prog wf ub alg n l base span la sn hc e env-sv σ t ns vs L rest fq h
       module P = PreOut po
 
       cs : FlatState
@@ -311,7 +309,7 @@ module CataFoldRoundC {FS : FrameSemantics} where
         live-shc : Live (falloc cs) (AtDynamic (sucHL hc))
         live-shc = live-suc (BeforeFrontier.heap-before P.hc-lt)
 
-        bin : BK.BackIn settle ns v rest
+        bin : Back.BackIn prog wf alg n l base span la sn hc e env-sv settle ns v rest
         bin = record
           { nh = nhS ; pc = pcS ; ns0 = ns0S
           ; eval = stack-keep node-tr kpS cfS (slS (suc n)) P.eval
@@ -324,7 +322,7 @@ module CataFoldRoundC {FS : FrameSemantics} where
           ; env = word-tr kpS P.env }
 
         wB : Walk prog n (λ _ → ⊥) settle X (λ τ′ → HeadAt τ′ ns (v ∷ rest))
-        wB = BK.Go.out settle ns v rest bin
+        wB = Back.Go.out prog wf alg n l base span la sn hc e env-sv settle ns v rest bin
 
         tailR : FlatSteps prog (Walk.steps wB) settle (Walk.τ wB)
         tailR = proj₁ (Walk.run wB)
