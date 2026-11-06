@@ -71,8 +71,11 @@ module ResuspIdC {FS : FrameSemantics} where
                (cE : CellAt {prog = prog} b E e pl (floc σ))
                (oA : OutAt′ {A} b y (floc σ))
                where
-      open ResuspIdRowsC.RId {FS} {F} wf {E} {A} coalg e prog lbl-n R mk-child
-      open Run n l σ y pl span nh0 lk ns0 n≥1 sl0 b hb lpl cE oA
+      -- Only what the run and the record use: an unrestricted application copies
+      -- every row fact into this module (1.3 GB live; plan 0.144).
+      open ResuspIdRowsC.RId.Run {FS} {F} wf {E} {A} coalg e prog lbl-n R mk-child
+             n l σ y pl span nh0 lk ns0 n≥1 sl0 b hb lpl cE oA
+        using (t1; t2; t3; t4; t5; t6; t7; t8; t9; t10; nh1; nh2; nh3; nh4; nh5; nh6; nh7; nh8; nh9; nh10; nhu2; nhu3; nhu4; nhu5; nhu6; nhu7; nhu8; nhu9; nhu10; outu10; child; p-s; shl; seg; module NSP)
       open NSP using (u2; u3; u4; u5; u6; u7; u8; u9; u10)
 
       -- The 19-row run in three nested pieces, each with its type (rows
