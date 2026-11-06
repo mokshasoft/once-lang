@@ -37,7 +37,7 @@ open import Once.CCC.Codegen.IRObsCorrect.SigOp o tbl using (module SigOpC)
 import Once.Type.Core as SpecTy
 import Once.Spec.Type as SpecTy
 open import Function using () renaming (id to idᶠ)
-open import Once.Denotation.ValueDomain using (forgetᵇ; cohᴰ)
+open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; cohᴰ)
 open import Once.Res using (returns)
 open import Once.Res using (returns-inj)
 open import Once.Denotation.Program using (Declared)
@@ -459,21 +459,30 @@ module CompareC {FS : FrameSemantics} where
                                (n≤1+n _))
 
       -- ── THE PLACE: the sum the denotation returns, by the tag.
+      -- Stated over the base witness `cb` (`conB si` at the use) and its
+      -- equation, matched as `refl`: a `rewrite bt-UU (conB si)` abstracted the
+      -- whole goal over `conB si` (37 s; plan 0.144).
+      place-at′ : ∀ (cb : Base ∅ₖ (SpecTy.Unit SpecTy.+ SpecTy.Unit)) → cb ≡ b-+ b-Unit b-Unit
+               → ∀ (b : Bool) → SMCore.MemOps.readLoc (floc fs11) sum-loc ≡ just (SV-Tag (if b then 1 else 0))
+               → ResultPlace {prog = prog} (Once.IRTy._+_ Once.IRTy.Unit Once.IRTy.Unit) Heap (falloc fs11) (falloc fs11)
+                             (subst idᶠ (sym (cohᴰ (SpecTy.Unit {0} SpecTy.+ SpecTy.Unit))) (injectᵇ cb (EvV.eraseᵍ (bool b)))) (floc fs11)
+      place-at′ .(b-+ b-Unit b-Unit) refl true tg =
+        at-loc sum-loc
+          (valid-inr-reg-wf tt tg (rep-unit refl pv) pay-fs11 before-suc)
+          before out-eq
+          (valid-inr-reg-wf tt tg (rep-unit refl pv) pay-fs11 before-suc)
+          before
+      place-at′ .(b-+ b-Unit b-Unit) refl false tg =
+        at-loc sum-loc
+          (valid-inl-reg-wf tt tg (rep-unit refl pv) pay-fs11 before-suc)
+          before out-eq
+          (valid-inl-reg-wf tt tg (rep-unit refl pv) pay-fs11 before-suc)
+          before
+
       place-at : ∀ (b : Bool) → SMCore.MemOps.readLoc (floc fs11) sum-loc ≡ just (SV-Tag (if b then 1 else 0))
                → ResultPlace {prog = prog} (Once.IRTy._+_ Once.IRTy.Unit Once.IRTy.Unit) Heap (falloc fs11) (falloc fs11)
                              (resOf si (EvV.eraseᵍ (bool b))) (floc fs11)
-      place-at true  tg rewrite bt-UU (conB si) =
-        at-loc sum-loc
-          (valid-inr-reg-wf tt tg (rep-unit refl pv) pay-fs11 before-suc)
-          before out-eq
-          (valid-inr-reg-wf tt tg (rep-unit refl pv) pay-fs11 before-suc)
-          before
-      place-at false tg rewrite bt-UU (conB si) =
-        at-loc sum-loc
-          (valid-inl-reg-wf tt tg (rep-unit refl pv) pay-fs11 before-suc)
-          before out-eq
-          (valid-inl-reg-wf tt tg (rep-unit refl pv) pay-fs11 before-suc)
-          before
+      place-at = place-at′ (conB si) (bt-UU (conB si))
 
       place : ∀ {v} → resultAt s (E₀ si x) ≡ returns v
             → ResultPlace {prog = prog} _ Heap (falloc fs11) (falloc fs11) v (floc fs11)
