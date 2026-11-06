@@ -990,6 +990,19 @@ module PairC {FS : FrameSemantics} where
     RUN-F   = chainF
     RUN-mid = mid-chain
 
+    -- The three straight segments emit nothing. Decided HERE, where the states
+    -- are built from this module's parameters (`variable-is-the-cheapest-
+    -- position`): in `Pair`, at the instantiated states, the same `refl`s cost
+    -- 9 s (plan 0.144).
+    RUN-pre[] : chain-events RUN-pre ≡ []
+    RUN-pre[] = refl
+
+    RUN-mid[] : chain-events RUN-mid ≡ []
+    RUN-mid[] = refl
+
+    tail[] : chain-events tail-chain ≡ []
+    tail[] = refl
+
     -- plan 0.119 D5: the pair's control steps cover `f`'s and `g`'s.
     RUN-ctrls : chain-ctrls (VR.run vrf) + chain-ctrls (VR.run vrg) ≤ chain-ctrls RUN
     RUN-ctrls =
