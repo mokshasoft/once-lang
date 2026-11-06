@@ -982,6 +982,14 @@ module PairC {FS : FrameSemantics} where
               (FlatSteps-++ mid-chain
                 (FlatSteps-++ chainG tail-chain)))
 
+    -- The chains `RUN` is built from, exported under THIS module's names, so a
+    -- consumer splitting `RUN`'s events compares it with its own pieces rather
+    -- than with another module's copies of them (plan 0.144: `Pair`'s
+    -- `ft-run` 8.8 s, conversion across the two families' chains).
+    RUN-pre = pre-chain
+    RUN-F   = chainF
+    RUN-mid = mid-chain
+
     -- plan 0.119 D5: the pair's control steps cover `f`'s and `g`'s.
     RUN-ctrls : chain-ctrls (VR.run vrf) + chain-ctrls (VR.run vrg) ≤ chain-ctrls RUN
     RUN-ctrls =

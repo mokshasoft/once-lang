@@ -253,11 +253,17 @@ module PairAsm {FS : FrameSemantics} where
               -- `PCG.chainG`), so the conclusion matches `RUN` after one
               -- unfolding instead of by normalising both runs' events
               -- (profile 2026-09-30: this call was 91% of the module).
+              -- `RUN` split by its OWN pieces (`PCG.RUN-*`), not by `Proof`'s
+              -- copies of them (plan 0.144, the `context-form-mismatch` pattern).
+              ft-run : chain-events PCG.RUN ≡ chain-events PCG.RUN-F ++ chain-events PCG.chainG
+              ft-run = PT.pair-chain-events PCG.RUN-pre PCG.RUN-F PCG.RUN-mid
+                                            PCG.chainG PCG.tail-chain refl refl refl
+
+              ft-calls : chain-events PCG.RUN-F ++ chain-events PCG.chainG ≡ esF ++ esG
+              ft-calls = cong₂ _++_ tf tg
+
               field-traces : chain-events PCG.RUN ≡ eventsAt s E
-              field-traces =
-                trans (PT.pair-chain-events PC.pre-chain PCF.chainF PCF.mid-chain
-                               PCG.chainG PCG.tail-chain refl refl refl)
-                      (trans (cong₂ _++_ tf tg) (sym ev-pair))
+              field-traces = trans ft-run (trans ft-calls (sym ev-pair))
 
               field-progress : k ≤ budgetLeft k (resultAt s E) + chain-ctrls PCG.RUN
               field-progress =
