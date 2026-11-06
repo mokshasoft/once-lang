@@ -60,10 +60,10 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
-  using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; cata-body; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; in-trace; node-copy-trace; out-trace; inj-trace; env-entry)
+  using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; cata-body; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; in-trace; with-copy; two-cell; node-copy-trace; out-trace; inj-trace; env-entry)
 open import Once.CCC.Codegen.FlatLayout using (word; flat; put; get; kind; lkind; lsz)
 open import Once.CCC.Codegen.Size using (size)
-open import Once.IRTy using (IRTy) renaming (_*_ to _*ᵀ_; _+_ to _+ᵀ_)
+open import Once.IRTy using (IRTy; ⟦_⟧TI; ν-type) renaming (_*_ to _*ᵀ_; _+_ to _+ᵀ_)
 open import Once.Spec.Type using (Fun)
 open import Data.Nat using (_⊔_)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
@@ -449,6 +449,11 @@ module Unique {FS : FrameSemantics} where
   none-nt : ∀ (t : AbstractTrace) → NoThunkT t → AllPairs _≢_ (thunk-labels t ++ [])
   none-nt t nt = subst (λ z → AllPairs _≢_ (z ++ [])) (sym (tl-nil t nt)) []
 
+  -- D393: a kept value's copy, then the two-cell build, defines no marker (`wc-nt`)
+  wc-du : ∀ kd E n c (bs : Blocks) → AllPairs _≢_ (block-defs bs)
+        → AllPairs _≢_ (thunk-labels (with-copy kd E n (λ m → two-cell m c)) ++ block-defs bs)
+  wc-du kd E n c bs p = subst (λ z → AllPairs _≢_ (z ++ block-defs bs)) (sym (tl-nil _ (wc-nt kd E n c))) p
+
   defs-uniq : ∀ {A B} (ir : IR A B) (n l : ℕ) → AllPairs _≢_ (defs (ir-to-trace' n l ir))
   defs-uniq id                    n l = []
   defs-uniq (fst {A} {B})         n l = none-nt (get A 0) (get-nt A 0)
@@ -471,20 +476,20 @@ module Unique {FS : FrameSemantics} where
   defs-uniq (Call _)             n l = []
   -- `in-ν`'s block is a one-instruction stub and it owns no children, so its
   -- single minted label has nothing to be distinct from.
-  defs-uniq (in-ν _)              n l = [] ∷ []
+  defs-uniq (in-ν {F} w)              n l = wc-du (kind (⟦ F ⟧TI (ν-type F))) _ n (ℓ o l) (bodies-of (ir-to-trace' n l (in-ν w))) ([] ∷ [])
   -- THE THREE THAT MINT AT `l` ITSELF. The child starts at a strictly larger
   -- counter, so the minted label is below everything the child defines.
-  defs-uniq (curry {E} {A} b)     n l =
+  defs-uniq (curry {E} {A} b)     n l = wc-du (kind E) E n (ℓ o l) (bodies-of (ir-to-trace' n l (curry {E} {A} b))) (
     subst (λ z → AllPairs _≢_ (ℓ o l ∷ (z ++ block-defs (bodies-of (ir-to-trace' bs (s² l) b)))))
           (sym (tl-pre (proj₂ (env-entry (kind E) E A)) (trace-of (ir-to-trace' bs (s² l) b)) (entry-nt (kind E) E A)))
-          (head-fresh′ l (n≤1+n (suc l)) (defsA b bs (s² l)) ∷ defs-uniq b bs (s² l))
+          (head-fresh′ l (n≤1+n (suc l)) (defsA b bs (s² l)) ∷ defs-uniq b bs (s² l)))
     where bs = proj₁ (env-entry (kind E) E A)
-  defs-uniq (Ana {F} wf {E} {A} c) n l =
+  defs-uniq (Ana {F} wf {E} {A} c) n l = wc-du flat (E *ᵀ A) n (ℓ o l) (bodies-of (ir-to-trace' n l (Ana wf c))) (
     subst (λ z → AllPairs _≢_ (ℓ o l ∷ (z ++ block-defs (bodies-of (ir-to-trace' 1 (suc l) c)))))
           (sym (tl-post (trace-of (ir-to-trace' 1 (suc l) c)) _
                         (resuspend-nt F E A (proj₁ (ir-to-trace' 1 (suc l) c))
                                       (label-of (ir-to-trace' 1 (suc l) c)) (ℓ o l) 0 wf)))
-          (head-fresh′ l ≤-refl (defsA c 1 (suc l)) ∷ defs-uniq c 1 (suc l))
+          (head-fresh′ l ≤-refl (defsA c 1 (suc l)) ∷ defs-uniq c 1 (suc l)))
   -- …AND THE ONE THAT MINTS ABOVE. `cata-body`'s label is the DISPATCH's, past
   -- everything the algebra took.
   defs-uniq (Cata {F} _ {E} {A} a) n l =

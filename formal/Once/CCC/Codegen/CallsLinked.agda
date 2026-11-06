@@ -31,7 +31,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
-open import Once.IRTy using (IRFunctor; ⟦_⟧TI; ν-type; fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod) renaming (_+_ to _+ᵀ_)
+open import Once.IRTy using (IRFunctor; ⟦_⟧TI; ν-type; fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod) renaming (_+_ to _+ᵀ_; _*_ to _*ᵀ_)
 open import Once.Spec.Type using (Fun; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
@@ -45,7 +45,7 @@ open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.FlatLayout
   using (Kind; word; flat; kind; put; put-k; get; get-k; fill; put-All; put-k-All; get-All; get-k-All; fill-All; lkind; lsz)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-call-from; cata-trace-const; fsize; resuspend-layer; env-entry; env-prologue; inj-trace)
+  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; with-copy; two-cell; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-call-from; cata-trace-const; fsize; resuspend-layer; env-entry; env-prologue; inj-trace)
 open import Once.CCC.Codegen.FrameFreeTrace o using (trace-of; cata-trace-of)
 import Once.CCC.Codegen.Size
 
@@ -204,6 +204,11 @@ out-cl mu-box  = tt ∷ []
 out-cl mu-unit = tt ∷ []
 out-cl mu-ptr  = tt ∷ []
 
+-- D393: a kept value's copy, then the two-cell build
+wc-cl : ∀ kd E n c → CLTrace (with-copy kd E n (λ m → two-cell m c))
+wc-cl word E n c = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+wc-cl flat E n c = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ ++⁺ (put-cl E n (suc n) 0) (tt ∷ [])) (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+
 calls-trace' : ∀ {A B} (ir : IR A B) (n l : ℕ) → LK ir
              → CLTrace (trace-of (ir-to-trace' n l ir))
 calls-trace' id       n l _ = tt ∷ []
@@ -219,8 +224,7 @@ calls-trace' (⟨_,_⟩ {A} {B} {C′} f g) n l (lf , lg) =
       (tt ∷ tt ∷
        ++⁺ (calls-trace' g _ _ lg)
            (tt ∷ tt ∷ tt ∷ ++⁺ (put-cl B _ _ 0) (++⁺ (put-cl C′ _ _ _) (tt ∷ []))))
-calls-trace' (curry b)  n l _ =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+calls-trace' (curry {E} b)  n l _ = wc-cl (kind E) E n _
 calls-trace' (apply {A} {B}) n l _ =
   ++⁺ (get-cl A 1)
       (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
@@ -237,10 +241,8 @@ calls-trace' (out-μ {F} _) n l _ = out-cl (mu-rep F)
 calls-trace' (Cata {F} _ {E} {A} alg) n l la =
   cata-dispatch-cl E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) _ _ _ _ (calls-trace' alg 0 l la)
 calls-trace' (Out _)        n l _ = tt ∷ tt ∷ tt ∷ tt ∷ []
-calls-trace' (in-ν _)     n l _ =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-calls-trace' (Ana _ c)      n l _ =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+calls-trace' (in-ν {F} _)     n l _ = wc-cl (kind (⟦ F ⟧TI (ν-type F))) _ n _
+calls-trace' (Ana {F} _ {E} {A} c)      n l _ = wc-cl flat (E *ᵀ A) n _
 calls-trace' (Iter {E} {A} {B} b) n l lb =
   ++⁺ (get-cl E 0) (++⁺ (tt ∷ tt ∷ [])
   (++⁺ (calls-trace' b _ _ lb) (++⁺ (tt ∷ tt ∷ [])

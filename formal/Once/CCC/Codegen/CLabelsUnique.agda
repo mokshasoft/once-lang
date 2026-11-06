@@ -112,7 +112,7 @@ open import Once.CCC.Codegen.IRToTrace o
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; put; put-k; get; fill; kind; lkind; lsz)
 import Once.CCC.Codegen.FlatLayout as FLK
 open import Once.CCC.Codegen.Size using (size)
-open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type) renaming (_+_ to _+ᵀ_)
+open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type) renaming (_+_ to _+ᵀ_; _*_ to _*ᵀ_)
 open import Data.Nat using (_⊔_; _∸_)
 open import Once.CCC.Codegen.LabelRange o using (resuspend-label-mono)
 
@@ -328,7 +328,7 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
-  using (ir-to-trace'; sigop-code; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; in-trace; node-copy-trace; out-trace; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; inj-trace; env-entry; cata-body)
+  using (ir-to-trace'; sigop-code; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; in-trace; with-copy; two-cell; node-copy-trace; out-trace; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; inj-trace; env-entry; cata-body)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Codegen.LabelRange o using (label-of; label-mono; cata-label-of)
 open import Once.CCC.Codegen.LabelScope o using (trace-of)
@@ -685,7 +685,7 @@ frag (⟨_,_⟩ {A} {B} {C} f g) n l =
          All-++⁺ (SC.put-P B (suc n) (suc (suc (suc n))) 0)
                  (All-++⁺ (SC.put-P C (suc (suc n)) (suc (suc (suc n))) (size B)) (refl ∷ []))
 frag (curry {E} {A} b) n l =
-  transport {P = FragP l l2} refl
+  transport {P = FragP l l2} (clabs-nc (SC.wc2-P (kind E) E n (ℓ o l)))
     (cong (l ∷_) (trans (clabs-++ ((pro ++ trace-of Xb) ++ _) _)
                         (cong (_++ BL b bs ssl)
                               (trans (clabs-++ (pro ++ trace-of Xb) _)
@@ -802,9 +802,9 @@ frag (Cata {F} _ {E} {A} alg) n l =
     cf = cata-frag E A ⌈ F ⌉F st (proj₁ XA) n (label-of XA) (trace-of XA) (bodies-of XA) (label-mono alg 0 l)
            (proj₁ FA) (proj₁ (proj₂ FA)) (proj₂ (proj₂ FA))
 frag (Out _)    n l = none
-frag (in-ν _)   n l = ([] , ([] ∷ []) , []) , [] , ((≤-refl , n<1+n l) ∷ [])
+frag (in-ν {F} _)   n l = transport {P = FragP l (suc l)} (clabs-nc (SC.wc2-P (kind (⟦ F ⟧TI (ν-type F))) _ n (ℓ o l))) refl (([] , ([] ∷ []) , []) , [] , ((≤-refl , n<1+n l) ∷ []))
 frag (Ana {F} wf {E} {A} c) n l =
-  transport {P = FragP l l3} refl (cong (l ∷_) eq)
+  transport {P = FragP l l3} (clabs-nc (SC.wc2-P FLK.flat (E *ᵀ A) n (ℓ o l))) (cong (l ∷_) eq)
     ( ([] , (fresh-below (n<1+n l) wAll ∷ dB) , [])
     , []
     , ((≤-refl , <-≤-trans (n<1+n l) (≤-trans (label-mono c 1 (suc l)) l2≤l3)) ∷ win-weaken (n≤1+n l) ≤-refl wAll) )
@@ -989,7 +989,7 @@ frag-nf (⟨_,_⟩ {A} {B} {C} f g) n l =
   , nf-bl (bodies-of Xf) _ (proj₂ (frag-nf f _ l)) (proj₂ (frag-nf g _ _))
   where Xf = ir-to-trace' (suc (suc (suc (suc n)))) l f
 frag-nf (curry {E} {A} b) n l =
-  refl , nf ((pro ++ trace-of Xb) ++ _) _
+  nf-all (SF.wc2-P (kind E) E n (ℓ o l)) , nf ((pro ++ trace-of Xb) ++ _) _
             (nf (pro ++ trace-of Xb) _ (nf pro _ (nf-all (SF.entry-P (kind E) E A)) (proj₁ (frag-nf b _ _))) refl)
             (proj₂ (frag-nf b _ _))
   where
@@ -1031,9 +1031,9 @@ frag-nf (Cata {F} _ {E} {A} alg) n l =
   , proj₂ (frag-nf alg 0 l)
   where XA = ir-to-trace' 0 l alg
 frag-nf (Out _)    n l = refl , refl
-frag-nf (in-ν _)   n l = refl , refl
+frag-nf (in-ν {F} _)   n l = nf-all (SF.wc2-P (kind (⟦ F ⟧TI (ν-type F))) _ n (ℓ o l)) , refl
 frag-nf (Ana {F} wf {E} {A} c) n l =
-  refl , nf ((ct ++ rt) ++ _) _ (nf (ct ++ rt) _ (nf ct rt (proj₁ (frag-nf c 1 (suc l))) (resusp-nf F E A (proj₁ Xc) (label-of Xc) (ℓ o l) 0 wf)) refl)
+  nf-all (SF.wc2-P FLK.flat (E *ᵀ A) n (ℓ o l)) , nf ((ct ++ rt) ++ _) _ (nf (ct ++ rt) _ (nf ct rt (proj₁ (frag-nf c 1 (suc l))) (resusp-nf F E A (proj₁ Xc) (label-of Xc) (ℓ o l) 0 wf)) refl)
                                  (proj₂ (frag-nf c 1 (suc l)))
   where
     Xc = ir-to-trace' 1 (suc l) c

@@ -53,7 +53,7 @@ open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Codegen.IRToTrace o
-  using (sigop-code; ir-to-trace; ir-to-trace-lab; ir-to-unit; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer; CataStrategy; strat-const; strat-box; strat-branching; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; out-trace; visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂; -- D099 / C1: the called-algebra blocks.
+  using (sigop-code; ir-to-trace; ir-to-trace-lab; ir-to-unit; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer; CataStrategy; strat-const; strat-box; strat-branching; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; with-copy; two-cell; out-trace; visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂; -- D099 / C1: the called-algebra blocks.
          cata-body; cata-call-setup; cata-call; cata-trace-const; fsize;
          cata-call-from; inj-trace; env-entry; getμ; wrap-sum; push2)
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; kind; lkind; lsz;
@@ -367,6 +367,11 @@ module CataIRSlotStable {FS : FrameSemantics} where
   sigop-stable si nothing  n l = all-stable?-sound _ refl
   sigop-stable si (just c) n l = all-stable?-sound _ refl
 
+  -- D393: a kept value's copy, then the two-cell build
+  wc-st : ∀ kd E n c → AllSlotStable (with-copy kd E n (λ m → two-cell m c))
+  wc-st word E n c = tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ []ᴬ
+  wc-st flat E n c = ++⁺ (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ ++⁺ (put-st E n (suc n) 0) (tt ∷ᴬ []ᴬ)) (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ []ᴬ)
+
   ir-stable : ∀ {A B} (ir : IR A B) (n l : ℕ) → AllSlotStable (trc (ir-to-trace' n l ir))
   ir-stable id              n l = all-stable?-sound _ refl
   ir-stable (fst {A} {B})   n l = get-st A 0
@@ -380,7 +385,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- D159: the body is a NAMED BLOCK now, so the entry block is closed
   -- straight-line code and the decider settles it — the recursion into the
   -- body moved to `ir-blocks-stable`, where the body actually lives.
-  ir-stable (curry b)  n l = all-stable?-sound _ refl
+  ir-stable (curry {E} b)  n l = wc-st (kind E) E n _
   ir-stable (SigOp si)      n l = sigop-stable si (cmp-of (sem si)) n l
   ir-stable (Call _)       n l = all-stable?-sound _ refl
   ir-stable (const fits-int _)   n l = all-stable?-sound _ refl
@@ -390,8 +395,8 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-stable (In {F} _)      n l = in-stable (mu-rep F) _ _ n
   ir-stable (out-μ {F} _)   n l = out-stable (mu-rep F)
   ir-stable (Out _)         n l = all-stable?-sound _ refl
-  ir-stable (in-ν _)      n l = all-stable?-sound _ refl
-  ir-stable (Ana _ c)       n l = all-stable?-sound _ refl
+  ir-stable (in-ν {F} _)      n l = wc-st (kind (⟦ F ⟧TI (ν-type F))) _ n _
+  ir-stable (Ana {F} _ {E} {A} c)       n l = wc-st flat (Once.IRTy._*_ E A) n _
   -- the loop: a straight-line prefix and suffix around the round.
   ir-stable (Iter {E} {A} {B} b) n l =
     ++⁺ (get-st E 0)

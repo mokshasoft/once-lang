@@ -55,7 +55,7 @@ import Once.CCC.Codegen.NodesOK
 open Once.CCC.Codegen.NodesOK using (sigop-syms)
 open import Once.CCC.Codegen.IRToTrace o using
   (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy;
-   strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; node-copy-trace; out-trace;
+   strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; with-copy; two-cell; node-copy-trace; out-trace;
    cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; wrap-sum; resuspend-layer;
    cata-call-from; inj-trace; env-entry; getμ; push2)
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; kind; lkind; lsz;
@@ -488,6 +488,13 @@ module _ (G : String → Set) where
   out-closes mu-unit = []
   out-closes mu-ptr  = []
 
+  -- D393: a kept value's copy, then the two-cell build: the copy names nothing
+  wc-closes : ∀ {D} kd E n c → (Closes D (two-cell 0 c)) → Closes D (with-copy kd E n (λ m → two-cell m c))
+  wc-closes word E n c r = r
+  wc-closes flat E n c r =
+    closes-++ (node-copy-trace E n) (mov-to-input ∷ two-cell (suc (suc n)) c)
+      (noref-closes (node-copy-trace E n) (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-noref E n (suc n) 0) (refl ∷ []))) r
+
   close : ∀ {A B} (ir : IR A B) (n l : ℕ) {D}
         → Defd D (Unit (ir-to-trace' n l ir)) → NOK ir
         → Closes D (trace-of (ir-to-trace' n l ir)) × Closes D (blocks-layout (bodies-of (ir-to-trace' n l ir)))
@@ -629,7 +636,7 @@ module _ (G : String → Set) where
       cb = close b (suc (suc (suc (suc n)))) (suc (suc l))
                  (defd-⊆ (++-⊆ bt L (⊆-trans btT inT) (⊆-++ʳ T L)) d) okb
   close (curry {E} {A} b) n l {D} d okb =
-    inj₁ (thk∈ (ℓ o l) d thk∈U) ∷ []
+    wc-closes (kind E) E n (ℓ o l) (inj₁ (thk∈ (ℓ o l) d thk∈U) ∷ [])
     , closes-++ (block-layout (ℓ o l , bb , bt)) (blocks-layout bbs)
                 (closes-++ bt (instr-ctrl (c-ret bb) ∷ [])
                    (closes-++ pro bt₀ (noref-closes pro (entry-noref (kind E) E A)) (proj₁ cb)) [])
@@ -648,8 +655,8 @@ module _ (G : String → Set) where
       bbsU : blocks-layout bbs ⊆ T ++ L
       bbsU m = ∈-++⁺ʳ T (∈-++⁺ʳ (block-layout (ℓ o l , bb , bt)) m)
       cb = close b (proj₁ (env-entry (kind E) E A)) (suc (suc l)) (defd-⊆ (++-⊆ bt₀ (blocks-layout bbs) btU bbsU) d) okb
-  close (in-ν w) n l {D} d ok =
-    inj₁ (thk∈ (ℓ o l) d (∈-++⁺ʳ (trace-of (ir-to-trace' n l (in-ν w))) (here refl))) ∷ [] , []
+  close (in-ν {F} w) n l {D} d ok =
+    wc-closes (kind (⟦ F ⟧TI (ν-type F))) _ n (ℓ o l) (inj₁ (thk∈ (ℓ o l) d (∈-++⁺ʳ (trace-of (ir-to-trace' n l (in-ν w))) (here refl))) ∷ []) , []
   close (Cata {F} w {E} {A} alg) n l {D} d ok =
     cata-closes E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) bb n l1 at (defd-⊆ (⊆-++ˡ T L) d) (proj₁ ca)
     , proj₂ ca
@@ -661,7 +668,7 @@ module _ (G : String → Set) where
       ca = close alg 0 l (defd-⊆ (++-⊆ at L (⊆-trans (at⊆ E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) bb n l1 at) (⊆-++ˡ T L))
                                            (⊆-++ʳ T L)) d) ok
   close (Ana {F} wf {E} {A} c) n l {D} d ok =
-    inj₁ (thk∈ (ℓ o l) d (∈-++⁺ʳ T (here refl))) ∷ []
+    wc-closes flat (E *ᵀ A) n (ℓ o l) (inj₁ (thk∈ (ℓ o l) d (∈-++⁺ʳ T (here refl))) ∷ [])
     , closes-++ (block-layout (ℓ o l , bb , bt)) (blocks-layout cbs)
                 (closes-++ bt (instr-ctrl (c-ret bb) ∷ [])
                    (closes-++ ct rt (proj₁ cc)
