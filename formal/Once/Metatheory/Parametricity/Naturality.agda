@@ -123,7 +123,7 @@ open import Once.Metatheory.Laws.Compose Σ u fmt S using (compᵛ)
 open import Once.Metatheory.Laws.Assoc Σ u fmt S using (compCong)
 open import Once.Metatheory.Laws.MapTop Σ u fmt S using (module MapTopV)
 open import Once.Metatheory.Parametricity.Subst Σ using (rel-sub→; ρ∘τ; E)
-open import Once.Metatheory.Parametricity.Graph Σ using (Rel-≡; coe-trans; coe₃)
+open import Once.Metatheory.Parametricity.Graph Σ using (Rel-≡; coe-irr)
 
 private
   -- A derivation along an equality of its type; what it returns, carried along.
@@ -135,6 +135,20 @@ private
             → Related (Same (X ⟨ σ ⟩)) (toT∞ π (⟦ d ⟧ δ σ r γ)) (return∞ v)
             → Related (Same (Y ⟨ σ ⟩)) (toT∞ π (⟦ substD e d ⟧ δ σ r γ)) (return∞ (coe (cong (_⟨ σ ⟩) e) v))
   relSubstD refl d p = p
+
+  -- A relation read off one transport of each side holds at any other
+  -- transport between the same types, carried along `eq` (plan 0.144: stated
+  -- over variables; written inline at the definition's instances, the coe
+  -- chains' endpoint types cost 11 s to unify).
+  rel-move : ∀ {k} {T T′ : Ty k} (eq : T ≡ T′) {σ₁ σ₂ : TySub k 0} (ρ : RelSub σ₁ σ₂)
+               {W₁ W₂ M₁ M₂ N₁ N₂ : Ty 0} (x₁ : ⟦ W₁ ⟧ᵛ) (x₂ : ⟦ W₂ ⟧ᵛ)
+               (p₁ : W₁ ≡ T ⟨ σ₁ ⟩) (p₂ : W₂ ≡ T ⟨ σ₂ ⟩)
+               (a₁ : W₁ ≡ M₁) (b₁ : M₁ ≡ N₁) (c₁ : N₁ ≡ T′ ⟨ σ₁ ⟩)
+               (a₂ : W₂ ≡ M₂) (b₂ : M₂ ≡ N₂) (c₂ : N₂ ≡ T′ ⟨ σ₂ ⟩)
+           → Rel T ρ (coe p₁ x₁) (coe p₂ x₂)
+           → Rel T′ ρ (coe c₁ (coe b₁ (coe a₁ x₁))) (coe c₂ (coe b₂ (coe a₂ x₂)))
+  rel-move {T = T} refl ρ x₁ x₂ p₁ p₂ refl refl c₁ refl refl c₂ r =
+    subst₂ (Rel T ρ) (coe-irr p₁ c₁ x₁) (coe-irr p₂ c₂ x₂) r
 
 naturality : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ Ψf A B q q′ π π₀ πf f}
                (e : Fin s) (τ : TySub (arity (S !! e)) (suc m)) {F G : Ty (suc m)}
@@ -198,9 +212,13 @@ naturality {m} {n} {Δ} {Γ} {Ψ} {Ψf} {A} {B} {q} {q′} {π} {π₀} {πf} {f
         mF hv x = mapS F cF (Φ F hv) x
 
         -- the definition's two instances, as values
+        dA : ⟦ ty ⟨ (λ i → τA i ⟨ σ ⟩) ⟩ ⟧ᵛ
         dA = DefSem.defs δ e (λ i → τA i ⟨ σ ⟩) (respects-∘ rd r)
+        dB : ⟦ ty ⟨ (λ i → τB i ⟨ σ ⟩) ⟩ ⟧ᵛ
         dB = DefSem.defs δ e (λ i → τB i ⟨ σ ⟩) (respects-∘ rd′ r)
+        vA : ⟦ (F ⟨ at₀ A ⟩ ⇒[ mk-kind q π ] G ⟨ at₀ A ⟩) ⟨ σ ⟩ ⟧ᵛ
         vA = coe (cong (_⟨ σ ⟩) (tyG dref)) (subst ⟦_⟧ᵛ (sym (⟨⟩-∘ ty τA σ)) dA)
+        vB : ⟦ (F ⟨ at₀ B ⟩ ⇒[ mk-kind q π ] G ⟨ at₀ B ⟩) ⟨ σ ⟩ ⟧ᵛ
         vB = coe (cong (_⟨ σ ⟩) (tyF′ dref′)) (subst ⟦_⟧ᵛ (sym (⟨⟩-∘ ty τB σ)) dB)
         dg  = substD (tyG dref) dref
         dg′ = substD (tyF′ dref′) dref′
@@ -241,15 +259,12 @@ naturality {m} {n} {Δ} {Γ} {Ψ} {Ψf} {A} {B} {q} {q′} {π} {π₀} {πf} {f
                 e₂ : ∀ j → τB j ⟨ σ ⟩ ≡ τ j ⟨ CGr.σB ⟩
                 e₂ j = ⟨⟩-∘ (τ j) (at₀ B) σ
                 PD = pd e (λ i → τA i ⟨ σ ⟩) (λ i → τB i ⟨ σ ⟩) (respects-∘ rd r) (respects-∘ rd′ r) (ρ∘τ τ CGr.ρ₀ e₁ e₂)
-                RV : CGr.RelT (F ⇒[ mk-kind q π ] G) vA vB
-                RV = subst₂ (Rel (F ⇒[ mk-kind q π ] G) CGr.ρ₀)
-                       (trans (coe-trans (E e₁ ty) (cong (_⟨ CGr.σA ⟩) eqT) dA)
-                              (sym (coe₃ (sym (⟨⟩-∘ ty τA σ)) (cong (_⟨ σ ⟩) (tyG dref)) (CGr.pA (F ⇒[ mk-kind q π ] G))
-                                         (trans (E e₁ ty) (cong (_⟨ CGr.σA ⟩) eqT)) dA)))
-                       (trans (coe-trans (E e₂ ty) (cong (_⟨ CGr.σB ⟩) eqT) dB)
-                              (sym (coe₃ (sym (⟨⟩-∘ ty τB σ)) (cong (_⟨ σ ⟩) (tyF′ dref′)) (CGr.pB (F ⇒[ mk-kind q π ] G))
-                                         (trans (E e₂ ty) (cong (_⟨ CGr.σB ⟩) eqT)) dB)))
-                       (Rel-≡ eqT CGr.ρ₀ (rel-sub→ τ CGr.ρ₀ e₁ e₂ ty PD))
+                TF = F ⇒[ mk-kind q π ] G
+                RV : CGr.RelT TF vA vB
+                RV = rel-move eqT CGr.ρ₀ dA dB (E e₁ ty) (E e₂ ty)
+                       (sym (⟨⟩-∘ ty τA σ)) (cong (_⟨ σ ⟩) (tyG dref)) (CGr.pA TF)
+                       (sym (⟨⟩-∘ ty τB σ)) (cong (_⟨ σ ⟩) (tyF′ dref′)) (CGr.pB TF)
+                       (rel-sub→ τ CGr.ρ₀ e₁ e₂ ty PD)
                 NL : toT∞ π (closL hv x) ≈ toT∞ π (fmap π (mapS G cG (C.φ hv)) (callᵛ q vA x))
                 NL = ≈-trans (toT∞-bind π _ _) (≈-trans (≈-bind (toT∞-sub lg _) (λ y → toT∞-sub lf _)) (≈-sym (toT∞-fmap π _ _)))
                 NR : toT∞ π (closR hv′ x′) ≈ toT∞ π (callᵛ q vB (mapS F cF (C.φ hv′) x′))
