@@ -21062,3 +21062,13 @@ To find the cost: `--profile=internal` for the phase, `--profile=definitions` fo
 field by replacing fields with `?` in a scratch copy; coverage per function with `-v tc.cover.top:10`.
 
 ### Checks
+2026-11-07: public-, pragma-, metatheory- and spec-gate clean. Backstop (per module, 797 modules, 8
+islands) rc 0 at the default limits. `make certified` OK at the default limits once the stale modules of
+its cone were checked one per process first (in one process over a stale `_build` it exhausted the 4.8 GB
+heap at `Laws.MapV.Lam`, then `TypeCheck.Verified`, each of which checks alone in < 2 GB). Reachability
+(MERGE.md §6, against the 0.143 dumps; `formal/` identical to master): trust base 52→52; PROVED 737→747
+(the ten split-off modules joined: `CallRows`, `IdRows`, `IterRoundsCont`, `Pair.Both`,
+`Categorical.{Products,Tools}`, `MapV.{Fix,Lam,Map,Sum}`); RUNS 3039, RUNS∖PROVED 85, all declared; 0
+gaps. The dump still checks in ONE process and still needed `HEAP=12G COMPACT=-c30` (default 5G: heap
+exhausted at `SpecFront.Annotate`, 1.8 GB alone): step 3 of the plan for the dump and for `make
+certified` — check bottom-up in separate processes, as the backstop now does — is NOT done either.
