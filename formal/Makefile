@@ -71,15 +71,15 @@ certified:
 	@echo "Type-checking the certified artefact (correctness AND well-behavedness)..."
 	@sh -c '$(AGDA_CMD) Once/Certified.agda'
 
-# Island-rot backstop: type-check EVERY module (not just the apex closure), so an
-# off-apex proof can never rot silently again (as ErrorProofs did). Generates a
-# transient Everything module importing the whole tree. Heavy — CI / on demand.
 .PHONY: lint-imports
 lint-imports:
 	@./scripts/lint-imports.sh
 
 .PHONY: backstop
-# The island backstop: every module except scripts/backstop.islands (MERGE.md §5).
+# The island backstop: every module except scripts/backstop.islands (MERGE.md §5),
+# reachable from the apex or not, so an off-apex proof cannot rot silently (as
+# ErrorProofs did). One module per Agda process, leaves first, via agda-profile.py;
+# modules that already passed with the same content are skipped.
 backstop:
 	@scripts/backstop.sh
 
@@ -96,9 +96,9 @@ merge-gate: public-gate pragma-gate metatheory-gate spec-gate backstop certified
 # `make profile-report` prints the worst offenders. Hours for the whole tree.
 .PHONY: profile profile-report
 profile:
-	@scripts/agda-profile.py
+	@scripts/agda-profile.py --work $(HOME)/.cache/once-profile/master
 profile-report:
-	@scripts/agda-profile.py --report
+	@scripts/agda-profile.py --report --work $(HOME)/.cache/once-profile/master
 
 .PHONY: lint-pragmas
 lint-pragmas:

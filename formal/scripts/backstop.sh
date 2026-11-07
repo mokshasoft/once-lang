@@ -1,8 +1,19 @@
 #!/usr/bin/env bash
 # backstop.sh — the island backstop: type-check EVERY module except the recorded
-# red islands (scripts/backstop.islands), so nothing off the apex rots silently
-# and a new module is checked from the day it lands. Generates
-# EverythingFiltered.agda (untracked) and checks it under the safe wrapper.
+# red islands (scripts/backstop.islands), reachable from the apex or not, so
+# nothing off the apex rots silently and a new module is checked from the day
+# it lands.
+#
+# One module per Agda process, leaves first (plan 0.144): each process loads its
+# imports' interfaces and checks one module. A single process importing the
+# whole tree (the old EverythingFiltered check) holds every interface at once
+# and runs out of heap on this machine. The run is scripts/agda-profile.py on
+# the committed tree (BACKSTOP_REF, default HEAD): a module whose content key
+# (its source and its imports' keys) already passed is not checked again, so a
+# rerun only checks what changed. Uncommitted edits are NOT checked.
+#
+# EverythingFiltered.agda (untracked) is still generated: reexport-remove.py
+# reads it to learn the backstop's module set.
 #
 # Usage (from formal/):  scripts/backstop.sh [--generate-only]
 set -euo pipefail
@@ -26,4 +37,11 @@ out=EverythingFiltered.agda
 n=$(grep -c '^import ' "$out")
 echo "backstop: $n modules, ${#skip[@]} islands skipped"
 [[ ${1:-} == --generate-only ]] && exit 0
-exec scripts/agda-safe.sh agda MODULE="$out"
+
+ref=${BACKSTOP_REF:-HEAD}
+if [[ $ref == HEAD ]] && ! git diff --quiet HEAD -- . ; then
+  echo "backstop: WARNING: formal/ has uncommitted changes; checking the committed HEAD"
+fi
+# The profiler's work directory (staged tree, interfaces, results) is shared with
+# `make profile`, so a module either one passed is not checked again.
+exec python3 scripts/agda-profile.py --ref "$ref" --work "${BACKSTOP_WORK:-$HOME/.cache/once-profile/master}"
