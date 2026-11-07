@@ -60,6 +60,7 @@ module CallC {FS : FrameSemantics} where
                  (λ p → CalleeRun.frame-pres crun (trans res-eq p) alloc (cong falloc call-eq))
                  (λ nc m loc bf → CalleeRun.bf-mono crun (nc′ nc) alloc m (cong falloc call-eq) loc bf)
                  (λ p → CalleeRun.frames-pres crun (trans res-eq p) alloc (cong falloc call-eq))
+                 (λ nc → CalleeRun.blocks-kept crun (nc′ nc) alloc (cong falloc call-eq))
     ; traces-agree = trc
     }
     where

@@ -154,16 +154,18 @@ contradicts `GOAL.md` changes `GOAL.md` openly or is wrong.
 
 ## 3. Rebase on a fresh master
 
+The branch lands squashed (§7), so it is rebased as one change: conflicts are resolved once, not
+per commit.
+
 ```
 git checkout master && git pull origin master
-git checkout <branch> && git rebase master
+git checkout -b <new-branch> master && git merge --squash <branch>
 ```
 
-Resolve conflicts on the branch. If the rebase pulled in master-side changes, re-run
-`formal/scripts/agda-safe.sh certified` before going on.
-
-A long branch with many conflicting commits may be squashed first (keep the unsquashed history on
-a backup branch) and rebased as one commit.
+Resolve the conflicts, then check the result (`formal/scripts/backstop.sh` or `agda-profile.py
+--root Once/Certified.agda` on a local commit of it, one module per process) before going on. Where
+master optimised code the branch rewrote, keep the branch's code and re-apply master's pattern only
+where its target survives.
 
 **Renumber what master has taken.** Decision and plan numbers are allocated on master. If master
 gained a `D###` or a plan number while the branch was out, the branch's own entries move:
@@ -259,6 +261,12 @@ It exits 1 on a new assumption or a new gap. Read:
 
 ## 7. Merge
 
-- Fast-forward only (`git merge --ff-only`): master's repository rules reject merge commits, which
-  is why §3 rebases. Never squash: commit hashes are referenced from the decision log.
+- Squashed, as three commits per branch, fast-forwarded onto master (`git merge --ff-only`; master's
+  repository rules reject merge commits):
+  1. the branch's plans in their final state: what they set out to do and their closing status, with
+     what was not done said as such;
+  2. the work, squashed into one commit (code, proofs, extraction, decision log, docs, other plans);
+  3. the deletion of the plans the branch closes (history is the record).
+- The unsquashed branch stays on origin: the hashes a plan or the decision log cites from it resolve
+  there. New citations name the squashed commit.
 - `HANDOFF.md` is untracked working notes. It never enters a branch.

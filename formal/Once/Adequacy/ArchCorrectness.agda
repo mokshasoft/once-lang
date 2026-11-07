@@ -42,27 +42,25 @@ import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 import Once.Compile as Co
 
 module Once.Adequacy.ArchCorrectness
-  (x86-64-heap-room : ∀ ι → RB.HeapRoom Co.entry-owner ι) (x86-64-stack-room : ∀ ι → RB.StackRoom Co.entry-owner ι)
-  (x86-64-call-room : ∀ ι → RB.CallRoom Co.entry-owner ι)
+  -- (Each arch's three ROOM bounds — `HeapRoom`, `StackRoom`, `CallRoom` — were
+  -- the first parameters here. Plan 0.123 A.4 step 5 retired all nine: the
+  -- emitted room checks make running out observable, and the budget they
+  -- re-arm, `FlatCore.Budget`, gives every spending instruction its room.)
   (x86-64-reg-range : ∀ ι → RB.RegRange Co.entry-owner ι)
   (x86-64-addr-no-wrap : ∀ ι → RB.AddrNoWrap Co.entry-owner ι)
   (x86-64-lit-fits : ∀ ι → RB.LitFits Co.entry-owner ι)
   -- riscv64's family, now the SAME as x86-64's plus `SlotAddrNoWrap` (plan 0.65
   -- G3): three of them were all that existed while its simulation was
   -- whole-cloth.
-  (riscv64-heap-room : ∀ ι → RBr.HeapRoom Co.entry-owner ι) (riscv64-stack-room : ∀ ι → RBr.StackRoom Co.entry-owner ι)
-  (riscv64-call-room : ∀ ι → RBr.CallRoom Co.entry-owner ι)
   (riscv64-reg-range : ∀ ι → RBr.RegRange Co.entry-owner ι)
   (riscv64-slot-addr-no-wrap : ∀ ι → RBr.SlotAddrNoWrap Co.entry-owner ι)
   (riscv64-addr-no-wrap : ∀ ι → RBr.AddrNoWrap Co.entry-owner ι)
   (riscv64-lit-fits : ∀ ι → RBr.LitFits Co.entry-owner ι)
   -- …and x86-32's, the SAME family again (plan 0.66 X3). It had NONE until now,
   -- for the reason D107 names: its simulation was whole-cloth, so nothing above
-  -- ever asked what resources the running program needs. Six, not seven —
-  -- `SlotAddrNoWrap` is riscv64's alone (D104: x86-32 computes a slot address
+  -- ever asked what resources the running program needs. One fewer than
+  -- riscv64's — `SlotAddrNoWrap` is riscv64's alone (D104: x86-32 computes a slot address
   -- with `lea`, which carries no range obligation, exactly as x86-64 does).
-  (x86-32-heap-room : ∀ ι → RB32.HeapRoom Co.entry-owner ι) (x86-32-stack-room : ∀ ι → RB32.StackRoom Co.entry-owner ι)
-  (x86-32-call-room : ∀ ι → RB32.CallRoom Co.entry-owner ι)
   (x86-32-reg-range : ∀ ι → RB32.RegRange Co.entry-owner ι)
   (x86-32-addr-no-wrap : ∀ ι → RB32.AddrNoWrap Co.entry-owner ι)
   (x86-32-lit-fits : ∀ ι → RB32.LitFits Co.entry-owner ι) where
@@ -96,12 +94,11 @@ import Once.Adequacy.ArchCorrectness.RiscV64 as ARV
 -- D244/D245: each instance is AT A TABLE — the program image it simulates is
 -- `main` together with that table's functions. The record below is per
 -- PROGRAM, so it instantiates the arch module at the program's own table.
-module X64 (ι : Interp) (tbl : List IRFun) = A64 o tbl ι (x86-64-heap-room ι) (x86-64-stack-room ι) (x86-64-call-room ι)
+module X64 (ι : Interp) (tbl : List IRFun) = A64 o tbl ι
        (x86-64-reg-range ι) (x86-64-addr-no-wrap ι) (x86-64-lit-fits ι)
-module X32 (ι : Interp) (tbl : List IRFun) = A32 o tbl ι (x86-32-heap-room ι) (x86-32-stack-room ι) (x86-32-call-room ι)
+module X32 (ι : Interp) (tbl : List IRFun) = A32 o tbl ι
        (x86-32-reg-range ι) (x86-32-addr-no-wrap ι) (x86-32-lit-fits ι)
 module RV (ι : Interp) (tbl : List IRFun) = ARV o tbl ι
-       (riscv64-heap-room ι) (riscv64-stack-room ι) (riscv64-call-room ι)
        (riscv64-reg-range ι) (riscv64-slot-addr-no-wrap ι)
        (riscv64-addr-no-wrap ι) (riscv64-lit-fits ι)
 
@@ -125,7 +122,8 @@ x86-64-correct : ∀ (ι : Interp) → ArchCorrect x86-64 ι
 x86-64-correct ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
   { file-wf            = λ doOpt m F eq → FileWF.file-wf x86-64 doOpt m F eq
-  -- … and running it has the trace of the program it was emitted from (D320).
+  -- … and running it has the trace of the program it was emitted from (D320),
+  -- so it follows it up to running out (D374).
   ; file-tr = λ doOpt m F eq ir mi ls →
       X64.file-tr-x86-64 ι (TP doOpt m ir) doOpt m F eq ir mi refl refl
         (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (BT doOpt m) ir))) ls (LK doOpt m ir mi))
@@ -135,7 +133,8 @@ x86-32-correct : ∀ (ι : Interp) → ArchCorrect x86-32 ι
 x86-32-correct ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
   { file-wf            = λ doOpt m F eq → FileWF.file-wf x86-32 doOpt m F eq
-  -- … and running it has the trace of the program it was emitted from (D320).
+  -- … and running it has the trace of the program it was emitted from (D320),
+  -- so it follows it up to running out (D374).
   ; file-tr = λ doOpt m F eq ir mi ls →
       X32.file-tr-x86-32 ι (TP doOpt m ir) doOpt m F eq ir mi refl refl
         (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (BT doOpt m) ir))) ls (LK doOpt m ir mi))
@@ -145,7 +144,8 @@ riscv64-correct : ∀ (ι : Interp) → ArchCorrect riscv64 ι
 riscv64-correct ι = record
   -- plan 0.107: the emitted FILE is well-formed (proved, per arch) …
   { file-wf            = λ doOpt m F eq → FileWF.file-wf riscv64 doOpt m F eq
-  -- … and running it has the trace of the program it was emitted from (D320).
+  -- … and running it has the trace of the program it was emitted from (D320),
+  -- so it follows it up to running out (D374).
   ; file-tr = λ doOpt m F eq ir mi ls →
       RV.file-tr-riscv64 ι (TP doOpt m ir) doOpt m F eq ir mi refl refl
         (subst (λ σ → LinkedProgram σ (rewrite-program (irProgram (BT doOpt m) ir))) ls (LK doOpt m ir mi))

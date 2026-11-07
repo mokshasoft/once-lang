@@ -99,9 +99,11 @@ module Core {FS : FrameSemantics} where
   -- now (the arrow case states a callee run in it).
   open ClosureWellFormedBase {FS}
     using (runAt; eventsAt; resultAt; stopsAt; ⟪_⟫_
-          ; prim-sv; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv
+          ; prim-sv; cell-ptr; cell-inline; cell-flat; IsNode; IsFlat; InlineRep; rep-prim; inline-sv
           ; ValidFO; ResultPlaceP; rp-unit; rp-loc; rp-reg; VTy; LayerV
-          ; Live; live→bf; live-heap; live-lift; live-ns) public
+          ; Live; live→bf; live-heap; live-lift; live-ns; InBlk; Here; BlocksKept
+          -- D400: footprints
+          ; Foot; _∈ᶠ_; SameBlk; blk-refl; blk-live; blk-live0) public
 
   -- A run depends on the state only through its log.
   runAt-≡ : ∀ {X} {st st′ : LocState FS} {m m′ : TM.T X}
@@ -159,7 +161,7 @@ module Core {FS : FrameSemantics} where
   open InstrPrimitives {FS} using (exec-abstract-preserves-stack-slot; store-at-slot-preserves-below; exec-abstract-preserves-frame; exec-abstract-preserves-saved; exec-abstract-preserves-heapMem; store-at-slot-preserves-ancestor) public
   open RecSchemeSemantics {FS} using (exec-abstract-load-indirect-output; exec-abstract-load-indirect-preserves-mem;
                                      exec-abstract-load-indirect-suc-output; exec-abstract-load-indirect-suc-preserves-mem) public
-  open Once.CCC.Machine.SMPrimitives using (nhw-load-indirect; nhw-load-indirect-suc; nhw-instr-save-closure-reg; nhw-instr-load-tag-lit; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-instr-load-code-addr; nhw-load-from-slot; InstrNoHeapWrite; instr-writes-slot; nhw-mov-to-output; nhw-instr-load-const; nhw-instr-sigop) public
+  open Once.CCC.Machine.SMPrimitives using (nhw-load-at; nhw-addr-at; nhw-load-indirect; nhw-load-indirect-suc; nhw-instr-save-closure-reg; nhw-instr-load-tag-lit; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-instr-load-code-addr; nhw-load-from-slot; InstrNoHeapWrite; instr-writes-slot; nhw-mov-to-output; nhw-instr-load-const; nhw-instr-sigop) public
   open RecSchemeSemantics {FS} using (exec-abstract-preserves-heap-ref) public
 
   open FlatMachine {FS} public
@@ -169,16 +171,18 @@ module Core {FS : FrameSemantics} where
            → SMCore.LocState.ev-log (floc (flat-exec-instr i prog fs)) ≡ SMCore.LocState.ev-log (floc fs) DL.++ DL.[]
   log-step i lf prog fs = trans (LP.flat-exec-instr-log i lf prog fs) (log-pure {floc fs})
   open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; step-at; exec-flat-steps; FlatSteps-++; FlatSteps-prefix; FlatSteps-reloc) public
-  open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
+  open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-faults; exec-sigop-faults-of; unread?; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
   open FrontierInvariant {FS} using (BeforeFrontier; frontier-monotone) public
   open ClosureWellFormedDef {FS}
-    using (ValidAtWF; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result
+    using (ValidAtWF; ResultPlace; at-loc; at-reg; unit-result
           ; CalleeRunP; module CalleeRunP; callee-run; crun-map; CallRuns; VAt; rp→place
           ; NuV; module NuV; ForceRuns; NuStep; module NuStep; module NuCoind
           -- plan 0.135 S3: where a fragment's input is (beside `ResultPlace`)
           ; InputAt; in-loc; in-reg; in-unit
           ; rp-map; valid→layer; ν-layer-place; fo→valid; valid→fo; μ-layer; valid-μ; μ-box-cell; valid-μbox
           ; validityWF-heap-transport; cellWF-heap-transport; validityWF-mem-only
+          -- D400: a value is kept by any change that keeps its footprint
+          ; foot; foot-cell; foot-live; foot-cell-live; module FootTransport
           -- Plan 0.68 step 1: the class-A discharges move the value witness
           -- across a REGISTER write. `ValueLocation` is `AtStack`/`AtDynamic`
           -- only — there is no register location — so `readLoc` cannot see a
@@ -594,6 +598,11 @@ module Core {FS : FrameSemantics} where
       -- and a call that returns pops what it pushed.
       frames-pres : ∀ {v r} → resultAt s (⟪ evalᴰ ir x ⟫ k) ≡ returns (done v r) → saved-frames (falloc settle) ≡ saved-frames alloc
 
+      -- D387: …and every block the caller had live keeps its size (an
+      -- allocation sizes only the fresh ref), so an embedded value's
+      -- in-block witness survives the run.
+      blocks-kept : NotCut (resultAt s (⟪ evalᴰ ir x ⟫ k)) → BlocksKept alloc (falloc settle)
+
   -- D208: the combined form, DERIVED once rather than assumed per clause.
   -- Consumers that do not care which half they are using (`valid-transport`,
   -- the call-site compositions) keep asking for this; the split is visible
@@ -607,6 +616,20 @@ module Core {FS : FrameSemantics} where
                 ≡ SMCore.MemOps.readLoc s loc
   vr-mem-pres vr nc (AtStack fr j) bf = ValueRealized.stack-pres vr nc fr j bf
   vr-mem-pres vr nc (AtDynamic hl) bf = ValueRealized.heap-pres  vr nc hl bf
+
+  -- D387: a frontier that only grows keeps what was live live…
+  live-mono : ∀ {a b : AllocState {FS}}
+            → (∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record a { next-slot = m }) loc
+                                                → BeforeFrontier (record b { next-slot = m }) loc)
+            → ∀ l → Live a l → Live b l
+  live-mono f (AtStack _ _) ()
+  live-mono f (AtDynamic hl) (BeforeFrontier.heap-before p) with f 0 (AtDynamic hl) (BeforeFrontier.heap-before p)
+  ... | BeforeFrontier.heap-before q = BeforeFrontier.heap-before q
+
+  -- …and two runs that keep live blocks' sizes keep them together.
+  bk-trans : ∀ {a b c : AllocState {FS}} → BlocksKept a b → BlocksKept b c
+           → (∀ l → Live a l → Live b l) → BlocksKept a c
+  bk-trans ab bc lv l la ib = bc l (lv l la) (ab l la ib)
 
   record MachineRefinesObsF (prog : AbstractTrace) (base : ℕ)
                              {A B} (n l : ℕ) (ir : IR A B) (x : ValueDomain.⟦ A ⟧ᴰᴵ)

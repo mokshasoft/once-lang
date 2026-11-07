@@ -39,9 +39,8 @@ module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (tbl : List IRF
   -- Plan 0.65: the resource bounds, as PARAMETERS threaded from the apex (D087),
   -- symmetric with x86-64. G3 (2026-08-17) is where they finally get CONSUMED:
   -- until the simulation was whole-cloth nothing below had asked for them, and
-  -- three of the twelve were all that had been written down.
-  (riscv64-heap-room : RBr.HeapRoom o ι) (riscv64-stack-room : RBr.StackRoom o ι)
-  (riscv64-call-room : RBr.CallRoom o ι)
+  -- three of the twelve were all that had been written down. (The three room
+  -- bounds left with plan 0.123 A.4 step 5: the checks and their budget.)
   (riscv64-reg-range : RBr.RegRange o ι)
   (riscv64-slot-addr-no-wrap : RBr.SlotAddrNoWrap o ι)
   (riscv64-addr-no-wrap : RBr.AddrNoWrap o ι)
@@ -50,9 +49,9 @@ module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (tbl : List IRF
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using ([]; map)
-open import Once.Spec.Trace using (_≈ᵗ⟨_⟩_)
+open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_)
 open import Once.Adequacy.MachineTrace using (listTr; module Machine)
-open import Once.Adequacy.BudgetApex using (budget-apex)
+open import Once.Adequacy.BudgetApex using (budget-apex-⊑; BudgetFact⊑; budget-fact-of)
 open import Once.Denotation.Program using (runIR)
 open import Once.IR.Semantics.Trace using (pureHalf)
 import Once.IR.Semantics.Trace as LT
@@ -77,7 +76,7 @@ open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)
 import Once.Arith.Backend.RiscV64.RunTrace as RTr
 open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
 open import Once.IR using (IR)
 open import Once.IRTy using (Unit)  -- Plan 0.52 M2: IRTy Unit
 open import Once.Denotation.Behavior using (Behavior)
@@ -115,6 +114,8 @@ import Once.Parser.Module.Core as P
 -- D100: the assembler's precondition (distinct emitted local labels), threaded
 -- into this arch's `loader-faithful` axiom.
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
+open import Once.CCC.Codegen.RoomChecks using (room-checks)
+open import Once.Adequacy.RoomChecksEvents using (module RoomEvents)
 import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Target.RiscV64.Layout using (InStack)
 open import Once.Memory.StackSlots using (stack-addr)
@@ -168,20 +169,20 @@ asR = arch-semantics riscv64
 ------------------------------------------------------------------------
 open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   rv64-frame-semantics refl refl riscv64-slot-addr-no-wrap
-  riscv64-heap-room riscv64-stack-room riscv64-call-room
   riscv64-reg-range
   (RBr.AddrNoWrap.ret-no-wrap riscv64-addr-no-wrap)
-  (RBr.AddrNoWrap.lo-fits riscv64-addr-no-wrap)
   (RBr.LitFits.tag-fits riscv64-lit-fits) (RBr.LitFits.lit-fits riscv64-lit-fits)
-  (RBr.float-fits o ι)
-  using (events-agree-start; CompiledCorr; EntryLike; reach-start; RunAt; mkRunAt)
+  (RBr.float-fits o ι) (RBr.LitFits.room-fits riscv64-lit-fits)
+  using (events-agree-start; events-agree-boot; AgreeAt; CompiledCorr; EntryLike; reach-start)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o rv64-frame-semantics slot-size refl using (mkRunAt)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o rv64-frame-semantics slot-size refl using (RunLow; low-start)
 
 open FlatMachine {rv64-frame-semantics} using (mkFlat)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {rv64-frame-semantics} using (flat-events)
 open import Once.CCC.Machine.FlatStoreWF rv64-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.SMCore using
-  (AbstractReg; Input1; Output; readReg; SV-Ptr; module LocState)
+  (AbstractReg; AbstractTrace; Input1; Output; readReg; SV-Ptr; SV-Lit; module LocState)
 open LocState using (regs)
 
 ------------------------------------------------------------------------
@@ -235,10 +236,10 @@ entry-frame-base = refl
 -- flat entry state. Every register equality reduces to `enc-hl (entry heap-loc)
 -- ≡ 0`; halt/pc are `refl`; `heap-eq` is vacuous (the entry heap is empty).
 ------------------------------------------------------------------------
-entry-corr : ∀ (ir : IR Unit Unit)
-           → CompiledCorr (entry-view (compile-trace (FFOr.image ir))) (FFOr.image ir)
+entry-corr : ∀ (prog : AbstractTrace)
+           → CompiledCorr (entry-view (compile-trace prog)) prog
                           FFOr.start-flat RS.initState
-entry-corr ir = record
+entry-corr prog = record
   { dataCorr = record
       { in1-eq = refl ; out-eq = refl
       ; clos-eq = refl
@@ -252,7 +253,6 @@ entry-corr ir = record
       ; dom-sized = λ _ ()          -- …and no block has a size
       ; heap-eq = λ _ ()
       ; lo-le = ≤-refl              -- initState's `sp` IS `stack-top` (the entry mark)
-      ; untouched = λ _ _ _ → refl  -- `emptyMemory`: every address reads `nothing`
       ; stack-eq = ≤-reflexive (sym entry-frame-base) , (λ _ _ _ ()) , tt
       }
   ; pc-off = refl
@@ -260,8 +260,8 @@ entry-corr ir = record
   ; ret-eq = tt
   ; code-eq = λ ℓ j fl → cong-pick fl
   }
-  where cong-pick : ∀ {ℓ j} → RS.find-label (compile-trace (FFOr.image ir)) (thunk ℓ) ≡ just j
-                  → code-map (compile-trace (FFOr.image ir)) ℓ ≡ j
+  where cong-pick : ∀ {ℓ j} → RS.find-label (compile-trace prog) (thunk ℓ) ≡ just j
+                  → code-map (compile-trace prog) ℓ ≡ j
         cong-pick e rewrite e = refl
 
 -- The ENTRY store-WF: the heap and stack are empty and every
@@ -278,44 +278,59 @@ entry-wf B = record
 -- the loader's state is a legitimate starting state: first instruction, running,
 -- nothing allocated, no block sized, no register holding a pointer, and — plan
 -- 0.65 G2 — no unspilled return, since the entry state is not in a call window.
+open import Once.Type using (FitsInReg)
 entry-like : ∀ (B : ℕ) → EntryLike (mkFlat FFOr.entry-s (FFOr.entry-alloc B) 0)
 entry-like B = refl , refl , refl , refl , refl
              , (λ _ → refl) , (λ _ _ → refl) , (λ _ → refl)
              , no-ptr
              , refl
+             , no-lit
   where
     no-ptr : ∀ (r : AbstractReg) (loc : _) → readReg (regs FFOr.entry-s) r ≡ SV-Ptr loc → _
     no-ptr Input1  loc ()
     no-ptr Output  loc ()
+    -- no register holds a literal either (D397's word range starts)
+    no-lit : ∀ (r : AbstractReg) {A} (p : FitsInReg A) v → readReg (regs FFOr.entry-s) r ≡ SV-Lit p v → _
+    no-lit Input1  p v ()
+    no-lit Output  p v ()
 
 -- D320 / plan 0.119 D5: THE BINARY'S TRACE, budget by budget (see the x86-64 instance).
 conc-tr :
   ∀ (p : IRProgram) (ir : IR Unit Unit)
     (lk : LinkedProgram (sig ι) (irProgram tbl ir))
-  → FFOr.image ir ≡ C.image-of p
-  → Machine.trace (RTr.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p))
-                     (compile-trace (FFOr.image ir))) ([] , RS.initState)
-    ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics riscv64) ι
+  → room-checks (FFOr.image ir) ≡ C.image-of p
+  → Machine.trace (RTr.Run.δ val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p))
+                     (compile-trace (room-checks (FFOr.image ir)))) ([] , RS.initState)
+    ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (arch-numerics riscv64) ι
 conc-tr p ir lk img =
-  budget-apex δc ([] , RS.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir)) fact
+  budget-apex-⊑ δc ([] , RS.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir)) fact
   where
-    δc = RTr.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace (FFOr.image ir))
-    run₀ : RunAt (FFOr.image ir) FFOr.start-flat
-    run₀ = mkRunAt tbl ir refl lk (reach-start FFOr.start-flat (entry-like 0) refl
-                                                   (FFOr.start-sound ir-obs-correct ir lk))
-    fact : ∀ k → Σ[ M ∈ ℕ ] (Fuel.runN δc M ([] , RS.initState) ≡ obsAp (LT.run ι [] (approx k (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir)))))
-                         × (proj₂ (obsAp (LT.run ι [] (approx k (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir))))) ≡ nothing → k ≤ suc M)
-    fact k = proj₁ agree
-           , trans (RTr.Run.runN-events val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace (FFOr.image ir)) (proj₁ agree) [] RS.initState)
-                   (cong (RTr.Run.outObs val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace (FFOr.image ir)))
-                         (trans (proj₁ (proj₂ agree)) (FFOr.flat-ends ir-obs-correct ir lk k)))
-           , λ c → ≤-trans (FFOr.flat-cut ir-obs-correct ir lk k c) (proj₂ (proj₂ agree))
+    -- D377: the machine runs the image WITH its room checks (see the x86-64 apex)
+    P′ = room-checks (FFOr.image ir)
+    δc = RTr.Run.δ val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace P′)
+    run₀ : RunLow P′ FFOr.start-flat
+    run₀ = low-start (FFOr.image ir) FFOr.start-flat
+             (mkRunAt tbl ir refl lk (reach-start FFOr.start-flat (entry-like 0) refl
+                                         (FFOr.start-sound ir-obs-correct ir lk)))
+             refl
+    fact : BudgetFact⊑ δc ([] , RS.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir))
+    fact k = budget-fact-of δc ([] , RS.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir)) k (proj₁ agree) _ _ _
+               (RTr.Run.runN-events val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace P′) (proj₁ agree) [] RS.initState)
+               (cong (RTr.Run.outObs val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace P′)) (FFOr.flat-ends ir-obs-correct ir lk k))
+               (FFOr.flat-cut ir-obs-correct ir lk k)
+               (proj₂ agree)
       where
-        agree = events-agree-start (FFOr.flat-fuel ir-obs-correct ir lk k)
-                  ev-riscv64 (block-env (C.blocks-riscv64 p))
-                  (FFOr.image ir) FFOr.start-flat RS.initState (ir-stack-budget ir) (entry-corr ir)
-                  (entry-wf 0) tt refl (p , img , refl) run₀
-                  refl refl refl refl refl
+        open RoomEvents {rv64-frame-semantics} (FFOr.image ir) using (ev-boot)
+        boot = ev-boot (FFOr.flat-fuel ir-obs-correct ir lk k) FFOr.start-flat 0 refl _ refl
+        agree₀ = events-agree-boot (proj₁ boot)
+                   ev-riscv64 (block-env (C.blocks-riscv64 p))
+                   P′ FFOr.start-flat RS.initState (ir-stack-budget ir) _ (entry-corr P′)
+                   (entry-wf 0) tt refl (p , img , refl) run₀
+                   refl refl refl refl refl refl
+        retarget : ∀ {A : ℕ → _} {o o′ c c′} → o ≡ o′ → c ≡ c′
+                 → Data.Product.Σ ℕ (λ M → AgreeAt (A M) o c M) → Data.Product.Σ ℕ (λ M → AgreeAt (A M) o′ c′ M)
+        retarget refl refl x = x
+        agree = retarget (proj₁ (proj₂ boot)) (proj₂ (proj₂ boot)) agree₀
 
 -- THIS INSTANCE'S FACTS, at its table. `ArchCorrectness` assembles them into
 -- the per-program `ArchCorrect` (each program brings its own table).
@@ -335,22 +350,22 @@ file-tr-riscv64 :
   → (teq : tbl ≡ table (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)))
   → (lk : LinkedProgram (sig ι) (irProgram tbl (main (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)))))
   → run-trace-riscv64 ι F (RS.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry F)))
-    ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl (main (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)))) ⟧IRᵗ (arch-numerics riscv64) ι
+    ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl (main (rewrite-program (irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir)))) ⟧IRᵗ (arch-numerics riscv64) ι
 file-tr-riscv64 doOpt m F eq ir mi oq teq lk =
   subst (λ G → run-trace-riscv64 ι G (RS.initStateAt (Data.Maybe.fromMaybe 0 (RF.Image.entry G)))
-               ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics riscv64) ι)
+               ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics riscv64) ι)
         (sym (file-is-emit-at doOpt riscv64 m F ir eq mi))
-        (subst (λ cd → Machine.trace (RTr.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) cd) ([] , RS.initState)
-                       ≈ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics riscv64) ι)
+        (subst (λ cd → Machine.trace (RTr.Run.δ val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) cd) ([] , RS.initState)
+                       ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir′) ⟧IRᵗ (arch-numerics riscv64) ι)
                (sym code-eq) (conc-tr p ir′ lk img))
   where
     p   = irProgram (C.tableOfResult (C.compileResolvedModule IR.Heap doOpt m)) ir
     ir′ = main (rewrite-program p)
-    img : FFOr.image ir′ ≡ C.image-of p
+    img : room-checks (FFOr.image ir′) ≡ C.image-of p
     img = img-at o oq tbl teq
       where img-at : ∀ o′ → o′ ≡ C.entry-owner → ∀ t → t ≡ table (rewrite-program p)
-                   → program-image o′ (irProgram t ir′) ≡ C.image-of p
+                   → room-checks (program-image o′ (irProgram t ir′)) ≡ C.image-of p
             img-at .C.entry-owner refl .(table (rewrite-program p)) refl = refl
-    code-eq : proj₂ (compile-trace-cnt C.entry-owner 0 (C.image-of p)) ≡ compile-trace (FFOr.image ir′)
+    code-eq : proj₂ (compile-trace-cnt C.entry-owner 0 (C.image-of p)) ≡ compile-trace (room-checks (FFOr.image ir′))
     code-eq = trans (cong proj₂ (compile-trace-cnt-agrees C.entry-owner 0 (C.image-of p)))
                     (cong compile-trace (sym img))

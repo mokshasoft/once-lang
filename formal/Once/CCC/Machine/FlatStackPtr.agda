@@ -43,6 +43,7 @@ open import Once.CCC.Label using (LabelId)
 open import Data.Nat using (ℕ; zero; suc; _≟_)
 import Data.Nat.Properties
 open import Data.Bool using (Bool; true; false)
+open import Data.Bool using () renaming (_∨_ to _∨_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
@@ -53,7 +54,7 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
-open import Once.Memory.HeapAddress using (HeapLocation; _≟HL_)
+open import Once.Memory.HeapAddress using (HeapLocation; _≟HL_; offsetHL)
 import Once.Allocator.AbstractInstance as AI
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts; Answers; semM)
 open import Once.Res using (Res; stopped; returns)
@@ -209,12 +210,12 @@ sp-write-reg cf ls x v ok wf = record
 -- …and the SigOp shape: the same write with the halt flag set in the same
 -- record update.
 sp-write-reg-halt : ∀ (cf : Frame) (ls : LocState FS) (x : AbstractReg)
-                      (v : StoredValue FS) (b : Bool) (es : List SigOpEvent)
+                      (v : StoredValue FS) (b fl : Bool) (es : List SigOpEvent)
                   → StackPtrOK v
                   → SPInv ls
-                  → SPInv (record ls { regs = writeReg (regs ls) x v ; halted = b ; ev-log = es })
+                  → SPInv (record ls { regs = writeReg (regs ls) x v ; halted = b ; faulted = fl ; ev-log = es })
 -- The invariant reads no flag and no log, so its fields carry over as they are.
-sp-write-reg-halt cf ls x v b es ok wf =
+sp-write-reg-halt cf ls x v b fl es ok wf =
   let w = sp-write-reg cf ls x v ok wf in
   record { sp-regs = sp-regs w ; sp-heap = sp-heap w ; sp-stack = sp-stack w }
 
@@ -330,6 +331,49 @@ sp-store-suc-resolved : ∀ (cf : Frame) (ls : LocState FS)
                       → SPInv (exec-store-suc-via-resolved ml v ls)
 sp-store-suc-resolved cf ls nothing    v ok wf = sp-fault cf ls wf
 sp-store-suc-resolved cf ls (just loc) v ok wf = sp-write-mem cf ls (sucLoc loc) v ok wf
+
+-- plan 0.123 B.4 α: the offset forms move a stored value like the others
+sp-load-at-resolved : ∀ (cf : Frame) (ls : LocState FS) (k : ℕ) (dst : AbstractReg)
+                        (ml : Maybe (ValueLocation FS))
+                    → SPInv ls
+                    → SPInv (exec-load-at-resolved k dst ml ls)
+sp-load-at-resolved cf ls k dst nothing    wf = sp-fault cf ls wf
+sp-load-at-resolved cf ls k dst (just loc) wf =
+  sp-load-value cf ls dst (readLoc ls (offsetLoc loc k))
+                (sp-read-loc cf ls wf (offsetLoc loc k)) wf
+
+sp-store-in-block : ∀ (cf : Frame) (ls : LocState FS) (ok : Bool)
+                      (loc : ValueLocation FS) (v : StoredValue FS)
+                  → StackPtrOK v → SPInv ls
+                  → SPInv (exec-store-in-block ok loc v ls)
+sp-store-in-block cf ls true  loc v ok wf = sp-write-mem cf ls loc v ok wf
+sp-store-in-block cf ls false loc v ok wf = sp-fault cf ls wf
+
+-- an address at an offset from a HEAP pointer is a heap pointer; a stack
+-- pointer in `Input1` is refuted by the invariant itself
+sp-addr-in-block : ∀ (cf : Frame) (ls : LocState FS) (ok : Bool) (loc : ValueLocation FS)
+                 → StackPtrOK (SV-Ptr loc) → SPInv ls
+                 → SPInv (exec-addr-in-block ok loc ls)
+sp-addr-in-block cf ls true  loc okp wf = sp-write-reg cf ls Output (SV-Ptr loc) okp wf
+sp-addr-in-block cf ls false loc okp wf = sp-fault cf ls wf
+
+sp-addr-at : ∀ (cf : Frame) (bs : ℕ → ℕ) (ls : LocState FS) (k : ℕ) (v : StoredValue FS)
+           → StackPtrOK v → SPInv ls
+           → SPInv (exec-addr-at-resolved bs k (sv-as-loc v) ls)
+sp-addr-at cf bs ls k (SV-Ptr (AtStack _ _)) () wf
+sp-addr-at cf bs ls k (SV-Ptr (AtDynamic hl)) _ wf =
+  sp-addr-in-block cf ls (in-block? bs (AtDynamic (offsetHL hl k))) (AtDynamic (offsetHL hl k)) tt wf
+sp-addr-at cf bs ls k (SV-Tag _)   _ wf = sp-fault cf ls wf
+sp-addr-at cf bs ls k (SV-Lit _ _) _ wf = sp-fault cf ls wf
+sp-addr-at cf bs ls k (SV-Code _)  _ wf = sp-fault cf ls wf
+
+sp-store-at-resolved : ∀ (cf : Frame) (bs : ℕ → ℕ) (ls : LocState FS) (k : ℕ)
+                         (ml : Maybe (ValueLocation FS)) (v : StoredValue FS)
+                     → StackPtrOK v → SPInv ls
+                     → SPInv (exec-store-at-resolved bs k ml v ls)
+sp-store-at-resolved cf bs ls k nothing    v ok wf = sp-fault cf ls wf
+sp-store-at-resolved cf bs ls k (just loc) v ok wf =
+  sp-store-in-block cf ls (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v ok wf
 
 -- the two slot reads (`load-from-slot` / `worklist-pop`, and `restore-input`):
 -- a register write on a hit, a halt on an empty cell. Stated with the anchor
@@ -456,6 +500,15 @@ sp-abstract (restore-input slot) ls alloc ff wf =
 -- the frame ops are unemittable — `⊥` in `FrameFreeI`
 sp-abstract (instr-alloc-stack n)   ls alloc () wf
 sp-abstract (instr-dealloc-stack n) ls alloc () wf
+sp-abstract (instr-free-heap n)     ls alloc () wf
+sp-abstract (load-at n)     ls alloc ff wf =
+  sp-load-at-resolved (current-frame alloc) ls n Output (sv-as-loc (readReg (regs ls) Input1)) wf
+sp-abstract (store-at n)     ls alloc ff wf =
+  sp-store-at-resolved (current-frame alloc) _ ls n (sv-as-loc (readReg (regs ls) Input1))
+                       (readReg (regs ls) Output) (sp-regs wf Output) wf
+sp-abstract (addr-at n)     ls alloc ff wf =
+  sp-addr-at (current-frame alloc) _ ls n (readReg (regs ls) Input1) (sp-regs wf Input1) wf
+sp-abstract (instr-room n)     ls alloc ff wf = wf
 sp-abstract (instr-push-frame cap)  ls alloc () wf
 sp-abstract instr-pop-frame         ls alloc () wf
 -- the case is unemittable since item 6 (`case` compiles to flat control)
@@ -470,7 +523,7 @@ sp-abstract (worklist-pop slot)   ls alloc ff wf =
                (sp-read-loc (current-frame alloc) ls wf (AtStack (current-frame alloc) slot)) wf
 sp-abstract (worklist-check slot) ls alloc ff wf = wf
 sp-abstract (instr-sigop si) ls alloc ff wf =
-  sp-write-reg-halt (current-frame alloc) ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (ev-log ls ++ sigop-events si ls)
+  sp-write-reg-halt (current-frame alloc) ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls)
                     (sigop-output-ok si ls) wf
 sp-abstract (instr-load-const p v)   ls alloc ff wf =
   sp-write-reg (current-frame alloc) ls Output (SV-Lit p (lit-value p v)) tt wf
@@ -586,6 +639,14 @@ flat-stack-ptr (instr-ctrl (c-branch-tag-zero m))     prog fs ff wf =
   sp-test (tag-test (flat-read-tag (floc fs))) m prog fs wf
 flat-stack-ptr (instr-alloc-stack n)   prog fs () wf
 flat-stack-ptr (instr-dealloc-stack n) prog fs () wf
+flat-stack-ptr (instr-free-heap n)     prog fs () wf
+flat-stack-ptr (load-at n)     prog fs ff wf =
+  sp-abstract (load-at n) (floc fs) (falloc fs) ff wf
+flat-stack-ptr (store-at n)     prog fs ff wf =
+  sp-abstract (store-at n) (floc fs) (falloc fs) ff wf
+flat-stack-ptr (addr-at n)     prog fs ff wf =
+  sp-abstract (addr-at n) (floc fs) (falloc fs) ff wf
+flat-stack-ptr (instr-room n)     prog fs ff wf = sp-abstract (instr-room n) (floc fs) (falloc fs) ff wf
 flat-stack-ptr (instr-push-frame cap)  prog fs () wf
 flat-stack-ptr instr-pop-frame         prog fs () wf
 flat-stack-ptr mov-to-output            prog fs ff wf =

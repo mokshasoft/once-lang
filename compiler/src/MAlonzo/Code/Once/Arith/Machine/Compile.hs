@@ -322,8 +322,11 @@ d_compile'45'go_184 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_load'45'input_10
                        (coe
-                          MAlonzo.Code.Once.Arith.Machine.Shape.du_'8970'_'8971''7486'_114
+                          MAlonzo.Code.Once.Arith.Machine.Shape.du_'8970'_'8971''7486'_162
                           (coe v0) (coe v5))
+                       (coe
+                          MAlonzo.Code.Once.Arith.Machine.Shape.du_flat'45'off_178 (coe v0)
+                          (coe v5))
                        (coe (0 :: Integer)))
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
              MAlonzo.Code.Once.Arith.Type.C_NFloat_10
@@ -332,8 +335,11 @@ d_compile'45'go_184 v0 v1 v2 v3
                     (coe
                        MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_load'45'finput_42
                        (coe
-                          MAlonzo.Code.Once.Arith.Machine.Shape.du_'8970'_'8971''7486'_114
+                          MAlonzo.Code.Once.Arith.Machine.Shape.du_'8970'_'8971''7486'_162
                           (coe v0) (coe v5))
+                       (coe
+                          MAlonzo.Code.Once.Arith.Machine.Shape.du_flat'45'off_178 (coe v0)
+                          (coe v5))
                        (coe (0 :: Integer)))
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
              _ -> MAlonzo.RTE.mazUnreachableError

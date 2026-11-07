@@ -31,8 +31,11 @@ open import Once.CCC.Codegen.IRObsCorrect.Apply o tbl using (module ApplyC)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Meaning o
   using (IdFree; idfree-of; tyeq; μ-layer-val; cata-const-meaning′)
-open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC; Head; head-strat)
-open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (module CataLayoutC; const-rc; end-pc)
+open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC; Head; head-strat; head-instr)
+open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (module CataLayoutC; const-rc)
+open import Once.CCC.Codegen.IRObsCorrect.CataConst.Call o tbl using (module CataCallC)
+open import Data.Nat.Solver using (module +-*-Solver)
+open +-*-Solver using (solve; _:+_; con; _:=_)
 open import Once.CCC.Codegen.IRToTrace o using (cata-strategy; strat-const)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; SV-Ptr; SV-Code; instr-call-closure; instr-ctrl; c-jmp; c-label)
@@ -60,18 +63,10 @@ module CataRunC {FS : FrameSemantics} where
   open ApplyC {FS} using (call-at)
   module BC = BlockCallC {FS}
   open CataStepsC {FS} using (s-++)
+  open CataCallC {FS} using (callK)
   open LocState using (regs; halted)
   open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 
-
-  -- a cell, by what it holds
-  cell-sv : ∀ {prog a C c q st} → CellAt {prog = prog} a C c q st → StoredValue FS
-  cell-sv (cell-ptr {comp-loc = cl′} _ _ _) = SV-Ptr cl′
-  cell-sv (cell-inline {c = c} rep _)       = inline-sv rep c
-
-  cell-read : ∀ {prog a C c q st} (ce : CellAt {prog = prog} a C c q st) → readLoc st q ≡ just (cell-sv ce)
-  cell-read (cell-ptr r _ _)    = r
-  cell-read (cell-inline rep r) = r
 
   -- a validity moved along a type equation
   valid-subst : ∀ {prog m a} {A B : IRTy} (eq : A ≡ B) {v : ⟦ A ⟧} {loc st}
@@ -91,27 +86,23 @@ module CataRunC {FS : FrameSemantics} where
              (la : LabelsAt prog base (emitted n l (Cata wf alg)))
              (x : ⟦ E IRTy′.* μ-type F ⟧) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
              (ns0 : next-slot alloc ≡ 0) (k : ℕ) (rs : List ℕ)
-             -- the state at the call, and what the twenty-seven rows before it established
+             -- the state at the call, and what the rows before it established
              (cs : FlatState)
              (u : FlatState)
              (runS : SRun prog 13 (entry-flat base s alloc cl rs) u) (segS : SegA alloc n (entry-flat base s alloc cl rs) u)
-             (runK : SRun prog 14 u cs) (segK : SegA alloc n u cs)
-             (nh-cs : halted (floc cs) ≡ false) (pc-cs : fpc cs ≡ 27 + base) (ret-cs : fret cs ≡ rs)
-             (hc hp : HeapLocation) (pl : ValueLocation FS)
+             (runK : SRun prog (length (callK (head-instr h) E (⟦ F ⟧TI (μ-type F)) n)) u cs) (segK : SegA alloc n u cs)
+             (nh-cs : halted (floc cs) ≡ false)
+             (pc-cs : fpc cs ≡ length (callK (head-instr h) E (⟦ F ⟧TI (μ-type F)) n) + (13 + base))
+             (ret-cs : fret cs ≡ rs)
+             (hc hp : HeapLocation)
              (clo : fclosure cs ≡ SV-Ptr (AtDynamic hc))
              (code : readLoc (floc cs) (AtDynamic (sucHL hc)) ≡ just (SV-Code (ℓ o (proj₁ (proj₂ (ir-to-trace' 0 l alg))))))
              (in-cs : readReg (regs (floc cs)) Input1 ≡ SV-Ptr (AtDynamic hp))
-             (c₁ : CellAt {prog = prog} alloc E (proj₁ x) pl s)
-             (hp-cs : readLoc (floc cs) (AtDynamic hp) ≡ readLoc s pl)
-             -- D366: the argument pair's second cell holds what the cell `ql` held at
-             -- entry, and that cell is the μ's LAYER: the input pair's μ cell
-             -- (a pointer to the layer) at an unboxed functor, the box's own cell at
-             -- a boxed one.
-             (ql : ValueLocation FS)
-             (cμ : CellAt {prog = prog} alloc (⟦ F ⟧TI (μ-type F)) (μ-layer-val wf (proj₂ x)) ql s)
-             (shp-cs : readLoc (floc cs) (AtDynamic (sucHL hp)) ≡ readLoc s ql)
-             -- the argument pair is below the frontier at the call (the call rows allocated it)
-             (hp-lt : suc (loc-ref (AtDynamic hp)) ≤ next-heap-ref (falloc cs))
+             -- plan 0.123 α2: the argument pair `(env , layer)`, flat, valid in its block
+             (pairV : ValidAtWF {prog = prog} Heap (falloc cs) {E IRTy′.* ⟦ F ⟧TI (μ-type F)}
+                        (proj₁ x , μ-layer-val wf (proj₂ x)) (AtDynamic hp) (floc cs))
+             (lhp : Live (falloc cs) (AtDynamic hp))
+             (bk-cs : BlocksKept alloc (falloc cs))
              where
 
     i : IdFree wf
@@ -131,24 +122,24 @@ module CataRunC {FS : FrameSemantics} where
     E′ : T∞ ⟦ C ⟧
     E′ = evalᴰ (Cata wf alg) x
 
-    -- the twenty-seven rows, composed over the abstract states
-    run27 : SRun prog 27 σ cs
-    run27 = s-++ {prog} {13} {14} {σ} {u} {cs} runS runK
+    CKl : ℕ
+    CKl = length (callK (head-instr h) E (⟦ F ⟧TI (μ-type F)) n)
+
+    -- the rows before the call, composed over the abstract states
+    runPre : SRun prog (13 + CKl) σ cs
+    runPre = s-++ {prog} {13} {CKl} {σ} {u} {cs} runS runK
 
     seg : SegA alloc n σ cs
     seg = segA-∘ {alloc} {n} {σ} {u} {cs} segS segK
 
     hp-live : Live (falloc cs) (AtDynamic hp)
-    hp-live = BeforeFrontier.heap-before hp-lt
-
-    shp-live : Live (falloc cs) (AtDynamic (sucHL hp))
-    shp-live = BeforeFrontier.heap-before (subst (λ z → suc z ≤ next-heap-ref (falloc cs)) (sym (sucHL-ref hp)) hp-lt)
+    hp-live = lhp
 
     ------------------------------------------------------------------
     -- the call, landing on the body's marker
     ------------------------------------------------------------------
     j : ℕ
-    j = 29 + base
+    j = suc ((CKl + 1) + (13 + base))
 
     feq : find-thunk prog (ℓ o T.l1) ≡ just j
     feq = thunk-found {prog} (BlockRuns.thunks-unique cr) j (ℓ o T.l1) T.bb TA.fetch-thunk
@@ -161,22 +152,22 @@ module CataRunC {FS : FrameSemantics} where
     call-eq = call-at prog cs hc (ℓ o T.l1) j clo code feq
 
     callS : FlatSteps prog 1 cs fs₁
-    callS = step-at fs₁ (nh-cs , subst (λ z → fetch prog z ≡ just instr-call-closure) (sym pc-cs) (TA.span-call 14 _ refl)) call-eq []
+    callS = step-at fs₁ (nh-cs , subst (λ z → fetch prog z ≡ just instr-call-closure) (sym pc-cs) TA.fetch-cc) call-eq []
 
     call-ev : chain-events callS ≡ []
     call-ev = chain-events-subst-start (sym call-eq) []
 
-    run28 : FlatSteps prog 28 σ fs₁
-    run28 = FlatSteps-++ (proj₁ run27) callS
+    run28 : FlatSteps prog ((13 + CKl) + 1) σ fs₁
+    run28 = FlatSteps-++ (proj₁ runPre) callS
 
     ev28 : chain-events run28 ≡ []
-    ev28 = trans (chain-events-++ (proj₁ run27) callS) (cong₂ _++_ (proj₁ (proj₂ run27)) call-ev)
+    ev28 = trans (chain-events-++ (proj₁ runPre) callS) (cong₂ _++_ (proj₁ (proj₂ runPre)) call-ev)
 
     h-eq : LocState.ev-log (floc fs₁) ≡ LocState.ev-log s
-    h-eq = proj₂ (proj₂ run27)
+    h-eq = proj₂ (proj₂ runPre)
 
     ------------------------------------------------------------------
-    -- what the callee sees: everything live at entry, unchanged
+    -- what the callee sees: the argument pair, valid there
     ------------------------------------------------------------------
     href-cs : next-heap-ref alloc ≤ next-heap-ref (falloc cs)
     href-cs = SegA.href seg
@@ -192,21 +183,6 @@ module CataRunC {FS : FrameSemantics} where
     live-cs : ∀ q → Live alloc q → Live (falloc cs) q
     live-cs = live-from alloc (falloc cs) href-cs
 
-    bft : ∀ q → Live alloc q → Live a′ q
-    bft q b = to-callee q (live-cs q b)
-
-    rd′ : ∀ q → Live alloc q → readLoc s′ q ≡ readLoc s q
-    rd′ q b = trans (BC.callee-heap T.bb fs₁ q (live-cs q b)) (SegA.mem seg q (live-ns n b))
-
-    v-tr : ∀ {m A} {c : ⟦ A ⟧} {loc} → Live alloc loc
-         → ValidAtWF {prog = prog} m alloc {A} c loc s → ValidAtWF {prog = prog} m a′ {A} c loc s′
-    v-tr {m} {A} {c} {loc} q w = validityWF-heap-transport {prog = prog} {m} {A} (Live alloc) (λ _ b → b) rd′ bft c loc q w
-
-    cell-copy : ∀ {A} {c : ⟦ A ⟧} {q₀ q} → readLoc s′ q ≡ readLoc s q₀
-              → CellAt {prog = prog} alloc A c q₀ s → CellAt {prog = prog} a′ A c q s′
-    cell-copy eq (cell-ptr r b w) = cell-ptr (trans eq r) (bft _ b) (v-tr b w)
-    cell-copy eq (cell-inline rep r) = cell-inline rep (trans eq r)
-
     -- the algebra's argument: the environment and the μ's own layer
     L″ : ⟦ ⟦ F ⟧TI C ⟧
     L″ = subst ⟦_⟧ (tyeq i (μ-type F) C) (μ-layer-val wf (proj₂ x))
@@ -214,16 +190,16 @@ module CataRunC {FS : FrameSemantics} where
     x′ : ⟦ E IRTy′.* ⟦ F ⟧TI C ⟧
     x′ = proj₁ x , L″
 
-
-    cE : CellAt {prog = prog} a′ E (proj₁ x) (AtDynamic hp) s′
-    cE = cell-copy (trans (BC.callee-heap T.bb fs₁ {falloc cs} (AtDynamic hp) hp-live) hp-cs) c₁
-
-    cL : CellAt {prog = prog} a′ (⟦ F ⟧TI C) L″ (AtDynamic (sucHL hp)) s′
-    cL = cell-subst {prog = prog} (tyeq i (μ-type F) C)
-           (cell-copy (trans (BC.callee-heap T.bb fs₁ {falloc cs} (AtDynamic (sucHL hp)) shp-live) shp-cs) cμ)
+    pair-cast : ∀ {T T′ : IRTy} (eq : T ≡ T′) {m a e} {v : ⟦ T ⟧} {l st}
+              → ValidAtWF {prog = prog} m a {E IRTy′.* T} (e , v) l st
+              → ValidAtWF {prog = prog} m a {E IRTy′.* T′} (e , subst ⟦_⟧ eq v) l st
+    pair-cast refl w = w
 
     pv : ValidAtWF {prog = prog} Heap a′ {E IRTy′.* ⟦ F ⟧TI C} x′ (AtDynamic hp) s′
-    pv = valid-pair-wf tt (to-callee (AtDynamic (sucHL hp)) shp-live) cE cL
+    pv = pair-cast (tyeq i (μ-type F) C)
+           (validityWF-heap-transport {prog = prog} (Live (falloc cs)) (λ _ b → b)
+              (λ q b → BC.callee-heap T.bb fs₁ q b) to-callee (BC.bk-enter T.bb fs₁ (falloc cs) refl)
+              _ (AtDynamic hp) hp-live pairV)
 
     inp : InputAt {prog} {E IRTy′.* ⟦ F ⟧TI C} Heap a′ x′ s′
     inp = in-loc (AtDynamic hp) pv (to-callee (AtDynamic hp) hp-live) in-cs
@@ -231,8 +207,13 @@ module CataRunC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     -- the body's run, and what it means
     ------------------------------------------------------------------
+    body-labels′ : LabelsAt prog (suc j) T.at
+    body-labels′ = subst (λ z → LabelsAt prog z T.at) (trans (cong (_+ base) T.len-pre) (arith CKl base)) TA.body-labels
+      where arith : ∀ c b → (13 + ((c + 1) + 2)) + b ≡ suc (suc ((c + 1) + (13 + b)))
+            arith = solve 2 (λ c b → (con 13 :+ ((c :+ con 1) :+ con 2)) :+ b := con 2 :+ ((c :+ con 1) :+ (con 13 :+ b))) refl
+
     crun₀ : CalleeRunP {prog = prog} {C} (ResultPlaceP {C} (VAt {prog = prog} C)) fs₁ (suc (fpc cs)) rs (evalᴰ alg x′) k
-    crun₀ = BC.block-call alg ih l prog (ℓ o T.l1) T.bb j ss cr TA.body-span bl TA.body-labels
+    crun₀ = BC.block-call alg ih l prog (ℓ o T.l1) T.bb j ss cr TA.body-span bl body-labels′
               fs₁ (falloc cs) Heap x′ (suc (fpc cs)) k rs refl nh-cs (cong (suc (fpc cs) ∷_) ret-cs) refl (trans (SegA.ns seg) ns0) inp
 
     meq : ⟪ E′ ⟫ k ≡ ⟪ evalᴰ alg x′ ⟫ k
@@ -265,7 +246,7 @@ module CataRunC {FS : FrameSemantics} where
     stops-f : stopsAt s (⟪ E′ ⟫ k) ≡ true
             → halted (floc CR.settle) ≡ true × ending (floc CR.settle) ≡ ending s
     stops-f p = proj₁ (CR.stops (trans st-eq p))
-              , trans (proj₂ (CR.stops (trans st-eq p))) (chain-left (proj₁ run27) nh-cs)
+              , trans (proj₂ (CR.stops (trans st-eq p))) (chain-left (proj₁ runPre) nh-cs)
 
     log-f : LocState.ev-log (floc CR.settle) ≡ LocState.ev-log s ++ eventsAt s (⟪ E′ ⟫ k)
     log-f = trans CR.log (cong₂ _++_ h-eq (cong proj₁ RE))
@@ -283,6 +264,9 @@ module CataRunC {FS : FrameSemantics} where
           → BeforeFrontier (record (falloc CR.settle) { next-slot = m }) loc
     bfm-f nc m loc bf = CR.bf-mono (nc′ nc) (falloc cs) m refl loc (bf-cs m loc bf)
 
+    bk-f : NotCut (resultAt s (⟪ E′ ⟫ k)) → BlocksKept alloc (falloc CR.settle)
+    bk-f nc = bk-trans {a = alloc} {b = falloc cs} {c = falloc CR.settle} bk-cs (CR.blocks-kept (nc′ nc) (falloc cs) refl) live-cs
+
     prog-c : k ≤ budgetLeft k (resultAt s (⟪ E′ ⟫ k)) + chain-ctrls CR.run
     prog-c = subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls CR.run) res-eq CR.progress
 
@@ -293,12 +277,12 @@ module CataRunC {FS : FrameSemantics} where
           → MachineRefinesObsF prog base n l (Cata wf alg) x s alloc cl rs k
     stuck eq nr = record
       { value-realized =
-          realized (28 + CR.steps) CR.settle CR.out-mode CR.cont-alloc (FlatSteps-++ run28 CR.run)
+          realized (((13 + CKl) + 1) + CR.steps) CR.settle CR.out-mode CR.cont-alloc (FlatSteps-++ run28 CR.run)
                    live-f (λ p → ⊥-elim (nr (trans (sym eq) p))) stops-f (λ p → ⊥-elim (nr (trans (sym eq) p)))
                    (λ nc → CR.no-link (nc′ nc)) log-f (λ p → ⊥-elim (nr (trans (sym eq) p)))
                    (progress-≤ prog-c (ctrls-≤ʳ run28 CR.run))
                    (λ nc fr j′ bf → mem-f nc (AtStack fr j′) bf) (λ nc hl bf → mem-f nc (AtDynamic hl) bf)
-                   (λ p → ⊥-elim (nr (trans (sym eq) p))) bfm-f (λ p → ⊥-elim (nr (trans (sym eq) p)))
+                   (λ p → ⊥-elim (nr (trans (sym eq) p))) bfm-f (λ p → ⊥-elim (nr (trans (sym eq) p))) bk-f
       ; traces-agree = trc
       }
       where
@@ -317,18 +301,25 @@ module CataRunC {FS : FrameSemantics} where
       nhS : halted (floc CR.settle) ≡ false
       nhS = CR.live (cong is-stopped retd)
 
-      pcS : fpc CR.settle ≡ 28 + base
-      pcS = trans (CR.returned retd) (cong suc pc-cs)
+      pcS : fpc CR.settle ≡ (CKl + 1) + (13 + base)
+      pcS = trans (CR.returned retd) (trans (cong suc pc-cs) (arith CKl base))
+        where arith : ∀ c b → suc (c + (13 + b)) ≡ (c + 1) + (13 + b)
+              arith = solve 2 (λ c b → con 1 :+ (c :+ (con 13 :+ b)) := (c :+ con 1) :+ (con 13 :+ b)) refl
+
+      endP : ℕ
+      endP = suc ((0 + T.LP) + length T.at) + base
 
       t1 t2 : FlatState
-      t1 = record CR.settle { fpc = (31 + length T.at) + base }
-      t2 = record CR.settle { fpc = suc ((31 + length T.at) + base) }
+      t1 = record CR.settle { fpc = endP }
+      t2 = record CR.settle { fpc = suc endP }
 
       jmp-eq : flat-exec-instr (instr-ctrl (c-jmp T.endL)) prog CR.settle ≡ t1
       jmp-eq = cong (λ z → do-jump z CR.settle) TA.end-label
 
       rest2 : FlatSteps prog 1 t1 t2
-      rest2 = step-at t2 (nhS , TA.fetch-end) refl []
+      rest2 = step-at t2 (nhS , subst (λ z → fetch prog z ≡ just (instr-ctrl (c-label T.endL))) (arith (length T.at) T.LP base) TA.fetch-end) refl []
+        where arith : ∀ a p b → suc (a + (p + b)) ≡ suc ((0 + p) + a) + b
+              arith = solve 3 (λ a p b → con 1 :+ (a :+ (p :+ b)) := (con 1 :+ ((con 0 :+ p) :+ a)) :+ b) refl
 
       tail : FlatSteps prog 2 CR.settle t2
       tail = step-at t1 (nhS , subst (λ z → fetch prog z ≡ just (instr-ctrl (c-jmp T.endL))) (sym pcS) TA.fetch-jmp)
@@ -337,7 +328,7 @@ module CataRunC {FS : FrameSemantics} where
       tail-ev : chain-events tail ≡ []
       tail-ev = chain-events-subst-start (sym jmp-eq) rest2
 
-      run-r : FlatSteps prog (28 + (CR.steps + 2)) σ t2
+      run-r : FlatSteps prog (((13 + CKl) + 1) + (CR.steps + 2)) σ t2
       run-r = FlatSteps-++ run28 (FlatSteps-++ CR.run tail)
 
       trc-r : chain-events run-r ≡ eventsAt s (⟪ E′ ⟫ k)
@@ -351,19 +342,23 @@ module CataRunC {FS : FrameSemantics} where
       ctrls-r = ≤-trans (ctrls-≤ˡ CR.run tail) (ctrls-≤ʳ run28 (FlatSteps-++ CR.run tail))
 
       at-end-r : fpc t2 ≡ length (emitted n l (Cata wf alg)) + base
-      at-end-r = trans (end-pc (length T.at) base)
-                       (cong (_+ base) (sym (trans (cong length (T.emitted-eq st)) T.len-text)))
+      at-end-r = trans (cong (λ z → suc (suc ((0 + z) + length T.at) + base)) T.len-pre)
+                 (trans (arith CKl (length T.at) base)
+                        (cong (_+ base) (sym (trans (cong length (T.emitted-eq st)) T.len-text))))
+        where arith : ∀ c a b → suc (suc ((0 + (13 + ((c + 1) + 2))) + a) + b) ≡ ((13 + (c + 1)) + (4 + a)) + b
+              arith = solve 3 (λ c a b → con 1 :+ ((con 1 :+ ((con 0 :+ (con 13 :+ ((c :+ con 1) :+ con 2))) :+ a)) :+ b)
+                                       := ((con 13 :+ (c :+ con 1)) :+ (con 4 :+ a)) :+ b) refl
 
       mro : MachineRefinesObsF prog base n l (Cata wf alg) x s alloc cl rs k
       mro = record
         { value-realized =
-            realized (28 + (CR.steps + 2)) t2 CR.out-mode CR.cont-alloc run-r
+            realized (((13 + CKl) + 1) + (CR.steps + 2)) t2 CR.out-mode CR.cont-alloc run-r
                      live-f (λ _ → at-end-r) stops-f (λ _ → CR.no-ret retd)
                      (λ nc → CR.no-link (nc′ nc)) log-f (λ p → rp→place (CR.place (trans res-eq p)))
                      (progress-≤ prog-c ctrls-r)
                      (λ nc fr j′ bf → mem-f nc (AtStack fr j′) bf) (λ nc hl bf → mem-f nc (AtDynamic hl) bf)
                      (λ _ → trans (CR.frame-pres retd (falloc cs) refl) (SegA.cf seg)) bfm-f
-                     (λ _ → trans (CR.frames-pres retd (falloc cs) refl) (SegA.sf seg))
+                     (λ _ → trans (CR.frames-pres retd (falloc cs) refl) (SegA.sf seg)) bk-f
         ; traces-agree = trc-r
         }
 

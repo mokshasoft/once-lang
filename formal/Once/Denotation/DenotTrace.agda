@@ -67,6 +67,8 @@ open import Once.Semantics.Machine
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.IR.Semantics.Trace using (T; ret; call; halt; callOp; haltOp; returnT; _>>=T_; fmapT; resT)
+open import Once.IR.Semantics.Boundary using (atTarget)
+open import Once.Res using (mapRes)
 
 -- Plan 0.58 (OCP-0006): the IR-FREE value domain `⟦_⟧ᴰ` + `forget`/`inject` +
 -- `emit-D` moved to `Once.Denotation.ValueDomain` and re-exported here
@@ -155,8 +157,9 @@ sigOpSemT fmt ans si (blockV e refl refl) x = ret (Val.eraseᵍ (block-semP e fm
 sigOpSemT fmt ans si (primV p)     x = ret (Val.eraseᵍ (primSem p fmt x))
 sigOpSemT fmt ans {A} si (emitsV refl) x = call (callOp (name si) A (baseA si) Unit) x (λ _ → ret tt)
 sigOpSemT fmt ans {A} si (haltsV refl) x = halt (haltOp (name si) A (baseA si)) x
-sigOpSemT fmt ans {A} {B} si ffiV  x = resT (ans (name si) A B x)
-sigOpSemT fmt ans {A} {B} si callsV x = call (callOp (name si) A (baseA si) B) x ret
+-- D397: what the world gives is read at the target
+sigOpSemT fmt ans {A} {B} si ffiV  x = resT (mapRes (atTarget fmt B) (ans (name si) A B x))
+sigOpSemT fmt ans {A} {B} si callsV x = call (callOp (name si) A (baseA si) B) x (λ b → ret (atTarget fmt B b))
 
 sigOpT : (fmt : TargetNum) → FFIAnswers → ∀ {A B} → SigOpInfo A B → Val.⟦ A ⟧ → T Val.⟦ B ⟧
 sigOpT fmt ans si = sigOpSemT fmt ans si (sem si)

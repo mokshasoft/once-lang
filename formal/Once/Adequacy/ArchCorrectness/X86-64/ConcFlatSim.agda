@@ -26,7 +26,7 @@ open FrameSemantics using (frame-word)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; CallI)
 open import Once.CCC.Label using (once; EntryId)
 open import Once.CCC.Target.X86-64.Syntax using
-  (slot-size; slots; Reg; reg; imm; mem; base; base+disp; rsp; rax; rdi; rbx; r14; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; syscall; label; call-l)
+  (slot-size; slots; Reg; reg; imm; mem; base; base+disp; rsp; rax; rdi; rbx; r14; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; syscall; label; call-l; jbe-fwd; local-1)
 open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_; _≡ᵇ_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 -- …and the pieces the RESOURCE parameter's type needs. Imported UNAPPLIED, so
@@ -47,6 +47,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
 import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation as FSim
 import Once.Adequacy.ArchCorrectness.X86-64.RunContext as RC
+import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
 
 -- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
 -- labels. `o` is constant for a whole definition, so it belongs on the module
@@ -64,56 +65,14 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   -- where the emitter's `round binary64` and the machine's `float-format FS`
   -- have to be shown to be the same number.
   (fmt-eq : FrameSemantics.float-format FS ≡ binary64)
-  -- MEMORY EXHAUSTION, as a PARAMETER rather than a postulate (2026-08-05).
-  -- The honest runtime bound: at an emitted `instr-alloc-heap n` the bump does
-  -- not run the heap up into the stack's high-water mark. Same class as the
-  -- apex's `conc-fuel`, and now stated in the same place — which is what lets
-  -- the correspondence carry NO resource postulate at all, and what `--safe`
-  -- requires (it rejects every postulate outright).
-  --
-  -- Conditioned on `RunAt` and `CompiledCorr`: without them it is REFUTABLE
-  -- (a view with `lo ≡ hfront` kills it), which is the 2026-07-30 vacuity
-  -- lesson. That conditioning is why `RunAt` had to move to `RunContext`.
-  (heap-room : ∀ {hv : FC.HeapView FS word-eq}
-                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                 (s : X.State) (n : ℕ)
-             → RC.RunAt o FS word-eq prog fs
-             → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-               ≡ just (instr-alloc-heap n)
-             -- (record projections INFER the module params from the record's own
-             -- type, so these take `hv` directly — unlike `RunAt`/`CompiledCorr`,
-             -- which telescope them explicitly)
-             → FC.hfront hv + slots n ≤ FC.lo hv)
-  -- STACK EXHAUSTION, the exact mirror (2026-08-06). At an emitted `c-thunk`
-  -- the body's reservation does not run `%rsp` down into the heap frontier.
-  -- Same class, same conditioning, same reason it is a parameter — see
-  -- `…X86-64.ResourceBounds.StackRoom`, which is where the statement lives.
-  (stack-room : ∀ {hv : FC.HeapView FS word-eq}
-                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                  (s : X.State) (b : ℕ)
-              → RC.RunAt o FS word-eq prog fs
-              → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-              → Σ EntryId (λ m → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-entry m b)))
-      ⊎ (FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (instr-ctrl (c-start b)))
-              → FC.hfront hv + slots b ≤ X.readReg (X.State.regs s) rsp)
-  -- CALL DEPTH (D098), the third of the family and the smallest: room for the
-  -- ONE slot a call spends on the return address. See `ResourceBounds.CallRoom`.
-  (call-room : ∀ {hv : FC.HeapView FS word-eq}
-                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS}) (s : X.State) (c : AbstractInstr)
-             → RC.RunAt o FS word-eq prog fs
-             → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
-               ≡ just c → CallI c
-             → FC.hfront hv + slot-size ≤ X.readReg (X.State.regs s) rsp)
   -- PLAN 0.70 PHASE C: the machine is finite. Both D087-class. Spelled out
-  -- against this module's own `FS`, exactly as the three rooms are — the
+  -- against this module's own `FS`, as the bounds below are — the
   -- `…X86-64.ResourceBounds` copies pin `x86-64-frame-semantics` and are the
   -- types the APEX threads, which is a different job.
   (reg-range : ∀ {hv : FC.HeapView FS word-eq}
                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                  (s : X.State) (r : Reg)
-             → RC.RunAt o FS word-eq prog fs
+             → RL.RunLow o FS slot-size word-eq prog fs
              → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → X.readReg (X.State.regs s) r < X.W.modulus)
   -- THE ADDRESS SPACE DOES NOT WRAP at the emitted `add` sites (plan 0.70
@@ -128,7 +87,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   (ret-no-wrap : ∀ {hv : FC.HeapView FS word-eq}
                    (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                    (s : X.State) (b : ℕ)
-               → RC.RunAt o FS word-eq prog fs
+               → RL.RunLow o FS slot-size word-eq prog fs
                → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
                → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                    ≡ just (instr-ctrl (c-ret b))
@@ -142,7 +101,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   (tag-fits : ∀ {hv : FC.HeapView FS word-eq}
                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                 (s : X.State) (n : ℕ)
-            → RC.RunAt o FS word-eq prog fs
+            → RL.RunLow o FS slot-size word-eq prog fs
             → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-load-tag-lit n)
@@ -150,7 +109,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   (lit-fits : ∀ {hv : FC.HeapView FS word-eq}
                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                 (s : X.State) (v : ℤ)
-            → RC.RunAt o FS word-eq prog fs
+            → RL.RunLow o FS slot-size word-eq prog fs
             → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-load-const fits-int v)
@@ -158,17 +117,11 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   (float-fits : ∀ {hv : FC.HeapView FS word-eq}
                   (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                   (s : X.State) (v : Decimal)
-              → RC.RunAt o FS word-eq prog fs
+              → RL.RunLow o FS slot-size word-eq prog fs
               → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
               → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-float v < X.W.modulus)
-  (lo-fits : ∀ {hv : FC.HeapView FS word-eq}
-               (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-               (s : X.State)
-           → RC.RunAt o FS word-eq prog fs
-           → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
-           → FC.lo hv < X.W.modulus)
   where
 
 open import Data.Maybe using (Maybe; just; nothing)
@@ -187,8 +140,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 -- `using`: an unrestricted application copies all of the simulation (and
 -- the correspondence it re-exports) into this interface.
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation o FS word-eq fmt-eq
-  using ( CompiledCorr; b-cmp-reg-imm; code-eq; dataCorr
-        ; load-indirect-heap-empty-stuck; load-indirect-suc-heap-empty-stuck
+  using ( CompiledCorr; b-cmp-reg-imm; code-eq; dataCorr; room-step-x86
         ; pc-off; ret-eq; x86-64-block-steps; x86-64-link-claim; xrreg
         ; module C; module CompiledCorr ) public
 open import Once.CCC.Machine.FlatStoreWF FS using
@@ -196,7 +148,7 @@ open import Once.CCC.Machine.FlatStoreWF FS using
 open C using (HeapView; haddr; HDom; hfront; lo) public
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
-  using (fetch-block-head; find-label-none-corr; fetch-block-2nd; is-label?; skip-law; label-hit; label-miss; headView)
+  using (blk-off; blk-len; blk-off-suc; fetch-block-head; find-label-none-corr; fetch-block-2nd; is-label?; skip-law; label-hit; label-miss; headView)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract)
 open import Once.CCC.Machine.FlatStackPtr FS using
   ()
@@ -210,7 +162,21 @@ open import Once.Adequacy.CPU.X86-64 using (val-x86-64; ev-x86-64; block-env; ca
 import Once.Compile as Cmp
 import Once.Adequacy.BlockTable as BT
 import Once.Arith.Backend.X86-64.Emit as AE
-open import Once.Adequacy.CPU.X86-64 using (block-env-hit)
+open import Once.Adequacy.CPU.X86-64 using (block-env-hit; block-env-sound)
+open import Once.Adequacy.RewriteOwned using (BlockOf; is-block)
+import Once.Adequacy.ArchCorrectness.X86-64.ArithFrame as AF
+import Once.Adequacy.ArchCorrectness.X86-64.ArithBlockValue o FS word-eq fmt-eq as ABV
+open import Once.Arith.Backend.XInstr.SpillBound using (SpillsWF; block-spills)
+open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
+open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
+open import Once.Arith.Machine.IR using (mk-block)
+open import Once.Arith.Type using (NInt; NFloat)
+open import Once.CCC.Codegen.RoomChecks using (sigop-scratch)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (role-sp; role-clos; role-heap; role-in1; role-out)
+open import Data.Nat.Properties using (*-distribʳ-+; *-comm; +-monoˡ-≤; m≤m+n; m+n≤o⇒n≤o; ≤-trans; +-monoʳ-≤)
+open import Data.Nat using (_*_)
+open import Data.Empty using (⊥-elim)
+open import Once.Arith.Machine.IR using (ArithBlock)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Data.String using (String)
 open import Once.Denotation.Program using (IRProgram)
@@ -222,6 +188,15 @@ open SigOpInfo using (sem)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
 open import Once.Arith.Backend.X86-64.Dispatch using (dispatch-arith)
+-- plan 0.123 α′ (e): the arch-free frame lemma of an arith SigOp's run
+open import Once.Adequacy.ArchCorrectness.X86-64.RegRoles using (x86-64-roles)
+open import Once.Adequacy.ArchCorrectness.FlatCore.SigOpFrame
+       o FS slot-size word-eq Reg x86-64-roles X.State xrreg X.State.memory X.State.halted
+       x86-64-link-claim X.State.pc Once.CCC.Target.X86-64.Syntax.Program compile-trace X.find-label blk-off blk-len X.exec
+       X.W.modulus
+  using (ArithRun; sigop-arith-step)
+open import Once.CCC.Codegen.RoomChecks using (spend; max-entry)
+open import Data.Nat.Properties using (+-comm)
 open import Data.Product using (uncurry)
 
 -- NON-HALTING ⇒ NON-CALL: `call-sym` is the ONLY instruction `matchCall` accepts,
@@ -250,6 +225,8 @@ nonhalt-noncall prog s (push _)   eq hnh = refl
 nonhalt-noncall prog s (pop _)    eq hnh = refl
 nonhalt-noncall prog s nop        eq hnh = refl
 nonhalt-noncall prog s ud2        eq hnh = refl
+nonhalt-noncall prog s jbe-fwd    eq hnh = refl
+nonhalt-noncall prog s local-1    eq hnh = refl
 nonhalt-noncall prog s syscall    eq hnh = refl
 nonhalt-noncall prog s (label _)  eq hnh = refl
 nonhalt-noncall prog s (call-l _) eq hnh = refl
@@ -337,6 +314,8 @@ open import Data.List using ()   -- for `EntryLike`'s empty frame stack
 -- can be MODULE PARAMETERS here rather than postulates. See that module.)
 open import Once.Adequacy.ArchCorrectness.X86-64.RunContext o FS word-eq
   using ( EntryLike; Reachable; RunAt; mkRunAt; reach-start; module RunAt ) public
+-- D377: the LOWERED run, which the engine and the run-conditioned parameters speak of
+open RL o FS slot-size word-eq using (RunLow)
 
 ------------------------------------------------------------------------
 -- THE GENERIC EVENT ENGINE, instantiated (plan 0.65 G2 item 4, slice 3).
@@ -417,7 +396,7 @@ x86-64-traceloop = record
   ; matchCall = RTx.matchCall
   -- plan 0.105: an external call returns with the world's answer in `rax`, the
   -- world being the frame semantics' interpretation.
-  ; ret-call = RTx.ret-call (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)
+  ; ret-call = RTx.ret-call (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)
   ; dispatchArith = uncurry (dispatch-arith val-x86-64)
   ; ev-arch = ev-x86-64 ; ArithTable = x86-64-arith-table
   ; sigop-call = call-sym ; sigop-lowering = λ _ → refl ; sigop-matchCall = λ _ → refl
@@ -530,36 +509,10 @@ execInstr-cmp-mi prog s a v rd rewrite rd = refl
 -- The engine asks only for the CONCRETE claim — that nothing more comes out
 -- of this machine — and discharges the abstract half itself
 -- (`EE.stuck-result`: the flat machine has halted, so `flat-events` is []).
--- These four are that concrete claim, and they are where the instruction
--- names live: a `mov rax,[rdi]` faulting on an unmapped address, a `jmp`/`je`
--- to a label the compiled program does not contain.
+-- These two are that concrete claim, and they are where the instruction
+-- names live: a `jmp`/`je` to a label the compiled program does not contain.
+-- (The empty-heap-cell loads were two more, until plan 0.123 A.4 step 4.)
 ------------------------------------------------------------------------
-stuck-load-indirect : ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
-  → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just load-indirect
-  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-  → C.HDom hv hl
-  → heapMem (floc fs) hl ≡ nothing
-  → EE.StuckAt ev env (compile-trace prog) s
-stuck-load-indirect ev env prog fs s hl cc h ftq i-eq dom h-eq = λ lg →
-  1 , RTx.run-events-stuck val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 0 (compile-trace prog) s
-        (mov (reg rax) (mem (base rdi)))
-        (trans (C.halt-eq (dataCorr cc)) h) (proj₁ stuckp) refl (proj₂ stuckp)
-  where stuckp = load-indirect-heap-empty-stuck prog fs s hl cc ftq i-eq dom h-eq
-
-stuck-load-indirect-suc : ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
-  → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just load-indirect-suc
-  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-  → C.HDom hv (sucHL hl)
-  → heapMem (floc fs) (sucHL hl) ≡ nothing
-  → EE.StuckAt ev env (compile-trace prog) s
-stuck-load-indirect-suc ev env prog fs s hl cc h ftq i-eq dom h-eq = λ lg →
-  1 , RTx.run-events-stuck val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 0 (compile-trace prog) s
-        (mov (reg rax) (mem (base+disp rdi slot-size)))
-        (trans (C.halt-eq (dataCorr cc)) h) (proj₁ stuckp) refl (proj₂ stuckp)
-  where stuckp = load-indirect-suc-heap-empty-stuck prog fs s hl cc ftq i-eq dom h-eq
-
 -- a concrete jump to a MISSING label HALTS (it does not get stuck), so the
 -- trace takes one step and then emits nothing.
 stuck-c-jmp : ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs s
@@ -568,9 +521,9 @@ stuck-c-jmp : ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs
   → find-label prog m ≡ nothing
   → EE.StuckAt ev env (compile-trace prog) s
 stuck-c-jmp ev env prog fs s m cc h ftq fl-eq = λ lg →
-  2 , trans (RTx.run-events-noncall val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 1 (compile-trace prog) s
+  2 , trans (RTx.run-events-noncall val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 1 (compile-trace prog) s
                (jmp (once m)) halt-s fetch-x86 refl step-eq)
-            (RTx.run-events-halted val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 0 (compile-trace prog) s' refl)
+            (RTx.run-events-halted val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 0 (compile-trace prog) s' refl)
   where
     halt-s : X.State.halted s ≡ false
     halt-s = trans (C.halt-eq (dataCorr cc)) h
@@ -593,11 +546,11 @@ stuck-c-branch-tag-zero : ∀ {hv : HeapView} ev env prog fs s m loc → Compile
   → find-label prog m ≡ nothing
   → EE.StuckAt ev env (compile-trace prog) s
 stuck-c-branch-tag-zero ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq = λ lg →
-  3 , trans (RTx.run-events-noncall val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 2 (compile-trace prog) s
+  3 , trans (RTx.run-events-noncall val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 2 (compile-trace prog) s
                (cmp (mem (base+disp rdi 0)) (imm 0)) halt-s fetch-cmp refl step-cmp)
-      (trans (RTx.run-events-noncall val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 1 (compile-trace prog) post-cmp
+      (trans (RTx.run-events-noncall val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 1 (compile-trace prog) post-cmp
                (je (once m)) halt-s fetch-je refl step-je)
-             (RTx.run-events-halted val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 0 (compile-trace prog) post-je refl))
+             (RTx.run-events-halted val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64) ev env lg 0 (compile-trace prog) post-je refl))
   where
     dc = dataCorr cc
     halt-s : X.State.halted s ≡ false
@@ -625,9 +578,7 @@ stuck-c-branch-tag-zero ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq = λ 
 -- here rather than silently.
 x86-64-stuck-steps : EE.StuckSteps
 x86-64-stuck-steps = record
-  { st-load-indirect         = stuck-load-indirect
-  ; st-load-indirect-suc     = stuck-load-indirect-suc
-  ; st-c-jmp                 = stuck-c-jmp
+  { st-c-jmp                 = stuck-c-jmp
   ; st-c-branch-tag-zero     = stuck-c-branch-tag-zero
   }
 
@@ -655,24 +606,15 @@ postulate
   -- about the ABSTRACT machine, and its discharge is the typed shape checker
   -- (the same route the other dataflow disciplines take) plus the
   -- `emitted-thunk-guarded` induction for the body's existence.
-  -- Plan 0.129 B5: the RUN half — the named block's code simulates the SigOp.
-  -- WHICH block (`env sym ≡ just pl`) is the theorem `arith-sigop-lookup` below.
-  arith-sigop-run : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs s {A B} (si : SigOpInfo A B)
-                  → RunAt prog fs
-                  → x86-64-arith-table prog env
-                  → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                  → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
-                  → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-x86-64) pl s)
-
   -- EXTERNAL SIGOP (Emits/Halts) interpretation contract — the value-carrying observable,
   -- the honest per-(SigOp×target) TrustedBase (D061). Bundles: env maps the symbol to
   -- `nothing` (external, not an arith block); the `ev` extractor emits EXACTLY the
   -- abstract `event-of` (`ev ≡ machine-event` — matching the observable value); and the
   -- concrete post-call state (ret-past) is the CompiledCorr of the flat post-state.
   -- `sigop-external` proves the run-events emission mechanics AROUND this.
-  external-sigop-contract : ∀ {hv : HeapView} (ev : RTx.EvExtractor val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64))
+  external-sigop-contract : ∀ {hv : HeapView} (ev : RTx.EvExtractor val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64))
                               prog fs s {A B} (si : SigOpInfo A B)
-                          → RunAt prog fs
+                          → RunLow prog fs
                           -- THE REAL EXTRACTOR AND ENV (2026-07-30): over arbitrary
                           -- `ev`/`env` the emission claim is refuted by `λ _ _ → []`.
                           → ev ≡ ev-x86-64 → x86-64-arith-table prog env
@@ -682,7 +624,7 @@ postulate
                           → (env (once-symbol-path (SigOpInfo.name si)) ≡ nothing)
                             × (ev (once-symbol-path (SigOpInfo.name si)) s ≡ event-of (instr-sigop si) fs)
                             × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)
-                                (RTx.ret-call (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)
+                                (RTx.ret-call (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)
                                    (LocState.ev-log (FlatMachine.floc {FS} fs)) (once-symbol-path (SigOpInfo.name si)) s)
 
 ------------------------------------------------------------------------
@@ -690,24 +632,132 @@ postulate
 -- image names a block of the program (`BlockTable.image-owned`), the file's
 -- table keeps that block's symbol (`table-has`), and `block-env` finds it.
 ------------------------------------------------------------------------
-arith-sigop-lookup : ∀ (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs {A B} (si : SigOpInfo A B)
+arith-sigop-lookup : ∀ (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs {A B} (si : SigOpInfo A B)
                    → x86-64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
                    → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl)
 arith-sigop-lookup .(block-env (Cmp.blocks-x86-64 p)) .(Cmp.image-of p) fs si (p , refl , refl) int ftq
   with fetch-All {k = fpc fs} (BT.image-owned p) ftq int
-... | b , m , e =
+... | b , m , e , _ =
   subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (Cmp.blocks-x86-64 p) (once-symbol-path n) ≡ just pl)) (sym e)
         (block-env-hit (Cmp.blocks-x86-64 p) _ (BT.table-has AE.arith-block-symbol AE.block-payload (Cmp.program-blocks p) m))
 
-arith-sigop-contract : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs s {A B} (si : SigOpInfo A B)
-                     → RunAt prog fs
+-- plan 0.123 α′ (f1): …and what it finds is the SigOp's OWN block — the
+-- table entry under its symbol is a program block with that symbol, and one
+-- symbol is one block (`BlockTable.which-block`, D395).
+arith-sigop-block : ∀ (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs {A B} (si : SigOpInfo A B)
+                  → x86-64-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                  → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
+                  → Σ ArithBlock (λ b → BlockOf si b × pl ≡ AE.block-payload b)
+arith-sigop-block .(block-env (Cmp.blocks-x86-64 p)) .(Cmp.image-of p) fs si (p , refl , refl) int ftq pl hit =
+  let (b , _ , bo , e) = BT.which-block AE.block-payload (Cmp.program-blocks p) si
+                           (fetch-All {k = fpc fs} (BT.image-owned p) ftq int)
+                           (block-env-sound (Cmp.blocks-x86-64 p) _ hit)
+  in b , bo , e
+
+------------------------------------------------------------------------
+-- Plan 0.123 α′ (f2): THE FRAME HALF of the block's run is a theorem
+-- (`X86-64.ArithFrame`): the subroutine keeps every role register but the
+-- result's, and writes only its return address and its spills — each slot
+-- below what its tree asks for (`SpillBound`), which the room check charged
+-- (D393).
+------------------------------------------------------------------------
+private
+  fits-W : ∀ n → 8 + 8 * n ≤ (5 + n) * 8
+  fits-W n = subst (8 + 8 * n ≤_) (sym (trans (*-distribʳ-+ 8 5 n) (cong (40 +_) (*-comm n 8))))
+               (+-monoˡ-≤ (8 * n) (m≤m+n 8 32))
+
+  frame-run : ∀ s (n : ℕ) (blk : List XInstr) (W v : ℕ)
+            → SpillsWF n blk → 8 + 8 * n ≤ W → W ≤ xrreg s rsp
+            → xrreg (dispatch-arith val-x86-64 blk n s) rax ≡ v
+            → ArithRun s (dispatch-arith val-x86-64 blk n s) W v
+  frame-run s n blk W v ok fits room out = record
+    { ar-out  = out
+    ; ar-role = λ { role-sp _ → Sub.sub-rsp ; role-clos _ → Sub.sub-r12 ; role-heap _ → Sub.sub-r15
+                  ; role-in1 _ → Sub.sub-rdi ; role-out ne → ⊥-elim (ne refl) }
+    ; ar-mem  = Sub.sub-mem
+    ; ar-halt = Sub.sub-halt }
+    where module Sub = AF.Sub val-x86-64 n blk s W ok fits room
+
+-- Plan 0.129 B5 / plan 0.123 α′ (f3): THE VALUE half of the block's run — a
+-- theorem (`X86-64.ArithBlockValue`): the decoded argument is the block's input
+-- at its entry state (D391, D398), its `Int` leaves words (D397), so the
+-- dispatch's `rax` is the block's meaning, which is the SigOp's output.
+arith-block-value  : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
+                   → RunLow prog fs
+                   → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                   → hfront hv + C.slots (spend (max-entry prog) (instr-sigop si)) ≤ xrreg s rsp
+                   → LocState.halted (floc fs) ≡ false
+                   -- plan 0.123 α′ (f1): the block run is the SigOp's own (`arith-sigop-block`)
+                   → ∀ (b : ArithBlock) → BlockOf si b
+                   → xrreg (uncurry (dispatch-arith val-x86-64) (AE.block-payload b) s) rax
+                     ≡ C.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs))
+arith-block-value {hv} prog fs s si r int cc ftq room h .(mk-block _ NInt e) (is-block {n = NInt} e refl refl eq) =
+  ABV.value-int prog fs s si e eq r int cc ftq h
+    (≤-trans (+-monoʳ-≤ (hfront hv)
+               (subst (8 + 8 * required-scratch (normalize e) ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq))
+                      (fits-W (required-scratch (normalize e)))))
+             room)
+arith-block-value {hv} prog fs s si r int cc ftq room h .(mk-block _ NFloat e) (is-block {n = NFloat} e refl refl eq) =
+  ABV.value-flt prog fs s si e eq r int cc ftq h
+    (≤-trans (+-monoʳ-≤ (hfront hv)
+               (subst (8 + 8 * required-scratch e ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq))
+                      (fits-W (required-scratch e))))
+             room)
+
+arith-dispatch-run : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
+                   → RunLow prog fs
+                   → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                   → hfront hv + C.slots (spend (max-entry prog) (instr-sigop si)) ≤ xrreg s rsp
+                   → LocState.halted (floc fs) ≡ false
+                   -- plan 0.123 α′ (f1): the block run is the SigOp's own (`arith-sigop-block`)
+                   → ∀ (b : ArithBlock) → BlockOf si b
+                   → ArithRun s (uncurry (dispatch-arith val-x86-64) (AE.block-payload b) s)
+                              (C.slots (spend (max-entry prog) (instr-sigop si)))
+                              (C.enc-sv hv (AbstractExec.exec-sigop-output {FS} si (floc fs)))
+arith-dispatch-run {hv} prog fs s si r int cc ftq room h .(mk-block _ NInt e) bo@(is-block {n = NInt} e eA eB eq) =
+  frame-run s (required-scratch (normalize e)) (emit-program (compile-abs (normalize e))) _ _
+    (block-spills (normalize e))
+    (subst (8 + 8 * required-scratch (normalize e) ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq)) (fits-W (required-scratch (normalize e))))
+    (m+n≤o⇒n≤o (hfront hv) room)
+    (arith-block-value {hv} prog fs s si r int cc ftq room h _ bo)
+arith-dispatch-run {hv} prog fs s si r int cc ftq room h .(mk-block _ NFloat e) bo@(is-block {n = NFloat} e eA eB eq) =
+  frame-run s (required-scratch e) (emit-program (compile-abs e)) _ _
+    (block-spills e)
+    (subst (8 + 8 * required-scratch e ≤_) (sym (cong (λ x → (5 + sigop-scratch x) * 8) eq)) (fits-W (required-scratch e)))
+    (m+n≤o⇒n≤o (hfront hv) room)
+    (arith-block-value {hv} prog fs s si r int cc ftq room h _ bo)
+
+------------------------------------------------------------------------
+-- Plan 0.123 α′ (e): THE RUN HALF, from the frame lemma — the link, the halt
+-- flag and the decode come from the run, the pc from the block offsets.
+------------------------------------------------------------------------
+arith-sigop-run : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs s {A B} (si : SigOpInfo A B)
+                → RunLow prog fs
+                → x86-64-arith-table prog env
+                → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                → hfront hv + C.slots (spend (max-entry prog) (instr-sigop si)) ≤ xrreg s rsp
+                → LocState.halted (floc fs) ≡ false
+                → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
+                → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-x86-64) pl s)
+arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit
+  with arith-sigop-block env prog fs si t int ftq pl hit
+... | b , bo , refl =
+  sigop-arith-step prog fs s (uncurry (dispatch-arith val-x86-64) (AE.block-payload b) s) si r int cc ftq h room
+    (arith-dispatch-run {hv} prog fs s si r int cc ftq room h b bo) refl
+    (trans (cong suc (pc-off cc))
+           (sym (trans (blk-off-suc prog (fpc fs) (instr-sigop si) ftq) (+-comm (blk-off prog (fpc fs)) 1))))
+
+arith-sigop-contract : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-64 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-64)) prog fs s {A B} (si : SigOpInfo A B)
+                     → RunLow prog fs
                      → x86-64-arith-table prog env
                      → Internal (sem si) → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                     → hfront hv + C.slots (spend (max-entry prog) (instr-sigop si)) ≤ xrreg s rsp
+                     → LocState.halted (floc fs) ≡ false
                      → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                          × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (uncurry (dispatch-arith val-x86-64) pl s))
-arith-sigop-contract {hv} env prog fs s si r t int cc ftq =
+arith-sigop-contract {hv} env prog fs s si r t int cc ftq room h =
   let (pl , hit) = arith-sigop-lookup env prog fs si t int ftq
-  in pl , hit , arith-sigop-run {hv} env prog fs s si r t int cc ftq pl hit
+  in pl , hit , arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit
 
 ------------------------------------------------------------------------
 -- THE FLAT MACHINE'S WELL-FORMEDNESS LAYER IS ARCH-GENERIC (Plan 0.65 G1d).
@@ -744,10 +794,9 @@ arith-sigop-contract {hv} env prog fs s si r t int cc ftq =
 x86-64-supply : EE.Supply
 x86-64-supply = record
   { bss = x86-64-block-steps ; sts = x86-64-stuck-steps
-  ; heap-room = heap-room ; stack-room = stack-room ; call-room = call-room
+  ; room-step = λ prog fs s k _ → room-step-x86 prog fs s k
   ; reg-range = reg-range ; ret-no-wrap = ret-no-wrap
   ; tag-fits = tag-fits ; lit-fits = lit-fits ; float-fits = float-fits
-  ; lo-fits = lo-fits
   ; arith-sigop-contract = arith-sigop-contract
   ; external-sigop-contract = external-sigop-contract
   }
@@ -758,4 +807,4 @@ x86-64-supply = record
 -- dispatch twice.
 open Dispatch.Dispatch o FS slot-size word-eq Reg x86-64-roles X.W.modulus
                        x86-64-emitter x86-64-machine x86-64-traceloop x86-64-supply
-  using (events-agree; events-agree-start) public
+  using (events-agree; events-agree-start; events-agree-boot; AgreeAt) public

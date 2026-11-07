@@ -37,6 +37,7 @@ open import Once.Spec.Core.Syntax
 open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
+open import Once.Spec.Boundary using (readAt)
 open import Once.Spec.Effect Σ using (M; toT∞; fmap; bind; bindᵍ; sub; module νM)
 open νM using (outν)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toB; fromB; toL; fromL; foldM; conv)
@@ -63,14 +64,14 @@ module _ {m : ℕ} (σ : TySub m 0) where
   sigopRefl c (constant b) mem μ₀ = fromB-same σ b _
   sigopRefl c (value a Zero b) mem μ₀ = lamZero {π = pure} {A = ⌜ a ⌝ ⟨ σ ⟩} (relPure (fromB-same σ b _))
   sigopRefl c (value a One  b) mem μ₀ =
-    lamOne {π = pure} λ {x} sa → relPure (subst (λ z → Same _ (fromB σ b (Model.valueᵐ μ₀ mem (toB σ a x))) (fromB σ b (Model.valueᵐ μ₀ mem z)))
+    lamOne {π = pure} λ {x} sa → relPure (subst (λ z → Same _ (fromB σ b (readAt fmt b (Model.valueᵐ μ₀ mem (toB σ a x)))) (fromB σ b (readAt fmt b (Model.valueᵐ μ₀ mem z))))
                                      (argEq σ a sa) (fromB-same σ b _))
   sigopRefl c (value a Many b) mem μ₀ =
-    lamMany {π = pure} λ {x} sa → relPure (subst (λ z → Same _ (fromB σ b (Model.valueᵐ μ₀ mem (toB σ a x))) (fromB σ b (Model.valueᵐ μ₀ mem z)))
+    lamMany {π = pure} λ {x} sa → relPure (subst (λ z → Same _ (fromB σ b (readAt fmt b (Model.valueᵐ μ₀ mem (toB σ a x)))) (fromB σ b (readAt fmt b (Model.valueᵐ μ₀ mem z))))
                                       (argEq σ a sa) (fromB-same σ b _))
-  sigopRefl c (operation a Zero b) mem μ₀ = lamZero {π = act} {A = ⌜ a ⌝ ⟨ σ ⟩} (callT σ mem refl)
-  sigopRefl c (operation a One  b) mem μ₀ = lamOne {π = act}  λ sa → callT σ mem (argEq σ a sa)
-  sigopRefl c (operation a Many b) mem μ₀ = lamMany {π = act} λ sa → callT σ mem (argEq σ a sa)
+  sigopRefl c (operation a Zero b) mem μ₀ = lamZero {π = act} {A = ⌜ a ⌝ ⟨ σ ⟩} (callT′ σ mem (readAt fmt b) refl)
+  sigopRefl c (operation a One  b) mem μ₀ = lamOne {π = act}  λ sa → callT′ σ mem (readAt fmt b) (argEq σ a sa)
+  sigopRefl c (operation a Many b) mem μ₀ = lamMany {π = act} λ sa → callT′ σ mem (readAt fmt b) (argEq σ a sa)
 
   baseDom : ∀ p → Base ∅ₖ (primDom {m} p ⟨ σ ⟩)
   baseDom p-add  = b-* b-Int b-Int

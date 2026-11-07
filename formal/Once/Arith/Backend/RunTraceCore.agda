@@ -34,8 +34,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.IR.Semantics.Out using (Out; cut; stop; ended; _▹_)
-open import Once.Spec.Trace using (returned)
-open import Once.Target.SymbolFresh using (host-leave-symbol)
+open import Once.Spec.Trace using (returned; exhausted)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
 open import Data.String using (_≟_)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Nullary.Decidable using (dec-no)
@@ -89,6 +89,7 @@ module RunTrace
   run-events-fetch : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → Maybe Instr → Out
   run-events-instr : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → Instr → Maybe String → Out
   run-events-site  : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → (lbl : String) → Dec (lbl ≡ host-leave-symbol) → Out
+  run-events-host  : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → (lbl : String) → Dec (lbl ≡ host-exhausted-symbol) → Out
   run-events-call  : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → String → Maybe Payload → Out
   run-events-exec  : EvExtractor → ArithEnv → List SigOpEvent → ℕ → Program → State → Maybe State → Out
 
@@ -106,7 +107,12 @@ module RunTrace
   run-events-instr ev env h n prog s i nothing    = run-events-exec ev env h n prog s (execInstr prog s i)
 
   run-events-site ev env h n prog s lbl (yes _) = ended (returned tt)
-  run-events-site ev env h n prog s lbl (no _)  = run-events-call ev env h n prog s lbl (env lbl)
+  run-events-site ev env h n prog s lbl (no _)  = run-events-host ev env h n prog s lbl (lbl ≟ host-exhausted-symbol)
+
+  -- D347: a call of the Host's `exhausted` — a room check failed; the run ends
+  -- `exhausted`.
+  run-events-host ev env h n prog s lbl (yes _) = ended exhausted
+  run-events-host ev env h n prog s lbl (no _)  = run-events-call ev env h n prog s lbl (env lbl)
 
   -- arith block: dispatch, NO event, continue.
   run-events-call ev env h n prog s lbl (just pl) =
@@ -146,8 +152,10 @@ module RunTrace
   ...   | just i  with matchCall i in eqm
   ...     | just lbl with lbl ≟ host-leave-symbol
   ...       | yes _ = refl
-  ...       | no _ with H (pc s) i lbl eqf eqm
-  ...         | (pl , eqv) rewrite eqv = run-events-[] ev env prog H h n (dispatchArith pl s)
+  ...       | no _ with lbl ≟ host-exhausted-symbol
+  ...         | yes _ = refl
+  ...         | no _ with H (pc s) i lbl eqf eqm
+  ...           | (pl , eqv) rewrite eqv = run-events-[] ev env prog H h n (dispatchArith pl s)
   run-events-[] ev env prog H h (suc n) s | false | just i | nothing with execInstr prog s i
   ...       | nothing  = refl
   ...       | just s'  = run-events-[] ev env prog H h n s'
@@ -208,19 +216,21 @@ module RunTrace
   -- advance to the dispatched post-state. (Pure ⇒ matches `flat-events`' `[]`.)
   run-events-arith : ∀ ev env h n prog s i lbl pl
                    → halted s ≡ false → fetch prog (pc s) ≡ just i
-                   → matchCall i ≡ just lbl → ¬ (lbl ≡ host-leave-symbol) → env lbl ≡ just pl
+                   → matchCall i ≡ just lbl → ¬ (lbl ≡ host-leave-symbol) → ¬ (lbl ≡ host-exhausted-symbol)
+                   → env lbl ≡ just pl
                    → run-events ev env h (suc n) prog s ≡ run-events ev env h n prog (dispatchArith pl s)
-  run-events-arith ev env h n prog s i lbl pl hs ft mc nl el
-    rewrite hs | ft | mc | dec-no (lbl ≟ host-leave-symbol) nl | el = refl
+  run-events-arith ev env h n prog s i lbl pl hs ft mc nl ne el
+    rewrite hs | ft | mc | dec-no (lbl ≟ host-leave-symbol) nl | dec-no (lbl ≟ host-exhausted-symbol) ne | el = refl
 
   -- EXTERNAL SigOp (`env lbl ≡ nothing`): emit its event `ev lbl s` and continue
   -- past the call. (Matches `flat-events`' `machine-event si` via the contract.)
   run-events-external : ∀ ev env h n prog s i lbl
                       → halted s ≡ false → fetch prog (pc s) ≡ just i
-                      → matchCall i ≡ just lbl → ¬ (lbl ≡ host-leave-symbol) → env lbl ≡ nothing
+                      → matchCall i ≡ just lbl → ¬ (lbl ≡ host-leave-symbol) → ¬ (lbl ≡ host-exhausted-symbol)
+                      → env lbl ≡ nothing
                       → run-events ev env h (suc n) prog s ≡ ev lbl s ▹ run-events ev env (h ++ ev lbl s) n prog (ret-call h lbl s)
-  run-events-external ev env h n prog s i lbl hs ft mc nl el
-    rewrite hs | ft | mc | dec-no (lbl ≟ host-leave-symbol) nl | el = refl
+  run-events-external ev env h n prog s i lbl hs ft mc nl ne el
+    rewrite hs | ft | mc | dec-no (lbl ≟ host-leave-symbol) nl | dec-no (lbl ≟ host-exhausted-symbol) ne | el = refl
 
   -- THE HOST'S `leave` (D320): the run ends there, `returned`.
   run-events-leave : ∀ ev env h n prog s i
@@ -228,4 +238,12 @@ module RunTrace
                    → matchCall i ≡ just host-leave-symbol
                    → run-events ev env h (suc n) prog s ≡ ended (returned tt)
   run-events-leave ev env h n prog s i hs ft mc
+    rewrite hs | ft | mc = refl
+
+  -- THE HOST'S `exhausted` (D347): the run ends there, `exhausted`.
+  run-events-exhausted : ∀ ev env h n prog s i
+                       → halted s ≡ false → fetch prog (pc s) ≡ just i
+                       → matchCall i ≡ just host-exhausted-symbol
+                       → run-events ev env h (suc n) prog s ≡ ended exhausted
+  run-events-exhausted ev env h n prog s i hs ft mc
     rewrite hs | ft | mc = refl

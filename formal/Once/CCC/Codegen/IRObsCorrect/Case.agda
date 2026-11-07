@@ -47,6 +47,7 @@ import Once.IR.Semantics.Trace as TM
 
 open import Once.CCC.Codegen.IRObsCorrect.CaseArmR o tbl
 open import Once.CCC.Codegen.IRObsCorrect.CaseArmL o tbl
+open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl using (module ShapeC)
 
 module CaseC {FS : FrameSemantics} where
 
@@ -62,10 +63,12 @@ module CaseC {FS : FrameSemantics} where
                    → IRObsCorrectF f → IRObsCorrectF g → IRObsCorrectF (case f g)
   obs-correct-case {A} {B} {C} {f} {g} ihf ihg n l prog base ss cr span bl la
                    mIn (inj₁ a) s alloc cl n≤ nh (in-loc loc vd bf rd) k rs =
-    ArmL.witness f g n l prog base span ihf ss cr bl la s alloc cl n≤ nh vd rd k rs
+    ArmL.witness f g n l prog base (subst (SpanAt prog base) (ShapeC.CaseShape.shape {FS} f g n l) span) ihf ss cr bl
+                 (subst (LabelsAt prog base) (ShapeC.CaseShape.shape {FS} f g n l) la) s alloc cl n≤ nh vd bf rd k rs
   obs-correct-case {A} {B} {C} {f} {g} ihf ihg n l prog base ss cr span bl la
                    mIn (inj₂ b) s alloc cl n≤ nh (in-loc loc vd bf rd) k rs =
-    ArmR.witness f g n l prog base span ihg ss cr bl la s alloc cl n≤ nh vd rd k rs
+    ArmR.witness f g n l prog base (subst (SpanAt prog base) (ShapeC.CaseShape.shape {FS} f g n l) span) ihg ss cr bl
+                 (subst (LabelsAt prog base) (ShapeC.CaseShape.shape {FS} f g n l) la) s alloc cl n≤ nh vd bf rd k rs
   obs-correct-case ihf ihg n l prog base ss cr span bl la mIn x s alloc cl n≤ nh (in-reg () _) k rs
   obs-correct-case ihf ihg n l prog base ss cr span bl la mIn x s alloc cl n≤ nh (in-unit ()) k rs
 

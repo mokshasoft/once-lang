@@ -22,6 +22,7 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.NuForce (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
+open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Simple o tbl using (module Simp)
 open import Once.CCC.Machine.SMCore
@@ -71,7 +72,7 @@ module NuForceC {FS : FrameSemantics} where
                     {prog fs ret-pc rs} {c c′ : T∞ ValueDomain.⟦ B ⟧ᴰᴵ} {k}
                 → runAt (floc fs) (⟪ c′ ⟫ k) ≡ runAt (floc fs) (⟪ c ⟫ k)
                 → CalleeRunP {prog = prog} {B} R fs ret-pc rs c k → CalleeRunP {prog = prog} {B} R fs ret-pc rs c′ k
-  crun-retarget {fs = fs} {k = k} e (callee-run st se om ca ru li re sp nr nl pl ev lg pr mp fp bm fsp) =
+  crun-retarget {fs = fs} {k = k} e (callee-run st se om ca ru li re sp nr nl pl ev lg pr mp fp bm fsp bk) =
     callee-run st se om ca ru
       (λ p → li (trans (cong is-stopped (sym er)) p))
       (λ p → re (trans (sym er) p))
@@ -86,6 +87,7 @@ module NuForceC {FS : FrameSemantics} where
       (λ p → fp (trans (sym er) p))
       (λ p → bm (subst NotCut er p))
       (λ p → fsp (trans (sym er) p))
+      (λ p → bk (subst NotCut er p))
     where
       er = cong proj₂ e
       ee = cong proj₁ e
@@ -150,23 +152,36 @@ module NuForceC {FS : FrameSemantics} where
   ------------------------------------------------------------------------
   SeedKept : AllocState {FS} → LocState FS → AllocState {FS} → LocState FS → Set
   SeedKept alloc s alloc′ s′ =
-    (∀ l′ → Live alloc l′ → Live alloc′ l′) × (∀ l′ → Live alloc l′ → readLoc s′ l′ ≡ readLoc s l′)
+    (∀ l′ → Live alloc l′ → Live alloc′ l′) × BlocksKept alloc alloc′ × (∀ l′ → Live alloc l′ → readLoc s′ l′ ≡ readLoc s l′)
+
+  -- D400: an input's footprint (a register or Unit input uses no cell)
+  in-foot : ∀ {prog A mIn alloc x s} → InputAt {prog} {A} mIn alloc x s → Foot
+  in-foot {A = A} (in-loc loc v _ _) = loc ∷ foot A loc v
+  in-foot (in-reg _ _) = []
+  in-foot (in-unit _)  = []
+
+  in-foot-live : ∀ {prog A mIn alloc x s} (inp : InputAt {prog} {A} mIn alloc x s)
+               → ∀ l′ → l′ ∈ᶠ in-foot inp → Live alloc l′
+  in-foot-live (in-loc loc v bf _) l′ (here b) = blk-live0 loc bf b
+  in-foot-live {A = A} (in-loc loc v bf _) l′ (there f) = foot-live A loc v l′ f
+  in-foot-live (in-reg _ _) l′ ()
+  in-foot-live (in-unit _)  l′ ()
 
   force-layer : ∀ {F} (wf : WellFormedFI F) (l : ℕ) (prog : AbstractTrace) (j : ℕ) (mIn : AllocMode)
                   (x : ValueDomain.⟦ ⟦ F ⟧TI (ν-type F) ⟧ᴰᴵ) (s : LocState FS) (alloc : AllocState {FS})
               → AllSlotStable prog → BlockRuns prog
               → SpanAt prog j (block-layout (ℓ o l , 0 , mov-to-output ∷ []))
               → LabelsAt prog (suc j) (mov-to-output ∷ [])
-              → InputAt {prog} {⟦ F ⟧TI (ν-type F)} mIn alloc x s
+              → (inp : InputAt {prog} {⟦ F ⟧TI (ν-type F)} mIn alloc x s)
               → ∀ alloc′ s′ seed → SeedKept alloc s alloc′ s′ → seed ≡ readReg (regs s) Input1
               → ForceRuns {prog = prog} {F} (λ m′ a′ v′ l′ s″ → NuV {prog = prog} {F} m′ a′ v′ l′ s″)
-                  alloc′ s′ seed j (retVal (evalᴰ (in-ν wf) x))
-  force-layer {F} wf l prog j mIn x s alloc ss cr sp lab inp alloc′ s′ seed (incl₀ , agree₀) seq
-              wf′ fs pre ret-pc k rs pc nh fr fa ns incl agree i1 =
+                  alloc′ s′ (in-foot inp) seed j (retVal (evalᴰ (in-ν wf) x))
+  force-layer {F} wf l prog j mIn x s alloc ss cr sp lab inp alloc′ s′ seed (incl₀ , bk₀ , agree₀) seq
+              wf′ fs pre ret-pc k rs pc nh fr fa ns incl bk agree i1 =
     crun-map {prog = prog} (rp-map {prog = prog} (valid→layer {prog = prog} wf {ν-type F} unν))
       (crun-retarget (cong (runAt (floc fs)) (out-in-ν wf wf′ x k))
         (BC.block-call (id {⟦ F ⟧TI (ν-type F)}) obs-correct-id (suc l) prog (ℓ o l) 0 j ss cr sp [] lab
-           fs pre mIn x ret-pc k rs pc nh fr fa ns (callee-input inp)))
+           fs pre mIn x ret-pc k rs pc nh fr fa ns (callee-input inp incl bk agree)))
     where
       unν : ∀ {m a v lc st} → ValidAtWF {prog = prog} m a {ν-type F} v lc st → NuV {prog = prog} {F} m a v lc st
       unν (valid-ν-wf nv) = nv
@@ -174,21 +189,26 @@ module NuForceC {FS : FrameSemantics} where
       in1 : readReg (regs (floc fs)) Input1 ≡ readReg (regs s) Input1
       in1 = trans i1 seq
 
-      live-pre : ∀ l′ → Live alloc l′ → Live pre l′
-      live-pre l′ b = incl l′ (incl₀ l′ b)
-
-      callee-input : InputAt {prog} {⟦ F ⟧TI (ν-type F)} mIn alloc x s
+      -- D400: what the force is told is kept is the input's footprint
+      callee-input : (i : InputAt {prog} {⟦ F ⟧TI (ν-type F)} mIn alloc x s)
+                   → (∀ l′ → l′ ∈ᶠ in-foot i → Live pre l′)
+                   → (∀ l′ → l′ ∈ᶠ in-foot i → InBlk alloc′ l′ → InBlk pre l′)
+                   → (∀ l′ → l′ ∈ᶠ in-foot i → readLoc (floc fs) l′ ≡ readLoc s′ l′)
                    → InputAt {prog} {⟦ F ⟧TI (ν-type F)} mIn (BC.callee-alloc 0 fs) x (BC.callee-loc 0 fs)
-      callee-input (in-reg fit e) = in-reg fit (trans in1 e)
-      callee-input (in-unit e)    = in-unit e
-      callee-input (in-loc loc valid bf e) =
+      callee-input (in-reg fit e) _ _ _ = in-reg fit (trans in1 e)
+      callee-input (in-unit e)    _ _ _ = in-unit e
+      callee-input i@(in-loc loc valid bf e) incl′ bk′ agree′ =
         in-loc loc
-          (validityWF-heap-transport (Live alloc) (λ _ b → b)
-             (λ l′ b → trans (BC.callee-heap 0 fs l′ (live-pre l′ b)) (trans (agree l′ (incl₀ l′ b)) (agree₀ l′ b)))
-             (λ l′ b → BC.live-callee 0 fs pre fa l′ (live-pre l′ b))
-             x loc bf valid)
-          (BC.live-callee 0 fs pre fa loc (live-pre loc bf))
+          (FT.v-tr _ valid (here (blk-refl loc)) (λ l′ f → there f))
+          (BC.live-callee 0 fs pre fa loc (incl′ loc (here (blk-refl loc))))
           (trans in1 e)
+        where
+          module FT = FootTransport {prog = prog} {a₁ = alloc} {a₂ = BC.callee-alloc 0 fs} {s₁ = s} {s₂ = BC.callee-loc 0 fs}
+                        (_∈ᶠ in-foot i)
+                        (λ l′ q → trans (BC.callee-heap 0 fs l′ (incl′ l′ q))
+                                        (trans (agree′ l′ q) (agree₀ l′ (in-foot-live i l′ q))))
+                        (λ l′ q _ → BC.live-callee 0 fs pre fa l′ (incl′ l′ q))
+                        (λ l′ q lv ib → BC.bk-enter 0 fs pre fa l′ (incl′ l′ q) (bk′ l′ q (bk₀ l′ lv ib)))
 
   ------------------------------------------------------------------------
   -- FORCING AN `Ana` IS RUNNING ITS COALGEBRA, the result re-suspended.

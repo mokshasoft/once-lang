@@ -45,11 +45,9 @@ module Sem (bits : ℕ) (F : FloatFormat) where
   eval-arith-W : ∀ {sh n} → MArithIR sh n → ⟦ sh ⟧S → Word
   eval-arith-W {sh} (alit z)   _   = fromℤ z
   eval-arith-W {sh} (aflit d)  _   = round F d
-  -- Both reads are TOTAL now — the path proves which leaf it lands on, so
-  -- neither clause has an impossible case to invent a `0` for. The `Int` side
-  -- still narrows through `fromℤ` (the leaf carries a spec integer); the float
-  -- side is the target's bit pattern already.
-  eval-arith-W {sh} {NInt}   (ainput p) inp = fromℤ (readLeaf p inp)
+  -- Both reads are TOTAL — the path proves which leaf it lands on — and both
+  -- leaves are words (D397): the read IS the value.
+  eval-arith-W {sh} {NInt}   (ainput p) inp = readLeaf p inp
   eval-arith-W {sh} {NFloat} (ainput p) inp = readLeaf p inp
   -- The op DISPATCHES ON THE KIND. `Once.Word`'s modular ops for `Int`,
   -- `Once.Spec.Float.Arith`'s for `Float` — and both are DEFINITIONS reading the

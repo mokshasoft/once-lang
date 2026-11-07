@@ -41,7 +41,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; tran
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Allocation using ()
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; LocState; StoredValue; SV-Tag; SV-Ptr; SV-Lit; SV-Code; instr-ctrl; c-label; c-jmp; c-branch-tag-zero; c-entry; c-start; c-leave; c-call-fn; c-ret; load-from-slot; restore-input; instr-alloc-stack; instr-reclaim-to; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; store-at-slot; store-indirect; store-indirect-suc; lea-slot; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-reg-op; out-nz; readReg; Output; module MemOps; module AbstractExec; AllocState; module AllocState; module LocState)
+  using (AbstractInstr; AbstractTrace; LocState; StoredValue; SV-Tag; SV-Ptr; SV-Lit; SV-Code; instr-ctrl; c-label; c-jmp; c-branch-tag-zero; c-entry; c-start; c-leave; c-call-fn; c-ret; load-from-slot; restore-input; instr-alloc-stack; instr-reclaim-to; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; store-at-slot; store-indirect; store-indirect-suc; lea-slot; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-alloc-heap; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; out-nz; readReg; Output; module MemOps; module AbstractExec; AllocState; module AllocState; module LocState)
 open import Once.Type using (fits-int; fits-float)
 open AllocState using (next-slot; current-frame)
 open LocState using (halted)
@@ -104,6 +104,11 @@ module CataNextSlot {FS : FrameSemantics} where
   abstract-keeps-next-slot (instr-load-tag-lit n) _ s alloc = refl
   abstract-keeps-next-slot (instr-alloc-heap n)  _ s alloc = refl
   abstract-keeps-next-slot (instr-reg-op op)     _ s alloc = refl
+  abstract-keeps-next-slot (instr-free-heap n)   _ s alloc = refl
+  abstract-keeps-next-slot (load-at n)   _ s alloc = refl
+  abstract-keeps-next-slot (store-at n)   _ s alloc = refl
+  abstract-keeps-next-slot (addr-at n)   _ s alloc = refl
+  abstract-keeps-next-slot (instr-room n)        _ s alloc = refl
   abstract-keeps-next-slot (worklist-pop slot)   _ s alloc =
     cong next-slot (elfs-alloc (readLoc s (AtStack (current-frame alloc) slot)) s alloc)
   abstract-keeps-next-slot (load-from-slot slot)  _ s alloc =
@@ -205,6 +210,11 @@ module CataNextSlot {FS : FrameSemantics} where
   ... | SV-Tag _            = refl
   ... | SV-Ptr _            = refl
   ... | SV-Code _           = refl
+  flat-keeps-next-slot prog fs (instr-free-heap n)     _ = refl
+  flat-keeps-next-slot prog fs (load-at n)     _ = refl
+  flat-keeps-next-slot prog fs (store-at n)     _ = refl
+  flat-keeps-next-slot prog fs (addr-at n)     _ = refl
+  flat-keeps-next-slot prog fs (instr-room n)          _ = refl
 
   -- The trace-level predicate: every instruction is slot-stable.
   AllSlotStable : AbstractTrace → Set

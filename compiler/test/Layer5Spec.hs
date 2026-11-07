@@ -65,13 +65,18 @@ layer5Tests = testGroup "Layer5"
   , testGroup "a server never ends (D317)"
       -- FAILING until plan 0.123 Part B (the proven allocators reclaim) wires the
       -- allocator and its `free`. Each round allocates its next state on the
-      -- bump heap, which is never reclaimed, so the 64 KiB heap fills after a
-      -- few thousand rounds and the next allocation writes past its end: the
-      -- binary segfaults (139) instead of running on. The apex does not see
-      -- this because it assumes `HeapRoom`, which no finite heap satisfies
-      -- for a loop whose rounds allocate.
+      -- bump heap, which is never reclaimed, so the heap fills after a few
+      -- thousand rounds. Since D371 a room check sees it and the run ends
+      -- `exhausted` (the Host's SIGABRT, -6) instead of running on: a defined
+      -- failure, not the segfault it was.
       [ foreverCases "a server that emits each round runs on" "loop-forever-emit" [0, 1, 2, 3, 4]
       , foreverCases "a silent server runs on and is never observed" "loop-forever-silent" []
+      ]
+  , testGroup "memory runs out observably (plan 0.123 A.5)"
+      -- A program whose LIVE data grows without bound ends `exhausted` on every
+      -- arch: the room check before the allocation that would not fit calls the
+      -- Host's `once_exhausted`, which aborts. Never a write past the heap.
+      [ exitCases "a growing list ends exhausted (SIGABRT)" "alloc-forever" (-6)
       ]
   ]
 

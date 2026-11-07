@@ -9,7 +9,7 @@
 --
 --     mov-to-output · store tmp                          tmp := root
 --     alloc · store n+6 · mov-to-input ·
---       tag 0 · store-indirect                           sn := [SV-Tag 0 , _]
+--       tag 0 · store-at 0                               sn := [SV-Tag 0 , _]
 --     load n+6 · store eval · load n+6 · store val ·
 --       load n+6 · store todo                            three empty stacks
 --     load tmp                                           Output := root
@@ -36,7 +36,7 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.Text o tbl using (init-rows; mo
 open import Once.CCC.Codegen.IRToTrace o using (push2)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; SV-Tag; sv-as-loc; store-at-slot; load-from-slot; store-indirect; mov-to-input; mov-to-output
+        ; SV-Ptr; SV-Tag; sv-as-loc; store-at-slot; load-from-slot; store-at; mov-to-input; mov-to-output; module MemOps; module AbstractExec
         ; instr-alloc-heap; instr-load-tag-lit)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
@@ -44,6 +44,9 @@ open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
 open import Once.IRTy using (IRTy; IRFunctor; μ-type)
 open import Data.Unit using (⊤)
+open import Data.Nat using (s≤s; z≤n)
+import Once.CCC.Machine.FlatAlloc as FlatAlloc
+import Once.CCC.Machine.SMPrimitives
 
 module CataInitC {FS : FrameSemantics} where
 
@@ -55,6 +58,8 @@ module CataInitC {FS : FrameSemantics} where
   open CataWalkC {FS}
   open LocState using (regs; halted)
   open AllocState using (next-slot; next-heap-ref; current-frame)
+  open MemOps {FS} using (writeLoc; writeLoc-preserves-other)
+  open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
 
   -- what the init leaves: three stacks on one sentinel
   record InitQ (prog : AbstractTrace) (F : IRFunctor) (C : IRTy) (n : ℕ) (sn : HeapLocation)
@@ -100,7 +105,7 @@ module CataInitC {FS : FrameSemantics} where
     u4  = St (store-at-slot ss) u3
     u5  = St mov-to-input u4
     u6  = St (instr-load-tag-lit 0) u5
-    u7  = St store-indirect u6
+    u7  = St (store-at 0) u6
     u8  = St (load-from-slot ss) u7
     u9  = St (store-at-slot ev) u8
     u10 = St (load-from-slot ss) u9
@@ -136,7 +141,7 @@ module CataInitC {FS : FrameSemantics} where
     cf6 : current-frame (falloc u6) ≡ f₀
     cf6 = trans (exec-abstract-preserves-frame (instr-load-tag-lit 0) (floc u5) (falloc u5)) cf5
     cf7 : current-frame (falloc u7) ≡ f₀
-    cf7 = trans (exec-abstract-preserves-frame store-indirect (floc u6) (falloc u6)) cf6
+    cf7 = trans (exec-abstract-preserves-frame (store-at 0) (floc u6) (falloc u6)) cf6
     cf8 : current-frame (falloc u8) ≡ f₀
     cf8 = trans (exec-abstract-preserves-frame (load-from-slot ss) (floc u7) (falloc u7)) cf7
     cf9 : current-frame (falloc u9) ≡ f₀
@@ -210,14 +215,34 @@ module CataInitC {FS : FrameSemantics} where
 
     rdi7 : sv-as-loc (Inp u6) ≡ just (AtDynamic sn)
     rdi7 = cong sv-as-loc in6
+    -- D385: the tag's cell is one of the fresh block's
+    ib6 : InBlk (falloc u6) (AtDynamic sn)
+    ib6 = subst (λ r → InBlk (falloc u6) (AtDynamic (heap-loc (mkHeapRef r) 0))) hr2 (FlatAlloc.alloc-in {FS} 2 (falloc u2) 0 (s≤s z≤n))
+    -- row 7 is one write, of `Output`, at the sentinel
+    eq7 : floc u7 ≡ writeLoc (floc u6) (AtDynamic sn) (Oup u6)
+    eq7 rewrite rdi7 | ib6 = refl
     nh7 : halted (floc u7) ≡ false
-    nh7 = exec-abstract-preserves-halted-WF store-indirect (floc u6) (falloc u6) nh6 (AtDynamic sn , rdi7)
+    nh7 = exec-abstract-preserves-halted-WF (store-at 0) (floc u6) (falloc u6) nh6 (AtDynamic sn , rdi7 , ib6)
     sent7 : hpr u7 sn ≡ just (SV-Tag 0)
-    sent7 = trans (store-ind-result (floc u6) (falloc u6) sn rdi7) (cong just out6)
+    sent7 = trans (cong (λ z → readLoc z (AtDynamic sn)) eq7)
+                  (trans (readLoc-writeLoc-same (floc u6) (AtDynamic sn) (Oup u6)) (cong just out6))
+    sl7 : ∀ j → sl u7 j ≡ sl u6 j
+    sl7 j = trans (cong (λ z → readLoc z (AtStack f₀ j)) eq7)
+                  (writeLoc-preserves-other (floc u6) (AtDynamic sn) (AtStack f₀ j) (Oup u6) (λ ()))
     ss7 : sl u7 ss ≡ just psn
-    ss7 = trans (sl-sind (floc u6) (falloc u6) sn f₀ ss rdi7) ss6
+    ss7 = trans (sl7 ss) ss6
     tmp7 : sl u7 tmp ≡ just w
-    tmp7 = trans (sl-sind (floc u6) (falloc u6) sn f₀ tmp rdi7) tmp6
+    tmp7 = trans (sl7 tmp) tmp6
+    -- …and nothing the caller had: the sentinel is fresh
+    seg7 : SegA a₀ n u6 u7
+    seg7 = record
+      { mem  = λ loc bf → trans (cong (λ z → readLoc z loc) eq7)
+                                (writeLoc-preserves-other (floc u6) (AtDynamic sn) loc (Oup u6) (not-sn loc bf))
+      ; cf   = refl ; sf = refl ; ns = refl ; href = ≤-refl }
+      where
+        not-sn : ∀ loc → BeforeFrontier (record a₀ { next-slot = n }) loc → AtDynamic sn ≢ loc
+        not-sn loc bf e with subst (BeforeFrontier (record a₀ { next-slot = n })) (sym e) bf
+        ... | BeforeFrontier.heap-before p = <-irrefl refl p
 
     ------------------------------------------------------------------
     -- rows 8-13: eval, val, todo := sn
@@ -329,7 +354,7 @@ module CataInitC {FS : FrameSemantics} where
       (trans (exec-abstract-preserves-heap-ref (load-from-slot ss) (floc u9) (falloc u9) tt)
       (trans (exec-abstract-preserves-heap-ref (store-at-slot ev) (floc u8) (falloc u8) tt)
       (trans (exec-abstract-preserves-heap-ref (load-from-slot ss) (floc u7) (falloc u7) tt)
-      (trans (exec-abstract-preserves-heap-ref store-indirect (floc u6) (falloc u6) tt)
+      (trans (exec-abstract-preserves-heap-ref (store-at 0) (floc u6) (falloc u6) tt)
       (trans (exec-abstract-preserves-heap-ref (instr-load-tag-lit 0) (floc u5) (falloc u5) tt)
       (trans (exec-abstract-preserves-heap-ref mov-to-input (floc u4) (falloc u4) tt)
       (trans (exec-abstract-preserves-heap-ref (store-at-slot ss) (floc u3) (falloc u3) tt) hr3))))))))))
@@ -347,7 +372,7 @@ module CataInitC {FS : FrameSemantics} where
       (trans (sl-keep (load-from-slot ss) (floc u9) (falloc u9) f₀ j nhw-load-from-slot refl)
       (trans (sl-other ev j (floc u8) (falloc u8) f₀ (far lt1 c≤j))
       (trans (sl-keep (load-from-slot ss) (floc u7) (falloc u7) f₀ j nhw-load-from-slot refl)
-      (trans (sl-sind (floc u6) (falloc u6) sn f₀ j rdi7)
+      (trans (sl7 j)
       (trans (sl-keep (instr-load-tag-lit 0) (floc u5) (falloc u5) f₀ j nhw-instr-load-tag-lit refl)
       (trans (sl-keep mov-to-input (floc u4) (falloc u4) f₀ j nhw-mov-to-input refl)
       (trans (sl-other ss j (floc u3) (falloc u3) f₀ (far lt6 c≤j))
@@ -387,7 +412,7 @@ module CataInitC {FS : FrameSemantics} where
         (segA-∘ (seg-store ss u3 cf3 (m≤m+n n 6))
         (segA-∘ (seg-q mov-to-input u4 nhw-mov-to-input refl tt tt)
         (segA-∘ (seg-q (instr-load-tag-lit 0) u5 nhw-instr-load-tag-lit refl tt tt)
-                (seg-sind u6 sn rdi7 ≤-refl))))))
+                seg7)))))
 
       segB : SegA a₀ n u7 u14
       segB =
@@ -402,12 +427,24 @@ module CataInitC {FS : FrameSemantics} where
       seg14 : SegA a₀ n σ u14
       seg14 = segA-∘ segA segB
 
+    -- the slot loads keep the allocator (each read a value); the one
+    -- allocation keeps every block (D387)
+    ld-al : ∀ k (t : FlatState) {v} → readLoc (floc t) (AtStack (current-frame (falloc t)) k) ≡ just v
+          → proj₂ (exec-abstract (load-from-slot k) (floc t) (falloc t)) ≡ falloc t
+    ld-al k t r = cong (λ mv → proj₂ (AbstractExec.exec-load-from-slot-with-value {FS} mv (floc t) (falloc t))) r
+
+    alloc14 : falloc u14 ≡ falloc u7
+    alloc14 = trans (ld-al tmp u13 (proj₂ wf14)) (trans (ld-al ss u11 (proj₂ wf12)) (trans (ld-al ss u9 (proj₂ wf10)) (ld-al ss u7 (proj₂ wf8))))
+
+    bk14 : BlocksKept a₀ (falloc u14)
+    bk14 = subst (BlocksKept a₀) (sym alloc14) (FlatAlloc.alloc-bk {FS} 2 a₀)
+
     kp14 : Kp a₀ s₀ (falloc u14) (floc u14)
-    kp14 = seg-kp seg14
+    kp14 = seg-kp seg14 bk14
 
     w14 : Walk prog n (KI c) σ (14 + fpc σ) (λ _ → ⊤)
     w14 = record
-      { τ = u14 ; steps = 14 ; run = s-++ {prog} {7} {7} {σ} {u7} {u14} runA runB ; seg = seg14 ; nh = nh14 ; pc = refl
+      { τ = u14 ; steps = 14 ; run = s-++ {prog} {7} {7} {σ} {u7} {u14} runA runB ; seg = seg14 ; bk = bk14 ; nh = nh14 ; pc = refl
       ; ret = refl ; clo = refl ; lnk = refl ; cf = cf14 ; slots = slots14 ; post = tt }
 
     ------------------------------------------------------------------
@@ -429,7 +466,7 @@ module CataInitC {FS : FrameSemantics} where
 
     τ = Push2Out.τ pu
     kpp : Kp (falloc u14) (floc u14) (falloc τ) (floc τ)
-    kpp = seg-kp (Push2Out.seg pu)
+    kpp = seg-kp (Push2Out.seg pu) (Push2Out.bk pu)
 
     keep-k : ∀ {V : Set} {E : ElemP V} → ETr E → ∀ {k} → k ≢ n → k ≢ n + 4 → k ≢ n + 5
            → StackAt E (falloc u14) (floc u14) k sn [] → StackAt E (falloc τ) (floc τ) k sn []

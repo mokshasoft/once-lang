@@ -50,13 +50,21 @@ entry updates the rule it changes here, in the same commit.
   two behaviours are the same when they are weakly bisimilar: the next call or
   end arrives in both or in neither, the same call, the rests again the same.
   The production rate is not observed. (D318 ← D317, D179, D058)
+- **A compiled run may run out of memory; the source never does.** A run ends
+  `returned`, `halted` or `exhausted`, and only a compiled run ends
+  `exhausted`. Correctness is `⊑`, not `≈`: the run follows its meaning up to
+  running out — every call before it is the meaning's, and it never stops
+  silently or goes on where the meaning does not. That a program does not run
+  out is a separate, space claim. (D374)
 - **A Host runs a program**: `enter ; main ; leave`, with `leave : Eff Unit
   Void`. The Spec says only THAT a run returned, halted or went on; the Host
   says how a platform does it (Linux `exit_group(0)`, a bare-metal stop, a
   deleted task). The compiler calls `leave` when `main` returns and never
   knows which Host it runs under; the Host is chosen at link time and its
   contract is a hypothesis of the apex. An explicit `exit` is an ordinary
-  operation into `Void`: the run halts and never reaches `leave`. (D320)
+  operation into `Void`: the run halts and never reaches `leave`. Running out
+  is the Host's third entry, `once_exhausted`: the run ends `exhausted`, and
+  the Host decides how that looks (Linux SIGABRT). (D374 ← D320)
 - **The observable is Spec**: an event records the operation's canonical name,
   its domain and the argument as a typed value. (D114)
 
@@ -441,8 +449,9 @@ entry updates the rule it changes here, in the same commit.
   premises, with two different sides — stated in the Spec (`LawsApply`) and
   proved. A new law merges only with its instance. (D372)
 - **Trust only `as`**: the one trusted translation is the assembler's; the
-  emitted code is the verified image, and `_start` is proved code; how the
-  run ends is the Host's `leave` (D320). A
+  emitted code is the verified image, and its entry `once_main` is proved
+  code; the run's memory and process entry are the Host's `enter` (Linux:
+  `_start`, D376), how the run ends its `leave` (D320). A
   toolchain axiom may never certify compiler logic. (D262 ← D165, D161, D261)
 - **Agda, extracted with MAlonzo**, is the current proof vehicle — scaffolding
   toward Once in Once and the TCB0 bootstrap. (D022, D036, GOAL.md)

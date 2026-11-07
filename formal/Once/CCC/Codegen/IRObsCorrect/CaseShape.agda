@@ -38,10 +38,12 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (labels-in)
-open import Once.CCC.Codegen.LabelSeg using (LabelsIn; li-none; li-lab)
+open import Once.CCC.Codegen.LabelSeg using (LabelsIn; li-none; li-lab; once-label-of)
 open import Once.CCC.Codegen.LabelRange o using (label-mono)
 open import Once.CCC.Label using (module LabelId; ℓ; LabelId)
 open LabelId using (idx)
+open import Once.CCC.Codegen.FlatLayout using (get-i; get-one; get-i-P)
+open import Once.CCC.Machine.SMCore using (offsetLoc)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AllocState; AbstractTrace; load-indirect-suc; mov-to-input; LocState; SV-Tag; readReg; Input1; SV-Ptr; sv-as-loc; StoredValue; sucLoc; Output; writeReg-same; module LocState)
 open LocState using (regs)
 open import Data.Nat.Properties using (1+n≰n)
@@ -115,7 +117,8 @@ module ShapeC {FS : FrameSemantics} where
   open Mach {FS}
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel; fl-hit)
-  open ClosureWellFormedBase {FS} using (SumTag; rep-prim; rep-unit)
+  open ClosureWellFormedBase {FS} using (SumTag; rep-prim)
+  open import Once.CCC.Machine.FlatWords {FS} using (offset-1)
 
   ----------------------------------------------------------------------
   -- THE SHAPE, and the four premise splits that ride on it.
@@ -134,13 +137,23 @@ module ShapeC {FS : FrameSemantics} where
     gt = emitted n1 l1 g
 
     pre mid post : AbstractTrace
-    pre  = instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ load-indirect-suc ∷ mov-to-input ∷ []
+    -- plan 0.123 B.4 α: each arm reads its payload at word 1 (`FlatLayout.get`,
+    -- one instruction whatever the payload's type)
+    pre  = instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ get-i B 1 ∷ mov-to-input ∷ []
     mid  = instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷
-           load-indirect-suc ∷ mov-to-input ∷ []
+           get-i A 1 ∷ mov-to-input ∷ []
     post = instr-ctrl (c-label (ℓ o (suc l))) ∷ []
 
-    shape : emitted n l (case f g) ≡ pre ++ gt ++ mid ++ ft ++ post
-    shape = refl
+    -- the text with each payload read as its one instruction; the emitted
+    -- text IS this (`get-one`), and every lemma below is stated over it
+    E′ : AbstractTrace
+    E′ = pre ++ gt ++ mid ++ ft ++ post
+
+    shape : emitted n l (case f g) ≡ E′
+    shape = cong₂ (λ x y → instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ (x ++ mov-to-input ∷ gt ++
+                              instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷
+                              (y ++ mov-to-input ∷ ft ++ post)))
+                  (get-one B 1) (get-one A 1)
 
     ------------------------------------------------------------------
     -- The two label WINDOWS this clause itself occupies: `ℓ o l` (the
@@ -149,12 +162,19 @@ module ShapeC {FS : FrameSemantics} where
     -- one of `f`'s or `g`'s labels pass the branch row and the mid row.
     ------------------------------------------------------------------
     pre-li : LabelsIn l (suc (suc l)) pre
-    pre-li = li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ []ᴬ
+    -- a payload read mentions no label
+    get-nolab : ∀ (X : IRTy) → once-label-of (get-i X 1) ≡ nothing
+    get-nolab X = get-i-P {λ i → once-label-of i ≡ nothing} X 1 (λ _ → refl) (λ _ → refl) refl
+
+    get-nodef : ∀ (X : IRTy) (m : LabelId) → label-of? (get-i X 1) ≢ just m
+    get-nodef X m = get-i-P {λ i → label-of? i ≢ just m} X 1 (λ _ ()) (λ _ ()) (λ ())
+
+    pre-li = li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ᴬ li-none (get-nolab B) ∷ᴬ li-none refl ∷ᴬ []ᴬ
 
     mid-li : LabelsIn l (suc (suc l)) mid
     mid-li = li-lab refl (n≤1+n l) ≤-refl
            ∷ᴬ li-lab refl ≤-refl (s≤s (n≤1+n l))
-           ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ []ᴬ
+           ∷ᴬ li-none (get-nolab A) ∷ᴬ li-none refl ∷ᴬ []ᴬ
 
     ------------------------------------------------------------------
     -- THE SPANS. `gt` sits past the three-row branch prologue, `ft` past
@@ -164,7 +184,7 @@ module ShapeC {FS : FrameSemantics} where
     span-shift d k b = trans (cong (_+ b) (+-comm d k)) (+-assoc k d b)
 
     span-g : ∀ (prog : AbstractTrace) (base : ℕ)
-           → SpanAt prog base (emitted n l (case f g))
+           → SpanAt prog base (E′)
            → SpanAt prog (suc (suc (suc base))) gt
     span-g prog base span k i eq =
       subst (λ m → fetch prog m ≡ just i) (span-shift 3 k base)
@@ -180,7 +200,7 @@ module ShapeC {FS : FrameSemantics} where
     f-shift base k = shuffle-f (length gt) base k
 
     span-f : ∀ (prog : AbstractTrace) (base : ℕ)
-           → SpanAt prog base (emitted n l (case f g))
+           → SpanAt prog base (E′)
            → SpanAt prog (fbase base) ft
     span-f prog base span k i eq =
       subst (λ m → fetch prog m ≡ just i) (f-shift base k)
@@ -219,7 +239,7 @@ module ShapeC {FS : FrameSemantics} where
     -- …and the mid row's own label is `ℓ o l`, not the join.
     noMid-e : NoLabel (ℓ o (suc l)) mid
     noMid-e = (λ ()) ∷ᴬ (λ eq → 1+n≰n (≤-reflexive (sym (cong idx (just-injL eq)))))
-            ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ []ᴬ
+            ∷ᴬ get-nodef A (ℓ o (suc l)) ∷ᴬ (λ ()) ∷ᴬ []ᴬ
 
     inl-at : ℕ
     inl-at = 4 + length gt
@@ -227,24 +247,31 @@ module ShapeC {FS : FrameSemantics} where
     join-at : ℕ
     join-at = ((3 + length gt) + 4) + length ft
 
-    inl-scan : find-label (emitted n l (case f g)) (ℓ o l) ≡ just inl-at
-    inl-scan = trans (fl-go-skip gt (mid ++ ft ++ post) (ℓ o l) 3 noG-l)
-                     (fl-hit (ℓ o l) (load-indirect-suc ∷ mov-to-input ∷ (ft ++ post)) inl-at)
+    -- the three prologue rows define no label (the read's included)
+    get-nothing : ∀ (X : IRTy) → label-of? (get-i X 1) ≡ nothing
+    get-nothing X = get-i-P {λ i → label-of? i ≡ nothing} X 1 (λ _ → refl) (λ _ → refl) refl
 
-    join-scan : find-label (emitted n l (case f g)) (ℓ o (suc l)) ≡ just join-at
-    join-scan =
+    pre-skip : ∀ m → find-label E′ m ≡ fl-go (gt ++ mid ++ ft ++ post) m 3
+    pre-skip m = cong (λ z → fl-at z (mov-to-input ∷ gt ++ mid ++ ft ++ post) m 1) (get-nothing B)
+
+    inl-scan : find-label (E′) (ℓ o l) ≡ just inl-at
+    inl-scan = trans (pre-skip (ℓ o l)) (trans (fl-go-skip gt (mid ++ ft ++ post) (ℓ o l) 3 noG-l)
+                     (fl-hit (ℓ o l) (get-i A 1 ∷ mov-to-input ∷ (ft ++ post)) inl-at))
+
+    join-scan : find-label (E′) (ℓ o (suc l)) ≡ just join-at
+    join-scan = trans (pre-skip (ℓ o (suc l))) (
       trans (fl-go-skip gt (mid ++ ft ++ post) (ℓ o (suc l)) 3 noG-e)
         (trans (fl-go-skip mid (ft ++ post) (ℓ o (suc l)) (3 + length gt) noMid-e)
           (trans (fl-go-skip ft post (ℓ o (suc l)) ((3 + length gt) + 4) noF-e)
-                 (fl-hit (ℓ o (suc l)) [] join-at)))
+                 (fl-hit (ℓ o (suc l)) [] join-at))))
 
     inl-target : ∀ (prog : AbstractTrace) (base : ℕ)
-               → LabelsAt prog base (emitted n l (case f g))
+               → LabelsAt prog base (E′)
                → find-label prog (ℓ o l) ≡ just (inl-at + base)
     inl-target prog base la = la (ℓ o l) inl-at inl-scan
 
     join-target : ∀ (prog : AbstractTrace) (base : ℕ)
-                → LabelsAt prog base (emitted n l (case f g))
+                → LabelsAt prog base (E′)
                 → find-label prog (ℓ o (suc l)) ≡ just (join-at + base)
     join-target prog base la = la (ℓ o (suc l)) join-at join-scan
 
@@ -274,17 +301,17 @@ module ShapeC {FS : FrameSemantics} where
     -- while `mid`'s two labels are below it and `gt`'s are at or above `l1`.
     ------------------------------------------------------------------
     labels-g : ∀ (prog : AbstractTrace) (base : ℕ)
-             → LabelsAt prog base (emitted n l (case f g))
+             → LabelsAt prog base (E′)
              → LabelsAt prog (suc (suc (suc base))) gt
     labels-g prog base la m j eq =
       subst (λ z → find-label prog m ≡ just z) (+-assoc j 3 base) (la m (j + 3) scan)
       where
-        scan : find-label (emitted n l (case f g)) m ≡ just (j + 3)
-        scan = fl-go-prefix gt (mid ++ ft ++ post) m 3 (j + 3)
-                 (trans (fl-go-shift gt m 3 0) (cong (mmap (_+ 3)) eq))
+        scan : find-label (E′) m ≡ just (j + 3)
+        scan = trans (pre-skip m) (fl-go-prefix gt (mid ++ ft ++ post) m 3 (j + 3)
+                 (trans (fl-go-shift gt m 3 0) (cong (mmap (_+ 3)) eq)))
 
     labels-f : ∀ (prog : AbstractTrace) (base : ℕ)
-             → LabelsAt prog base (emitted n l (case f g))
+             → LabelsAt prog base (E′)
              → LabelsAt prog (fbase base) ft
     labels-f prog base la m j eq =
       subst (λ z → find-label prog m ≡ just z) arith (la m (j + off) scan)
@@ -303,11 +330,11 @@ module ShapeC {FS : FrameSemantics} where
         noMid = noLabel-outside m mid mid-li
                   (λ w → 1+n≰n (≤-trans (proj₂ w) (proj₁ inW)))
 
-        scan : find-label (emitted n l (case f g)) m ≡ just (j + off)
-        scan = trans (fl-go-skip gt (mid ++ ft ++ post) m 3 noG)
+        scan : find-label (E′) m ≡ just (j + off)
+        scan = trans (pre-skip m) (trans (fl-go-skip gt (mid ++ ft ++ post) m 3 noG)
                      (trans (fl-go-skip mid (ft ++ post) m (3 + length gt) noMid)
                             (fl-go-prefix ft post m off (j + off)
-                               (trans (fl-go-shift ft m off 0) (cong (mmap (_+ off)) eq))))
+                               (trans (fl-go-shift ft m off 0) (cong (mmap (_+ off)) eq)))))
 
         arith : (j + off) + base ≡ j + fbase base
         arith = trans (+-assoc j off base) (cong (j +_) (shuffle-lf (length gt) base))
@@ -337,9 +364,11 @@ module ShapeC {FS : FrameSemantics} where
           → ValidAtWF {prog = prog} m alloc {A IRT.+ B} (inj₁ a) loc s
           → readReg (regs s) Input1 ≡ SV-Ptr loc
           → tag-test (flat-read-tag s) ≡ just true
-  tag-inl {m = m} {loc = loc} {s = s} (valid-inl-wf _ tg _ _ _ _) rd
+  tag-inl {m = m} {loc = loc} {s = s} (valid-inl-wf _ _ tg _ _ _ _ _) rd
     rewrite rd = cong tag-test (sumTag-read m 0 s loc tg)
-  tag-inl {m = m} {loc = loc} {s = s} (valid-inl-reg-wf _ tg _ _ _) rd
+  tag-inl {m = m} {loc = loc} {s = s} (valid-inl-reg-wf _ tg _ _ _ _) rd
+    rewrite rd = cong tag-test (sumTag-read m 0 s loc tg)
+  tag-inl {m = m} {loc = loc} {s = s} (valid-inl-flat-wf _ _ tg _ _ _ _) rd
     rewrite rd = cong tag-test (sumTag-read m 0 s loc tg)
 
   tag-inr : ∀ {prog : AbstractTrace} {A B} {b : ⟦ B ⟧} {m : AllocMode} {alloc : AllocState {FS}}
@@ -347,87 +376,52 @@ module ShapeC {FS : FrameSemantics} where
           → ValidAtWF {prog = prog} m alloc {A IRT.+ B} (inj₂ b) loc s
           → readReg (regs s) Input1 ≡ SV-Ptr loc
           → tag-test (flat-read-tag s) ≡ just false
-  tag-inr {m = m} {loc = loc} {s = s} (valid-inr-wf _ tg _ _ _ _) rd
+  tag-inr {m = m} {loc = loc} {s = s} (valid-inr-wf _ _ tg _ _ _ _ _) rd
     rewrite rd = cong tag-test (sumTag-read m 1 s loc tg)
-  tag-inr {m = m} {loc = loc} {s = s} (valid-inr-reg-wf _ tg _ _ _) rd
+  tag-inr {m = m} {loc = loc} {s = s} (valid-inr-reg-wf _ tg _ _ _ _) rd
     rewrite rd = cong tag-test (sumTag-read m 1 s loc tg)
-
-  -- …AND THE UNPACK ROW IS WELL-FORMED FOR THE SAME REASON. `load-indirect-suc`
-  -- owes `InstrWF`: `Input1` must resolve to a location whose successor cell
-  -- can be read. For a sum that IS the residence — the payload cell — so the
-  -- witness is the validity's own `readLoc s (sucLoc sum-loc)` field, in all
-  -- four shapes (pointer or inline payload, either tag).
-  unpack-wf : ∀ {prog : AbstractTrace} {A' B' : IRTy} {v : ⟦ A' IRT.+ B' ⟧} {m : AllocMode}
-                {alloc : AllocState {FS}} {loc : ValueLocation FS} {s' : LocState FS}
-            → ValidAtWF {prog = prog} m alloc {A' IRT.+ B'} v loc s'
-            → readReg (regs s') Input1 ≡ SV-Ptr loc
-            → InstrWF s' alloc load-indirect-suc
-  unpack-wf {loc = loc} (valid-inl-wf _ _ r _ _ _)   rd = loc , cong sv-as-loc rd , (_ , r)
-  unpack-wf {loc = loc} (valid-inr-wf _ _ r _ _ _)   rd = loc , cong sv-as-loc rd , (_ , r)
-  unpack-wf {loc = loc} (valid-inl-reg-wf _ _ _ r _) rd = loc , cong sv-as-loc rd , (_ , r)
-  unpack-wf {loc = loc} (valid-inr-reg-wf _ _ _ r _) rd = loc , cong sv-as-loc rd , (_ , r)
-
-  -- WHAT THE UNPACK ROW PUTS IN `Output`: the payload cell, verbatim. The
-  -- `with`-chain is `load-ind-suc-preserves-input`'s (Machine.agda:72) — the
-  -- two resolutions have to be forced before `exec-load-with-value` reduces.
-  load-suc-out : ∀ (s' : LocState FS) (alloc' : AllocState {FS})
-                   (loc : ValueLocation FS) (v : StoredValue FS)
-               → sv-as-loc (readReg (regs s') Input1) ≡ just loc
-               → readLoc s' (sucLoc loc) ≡ just v
-               → readReg (regs (proj₁ (exec-abstract load-indirect-suc s' alloc'))) Output ≡ v
-  load-suc-out s' alloc' loc v eq cell
-    with sv-as-loc (readReg (regs s') Input1) | eq
-  ... | .(just loc) | refl with readLoc s' (sucLoc loc) | cell
-  ...   | .(just v) | refl = writeReg-same (regs s') Output v
+  tag-inr {m = m} {loc = loc} {s = s} (valid-inr-flat-wf _ _ tg _ _ _ _) rd
+    rewrite rd = cong tag-test (sumTag-read m 1 s loc tg)
 
   ----------------------------------------------------------------------
-  -- THE ARM'S INPUT. After the two unpack rows, `Input1` holds the payload —
-  -- which is exactly the residence the arm's `IRObsCorrectF` asks for. The
-  -- mode is the PAYLOAD's, not the sum's, so it comes back existentially: a
-  -- pointer payload lands in `in-loc`, an inline one in `in-reg`.
-  --
-  -- Neither row touches memory (`load-indirect-suc` reads it, `mov-to-input`
-  -- moves a register), so the payload's own `ValidAtWF` transports unchanged.
+  -- THE PAYLOAD, at word 1 of the sum, as a component's cell (what
+  -- `Get.get-run` reads): a pointer word, an inline scalar, or the payload's
+  -- own words in place.
   ----------------------------------------------------------------------
-  mem-unpack : ∀ (s' : LocState FS) (alloc' : AllocState {FS}) (lc : ValueLocation FS)
-             → readLoc (proj₁ (exec-abstract load-indirect-suc s' alloc')) lc ≡ readLoc s' lc
-  mem-unpack s' alloc' lc = mem-untouched load-indirect-suc s' alloc' lc nhw-load-indirect-suc refl
+  payload-l : ∀ {prog : AbstractTrace} {A' B' : IRTy} {a : ⟦ A' ⟧} {m : AllocMode}
+                {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
+            → ValidAtWF {prog = prog} m alloc {A' IRT.+ B'} (inj₁ a) loc s
+            → CellAt {prog = prog} alloc A' a (offsetLoc loc 1) s
+  payload-l {prog = prog} {A' = A'} {a = a} {alloc = alloc} {loc = loc} {s = s} v =
+    subst (λ z → CellAt {prog = prog} alloc A' a z s) (sym (offset-1 {prog = prog} loc)) (go v)
+    where
+      go : _ → CellAt {prog = prog} alloc A' a (sucLoc loc) s
+      go (valid-inl-wf nd _ _ pp pb _ _ pv)      = cell-ptr nd pp pb pv
+      go (valid-inl-reg-wf _ _ rep pp _ _)       = cell-inline rep pp
+      go (valid-inl-flat-wf fl _ _ slb ib _ pv)  = cell-flat fl (λ p → slb , ib p) pv
 
-  arm-input-l : ∀ {prog : AbstractTrace} {A' B' : IRTy} {a : ⟦ A' ⟧} {m : AllocMode} {alloc : AllocState {FS}}
-                  {loc : ValueLocation FS} {s' : LocState FS} (s'' : LocState FS)
-              → ValidAtWF {prog = prog} m alloc {A' IRT.+ B'} (inj₁ a) loc s'
-              → readReg (regs s') Input1 ≡ SV-Ptr loc
-              → readReg (regs s'') Input1
-                ≡ readReg (regs (proj₁ (exec-abstract load-indirect-suc s' alloc))) Output
-              → (∀ lc → readLoc s'' lc ≡ readLoc s' lc)
-              → Σ AllocMode (λ mA → InputAt {prog = prog} mA alloc a s'')
-  arm-input-l {alloc = alloc} {loc = loc} {s' = s'} s''
-              (valid-inl-wf {payload-loc = pl} {mA = mA} _ _ r bfp _ va) rd mv me =
-    mA , in-loc pl (validityWF-mem-preserved _ pl s' s'' (live→bf bfp) (λ lc _ → me lc) va) bfp
-           (trans mv (load-suc-out s' alloc loc (SV-Ptr pl) (cong sv-as-loc rd) r))
-  -- An INLINE payload is either a register-fitting primitive or a unit, and
-  -- `InputAt` has a constructor for each — `in-reg` and `in-unit`.
-  arm-input-l {alloc = alloc} {loc = loc} {s' = s'} s''
-              (valid-inl-reg-wf _ _ (rep-prim fit) r _) rd mv me =
-    Heap , in-reg fit (trans mv (load-suc-out s' alloc loc _ (cong sv-as-loc rd) r))
-  arm-input-l s'' (valid-inl-reg-wf _ _ (rep-unit e _) _ _) _ _ _ = Heap , in-unit e
+  payload-r : ∀ {prog : AbstractTrace} {A' B' : IRTy} {b : ⟦ B' ⟧} {m : AllocMode}
+                {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
+            → ValidAtWF {prog = prog} m alloc {A' IRT.+ B'} (inj₂ b) loc s
+            → CellAt {prog = prog} alloc B' b (offsetLoc loc 1) s
+  payload-r {prog = prog} {B' = B'} {b = b} {alloc = alloc} {loc = loc} {s = s} v =
+    subst (λ z → CellAt {prog = prog} alloc B' b z s) (sym (offset-1 {prog = prog} loc)) (go v)
+    where
+      go : _ → CellAt {prog = prog} alloc B' b (sucLoc loc) s
+      go (valid-inr-wf nd _ _ pp pb _ _ pv)      = cell-ptr nd pp pb pv
+      go (valid-inr-reg-wf _ _ rep pp _ _)       = cell-inline rep pp
+      go (valid-inr-flat-wf fl _ _ slb ib _ pv)  = cell-flat fl (λ p → slb , ib p) pv
 
-  arm-input-r : ∀ {prog : AbstractTrace} {A' B' : IRTy} {b : ⟦ B' ⟧} {m : AllocMode} {alloc : AllocState {FS}}
-                  {loc : ValueLocation FS} {s' : LocState FS} (s'' : LocState FS)
-              → ValidAtWF {prog = prog} m alloc {A' IRT.+ B'} (inj₂ b) loc s'
-              → readReg (regs s') Input1 ≡ SV-Ptr loc
-              → readReg (regs s'') Input1
-                ≡ readReg (regs (proj₁ (exec-abstract load-indirect-suc s' alloc))) Output
-              → (∀ lc → readLoc s'' lc ≡ readLoc s' lc)
-              → Σ AllocMode (λ mB → InputAt {prog = prog} mB alloc b s'')
-  arm-input-r {alloc = alloc} {loc = loc} {s' = s'} s''
-              (valid-inr-wf {payload-loc = pl} {mB = mB} _ _ r bfp _ vb) rd mv me =
-    mB , in-loc pl (validityWF-mem-preserved _ pl s' s'' (live→bf bfp) (λ lc _ → me lc) vb) bfp
-           (trans mv (load-suc-out s' alloc loc (SV-Ptr pl) (cong sv-as-loc rd) r))
-  arm-input-r {alloc = alloc} {loc = loc} {s' = s'} s''
-              (valid-inr-reg-wf _ _ (rep-prim fit) r _) rd mv me =
-    Heap , in-reg fit (trans mv (load-suc-out s' alloc loc _ (cong sv-as-loc rd) r))
-  arm-input-r s'' (valid-inr-reg-wf _ _ (rep-unit e _) _ _) _ _ _ = Heap , in-unit e
+  -- THE ARM'S INPUT: the read's result, moved to `Input1` (D152 A1's bridge).
+  place→input : ∀ {prog} {C} {c : ⟦ C ⟧} {m alloc ca} {s s′ : LocState FS}
+              → ResultPlace {prog = prog} C m alloc ca c s
+              → readReg (regs s′) Input1 ≡ readReg (regs s) Output
+              → (∀ lc → readLoc s′ lc ≡ readLoc s lc)
+              → InputAt {prog = prog} m alloc c s′
+  place→input (at-loc lc v bf rax _ _) mv me =
+    in-loc lc (validityWF-mem-preserved _ lc _ _ (live→bf bf) (λ l′ _ → me l′) v) bf (trans mv rax)
+  place→input (at-reg fit rax) mv _ = in-reg fit (trans mv rax)
+  place→input unit-result      _  _ = in-unit refl
 
   ----------------------------------------------------------------------
   -- THE RUN. Both arms share the branch row; they differ in whether it is

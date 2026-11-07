@@ -57,16 +57,19 @@ module ResuspC {FS : FrameSemantics} where
                 (prog : AbstractTrace) (lbl-n : ℕ)
                 (R : VTy (ν-type F))
                 -- a fresh suspension of `(e , a′)` with this block's code is an `R`
-                (mk-child : ∀ {alloc ν-loc s} (a′ : ValueDomain.⟦ A ⟧ᴰᴵ)
+                -- plan 0.123 α2: cell 0 is the seed pair's pointer, cell 1 this block's code
+                (mk-child : ∀ {alloc ν-loc s pl′} (a′ : ValueDomain.⟦ A ⟧ᴰᴵ)
                           → LocMatchesMode Heap ν-loc
+                          → readLoc s ν-loc ≡ just (SV-Ptr pl′) → Live alloc pl′
+                          → ValidAtWF {prog = prog} Heap alloc {E IRTy′.* A} (e , a′) pl′ s
                           → readLoc s (sucLoc ν-loc) ≡ just (SV-Code (ℓ o lbl-n))
                           → Live alloc (sucLoc ν-loc)
-                          → CellAt {prog = prog} alloc (E IRTy′.* A) (e , a′) ν-loc s
                           → R Heap alloc (retVal (evalᴰ (Ana wf coalg) (e , a′))) ν-loc s)
-                -- …and stays one while what was live stays live and unchanged
+                -- …and stays one while what was live stays live, unchanged, its blocks kept
                 (R-tr : ∀ {a a′ : AllocState {FS}} {s s′ : LocState FS}
                       → (∀ l → Live a l → Live a′ l)
                       → (∀ l → Live a l → readLoc s′ l ≡ readLoc s l)
+                      → BlocksKept a a′
                       → ∀ {m v lc} → R m a v lc s → R m a′ v lc s′)
                 where
 
@@ -74,7 +77,7 @@ module ResuspC {FS : FrameSemantics} where
 
     -- the re-suspension's text at frontier `n`, labels from `l`
     rtrace : ∀ {G : IRFunctor} → WellFormedFI G → ℕ → ℕ → AbstractTrace
-    rtrace wG n l = proj₂ (proj₂ (resuspend-layer n l (ℓ o lbl-n) 0 wG))
+    rtrace wG n l = proj₂ (proj₂ (resuspend-layer F E A n l (ℓ o lbl-n) 0 wG))
 
     -- where a value is when it is in Output: a heap cell, a register literal,
     -- or nothing at all (`Unit`)
@@ -108,52 +111,57 @@ module ResuspC {FS : FrameSemantics} where
         sf       : saved-frames (falloc settle) ≡ saved-frames (falloc σ)
         bf-mono  : ∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record (falloc σ) { next-slot = m }) loc
                  → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
+        -- D387: the blocks live at the start keep their sizes
+        bk       : BlocksKept (falloc σ) (falloc settle)
 
     ----------------------------------------------------------------------
     -- THE PROOF, by induction on `wG` (one module per case: `Resusp.Id`,
     -- `Resusp.Prod`, `Resusp.Sum`). It is stated there in a stronger form
     -- (`RBase.RRuns′`): the inputs are valid at a BASE allocator no later
     -- than the start, the stack frontier comes back unchanged, and the
-    -- result survives any later state that keeps its footprint — which is
-    -- what a product needs of its second component, whose result must
-    -- outlive the write of the fresh pair's second cell.
+    -- result stays valid in any later state that keeps the cells live at its
+    -- making — which is what a later put of it needs: a product's first part
+    -- outlives the second part's run, then both are copied into a fresh block.
     ----------------------------------------------------------------------
     private
-      module B = ResuspBaseC.RBase {FS} wf coalg e prog lbl-n R mk-child
-      open ResuspBaseC {FS} using (SegA; seg-bf; live-from; Kp; Prot)
+      module B = ResuspBaseC.RBase {FS} wf coalg e prog lbl-n R mk-child R-tr
+      open ResuspBaseC {FS} using (SegA; seg-bf; live-from)
 
       resusp-K : ∀ {C} (ib : IsBaseTypeI C) → B.Resusp′ (wf-K ib)
-      resusp-K {C} ib n l σ y pl b hb span lab nh lk ns n≥1 sl0 lpl cE (B.out-loc {m} loc v bf rax) = record
+      resusp-K {C} ib n l σ y pl b hb bkb span lab nh lk ns n≥1 sl0 lpl cE (B.out-loc {m} loc v bf rax) = record
         { steps = 0 ; settle = σ ; run = [] ; nh = nh ; pc = refl ; ret = refl ; lnk = lk
         ; ev = chain-events-nil {prog} {σ} ; log = refl ; left = refl
         ; out-mode = m
         ; rout = B.ro-loc loc (live-from b (falloc σ) hb loc bf) rax
-                   (λ {a′} {s′} bft rd → valid→fo {m = m} {alloc = a′} {A = C} {v = y} {loc = loc} {s = s′} (fo-base ib)
-                      (B.v-tr {b} {a′} {floc σ} {s′}
-                         ((λ l′ x → bft l′ (live-from b (falloc σ) hb l′ x)) , (λ l′ x → rd l′ (live-from b (falloc σ) hb l′ x , inj₁ x)))
-                         {m} {C} {y} {loc} bf v))
+                   (λ {s′} keep → valid→fo {m = m} {alloc = falloc σ} {A = C} {v = y} {loc = loc} {s = s′} (fo-base ib)
+                      (validityWF-heap-transport (Live b) (λ _ x → x)
+                         (λ l′ x → keep l′ (live-from b (falloc σ) hb l′ x))
+                         (live-from b (falloc σ) hb) bkb y loc bf v))
         ; seg = record { mem = λ _ _ → refl ; cf = refl ; sf = refl ; ns = refl ; href = ≤-refl }
+        ; bk = λ _ _ ib′ → ib′
         }
-      resusp-K ib n l σ y pl b hb span lab nh lk ns n≥1 sl0 lpl cE (B.out-reg fit rax) = record
+      resusp-K ib n l σ y pl b hb bkb span lab nh lk ns n≥1 sl0 lpl cE (B.out-reg fit rax) = record
         { steps = 0 ; settle = σ ; run = [] ; nh = nh ; pc = refl ; ret = refl ; lnk = lk
         ; ev = chain-events-nil {prog} {σ} ; log = refl ; left = refl
         ; out-mode = Heap
         ; rout = B.ro-reg fit rax
         ; seg = record { mem = λ _ _ → refl ; cf = refl ; sf = refl ; ns = refl ; href = ≤-refl }
+        ; bk = λ _ _ ib′ → ib′
         }
-      resusp-K ib n l σ y pl b hb span lab nh lk ns n≥1 sl0 lpl cE (B.out-unit u) = record
+      resusp-K ib n l σ y pl b hb bkb span lab nh lk ns n≥1 sl0 lpl cE (B.out-unit u) = record
         { steps = 0 ; settle = σ ; run = [] ; nh = nh ; pc = refl ; ret = refl ; lnk = lk
         ; ev = chain-events-nil {prog} {σ} ; log = refl ; left = refl
         ; out-mode = Heap
         ; rout = B.ro-unit u
         ; seg = record { mem = λ _ _ → refl ; cf = refl ; sf = refl ; ns = refl ; href = ≤-refl }
+        ; bk = λ _ _ ib′ → ib′
         }
 
       resusp′ : ∀ {G : IRFunctor} (wG : WellFormedFI G) → B.Resusp′ wG
       resusp′ (wf-K ib)     = resusp-K ib
-      resusp′ wf-Id         = ResuspIdC.RId.resusp-Id {FS} wf coalg e prog lbl-n R mk-child
-      resusp′ (wf-Prod f g) = ResuspProdC.RProd.resusp-Prod {FS} wf coalg e prog lbl-n R mk-child f g (resusp′ f) (resusp′ g)
-      resusp′ (wf-Sum f g)  = ResuspSumC.RSum.resusp-Sum {FS} wf coalg e prog lbl-n R mk-child f g (resusp′ f) (resusp′ g)
+      resusp′ wf-Id         = ResuspIdC.RId.resusp-Id {FS} wf coalg e prog lbl-n R mk-child R-tr
+      resusp′ (wf-Prod f g) = ResuspProdC.RProd.Case.resusp-Prod {FS} wf coalg e prog lbl-n R mk-child R-tr f g (resusp′ f) (resusp′ g)
+      resusp′ (wf-Sum f g)  = ResuspSumC.RSum.resusp-Sum {FS} wf coalg e prog lbl-n R mk-child R-tr f g (resusp′ f) (resusp′ g)
 
       out-in : ∀ {C} {alloc : AllocState {FS}} {c : ValueDomain.⟦ C ⟧ᴰᴵ} {st : LocState FS}
              → OutAt {C} alloc c st → B.OutAt′ {C} alloc c st
@@ -179,6 +187,7 @@ module ResuspC {FS : FrameSemantics} where
         ; cf       = SegA.cf (B.RRuns′.seg r)
         ; sf       = SegA.sf (B.RRuns′.seg r)
         ; bf-mono  = seg-bf (B.RRuns′.seg r)
+        ; bk       = B.RRuns′.bk r
         }
 
     resusp : ∀ {G : IRFunctor} (wG : WellFormedFI G) (n l : ℕ) (σ : FlatState)
@@ -193,4 +202,4 @@ module ResuspC {FS : FrameSemantics} where
            → OutAt {⟦ G ⟧TI A} (falloc σ) y (floc σ)
            → RRuns wG n l σ y
     resusp wG n l σ y pl span lab nh lk ns n≥1 sl0 lpl cE oA =
-      runs-out (resusp′ wG n l σ y pl (falloc σ) ≤-refl span lab nh lk ns n≥1 sl0 lpl cE (out-in oA))
+      runs-out (resusp′ wG n l σ y pl (falloc σ) ≤-refl (λ _ _ ib → ib) span lab nh lk ns n≥1 sl0 lpl cE (out-in oA))

@@ -38,6 +38,7 @@ open import Once.Spec.Trace using (Tr)
 open import Once.Adequacy.MachineTrace using (module Machine)
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.IR.Semantics.Trace using (Interp)
+open import Once.Target.Arch using (arch-numerics; x86-64)
 open import Once.Arith.Backend.CallAnswer using (CallResolver; answer-at)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 
@@ -67,7 +68,7 @@ open import Once.Spec.Float.Decimal using (round)
 open import Once.Spec.Float.Dyadic using (binary64)
 open import Once.Target.X86-64.PhysReg using (Reg; rsp; rdi)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
-open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
+open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd; flat-addr)
 import Once.Arith.Backend.X86-64.RunTrace as RT
 open X64 using (State; readReg; readMem)
 open X64.State using (regs; memory)
@@ -118,26 +119,19 @@ def nothing  = 0
 scratch-addr : State → XScratch → X64.Word
 scratch-addr s sc = readReg (regs s) rsp ℕ.+ (8 * XScratch.slot sc)
 
-side-off : Side → X64.Word
-side-off Fst = 0
-side-off Snd = 8
-
--- Chase the input path from an address through memory (each Fst/Snd hop
--- offsets then dereferences; the final leaf is the value at the address).
-path-load-go : State → X64.Word → InputPath → X64.Word
-path-load-go s addr []          = def (readMem (memory s) addr)
-path-load-go s addr (sd ∷ rest) =
-  path-load-go s (def (readMem (memory s) (addr ℕ.+ side-off sd))) rest
-
-path-load : State → InputPath → X64.Word
-path-load s p = path-load-go s (readReg (regs s) rdi) p
+-- D391: a leaf of the flat input (D381) is ONE word at its offset `k` from the
+-- input pointer (`Shape.flat-addr`).
+-- D396: the empty path is the input itself, register-resident (`movq %rdi, …`)
+path-load : State → InputPath → ℕ → X64.Word
+path-load s []      k = readReg (regs s) rdi
+path-load s (x ∷ p) k = def (readMem (memory s) (flat-addr 8 (readReg (regs s) rdi) (x ∷ p) k))
 
 val-x86-64 : XInstr → X64.State → Reg → X64.Word
 val-x86-64 (XI.Xmov-imm d z)          s _ = W.fromℤ z
 val-x86-64 (XI.Xmov-rr d src)         s _ = rd s src
 val-x86-64 (XI.Xmov-r-m sc src)       s _ = rd s src            -- writes = []; unused
 val-x86-64 (XI.Xmov-m-r d sc)         s _ = def (readMem (memory s) (scratch-addr s sc))
-val-x86-64 (XI.Xmov-arg d p)          s _ = path-load s p
+val-x86-64 (XI.Xmov-arg d p k)        s _ = path-load s p k
 val-x86-64 (XI.Xadd-rr d src)         s _ = rd s d W.⊕ rd s src
 val-x86-64 (XI.Xsub-rr d src)         s _ = rd s d W.⊖ rd s src
 val-x86-64 (XI.Ximul-rr d src)        s _ = rd s d W.⊗ rd s src
@@ -162,7 +156,7 @@ val-x86-64 (XI.Xfsubr-rr d src)        s _ = FA.fsub binary64 (rd s src) (rd s d
 val-x86-64 (XI.Xfneg-r d)              s _ = FA.fneg binary64 (rd s d)
 val-x86-64 (XI.Xi2f-r d src)           s _ = FA.i2f binary64 (W.toℤ (rd s src))
 val-x86-64 (XI.Xmov-fimm d dc)         s _ = round binary64 dc
-val-x86-64 (XI.Xmov-farg d p)          s _ = path-load s p
+val-x86-64 (XI.Xmov-farg d p k)        s _ = path-load s p k
 val-x86-64 (XI.Xmov-out src)          s _ = rd s src
 
 postulate
@@ -193,11 +187,24 @@ block-env-hit ((s′ , p) ∷ bs) s a = go (s′ ≟ s) a
     go (no ¬e)  (here e)  = ⊥-elim (¬e e)
     go (no _)   (there a) = block-env-hit bs s a
 
+-- plan 0.123 α′ (f1): …and what is found is an entry under that symbol.
+open import Data.Maybe.Properties using (just-injective)
+open import Data.Product using (proj₂)
+block-env-sound : ∀ (bs : List (String × RF.Payload)) (s : String) {pl : RF.Payload} → block-env bs s ≡ just pl
+                → Any (λ x → proj₁ x ≡ s × proj₂ x ≡ pl) bs
+block-env-sound []              s ()
+block-env-sound ((s′ , p) ∷ bs) s {pl} eq = go (s′ ≟ s) eq
+  where
+    go : (d : Dec (s′ ≡ s)) → (if isYes d then just p else block-env bs s) ≡ just pl
+       → Any (λ x → proj₁ x ≡ s × proj₂ x ≡ pl) ((s′ , p) ∷ bs)
+    go (yes e) eq′ = here (e , just-injective eq′)
+    go (no _)  eq′ = there (block-env-sound bs s eq′)
+
 -- D320: the binary's TRACE — the machine read off step by step (`RT.Run.δ`,
 -- `MachineTrace`): no fuel, so a run that never calls again never arrives.
 run-trace-x86-64 : Interp → RF.Image → X64.State → Tr ⊤
 run-trace-x86-64 ι P s =
-  Machine.trace (RT.Run.δ val-x86-64 (answer-at ι call-at-x86-64) ev-x86-64 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
+  Machine.trace (RT.Run.δ val-x86-64 (answer-at (arch-numerics x86-64) ι call-at-x86-64) ev-x86-64 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
 
 postulate
   -- decode-x86-64 — POSTULATED. Concrete byte-encoder/decoder per the

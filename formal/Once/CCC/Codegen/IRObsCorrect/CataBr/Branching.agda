@@ -36,7 +36,7 @@ module Once.CCC.Codegen.IRObsCorrect.CataBr.Branching (o : CanonicalName) (tbl :
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
-open import Once.CCC.Codegen.IRObsCorrect.CataConst.Run o tbl using (module CataRunC)
+open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Meaning using (module PO; cata-alg; cata-br-meaning)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FillOk using (module FillOk)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
@@ -49,7 +49,8 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldLoop o tbl using (module Ca
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldExit o tbl using (module CataFoldExitC)
 open import Once.CCC.Codegen.IRToTrace o using (cata-strategy; strat-branching)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; Output; SV-Ptr)
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; Output; SV-Ptr; offsetLoc)
+open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; module HeapLocation; module HeapRef)
@@ -74,9 +75,10 @@ module CataBranchC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open ResuspBaseC {FS} using (SegA; seg-bf)
-  open CataRunC {FS} using (cell-sv; cell-read)
-  open CataStackC {FS} using (cell→word; word-tr; seg-kp)
+  open ResuspBaseC {FS} using (SegA; seg-bf; live-from)
+  open GetC {FS} using (offset-zero)
+
+  open CataStackC {FS} using (word-tr; seg-kp)
   open CataWalkC {FS} using (Walk)
   open CataBrTextC {FS} using (module Text)
   open CataFoldTextC {FS} using (module FoldAt)
@@ -105,10 +107,10 @@ module CataBranchC {FS : FrameSemantics} where
               (la : LabelsAt prog base (emitted n l (Cata wf alg)))
               (x : ⟦ E IRTy′.* μ-type F ⟧) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
               (ns0 : next-slot alloc ≡ 0) (nh : halted s ≡ false) (k : ℕ) (rs : List ℕ)
-              (phl : HeapLocation) (rdi : readReg (regs s) Input1 ≡ SV-Ptr (AtDynamic phl))
-              (c₁ : CellAt {prog = prog} alloc E (proj₁ x) (AtDynamic phl) s)
+              (pl : ValueLocation FS) (rdi : readReg (regs s) Input1 ≡ SV-Ptr pl) (lpl : Live alloc pl)
+              (cE : CellAt {prog = prog} alloc E (proj₁ x) (offsetLoc pl 0) s)
               (μhl : HeapLocation) (mC : AllocMode)
-              (rdμ : readLoc s (AtDynamic (sucHL phl)) ≡ just (SV-Ptr (AtDynamic μhl)))
+              (rdμ : readLoc s (offsetLoc pl (size E)) ≡ just (SV-Ptr (AtDynamic μhl)))
               (lμ : Live alloc (AtDynamic μhl))
               (vμ : ValidAtWF {prog = prog} mC alloc {μ-type F} (proj₂ x) (AtDynamic μhl) s)
               where
@@ -128,9 +130,6 @@ module CataBranchC {FS : FrameSemantics} where
     root : ⟦ μ-type F ⟧
     root = proj₂ x
 
-    env-sv : StoredValue FS
-    env-sv = cell-sv c₁
-
     σ : FlatState
     σ = entry-flat base s alloc cl rs
 
@@ -144,8 +143,13 @@ module CataBranchC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     -- 1. entry → the fold head
     ------------------------------------------------------------------
-    tf : ToFoldOut prog n c bodyL X σ wf alg₀ C root env-sv
-    tf = Build.out wf alg st n l prog base span la alg₀ x s alloc cl rs nh phl rdi c₁ μhl mC rdμ lμ vμ
+    -- the two fields are taken directly, not through `module B = Build …`: applying the whole
+    -- module copies every definition in it, which ran out of heap (D400's richer witnesses)
+    env-sv : StoredValue FS
+    env-sv = Build.env-sv wf alg st n l prog base span la alg₀ x s alloc cl rs nh pl rdi lpl cE μhl mC rdμ lμ vμ
+
+    tf : ToFoldOut prog n c bodyL X σ wf alg₀ C root E e env-sv
+    tf = Build.out wf alg st n l prog base span la alg₀ x s alloc cl rs nh pl rdi lpl cE μhl mC rdμ lμ vμ
     module TF = ToFoldOut tf
 
     open Inv prog F E C n c bodyL X TF.sn TF.hc e env-sv
@@ -158,7 +162,7 @@ module CataBranchC {FS : FrameSemantics} where
       { nh = TF.nh ; pc = TF.pc ; ns0 = trans (SegA.ns TF.seg) ns0
       ; eval = TF.eval ; val = TF.val ; cl = TF.cl ; ev = TF.ev ; code = TF.code
       ; hc-lt = subst (λ z → suc z ≤ next-heap-ref (falloc TF.τ)) (sym TF.ref-hc) TF.hr
-      ; env = word-tr (seg-kp TF.seg) (cell→word c₁ (cell-read c₁)) }
+      ; env = word-tr (seg-kp TF.seg TF.bk) TF.env }
 
     run₀ : FlatSteps prog TF.steps σ TF.τ
     run₀ = proj₁ TF.run
@@ -239,6 +243,15 @@ module CataBranchC {FS : FrameSemantics} where
          → BeforeFrontier (record (falloc RR.τ) { next-slot = m }) loc
     bf-R nc m loc b = RR.bf (ncR nc) m loc (seg-bf TF.seg m loc b)
 
+    lv-R : NotCut ρ → ∀ l → Live alloc l → Live (falloc RR.τ) l
+    lv-R nc (AtDynamic hl) (BeforeFrontier.heap-before p) with bf-R nc 0 (AtDynamic hl) (BeforeFrontier.heap-before p)
+    ... | BeforeFrontier.heap-before p′ = BeforeFrontier.heap-before p′
+
+    -- D387: every block survives the cata
+    bk-R : NotCut ρ → BlocksKept alloc (falloc RR.τ)
+    bk-R nc = bk-trans {a = alloc} {b = falloc TF.τ} {c = falloc RR.τ} TF.bk (RR.bk (ncR nc))
+                (live-from alloc (falloc TF.τ) (SegA.href TF.seg))
+
     ------------------------------------------------------------------
     -- STOPPED or CUT: the run ends inside the loop.
     ------------------------------------------------------------------
@@ -255,7 +268,7 @@ module CataBranchC {FS : FrameSemantics} where
                    (λ p → ⊥-elim (nr (trans (sym eq) p)))
                    (progress-≤ prog-R (ctrls-≤ʳ run₀ RR.run))
                    (λ nc fr j bf → mem-R nc (AtStack fr j) bf) (λ nc hl bf → mem-R nc (AtDynamic hl) bf)
-                   (λ p → ⊥-elim (nr (trans (sym eq) p))) bf-R (λ p → ⊥-elim (nr (trans (sym eq) p)))
+                   (λ p → ⊥-elim (nr (trans (sym eq) p))) bf-R (λ p → ⊥-elim (nr (trans (sym eq) p))) bk-R
       ; traces-agree = trans (chain-events-++ run₀ RR.run)
                              (trans (cong₂ _++_ (proj₁ (proj₂ TF.run)) RR.events) evs)
       }
@@ -284,8 +297,8 @@ module CataBranchC {FS : FrameSemantics} where
       full : FlatSteps prog (TF.steps + (RR.steps + Walk.steps wX)) σ τX
       full = FlatSteps-++ run₀ (FlatSteps-++ RR.run runX)
 
-      pl : Σ AllocMode (λ m → ResultPlace {prog = prog} C m (falloc τX) (falloc τX) v (floc τX))
-      pl = word→place (Walk.post wX)
+      rpl : Σ AllocMode (λ m → ResultPlace {prog = prog} C m (falloc τX) (falloc τX) v (floc τX))
+      rpl = word→place (Walk.post wX)
 
       at-end : fpc τX ≡ length (emitted n l (Cata wf alg)) + base
       at-end = trans (Walk.pc wX)
@@ -310,20 +323,21 @@ module CataBranchC {FS : FrameSemantics} where
       mro : MachineRefinesObsF prog base n l (Cata wf alg) x s alloc cl rs k
       mro = record
         { value-realized =
-            realized (TF.steps + (RR.steps + Walk.steps wX)) τX (proj₁ pl) (falloc τX) full
+            realized (TF.steps + (RR.steps + Walk.steps wX)) τX (proj₁ rpl) (falloc τX) full
                      (λ _ → Walk.nh wX)
                      (λ _ → at-end)
                      (λ p → ⊥-elim (f≢t (trans (sym (cong is-stopped eq)) p)))
                      (λ _ → trans (Walk.ret wX) (trans (Same.ret sm) TF.ret))
                      (λ _ → trans (Walk.lnk wX) (RR.no-link (subst NotCut (sym resR) tt)))
                      (trans (proj₂ (proj₂ (Walk.run wX))) log-R)
-                     (λ p → subst (λ z → ResultPlace {prog = prog} C (proj₁ pl) (falloc τX) (falloc τX) z (floc τX))
-                                  (done-inj (trans (sym eq) p)) (proj₂ pl))
+                     (λ p → subst (λ z → ResultPlace {prog = prog} C (proj₁ rpl) (falloc τX) (falloc τX) z (floc τX))
+                                  (done-inj (trans (sym eq) p)) (proj₂ rpl))
                      (progress-≤ prog-R ctrlsX)
                      (λ nc fr j bf → memX nc (AtStack fr j) bf) (λ nc hl bf → memX nc (AtDynamic hl) bf)
                      (λ _ → trans (Walk.cf wX) (trans (Same.cf sm) TF.cf))
                      (λ nc m loc b → seg-bf (Walk.seg wX) m loc (bf-R nc m loc b))
                      (λ _ → trans (SegA.sf (Walk.seg wX)) (trans (Same.sf sm) (SegA.sf TF.seg)))
+                     (λ nc → bk-trans {a = alloc} {b = falloc RR.τ} {c = falloc τX} (bk-R nc) (Walk.bk wX) (lv-R nc))
         ; traces-agree = evX
         }
 
@@ -344,19 +358,22 @@ module CataBranchC {FS : FrameSemantics} where
   -- the input is a PAIR: no register holds it, and it is not `Unit`
   cata-correct-branching wf alg ih st n l prog base ss cr span bl la mIn x s alloc cl ns0 nh (in-reg () _) k rs
   cata-correct-branching wf alg ih st n l prog base ss cr span bl la mIn x s alloc cl ns0 nh (in-unit ()) k rs
-  cata-correct-branching wf alg ih st n l prog base ss cr span bl la mIn x s alloc cl ns0 nh (in-loc (AtStack _ _) _ () _) k rs
   cata-correct-branching {F} wf {E} {C} alg ih st n l prog base ss cr span bl la mIn x s alloc cl ns0 nh
-    (in-loc (AtDynamic phl) valid lv rdi) k rs =
+    (in-loc rpl valid lv rdi) k rs =
     go-μ (PairValidWF.snd-cell d)
     where
       d = decomposePairWF valid
 
-      -- a μ is never inline, and its cell points at the heap
-      go-μ : CellAt {prog = prog} alloc (μ-type F) (proj₂ x) (AtDynamic (sucHL phl)) s
+      -- plan 0.123 α2: the environment's words begin the flat pair
+      cE : CellAt {prog = prog} alloc E (proj₁ x) (offsetLoc rpl 0) s
+      cE = subst (λ z → CellAt {prog = prog} alloc E (proj₁ x) z s) (sym (offset-zero rpl)) (PairValidWF.fst-cell d)
+
+      -- a μ is a node: its cell is a pointer word, at the heap
+      go-μ : CellAt {prog = prog} alloc (μ-type F) (proj₂ x) (offsetLoc rpl (size E)) s
            → MachineRefinesObsF prog base n l (Cata wf alg) x s alloc cl rs k
       go-μ (cell-inline (rep-prim ()) _)
-      go-μ (cell-inline (rep-unit () _) _)
-      go-μ (cell-ptr {comp-loc = AtStack _ _} _ () _)
-      go-μ (cell-ptr {comp-loc = AtDynamic μhl} {mC = mC} rdμ lμ vμ) =
+      go-μ (cell-flat () _ _)
+      go-μ (cell-ptr {comp-loc = AtStack _ _} _ _ () _)
+      go-μ (cell-ptr {comp-loc = AtDynamic μhl} {mC = mC} _ rdμ lμ vμ) =
         Glue.result wf alg ih st n l prog base ss cr span bl la x s alloc cl ns0 nh k rs
-                    phl rdi (PairValidWF.fst-cell d) μhl mC rdμ lμ vμ
+                    rpl rdi lv cE μhl mC rdμ lμ vμ

@@ -14,26 +14,27 @@
 
 open import Data.Nat using (ℕ; _+_)
 open import Data.Maybe using (Maybe)
+open import Relation.Binary.PropositionalEquality using (_≡_; cong; refl)
 open import Data.List using ([]; _∷_)
-open import Relation.Binary.PropositionalEquality using (_≡_; cong; trans)
 
-open import Once.Arith.Machine.Shape using (InputPath; Side)
+open import Once.Arith.Machine.Shape using (InputPath; flat-addr)
 
 module Once.Adequacy.ArchCorrectness.ArithSimPathLoad
   (St : Set)
   (mem : St → ℕ → Maybe ℕ)          -- the arch's memory accessor (Memory = ℕ → Maybe ℕ)
   (def : Maybe ℕ → ℕ)
-  (side-off : Side → ℕ)
+  (word : ℕ)                         -- the arch's word, in bytes
   where
 
-path-load-go : St → ℕ → InputPath → ℕ
-path-load-go s addr []          = def (mem s addr)
-path-load-go s addr (sd ∷ rest) = path-load-go s (def (mem s (addr + side-off sd))) rest
+-- D391: a leaf of the flat input (D381) is one read, at `flat-addr`. D396: the
+-- empty path is the input ITSELF — a scalar block's input is register-resident,
+-- and the emitted load is a register move (`movq %rdi` / `movl %ecx` / `mv t0`).
+path-load-go : St → ℕ → InputPath → ℕ → ℕ
+path-load-go s base []      k = base
+path-load-go s base (x ∷ p) k = def (mem s (flat-addr word base (x ∷ p) k))
 
--- path-load-go depends on the state ONLY through its memory (proved by induction
--- on the path). Every `pl-inv` non-spill case rides this with a `refl` memory-eq.
-plg-mem-cong : ∀ A B addr p → mem A ≡ mem B → path-load-go A addr p ≡ path-load-go B addr p
-plg-mem-cong A B addr []          meq = cong (λ m → def (m addr)) meq
-plg-mem-cong A B addr (sd ∷ rest) meq =
-  trans (cong (λ m → path-load-go A (def (m (addr + side-off sd))) rest) meq)
-        (plg-mem-cong A B (def (mem B (addr + side-off sd))) rest meq)
+-- path-load-go depends on the state ONLY through its memory. Every `pl-inv`
+-- non-spill case rides this with a `refl` memory-eq.
+plg-mem-cong : ∀ A B base p k → mem A ≡ mem B → path-load-go A base p k ≡ path-load-go B base p k
+plg-mem-cong A B base []      k meq = refl
+plg-mem-cong A B base (x ∷ p) k meq = cong (λ m → def (m (flat-addr word base (x ∷ p) k))) meq

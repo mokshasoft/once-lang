@@ -21,6 +21,7 @@ open import Data.Product using (_,_)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ; ⌜_⌝; DeclType; BTy; constant; value; operation; op; call)
 open import Once.Spec.Core.Syntax using (Defs)
 open import Once.Spec.Numerics using (TargetNum)
+open import Once.Spec.Boundary using (readAt)
 
 import Once.Spec.Grade
 module Once.Adequacy.SpecCore.Cases (Σ : Signature) {s : ℕ} (S : Defs s) (fmt : TargetNum) where
@@ -178,18 +179,19 @@ module _ {m} (σ : TySub m 0) where
 
   private
     call-R : ∀ {c a q b} (M : (c ∶ operation a q b) ∈ Σ) {y y′} → y ≡ y′
-           → TR (ValR (gb b)) (SE.performT (call (op M) y (SD.fromB noVars b))) (SE.performT (call (op M) y′ (SD.fromB σ b)))
-    call-R {b = b} M refl = call (λ v → ret (fromB-R b v))
+           → TR (ValR (gb b)) (SE.performT (call (op M) y (λ v → SD.fromB noVars b (readAt fmt b v))))
+                               (SE.performT (call (op M) y′ (λ v → SD.fromB σ b (readAt fmt b v))))
+    call-R {b = b} M refl = call (λ v → ret (fromB-R b (readAt fmt b v)))
 
   sig-R : ∀ (mo : Model) {c} {t : DeclType} (M : (c ∶ t) ∈ Σ)
         → ValR (gS t) (SM.sigopᵛ noVars c t M mo) (SM.sigopᵛ σ c t M mo)
   sig-R mo {t = constant b} M = fromB-R b _
   sig-R mo {t = value a LG.Zero b} M = fromB-R b _
   sig-R mo {t = value a LG.One  b} M {x} {x′} r =
-    subst (λ z → ValR (gb b) (SD.fromB noVars b (Model.valueᵐ mo M (SD.toB noVars a x))) (SD.fromB σ b (Model.valueᵐ mo M z)))
+    subst (λ z → ValR (gb b) (SD.fromB noVars b (readAt fmt b (Model.valueᵐ mo M (SD.toB noVars a x)))) (SD.fromB σ b (readAt fmt b (Model.valueᵐ mo M z))))
           (toB-R a r) (fromB-R b _)
   sig-R mo {t = value a LG.Many b} M {x} {x′} r =
-    subst (λ z → ValR (gb b) (SD.fromB noVars b (Model.valueᵐ mo M (SD.toB noVars a x))) (SD.fromB σ b (Model.valueᵐ mo M z)))
+    subst (λ z → ValR (gb b) (SD.fromB noVars b (readAt fmt b (Model.valueᵐ mo M (SD.toB noVars a x)))) (SD.fromB σ b (readAt fmt b (Model.valueᵐ mo M z))))
           (toB-R a r) (fromB-R b _)
   sig-R mo {t = operation a LG.Zero b} M = call-R M refl
   sig-R mo {t = operation a LG.One  b} M = λ r → call-R M (toB-R a r)

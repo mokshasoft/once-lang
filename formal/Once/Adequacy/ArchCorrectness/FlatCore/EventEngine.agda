@@ -45,7 +45,7 @@ open import Data.Sum using (_⊎_)
 open import Once.SigOp.Info using (SigOpInfo; effect; Pure; Internal; External; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Target.Symbol using (once-symbol-path)
-open import Once.Target.SymbolFresh using (host-leave-symbol; leave≢osp)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol; leave≢osp; exhausted≢osp)
 open import Once.CCC.Machine.FlatLeft using (LeftFree; module LeftPres)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.IR.Semantics.Event using (SigOpEvent)
@@ -105,10 +105,16 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
        xpc (List Instr) compile-trace find-label blk-off blk-len exec modulus
   public
 
+-- D377: the machine runs the LOWERED image (`room-checks` of the program
+-- image), so the run context the engine carries is `RunLow` — a lift of the
+-- image's own run (`RunContext.RunAt`, which `RunWF` speaks of). Exported under
+-- the engine's name for it, `RunAt`: "the run of the program the machine runs".
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
+  hiding (RunAt; module RunAt; mkRunAt; run-tbl; run-ir; run-emit; run-linked; run-reach; run-sound; run-emitted)
   public
-open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
-  using (run-step-pc-pos)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
+  using (module RunLow; mkRunLow; low-step-past; low-start; low-sound)
+  renaming (RunLow to RunAt)
 
 -- …and the data correspondence itself, which `CompiledCorrespondence` keeps
 -- private (an instance re-opened publicly would clash with the `C` every arch
@@ -164,10 +170,11 @@ record FlatInv (ev : RT.EvExtractor) (env : RT.ArithEnv)
     inv-ev      : ev ≡ ev-arch
     inv-env     : ArithTable prog env
     inv-run     : RunAt prog fs
-    -- plan 0.107: the correspondence runs AFTER the start (pc 0), which the
-    -- per-arch start lemma covers on its own; no step returns there
-    -- (`RunWF.run-step-pc-pos`).
-    inv-started : fpc fs ≡ 0 → ⊥
+    -- plan 0.107: the correspondence runs AFTER the start, which the per-arch
+    -- start lemma covers on its own; no step returns there. D377: said of the
+    -- image's own run the lowered run lifts (its start is pc 0 there, while the
+    -- lowered image has the start's check first) — `RunWF.run-step-pc-pos`.
+    inv-started : fpc (RunLow.run-at inv-run) ≡ 0 → ⊥
     -- D320: the run has not left — `left` is set only by `c-leave`, after
     -- which the machine is halted and the induction stops.
     inv-left    : LocState.left (floc fs) ≡ false
@@ -183,12 +190,11 @@ flat-inv-step i prog fs ftq h lf inv = record
   ; inv-closure = cl-step i prog fs (inv-wf inv) (inv-closure inv)
   ; inv-ev      = inv-ev inv
   ; inv-env     = inv-env inv
-  ; inv-run     = mkRunAt (run-tbl (inv-run inv)) (run-ir (inv-run inv)) (run-emit (inv-run inv))
-                          (run-linked (inv-run inv))
-                          (reach-step i fs (run-reach (inv-run inv)) ftq h)
-  ; inv-started = run-step-pc-pos prog fs i (inv-run inv) ftq
+  ; inv-run     = proj₁ nxt
+  ; inv-started = proj₂ nxt
   ; inv-left    = trans (LeftPres.flat-exec-instr-left i lf prog fs) (inv-left inv)
   }
+  where nxt = low-step-past prog fs i (inv-run inv) ftq h (inv-started inv)
 
 ------------------------------------------------------------------------
 -- WITNESS-FREE BLOCK CHAINING: if `exec L` reaches a NON-halted `s'`, then
@@ -265,6 +271,7 @@ block-run-exec ev env h (suc L) rest cprog s {s'} eq hs' = go-h (xhalted s) refl
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; event-of; flat-events-halted; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of; ctrl-≤1)
 open import Data.Nat.Properties using (≤-trans; ≤-reflexive; +-identityʳ)
+open import Once.CCC.Codegen.RoomChecks using (spend; max-entry)
 open import Data.Nat using (s≤s; z≤n)
 
 -- PROGRAM END: the abstract fetch runs out, so the concrete pc — which `pc-off`
@@ -337,6 +344,7 @@ sigop-run-arith ev env lg n prog fs s si pl cc h ftq env-eq =
     (sigop-concrete-fetch prog fs s si cc ftq)
     (sigop-matchCall (once-symbol-path (SigOpInfo.name si)))
     (λ q → leave≢osp (SigOpInfo.name si) (sym q))
+    (λ q → exhausted≢osp (SigOpInfo.name si) (sym q))
     env-eq
 
 -- EXTERNAL SigOp: the same fetch and match, but the env has no block for the
@@ -358,6 +366,7 @@ sigop-run-external ev env lg n prog fs s si cc h ftq env-eq =
     (sigop-concrete-fetch prog fs s si cc ftq)
     (sigop-matchCall (once-symbol-path (SigOpInfo.name si)))
     (λ q → leave≢osp (SigOpInfo.name si) (sym q))
+    (λ q → exhausted≢osp (SigOpInfo.name si) (sym q))
     env-eq
 
 -- A Pure SigOp emits no event (the extractor's Pure branch is []).
@@ -369,8 +378,9 @@ event-of-pure si fs eqe rewrite eqe = refl
 -- THE STUCK ROUTES — the engine's SECOND per-arch supply (slice 3).
 --
 -- Slice 2's `BlockSteps` covers every branch where the abstract machine
--- STEPS. These are the branches where it does not: an empty heap cell, a jump
--- to a label that is not there. Neither is a `BlockStep` — nothing steps — and
+-- STEPS. These are the branches where it does not: a jump to a label that is
+-- not there. (An empty heap cell was one too, until plan 0.123 A.4 step 4:
+-- reading one faults, and the run never faults — `RunWF.heap-load-written`.) Neither is a `BlockStep` — nothing steps — and
 -- neither can be folded into that record: what an arch owes here is a
 -- run-events EQUATION, not a `BlockStep`.
 --
@@ -395,24 +405,7 @@ StuckAt ev env cprog s = ∀ (lg : List SigOpEvent) → Σ ℕ (λ M → RT.run-
 
 record StuckSteps : Set₁ where
   field
-    -- an indirect load through a pointer to an UNWRITTEN heap cell
-    st-load-indirect :
-      ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just load-indirect
-      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-      → HDom hv hl
-      → heapMem (floc fs) hl ≡ nothing
-      → StuckAt ev env (compile-trace prog) s
-    st-load-indirect-suc :
-      ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just load-indirect-suc
-      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-      → HDom hv (sucHL hl)
-      → heapMem (floc fs) (sucHL hl) ≡ nothing
-      → StuckAt ev env (compile-trace prog) s
-    -- …and the two control routes whose label is MISSING. Only the TAKEN
+    -- the two control routes whose label is MISSING. Only the TAKEN
     -- ones are here: a not-taken branch never consults the label and is an
     -- ordinary block step (`bs-c-branch-tag-nz`).
     st-c-jmp :
@@ -464,33 +457,47 @@ stuck-result ev env lg (suc n) prog fs s i hpost lpost ev-eq st =
 -- dispatch's mutual members each carry the telescope, and the telescope is
 -- what the typechecker's memory is spent on.
 --
--- The nine bounds are D087-class PARAMETERS, not postulates — honest runtime
--- facts (this program does not exhaust memory; the machine is finite) that the
--- apex constrains. The two SigOp contracts are the per-(SigOp × target)
+-- The bounds are D087-class PARAMETERS, not postulates — honest runtime facts
+-- (the machine is finite; an emitted immediate fits) that the apex constrains.
+-- Memory exhaustion is no longer one of them (plan 0.123 A.4 step 5). The two SigOp contracts are the per-(SigOp × target)
 -- trusted base (D061); they are postulates at x86-64 today and passing them as
 -- fields makes them what they always were.
 ------------------------------------------------------------------------
+
+-- Plan 0.123 A.4: THE ROOM CHECK's two outcomes. Its lowering branches, so
+-- unlike a `BlockStep` its step count is the arch's to say: either the room
+-- is there, and some run of the check lands in the correspondence past it (the
+-- flat step is a no-op), or it is not, and the check reaches, still running,
+-- the call of the Host's `once_exhausted`, which ends the run.
+--
+-- The room branch also says WHAT the compare found: `frontier + k words ≤ sp`.
+-- That is what re-arms the budget (`Budget.bg-room`): the check's `k` is what
+-- the code spends before the next check, so from here to there no room is
+-- assumed.
+RoomStep : HeapView → AbstractTrace → FlatState → State → ℕ → Set
+RoomStep hv prog fs s k =
+    Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
+                × CompiledCorr hv prog (flat-exec-instr (instr-room k) prog fs) s'
+                × (CFC.hfront hv + slots k ≤ rreg s sp-reg)))
+  ⊎ Σ ℕ (λ c → Σ State (λ s' → (exec c (compile-trace prog) s ≡ just s')
+                × xhalted s' ≡ false
+                × mfetch (compile-trace prog) (xpc s') ≡ just (sigop-call host-exhausted-symbol)))
+
 record Supply : Set₁ where
   field
     bss : BlockSteps
+    -- the room check (plan 0.123 A.4): proved per arch, not assumed.
+    room-step : ∀ {hv : HeapView} prog fs s k → RunAt prog fs
+             → CompiledCorr hv prog fs s
+             → halted (floc fs) ≡ false
+             → fetch prog (fpc fs) ≡ just (instr-room k)
+             → RoomStep hv prog fs s k
     sts : StuckSteps
-    -- MEMORY / STACK / CALL-DEPTH EXHAUSTION, conditioned on `RunAt` and the
-    -- correspondence — without them they are REFUTABLE (the 2026-07-30 vacuity
-    -- lesson), which is why the run context had to exist before this did.
-    heap-room : ∀ {hv : HeapView} prog fs s n → RunAt prog fs
-             → CompiledCorr hv prog fs s
-             → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
-             → CFC.hfront hv + slots n ≤ CFC.lo hv
-    stack-room : ∀ {hv : HeapView} prog fs s b → RunAt prog fs
-              → CompiledCorr hv prog fs s
-              → Σ EntryId (λ m → fetch prog (fpc fs) ≡ just (instr-ctrl (c-entry m b)))
-      ⊎ (fetch prog (fpc fs) ≡ just (instr-ctrl (c-start b)))
-              → CFC.hfront hv + slots b ≤ rreg s sp-reg
-    -- D245: at EITHER call, closure or direct: both spend one slot.
-    call-room : ∀ {hv : HeapView} prog fs s (c : AbstractInstr) → RunAt prog fs
-             → CompiledCorr hv prog fs s
-             → fetch prog (fpc fs) ≡ just c → CallI c
-             → CFC.hfront hv + slot-size ≤ rreg s sp-reg
+    -- (MEMORY / STACK / CALL-DEPTH EXHAUSTION — `heap-room`, `stack-room`,
+    -- `call-room` — stood here as resource parameters. Plan 0.123 A.4 step 5
+    -- retired them: the room checks make running out observable, and the
+    -- budget the checks re-arm (`FlatCore.Budget`) is what gives each spending
+    -- instruction its room, `Budget.room-of`.)
     -- THE MACHINE IS FINITE, and the emitted `add` sites do not wrap (plan 0.70).
     reg-range : ∀ {hv : HeapView} prog fs s r → RunAt prog fs
              → CompiledCorr hv prog fs s → rreg s r < modulus
@@ -517,8 +524,6 @@ record Supply : Set₁ where
               → CompiledCorr hv prog fs s
               → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
               → AbstractExec.lit-value {FS} fits-float v < modulus
-    lo-fits : ∀ {hv : HeapView} prog fs s → RunAt prog fs
-           → CompiledCorr hv prog fs s → CFC.lo hv < modulus
     -- THE TWO SIGOP CONTRACTS (D061).
     arith-sigop-contract : ∀ {hv : HeapView} (env : RT.ArithEnv) prog fs s {A B}
                             (si : SigOpInfo A B)
@@ -529,6 +534,10 @@ record Supply : Set₁ where
                         -- FFI contract is `Pure` and external.
                         → Internal (sem si) → CompiledCorr hv prog fs s
                         → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                        -- D393: the room the check before it left for the
+                        -- block's frame, and the run has not stopped
+                        → CFC.hfront hv + slots (spend (max-entry prog) (instr-sigop si)) ≤ rreg s sp-reg
+                        → LocState.halted (floc fs) ≡ false
                         → Σ Payload (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                             × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)
                                 (dispatchArith pl s))

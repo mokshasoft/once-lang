@@ -15,13 +15,6 @@
 -- body, so the statement needs a home outside both. Naming it here also
 -- means the bound is stated ONCE; the thread above is `HeapRoom o` at every
 -- level and cannot drift.
---
--- WHAT THIS IS NOT: a place for stubs. `conc-fuel` does NOT belong here —
--- it asserts the adequacy of `step-budget-x86-64`, which is an UNDEFINED
--- postulated `ℕ → ℕ` in `Once.Adequacy.CPU.X86-64`. That is a hole in the
--- implementation, not a fact about the world, and dressing it as a resource
--- parameter would freeze it as one. It becomes provable when `step-budget`
--- is pinned to a definition.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -42,6 +35,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FCx
 import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation as FSimx
 import Once.Adequacy.ArchCorrectness.X86-64.RunContext as RCx
+import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLx
 import Once.CCC.Target.X86-64.Semantics as X
 import Once.Spec.Word as W64
 import Once.Word as W64L
@@ -63,83 +57,10 @@ x86-64-frame-semantics : FrameSemantics
 x86-64-frame-semantics = x86-64-frame-semantics-at ι
 
 ------------------------------------------------------------------------
--- HEAP EXHAUSTION: at an emitted `instr-alloc-heap n` the bump does not run
--- the heap frontier up into the stack's high-water mark.
---
--- CONDITIONED on the run context (`RunAt`) and the correspondence
--- (`CompiledCorr`) — unconditioned it is REFUTABLE (a view with
--- `lo ≡ hfront` kills it), which is the 2026-07-30 vacuity lesson, and why
--- `RunAt` had to move to `RunContext` in the first place.
---
--- This is the honest kind of assumption: a property of the running program
--- that a linker could one day discharge by sizing the heap and stack for the
--- compiled program. A PARAMETER is exactly the shape such a proof slots
--- into — a postulate could only be deleted and re-plumbed.
-------------------------------------------------------------------------
-HeapRoom : Set₁
-HeapRoom =
-  ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
-    (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
-    (s : X.State) (n : ℕ)
-  → RCx.RunAt o x86-64-frame-semantics refl prog fs
-  → FSimx.CompiledCorr o x86-64-frame-semantics refl refl hv prog fs s
-  → FlatMachine.fetch {x86-64-frame-semantics} prog
-      (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-alloc-heap n)
-  → FCx.hfront hv + slots n ≤ FCx.lo hv
-
-------------------------------------------------------------------------
--- STACK EXHAUSTION: at an emitted `c-thunk m b` the body's reservation does
--- not run `%rsp` down into the heap's allocation frontier.
---
--- THE EXACT MIRROR OF `HeapRoom`, and deliberately so — the two bounds say
--- the same thing about the two ends of the same virgin region `[hfront, lo)`:
--- an allocation must not consume it from below, a frame reservation must not
--- consume it from above. Same conditioning (`RunAt` + `CompiledCorr` + the
--- site), same class, same reason it is a PARAMETER (D087): a linker sizing
--- pass discharges it, and a parameter is the hole that proof slots into.
---
--- WHY `hfront + slots b ≤ %rsp` AND NOT THE TWO CONSEQUENCES SEPARATELY. The
--- `c-thunk` block-step needs `slots b ≤ %rsp` (the `sub` does not underflow)
--- and `hfront ≤ %rsp ∸ slots b` (the reserved frame stays above the heap).
--- Truncated subtraction makes the second NOT imply the first, so stating them
--- apart would be two parameters where the additive form is one — and the
--- additive form is also the one a sizing pass would actually establish.
-------------------------------------------------------------------------
-StackRoom : Set₁
-StackRoom =
-  ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
-    (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
-    (s : X.State) (b : ℕ)
-  → RCx.RunAt o x86-64-frame-semantics refl prog fs
-  → FSimx.CompiledCorr o x86-64-frame-semantics refl refl hv prog fs s
-  → Σ EntryId (λ m → FlatMachine.fetch {x86-64-frame-semantics} prog (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-ctrl (c-entry m b)))
-      ⊎ (FlatMachine.fetch {x86-64-frame-semantics} prog (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-ctrl (c-start b)))
-  → FCx.hfront hv + slots b ≤ X.readReg (X.State.regs s) rsp
-
-------------------------------------------------------------------------
--- CALL DEPTH: at an emitted `instr-call-closure` there is room for the ONE
--- slot the call spends on the return address.
---
--- The third of the same family, and the smallest: ONE slot, the one a call
--- spends on the return address (D086 — the body's `c-thunk` reserves the
--- rest). So this is stack exhaustion measured per CALL rather than per frame.
--- Same conditioning, same class, same reason it is a parameter (D087).
---
--- ADDITIVE, for `StackRoom`'s reason: the block-step needs both `slot-size ≤
--- %rsp` (the push does not underflow) and `hfront ≤ %rsp ∸ slot-size` (the
--- pushed cell stays above the heap), and truncated subtraction makes the
--- second not imply the first.
-------------------------------------------------------------------------
-CallRoom : Set₁
-CallRoom =
-  ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
-    (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
-    (s : X.State) (c : AbstractInstr)
-  → RCx.RunAt o x86-64-frame-semantics refl prog fs
-  → FSimx.CompiledCorr o x86-64-frame-semantics refl refl hv prog fs s
-  → FlatMachine.fetch {x86-64-frame-semantics} prog
-      (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just c → CallI c
-  → FCx.hfront hv + slot-size ≤ X.readReg (X.State.regs s) rsp
+-- (HEAP EXHAUSTION, STACK EXHAUSTION and CALL DEPTH — `HeapRoom`, `StackRoom`,
+-- `CallRoom` — stood here as resource parameters. Plan 0.123 A.4 step 5 retired
+-- them: the emitted room checks make running out observable, and the budget
+-- they re-arm (`FlatCore.Budget`) gives every spending instruction its room.)
 
 ------------------------------------------------------------------------
 -- THE MACHINE IS FINITE (plan 0.70 phase C).
@@ -159,7 +80,7 @@ RegRange =
   ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
     (s : X.State) (r : Reg)
-  → RCx.RunAt o x86-64-frame-semantics refl prog fs
+  → RLx.RunLow o x86-64-frame-semantics slot-size refl prog fs
   → FSimx.CompiledCorr o x86-64-frame-semantics refl refl hv prog fs s
   → X.readReg (X.State.regs s) r < W.modulus
 
@@ -200,25 +121,16 @@ record AddrNoWrap : Set₁ where
       ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
         (s : X.State) (b : ℕ)
-      → RCx.RunAt o x86-64-frame-semantics refl prog fs
+      → RLx.RunLow o x86-64-frame-semantics slot-size refl prog fs
       → FSimx.CompiledCorr o x86-64-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {x86-64-frame-semantics} prog
           (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
       → X.readReg (X.State.regs s) rsp + slots (suc b) < W.modulus
 
-    -- THE STACK'S HIGH-WATER MARK IS REPRESENTABLE. Not site-conditioned,
-    -- because it need not be: it mentions no addend. This is the layout bound
-    -- in its most basic form — and it is what discharges the heap bump's
-    -- no-wrap outright, since `HeapRoom` already bounds the bumped frontier
-    -- by `lo`. The other field is the site where no such bound was already
-    -- in hand.
-    lo-fits :
-      ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
-        (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
-        (s : X.State)
-      → RCx.RunAt o x86-64-frame-semantics refl prog fs
-      → FSimx.CompiledCorr o x86-64-frame-semantics refl refl hv prog fs s
-      → FCx.lo hv < W.modulus
+    -- (`lo-fits`, "the stack's high-water mark is representable", STOOD HERE: it
+    -- discharged the heap bump's no-wrap while `HeapRoom` bounded the frontier
+    -- by `lo`. `HeapRoom` now bounds it by `%rsp`, whose range is `reg-range`'s,
+    -- so it went — plan 0.123 A.4 step 4.)
 
 ------------------------------------------------------------------------
 -- (3) THE EMITTED LITERALS FIT IN A MACHINE WORD — plan 0.70 phase D.
@@ -244,7 +156,7 @@ record LitFits : Set₁ where
       ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
         (s : X.State) (n : ℕ)
-      → RCx.RunAt o x86-64-frame-semantics refl prog fs
+      → RLx.RunLow o x86-64-frame-semantics slot-size refl prog fs
       → FSimx.CompiledCorr o x86-64-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {x86-64-frame-semantics} prog
           (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-load-tag-lit n)
@@ -255,7 +167,7 @@ record LitFits : Set₁ where
       ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
         (s : X.State) (v : ℤ)
-      → RCx.RunAt o x86-64-frame-semantics refl prog fs
+      → RLx.RunLow o x86-64-frame-semantics slot-size refl prog fs
       → FSimx.CompiledCorr o x86-64-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {x86-64-frame-semantics} prog
           (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
@@ -279,7 +191,7 @@ float-fits :
   ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
     (s : X.State) (v : Decimal)
-  → RCx.RunAt o x86-64-frame-semantics refl prog fs
+  → RLx.RunLow o x86-64-frame-semantics slot-size refl prog fs
   → FSimx.CompiledCorr o x86-64-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {x86-64-frame-semantics} prog
       (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-load-const fits-float v)

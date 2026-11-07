@@ -45,9 +45,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation as FSimr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
+import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLr
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; lea-slot; instr-load-tag-lit; instr-load-const; AbstractInstr; CallI)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; lea-slot; instr-load-tag-lit; instr-load-const; instr-room; AbstractInstr; CallI)
 open import Once.CCC.Label using (EntryId)
 open import Once.CCC.Target.RiscV64.Syntax using (slots; slot-size; sp; Reg)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
@@ -72,49 +73,10 @@ open import Data.Integer using (ℤ)
 import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim as CFSr
 
 ------------------------------------------------------------------------
--- HEAP EXHAUSTION: at an emitted `instr-alloc-heap n` the bump does not run
--- the heap frontier up into the stack's high-water mark.
-------------------------------------------------------------------------
-HeapRoom : Set₁
-HeapRoom =
-  ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
-    (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
-    (s : R.State) (n : ℕ)
-  → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
-  → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
-  → FlatMachine.fetch {rv64-frame-semantics} prog
-      (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-alloc-heap n)
-  → FCr.hfront hv + slots n ≤ FCr.lo hv
-
-------------------------------------------------------------------------
--- STACK EXHAUSTION: at an emitted `c-thunk m b` the body's reservation does
--- not run `sp` down into the heap's allocation frontier.
-------------------------------------------------------------------------
-StackRoom : Set₁
-StackRoom =
-  ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
-    (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
-    (s : R.State) (b : ℕ)
-  → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
-  → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
-  → Σ EntryId (λ m → FlatMachine.fetch {rv64-frame-semantics} prog (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-entry m b)))
-      ⊎ (FlatMachine.fetch {rv64-frame-semantics} prog (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-start b)))
-  → FCr.hfront hv + slots b ≤ R.readReg (R.State.regs s) sp
-
-------------------------------------------------------------------------
--- CALL DEPTH: at an emitted `instr-call-closure` there is room for the ONE
--- slot the call spends on the return address.
-------------------------------------------------------------------------
-CallRoom : Set₁
-CallRoom =
-  ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
-    (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
-    (s : R.State) (c : AbstractInstr)
-  → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
-  → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
-  → FlatMachine.fetch {rv64-frame-semantics} prog
-      (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just c → CallI c
-  → FCr.hfront hv + slot-size ≤ R.readReg (R.State.regs s) sp
+-- (HEAP EXHAUSTION, STACK EXHAUSTION and CALL DEPTH — `HeapRoom`, `StackRoom`,
+-- `CallRoom` — stood here as resource parameters. Plan 0.123 A.4 step 5 retired
+-- them: the emitted room checks make running out observable, and the budget
+-- they re-arm (`FlatCore.Budget`) gives every spending instruction its room.)
 
 ------------------------------------------------------------------------
 -- THE SLOT ADDRESS DOES NOT WRAP (plan 0.65 G2, D087 class).
@@ -145,7 +107,7 @@ SlotAddrNoWrap =
   ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (slot : ℕ)
-  → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+  → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
   → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
       (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (lea-slot slot)
@@ -165,7 +127,7 @@ RegRange =
   ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (r : Reg)
-  → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+  → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
   → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → R.readReg (R.State.regs s) r < R.W.modulus
 
@@ -186,22 +148,16 @@ record AddrNoWrap : Set₁ where
       ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
         (s : R.State) (b : ℕ)
-      → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+      → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
       → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {rv64-frame-semantics} prog
           (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
       → R.readReg (R.State.regs s) sp + slots (suc b) < R.W.modulus
 
-    -- THE STACK'S HIGH-WATER MARK IS REPRESENTABLE. Not site-conditioned — it
-    -- mentions no addend — and it is what discharges the heap bump's no-wrap
-    -- outright, since `HeapRoom` already bounds the bumped frontier by `lo`.
-    lo-fits :
-      ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
-        (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
-        (s : R.State)
-      → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
-      → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
-      → FCr.lo hv < R.W.modulus
+    -- (`lo-fits`, "the stack's high-water mark is representable", STOOD HERE: it
+    -- discharged the heap bump's no-wrap while `HeapRoom` bounded the frontier
+    -- by `lo`. `HeapRoom` now bounds it by `sp`, whose range is `reg-range`'s,
+    -- so it went — plan 0.123 A.4 step 4.)
 
 ------------------------------------------------------------------------
 -- (3) THE EMITTED LITERALS FIT IN A MACHINE WORD (plan 0.70 phase D).
@@ -217,7 +173,7 @@ record LitFits : Set₁ where
       ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
         (s : R.State) (n : ℕ)
-      → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+      → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
       → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {rv64-frame-semantics} prog
           (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-tag-lit n)
@@ -227,11 +183,22 @@ record LitFits : Set₁ where
       ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
         (s : R.State) (v : ℤ)
-      → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+      → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
       → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {rv64-frame-semantics} prog
           (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
       → Once.CCC.Machine.SMCore.AbstractExec.lit-value {rv64-frame-semantics} fits-int v < R.W.modulus
+
+    -- D378: a room check's need `8k` is the `li t2, 8k` immediate.
+    room-fits :
+      ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
+        (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
+        (s : R.State) (k : ℕ)
+      → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
+      → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
+      → FlatMachine.fetch {rv64-frame-semantics} prog
+          (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-room k)
+      → slots k < R.W.modulus
 
 
 ------------------------------------------------------------------------
@@ -251,7 +218,7 @@ float-fits :
   ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (v : Decimal)
-  → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+  → RLr.RunLow o rv64-frame-semantics slot-size refl prog fs
   → FSimr.CompiledCorr o rv64-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
       (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-const fits-float v)

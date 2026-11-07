@@ -25,7 +25,8 @@
 module Once.Arith.Backend.RiscV64.Emit where
 
 open import Data.Integer.Show using () renaming (show to showℤ)
-open import Data.Nat using (ℕ; _*_; _∸_)
+open import Data.Nat using (ℕ; _*_; _∸_; _<ᵇ_)
+open import Data.Bool using (true; false)
 open import Data.Nat.Show using () renaming (show to showℕ)
 open import Once.Spec.Float.Decimal using (round)
 open import Once.Spec.Float.Dyadic using (binary64)
@@ -77,6 +78,17 @@ scratch-text record { slot = s } =
 ------------------------------------------------------------------------
 -- Per-instruction text
 ------------------------------------------------------------------------
+
+-- D391: a leaf of the flat input (D381) is ONE doubleword at its offset `k` from
+-- the input pointer `t0`; a whole-input scalar (`[]`) is `t0` itself. An offset
+-- past the 12-bit immediate is formed in `dst` (no other register written).
+arg-load-text : XReg → InputPath → ℕ → String
+arg-load-text dst [] _ = "    mv " ++ reg-text dst ++ ", t0\n"
+arg-load-text dst (_ ∷ _) k with (8 * k) <ᵇ 2048
+... | true  = "    ld " ++ reg-text dst ++ ", " ++ showℕ (8 * k) ++ "(t0)\n"
+... | false = "    li " ++ reg-text dst ++ ", " ++ showℕ (8 * k) ++ "\n" ++
+              "    add " ++ reg-text dst ++ ", " ++ reg-text dst ++ ", t0\n" ++
+              "    ld " ++ reg-text dst ++ ", 0(" ++ reg-text dst ++ ")\n"
 
 instr-text : XInstr → String
 instr-text (Xmov-imm dst z)   = "    li " ++ reg-text dst ++ ", " ++ showℤ z ++ "\n"
@@ -130,33 +142,8 @@ instr-text (Xmov-fimm dst dc) =
 instr-text (Xmov-r-m s src)   = "    sd " ++ reg-text src ++ ", " ++ scratch-text s ++ "\n"
 instr-text (Xmov-m-r dst s)   = "    ld " ++ reg-text dst ++ ", " ++ scratch-text s ++ "\n"
 -- A float leaf is loaded exactly as an integer one is.
-instr-text (Xmov-farg dst path) = instr-text (Xmov-arg dst path)
-instr-text (Xmov-arg dst path) = path-load-text dst path
-  where
-    -- Byte offset for one path step (matches CCC's pair layout).
-    side-offset : Side → String
-    side-offset Fst = "0"
-    side-offset Snd = "8"
-
-    -- Walk intermediate steps using a0 as base; final step lands in dst.
-    walk-a0-rest : XReg → InputPath → String
-    walk-a0-rest dst (s ∷ []) =
-      "    ld " ++ reg-text dst ++ ", " ++ side-offset s ++ "(a0)\n"
-    {-# CATCHALL #-}
-    walk-a0-rest dst (s ∷ ss) =
-      "    ld a0, " ++ side-offset s ++ "(a0)\n" ++ walk-a0-rest dst ss
-    walk-a0-rest dst []       = ""
-
-    -- Top-level path walker. `[]` = the input pointer t0 IS the value.
-    path-load-text : XReg → InputPath → String
-    path-load-text dst []         =
-      "    mv " ++ reg-text dst ++ ", t0\n"
-    path-load-text dst (s ∷ [])   =
-      "    ld " ++ reg-text dst ++ ", " ++ side-offset s ++ "(t0)\n"
-    {-# CATCHALL #-}
-    path-load-text dst (s ∷ rest) =
-      "    ld a0, " ++ side-offset s ++ "(t0)\n" ++
-      walk-a0-rest dst rest
+instr-text (Xmov-farg dst path k) = arg-load-text dst path k
+instr-text (Xmov-arg dst path k)  = arg-load-text dst path k
 instr-text (Xadd-rr dst src)  = "    add " ++ reg-text dst ++ ", " ++ reg-text dst ++ ", " ++ reg-text src ++ "\n"
 instr-text (Xsub-rr dst src)  = "    sub " ++ reg-text dst ++ ", " ++ reg-text dst ++ ", " ++ reg-text src ++ "\n"
 instr-text (Ximul-rr dst src) = "    mul " ++ reg-text dst ++ ", " ++ reg-text dst ++ ", " ++ reg-text src ++ "\n"

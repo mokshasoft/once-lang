@@ -78,6 +78,27 @@ module LogPres {FS : FrameSemantics} where
   store-suc-via-log (just loc) v s = writeLoc-log s (sucLoc loc) v
   store-suc-via-log nothing    v s = refl
 
+  -- Plan 0.123 B.4 R1: the offset forms.
+  load-at-log : ∀ k dst (ml : Maybe (ValueLocation FS)) s → log (exec-load-at-resolved k dst ml s) ≡ log s
+  load-at-log k dst (just loc) s = load-with-log dst (readLoc s (offsetLoc loc k)) s
+  load-at-log k dst nothing    s = refl
+
+  store-in-block-log : ∀ ok (loc : ValueLocation FS) v s → log (exec-store-in-block ok loc v s) ≡ log s
+  store-in-block-log true  loc v s = writeLoc-log s loc v
+  store-in-block-log false loc v s = refl
+
+  store-at-log : ∀ bs k (ml : Maybe (ValueLocation FS)) v s → log (exec-store-at-resolved bs k ml v s) ≡ log s
+  store-at-log bs k (just loc) v s = store-in-block-log (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v s
+  store-at-log bs k nothing    v s = refl
+
+  addr-in-block-log : ∀ ok (loc : ValueLocation FS) s → log (exec-addr-in-block ok loc s) ≡ log s
+  addr-in-block-log true  loc s = refl
+  addr-in-block-log false loc s = refl
+
+  addr-at-log : ∀ bs k (ml : Maybe (ValueLocation FS)) s → log (exec-addr-at-resolved bs k ml s) ≡ log s
+  addr-at-log bs k (just loc) s = addr-in-block-log (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) s
+  addr-at-log bs k nothing    s = refl
+
 
   load-slot-log : ∀ (mv : Maybe (StoredValue FS)) s alloc → log (proj₁ (exec-load-from-slot-with-value mv s alloc)) ≡ log s
   load-slot-log (just v) s alloc = refl
@@ -117,6 +138,11 @@ module LogPres {FS : FrameSemantics} where
   exec-abstract-log (instr-load-tag-lit n)   _ s alloc = refl
   exec-abstract-log (instr-alloc-heap n)     _ s alloc = refl
   exec-abstract-log (instr-reg-op op)        _ s alloc = refl
+  exec-abstract-log (instr-free-heap n)      _ s alloc = refl
+  exec-abstract-log (instr-room n)      _ s alloc = refl
+  exec-abstract-log (load-at k)              _ s alloc = load-at-log k Output (sv-as-loc (readReg (regs s) Input1)) s
+  exec-abstract-log (store-at k)             _ s alloc = store-at-log (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
+  exec-abstract-log (addr-at k)              _ s alloc = addr-at-log (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s
   exec-abstract-log (instr-ctrl c)           _ s alloc = refl
 
   -- The control helpers of the flat machine, by their own cases.
@@ -205,3 +231,8 @@ module LogPres {FS : FrameSemantics} where
   flat-exec-instr-log (instr-load-tag-lit n)   lf prog fs = exec-abstract-log (instr-load-tag-lit n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (instr-alloc-heap n)     lf prog fs = exec-abstract-log (instr-alloc-heap n) lf (floc fs) (falloc fs)
   flat-exec-instr-log (instr-reg-op out-nz)    lf prog fs = do-nz-log (readReg (regs (floc fs)) Output) fs
+  flat-exec-instr-log (instr-free-heap n)      lf prog fs = exec-abstract-log (instr-free-heap n) lf (floc fs) (falloc fs)
+  flat-exec-instr-log (instr-room n)           lf prog fs = exec-abstract-log (instr-room n) lf (floc fs) (falloc fs)
+  flat-exec-instr-log (load-at n)           lf prog fs = exec-abstract-log (load-at n) lf (floc fs) (falloc fs)
+  flat-exec-instr-log (store-at n)           lf prog fs = exec-abstract-log (store-at n) lf (floc fs) (falloc fs)
+  flat-exec-instr-log (addr-at n)           lf prog fs = exec-abstract-log (addr-at n) lf (floc fs) (falloc fs)

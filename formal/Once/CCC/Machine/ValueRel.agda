@@ -28,6 +28,8 @@
 -- The datatypes live in this UNPARAMETERISED module (a parameterised one makes
 -- a distinct type per instantiation); `IRObsCorrect.Prelude` re-exports it.
 open import Data.List using (List; []; _∷_; _++_)
+open import Data.List.Relation.Unary.Any using (Any; here; there)
+open import Data.List.Relation.Unary.Any.Properties using (++⁺ˡ; ++⁺ʳ; ++⁻)
 open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Machine.ValueRel where
 
@@ -42,6 +44,8 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Once.CCC.Machine.MuRep using (mu-rep; mu-box; Unboxed; box-not-unboxed)
+open import Once.CCC.Codegen.Size using (size)
+open import Once.Memory.HeapAddress using (heap-loc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -195,13 +199,32 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
   --     that value rather than pretending to constrain it. This is the same
   --     stance as `in-unit` and `unit-result`: Unit has NO residence.
   ------------------------------------------------------------------------
+  -- plan 0.123 B.4 α: only a SCALAR is inline; a Unit component occupies no
+  -- word (D381), so the old `rep-unit` (a junk cell standing for Unit) went.
   data InlineRep (A : IRTy) : Set where
     rep-prim : FitsInRegI A → InlineRep A
-    rep-unit : A ≡ Unit → StoredValue FS → InlineRep A
 
   inline-sv : ∀ {A : IRTy} → InlineRep A → ⟦ A ⟧ → StoredValue FS
   inline-sv (rep-prim fit)  a = prim-sv fit a
-  inline-sv (rep-unit _ sv) _ = sv
+
+  -- plan 0.123 B.4 α (D381, D384): WHAT A COMPONENT'S CELL IS, BY ITS TYPE. A
+  -- node (μ, ν, a closure) is a pointer word to its own block; a scalar is its
+  -- word; a compound (a product, a sum, Unit) is EMBEDDED: its own words, in
+  -- place (Unit: none). The layout is a function of the type, so a consumer's
+  -- code can depend on it.
+  IsNode : IRTy → Set
+  IsNode (μ-type _) = ⊤
+  IsNode (ν-type _) = ⊤
+  IsNode (_ ⇛ _)    = ⊤
+  {-# CATCHALL #-}
+  IsNode _          = ⊥
+
+  IsFlat : IRTy → Set
+  IsFlat Unit    = ⊤
+  IsFlat (_ * _) = ⊤
+  IsFlat (_ + _) = ⊤
+  {-# CATCHALL #-}
+  IsFlat _       = ⊥
 
 
 
@@ -258,12 +281,97 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
   live-ns : ∀ {alloc : AllocState {FS}} (m : ℕ) {l} → Live alloc l → BeforeFrontier (record alloc { next-slot = m }) l
   live-ns m {AtDynamic _} (BeforeFrontier.heap-before r<h) = BeforeFrontier.heap-before r<h
 
+  -- plan 0.123 B.4 α: liveness is the BLOCK's (a heap cell's is its block's),
+  -- so the cell after a value's first is live wherever in the block a
+  -- component starts
+  live-shift : ∀ {alloc : AllocState {FS}} (l : ValueLocation FS) (n : ℕ)
+             → Live alloc (sucLoc l) → Live alloc (offsetLoc l n)
+  live-shift (AtDynamic (heap-loc r o)) n (BeforeFrontier.heap-before p) = BeforeFrontier.heap-before p
+
+  -- D387: a cell of its block (D385's test, at this allocator's block sizes)…
+  InBlk : AllocState {FS} → ValueLocation FS → Set
+  InBlk alloc l = ExecFinal.in-block? {FS} (AllocState.block-size alloc) l ≡ true
+
+  -- …and a LIVE one: where an embedded value with words starts, so the
+  -- `addr-at` that takes its address stays in its block.
+  Here : AllocState {FS} → ValueLocation FS → Set
+  Here alloc l = Live alloc l × InBlk alloc l
+
+  -- a witness moves to another allocator only if every live block keeps its
+  -- size (an allocation sizes only the fresh, dead, ref)
+  BlocksKept : AllocState {FS} → AllocState {FS} → Set
+  BlocksKept a₁ a₂ = ∀ l → Live a₁ l → InBlk a₁ l → InBlk a₂ l
+
+  -- D388: a cell that holds a word, and a sum's padding — `c` words from word
+  -- `from` — each holding one, so every word of a flat value is written
+  Written : LocState FS → ValueLocation FS → Set
+  Written s l = ∃[ w ] (readLoc s l ≡ just w)
+
+  Pad : LocState FS → ValueLocation FS → (from c : ℕ) → Set
+  Pad s l from c = ∀ j → j < c → Written s (offsetLoc l (from ℕ.+ j))
+
+  -- D400: LIVE MEANS IN SCOPE. A FOOTPRINT is a set of cells a value uses;
+  -- `foot` (below) reads it off the value's witness, and the cells live at a
+  -- point are the footprints of the values in scope there. A value is kept by
+  -- any change that keeps its footprint (`FootTransport`), so a write to a
+  -- block outside it — a reserved destination, a dead state's place, a freed
+  -- block — is no threat to it.
+  -- the cells of `l`'s block (a stack cell is its own)
+  SameBlk : ValueLocation FS → ValueLocation FS → Set
+  SameBlk (AtDynamic (heap-loc r _)) (AtDynamic (heap-loc r′ _)) = r ≡ r′
+  SameBlk (AtDynamic _)              (AtStack _ _)              = ⊥
+  SameBlk (AtStack f k)              l                          = AtStack f k ≡ l
+
+  -- A footprint is a list of BLOCKS, each named by one of its cells (a
+  -- value is data, so its footprint is too: a predicate would not fit in
+  -- the closure that carries one).
+  Foot : Set
+  Foot = List (ValueLocation FS)
+
+  _∈ᶠ_ : ValueLocation FS → Foot → Set
+  l ∈ᶠ E = Any (λ b → SameBlk b l) E
+  infix 4 _∈ᶠ_
+
+  blk-refl : (l : ValueLocation FS) → SameBlk l l
+  blk-refl (AtDynamic (heap-loc r o)) = refl
+  blk-refl (AtStack f k) = refl
+
+  blk-off : ∀ {alloc : AllocState {FS}} (l : ValueLocation FS) (n : ℕ)
+          → Live alloc (sucLoc l) → SameBlk l (offsetLoc l n)
+  blk-off (AtDynamic (heap-loc r o)) n _ = refl
+  blk-off (AtStack _ _) n ()
+
+  blk-suc : ∀ {alloc : AllocState {FS}} (l : ValueLocation FS)
+          → Live alloc (sucLoc l) → SameBlk l (sucLoc l)
+  blk-suc (AtDynamic (heap-loc r o)) _ = refl
+  blk-suc (AtStack _ _) ()
+
+  blk-heap : (l : ValueLocation FS) → LocMatchesMode Heap l → SameBlk l (sucLoc l)
+  blk-heap (AtDynamic (heap-loc r o)) _ = refl
+  blk-heap (AtStack _ _) ()
+
+  -- a block's cells are live together
+  blk-live0 : ∀ {alloc : AllocState {FS}} (l : ValueLocation FS) {l′ : ValueLocation FS}
+            → Live alloc l → SameBlk l l′ → Live alloc l′
+  blk-live0 (AtDynamic (heap-loc r o)) {AtDynamic (heap-loc .r o′)} (BeforeFrontier.heap-before p) refl =
+    BeforeFrontier.heap-before p
+  blk-live0 (AtDynamic _) {AtStack _ _} _ ()
+  blk-live0 (AtStack _ _) () _
+
+  blk-live : ∀ {alloc : AllocState {FS}} (l : ValueLocation FS) {l′ : ValueLocation FS}
+           → Live alloc (sucLoc l) → SameBlk l l′ → Live alloc l′
+  blk-live (AtDynamic (heap-loc r o)) {AtDynamic (heap-loc .r o′)} (BeforeFrontier.heap-before p) refl =
+    BeforeFrontier.heap-before p
+  blk-live (AtDynamic _) {AtStack _ _} _ ()
+  blk-live (AtStack _ _) () _
+
   -- D187: where a compound's component lives — a pointer to a cell valid at
   -- the component's type, or the component inline.
   data CellAtP {C : IRTy} (VC : VTy C) (alloc : AllocState {FS}) :
        ⟦ C ⟧ → ValueLocation FS → LocState FS → Set where
     cell-ptr : ∀ {c : ⟦ C ⟧} {cell-loc comp-loc : ValueLocation FS}
                  {s : LocState FS} {mC : AllocMode} →
+               IsNode C →
                readLoc s cell-loc ≡ just (SV-Ptr comp-loc) →
                Live alloc comp-loc →
                VC mC alloc c comp-loc s →
@@ -271,6 +379,14 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
     cell-inline : ∀ {c : ⟦ C ⟧} {cell-loc : ValueLocation FS}
                     {s : LocState FS} (rep : InlineRep C) →
                readLoc s cell-loc ≡ just (inline-sv rep c) →
+               CellAtP {C} VC alloc c cell-loc s
+    -- plan 0.123 B.4 α: a compound component, embedded at the cell itself;
+    -- D387: when it has words, its first is a live cell of its block
+    cell-flat : ∀ {c : ⟦ C ⟧} {cell-loc : ValueLocation FS}
+                  {s : LocState FS} {mC : AllocMode} →
+               IsFlat C →
+               (0 < size C → Here alloc cell-loc) →
+               VC mC alloc c cell-loc s →
                CellAtP {C} VC alloc c cell-loc s
 
   data UnitV : AllocMode → AllocState {FS} → ⟦ Unit ⟧ → ValueLocation FS → LocState FS → Set where
@@ -286,27 +402,32 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       LocMatchesMode m pair-loc →
       Live alloc (sucLoc pair-loc) →
       CellAtP {A} VA alloc a pair-loc s →
-      CellAtP {B} VB alloc b (sucLoc pair-loc) s →
+      -- plan 0.123 B.4 α: the second component starts after the first's words
+      CellAtP {B} VB alloc b (offsetLoc pair-loc (size A)) s →
       PairV {A} {B} VA VB m alloc (a , b) pair-loc s
 
   data SumV {A B : IRTy} (VA : VTy A) (VB : VTy B) :
        AllocMode → AllocState {FS} → ⟦ A + B ⟧ → ValueLocation FS → LocState FS → Set where
     inl-wf : ∀ {m} {a : ⟦ A ⟧} {alloc : AllocState {FS}}
       {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} {mA : AllocMode} →
+      IsNode A →
       LocMatchesMode m sum-loc →
       SumTag m 0 s sum-loc →
       readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
       Live alloc payload-loc →
       Live alloc (sucLoc sum-loc) →
+      Pad s sum-loc (suc (size A)) (size A ℕ.⊔ size B ℕ.∸ size A) →
       VA mA alloc a payload-loc s →
       SumV {A} {B} VA VB m alloc (inj₁ a) sum-loc s
     inr-wf : ∀ {m} {b : ⟦ B ⟧} {alloc : AllocState {FS}}
       {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} {mB : AllocMode} →
+      IsNode B →
       LocMatchesMode m sum-loc →
       SumTag m 1 s sum-loc →
       readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc) →
       Live alloc payload-loc →
       Live alloc (sucLoc sum-loc) →
+      Pad s sum-loc (suc (size B)) (size A ℕ.⊔ size B ℕ.∸ size B) →
       VB mB alloc b payload-loc s →
       SumV {A} {B} VA VB m alloc (inj₂ b) sum-loc s
     -- Stage F: an inline payload has no cell of its own to be valid at.
@@ -317,6 +438,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       (rep : InlineRep A) →
       readLoc s (sucLoc sum-loc) ≡ just (inline-sv rep a) →
       Live alloc (sucLoc sum-loc) →
+      Pad s sum-loc (suc (size A)) (size A ℕ.⊔ size B ℕ.∸ size A) →
       SumV {A} {B} VA VB m alloc (inj₁ a) sum-loc s
     inr-reg-wf : ∀ {m} {b : ⟦ B ⟧} {alloc : AllocState {FS}}
       {sum-loc : ValueLocation FS} {s : LocState FS} →
@@ -325,22 +447,38 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
       (rep : InlineRep B) →
       readLoc s (sucLoc sum-loc) ≡ just (inline-sv rep b) →
       Live alloc (sucLoc sum-loc) →
+      Pad s sum-loc (suc (size B)) (size A ℕ.⊔ size B ℕ.∸ size B) →
+      SumV {A} {B} VA VB m alloc (inj₂ b) sum-loc s
+    -- plan 0.123 B.4 α: a compound payload, embedded after the tag (Unit: none)
+    inl-flat-wf : ∀ {m} {a : ⟦ A ⟧} {alloc : AllocState {FS}}
+      {sum-loc : ValueLocation FS} {s : LocState FS} {mA : AllocMode} →
+      IsFlat A →
+      LocMatchesMode m sum-loc →
+      SumTag m 0 s sum-loc →
+      Live alloc (sucLoc sum-loc) →
+      (0 < size A → InBlk alloc (sucLoc sum-loc)) →
+      Pad s sum-loc (suc (size A)) (size A ℕ.⊔ size B ℕ.∸ size A) →
+      VA mA alloc a (sucLoc sum-loc) s →
+      SumV {A} {B} VA VB m alloc (inj₁ a) sum-loc s
+    inr-flat-wf : ∀ {m} {b : ⟦ B ⟧} {alloc : AllocState {FS}}
+      {sum-loc : ValueLocation FS} {s : LocState FS} {mB : AllocMode} →
+      IsFlat B →
+      LocMatchesMode m sum-loc →
+      SumTag m 1 s sum-loc →
+      Live alloc (sucLoc sum-loc) →
+      (0 < size B → InBlk alloc (sucLoc sum-loc)) →
+      Pad s sum-loc (suc (size B)) (size A ℕ.⊔ size B ℕ.∸ size B) →
+      VB mB alloc b (sucLoc sum-loc) s →
       SumV {A} {B} VA VB m alloc (inj₂ b) sum-loc s
 
-  -- Plan 0.54 Phase B rung A: the stored value IS the semantic value.
+  -- D389: a scalar has NO memory residence. In the flat layout a scalar is
+  -- its word — in a register (`at-reg`/`in-reg`), or inline in a compound's
+  -- cell (`cell-inline`) — never a value at a location, so these are empty
+  -- (as `VoidV` is). A pointer to a scalar would be stored by `put` as the
+  -- pointer, not the scalar's word.
   data IntV : AllocMode → AllocState {FS} → ⟦ Int ⟧ → ValueLocation FS → LocState FS → Set where
-    int-wf : ∀ {m} {n : ⟦ Int ⟧} {alloc : AllocState {FS}}
-      {loc : ValueLocation FS} {s : LocState FS} →
-      Live alloc loc →
-      readLoc s loc ≡ just (prim-sv fits-int n) →
-      IntV m alloc n loc s
 
   data FloatV : AllocMode → AllocState {FS} → ⟦ Float ⟧ → ValueLocation FS → LocState FS → Set where
-    float-wf : ∀ {m} {x : ⟦ Float ⟧} {alloc : AllocState {FS}}
-      {loc : ValueLocation FS} {s : LocState FS} →
-      Live alloc loc →
-      readLoc s loc ≡ just (prim-sv fits-float x) →
-      FloatV m alloc x loc s
 
   -- Where a result is, for a validity `VB` (the arrow case's callee result).
   -- `ResultPlace` (ClosureWellFormedDef) is the same at `ValidAtWF`, as an
@@ -525,13 +663,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
                  → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
       frames-pres : ∀ {v r} → resultAt (floc fs) (⟪ comp ⟫ k) ≡ returns (done v r) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
                   → saved-frames (falloc settle) ≡ saved-frames pre
+      -- D387: every block the caller had live keeps its size
+      blocks-kept : NotCut (resultAt (floc fs) (⟪ comp ⟫ k)) → ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
+                  → BlocksKept pre (falloc settle)
 
   -- A run is a run whatever is said about where its result is.
   crun-map : ∀ {B} {R R′ : AllocMode → AllocState {FS} → AllocState {FS} → ⟦ B ⟧ → LocState FS → Set}
            → (∀ {m a₁ a₂ v s} → R m a₁ a₂ v s → R′ m a₁ a₂ v s)
            → ∀ {fs ret-pc rs comp k} → CalleeRunP {B} R fs ret-pc rs comp k → CalleeRunP {B} R′ fs ret-pc rs comp k
-  crun-map f (callee-run st se om ca ru li re sp nr nl pl ev lg pr mp fp bm fsp) =
-    callee-run st se om ca ru li re sp nr nl (λ e → f (pl e)) ev lg pr mp fp bm fsp
+  crun-map f (callee-run st se om ca ru li re sp nr nl pl ev lg pr mp fp bm fsp bk) =
+    callee-run st se om ca ru li re sp nr nl (λ e → f (pl e)) ev lg pr mp fp bm fsp bk
 
   ------------------------------------------------------------------------
   -- plan 0.135 S1: WHAT A CLOSURE DOES, as a fact about the value.
@@ -541,21 +682,23 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   -- holds and whose cell 1 holds a VALID argument, runs `f a` and returns
   -- (`CalleeRunP`). The environment stays opaque: its type is hidden in the
   -- closure, so its validity is not a subterm of `A ⇛ B`. What makes it still
-  -- valid at the call is the caller's guarantee that everything live when the
-  -- closure was built (`BeforeFrontier alloc`) still reads the same and is
-  -- still live (plan 0.93 spike finding 2: `HeapAgree`/`HeapMono`). `curry`
-  -- proves this from its body's correctness (S3); `apply` spends it.
+  -- valid at the call is the caller's guarantee that the environment's
+  -- FOOTPRINT `E` (D400: the cells it uses, which the closure carries since
+  -- the environment's type is hidden) still reads the same, is still live
+  -- and keeps its blocks. `curry` proves this from its body's correctness
+  -- (S3); `apply` spends it.
   ------------------------------------------------------------------------
   CallRuns : ∀ {A B : IRTy} → VTy A → VTy B → AllocState {FS} → LocState FS
-           → ValueLocation FS → ℕ → ⟦ A ⇛ B ⟧ → Set
-  CallRuns {A} {B} VA VB alloc s cloc j f =
+           → Foot → ValueLocation FS → ℕ → ⟦ A ⇛ B ⟧ → Set
+  CallRuns {A} {B} VA VB alloc s E cloc j f =
     ∀ (fs : FlatState) (pre : AllocState {FS}) (a : ⟦ A ⟧) (pair-loc : ValueLocation FS)
       (ret-pc k : ℕ) (rs : List ℕ)
     → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
     → falloc fs ≡ enter-call pre
     → next-slot pre ≡ 0
-    → (∀ l → Live alloc l → Live pre l)
-    → (∀ l → Live alloc l → readLoc (floc fs) l ≡ readLoc s l)
+    → (∀ l → l ∈ᶠ E → Live pre l)
+    → (∀ l → l ∈ᶠ E → InBlk alloc l → InBlk pre l)
+    → (∀ l → l ∈ᶠ E → readLoc (floc fs) l ≡ readLoc s l)
     → readReg (regs (floc fs)) Input1 ≡ SV-Ptr pair-loc
     → Live pre pair-loc
     → Live pre (sucLoc pair-loc)
@@ -571,26 +714,31 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     closure-wf : ∀ {f : ⟦ A ⇛ B ⟧}
       {alloc : AllocState {FS}}
       {closure-loc env-loc : ValueLocation FS} {s : LocState FS}
-      {body-label : LabelId} {j : ℕ} →
+      {body-label : LabelId} {j : ℕ} {E : Foot} →
       LocMatchesMode Heap closure-loc →
       readLoc s closure-loc ≡ just (SV-Ptr env-loc) →
       readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label) →
       Live alloc env-loc →
       Live alloc (sucLoc closure-loc) →
+      (∀ l → l ∈ᶠ E → Live alloc l) →
       find-thunk prog body-label ≡ just j →
-      CallRuns {A} {B} VA VB alloc s closure-loc j f →
+      CallRuns {A} {B} VA VB alloc s E closure-loc j f →
       ArrowV {A} {B} VA VB Heap alloc f closure-loc s
-    closure-reg-wf : ∀ {EnvType} {f : ⟦ A ⇛ B ⟧} {env : ⟦ EnvType ⟧}
+    -- D390: an environment that is not a pointer to a live block (a scalar,
+    -- or a Unit, whose register word is arbitrary) is just the WORD the env
+    -- cell holds: the call passes that word on (`CallRuns`), and nothing
+    -- else reads it.
+    closure-reg-wf : ∀ {f : ⟦ A ⇛ B ⟧} {w : StoredValue FS}
       {alloc : AllocState {FS}}
       {closure-loc : ValueLocation FS} {s : LocState FS}
-      {body-label : LabelId} {j : ℕ} →
+      {body-label : LabelId} {j : ℕ} {E : Foot} →
       LocMatchesMode Heap closure-loc →
-      (rep : InlineRep EnvType) →
-      readLoc s closure-loc ≡ just (inline-sv rep env) →
+      readLoc s closure-loc ≡ just w →
       readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label) →
       Live alloc (sucLoc closure-loc) →
+      (∀ l → l ∈ᶠ E → Live alloc l) →
       find-thunk prog body-label ≡ just j →
-      CallRuns {A} {B} VA VB alloc s closure-loc j f →
+      CallRuns {A} {B} VA VB alloc s E closure-loc j f →
       ArrowV {A} {B} VA VB Heap alloc f closure-loc s
 
   ------------------------------------------------------------------------
@@ -617,15 +765,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   -- What forcing a ν does, at the validity `R` of the layer's recursive
   -- positions (`NuV` passes itself).
   ForceRuns : ∀ {F : IRFunctor} → VTy (ν-type F) → AllocState {FS} → LocState FS
-            → StoredValue FS → ℕ → ⟦ ν-type F ⟧ → Set
-  ForceRuns {F} R alloc s seed j v =
+            → Foot → StoredValue FS → ℕ → ⟦ ν-type F ⟧ → Set
+  ForceRuns {F} R alloc s E seed j v =
     ∀ (wf : WellFormedFI F) (fs : FlatState) (pre : AllocState {FS})
       (ret-pc k : ℕ) (rs : List ℕ)
     → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ rs
     → falloc fs ≡ enter-call pre
     → next-slot pre ≡ 0
-    → (∀ l → Live alloc l → Live pre l)
-    → (∀ l → Live alloc l → readLoc (floc fs) l ≡ readLoc s l)
+    → (∀ l → l ∈ᶠ E → Live pre l)
+    → (∀ l → l ∈ᶠ E → InBlk alloc l → InBlk pre l)
+    → (∀ l → l ∈ᶠ E → readLoc (floc fs) l ≡ readLoc s l)
     → readReg (regs (floc fs)) Input1 ≡ seed
     → CalleeRunP {⟦ F ⟧TI (ν-type F)}
         (ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} R))
@@ -644,7 +793,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       nu-cell1 : readLoc s (sucLoc ν-loc) ≡ just (SV-Code nu-lbl)
       nu-live1 : Live alloc (sucLoc ν-loc)
       nu-code  : find-thunk prog nu-lbl ≡ just nu-j
-      nu-force : ForceRuns {F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′) alloc s nu-seed nu-j v
+      -- D400: the seed's footprint (its type is hidden, as an environment's is)
+      nu-fp    : Foot
+      nu-fp-live : ∀ l → l ∈ᶠ nu-fp → Live alloc l
+      nu-force : ForceRuns {F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′) alloc s nu-fp nu-seed nu-j v
   open NuV
 
   ------------------------------------------------------------------------
@@ -668,7 +820,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       st-cell1 : readLoc s (sucLoc ν-loc) ≡ just (SV-Code st-lbl)
       st-live1 : Live alloc (sucLoc ν-loc)
       st-code  : find-thunk prog st-lbl ≡ just st-j
-      st-force : ForceRuns {F} P alloc s st-seed st-j v
+      st-fp    : Foot
+      st-fp-live : ∀ l → l ∈ᶠ st-fp → Live alloc l
+      st-force : ForceRuns {F} P alloc s st-fp st-seed st-j v
 
   module NuCoind {F : IRFunctor} (P : VTy (ν-type F))
                  (step : ∀ {m a v l s} → P m a v l s → NuStep {F} P m a v l s) where
@@ -683,16 +837,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       nu-cell1 (coind p) = NuStep.st-cell1 (step p)
       nu-live1 (coind p) = NuStep.st-live1 (step p)
       nu-code  (coind p) = NuStep.st-code  (step p)
-      nu-force (coind p) wf fs pre ret-pc k rs pc nh fr fa ns incl agree i1 =
-        crun-conv (NuStep.st-force (step p) wf fs pre ret-pc k rs pc nh fr fa ns incl agree i1)
+      nu-fp    (coind p) = NuStep.st-fp    (step p)
+      nu-fp-live (coind p) = NuStep.st-fp-live (step p)
+      nu-force (coind p) wf fs pre ret-pc k rs pc nh fr fa ns incl bk agree i1 =
+        crun-conv (NuStep.st-force (step p) wf fs pre ret-pc k rs pc nh fr fa ns incl bk agree i1)
 
       crun-conv : ∀ {fs ret-pc rs comp k}
                 → CalleeRunP {⟦ F ⟧TI (ν-type F)} (ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} P)) fs ret-pc rs comp k
                 → CalleeRunP {⟦ F ⟧TI (ν-type F)}
                     (ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′)))
                     fs ret-pc rs comp k
-      crun-conv (callee-run st se om ca ru li re sp nr nl pl ev lg pr mp fp bm fsp) =
-        callee-run st se om ca ru li re sp nr nl (λ e → rp-conv (pl e)) ev lg pr mp fp bm fsp
+      crun-conv (callee-run st se om ca ru li re sp nr nl pl ev lg pr mp fp bm fsp bk) =
+        callee-run st se om ca ru li re sp nr nl (λ e → rp-conv (pl e)) ev lg pr mp fp bm fsp bk
 
       rp-conv : ∀ {m a₁ a₂ v s}
               → ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} P) m a₁ a₂ v s
@@ -705,17 +861,20 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
           → LayerV G {ν-type F} P m a v l s → LayerV G {ν-type F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′) m a v l s
       lay (K A) lv = lv
       lay Id    lv = coind lv
-      lay (G ⊕ H) (inl-wf lmm tg pp pb slb pv) = inl-wf lmm tg pp pb slb (lay G pv)
-      lay (G ⊕ H) (inr-wf lmm tg pp pb slb pv) = inr-wf lmm tg pp pb slb (lay H pv)
-      lay (G ⊕ H) (inl-reg-wf lmm tg rep pp slb) = inl-reg-wf lmm tg rep pp slb
-      lay (G ⊕ H) (inr-reg-wf lmm tg rep pp slb) = inr-reg-wf lmm tg rep pp slb
+      lay (G ⊕ H) (inl-wf nd lmm tg pp pb slb pd pv) = inl-wf nd lmm tg pp pb slb pd (lay G pv)
+      lay (G ⊕ H) (inr-wf nd lmm tg pp pb slb pd pv) = inr-wf nd lmm tg pp pb slb pd (lay H pv)
+      lay (G ⊕ H) (inl-reg-wf lmm tg rep pp slb pd) = inl-reg-wf lmm tg rep pp slb pd
+      lay (G ⊕ H) (inr-reg-wf lmm tg rep pp slb pd) = inr-reg-wf lmm tg rep pp slb pd
+      lay (G ⊕ H) (inl-flat-wf fl lmm tg slb ib pd pv) = inl-flat-wf fl lmm tg slb ib pd (lay G pv)
+      lay (G ⊕ H) (inr-flat-wf fl lmm tg slb ib pd pv) = inr-flat-wf fl lmm tg slb ib pd (lay H pv)
       lay (G ⊗ H) (pair-wf lmm slb c₁ c₂) = pair-wf lmm slb (cell G c₁) (cell H c₂)
 
       cell : ∀ (G : IRFunctor) {a c cl s}
            → CellAtP {⟦ G ⟧TI (ν-type F)} (LayerV G {ν-type F} P) a c cl s
            → CellAtP {⟦ G ⟧TI (ν-type F)} (LayerV G {ν-type F} (λ m′ a′ v′ l′ s′ → NuV {F} m′ a′ v′ l′ s′)) a c cl s
-      cell G (cell-ptr r bf v) = cell-ptr r bf (lay G v)
+      cell G (cell-ptr nd r bf v) = cell-ptr nd r bf (lay G v)
       cell G (cell-inline rep r) = cell-inline rep r
+      cell G (cell-flat fl hr v) = cell-flat fl hr (lay G v)
 
   ------------------------------------------------------------------------
   -- THE RELATION. Structural on the type; no pragma.
@@ -741,26 +900,152 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
 
   pattern valid-unit-wf = wrap unit-wf
   pattern valid-pair-wf {pair-loc} lmm slb c₁ c₂ = wrap (pair-wf {pair-loc = pair-loc} lmm slb c₁ c₂)
-  pattern valid-inl-wf {m} {a} {sum-loc} {payload-loc} {mA} lmm tg pp pb slb pv =
-    wrap (inl-wf {m = m} {a = a} {sum-loc = sum-loc} {payload-loc = payload-loc} {mA = mA} lmm tg pp pb slb pv)
-  pattern valid-inr-wf {m} {b} {sum-loc} {payload-loc} {mB} lmm tg pp pb slb pv =
-    wrap (inr-wf {m = m} {b = b} {sum-loc = sum-loc} {payload-loc = payload-loc} {mB = mB} lmm tg pp pb slb pv)
-  pattern valid-inl-reg-wf {m} {a} {sum-loc} lmm tg rep pp slb =
-    wrap (inl-reg-wf {m = m} {a = a} {sum-loc = sum-loc} lmm tg rep pp slb)
-  pattern valid-inr-reg-wf {m} {b} {sum-loc} lmm tg rep pp slb =
-    wrap (inr-reg-wf {m = m} {b = b} {sum-loc = sum-loc} lmm tg rep pp slb)
-  pattern valid-closure-wf {f} {closure-loc} {env-loc} lmm ep cp eb slb fd runs =
-    wrap (closure-wf {f = f} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
-  pattern valid-closure-reg-wf {f} {env} {closure-loc} lmm rep ep cp slb fd runs =
-    wrap (closure-reg-wf {f = f} {env = env} {closure-loc = closure-loc} lmm rep ep cp slb fd runs)
+  pattern valid-inl-wf {m} {a} {sum-loc} {payload-loc} {mA} nd lmm tg pp pb slb pd pv =
+    wrap (inl-wf {m = m} {a = a} {sum-loc = sum-loc} {payload-loc = payload-loc} {mA = mA} nd lmm tg pp pb slb pd pv)
+  pattern valid-inr-wf {m} {b} {sum-loc} {payload-loc} {mB} nd lmm tg pp pb slb pd pv =
+    wrap (inr-wf {m = m} {b = b} {sum-loc = sum-loc} {payload-loc = payload-loc} {mB = mB} nd lmm tg pp pb slb pd pv)
+  pattern valid-inl-reg-wf {m} {a} {sum-loc} lmm tg rep pp slb pd =
+    wrap (inl-reg-wf {m = m} {a = a} {sum-loc = sum-loc} lmm tg rep pp slb pd)
+  pattern valid-inr-reg-wf {m} {b} {sum-loc} lmm tg rep pp slb pd =
+    wrap (inr-reg-wf {m = m} {b = b} {sum-loc = sum-loc} lmm tg rep pp slb pd)
+  pattern valid-inl-flat-wf {m} {a} {sum-loc} {mA} fl lmm tg slb ib pd pv =
+    wrap (inl-flat-wf {m = m} {a = a} {sum-loc = sum-loc} {mA = mA} fl lmm tg slb ib pd pv)
+  pattern valid-inr-flat-wf {m} {b} {sum-loc} {mB} fl lmm tg slb ib pd pv =
+    wrap (inr-flat-wf {m = m} {b = b} {sum-loc = sum-loc} {mB = mB} fl lmm tg slb ib pd pv)
+  pattern valid-closure-wf {f} {closure-loc} {env-loc} {E} lmm ep cp eb slb el fd runs =
+    wrap (closure-wf {f = f} {closure-loc = closure-loc} {env-loc = env-loc} {E = E} lmm ep cp eb slb el fd runs)
+  pattern valid-closure-reg-wf {f} {w} {closure-loc} {E} lmm ep cp slb el fd runs =
+    wrap (closure-reg-wf {f = f} {w = w} {closure-loc = closure-loc} {E = E} lmm ep cp slb el fd runs)
   pattern valid-ν-wf nv = wrap nv
-  pattern valid-int-wf {loc} bf rl = wrap (int-wf {loc = loc} bf rl)
-  pattern valid-float-wf {loc} bf rl = wrap (float-wf {loc = loc} bf rl)
   pattern valid-μ-wf ub wf x lv = wrap (fo-μwf ub wf x lv)
   pattern valid-μbox-wf bx wf x c = wrap (fo-μbox bx wf x c)
 
   CellAt : AllocState {FS} → (C : IRTy) → ⟦ C ⟧ → ValueLocation FS → LocState FS → Set
   CellAt alloc C = CellAtP {C} (VAt C) alloc
+
+  ------------------------------------------------------------------------
+  -- D400: A VALUE'S FOOTPRINT, read off its witness: its block, what its
+  -- pointers reach, an environment's or a seed's carried footprint. The
+  -- value's own location is read too, and is asked for separately (a Unit
+  -- reads nothing). `foot-live`: a footprint is live, so the frontier-based
+  -- transport below is an instance of `FootTransport`.
+  ------------------------------------------------------------------------
+  mutual
+    foot-fo : ∀ {m a A v} (loc : ValueLocation FS) {s} → ValidFO m a {A} v loc s → Foot
+    foot-fo loc (fo-unit _) = []
+    foot-fo loc (fo-pair (pair-wf _ _ c₁ c₂)) = loc ∷ (foot-focell c₁ ++ foot-focell c₂)
+    foot-fo loc (fo-sum (inl-wf {payload-loc = pl} _ _ _ _ _ _ _ pv)) = loc ∷ pl ∷ foot-fo pl pv
+    foot-fo loc (fo-sum (inr-wf {payload-loc = pl} _ _ _ _ _ _ _ pv)) = loc ∷ pl ∷ foot-fo pl pv
+    foot-fo loc (fo-sum (inl-reg-wf _ _ _ _ _ _)) = loc ∷ []
+    foot-fo loc (fo-sum (inr-reg-wf _ _ _ _ _ _)) = loc ∷ []
+    foot-fo loc (fo-sum (inl-flat-wf _ _ _ _ _ _ pv)) = loc ∷ foot-fo (sucLoc loc) pv
+    foot-fo loc (fo-sum (inr-flat-wf _ _ _ _ _ _ pv)) = loc ∷ foot-fo (sucLoc loc) pv
+    foot-fo loc (fo-int ())
+    foot-fo loc (fo-float ())
+    foot-fo loc (fo-μwf _ _ _ lv) = foot-fo loc lv
+    foot-fo loc (fo-μbox _ _ _ c) = foot-focell c
+
+    foot-focell : ∀ {a C c cl s} → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) a c cl s → Foot
+    foot-focell (cell-ptr {comp-loc = pl} _ _ _ v) = pl ∷ foot-fo pl v
+    foot-focell (cell-inline _ _) = []
+    foot-focell {cl = cl} (cell-flat _ _ v) = foot-fo cl v
+
+  mutual
+    foot : ∀ (A : IRTy) {m a v} (loc : ValueLocation FS) {s} → ValidAtWF m a {A} v loc s → Foot
+    foot Unit loc _ = []
+    foot Void loc (wrap ())
+    foot (A * B) loc (wrap (pair-wf _ _ c₁ c₂)) = loc ∷ (foot-cell A c₁ ++ foot-cell B c₂)
+    foot (A + B) loc (wrap (inl-wf {payload-loc = pl} _ _ _ _ _ _ _ pv)) = loc ∷ pl ∷ foot A pl pv
+    foot (A + B) loc (wrap (inr-wf {payload-loc = pl} _ _ _ _ _ _ _ pv)) = loc ∷ pl ∷ foot B pl pv
+    foot (A + B) loc (wrap (inl-reg-wf _ _ _ _ _ _)) = loc ∷ []
+    foot (A + B) loc (wrap (inr-reg-wf _ _ _ _ _ _)) = loc ∷ []
+    foot (A + B) loc (wrap (inl-flat-wf _ _ _ _ _ _ pv)) = loc ∷ foot A (sucLoc loc) pv
+    foot (A + B) loc (wrap (inr-flat-wf _ _ _ _ _ _ pv)) = loc ∷ foot B (sucLoc loc) pv
+    foot (A ⇛ B) loc (wrap (closure-wf {env-loc = el} {E = E} _ _ _ _ _ _ _ _)) = loc ∷ el ∷ E
+    foot (A ⇛ B) loc (wrap (closure-reg-wf {E = E} _ _ _ _ _ _ _)) = loc ∷ E
+    foot (μ-type F) loc (wrap w) = foot-fo loc w
+    foot (ν-type F) loc (wrap n) = loc ∷ nu-fp n
+    foot Int loc (wrap ())
+    foot Float loc (wrap ())
+
+    foot-cell : ∀ (C : IRTy) {a c cl s} → CellAt a C c cl s → Foot
+    foot-cell C (cell-ptr {comp-loc = pl} _ _ _ v) = pl ∷ foot C pl v
+    foot-cell C (cell-inline _ _) = []
+    foot-cell C {cl = cl} (cell-flat _ _ v) = foot C cl v
+
+  -- split a membership in `xs ++ ys`
+  ∈-++ : ∀ {l} (xs : Foot) {ys : Foot} {R : Set} → l ∈ᶠ xs ++ ys → (l ∈ᶠ xs → R) → (l ∈ᶠ ys → R) → R
+  ∈-++ xs m f g with ++⁻ xs m
+  ... | inj₁ p = f p
+  ... | inj₂ p = g p
+
+  mutual
+    foot-fo-live : ∀ {m a A v} (loc : ValueLocation FS) {s} (w : ValidFO m a {A} v loc s)
+                 → ∀ l → l ∈ᶠ foot-fo loc w → Live a l
+    foot-fo-live loc (fo-unit _) l ()
+    foot-fo-live loc (fo-pair (pair-wf _ slb c₁ c₂)) l (here b) = blk-live loc slb b
+    foot-fo-live loc (fo-pair (pair-wf _ slb c₁ c₂)) l (there f) =
+      ∈-++ (foot-focell c₁) f (foot-focell-live c₁ l) (foot-focell-live c₂ l)
+    foot-fo-live loc (fo-sum (inl-wf _ _ _ _ pb slb _ pv)) l (here b) = blk-live loc slb b
+    foot-fo-live loc (fo-sum (inl-wf {payload-loc = pl} _ _ _ _ pb slb _ pv)) l (there (here b)) = blk-live0 pl pb b
+    foot-fo-live loc (fo-sum (inl-wf {payload-loc = pl} _ _ _ _ pb slb _ pv)) l (there (there f)) = foot-fo-live pl pv l f
+    foot-fo-live loc (fo-sum (inr-wf _ _ _ _ pb slb _ pv)) l (here b) = blk-live loc slb b
+    foot-fo-live loc (fo-sum (inr-wf {payload-loc = pl} _ _ _ _ pb slb _ pv)) l (there (here b)) = blk-live0 pl pb b
+    foot-fo-live loc (fo-sum (inr-wf {payload-loc = pl} _ _ _ _ pb slb _ pv)) l (there (there f)) = foot-fo-live pl pv l f
+    foot-fo-live loc (fo-sum (inl-reg-wf _ _ _ _ slb _)) l (here b) = blk-live loc slb b
+    foot-fo-live loc (fo-sum (inr-reg-wf _ _ _ _ slb _)) l (here b) = blk-live loc slb b
+    foot-fo-live loc (fo-sum (inl-flat-wf _ _ _ slb _ _ pv)) l (here b) = blk-live loc slb b
+    foot-fo-live loc (fo-sum (inl-flat-wf _ _ _ slb _ _ pv)) l (there f) = foot-fo-live (sucLoc loc) pv l f
+    foot-fo-live loc (fo-sum (inr-flat-wf _ _ _ slb _ _ pv)) l (here b) = blk-live loc slb b
+    foot-fo-live loc (fo-sum (inr-flat-wf _ _ _ slb _ _ pv)) l (there f) = foot-fo-live (sucLoc loc) pv l f
+    foot-fo-live loc (fo-int ())
+    foot-fo-live loc (fo-float ())
+    foot-fo-live loc (fo-μwf _ _ _ lv) l f = foot-fo-live loc lv l f
+    foot-fo-live loc (fo-μbox _ _ _ c) l f = foot-focell-live c l f
+
+    foot-focell-live : ∀ {a C c cl s} (x : CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) a c cl s)
+                     → ∀ l → l ∈ᶠ foot-focell x → Live a l
+    foot-focell-live (cell-ptr {comp-loc = pl} _ _ bf v) l (here b) = blk-live0 pl bf b
+    foot-focell-live (cell-ptr {comp-loc = pl} _ _ bf v) l (there f) = foot-fo-live pl v l f
+    foot-focell-live (cell-inline _ _) l ()
+    foot-focell-live {cl = cl} (cell-flat _ _ v) l f = foot-fo-live cl v l f
+
+  mutual
+    foot-live : ∀ (A : IRTy) {m a v} (loc : ValueLocation FS) {s} (w : ValidAtWF m a {A} v loc s)
+              → ∀ l → l ∈ᶠ foot A loc w → Live a l
+    foot-live Unit loc _ l ()
+    foot-live Void loc (wrap ())
+    foot-live (A * B) loc (wrap (pair-wf _ slb c₁ c₂)) l (here b) = blk-live loc slb b
+    foot-live (A * B) loc (wrap (pair-wf _ slb c₁ c₂)) l (there f) =
+      ∈-++ (foot-cell A c₁) f (foot-cell-live A c₁ l) (foot-cell-live B c₂ l)
+    foot-live (A + B) loc (wrap (inl-wf _ _ _ _ pb slb _ pv)) l (here b) = blk-live loc slb b
+    foot-live (A + B) loc (wrap (inl-wf {payload-loc = pl} _ _ _ _ pb slb _ pv)) l (there (here b)) = blk-live0 pl pb b
+    foot-live (A + B) loc (wrap (inl-wf {payload-loc = pl} _ _ _ _ pb slb _ pv)) l (there (there f)) = foot-live A pl pv l f
+    foot-live (A + B) loc (wrap (inr-wf _ _ _ _ pb slb _ pv)) l (here b) = blk-live loc slb b
+    foot-live (A + B) loc (wrap (inr-wf {payload-loc = pl} _ _ _ _ pb slb _ pv)) l (there (here b)) = blk-live0 pl pb b
+    foot-live (A + B) loc (wrap (inr-wf {payload-loc = pl} _ _ _ _ pb slb _ pv)) l (there (there f)) = foot-live B pl pv l f
+    foot-live (A + B) loc (wrap (inl-reg-wf _ _ _ _ slb _)) l (here b) = blk-live loc slb b
+    foot-live (A + B) loc (wrap (inr-reg-wf _ _ _ _ slb _)) l (here b) = blk-live loc slb b
+    foot-live (A + B) loc (wrap (inl-flat-wf _ _ _ slb _ _ pv)) l (here b) = blk-live loc slb b
+    foot-live (A + B) loc (wrap (inl-flat-wf _ _ _ slb _ _ pv)) l (there f) = foot-live A (sucLoc loc) pv l f
+    foot-live (A + B) loc (wrap (inr-flat-wf _ _ _ slb _ _ pv)) l (here b) = blk-live loc slb b
+    foot-live (A + B) loc (wrap (inr-flat-wf _ _ _ slb _ _ pv)) l (there f) = foot-live B (sucLoc loc) pv l f
+    foot-live (A ⇛ B) loc (wrap (closure-wf _ _ _ eb slb el _ _)) l (here b) = blk-live loc slb b
+    foot-live (A ⇛ B) loc (wrap (closure-wf {env-loc = el′} _ _ _ eb slb el _ _)) l (there (here b)) = blk-live0 el′ eb b
+    foot-live (A ⇛ B) loc (wrap (closure-wf _ _ _ eb slb el _ _)) l (there (there e)) = el l e
+    foot-live (A ⇛ B) loc (wrap (closure-reg-wf _ _ _ slb el _ _)) l (here b) = blk-live loc slb b
+    foot-live (A ⇛ B) loc (wrap (closure-reg-wf _ _ _ slb el _ _)) l (there e) = el l e
+    foot-live (μ-type F) loc (wrap w) l f = foot-fo-live loc w l f
+    foot-live (ν-type F) loc (wrap n) l (here b) = blk-live loc (nu-live1 n) b
+    foot-live (ν-type F) loc (wrap n) l (there e) = nu-fp-live n l e
+    foot-live Int loc (wrap ())
+    foot-live Float loc (wrap ())
+
+    foot-cell-live : ∀ (C : IRTy) {a c cl s} (x : CellAt a C c cl s) → ∀ l → l ∈ᶠ foot-cell C x → Live a l
+    foot-cell-live C (cell-ptr {comp-loc = pl} _ _ bf v) l (here b) = blk-live0 pl bf b
+    foot-cell-live C (cell-ptr {comp-loc = pl} _ _ bf v) l (there f) = foot-live C pl v l f
+    foot-cell-live C (cell-inline _ _) l ()
+    foot-cell-live C {cl = cl} (cell-flat _ _ v) l f = foot-live C cl v l f
 
   -- The first-order bridge (μ layers).
   mutual
@@ -768,18 +1053,21 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     fo→valid (fo-unit u) = wrap u
     fo→valid (fo-pair (pair-wf lmm slb c₁ c₂)) =
       valid-pair-wf lmm slb (fo→cell c₁) (fo→cell c₂)
-    fo→valid (fo-sum (inl-wf lmm tg pp pb slb pv)) = valid-inl-wf lmm tg pp pb slb (fo→valid pv)
-    fo→valid (fo-sum (inr-wf lmm tg pp pb slb pv)) = valid-inr-wf lmm tg pp pb slb (fo→valid pv)
-    fo→valid (fo-sum (inl-reg-wf lmm tg rep pp slb)) = valid-inl-reg-wf lmm tg rep pp slb
-    fo→valid (fo-sum (inr-reg-wf lmm tg rep pp slb)) = valid-inr-reg-wf lmm tg rep pp slb
+    fo→valid (fo-sum (inl-wf nd lmm tg pp pb slb pd pv)) = valid-inl-wf nd lmm tg pp pb slb pd (fo→valid pv)
+    fo→valid (fo-sum (inr-wf nd lmm tg pp pb slb pd pv)) = valid-inr-wf nd lmm tg pp pb slb pd (fo→valid pv)
+    fo→valid (fo-sum (inl-reg-wf lmm tg rep pp slb pd)) = valid-inl-reg-wf lmm tg rep pp slb pd
+    fo→valid (fo-sum (inr-reg-wf lmm tg rep pp slb pd)) = valid-inr-reg-wf lmm tg rep pp slb pd
+    fo→valid (fo-sum (inl-flat-wf fl lmm tg slb ib pd pv)) = valid-inl-flat-wf fl lmm tg slb ib pd (fo→valid pv)
+    fo→valid (fo-sum (inr-flat-wf fl lmm tg slb ib pd pv)) = valid-inr-flat-wf fl lmm tg slb ib pd (fo→valid pv)
     fo→valid (fo-int i) = wrap i
     fo→valid (fo-float f) = wrap f
     fo→valid w@(fo-μwf _ _ _ _) = wrap w
     fo→valid w@(fo-μbox _ _ _ _) = wrap w
 
     fo→cell : ∀ {alloc C c cl s} → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) alloc c cl s → CellAt alloc C c cl s
-    fo→cell (cell-ptr r bf v) = cell-ptr r bf (fo→valid v)
+    fo→cell (cell-ptr nd r bf v) = cell-ptr nd r bf (fo→valid v)
     fo→cell (cell-inline rep r) = cell-inline rep r
+    fo→cell (cell-flat fl hr v) = cell-flat fl hr (fo→valid v)
 
   mutual
     valid→fo : ∀ {m alloc A v loc s} → FOTy A → ValidAtWF m alloc {A} v loc s → ValidFO m alloc {A} v loc s
@@ -789,15 +1077,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     valid→fo fo-Float (wrap f) = fo-float f
     valid→fo (fo-* fa fb) (valid-pair-wf lmm slb c₁ c₂) =
       fo-pair (pair-wf lmm slb (cell→fo fa c₁) (cell→fo fb c₂))
-    valid→fo (fo-+ fa fb) (valid-inl-wf lmm tg pp pb slb pv) = fo-sum (inl-wf lmm tg pp pb slb (valid→fo fa pv))
-    valid→fo (fo-+ fa fb) (valid-inr-wf lmm tg pp pb slb pv) = fo-sum (inr-wf lmm tg pp pb slb (valid→fo fb pv))
-    valid→fo (fo-+ fa fb) (valid-inl-reg-wf lmm tg rep pp slb) = fo-sum (inl-reg-wf lmm tg rep pp slb)
-    valid→fo (fo-+ fa fb) (valid-inr-reg-wf lmm tg rep pp slb) = fo-sum (inr-reg-wf lmm tg rep pp slb)
+    valid→fo (fo-+ fa fb) (valid-inl-wf nd lmm tg pp pb slb pd pv) = fo-sum (inl-wf nd lmm tg pp pb slb pd (valid→fo fa pv))
+    valid→fo (fo-+ fa fb) (valid-inr-wf nd lmm tg pp pb slb pd pv) = fo-sum (inr-wf nd lmm tg pp pb slb pd (valid→fo fb pv))
+    valid→fo (fo-+ fa fb) (valid-inl-reg-wf lmm tg rep pp slb pd) = fo-sum (inl-reg-wf lmm tg rep pp slb pd)
+    valid→fo (fo-+ fa fb) (valid-inr-reg-wf lmm tg rep pp slb pd) = fo-sum (inr-reg-wf lmm tg rep pp slb pd)
+    valid→fo (fo-+ fa fb) (valid-inl-flat-wf fl lmm tg slb ib pd pv) = fo-sum (inl-flat-wf fl lmm tg slb ib pd (valid→fo fa pv))
+    valid→fo (fo-+ fa fb) (valid-inr-flat-wf fl lmm tg slb ib pd pv) = fo-sum (inr-flat-wf fl lmm tg slb ib pd (valid→fo fb pv))
     valid→fo fo-μ (wrap w) = w
 
     cell→fo : ∀ {alloc C c cl s} → FOTy C → CellAt alloc C c cl s → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) alloc c cl s
-    cell→fo fc (cell-ptr r bf v) = cell-ptr r bf (valid→fo fc v)
+    cell→fo fc (cell-ptr nd r bf v) = cell-ptr nd r bf (valid→fo fc v)
     cell→fo fc (cell-inline rep r) = cell-inline rep r
+    cell→fo fc (cell-flat fl hr v) = cell-flat fl hr (valid→fo fc v)
 
   -- The μ layer, read and written through the bridge: at an UNBOXED functor
   -- the layer is valid where the μ is.
@@ -826,8 +1117,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   -- The case datas are functorial in their components' validities.
   cell-map : ∀ {C} {V W : VTy C} → (∀ {m a c l s} → V m a c l s → W m a c l s)
            → ∀ {alloc c cl s} → CellAtP {C} V alloc c cl s → CellAtP {C} W alloc c cl s
-  cell-map f (cell-ptr r bf v) = cell-ptr r bf (f v)
+  cell-map f (cell-ptr nd r bf v) = cell-ptr nd r bf (f v)
   cell-map f (cell-inline rep r) = cell-inline rep r
+  cell-map f (cell-flat fl hr v) = cell-flat fl hr (f v)
 
   pair-map : ∀ {A B} {VA WA : VTy A} {VB WB : VTy B}
            → (∀ {m a c l s} → VA m a c l s → WA m a c l s)
@@ -839,10 +1131,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
           → (∀ {m a c l s} → VA m a c l s → WA m a c l s)
           → (∀ {m a c l s} → VB m a c l s → WB m a c l s)
           → ∀ {m alloc v loc s} → SumV {A} {B} VA VB m alloc v loc s → SumV {A} {B} WA WB m alloc v loc s
-  sum-map f g (inl-wf lmm tg pp pb slb pv) = inl-wf lmm tg pp pb slb (f pv)
-  sum-map f g (inr-wf lmm tg pp pb slb pv) = inr-wf lmm tg pp pb slb (g pv)
-  sum-map f g (inl-reg-wf lmm tg rep pp slb) = inl-reg-wf lmm tg rep pp slb
-  sum-map f g (inr-reg-wf lmm tg rep pp slb) = inr-reg-wf lmm tg rep pp slb
+  sum-map f g (inl-wf nd lmm tg pp pb slb pd pv) = inl-wf nd lmm tg pp pb slb pd (f pv)
+  sum-map f g (inr-wf nd lmm tg pp pb slb pd pv) = inr-wf nd lmm tg pp pb slb pd (g pv)
+  sum-map f g (inl-reg-wf lmm tg rep pp slb pd) = inl-reg-wf lmm tg rep pp slb pd
+  sum-map f g (inl-flat-wf fl lmm tg slb ib pd pv) = inl-flat-wf fl lmm tg slb ib pd (f pv)
+  sum-map f g (inr-flat-wf fl lmm tg slb ib pd pv) = inr-flat-wf fl lmm tg slb ib pd (g pv)
+  sum-map f g (inr-reg-wf lmm tg rep pp slb pd) = inr-reg-wf lmm tg rep pp slb pd
 
   -- A forced layer IS a valid value of the layer type, and back where the
   -- functor is well formed (the constant positions are first-order).
@@ -870,25 +1164,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   rp-map f (rp-reg fit rax) = rp-reg fit rax
 
 
-  --------------------------------------------------------------------
-  -- valid-primitive-wf: Dispatch on FitsInReg evidence
-  --
-  -- For register-fittable primitive types, ValidAtWF only needs
-  -- BeforeFrontier. Plan 0.2.4.5: legacy IsPrimitive retired —
-  -- Unit is erased (no slot), Str/Buffer are 2-slot compounds with
-  -- their own valid-str-wf / valid-buffer-wf witnesses. The only
-  -- inhabitants left are Int and Float.
-  --------------------------------------------------------------------
-
-  valid-primitive-wf : ∀ {m} {B : IRTy} {v : ⟦ B ⟧}
-    {alloc : AllocState {FS}}
-    {loc : ValueLocation FS} {s : LocState FS} →
-    (fit : FitsInRegI B) →
-    Live alloc loc →
-    readLoc s loc ≡ just (prim-sv fit v) →
-    ValidAtWF m alloc {B} v loc s
-  valid-primitive-wf fits-int   bf rl = valid-int-wf bf rl
-  valid-primitive-wf fits-float bf rl = valid-float-wf bf rl
+  -- (D389: `valid-primitive-wf` is gone — a scalar is never valid at a
+  -- location.)
 
   --------------------------------------------------------------------
   -- IRResultAWF: Mode-indexed IR execution result
@@ -1020,8 +1297,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
                 → readLoc s closure-loc ≡ just (SV-Ptr env-loc)
                 → BeforeFrontier alloc env-loc
                 → EnvAt alloc env closure-loc s
-    env-in-cell : (rep : InlineRep E)
-                → readLoc s closure-loc ≡ just (inline-sv rep env)
+    env-in-cell : (w : StoredValue FS)
+                → readLoc s closure-loc ≡ just w
                 → EnvAt alloc env closure-loc s
 
   record ClosureValidWF (alloc : AllocState {FS}) {A B : IRTy}
@@ -1039,18 +1316,21 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       -- plan 0.135 S1: the label resolves, and the block computes `f`.
       code-j : ℕ
       code-found : find-thunk prog body-label ≡ just code-j
-      runs : CallRuns {A} {B} (VAt A) (VAt B) alloc s closure-loc code-j f
+      -- D400: the environment's footprint, and it is live
+      env-foot : Foot
+      env-foot-live : ∀ l → l ∈ᶠ env-foot → Live alloc l
+      runs : CallRuns {A} {B} (VAt A) (VAt B) alloc s env-foot closure-loc code-j f
 
   decomposeClosureWF : ∀ {m alloc A B} {f : ⟦ A ⇛ B ⟧} {loc s} →
     ValidAtWF m alloc {A ⇛ B} f loc s → ClosureValidWF alloc {A} {B} f loc s
-  decomposeClosureWF (valid-closure-wf {env-loc = el} lmm ep cp eb slb fd rn) = record
+  decomposeClosureWF (valid-closure-wf {env-loc = el′} {E = E} lmm ep cp eb slb el fd rn) = record
     { EnvType = Unit ; env = tt ; body-label = _ ; loc-mode = lmm
-    ; env-at = env-at-loc el ep (live→bf eb) ; code-ptr = cp ; sucLoc-before = live→bf slb
-    ; code-j = _ ; code-found = fd ; runs = rn }
-  decomposeClosureWF (valid-closure-reg-wf {env = env} lmm rep ep cp slb fd rn) = record
-    { EnvType = _ ; env = env ; body-label = _ ; loc-mode = lmm
-    ; env-at = env-in-cell rep ep ; code-ptr = cp ; sucLoc-before = live→bf slb
-    ; code-j = _ ; code-found = fd ; runs = rn }
+    ; env-at = env-at-loc el′ ep (live→bf eb) ; code-ptr = cp ; sucLoc-before = live→bf slb
+    ; code-j = _ ; code-found = fd ; env-foot = E ; env-foot-live = el ; runs = rn }
+  decomposeClosureWF (valid-closure-reg-wf {w = w} {E = E} lmm ep cp slb el fd rn) = record
+    { EnvType = Unit ; env = tt ; body-label = _ ; loc-mode = lmm
+    ; env-at = env-in-cell w ep ; code-ptr = cp ; sucLoc-before = live→bf slb
+    ; code-j = _ ; code-found = fd ; env-foot = E ; env-foot-live = el ; runs = rn }
 
   data Place : Set where
     AtStorage : ValueLocation FS → Place
@@ -1131,7 +1411,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     field
       sucLoc-before : BeforeFrontier alloc (sucLoc pair-loc)
       fst-cell : CellAt alloc A (proj₁ p) pair-loc s
-      snd-cell : CellAt alloc B (proj₂ p) (sucLoc pair-loc) s
+      -- plan 0.123 B.4 α: after the first component's words
+      snd-cell : CellAt alloc B (proj₂ p) (offsetLoc pair-loc (size A)) s
 
   decomposePairWF : ∀ {m alloc A B} {p : ⟦ A * B ⟧} {loc s} →
     ValidAtWF m alloc {A * B} p loc s → PairValidWF alloc {A} {B} p loc s
@@ -1162,6 +1443,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     payload-in-reg : (rep : InlineRep A)
                    → readLoc s (sucLoc sum-loc) ≡ just (inline-sv rep a)
                    → PayloadAt alloc a sum-loc s
+    -- plan 0.123 B.4 α: a compound payload, EMBEDDED after the tag; the branch
+    -- gets its address, not a loaded pointer
+    payload-flat : ∀ {mA : AllocMode}
+                 → IsFlat A
+                 → ValidAtWF mA alloc {A} a (sucLoc sum-loc) s
+                 → PayloadAt alloc a sum-loc s
 
   -- The uniform accessors: what the payload CELL holds, and the proof that it holds it. A
   -- pointer for a located payload, the value itself for an inline one. Every
@@ -1172,11 +1459,17 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
              → PayloadAt alloc {A} a sum-loc s → StoredValue FS
   payload-sv (payload-at-loc pl _ _ _)      = SV-Ptr pl
   payload-sv {a = a} (payload-in-reg rep _) = inline-sv rep a
+  payload-sv {sum-loc = sum-loc} (payload-flat _ _) = SV-Ptr (sucLoc sum-loc)
 
+  -- plan 0.123 B.4 α: how the branch's input is had — LOADED from the payload
+  -- cell (a pointer or a scalar), or, for an embedded payload, the cell's
+  -- own address
   payload-read : ∀ {alloc A} {a : ⟦ A ⟧} {sum-loc s} (pd : PayloadAt alloc {A} a sum-loc s)
-               → readLoc s (sucLoc sum-loc) ≡ just (payload-sv pd)
-  payload-read (payload-at-loc _ pp _ _) = pp
-  payload-read (payload-in-reg _ pp)     = pp
+               → (readLoc s (sucLoc sum-loc) ≡ just (payload-sv pd))
+                 ⊎ (IsFlat A × payload-sv pd ≡ SV-Ptr (sucLoc sum-loc))
+  payload-read (payload-at-loc _ pp _ _) = inj₁ pp
+  payload-read (payload-in-reg _ pp)     = inj₁ pp
+  payload-read (payload-flat fl _)       = inj₂ (fl , refl)
 
   record InlValidWF (alloc : AllocState {FS}) {A B : IRTy}
                     (v : ⟦ A + B ⟧)
@@ -1200,21 +1493,27 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
 
   decomposeInlWF : ∀ {m alloc A B} {a : ⟦ A ⟧} {loc s} →
     ValidAtWF m alloc {A + B} (inj₁ a) loc s → InlValidWF alloc {A} {B} (inj₁ a) loc s
-  decomposeInlWF (valid-inl-wf {a = a} {payload-loc = pl} {mA = mA} lmm _ pp pb slb pv) = record
+  decomposeInlWF (valid-inl-wf {a = a} {payload-loc = pl} {mA = mA} _ lmm _ pp pb slb pd pv) = record
     { a = a ; sucLoc-before = live→bf slb
     ; payload = payload-at-loc {mA = mA} pl pp (live→bf pb) pv ; v-is-inl = refl }
-  decomposeInlWF (valid-inl-reg-wf {a = a} lmm _ fit pp slb) = record
+  decomposeInlWF (valid-inl-reg-wf {a = a} lmm _ fit pp slb _) = record
     { a = a ; sucLoc-before = live→bf slb
     ; payload = payload-in-reg fit pp ; v-is-inl = refl }
+  decomposeInlWF (valid-inl-flat-wf {a = a} {mA = mA} fl lmm _ slb _ _ pv) = record
+    { a = a ; sucLoc-before = live→bf slb
+    ; payload = payload-flat {mA = mA} fl pv ; v-is-inl = refl }
 
   decomposeInrWF : ∀ {m alloc A B} {b : ⟦ B ⟧} {loc s} →
     ValidAtWF m alloc {A + B} (inj₂ b) loc s → InrValidWF alloc {A} {B} (inj₂ b) loc s
-  decomposeInrWF (valid-inr-wf {b = b} {payload-loc = pl} {mB = mB} lmm _ pp pb slb pv) = record
+  decomposeInrWF (valid-inr-wf {b = b} {payload-loc = pl} {mB = mB} _ lmm _ pp pb slb pd pv) = record
     { b = b ; sucLoc-before = live→bf slb
     ; payload = payload-at-loc {mA = mB} pl pp (live→bf pb) pv ; v-is-inr = refl }
-  decomposeInrWF (valid-inr-reg-wf {b = b} lmm _ fit pp slb) = record
+  decomposeInrWF (valid-inr-reg-wf {b = b} lmm _ fit pp slb _) = record
     { b = b ; sucLoc-before = live→bf slb
     ; payload = payload-in-reg fit pp ; v-is-inr = refl }
+  decomposeInrWF (valid-inr-flat-wf {b = b} {mB = mB} fl lmm _ slb _ _ pv) = record
+    { b = b ; sucLoc-before = live→bf slb
+    ; payload = payload-flat {mA = mB} fl pv ; v-is-inr = refl }
 
   ------------------------------------------------------------------------
   -- OCP-0003: FoldValidWF record and decomposeFoldWF removed.
@@ -1234,100 +1533,177 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   ------------------------------------------------------------------------
   -- plan 0.135 S1: ONE TRANSPORT. Every `validityWF-*` below is an instance.
   --
-  -- A witness reads only cells it can name: the top cell (`Q loc`) and cells
-  -- before the frontier. So it moves to any state that agrees on a set `Q`
-  -- covering both, and to any allocator whose frontier includes the old one.
-  -- Proved once by recursion on the type (`v-tr`) and once on the first-order
-  -- witness (`fo-tr`, μ). The arrow case retargets its callee premises:
-  -- what was live and unchanged for the old state is so for the new one.
+  -- D400: by FOOTPRINT. A witness reads only its own location (`Q loc`) and
+  -- its footprint (`foot`). So it moves to any state that agrees on a set `Q`
+  -- covering both, and to any allocator that keeps `Q`'s live cells live and
+  -- their blocks' sizes. Proved once by recursion on the type (`v-tr`) and
+  -- once on the first-order witness (`fo-tr`, μ). The arrow and ν cases
+  -- retarget their callee premises: the carried footprint lies in `Q`.
+  -- `Transport` (the frontier form: `Q` covers everything live) is the
+  -- instance through `foot-live`.
   ------------------------------------------------------------------------
+  module FootTransport {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
+           (Q : ValueLocation FS → Set)
+           (rd  : ∀ l → Q l → readLoc s₂ l ≡ readLoc s₁ l)
+           (bft : ∀ l → Q l → Live a₁ l → Live a₂ l)
+           (ibt : ∀ l → Q l → Live a₁ l → InBlk a₁ l → InBlk a₂ l) where
+
+    here-tr : ∀ {l} → Q l → Here a₁ l → Here a₂ l
+    here-tr q (lv , ib) = bft _ q lv , ibt _ q lv ib
+
+    -- D388: a sum's padding is in its block, so it reads the same
+    pad-tr : ∀ {l from c} → Live a₁ (sucLoc l) → (∀ x → SameBlk l x → Q x) → Pad s₁ l from c → Pad s₂ l from c
+    pad-tr {l} slb qb pd j j<c =
+      proj₁ (pd j j<c) , trans (rd _ (qb _ (blk-off l _ slb))) (proj₂ (pd j j<c))
+
+    mutual
+      fo-tr : ∀ {m A v loc} (w : ValidFO m a₁ {A} v loc s₁) → Q loc → (∀ l → l ∈ᶠ foot-fo loc w → Q l)
+            → ValidFO m a₂ {A} v loc s₂
+      fo-tr (fo-unit unit-wf) q sub = fo-unit unit-wf
+      fo-tr {loc = loc} (fo-pair (pair-wf lmm slb c₁ c₂)) q sub =
+        fo-pair (pair-wf lmm (bft _ (sub _ (here (blk-suc loc slb))) slb)
+                   (fo-cell c₁ q (λ l f → sub l (there (++⁺ˡ f))))
+                   (fo-cell c₂ (sub _ (here (blk-off loc _ slb))) (λ l f → sub l (there (++⁺ʳ (foot-focell c₁) f)))))
+      fo-tr {loc = loc} (fo-sum (inl-wf {payload-loc = pl} nd lmm tg pp pb slb pd pv)) q sub =
+        fo-sum (inl-wf nd lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (sub _ (here (blk-suc loc slb)))) pp)
+                  (bft _ (sub pl (there (here (blk-refl pl)))) pb) (bft _ (sub _ (here (blk-suc loc slb))) slb)
+                  (pad-tr slb (λ x b → sub x (here b)) pd)
+                  (fo-tr pv (sub pl (there (here (blk-refl pl)))) (λ l f → sub l (there (there f)))))
+      fo-tr {loc = loc} (fo-sum (inr-wf {payload-loc = pl} nd lmm tg pp pb slb pd pv)) q sub =
+        fo-sum (inr-wf nd lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (sub _ (here (blk-suc loc slb)))) pp)
+                  (bft _ (sub pl (there (here (blk-refl pl)))) pb) (bft _ (sub _ (here (blk-suc loc slb))) slb)
+                  (pad-tr slb (λ x b → sub x (here b)) pd)
+                  (fo-tr pv (sub pl (there (here (blk-refl pl)))) (λ l f → sub l (there (there f)))))
+      fo-tr {loc = loc} (fo-sum (inl-reg-wf lmm tg rep pp slb pd)) q sub =
+        fo-sum (inl-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (sub _ (here (blk-suc loc slb)))) pp)
+                  (bft _ (sub _ (here (blk-suc loc slb))) slb) (pad-tr slb (λ x b → sub x (here b)) pd))
+      fo-tr {loc = loc} (fo-sum (inr-reg-wf lmm tg rep pp slb pd)) q sub =
+        fo-sum (inr-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (sub _ (here (blk-suc loc slb)))) pp)
+                  (bft _ (sub _ (here (blk-suc loc slb))) slb) (pad-tr slb (λ x b → sub x (here b)) pd))
+      fo-tr {loc = loc} (fo-sum (inl-flat-wf fl lmm tg slb ib pd pv)) q sub =
+        fo-sum (inl-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ (sub _ (here (blk-suc loc slb))) slb)
+                  (λ p → ibt _ (sub _ (here (blk-suc loc slb))) slb (ib p)) (pad-tr slb (λ x b → sub x (here b)) pd)
+                  (fo-tr pv (sub _ (here (blk-suc loc slb))) (λ l f → sub l (there f))))
+      fo-tr {loc = loc} (fo-sum (inr-flat-wf fl lmm tg slb ib pd pv)) q sub =
+        fo-sum (inr-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ (sub _ (here (blk-suc loc slb))) slb)
+                  (λ p → ibt _ (sub _ (here (blk-suc loc slb))) slb (ib p)) (pad-tr slb (λ x b → sub x (here b)) pd)
+                  (fo-tr pv (sub _ (here (blk-suc loc slb))) (λ l f → sub l (there f))))
+      fo-tr (fo-int ()) q sub
+      fo-tr (fo-float ()) q sub
+      fo-tr (fo-μwf ub wf x lv) q sub = fo-μwf ub wf x (fo-tr lv q sub)
+      fo-tr (fo-μbox bx wf x c) q sub = fo-μbox bx wf x (fo-cell c q sub)
+
+      fo-cell : ∀ {C c cl} (x : CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) a₁ c cl s₁) → Q cl
+              → (∀ l → l ∈ᶠ foot-focell x → Q l)
+              → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) a₂ c cl s₂
+      fo-cell (cell-ptr {comp-loc = pl} nd r bf v) q sub =
+        cell-ptr nd (trans (rd _ q) r) (bft _ (sub pl (here (blk-refl pl))) bf) (fo-tr v (sub pl (here (blk-refl pl))) (λ l f → sub l (there f)))
+      fo-cell (cell-inline rep r) q sub = cell-inline rep (trans (rd _ q) r)
+      fo-cell (cell-flat fl hr v) q sub = cell-flat fl (λ p → here-tr q (hr p)) (fo-tr v q sub)
+
+    -- a callee premise over the carried footprint `E`, retargeted
+    runs-tr : ∀ {A B} {VA : VTy A} {VB : VTy B} {E cloc j f} → Q cloc
+            → (∀ l → l ∈ᶠ E → Q l) → (∀ l → l ∈ᶠ E → Live a₁ l)
+            → CallRuns {A} {B} VA VB a₁ s₁ E cloc j f → CallRuns {A} {B} VA VB a₂ s₂ E cloc j f
+    runs-tr q qe el r fs pre a pl ret-pc k rs pc nh fr fa ns incl bk agree i1 lpl slb c0 c1 =
+      r fs pre a pl ret-pc k rs pc nh fr fa ns incl
+        (λ l e ib → bk l e (ibt l (qe l e) (el l e) ib))
+        (λ l e → trans (agree l e) (rd l (qe l e)))
+        i1 lpl slb (trans c0 (rd _ q)) c1
+
+    -- A ν, like a closure, only retargets its force's premises; the forced
+    -- layer is the same run, so nothing is corecursive here.
+    nu-tr : ∀ {F m v loc} (n : NuV {F} m a₁ v loc s₁) → Q loc
+          → (∀ l → SameBlk loc l → Q l) → (∀ l → l ∈ᶠ nu-fp n → Q l)
+          → NuV {F} m a₂ v loc s₂
+    nu-mode  (nu-tr n q sb qe) = nu-mode n
+    nu-heap  (nu-tr n q sb qe) = nu-heap n
+    nu-seed  (nu-tr n q sb qe) = nu-seed n
+    nu-lbl   (nu-tr n q sb qe) = nu-lbl n
+    nu-j     (nu-tr n q sb qe) = nu-j n
+    nu-cell0 (nu-tr n q sb qe) = trans (rd _ q) (nu-cell0 n)
+    nu-cell1 (nu-tr {loc = loc} n q sb qe) = trans (rd _ (sb _ (blk-suc loc (nu-live1 n)))) (nu-cell1 n)
+    nu-live1 (nu-tr {loc = loc} n q sb qe) = bft _ (sb _ (blk-suc loc (nu-live1 n))) (nu-live1 n)
+    nu-code  (nu-tr n q sb qe) = nu-code n
+    nu-fp    (nu-tr n q sb qe) = nu-fp n
+    nu-fp-live (nu-tr n q sb qe) l e = bft l (qe l e) (nu-fp-live n l e)
+    nu-force (nu-tr n q sb qe) wf fs pre ret-pc k rs pc nh fr fa ns incl bk agree i1 =
+      nu-force n wf fs pre ret-pc k rs pc nh fr fa ns incl
+        (λ l e ib → bk l e (ibt l (qe l e) (nu-fp-live n l e) ib))
+        (λ l e → trans (agree l e) (rd l (qe l e)))
+        i1
+
+    mutual
+      v-tr : ∀ {m} A {v loc} (w : ValidAtWF m a₁ {A} v loc s₁) → Q loc → (∀ l → l ∈ᶠ foot A loc w → Q l)
+           → ValidAtWF m a₂ {A} v loc s₂
+      v-tr Unit valid-unit-wf q sub = valid-unit-wf
+      v-tr Void (wrap ()) q sub
+      v-tr (A * B) {loc = loc} (wrap (pair-wf lmm slb c₁ c₂)) q sub =
+        valid-pair-wf lmm (bft _ (sub _ (here (blk-suc loc slb))) slb)
+          (v-cell A c₁ q (λ l f → sub l (there (++⁺ˡ f))))
+          (v-cell B c₂ (sub _ (here (blk-off loc _ slb))) (λ l f → sub l (there (++⁺ʳ (foot-cell A c₁) f))))
+      v-tr (A + B) {loc = loc} (wrap (inl-wf {payload-loc = pl} nd lmm tg pp pb slb pd pv)) q sub =
+        valid-inl-wf nd lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (sub _ (here (blk-suc loc slb)))) pp)
+          (bft _ (sub pl (there (here (blk-refl pl)))) pb) (bft _ (sub _ (here (blk-suc loc slb))) slb)
+          (pad-tr slb (λ x b → sub x (here b)) pd)
+          (v-tr A pv (sub pl (there (here (blk-refl pl)))) (λ l f → sub l (there (there f))))
+      v-tr (A + B) {loc = loc} (wrap (inr-wf {payload-loc = pl} nd lmm tg pp pb slb pd pv)) q sub =
+        valid-inr-wf nd lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (sub _ (here (blk-suc loc slb)))) pp)
+          (bft _ (sub pl (there (here (blk-refl pl)))) pb) (bft _ (sub _ (here (blk-suc loc slb))) slb)
+          (pad-tr slb (λ x b → sub x (here b)) pd)
+          (v-tr B pv (sub pl (there (here (blk-refl pl)))) (λ l f → sub l (there (there f))))
+      v-tr (A + B) {loc = loc} (wrap (inl-reg-wf lmm tg rep pp slb pd)) q sub =
+        valid-inl-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (sub _ (here (blk-suc loc slb)))) pp)
+          (bft _ (sub _ (here (blk-suc loc slb))) slb) (pad-tr slb (λ x b → sub x (here b)) pd)
+      v-tr (A + B) {loc = loc} (wrap (inr-reg-wf lmm tg rep pp slb pd)) q sub =
+        valid-inr-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (sub _ (here (blk-suc loc slb)))) pp)
+          (bft _ (sub _ (here (blk-suc loc slb))) slb) (pad-tr slb (λ x b → sub x (here b)) pd)
+      v-tr (A + B) {loc = loc} (wrap (inl-flat-wf fl lmm tg slb ib pd pv)) q sub =
+        valid-inl-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ (sub _ (here (blk-suc loc slb))) slb)
+          (λ p → ibt _ (sub _ (here (blk-suc loc slb))) slb (ib p)) (pad-tr slb (λ x b → sub x (here b)) pd)
+          (v-tr A pv (sub _ (here (blk-suc loc slb))) (λ l f → sub l (there f)))
+      v-tr (A + B) {loc = loc} (wrap (inr-flat-wf fl lmm tg slb ib pd pv)) q sub =
+        valid-inr-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ (sub _ (here (blk-suc loc slb))) slb)
+          (λ p → ibt _ (sub _ (here (blk-suc loc slb))) slb (ib p)) (pad-tr slb (λ x b → sub x (here b)) pd)
+          (v-tr B pv (sub _ (here (blk-suc loc slb))) (λ l f → sub l (there f)))
+      v-tr (A ⇛ B) {loc = loc} (wrap (closure-wf {env-loc = el′} lmm ep cp eb slb el fd runs)) q sub =
+        valid-closure-wf lmm (trans (rd _ q) ep) (trans (rd _ (sub _ (here (blk-suc loc slb)))) cp)
+          (bft _ (sub el′ (there (here (blk-refl el′)))) eb) (bft _ (sub _ (here (blk-suc loc slb))) slb)
+          (λ l e → bft l (sub l (there (there e))) (el l e))
+          fd (runs-tr q (λ l e → sub l (there (there e))) el runs)
+      v-tr (A ⇛ B) {loc = loc} (wrap (closure-reg-wf {w = w} lmm ep cp slb el fd runs)) q sub =
+        valid-closure-reg-wf {w = w} lmm (trans (rd _ q) ep) (trans (rd _ (sub _ (here (blk-suc loc slb)))) cp)
+          (bft _ (sub _ (here (blk-suc loc slb))) slb)
+          (λ l e → bft l (sub l (there e)) (el l e))
+          fd (runs-tr q (λ l e → sub l (there e)) el runs)
+      v-tr (μ-type F) (wrap w) q sub = wrap (fo-tr w q sub)
+      v-tr (ν-type F) (valid-ν-wf n) q sub = valid-ν-wf (nu-tr n q (λ l b → sub l (here b)) (λ l e → sub l (there e)))
+      v-tr Int (wrap ()) q sub
+      v-tr Float (wrap ()) q sub
+
+      v-cell : ∀ C {c cl} (x : CellAt a₁ C c cl s₁) → Q cl → (∀ l → l ∈ᶠ foot-cell C x → Q l) → CellAt a₂ C c cl s₂
+      v-cell C (cell-ptr {comp-loc = pl} nd r bf v) q sub =
+        cell-ptr nd (trans (rd _ q) r) (bft _ (sub pl (here (blk-refl pl))) bf) (v-tr C v (sub pl (here (blk-refl pl))) (λ l f → sub l (there f)))
+      v-cell C (cell-inline rep r) q sub = cell-inline rep (trans (rd _ q) r)
+      v-cell C (cell-flat fl hr v) q sub = cell-flat fl (λ p → here-tr q (hr p)) (v-tr C v q sub)
+
+  -- the frontier form: `Q` covers every live cell
   module Transport {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
            (Q : ValueLocation FS → Set)
            (q-bf : ∀ l → Live a₁ l → Q l)
            (rd : ∀ l → Q l → readLoc s₂ l ≡ readLoc s₁ l)
-           (bft : ∀ l → Live a₁ l → Live a₂ l) where
+           (bft : ∀ l → Live a₁ l → Live a₂ l)
+           (ibt : BlocksKept a₁ a₂) where
+    private module FT = FootTransport {a₁} {a₂} {s₁} {s₂} Q rd (λ l _ → bft l) (λ l _ → ibt l)
 
-    mutual
-      fo-tr : ∀ {m A v loc} → Q loc → ValidFO m a₁ {A} v loc s₁ → ValidFO m a₂ {A} v loc s₂
-      fo-tr q (fo-unit unit-wf) = fo-unit unit-wf
-      fo-tr q (fo-pair (pair-wf lmm slb c₁ c₂)) =
-        fo-pair (pair-wf lmm (bft _ slb) (fo-cell q c₁) (fo-cell (q-bf _ slb) c₂))
-      fo-tr q (fo-sum (inl-wf lmm tg pp pb slb pv)) =
-        fo-sum (inl-wf lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (q-bf _ slb)) pp)
-                             (bft _ pb) (bft _ slb) (fo-tr (q-bf _ pb) pv))
-      fo-tr q (fo-sum (inr-wf lmm tg pp pb slb pv)) =
-        fo-sum (inr-wf lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (q-bf _ slb)) pp)
-                             (bft _ pb) (bft _ slb) (fo-tr (q-bf _ pb) pv))
-      fo-tr q (fo-sum (inl-reg-wf lmm tg rep pp slb)) =
-        fo-sum (inl-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb))
-      fo-tr q (fo-sum (inr-reg-wf lmm tg rep pp slb)) =
-        fo-sum (inr-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb))
-      fo-tr q (fo-int (int-wf bf rl)) = fo-int (int-wf (bft _ bf) (trans (rd _ q) rl))
-      fo-tr q (fo-float (float-wf bf rl)) = fo-float (float-wf (bft _ bf) (trans (rd _ q) rl))
-      fo-tr q (fo-μwf ub wf x lv) = fo-μwf ub wf x (fo-tr q lv)
-      fo-tr q (fo-μbox bx wf x c) = fo-μbox bx wf x (fo-cell q c)
+    v-tr : ∀ {m} A {v loc} → Q loc → ValidAtWF m a₁ {A} v loc s₁ → ValidAtWF m a₂ {A} v loc s₂
+    v-tr A {loc = loc} q w = FT.v-tr A w q (λ l f → q-bf l (foot-live A loc w l f))
 
-      fo-cell : ∀ {C c cl} → Q cl → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) a₁ c cl s₁
-              → CellAtP {C} (λ m′ a′ → ValidFO m′ a′ {C}) a₂ c cl s₂
-      fo-cell q (cell-ptr r bf v) = cell-ptr (trans (rd _ q) r) (bft _ bf) (fo-tr (q-bf _ bf) v)
-      fo-cell q (cell-inline rep r) = cell-inline rep (trans (rd _ q) r)
+    v-cell : ∀ C {c cl} → Q cl → CellAt a₁ C c cl s₁ → CellAt a₂ C c cl s₂
+    v-cell C q x = FT.v-cell C x q (λ l f → q-bf l (foot-cell-live C x l f))
 
-    runs-tr : ∀ {A B} {VA : VTy A} {VB : VTy B} {cloc j f} → Q cloc
-            → CallRuns {A} {B} VA VB a₁ s₁ cloc j f → CallRuns {A} {B} VA VB a₂ s₂ cloc j f
-    runs-tr q r fs pre a pl ret-pc k rs pc nh fr fa ns incl agree i1 lmm slb c0 c1 =
-      r fs pre a pl ret-pc k rs pc nh fr fa ns
-        (λ l b → incl l (bft l b))
-        (λ l b → trans (agree l (bft l b)) (rd l (q-bf l b)))
-        i1 lmm slb (trans c0 (rd _ q)) c1
-
-    -- A ν, like a closure, only retargets its force's premises; the forced
-    -- layer is the same run, so nothing is corecursive here.
-    nu-tr : ∀ {F m v loc} → Q loc → NuV {F} m a₁ v loc s₁ → NuV {F} m a₂ v loc s₂
-    nu-mode  (nu-tr q n) = nu-mode n
-    nu-heap  (nu-tr q n) = nu-heap n
-    nu-seed  (nu-tr q n) = nu-seed n
-    nu-lbl   (nu-tr q n) = nu-lbl n
-    nu-j     (nu-tr q n) = nu-j n
-    nu-cell0 (nu-tr q n) = trans (rd _ q) (nu-cell0 n)
-    nu-cell1 (nu-tr q n) = trans (rd _ (q-bf _ (nu-live1 n))) (nu-cell1 n)
-    nu-live1 (nu-tr q n) = bft _ (nu-live1 n)
-    nu-code  (nu-tr q n) = nu-code n
-    nu-force (nu-tr q n) wf fs pre ret-pc k rs pc nh fr fa ns incl agree i1 =
-      nu-force n wf fs pre ret-pc k rs pc nh fr fa ns
-        (λ l b → incl l (bft l b))
-        (λ l b → trans (agree l (bft l b)) (rd l (q-bf l b)))
-        i1
-
-    mutual
-      v-tr : ∀ {m} A {v loc} → Q loc → ValidAtWF m a₁ {A} v loc s₁ → ValidAtWF m a₂ {A} v loc s₂
-      v-tr Unit q valid-unit-wf = valid-unit-wf
-      v-tr Void q (wrap ())
-      v-tr (A * B) q (valid-pair-wf lmm slb c₁ c₂) =
-        valid-pair-wf lmm (bft _ slb) (v-cell A q c₁) (v-cell B (q-bf _ slb) c₂)
-      v-tr (A + B) q (valid-inl-wf lmm tg pp pb slb pv) =
-        valid-inl-wf lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (q-bf _ slb)) pp)
-                     (bft _ pb) (bft _ slb) (v-tr A (q-bf _ pb) pv)
-      v-tr (A + B) q (valid-inr-wf lmm tg pp pb slb pv) =
-        valid-inr-wf lmm (transport-SumTag (rd _ q) tg) (trans (rd _ (q-bf _ slb)) pp)
-                     (bft _ pb) (bft _ slb) (v-tr B (q-bf _ pb) pv)
-      v-tr (A + B) q (valid-inl-reg-wf lmm tg rep pp slb) =
-        valid-inl-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb)
-      v-tr (A + B) q (valid-inr-reg-wf lmm tg rep pp slb) =
-        valid-inr-reg-wf lmm (transport-SumTag (rd _ q) tg) rep (trans (rd _ (q-bf _ slb)) pp) (bft _ slb)
-      v-tr (A ⇛ B) q (valid-closure-wf lmm ep cp eb slb fd runs) =
-        valid-closure-wf lmm (trans (rd _ q) ep) (trans (rd _ (q-bf _ slb)) cp) (bft _ eb) (bft _ slb)
-                         fd (runs-tr q runs)
-      v-tr (A ⇛ B) q (valid-closure-reg-wf {env = env} lmm rep ep cp slb fd runs) =
-        valid-closure-reg-wf {env = env} lmm rep (trans (rd _ q) ep) (trans (rd _ (q-bf _ slb)) cp) (bft _ slb)
-                             fd (runs-tr q runs)
-      v-tr (μ-type F) q (wrap w) = wrap (fo-tr q w)
-      v-tr (ν-type F) q (valid-ν-wf n) = valid-ν-wf (nu-tr q n)
-      v-tr Int q (valid-int-wf bf rl) = valid-int-wf (bft _ bf) (trans (rd _ q) rl)
-      v-tr Float q (valid-float-wf bf rl) = valid-float-wf (bft _ bf) (trans (rd _ q) rl)
-
-      v-cell : ∀ C {c cl} → Q cl → CellAt a₁ C c cl s₁ → CellAt a₂ C c cl s₂
-      v-cell C q (cell-ptr r bf v) = cell-ptr (trans (rd _ q) r) (bft _ bf) (v-tr C (q-bf _ bf) v)
-      v-cell C q (cell-inline rep r) = cell-inline rep (trans (rd _ q) r)
+    fo-tr : ∀ {m A v loc} → Q loc → ValidFO m a₁ {A} v loc s₁ → ValidFO m a₂ {A} v loc s₂
+    fo-tr {loc = loc} q w = FT.fo-tr w q (λ l f → q-bf l (foot-fo-live loc w l f))
 
   -- The general transport, by its three facts.
   validityWF-transport : ∀ {m A} {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
@@ -1335,10 +1711,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     (∀ l → BeforeFrontier a₁ l → Q l) →
     (∀ l → Q l → readLoc s₂ l ≡ readLoc s₁ l) →
     (∀ l → BeforeFrontier a₁ l → BeforeFrontier a₂ l) →
+    BlocksKept a₁ a₂ →
     ∀ (v : ⟦ A ⟧) loc → Q loc →
     ValidAtWF m a₁ {A} v loc s₁ → ValidAtWF m a₂ {A} v loc s₂
-  validityWF-transport {A = A} Q q-bf rd bft _ _ q =
-    Transport.v-tr Q (λ l b → q-bf l (live→bf b)) rd (λ l b → bf→live (live-heap b) (bft l (live→bf b))) A q
+  validityWF-transport {A = A} Q q-bf rd bft bk _ _ q =
+    Transport.v-tr Q (λ l b → q-bf l (live→bf b)) rd (λ l b → bf→live (live-heap b) (bft l (live→bf b))) bk A q
 
   -- plan 0.135 S2: …and since a value's cells are heap cells, only the HEAP
   -- frontier and heap memory matter. This is what crosses a call and a return.
@@ -1347,24 +1724,28 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     (∀ l → Live a₁ l → Q l) →
     (∀ l → Q l → readLoc s₂ l ≡ readLoc s₁ l) →
     (∀ l → Live a₁ l → Live a₂ l) →
+    BlocksKept a₁ a₂ →
     ∀ (v : ⟦ A ⟧) loc → Q loc →
     ValidAtWF m a₁ {A} v loc s₁ → ValidAtWF m a₂ {A} v loc s₂
-  validityWF-heap-transport {A = A} Q q-bf rd bft _ _ q = Transport.v-tr Q q-bf rd bft A q
+  validityWF-heap-transport {A = A} Q q-bf rd bft bk _ _ q = Transport.v-tr Q q-bf rd bft bk A q
 
   cellWF-heap-transport : ∀ {C} {a₁ a₂ : AllocState {FS}} {s₁ s₂ : LocState FS}
     (Q : ValueLocation FS → Set) →
     (∀ l → Live a₁ l → Q l) →
     (∀ l → Q l → readLoc s₂ l ≡ readLoc s₁ l) →
     (∀ l → Live a₁ l → Live a₂ l) →
+    BlocksKept a₁ a₂ →
     ∀ (c : ⟦ C ⟧) cl → Q cl →
     CellAt a₁ C c cl s₁ → CellAt a₂ C c cl s₂
-  cellWF-heap-transport {C} Q q-bf rd bft _ _ q = Transport.v-cell Q q-bf rd bft C q
+  cellWF-heap-transport {C} Q q-bf rd bft bk _ _ q = Transport.v-cell Q q-bf rd bft bk C q
 
   private
     all : ValueLocation FS → Set
     all _ = ⊤
     same-alloc : ∀ {a : AllocState {FS}} l → BeforeFrontier a l → BeforeFrontier a l
     same-alloc _ b = b
+    same-blocks : ∀ {a : AllocState {FS}} → BlocksKept a a
+    same-blocks _ _ ib = ib
 
   -- ValidAtWF only depends on memory, not registers.
   validityWF-mem-only : ∀ {m alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
@@ -1372,7 +1753,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     heapMem s₂ ≡ heapMem s₁ →
     ValidAtWF m alloc {A} v loc s₁ → ValidAtWF m alloc {A} v loc s₂
   validityWF-mem-only v loc s₁ s₂ se he =
-    validityWF-transport all (λ _ _ → tt) (λ l _ → readLoc-stack-heap-eq s₂ s₁ l se he) same-alloc v loc tt
+    validityWF-transport all (λ _ _ → tt) (λ l _ → readLoc-stack-heap-eq s₂ s₁ l se he) same-alloc same-blocks v loc tt
 
   validityWF-write-at-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (val : ValueLocation FS) →
@@ -1381,7 +1762,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     ValidAtWF m alloc {A} v loc (write-loc s (AtStack (current-frame alloc) (next-slot alloc)) val)
   validityWF-write-at-frontier {alloc = alloc} v loc s val lb =
     validityWF-transport (BeforeFrontier alloc) (λ _ b → b)
-      (λ l b → write-at-frontier-preserves-before s alloc l val b) same-alloc v loc lb
+      (λ l b → write-at-frontier-preserves-before s alloc l val b) same-alloc same-blocks v loc lb
 
   validityWF-write-at-suc-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (val : ValueLocation FS) →
@@ -1390,7 +1771,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     ValidAtWF m alloc {A} v loc (write-loc s (AtStack (current-frame alloc) (suc (next-slot alloc))) val)
   validityWF-write-at-suc-frontier {alloc = alloc} v loc s val lb =
     validityWF-transport (BeforeFrontier alloc) (λ _ b → b)
-      (λ l b → write-at-suc-frontier-preserves-before s alloc l val b) same-alloc v loc lb
+      (λ l b → write-at-suc-frontier-preserves-before s alloc l val b) same-alloc same-blocks v loc lb
 
   validityWF-write-sv-at-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (stored : StoredValue FS) →
@@ -1399,7 +1780,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     ValidAtWF m alloc {A} v loc (writeLoc s (AtStack (current-frame alloc) (next-slot alloc)) stored)
   validityWF-write-sv-at-frontier {alloc = alloc} v loc s stored lb =
     validityWF-transport (BeforeFrontier alloc) (λ _ b → b)
-      (λ l b → write-sv-at-frontier-preserves-before s alloc l stored b) same-alloc v loc lb
+      (λ l b → write-sv-at-frontier-preserves-before s alloc l stored b) same-alloc same-blocks v loc lb
 
   validityWF-write-sv-at-suc-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (stored : StoredValue FS) →
@@ -1408,31 +1789,33 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     ValidAtWF m alloc {A} v loc (writeLoc s (AtStack (current-frame alloc) (suc (next-slot alloc))) stored)
   validityWF-write-sv-at-suc-frontier {alloc = alloc} v loc s stored lb =
     validityWF-transport (BeforeFrontier alloc) (λ _ b → b)
-      (λ l b → write-sv-at-suc-frontier-preserves-before s alloc l stored b) same-alloc v loc lb
+      (λ l b → write-sv-at-suc-frontier-preserves-before s alloc l stored b) same-alloc same-blocks v loc lb
 
   validityWF-with-bf-transfer : ∀ {m A} (v : ⟦ A ⟧) loc (s : LocState FS)
     (a₁ a₂ : AllocState {FS})
     (bf-transfer : ∀ loc' → BeforeFrontier a₁ loc' → BeforeFrontier a₂ loc') →
+    BlocksKept a₁ a₂ →
     ValidAtWF m a₁ {A} v loc s →
     ValidAtWF m a₂ {A} v loc s
-  validityWF-with-bf-transfer v loc s a₁ a₂ bft =
-    validityWF-transport all (λ _ _ → tt) (λ _ _ → refl) bft v loc tt
+  validityWF-with-bf-transfer v loc s a₁ a₂ bft bk =
+    validityWF-transport all (λ _ _ → tt) (λ _ _ → refl) bft bk v loc tt
 
   validityWF-alloc-advance : ∀ {m alloc A} (v : ⟦ A ⟧) loc s (n : ℕ) →
     ValidAtWF m alloc {A} v loc s →
     let alloc' = record alloc { next-slot = next-slot alloc ℕ.+ n }
     in ValidAtWF m alloc' v loc s
   validityWF-alloc-advance {alloc = alloc} v loc s n =
-    validityWF-with-bf-transfer v loc s _ _ (stack-alloc-advances alloc n)
+    validityWF-with-bf-transfer v loc s _ _ (stack-alloc-advances alloc n) (λ _ _ ib → ib)
 
   validityWF-frontier-advance : ∀ {m alloc alloc' A} (v : ⟦ A ⟧) loc (s : LocState FS) →
     current-frame alloc' ≡ current-frame alloc →
     next-slot alloc ≤ next-slot alloc' →
     next-heap-ref alloc ≤ next-heap-ref alloc' →
+    BlocksKept alloc alloc' →
     ValidAtWF m alloc {A} v loc s →
     ValidAtWF m alloc' v loc s
-  validityWF-frontier-advance {alloc = alloc} {alloc' = alloc'} v loc s cf-eq slot-≤ heap-≤ =
-    validityWF-with-bf-transfer v loc s _ _ (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤)
+  validityWF-frontier-advance {alloc = alloc} {alloc' = alloc'} v loc s cf-eq slot-≤ heap-≤ bk =
+    validityWF-with-bf-transfer v loc s _ _ (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤) bk
 
   validityWF-mem-preserved : ∀ {m alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
     BeforeFrontier alloc loc →
@@ -1440,7 +1823,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     ValidAtWF m alloc {A} v loc s₁ →
     ValidAtWF m alloc {A} v loc s₂
   validityWF-mem-preserved {alloc = alloc} v loc s₁ s₂ lb mem-eq =
-    validityWF-transport (BeforeFrontier alloc) (λ _ b → b) mem-eq same-alloc v loc lb
+    validityWF-transport (BeforeFrontier alloc) (λ _ b → b) mem-eq same-alloc same-blocks v loc lb
 
 
   inputPlace-transport : ∀ {A m alloc alloc'} {x : ⟦ A ⟧} {s s'}
@@ -1448,18 +1831,19 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     → current-frame alloc' ≡ current-frame alloc
     → next-slot alloc ≤ next-slot alloc'
     → next-heap-ref alloc ≤ next-heap-ref alloc'
+    → BlocksKept alloc alloc'
     → (∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc)
     → readReg (regs s') Input1 ≡ input-sv ip
     → InputPlace {A} m alloc' x s'
   inputPlace-transport {x = x} {s = s} {s' = s'}
-      (in-at-loc loc valid before _) cf-eq slot-≤ heap-≤ mem-eq eq' =
+      (in-at-loc loc valid before _) cf-eq slot-≤ heap-≤ bk mem-eq eq' =
     in-at-loc loc
-      (validityWF-frontier-advance x loc s' cf-eq slot-≤ heap-≤
+      (validityWF-frontier-advance x loc s' cf-eq slot-≤ heap-≤ bk
         (validityWF-mem-preserved x loc s s' before mem-eq valid))
       (frontier-monotone _ _ (sym cf-eq) slot-≤ heap-≤ loc before)
       eq'
-  inputPlace-transport (in-at-reg fit _) _ _ _ _ eq' = in-at-reg fit eq'
-  inputPlace-transport (in-unit u)       _ _ _ _ _   = in-unit u
+  inputPlace-transport (in-at-reg fit _) _ _ _ _ _ eq' = in-at-reg fit eq'
+  inputPlace-transport (in-unit u)       _ _ _ _ _ _   = in-unit u
 
   -- (D270: the memory-gap validity transfers — `validityWF-mem-preserved-
   -- excluding`/`-in-regions`/`-in-regions-strong`, `LocInRegions`/
@@ -1512,7 +1896,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     ValidAtWF m alloc {A} v loc s →
     ValidAtWF m (reclaim-alloc alloc reclaim-slot) v loc s
   validityWF-reclaim {m} {alloc} v loc s rs mono loc-bf valid =
-    validityWF-frontier-advance v loc s refl mono ≤-refl valid
+    validityWF-frontier-advance v loc s refl mono ≤-refl (λ _ _ ib → ib) valid
     where
       open import Data.Nat.Properties using (≤-refl)
 
@@ -1703,24 +2087,26 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
 -- unsolved. Declared here, at the top level, where there is no parameter to
 -- abstract over (the constructors' own `FS` and `prog` are fixed by the
 -- expected type).
-open ClosureWellFormedBase using (wrap; unit-wf; pair-wf; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; int-wf; float-wf; fo-μwf; fo-μbox)
+open ClosureWellFormedBase using (wrap; unit-wf; pair-wf; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; inl-flat-wf; inr-flat-wf; fo-μwf; fo-μbox)
 open ClosureWellFormedDef using (closure-wf; closure-reg-wf)
 pattern valid-unit-wf = wrap unit-wf
 pattern valid-pair-wf {pair-loc} lmm slb c₁ c₂ = wrap (pair-wf {pair-loc = pair-loc} lmm slb c₁ c₂)
-pattern valid-inl-wf {m} {a} {sum-loc} {payload-loc} {mA} lmm tg pp pb slb pv =
-  wrap (inl-wf {m = m} {a = a} {sum-loc = sum-loc} {payload-loc = payload-loc} {mA = mA} lmm tg pp pb slb pv)
-pattern valid-inr-wf {m} {b} {sum-loc} {payload-loc} {mB} lmm tg pp pb slb pv =
-  wrap (inr-wf {m = m} {b = b} {sum-loc = sum-loc} {payload-loc = payload-loc} {mB = mB} lmm tg pp pb slb pv)
-pattern valid-inl-reg-wf {m} {a} {sum-loc} lmm tg rep pp slb =
-  wrap (inl-reg-wf {m = m} {a = a} {sum-loc = sum-loc} lmm tg rep pp slb)
-pattern valid-inr-reg-wf {m} {b} {sum-loc} lmm tg rep pp slb =
-  wrap (inr-reg-wf {m = m} {b = b} {sum-loc = sum-loc} lmm tg rep pp slb)
-pattern valid-closure-wf {f} {closure-loc} {env-loc} lmm ep cp eb slb fd runs =
-  wrap (closure-wf {f = f} {closure-loc = closure-loc} {env-loc = env-loc} lmm ep cp eb slb fd runs)
-pattern valid-closure-reg-wf {f} {env} {closure-loc} lmm rep ep cp slb fd runs =
-  wrap (closure-reg-wf {f = f} {env = env} {closure-loc = closure-loc} lmm rep ep cp slb fd runs)
+pattern valid-inl-wf {m} {a} {sum-loc} {payload-loc} {mA} nd lmm tg pp pb slb pd pv =
+  wrap (inl-wf {m = m} {a = a} {sum-loc = sum-loc} {payload-loc = payload-loc} {mA = mA} nd lmm tg pp pb slb pd pv)
+pattern valid-inr-wf {m} {b} {sum-loc} {payload-loc} {mB} nd lmm tg pp pb slb pd pv =
+  wrap (inr-wf {m = m} {b = b} {sum-loc = sum-loc} {payload-loc = payload-loc} {mB = mB} nd lmm tg pp pb slb pd pv)
+pattern valid-inl-reg-wf {m} {a} {sum-loc} lmm tg rep pp slb pd =
+  wrap (inl-reg-wf {m = m} {a = a} {sum-loc = sum-loc} lmm tg rep pp slb pd)
+pattern valid-inr-reg-wf {m} {b} {sum-loc} lmm tg rep pp slb pd =
+  wrap (inr-reg-wf {m = m} {b = b} {sum-loc = sum-loc} lmm tg rep pp slb pd)
+pattern valid-inl-flat-wf {m} {a} {sum-loc} {mA} fl lmm tg slb ib pd pv =
+  wrap (inl-flat-wf {m = m} {a = a} {sum-loc = sum-loc} {mA = mA} fl lmm tg slb ib pd pv)
+pattern valid-inr-flat-wf {m} {b} {sum-loc} {mB} fl lmm tg slb ib pd pv =
+  wrap (inr-flat-wf {m = m} {b = b} {sum-loc = sum-loc} {mB = mB} fl lmm tg slb ib pd pv)
+pattern valid-closure-wf {f} {closure-loc} {env-loc} {E} lmm ep cp eb slb el fd runs =
+  wrap (closure-wf {f = f} {closure-loc = closure-loc} {env-loc = env-loc} {E = E} lmm ep cp eb slb el fd runs)
+pattern valid-closure-reg-wf {f} {w} {closure-loc} {E} lmm ep cp slb el fd runs =
+  wrap (closure-reg-wf {f = f} {w = w} {closure-loc = closure-loc} {E = E} lmm ep cp slb el fd runs)
 pattern valid-ν-wf nv = wrap nv
-pattern valid-int-wf {loc} bf rl = wrap (int-wf {loc = loc} bf rl)
-pattern valid-float-wf {loc} bf rl = wrap (float-wf {loc = loc} bf rl)
 pattern valid-μ-wf ub wf x lv = wrap (fo-μwf ub wf x lv)
 pattern valid-μbox-wf bx wf x c = wrap (fo-μbox bx wf x c)
