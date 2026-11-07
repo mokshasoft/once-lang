@@ -168,10 +168,12 @@ module Prog (σ : ISig) (p : IRProgram) (lk₀ : LinkedProgram σ p) where
   FI⊆ x = there (∈-++⁺ʳ LT x)
 
   -- a call names a table entry, and the image carries its marker
+  -- (plan 0.144: over the entry as a variable; matched by `with`, 6.5 s)
+  call-of : ∀ {f} → Σ[ e ∈ IRFun ] (e ∈ table rp × fname e ≡ f) → G (labelSym (callee (e-fn f)))
+  call-of (e , em , refl) = inj₁ (d-img (FI⊆ (proj₂ (entry∈fns (suc (IT.ir-next-label eo 0 main′)) (table rp) em))) (here refl))
+
   call-G : ∀ (f : CanonicalName) (A B : IRTy) → LinkedAt (table rp) f A B → G (labelSym (callee (e-fn f)))
-  call-G f A B lk with linked-entry (table rp) f A B lk
-  ... | e , em , refl with entry∈fns (suc (IT.ir-next-label eo 0 main′)) (table rp) em
-  ...   | b , mem = inj₁ (d-img (FI⊆ mem) (here refl))
+  call-G f A B lk = call-of (linked-entry (table rp) f A B lk)
 
   module _ (sl-main : SigLeaves P main′) (sl-tbl : All (λ e → SigLeaves P (fbody e)) (table rp)) where
 
@@ -291,10 +293,12 @@ module Lib (σ : ISig) (tbl : List IRFun) (table-linked : All (λ e → Linked �
   rt-linked = all-rewrite-linked tbl tbl table-linked
 
   -- a call names a table entry, whose marker the image carries
+  -- (plan 0.144: over the entry as a variable; matched by `with`, 6.6 s)
+  call-of : ∀ {f} → Σ[ e ∈ IRFun ] (e ∈ rt × fname e ≡ f) → G (labelSym (callee (e-fn f)))
+  call-of (e , em , refl) = inj₁ (inD (defd-self (C.lib-image tbl) (proj₂ (entry∈fns 0 rt em)) (here refl)))
+
   call-G : ∀ (f : CanonicalName) (A B : IRTy) → LinkedAt rt f A B → G (labelSym (callee (e-fn f)))
-  call-G f A B lk with linked-entry rt f A B lk
-  ... | e , em , refl with entry∈fns 0 rt em
-  ...   | b , mem = inj₁ (inD (defd-self (C.lib-image tbl) mem (here refl)))
+  call-G f A B lk = call-of (linked-entry rt f A B lk)
 
   -- every SigOp leaf names a block or an extern (`externs-of`'s construction)
   private
