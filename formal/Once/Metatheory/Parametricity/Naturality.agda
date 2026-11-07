@@ -101,9 +101,9 @@ module Core {m : ℕ} (Δ : KCtx m) (σ : TySub m 0) (A B : Ty m) {q′ : Quanti
 open import Data.Sum using (inj₂)
 open import Once.Spec.Type using (Respects; ∅ₖ)
 open import Once.Spec.Type.Substitution using (⟨⟩-∘; respects-∘)
-open import Once.Spec.Context using (Ctx)
+open import Once.Spec.Context using (Ctx; zeroUsage; _⊑ᵘ_)
 open import Once.Spec.Core.Syntax using (_!!_; ref; module Schema)
-open Schema using (arity; type)
+open Schema using (arity; type; kinds)
 open import Once.Spec.Core.Derived using (composeᶜ; mapᶜ)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
@@ -135,6 +135,19 @@ private
             → Related (Same (X ⟨ σ ⟩)) (toT∞ π (⟦ d ⟧ δ σ r γ)) (return∞ v)
             → Related (Same (Y ⟨ σ ⟩)) (toT∞ π (⟦ substD e d ⟧ δ σ r γ)) (return∞ (coe (cong (_⟨ σ ⟩) e) v))
   relSubstD refl d p = p
+
+  -- A reference's derivation, peeled once here over variables (plan 0.144:
+  -- `peel` matched inline in GO's chain refutes every other rule there).
+  record RefPeeled {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ e τ A π} (d : Δ ⊩ Γ ⊢[ Ψ ] ref e τ ∷ A ! π) : Set where
+    constructor refPeeled
+    field
+      rd   : Respects (kinds (S !! e)) Δ τ
+      inc  : zeroUsage ⊑ᵘ Ψ
+      tyEq : A ≡ type (S !! e) ⟨ τ ⟩
+
+  refPeel : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ e τ A π} (d : Δ ⊩ Γ ⊢[ Ψ ] ref e τ ∷ A ! π) → RefPeeled d
+  refPeel d with peel d
+  ... | peeled (⊢ref _ _ rd) P _ = refPeeled rd P refl
 
   -- A relation read off one transport of each side holds at any other
   -- transport between the same types, carried along `eq` (plan 0.144: stated
@@ -189,8 +202,8 @@ naturality {m} {n} {Δ} {Γ} {Ψ} {Ψf} {A} {B} {q} {q′} {π} {π₀} {πf} {f
        → Shape (F ⟨ at₀ A ⟩) π TT (ref e τB) (mapᶜ F A B f) → AV.Arms d′ (ref e τB) (mapᶜ F A B f)
        → _~_ {TT} (⟪ d ⟫ γ) (⟪ d′ ⟫ γ)
     GO (shape eT tyF tyG lf lg zp) (AV.arms dmG dref Pm Pr) (shape eT′ tyF′ tyG′ lf′ lg′ zp′) (AV.arms dref′ dmF Pr′ Pm′)
-      with eT | tyF dmG | eT′ | tyG′ dmF | peel dref | peel dref′
-    ... | refl | refl | refl | refl | peeled (⊢ref _ _ rd) P _ | peeled (⊢ref _ _ rd′) P′ _
+      with eT | tyF dmG | eT′ | tyG′ dmF | refPeel dref | refPeel dref′
+    ... | refl | refl | refl | refl | refPeeled rd P refl | refPeeled rd′ P′ refl
       with MT.mapTy G dmG | MT.mapTy F dmF
     ... | _ , refl | _ , refl
       with trans (sym eqA) (tyG dref) | trans (sym eqB) (tyF′ dref′)
