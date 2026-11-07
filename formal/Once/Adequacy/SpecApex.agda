@@ -164,15 +164,15 @@ module _ (br : Bridges) where
       soundness : ∀ bytes → compile arch doOpt src ≡ just bytes →
           Σ[ tp ∈ Typed ] ((src ⊢ tp) × Admissible (arch-numerics arch) tp
                            × (∀ J → exec arch (signature tp) J bytes ≈ behaviour (arch-numerics arch) tp J))
-      soundness bytes eq with bind-just (toSource src) (VC.compile arch doOpt) eq
-      ... | srcC , eqS , eqC with proj₁ (VC.correctᵈ arch doOpt srcC) bytes eqC
-      ...   | tp , ⊢tp , adm , runs with sound arch src srcC tp eqS ⊢tp adm
-      ...     | tp′ , ⊢tp′ , adm′ , u , means = tp′ , ⊢tp′ , adm′ , λ J → behaves J
-        where
-          behaves : ∀ J → exec arch (signature tp′) J bytes ≈ behaviour (arch-numerics arch) tp′ J
-          behaves J with exec-wf arch tp′ J bytes
-          ... | wf , eqE rewrite eqE =
-            WB-trans trans (runs (signature tp′) u wf J) (means J)
+      -- (plan 0.144: the pieces taken apart by `let`, not abstracted by `with`: 8.6 s)
+      soundness bytes eq =
+        let (srcC , eqS , eqC)              = bind-just (toSource src) (VC.compile arch doOpt) eq
+            (tp , ⊢tp , adm , runs)         = proj₁ (VC.correctᵈ arch doOpt srcC) bytes eqC
+            (tp′ , ⊢tp′ , adm′ , u , means) = sound arch src srcC tp eqS ⊢tp adm
+        in tp′ , ⊢tp′ , adm′ , λ J →
+             let (wf , eqE) = exec-wf arch tp′ J bytes
+             in subst (λ x → x ≈ behaviour (arch-numerics arch) tp′ J) (sym eqE)
+                      (WB-trans trans (runs (signature tp′) u wf J) (means J))
 
       completeness : ∀ tp → src ⊢ tp → Admissible (arch-numerics arch) tp →
           Σ[ bytes ∈ List Byte ] (compile arch doOpt src ≡ just bytes)
