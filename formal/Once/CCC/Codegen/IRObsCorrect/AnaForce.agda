@@ -26,6 +26,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl
 open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl
 open import Once.CCC.Codegen.IRToTrace o using (resuspend-layer)
+open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; StoredValue; readReg; Input1; Output; writeReg-same; writeReg-preserves; SV-Code; SV-Ptr; sucLoc
         ; mov-to-output; store-at-slot; block-layout; e-thunk)
@@ -64,7 +65,7 @@ module AnaForceC {FS : FrameSemantics} where
   open LocState using (regs; halted)
   open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
   open NuForceC {FS}
-  open CWF.ClosureWellFormedBase {FS} using (CellAtP; fo-base; pair-wf; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf)
+  open CWF.ClosureWellFormedBase {FS} using (CellAtP; fo-base; pair-wf; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; inl-flat-wf; inr-flat-wf)
 
   module AnaBlock {F : IRFunctor} (wf : WellFormedFI F) {E A : IRTy}
                   (coalg : IR (E IRTy′.* A) (⟦ F ⟧TI A)) (ihc : IRObsCorrectF coalg)
@@ -75,7 +76,7 @@ module AnaForceC {FS : FrameSemantics} where
     ctrace = emitted 1 (suc l) coalg
 
     rsp : ℕ × ℕ × AbstractTrace
-    rsp = resuspend-layer (proj₁ (ir-to-trace' 1 (suc l) coalg)) (proj₁ (proj₂ (ir-to-trace' 1 (suc l) coalg))) (ℓ o l) 0 wf
+    rsp = resuspend-layer F E A (proj₁ (ir-to-trace' 1 (suc l) coalg)) (proj₁ (proj₂ (ir-to-trace' 1 (suc l) coalg))) (ℓ o l) 0 wf
 
     bb : ℕ
     bb = proj₁ rsp
@@ -83,47 +84,40 @@ module AnaForceC {FS : FrameSemantics} where
     body : AbstractTrace
     body = mov-to-output ∷ store-at-slot 0 ∷ ctrace DL.++ proj₂ (proj₂ rsp)
 
-    -- AN `Ana` SUSPENSION: the code cell names this block, and cell 0 holds a
-    -- valid seed (its own residence, as a closure's environment cell).
+    -- AN `Ana` SUSPENSION: the code cell names this block, and cell 0 points
+    -- to a valid seed.
+    -- plan 0.123 α2: cell 0 holds the seed PAIR's pointer — the pair is flat,
+    -- in its own block — exactly what the forced block receives in Input1.
     data AnaP : AllocMode → AllocState {FS} → ValueDomain.⟦ ν-type F ⟧ᴰᴵ → ValueLocation FS → LocState FS → Set where
-      ana-p : ∀ {alloc ν-loc s} (x : ValueDomain.⟦ E IRTy′.* A ⟧ᴰᴵ)
+      ana-p : ∀ {alloc ν-loc s pl m′} (x : ValueDomain.⟦ E IRTy′.* A ⟧ᴰᴵ)
             → LocMatchesMode Heap ν-loc
+            → readLoc s ν-loc ≡ just (SV-Ptr pl)
+            → Live alloc pl
+            → ValidAtWF {prog = prog} m′ alloc {E IRTy′.* A} x pl s
             → readLoc s (sucLoc ν-loc) ≡ just (SV-Code (ℓ o l))
             → Live alloc (sucLoc ν-loc)
-            → CellAt {prog = prog} alloc (E IRTy′.* A) x ν-loc s
             → AnaP Heap alloc (retVal (evalᴰ (Ana wf coalg) x)) ν-loc s
 
     AP : VTy (ν-type F)
     AP m a v lc st = AnaP m a v lc st
 
-    -- the seed cell's content
-    cell-sv : ∀ {a C c cl st} → CellAt {prog = prog} a C c cl st → StoredValue FS
-    cell-sv (cell-ptr {comp-loc = cl′} _ _ _) = SV-Ptr cl′
-    cell-sv (cell-inline {c = c} rep _)       = inline-sv rep c
-
-    cell-mode : ∀ {a C c cl st} → CellAt {prog = prog} a C c cl st → AllocMode
-    cell-mode (cell-ptr {mC = m} _ _ _) = m
-    cell-mode (cell-inline _ _)         = Heap
-
-    cell-read : ∀ {a C c cl st} (ce : CellAt {prog = prog} a C c cl st) → readLoc st cl ≡ just (cell-sv ce)
-    cell-read (cell-ptr r _ _)    = r
-    cell-read (cell-inline rep r) = r
-
-    -- AnaP, and a layer of them, survive a heap-frontier move.
-    ap-tr : ∀ {a a′ : AllocState {FS}} → (∀ l′ → Live a l′ → Live a′ l′)
+    -- AnaP, and a layer of them, survive a heap-frontier move that keeps the blocks.
+    ap-tr : ∀ {a a′ : AllocState {FS}} → (∀ l′ → Live a l′ → Live a′ l′) → BlocksKept a a′
           → ∀ {m v lc st} → AnaP m a v lc st → AnaP m a′ v lc st
-    ap-tr bft (ana-p x lmm cp slb c0) =
-      ana-p x lmm cp (bft _ slb) (cellWF-heap-transport (λ _ → ⊤) (λ _ _ → tt) (λ _ _ → refl) bft x _ tt c0)
+    ap-tr bft bk (ana-p x lmm c0 lpl pv cp slb) =
+      ana-p x lmm c0 (bft _ lpl)
+        (validityWF-heap-transport (λ _ → ⊤) (λ _ _ → tt) (λ _ _ → refl) bft bk x _ tt pv) cp (bft _ slb)
 
     live-pred : ∀ {a : AllocState {FS}} {lc : ValueLocation FS} → LocMatchesMode Heap lc → Live a (sucLoc lc) → Live a lc
     live-pred {lc = AtDynamic _} _ (BeforeFrontier.heap-before r<h) = BeforeFrontier.heap-before r<h
 
     ap-tr′ : ∀ {a a′ : AllocState {FS}} {st st′ : LocState FS}
-           → (∀ l′ → Live a l′ → Live a′ l′) → (∀ l′ → Live a l′ → readLoc st′ l′ ≡ readLoc st l′)
+           → (∀ l′ → Live a l′ → Live a′ l′) → (∀ l′ → Live a l′ → readLoc st′ l′ ≡ readLoc st l′) → BlocksKept a a′
            → ∀ {m v lc} → AnaP m a v lc st → AnaP m a′ v lc st′
-    ap-tr′ {a} bft rdq (ana-p x lmm cp slb c0) =
-      ana-p x lmm (trans (rdq _ slb) cp) (bft _ slb)
-            (cellWF-heap-transport (Live a) (λ _ b → b) rdq bft x _ (live-pred lmm slb) c0)
+    ap-tr′ {a} bft rdq bk (ana-p x lmm c0 lpl pv cp slb) =
+      ana-p x lmm (trans (rdq _ (live-pred lmm slb)) c0) (bft _ lpl)
+            (validityWF-heap-transport (Live a) (λ _ b → b) rdq bft bk x _ lpl pv)
+            (trans (rdq _ slb) cp) (bft _ slb)
 
     arith-span : ∀ k′ c b → suc (suc (c + k′)) + b ≡ k′ + (c + suc (suc b))
     arith-span k′ c b = solve 3 (λ k′ c b → con 2 :+ (c :+ k′) :+ b := k′ :+ (c :+ (con 2 :+ b))) refl k′ c b
@@ -135,29 +129,35 @@ module AnaForceC {FS : FrameSemantics} where
     arith-end′ c r b = solve 3 (λ c r b → r :+ (c :+ (con 2 :+ b)) := (con 2 :+ (c :+ r)) :+ b) refl c r b
 
     mutual
-      lay-tr : ∀ {G : IRFunctor} → WellFormedFI G → ∀ {a a′ : AllocState {FS}} → (∀ l′ → Live a l′ → Live a′ l′)
+      lay-tr : ∀ {G : IRFunctor} → WellFormedFI G → ∀ {a a′ : AllocState {FS}} → (∀ l′ → Live a l′ → Live a′ l′) → BlocksKept a a′
              → ∀ {m v lc st} → LayerV G {ν-type F} AP m a v lc st → LayerV G {ν-type F} AP m a′ v lc st
-      lay-tr (wf-K ib) bft lv =
-        valid→fo (fo-base ib) (validityWF-heap-transport {prog = prog} (λ _ → ⊤) (λ _ _ → tt) (λ _ _ → refl) bft _ _ tt (fo→valid lv))
-      lay-tr wf-Id bft lv = ap-tr bft lv
-      lay-tr (wf-Sum f g) bft (inl-wf lmm tg pp pb slb pv) = inl-wf lmm tg pp (bft _ pb) (bft _ slb) (lay-tr f bft pv)
-      lay-tr (wf-Sum f g) bft (inr-wf lmm tg pp pb slb pv) = inr-wf lmm tg pp (bft _ pb) (bft _ slb) (lay-tr g bft pv)
-      lay-tr (wf-Sum f g) bft (inl-reg-wf lmm tg rep pp slb) = inl-reg-wf lmm tg rep pp (bft _ slb)
-      lay-tr (wf-Sum f g) bft (inr-reg-wf lmm tg rep pp slb) = inr-reg-wf lmm tg rep pp (bft _ slb)
-      lay-tr (wf-Prod f g) bft (pair-wf lmm slb c₁ c₂) = pair-wf lmm (bft _ slb) (cell-tr f bft c₁) (cell-tr g bft c₂)
+      lay-tr (wf-K ib) bft bk lv =
+        valid→fo (fo-base ib) (validityWF-heap-transport {prog = prog} (λ _ → ⊤) (λ _ _ → tt) (λ _ _ → refl) bft bk _ _ tt (fo→valid lv))
+      lay-tr wf-Id bft bk lv = ap-tr bft bk lv
+      lay-tr (wf-Sum f g) bft bk (inl-wf nd lmm tg pp pb slb pd pv) = inl-wf nd lmm tg pp (bft _ pb) (bft _ slb) pd (lay-tr f bft bk pv)
+      lay-tr (wf-Sum f g) bft bk (inr-wf nd lmm tg pp pb slb pd pv) = inr-wf nd lmm tg pp (bft _ pb) (bft _ slb) pd (lay-tr g bft bk pv)
+      lay-tr (wf-Sum f g) bft bk (inl-reg-wf lmm tg rep pp slb pd) = inl-reg-wf lmm tg rep pp (bft _ slb) pd
+      lay-tr (wf-Sum f g) bft bk (inr-reg-wf lmm tg rep pp slb pd) = inr-reg-wf lmm tg rep pp (bft _ slb) pd
+      lay-tr (wf-Sum f g) bft bk (inl-flat-wf fl lmm tg slb ib pd pv) =
+        inl-flat-wf fl lmm tg (bft _ slb) (λ p → bk _ slb (ib p)) pd (lay-tr f bft bk pv)
+      lay-tr (wf-Sum f g) bft bk (inr-flat-wf fl lmm tg slb ib pd pv) =
+        inr-flat-wf fl lmm tg (bft _ slb) (λ p → bk _ slb (ib p)) pd (lay-tr g bft bk pv)
+      lay-tr (wf-Prod f g) bft bk (pair-wf lmm slb c₁ c₂) = pair-wf lmm (bft _ slb) (cell-tr f bft bk c₁) (cell-tr g bft bk c₂)
 
-      cell-tr : ∀ {G : IRFunctor} → WellFormedFI G → ∀ {a a′ : AllocState {FS}} → (∀ l′ → Live a l′ → Live a′ l′)
+      cell-tr : ∀ {G : IRFunctor} → WellFormedFI G → ∀ {a a′ : AllocState {FS}} → (∀ l′ → Live a l′ → Live a′ l′) → BlocksKept a a′
               → ∀ {c cl st} → CellAtP {⟦ G ⟧TI (ν-type F)} (LayerV G {ν-type F} AP) a c cl st
               → CellAtP {⟦ G ⟧TI (ν-type F)} (LayerV G {ν-type F} AP) a′ c cl st
-      cell-tr w bft (cell-ptr r bf v)   = cell-ptr r (bft _ bf) (lay-tr w bft v)
-      cell-tr w bft (cell-inline rep r) = cell-inline rep r
+      cell-tr w bft bk (cell-ptr nd r bf v) = cell-ptr nd r (bft _ bf) (lay-tr w bft bk v)
+      cell-tr w bft bk (cell-inline rep r)  = cell-inline rep r
+      cell-tr w bft bk (cell-flat fl hr v)  =
+        cell-flat fl (λ p → bft _ (proj₁ (hr p)) , bk _ (proj₁ (hr p)) (proj₂ (hr p))) (lay-tr w bft bk v)
 
-    across : ∀ {m a ca v st} {a′ : AllocState {FS}} → (∀ l′ → Live a l′ → Live a′ l′)
+    across : ∀ {m a ca v st} {a′ : AllocState {FS}} → (∀ l′ → Live a l′ → Live a′ l′) → BlocksKept a a′
            → ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} AP) m a ca v st
            → ResultPlaceP {⟦ F ⟧TI (ν-type F)} (LayerV F {ν-type F} AP) m a′ a′ v st
-    across bft (rp-unit e) = rp-unit e
-    across bft (rp-loc loc v bf rax _ _) = rp-loc loc (lay-tr wf bft v) (bft loc bf) rax (lay-tr wf bft v) (bft loc bf)
-    across bft (rp-reg fit rax) = rp-reg fit rax
+    across bft bk (rp-unit e) = rp-unit e
+    across bft bk (rp-loc loc v bf rax _ _) = rp-loc loc (lay-tr wf bft bk v) (bft loc bf) rax (lay-tr wf bft bk v) (bft loc bf)
+    across bft bk (rp-reg fit rax) = rp-reg fit rax
 
     module Block (j : ℕ) (feq : find-thunk prog (ℓ o l) ≡ just j)
                  (sp : SpanAt prog j (block-layout (ℓ o l , bb , body)))
@@ -188,11 +188,14 @@ module AnaForceC {FS : FrameSemantics} where
         rsdF  = AnaDen.rsd wf coalg e wf
         comp  = fmap∞ rsdF M
 
-        mk-child : ∀ {a′c ν-loc st} (a′ : ValueDomain.⟦ A ⟧ᴰᴵ)
-                 → LocMatchesMode Heap ν-loc → readLoc st (sucLoc ν-loc) ≡ just (SV-Code (ℓ o l))
-                 → Live a′c (sucLoc ν-loc) → CellAt {prog = prog} a′c (E IRTy′.* A) (e , a′) ν-loc st
+        mk-child : ∀ {a′c ν-loc st pl′} (a′ : ValueDomain.⟦ A ⟧ᴰᴵ)
+                 → LocMatchesMode Heap ν-loc
+                 → readLoc st ν-loc ≡ just (SV-Ptr pl′) → Live a′c pl′
+                 → ValidAtWF {prog = prog} Heap a′c {E IRTy′.* A} (e , a′) pl′ st
+                 → readLoc st (sucLoc ν-loc) ≡ just (SV-Code (ℓ o l))
+                 → Live a′c (sucLoc ν-loc)
                  → AnaP Heap a′c (retVal (evalᴰ (Ana wf coalg) (e , a′))) ν-loc st
-        mk-child a′ lmm cp slb c0 = ana-p (e , a′) lmm cp slb c0
+        mk-child a′ lmm c0 lpl pv cp slb = ana-p (e , a′) lmm c0 lpl pv cp slb
 
         module RS = ResuspC.Resusp {FS} wf coalg e prog l AP mk-child ap-tr′
 
@@ -249,7 +252,7 @@ module AnaForceC {FS : FrameSemantics} where
         log2 = trans (log-abstract (store-at-slot 0) tt (floc fs1) (falloc fs1)) (log-abstract mov-to-output tt s alloc)
 
         inp2 : InputAt {prog = prog} {E IRTy′.* A} mIn alloc x (floc fs2)
-        inp2 = in-loc pl (validityWF-heap-transport (Live alloc) (λ _ b → b) heap02 (λ _ b → b) x pl bfp pv) bfp in2
+        inp2 = in-loc pl (validityWF-heap-transport (Live alloc) (λ _ b → b) heap02 (λ _ b → b) (λ _ _ ib → ib) x pl bfp pv) bfp in2
 
         -- the coalgebra's text and labels, inside the body
         span-c : SpanAt prog (suc (suc base)) ctrace
@@ -260,7 +263,7 @@ module AnaForceC {FS : FrameSemantics} where
         labs-c = labels-in coalg 1 (suc l)
 
         labs-r : LabelsIn l2 (proj₁ (proj₂ rsp)) rt
-        labs-r = resuspend-labels-in l2 (proj₁ (proj₂ rsp)) cb l2 (ℓ o l) 0 wf ≤-refl ≤-refl
+        labs-r = resuspend-labels-in l2 (proj₁ (proj₂ rsp)) F E A cb l2 (ℓ o l) 0 wf ≤-refl ≤-refl
 
         lab-c : LabelsAt prog (suc (suc base)) ctrace
         lab-c m jj eq =
@@ -336,6 +339,7 @@ module AnaForceC {FS : FrameSemantics} where
             (λ p → ⊥-elim (nr′ p))
             (λ nc m′ lc bf → VR.bf-mono (nc-c nc) m′ lc bf)
             (λ p → ⊥-elim (nr′ p))
+            (λ nc → VR.blocks-kept (nc-c nc))
           where
             nr′ : ∀ {v r} → resultAt s (⟪ comp ⟫ k) ≡ returns (done v r) → ⊥
             nr′ p = unmap ρM refl (trans (sym res-c) p)
@@ -378,7 +382,7 @@ module AnaForceC {FS : FrameSemantics} where
           memS0 lc b = trans (vr-mem-pres vr nc0 lc (live-ns 1 b)) (heap02 lc b)
 
           env-c : CellAt {prog = prog} (falloc S0) E e pl (floc S0)
-          env-c = cellWF-heap-transport (Live alloc) (λ _ b → b) memS0 liveS0 e pl bfp
+          env-c = cellWF-heap-transport (Live alloc) (λ _ b → b) memS0 liveS0 (VR.blocks-kept nc0) e pl bfp
                     (PairValidWF.fst-cell (decomposePairWF pv))
 
           place→out : ∀ {B m a ca v st} → ResultPlace {prog = prog} B m a ca v st → RS.OutAt {B} a v st
@@ -436,6 +440,7 @@ module AnaForceC {FS : FrameSemantics} where
               (λ _ → trans RR.cf cf0)
               (λ nc m′ lc bf → RR.bf-mono m′ lc (VR.bf-mono nc0 m′ lc bf))
               (λ _ → trans RR.sf (VR.frames-pres eq))
+              (λ _ → bk-trans {a = alloc} {b = falloc S0} {c = falloc RR.settle} (VR.blocks-kept nc0) RR.bk liveS0)
 
         go : ∀ (ρ : Res (Ap ValueDomain.⟦ ⟦ F ⟧TI A ⟧ᴰᴵ)) → ρM ≡ ρ → BR
         go (returns (done y r′)) eq = Ret.runs y r′ eq
@@ -463,42 +468,52 @@ module AnaForceC {FS : FrameSemantics} where
       ana-body x fs pre mIn ret-pc k rs nh fa ns (in-unit ())
 
       -- ONE FORCE: the block call, its body's run, and what that run means.
-      ana-force : ∀ {alloc ν-loc st} (x : ValueDomain.⟦ E IRTy′.* A ⟧ᴰᴵ)
-                  (c0 : CellAt {prog = prog} alloc (E IRTy′.* A) x ν-loc st)
-                → ForceRuns {prog = prog} {F} AP alloc st (cell-sv c0) j (retVal (evalᴰ (Ana wf coalg) x))
-      ana-force {alloc} {ν-loc} {st} x c0 wf′ fs pre ret-pc k rs pc nh fr fa ns incl agree i1 =
+      -- D400: the seed is kept by its footprint (`seed-foot`), all the force asks.
+      seed-foot : ∀ {alloc st pl m′} {x : ValueDomain.⟦ E IRTy′.* A ⟧ᴰᴵ}
+                → ValidAtWF {prog = prog} m′ alloc {E IRTy′.* A} x pl st → Foot
+      seed-foot {pl = pl} pv = pl ∷ foot (E IRTy′.* A) pl pv
+
+      seed-foot-live : ∀ {alloc st pl m′} {x : ValueDomain.⟦ E IRTy′.* A ⟧ᴰᴵ}
+                     → Live alloc pl → (pv : ValidAtWF {prog = prog} m′ alloc {E IRTy′.* A} x pl st)
+                     → ∀ l′ → l′ ∈ᶠ seed-foot pv → Live alloc l′
+      seed-foot-live {pl = pl} lpl pv l′ (here b) = blk-live0 pl lpl b
+      seed-foot-live {pl = pl} lpl pv l′ (there f) = foot-live (E IRTy′.* A) pl pv l′ f
+
+      ana-force : ∀ {alloc st pl m′} (x : ValueDomain.⟦ E IRTy′.* A ⟧ᴰᴵ)
+                  (lpl : Live alloc pl) (pv : ValidAtWF {prog = prog} m′ alloc {E IRTy′.* A} x pl st)
+                → ForceRuns {prog = prog} {F} AP alloc st (seed-foot pv) (SV-Ptr pl) j (retVal (evalᴰ (Ana wf coalg) x))
+      ana-force {alloc} {st} {pl} {m′} x lpl pv wf′ fs pre ret-pc k rs pc nh fr fa ns incl bkp agree i1 =
         crun-retarget (AnaDen.out-ana wf coalg (proj₁ x) wf′ (proj₂ x) k (floc fs))
           (BC.block-call-gen {⟦ F ⟧TI (ν-type F)} across body (fmap∞ (AnaDen.rsd wf coalg (proj₁ x) wf) (evalᴰ coalg x))
              prog (ℓ o l) bb j sp fs pre ret-pc k rs pc nh fr fa
-             (ana-body x fs pre (cell-mode c0) ret-pc k rs nh fa ns (callee-input c0 i1)))
+             (ana-body x fs pre m′ ret-pc k rs nh fa ns
+                (in-loc pl
+                   (FT.v-tr (E IRTy′.* A) pv (here (blk-refl pl)) (λ l′ f → there f))
+                   (live-pre pl (here (blk-refl pl))) i1)))
         where
-          live-pre : ∀ l′ → Live alloc l′ → Live (BC.callee-alloc bb fs) l′
-          live-pre l′ b = BC.live-callee bb fs pre fa l′ (incl l′ b)
+          live-pre : ∀ l′ → l′ ∈ᶠ seed-foot pv → Live (BC.callee-alloc bb fs) l′
+          live-pre l′ e = BC.live-callee bb fs pre fa l′ (incl l′ e)
 
-          callee-input : (ce : CellAt {prog = prog} alloc (E IRTy′.* A) x ν-loc st)
-                       → readReg (regs (floc fs)) Input1 ≡ cell-sv ce
-                       → InputAt {prog = prog} {E IRTy′.* A} (cell-mode ce) (BC.callee-alloc bb fs) x (BC.callee-loc bb fs)
-          callee-input (cell-ptr {comp-loc = pl} r bf v) i =
-            in-loc pl
-              (validityWF-heap-transport (Live alloc) (λ _ b → b)
-                 (λ l′ b → trans (BC.callee-heap bb fs l′ (incl l′ b)) (agree l′ b))
-                 live-pre x pl bf v)
-              (live-pre pl bf) i
-          callee-input (cell-inline (rep-prim fit) r) i = in-reg fit i
-          callee-input (cell-inline (rep-unit e _) r) i = in-unit e
+          module FT = FootTransport {prog = prog} {a₁ = alloc} {a₂ = BC.callee-alloc bb fs} {s₁ = st} {s₂ = BC.callee-loc bb fs}
+                        (_∈ᶠ seed-foot pv)
+                        (λ l′ e → trans (BC.callee-heap bb fs l′ (incl l′ e)) (agree l′ e))
+                        (λ l′ e _ → live-pre l′ e)
+                        (λ l′ e _ ib → BC.bk-enter bb fs pre fa l′ (incl l′ e) (bkp l′ e ib))
 
       ana-step : ∀ {m a v lc st} → AnaP m a v lc st → NuStep {prog = prog} {F} AP m a v lc st
-      ana-step (ana-p x lmm cp slb c0) = record
+      ana-step (ana-p {pl = pl} x lmm c0 lpl pv cp slb) = record
         { st-mode  = refl
         ; st-heap  = lmm
-        ; st-seed  = cell-sv c0
+        ; st-seed  = SV-Ptr pl
         ; st-lbl   = ℓ o l
         ; st-j     = j
-        ; st-cell0 = cell-read c0
+        ; st-cell0 = c0
         ; st-cell1 = cp
         ; st-live1 = slb
         ; st-code  = feq
-        ; st-force = ana-force x c0
+        ; st-fp    = seed-foot pv
+        ; st-fp-live = seed-foot-live lpl pv
+        ; st-force = ana-force x lpl pv
         }
 
       -- THE ν: every `Ana` suspension of a valid seed is a `NuV`.

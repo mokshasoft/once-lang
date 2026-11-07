@@ -51,7 +51,7 @@ open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch
 open XI using (XR0; XR1)
 open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath)
 open import Once.Arith.Machine.AbsState using (ArithAbsState; _[_]; _[_↦_]; init; store-write-same; store-write-other; output-of)
-open import Once.Arith.Machine.Shape using (Path; here-int; here-flt; go-fst; go-snd; readLeaf; ⌊_⌋ᴾ; project-path; projectF-path)
+open import Once.Arith.Machine.Shape using (Path; here-int; here-flt; go-fst; go-snd; readLeaf; ⌊_⌋ᴾ; flat-off; project-path; projectF-path)
 open import Once.Arith.Machine.AbsInstr using (AbstractInstr; spill; bin-op; un-op; maybe-zero; maybe-zero-f; move-to-out)
 import Once.Arith.Backend.Correct as Correct
 -- PLAN 0.75 F4: pinned at `NInt`. The simulation core models two INTEGER
@@ -101,7 +101,7 @@ module At (tn : TargetNum) where
   tgt (XI.Xmov-imm d _)         = just d
   tgt (XI.Xmov-rr d _)          = just d
   tgt (XI.Xmov-m-r d _)         = just d
-  tgt (XI.Xmov-arg d _)         = just d
+  tgt (XI.Xmov-arg d _ _)       = just d
   tgt (XI.Xadd-rr d _)          = just d
   tgt (XI.Xsub-rr d _)          = just d
   tgt (XI.Ximul-rr d _)         = just d
@@ -124,7 +124,7 @@ module At (tn : TargetNum) where
   tgt (XI.Xfneg-r d)              = just d
   tgt (XI.Xi2f-r d _)             = just d
   tgt (XI.Xmov-fimm d _)          = just d
-  tgt (XI.Xmov-farg d _)          = just d
+  tgt (XI.Xmov-farg d _ _)        = just d
   tgt (XI.Xmov-r-m _ _)         = nothing
   tgt (XI.Xmov-out _)           = nothing
 
@@ -159,7 +159,7 @@ module At (tn : TargetNum) where
     trans (cong (emit i ++_) (emit-program-++ is ys))
           (sym (++-assoc (emit i) (emit-program is) (emit-program ys)))
 
-  block-shape : ∀ {sh} (e : MArithIR sh NInt)
+  block-shape : ∀ {sh n} (e : MArithIR sh n)
               → emit-program (compile-abs e) ≡ emit-program (compile-go 0 e) ++ (XI.Xmov-out XR0 ∷ [])
   block-shape e = emit-program-++ (compile-go 0 e) (move-to-out 0 ∷ [])
 
@@ -175,8 +175,8 @@ module At (tn : TargetNum) where
   ------------------------------------------------------------------------
 
   LoadOK : InputShape → XInstr → Set
-  LoadOK sh (XI.Xmov-arg  d p) = Σ-syntax (Path sh NInt)   (λ tp → ⌊ tp ⌋ᴾ ≡ p)
-  LoadOK sh (XI.Xmov-farg d p) = Σ-syntax (Path sh NFloat) (λ tp → ⌊ tp ⌋ᴾ ≡ p)
+  LoadOK sh (XI.Xmov-arg  d p k) = Σ-syntax (Path sh NInt)   (λ tp → (⌊ tp ⌋ᴾ ≡ p) × (flat-off tp ≡ k))
+  LoadOK sh (XI.Xmov-farg d p k) = Σ-syntax (Path sh NFloat) (λ tp → (⌊ tp ⌋ᴾ ≡ p) × (flat-off tp ≡ k))
   {-# CATCHALL #-}
   LoadOK sh _                  = ⊤
 
@@ -255,8 +255,8 @@ module At (tn : TargetNum) where
   compile-loads d (aflit dc) = _
   -- THE TWO CLAUSES THIS WHOLE RELATION EXISTS FOR: the typed path erased by
   -- `compile-go` is handed straight back as the witness.
-  compile-loads {n = NInt}   d (ainput p) = (p , refl) , _
-  compile-loads {n = NFloat} d (ainput p) = (p , refl) , _
+  compile-loads {n = NInt}   d (ainput p) = (p , refl , refl) , _
+  compile-loads {n = NFloat} d (ainput p) = (p , refl , refl) , _
   compile-loads {n = NInt}   d (aadd a b) = lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) _
   compile-loads {n = NFloat} d (aadd a b) = lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) _
   compile-loads {n = NInt}   d (asub a b) = lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) _
@@ -294,7 +294,7 @@ module At (tn : TargetNum) where
   scratch-unchanged (XI.Xmov-imm _ _)         _ s = refl
   scratch-unchanged (XI.Xmov-rr _ _)          _ s = refl
   scratch-unchanged (XI.Xmov-m-r _ _)         _ s = refl
-  scratch-unchanged (XI.Xmov-arg _ _)         _ s = refl
+  scratch-unchanged (XI.Xmov-arg _ _ _)       _ s = refl
   scratch-unchanged (XI.Xadd-rr _ _)          _ s = refl
   scratch-unchanged (XI.Xsub-rr _ _)          _ s = refl
   scratch-unchanged (XI.Ximul-rr _ _)         _ s = refl
@@ -314,7 +314,7 @@ module At (tn : TargetNum) where
   scratch-unchanged (XI.Xfneg-r _)            _ s = refl
   scratch-unchanged (XI.Xi2f-r _ _)           _ s = refl
   scratch-unchanged (XI.Xmov-fimm _ _)        _ s = refl
-  scratch-unchanged (XI.Xmov-farg _ _)        _ s = refl
+  scratch-unchanged (XI.Xmov-farg _ _ _)      _ s = refl
   scratch-unchanged (XI.Xmov-out _)           _ s = refl
 
   -- NO instruction changes the abstract input (all update regs/scratch/output).
@@ -324,7 +324,7 @@ module At (tn : TargetNum) where
   input-unchanged (XI.Xmov-rr _ _)          s = refl
   input-unchanged (XI.Xmov-r-m _ _)         s = refl
   input-unchanged (XI.Xmov-m-r _ _)         s = refl
-  input-unchanged (XI.Xmov-arg _ _)         s = refl
+  input-unchanged (XI.Xmov-arg _ _ _)       s = refl
   input-unchanged (XI.Xadd-rr _ _)          s = refl
   input-unchanged (XI.Xsub-rr _ _)          s = refl
   input-unchanged (XI.Ximul-rr _ _)         s = refl
@@ -344,7 +344,7 @@ module At (tn : TargetNum) where
   input-unchanged (XI.Xfneg-r _)            s = refl
   input-unchanged (XI.Xi2f-r _ _)           s = refl
   input-unchanged (XI.Xmov-fimm _ _)        s = refl
-  input-unchanged (XI.Xmov-farg _ _)        s = refl
+  input-unchanged (XI.Xmov-farg _ _ _)      s = refl
   input-unchanged (XI.Xmov-out _)           s = refl
 
   module Core
@@ -356,7 +356,7 @@ module At (tn : TargetNum) where
     (def      : Maybe ℕ → ℕ)
     (def-just : ∀ w → def (just w) ≡ w)
     (sa       : St → XScratch → ℕ)               -- scratch-addr
-    (pl       : St → InputPath → ℕ)              -- path-load
+    (pl       : St → InputPath → ℕ → ℕ)          -- path-load (D391: the leaf's word offset)
     (e1       : XInstr → St → St)                -- concrete step (opaque)
     (eb       : List XInstr → St → St)           -- concrete block fold (opaque)
     (eb-nil   : ∀ s → eb [] s ≡ s)
@@ -375,12 +375,19 @@ module At (tn : TargetNum) where
     -- the stack pointer nor the input region) and threaded through Rf so the
     -- memory-layout obligations (pl-inv's spill case; sa-inj) discharge from the
     -- GLOBAL region model rather than being postulated. Supplied by the frame.
-    (WF           : St → Set)
-    (wf-e1        : ∀ i s → WF s → WF (e1 i s))
+    -- plan 0.123 α′ (f3c): indexed by the INPUT SHAPE — a layout fact is about
+    -- the cells the block's input occupies (its typed leaves), not every offset.
+    (WF           : InputShape → St → Set)
+    (wf-e1        : ∀ {sh} i s → WF sh s → WF sh (e1 i s))
     -- PATH-LOAD invariance: no instruction changes the concrete input read (the
     -- input pointer is never written; spill's write is disjoint from the input,
     -- which `WF s` witnesses via the region model).
-    (pl-inv       : ∀ i s → WF s → ∀ p → pl (e1 i s) p ≡ pl s p)
+    -- plan 0.123 α′ (f3c): what the PROGRAM guarantees of an instruction, beside
+    -- the state's WF — x86-64 needs a spill's slot inside the block's frame to
+    -- keep it off an input the caller's stack holds; riscv64/x86-32 ask nothing.
+    (IOk          : XInstr → Set)
+    (pl-inv       : ∀ {sh} i s → WF sh s → IOk i → ∀ {n} (p : Path sh n)
+                  → pl (e1 i s) ⌊ p ⌋ᴾ (flat-off p) ≡ pl s ⌊ p ⌋ᴾ (flat-off p))
     -- READ-FRAME: reading a non-target arith register is unchanged by `i`.
     (rf-other : ∀ i s x → (∀ d → tgt i ≡ just d → ¬ (x ≡ d))
               → rr (e1 i s) (arith-reg x) ≡ rr s (arith-reg x))
@@ -388,12 +395,12 @@ module At (tn : TargetNum) where
     (rt-mov-imm : ∀ d z s   → rr (e1 (XI.Xmov-imm d z) s)   (arith-reg d) ≡ fromℤ z)
     (rt-mov-rr  : ∀ d src s  → rr (e1 (XI.Xmov-rr d src) s)  (arith-reg d) ≡ rr s (arith-reg src))
     (rt-reload  : ∀ d sc s   → rr (e1 (XI.Xmov-m-r d sc) s)  (arith-reg d) ≡ def (mem s (sa s sc)))
-    (rt-arg     : ∀ d p s    → rr (e1 (XI.Xmov-arg d p) s)   (arith-reg d) ≡ pl s p)
+    (rt-arg     : ∀ d p k s  → rr (e1 (XI.Xmov-arg d p k) s)   (arith-reg d) ≡ pl s p k)
     -- The float load reads THE SAME memory — a path-load is a path-load — so
     -- every arch discharges this exactly as it discharges `rt-arg`. Only the
     -- ABSTRACT interpretation of those bytes differed, and the typed path now
     -- decides that.
-    (rt-farg    : ∀ d p s    → rr (e1 (XI.Xmov-farg d p) s)  (arith-reg d) ≡ pl s p)
+    (rt-farg    : ∀ d p k s  → rr (e1 (XI.Xmov-farg d p k) s)  (arith-reg d) ≡ pl s p k)
     (rt-add     : ∀ d src s  → rr (e1 (XI.Xadd-rr d src) s)  (arith-reg d) ≡ rr s (arith-reg d) ⊕ rr s (arith-reg src))
     (rt-sub     : ∀ d src s  → rr (e1 (XI.Xsub-rr d src) s)  (arith-reg d) ≡ rr s (arith-reg d) ⊖ rr s (arith-reg src))
     (rt-imul    : ∀ d src s  → rr (e1 (XI.Ximul-rr d src) s) (arith-reg d) ≡ rr s (arith-reg d) ⊗ rr s (arith-reg src))
@@ -534,17 +541,16 @@ module At (tn : TargetNum) where
     ----------------------------------------------------------------------
     -- R-input — the input correspondence (for arg).
     ----------------------------------------------------------------------
-    -- | The machine word a TYPED leaf holds. `Int` leaves narrow through
-    -- `fromℤ` (the leaf carries a spec integer); a float leaf is already a
-    -- pattern. No `Maybe`, so no default to be false about.
+    -- | The machine word a TYPED leaf holds: the leaf itself, an `Int` word
+    -- (D397) or a float pattern. No `Maybe`, so no default to be false about.
     leafWord : ∀ {sh n} → Path sh n → ⟦ sh ⟧S → ℕ
-    leafWord here-int   z       = fromℤ z
+    leafWord here-int   z       = z
     leafWord here-flt   w       = w
     leafWord (go-fst p) (x , _) = leafWord p x
     leafWord (go-snd p) (_ , y) = leafWord p y
 
     leafWord-int : ∀ {sh} (tp : Path sh NInt) (inp : ⟦ sh ⟧S)
-                 → leafWord tp inp ≡ fromℤ (readLeaf tp inp)
+                 → leafWord tp inp ≡ readLeaf tp inp
     leafWord-int here-int   z       = refl
     leafWord-int (go-fst p) (x , _) = leafWord-int p x
     leafWord-int (go-snd p) (_ , y) = leafWord-int p y
@@ -563,7 +569,7 @@ module At (tn : TargetNum) where
     R-input : ∀ {sh} → ArithAbsState sh → St → Set
     R-input {sh} s-abs s-conc =
       ∀ {n} (p : Path sh n)
-      → pl s-conc ⌊ p ⌋ᴾ ≡ leafWord p (ArithAbsState.input s-abs)
+      → pl s-conc ⌊ p ⌋ᴾ (flat-off p) ≡ leafWord p (ArithAbsState.input s-abs)
 
     -- | The one thing an instruction cannot say about itself: that its path
     -- lands on a leaf of the type it reads. The ISA is untyped BY DESIGN (the
@@ -575,15 +581,15 @@ module At (tn : TargetNum) where
     -- an `ainput`, which now holds a typed path.
     R-step-arg : ∀ {sh} (d : XReg) (tp : Path sh NInt) (s-abs : ArithAbsState sh) (s-conc : St)
                → R s-abs s-conc → R-input s-abs s-conc
-               → R (exec-xinstr (XI.Xmov-arg d ⌊ tp ⌋ᴾ) s-abs) (e1 (XI.Xmov-arg d ⌊ tp ⌋ᴾ) s-conc)
+               → R (exec-xinstr (XI.Xmov-arg d ⌊ tp ⌋ᴾ (flat-off tp)) s-abs) (e1 (XI.Xmov-arg d ⌊ tp ⌋ᴾ (flat-off tp)) s-conc)
     R-step-arg d tp s-abs s-conc r ri x w eq with x ≟x d
     ... | yes refl =
-          sym (trans (rt-arg d ⌊ tp ⌋ᴾ s-conc)
+          sym (trans (rt-arg d ⌊ tp ⌋ᴾ (flat-off tp) s-conc)
               (trans (ri tp)
               (trans (leafWord-int tp (ArithAbsState.input s-abs))
-              (trans (sym (cong (λ m → fromℤ (maybe-zero m)) (project-path tp (ArithAbsState.input s-abs))))
+              (trans (sym (cong maybe-zero (project-path tp (ArithAbsState.input s-abs))))
                      (just-injective (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))))))
-    ... | no ¬eq = step-other (XI.Xmov-arg d ⌊ tp ⌋ᴾ) d x w s-abs s-conc refl r ¬eq eq
+    ... | no ¬eq = step-other (XI.Xmov-arg d ⌊ tp ⌋ᴾ (flat-off tp)) d x w s-abs s-conc refl r ¬eq eq
 
     -- | The float twin, and it is the SAME proof — which is the point. It was a
     -- postulate only because `R-input` could not describe a float leaf; now
@@ -591,21 +597,21 @@ module At (tn : TargetNum) where
     -- `rt-arg`'s) closes it exactly as `rt-arg` closes the integer one.
     R-step-farg : ∀ {sh} (d : XReg) (tp : Path sh NFloat) (s-abs : ArithAbsState sh) (s-conc : St)
                 → R s-abs s-conc → R-input s-abs s-conc
-                → R (exec-xinstr (XI.Xmov-farg d ⌊ tp ⌋ᴾ) s-abs) (e1 (XI.Xmov-farg d ⌊ tp ⌋ᴾ) s-conc)
+                → R (exec-xinstr (XI.Xmov-farg d ⌊ tp ⌋ᴾ (flat-off tp)) s-abs) (e1 (XI.Xmov-farg d ⌊ tp ⌋ᴾ (flat-off tp)) s-conc)
     R-step-farg d tp s-abs s-conc r ri x w eq with x ≟x d
     ... | yes refl =
-          sym (trans (rt-farg d ⌊ tp ⌋ᴾ s-conc)
+          sym (trans (rt-farg d ⌊ tp ⌋ᴾ (flat-off tp) s-conc)
               (trans (ri tp)
               (trans (leafWord-flt tp (ArithAbsState.input s-abs))
               (trans (sym (cong maybe-zero-f (projectF-path tp (ArithAbsState.input s-abs))))
                      (just-injective (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))))))
-    ... | no ¬eq = step-other (XI.Xmov-farg d ⌊ tp ⌋ᴾ) d x w s-abs s-conc refl r ¬eq eq
+    ... | no ¬eq = step-other (XI.Xmov-farg d ⌊ tp ⌋ᴾ (flat-off tp)) d x w s-abs s-conc refl r ¬eq eq
 
     ----------------------------------------------------------------------
     -- Rf = R × R-scratch × R-input — the FULL relation and block simulation.
     ----------------------------------------------------------------------
     Rf : ∀ {sh} → ArithAbsState sh → St → Set
-    Rf s-abs s-conc = R s-abs s-conc × R-scratch s-abs s-conc × R-input s-abs s-conc × WF s-conc
+    Rf {sh} s-abs s-conc = R s-abs s-conc × R-scratch s-abs s-conc × R-input s-abs s-conc × WF sh s-conc
 
     -- The per-instruction step, TOTAL over XInstr. UNIFORM: the `yes` (x ≡ target)
     -- branch combines the abstract value inversion with `rt-<i>`; the `no` branch
@@ -662,9 +668,9 @@ module At (tn : TargetNum) where
     R-step-full (XI.Xmov-m-r d sc) lok s-abs s-conc (r , rsc , _ , _) = R-step-reload d sc s-abs s-conc r rsc
     R-step-full (XI.Xmov-r-m sc src) lok s-abs s-conc (r , _ , _) x w eq =
       trans (r x w eq) (sym (rf-other (XI.Xmov-r-m sc src) s-conc x (no-tgt-hyp (XI.Xmov-r-m sc src) refl)))
-    R-step-full (XI.Xmov-arg d p) (tp , refl) s-abs s-conc (r , _ , ri , _) =
+    R-step-full (XI.Xmov-arg d p k) (tp , refl , refl) s-abs s-conc (r , _ , ri , _) =
       R-step-arg d tp s-abs s-conc r ri
-    R-step-full (XI.Xmov-farg d p) (tp , refl) s-abs s-conc (r , _ , ri , _) =
+    R-step-full (XI.Xmov-farg d p k) (tp , refl , refl) s-abs s-conc (r , _ , ri , _) =
       R-step-farg d tp s-abs s-conc r ri
     R-step-full (XI.Xmov-out src) lok s-abs s-conc (r , _ , _) x w eq =
       trans (r x w eq) (sym (rf-other (XI.Xmov-out src) s-conc x (no-tgt-hyp (XI.Xmov-out src) refl)))
@@ -728,9 +734,9 @@ module At (tn : TargetNum) where
     -- The INPUT frame — R-input preservation. PROVED from `pl-inv` (the concrete
     -- input read is unchanged) + `input-unchanged` (the abstract input is unchanged).
     input-frame : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
-                → WF s-conc → R-input s-abs s-conc → R-input (exec-xinstr i s-abs) (e1 i s-conc)
-    input-frame i s-abs s-conc wf rin p =
-      trans (pl-inv i s-conc wf ⌊ p ⌋ᴾ)
+                → WF sh s-conc → IOk i → R-input s-abs s-conc → R-input (exec-xinstr i s-abs) (e1 i s-conc)
+    input-frame i s-abs s-conc wf ok rin p =
+      trans (pl-inv i s-conc wf ok p)
             (trans (rin p) (cong (leafWord p) (sym (input-unchanged i s-abs))))
 
     -- Same slot ⇒ same scratch address (XScratch eta: `sc = mk-scratch (slot sc)`).
@@ -770,7 +776,7 @@ module At (tn : TargetNum) where
     scratch-frame (XI.Xmov-imm d z) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-imm d z) tt s-abs s-conc rsc
     scratch-frame (XI.Xmov-rr d src) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-rr d src) tt s-abs s-conc rsc
     scratch-frame (XI.Xmov-m-r d sc) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-m-r d sc) tt s-abs s-conc rsc
-    scratch-frame (XI.Xmov-arg d p) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-arg d p) tt s-abs s-conc rsc
+    scratch-frame (XI.Xmov-arg d p k) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-arg d p k) tt s-abs s-conc rsc
     scratch-frame (XI.Xadd-rr d src) s-abs s-conc r rsc = nonspill-sf (XI.Xadd-rr d src) tt s-abs s-conc rsc
     scratch-frame (XI.Xsub-rr d src) s-abs s-conc r rsc = nonspill-sf (XI.Xsub-rr d src) tt s-abs s-conc rsc
     scratch-frame (XI.Ximul-rr d src) s-abs s-conc r rsc = nonspill-sf (XI.Ximul-rr d src) tt s-abs s-conc rsc
@@ -791,24 +797,28 @@ module At (tn : TargetNum) where
     scratch-frame (XI.Xfneg-r a) s-abs s-conc r rsc = nonspill-sf (XI.Xfneg-r a) tt s-abs s-conc rsc
     scratch-frame (XI.Xi2f-r a b) s-abs s-conc r rsc = nonspill-sf (XI.Xi2f-r a b) tt s-abs s-conc rsc
     scratch-frame (XI.Xmov-fimm a b) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-fimm a b) tt s-abs s-conc rsc
-    scratch-frame (XI.Xmov-farg a b) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-farg a b) tt s-abs s-conc rsc
+    scratch-frame (XI.Xmov-farg a b k) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-farg a b k) tt s-abs s-conc rsc
     scratch-frame (XI.Xmov-out src) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-out src) tt s-abs s-conc rsc
 
-    Rf-step : ∀ {sh} (i : XInstr) → LoadOK sh i → (s-abs : ArithAbsState sh) (s-conc : St)
+    Rf-step : ∀ {sh} (i : XInstr) → LoadOK sh i → IOk i → (s-abs : ArithAbsState sh) (s-conc : St)
             → Rf s-abs s-conc → Rf (exec-xinstr i s-abs) (e1 i s-conc)
-    Rf-step i lok s-abs s-conc rf@(rr₀ , rsc , rin , wf) =
+    Rf-step i lok ok s-abs s-conc rf@(rr₀ , rsc , rin , wf) =
       R-step-full i lok s-abs s-conc rf , scratch-frame i s-abs s-conc rr₀ rsc
-      , input-frame i s-abs s-conc wf rin , wf-e1 i s-conc wf
+      , input-frame i s-abs s-conc wf ok rin , wf-e1 i s-conc wf
+
+    IOksWF : List XInstr → Set
+    IOksWF []       = ⊤
+    IOksWF (i ∷ is) = IOk i × IOksWF is
 
     -- The fold carries the program's `LoadsWF` and peels one `LoadOK` per
     -- instruction — the only place the program fact is consumed.
-    Rf-sim : ∀ {sh} (xs : List XInstr) → LoadsWF sh xs
+    Rf-sim : ∀ {sh} (xs : List XInstr) → LoadsWF sh xs → IOksWF xs
            → (s-abs : ArithAbsState sh) (s-conc : St)
            → Rf s-abs s-conc
            → Rf (exec-xprog xs s-abs) (eb xs s-conc)
-    Rf-sim []       lw s-abs s-conc rf rewrite eb-nil s-conc = rf
-    Rf-sim (i ∷ is) (lok , lw) s-abs s-conc rf rewrite eb-cons i is s-conc =
-      Rf-sim is lw (exec-xinstr i s-abs) (e1 i s-conc) (Rf-step i lok s-abs s-conc rf)
+    Rf-sim []       lw _ s-abs s-conc rf rewrite eb-nil s-conc = rf
+    Rf-sim (i ∷ is) (lok , lw) (ok , oks) s-abs s-conc rf rewrite eb-cons i is s-conc =
+      Rf-sim is lw oks (exec-xinstr i s-abs) (e1 i s-conc) (Rf-step i lok ok s-abs s-conc rf)
 
     ----------------------------------------------------------------------
     -- Rf at block entry (`init env`).
@@ -817,7 +827,7 @@ module At (tn : TargetNum) where
     R-scratch-init env s-conc sc w eq = ⊥-elim (n≢j eq)
 
     Rf-init : ∀ {sh} (env : ⟦ sh ⟧S) (s-conc : St)
-            → WF s-conc → R-input (init env) s-conc → Rf (init env) s-conc
+            → WF sh s-conc → R-input (init env) s-conc → Rf (init env) s-conc
     Rf-init env s-conc wf ri = R-init env s-conc , R-scratch-init env s-conc , ri , wf
 
     ----------------------------------------------------------------------
@@ -834,7 +844,7 @@ module At (tn : TargetNum) where
     -- result register holds the abstract output — PROVED: the final Xmov-out's
     -- concrete out-reg = arith-reg XR0's read (rt-out), which R ties to the
     -- abstract reg 0 = the block output (block-value-semM makes it defined).
-    output-extract : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) (s-conc : St)
+    output-extract : ∀ {sh n} (e : MArithIR sh n) (env : ⟦ sh ⟧S) (s-conc : St)
       → R (exec-xprog (emit-program (compile-abs e)) (init env))
           (eb (emit-program (compile-abs e)) s-conc)
       → output-of (exec-xprog (emit-program (compile-abs e)) (init env))
@@ -861,13 +871,14 @@ module At (tn : TargetNum) where
         body = trans (trans rr-eq (rf-other (XI.Xmov-out XR0) cPre XR0 (no-tgt-hyp (XI.Xmov-out XR0) refl)))
                      (sym (trans (cong (λ t → rr t out-reg) ebk≡) (rt-out XR0 cPre)))
 
-    arith-block-correct : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) (s-conc : St)
-      → WF s-conc
+    arith-block-correct : ∀ {sh n} (e : MArithIR sh n) (env : ⟦ sh ⟧S) (s-conc : St)
+      → WF sh s-conc
+      → IOksWF (emit-program (compile-abs e))
       → R-input (init env) s-conc
       → rr (eb (emit-program (compile-abs e)) s-conc) out-reg
           ≡ block-semM e tn (toWord tn sh env)
-    arith-block-correct e env s-conc wf ri =
+    arith-block-correct e env s-conc wf oks ri =
       just-injective
         (trans (sym (output-extract e env s-conc
-                       (proj₁ (Rf-sim (emit-program (compile-abs e)) (compile-loads-abs e) (init env) s-conc (Rf-init env s-conc wf ri)))))
+                       (proj₁ (Rf-sim (emit-program (compile-abs e)) (compile-loads-abs e) oks (init env) s-conc (Rf-init env s-conc wf ri)))))
                (block-value-semM tn e env))

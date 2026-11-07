@@ -5,7 +5,7 @@
 -- Once.Arith.Machine.Shape
 --
 -- The WIDTH-AGNOSTIC core of the arith-block machine: the input-shape
--- tree, its ℤ-spec interpretation `⟦_⟧S`, and positional `InputPath`s.
+-- tree, its word-leaf interpretation `⟦_⟧S`, and positional `InputPath`s.
 --
 -- Split out of `Once.Arith.Machine.AbsState` (clean-semantics L1 step a)
 -- so the width-bearing abstract state can be parameterised by `bits`
@@ -16,8 +16,7 @@
 
 module Once.Arith.Machine.Shape where
 
-open import Data.Nat using (ℕ)
-open import Data.Integer using (ℤ)
+open import Data.Nat using (ℕ; _+_; _*_; _<_)
 open import Data.Maybe using (Maybe; just; nothing) renaming (map to mapᴹ)
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_; _,_)
@@ -39,16 +38,15 @@ data InputShape : Set where
   shape-int   : InputShape
   -- PLAN 0.75 F4: a FLOAT leaf. Its spec value is the target's BIT PATTERN,
   -- not an exact number — D113 removed the exact value level from `Float`
-  -- exactly as D054 removed it from `Int`, so there is nothing else it could
-  -- be. That is why this leaf is `ℕ` where the `Int` leaf is `ℤ`: the `Int`
-  -- leaf still carries a spec-level integer that `fromℤ` narrows to a `Word`,
-  -- and a float has no such intermediate.
+  -- exactly as D054 removed it from `Int`. D397: so both leaves are WORDS —
+  -- the `Int` leaf is the machine word `Int` denotes (D054), not a ℤ that
+  -- `fromℤ` narrows; a block computes on exactly the words its SigOp does.
   shape-float : InputShape
   shape-pair  : InputShape → InputShape → InputShape
 
 ⟦_⟧S : InputShape → Set
 ⟦ shape-unit      ⟧S = ⊤
-⟦ shape-int       ⟧S = ℤ
+⟦ shape-int       ⟧S = ℕ
 ⟦ shape-float     ⟧S = ℕ
 ⟦ shape-pair l r  ⟧S = ⟦ l ⟧S × ⟦ r ⟧S
 
@@ -67,7 +65,7 @@ InputPath = List Side
 -- FLOAT leaf — is `nothing`, and the caller defaults. Recognition only ever
 -- builds paths that land correctly; the validity theorem restates that, so the
 -- default never fires in practice.
-project : ∀ (sh : InputShape) → InputPath → ⟦ sh ⟧S → Maybe ℤ
+project : ∀ (sh : InputShape) → InputPath → ⟦ sh ⟧S → Maybe ℕ
 project shape-unit       _        _       = nothing
 project shape-int        []       z       = just z
 project shape-int        (_ ∷ _)  _       = nothing
@@ -115,11 +113,10 @@ data Path : InputShape → NumType → Set where
   go-fst   : ∀ {l r n} → Path l n → Path (shape-pair l r) n
   go-snd   : ∀ {l r n} → Path r n → Path (shape-pair l r) n
 
--- | What a leaf of each kind holds. The asymmetry is `InputShape`'s own (see
--- `shape-float`): an `Int` leaf carries a spec-level integer, a float leaf
--- carries the target's bit pattern.
+-- | What a leaf of each kind holds: a word (D397) — the `Int`'s two's
+-- complement residue, the float's bit pattern.
 LeafVal : NumType → Set
-LeafVal NInt   = ℤ
+LeafVal NInt   = ℕ
 LeafVal NFloat = ℕ
 
 -- | THE read. Total, because the path proves the leaf is there.
@@ -129,6 +126,21 @@ readLeaf here-flt   w       = w
 readLeaf (go-fst p) (x , _) = readLeaf p x
 readLeaf (go-snd p) (_ , y) = readLeaf p y
 
+-- | D397: the input's `Int` leaves are words — each below the target's modulus
+-- `m`. A value the program holds is the target's (its ops `norm`, its literals
+-- are elaborated words, the world's answers are read at the target), and the
+-- block's code computes on the word as it is (`lit-word` is the identity).
+IntsBelow : ℕ → ∀ sh → ⟦ sh ⟧S → Set
+IntsBelow m shape-unit       _       = ⊤
+IntsBelow m shape-int        v       = v < m
+IntsBelow m shape-float      _       = ⊤
+IntsBelow m (shape-pair l r) (x , y) = IntsBelow m l x × IntsBelow m r y
+
+readLeaf-below : ∀ {m sh} (p : Path sh NInt) (env : ⟦ sh ⟧S) → IntsBelow m sh env → readLeaf p env < m
+readLeaf-below here-int   v       h       = h
+readLeaf-below (go-fst p) (x , _) (h , _) = readLeaf-below p x h
+readLeaf-below (go-snd p) (_ , y) (_ , h) = readLeaf-below p y h
+
 -- | Erasure to the untyped path. The CONCRETE side wants this: an address
 -- computation genuinely does not care which type lives at the end of it, so
 -- the index stops at the boundary rather than being pushed through the ISA.
@@ -137,6 +149,30 @@ readLeaf (go-snd p) (_ , y) = readLeaf p y
 ⌊ here-flt  ⌋ᴾ = []
 ⌊ go-fst p  ⌋ᴾ = Fst ∷ ⌊ p ⌋ᴾ
 ⌊ go-snd p  ⌋ᴾ = Snd ∷ ⌊ p ⌋ᴾ
+
+-- | D391: WHERE A LEAF IS, in the flat layout (D381). A compound input is a
+-- pointer to its words; a component is embedded, so a leaf is one word at the
+-- sum of its left siblings' sizes along the path. A whole-input scalar (`[]`)
+-- is its register, as before.
+shape-size : InputShape → ℕ
+shape-size shape-unit       = 0
+shape-size shape-int        = 1
+shape-size shape-float      = 1
+shape-size (shape-pair l r) = shape-size l + shape-size r
+
+-- the word offset of a typed path's leaf (left siblings' sizes, along the path)
+flat-off : ∀ {sh n} → Path sh n → ℕ
+flat-off here-int            = 0
+flat-off here-flt            = 0
+flat-off (go-fst p)          = flat-off p
+flat-off (go-snd {l = l} p)  = shape-size l + flat-off p
+
+-- the address a target reads a leaf from, for a word of `w` bytes: the input
+-- pointer `base` itself for `[]` (as the arch models have it), else one word
+-- at the leaf's offset
+flat-addr : (w base : ℕ) → InputPath → ℕ → ℕ
+flat-addr w base []      k = base
+flat-addr w base (_ ∷ _) k = base + w * k
 
 -- | …and the two bridges that retire the defaults: along an erased typed path
 -- the old projections are `just`, so `maybe-zero` provably never fires.

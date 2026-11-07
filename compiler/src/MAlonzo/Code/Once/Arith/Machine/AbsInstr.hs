@@ -31,7 +31,7 @@ import qualified MAlonzo.Code.Once.Word
 d_AbstractInstr_8 = ()
 data T_AbstractInstr_8
   = C_load'45'input_10 [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24]
-                       Integer |
+                       Integer Integer |
     C_load'45'imm_12 Integer Integer |
     C_add'45'rrr_14 Integer Integer Integer |
     C_sub'45'rrr_16 Integer Integer Integer |
@@ -47,7 +47,7 @@ data T_AbstractInstr_8
     C_neg'45'rr_34 Integer Integer | C_spill_36 Integer Integer |
     C_reload_38 Integer Integer | C_move'45'to'45'out_40 Integer |
     C_load'45'finput_42 [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24]
-                        Integer |
+                        Integer Integer |
     C_load'45'fimm_44 MAlonzo.Code.Once.Spec.Float.Decimal.T_Decimal_8
                       Integer |
     C_fadd'45'rrr_46 Integer Integer Integer |
@@ -103,33 +103,30 @@ d_step_112 ::
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
 d_step_112 v0 v1 v2 v3
   = case coe v3 of
-      C_load'45'input_10 v4 v5
+      C_load'45'input_10 v4 v5 v6
         -> coe
-             (\ v6 ->
+             (\ v7 ->
                 coe
                   MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_150
                   (coe
                      MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_14
-                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
-                     (coe v5)
+                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
+                     (coe v6)
                      (coe
                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                         (coe
-                           MAlonzo.Code.Once.Spec.Word.d_fromℤ_22 (coe v0)
+                           d_maybe'45'zero_72
                            (coe
-                              d_maybe'45'zero_72
+                              MAlonzo.Code.Once.Arith.Machine.Shape.d_project_34 (coe v2)
+                              (coe v4)
                               (coe
-                                 MAlonzo.Code.Once.Arith.Machine.Shape.d_project_34 (coe v2)
-                                 (coe v4)
-                                 (coe
-                                    MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148
-                                    (coe v6)))))))
+                                 MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v7))))))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v6))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v7))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_146 (coe v6))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_146 (coe v7))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v6)))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v7)))
       C_load'45'imm_12 v4 v5
         -> coe
              (\ v6 ->
@@ -481,15 +478,15 @@ d_step_112 v0 v1 v2 v3
                      (coe v4))
                   (coe
                      MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v5)))
-      C_load'45'finput_42 v4 v5
+      C_load'45'finput_42 v4 v5 v6
         -> coe
-             (\ v6 ->
+             (\ v7 ->
                 coe
                   MAlonzo.Code.Once.Arith.Machine.AbsState.C_mk'45'state_150
                   (coe
                      MAlonzo.Code.Once.Arith.Machine.AbsState.d__'91'_'8614'_'93'_14
-                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v6))
-                     (coe v5)
+                     (coe MAlonzo.Code.Once.Arith.Machine.AbsState.d_regs_142 (coe v7))
+                     (coe v6)
                      (coe
                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                         (coe
@@ -498,13 +495,13 @@ d_step_112 v0 v1 v2 v3
                               MAlonzo.Code.Once.Arith.Machine.Shape.d_projectF_52 (coe v2)
                               (coe v4)
                               (coe
-                                 MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v6))))))
+                                 MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v7))))))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v6))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_scratch_144 (coe v7))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_146 (coe v6))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_output_146 (coe v7))
                   (coe
-                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v6)))
+                     MAlonzo.Code.Once.Arith.Machine.AbsState.d_input_148 (coe v7)))
       C_load'45'fimm_44 v4 v5
         -> coe
              (\ v6 ->

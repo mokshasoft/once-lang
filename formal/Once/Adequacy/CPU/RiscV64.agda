@@ -46,6 +46,7 @@ open import Once.Spec.Trace using (Tr)
 open import Once.Adequacy.MachineTrace using (module Machine)
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.IR.Semantics.Trace using (Interp)
+open import Once.Target.Arch using (arch-numerics; riscv64)
 open import Once.Arith.Backend.CallAnswer using (CallResolver; answer-at)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 
@@ -96,11 +97,24 @@ block-env-hit ((s′ , p) ∷ bs) s a = go (s′ ≟ s) a
     go (no ¬e)  (here e)  = ⊥-elim (¬e e)
     go (no _)   (there a) = block-env-hit bs s a
 
+-- plan 0.123 α′ (f1): …and what is found is an entry under that symbol.
+open import Data.Maybe.Properties using (just-injective)
+open import Data.Product using (proj₂)
+block-env-sound : ∀ (bs : List (String × RF.Payload)) (s : String) {pl : RF.Payload} → block-env bs s ≡ just pl
+                → Any (λ x → proj₁ x ≡ s × proj₂ x ≡ pl) bs
+block-env-sound []              s ()
+block-env-sound ((s′ , p) ∷ bs) s {pl} eq = go (s′ ≟ s) eq
+  where
+    go : (d : Dec (s′ ≡ s)) → (if isYes d then just p else block-env bs s) ≡ just pl
+       → Any (λ x → proj₁ x ≡ s × proj₂ x ≡ pl) ((s′ , p) ∷ bs)
+    go (yes e) eq′ = here (e , just-injective eq′)
+    go (no _)  eq′ = there (block-env-sound bs s eq′)
+
 -- D320: the binary's TRACE — the machine read off step by step (`RT.Run.δ`,
 -- `MachineTrace`): no fuel, so a run that never calls again never arrives.
 run-trace-riscv64 : Interp → RF.Image → RV.State → Tr ⊤
 run-trace-riscv64 ι P s =
-  Machine.trace (RT.Run.δ val-riscv64 (answer-at ι call-at-riscv64) ev-riscv64 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
+  Machine.trace (RT.Run.δ val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
 
 postulate
   -- The CPU's decoder (the ISA's encoding) — only ever used through

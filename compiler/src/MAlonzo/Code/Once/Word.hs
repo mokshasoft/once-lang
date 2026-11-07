@@ -917,24 +917,192 @@ d_'8853''45'neg_746 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'8853''45'neg_746 = erased
+-- Once.Word.WidthLaws.norm-+ˡ
+d_norm'45''43''737'_764 ::
+  Integer ->
+  Integer ->
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_norm'45''43''737'_764 = erased
+-- Once.Word.WidthLaws.⊕⊖-cancel
+d_'8853''8854''45'cancel_776 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'8853''8854''45'cancel_776 = erased
+-- Once.Word.WidthLaws.⊕⊖-norm
+d_'8853''8854''45'norm_792 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'8853''8854''45'norm_792 = erased
 -- Once.Word.WidthLaws.⊖-self
-d_'8854''45'self_762 ::
+d_'8854''45'self_802 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8854''45'self_762 = erased
+d_'8854''45'self_802 = erased
 -- Once.Word.WidthLaws.sbb-zero
-d_sbb'45'zero_768 ::
+d_sbb'45'zero_808 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sbb'45'zero_768 = erased
+d_sbb'45'zero_808 = erased
 -- Once.Word.WidthLaws.sbb-pos
-d_sbb'45'pos_780 ::
+d_sbb'45'pos_820 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sbb'45'pos_780 = erased
+d_sbb'45'pos_820 = erased
+-- Once.Word.WidthLaws.norm-range
+d_norm'45'range_834 ::
+  Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_norm'45'range_834 v0 v1
+  = coe
+      MAlonzo.Code.Data.Nat.DivMod.du_m'37'n'60'n_166 (coe v1)
+      (coe MAlonzo.Code.Once.Spec.Word.d_modulus_12 (coe v0))
+-- Once.Word.WidthLaws.⊖⊕-cancel
+d_'8854''8853''45'cancel_842 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'8854''8853''45'cancel_842 = erased
+-- Once.Word.WidthLaws.room-word
+d_room'45'word_858 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_room'45'word_858 = erased
+-- Once.Word.WidthLaws._.D
+d_D_874 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 -> Integer
+d_D_874 ~v0 v1 v2 ~v3 ~v4 ~v5 = du_D_874 v1 v2
+du_D_874 :: Integer -> Integer -> Integer
+du_D_874 v0 v1
+  = coe MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22 v1 v0
+-- Once.Word.WidthLaws._.bD
+d_bD_876 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_bD_876 = erased
+-- Once.Word.WidthLaws._.Da≤M
+d_Da'8804'M_878 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_Da'8804'M_878 ~v0 ~v1 ~v2 ~v3 v4 ~v5 = du_Da'8804'M_878 v4
+du_Da'8804'M_878 ::
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+du_Da'8804'M_878 v0
+  = coe
+      MAlonzo.Code.Data.Nat.Properties.du_'60''8658''8804'_2998 (coe v0)
+-- Once.Word.WidthLaws._.a+[M∸b]
+d_a'43''91'M'8760'b'93'_882 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_a'43''91'M'8760'b'93'_882 = erased
+-- Once.Word.WidthLaws._.sD≤M
+d_sD'8804'M_888 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_sD'8804'M_888 ~v0 v1 v2 ~v3 v4 ~v5 = du_sD'8804'M_888 v1 v2 v4
+du_sD'8804'M_888 ::
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+du_sD'8804'M_888 v0 v1 v2
+  = coe
+      MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
+      (coe
+         MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+         (MAlonzo.Code.Data.Nat.Properties.d_m'8760'n'8804'm_5184
+            (coe v1) (coe v0)))
+      (coe v2)
+-- Once.Word.WidthLaws._.MD
+d_MD_890 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_MD_890 = erased
+-- Once.Word.WidthLaws._.M1
+d_M1_892 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_M1_892 = erased
+-- Once.Word.WidthLaws._.sum-eq
+d_sum'45'eq_894 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_sum'45'eq_894 = erased
+-- Once.Word.WidthLaws._.lt
+d_lt_900 ::
+  Integer ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_lt_900 v0 v1 v2 ~v3 ~v4 ~v5 = du_lt_900 v0 v1 v2
+du_lt_900 ::
+  Integer ->
+  Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+du_lt_900 v0 v1 v2
+  = coe
+      MAlonzo.Code.Data.Nat.Properties.d_m'8760'n'8804'm_5184
+      (coe MAlonzo.Code.Once.Spec.Word.d_modulus_12 (coe v0))
+      (coe du_D_874 (coe v1) (coe v2))

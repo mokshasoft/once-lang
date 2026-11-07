@@ -4,8 +4,19 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.IRObsCorrect.Apply
 --
--- D200: `apply` — the sixteen-instruction setup, the call, and the hand-off
--- to the closure's own `runs` (plan 0.135 S1; was `BlockRuns.closures`, D188).
+-- D200: `apply` — the setup, the call, and the hand-off to the closure's own
+-- `runs` (plan 0.135 S1). plan 0.123 B.4 α / D386: the setup builds the call
+-- pair `[env-word, arg…]` on the flat layout:
+--
+--   get A 1 ; store-at-slot n ; load-at 0 ; mov-to-input      -- arg; closure
+--   instr-save-closure-reg                                     -- closure-reg
+--   load-at 0 ; store-at-slot (n+1)                            -- env word
+--   instr-alloc-heap (2 ⊔ suc (size A)) ; store-at-slot (n+2) ; mov-to-input
+--   load-from-slot (n+1) ; store-at 0 ; put A n (n+2) 1        -- the pair
+--   load-from-slot (n+2) ; mov-to-input ; instr-call-closure
+--
+-- The read is `Get.get-run`; the two straight segments around the closure
+-- register's save are `StraightRun`'s, their effect `exec-trace`'s.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -16,11 +27,23 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Apply (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (AbstractTrace; SV-Ptr; sucLoc; SV-Code; instr-call-closure; StoredValue; LocState; module LocState; readReg; Input1)
+open import Once.CCC.Machine.SMCore
+  using (AbstractTrace; SV-Ptr; sucLoc; offsetLoc; SV-Code; instr-call-closure; StoredValue; LocState; module LocState;
+         readReg; writeReg; Input1; Output; AllocState; module AllocState; module ExecFinal;
+         store-at-slot; load-from-slot; load-at; store-at; mov-to-input; instr-alloc-heap; instr-save-closure-reg)
 open LocState using (halted; regs)
+open AllocState using (current-frame; next-slot; saved-frames)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; ValueLocation)
+open import Once.Memory.HeapAddress using (heap-loc)
+open import Once.CCC.Codegen.Size using (size)
+open import Once.CCC.Codegen.FlatLayout using (get; get-one; get-i; put; put-All)
+open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
+open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
+open import Once.CCC.Codegen.IRObsCorrect.Pair.Build o tbl using (module PairBuildC)
+import Once.CCC.Machine.FlatPut as FlatPut
+import Once.CCC.Machine.FlatAlloc as FlatAlloc
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -28,6 +51,9 @@ import Once.IRTy
 import Once.IRTy as IRTy′
 import Once.IR
 open import Data.List.Properties using (++-identityʳ)
+open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.Nat using (_⊔_; z≤n; s≤s)
+open import Data.Nat.Properties using (m≤n⊔m)
 open import Once.Res using (is-stopped)
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
@@ -40,12 +66,16 @@ module ApplyC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
+  open SMCore.AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
+  open SMCore.MemOps {FS} using (writeLoc; writeLoc-halted; writeLoc-regs; writeLoc-preserves-other; writeLoc-read-same-stack)
+  open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
+  open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
+  open FlatEventTrace {FS} using (chain-events-subst)
+  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem)
+  module SR = StraightRunAPI {FS}
 
   -- THE CALL at ANY state: `callView`'s three levels, from the closure
-  -- register, the code cell and the thunk scan. Stated over a variable state
-  -- and instantiated at the setup's `a16`, so conversion never unfolds the
-  -- setup's sixteen steps (profile 2026-09-30: 14.5M unfoldings, 77 s, when
-  -- the chain was written at `a16` directly).
+  -- register, the code cell and the thunk scan.
   call-at : ∀ (prog : AbstractTrace) (fs : FlatState) (hl : _) (ℓ : LabelId) (j : ℕ)
           → fclosure fs ≡ SV-Ptr (AtDynamic hl)
           → SMCore.MemOps.readLoc (floc fs) (sucLoc (AtDynamic hl)) ≡ just (SV-Code ℓ)
@@ -61,206 +91,406 @@ module ApplyC {FS : FrameSemantics} where
       (trans (cong (λ z → do-call-code prog z fs) code)
              (cong (λ z → do-call-at z fs) feq))
 
+  -- a load at an offset of the block `Input1` points to
+  ld : ∀ k (s : LocState FS) (a : AllocState {FS}) (l : ValueLocation FS) (w : StoredValue FS)
+     → readReg (regs s) Input1 ≡ SV-Ptr l → readLoc s (offsetLoc l k) ≡ just w
+     → exec-abstract (load-at k) s a ≡ (record s { regs = writeReg (regs s) Output w } , a)
+  ld k s a l w i1 r =
+    trans (cong (λ x → (ExecFinal.exec-load-at-resolved {FS} k Output (SMCore.sv-as-loc x) s , a)) i1)
+          (cong (λ m → (ExecFinal.exec-load-with-value {FS} Output m s , a)) r)
+
+  private
+    slot-of : ValueLocation FS → ℕ
+    slot-of (AtDynamic _) = 0
+    slot-of (AtStack _ j) = j
+
+    sne : ∀ {fr} {a b : ℕ} → a < b → AtStack {FS} fr b ≢ AtStack fr a
+    sne a<b e = <-irrefl (sym (cong slot-of e)) a<b
+
   obs-correct-apply : ∀ {A B} → IRObsCorrectF (apply {A} {B})
   -- A PAIR fits no register and is not `Unit`, so the two off-pointer input
-  -- residences are refuted outright.
+  -- residences are refuted outright; a live location is a heap cell.
   obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-reg () _) k rs
   obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-unit ()) k rs
+  obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-loc (AtStack _ _) _ () _) k rs
   obs-correct-apply {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh
-    (in-loc pair-loc valid bf rdi) k rs =
-    go (PairValidWF.fst-cell d) (PairValidWF.snd-cell d)
+    (in-loc (AtDynamic (heap-loc pr po)) valid bf rdi) k rs =
+    go (PairValidWF.fst-cell d)
     where
+      pair-loc : ValueLocation FS
+      pair-loc = AtDynamic (heap-loc pr po)
       d = decomposePairWF valid
-      module ASP = ApplySetupPres n prog base s alloc cl rs
 
-      -- A CLOSURE is never inline (`InlineRep (A ⇛ B)` needs `FitsInRegI` or
-      -- `≡ Unit`, both absurd), and D184 pins it to the HEAP — which is also
-      -- the only shape `do-call` enters on, so the `AtStack` case is refuted
-      -- by the witness's own `LocMatchesMode`.
+      -- A CLOSURE is never inline, and D184 pins it to the HEAP.
       go : CellAt {prog = prog} alloc (A IRTy′.⇛ B) (proj₁ x) pair-loc s
-         → CellAt {prog = prog} alloc A (proj₂ x) (sucLoc pair-loc) s
          → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl rs k
-      go (cell-inline (rep-prim ()) _) _
-      go (cell-inline (rep-unit () _) _) _
-      go (cell-ptr {comp-loc = AtStack _ _} _ _ fv) _ =
+      go (cell-inline (rep-prim ()) _)
+      go (cell-ptr {comp-loc = AtStack _ _} _ _ _ fv) =
         ⊥-elim (ClosureValidWF.loc-mode (decomposeClosureWF fv))
-      go (cell-ptr {comp-loc = AtDynamic chl} fst-cell fst-bf fst-valid) sc =
-        assemble (ClosureValidWF.env-at cvw) sc
+      go (cell-ptr {comp-loc = AtDynamic (heap-loc cr co)} _ fst-cell fst-bf fst-valid) =
+        assemble (ClosureValidWF.env-at cvw)
         where
-          fst-loc = AtDynamic {FS} chl
+          fst-loc : ValueLocation FS
+          fst-loc = AtDynamic (heap-loc cr co)
           cvw     = decomposeClosureWF fst-valid
 
           E    = ClosureValidWF.EnvType cvw
           env  = ClosureValidWF.env cvw
-          blbl    = ClosureValidWF.body-label cvw
+          blbl = ClosureValidWF.body-label cvw
 
-          -- Each residence contributes a STORED VALUE and the cell equation;
-          -- the callee's cell is rebuilt from the same split (D187).
           env-sv-of : EnvAt {prog = prog} alloc {E} env fst-loc s → StoredValue FS
-          env-sv-of (env-at-loc el _ _)   = SV-Ptr el
-          env-sv-of (env-in-cell rep _)   = inline-sv rep env
+          env-sv-of (env-at-loc el _ _) = SV-Ptr el
+          env-sv-of (env-in-cell w _) = w
 
           env-cell-of : (ea : EnvAt {prog = prog} alloc {E} env fst-loc s)
                       → SMCore.MemOps.readLoc s fst-loc ≡ just (env-sv-of ea)
-          env-cell-of (env-at-loc _ ep _)   = ep
-          env-cell-of (env-in-cell _ ep)    = ep
-
-          arg-sv-of : CellAt {prog = prog} alloc A (proj₂ x) (sucLoc pair-loc) s → StoredValue FS
-          arg-sv-of (cell-ptr {comp-loc = al} _ _ _) = SV-Ptr al
-          arg-sv-of (cell-inline rep _)              = inline-sv rep (proj₂ x)
-
-          arg-cell-of : (c : CellAt {prog = prog} alloc A (proj₂ x) (sucLoc pair-loc) s)
-                      → SMCore.MemOps.readLoc s (sucLoc pair-loc) ≡ just (arg-sv-of c)
-          arg-cell-of (cell-ptr ap _ _)  = ap
-          arg-cell-of (cell-inline _ ap) = ap
+          env-cell-of (env-at-loc _ ep _) = ep
+          env-cell-of (env-in-cell _ ep)  = ep
 
           assemble : EnvAt {prog = prog} alloc {E} env fst-loc s
-                   → CellAt {prog = prog} alloc A (proj₂ x) (sucLoc pair-loc) s
                    → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl rs k
-          assemble ea sc' = record
-            { value-realized =
-                realized (17 + CalleeRun.steps crun) (CalleeRun.settle crun)
-                         (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
-                         run (λ p → CalleeRun.live crun (trans st-eq p))
-                         (λ p → CalleeRun.returned crun (trans res-eq p))
-                         (λ p → proj₁ (CalleeRun.stops crun (trans st-eq p))
-                              , trans (proj₂ (CalleeRun.stops crun (trans st-eq p)))
-                                      (chain-left run17 (trans (cong (λ st → halted (floc st)) call-eq) OB.nh16)))
-                         (λ p → CalleeRun.no-ret crun (trans res-eq p))
-                         (λ nc → CalleeRun.no-link crun (nc′ nc))
-                         (trans (CalleeRun.log crun) (cong₂ DL._++_ h-eq (cong proj₁ RE)))
-                         place
-                         (progress-≤ (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (CalleeRun.run crun)) res-eq (CalleeRun.progress crun))
-                                     (ctrls-≤ʳ run17 (CalleeRun.run crun)))
-                         (λ nc fr j bf → mem-pres-apply nc (AtStack fr j) bf) (λ nc hl bf → mem-pres-apply nc (AtDynamic hl) bf)
-                         (λ p → trans (CalleeRun.frame-pres crun (trans res-eq p) (falloc ASP.a16)
-                                   (cong falloc call-eq))
-                                OB.cf-a16)
-                         bf-mono-apply
-                         (λ p → trans (CalleeRun.frames-pres crun (trans res-eq p) (falloc ASP.a16)
-                                   (cong falloc call-eq))
-                                OB.sf-a16)
-            ; traces-agree = trc
-            }
+          assemble ea = result
             where
-              module OB = ASP.Obligations pair-loc fst-loc (arg-sv-of sc') (env-sv-of ea)
-                            rdi fst-cell (arg-cell-of sc') (env-cell-of ea) (live→bf bf) fst-bf (ns≤ {alloc} n n≤) nh
+              ev = env-sv-of ea
 
-              callee-arg : (c : CellAt {prog = prog} alloc A (proj₂ x) (sucLoc pair-loc) s)
-                         → SMCore.MemOps.readLoc (floc ASP.a16) (sucLoc (AtDynamic ASP.ahl))
-                           ≡ just (arg-sv-of c)
-                         → CellAt {prog = prog} (falloc ASP.a16) A (proj₂ x)
-                             (sucLoc (AtDynamic ASP.ahl)) (floc ASP.a16)
-              callee-arg (cell-ptr ap abf av) q =
-                cell-ptr q (live-lift OB.bf-advance abf) (OB.carry (proj₂ x) _ (live→bf abf) av)
-              callee-arg (cell-inline rep ap) q = cell-inline rep q
+              ------------------------------------------------------------------
+              -- THE TEXT, with the read as its one instruction (`get-one`)
+              ------------------------------------------------------------------
+              N = 2 ⊔ suc (size A)
+              T2  = load-from-slot (suc (suc n)) ∷ mov-to-input ∷ []
+              S2 = load-at 0 ∷ store-at-slot (suc n) ∷ instr-alloc-heap N ∷ store-at-slot (suc (suc n)) ∷
+                   mov-to-input ∷ load-from-slot (suc n) ∷ store-at 0 ∷ (put A n (suc (suc n)) 1 ++ T2)
+              T1 = store-at-slot n ∷ load-at 0 ∷ mov-to-input ∷ []
+              S2c = load-at 0 ∷ store-at-slot (suc n) ∷ instr-alloc-heap N ∷ store-at-slot (suc (suc n)) ∷
+                    mov-to-input ∷ load-from-slot (suc n) ∷ store-at 0 ∷ (put A n (suc (suc n)) 1 ++ T2 ++ instr-call-closure ∷ [])
+              E′ = get-i A 1 ∷ (T1 ++ instr-save-closure-reg ∷ S2c)
+
+              shape : emitted n l (apply {A} {B}) ≡ E′
+              shape = cong (_++ (T1 ++ instr-save-closure-reg ∷ S2c)) (get-one A 1)
+
+              span′ : SpanAt prog base E′
+              span′ = subst (SpanAt prog base) shape span
+
+              S2-c : S2 ++ instr-call-closure ∷ [] ≡ S2c
+              S2-c = cong (λ t → load-at 0 ∷ store-at-slot (suc n) ∷ instr-alloc-heap N ∷ store-at-slot (suc (suc n)) ∷
+                                 mov-to-input ∷ load-from-slot (suc n) ∷ store-at 0 ∷ t)
+                          (++-assoc (put A n (suc (suc n)) 1) T2 (instr-call-closure ∷ []))
+
+              ------------------------------------------------------------------
+              -- 1. the read: the argument, at word 1 of the input pair
+              ------------------------------------------------------------------
+              fs0 = entry-flat base s alloc cl rs
+
+              at0 : ∀ i → fetch (get A 1) 0 ≡ just i → fetch prog (fpc fs0) ≡ just i
+              at0 i e = span′ 0 i (trans (sym (cong (λ t → fetch t 0) (get-one A 1))) e)
+
+              g : GetOut {prog = prog} A (proj₂ x) fs0
+              g = get-run A 1 fs0 pair-loc nh at0 rdi bf (PairValidWF.snd-cell d)
+              module G = GetOut g
+              g1 = setOut fs0 G.out
+              u  = floc g1
+
+              ------------------------------------------------------------------
+              -- 2. stash it; the closure, into `Input1`
+              ------------------------------------------------------------------
+              u₁ = proj₁ (exec-abstract (store-at-slot n) u alloc)
+              u₂ = record u₁ { regs = writeReg (regs u₁) Output (SV-Ptr fst-loc) }
+              u₃ = proj₁ (exec-abstract mov-to-input u₂ alloc)
+
+              seg1 : exec-trace T1 u alloc ≡ (u₃ , alloc)
+              seg1 = trans (exec-trace-cons (store-at-slot n) _ u alloc nh)
+                    (trans (exec-trace-cons (load-at 0) (mov-to-input ∷ []) u₁ alloc nh)
+                    (trans (cong (λ r → exec-trace (mov-to-input ∷ []) (proj₁ r) (proj₂ r))
+                                 (ld 0 u₁ alloc pair-loc (SV-Ptr fst-loc) rdi fst-cell))
+                           (exec-trace-cons mov-to-input [] u₂ alloc nh)))
+
+              at1 : SR.At prog (fpc g1) T1
+              at1 j i e = subst (λ p → fetch prog p ≡ just i) (sym (+-suc j base))
+                                (span′ (suc j) i (fetch-++-left T1 (instr-save-closure-reg ∷ S2c) j i e))
+
+              sts1 : All StraightStep T1
+              sts1 = (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
+
+              evs1 : All (λ i → ∀ fs′ → event-of i fs′ ≡ []) T1
+              evs1 = (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ []
+
+              he1 : halted (proj₁ (exec-trace T1 u alloc)) ≡ false
+              he1 = trans (cong (λ r → halted (proj₁ r)) seg1) nh
+
+              f3 = record g1 { floc = u₃ ; falloc = alloc ; fpc = 3 + fpc g1 }
+              eq1 : SR.after T1 g1 ≡ f3
+              eq1 = cong (λ r → record g1 { floc = proj₁ r ; falloc = proj₂ r ; fpc = 3 + fpc g1 }) seg1
+              run1₀ = SR.straight-steps {prog} T1 g1 sts1 at1 nh he1
+              run1 : FlatSteps prog 3 g1 f3
+              run1 = subst (FlatSteps prog 3 g1) eq1 run1₀
+
+              ------------------------------------------------------------------
+              -- 3. the closure register
+              ------------------------------------------------------------------
+              f4 = flat-exec-instr instr-save-closure-reg prog f3
+
+              run-save : FlatSteps prog 1 f3 f4
+              run-save = (nh , span′ 4 _ refl) ∷ []
+
+              ------------------------------------------------------------------
+              -- 4. the call pair `[env-word, arg…]`
+              ------------------------------------------------------------------
+              cf = current-frame alloc
+              A₁ = FlatAlloc.alloc-after {FS} N alloc
+              rd = FlatAlloc.fresh-ref {FS} alloc
+              L : ValueLocation FS
+              L  = AtDynamic (heap-loc rd 0)
+              blk : StoredValue FS
+              blk = SV-Ptr L
+
+              v₁ = record u₃ { regs = writeReg (regs u₃) Output ev }
+              v₂ = proj₁ (exec-abstract (store-at-slot (suc n)) v₁ alloc)
+              v₃ = proj₁ (exec-abstract (instr-alloc-heap N) v₂ alloc)
+              v₄ = proj₁ (exec-abstract (store-at-slot (suc (suc n))) v₃ A₁)
+              v₅ = proj₁ (exec-abstract mov-to-input v₄ A₁)
+              v₆ = record v₅ { regs = writeReg (regs v₅) Output ev }
+              v₇ = writeLoc v₆ L ev
+
+              slot-ev : readLoc v₅ (AtStack cf (suc n)) ≡ just ev
+              slot-ev = trans (writeLoc-preserves-other v₃ (AtStack cf (suc (suc n))) (AtStack cf (suc n)) blk
+                                 (sne (n<1+n (suc n))))
+                              (writeLoc-read-same-stack v₁ cf (suc n) ev)
+
+              ib0 : InBlk A₁ L
+              ib0 = FlatAlloc.alloc-in {FS} N alloc 0 (s≤s z≤n)
+
+              st0 : exec-abstract (store-at 0) v₆ A₁ ≡ (v₇ , A₁)
+              st0 = cong (λ b → (ExecFinal.exec-store-in-block {FS} b L ev v₆ , A₁)) ib0
+
+              h₇ : halted v₇ ≡ false
+              h₇ = trans (writeLoc-halted v₆ L ev) nh
+
+              slot-arg₇ : readLoc v₇ (AtStack cf n) ≡ just G.out
+              slot-arg₇ =
+                trans (writeLoc-preserves-other v₆ L (AtStack cf n) ev (λ ()))
+               (trans (writeLoc-preserves-other v₃ (AtStack cf (suc (suc n))) (AtStack cf n) blk
+                         (sne (≤-trans (n<1+n n) (n≤1+n (suc n)))))
+               (trans (writeLoc-preserves-other v₁ (AtStack cf (suc n)) (AtStack cf n) ev (sne (n<1+n n)))
+                      (writeLoc-read-same-stack u cf n G.out)))
+
+              slot-blk₇ : readLoc v₇ (AtStack cf (suc (suc n))) ≡ just blk
+              slot-blk₇ = trans (writeLoc-preserves-other v₆ L (AtStack cf (suc (suc n))) ev (λ ()))
+                                (writeLoc-read-same-stack v₃ cf (suc (suc n)) blk)
+
+              freshA : ∀ o → Live alloc (AtDynamic (heap-loc rd o)) → ⊥
+              freshA o = FlatAlloc.alloc-fresh {FS} alloc o
+
+              -- the heap the caller had live, as the read left it, and as the entry had it
+              keep₇ : ∀ l → Live alloc l → readLoc v₇ l ≡ readLoc s l
+              keep₇ (AtDynamic hl) lv =
+                writeLoc-preserves-other v₆ L (AtDynamic hl) ev (λ e → freshA 0 (subst (Live alloc) (sym e) lv))
+
+              src₇ : FlatPut.Src {FS} {prog} alloc v₇ A (proj₂ x) G.out
+              src₇ = FlatPut.src-tr {FS} {prog} (λ l lv → trans (keep₇ l lv) (sym (out-mem fs0 G.out l)))
+                       (PairBuildC.src-of-place {FS} {prog} G.place)
+
+              PA = FlatPut.put-run {FS} {prog} A n (suc (suc n)) 1 v₇ A₁ alloc G.out rd N h₇ slot-arg₇ slot-blk₇
+                     (FlatAlloc.alloc-bft {FS} N alloc) (FlatAlloc.alloc-bk {FS} N alloc) freshA
+                     (FlatAlloc.alloc-live {FS} N alloc) (m≤n⊔m 2 (suc (size A)))
+                     (FlatAlloc.alloc-in {FS} N alloc) src₇
+              module PA = FlatPut.PutOut PA
+              vP = proj₁ (exec-trace (put A n (suc (suc n)) 1) v₇ A₁)
+              v₈ = record vP { regs = writeReg (regs vP) Output blk }
+              v₉ = proj₁ (exec-abstract mov-to-input v₈ A₁)
+
+              R6 = store-at-slot (suc n) ∷ instr-alloc-heap N ∷ store-at-slot (suc (suc n)) ∷
+                   mov-to-input ∷ load-from-slot (suc n) ∷ store-at 0 ∷ (put A n (suc (suc n)) 1 ++ T2)
+              R5 = instr-alloc-heap N ∷ store-at-slot (suc (suc n)) ∷ mov-to-input ∷ load-from-slot (suc n) ∷ store-at 0 ∷ (put A n (suc (suc n)) 1 ++ T2)
+              R4 = store-at-slot (suc (suc n)) ∷ mov-to-input ∷ load-from-slot (suc n) ∷ store-at 0 ∷ (put A n (suc (suc n)) 1 ++ T2)
+              R3 = mov-to-input ∷ load-from-slot (suc n) ∷ store-at 0 ∷ (put A n (suc (suc n)) 1 ++ T2)
+              R2 = load-from-slot (suc n) ∷ store-at 0 ∷ (put A n (suc (suc n)) 1 ++ T2)
+              R1 = store-at 0 ∷ (put A n (suc (suc n)) 1 ++ T2)
+              R0 = put A n (suc (suc n)) 1 ++ T2
+
+              seg2 : exec-trace S2 u₃ alloc ≡ (v₉ , A₁)
+              seg2 =
+                trans (exec-trace-cons (load-at 0) R6 u₃ alloc nh)
+               (trans (cong (λ r → exec-trace R6 (proj₁ r) (proj₂ r)) (ld 0 u₃ alloc fst-loc ev refl (env-cell-of ea)))
+               (trans (exec-trace-cons (store-at-slot (suc n)) R5 v₁ alloc nh)
+               (trans (exec-trace-cons (instr-alloc-heap N) R4 v₂ alloc nh)
+               (trans (exec-trace-cons (store-at-slot (suc (suc n))) R3 v₃ A₁ nh)
+               (trans (exec-trace-cons mov-to-input R2 v₄ A₁ nh)
+               (trans (exec-trace-cons (load-from-slot (suc n)) R1 v₅ A₁ nh)
+               (trans (cong (λ mv → exec-trace R1 (proj₁ (exec-load-from-slot-with-value mv v₅ A₁))
+                                                  (proj₂ (exec-load-from-slot-with-value mv v₅ A₁))) slot-ev)
+               (trans (exec-trace-cons (store-at 0) R0 v₆ A₁ nh)
+               (trans (cong (λ r → exec-trace R0 (proj₁ r) (proj₂ r)) st0)
+               (trans (exec-trace-append (put A n (suc (suc n)) 1) T2 v₇ A₁)
+               (trans (cong (λ a → exec-trace T2 vP a) PA.alloc-eq)
+               (trans (exec-trace-cons (load-from-slot (suc (suc n))) (mov-to-input ∷ []) vP A₁ PA.live)
+               (trans (cong (λ mv → exec-trace (mov-to-input ∷ []) (proj₁ (exec-load-from-slot-with-value mv vP A₁))
+                                                                 (proj₂ (exec-load-from-slot-with-value mv vP A₁)))
+                            (trans (PA.other (AtStack cf (suc (suc n))) (λ _ _ ())) slot-blk₇))
+                      (exec-trace-cons mov-to-input [] v₈ A₁ PA.live))))))))))))))
+
+              at2 : SR.At prog (fpc f4) S2
+              at2 j i e = subst (λ p → fetch prog p ≡ just i) shift5
+                                (span′ (5 + j) i
+                                  (subst (λ t → fetch t j ≡ just i) S2-c (fetch-++-left S2 (instr-call-closure ∷ []) j i e)))
+                where shift5 : 5 + j + base ≡ j + fpc f4
+                      shift5 = sym (trans (+-suc j _) (cong suc (trans (+-suc j _) (cong suc (trans (+-suc j _)
+                                 (cong suc (trans (+-suc j _) (cong suc (+-suc j base)))))))))
+
+              sts2 : All StraightStep S2
+              sts2 = (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
+                     (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
+                     ++⁺ (put-All {StraightStep} A n (suc (suc n)) 1 (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ _ → refl) (λ _ _ _ → refl))
+                         ((λ _ _ → refl) ∷ (λ _ _ → refl) ∷ [])
+
+              evs2 : All (λ i → ∀ fs′ → event-of i fs′ ≡ []) S2
+              evs2 = (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷
+                     (λ _ → refl) ∷ (λ _ → refl) ∷
+                     ++⁺ (put-All {λ i → ∀ fs′ → event-of i fs′ ≡ []} A n (suc (suc n)) 1 (λ _ → refl) (λ _ → refl) (λ _ → refl) (λ _ _ → refl) (λ _ _ → refl))
+                         ((λ _ → refl) ∷ (λ _ → refl) ∷ [])
+
+              he2 : halted (proj₁ (exec-trace S2 u₃ alloc)) ≡ false
+              he2 = trans (cong (λ r → halted (proj₁ r)) seg2) PA.live
+
+              fsS = record f4 { floc = v₉ ; falloc = A₁ ; fpc = length S2 + fpc f4 }
+              eq2 : SR.after S2 f4 ≡ fsS
+              eq2 = cong (λ r → record f4 { floc = proj₁ r ; falloc = proj₂ r ; fpc = length S2 + fpc f4 }) seg2
+              run2₀ = SR.straight-steps {prog} S2 f4 sts2 at2 nh he2
+              run2 : FlatSteps prog (length S2) f4 fsS
+              run2 = subst (FlatSteps prog (length S2) f4) eq2 run2₀
+
+              ------------------------------------------------------------------
+              -- 5. the call
+              ------------------------------------------------------------------
+              -- the setup kept every cell the caller had live
+              keepS : ∀ l → Live alloc l → readLoc v₉ l ≡ readLoc s l
+              keepS (AtDynamic hl) lv =
+                trans (PA.other (AtDynamic hl) (λ j _ e → freshA _ (subst (Live alloc) e lv))) (keep₇ (AtDynamic hl) lv)
+
+              at-callinstr : fetch prog (fpc fsS) ≡ just instr-call-closure
+              at-callinstr =
+                subst (λ p → fetch prog p ≡ just instr-call-closure) shiftc
+                  (span′ (5 + length S2) instr-call-closure
+                    (trans (cong (λ t → fetch t (length S2)) (sym S2-c))
+                           (trans (subst (λ z → fetch (S2 ++ instr-call-closure ∷ []) z ≡ fetch (instr-call-closure ∷ []) 0)
+                                         (+-identityʳ (length S2)) (fetch-++-right S2 (instr-call-closure ∷ []) 0))
+                                  refl)))
+                where shiftc : 5 + length S2 + base ≡ fpc fsS
+                      shiftc = sym (trans (+-suc (length S2) _) (cong suc (trans (+-suc (length S2) _) (cong suc
+                                 (trans (+-suc (length S2) _) (cong suc (trans (+-suc (length S2) _) (cong suc (+-suc (length S2) base)))))))))
 
               j   = ClosureValidWF.code-j cvw
+              -- D400: the environment's footprint is what the call keeps
+              EL  = ClosureValidWF.env-foot-live cvw
               feq = ClosureValidWF.code-found cvw
 
-              -- THE CALL. `callView`'s three levels, spelled out from the
-              -- three facts the setup and the witness already give.
-              call-eq : flat-exec-instr instr-call-closure prog ASP.a16
-                      ≡ record ASP.a16
-                          { falloc = enter-call (falloc ASP.a16)
-                          ; fret   = suc (fpc ASP.a16) ∷ fret ASP.a16
-                          ; flink  = just (suc (fpc ASP.a16))
-                          ; fpc    = j }
-              call-eq =
-                call-at prog ASP.a16 chl blbl j
-                  (ASP.closure-reg pair-loc fst-loc (arg-sv-of sc') (ns≤ {alloc} n n≤) (live→bf bf) rdi
-                     (arg-cell-of sc') fst-cell)
-                  (ASP.code-cell fst-loc blbl (ns≤ {alloc} n n≤) OB.rdi12' OB.rdi14'
-                     (ClosureValidWF.sucLoc-before cvw) (ClosureValidWF.code-ptr cvw))
-                  feq
+              code-S : readLoc v₉ (sucLoc fst-loc) ≡ just (SV-Code blbl)
+              code-S = trans (keepS (sucLoc fst-loc) (live-suc-of fst-bf)) (ClosureValidWF.code-ptr cvw)
+                where live-suc-of : Live alloc fst-loc → Live alloc (sucLoc fst-loc)
+                      live-suc-of (BeforeFrontier.heap-before p) = BeforeFrontier.heap-before p
 
-              -- plan 0.135 S1: the CLOSURE says what its block does (`runs`);
-              -- no table of block runs is consulted. Each premise is a fact
-              -- the setup established at `a16`, moved across the call (which
-              -- leaves `floc` alone).
-              at-call : (P : LocState FS → Set) → P (floc ASP.a16)
-                      → P (floc (flat-exec-instr instr-call-closure prog ASP.a16))
+              call-eq : flat-exec-instr instr-call-closure prog fsS
+                      ≡ record fsS
+                          { falloc = enter-call A₁
+                          ; fret   = suc (fpc fsS) ∷ fret fsS
+                          ; flink  = just (suc (fpc fsS))
+                          ; fpc    = j }
+              call-eq = call-at prog fsS (heap-loc cr co) blbl j refl code-S feq
+
+              callFs = flat-exec-instr instr-call-closure prog fsS
+
+              at-call : (P : LocState FS → Set) → P v₉ → P (floc callFs)
               at-call P = subst P (sym (cong floc call-eq))
 
+              -- the callee's input: `[env-word, arg]` at the fresh block
+              arg-cell : CellAt {prog = prog} A₁ A (proj₂ x) (sucLoc L) v₉
+              arg-cell = PA.cell-at v₉ (λ _ _ → refl)
+                           (λ { (AtDynamic hl) lv → PA.other (AtDynamic hl) (λ j _ e → freshA _ (subst (Live alloc) e lv)) })
+
+              env-cell : readLoc v₉ L ≡ readLoc s fst-loc
+              env-cell = trans (PA.other L (λ j _ e → suc≢0 (cong off-of e)))
+                               (trans (readLoc-writeLoc-same v₆ L ev) (sym (env-cell-of ea)))
+                where off-of : ValueLocation FS → ℕ
+                      off-of (AtDynamic (heap-loc _ o′)) = o′
+                      off-of (AtStack _ _) = 0
+                      suc≢0 : ∀ {m} → 0 ≡ suc (m + 0) → ⊥
+                      suc≢0 ()
+
               crun : CalleeRunP {prog = prog} {B} (ResultPlaceP {B} (VAt {prog = prog} B))
-                       (flat-exec-instr instr-call-closure prog ASP.a16)
-                       (suc (fpc ASP.a16)) rs (proj₁ x (proj₂ x)) k
-              crun = ClosureValidWF.runs cvw (flat-exec-instr instr-call-closure prog ASP.a16)
-                       (falloc ASP.a16) (proj₂ x) (AtDynamic ASP.ahl) (suc (fpc ASP.a16)) k rs
-                       (trans (cong fpc call-eq) refl)
-                       (trans (cong (λ st → halted (floc st)) call-eq) OB.nh16)
-                       (trans (cong fret call-eq) refl)
-                       (trans (cong falloc call-eq) refl)
-                       (trans OB.nextslot-a16 n≤)
-                       (λ l b → live-lift OB.bf-advance b)
-                       (λ l b → at-call (λ st → SMCore.MemOps.readLoc st l ≡ SMCore.MemOps.readLoc s l)
-                                  (OB.mem-pres l (frontier-monotone alloc (record alloc { next-slot = n })
-                                                    refl (ns≤ {alloc} n n≤) ≤-refl l (live→bf b))))
-                       (at-call (λ st → readReg (regs st) Input1 ≡ SV-Ptr (AtDynamic ASP.ahl)) OB.input1-a16)
-                       OB.before-ahl
-                       OB.before-ahl-suc
-                       (at-call (λ st → SMCore.MemOps.readLoc st (AtDynamic ASP.ahl) ≡ SMCore.MemOps.readLoc s fst-loc)
-                          (trans OB.pair-fst-a16 (sym (env-cell-of ea))))
-                       (at-call (CellAt {prog = prog} (falloc ASP.a16) A (proj₂ x) (sucLoc (AtDynamic ASP.ahl)))
-                          (callee-arg sc' OB.pair-snd-a16))
+                       callFs (suc (fpc fsS)) rs (proj₁ x (proj₂ x)) k
+              crun = ClosureValidWF.runs cvw callFs A₁ (proj₂ x) L (suc (fpc fsS)) k rs
+                       (cong fpc call-eq)
+                       (trans (cong (λ st → halted (floc st)) call-eq) PA.live)
+                       (cong fret call-eq)
+                       (cong falloc call-eq)
+                       n≤
+                       (λ l e → FlatAlloc.alloc-bft {FS} N alloc l (EL l e))
+                       (λ l e → FlatAlloc.alloc-bk {FS} N alloc l (EL l e))
+                       (λ l e → at-call (λ st → readLoc st l ≡ readLoc s l) (keepS l (EL l e)))
+                       (at-call (λ st → readReg (regs st) Input1 ≡ SV-Ptr L) refl)
+                       (FlatAlloc.alloc-live {FS} N alloc 0)
+                       (FlatAlloc.alloc-live {FS} N alloc 1)
+                       (at-call (λ st → readLoc st L ≡ readLoc s fst-loc) env-cell)
+                       (at-call (CellAt {prog = prog} A₁ A (proj₂ x) (sucLoc L)) arg-cell)
 
-              run17 : FlatSteps prog 17 (entry-flat base s alloc cl rs)
-                        (flat-exec-instr instr-call-closure prog ASP.a16)
-              -- Every link lands on the setup's NAMED state (`step-at`): the
-              -- step is one equation between names, not a k-step chain
-              -- re-derived and compared (profile 2026-09-29).
-              run17 =
-                  step-at ASP.a1 (OB.nh0 , span 0 _ refl) refl
-                  (step-at ASP.a2 (OB.nh1 , span 1 _ refl) refl
-                  (step-at ASP.a3 (OB.nh2 , span 2 _ refl) refl
-                  (step-at ASP.a4 (OB.nh3 , span 3 _ refl) refl
-                  (step-at ASP.a5 (OB.nh4 , span 4 _ refl) refl
-                  (step-at ASP.a6 (OB.nh5 , span 5 _ refl) refl
-                  (step-at ASP.a7 (OB.nh6 , span 6 _ refl) refl
-                  (step-at ASP.a8 (OB.nh7 , span 7 _ refl) refl
-                  (step-at ASP.a9 (OB.nh8 , span 8 _ refl) refl
-                  (step-at ASP.a10 (OB.nh9 , span 9 _ refl) refl
-                  (step-at ASP.a11 (OB.nh10 , span 10 _ refl) refl
-                  (step-at ASP.a12 (OB.nh11 , span 11 _ refl) refl
-                  (step-at ASP.a13 (OB.nh12 , span 12 _ refl) refl
-                  (step-at ASP.a14 (OB.nh13 , span 13 _ refl) refl
-                  (step-at ASP.a15 (OB.nh14 , span 14 _ refl) refl
-                  (step-at ASP.a16 (OB.nh15 , span 15 _ refl) refl
-                  (((OB.nh16 , span 16 _ refl) ∷ [])))))))))))))))))
+              ------------------------------------------------------------------
+              -- THE RUN, and the record
+              ------------------------------------------------------------------
+              SETUP = 1 + (3 + (1 + (length S2 + 1)))
 
-              run : FlatSteps prog (17 + CalleeRun.steps crun)
-                      (entry-flat base s alloc cl rs) (CalleeRun.settle crun)
-              run = FlatSteps-++ run17 (CalleeRun.run crun)
+              c-call : FlatSteps prog 1 fsS callFs
+              c-call = (PA.live , at-callinstr) ∷ []
+              c4 = FlatSteps-++ run2 c-call
+              c3 = FlatSteps-++ run-save c4
+              c2 = FlatSteps-++ run1 c3
 
-              -- plan 0.135 S1: the closure's run is stated at `f a` itself, so the
-              -- callee's and the caller's computations are the same term; the
-              -- D189 `f-is-closure` step (which existed because the run was
-              -- stated at `evalᴰ body (env , arg)`) is gone.
+              run-setup : FlatSteps prog SETUP fs0 callFs
+              run-setup = FlatSteps-++ G.step c2
+
+              s4 : chain-events c4 ≡ []
+              s4 = trans (chain-events-++ run2 c-call)
+                         (cong (DL._++ chain-events c-call)
+                               (trans (chain-events-subst eq2 run2₀) (SR.straight-silent {prog} S2 f4 sts2 at2 nh he2 evs2)))
+
+              s3 : chain-events c3 ≡ []
+              s3 = trans (chain-events-++ run-save c4) s4
+
+              s2 : chain-events c2 ≡ []
+              s2 = trans (chain-events-++ run1 c3)
+                         (cong₂ DL._++_ (trans (chain-events-subst eq1 run1₀) (SR.straight-silent {prog} T1 g1 sts1 at1 nh he1 evs1)) s3)
+
+              silent-setup : chain-events run-setup ≡ []
+              silent-setup = trans (chain-events-++ G.step c2) (cong₂ DL._++_ G.silent s2)
+
+              -- the call returns past the text's end
+              at-end-eq : suc (fpc fsS) ≡ length (emitted n l (apply {A} {B})) + base
+              at-end-eq =
+                trans arith
+                      (cong (λ t → length t + base)
+                            (sym (trans shape (cong (λ t → get-i A 1 ∷ (T1 ++ instr-save-closure-reg ∷ t)) (sym S2-c)))))
+                where
+                  open import Data.Nat.Solver using (module +-*-Solver)
+                  open +-*-Solver using (solve; _:+_; con; _:=_)
+                  arith : suc (length S2 + suc (suc (suc (suc (suc base)))))
+                        ≡ length (get-i A 1 ∷ (T1 ++ instr-save-closure-reg ∷ (S2 ++ instr-call-closure ∷ []))) + base
+                  arith =
+                    trans (solve 2 (λ x y → con 1 :+ (x :+ (con 5 :+ y)) := (con 5 :+ (x :+ con 1)) :+ y) refl (length S2) base)
+                          (cong (λ z → suc (suc (suc (suc (suc z)))) + base) (sym (length-++ S2 {instr-call-closure ∷ []})))
+
+              run : FlatSteps prog (SETUP + CalleeRun.steps crun) fs0 (CalleeRun.settle crun)
+              run = FlatSteps-++ run-setup (CalleeRun.run crun)
+
               denot-eq : proj₁ x (proj₂ x) ≡ evalᴰ (apply {A} {B}) x
               denot-eq = refl
 
-              -- plan 0.97: …and the same equation carries the STOPPEDNESS, which
-              -- is what the conditioned fields are stated against. A closure
-              -- whose body ends in a halting SigOp never returns, so `apply`
-              -- can only pass the callee's `live`/`returned`/`place` along
-              -- under the premise the callee itself is given.
-              -- plan 0.105: …and the callee runs from the caller's log — the
-              -- seventeen setup rows make no call — so the two RUNS agree.
-              callFs = flat-exec-instr instr-call-closure prog ASP.a16
               h-eq : SMCore.LocState.ev-log (floc callFs) ≡ SMCore.LocState.ev-log s
-              h-eq = trans (log-of run17 refl) (++-identityʳ _)
+              h-eq = trans (log-of run-setup silent-setup) (++-identityʳ _)
 
               RE : runAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k) ≡ runAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
               RE = runAt-≡ {st = floc callFs} {st′ = s} h-eq (cong (⟪_⟫ k) denot-eq)
 
-              st-eq : stopsAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k)
-                    ≡ stopsAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
+              st-eq : stopsAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k) ≡ stopsAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
               st-eq = cong (λ r → is-stopped (proj₂ r)) RE
 
-              -- plan 0.98: the `subst` is GONE. It existed to move
-              -- `TM.valueT d k` along `denot-eq`; now the premise BINDS the
-              -- value, so the two sides name the same `v` and only the
-              -- equation being transported has to move.
               res-eq : resultAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k) ≡ resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
               res-eq = cong proj₂ RE
 
@@ -273,65 +503,59 @@ module ApplyC {FS : FrameSemantics} where
                         v (floc (CalleeRun.settle crun))
               place p = rp→place (CalleeRun.place crun (trans res-eq p))
 
-              -- D204: what the whole `apply` leaves alone — the sixteen setup rows
-              -- (`setup-mem-pres`, already proved) composed with the callee's
-              -- own preservation. The callee's `pre` is `falloc a16`, NOT
-              -- `alloc`: the setup allocates the `(env , arg)` pair, so the
-              -- frontier has moved, and `bf-advance` is what carries the
-              -- caller's `BeforeFrontier` across it.
-              -- The setup ALLOCATES the callee's pair, so the frontier moves
-              -- twice: `bf-advance` across the sixteen rows, then the callee's.
-              bf-mono-apply : NotCut (resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k))
-                            → ∀ (m : ℕ) (loc : ValueLocation FS)
-                            → BeforeFrontier (record alloc { next-slot = m }) loc
-                            → BeforeFrontier
-                                (record (falloc (CalleeRun.settle crun)) { next-slot = m }) loc
-              bf-mono-apply nc m loc bf =
-                CalleeRun.bf-mono crun (nc′ nc) (falloc ASP.a16) m (cong falloc call-eq) loc
-                  (frontier-monotone (record alloc { next-slot = m })
-                     (record (falloc ASP.a16) { next-slot = m })
-                     (sym OB.cf-a16) ≤-refl OB.heapref-a16-≤ loc bf)
+              -- the setup's own preservation: slots at and above `n`, the fresh block
+              B′ = record alloc { next-slot = n }
 
-              mem-pres-apply : NotCut (resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k))
-                             → ∀ (loc : ValueLocation FS)
-                             → BeforeFrontier (record alloc { next-slot = n }) loc
-                             → SMCore.MemOps.readLoc (floc (CalleeRun.settle crun)) loc
-                               ≡ SMCore.MemOps.readLoc s loc
-              mem-pres-apply nc loc bf =
-                -- The callee preserves the caller's frame at ANY bound; the
-                -- setup's own preservation is at apply's frontier `n`. The
-                -- lift across the setup keeps the bound and moves only the
-                -- heap frontier (the setup allocates the callee's pair).
-                trans (CalleeRun.mem-pres crun (nc′ nc) (falloc ASP.a16) n
-                         (cong falloc call-eq) loc
-                         (frontier-monotone (record alloc { next-slot = n })
-                            (record (falloc ASP.a16) { next-slot = n })
-                            (sym OB.cf-a16) ≤-refl OB.heapref-a16-≤ loc bf))
-                      (trans (cong (λ st → SMCore.MemOps.readLoc (floc st) loc) call-eq)
-                             (ASP.setup-mem-pres (ns≤ {alloc} n n≤) OB.rdi12' OB.rdi14' loc bf))
+              setup-keep : ∀ (loc : ValueLocation FS) → BeforeFrontier B′ loc → readLoc v₉ loc ≡ readLoc s loc
+              setup-keep (AtDynamic hl) (BeforeFrontier.heap-before p) = keepS (AtDynamic hl) (BeforeFrontier.heap-before p)
+              setup-keep (AtStack fr i) bf =
+                trans (PA.other (AtStack fr i) (λ _ _ ()))
+               (trans (writeLoc-preserves-other v₆ L (AtStack fr i) ev (λ ()))
+               (trans (store-slot-preserves-before (suc (suc n)) v₃ B′ A₁ (AtStack fr i) refl
+                         (≤-trans (n≤1+n n) (n≤1+n (suc n))) bf)
+               (trans (store-slot-preserves-before (suc n) v₁ B′ alloc (AtStack fr i) refl (n≤1+n n) bf)
+               (trans (store-slot-preserves-before n u B′ alloc (AtStack fr i) refl ≤-refl bf)
+                      (out-mem fs0 G.out (AtStack fr i))))))
 
-              trc : chain-events run ≡ eventsAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
-              trc = trans (chain-events-++ run17 (CalleeRun.run crun))
-                          (trans (CalleeRun.events crun) (cong proj₁ RE))
+              bf-call : ∀ (m : ℕ) (loc : ValueLocation FS)
+                      → BeforeFrontier (record alloc { next-slot = m }) loc
+                      → BeforeFrontier (record A₁ { next-slot = m }) loc
+              bf-call m = frontier-monotone (record alloc { next-slot = m }) (record A₁ { next-slot = m }) refl ≤-refl (n≤1+n _)
 
-  ------------------------------------------------------------------------
-  -- D199: `obs-correct-Out` — FORCING, DISCHARGED.
-  --
-  -- `obs-correct-apply`'s argument with the pair-packing removed. A suspension
-  -- IS the callee record — cell 0 the argument, cell 1 the code — so the setup
-  -- is three rows instead of sixteen, and it writes NO memory at all:
-  -- `instr-save-closure-reg` moves a FlatState register, `load-indirect` and
-  -- `mov-to-input` move machine registers. Neither touches the ALLOCATOR
-  -- either, definitionally, so `apply`'s frontier-advance plumbing
-  -- (`bf-advance`, the `next-slot`/`next-heap-ref` bounds) collapses here: the
-  -- only transport left is across the state, and even that is by a memory map
-  -- that is pointwise equal.
-  --
-  -- What the ν's witness supplies that a closure's does not is the SEED.
-  -- `valid-ν-susp-wf` names the ν's ORIGIN (`νOrigin`, plan 0.88: an `Ana`
-  -- seed or an `in-ν` layer) and the cell holding it, and `CoalgRuns` is
-  -- stated over exactly those fields at the ν's own value index. That is why
-  -- this clause needs no `denot-eq` step where `apply` spends
-  -- `f-is-closure`: the block's claim and the goal are the same term.
-  ------------------------------------------------------------------------
-
+              result : MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl rs k
+              result = record
+                { value-realized =
+                    realized (SETUP + CalleeRun.steps crun) (CalleeRun.settle crun)
+                             (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
+                             run (λ p → CalleeRun.live crun (trans st-eq p))
+                             (λ p → trans (CalleeRun.returned crun (trans res-eq p)) at-end-eq)
+                             (λ p → proj₁ (CalleeRun.stops crun (trans st-eq p))
+                                  , trans (proj₂ (CalleeRun.stops crun (trans st-eq p)))
+                                          (chain-left run-setup (trans (cong (λ st → halted (floc st)) call-eq) PA.live)))
+                             (λ p → CalleeRun.no-ret crun (trans res-eq p))
+                             (λ nc → CalleeRun.no-link crun (nc′ nc))
+                             (trans (CalleeRun.log crun) (cong₂ DL._++_ h-eq (cong proj₁ RE)))
+                             place
+                             (progress-≤ (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (CalleeRun.run crun)) res-eq (CalleeRun.progress crun))
+                                         (ctrls-≤ʳ run-setup (CalleeRun.run crun)))
+                             (λ nc fr i bf → mem-pres-apply nc (AtStack fr i) bf)
+                             (λ nc hl bf → mem-pres-apply nc (AtDynamic hl) bf)
+                             (λ p → CalleeRun.frame-pres crun (trans res-eq p) A₁ (cong falloc call-eq))
+                             (λ nc m loc b → CalleeRun.bf-mono crun (nc′ nc) A₁ m (cong falloc call-eq) loc (bf-call m loc b))
+                             (λ p → CalleeRun.frames-pres crun (trans res-eq p) A₁ (cong falloc call-eq))
+                             (λ nc → bk-trans {a = alloc} {b = A₁} {c = falloc (CalleeRun.settle crun)}
+                                       (FlatAlloc.alloc-bk {FS} N alloc)
+                                       (CalleeRun.blocks-kept crun (nc′ nc) A₁ (cong falloc call-eq))
+                                       (FlatAlloc.alloc-bft {FS} N alloc))
+                ; traces-agree = trans (chain-events-++ run-setup (CalleeRun.run crun))
+                                       (trans (cong (DL._++ chain-events (CalleeRun.run crun)) silent-setup)
+                                              (trans (CalleeRun.events crun) (cong proj₁ RE)))
+                }
+                where
+                  mem-pres-apply : NotCut (resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k))
+                                 → ∀ (loc : ValueLocation FS)
+                                 → BeforeFrontier (record alloc { next-slot = n }) loc
+                                 → SMCore.MemOps.readLoc (floc (CalleeRun.settle crun)) loc ≡ SMCore.MemOps.readLoc s loc
+                  mem-pres-apply nc loc b =
+                    trans (CalleeRun.mem-pres crun (nc′ nc) A₁ n (cong falloc call-eq) loc (bf-call n loc b))
+                          (trans (cong (λ st → SMCore.MemOps.readLoc (floc st) loc) call-eq) (setup-keep loc b))

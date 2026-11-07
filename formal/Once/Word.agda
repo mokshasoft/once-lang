@@ -20,7 +20,7 @@ open import Data.Nat.Properties using
   (m^n≢0; m^n>0; +-identityʳ; +-comm;
    +-mono-≤; +-monoʳ-≤; +-monoʳ-<; ^-monoʳ-≤; ∸-monoˡ-≤; m+n∸n≡m; m∸n+n≡m; m∸[m∸n]≡n;
    ≤-refl; ≡ᵇ⇒≡; <ᵇ⇒<; <⇒<ᵇ; ≤⇒≯; ≤-trans; <⇒≤; ≤-<-trans; m∸n≤m; +-∸-assoc; +-∸-comm;
-   ∸-monoʳ-≤; ∸-monoʳ-<)
+   ∸-monoʳ-≤; ∸-monoʳ-<; +-suc; [m+n]∸[m+o]≡n∸o)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣; sign; _◃_; _-_; -_)
 import Data.Integer as ℤ
 open import Data.Product using (_×_; _,_)
@@ -486,6 +486,25 @@ module WidthLaws (bits : ℕ) where
     trans (⊕-neg-suc x j (≤-<-trans k≤x x<m)) (⊖≡∸ x (suc j) k≤x x<m)
 
 
+  -- Plan 0.123 A.4: ADD THEN SUBTRACT is the identity, wrap or not. x86-32's
+  -- room check borrows the frontier register for the sum and takes it back.
+  norm-+ˡ : ∀ (a b : ℕ) → norm (norm a ℕ.+ b) ≡ norm (a ℕ.+ b)
+  norm-+ˡ a b =
+    trans (%-distribˡ-+ (a % modulus) b modulus)
+          (trans (cong (λ z → (z ℕ.+ b % modulus) % modulus) (m%n%n≡m%n a modulus))
+                 (sym (%-distribˡ-+ a b modulus)))
+
+  ⊕⊖-cancel : ∀ (x y : Word) → x < modulus → y ℕ.≤ modulus → (x ⊕ y) ⊖ y ≡ x
+  ⊕⊖-cancel x y x<m y≤m =
+    trans (norm-+ˡ (x ℕ.+ y) (modulus ∸ y))
+   (trans (cong norm (Data.Nat.Properties.+-assoc x y (modulus ∸ y)))
+   (trans (cong (λ z → norm (x ℕ.+ z)) (Data.Nat.Properties.m+[n∸m]≡n y≤m))
+   (trans ([m+n]%n≡m%n x modulus) (m<n⇒m%n≡m x<m))))
+
+  -- …at an immediate, which the machine norms first.
+  ⊕⊖-norm : ∀ (x n : ℕ) → x < modulus → (x ⊕ norm n) ⊖ norm n ≡ x
+  ⊕⊖-norm x n x<m = ⊕⊖-cancel x (norm n) x<m (<⇒≤ (m%n<n n modulus))
+
   -- plan 0.108: x86's BRANCH-FREE `x ≠ 0` — `cmp x, 1` (CF := x <u 1), then
   -- `sbb r, r` (r := 0 − CF), then `add r, 1` (r := 1 − CF). One lemma per
   -- value of CF; each needs one bit of width (`1 < modulus`).
@@ -502,6 +521,58 @@ module WidthLaws (bits : ℕ) where
   sbb-pos x x<m 1<m =
     trans (cong (λ z → (z ⊖ 0) ⊕ 1) (⊖-self x x<m))
    (trans (cong (_⊕ 1) (⊖-self 0 0<modulus)) (norm-id 1<m))
+
+  -- every normed value is a word
+  norm-range : ∀ (n : ℕ) → norm n < modulus
+  norm-range n = m%n<n n modulus
+
+  -- D378: SUBTRACT THEN ADD is the identity too, wrap or not — how x86-32's
+  -- room check gives the frontier register back.
+  ⊖⊕-cancel : ∀ (x y : Word) → x < modulus → y ℕ.≤ modulus → (x ⊖ y) ⊕ y ≡ x
+  ⊖⊕-cancel x y x<m y≤m =
+    trans (norm-+ˡ (x ℕ.+ (modulus ∸ y)) y)
+   (trans (cong norm (Data.Nat.Properties.+-assoc x (modulus ∸ y) y))
+   (trans (cong (λ z → norm (x ℕ.+ z)) (m∸n+n≡m y≤m))
+   (trans ([m+n]%n≡m%n x modulus) (m<n⇒m%n≡m x<m))))
+
+  -- D378: x86-32's WRAP-FREE room check computes `a ⊖ b ⊖ 1` from the frontier
+  -- `a` and the stack pointer `b` (the frontier is not above it). That borrows,
+  -- and exactly: the result is `modulus ∸ suc (b ∸ a)`, the room's complement
+  -- less one — at every room, none included (where `a ⊖ b` alone is 0 and could
+  -- not tell no room from a whole word of it).
+  room-word : ∀ (a b : Word) → a ℕ.≤ b → b < modulus → 1 < modulus
+            → (a ⊖ b) ⊖ norm 1 ≡ modulus ∸ suc (b ∸ a)
+  room-word a b a≤b b<m 1<m =
+    trans (cong ((a ⊖ b) ⊖_) (norm-id 1<m))
+   (trans (cong (λ z → norm (z ℕ.+ (modulus ∸ 1))) (cong norm a+[M∸b]))
+   (trans (norm-+ˡ (modulus ∸ D) (modulus ∸ 1))
+   (trans (cong norm sum-eq)
+   (trans ([m+n]%n≡m%n (modulus ∸ suc D) modulus)
+          (m<n⇒m%n≡m lt)))))
+    where
+      D = b ∸ a
+      bD : D ℕ.+ a ≡ b
+      bD = m∸n+n≡m a≤b
+      Da≤M : D ℕ.+ a ℕ.≤ modulus
+      Da≤M = subst (ℕ._≤ modulus) (sym bD) (<⇒≤ b<m)
+      a+[M∸b] : a ℕ.+ (modulus ∸ b) ≡ modulus ∸ D
+      a+[M∸b] =
+        trans (cong (λ z → a ℕ.+ (modulus ∸ z)) (sym bD))
+       (trans (sym (+-∸-assoc a Da≤M))
+       (trans (cong ((a ℕ.+ modulus) ∸_) (+-comm D a))
+              ([m+n]∸[m+o]≡n∸o a modulus D)))
+      sD≤M : suc D ℕ.≤ modulus
+      sD≤M = ≤-trans (s≤s (m∸n≤m b a)) b<m
+      MD : modulus ∸ D ≡ suc (modulus ∸ suc D)
+      MD = +-∸-assoc 1 sD≤M
+      M1 : suc (modulus ∸ 1) ≡ modulus
+      M1 = trans (+-comm 1 (modulus ∸ 1)) (m∸n+n≡m (<⇒≤ 1<m))
+      sum-eq : (modulus ∸ D) ℕ.+ (modulus ∸ 1) ≡ (modulus ∸ suc D) ℕ.+ modulus
+      sum-eq = trans (cong (ℕ._+ (modulus ∸ 1)) MD)
+              (trans (sym (+-suc (modulus ∸ suc D) (modulus ∸ 1)))
+                     (cong ((modulus ∸ suc D) ℕ.+_) M1))
+      lt : modulus ∸ suc D < modulus
+      lt = subst (ℕ._≤ modulus) MD (m∸n≤m modulus D)
 
 
 ------------------------------------------------------------------------

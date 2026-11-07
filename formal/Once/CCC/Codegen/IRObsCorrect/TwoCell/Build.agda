@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.IRObsCorrect.TwoCell.Build
 --
--- The FACTS about the two-cell build's states (`TwoCellRun`): what it
+-- The FACTS about the two-cell build's end state (`TwoCellRun`): what it
 -- reads back, its frontier and what it leaves alone.
 ------------------------------------------------------------------------
 
@@ -17,22 +17,16 @@ module Once.CCC.Codegen.IRObsCorrect.TwoCell.Build (o : CanonicalName) (tbl : DL
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
-open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation)
-open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; load-from-slot; store-indirect-suc; instr-load-code-addr; store-indirect; mov-to-input; store-at-slot; sucLoc; readReg; Output; SV-Code; writeReg-same; SV-Ptr; instr-alloc-heap; mov-to-output; module LocState; module AllocState)
+open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; ValueLocation)
+open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; sucLoc; readReg; Output; SV-Code; SV-Ptr; module LocState; module AllocState)
 open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 open LocState using (halted; regs)
-open import Once.Memory.HeapAddress using (sucHL)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; module HeapRef; module HeapLocation)
+import Once.CCC.Machine.FlatAlloc as FlatAlloc
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
-import Once.IRTy
-import Once.IR
-import Once.Semantics.Machine as EvV
-import Once.CCC.Machine.ReadTypedAdequate as RTA
-import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
-import Once.IR.Semantics.Trace as TM
 
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Run o tbl
 
@@ -41,6 +35,8 @@ module TwoCellBuildC {FS : FrameSemantics} where
   open Core {FS}
   open Mach {FS}
   open TwoCellRunC {FS}
+  open SMCore.MemOps {FS} using (writeLoc-preserves-other)
+  open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
 
   module TwoCellBuild
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
@@ -50,125 +46,76 @@ module TwoCellBuildC {FS : FrameSemantics} where
     where
     open TwoCellRun n l prog base s alloc cl rs n≤ nh span
 
-    -- ── The frontier: the allocation hands out `next-heap-ref (falloc fs2)`
-    -- and moves past it, so the record is BEFORE the frontier it leaves.
-    heapref-fs10 : next-heap-ref (falloc fs10) ≡ suc (next-heap-ref (falloc fs2))
-    heapref-fs10 =
-      trans (exec-abstract-preserves-heap-ref (load-from-slot obj-stash) (floc fs9) (falloc fs9) tt)
-     (trans (exec-abstract-preserves-heap-ref store-indirect-suc (floc fs8) (falloc fs8) tt)
-     (trans (exec-abstract-preserves-heap-ref (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7) tt)
-     (trans (exec-abstract-preserves-heap-ref store-indirect (floc fs6) (falloc fs6) tt)
-     (trans (exec-abstract-preserves-heap-ref (load-from-slot cell0-stash) (floc fs5) (falloc fs5) tt)
-     (trans (exec-abstract-preserves-heap-ref mov-to-input (floc fs4) (falloc fs4) tt)
-            (exec-abstract-preserves-heap-ref (store-at-slot obj-stash) (floc fs3) (falloc fs3) tt))))))
-
-    before : BeforeFrontier (falloc fs10) obj-loc
-    before = BeforeFrontier.heap-before
-               (subst (λ m → next-heap-ref (falloc fs2) < m) (sym heapref-fs10) (n<1+n _))
-
-    before-suc : BeforeFrontier (falloc fs10) (sucLoc obj-loc)
-    before-suc = BeforeFrontier.heap-before
-                   (subst (λ m → next-heap-ref (falloc fs2) < m) (sym heapref-fs10) (n<1+n _))
-
-    -- ── THE ENV CELL, written by `store-indirect` at fs6→fs7 and carried to
-    -- fs10 past the code-address load (registers only) and the second heap
-    -- write (a DIFFERENT cell).
-    cell0out-fs6 : readReg (regs (floc fs6)) Output ≡ cell0v
-    cell0out-fs6 = load-slot-result cell0-stash (floc fs5) (falloc fs5) cell0v (proj₂ wf-load-cell0)
-
-    cell0-fs7 : SMCore.MemOps.readLoc (floc fs7) obj-loc ≡ just cell0v
-    cell0-fs7 = trans (store-ind-result (floc fs6) (falloc fs6) obj-hl rdi-fs6)
-                    (cong just cell0out-fs6)
-
-    cell0-fs10 : SMCore.MemOps.readLoc (floc fs10) obj-loc ≡ just cell0v
-    cell0-fs10 =
-      trans (heap-untouched (load-from-slot obj-stash) (floc fs9) (falloc fs9)
-               obj-hl nhw-load-from-slot)
-     (trans (store-ind-suc-preserves-heap (floc fs8) (falloc fs8) obj-hl obj-hl
-               rdi-fs8 (sucHL-≢ obj-hl))
-     (trans (heap-untouched (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7)
-               obj-hl nhw-instr-load-code-addr)
-            cell0-fs7))
-
-    -- ── THE CODE CELL, written by `store-indirect-suc` at fs8→fs9.
-    codeout-fs8 : readReg (regs (floc fs8)) Output ≡ SV-Code code-lbl
-    codeout-fs8 = writeReg-same (regs (floc fs7)) Output (SV-Code code-lbl)
-
-    code-fs10 : SMCore.MemOps.readLoc (floc fs10) (sucLoc obj-loc) ≡ just (SV-Code code-lbl)
-    code-fs10 =
-      trans (heap-untouched (load-from-slot obj-stash) (floc fs9) (falloc fs9)
-               (sucHL obj-hl) nhw-load-from-slot)
-     (trans (store-ind-suc-result (floc fs8) (falloc fs8) obj-hl rdi-fs8)
-            (cong just codeout-fs8))
-
-    -- ── THE RESULT POINTER.
-    cv≡ptr : objv ≡ SV-Ptr obj-loc
-    cv≡ptr = writeReg-same (regs (floc fs2)) Output (SV-Ptr (AtDynamic obj-hl))
-
-    out-eq : readReg (regs (floc fs10)) Output ≡ SV-Ptr obj-loc
-    out-eq = trans (load-slot-result obj-stash (floc fs9) (falloc fs9) objv
-                      (proj₂ wf-load-obj)) cv≡ptr
-
-    cf-fs10 : current-frame (falloc fs10) ≡ current-frame alloc
-    cf-fs10 =
-      trans (exec-abstract-preserves-frame (load-from-slot obj-stash) (floc fs9) (falloc fs9))
-     (trans cf-fs9
-     (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs2) (falloc fs2))
-     (trans (exec-abstract-preserves-frame (store-at-slot cell0-stash) (floc fs1) (falloc fs1))
-            (exec-abstract-preserves-frame mov-to-output (floc fs0) (falloc fs0)))))
-
-    sf-fs10 : saved-frames (falloc fs10) ≡ saved-frames alloc
-    sf-fs10 =
-      trans (exec-abstract-preserves-saved (load-from-slot obj-stash) (floc fs9) (falloc fs9))
-     (trans sf-fs9
-     (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs2) (falloc fs2))
-     (trans (exec-abstract-preserves-saved (store-at-slot cell0-stash) (floc fs1) (falloc fs1))
-            (exec-abstract-preserves-saved mov-to-output (floc fs0) (falloc fs0)))))
-
-    nextslot-fs10 : next-slot (falloc fs10) ≡ next-slot alloc
-    nextslot-fs10 =
-      trans (exec-abstract-preserves-next-slot (load-from-slot obj-stash) (floc fs9) (falloc fs9) tt)
-     (trans (exec-abstract-preserves-next-slot store-indirect-suc (floc fs8) (falloc fs8) tt)
-     (trans (exec-abstract-preserves-next-slot (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7) tt)
-     (trans (exec-abstract-preserves-next-slot store-indirect (floc fs6) (falloc fs6) tt)
-     (trans (exec-abstract-preserves-next-slot (load-from-slot cell0-stash) (floc fs5) (falloc fs5) tt)
-     (trans (exec-abstract-preserves-next-slot mov-to-input (floc fs4) (falloc fs4) tt)
-     (trans (exec-abstract-preserves-next-slot (store-at-slot obj-stash) (floc fs3) (falloc fs3) tt)
-     (trans (exec-abstract-preserves-next-slot (instr-alloc-heap 2) (floc fs2) (falloc fs2) tt)
-     (trans (exec-abstract-preserves-next-slot (store-at-slot cell0-stash) (floc fs1) (falloc fs1) tt)
-            (exec-abstract-preserves-next-slot mov-to-output (floc fs0) (falloc fs0) tt)))))))))
+    -- ── The frontier: the allocation hands out a fresh ref and moves past it.
+    heapref-≤ : next-heap-ref alloc ≤ next-heap-ref (falloc fs10)
+    heapref-≤ = n≤1+n _
 
     nextslot-≤ : next-slot alloc ≤ next-slot (falloc fs10)
-    nextslot-≤ = ≤-reflexive (sym nextslot-fs10)
+    nextslot-≤ = ≤-refl
 
-    heapref-≤ : next-heap-ref alloc ≤ next-heap-ref (falloc fs10)
-    heapref-≤ = subst (λ m → next-heap-ref alloc ≤ m) (sym heapref-fs10) (n≤1+n _)
+    cf-fs10 : current-frame (falloc fs10) ≡ current-frame alloc
+    cf-fs10 = refl
+
+    sf-fs10 : saved-frames (falloc fs10) ≡ saved-frames alloc
+    sf-fs10 = refl
+
+    before : BeforeFrontier (falloc fs10) obj-loc
+    before = FlatAlloc.alloc-live {FS} 2 alloc 0
+
+    before-suc : BeforeFrontier (falloc fs10) (sucLoc obj-loc)
+    before-suc = FlatAlloc.alloc-live {FS} 2 alloc 1
+
+    blocks-kept : BlocksKept alloc (falloc fs10)
+    blocks-kept = FlatAlloc.alloc-bk {FS} 2 alloc
+
+    -- ── The two cells, and the result.
+    cell0-fs10 : SMCore.MemOps.readLoc (floc fs10) obj-loc ≡ just cell0v
+    cell0-fs10 =
+      trans (writeLoc-preserves-other t₈ (sucLoc obj-loc) obj-loc code (λ e → 0≢1 (cong off-of e)))
+            (readLoc-writeLoc-same t₆ obj-loc cell0v)
+      where
+        off-of : ValueLocation FS → ℕ
+        off-of (AtDynamic (heap-loc _ o′)) = o′
+        off-of (AtStack _ _) = 0
+        0≢1 : 1 ≡ 0 → ⊥
+        0≢1 ()
+
+    code-fs10 : SMCore.MemOps.readLoc (floc fs10) (sucLoc obj-loc) ≡ just (SV-Code code-lbl)
+    code-fs10 = readLoc-writeLoc-same t₈ (sucLoc obj-loc) code
+
+    out-eq : readReg (regs (floc fs10)) Output ≡ SV-Ptr obj-loc
+    out-eq = refl
 
     bf-advance : ∀ {lc : ValueLocation FS} → BeforeFrontier alloc lc
                → BeforeFrontier (falloc fs10) lc
     bf-advance (BeforeFrontier.stack-before f≡cf k<ns) =
-      BeforeFrontier.stack-before (trans f≡cf (sym cf-fs10)) (<-≤-trans k<ns nextslot-≤)
+      BeforeFrontier.stack-before f≡cf k<ns
     bf-advance (BeforeFrontier.stack-ancestor cf≺f src) =
-      BeforeFrontier.stack-ancestor
-        (subst (λ c → Once.CCC.FrameSemantics.FrameSemantics._≺_ FS c _)
-               (sym cf-fs10) cf≺f) src
+      BeforeFrontier.stack-ancestor cf≺f src
     bf-advance (BeforeFrontier.heap-before r<h) =
       BeforeFrontier.heap-before (<-≤-trans r<h heapref-≤)
 
-
-    -- D204: what the ten-instruction build LEAVES ALONE. `TenStepPres` already
-    -- proved it (it is what `valid-transport` spends below); the obligation
-    -- now names it, so both consumers hand it over instead of it staying an
-    -- internal step.
+    -- D204: what the build LEAVES ALONE — two slots at and above `n`, and the
+    -- fresh block.
     mem-pres : ∀ (loc : ValueLocation FS)
              → BeforeFrontier (record alloc { next-slot = n }) loc
              → SMCore.MemOps.readLoc (floc fs10) loc ≡ SMCore.MemOps.readLoc s loc
-    mem-pres = TSP.mem-pres nhw-load-from-slot refl nhw-instr-load-code-addr refl
-                 n≤ rdi-fs6 rdi-fs8
+    mem-pres (AtDynamic hl) (BeforeFrontier.heap-before p) =
+      trans (writeLoc-preserves-other t₈ (sucLoc obj-loc) (AtDynamic hl) code (ne _))
+            (writeLoc-preserves-other t₆ obj-loc (AtDynamic hl) cell0v (ne _))
+      where
+        ref-of : ValueLocation FS → ℕ
+        ref-of (AtDynamic h) = HeapRef.ref-id (HeapLocation.heap-ref h)
+        ref-of (AtStack _ _) = 0
+        ne : ∀ o′ → AtDynamic (heap-loc rd o′) ≢ AtDynamic hl
+        ne o′ e = <-irrefl (sym (cong ref-of e)) p
+    mem-pres (AtStack fr j) bf =
+      trans (writeLoc-preserves-other t₈ (sucLoc obj-loc) (AtStack fr j) code (λ ()))
+     (trans (writeLoc-preserves-other t₆ obj-loc (AtStack fr j) cell0v (λ ()))
+     (trans (store-slot-preserves-before (suc n) t₃ (record alloc { next-slot = n }) A₁ (AtStack fr j) refl (n≤1+n n) bf)
+            (store-slot-preserves-before n t₁ (record alloc { next-slot = n }) alloc (AtStack fr j) refl ≤-refl bf)))
 
-    -- The input's validity, carried from the entry state to `fs10`. This is
-    -- the one place `TenStepPres` is spent, and both consumers spend it the
-    -- same way — the pointer residence is the only one that has a sub-value.
+    -- The input's validity, carried from the entry state to `fs10`.
     -- `{A}` is PINNED at every application: `⟦_⟧ᴰᴵ` is not constructor-headed
     -- (D180), so nothing here determines it from the value's type.
     valid-transport : ∀ {mIn A} (x : ValueDomain.⟦ A ⟧ᴰᴵ) (loc : ValueLocation FS)
@@ -177,14 +124,9 @@ module TwoCellBuildC {FS : FrameSemantics} where
                     → ValidAtWF {prog = prog} mIn (falloc fs10) {A} x loc (floc fs10)
     valid-transport {A = A} x loc bf valid =
       validityWF-frontier-advance {A = A} x loc (floc fs10)
-        cf-fs10 nextslot-≤ heapref-≤
+        cf-fs10 nextslot-≤ heapref-≤ blocks-kept
         (validityWF-mem-preserved {A = A} x loc s (floc fs10) bf
-           -- D206: `TSP.mem-pres` is now stated at the BUILD's frontier `n`;
-           -- the caller's data is below `next-slot alloc ≤ n`, so the
-           -- hypothesis weakens upward.
-           (λ loc' bf' → TSP.mem-pres nhw-load-from-slot refl
-                           nhw-instr-load-code-addr refl n≤ rdi-fs6 rdi-fs8 loc'
+           (λ loc' bf' → mem-pres loc'
                            (frontier-monotone alloc (record alloc { next-slot = n })
                               refl n≤ ≤-refl loc' bf'))
            valid)
-

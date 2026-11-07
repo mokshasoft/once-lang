@@ -28,7 +28,8 @@ open import Once.Spec.Type using (Base; b-*; b-Float; b-Int; b-Unit; ∅ₖ)
 open import Data.Integer using (ℤ; +_; -[1+_]) renaming ()
 import Data.Integer as ℤ
 open import Data.Nat using (suc)
-open import Data.Nat.Show using () renaming (show to showℕ)
+-- the decimal the symbol layer proves injective (`SymbolInjective.toList-showNat`)
+open import Once.Target.Symbol using () renaming (showNat to showℕ)
 open import Data.List using ([]; _∷_)
 open import Data.String using (String; _++_)
 open import Data.Product using (_,_)
@@ -117,12 +118,23 @@ show-arith-ir (acmp o a b) = "K" ++ show-cmp o ++ show-arith-ir a ++ show-arith-
         show-cmp c-eq = "4"
         show-cmp c-ne = "5"
 
--- | The digest is just the serialisation. (A hash function would be
--- stable across re-renders and shorter; the plan's "64-bit hex digest"
--- is a Phase E follow-up. The serialisation is sufficient for
--- correctness; only symbol-table size suffers.)
+-- | D395: the block's INPUT SHAPE, prefix-free (Polish notation, lower case so
+-- it never reads as a tree letter). Since D391 a leaf's load is at its flat
+-- word offset (`Shape.flat-off`), which the whole shape decides, not the
+-- side-path alone: `snd + 1` over `Int * Int` loads word 1 and over
+-- `(Int * Int) * Int` word 2. Without the shape the two named one block, and
+-- `dedup-blocks` linked both calls to one body.
+show-shape : InputShape → String
+show-shape shape-unit       = "u"
+show-shape shape-int        = "i"
+show-shape shape-float      = "f"
+show-shape (shape-pair a b) = "p" ++ show-shape a ++ show-shape b
+
+-- | The digest is the serialisation of the shape and the tree. (A hash
+-- function would be shorter; the serialisation is sufficient for
+-- correctness — it is injective — and only symbol-table size suffers.)
 block-digest : ∀ {sh n} → MArithIR sh n → String
-block-digest e = show-arith-ir e
+block-digest {sh} e = show-shape sh ++ show-arith-ir e
 
 -- | The canonical name for an arith block.
 block-name : ∀ {sh n} → MArithIR sh n → String

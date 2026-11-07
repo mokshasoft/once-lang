@@ -98,3 +98,8 @@ module _ {m : ℕ} (σ : TySub m 0) where
           → Rel act act (⌜ b ⌝ ⟨ σ ⟩) (performT (call (op mem) v (fromB σ b))) (performT (call (op mem) v′ (fromB σ b)))
     callT refl = rel (Related-self (selfCall (fromB-same b)))
 
+    -- …and with the answer read through any `f` first (D397: the Spec reads it at the target)
+    callT′ : ∀ (f : S.⟦ b ⟧ᵇ → S.⟦ b ⟧ᵇ) {v v′} → v ≡ v′
+           → Rel act act (⌜ b ⌝ ⟨ σ ⟩) (performT (call (op mem) v (λ x → fromB σ b (f x)))) (performT (call (op mem) v′ (λ x → fromB σ b (f x))))
+    callT′ f refl = rel (Related-self (selfCall (λ r → fromB-same b (f r))))
+

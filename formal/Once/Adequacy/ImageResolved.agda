@@ -5,7 +5,7 @@
 -- Once.Adequacy.ImageResolved — plan 0.107 phase d, layer 2 assembled: EVERY
 -- SYMBOL THE PROGRAM IMAGE REFERENCES IS DEFINED, OR AN INTERPRETATION'S.
 --
--- The image is `_start`, `main`'s unit (ending in the silent stop), and each
+-- The image is the start (`c-start`), `main`'s unit (ending in the silent stop), and each
 -- table entry's marker and unit. `RefsClosed` closes each unit's local
 -- references against the image's definitions; the global ones are the leaves'
 -- (`NodesOK`): a call names a table entry, whose marker the image carries
@@ -26,7 +26,7 @@ open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Spec.Name using (CanonicalName)
@@ -42,13 +42,14 @@ open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-ctrl; c-entry; c
 open import Once.Denotation.Program using (IRFun; irProgram; LinkedAt; LinkedAt-at)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
-open import Once.CCC.Codegen.ImageSymbols using (instr-defs; adefs; arefs)
+open import Once.CCC.Codegen.ImageSymbols using (instr-defs; instr-refs; adefs; arefs)
 open import Once.CCC.Codegen.NodesOK using (SigLeaves; sigop-syms; nodes-from)
 import Once.CCC.Codegen.RefsClosed as RC
 import Once.CCC.Codegen.IRToTrace as IT
 import Once.CCC.Codegen.LabelScope as LS
 import Once.CCC.Codegen.SlotBudget as SB
-open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next)
+open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next; program-image)
+open import Once.CCC.Codegen.RoomChecksFacts using (fold-room; All-fold-room)
 import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
@@ -140,6 +141,10 @@ module Prog (σ : ISig) (p : IRProgram) (lk₀ : LinkedProgram σ p) where
   D   = prog-defs p
   ext = prog-externs p
   img = C.image-of p
+  -- D377: the image is the program image with its room checks; the closure
+  -- below is the program image's, and crosses the pass at the end (a check
+  -- defines nothing and references only the Host's `once_exhausted`)
+  img₀ = program-image eo rp
 
   G : String → Set
   G = ProgG p
@@ -147,12 +152,15 @@ module Prog (σ : ISig) (p : IRProgram) (lk₀ : LinkedProgram σ p) where
   P : ∀ {A B} → Once.SigOp.Info.SigOpInfo A B → Set
   P = ProgP p
 
-  inD : ∀ {s} → s ∈ adefs img → s ∈ D
-  inD x = there (there (∈-++⁺ˡ x))
+  adefs-eq : adefs img ≡ adefs img₀
+  adefs-eq = fold-room adefs (λ i xs → instr-defs i ++ xs) (λ _ _ → refl) (λ _ _ → refl) img₀
+
+  inD : ∀ {s} → s ∈ adefs img₀ → s ∈ D
+  inD {s} x = there (∈-++⁺ˡ (subst (s ∈_) (sym adefs-eq) x))
 
   -- the image's definitions are `D`'s
-  d-img : ∀ {i} → i ∈ img → ∀ {s} → s ∈ instr-defs i → s ∈ D
-  d-img mem ms = inD (defd-self img mem ms)
+  d-img : ∀ {i} → i ∈ img₀ → ∀ {s} → s ∈ instr-defs i → s ∈ D
+  d-img mem ms = inD (defd-self img₀ mem ms)
 
   main′ = main rp
   X     = IT.ir-to-trace' eo 0 0 main′
@@ -161,10 +169,10 @@ module Prog (σ : ISig) (p : IRProgram) (lk₀ : LinkedProgram σ p) where
   LT    = link-top (IT.ir-to-unit eo main′)
   FI    = fns-image (suc (IT.ir-next-label eo 0 main′)) (table rp)
 
-  LT⊆ : ∀ {i} → i ∈ LT → i ∈ img
+  LT⊆ : ∀ {i} → i ∈ LT → i ∈ img₀
   LT⊆ x = there (∈-++⁺ˡ x)
 
-  FI⊆ : ∀ {i} → i ∈ FI → i ∈ img
+  FI⊆ : ∀ {i} → i ∈ FI → i ∈ img₀
   FI⊆ x = there (∈-++⁺ʳ LT x)
 
   -- a call names a table entry, and the image carries its marker
@@ -190,19 +198,19 @@ module Prog (σ : ISig) (p : IRProgram) (lk₀ : LinkedProgram σ p) where
                (nodes-from G call-G main′ (proj₁ lk) sl-main)
 
     closes-FI : ∀ (l : ℕ) (es : List IRFun)
-              → (∀ {i} → i ∈ fns-image l es → i ∈ img)
+              → (∀ {i} → i ∈ fns-image l es → i ∈ img₀)
               → All (λ e → Once.Denotation.Program.Linked σ (table rp) (fbody e)) es
               → All (λ e → SigLeaves P (fbody e)) es
               → RC.Closes eo G D (fns-image l es)
     closes-FI l es sub = Fns.closes-FI G D σ (table rp) call-G l es (λ x → d-img (sub x))
 
-    closes-img : RC.Closes eo G D img
+    closes-img : RC.Closes eo G D img₀
     closes-img =
-      inj₁ (here refl) ∷
       RC.closes-++ eo G LT FI closes-LT (closes-FI (suc (IT.ir-next-label eo 0 main′)) (table rp) FI⊆ (proj₁ (proj₂ lk)) sl-tbl)
 
     resolved : Resolved D ext (arefs img)
-    resolved = All-map flat closes-img
+    resolved = All-fold-room arefs instr-refs (λ _ _ → refl) (λ _ → inj₂ (there (here refl)) ∷ []) img₀
+                 (All-map flat closes-img)
       where
         flat : ∀ {s} → s ∈ D ⊎ G s → s ∈ D ⊎ s ∈ ext
         flat (inj₁ x)        = inj₁ x
@@ -286,7 +294,7 @@ module Lib (σ : ISig) (tbl : List IRFun) (table-linked : All (λ e → Linked �
   G s = s ∈ D ⊎ s ∈ ext
 
   inD : ∀ {s} → s ∈ adefs (C.lib-image tbl) → s ∈ D
-  inD x = there (∈-++⁺ˡ x)
+  inD x = ∈-++⁺ˡ x
 
 
   rt-linked : All (λ e → Linked σ rt (fbody e)) rt
@@ -306,7 +314,7 @@ module Lib (σ : ISig) (tbl : List IRFun) (table-linked : All (λ e → Linked �
     calls-ok = Data.List.Relation.Unary.All.tabulate (λ {s} s∈ → split s s∈ (s StrMem.∈? C.block-syms (C.program-blocks lp)))
       where
         split : ∀ s → s ∈ C.calls-of (C.rewrite-program lp) → _ → G s
-        split s s∈ (yes b) = inj₁ (there (∈-++⁺ʳ (adefs (C.lib-image tbl)) b))
+        split s s∈ (yes b) = inj₁ (∈-++⁺ʳ (adefs (C.lib-image tbl)) b)
         split s s∈ (no nb) = inj₂ (∈-filter⁺ (C.is-extern? lp) s∈ nb)
 
     tbl-leaves : ∀ (es : List IRFun) → All G (Data.List.concatMap (λ e → leaf-syms (fbody e)) es)

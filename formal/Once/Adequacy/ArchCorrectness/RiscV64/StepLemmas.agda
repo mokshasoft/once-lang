@@ -29,7 +29,8 @@
 
 module Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas where
 
-open import Data.Nat using (suc; _+_; _≡ᵇ_; _<ᵇ_)
+open import Data.Nat using (zero; suc; _+_; _≡ᵇ_; _<ᵇ_)
+open import Data.List using ([]; _∷_; drop)
 open import Data.Bool using (true; false; if_then_else_)
 open import Data.Maybe using (just; nothing)
 open import Data.Integer using (ℤ)
@@ -253,6 +254,38 @@ step-beq-not : ∀ {prog s rs1 rs2 target}
              → (readReg (regs s) rs1 ≡ᵇ readReg (regs s) rs2) ≡ false
              → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
 step-beq-not ft ne rewrite ft | ne = refl
+
+-- Plan 0.123 A.4: the room check's skip, `bgeu rs1, rs2, 1f`, taken when
+-- rs1 ≥ rs2 (unsigned) and not when rs1 < rs2, and its `1:` target.
+step-bgeu-taken : ∀ {prog s rs1 rs2 tgt}
+                → fetch prog (pc s) ≡ just (bgeu-fwd rs1 rs2)
+                → (readReg (regs s) rs1 <ᵇ readReg (regs s) rs2) ≡ false
+                → find-local-1 prog (pc s + 1) ≡ just tgt
+                → step-not-halted prog s ≡ just (record s { pc = tgt })
+step-bgeu-taken ft lt fl rewrite ft | lt | fl = refl
+
+step-bgeu-not : ∀ {prog s rs1 rs2}
+              → fetch prog (pc s) ≡ just (bgeu-fwd rs1 rs2)
+              → (readReg (regs s) rs1 <ᵇ readReg (regs s) rs2) ≡ true
+              → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
+step-bgeu-not ft lt rewrite ft | lt = refl
+
+step-local-1 : ∀ {prog s}
+             → fetch prog (pc s) ≡ just local-1
+             → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
+step-local-1 ft rewrite ft = refl
+
+-- The skip's scan: past the call, the next `1:`.
+drop-fetch : ∀ {prog : Program} {i x} → fetch prog i ≡ just x → drop i prog ≡ x ∷ drop (suc i) prog
+drop-fetch {[]}     ()
+drop-fetch {y ∷ ys} {zero}  refl = refl
+drop-fetch {y ∷ ys} {suc i} ft   = drop-fetch {ys} {i} ft
+
+find-local-1-past-call : ∀ {prog i nm}
+  → fetch prog i ≡ just (call-sym nm) → fetch prog (suc i) ≡ just local-1
+  → find-local-1 prog i ≡ just (suc i)
+find-local-1-past-call {prog} {i} f1 f2
+  rewrite drop-fetch {prog} {i} f1 | drop-fetch {prog} {suc i} f2 = refl
 
 -- …and `j` with its label RESOLVED, which is the form a block-step wants
 -- (`step-j` above leaves the `jump-to` unreduced). Same shape as

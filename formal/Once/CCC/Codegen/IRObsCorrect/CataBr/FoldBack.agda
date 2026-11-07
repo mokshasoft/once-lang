@@ -5,7 +5,7 @@
 -- Once.CCC.Codegen.IRObsCorrect.CataBr.FoldBack   (plan 0.135 S3, cata M4 stage D1b)
 --
 -- THE END OF A FOLD ROUND, after the algebra returned (at the row after the
--- call, `15 + Y`, its result's word in `Output`): `push2` onto the value
+-- call, `Z`, its result's word in `Output`): `push2` onto the value
 -- stack, then `c-jmp ℓ (l1+2)` back to the fold head — where `HeadAt`
 -- holds one node on, with the result pushed. A silent `Walk`.
 ------------------------------------------------------------------------
@@ -57,7 +57,7 @@ module CataFoldBackC {FS : FrameSemantics} where
               (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
-    open FA using (X; Y; span-push; fetch-jmp-head; head-label; headL)
+    open FA using (X; Y; Z; span-push; fetch-jmp-head; head-label; headL)
 
     c bodyL : ℕ
     c = FA.T.Pc.cslot
@@ -75,7 +75,7 @@ module CataFoldBackC {FS : FrameSemantics} where
     record BackIn (τ : FlatState) (ns : List ⟦ μ-type F ⟧) (v : ⟦ C ⟧) (rest : List ⟦ C ⟧) : Set where
       field
         nh    : halted (floc τ) ≡ false
-        pc    : fpc τ ≡ 15 + Y
+        pc    : fpc τ ≡ Z
         ns0   : next-slot (falloc τ) ≡ 0
         eval  : StackAt (NodeE prog F) (falloc τ) (floc τ) (suc n) sn ns
         val   : StackAt (ValE prog C) (falloc τ) (floc τ) (n + 2) sn rest
@@ -103,7 +103,7 @@ module CataFoldBackC {FS : FrameSemantics} where
       τ7 = PU.τ
 
       kp7 : Kp (falloc τ) (floc τ) (falloc τ7) (floc τ7)
-      kp7 = seg-kp PU.seg
+      kp7 = seg-kp PU.seg PU.bk
 
       sl7 : ∀ j → j ≢ n + 2 → j ≢ n + 4 → j ≢ n + 5
           → readLoc (floc τ7) (AtStack (current-frame (falloc τ7)) j) ≡ readLoc (floc τ) (AtStack (current-frame (falloc τ)) j)
@@ -112,7 +112,7 @@ module CataFoldBackC {FS : FrameSemantics} where
       far-c : ∀ {j} → c ≤ j → (j ≢ n + 2) × (j ≢ n + 4) × (j ≢ n + 5)
       far-c c≤j = far lt2 c≤j , far lt4 c≤j , far lt5 c≤j
 
-      pc7 : fpc τ7 ≡ 25 + Y
+      pc7 : fpc τ7 ≡ 10 + Z
       pc7 = trans PU.pc (cong (10 +_) B.pc)
 
       live-shc : Live (falloc τ) (AtDynamic (sucHL hc))
@@ -128,7 +128,7 @@ module CataFoldBackC {FS : FrameSemantics} where
         ; val = PU.stack
         ; cl = trans (sl7 c (proj₁ (far-c ≤-refl)) (proj₁ (proj₂ (far-c ≤-refl))) (proj₂ (proj₂ (far-c ≤-refl)))) B.cl
         ; ev = trans (sl7 (c + 2) (proj₁ (far-c (m≤m+n c 2))) (proj₁ (proj₂ (far-c (m≤m+n c 2)))) (proj₂ (proj₂ (far-c (m≤m+n c 2))))) B.ev
-        ; code = trans (proj₂ kp7 _ live-shc) B.code
+        ; code = trans (proj₂ (proj₂ kp7) _ live-shc) B.code
         ; hc-lt = ≤-trans B.hc-lt (SegA.href PU.seg)
         ; env = word-tr kp7 B.env }
 

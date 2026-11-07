@@ -21,7 +21,8 @@ open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; _∨_)
+open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Halts; Emits; Answers)
 open import Once.Type using (fits-int; fits-float)
 open import Data.Product using (proj₁; proj₂)
 open import Data.Nat using (zero; suc)
@@ -80,6 +81,27 @@ module LeftPres {FS : FrameSemantics} where
   store-suc-via-left (just loc) v s = writeLoc-left s (sucLoc loc) v
   store-suc-via-left nothing    v s = refl
 
+  -- Plan 0.123 B.4 R1: the offset forms.
+  load-at-left : ∀ k dst (ml : Maybe (ValueLocation FS)) s → lft (exec-load-at-resolved k dst ml s) ≡ lft s
+  load-at-left k dst (just loc) s = load-with-left dst (readLoc s (offsetLoc loc k)) s
+  load-at-left k dst nothing    s = refl
+
+  store-in-block-left : ∀ ok (loc : ValueLocation FS) v s → lft (exec-store-in-block ok loc v s) ≡ lft s
+  store-in-block-left true  loc v s = writeLoc-left s loc v
+  store-in-block-left false loc v s = refl
+
+  store-at-left : ∀ bs k (ml : Maybe (ValueLocation FS)) v s → lft (exec-store-at-resolved bs k ml v s) ≡ lft s
+  store-at-left bs k (just loc) v s = store-in-block-left (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v s
+  store-at-left bs k nothing    v s = refl
+
+  addr-in-block-left : ∀ ok (loc : ValueLocation FS) s → lft (exec-addr-in-block ok loc s) ≡ lft s
+  addr-in-block-left true  loc s = refl
+  addr-in-block-left false loc s = refl
+
+  addr-at-left : ∀ bs k (ml : Maybe (ValueLocation FS)) s → lft (exec-addr-at-resolved bs k ml s) ≡ lft s
+  addr-at-left bs k (just loc) s = addr-in-block-left (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) s
+  addr-at-left bs k nothing    s = refl
+
 
   load-slot-left : ∀ (mv : Maybe (StoredValue FS)) s alloc → lft (proj₁ (exec-load-from-slot-with-value mv s alloc)) ≡ lft s
   load-slot-left (just v) s alloc = refl
@@ -125,6 +147,11 @@ module LeftPres {FS : FrameSemantics} where
   abs-left (instr-load-tag-lit n) s alloc = refl
   abs-left (instr-alloc-heap n) s alloc = refl
   abs-left (instr-reg-op op) s alloc = refl
+  abs-left (instr-free-heap n) s alloc = refl
+  abs-left (instr-room n) s alloc = refl
+  abs-left (load-at k) s alloc = load-at-left k Output (sv-as-loc (readReg (regs s) Input1)) s
+  abs-left (store-at k) s alloc = store-at-left (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
+  abs-left (addr-at k) s alloc = addr-at-left (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s
   abs-left (instr-ctrl c) s alloc = refl
 
   exec-abstract-left : ∀ (i : AbstractInstr) → LeftFree i → ∀ s alloc → lft (proj₁ (exec-abstract i s alloc)) ≡ lft s
@@ -216,6 +243,11 @@ module LeftPres {FS : FrameSemantics} where
   flat-exec-instr-left (instr-load-tag-lit n)   lf prog fs = exec-abstract-left (instr-load-tag-lit n) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-alloc-heap n)     lf prog fs = exec-abstract-left (instr-alloc-heap n) lf (floc fs) (falloc fs)
   flat-exec-instr-left (instr-reg-op out-nz)    lf prog fs = do-nz-left (readReg (regs (floc fs)) Output) fs
+  flat-exec-instr-left (instr-free-heap n)      lf prog fs = exec-abstract-left (instr-free-heap n) lf (floc fs) (falloc fs)
+  flat-exec-instr-left (instr-room n)           lf prog fs = exec-abstract-left (instr-room n) lf (floc fs) (falloc fs)
+  flat-exec-instr-left (load-at n)           lf prog fs = exec-abstract-left (load-at n) lf (floc fs) (falloc fs)
+  flat-exec-instr-left (store-at n)           lf prog fs = exec-abstract-left (store-at n) lf (floc fs) (falloc fs)
+  flat-exec-instr-left (addr-at n)           lf prog fs = exec-abstract-left (addr-at n) lf (floc fs) (falloc fs)
 
 ------------------------------------------------------------------------
 -- D367: …AND A STEP THAT DOES NOT HALT DOES NOT FAULT. A fault sets `halted`
@@ -269,6 +301,32 @@ module FaultPres {FS : FrameSemantics} where
   store-suc-via-fault (just loc) v s _ = writeLoc-fault s (sucLoc loc) v
   store-suc-via-fault nothing    v s ()
 
+  -- Plan 0.123 B.4 R1: the offset forms.
+  load-at-fault : ∀ k dst (ml : Maybe (ValueLocation FS)) s → hlt (exec-load-at-resolved k dst ml s) ≡ false
+                → flt (exec-load-at-resolved k dst ml s) ≡ flt s
+  load-at-fault k dst (just loc) s h = load-with-fault dst (readLoc s (offsetLoc loc k)) s h
+  load-at-fault k dst nothing    s ()
+
+  store-in-block-fault : ∀ ok (loc : ValueLocation FS) v s → hlt (exec-store-in-block ok loc v s) ≡ false
+                       → flt (exec-store-in-block ok loc v s) ≡ flt s
+  store-in-block-fault true  loc v s _ = writeLoc-fault s loc v
+  store-in-block-fault false loc v s ()
+
+  store-at-fault : ∀ bs k (ml : Maybe (ValueLocation FS)) v s → hlt (exec-store-at-resolved bs k ml v s) ≡ false
+                 → flt (exec-store-at-resolved bs k ml v s) ≡ flt s
+  store-at-fault bs k (just loc) v s h = store-in-block-fault (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v s h
+  store-at-fault bs k nothing    v s ()
+
+  addr-in-block-fault : ∀ ok (loc : ValueLocation FS) s → hlt (exec-addr-in-block ok loc s) ≡ false
+                      → flt (exec-addr-in-block ok loc s) ≡ flt s
+  addr-in-block-fault true  loc s _ = refl
+  addr-in-block-fault false loc s ()
+
+  addr-at-fault : ∀ bs k (ml : Maybe (ValueLocation FS)) s → hlt (exec-addr-at-resolved bs k ml s) ≡ false
+                → flt (exec-addr-at-resolved bs k ml s) ≡ flt s
+  addr-at-fault bs k (just loc) s h = addr-in-block-fault (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) s h
+  addr-at-fault bs k nothing    s ()
+
   load-slot-fault : ∀ (mv : Maybe (StoredValue FS)) s alloc → hlt (proj₁ (exec-load-from-slot-with-value mv s alloc)) ≡ false
                   → flt (proj₁ (exec-load-from-slot-with-value mv s alloc)) ≡ flt s
   load-slot-fault (just v) s alloc _ = refl
@@ -278,6 +336,18 @@ module FaultPres {FS : FrameSemantics} where
                 → flt (proj₁ (exec-restore-input-with-value mv s alloc)) ≡ flt s
   restore-fault (just v) s alloc _ = refl
   restore-fault nothing  s alloc ()
+
+  -- D392: a Pure SigOp faults exactly when it halts, so one that does not halt
+  -- does not fault either
+  sigop-fault : ∀ {A B} (si : SigOpInfo A B) (s : LocState FS) → exec-sigop-halts si s ≡ false
+              → (exec-sigop-faults si s ∨ flt s) ≡ flt s
+  sigop-fault {B = B} si s h = go (effect si) h
+    where
+      go : (e : EffectShape B) → exec-sigop-halts-of e si s ≡ false → (exec-sigop-faults-of e si s ∨ flt s) ≡ flt s
+      go Pure      h′ rewrite h′ = refl
+      go (Halts _) ()
+      go (Emits _) _  = refl
+      go Answers   _  = refl
 
   abs-fault : ∀ (i : AbstractInstr) (s : LocState FS) alloc → hlt (proj₁ (exec-abstract i s alloc)) ≡ false
             → flt (proj₁ (exec-abstract i s alloc)) ≡ flt s
@@ -301,12 +371,17 @@ module FaultPres {FS : FrameSemantics} where
   abs-fault (worklist-push slot) s alloc _ = writeLoc-fault s (AtStack (current-frame alloc) slot) (readReg (regs s) Output)
   abs-fault (worklist-pop slot) s alloc h = load-slot-fault (readLoc s (AtStack (current-frame alloc) slot)) s alloc h
   abs-fault (worklist-check slot) s alloc _ = refl
-  abs-fault (instr-sigop si) s alloc _ = refl
+  abs-fault (instr-sigop si) s alloc h = sigop-fault si s h
   abs-fault (instr-load-const p v) s alloc _ = refl
   abs-fault (instr-load-code-addr n) s alloc _ = refl
   abs-fault instr-save-closure-reg s alloc _ = refl
   abs-fault (instr-load-tag-lit n) s alloc _ = refl
   abs-fault (instr-alloc-heap n) s alloc _ = refl
+  abs-fault (instr-free-heap n) s alloc _ = refl
+  abs-fault (instr-room n) s alloc _ = refl
+  abs-fault (load-at k) s alloc h = load-at-fault k Output (sv-as-loc (readReg (regs s) Input1)) s h
+  abs-fault (store-at k) s alloc h = store-at-fault (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s h
+  abs-fault (addr-at k) s alloc h = addr-at-fault (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s h
   abs-fault (instr-reg-op op) s alloc _ = refl
   abs-fault (instr-ctrl c) s alloc _ = refl
 
@@ -396,3 +471,8 @@ module FaultPres {FS : FrameSemantics} where
   flat-exec-instr-fault (instr-load-tag-lit n)   prog fs h = abs-fault (instr-load-tag-lit n) (floc fs) (falloc fs) h
   flat-exec-instr-fault (instr-alloc-heap n)     prog fs h = abs-fault (instr-alloc-heap n) (floc fs) (falloc fs) h
   flat-exec-instr-fault (instr-reg-op out-nz)    prog fs h = do-nz-fault (readReg (regs (floc fs)) Output) fs h
+  flat-exec-instr-fault (instr-free-heap n)      prog fs h = abs-fault (instr-free-heap n) (floc fs) (falloc fs) h
+  flat-exec-instr-fault (instr-room n)           prog fs h = abs-fault (instr-room n) (floc fs) (falloc fs) h
+  flat-exec-instr-fault (load-at n)           prog fs h = abs-fault (load-at n) (floc fs) (falloc fs) h
+  flat-exec-instr-fault (store-at n)           prog fs h = abs-fault (store-at n) (floc fs) (falloc fs) h
+  flat-exec-instr-fault (addr-at n)           prog fs h = abs-fault (addr-at n) (floc fs) (falloc fs) h

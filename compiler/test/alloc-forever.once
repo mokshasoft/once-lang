@@ -1,0 +1,22 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.123 A.5: MEMORY RUNS OUT OBSERVABLY. A server whose state is a list
+-- that grows by a cell every round allocates without bound, and every cell
+-- stays live (the state holds it), so no allocator can reclaim it — before
+-- Part B or after. The run must end with the `exhausted` outcome: a room check
+-- finds no room before the next allocation and calls the Host's
+-- `once_exhausted`, which aborts (SIGABRT). Not a segfault, and never a write
+-- past the heap.
+--
+-- Observed by `exitCases` (Layer5Spec) as the exit status -6 on every arch. It
+-- has no `exit`, so tests/run-exit-tests*.sh skip it.
+
+grow : Mu (K Unit + K Int * Id) -> Void + Mu (K Unit + K Int * Id)
+grow l = inr (In (inr (1, l)))
+
+keep : Eff (Mu (K Unit + K Int * Id)) Void
+keep = ana grow
+
+main : Eff Unit Void
+main = keep . (\_ -> In (inl unit))

@@ -11,8 +11,8 @@
 -- SENTINEL block whose cell 0 is `SV-Tag 0`. The three stacks (todo, eval,
 -- value) share one sentinel (`cata-br-I₁`'s init). An element is a word
 -- related to a semantic value by a predicate `E` the caller picks; the one
--- every stack here uses is `WordAt` — "this word is what a valid CELL of
--- type `A` holding `v` would hold" (`CellAt`'s two forms, minus the cell):
+-- every stack here uses is `WordAt` — the value's REGISTER FORM, `FlatPut.Src`
+-- (a node's pointer, a flat value's address, a scalar, anything for `Unit`):
 -- μ nodes for todo/eval, algebra results for the value stack.
 --
 -- WHAT `c-branch-tag-zero` TESTS. `Flat.flat-exec-instr` reads the cell
@@ -45,64 +45,63 @@ module Once.CCC.Codegen.IRObsCorrect.CataBr.Stack (o : CanonicalName) (tbl : DL.
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
-open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
 open import Once.CCC.Codegen.IRToTrace o using (push2; pop2)
+import Once.CCC.Machine.SMCore as SMCore
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; SV-Tag; SV-Lit; SV-Code; sv-as-loc; store-at-slot; load-from-slot; load-indirect; load-indirect-suc
-        ; store-indirect; store-indirect-suc; mov-to-input; instr-alloc-heap)
+  using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; module MemOps; module AbstractExec
+        ; StoredValue; readReg; writeReg; Output; Input1; SV-Ptr; SV-Tag; sv-as-loc; offsetLoc
+        ; store-at-slot; load-from-slot; mov-to-input; instr-alloc-heap; store-at; load-at)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; sucHL; module HeapLocation; module HeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; sucHL; offsetHL; module HeapLocation; module HeapRef)
 open import Once.IRTy using (IRTy; IRFunctor; μ-type)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Data.Bool using (Bool)
 open import Data.List using (null)
+open import Data.List.Properties using (++-identityʳ)
+open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.Nat using (z≤n; s≤s)
+open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
+import Once.CCC.Machine.FlatPut as FlatPut
+import Once.CCC.Machine.FlatAlloc as FlatAlloc
+import Once.CCC.Machine.SMPrimitives
 
 module CataStackC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
   open ResuspBaseC {FS}
-  open CataStepsC {FS}
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (next-slot; next-heap-ref; current-frame; block-size)
+  open MemOps {FS} using (writeLoc; writeLoc-preserves-other; writeLoc-read-same-stack; writeLoc-regs; writeLoc-halted)
+  open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
+  open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
+  open FlatEventTrace {FS} using (chain-events-subst)
+  module SR = StraightRunAPI {FS}
 
   ------------------------------------------------------------------------
-  -- ELEMENT WORDS.
+  -- ELEMENT WORDS (plan 0.123 α2): an element is a value's REGISTER FORM —
+  -- a node's pointer, a flat value's address, a scalar's word, anything for
+  -- a `Unit` — which is what `FlatPut.put` takes (`Src`).
   ------------------------------------------------------------------------
-  -- what a valid cell of type `A` holding `v` holds, as a word
-  data WordAt (prog : AbstractTrace) (a : AllocState {FS}) (A : IRTy) (v : ⟦ A ⟧) (w : StoredValue FS) (s : LocState FS) : Set where
-    w-ptr : ∀ {m : AllocMode} (loc : ValueLocation FS) → w ≡ SV-Ptr loc → Live a loc
-          → ValidAtWF {prog = prog} m a {A} v loc s → WordAt prog a A v w s
-    w-inl : (rep : InlineRep A) → w ≡ inline-sv rep v → WordAt prog a A v w s
+  WordAt : (prog : AbstractTrace) (a : AllocState {FS}) (A : IRTy) (v : ⟦ A ⟧) (w : StoredValue FS) (s : LocState FS) → Set
+  WordAt prog a A v w s = FlatPut.Src {FS} {prog} a s A v w
 
-  -- a cell IS a stored word
-  cell→word : ∀ {prog a A v cl s w} → CellAt {prog = prog} a A v cl s → readLoc s cl ≡ just w → WordAt prog a A v w s
-  cell→word (cell-ptr r lv val) e = w-ptr _ (just-inj (trans (sym e) r)) lv val
-    where just-inj : ∀ {x y : StoredValue FS} → just x ≡ just y → x ≡ y
-          just-inj refl = refl
-  cell→word (cell-inline rep r) e = w-inl rep (just-inj (trans (sym e) r))
-    where just-inj : ∀ {x y : StoredValue FS} → just x ≡ just y → x ≡ y
-          just-inj refl = refl
-
-  word→cell : ∀ {prog a A v cl s w} → readLoc s cl ≡ just w → WordAt prog a A v w s → CellAt {prog = prog} a A v cl s
-  word→cell r (w-ptr loc refl lv val) = cell-ptr r lv val
-  word→cell r (w-inl rep refl) = cell-inline rep r
-
-  -- a word survives whatever keeps live cells live and unchanged
+  -- a word survives whatever keeps live cells live, their blocks, and unchanged
   word-tr : ∀ {prog a s a′ s′ A v w} → Kp a s a′ s′ → WordAt prog a A v w s → WordAt prog a′ A v w s′
-  word-tr {prog} {a} {A = A} {v} (bft , rd) (w-ptr {m} loc e lv val) =
-    w-ptr loc e (bft _ lv) (validityWF-heap-transport {prog = prog} {m} {A} (Live a) (λ _ b → b) rd bft v loc lv val)
-  word-tr k (w-inl rep e) = w-inl rep e
+  word-tr {prog} {a} {A = A} {v} (bft , bk , rd) (FlatPut.src-node nd lv val) =
+    FlatPut.src-node nd (bft _ lv) (validityWF-heap-transport {prog = prog} (Live a) (λ _ b → b) rd bft bk v _ lv val)
+  word-tr k (FlatPut.src-scalar fit) = FlatPut.src-scalar fit
+  word-tr {prog} {a} {A = A} {v} (bft , bk , rd) (FlatPut.src-flat fl lv val) =
+    FlatPut.src-flat fl (bft _ lv) (validityWF-heap-transport {prog = prog} (Live a) (λ _ b → b) rd bft bk v _ lv val)
+  word-tr k FlatPut.src-unit = FlatPut.src-unit
 
   -- a μ node's word is a pointer, never the sentinel's tag
   word-nz-μ : ∀ {prog a F v w s} → WordAt prog a (μ-type F) v w s → tag-test (just w) ≡ just false
-  word-nz-μ (w-ptr loc refl lv val) = refl
-  word-nz-μ (w-inl (rep-prim ()) e)
-  word-nz-μ (w-inl (rep-unit () _) e)
+  word-nz-μ (FlatPut.src-node nd lv val) = refl
+  word-nz-μ (FlatPut.src-scalar ())
+  word-nz-μ (FlatPut.src-flat () _ _)
 
   ------------------------------------------------------------------------
   -- THE CHAIN and THE STACK.
@@ -144,7 +143,7 @@ module CataStackC {FS : FrameSemantics} where
   chain-tr : ∀ {V} {E : ElemP V} → ETr E → ∀ {a s a′ s′ sn b xs} → Kp a s a′ s′
            → Chain E a s sn b xs → Chain E a′ s′ sn b xs
   chain-tr et k ch-nil = ch-nil
-  chain-tr et k@(bft , rd) (ch-cons w lv r0 e r1 ch) =
+  chain-tr et k@(bft , _ , rd) (ch-cons w lv r0 e r1 ch) =
     ch-cons w (bft _ lv) (trans (rd _ lv) r0) (et k e) (trans (rd _ (live-suc lv)) r1) (chain-tr et k ch)
 
   -- a stack survives anything that keeps the cells live at its start and its slot
@@ -152,14 +151,15 @@ module CataStackC {FS : FrameSemantics} where
              → current-frame a′ ≡ current-frame a
              → readLoc s′ (AtStack (current-frame a) k) ≡ readLoc s (AtStack (current-frame a) k)
              → StackAt E a s k sn xs → StackAt E a′ s′ k sn xs
-  stack-keep et {a′ = a′} {s′ = s′} {k = k} kp@(bft , rd) cf sl (stack-at t sl0 ch se sl′) =
+  stack-keep et {a′ = a′} {s′ = s′} {k = k} kp@(bft , _ , rd) cf sl (stack-at t sl0 ch se sl′) =
     stack-at t (trans (cong (λ f → readLoc s′ (AtStack f k)) cf) (trans sl sl0)) (chain-tr et kp ch)
              (trans (rd _ sl′) se) (bft _ sl′)
 
-  -- what a segment keeps
-  seg-kp : ∀ {n fs fs′} → Seg n fs fs′ → Kp (falloc fs) (floc fs) (falloc fs′) (floc fs′)
-  seg-kp {fs = fs} {fs′} p = live-from (falloc fs) (falloc fs′) (SegA.href p) , seg-live-read p
+  -- what a segment keeps (with its blocks)
+  seg-kp : ∀ {n fs fs′} → Seg n fs fs′ → BlocksKept (falloc fs) (falloc fs′) → Kp (falloc fs) (floc fs) (falloc fs′) (floc fs′)
+  seg-kp {fs = fs} {fs′} p bk = live-from (falloc fs) (falloc fs′) (SegA.href p) , bk , seg-live-read p
 
+  ------------------------------------------------------------------------
   ------------------------------------------------------------------------
   -- THE SENTINEL TEST: the top block's cell 0 is the tag iff the stack is empty.
   ------------------------------------------------------------------------
@@ -175,6 +175,18 @@ module CataStackC {FS : FrameSemantics} where
   stack-tag nz {s = s} st e =
     trans (cong (λ z → tag-test (flat-read-at s (sv-as-loc z))) e) (chain-tag nz (StackAt.sent st) (StackAt.chain st))
 
+
+  private
+    slot-of : ValueLocation FS → ℕ
+    slot-of (AtStack _ j) = j
+    slot-of (AtDynamic _) = 0
+
+    -- a heap location's words at offsets 0 and 1
+    off0 : ∀ (hl : HeapLocation) → offsetHL hl 0 ≡ hl
+    off0 (heap-loc r o′) = refl
+    off1 : ∀ (hl : HeapLocation) → offsetHL hl 1 ≡ sucHL hl
+    off1 (heap-loc r o′) = refl
+
   ------------------------------------------------------------------------
   -- PUSH: `push2 top tv tb`, ten straight rows, `Output` onto the stack at `top`.
   ------------------------------------------------------------------------
@@ -184,6 +196,7 @@ module CataStackC {FS : FrameSemantics} where
       τ     : FlatState
       run   : SRun prog 10 σ τ
       seg   : Seg n σ τ
+      bk    : BlocksKept (falloc σ) (falloc τ)
       nh    : halted (floc τ) ≡ false
       pc    : fpc τ ≡ 10 + fpc σ
       ret   : fret τ ≡ fret σ
@@ -208,238 +221,165 @@ module CataStackC {FS : FrameSemantics} where
     s₀ = floc σ
     a₀ = falloc σ
     f₀ = current-frame a₀
-    r₀ = next-heap-ref a₀
     w  = readReg (regs s₀) Output
     tp = StackAt.top st
+    A₁ = FlatAlloc.alloc-after {FS} 2 a₀
+    rd = FlatAlloc.fresh-ref {FS} a₀
+    B  : HeapLocation
+    B  = heap-loc rd 0
+    blk : StoredValue FS
+    blk = SV-Ptr (AtDynamic B)
+    ptp : StoredValue FS
+    ptp = SV-Ptr (AtDynamic tp)
 
-    u1 u2 u3 u4 u5 u6 u7 u8 u9 u10 : FlatState
-    u1  = St (store-at-slot tv) σ
-    u2  = St (instr-alloc-heap 2) u1
-    u3  = St (store-at-slot tb) u2
-    u4  = St mov-to-input u3
-    u5  = St (load-from-slot tv) u4
-    u6  = St store-indirect u5
-    u7  = St (load-from-slot top) u6
-    u8  = St store-indirect-suc u7
-    u9  = St (load-from-slot tb) u8
-    u10 = St (store-at-slot top) u9
+    v1 = proj₁ (exec-abstract (store-at-slot tv) s₀ a₀)
+    v2 = proj₁ (exec-abstract (instr-alloc-heap 2) v1 a₀)
+    v3 = proj₁ (exec-abstract (store-at-slot tb) v2 A₁)
+    v4 = proj₁ (exec-abstract mov-to-input v3 A₁)
+    v5 = record v4 { regs = writeReg (regs v4) Output w }
+    v6 = writeLoc v5 (AtDynamic B) w
+    v7 = record v6 { regs = writeReg (regs v6) Output ptp }
+    v8 = writeLoc v7 (AtDynamic (sucHL B)) ptp
+    v9 = record v8 { regs = writeReg (regs v8) Output blk }
+    v10 = proj₁ (exec-abstract (store-at-slot top) v9 A₁)
 
-    hb : HeapLocation
-    hb = heap-loc (mkHeapRef r₀) 0
+    ne : ∀ {i j} → i ≢ j → AtStack {FS} f₀ i ≢ AtStack f₀ j
+    ne d e′ = d (cong slot-of e′)
 
-    Inp Oup : FlatState → StoredValue FS
-    Inp t = readReg (regs (floc t)) Input1
-    Oup t = readReg (regs (floc t)) Output
+    tvSlot4 : readLoc v4 (AtStack f₀ tv) ≡ just w
+    tvSlot4 = trans (writeLoc-preserves-other v2 (AtStack f₀ tb) (AtStack f₀ tv) blk (ne (λ e′ → tv≢tb (sym e′))))
+                    (writeLoc-read-same-stack s₀ f₀ tv w)
 
-    sl : FlatState → ℕ → Maybe (StoredValue FS)
-    sl t j = readLoc (floc t) (AtStack f₀ j)
+    ib0 : InBlk A₁ (AtDynamic B)
+    ib0 = FlatAlloc.alloc-in {FS} 2 a₀ 0 (s≤s z≤n)
+    ib1 : InBlk A₁ (AtDynamic (sucHL B))
+    ib1 = FlatAlloc.alloc-in {FS} 2 a₀ 1 (s≤s (s≤s z≤n))
 
-    hpr : FlatState → HeapLocation → Maybe (StoredValue FS)
-    hpr t h = readLoc (floc t) (AtDynamic h)
+    h6 : halted v6 ≡ false
+    h6 = trans (writeLoc-halted v5 (AtDynamic B) w) nh0
+    h8 : halted v8 ≡ false
+    h8 = trans (writeLoc-halted v7 (AtDynamic (sucHL B)) ptp) h6
 
-    tv≢top = λ (e : tv ≡ top) → top≢tv (sym e)
-    tb≢top = λ (e : tb ≡ top) → top≢tb (sym e)
-    tb≢tv  = λ (e : tb ≡ tv) → tv≢tb (sym e)
+    topSlot6 : readLoc v6 (AtStack f₀ top) ≡ just ptp
+    topSlot6 = trans (writeLoc-preserves-other v5 (AtDynamic B) (AtStack f₀ top) w (λ ()))
+              (trans (writeLoc-preserves-other v2 (AtStack f₀ tb) (AtStack f₀ top) blk (ne (λ e′ → top≢tb (sym e′))))
+              (trans (writeLoc-preserves-other s₀ (AtStack f₀ tv) (AtStack f₀ top) w (ne (λ e′ → top≢tv (sym e′))))
+                     (StackAt.slot st)))
 
-    top0 : sl σ top ≡ just (SV-Ptr (AtDynamic tp))
-    top0 = StackAt.slot st
+    tbSlot8 : readLoc v8 (AtStack f₀ tb) ≡ just blk
+    tbSlot8 = trans (writeLoc-preserves-other v7 (AtDynamic (sucHL B)) (AtStack f₀ tb) ptp (λ ()))
+             (trans (writeLoc-preserves-other v5 (AtDynamic B) (AtStack f₀ tb) w (λ ()))
+                    (writeLoc-read-same-stack v2 f₀ tb blk))
 
-    -- row 1: tv := w
-    nh1 : halted (floc u1) ≡ false
-    nh1 = exec-abstract-preserves-halted-WF (store-at-slot tv) s₀ a₀ nh0 tt
-    tv1 : sl u1 tv ≡ just w
-    tv1 = sl-same tv s₀ a₀ f₀ refl
-    top1 : sl u1 top ≡ just (SV-Ptr (AtDynamic tp))
-    top1 = trans (sl-other tv top s₀ a₀ f₀ top≢tv) top0
+    in1-6 : readReg (regs v6) Input1 ≡ blk
+    in1-6 = cong (λ r → readReg r Input1) (writeLoc-regs v5 (AtDynamic B) w)
 
-    -- row 2: alloc
-    nh2 : halted (floc u2) ≡ false
-    nh2 = exec-abstract-preserves-halted-WF (instr-alloc-heap 2) (floc u1) (falloc u1) nh1 tt
-    out2 : Oup u2 ≡ SV-Ptr (AtDynamic hb)
-    out2 = out-alloc 2 (floc u1) (falloc u1)
-    tv2 : sl u2 tv ≡ just w
-    tv2 = trans (sl-keep (instr-alloc-heap 2) (floc u1) (falloc u1) f₀ tv nhw-instr-alloc-heap refl) tv1
-    top2 : sl u2 top ≡ just (SV-Ptr (AtDynamic tp))
-    top2 = trans (sl-keep (instr-alloc-heap 2) (floc u1) (falloc u1) f₀ top nhw-instr-alloc-heap refl) top1
+    T10 : AbstractTrace
+    T10 = push2 top tv tb
 
-    -- row 3: tb := block
-    nh3 : halted (floc u3) ≡ false
-    nh3 = exec-abstract-preserves-halted-WF (store-at-slot tb) (floc u2) (falloc u2) nh2 tt
-    tb3 : sl u3 tb ≡ just (SV-Ptr (AtDynamic hb))
-    tb3 = trans (sl-same tb (floc u2) (falloc u2) f₀ refl) (cong just out2)
-    tv3 : sl u3 tv ≡ just w
-    tv3 = trans (sl-other tb tv (floc u2) (falloc u2) f₀ tv≢tb) tv2
-    top3 : sl u3 top ≡ just (SV-Ptr (AtDynamic tp))
-    top3 = trans (sl-other tb top (floc u2) (falloc u2) f₀ top≢tb) top2
+    ld5 : exec-abstract (load-from-slot tv) v4 A₁ ≡ (v5 , A₁)
+    ld5 = cong (λ mv → exec-load-from-slot-with-value mv v4 A₁) tvSlot4
+    st6 : exec-abstract (store-at 0) v5 A₁ ≡ (v6 , A₁)
+    st6 = cong (λ bb → (SMCore.ExecFinal.exec-store-in-block {FS} bb (AtDynamic B) w v5 , A₁)) ib0
+    ld7 : exec-abstract (load-from-slot top) v6 A₁ ≡ (v7 , A₁)
+    ld7 = cong (λ mv → exec-load-from-slot-with-value mv v6 A₁) topSlot6
+    st8 : exec-abstract (store-at 1) v7 A₁ ≡ (v8 , A₁)
+    st8 = trans (cong (λ ml → (SMCore.ExecFinal.exec-store-at-resolved {FS} (block-size A₁) 1 ml ptp v7 , A₁)) (cong sv-as-loc in1-6))
+                (cong (λ bb → (SMCore.ExecFinal.exec-store-in-block {FS} bb (AtDynamic (sucHL B)) ptp v7 , A₁)) ib1)
+    ld9 : exec-abstract (load-from-slot tb) v8 A₁ ≡ (v9 , A₁)
+    ld9 = cong (λ mv → exec-load-from-slot-with-value mv v8 A₁) tbSlot8
 
-    -- row 4: Input1 := block
-    nh4 : halted (floc u4) ≡ false
-    nh4 = exec-abstract-preserves-halted-WF mov-to-input (floc u3) (falloc u3) nh3 tt
-    in4 : Inp u4 ≡ SV-Ptr (AtDynamic hb)
-    in4 = trans (in-movin (floc u3) (falloc u3)) (trans (reg-store tb (floc u2) (falloc u2) Output) out2)
-    tv4 : sl u4 tv ≡ just w
-    tv4 = trans (sl-keep mov-to-input (floc u3) (falloc u3) f₀ tv nhw-mov-to-input refl) tv3
-    tb4 : sl u4 tb ≡ just (SV-Ptr (AtDynamic hb))
-    tb4 = trans (sl-keep mov-to-input (floc u3) (falloc u3) f₀ tb nhw-mov-to-input refl) tb3
-    top4 : sl u4 top ≡ just (SV-Ptr (AtDynamic tp))
-    top4 = trans (sl-keep mov-to-input (floc u3) (falloc u3) f₀ top nhw-mov-to-input refl) top3
+    whole : exec-trace T10 s₀ a₀ ≡ (v10 , A₁)
+    whole =
+      trans (exec-trace-cons (store-at-slot tv) _ s₀ a₀ nh0)
+     (trans (exec-trace-cons (instr-alloc-heap 2) _ v1 a₀ nh0)
+     (trans (exec-trace-cons (store-at-slot tb) _ v2 A₁ nh0)
+     (trans (exec-trace-cons mov-to-input _ v3 A₁ nh0)
+     (trans (exec-trace-cons (load-from-slot tv) _ v4 A₁ nh0)
+     (trans (cong (λ r → exec-trace (store-at 0 ∷ load-from-slot top ∷ store-at 1 ∷ load-from-slot tb ∷ store-at-slot top ∷ []) (proj₁ r) (proj₂ r)) ld5)
+     (trans (exec-trace-cons (store-at 0) _ v5 A₁ nh0)
+     (trans (cong (λ r → exec-trace (load-from-slot top ∷ store-at 1 ∷ load-from-slot tb ∷ store-at-slot top ∷ []) (proj₁ r) (proj₂ r)) st6)
+     (trans (exec-trace-cons (load-from-slot top) _ v6 A₁ h6)
+     (trans (cong (λ r → exec-trace (store-at 1 ∷ load-from-slot tb ∷ store-at-slot top ∷ []) (proj₁ r) (proj₂ r)) ld7)
+     (trans (exec-trace-cons (store-at 1) _ v7 A₁ h6)
+     (trans (cong (λ r → exec-trace (load-from-slot tb ∷ store-at-slot top ∷ []) (proj₁ r) (proj₂ r)) st8)
+     (trans (exec-trace-cons (load-from-slot tb) _ v8 A₁ h8)
+     (trans (cong (λ r → exec-trace (store-at-slot top ∷ []) (proj₁ r) (proj₂ r)) ld9)
+            (exec-trace-cons (store-at-slot top) [] v9 A₁ h8))))))))))))))
 
-    -- row 5: Output := w
-    nh5 : halted (floc u5) ≡ false
-    nh5 = exec-abstract-preserves-halted-WF (load-from-slot tv) (floc u4) (falloc u4) nh4 (w , tv4)
-    out5 : Oup u5 ≡ w
-    out5 = out-lslot tv (floc u4) (falloc u4) w tv4
-    in5 : Inp u5 ≡ SV-Ptr (AtDynamic hb)
-    in5 = trans (in-lslot tv (floc u4) (falloc u4) w tv4) in4
-    tb5 : sl u5 tb ≡ just (SV-Ptr (AtDynamic hb))
-    tb5 = trans (sl-keep (load-from-slot tv) (floc u4) (falloc u4) f₀ tb nhw-load-from-slot refl) tb4
-    top5 : sl u5 top ≡ just (SV-Ptr (AtDynamic tp))
-    top5 = trans (sl-keep (load-from-slot tv) (floc u4) (falloc u4) f₀ top nhw-load-from-slot refl) top4
-    cf5 : current-frame (falloc u5) ≡ f₀
-    cf5 = exec-abstract-preserves-frame (load-from-slot tv) (floc u4) (falloc u4)
-    hr5 : next-heap-ref (falloc u5) ≡ suc r₀
-    hr5 = exec-abstract-preserves-heap-ref (load-from-slot tv) (floc u4) (falloc u4) tt
+    τ : FlatState
+    τ = record σ { floc = v10 ; falloc = A₁ ; fpc = 10 + fpc σ }
 
-    -- row 6: block[0] := w
-    rdi6 : sv-as-loc (Inp u5) ≡ just (AtDynamic hb)
-    rdi6 = cong sv-as-loc in5
-    nh6 : halted (floc u6) ≡ false
-    nh6 = exec-abstract-preserves-halted-WF store-indirect (floc u5) (falloc u5) nh5 (AtDynamic hb , rdi6)
-    hp6 : hpr u6 hb ≡ just w
-    hp6 = trans (store-ind-result (floc u5) (falloc u5) hb rdi6) (cong just out5)
-    in6 : Inp u6 ≡ SV-Ptr (AtDynamic hb)
-    in6 = trans (in-sind (floc u5) (falloc u5) (AtDynamic hb) rdi6) in5
-    tb6 : sl u6 tb ≡ just (SV-Ptr (AtDynamic hb))
-    tb6 = trans (sl-sind (floc u5) (falloc u5) hb f₀ tb rdi6) tb5
-    top6 : sl u6 top ≡ just (SV-Ptr (AtDynamic tp))
-    top6 = trans (sl-sind (floc u5) (falloc u5) hb f₀ top rdi6) top5
-    cf6 : current-frame (falloc u6) ≡ f₀
-    cf6 = trans (exec-abstract-preserves-frame store-indirect (floc u5) (falloc u5)) cf5
-    hr6 : next-heap-ref (falloc u6) ≡ suc r₀
-    hr6 = trans (exec-abstract-preserves-heap-ref store-indirect (floc u5) (falloc u5) tt) hr5
+    private
+      sts : All StraightStep T10
+      sts = (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
+            (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
+      evs : All (λ i → ∀ fs′ → event-of i fs′ ≡ []) T10
+      evs = (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷
+            (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ []
+      he : halted (proj₁ (exec-trace T10 s₀ a₀)) ≡ false
+      he = trans (cong (λ r → halted (proj₁ r)) whole) h8
+      run₀ = SR.straight-steps {prog} T10 σ sts span nh0 he
+      eq : SR.after T10 σ ≡ τ
+      eq = cong (λ r → record σ { floc = proj₁ r ; falloc = proj₂ r ; fpc = 10 + fpc σ }) whole
 
-    -- row 7: Output := the old top
-    wf7 : InstrWF (floc u6) (falloc u6) (load-from-slot top)
-    wf7 = SV-Ptr (AtDynamic tp) , at-cf (floc u6) (falloc u6) cf6 top6
-    nh7 : halted (floc u7) ≡ false
-    nh7 = exec-abstract-preserves-halted-WF (load-from-slot top) (floc u6) (falloc u6) nh6 wf7
-    out7 : Oup u7 ≡ SV-Ptr (AtDynamic tp)
-    out7 = out-lslot top (floc u6) (falloc u6) _ (proj₂ wf7)
-    in7 : Inp u7 ≡ SV-Ptr (AtDynamic hb)
-    in7 = trans (in-lslot top (floc u6) (falloc u6) _ (proj₂ wf7)) in6
-    hp7 : hpr u7 hb ≡ just w
-    hp7 = trans (hp-keep (load-from-slot top) (floc u6) (falloc u6) hb nhw-load-from-slot) hp6
-    tb7 : sl u7 tb ≡ just (SV-Ptr (AtDynamic hb))
-    tb7 = trans (sl-keep (load-from-slot top) (floc u6) (falloc u6) f₀ tb nhw-load-from-slot refl) tb6
-    cf7 : current-frame (falloc u7) ≡ f₀
-    cf7 = trans (exec-abstract-preserves-frame (load-from-slot top) (floc u6) (falloc u6)) cf6
-    hr7 : next-heap-ref (falloc u7) ≡ suc r₀
-    hr7 = trans (exec-abstract-preserves-heap-ref (load-from-slot top) (floc u6) (falloc u6) tt) hr6
+    run10 : FlatSteps prog 10 σ τ
+    run10 = subst (FlatSteps prog 10 σ) eq run₀
 
-    -- row 8: block[1] := the old top
-    rdi8 : sv-as-loc (Inp u7) ≡ just (AtDynamic hb)
-    rdi8 = cong sv-as-loc in7
-    nh8 : halted (floc u8) ≡ false
-    nh8 = exec-abstract-preserves-halted-WF store-indirect-suc (floc u7) (falloc u7) nh7 (AtDynamic hb , rdi8)
-    shp8 : hpr u8 (sucHL hb) ≡ just (SV-Ptr (AtDynamic tp))
-    shp8 = trans (store-ind-suc-result (floc u7) (falloc u7) hb rdi8) (cong just out7)
-    hp8 : hpr u8 hb ≡ just w
-    hp8 = trans (store-ind-suc-preserves-heap (floc u7) (falloc u7) hb hb rdi8 (sucHL-≢ hb)) hp7
-    tb8 : sl u8 tb ≡ just (SV-Ptr (AtDynamic hb))
-    tb8 = trans (sl-sind-suc (floc u7) (falloc u7) hb f₀ tb rdi8) tb7
-    cf8 : current-frame (falloc u8) ≡ f₀
-    cf8 = trans (exec-abstract-preserves-frame store-indirect-suc (floc u7) (falloc u7)) cf7
-    hr8 : next-heap-ref (falloc u8) ≡ suc r₀
-    hr8 = trans (exec-abstract-preserves-heap-ref store-indirect-suc (floc u7) (falloc u7) tt) hr7
+    sil10 : chain-events run10 ≡ []
+    sil10 = trans (chain-events-subst eq run₀) (SR.straight-silent {prog} T10 σ sts span nh0 he evs)
 
-    -- row 9: Output := block
-    wf9 : InstrWF (floc u8) (falloc u8) (load-from-slot tb)
-    wf9 = SV-Ptr (AtDynamic hb) , at-cf (floc u8) (falloc u8) cf8 tb8
-    nh9 : halted (floc u9) ≡ false
-    nh9 = exec-abstract-preserves-halted-WF (load-from-slot tb) (floc u8) (falloc u8) nh8 wf9
-    out9 : Oup u9 ≡ SV-Ptr (AtDynamic hb)
-    out9 = out-lslot tb (floc u8) (falloc u8) _ (proj₂ wf9)
-    hp9 : hpr u9 hb ≡ just w
-    hp9 = trans (hp-keep (load-from-slot tb) (floc u8) (falloc u8) hb nhw-load-from-slot) hp8
-    shp9 : hpr u9 (sucHL hb) ≡ just (SV-Ptr (AtDynamic tp))
-    shp9 = trans (hp-keep (load-from-slot tb) (floc u8) (falloc u8) (sucHL hb) nhw-load-from-slot) shp8
-    cf9 : current-frame (falloc u9) ≡ f₀
-    cf9 = trans (exec-abstract-preserves-frame (load-from-slot tb) (floc u8) (falloc u8)) cf8
-    hr9 : next-heap-ref (falloc u9) ≡ suc r₀
-    hr9 = trans (exec-abstract-preserves-heap-ref (load-from-slot tb) (floc u8) (falloc u8) tt) hr8
+    freshB : ∀ o′ → Live a₀ (AtDynamic (heap-loc rd o′)) → ⊥
+    freshB o′ = FlatAlloc.alloc-fresh {FS} a₀ o′
 
-    -- row 10: top := block
-    nh10 : halted (floc u10) ≡ false
-    nh10 = exec-abstract-preserves-halted-WF (store-at-slot top) (floc u9) (falloc u9) nh9 tt
-    top10 : sl u10 top ≡ just (SV-Ptr (AtDynamic hb))
-    top10 = trans (sl-same top (floc u9) (falloc u9) f₀ cf9) (cong just out9)
-    hp10 : hpr u10 hb ≡ just w
-    hp10 = trans (hp-keep (store-at-slot top) (floc u9) (falloc u9) hb nhw-store-at-slot) hp9
-    shp10 : hpr u10 (sucHL hb) ≡ just (SV-Ptr (AtDynamic tp))
-    shp10 = trans (hp-keep (store-at-slot top) (floc u9) (falloc u9) (sucHL hb) nhw-store-at-slot) shp9
-    cf10 : current-frame (falloc u10) ≡ f₀
-    cf10 = cf9
-    hr10 : next-heap-ref (falloc u10) ≡ suc r₀
-    hr10 = hr9
+    keepH : ∀ l → Live a₀ l → readLoc v10 l ≡ readLoc s₀ l
+    keepH (AtDynamic hl) lv =
+      trans (writeLoc-preserves-other v7 (AtDynamic (sucHL B)) (AtDynamic hl) ptp (λ e′ → freshB 1 (subst (Live a₀) (sym e′) lv)))
+            (writeLoc-preserves-other v5 (AtDynamic B) (AtDynamic hl) w (λ e′ → freshB 0 (subst (Live a₀) (sym e′) lv)))
 
-    -- every other slot
-    slots10 : ∀ j → j ≢ top → j ≢ tv → j ≢ tb → sl u10 j ≡ sl σ j
-    slots10 j j≢top j≢tv j≢tb =
-      trans (sl-other top j (floc u9) (falloc u9) f₀ j≢top)
-      (trans (sl-keep (load-from-slot tb) (floc u8) (falloc u8) f₀ j nhw-load-from-slot refl)
-      (trans (sl-sind-suc (floc u7) (falloc u7) hb f₀ j rdi8)
-      (trans (sl-keep (load-from-slot top) (floc u6) (falloc u6) f₀ j nhw-load-from-slot refl)
-      (trans (sl-sind (floc u5) (falloc u5) hb f₀ j rdi6)
-      (trans (sl-keep (load-from-slot tv) (floc u4) (falloc u4) f₀ j nhw-load-from-slot refl)
-      (trans (sl-keep mov-to-input (floc u3) (falloc u3) f₀ j nhw-mov-to-input refl)
-      (trans (sl-other tb j (floc u2) (falloc u2) f₀ j≢tb)
-      (trans (sl-keep (instr-alloc-heap 2) (floc u1) (falloc u1) f₀ j nhw-instr-alloc-heap refl)
-             (sl-other tv j s₀ a₀ f₀ j≢tv)))))))))
+    kp : Kp a₀ s₀ A₁ v10
+    kp = FlatAlloc.alloc-bft {FS} 2 a₀ , FlatAlloc.alloc-bk {FS} 2 a₀ , keepH
 
-    runA : SRun prog 5 σ u5
-    runA =
-      s-at {prog} {σ} {4} {u5} u1 (nh0 , span 0 _ refl) refl refl tt (
-      s-at {prog} {u1} {3} {u5} u2 (nh1 , span 1 _ refl) refl refl tt (
-      s-at {prog} {u2} {2} {u5} u3 (nh2 , span 2 _ refl) refl refl tt (
-      s-at {prog} {u3} {1} {u5} u4 (nh3 , span 3 _ refl) refl refl tt (
-      s-at {prog} {u4} {0} {u5} u5 (nh4 , span 4 _ refl) refl refl tt s-nil))))
+    slotsS : ∀ j → j ≢ top → j ≢ tv → j ≢ tb → readLoc v10 (AtStack f₀ j) ≡ readLoc s₀ (AtStack f₀ j)
+    slotsS j d1 d2 d3 =
+      trans (writeLoc-preserves-other v9 (AtStack f₀ top) (AtStack f₀ j) blk (ne (λ e′ → d1 (sym e′))))
+     (trans (writeLoc-preserves-other v7 (AtDynamic (sucHL B)) (AtStack f₀ j) ptp (λ ()))
+     (trans (writeLoc-preserves-other v5 (AtDynamic B) (AtStack f₀ j) w (λ ()))
+     (trans (writeLoc-preserves-other v2 (AtStack f₀ tb) (AtStack f₀ j) blk (ne (λ e′ → d3 (sym e′))))
+            (writeLoc-preserves-other s₀ (AtStack f₀ tv) (AtStack f₀ j) w (ne (λ e′ → d2 (sym e′)))))))
 
-    runB : SRun prog 5 u5 u10
-    runB =
-      s-at {prog} {u5} {4} {u10} u6 (nh5 , span 5 _ refl) refl refl tt (
-      s-at {prog} {u6} {3} {u10} u7 (nh6 , span 6 _ refl) refl refl tt (
-      s-at {prog} {u7} {2} {u10} u8 (nh7 , span 7 _ refl) refl refl tt (
-      s-at {prog} {u8} {1} {u10} u9 (nh8 , span 8 _ refl) refl refl tt (
-      s-at {prog} {u9} {0} {u10} u10 (nh9 , span 9 _ refl) refl refl tt s-nil))))
+    below : ∀ loc → BeforeFrontier (record a₀ { next-slot = n }) loc → readLoc v10 loc ≡ readLoc s₀ loc
+    below (AtDynamic hl) (BeforeFrontier.heap-before p′) = keepH (AtDynamic hl) (BeforeFrontier.heap-before p′)
+    below (AtStack fr j) bf =
+      trans (store-slot-preserves-before top v9 (record a₀ { next-slot = n }) A₁ (AtStack fr j) refl n≤top bf)
+     (trans (writeLoc-preserves-other v7 (AtDynamic (sucHL B)) (AtStack fr j) ptp (λ ()))
+     (trans (writeLoc-preserves-other v5 (AtDynamic B) (AtStack fr j) w (λ ()))
+     (trans (store-slot-preserves-before tb v2 (record a₀ { next-slot = n }) A₁ (AtStack fr j) refl n≤tb bf)
+            (store-slot-preserves-before tv s₀ (record a₀ { next-slot = n }) a₀ (AtStack fr j) refl n≤tv bf))))
 
-    abstract
-      seg : SegA a₀ n σ u10
-      seg =
-        segA-∘ (seg-store tv σ refl n≤tv)
-        (segA-∘ (seg-alloc u1)
-        (segA-∘ (seg-store tb u2 refl n≤tb)
-        (segA-∘ (seg-q mov-to-input u3 nhw-mov-to-input refl tt tt)
-        (segA-∘ (seg-q (load-from-slot tv) u4 nhw-load-from-slot refl tt tt)
-        (segA-∘ (seg-sind u5 hb rdi6 ≤-refl)
-        (segA-∘ (seg-q (load-from-slot top) u6 nhw-load-from-slot refl tt tt)
-        (segA-∘ (seg-sind-suc u7 hb rdi8 ≤-refl)
-        (segA-∘ (seg-q (load-from-slot tb) u8 nhw-load-from-slot refl tt tt)
-                (seg-store top u9 cf9 n≤top)))))))))
+    stack10 : StackAt E A₁ v10 top sn (x ∷ xs)
+    stack10 = stack-at B (writeLoc-read-same-stack v9 f₀ top blk)
+                (ch-cons w (FlatAlloc.alloc-live {FS} 2 a₀ 0)
+                   (trans (writeLoc-preserves-other v9 (AtStack f₀ top) (AtDynamic B) blk (λ ()))
+                   (trans (writeLoc-preserves-other v7 (AtDynamic (sucHL B)) (AtDynamic B) ptp (λ e′ → <-irrefl (cong off (sym e′)) (s≤s z≤n)))
+                          (readLoc-writeLoc-same v5 (AtDynamic B) w)))
+                   (et kp ex)
+                   (trans (writeLoc-preserves-other v9 (AtStack f₀ top) (AtDynamic (sucHL B)) blk (λ ()))
+                          (readLoc-writeLoc-same v7 (AtDynamic (sucHL B)) ptp))
+                   (chain-tr et kp (StackAt.chain st)))
+                (trans (keepH _ (StackAt.sent-live st)) (StackAt.sent st))
+                (FlatAlloc.alloc-bft {FS} 2 a₀ _ (StackAt.sent-live st))
+      where off : ValueLocation FS → ℕ
+            off (AtDynamic (heap-loc _ o′)) = o′
+            off (AtStack _ _) = 0
 
-    hb-live : Live (falloc u10) (AtDynamic hb)
-    hb-live = BeforeFrontier.heap-before (≤-reflexive (sym hr10))
-
-    stack10 : StackAt E (falloc u10) (floc u10) top sn (x ∷ xs)
-    stack10 = stack-at hb (at-cf (floc u10) (falloc u10) cf10 top10)
-                (ch-cons w hb-live hp10 (et (seg-kp seg) ex) shp10 (chain-tr et (seg-kp seg) (StackAt.chain st)))
-                (trans (seg-live-read seg (AtDynamic sn) (StackAt.sent-live st)) (StackAt.sent st))
-                (proj₁ (seg-kp seg) _ (StackAt.sent-live st))
-
-    abstract
-      out : Push2Out E prog n top tv tb sn σ x xs
-      out = record
-        { τ = u10 ; run = s-++ {prog} {5} {5} {σ} {u5} {u10} runA runB ; seg = seg ; nh = nh10 ; pc = refl
-        ; ret = refl ; clo = refl ; lnk = refl ; cf = cf10 ; hr = hr10 ; slots = slots10 ; stack = stack10 }
+    out : Push2Out E prog n top tv tb sn σ x xs
+    out = record
+      { τ = τ ; run = run10 , sil10 , trans (log-of run10 sil10) (++-identityʳ _)
+      ; seg = record { mem = below ; cf = refl ; sf = refl ; ns = refl ; href = n≤1+n _ }
+      ; bk = FlatAlloc.alloc-bk {FS} 2 a₀
+      ; nh = h8 ; pc = refl ; ret = refl ; clo = refl ; lnk = refl ; cf = refl ; hr = refl
+      ; slots = slotsS ; stack = stack10 }
 
   push2-run : ∀ {V : Set} (E : ElemP V) (et : ETr E) (prog : AbstractTrace) (n top tv tb : ℕ) (sn : HeapLocation)
               (σ : FlatState) (x : V) (xs : List V)
@@ -468,6 +408,7 @@ module CataStackC {FS : FrameSemantics} where
       lnk   : flink τ ≡ flink σ
       cf    : current-frame (falloc τ) ≡ current-frame (falloc σ)
       hr    : next-heap-ref (falloc τ) ≡ next-heap-ref (falloc σ)
+      alloc-eq : falloc τ ≡ falloc σ
       heap  : ∀ hl → readLoc (floc τ) (AtDynamic hl) ≡ readLoc (floc σ) (AtDynamic hl)
       slots : ∀ j → j ≢ top
             → readLoc (floc τ) (AtStack (current-frame (falloc σ)) j) ≡ readLoc (floc σ) (AtStack (current-frame (falloc σ)) j)
@@ -499,131 +440,98 @@ module CataStackC {FS : FrameSemantics} where
     uncons : ∀ {b} → Chain E a₀ s₀ sn b (x ∷ xs) → b ≡ tp → Top
     uncons (ch-cons w lv r0 e r1 ch) refl = top-is w _ r0 e r1 ch
 
+    module T (w : StoredValue FS) (nb : HeapLocation) (c0 : readLoc s₀ (AtDynamic tp) ≡ just w) (ew : E a₀ s₀ x w)
+             (c1 : readLoc s₀ (AtDynamic (sucHL tp)) ≡ just (SV-Ptr (AtDynamic nb))) (rest : Chain E a₀ s₀ sn nb xs) where
+
+      ptp : StoredValue FS
+      ptp = SV-Ptr (AtDynamic tp)
+      pnb : StoredValue FS
+      pnb = SV-Ptr (AtDynamic nb)
+
+      y1 = record s₀ { regs = writeReg (regs s₀) Output ptp }
+      y2 = proj₁ (exec-abstract mov-to-input y1 a₀)
+      y3 = record y2 { regs = writeReg (regs y2) Output pnb }
+      y4 = proj₁ (exec-abstract (store-at-slot top) y3 a₀)
+      y5 = record y4 { regs = writeReg (regs y4) Output w }
+
+      in1-2 : readReg (regs y2) Input1 ≡ ptp
+      in1-2 = refl
+
+      ld1 : exec-abstract (load-from-slot top) s₀ a₀ ≡ (y1 , a₀)
+      ld1 = cong (λ mv → exec-load-from-slot-with-value mv s₀ a₀) (StackAt.slot st)
+
+      r1 : readLoc y2 (offsetLoc (AtDynamic tp) 1) ≡ just pnb
+      r1 = trans (cong (λ z → readLoc y2 (AtDynamic z)) (off1 tp)) c1
+      ld3 : exec-abstract (load-at 1) y2 a₀ ≡ (y3 , a₀)
+      ld3 = trans (cong (λ v → (SMCore.ExecFinal.exec-load-at-resolved {FS} 1 Output (sv-as-loc v) y2 , a₀)) in1-2)
+                  (cong (λ m → (SMCore.ExecFinal.exec-load-with-value {FS} Output m y2 , a₀)) r1)
+
+      in1-4 : readReg (regs y4) Input1 ≡ ptp
+      in1-4 = cong (λ r → readReg r Input1) (writeLoc-regs y3 (AtStack f₀ top) pnb)
+
+      r0 : readLoc y4 (offsetLoc (AtDynamic tp) 0) ≡ just w
+      r0 = trans (cong (λ z → readLoc y4 (AtDynamic z)) (off0 tp))
+                 (trans (writeLoc-preserves-other y3 (AtStack f₀ top) (AtDynamic tp) pnb (λ ())) c0)
+      ld5 : exec-abstract (load-at 0) y4 a₀ ≡ (y5 , a₀)
+      ld5 = trans (cong (λ v → (SMCore.ExecFinal.exec-load-at-resolved {FS} 0 Output (sv-as-loc v) y4 , a₀)) in1-4)
+                  (cong (λ m → (SMCore.ExecFinal.exec-load-with-value {FS} Output m y4 , a₀)) r0)
+
+      whole : exec-trace (pop2 top) s₀ a₀ ≡ (y5 , a₀)
+      whole =
+        trans (exec-trace-cons (load-from-slot top) _ s₀ a₀ nh0)
+       (trans (cong (λ r → exec-trace (mov-to-input ∷ load-at 1 ∷ store-at-slot top ∷ load-at 0 ∷ []) (proj₁ r) (proj₂ r)) ld1)
+       (trans (exec-trace-cons mov-to-input _ y1 a₀ nh0)
+       (trans (exec-trace-cons (load-at 1) _ y2 a₀ nh0)
+       (trans (cong (λ r → exec-trace (store-at-slot top ∷ load-at 0 ∷ []) (proj₁ r) (proj₂ r)) ld3)
+       (trans (exec-trace-cons (store-at-slot top) _ y3 a₀ nh0)
+       (trans (exec-trace-cons (load-at 0) [] y4 a₀ nh0)
+              (cong (λ r → exec-trace [] (proj₁ r) (proj₂ r)) ld5)))))))
+
+      τ : FlatState
+      τ = record σ { floc = y5 ; fpc = 5 + fpc σ }
+
+      private
+        sts : All StraightStep (pop2 top)
+        sts = (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
+        evs : All (λ i → ∀ fs′ → event-of i fs′ ≡ []) (pop2 top)
+        evs = (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ []
+        he : halted (proj₁ (exec-trace (pop2 top) s₀ a₀)) ≡ false
+        he = trans (cong (λ r → halted (proj₁ r)) whole) nh0
+        run₀ = SR.straight-steps {prog} (pop2 top) σ sts span nh0 he
+        eq : SR.after (pop2 top) σ ≡ τ
+        eq = cong (λ r → record σ { floc = proj₁ r ; falloc = proj₂ r ; fpc = 5 + fpc σ }) whole
+
+      run5 : FlatSteps prog 5 σ τ
+      run5 = subst (FlatSteps prog 5 σ) eq run₀
+
+      sil5 : chain-events run5 ≡ []
+      sil5 = trans (chain-events-subst eq run₀) (SR.straight-silent {prog} (pop2 top) σ sts span nh0 he evs)
+
+      heapK : ∀ hl → readLoc y5 (AtDynamic hl) ≡ readLoc s₀ (AtDynamic hl)
+      heapK hl = writeLoc-preserves-other y3 (AtStack f₀ top) (AtDynamic hl) pnb (λ ())
+
+      kp : Kp a₀ s₀ a₀ y5
+      kp = (λ _ x′ → x′) , (λ _ _ ib → ib) , (λ { (AtDynamic hl) _ → heapK hl })
+
+      slotsS : ∀ j → j ≢ top → readLoc y5 (AtStack f₀ j) ≡ readLoc s₀ (AtStack f₀ j)
+      slotsS j d = writeLoc-preserves-other y3 (AtStack f₀ top) (AtStack f₀ j) pnb (λ e′ → d (sym (cong slot-of e′)))
+
+      below : ∀ loc → BeforeFrontier (record a₀ { next-slot = n }) loc → readLoc y5 loc ≡ readLoc s₀ loc
+      below (AtDynamic hl) _ = heapK hl
+      below (AtStack fr j) bf = store-slot-preserves-before top y3 (record a₀ { next-slot = n }) a₀ (AtStack fr j) refl n≤top bf
+
+      res : Pop2Out E prog n top sn σ x xs
+      res = record
+        { τ = τ ; run = run5 , sil5 , trans (log-of run5 sil5) (++-identityʳ _)
+        ; seg = record { mem = below ; cf = refl ; sf = refl ; ns = refl ; href = ≤-refl }
+        ; nh = nh0 ; pc = refl ; ret = refl ; clo = refl ; lnk = refl ; cf = refl ; hr = refl ; alloc-eq = refl
+        ; heap = heapK ; slots = slotsS ; word = w ; out = refl
+        ; elem = et kp ew
+        ; stack = stack-at nb (writeLoc-read-same-stack y3 f₀ top pnb) (chain-tr et kp rest)
+                    (trans (heapK sn) (StackAt.sent st)) (StackAt.sent-live st) }
+
     tp-cell : Top
     tp-cell = uncons (StackAt.chain st) refl
-
-    module T (w : StoredValue FS) (nb : HeapLocation)
-             (c0 : readLoc s₀ (AtDynamic tp) ≡ just w) (ew : E a₀ s₀ x w)
-             (c1 : readLoc s₀ (AtDynamic (sucHL tp)) ≡ just (SV-Ptr (AtDynamic nb)))
-             (rest : Chain E a₀ s₀ sn nb xs) where
-
-      p1 p2 p3 p4 p5 : FlatState
-      p1 = St (load-from-slot top) σ
-      p2 = St mov-to-input p1
-      p3 = St load-indirect-suc p2
-      p4 = St (store-at-slot top) p3
-      p5 = St load-indirect p4
-
-      Inp Oup : FlatState → StoredValue FS
-      Inp t = readReg (regs (floc t)) Input1
-      Oup t = readReg (regs (floc t)) Output
-
-      sl : FlatState → ℕ → Maybe (StoredValue FS)
-      sl t j = readLoc (floc t) (AtStack f₀ j)
-
-      hk : ∀ (i : AbstractInstr) (t : FlatState) hl → InstrNoHeapWrite i
-         → readLoc (floc (St i t)) (AtDynamic hl) ≡ readLoc (floc t) (AtDynamic hl)
-      hk i t hl nhw = hp-keep i (floc t) (falloc t) hl nhw
-
-      heap5 : ∀ hl → readLoc (floc p5) (AtDynamic hl) ≡ readLoc s₀ (AtDynamic hl)
-      heap5 hl =
-        trans (hk load-indirect p4 hl nhw-load-indirect)
-        (trans (hk (store-at-slot top) p3 hl nhw-store-at-slot)
-        (trans (hk load-indirect-suc p2 hl nhw-load-indirect-suc)
-        (trans (hk mov-to-input p1 hl nhw-mov-to-input)
-               (hk (load-from-slot top) σ hl nhw-load-from-slot))))
-
-      wf1 : InstrWF s₀ a₀ (load-from-slot top)
-      wf1 = SV-Ptr (AtDynamic tp) , StackAt.slot st
-      nh1 : halted (floc p1) ≡ false
-      nh1 = exec-abstract-preserves-halted-WF (load-from-slot top) s₀ a₀ nh0 wf1
-      out1 : Oup p1 ≡ SV-Ptr (AtDynamic tp)
-      out1 = out-lslot top s₀ a₀ _ (StackAt.slot st)
-      cf1 : current-frame (falloc p1) ≡ f₀
-      cf1 = exec-abstract-preserves-frame (load-from-slot top) s₀ a₀
-      hr1 : next-heap-ref (falloc p1) ≡ next-heap-ref a₀
-      hr1 = exec-abstract-preserves-heap-ref (load-from-slot top) s₀ a₀ tt
-
-      nh2 : halted (floc p2) ≡ false
-      nh2 = exec-abstract-preserves-halted-WF mov-to-input (floc p1) (falloc p1) nh1 tt
-      in2 : Inp p2 ≡ SV-Ptr (AtDynamic tp)
-      in2 = trans (in-movin (floc p1) (falloc p1)) out1
-
-      c1-2 : readLoc (floc p2) (AtDynamic (sucHL tp)) ≡ just (SV-Ptr (AtDynamic nb))
-      c1-2 = trans (hk mov-to-input p1 (sucHL tp) nhw-mov-to-input) (trans (hk (load-from-slot top) σ (sucHL tp) nhw-load-from-slot) c1)
-      wf3 : InstrWF (floc p2) (falloc p2) load-indirect-suc
-      wf3 = AtDynamic tp , cong sv-as-loc in2 , SV-Ptr (AtDynamic nb) , c1-2
-      nh3 : halted (floc p3) ≡ false
-      nh3 = exec-abstract-preserves-halted-WF load-indirect-suc (floc p2) (falloc p2) nh2 wf3
-      out3 : Oup p3 ≡ SV-Ptr (AtDynamic nb)
-      out3 = out-lind-suc (floc p2) (falloc p2) (AtDynamic tp) _ in2 c1-2
-      in3 : Inp p3 ≡ SV-Ptr (AtDynamic tp)
-      in3 = trans (load-ind-suc-preserves-input (floc p2) (falloc p2) (AtDynamic tp) _ (cong sv-as-loc in2) c1-2) in2
-      cf3 : current-frame (falloc p3) ≡ f₀
-      cf3 = trans (exec-abstract-preserves-frame load-indirect-suc (floc p2) (falloc p2)) cf1
-      hr3 : next-heap-ref (falloc p3) ≡ next-heap-ref a₀
-      hr3 = trans (exec-abstract-preserves-heap-ref load-indirect-suc (floc p2) (falloc p2) tt) hr1
-
-      nh4 : halted (floc p4) ≡ false
-      nh4 = exec-abstract-preserves-halted-WF (store-at-slot top) (floc p3) (falloc p3) nh3 tt
-      top4 : sl p4 top ≡ just (SV-Ptr (AtDynamic nb))
-      top4 = trans (sl-same top (floc p3) (falloc p3) f₀ cf3) (cong just out3)
-      in4 : Inp p4 ≡ SV-Ptr (AtDynamic tp)
-      in4 = trans (reg-store top (floc p3) (falloc p3) Input1) in3
-
-      c0-4 : readLoc (floc p4) (AtDynamic tp) ≡ just w
-      c0-4 = trans (hk (store-at-slot top) p3 tp nhw-store-at-slot)
-             (trans (hk load-indirect-suc p2 tp nhw-load-indirect-suc)
-             (trans (hk mov-to-input p1 tp nhw-mov-to-input) (trans (hk (load-from-slot top) σ tp nhw-load-from-slot) c0)))
-      wf5 : InstrWF (floc p4) (falloc p4) load-indirect
-      wf5 = AtDynamic tp , cong sv-as-loc in4 , w , c0-4
-      nh5 : halted (floc p5) ≡ false
-      nh5 = exec-abstract-preserves-halted-WF load-indirect (floc p4) (falloc p4) nh4 wf5
-      out5 : Oup p5 ≡ w
-      out5 = out-lind (floc p4) (falloc p4) (AtDynamic tp) w in4 c0-4
-      top5 : sl p5 top ≡ just (SV-Ptr (AtDynamic nb))
-      top5 = trans (sl-keep load-indirect (floc p4) (falloc p4) f₀ top nhw-load-indirect refl) top4
-      cf5 : current-frame (falloc p5) ≡ f₀
-      cf5 = trans (exec-abstract-preserves-frame load-indirect (floc p4) (falloc p4)) cf3
-      hr5 : next-heap-ref (falloc p5) ≡ next-heap-ref a₀
-      hr5 = trans (exec-abstract-preserves-heap-ref load-indirect (floc p4) (falloc p4) tt) hr3
-
-      slots5 : ∀ j → j ≢ top → sl p5 j ≡ sl σ j
-      slots5 j j≢top =
-        trans (sl-keep load-indirect (floc p4) (falloc p4) f₀ j nhw-load-indirect refl)
-        (trans (sl-other top j (floc p3) (falloc p3) f₀ j≢top)
-        (trans (sl-keep load-indirect-suc (floc p2) (falloc p2) f₀ j nhw-load-indirect-suc refl)
-        (trans (sl-keep mov-to-input (floc p1) (falloc p1) f₀ j nhw-mov-to-input refl)
-               (sl-keep (load-from-slot top) s₀ a₀ f₀ j nhw-load-from-slot refl))))
-
-      run5 : SRun prog 5 σ p5
-      run5 =
-        s-at {prog} {σ} {4} {p5} p1 (nh0 , span 0 _ refl) refl refl tt (
-        s-at {prog} {p1} {3} {p5} p2 (nh1 , span 1 _ refl) refl refl tt (
-        s-at {prog} {p2} {2} {p5} p3 (nh2 , span 2 _ refl) refl refl tt (
-        s-at {prog} {p3} {1} {p5} p4 (nh3 , span 3 _ refl) refl refl tt (
-        s-at {prog} {p4} {0} {p5} p5 (nh4 , span 4 _ refl) refl refl tt s-nil))))
-
-      abstract
-        seg : SegA a₀ n σ p5
-        seg =
-          segA-∘ (seg-q (load-from-slot top) σ nhw-load-from-slot refl tt tt)
-          (segA-∘ (seg-q mov-to-input p1 nhw-mov-to-input refl tt tt)
-          (segA-∘ (seg-q load-indirect-suc p2 nhw-load-indirect-suc refl tt tt)
-          (segA-∘ (seg-store top p3 cf3 n≤top)
-                  (seg-q load-indirect p4 nhw-load-indirect refl tt tt))))
-
-      kp : Kp a₀ s₀ (falloc p5) (floc p5)
-      kp = seg-kp seg
-
-      abstract
-        res : Pop2Out E prog n top sn σ x xs
-        res = record
-          { τ = p5 ; run = run5 ; seg = seg ; nh = nh5 ; pc = refl ; ret = refl ; clo = refl ; lnk = refl
-          ; cf = cf5 ; hr = hr5 ; heap = heap5 ; slots = slots5 ; word = w ; out = out5 ; elem = et kp ew
-          ; stack = stack-at nb (at-cf (floc p5) (falloc p5) cf5 top5) (chain-tr et kp rest)
-                      (trans (proj₂ kp _ (StackAt.sent-live st)) (StackAt.sent st))
-                      (proj₁ kp _ (StackAt.sent-live st)) }
 
     out : Pop2Out E prog n top sn σ x xs
     out with tp-cell

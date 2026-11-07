@@ -26,12 +26,13 @@
 
 module Once.Adequacy.ArchCorrectness.ArithSimRiscV64 where
 
-open import Data.Nat using (ℕ; _+_; _*_; _≡ᵇ_)
-open import Data.Nat.Properties using (≡⇒≡ᵇ)
+open import Data.Nat using (ℕ; _+_; _*_; _≡ᵇ_; _<_; _≤_)
+open import Data.Nat.Properties using (≡⇒≡ᵇ; <-irrefl; <-≤-trans; m≤m+n; +-monoʳ-<)
+open import Data.Sum using (_⊎_; [_,_]′)
 open import Data.Bool using (true; false; T)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using ([]; _∷_)
-open import Data.Unit using (tt)
+open import Data.Unit using (tt; ⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
@@ -42,7 +43,7 @@ open import Once.Arith.CmpOp using (cmp-bit)
 open import Once.Spec.Float.Decimal using (round)
 open import Once.Spec.Float.Dyadic using (binary64)
 open XI using (XR0; XR1)
-open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
+open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd; ⌊_⌋ᴾ; flat-off; flat-addr; InputShape; Path)
 open import Once.Target.RiscV64.PhysReg using (Reg; a0; sp; t0)
 open import Once.Arith.Backend.RiscV64.Emit using (arith-reg)
 import Once.CCC.Target.RiscV64.Semantics as RV
@@ -79,41 +80,37 @@ def nothing  = 0
 scratch-addr : State → XScratch → Word
 scratch-addr s sc = readReg (regs s) sp + (8 * XScratch.slot sc)
 
-side-off : Side → Word
-side-off Fst = 0
-side-off Snd = 8
+-- D391: a leaf is one word at its offset
+word-bytes : Word
+word-bytes = 8
 
-open import Once.Adequacy.ArchCorrectness.ArithSimPathLoad State memory def side-off
+open import Once.Adequacy.ArchCorrectness.ArithSimPathLoad State memory def word-bytes
   using (path-load-go; plg-mem-cong)
 
 -- The GLOBAL region model (RuntimeContract linker guarantee) at the riscv layout.
 open import Once.CCC.Target.RiscV64.Layout using (InStack; InHeap; stackAddr-write-preserves-heap)
 open import Once.Adequacy.ArchCorrectness.ArithSimPathLoadRegion
-  InStack InHeap stackAddr-write-preserves-heap def side-off
+  InStack InHeap stackAddr-write-preserves-heap def word-bytes
   using (plg; HeapChase; plg-stack-write-invisible; heapchase-agree)
 
 open import Data.Product using (_×_; _,_)
 
 -- Bridge the (St-based) shared path-load-go to the (bare-memory) region plg
 -- (identical folds; both stuck on the path variable, so a small induction).
-pathloadgo≡plg : ∀ s addr p → path-load-go s addr p ≡ plg (memory s) addr p
-pathloadgo≡plg s addr []          = refl
-pathloadgo≡plg s addr (sd ∷ rest) = pathloadgo≡plg s (def (readMem (memory s) (addr + side-off sd))) rest
+pathloadgo≡plg : ∀ s addr p k → path-load-go s addr p k ≡ plg (memory s) addr p k
+pathloadgo≡plg s addr []      k = refl
+pathloadgo≡plg s addr (x ∷ p) k = refl
 
--- LayoutWF: scratch is in-stack; the input value is heap-resident. The frame's
--- calling-convention contract (discharges pl-inv-spill via the region model).
-WF : State → Set
-WF s = (∀ sc → InStack (scratch-addr s sc)) × (∀ p → HeapChase (memory s) (readReg (regs s) t0) p)
 
-path-load : State → InputPath → Word
-path-load s p = path-load-go s (readReg (regs s) t0) p
+path-load : State → InputPath → Word → Word
+path-load s p k = path-load-go s (readReg (regs s) t0) p k
 
 val-riscv64 : XInstr → State → Reg → Word
 val-riscv64 (XI.Xmov-imm d z)          s _ = W.fromℤ z
 val-riscv64 (XI.Xmov-rr d src)         s _ = rd s src
 val-riscv64 (XI.Xmov-r-m sc src)       s _ = rd s src
 val-riscv64 (XI.Xmov-m-r d sc)         s _ = def (readMem (memory s) (scratch-addr s sc))
-val-riscv64 (XI.Xmov-arg d p)          s _ = path-load s p
+val-riscv64 (XI.Xmov-arg d p kₒ)          s _ = path-load s p kₒ
 val-riscv64 (XI.Xadd-rr d src)         s _ = rd s d W.⊕ rd s src
 val-riscv64 (XI.Xsub-rr d src)         s _ = rd s d W.⊖ rd s src
 val-riscv64 (XI.Ximul-rr d src)        s _ = rd s d W.⊗ rd s src
@@ -139,7 +136,7 @@ val-riscv64 (XI.Xfsubr-rr d src)         s _ = FA.fsub binary64 (rd s src) (rd s
 val-riscv64 (XI.Xfneg-r d)               s _ = FA.fneg binary64 (rd s d)
 val-riscv64 (XI.Xi2f-r d src)            s _ = FA.i2f binary64 (W.toℤ (rd s src))
 val-riscv64 (XI.Xmov-fimm d dc)          s _ = round binary64 dc
-val-riscv64 (XI.Xmov-farg d p)           s _ = path-load s p
+val-riscv64 (XI.Xmov-farg d p kₒ)           s _ = path-load s p kₒ
 val-riscv64 (XI.Xmov-out src)          s _ = rd s src
 
 ------------------------------------------------------------------------
@@ -213,7 +210,7 @@ module _ (N : ℕ) where
   mem-keep (XI.Xmov-imm _ _)         s addr _ = refl
   mem-keep (XI.Xmov-rr _ _)          s addr _ = refl
   mem-keep (XI.Xmov-m-r _ _)         s addr _ = refl
-  mem-keep (XI.Xmov-arg _ _)         s addr _ = refl
+  mem-keep (XI.Xmov-arg _ _ _)         s addr _ = refl
   mem-keep (XI.Xadd-rr _ _)          s addr _ = refl
   mem-keep (XI.Xsub-rr _ _)          s addr _ = refl
   mem-keep (XI.Ximul-rr _ _)         s addr _ = refl
@@ -234,7 +231,7 @@ module _ (N : ℕ) where
   mem-keep (XI.Xfneg-r _)              s addr _ = refl
   mem-keep (XI.Xi2f-r _ _)             s addr _ = refl
   mem-keep (XI.Xmov-fimm _ _)          s addr _ = refl
-  mem-keep (XI.Xmov-farg _ _)          s addr _ = refl
+  mem-keep (XI.Xmov-farg _ _ _)          s addr _ = refl
   mem-keep (XI.Xmov-out _)           s addr _ = refl
 
   mem-spill-hit : ∀ sc' src s
@@ -258,9 +255,9 @@ module _ (N : ℕ) where
   rf-other (XI.Xmov-imm d z) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xmov-imm d z) s) (¬d≡x d x h)
   rf-other (XI.Xmov-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xmov-rr d src) s) (¬d≡x d x h)
   rf-other (XI.Xmov-m-r d sc) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xmov-m-r d sc) s) (¬d≡x d x h)
-  rf-other (XI.Xmov-arg d p) s x h =
-    trans (readReg-wr-a0-arith (writeReg (regs s) (arith-reg d) (V (XI.Xmov-arg d p) s)) x (V (XI.Xmov-arg d p) s))
-          (readReg-wr-arith-other (regs s) d x (V (XI.Xmov-arg d p) s) (¬d≡x d x h))
+  rf-other (XI.Xmov-arg d p kₒ) s x h =
+    trans (readReg-wr-a0-arith (writeReg (regs s) (arith-reg d) (V (XI.Xmov-arg d p kₒ) s)) x (V (XI.Xmov-arg d p kₒ) s))
+          (readReg-wr-arith-other (regs s) d x (V (XI.Xmov-arg d p kₒ) s) (¬d≡x d x h))
   rf-other (XI.Xadd-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xadd-rr d src) s) (¬d≡x d x h)
   rf-other (XI.Xsub-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xsub-rr d src) s) (¬d≡x d x h)
   rf-other (XI.Ximul-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Ximul-rr d src) s) (¬d≡x d x h)
@@ -283,7 +280,7 @@ module _ (N : ℕ) where
   rf-other (XI.Xfneg-r d) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfneg-r d) s) (¬d≡x d x h)
   rf-other (XI.Xi2f-r d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xi2f-r d src) s) (¬d≡x d x h)
   rf-other (XI.Xmov-fimm d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xmov-fimm d src) s) (¬d≡x d x h)
-  rf-other (XI.Xmov-farg d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xmov-farg d src) s) (¬d≡x d x h)
+  rf-other (XI.Xmov-farg d src kₒ) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xmov-farg d src kₒ) s) (¬d≡x d x h)
   rf-other (XI.Xmov-r-m sc src) s x h = refl
   rf-other (XI.Xmov-out src) s x h = readReg-wr-a0-arith (regs s) x (V (XI.Xmov-out src) s)
 
@@ -293,9 +290,9 @@ module _ (N : ℕ) where
   t0-inv (XI.Xmov-imm d z) s = wr-arith-t0 (regs s) d (V (XI.Xmov-imm d z) s)
   t0-inv (XI.Xmov-rr d src) s = wr-arith-t0 (regs s) d (V (XI.Xmov-rr d src) s)
   t0-inv (XI.Xmov-m-r d sc) s = wr-arith-t0 (regs s) d (V (XI.Xmov-m-r d sc) s)
-  t0-inv (XI.Xmov-arg d p) s =
-    trans (wr-a0-t0 (writeReg (regs s) (arith-reg d) (V (XI.Xmov-arg d p) s)) (V (XI.Xmov-arg d p) s))
-          (wr-arith-t0 (regs s) d (V (XI.Xmov-arg d p) s))
+  t0-inv (XI.Xmov-arg d p kₒ) s =
+    trans (wr-a0-t0 (writeReg (regs s) (arith-reg d) (V (XI.Xmov-arg d p kₒ) s)) (V (XI.Xmov-arg d p kₒ) s))
+          (wr-arith-t0 (regs s) d (V (XI.Xmov-arg d p kₒ) s))
   t0-inv (XI.Xadd-rr d src) s = wr-arith-t0 (regs s) d (V (XI.Xadd-rr d src) s)
   t0-inv (XI.Xsub-rr d src) s = wr-arith-t0 (regs s) d (V (XI.Xsub-rr d src) s)
   t0-inv (XI.Ximul-rr d src) s = wr-arith-t0 (regs s) d (V (XI.Ximul-rr d src) s)
@@ -307,7 +304,7 @@ module _ (N : ℕ) where
   t0-inv (XI.Xfneg-r d) s = wr-arith-t0 (regs s) d (V (XI.Xfneg-r d) s)
   t0-inv (XI.Xi2f-r d src2) s = wr-arith-t0 (regs s) d (V (XI.Xi2f-r d src2) s)
   t0-inv (XI.Xmov-fimm d src2) s = wr-arith-t0 (regs s) d (V (XI.Xmov-fimm d src2) s)
-  t0-inv (XI.Xmov-farg d src2) s = wr-arith-t0 (regs s) d (V (XI.Xmov-farg d src2) s)
+  t0-inv (XI.Xmov-farg d src2 kₒ) s = wr-arith-t0 (regs s) d (V (XI.Xmov-farg d src2 kₒ) s)
   t0-inv (XI.Xneg-r d) s = wr-arith-t0 (regs s) d (V (XI.Xneg-r d) s)
   t0-inv (XI.Xshl-rri d src imm) s = wr-arith-t0 (regs s) d (V (XI.Xshl-rri d src imm) s)
   t0-inv (XI.Xdiv-rrr d a b) s = wr-arith-t0 (regs s) d (V (XI.Xdiv-rrr d a b) s)
@@ -321,88 +318,77 @@ module _ (N : ℕ) where
   t0-inv (XI.Xmov-out src) s = wr-a0-t0 (regs s) (V (XI.Xmov-out src) s)
   t0-inv (XI.Xmov-r-m sc src) s = refl
 
-  pl-inv-ns : ∀ i s p → memory (EA.exec1 val-riscv64 N i s) ≡ memory s
-            → path-load (EA.exec1 val-riscv64 N i s) p ≡ path-load s p
-  pl-inv-ns i s p meq =
-    trans (cong (λ a → path-load-go (EA.exec1 val-riscv64 N i s) a p) (t0-inv i s))
-          (plg-mem-cong (EA.exec1 val-riscv64 N i s) s (readReg (regs s) t0) p meq)
+  pl-inv-ns : ∀ i s p k → memory (EA.exec1 val-riscv64 N i s) ≡ memory s
+            → path-load (EA.exec1 val-riscv64 N i s) p k ≡ path-load s p k
+  pl-inv-ns i s p k meq =
+    trans (cong (λ a → path-load-go (EA.exec1 val-riscv64 N i s) a p k) (t0-inv i s))
+          (plg-mem-cong (EA.exec1 val-riscv64 N i s) s (readReg (regs s) t0) p k meq)
 
-  -- arith agrees with the pre-state on every IN-HEAP address (spill writes only
-  -- in-stack scratch — FrameOps; non-spill writes no memory — mem-keep).
-  mem-agree-heap : ∀ i s → (∀ sc → InStack (scratch-addr s sc)) → ∀ a → InHeap a
-                 → readMem (memory (EA.exec1 val-riscv64 N i s)) a ≡ readMem (memory s) a
-  mem-agree-heap (XI.Xmov-r-m sc src) s inStk a inH =
-    stackAddr-write-preserves-heap (memory s) (scratch-addr s sc) (readReg (regs s) (arith-reg src)) a (inStk sc) inH
-  mem-agree-heap (XI.Xmov-imm d z) s inStk a inH = mem-keep (XI.Xmov-imm d z) s a tt
-  mem-agree-heap (XI.Xmov-rr d src) s inStk a inH = mem-keep (XI.Xmov-rr d src) s a tt
-  mem-agree-heap (XI.Xmov-m-r d sc) s inStk a inH = mem-keep (XI.Xmov-m-r d sc) s a tt
-  mem-agree-heap (XI.Xmov-arg d p) s inStk a inH = mem-keep (XI.Xmov-arg d p) s a tt
-  mem-agree-heap (XI.Xadd-rr d src) s inStk a inH = mem-keep (XI.Xadd-rr d src) s a tt
-  mem-agree-heap (XI.Xsub-rr d src) s inStk a inH = mem-keep (XI.Xsub-rr d src) s a tt
-  mem-agree-heap (XI.Ximul-rr d src) s inStk a inH = mem-keep (XI.Ximul-rr d src) s a tt
-  mem-agree-heap (XI.Xfadd-rr d src2) s inStk a inH = mem-keep (XI.Xfadd-rr d src2) s a tt
-  mem-agree-heap (XI.Xfsub-rr d src2) s inStk a inH = mem-keep (XI.Xfsub-rr d src2) s a tt
-  mem-agree-heap (XI.Xfmul-rr d src2) s inStk a inH = mem-keep (XI.Xfmul-rr d src2) s a tt
-  mem-agree-heap (XI.Xfdiv-rrr d a b) s inStk a' inH = mem-keep (XI.Xfdiv-rrr d a b) s a' tt
-  mem-agree-heap (XI.Xfsubr-rr d src2) s inStk a inH = mem-keep (XI.Xfsubr-rr d src2) s a tt
-  mem-agree-heap (XI.Xfneg-r d) s inStk a inH = mem-keep (XI.Xfneg-r d) s a tt
-  mem-agree-heap (XI.Xi2f-r d src2) s inStk a inH = mem-keep (XI.Xi2f-r d src2) s a tt
-  mem-agree-heap (XI.Xmov-fimm d src2) s inStk a inH = mem-keep (XI.Xmov-fimm d src2) s a tt
-  mem-agree-heap (XI.Xmov-farg d src2) s inStk a inH = mem-keep (XI.Xmov-farg d src2) s a tt
-  mem-agree-heap (XI.Xneg-r d) s inStk a inH = mem-keep (XI.Xneg-r d) s a tt
-  mem-agree-heap (XI.Xshl-rri d src imm) s inStk a inH = mem-keep (XI.Xshl-rri d src imm) s a tt
-  mem-agree-heap (XI.Xdiv-rrr d x y) s inStk a inH = mem-keep (XI.Xdiv-rrr d x y) s a tt
-  mem-agree-heap (XI.Xrem-rrr d x y) s inStk a inH = mem-keep (XI.Xrem-rrr d x y) s a tt
-  mem-agree-heap (XI.Xcmp-rrr o d x y) s inStk a inH = mem-keep (XI.Xcmp-rrr o d x y) s a tt
-  mem-agree-heap (XI.Xdiv-safe-rrr d x y) s inStk a inH = mem-keep (XI.Xdiv-safe-rrr d x y) s a tt
-  mem-agree-heap (XI.Xrem-safe-rrr d x y) s inStk a inH = mem-keep (XI.Xrem-safe-rrr d x y) s a tt
-  mem-agree-heap (XI.Xsdiv-pow2-rri d src imm) s inStk a inH = mem-keep (XI.Xsdiv-pow2-rri d src imm) s a tt
-  mem-agree-heap (XI.Xmov-out src) s inStk a inH = mem-keep (XI.Xmov-out src) s a tt
+  -- arith never writes sp (CCC-preserved)
+  sp-inv : ∀ i s → readReg (regs (EA.exec1 val-riscv64 N i s)) sp ≡ readReg (regs s) sp
+  sp-inv i s = sym (a-sp (step-of-preserves i (val-riscv64 i s) (regs s)))
 
-  -- LayoutWF is PRESERVED: scratch-addr is step-invariant (sa-inv), and the
-  -- input chase is heap-resident, which every step's in-heap agreement carries.
-  wf-e1 : ∀ i s → WF s → WF (EA.exec1 val-riscv64 N i s)
-  wf-e1 i s (inStk , inHp) =
-    (λ sc → subst InStack (sym (sa-inv i s sc)) (inStk sc)) ,
-    (λ p → subst (λ ptr → HeapChase (memory (EA.exec1 val-riscv64 N i s)) ptr p) (sym (t0-inv i s))
-                 (heapchase-agree (memory s) (memory (EA.exec1 val-riscv64 N i s)) (readReg (regs s) t0) p
-                                  (mem-agree-heap i s inStk) (inHp p)))
+  -- plan 0.123 α′ (f3c): THE DISPATCH'S LAYOUT (D394), as x86-64's: every input
+  -- leaf the block reads (a typed path, D391) is outside its frame `[sp, sp + N)`
+  -- — the heap below it, a caller's stack above — and every spill inside it.
+  Out : State → InputPath → ℕ → Set
+  Out s []      k = ⊤
+  Out s (x ∷ p) k = (flat-addr 8 (readReg (regs s) t0) (x ∷ p) k < readReg (regs s) sp)
+                  ⊎ (readReg (regs s) sp + N ≤ flat-addr 8 (readReg (regs s) t0) (x ∷ p) k)
 
-  -- pl-inv: non-spill via t0-inv+plg-mem-cong (WF unused); spill via the region
-  -- model (plg-stack-write-invisible) from WF.
-  pl-inv : ∀ i s → WF s → ∀ p → path-load (EA.exec1 val-riscv64 N i s) p ≡ path-load s p
-  pl-inv (XI.Xmov-imm d z) s wf p = pl-inv-ns (XI.Xmov-imm d z) s p refl
-  pl-inv (XI.Xmov-rr d src) s wf p = pl-inv-ns (XI.Xmov-rr d src) s p refl
-  pl-inv (XI.Xmov-m-r d sc) s wf p = pl-inv-ns (XI.Xmov-m-r d sc) s p refl
-  pl-inv (XI.Xmov-arg d q) s wf p = pl-inv-ns (XI.Xmov-arg d q) s p refl
-  pl-inv (XI.Xadd-rr d src) s wf p = pl-inv-ns (XI.Xadd-rr d src) s p refl
-  pl-inv (XI.Xsub-rr d src) s wf p = pl-inv-ns (XI.Xsub-rr d src) s p refl
-  pl-inv (XI.Ximul-rr d src) s wf p = pl-inv-ns (XI.Ximul-rr d src) s p refl
-  pl-inv (XI.Xfadd-rr d src2) s wf p = pl-inv-ns (XI.Xfadd-rr d src2) s p refl
-  pl-inv (XI.Xfsub-rr d src2) s wf p = pl-inv-ns (XI.Xfsub-rr d src2) s p refl
-  pl-inv (XI.Xfmul-rr d src2) s wf p = pl-inv-ns (XI.Xfmul-rr d src2) s p refl
-  pl-inv (XI.Xfdiv-rrr d a b) s wf p = pl-inv-ns (XI.Xfdiv-rrr d a b) s p refl
-  pl-inv (XI.Xfsubr-rr d src2) s wf p = pl-inv-ns (XI.Xfsubr-rr d src2) s p refl
-  pl-inv (XI.Xfneg-r d) s wf p = pl-inv-ns (XI.Xfneg-r d) s p refl
-  pl-inv (XI.Xi2f-r d src2) s wf p = pl-inv-ns (XI.Xi2f-r d src2) s p refl
-  pl-inv (XI.Xmov-fimm d src2) s wf p = pl-inv-ns (XI.Xmov-fimm d src2) s p refl
-  pl-inv (XI.Xmov-farg d src2) s wf p = pl-inv-ns (XI.Xmov-farg d src2) s p refl
-  pl-inv (XI.Xneg-r d) s wf p = pl-inv-ns (XI.Xneg-r d) s p refl
-  pl-inv (XI.Xshl-rri d src imm) s wf p = pl-inv-ns (XI.Xshl-rri d src imm) s p refl
-  pl-inv (XI.Xdiv-rrr d a b) s wf p = pl-inv-ns (XI.Xdiv-rrr d a b) s p refl
-  pl-inv (XI.Xrem-rrr d a b) s wf p = pl-inv-ns (XI.Xrem-rrr d a b) s p refl
-  pl-inv (XI.Xcmp-rrr o d a b) s wf p = pl-inv-ns (XI.Xcmp-rrr o d a b) s p refl
-  pl-inv (XI.Xdiv-safe-rrr d a b) s wf p = pl-inv-ns (XI.Xdiv-safe-rrr d a b) s p refl
-  pl-inv (XI.Xrem-safe-rrr d a b) s wf p = pl-inv-ns (XI.Xrem-safe-rrr d a b) s p refl
-  pl-inv (XI.Xsdiv-pow2-rri d src imm) s wf p = pl-inv-ns (XI.Xsdiv-pow2-rri d src imm) s p refl
-  pl-inv (XI.Xmov-out src) s wf p = pl-inv-ns (XI.Xmov-out src) s p refl
-  pl-inv (XI.Xmov-r-m sc' src) s (inStk , inHp) p =
-    trans (pathloadgo≡plg (EA.exec1 val-riscv64 N (XI.Xmov-r-m sc' src) s) (readReg (regs s) t0) p)
-          (trans (plg-stack-write-invisible (memory s) (scratch-addr s sc') (readReg (regs s) (arith-reg src))
-                    (readReg (regs s) t0) p (inStk sc') (inHp p))
-                 (sym (pathloadgo≡plg s (readReg (regs s) t0) p)))
+  WF : InputShape → State → Set
+  WF sh s = ∀ {n} (p : Path sh n) → Out s ⌊ p ⌋ᴾ (flat-off p)
 
-  open Core
+  out-e1 : ∀ i s p k → Out s p k → Out (EA.exec1 val-riscv64 N i s) p k
+  out-e1 i s []      k _ = tt
+  out-e1 i s (x ∷ p) k o =
+    subst₂′ (λ b t → (flat-addr 8 b (x ∷ p) k < t) ⊎ (t + N ≤ flat-addr 8 b (x ∷ p) k))
+            (sym (t0-inv i s)) (sym (sp-inv i s)) o
+    where subst₂′ : ∀ {A B : Set} (P : A → B → Set) {a a′ b b′} → a ≡ a′ → b ≡ b′ → P a b → P a′ b′
+          subst₂′ P refl refl q = q
+
+  wf-e1 : ∀ {sh} i s → WF sh s → WF sh (EA.exec1 val-riscv64 N i s)
+  wf-e1 i s wf p = out-e1 i s ⌊ p ⌋ᴾ (flat-off p) (wf p)
+
+  -- pl-inv: non-spill via t0-inv + plg-mem-cong; a spill lands inside the
+  -- frame (`InFrame`), so off every input leaf (`Out`).
+  pl-inv : ∀ i s → EA.InFrame N i → ∀ p k → Out s p k → path-load (EA.exec1 val-riscv64 N i s) p k ≡ path-load s p k
+  pl-inv (XI.Xmov-imm d z) s _ p k _ = pl-inv-ns (XI.Xmov-imm d z) s p k refl
+  pl-inv (XI.Xmov-rr d src) s _ p k _ = pl-inv-ns (XI.Xmov-rr d src) s p k refl
+  pl-inv (XI.Xmov-m-r d sc) s _ p k _ = pl-inv-ns (XI.Xmov-m-r d sc) s p k refl
+  pl-inv (XI.Xmov-arg d q kₒ) s _ p k _ = pl-inv-ns (XI.Xmov-arg d q kₒ) s p k refl
+  pl-inv (XI.Xadd-rr d src) s _ p k _ = pl-inv-ns (XI.Xadd-rr d src) s p k refl
+  pl-inv (XI.Xsub-rr d src) s _ p k _ = pl-inv-ns (XI.Xsub-rr d src) s p k refl
+  pl-inv (XI.Ximul-rr d src) s _ p k _ = pl-inv-ns (XI.Ximul-rr d src) s p k refl
+  pl-inv (XI.Xfadd-rr d src2) s _ p k _ = pl-inv-ns (XI.Xfadd-rr d src2) s p k refl
+  pl-inv (XI.Xfsub-rr d src2) s _ p k _ = pl-inv-ns (XI.Xfsub-rr d src2) s p k refl
+  pl-inv (XI.Xfmul-rr d src2) s _ p k _ = pl-inv-ns (XI.Xfmul-rr d src2) s p k refl
+  pl-inv (XI.Xfdiv-rrr d a b) s _ p k _ = pl-inv-ns (XI.Xfdiv-rrr d a b) s p k refl
+  pl-inv (XI.Xfsubr-rr d src2) s _ p k _ = pl-inv-ns (XI.Xfsubr-rr d src2) s p k refl
+  pl-inv (XI.Xfneg-r d) s _ p k _ = pl-inv-ns (XI.Xfneg-r d) s p k refl
+  pl-inv (XI.Xi2f-r d src2) s _ p k _ = pl-inv-ns (XI.Xi2f-r d src2) s p k refl
+  pl-inv (XI.Xmov-fimm d src2) s _ p k _ = pl-inv-ns (XI.Xmov-fimm d src2) s p k refl
+  pl-inv (XI.Xmov-farg d src2 kₒ) s _ p k _ = pl-inv-ns (XI.Xmov-farg d src2 kₒ) s p k refl
+  pl-inv (XI.Xneg-r d) s _ p k _ = pl-inv-ns (XI.Xneg-r d) s p k refl
+  pl-inv (XI.Xshl-rri d src imm) s _ p k _ = pl-inv-ns (XI.Xshl-rri d src imm) s p k refl
+  pl-inv (XI.Xdiv-rrr d a b) s _ p k _ = pl-inv-ns (XI.Xdiv-rrr d a b) s p k refl
+  pl-inv (XI.Xrem-rrr d a b) s _ p k _ = pl-inv-ns (XI.Xrem-rrr d a b) s p k refl
+  pl-inv (XI.Xcmp-rrr o d a b) s _ p k _ = pl-inv-ns (XI.Xcmp-rrr o d a b) s p k refl
+  pl-inv (XI.Xdiv-safe-rrr d a b) s _ p k _ = pl-inv-ns (XI.Xdiv-safe-rrr d a b) s p k refl
+  pl-inv (XI.Xrem-safe-rrr d a b) s _ p k _ = pl-inv-ns (XI.Xrem-safe-rrr d a b) s p k refl
+  pl-inv (XI.Xsdiv-pow2-rri d src imm) s _ p k _ = pl-inv-ns (XI.Xsdiv-pow2-rri d src imm) s p k refl
+  pl-inv (XI.Xmov-out src) s _ p k _ = pl-inv-ns (XI.Xmov-out src) s p k refl
+  pl-inv (XI.Xmov-r-m sc′ src′) s inf []      k _  = refl
+  pl-inv (XI.Xmov-r-m sc′ src′) s inf (x ∷ p) k wf =
+    cong def (readMem-writeMem-other (memory s) (scratch-addr s sc′) _ _ ne)
+    where
+      sp′ = readReg (regs s) sp
+      ne : ¬ (flat-addr 8 (readReg (regs s) t0) (x ∷ p) k ≡ scratch-addr s sc′)
+      ne eq = [ (λ lo → <-irrefl eq (<-≤-trans lo (m≤m+n sp′ (8 * XScratch.slot sc′))))
+              , (λ hi → <-irrefl (sym eq) (<-≤-trans (+-monoʳ-< sp′ inf) hi)) ]′ wf
+
+  -- the instance, by name (no `public` re-export, plan 0.92)
+  module Sim = Core
     State Reg
     rr mem
     arith-reg a0
@@ -412,19 +398,19 @@ module _ (N : ℕ) where
     (λ _ → refl) (λ _ _ _ → refl)
     sa-inv sa-inj mem-keep mem-spill-hit mem-spill-miss
     WF wf-e1
-    pl-inv
+    (EA.InFrame N) (λ i s wf ok p → pl-inv i s ok ⌊ p ⌋ᴾ (flat-off p) (wf p))
     rf-other
     -- rt-mov-imm rt-mov-rr rt-reload
     (λ d z s   → readReg-wr-arith-same (regs s) d _)
     (λ d src s  → readReg-wr-arith-same (regs s) d _)
     (λ d sc s   → readReg-wr-arith-same (regs s) d _)
     -- rt-arg (peel a0)
-    (λ d p s    → trans (readReg-wr-a0-arith (writeReg (regs s) (arith-reg d) _) d _)
+    (λ d p k s  → trans (readReg-wr-a0-arith (writeReg (regs s) (arith-reg d) _) d _)
                         (readReg-wr-arith-same (regs s) d _))
     -- rt-farg — the SAME memory read, discharged the same way. A float load is
     -- a load; only the abstract reading of the bytes differed, and the typed
     -- path decides that now.
-    (λ d p s    → trans (readReg-wr-a0-arith (writeReg (regs s) (arith-reg d) _) d _)
+    (λ d p k s  → trans (readReg-wr-a0-arith (writeReg (regs s) (arith-reg d) _) d _)
                         (readReg-wr-arith-same (regs s) d _))
     -- rt-add rt-sub rt-imul
     (λ d src s  → readReg-wr-arith-same (regs s) d _)
@@ -458,4 +444,116 @@ module _ (N : ℕ) where
     (λ d dc s   → readReg-wr-arith-same (regs s) d _)
     -- rt-fdiv: three-address, so four binders rather than three.
     (λ d a b s  → readReg-wr-arith-same (regs s) d _)
-    public
+
+------------------------------------------------------------------------
+-- plan 0.123 α′ (f3c): THE BLOCK'S ENTRY STATE. The dispatch enters the
+-- block's frame (`call-frame`, D394): `ra` linked, `sp` lowered by `8n`, no
+-- memory written. Each typed leaf of the input is the input register `t0` (a
+-- scalar, D396/D398) or the word at `t0 + 8k` (D391) below that frame.
+------------------------------------------------------------------------
+open import Once.Arith.Backend.RiscV64.Dispatch using (call-frame; dispatch-arith)
+open import Once.Arith.Machine.Shape using (⟦_⟧S; IntsBelow)
+open import Once.Arith.Machine.AbsState using (init)
+open import Data.Nat using (_∸_)
+open import Data.Product using (proj₁; proj₂)
+
+EntryLeaf : ℕ → State → InputPath → ℕ → ℕ → Set
+EntryLeaf n s []      k w = readReg (regs s) t0 ≡ w
+EntryLeaf n s (x ∷ q) k w = (readMem (memory s) (readReg (regs s) t0 + 8 * k) ≡ just w)
+                          × (readReg (regs s) t0 + 8 * k < readReg (regs s) sp ∸ 8 * n)
+
+entry-at : ∀ n s {sh} (env : ⟦ sh ⟧S)
+         → (∀ {m} (p : Path sh m) → EntryLeaf n s ⌊ p ⌋ᴾ (flat-off p) (Sim.leafWord (8 * n) p env))
+         → Sim.R-input (8 * n) (init env) (call-frame val-riscv64 n s)
+           × WF (8 * n) sh (call-frame val-riscv64 n s)
+entry-at n s {sh} env leaf = ri , wf
+  where
+    ri-at : ∀ q k w → EntryLeaf n s q k w → path-load (call-frame val-riscv64 n s) q k ≡ w
+    ri-at []      k w e       = e
+    ri-at (x ∷ q) k w (m , _) = cong def m
+    out-at : ∀ q k w → EntryLeaf n s q k w → Out (8 * n) (call-frame val-riscv64 n s) q k
+    out-at []      k w _        = tt
+    out-at (x ∷ q) k w (_ , lt) = Data.Sum.inj₁ lt
+      where import Data.Sum
+    ri : Sim.R-input (8 * n) (init env) (call-frame val-riscv64 n s)
+    ri p = ri-at ⌊ p ⌋ᴾ (flat-off p) _ (leaf p)
+    wf : WF (8 * n) sh (call-frame val-riscv64 n s)
+    wf p = out-at ⌊ p ⌋ᴾ (flat-off p) _ (leaf p)
+
+------------------------------------------------------------------------
+-- plan 0.123 α′ (f3d): THE VALUE (as x86-64's).
+------------------------------------------------------------------------
+open import Once.Arith.Machine.IR using (MArithIR)
+open import Once.Arith.Type using (NInt; NFloat)
+open import Once.Arith.Machine.Compile using (compile-abs; normalize; required-scratch)
+open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
+open import Once.Arith.Backend.XInstr.SpillBound using (SpillsWF; SpillOK; block-spills)
+open import Once.Arith.SigOp.BlockSem using (block-semM)
+open import Once.Arith.SigOp.BlockSemBridge using (toWord; eval≡semM)
+import Once.Arith.Machine.CompileCorrect as CC
+open import Once.Spec.Numerics using (module TargetNum)
+open import Once.SigOp.Words using (IM)
+open import Data.Nat.Properties using (*-monoʳ-<)
+
+private
+  tn = arch-numerics riscv64
+
+  in-frame : ∀ n i → SpillOK n i → EA.InFrame (8 * n) i
+  in-frame n (XI.Xmov-r-m sc src) lt = *-monoʳ-< 8 lt
+  in-frame n (XI.Xmov-imm _ _) _ = tt
+  in-frame n (XI.Xmov-rr _ _) _ = tt
+  in-frame n (XI.Xmov-m-r _ _) _ = tt
+  in-frame n (XI.Xmov-arg _ _ _) _ = tt
+  in-frame n (XI.Xadd-rr _ _) _ = tt
+  in-frame n (XI.Xsub-rr _ _) _ = tt
+  in-frame n (XI.Ximul-rr _ _) _ = tt
+  in-frame n (XI.Xneg-r _) _ = tt
+  in-frame n (XI.Xshl-rri _ _ _) _ = tt
+  in-frame n (XI.Xdiv-rrr _ _ _) _ = tt
+  in-frame n (XI.Xrem-rrr _ _ _) _ = tt
+  in-frame n (XI.Xcmp-rrr _ _ _ _) _ = tt
+  in-frame n (XI.Xdiv-safe-rrr _ _ _) _ = tt
+  in-frame n (XI.Xrem-safe-rrr _ _ _) _ = tt
+  in-frame n (XI.Xsdiv-pow2-rri _ _ _) _ = tt
+  in-frame n (XI.Xfadd-rr _ _) _ = tt
+  in-frame n (XI.Xfsub-rr _ _) _ = tt
+  in-frame n (XI.Xfmul-rr _ _) _ = tt
+  in-frame n (XI.Xfdiv-rrr _ _ _) _ = tt
+  in-frame n (XI.Xfsubr-rr _ _) _ = tt
+  in-frame n (XI.Xfneg-r _) _ = tt
+  in-frame n (XI.Xi2f-r _ _) _ = tt
+  in-frame n (XI.Xmov-fimm _ _) _ = tt
+  in-frame n (XI.Xmov-farg _ _ _) _ = tt
+  in-frame n (XI.Xmov-out _) _ = tt
+
+  in-frames : ∀ n xs → SpillsWF n xs → Sim.IOksWF (8 * n) xs
+  in-frames n []       _        = tt
+  in-frames n (i ∷ is) (ok , w) = in-frame n i ok , in-frames n is w
+
+block-value-riscv64 : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) (s : State)
+  → (∀ {m} (p : Path sh m) → EntryLeaf (required-scratch (normalize e)) s ⌊ p ⌋ᴾ (flat-off p)
+                                (Sim.leafWord (8 * required-scratch (normalize e)) p env))
+  → IntsBelow (IM tn) sh env
+  → readReg (regs (dispatch-arith val-riscv64 (emit-program (compile-abs (normalize e))) (required-scratch (normalize e)) s)) a0
+    ≡ block-semM e tn (toWord tn sh env)
+block-value-riscv64 {sh} e env s leaf ib =
+  trans (Sim.arith-block-correct (8 * n) (normalize e) env (call-frame val-riscv64 n s)
+           (proj₂ ent) (in-frames n _ (block-spills (normalize e))) (proj₁ ent))
+    (trans (sym (eval≡semM tn (normalize e) env))
+      (trans (CC.normalize-preserves (TargetNum.int-bits tn) (TargetNum.float-format tn) 63 refl e env ib)
+             (eval≡semM tn e env)))
+  where
+    n = required-scratch (normalize e)
+    ent = entry-at n s env leaf
+
+block-value-riscv64-flt : ∀ {sh} (e : MArithIR sh NFloat) (env : ⟦ sh ⟧S) (s : State)
+  → (∀ {m} (p : Path sh m) → EntryLeaf (required-scratch e) s ⌊ p ⌋ᴾ (flat-off p)
+                                (Sim.leafWord (8 * required-scratch e) p env))
+  → readReg (regs (dispatch-arith val-riscv64 (emit-program (compile-abs e)) (required-scratch e) s)) a0
+    ≡ block-semM e tn (toWord tn sh env)
+block-value-riscv64-flt {sh} e env s leaf =
+  Sim.arith-block-correct (8 * n) e env (call-frame val-riscv64 n s)
+    (proj₂ ent) (in-frames n _ (block-spills e)) (proj₁ ent)
+  where
+    n = required-scratch e
+    ent = entry-at n s env leaf

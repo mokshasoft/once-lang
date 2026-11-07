@@ -144,7 +144,8 @@ open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; Slot)
 open MemOps {FS} using (writeLoc; writeLocToHeap; writeLocToStack; writeHeapMem
                        ; readLoc; writeLoc-read-same-stack; writeLoc-preserves-other)
 open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value
-                          ; exec-store-via-resolved; exec-store-suc-via-resolved)
+                          ; exec-store-via-resolved; exec-store-suc-via-resolved
+                          ; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open FrameSemantics FS using (shift-frame)
@@ -572,8 +573,13 @@ record FlatCorr (hv : HeapView) (fs : FlatState) (s : State) : Set where
     dom-sized : ∀ (hl : HeapLocation)
               → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))
               → HDom hv hl
-    heap-eq : ∀ (hl : HeapLocation) → HDom hv hl →
-              readMem (memory s) (haddr hv hl) ≡ enc-maybe hv (heapMem (floc fs) hl)
+    -- ONE DIRECTION ONLY (plan 0.123 A.4 step 4), as the stack's `Window`: the
+    -- concrete cell matches wherever the ABSTRACT cell is WRITTEN. An unwritten
+    -- cell is never read (reading one faults, and the run never faults —
+    -- `RunWF.heap-load-written`), so nothing is claimed about it, and a fresh
+    -- block needs no concrete freshness.
+    heap-eq : ∀ (hl : HeapLocation) {v : StoredValue FS} → heapMem (floc fs) hl ≡ just v →
+              readMem (memory s) (haddr hv hl) ≡ just (enc-sv hv v)
     -- BOUNDED to the current frame's reserved slots (k < frame-slots). An
     -- UNBOUNDED ∀ k would be unsatisfiable (it would claim the CALLER's slots,
     -- above rsp, holding live data, ≡ the abstract `nothing`). The bound is the
@@ -597,18 +603,10 @@ record FlatCorr (hv : HeapView) (fs : FlatState) (s : State) : Set where
     -- composite is the top-level `sep` below, so every disjointness consumer is
     -- unchanged.
     lo-le : lo hv ≤ rreg s sp-reg
-    -- THE VIRGIN REGION (plan 0.54 rung D step 3): between the heap frontier and
-    -- the deepest `%rsp` ever reached, the concrete memory is UNMAPPED. This is
-    -- what an allocation's freshness rests on: the `n` words at the frontier are
-    -- in this region (by the site's room premise), so they read as `nothing` —
-    -- previously the postulate `alloc-heap-fresh-x86`, now a consequence.
-    --
-    -- It is preserved by every step because every WRITE lands outside the region:
-    -- a heap write is at a mapped cell (`dom-below` ⇒ below `hfront`), a stack
-    -- write is at `%rsp + 8k ≥ %rsp ≥ lo`, and the two instructions that lower
-    -- `%rsp` lower `lo` with it (`descend-view`) BEFORE writing.
-    untouched : ∀ (a : ℕ) → hfront hv ≤ a → a < lo hv
-              → readMem (memory s) a ≡ nothing
+    -- (`untouched`, the VIRGIN REGION `[hfront, lo)` read as unmapped, STOOD
+    -- HERE: an allocation's freshness rested on it. Since `heap-eq` claims only
+    -- written cells, a fresh block owes nothing, and it went — plan 0.123 A.4
+    -- step 4.)
     -- EVERY LIVE FRAME (Plan 0.63, D085) — see `StackWindows`. The bound per
     -- frame is its OWN reservation (`frame-slots` for the current one, the
     -- remembered count for each saved caller): an unbounded ∀ k would be
@@ -690,22 +688,47 @@ module _ {hv : HeapView} {fs : FlatState} {s s' : State} {ρ : Role} {v : Word}
   keep-halt : xhalted s' ≡ halted (floc fs)
   keep-halt = trans (keeps-halt st) (halt-eq corr)
 
-  keep-heap : ∀ (hl : HeapLocation) → HDom hv hl
-            → readMem (memory s') (haddr hv hl) ≡ enc-maybe hv (heapMem (floc fs) hl)
+  keep-heap : ∀ (hl : HeapLocation) {v : StoredValue FS} → heapMem (floc fs) hl ≡ just v
+            → readMem (memory s') (haddr hv hl) ≡ just (enc-sv hv v)
   keep-heap hl d = trans (cong (λ m → readMem m (haddr hv hl)) (keeps-mem st)) (heap-eq corr hl d)
 
   keep-lo-le : ¬ (role-sp ≡ ρ) → lo hv ≤ rreg s' sp-reg
   keep-lo-le ne = subst (lo hv ≤_) (sym (off-role st role-sp ne)) (lo-le corr)
 
-  keep-untouched : ∀ (a : ℕ) → hfront hv ≤ a → a < lo hv
-                 → readMem (memory s') a ≡ nothing
-  keep-untouched a f<a a<lo =
-    trans (cong (λ m → readMem m a) (keeps-mem st)) (untouched corr a f<a a<lo)
-
   keep-stack : StackWindows (amap hv) (memory s') (stackMem (floc fs))
                             (lo hv) (frames-of (falloc fs))
   keep-stack = subst (λ m → StackWindows (amap hv) m (stackMem (floc fs)) (lo hv) (frames-of (falloc fs)))
                      (sym (keeps-mem st)) (stack-eq corr)
+
+------------------------------------------------------------------------
+-- Plan 0.123 A.4: a run that writes NO role's register, nor memory, nor the
+-- halt flag (the room check that fits: a scratch register and the flags). The
+-- whole correspondence carries over.
+------------------------------------------------------------------------
+record KeepsRoles (s s' : State) : Set where
+  field
+    kr-role : ∀ ρ → rreg s' (reg-of ρ) ≡ rreg s (reg-of ρ)
+    kr-mem  : memory s' ≡ memory s
+    kr-halt : xhalted s' ≡ xhalted s
+open KeepsRoles
+
+keep-all : ∀ {hv : HeapView} {fs : FlatState} {s s' : State}
+         → FlatCorr hv fs s → KeepsRoles s s' → FlatCorr hv fs s'
+keep-all {hv} {fs} corr kr = record
+  { in1-eq      = trans (kr-role kr role-in1) (in1-eq corr)
+  ; out-eq      = trans (kr-role kr role-out) (out-eq corr)
+  ; clos-eq     = trans (kr-role kr role-clos) (clos-eq corr)
+  ; halt-eq     = trans (kr-halt kr) (halt-eq corr)
+  ; sp-eq       = trans (kr-role kr role-sp) (sp-eq corr)
+  ; frontier-eq = trans (kr-role kr role-heap) (frontier-eq corr)
+  ; dom-fresh   = dom-fresh corr
+  ; dom-written = dom-written corr
+  ; dom-sized   = dom-sized corr
+  ; heap-eq     = λ hl d → trans (cong (λ m → readMem m (haddr hv hl)) (kr-mem kr)) (heap-eq corr hl d)
+  ; lo-le       = subst (lo hv ≤_) (sym (kr-role kr role-sp)) (lo-le corr)
+  ; stack-eq    = subst (λ m → StackWindows (amap hv) m (stackMem (floc fs)) (lo hv) (frames-of (falloc fs)))
+                        (sym (kr-mem kr)) (stack-eq corr)
+  }
 
 ------------------------------------------------------------------------
 -- …and the same for a MEMORY write. `SetsRole`'s mirror: one cell changes,
@@ -862,14 +885,6 @@ descend-view hv lo' _ front-lo' = record
 -- unfolds to `enc-sv-at (amap hv)` on both sides. That is the whole reason the
 -- wrapper above exists.)
 
--- `untouched` at the descended view: the region only shrank.
-untouched-descend : ∀ {hv : HeapView} {fs : FlatState} {s : State}
-                      (lo' : ℕ) (le : lo' ≤ lo hv) (fl : hfront hv ≤ lo')
-                    (corr : FlatCorr hv fs s)
-                  → ∀ (a : ℕ) → hfront hv ≤ a → a < lo'
-                  → readMem (memory s) a ≡ nothing
-untouched-descend lo' le fl corr a fa a<lo' = untouched corr a fa (<-≤-trans a<lo' le)
-
 ------------------------------------------------------------------------
 -- Per-instruction simulation (Plan 0.32 M3 Phase D). Each lemma: one
 -- exec-flat step on `i` corresponds to running compile-abstract i on the
@@ -895,7 +910,7 @@ sim-mov-to-output {hv} fs s s' corr st = record
   ; out-eq  = trans (at-role st) (in1-eq corr)
   ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr
   ; heap-eq = keep-heap corr st
-  ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st
+  ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st
   }
 
 -- Plan 0.107: THE HEAP REGISTER AT THE HEAP'S BASE — the start's first half
@@ -913,7 +928,7 @@ sim-heap-base {hv} fs s s' b corr st h0 = record
   ; frontier-eq = trans (at-role st) (sym h0)
   ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr
   ; heap-eq = keep-heap corr st
-  ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st
+  ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st
   }
 
 -- mov-to-input (Input1 := Output) ↔ `mov rdi, rax`.
@@ -922,7 +937,7 @@ sim-mov-to-input : {hv : HeapView} (fs : FlatState) (s s' : State) → FlatCorr 
   → FlatCorr hv (flat-exec-instr mov-to-input [] fs) s'
 sim-mov-to-input {hv} fs s s' corr st = record
   { in1-eq = trans (at-role st) (out-eq corr) ; out-eq = keep-out corr st (λ ())
-  ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+  ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
 
 -- instr-load-tag-lit n (Output := SV-Tag n) ↔ `mov rax, n`. enc(SV-Tag n)=n, so
 -- the new field IS `at-role` with no transport at all.
@@ -931,7 +946,7 @@ sim-load-tag-lit : {hv : HeapView} (n : ℕ) (fs : FlatState) (s s' : State) →
   → FlatCorr hv (flat-exec-instr (instr-load-tag-lit n) [] fs) s'
 sim-load-tag-lit {hv} n fs s s' corr st = record
   { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
-  ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+  ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
 
 -- plan 0.108: `instr-reg-op out-nz` (Output := its word's truth, as a tag):
 -- the arch computes `word ≠ 0` into the Output role. The premise is the
@@ -944,7 +959,7 @@ sim-out-nz {hv} w fs s s' corr eq st = record
   { in1-eq = keep-in1 corr st (λ ())
   ; out-eq = trans (at-role st) (cong (λ v → enc-sv hv (sv-nz v)) (sym eq))
 
-  ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+  ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
 
 
 
@@ -995,7 +1010,7 @@ sim-load-indirect-suc {hv} hl w fs s s' corr i-eq h-eq st =
     corr-clean : FlatCorr hv cleanFlat s'
     corr-clean = record
       { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
-      ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+      ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
 
 ------------------------------------------------------------------------
 -- Heap load (no offset): load-indirect (Output := *Input1) ↔
@@ -1022,7 +1037,7 @@ sim-load-indirect {hv} hl w fs s s' corr i-eq h-eq st =
     corr-clean : FlatCorr hv cleanFlat s'
     corr-clean = record
       { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
-      ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+      ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
 
 ------------------------------------------------------------------------
 -- STACK LOAD: `load-from-slot slot` (Output := stack[current-frame, slot]) ↔
@@ -1051,7 +1066,7 @@ sim-load-from-slot {hv} slot w fs s s' corr st-eq st =
     corr-clean : FlatCorr hv cleanFlat s'
     corr-clean = record
       { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
-      ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+      ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
 
 ------------------------------------------------------------------------
 -- Heap STORES (Plan 0.32 Phase D). A heap write ↔ x86 `mov [addr], reg`.
@@ -1059,37 +1074,6 @@ sim-load-from-slot {hv} slot w fs s s' corr st-eq st =
 -- ≟HL) to the x86 memory update `writeMem` (decides addresses by ≡ᵇ).
 -- They agree because haddr hv is INJECTIVE (the memory injection).
 ------------------------------------------------------------------------
--- A write OUTSIDE the virgin region leaves it virgin (plan 0.54 rung D step 3).
--- The `≢` is what each writing instruction supplies: a heap write is below the
--- frontier (`dom-below`), a stack write is at or above `lo` (`lo-le`).
-untouched-write : ∀ {s s' : State} (waddr : ℕ) (v' : Word) (a : ℕ)
-                → SetsMem s s' waddr v' → (a ≡ waddr → ⊥)
-                → readMem (memory s) a ≡ nothing
-                → readMem (memory s') a ≡ nothing
-untouched-write waddr v' a sm ≢w pre = trans (off-addr sm a ≢w) pre
-
--- A HEAP store misses the virgin region: its target is a mapped cell, hence
--- strictly below the frontier, hence below every address the region contains.
-untouched-heap-store : ∀ {hv : HeapView} {fs : FlatState} {s s' : State}
-                         (hl : HeapLocation) (v' : Word) → HDom hv hl → FlatCorr hv fs s
-                     → SetsMem s s' (haddr hv hl) v'
-                     → ∀ (a : ℕ) → hfront hv ≤ a → a < lo hv
-                     → readMem (memory s') a ≡ nothing
-untouched-heap-store {hv} {fs} {s} hl v' d corr sm a fa a<lo =
-  untouched-write (haddr hv hl) v' a sm
-    (λ eq → <-irrefl refl (<-≤-trans (subst (_< hfront hv) (sym eq) (dom-below hv d)) fa))
-    (untouched corr a fa a<lo)
-
--- A STACK store misses it from the other side: its target is at or above `lo`
--- (`%rsp + 8k ≥ %rsp ≥ lo`), and the region stops strictly below `lo`.
-untouched-stack-store : ∀ {hv : HeapView} {fs : FlatState} {s s' : State}
-                          (waddr : ℕ) (v' : Word) → lo hv ≤ waddr → FlatCorr hv fs s
-                      → SetsMem s s' waddr v'
-                      → ∀ (a : ℕ) → hfront hv ≤ a → a < lo hv
-                      → readMem (memory s') a ≡ nothing
-untouched-stack-store {hv} {fs} {s} waddr v' lo≤w corr sm a fa a<lo =
-  untouched-write waddr v' a sm (<⇒≢ (<-≤-trans a<lo lo≤w)) (untouched corr a fa a<lo)
-
 -- The store correspondence: writing `v` at heap cell `hl` (x86: haddr hv hl)
 -- preserves the heap agreement at every other cell, and installs enc-sv v
 -- at `hl`. Case-split on ≟HL; enc-hl-inj turns cell-distinctness into
@@ -1101,16 +1085,17 @@ untouched-stack-store {hv} {fs} {s} waddr v' lo≤w corr sm a fa a<lo =
 store-heap-eq : ∀ (hv : HeapView) (hl : HeapLocation) (v : StoredValue FS) (s s' : State) (ls : LocState FS)
   → SetsMem s s' (haddr hv hl) (enc-sv hv v)
   → HDom hv hl
-  → (∀ hl' → HDom hv hl' → readMem (memory s) (haddr hv hl') ≡ enc-maybe hv (heapMem ls hl'))
-  → ∀ hl' → HDom hv hl' → readMem (memory s') (haddr hv hl')
-            ≡ enc-maybe hv (writeHeapMem (heapMem ls) hl v hl')
+  → (∀ (hl' : HeapLocation) {w : StoredValue FS} → heapMem ls hl' ≡ just w → HDom hv hl')
+  → (∀ hl' {w} → heapMem ls hl' ≡ just w → readMem (memory s) (haddr hv hl') ≡ just (enc-sv hv w))
+  → ∀ hl' {w} → writeHeapMem (heapMem ls) hl v hl' ≡ just w
+  → readMem (memory s') (haddr hv hl') ≡ just (enc-sv hv w)
 -- (writeHeapMem is with-free now, so the `with hl ≟HL hl'` below reduces
 -- it directly — no read-after-write accessor lemmas needed.)
-store-heap-eq hv hl v s s' ls sm live-hl pre hl' live-hl' with hl ≟HL hl'
-... | yes refl = at-addr sm
+store-heap-eq hv hl v s s' ls sm live-hl dw pre hl' eq with hl ≟HL hl'
+store-heap-eq hv hl v s s' ls sm live-hl dw pre .hl refl | yes refl = at-addr sm
 ... | no ¬p = trans (off-addr sm (haddr hv hl')
-                      (λ q → ¬p (sym (haddr-inj hv live-hl' live-hl q))))
-                    (pre hl' live-hl')
+                      (λ q → ¬p (sym (haddr-inj hv (dw hl' eq) live-hl q))))
+                    (pre hl' eq)
 
 -- COVERAGE under a HEAP store (2026-07-30 vacuity fix): the written cell is in the
 -- domain by the store's own liveness premise, every other cell is unchanged. Same
@@ -1330,9 +1315,8 @@ sim-store-indirect {hv} hl fs s s' corr i-eq live-hl guard sm =
       ; clos-eq = mkeep-clos corr sm ; halt-eq = mkeep-halt corr sm ; sp-eq = mkeep-sp corr sm ; frontier-eq = mkeep-heap-reg corr sm ; dom-fresh = dom-fresh corr
       ; dom-written = store-dom-written hv hl v (floc fs) live-hl (dom-written corr)
       ; dom-sized = dom-sized corr
-      ; heap-eq = store-heap-eq hv hl v s s' (floc fs) sm live-hl (heap-eq corr)
+      ; heap-eq = store-heap-eq hv hl v s s' (floc fs) sm live-hl (dom-written corr) (heap-eq corr)
       ; lo-le = mkeep-lo-le corr sm
-      ; untouched = untouched-heap-store hl (enc-sv hv v) live-hl corr sm
       ; stack-eq = windows-heap-store hl (enc-sv hv v) live-hl corr sm }
 
 -- store-indirect-suc: *(sucLoc Input1) := Output ↔ `mov [rdi+slot], rax`.
@@ -1360,10 +1344,100 @@ sim-store-indirect-suc {hv} hl fs s s' corr i-eq live-shl guard sm =
       ; clos-eq = mkeep-clos corr sm ; halt-eq = mkeep-halt corr sm ; sp-eq = mkeep-sp corr sm ; frontier-eq = mkeep-heap-reg corr sm ; dom-fresh = dom-fresh corr
       ; dom-written = store-dom-written hv (sucHL hl) v (floc fs) live-shl (dom-written corr)
       ; dom-sized = dom-sized corr
-      ; heap-eq = store-heap-eq hv (sucHL hl) v s s' (floc fs) sm live-shl (heap-eq corr)
+      ; heap-eq = store-heap-eq hv (sucHL hl) v s s' (floc fs) sm live-shl (dom-written corr) (heap-eq corr)
       ; lo-le = mkeep-lo-le corr sm
-      ; untouched = untouched-heap-store (sucHL hl) (enc-sv hv v) live-shl corr sm
       ; stack-eq = windows-heap-store (sucHL hl) (enc-sv hv v) live-shl corr sm }
+
+------------------------------------------------------------------------
+-- plan 0.123 B.4 α: THE OFFSET FORMS. The address law at any offset is the
+-- slot law iterated (a block is contiguous); the value correspondences are the
+-- `-suc` ones at `offsetHL hl k`.
+------------------------------------------------------------------------
+haddr-offset : ∀ (hv : HeapView) (hl : HeapLocation) (k : ℕ)
+             → haddr hv (offsetHL hl k) ≡ haddr hv hl + k * slot-size
+haddr-offset hv (heap-loc r o) zero    = sym (+-identityʳ (haddr hv (heap-loc r o)))
+haddr-offset hv (heap-loc r o) (suc k) =
+  trans (haddr-suc hv (heap-loc r (k + o)))
+        (trans (cong (_+ slot-size) (haddr-offset hv (heap-loc r o) k))
+               (trans (+-assoc (haddr hv (heap-loc r o)) (k * slot-size) slot-size)
+                      (cong (haddr hv (heap-loc r o) +_) (+-comm (k * slot-size) slot-size))))
+
+sim-load-at : {hv : HeapView} (k : ℕ) (hl : HeapLocation) (w : StoredValue FS) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → heapMem (floc fs) (offsetHL hl k) ≡ just w
+  → SetsRole s s' role-out (enc-sv hv w)
+  → FlatCorr hv (flat-exec-instr (load-at k) [] fs) s'
+sim-load-at {hv} k hl w fs s s' corr i-eq h-eq st =
+  subst (λ z → FlatCorr hv z s') (sym reduces) corr-clean
+  where
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+                          ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-load-at-resolved k Output (sv-as-loc (readReg (regs (floc fs)) Input1)) (floc fs)
+              ≡ record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+    floc-eq = trans (cong (λ m → exec-load-at-resolved k Output m (floc fs)) (cong sv-as-loc i-eq))
+                    (cong (λ mv → exec-load-with-value Output mv (floc fs)) h-eq)
+    reduces : flat-exec-instr (load-at k) [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr hv cleanFlat s'
+    corr-clean = record
+      { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
+      ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
+
+-- plan 0.123 B.4 α: `addr-at k` writes the cell's ADDRESS to the Output role.
+sim-addr-at : {hv : HeapView} (k : ℕ) (hl : HeapLocation) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+  → SetsRole s s' role-out (enc-sv hv (SV-Ptr (AtDynamic (offsetHL hl k))))
+  → FlatCorr hv (flat-exec-instr (addr-at k) [] fs) s'
+sim-addr-at {hv} k hl fs s s' corr i-eq ib st =
+  subst (λ z → FlatCorr hv z s') (sym reduces) corr-clean
+  where
+    p = SV-Ptr (AtDynamic (offsetHL hl k))
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output p }
+                          ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-addr-at-resolved (block-size (falloc fs)) k (sv-as-loc (readReg (regs (floc fs)) Input1)) (floc fs)
+              ≡ record (floc fs) { regs = writeReg (regs (floc fs)) Output p }
+    floc-eq = trans (cong (λ m → exec-addr-at-resolved (block-size (falloc fs)) k m (floc fs)) (cong sv-as-loc i-eq))
+                    (cong (λ b → exec-addr-in-block b (AtDynamic (offsetHL hl k)) (floc fs)) ib)
+    reduces : flat-exec-instr (addr-at k) [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr hv cleanFlat s'
+    corr-clean = record
+      { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
+      ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
+
+sim-store-at : {hv : HeapView} (k : ℕ) (hl : HeapLocation) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → HDom hv (offsetHL hl k)
+  → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+  → writeLoc (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)
+    ≡ writeLocToHeap (floc fs) (offsetHL hl k) (readReg (regs (floc fs)) Output)
+  → SetsMem s s' (haddr hv (offsetHL hl k)) (enc-sv hv (readReg (regs (floc fs)) Output))
+  → FlatCorr hv (flat-exec-instr (store-at k) [] fs) s'
+sim-store-at {hv} k hl fs s s' corr i-eq live guard-ib guard sm =
+  subst (λ z → FlatCorr hv z s') (sym reduces) corr-clean
+  where
+    v = readReg (regs (floc fs)) Output
+    bs = block-size (falloc fs)
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = writeLocToHeap (floc fs) (offsetHL hl k) v ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-store-at-resolved bs k (sv-as-loc (readReg (regs (floc fs)) Input1)) v (floc fs)
+              ≡ writeLocToHeap (floc fs) (offsetHL hl k) v
+    floc-eq = trans (cong (λ m → exec-store-at-resolved bs k m v (floc fs)) (cong sv-as-loc i-eq))
+                    (trans (cong (λ b → exec-store-in-block b (AtDynamic (offsetHL hl k)) v (floc fs)) guard-ib) guard)
+    reduces : flat-exec-instr (store-at k) [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr hv cleanFlat s'
+    corr-clean = record
+      { in1-eq = mkeep-in1 corr sm ; out-eq = mkeep-out corr sm
+      ; clos-eq = mkeep-clos corr sm ; halt-eq = mkeep-halt corr sm ; sp-eq = mkeep-sp corr sm ; frontier-eq = mkeep-heap-reg corr sm ; dom-fresh = dom-fresh corr
+      ; dom-written = store-dom-written hv (offsetHL hl k) v (floc fs) live (dom-written corr)
+      ; dom-sized = dom-sized corr
+      ; heap-eq = store-heap-eq hv (offsetHL hl k) v s s' (floc fs) sm live (dom-written corr) (heap-eq corr)
+      ; lo-le = mkeep-lo-le corr sm
+      ; stack-eq = windows-heap-store (offsetHL hl k) (enc-sv hv v) live corr sm }
 
 ------------------------------------------------------------------------
 -- STACK RESTORE: `restore-input slot` (Input1 := stack[current-frame, slot]) ↔
@@ -1389,7 +1463,7 @@ sim-restore-input {hv} slot w fs s s' corr st-eq st =
     corr-clean : FlatCorr hv cleanFlat s'
     corr-clean = record
       { in1-eq = at-role st ; out-eq = keep-out corr st (λ ())
-      ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+      ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
 
 ------------------------------------------------------------------------
 -- STACK STORE: `store-at-slot slot` (stack[current-frame, slot] := Output) ↔
@@ -1418,11 +1492,12 @@ atstack-frame-inj refl = refl
 -- given stack/heap disjointness (`disj`).
 store-slot-heap-eq : ∀ (hv : HeapView) (waddr : ℕ) (v' : Word) (s s' : State) (ls : LocState FS)
   → SetsMem s s' waddr v'
-  → (∀ hl' → HDom hv hl' → readMem (memory s) (haddr hv hl') ≡ enc-maybe hv (heapMem ls hl'))
+  → (∀ (hl' : HeapLocation) {w : StoredValue FS} → heapMem ls hl' ≡ just w → HDom hv hl')
+  → (∀ hl' {w} → heapMem ls hl' ≡ just w → readMem (memory s) (haddr hv hl') ≡ just (enc-sv hv w))
   → (∀ hl' → HDom hv hl' → (waddr ≡ haddr hv hl') → ⊥)
-  → ∀ hl' → HDom hv hl' → readMem (memory s') (haddr hv hl') ≡ enc-maybe hv (heapMem ls hl')
-store-slot-heap-eq hv waddr v' s s' ls sm pre disj hl' live =
-  trans (off-addr sm (haddr hv hl') (λ eq → disj hl' live (sym eq))) (pre hl' live)
+  → ∀ hl' {w} → heapMem ls hl' ≡ just w → readMem (memory s') (haddr hv hl') ≡ just (enc-sv hv w)
+store-slot-heap-eq hv waddr v' s s' ls sm dw pre disj hl' eq =
+  trans (off-addr sm (haddr hv hl') (λ q → disj hl' (dw hl' eq) (sym q))) (pre hl' eq)
 
 -- STACK read-back under the stack store: reading slot `k` after writing slot `slot`
 -- (same current frame `cf`) — `k ≡ slot` ⇒ the written value; else the old value.
@@ -1519,10 +1594,8 @@ sim-store-at-slot {hv} slot fs s s' corr slot<b disj sm = corr-clean
       { in1-eq = mkeep-in1 corr sm ; out-eq = mkeep-out corr sm
       ; clos-eq = mkeep-clos corr sm ; halt-eq = mkeep-halt corr sm ; sp-eq = mkeep-sp corr sm ; frontier-eq = mkeep-heap-reg corr sm ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr
       ; heap-eq = store-slot-heap-eq hv (base + slot-to-disp slot) (enc-sv hv Out) s s' (floc fs)
-                    sm (heap-eq corr) disj
+                    sm (dom-written corr) (heap-eq corr) disj
       ; lo-le = mkeep-lo-le corr sm
-      ; untouched = untouched-stack-store (base + slot-to-disp slot) (enc-sv hv Out)
-                      (≤-trans (lo-le corr) (m≤m+n base (slot-to-disp slot))) corr sm
       ; stack-eq = windows-slot-store (floc fs) cf (frame-slots (falloc fs))
                      slot Out (lo hv) (saved-frames (falloc fs)) sm-base slot<b (stack-eq corr) }
 
@@ -1575,8 +1648,6 @@ sim-alloc-stack {hv} n fs s s' corr fresh-abs lo' lo'≤lo front-lo' lo'≤sp-re
   ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr
   ; heap-eq = keep-heap corr st
   ; lo-le = subst (lo' ≤_) (sym (at-role st)) lo'≤sp-reg
-  ; untouched = λ a fa a<lo → trans (cong (λ m → readMem m a) (keeps-mem st))
-                                    (untouched-descend lo' lo'≤lo front-lo' corr a fa a<lo)
   -- Plan 0.63: the prologue CONSES a frame (`enter-frame n`), so the post's
   -- windows are the callee's — bounded by its own reservation `n`, and fresh on
   -- both sides — on top of the pre-state's, whose floor rises from `lo` to the
@@ -1650,8 +1721,6 @@ sim-thunk {hv} b fs s s' corr lo' lo'≤lo front-lo' lo'≤sp-reg fits st = reco
   ; dom-sized = dom-sized corr
   ; heap-eq = keep-heap corr st
   ; lo-le = subst (lo' ≤_) (sym (at-role st)) lo'≤sp-reg
-  ; untouched = λ a fa a<lo → trans (cong (λ m → readMem m a) (keeps-mem st))
-                                    (untouched-descend lo' lo'≤lo front-lo' corr a fa a<lo)
   ; stack-eq = subst (λ m → StackWindows (amap hv) m (stackMem (floc (do-thunk b fs))) lo'
                                           (frames-of (falloc (do-thunk b fs))))
                      (sym (keeps-mem st)) windows-s }
@@ -1754,8 +1823,6 @@ sim-call-frame {hv} jₐ fs s s' corr lo' lo'≤lo front-lo' lo'≤sp-reg fits s
   ; heap-eq = λ hl d → trans (cong (λ m → readMem m (haddr hv hl)) (keeps-mem st))
                              (heap-eq corr hl d)
   ; lo-le = subst (lo' ≤_) (sym (at-role st)) lo'≤sp-reg
-  ; untouched = λ a fa a<lo' → trans (cong (λ m → readMem m a) (keeps-mem st))
-                                     (untouched-descend lo' lo'≤lo front-lo' corr a fa a<lo')
   ; stack-eq = subst (lo' ≤_) newbase lo'≤sp-reg
              , (λ k ())
              , windows-reanchor (frame-base cf) (frame-base (shift-frame cf 1) + slots 0)
@@ -1813,7 +1880,6 @@ sim-dealloc-stack {hv} n fs s s' corr restores st = record
   -- exactly the dead memory the mark exists to remember.
   ; lo-le = subst (lo hv ≤_) (sym (at-role st))
                   (≤-trans (lo-le corr) (m≤m+n (rreg s sp-reg) (slots n)))
-  ; untouched = keep-untouched corr st
   -- Plan 0.61: the epilogue RESTORES the caller's frame; the move leaves the
   -- allocation frontier alone, so `dom-fresh` only needs transporting.
   ; dom-fresh = λ {hl} d → subst (λ m → ref-id (heap-ref hl) < m)
@@ -1858,7 +1924,6 @@ sim-ret {hv} b rpc rest fs s s' corr req restores st rewrite req = record
               (≤-trans (lo-le corr)
                 (≤-trans (m≤m+n (rreg s sp-reg) (slots b))
                          (m≤m+n (rreg s sp-reg + slots b) slot-size)))
-  ; untouched = keep-untouched corr st
   ; dom-fresh = λ {hl} d → subst (λ m → ref-id (heap-ref hl) < m)
                                  (sym (leave-frame-heap-ref (falloc fs))) (dom-fresh corr d)
   ; dom-written = dom-written corr
@@ -1892,7 +1957,7 @@ sim-load-const : {hv : HeapView} (v : ℤ) (fs : FlatState) (s s' : State) → F
   → FlatCorr hv (flat-exec-instr (instr-load-const fits-int v) [] fs) s'
 sim-load-const {hv} v fs s s' corr st = record
   { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
-  ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+  ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
 
 -- …and the FLOAT constant (D079/D113): identical, with the IEEE-754 pattern as
 -- the immediate. The payload is a `Decimal` — source syntax — and the machine
@@ -1904,7 +1969,7 @@ sim-load-const-float : {hv : HeapView} (v : Decimal) (fs : FlatState) (s s' : St
   → FlatCorr hv (flat-exec-instr (instr-load-const fits-float v) [] fs) s'
 sim-load-const-float {hv} v fs s s' corr st = record
   { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
-  ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+  ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
 
 ------------------------------------------------------------------------
 -- LOAD CODE ADDR: `instr-load-code-addr n` (Output := SV-Code n) ↔ `lea rax,
@@ -1923,7 +1988,7 @@ sim-load-code-addr : {hv : HeapView} (n : LabelId) (j : ℕ) (fs : FlatState) (s
   → FlatCorr hv (flat-exec-instr (instr-load-code-addr n) [] fs) s'
 sim-load-code-addr {hv} n j fs s s' corr ceq st = record
   { in1-eq = keep-in1 corr st (λ ()) ; out-eq = trans (at-role st) (sym ceq)
-  ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+  ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
 
 ------------------------------------------------------------------------
 -- SAVE CLOSURE REG: `instr-save-closure-reg` ↔ `mov r12, rdi`.
@@ -1939,7 +2004,7 @@ sim-save-closure-reg : {hv : HeapView} (fs : FlatState) (s s' : State) → FlatC
   → FlatCorr hv (flat-exec-instr instr-save-closure-reg [] fs) s'
 sim-save-closure-reg {hv} fs s s' corr st = record
   { in1-eq = keep-in1 corr st (λ ()) ; out-eq = keep-out corr st (λ ())
-  ; clos-eq = trans (at-role st) (in1-eq corr) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+  ; clos-eq = trans (at-role st) (in1-eq corr) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
 
 
 
@@ -2014,17 +2079,17 @@ ext-suc hv st (heap-loc r o) = ext-suc-aux hv st r o (ref-id r ≟ st)
 -- THE EXTENDED VIEW. `fresh` (every mapped cell's ref-id is below the fresh ref —
 -- FlatCorr's `dom-fresh`) is what keeps the extension injective: old cells stay
 -- put BELOW the frontier, the new block starts AT it.
--- `room` (plan 0.54 rung D step 3): the `n` words the bump claims are still in the
--- VIRGIN region, i.e. the heap frontier does not reach the stack high-water mark.
+-- `room`: the `n` words the bump claims stay below the new view's floor `lo'`.
 -- This is the HEAP EXHAUSTION premise (`heap-room`), and it is what makes the
--- extended view a legal one — and, via `FlatCorr.untouched`, what makes the fresh
--- block's cells provably unwritten on the concrete side (the postulate
--- `alloc-heap-fresh-x86` is gone).
+-- extended view a legal one (`front-lo`). The floor is the caller's choice:
+-- `sim-alloc-heap` raises it to the current `%rsp` (plan 0.123 A.4 step 4 —
+-- with `heap-eq` on written cells only, nothing below `%rsp` needs to be
+-- unmapped any more, so the heap may grow up to the stack pointer itself).
 extend-view : (hv : HeapView) (st n : ℕ)
             → (∀ {hl : HeapLocation} → HDom hv hl → ref-id (heap-ref hl) < st)
-            → hfront hv + slots n ≤ lo hv
+            → {lo' : ℕ} → hfront hv + slots n ≤ lo'
             → HeapView
-extend-view hv st n fresh room = record
+extend-view hv st n fresh {lo'} room = record
   { haddr     = ext-addr hv st
   -- D096: an allocation extends the HEAP map; the code map is a property of
   -- the PROGRAM, so it rides through untouched.
@@ -2034,7 +2099,7 @@ extend-view hv st n fresh room = record
   ; haddr-suc = ext-suc hv st
   ; haddr-inj = inj
   ; dom-below = below
-  ; lo        = lo hv
+  ; lo        = lo'
   ; front-lo  = room
   ; front-pos = <-≤-trans (front-pos hv) (m≤m+n (hfront hv) (slots n))
   ; dom-pos   = pos
@@ -2090,7 +2155,7 @@ extend-view hv st n fresh room = record
 -- fresh ref: the extension only ADDS addresses.
 enc-ext : ∀ (hv : HeapView) (st n : ℕ)
             (pf : ∀ {hl : HeapLocation} → HDom hv hl → ref-id (heap-ref hl) < st)
-            (rm : hfront hv + slots n ≤ lo hv)
+            {lo' : ℕ} (rm : hfront hv + slots n ≤ lo')
             (v : StoredValue FS) → sv-below st v
         → enc-sv (extend-view hv st n pf rm) v ≡ enc-sv hv v
 enc-ext hv st n pf rm (SV-Ptr (AtDynamic hl)) lt = ext-addr-old hv st hl lt
@@ -2102,7 +2167,7 @@ enc-ext hv st n pf rm (SV-Code _)             _  = refl
 
 enc-ext-maybe : ∀ (hv : HeapView) (st n : ℕ)
                   (pf : ∀ {hl : HeapLocation} → HDom hv hl → ref-id (heap-ref hl) < st)
-                  (rm : hfront hv + slots n ≤ lo hv)
+                  {lo' : ℕ} (rm : hfront hv + slots n ≤ lo')
                   (mv : Maybe (StoredValue FS)) → svm-below st mv
               → enc-maybe (extend-view hv st n pf rm) mv ≡ enc-maybe hv mv
 enc-ext-maybe hv st n pf rm (just v) wf = cong just (enc-ext hv st n pf rm v wf)
@@ -2114,7 +2179,7 @@ enc-ext-maybe hv st n pf rm nothing  _  = refl
 -- quantified over all frames (`FlatWF.wf-stack`), so this needs no new fact.
 windows-enc-ext : ∀ (hv : HeapView) (st n : ℕ)
                     (pf : ∀ {hl : HeapLocation} → HDom hv hl → ref-id (heap-ref hl) < st)
-                    (rm : hfront hv + slots n ≤ lo hv)
+                    {lo' : ℕ} (rm : hfront hv + slots n ≤ lo')
                     (mem : Memory) (stk : StackMem FS) (fl : ℕ) (fr : List (Frame × ℕ))
                 → (∀ (f : Frame) (k : Slot) → svm-below st (stk f k))
                 → StackWindows (amap hv) mem stk fl fr
@@ -2147,13 +2212,12 @@ sim-alloc-heap : ∀ {hv : HeapView} (n : ℕ)
   -- the form `FlatWF.wf-stack` already has, so the call sites got shorter.
   → (∀ (f : Frame) (k : Slot) → svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) f k))
   → (∀ hl → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs) → heapMem (floc fs) hl ≡ nothing)
-  -- ROOM (plan 0.54 rung D): the bump does not run the heap up into the stack —
-  -- and, step 3, it is measured against the HIGH-WATER MARK, not against the
-  -- current `%rsp`: a region the stack has already visited keeps its contents, so
-  -- only the virgin part of the gap is available to the heap. This is HEAP
-  -- EXHAUSTION, and it now also DISCHARGES the fresh block's concrete freshness
-  -- (`FlatCorr.untouched`) — the postulate `alloc-heap-fresh-x86` is retired.
-  → (room : hfront hv + slots n ≤ lo hv)
+  -- ROOM (plan 0.54 rung D; plan 0.123 A.4 step 4): the bump does not run the
+  -- heap up into the stack. Measured against the CURRENT `%rsp`: a region the
+  -- stack has visited may keep its contents, and that is harmless now that
+  -- `heap-eq` claims only written cells. This is HEAP EXHAUSTION. The extended
+  -- view's floor `lo` rises to `%rsp` with it.
+  → (room : hfront hv + slots n ≤ rreg s sp-reg)
   -- the two-instruction block writes Output (the block's base) and then the
   -- frontier; `Sets2Roles` is what says the OTHER three roles survive both.
   → Sets2Roles s s' role-out role-heap
@@ -2174,16 +2238,16 @@ sim-alloc-heap {hv} n fs s s' corr wf1 wfcl wf-heap wf-stack fresh-abs room s2 =
   ; dom-written = λ hl eq → ext-old (dom-written corr hl eq)
   ; dom-sized = ds
   ; heap-eq = hp
-  -- %rsp is untouched by the bump; the virgin region only SHRANK (its floor rose
-  -- from `hfront` to `hfront + 8n`), so both invariants transport.
-  ; lo-le = subst (lo hv ≤_) (sym (off-roles s2 role-sp (λ ()) (λ ()))) (lo-le corr)
-  ; untouched = λ a fa a<lo → trans (cong (λ m → readMem m a) (keeps-mem₂ s2))
-                                    (untouched corr a (≤-trans (m≤m+n (hfront hv) (slots n)) fa) a<lo)
+  -- %rsp is untouched by the bump, and the new floor IS %rsp; the windows are
+  -- re-anchored there (`%rsp` is the current frame's base, `sp-eq`).
+  ; lo-le = ≤-reflexive (sym (off-roles s2 role-sp (λ ()) (λ ())))
   ; stack-eq = subst (λ m → StackWindows (amap (extend-view hv st n dfr room)) m
-                                          (stackMem (floc fs)) (lo hv) (frames-of (falloc fs)))
+                                          (stackMem (floc fs)) (rreg s sp-reg) (frames-of (falloc fs)))
                      (sym (keeps-mem₂ s2))
-                     (windows-enc-ext hv st n dfr room (memory s) (stackMem (floc fs))
-                        (lo hv) (frames-of (falloc fs)) wf-stack (stack-eq corr))
+                     (windows-reanchor (lo hv) (rreg s sp-reg) (current-frame (falloc fs))
+                        (frame-slots (falloc fs)) (saved-frames (falloc fs)) (≤-reflexive (sp-eq corr))
+                        (windows-enc-ext hv st n dfr room (memory s) (stackMem (floc fs))
+                           (lo hv) (frames-of (falloc fs)) wf-stack (stack-eq corr)))
   }
   where
     st  = next-heap-ref (falloc fs)
@@ -2204,29 +2268,22 @@ sim-alloc-heap {hv} n fs s s' corr wf1 wfcl wf-heap wf-stack fresh-abs room s2 =
             go (yes req) o<n = ext-fresh req o<n
             go (no  _)   o<b = ext-old (dom-sized corr hl o<b)
     hv' = extend-view hv st n dfr room
-    -- THE FRESH BLOCK IS UNWRITTEN, DERIVED (plan 0.54 rung D step 3): its cells
-    -- sit in `[hfront, hfront + 8n) ⊆ [hfront, lo)`, the virgin region.
-    fresh-x86 : ∀ i → i < n → readMem (memory s) (hfront hv + slot-to-disp i) ≡ nothing
-    fresh-x86 i i<n = untouched corr (hfront hv + slot-to-disp i)
-                        (m≤m+n (hfront hv) (slot-to-disp i))
-                        (<-≤-trans (+-monoʳ-< (hfront hv) (*-monoˡ-< slot-size i<n)) room)
     df : ∀ {hl : HeapLocation} → ExtDom hv st n hl → ref-id (heap-ref hl) < suc st
     df (ext-old d)       = m<n⇒m<1+n (dfr d)
     df (ext-fresh req _) = subst (_< suc st) (sym req) ≤-refl
-    -- the bump touches no memory, so the extended heap agreement is the old one
-    -- carried across `keeps-mem₂` — one `trans` in front of each clause.
-    hp : ∀ (hl : HeapLocation) → ExtDom hv st n hl
-       → readMem (memory s') (ext-addr hv st hl) ≡ enc-maybe hv' (heapMem (floc fs) hl)
-    hp hl (ext-old d) =
+    -- the bump touches no memory and writes no heap cell, so the extended heap
+    -- agreement is the old one carried across `keeps-mem₂`. Only WRITTEN cells
+    -- are claimed (plan 0.123 A.4 step 4), and a written cell is an OLD one: the
+    -- fresh block is unwritten (`fresh-abs`), so it owes nothing — no concrete
+    -- freshness, no virgin region.
+    hp : ∀ (hl : HeapLocation) {v : StoredValue FS} → heapMem (floc fs) hl ≡ just v
+       → readMem (memory s') (ext-addr hv st hl) ≡ just (enc-sv hv' v)
+    hp hl {v} eq =
       trans (cong (λ m → readMem m (ext-addr hv st hl)) (keeps-mem₂ s2))
       (trans (cong (readMem (memory s)) (ext-addr-old hv st hl (dfr d)))
-            (trans (heap-eq corr hl d)
-                   (sym (enc-ext-maybe hv st n dfr room (heapMem (floc fs) hl) (wf-heap hl d)))))
-    hp hl (ext-fresh req off<n) =
-      trans (cong (λ m → readMem m (ext-addr hv st hl)) (keeps-mem₂ s2))
-      (trans (cong (readMem (memory s)) (ext-addr-fresh hv st hl req))
-            (trans (fresh-x86 (heap-offset hl) off<n)
-                   (sym (cong (enc-maybe hv') (fresh-abs hl req)))))
+            (trans (heap-eq corr hl eq)
+                   (sym (enc-ext-maybe hv st n dfr room (just v) (subst (svm-below st) eq (wf-heap hl d))))))
+      where d = dom-written corr hl eq
 
 ------------------------------------------------------------------------
 -- STACK ADDRESS: `lea-slot slot` (Output := &stack[frame, slot]) ↔
@@ -2246,7 +2303,7 @@ sim-lea-slot {hv} slot fs s s' corr st = record
   { in1-eq = keep-in1 corr st (λ ())
   ; out-eq = trans (at-role st) addr-eq
   ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ())
-  ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+  ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
   where
     cf = current-frame (falloc fs)
     addr-eq : rreg s sp-reg + slot-to-disp slot ≡ slot-addr cf slot
@@ -2280,7 +2337,7 @@ sim-load-indirect-stack {hv} f k w fs s s' corr i-eq st-eq st =
     corr-clean = record
       { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
       ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ())
-      ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+      ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
 
 -- Second cell through a STACK pointer: `sucLoc (AtStack f k) = AtStack f (suc k)`,
 -- so this is `sim-load-indirect-stack` one slot along.
@@ -2306,7 +2363,7 @@ sim-load-indirect-suc-stack {hv} f k w fs s s' corr i-eq st-eq st =
     corr-clean = record
       { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st
       ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ())
-      ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
+      ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; stack-eq = keep-stack corr st }
 
 -- STORE through a stack pointer: `writeLoc … (AtStack f k)` IS the plain stack
 -- write (the cross-region guard only concerns the heap branch), so this reuses
@@ -2342,10 +2399,8 @@ sim-store-indirect-stack {hv} k fs s s' corr i-eq k<b disj sm =
       ; clos-eq = mkeep-clos corr sm ; halt-eq = mkeep-halt corr sm ; sp-eq = mkeep-sp corr sm ; frontier-eq = mkeep-heap-reg corr sm
       ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr
       ; heap-eq = store-slot-heap-eq hv (base + slot-to-disp k) (enc-sv hv Out) s s' (floc fs)
-                    sm (heap-eq corr) disj
+                    sm (dom-written corr) (heap-eq corr) disj
       ; lo-le = mkeep-lo-le corr sm
-      ; untouched = untouched-stack-store (base + slot-to-disp k) (enc-sv hv Out)
-                      (≤-trans (lo-le corr) (m≤m+n base (slot-to-disp k))) corr sm
       ; stack-eq = windows-slot-store (floc fs) cf (frame-slots (falloc fs))
                      k Out (lo hv) (saved-frames (falloc fs)) sm-base k<b (stack-eq corr) }
 
@@ -2383,10 +2438,8 @@ sim-store-indirect-suc-stack {hv} k fs s s' corr i-eq sk<b disj sm =
       ; clos-eq = mkeep-clos corr sm ; halt-eq = mkeep-halt corr sm ; sp-eq = mkeep-sp corr sm ; frontier-eq = mkeep-heap-reg corr sm
       ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr
       ; heap-eq = store-slot-heap-eq hv (base + slot-to-disp (suc k)) (enc-sv hv Out) s s' (floc fs)
-                    sm (heap-eq corr) disj
+                    sm (dom-written corr) (heap-eq corr) disj
       ; lo-le = mkeep-lo-le corr sm
-      ; untouched = untouched-stack-store (base + slot-to-disp (suc k)) (enc-sv hv Out)
-                      (≤-trans (lo-le corr) (m≤m+n base (slot-to-disp (suc k)))) corr sm
       ; stack-eq = windows-slot-store (floc fs) cf (frame-slots (falloc fs))
                      (suc k) Out (lo hv) (saved-frames (falloc fs)) sm-base sk<b (stack-eq corr) }
 
@@ -2417,7 +2470,6 @@ corr-regs-agree {hv} fs s s' corr rr mm hh = record
   ; dom-sized = dom-sized corr
   ; heap-eq = λ hl d → trans (cong (λ m → readMem m (haddr hv hl)) mm) (heap-eq corr hl d)
   ; lo-le = subst (lo hv ≤_) (sym (rr role-sp)) (lo-le corr)
-  ; untouched = λ c fc c<lo → trans (cong (λ m → readMem m c) mm) (untouched corr c fc c<lo)
   ; stack-eq = subst (λ m → StackWindows (amap hv) m (stackMem (floc fs))
                                          (lo hv) (frames-of (falloc fs)))
                      (sym mm) (stack-eq corr) }
@@ -2443,13 +2495,9 @@ corr-store-gap {hv} fs s s' v corr rr hh mm gn = record
   ; dom-sized = dom-sized corr
   ; heap-eq = λ hl d → trans (cong (λ m → readMem m (haddr hv hl)) mm)
                        (trans (read-write-miss (memory s) a v (haddr hv hl)
-                                (<⇒≢ (<-≤-trans (dom-below hv d) front≤a)))
+                                (<⇒≢ (<-≤-trans (dom-below hv (dom-written corr hl d)) front≤a)))
                               (heap-eq corr hl d))
   ; lo-le = subst (lo hv ≤_) (sym (rr sp-reg)) (lo-le corr)
-  ; untouched = λ c fc c<lo → trans (cong (λ m → readMem m c) mm)
-                              (trans (read-write-miss (memory s) a v c
-                                       (<⇒≢ (<-≤-trans c<lo lo≤a)))
-                                     (untouched corr c fc c<lo))
   ; stack-eq = subst (λ m → StackWindows (amap hv) m (stackMem (floc fs))
                                          (lo hv) (frames-of (falloc fs)))
                      (sym mm)

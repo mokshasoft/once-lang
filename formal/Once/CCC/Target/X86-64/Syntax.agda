@@ -138,6 +138,13 @@ data Instr : Set where
   syscall : Instr                       -- syscall instruction (syscall number in rax,
                                         -- args in rdi, rsi, rdx, r10, r8, r9)
 
+  -- Plan 0.123 A.4 (D347): the room check's skip over its call of the Host's
+  -- `exhausted`, by GNU `as`'s local numeric label: `jbe 1f` jumps to the next
+  -- `1:` when CF or ZF is set (unsigned below-or-equal), and `1:` marks it.
+  -- No symbol is defined or referenced.
+  jbe-fwd : Instr                       -- jbe 1f
+  local-1 : Instr                       -- 1:
+
   -- Label (pseudo-instruction for assembly)
   label  : Label → Instr                -- label n:
 
@@ -257,6 +264,8 @@ instr-consumed-slots (pop _)          = 0   -- pop deallocates, not counted
 instr-consumed-slots nop              = 0
 instr-consumed-slots ud2              = 0
 instr-consumed-slots syscall          = 0
+instr-consumed-slots jbe-fwd          = 0
+instr-consumed-slots local-1          = 0
 instr-consumed-slots (label _)        = 0
 
 -- | Total stack slots consumed by an instruction sequence

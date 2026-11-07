@@ -261,6 +261,12 @@ idle-neutral (i ∷ is) eq st =
 -- Uniform in the enclosing stack `sv` (the bound only reads `cur`), which is
 -- what lets a sub-walk be spliced at any depth.
 ------------------------------------------------------------------------
+-- plan 0.123 B.4 α: a trace of segment-idle instructions is idle (the layout
+-- code's lengths depend on a type, so `refl` no longer decides it)
+idle-All : ∀ (t : AbstractTrace) → All (λ i → is-id? (seg-action i) ≡ true) t → seg-idle? t ≡ true
+idle-All []       []       = refl
+idle-All (i ∷ is) (p ∷ ps) rewrite p = idle-All is ps
+
 record SegOK (b : ℕ) (t : AbstractTrace) : Set where
   constructor mkSegOK
   field

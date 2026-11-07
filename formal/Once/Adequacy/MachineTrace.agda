@@ -30,7 +30,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 open import Once.Spec.Signature using (Event)
 open import Once.Spec.Delay using (Delay; module Delay; now; _⇓_; now⇓; later⇓)
-open import Once.Spec.Trace using (End; returned; halted; Tr; module Tr; EndRel; returned≈; halted≈; StepRel; _≈ᵗ⟨_⟩_; module _≈ᵗ⟨_⟩_)
+open import Once.Spec.Trace using (End; returned; halted; exhausted; Tr; module Tr; EndRel; returned≈; halted≈; exhausted≈; StepRel; _≈ᵗ⟨_⟩_; module _≈ᵗ⟨_⟩_)
 open import Once.Metatheory.Trace using (⇓-det)
 
 open Delay using (step)
@@ -64,6 +64,7 @@ private
   endRefl : ∀ (e : End ⊤) → EndRel _≡_ e e
   endRefl (returned x) = returned≈ refl
   endRefl halted       = halted≈
+  endRefl exhausted    = exhausted≈
 
 module Machine {S : Set} (δ : S → Step S) where
 

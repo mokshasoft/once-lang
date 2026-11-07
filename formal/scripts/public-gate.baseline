@@ -1,6 +1,5 @@
 # public-gate baseline (plan 0.92 S0): `public` re-export lines per module that predate
 # the gate. Counts may only go DOWN; each is a re-export to remove or to justify (§2, S4).
-Once/Adequacy/ArchCorrectness/ArithSimRiscV64.agda 1
 Once/Adequacy/ArchCorrectness/FlatCore/CompiledCorrespondence.agda 2
 Once/Adequacy/ArchCorrectness/FlatCore/EventEngine.agda 3
 Once/Adequacy/ArchCorrectness/FlatCore/FlatCorrespondence.agda 2
@@ -38,7 +37,7 @@ Once/Arith/Backend/X86-64/StatePreserve.agda 1
 Once/CCC/Codegen/IRObsCorrect/Interface.agda 17
 Once/CCC/Codegen/IRObsCorrect/Machine.agda 2
 Once/CCC/Codegen/IRObsCorrect/Prelude.agda 27
-Once/CCC/Codegen/IRObsCorrectFlat.agda 14
+Once/CCC/Codegen/IRObsCorrectFlat.agda 12
 Once/CCC/Codegen/ThunkScope.agda 1
 Once/CCC/Machine/Allocation.agda 1
 Once/CCC/Machine/Flat.agda 1

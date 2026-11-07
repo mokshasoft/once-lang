@@ -4,23 +4,18 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Machine.FlatPtrBounds   (Plan 0.54 rung D, item 5)
 --
--- EVERY DYNAMIC POINTER IN THE STATE IS IN-BOUNDS FOR ITS BLOCK — in the
--- PAIR form: the cell it addresses AND the next one are inside the block
--- (`suc (heap-offset hl) < block-size (ref-id (heap-ref hl))`).
+-- EVERY DYNAMIC POINTER IN THE STATE ADDRESSES A CELL OF ITS BLOCK
+-- (`heap-offset hl < block-size (ref-id (heap-ref hl))`).
 --
--- This is the state invariant behind the flat↔x86-64 dereference residuals
--- `store-indirect{,-suc}-inbounds` and the in-bounds conjunct of
--- `load-indirect{,-suc}-target-wf` (D073): the correspondence needs the
--- store/load target to lie inside its block before `FlatCorr.dom-sized` can
--- turn it into the mapped-cell fact the block-steps consume.
+-- The correspondence needs a pointer's pointee to be mapped (the tag branch
+-- on a node pointer, `FlatCorr.dom-sized`). A store at an offset checks its
+-- own cell (D385), and a load at one reads a written, so mapped, cell.
 --
--- WHY THE PAIR FORM: every producer of a heap pointer is `instr-alloc-heap n`
--- handing out the block START (offset 0) of a block of `n ≥ 2` cells — the
--- pair `⟨_,_⟩ Heap` (fst/snd), the sum node (tag/payload), the closure record
--- (env/code) and the cata payload-stack nodes are all 2-cell blocks — so the
--- invariant that is actually true is about the pair, and it is exactly what
--- the `-suc` residuals need (`heap-offset (sucHL hl) ≡ suc (heap-offset hl)`
--- definitionally).
+-- plan 0.123 B.4 α (D385): it was the PAIR form (the cell AND the next one),
+-- true while every pointer was a 2-cell block's start. A flat value's
+-- component is addressed INSIDE its container (`addr-at`), possibly at the
+-- block's last word, so the invariant is the cell alone; `addr-at` keeps it by
+-- faulting past its block, and `instr-alloc-heap` by `n ≥ 1`.
 --
 -- WHY IT IS AN INVARIANT: `block-size` is written ONLY by `instr-alloc-heap`
 -- (`size-with` — the fresh ref gets `n`, older refs keep their sizes), and the
@@ -43,9 +38,10 @@ module Once.CCC.Machine.FlatPtrBounds (FS : FrameSemantics) where
 
 open import Once.CCC.Label using (LabelId)
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≟_)
-open import Data.Nat.Properties using (≤-trans; n≤1+n; <⇒≢)
-open import Data.Bool using (Bool; true; false)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≟_; s≤s; z≤n)
+open import Data.Nat.Properties using (≤-trans; n≤1+n; <⇒≢; <ᵇ⇒<)
+open import Data.Bool using (Bool; true; false; T)
+open import Data.Bool using () renaming (_∨_ to _∨_)
 open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
@@ -89,7 +85,7 @@ open StoreWF using (wf-heap; wf-stack; wf-regs)
 -- StoredValue constructor must be classified here).
 ------------------------------------------------------------------------
 PtrB : (ℕ → ℕ) → StoredValue FS → Set
-PtrB bs (SV-Ptr (AtDynamic hl)) = suc (heap-offset hl) < bs (ref-id (heap-ref hl))
+PtrB bs (SV-Ptr (AtDynamic hl)) = heap-offset hl < bs (ref-id (heap-ref hl))
 PtrB bs (SV-Ptr (AtStack _ _))  = ⊤
 PtrB bs (SV-Tag _)              = ⊤
 PtrB bs (SV-Lit _ _)            = ⊤
@@ -116,21 +112,19 @@ PtrBoundsWF : FlatState → Set
 PtrBoundsWF fs = PBInv (block-size (falloc fs)) (floc fs)
 
 ------------------------------------------------------------------------
--- THE USE-SITE FORMS: a register that holds a dynamic pointer addresses an
--- in-bounds pair — both the cell and its successor.
+-- THE USE-SITE FORM: a register that holds a dynamic pointer addresses a cell
+-- of its block.
 ------------------------------------------------------------------------
-ptr-bounds-suc : ∀ (fs : FlatState) (r : AbstractReg) (hl : HeapLocation)
-               → PtrBoundsWF fs
-               → readReg (regs (floc fs)) r ≡ SV-Ptr (AtDynamic hl)
-               → suc (heap-offset hl) < block-size (falloc fs) (ref-id (heap-ref hl))
-ptr-bounds-suc fs r hl wf eq = subst (PtrB _) eq (pb-regs wf r)
-
 ptr-bounds-cell : ∀ (fs : FlatState) (r : AbstractReg) (hl : HeapLocation)
                 → PtrBoundsWF fs
                 → readReg (regs (floc fs)) r ≡ SV-Ptr (AtDynamic hl)
                 → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))
-ptr-bounds-cell fs r hl wf eq =
-  ≤-trans (n≤1+n (suc (heap-offset hl))) (ptr-bounds-suc fs r hl wf eq)
+ptr-bounds-cell fs r hl wf eq = subst (PtrB _) eq (pb-regs wf r)
+
+-- D385: what `in-block?` accepts is a cell of its block
+in-block-ptrb : ∀ (bs : ℕ → ℕ) (loc : ValueLocation FS) → in-block? bs loc ≡ true → PtrB bs (SV-Ptr loc)
+in-block-ptrb bs (AtStack _ _)  _ = tt
+in-block-ptrb bs (AtDynamic hl) e = <ᵇ⇒< (heap-offset hl) (bs (ref-id (heap-ref hl))) (subst T (sym e) tt)
 
 ------------------------------------------------------------------------
 -- THE EXTENSION LEMMAS for `instr-alloc-heap`. `size-with n st bs` gives the
@@ -151,7 +145,7 @@ size-with-old n st bs r ne with r ≟ st
 ptrb-ext : ∀ (n st : ℕ) (bs : ℕ → ℕ) (v : StoredValue FS)
          → sv-below st v → PtrB bs v → PtrB (size-with n st bs) v
 ptrb-ext n st bs (SV-Ptr (AtDynamic hl)) fr b =
-  subst (suc (heap-offset hl) <_)
+  subst (heap-offset hl <_)
         (sym (size-with-old n st bs (ref-id (heap-ref hl)) (<⇒≢ fr))) b
 ptrb-ext n st bs (SV-Ptr (AtStack _ _)) _ _ = tt
 ptrb-ext n st bs (SV-Tag _)             _ _ = tt
@@ -194,11 +188,11 @@ pb-write-reg bs ls x v ok wf = record
     go r (inj₂ eq) rewrite eq = pb-regs wf r
 
 pb-write-reg-halt : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (x : AbstractReg)
-                      (v : StoredValue FS) (b : Bool) (es : List SigOpEvent)
+                      (v : StoredValue FS) (b fl : Bool) (es : List SigOpEvent)
                   → PtrB bs v → PBInv bs ls
-                  → PBInv bs (record ls { regs = writeReg (regs ls) x v ; halted = b ; ev-log = es })
+                  → PBInv bs (record ls { regs = writeReg (regs ls) x v ; halted = b ; faulted = fl ; ev-log = es })
 -- The invariant reads no flag and no log, so its fields carry over as they are.
-pb-write-reg-halt bs ls x v b es ok wf =
+pb-write-reg-halt bs ls x v b fl es ok wf =
   let w = pb-write-reg bs ls x v ok wf in
   record { pb-regs = pb-regs w ; pb-heap = pb-heap w ; pb-stack = pb-stack w }
 
@@ -289,6 +283,45 @@ pb-store-suc-resolved : ∀ (bs : ℕ → ℕ) (ls : LocState FS)
                       → PBInv bs (exec-store-suc-via-resolved ml v ls)
 pb-store-suc-resolved bs ls nothing    v ok wf = pb-fault bs ls wf
 pb-store-suc-resolved bs ls (just loc) v ok wf = pb-write-mem bs ls (sucLoc loc) v ok wf
+
+-- plan 0.123 B.4 α: the offset forms move a stored value like the others
+pb-load-at-resolved : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (k : ℕ) (dst : AbstractReg)
+                        (ml : Maybe (ValueLocation FS))
+                    → PBInv bs ls
+                    → PBInv bs (exec-load-at-resolved k dst ml ls)
+pb-load-at-resolved bs ls k dst nothing    wf = pb-fault bs ls wf
+pb-load-at-resolved bs ls k dst (just loc) wf =
+  pb-load-value bs ls dst (readLoc ls (offsetLoc loc k))
+                (pb-read-loc bs ls wf (offsetLoc loc k)) wf
+
+pb-store-in-block : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (ok : Bool)
+                      (loc : ValueLocation FS) (v : StoredValue FS)
+                  → PtrB bs v → PBInv bs ls
+                  → PBInv bs (exec-store-in-block ok loc v ls)
+pb-store-in-block bs ls true  loc v ok wf = pb-write-mem bs ls loc v ok wf
+pb-store-in-block bs ls false loc v ok wf = pb-fault bs ls wf
+
+pb-store-at-resolved : ∀ (bs bs′ : ℕ → ℕ) (ls : LocState FS) (k : ℕ)
+                         (ml : Maybe (ValueLocation FS)) (v : StoredValue FS)
+                     → PtrB bs v → PBInv bs ls
+                     → PBInv bs (exec-store-at-resolved bs′ k ml v ls)
+pb-store-at-resolved bs bs′ ls k nothing    v ok wf = pb-fault bs ls wf
+pb-store-at-resolved bs bs′ ls k (just loc) v ok wf =
+  pb-store-in-block bs ls (in-block? bs′ (offsetLoc loc k)) (offsetLoc loc k) v ok wf
+
+-- D385: an address at an offset is a cell of its block, or a fault
+pb-addr-in-block : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (ok : Bool) (loc : ValueLocation FS)
+                 → ok ≡ in-block? bs loc → PBInv bs ls
+                 → PBInv bs (exec-addr-in-block ok loc ls)
+pb-addr-in-block bs ls true  loc e wf = pb-write-reg bs ls Output (SV-Ptr loc) (in-block-ptrb bs loc (sym e)) wf
+pb-addr-in-block bs ls false loc e wf = pb-fault bs ls wf
+
+pb-addr-at-resolved : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (k : ℕ) (ml : Maybe (ValueLocation FS))
+                    → PBInv bs ls
+                    → PBInv bs (exec-addr-at-resolved bs k ml ls)
+pb-addr-at-resolved bs ls k nothing    wf = pb-fault bs ls wf
+pb-addr-at-resolved bs ls k (just loc) wf =
+  pb-addr-in-block bs ls (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) refl wf
 
 pb-from-slot : ∀ (ls : LocState FS) (alloc : AllocState {FS}) (mv : Maybe (StoredValue FS))
              → PtrB? (block-size alloc) mv
@@ -413,6 +446,15 @@ pb-abstract (restore-input slot) ls alloc ff am wfS wf =
 -- the frame ops are unemittable — `⊥` in `FrameFreeI`
 pb-abstract (instr-alloc-stack n)   ls alloc () am wfS wf
 pb-abstract (instr-dealloc-stack n) ls alloc () am wfS wf
+pb-abstract (instr-free-heap n)     ls alloc () am wfS wf
+pb-abstract (load-at n)     ls alloc ff am wfS wf =
+  pb-load-at-resolved _ ls n Output (sv-as-loc (readReg (regs ls) Input1)) wf
+pb-abstract (store-at n)     ls alloc ff am wfS wf =
+  pb-store-at-resolved _ _ ls n (sv-as-loc (readReg (regs ls) Input1))
+                       (readReg (regs ls) Output) (pb-regs wf Output) wf
+pb-abstract (addr-at n)     ls alloc ff am wfS wf =
+  pb-addr-at-resolved _ ls n (sv-as-loc (readReg (regs ls) Input1)) wf
+pb-abstract (instr-room n)     ls alloc ff am wfS wf = wf
 pb-abstract (instr-push-frame cap)  ls alloc () am wfS wf
 pb-abstract instr-pop-frame         ls alloc () am wfS wf
 -- the case is unemittable since item 6 (`case` compiles to flat control)
@@ -427,7 +469,7 @@ pb-abstract (worklist-pop slot)   ls alloc ff am wfS wf =
                (pb-read-loc _ ls wf (AtStack (current-frame alloc) slot)) wf
 pb-abstract (worklist-check slot) ls alloc ff am wfS wf = wf
 pb-abstract (instr-sigop si) ls alloc ff am wfS wf =
-  pb-write-reg-halt _ ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (ev-log ls ++ sigop-events si ls)
+  pb-write-reg-halt _ ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls)
                     (sigop-output-pb _ si ls) wf
 pb-abstract (instr-load-const p v)   ls alloc ff am wfS wf =
   pb-write-reg _ ls Output (SV-Lit p (lit-value p v)) tt wf
@@ -448,7 +490,7 @@ pb-abstract (instr-alloc-heap n) ls alloc ff am wfS wf = record
     fresh : StoredValue FS
     fresh = SV-Ptr (AtDynamic (heap-loc (mkHeapRef st) 0))
     fresh-ok : PtrB (size-with n st bs) fresh
-    fresh-ok = subst (1 <_) (sym (size-with-new n st bs)) (am n refl)
+    fresh-ok = subst (0 <_) (sym (size-with-new n st bs)) (≤-trans (s≤s z≤n) (am n refl))
     go : ∀ (r : AbstractReg)
        → (readReg (writeReg (regs ls) Output fresh) r ≡ fresh)
        ⊎ (readReg (writeReg (regs ls) Output fresh) r ≡ readReg (regs ls) r)
@@ -558,6 +600,14 @@ flat-ptr-bounds (instr-ctrl (c-branch-tag-zero m))     prog fs ff am wfS wf =
   pb-test (tag-test (flat-read-tag (floc fs))) m prog fs wf
 flat-ptr-bounds (instr-alloc-stack n)   prog fs () am wfS wf
 flat-ptr-bounds (instr-dealloc-stack n) prog fs () am wfS wf
+flat-ptr-bounds (instr-free-heap n)     prog fs () am wfS wf
+flat-ptr-bounds (load-at n)     prog fs ff am wfS wf =
+  pb-abstract (load-at n) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (store-at n)     prog fs ff am wfS wf =
+  pb-abstract (store-at n) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (addr-at n)     prog fs ff am wfS wf =
+  pb-abstract (addr-at n) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (instr-room n)     prog fs ff am wfS wf = pb-abstract (instr-room n) (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (instr-push-frame cap)  prog fs () am wfS wf
 flat-ptr-bounds instr-pop-frame         prog fs () am wfS wf
 flat-ptr-bounds mov-to-output            prog fs ff am wfS wf =

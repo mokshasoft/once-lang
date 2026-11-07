@@ -67,10 +67,10 @@ d_cmp'45'body_16 v0
 -- Once.Arith.SigOp.Compare.cmp-block
 d_cmp'45'block_20 ::
   MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_166
+  MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_56
 d_cmp'45'block_20 v0
   = coe
-      MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_180
+      MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_70
       (coe
          MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'pair_16
          (coe MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'int_12)
@@ -83,7 +83,7 @@ d_cmp'45'block'45'info_24 ::
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102
 d_cmp'45'block'45'info_24 v0
   = coe
-      MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_108
+      MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_116
       (coe
          MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'pair_16
          (coe MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'int_12)

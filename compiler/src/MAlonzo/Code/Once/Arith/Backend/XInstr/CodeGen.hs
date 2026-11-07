@@ -95,16 +95,16 @@ d_emit_24 ::
   [MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24]
 d_emit_24 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_load'45'input_10 v1 v2
-        -> let v3 = d_abs'45'reg_12 (coe v2) in
+      MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_load'45'input_10 v1 v2 v3
+        -> let v4 = d_abs'45'reg_12 (coe v3) in
            coe
-             (case coe v3 of
-                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
+             (case coe v4 of
+                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe
                           MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'arg_34
-                          (coe v4) (coe v1))
+                          (coe v5) (coe v1) (coe v2))
                        (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                   -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
@@ -543,16 +543,16 @@ d_emit_24 v0
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                   -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
                 _ -> MAlonzo.RTE.mazUnreachableError)
-      MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_load'45'finput_42 v1 v2
-        -> let v3 = d_abs'45'reg_12 (coe v2) in
+      MAlonzo.Code.Once.Arith.Machine.AbsInstr.C_load'45'finput_42 v1 v2 v3
+        -> let v4 = d_abs'45'reg_12 (coe v3) in
            coe
-             (case coe v3 of
-                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
+             (case coe v4 of
+                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe
                           MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'farg_74
-                          (coe v4) (coe v1))
+                          (coe v5) (coe v1) (coe v2))
                        (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                   -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
@@ -835,14 +835,14 @@ d_emit_24 v0
                    _ -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.XInstr.CodeGen.emit-program
-d_emit'45'program_900 ::
+d_emit'45'program_912 ::
   [MAlonzo.Code.Once.Arith.Machine.AbsInstr.T_AbstractInstr_8] ->
   [MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24]
-d_emit'45'program_900 v0
+d_emit'45'program_912 v0
   = case coe v0 of
       [] -> coe v0
       (:) v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
-             (coe d_emit_24 (coe v1)) (coe d_emit'45'program_900 (coe v2))
+             (coe d_emit_24 (coe v1)) (coe d_emit'45'program_912 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError

@@ -60,14 +60,19 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
-  using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; cata-body; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; in-trace; out-trace)
+  using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; cata-body; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; in-trace; with-copy; two-cell; node-copy-trace; out-trace; inj-trace; env-entry)
+open import Once.CCC.Codegen.FlatLayout using (word; flat; put; get; kind; lkind; lsz)
+open import Once.CCC.Codegen.Size using (size)
+open import Once.IRTy using (IRTy; ⟦_⟧TI; ν-type) renaming (_*_ to _*ᵀ_; _+_ to _+ᵀ_)
+open import Once.Spec.Type using (Fun)
+open import Data.Nat using (_⊔_)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Codegen.LabelRange o using (label-of)
 open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
 open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-ctrl; c-ret; c-label; c-start; block-layout; mov-to-input; mov-to-output; store-at-slot; restore-input; instr-alloc-heap; load-from-slot; store-indirect; store-indirect-suc; c-jmp; c-branch-tag-zero; load-indirect-suc; c-leave)
+  using (AbstractTrace; instr-ctrl; c-ret; c-label; c-start; block-layout; mov-to-input; mov-to-output; store-at-slot; restore-input; instr-alloc-heap; load-from-slot; store-indirect; store-indirect-suc; c-jmp; c-branch-tag-zero; load-indirect-suc; c-leave; load-at)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.ThunkScope o using (module Scope)
 open import Once.CCC.Codegen.BlockLayout using (module Layout)
@@ -340,31 +345,33 @@ module Unique {FS : FrameSemantics} where
   tl-pre : ∀ (pre t : AbstractTrace) → NoThunkT pre → thunk-labels (pre ++ t) ≡ thunk-labels t
   tl-pre pre t nt = trans (tl-++ pre t) (cong (_++ thunk-labels t) (tl-nil pre nt))
 
-  cata-tl : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
-          → thunk-labels (cata-trace-of (cata-dispatch st bb n1 l1 at))
+  cata-tl : ∀ (E A : IRTy) (G : Fun 0) (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
+          → thunk-labels (cata-trace-of (cata-dispatch E A G st bb n1 l1 at))
           ≡ ℓ o (cata-BL st l1) ∷ thunk-labels at
-  cata-tl strat-const bb n1 l1 at =
-    trans (tl-pre P₁ R₁ (nt-dec P₁ refl))
-          (trans (tl-pre P₂ R₂ (nt-dec P₂ refl)) (cata-body-tl l1 (l1 + 1) bb at))
+  cata-tl E A G strat-const bb n1 l1 at =
+    trans (tl-pre P₁ R₁ (setup-nt E n1 (n1 + 1) (n1 + 2) l1))
+          (trans (tl-pre P₂ R₂ (call-nt mov-to-output E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3) refl))
+                 (cata-body-tl l1 (l1 + 1) bb at))
     where
-      P₁ = cata-call-setup n1 (n1 + 1) (n1 + 2) l1
-      P₂ = cata-call n1 (n1 + 1) (n1 + 2) (n1 + 3)
+      P₁ = cata-call-setup E n1 (n1 + 1) (n1 + 2) l1
+      P₂ = cata-call E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3)
       R₂ = cata-body l1 (l1 + 1) bb at
       R₁ = P₂ ++ R₂
-  cata-tl strat-box bb n1 l1 at =
-    trans (tl-pre P₁ R₁ (nt-dec P₁ refl))
-          (trans (tl-pre P₂ R₂ (nt-dec P₂ refl)) (cata-body-tl l1 (l1 + 1) bb at))
+  cata-tl E A G strat-box bb n1 l1 at =
+    trans (tl-pre P₁ R₁ (setup-nt E n1 (n1 + 1) (n1 + 2) l1))
+          (trans (tl-pre P₂ R₂ (call-nt (load-at 0) E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3) refl))
+                 (cata-body-tl l1 (l1 + 1) bb at))
     where
-      P₁ = cata-call-setup n1 (n1 + 1) (n1 + 2) l1
-      P₂ = cata-call-box n1 (n1 + 1) (n1 + 2) (n1 + 3)
+      P₁ = cata-call-setup E n1 (n1 + 1) (n1 + 2) l1
+      P₂ = cata-call-box E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3)
       R₂ = cata-body l1 (l1 + 1) bb at
       R₁ = P₂ ++ R₂
   -- The branching prelude contains the compile-time functor walks, so its
   -- thunk-freeness is `br-I₁-nt`'s induction, not a decider.
-  cata-tl (strat-branching F) bb n1 l1 at =
-    trans (tl-pre P₁ R₁ (nt-dec P₁ refl))
-      (trans (tl-pre P₂ R₂ (br-I₁-nt F n1 l1))
-        (trans (tl-pre P₃ R₃ (nt-dec P₃ refl))
+  cata-tl E A G (strat-branching F) bb n1 l1 at =
+    trans (tl-pre P₁ R₁ (setup-nt E B (B + 1) (B + 2) L))
+      (trans (tl-pre P₂ R₂ (br-I₁-nt (kind A) (size A) F n1 l1))
+        (trans (tl-pre P₃ R₃ (call-nt mov-to-output E (lkind F (kind A)) (lsz F (size A)) B (B + 1) (B + 2) (B + 3) refl))
           (trans (tl-pre P₄ R₄ (nt-dec P₄ refl))
                  (cata-body-tl L (L + 1) bb at))))
     where
@@ -372,9 +379,9 @@ module Unique {FS : FrameSemantics} where
       B = n1 + 7 + (4 ℕ.* fsize F) + 4
       L : ℕ
       L = l1 + 4 + lsize F + lsize F
-      P₁ = cata-call-setup B (B + 1) (B + 2) L
-      P₂ = cata-br-I₁ F n1 l1
-      P₃ = cata-call B (B + 1) (B + 2) (B + 3)
+      P₁ = cata-call-setup E B (B + 1) (B + 2) L
+      P₂ = cata-br-I₁ (kind A) (size A) F n1 l1
+      P₃ = cata-call E (lkind F (kind A)) (lsz F (size A)) B (B + 1) (B + 2) (B + 3)
       P₄ = cata-br-I₂ n1 l1
       R₄ = cata-body L (L + 1) bb at
       R₃ = P₄ ++ R₄
@@ -427,26 +434,40 @@ module Unique {FS : FrameSemantics} where
   sigop-defs si n (just _) = []
 
   -- D366: `In`'s three shapes and `out-μ`'s define no marker.
-  in-du : ∀ (r : MuRep) (n : ℕ) → AllPairs _≢_ (thunk-labels (in-trace r n) ++ [])
-  in-du mu-box  n = []
-  in-du mu-unit n = []
-  in-du mu-ptr  n = []
+  in-du : ∀ (r : MuRep) kd L (n : ℕ) → AllPairs _≢_ (thunk-labels (in-trace r kd L n) ++ [])
+  in-du mu-box  kd L n = []
+  in-du mu-unit kd L n = []
+  in-du mu-ptr  word L n = []
+  in-du mu-ptr  flat L n = subst (λ z → AllPairs _≢_ (z ++ [])) (sym (tl-nil (node-copy-trace L n) (refl ∷ refl ∷ refl ∷ refl ∷ All-++⁺ (put-nt L n (suc n) 0) (refl ∷ [])))) []
 
   out-du : ∀ (r : MuRep) → AllPairs _≢_ (thunk-labels (out-trace r) ++ [])
   out-du mu-box  = []
   out-du mu-unit = []
   out-du mu-ptr  = []
 
+  -- plan 0.123 B.4 α: a marker-free trace whose length a type decides
+  none-nt : ∀ (t : AbstractTrace) → NoThunkT t → AllPairs _≢_ (thunk-labels t ++ [])
+  none-nt t nt = subst (λ z → AllPairs _≢_ (z ++ [])) (sym (tl-nil t nt)) []
+
+  -- D399: a kept value's copy, then the two-cell build, defines no marker (`wc-nt`)
+  wc-du : ∀ kd E n c (bs : Blocks) → AllPairs _≢_ (block-defs bs)
+        → AllPairs _≢_ (thunk-labels (with-copy kd E n (λ m → two-cell m c)) ++ block-defs bs)
+  wc-du kd E n c bs p = subst (λ z → AllPairs _≢_ (z ++ block-defs bs)) (sym (tl-nil _ (wc-nt kd E n c))) p
+
   defs-uniq : ∀ {A B} (ir : IR A B) (n l : ℕ) → AllPairs _≢_ (defs (ir-to-trace' n l ir))
   defs-uniq id                    n l = []
-  defs-uniq fst                   n l = []
-  defs-uniq snd                   n l = []
-  defs-uniq inl                   n l = []
-  defs-uniq inr                   n l = []
+  defs-uniq (fst {A} {B})         n l = none-nt (get A 0) (get-nt A 0)
+  defs-uniq (snd {A} {B})         n l = none-nt (get B (size A)) (get-nt B (size A))
+  defs-uniq (inl {A} {B})         n l = none-nt (inj-trace 0 A (A +ᵀ B) n) (inj-nt 0 A (A +ᵀ B) n)
+  defs-uniq (inr {A} {B})         n l = none-nt (inj-trace 1 B (A +ᵀ B) n) (inj-nt 1 B (A +ᵀ B) n)
   defs-uniq terminal              n l = []
   defs-uniq initial               n l = []
-  defs-uniq apply                 n l = []
-  defs-uniq (In {F} _)            n l = in-du (mu-rep F) n
+  defs-uniq (apply {A} {B})       n l =
+    none-nt (trace-of (ir-to-trace' n l (apply {A} {B})))
+      (All-++⁺ (get-nt A 1)
+           (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+            All-++⁺ (put-nt A n (suc (suc n)) 1) (refl ∷ refl ∷ refl ∷ [])))
+  defs-uniq (In {F} _)            n l = in-du (mu-rep F) _ _ n
   defs-uniq (out-μ {F} _)         n l = out-du (mu-rep F)
   defs-uniq (Out _)               n l = []
   defs-uniq (const fits-int   v)  n l = []
@@ -455,22 +476,25 @@ module Unique {FS : FrameSemantics} where
   defs-uniq (Call _)             n l = []
   -- `in-ν`'s block is a one-instruction stub and it owns no children, so its
   -- single minted label has nothing to be distinct from.
-  defs-uniq (in-ν _)              n l = [] ∷ []
+  defs-uniq (in-ν {F} w)              n l = wc-du (kind (⟦ F ⟧TI (ν-type F))) _ n (ℓ o l) (bodies-of (ir-to-trace' n l (in-ν w))) ([] ∷ [])
   -- THE THREE THAT MINT AT `l` ITSELF. The child starts at a strictly larger
   -- counter, so the minted label is below everything the child defines.
-  defs-uniq (curry b)             n l =
-    head-fresh′ l (n≤1+n (suc l)) (defsA b 0 (s² l)) ∷ defs-uniq b 0 (s² l)
-  defs-uniq (Ana wf c)            n l =
+  defs-uniq (curry {E} {A} b)     n l = wc-du (kind E) E n (ℓ o l) (bodies-of (ir-to-trace' n l (curry {E} {A} b))) (
+    subst (λ z → AllPairs _≢_ (ℓ o l ∷ (z ++ block-defs (bodies-of (ir-to-trace' bs (s² l) b)))))
+          (sym (tl-pre (proj₂ (env-entry (kind E) E A)) (trace-of (ir-to-trace' bs (s² l) b)) (entry-nt (kind E) E A)))
+          (head-fresh′ l (n≤1+n (suc l)) (defsA b bs (s² l)) ∷ defs-uniq b bs (s² l)))
+    where bs = proj₁ (env-entry (kind E) E A)
+  defs-uniq (Ana {F} wf {E} {A} c) n l = wc-du flat (E *ᵀ A) n (ℓ o l) (bodies-of (ir-to-trace' n l (Ana wf c))) (
     subst (λ z → AllPairs _≢_ (ℓ o l ∷ (z ++ block-defs (bodies-of (ir-to-trace' 1 (suc l) c)))))
           (sym (tl-post (trace-of (ir-to-trace' 1 (suc l) c)) _
-                        (resuspend-nt (proj₁ (ir-to-trace' 1 (suc l) c))
+                        (resuspend-nt F E A (proj₁ (ir-to-trace' 1 (suc l) c))
                                       (label-of (ir-to-trace' 1 (suc l) c)) (ℓ o l) 0 wf)))
-          (head-fresh′ l ≤-refl (defsA c 1 (suc l)) ∷ defs-uniq c 1 (suc l))
+          (head-fresh′ l ≤-refl (defsA c 1 (suc l)) ∷ defs-uniq c 1 (suc l)))
   -- …AND THE ONE THAT MINTS ABOVE. `cata-body`'s label is the DISPATCH's, past
   -- everything the algebra took.
-  defs-uniq (Cata {F} _ a)        n l =
+  defs-uniq (Cata {F} _ {E} {A} a) n l =
     subst (λ z → AllPairs _≢_ (z ++ block-defs (bodies-of (ir-to-trace' 0 l a))))
-          (sym (cata-tl (cata-strategy ⌈ F ⌉F) (proj₁ (ir-to-trace' 0 l a)) n
+          (sym (cata-tl E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) (proj₁ (ir-to-trace' 0 l a)) n
                         (label-of (ir-to-trace' 0 l a)) (trace-of (ir-to-trace' 0 l a))))
           (head-fresh (cata-BL (cata-strategy ⌈ F ⌉F) (label-of (ir-to-trace' 0 l a)))
                       (Below-weaken (cata-BL-mono (cata-strategy ⌈ F ⌉F)
@@ -492,7 +516,7 @@ module Unique {FS : FrameSemantics} where
       fb = bodies-of (ir-to-trace' n l f)
       gt = trace-of (ir-to-trace' n1 l1 g)
       gb = bodies-of (ir-to-trace' n1 l1 g)
-  defs-uniq ⟨ f , g ⟩             n l =
+  defs-uniq (⟨_,_⟩ {A} {B} {C} f g) n l =
     subst (AllPairs _≢_) (sym (cong₂ _++_ tl-eq (bd-++ fb gb)))
           (regroup (thunk-labels ft) (block-defs fb) (thunk-labels gt) (block-defs gb)
                    (defs-uniq f (s⁴ n) l) (defs-uniq g n1 l1)
@@ -506,31 +530,39 @@ module Unique {FS : FrameSemantics} where
       gt = trace-of (ir-to-trace' n1 l1 g)
       gb = bodies-of (ir-to-trace' n1 l1 g)
       post : AbstractTrace
-      post = store-at-slot (s² n) ∷ instr-alloc-heap 2 ∷ store-at-slot (s³ n) ∷
-             mov-to-input ∷ load-from-slot (suc n) ∷ store-indirect ∷
-             load-from-slot (s² n) ∷ store-indirect-suc ∷ load-from-slot (s³ n) ∷ []
+      post = store-at-slot (s² n) ∷ instr-alloc-heap (2 ⊔ size (B *ᵀ C)) ∷ store-at-slot (s³ n) ∷
+             (put B (suc n) (s³ n) 0 ++ (put C (s² n) (s³ n) (size B) ++ (load-from-slot (s³ n) ∷ [])))
+      post-nt : NoThunkT post
+      post-nt = refl ∷ refl ∷ refl ∷
+                All-++⁺ (put-nt B (suc n) (s³ n) 0) (All-++⁺ (put-nt C (s² n) (s³ n) (size B)) (refl ∷ []))
       tl-eq : thunk-labels (mov-to-output ∷ store-at-slot n ∷
                             (ft ++ (store-at-slot (suc n) ∷ restore-input n ∷ (gt ++ post))))
             ≡ thunk-labels ft ++ thunk-labels gt
       tl-eq = trans (tl-++ ft (store-at-slot (suc n) ∷ restore-input n ∷ (gt ++ post)))
-                    (cong (thunk-labels ft ++_) (tl-post gt post (nt-dec post refl)))
+                    (cong (thunk-labels ft ++_) (tl-post gt post post-nt))
   -- the loop defines nothing of its own (its labels are `c-label`s, not
   -- markers): its definitions are the round's.
-  defs-uniq (Iter b)              n l =
+  defs-uniq (Iter {E} {A} {B} b)  n l =
     subst (λ z → AllPairs _≢_ (z ++ block-defs (bodies-of (ir-to-trace' (s⁴ n) (s² l) b))))
-          (sym (tl-post (trace-of (ir-to-trace' (s⁴ n) (s² l) b)) post (nt-dec post refl)))
+          (sym (trans (tl-pre (get E 0) _ (get-nt E 0))
+                      (tl-post (trace-of (ir-to-trace' (s⁴ n) (s² l) b)) post post-nt)))
           (defs-uniq b (s⁴ n) (s² l))
     where
       post : AbstractTrace
-      post = mov-to-input ∷ instr-ctrl (c-branch-tag-zero (ℓ o (suc l))) ∷ load-indirect-suc ∷
-             store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷ store-at-slot (suc (suc (suc n))) ∷
-             mov-to-input ∷ load-from-slot (suc n) ∷ store-indirect ∷
-             load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷ load-from-slot (suc (suc (suc n))) ∷
-             mov-to-input ∷ instr-ctrl (c-jmp (ℓ o l)) ∷ instr-ctrl (c-label (ℓ o (suc l))) ∷
-             load-indirect-suc ∷ []
+      post = mov-to-input ∷ instr-ctrl (c-branch-tag-zero (ℓ o (suc l))) ∷
+             (get A 1 ++ (store-at-slot (s² n) ∷ instr-alloc-heap (2 ⊔ size (E *ᵀ A)) ∷ store-at-slot (s³ n) ∷
+                          (put E (suc n) (s³ n) 0 ++ (put A (s² n) (s³ n) (size E) ++
+                           (load-from-slot (s³ n) ∷ mov-to-input ∷ instr-ctrl (c-jmp (ℓ o l)) ∷
+                            instr-ctrl (c-label (ℓ o (suc l))) ∷ get B 1)))))
+      post-nt : NoThunkT post
+      post-nt = refl ∷ refl ∷
+                All-++⁺ (get-nt A 1)
+                    (refl ∷ refl ∷ refl ∷
+                     All-++⁺ (put-nt E (suc n) (s³ n) 0)
+                         (All-++⁺ (put-nt A (s² n) (s³ n) (size E)) (refl ∷ refl ∷ refl ∷ refl ∷ get-nt B 1)))
   -- `case` puts `g` FIRST in the trace and `f` first in the blocks, so this is
   -- the mirrored merge.
-  defs-uniq (case f g)            n l =
+  defs-uniq (case {A} {B} f g)    n l =
     subst (AllPairs _≢_) (sym (cong₂ _++_ tl-eq (bd-++ fb gb)))
           (regroup-swap (thunk-labels ft) (block-defs fb) (thunk-labels gt) (block-defs gb)
                         (defs-uniq f n (s² l)) (defs-uniq g n1 l1)
@@ -545,14 +577,12 @@ module Unique {FS : FrameSemantics} where
       gb = bodies-of (ir-to-trace' n1 l1 g)
       post : AbstractTrace
       post = instr-ctrl (c-label (ℓ o (suc l))) ∷ []
-      mid : AbstractTrace
-      mid = instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷
-            load-indirect-suc ∷ mov-to-input ∷ []
-      tl-eq : thunk-labels ((instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ load-indirect-suc ∷
-                             mov-to-input ∷ []) ++ (gt ++ (mid ++ (ft ++ post))))
+      tl-eq : thunk-labels (trace-of (ir-to-trace' n l (case {A} {B} f g)))
             ≡ thunk-labels gt ++ thunk-labels ft
-      tl-eq = trans (tl-++ gt (mid ++ (ft ++ post)))
-                    (cong (thunk-labels gt ++_) (tl-post ft post (nt-dec post refl)))
+      tl-eq = trans (tl-pre (get B 1) _ (get-nt B 1))
+                (trans (tl-++ gt _)
+                  (cong (thunk-labels gt ++_)
+                        (trans (tl-pre (get A 1) _ (get-nt A 1)) (tl-post ft post (nt-dec post refl)))))
 
   ------------------------------------------------------------------------
   -- THE CONSUMER'S FORM. `link` puts the entry trace and its `c-ret` before

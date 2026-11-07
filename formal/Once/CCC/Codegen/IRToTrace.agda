@@ -90,14 +90,17 @@ open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; t
 -- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
 open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (Fun)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; IRTy; IRFunctor; ⟦_⟧TI; ν-type; μ-type)
+  renaming (_*_ to _*ᵀ_; _+_ to _+ᵀ_)
+open import Once.CCC.Codegen.Size using (size)
+open import Once.CCC.Codegen.FlatLayout using (put; put-k; get; get-k; fill; Kind; word; flat; kind; lkind; lsz)
 import Once.Type as Ty
 open import Once.Spec.Type using (Int; Float)
 open import Data.Bool using (Bool; true; false)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; CompUnit; unit; link; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; restore-input; instr-alloc-heap; instr-call-closure; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-ctrl; c-label; c-jmp; c-thunk; c-call-fn; c-ret; c-branch-tag-zero; out-nz)
+  using (AbstractInstr; AbstractTrace; CompUnit; unit; link; mov-to-output; mov-to-input; load-from-slot; store-at-slot; restore-input; instr-alloc-heap; instr-call-closure; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-ctrl; c-label; c-jmp; c-thunk; c-call-fn; c-ret; c-branch-tag-zero; out-nz; store-at; load-at; addr-at)
 
 ------------------------------------------------------------------------
 -- IR → AbstractTrace, state-passing
@@ -227,19 +230,21 @@ cata-body body-label end-label bb at =
 -- FRESH by every `cata-call` (see there). This prologue only splits the input
 -- (`ev`, `k`) and builds the closure record `cl`; the slot layout
 -- `cl/k/ev/pr` is unchanged, `pr` is the slot the CALL writes.
-cata-call-setup : ℕ → ℕ → ℕ → ℕ → AbstractTrace
-cata-call-setup cl k ev body-label =
-  load-indirect ∷
+-- plan 0.123 B.4 α: the input pair `E * μF` is flat — the environment at word 0
+-- (`get`: its word, or its address), the μ pointer at word `size E`.
+cata-call-setup : IRTy → ℕ → ℕ → ℕ → ℕ → AbstractTrace
+cata-call-setup E cl k ev body-label =
+  get E 0 ++
   store-at-slot ev ∷
-  load-indirect-suc ∷
+  load-at (size E) ∷
   store-at-slot k ∷
   instr-alloc-heap 2 ∷
   store-at-slot cl ∷
   mov-to-input ∷
   instr-load-tag-lit 0 ∷
-  store-indirect ∷
+  store-at 0 ∷
   instr-load-code-addr (ℓ o body-label) ∷
-  store-indirect-suc ∷
+  store-at 1 ∷
   load-from-slot k ∷
   mov-to-input ∷ []
 
@@ -266,25 +271,27 @@ cata-call-setup cl k ev body-label =
 -- writes only fresh cells, so earlier results are never disturbed. Reusing one
 -- pair per fold is deferred to the linearity / in-place-update work, where it
 -- can be justified for every carrier.
-cata-call-from : AbstractInstr → ℕ → ℕ → ℕ → ℕ → AbstractTrace
-cata-call-from i0 cl k ev pr =
+-- plan 0.123 B.4 α: the argument pair `E * ⟦F⟧A` is flat — the environment's
+-- words (or word) at 0, the layer's (kind `lk`, size `ls`) at `size E`.
+cata-call-from : AbstractInstr → IRTy → Kind → ℕ → ℕ → ℕ → ℕ → ℕ → AbstractTrace
+cata-call-from i0 E lk ls cl k ev pr =
   i0 ∷ store-at-slot k ∷
-  instr-alloc-heap 2 ∷ store-at-slot pr ∷ mov-to-input ∷
-  load-from-slot ev ∷ store-indirect ∷
-  load-from-slot k ∷ store-indirect-suc ∷
+  instr-alloc-heap (2 ⊔ (size E ℕ.+ ls)) ∷ store-at-slot pr ∷
+  put E ev pr 0 ++
+  put-k lk ls k pr (size E) ++
   load-from-slot cl ∷ mov-to-input ∷
   instr-save-closure-reg ∷
   load-from-slot pr ∷ mov-to-input ∷
   instr-call-closure ∷ []
 
-cata-call : ℕ → ℕ → ℕ → ℕ → AbstractTrace
+cata-call : IRTy → Kind → ℕ → ℕ → ℕ → ℕ → ℕ → AbstractTrace
 cata-call = cata-call-from mov-to-output
 
--- D366: at a BOXED μ (`strat-box`) the layer is the box's cell, so the first
--- row reads it (`load-indirect`) where the others copy the pointer
+-- D366: at a BOXED μ (`strat-box`) the layer is the box's word, so the first
+-- row reads it (`load-at 0`) where the others copy the pointer
 -- (`mov-to-output`); the rows after it are the same.
-cata-call-box : ℕ → ℕ → ℕ → ℕ → AbstractTrace
-cata-call-box = cata-call-from load-indirect
+cata-call-box : IRTy → Kind → ℕ → ℕ → ℕ → ℕ → ℕ → AbstractTrace
+cata-call-box = cata-call-from (load-at 0)
 
 -- ────────────────────────────────────────────────────────────────────
 -- Plan 0.36 Phase 2b Tier 2: functor-general BRANCHING cata codegen
@@ -320,8 +327,8 @@ fsize (F ⊗ G) = suc (fsize F ℕ.+ fsize G)
 push2 : (topSlot tv tb : ℕ) → AbstractTrace
 push2 topSlot tv tb =
   store-at-slot tv ∷ instr-alloc-heap 2 ∷ store-at-slot tb ∷ mov-to-input ∷
-  load-from-slot tv ∷ store-indirect ∷
-  load-from-slot topSlot ∷ store-indirect-suc ∷
+  load-from-slot tv ∷ store-at 0 ∷
+  load-from-slot topSlot ∷ store-at 1 ∷
   load-from-slot tb ∷ store-at-slot topSlot ∷ []
 
 -- pop a 2-cell linked stack at `topSlot`; popped value → Output, advance
@@ -329,17 +336,28 @@ push2 topSlot tv tb =
 pop2 : (topSlot : ℕ) → AbstractTrace
 pop2 topSlot =
   load-from-slot topSlot ∷ mov-to-input ∷
-  load-indirect-suc ∷ store-at-slot topSlot ∷
-  load-indirect ∷ []
+  load-at 1 ∷ store-at-slot topSlot ∷
+  load-at 0 ∷ []
 
--- wrap the payload repr in Output into a sum node `[tag, payload]` (Output
--- := new block); scratch slots `s` (payload) and `s+1` (block).
-wrap-sum : (tag s : ℕ) → AbstractTrace
-wrap-sum tag s =
-  store-at-slot s ∷ instr-alloc-heap 2 ∷ store-at-slot (suc s) ∷ mov-to-input ∷
-  instr-load-tag-lit tag ∷ store-indirect ∷
-  load-from-slot s ∷ store-indirect-suc ∷
+-- plan 0.123 B.4 α: wrap the payload (kind `pk`, size `ps`) in Output into a
+-- flat sum `[tag, payload…]` of `2 ⊔ ss` words (Output := new block); scratch
+-- slots `s` (payload) and `s+1` (block).
+wrap-sum : (tag : ℕ) → Kind → (ps ss s : ℕ) → AbstractTrace
+wrap-sum tag pk ps ss s =
+  store-at-slot s ∷ instr-alloc-heap (2 ⊔ ss) ∷ store-at-slot (suc s) ∷ mov-to-input ∷
+  instr-load-tag-lit tag ∷ store-at 0 ∷
+  fill (suc ps) (ss ℕ.∸ suc ps) ++
+  put-k pk ps s (suc s) 1 ++
   load-from-slot (suc s) ∷ []
+
+-- plan 0.123 B.4 α: the walks read a layer `⟦ G ⟧ X` at its flat offsets:
+-- `getL G ck cs k` is `get` of the layer at word `k`. A μ node's positions are
+-- at the carrier μ: a word of size 1.
+getL : Fun 0 → Kind → ℕ → ℕ → AbstractTrace
+getL G ck cs = get-k (lkind G ck) (lsz G cs)
+
+getμ : Fun 0 → ℕ → AbstractTrace
+getμ G = getL G word 1
 
 -- VISIT walk: Input1 = repr(G); push every Id child (a μF pointer) of G
 -- onto the todo stack, LEFT-to-RIGHT. `s` = structural-walk slot base
@@ -362,16 +380,16 @@ visit-walk : (todoSlot tv tb : ℕ) → Fun 0 → (s lb : ℕ) → AbstractTrace
 visit-walk todoSlot tv tb (K _) s lb = []
 visit-walk todoSlot tv tb Id    s lb = mov-to-output ∷ push2 todoSlot tv tb
 visit-walk todoSlot tv tb (F ⊕ G) s lb =
-  (instr-ctrl (c-branch-tag-zero (ℓ o lb)) ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
+  (instr-ctrl (c-branch-tag-zero (ℓ o lb)) ∷ []) ++ getμ G 1 ++ (mov-to-input ∷ []) ++
   visit-walk todoSlot tv tb G (s ℕ.+ 4) (suc (suc lb) ℕ.+ lsize F) ++
-  (instr-ctrl (c-jmp (ℓ o (suc lb))) ∷ instr-ctrl (c-label (ℓ o lb)) ∷
-   load-indirect-suc ∷ mov-to-input ∷ []) ++
+  (instr-ctrl (c-jmp (ℓ o (suc lb))) ∷ instr-ctrl (c-label (ℓ o lb)) ∷ []) ++
+  getμ F 1 ++ (mov-to-input ∷ []) ++
   visit-walk todoSlot tv tb F (s ℕ.+ 4) (suc (suc lb)) ++
   (instr-ctrl (c-label (ℓ o (suc lb))) ∷ [])
 visit-walk todoSlot tv tb (F ⊗ G) s lb =
-  (mov-to-output ∷ store-at-slot s ∷ load-indirect ∷ mov-to-input ∷ []) ++
+  (mov-to-output ∷ store-at-slot s ∷ []) ++ getμ F 0 ++ (mov-to-input ∷ []) ++
   visit-walk todoSlot tv tb F (s ℕ.+ 4) lb ++
-  (restore-input s ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
+  (restore-input s ∷ []) ++ getμ G (lsz F 1) ++ (mov-to-input ∷ []) ++
   visit-walk todoSlot tv tb G (s ℕ.+ 4) (lb ℕ.+ lsize F)
 
 -- REBUILD walk: Input1 = repr(G) (the node sublayer); build the ⟦G⟧A layer
@@ -384,37 +402,41 @@ visit-walk todoSlot tv tb (F ⊗ G) s lb =
 -- `reverse` of it, because the visited stack is also LIFO) is LEFT-FIRST — the
 -- order `seqF (G ⊗ H)` specifies. The value stack then has the RIGHT child's
 -- result on top, so this walk pops `G` before `F`.
-rebuild-walk : (valSlot tv tb : ℕ) → Fun 0 → (s lb : ℕ) → AbstractTrace
-rebuild-walk valSlot tv tb (K _) s lb = mov-to-output ∷ []
-rebuild-walk valSlot tv tb Id    s lb = pop2 valSlot
-rebuild-walk valSlot tv tb (F ⊕ G) s lb =
-  (instr-ctrl (c-branch-tag-zero (ℓ o lb)) ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
-  rebuild-walk valSlot tv tb G (s ℕ.+ 4) (suc (suc lb) ℕ.+ lsize F) ++ wrap-sum 1 s ++
-  (instr-ctrl (c-jmp (ℓ o (suc lb))) ∷ instr-ctrl (c-label (ℓ o lb)) ∷
-   load-indirect-suc ∷ mov-to-input ∷ []) ++
-  rebuild-walk valSlot tv tb F (s ℕ.+ 4) (suc (suc lb)) ++ wrap-sum 0 s ++
+-- plan 0.123 B.4 α: the node's layer is read at the carrier μ (`getμ`); the
+-- rebuilt layer is laid out at the carrier `A` (kind `ck`, size `cs`).
+rebuild-walk : (valSlot tv tb : ℕ) → Kind → ℕ → Fun 0 → (s lb : ℕ) → AbstractTrace
+rebuild-walk valSlot tv tb ck cs (K _) s lb = mov-to-output ∷ []
+rebuild-walk valSlot tv tb ck cs Id    s lb = pop2 valSlot
+rebuild-walk valSlot tv tb ck cs (F ⊕ G) s lb =
+  (instr-ctrl (c-branch-tag-zero (ℓ o lb)) ∷ []) ++ getμ G 1 ++ (mov-to-input ∷ []) ++
+  rebuild-walk valSlot tv tb ck cs G (s ℕ.+ 4) (suc (suc lb) ℕ.+ lsize F) ++
+  wrap-sum 1 (lkind G ck) (lsz G cs) (lsz (F ⊕ G) cs) s ++
+  (instr-ctrl (c-jmp (ℓ o (suc lb))) ∷ instr-ctrl (c-label (ℓ o lb)) ∷ []) ++
+  getμ F 1 ++ (mov-to-input ∷ []) ++
+  rebuild-walk valSlot tv tb ck cs F (s ℕ.+ 4) (suc (suc lb)) ++
+  wrap-sum 0 (lkind F ck) (lsz F cs) (lsz (F ⊕ G) cs) s ++
   (instr-ctrl (c-label (ℓ o (suc lb))) ∷ [])
-rebuild-walk valSlot tv tb (F ⊗ G) s lb =
-  (mov-to-output ∷ store-at-slot s ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
-  rebuild-walk valSlot tv tb G (s ℕ.+ 4) (lb ℕ.+ lsize F) ++
-  (store-at-slot (s ℕ.+ 2) ∷ restore-input s ∷ load-indirect ∷ mov-to-input ∷ []) ++
-  rebuild-walk valSlot tv tb F (s ℕ.+ 4) lb ++
-  (store-at-slot (suc s) ∷ instr-alloc-heap 2 ∷ store-at-slot (s ℕ.+ 3) ∷ mov-to-input ∷
-   load-from-slot (suc s) ∷ store-indirect ∷
-   load-from-slot (s ℕ.+ 2) ∷ store-indirect-suc ∷
-   load-from-slot (s ℕ.+ 3) ∷ [])
+rebuild-walk valSlot tv tb ck cs (F ⊗ G) s lb =
+  (mov-to-output ∷ store-at-slot s ∷ []) ++ getμ G (lsz F 1) ++ (mov-to-input ∷ []) ++
+  rebuild-walk valSlot tv tb ck cs G (s ℕ.+ 4) (lb ℕ.+ lsize F) ++
+  (store-at-slot (s ℕ.+ 2) ∷ restore-input s ∷ []) ++ getμ F 0 ++ (mov-to-input ∷ []) ++
+  rebuild-walk valSlot tv tb ck cs F (s ℕ.+ 4) lb ++
+  (store-at-slot (suc s) ∷ instr-alloc-heap (2 ⊔ lsz (F ⊗ G) cs) ∷ store-at-slot (s ℕ.+ 3) ∷ []) ++
+  put-k (lkind F ck) (lsz F cs) (suc s) (s ℕ.+ 3) 0 ++
+  put-k (lkind G ck) (lsz G cs) (s ℕ.+ 2) (s ℕ.+ 3) (lsz F cs) ++
+  (load-from-slot (s ℕ.+ 3) ∷ [])
 
 -- The branching codegen. Precondition: Input1 = root μ-value; `at` = alg
 -- trace (Input1 = ⟦F⟧A layer → Output = A). Output := root fold.
 -- Plan 0.63 (iii): the branching skeleton splices the algebra ONCE, so its
 -- decomposition is `I₁ ++ at ++ I₂`. Same list as before; the old form nested
 -- as `(… ++ at ++ B) ++ final-read`.
-cata-br-I₁ : Fun 0 → ℕ → ℕ → AbstractTrace
-cata-br-I₁ F n1 l1 =
+cata-br-I₁ : Kind → ℕ → Fun 0 → ℕ → ℕ → AbstractTrace
+cata-br-I₁ ck cs F n1 l1 =
   -- init
   (mov-to-output ∷ store-at-slot (n1 ℕ.+ 3) ∷
    instr-alloc-heap 2 ∷ store-at-slot (n1 ℕ.+ 6) ∷ mov-to-input ∷
-   instr-load-tag-lit 0 ∷ store-indirect ∷
+   instr-load-tag-lit 0 ∷ store-at 0 ∷
    load-from-slot (n1 ℕ.+ 6) ∷ store-at-slot (suc n1) ∷
    load-from-slot (n1 ℕ.+ 6) ∷ store-at-slot (n1 ℕ.+ 2) ∷
    load-from-slot (n1 ℕ.+ 6) ∷ store-at-slot n1 ∷
@@ -423,8 +445,8 @@ cata-br-I₁ F n1 l1 =
   (instr-ctrl (c-label (ℓ o l1)) ∷
    load-from-slot n1 ∷ mov-to-input ∷
    instr-ctrl (c-branch-tag-zero (ℓ o (suc l1))) ∷
-   load-indirect-suc ∷ store-at-slot n1 ∷
-   load-indirect ∷ mov-to-input ∷ store-at-slot (n1 ℕ.+ 3) ∷
+   load-at 1 ∷ store-at-slot n1 ∷
+   load-at 0 ∷ mov-to-input ∷ store-at-slot (n1 ℕ.+ 3) ∷
    load-from-slot (n1 ℕ.+ 3) ∷ []) ++ push2 (suc n1) (n1 ℕ.+ 4) (n1 ℕ.+ 5) ++
   (load-from-slot (n1 ℕ.+ 3) ∷ mov-to-input ∷ []) ++
   visit-walk n1 (n1 ℕ.+ 4) (n1 ℕ.+ 5) F (n1 ℕ.+ 7) (l1 ℕ.+ 4) ++
@@ -433,9 +455,9 @@ cata-br-I₁ F n1 l1 =
   (instr-ctrl (c-label (ℓ o (l1 ℕ.+ 2))) ∷
    load-from-slot (suc n1) ∷ mov-to-input ∷
    instr-ctrl (c-branch-tag-zero (ℓ o (l1 ℕ.+ 3))) ∷
-   load-indirect-suc ∷ store-at-slot (suc n1) ∷
-   load-indirect ∷ mov-to-input ∷ []) ++
-  rebuild-walk (n1 ℕ.+ 2) (n1 ℕ.+ 4) (n1 ℕ.+ 5) F (n1 ℕ.+ 7) (l1 ℕ.+ 4 ℕ.+ lsize F) ++
+   load-at 1 ∷ store-at-slot (suc n1) ∷
+   load-at 0 ∷ mov-to-input ∷ []) ++
+  rebuild-walk (n1 ℕ.+ 2) (n1 ℕ.+ 4) (n1 ℕ.+ 5) ck cs F (n1 ℕ.+ 7) (l1 ℕ.+ 4 ℕ.+ lsize F) ++
   (mov-to-input ∷ [])
 
 cata-br-I₂ : ℕ → ℕ → AbstractTrace
@@ -443,21 +465,21 @@ cata-br-I₂ n1 l1 =
   push2 (n1 ℕ.+ 2) (n1 ℕ.+ 4) (n1 ℕ.+ 5) ++
   (instr-ctrl (c-jmp (ℓ o (l1 ℕ.+ 2))) ∷ instr-ctrl (c-label (ℓ o (l1 ℕ.+ 3))) ∷ []) ++
   -- final-read
-  (load-from-slot (n1 ℕ.+ 2) ∷ mov-to-input ∷ load-indirect ∷ [])
+  (load-from-slot (n1 ℕ.+ 2) ∷ mov-to-input ∷ load-at 0 ∷ [])
 
 -- Tier 2 splices the algebra ONCE, so C1 costs it one call site, not two.
 -- The body/join labels and the call's two slots go above the existing ranges.
-cata-trace-branching : Fun 0 → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
-cata-trace-branching F bb n1 l1 at =
+cata-trace-branching : IRTy → IRTy → Fun 0 → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-branching E A F bb n1 l1 at =
   -- D131: two more slots above the existing range — `ev` for the fold's
   -- environment and `pr` for the `(env , layer)` argument pair (fresh per call).
   (n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 4 , (l1 ℕ.+ 4 ℕ.+ lsize F ℕ.+ lsize F) ℕ.+ 2 ,
-  (cata-call-setup (n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4)
+  (cata-call-setup E (n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4)
                    ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 1)
                    ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 2)
                    (l1 ℕ.+ 4 ℕ.+ lsize F ℕ.+ lsize F) ++
-   (cata-br-I₁ F n1 l1 ++
-    (cata-call (n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4)
+   (cata-br-I₁ (kind A) (size A) F n1 l1 ++
+    (cata-call E (lkind F (kind A)) (lsz F (size A)) (n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4)
                ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 1)
                ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 2)
                ((n1 ℕ.+ 7 ℕ.+ (4 * fsize F) ℕ.+ 4) ℕ.+ 3) ++
@@ -472,25 +494,27 @@ cata-trace-branching F bb n1 l1 at =
 -- uniformity is what lets the algebra always be generated at frontier 0 (its
 -- own frame). An inline `strat-const` would need it at the CALLER's frontier,
 -- i.e. two different generations of the same term.
-cata-trace-const : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
-cata-trace-const bb n1 l1 at =
+cata-trace-const : IRTy → Fun 0 → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-const E G bb n1 l1 at =
   n1 ℕ.+ 4 , l1 ℕ.+ 2 ,
-  (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) l1 ++
-   (cata-call n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3) ++ cata-body l1 (l1 ℕ.+ 1) bb at))
+  (cata-call-setup E n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) l1 ++
+   (cata-call E (lkind G word) (lsz G 1) n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3) ++ cata-body l1 (l1 ℕ.+ 1) bb at))
 
 -- D366: `strat-const` at a BOXED μ (`Mu (K Int)`, `Mu (K Float)`): the
 -- same, except that the call's first row reads the layer out of the box.
-cata-trace-box : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
-cata-trace-box bb n1 l1 at =
+cata-trace-box : IRTy → Fun 0 → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-box E G bb n1 l1 at =
   n1 ℕ.+ 4 , l1 ℕ.+ 2 ,
-  (cata-call-setup n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) l1 ++
-   (cata-call-box n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3) ++ cata-body l1 (l1 ℕ.+ 1) bb at))
+  (cata-call-setup E n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) l1 ++
+   (cata-call-box E (lkind G word) (lsz G 1) n1 (n1 ℕ.+ 1) (n1 ℕ.+ 2) (n1 ℕ.+ 3) ++ cata-body l1 (l1 ℕ.+ 1) bb at))
 
 -- Dispatch the strategy.
-cata-dispatch : CataStrategy → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
-cata-dispatch strat-const         bb n1 l1 at = cata-trace-const bb n1 l1 at
-cata-dispatch strat-box           bb n1 l1 at = cata-trace-box bb n1 l1 at
-cata-dispatch (strat-branching F) bb n1 l1 at = cata-trace-branching F bb n1 l1 at
+-- plan 0.123 B.4 α: the layouts depend on the environment `E`, the carrier `A`
+-- and the functor `G` (the strategy's own, `⌈ F ⌉F`).
+cata-dispatch : IRTy → IRTy → Fun 0 → CataStrategy → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-dispatch E A G strat-const         bb n1 l1 at = cata-trace-const E G bb n1 l1 at
+cata-dispatch E A G strat-box           bb n1 l1 at = cata-trace-box E G bb n1 l1 at
+cata-dispatch E A G (strat-branching F) bb n1 l1 at = cata-trace-branching E A F bb n1 l1 at
 
 -- ────────────────────────────────────────────────────────────────────
 -- D199: `resuspend-layer` — THE MISSING HALF OF FORCING.
@@ -522,65 +546,66 @@ cata-dispatch (strat-branching F) bb n1 l1 at = cata-trace-branching F bb n1 l1 
 -- D273: the suspension's seed is the PAIR `(e , a)` (`Ana` is parameterized),
 -- and slot `env` holds the forced suspension's own seed pair, whose first cell
 -- is the environment every layer shares.
-resuspend-layer : ℕ → ℕ → LabelId → ℕ → ∀ {F} → WellFormedFI F
+--
+-- plan 0.123 B.4 α: layers are flat. `H` is the ν's functor, `E * A` the seed
+-- pair; a sub-layer `⟦ G ⟧TI A` is read at its offsets and the re-suspended
+-- `⟦ G ⟧TI (ν-type H)` built at its own (a ν position is one word).
+resuspend-layer : IRFunctor → IRTy → IRTy → ℕ → ℕ → LabelId → ℕ → ∀ {F} → WellFormedFI F
                 → ℕ × ℕ × AbstractTrace
 -- A constant position holds a base value. Nothing to suspend.
-resuspend-layer n l lbl env (wf-K _) = n , l , []
+resuspend-layer H E A n l lbl env (wf-K _) = n , l , []
 -- THE RECURSIVE POSITION: Output holds a seed `a'`, and owes a suspension of
 -- the seed pair `(e , a')`. First the pair: a fresh two-cell node whose first
 -- cell copies the environment cell of the pair in slot `env`. Then `Ana`'s own
 -- ten instructions minus the leading `mov-to-output` (the seed is already in
 -- Output here, where at the `Ana` site it arrives in Input1), with the code
 -- cell pointing at the block being emitted.
-resuspend-layer n l lbl env wf-Id =
+-- plan 0.123 B.4 α: the seed pair is the flat `E * A` — the environment from
+-- the forced suspension's seed pair (its word 0), then `a'`.
+resuspend-layer H E A n l lbl env wf-Id =
   let a-stash    = n
-      q-stash    = suc a-stash
-      seed-stash = suc q-stash
-      susp-stash = suc seed-stash
+      e-stash    = suc a-stash
+      q-stash    = suc e-stash
+      susp-stash = suc q-stash
   in suc susp-stash , l ,
      (store-at-slot a-stash ∷
-      instr-alloc-heap 2 ∷
-      store-at-slot q-stash ∷
-      restore-input env ∷
-      load-indirect ∷
-      restore-input q-stash ∷
-      store-indirect ∷
-      load-from-slot a-stash ∷
-      store-indirect-suc ∷
-      load-from-slot q-stash ∷
-      store-at-slot seed-stash ∷
-      instr-alloc-heap 2 ∷
+      restore-input env ∷ []) ++
+     get E 0 ++
+     (store-at-slot e-stash ∷
+      instr-alloc-heap (2 ⊔ size (E *ᵀ A)) ∷
+      store-at-slot q-stash ∷ []) ++
+     put E e-stash q-stash 0 ++
+     put A a-stash q-stash (size E) ++
+     (instr-alloc-heap 2 ∷
       store-at-slot susp-stash ∷
       mov-to-input ∷
-      load-from-slot seed-stash ∷
-      store-indirect ∷
+      load-from-slot q-stash ∷
+      store-at 0 ∷
       instr-load-code-addr lbl ∷
-      store-indirect-suc ∷
+      store-at 1 ∷
       load-from-slot susp-stash ∷ [])
 -- A product layer is two cells at the pair pointer (`valid-pair-wf`). Read
 -- each child, transform it, and build a FRESH pair from the results.
-resuspend-layer n l lbl env (wf-Prod wfF wfG) =
+-- plan 0.123 B.4 α: each part read at its offset, transformed, and both put
+-- into a fresh flat block at theirs.
+resuspend-layer H E A n l lbl env (wf-Prod {F} {G} wfF wfG) =
   let src             = n
       dst             = suc src
-      tmp             = suc dst
-      (n2 , l2 , tF)  = resuspend-layer (suc tmp) l lbl env wfF
-      (n3 , l3 , tG)  = resuspend-layer n2 l2 lbl env wfG
+      t1              = suc dst
+      t2              = suc t1
+      (n2 , l2 , tF)  = resuspend-layer H E A (suc t2) l lbl env wfF
+      (n3 , l3 , tG)  = resuspend-layer H E A n2 l2 lbl env wfG
   in n3 , l3 ,
-     (store-at-slot src ∷
-      restore-input src ∷ load-indirect ∷
-      tF ++ (store-at-slot tmp ∷
-             instr-alloc-heap 2 ∷
-             store-at-slot dst ∷
-             mov-to-input ∷
-             load-from-slot tmp ∷
-             store-indirect ∷
-             restore-input src ∷
-             load-indirect-suc ∷
-             tG ++ (store-at-slot tmp ∷
-                    restore-input dst ∷
-                    load-from-slot tmp ∷
-                    store-indirect-suc ∷
-                    load-from-slot dst ∷ [])))
+     (store-at-slot src ∷ restore-input src ∷ []) ++
+     get (⟦ F ⟧TI A) 0 ++ tF ++
+     (store-at-slot t1 ∷ restore-input src ∷ []) ++
+     get (⟦ G ⟧TI A) (size (⟦ F ⟧TI A)) ++ tG ++
+     (store-at-slot t2 ∷
+      instr-alloc-heap (2 ⊔ size (⟦ F ⟧TI (ν-type H) *ᵀ ⟦ G ⟧TI (ν-type H))) ∷
+      store-at-slot dst ∷ []) ++
+     put (⟦ F ⟧TI (ν-type H)) t1 dst 0 ++
+     put (⟦ G ⟧TI (ν-type H)) t2 dst (size (⟦ F ⟧TI (ν-type H))) ++
+     (load-from-slot dst ∷ [])
 -- A sum layer is a tag cell and a payload POINTER (`valid-inl-wf`). Only one
 -- arm is live, so this branches — in FLAT control, the same
 -- `c-branch-tag-zero` / `c-jmp` / `c-label` skeleton `case` emits, and for the
@@ -589,34 +614,38 @@ resuspend-layer n l lbl env (wf-Prod wfF wfG) =
 --
 -- Each arm builds a FRESH node and writes its own tag literally: inside an arm
 -- the tag is known, so there is nothing to copy.
-resuspend-layer n l lbl env (wf-Sum wfF wfG) =
+-- plan 0.123 B.4 α: the payload read at word 1, transformed, and put at word 1
+-- of a fresh flat block after the tag.
+resuspend-layer H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
   let src             = n
       dst             = suc src
       tmp             = suc dst
       l-inl           = l
       l-end           = suc l
-      (n2 , l2 , tF)  = resuspend-layer (suc tmp) (suc (suc l)) lbl env wfF
-      (n3 , l3 , tG)  = resuspend-layer n2 l2 lbl env wfG
-      arm             = λ t tag →
-                          (restore-input src ∷ load-indirect-suc ∷ []) ++
+      (n2 , l2 , tF)  = resuspend-layer H E A (suc tmp) (suc (suc l)) lbl env wfF
+      (n3 , l3 , tG)  = resuspend-layer H E A n2 l2 lbl env wfG
+      sz              = size (⟦ F ⟧TI (ν-type H) +ᵀ ⟦ G ⟧TI (ν-type H))
+      arm             = λ (P : IRFunctor) t tag →
+                          (restore-input src ∷ []) ++
+                          get (⟦ P ⟧TI A) 1 ++
                           t ++
                           (store-at-slot tmp ∷
-                           instr-alloc-heap 2 ∷
+                           instr-alloc-heap (2 ⊔ sz) ∷
                            store-at-slot dst ∷
                            mov-to-input ∷
-                           load-from-slot tmp ∷
-                           store-indirect-suc ∷
                            instr-load-tag-lit tag ∷
-                           store-indirect ∷
-                           load-from-slot dst ∷ [])
+                           store-at 0 ∷ []) ++
+                          fill (suc (size (⟦ P ⟧TI (ν-type H)))) (sz ℕ.∸ suc (size (⟦ P ⟧TI (ν-type H)))) ++
+                          put (⟦ P ⟧TI (ν-type H)) tmp dst 1 ++
+                          (load-from-slot dst ∷ [])
   in n3 , l3 ,
      (store-at-slot src ∷
       restore-input src ∷
       instr-ctrl (c-branch-tag-zero (ℓ o l-inl)) ∷ []) ++
-     arm tG 1 ++
+     arm G tG 1 ++
      (instr-ctrl (c-jmp (ℓ o l-end)) ∷
       instr-ctrl (c-label (ℓ o l-inl)) ∷ []) ++
-     arm tF 0 ++
+     arm F tF 0 ++
      (instr-ctrl (c-label (ℓ o l-end)) ∷ [])
 
 -- Plan 0.108: a SigOp is one call — unless it is a COMPARISON. Then it is
@@ -632,9 +661,7 @@ cmp-trace o n =
   store-at-slot (suc n) ∷
   mov-to-input ∷
   load-from-slot n ∷
-  store-indirect ∷
-  instr-load-tag-lit 0 ∷
-  store-indirect-suc ∷
+  store-at 0 ∷                 -- plan 0.123 B.4 α: the tag; a Unit payload has no words
   load-from-slot (suc n) ∷ []
 
 -- Only the budget and the code depend on the choice; the label counter and
@@ -659,22 +686,109 @@ sigop-trace n l si m = sigop-budget n m , l , sigop-code si n m , []
 in-box-trace : ℕ → AbstractTrace
 in-box-trace n =
   mov-to-output ∷ store-at-slot n ∷ instr-alloc-heap 2 ∷ mov-to-input ∷
-  load-from-slot n ∷ store-indirect ∷ mov-to-output ∷ []
+  load-from-slot n ∷ store-at 0 ∷ mov-to-output ∷ []
 
-in-trace : MuRep → ℕ → AbstractTrace
-in-trace mu-box  n = in-box-trace n
-in-trace mu-unit n = instr-alloc-heap 2 ∷ []
-in-trace mu-ptr  n = mov-to-output ∷ []
+-- D399 (β1): a flat layer becomes the node by a COPY of its words into a fresh
+-- block, so a node never shares its words with the layer it was built from
+-- (which, after β6, may lie in a frame). Two slots: `n` the layer, `suc n` the
+-- node. A word layer (`Id`: a μ pointer) is already a node and passes through.
+node-copy-trace : IRTy → ℕ → AbstractTrace
+node-copy-trace L n =
+  mov-to-output ∷
+  store-at-slot n ∷
+  instr-alloc-heap (2 ⊔ size L) ∷
+  store-at-slot (suc n) ∷
+  put L n (suc n) 0 ++
+  load-from-slot (suc n) ∷ []
 
-in-next : MuRep → ℕ → ℕ
-in-next mu-box  n = suc n
-in-next mu-unit n = n
-in-next mu-ptr  n = n
+in-ptr-trace : Kind → IRTy → ℕ → AbstractTrace
+in-ptr-trace word L n = mov-to-output ∷ []
+in-ptr-trace flat L n = node-copy-trace L n
+
+in-ptr-next : Kind → ℕ → ℕ
+in-ptr-next word n = n
+in-ptr-next flat n = suc (suc n)
+
+in-trace : MuRep → Kind → IRTy → ℕ → AbstractTrace
+in-trace mu-box  kd L n = in-box-trace n
+in-trace mu-unit kd L n = instr-alloc-heap 2 ∷ []
+in-trace mu-ptr  kd L n = in-ptr-trace kd L n
+
+in-next : MuRep → Kind → ℕ → ℕ
+in-next mu-box  kd n = suc n
+in-next mu-unit kd n = n
+in-next mu-ptr  kd n = in-ptr-next kd n
+
+-- D399 (β1, β2): what a node KEEPS in cell 0 — a closure's environment, a
+-- suspension's seed, an `in-ν` layer — is a copy when it is flat: the value is
+-- copied into a fresh block (`node-copy-trace`, slots `n` and `suc n`), its
+-- address moved to `Input1`, and the build continues at `suc (suc n)`. A word
+-- value (a scalar, a node pointer) is kept as it is.
+with-copy : Kind → IRTy → ℕ → (ℕ → AbstractTrace) → AbstractTrace
+with-copy word E n k = k n
+with-copy flat E n k = node-copy-trace E n ++ mov-to-input ∷ k (suc (suc n))
+
+copy-next : Kind → ℕ → ℕ
+copy-next word n = n
+copy-next flat n = suc (suc n)
+
+-- the two-cell build (D190): cell 0 what `Input1` holds, cell 1 the code
+two-cell : ℕ → LabelId → AbstractTrace
+two-cell n c =
+  mov-to-output ∷
+  store-at-slot n ∷
+  instr-alloc-heap 2 ∷
+  store-at-slot (suc n) ∷
+  mov-to-input ∷
+  load-from-slot n ∷
+  store-at 0 ∷
+  instr-load-code-addr c ∷
+  store-at 1 ∷
+  load-from-slot (suc n) ∷ []
 
 out-trace : MuRep → AbstractTrace
-out-trace mu-box  = load-indirect ∷ []
+out-trace mu-box  = load-at 0 ∷ []
 out-trace mu-unit = mov-to-output ∷ []
 out-trace mu-ptr  = mov-to-output ∷ []
+
+-- plan 0.123 B.4 α (D381): an injection with tag `t` of a payload of type `P`
+-- (in `Input1`) into a sum of type `S`: a block of `2 ⊔ size S` words, the tag
+-- at word 0, the payload's words from word 1 (`FlatLayout.put`). Two stash
+-- slots, `n` (the payload) and `suc n` (the block).
+inj-trace : ℕ → IRTy → IRTy → ℕ → AbstractTrace
+inj-trace t P S n =
+  mov-to-output ∷
+  store-at-slot n ∷
+  instr-alloc-heap (2 ⊔ size S) ∷
+  store-at-slot (suc n) ∷
+  mov-to-input ∷
+  instr-load-tag-lit t ∷
+  store-at 0 ∷
+  fill (suc (size P)) (size S ℕ.∸ suc (size P)) ++
+  put P n (suc n) 1 ++
+  load-from-slot (suc n) ∷ []
+
+-- D386: a closure body's entry. The call pair is `[env-word, arg…]`; with a
+-- WORD environment that is already the body's flat input `E * A`, so nothing
+-- runs and the body's slots start at 0. With a FLAT environment the body
+-- rebuilds `E * A` (slots 0–3: the call pair, the environment's address, the
+-- argument, the new block) and its own slots start at 4.
+env-prologue : IRTy → IRTy → AbstractTrace
+env-prologue E A =
+  mov-to-output ∷ store-at-slot 0 ∷        -- the call pair
+  load-at 0 ∷ store-at-slot 1 ∷            -- the environment's address
+  restore-input 0 ∷
+  get A 1 ++                               -- the argument (its word, or its address)
+  store-at-slot 2 ∷
+  instr-alloc-heap (2 ⊔ size (E *ᵀ A)) ∷
+  store-at-slot 3 ∷
+  put E 1 3 0 ++
+  put A 2 3 (size E) ++
+  load-from-slot 3 ∷ mov-to-input ∷ []
+
+env-entry : Kind → IRTy → IRTy → ℕ × AbstractTrace
+env-entry word E A = 0 , []
+env-entry flat E A = 4 , env-prologue E A
 
 ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
               → ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
@@ -694,8 +808,11 @@ ir-to-trace' n l id        = n , l , (mov-to-output ∷ []) , []
 -- postulates. Future: type-driven split for register-fittable
 -- primitive args, layered as an optimization pass on top of the
 -- uniform packed base.
-ir-to-trace' n l fst       = n , l , (load-indirect ∷ []) , []
-ir-to-trace' n l snd       = n , l , (load-indirect-suc ∷ []) , []
+-- plan 0.123 B.4 α (D381): a product is flat — the first component at word 0,
+-- the second after the first's words; a word kind is loaded, a flat kind is
+-- addressed (`FlatLayout.get`).
+ir-to-trace' n l (fst {A} {B}) = n , l , get A 0 , []
+ir-to-trace' n l (snd {A} {B}) = n , l , get B (size A) , []
 -- Plan 0.2.4.5 D1 (Unit erasure): terminal produces a Unit value
 -- which carries no information — emit no instructions. Matches
 -- run-terminal's empty-trace WF spec.
@@ -733,7 +850,10 @@ ir-to-trace' n l (g ∘ f)   =
 -- `FlatStackPtr`'s "there is no stack pointer" invariant stand unchanged and
 -- the flat<->concrete correspondence is not reopened. Moving pair I/O to the
 -- stack is plan 0.87.
-ir-to-trace' n l ⟨ f , g ⟩ =
+-- plan 0.123 B.4 α (D381): the block holds BOTH components' words, the second
+-- after the first's (`FlatLayout.put`: a word kind its word, a flat kind a copy
+-- of its words). At least 2 words (`AllocMin`).
+ir-to-trace' n l (⟨_,_⟩ {A} {B} {C} f g) =
   let backup-slot = n
       fst-stash   = suc backup-slot
       snd-stash   = suc fst-stash
@@ -747,13 +867,10 @@ ir-to-trace' n l ⟨ f , g ⟩ =
       store-at-slot fst-stash ∷ restore-input backup-slot ∷
       gt ++
       store-at-slot snd-stash ∷
-      instr-alloc-heap 2 ∷
+      instr-alloc-heap (2 ⊔ size (B *ᵀ C)) ∷
       store-at-slot pair-stash ∷
-      mov-to-input ∷
-      load-from-slot fst-stash ∷
-      store-indirect ∷
-      load-from-slot snd-stash ∷
-      store-indirect-suc ∷
+      put B fst-stash pair-stash 0 ++
+      put C snd-stash pair-stash (size B) ++
       load-from-slot pair-stash ∷ []) ,
      (fb ++ gb)
 
@@ -810,24 +927,18 @@ ir-to-trace' n l ⟨ f , g ⟩ =
 -- anyway (the elaborator threads `Heap`; the only pass that claimed to select
 -- it, `Once.Escape`, was a header comment rather than code and is now
 -- deleted). This is the heap lowering, unchanged.
-ir-to-trace' n l (curry body) =
+-- D386: the node is `[env-word, code]`; a body whose environment is FLAT starts
+-- by rebuilding its flat input from the call pair (`env-entry`).
+ir-to-trace' n l (curry {E} {A} body) =
   let this-label    = l
       end-label     = suc l
       l1            = suc (suc l)
-      env-stash     = n
-      closure-stash = suc env-stash
-      next          = suc closure-stash
-      (body-budget , l2 , body-trace , body-bodies) = ir-to-trace' 0 l1 body
-      this-trace  = (mov-to-output ∷
-                     store-at-slot env-stash ∷
-                     instr-alloc-heap 2 ∷
-                     store-at-slot closure-stash ∷
-                     mov-to-input ∷
-                     load-from-slot env-stash ∷
-                     store-indirect ∷
-                     instr-load-code-addr (ℓ o this-label) ∷
-                     store-indirect-suc ∷
-                     load-from-slot closure-stash ∷ [])
+      next          = suc (suc (copy-next (kind E) n))
+      (body-start , prologue) = env-entry (kind E) E A
+      (body-budget , l2 , body-trace₀ , body-bodies) = ir-to-trace' body-start l1 body
+      body-trace  = prologue ++ body-trace₀
+      -- D399 (β2): a flat environment is copied first
+      this-trace  = with-copy (kind E) E n (λ m → two-cell m (ℓ o this-label))
       -- D159: see the Stack clause — the body is a named block.
       all-bodies  = (ℓ o this-label , body-budget , body-trace) ∷ body-bodies
   in next , l2 , this-trace , all-bodies
@@ -856,27 +967,28 @@ ir-to-trace' n l (curry body) =
 -- transient stack cell that is reused once the frame is popped — the x86-32
 -- `arith-lambda-2` dangling read (x86-64/riscv64 only survived by luck). We are
 -- heap-only, so build it on the heap (mirrors the `⟨ f , g ⟩ Heap` clause).
-ir-to-trace' n l apply =
+-- D386: the call pair is `[env-word, arg]`, the argument `put` at word 1 (its
+-- words copied when it is flat). The input pair is `[closure, arg…]`.
+ir-to-trace' n l (apply {A} {B}) =
   let arg-stash  = n
       env-stash  = suc arg-stash
       pair-stash = suc env-stash
   in (suc pair-stash) , l ,
-     (load-indirect-suc ∷                -- Output := arg-loc from input pair
+     (get A 1 ++                         -- Output := the arg (its word, or its address)
       store-at-slot arg-stash ∷          -- stash arg
-      load-indirect ∷                    -- Output := closure-loc from input pair
-      mov-to-input ∷                     -- Input1 := closure-loc
+      load-at 0 ∷                        -- Output := the closure, from the input pair
+      mov-to-input ∷                     -- Input1 := closure
       instr-save-closure-reg ∷           -- closure-reg := closure (survives below)
-      load-indirect ∷                    -- Output := env-loc from closure[0]
+      load-at 0 ∷                        -- Output := env-word, closure[0]
       store-at-slot env-stash ∷          -- stash env
-      instr-alloc-heap 2 ∷               -- Output := fresh heap pair
+      instr-alloc-heap (2 ⊔ suc (size A)) ∷  -- Output := fresh call pair
       store-at-slot pair-stash ∷
-      mov-to-input ∷                     -- Input1 := heap pair
+      mov-to-input ∷                     -- Input1 := call pair
       load-from-slot env-stash ∷
-      store-indirect ∷                   -- heap-pair[0] := env
-      load-from-slot arg-stash ∷
-      store-indirect-suc ∷               -- heap-pair[1] := arg
-      load-from-slot pair-stash ∷        -- Output := &heap-pair
-      mov-to-input ∷                     -- Input1 := &heap-pair
+      store-at 0 ∷                       -- call-pair[0] := env-word
+      put A arg-stash pair-stash 1 ++    -- call-pair[1…] := arg
+      load-from-slot pair-stash ∷        -- Output := &call-pair
+      mov-to-input ∷                     -- Input1 := &call-pair
       instr-call-closure ∷ []) ,
      []
 
@@ -917,39 +1029,10 @@ ir-to-trace' n l (const fits-float v) = n , l , (instr-load-const Ty.fits-float 
 -- Bump-allocate a 2-cell heap block, write [tag, payload-ptr].
 -- Mirrors SumInlAllocWF.inl-heap-trace / SumInrAllocWF.inr-heap-trace.
 -- Uses 2 scratch slots for stashing: payload-stash = n, sum-stash = n+1.
-ir-to-trace' n l inl =
-  let payload-stash = n
-      sum-stash     = suc payload-stash
-      next          = suc sum-stash
-  in next , l ,
-     (mov-to-output ∷
-      store-at-slot payload-stash ∷
-      instr-alloc-heap 2 ∷
-      store-at-slot sum-stash ∷
-      mov-to-input ∷
-      instr-load-tag-lit 0 ∷
-      store-indirect ∷
-      load-from-slot payload-stash ∷
-      store-indirect-suc ∷
-      load-from-slot sum-stash ∷ []) ,
-     []
-
-ir-to-trace' n l inr =
-  let payload-stash = n
-      sum-stash     = suc payload-stash
-      next          = suc sum-stash
-  in next , l ,
-     (mov-to-output ∷
-      store-at-slot payload-stash ∷
-      instr-alloc-heap 2 ∷
-      store-at-slot sum-stash ∷
-      mov-to-input ∷
-      instr-load-tag-lit 1 ∷
-      store-indirect ∷
-      load-from-slot payload-stash ∷
-      store-indirect-suc ∷
-      load-from-slot sum-stash ∷ []) ,
-     []
+-- plan 0.123 B.4 α (D381): the block is the tag, then the payload's words
+-- (`FlatLayout.put` at word 1), sized for the larger alternative.
+ir-to-trace' n l (inl {A} {B}) = suc (suc n) , l , inj-trace 0 A (A +ᵀ B) n , []
+ir-to-trace' n l (inr {A} {B}) = suc (suc n) , l , inj-trace 1 B (A +ᵀ B) n , []
 
 -- ────────────────────────────────────────────────────────────────────
 -- case f g — sum elimination (Plan 0.13.1 Phase 4; FLAT since Plan 0.54
@@ -970,29 +1053,33 @@ ir-to-trace' n l inr =
 -- deleted by plan 0.135, with `instr-loop` and `lea-indexed`).
 -- ────────────────────────────────────────────────────────────────────
 
-ir-to-trace' n l (case f g) =
+-- plan 0.123 B.4 α: each arm's input is the payload at word 1 (`get`).
+ir-to-trace' n l (case {A} {B} f g) =
   let l-inl = l
       l-end = suc l
       (n1 , l1 , ft , fb) = ir-to-trace' n  (suc (suc l)) f
       (n2 , l2 , gt , gb) = ir-to-trace' n1 l1 g
   in n2 , l2 ,
-     (instr-ctrl (c-branch-tag-zero (ℓ o l-inl)) ∷
-      load-indirect-suc ∷ mov-to-input ∷ []) ++
+     (instr-ctrl (c-branch-tag-zero (ℓ o l-inl)) ∷ []) ++
+     get B 1 ++ (mov-to-input ∷ []) ++
      gt ++
-     (instr-ctrl (c-jmp (ℓ o l-end)) ∷ instr-ctrl (c-label (ℓ o l-inl)) ∷
-      load-indirect-suc ∷ mov-to-input ∷ []) ++
+     (instr-ctrl (c-jmp (ℓ o l-end)) ∷ instr-ctrl (c-label (ℓ o l-inl)) ∷ []) ++
+     get A 1 ++ (mov-to-input ∷ []) ++
      ft ++
      (instr-ctrl (c-label (ℓ o l-end)) ∷ []) ,
      (fb ++ gb)
 
 -- In: μ Lambek constructor. A μ value is a HEAP POINTER (D366), so what `In`
 -- emits depends on how its layer arrives (`MuRep`): a layer that is already a
--- pointer (sum, product, μ) IS the node — `mov-to-output` passes it through;
+-- μ pointer (`Id`) IS the node — `mov-to-output` passes it through; a flat
+-- one (sum, product) is copied into a fresh node (D399, β1);
 -- an `Int`/`Float` layer is BOXED into a fresh block (`in-box-trace`); a
 -- `Unit` layer has no residence, so `In` allocates a block and writes
 -- nothing. (Before D366 every `In` was `mov-to-output`, which left a literal,
 -- or nothing, where the value relation demands a pointer.)
-ir-to-trace' n l (In {F} _)    = in-next (mu-rep F) n , l , in-trace (mu-rep F) n , []
+ir-to-trace' n l (In {F} _)    =
+  in-next (mu-rep F) (kind (⟦ F ⟧TI (μ-type F))) n , l ,
+  in-trace (mu-rep F) (kind (⟦ F ⟧TI (μ-type F))) (⟦ F ⟧TI (μ-type F)) n , []
 -- out-μ: the inverse. A pointer layer IS the node (`mov-to-output`); a boxed
 -- one is the box's cell (`load-indirect`); a `Unit` layer is anything.
 ir-to-trace' n l (out-μ {F} _) = n , l , out-trace (mu-rep F) , []
@@ -1001,9 +1088,9 @@ ir-to-trace' n l (out-μ {F} _) = n , l , out-trace (mu-rep F) , []
 -- D099 / C1: the algebra is generated ONCE, at frontier 0 — it runs in its OWN
 -- frame as a called body (exactly as `curry`'s body is generated), so its slots
 -- no longer extend the cata's frame and its budget `bb` becomes the body's.
-ir-to-trace' n l (Cata {F} _ alg) =
+ir-to-trace' n l (Cata {F} _ {E} {A} alg) =
   let (bb , l1 , at , ab) = ir-to-trace' 0 l alg
-      (next , l2 , trace) = cata-dispatch (cata-strategy ⌈ F ⌉F) bb n l1 at
+      (next , l2 , trace) = cata-dispatch E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) bb n l1 at
   in next , l2 , trace , ab
 -- ────────────────────────────────────────────────────────────────────
 -- D189: `Out` — FORCING A SUSPENSION, which is a CALL.
@@ -1022,7 +1109,7 @@ ir-to-trace' n l (Cata {F} _ alg) =
 -- code. `do-call` reads the code from `sucHL` of the CLOSURE REGISTER, which
 -- is why the register is saved before the seed overwrites `Input1`.
 ir-to-trace' n l (Out _)        = n , l ,
-  (instr-save-closure-reg ∷ load-indirect ∷ mov-to-input ∷
+  (instr-save-closure-reg ∷ load-at 0 ∷ mov-to-input ∷
    instr-call-closure ∷ []) , []
 -- D189: `in-ν` — the SAME two-cell build, with an IDENTITY block.
 --
@@ -1031,27 +1118,17 @@ ir-to-trace' n l (Out _)        = n , l ,
 -- block that returns its input: forcing it (`Out`, which calls cell 1 on cell
 -- 0) then yields exactly the layer that was stored. One representation for
 -- both ν introductions, and `Out` does not have to know which it is looking at.
-ir-to-trace' n l (in-ν _) =
+ir-to-trace' n l (in-ν {F} _) =
   let this-label  = l
       l1          = suc l
-      seed-stash  = n
-      susp-stash  = suc seed-stash
-      next        = suc susp-stash
+      next        = suc (suc (copy-next (kind (⟦ F ⟧TI (ν-type F))) n))
       -- The block is written out rather than generated by recursing into
       -- `id`: it is a fixed one-instruction STUB, not a compiled sub-IR, and
       -- recursing on a term that is not a subterm of `in-ν` is exactly what
       -- the termination checker refuses (`scope-ok` is mutual with the
       -- block lemmas). `mov-to-output` IS `ir-to-trace' 0 l1 id`'s trace.
-      this-trace  = (mov-to-output ∷
-                     store-at-slot seed-stash ∷
-                     instr-alloc-heap 2 ∷
-                     store-at-slot susp-stash ∷
-                     mov-to-input ∷
-                     load-from-slot seed-stash ∷
-                     store-indirect ∷
-                     instr-load-code-addr (ℓ o this-label) ∷
-                     store-indirect-suc ∷
-                     load-from-slot susp-stash ∷ [])
+      -- D399 (β1): a flat layer is copied first
+      this-trace  = with-copy (kind (⟦ F ⟧TI (ν-type F))) (⟦ F ⟧TI (ν-type F)) n (λ m → two-cell m (ℓ o this-label))
       all-bodies  = (ℓ o this-label , 0 , mov-to-output ∷ []) ∷ []
   in next , l1 , this-trace , all-bodies
 -- ────────────────────────────────────────────────────────────────────
@@ -1074,12 +1151,10 @@ ir-to-trace' n l (in-ν _) =
 -- The coalgebra is a NAMED BLOCK, generated at frontier 0 exactly as
 -- `curry`'s body is: it runs in its own frame when forced, so its slots do
 -- not extend the constructing frame.
-ir-to-trace' n l (Ana wf coalg) =
+ir-to-trace' n l (Ana {F} wf {E} {A} coalg) =
   let this-label  = l
       l1          = suc l
-      seed-stash  = n
-      susp-stash  = suc seed-stash
-      next        = suc susp-stash
+      next        = suc (suc (suc (suc n)))
       -- D273: the block first keeps its input — the seed PAIR `(e , a)` — in
       -- slot 0, so every re-suspension can share `e`; the coalgebra runs from
       -- frontier 1, reading the same pair in Input1.
@@ -1089,17 +1164,9 @@ ir-to-trace' n l (Ana wf coalg) =
       -- `forceᵈ` the machine used to skip. Its slots continue the block's own
       -- frame, so they start where the coalgebra's frontier ended.
       (block-budget , l3 , resusp-trace) =
-        resuspend-layer coalg-budget l2 (ℓ o this-label) 0 wf
-      this-trace  = (mov-to-output ∷
-                     store-at-slot seed-stash ∷
-                     instr-alloc-heap 2 ∷
-                     store-at-slot susp-stash ∷
-                     mov-to-input ∷
-                     load-from-slot seed-stash ∷
-                     store-indirect ∷
-                     instr-load-code-addr (ℓ o this-label) ∷
-                     store-indirect-suc ∷
-                     load-from-slot susp-stash ∷ [])
+        resuspend-layer F E A coalg-budget l2 (ℓ o this-label) 0 wf
+      -- D399 (β1): the seed pair is copied first
+      this-trace  = with-copy flat (E *ᵀ A) n (λ m → two-cell m (ℓ o this-label))
       all-bodies  = (ℓ o this-label , block-budget ,
                      mov-to-output ∷ store-at-slot 0 ∷ coalg-trace ++ resusp-trace) ∷ coalg-bodies
   in next , l3 , this-trace , all-bodies
@@ -1119,24 +1186,32 @@ ir-to-trace' n l (Ana wf coalg) =
 --   <pair tail> ∷ mov-to-input ∷ c-jmp top ∷
 --   c-label done ∷ load-indirect-suc ∷ []
 -- ────────────────────────────────────────────────────────────────────
-ir-to-trace' n l (Iter body) =
+-- plan 0.123 B.4 α: the pair `E * A` and the result `B + A` are flat: the
+-- environment is kept as its register form (`get E 0`; a flat one's words stay
+-- in the first pair, which nothing writes), `a′` and `b` are read at word 1,
+-- and the next pair is `put` together.
+ir-to-trace' n l (Iter {E} {A} {B} body) =
   let l-top = l
       l-done = suc l
       (nb , l1 , bt , bb) = ir-to-trace' (suc (suc (suc (suc n)))) (suc (suc l)) body
   in nb , l1 ,
-     (load-indirect ∷ store-at-slot (suc n) ∷
+     get E 0 ++
+     (store-at-slot (suc n) ∷
       instr-ctrl (c-label (ℓ o l-top)) ∷ []) ++
      bt ++
      (mov-to-input ∷
-      instr-ctrl (c-branch-tag-zero (ℓ o l-done)) ∷
-      load-indirect-suc ∷
-      store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷ store-at-slot (suc (suc (suc n))) ∷
-      mov-to-input ∷ load-from-slot (suc n) ∷ store-indirect ∷
-      load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷ load-from-slot (suc (suc (suc n))) ∷
+      instr-ctrl (c-branch-tag-zero (ℓ o l-done)) ∷ []) ++
+     get A 1 ++
+     (store-at-slot (suc (suc n)) ∷
+      instr-alloc-heap (2 ⊔ size (E *ᵀ A)) ∷
+      store-at-slot (suc (suc (suc n))) ∷ []) ++
+     put E (suc n) (suc (suc (suc n))) 0 ++
+     put A (suc (suc n)) (suc (suc (suc n))) (size E) ++
+     (load-from-slot (suc (suc (suc n))) ∷
       mov-to-input ∷
       instr-ctrl (c-jmp (ℓ o l-top)) ∷
-      instr-ctrl (c-label (ℓ o l-done)) ∷
-      load-indirect-suc ∷ []) ,
+      instr-ctrl (c-label (ℓ o l-done)) ∷ []) ++
+     get B 1 ,
      bb
 
 -- free-heap is semantically a no-op (returns its input unchanged).

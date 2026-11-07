@@ -41,7 +41,7 @@ data T_XInstr_24
     C_Xmov'45'r'45'm_30 T_XScratch_16 T_XReg_10 |
     C_Xmov'45'm'45'r_32 T_XReg_10 T_XScratch_16 |
     C_Xmov'45'arg_34 T_XReg_10
-                     [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] |
+                     [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] Integer |
     C_Xadd'45'rr_36 T_XReg_10 T_XReg_10 |
     C_Xsub'45'rr_38 T_XReg_10 T_XReg_10 |
     C_Ximul'45'rr_40 T_XReg_10 T_XReg_10 | C_Xneg'45'r_42 T_XReg_10 |
@@ -62,7 +62,7 @@ data T_XInstr_24
     C_Xmov'45'fimm_72 T_XReg_10
                       MAlonzo.Code.Once.Spec.Float.Decimal.T_Decimal_8 |
     C_Xmov'45'farg_74 T_XReg_10
-                      [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] |
+                      [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] Integer |
     C_Xmov'45'out_76 T_XReg_10
 -- Once.Arith.Backend.XInstr.Syntax.XProgram
 d_XProgram_78 :: ()

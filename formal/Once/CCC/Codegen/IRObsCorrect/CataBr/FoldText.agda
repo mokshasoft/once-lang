@@ -8,14 +8,15 @@
 -- `span-rest`: the text `R` at the fold head `X = length flatTxt + H`):
 --
 --     X+0 … X+7     ℓ (l1+2): load eval · mov-to-input · branch-tag-zero ℓ (l1+3) ·
---                   load-indirect-suc · store eval · load-indirect · mov-to-input   (`hd8`)
+--                   load-at 1 · store eval · load-at 0 · mov-to-input                   (`hd8`)
 --     X+8 …         rebuild-walk (n+2) (n+4) (n+5) G (n+7) (l1+4+lsize G)          (`rbTxt`, RL rows)
 --     RL+8+X        mov-to-input
---     Y = 1+RL+8+X  the call's fourteen rows, `instr-call-closure` at 14+Y
---     15+Y …        push2 val (ten rows), `c-jmp ℓ (l1+2)` at 25+Y,
---                   `ℓ (l1+3)` at 26+Y, then load val · mov-to-input · load-indirect
---     30+Y          `c-jmp ℓ (bodyL+1)`, the body's marker at 31+Y, the algebra
---                   from 32+Y, its `c-ret`, and the end label at (33+|at|)+Y.
+--     Y = 1+RL+8+X  the call (`CataConst.Call`'s `callK`, CK rows: its puts
+--                   make it as long as the layer's type), `instr-call-closure` at CK+Y
+--     Z = 1+CK+Y …  push2 val (ten rows), `c-jmp ℓ (l1+2)` at 10+Z,
+--                   `ℓ (l1+3)` at 11+Z, then load val · mov-to-input · load-at 0
+--     15+Z          `c-jmp ℓ (bodyL+1)`, the body's marker at 16+Z, the algebra
+--                   from 17+Z, its `c-ret`, and the end label at (18+|at|)+Z.
 --
 -- The label scans (`head-label`, `exit-label`, `end-label`, the rebuild
 -- walk's and the algebra's own windows) are each one `NoLabel` over the text
@@ -34,13 +35,17 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.Text o tbl using (module CataBr
 open import Once.CCC.Codegen.IRToTrace o
   using (cata-call-setup; cata-call; cata-body; cata-br-I₂; push2; visit-walk; rebuild-walk; fsize; lsize)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
-open import Once.CCC.Codegen.LabelScope o using (visit-ls; rebuild-ls; push2-ls; cata-setup-ls; cata-call-ls; labels-in)
+open import Once.CCC.Codegen.LabelScope o using (visit-ls; rebuild-ls; push2-ls; cata-call-from-ls; labels-in)
+open import Once.CCC.Codegen.IRObsCorrect.CataConst.Call o tbl using (module CataCallC)
+open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC)
 open import Once.CCC.Codegen.LabelSeg using (LabelsIn; li-none; li-lab)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; AbstractInstr; instr-ctrl; c-jmp; c-label; c-branch-tag-zero; c-thunk; c-ret; load-from-slot; store-at-slot
-        ; mov-to-input; mov-to-output; load-indirect; load-indirect-suc; instr-call-closure; block-layout)
+        ; mov-to-input; mov-to-output; load-at; instr-call-closure; instr-save-closure-reg; block-layout)
+open import Once.CCC.Codegen.FlatLayout using (kind; lkind; lsz)
+open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Label using (ℓ; LabelId; module LabelId)
 open LabelId using (idx)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F)
@@ -72,14 +77,23 @@ private
   len-e : ∀ (a : ℕ) → 32 + (a + 1) ≡ 33 + a
   len-e = solve 1 (λ a → con 32 :+ (a :+ con 1) := con 33 :+ a) refl
 
+  pos-after : ∀ (c k y : ℕ) → (suc c + k) + y ≡ k + suc (c + y)
+  pos-after = solve 3 (λ c k y → (con 1 :+ c :+ k) :+ y := k :+ (con 1 :+ (c :+ y))) refl
+
+  pos-end : ∀ (a z : ℕ) → (8 + a) + (10 + z) ≡ (18 + a) + z
+  pos-end = solve 2 (λ a z → (con 8 :+ a) :+ (con 10 :+ z) := (con 18 :+ a) :+ z) refl
+
+  pos-wend : ∀ (lc a : ℕ) → (lc + 17) + (a + 1) ≡ lc + (18 + a)
+  pos-wend = solve 2 (λ lc a → (lc :+ con 17) :+ (a :+ con 1) := lc :+ (con 18 :+ a)) refl
+
 -- the fold loop's head (`Pieces.foldTxt`'s first eight rows), for slot base `n`, label base `l1`
 fold-hd : ℕ → ℕ → AbstractTrace
 fold-hd n l1 =
   instr-ctrl (c-label (ℓ o (l1 + 2))) ∷
   load-from-slot (suc n) ∷ mov-to-input ∷
   instr-ctrl (c-branch-tag-zero (ℓ o (l1 + 3))) ∷
-  load-indirect-suc ∷ store-at-slot (suc n) ∷
-  load-indirect ∷ mov-to-input ∷ []
+  load-at 1 ∷ store-at-slot (suc n) ∷
+  load-at 0 ∷ mov-to-input ∷ []
 
 module CataFoldTextC {FS : FrameSemantics} where
 
@@ -88,6 +102,8 @@ module CataFoldTextC {FS : FrameSemantics} where
   open Resolve {FS} using (NoLabel; noLabel-outside; label-resolves; found-in-window)
   open FlatStepsAPI {FS} using (find-label-distrib)
   open CataBrTextC {FS} using (module Text)
+  open CataCallC {FS} using (callA; callB; callK)
+  open CataVisitC {FS} using (lgi)
 
   -- a piece whose label window misses `m` defines no `m`
   nl-out : ∀ {lo hi} (t : AbstractTrace) → LabelsIn lo hi t → ∀ (m : LabelId) → (idx m < lo) ⊎ (hi ≤ idx m) → NoLabel m t
@@ -109,7 +125,7 @@ module CataFoldTextC {FS : FrameSemantics} where
                 (la : LabelsAt prog base (Text.text′ wf alg n l)) where
 
     module T = Text wf alg n l
-    open T using (G; l1; bb; at; tailTxt; R; text′)
+    open T using (G; l1; bb; at; tailTxt; R; text′; L; callTxt)
     open T.Pc using (cslot; bodyL; pre37; flatTxt; headTxt; pushTxt; reloadTxt; visitTxt; exitTxt; foldTxt
                     ; setupTxt; initTxt; rootTxt)
     module TA = T.At prog base span la
@@ -125,28 +141,48 @@ module CataFoldTextC {FS : FrameSemantics} where
     lr : ℕ
     lr = l1 + 4 + lsize G
 
-    hd8 rbTxt callTxt pushV post2 : AbstractTrace
+    hd8 rbTxt pushV post2 : AbstractTrace
     hd8 = fold-hd n l1
-    rbTxt = rebuild-walk (n + 2) (n + 4) (n + 5) G (n + 7) lr
-    callTxt = cata-call cslot (cslot + 1) (cslot + 2) (cslot + 3)
+    rbTxt = rebuild-walk (n + 2) (n + 4) (n + 5) (kind C) (size C) G (n + 7) lr
     pushV = push2 (n + 2) (n + 4) (n + 5)
     post2 = instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label endL) ∷ []
 
-    -- the first 32 rows of `tailTxt` (up to and including the body's marker)
-    pre32 : AbstractTrace
-    pre32 = callTxt ++ (pushV ++ (instr-ctrl (c-jmp headL) ∷ instr-ctrl (c-label exitL) ∷
-              load-from-slot (n + 2) ∷ mov-to-input ∷ load-indirect ∷
-              instr-ctrl (c-jmp endL) ∷ instr-ctrl (c-thunk (ℓ o bodyL) bb) ∷ []))
+    -- the call (`Text.callTxt`): `callK`, as `CataConst.Call` runs it, then the call row
+    KK : AbstractTrace
+    KK = callK mov-to-output E L cslot
+
+    CK : ℕ
+    CK = length (callA mov-to-output E L cslot) + (1 + 2)
+
+    len-KK : length KK ≡ CK
+    len-KK = length-++ (callA mov-to-output E L cslot) {instr-save-closure-reg ∷ callB cslot}
+
+    -- the seven rows between the value push and the body
+    mid7 : AbstractTrace
+    mid7 = instr-ctrl (c-jmp headL) ∷ instr-ctrl (c-label exitL) ∷
+           load-from-slot (n + 2) ∷ mov-to-input ∷ load-at 0 ∷
+           instr-ctrl (c-jmp endL) ∷ instr-ctrl (c-thunk (ℓ o bodyL) bb) ∷ []
+
+    -- everything after the call row
+    after : AbstractTrace
+    after = pushV ++ (mid7 ++ (at ++ post2))
+
+    -- the tail up to and including the body's marker
+    preB : AbstractTrace
+    preB = callTxt ++ (pushV ++ mid7)
 
     -- …and up to the exit label
-    pre26 : AbstractTrace
-    pre26 = callTxt ++ (pushV ++ (instr-ctrl (c-jmp headL) ∷ []))
+    preX : AbstractTrace
+    preX = callTxt ++ (pushV ++ (instr-ctrl (c-jmp headL) ∷ []))
 
     RL : ℕ
     RL = length rbTxt
 
-    tail-eq : tailTxt ≡ pre32 ++ (at ++ post2)
-    tail-eq = refl
+    tail-eq : tailTxt ≡ preB ++ (at ++ post2)
+    tail-eq = sym (++-assoc callTxt (pushV ++ mid7) (at ++ post2))
+
+    tail-K : tailTxt ≡ KK ++ (instr-call-closure ∷ after)
+    tail-K = ++-assoc KK (instr-call-closure ∷ []) after
 
     R-eq : R ≡ hd8 ++ (rbTxt ++ (mov-to-input ∷ tailTxt))
     R-eq = cong (hd8 ++_) (++-assoc rbTxt (mov-to-input ∷ []) tailTxt)
@@ -155,12 +191,12 @@ module CataFoldTextC {FS : FrameSemantics} where
     PRE : AbstractTrace → AbstractTrace
     PRE W = pre37 ++ (flatTxt ++ (hd8 ++ (rbTxt ++ (mov-to-input ∷ W))))
 
-    cut : ∀ (W Z : AbstractTrace) → tailTxt ≡ W ++ Z → text′ ≡ PRE W ++ Z
-    cut W Z e =
+    cut : ∀ (W Z′ : AbstractTrace) → tailTxt ≡ W ++ Z′ → text′ ≡ PRE W ++ Z′
+    cut W Z′ e =
       trans (cong (λ t → pre37 ++ (flatTxt ++ t)) (trans R-eq (cong (λ t → hd8 ++ (rbTxt ++ (mov-to-input ∷ t))) e)))
       (cong (pre37 ++_)
-        (trans (cong (λ t → flatTxt ++ (hd8 ++ t)) (sym (++-assoc rbTxt (mov-to-input ∷ W) Z)))
-               (sym (++-assoc flatTxt (hd8 ++ (rbTxt ++ (mov-to-input ∷ W))) Z))))
+        (trans (cong (λ t → flatTxt ++ (hd8 ++ t)) (sym (++-assoc rbTxt (mov-to-input ∷ W) Z′)))
+               (sym (++-assoc flatTxt (hd8 ++ (rbTxt ++ (mov-to-input ∷ W))) Z′))))
 
     len-PRE : ∀ (W : AbstractTrace) → length (PRE W) ≡ 37 + (length flatTxt + (8 + (RL + suc (length W))))
     len-PRE W =
@@ -170,9 +206,11 @@ module CataFoldTextC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     -- THE PCS.
     ------------------------------------------------------------------
-    X Y : ℕ
+    X Y Z : ℕ
     X = length flatTxt + TA.H
     Y = suc (RL + (8 + X))
+    -- the first row after the call
+    Z = suc (CK + Y)
 
     -- the text before row `W` of the tail ends at `length W + Y`
     pre-pc : ∀ (W : AbstractTrace) → length (PRE W) + base ≡ length W + Y
@@ -180,6 +218,13 @@ module CataFoldTextC {FS : FrameSemantics} where
       where
         e1 : length (PRE W) + base ≡ (37 + (length flatTxt + (8 + (RL + suc (length W))))) + base
         e1 = cong (_+ base) {length (PRE W)} {37 + (length flatTxt + (8 + (RL + suc (length W))))} (len-PRE W)
+
+    len-call : length callTxt ≡ suc CK
+    len-call = trans (length-++ KK {instr-call-closure ∷ []}) (trans (cong (_+ 1) len-KK) (+-comm CK 1))
+
+    -- a row `k` past the call's first rows, `k + length callTxt` into the tail
+    after-pc : ∀ (k : ℕ) → (length callTxt + k) + Y ≡ k + Z
+    after-pc k = trans (cong (λ z → (z + k) + Y) len-call) (pos-after CK k Y)
 
     ------------------------------------------------------------------
     -- SPANS AND ROWS.
@@ -208,59 +253,77 @@ module CataFoldTextC {FS : FrameSemantics} where
     span-call : SpanAt prog Y callTxt
     span-call = span-take prog callTxt Y span-tail
 
-    fetch-cc : fetch prog (14 + Y) ≡ just instr-call-closure
-    fetch-cc = span-tail 14 _ refl
+    span-KK : SpanAt prog Y KK
+    span-KK = span-take prog KK Y span-call
 
-    span-push : SpanAt prog (15 + Y) pushV
-    span-push = span-take prog pushV (15 + Y) (span-drop prog callTxt Y span-tail)
+    private
+      sp-cc : SpanAt prog (length KK + Y) (instr-call-closure ∷ after)
+      sp-cc = span-drop prog KK {instr-call-closure ∷ after} Y (subst (SpanAt prog Y) tail-K span-tail)
 
-    fetch-jmp-head : fetch prog (25 + Y) ≡ just (instr-ctrl (c-jmp headL))
-    fetch-jmp-head = span-tail 25 _ refl
+    fetch-cc : fetch prog (CK + Y) ≡ just instr-call-closure
+    fetch-cc = subst (λ z → fetch prog (z + Y) ≡ just instr-call-closure) len-KK (sp-cc 0 _ refl)
 
-    fetch-exit : fetch prog (26 + Y) ≡ just (instr-ctrl (c-label exitL))
-    fetch-exit = span-tail 26 _ refl
+    span-after : SpanAt prog Z after
+    span-after = subst (λ z → SpanAt prog (suc (z + Y)) after) len-KK
+                   (span-drop prog (instr-call-closure ∷ []) {after} (length KK + Y) sp-cc)
 
-    fetch-ld : fetch prog (27 + Y) ≡ just (load-from-slot (n + 2))
-    fetch-ld = span-tail 27 _ refl
+    span-push : SpanAt prog Z pushV
+    span-push = span-take prog pushV Z span-after
 
-    fetch-mti2 : fetch prog (28 + Y) ≡ just mov-to-input
-    fetch-mti2 = span-tail 28 _ refl
+    private
+      sp-mid : SpanAt prog (10 + Z) (mid7 ++ (at ++ post2))
+      sp-mid = span-drop prog pushV Z span-after
 
-    fetch-li : fetch prog (29 + Y) ≡ just load-indirect
-    fetch-li = span-tail 29 _ refl
+    fetch-jmp-head : fetch prog (10 + Z) ≡ just (instr-ctrl (c-jmp headL))
+    fetch-jmp-head = sp-mid 0 _ refl
 
-    fetch-jmp-end : fetch prog (30 + Y) ≡ just (instr-ctrl (c-jmp endL))
-    fetch-jmp-end = span-tail 30 _ refl
+    fetch-exit : fetch prog (11 + Z) ≡ just (instr-ctrl (c-label exitL))
+    fetch-exit = sp-mid 1 _ refl
 
-    fetch-thunk : fetch prog (31 + Y) ≡ just (instr-ctrl (c-thunk (ℓ o bodyL) bb))
-    fetch-thunk = span-tail 31 _ refl
+    fetch-ld : fetch prog (12 + Z) ≡ just (load-from-slot (n + 2))
+    fetch-ld = sp-mid 2 _ refl
 
-    fetch-end : fetch prog ((33 + length at) + Y) ≡ just (instr-ctrl (c-label endL))
-    fetch-end = span-tail (33 + length at) _
-                  (trans (fetch-++-right pre32 (at ++ post2) (suc (length at)))
-                         (subst (λ z → fetch (at ++ post2) z ≡ just (instr-ctrl (c-label endL)))
-                                (+-comm (length at) 1) (fetch-++-right at post2 1)))
+    fetch-mti2 : fetch prog (13 + Z) ≡ just mov-to-input
+    fetch-mti2 = sp-mid 3 _ refl
 
-    body-span : SpanAt prog (31 + Y) (block-layout (ℓ o bodyL , bb , at))
-    body-span = span-take prog (block-layout (ℓ o bodyL , bb , at)) {instr-ctrl (c-label endL) ∷ []} (31 + Y)
-                  (subst (λ t → SpanAt prog (31 + Y) (instr-ctrl (c-thunk (ℓ o bodyL) bb) ∷ t))
+    fetch-li : fetch prog (14 + Z) ≡ just (load-at 0)
+    fetch-li = sp-mid 4 _ refl
+
+    fetch-jmp-end : fetch prog (15 + Z) ≡ just (instr-ctrl (c-jmp endL))
+    fetch-jmp-end = sp-mid 5 _ refl
+
+    fetch-thunk : fetch prog (16 + Z) ≡ just (instr-ctrl (c-thunk (ℓ o bodyL) bb))
+    fetch-thunk = sp-mid 6 _ refl
+
+    fetch-end : fetch prog ((18 + length at) + Z) ≡ just (instr-ctrl (c-label endL))
+    fetch-end = subst (λ z → fetch prog z ≡ just (instr-ctrl (c-label endL))) (pos-end (length at) Z)
+                  (sp-mid (8 + length at)
+                    (instr-ctrl (c-label endL))
+                    (trans (fetch-++-right mid7 (at ++ post2) (suc (length at)))
+                           (subst (λ z → fetch (at ++ post2) z ≡ just (instr-ctrl (c-label endL)))
+                                  (+-comm (length at) 1) (fetch-++-right at post2 1))))
+
+    body-span : SpanAt prog (16 + Z) (block-layout (ℓ o bodyL , bb , at))
+    body-span = span-take prog (block-layout (ℓ o bodyL , bb , at)) {instr-ctrl (c-label endL) ∷ []} (16 + Z)
+                  (subst (λ t → SpanAt prog (16 + Z) (instr-ctrl (c-thunk (ℓ o bodyL) bb) ∷ t))
                          (sym (++-assoc at (instr-ctrl (c-ret bb) ∷ []) (instr-ctrl (c-label endL) ∷ [])))
-                         (span-drop prog (callTxt ++ (pushV ++ (instr-ctrl (c-jmp headL) ∷ instr-ctrl (c-label exitL) ∷
-                                            load-from-slot (n + 2) ∷ mov-to-input ∷ load-indirect ∷
-                                            instr-ctrl (c-jmp endL) ∷ [])))
-                                    Y span-tail))
+                         (span-drop prog (instr-ctrl (c-jmp headL) ∷ instr-ctrl (c-label exitL) ∷
+                                            load-from-slot (n + 2) ∷ mov-to-input ∷ load-at 0 ∷
+                                            instr-ctrl (c-jmp endL) ∷ [])
+                                    (10 + Z) sp-mid))
 
     -- where the cata ends
     text-PRE : text′ ≡ PRE tailTxt
     text-PRE = cong (λ t → pre37 ++ (flatTxt ++ t)) R-eq
 
-    len-end : length text′ + base ≡ (34 + length at) + Y
-    len-end = trans e1 (trans (pre-pc tailTxt) (cong (_+ Y) {length tailTxt} {34 + length at} e2))
+    len-end : length text′ + base ≡ (19 + length at) + Z
+    len-end = trans e1 (trans (pre-pc tailTxt) (trans (cong (_+ Y) e2) (after-pc (19 + length at))))
       where
         e1 : length text′ + base ≡ length (PRE tailTxt) + base
         e1 = cong (λ t → length t + base) {text′} {PRE tailTxt} text-PRE
-        e2 : length tailTxt ≡ 34 + length at
-        e2 = trans (cong (32 +_) {length (at ++ post2)} {length at + 2} (length-++ at {post2})) (len-t (length at))
+        e2 : length tailTxt ≡ length callTxt + (19 + length at)
+        e2 = trans (length-++ callTxt {after})
+                   (cong (length callTxt +_) (cong (17 +_) (trans (length-++ at {post2}) (+-comm (length at) 2))))
 
     ------------------------------------------------------------------
     -- THE LABEL WINDOWS of the pieces before the fold's labels.
@@ -276,11 +339,7 @@ module CataFoldTextC {FS : FrameSemantics} where
       s1<2 = subst (_< l1 + 2) (+-comm l1 1) (+-monoʳ-< l1 (s≤s (s≤s z≤n)))
 
       L-pre37 : LabelsIn 0 0 pre37
-      L-pre37 =
-        ++⁺ (cata-setup-ls 0 0 _ _ _ _)
-        (++⁺ (li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ
-              li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ []ᴬ)
-             (push2-ls 0 0 n (n + 4) (n + 5)))
+      L-pre37 = lgi E 0 ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ []ᴬ
 
       L-head : LabelsIn l1 (l1 + 2) headTxt
       L-head = li-lab refl ≤-refl (lt l1 1) ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-lab refl (n≤1+n l1) s1<2 ∷ᴬ
@@ -298,7 +357,7 @@ module CataFoldTextC {FS : FrameSemantics} where
               li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ []ᴬ
 
       L-rb : LabelsIn lr (lr + lsize G) rbTxt
-      L-rb = rebuild-ls G (n + 2) (n + 4) (n + 5) (n + 7) lr
+      L-rb = rebuild-ls (kind C) (size C) G (n + 2) (n + 4) (n + 5) (n + 7) lr
 
       L-at : LabelsIn l l1 at
       L-at = labels-in alg 0 l
@@ -319,14 +378,14 @@ module CataFoldTextC {FS : FrameSemantics} where
         (++⁺ (nl-out visitTxt L-visit m q) (nl-out exitTxt L-exit m p))))
 
       nl-call : ∀ (m : LabelId) → NoLabel m callTxt
-      nl-call m = nl-nolab m callTxt (cata-call-ls 0 0 _ _ _ _)
+      nl-call m = subst (NoLabel m) T.call-eq (nl-nolab m _ (cata-call-from-ls 0 0 _ refl E (lkind G (kind C)) (lsz G (size C)) _ _ _ _))
 
       nl-push : ∀ (m : LabelId) → NoLabel m pushV
       nl-push m = nl-nolab m pushV (push2-ls 0 0 (n + 2) (n + 4) (n + 5))
 
-      -- the first 32 rows of the tail, for a label that is not `ℓ (l1+3)`
-      nl-pre32 : ∀ (m : LabelId) → l1 + 3 ≢ idx m → NoLabel m pre32
-      nl-pre32 m ne =
+      -- the tail up to the body, for a label that is not `ℓ (l1+3)`
+      nl-preB : ∀ (m : LabelId) → l1 + 3 ≢ idx m → NoLabel m preB
+      nl-preB m ne =
         ++⁺ (nl-call m) (++⁺ (nl-push m)
           ((λ ()) ∷ᴬ nl-row m ne ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ []ᴬ))
 
@@ -372,35 +431,45 @@ module CataFoldTextC {FS : FrameSemantics} where
         scan : find-label text′ headL ≡ just (37 + length flatTxt)
         post : AbstractTrace
         post = (load-from-slot (suc n) ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero exitL) ∷
-                load-indirect-suc ∷ store-at-slot (suc n) ∷ load-indirect ∷ mov-to-input ∷ []) ++ ((rbTxt ++ (mov-to-input ∷ [])) ++ tailTxt)
+                load-at 1 ∷ store-at-slot (suc n) ∷ load-at 0 ∷ mov-to-input ∷ []) ++ ((rbTxt ++ (mov-to-input ∷ [])) ++ tailTxt)
         scan = trans (cong (λ t → find-label t headL) (sym (++-assoc pre37 flatTxt (instr-ctrl (c-label headL) ∷ post))))
                      (trans (label-resolves (pre37 ++ flatTxt) headL post nl)
                             (cong just (+-identityʳ (37 + length flatTxt))))
 
     -- the loop's exit
-    exit-label : find-label prog exitL ≡ just (26 + Y)
-    exit-label = resolve pre26 _ exitL refl
-      (nl-PRE exitL pre26 (nl-flat exitL (inj₂ l2≤3) (inj₁ l3<4))
+    exit-label : find-label prog exitL ≡ just (11 + Z)
+    exit-label =
+      trans (resolve preX _ exitL (sym (++-assoc callTxt (pushV ++ (instr-ctrl (c-jmp headL) ∷ []))
+                                        (instr-ctrl (c-label exitL) ∷ (load-from-slot (n + 2) ∷ mov-to-input ∷ load-at 0 ∷
+                                         instr-ctrl (c-jmp endL) ∷ instr-ctrl (c-thunk (ℓ o bodyL) bb) ∷ (at ++ post2)))))
+      (nl-PRE exitL preX (nl-flat exitL (inj₂ l2≤3) (inj₁ l3<4))
         (nl-row exitL (λ e → lt-ne (+-monoʳ-< l1 (s≤s (s≤s (s≤s z≤n)))) e) ∷ᴬ
          (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ []ᴬ)
         (nl-out rbTxt L-rb exitL (inj₁ (<-≤-trans l3<4 (m≤m+n (l1 + 4) (lsize G)))))
-        (++⁺ (nl-call exitL) (++⁺ (nl-push exitL) ((λ ()) ∷ᴬ []ᴬ))))
+        (++⁺ (nl-call exitL) (++⁺ (nl-push exitL) ((λ ()) ∷ᴬ []ᴬ)))))
+      (cong just (trans (cong (_+ Y) (length-++ callTxt {pushV ++ (instr-ctrl (c-jmp headL) ∷ [])})) (after-pc 11)))
 
     -- the jump over the body lands on its end label
-    end-label : find-label prog endL ≡ just ((33 + length at) + Y)
+    end-label : find-label prog endL ≡ just ((18 + length at) + Z)
     end-label =
-      trans (resolve Wend [] endL (cong (pre32 ++_) (sym (++-assoc at (instr-ctrl (c-ret bb) ∷ []) (instr-ctrl (c-label endL) ∷ []))))
+      trans (resolve Wend [] endL
+               (trans tail-eq (trans (cong (preB ++_) (sym (++-assoc at (instr-ctrl (c-ret bb) ∷ []) (instr-ctrl (c-label endL) ∷ []))))
+                                     (sym (++-assoc preB (at ++ (instr-ctrl (c-ret bb) ∷ [])) (instr-ctrl (c-label endL) ∷ [])))))
                (nl-PRE endL Wend (nl-flat endL (inj₂ (≤-trans l2≤4 (≤-trans up4 bl1)))
                                                  (inj₂ (≤-trans (m≤m+n lr (lsize G)) bl1)))
                                  (nl-out hd8 L-hd8 endL (inj₂ (≤-trans up4 bl1)))
                                  (nl-out rbTxt L-rb endL (inj₂ bl1))
-                                 (++⁺ (nl-pre32 endL (lt-ne (<-≤-trans l3<4 (≤-trans up4 bl1))))
+                                 (++⁺ (nl-preB endL (lt-ne (<-≤-trans l3<4 (≤-trans up4 bl1))))
                                       (++⁺ (nl-out at L-at endL (inj₂ (≤-trans (m≤m+n l1 4) (≤-trans up4 bl1))))
                                            ((λ ()) ∷ᴬ []ᴬ)))))
-            (cong (λ z → just (z + Y)) (trans (cong (32 +_) (length-++ at {instr-ctrl (c-ret bb) ∷ []})) (len-e (length at))))
+            (cong just (trans (cong (_+ Y) len-Wend) (after-pc (18 + length at))))
       where
         Wend : AbstractTrace
-        Wend = pre32 ++ (at ++ (instr-ctrl (c-ret bb) ∷ []))
+        Wend = preB ++ (at ++ (instr-ctrl (c-ret bb) ∷ []))
+        len-Wend : length Wend ≡ length callTxt + (18 + length at)
+        len-Wend = trans (length-++ preB {at ++ (instr-ctrl (c-ret bb) ∷ [])})
+                         (trans (cong₂ _+_ (length-++ callTxt {pushV ++ mid7}) (length-++ at {instr-ctrl (c-ret bb) ∷ []}))
+                                (pos-wend (length callTxt) (length at)))
 
     -- the rebuild walk's own labels
     rb-labels : LabelsAt prog (8 + X) rbTxt
@@ -420,17 +489,18 @@ module CataFoldTextC {FS : FrameSemantics} where
         eq = trans (cong (λ t → pre37 ++ (flatTxt ++ t)) R-eq) (cong (pre37 ++_) (sym (++-assoc flatTxt hd8 _)))
 
     -- the algebra's own labels
-    body-labels : LabelsAt prog (32 + Y) at
+    body-labels : LabelsAt prog (17 + Z) at
     body-labels m j h =
-      trans (la m _ (trans (cong (λ t → find-label t m) (cut pre32 (at ++ post2) refl))
-                           (find-label-distrib (PRE pre32) at post2 m j nl h)))
-            (cong just (trans (+-assoc j (length (PRE pre32)) base) (cong (j +_) (pre-pc pre32))))
+      trans (la m _ (trans (cong (λ t → find-label t m) (cut preB (at ++ post2) tail-eq))
+                           (find-label-distrib (PRE preB) at post2 m j nl h)))
+            (cong just (trans (+-assoc j (length (PRE preB)) base)
+                              (cong (j +_) (trans (pre-pc preB) (trans (cong (_+ Y) (length-++ callTxt {pushV ++ mid7})) (after-pc 17))))))
       where
         win = found-in-window at m j h L-at
         hi : idx m < l1
         hi = proj₂ win
-        nl : NoLabel m (PRE pre32)
-        nl = nl-PRE m pre32 (nl-flat m (inj₁ hi) (inj₁ (<-≤-trans hi (m≤m+n l1 4))))
+        nl : NoLabel m (PRE preB)
+        nl = nl-PRE m preB (nl-flat m (inj₁ hi) (inj₁ (<-≤-trans hi (m≤m+n l1 4))))
                             (nl-out hd8 L-hd8 m (inj₁ (<-≤-trans hi l≤2)))
                             (nl-out rbTxt L-rb m (inj₁ (<-≤-trans hi (≤-trans (m≤m+n l1 4) (m≤m+n (l1 + 4) (lsize G))))))
-                            (nl-pre32 m (λ e → lt-ne (<-≤-trans hi (m≤m+n l1 3)) (sym e)))
+                            (nl-preB m (λ e → lt-ne (<-≤-trans hi (m≤m+n l1 3)) (sym e)))

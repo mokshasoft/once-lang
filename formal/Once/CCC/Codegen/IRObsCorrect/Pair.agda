@@ -8,13 +8,12 @@
 --
 -- The clusters the clause is made of live under `Pair/`:
 --   * `Pair.Chain` — the run's states: the prologue (`PairChain`), what
---     follows `f` (`PairChainF`) and what follows `g` (`PairChainG`), and
---     the five-segment event splice (`PairTrace`, `PairChainG.RUN-events`);
---   * `Pair.Place` — the heap node and `ResultPlace`;
---   * `Pair.Pres`  — the D206/D208/D210 preservation quartet;
---   * `Pair.Proof` — the clause's binders and `f`'s half (`PairProof`);
---   * `Pair.Both`  — both halves returned: the pair's fifteen-field record.
--- This module is the rest of the WIRING: `g`'s other outcomes and the dispatch.
+--     follows `f` (`PairChainF`) and what follows `g` (`PairChainG`);
+--   * `Pair.Build` — the tail: both components put into one block (D381);
+--   * `Pair.Pres`  — the D206/D208/D210 preservation quartet and the
+--     five-segment event splice;
+--   * `Pair.Proof` — the clause's binders and `f`'s half (`PairProof`).
+-- This module is the rest of the WIRING: `g`'s half and the dispatch.
 --
 -- What is written here and in none of the clusters:
 --
@@ -33,19 +32,9 @@
 --     `ValueRealized` field and nowhere in the tree; derivable from `bf-mono`
 --     alone, at a synthetic reference one below the caller's frontier.
 --
--- WHY SPLIT. Each file must check within the per-module limit (plan 0.144:
--- 50 s and 3 GB), and one pass over all the clusters plus the fifteen-field
--- record does not; split, each cluster is read back from its interface.
---
--- WHAT KEEPS IT FAST (plan 0.144, 739 s → 48 s; profile per definition):
---   * the settle state is met through the OPAQUE `NineSteps.u10ᵒ`
---     (`settle≡place`, `settle≡pres`) and the clusters' facts are moved along
---     those two equalities by `subst`; met directly, the three families'
---     spellings of it are identified by evaluating the nine rows (~100 s each);
---   * every implicit that would be solved against a computed term is pinned
---     (`field-place`'s `{prog = prog}`: >20 min unpinned);
---   * facts about `PCG.RUN` are stated in `Pair.Chain`, where `RUN`'s pieces
---     are its own names (`RUN-events`; the straight segments' `[]`s).
+-- WHY SPLIT. Each file must check within the 30 s per-module cap, and one
+-- pass over all the clusters plus the fifteen-field record does not; split,
+-- each cluster is read back from its interface.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -64,9 +53,7 @@ open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl
-open import Once.CCC.Codegen.IRObsCorrect.Pair.Place o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Proof o tbl
-open import Once.CCC.Codegen.IRObsCorrect.Pair.Both o tbl
 open import Data.List.Properties using (++-identityʳ)
 
 import Once.CCC.FrameSemantics
@@ -86,10 +73,15 @@ module PairAsm {FS : FrameSemantics} where
   open Core  {FS}
   open Mach  {FS}
   open PairC {FS}
-  open PairPlaceC {FS}
-
   open PairProofC {FS}
-  open PairBothC {FS} using () renaming (module PairProofB to Both)
+
+  -- a frontier step's liveness (liveness is the heap frontier's)
+  live-of-bf : ∀ {a b : AllocState {FS}}
+             → (∀ (m : ℕ) (loc : ValueLocation FS) → BeforeFrontier (record a { next-slot = m }) loc
+                                                    → BeforeFrontier (record b { next-slot = m }) loc)
+             → ∀ l → Live a l → Live b l
+  live-of-bf bm (AtDynamic hl) (BeforeFrontier.heap-before p) with bm 0 (AtDynamic hl) (BeforeFrontier.heap-before p)
+  ... | BeforeFrontier.heap-before q = BeforeFrontier.heap-before q
 
   module PairProofB {A B C} {f : IR A B} {g : IR A C}
     (ihf : IRObsCorrectF f) (ihg : IRObsCorrectF g) (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
@@ -114,6 +106,169 @@ module PairAsm {FS : FrameSemantics} where
           ctrlsG : chain-ctrls (VR.run vrg) ≡ chain-ctrls chainG₀
           ctrlsG = sym (chain-ctrls-subst-start (sym PCF.handG) (VR.run vrg))
 
+          module ReturnsG (vC : ⟦ C ⟧) (rC : ℕ) (rgeq : resultAt (floc PCF.m2) (⟪ evalᴰ g x ⟫ rB) ≡ returns (done vC rC)) where
+              -- `g` returned, so it was not cut.
+              ncG : NotCut (resultAt (floc PCF.m2) (⟪ evalᴰ g x ⟫ rB))
+              ncG = subst NotCut (sym rgeq) tt
+
+              module PPresG = PPres ncG
+
+              -- WHAT THE PAIR RUNS AND RETURNS: both calls' events, and `f`'s
+              -- value with `g`'s, assembled by the inner `return∞`, with the
+              -- budget `g` left.
+              PR≡ : runAt s (⟪ evalᴰ ⟨ f , g ⟩ x ⟫ k) ≡ (esF ++ (esG ++ []) , returns (done (vB , vC) rC))
+              PR≡ = inner-run (returns (done vC rC)) rgeq
+
+              res-pair : resultAt s (⟪ evalᴰ ⟨ f , g ⟩ x ⟫ k) ≡ returns (done (vB , vC) rC)
+              res-pair = cong proj₂ PR≡
+
+              ev-pair : eventsAt s (⟪ evalᴰ ⟨ f , g ⟩ x ⟫ k) ≡ esF ++ esG
+              ev-pair = trans (cong proj₁ PR≡) (cong (esF ++_) (++-identityʳ esG))
+
+              not-stopped : ∀ {X : Set} → stopsAt s (⟪ evalᴰ ⟨ f , g ⟩ x ⟫ k) ≡ true → X
+              not-stopped p = case trans (sym p) (cong is-stopped res-pair) of λ ()
+
+              module PCG = PairChainG f g n l prog base s alloc cl rs n≤ nh span vrf rfeq vrg rgeq
+
+              ----------------------------------------------------------------
+              -- `PairPlace`'s five non-trivial parameters.
+              ----------------------------------------------------------------
+              runG≡ : exec-flat (VR.steps vrg) prog
+                        (entry-flat PCF.bg (floc PCF.m2) (falloc PCF.m2)
+                                    (fclosure PCF.m2) rs)
+                      ≡ PCG.fsG
+              runG≡ = trans (cong (λ m → exec-flat m prog
+                                           (entry-flat PCF.bg (floc PCF.m2)
+                                              (falloc PCF.m2) (fclosure PCF.m2) rs))
+                                  (sym (+-identityʳ (VR.steps vrg))))
+                            (exec-flat-steps (VR.run vrg) 0)
+
+              ns-gs : next-slot (falloc PCG.fsG) ≡ next-slot alloc
+              ns-gs = trans (trans (cong (λ st → next-slot (falloc st)) (sym runG≡))
+                                   (flat-run-keeps-next-slot (VR.steps vrg) prog ss
+                                      PCF.bg (floc PCF.m2) (falloc PCF.m2)
+                                      (fclosure PCF.m2) rs))
+                            ns-m2
+
+              hr-gs : next-heap-ref (falloc PCF.fsF) ≤ next-heap-ref (falloc PCG.fsG)
+              hr-gs = ≤-trans (≤-reflexive (sym hr-mid)) (vr-heap-mono vrg ncG)
+
+              bf-fsF→g : ∀ (loc : ValueLocation FS)
+                       → BeforeFrontier (falloc PCF.fsF) loc
+                       → BeforeFrontier (record (falloc PCF.m2) { next-slot = PS.n1 }) loc
+              bf-fsF→g = frontier-monotone (falloc PCF.fsF)
+                           (record (falloc PCF.m2) { next-slot = PS.n1 })
+                           (trans PCF.cf-fsF (sym PCF.cf-m2))
+                           (≤-trans (≤-reflexive ns-fsF) (≤-trans n≤ n≤n1))
+                           (≤-reflexive (sym hr-mid))
+
+              mem-F→G : ∀ (loc : ValueLocation FS)
+                      → BeforeFrontier (falloc PCF.fsF) loc
+                      → SMCore.MemOps.readLoc (floc PCG.fsG) loc
+                        ≡ SMCore.MemOps.readLoc (floc PCF.fsF) loc
+              mem-F→G loc b =
+                trans (vr-mem-pres vrg ncG loc (bf-fsF→g loc b))
+                (trans (mem-untouched (restore-input n) (floc PCF.m1) (falloc PCF.m1) loc
+                          Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
+                       (store-slot-preserves-before (suc n) (floc PCF.fsF)
+                          (falloc PCF.fsF) (falloc PCF.fsF) loc refl
+                          (≤-trans (≤-reflexive ns-fsF) (≤-trans n≤ (n≤1+n n))) b))
+
+              fst-cell-gs : SMCore.MemOps.readLoc (floc PCG.fsG)
+                              (AtStack (current-frame alloc) (suc n))
+                          ≡ just (readReg (regs (floc PCF.fsF)) Output)
+              fst-cell-gs =
+                trans (vr-mem-pres vrg ncG (AtStack (current-frame alloc) (suc n))
+                        (BeforeFrontier.stack-before (sym PCF.cf-m2) PCG.fst<n1))
+                (trans (mem-untouched (restore-input n) (floc PCF.m1) (falloc PCF.m1)
+                          (AtStack (current-frame alloc) (suc n))
+                          Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
+                       PCF.read-fst-m1')
+
+              -- the tail (`Pair.Build`, inside `PCG`): what it leaves alone
+              module PPresF = PPresG.WithTail PCG.SETTLE PCG.T.cf-tail PCG.T.sf-tail PCG.T.bf-tail PCG.T.keep
+
+              -- every block the caller had live keeps its size: `f`'s run,
+              -- `g`'s (with the mid rows), the tail's allocation
+              bk-pair : BlocksKept alloc (falloc PCG.SETTLE)
+              bk-pair = bk-trans {a = alloc} {b = falloc (VR.settle vrg)} {c = falloc PCG.SETTLE}
+                                 (bk-trans {a = alloc} {b = falloc PCF.fsF} {c = falloc (VR.settle vrg)}
+                                           (VR.blocks-kept vrf PCF.ncF) PCG.bkB
+                                           (live-of-bf {a = alloc} {b = falloc PCF.fsF} (VR.bf-mono vrf PCF.ncF)))
+                                 PCG.T.bk-tail (live-of-bf {a = alloc} {b = falloc (VR.settle vrg)} PPresG.bf-to-gs)
+
+              PLACE : ResultPlace {prog = prog} (B IRTy′.* C) Heap (falloc PCG.SETTLE) PCG.T.A₁ (vB , vC) (floc PCG.SETTLE)
+              PLACE = at-loc PCG.T.L PCG.T.val PCG.T.live-L refl PCG.T.val PCG.T.live-L
+
+              -- The record's fields, each NAMED AT ITS TYPE: the expected types
+              -- mention `PCG.SETTLE`/`PCG.RUN`, the suppliers their own states,
+              -- and stating each once keeps the conversion between them in
+              -- one place (and lets a profile see which one costs).
+              E : TM.T (Ap ⟦ B IRTy′.* C ⟧)
+              E = ⟪ evalᴰ ⟨ f , g ⟩ x ⟫ k
+
+              field-log : SMCore.LocState.ev-log (floc PCG.SETTLE) ≡ SMCore.LocState.ev-log s ++ eventsAt s E
+              field-log =
+                trans (log-silent PCG.tail-chain PCG.tail-silent)
+                (trans log-fg
+                (trans (++-assoc h esF esG) (cong (h ++_) (sym ev-pair))))
+
+              -- plan 0.98: the premise binds `v`; `res-pair` says what the pair
+              -- actually returned, and `done-value` identifies the two.
+              field-place : ∀ {v r} → resultAt s E ≡ returns (done v r)
+                          → ResultPlace {prog = prog} (B IRTy′.* C) Heap (falloc PCG.SETTLE)
+                              PCG.T.A₁ v (floc PCG.SETTLE)
+              field-place p = subst (λ w → ResultPlace {prog = prog} (B IRTy′.* C) Heap (falloc PCG.SETTLE) PCG.T.A₁ w (floc PCG.SETTLE))
+                                    (done-value (trans (sym res-pair) p))
+                                    PLACE
+
+              field-stack : ∀ (fr : FrameSemantics.Frame FS) (j : ℕ)
+                          → BeforeFrontier (record alloc { next-slot = n }) (AtStack fr j)
+                          → SMCore.MemOps.readLoc (floc PCG.SETTLE) (AtStack fr j) ≡ SMCore.MemOps.readLoc s (AtStack fr j)
+              field-stack = PPresF.stack-pres-pair
+
+              field-heap : ∀ (hl : HeapLocation)
+                         → BeforeFrontier (record alloc { next-slot = n }) (AtDynamic hl)
+                         → SMCore.MemOps.readLoc (floc PCG.SETTLE) (AtDynamic hl) ≡ SMCore.MemOps.readLoc s (AtDynamic hl)
+              field-heap = PPresF.heap-pres-pair
+
+              -- the SAME chain names `PCG.RUN` is built from (`PCF.chainF`,
+              -- `PCG.chainG`), so the conclusion matches `RUN` after one
+              -- unfolding instead of by normalising both runs' events
+              -- (profile 2026-09-30: this call was 91% of the module).
+              -- `RUN` split by its OWN pieces (`PCG.RUN-events`), not by
+              -- `Proof`'s copies of them (plan 0.144, the `context-form-mismatch`
+              -- pattern: stated here over the copies, 1850 s).
+              ft-run : chain-events PCG.RUN ≡ chain-events PCF.chainF ++ chain-events PCG.chainG
+              ft-run = PCG.RUN-events
+
+              ft-calls : chain-events PCF.chainF ++ chain-events PCG.chainG ≡ esF ++ esG
+              ft-calls = cong₂ _++_ tf tg
+
+              field-traces : chain-events PCG.RUN ≡ eventsAt s E
+              field-traces = trans ft-run (trans ft-calls (sym ev-pair))
+
+              field-progress : k ≤ budgetLeft k (resultAt s E) + chain-ctrls PCG.RUN
+              field-progress =
+                subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls PCG.RUN) (sym res-pair)
+                      (bind-arith rC progF
+                         (subst (λ ρ → rB ≤ budgetLeft rB ρ + chain-ctrls (VR.run vrg)) rgeq (VR.progress vrg))
+                         PCG.RUN-ctrls)
+
+              result : MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl rs k
+              result = record
+                { value-realized =
+                    realized PCG.STEPS PCG.SETTLE Heap PCG.T.A₁
+                             PCG.RUN (λ _ → PCG.LIVE) (λ _ → PCG.ATEND)
+                             not-stopped
+                             (λ _ → PCG.NORET) (λ _ → PCG.NOLINK)
+                             field-log field-place field-progress
+                             (λ _ → field-stack) (λ _ → field-heap)
+                             (λ _ → PPresF.frame-pres-pair rgeq) (λ _ → PPresF.bf-mono-pair) (λ _ → PPresF.frames-pres-pair rgeq)
+                             (λ _ → bk-pair)
+                ; traces-agree = field-traces
+                }
+
           -- `g`'s chain and the run up to its settle state, shared by the
           -- branches where `g` does not reach the tail.
           chain-to-g : FlatSteps prog (2 + (VR.steps vrf + (2 + VR.steps vrg))) (entry-flat base s alloc cl rs) (VR.settle vrg)
@@ -137,7 +292,7 @@ module PairAsm {FS : FrameSemantics} where
                               , trans (proj₂ (VR.stops vrg sgeq))
                                       (chain-left (FlatSteps-++ PC.pre-chain (FlatSteps-++ chainF₀ PCF.mid-chain)) PCF.nhM2))
                          (λ p → case trans (sym res-g) p of λ ()) (λ _ → VR.no-link vrg ncG)
-                         (log-assoc h esF esG log-fg ev-pair-g)
+                         (trans log-fg (trans (++-assoc h esF esG) (cong (h ++_) (sym ev-pair-g))))
                          (λ p → case trans (sym res-g) p of λ ())
                          (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chain-to-g) (sym res-g) (m≤m+n k _))
                          (λ _ fr j b → PPresG.mem-pres-to-gs (AtStack fr j) b)
@@ -145,6 +300,10 @@ module PairAsm {FS : FrameSemantics} where
                          (λ p → case trans (sym res-g) p of λ ())
                          (λ _ → PPresG.bf-to-gs)
                          (λ p → case trans (sym res-g) p of λ ())
+                         (λ _ → bk-trans {a = alloc} {b = falloc PCF.fsF} {c = falloc (VR.settle vrg)}
+                                  (VR.blocks-kept vrf PCF.ncF)
+                                  (subst (λ a′ → BlocksKept a′ (falloc (VR.settle vrg))) PCF.alloc-m2 (VR.blocks-kept vrg ncG))
+                                  (live-of-bf {a = alloc} {b = falloc PCF.fsF} (VR.bf-mono vrf PCF.ncF)))
             ; traces-agree =
                 trans (PT.pair-chain-events-g PC.pre-chain chainF₀ PCF.mid-chain chainG₀ refl refl)
                       (trans (cong₂ _++_ tf tg) (sym ev-pair-g))
@@ -180,14 +339,14 @@ module PairAsm {FS : FrameSemantics} where
                          (λ p → case trans (sym res-g) p of λ ())
                          (λ p → case trans (sym (cong is-stopped res-g)) p of λ ())
                          (λ p → case trans (sym res-g) p of λ ()) (cut-absurd res-g)
-                         (log-assoc h esF esG log-fg ev-pair-g)
+                         (trans log-fg (trans (++-assoc h esF esG) (cong (h ++_) (sym ev-pair-g))))
                          (λ p → case trans (sym res-g) p of λ ())
                          (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls chain-to-g) (sym res-g)
                                 (bind-arith 0 progF
                                    (subst (λ ρ → rB ≤ budgetLeft rB ρ + chain-ctrls (VR.run vrg)) rgeq (VR.progress vrg))
                                    (subst₂ (λ a b → a + b ≤ chain-ctrls chain-to-g) (sym ctrlsF) (sym ctrlsG)
                                            (ctrls-4 PC.pre-chain chainF₀ PCF.mid-chain chainG₀))))
-                         (cut-absurd res-g) (cut-absurd res-g) (λ p → case trans (sym res-g) p of λ ()) (cut-absurd res-g) (λ p → case trans (sym res-g) p of λ ())
+                         (cut-absurd res-g) (cut-absurd res-g) (λ p → case trans (sym res-g) p of λ ()) (cut-absurd res-g) (λ p → case trans (sym res-g) p of λ ()) (cut-absurd res-g)
             ; traces-agree =
                 trans (PT.pair-chain-events-g PC.pre-chain chainF₀ PCF.mid-chain chainG₀ refl refl)
                       (trans (cong₂ _++_ tf tg) (sym ev-pair-g))
@@ -203,8 +362,7 @@ module PairAsm {FS : FrameSemantics} where
               ev-pair-g = cong proj₁ PR≡
 
           -- ── BOTH REACHED THEIR END — the pair is assembled. ──────────
-          dispatch-g (returns (done vC rC)) rgeq =
-            Both.ReturnsB.ReturnsG.result ihf ihg n l prog base ss cr span bl la mIn x s alloc cl rs ns0 nh inp k vB rB rfeq vC rC rgeq
+          dispatch-g (returns (done vC rC)) rgeq = ReturnsG.result vC rC rgeq
 
       dispatch : (ρ : Res (Ap ⟦ B ⟧)) → resultAt (floc PC.PR.p2) (⟪ evalᴰ f x ⟫ k) ≡ ρ
                → MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl rs k
@@ -227,6 +385,7 @@ module PairAsm {FS : FrameSemantics} where
                      (λ _ hl b → mem-to-fsF (AtDynamic hl) b)
                      (λ p → case trans (sym res-f) p of λ ())
                      (λ _ m loc b → VR.bf-mono vrf ncF m loc b) (λ p → case trans (sym res-f) p of λ ())
+                     (λ _ → VR.blocks-kept vrf ncF)
         ; traces-agree =
             trans (PT.pair-chain-events-f PC.pre-chain chainF₀ refl) (trans tf (sym ev-pair-f))
         }
@@ -269,7 +428,7 @@ module PairAsm {FS : FrameSemantics} where
                      (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (FlatSteps-++ PC.pre-chain chainF₀)) (sym res-f)
                             (progress-≤ {b = 0} (subst (λ ρ → k ≤ budgetLeft k ρ + chain-ctrls (VR.run vrf)) rfeq (VR.progress vrf))
                                         (≤-trans (≤-reflexive ctrlsF) (ctrls-≤ʳ PC.pre-chain chainF₀))))
-                     (cut-absurd res-f) (cut-absurd res-f) (λ p → case trans (sym res-f) p of λ ()) (cut-absurd res-f) (λ p → case trans (sym res-f) p of λ ())
+                     (cut-absurd res-f) (cut-absurd res-f) (λ p → case trans (sym res-f) p of λ ()) (cut-absurd res-f) (λ p → case trans (sym res-f) p of λ ()) (cut-absurd res-f)
         ; traces-agree =
             trans (PT.pair-chain-events-f PC.pre-chain chainF₀ refl) (trans tf (sym ev-pair-f))
         }

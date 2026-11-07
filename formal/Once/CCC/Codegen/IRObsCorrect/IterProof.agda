@@ -5,7 +5,7 @@
 -- Once.CCC.Codegen.IRObsCorrect.IterProof
 --
 -- plan 0.119 D5: `Iter body` — THE LOOP'S OBLIGATION, DISCHARGED. The
--- prologue (`load-indirect` puts `e`'s cell in `Output`, `store-at-slot`
+-- prologue (`get E 0` reads `e` into `Output`, `store-at-slot`
 -- stashes it at `suc n`, the top label) reaches the first round entry with
 -- the invariant; the rounds (`IterRounds`, by induction on the budget) do the
 -- rest. The input is a pair in memory: a pair fits no register and is no unit.
@@ -37,16 +37,17 @@ open import Once.CCC.Codegen.IRObsCorrect.IterShape o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterRun o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterInv o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterRounds o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 
 module IterProofC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open ClosureWellFormedBase {FS} using (rep-prim; rep-unit)
   open IterShapeC {FS}
   open IterRunC {FS}
   open IterInvC {FS}
   open IterRoundsC {FS}
+  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; offset-zero)
 
   module Main {E A B : IRTy} (body : IR (E IRT.* A) (B IRT.+ A)) (ihb : IRObsCorrectF body)
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
@@ -72,37 +73,22 @@ module IterProofC {FS : FrameSemantics} where
 
     fs0 fs1 fs2 σ₁ : FlatState
     fs0 = entry-flat base s alloc cl rs
-    fs1 = flat-exec-instr load-indirect prog fs0
+
+    -- `e`, read at word 0 of the pair (`Get.get-run`)
+    g : GetOut {prog = prog} E e fs0
+    g = get-run E 0 fs0 pl nh at-get rd bfp
+          (subst (λ z → CellAt {prog = prog} alloc E e z s) (sym (offset-zero pl))
+                 (PairValidWF.fst-cell (decomposePairWF pv)))
+
+    fs1 = setOut fs0 (GetOut.out g)
     fs2 = flat-exec-instr (store-at-slot (suc n)) prog fs1
     σ₁  = flat-exec-instr (instr-ctrl (c-label (ℓ o l))) prog fs2
 
     mem-eq1 : ∀ (lc : ValueLocation FS) → SMCore.MemOps.readLoc (floc fs1) lc ≡ SMCore.MemOps.readLoc s lc
-    mem-eq1 lc = exec-abstract-load-indirect-preserves-mem s alloc lc
-
-    -- `e`'s place after `load-indirect`, `Input1` untouched, the run live —
-    -- read off the pair's first cell (`fst`'s argument, D178/D187).
-    fst-out : CellAt {prog = prog} alloc E e pl s
-            → Σ AllocMode (λ m → ResultPlace {prog = prog} E m alloc alloc e (floc fs1))
-              × (halted (floc fs1) ≡ false)
-              × (readReg (regs (floc fs1)) Input1 ≡ readReg (regs s) Input1)
-    fst-out (cell-ptr {comp-loc = cloc} cp cbef cv) =
-      (_ , at-loc cloc cval cbef (exec-abstract-load-indirect-output s alloc pl (SV-Ptr cloc) rd cp) cval cbef)
-      , exec-abstract-preserves-halted-WF load-indirect s alloc nh (load-indirect-twf {alloc = alloc} pl (SV-Ptr cloc) rd cp)
-      , load-ind-preserves-input s alloc pl (SV-Ptr cloc) (cong sv-as-loc rd) cp
-      where cval = validityWF-mem-preserved e cloc s (floc fs1) (live→bf cbef) (λ lc _ → mem-eq1 lc) cv
-    fst-out (cell-inline (rep-prim fit) cp) =
-      (Heap , at-reg fit (exec-abstract-load-indirect-output s alloc pl _ rd cp))
-      , exec-abstract-preserves-halted-WF load-indirect s alloc nh (load-indirect-twf {alloc = alloc} pl _ rd cp)
-      , load-ind-preserves-input s alloc pl _ (cong sv-as-loc rd) cp
-    fst-out (cell-inline (rep-unit refl sv) cp) =
-      (Heap , unit-result)
-      , exec-abstract-preserves-halted-WF load-indirect s alloc nh (load-indirect-twf {alloc = alloc} pl sv rd cp)
-      , load-ind-preserves-input s alloc pl sv (cong sv-as-loc rd) cp
-
-    FO = fst-out (PairValidWF.fst-cell (decomposePairWF pv))
+    mem-eq1 lc = out-mem fs0 (GetOut.out g) lc
 
     nh1 : halted (floc fs1) ≡ false
-    nh1 = proj₁ (proj₂ FO)
+    nh1 = nh
 
     nh2 : halted (floc fs2) ≡ false
     nh2 = exec-abstract-preserves-halted-WF (store-at-slot (suc n)) (floc fs1) (falloc fs1) nh1 tt
@@ -119,22 +105,27 @@ module IterProofC {FS : FrameSemantics} where
     input1 = trans (cong (λ r → readReg r Input1)
                          (SMCore.MemOps.writeLoc-regs (floc fs1) (AtStack (current-frame alloc) (suc n))
                                                       (readReg (regs (floc fs1)) Output)))
-                   (proj₂ (proj₂ FO))
+                   refl
 
     chain1 : FlatSteps prog 1 fs0 fs1
-    chain1 = (nh , at-load) ∷ []
+    chain1 = GetOut.step g
 
     pre-chain : FlatSteps prog 3 fs0 σ₁
-    pre-chain = (nh , at-load) ∷ (nh1 , at-store) ∷ (nh2 , at-top) ∷ []
+    pre-chain = FlatSteps-++ (GetOut.step g) ((nh1 , at-store) ∷ (nh2 , at-top) ∷ [])
+
+    ev-pre : chain-events pre-chain ≡ []
+    ev-pre = trans (chain-events-++ (GetOut.step g) ((nh1 , at-store) ∷ (nh2 , at-top) ∷ []))
+                   (cong (DL._++ []) (GetOut.silent g))
 
     Z : Anchor prog
     Z = record
       { s₀ = s ; alloc₀ = alloc ; n≤₀ = n≤ ; ns₀ = ns0 ; rs₀ = rs ; e = e
-      ; fsF = fs1 ; mf = proj₁ (proj₁ FO) ; caf = alloc ; placeF = proj₂ (proj₁ FO)
+      ; fsF = fs1 ; mf = GetOut.mode g ; caf = alloc ; placeF = GetOut.place g
       ; cf-F = refl ; ns-F = refl ; hr-F = ≤-refl
       ; mem0-F = λ lc _ → mem-eq1 lc
       ; bf0-F = λ m lc bf → bf
       ; left-F = chain-left chain1 nh1
+      ; bk0-F = λ _ _ ib → ib
       }
 
     inv₁ : RoundInv Z σ₁ a₀
@@ -148,13 +139,14 @@ module IterProofC {FS : FrameSemantics} where
       ; mem0 = λ lc bf → trans (memS0 lc bf) (mem-eq1 lc)
       ; bf0 = λ m lc bf → bf
       ; left = chain-left pre-chain nh2
+      ; bkF = λ _ _ ib → ib ; bk0 = λ _ _ ib → ib
       }
 
     rr : RoundsRun Z prog σ₁ a₀ k
     rr = Rounds.rounds body n l prog base span ihb ss cr bl la Z k k ≤-refl σ₁ a₀ inv₁
 
     log1 : SMCore.LocState.ev-log (floc σ₁) ≡ SMCore.LocState.ev-log s
-    log1 = trans (log-abstract (store-at-slot (suc n)) tt (floc fs1) (falloc fs1)) (log-abstract load-indirect tt s alloc)
+    log1 = trans (log-abstract (store-at-slot (suc n)) tt (floc fs1) (falloc fs1)) refl
 
     RES : runAt (floc σ₁) (⟪ loopFrom e a₀ ⟫ k) ≡ runAt s (⟪ evalᴰ (Iter body) (e , a₀) ⟫ k)
     RES = runAt-≡ {st = floc σ₁} {st′ = s} {m = ⟪ loopFrom e a₀ ⟫ k} {m′ = ⟪ evalᴰ (Iter body) (e , a₀) ⟫ k} log1 refl
@@ -182,7 +174,8 @@ module IterProofC {FS : FrameSemantics} where
             (λ p → R.frame (trans res p))
             (λ nc → R.bf0 (subst NotCut (sym res) nc))
             (λ p → R.frames (trans res p))
-      ; traces-agree = trans (chain-events-++ pre-chain R.run) (trans R.events evs)
+            (λ nc → R.bk0 (subst NotCut (sym res) nc))
+      ; traces-agree = trans (chain-events-++ pre-chain R.run) (trans (cong (DL._++ chain-events R.run) ev-pre) (trans R.events evs))
       }
 
   obs-correct-Iter : ∀ {E A B} (body : IR (E IRT.* A) (B IRT.+ A)) → IRObsCorrectF body → IRObsCorrectF (Iter body)
