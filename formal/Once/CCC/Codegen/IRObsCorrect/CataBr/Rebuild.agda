@@ -765,11 +765,10 @@ module CataRebuildC {FS : FrameSemantics} where
       s1≢s3 e = ne+ s (λ ()) (trans (sym (sx s)) e)
 
       -- the fresh pair
-      module E = Block2 prog n (suc s) (s + 3) (s + 2) (load-from-slot (suc s)) wL wR τa r5-slot SPE (Walk.nh wa)
-                   (≤-trans n≤s (n≤1+n s)) (≤-trans n≤s (m≤m+n s 3)) s1≢s3 (inj₂ (s2≢s1 , s2≢s3 , s2-a))
 
       we′ : Walk prog n (λ j → (j ≢ suc s) × (j ≢ s + 3)) τa (9 + fpc τa) (Block wL wR)
-      we′ = E.walk (λ j kj → kj)
+      we′ = (Block2.walk prog n (suc s) (s + 3) (s + 2) (load-from-slot (suc s)) wL wR τa r5-slot SPE (Walk.nh wa)
+          (≤-trans n≤s (n≤1+n s)) (≤-trans n≤s (m≤m+n s 3)) s1≢s3 (inj₂ (s2≢s1 , s2≢s3 , s2-a))) (λ j kj → kj)
       we : Walk prog n (KR s) τa (9 + fpc τa) (Block wL wR)
       we = walk-K (λ j kj → nk1 s4u (proj₁ kj) , nk3 s4u (proj₁ kj)) we′
 
@@ -960,10 +959,9 @@ module CataRebuildC {FS : FrameSemantics} where
                       → readLoc s′ (AtDynamic (sucHL hb)) ≡ just c → Live a (AtDynamic hb)
                       → WordAt prog a B (inj lp) (SV-Ptr (AtDynamic hb)) s′) where
         wP = readReg (regs (floc τp)) Output
-        module W = Block2 prog n s (suc s) s (instr-load-tag-lit t) (SV-Tag t) wP τp (r5-tag t) spw nhp n≤s
-                     (≤-trans n≤s (n≤1+n s)) (λ e → <-irrefl e (n<1+n s)) (inj₁ (refl , refl))
         ww′ : Walk prog n (λ j → (j ≢ s) × (j ≢ suc s)) τp (9 + fpc τp) (Block (SV-Tag t) wP)
-        ww′ = W.walk (λ j kj → kj)
+        ww′ = (Block2.walk prog n s (suc s) s (instr-load-tag-lit t) (SV-Tag t) wP τp (r5-tag t) spw nhp n≤s
+            (≤-trans n≤s (n≤1+n s)) (λ e → <-irrefl e (n<1+n s)) (inj₁ (refl , refl))) (λ j kj → kj)
         ww : Walk prog n (KR s) τp (9 + fpc τp) (Block (SV-Tag t) wP)
         ww = walk-K ks ww′
         τw = Walk.τ ww
