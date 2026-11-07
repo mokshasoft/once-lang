@@ -135,8 +135,6 @@ module CataFoldPreC {FS : FrameSemantics} where
 
     open Inv prog F E C n c bodyL X sn hc e env-sv
 
-    module FH = FoldHead prog F C n l1 sn (26 + Y) exit-label
-    module RB = Rebuild prog F C n (n + 2) (n + 4) (n + 5) sn c (m≤m+n n 2)
 
     NE : ElemP ⟦ μ-type F ⟧
     NE = NodeE prog F
@@ -154,7 +152,7 @@ module CataFoldPreC {FS : FrameSemantics} where
     k-h : ∀ j → K₀ j → KH n j
     k-h j kj = far lt1 (k-c j kj)
 
-    k-r : ∀ j → K₀ j → RB.KR (n + 7) j
+    k-r : ∀ j → K₀ j → (Rebuild.KR prog F C n (n + 2) (n + 4) (n + 5) sn c (m≤m+n n 2)) (n + 7) j
     k-r j kj = inj₂ (k-c j kj) , far lt2 (k-c j kj)
 
     s≢2 : suc n ≢ n + 2
@@ -170,15 +168,15 @@ module CataFoldPreC {FS : FrameSemantics} where
       ------------------------------------------------------------------
       -- 1. the pop
       ------------------------------------------------------------------
-      span-hd′ : SpanAt prog (fpc σ) FH.hd8
-      span-hd′ = subst (λ b → SpanAt prog b FH.hd8) (sym H.pc) span-hd
+      span-hd′ : SpanAt prog (fpc σ) (FoldHead.hd8 prog F C n l1 sn (26 + Y) exit-label)
+      span-hd′ = subst (λ b → SpanAt prog b (FoldHead.hd8 prog F C n l1 sn (26 + Y) exit-label)) (sym H.pc) span-hd
 
-      wP : Walk prog n (KH n) σ (8 + fpc σ) (FH.PopQ t ns vs)
-      wP = FH.Pop.out σ t ns vs span-hd′ H.nh H.eval H.val
+      wP : Walk prog n (KH n) σ (8 + fpc σ) ((FoldHead.PopQ prog F C n l1 sn (26 + Y) exit-label) t ns vs)
+      wP = (FoldHead.Pop.out prog F C n l1 sn (26 + Y) exit-label) σ t ns vs span-hd′ H.nh H.eval H.val
 
       τP : FlatState
       τP = Walk.τ wP
-      module PQ = FH.PopQ (Walk.post wP)
+      module PQ = FoldHead.PopQ (Walk.post wP)
 
       pcP : fpc τP ≡ 8 + X
       pcP = trans (Walk.pc wP) (cong (8 +_) H.pc)
@@ -186,8 +184,8 @@ module CataFoldPreC {FS : FrameSemantics} where
       ------------------------------------------------------------------
       -- 2. the rebuild
       ------------------------------------------------------------------
-      wR : Walk prog n (RB.KR (n + 7)) τP (RL + fpc τP) (RB.RQ (⟦ F ⟧TI C) L rest)
-      wR = RB.rebuild wf (n + 7) lr τP (μ-layer-val wf t) vs L rest fq (m≤m+n n 7)
+      wR : Walk prog n ((Rebuild.KR prog F C n (n + 2) (n + 4) (n + 5) sn c (m≤m+n n 2)) (n + 7)) τP (RL + fpc τP) ((Rebuild.RQ prog F C n (n + 2) (n + 4) (n + 5) sn c (m≤m+n n 2)) (⟦ F ⟧TI C) L rest)
+      wR = (Rebuild.rebuild prog F C n (n + 2) (n + 4) (n + 5) sn c (m≤m+n n 2)) wf (n + 7) lr τP (μ-layer-val wf t) vs L rest fq (m≤m+n n 7)
              (+-monoʳ-< n (s≤s (s≤s (s≤s z≤n)))) cb
              (subst (λ b → SpanAt prog b rbTxt) (sym pcP) span-rb)
              (subst (λ b → LabelsAt prog b rbTxt) (sym pcP) rb-labels)
@@ -195,7 +193,7 @@ module CataFoldPreC {FS : FrameSemantics} where
 
       τR : FlatState
       τR = Walk.τ wR
-      module RQ = RB.RQs (Walk.post wR)
+      module RQ = Rebuild.RQs (Walk.post wR)
 
       pcR : fpc τR ≡ RL + (8 + X)
       pcR = trans (Walk.pc wR) (cong (RL +_) pcP)
