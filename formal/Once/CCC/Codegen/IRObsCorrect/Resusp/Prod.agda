@@ -772,7 +772,7 @@ module ResuspProdC {FS : FrameSemantics} where
         ; ev       = evL
         ; log      = trans (proj₂ (proj₂ endS)) (trans RG.log (trans (proj₂ (proj₂ midS))
                      (trans RF.log (proj₂ (proj₂ preS)))))
-        ; left     = chain-left run nhe5
+        ; left     = chain-left {prog} {3 + (RF.steps + (8 + (RG.steps + 5)))} {σ} {e5} run nhe5
         ; out-mode = Heap
         ; rout     = ro-loc (AtDynamic ohl) (proj₁ p-o) oute5 pairV
         ; seg      = allS

@@ -127,7 +127,7 @@ module ResuspIdC {FS : FrameSemantics} where
         ; lnk      = lk
         ; ev       = proj₁ (proj₂ sr)
         ; log      = proj₂ (proj₂ sr)
-        ; left     = chain-left run nhu10
+        ; left     = chain-left {prog} {19} {σ} {u10} run nhu10
         ; out-mode = Heap
         ; rout     = ro-loc (AtDynamic shl) (proj₁ p-s) outu10 child
         ; seg      = seg

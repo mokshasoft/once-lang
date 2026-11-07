@@ -262,7 +262,7 @@ module ResuspSumRC {FS : FrameSemantics} where
         ; lnk      = RG.lnk
         ; ev       = evL
         ; log      = logL
-        ; left     = chain-left run T.nhw9
+        ; left     = chain-left {prog} {2 + (3 + (RG.steps + (9 + 2)))} {σ} {fin} run T.nhw9
         ; out-mode = Heap
         ; rout     = routL
         ; seg      = segL
