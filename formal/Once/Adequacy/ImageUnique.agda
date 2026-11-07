@@ -688,6 +688,21 @@ private
   rt-names []       = refl
   rt-names (e ∷ es) = cong (fname e ∷_) (rt-names es)
 
+  -- An own symbol is apart from the blocks, the heap and `_start`; stated over
+  -- the symbol as a variable (plan 0.144: matched by `with` inside `Apart`,
+  -- each cost 5–7 s).
+  OwnSym : String → Set
+  OwnSym s = Σ[ x ∈ String ] (ValidName x × s ≡ once-symbol-own x)
+
+  own≢blk : ∀ {s t} → OwnSym s → BlockSym t → s ≢ t
+  own≢blk (x , vx , refl) (d , refl) = own≢block x d vx
+
+  heap≢own : ∀ {s} → OwnSym s → heap-symbol ≢ s
+  heap≢own (x , _ , refl) = heap≢osp (canonical (x ∷ []))
+
+  start≢own : ∀ {s} → OwnSym s → "_start" ≢ s
+  start≢own (x , _ , refl) = hd≢ refl (osp-hd (canonical (x ∷ []))) (λ ())
+
   -- the function entries of an image whose table is `T`'s, read through the guard
   module Entries (T : List IRFun) (tn : TableNames T) where
     open TableNames tn
@@ -697,9 +712,10 @@ private
     EF≡ = trans (cong (Data.List.map once-symbol-path) (rt-names T)) (trans (sym (map-∘ T)) syms≡)
     EF-dist : AllPairs _≢_ EF
     EF-dist = subst (AllPairs _≢_) (sym EF≡) (ap-reverse dist)
-    EF-own : ∀ {s} → s ∈ EF → Σ[ x ∈ String ] (ValidName x × s ≡ once-symbol-own x)
-    EF-own {s} s∈ with ∈-map⁻ once-symbol-own (AnyP.reverse⁻ {xs = Data.List.map once-symbol-own names} (subst (s ∈_) EF≡ s∈))
-    ... | x , x∈ , refl = x , lookup valid x∈ , refl
+    EF-own : ∀ {s} → s ∈ EF → OwnSym s
+    EF-own {s} s∈ =
+      let (x , x∈ , eq) = ∈-map⁻ once-symbol-own (AnyP.reverse⁻ {xs = Data.List.map once-symbol-own names} (subst (s ∈_) EF≡ s∈))
+      in x , lookup valid x∈ , eq
 
   -- …and so the definitions, the blocks, the heap and `_start` are apart.
   module Apart (fs : List CanonicalName) (T : List IRFun) (tn : TableNames T)
@@ -710,21 +726,18 @@ private
 
     def≢blk : ∀ {s t} → DefClass fs s → BlockSym t → s ≢ t
     def≢blk (inj₁ h) (d , refl) = hd≢ h (osp-hd (canonical (("arith.block." ++ˢ d) ∷ []))) (λ ())
-    def≢blk (inj₂ s∈) (d , refl) with EF-own (toEF s∈)
-    ... | x , vx , refl = own≢block x d vx
+    def≢blk (inj₂ s∈) b = own≢blk (EF-own (toEF s∈)) b
 
     heap≢def : ∀ {s} → DefClass fs s → heap-symbol ≢ s
     heap≢def (inj₁ h) = hd≢ refl h (λ ())
-    heap≢def (inj₂ s∈) with EF-own (toEF s∈)
-    ... | x , _ , refl = heap≢osp (canonical (x ∷ []))
+    heap≢def (inj₂ s∈) = heap≢own (EF-own (toEF s∈))
 
     heap≢blk : ∀ {t} → BlockSym t → heap-symbol ≢ t
     heap≢blk (d , refl) = heap≢osp (canonical (("arith.block." ++ˢ d) ∷ []))
 
     start≢def : ∀ {s} → DefClass fs s → "_start" ≢ s
     start≢def (inj₁ h) = hd≢ refl h (λ ())
-    start≢def (inj₂ s∈) with EF-own (toEF s∈)
-    ... | x , _ , refl = hd≢ refl (osp-hd (canonical (x ∷ []))) (λ ())
+    start≢def (inj₂ s∈) = start≢own (EF-own (toEF s∈))
 
     start≢blk : ∀ {t} → BlockSym t → "_start" ≢ t
     start≢blk (d , refl) = hd≢ refl (osp-hd (canonical (("arith.block." ++ˢ d) ∷ []))) (λ ())
