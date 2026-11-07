@@ -248,8 +248,17 @@ decision-log entry updates the rule it changes here, in the same commit.
   Agda; `make check-extraction-sync` reports drift. (D162)
 - **Re-exports**: only to share a parameterized module's instantiation; the
   public surface only shrinks; the Spec re-exports nothing. (D306 ← D277)
+- **Checking cost is engineered**: what Agda must unify or normalise is kept
+  small — pinned implicits, `opaque` states, lemmas over variables instead of
+  `with` over big contexts, `using` on module applications; the measured
+  catalogue is D373. (D373)
 
 ## 8. Process and tooling
+
+- **Every module fits on its own**: at most 3 GB peak RSS and 50 s checked
+  alone with its imports built (the apex modules exempt from time), measured
+  one module per process by `scripts/agda-profile.py`; the backstop checks
+  one module per process, leaves first. Open: `CoherenceS`, `UseAgree`. (D373)
 
 - **Merge gate checks reachability from the apex**: the trust base must not
   grow without a decision. (D279)

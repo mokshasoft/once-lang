@@ -20988,3 +20988,77 @@ metatheory- and spec-gate (after `spec-approve`) and lint-pragmas clean; backsto
 2026-11-06: reachability (MERGE.md §6, against the 0.142 dumps, `formal/` identical to master): trust base
 52→52; PROVED 736→737 (`Metatheory/LawsApply` joined); RUNS 3039, RUNS∖PROVED 85, all declared; 0 gaps.
 The dump needed `HEAP=12G COMPACT=-c30` (`Resusp.Id` and `Metatheory.Laws.*` exceed the default 5G).
+
+## D373 — EVERY MODULE IS CHECKED ON ITS OWN, AND FITS (2026-11-06/07)
+
+**Decision** (plan 0.144, B1–B3 taken by the user 2026-11-06; the backstop's form 2026-11-07). The gates
+kept running out of memory on this 7.6 GB machine (0.143: the backstop needed 6G, the AST dump 12G), and
+each time the limit was raised and the cause left in place.
+- **B1, the target.** Every module at most **3 GB peak RSS and 50 s** checked alone, with its imports
+  built (about 1.5 GB live). `Once.Certified` and `Once.Compiler` are exempt from the time limit: their
+  time is loading the 560–760 modules they import.
+- **The measurement** (`formal/scripts/agda-profile.py`, `make profile`, `make profile-report`): one module
+  per Agda process, leaves first, in a tree staged from a committed ref with its own `_build`; the module's
+  own interface is deleted first, so a row measures a check, never a load (the measurement trap). Rows are
+  keyed by the module's source and its imports' keys, so a rerun checks only what changed. No profile data
+  is committed (B2).
+- **The backstop is per module** (`scripts/backstop.sh`, MERGE.md §5's row unchanged): it IS a profile run
+  of the committed HEAD over every module outside `backstop.islands`, reachable from the apex or not. One
+  process importing the whole tree held every interface at once (Heap exhausted at the default limit); now
+  no process holds more than one module's work plus its imports. It checks the COMMITTED tree and warns
+  when `formal/` has uncommitted changes.
+
+**Outcome** (master `3c8a5ddd8` → branch, each measured alone): `Pair` 739 → 24 s (+ `Pair.Both` 35 s);
+`Laws.MapV` 422 s / 4.4 G → five modules ≤ 37 s; `Laws.Categorical` 192 s / 4.2 G → three ≤ 39 s;
+`LetCase` 180 → 34 s; `CataConst.Call` 120 s / 4.2 G → 26 + 37 s (`CallRows`); `Resusp.Id` 119 s / 4.6 G →
+19 + 40 s (`IdRows`); `SpecWitness` 108 → 14 s; `Resusp.SumR`/`SumL` 97/90 s, 4.9 G → 41/37 s, 2.9 G;
+`Compare` 89 → 21 s; `FoldRound` 77 → 29 s; `Rebuild` 71 → 42 s; `Naturality` 65 → 30 s; `IterRounds`
+58 s / 3.2 G → 18 + 25 s (`IterRoundsCont`); `ImageUnique` 42 → 14 s; `ImageResolved` 35 → 17 s;
+`SpecApex` 36 → 26 s; `Certified` 51–67 → 45–48 s. No statement changed: no postulate, no pragma, no
+exported type; splits keep every name their consumers use.
+
+**Not done** (the user closed the plan 2026-11-07):
+- `Adequacy.CoherenceS` (111 s) and `TypeCheck.UseAgree` (99 s) remain over B1. Their cost is coverage
+  checking of the double induction (`coh⇒` ~38 s over 126 splits, `coh⇐` ~19 s, `coh↦` ~11 s, `coh↦⇐`
+  ~10 s, `coh⇒⇐` ~7 s; `-v tc.cover.top:10`, timestamped), spread over the splits rather than one clause
+  group; deleting absurd clauses made it worse (51 → 83 s). The candidate is a view on the application's
+  head shared by both modules.
+- `make profile-gate` (B2: profile the modules a branch changes, fail above B1) is not written, so a new
+  module beyond B1 is not yet caught.
+- Fixed costs set a floor: loading interfaces is 7–10 s per heavy module, and GC is 30–55 % of a check
+  (`-A64m`/`-A256m` gain ~7 %).
+
+**The patterns** (symptom in `--profile=internal` / `--profile=definitions` → cause → fix; measured):
+- *A term at two syntactic forms is normalised to compare* (a tiny definition costs 30–100 s) → `opaque`
+  with a lemma interface (`Mach.u10ᵒ`, `u10ᵒ-def`).
+- *A meta stands for a computed term* (`_`, omitted implicits; a helper `go : … → _` under `with … | refl`)
+  → pin it: name the goal (`GOAL = SameM …`, `→ GOAL`; Categorical 242 → 57 s), `{prog = prog}` (Pair
+  > 20 min → 1 s), `s-at {prog} {from} {k} {to}` on every link of an `SRun` chain (one link 35 s → 40 ms),
+  `chain-left {prog} {k} {from} {to}` (SumR 109 → 41 s, 4.6 → 3.0 GB).
+- ⚠ *A pin changes the interface's term forms*: measure the importers too. Pinning Pair's two
+  `chain-left`s left Pair unchanged and took `IRObsCorrectFlat` 22 → 52 s, `ArchCorrectness` 35 → 118 s;
+  reverted.
+- *Positivity is cubic in one mutual block* (a recursive definition whose cases' `where`/`with` helpers
+  join its block) → each case a non-recursive definition taking the recursive call as a parameter
+  (MapV positivity 475 → 11 s).
+- *A module application copies the module* (`let open M x in` per definition: SpecWitness 108 → 14 s;
+  module-level `module X = BigProof args`: FoldRound 55 → 29 s) → `open M x using (…)`, or call
+  `BigProof.x args` directly when the arguments are parameters. Not when they are deep computed states
+  (SumR: > 10 min).
+- *`with` or `rewrite` abstracts a big goal and context* (a few-line definition costs 5–9 s: `with
+  EF-own … | x , _ , refl`, a chain of tuple `with`s plus `rewrite`) → a lemma over the matched value as
+  a variable (`heap≢own : OwnSym s → …`, `call-of`), `let (a , b , c) = …` and `subst` (ImageUnique
+  41 → 14 s, 2.8 → 1.0 GB; Compare's `place-at` 37 → 0.9 s).
+- *An inversion matched inline* (`peel d` → `peeled (⊢ref _ _ rd) P _`; Coverage.UnifyIndices large) →
+  an inversion lemma over variables (`refPeel`; Naturality coverage 21 s → ~0).
+- *An equation chain over deep states* (`trans … (++-assoc h es _) …` on machine logs; a `coe` chain
+  meeting its endpoint types in two forms) → one lemma over plain variables (`log-glue`, `log-assoc`:
+  IterRoundsCont 3.2 → 2.4 GB; `rel-move`: Naturality RV 11 → 4.4 s).
+- *Late facts of a long state chain cost seconds each* → split the facts from the run by consumption
+  (`CallRows`, `IdRows`). ⚠ Not a fix: restating the keep lemmas over a named state (`t′ ≡ St i t → …`,
+  applied to `refl`): CallRows 37 → 358 s.
+- *Out of memory but fine elsewhere* → `+RTS -c` before restructuring.
+To find the cost: `--profile=internal` for the phase, `--profile=definitions` for the site; a record
+field by replacing fields with `?` in a scratch copy; coverage per function with `-v tc.cover.top:10`.
+
+### Checks
