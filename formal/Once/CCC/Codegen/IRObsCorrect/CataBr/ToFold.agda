@@ -198,10 +198,14 @@ module CataToFoldC {FS : FrameSemantics} where
     wd = subst (λ z → WordAt prog (falloc u) (μ-type F) root z (floc u)) (sym SO.inμ)
                (word-tr kpS (w-ptr {prog} {alloc} {μ-type F} {root} {μ-sv} {s} {mC} (AtDynamic μhl) refl lμ vμ))
 
-    module I = Init prog F C n c n7≤c u span-i SO.nh root wd
 
-    wI : Walk prog n (KI c) u (24 + fpc u) (InitQ prog F C n I.sn root)
-    wI = I.out
+    -- Init's and Flatten's lemmas are called applied, not through `module I = Init …`
+    -- / `module FL = Flatten …`: those copied both proofs into this module (plan 0.144).
+    snI : HeapLocation
+    snI = Init.sn prog F C n c n7≤c u span-i SO.nh root wd
+
+    wI : Walk prog n (KI c) u (24 + fpc u) (InitQ prog F C n snI root)
+    wI = (Init.out prog F C n c n7≤c u span-i SO.nh root wd)
 
     τI : FlatState
     τI = Walk.τ wI
@@ -212,10 +216,9 @@ module CataToFoldC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     -- 3. the flatten loop
     ------------------------------------------------------------------
-    module FL = Flatten prog wf (br-unboxed wf st) alg₀ n c T.l1 I.sn cb TA.H TA.span-flat TA.head-label TA.exit-label TA.visit-labels
 
-    wF : Walk prog n (KL n c) τI (suc FL.L.XL) (FL.FQ (root ∷ []) [])
-    wF = FL.flatten-root τI root pcI (Walk.nh wI) (InitQ.todo (Walk.post wI)) (InitQ.eval (Walk.post wI))
+    wF : Walk prog n (KL n c) τI (suc (Flatten.L.XL prog wf (br-unboxed wf st) alg₀ n c T.l1 snI cb TA.H TA.span-flat TA.head-label TA.exit-label TA.visit-labels)) ((Flatten.FQ prog wf (br-unboxed wf st) alg₀ n c T.l1 snI cb TA.H TA.span-flat TA.head-label TA.exit-label TA.visit-labels) (root ∷ []) [])
+    wF = (Flatten.flatten-root prog wf (br-unboxed wf st) alg₀ n c T.l1 snI cb TA.H TA.span-flat TA.head-label TA.exit-label TA.visit-labels) τI root pcI (Walk.nh wI) (InitQ.todo (Walk.post wI)) (InitQ.eval (Walk.post wI))
 
     τ : FlatState
     τ = Walk.τ wF
@@ -241,12 +244,12 @@ module CataToFoldC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     -- THE BUNDLE.
     ------------------------------------------------------------------
-    wAll : Walk prog n (λ _ → ⊥) σ (suc FL.L.XL) (FL.FQ (root ∷ []) [])
+    wAll : Walk prog n (λ _ → ⊥) σ (suc (Flatten.L.XL prog wf (br-unboxed wf st) alg₀ n c T.l1 snI cb TA.H TA.span-flat TA.head-label TA.exit-label TA.visit-labels)) ((Flatten.FQ prog wf (br-unboxed wf st) alg₀ n c T.l1 snI cb TA.H TA.span-flat TA.head-label TA.exit-label TA.visit-labels) (root ∷ []) [])
     wAll = walk-∘ {prog} {n} {λ _ → ⊥} {σ} wS
              (walk-∘ {prog} {n} {λ _ → ⊥} {u} (walk-K (λ _ ()) wI) (walk-K (λ _ ()) wF))
 
-    pc-X : suc FL.L.XL ≡ X
-    pc-X = trans (fold-pc FL.L.VL TA.H)
+    pc-X : suc (Flatten.L.XL prog wf (br-unboxed wf st) alg₀ n c T.l1 snI cb TA.H TA.span-flat TA.head-label TA.exit-label TA.visit-labels) ≡ X
+    pc-X = trans (fold-pc (Flatten.L.VL prog wf (br-unboxed wf st) alg₀ n c T.l1 snI cb TA.H TA.span-flat TA.head-label TA.exit-label TA.visit-labels) TA.H)
                  (cong (λ z → (22 + z) + TA.H) (sym (length-++ T.Pc.visitTxt {T.Pc.exitTxt})))
 
     abstract
@@ -255,7 +258,7 @@ module CataToFoldC {FS : FrameSemantics} where
         { τ = τ ; steps = Walk.steps wAll ; run = Walk.run wAll ; seg = Walk.seg wAll ; nh = Walk.nh wF
         ; pc = trans (Walk.pc wF) pc-X
         ; ret = Walk.ret wAll ; clo = Walk.clo wAll ; lnk = Walk.lnk wAll ; cf = Walk.cf wAll
-        ; sn = I.sn
+        ; sn = snI
         ; todo = proj₁ (Walk.post wF)
         ; eval = proj₂ (Walk.post wF)
         ; val = KF.keep-stack val-tr (inj₁ refl) (InitQ.val (Walk.post wI))
