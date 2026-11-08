@@ -238,7 +238,17 @@ coh⁻¹ (F ⊗f G) X (x , y)  = (coh⁻¹ F X x , coh⁻¹ G X y)
 
 infixr 9 _∘l_
 infixr 7 _⊗l_
-data LTm : LTy → LTy → Set where
+data LTm : LTy → LTy → Set
+
+-- ★ plan 0.146 A2: BORROWS, as a second context.  `BTm E A B` is a morphism
+-- `A → B` that may READ a lent `E` but never owns it: never frees it, never
+-- keeps it.  What a result keeps of `E` is copied out (`bcopy`, D402's choice
+-- A), so the owner frees `E` whole, once, after the scope.  `E` is not a type
+-- of the core (there is no borrow type), so a borrow cannot escape into a
+-- result, a closure's environment or a ν's seed: `lend`'s result is an `LTy`.
+data BTm : LTy → LTy → LTy → Set
+
+data LTm where
   lid     : ∀ {A} → LTm A A
   _∘l_    : ∀ {A B C} → LTm B C → LTm A B → LTm A C
   _⊗l_    : ∀ {A B C D} → LTm A B → LTm C D → LTm (A ⊗t C) (B ⊗t D)
@@ -270,6 +280,25 @@ data LTm : LTy → LTy → Set where
   -- closed structure
   lcurry  : ∀ {A B C} → LTm (A ⊗t B) C → LTm A (B ⇒t C)
   leval   : ∀ {A B} → LTm ((A ⇒t B) ⊗t A) B
+  -- ★ the scope: lend `E` to a body that reads it; `E` comes back unchanged
+  lend    : ∀ {E A B} → BTm E A B → LTm (E ⊗t A) (E ⊗t B)
+
+infixr 9 _∘b_
+infixr 7 _⊗b_
+data BTm where
+  blift  : ∀ {E A B} → LTm A B → BTm E A B                       -- a step that does not read `E`
+  _∘b_   : ∀ {E A B C} → BTm E B C → BTm E A B → BTm E A C
+  _⊗b_   : ∀ {E A B C D} → BTm E A B → BTm E C D → BTm E (A ⊗t C) (B ⊗t D)
+  bcase  : ∀ {E A B C} → BTm E A C → BTm E B C → BTm E (A ⊕t B) C
+  -- reading the lent value: a part of it, its tag, inside a node (all views)
+  bfst   : ∀ {E₁ E₂ A B} → BTm E₁ A B → BTm (E₁ ⊗t E₂) A B
+  bsnd   : ∀ {E₁ E₂ A B} → BTm E₂ A B → BTm (E₁ ⊗t E₂) A B
+  bcaseE : ∀ {E₁ E₂ A B} → BTm E₁ A B → BTm E₂ A B → BTm (E₁ ⊕t E₂) A B
+  bout   : ∀ {F A B} → BTm (LF∙ F (μt F)) A B → BTm (μt F) A B
+  -- keeping it: a copy (fresh cells; a word costs nothing)
+  bcopy  : ∀ {E} → BTm E One E
+  -- ★ a fold that reads `E` at every layer, with no copy of `E`
+  bcata  : ∀ F {E A} → BTm E (LF∙ F A) A → BTm E (μt F) A
 
 ------------------------------------------------------------------------
 -- 6. ★ THE COST SEMANTICS, mutual with both recursion operators.
@@ -322,6 +351,22 @@ mutual
   Lᶜ (lInν {F})     x              = retᶜ (inν (coh F (νt F) x))
   Lᶜ (lcurry f)     a              = retᶜ (λ b → Lᶜ f (a , b))
   Lᶜ leval          (f , a)        = f a
+  Lᶜ (lend b)       (e , a)        = Bᶜ b e a >>=ᶜ λ w → retᶜ (e , w)
+
+  -- a borrowing morphism means a function of the lent value, which it does not consume
+  Bᶜ : ∀ {E A B} → BTm E A B → ⟦ E ⟧ → ⟦ A ⟧ → ⟦ B ⟧ × ℕ
+  Bᶜ (blift f)      e         a        = Lᶜ f a
+  Bᶜ (f ∘b g)       e         a        = Bᶜ g e a >>=ᶜ Bᶜ f e
+  Bᶜ (f ⊗b g)       e         (a , c)  = Bᶜ f e a >>=ᶜ λ b → Bᶜ g e c >>=ᶜ λ d → retᶜ (b , d)
+  Bᶜ (bcase f g)    e         (inj₁ a) = Bᶜ f e a
+  Bᶜ (bcase f g)    e         (inj₂ b) = Bᶜ g e b
+  Bᶜ (bfst f)       (e₁ , e₂) a        = Bᶜ f e₁ a
+  Bᶜ (bsnd f)       (e₁ , e₂) a        = Bᶜ f e₂ a
+  Bᶜ (bcaseE f g)   (inj₁ e)  a        = Bᶜ f e a
+  Bᶜ (bcaseE f g)   (inj₂ e)  a        = Bᶜ g e a
+  Bᶜ (bout {F} f)   e         a        = Bᶜ f (coh⁻¹ F (μt F) (outμ e)) a
+  Bᶜ bcopy          e         a        = (e , suc zero)          -- priced like `dup`
+  Bᶜ (bcata F alg)  e         x        = cataC F (λ y → Bᶜ alg e (coh⁻¹ F _ y)) x
 
   cataC : ∀ F {X : Set} → (FS F X → X × ℕ) → Mu F → X × ℕ
   cataC F alg (inμ w) = sumF F (mapC F F alg w) >>=ᶜ alg
