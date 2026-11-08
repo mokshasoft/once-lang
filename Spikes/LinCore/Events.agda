@@ -121,14 +121,37 @@ freeAll (mclo i e f) = free i ∷ freeAll e
 freeAll (mnu i s c)  = free i ∷ freeAll s
 freeAll (mnuv i v)   = free i ∷ freeAll v
 
+-- observing a suspension: each recursive position of the layer becomes a new
+-- suspension cell holding that position's seed (one `alloc` per position)
+wrap : ∀ {S} F (c : LTm S (LF∙ F S)) G → MV (LF∙ G S) → ℕ → MV (LF∙ G (νt F)) × ℕ × Trace
+wrap F c Idf      s n = (mnu n s c , suc n , alloc n ∷ [])
+wrap F c Kone     x n = (x , n , [])
+wrap F c (Kb b)   x n = (x , n , [])
+wrap F c (Kμ G)   x n = (x , n , [])
+wrap F c (Kν G)   x n = (x , n , [])
+wrap F c (G ⊕f H) (minl x) n with wrap F c G x n
+... | (y , n₁ , t₁) = (minl y , n₁ , t₁)
+wrap F c (G ⊕f H) (minr x) n with wrap F c H x n
+... | (y , n₁ , t₁) = (minr y , n₁ , t₁)
+wrap F c (G ⊗f H) (mpair x x′) n with wrap F c G x n
+... | (y , n₁ , t₁) with wrap F c H x′ n₁
+...   | (y′ , n₂ , t₂) = (mpair y y′ , n₂ , t₁ ++ t₂)
+
 ------------------------------------------------------------------------
--- 3. THE RUN (stage 1: everything but `lcata` and ν observation).
+-- 3. THE RUN (stages 1 and 3).
 --
 -- `Run f v n w n′ t`: `f` takes `v` to `w`; the ids `n … n′-1` are the fresh
 -- ones it allocated; `t` is the events, in order.
 ------------------------------------------------------------------------
 
-data Run : ∀ {A B} → LTm A B → MV A → ℕ → MV B → ℕ → Trace → Set where
+data Run : ∀ {A B} → LTm A B → MV A → ℕ → MV B → ℕ → Trace → Set
+
+-- folding the recursive positions of a layer (the `Idf` positions run the
+-- fold; every other position moves)
+data RunMap {A : LTy} (F : LF) (alg : LTm (LF∙ F A) A)
+  : (G : LF) → MV (LF∙ G (μt F)) → ℕ → MV (LF∙ G A) → ℕ → Trace → Set
+
+data Run where
   r-id    : ∀ {A} {v : MV A} {n} → Run lid v n v n []
   r-∘     : ∀ {A B C} {f : LTm B C} {g : LTm A B} {v u w n n₁ n₂ t₁ t₂}
           → Run g v n u n₁ t₁ → Run f u n₁ w n₂ t₂ → Run (f ∘l g) v n w n₂ (t₁ ++ t₂)
@@ -161,6 +184,29 @@ data Run : ∀ {A B} → LTm A B → MV A → ℕ → MV B → ℕ → Trace →
   r-Ana   : ∀ {S F} {c : LTm S (LF∙ F S)} {s : MV S} {n}
           → Run (lAna F c) s n (mnu n s c) (suc n) (alloc n ∷ [])
   r-Inν   : ∀ {F} {v : MV (LF∙ F (νt F))} {n} → Run (lInν {F}) v n (mnuv n v) (suc n) (alloc n ∷ [])
+  -- stage 3: the fold frees the node, folds its positions, runs the algebra
+  r-cata  : ∀ {F A} {alg : LTm (LF∙ F A) A} {i v u w n n₁ n₂ t₁ t₂}
+          → RunMap F alg F v n u n₁ t₁ → Run alg u n₁ w n₂ t₂
+          → Run (lcata F alg) (mmu i v) n w n₂ (free i ∷ (t₁ ++ t₂))
+  -- observing a built layer frees its cell
+  r-Outν  : ∀ {F} {v : MV (LF∙ F (νt F))} {i n} → Run (lOut {F}) (mnuv i v) n v n (free i ∷ [])
+  -- observing a suspension frees its cell, runs the coalgebra, wraps the seeds
+  r-Out   : ∀ {S F} {c : LTm S (LF∙ F S)} {s u i n n₁ t₁}
+          → Run c s n u n₁ t₁
+          → Run (lOut {F}) (mnu i s c) n (fst (wrap F c F u n₁)) (fst (snd (wrap F c F u n₁)))
+                (free i ∷ (t₁ ++ snd (snd (wrap F c F u n₁))))
+
+data RunMap {A} F alg where
+  m-id   : ∀ {x y n n′ t} → Run (lcata F alg) x n y n′ t → RunMap F alg Idf x n y n′ t
+  m-one  : ∀ {x n} → RunMap F alg Kone x n x n []
+  m-b    : ∀ {b x n} → RunMap F alg (Kb b) x n x n []
+  m-μ    : ∀ {G x n} → RunMap F alg (Kμ G) x n x n []
+  m-ν    : ∀ {G x n} → RunMap F alg (Kν G) x n x n []
+  m-inl  : ∀ {G H x y n n′ t} → RunMap F alg G x n y n′ t → RunMap F alg (G ⊕f H) (minl x) n (minl y) n′ t
+  m-inr  : ∀ {G H x y n n′ t} → RunMap F alg H x n y n′ t → RunMap F alg (G ⊕f H) (minr x) n (minr y) n′ t
+  m-pair : ∀ {G H x x′ y y′ n n₁ n₂ t₁ t₂}
+         → RunMap F alg G x n y n₁ t₁ → RunMap F alg H x′ n₁ y′ n₂ t₂
+         → RunMap F alg (G ⊗f H) (mpair x x′) n (mpair y y′) n₂ (t₁ ++ t₂)
 
 ------------------------------------------------------------------------
 -- 4. SOUNDNESS: a run computes the denotation (`Lᶜ`'s value; its cost is
@@ -197,6 +243,25 @@ coh⁻¹∘coh (F ⊕f G) X (inj₁ x) = cong inj₁ (coh⁻¹∘coh F X x)
 coh⁻¹∘coh (F ⊕f G) X (inj₂ y) = cong inj₂ (coh⁻¹∘coh G X y)
 coh⁻¹∘coh (F ⊗f G) X (x , y)  = cong₂ _,_ (coh⁻¹∘coh F X x) (coh⁻¹∘coh G X y)
 
+-- wrapping builds exactly the core's unfold
+wrap-er : ∀ {S} F (c : LTm S (LF∙ F S)) G (u : MV (LF∙ G S)) n
+        → coh G (νt F) (er (fst (wrap F c G u n))) ≡ mapU F G c (coh G S (er u))
+wrap-er F c Idf      s n = refl
+wrap-er F c Kone     x n = refl
+wrap-er F c (Kb b)   x n = refl
+wrap-er F c (Kμ G)   x n = refl
+wrap-er F c (Kν G)   x n = refl
+wrap-er F c (G ⊕f H) (minl x) n with wrap F c G x n | wrap-er F c G x n
+... | (y , n₁ , t₁) | e = cong inj₁ e
+wrap-er F c (G ⊕f H) (minr x) n with wrap F c H x n | wrap-er F c H x n
+... | (y , n₁ , t₁) | e = cong inj₂ e
+wrap-er F c (G ⊗f H) (mpair x x′) n with wrap F c G x n | wrap-er F c G x n
+... | (y , n₁ , t₁) | e with wrap F c H x′ n₁ | wrap-er F c H x′ n₁
+...   | (y′ , n₂ , t₂) | e′ = cong₂ _,_ e e′
+
+sound-map : ∀ {A F} {alg : LTm (LF∙ F A) A} {G x n y n′ t} → RunMap F alg G x n y n′ t
+          → coh G A (er y) ≡ fst (sumF G (mapC F G (λ z → Lᶜ alg (coh⁻¹ F A z)) (coh G (μt F) (er x))))
+
 sound : ∀ {A B} {f : LTm A B} {v w n n′ t} → Run f v n w n′ t → er w ≡ fst (Lᶜ f (er v))
 sound r-id = refl
 sound (r-∘ {f = f} {v = v} rg rf) = trans (sound rf) (cong (λ x → fst (Lᶜ f x)) (sound rg))
@@ -220,6 +285,21 @@ sound r-curry = refl
 sound (r-eval r) = sound r
 sound r-Ana  = refl
 sound r-Inν  = refl
+sound (r-cata {F} {A} {alg} {u = u} rm ra) =
+  trans (sound ra) (cong (λ z → fst (Lᶜ alg z)) (trans (sym (coh⁻¹∘coh F A (er u))) (cong (coh⁻¹ F A) (sound-map rm))))
+sound (r-Outν {F} {v}) = sym (coh⁻¹∘coh F (νt F) (er v))
+sound (r-Out {S} {F} {c} {s} {u} {n₁ = n₁} rc) =
+  trans (sym (coh⁻¹∘coh F (νt F) (er (fst (wrap F c F u n₁)))))
+        (cong (coh⁻¹ F (νt F)) (trans (wrap-er F c F u n₁) (cong (λ z → mapU F F c (coh F S z)) (sound rc))))
+
+sound-map (m-id r)       = sound r
+sound-map m-one          = refl
+sound-map m-b            = refl
+sound-map m-μ            = refl
+sound-map m-ν            = refl
+sound-map (m-inl r)      = cong inj₁ (sound-map r)
+sound-map (m-inr r)      = cong inj₂ (sound-map r)
+sound-map (m-pair r r′)  = cong₂ _,_ (sound-map r) (sound-map r′)
 
 ------------------------------------------------------------------------
 -- 5. ★ THE MEMORY THEOREM (stage 2).
@@ -530,6 +610,72 @@ free-ok (mclo j e f) h r le sb = free-cell j (cnt e) (freeAll e) h r le sb (λ h
 free-ok (mnu j s c) h r le sb = free-cell j (cnt s) (freeAll s) h r le sb (λ h′ le′ sb′ → free-ok s h′ r le′ sb′)
 free-ok (mnuv j v) h r le sb = free-cell j (cnt v) (freeAll v) h r le sb (λ h′ le′ sb′ → free-ok v h′ r le′ sb′)
 
+-- `wrap`'s cells come from the counter, legally, and hold exactly the layer's seeds
+wrap-mono : ∀ {S} F (c : LTm S (LF∙ F S)) G (u : MV (LF∙ G S)) n → n ≤ fst (snd (wrap F c G u n))
+wrap-mono F c Idf      s n = n≤1+n n
+wrap-mono F c Kone     x n = ≤-refl
+wrap-mono F c (Kb b)   x n = ≤-refl
+wrap-mono F c (Kμ G)   x n = ≤-refl
+wrap-mono F c (Kν G)   x n = ≤-refl
+wrap-mono F c (G ⊕f H) (minl x) n with wrap F c G x n | wrap-mono F c G x n
+... | (y , n₁ , t₁) | m = m
+wrap-mono F c (G ⊕f H) (minr x) n with wrap F c H x n | wrap-mono F c H x n
+... | (y , n₁ , t₁) | m = m
+wrap-mono F c (G ⊗f H) (mpair x x′) n with wrap F c G x n | wrap-mono F c G x n
+... | (y , n₁ , t₁) | m with wrap F c H x′ n₁ | wrap-mono F c H x′ n₁
+...   | (y′ , n₂ , t₂) | m′ = ≤-trans m m′
+
+Below : ∀ {A} → MV A → ℕ → Set
+Below v n = ∀ i → n ≤ i → cnt v i ≡ 0
+
+wrap-below : ∀ {S} F (c : LTm S (LF∙ F S)) G (u : MV (LF∙ G S)) n
+           → Below u n → Below (fst (wrap F c G u n)) (fst (snd (wrap F c G u n)))
+wrap-below F c Idf      s n b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
+wrap-below F c Kone     x n b = b
+wrap-below F c (Kb bb)  x n b = b
+wrap-below F c (Kμ G)   x n b = b
+wrap-below F c (Kν G)   x n b = b
+wrap-below F c (G ⊕f H) (minl x) n b with wrap F c G x n | wrap-below F c G x n b
+... | (y , n₁ , t₁) | bb = bb
+wrap-below F c (G ⊕f H) (minr x) n b with wrap F c H x n | wrap-below F c H x n b
+... | (y , n₁ , t₁) | bb = bb
+wrap-below F c (G ⊗f H) (mpair x x′) n b
+  with wrap F c G x n | wrap-below F c G x n (λ i le → +≡0ˡ (cnt x i) (cnt x′ i) (b i le)) | wrap-mono F c G x n
+... | (y , n₁ , t₁) | b₁ | m
+  with wrap F c H x′ n₁ | wrap-below F c H x′ n₁ (λ i le → +≡0ʳ (cnt x i) (cnt x′ i) (b i (≤-trans m le))) | wrap-mono F c H x′ n₁
+...   | (y′ , n₂ , t₂) | b₂ | m′ = λ i le → cong₂ _+_ (b₁ i (≤-trans m′ le)) (b₂ i le)
+
+wrap-ok : ∀ {S} F (c : LTm S (LF∙ F S)) G (u : MV (LF∙ G S)) n (h : Heap)
+        → (∀ i → n ≤ i → h i ≡ 0) → Below u n
+        → OK (snd (snd (wrap F c G u n))) h
+          × (∀ i → play (snd (snd (wrap F c G u n))) h i + cnt u i ≡ h i + cnt (fst (wrap F c G u n)) i)
+wrap-ok F c Idf      s n h ab b = ((ab n ≤-refl , tt) , λ i → assoc (h i) (δ n i) (cnt s i))
+wrap-ok F c Kone     x n h ab b = (tt , λ i → refl)
+wrap-ok F c (Kb bb)  x n h ab b = (tt , λ i → refl)
+wrap-ok F c (Kμ G)   x n h ab b = (tt , λ i → refl)
+wrap-ok F c (Kν G)   x n h ab b = (tt , λ i → refl)
+wrap-ok F c (G ⊕f H) (minl x) n h ab b with wrap F c G x n | wrap-ok F c G x n h ab b
+... | (y , n₁ , t₁) | r = r
+wrap-ok F c (G ⊕f H) (minr x) n h ab b with wrap F c H x n | wrap-ok F c H x n h ab b
+... | (y , n₁ , t₁) | r = r
+wrap-ok F c (G ⊗f H) (mpair x x′) n h ab b
+  with wrap F c G x n | wrap-ok F c G x n h ab (λ i le → +≡0ˡ (cnt x i) (cnt x′ i) (b i le))
+     | wrap-below F c G x n (λ i le → +≡0ˡ (cnt x i) (cnt x′ i) (b i le)) | wrap-mono F c G x n
+... | (y , n₁ , t₁) | (ok₁ , eq₁) | b₁ | m
+  with wrap F c H x′ n₁
+     | wrap-ok F c H x′ n₁ (play t₁ h)
+         (λ i le → trans (sym (+0 (play t₁ h i)))
+                     (trans (cong (play t₁ h i +_) (sym (+≡0ˡ (cnt x i) (cnt x′ i) (b i (≤-trans m le)))))
+                       (trans (eq₁ i) (cong₂ _+_ (ab i (≤-trans m le)) (b₁ i le)))))
+         (λ i le → +≡0ʳ (cnt x i) (cnt x′ i) (b i (≤-trans m le)))
+...   | (y′ , n₂ , t₂) | (ok₂ , eq₂) =
+  ( OK-++ t₁ t₂ h ok₁ ok₂
+  , λ i → trans (cong (λ z → z i + (cnt x i + cnt x′ i)) (play-++ t₁ t₂ h))
+            (chain⊗ (play t₂ (play t₁ h) i) (cnt x′ i) (play t₁ h i) (cnt y′ i) (cnt x i) (h i) (cnt y i) (eq₂ i) (eq₁ i)) )
+
+mono-map : ∀ {A F} {alg : LTm (LF∙ F A) A} {G x n y n′ t} → RunMap F alg G x n y n′ t → n ≤ n′
+below-map : ∀ {A F} {alg : LTm (LF∙ F A) A} {G x n y n′ t} → RunMap F alg G x n y n′ t → Below x n → Below y n′
+
 mono : ∀ {A B} {f : LTm A B} {v w n n′ t} → Run f v n w n′ t → n ≤ n′
 mono r-id          = ≤-refl
 mono (r-∘ rg rf)   = ≤-trans (mono rg) (mono rf)
@@ -553,9 +699,18 @@ mono r-curry       = n≤1+n _
 mono (r-eval r)    = mono r
 mono r-Ana         = n≤1+n _
 mono r-Inν         = n≤1+n _
+mono (r-cata rm ra) = ≤-trans (mono-map rm) (mono ra)
+mono r-Outν        = ≤-refl
+mono (r-Out {F = F} {c} {u = u} {n₁ = n₁} rc) = ≤-trans (mono rc) (wrap-mono F c F u n₁)
 
-Below : ∀ {A} → MV A → ℕ → Set
-Below v n = ∀ i → n ≤ i → cnt v i ≡ 0
+mono-map (m-id r)      = mono r
+mono-map m-one         = ≤-refl
+mono-map m-b           = ≤-refl
+mono-map m-μ           = ≤-refl
+mono-map m-ν           = ≤-refl
+mono-map (m-inl r)     = mono-map r
+mono-map (m-inr r)     = mono-map r
+mono-map (m-pair r r′) = ≤-trans (mono-map r) (mono-map r′)
 
 below : ∀ {A B} {f : LTm A B} {v w n n′ t} → Run f v n w n′ t → Below v n → Below w n′
 below r-id b = b
@@ -584,23 +739,45 @@ below (r-eval {env = env} {a = a} {i = j} r) b = below r (λ i le →
             (+≡0ʳ (δ j i + cnt env i) (cnt a i) (b i le)))
 below (r-Ana {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
 below (r-Inν {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
+below (r-cata {i = j} {v} rm ra) b = below ra (below-map rm (λ i le → +≡0ʳ (δ j i) (cnt v i) (b i le)))
+below (r-Outν {v = v} {i = j}) b i le = +≡0ʳ (δ j i) (cnt v i) (b i le)
+below (r-Out {F = F} {c} {s} {u} {i = j} {n₁ = n₁} rc) b =
+  wrap-below F c F u n₁ (below rc (λ i le → +≡0ʳ (δ j i) (cnt s i) (b i le)))
+
+below-map (m-id r) b = below r b
+below-map m-one b = b
+below-map m-b b = b
+below-map m-μ b = b
+below-map m-ν b = b
+below-map (m-inl r) b = below-map r b
+below-map (m-inr r) b = below-map r b
+below-map (m-pair {x = x} {x′} r r′) b i le =
+  cong₂ _+_ (below-map r (λ j l → +≡0ˡ (cnt x j) (cnt x′ j) (b j l)) i (≤-trans (mono-map r′) le))
+            (below-map r′ (λ j l → +≡0ʳ (cnt x j) (cnt x′ j) (b j (≤-trans (mono-map r) l))) i le)
 
 pre-below : ∀ {h n A} {v : MV A} {r} → Pre h n v r → Below v n
 pre-below {h} {v = v} {r} pre i le = +≡0ˡ (cnt v i) (r i) (≤0 (subst (cnt v i + r i ≤_) (above pre i le) (sub pre i)))
 
 -- after a run, the same precondition holds of the output, at the new counter
-post : ∀ {A B} {f : LTm A B} {v w n n′ t h r} → Run f v n w n′ t → Pre h n v r → OK t h
-     → (∀ i → play t h i + cnt v i ≡ h i + cnt w i) → Pre (play t h) n′ w r
-post {v = v} {w} {n} {n′} {t} {h} {r} run pre ok eq = record
+post-gen : ∀ {A B} {v : MV A} {w : MV B} {n n′ t h r} → n ≤ n′ → (Below v n → Below w n′)
+         → Pre h n v r → OK t h → (∀ i → play t h i + cnt v i ≡ h i + cnt w i) → Pre (play t h) n′ w r
+post-gen {v = v} {w} {n} {n′} {t} {h} {r} mn bl pre ok eq = record
   { le1   = OK-le1 t h ok (le1 pre)
   ; above = λ i le →
-      let n≤i = ≤-trans (mono run) le
+      let n≤i = ≤-trans mn le
           e   = eq i
           e′  = trans (sym (+0 (play t h i)))
                   (trans (cong (play t h i +_) (sym (pre-below pre i n≤i)))
-                    (trans e (cong₂ _+_ (above pre i n≤i) (below run (pre-below pre) i le))))
+                    (trans e (cong₂ _+_ (above pre i n≤i) (bl (pre-below pre) i le))))
       in e′
   ; sub   = λ i → post-sub (play t h i) (cnt v i) (h i) (cnt w i) (r i) (eq i) (sub pre i) }
+
+post : ∀ {A B} {f : LTm A B} {v w n n′ t h r} → Run f v n w n′ t → Pre h n v r → OK t h
+     → (∀ i → play t h i + cnt v i ≡ h i + cnt w i) → Pre (play t h) n′ w r
+post run = post-gen (mono run) (below run)
+
+exchange-map : ∀ {A F} {alg : LTm (LF∙ F A) A} {G x n y n′ t} → RunMap F alg G x n y n′ t → ∀ {h r} → Pre h n x r
+             → OK t h × (∀ i → play t h i + cnt x i ≡ h i + cnt y i)
 
 ------------------------------------------------------------------------
 -- ★ The theorem.
@@ -679,6 +856,87 @@ exchange (r-eval {env = env} {a = a} {i = j} {t = t} r) {h} {rf} pre
         r7 = solve-∀
 exchange (r-Ana {s = s}) pre = alloc1 (cnt s) pre
 exchange (r-Inν {v = v}) pre = alloc1 (cnt v) pre
+exchange (r-cata {F} {A} {alg} {i = j} {v} {u} {w} {t₁ = t₁} {t₂} rm ra) {h} {r} pre
+  with free-step j (cnt v) h r (le1 pre) (sub pre)
+... | (hj , le′ , sb′ , back)
+  with exchange-map rm {step (free j) h} {r}
+         record { le1 = le′
+                ; above = λ i le → ≤0 (subst (step (free j) h i ≤_) (above pre i le) (m∸n≤m (h i) (δ j i)))
+                ; sub = sb′ }
+...   | (okm , eqm)
+  with exchange ra (post-gen {v = v} {w = u} {r = r} (mono-map rm) (below-map rm)
+                      (record { le1 = le′
+                              ; above = λ i le → ≤0 (subst (step (free j) h i ≤_) (above pre i le) (m∸n≤m (h i) (δ j i)))
+                              ; sub = sb′ })
+                      okm eqm)
+...     | (oka , eqa) =
+  ( (hj , OK-++ t₁ t₂ (step (free j) h) okm oka)
+  , λ i → trans (cong (λ z → z i + (δ j i + cnt v i)) (play-++ t₁ t₂ (step (free j) h)))
+            (trans (r8 (play t₂ (play t₁ (step (free j) h)) i) (δ j i) (cnt v i))
+              (trans (cong (_+ δ j i)
+                       (chain (play t₂ (play t₁ (step (free j) h)) i) (cnt u i) (play t₁ (step (free j) h) i)
+                              (cnt w i) (cnt v i) (step (free j) h i) (eqa i) (eqm i)))
+                (trans (r9 (step (free j) h i) (cnt w i) (δ j i)) (cong (_+ cnt w i) (back i))))) )
+  where r8 : ∀ P D V → P + (D + V) ≡ (P + V) + D
+        r8 = solve-∀
+        r9 : ∀ H W D → (H + W) + D ≡ (H + D) + W
+        r9 = solve-∀
+exchange (r-Outν {v = v} {i = j}) {h} {r} pre with free-step j (cnt v) h r (le1 pre) (sub pre)
+... | (hj , _ , _ , back) = ((hj , tt) , λ i → trans (r5 (step (free j) h i) (δ j i) (cnt v i)) (cong (_+ cnt v i) (back i)))
+  where r5 : ∀ P D V → P + (D + V) ≡ (P + D) + V
+        r5 = solve-∀
+exchange (r-Out {S} {F} {c} {s} {u} {i = j} {n₁ = n₁} {t₁} rc) {h} {r} pre
+  with free-step j (cnt s) h r (le1 pre) (sub pre)
+... | (hj , le′ , sb′ , back)
+  with exchange rc {step (free j) h} {r}
+         record { le1 = le′
+                ; above = λ i le → ≤0 (subst (step (free j) h i ≤_) (above pre i le) (m∸n≤m (h i) (δ j i)))
+                ; sub = sb′ }
+...   | (okc , eqc)
+  with post rc (record { le1 = le′
+                       ; above = λ i le → ≤0 (subst (step (free j) h i ≤_) (above pre i le) (m∸n≤m (h i) (δ j i)))
+                       ; sub = sb′ }) okc eqc
+...     | pre₁
+  with wrap-ok F c F u n₁ (play t₁ (step (free j) h)) (above pre₁) (pre-below pre₁)
+...       | (okw , eqw) =
+  ( (hj , OK-++ t₁ (snd (snd (wrap F c F u n₁))) (step (free j) h) okc okw)
+  , λ i → trans (cong (λ z → z i + (δ j i + cnt s i)) (play-++ t₁ (snd (snd (wrap F c F u n₁))) (step (free j) h)))
+            (trans (r8 (play (snd (snd (wrap F c F u n₁))) (play t₁ (step (free j) h)) i) (δ j i) (cnt s i))
+              (trans (cong (_+ δ j i)
+                       (chain (play (snd (snd (wrap F c F u n₁))) (play t₁ (step (free j) h)) i) (cnt u i)
+                              (play t₁ (step (free j) h) i) (cnt (fst (wrap F c F u n₁)) i) (cnt s i)
+                              (step (free j) h i) (eqw i) (eqc i)))
+                (trans (r9 (step (free j) h i) (cnt (fst (wrap F c F u n₁)) i) (δ j i)) (cong (_+ cnt (fst (wrap F c F u n₁)) i) (back i))))) )
+  where r8 : ∀ P D V → P + (D + V) ≡ (P + V) + D
+        r8 = solve-∀
+        r9 : ∀ H W D → (H + W) + D ≡ (H + D) + W
+        r9 = solve-∀
+
+exchange-map (m-id r) pre = exchange r record { le1 = le1 pre ; above = above pre ; sub = sub pre }
+exchange-map m-one pre = (tt , λ i → refl)
+exchange-map m-b pre = (tt , λ i → refl)
+exchange-map m-μ pre = (tt , λ i → refl)
+exchange-map m-ν pre = (tt , λ i → refl)
+exchange-map (m-inl r) pre = exchange-map r record { le1 = le1 pre ; above = above pre ; sub = sub pre }
+exchange-map (m-inr r) pre = exchange-map r record { le1 = le1 pre ; above = above pre ; sub = sub pre }
+exchange-map (m-pair {x = x} {x′} {y} {y′} {t₁ = t₁} {t₂} r r′) {h} {rf} pre
+  with exchange-map r {h} {λ i → cnt x′ i + rf i}
+         record { le1 = le1 pre ; above = above pre
+                ; sub = λ i → subst (_≤ h i) (assoc (cnt x i) (cnt x′ i) (rf i)) (sub pre i) }
+... | (ok₁ , eq₁)
+  with exchange-map r′ {play t₁ h} {λ i → cnt y i + rf i}
+         (let p₁ = post-gen {v = x} {w = y} {r = λ i → cnt x′ i + rf i} (mono-map r) (below-map r)
+                     (record { le1 = le1 pre ; above = above pre
+                             ; sub = λ i → subst (_≤ h i) (assoc (cnt x i) (cnt x′ i) (rf i)) (sub pre i) })
+                     ok₁ eq₁
+          in record { le1 = le1 p₁ ; above = above p₁
+                    ; sub = λ i → subst (_≤ play t₁ h i) (sw (cnt y i) (cnt x′ i) (rf i)) (sub p₁ i) })
+  where sw : ∀ A′ B R → A′ + (B + R) ≡ B + (A′ + R)
+        sw = solve-∀
+...   | (ok₂ , eq₂) =
+  ( OK-++ t₁ t₂ h ok₁ ok₂
+  , λ i → trans (cong (λ z → z i + (cnt x i + cnt x′ i)) (play-++ t₁ t₂ h))
+            (chain⊗ (play t₂ (play t₁ h) i) (cnt x′ i) (play t₁ h i) (cnt y′ i) (cnt x i) (h i) (cnt y i) (eq₂ i) (eq₁ i)) )
 
 -- ★ NoLeak, for a run that returns: a whole program, from the empty heap,
 -- frees every cell it allocated, exactly once, and frees nothing else.
