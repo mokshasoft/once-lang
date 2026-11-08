@@ -21913,3 +21913,75 @@ Recorded in plan 0.123 B.1 as its D6 and D7; moved here when plan 0.123 closed (
 * D379/D380 (frames first, values that can live on the stack do) follow from the two heaps.
 * Plan 0.146 (the linear core) meets these by construction: a linear core's `drop`s are the frees, its
   values are owned, and `dup` is the copy. Plan 0.123's allocator design (its D1–D5) is not carried over.
+
+## D403 — THE LINEAR CORE'S SHAPE: CELLS AND FRAMES, A LENDING CONTEXT, MANY-USE CLOSURES, EFFECTS ABOVE, REUSE AS A RULE (2026-11-08)
+
+**Proposed** (plan 0.146 §4 A, for the user's review before §4 B, the migration, starts). Worked out
+unattended in `Spikes/LinCore/` (POC-first, the user 2026-11-08), each part a checked Agda module
+(`--safe`, no postulates). **Applies**: D402 (static ownership, two heaps, choice A), D400 (no read of an
+unwritten cell), D317 (a server is the loop over a round), D131 (a fold's algebra is a closure obtained
+once). **Starts from**: `NbEPLinCore` (OCP-0009, `origin/plan-ref`).
+
+### Decision
+* **What memory a value occupies** (`Events.MV`). Flat, no cell (a frame slot or registers): `One`, `⊗`,
+  `⊕`, base words. One cell each, in the cell heap: a μ node (its layer), a ν (a suspension: its seed;
+  or a layer built by `lInν`), a closure (its environment). That is D402's two heaps; frames are LIFO, so
+  only cells need a theorem.
+* **What the core's generators do to memory** (`Events.Run`, a relation; `sound`: every run computes the
+  core's meaning `Lᶜ`). `dup` copies every cell of its value, `drop` frees every cell; `lIn`, `lAna`,
+  `lInν` and closure building allocate one cell; `lOutμ`, a one-shot application and an observation
+  free one; a fold frees each node as it consumes it. Nothing else touches the heap: moving data is not
+  copying it.
+* **Borrows are a second context, not a type** (`BTm E A B`, `lend`). A borrowing morphism reads a lent
+  `E` but never owns, frees or keeps it; it can zoom into `E`, branch on its tag, look inside a lent node
+  (a `peek` event: legal only while the cell is live) and copy it out (`bcopy`: choice A). The one new
+  core generator is the scope `lend : BTm E A B → LTm (E ⊗ A) (E ⊗ B)`; since `E` is no type of the core,
+  a borrow cannot escape into a result, a closure's environment or a ν's seed, with no side condition
+  anywhere. A fold reads its environment at every layer this way (`bcata`), at no cost.
+* **Two closure types** (QTT's 1 and ω arrows). `A ⇒ B` is one-shot: applying it consumes its
+  environment. `A ⇛ B` is many-use: its body only reads its environment, so it is applied while lent
+  (`bapp`), any number of times, and freed once. D131's algebra closure is a `⇛`, lent to the fold.
+* **Effects sit above the core** (`Act.ATm`, `Act.Loop`). A round is a finite block: core steps (which may
+  read a lent `E`), sequencing, pairs, cases, and the SigOps — Pure/Emits (an `io` event and the world's
+  answer, any answer) and Halts (the run ends). A server is the loop over a round (D317). The core stays
+  pure; effects add no heap event.
+* **In-place reuse is a machine rule** (`r-cata-reuse`). A fold that rebuilds each node with the same
+  functor may keep the consumed node's cell for the rebuilt one: no free, no alloc. The ordinary rule
+  still applies; the compiler picks.
+
+### What is proved (the invariants, D400 and the user's of 2026-11-08)
+* `exchange` (every generator, borrows, many-use closures and reuse included): if the heap holds a run's
+  input cells beside a frame (whatever else is live), the run's events are legal — every `alloc` of a
+  dead id, every `free` and every `peek` of a live one: no double free, no free of a stranger, no read of
+  a dead cell — and afterwards the heap holds the OUTPUT's cells instead of the input's, the frame
+  untouched. The frame is the frame rule; a lent value sits in it, so "the reader neither frees nor
+  copies it" is a theorem, not a check.
+* `noleak`: a whole program that returns frees every cell it allocated, exactly once, and nothing else —
+  the shape of `Once.Implementation.NoLeak` (`Run.LeakFree`), here a theorem of the core's structure.
+* `exchangeA`: the same for a round; a round that HALTS claims only legality — what is live at an exit
+  stays (the user's exception; `LeakFree`'s `StoppedAt`).
+* `loop-exchange`: after any number of rounds, the heap is the frame plus the current state's cells. A
+  server's memory is its state, round after round, with no "eventually" for a run that never ends: the
+  space claim at round boundaries (plan 0.146 §3).
+* Non-vacuity, by concrete runs (`Examples`): the gate's `loop-forever-emit` server (no heap event in two
+  rounds); a server whose state is a list rebuilt each round (events `free 0, free 1, alloc 2, alloc 3`,
+  and the heap afterwards holds exactly the new list); D131's fold with a lent algebra closure (the
+  closure allocated once, `peek`ed once per layer, freed once, never copied); and the same list round in
+  place (no event at all).
+
+### Consequences
+* The migration (plan 0.146 §4 B) compiles `Once.IR` through this core: `⟨f,g⟩` via `dup` or, when one
+  side only reads, via `lend`; `Cata`'s environment via `lend (bcata …)` and one `drop`; a closure that
+  may be applied more than once as a `⇛`; `Iter`/`Ana` into `Eff` as the loop over a round.
+* Costs: a `dup` of a structure is a deep copy (no sharing without run-time counts, D402); a `⇛`'s and a
+  lent value's reads cost nothing; frees are compiler-placed. In-place reuse removes the free/alloc pair
+  of every shape-preserving rebuild.
+* **Findings, open**: (1) `Ana` with an environment and a BRANCHING functor copies the environment once
+  per extra recursive position per unfold (a single-position functor — every stream and every `Eff`
+  loop — moves it, no copy); the corpus has no branching codata. (2) Cell SIZES are not yet in the
+  events (D402's free lists are per node size; the reuse rule needs equal sizes, which the same functor
+  gives). (3) Effectful closures and effectful folds (D131: an algebra may have effects) are the same
+  memory pattern one layer up, not yet written. (4) Termination of the run relation is not proved; the
+  examples show runs exist.
+* **The gate** (plan 0.146 §4): both gate servers keep an `Int`, which frames alone would pass; the
+  list-state server above is the proposed extra gate test (for the user to decide).
