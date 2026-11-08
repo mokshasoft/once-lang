@@ -21,6 +21,7 @@
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Agda.Builtin.Sigma using (_,_)
+import Agda.Builtin.Sigma
 open import Data.Product using (_×_)
 open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ; zero; suc; z≤n; s≤s; _+_; _≤_)
@@ -198,3 +199,23 @@ trace-of-run {t = t} _ = t
 closure-fold-events : trace-of-run closure-fold-run
                     ≡ alloc 2 ∷ free 0 ∷ free 1 ∷ peek 2 ∷ alloc 3 ∷ peek 2 ∷ alloc 4 ∷ free 2 ∷ []
 closure-fold-events = refl
+
+------------------------------------------------------------------------
+-- 4. A8: the same round, IN PLACE. Written `lcata ListF (lIn ∘l lid)` (the
+--    algebra rebuilds each node with the same functor), the fold may reuse
+--    each consumed node's cell for the rebuilt node.
+------------------------------------------------------------------------
+
+rebuild-in-place : LTm IntList IntList
+rebuild-in-place = lcata ListF (lIn ∘l lid)
+
+in-place-run : Run rebuild-in-place (one-list 5) 2 (one-list 5) 2 _
+in-place-run = r-cata-reuse (m-inr (m-pair m-b (m-id (r-cata-reuse (m-inl m-one) r-id)))) r-id
+
+-- ★ by evaluation: no event at all — the list was rebuilt in its own cells
+in-place-events : trace-of-run in-place-run ≡ []
+in-place-events = refl
+
+-- and it means the same as the rebuild that frees and allocates
+in-place-sound : er (one-list 5) ≡ Agda.Builtin.Sigma.fst (Lᶜ rebuild-in-place (er (one-list 5)))
+in-place-sound = sound in-place-run

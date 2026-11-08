@@ -210,6 +210,13 @@ data Run where
           → Run c s n u n₁ t₁
           → Run (lOut {F}) (mnu i s c) n (fst (wrap F c F u n₁)) (fst (snd (wrap F c F u n₁)))
                 (free i ∷ (t₁ ++ snd (snd (wrap F c F u n₁))))
+  -- ★ A8, IN-PLACE REUSE: a fold that rebuilds each node with the same functor
+  -- (`lIn ∘l g`) may keep the consumed node's cell for the rebuilt node — no
+  -- `free i`, no fresh `alloc`. The other rule (`r-cata`) still applies; the
+  -- compiler picks. During the fold, cell `i` is live and referenced by no value.
+  r-cata-reuse : ∀ {F} {g : LTm (LF∙ F (μt F)) (LF∙ F (μt F))} {i v u u′ n n₁ n₂ t₁ t₂}
+          → RunMap F (lIn ∘l g) F v n u n₁ t₁ → Run g u n₁ u′ n₂ t₂
+          → Run (lcata F (lIn ∘l g)) (mmu i v) n (mmu i u′) n₂ (t₁ ++ t₂)
   -- A2: the scope lends `e` to the body; `e` comes back as it was
   r-lend  : ∀ {E A B} {b : BTm E A B} {e a w n n′ t}
           → RunB b e a n w n′ t → Run (lend b) (mpair e a) n (mpair e w) n′ t
@@ -364,6 +371,9 @@ sound (r-Out {S} {F} {c} {s} {u} {n₁ = n₁} rc) =
         (cong (coh⁻¹ F (νt F)) (trans (wrap-er F c F u n₁) (cong (λ z → mapU F F c (coh F S z)) (sound rc))))
 
 sound (r-lend {e = e} r) = cong (er e ,_) (soundB r)
+sound (r-cata-reuse {F} {g} {u = u} rm rg) =
+  cong (λ z → inμ (coh F (μt F) z))
+       (trans (sound rg) (cong (λ z → fst (Lᶜ g z)) (trans (sym (coh⁻¹∘coh F (μt F) (er u))) (cong (coh⁻¹ F (μt F)) (sound-map rm)))))
 
 soundB (b-lift r) = sound r
 soundB (b-∘ {f = f} {e = e} rg rf) = trans (soundB rf) (cong (λ x → fst (Bᶜ f (er e) x)) (soundB rg))
@@ -821,6 +831,7 @@ mono r-Outν        = ≤-refl
 mono (r-Out {F = F} {c} {u = u} {n₁ = n₁} rc) = ≤-trans (mono rc) (wrap-mono F c F u n₁)
 
 mono (r-lend r) = monoB r
+mono (r-cata-reuse rm rg) = ≤-trans (mono-map rm) (mono rg)
 
 monoB (b-lift r) = mono r
 monoB (b-∘ rg rf) = ≤-trans (monoB rg) (monoB rf)
@@ -887,6 +898,9 @@ below (r-Outν {v = v} {i = j}) b i le = +≡0ʳ (δ j i) (cnt v i) (b i le)
 below (r-Out {F = F} {c} {s} {u} {i = j} {n₁ = n₁} rc) b =
   wrap-below F c F u n₁ (below rc (λ i le → +≡0ʳ (δ j i) (cnt s i) (b i le)))
 
+below (r-cata-reuse {i = j} {v} rm rg) b i le =
+  cong₂ _+_ (+≡0ˡ (δ j i) (cnt v i) (b i (≤-trans (≤-trans (mono-map rm) (mono rg)) le)))
+            (below rg (below-map rm (λ k l → +≡0ʳ (δ j k) (cnt v k) (b k l))) i le)
 below (r-lend {e = e} {a} r) b i le =
   cong₂ _+_ (+≡0ˡ (cnt e i) (cnt a i) (b i (≤-trans (monoB r) le)))
             (belowB r (λ j l → +≡0ʳ (cnt e j) (cnt a j) (b j l)) i le)
@@ -1107,6 +1121,30 @@ exchange (r-Out {S} {F} {c} {s} {u} {i = j} {n₁ = n₁} {t₁} rc) {h} {r} pre
         r9 : ∀ H W D → (H + W) + D ≡ (H + D) + W
         r9 = solve-∀
 
+-- ★ A8: the reused cell sits in the frame while the node is folded and rebuilt
+exchange (r-cata-reuse {i = j} {v} {u} {u′} {t₁ = t₁} {t₂} rm rg) {h} {r} pre
+  with exchange-map rm {h} {λ i → δ j i + r i}
+         record { le1 = le1 pre ; above = above pre
+                ; sub = λ i → subst (_≤ h i) (sw (δ j i) (cnt v i) (r i)) (sub pre i) }
+  where sw : ∀ D V R → (D + V) + R ≡ V + (D + R)
+        sw = solve-∀
+... | (okm , eqm)
+  with exchange rg (post-gen {v = v} {w = u} {r = λ i → δ j i + r i} (mono-map rm) (below-map rm)
+                      (record { le1 = le1 pre ; above = above pre
+                              ; sub = λ i → subst (_≤ h i) (sw (δ j i) (cnt v i) (r i)) (sub pre i) })
+                      okm eqm)
+  where sw : ∀ D V R → (D + V) + R ≡ V + (D + R)
+        sw = solve-∀
+...   | (okg , eqg) =
+  ( OK-++ t₁ t₂ h okm okg
+  , λ i → trans (cong (λ z → z i + (δ j i + cnt v i)) (play-++ t₁ t₂ h))
+            (trans (r12 (play t₂ (play t₁ h) i) (δ j i) (cnt v i))
+              (trans (cong (_+ δ j i) (chain (play t₂ (play t₁ h) i) (cnt u i) (play t₁ h i) (cnt u′ i) (cnt v i) (h i) (eqg i) (eqm i)))
+                (r13 (h i) (cnt u′ i) (δ j i)))) )
+  where r12 : ∀ P D V → P + (D + V) ≡ (P + V) + D
+        r12 = solve-∀
+        r13 : ∀ H W D → (H + W) + D ≡ H + (D + W)
+        r13 = solve-∀
 -- ★ A2: the body reads `e` from the frame; `e`'s cells are neither freed nor copied
 exchange (r-lend {e = e} {a} {w} r) {h} {rf} pre
   with exchangeB r {h} {λ i → cnt e i + rf i}
