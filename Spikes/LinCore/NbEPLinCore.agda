@@ -112,13 +112,17 @@ data LF : Set where
 
 infixr 5 _⊗t_
 infixr 4 _⊕t_
-infixr 3 _⇒t_
+infixr 3 _⇒t_ _⇛t_
 data LTy : Set where
   One  : LTy
   Zero : LTy
   _⊗t_ : LTy → LTy → LTy
   _⊕t_ : LTy → LTy → LTy
   _⇒t_ : LTy → LTy → LTy
+  -- ★ plan 0.146 A2 (D131): a MANY-USE closure — its body only reads its
+  -- environment, so it can be applied while lent, any number of times, and is
+  -- freed once (QTT's ω arrow; `⇒t` is the one-shot, 1-graded one)
+  _⇛t_ : LTy → LTy → LTy
   μt   : LF → LTy
   νt   : LF → LTy          -- ★ present because the theory wants it
   Bt   : Base → LTy        -- ★ likewise
@@ -175,6 +179,7 @@ force (inν w) = (w , zero)
 ⟦ A ⊗t B ⟧   = ⟦ A ⟧ × ⟦ B ⟧
 ⟦ A ⊕t B ⟧   = ⟦ A ⟧ ⊎ ⟦ B ⟧
 ⟦ A ⇒t B ⟧   = ⟦ A ⟧ → ⟦ B ⟧ × ℕ    -- ★ a function reports its own cost
+⟦ A ⇛t B ⟧   = ⟦ A ⟧ → ⟦ B ⟧ × ℕ    -- the same meaning; the difference is in memory
 ⟦ μt F ⟧     = Mu F
 ⟦ νt F ⟧     = Nu F
 ⟦ Bt b ⟧     = ⟦ b ⟧b
@@ -282,6 +287,8 @@ data LTm where
   leval   : ∀ {A B} → LTm ((A ⇒t B) ⊗t A) B
   -- ★ the scope: lend `E` to a body that reads it; `E` comes back unchanged
   lend    : ∀ {E A B} → BTm E A B → LTm (E ⊗t A) (E ⊗t B)
+  -- a many-use closure: it owns `E`; its body only reads it
+  lcurryB : ∀ {E A B} → BTm E A B → LTm E (A ⇛t B)
 
 infixr 9 _∘b_
 infixr 7 _⊗b_
@@ -299,6 +306,9 @@ data BTm where
   bcopy  : ∀ {E} → BTm E One E
   -- ★ a fold that reads `E` at every layer, with no copy of `E`
   bcata  : ∀ F {E A} → BTm E (LF∙ F A) A → BTm E (μt F) A
+  -- applying a LENT many-use closure (D131: a fold's algebra, obtained once,
+  -- applied at every layer): its environment is lent on to its body
+  bapp   : ∀ {A B} → BTm (A ⇛t B) A B
 
 ------------------------------------------------------------------------
 -- 6. ★ THE COST SEMANTICS, mutual with both recursion operators.
@@ -352,6 +362,7 @@ mutual
   Lᶜ (lcurry f)     a              = retᶜ (λ b → Lᶜ f (a , b))
   Lᶜ leval          (f , a)        = f a
   Lᶜ (lend b)       (e , a)        = Bᶜ b e a >>=ᶜ λ w → retᶜ (e , w)
+  Lᶜ (lcurryB b)    e              = retᶜ (λ a → Bᶜ b e a)
 
   -- a borrowing morphism means a function of the lent value, which it does not consume
   Bᶜ : ∀ {E A B} → BTm E A B → ⟦ E ⟧ → ⟦ A ⟧ → ⟦ B ⟧ × ℕ
@@ -367,6 +378,7 @@ mutual
   Bᶜ (bout {F} f)   e         a        = Bᶜ f (coh⁻¹ F (μt F) (outμ e)) a
   Bᶜ bcopy          e         a        = (e , suc zero)          -- priced like `dup`
   Bᶜ (bcata F alg)  e         x        = cataC F (λ y → Bᶜ alg e (coh⁻¹ F _ y)) x
+  Bᶜ bapp           f         a        = f a
 
   cataC : ∀ F {X : Set} → (FS F X → X × ℕ) → Mu F → X × ℕ
   cataC F alg (inμ w) = sumF F (mapC F F alg w) >>=ᶜ alg
@@ -508,6 +520,8 @@ Free (A ⊗t B)  (a , b)  = Free A a × Free B b
 Free (A ⊕t B)  (inj₁ a) = Free A a
 Free (A ⊕t B)  (inj₂ b) = Free B b
 Free (A ⇒t B)  f        =
+  (a : ⟦ A ⟧) → Free A a → Free B (fst (f a)) × (snd (f a) ≡ zero)
+Free (A ⇛t B)  f        =
   (a : ⟦ A ⟧) → Free A a → Free B (fst (f a)) × (snd (f a) ≡ zero)
 Free (μt F)    x        = FreeMu F x
 Free (νt F)    x        = FreeNu F x

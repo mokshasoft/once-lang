@@ -166,3 +166,35 @@ list-after = refl , refl , refl , refl
 -- the emit server's two rounds touch no cell at all: its events are SigOp calls
 emit-events : memOf (trace-of emit-server) ≡ []
 emit-events = refl
+
+------------------------------------------------------------------------
+-- 3. D131: a fold whose algebra is a CLOSURE, obtained once and applied at
+--    every layer. The closure is a many-use one (`⇛t`); the fold borrows it
+--    (`lend`, `bapp` at each layer) and it is freed once, after.
+------------------------------------------------------------------------
+
+-- the algebra, as a closure value (its environment is `One` here)
+alg-closure : LTm One (LF∙ ListF IntList ⇛t IntList)
+alg-closure = lcurryB (blift lIn)
+
+-- build the closure, lend it to the fold, drop it
+closure-fold : LTm IntList IntList
+closure-fold = lul ∘l (drop ⊗l lid) ∘l lend (bcata ListF bapp) ∘l (alg-closure ⊗l lid) ∘l lul⁻
+
+-- on [5] (cells 0, 1), from counter 2: the closure is cell 2; the new list is 4 → 3
+closure-fold-run : Run closure-fold (one-list 5) 2 (mmu 4 (minr (mpair (mbase 5) (mmu 3 (minl mone))))) 5 _
+closure-fold-run =
+  r-∘ (r-∘ (r-∘ (r-∘ r-λ⁻ (r-⊗ r-curryB r-id))
+                (r-lend (b-cata (mb-inr (mb-pair mb-b (mb-id (b-cata (mb-inl mb-one) (b-app (b-lift r-In))))))
+                                (b-app (b-lift r-In)))))
+           (r-⊗ r-drop r-id))
+      r-λ
+
+trace-of-run : ∀ {A C} {f : LTm A C} {v w n n′ t} → Run f v n w n′ t → Trace
+trace-of-run {t = t} _ = t
+
+-- ★ by evaluation: the closure allocated once (2), read once per layer
+-- (peek 2, twice), never copied, freed once at the end
+closure-fold-events : trace-of-run closure-fold-run
+                    ≡ alloc 2 ∷ free 0 ∷ free 1 ∷ peek 2 ∷ alloc 3 ∷ peek 2 ∷ alloc 4 ∷ free 2 ∷ []
+closure-fold-events = refl
