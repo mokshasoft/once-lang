@@ -75,7 +75,9 @@ typecheck:
 .PHONY: certified
 certified:
 	@echo "Type-checking the certified artefact (correctness AND well-behavedness)..."
-	@sh -c '$(AGDA_CMD) Once/Certified.agda'
+	@# -c: one process loads every interface (~2.2 GB live); the default copying
+	@# collector needs about twice that and exceeds agda-safe's cap (plan 0.123).
+	@AGDA_RTS_EXTRA=-c sh -c '$(AGDA_CMD) Once/Certified.agda'
 
 .PHONY: lint-imports
 lint-imports:

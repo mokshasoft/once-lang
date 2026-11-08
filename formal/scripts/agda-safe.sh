@@ -75,7 +75,9 @@ cgroup_available() {
 # even though the live data fits: `Resusp/SumR` holds 3.3 GB live but
 # reaches 5.3 GB RSS. With `-M` the collector compacts in place near the
 # limit instead (SumR: 4.7 GB RSS, same time). Headroom 700M covers the
-# non-heap RSS. Skipped when the caller already set GHCRTS.
+# non-heap RSS. Skipped when the caller already set GHCRTS. AGDA_RTS_EXTRA is
+# appended (`make certified` passes `-c`: compact the old generation from the
+# start, as agda-profile.py's rung c).
 mem_mb() {
   case "$1" in
     *G|*g) echo $(( ${1%?} * 1024 )) ;;
@@ -86,7 +88,7 @@ mem_mb() {
 if [ -z "${GHCRTS:-}" ]; then
   cap_mb=$(mem_mb "$MEM_MAX")
   if [ -n "$cap_mb" ] && [ "$cap_mb" -gt 1400 ]; then
-    export GHCRTS="-M$(( cap_mb - 700 ))m"
+    export GHCRTS="-M$(( cap_mb - 700 ))m${AGDA_RTS_EXTRA:+ $AGDA_RTS_EXTRA}"
   fi
 fi
 
