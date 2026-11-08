@@ -9,9 +9,9 @@
 # against the pinned kernel's headers by examples/seL4 `check-numbers.sh`.
 #
 # SigOp ABI (as the compiler calls it): the argument in rdi, the answer
-# in rax; a pair is a pointer to a 16-byte cell [fst, snd], wider tuples
-# nest to the left; an answer tuple is allocated at the heap pointer r15,
-# which is advanced. Every other register is preserved.
+# in rax; a tuple is a pointer to one flat block of its words, lowest
+# address first (D381); an answer tuple is allocated at the heap pointer
+# r15, which is advanced. Every other register is preserved.
 #
 # ======================================================================
 
@@ -147,23 +147,18 @@ bootinfo_domainInfo:
 .type bootinfo_getUntyped, @function
 bootinfo_getUntyped:
     pushq   %rcx
-    pushq   %rdx
     movq    8(%rdi), %rcx               # index
     shlq    $UNTYPED_DESC_SIZE_BITS, %rcx   # * sizeof(seL4_UntypedDesc)
     addq    (%rdi), %rcx                # + bootinfo
     addq    $BI_UNTYPED_LIST, %rcx      # rcx = &untypedList[index]
     movq    UD_PADDR(%rcx), %rax
-    movq    %rax, 0(%r15)               # inner = [paddr, sizeBits]
+    movq    %rax, 0(%r15)               # flat: [paddr, sizeBits, isDevice]
     movzbq  UD_SIZE_BITS(%rcx), %rax
     movq    %rax, 8(%r15)
-    movq    %r15, %rdx
-    addq    $16, %r15
-    movq    %rdx, 0(%r15)               # outer = [inner, isDevice]
     movzbq  UD_IS_DEVICE(%rcx), %rax
-    movq    %rax, 8(%r15)
+    movq    %rax, 16(%r15)
     movq    %r15, %rax
-    addq    $16, %r15
-    popq    %rdx
+    addq    $24, %r15
     popq    %rcx
     ret
 .size bootinfo_getUntyped, .-bootinfo_getUntyped

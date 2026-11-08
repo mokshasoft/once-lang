@@ -16,7 +16,8 @@
 # The seL4 numbers are the kernel's names, checked against the pinned
 # kernel by examples/seL4 `check-numbers.sh`.
 #
-# SigOp ABI: the argument in rdi, the answer in rax; every other register
+# SigOp ABI: the argument in rdi (a tuple is one flat block of words, D381),
+# the answer in rax; every other register
 # is preserved (r15, Once's heap pointer, is seL4's fourth message word).
 #
 # ======================================================================
@@ -52,10 +53,9 @@ start:
     pushq   %rdx
     pushq   %rcx
     pushq   %rbx
-    movq    (%rdi), %rcx                # (tcb, program)
-    movq    8(%rcx), %r12               # program
-    movq    (%rcx), %rbx                # tcb
-    movq    8(%rdi), %rdx               # arg
+    movq    0(%rdi), %rbx               # tcb
+    movq    8(%rdi), %r12               # program
+    movq    16(%rdi), %rdx              # arg
     movq    $seL4_InvalidArgument, %rax
     cmpq    $1, %r12
     jb      1f

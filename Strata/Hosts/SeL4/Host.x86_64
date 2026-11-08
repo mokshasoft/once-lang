@@ -25,7 +25,7 @@
 # program the calling thread runs, from its stack pointer.
 #
 # The Interpretations' shared routines are here too, since every seL4
-# program links this Host: `once_sel4_flatten` / `once_sel4_build` (a
+# program links this Host: `once_sel4_copy_arg` / `once_sel4_answer` (a
 # SigOp's tuple argument and answer) and `once_sel4_invoke` (an object
 # invocation).
 #
@@ -165,42 +165,33 @@ once_sel4_self:
     ret
 .size once_sel4_self, .-once_sel4_self
 
-# once_sel4_flatten: the left-nested n-tuple at rdi (n >= 2, in rcx) into
-# the words at rsi, in order: how the Interpretations read a SigOp's
-# argument (a pair is a cell [fst, snd]). Clobbers rax, rcx, rdi.
-.global once_sel4_flatten
-.type once_sel4_flatten, @function
-once_sel4_flatten:
-1:  cmpq    $1, %rcx
-    je      2f
-    decq    %rcx
-    movq    8(%rdi), %rax
+# once_sel4_copy_arg: the n-tuple at rdi (n >= 1, in rcx) into the words at
+# rsi: how the Interpretations read a SigOp's argument, one flat block of
+# words (D381). Clobbers rax, rcx.
+.global once_sel4_copy_arg
+.type once_sel4_copy_arg, @function
+once_sel4_copy_arg:
+1:  decq    %rcx
+    movq    (%rdi,%rcx,8), %rax
     movq    %rax, (%rsi,%rcx,8)
-    movq    (%rdi), %rdi
-    jmp     1b
-2:  movq    %rdi, (%rsi)
+    jnz     1b
     ret
-.size once_sel4_flatten, .-once_sel4_flatten
+.size once_sel4_copy_arg, .-once_sel4_copy_arg
 
-# once_sel4_build: the n words at rsi (n >= 2, in rcx) as a left-nested
-# tuple allocated at the heap pointer r15 (advanced); the tuple in rax.
-# Clobbers rdx, r8.
-.global once_sel4_build
-.type once_sel4_build, @function
-once_sel4_build:
-    movq    (%rsi), %rax
-    movq    $1, %r8
-1:  cmpq    %rcx, %r8
-    je      2f
-    movq    %rax, 0(%r15)
-    movq    (%rsi,%r8,8), %rdx
-    movq    %rdx, 8(%r15)
+# once_sel4_answer: the n words at rsi (n >= 1, in rcx) as a flat block
+# allocated at the heap pointer r15 (advanced); the block in rax (D381).
+# Clobbers rcx, rdx.
+.global once_sel4_answer
+.type once_sel4_answer, @function
+once_sel4_answer:
     movq    %r15, %rax
-    addq    $16, %r15
-    incq    %r8
-    jmp     1b
-2:  ret
-.size once_sel4_build, .-once_sel4_build
+    leaq    (%r15,%rcx,8), %r15
+1:  decq    %rcx
+    movq    (%rsi,%rcx,8), %rdx
+    movq    %rdx, (%rax,%rcx,8)
+    jnz     1b
+    ret
+.size once_sel4_answer, .-once_sel4_answer
 
 # once_sel4_invoke: an object invocation, seL4_Call on cap rdi with
 # message info rsi; message words at r12 (at least 4: words 0-3 go in

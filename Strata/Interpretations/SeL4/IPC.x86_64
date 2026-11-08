@@ -10,9 +10,9 @@
 # kernel by examples/seL4 `check-numbers.sh`.
 # Messages are the four register words only: no IPC buffer is needed.
 #
-# SigOp ABI: the argument in rdi (a left-nested tuple of cells
-# [fst, snd]), the answer in rax (Unit is 0; a tuple answer is allocated
-# at the heap pointer r15, which is advanced); every other register is
+# SigOp ABI: the argument in rdi (a tuple is one flat block of words,
+# D381), the answer in rax (Unit is 0; a tuple answer is a flat block
+# allocated at the heap pointer r15, which is advanced); every other register is
 # preserved. r15 is both Once's heap pointer and seL4's fourth message
 # word, so it is saved around each syscall.
 #
@@ -29,7 +29,7 @@
 .equ SysNBRecv, -8
 # end seL4 numbers
 
-# Frame: the flattened arguments, the results
+# Frame: the arguments, the results
 .equ ARGS,   0
 .equ RES,    64
 .equ FRAME,  112
@@ -77,11 +77,11 @@
     movq    %rbx, %rsp
 .endm
 
-# Flatten the n-tuple argument (rdi) into ARGS
-.macro FLATTEN n
+# Copy the n-word argument (rdi) into ARGS
+.macro READ_ARG n
     leaq    ARGS(%rsp), %rsi
     movq    $\n, %rcx
-    call    once_sel4_flatten
+    call    once_sel4_copy_arg
 .endm
 
 # Message words 0-3 from ARGS slots a..a+3
@@ -105,14 +105,14 @@
     movq    SAVED_R15(%rsp), %r15
     leaq    RES(%rsp), %rsi
     movq    $\n, %rcx
-    call    once_sel4_build
+    call    once_sel4_answer
 .endm
 
 .text
 .align 16
 
-# (The tuple argument is read by the seL4 Host's `once_sel4_flatten`, a
-# tuple answer built by its `once_sel4_build`.)
+# (The tuple argument is read by the seL4 Host's `once_sel4_copy_arg`, a
+# tuple answer built by its `once_sel4_answer`.)
 
 # ----------------------------------------------------------------------
 # seL4_Yield : Unit -> Unit
@@ -137,7 +137,7 @@ seL4_Yield:
 \name:
     SAVE_ALL
     subq    $FRAME, %rsp
-    FLATTEN 6
+    READ_ARG 6
     movq    (ARGS + 0)(%rsp), %rdi
     movq    (ARGS + 8)(%rsp), %rsi
     LOAD_MRS 2
@@ -163,7 +163,7 @@ SEND_OP seL4_NBSend, SysNBSend
 \name:
     SAVE_ALL
     subq    $FRAME, %rsp
-    FLATTEN 2
+    READ_ARG 2
     movq    (ARGS + 0)(%rsp), %rdi
     SYSCALL_SEL4 \number
     movq    %rdi, (RES + 0)(%rsp)
@@ -187,7 +187,7 @@ RECV_OP seL4_NBRecv, SysNBRecv
 seL4_Call:
     SAVE_ALL
     subq    $FRAME, %rsp
-    FLATTEN 6
+    READ_ARG 6
     movq    (ARGS + 0)(%rsp), %rdi
     movq    (ARGS + 8)(%rsp), %rsi
     LOAD_MRS 2
@@ -208,7 +208,7 @@ seL4_Call:
 seL4_Reply:
     SAVE_ALL
     subq    $FRAME, %rsp
-    FLATTEN 5
+    READ_ARG 5
     movq    (ARGS + 0)(%rsp), %rsi
     LOAD_MRS 1
     SYSCALL_SEL4 SysReply
@@ -228,7 +228,7 @@ seL4_Reply:
 seL4_ReplyRecv:
     SAVE_ALL
     subq    $FRAME, %rsp
-    FLATTEN 7
+    READ_ARG 7
     movq    (ARGS + 0)(%rsp), %rdi
     movq    (ARGS + 8)(%rsp), %rsi
     LOAD_MRS 2
