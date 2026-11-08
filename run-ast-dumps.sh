@@ -16,6 +16,7 @@
 #   ./run-ast-dumps.sh              # master and the current branch
 #   ./run-ast-dumps.sh master       # one ref
 #   HEAP=3G ./run-ast-dumps.sh      # tighter heap cap on a smaller machine
+#   PROGRESS=30 ./run-ast-dumps.sh  # a progress line every 30 s (default 60; 0 = off)
 #
 # Used by MERGE.md §6 (reachability) and plan 0.92/D277 (apex-live scope).
 #
@@ -82,6 +83,10 @@ HEAP="${HEAP:-5G}"
 COMPACT="${COMPACT:--c40}"
 ALLOC="${ALLOC:-16m}"
 RTS_OPTS=(-M"$HEAP" "$COMPACT" -A"$ALLOC" -s)
+
+# While Agda runs, every PROGRESS seconds: how many modules of the entry's import
+# closure have an interface, and the module Agda last started. PROGRESS=0 turns it off.
+PROGRESS="${PROGRESS:-60}"
 # RTS_EXTRA is appended verbatim, for anything not covered above.
 read -r -a _rts_extra <<< "${RTS_EXTRA:-}"
 [ ${#_rts_extra[@]} -gt 0 ] && RTS_OPTS+=("${_rts_extra[@]}")
@@ -165,6 +170,50 @@ stage_ref() {
 
 # ------------------------------------------------------------------ running --
 
+# The project modules $entry_module imports, transitively, one path per line
+# without `.agda` (the stdlib is not counted: its interfaces live in $STDLIB).
+# Read off the import lines, so it needs no Agda; it agrees with agda-profile.py's
+# cone (807 modules for Once/Certified.agda on 2026-11-08).
+closure_of() {
+  python3 - "$1" "$2" <<'PY'
+import os, re, sys
+root, entry = sys.argv[1], sys.argv[2]
+imp = re.compile(r'^\s*(?:open\s+)?import\s+([^\s(;]+)', re.M)
+seen, todo = set(), [entry]
+while todo:
+    f = todo.pop()
+    if f in seen:
+        continue
+    seen.add(f)
+    src = open(os.path.join(root, f), encoding='utf-8').read()
+    src = re.sub(r'\{-.*?-\}', '', src, flags=re.S)
+    for m in imp.findall(src):
+        g = m.replace('.', '/') + '.agda'
+        if os.path.exists(os.path.join(root, g)):
+            todo.append(g)
+for f in sorted(seen):
+    print(f[:-len('.agda')])
+PY
+}
+
+# The ticker: runs beside Agda until killed. The interface directory is found,
+# not derived (the fork's --numeric-version is not the directory's name).
+progress_loop() {
+  local dir="$1" log="$2" list="$3" start="$4" t0 total n f vd cur
+  t0=$(date +%s)
+  total=$(wc -l < "$list")
+  [ "$total" -gt 0 ] || return 0
+  while sleep "$PROGRESS"; do
+    vd=$(ls -d "$dir"/_build/*/agda 2>/dev/null | head -1)
+    n=0
+    if [ -n "$vd" ]; then
+      while IFS= read -r f; do [ -f "$vd/$f.agdai" ] && n=$((n + 1)); done < "$list"
+    fi
+    cur=$(tail -c 20000 "$log" | grep -a "Checking" | tail -1 | sed 's/^ *Checking //;s/ *(.*//')
+    say "  progress: $n/$total modules ($((100 * n / total))%), +$((n - start)) in $(( ($(date +%s) - t0) / 60 )) min; last started ${cur:-?}"
+  done
+}
+
 # Type-check and dump. Agda writes one .agdai per module as it goes, so an
 # interrupted attempt still makes progress; retry as long as each attempt
 # advances, and give up once two consecutive attempts add nothing (that means a
@@ -173,12 +222,25 @@ run_ref() {
   local dir="$1" raw="$2" log="$3" libs="$4"
   local REF_LABEL="${5:-<ref>}"
   local entry="${6:-$ENTRY}" entry_module="${7:-$ENTRY_MODULE}"
-  local attempt=0 stalled=0 rc before after
+  local attempt=0 stalled=0 rc before after ticker="" list="$log.closure" vd n f
+
+  if [ "$PROGRESS" -gt 0 ]; then
+    closure_of "$dir" "$entry_module" > "$list" 2>/dev/null || : > "$list"
+  fi
 
   while :; do
     attempt=$((attempt + 1))
     before=$(find "$dir" -name '*.agdai' | wc -l)
     say "  attempt $attempt (interfaces: $before)"
+
+    if [ "$PROGRESS" -gt 0 ] && [ -s "$list" ]; then
+      vd=$(ls -d "$dir"/_build/*/agda 2>/dev/null | head -1); n=0
+      if [ -n "$vd" ]; then
+        while IFS= read -r f; do [ -f "$vd/$f.agdai" ] && n=$((n + 1)); done < "$list"
+      fi
+      say "  closure of $entry_module: $(wc -l < "$list") modules, $n with an interface"
+      progress_loop "$dir" "$log" "$list" "$n" & ticker=$!
+    fi
 
     ( cd "$dir" && unset AGDA_DIR && LC_ALL="$LOCALE" \
       "$AGDA" +RTS "${RTS_OPTS[@]}" -RTS \
@@ -186,6 +248,7 @@ run_ref() {
         --write-ast="$entry" --ast-file="$raw" \
         "$entry_module" ) >> "$log" 2>&1
     rc=$?
+    if [ -n "$ticker" ]; then kill "$ticker" 2>/dev/null; wait "$ticker" 2>/dev/null; ticker=""; fi
 
     after=$(find "$dir" -name '*.agdai' | wc -l)
     [ $rc -eq 0 ] && { say "  agda finished cleanly ($after interfaces)"; return 0; }
