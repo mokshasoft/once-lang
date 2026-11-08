@@ -219,3 +219,14 @@ in-place-events = refl
 -- and it means the same as the rebuild that frees and allocates
 in-place-sound : er (one-list 5) ≡ Agda.Builtin.Sigma.fst (Lᶜ rebuild-in-place (er (one-list 5)))
 in-place-sound = sound in-place-run
+
+------------------------------------------------------------------------
+-- 5. The lifetime of one block, by evaluation: the algebra closure of §3
+--    (block 2) is born, read once per layer, and dies once.
+------------------------------------------------------------------------
+
+closure-life : on 2 (trace-of-run closure-fold-run) ≡ born ∷ read ∷ read ∷ died ∷ []
+closure-life = refl
+
+closure-life-ok : Life dead (on 2 (trace-of-run closure-fold-run)) dead
+closure-life-ok = birth (use (use (death done)))

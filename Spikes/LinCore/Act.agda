@@ -34,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong�
 open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
 open import Data.Product using (_×_)
 open import Data.Unit using (⊤; tt)
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; z≤n)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤n+m)
 open import Data.Nat.Tactic.RingSolver using (solve-∀)
 open import Data.List using (List; []; _∷_; _++_; map)
@@ -284,3 +284,28 @@ word-server rs pre lent with loop-exchange rs pre lent
 ... | (ok , eq) = (ok , λ i → trans (sym (+0 _)) (trans (eq i) (+0 _)))
   where +0 : ∀ x → x + 0 ≡ x
         +0 = solve-∀
+
+------------------------------------------------------------------------
+-- ★ LIFETIMES, with the exit exception (the user's invariant, 2026-11-08).
+--
+-- A whole program here is a round from the empty heap. If it returns, every
+-- block it allocates is freed exactly once, read only in between. If it HALTS,
+-- every block's events are still lifetimes — none freed twice, none read dead —
+-- but the last lifetime of a block may be open: the block is live at the exit.
+------------------------------------------------------------------------
+
+private
+  empty₀ : Pre (λ _ → 0) 0 mone (λ _ → 0)
+  empty₀ = record { le1 = λ _ → z≤n ; above = λ _ _ → refl ; sub = λ _ → z≤n }
+
+lifetimesA : ∀ {f : ATm One One One} {n′ t} → RunA f mone mone 0 (ret mone n′) t
+           → ∀ i → Life dead (on i (memOf t)) dead
+lifetimesA {t = t} r i with exchangeA r empty₀ (λ i ())
+... | (ok , eq) = subst (λ x → Life dead (on i (memOf t)) (st x)) (trans (sym (+0 _)) (eq i))
+                        (life (memOf t) (λ _ → 0) i ok z≤n)
+  where +0 : ∀ x → x + 0 ≡ x
+        +0 = solve-∀
+
+lifetimes-exit : ∀ {B} {f : ATm One One B} {t} → RunA f mone mone 0 halted t
+               → ∀ i → Σ St (λ s → Life dead (on i (memOf t)) s)
+lifetimes-exit {t = t} r i = (_ , life (memOf t) (λ _ → 0) i (fst (exchangeA r empty₀ (λ i ()))) z≤n)
