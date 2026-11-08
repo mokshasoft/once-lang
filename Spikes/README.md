@@ -1,7 +1,8 @@
 # Spikes
 
 Small, self-contained proofs of concept that settle the SHAPE of a design before it moves into the
-compiler and its proof (`formal/`). A spike is cheap to change: it imports nothing outside `Spikes/`, it
+compiler and its proof (`formal/`). A spike is cheap to change: it imports nothing outside `Spikes/` but the
+standard library, it
 checks in seconds, and no gate or backstop reads it. Once its shape is settled, the design is recorded
 as a D-entry and migrated into `formal/`; the spike then stays only as long as its plan is open.
 

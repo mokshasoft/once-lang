@@ -5,8 +5,9 @@
 -- OCP-0009 · W0e/W0d — THE LINEAR CORE, OWNED.
 --
 -- The linearization line's object language, semantics and payoff theorem, in
--- one self-contained module that DEPENDS ON NOTHING.  No prelude import, no
--- `bootstrap/normalizer/**` (that is another POC), no `formal/Once/**`.
+-- one self-contained module that depends on no other POC: no
+-- `bootstrap/normalizer/**` (that is another POC), no `formal/Once/**`; since
+-- plan 0.146 it imports the standard library's basic types (§0).
 --
 -- ★ WHY THAT MATTERS, and why this module exists at all.  `NbEPLinRec` indexes
 -- `LTm` by the NORMALIZER POC's `Ty`, and `Dyn`/`Pass`/`QTT` go further,
@@ -57,72 +58,31 @@
 -- same bottom-up mistake one level down.
 --
 -- `--safe --guardedness`, no sized types (hard ban), zero postulates, zero
--- holes, zero imports.
+-- holes; imports: the standard library only.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe --guardedness #-}
+
+------------------------------------------------------------------------
+-- 0. PRELUDE.  The standard library's basic types (plan 0.146, Spikes/):
+--    plan-ref kept a local prelude so as not to couple to a PEER POC's; the
+--    stdlib is not one, `formal/` (where this core migrates) uses it, and
+--    the event semantics (`LinCore.Events`) needs its arithmetic and lists.
+--    Same names as before (`fst`/`snd`, `_+ℕ_`), so nothing below changed.
+------------------------------------------------------------------------
+
+open import Agda.Builtin.Equality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Relation.Nullary using (¬_)
+open import Data.Unit using (⊤; tt)
+open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
+open import Data.Product using (_×_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
+
 module LinCore.NbEPLinCore
   (Base : Set) (⟦_⟧b : Base → Set) where
-
-------------------------------------------------------------------------
--- 0. PRELUDE.  Local, because sharing a peer POC's prelude is how the
---    coupling starts.
-------------------------------------------------------------------------
-
-infix 4 _≡_
-data _≡_ {A : Set} (x : A) : A → Set where
-  refl : x ≡ x
-
-sym : ∀ {A : Set} {x y : A} → x ≡ y → y ≡ x
-sym refl = refl
-
-trans : ∀ {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
-trans refl q = q
-
-cong : ∀ {A B : Set} (f : A → B) {x y : A} → x ≡ y → f x ≡ f y
-cong f refl = refl
-
-cong₂ : ∀ {A B C : Set} (f : A → B → C) {x x' : A} {y y' : B} →
-        x ≡ x' → y ≡ y' → f x y ≡ f x' y'
-cong₂ f refl refl = refl
-
-data ⊥ : Set where
-
-⊥-elim : ∀ {A : Set} → ⊥ → A
-⊥-elim ()
-
-infix 3 ¬_
-¬_ : Set → Set
-¬ P = P → ⊥
-
-record ⊤ : Set where
-  constructor tt
-
-infixr 4 _,_
-record Σ (A : Set) (B : A → Set) : Set where
-  constructor _,_
-  field
-    fst : A
-    snd : B fst
-open Σ
-
-infixr 2 _×_
-_×_ : Set → Set → Set
-A × B = Σ A (λ _ → B)
-
-infixr 1 _⊎_
-data _⊎_ (A B : Set) : Set where
-  inj₁ : A → A ⊎ B
-  inj₂ : B → A ⊎ B
-
-data ℕ : Set where
-  zero : ℕ
-  suc  : ℕ → ℕ
-
-infixl 6 _+ℕ_
-_+ℕ_ : ℕ → ℕ → ℕ
-zero  +ℕ n = n
-suc m +ℕ n = suc (m +ℕ n)
 
 ------------------------------------------------------------------------
 -- 1. POLYNOMIAL FUNCTOR CODES.
