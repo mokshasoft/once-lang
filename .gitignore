@@ -20,8 +20,17 @@ formal/_build/
 
 # Instructions
 .do-not-commit/
-compiler/qemu_*.core
-qemu_*.core
+
+# Core dumps, in any directory (qemu's qemu_<prog>_<date>_<pid>.core, the kernel's
+# core / core.<pid>, valgrind's vgcore.<pid>). Never committed: one sat tracked in
+# formal/ from 2026-07-01 to 2026-11-08, after the 2026-08-11 cleanup missed it, and
+# an ignore rule does not cover a file already tracked.
+*.core
+core
+core.[0-9]*
+vgcore.*
+# ... but the docs directories named core stay
+!core/
 
 # Per-branch working notes — never tracked (see MERGE.md step 5)
 HANDOFF.md
