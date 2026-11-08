@@ -1286,3 +1286,84 @@ noleak : ∀ {f : LTm One One} {n′ t} → Run f mone 0 mone n′ t
 noleak run with exchange run {λ _ → 0} {λ _ → 0}
                   record { le1 = λ _ → z≤n ; above = λ _ _ → refl ; sub = λ _ → z≤n }
 ... | (ok , eq) = (ok , λ i → trans (sym (+0 _)) (eq i))
+
+------------------------------------------------------------------------
+-- 6. ★ LIFETIMES: each block allocated is freed exactly once (the user's
+--    invariant, 2026-11-08).
+--
+-- Stated per block, on the trace itself: the events on a block `i` are
+-- lifetimes, one after another — `alloc i` (born), any number of reads
+-- (`peek i`), exactly one `free i` (died) — and nothing on `i` outside them.
+-- `Life dead k dead` is the language (born read* died)*. Double free, free of
+-- a stranger and read of a dead cell are its consequences.
+--
+-- It is not proved rule by rule. The rules are proved with COUNTS (`OK`, a
+-- block's count checked before every event; `exchange`), because counts add
+-- up and so compose under `∘l`, `⊗l` and the frame. `life` turns legal counts
+-- into lifetimes once, for every trace, by induction on the trace.
+------------------------------------------------------------------------
+
+data Kind : Set where
+  born read died : Kind
+
+-- the events on block `i`, in order
+on : Id → Trace → List Kind
+on i []            = []
+on i (alloc j ∷ t) with j ≟ i
+... | yes _ = born ∷ on i t
+... | no  _ = on i t
+on i (free j ∷ t)  with j ≟ i
+... | yes _ = died ∷ on i t
+... | no  _ = on i t
+on i (peek j ∷ t)  with j ≟ i
+... | yes _ = read ∷ on i t
+... | no  _ = on i t
+
+data St : Set where
+  dead live : St
+
+-- `Life s k s′`: from state `s`, the events `k` are lifetimes, ending in `s′`
+data Life : St → List Kind → St → Set where
+  done  : ∀ {s} → Life s [] s
+  birth : ∀ {k s} → Life live k s → Life dead (born ∷ k) s
+  use   : ∀ {k s} → Life live k s → Life live (read ∷ k) s
+  death : ∀ {k s} → Life dead k s → Life live (died ∷ k) s
+
+st : ℕ → St
+st zero    = dead
+st (suc _) = live
+
+-- legal counts are lifetimes, on every trace
+life : ∀ t h i → OK t h → h i ≤ 1 → Life (st (h i)) (on i t) (st (play t h i))
+life []            h i _        _  = done
+life (alloc j ∷ t) h i (p , ok) le with j ≟ i
+... | yes refl =
+  let h′ = step (alloc j) h ; z = st (play t h′ j) ; e = trans (cong (_+ δ j j) p) (δ-same j) in
+  subst (λ x → Life x (born ∷ on j t) z) (cong st (sym p))
+        (birth (subst (λ x → Life (st x) (on j t) z) e
+                      (life t h′ j ok (subst (_≤ 1) (sym e) ≤-refl))))
+... | no ne =
+  let h′ = step (alloc j) h ; z = st (play t h′ i) ; e = trans (cong (h i +_) (δ-≢ ne)) (+0 (h i)) in
+  subst (λ x → Life (st x) (on i t) z) e (life t h′ i ok (subst (_≤ 1) (sym e) le))
+life (free j ∷ t)  h i (p , ok) le with j ≟ i
+... | yes refl =
+  let h′ = step (free j) h ; z = st (play t h′ j) ; e = cong₂ _∸_ p (δ-same j) in
+  subst (λ x → Life x (died ∷ on j t) z) (cong st (sym p))
+        (death (subst (λ x → Life (st x) (on j t) z) e
+                      (life t h′ j ok (subst (_≤ 1) (sym e) z≤n))))
+... | no ne =
+  let h′ = step (free j) h ; z = st (play t h′ i) ; e = cong (h i ∸_) (δ-≢ ne) in
+  subst (λ x → Life (st x) (on i t) z) e (life t h′ i ok (subst (_≤ 1) (sym e) le))
+life (peek j ∷ t)  h i (p , ok) le with j ≟ i
+... | yes refl =
+  let z = st (play t h j) in
+  subst (λ x → Life x (read ∷ on j t) z) (cong st (sym p))
+        (use (subst (λ x → Life x (on j t) z) (cong st p) (life t h j ok le)))
+... | no _ = life t h i ok le
+
+-- ★ the invariant, for a whole program that returns: every block it
+-- allocates is freed exactly once, read only in between, and none is open at
+-- the end
+lifetimes : ∀ {f : LTm One One} {n′ t} → Run f mone 0 mone n′ t → ∀ i → Life dead (on i t) dead
+lifetimes {t = t} run i with noleak run
+... | (ok , empty) = subst (λ x → Life dead (on i t) (st x)) (empty i) (life t (λ _ → 0) i ok z≤n)

@@ -21950,14 +21950,24 @@ once). **Starts from**: `NbEPLinCore` (OCP-0009, `origin/plan-ref`).
   still applies; the compiler picks.
 
 ### What is proved (the invariants, D400 and the user's of 2026-11-08)
+* **The invariant: each block allocated is freed exactly once** (`Events.lifetimes`; the user,
+  2026-11-08). Per block `i`, on the trace: the events on `i` are lifetimes one after another — `alloc i`,
+  any number of reads of `i`, exactly one `free i` — and none outside them (`Life dead (on i t) dead`, the
+  language (alloc read* free)*). No double free, no free of a stranger and no read of a dead cell are its
+  consequences, not separate properties. With the exit exception (`Act.lifetimes-exit`): a program that
+  halts has the same lifetimes, except that a block's last one may be open (live at the exit).
+* **How it is proved: counts, then lifetimes.** The rules are proved with a count per block, checked
+  before every event (`OK`: an `alloc` needs 0, a `free` or a read needs 1), because counts add up and so
+  compose under sequencing, pairs and the frame. A pairing of allocs with frees stated on trace positions
+  would need interleaving arguments in every rule. One lemma about traces, nothing about the core
+  (`Events.life`, by induction on the trace), turns legal counts into lifetimes.
 * `exchange` (every generator, borrows, many-use closures and reuse included): if the heap holds a run's
-  input cells beside a frame (whatever else is live), the run's events are legal — every `alloc` of a
-  dead id, every `free` and every `peek` of a live one: no double free, no free of a stranger, no read of
-  a dead cell — and afterwards the heap holds the OUTPUT's cells instead of the input's, the frame
-  untouched. The frame is the frame rule; a lent value sits in it, so "the reader neither frees nor
-  copies it" is a theorem, not a check.
-* `noleak`: a whole program that returns frees every cell it allocated, exactly once, and nothing else —
-  the shape of `Once.Implementation.NoLeak` (`Run.LeakFree`), here a theorem of the core's structure.
+  input cells beside a frame (whatever else is live), the run's events are legal (`OK`), and afterwards
+  the heap holds the OUTPUT's cells instead of the input's, the frame untouched. The frame is the frame
+  rule; a lent value sits in it, so "the reader neither frees nor copies it" is a theorem, not a check.
+* `noleak`: a whole program that returns ends with the empty heap — with `OK`, the two hypotheses of
+  `life`; the shape of `Once.Implementation.NoLeak` (`Run.LeakFree`), here a theorem of the core's
+  structure.
 * `exchangeA`: the same for a round; a round that HALTS claims only legality — what is live at an exit
   stays (the user's exception; `LeakFree`'s `StoppedAt`).
 * `loop-exchange`: after any number of rounds, the heap is the frame plus the current state's cells. A
@@ -21967,7 +21977,8 @@ once). **Starts from**: `NbEPLinCore` (OCP-0009, `origin/plan-ref`).
   rounds); a server whose state is a list rebuilt each round (events `free 0, free 1, alloc 2, alloc 3`,
   and the heap afterwards holds exactly the new list); D131's fold with a lent algebra closure (the
   closure allocated once, `peek`ed once per layer, freed once, never copied); and the same list round in
-  place (no event at all).
+  place (no event at all). And one block's lifetime by evaluation (`closure-life`): the closure's block
+  is `alloc, read, read, free`.
 
 ### Consequences
 * The migration (plan 0.146 §4 B) compiles `Once.IR` through this core: `⟨f,g⟩` via `dup` or, when one
