@@ -70,10 +70,10 @@ riscv64:
 
 # seL4 examples (requires nix)
 # (numbers-check: every seL4 number in the Strata against the pinned
-# kernel's headers; echo-test: boots the image under QEMU and fails unless
-# the Once programs printed the expected lines; see seL4/README.md)
+# kernel's headers; echo-test, caps-test: boot the image under QEMU and fail
+# unless the Once programs printed the expected lines; see seL4/README.md)
 seL4:
-	cd $(EXAMPLES_DIR)/seL4 && nix build .#numbers-check .#echo-test --no-link -L
+	cd $(EXAMPLES_DIR)/seL4 && nix build .#numbers-check .#echo-test .#caps-test --no-link -L
 	@echo "seL4: PASS"
 
 clean:

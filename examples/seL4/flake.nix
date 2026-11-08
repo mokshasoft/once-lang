@@ -164,15 +164,52 @@
           cp console.txt $out/
         '';
 
+        # Plan 0.127 D.1: a root task alone runs every CNode and Notification
+        # operation and prints one digit (the seL4_Error) per step
+        caps-image = pkgs.runCommand "seL4-once-caps-image" {
+          nativeBuildInputs = [ onceCompiler pkgs.binutils pkgs.bash ];
+        } ''
+          mkdir -p $out
+          bash ${./link-image.sh} once ${strata} $out/caps-image ${./Caps/Root.once}
+        '';
+
+        # Two steps fail on purpose, and the debug kernel reports each failure
+        # on the console in the middle of the program's line (a whole
+        # `<<seL4(CPU 0) ...>>` message, colours and newline included): the
+        # check removes those messages and reads the line back
+        caps-test = pkgs.runCommand "seL4-once-caps-test" {
+          nativeBuildInputs = [ pkgs.qemu pkgs.gnugrep pkgs.gnused pkgs.coreutils ];
+        } ''
+          serial=$PWD/serial.txt
+          timeout 60 qemu-system-x86_64 ${qemuFlags} -serial file:$serial \
+            -kernel ${seL4-kernel-x86_64}/kernel32.elf \
+            -initrd ${caps-image}/caps-image &
+          qemu=$!
+          for _ in $(seq 120); do
+            grep -q 'Once: returned' $serial 2>/dev/null && break
+            sleep 0.5
+          done
+          sleep 1
+          kill $qemu 2>/dev/null || true
+          tr -d '\r' < $serial > console.txt
+          cat console.txt
+          sed -E -z 's/\x1b\[[0-9;]*m//g; s/<<seL4[^\n]*>>\n//g' console.txt > program.txt
+          grep -qx '00500580060' program.txt
+          grep -qx 'Once: returned' program.txt
+          mkdir -p $out
+          cp console.txt program.txt $out/
+        '';
+
       in {
         packages = {
-          inherit seL4-kernel-x86_64 echo-image echo-test exhausted-image exhausted-test numbers-check simulate;
+          inherit seL4-kernel-x86_64 echo-image echo-test exhausted-image exhausted-test caps-image caps-test numbers-check simulate;
           default = echo-test;
         };
 
         checks = {
           echo = echo-test;
           exhausted = exhausted-test;
+          caps = caps-test;
           numbers = numbers-check;
         };
 

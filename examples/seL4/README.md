@@ -11,8 +11,9 @@ assembly of the seL4 Interpretations and Host ([plan 0.127](../../plans/0.127-se
 ```sh
 nix build .#echo-test -L      # build compiler, kernel and image; boot under QEMU; check the output
 nix build .#exhausted-test -L # a root task that allocates without bound ends `exhausted`
+nix build .#caps-test -L      # a root task runs every CNode and Notification operation
 nix build .#numbers-check -L  # check every seL4 number in the Strata against the kernel
-nix flake check               # all three
+nix flake check               # all four
 nix run .#simulate           # boot it interactively (Ctrl-A X quits QEMU)
 ```
 
@@ -69,15 +70,13 @@ The programs share the root task's address space and CSpace for now; giving each
   pinned kernel's own headers and fails on any difference. (It found `seL4_SlotBits` and the read
   and write rights wrong, besides the syscall numbers.)
 - `flake.nix` — the kernel (`seL4-kernel-x86_64`: pc99, debug, printing, seL4's own simulation
-  settings), the images (`echo-image`, `exhausted-image`), the checks (`echo-test`,
-  `exhausted-test`, `numbers-check`) and `simulate`.
+  settings), the images (`echo-image`, `exhausted-image`, `caps-image`), the checks (`echo-test`,
+  `exhausted-test`, `caps-test`, `numbers-check`) and `simulate`.
 
 ## Not yet
 
 - Other architectures: riscv64 and x86_32 (plan 0.127 C); arm64 once there is an ARM64 backend.
-- `CNode` and `Notification` are number-checked but not yet run: `Caps/Root.once` tests them, but it
-  ran out of its old 64 KiB heap before it started. Running out is now detected (`exhausted`), and
-  the region is 1 MiB; the test is not yet wired into the flake (plan 0.127). Nothing reclaims the
-  heap yet (plan 0.123 Part B).
+- Reclaiming the heap: nothing does yet (plan 0.146); a program that outruns its 1 MiB region ends
+  `exhausted`.
 - Isolation between the programs (own CNode, own VSpace).
 - Message lengths beyond the four register words (needs an IPC buffer per thread).
