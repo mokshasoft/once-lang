@@ -1,0 +1,41 @@
+# ======================================================================
+# seL4 Debug Output - x86_32 Implementation
+# ======================================================================
+#
+# seL4_DebugPutChar is syscall SysDebugPutChar (debug kernel) with the
+# character in %ebx, issued as a send-receive. The syscall convention is in
+# Host.x86_32.
+#
+# SigOp ABI: the argument in %ecx (a tuple is one flat block of words,
+# D381), the answer in %eax; every other register is preserved, %esi
+# (Once's heap pointer, and seL4's message-info register) too.
+#
+# ======================================================================
+
+# seL4 numbers
+.equ SysDebugPutChar, -9
+# end seL4 numbers
+
+.macro SYSCALL_SEL4 number
+    movl    $\number, %eax
+    movl    %esp, %ecx
+    movl    $9f, %edx
+9:  sysenter
+.endm
+
+.text
+.align 16
+
+.global putChar
+.type putChar, @function
+putChar:
+    pushal
+    movzbl  %cl, %ebx
+    xorl    %esi, %esi
+    xorl    %edi, %edi
+    xorl    %ebp, %ebp
+    SYSCALL_SEL4 SysDebugPutChar
+    popal
+    xorl    %eax, %eax
+    ret
+.size putChar, .-putChar

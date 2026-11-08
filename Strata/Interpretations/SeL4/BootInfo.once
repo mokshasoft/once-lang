@@ -35,6 +35,11 @@ signature getBootInfo : Unit -> Int
 -- Returns: Pointer to IPC buffer
 signature getIPCBuffer : Unit -> Int
 
+-- | The bits of a machine word
+--
+-- A slot of the root CNode is addressed with this depth.
+signature wordBits : Unit -> Int
+
 ------------------------------------------------------------------------
 -- BootInfo Field Access
 ------------------------------------------------------------------------

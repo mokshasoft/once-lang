@@ -1,6 +1,6 @@
 # seL4 Echo Server Example
 
-Once programs running on the seL4 microkernel (x86_64, under QEMU): a root task, an echo server and
+Once programs running on the seL4 microkernel (x86_64, x86_32 and riscv64, under QEMU): a root task, an echo server and
 a client, all written in Once. The client calls the server over an seL4 endpoint with the Ints 65 to
 90 and prints each answer; the server answers with what it received. No C runs in this path:
 the kernel starts the root task, and everything after that is Once code and the thin per-arch
@@ -9,13 +9,16 @@ assembly of the seL4 Interpretations and Host ([plan 0.127](../../plans/0.127-se
 ## Run it
 
 ```sh
-nix build .#echo-test -L      # build compiler, kernel and image; boot under QEMU; check the output
-nix build .#exhausted-test -L # a root task that allocates without bound ends `exhausted`
-nix build .#caps-test -L      # a root task runs every CNode and Notification operation
-nix build .#numbers-check -L  # check every seL4 number in the Strata against the kernel
-nix flake check               # all four
-nix run .#simulate           # boot it interactively (Ctrl-A X quits QEMU)
+nix build .#echo-test-x86_64 -L      # build compiler, kernel and image; boot under QEMU; check the output
+nix build .#exhausted-test-x86_64 -L # a root task that allocates without bound faults
+nix build .#monitored-test-x86_64 -L # a monitor receives a program's out-of-memory fault
+nix build .#caps-test-x86_64 -L      # a root task runs every CNode and Notification operation
+nix build .#numbers-check-x86_64 -L  # check every seL4 number in the Strata against the kernel
+nix build .#all -L                   # all five, on every architecture
+nix run .#simulate-x86_64            # boot the echo interactively (Ctrl-A X quits QEMU)
 ```
+
+Each name exists for `x86_64`, `x86_32` and `riscv64`.
 
 Everything is built by Nix: the Once compiler from this repository, the pinned seL4 kernel, and the
 image. `echo-test` passes when the console shows
@@ -49,34 +52,37 @@ region the Host keeps for it; that points the heap at the region's bottom and ju
 
 Each program's region is 1 MiB, its cells growing up from the bottom and its stack down from the
 top (plan 0.123 C.5). When the two would meet, a room check in the program calls the Host's
-`once_exhausted`, which prints `Once: exhausted` and suspends the thread (`Exhausted/Root.once`,
-`exhausted-test`).
+`once_exhausted`, and the thread faults, the usual way for an seL4 thread that cannot go on: the
+kernel sends a fault message to the endpoint named in the thread's TCB, and the thread waits for its
+supervisor. `Exhausted/Monitor.once` is such a supervisor (`monitored-test`). A thread with no fault
+endpoint, like the root task, is reported on the kernel's console and stopped (`exhausted-test`).
 
 The programs share the root task's address space and CSpace for now; giving each its own CNode
 (and later VSpace) is the step towards isolation.
 
 ## The pieces
 
-- `Strata/Hosts/SeL4/Host.x86_64` — the seL4 Host: the root task's entry (its region's stack and
-  heap, the bootinfo pointer saved, then the compiler's `once_main`), the program table, regions and
-  entry, and `leave` and `exhausted` (print a line, suspend the thread). `Host.x86_64.ld` names the
-  entry for the link.
+- `Strata/Hosts/SeL4/Host.<arch>` — the seL4 Host: the root task's entry `_start` (its region's
+  stack and heap, the bootinfo pointer saved, then the compiler's `once_main`), the program table,
+  regions and entry, `leave` (print a line, suspend the thread) and `exhausted` (fault).
 - `Strata/Interpretations/SeL4/` — `BootInfo`, `Untyped`, `TCB`, `CNode`, `IPC`, `Notification`,
-  `Debug`, `Program`, x86_64 only. The Host holds their shared routines (reading a tuple argument,
-  building a tuple answer, an object invocation).
+  `Debug`, `Program`, one file per architecture. The Host holds their shared routines (reading a
+  tuple argument, building a tuple answer, an object invocation).
 - `check-numbers.sh` — every seL4 number (syscall numbers, invocation message infos, object types,
   struct offsets, capability slots, rights bits) sits in a `seL4 numbers` block of its file, named
   by the kernel's name or with the C expression it must equal; the check compiles them against the
   pinned kernel's own headers and fails on any difference. (It found `seL4_SlotBits` and the read
   and write rights wrong, besides the syscall numbers.)
-- `flake.nix` — the kernel (`seL4-kernel-x86_64`: pc99, debug, printing, seL4's own simulation
-  settings), the images (`echo-image`, `exhausted-image`, `caps-image`), the checks (`echo-test`,
-  `exhausted-test`, `caps-test`, `numbers-check`) and `simulate`.
+- `flake.nix` — one row per architecture (its kernel, its linking tools, how QEMU boots an image);
+  the examples, the checks and `simulate` are made for every row.
+- `riscv64-boot/` — on riscv64 the kernel and the root task boot together inside seL4's elfloader,
+  which QEMU's OpenSBI starts; this CMake project builds the elfloader around a Once image.
 
 ## Not yet
 
-- Other architectures: riscv64 and x86_32 (plan 0.127 C); arm64 once there is an ARM64 backend.
-- Reclaiming the heap: nothing does yet (plan 0.146); a program that outruns its 1 MiB region ends
-  `exhausted`.
-- Isolation between the programs (own CNode, own VSpace).
-- Message lengths beyond the four register words (needs an IPC buffer per thread).
+- Reclaiming the heap: nothing does yet (plan 0.146); a program that outruns its 1 MiB region
+  faults.
+- Isolation between the programs (own CNode, own VSpace) and IPC buffers for started programs
+  ([plan 0.148](../../plans/0.148-sel4-isolation-and-ipc-buffers.md)). Until they have a buffer, they
+  send and receive only the register words: four on x86_64 and riscv64, two on x86_32. The root task
+  has a buffer and sends all four words of `seL4_Send` and `seL4_Call` on every architecture.

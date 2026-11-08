@@ -19,6 +19,9 @@
 
 # seL4 numbers
 .equ RETYPE_INFO, 0x1086            # = MSG_INFO(UntypedRetype, 0, 1, 6)
+.equ NOTIFICATION_BITS, 5           # = seL4_NotificationBits
+.equ TCB_BITS, 11                   # = seL4_TCBBits
+.equ SLOT_BITS, 5                   # = seL4_SlotBits
 # end seL4 numbers
 
 # Frame: the arguments, the message words, the extra caps
@@ -114,3 +117,22 @@
 # Words: type, sizeBits, nodeIndex, nodeDepth, nodeOffset, numObjects;
 # cap: root.
 SEL4_INVOCATION seL4_Untyped_Retype, 8, RETYPE_INFO, w0=1, w1=2, w2=4, w3=5, w4=6, w5=7, c0=3
+
+# The object sizes : Unit -> Int
+.global seL4_NotificationBits
+.type seL4_NotificationBits, @function
+seL4_NotificationBits:
+    movq    $NOTIFICATION_BITS, %rax
+    ret
+
+.global seL4_TCBBits
+.type seL4_TCBBits, @function
+seL4_TCBBits:
+    movq    $TCB_BITS, %rax
+    ret
+
+.global seL4_SlotBits
+.type seL4_SlotBits, @function
+seL4_SlotBits:
+    movq    $SLOT_BITS, %rax
+    ret

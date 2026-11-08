@@ -1,12 +1,14 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- Plan 0.123 A.5 on seL4: a root task whose live data grows without bound (a
+-- Plan 0.123 A.5 on seL4: a program whose live data grows without bound (a
 -- list that gains a cell every round, all of it kept) runs out of its region.
 -- A room check sees it before the allocation that would not fit and calls the
--- seL4 Host's `once_exhausted`, which prints `Once: exhausted` on the debug
--- console and suspends the thread. Never a write past the region into the
--- stack (before plan 0.123 the heap ran into the stack silently).
+-- seL4 Host's `once_exhausted`, which faults. Never a write past the region
+-- into the stack (before plan 0.123 the heap ran into the stack silently).
+--
+-- As the root task it has no fault endpoint: the kernel reports the fault and
+-- stops the thread. Started by Monitor.once, the fault goes to the monitor.
 
 grow : Mu (K Unit + K Int * Id) -> Void + Mu (K Unit + K Int * Id)
 grow l = inr (In (inr (1, l)))

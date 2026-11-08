@@ -7,8 +7,10 @@
 #   check-numbers.sh KERNEL_SRC KERNEL_BUILD ARCH FILE...
 #
 # KERNEL_SRC is the kernel's source; KERNEL_BUILD the kernel package (its
-# `autoconf/`, `gen_config/`, `gen_headers/`); ARCH is x86_64 (riscv64 to
-# come). Each FILE keeps its seL4 numbers in one block:
+# `autoconf/`, `gen_config/`, `gen_headers/`); ARCH is x86_64, x86_32 or
+# riscv64, and `cc` must have ARCH's word size (the probe only reads the
+# headers' constants and layouts, so riscv64 is compiled by the host's cc).
+# Each FILE keeps its seL4 numbers in one block:
 #
 #   assembly:   # seL4 numbers               Once:   -- seL4 numbers
 #               .equ NAME, VALUE [# = EXPR]          NAME = VALUE [-- = EXPR]
@@ -30,7 +32,9 @@ fi
 SRC=$1; BUILD=$2; ARCH=$3; shift 3
 
 case "$ARCH" in
-    x86_64) ARCH_INC=x86; PLAT=pc99 ;;
+    x86_64)  ARCH_INC=x86;   SEL4_ARCH=x86_64;  MODE=64; PLAT=pc99 ;;
+    x86_32)  ARCH_INC=x86;   SEL4_ARCH=ia32;    MODE=32; PLAT=pc99 ;;
+    riscv64) ARCH_INC=riscv; SEL4_ARCH=riscv64; MODE=64; PLAT=qemu-riscv-virt ;;
     *) echo "check-numbers: no header set for $ARCH" >&2; exit 2 ;;
 esac
 
@@ -90,6 +94,7 @@ typedef unsigned long word_t;
 #include <sel4/sel4_arch/objecttype.h>
 #include <sel4/arch/objecttype.h>
 #include <sel4/sel4_arch/types.h>
+#include <sel4/arch/types.h>
 #include <sel4/sel4_arch/constants.h>
 #include <sel4/errors.h>
 #include <api/invocation.h>
@@ -97,7 +102,7 @@ typedef unsigned long word_t;
 #include <arch/api/syscall.h>
 
 /* The rights word with only the bit the kernel's getter reads */
-static long rights_bit(uint64_t (*get)(seL4_CapRights_t)) {
+static long rights_bit(__typeof__(&seL4_CapRights_get_capAllowRead) get) {
     for (int k = 0; k < 64; k++) {
         seL4_CapRights_t r = {{1ull << k}};
         if (get(r)) return 1L << k;
@@ -127,7 +132,7 @@ EOF
 # comes after the C library's, which it would otherwise shadow
 cc -I"$BUILD/autoconf" -I"$BUILD/gen_config" -I"$BUILD/gen_headers" -I"$BUILD/generated" \
    -I"$SRC/libsel4/include" -I"$SRC/libsel4/arch_include/$ARCH_INC" \
-   -I"$SRC/libsel4/sel4_arch_include/$ARCH" -I"$SRC/libsel4/mode_include/64" \
+   -I"$SRC/libsel4/sel4_arch_include/$SEL4_ARCH" -I"$SRC/libsel4/mode_include/$MODE" \
    -I"$SRC/libsel4/sel4_plat_include/$PLAT" -idirafter "$SRC/include" \
    "$WORK/probe.c" -o "$WORK/probe"
 "$WORK/probe"

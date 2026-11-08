@@ -79,9 +79,9 @@ digit e = 48 + e
 check : Act Int Unit
 check = compose putChar@D digit
 
--- A slot of the root CNode (cap 2) is addressed with the word's 64 bits
-depth : Int
-depth = 64
+-- A slot of the root CNode (cap 2) is addressed with all of the word's bits
+depth : Unit -> Int
+depth _ = wordBits@B unit
 
 -- One notification into slot free
 retypeArgs : Int * Int -> ((((((Int * Int) * Int) * Int) * Int) * Int) * Int) * Int
@@ -89,13 +89,13 @@ retypeArgs s = (((((((fst s, 3), 0), 2), 0), 0), snd s), 1)
 
 -- (free + dest, free + src) as a copy's arguments, all rights
 copyArgs : Int -> Int -> Int * Int -> (((((Int * Int) * Int) * Int) * Int) * Int) * Int
-copyArgs d c s = ((((((2, snd s + d), depth), 2), snd s + c), depth), 15)
+copyArgs d c s = ((((((2, snd s + d), depth unit), 2), snd s + c), depth unit), 15)
 
 mintArgs : Int * Int -> ((((((Int * Int) * Int) * Int) * Int) * Int) * Int) * Int
 mintArgs s = (copyArgs 1 0 s, 5)
 
 slotArgs : Int -> Int * Int -> (Int * Int) * Int
-slotArgs c s = ((2, snd s + c), depth)
+slotArgs c s = ((2, snd s + c), depth unit)
 
 slot : Int -> Int * Int -> Int
 slot c s = snd s + c

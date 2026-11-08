@@ -128,9 +128,6 @@ seL4_SysNBRecv = -8  -- = SysNBRecv
 -- Returns packed MessageInfo word
 signature mkMessageInfo : Act (Int * Int * Int * Int) Int
 
--- | Extract label from MessageInfo (bits 12-63 on 64-bit)
-signature msgLabel : Act Int Int
-
 -- | Extract message length from MessageInfo (bits 0-6)
 signature msgLength : Act Int Int
 

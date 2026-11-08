@@ -1,0 +1,217 @@
+# ======================================================================
+# seL4 IPC Primitives - riscv64 Implementation
+# ======================================================================
+#
+# The syscall convention is in Host.riscv64. Messages are the four register
+# words only: no IPC buffer is needed.
+#
+# SigOp ABI: the argument in t0 (Input1; a tuple is one flat block of
+# words, D381), the answer in a0; every other register is preserved.
+#
+# ======================================================================
+
+# seL4 numbers
+.equ SysCall, -1
+.equ SysReplyRecv, -2
+.equ SysSend, -3
+.equ SysNBSend, -4
+.equ SysRecv, -5
+.equ SysReply, -6
+.equ SysYield, -7
+.equ SysNBRecv, -8
+.equ MSG_LABEL_SHIFT, 12            # = __builtin_ctzl(MSG_INFO(1, 0, 0, 0))
+# end seL4 numbers
+
+# Frame: the arguments, the results
+.equ ARGS,   0
+.equ RES,    56
+.equ FRAME,  112
+
+.macro SAVE_ALL
+    addi    sp, sp, -128
+    sd      ra, 0(sp)
+    sd      a1, 8(sp)
+    sd      a2, 16(sp)
+    sd      a3, 24(sp)
+    sd      a4, 32(sp)
+    sd      a5, 40(sp)
+    sd      a6, 48(sp)
+    sd      a7, 56(sp)
+    sd      t0, 64(sp)
+    sd      t1, 72(sp)
+    sd      t2, 80(sp)
+    sd      t3, 88(sp)
+    sd      t4, 96(sp)
+    sd      t5, 104(sp)
+    sd      t6, 112(sp)
+.endm
+
+.macro RESTORE_ALL
+    ld      ra, 0(sp)
+    ld      a1, 8(sp)
+    ld      a2, 16(sp)
+    ld      a3, 24(sp)
+    ld      a4, 32(sp)
+    ld      a5, 40(sp)
+    ld      a6, 48(sp)
+    ld      a7, 56(sp)
+    ld      t0, 64(sp)
+    ld      t1, 72(sp)
+    ld      t2, 80(sp)
+    ld      t3, 88(sp)
+    ld      t4, 96(sp)
+    ld      t5, 104(sp)
+    ld      t6, 112(sp)
+    addi    sp, sp, 128
+.endm
+
+.macro ENTER
+    SAVE_ALL
+    addi    sp, sp, -FRAME
+.endm
+
+.macro LEAVE_UNIT
+    addi    sp, sp, FRAME
+    RESTORE_ALL
+    li      a0, 0
+    ret
+.endm
+
+.macro SYSCALL_SEL4 number
+    li      a7, \number
+    ecall
+.endm
+
+.macro READ_ARG n
+    mv      a0, t0
+    addi    a1, sp, ARGS
+    li      a2, \n
+    call    once_sel4_copy_arg
+.endm
+
+# Message words 0-3 from ARGS slots a..a+3
+.macro LOAD_MRS a
+    ld      a2, (ARGS + 8 * \a)(sp)
+    ld      a3, (ARGS + 8 * (\a + 1))(sp)
+    ld      a4, (ARGS + 8 * (\a + 2))(sp)
+    ld      a5, (ARGS + 8 * (\a + 3))(sp)
+.endm
+
+# Message words 0-3 to RES slots r..r+3
+.macro STORE_MRS r
+    sd      a2, (RES + 8 * \r)(sp)
+    sd      a3, (RES + 8 * (\r + 1))(sp)
+    sd      a4, (RES + 8 * (\r + 2))(sp)
+    sd      a5, (RES + 8 * (\r + 3))(sp)
+.endm
+
+# Answer the n results in RES as a tuple at the heap pointer s2
+.macro LEAVE_TUPLE n
+    addi    a1, sp, RES
+    li      a2, \n
+    call    once_sel4_answer
+    addi    sp, sp, FRAME
+    RESTORE_ALL
+    ret
+.endm
+
+.text
+.balign 4
+
+# seL4_Yield : Unit -> Unit
+.global seL4_Yield
+.type seL4_Yield, @function
+seL4_Yield:
+    ENTER
+    SYSCALL_SEL4 SysYield
+    LEAVE_UNIT
+.size seL4_Yield, .-seL4_Yield
+
+# seL4_Send / seL4_NBSend : (cap, msgInfo, mr0, mr1, mr2, mr3) -> Unit
+.macro SEND_OP name, number
+.global \name
+.type \name, @function
+\name:
+    ENTER
+    READ_ARG 6
+    ld      a0, (ARGS + 0)(sp)
+    ld      a1, (ARGS + 8)(sp)
+    LOAD_MRS 2
+    SYSCALL_SEL4 \number
+    LEAVE_UNIT
+.size \name, .-\name
+.endm
+
+SEND_OP seL4_Send, SysSend
+SEND_OP seL4_NBSend, SysNBSend
+
+# seL4_Recv / seL4_NBRecv : (src, reply) -> (badge, msgInfo, mr0..mr3)
+.macro RECV_OP name, number
+.global \name
+.type \name, @function
+\name:
+    ENTER
+    READ_ARG 2
+    ld      a0, (ARGS + 0)(sp)
+    SYSCALL_SEL4 \number
+    sd      a0, (RES + 0)(sp)
+    sd      a1, (RES + 8)(sp)
+    STORE_MRS 2
+    LEAVE_TUPLE 6
+.size \name, .-\name
+.endm
+
+RECV_OP seL4_Recv, SysRecv
+RECV_OP seL4_NBRecv, SysNBRecv
+
+# seL4_Call : (cap, msgInfo, mr0, mr1, mr2, mr3) -> (msgInfo, mr0..mr3)
+.global seL4_Call
+.type seL4_Call, @function
+seL4_Call:
+    ENTER
+    READ_ARG 6
+    ld      a0, (ARGS + 0)(sp)
+    ld      a1, (ARGS + 8)(sp)
+    LOAD_MRS 2
+    SYSCALL_SEL4 SysCall
+    sd      a1, (RES + 0)(sp)
+    STORE_MRS 1
+    LEAVE_TUPLE 5
+.size seL4_Call, .-seL4_Call
+
+# seL4_Reply : (msgInfo, mr0, mr1, mr2, mr3) -> Unit
+.global seL4_Reply
+.type seL4_Reply, @function
+seL4_Reply:
+    ENTER
+    READ_ARG 5
+    ld      a1, (ARGS + 0)(sp)
+    LOAD_MRS 1
+    SYSCALL_SEL4 SysReply
+    LEAVE_UNIT
+.size seL4_Reply, .-seL4_Reply
+
+# seL4_ReplyRecv : (src, msgInfo, mr0, mr1, mr2, mr3, reply)
+#                  -> (badge, msgInfo, mr0..mr3)
+.global seL4_ReplyRecv
+.type seL4_ReplyRecv, @function
+seL4_ReplyRecv:
+    ENTER
+    READ_ARG 7
+    ld      a0, (ARGS + 0)(sp)
+    ld      a1, (ARGS + 8)(sp)
+    LOAD_MRS 2
+    SYSCALL_SEL4 SysReplyRecv
+    sd      a0, (RES + 0)(sp)
+    sd      a1, (RES + 8)(sp)
+    STORE_MRS 2
+    LEAVE_TUPLE 6
+.size seL4_ReplyRecv, .-seL4_ReplyRecv
+
+# msgLabel : msgInfo -> its label (for a fault, the fault's type)
+.global msgLabel
+.type msgLabel, @function
+msgLabel:
+    srli    a0, t0, MSG_LABEL_SHIFT
+    ret
+.size msgLabel, .-msgLabel

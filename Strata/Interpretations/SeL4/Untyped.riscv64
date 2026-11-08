@@ -1,0 +1,137 @@
+# ======================================================================
+# seL4 Untyped Primitives - riscv64 Implementation
+# ======================================================================
+#
+# As Untyped.x86_64: an object invocation is an seL4_Call made by the seL4
+# Host's `once_sel4_invoke` (root task only). Every seL4 number is in the
+# block below, checked against the pinned kernel.
+#
+# SigOp ABI: the argument in t0 (Input1; a tuple is one flat block of
+# words, D381), the answer in a0; every other register is preserved.
+#
+# ======================================================================
+
+# seL4 numbers
+.equ RETYPE_INFO, 0x1086            # = MSG_INFO(UntypedRetype, 0, 1, 6)
+.equ NOTIFICATION_BITS, 5           # = seL4_NotificationBits
+.equ TCB_BITS, 11                   # = seL4_TCBBits
+.equ SLOT_BITS, 5                   # = seL4_SlotBits
+# end seL4 numbers
+
+# Frame: the arguments, the message words, the extra caps
+.equ ARGS,   0
+.equ WORDS,  64
+.equ CAPS,   112
+.equ FRAME,  144
+
+.macro SAVE_ALL
+    addi    sp, sp, -128
+    sd      ra, 0(sp)
+    sd      a1, 8(sp)
+    sd      a2, 16(sp)
+    sd      a3, 24(sp)
+    sd      a4, 32(sp)
+    sd      a5, 40(sp)
+    sd      a6, 48(sp)
+    sd      a7, 56(sp)
+    sd      t0, 64(sp)
+    sd      t1, 72(sp)
+    sd      t2, 80(sp)
+    sd      t3, 88(sp)
+    sd      t4, 96(sp)
+    sd      t5, 104(sp)
+    sd      t6, 112(sp)
+.endm
+
+.macro RESTORE_ALL
+    ld      ra, 0(sp)
+    ld      a1, 8(sp)
+    ld      a2, 16(sp)
+    ld      a3, 24(sp)
+    ld      a4, 32(sp)
+    ld      a5, 40(sp)
+    ld      a6, 48(sp)
+    ld      a7, 56(sp)
+    ld      t0, 64(sp)
+    ld      t1, 72(sp)
+    ld      t2, 80(sp)
+    ld      t3, 88(sp)
+    ld      t4, 96(sp)
+    ld      t5, 104(sp)
+    ld      t6, 112(sp)
+    addi    sp, sp, 128
+.endm
+
+# Copy argument `idx` (or 0 when idx < 0) to the frame slot `off`
+.macro ARG_TO off, idx
+.if \idx < 0
+    sd      zero, \off(sp)
+.else
+    ld      t1, (ARGS + 8 * \idx)(sp)
+    sd      t1, \off(sp)
+.endif
+.endm
+
+# An invocation on argument 0's capability: `n` arguments, message info
+# `info`, message words from arguments w0..w5, extra caps from c0..c2.
+.macro SEL4_INVOCATION name, n, info, w0=-1, w1=-1, w2=-1, w3=-1, w4=-1, w5=-1, c0=-1, c1=-1, c2=-1
+.global \name
+.type \name, @function
+\name:
+    SAVE_ALL
+    addi    sp, sp, -FRAME
+.if \n == 1
+    sd      t0, ARGS(sp)
+.else
+    mv      a0, t0
+    addi    a1, sp, ARGS
+    li      a2, \n
+    call    once_sel4_copy_arg
+.endif
+    ARG_TO  (WORDS + 0), \w0
+    ARG_TO  (WORDS + 8), \w1
+    ARG_TO  (WORDS + 16), \w2
+    ARG_TO  (WORDS + 24), \w3
+    ARG_TO  (WORDS + 32), \w4
+    ARG_TO  (WORDS + 40), \w5
+    ARG_TO  (CAPS + 0), \c0
+    ARG_TO  (CAPS + 8), \c1
+    ARG_TO  (CAPS + 16), \c2
+    ld      a0, ARGS(sp)
+    li      a1, \info
+    addi    a2, sp, WORDS
+    addi    a3, sp, CAPS
+    call    once_sel4_invoke
+    addi    sp, sp, FRAME
+    RESTORE_ALL
+    ret
+.size \name, .-\name
+.endm
+
+.text
+.balign 4
+
+# seL4_Untyped_Retype : (untyped, type, sizeBits, root, nodeIndex,
+#                        nodeDepth, nodeOffset, numObjects) -> seL4_Error
+# Words: type, sizeBits, nodeIndex, nodeDepth, nodeOffset, numObjects;
+# cap: root.
+SEL4_INVOCATION seL4_Untyped_Retype, 8, RETYPE_INFO, w0=1, w1=2, w2=4, w3=5, w4=6, w5=7, c0=3
+
+# The object sizes : Unit -> Int
+.global seL4_NotificationBits
+.type seL4_NotificationBits, @function
+seL4_NotificationBits:
+    li      a0, NOTIFICATION_BITS
+    ret
+
+.global seL4_TCBBits
+.type seL4_TCBBits, @function
+seL4_TCBBits:
+    li      a0, TCB_BITS
+    ret
+
+.global seL4_SlotBits
+.type seL4_SlotBits, @function
+seL4_SlotBits:
+    li      a0, SLOT_BITS
+    ret

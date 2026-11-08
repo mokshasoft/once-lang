@@ -1,0 +1,142 @@
+# ======================================================================
+# seL4 TCB Primitives - riscv64 Implementation
+# ======================================================================
+#
+# As TCB.x86_64: an object invocation is an seL4_Call made by the seL4
+# Host's `once_sel4_invoke` (root task only). Every seL4 number is in the
+# block below, checked against the pinned kernel.
+#
+# SigOp ABI: the argument in t0 (Input1; a tuple is one flat block of
+# words, D381), the answer in a0; every other register is preserved.
+#
+# ======================================================================
+
+# seL4 numbers
+.equ CONFIGURE_INFO, 0x5184         # = MSG_INFO(TCBConfigure, 0, 3, 4)
+.equ SET_PRIORITY_INFO, 0x6081      # = MSG_INFO(TCBSetPriority, 0, 1, 1)
+.equ SET_MC_PRIORITY_INFO, 0x7081   # = MSG_INFO(TCBSetMCPriority, 0, 1, 1)
+.equ SET_SCHED_PARAMS_INFO, 0x8082  # = MSG_INFO(TCBSetSchedParams, 0, 1, 2)
+.equ SET_IPC_BUFFER_INFO, 0x9081    # = MSG_INFO(TCBSetIPCBuffer, 0, 1, 1)
+.equ SET_SPACE_INFO, 0xA103         # = MSG_INFO(TCBSetSpace, 0, 2, 3)
+.equ SUSPEND_INFO, 0xB000           # = MSG_INFO(TCBSuspend, 0, 0, 0)
+.equ RESUME_INFO, 0xC000            # = MSG_INFO(TCBResume, 0, 0, 0)
+# end seL4 numbers
+
+# Frame: the arguments, the message words, the extra caps
+.equ ARGS,   0
+.equ WORDS,  64
+.equ CAPS,   112
+.equ FRAME,  144
+
+.macro SAVE_ALL
+    addi    sp, sp, -128
+    sd      ra, 0(sp)
+    sd      a1, 8(sp)
+    sd      a2, 16(sp)
+    sd      a3, 24(sp)
+    sd      a4, 32(sp)
+    sd      a5, 40(sp)
+    sd      a6, 48(sp)
+    sd      a7, 56(sp)
+    sd      t0, 64(sp)
+    sd      t1, 72(sp)
+    sd      t2, 80(sp)
+    sd      t3, 88(sp)
+    sd      t4, 96(sp)
+    sd      t5, 104(sp)
+    sd      t6, 112(sp)
+.endm
+
+.macro RESTORE_ALL
+    ld      ra, 0(sp)
+    ld      a1, 8(sp)
+    ld      a2, 16(sp)
+    ld      a3, 24(sp)
+    ld      a4, 32(sp)
+    ld      a5, 40(sp)
+    ld      a6, 48(sp)
+    ld      a7, 56(sp)
+    ld      t0, 64(sp)
+    ld      t1, 72(sp)
+    ld      t2, 80(sp)
+    ld      t3, 88(sp)
+    ld      t4, 96(sp)
+    ld      t5, 104(sp)
+    ld      t6, 112(sp)
+    addi    sp, sp, 128
+.endm
+
+# Copy argument `idx` (or 0 when idx < 0) to the frame slot `off`
+.macro ARG_TO off, idx
+.if \idx < 0
+    sd      zero, \off(sp)
+.else
+    ld      t1, (ARGS + 8 * \idx)(sp)
+    sd      t1, \off(sp)
+.endif
+.endm
+
+# An invocation on argument 0's capability: `n` arguments, message info
+# `info`, message words from arguments w0..w5, extra caps from c0..c2.
+.macro SEL4_INVOCATION name, n, info, w0=-1, w1=-1, w2=-1, w3=-1, w4=-1, w5=-1, c0=-1, c1=-1, c2=-1
+.global \name
+.type \name, @function
+\name:
+    SAVE_ALL
+    addi    sp, sp, -FRAME
+.if \n == 1
+    sd      t0, ARGS(sp)
+.else
+    mv      a0, t0
+    addi    a1, sp, ARGS
+    li      a2, \n
+    call    once_sel4_copy_arg
+.endif
+    ARG_TO  (WORDS + 0), \w0
+    ARG_TO  (WORDS + 8), \w1
+    ARG_TO  (WORDS + 16), \w2
+    ARG_TO  (WORDS + 24), \w3
+    ARG_TO  (WORDS + 32), \w4
+    ARG_TO  (WORDS + 40), \w5
+    ARG_TO  (CAPS + 0), \c0
+    ARG_TO  (CAPS + 8), \c1
+    ARG_TO  (CAPS + 16), \c2
+    ld      a0, ARGS(sp)
+    li      a1, \info
+    addi    a2, sp, WORDS
+    addi    a3, sp, CAPS
+    call    once_sel4_invoke
+    addi    sp, sp, FRAME
+    RESTORE_ALL
+    ret
+.size \name, .-\name
+.endm
+
+.text
+.balign 4
+
+# seL4_TCB_Configure : (tcb, faultEP, cspaceRoot, cspaceData, vspaceRoot,
+#                       vspaceData, buffer, bufferFrame) -> seL4_Error
+# Words: faultEP, cspaceData, vspaceData, buffer;
+# caps: cspaceRoot, vspaceRoot, bufferFrame. (buffer 0: no IPC buffer.)
+SEL4_INVOCATION seL4_TCB_Configure, 8, CONFIGURE_INFO, w0=1, w1=3, w2=5, w3=6, c0=2, c1=4, c2=7
+
+# seL4_TCB_SetPriority : (tcb, authority, priority) -> seL4_Error
+SEL4_INVOCATION seL4_TCB_SetPriority, 3, SET_PRIORITY_INFO, w0=2, c0=1
+
+# seL4_TCB_SetMCPriority : (tcb, authority, mcp) -> seL4_Error
+SEL4_INVOCATION seL4_TCB_SetMCPriority, 3, SET_MC_PRIORITY_INFO, w0=2, c0=1
+
+# seL4_TCB_SetSchedParams : (tcb, authority, mcp, priority) -> seL4_Error
+SEL4_INVOCATION seL4_TCB_SetSchedParams, 4, SET_SCHED_PARAMS_INFO, w0=2, w1=3, c0=1
+
+# seL4_TCB_SetIPCBuffer : (tcb, buffer, bufferFrame) -> seL4_Error
+SEL4_INVOCATION seL4_TCB_SetIPCBuffer, 3, SET_IPC_BUFFER_INFO, w0=1, c0=2
+
+# seL4_TCB_SetSpace : (tcb, faultEP, cspaceRoot, cspaceData, vspaceRoot,
+#                      vspaceData) -> seL4_Error
+SEL4_INVOCATION seL4_TCB_SetSpace, 6, SET_SPACE_INFO, w0=1, w1=3, w2=5, c0=2, c1=4
+
+# seL4_TCB_Resume / seL4_TCB_Suspend : tcb -> seL4_Error
+SEL4_INVOCATION seL4_TCB_Resume, 1, RESUME_INFO
+SEL4_INVOCATION seL4_TCB_Suspend, 1, SUSPEND_INFO

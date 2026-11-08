@@ -5,7 +5,7 @@
 -- seL4 IPC Primitives
 --
 -- Core Inter-Process Communication operations for seL4.
--- These map directly to seL4 kernel syscalls on AArch64.
+-- These map directly to seL4 kernel syscalls.
 --
 -- seL4's IPC model:
 -- - All communication is via capabilities to endpoint/notification objects
@@ -106,3 +106,7 @@ signature seL4_ReplyRecv :
 -- Arguments: Unit
 -- Returns: Unit
 signature seL4_Yield : Act Unit Unit
+
+-- | The label of a msgInfo word. For a message the kernel sent to a fault
+-- endpoint, the label is the fault's type (seL4_Fault_*).
+signature msgLabel : Act Int Int

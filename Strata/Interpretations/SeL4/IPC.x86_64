@@ -27,6 +27,7 @@
 .equ SysReply, -6
 .equ SysYield, -7
 .equ SysNBRecv, -8
+.equ MSG_LABEL_SHIFT, 12            # = __builtin_ctzl(MSG_INFO(1, 0, 0, 0))
 # end seL4 numbers
 
 # Frame: the arguments, the results
@@ -241,3 +242,12 @@ seL4_ReplyRecv:
     RESTORE_ALL_BUT_R15
     ret
 .size seL4_ReplyRecv, .-seL4_ReplyRecv
+
+# msgLabel : msgInfo -> its label (for a fault, the fault's type)
+.global msgLabel
+.type msgLabel, @function
+msgLabel:
+    movq    %rdi, %rax
+    shrq    $MSG_LABEL_SHIFT, %rax
+    ret
+.size msgLabel, .-msgLabel

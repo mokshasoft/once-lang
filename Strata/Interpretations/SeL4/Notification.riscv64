@@ -1,0 +1,96 @@
+# ======================================================================
+# seL4 Notification Primitives - riscv64 Implementation
+# ======================================================================
+#
+# As Notification.x86_64. The syscall convention is in Host.riscv64.
+#
+# SigOp ABI: the argument in t0 (Input1; a tuple is one flat block of
+# words, D381), the answer in a0; every other register is preserved.
+#
+# ======================================================================
+
+# seL4 numbers
+.equ SysSend, -3
+.equ SysRecv, -5
+.equ SysNBRecv, -8
+.equ EMPTY_INFO, 0                  # = MSG_INFO(0, 0, 0, 0)
+# end seL4 numbers
+
+.macro SAVE_ALL
+    addi    sp, sp, -128
+    sd      ra, 0(sp)
+    sd      a1, 8(sp)
+    sd      a2, 16(sp)
+    sd      a3, 24(sp)
+    sd      a4, 32(sp)
+    sd      a5, 40(sp)
+    sd      a6, 48(sp)
+    sd      a7, 56(sp)
+    sd      t0, 64(sp)
+    sd      t1, 72(sp)
+    sd      t2, 80(sp)
+    sd      t3, 88(sp)
+    sd      t4, 96(sp)
+    sd      t5, 104(sp)
+    sd      t6, 112(sp)
+.endm
+
+.macro RESTORE_ALL
+    ld      ra, 0(sp)
+    ld      a1, 8(sp)
+    ld      a2, 16(sp)
+    ld      a3, 24(sp)
+    ld      a4, 32(sp)
+    ld      a5, 40(sp)
+    ld      a6, 48(sp)
+    ld      a7, 56(sp)
+    ld      t0, 64(sp)
+    ld      t1, 72(sp)
+    ld      t2, 80(sp)
+    ld      t3, 88(sp)
+    ld      t4, 96(sp)
+    ld      t5, 104(sp)
+    ld      t6, 112(sp)
+    addi    sp, sp, 128
+.endm
+
+.text
+.balign 4
+
+# seL4_Signal : cap -> Unit
+.global seL4_Signal
+.type seL4_Signal, @function
+seL4_Signal:
+    SAVE_ALL
+    mv      a0, t0
+    li      a1, EMPTY_INFO
+    li      a7, SysSend
+    ecall
+    RESTORE_ALL
+    li      a0, 0
+    ret
+.size seL4_Signal, .-seL4_Signal
+
+# seL4_Wait : (src, reply) -> the notification word (reply: MCS only)
+.global seL4_Wait
+.type seL4_Wait, @function
+seL4_Wait:
+    SAVE_ALL
+    ld      a0, 0(t0)
+    li      a7, SysRecv
+    ecall
+    RESTORE_ALL
+    ret
+.size seL4_Wait, .-seL4_Wait
+
+# seL4_Poll : cap -> the notification word (0 if none)
+.global seL4_Poll
+.type seL4_Poll, @function
+seL4_Poll:
+    SAVE_ALL
+    mv      a0, t0
+    li      a7, SysNBRecv
+    ecall
+    RESTORE_ALL
+    ret
+.size seL4_Poll, .-seL4_Poll

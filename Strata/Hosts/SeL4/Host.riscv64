@@ -1,0 +1,265 @@
+# ======================================================================
+# The seL4 Host — riscv64 (D320, plan 0.127)
+#
+# A Host is how a platform runs a program: `enter ; main ; leave`. See
+# Host.x86_64 for the shape; this is the same contract on riscv64.
+#
+# `enter` (`_start`, the ELF entry, D376). The kernel starts the root task
+# at the ELF entry with the bootinfo pointer in a0 and no stack. Once's
+# frontier register is s2. `gp` is set first: the linker may relax an
+# address to be `gp`-relative.
+#
+# seL4 riscv64 syscall convention (libsel4, non-MCS): a7 the syscall
+# number; a0 the destination cap (out: badge); a1 the message info (in and
+# out); a2-a5 message words 0-3. Words 4.. go in the IPC buffer.
+# ======================================================================
+
+# seL4 numbers
+.equ SysCall, -1
+.equ SysYield, -7
+.equ SysDebugPutChar, -9
+.equ seL4_CapInitThreadTCB, 1
+.equ SUSPEND_INFO, 0xB000           # = MSG_INFO(TCBSuspend, 0, 0, 0)
+.equ MSG_LABEL_SHIFT, 12            # = __builtin_ctzl(MSG_INFO(1, 0, 0, 0))
+.equ MSG_EXTRA_CAPS_SHIFT, 7        # = __builtin_ctzl(MSG_INFO(0, 0, 1, 0))
+.equ MSG_EXTRA_CAPS_MASK, 3         # = MSG_INFO(0, 0, 3, 0) >> __builtin_ctzl(MSG_INFO(0, 0, 1, 0))
+.equ MSG_LENGTH_MASK, 0x7f          # = MSG_INFO(0, 0, 0, 0x7f)
+.equ BI_IPC_BUFFER, 0x20            # = offsetof(seL4_BootInfo, ipcBuffer)
+.equ IPC_MSG, 8                     # = offsetof(seL4_IPCBuffer, msg)
+.equ IPC_CAPS, 976                  # = offsetof(seL4_IPCBuffer, caps_or_badges)
+# end seL4 numbers
+
+.equ REGISTER_WORDS,          4           # a2-a5 (the kernel's n_msgRegisters)
+.equ ONCE_EXHAUSTED,          0x4F4F4D    # no kernel syscall has this number
+.equ ROOT_REGION_SIZE,        1048576     # 1 MiB
+.equ PROGRAM_SLOTS,           4
+.equ PROGRAM_REGION_SIZE,     1048576     # 1 MiB
+.equ PROGRAM_REGION_SHIFT,    20          # log2 PROGRAM_REGION_SIZE
+
+.macro SET_GP
+    .option push
+    .option norelax
+    lla     gp, __global_pointer$
+    .option pop
+.endm
+
+.bss
+.balign 16
+once_sel4_root_region:
+    .space ROOT_REGION_SIZE
+once_sel4_root_region_end:
+
+.global once_sel4_bootinfo
+.balign 8
+once_sel4_bootinfo:
+    .space 8
+
+.balign 16
+once_sel4_program_regions:
+    .space (PROGRAM_SLOTS - 1) * PROGRAM_REGION_SIZE
+once_sel4_program_regions_end:
+
+.global once_sel4_program_tcb
+.balign 8
+once_sel4_program_tcb:
+    .space 8 * PROGRAM_SLOTS
+.global once_sel4_program_arg
+once_sel4_program_arg:
+    .space 8 * PROGRAM_SLOTS
+
+.data
+.weak once_program_1
+.weak once_program_2
+.weak once_program_3
+
+.global once_sel4_program_entry
+.balign 8
+once_sel4_program_entry:
+    .dword 0
+    .dword once_program_1
+    .dword once_program_2
+    .dword once_program_3
+
+.global once_sel4_program_sp
+once_sel4_program_sp:
+    .dword 0
+    .dword once_sel4_program_regions + 1 * PROGRAM_REGION_SIZE - 16
+    .dword once_sel4_program_regions + 2 * PROGRAM_REGION_SIZE - 16
+    .dword once_sel4_program_regions + 3 * PROGRAM_REGION_SIZE - 16
+
+.section .rodata
+once_sel4_leave_line:
+    .ascii "Once: returned\n"
+once_sel4_leave_line_end:
+
+.text
+.global _start
+.type _start, @function
+_start:
+    SET_GP
+    lla     sp, once_sel4_root_region_end   # the stack: the region's top
+    lla     s2, once_sel4_root_region       # the frontier: its bottom
+    lla     t1, once_sel4_bootinfo
+    sd      a0, 0(t1)
+    tail    once_main
+.size _start, .-_start
+
+# Where `I.SeL4.Program.start` starts program n, its stack pointer at the
+# top of region n: the frontier at the region's bottom, then the program.
+.global once_sel4_program_enter
+.type once_sel4_program_enter, @function
+once_sel4_program_enter:
+    SET_GP
+    call    once_sel4_self              # n, in a0
+    addi    t1, a0, -1
+    slli    t1, t1, PROGRAM_REGION_SHIFT
+    lla     t2, once_sel4_program_regions
+    add     s2, t1, t2                  # the frontier: region n's bottom
+    slli    t1, a0, 3
+    lla     t2, once_sel4_program_entry
+    add     t1, t1, t2
+    ld      t1, 0(t1)
+    jr      t1
+.size once_sel4_program_enter, .-once_sel4_program_enter
+
+# The program the calling thread runs, in a0 (0: the root task). Preserves
+# every other register.
+.global once_sel4_self
+.type once_sel4_self, @function
+once_sel4_self:
+    addi    sp, sp, -16
+    sd      t1, 0(sp)
+    lla     t1, once_sel4_program_regions
+    sub     a0, sp, t1
+    bltu    sp, t1, 1f
+    lla     t1, once_sel4_program_regions_end
+    bgeu    sp, t1, 1f
+    srli    a0, a0, PROGRAM_REGION_SHIFT
+    addi    a0, a0, 1
+    j       2f
+1:  li      a0, 0
+2:  ld      t1, 0(sp)
+    addi    sp, sp, 16
+    ret
+.size once_sel4_self, .-once_sel4_self
+
+# The n-word block at a0 (n >= 1, in a2) into the words at a1: how the
+# Interpretations read a SigOp's argument (D381). Clobbers a2, t1, t2.
+.global once_sel4_copy_arg
+.type once_sel4_copy_arg, @function
+once_sel4_copy_arg:
+1:  addi    a2, a2, -1
+    slli    t1, a2, 3
+    add     t2, a0, t1
+    ld      t2, 0(t2)
+    add     t1, a1, t1
+    sd      t2, 0(t1)
+    bnez    a2, 1b
+    ret
+.size once_sel4_copy_arg, .-once_sel4_copy_arg
+
+# The n words at a1 (n >= 1, in a2) as a flat block allocated at the heap
+# pointer s2 (advanced); the block in a0. Clobbers a2, t1, t2.
+.global once_sel4_answer
+.type once_sel4_answer, @function
+once_sel4_answer:
+    mv      a0, s2
+    slli    t1, a2, 3
+    add     s2, s2, t1
+1:  addi    a2, a2, -1
+    slli    t1, a2, 3
+    add     t2, a1, t1
+    ld      t2, 0(t2)
+    add     t1, a0, t1
+    sd      t2, 0(t1)
+    bnez    a2, 1b
+    ret
+.size once_sel4_answer, .-once_sel4_answer
+
+# An object invocation: seL4_Call on cap a0 with message info a1; message
+# words at a2 (at least 4), extra caps at a3. Words 4.. and the extra caps
+# go in the root task's IPC buffer (only the root task has one). Answers
+# the reply's label, the seL4_Error, in a0. Clobbers a1-a5, a7, t1-t6: the
+# caller saves them.
+.global once_sel4_invoke
+.type once_sel4_invoke, @function
+once_sel4_invoke:
+    lla     t1, once_sel4_bootinfo
+    ld      t1, 0(t1)
+    ld      t1, BI_IPC_BUFFER(t1)
+    srli    t2, a1, MSG_EXTRA_CAPS_SHIFT
+    andi    t2, t2, MSG_EXTRA_CAPS_MASK
+    li      t3, 0
+1:  beq     t3, t2, 2f
+    slli    t4, t3, 3
+    add     t5, a3, t4
+    ld      t5, 0(t5)
+    add     t6, t1, t4
+    sd      t5, IPC_CAPS(t6)
+    addi    t3, t3, 1
+    j       1b
+2:  andi    t2, a1, MSG_LENGTH_MASK
+    li      t3, REGISTER_WORDS
+3:  bgeu    t3, t2, 4f
+    slli    t4, t3, 3
+    add     t5, a2, t4
+    ld      t5, 0(t5)
+    add     t6, t1, t4
+    sd      t5, IPC_MSG(t6)
+    addi    t3, t3, 1
+    j       3b
+4:  mv      t1, a2
+    ld      a2, 0(t1)
+    ld      a3, 8(t1)
+    ld      a4, 16(t1)
+    ld      a5, 24(t1)
+    li      a7, SysCall
+    ecall
+    srli    a0, a1, MSG_LABEL_SHIFT     # the reply's label: the error
+    ret
+.size once_sel4_invoke, .-once_sel4_invoke
+
+.global once_leave
+.type once_leave, @function
+once_leave:
+    lla     s3, once_sel4_leave_line
+    lla     s4, once_sel4_leave_line_end
+    j       once_sel4_end
+.size once_leave, .-once_leave
+
+# The run ran out of memory (plan 0.123): the thread faults, as in
+# Host.x86_64, and never returns.
+.global once_exhausted
+.type once_exhausted, @function
+once_exhausted:
+    li      a7, ONCE_EXHAUSTED
+    ecall
+    j       once_exhausted
+.size once_exhausted, .-once_exhausted
+
+# Print the line [s3, s4) and suspend the calling thread.
+.type once_sel4_end, @function
+once_sel4_end:
+1:  beq     s3, s4, 2f
+    lbu     a0, 0(s3)
+    li      a1, 0
+    li      a7, SysDebugPutChar
+    ecall
+    addi    s3, s3, 1
+    j       1b
+2:  call    once_sel4_self
+    bnez    a0, 3f
+    li      a0, seL4_CapInitThreadTCB
+    j       4f
+3:  slli    t1, a0, 3
+    lla     t2, once_sel4_program_tcb
+    add     t1, t1, t2
+    ld      a0, 0(t1)
+4:  li      a1, SUSPEND_INFO
+    li      a7, SysCall
+    ecall
+    # Not reached: a suspended thread never runs again
+5:  li      a7, SysYield
+    ecall
+    j       5b
+.size once_sel4_end, .-once_sel4_end

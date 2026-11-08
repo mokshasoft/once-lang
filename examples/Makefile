@@ -10,8 +10,9 @@
 #   make x86_32         - build and run the programs on x86-32
 #   make riscv64        - cross-build and run under qemu-riscv64
 #                         (needs riscv64-unknown-linux-gnu-{as,ld,objcopy}, e.g. `nix develop`)
-#   make seL4           - Build and run the seL4 echo test under QEMU (requires nix):
-#                         Once programs as seL4's root task, server and client (plan 0.127)
+#   make seL4           - Build and run the seL4 examples under QEMU on x86_64, x86_32 and
+#                         riscv64 (requires nix): Once programs as seL4's root task,
+#                         server and client (plan 0.127)
 #   make clean          - Remove build artifacts
 #
 # The compiler is `once` on PATH; override with e.g. `make ONCE=../result/bin/once`.
@@ -69,11 +70,11 @@ riscv64:
 	$(call run-all,riscv64,$(RISCV_ENV),qemu-riscv64)
 
 # seL4 examples (requires nix)
-# (numbers-check: every seL4 number in the Strata against the pinned
-# kernel's headers; echo-test, caps-test: boot the image under QEMU and fail
-# unless the Once programs printed the expected lines; see seL4/README.md)
+# (`all`, per architecture: every seL4 number in the Strata against the pinned
+# kernel's headers; each example booted under QEMU, failing unless the Once
+# programs printed the expected lines; see seL4/README.md)
 seL4:
-	cd $(EXAMPLES_DIR)/seL4 && nix build .#numbers-check .#echo-test .#caps-test --no-link -L
+	cd $(EXAMPLES_DIR)/seL4 && nix build .#all --no-link -L
 	@echo "seL4: PASS"
 
 clean:

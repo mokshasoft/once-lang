@@ -1,0 +1,128 @@
+# ======================================================================
+# seL4 Programs of an Image - riscv64 Implementation
+# ======================================================================
+#
+# As Program.x86_64. `start` is seL4_TCB_WriteRegisters with resume and
+# three registers (pc, ra, sp: seL4_UserContext's first three): five message
+# words, the last in the root task's IPC buffer, so it goes through the
+# Host's `once_sel4_invoke`.
+#
+# SigOp ABI: the argument in t0 (Input1; a tuple is one flat block of
+# words, D381), the answer in a0; every other register is preserved.
+#
+# ======================================================================
+
+.macro SAVE_ALL
+    addi    sp, sp, -128
+    sd      ra, 0(sp)
+    sd      a1, 8(sp)
+    sd      a2, 16(sp)
+    sd      a3, 24(sp)
+    sd      a4, 32(sp)
+    sd      a5, 40(sp)
+    sd      a6, 48(sp)
+    sd      a7, 56(sp)
+    sd      t0, 64(sp)
+    sd      t1, 72(sp)
+    sd      t2, 80(sp)
+    sd      t3, 88(sp)
+    sd      t4, 96(sp)
+    sd      t5, 104(sp)
+    sd      t6, 112(sp)
+.endm
+
+.macro RESTORE_ALL
+    ld      ra, 0(sp)
+    ld      a1, 8(sp)
+    ld      a2, 16(sp)
+    ld      a3, 24(sp)
+    ld      a4, 32(sp)
+    ld      a5, 40(sp)
+    ld      a6, 48(sp)
+    ld      a7, 56(sp)
+    ld      t0, 64(sp)
+    ld      t1, 72(sp)
+    ld      t2, 80(sp)
+    ld      t3, 88(sp)
+    ld      t4, 96(sp)
+    ld      t5, 104(sp)
+    ld      t6, 112(sp)
+    addi    sp, sp, 128
+.endm
+
+# seL4 numbers
+.equ seL4_InvalidArgument, 1
+.equ WRITE_REGISTERS_INFO, 0x3005   # = MSG_INFO(TCBWriteRegisters, 0, 0, 5)
+.equ UC_PC, 0                       # = offsetof(seL4_UserContext, pc) / sizeof(seL4_Word)
+.equ UC_RA, 1                       # = offsetof(seL4_UserContext, ra) / sizeof(seL4_Word)
+.equ UC_SP, 2                       # = offsetof(seL4_UserContext, sp) / sizeof(seL4_Word)
+# end seL4 numbers
+
+.equ PROGRAM_SLOTS, 4
+.equ FRAME, 48
+
+.text
+.balign 4
+
+# start : ((tcb, program), arg) -> seL4_Error
+.global start
+.type start, @function
+start:
+    SAVE_ALL
+    addi    sp, sp, -FRAME
+    ld      a0, 0(t0)                   # tcb
+    ld      t1, 8(t0)                   # program
+    ld      t2, 16(t0)                  # arg
+    li      t3, 1
+    bltu    t1, t3, 1f
+    li      t3, PROGRAM_SLOTS
+    bgeu    t1, t3, 1f
+    slli    t4, t1, 3
+    lla     t3, once_sel4_program_entry
+    add     t3, t3, t4
+    ld      t3, 0(t3)
+    beqz    t3, 1f
+    lla     t5, once_sel4_program_tcb
+    add     t5, t5, t4
+    sd      a0, 0(t5)
+    lla     t5, once_sel4_program_arg
+    add     t5, t5, t4
+    sd      t2, 0(t5)
+    lla     t5, once_sel4_program_sp
+    add     t5, t5, t4
+    ld      t5, 0(t5)
+    li      t6, 1
+    sd      t6, 0(sp)                   # resume_target = 1, arch_flags = 0
+    li      t6, 3
+    sd      t6, 8(sp)                   # count: pc, ra, sp
+    lla     t6, once_sel4_program_enter
+    sd      t6, (16 + 8 * UC_PC)(sp)
+    sd      zero, (16 + 8 * UC_RA)(sp)
+    sd      t5, (16 + 8 * UC_SP)(sp)
+    li      a1, WRITE_REGISTERS_INFO
+    mv      a2, sp
+    call    once_sel4_invoke
+    j       2f
+1:  li      a0, seL4_InvalidArgument
+2:  addi    sp, sp, FRAME
+    RESTORE_ALL
+    ret
+.size start, .-start
+
+# arg : Unit -> Int
+.global arg
+.type arg, @function
+arg:
+    addi    sp, sp, -16
+    sd      ra, 0(sp)
+    sd      t1, 8(sp)
+    call    once_sel4_self
+    slli    a0, a0, 3
+    lla     t1, once_sel4_program_arg
+    add     a0, a0, t1
+    ld      a0, 0(a0)
+    ld      ra, 0(sp)
+    ld      t1, 8(sp)
+    addi    sp, sp, 16
+    ret
+.size arg, .-arg

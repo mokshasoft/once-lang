@@ -8,7 +8,7 @@
 # stack at the top growing down. Running out is the two meeting, which the
 # compiled program's room checks see first: they call `once_exhausted`.
 #
-# `enter` (`once_sel4_enter`, the ELF entry: `Host.x86_64.ld`). The kernel
+# `enter` (`_start`, the ELF entry, as on Linux: D376). The kernel
 # starts the root task at the ELF entry with the bootinfo pointer in `rdi`
 # and no stack (seL4 `create_initial_thread`). `enter` points `%rsp` at the
 # top of the root task's region and `%r15` at its bottom, saves the bootinfo
@@ -55,6 +55,7 @@
 .equ IPC_CAPS, 976                  # = offsetof(seL4_IPCBuffer, caps_or_badges)
 # end seL4 numbers
 
+.equ ONCE_EXHAUSTED,          0x4F4F4D    # no kernel syscall has this number
 .equ ROOT_REGION_SIZE,        1048576     # 1 MiB
 .equ PROGRAM_SLOTS,           4
 .equ PROGRAM_REGION_SIZE,     1048576     # 1 MiB
@@ -112,19 +113,16 @@ once_sel4_program_sp:
 once_sel4_leave_line:
     .ascii "Once: returned\n"
 once_sel4_leave_line_end:
-once_sel4_exhausted_line:
-    .ascii "Once: exhausted\n"
-once_sel4_exhausted_line_end:
 
 .text
-.global once_sel4_enter
-.type once_sel4_enter, @function
-once_sel4_enter:
+.global _start
+.type _start, @function
+_start:
     leaq    once_sel4_root_region_end(%rip), %rsp   # the stack: the region's top
     leaq    once_sel4_root_region(%rip), %r15       # the frontier: its bottom
     movq    %rdi, once_sel4_bootinfo(%rip)
     jmp     once_main
-.size once_sel4_enter, .-once_sel4_enter
+.size _start, .-_start
 
 # once_sel4_program_enter: where `I.SeL4.Program.start` starts program n
 # (1..PROGRAM_SLOTS-1), its stack pointer at the top of region n. Points the
@@ -244,17 +242,21 @@ once_leave:
     jmp     once_sel4_end
 .size once_leave, .-once_leave
 
-# once_exhausted — the run ran out of memory (D347, plan 0.123): a room check
-# found no room. It never returns. Its contract: the run ends `exhausted`.
-# On seL4 the thread prints the out-of-memory line on the debug console and
-# suspends, as `leave` does with its own line: the console tells the two
-# ends apart.
+# once_exhausted — the run ran out of memory (plan 0.123): a room check found
+# no room. It never returns. Like any seL4 thread that cannot go on, it
+# faults: a syscall number the kernel does not have is
+# seL4_Fault_UnknownSyscall, which the kernel sends to the thread's fault
+# endpoint, and the thread waits there for its supervisor. With no fault
+# endpoint (the root task has none) the kernel reports the fault and stops
+# the thread. A supervisor's reply only raises the fault again.
 .global once_exhausted
 .type once_exhausted, @function
 once_exhausted:
-    leaq    once_sel4_exhausted_line(%rip), %r12
-    leaq    once_sel4_exhausted_line_end(%rip), %r13
-    jmp     once_sel4_end
+    movq    $ONCE_EXHAUSTED, %rdx
+    movq    %rsp, %rbx
+    syscall
+    movq    %rbx, %rsp
+    jmp     once_exhausted
 .size once_exhausted, .-once_exhausted
 
 # once_sel4_end: print the line [r12, r13) and suspend the calling thread.

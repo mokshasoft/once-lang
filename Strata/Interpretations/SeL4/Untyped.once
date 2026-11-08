@@ -80,19 +80,18 @@ signature seL4_Untyped_Retype : Act (Int * Int * Int * Int * Int * Int * Int * I
 -- | Size in bits for an Endpoint
 seL4_EndpointBits : Int
 seL4_EndpointBits = 4
+-- end seL4 numbers
+
+-- The other sizes depend on the architecture and the kernel's configuration;
+-- each architecture's file answers them from its checked numbers.
 
 -- | Size in bits for a Notification
-seL4_NotificationBits : Int
-seL4_NotificationBits = 5
+signature seL4_NotificationBits : Unit -> Int
 
--- | Size in bits for a TCB (architecture- and configuration-dependent;
--- this is x86_64's with this kernel's configuration)
-seL4_TCBBits : Int
-seL4_TCBBits = 11
+-- | Size in bits for a TCB
+signature seL4_TCBBits : Unit -> Int
 
--- | Size in bits for a CNode slot (32 bytes on 64-bit)
-seL4_SlotBits : Int
-seL4_SlotBits = 5
--- end seL4 numbers
+-- | Size in bits for a CNode slot
+signature seL4_SlotBits : Unit -> Int
 
 ------------------------------------------------------------------------

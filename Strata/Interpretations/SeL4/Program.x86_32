@@ -1,0 +1,68 @@
+# ======================================================================
+# seL4 Programs of an Image - x86_32 Implementation
+# ======================================================================
+#
+# As Program.x86_64. `start` is seL4_TCB_WriteRegisters with resume and two
+# registers, eip and esp: four message words, the last two in the root
+# task's IPC buffer (ia32 has two message registers), so it goes through
+# the Host's `once_sel4_invoke`.
+#
+# SigOp ABI: the argument in %ecx (a tuple is one flat block of words,
+# D381), the answer in %eax; every other register is preserved, %esi
+# (Once's heap pointer, and seL4's message-info register) too.
+#
+# ======================================================================
+
+# seL4 numbers
+.equ seL4_InvalidArgument, 1
+.equ WRITE_REGISTERS_INFO, 0x3004   # = MSG_INFO(TCBWriteRegisters, 0, 0, 4)
+.equ UC_EIP, 0                      # = offsetof(seL4_UserContext, eip) / sizeof(seL4_Word)
+.equ UC_ESP, 1                      # = offsetof(seL4_UserContext, esp) / sizeof(seL4_Word)
+# end seL4 numbers
+
+.equ PROGRAM_SLOTS, 4
+.equ SAVED_EAX, 16 + 28             # the frame, then pushal's slot for %eax
+
+.text
+.align 16
+
+# start : ((tcb, program), arg) -> seL4_Error
+.global start
+.type start, @function
+start:
+    pushal
+    subl    $16, %esp
+    movl    0(%ecx), %ebx               # tcb
+    movl    4(%ecx), %edx               # program
+    movl    8(%ecx), %ebp               # arg
+    movl    $seL4_InvalidArgument, %eax
+    cmpl    $1, %edx
+    jb      1f
+    cmpl    $PROGRAM_SLOTS, %edx
+    jae     1f
+    cmpl    $0, once_sel4_program_entry(,%edx,4)
+    je      1f
+    movl    %ebx, once_sel4_program_tcb(,%edx,4)
+    movl    %ebp, once_sel4_program_arg(,%edx,4)
+    movl    $1, 0(%esp)                 # resume_target = 1, arch_flags = 0
+    movl    $2, 4(%esp)                 # count: eip, esp
+    movl    $once_sel4_program_enter, 8(%esp)
+    movl    once_sel4_program_sp(,%edx,4), %eax
+    movl    %eax, 12(%esp)
+    movl    $WRITE_REGISTERS_INFO, %esi
+    movl    %esp, %edi
+    call    once_sel4_invoke
+1:  movl    %eax, SAVED_EAX(%esp)
+    addl    $16, %esp
+    popal
+    ret
+.size start, .-start
+
+# arg : Unit -> Int
+.global arg
+.type arg, @function
+arg:
+    call    once_sel4_self
+    movl    once_sel4_program_arg(,%eax,4), %eax
+    ret
+.size arg, .-arg

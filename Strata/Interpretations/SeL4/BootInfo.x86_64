@@ -33,7 +33,18 @@
 .equ seL4_CapInitThreadTCB, 1
 .equ seL4_CapInitThreadCNode, 2
 .equ seL4_CapInitThreadVSpace, 3
+.equ WORD_BITS, 64                  # = seL4_WordBits
 # end seL4 numbers
+
+# ----------------------------------------------------------------------
+# wordBits : Unit -> Int
+# ----------------------------------------------------------------------
+.global wordBits
+.type wordBits, @function
+wordBits:
+    movq    $WORD_BITS, %rax
+    ret
+.size wordBits, .-wordBits
 
 # ----------------------------------------------------------------------
 # getBootInfo : Unit -> Int
