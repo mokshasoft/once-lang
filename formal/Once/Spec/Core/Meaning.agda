@@ -22,6 +22,7 @@
 
 open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Numerics using (TargetNum)
+open import Once.Spec.Boundary using (readAt)
 open import Once.Spec.Core.Syntax using (Defs)
 open import Data.Nat using (ℕ)
 
@@ -148,14 +149,20 @@ module _ {m : ℕ} (σ : TySub m 0) where
   -- one call, a block
   ----------------------------------------------------------------------
 
+  -- D397: what the world gives — a model value or a call's answer — is read at
+  -- the target (`Boundary.readAt`), as the CPU reads the register it arrives
+  -- in; every other value is the target's already, being computed by its ops.
+  fromW : ∀ b → Once.Spec.Signature.⟦ b ⟧ᵇ → ⟦ Once.Spec.Signature.⌜ b ⌝ ⟨ σ ⟩ ⟧ᵛ
+  fromW b x = fromB σ b (readAt fmt b x)
+
   sigopᵛ : ∀ (c : CanonicalName) (t : DeclType) → (c ∶ t) ∈ Σ → Model → ⟦ Once.Spec.Signature.⌜_⌝ᵈ t ⟨ σ ⟩ ⟧ᵛ
-  sigopᵛ c (constant b)         m mo = fromB σ b (constantᵐ mo m)
-  sigopᵛ c (value a Zero b)     m mo = λ _ → fromB σ b (valueᵐ mo m tt)
-  sigopᵛ c (value a One  b)     m mo = λ x → fromB σ b (valueᵐ mo m (toB σ a x))
-  sigopᵛ c (value a Many b)     m mo = λ x → fromB σ b (valueᵐ mo m (toB σ a x))
-  sigopᵛ c (operation a Zero b) m mo = λ _ → performT (call (op m) tt (fromB σ b))
-  sigopᵛ c (operation a One  b) m mo = λ x → performT (call (op m) (toB σ a x) (fromB σ b))
-  sigopᵛ c (operation a Many b) m mo = λ x → performT (call (op m) (toB σ a x) (fromB σ b))
+  sigopᵛ c (constant b)         m mo = fromW b (constantᵐ mo m)
+  sigopᵛ c (value a Zero b)     m mo = λ _ → fromW b (valueᵐ mo m tt)
+  sigopᵛ c (value a One  b)     m mo = λ x → fromW b (valueᵐ mo m (toB σ a x))
+  sigopᵛ c (value a Many b)     m mo = λ x → fromW b (valueᵐ mo m (toB σ a x))
+  sigopᵛ c (operation a Zero b) m mo = λ _ → performT (call (op m) tt (fromW b))
+  sigopᵛ c (operation a One  b) m mo = λ x → performT (call (op m) (toB σ a x) (fromW b))
+  sigopᵛ c (operation a Many b) m mo = λ x → performT (call (op m) (toB σ a x) (fromW b))
 
   -- The arithmetic is the target's: words of its width (`+`, `-`, `*` wrap;
   -- `/`, `%` total; comparisons signed), floats of its format, correctly

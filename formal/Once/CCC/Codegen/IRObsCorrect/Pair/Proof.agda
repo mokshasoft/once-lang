@@ -359,6 +359,7 @@ module PairProofC {FS : FrameSemantics} where
               (validityWF-frontier-advance x loc (floc PCF.m2)
                  PCF.cf-m2 (≤-reflexive (sym ns-m2))
                  (≤-trans (vr-heap-mono vrf ncF) (≤-reflexive (sym hr-mid)))
+                 (subst (λ a′ → BlocksKept alloc a′) (sym PCF.alloc-m2) (VR.blocks-kept vrf ncF))
                  (validityWF-mem-preserved x loc s (floc PCF.m2) (live→bf bf)
                     (λ loc' b' → mem-to-m2 loc' (bf-n loc' b')) vd))
               (live-lift (bfG loc) bf) (trans input1-m2 rd)

@@ -35,7 +35,7 @@ module Once.CCC.Codegen.LabelScope (o : CanonicalName) where
 
 open import Once.CCC.Label using (LabelId; ℓ; module LabelId)
 open LabelId using (idx)
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_; _⊔_; _∸_)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; +-monoʳ-≤; +-assoc; m≤n⇒m≤1+n; <-≤-trans; +-suc)
 open import Data.Bool using (true)
@@ -44,7 +44,7 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_; length)
-open import Data.List.Relation.Unary.All using ([]; _∷_)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.List.Properties using (++-assoc)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -64,7 +64,10 @@ open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label; CataStrategy; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; out-trace; fsize; resuspend-layer)
+  (sigop-code; ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label; CataStrategy; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; with-copy; two-cell; out-trace; fsize; resuspend-layer; cata-call-from; inj-trace; env-entry; env-prologue)
+open import Once.CCC.Codegen.FlatLayout
+  using (Kind; word; flat; kind; put; put-k; get; get-k; fill; put-All; put-k-All; get-All; get-k-All; fill-All; lkind; lsz)
+open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Codegen.LabelRange o using (label-of; cata-label-of; label-mono; cata-label-mono;
   resuspend-label-mono)
@@ -83,6 +86,46 @@ trace-of (_ , _ , t , _) = t
 ------------------------------------------------------------------------
 -- The slot-only fragments mention no label at all.
 ------------------------------------------------------------------------
+------------------------------------------------------------------------
+-- plan 0.123 B.4 α: the flat layout's code carries no label.
+------------------------------------------------------------------------
+put-nolab : ∀ X s b o′ → NoLab (put X s b o′)
+put-nolab X s b o′ = put-All X s b o′ refl refl refl (λ _ → refl) (λ _ → refl)
+
+put-k-nolab : ∀ kd n s b o′ → NoLab (put-k kd n s b o′)
+put-k-nolab kd n s b o′ = put-k-All kd n s b o′ refl refl refl (λ _ → refl) (λ _ → refl)
+
+get-nolab : ∀ X k → NoLab (get X k)
+get-nolab X k = get-All X k (λ _ → refl) (λ _ → refl) refl
+
+get-k-nolab : ∀ kd n k → NoLab (get-k kd n k)
+get-k-nolab kd n k = get-k-All kd n k (λ _ → refl) (λ _ → refl) refl
+
+nolab-ls : ∀ {lo hi} {t} → NoLab t → LabelsIn lo hi t
+nolab-ls []       = []
+nolab-ls (e ∷ es) = li-none e ∷ nolab-ls es
+
+put-ls : ∀ {lo hi} X s b o′ → LabelsIn lo hi (put X s b o′)
+put-ls X s b o′ = nolab-ls (put-nolab X s b o′)
+
+put-k-ls : ∀ {lo hi} kd n s b o′ → LabelsIn lo hi (put-k kd n s b o′)
+put-k-ls kd n s b o′ = nolab-ls (put-k-nolab kd n s b o′)
+
+get-ls : ∀ {lo hi} X k → LabelsIn lo hi (get X k)
+get-ls X k = nolab-ls (get-nolab X k)
+
+getμ-ls : ∀ {lo hi} (G : Fun 0) k → LabelsIn lo hi (get-k (lkind G word) (lsz G 1) k)
+getμ-ls G k = nolab-ls (get-k-nolab (lkind G word) (lsz G 1) k)
+
+-- D388: a sum's padding fill mentions no label
+fill-nolab : ∀ from c → NoLab (fill from c)
+fill-nolab from c = fill-All from c refl (λ _ → refl)
+
+inj-ls : ∀ {lo hi} (t : ℕ) (P S : IT.IRTy) (n : ℕ) → LabelsIn lo hi (inj-trace t P S n)
+inj-ls t P S n =
+  nolab-ls (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+            ++⁺ (fill-nolab _ (size S ∸ suc (size P))) (++⁺ (put-nolab P n (suc n) 1) (refl ∷ [])))
+
 push2-ls : ∀ (lo hi topSlot tv tb : ℕ) → LabelsIn lo hi (push2 topSlot tv tb)
 push2-ls lo hi topSlot tv tb =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
@@ -92,10 +135,9 @@ pop2-ls : ∀ (lo hi topSlot : ℕ) → LabelsIn lo hi (pop2 topSlot)
 pop2-ls lo hi topSlot =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 
-wrap-sum-ls : ∀ (lo hi tag s : ℕ) → LabelsIn lo hi (wrap-sum tag s)
-wrap-sum-ls lo hi tag s =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+wrap-sum-ls : ∀ (lo hi tag : ℕ) pk ps ss (s : ℕ) → LabelsIn lo hi (wrap-sum tag pk ps ss s)
+wrap-sum-ls lo hi tag pk ps ss s =
+  nolab-ls (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (fill-nolab _ (ss ∸ suc ps)) (++⁺ (put-k-nolab pk ps s (suc s) 1) (refl ∷ [])))
 
 ------------------------------------------------------------------------
 -- THE TWO COMPILE-TIME WALKS. A `⊕` level owns `[lb, lb+1]` and recurses at
@@ -109,12 +151,15 @@ visit-ls (K _) todo tv tb s lb = []
 visit-ls Id    todo tv tb s lb =
   li-none refl ∷ push2-ls _ _ todo tv tb
 visit-ls (F ⊕ G) todo tv tb s lb =
-  ++⁺ (li-lab refl ≤-refl lb<hi ∷ li-none refl ∷ li-none refl ∷ [])
+  ++⁺ (li-lab refl ≤-refl lb<hi ∷ [])
+      (++⁺ (getμ-ls G 1)
+      (++⁺ (li-none refl ∷ [])
       (++⁺ (ls-weaken loG hiG (visit-ls G todo tv tb (s + 4) (suc (suc lb) + lsize F)))
-           (++⁺ (li-lab refl (n≤1+n lb) slb<hi ∷ li-lab refl ≤-refl lb<hi ∷
-                 li-none refl ∷ li-none refl ∷ [])
-                (++⁺ (ls-weaken loF hiF (visit-ls F todo tv tb (s + 4) (suc (suc lb))))
-                     (li-lab refl (n≤1+n lb) slb<hi ∷ []))))
+      (++⁺ (li-lab refl (n≤1+n lb) slb<hi ∷ li-lab refl ≤-refl lb<hi ∷ [])
+      (++⁺ (getμ-ls F 1)
+      (++⁺ (li-none refl ∷ [])
+      (++⁺ (ls-weaken loF hiF (visit-ls F todo tv tb (s + 4) (suc (suc lb))))
+           (li-lab refl (n≤1+n lb) slb<hi ∷ []))))))))
   where
     hi = lb + lsize (F ⊕ G)
     lb<hi : lb < hi
@@ -132,29 +177,36 @@ visit-ls (F ⊕ G) todo tv tb s lb =
     hiG = subst (suc (suc (lb + lsize F + lsize G)) ≤_) (sym (+ss lb (lsize F + lsize G)))
                 (s≤s (s≤s (≤-reflexive (+-assoc lb (lsize F) (lsize G)))))
 visit-ls (F ⊗ G) todo tv tb s lb =
-  ++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
+  ++⁺ (li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (getμ-ls F 0)
+      (++⁺ (li-none refl ∷ [])
       (++⁺ (ls-weaken ≤-refl hiF (visit-ls F todo tv tb (s + 4) lb))
-           (++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
-                (ls-weaken (m≤m+n lb (lsize F)) hiG (visit-ls G todo tv tb (s + 4) (lb + lsize F)))))
+      (++⁺ (li-none refl ∷ [])
+      (++⁺ (getμ-ls G _)
+      (++⁺ (li-none refl ∷ [])
+           (ls-weaken (m≤m+n lb (lsize F)) hiG (visit-ls G todo tv tb (s + 4) (lb + lsize F)))))))))
   where
     hiF : lb + lsize F ≤ lb + lsize (F ⊗ G)
     hiF = +-monoʳ-≤ lb (m≤m+n (lsize F) (lsize G))
     hiG : lb + lsize F + lsize G ≤ lb + lsize (F ⊗ G)
     hiG = ≤-reflexive (+-assoc lb (lsize F) (lsize G))
 
-rebuild-ls : ∀ (F : Fun 0) (val tv tb s lb : ℕ)
-           → LabelsIn lb (lb + lsize F) (rebuild-walk val tv tb F s lb)
-rebuild-ls (K _) val tv tb s lb = li-none refl ∷ []
-rebuild-ls Id    val tv tb s lb = pop2-ls _ _ val
-rebuild-ls (F ⊕ G) val tv tb s lb =
-  ++⁺ (li-lab refl ≤-refl lb<hi ∷ li-none refl ∷ li-none refl ∷ [])
-      (++⁺ (ls-weaken loG hiG (rebuild-ls G val tv tb (s + 4) (suc (suc lb) + lsize F)))
-           (++⁺ (wrap-sum-ls _ _ 1 s)
-                (++⁺ (li-lab refl (n≤1+n lb) slb<hi ∷ li-lab refl ≤-refl lb<hi ∷
-                      li-none refl ∷ li-none refl ∷ [])
-                     (++⁺ (ls-weaken loF hiF (rebuild-ls F val tv tb (s + 4) (suc (suc lb))))
-                          (++⁺ (wrap-sum-ls _ _ 0 s)
-                               (li-lab refl (n≤1+n lb) slb<hi ∷ []))))))
+rebuild-ls : ∀ (ck : Kind) (cs : ℕ) (F : Fun 0) (val tv tb s lb : ℕ)
+           → LabelsIn lb (lb + lsize F) (rebuild-walk val tv tb ck cs F s lb)
+rebuild-ls ck cs (K _) val tv tb s lb = li-none refl ∷ []
+rebuild-ls ck cs Id    val tv tb s lb = pop2-ls _ _ val
+rebuild-ls ck cs (F ⊕ G) val tv tb s lb =
+  ++⁺ (li-lab refl ≤-refl lb<hi ∷ [])
+      (++⁺ (getμ-ls G 1)
+      (++⁺ (li-none refl ∷ [])
+      (++⁺ (ls-weaken loG hiG (rebuild-ls ck cs G val tv tb (s + 4) (suc (suc lb) + lsize F)))
+      (++⁺ (wrap-sum-ls _ _ 1 (lkind G ck) (lsz G cs) (lsz (F ⊕ G) cs) s)
+      (++⁺ (li-lab refl (n≤1+n lb) slb<hi ∷ li-lab refl ≤-refl lb<hi ∷ [])
+      (++⁺ (getμ-ls F 1)
+      (++⁺ (li-none refl ∷ [])
+      (++⁺ (ls-weaken loF hiF (rebuild-ls ck cs F val tv tb (s + 4) (suc (suc lb))))
+      (++⁺ (wrap-sum-ls _ _ 0 (lkind F ck) (lsz F cs) (lsz (F ⊕ G) cs) s)
+           (li-lab refl (n≤1+n lb) slb<hi ∷ []))))))))))
   where
     hi = lb + lsize (F ⊕ G)
     lb<hi : lb < hi
@@ -171,14 +223,19 @@ rebuild-ls (F ⊕ G) val tv tb s lb =
     hiG : suc (suc lb) + lsize F + lsize G ≤ hi
     hiG = subst (suc (suc (lb + lsize F + lsize G)) ≤_) (sym (+ss lb (lsize F + lsize G)))
                 (s≤s (s≤s (≤-reflexive (+-assoc lb (lsize F) (lsize G)))))
-rebuild-ls (F ⊗ G) val tv tb s lb =
-  ++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
-      (++⁺ (ls-weaken (m≤m+n lb (lsize F)) hiG (rebuild-ls G val tv tb (s + 4) (lb + lsize F)))
-           (++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
-                (++⁺ (ls-weaken ≤-refl hiF (rebuild-ls F val tv tb (s + 4) lb))
-                     (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-                      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-                      li-none refl ∷ []))))
+rebuild-ls ck cs (F ⊗ G) val tv tb s lb =
+  ++⁺ (li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (getμ-ls G _)
+      (++⁺ (li-none refl ∷ [])
+      (++⁺ (ls-weaken (m≤m+n lb (lsize F)) hiG (rebuild-ls ck cs G val tv tb (s + 4) (lb + lsize F)))
+      (++⁺ (li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (getμ-ls F 0)
+      (++⁺ (li-none refl ∷ [])
+      (++⁺ (ls-weaken ≤-refl hiF (rebuild-ls ck cs F val tv tb (s + 4) lb))
+      (++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (put-k-ls (lkind F ck) (lsz F cs) (suc s) (s + 3) 0)
+      (++⁺ (put-k-ls (lkind G ck) (lsz G cs) (s + 2) (s + 3) (lsz F cs))
+           (li-none refl ∷ [])))))))))))
   where
     hiF : lb + lsize F ≤ lb + lsize (F ⊗ G)
     hiF = +-monoʳ-≤ lb (m≤m+n (lsize F) (lsize G))
@@ -213,26 +270,17 @@ cata-body-ls lo hi bl el bb at atls Lel Hel =
   li-lab refl Lel Hel ∷ li-none refl ∷
   ++⁺ atls (li-none refl ∷ li-lab refl Lel Hel ∷ [])
 
-cata-setup-ls : ∀ (lo hi cl k ev bl : ℕ) → LabelsIn lo hi (cata-call-setup cl k ev bl)
-cata-setup-ls lo hi cl k ev bl =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ []
+cata-setup-ls : ∀ (lo hi : ℕ) (E : IT.IRTy) (cl k ev bl : ℕ) → LabelsIn lo hi (cata-call-setup E cl k ev bl)
+cata-setup-ls lo hi E cl k ev bl =
+  nolab-ls (++⁺ (get-nolab E 0)
+                (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
 
-cata-call-ls : ∀ (lo hi cl k ev pr : ℕ) → LabelsIn lo hi (cata-call cl k ev pr)
-cata-call-ls lo hi cl k ev pr =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-
-cata-call-box-ls : ∀ (lo hi cl k ev pr : ℕ) → LabelsIn lo hi (cata-call-box cl k ev pr)
-cata-call-box-ls lo hi cl k ev pr =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+cata-call-from-ls : ∀ (lo hi : ℕ) i0 → once-label-of i0 ≡ nothing → ∀ E lk ls (cl k ev pr : ℕ)
+                  → LabelsIn lo hi (cata-call-from i0 E lk ls cl k ev pr)
+cata-call-from-ls lo hi i0 e0 E lk ls cl k ev pr =
+  nolab-ls (e0 ∷ refl ∷ refl ∷ refl ∷
+            ++⁺ (put-nolab E ev pr 0)
+                (++⁺ (put-k-nolab lk ls k pr _) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])))
 
 -- The Tier-1 LINEAR skeleton: four labels above `l1` (`ld-top`, `ld-end`,
 -- `la-top`, `la-end`), the algebra spliced twice.
@@ -241,16 +289,16 @@ cata-call-box-ls lo hi cl k ev pr =
 -- functor walks in DISJOINT windows: visit at `lv = l1+4`, rebuild at
 -- `lr = lv + lsize F`, and `l2 = lr + lsize F`. That the windows are disjoint
 -- is exactly what the two `ls-weaken`s below check.
-cata-branching-ls : ∀ (F : Fun 0) (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
-                  → LabelsIn lo (cata-label-of (cata-dispatch (strat-branching F) bb n1 l1 at))
-                             (cata-trace-of (cata-dispatch (strat-branching F) bb n1 l1 at))
+cata-branching-ls : ∀ (E A : IT.IRTy) (G F : Fun 0) (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
+                  → LabelsIn lo (cata-label-of (cata-dispatch E A G (strat-branching F) bb n1 l1 at))
+                             (cata-trace-of (cata-dispatch E A G (strat-branching F) bb n1 l1 at))
 -- C1: `cata-body ++ setup ++ I₁ ++ call ++ I₂` — Tier 2 splices once, so it
 -- gets ONE call site. The two functor-walk windows are UNCHANGED; `ls-weaken`
 -- lifts them over the two labels the body bracket adds above them.
-cata-branching-ls F lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-setup-ls lo hi2 _ _ _ hi)
+cata-branching-ls E A G F lo bb n1 l1 at lo≤l1 atls =
+  ++⁺ (cata-setup-ls lo hi2 E _ _ _ hi)
    (++⁺ (ls-weaken ≤-refl hi≤hi2 I₁-ls)
-    (++⁺ (cata-call-ls lo hi2 _ _ _ _)
+    (++⁺ (cata-call-from-ls lo hi2 _ refl E (lkind F (kind A)) (lsz F (size A)) _ _ _ _)
      (++⁺ (ls-weaken ≤-refl hi≤hi2 I₂-ls)
           (cata-body-ls lo hi2 hi (hi + 1) _ at at2 Lend Hend))))
   where
@@ -290,7 +338,7 @@ cata-branching-ls F lo bb n1 l1 at lo≤l1 atls =
     H3 = <-≤-trans (+lt l1 3 4 (s≤s (s≤s (s≤s (s≤s z≤n))))) top
     at' : LabelsIn lo hi at
     at' = ls-weaken ≤-refl (≤-trans (m≤m+n l1 4) top) atls
-    I₁-ls : LabelsIn lo hi (cata-br-I₁ F n1 l1)
+    I₁-ls : LabelsIn lo hi (cata-br-I₁ (kind A) (size A) F n1 l1)
     I₁-ls =
       ++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
@@ -308,7 +356,7 @@ cata-branching-ls F lo bb n1 l1 at lo≤l1 atls =
             li-lab refl L3 H3 ∷ li-none refl ∷ li-none refl ∷
             li-none refl ∷ li-none refl ∷ [])
       (++⁺ (ls-weaken (≤-trans L0 (≤-trans (m≤m+n l1 4) lv≤lr)) ≤-refl
-                      (rebuild-ls F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) lr))
+                      (rebuild-ls (kind A) (size A) F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) lr))
            (li-none refl ∷ [])))))))))
     I₂-ls : LabelsIn lo hi (cata-br-I₂ n1 l1)
     I₂-ls =
@@ -318,12 +366,12 @@ cata-branching-ls F lo bb n1 l1 at lo≤l1 atls =
 
 -- D099 / C1: `strat-const` no longer passes the algebra's witness through —
 -- it emits a called body like the others, so it has its own two labels.
-cata-const-ls : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
-              → LabelsIn lo (cata-label-of (cata-dispatch strat-const bb n1 l1 at))
-                         (cata-trace-of (cata-dispatch strat-const bb n1 l1 at))
-cata-const-ls lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-setup-ls lo hi _ _ _ l1)
-   (++⁺ (cata-call-ls lo hi _ _ _ _) (cata-body-ls lo hi l1 (l1 + 1) _ at at' Lend Hend))
+cata-const-ls : ∀ (E A : IT.IRTy) (G : Fun 0) (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
+              → LabelsIn lo (cata-label-of (cata-dispatch E A G strat-const bb n1 l1 at))
+                         (cata-trace-of (cata-dispatch E A G strat-const bb n1 l1 at))
+cata-const-ls E A G lo bb n1 l1 at lo≤l1 atls =
+  ++⁺ (cata-setup-ls lo hi E _ _ _ l1)
+   (++⁺ (cata-call-from-ls lo hi _ refl E (lkind G word) (lsz G 1) _ _ _ _) (cata-body-ls lo hi l1 (l1 + 1) _ at at' Lend Hend))
   where
     hi = l1 + 2
     Hend : l1 + 1 < hi
@@ -333,12 +381,12 @@ cata-const-ls lo bb n1 l1 at lo≤l1 atls =
     at' : LabelsIn lo hi at
     at' = ls-weaken ≤-refl (m≤m+n l1 2) atls
 
-cata-box-ls : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
-              → LabelsIn lo (cata-label-of (cata-dispatch strat-box bb n1 l1 at))
-                         (cata-trace-of (cata-dispatch strat-box bb n1 l1 at))
-cata-box-ls lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-setup-ls lo hi _ _ _ l1)
-   (++⁺ (cata-call-box-ls lo hi _ _ _ _) (cata-body-ls lo hi l1 (l1 + 1) _ at at' Lend Hend))
+cata-box-ls : ∀ (E A : IT.IRTy) (G : Fun 0) (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
+              → LabelsIn lo (cata-label-of (cata-dispatch E A G strat-box bb n1 l1 at))
+                         (cata-trace-of (cata-dispatch E A G strat-box bb n1 l1 at))
+cata-box-ls E A G lo bb n1 l1 at lo≤l1 atls =
+  ++⁺ (cata-setup-ls lo hi E _ _ _ l1)
+   (++⁺ (cata-call-from-ls lo hi _ refl E (lkind G word) (lsz G 1) _ _ _ _) (cata-body-ls lo hi l1 (l1 + 1) _ at at' Lend Hend))
   where
     hi = l1 + 2
     Hend : l1 + 1 < hi
@@ -348,12 +396,12 @@ cata-box-ls lo bb n1 l1 at lo≤l1 atls =
     at' : LabelsIn lo hi at
     at' = ls-weaken ≤-refl (m≤m+n l1 2) atls
 
-cata-ls : ∀ (st : CataStrategy) (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
-        → LabelsIn lo (cata-label-of (cata-dispatch st bb n1 l1 at))
-                   (cata-trace-of (cata-dispatch st bb n1 l1 at))
-cata-ls strat-const         lo bb n1 l1 at le atls = cata-const-ls lo bb n1 l1 at le atls
-cata-ls strat-box           lo bb n1 l1 at le atls = cata-box-ls lo bb n1 l1 at le atls
-cata-ls (strat-branching F) lo bb n1 l1 at le atls = cata-branching-ls F lo bb n1 l1 at le atls
+cata-ls : ∀ (E A : IT.IRTy) (G : Fun 0) (st : CataStrategy) (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
+        → LabelsIn lo (cata-label-of (cata-dispatch E A G st bb n1 l1 at))
+                   (cata-trace-of (cata-dispatch E A G st bb n1 l1 at))
+cata-ls E A G strat-const         lo bb n1 l1 at le atls = cata-const-ls E A G lo bb n1 l1 at le atls
+cata-ls E A G strat-box           lo bb n1 l1 at le atls = cata-box-ls E A G lo bb n1 l1 at le atls
+cata-ls E A G (strat-branching F) lo bb n1 l1 at le atls = cata-branching-ls E A G F lo bb n1 l1 at le atls
 
 ------------------------------------------------------------------------
 -- THE INDUCTION: every label an emitted fragment mentions lies in the range
@@ -364,25 +412,32 @@ cata-ls (strat-branching F) lo bb n1 l1 at le atls = cata-branching-ls F lo bb n
 sigop-labels : ∀ {A B} (si : SigOpInfo A B) (n l : ℕ) (m : Maybe CmpOp)
              → LabelsIn l l (sigop-code si n m)
 sigop-labels si n l nothing  = li-none refl ∷ []
-sigop-labels si n l (just _) = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+sigop-labels si n l (just _) = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 
 -- D366: `In`'s three shapes and `out-μ`'s mention no label.
-in-ls : ∀ {lo hi} (r : MuRep) (n : ℕ) → LabelsIn lo hi (in-trace r n)
-in-ls mu-box  n = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+in-ls : ∀ {lo hi} (r : MuRep) kd L (n : ℕ) → LabelsIn lo hi (in-trace r kd L n)
+in-ls mu-box  kd L n = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
                   li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-in-ls mu-unit n = li-none refl ∷ []
-in-ls mu-ptr  n = li-none refl ∷ []
+in-ls mu-unit kd L n = li-none refl ∷ []
+in-ls mu-ptr  word L n = li-none refl ∷ []
+in-ls mu-ptr  flat L n = nolab-ls (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nolab L n (suc n) 0) (refl ∷ []))
 
 out-ls : ∀ {lo hi} (r : MuRep) → LabelsIn lo hi (out-trace r)
 out-ls mu-box  = li-none refl ∷ []
 out-ls mu-unit = li-none refl ∷ []
 out-ls mu-ptr  = li-none refl ∷ []
+-- D399: a kept value's copy, then the two-cell build
+wc-ls : ∀ kd E n c → ∀ {lo hi} → LabelsIn lo hi (with-copy kd E n (λ m → two-cell m c))
+wc-ls word E n c = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+wc-ls flat E n c = nolab-ls (++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nolab E n (suc n) 0) (refl ∷ [])) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
+
 
 labels-in : ∀ {A B} (ir : IR A B) (n l : ℕ)
           → LabelsIn l (label-of (ir-to-trace' n l ir)) (trace-of (ir-to-trace' n l ir))
 labels-in id       n l = li-none refl ∷ []
-labels-in fst      n l = li-none refl ∷ []
-labels-in snd      n l = li-none refl ∷ []
+labels-in (fst {A} {B}) n l = get-ls A 0
+labels-in (snd {A} {B}) n l = get-ls B _
 labels-in terminal n l = []
 labels-in initial  n l = li-none refl ∷ []
 labels-in (g ∘ f)  n l =
@@ -390,79 +445,75 @@ labels-in (g ∘ f)  n l =
       (li-none refl ∷ ls-weaken (label-mono f n l) ≤-refl (labels-in g _ _))
 -- Stage G: the stack-shape clause that stood here collapsed onto this
 -- same LHS when the pair's mode was dropped, and shadowed the heap one.
-labels-in (⟨ f , g ⟩) n l =
+labels-in (⟨_,_⟩ {A} {B} {C} f g) n l =
   li-none refl ∷ li-none refl ∷
   ++⁺ (ls-weaken ≤-refl (label-mono g _ _) (labels-in f _ l))
       (li-none refl ∷ li-none refl ∷
        ++⁺ (ls-weaken (label-mono f _ l) ≤-refl (labels-in g _ _))
-           (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-            li-none refl ∷ []))
+           (nolab-ls (refl ∷ refl ∷ refl ∷
+                      ++⁺ (put-nolab B _ _ 0) (++⁺ (put-nolab C _ _ _) (refl ∷ [])))))
 -- D159: POST-UNFLIP the closure clauses mention NO once label at all. The jump
 -- over the inlined body and its landing `c-label` were the only two, and both
 -- existed solely because the body was spliced in. The body marker and the code
 -- address stay invisible as they always did — `thunk` provenance (D082).
-labels-in (curry b) n l =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-labels-in apply n l =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ []
-labels-in inl n l =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-labels-in inr n l =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+labels-in (curry {E} b) n l = wc-ls (kind E) E n _
+labels-in (apply {A} {B}) n l =
+  nolab-ls (++⁺ (get-nolab A 1)
+                (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+                 ++⁺ (put-nolab A _ _ 1) (refl ∷ refl ∷ refl ∷ [])))
+labels-in (inl {A} {B}) n l = inj-ls 0 A (A IT.+ B) n
+labels-in (inr {A} {B}) n l = inj-ls 1 B (A IT.+ B) n
 -- `case` owns `l` (the inl entry) and `suc l` (the join); both branches are
 -- compiled above them, so all four mentions sit at the bottom of the range.
-labels-in (case f g) n l =
-  ++⁺ (li-lab refl ≤-refl case-l<hi ∷ li-none refl ∷ li-none refl ∷ [])
+labels-in (case {A} {B} f g) n l =
+  ++⁺ (li-lab refl ≤-refl case-l<hi ∷ [])
+      (++⁺ (get-ls B 1)
+      (++⁺ (li-none refl ∷ [])
       (++⁺ (ls-weaken (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (label-mono f n (suc (suc l)))) ≤-refl
                       (labels-in g _ _))
-           (++⁺ (li-lab refl (n≤1+n l) case-sl<hi ∷ li-lab refl ≤-refl case-l<hi ∷
-                 li-none refl ∷ li-none refl ∷ [])
-                (++⁺ (ls-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (label-mono g _ _)
-                                (labels-in f n (suc (suc l))))
-                     (li-lab refl (n≤1+n l) case-sl<hi ∷ []))))
+      (++⁺ (li-lab refl (n≤1+n l) case-sl<hi ∷ li-lab refl ≤-refl case-l<hi ∷ [])
+      (++⁺ (get-ls A 1)
+      (++⁺ (li-none refl ∷ [])
+      (++⁺ (ls-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) (label-mono g _ _)
+                      (labels-in f n (suc (suc l))))
+           (li-lab refl (n≤1+n l) case-sl<hi ∷ []))))))))
   where
-    up : suc (suc l) ≤ label-of (ir-to-trace' n l (case f g))
+    up : suc (suc l) ≤ label-of (ir-to-trace' n l (case {A} {B} f g))
     up = ≤-trans (label-mono f n (suc (suc l))) (label-mono g _ _)
-    case-l<hi : l < label-of (ir-to-trace' n l (case f g))
+    case-l<hi : l < label-of (ir-to-trace' n l (case {A} {B} f g))
     case-l<hi = ≤-trans (m≤n⇒m≤1+n ≤-refl) up
-    case-sl<hi : suc l < label-of (ir-to-trace' n l (case f g))
+    case-sl<hi : suc l < label-of (ir-to-trace' n l (case {A} {B} f g))
     case-sl<hi = up
-labels-in (In {F} _)    n l = in-ls (mu-rep F) n
+labels-in (In {F} _)    n l = in-ls (mu-rep F) _ _ n
 labels-in (out-μ {F} _) n l = out-ls (mu-rep F)
 -- C1: the algebra is generated at frontier 0 (its own frame).
-labels-in (Cata {F} _ alg) n l =
-  cata-ls (cata-strategy ⌈ F ⌉F) l _ _ _ _ (label-mono alg 0 l) (labels-in alg 0 l)
+labels-in (Cata {F} _ {E} {A} alg) n l =
+  cata-ls E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) l _ _ _ _ (label-mono alg 0 l) (labels-in alg 0 l)
 labels-in (Out _)        n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 -- D189: the same two-cell build as `Ana`, with `id` as the block.
-labels-in (in-ν _) n l =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+labels-in (in-ν {F} _) n l = wc-ls (kind (IT.⟦ F ⟧TI (IT.ν-type F))) _ n _
 -- D189: the ν suspension is `curry`'s closure record cell for cell, so
 -- its walk clause is `curry`'s. The coalgebra is a named block, like the
 -- closure body, emitted at frontier 0 under the ν's own label.
-labels-in (Ana _ c) n l =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+labels-in (Ana {F} _ {E} {A} c) n l = wc-ls flat (E IT.* A) n _
 -- the loop owns `l` (its top) and `suc l` (its exit); the round is compiled
 -- above them.
-labels-in (Iter b) n l =
-  li-none refl ∷ li-none refl ∷ li-lab refl ≤-refl l<hi ∷
-  ++⁺ (ls-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) ≤-refl (labels-in b _ _))
-      (li-none refl ∷ li-lab refl (n≤1+n l) up ∷
-       li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-       li-lab refl ≤-refl l<hi ∷ li-lab refl (n≤1+n l) up ∷ li-none refl ∷ [])
+labels-in (Iter {E} {A} {B} b) n l =
+  ++⁺ (get-ls E 0)
+      (++⁺ (li-none refl ∷ li-lab refl ≤-refl l<hi ∷ [])
+      (++⁺ (ls-weaken (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) ≤-refl (labels-in b _ _))
+      (++⁺ (li-none refl ∷ li-lab refl (n≤1+n l) up ∷ [])
+      (++⁺ (get-ls A 1)
+      (++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (put-ls E _ _ 0)
+      (++⁺ (put-ls A _ _ _)
+      (++⁺ (li-none refl ∷ li-none refl ∷ li-lab refl ≤-refl l<hi ∷ li-lab refl (n≤1+n l) up ∷ [])
+           (get-ls B 1)))))))))
   where
-    up : suc (suc l) ≤ label-of (ir-to-trace' n l (Iter b))
+    up : suc (suc l) ≤ label-of (ir-to-trace' n l (Iter {E} {A} {B} b))
     up = label-mono b _ _
-    l<hi : l < label-of (ir-to-trace' n l (Iter b))
+    l<hi : l < label-of (ir-to-trace' n l (Iter {E} {A} {B} b))
     l<hi = ≤-trans (m≤n⇒m≤1+n ≤-refl) up
 labels-in (SigOp si)     n l = sigop-labels si n l (cmp-of (sem si))
 labels-in (Call _)      n l = li-none refl ∷ []
@@ -871,9 +922,25 @@ record CataSplit (bb l1 : ℕ) (at t : AbstractTrace) : Set where
 -- Tier 2 calls the algebra ONCE, so its `H` has one call site. The functor
 -- walks are stuck on `F`, so `H ++ body` is NOT definitionally the emitted
 -- trace here — one `++-assoc` at `cata-br-I₁` is the whole difference.
-cata-br-split : ∀ (F : Fun 0) (bb n1 l1 : ℕ) (at : AbstractTrace)
-              → CataSplit bb l1 at (cata-trace-of (cata-dispatch (strat-branching F) bb n1 l1 at))
-cata-br-split F bb n1 l1 at =
+-- plan 0.123 B.4 α: the setup and the call read the environment by its type,
+-- so their idleness is `idle-All`, not `refl`.
+setup-idle : ∀ (E : IT.IRTy) (cl k ev bl : ℕ) → seg-idle? (cata-call-setup E cl k ev bl) ≡ true
+setup-idle E cl k ev bl =
+  idle-All (cata-call-setup E cl k ev bl) (++⁺ {xs = get E 0} (get-All E 0 (λ _ → refl) (λ _ → refl) refl)
+                  (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
+
+call-idle : ∀ i0 → is-id? (seg-action i0) ≡ true → ∀ E lk ls (cl k ev pr : ℕ)
+          → seg-idle? (cata-call-from i0 E lk ls cl k ev pr) ≡ true
+call-idle i0 e0 E lk ls cl k ev pr =
+  idle-All (cata-call-from i0 E lk ls cl k ev pr)
+             (e0 ∷ refl ∷ refl ∷ refl ∷
+              ++⁺ (put-All E ev pr 0 refl refl refl (λ _ → refl) (λ _ → refl))
+                  (++⁺ (put-k-All lk ls k pr _ refl refl refl (λ _ → refl) (λ _ → refl))
+                       (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])))
+
+cata-br-split : ∀ (E A : IT.IRTy) (G F : Fun 0) (bb n1 l1 : ℕ) (at : AbstractTrace)
+              → CataSplit bb l1 at (cata-trace-of (cata-dispatch E A G (strat-branching F) bb n1 l1 at))
+cata-br-split E A G F bb n1 l1 at =
   mkSplit H (ℓ o bodyL) (ℓ o endL) hi2 assoc H-idle H-ls (Lend , Hend)
   where
     lv  = l1 + 4
@@ -883,16 +950,21 @@ cata-br-split F bb n1 l1 at =
     bodyL = hi
     endL  = hi + 1
     cl = n1 + 7 + (4 * fsize F) + 4
-    setup = cata-call-setup cl (cl + 1) (cl + 2) bodyL
-    call  = cata-call cl (cl + 1) (cl + 2) (cl + 3)
+    setup = cata-call-setup E cl (cl + 1) (cl + 2) bodyL
+    call  = cata-call E (lkind F (kind A)) (lsz F (size A)) cl (cl + 1) (cl + 2) (cl + 3)
     jmp   = instr-ctrl (c-jmp (ℓ o endL)) ∷ []
     tailB = instr-ctrl (c-thunk (ℓ o bodyL) bb) ∷
             (at ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label (ℓ o endL)) ∷ [])
+    I₁ = cata-br-I₁ (kind A) (size A) F n1 l1
     inner = call ++ (cata-br-I₂ n1 l1 ++ jmp)
-    H = setup ++ (cata-br-I₁ F n1 l1 ++ inner)
-    assoc : H ++ tailB ≡ cata-trace-of (cata-dispatch (strat-branching F) bb n1 l1 at)
-    assoc = trans (++-assoc setup (cata-br-I₁ F n1 l1 ++ inner) tailB)
-                  (cong (setup ++_) (++-assoc (cata-br-I₁ F n1 l1) inner tailB))
+    H = setup ++ (I₁ ++ inner)
+    assoc : H ++ tailB ≡ cata-trace-of (cata-dispatch E A G (strat-branching F) bb n1 l1 at)
+    assoc = trans (++-assoc setup (I₁ ++ inner) tailB)
+                  (cong (setup ++_)
+                    (trans (++-assoc I₁ inner tailB)
+                      (cong (I₁ ++_)
+                        (trans (++-assoc call (cata-br-I₂ n1 l1 ++ jmp) tailB)
+                               (cong (call ++_) (++-assoc (cata-br-I₂ n1 l1) jmp tailB))))))
     hi≤hi2 : hi ≤ hi2
     hi≤hi2 = m≤m+n hi 2
     l1≤hi : l1 ≤ hi
@@ -921,15 +993,17 @@ cata-br-split F bb n1 l1 at =
     H2 = <-≤-trans (+lt l1 2 4 (s≤s (s≤s (s≤s z≤n)))) top
     H3 : l1 + 3 < hi
     H3 = <-≤-trans (+lt l1 3 4 (s≤s (s≤s (s≤s (s≤s z≤n))))) top
-    I₁-idle : seg-idle? (cata-br-I₁ F n1 l1) ≡ true
+    I₁-idle : seg-idle? I₁ ≡ true
     I₁-idle = idle-++ (visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) lv) _
                 (visit-idle F n1 (n1 + 4) (n1 + 5) (n1 + 7) lv)
-                (idle-++ (rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) lr) _
-                  (rebuild-idle F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) lr) refl)
+                (idle-++ (rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) (kind A) (size A) F (n1 + 7) lr) _
+                  (rebuild-idle (kind A) (size A) F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) lr) refl)
     H-idle : seg-idle? H ≡ true
-    H-idle = idle-++ setup (cata-br-I₁ F n1 l1 ++ inner) refl
-               (idle-++ (cata-br-I₁ F n1 l1) inner I₁-idle refl)
-    I₁-ls : LabelsIn l1 hi (cata-br-I₁ F n1 l1)
+    H-idle = idle-++ setup (I₁ ++ inner) (setup-idle E cl (cl + 1) (cl + 2) bodyL)
+               (idle-++ I₁ inner I₁-idle
+                 (idle-++ call _ (call-idle mov-to-output refl E (lkind F (kind A)) (lsz F (size A))
+                                            cl (cl + 1) (cl + 2) (cl + 3)) refl))
+    I₁-ls : LabelsIn l1 hi I₁
     I₁-ls =
       ++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
@@ -947,7 +1021,7 @@ cata-br-split F bb n1 l1 at =
             li-lab refl L3 H3 ∷ li-none refl ∷ li-none refl ∷
             li-none refl ∷ li-none refl ∷ [])
       (++⁺ (ls-weaken (≤-trans (m≤m+n l1 4) lv≤lr) ≤-refl
-                      (rebuild-ls F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) lr))
+                      (rebuild-ls (kind A) (size A) F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) lr))
            (li-none refl ∷ [])))))))))
     I₂-ls : LabelsIn l1 hi (cata-br-I₂ n1 l1)
     I₂-ls =
@@ -956,55 +1030,52 @@ cata-br-split F bb n1 l1 at =
            li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
     H-ls : LabelsIn l1 hi2 H
     H-ls =
-      ++⁺ (cata-setup-ls l1 hi2 cl (cl + 1) (cl + 2) bodyL)
+      ++⁺ (cata-setup-ls l1 hi2 E cl (cl + 1) (cl + 2) bodyL)
        (++⁺ (ls-weaken ≤-refl hi≤hi2 I₁-ls)
-        (++⁺ (cata-call-ls l1 hi2 cl (cl + 1) (cl + 2) (cl + 3))
+        (++⁺ (cata-call-from-ls l1 hi2 _ refl E (lkind F (kind A)) (lsz F (size A)) cl (cl + 1) (cl + 2) (cl + 3))
          (++⁺ (ls-weaken ≤-refl hi≤hi2 I₂-ls)
               (li-lab refl Lend Hend ∷ []))))
 
 -- `strat-const`'s trace is setup ++ call ++ the body bracket: no loop at all,
--- so `H` is just the two blocks and the jump over the body.
-cata-const-split : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace)
-                 → CataSplit bb l1 at (cata-trace-of (cata-dispatch strat-const bb n1 l1 at))
-cata-const-split bb n1 l1 at =
-  mkSplit H (ℓ o l1) (ℓ o endL) hi refl refl H-ls (Lend , Hend)
+-- so `H` is just the two blocks and the jump over the body. (`strat-box` is the
+-- same with the call reading the box's word.)
+cata-flat-split : ∀ (i0 : AbstractInstr) → once-label-of i0 ≡ nothing → is-id? (seg-action i0) ≡ true
+                → ∀ (E : IT.IRTy) (G : Fun 0) (bb n1 l1 : ℕ) (at : AbstractTrace)
+                → CataSplit bb l1 at
+                    (cata-call-setup E n1 (n1 + 1) (n1 + 2) l1 ++
+                     (cata-call-from i0 E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3) ++
+                      cata-body l1 (l1 + 1) bb at))
+cata-flat-split i0 e0 i0d E G bb n1 l1 at =
+  mkSplit H (ℓ o l1) (ℓ o endL) hi assoc H-idle H-ls (Lend , Hend)
   where
     hi   = l1 + 2
     endL = l1 + 1
-    H = cata-call-setup n1 (n1 + 1) (n1 + 2) l1 ++
-        (cata-call n1 (n1 + 1) (n1 + 2) (n1 + 3) ++ (instr-ctrl (c-jmp (ℓ o endL)) ∷ []))
+    setup = cata-call-setup E n1 (n1 + 1) (n1 + 2) l1
+    call  = cata-call-from i0 E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3)
+    jmp   = instr-ctrl (c-jmp (ℓ o endL)) ∷ []
+    tailB = instr-ctrl (c-thunk (ℓ o l1) bb) ∷
+            (at ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label (ℓ o endL)) ∷ [])
+    H = setup ++ (call ++ jmp)
+    assoc : H ++ tailB ≡ setup ++ (call ++ cata-body l1 (l1 + 1) bb at)
+    assoc = trans (++-assoc setup (call ++ jmp) tailB)
+                  (cong (setup ++_) (++-assoc call jmp tailB))
+    H-idle : seg-idle? H ≡ true
+    H-idle = idle-++ setup (call ++ jmp) (setup-idle E n1 (n1 + 1) (n1 + 2) l1)
+               (idle-++ call jmp (call-idle i0 i0d E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3)) refl)
     Lend : l1 ≤ endL
     Lend = m≤m+n l1 1
     Hend : endL < hi
     Hend = ≤-reflexive (sym (+-suc l1 1))
     H-ls : LabelsIn l1 hi H
-    H-ls = ++⁺ (cata-setup-ls l1 hi n1 (n1 + 1) (n1 + 2) l1)
-               (++⁺ (cata-call-ls l1 hi n1 (n1 + 1) (n1 + 2) (n1 + 3))
+    H-ls = ++⁺ (cata-setup-ls l1 hi E n1 (n1 + 1) (n1 + 2) l1)
+               (++⁺ (cata-call-from-ls l1 hi i0 e0 E (lkind G word) (lsz G 1) n1 (n1 + 1) (n1 + 2) (n1 + 3))
                     (li-lab refl Lend Hend ∷ []))
 
-cata-box-split : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace)
-                 → CataSplit bb l1 at (cata-trace-of (cata-dispatch strat-box bb n1 l1 at))
-cata-box-split bb n1 l1 at =
-  mkSplit H (ℓ o l1) (ℓ o endL) hi refl refl H-ls (Lend , Hend)
-  where
-    hi   = l1 + 2
-    endL = l1 + 1
-    H = cata-call-setup n1 (n1 + 1) (n1 + 2) l1 ++
-        (cata-call-box n1 (n1 + 1) (n1 + 2) (n1 + 3) ++ (instr-ctrl (c-jmp (ℓ o endL)) ∷ []))
-    Lend : l1 ≤ endL
-    Lend = m≤m+n l1 1
-    Hend : endL < hi
-    Hend = ≤-reflexive (sym (+-suc l1 1))
-    H-ls : LabelsIn l1 hi H
-    H-ls = ++⁺ (cata-setup-ls l1 hi n1 (n1 + 1) (n1 + 2) l1)
-               (++⁺ (cata-call-box-ls l1 hi n1 (n1 + 1) (n1 + 2) (n1 + 3))
-                    (li-lab refl Lend Hend ∷ []))
-
-cata-split : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
-           → CataSplit bb l1 at (cata-trace-of (cata-dispatch st bb n1 l1 at))
-cata-split strat-const         bb n1 l1 at = cata-const-split bb n1 l1 at
-cata-split strat-box           bb n1 l1 at = cata-box-split bb n1 l1 at
-cata-split (strat-branching F) bb n1 l1 at = cata-br-split  F bb n1 l1 at
+cata-split : ∀ (E A : IT.IRTy) (G : Fun 0) (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
+           → CataSplit bb l1 at (cata-trace-of (cata-dispatch E A G st bb n1 l1 at))
+cata-split E A G strat-const         bb n1 l1 at = cata-flat-split _ refl refl E G bb n1 l1 at
+cata-split E A G strat-box           bb n1 l1 at = cata-flat-split _ refl refl E G bb n1 l1 at
+cata-split E A G (strat-branching F) bb n1 l1 at = cata-br-split E A G F bb n1 l1 at
 
 -- Every consumer of a skeleton is now ONE application of its split.
 split-agree : ∀ {bb l1 : ℕ} {at t : AbstractTrace} (sp : CataSplit bb l1 at t) (lo : ℕ)
@@ -1052,11 +1123,11 @@ split-nc-r {bb} {l1} {at} sp u lo lu nc =
              li-lab refl (proj₁ (CataSplit.e-win sp)) (proj₂ (CataSplit.e-win sp)) ∷ [])
             (inj₁ ≤-refl)))))
 
-cata-agree : ∀ (st : CataStrategy) (lo bb n1 l1 : ℕ) (at : AbstractTrace)
+cata-agree : ∀ (E A : IT.IRTy) (G : Fun 0) (st : CataStrategy) (lo bb n1 l1 : ℕ) (at : AbstractTrace)
            → (∀ s → seg-fold at s ≡ s) → SegAgree at → LabelsIn lo l1 at
-           → SegAgree (cata-trace-of (cata-dispatch st bb n1 l1 at))
-cata-agree st lo bb n1 l1 at natl saB lsB =
-  split-agree (cata-split st bb n1 l1 at) lo natl saB lsB
+           → SegAgree (cata-trace-of (cata-dispatch E A G st bb n1 l1 at))
+cata-agree E A G st lo bb n1 l1 at natl saB lsB =
+  split-agree (cata-split E A G st bb n1 l1 at) lo natl saB lsB
 
 ------------------------------------------------------------------------
 -- THE INDUCTION. Every clause has its tool: leaves have an EMPTY label range,
@@ -1067,17 +1138,23 @@ cata-agree st lo bb n1 l1 at natl saB lsB =
 ------------------------------------------------------------------------
 sigop-seg : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → SegAgree (sigop-code si n m)
 sigop-seg si n nothing  = segagree-nolab _ (refl ∷ [])
-sigop-seg si n (just _) = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+sigop-seg si n (just _) = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
 -- D366: `In`'s three shapes and `out-μ`'s define no label.
-in-sa : ∀ (r : MuRep) (n : ℕ) → SegAgree (in-trace r n)
-in-sa mu-box  n = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-in-sa mu-unit n = segagree-nolab _ (refl ∷ [])
-in-sa mu-ptr  n = segagree-nolab _ (refl ∷ [])
+in-sa : ∀ (r : MuRep) kd L (n : ℕ) → SegAgree (in-trace r kd L n)
+in-sa mu-box  kd L n = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+in-sa mu-unit kd L n = segagree-nolab _ (refl ∷ [])
+in-sa mu-ptr  word L n = segagree-nolab _ (refl ∷ [])
+in-sa mu-ptr  flat L n = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nolab L n (suc n) 0) (refl ∷ []))
 
 out-sa : ∀ (r : MuRep) → SegAgree (out-trace r)
 out-sa mu-box  = segagree-nolab _ (refl ∷ [])
 out-sa mu-unit = segagree-nolab _ (refl ∷ [])
 out-sa mu-ptr  = segagree-nolab _ (refl ∷ [])
+
+-- D399: a kept value's copy, then the two-cell build
+wc-sa : ∀ kd E n c → SegAgree (with-copy kd E n (λ m → two-cell m c))
+wc-sa word E n c = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+wc-sa flat E n c = segagree-nolab _ (++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nolab E n (suc n) 0) (refl ∷ [])) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
 
 seg-agree   : ∀ {A B} (ir : IR A B) (n l : ℕ) → SegAgree (trace-of (ir-to-trace' n l ir))
 pair-agree-heap : ∀ {A B C} (f : IR A B) (g : IR A C) (n l : ℕ)
@@ -1093,19 +1170,15 @@ iter-pieces : ∀ {E A B} (b : IR (E IT.* A) (B IT.+ A)) (n l : ℕ)
 
 
 seg-agree id n l = segagree-nolab _ (refl ∷ [])
-seg-agree fst n l = segagree-nolab _ (refl ∷ [])
-seg-agree snd n l = segagree-nolab _ (refl ∷ [])
+seg-agree (fst {A} {B}) n l = segagree-nolab _ (get-nolab A 0)
+seg-agree (snd {A} {B}) n l = segagree-nolab _ (get-nolab B _)
 seg-agree terminal n l = segagree-nolab _ []
 seg-agree initial n l = segagree-nolab _ (refl ∷ [])
-seg-agree (In {F} w) n l = in-sa (mu-rep F) n
+seg-agree (In {F} w) n l = in-sa (mu-rep F) _ _ n
 seg-agree (out-μ {F} w) n l = out-sa (mu-rep F)
 seg-agree (Out w) n l = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree (in-ν w) n l =
-  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree (Ana w c) n l =
-  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+seg-agree (in-ν {F} w) n l = wc-sa (kind (IT.⟦ F ⟧TI (IT.ν-type F))) _ n _
+seg-agree (Ana {F} w {E} {A} c) n l = wc-sa flat (E IT.* A) n _
 seg-agree (SigOp w) n l = sigop-seg w n (cmp-of (sem w))
 seg-agree (Call _) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (const fits-int v) n l = segagree-nolab _ (refl ∷ [])
@@ -1116,16 +1189,17 @@ seg-agree (const fits-float v) n l = segagree-nolab _ (refl ∷ [])
 -- D159: the entry block is now LABEL-FREE straight-line code — no jump over a
 -- body, no landing label — so the bracket combinator `segagree-curry` is not
 -- needed here at all. The body's own agreement moved to the block.
-seg-agree (curry bd)  n l =
-  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree apply n l =
-  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-     refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree inl n l =
-  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree inr n l =
-  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+seg-agree (curry {E} bd)  n l = wc-sa (kind E) E n _
+seg-agree (apply {A} {B}) n l =
+  segagree-nolab _ (++⁺ (get-nolab A 1)
+                        (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+                         ++⁺ (put-nolab A _ _ 1) (refl ∷ refl ∷ refl ∷ [])))
+seg-agree (inl {A} {B}) n l =
+  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+                    ++⁺ (fill-nolab _ (size (A IT.+ B) ∸ suc (size A))) (++⁺ (put-nolab A n (suc n) 1) (refl ∷ [])))
+seg-agree (inr {A} {B}) n l =
+  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+                    ++⁺ (fill-nolab _ (size (A IT.+ B) ∸ suc (size B))) (++⁺ (put-nolab B n (suc n) 1) (refl ∷ [])))
 seg-agree (g ∘ f) n l =
   segagree-++' _ _ l (label-of (ir-to-trace' n l f)) (label-of (ir-to-trace' n l f)) _
     (labels-in f n l) (li-none refl ∷ labels-in g _ _)
@@ -1136,8 +1210,8 @@ seg-agree (g ∘ f) n l =
 -- CALLED — so this is `curry`'s bracket with the loop skeleton as the idle
 -- prefix. The algebra's window `[l, l1)` sits BELOW the skeleton's, which is
 -- the `inj₂` inside `cata-agree`.
-seg-agree (Cata {F} _ alg) n l =
-  cata-agree (cata-strategy ⌈ F ⌉F) l _ _ _ _
+seg-agree (Cata {F} _ {E} {A} alg) n l =
+  cata-agree E A ⌈ F ⌉F (cata-strategy ⌈ F ⌉F) l _ _ _ _
     (λ st → ok-neu (slots-below alg 0 l) st)
     (seg-agree alg 0 l) (labels-in alg 0 l)
 -- Stage G: the stack-shape clause and its `pair-agree` helper are deleted;
@@ -1151,41 +1225,88 @@ seg-agree (case f g) n l = pieces2-agree l (suc (suc l)) _ _ (case-pieces f g n 
 -- top label) and its suffix (the branch to the exit, the back edge, the exit).
 seg-agree (Iter b) n l = pieces2-agree l (suc (suc l)) _ _ (iter-pieces b n l)
 
-iter-pieces b n l =
-  p2cons (suc (suc l)) (label-of (ir-to-trace' (suc (suc (suc (suc n)))) (suc (suc l)) b)) refl hdL
-         (λ st → ok-neu (slots-below b (suc (suc (suc (suc n)))) (suc (suc l))) st)
-         (seg-agree b _ _) (labels-in b _ _) ≤-refl (label-mono b _ _) ≤-refl
-    (p2nil refl tailL)
+-- plan 0.123 B.4 α: the prefix is `get E 0 ++ …`, so the split is one `++-assoc`
+iter-pieces {E} {A} {B} b n l =
+  subst (Pieces2 l (suc (suc l)) (label-of (ir-to-trace' (suc (suc (suc (suc n)))) (suc (suc l)) b)))
+        (++-assoc (get E 0) hd₀ _)
+    (p2cons (suc (suc l)) (label-of (ir-to-trace' (suc (suc (suc (suc n)))) (suc (suc l)) b))
+           hd-idle hdL
+           (λ st → ok-neu (slots-below b (suc (suc (suc (suc n)))) (suc (suc l))) st)
+           (seg-agree b _ _) (labels-in b _ _) ≤-refl (label-mono b _ _) ≤-refl
+      (p2nil tl-idle tailL))
   where
-    hdL : LabelsIn l (suc (suc l)) _
-    hdL = li-none refl ∷ li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ []
-    tailL : LabelsIn l (suc (suc l)) _
-    tailL = li-none refl ∷ li-lab refl (n≤1+n l) ≤-refl ∷
-            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-            li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ li-lab refl (n≤1+n l) ≤-refl ∷ li-none refl ∷ []
+    hd₀ : AbstractTrace
+    hd₀ = store-at-slot (suc n) ∷ instr-ctrl (c-label (ℓ o l)) ∷ []
+    hdL : LabelsIn l (suc (suc l)) (get E 0 ++ hd₀)
+    hdL = ++⁺ (get-ls E 0) (li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ [])
+    hd-idle : seg-idle? (get E 0 ++ hd₀) ≡ true
+    hd-idle = idle-All (get E 0 ++ hd₀) (++⁺ (get-All E 0 (λ _ → refl) (λ _ → refl) refl) (refl ∷ refl ∷ []))
+    tl : AbstractTrace
+    tl = (mov-to-input ∷ instr-ctrl (c-branch-tag-zero (ℓ o (suc l))) ∷ []) ++
+         get A 1 ++
+         (store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ size (E IT.* A)) ∷
+          store-at-slot (suc (suc (suc n))) ∷ []) ++
+         put E (suc n) (suc (suc (suc n))) 0 ++
+         put A (suc (suc n)) (suc (suc (suc n))) (size E) ++
+         (load-from-slot (suc (suc (suc n))) ∷ mov-to-input ∷
+          instr-ctrl (c-jmp (ℓ o l)) ∷ instr-ctrl (c-label (ℓ o (suc l))) ∷ []) ++
+         get B 1
+    tl-ls : All (λ i → is-id? (seg-action i) ≡ true) tl
+    tl-ls = ++⁺ (refl ∷ refl ∷ [])
+            (++⁺ (get-All A 1 (λ _ → refl) (λ _ → refl) refl)
+            (++⁺ (refl ∷ refl ∷ refl ∷ [])
+            (++⁺ (put-All E _ _ 0 refl refl refl (λ _ → refl) (λ _ → refl))
+            (++⁺ (put-All A _ _ _ refl refl refl (λ _ → refl) (λ _ → refl))
+            (++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ [])
+                 (get-All B 1 (λ _ → refl) (λ _ → refl) refl))))))
+    tl-idle : seg-idle? tl ≡ true
+    tl-idle = idle-All tl tl-ls
+    tailL : LabelsIn l (suc (suc l)) tl
+    tailL = ++⁺ (li-none refl ∷ li-lab refl (n≤1+n l) ≤-refl ∷ [])
+            (++⁺ (get-ls A 1)
+            (++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
+            (++⁺ (put-ls E _ _ 0)
+            (++⁺ (put-ls A _ _ _)
+            (++⁺ (li-none refl ∷ li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷
+                  li-lab refl (n≤1+n l) ≤-refl ∷ [])
+                 (get-ls B 1))))))
 
 
-case-pieces f g n l =
-  p2cons lf lg refl hdL (λ st → ok-neu (slots-below g nf lf) st) (seg-agree g nf lf)
+-- plan 0.123 B.4 α: each arm's prologue reads the payload (`get`), so each
+-- piece's split is one `++-assoc` under the fixed head.
+case-pieces {A} {B} f g n l =
+  subst (Pieces2 l (suc (suc l)) lg)
+        (cong (instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷_) (++-assoc (get B 1) (mov-to-input ∷ []) _))
+    (p2cons lf lg hd-idle hdL (λ st → ok-neu (slots-below g nf lf) st) (seg-agree g nf lf)
          (labels-in g nf lf) (label-mono f n (suc (suc l))) (label-mono g nf lf) ≤-refl
-    (p2cons (suc (suc l)) lf refl midL
+      (subst (Pieces2 l (suc (suc l)) lf)
+             (cong (λ z → instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷ z)
+                   (++-assoc (get A 1) (mov-to-input ∷ []) _))
+        (p2cons (suc (suc l)) lf mid-idle midL
             (λ st → ok-neu (slots-below f n (suc (suc l))) st)
             (seg-agree f n (suc (suc l))) (labels-in f n (suc (suc l)))
             ≤-refl (label-mono f n (suc (suc l))) ≤-refl
-      (p2nil refl tailL))
+          (p2nil refl tailL))))
   where
     nf = budget-of (ir-to-trace' n (suc (suc l)) f)
     lf = label-of (ir-to-trace' n (suc (suc l)) f)
     lg = label-of (ir-to-trace' nf lf g)
-    hdL : LabelsIn l (suc (suc l)) _
-    hdL = li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ li-none refl ∷ li-none refl ∷ []
-    midL : LabelsIn l (suc (suc l)) _
+    hdL : LabelsIn l (suc (suc l)) (instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ (get B 1 ++ (mov-to-input ∷ [])))
+    hdL = li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ ++⁺ (get-ls B 1) (li-none refl ∷ [])
+    hd-idle : seg-idle? (instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ (get B 1 ++ (mov-to-input ∷ []))) ≡ true
+    hd-idle = idle-All (instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ (get B 1 ++ (mov-to-input ∷ [])))
+                       (refl ∷ ++⁺ (get-All B 1 (λ _ → refl) (λ _ → refl) refl) (refl ∷ []))
+    midL : LabelsIn l (suc (suc l))
+             (instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷ (get A 1 ++ (mov-to-input ∷ [])))
     midL = li-lab refl (n≤1+n l) ≤-refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷
-           li-none refl ∷ li-none refl ∷ []
+           ++⁺ (get-ls A 1) (li-none refl ∷ [])
+    mid-idle : seg-idle? (instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷ (get A 1 ++ (mov-to-input ∷ []))) ≡ true
+    mid-idle = idle-All (instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷ (get A 1 ++ (mov-to-input ∷ [])))
+                        (refl ∷ refl ∷ ++⁺ (get-All A 1 (λ _ → refl) (λ _ → refl) refl) (refl ∷ []))
     tailL : LabelsIn l (suc (suc l)) _
     tailL = li-lab refl (n≤1+n l) ≤-refl ∷ []
 
-pair-agree-heap f g n l =
+pair-agree-heap {A} {B} {C} f g n l =
   segagree-pre (mov-to-output ∷ store-at-slot n ∷ []) l l lg (refl ∷ refl ∷ [])
     (++⁺ (ls-weaken ≤-refl (label-mono g nf lf) (labels-in f (suc (suc (suc (suc n)))) l))
          (ls-weaken (label-mono f (suc (suc (suc (suc n)))) l) ≤-refl restH)) ≤-refl
@@ -1196,16 +1317,18 @@ pair-agree-heap f g n l =
           (++⁺ (labels-in g nf lf) (ls-weaken (label-mono g nf lf) ≤-refl tailH)) ≤-refl
           (segagree-++' _ _ lf lg lg lg (labels-in g nf lf) tailH (inj₁ ≤-refl)
              (seg-agree g nf lf)
-             (segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
-                                refl ∷ refl ∷ refl ∷ refl ∷ [])))))
+             (segagree-nolab _ tailN))))
   where
     nf = budget-of (ir-to-trace' (suc (suc (suc (suc n)))) l f)
     lf = label-of (ir-to-trace' (suc (suc (suc (suc n)))) l f)
     lg = label-of (ir-to-trace' nf lf g)
+    -- plan 0.123 B.4 α: the tail `put`s both components
+    tailN : NoLab _
+    tailN = refl ∷ refl ∷ refl ∷
+            ++⁺ (put-nolab B (suc n) (suc (suc (suc n))) 0)
+                (++⁺ (put-nolab C (suc (suc n)) (suc (suc (suc n))) _) (refl ∷ []))
     tailH : LabelsIn lg lg _
-    tailH = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-            li-none refl ∷ []
+    tailH = nolab-ls tailN
     restH : LabelsIn lf lg _
     restH = li-none refl ∷ li-none refl ∷
             ++⁺ (labels-in g nf lf) (ls-weaken (label-mono g nf lf) ≤-refl tailH)
@@ -1253,101 +1376,121 @@ scope-nolab t bs lo hi nl li sa =
 -- point a fresh suspension's code cell at it — contributes no label at all, and
 -- the only labels the pass owns are `wf-Sum`'s branch target and join.
 
-resuspend-idle : ∀ (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
-               → seg-idle? (proj₂ (proj₂ (resuspend-layer n l lbl env wf))) ≡ true
-resuspend-idle n l lbl env (wf-K _) = refl
-resuspend-idle n l lbl env wf-Id    = refl
-resuspend-idle n l lbl env (wf-Prod wfF wfG) =
-  idle-++ (store-at-slot n ∷ restore-input n ∷ load-indirect ∷ tF) mid
-    (resuspend-idle (suc (suc (suc n))) l lbl env wfF)
-    (idle-++ tG tail2 (resuspend-idle n2 l2 lbl env wfG) refl)
-  where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
-    tF = proj₂ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
-    tG = proj₂ (proj₂ (resuspend-layer n2 l2 lbl env wfG))
-    tail2 = store-at-slot (suc (suc n)) ∷ restore-input (suc n) ∷
-            load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷
-            load-from-slot (suc n) ∷ []
-    mid = store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
-          store-at-slot (suc n) ∷ mov-to-input ∷
-          load-from-slot (suc (suc n)) ∷ store-indirect ∷
-          restore-input n ∷ load-indirect-suc ∷ (tG ++ tail2)
-resuspend-idle n l lbl env (wf-Sum wfF wfG) =
-  idle-++ (tG ++ tail9 1) rest
-    (idle-++ tG (tail9 1) (resuspend-idle n2 l2 lbl env wfG) refl)
-    (idle-++ (tF ++ tail9 0) (instr-ctrl (c-label (ℓ o (suc l))) ∷ [])
-      (idle-++ tF (tail9 0) (resuspend-idle (suc (suc (suc n))) (suc (suc l)) lbl env wfF) refl)
-      refl)
-  where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
-    tF = proj₂ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
-    tG = proj₂ (proj₂ (resuspend-layer n2 l2 lbl env wfG))
-    tail9 : ℕ → AbstractTrace
-    tail9 tag = store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
-                store-at-slot (suc n) ∷ mov-to-input ∷
-                load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷
-                instr-load-tag-lit tag ∷ store-indirect ∷
-                load-from-slot (suc n) ∷ []
-    rest = instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷
-           restore-input n ∷ load-indirect-suc ∷
-           ((tF ++ tail9 0) ++ (instr-ctrl (c-label (ℓ o (suc l))) ∷ []))
+Idle : AbstractInstr → Set
+Idle i = is-id? (seg-action i) ≡ true
 
-resuspend-labels-in : ∀ (lo hi n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+-- plan 0.123 B.4 α: the flat re-suspension — idle everywhere (an `All`), and
+-- its only labels are `wf-Sum`'s branch target and join.
+resuspend-idleA : ∀ (H : IT.IRFunctor) (E A : IT.IRTy) (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+                → All Idle (proj₂ (proj₂ (resuspend-layer H E A n l lbl env wf)))
+resuspend-idleA H E A n l lbl env (wf-K _) = []
+resuspend-idleA H E A n l lbl env wf-Id =
+  ++⁺ (refl ∷ refl ∷ [])
+      (++⁺ (get-All E 0 (λ _ → refl) (λ _ → refl) refl)
+      (++⁺ (refl ∷ refl ∷ refl ∷ [])
+      (++⁺ (put-All E _ _ 0 refl refl refl (λ _ → refl) (λ _ → refl))
+      (++⁺ (put-All A _ _ _ refl refl refl (λ _ → refl) (λ _ → refl))
+           (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])))))
+resuspend-idleA H E A n l lbl env (wf-Prod {F} {G} wfF wfG) =
+  ++⁺ (refl ∷ refl ∷ [])
+      (++⁺ (get-All (⟦ F ⟧TI A) 0 (λ _ → refl) (λ _ → refl) refl)
+      (++⁺ (resuspend-idleA H E A (suc (suc (suc (suc n)))) l lbl env wfF)
+      (++⁺ (refl ∷ refl ∷ [])
+      (++⁺ (get-All (⟦ G ⟧TI A) _ (λ _ → refl) (λ _ → refl) refl)
+      (++⁺ (resuspend-idleA H E A _ _ lbl env wfG)
+      (++⁺ (refl ∷ refl ∷ refl ∷ [])
+      (++⁺ (put-All (⟦ F ⟧TI (ν-type H)) _ _ 0 refl refl refl (λ _ → refl) (λ _ → refl))
+      (++⁺ (put-All (⟦ G ⟧TI (ν-type H)) _ _ _ refl refl refl (λ _ → refl) (λ _ → refl))
+           (refl ∷ [])))))))))
+resuspend-idleA H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
+  ++⁺ (refl ∷ refl ∷ refl ∷ [])
+      (++⁺ (arm G (resuspend-idleA H E A _ _ lbl env wfG) {c = c-of G})
+      (++⁺ (refl ∷ refl ∷ [])
+      (++⁺ (arm F (resuspend-idleA H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF) {c = c-of F})
+           (refl ∷ []))))
+  where
+    c-of : IT.IRFunctor → ℕ
+    c-of P = size (⟦ F ⟧TI (ν-type H) IT.+ ⟦ G ⟧TI (ν-type H)) ∸ suc (size (⟦ P ⟧TI (ν-type H)))
+    arm : ∀ (P : IT.IRFunctor) {t} → All Idle t → ∀ {tag sz c}
+        → All Idle ((restore-input n ∷ []) ++ get (⟦ P ⟧TI A) 1 ++ t ++
+                    (store-at-slot (suc (suc n)) ∷ instr-alloc-heap sz ∷
+                     store-at-slot (suc n) ∷ mov-to-input ∷
+                     instr-load-tag-lit tag ∷ store-at 0 ∷ []) ++
+                    fill (suc (size (⟦ P ⟧TI (ν-type H)))) c ++
+                    put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
+                    (load-from-slot (suc n) ∷ []))
+    arm P p {c = c} =
+      ++⁺ (refl ∷ []) (++⁺ (get-All (⟦ P ⟧TI A) 1 (λ _ → refl) (λ _ → refl) refl)
+      (++⁺ p (++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+      (++⁺ (fill-All _ c refl (λ _ → refl))
+           (++⁺ (put-All (⟦ P ⟧TI (ν-type H)) _ _ 1 refl refl refl (λ _ → refl) (λ _ → refl)) (refl ∷ []))))))
+
+resuspend-idle : ∀ (H : IT.IRFunctor) (E A : IT.IRTy) (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
+               → seg-idle? (proj₂ (proj₂ (resuspend-layer H E A n l lbl env wf))) ≡ true
+resuspend-idle H E A n l lbl env wf = idle-All _ (resuspend-idleA H E A n l lbl env wf)
+
+resuspend-labels-in : ∀ (lo hi : ℕ) (H : IT.IRFunctor) (E A : IT.IRTy) (n l : ℕ) (lbl : LabelId) (env : ℕ) {F} (wf : WellFormedFI F)
                     → lo ≤ l
-                    → proj₁ (proj₂ (resuspend-layer n l lbl env wf)) ≤ hi
-                    → LabelsIn lo hi (proj₂ (proj₂ (resuspend-layer n l lbl env wf)))
-resuspend-labels-in lo hi n l lbl env (wf-K _) lo≤ ≤hi = []
-resuspend-labels-in lo hi n l lbl env wf-Id lo≤ ≤hi =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-resuspend-labels-in lo hi n l lbl env (wf-Prod wfF wfG) lo≤ ≤hi =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷
-  ++⁺ (resuspend-labels-in lo hi (suc (suc (suc n))) l lbl env wfF lo≤
-        (≤-trans (resuspend-label-mono n2 l2 lbl env wfG) ≤hi))
-      (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-       li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-       ++⁺ (resuspend-labels-in lo hi n2 l2 lbl env wfG
-             (≤-trans lo≤ (resuspend-label-mono (suc (suc (suc n))) l lbl env wfF)) ≤hi)
-           (li-none refl ∷ li-none refl ∷ li-none refl ∷
-            li-none refl ∷ li-none refl ∷ []))
+                    → proj₁ (proj₂ (resuspend-layer H E A n l lbl env wf)) ≤ hi
+                    → LabelsIn lo hi (proj₂ (proj₂ (resuspend-layer H E A n l lbl env wf)))
+resuspend-labels-in lo hi H E A n l lbl env (wf-K _) lo≤ ≤hi = []
+resuspend-labels-in lo hi H E A n l lbl env wf-Id lo≤ ≤hi =
+  nolab-ls (++⁺ (refl ∷ refl ∷ [])
+           (++⁺ (get-nolab E 0)
+           (++⁺ (refl ∷ refl ∷ refl ∷ [])
+           (++⁺ (put-nolab E _ _ 0)
+           (++⁺ (put-nolab A _ _ _)
+                (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))))))
+resuspend-labels-in lo hi H E A n l lbl env (wf-Prod {F} {G} wfF wfG) lo≤ ≤hi =
+  ++⁺ (li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (get-ls (⟦ F ⟧TI A) 0)
+      (++⁺ (resuspend-labels-in lo hi H E A (suc (suc (suc (suc n)))) l lbl env wfF lo≤
+             (≤-trans (resuspend-label-mono H E A n2 l2 lbl env wfG) ≤hi))
+      (++⁺ (li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (get-ls (⟦ G ⟧TI A) _)
+      (++⁺ (resuspend-labels-in lo hi H E A n2 l2 lbl env wfG
+             (≤-trans lo≤ (resuspend-label-mono H E A (suc (suc (suc (suc n)))) l lbl env wfF)) ≤hi)
+      (++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (put-ls (⟦ F ⟧TI (ν-type H)) _ _ 0)
+      (++⁺ (put-ls (⟦ G ⟧TI (ν-type H)) _ _ _)
+           (li-none refl ∷ [])))))))))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl env wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl env wfF))
-resuspend-labels-in lo hi n l lbl env (wf-Sum wfF wfG) lo≤ ≤hi =
-  li-none refl ∷ li-none refl ∷ li-lab refl lo≤ l<hi ∷
-  ++⁺ (arm 1 (resuspend-labels-in lo hi n2 l2 lbl env wfG
-             (≤-trans lo≤ (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) upF)) ≤hi))
-      (li-lab refl (≤-trans lo≤ (n≤1+n l)) sl<hi ∷ li-lab refl lo≤ l<hi ∷
-       ++⁺ (arm 0 (resuspend-labels-in lo hi (suc (suc (suc n))) (suc (suc l)) lbl env wfF
-                  (≤-trans lo≤ (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
-                  (≤-trans (resuspend-label-mono n2 l2 lbl env wfG) ≤hi)))
-           (li-lab refl (≤-trans lo≤ (n≤1+n l)) sl<hi ∷ []))
+    n2 = proj₁ (resuspend-layer H E A (suc (suc (suc (suc n)))) l lbl env wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc (suc n)))) l lbl env wfF))
+resuspend-labels-in lo hi H E A n l lbl env (wf-Sum {F} {G} wfF wfG) lo≤ ≤hi =
+  ++⁺ (li-none refl ∷ li-none refl ∷ li-lab refl lo≤ l<hi ∷ [])
+      (++⁺ (arm G (resuspend-labels-in lo hi H E A n2 l2 lbl env wfG
+                    (≤-trans lo≤ (≤-trans (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)) upF)) ≤hi) {c = c-of G})
+      (++⁺ (li-lab refl (≤-trans lo≤ (n≤1+n l)) sl<hi ∷ li-lab refl lo≤ l<hi ∷ [])
+      (++⁺ (arm F (resuspend-labels-in lo hi H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF
+                    (≤-trans lo≤ (m≤n⇒m≤1+n (m≤n⇒m≤1+n ≤-refl)))
+                    (≤-trans (resuspend-label-mono H E A n2 l2 lbl env wfG) ≤hi)) {c = c-of F})
+           (li-lab refl (≤-trans lo≤ (n≤1+n l)) sl<hi ∷ []))))
   where
-    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
-    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
+    c-of : IT.IRFunctor → ℕ
+    c-of P = size (⟦ F ⟧TI (ν-type H) IT.+ ⟦ G ⟧TI (ν-type H)) ∸ suc (size (⟦ P ⟧TI (ν-type H)))
+    n2 = proj₁ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF))
     upF : suc (suc l) ≤ l2
-    upF = resuspend-label-mono (suc (suc (suc n))) (suc (suc l)) lbl env wfF
+    upF = resuspend-label-mono H E A (suc (suc (suc n))) (suc (suc l)) lbl env wfF
     up : suc (suc l) ≤ hi
-    up = ≤-trans upF (≤-trans (resuspend-label-mono n2 l2 lbl env wfG) ≤hi)
+    up = ≤-trans upF (≤-trans (resuspend-label-mono H E A n2 l2 lbl env wfG) ≤hi)
     sl<hi : suc l < hi
     sl<hi = up
     l<hi : l < hi
     l<hi = ≤-trans (m≤n⇒m≤1+n ≤-refl) up
-    arm : ∀ (tag : ℕ) {t} → LabelsIn lo hi t
-        → LabelsIn lo hi (restore-input n ∷ load-indirect-suc ∷
-                          t ++ (store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
-                                store-at-slot (suc n) ∷ mov-to-input ∷
-                                load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷
-                                instr-load-tag-lit tag ∷ store-indirect ∷
-                                load-from-slot (suc n) ∷ []))
-    arm tag ls = li-none refl ∷ li-none refl ∷
-             ++⁺ ls (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-                     li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-                     li-none refl ∷ [])
+    arm : ∀ (P : IT.IRFunctor) {t} → LabelsIn lo hi t → ∀ {tag sz c}
+        → LabelsIn lo hi ((restore-input n ∷ []) ++ get (⟦ P ⟧TI A) 1 ++ t ++
+                          (store-at-slot (suc (suc n)) ∷ instr-alloc-heap sz ∷
+                           store-at-slot (suc n) ∷ mov-to-input ∷
+                           instr-load-tag-lit tag ∷ store-at 0 ∷ []) ++
+                          fill (suc (size (⟦ P ⟧TI (ν-type H)))) c ++
+                          put (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 ++
+                          (load-from-slot (suc n) ∷ []))
+    arm P ls {c = c} =
+      ++⁺ (li-none refl ∷ []) (++⁺ (get-ls (⟦ P ⟧TI A) 1)
+      (++⁺ ls (++⁺ (nolab-ls (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
+      (++⁺ (nolab-ls (fill-nolab _ c)) (++⁺ (put-ls (⟦ P ⟧TI (ν-type H)) _ _ 1) (li-none refl ∷ []))))))
 
 scope-ok : ∀ {A B} (ir : IR A B) (n l : ℕ)
          → ScopeOK (trace-of (ir-to-trace' n l ir))
@@ -1364,22 +1507,38 @@ scope-ok : ∀ {A B} (ir : IR A B) (n l : ℕ)
 -- For `in-ν` the block is a fixed one-instruction stub, not a sub-IR, so its
 -- scope is `scope-nil` outright — and taking it as an argument is what keeps
 -- `scope-ok` from calling itself at a term that is not a subterm of its own.
-body-bl-in : ∀ {X C} (bd : IR X C) (n l lb : ℕ) → l ≤ lb
-            → ScopeOK (trace-of (ir-to-trace' 0 lb bd))
-                      (bodies-of (ir-to-trace' 0 lb bd))
-                      lb (label-of (ir-to-trace' 0 lb bd))
-            → LabelsIn l (label-of (ir-to-trace' 0 lb bd))
-                (blocks-layout ((ℓ o l , budget-of (ir-to-trace' 0 lb bd)
-                                , trace-of (ir-to-trace' 0 lb bd))
-                                ∷ bodies-of (ir-to-trace' 0 lb bd)))
-body-bl-agree : ∀ {X C} (bd : IR X C) (n l lb : ℕ)
-               → ScopeOK (trace-of (ir-to-trace' 0 lb bd))
-                         (bodies-of (ir-to-trace' 0 lb bd))
-                         lb (label-of (ir-to-trace' 0 lb bd))
+-- plan 0.123 B.4 α (D386): a body block is a LABEL-FREE prologue `pre` (a flat
+-- environment's rebuild; `[]` otherwise) then the body at frontier `m`.
+body-bl-in : ∀ {X C} (pre : AbstractTrace) → NoLab pre → (m : ℕ) (bd : IR X C) (n l lb : ℕ) → l ≤ lb
+            → ScopeOK (trace-of (ir-to-trace' m lb bd))
+                      (bodies-of (ir-to-trace' m lb bd))
+                      lb (label-of (ir-to-trace' m lb bd))
+            → LabelsIn l (label-of (ir-to-trace' m lb bd))
+                (blocks-layout ((ℓ o l , budget-of (ir-to-trace' m lb bd)
+                                , pre ++ trace-of (ir-to-trace' m lb bd))
+                                ∷ bodies-of (ir-to-trace' m lb bd)))
+body-bl-agree : ∀ {X C} (pre : AbstractTrace) → NoLab pre → (m : ℕ) (bd : IR X C) (n l lb : ℕ)
+               → ScopeOK (trace-of (ir-to-trace' m lb bd))
+                         (bodies-of (ir-to-trace' m lb bd))
+                         lb (label-of (ir-to-trace' m lb bd))
                → SegAgree (blocks-layout
-                   ((ℓ o l , budget-of (ir-to-trace' 0 lb bd)
-                           , trace-of (ir-to-trace' 0 lb bd))
-                    ∷ bodies-of (ir-to-trace' 0 lb bd)))
+                   ((ℓ o l , budget-of (ir-to-trace' m lb bd)
+                           , pre ++ trace-of (ir-to-trace' m lb bd))
+                    ∷ bodies-of (ir-to-trace' m lb bd)))
+
+-- D386: the prologue is label-free
+env-entry-nolab : ∀ (kd : Kind) (E A : IT.IRTy) → NoLab (proj₂ (env-entry kd E A))
+env-entry-nolab word E A = []
+env-entry-nolab flat E A =
+  refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+  ++⁺ (get-nolab A 1)
+      (refl ∷ refl ∷ refl ∷
+       ++⁺ (put-nolab E 1 3 0) (++⁺ (put-nolab A 2 3 _) (refl ∷ refl ∷ [])))
+
+-- D399: a kept value's copy, then the two-cell build, is label-free
+wc-nl : ∀ kd E n c → NoLab (with-copy kd E n (λ m → two-cell m c))
+wc-nl word E n c = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
+wc-nl flat E n c = ++⁺ (refl ∷ refl ∷ refl ∷ refl ∷ ++⁺ (put-nolab E n (suc n) 0) (refl ∷ [])) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
 
 scope-ok id                  n l = scope-nil _ _ _
 scope-ok fst                 n l = scope-nil _ _ _
@@ -1394,25 +1553,25 @@ scope-ok (out-μ _)           n l = scope-nil _ _ _
 scope-ok (Out _)             n l = scope-nil _ _ _
 scope-ok (in-ν {F} _) n l =
   scope-nolab _ _ l _
-    (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-    (body-bl-in (id {⟦ F ⟧TI (ν-type F)}) n l (suc l) (n≤1+n l) (scope-nil _ _ _))
-    (body-bl-agree (id {⟦ F ⟧TI (ν-type F)}) n l (suc l) (scope-nil _ _ _))
+    (wc-nl (kind (⟦ F ⟧TI (ν-type F))) _ n _)
+    (body-bl-in [] [] 0 (id {⟦ F ⟧TI (ν-type F)}) n l (suc l) (n≤1+n l) (scope-nil _ _ _))
+    (body-bl-agree [] [] 0 (id {⟦ F ⟧TI (ν-type F)}) n l (suc l) (scope-nil _ _ _))
 -- D199: `body-bl-in`/`body-bl-agree` no longer apply — they are hardwired to a
 -- block whose trace IS `trace-of (ir-to-trace' 0 lb bd)`, and this block's is
 -- `coalg ++ re-suspension`. The two pieces carry labels in DISJOINT windows
 -- (`[suc l , l')` for the coalgebra, `[l' , hi)` for the pass), which is what
 -- makes every `SegAgree`/`NoCross` obligation below a `segagree-++'` or a
 -- `nocross-win` rather than new reasoning.
-scope-ok (Ana wf c) n l =
+scope-ok (Ana {F} wf {E} {A} c) n l =
   scope-nolab _ _ l _
-    (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+    (wc-nl flat (E IT.* A) n _)
     ana-bl-in ana-bl-agree
   where
     lb = suc l
     D  = ir-to-trace' 1 lb c
     ct = trace-of D
     l' = label-of D
-    R  = resuspend-layer (budget-of D) l' (ℓ o l) 0 wf
+    R  = resuspend-layer F E A (budget-of D) l' (ℓ o l) 0 wf
     rt = proj₂ (proj₂ R)
     bb = proj₁ R
     hi = proj₁ (proj₂ R)
@@ -1426,14 +1585,14 @@ scope-ok (Ana wf c) n l =
     S  = scope-ok c 1 lb
 
     l'≤hi : l' ≤ hi
-    l'≤hi = resuspend-label-mono (budget-of D) l' (ℓ o l) 0 wf
+    l'≤hi = resuspend-label-mono F E A (budget-of D) l' (ℓ o l) 0 wf
     l≤l' : l ≤ l'
     l≤l' = ≤-trans (n≤1+n l) (label-mono c 1 lb)
 
     ctL : LabelsIn lb l' ct
     ctL = labels-in c 1 lb
     rtL : LabelsIn l' hi rt
-    rtL = resuspend-labels-in l' hi (budget-of D) l' (ℓ o l) 0 wf ≤-refl ≤-refl
+    rtL = resuspend-labels-in l' hi F E A (budget-of D) l' (ℓ o l) 0 wf ≤-refl ≤-refl
     bcL : LabelsIn l hi bc
     bcL = ++⁺ (ls-weaken (n≤1+n l) l'≤hi ctL) (ls-weaken l≤l' ≤-refl rtL)
     btL : LabelsIn l hi bt
@@ -1443,7 +1602,7 @@ scope-ok (Ana wf c) n l =
 
     bcA : SegAgree bc
     bcA = segagree-++' ct rt lb l' l' hi ctL rtL (inj₁ ≤-refl)
-            (seg-agree c 1 lb) (segagree-idle rt (resuspend-idle (budget-of D) l' (ℓ o l) 0 wf))
+            (seg-agree c 1 lb) (segagree-idle rt (resuspend-idle F E A (budget-of D) l' (ℓ o l) 0 wf))
     btA : SegAgree bt
     btA = segagree-pre pro l l hi (refl ∷ refl ∷ []) bcL ≤-refl bcA
     btlA : SegAgree (bt ++ tl)
@@ -1486,12 +1645,12 @@ scope-ok (const fits-int _)  n l = scope-nil _ _ _
 scope-ok (const fits-float _) n l = scope-nil _ _ _
 
 -- ── the closure clauses: the body IS the block, and the entry has no label
-scope-ok (curry bd) n l =
+scope-ok (curry {E} {A} bd) n l =
   scope-nolab _ _ l _
-    (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-    (body-bl-in bd n l (suc (suc l)) (m≤n⇒m≤1+n (n≤1+n l))
-                (scope-ok bd 0 (suc (suc l))))
-    (body-bl-agree bd n l (suc (suc l)) (scope-ok bd 0 (suc (suc l))))
+    (wc-nl (kind E) E n _)
+    (body-bl-in _ (env-entry-nolab (kind E) E A) _ bd n l (suc (suc l)) (m≤n⇒m≤1+n (n≤1+n l))
+                (scope-ok bd _ (suc (suc l))))
+    (body-bl-agree _ (env-entry-nolab (kind E) E A) _ bd n l (suc (suc l)) (scope-ok bd _ (suc (suc l))))
 
 scope-ok (g ∘ f) n l = mkScope blin blagr nceb ncbe
   where
@@ -1542,7 +1701,7 @@ scope-ok (g ∘ f) n l = mkScope blin blagr nceb ncbe
     ncbe = subst (λ z → NoCross z (ft ++ mov-to-input ∷ gt)) (sym eq)
              (nocross-++ˡ BF BG (ft ++ mov-to-input ∷ gt) nbf nbg)
 
-scope-ok (⟨ f , g ⟩) n l = mkScope blin blagr nceb ncbe
+scope-ok (⟨_,_⟩ {X} {B} {C} f g) n l = mkScope blin blagr nceb ncbe
   where
     F  = ir-to-trace' (suc (suc (suc (suc n)))) l f
     G  = ir-to-trace' (budget-of F) (label-of F) g
@@ -1557,10 +1716,10 @@ scope-ok (⟨ f , g ⟩) n l = mkScope blin blagr nceb ncbe
     lf≤lg = label-mono g (budget-of F) lf
     pre  = mov-to-output ∷ store-at-slot n ∷ []
     mid  = store-at-slot (suc n) ∷ restore-input n ∷ []
-    tail = store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
-           store-at-slot (suc (suc (suc n))) ∷ mov-to-input ∷
-           load-from-slot (suc n) ∷ store-indirect ∷
-           load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷
+    tail = store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ size (B IT.* C)) ∷
+           store-at-slot (suc (suc (suc n))) ∷
+           put B (suc n) (suc (suc (suc n))) 0 ++
+           put C (suc (suc n)) (suc (suc (suc n))) (size B) ++
            load-from-slot (suc (suc (suc n))) ∷ []
     E = pre ++ (ft ++ (mid ++ (gt ++ tail)))
     blin : LabelsIn l lg (blocks-layout (fb ++ gb))
@@ -1576,7 +1735,8 @@ scope-ok (⟨ f , g ⟩) n l = mkScope blin blagr nceb ncbe
     midN : NoLab mid
     midN = refl ∷ refl ∷ []
     tailN : NoLab tail
-    tailN = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
+    tailN = refl ∷ refl ∷ refl ∷
+            ++⁺ (put-nolab B _ _ 0) (++⁺ (put-nolab C _ _ _) (refl ∷ []))
     ncf : NoCross ft (BF ++ BG)
     ncf = nocross-++ʳ ft BF BG (ScopeOK.nc-eb Sf)
             (nocross-win ft BG l lf lf lg (labels-in f _ l) (ScopeOK.bl-in Sg) (inj₁ ≤-refl))
@@ -1611,7 +1771,9 @@ scope-ok (⟨ f , g ⟩) n l = mkScope blin blagr nceb ncbe
                                    (labels-in f _ l) (inj₂ ≤-refl))
                       (ScopeOK.nc-be Sg)))
 
-scope-ok (case f g) n l = mkScope blin blagr nceb ncbe
+scope-ok (case {A} {B} f g) n l =
+  mkScope blin blagr (subst (λ z → NoCross z (blocks-layout (fb ++ gb))) eqE nceb)
+                     (subst (NoCross (blocks-layout (fb ++ gb))) eqE ncbe)
   where
     l2 = suc (suc l)
     F  = ir-to-trace' n l2 f
@@ -1628,16 +1790,24 @@ scope-ok (case f g) n l = mkScope blin blagr nceb ncbe
     l≤l2 : l ≤ l2
     l≤l2 = m≤n⇒m≤1+n (n≤1+n l)
     l2≤lg = ≤-trans l2≤lf lf≤lg
-    p1 = instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ load-indirect-suc ∷ mov-to-input ∷ []
+    p1 = instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ (get B 1 ++ (mov-to-input ∷ []))
     p3 = instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷
-         load-indirect-suc ∷ mov-to-input ∷ []
+         (get A 1 ++ (mov-to-input ∷ []))
     p5 = instr-ctrl (c-label (ℓ o (suc l))) ∷ []
     E = p1 ++ (gt ++ (p3 ++ (ft ++ p5)))
+    -- plan 0.123 B.4 α: the glue reads the payload (`get`), so `E` is the
+    -- emitted trace up to re-association
+    eqE : E ≡ trace-of (ir-to-trace' n l (case {A} {B} f g))
+    eqE = cong (instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷_)
+            (trans (++-assoc (get B 1) (mov-to-input ∷ []) (gt ++ (p3 ++ (ft ++ p5))))
+                   (cong (λ z → get B 1 ++ (mov-to-input ∷ (gt ++ z)))
+                         (cong (λ z → instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷ z)
+                               (++-assoc (get A 1) (mov-to-input ∷ []) (ft ++ p5)))))
     p1L : LabelsIn l l2 p1
-    p1L = li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ li-none refl ∷ li-none refl ∷ []
+    p1L = li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ ++⁺ (get-ls B 1) (li-none refl ∷ [])
     p3L : LabelsIn l l2 p3
     p3L = li-lab refl (n≤1+n l) ≤-refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷
-          li-none refl ∷ li-none refl ∷ []
+          ++⁺ (get-ls A 1) (li-none refl ∷ [])
     p5L : LabelsIn l l2 p5
     p5L = li-lab refl (n≤1+n l) ≤-refl ∷ []
     blin : LabelsIn l lg (blocks-layout (fb ++ gb))
@@ -1696,7 +1866,8 @@ scope-ok (case f g) n l = mkScope blin blagr nceb ncbe
 -- the loop: one sub-IR (the round) between glue whose labels are `l` (the
 -- top) and `suc l` (the exit); every block of the round sits at `suc (suc l)`
 -- or above, so the glue is settled by the window alone.
-scope-ok (Iter b) n l = mkScope blin blagr nceb ncbe
+scope-ok (Iter {E} {A} {B} b) n l =
+  mkScope blin blagr (subst (λ z → NoCross z BB) eqE nceb) (subst (NoCross BB) eqE ncbe)
   where
     l2 = suc (suc l)
     Bd = ir-to-trace' (suc (suc (suc (suc n)))) l2 b
@@ -1704,19 +1875,31 @@ scope-ok (Iter b) n l = mkScope blin blagr nceb ncbe
     Sb = scope-ok b (suc (suc (suc (suc n)))) l2
     l≤l2 : l ≤ l2
     l≤l2 = m≤n⇒m≤1+n (n≤1+n l)
-    p1 = load-indirect ∷ store-at-slot (suc n) ∷ instr-ctrl (c-label (ℓ o l)) ∷ []
-    p3 = mov-to-input ∷ instr-ctrl (c-branch-tag-zero (ℓ o (suc l))) ∷ load-indirect-suc ∷
-         store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷ store-at-slot (suc (suc (suc n))) ∷
-         mov-to-input ∷ load-from-slot (suc n) ∷ store-indirect ∷
-         load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷ load-from-slot (suc (suc (suc n))) ∷
-         mov-to-input ∷ instr-ctrl (c-jmp (ℓ o l)) ∷ instr-ctrl (c-label (ℓ o (suc l))) ∷
-         load-indirect-suc ∷ []
+    -- plan 0.123 B.4 α: the flat loop (`get`/`put` by the types)
+    hd = store-at-slot (suc n) ∷ instr-ctrl (c-label (ℓ o l)) ∷ []
+    p1 = get E 0 ++ hd
+    p3 = (mov-to-input ∷ instr-ctrl (c-branch-tag-zero (ℓ o (suc l))) ∷ []) ++
+         get A 1 ++
+         (store-at-slot (suc (suc n)) ∷ instr-alloc-heap (2 ⊔ size (E IT.* A)) ∷
+          store-at-slot (suc (suc (suc n))) ∷ []) ++
+         put E (suc n) (suc (suc (suc n))) 0 ++
+         put A (suc (suc n)) (suc (suc (suc n))) (size E) ++
+         (load-from-slot (suc (suc (suc n))) ∷ mov-to-input ∷
+          instr-ctrl (c-jmp (ℓ o l)) ∷ instr-ctrl (c-label (ℓ o (suc l))) ∷ []) ++
+         get B 1
+    eqE : p1 ++ (bt ++ p3) ≡ trace-of (ir-to-trace' n l (Iter {E} {A} {B} b))
+    eqE = ++-assoc (get E 0) hd (bt ++ p3)
     p1L : LabelsIn l l2 p1
-    p1L = li-none refl ∷ li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ []
+    p1L = ++⁺ (get-ls E 0) (li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ [])
     p3L : LabelsIn l l2 p3
-    p3L = li-none refl ∷ li-lab refl (n≤1+n l) ≤-refl ∷
-          li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-          li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ li-lab refl (n≤1+n l) ≤-refl ∷ li-none refl ∷ []
+    p3L = ++⁺ (li-none refl ∷ li-lab refl (n≤1+n l) ≤-refl ∷ [])
+          (++⁺ (get-ls A 1)
+          (++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
+          (++⁺ (put-ls E _ _ 0)
+          (++⁺ (put-ls A _ _ _)
+          (++⁺ (li-none refl ∷ li-none refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷
+                li-lab refl (n≤1+n l) ≤-refl ∷ [])
+               (get-ls B 1))))))
     blin : LabelsIn l lb BB
     blin = ls-weaken l≤l2 ≤-refl (ScopeOK.bl-in Sb)
     blagr : SegAgree BB
@@ -1732,16 +1915,16 @@ scope-ok (Iter b) n l = mkScope blin blagr nceb ncbe
     ncbe = nocross-++ʳ BB p1 (bt ++ p3) (glueR p1 p1L)
              (nocross-++ʳ BB bt p3 (ScopeOK.nc-be Sb) (glueR p3 p3L))
 
-scope-ok (Cata {F} _ alg) n l = mkScope blin blagr nceb ncbe
+scope-ok (Cata {F} _ {E} {X} alg) n l = mkScope blin blagr nceb ncbe
   where
     A  = ir-to-trace' 0 l alg
     bb = budget-of A ; l1 = label-of A ; at = trace-of A
     ab = bodies-of A ; AB = blocks-layout ab
     st = cata-strategy ⌈ F ⌉F
-    sp = cata-split st bb n l1 at
+    sp = cata-split E X ⌈ F ⌉F st bb n l1 at
     Sa = scope-ok alg 0 l
-    l1≤l2 = cata-label-mono st bb n l1 at
-    blin : LabelsIn l (cata-label-of (cata-dispatch st bb n l1 at)) AB
+    l1≤l2 = cata-label-mono E X ⌈ F ⌉F st bb n l1 at
+    blin : LabelsIn l (cata-label-of (cata-dispatch E X ⌈ F ⌉F st bb n l1 at)) AB
     blin = ls-weaken ≤-refl l1≤l2 (ScopeOK.bl-in Sa)
     blagr : SegAgree AB
     blagr = ScopeOK.bl-agree Sa
@@ -1755,37 +1938,45 @@ scope-ok (Cata {F} _ alg) n l = mkScope blin blagr nceb ncbe
 -- hypothesis is spent: the body's trace and the body's OWN blocks share a
 -- window, so only `NoCross` can join them.
 ------------------------------------------------------------------------
-body-bl-in bd n l lb l≤lb S =
-  ++⁺ (li-none refl ∷ ++⁺ (ls-weaken l≤lb ≤-refl (labels-in bd 0 lb))
+body-bl-in pre npre m bd n l lb l≤lb S =
+  ++⁺ (li-none refl ∷ ++⁺ (++⁺ (nolab-ls npre) (ls-weaken l≤lb ≤-refl (labels-in bd m lb)))
                           (li-none refl ∷ []))
       (ls-weaken l≤lb ≤-refl (ScopeOK.bl-in S))
 
-body-bl-agree bd n l lb S =
+body-bl-agree pre npre m bd n l lb S =
   segagree-++ⁿ blk BB nc1 nc2 blkA (ScopeOK.bl-agree S)
   where
     l2' = lb
-    D   = ir-to-trace' 0 l2' bd
-    bt  = trace-of D ; bb = budget-of D ; hi = label-of D
+    D   = ir-to-trace' m l2' bd
+    bt₀ = trace-of D ; bb = budget-of D ; hi = label-of D
+    bt  = pre ++ bt₀
     BB  = blocks-layout (bodies-of D)
     tl  = instr-ctrl (c-ret bb) ∷ []
     blk = instr-ctrl (c-thunk (ℓ o l) bb) ∷ (bt ++ tl)
+    bt₀L : LabelsIn l2' hi bt
+    bt₀L = ++⁺ (nolab-ls npre) (labels-in bd m l2')
     btL : LabelsIn l2' hi (bt ++ tl)
-    btL = ++⁺ (labels-in bd 0 l2') (li-none refl ∷ [])
+    btL = ++⁺ bt₀L (li-none refl ∷ [])
     btA : SegAgree (bt ++ tl)
     btA = segagree-++' bt tl l2' hi 0 0
-            (labels-in bd 0 l2') (nolab-any 0 tl (refl ∷ [])) (inj₂ z≤n)
-            (seg-agree bd 0 l2') (segagree-nolab tl (refl ∷ []))
+            bt₀L (nolab-any 0 tl (refl ∷ [])) (inj₂ z≤n)
+            (segagree-pre pre l2' l2' hi npre (labels-in bd m l2') ≤-refl (seg-agree bd m l2'))
+            (segagree-nolab tl (refl ∷ []))
     blkA : SegAgree blk
     blkA = segagree-pre (instr-ctrl (c-thunk (ℓ o l) bb) ∷ []) l2' l2' hi
              (refl ∷ []) btL ≤-refl btA
     nc1 : NoCross blk BB
     nc1 = nocross-++ˡ (instr-ctrl (c-thunk (ℓ o l) bb) ∷ []) (bt ++ tl) BB
             (nocross-nolabˡ _ BB (refl ∷ []))
-            (nocross-++ˡ bt tl BB (ScopeOK.nc-eb S) (nocross-nolabˡ tl BB (refl ∷ [])))
+            (nocross-++ˡ bt tl BB
+              (nocross-++ˡ pre bt₀ BB (nocross-nolabˡ pre BB npre) (ScopeOK.nc-eb S))
+              (nocross-nolabˡ tl BB (refl ∷ [])))
     nc2 : NoCross BB blk
     nc2 = nocross-++ʳ BB (instr-ctrl (c-thunk (ℓ o l) bb) ∷ []) (bt ++ tl)
             (nocross-nolabʳ BB _ (refl ∷ []))
-            (nocross-++ʳ BB bt tl (ScopeOK.nc-be S) (nocross-nolabʳ BB tl (refl ∷ [])))
+            (nocross-++ʳ BB bt tl
+              (nocross-++ʳ BB pre bt₀ (nocross-nolabʳ BB pre npre) (ScopeOK.nc-be S))
+              (nocross-nolabʳ BB tl (refl ∷ [])))
 
 
 ------------------------------------------------------------------------

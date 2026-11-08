@@ -2,8 +2,8 @@
 # reason. The list only shrinks: repair a module, then delete its line. A new
 # entry needs a reason and the reviewer's agreement (MERGE.md §5).
 #
-# Stale import lists / dead names after a refactor (plan 0.123 Part B: the allocator is unwired)
-Once.Allocator.BumpAllocator        # AllocBump facade changed; unwired (plan 0.123 Part B)
+# Stale import lists / dead names after a refactor (plan 0.146: the allocator is unwired)
+Once.Allocator.BumpAllocator        # AllocBump facade changed; unwired (plan 0.146)
 Once.Allocator.Mempool              # unwired allocator (plan 0.123 Part B)
 Once.Allocator.ReuseFreshness       # unwired allocator (plan 0.123 Part B)
 Once.Allocator.Slab                 # unwired allocator (plan 0.123 Part B)

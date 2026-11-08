@@ -22,7 +22,7 @@ module Once.CCC.Codegen.IRObsCorrect.CataConst.Steps (o : CanonicalName) (tbl : 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractInstr; AllocState; module AllocState; readReg; Output; Input1; store-at-slot; store-indirect; store-indirect-suc; instr-alloc-heap; mov-to-output; load-indirect; sv-as-loc; writeReg-same; StoredValue; SV-Ptr; AbstractTrace)
+  using (LocState; module LocState; AbstractInstr; AllocState; module AllocState; readReg; Output; Input1; store-at-slot; store-indirect; store-indirect-suc; instr-alloc-heap; mov-to-output; load-indirect; load-at; offsetLoc; sv-as-loc; writeReg-same; StoredValue; SV-Ptr; AbstractTrace)
 open import Once.CCC.Codegen.IRToTrace o using (CataStrategy; strat-const; strat-box)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.FlatLog using (LogFree)
@@ -42,7 +42,7 @@ data Head : Set where
 
 head-instr : Head → AbstractInstr
 head-instr h-mov = mov-to-output
-head-instr h-box = load-indirect
+head-instr h-box = load-at 0
 
 head-strat : Head → CataStrategy
 head-strat h-mov = strat-const
@@ -128,16 +128,21 @@ module CataStepsC {FS : FrameSemantics} where
     ; out1 = trans (out-movout (floc σ) (falloc σ)) in0
     ; nhw = nhw-mov-to-output ; nws = refl ; ff = tt ; eh = tt }
 
-  -- the read: `Input1` points at a cell holding the layer's word
+  -- the read (plan 0.123 α2: `load-at 0`): `Input1` points at a cell holding the layer's word
+  box-out : ∀ (s : LocState FS) (a : AllocState {FS}) (q : ValueLocation FS) (μ-sv : StoredValue FS)
+          → readReg (regs s) Input1 ≡ SV-Ptr q → readLoc s (offsetLoc q 0) ≡ just μ-sv
+          → readReg (regs (X (load-at 0) s a)) Output ≡ μ-sv
+  box-out s a q μ-sv in0 rd rewrite in0 | rd = writeReg-same (regs s) Output μ-sv
+
   box-head : ∀ (prog : AbstractTrace) (σ : FlatState) (q : ValueLocation FS) (μ-sv : StoredValue FS)
-           → readReg (regs (floc σ)) Input1 ≡ SV-Ptr q → readLoc (floc σ) q ≡ just μ-sv
+           → readReg (regs (floc σ)) Input1 ≡ SV-Ptr q → readLoc (floc σ) (offsetLoc q 0) ≡ just μ-sv
            → HeadOK prog σ h-box μ-sv
   box-head prog σ q μ-sv in0 rd = record
     { step = refl ; ev = refl ; lf = tt
-    ; nh1  = λ nh → exec-abstract-preserves-halted-WF load-indirect (floc σ) (falloc σ) nh
-                      (load-indirect-twf {alloc = falloc σ} q μ-sv in0 rd)
-    ; out1 = exec-abstract-load-indirect-output (floc σ) (falloc σ) q μ-sv in0 rd
-    ; nhw = nhw-load-indirect ; nws = refl ; ff = tt ; eh = tt }
+    ; nh1  = λ nh → exec-abstract-preserves-halted-WF (load-at 0) (floc σ) (falloc σ) nh
+                      (q , cong sv-as-loc in0 , μ-sv , rd)
+    ; out1 = box-out (floc σ) (falloc σ) q μ-sv in0 rd
+    ; nhw = nhw-load-at ; nws = refl ; ff = tt ; eh = tt }
 
   -- two silent runs, one after the other (give the implicits: `SRun` is a
   -- definition, so inferring them unfolds the machine states)

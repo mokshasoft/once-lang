@@ -44,6 +44,8 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Spec.Type using (Type; Unit; Void)
 open import Once.Res using (Res; stopped; returns)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.IR.Semantics.Boundary using (atTarget)
+open import Once.Res using (mapRes)
 open import Data.Bool using (Bool; true; false)
 -- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
 -- and result types must be CONCRETE (`Base ∅ₖ` — no arrows, no `μ`/`ν`). This is
@@ -219,8 +221,9 @@ semM-of ans n (blockV e refl refl) = λ tn x → returns (M.eraseᵍ (block-semP
 semM-of ans n (emitsV refl) = λ _ _ → returns tt
 semM-of ans n (haltsV refl) = λ _ _ → stopped
 semM-of ans n (primV p)     = λ tn x → returns (M.eraseᵍ (primSem p tn x))
-semM-of {A} {B} ans n ffiV   = λ _ x → ans n A B x
-semM-of {A} {B} ans n callsV = λ _ x → ans n A B x
+-- D397: a world value is read at the target (`Boundary.atTarget`)
+semM-of {A} {B} ans n ffiV   = λ tn x → mapRes (atTarget tn B) (ans n A B x)
+semM-of {A} {B} ans n callsV = λ tn x → mapRes (atTarget tn B) (ans n A B x)
 
 effect-of : ∀ {A B} → SigOpSem A B → EffectShape B
 effect-of (blockV _ _ _) = Pure

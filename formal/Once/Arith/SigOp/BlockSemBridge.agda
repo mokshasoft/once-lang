@@ -5,13 +5,13 @@
 -- Once.Arith.SigOp.BlockSemBridge  (Plan 0.54 rung B / B2.3 piece 5)
 --
 -- Spec alignment between the two arith value evaluators:
---   * `eval-arith-W` (WordSem, over the ℤ-valued input tree `⟦ sh ⟧S`) — the
+--   * `eval-arith-W` (WordSem, over the word-leaf input tree `⟦ sh ⟧S`) — the
 --     value `block-correct` establishes on the abstract machine.
 --   * `block-semM`   (Block, over the Word-valued input tree
 --     `M.⟦ shape-as-type sh ⟧`) — the value the FLAT machine computes (rung A)
 --     and the concrete `val` produces.
--- They differ ONLY in the input representation (ℤ-tree vs Word-tree), so the
--- bridge is `toWord` (apply `fromℤ` at the int leaves) + a structural induction.
+-- D397: both trees hold words at their leaves, so the bridge `toWord` is the
+-- identity leaf by leaf (it only re-indexes the tree by `shape-as-type`).
 -- At `bits = 64` the two evaluators use the SAME `Word64` operations.
 --
 -- This is the piece that lets `block-correct`'s value transfer to the flat/
@@ -64,30 +64,26 @@ module _ (tn : TargetNum) where
   module WL = OnceWordL.WidthLaws (int-bits tn)
 
   ------------------------------------------------------------------------
-  -- The input representation bridge: ℤ-tree → Word-tree (fromℤ at leaves).
+  -- The input representation bridge: the same words, re-indexed (D397).
   ------------------------------------------------------------------------
 
   toWord : ∀ (sh : InputShape) → ⟦ sh ⟧S → M.⟦ shape-as-type sh ⟧
   toWord shape-unit       tt      = tt
-  toWord shape-int        z       = W.fromℤ z
-  -- PLAN 0.75 F4: the IDENTITY on a float leaf. `⟦ shape-float ⟧S` is already
-  -- the bit pattern and `M.⟦ Float ⟧` is the same `Carrier` — there is no
-  -- spec-level float value to narrow from, which is D113 showing through at
-  -- the one place the `Int` leaf needs `fromℤ`.
+  -- the IDENTITY on both leaves: an `Int` leaf is the word (D054, D397), a
+  -- float leaf the bit pattern (D113), and `M.⟦_⟧` holds the same `Carrier`.
+  toWord shape-int        z       = z
   toWord shape-float      w       = w
   toWord (shape-pair l r) (x , y) = toWord l x , toWord r y
 
   ------------------------------------------------------------------------
-  -- Leaf commute: projecting the Word-tree = mapping fromℤ over the ℤ-project.
+  -- Leaf commute: projecting the re-indexed tree is projecting the tree.
   ------------------------------------------------------------------------
 
-  -- STATED AT `NInt`, and it has to be: this is the ℤ-spec bridge, `project`
-  -- only ever finds `Int` leaves, and there is no ℤ spec for a float to bridge
-  -- to. With a kind-blind `projectM` the statement would be FALSE at a float
-  -- leaf — `just w` on the left, `nothing` on the right — which is how the
-  -- kind parameter earned its place.
+  -- STATED AT `NInt`: `project` only ever finds `Int` leaves. With a
+  -- kind-blind `projectM` the statement would be FALSE at a float leaf —
+  -- `just w` on the left, `nothing` on the right.
   project-commute : ∀ (sh : InputShape) (p : InputPath) (env : ⟦ sh ⟧S)
-                  → projectM NInt sh p (toWord sh env) ≡ mapMaybe W.fromℤ (project sh p env)
+                  → projectM NInt sh p (toWord sh env) ≡ project sh p env
   project-commute shape-unit       p         env       = refl
   project-commute shape-int        []        z         = refl
   project-commute shape-int        (_ ∷ _)   z         = refl
@@ -100,10 +96,8 @@ module _ (tn : TargetNum) where
   -- Piece 5: the two evaluators agree, modulo the input bridge.
   ------------------------------------------------------------------------
 
-  -- PLAN 0.75 F4: the FLOAT leaf's commute, and it is `refl` at every shape —
-  -- `toWord` is the identity on a float leaf, because there is no spec-level
-  -- float value to narrow from (D113). The `Int` twin above needs `fromℤ`
-  -- precisely where this one needs nothing.
+  -- PLAN 0.75 F4: the FLOAT leaf's commute, `refl` at every shape as the
+  -- `Int` twin above is.
   projectF-commute : ∀ (sh : InputShape) (p : InputPath) (env : ⟦ sh ⟧S)
                    → projectM NFloat sh p (toWord sh env) ≡ projectF sh p env
   projectF-commute shape-unit       p         env     = refl
@@ -124,7 +118,7 @@ module _ (tn : TargetNum) where
   -- lemmas had to reconcile two `Maybe`s and their two invented defaults;
   -- there are no defaults left to reconcile.
   readLeaf-commute : ∀ {sh} (p : Path sh NInt) (env : ⟦ sh ⟧S)
-                   → readLeafM p (toWord sh env) ≡ W.fromℤ (readLeaf p env)
+                   → readLeafM p (toWord sh env) ≡ readLeaf p env
   readLeaf-commute here-int   z       = refl
   readLeaf-commute (go-fst p) (x , y) = readLeaf-commute p x
   readLeaf-commute (go-snd p) (x , y) = readLeaf-commute p y

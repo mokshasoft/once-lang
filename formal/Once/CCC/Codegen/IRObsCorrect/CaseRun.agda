@@ -52,6 +52,8 @@ import Once.Denotation.DenotTrace as DT
 import Once.IR.Semantics.Trace as TM
 
 open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl
+open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
+open import Once.CCC.Codegen.FlatLayout using (get; get-one)
 
 ------------------------------------------------------------------------
 -- THE SHARED RUN SCAFFOLDING: where every instruction sits, how long the
@@ -68,19 +70,20 @@ module RunC {FS : FrameSemantics} where
   -- The first half of this same clause: the shape, the four premise splits,
   -- the two jump targets, and the residence lemmas.
   open ShapeC {FS}
+  open GetC {FS} using (GetOut; module GetOut; setOut; out-mem)
   ----------------------------------------------------------------------
   module CaseRun {A B C : IRTy} (f : IR A C) (g : IR B C)
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
-    (span : SpanAt prog base (emitted n l (case f g)))
+    (span : SpanAt prog base (CaseShape.E′ f g n l))
     where
 
     open CaseShape f g n l
 
     -- The emitted length, in the form the two arms' end-pcs take.
     len-eq : length (emitted n l (case f g)) ≡ suc join-at
-    len-eq = trans step (shuffle-len (length gt) (length ft))
+    len-eq = trans (cong length shape) (trans step (shuffle-len (length gt) (length ft)))
       where
-        step : length (emitted n l (case f g))
+        step : length E′
              ≡ 3 + (length gt + (4 + (length ft + 1)))
         step = trans (length-++ pre {gt ++ mid ++ ft ++ post})
                  (cong (3 +_)
@@ -107,8 +110,9 @@ module RunC {FS : FrameSemantics} where
     at-branch : fetch prog (0 + base) ≡ just (instr-ctrl (c-branch-tag-zero (ℓ o l)))
     at-branch = span 0 _ refl
 
-    at-unpack-r : fetch prog (1 + base) ≡ just load-indirect-suc
-    at-unpack-r = span 1 _ refl
+    -- the payload reads: `get`'s one instruction, at each arm's offset
+    at-unpack-r : ∀ i → fetch (get B 1) 0 ≡ just i → fetch prog (1 + base) ≡ just i
+    at-unpack-r i e = span 1 i (trans (sym (cong (λ t → fetch t 0) (get-one B 1))) e)
 
     at-movin-r : fetch prog (2 + base) ≡ just mov-to-input
     at-movin-r = span 2 _ refl
@@ -119,8 +123,8 @@ module RunC {FS : FrameSemantics} where
     at-inl-label : fetch prog (inl-at + base) ≡ just (instr-ctrl (c-label (ℓ o l)))
     at-inl-label = gt-at 1 _ refl
 
-    at-unpack-l : fetch prog ((5 + length gt) + base) ≡ just load-indirect-suc
-    at-unpack-l = gt-at 2 _ refl
+    at-unpack-l : ∀ i → fetch (get A 1) 0 ≡ just i → fetch prog ((5 + length gt) + base) ≡ just i
+    at-unpack-l i e = gt-at 2 i (trans (sym (cong (λ t → fetch t 0) (get-one A 1))) e)
 
     at-movin-l : fetch prog ((6 + length gt) + base) ≡ just mov-to-input
     at-movin-l = gt-at 3 _ refl
@@ -156,113 +160,116 @@ module RunC {FS : FrameSemantics} where
     ev-step1 fs h ft refl e = cong (_++ []) e
 
     ------------------------------------------------------------------
-    -- THE TWO PROLOGUES. Both are three steps: the branch row, then the
-    -- arm's `load-indirect-suc` (Output := the sum's payload cell) and
-    -- `mov-to-input` (hand it to the arm). They differ ONLY in whether the
-    -- branch falls through or jumps, and that is decided by the input's own
-    -- tag — `tag-inr` / `tag-inl`.
+    -- THE TWO PROLOGUES: the branch row, then the arm's payload read
+    -- (`get`, one step — `Get.get-run`) and `mov-to-input` (hand it to the
+    -- arm). They differ in whether the branch falls through or jumps, which
+    -- the input's own tag decides (`tag-inr` / `tag-inl`), and in the payload
+    -- type the read is at.
     ------------------------------------------------------------------
     module Prologue (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ)
                     (nh : halted s ≡ false)
-                    (iwf : InstrWF s alloc load-indirect-suc)
-                    (la : LabelsAt prog base (emitted n l (case f g)))
+                    (la : LabelsAt prog base E′)
                     where
 
       fs0 : FlatState
       fs0 = entry-flat base s alloc cl rs
 
-      -- ── the `inr` arm: the branch falls through.
-      r1 r2 r3 : FlatState
+      r1 i1 i2 : FlatState
       r1 = record fs0 { fpc = suc base }
-      r2 = flat-exec-instr load-indirect-suc prog r1
-      r3 = flat-exec-instr mov-to-input      prog r2
-
-      nh-r1 : halted (floc r1) ≡ false
-      nh-r1 = nh
-      nh-r2 : halted (floc r2) ≡ false
-      nh-r2 = exec-abstract-preserves-halted-WF load-indirect-suc (floc r1) (falloc r1) nh-r1 iwf
-
-      run-r : tag-test (flat-read-tag (floc fs0)) ≡ just false → FlatSteps prog 3 fs0 r3
-      run-r cond =
-        FlatSteps-++ (flat-step1 nh at-branch (flat-tag-branch-not prog fs0 (ℓ o l) cond))
-                     ((nh-r1 , at-unpack-r) ∷ (nh-r2 , at-movin-r) ∷ [])
-
-      -- ── the `inl` arm: the branch jumps to `ℓ o l`, which is the mid row's
-      -- own `c-label`; executing that label is the second step.
-      i1 i2 i3 i4 : FlatState
       i1 = record fs0 { fpc = inl-at + base }
       i2 = record i1  { fpc = suc (inl-at + base) }
-      i3 = flat-exec-instr load-indirect-suc prog i2
-      i4 = flat-exec-instr mov-to-input      prog i3
 
-      nh-i2 : halted (floc i2) ≡ false
-      nh-i2 = nh
-      nh-i3 : halted (floc i3) ≡ false
-      nh-i3 = exec-abstract-preserves-halted-WF load-indirect-suc (floc i2) (falloc i2) nh-i2 iwf
+      -- ── the `inr` arm: the branch falls through.
+      module R {b : ⟦ B ⟧} (gr : GetOut {prog = prog} B b r1) where
+        r2 r3 : FlatState
+        r2 = setOut r1 (GetOut.out gr)
+        r3 = flat-exec-instr mov-to-input prog r2
 
-      run-i : tag-test (flat-read-tag (floc fs0)) ≡ just true → FlatSteps prog 4 fs0 i4
-      run-i cond =
-        FlatSteps-++
-          (flat-step1 nh at-branch
-            (trans (flat-tag-branch-yes prog fs0 (ℓ o l) cond)
-                   (cong (λ mj → do-jump mj fs0) (inl-target prog base la))))
-          (FlatSteps-++ (flat-step1 nh at-inl-label refl)
-                        ((nh-i2 , at-unpack-l) ∷ (nh-i3 , at-movin-l) ∷ []))
+        nh-r2 : halted (floc r2) ≡ false
+        nh-r2 = nh
 
-      ------------------------------------------------------------
-      -- BOTH ARMS REACH THE SAME `LocState`. `r3` and `i4` differ only in
-      -- the pc — the memory and registers are the same two rows applied to
-      -- the same start — so the facts about what the prologue did are
-      -- shared, and stated once here rather than twice below.
-      ------------------------------------------------------------
-      mv-eq : readReg (regs (floc r3)) Input1
-            ≡ readReg (regs (proj₁ (exec-abstract load-indirect-suc s alloc))) Output
-      mv-eq = writeReg-same (regs (floc r2)) Input1
-                (readReg (regs (floc r2)) Output)
+        run-r : tag-test (flat-read-tag (floc fs0)) ≡ just false → FlatSteps prog 3 fs0 r3
+        run-r cond =
+          FlatSteps-++ (flat-step1 nh at-branch (flat-tag-branch-not prog fs0 (ℓ o l) cond))
+                       (FlatSteps-++ (GetOut.step gr) ((nh-r2 , at-movin-r) ∷ []))
 
-      mem-eq : ∀ (lc : ValueLocation FS) → SMCore.MemOps.readLoc (floc r3) lc ≡ SMCore.MemOps.readLoc s lc
-      mem-eq lc = trans (mem-untouched mov-to-input (floc r2) (falloc r2) lc
-                           nhw-mov-to-input refl)
-                        (mem-untouched load-indirect-suc s alloc lc
-                           nhw-load-indirect-suc refl)
+        mv-eq : readReg (regs (floc r3)) Input1 ≡ readReg (regs (floc r2)) Output
+        mv-eq = writeReg-same (regs (floc r2)) Input1 (readReg (regs (floc r2)) Output)
 
-      -- plan 0.105: …and the log is the caller's (no row calls).
-      log-r3 : SMCore.LocState.ev-log (floc r3) ≡ SMCore.LocState.ev-log s
-      log-r3 = log-abstract load-indirect-suc tt s alloc
+        mem-mv : ∀ (lc : ValueLocation FS) → SMCore.MemOps.readLoc (floc r3) lc ≡ SMCore.MemOps.readLoc (floc r2) lc
+        mem-mv lc = mem-untouched mov-to-input (floc r2) (falloc r2) lc nhw-mov-to-input refl
 
-      log-i4 : SMCore.LocState.ev-log (floc i4) ≡ SMCore.LocState.ev-log s
-      log-i4 = log-abstract load-indirect-suc tt s alloc
+        mem-eq : ∀ (lc : ValueLocation FS) → SMCore.MemOps.readLoc (floc r3) lc ≡ SMCore.MemOps.readLoc s lc
+        mem-eq lc = trans (mem-mv lc) (out-mem r1 (GetOut.out gr) lc)
 
-      -- NONE of the five rows is a SigOp, so a prologue emits nothing. The
-      -- `subst` inside `flat-step1` is what stops that from being `refl`.
-      ev-run-r : ∀ (cond : tag-test (flat-read-tag (floc fs0)) ≡ just false)
-               → chain-events (run-r cond) ≡ []
-      ev-run-r cond =
-        trans (chain-events-++
-                 (flat-step1 {prog} {fs0} nh at-branch (flat-tag-branch-not prog fs0 (ℓ o l) cond))
-                 ((nh-r1 , at-unpack-r) ∷ (nh-r2 , at-movin-r) ∷ []))
-              (cong (_++ [])
-                (ev-step1 fs0 nh at-branch
-                   (flat-tag-branch-not prog fs0 (ℓ o l) cond) refl))
+        log-r3 : SMCore.LocState.ev-log (floc r3) ≡ SMCore.LocState.ev-log s
+        log-r3 = refl
 
-      ev-run-i : ∀ (cond : tag-test (flat-read-tag (floc fs0)) ≡ just true)
-               → chain-events (run-i cond) ≡ []
-      ev-run-i cond =
-        trans (chain-events-++
-                 (flat-step1 {prog} {fs0} nh at-branch
-                   (trans (flat-tag-branch-yes prog fs0 (ℓ o l) cond)
-                          (cong (λ mj → do-jump mj fs0) (inl-target prog base la))))
-                 (FlatSteps-++ (flat-step1 {prog} {i1} nh at-inl-label refl)
-                               ((nh-i2 , at-unpack-l) ∷ (nh-i3 , at-movin-l) ∷ [])))
-          (trans (cong (_++ chain-events (FlatSteps-++ (flat-step1 {prog} {i1} nh at-inl-label refl)
-                                            ((nh-i2 , at-unpack-l) ∷ (nh-i3 , at-movin-l) ∷ [])))
-                       (ev-step1 fs0 nh at-branch
-                          (trans (flat-tag-branch-yes prog fs0 (ℓ o l) cond)
-                                 (cong (λ mj → do-jump mj fs0) (inl-target prog base la)))
-                          refl))
-                 (trans (chain-events-++ (flat-step1 {prog} {i1} nh at-inl-label refl)
-                                         ((nh-i2 , at-unpack-l) ∷ (nh-i3 , at-movin-l) ∷ []))
-                        (cong (_++ []) (ev-step1 i1 nh at-inl-label refl refl))))
+        inp : InputAt {prog = prog} (GetOut.mode gr) alloc b (floc r3)
+        inp = place→input (GetOut.place gr) mv-eq mem-mv
+
+        ev-run-r : ∀ (cond : tag-test (flat-read-tag (floc fs0)) ≡ just false)
+                 → chain-events (run-r cond) ≡ []
+        ev-run-r cond =
+          trans (chain-events-++
+                   (flat-step1 {prog} {fs0} nh at-branch (flat-tag-branch-not prog fs0 (ℓ o l) cond))
+                   (FlatSteps-++ (GetOut.step gr) ((nh-r2 , at-movin-r) ∷ [])))
+                (cong₂ _++_
+                  (ev-step1 fs0 nh at-branch (flat-tag-branch-not prog fs0 (ℓ o l) cond) refl)
+                  (trans (chain-events-++ (GetOut.step gr) ((nh-r2 , at-movin-r) ∷ []))
+                         (cong (_++ _) (GetOut.silent gr))))
+
+      -- ── the `inl` arm: the branch jumps to `ℓ o l`, the mid row's own
+      -- `c-label`; executing that label is the second step.
+      module L {a : ⟦ A ⟧} (gl : GetOut {prog = prog} A a i2) where
+        i3 i4 : FlatState
+        i3 = setOut i2 (GetOut.out gl)
+        i4 = flat-exec-instr mov-to-input prog i3
+
+        nh-i3 : halted (floc i3) ≡ false
+        nh-i3 = nh
+
+        br : flat-exec-instr (instr-ctrl (c-branch-tag-zero (ℓ o l))) prog fs0 ≡ i1
+           → FlatSteps prog 1 fs0 i1
+        br e = flat-step1 nh at-branch e
+
+        jump : tag-test (flat-read-tag (floc fs0)) ≡ just true
+             → flat-exec-instr (instr-ctrl (c-branch-tag-zero (ℓ o l))) prog fs0 ≡ i1
+        jump cond = trans (flat-tag-branch-yes prog fs0 (ℓ o l) cond)
+                          (cong (λ mj → do-jump mj fs0) (inl-target prog base la))
+
+        tail : FlatSteps prog 3 i1 i4
+        tail = FlatSteps-++ (flat-step1 nh at-inl-label refl)
+                            (FlatSteps-++ (GetOut.step gl) ((nh-i3 , at-movin-l) ∷ []))
+
+        run-i : tag-test (flat-read-tag (floc fs0)) ≡ just true → FlatSteps prog 4 fs0 i4
+        run-i cond = FlatSteps-++ (br (jump cond)) tail
+
+        mv-eq : readReg (regs (floc i4)) Input1 ≡ readReg (regs (floc i3)) Output
+        mv-eq = writeReg-same (regs (floc i3)) Input1 (readReg (regs (floc i3)) Output)
+
+        mem-mv : ∀ (lc : ValueLocation FS) → SMCore.MemOps.readLoc (floc i4) lc ≡ SMCore.MemOps.readLoc (floc i3) lc
+        mem-mv lc = mem-untouched mov-to-input (floc i3) (falloc i3) lc nhw-mov-to-input refl
+
+        mem-eq : ∀ (lc : ValueLocation FS) → SMCore.MemOps.readLoc (floc i4) lc ≡ SMCore.MemOps.readLoc s lc
+        mem-eq lc = trans (mem-mv lc) (out-mem i2 (GetOut.out gl) lc)
+
+        log-i4 : SMCore.LocState.ev-log (floc i4) ≡ SMCore.LocState.ev-log s
+        log-i4 = refl
+
+        inp : InputAt {prog = prog} (GetOut.mode gl) alloc a (floc i4)
+        inp = place→input (GetOut.place gl) mv-eq mem-mv
+
+        ev-run-i : ∀ (cond : tag-test (flat-read-tag (floc fs0)) ≡ just true)
+                 → chain-events (run-i cond) ≡ []
+        ev-run-i cond =
+          trans (chain-events-++ (br (jump cond)) tail)
+                (cong₂ _++_ (ev-step1 fs0 nh at-branch (jump cond) refl)
+                  (trans (chain-events-++ (flat-step1 {prog} {i1} nh at-inl-label refl)
+                                          (FlatSteps-++ (GetOut.step gl) ((nh-i3 , at-movin-l) ∷ [])))
+                         (cong₂ _++_ (ev-step1 i1 nh at-inl-label refl refl)
+                           (trans (chain-events-++ (GetOut.step gl) ((nh-i3 , at-movin-l) ∷ []))
+                                  (cong (_++ _) (GetOut.silent gl))))))
 
     ------------------------------------------------------------------
     -- D158's hand-over, restated locally (it lives inside `CompC`).

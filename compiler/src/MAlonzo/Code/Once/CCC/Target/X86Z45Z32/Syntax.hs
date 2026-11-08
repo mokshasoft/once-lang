@@ -52,17 +52,17 @@ data T_Instr_28
     C_call_54 T_Operand_20 |
     C_call'45'sym_56 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_call'45'l_58 MAlonzo.Code.Once.CCC.Label.T_Label_28 | C_ret_60 |
-    C_nop_62 | C_ud2_64 |
-    C_label_66 MAlonzo.Code.Once.CCC.Label.T_Label_28 |
-    C_mov'45'code_68 MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
+    C_nop_62 | C_ud2_64 | C_jbe'45'fwd_66 | C_local'45'1_68 |
+    C_label_70 MAlonzo.Code.Once.CCC.Label.T_Label_28 |
+    C_mov'45'code_72 MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
                      MAlonzo.Code.Once.CCC.Label.T_LabelId_6 |
-    C_jmp'45'l_70 MAlonzo.Code.Once.CCC.Label.T_Label_28
+    C_jmp'45'l_74 MAlonzo.Code.Once.CCC.Label.T_Label_28
 -- Once.CCC.Target.X86-32.Syntax.Program
-d_Program_72 :: ()
-d_Program_72 = erased
+d_Program_76 :: ()
+d_Program_76 = erased
 -- Once.CCC.Target.X86-32.Syntax.slot-size
-d_slot'45'size_74 :: Integer
-d_slot'45'size_74 = coe (4 :: Integer)
+d_slot'45'size_78 :: Integer
+d_slot'45'size_78 = coe (4 :: Integer)
 -- Once.CCC.Target.X86-32.Syntax.slots
-d_slots_76 :: Integer -> Integer
-d_slots_76 v0 = coe mulInt (coe v0) (coe d_slot'45'size_74)
+d_slots_80 :: Integer -> Integer
+d_slots_80 v0 = coe mulInt (coe v0) (coe d_slot'45'size_78)

@@ -39,7 +39,7 @@ open import Data.Empty using (⊥-elim)
 import Once.CCC.Target.RiscV64.Semantics as R
 open R using (mkstate) renaming (writeReg to rwriteReg)
 open R.State using (memory) renaming (regs to rregs; halted to rhalted)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; ra; t1)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; ra; t1; t2)
 open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
@@ -97,6 +97,33 @@ role-off-t1 s role-clos    w = refl
 role-off-t1 s role-heap    w = refl
 role-off-t1 s role-out     w = refl
 role-off-t1 s role-in1     w = refl
+
+-- Plan 0.123 A.4: the room check writes `t1`, which no role holds (twice:
+-- the immediate, then the sum); every role's register, memory and the halt
+-- flag are as they were.
+keeps-t1-riscv64 : ∀ (s : R.State) (v w : Word) (p : ℕ)
+  → KeepsRoles s (mkstate (rwriteReg (rwriteReg (rregs s) t1 v) t1 w) (memory s) p (rhalted s))
+keeps-t1-riscv64 s v w p = record { kr-role = kr ; kr-mem = refl ; kr-halt = refl }
+  where
+    kr : ∀ ρ → R.readReg (rwriteReg (rwriteReg (rregs s) t1 v) t1 w) (reg-of ρ) ≡ rreg s (reg-of ρ)
+    kr role-sp      = refl
+    kr role-clos    = refl
+    kr role-heap    = refl
+    kr role-out     = refl
+    kr role-in1     = refl
+
+-- D378: the room check computes the room in `t1` and the need in `t2`, neither
+-- a role's.
+keeps-t1-t2-riscv64 : ∀ (s : R.State) (v w : Word) (p : ℕ)
+  → KeepsRoles s (mkstate (rwriteReg (rwriteReg (rregs s) t1 v) t2 w) (memory s) p (rhalted s))
+keeps-t1-t2-riscv64 s v w p = record { kr-role = kr ; kr-mem = refl ; kr-halt = refl }
+  where
+    kr : ∀ ρ → R.readReg (rwriteReg (rwriteReg (rregs s) t1 v) t2 w) (reg-of ρ) ≡ rreg s (reg-of ρ)
+    kr role-sp      = refl
+    kr role-clos    = refl
+    kr role-heap    = refl
+    kr role-out     = refl
+    kr role-in1     = refl
 
 sets-role-riscv64 : ∀ (s : R.State) (ρ : Role) (v : Word) (p : ℕ)
   → SetsRole s (mkstate (rwriteReg (rregs s) (reg-of ρ) v) (memory s) p (rhalted s)) ρ v

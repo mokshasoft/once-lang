@@ -15,7 +15,7 @@
 --   * the function entries are the table's, whose symbols the extractor's guard
 --     keeps distinct (`NameClash.program-no-clash`), and no unit defines one
 --     (`CLabelsUnique.frag-nf`);
---   * the heap, `_start` and the arith blocks are separated from all of these
+--   * the entry (`once_main`) and the arith blocks are separated from all of these
 --     by their characters.
 ------------------------------------------------------------------------
 
@@ -107,6 +107,11 @@ idefs (restore-input _) = refl
 idefs (instr-alloc-stack _) = refl
 idefs (instr-dealloc-stack _) = refl
 idefs (instr-reclaim-to _) = refl
+idefs (instr-free-heap _) = refl
+idefs (load-at _) = refl
+idefs (store-at _) = refl
+idefs (addr-at _) = refl
+idefs (instr-room _) = refl
 idefs (instr-push-frame _) = refl
 idefs instr-pop-frame = refl
 idefs instr-call-closure = refl
@@ -146,6 +151,11 @@ idefl (restore-input _) = []
 idefl (instr-alloc-stack _) = []
 idefl (instr-dealloc-stack _) = []
 idefl (instr-reclaim-to _) = []
+idefl (instr-free-heap _) = []
+idefl (load-at _) = []
+idefl (store-at _) = []
+idefl (addr-at _) = []
+idefl (instr-room _) = []
 idefl (instr-push-frame _) = []
 idefl instr-pop-frame = []
 idefl instr-call-closure = []
@@ -185,6 +195,11 @@ ileft (restore-input _) = refl
 ileft (instr-alloc-stack _) = refl
 ileft (instr-dealloc-stack _) = refl
 ileft (instr-reclaim-to _) = refl
+ileft (instr-free-heap _) = refl
+ileft (load-at _) = refl
+ileft (store-at _) = refl
+ileft (addr-at _) = refl
+ileft (instr-room _) = refl
 ileft (instr-push-frame _) = refl
 ileft instr-pop-frame = refl
 ileft instr-call-closure = refl
@@ -223,6 +238,11 @@ iright (restore-input _) = refl
 iright (instr-alloc-stack _) = refl
 iright (instr-dealloc-stack _) = refl
 iright (instr-reclaim-to _) = refl
+iright (instr-free-heap _) = refl
+iright (load-at _) = refl
+iright (store-at _) = refl
+iright (addr-at _) = refl
+iright (instr-room _) = refl
 iright (instr-push-frame _) = refl
 iright instr-pop-frame = refl
 iright instr-call-closure = refl
@@ -317,6 +337,7 @@ open import Once.Denotation.Program using (IRFun; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fname)
 open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next; program-image)
+open import Once.CCC.Codegen.RoomChecksFacts using (fold-room)
 open import Once.CCC.Codegen.LabelDefs using (Win; dst-++; dj-win; win-weaken; fresh-above; clabs-++; nf)
 import Once.CCC.Codegen.CLabelsUnique as CLU
 import Once.CCC.Codegen.IRToTrace as IT
@@ -367,7 +388,7 @@ fns-fdefs l (e ∷ es) =
     fdefs-++ []       y = refl
     fdefs-++ (i ∷ is) y = trans (cong (fdef-of i ++_) (fdefs-++ is y)) (sym (++-assoc (fdef-of i) (fdefs is) (fdefs y)))
 
--- the program image: `_start`, `main`'s unit ending in the leave (D320), the table
+-- the program image: the start, `main`'s unit ending in the leave (D320), the table
 image-cl : ∀ (o : CanonicalName) (q : IRProgram) → Dst (clabs (program-image o q))
 image-cl o q =
   subst Dst (sym eq)
@@ -484,7 +505,7 @@ ap-reverse {x ∷ xs} (px ∷ pxs) =
         rev-∈ = Data.List.Relation.Unary.Any.Properties.reverse⁻
 
 ------------------------------------------------------------------------
--- Characters: what separates the heap, `_start`, the counters, the entries
+-- Characters: what separates the program's entry, the counters, the entries
 -- and the arith blocks.
 ------------------------------------------------------------------------
 
@@ -501,7 +522,7 @@ open import Once.CCC.Label using (showLabelId)
 open import Once.Target.Symbol using (once-prefix; join-us; mangle-component)
 open import Once.Target.SymbolInjective
   using (charsInBase-all-digits; HeadNotDigit; digit-prefix-unique; zencL; zencL-inj; zencL-vic; toList-mangle; NameChars)
-open import Once.CCC.Codegen.ImageSymbols using (heap-symbol)
+open import Once.CCC.Codegen.ImageSymbols using (entry-symbol)
 open import Once.Target.SymbolFresh using (letter≢osp)
 
 private
@@ -525,9 +546,9 @@ private
   hd≢ hs ht a≢b refl = a≢b (trans (sym hs) ht)
 
 
--- the heap is no canonical name's symbol (`SymbolFresh`: the prefix, then a letter)
-heap≢osp : ∀ (cn : CanonicalName) → heap-symbol ≢ once-symbol-path cn
-heap≢osp = letter≢osp heap-symbol 'h' (toList "eap_base") refl refl
+-- the entry is no canonical name's symbol (`SymbolFresh`: the prefix, then a letter)
+entry≢osp : ∀ (cn : CanonicalName) → entry-symbol ≢ once-symbol-path cn
+entry≢osp = letter≢osp entry-symbol 'm' (toList "ain") refl refl
 
 -- a definition's symbol is no arith block's (a block name has a `.` and a letter)
 own≢block : ∀ (x d : String) → ValidName x → once-symbol-own x ≢ once-symbol-own ("arith.block." ++ˢ d)
@@ -688,7 +709,7 @@ private
   rt-names []       = refl
   rt-names (e ∷ es) = cong (fname e ∷_) (rt-names es)
 
-  -- An own symbol is apart from the blocks, the heap and `_start`; stated over
+  -- An own symbol is apart from the blocks and the entry; stated over
   -- the symbol as a variable (plan 0.144: matched by `with` inside `Apart`,
   -- each cost 5–7 s).
   OwnSym : String → Set
@@ -697,11 +718,8 @@ private
   own≢blk : ∀ {s t} → OwnSym s → BlockSym t → s ≢ t
   own≢blk (x , vx , refl) (d , refl) = own≢block x d vx
 
-  heap≢own : ∀ {s} → OwnSym s → heap-symbol ≢ s
-  heap≢own (x , _ , refl) = heap≢osp (canonical (x ∷ []))
-
-  start≢own : ∀ {s} → OwnSym s → "_start" ≢ s
-  start≢own (x , _ , refl) = hd≢ refl (osp-hd (canonical (x ∷ []))) (λ ())
+  entry≢own : ∀ {s} → OwnSym s → entry-symbol ≢ s
+  entry≢own (x , _ , refl) = entry≢osp (canonical (x ∷ []))
 
   -- the function entries of an image whose table is `T`'s, read through the guard
   module Entries (T : List IRFun) (tn : TableNames T) where
@@ -717,7 +735,7 @@ private
       let (x , x∈ , eq) = ∈-map⁻ once-symbol-own (AnyP.reverse⁻ {xs = Data.List.map once-symbol-own names} (subst (s ∈_) EF≡ s∈))
       in x , lookup valid x∈ , eq
 
-  -- …and so the definitions, the blocks, the heap and `_start` are apart.
+  -- …and so the definitions, the blocks and the entry are apart.
   module Apart (fs : List CanonicalName) (T : List IRFun) (tn : TableNames T)
                (fs≡ : Data.List.map once-symbol-path fs ≡ Entries.EF T tn) where
     open Entries T tn
@@ -728,50 +746,47 @@ private
     def≢blk (inj₁ h) (d , refl) = hd≢ h (osp-hd (canonical (("arith.block." ++ˢ d) ∷ []))) (λ ())
     def≢blk (inj₂ s∈) b = own≢blk (EF-own (toEF s∈)) b
 
-    heap≢def : ∀ {s} → DefClass fs s → heap-symbol ≢ s
-    heap≢def (inj₁ h) = hd≢ refl h (λ ())
-    heap≢def (inj₂ s∈) = heap≢own (EF-own (toEF s∈))
+    entry≢def : ∀ {s} → DefClass fs s → entry-symbol ≢ s
+    entry≢def (inj₁ h) = hd≢ refl h (λ ())
+    entry≢def (inj₂ s∈) = entry≢own (EF-own (toEF s∈))
 
-    heap≢blk : ∀ {t} → BlockSym t → heap-symbol ≢ t
-    heap≢blk (d , refl) = heap≢osp (canonical (("arith.block." ++ˢ d) ∷ []))
-
-    start≢def : ∀ {s} → DefClass fs s → "_start" ≢ s
-    start≢def (inj₁ h) = hd≢ refl h (λ ())
-    start≢def (inj₂ s∈) = start≢own (EF-own (toEF s∈))
-
-    start≢blk : ∀ {t} → BlockSym t → "_start" ≢ t
-    start≢blk (d , refl) = hd≢ refl (osp-hd (canonical (("arith.block." ++ˢ d) ∷ []))) (λ ())
+    entry≢blk : ∀ {t} → BlockSym t → entry-symbol ≢ t
+    entry≢blk (d , refl) = entry≢osp (canonical (("arith.block." ++ˢ d) ∷ []))
 
     defs++blocks : ∀ (D B : List String) → All (DefClass fs) D → All BlockSym B
                  → AllPairs _≢_ D → AllPairs _≢_ B → AllPairs _≢_ (D ++ B)
     defs++blocks D B cD cB uD uB =
       AP-++⁺ uD uB (Data.List.Relation.Unary.All.map (λ {s} cs → Data.List.Relation.Unary.All.map (def≢blk cs) cB) cD)
 
-    heap-fresh : ∀ (D B : List String) → All (DefClass fs) D → All BlockSym B → All (heap-symbol ≢_) (D ++ B)
-    heap-fresh D B cD cB = All-++⁺ (Data.List.Relation.Unary.All.map heap≢def cD) (Data.List.Relation.Unary.All.map heap≢blk cB)
-
-    start-fresh : ∀ (D B : List String) → All (DefClass fs) D → All BlockSym B → All ("_start" ≢_) (D ++ B)
-    start-fresh D B cD cB = All-++⁺ (Data.List.Relation.Unary.All.map start≢def cD) (Data.List.Relation.Unary.All.map start≢blk cB)
+    entry-fresh : ∀ (D B : List String) → All (DefClass fs) D → All BlockSym B → All (entry-symbol ≢_) (D ++ B)
+    entry-fresh D B cD cB = All-++⁺ (Data.List.Relation.Unary.All.map entry≢def cD) (Data.List.Relation.Unary.All.map entry≢blk cB)
 
 -- THE PROGRAM (was `ImageWF.prog-unique`, a postulate).
 -- Over any table whose names are distinct and valid (plan 0.39: the optimized
 -- build's too).
 prog-unique-at : ∀ (T : List IRFun) (tn : TableNames T) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Unique (prog-defs (irProgram T ir))
 prog-unique-at T tn ir =
-  ((λ ()) ∷ heap-fresh D B cD cB) ∷ start-fresh D B cD cB ∷ defs++blocks D B cD cB uD (blocks-unique (C.program-blocks p))
+  entry-fresh D B cD cB ∷ defs++blocks D B cD cB uD (blocks-unique (C.program-blocks p))
   where
     p  = irProgram T ir
     q  = C.rewrite-program p
     img = C.image-of p
     fs = fdefs img
     fs≡ : Data.List.map once-symbol-path fs ≡ Entries.EF T tn
-    fs≡ = cong (Data.List.map once-symbol-path) (image-fdefs C.entry-owner q)
+    -- D377: the image is the program image with its room checks, which define
+    -- no function and no closure label (`fold-room`)
+    fs≡ = cong (Data.List.map once-symbol-path)
+               (trans (fold-room fdefs (λ i xs → fdef-of i ++ xs) (λ _ _ → refl) (λ _ _ → refl) (program-image C.entry-owner q))
+                      (image-fdefs C.entry-owner q))
+    cl-room : Dst (clabs img)
+    cl-room = subst Dst (sym (fold-room clabs (λ i → cl-at (clab-of i)) (λ _ _ → refl) (λ _ _ → refl) (program-image C.entry-owner q)))
+                    (image-cl C.entry-owner q)
     open Apart fs T tn fs≡
     D = adefs img
     B = C.block-syms (C.program-blocks p)
     cD = adefs-class img
     cB = blocks-sym (C.program-blocks p)
-    uD = adefs-unique img (image-cl C.entry-owner q) (subst (AllPairs _≢_) (sym fs≡) (Entries.EF-dist T tn))
+    uD = adefs-unique img cl-room (subst (AllPairs _≢_) (sym fs≡) (Entries.EF-dist T tn))
 
 prog-unique : ∀ (m : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → Unique (prog-defs (irProgram (C.moduleTable m) ir))
 prog-unique m ir = prog-unique-at (C.moduleTable m) (table-names m) ir
@@ -779,7 +794,7 @@ prog-unique m ir = prog-unique-at (C.moduleTable m) (table-names m) ir
 -- THE LIBRARY (was `ImageWF.lib-unique`, a postulate).
 lib-unique-at : ∀ (T : List IRFun) (tn : TableNames T) → Unique (lib-defs T)
 lib-unique-at T tn =
-  heap-fresh D B cD cB ∷ defs++blocks D B cD cB uD (blocks-unique (C.lib-blocks T))
+  defs++blocks D B cD cB uD (blocks-unique (C.lib-blocks T))
   where
     img = C.lib-image T
     fs = fdefs img

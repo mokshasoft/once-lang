@@ -39,6 +39,7 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWa
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Layer o using (fillI)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Rebuild o tbl using (module CataRebuildC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Round o tbl using (module CataRoundC)
+open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Text o tbl using (module CataBrTextC; module SlotArith; module OffArith)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldText o tbl using (module CataFoldTextC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldPop o tbl using (module CataFoldPopC)
@@ -71,6 +72,7 @@ module CataFoldPreC {FS : FrameSemantics} where
   open CataCallC {FS} using (module Call; CallOut)
   open CataRebuildC {FS} using (module Rebuild)
   open CataRoundC {FS} using (μ-word)
+  open CataVisitC {FS} using (bk-id)
   open CataBrTextC {FS} using (module Text)
   open CataFoldTextC {FS} using (module FoldAt)
   open CataFoldPopC {FS} using (module FoldHead; KH)
@@ -79,7 +81,7 @@ module CataFoldPreC {FS : FrameSemantics} where
   open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 
   -- WHAT THE ROUND HAS AT ITS CALL, as an opaque bundle.
-  record PreOut (prog : AbstractTrace) (F : IRFunctor) (E C : IRTy) (n c bodyL Y : ℕ) (sn hc : HeapLocation)
+  record PreOut (prog : AbstractTrace) (F : IRFunctor) (E C : IRTy) (n c bodyL CK Y : ℕ) (sn hc : HeapLocation)
                 (e : ⟦ E ⟧) (env-sv : StoredValue FS) (σ : FlatState)
                 (ns : List ⟦ μ-type F ⟧) (rest : List ⟦ C ⟧) (L : ⟦ ⟦ F ⟧TI C ⟧) : Set where
     field
@@ -88,7 +90,7 @@ module CataFoldPreC {FS : FrameSemantics} where
       run   : SRun prog steps σ cs
       seg   : SegA (falloc σ) n σ cs
       nh    : halted (floc cs) ≡ false
-      pc    : fpc cs ≡ 14 + Y
+      pc    : fpc cs ≡ CK + Y
       ret   : fret cs ≡ fret σ
       clo   : fclosure cs ≡ SV-Ptr (AtDynamic hc)
       code  : readLoc (floc cs) (AtDynamic (sucHL hc)) ≡ just (SV-Code (ℓ o bodyL))
@@ -97,10 +99,10 @@ module CataFoldPreC {FS : FrameSemantics} where
       hp    : HeapLocation
       hp-lt : suc (ref-id (heap-ref hp)) ≤ next-heap-ref (falloc cs)
       inp   : readReg (regs (floc cs)) Input1 ≡ SV-Ptr (AtDynamic hp)
-      hp0   : readLoc (floc cs) (AtDynamic hp) ≡ just env-sv
-      lw    : StoredValue FS
-      shp   : readLoc (floc cs) (AtDynamic (sucHL hp)) ≡ just lw
-      layer : WordAt prog (falloc cs) (⟦ F ⟧TI C) L lw (floc cs)
+      -- plan 0.123 α2: the argument pair `(env , layer)`, flat, valid in its block
+      pairV : ValidAtWF {prog = prog} Heap (falloc cs) {E IRTy′.* ⟦ F ⟧TI C} (e , L) (AtDynamic hp) (floc cs)
+      lhp   : Live (falloc cs) (AtDynamic hp)
+      bk    : BlocksKept (falloc σ) (falloc cs)
       env   : WordAt prog (falloc cs) E e env-sv (floc cs)
       eval  : StackAt (NodeE prog F) (falloc cs) (floc cs) (suc n) sn ns
       val   : StackAt (ValE prog C) (falloc cs) (floc cs) (n + 2) sn rest
@@ -114,7 +116,7 @@ module CataFoldPreC {FS : FrameSemantics} where
              (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
-    open FA using (X; Y; RL; lr; rbTxt; span-hd; span-rb; rb-labels; fetch-mti; span-call; exit-label)
+    open FA using (X; Y; Z; CK; KK; len-KK; RL; lr; rbTxt; span-hd; span-rb; rb-labels; fetch-mti; span-call; span-KK; fetch-cc; exit-label)
 
     c bodyL l1 : ℕ
     c = FA.T.Pc.cslot
@@ -168,11 +170,11 @@ module CataFoldPreC {FS : FrameSemantics} where
       ------------------------------------------------------------------
       -- 1. the pop
       ------------------------------------------------------------------
-      span-hd′ : SpanAt prog (fpc σ) (FoldHead.hd8 prog F C n l1 sn (26 + Y) exit-label)
-      span-hd′ = subst (λ b → SpanAt prog b (FoldHead.hd8 prog F C n l1 sn (26 + Y) exit-label)) (sym H.pc) span-hd
+      span-hd′ : SpanAt prog (fpc σ) (FoldHead.hd8 prog F C n l1 sn (11 + Z) exit-label)
+      span-hd′ = subst (λ b → SpanAt prog b (FoldHead.hd8 prog F C n l1 sn (11 + Z) exit-label)) (sym H.pc) span-hd
 
-      wP : Walk prog n (KH n) σ (8 + fpc σ) ((FoldHead.PopQ prog F C n l1 sn (26 + Y) exit-label) t ns vs)
-      wP = (FoldHead.Pop.out prog F C n l1 sn (26 + Y) exit-label) σ t ns vs span-hd′ H.nh H.eval H.val
+      wP : Walk prog n (KH n) σ (8 + fpc σ) ((FoldHead.PopQ prog F C n l1 sn (11 + Z) exit-label) t ns vs)
+      wP = (FoldHead.Pop.out prog F C n l1 sn (11 + Z) exit-label) σ t ns vs span-hd′ H.nh H.eval H.val
 
       τP : FlatState
       τP = Walk.τ wP
@@ -210,10 +212,10 @@ module CataFoldPreC {FS : FrameSemantics} where
 
       wM : Walk prog n K₀ τR (suc (fpc τR)) (λ _ → ⊤)
       wM = walk-q τR mov-to-input refl (Walk.nh wR) (subst (λ z → fetch prog z ≡ just mov-to-input) (sym pcR) fetch-mti)
-             tt nhw-mov-to-input refl tt tt refl tt tt
+             tt nhw-mov-to-input refl tt tt refl tt bk-id tt
 
       kpM : Kp (falloc τR) (floc τR) (falloc τM) (floc τM)
-      kpM = kp-q mov-to-input τR nhw-mov-to-input refl tt tt
+      kpM = kp-q mov-to-input τR nhw-mov-to-input refl tt tt bk-id
       cfM : current-frame (falloc τM) ≡ current-frame (falloc τR)
       cfM = exec-abstract-preserves-frame mov-to-input (floc τR) (falloc τR)
       slM : ∀ j → readLoc (floc τM) (AtStack (current-frame (falloc τR)) j) ≡ readLoc (floc τR) (AtStack (current-frame (falloc τR)) j)
@@ -249,19 +251,20 @@ module CataFoldPreC {FS : FrameSemantics} where
       ------------------------------------------------------------------
       -- 4. the call rows
       ------------------------------------------------------------------
-      co : CallOut c prog τM (falloc τM) hc (ℓ o bodyL) env-sv (readReg (regs (floc τR)) Output)
-      co = Call.out c prog τM (falloc τM) h-mov (subst (λ b → SpanAt prog b FA.callTxt) (sym pcM) span-call)
+      co : CallOut c prog τM (falloc τM) hc (ℓ o bodyL) E (⟦ F ⟧TI C) e L CK
+      co = Call.out h-mov E (⟦ F ⟧TI C) c prog τM (falloc τM) (subst (λ b → SpanAt prog b KK) (sym pcM) span-KK)
              (Walk.nh wA) hc (ℓ o bodyL) env-sv (readReg (regs (floc τR)) Output)
              (mov-head prog τM (readReg (regs (floc τR)) Output) inM)
              (trans (slotA c (inj₁ refl)) H.cl) (trans (slotA (c + 2) (inj₂ refl)) H.ev)
-             (trans (proj₂ kpA _ live-shc) H.code) hcM refl ≤-refl
+             (trans (proj₂ (proj₂ kpA) _ live-shc) H.code) (proj₁ kpA _ live-shc)
+             (word-tr kpA H.env) (word-tr kpM RQ.out) (λ _ lv → lv) bk-id refl
       module CO = CallOut co
 
       w : FlatState
       w = CO.w
 
       kpC : Kp (falloc τM) (floc τM) (falloc w) (floc w)
-      kpC = seg-kp CO.seg
+      kpC = seg-kp CO.seg CO.bk
 
       keep< : ∀ j → j < c → readLoc (floc w) (AtStack (current-frame (falloc τM)) j) ≡ readLoc (floc τM) (AtStack (current-frame (falloc τM)) j)
       keep< j p = SegA.mem CO.seg _ (BeforeFrontier.stack-before refl p)
@@ -271,21 +274,21 @@ module CataFoldPreC {FS : FrameSemantics} where
                  (seg-rebase {falloc σ} {falloc τM} {n} {c} {τM} {w} CO.seg cfA n≤c (SegA.href (Walk.seg wA)))
 
       abstract
-        out : PreOut prog F E C n c bodyL Y sn hc e env-sv σ ns rest L
+        out : PreOut prog F E C n c bodyL CK Y sn hc e env-sv σ ns rest L
         out = record
-          { cs = w ; steps = Walk.steps wA + 14
-          ; run = s-++ {prog} {Walk.steps wA} {14} {σ} {τM} {w} (Walk.run wA) CO.runK
-          ; seg = segAll ; nh = CO.nh ; pc = trans CO.pc (cong (14 +_) pcM)
+          { cs = w ; steps = Walk.steps wA + CK
+          ; run = s-++ {prog} {Walk.steps wA} {CK} {σ} {τM} {w} (Walk.run wA) CO.runK
+          ; seg = segAll ; nh = CO.nh ; pc = trans CO.pc (cong (CK +_) pcM)
           ; ret = trans CO.ret (Walk.ret wA) ; clo = CO.clo ; code = CO.code
           ; hc-lt = ≤-trans hcM (SegA.href CO.seg)
           ; ns0 = trans (SegA.ns segAll) H.ns0
           ; hp = CO.hp ; hp-lt = ≤-reflexive (trans (cong suc CO.ref-hp) (sym CO.hr))
-          ; inp = CO.inp ; hp0 = CO.hp0 ; lw = readReg (regs (floc τR)) Output ; shp = CO.shp
-          ; layer = word-tr (kp-∘ kpM kpC) RQ.out
-          ; env = word-tr (seg-kp segAll) H.env
+          ; inp = CO.inp ; pairV = CO.pairV ; lhp = CO.lhp ; env = word-tr (kp-∘ kpA kpC) H.env
+          ; bk = bk-trans {a = falloc σ} {b = falloc τM} {c = falloc w} (Walk.bk wA) CO.bk
+                   (live-from (falloc σ) (falloc τM) (SegA.href (Walk.seg wA)))
           ; eval = stack-keep node-tr (kp-∘ kpM kpC) (trans CO.cf cfM) (trans (cong (λ f → readLoc (floc w) (AtStack f (suc n))) (sym cfM))
                       (trans (keep< (suc n) lt1) (trans (cong (λ f → readLoc (floc τM) (AtStack f (suc n))) cfM) (slM (suc n))))) evalR
           ; val = stack-keep val-tr (kp-∘ kpM kpC) (trans CO.cf cfM) (trans (cong (λ f → readLoc (floc w) (AtStack f (n + 2))) (sym cfM))
                       (trans (keep< (n + 2) lt2) (trans (cong (λ f → readLoc (floc τM) (AtStack f (n + 2))) cfM) (slM (n + 2))))) RQ.stack
           ; cl = trans (cong (λ f → readLoc (floc w) (AtStack f c)) CO.cf) CO.cl
-          ; ev = trans (cong (λ f → readLoc (floc w) (AtStack f (c + 2))) CO.cf) CO.ev }
+          ; ev = trans (cong (λ f → readLoc (floc w) (AtStack f (c + 2))) CO.cf) (trans CO.ev (trans (slotA (c + 2) (inj₂ refl)) H.ev)) }

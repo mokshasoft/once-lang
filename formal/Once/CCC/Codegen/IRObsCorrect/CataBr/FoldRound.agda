@@ -51,6 +51,7 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldText o tbl using (module Ca
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldInv o tbl using (module CataFoldInvC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldPre o tbl using (module CataFoldPreC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldBack o tbl using (module CataFoldBackC)
+open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Output; Input1
@@ -77,7 +78,8 @@ module CataFoldRoundC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open ResuspBaseC {FS} using (SRun; SegA; Kp; bf-step; seg-bf)
+  open ResuspBaseC {FS} using (SRun; SegA; Kp; bf-step; seg-bf; live-from)
+  open CataVisitC {FS} using (place→word)
   open ApplyC {FS} using (call-at)
   module BC = BlockCallC {FS}
   open CataStackC {FS}
@@ -90,11 +92,6 @@ module CataFoldRoundC {FS : FrameSemantics} where
   open LocState using (regs; halted)
   open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 
-  -- where a callee's result is, as a word in `Output`
-  place→word : ∀ {prog B m a ca v s} → ResultPlace {prog = prog} B m a ca v s → WordAt prog a B v (readReg (regs s) Output) s
-  place→word unit-result                    = w-inl (rep-unit refl _) refl
-  place→word (at-loc loc val lv out _ _)    = w-ptr loc out lv val
-  place→word (at-reg fit rax)               = w-inl (rep-prim fit) rax
 
   -- a heap cell below one frontier, read at a stack bound
   bf-live : ∀ {a a′ : AllocState {FS}} {m : ℕ} (l : ValueLocation FS) → Live a l
@@ -115,7 +112,7 @@ module CataFoldRoundC {FS : FrameSemantics} where
                (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
-    open FA using (X; Y)
+    open FA using (X; Y; Z)
 
     c bodyL bb : ℕ
     c = FA.T.Pc.cslot
@@ -125,7 +122,7 @@ module CataFoldRoundC {FS : FrameSemantics} where
     open Inv prog F E C n c bodyL X sn hc e env-sv
 
     j : ℕ
-    j = 31 + Y
+    j = 16 + Z
 
     feq : find-thunk prog (ℓ o bodyL) ≡ just j
     feq = thunk-found {prog} (BlockRuns.thunks-unique cr) j (ℓ o bodyL) bb FA.fetch-thunk
@@ -135,7 +132,7 @@ module CataFoldRoundC {FS : FrameSemantics} where
               (fq : fillI wf (μ-type F) C (μ-layer-val wf t) vs ≡ just (L , rest))
               (h : HeadAt σ (t ∷ ns) vs) (k : ℕ) where
 
-      po : PreOut prog F E C n c bodyL Y sn hc e env-sv σ ns rest L
+      po : PreOut prog F E C n c bodyL FA.CK Y sn hc e env-sv σ ns rest L
       po = Pre.Go.out prog wf ub alg n l base span la sn hc e env-sv σ t ns vs L rest fq h
       module P = PreOut po
 
@@ -173,23 +170,24 @@ module CataFoldRoundC {FS : FrameSemantics} where
       s′ : LocState FS
       s′ = BC.callee-loc bb fs₁
 
-      kpc : Kp (falloc cs) (floc cs) a′ s′
-      kpc = BC.live-callee bb fs₁ (falloc cs) refl , (λ q lq → BC.callee-heap bb fs₁ q lq)
-
-      hp-live : Live (falloc cs) (AtDynamic P.hp)
-      hp-live = BeforeFrontier.heap-before P.hp-lt
+      to-callee : ∀ q → Live (falloc cs) q → Live a′ q
+      to-callee = BC.live-callee bb fs₁ (falloc cs) refl
 
       x′ : ⟦ E IRTy′.* ⟦ F ⟧TI C ⟧
       x′ = e , L
 
-      cE : CellAt {prog = prog} a′ E e (AtDynamic P.hp) s′
-      cE = word→cell (trans (proj₂ kpc _ hp-live) P.hp0) (word-tr kpc P.env)
-
-      cL : CellAt {prog = prog} a′ (⟦ F ⟧TI C) L (AtDynamic (sucHL P.hp)) s′
-      cL = word→cell (trans (proj₂ kpc _ (live-suc hp-live)) P.shp) (word-tr kpc P.layer)
+      -- the argument pair (plan 0.123 α2: flat), valid in the callee
+      pv : ValidAtWF {prog = prog} Heap a′ {E IRTy′.* ⟦ F ⟧TI C} x′ (AtDynamic P.hp) s′
+      pv = validityWF-heap-transport {prog = prog} (Live (falloc cs)) (λ _ b → b)
+             (λ q b → BC.callee-heap bb fs₁ q b) to-callee (BC.bk-enter bb fs₁ (falloc cs) refl)
+             _ (AtDynamic P.hp) P.lhp P.pairV
 
       inp : InputAt {prog} {E IRTy′.* ⟦ F ⟧TI C} Heap a′ x′ s′
-      inp = in-loc (AtDynamic P.hp) (valid-pair-wf tt (proj₁ kpc _ (live-suc hp-live)) cE cL) (proj₁ kpc _ hp-live) P.inp
+      inp = in-loc (AtDynamic P.hp) pv (to-callee (AtDynamic P.hp) P.lhp) P.inp
+
+      live-cs : ∀ q → Live (falloc σ) q → Live (falloc cs) q
+      live-cs = live-from (falloc σ) (falloc cs) (SegA.href P.seg)
+
 
       comp : T∞ ⟦ C ⟧
       comp = evalᴰ alg x′
@@ -214,6 +212,9 @@ module CataFoldRoundC {FS : FrameSemantics} where
 
       nc′ : NotCut ρ₀ → NotCut (resultAt (floc fs₁) (⟪ comp ⟫ k))
       nc′ = subst NotCut (sym res-eq)
+
+      bk-c : NotCut ρ₀ → BlocksKept (falloc σ) (falloc CR.settle)
+      bk-c nc = bk-trans {a = falloc σ} {b = falloc cs} {c = falloc CR.settle} P.bk (CR.blocks-kept (nc′ nc) (falloc cs) refl) live-cs
 
       ------------------------------------------------------------------
       -- the fields every outcome shares
@@ -260,7 +261,7 @@ module CataFoldRoundC {FS : FrameSemantics} where
         ; progress = progress-≤ prog-c (ctrls-≤ʳ runC CR.run)
         ; live = live-f ; stops = stops-f
         ; no-link = λ nc → CR.no-link (nc′ nc)
-        ; mem = mem-f ; bf = bf-f
+        ; mem = mem-f ; bf = bf-f ; bk = bk-c
         ; same = λ p → ⊥-elim (nr (trans (sym eq) p))
         ; post = λ p → ⊥-elim (nr (trans (sym eq) p)) }
 
@@ -281,11 +282,12 @@ module CataFoldRoundC {FS : FrameSemantics} where
         nhS : halted (floc settle) ≡ false
         nhS = CR.live (cong is-stopped retd)
 
-        pcS : fpc settle ≡ 15 + Y
+        pcS : fpc settle ≡ Z
         pcS = trans (CR.returned retd) (cong suc P.pc)
 
         kpS : Kp (falloc cs) (floc cs) (falloc settle) (floc settle)
         kpS = (λ q lq → bf-live q lq (CR.bf-mono nc (falloc cs) 0 refl q (live-ns 0 lq)))
+            , CR.blocks-kept nc (falloc cs) refl
             , (λ q lq → CR.mem-pres nc (falloc cs) 0 refl q (live-ns 0 lq))
 
         cfS : current-frame (falloc settle) ≡ current-frame (falloc cs)
@@ -317,7 +319,7 @@ module CataFoldRoundC {FS : FrameSemantics} where
           ; out = place→word (rp→place (CR.place retd))
           ; cl = trans (slS′ c) P.cl
           ; ev = trans (slS′ (c + 2)) P.ev
-          ; code = trans (proj₂ kpS _ live-shc) P.code
+          ; code = trans (proj₂ (proj₂ kpS) _ live-shc) P.code
           ; hc-lt = live-lt (proj₁ kpS (AtDynamic hc) (BeforeFrontier.heap-before P.hc-lt))
           ; env = word-tr kpS P.env }
 
@@ -345,6 +347,8 @@ module CataFoldRoundC {FS : FrameSemantics} where
           ; no-link = λ _ → trans (Walk.lnk wB) (CR.no-link nc)
           ; mem = λ nc₀ loc b → trans (SegA.mem (Walk.seg wB) loc (bf-f nc₀ n loc b)) (mem-f nc₀ loc b)
           ; bf = λ nc₀ m loc b → seg-bf (Walk.seg wB) m loc (bf-f nc₀ m loc b)
+          ; bk = λ nc₀ → bk-trans {a = falloc σ} {b = falloc settle} {c = falloc (Walk.τ wB)} (bk-c nc₀) (Walk.bk wB)
+                           (λ q lq → proj₁ kpS q (live-cs q lq))
           ; same = λ _ → record
               { ret = trans (Walk.ret wB) (trans (CR.no-ret retd) P.ret)
               ; cf = trans (Walk.cf wB) (trans cfS (SegA.cf P.seg))

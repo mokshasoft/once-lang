@@ -76,7 +76,7 @@ module CataFlattenC {FS : FrameSemantics} where
     keep-slot {k} kk r = trans (cong (λ f → readLoc (floc τ) (AtStack f k)) (Walk.cf w)) (trans (Walk.slots w k kk) r)
 
     keep-heap : ∀ {l v} → Live (falloc σ) l → readLoc (floc σ) l ≡ just v → readLoc (floc τ) l ≡ just v
-    keep-heap lv r = trans (proj₂ (walk-kp w) _ lv) r
+    keep-heap lv r = trans (proj₂ (proj₂ (walk-kp w)) _ lv) r
 
   module Flatten (prog : AbstractTrace) {F : IRFunctor} (wf : WellFormedFI F) (ub : Unboxed F)
                  {C₀ : Set} (alg₀ : ⟦ ⌈ F ⌉F ⟧F C₀ → T∞ C₀)

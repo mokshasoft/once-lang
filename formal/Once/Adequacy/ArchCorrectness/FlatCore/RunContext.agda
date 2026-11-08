@@ -55,6 +55,8 @@ open import Once.CCC.Machine.SMCore
 open AllocState using (next-slot; saved-frames; block-size; frame-slots)
 open LocState using (halted; heapMem; stackMem; regs)
 open import Once.CCC.Machine.Locations using (ValueLocation)
+open import Once.Type using (FitsInReg)
+open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.Flat
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (Sound; sound-step)
@@ -104,6 +106,11 @@ EntryLike fs = (fpc fs ≡ 0)
              -- the base case of `run-link-at-thunk`: without it a "start"
              -- state could claim a pending return that no call ever made.
              × (flink fs ≡ nothing)
+             -- …and NO REGISTER holds a literal (D397): the entry registers are
+             -- the tag filler, so the store-WF invariant's word range (every
+             -- stored `Int` below the modulus) starts off too (`entry-flat-wf`).
+             × (∀ (r : AbstractReg) {A} (p : FitsInReg A) (v : ⟦ A ⟧)
+                → readReg (regs (floc fs)) r ≡ SV-Lit p v → ⊥)
 
 -- …indexed by the STATIC SLOT BUDGET `B` the prologue reserved. The entry state
 -- pins `frame-slots` to it (`reach-start`), and no reachable step can move it —

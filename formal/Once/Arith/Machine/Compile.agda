@@ -44,7 +44,7 @@ open import Once.Arith.Machine.AbsInstr
 open import Once.Arith.Type using (NInt; NFloat)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
-open import Once.Arith.Machine.Shape using (⌊_⌋ᴾ)
+open import Once.Arith.Machine.Shape using (⌊_⌋ᴾ; flat-off)
 
 ------------------------------------------------------------------------
 -- Register / scratch budget
@@ -216,8 +216,8 @@ compile-go d (aflit dc)   = load-fimm dc 0 ∷ []
 -- constructors by `sh` to serve two would be indexing the wrong thing. The
 -- type travels as far as the IR node and stops here; what the proof needs on
 -- the other side is recovered from `project-path` / `projectF-path`.
-compile-go {n = NInt}   d (ainput p) = load-input ⌊ p ⌋ᴾ 0 ∷ []
-compile-go {n = NFloat} d (ainput p) = load-finput ⌊ p ⌋ᴾ 0 ∷ []
+compile-go {n = NInt}   d (ainput p) = load-input ⌊ p ⌋ᴾ (flat-off p) 0 ∷ []
+compile-go {n = NFloat} d (ainput p) = load-finput ⌊ p ⌋ᴾ (flat-off p) 0 ∷ []
 compile-go {n = NInt} d (aadd a b) =
   compile-go d a ++ (spill 0 d ∷ []) ++
   compile-go (suc d) b ++

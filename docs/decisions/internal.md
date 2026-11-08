@@ -53,6 +53,13 @@ decision-log entry updates the rule it changes here, in the same commit.
   emit. (D040, D287 ← D163)
 - **A comparison** is lowered to its arith block, a tag move, then the sum
   build. (D264)
+- **An arith block reads its input flat**: one load per leaf at its word
+  offset; an empty path is the input register itself, and a scalar argument is
+  its register in the machine too. (D391, D396, D398) A block's name carries
+  its input shape, so one symbol is one block. (D395) Its dispatch enters the
+  block's frame as the emitted call does. (D394) A Pure SigOp whose argument
+  does not decode faults (D392), and a SigOp's stack use is room-checked: what
+  its call pushes plus its block's scratch. (D393)
 - **The symbol encoding is total and injective** (z-encoding). (D275)
 
 ## 3. Code generation
@@ -103,9 +110,32 @@ decision-log entry updates the rule it changes here, in the same commit.
   payloads and compound components are stored inline; both stack and heap
   sums write their tag; a `Unit` input has no residence. (D073, D077, D149,
   D187, D078, D074)
-- **Values are heap-only**: every location inside a value is a heap
+- **Values are heap-only, today**: every location inside a value is a heap
   location, so no frame move (`enter-call`, `leave-frame`) can kill it; no
-  `lea-slot` is emitted. (D364)
+  `lea-slot` is emitted. (D364) *Decided to change, not done:* a value whose
+  type fixes its size lives in a frame slot (its caller's, for a result), and
+  frames come before any `free` (no interim free list). (D379, D380 ← D364)
+  The memory work that does it moved to the linear core (plan 0.146).
+- **Ownership is static; no run-time ownership information** (no counts,
+  tags or shared flags): a heap value is owned, borrowed or copied, as the
+  compiler decides; a result never shares structure with a borrowed input
+  (choice A); a linear value is always owned, so in-place update needs no
+  check. **Two heaps**: the stack for statically sized values, a cell heap for
+  μ/ν structures and escaping closures, growing toward each other. (D402)
+- **Flat values**: a base value, and a μ/ν node's layer, is laid out as
+  `Spec.ABI` lays out a struct; a recursive position, a closure or a ν inside
+  it is one pointer word; blocks are sized per type. (D384, D381) An offset
+  store writes a cell of its block or faults (D385); a 0-word component is read
+  by copying the pointer (D387); a sum's padding is written when it is built
+  (D388); a scalar has no memory residence, and a copy's source is any location
+  (D389).
+- **Live means in scope**: a value's cells are its footprint, read off its
+  validity witness; the live cells at a point are the footprints of the values
+  in scope; nothing keeps a separate live set. The three invariants of memory
+  use: every allocation is freed, no read of an unwritten cell, no dead store
+  of the compiler's own beyond the IR's discards. (D400) Escapes copy first
+  (β1, β2: done), then values move into frames (β3–β6: not done). (D399) β3's
+  design with a footprint frame (D401) is shelved for the linear core.
 - **A μ value is a heap pointer at every functor** (`MuRep`): a layer that is
   already a pointer (sum, product, μ) is the node itself; `In` boxes an
   `Int`/`Float` layer into a fresh pair block whose first cell holds the
@@ -113,13 +143,22 @@ decision-log entry updates the rule it changes here, in the same commit.
   and the cata's call (`strat-box`) read back; a `Unit` layer gets a fresh
   block. (D366)
 - **Closures are heap-moded**: a stack-resident closure would halt `do-call`.
-  (D184)
+  (D184) A closure node is `[env-word, code]`; a call passes the call pair
+  `[env-word, arg]`, and a flat environment is rebuilt by the body; a
+  non-pointer environment is the word its cell holds. (D386, D390)
 - **The layout model**: heap up from 0, stack down from an opaque top, a ghost
-  stack high-water mark; memory exhaustion is a per-allocation room premise
-  (a hypothesis), never undefined. (D090, D208; GOAL.md "unlimited memory")
+  floor `lo` the allocation raises to the stack pointer; memory exhaustion is a
+  per-allocation room premise against the stack pointer (a hypothesis until
+  the room checks land), never undefined. (D090, D208; GOAL.md "unlimited
+  memory")
+- **The room checks are a late pass over the abstract image**: `IRToTrace`
+  and its proofs do not see them; one compare (`frontier + k ≤ stack
+  pointer`, else the Host's `once_exhausted`) covers heap and stack, and the
+  budget "room ≥ spend until the next check" replaces the per-arch room
+  parameters. Placement (C.2, then toward C.1) is the pass's alone. (D377)
 - **`--alloc` selects the allocator** behind dynamic calls (bump, malloc,
   mempool, arena), not a placement mode; it is parsed but unwired until the
-  allocator subsystem (plan 0.123 Part B) is. (D142 ← D014)
+  allocator subsystem (plan 0.146) is. (D142 ← D014)
 
 ## 5. The machine models and the correspondence
 
@@ -135,7 +174,8 @@ decision-log entry updates the rule it changes here, in the same commit.
   no floor**: a callee's frame is new for every caller, the lowest included
   (`shift-≺`: a shift of at least one slot is strictly below; `shift-below`:
   shifting a frame already below another keeps it below). Running out of stack
-  is the concrete machine's outcome (`StackRoom`/`CallRoom`, plan 0.123).
+  is the concrete machine's outcome, observed by its room checks (plan 0.123,
+  D377/D378; the budget `FlatCore.Budget` replaced `StackRoom`/`CallRoom`).
   (D362)
 - **The stack pointer is represented once, on the frame.** (D084)
 - **The call window's head row is per-arch**; RISC-V spills its link onto the

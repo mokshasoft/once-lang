@@ -21,6 +21,8 @@ arithTests = testGroup "Arith"
   [ exitCases "3 + 5 * 2 = 13 (arith block lowering)" "arith-simple"   13
   , exitCases "f x = x + 3*5 - 2*x; f 5 = 10"         "arith-lambda-1" 10
   , exitCases "g x y = x + 2*y; g 4 19 = 42"          "arith-lambda-2" 42
+  , exitCases "one tree over two input shapes is two blocks (D395)"
+                                                      "arith-shape-collide" 44
     -- Ported from tests/run-exit-tests.sh (2026-09-08). These ran only in the
     -- shell scripts, so they were exercised on x86_64 alone and only when the
     -- scripts were run by hand; `exitCases` runs each on all three backends.

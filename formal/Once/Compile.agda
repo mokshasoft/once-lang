@@ -51,7 +51,7 @@ open import Once.IR
 open import Once.IRTy using (Unit; ⌊_⌋)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.Target.Symbol using (once-symbol-path; once-symbol-own)
-open import Once.Target.SymbolFresh using (host-leave-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
 open import Once.CCC.Codegen.NodesOK using (leaf-syms)
 open import Data.List.Membership.DecPropositional Data.String._≟_ using () renaming (_∈?_ to _∈ˢ?_; _∈_ to _∈ˢ_)
 open import Relation.Nullary.Decidable.Core using (¬?)
@@ -93,6 +93,7 @@ import Once.Arith.Backend.RiscV64.Emit as RVA
 import Once.CCC.Label as Label
 open import Once.CCC.Machine.SMCore using (AbstractTrace)
 open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image)
+open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.Denotation.Program using (IRFun; irFun; IRProgram; irProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
@@ -718,8 +719,9 @@ externs-of : IRProgram → List String
 externs-of p = DL.filter (is-extern? p) (calls-of (rewrite-program p))
 
 -- D320: a PROGRAM also calls the Host's `leave` (`c-leave`); a library does not.
+-- D377: …and its `exhausted` (every room check calls it when there is no room).
 prog-externs : IRProgram → List String
-prog-externs p = host-leave-symbol ∷ externs-of p
+prog-externs p = host-leave-symbol ∷ host-exhausted-symbol ∷ externs-of p
 
 -- The entry unit's owner: a name no definition can have (an identifier cannot
 -- start with a digit), so its labels and symbol cannot clash.
@@ -744,8 +746,11 @@ printFile x86-64  = X64F.print
 printFile x86-32  = X32F.print
 printFile riscv64 = RVF.print
 
+-- D377 (plan 0.123 A.4 step 5): the image the backends lower is the program image
+-- with its room checks (`RoomChecks.room-checks`): a check at the start and after
+-- every label, entry and call, each for what its stretch spends.
 image-of : IRProgram → AbstractTrace
-image-of p = program-image entry-owner (rewrite-program p)
+image-of p = room-checks (program-image entry-owner (rewrite-program p))
 
 -- the file's arith blocks: the program's, by symbol, once each
 blocks-x86-64 : IRProgram → List (String × X64F.Payload)

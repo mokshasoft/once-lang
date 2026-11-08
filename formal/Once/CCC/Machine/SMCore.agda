@@ -23,12 +23,12 @@
 module Once.CCC.Machine.SMCore where
 
 open import Relation.Binary.Definitions using (DecidableEquality)
-open import Once.Spec.Type using (Base; b-Float; b-Int; b-Unit; ∅ₖ)
+open import Once.Spec.Type using (Base; b-Float; b-Int; b-Unit; b-*; b-+; ∅ₖ)
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _>_; _≥_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _>_; _≥_; _<ᵇ_)
 open import Data.Nat.Properties using (_≟_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -61,6 +61,7 @@ import Once.Type as Ty
 import Once.Type.Core as Ty
 import Once.Spec.Type as Ty
 open import Once.Semantics.Machine using (⟦_⟧; LitPayload)
+open import Once.IR.Semantics.Boundary using (atTarget)
 open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts; Answers; module SigOpInfo)
 open SigOpInfo using (name; baseA)
 open import Once.Res using (Res; stopped; returns)
@@ -824,6 +825,38 @@ module ExecFinal {FS : FrameSemantics} where
   exec-store-suc-via-resolved (just loc) v s = writeLoc s (sucLoc loc) v
   exec-store-suc-via-resolved nothing    _ s = record s { halted = true ; faulted = true }
 
+  -- Plan 0.123 B.4 R1: the offset forms, `with`-free for the same reason.
+  exec-load-at-resolved : ℕ → AbstractReg → Maybe (ValueLocation FS) → LocState FS → LocState FS
+  exec-load-at-resolved k dst (just loc) s = exec-load-with-value dst (readLoc s (offsetLoc loc k)) s
+  exec-load-at-resolved k dst nothing    s = record s { halted = true ; faulted = true }
+
+  -- D385: a store at an offset writes a cell OF ITS BLOCK, or faults (D367: a
+  -- target cannot follow a store past its block — it would write another
+  -- block's words). The pointer's own cell is in bounds by `PtrB`; the words
+  -- after it are not, so the offset store checks. A stack location is not
+  -- checked: no register holds one (`StackPtrWF`) until frames hold values (β).
+  in-block? : (ℕ → ℕ) → ValueLocation FS → Bool
+  in-block? bs (AtStack _ _)  = true
+  in-block? bs (AtDynamic hl) = heap-offset hl <ᵇ bs (ref-id (heap-ref hl))
+
+  exec-store-in-block : Bool → ValueLocation FS → StoredValue FS → LocState FS → LocState FS
+  exec-store-in-block true  loc v s = writeLoc s loc v
+  exec-store-in-block false _   _ s = record s { halted = true ; faulted = true }
+
+  exec-store-at-resolved : (ℕ → ℕ) → ℕ → Maybe (ValueLocation FS) → StoredValue FS → LocState FS → LocState FS
+  exec-store-at-resolved bs k (just loc) v s = exec-store-in-block (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) v s
+  exec-store-at-resolved bs k nothing    _ s = record s { halted = true ; faulted = true }
+
+  -- D385: an address at an offset is a cell OF ITS BLOCK, or the step faults:
+  -- a heap pointer always addresses a cell of its block (`PtrB`).
+  exec-addr-in-block : Bool → ValueLocation FS → LocState FS → LocState FS
+  exec-addr-in-block true  loc s = record s { regs = writeReg (regs s) Output (SV-Ptr loc) }
+  exec-addr-in-block false _   s = record s { halted = true ; faulted = true }
+
+  exec-addr-at-resolved : (ℕ → ℕ) → ℕ → Maybe (ValueLocation FS) → LocState FS → LocState FS
+  exec-addr-at-resolved bs k (just loc) s = exec-addr-in-block (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) s
+  exec-addr-at-resolved bs k nothing    s = record s { halted = true ; faulted = true }
+
   exec : Instr FS → LocState FS → LocState FS
 
   exec (load dst src) s =
@@ -1190,6 +1223,32 @@ data AbstractInstr : Set where
   -- MAlonzo ctor-index stability. Structured exec halts on these; the
   -- flat pc/fuel exec interprets them. See FlatCtrl above.
   instr-ctrl : FlatCtrl → AbstractInstr
+
+  -- Plan 0.123 M2: `instr-free-heap n` frees the `n`-cell heap block whose
+  -- base `Input1` points at. The run's frees are what the no-leak claim
+  -- (`Once.Implementation.NoLeak`, B.0) counts. Memory-non-destructive: no
+  -- machine state changes (the bump allocator never reuses a block), and
+  -- not emittable yet (`EmittableI`): the compiler emits it from M4 on.
+  -- Added LAST for MAlonzo ctor-index stability.
+  instr-free-heap : ℕ → AbstractInstr
+
+  -- Plan 0.123 A.4 (D374): `instr-room k` checks that the next `k` words fit
+  -- between the cell frontier and the stack, and ends the run `exhausted` (a
+  -- call of the Host's `once_exhausted`) when they do not. The abstract
+  -- machine has unbounded memory, so here it is a no-op; the run that ends
+  -- is the concrete one. Not emittable yet (`EmittableI`). Added LAST for
+  -- MAlonzo ctor-index stability.
+  instr-room : ℕ → AbstractInstr
+
+  -- Plan 0.123 B.4 R1 (D381): a FLAT value is its `Spec.ABI` words at
+  -- consecutive locations, so a field is a word at an OFFSET from the value's
+  -- address. `load-at k`: Output := *(Input1 + k); `store-at k`:
+  -- *(Input1 + k) := Output; `addr-at k`: Output := Input1 + k (a field's own
+  -- address, for a multi-word field). Each faults when Input1 is not a
+  -- pointer, as `load-indirect` does. They generalise the `-indirect` and
+  -- `-indirect-suc` pairs (offsets 0 and 1). Not emittable yet (`EmittableI`):
+  -- the joint rewrite emits them. Added LAST for MAlonzo ctor-index stability.
+  load-at store-at addr-at : ℕ → AbstractInstr
 
 -- | A trace is a sequence of abstract instructions
 -- D245: the two CALLS, a closure call and a direct call of a program function.
@@ -1604,17 +1663,30 @@ module AbstractExec {FS : FrameSemantics} where
   readTyped-sum cA cB (just (SV-Code _))            mp = nothing
   readTyped-sum cA cB nothing                       mp = nothing
 
+  -- plan 0.123 B.4 α (D381): a base value's size in words — Unit 0, a scalar
+  -- 1, a product the sum, a sum a tag and the larger payload (`Spec.ABI.words`).
+  tsize : Type → ℕ
+  tsize Unit       = 0
+  tsize Ty.Void    = 0
+  tsize Int        = 1
+  tsize Float      = 1
+  tsize (A * B)    = tsize A + tsize B
+  tsize (A Ty.+ B) = suc (tsize A ℕ.⊔ tsize B)
+  {-# CATCHALL #-}
+  tsize _          = 1
+
+  -- plan 0.123 B.4 α: THE FLAT READER. A base value is its words in place (D381):
+  -- a product's second component after the first's words, a sum's payload
+  -- after its tag (a scalar payload is its word there, Unit none). No pointer
+  -- is followed: a base value holds none.
   readTyped : (A : Type) → ValueLocation FS → LocState FS → Maybe ⟦ A ⟧
   readTyped Unit    loc s = just tt
   readTyped Int     loc s = readTyped-int (readLoc s loc)
   readTyped (A * B) loc s =
-    readTyped-pair (λ l → readTyped A l s) (λ l → readTyped B l s)
-      (readReg-typed A) (readReg-typed B)
-      (readLoc s loc) (readLoc s (sucLoc loc))
+    combine-typed (readTyped A loc s) (readTyped B (offsetLoc loc (tsize A)) s)
   readTyped Float   loc s = readTyped-float (readLoc s loc)
   readTyped (A Ty.+ B) loc s =
-    readTyped-sum (readTyped-cell (λ l → readTyped A l s) (readReg-typed A))
-                  (readTyped-cell (λ l → readTyped B l s) (readReg-typed B))
+    readTyped-sum (λ _ → readTyped A (sucLoc loc) s) (λ _ → readTyped B (sucLoc loc) s)
       (readLoc s loc) (readLoc s (sucLoc loc))
   {-# CATCHALL #-}
   readTyped _       loc s = nothing
@@ -1643,11 +1715,15 @@ module AbstractExec {FS : FrameSemantics} where
   -- ⟦ A ⟧`, which gave `⊥` at `b-Void` once an interpretation was
   -- inhabited, and decoded a boxed value from the pointer alone.)
   decode-at : ∀ {A} → Base ∅ₖ A → StoredValue FS → LocState FS → Maybe ⟦ A ⟧
+  -- D398: a SCALAR argument is its register (D389: a scalar has no memory
+  -- residence), so a pointer at a scalar base does not decode — the step
+  -- faults (D392), as the block's code, which takes the register itself as
+  -- the value (D396), would compute from an address.
   decode-at b-Unit  _                      _ = just tt
   decode-at b-Int   (SV-Lit fits-int   v)  _ = just v
   decode-at b-Float (SV-Lit fits-float v)  _ = just v
-  {-# CATCHALL #-}
-  decode-at {A} _      (SV-Ptr loc)           s = readTyped A loc s
+  decode-at {A} (b-* _ _) (SV-Ptr loc)    s = readTyped A loc s
+  decode-at {A} (b-+ _ _) (SV-Ptr loc)    s = readTyped A loc s
   {-# CATCHALL #-}
   decode-at _          _                      _ = nothing
 
@@ -1673,8 +1749,9 @@ module AbstractExec {FS : FrameSemantics} where
   call-sigop-ans-at : ∀ {A B} (si : SigOpInfo A B) → LocState FS → FitsInReg B
                     → callKey (callOp (name si) A (baseA si) B) ∈ calls (fs-interp FS)
                     → Maybe ⟦ A ⟧ → StoredValue FS
+  -- D397: the answer is read at the target
   call-sigop-ans-at {A} {B} si s fitB p (just a) =
-    SV-Lit fitB (answer (fs-interp FS) (ev-log s) (callOp (name si) A (baseA si) B) p a)
+    SV-Lit fitB (atTarget (fs-numerics FS) B (answer (fs-interp FS) (ev-log s) (callOp (name si) A (baseA si) B) p a))
   call-sigop-ans-at si s fitB p nothing = unit-storedvalue
 
   call-sigop-ans : ∀ {A B} (si : SigOpInfo A B) → LocState FS → FitsInReg B
@@ -1771,12 +1848,31 @@ module AbstractExec {FS : FrameSemantics} where
   exec-sigop-output si s = exec-sigop-output-of (effect si) si s
 
   -- | Shape-direct halt-flag dispatch.
+  -- D392: a PURE SigOp whose argument does not decode FAULTS (as D385's
+  -- `store-at` outside its block): it has no meaning there, and a fault is what
+  -- lets a run's not faulting say that the argument decoded (a site fact, as
+  -- `load-at`'s). Aux-style (an explicit `Maybe`), so a consumer's `rewrite` of
+  -- the decode reduces it.
+  unread? : ∀ {X : Set} → Maybe X → Bool
+  unread? (just _) = false
+  unread? nothing  = true
+
+  exec-sigop-faults-of : ∀ {A B} → EffectShape B → SigOpInfo A B →
+                         LocState FS → Bool
+  exec-sigop-faults-of Pure      si s = unread? (decode-at (baseA si) (readReg (regs s) Input1) s)
+  exec-sigop-faults-of (Halts _) _  _ = false
+  exec-sigop-faults-of (Emits _) _  _ = false
+  exec-sigop-faults-of Answers   _  _ = false
+
+  exec-sigop-faults : ∀ {A B} → SigOpInfo A B → LocState FS → Bool
+  exec-sigop-faults si s = exec-sigop-faults-of (effect si) si s
+
   exec-sigop-halts-of : ∀ {A B} → EffectShape B → SigOpInfo A B →
                         LocState FS → Bool
-  exec-sigop-halts-of (Halts _) _ _ = true
-  exec-sigop-halts-of Pure      _ _ = false
-  exec-sigop-halts-of (Emits _) _ _ = false
-  exec-sigop-halts-of Answers   _ _ = false
+  exec-sigop-halts-of (Halts _) _  _ = true
+  exec-sigop-halts-of Pure      si s = exec-sigop-faults-of Pure si s
+  exec-sigop-halts-of (Emits _) _  _ = false
+  exec-sigop-halts-of Answers   _  _ = false
 
   -- | Dispatch-derived halt-flag (wrapper).
   exec-sigop-halts : ∀ {A B} → SigOpInfo A B → LocState FS → Bool
@@ -1890,6 +1986,19 @@ module AbstractExec {FS : FrameSemantics} where
   -- do now that the runtime mirror is gone.
   exec-abstract (instr-dealloc-stack n) s alloc = s , alloc
 
+  -- instr-free-heap: memory-non-destructive (plan 0.123 M2). The bump
+  -- allocator never reuses a block, so a free changes no state; what it
+  -- frees is read off the run by the no-leak claim (`Once.Implementation.NoLeak`).
+  exec-abstract (instr-free-heap n) s alloc = s , alloc
+
+  -- instr-room: a no-op on the unbounded abstract memory (plan 0.123 A.4).
+  exec-abstract (instr-room k) s alloc = s , alloc
+
+  -- load-at / store-at / addr-at: the offset forms (plan 0.123 B.4 R1).
+  exec-abstract (load-at k) s alloc  = exec-load-at-resolved k Output (sv-as-loc (readReg (regs s) Input1)) s , alloc
+  exec-abstract (store-at k) s alloc = exec-store-at-resolved (block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s , alloc
+  exec-abstract (addr-at k) s alloc  = exec-addr-at-resolved (block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s , alloc
+
   -- instr-reclaim-to: a NO-OP on alloc too (D150), for the same reason as
   -- `instr-alloc-stack`, and with an even blunter piece of evidence: ALL THREE
   -- backends compile it to `[]` —
@@ -1968,9 +2077,10 @@ module AbstractExec {FS : FrameSemantics} where
   -- the silent wildcard-payload leak as named, audit-visible
   -- postulates.
   exec-abstract (instr-sigop si) s alloc =
-    record s { regs   = writeReg (regs s) Output (exec-sigop-output si s)
-             ; halted = exec-sigop-halts si s
-             ; ev-log = ev-log s ++ sigop-events si s }
+    record s { regs    = writeReg (regs s) Output (exec-sigop-output si s)
+             ; halted  = exec-sigop-halts si s
+             ; faulted = exec-sigop-faults si s ∨ faulted s
+             ; ev-log  = ev-log s ++ sigop-events si s }
     , alloc
 
   -- Plan 0.13.2: load a primitive constant into Output as `SV-Lit`.

@@ -25,6 +25,9 @@ open import Data.List using (List; map)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Once.Name using (showCanonical; WordName)
 open import Once.Spec.Numerics using (TargetNum)
+open import Once.Spec.Boundary using (readAt)
+open import Once.IR.Semantics.Boundary using (atTarget)
+open import Once.Res using (mapRes)
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
 open import Once.Spec.Type using (TySub)
 import Once.Spec.Observation as Obs
@@ -352,13 +355,17 @@ private
 val-R : ∀ (ψ : LTr.FFIAnswers) → ψ ≡ LTr.pureHalf ι′ → ∀ {D : T.Type} (c : _) b (x : M.⟦ D ⟧) (v : S.⟦ b ⟧ᵇ)
       → key (showCanonical c) D ⌞ b ⌟ ∈ valueKeys (toISig Σ)
       → (∀ p₀ → LTr.pure ι′ (key (showCanonical c) D ⌞ b ⌟) p₀ x ≡ SI.fromB b v)
-      → RelGM G.pure (S.⌜ b ⌝) (SD.fromB σ₀ b v) (embed (LTr.fmapT (injectᵇ (⌜⌝-base b)) (LTr.resT (ψ c D ⌞ b ⌟ x))))
+      → RelGM G.pure (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v))
+              (embed (LTr.fmapT (injectᵇ (⌜⌝-base b)) (LTr.resT (mapRes (atTarget fmt ⌞ b ⌟) (ψ c D ⌞ b ⌟ x)))))
 val-R ψ refl {D} c b x v p h = go (key (showCanonical c) D ⌞ b ⌟ ∈K? valueKeys (toISig Σ))
   where
     go : (d : Dec (key (showCanonical c) D ⌞ b ⌟ ∈ valueKeys (toISig Σ)))
-       → RelGM G.pure (S.⌜ b ⌝) (SD.fromB σ₀ b v)
-               (embed (LTr.fmapT (injectᵇ (⌜⌝-base b)) (LTr.resT (LTr.pureHalf-at ι′ (key (showCanonical c) D ⌞ b ⌟) d x))))
-    forceR (go (yes p₀)) = ret (left (subst (λ z → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b v) (injectᵇ (⌜⌝-base b) z)) (sym (h p₀)) (fromB-R b v)))
+       → RelGM G.pure (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v))
+               (embed (LTr.fmapT (injectᵇ (⌜⌝-base b)) (LTr.resT (mapRes (atTarget fmt ⌞ b ⌟) (LTr.pureHalf-at ι′ (key (showCanonical c) D ⌞ b ⌟) d x)))))
+    -- D397: the world's value, read at the target, is the Spec's read value
+    forceR (go (yes p₀)) = ret (left (subst (λ z → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v)) (injectᵇ (⌜⌝-base b) (atTarget fmt ⌞ b ⌟ z))) (sym (h p₀))
+                                        (subst (λ w → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v)) (injectᵇ (⌜⌝-base b) w)) (sym (SI.fromB-at fmt b v))
+                                               (fromB-R b (readAt fmt b v)))))
     go (no ¬p) = ⊥-elim (¬p p)
 
 module _ {s₀} (S₀ : SC.Defs s₀) (σ : SDn.DefsSem) (eψ : CallEnv.ffiE (SDn.DefsSem.calls σ) ≡ LTr.pureHalf ι′) where
@@ -369,7 +376,7 @@ module _ {s₀} (S₀ : SC.Defs s₀) (σ : SDn.DefsSem) (eψ : CallEnv.ffiE (SD
     -- an operation's call, by the form its answer type decides
     op-R : ∀ {c a q b} (M : (c ∶ operation a q b) ∈ Σ) (bDom : (LW.Base LW.∅ₖ) ⌞ argAt q a ⌟) {x y}
          → SI.toB (argAt q a) x ≡ y → ∀ dv du
-         → RunR (RelGV (S.⌜ b ⌝)) (SE.embed (SE.performT (S.call (op M) y (SD.fromB σ₀ b))))
+         → RunR (RelGV (S.⌜ b ⌝)) (SE.embed (SE.performT (S.call (op M) y (λ v → SD.fromB σ₀ b (readAt fmt b v)))))
                 (embed (LTr.fmapT (injectᵇ (⌜⌝-base b)) (sigOpT fmt ψ (mk-info' c (arrow-sem-eff dv du) bDom (⌜⌝-base b)) x)))
     forceR (op-R {b = b} M bDom ra (yes e) du) with ⌞⌟-void b e
     ... | refl with e
@@ -379,7 +386,9 @@ module _ {s₀} (S₀ : SC.Defs s₀) (σ : SDn.DefsSem) (eψ : CallEnv.ffiE (SD
     ...   | refl = call (cr M tt) ra (λ {v} {v′} _ → ret (left tt))
     forceR (op-R {b = b} M bDom ra (no ¬v) (no ¬u)) =
       call (cr M (data-ne b (wf-at wf M) ¬v ¬u)) ra
-           (λ {v} {v′} e → ret (left (subst (λ z → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b v) (injectᵇ (⌜⌝-base b) z)) (sym e) (fromB-R b v))))
+           (λ {v} {v′} e → ret (left (subst (λ z → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v)) (injectᵇ (⌜⌝-base b) (atTarget fmt ⌞ b ⌟ z))) (sym e)
+                                      (subst (λ w → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v)) (injectᵇ (⌜⌝-base b) w)) (sym (SI.fromB-at fmt b v))
+                                             (fromB-R b (readAt fmt b v))))))
 
   -- At each form of declaration.
   sig-SD : ∀ {c} t (M : (c ∶ t) ∈ Σ)
@@ -392,7 +401,7 @@ module _ {s₀} (S₀ : SC.Defs s₀) (σ : SDn.DefsSem) (eψ : CallEnv.ffiE (SD
   sig-SD {c} (constant (a S.+ b)) M = val-R ψ eψ c (a S.+ b) tt (Model.constantᵐ mo M) (value-∈ (∈-toISig M) (base-contract (showCanonical c) (⌜⌝-base (a S.+ b)))) (λ p₀ → read-const M {p₀} (yes p₀))
   sig-SD {c} (value a SG.Zero b) M =
     return∞-R ( val-R ψ eψ c b tt (Model.valueᵐ mo M tt) (value-∈ (∈-toISig M) refl) (λ p₀ → read-value M {p₀} (yes p₀) tt)
-              , emb-self (⌜⌝-base b) (LTr.resT (ψ c LW.Unit ⌞ b ⌟ tt)) )
+              , emb-self (⌜⌝-base b) (LTr.resT (mapRes (atTarget fmt ⌞ b ⌟) (ψ c LW.Unit ⌞ b ⌟ tt))) )
   sig-SD {c} (value a SG.One b) M =
     return∞-R ( (λ {x} {y} r → val-R ψ eψ c b (forgetᵇ (⌜⌝-base a) y) (Model.valueᵐ mo M (SD.toB σ₀ a x)) (value-∈ (∈-toISig M) refl)
                                  (λ p₀ → trans (read-value M {p₀} (yes p₀) (forgetᵇ (⌜⌝-base a) y))

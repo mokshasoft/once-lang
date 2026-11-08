@@ -143,13 +143,13 @@ du_block'45'as'45'ir_46 v0 v1 v2
   = coe
       MAlonzo.Code.Once.IR.C_SigOp_140
       (coe
-         MAlonzo.Code.Once.Arith.Machine.IR.d_shape'45'as'45'type_158
+         MAlonzo.Code.Once.Arith.Machine.IR.d_shape'45'as'45'type_48
          (coe v0))
       (coe
-         MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_164
+         MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_54
          (coe v1))
       (coe
-         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_108 (coe v0)
+         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_116 (coe v0)
          (coe v1) (coe v2))
 -- Once.Arith.Machine.Rewrite.try-lift
 d_try'45'lift_64 ::
@@ -190,7 +190,7 @@ d_try'45'lift_64 v0 v1 v2
                                                               MAlonzo.Code.Once.Arith.Type.C_NInt_8)
                                                            (coe v9))
                                                         (coe
-                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_180
+                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_70
                                                            (coe v6)
                                                            (coe
                                                               MAlonzo.Code.Once.Arith.Type.C_NInt_8)
@@ -230,7 +230,7 @@ d_try'45'lift_64 v0 v1 v2
                                                               MAlonzo.Code.Once.Arith.Type.C_NFloat_10)
                                                            (coe v9))
                                                         (coe
-                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_180
+                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_70
                                                            (coe v6)
                                                            (coe
                                                               MAlonzo.Code.Once.Arith.Type.C_NFloat_10)
@@ -245,7 +245,7 @@ d_try'45'lift_64 v0 v1 v2
 -- Once.Arith.Machine.Rewrite.sigop-blocks
 d_sigop'45'blocks_198 ::
   Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
-  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_166]
+  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_56]
 d_sigop'45'blocks_198 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
@@ -274,18 +274,18 @@ d_bare'45'sigop_208 v0 v1 v2 v3 v4 v5
              (coe
                 MAlonzo.Code.Once.IR.C_SigOp_140
                 (coe
-                   MAlonzo.Code.Once.Arith.Machine.IR.d_shape'45'as'45'type_158
+                   MAlonzo.Code.Once.Arith.Machine.IR.d_shape'45'as'45'type_48
                    (coe v6))
                 (coe
-                   MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_164
+                   MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_54
                    (coe v7))
                 (coe
-                   MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_108 (coe v6)
+                   MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_116 (coe v6)
                    (coe v7) (coe v8)))
              (coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe
-                   MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_180 (coe v6)
+                   MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_70 (coe v6)
                    (coe v7) (coe v8))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
       MAlonzo.Code.Once.SigOp.Info.C_ffiV_88

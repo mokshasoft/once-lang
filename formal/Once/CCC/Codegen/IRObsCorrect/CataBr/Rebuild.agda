@@ -4,32 +4,28 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.IRObsCorrect.CataBr.Rebuild   (plan 0.135 S3, cata M4 stage B)
 --
--- THE REBUILD WALK (`IRToTrace.rebuild-walk val tv tb ⌈ G ⌉F s lb`), by
--- induction on the sub-functor `G`: from `Input1` holding a valid word for
+-- THE REBUILD WALK (`IRToTrace.rebuild-walk val tv tb (kind C) (size C) ⌈ G ⌉F s lb`),
+-- by induction on the sub-functor `G`: from `Input1` holding a valid word for
 -- the node's sublayer `v : ⟦ ⟦ G ⟧TI (μ-type F) ⟧` and the value stack
 -- holding `vs` with `fillI G v vs ≡ just (l , rest)`, the run ends with
--- `Output` holding a VALID word for `l : ⟦ ⟦ G ⟧TI C ⟧` (`WordAt`, i.e.
--- what a `CellAt (⟦ G ⟧TI C) l` cell holds) and the value stack holding
+-- `Output` holding a VALID word for `l : ⟦ ⟦ G ⟧TI C ⟧` (`WordAt`: its
+-- register form, what `FlatPut.put` takes) and the value stack holding
 -- `rest`, as a `Walk`:
 --
---   K      `mov-to-output`: the node's own cell word (its validity is the
+--   K      `mov-to-output`: the node's own word for it (its validity is the
 --          node's, carried along)
 --   Id     `pop2 val`: the popped result
---   ⊗      right part first (cell 1, at `s+4`), its word stashed at `s+2`;
---          left part (cell 0); a fresh pair `[left , right]` (`Block2`)
---   ⊕      branch on the tag as `visit-walk` does; the payload rebuilt at
---          `s+4`, then a fresh sum block `[tag , payload]` (`wrap-sum`).
+--   ⊗      the right part first (read at the words after the left part's,
+--          D381), rebuilt at `s+4`, its word stashed at `s+2`; the left part
+--          (word 0); a fresh flat pair, both parts `put` (`Build.BuildPair`)
+--   ⊕      branch on the tag as `visit-walk` does; the payload (word 1)
+--          rebuilt at `s+4`, then a fresh flat sum block (`Build.BuildSum`).
 --
 -- Everything the walk writes is a slot in `[s , s + 4·fsize G)` (or `val`)
 -- and a block it allocated, so whatever was live at its start reads the
 -- same at its end (`Walk.seg`), every word built is valid at the end, and
 -- every slot below `s` or from `u ≥ s + 4·fsize G` on other than `val` is
 -- kept (`KR s`; the upper window is the cata's call slots, as in `Visit`).
---
--- The fold loop hands the top layer (`G = F`) to the algebra exactly as M1
--- did (`CataConst/Run`'s `cL`): a cell holding this word is a
--- `CellAt (⟦ F ⟧TI C) l` (`word→cell`), and the pair `(env , layer)` is
--- built around it by the call rows.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -41,56 +37,52 @@ module Once.CCC.Codegen.IRObsCorrect.CataBr.Rebuild (o : CanonicalName) (tbl : D
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
+open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (lsz-eq)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
-open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC; sum-end; su-l; su-r)
+open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC; su-l; su-r)
+open import Once.CCC.Codegen.IRObsCorrect.CataBr.Build o tbl using (module CataBuildC; pair-text; Arm; arm-l; arm-r; arm-ty; arm-tag; lkind-gen; lsz-gen)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Layer o
   using (fillI; fill-K; fill-Id; fill-inl; fill-inr; fill-pair; module FillPair)
-open import Once.CCC.Codegen.IRToTrace o using (rebuild-walk; lsize; pop2; wrap-sum; fsize)
-open import Once.CCC.Codegen.LabelScope o using (rebuild-ls; wrap-sum-ls)
+open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
+open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl using (module ShapeC)
+open import Once.CCC.Codegen.IRToTrace o using (rebuild-walk; lsize; pop2; wrap-sum; fsize; getμ)
+open import Once.CCC.Codegen.FlatLayout using (Kind; kind; lkind; lsz; get; get-k; get-i; get-one; put-k; kind-skind; size-ssize)
+open import Once.CCC.Codegen.Size using (size)
+open import Once.CCC.Codegen.LabelScope o using (rebuild-ls; wrap-sum-ls; put-k-ls)
 open import Once.CCC.Codegen.LabelSeg using (LabelsIn; li-lab; li-none; ls-weaken)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; SV-Tag; sv-as-loc; sucLoc; store-at-slot; restore-input; load-from-slot; load-indirect; load-indirect-suc
-        ; store-indirect; store-indirect-suc; mov-to-input; mov-to-output; instr-alloc-heap; instr-load-tag-lit
-        ; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; writeReg-preserves)
+        ; SV-Ptr; SV-Tag; sv-as-loc; sucLoc; offsetLoc; store-at-slot; restore-input; load-from-slot; mov-to-input; mov-to-output
+        ; instr-alloc-heap; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; writeReg-preserves)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot; nhw-restore-input; EffectPreservesNextHeapRef; instr-effect)
-open import Once.CCC.Machine.FrameFree using (FrameFreeI)
-open import Once.CCC.Machine.FlatLog using (LogFree)
+open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot; nhw-restore-input)
 open import Once.CCC.Label using (ℓ; LabelId; module LabelId)
 open LabelId using (idx)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; sucHL)
+open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as I
 open import Data.Product using (Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
-open import Data.Nat using (s≤s; z≤n; _*_)
+open import Data.Nat using (s≤s; z≤n; _*_; _⊔_)
 open import Data.Nat.Properties using (+-cancelˡ-≡; +-monoʳ-<)
 open import Relation.Nullary using (¬_)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; _:*_; con; _:=_)
 
 -- the ends of a `⊗` and a `⊕` rebuild, as the run reaches them
-prod-end-r : ∀ (a c b : ℕ) → 9 + (a + (4 + (c + (4 + b)))) ≡ (4 + (c + (4 + (a + 9)))) + b
-prod-end-r = solve 3 (λ a c b → con 9 :+ (a :+ (con 4 :+ (c :+ (con 4 :+ b))))
-                                := (con 4 :+ (c :+ (con 4 :+ (a :+ con 9)))) :+ b) refl
+prod-end-r : ∀ (e a c b : ℕ) → e + (a + (4 + (c + (4 + b)))) ≡ (4 + (c + (4 + (a + e)))) + b
+prod-end-r = solve 4 (λ e a c b → e :+ (a :+ (con 4 :+ (c :+ (con 4 :+ b))))
+                                  := (con 4 :+ (c :+ (con 4 :+ (a :+ e)))) :+ b) refl
 
-sum-end-r : ∀ (l r b : ℕ) → suc (9 + (l + (4 + (9 + (r + (3 + b)))))) ≡ (3 + (r + (9 + (4 + (l + (9 + 1)))))) + b
-sum-end-r = solve 3 (λ l r b → con 1 :+ (con 9 :+ (l :+ (con 4 :+ (con 9 :+ (r :+ (con 3 :+ b))))))
-                               := (con 3 :+ (r :+ (con 9 :+ (con 4 :+ (l :+ (con 9 :+ con 1)))))) :+ b) refl
-
--- a fresh two-cell block, filled: `wrap-sum t s` is `block2 s (suc s) s (instr-load-tag-lit t)`, the
--- product's epilogue `block2 (suc s) (s + 3) (s + 2) (load-from-slot (suc s))`
-block2 : ℕ → ℕ → ℕ → AbstractInstr → AbstractTrace
-block2 k₁ kb k₂ r5 =
-  store-at-slot k₁ ∷ instr-alloc-heap 2 ∷ store-at-slot kb ∷ mov-to-input ∷ r5 ∷ store-indirect ∷
-  load-from-slot k₂ ∷ store-indirect-suc ∷ load-from-slot kb ∷ []
+sum-end-r : ∀ (wl vl wr vr b : ℕ) → suc (wl + (vl + (4 + (wr + (vr + (3 + b)))))) ≡ (3 + (vr + (wr + (4 + (vl + (wl + 1)))))) + b
+sum-end-r = solve 5 (λ wl vl wr vr b → con 1 :+ (wl :+ (vl :+ (con 4 :+ (wr :+ (vr :+ (con 3 :+ b))))))
+                                       := (con 3 :+ (vr :+ (wr :+ (con 4 :+ (vl :+ (wl :+ con 1)))))) :+ b) refl
 
 module CataRebuildC {FS : FrameSemantics} where
 
@@ -100,294 +92,15 @@ module CataRebuildC {FS : FrameSemantics} where
   open CataStepsC {FS}
   open CataStackC {FS}
   open CataWalkC {FS}
-  open CataVisitC {FS} using (SumCell; module SumCell; sum-inl; sum-inr; PairCells; module PairCells; pair-cells
-                             ; PtrTo; module PtrTo; sum-ptr; prod-ptr)
+  open CataBuildC {FS} using (module BuildPair; module BuildSum; arm-val)
+  open CataVisitC {FS} using (PtrTo; module PtrTo; sum-ptr; prod-ptr; place→word; restore-bk; bk-id; kp-set; cell-kp; live-off
+                             ; get-fetch; ngi; lgi)
+  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; offset-zero)
+  open ShapeC {FS} using (tag-inl; tag-inr; payload-l; payload-r)
   open Resolve {FS} using (NoLabel; fl-hit; noLabel-outside; found-in-window)
   open FlatStepsAPI {FS} using (flat-tag-branch-yes; flat-tag-branch-not)
   open LocState using (regs; halted)
   open AllocState using (next-slot; next-heap-ref; current-frame)
-
-  ------------------------------------------------------------------------
-  -- BUILT WORDS.
-  ------------------------------------------------------------------------
-  mk-inl : ∀ {prog a A B l c s hb} → WordAt prog a A l c s
-         → readLoc s (AtDynamic hb) ≡ just (SV-Tag 0) → readLoc s (AtDynamic (sucHL hb)) ≡ just c → Live a (AtDynamic hb)
-         → WordAt prog a (A I.+ B) (inj₁ l) (SV-Ptr (AtDynamic hb)) s
-  mk-inl (w-ptr loc refl lv val) tg pp live = w-ptr {m = Heap} _ refl live (valid-inl-wf tt tg pp lv (live-suc live) val)
-  mk-inl (w-inl rep refl) tg pp live = w-ptr {m = Heap} _ refl live (valid-inl-reg-wf tt tg rep pp (live-suc live))
-
-  mk-inr : ∀ {prog a A B l c s hb} → WordAt prog a B l c s
-         → readLoc s (AtDynamic hb) ≡ just (SV-Tag 1) → readLoc s (AtDynamic (sucHL hb)) ≡ just c → Live a (AtDynamic hb)
-         → WordAt prog a (A I.+ B) (inj₂ l) (SV-Ptr (AtDynamic hb)) s
-  mk-inr (w-ptr loc refl lv val) tg pp live = w-ptr {m = Heap} _ refl live (valid-inr-wf tt tg pp lv (live-suc live) val)
-  mk-inr (w-inl rep refl) tg pp live = w-ptr {m = Heap} _ refl live (valid-inr-reg-wf tt tg rep pp (live-suc live))
-
-  mk-pair : ∀ {prog a A B l₁ l₂ c₀ c₁ s hb} → WordAt prog a A l₁ c₀ s → WordAt prog a B l₂ c₁ s
-          → readLoc s (AtDynamic hb) ≡ just c₀ → readLoc s (AtDynamic (sucHL hb)) ≡ just c₁ → Live a (AtDynamic hb)
-          → WordAt prog a (A I.* B) (l₁ , l₂) (SV-Ptr (AtDynamic hb)) s
-  mk-pair w₀ w₁ r₀ r₁ live = w-ptr {m = Heap} _ refl live (valid-pair-wf tt (live-suc live) (word→cell r₀ w₀) (word→cell r₁ w₁))
-
-  ------------------------------------------------------------------------
-  -- A FRESH TWO-CELL BLOCK (`block2`): nine straight rows.
-  ------------------------------------------------------------------------
-  -- row 5 puts cell 0's word in Output: a tag literal, or the word row 1 stashed
-  data Row5 (k₁ : ℕ) (w : StoredValue FS) : AbstractInstr → StoredValue FS → Set where
-    r5-tag  : ∀ t → Row5 k₁ w (instr-load-tag-lit t) (SV-Tag t)
-    r5-slot : Row5 k₁ w (load-from-slot k₁) w
-
-  module _ {k₁ : ℕ} {w : StoredValue FS} where
-    r5-flat : ∀ {i c0} → Row5 k₁ w i c0 → ∀ (prog : AbstractTrace) (t : FlatState) → flat-exec-instr i prog t ≡ St i t
-    r5-flat (r5-tag _) prog t = refl
-    r5-flat r5-slot    prog t = refl
-    r5-nhw : ∀ {i c0} → Row5 k₁ w i c0 → InstrNoHeapWrite i
-    r5-nhw (r5-tag _) = nhw-instr-load-tag-lit
-    r5-nhw r5-slot    = nhw-load-from-slot
-    r5-nws : ∀ {i c0} → Row5 k₁ w i c0 → instr-writes-slot i ≡ nothing
-    r5-nws (r5-tag _) = refl
-    r5-nws r5-slot    = refl
-    r5-ff : ∀ {i c0} → Row5 k₁ w i c0 → FrameFreeI i
-    r5-ff (r5-tag _) = tt
-    r5-ff r5-slot    = tt
-    r5-eh : ∀ {i c0} → Row5 k₁ w i c0 → EffectPreservesNextHeapRef (instr-effect i)
-    r5-eh (r5-tag _) = tt
-    r5-eh r5-slot    = tt
-    r5-ev : ∀ {i c0} → Row5 k₁ w i c0 → ∀ (t : FlatState) → event-of i t ≡ []
-    r5-ev (r5-tag _) t = refl
-    r5-ev r5-slot    t = refl
-    r5-lf : ∀ {i c0} → Row5 k₁ w i c0 → LogFree i
-    r5-lf (r5-tag _) = tt
-    r5-lf r5-slot    = tt
-    r5-wf : ∀ {i c0} → Row5 k₁ w i c0 → ∀ s a → readLoc s (AtStack (current-frame a) k₁) ≡ just w → InstrWF s a i
-    r5-wf (r5-tag _) s a e = tt
-    r5-wf r5-slot    s a e = w , e
-    r5-out : ∀ {i c0} → Row5 k₁ w i c0 → ∀ s a → readLoc s (AtStack (current-frame a) k₁) ≡ just w
-           → readReg (regs (X i s a)) Output ≡ c0
-    r5-out (r5-tag t) s a e = out-tag t s a
-    r5-out r5-slot    s a e = out-lslot k₁ s a w e
-    r5-inp : ∀ {i c0} → Row5 k₁ w i c0 → ∀ s a → readLoc s (AtStack (current-frame a) k₁) ≡ just w
-           → readReg (regs (X i s a)) Input1 ≡ readReg (regs s) Input1
-    r5-inp (r5-tag t) s a e = in-tag t s a
-    r5-inp r5-slot    s a e = in-lslot k₁ s a w e
-
-  -- what the block leaves: Output points at it, its two cells hold the two words
-  record Block (c0 c1 : StoredValue FS) (τ : FlatState) : Set where
-    field
-      hb   : HeapLocation
-      out  : readReg (regs (floc τ)) Output ≡ SV-Ptr (AtDynamic hb)
-      c0r  : readLoc (floc τ) (AtDynamic hb) ≡ just c0
-      c1r  : readLoc (floc τ) (AtDynamic (sucHL hb)) ≡ just c1
-      live : Live (falloc τ) (AtDynamic hb)
-
-  module Block2 (prog : AbstractTrace) (n k₁ kb k₂ : ℕ) (i5 : AbstractInstr) (c0 c1 : StoredValue FS) (σ : FlatState)
-                (row5 : Row5 k₁ (readReg (regs (floc σ)) Output) i5 c0)
-                (span : SpanAt prog (fpc σ) (block2 k₁ kb k₂ i5))
-                (nh0 : halted (floc σ) ≡ false) (n≤k₁ : n ≤ k₁) (n≤kb : n ≤ kb) (k₁≢kb : k₁ ≢ kb)
-                (src : ((k₂ ≡ k₁) × (c1 ≡ readReg (regs (floc σ)) Output))
-                     ⊎ ((k₂ ≢ k₁) × (k₂ ≢ kb) × (readLoc (floc σ) (AtStack (current-frame (falloc σ)) k₂) ≡ just c1)))
-                where
-    module Q5 where
-      flat = r5-flat row5
-      nhw = r5-nhw row5
-      nws = r5-nws row5
-      ff = r5-ff row5
-      eh = r5-eh row5
-      ev = r5-ev row5
-      lf = r5-lf row5
-      wf = r5-wf row5
-      out = r5-out row5
-      inp = r5-inp row5
-
-    s₀ = floc σ
-    a₀ = falloc σ
-    f₀ = current-frame a₀
-    r₀ = next-heap-ref a₀
-    w  = readReg (regs s₀) Output
-
-    u1 u2 u3 u4 u5 u6 u7 u8 u9 : FlatState
-    u1 = St (store-at-slot k₁) σ
-    u2 = St (instr-alloc-heap 2) u1
-    u3 = St (store-at-slot kb) u2
-    u4 = St mov-to-input u3
-    u5 = St i5 u4
-    u6 = St store-indirect u5
-    u7 = St (load-from-slot k₂) u6
-    u8 = St store-indirect-suc u7
-    u9 = St (load-from-slot kb) u8
-
-    hb : HeapLocation
-    hb = heap-loc (mkHeapRef r₀) 0
-
-    Inp Oup : FlatState → StoredValue FS
-    Inp t = readReg (regs (floc t)) Input1
-    Oup t = readReg (regs (floc t)) Output
-
-    sl : FlatState → ℕ → Maybe (StoredValue FS)
-    sl t j = readLoc (floc t) (AtStack f₀ j)
-
-    hpr : FlatState → HeapLocation → Maybe (StoredValue FS)
-    hpr t h = readLoc (floc t) (AtDynamic h)
-
-    kb≢k₁ : kb ≢ k₁
-    kb≢k₁ e = k₁≢kb (sym e)
-
-    nh1 = exec-abstract-preserves-halted-WF (store-at-slot k₁) s₀ a₀ nh0 tt
-    k1-1 : sl u1 k₁ ≡ just w
-    k1-1 = sl-same k₁ s₀ a₀ f₀ refl
-
-    nh2 = exec-abstract-preserves-halted-WF (instr-alloc-heap 2) (floc u1) (falloc u1) nh1 tt
-    out2 : Oup u2 ≡ SV-Ptr (AtDynamic hb)
-    out2 = out-alloc 2 (floc u1) (falloc u1)
-    k1-2 : sl u2 k₁ ≡ just w
-    k1-2 = trans (sl-keep (instr-alloc-heap 2) (floc u1) (falloc u1) f₀ k₁ nhw-instr-alloc-heap refl) k1-1
-
-    nh3 = exec-abstract-preserves-halted-WF (store-at-slot kb) (floc u2) (falloc u2) nh2 tt
-    kb3 : sl u3 kb ≡ just (SV-Ptr (AtDynamic hb))
-    kb3 = trans (sl-same kb (floc u2) (falloc u2) f₀ refl) (cong just out2)
-    k1-3 : sl u3 k₁ ≡ just w
-    k1-3 = trans (sl-other kb k₁ (floc u2) (falloc u2) f₀ k₁≢kb) k1-2
-
-    nh4 = exec-abstract-preserves-halted-WF mov-to-input (floc u3) (falloc u3) nh3 tt
-    in4 : Inp u4 ≡ SV-Ptr (AtDynamic hb)
-    in4 = trans (in-movin (floc u3) (falloc u3)) (trans (reg-store kb (floc u2) (falloc u2) Output) out2)
-    kb4 : sl u4 kb ≡ just (SV-Ptr (AtDynamic hb))
-    kb4 = trans (sl-keep mov-to-input (floc u3) (falloc u3) f₀ kb nhw-mov-to-input refl) kb3
-    k1-4 : sl u4 k₁ ≡ just w
-    k1-4 = trans (sl-keep mov-to-input (floc u3) (falloc u3) f₀ k₁ nhw-mov-to-input refl) k1-3
-
-    nh5 = exec-abstract-preserves-halted-WF i5 (floc u4) (falloc u4) nh4 (Q5.wf (floc u4) (falloc u4) k1-4)
-    out5 : Oup u5 ≡ c0
-    out5 = Q5.out (floc u4) (falloc u4) k1-4
-    in5 : Inp u5 ≡ SV-Ptr (AtDynamic hb)
-    in5 = trans (Q5.inp (floc u4) (falloc u4) k1-4) in4
-    kb5 : sl u5 kb ≡ just (SV-Ptr (AtDynamic hb))
-    kb5 = trans (sl-keep i5 (floc u4) (falloc u4) f₀ kb Q5.nhw Q5.nws) kb4
-    k1-5 : sl u5 k₁ ≡ just w
-    k1-5 = trans (sl-keep i5 (floc u4) (falloc u4) f₀ k₁ Q5.nhw Q5.nws) k1-4
-    cf5 : current-frame (falloc u5) ≡ f₀
-    cf5 = exec-abstract-preserves-frame i5 (floc u4) (falloc u4)
-    hr5 : next-heap-ref (falloc u5) ≡ suc r₀
-    hr5 = exec-abstract-preserves-heap-ref i5 (floc u4) (falloc u4) Q5.eh
-
-    rdi6 : sv-as-loc (Inp u5) ≡ just (AtDynamic hb)
-    rdi6 = cong sv-as-loc in5
-    nh6 = exec-abstract-preserves-halted-WF store-indirect (floc u5) (falloc u5) nh5 (AtDynamic hb , rdi6)
-    hp6 : hpr u6 hb ≡ just c0
-    hp6 = trans (store-ind-result (floc u5) (falloc u5) hb rdi6) (cong just out5)
-    in6 : Inp u6 ≡ SV-Ptr (AtDynamic hb)
-    in6 = trans (in-sind (floc u5) (falloc u5) (AtDynamic hb) rdi6) in5
-    kb6 : sl u6 kb ≡ just (SV-Ptr (AtDynamic hb))
-    kb6 = trans (sl-sind (floc u5) (falloc u5) hb f₀ kb rdi6) kb5
-    k1-6 : sl u6 k₁ ≡ just w
-    k1-6 = trans (sl-sind (floc u5) (falloc u5) hb f₀ k₁ rdi6) k1-5
-    cf6 : current-frame (falloc u6) ≡ f₀
-    cf6 = trans (exec-abstract-preserves-frame store-indirect (floc u5) (falloc u5)) cf5
-    hr6 : next-heap-ref (falloc u6) ≡ suc r₀
-    hr6 = trans (exec-abstract-preserves-heap-ref store-indirect (floc u5) (falloc u5) tt) hr5
-
-    -- every slot but `k₁` and `kb`, through row 6
-    keep6 : ∀ j → j ≢ k₁ → j ≢ kb → sl u6 j ≡ sl σ j
-    keep6 j j≢k₁ j≢kb =
-      trans (sl-sind (floc u5) (falloc u5) hb f₀ j rdi6)
-      (trans (sl-keep i5 (floc u4) (falloc u4) f₀ j Q5.nhw Q5.nws)
-      (trans (sl-keep mov-to-input (floc u3) (falloc u3) f₀ j nhw-mov-to-input refl)
-      (trans (sl-other kb j (floc u2) (falloc u2) f₀ j≢kb)
-      (trans (sl-keep (instr-alloc-heap 2) (floc u1) (falloc u1) f₀ j nhw-instr-alloc-heap refl)
-             (sl-other k₁ j s₀ a₀ f₀ j≢k₁)))))
-
-    k2-of : ((k₂ ≡ k₁) × (c1 ≡ w)) ⊎ ((k₂ ≢ k₁) × (k₂ ≢ kb) × (readLoc s₀ (AtStack f₀ k₂) ≡ just c1)) → sl u6 k₂ ≡ just c1
-    k2-of (inj₁ (e , ec)) = subst (λ k → sl u6 k ≡ just c1) (sym e) (subst (λ c → sl u6 k₁ ≡ just c) (sym ec) k1-6)
-    k2-of (inj₂ (ne₁ , ne₂ , r)) = trans (keep6 k₂ ne₁ ne₂) r
-
-    k2-6 : sl u6 k₂ ≡ just c1
-    k2-6 = k2-of src
-
-    wf7 : InstrWF (floc u6) (falloc u6) (load-from-slot k₂)
-    wf7 = c1 , at-cf (floc u6) (falloc u6) cf6 k2-6
-    nh7 = exec-abstract-preserves-halted-WF (load-from-slot k₂) (floc u6) (falloc u6) nh6 wf7
-    out7 : Oup u7 ≡ c1
-    out7 = out-lslot k₂ (floc u6) (falloc u6) c1 (proj₂ wf7)
-    in7 : Inp u7 ≡ SV-Ptr (AtDynamic hb)
-    in7 = trans (in-lslot k₂ (floc u6) (falloc u6) c1 (proj₂ wf7)) in6
-    hp7 : hpr u7 hb ≡ just c0
-    hp7 = trans (hp-keep (load-from-slot k₂) (floc u6) (falloc u6) hb nhw-load-from-slot) hp6
-    kb7 : sl u7 kb ≡ just (SV-Ptr (AtDynamic hb))
-    kb7 = trans (sl-keep (load-from-slot k₂) (floc u6) (falloc u6) f₀ kb nhw-load-from-slot refl) kb6
-    cf7 : current-frame (falloc u7) ≡ f₀
-    cf7 = trans (exec-abstract-preserves-frame (load-from-slot k₂) (floc u6) (falloc u6)) cf6
-    hr7 : next-heap-ref (falloc u7) ≡ suc r₀
-    hr7 = trans (exec-abstract-preserves-heap-ref (load-from-slot k₂) (floc u6) (falloc u6) tt) hr6
-
-    rdi8 : sv-as-loc (Inp u7) ≡ just (AtDynamic hb)
-    rdi8 = cong sv-as-loc in7
-    nh8 = exec-abstract-preserves-halted-WF store-indirect-suc (floc u7) (falloc u7) nh7 (AtDynamic hb , rdi8)
-    shp8 : hpr u8 (sucHL hb) ≡ just c1
-    shp8 = trans (store-ind-suc-result (floc u7) (falloc u7) hb rdi8) (cong just out7)
-    hp8 : hpr u8 hb ≡ just c0
-    hp8 = trans (store-ind-suc-preserves-heap (floc u7) (falloc u7) hb hb rdi8 (sucHL-≢ hb)) hp7
-    kb8 : sl u8 kb ≡ just (SV-Ptr (AtDynamic hb))
-    kb8 = trans (sl-sind-suc (floc u7) (falloc u7) hb f₀ kb rdi8) kb7
-    cf8 : current-frame (falloc u8) ≡ f₀
-    cf8 = trans (exec-abstract-preserves-frame store-indirect-suc (floc u7) (falloc u7)) cf7
-    hr8 : next-heap-ref (falloc u8) ≡ suc r₀
-    hr8 = trans (exec-abstract-preserves-heap-ref store-indirect-suc (floc u7) (falloc u7) tt) hr7
-
-    wf9 : InstrWF (floc u8) (falloc u8) (load-from-slot kb)
-    wf9 = SV-Ptr (AtDynamic hb) , at-cf (floc u8) (falloc u8) cf8 kb8
-    nh9 : halted (floc u9) ≡ false
-    nh9 = exec-abstract-preserves-halted-WF (load-from-slot kb) (floc u8) (falloc u8) nh8 wf9
-    out9 : Oup u9 ≡ SV-Ptr (AtDynamic hb)
-    out9 = out-lslot kb (floc u8) (falloc u8) _ (proj₂ wf9)
-    hp9 : hpr u9 hb ≡ just c0
-    hp9 = trans (hp-keep (load-from-slot kb) (floc u8) (falloc u8) hb nhw-load-from-slot) hp8
-    shp9 : hpr u9 (sucHL hb) ≡ just c1
-    shp9 = trans (hp-keep (load-from-slot kb) (floc u8) (falloc u8) (sucHL hb) nhw-load-from-slot) shp8
-    cf9 : current-frame (falloc u9) ≡ f₀
-    cf9 = trans (exec-abstract-preserves-frame (load-from-slot kb) (floc u8) (falloc u8)) cf8
-    hr9 : next-heap-ref (falloc u9) ≡ suc r₀
-    hr9 = trans (exec-abstract-preserves-heap-ref (load-from-slot kb) (floc u8) (falloc u8) tt) hr8
-
-    keep9 : ∀ j → j ≢ k₁ → j ≢ kb → sl u9 j ≡ sl σ j
-    keep9 j j≢k₁ j≢kb =
-      trans (sl-keep (load-from-slot kb) (floc u8) (falloc u8) f₀ j nhw-load-from-slot refl)
-      (trans (sl-sind-suc (floc u7) (falloc u7) hb f₀ j rdi8)
-      (trans (sl-keep (load-from-slot k₂) (floc u6) (falloc u6) f₀ j nhw-load-from-slot refl) (keep6 j j≢k₁ j≢kb)))
-
-    runA : SRun prog 5 σ u5
-    runA =
-      s-at {prog} {σ} {4} {u5} u1 (nh0 , span 0 _ refl) refl refl tt (
-      s-at {prog} {u1} {3} {u5} u2 (nh1 , span 1 _ refl) refl refl tt (
-      s-at {prog} {u2} {2} {u5} u3 (nh2 , span 2 _ refl) refl refl tt (
-      s-at {prog} {u3} {1} {u5} u4 (nh3 , span 3 _ refl) refl refl tt (
-      s-at {prog} {u4} {0} {u5} u5 (nh4 , span 4 _ refl) (Q5.flat prog u4) (Q5.ev u4) Q5.lf s-nil))))
-
-    runB : SRun prog 4 u5 u9
-    runB =
-      s-at {prog} {u5} {3} {u9} u6 (nh5 , span 5 _ refl) refl refl tt (
-      s-at {prog} {u6} {2} {u9} u7 (nh6 , span 6 _ refl) refl refl tt (
-      s-at {prog} {u7} {1} {u9} u8 (nh7 , span 7 _ refl) refl refl tt (
-      s-at {prog} {u8} {0} {u9} u9 (nh8 , span 8 _ refl) refl refl tt s-nil)))
-
-    abstract
-      seg : SegA a₀ n σ u9
-      seg =
-        segA-∘ (seg-store k₁ σ refl n≤k₁)
-        (segA-∘ (seg-alloc u1)
-        (segA-∘ (seg-store kb u2 refl n≤kb)
-        (segA-∘ (seg-q mov-to-input u3 nhw-mov-to-input refl tt tt)
-        (segA-∘ (seg-q i5 u4 Q5.nhw Q5.nws Q5.ff Q5.eh)
-        (segA-∘ (seg-sind u5 hb rdi6 ≤-refl)
-        (segA-∘ (seg-q (load-from-slot k₂) u6 nhw-load-from-slot refl tt tt)
-        (segA-∘ (seg-sind-suc u7 hb rdi8 ≤-refl)
-                (seg-q (load-from-slot kb) u8 nhw-load-from-slot refl tt tt))))))))
-
-    abstract
-      walk : ∀ {K : ℕ → Set} → (∀ j → K j → (j ≢ k₁) × (j ≢ kb)) → Walk prog n K σ (9 + fpc σ) (Block c0 c1)
-      walk f = record
-        { τ = u9 ; steps = 9 ; run = s-++ {prog} {5} {4} {σ} {u5} {u9} runA runB ; seg = seg ; nh = nh9 ; pc = refl
-        ; ret = refl ; clo = refl ; lnk = refl ; cf = cf9
-        ; slots = λ j kj → keep9 j (proj₁ (f j kj)) (proj₂ (f j kj))
-        ; post = record { hb = hb ; out = out9 ; c0r = hp9 ; c1r = shp9
-                        ; live = BeforeFrontier.heap-before (≤-reflexive (sym hr9)) } }
 
   ------------------------------------------------------------------------
   -- THE WALK.
@@ -419,8 +132,16 @@ module CataRebuildC {FS : FrameSemantics} where
     VE : ElemP ⟦ C ⟧
     VE = ValE prog C
 
+    ck = kind C
+    cs = size C
+
     RW : ∀ {G} → WellFormedFI G → ℕ → ℕ → AbstractTrace
-    RW {G} wG s lb = rebuild-walk val tv tb ⌈ G ⌉F s lb
+    RW {G} wG s lb = rebuild-walk val tv tb ck cs ⌈ G ⌉F s lb
+
+    -- a node's sublayer is read at its flat offsets (`getμ`): one `get` row
+    getμ-one : ∀ (G : IRFunctor) k → getμ ⌈ G ⌉F k ≡ get-i (⟦ G ⟧TI (μ-type F)) k ∷ []
+    getμ-one G k = trans (cong₂ (λ kd sz → get-k kd sz k) (sym (lkind-gen G (μ-type F))) (sym (lsz-gen G (μ-type F))))
+                         (get-one _ k)
 
     KR : ℕ → ℕ → Set
     KR s j = ((j < s) ⊎ (u ≤ j)) × (j ≢ val)
@@ -479,19 +200,13 @@ module CataRebuildC {FS : FrameSemantics} where
     no-label-in m t u j lt lu eq (inj₂ h) =
       noLabel-outside m t lt (λ w → <-irrefl refl (<-≤-trans (proj₂ w) (≤-trans h (proj₁ (found-in-window u m j eq lu)))))
 
-    nl-block2 : ∀ m k₁ kb k₂ (i5 : AbstractInstr) → label-of? i5 ≡ nothing → Resolve.NoLabel {FS} m (block2 k₁ kb k₂ i5)
-    nl-block2 m k₁ kb k₂ i5 e =
-      (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ e′ → nothing≢just (trans (sym e) e′)) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ []ᴬ
-      where nothing≢just : ∀ {x : LabelId} → nothing ≢ just x
-            nothing≢just ()
-
     ----------------------------------------------------------------------
-    -- K: the node's own cell word.  Id: pop a result.
+    -- K: the node's own word.  Id: pop a result.
     ----------------------------------------------------------------------
     rebuild-K : ∀ {A} {b : I.IsBaseTypeI A} → RebuildT (wf-K b)
     rebuild-K {A} {b} s lb σ x vs l rest eq n≤s val<s su span la nh wd st =
       subst₂ (λ l′ r′ → Walk prog n (KR s) σ (suc (fpc σ)) (RQ A l′ r′)) (sym (proj₁ fk)) (sym (proj₂ fk))
-        (walk-q σ mov-to-output refl nh (span 0 _ refl) tt nhw-mov-to-output refl tt tt refl tt
+        (walk-q σ mov-to-output refl nh (span 0 _ refl) tt nhw-mov-to-output refl tt tt refl tt bk-id
           (record { out = subst (λ z → WordAt prog (falloc u1) _ x z (floc u1)) (sym (out-movout (floc σ) (falloc σ))) (word-tr kp1 wd)
                   ; stack = stack-keep val-tr kp1 (exec-abstract-preserves-frame mov-to-output (floc σ) (falloc σ))
                               (sl-keep mov-to-output (floc σ) (falloc σ) _ val nhw-mov-to-output refl) st }))
@@ -499,7 +214,7 @@ module CataRebuildC {FS : FrameSemantics} where
         fk = fill-K {A = A} {b = b} {X = μ-type F} {C = C} {x = x} {vs = vs} {l = l} {rest = rest} eq
         u1 = St mov-to-output σ
         kp1 : Kp (falloc σ) (floc σ) (falloc u1) (floc u1)
-        kp1 = kp-q mov-to-output σ nhw-mov-to-output refl tt tt
+        kp1 = kp-q mov-to-output σ nhw-mov-to-output refl tt tt bk-id
 
     rebuild-Id : RebuildT wf-Id
     rebuild-Id s lb σ t vs l rest eq n≤s val<s su span la nh wd st =
@@ -514,7 +229,8 @@ module CataRebuildC {FS : FrameSemantics} where
         p = Walk.post w
 
     ----------------------------------------------------------------------
-    -- ⊗: the right part from cell 1, stashed at `s+2`; the left from cell 0; a fresh pair.
+    -- ⊗: the right part (after the left part's words), stashed at `s+2`;
+    -- the left part (word 0); a fresh flat pair.
     ----------------------------------------------------------------------
     module ProdC {G H : IRFunctor} (a : WellFormedFI G) (b : WellFormedFI H) (iha : RebuildT a) (ihb : RebuildT b)
                  (s lb : ℕ) (σ : FlatState) (x : ⟦ ⟦ G ⟧TI (μ-type F) ⟧) (y : ⟦ ⟦ H ⟧TI (μ-type F) ⟧)
@@ -534,20 +250,48 @@ module CataRebuildC {FS : FrameSemantics} where
       base = fpc σ
       lF = lsize ⌈ G ⌉F
       lH = lsize ⌈ H ⌉F
+      Y₁ = ⟦ G ⟧TI (μ-type F)
+      Y₂ = ⟦ H ⟧TI (μ-type F)
+      Z₁ = ⟦ G ⟧TI C
+      Z₂ = ⟦ H ⟧TI C
 
       pre : AbstractTrace
-      pre = mov-to-output ∷ store-at-slot s ∷ load-indirect-suc ∷ mov-to-input ∷ []
+      pre = mov-to-output ∷ store-at-slot s ∷ get-i Y₂ (size Y₁) ∷ mov-to-input ∷ []
       VB = RW b (s + 4) (lb + lF)
       mid : AbstractTrace
-      mid = store-at-slot (s + 2) ∷ restore-input s ∷ load-indirect ∷ mov-to-input ∷ []
+      mid = store-at-slot (s + 2) ∷ restore-input s ∷ get-i Y₁ 0 ∷ mov-to-input ∷ []
       VA = RW a (s + 4) lb
-      epi = block2 (suc s) (s + 3) (s + 2) (load-from-slot (suc s))
+      epi = pair-text (suc s) (s + 2) (s + 3) Z₁ Z₂
       T3 = mid ++ (VA ++ epi)
+
+      -- the text, with its reads as rows and its build at the IR's types
+      txt : AbstractTrace → AbstractTrace → ℕ → Kind → ℕ → Kind → ℕ → ℕ → AbstractTrace
+      txt gH gG N kG sG kH sH oH =
+        (mov-to-output ∷ store-at-slot s ∷ []) ++ gH ++ (mov-to-input ∷ []) ++ VB ++
+        (store-at-slot (s + 2) ∷ restore-input s ∷ []) ++ gG ++ (mov-to-input ∷ []) ++ VA ++
+        (store-at-slot (suc s) ∷ instr-alloc-heap N ∷ store-at-slot (s + 3) ∷ []) ++
+        put-k kG sG (suc s) (s + 3) 0 ++ put-k kH sH (s + 2) (s + 3) oH ++ (load-from-slot (s + 3) ∷ [])
+
+      txt-eq : ∀ {a₁ a₂ b₁ b₂ c₁ c₂ d₁ d₂ e₁ e₂ f₁ f₂ g₁ g₂ h₁ h₂}
+             → a₁ ≡ a₂ → b₁ ≡ b₂ → c₁ ≡ c₂ → d₁ ≡ d₂ → e₁ ≡ e₂ → f₁ ≡ f₂ → g₁ ≡ g₂ → h₁ ≡ h₂
+             → txt a₁ b₁ c₁ d₁ e₁ f₁ g₁ h₁ ≡ txt a₂ b₂ c₂ d₂ e₂ f₂ g₂ h₂
+      txt-eq refl refl refl refl refl refl refl refl = refl
+
+      shape : RW (wf-Prod a b) s lb ≡ pre ++ VB ++ T3
+      shape = txt-eq (trans (getμ-one H (lsz ⌈ G ⌉F 1)) (cong (λ k → get-i Y₂ k ∷ []) (sym (lsz-gen G (μ-type F)))))
+                     (getμ-one G 0)
+                     (cong (2 ⊔_) (sym (cong₂ _+_ (lsz-gen G C) (lsz-gen H C))))
+                     (sym (lkind-gen G C)) (sym (lsz-gen G C)) (sym (lkind-gen H C)) (sym (lsz-gen H C)) (sym (lsz-gen G C))
+
+      span′ : SpanAt prog base (pre ++ VB ++ T3)
+      span′ = subst (SpanAt prog base) shape span
+      la′ : LabelsAt prog base (pre ++ VB ++ T3)
+      la′ = subst (LabelsAt prog base) shape la
 
       pt = prod-ptr wd
       hl = PtrTo.hl pt
-      pc = pair-cells (PtrTo.val pt)
-      w₁ = PairCells.w₁ pc
+      lv = PtrTo.live pt
+      pv = decomposePairWF (PtrTo.val pt)
 
       val≢s : val ≢ s
       val≢s = below0 val<s
@@ -560,39 +304,37 @@ module CataRebuildC {FS : FrameSemantics} where
       s2<s4 : s + 2 < s + 4
       s2<s4 = +-monoʳ-< s (s≤s (s≤s (s≤s z≤n)))
 
-      SP1 = span-drop prog pre {VB ++ T3} base span
+      SP1 = span-drop prog pre {VB ++ T3} base span′
       SPB = span-take prog VB {T3} (4 + base) SP1
       SP2 = span-drop prog VB {T3} (4 + base) SP1
       SP3 = span-drop prog mid {VA ++ epi} (length VB + (4 + base)) SP2
       SPA = span-take prog VA {epi} (4 + (length VB + (4 + base))) SP3
       SP4 = span-drop prog VA {epi} (4 + (length VB + (4 + base))) SP3
 
-      nl4 : ∀ m (i₁ i₂ i₃ i₄ : AbstractInstr) → label-of? i₁ ≡ nothing → label-of? i₂ ≡ nothing
-          → label-of? i₃ ≡ nothing → label-of? i₄ ≡ nothing → Resolve.NoLabel {FS} m (i₁ ∷ i₂ ∷ i₃ ∷ i₄ ∷ [])
-      nl4 m i₁ i₂ i₃ i₄ e₁ e₂ e₃ e₄ = ne e₁ ∷ᴬ ne e₂ ∷ᴬ ne e₃ ∷ᴬ ne e₄ ∷ᴬ []ᴬ
-        where ne : ∀ {i : AbstractInstr} → label-of? i ≡ nothing → ¬ (label-of? i ≡ just m)
-              ne e e′ = nj (trans (sym e) e′)
-                where nj : ∀ {x : LabelId} → nothing ≢ just x
-                      nj ()
+      nl-pre : ∀ m → Resolve.NoLabel {FS} m pre
+      nl-pre m = (λ ()) ∷ᴬ (λ ()) ∷ᴬ ngi Y₂ (size Y₁) m ∷ᴬ (λ ()) ∷ᴬ []ᴬ
+      nl-mid : ∀ m → Resolve.NoLabel {FS} m mid
+      nl-mid m = (λ ()) ∷ᴬ (λ ()) ∷ᴬ ngi Y₁ 0 m ∷ᴬ (λ ()) ∷ᴬ []ᴬ
+
+      ls-epi : ∀ {lo hi} → LabelsIn lo hi epi
+      ls-epi = li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ
+               ++⁺ (put-k-ls (kind Z₁) (size Z₁) (suc s) (s + 3) 0)
+                   (++⁺ (put-k-ls (kind Z₂) (size Z₂) (s + 2) (s + 3) (size Z₁)) (li-none refl ∷ᴬ []ᴬ))
 
       ls-T3 : LabelsIn lb (lb + lF) T3
-      ls-T3 = li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ
-              ++⁺ (rebuild-ls ⌈ G ⌉F val tv tb (s + 4) lb)
-                  (li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ
-                   li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ []ᴬ)
+      ls-T3 = li-none refl ∷ᴬ li-none refl ∷ᴬ lgi Y₁ 0 ∷ᴬ li-none refl ∷ᴬ
+              ++⁺ (rebuild-ls ck cs ⌈ G ⌉F val tv tb (s + 4) lb) ls-epi
 
-      LA1 = labels-drop prog pre {VB ++ T3} base la (λ m j _ → nl4 m _ _ _ _ refl refl refl refl)
+      LA1 = labels-drop prog pre {VB ++ T3} base la′ (λ m j _ → nl-pre m)
       LAB = labels-take prog VB {T3} (4 + base) LA1
       LA2 = labels-drop prog VB {T3} (4 + base) LA1
-              (λ m j e → no-label-in m VB T3 j (rebuild-ls ⌈ H ⌉F val tv tb (s + 4) (lb + lF)) ls-T3 e (inj₁ ≤-refl))
-      LA3 = labels-drop prog mid {VA ++ epi} (length VB + (4 + base)) LA2 (λ m j _ → nl4 m _ _ _ _ refl refl refl refl)
+              (λ m j e → no-label-in m VB T3 j (rebuild-ls ck cs ⌈ H ⌉F val tv tb (s + 4) (lb + lF)) ls-T3 e (inj₁ ≤-refl))
+      LA3 = labels-drop prog mid {VA ++ epi} (length VB + (4 + base)) LA2 (λ m j _ → nl-mid m)
       LAA = labels-take prog VA {epi} (4 + (length VB + (4 + base))) LA3
 
-      -- rows 1-4: the pair stashed at `s`, cell 1 into Input1
+      -- rows 1-2: the pair stashed at `s`
       p1 = St mov-to-output σ
       p2 = St (store-at-slot s) p1
-      p3 = St load-indirect-suc p2
-      p4 = St mov-to-input p3
 
       f₀ = current-frame (falloc σ)
 
@@ -608,58 +350,60 @@ module CataRebuildC {FS : FrameSemantics} where
       slot2 = trans (sl-same s (floc p1) (falloc p1) f₀ cf1) (cong just out1)
       in2 : readReg (regs (floc p2)) Input1 ≡ SV-Ptr (AtDynamic hl)
       in2 = trans (reg-store s (floc p1) (falloc p1) Input1) in1
-      hk : ∀ hl′ → readLoc (floc p2) (AtDynamic hl′) ≡ readLoc (floc σ) (AtDynamic hl′)
-      hk hl′ = trans (hp-keep (store-at-slot s) (floc p1) (falloc p1) hl′ nhw-store-at-slot)
-                     (hp-keep mov-to-output (floc σ) (falloc σ) hl′ nhw-mov-to-output)
-      r₂2 : readLoc (floc p2) (AtDynamic (sucHL hl)) ≡ just (PairCells.w₂ pc)
-      r₂2 = trans (hk (sucHL hl)) (PairCells.r₂ pc)
-      wf3 : InstrWF (floc p2) (falloc p2) load-indirect-suc
-      wf3 = AtDynamic hl , cong sv-as-loc in2 , _ , r₂2
-      nh3 = exec-abstract-preserves-halted-WF load-indirect-suc (floc p2) (falloc p2) nh2 wf3
-      nh4 : halted (floc p4) ≡ false
-      nh4 = exec-abstract-preserves-halted-WF mov-to-input (floc p3) (falloc p3) nh3 tt
-      in4 : readReg (regs (floc p4)) Input1 ≡ PairCells.w₂ pc
-      in4 = trans (in-movin (floc p3) (falloc p3)) (out-lind-suc (floc p2) (falloc p2) (AtDynamic hl) _ in2 r₂2)
-      cf4 : current-frame (falloc p4) ≡ f₀
-      cf4 = trans (exec-abstract-preserves-frame mov-to-input (floc p3) (falloc p3))
-                  (trans (exec-abstract-preserves-frame load-indirect-suc (floc p2) (falloc p2)) cf1)
 
-      abstract
-        seg4 : SegA (falloc σ) n σ p4
-        seg4 = segA-∘ (seg-q mov-to-output σ nhw-mov-to-output refl tt tt)
-               (segA-∘ (seg-store s p1 cf1 n≤s)
-               (segA-∘ (seg-q load-indirect-suc p2 nhw-load-indirect-suc refl tt tt)
-                       (seg-q mov-to-input p3 nhw-mov-to-input refl tt tt)))
+      w12 : Walk prog n (KR s) σ (suc (fpc p1)) (λ _ → ⊤)
+      w12 = walk-∘ {prog} {n} {KR s} {σ}
+              (walk-q {Q = λ _ → ⊤} σ mov-to-output refl nh (span′ 0 _ refl) tt nhw-mov-to-output refl tt tt refl tt bk-id tt)
+              (walk-st p1 (store-at-slot s) refl nh1 (span′ 1 _ refl) nh2 refl tt (seg-store s p1 refl n≤s) bk-id
+                 (λ j kj → sl-other s j (floc p1) (falloc p1) _ (nk0 s4u (proj₁ kj))) tt)
+
+      kp2 : Kp (falloc σ) (floc σ) (falloc p2) (floc p2)
+      kp2 = walk-kp w12
+
+      -- row 3: the right part, at the words after the left part's
+      cell₂ : CellAt {prog = prog} (falloc p2) Y₂ y (offsetLoc (AtDynamic hl) (size Y₁)) (floc p2)
+      cell₂ = cell-kp kp2 y _ (live-off (size Y₁) lv) (PairValidWF.snd-cell pv)
+
+      g₂ : GetOut {prog = prog} Y₂ y p2
+      g₂ = get-run Y₂ (size Y₁) p2 (AtDynamic hl) nh2 (get-fetch {prog} {fpc p2} Y₂ (size Y₁) (span′ 2 _ refl)) in2
+             (proj₁ kp2 _ lv) cell₂
+
+      p3 = setOut p2 (GetOut.out g₂)
+      p4 = St mov-to-input p3
+
+      nh4 : halted (floc p4) ≡ false
+      nh4 = exec-abstract-preserves-halted-WF mov-to-input (floc p3) (falloc p3) nh2 tt
+      cf4 : current-frame (falloc p4) ≡ f₀
+      cf4 = trans (exec-abstract-preserves-frame mov-to-input (floc p3) (falloc p3)) cf1
+
+      pre-walk : Walk prog n (KR s) σ (fpc p4) (λ _ → ⊤)
+      pre-walk = walk-∘ {prog} {n} {KR s} {σ} w12 (walk-∘ {prog} {n} {KR s} {p2} (get-walk {Q = λ _ → ⊤} p2 g₂ nh2 tt)
+                   (walk-q p3 mov-to-input refl nh2 (span′ 3 _ refl) tt nhw-mov-to-input refl tt tt refl tt bk-id tt))
 
       kp4 : Kp (falloc σ) (floc σ) (falloc p4) (floc p4)
-      kp4 = seg-kp seg4
+      kp4 = walk-kp pre-walk
 
       keep4 : ∀ j → j ≢ s → readLoc (floc p4) (AtStack f₀ j) ≡ readLoc (floc σ) (AtStack f₀ j)
       keep4 j j≢s =
         trans (sl-keep mov-to-input (floc p3) (falloc p3) f₀ j nhw-mov-to-input refl)
-        (trans (sl-keep load-indirect-suc (floc p2) (falloc p2) f₀ j nhw-load-indirect-suc refl)
+        (trans (out-mem p2 (GetOut.out g₂) (AtStack f₀ j))
         (trans (sl-other s j (floc p1) (falloc p1) f₀ j≢s)
                (sl-keep mov-to-output (floc σ) (falloc σ) f₀ j nhw-mov-to-output refl)))
 
       slot4 : readLoc (floc p4) (AtStack f₀ s) ≡ just (SV-Ptr (AtDynamic hl))
       slot4 = trans (sl-keep mov-to-input (floc p3) (falloc p3) f₀ s nhw-mov-to-input refl)
-              (trans (sl-keep load-indirect-suc (floc p2) (falloc p2) f₀ s nhw-load-indirect-suc refl) slot2)
+              (trans (out-mem p2 (GetOut.out g₂) (AtStack f₀ s)) slot2)
 
-      pre-walk : Walk prog n (KR s) σ (fpc p4) (λ _ → ⊤)
-      pre-walk = record
-        { τ = p4 ; steps = 4
-        ; run = s-at p1 (nh , span 0 _ refl) refl refl tt (s-at p2 (nh1 , span 1 _ refl) refl refl tt
-                (s-at p3 (nh2 , span 2 _ refl) refl refl tt (s-at p4 (nh3 , span 3 _ refl) refl refl tt s-nil)))
-        ; seg = seg4 ; nh = nh4 ; pc = refl ; ret = refl ; clo = refl ; lnk = refl ; cf = cf4
-        ; slots = λ j kj → keep4 j (nk0 s4u (proj₁ kj)) ; post = tt }
+      wd4 : InWord Y₂ y p4
+      wd4 = subst (λ z → WordAt prog (falloc p4) Y₂ y z (floc p4)) (sym (in-movin (floc p3) (falloc p3)))
+              (word-tr (kp-q mov-to-input p3 nhw-mov-to-input refl tt tt bk-id) (place→word (GetOut.place g₂)))
 
       -- the right part
-      wb : Walk prog n (KR (s + 4)) p4 (length VB + fpc p4) (RQ (⟦ H ⟧TI C) (proj₂ l) midl)
+      wb : Walk prog n (KR (s + 4)) p4 (length VB + fpc p4) (RQ Z₂ (proj₂ l) midl)
       wb = ihb (s + 4) (lb + lF) p4 y vs (proj₂ l) midl (FillPair.right fp) n≤s4 (up val<s) (su-r s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPB LAB nh4
-             (subst (λ z → WordAt prog (falloc p4) _ y z (floc p4)) (sym in4) (word-tr kp4 (PairCells.c₂ pc)))
-             (stack-keep val-tr kp4 cf4 (keep4 val val≢s) st)
+             wd4 (stack-keep val-tr kp4 cf4 (keep4 val val≢s) st)
 
-      wpb : Walk prog n (KR s) σ (length VB + fpc p4) (RQ (⟦ H ⟧TI C) (proj₂ l) midl)
+      wpb : Walk prog n (KR s) σ (length VB + fpc p4) (RQ Z₂ (proj₂ l) midl)
       wpb = walk-∘ {prog} {n} {KR s} {σ} pre-walk (walk-K (kr-up s) wb)
 
       τb = Walk.τ wb
@@ -672,11 +416,9 @@ module CataRebuildC {FS : FrameSemantics} where
       slot-b = trans (cong (λ f → readLoc (floc τb) (AtStack f s)) (Walk.cf wb))
                (trans (Walk.slots wb s (inj₁ s<s4 , λ e → val≢s (sym e))) (trans (cong (λ f → readLoc (floc p4) (AtStack f s)) cf4) slot4))
 
-      -- rows: the right word to `s+2`, the pair back, cell 0 into Input1
+      -- rows: the right word to `s+2`, the pair back, the left part (word 0) into Input1
       m1 = St (store-at-slot (s + 2)) τb
       m2 = St (restore-input s) m1
-      m3 = St load-indirect m2
-      m4 = St mov-to-input m3
 
       s≢s2 : s ≢ s + 2
       s≢s2 e = ne+ s (λ ()) (trans (+-identityʳ s) e)
@@ -688,48 +430,61 @@ module CataRebuildC {FS : FrameSemantics} where
       in-m2 : readReg (regs (floc m2)) Input1 ≡ SV-Ptr (AtDynamic hl)
       in-m2 = in-restore s (floc m1) (falloc m1) _ slot-m1
       kpm1 : Kp (falloc τb) (floc τb) (falloc m1) (floc m1)
-      kpm1 = seg-kp (seg-store {falloc τb} {0} (s + 2) τb refl z≤n)
-      r₁m2 : readLoc (floc m2) (AtDynamic hl) ≡ just w₁
-      r₁m2 = trans (hp-keep (restore-input s) (floc m1) (falloc m1) hl nhw-restore-input)
-             (trans (proj₂ kpm1 _ (proj₁ kpb _ (PtrTo.live pt))) (trans (proj₂ kpb _ (PtrTo.live pt)) (PairCells.r₁ pc)))
-      wf-m3 : InstrWF (floc m2) (falloc m2) load-indirect
-      wf-m3 = AtDynamic hl , cong sv-as-loc in-m2 , w₁ , r₁m2
+      kpm1 = seg-kp (seg-store {falloc τb} {0} (s + 2) τb refl z≤n) bk-id
+      bk-m2 = restore-bk s (floc m1) (falloc m1) slot-m1
+      kpm2 : Kp (falloc τb) (floc τb) (falloc m2) (floc m2)
+      kpm2 = kp-∘ kpm1 (kp-q (restore-input s) m1 nhw-restore-input refl tt tt bk-m2)
       nh-m1 = exec-abstract-preserves-halted-WF (store-at-slot (s + 2)) (floc τb) (falloc τb) (Walk.nh wb) tt
       nh-m2 = exec-abstract-preserves-halted-WF (restore-input s) (floc m1) (falloc m1) nh-m1 (_ , slot-m1)
-      nh-m3 = exec-abstract-preserves-halted-WF load-indirect (floc m2) (falloc m2) nh-m2 wf-m3
-      nh-m4 : halted (floc m4) ≡ false
-      nh-m4 = exec-abstract-preserves-halted-WF mov-to-input (floc m3) (falloc m3) nh-m3 tt
-      in-m4 : readReg (regs (floc m4)) Input1 ≡ w₁
-      in-m4 = trans (in-movin (floc m3) (falloc m3)) (out-lind (floc m2) (falloc m2) (AtDynamic hl) w₁ in-m2 r₁m2)
-
-      kpm : Kp (falloc τb) (floc τb) (falloc m4) (floc m4)
-      kpm = kp-∘ kpm1 (kp-∘ (kp-q (restore-input s) m1 nhw-restore-input refl tt tt)
-                 (kp-∘ (kp-q load-indirect m2 nhw-load-indirect refl tt tt) (kp-q mov-to-input m3 nhw-mov-to-input refl tt tt)))
-      cfm : current-frame (falloc m4) ≡ fb
-      cfm = trans (exec-abstract-preserves-frame mov-to-input (floc m3) (falloc m3))
-            (trans (exec-abstract-preserves-frame load-indirect (floc m2) (falloc m2))
-                   (exec-abstract-preserves-frame (restore-input s) (floc m1) (falloc m1)))
-      slm : ∀ j → j ≢ s + 2 → readLoc (floc m4) (AtStack fb j) ≡ readLoc (floc τb) (AtStack fb j)
-      slm j ne = trans (sl-keep mov-to-input (floc m3) (falloc m3) _ j nhw-mov-to-input refl)
-                 (trans (sl-keep load-indirect (floc m2) (falloc m2) _ j nhw-load-indirect refl)
-                 (trans (sl-keep (restore-input s) (floc m1) (falloc m1) _ j nhw-restore-input refl)
-                        (sl-other (s + 2) j (floc τb) (falloc τb) fb ne)))
-      s2-m4 : readLoc (floc m4) (AtStack fb (s + 2)) ≡ just wR
-      s2-m4 = trans (sl-keep mov-to-input (floc m3) (falloc m3) _ (s + 2) nhw-mov-to-input refl)
-              (trans (sl-keep load-indirect (floc m2) (falloc m2) _ (s + 2) nhw-load-indirect refl)
-              (trans (sl-keep (restore-input s) (floc m1) (falloc m1) _ (s + 2) nhw-restore-input refl) s2-m1))
 
       fm : ∀ (k : ℕ) {i : AbstractInstr} → fetch mid k ≡ just i → fetch prog (k + fpc τb) ≡ just i
       fm k {i} e = subst (λ z → fetch prog (k + z) ≡ just i) (sym (Walk.pc wb)) (SP2 k i (fetch-++-left mid (VA ++ epi) k i e))
 
+      kpbm2 = kp-∘ kpb kpm2
+
+      cell₁ : CellAt {prog = prog} (falloc m2) Y₁ x (offsetLoc (AtDynamic hl) 0) (floc m2)
+      cell₁ = subst (λ z → CellAt {prog = prog} (falloc m2) Y₁ x z (floc m2)) (sym (offset-zero (AtDynamic hl)))
+                (cell-kp kpbm2 x (AtDynamic hl) lv (PairValidWF.fst-cell pv))
+
+      g₁ : GetOut {prog = prog} Y₁ x m2
+      g₁ = get-run Y₁ 0 m2 (AtDynamic hl) nh-m2 (get-fetch {prog} {fpc m2} Y₁ 0 (fm 2 refl)) in-m2 (proj₁ kpbm2 _ lv) cell₁
+
+      m3 = setOut m2 (GetOut.out g₁)
+      m4 = St mov-to-input m3
+
+      nh-m4 : halted (floc m4) ≡ false
+      nh-m4 = exec-abstract-preserves-halted-WF mov-to-input (floc m3) (falloc m3) nh-m2 tt
+
+      kp-m4 = kp-q mov-to-input m3 nhw-mov-to-input refl tt tt bk-id
+      kpm : Kp (falloc τb) (floc τb) (falloc m4) (floc m4)
+      kpm = kp-∘ kpm2 (kp-∘ (kp-set m2 (GetOut.out g₁)) kp-m4)
+      cfm : current-frame (falloc m4) ≡ fb
+      cfm = trans (exec-abstract-preserves-frame mov-to-input (floc m3) (falloc m3))
+                  (exec-abstract-preserves-frame (restore-input s) (floc m1) (falloc m1))
+      slm : ∀ j → j ≢ s + 2 → readLoc (floc m4) (AtStack fb j) ≡ readLoc (floc τb) (AtStack fb j)
+      slm j ne = trans (sl-keep mov-to-input (floc m3) (falloc m3) _ j nhw-mov-to-input refl)
+                 (trans (out-mem m2 (GetOut.out g₁) (AtStack fb j))
+                 (trans (sl-keep (restore-input s) (floc m1) (falloc m1) _ j nhw-restore-input refl)
+                        (sl-other (s + 2) j (floc τb) (falloc τb) fb ne)))
+      s2-m4 : readLoc (floc m4) (AtStack fb (s + 2)) ≡ just wR
+      s2-m4 = trans (sl-keep mov-to-input (floc m3) (falloc m3) _ (s + 2) nhw-mov-to-input refl)
+              (trans (out-mem m2 (GetOut.out g₁) (AtStack fb (s + 2)))
+              (trans (sl-keep (restore-input s) (floc m1) (falloc m1) _ (s + 2) nhw-restore-input refl) s2-m1))
+
+      wd-m4 : InWord Y₁ x m4
+      wd-m4 = subst (λ z → WordAt prog (falloc m4) Y₁ x z (floc m4)) (sym (in-movin (floc m3) (falloc m3)))
+                (word-tr kp-m4 (place→word (GetOut.place g₁)))
+
       mid-walk : Walk prog n (KR s) τb (fpc m4) (λ _ → ⊤)
       mid-walk =
-        walk-∘ (walk-st {Q = λ _ → ⊤} τb (store-at-slot (s + 2)) refl (Walk.nh wb) (fm 0 refl) nh-m1 refl tt
-                  (seg-store (s + 2) τb refl (≤-trans n≤s (m≤m+n s 2)))
+        walk-∘ {prog} {n} {KR s} {τb}
+          (walk-st {Q = λ _ → ⊤} τb (store-at-slot (s + 2)) refl (Walk.nh wb) (fm 0 refl) nh-m1 refl tt
+                  (seg-store (s + 2) τb refl (≤-trans n≤s (m≤m+n s 2))) bk-id
                   (λ j kj → sl-other (s + 2) j (floc τb) (falloc τb) _ (nk2 s4u (proj₁ kj))) tt)
-        (walk-∘ (walk-q {Q = λ _ → ⊤} m1 (restore-input s) refl nh-m1 (fm 1 refl) (_ , slot-m1) nhw-restore-input refl tt tt refl tt tt)
-        (walk-∘ (walk-q {Q = λ _ → ⊤} m2 load-indirect refl nh-m2 (fm 2 refl) wf-m3 nhw-load-indirect refl tt tt refl tt tt)
-                (walk-q m3 mov-to-input refl nh-m3 (fm 3 refl) tt nhw-mov-to-input refl tt tt refl tt tt)))
+        (walk-∘ {prog} {n} {KR s} {m1}
+          (walk-q {Q = λ _ → ⊤} m1 (restore-input s) refl nh-m1 (fm 1 refl) (_ , slot-m1) nhw-restore-input refl tt tt refl tt bk-m2 tt)
+        (walk-∘ {prog} {n} {KR s} {m2} (get-walk {Q = λ _ → ⊤} m2 g₁ nh-m2 tt)
+                (walk-q m3 mov-to-input refl nh-m2 (fm 3 refl) tt nhw-mov-to-input refl tt tt refl tt bk-id tt)))
 
       SPA′ : SpanAt prog (fpc m4) VA
       SPA′ = subst (λ z → SpanAt prog (suc (suc (suc (suc z)))) VA) (sym (Walk.pc wb)) SPA
@@ -737,16 +492,14 @@ module CataRebuildC {FS : FrameSemantics} where
       LAA′ = subst (λ z → LabelsAt prog (suc (suc (suc (suc z)))) VA) (sym (Walk.pc wb)) LAA
 
       -- the left part
-      wa : Walk prog n (KR (s + 4)) m4 (length VA + fpc m4) (RQ (⟦ G ⟧TI C) (proj₁ l) rest)
+      wa : Walk prog n (KR (s + 4)) m4 (length VA + fpc m4) (RQ Z₁ (proj₁ l) rest)
       wa = iha (s + 4) lb m4 x midl (proj₁ l) rest (FillPair.left fp) n≤s4 (up val<s) (su-l s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPA′ LAA′ nh-m4
-             (subst (λ z → WordAt prog (falloc m4) _ x z (floc m4)) (sym in-m4) (word-tr (kp-∘ kpb kpm) (PairCells.c₁ pc)))
-             (stack-keep val-tr kpm cfm (slm val (below 2 val<s)) (RQs.stack (Walk.post wb)))
+             wd-m4 (stack-keep val-tr kpm cfm (slm val (below 2 val<s)) (RQs.stack (Walk.post wb)))
 
-      wma : Walk prog n (KR s) τb (length VA + fpc m4) (RQ (⟦ G ⟧TI C) (proj₁ l) rest)
+      wma : Walk prog n (KR s) τb (length VA + fpc m4) (RQ Z₁ (proj₁ l) rest)
       wma = walk-∘ {prog} {n} {KR s} {τb} mid-walk (walk-K (kr-up s) wa)
 
       τa = Walk.τ wa
-      wL = readReg (regs (floc τa)) Output
 
       s2-a : readLoc (floc τa) (AtStack (current-frame (falloc τa)) (s + 2)) ≡ just wR
       s2-a = trans (cong (λ f → readLoc (floc τa) (AtStack f (s + 2))) (Walk.cf wa))
@@ -759,50 +512,40 @@ module CataRebuildC {FS : FrameSemantics} where
 
       s2≢s1 : s + 2 ≢ suc s
       s2≢s1 e = ne+ s (λ ()) (trans e (sx s))
-      s2≢s3 : s + 2 ≢ s + 3
-      s2≢s3 = ne+ s (λ ())
-      s1≢s3 : suc s ≢ s + 3
-      s1≢s3 e = ne+ s (λ ()) (trans (sym (sx s)) e)
+      s3≢s2 : s + 3 ≢ s + 2
+      s3≢s2 = ne+ s (λ ())
+      s3≢s1 : s + 3 ≢ suc s
+      s3≢s1 e = ne+ s (λ ()) (trans e (sx s))
 
       -- the fresh pair
+      module E = BuildPair {prog} n (suc s) (s + 2) (s + 3) Z₁ Z₂ τa {proj₁ l} {proj₂ l} wR SPE (Walk.nh wa)
+                   (≤-trans n≤s (n≤1+n s)) (≤-trans n≤s (m≤m+n s 3)) s2≢s1 s3≢s1 s3≢s2
+                   (RQs.out (Walk.post wa)) (word-tr (walk-kp wma) (RQs.out (Walk.post wb))) s2-a
 
-      we′ : Walk prog n (λ j → (j ≢ suc s) × (j ≢ s + 3)) τa (9 + fpc τa) (Block wL wR)
-      we′ = (Block2.walk prog n (suc s) (s + 3) (s + 2) (load-from-slot (suc s)) wL wR τa r5-slot SPE (Walk.nh wa)
-          (≤-trans n≤s (n≤1+n s)) (≤-trans n≤s (m≤m+n s 3)) s1≢s3 (inj₂ (s2≢s1 , s2≢s3 , s2-a))) (λ j kj → kj)
-      we : Walk prog n (KR s) τa (9 + fpc τa) (Block wL wR)
-      we = walk-K (λ j kj → nk1 s4u (proj₁ kj) , nk3 s4u (proj₁ kj)) we′
+      we : Walk prog n (KR s) τa (length epi + fpc τa)
+              (λ τ′ → WordAt prog (falloc τ′) (Z₁ I.* Z₂) (proj₁ l , proj₂ l) (readReg (regs (floc τ′)) Output) (floc τ′))
+      we = E.walk (λ j kj → nk1 s4u (proj₁ kj) , nk3 s4u (proj₁ kj))
 
-      all : Walk prog n (KR s) σ (9 + fpc τa) (Block wL wR)
       all = walk-∘ {prog} {n} {KR s} {σ} wpb (walk-∘ {prog} {n} {KR s} {τb} wma we)
 
       τe = Walk.τ we
-      bk = Walk.post we
-      kpe : Kp (falloc τa) (floc τa) (falloc τe) (floc τe)
-      kpe = walk-kp we
-      kpbe : Kp (falloc τb) (floc τb) (falloc τe) (floc τe)
-      kpbe = kp-∘ (walk-kp wma) kpe
-
-      built : WordAt prog (falloc τe) (⟦ G ⟧TI C I.* ⟦ H ⟧TI C) (proj₁ l , proj₂ l) (readReg (regs (floc τe)) Output) (floc τe)
-      built = subst (λ z → WordAt prog (falloc τe) _ (proj₁ l , proj₂ l) z (floc τe)) (sym (Block.out bk))
-                (mk-pair (word-tr kpe (RQs.out (Walk.post wa))) (word-tr kpbe (RQs.out (Walk.post wb)))
-                         (Block.c0r bk) (Block.c1r bk) (Block.live bk))
 
       stack-e : StackAt VE (falloc τe) (floc τe) val sn rest
-      stack-e = stack-keep val-tr kpe (Walk.cf we)
-                  (Walk.slots we′ val (below-suc val<s , below 3 val<s)) (RQs.stack (Walk.post wa))
+      stack-e = stack-keep val-tr (walk-kp we) (Walk.cf we)
+                  (E.slots val (below-suc val<s) (below 3 val<s)) (RQs.stack (Walk.post wa))
 
-      len-eq : length (RW (wf-Prod a b) s lb) ≡ 4 + (length VB + (4 + (length VA + 9)))
-      len-eq = cong (4 +_) (trans (length-++ VB {T3}) (cong (λ z → length VB + (4 + z)) (length-++ VA {epi})))
+      len-eq : length (RW (wf-Prod a b) s lb) ≡ 4 + (length VB + (4 + (length VA + length epi)))
+      len-eq = trans (cong length shape) (cong (4 +_) (trans (length-++ VB {T3}) (cong (λ z → length VB + (4 + z)) (length-++ VA {epi}))))
 
-      end-eq : 9 + fpc τa ≡ length (RW (wf-Prod a b) s lb) + base
-      end-eq = trans (cong (9 +_) (trans (Walk.pc wa) (cong (λ z → length VA + suc (suc (suc (suc z)))) (Walk.pc wb))))
-                     (trans (prod-end-r (length VA) (length VB) base) (cong (_+ base) (sym len-eq)))
+      end-eq : length epi + fpc τa ≡ length (RW (wf-Prod a b) s lb) + base
+      end-eq = trans (cong (length epi +_) (trans (Walk.pc wa) (cong (λ z → length VA + suc (suc (suc (suc z)))) (Walk.pc wb))))
+                     (trans (prod-end-r (length epi) (length VA) (length VB) base) (cong (_+ base) (sym len-eq)))
 
-      result : Walk prog n (KR s) σ (length (RW (wf-Prod a b) s lb) + base) (RQ (⟦ G ⟧TI C I.* ⟦ H ⟧TI C) l rest)
-      result = walk-pc end-eq (walk-post all (record { out = built ; stack = stack-e }))
+      result : Walk prog n (KR s) σ (length (RW (wf-Prod a b) s lb) + base) (RQ (Z₁ I.* Z₂) l rest)
+      result = walk-pc end-eq (walk-post all (record { out = Walk.post we ; stack = stack-e }))
 
     ----------------------------------------------------------------------
-    -- ⊕: branch on the tag, rebuild the payload, wrap it in a fresh sum block, join.
+    -- ⊕: branch on the tag, rebuild the payload, wrap it in a fresh flat sum block, join.
     ----------------------------------------------------------------------
     module SumC {G H : IRFunctor} (a : WellFormedFI G) (b : WellFormedFI H) (iha : RebuildT a) (ihb : RebuildT b)
                 (s lb : ℕ) (σ : FlatState) (vs : List ⟦ C ⟧) (rest : List ⟦ C ⟧)
@@ -817,15 +560,19 @@ module CataRebuildC {FS : FrameSemantics} where
       lF = lsize ⌈ G ⌉F
       lH = lsize ⌈ H ⌉F
       ssl = suc (suc lb)
+      Y₁ = ⟦ G ⟧TI (μ-type F)
+      Y₂ = ⟦ H ⟧TI (μ-type F)
+      Z₁ = ⟦ G ⟧TI C
+      Z₂ = ⟦ H ⟧TI C
 
       pre : AbstractTrace
-      pre = instr-ctrl (c-branch-tag-zero (ℓ o lb)) ∷ load-indirect-suc ∷ mov-to-input ∷ []
+      pre = instr-ctrl (c-branch-tag-zero (ℓ o lb)) ∷ get-i Y₂ 1 ∷ mov-to-input ∷ []
       VR = RW b (s + 4) (ssl + lF)
-      WR = wrap-sum 1 s
+      WR = wrap-sum 1 (kind Z₂) (size Z₂) (size (Z₁ I.+ Z₂)) s
       mid : AbstractTrace
-      mid = instr-ctrl (c-jmp (ℓ o (suc lb))) ∷ instr-ctrl (c-label (ℓ o lb)) ∷ load-indirect-suc ∷ mov-to-input ∷ []
+      mid = instr-ctrl (c-jmp (ℓ o (suc lb))) ∷ instr-ctrl (c-label (ℓ o lb)) ∷ get-i Y₁ 1 ∷ mov-to-input ∷ []
       VL = RW a (s + 4) ssl
-      WL = wrap-sum 0 s
+      WL = wrap-sum 0 (kind Z₁) (size Z₁) (size (Z₁ I.+ Z₂)) s
       post : AbstractTrace
       post = instr-ctrl (c-label (ℓ o (suc lb))) ∷ []
       R4 = WL ++ post
@@ -833,20 +580,46 @@ module CataRebuildC {FS : FrameSemantics} where
       R2 = mid ++ R3
       R1 = WR ++ R2
 
+      -- the text, with its reads as rows and its wraps at the IR's types
+      txt : AbstractTrace → AbstractTrace → Kind → ℕ → Kind → ℕ → ℕ → AbstractTrace
+      txt gH gG kH sH kG sG ss =
+        (instr-ctrl (c-branch-tag-zero (ℓ o lb)) ∷ []) ++ gH ++ (mov-to-input ∷ []) ++ VR ++
+        wrap-sum 1 kH sH ss s ++
+        (instr-ctrl (c-jmp (ℓ o (suc lb))) ∷ instr-ctrl (c-label (ℓ o lb)) ∷ []) ++ gG ++ (mov-to-input ∷ []) ++ VL ++
+        wrap-sum 0 kG sG ss s ++ post
+
+      txt-eq : ∀ {a₁ a₂ b₁ b₂ c₁ c₂ d₁ d₂ e₁ e₂ f₁ f₂ g₁ g₂}
+             → a₁ ≡ a₂ → b₁ ≡ b₂ → c₁ ≡ c₂ → d₁ ≡ d₂ → e₁ ≡ e₂ → f₁ ≡ f₂ → g₁ ≡ g₂
+             → txt a₁ b₁ c₁ d₁ e₁ f₁ g₁ ≡ txt a₂ b₂ c₂ d₂ e₂ f₂ g₂
+      txt-eq refl refl refl refl refl refl refl = refl
+
+      shape : RW (wf-Sum a b) s lb ≡ pre ++ VR ++ R1
+      shape = txt-eq (getμ-one H 1) (getμ-one G 1)
+                     (sym (lkind-gen H C)) (sym (lsz-gen H C)) (sym (lkind-gen G C)) (sym (lsz-gen G C))
+                     (sym (cong suc (cong₂ _⊔_ (lsz-gen G C) (lsz-gen H C))))
+
+      span′ : SpanAt prog base (pre ++ VR ++ R1)
+      span′ = subst (SpanAt prog base) shape span
+      la′ : LabelsAt prog base (pre ++ VR ++ R1)
+      la′ = subst (LabelsAt prog base) shape la
+
       n≤s4 : n ≤ s + 4
       n≤s4 = ≤-trans n≤s (m≤m+n s 4)
 
-      X₀ = length VR + (3 + base)
-      Y₀ = length VL + (4 + (9 + X₀))
+      P₁ = length VR + (3 + base)
+      P₂ = length WR + P₁
+      P₃ = 4 + P₂
+      Y₀ = length VL + P₃
+      P₅ = length WL + Y₀
 
-      SP1 = span-drop prog pre {VR ++ R1} base span
+      SP1 = span-drop prog pre {VR ++ R1} base span′
       SPR = span-take prog VR {R1} (3 + base) SP1
       SP2 = span-drop prog VR {R1} (3 + base) SP1
-      SPWR = span-take prog WR {R2} X₀ SP2
-      SP3 = span-drop prog WR {R2} X₀ SP2
-      SP4 = span-drop prog mid {R3} (9 + X₀) SP3
-      SPL = span-take prog VL {R4} (4 + (9 + X₀)) SP4
-      SP5 = span-drop prog VL {R4} (4 + (9 + X₀)) SP4
+      SPWR = span-take prog WR {R2} P₁ SP2
+      SP3 = span-drop prog WR {R2} P₁ SP2
+      SP4 = span-drop prog mid {R3} P₂ SP3
+      SPL = span-take prog VL {R4} P₃ SP4
+      SP5 = span-drop prog VL {R4} P₃ SP4
       SPWL = span-take prog WL {post} Y₀ SP5
       SP6 = span-drop prog WL {post} Y₀ SP5
 
@@ -855,30 +628,27 @@ module CataRebuildC {FS : FrameSemantics} where
       lb<hi : lb < ssl + lF
       lb<hi = ≤-trans (n≤1+n (suc lb)) (m≤m+n ssl lF)
 
-      ls-VR = rebuild-ls ⌈ H ⌉F val tv tb (s + 4) (ssl + lF)
-      ls-VL = rebuild-ls ⌈ G ⌉F val tv tb (s + 4) ssl
+      ls-VR = rebuild-ls ck cs ⌈ H ⌉F val tv tb (s + 4) (ssl + lF)
+      ls-VL = rebuild-ls ck cs ⌈ G ⌉F val tv tb (s + 4) ssl
 
       ls-post : LabelsIn (suc lb) ssl post
       ls-post = li-lab refl ≤-refl ≤-refl ∷ᴬ []ᴬ
 
       ls-R4 : LabelsIn (suc lb) ssl R4
-      ls-R4 = ++⁺ (wrap-sum-ls (suc lb) ssl 0 s) ls-post
+      ls-R4 = ++⁺ (wrap-sum-ls (suc lb) ssl 0 (kind Z₁) (size Z₁) (size (Z₁ I.+ Z₂)) s) ls-post
 
       ls-R3 : LabelsIn (suc lb) (ssl + lF) R3
       ls-R3 = ++⁺ (ls-weaken (n≤1+n (suc lb)) ≤-refl ls-VL) (ls-weaken ≤-refl (m≤m+n ssl lF) ls-R4)
 
-      ls-R1 : LabelsIn lb (ssl + lF) R1
-      ls-R1 = ++⁺ (wrap-sum-ls lb (ssl + lF) 1 s)
-                (li-lab refl (n≤1+n lb) slb<hi ∷ᴬ li-lab refl ≤-refl lb<hi ∷ᴬ li-none refl ∷ᴬ li-none refl ∷ᴬ
-                 ls-weaken (n≤1+n lb) ≤-refl ls-R3)
+      ls-R2 : LabelsIn lb (ssl + lF) R2
+      ls-R2 = li-lab refl (n≤1+n lb) slb<hi ∷ᴬ li-lab refl ≤-refl lb<hi ∷ᴬ lgi Y₁ 1 ∷ᴬ li-none refl ∷ᴬ
+              ls-weaken (n≤1+n lb) ≤-refl ls-R3
 
-      nl3 : ∀ m (i₁ i₂ i₃ : AbstractInstr) → label-of? i₁ ≡ nothing → label-of? i₂ ≡ nothing
-          → label-of? i₃ ≡ nothing → Resolve.NoLabel {FS} m (i₁ ∷ i₂ ∷ i₃ ∷ [])
-      nl3 m i₁ i₂ i₃ e₁ e₂ e₃ = ne e₁ ∷ᴬ ne e₂ ∷ᴬ ne e₃ ∷ᴬ []ᴬ
-        where ne : ∀ {i : AbstractInstr} → label-of? i ≡ nothing → ¬ (label-of? i ≡ just m)
-              ne e e′ = nj (trans (sym e) e′)
-                where nj : ∀ {x : LabelId} → nothing ≢ just x
-                      nj ()
+      ls-R1 : LabelsIn lb (ssl + lF) R1
+      ls-R1 = ++⁺ (wrap-sum-ls lb (ssl + lF) 1 (kind Z₂) (size Z₂) (size (Z₁ I.+ Z₂)) s) ls-R2
+
+      nl-pre : ∀ m → Resolve.NoLabel {FS} m pre
+      nl-pre m = (λ ()) ∷ᴬ ngi Y₂ 1 m ∷ᴬ (λ ()) ∷ᴬ []ᴬ
 
       idx-of : Maybe LabelId → ℕ
       idx-of (just l) = idx l
@@ -886,19 +656,21 @@ module CataRebuildC {FS : FrameSemantics} where
 
       nl-mid : ∀ m j → find-label R3 m ≡ just j → Resolve.NoLabel {FS} m mid
       nl-mid m j eq = (λ ()) ∷ᴬ (λ e → <-irrefl refl (subst (λ z → suc z ≤ idx m) (cong idx-of e) (proj₁ (found-in-window R3 m j eq ls-R3))))
-                      ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ []ᴬ
+                      ∷ᴬ ngi Y₁ 1 m ∷ᴬ (λ ()) ∷ᴬ []ᴬ
 
-      LA1 = labels-drop prog pre {VR ++ R1} base la (λ m j _ → nl3 m _ _ _ refl refl refl)
+      LA1 = labels-drop prog pre {VR ++ R1} base la′ (λ m j _ → nl-pre m)
       LAR = labels-take prog VR {R1} (3 + base) LA1
       LA2 = labels-drop prog VR {R1} (3 + base) LA1 (λ m j e → no-label-in m VR R1 j ls-VR ls-R1 e (inj₁ ≤-refl))
-      LA3 = labels-drop prog WR {R2} X₀ LA2 (λ m j _ → nl-block2 m s (suc s) s (instr-load-tag-lit 1) refl)
-      LA4 = labels-drop prog mid {R3} (9 + X₀) LA3 nl-mid
-      LAL = labels-take prog VL {R4} (4 + (9 + X₀)) LA4
-      LA5 = labels-drop prog VL {R4} (4 + (9 + X₀)) LA4 (λ m j e → no-label-in m VL R4 j ls-VL ls-R4 e (inj₁ ≤-refl))
-      LA6 = labels-drop prog WL {post} Y₀ LA5 (λ m j _ → nl-block2 m s (suc s) s (instr-load-tag-lit 0) refl)
+      LA3 = labels-drop prog WR {R2} P₁ LA2
+              (λ m j e → no-label-in m WR R2 j (wrap-sum-ls 0 0 1 (kind Z₂) (size Z₂) (size (Z₁ I.+ Z₂)) s) ls-R2 e (inj₂ z≤n))
+      LA4 = labels-drop prog mid {R3} P₂ LA3 nl-mid
+      LAL = labels-take prog VL {R4} P₃ LA4
+      LA5 = labels-drop prog VL {R4} P₃ LA4 (λ m j e → no-label-in m VL R4 j ls-VL ls-R4 e (inj₁ ≤-refl))
+      LA6 = labels-drop prog WL {post} Y₀ LA5
+              (λ m j e → no-label-in m WL post j (wrap-sum-ls 0 0 0 (kind Z₁) (size Z₁) (size (Z₁ I.+ Z₂)) s) ls-post e (inj₂ z≤n))
 
-      J₁ = 1 + (9 + X₀)
-      J  = 0 + (9 + Y₀)
+      J₁ = 1 + P₂
+      J  = 0 + P₅
 
       inl-tgt : find-label prog (ℓ o lb) ≡ just J₁
       inl-tgt = LA3 (ℓ o lb) 1 (fl-hit (ℓ o lb) _ 1)
@@ -906,11 +678,13 @@ module CataRebuildC {FS : FrameSemantics} where
       join-tgt : find-label prog (ℓ o (suc lb)) ≡ just J
       join-tgt = LA6 (ℓ o (suc lb)) 0 (fl-hit (ℓ o (suc lb)) [] 0)
 
-      len-eq : length (RW (wf-Sum a b) s lb) ≡ 3 + (length VR + (9 + (4 + (length VL + (9 + 1)))))
-      len-eq = cong (3 +_) (trans (length-++ VR {R1}) (cong (λ z → length VR + (9 + (4 + z))) (length-++ VL {R4})))
+      len-eq : length (RW (wf-Sum a b) s lb) ≡ 3 + (length VR + (length WR + (4 + (length VL + (length WL + 1)))))
+      len-eq = trans (cong length shape)
+                 (cong (3 +_) (trans (length-++ VR {R1}) (cong (length VR +_) (trans (length-++ WR {R2})
+                   (cong (λ z → length WR + (4 + z)) (trans (length-++ VL {R4}) (cong (length VL +_) (length-++ WL {post}))))))))
 
-      end-eq : suc (9 + Y₀) ≡ length (RW (wf-Sum a b) s lb) + base
-      end-eq = trans (sum-end-r (length VL) (length VR) base) (cong (_+ base) (sym len-eq))
+      end-eq : suc P₅ ≡ length (RW (wf-Sum a b) s lb) + base
+      end-eq = trans (sum-end-r (length WL) (length VL) (length WR) (length VR) base) (cong (_+ base) (sym len-eq))
 
       s4u : s + 4 ≤ u
       s4u = su4 s (fsize ⌈ G ⌉F + fsize ⌈ H ⌉F) u su
@@ -918,146 +692,135 @@ module CataRebuildC {FS : FrameSemantics} where
       ks : ∀ j → KR s j → (j ≢ s) × (j ≢ suc s)
       ks j kj = nk0 s4u (proj₁ kj) , nk1 s4u (proj₁ kj)
 
-      -- the payload's two unpacking rows
-      module Unpack {A : IRTy} (v : ⟦ A ⟧) (t : ℕ) (q0 : FlatState) (hl : HeapLocation)
+      -- the payload's two rows (its read at word 1, then into Input1)
+      module Unpack {A : IRTy} (v : ⟦ A ⟧) (q0 : FlatState) (hl : HeapLocation)
                     (nh0 : halted (floc q0) ≡ false)
                     (in0 : readReg (regs (floc q0)) Input1 ≡ SV-Ptr (AtDynamic hl))
-                    (sc : SumCell prog (falloc q0) A v t hl (floc q0))
+                    (lv0 : Live (falloc q0) (AtDynamic hl))
+                    (cell : CellAt {prog = prog} (falloc q0) A v (offsetLoc (AtDynamic hl) 1) (floc q0))
                     (st0 : StackAt VE (falloc q0) (floc q0) val sn vs)
-                    (f1 : fetch prog (fpc q0) ≡ just load-indirect-suc)
+                    (f1 : fetch prog (fpc q0) ≡ just (get-i A 1))
                     (f2 : fetch prog (suc (fpc q0)) ≡ just mov-to-input) where
-        q1 = St load-indirect-suc q0
+        g : GetOut {prog = prog} A v q0
+        g = get-run A 1 q0 (AtDynamic hl) nh0 (get-fetch {prog} {fpc q0} A 1 f1) in0 lv0 cell
+        q1 = setOut q0 (GetOut.out g)
         q2 = St mov-to-input q1
-        wf1 : InstrWF (floc q0) (falloc q0) load-indirect-suc
-        wf1 = AtDynamic hl , cong sv-as-loc in0 , SumCell.word sc , SumCell.pay sc
-        nh1 = exec-abstract-preserves-halted-WF load-indirect-suc (floc q0) (falloc q0) nh0 wf1
         nh2 : halted (floc q2) ≡ false
-        nh2 = exec-abstract-preserves-halted-WF mov-to-input (floc q1) (falloc q1) nh1 tt
-        in2 : readReg (regs (floc q2)) Input1 ≡ SumCell.word sc
-        in2 = trans (in-movin (floc q1) (falloc q1)) (out-lind-suc (floc q0) (falloc q0) (AtDynamic hl) _ in0 (SumCell.pay sc))
+        nh2 = exec-abstract-preserves-halted-WF mov-to-input (floc q1) (falloc q1) nh0 tt
+        kp-q2 = kp-q mov-to-input q1 nhw-mov-to-input refl tt tt bk-id
         kp2 : Kp (falloc q0) (floc q0) (falloc q2) (floc q2)
-        kp2 = kp-∘ (kp-q load-indirect-suc q0 nhw-load-indirect-suc refl tt tt) (kp-q mov-to-input q1 nhw-mov-to-input refl tt tt)
+        kp2 = kp-∘ (kp-set q0 (GetOut.out g)) kp-q2
         cf2 : current-frame (falloc q2) ≡ current-frame (falloc q0)
-        cf2 = trans (exec-abstract-preserves-frame mov-to-input (floc q1) (falloc q1))
-                    (exec-abstract-preserves-frame load-indirect-suc (floc q0) (falloc q0))
+        cf2 = exec-abstract-preserves-frame mov-to-input (floc q1) (falloc q1)
         wd2 : InWord A v q2
-        wd2 = subst (λ z → WordAt prog (falloc q2) A v z (floc q2)) (sym in2) (word-tr kp2 (SumCell.wd sc))
+        wd2 = subst (λ z → WordAt prog (falloc q2) A v z (floc q2)) (sym (in-movin (floc q1) (falloc q1)))
+                (word-tr kp-q2 (place→word (GetOut.place g)))
         st2 : StackAt VE (falloc q2) (floc q2) val sn vs
         st2 = stack-keep val-tr kp2 cf2
                 (trans (sl-keep mov-to-input (floc q1) (falloc q1) _ val nhw-mov-to-input refl)
-                       (sl-keep load-indirect-suc (floc q0) (falloc q0) _ val nhw-load-indirect-suc refl)) st0
+                       (out-mem q0 (GetOut.out g) (AtStack _ val))) st0
         walk : Walk prog n (KR s) q0 (fpc q2) (λ _ → ⊤)
-        walk = walk-∘ (walk-q {Q = λ _ → ⊤} q0 load-indirect-suc refl nh0 f1 wf1 nhw-load-indirect-suc refl tt tt refl tt tt)
-                      (walk-q q1 mov-to-input refl nh1 f2 tt nhw-mov-to-input refl tt tt refl tt tt)
+        walk = walk-∘ {prog} {n} {KR s} {q0} (get-walk {Q = λ _ → ⊤} q0 g nh0 tt)
+                      (walk-q q1 mov-to-input refl nh0 f2 tt nhw-mov-to-input refl tt tt refl tt bk-id tt)
 
-      -- the payload rebuilt (a walk to `τp`), then wrapped with tag `t`
-      module Wrap {A B : IRTy} (inj : ⟦ A ⟧ → ⟦ B ⟧) (t : ℕ) (lp : ⟦ A ⟧) (τp : FlatState)
+      -- the payload rebuilt (a walk to `τp`), then wrapped
+      module Wrap (r : Arm) (lp : ⟦ arm-ty r Z₁ Z₂ ⟧) (τp : FlatState)
                   (nhp : halted (floc τp) ≡ false)
-                  (spw : SpanAt prog (fpc τp) (wrap-sum t s))
-                  (rq : RQ A lp rest τp)
-                  (mk : ∀ {a c s′ hb} → WordAt prog a A lp c s′ → readLoc s′ (AtDynamic hb) ≡ just (SV-Tag t)
-                      → readLoc s′ (AtDynamic (sucHL hb)) ≡ just c → Live a (AtDynamic hb)
-                      → WordAt prog a B (inj lp) (SV-Ptr (AtDynamic hb)) s′) where
-        wP = readReg (regs (floc τp)) Output
-        ww′ : Walk prog n (λ j → (j ≢ s) × (j ≢ suc s)) τp (9 + fpc τp) (Block (SV-Tag t) wP)
-        ww′ = (Block2.walk prog n s (suc s) s (instr-load-tag-lit t) (SV-Tag t) wP τp (r5-tag t) spw nhp n≤s
-            (≤-trans n≤s (n≤1+n s)) (λ e → <-irrefl e (n<1+n s)) (inj₁ (refl , refl))) (λ j kj → kj)
-        ww : Walk prog n (KR s) τp (9 + fpc τp) (Block (SV-Tag t) wP)
-        ww = walk-K ks ww′
+                  (spw : SpanAt prog (fpc τp) (wrap-sum (arm-tag r) (kind (arm-ty r Z₁ Z₂)) (size (arm-ty r Z₁ Z₂)) (size (Z₁ I.+ Z₂)) s))
+                  (rq : RQ (arm-ty r Z₁ Z₂) lp rest τp) where
+        module W = BuildSum {prog} n r Z₁ Z₂ s τp spw nhp n≤s (RQs.out rq)
+        ww : Walk prog n (KR s) τp (length W.T + fpc τp)
+                  (λ τ′ → WordAt prog (falloc τ′) (Z₁ I.+ Z₂) (arm-val r lp) (readReg (regs (floc τ′)) Output) (floc τ′))
+        ww = W.walk ks
         τw = Walk.τ ww
-        bk = Walk.post ww
-        kpw = walk-kp ww
-        post-w : RQ B (inj lp) rest τw
+        post-w : RQ (Z₁ I.+ Z₂) (arm-val r lp) rest τw
         post-w = record
-          { out = subst (λ z → WordAt prog (falloc τw) B (inj lp) z (floc τw)) (sym (Block.out bk))
-                    (mk (word-tr kpw (RQs.out rq)) (Block.c0r bk) (Block.c1r bk) (Block.live bk))
-          ; stack = stack-keep val-tr kpw (Walk.cf ww) (Walk.slots ww′ val (below0 val<s , below-suc val<s)) (RQs.stack rq) }
-        walk : Walk prog n (KR s) τp (9 + fpc τp) (RQ B (inj lp) rest)
+          { out = Walk.post ww
+          ; stack = stack-keep val-tr (walk-kp ww) (Walk.cf ww) (W.slots val (below0 val<s) (below-suc val<s)) (RQs.stack rq) }
+        walk : Walk prog n (KR s) τp (length W.T + fpc τp) (RQ (Z₁ I.+ Z₂) (arm-val r lp) rest)
         walk = walk-post ww post-w
 
       -- `inr`
-      module Inr (y : ⟦ ⟦ H ⟧TI (μ-type F) ⟧) (l₂ : ⟦ ⟦ H ⟧TI C ⟧)
+      module Inr (y : ⟦ Y₂ ⟧) (l₂ : ⟦ Z₂ ⟧)
                  (fy : fillI b (μ-type F) C y vs ≡ just (l₂ , rest))
-                 (wd : InWord (⟦ G ⟧TI (μ-type F) I.+ ⟦ H ⟧TI (μ-type F)) (inj₂ y) σ) where
+                 (wd : InWord (Y₁ I.+ Y₂) (inj₂ y) σ) where
         pt = sum-ptr wd
-        sc = sum-inr (PtrTo.val pt)
 
         cond : tag-test (flat-read-tag (floc σ)) ≡ just false
-        cond = trans (cong (λ z → tag-test (flat-read-at (floc σ) (sv-as-loc z))) (PtrTo.eq pt)) (cong tag-test (SumCell.tag sc))
+        cond = tag-inr (PtrTo.val pt) (PtrTo.eq pt)
 
         q0 = record σ { fpc = suc base }
         w0 : Walk prog n (KR s) σ (suc base) (λ _ → ⊤)
-        w0 = walk-ctrl σ (instr-ctrl (c-branch-tag-zero (ℓ o lb))) (suc base) nh (span 0 _ refl)
+        w0 = walk-ctrl σ (instr-ctrl (c-branch-tag-zero (ℓ o lb))) (suc base) nh (span′ 0 _ refl)
                (flat-tag-branch-not prog σ (ℓ o lb) cond) refl tt tt
 
-        module U = Unpack y 1 q0 (PtrTo.hl pt) nh (PtrTo.eq pt) sc st (span 1 _ refl) (span 2 _ refl)
+        module U = Unpack y q0 (PtrTo.hl pt) nh (PtrTo.eq pt) (PtrTo.live pt) (payload-r (PtrTo.val pt)) st (span′ 1 _ refl) (span′ 2 _ refl)
 
-        wR : Walk prog n (KR (s + 4)) U.q2 (length VR + fpc U.q2) (RQ (⟦ H ⟧TI C) l₂ rest)
+        wR : Walk prog n (KR (s + 4)) U.q2 (length VR + fpc U.q2) (RQ Z₂ l₂ rest)
         wR = ihb (s + 4) (ssl + lF) U.q2 y vs l₂ rest fy n≤s4 (up val<s) (su-r s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPR LAR U.nh2 U.wd2 U.st2
 
         τR = Walk.τ wR
 
-        module Wp = Wrap {⟦ H ⟧TI C} {⟦ G ⟧TI C I.+ ⟦ H ⟧TI C} inj₂ 1 l₂ τR (Walk.nh wR)
-                      (subst (λ z → SpanAt prog z WR) (sym (Walk.pc wR)) SPWR) (Walk.post wR) mk-inr
+        module Wp = Wrap arm-r l₂ τR (Walk.nh wR) (subst (λ z → SpanAt prog z WR) (sym (Walk.pc wR)) SPWR) (Walk.post wR)
 
         τW = Walk.τ Wp.walk
 
-        wj : Walk prog n (KR s) τW J (RQ (⟦ G ⟧TI C I.+ ⟦ H ⟧TI C) (inj₂ l₂) rest)
+        pcW : fpc τW ≡ P₂
+        pcW = trans (Walk.pc Wp.walk) (cong (length WR +_) (Walk.pc wR))
+
+        wj : Walk prog n (KR s) τW J (RQ (Z₁ I.+ Z₂) (inj₂ l₂) rest)
         wj = walk-ctrl τW (instr-ctrl (c-jmp (ℓ o (suc lb)))) J (Walk.nh Wp.walk)
-               (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-jmp (ℓ o (suc lb)))))
-                      (sym (trans (Walk.pc Wp.walk) (cong (9 +_) (Walk.pc wR)))) (SP3 0 _ refl))
+               (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-jmp (ℓ o (suc lb))))) (sym pcW) (SP3 0 _ refl))
                (cong (λ mj → do-jump mj τW) join-tgt) refl tt (Walk.post Wp.walk)
 
-        wl : Walk prog n (KR s) (record τW { fpc = J }) (suc J) (RQ (⟦ G ⟧TI C I.+ ⟦ H ⟧TI C) (inj₂ l₂) rest)
+        wl : Walk prog n (KR s) (record τW { fpc = J }) (suc J) (RQ (Z₁ I.+ Z₂) (inj₂ l₂) rest)
         wl = walk-ctrl (record τW { fpc = J }) (instr-ctrl (c-label (ℓ o (suc lb)))) (suc J) (Walk.nh Wp.walk)
                (SP6 0 _ refl) refl refl tt (Walk.post Wp.walk)
 
-        result : Walk prog n (KR s) σ (length (RW (wf-Sum a b) s lb) + base) (RQ (⟦ G ⟧TI C I.+ ⟦ H ⟧TI C) (inj₂ l₂) rest)
+        result : Walk prog n (KR s) σ (length (RW (wf-Sum a b) s lb) + base) (RQ (Z₁ I.+ Z₂) (inj₂ l₂) rest)
         result = walk-pc end-eq
           (walk-∘ {prog} {n} {KR s} {σ} w0 (walk-∘ {prog} {n} {KR s} {q0} U.walk
             (walk-∘ {prog} {n} {KR s} {U.q2} (walk-K (kr-up s) wR) (walk-∘ {prog} {n} {KR s} {τR} Wp.walk
               (walk-∘ {prog} {n} {KR s} {τW} wj wl)))))
 
       -- `inl`
-      module Inl (x : ⟦ ⟦ G ⟧TI (μ-type F) ⟧) (l₁ : ⟦ ⟦ G ⟧TI C ⟧)
+      module Inl (x : ⟦ Y₁ ⟧) (l₁ : ⟦ Z₁ ⟧)
                  (fx : fillI a (μ-type F) C x vs ≡ just (l₁ , rest))
-                 (wd : InWord (⟦ G ⟧TI (μ-type F) I.+ ⟦ H ⟧TI (μ-type F)) (inj₁ x) σ) where
+                 (wd : InWord (Y₁ I.+ Y₂) (inj₁ x) σ) where
         pt = sum-ptr wd
-        sc = sum-inl (PtrTo.val pt)
 
         cond : tag-test (flat-read-tag (floc σ)) ≡ just true
-        cond = trans (cong (λ z → tag-test (flat-read-at (floc σ) (sv-as-loc z))) (PtrTo.eq pt)) (cong tag-test (SumCell.tag sc))
+        cond = tag-inl (PtrTo.val pt) (PtrTo.eq pt)
 
         i1 = record σ { fpc = J₁ }
         w0 : Walk prog n (KR s) σ J₁ (λ _ → ⊤)
-        w0 = walk-ctrl σ (instr-ctrl (c-branch-tag-zero (ℓ o lb))) J₁ nh (span 0 _ refl)
+        w0 = walk-ctrl σ (instr-ctrl (c-branch-tag-zero (ℓ o lb))) J₁ nh (span′ 0 _ refl)
                (trans (flat-tag-branch-yes prog σ (ℓ o lb) cond) (cong (λ mj → do-jump mj σ) inl-tgt)) refl tt tt
 
         i2 = record i1 { fpc = suc J₁ }
         w1 : Walk prog n (KR s) i1 (suc J₁) (λ _ → ⊤)
         w1 = walk-ctrl i1 (instr-ctrl (c-label (ℓ o lb))) (suc J₁) nh (SP3 1 _ refl) refl refl tt tt
 
-        module U = Unpack x 0 i2 (PtrTo.hl pt) nh (PtrTo.eq pt) sc st (SP3 2 _ refl) (SP3 3 _ refl)
+        module U = Unpack x i2 (PtrTo.hl pt) nh (PtrTo.eq pt) (PtrTo.live pt) (payload-l (PtrTo.val pt)) st (SP3 2 _ refl) (SP3 3 _ refl)
 
-        wL : Walk prog n (KR (s + 4)) U.q2 (length VL + fpc U.q2) (RQ (⟦ G ⟧TI C) l₁ rest)
+        wL : Walk prog n (KR (s + 4)) U.q2 (length VL + fpc U.q2) (RQ Z₁ l₁ rest)
         wL = iha (s + 4) ssl U.q2 x vs l₁ rest fx n≤s4 (up val<s) (su-l s (fsize ⌈ G ⌉F) (fsize ⌈ H ⌉F) u su) SPL LAL U.nh2 U.wd2 U.st2
 
         τL = Walk.τ wL
 
-        module Wp = Wrap {⟦ G ⟧TI C} {⟦ G ⟧TI C I.+ ⟦ H ⟧TI C} inj₁ 0 l₁ τL (Walk.nh wL)
-                      (subst (λ z → SpanAt prog z WL) (sym (Walk.pc wL)) SPWL) (Walk.post wL) mk-inl
+        module Wp = Wrap arm-l l₁ τL (Walk.nh wL) (subst (λ z → SpanAt prog z WL) (sym (Walk.pc wL)) SPWL) (Walk.post wL)
 
         τW = Walk.τ Wp.walk
 
-        pcW : fpc τW ≡ 9 + Y₀
-        pcW = trans (Walk.pc Wp.walk) (cong (9 +_) (Walk.pc wL))
+        pcW : fpc τW ≡ P₅
+        pcW = trans (Walk.pc Wp.walk) (cong (length WL +_) (Walk.pc wL))
 
-        wl : Walk prog n (KR s) τW (suc (fpc τW)) (RQ (⟦ G ⟧TI C I.+ ⟦ H ⟧TI C) (inj₁ l₁) rest)
+        wl : Walk prog n (KR s) τW (suc (fpc τW)) (RQ (Z₁ I.+ Z₂) (inj₁ l₁) rest)
         wl = walk-ctrl τW (instr-ctrl (c-label (ℓ o (suc lb)))) (suc (fpc τW)) (Walk.nh Wp.walk)
                (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-label (ℓ o (suc lb))))) (sym pcW) (SP6 0 _ refl))
                refl refl tt (Walk.post Wp.walk)
 
-        result : Walk prog n (KR s) σ (length (RW (wf-Sum a b) s lb) + base) (RQ (⟦ G ⟧TI C I.+ ⟦ H ⟧TI C) (inj₁ l₁) rest)
+        result : Walk prog n (KR s) σ (length (RW (wf-Sum a b) s lb) + base) (RQ (Z₁ I.+ Z₂) (inj₁ l₁) rest)
         result = walk-pc (trans (cong suc pcW) end-eq)
           (walk-∘ {prog} {n} {KR s} {σ} w0 (walk-∘ {prog} {n} {KR s} {i1} w1 (walk-∘ {prog} {n} {KR s} {i2} U.walk
             (walk-∘ {prog} {n} {KR s} {U.q2} (walk-K (kr-up s) wL) (walk-∘ {prog} {n} {KR s} {τL} Wp.walk wl)))))

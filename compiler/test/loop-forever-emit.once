@@ -9,9 +9,10 @@
 -- stops it, and its trace starts 0, 1, 2, 3, 4. It has no expected exit, so
 -- tests/run-exit-tests*.sh skip it.
 --
--- FAILS until plan 0.123 Part B (the proven allocators reclaim): each round
+-- FAILS until plan 0.146 (memory by a linear core; this is its gate): each round
 -- allocates its next state on the bump heap, which nothing reclaims, so the
--- 64 KiB heap fills after a few thousand rounds and the binary segfaults.
+-- heap fills after a few thousand rounds; a room check sees it and the run
+-- ends `exhausted` (the Host's SIGABRT, D377) instead of running on.
 
 import I.Test.Emit as E
 

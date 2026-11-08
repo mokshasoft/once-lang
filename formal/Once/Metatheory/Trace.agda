@@ -24,11 +24,12 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function using (flip)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Spec.Delay using (Delay; module Delay; now; _⇓_; now⇓; later⇓; _≈⟨_⟩_)
-open import Once.Spec.Trace using (End; returned; halted; Tr; module Tr; EndRel; returned≈; halted≈; StepRel; _≈ᵗ⟨_⟩_; module _≈ᵗ⟨_⟩_)
+open import Once.Spec.Trace using (End; returned; halted; exhausted; Tr; module Tr; EndRel; returned≈; halted≈; exhausted≈; StepRel; _≈ᵗ⟨_⟩_; module _≈ᵗ⟨_⟩_; _⊑ᵗ⟨_⟩_; module _⊑ᵗ⟨_⟩_)
 
 open Delay using (step)
 open Tr using (next)
 open _≈ᵗ⟨_⟩_ using (same)
+open _⊑ᵗ⟨_⟩_ using (sound; complete)
 
 private
   S : Set → Set
@@ -45,12 +46,14 @@ module _ {X : Set} {R : X → X → Set} where
   same (WB-refl r t) = (λ o a → o , a , reflStep r o) , (λ o a → o , a , reflStep r o)
   reflStep r (inj₁ (returned x)) = returned≈ (r x)
   reflStep r (inj₁ halted)       = halted≈
+  reflStep r (inj₁ exhausted)    = exhausted≈
   reflStep r (inj₂ (v , t))      = refl , WB-refl r t
 
   private
     flipEnd : ∀ {e e′} → (∀ {x y} → R x y → R y x) → EndRel R e e′ → EndRel R e′ e
     flipEnd s (returned≈ r) = returned≈ (s r)
     flipEnd s halted≈       = halted≈
+    flipEnd s exhausted≈    = exhausted≈
 
   WB-sym  : (∀ {x y} → R x y → R y x) → ∀ {t t′ : Tr X} → t ≈ᵗ⟨ R ⟩ t′ → t′ ≈ᵗ⟨ R ⟩ t
   symStep : (∀ {x y} → R x y → R y x) → ∀ {o o′ : S X} → StepRel R (λ u u′ → u ≈ᵗ⟨ R ⟩ u′) o o′
@@ -72,6 +75,7 @@ module _ {X : Set} {R : X → X → Set} where
       endT : ∀ {e₁ e₂ e₃} → EndRel R e₁ e₂ → EndRel R e₂ e₃ → EndRel R e₁ e₃
       endT (returned≈ r) (returned≈ r′) = returned≈ (R-trans r r′)
       endT halted≈ halted≈ = halted≈
+      endT exhausted≈ exhausted≈ = exhausted≈
 
       -- The two steps compose: ends to ends, calls to the same call.
       data Comp : S X → S X → S X → Set where
@@ -119,9 +123,66 @@ module _ {X Y : Set} {R R′ : X → Y → Set} (h : ∀ {x y} → R x y → R�
       go′ (o , a , r) = o , a , monoStep r
   monoStep {inj₁ _} {inj₁ _} (returned≈ r) = returned≈ (h r)
   monoStep {inj₁ _} {inj₁ _} halted≈       = halted≈
+  monoStep {inj₁ _} {inj₁ _} exhausted≈    = exhausted≈
   monoStep {inj₂ _} {inj₂ _} (eq , p)      = eq , WB-mono p
   monoStep {inj₁ _} {inj₂ _} ()
   monoStep {inj₂ _} {inj₁ _} ()
+
+-- Weakly bisimilar implies the same up to running out (D374): a run that
+-- never runs out is the plainest case of `⊑ᵗ`.
+module _ {X : Set} {R : X → X → Set} where
+  ≈⇒⊑     : ∀ {t s : Tr X} → t ≈ᵗ⟨ R ⟩ s → t ⊑ᵗ⟨ R ⟩ s
+  ≈⇒⊑Step : ∀ {o o′ : S X} → StepRel R (λ u u′ → u ≈ᵗ⟨ R ⟩ u′) o o′ → StepRel R (λ u u′ → u ⊑ᵗ⟨ R ⟩ u′) o o′
+  sound    (≈⇒⊑ p) o a = inj₂ (go (proj₁ (same p) o a))
+    where
+      go : ∀ {d : Delay (S X)} {o} → ∃[ o′ ] (d ⇓ o′ × StepRel R _ o o′) → ∃[ o′ ] (d ⇓ o′ × StepRel R _ o o′)
+      go (o′ , a′ , r) = o′ , a′ , ≈⇒⊑Step r
+  complete (≈⇒⊑ p) o′ a = inj₂ (go′ (proj₂ (same p) o′ a))
+    where
+      go′ : ∀ {d : Delay (S X)} {o′} → ∃[ o ] (d ⇓ o × StepRel R _ o o′) → ∃[ o ] (d ⇓ o × StepRel R _ o o′)
+      go′ (o , a′ , r) = o , a′ , ≈⇒⊑Step r
+  ≈⇒⊑Step {inj₁ _} {inj₁ _} r        = r
+  ≈⇒⊑Step {inj₂ _} {inj₂ _} (eq , p) = eq , ≈⇒⊑ p
+  ≈⇒⊑Step {inj₁ _} {inj₂ _} ()
+  ≈⇒⊑Step {inj₂ _} {inj₁ _} ()
+
+-- Up to running out, then the same (D374): a compiled run that follows one
+-- trace up to running out follows every trace weakly bisimilar to it. What
+-- the chain needs, where the run's relation to the program is `⊑ᵗ` and the
+-- program's to the meaning is `≈ᵗ`.
+module _ {X : Set} {R : X → X → Set} (R-trans : ∀ {x y z} → R x y → R y z → R x z) where
+  private
+    endT : ∀ {e₁ e₂ e₃} → EndRel R e₁ e₂ → EndRel R e₂ e₃ → EndRel R e₁ e₃
+    endT (returned≈ r) (returned≈ r′) = returned≈ (R-trans r r′)
+    endT halted≈ halted≈ = halted≈
+    endT exhausted≈ exhausted≈ = exhausted≈
+
+  ⊑≈-trans  : ∀ {t s u : Tr X} → t ⊑ᵗ⟨ R ⟩ s → s ≈ᵗ⟨ R ⟩ u → t ⊑ᵗ⟨ R ⟩ u
+  ⊑≈-step   : ∀ {o₁ o₂ o₃ : S X} → StepRel R (λ u u′ → u ⊑ᵗ⟨ R ⟩ u′) o₁ o₂
+            → StepRel R (λ u u′ → u ≈ᵗ⟨ R ⟩ u′) o₂ o₃ → StepRel R (λ u u′ → u ⊑ᵗ⟨ R ⟩ u′) o₁ o₃
+  sound (⊑≈-trans {t} {s} {u} p q) a a⇓ = fw (sound p a a⇓)
+    where
+      fw : a ≡ inj₁ exhausted ⊎ ∃[ b ] (next s ⇓ b × StepRel R _ a b)
+         → a ≡ inj₁ exhausted ⊎ ∃[ c ] (next u ⇓ c × StepRel R _ a c)
+      fw (inj₁ ex)            = inj₁ ex
+      fw (inj₂ (b , b⇓ , r₁)) = inj₂ (on (proj₁ (same q) b b⇓))
+        where on : ∃[ c ] (next u ⇓ c × StepRel R _ b c) → ∃[ c ] (next u ⇓ c × StepRel R _ a c)
+              on (c , c⇓ , r₂) = c , c⇓ , ⊑≈-step r₁ r₂
+  complete (⊑≈-trans {t} {s} {u} p q) c c⇓ = bw (proj₂ (same q) c c⇓)
+    where
+      bw : ∃[ b ] (next s ⇓ b × StepRel R _ b c)
+         → next t ⇓ inj₁ exhausted ⊎ ∃[ a ] (next t ⇓ a × StepRel R _ a c)
+      bw (b , b⇓ , r₂) = on (complete p b b⇓)
+        where on : next t ⇓ inj₁ exhausted ⊎ ∃[ a ] (next t ⇓ a × StepRel R _ a b)
+                 → next t ⇓ inj₁ exhausted ⊎ ∃[ a ] (next t ⇓ a × StepRel R _ a c)
+              on (inj₁ ex)            = inj₁ ex
+              on (inj₂ (a , a⇓ , r₁)) = inj₂ (a , a⇓ , ⊑≈-step r₁ r₂)
+  ⊑≈-step {inj₁ _} {inj₁ _} {inj₁ _} r r′               = endT r r′
+  ⊑≈-step {inj₂ _} {inj₂ _} {inj₂ _} (refl , p) (refl , q) = refl , ⊑≈-trans p q
+  ⊑≈-step {inj₁ _} {inj₁ _} {inj₂ _} r ()
+  ⊑≈-step {inj₁ _} {inj₂ _} () r′
+  ⊑≈-step {inj₂ _} {inj₂ _} {inj₁ _} r ()
+  ⊑≈-step {inj₂ _} {inj₁ _} () r′
 
 ------------------------------------------------------------------------
 -- Delay: bind, and arrival through it
@@ -305,9 +366,11 @@ private
   EndRel-flip : ∀ {X Y} {R : X → Y → Set} {e e′} → EndRel R e e′ → EndRel (flip R) e′ e
   EndRel-flip (returned≈ r) = returned≈ r
   EndRel-flip halted≈ = halted≈
+  EndRel-flip exhausted≈ = exhausted≈
   EndRel-unflip : ∀ {X Y} {R : X → Y → Set} {e e′} → EndRel (flip R) e′ e → EndRel R e e′
   EndRel-unflip (returned≈ r) = returned≈ r
   EndRel-unflip halted≈ = halted≈
+  EndRel-unflip exhausted≈ = exhausted≈
   MaybeEnd-flip : ∀ {X Y} {R : X → Y → Set} {e e′} → MaybeEnd R e e′ → MaybeEnd (flip R) e′ e
   MaybeEnd-flip cut≈ = cut≈
   MaybeEnd-flip (end≈ r) = end≈ (EndRel-flip r)

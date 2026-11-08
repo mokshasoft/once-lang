@@ -34,7 +34,6 @@ module Once.CCC.Codegen.IRObsCorrect.CataBr.ToFold (o : CanonicalName) (tbl : DL
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Setup o tbl using (module CataSetupC)
-open import Once.CCC.Codegen.IRObsCorrect.CataConst.Run o tbl using (module CataRunC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Meaning using (module PO)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
@@ -44,7 +43,9 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.Round o tbl using (module CataR
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Flatten o tbl using (module CataFlattenC)
 open import Once.CCC.Codegen.IRToTrace o using (cata-strategy; strat-branching; fsize)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; SV-Ptr; SV-Code)
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; SV-Ptr; SV-Code; offsetLoc)
+open import Once.CCC.Codegen.Size using (size)
+import Once.CCC.Machine.FlatPut as FlatPut
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
@@ -75,7 +76,7 @@ module CataToFoldC {FS : FrameSemantics} where
   open Mach {FS}
   open ResuspBaseC {FS} using (SRun; SegA; Seg; seg-rebase; Kp)
   open CataSetupC {FS} using (module Setup; SetupOut)
-  open CataRunC {FS} using (cell-sv; cell-read)
+
   open CataStackC {FS}
   open CataWalkC {FS}
   open CataBrTextC {FS} using (module Text)
@@ -90,7 +91,7 @@ module CataToFoldC {FS : FrameSemantics} where
   ------------------------------------------------------------------------
   record ToFoldOut (prog : AbstractTrace) (n c bodyL X : ℕ) (σ : FlatState)
                    {F : IRFunctor} (wf : WellFormedFI F) {C₀ : Set} (alg₀ : ⟦ ⌈ F ⌉F ⟧F C₀ → T∞ C₀)
-                   (C : IRTy) (root : ⟦ μ-type F ⟧) (env-sv : StoredValue FS) : Set where
+                   (C : IRTy) (root : ⟦ μ-type F ⟧) (E : IRTy) (e : ⟦ E ⟧) (env-sv : StoredValue FS) : Set where
     field
       τ      : FlatState
       steps  : ℕ
@@ -114,6 +115,9 @@ module CataToFoldC {FS : FrameSemantics} where
       ev     : readLoc (floc τ) (AtStack (current-frame (falloc τ)) (c + 2)) ≡ just env-sv
       code   : readLoc (floc τ) (AtDynamic (sucHL hc)) ≡ just (SV-Code (ℓ o bodyL))
       hr     : suc (next-heap-ref (falloc σ)) ≤ next-heap-ref (falloc τ)
+      -- the environment's word, valid where the cata started; every block kept
+      env    : WordAt prog (falloc σ) E e env-sv (floc σ)
+      bk     : BlocksKept (falloc σ) (falloc τ)
 
   ------------------------------------------------------------------------
   -- THE BUNDLE, for one input.
@@ -126,10 +130,11 @@ module CataToFoldC {FS : FrameSemantics} where
                {C₀ : Set} (alg₀ : ⟦ ⌈ F ⌉F ⟧F C₀ → T∞ C₀)
                (x : ⟦ E IRTy′.* μ-type F ⟧) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
                (rs : List ℕ) (nh : halted s ≡ false)
-               (phl : HeapLocation) (rdi : readReg (regs s) Input1 ≡ SV-Ptr (AtDynamic phl))
-               (c₁ : CellAt {prog = prog} alloc E (proj₁ x) (AtDynamic phl) s)
+               -- plan 0.123 α2: the input pair is flat: the environment's words at 0, the μ pointer at `size E`
+               (pl : ValueLocation FS) (rdi : readReg (regs s) Input1 ≡ SV-Ptr pl) (lpl : Live alloc pl)
+               (cE : CellAt {prog = prog} alloc E (proj₁ x) (offsetLoc pl 0) s)
                (μhl : HeapLocation) (mC : AllocMode)
-               (rdμ : readLoc s (AtDynamic (sucHL phl)) ≡ just (SV-Ptr (AtDynamic μhl)))
+               (rdμ : readLoc s (offsetLoc pl (size E)) ≡ just (SV-Ptr (AtDynamic μhl)))
                (lμ : Live alloc (AtDynamic μhl))
                (vμ : ValidAtWF {prog = prog} mC alloc {μ-type F} (proj₂ x) (AtDynamic μhl) s)
                where
@@ -158,9 +163,8 @@ module CataToFoldC {FS : FrameSemantics} where
     σ : FlatState
     σ = entry-flat base s alloc cl rs
 
-    env-sv μ-sv : StoredValue FS
-    env-sv = cell-sv c₁
-    μ-sv   = SV-Ptr (AtDynamic μhl)
+    μ-sv : StoredValue FS
+    μ-sv = SV-Ptr (AtDynamic μhl)
 
     root : ⟦ μ-type F ⟧
     root = proj₂ x
@@ -172,9 +176,12 @@ module CataToFoldC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     -- 1. the setup (M1's), as a walk keeping no slot
     ------------------------------------------------------------------
-    so : SetupOut c T.Pc.bodyL prog σ env-sv μ-sv
-    so = Setup.out c T.Pc.bodyL prog σ TA.span-setup nh phl env-sv μ-sv rdi (cell-read c₁) rdμ
+    so : SetupOut E (proj₁ x) c T.Pc.bodyL prog σ μ-sv
+    so = Setup.out E c T.Pc.bodyL prog σ (subst (SpanAt prog base) (sym T.Pc.setup-eq) TA.span-setup) nh pl rdi lpl cE μ-sv rdμ
     module SO = SetupOut so
+
+    env-sv : StoredValue FS
+    env-sv = SO.env-sv
 
     u : FlatState
     u = SO.u
@@ -183,7 +190,7 @@ module CataToFoldC {FS : FrameSemantics} where
     wS = record
       { τ = u ; steps = 13 ; run = SO.runS
       ; seg = seg-rebase {falloc σ} {falloc σ} {n} {c} {σ} {u} SO.seg refl n≤c ≤-refl
-      ; nh = SO.nh ; pc = SO.pc ; ret = SO.ret ; clo = SO.clo ; lnk = SO.lnk ; cf = SO.cf ; slots = λ _ () ; post = tt }
+      ; bk = SO.bk ; nh = SO.nh ; pc = SO.pc ; ret = SO.ret ; clo = SO.clo ; lnk = SO.lnk ; cf = SO.cf ; slots = λ _ () ; post = tt }
 
     ------------------------------------------------------------------
     -- 2. the init and the root's push
@@ -192,11 +199,11 @@ module CataToFoldC {FS : FrameSemantics} where
     span-i = subst (λ b → SpanAt prog b (T.Pc.initTxt ++ T.Pc.rootTxt)) (sym SO.pc) TA.span-init
 
     kpS : Kp alloc s (falloc u) (floc u)
-    kpS = seg-kp SO.seg
+    kpS = seg-kp SO.seg SO.bk
 
     wd : NodeE prog F (falloc u) (floc u) root (readReg (regs (floc u)) Input1)
     wd = subst (λ z → WordAt prog (falloc u) (μ-type F) root z (floc u)) (sym SO.inμ)
-               (word-tr kpS (w-ptr {prog} {alloc} {μ-type F} {root} {μ-sv} {s} {mC} (AtDynamic μhl) refl lμ vμ))
+               (word-tr kpS (FlatPut.src-node {FS} {prog} {C = μ-type F} {c = root} {cl = AtDynamic μhl} {m = mC} tt lμ vμ))
 
 
     -- Init's and Flatten's lemmas are called applied, not through `module I = Init …`
@@ -253,7 +260,7 @@ module CataToFoldC {FS : FrameSemantics} where
                  (cong (λ z → (22 + z) + TA.H) (sym (length-++ T.Pc.visitTxt {T.Pc.exitTxt})))
 
     abstract
-      out : ToFoldOut prog n c T.Pc.bodyL X σ wf alg₀ C root env-sv
+      out : ToFoldOut prog n c T.Pc.bodyL X σ wf alg₀ C root E (proj₁ x) env-sv
       out = record
         { τ = τ ; steps = Walk.steps wAll ; run = Walk.run wAll ; seg = Walk.seg wAll ; nh = Walk.nh wF
         ; pc = trans (Walk.pc wF) pc-X
@@ -266,4 +273,6 @@ module CataToFoldC {FS : FrameSemantics} where
         ; cl = cross-slot ≤-refl SO.cl
         ; ev = cross-slot (m≤m+n c 2) SO.ev
         ; code = cross-heap live-shc SO.code
-        ; hr = ≤-trans (≤-reflexive (sym SO.hr)) (≤-trans (SegA.href (Walk.seg wI)) (SegA.href (Walk.seg wF))) }
+        ; hr = ≤-trans (≤-reflexive (sym SO.hr)) (≤-trans (SegA.href (Walk.seg wI)) (SegA.href (Walk.seg wF)))
+        ; env = FlatPut.src-tr {FS} {prog} (λ q lq → sym (SO.keep q lq)) SO.src
+        ; bk = Walk.bk wAll }

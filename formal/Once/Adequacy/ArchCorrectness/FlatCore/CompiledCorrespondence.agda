@@ -101,7 +101,10 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; fret; falloc; fclosure; flink)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open FlatMachine {FS} using (floc; fetch)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; module HeapRef; module HeapLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; offsetHL; module HeapRef; module HeapLocation)
+open ExecFinal {FS} using (in-block?)
+open AllocState using (block-size)
+open import Data.Bool using (true)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Data.Nat using (zero; suc; _+_; _*_; _∸_; _≤_; _<_)
@@ -120,6 +123,7 @@ open import Once.Type using (fits-int; fits-float)
 
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RC
+import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
 -- PRIVATE: an instance re-opened publicly would clash with the `C` every arch
 -- already binds for its own `FlatCorrespondence` instance. Only the record
 -- below is exported.
@@ -131,6 +135,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RC
 private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
   module CRC = RC o FS slot-size word-eq
+  module CRL = RL o FS slot-size word-eq
 
 open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; caddr; HDom; haddr
                ; lo; hfront; descend-view; extend-view; slots; dom-fresh)
@@ -325,7 +330,7 @@ record BlockSteps : Set₁ where
       ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (lea-slot slot)
-      → CRC.RunAt prog fs
+      → CRL.RunLow prog fs
       → BlockStep hv prog fs s (lea-slot slot)
     bs-save-closure-reg :
       ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
@@ -483,6 +488,40 @@ record BlockSteps : Set₁ where
       → suc k < frame-slots (falloc fs)
       → (∀ hl' → HDom hv hl' → (rreg s sp-reg + suc k * slot-size ≡ haddr hv hl') → ⊥)
       → BlockStep hv prog fs s store-indirect-suc
+    -- plan 0.123 B.4 α: THE OFFSET FORMS, heap only (a register never holds a
+    -- stack pointer, `StackPtrWF`). A load reads a written, so mapped, cell; a
+    -- store writes a cell of its block (D385), so a mapped one, and the
+    -- abstract step is the write (`in-block?` holds).
+    bs-load-at :
+      ∀ {hv : HeapView} prog fs s k hl w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (load-at k)
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+      → HDom hv (offsetHL hl k)
+      → heapMem (floc fs) (offsetHL hl k) ≡ just w
+      → BlockStep hv prog fs s (load-at k)
+    bs-store-at :
+      ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (store-at k)
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+      → HDom hv (offsetHL hl k)
+      → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+      → writeLoc (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)
+        ≡ writeLocToHeap (floc fs) (offsetHL hl k) (readReg (regs (floc fs)) Output)
+      → BlockStep hv prog fs s (store-at k)
+    -- plan 0.123 B.4 α: an address at an offset, a cell of its block (D385),
+    -- so a mapped one; the run is handed over for an arch whose address is a
+    -- real add (riscv64's `addi`: its no-wrap is the frontier's register range).
+    bs-addr-at :
+      ∀ {hv : HeapView} prog fs s k hl → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (addr-at k)
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+      → HDom hv (offsetHL hl k)
+      → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+      → CRL.RunLow prog fs
+      → BlockStep hv prog fs s (addr-at k)
     ------------------------------------------------------------------
     -- GROUP 3b, the band's other half — CONTROL, `out-nz`, and the two frame
     -- markers.
@@ -714,8 +753,8 @@ record BlockSteps : Set₁ where
            → svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) f k))
       → (∀ hl → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs)
               → heapMem (floc fs) hl ≡ nothing)
-      → (room : hfront hv + slots n ≤ lo hv)
-      → lo hv < modulus
+      → (room : hfront hv + slots n ≤ rreg s sp-reg)
+      → rreg s sp-reg < modulus
       → BlockStep (extend-view hv (next-heap-ref (falloc fs)) n
                                (dom-fresh (dataCorr cc)) room)
                   prog fs s (instr-alloc-heap n)

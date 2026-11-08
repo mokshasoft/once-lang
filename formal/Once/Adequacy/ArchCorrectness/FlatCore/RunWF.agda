@@ -59,7 +59,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.RunWF
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.Nat using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst; subst₂)
 
@@ -71,8 +71,11 @@ open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module 
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open MemOps {FS} using (readLoc)
-open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved)
-open AbstractExec {FS} using (exec-load-from-slot-with-value; exec-restore-input-with-value)
+open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
+open import Once.Memory.HeapAddress using (offsetHL)
+open import Data.Bool using (T)
+open import Data.Nat.Properties using (<ᵇ⇒<)
+open AbstractExec {FS} using (exec-load-from-slot-with-value; exec-restore-input-with-value; unread?; exec-sigop-faults-of; decode-at)
 open FrameSemantics FS using (Frame)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
@@ -99,7 +102,8 @@ open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-
 import Once.CCC.Codegen.ImageInstrs as IIn
 open import Data.List.Relation.Unary.All using () renaming (map to All-mapL)
 open import Once.CCC.Codegen.CallOK using (InstrOK; Calls; calls-⊤)
-open import Once.SigOp.Info using (module SigOpInfo)
+open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo; effect; Pure)
+open SigOpInfo using (baseA)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Relation.Unary.Any.Properties using () renaming (++⁺ˡ to Any++⁺ˡ; ++⁺ʳ to Any++⁺ʳ)
@@ -317,15 +321,14 @@ postulate
   -- frontier and the stack's high-water mark; the
   -- disjointness facts that used to be postulated are derived from the carried
   -- `sep` these keep true. A real runtime failure mode (OOM / stack overflow),
-  -- not a claim about addresses — the same class as the `conc-fuel` step budget.
+  -- not a claim about addresses.
   -- Plan 0.54 rung D step 3: the heap's room is measured against the stack's
   -- HIGH-WATER MARK, not the current `%rsp` — a region the stack has already
   -- visited keeps its (dead) contents, so only the VIRGIN part of the gap is
   -- available. That is also what discharges the fresh block's freshness on the
   -- concrete side, which is why `alloc-heap-fresh-x86` is gone.
   -- (`heap-room` is a MODULE PARAMETER now — see the header. It was the one
-  -- resource bound stated inside the correspondence rather than at the apex
-  -- beside `conc-fuel`.)
+  -- resource bound stated inside the correspondence rather than at the apex.)
   -- RETIRED 2026-07-31 (plan 0.54 rung D, item 2): `stack-room` / `frame-room` /
   -- `pop-room`, and the alloc-stack FRESH-FRAME pair `alloc-stack-fresh-{abs,x86}`
   -- together with `alloc-stack-entry`, all conditioned a frame-op site — and an
@@ -460,6 +463,11 @@ ff→seg-id (lea-slot _)                        _ = refl
 ff→seg-id (restore-input _)                   _ = refl
 ff→seg-id (instr-alloc-stack _)               _ = refl
 ff→seg-id (instr-dealloc-stack _)             _ = refl
+ff→seg-id (instr-free-heap _)                 _ = refl
+ff→seg-id (load-at _)                 _ = refl
+ff→seg-id (store-at _)                 _ = refl
+ff→seg-id (addr-at _)                 _ = refl
+ff→seg-id (instr-room _)                 _ = refl
 ff→seg-id (instr-reclaim-to _)                _ = refl
 ff→seg-id (instr-push-frame _)                _ = refl
 ff→seg-id instr-pop-frame                     _ = refl
@@ -695,17 +703,22 @@ pcView (instr-ctrl (c-call-fn f))             _ = pv-call-fn f refl
 pcView (instr-ctrl (c-ret bb))                _ = pv-ret bb refl
 pcView (instr-alloc-stack _)                  ()
 pcView (instr-dealloc-stack _)                ()
+pcView (instr-free-heap _)                    ()
+pcView (load-at _)                            _ = pv-suc tt tt (λ _ _ → refl)
+pcView (store-at _)                           _ = pv-suc tt tt (λ _ _ → refl)
+pcView (addr-at _)                            _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-room _)                    ()
 pcView (instr-push-frame _)                   ()
 pcView instr-pop-frame                        ()
 pcView (lea-slot _)                           ()
 pcView mov-to-output                          _ = pv-suc tt tt (λ _ _ → refl)
 pcView mov-to-input                           _ = pv-suc tt tt (λ _ _ → refl)
-pcView load-indirect                          _ = pv-suc tt tt (λ _ _ → refl)
-pcView load-indirect-suc                      _ = pv-suc tt tt (λ _ _ → refl)
+pcView load-indirect                          ()
+pcView load-indirect-suc                      ()
 pcView (load-from-slot _)                     _ = pv-suc tt tt (λ _ _ → refl)
 pcView (store-at-slot _)                      _ = pv-suc tt tt (λ _ _ → refl)
-pcView store-indirect                         _ = pv-suc tt tt (λ _ _ → refl)
-pcView store-indirect-suc                     _ = pv-suc tt tt (λ _ _ → refl)
+pcView store-indirect                         ()
+pcView store-indirect-suc                     ()
 pcView (restore-input _)                      _ = pv-suc tt tt (λ _ _ → refl)
 pcView (instr-reclaim-to _)                   _ = pv-suc tt tt (λ _ _ → refl)
 pcView instr-call-closure                     _ = pv-call refl
@@ -1163,6 +1176,11 @@ stack-ptr-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog fs
 stack-ptr-step (lea-slot slot) prog fs r ftq () wf
 stack-ptr-step (instr-alloc-stack n)   prog fs r ftq () wf
 stack-ptr-step (instr-dealloc-stack n) prog fs r ftq () wf
+stack-ptr-step (instr-free-heap n)     prog fs r ftq () wf
+stack-ptr-step (load-at n)     prog fs r ftq ff wf = flat-stack-ptr (load-at n) prog fs ff wf
+stack-ptr-step (store-at n)     prog fs r ftq ff wf = flat-stack-ptr (store-at n) prog fs ff wf
+stack-ptr-step (addr-at n)     prog fs r ftq ff wf = flat-stack-ptr (addr-at n) prog fs ff wf
+stack-ptr-step (instr-room n)     prog fs r ftq ff wf = flat-stack-ptr (instr-room n) prog fs ff wf
 stack-ptr-step (instr-push-frame cap)  prog fs r ftq () wf
 stack-ptr-step instr-pop-frame         prog fs r ftq () wf
 stack-ptr-step mov-to-output prog fs r ftq ff wf =
@@ -1241,7 +1259,7 @@ entry-ptr-bounds fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _) = record
         go r (SV-Code c)   eq rewrite eq = tt
 
 entry-flat-wf : ∀ (fs : FlatState) → EntryLike fs → FlatWF fs
-entry-flat-wf fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _) = record
+entry-flat-wf fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _ , nolit) = record
   { wf-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
   ; wf-heap  = λ hl → subst (svm-below _) (sym (hemp hl)) tt
   ; wf-stack = λ f k → subst (svm-below _) (sym (semp f k)) tt
@@ -1250,7 +1268,7 @@ entry-flat-wf fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _) = record
            → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) r)
         go r (SV-Ptr loc)  eq = ⊥-elim (noptr r loc eq)
         go r (SV-Tag t)    eq rewrite eq = tt
-        go r (SV-Lit p v)  eq rewrite eq = tt
+        go r (SV-Lit p v)  eq = ⊥-elim (nolit r p v eq)
         go r (SV-Code c)   eq rewrite eq = tt
 
 -- Plan 0.107: NO STEP LANDS ON THE START. A fall-through lands one past
@@ -1418,6 +1436,11 @@ ptr-bounds-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog f
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
 ptr-bounds-step (instr-alloc-stack n)   prog fs r ftq () wfS wf
 ptr-bounds-step (instr-dealloc-stack n) prog fs r ftq () wfS wf
+ptr-bounds-step (instr-free-heap n)     prog fs r ftq () wfS wf
+ptr-bounds-step (load-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (load-at n) prog fs ff (λ { _ () }) wfS wf
+ptr-bounds-step (store-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (store-at n) prog fs ff (λ { _ () }) wfS wf
+ptr-bounds-step (addr-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (addr-at n) prog fs ff (λ { _ () }) wfS wf
+ptr-bounds-step (instr-room n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (instr-room n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-push-frame cap)  prog fs r ftq () wfS wf
 ptr-bounds-step instr-pop-frame         prog fs r ftq () wfS wf
 -- THE PRODUCER: the emitter's alloc discipline comes in through the premise.
@@ -1585,6 +1608,29 @@ load-indirect-suc-target-ptr prog fs r h ftq =
   in1-ptr fs (λ ml → LocState.faulted (exec-load-suc-via-resolved Output ml (floc fs))) refl
           (step-ok prog fs load-indirect-suc r h ftq)
 
+-- Plan 0.123 A.4 step 4, by D367's route: a load through `Input1` never reads
+-- an unwritten HEAP cell. Reading one faults (`exec-load-with-value … nothing`),
+-- and the run never faults (`step-ok`). So nothing reads a cell before it is
+-- written, and the emitted code needs no discipline of its own for it (the
+-- slot twin is `slot-read-written` below).
+heap-load-written : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunAt prog fs
+                  → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just load-indirect
+                  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                  → heapMem (floc fs) hl ≡ nothing → ⊥
+heap-load-written prog fs hl r h ftq i-eq empty =
+  true≢false (at (λ mv → LocState.faulted (exec-load-with-value Output mv (floc fs))) empty
+                 (at (λ v → LocState.faulted (exec-load-via-resolved Output (sv-as-loc v) (floc fs))) i-eq
+                     (step-ok prog fs load-indirect r h ftq)))
+
+heap-load-suc-written : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunAt prog fs
+                      → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just load-indirect-suc
+                      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                      → heapMem (floc fs) (sucHL hl) ≡ nothing → ⊥
+heap-load-suc-written prog fs hl r h ftq i-eq empty =
+  true≢false (at (λ mv → LocState.faulted (exec-load-with-value Output mv (floc fs))) empty
+                 (at (λ v → LocState.faulted (exec-load-suc-via-resolved Output (sv-as-loc v) (floc fs))) i-eq
+                     (step-ok prog fs load-indirect-suc r h ftq)))
+
 store-indirect-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs → halted (floc fs) ≡ false
                           → fetch prog (fpc fs) ≡ just store-indirect
                           → Σ (ValueLocation FS) (λ loc →
@@ -1600,6 +1646,116 @@ store-indirect-suc-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs → 
 store-indirect-suc-target-ptr prog fs r h ftq =
   in1-ptr fs (λ ml → LocState.faulted (exec-store-suc-via-resolved ml (readReg (regs (floc fs)) Output) (floc fs))) refl
           (step-ok prog fs store-indirect-suc r h ftq)
+
+-- plan 0.123 B.4 α: THE OFFSET FORMS' SITES, by the same route. A load at an
+-- offset reads a written cell (so a mapped one, `dom-written`); a store at an
+-- offset writes a cell of its block (D385: anything else faults), so a mapped
+-- one (`dom-sized`).
+load-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
+                   → fetch prog (fpc fs) ≡ just (load-at k)
+                   → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+load-at-target-ptr prog fs k r h ftq =
+  in1-ptr fs (λ ml → LocState.faulted (exec-load-at-resolved k Output ml (floc fs))) refl
+          (step-ok prog fs (load-at k) r h ftq)
+
+-- D392: A PURE SIGOP'S ARGUMENT DECODED, at a non-faulting step — the site fact
+-- `arith-sigop-run` reads its input from (its block computes from the words).
+private
+  ∨-false-l : ∀ a b → (a ∨ b) ≡ false → a ≡ false
+  ∨-false-l false b _ = refl
+  ∨-false-l true  b ()
+
+  read-of : ∀ {X : Set} (m : Maybe X) → unread? m ≡ false → ∃ (λ x → m ≡ just x)
+  read-of (just x) _ = x , refl
+  read-of nothing ()
+
+sigop-decodes : ∀ prog (fs : FlatState) {A B} (si : SigOpInfo A B) → RunAt prog fs → halted (floc fs) ≡ false
+              → fetch prog (fpc fs) ≡ just (instr-sigop si) → effect si ≡ Pure
+              → ∃ (λ a → decode-at (baseA si) (readReg (regs (floc fs)) Input1) (floc fs) ≡ just a)
+sigop-decodes prog fs si r h ftq pe =
+  read-of _ (subst (λ e → exec-sigop-faults-of e si (floc fs) ≡ false) pe
+              (∨-false-l _ _ (step-ok prog fs (instr-sigop si) r h ftq)))
+
+heap-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
+                     → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (load-at k)
+                     → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                     → heapMem (floc fs) (offsetHL hl k) ≡ nothing → ⊥
+heap-load-at-written prog fs k hl r h ftq i-eq empty =
+  true≢false (at (λ mv → LocState.faulted (exec-load-with-value Output mv (floc fs))) empty
+                 (at (λ v → LocState.faulted (exec-load-at-resolved k Output (sv-as-loc v) (floc fs))) i-eq
+                     (step-ok prog fs (load-at k) r h ftq)))
+
+store-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
+                    → fetch prog (fpc fs) ≡ just (store-at k)
+                    → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+store-at-target-ptr prog fs k r h ftq =
+  in1-ptr fs (λ ml → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k ml
+                                         (readReg (regs (floc fs)) Output) (floc fs))) refl
+          (step-ok prog fs (store-at k) r h ftq)
+
+store-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
+                  → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (store-at k)
+                  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                  → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+store-at-in-block prog fs k hl r h ftq i-eq = ib _ refl
+  where
+    ok : LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (just (AtDynamic hl))
+                             (readReg (regs (floc fs)) Output) (floc fs)) ≡ false
+    ok = at (λ v → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (sv-as-loc v)
+                                       (readReg (regs (floc fs)) Output) (floc fs))) i-eq
+            (step-ok prog fs (store-at k) r h ftq)
+    ib : ∀ b → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ b
+       → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+    ib true  e = e
+    ib false e = ⊥-elim (true≢false
+      (at (λ b → LocState.faulted (exec-store-in-block b (AtDynamic (offsetHL hl k))
+                                     (readReg (regs (floc fs)) Output) (floc fs))) e ok))
+
+-- plan 0.123 B.4 α (D385): an address at an offset is a cell of its block, or
+-- the step faults — so at an emitted `addr-at` it is.
+addr-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
+                   → fetch prog (fpc fs) ≡ just (addr-at k)
+                   → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+addr-at-target-ptr prog fs k r h ftq =
+  in1-ptr fs (λ ml → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k ml (floc fs))) refl
+          (step-ok prog fs (addr-at k) r h ftq)
+
+addr-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
+                 → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (addr-at k)
+                 → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                 → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+addr-at-in-block prog fs k hl r h ftq i-eq = ib _ refl
+  where
+    ok : LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (just (AtDynamic hl)) (floc fs)) ≡ false
+    ok = at (λ v → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (sv-as-loc v) (floc fs))) i-eq
+            (step-ok prog fs (addr-at k) r h ftq)
+    ib : ∀ b → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ b
+       → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
+    ib true  e = e
+    ib false e = ⊥-elim (true≢false
+      (at (λ b → LocState.faulted (exec-addr-in-block b (AtDynamic (offsetHL hl k)) (floc fs))) e ok))
+
+addr-at-inbounds : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
+                 → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (addr-at k)
+                 → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                 → heap-offset (offsetHL hl k) < block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k)))
+addr-at-inbounds prog fs k hl r h ftq i-eq =
+  <ᵇ⇒< (heap-offset (offsetHL hl k)) (block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k))))
+       (T-of (addr-at-in-block prog fs k hl r h ftq i-eq))
+  where
+    T-of : ∀ {b : Bool} → b ≡ true → T b
+    T-of refl = tt
+
+store-at-inbounds : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
+                  → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (store-at k)
+                  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                  → heap-offset (offsetHL hl k) < block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k)))
+store-at-inbounds prog fs k hl r h ftq i-eq =
+  <ᵇ⇒< (heap-offset (offsetHL hl k)) (block-size (falloc fs) (ref-id (heap-ref (offsetHL hl k))))
+       (T-of (store-at-in-block prog fs k hl r h ftq i-eq))
+  where
+    T-of : ∀ {b : Bool} → b ≡ true → T b
+    T-of refl = tt
 
 -- plan 0.108 / D367: AT AN EMITTED `out-nz`, OUTPUT HOLDS AN `Int` WORD — the
 -- comparison's arith block just wrote it; anything else faults (`do-nz`).
@@ -1700,8 +1856,11 @@ store-indirect-suc-inbounds : ∀ prog (fs : FlatState) (hl : HeapLocation) → 
                             → fetch prog (fpc fs) ≡ just store-indirect-suc
                             → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                             → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))
+-- plan 0.123 B.4 α: the four fixed-offset forms are retired (out of both
+-- fences), so an emitted program never fetches one — and `PtrB` no longer says
+-- anything about the next cell.
 store-indirect-suc-inbounds prog fs hl r ftq eq =
-  ptr-bounds-suc fs Input1 hl (run-ptr-bounds prog fs r) eq
+  ⊥-elim (frame-op-absurd prog fs store-indirect-suc (run-emitted r) ftq)
 
 load-indirect-target-wf : ∀ prog (fs : FlatState) → RunAt prog fs → halted (floc fs) ≡ false
                         → fetch prog (fpc fs) ≡ just load-indirect
@@ -1720,10 +1879,8 @@ load-indirect-suc-target-wf : ∀ prog (fs : FlatState) → RunAt prog fs → ha
                                 (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
                                 × (∀ hl → loc ≡ AtDynamic hl
                                    → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))))
-load-indirect-suc-target-wf prog fs r h ftq with load-indirect-suc-target-ptr prog fs r h ftq
-... | loc , eq = loc , eq ,
-  λ hl leq → ptr-bounds-suc fs Input1 hl (run-ptr-bounds prog fs r)
-               (trans eq (cong SV-Ptr leq))
+load-indirect-suc-target-wf prog fs r h ftq =
+  ⊥-elim (frame-op-absurd prog fs load-indirect-suc (run-emitted r) ftq)
 
 
 ------------------------------------------------------------------------
@@ -1770,7 +1927,7 @@ run-link-at-thunk prog fs (mkRunAt tbl ir eq lkd reach) = go fs reach
 
     go : ∀ (fs' : FlatState) → Reachable prog 0 fs'
        → ∀ {r : ℕ} → flink fs' ≡ just r → Goal fs'
-    go fs' (reach-start .fs' (_ , _ , _ , _ , _ , _ , _ , _ , _ , fl) _ _) lk =
+    go fs' (reach-start .fs' (_ , _ , _ , _ , _ , _ , _ , _ , _ , fl , _) _ _) lk =
       ⊥-elim (nothing≢justℕ (trans (sym fl) lk))
     go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) {r} lk =
       step (flinkView i)

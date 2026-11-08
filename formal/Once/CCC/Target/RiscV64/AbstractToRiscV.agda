@@ -39,7 +39,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Data.Integer using (+_)
 open import Data.List using ([]; _∷_; _++_)
-open import Once.Target.SymbolFresh using (host-leave-symbol)
+open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
 open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import RISC-V syntax
@@ -48,7 +48,7 @@ open import Once.Spec.Float.Decimal using (round)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
 open import Once.CCC.Target.RiscV64.Syntax
-  using (zero; ra; sp; fp; a0; s1; s2; t0; t1; ld; sd; add; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; label; once; callee; e-fn; Program; slot-size; slots)
+  using (zero; ra; sp; fp; a0; s1; s2; t0; t1; t2; ld; sd; add; sub; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; bgeu-fwd; local-1; label; once; callee; e-fn; Program; slot-size; slots)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
@@ -56,7 +56,7 @@ open import Once.Type using (fits-int; fits-float)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
+  using (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot; store-indirect; store-indirect-suc; lea-slot; restore-input; instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-push-frame; instr-pop-frame; instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check; instr-reclaim-to; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-free-heap; instr-room; load-at; store-at; addr-at; instr-ctrl; out-nz; c-label; c-jmp; c-branch-tag-zero; c-ret; c-entry; c-call-fn; c-start; c-leave)
 open import Once.CCC.Machine.Locations using (Slot)
 
 ------------------------------------------------------------------------
@@ -149,7 +149,7 @@ compile-abstract (instr-alloc-stack n) =
 
 -- instr-alloc-heap: allocate a heap cell.
 -- Plan 0.53: mirror x86-64's r15 bump allocator. s2 holds the heap top
--- pointer (initialized by _start to once_heap_base). To allocate n slots:
+-- pointer (set by the Host's `enter` to the region's bottom, C.5). To allocate n slots:
 --   mv   a0, s2       ; Output := current heap top
 --   addi s2, s2, n*8  ; bump heap top by n words
 -- The freshly-allocated block lives at the OLD s2 value (now in a0).
@@ -244,6 +244,33 @@ compile-abstract (worklist-check n) = []
 -- instr-reclaim-to: set next-slot to n (allocation bookkeeping only)
 -- RV64: (empty - pure AllocState update, no machine effect)
 compile-abstract (instr-reclaim-to n) = []
+-- instr-free-heap: no code yet (plan 0.123 M2: the bump allocator never
+-- reuses a block; the free-list and pop code come with M3)
+compile-abstract (instr-free-heap n) = []
+-- plan 0.123 B.4 α: a flat value's word k, by its offset from Input1.
+-- riscv64: ld a0, 8k(t0) ; sd a0, 8k(t0) ; addi a0, t0, 8k (the offset is
+-- unbounded in the model, as a slot's is; beyond the 12-bit immediate the
+-- assembler needs an add first, which the slot accesses share)
+compile-abstract (load-at n) =
+  ld a0 t0 (slot-to-disp n) ∷ []
+compile-abstract (store-at n) =
+  sd a0 t0 (slot-to-disp n) ∷ []
+compile-abstract (addr-at n) =
+  addi a0 t0 (+ (slot-to-disp n)) ∷ []
+-- instr-room k (plan 0.123 A.4): the next k words fit iff the room between the
+-- frontier and the stack pointer holds them; if not, call the Host's
+-- `once_exhausted`, which ends the run. The room `sp − s2` is computed, not the
+-- sum `s2 + 8k`: the frontier is never above the stack pointer, so the
+-- difference cannot borrow, where the sum could wrap and pass a check that
+-- must fail (D378). t1 and t2 are no role's; `li` because `addi`'s 12-bit
+-- immediate cannot hold every k.
+-- riscv64: sub t1, sp, s2 ; li t2, 8k ; bgeu t1, t2, 1f ; call once_exhausted ; 1:
+compile-abstract (instr-room k) =
+  sub t1 sp s2 ∷
+  li t2 (+ slots k) ∷
+  bgeu-fwd t1 t2 ∷
+  call-sym host-exhausted-symbol ∷
+  local-1 ∷ []
 
 -- Plan 0.11: name-agnostic SigOp codegen.
 -- Emit a single symbolic call; linker resolves the name at build time
@@ -309,9 +336,10 @@ compile-abstract (instr-ctrl (c-jmp n))                 = j (once n) ∷ []
 -- the same cell as before the split, since the total descent is unchanged.
 -- `c-ret` releases `slots (suc b)` for the same reason and is untouched.
 compile-abstract (instr-ctrl (c-entry e b))             = label (callee e) ∷ addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ sd ra sp (slots b) ∷ []
--- plan 0.107: `_start` — the heap register (`s2`), then the outermost frame;
+-- plan 0.107: the start (`once_main`) — the outermost frame (the Host set the
+-- heap register `s2`, plan 0.123 C.5);
 -- nothing called the program, so no `ra` to spill.
-compile-abstract (instr-ctrl (c-start b))               = lla-sym s2 "once_heap_base" ∷ addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ []
+compile-abstract (instr-ctrl (c-start b))               = addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ []
   where import Data.Integer
 -- D320: the program leaves by the Host's `leave`, a call of its one fixed symbol.
 compile-abstract (instr-ctrl c-leave)                   = call-sym host-leave-symbol ∷ []

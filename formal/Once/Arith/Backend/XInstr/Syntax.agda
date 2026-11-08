@@ -77,7 +77,7 @@ data XInstr : Set where
   Xmov-rr   : XReg → XReg → XInstr          -- mov %src, %dst
   Xmov-r-m  : XScratch → XReg → XInstr      -- mov %src, [rsp - …]   (spill)
   Xmov-m-r  : XReg → XScratch → XInstr      -- mov [rsp - …], %dst   (reload)
-  Xmov-arg  : XReg → InputPath → XInstr     -- Load value at the
+  Xmov-arg  : XReg → InputPath → ℕ → XInstr     -- Load value at the
                                             -- given InputPath from
                                             -- the block's input
                                             -- (`%rdi`) into `dst`.
@@ -175,7 +175,7 @@ data XInstr : Set where
   -- | A FLOAT input leaf. Distinct from `Xmov-arg` because the projections
   -- differ by kind (`projectF`, not `project`) — a kind-blind load is the
   -- silent type confusion `projectM` already had to be fixed for.
-  Xmov-farg : XReg → InputPath → XInstr
+  Xmov-farg : XReg → InputPath → ℕ → XInstr
 
   -- Boundary glue
   Xmov-out  : XReg → XInstr                 -- mov %src, %rax  (function

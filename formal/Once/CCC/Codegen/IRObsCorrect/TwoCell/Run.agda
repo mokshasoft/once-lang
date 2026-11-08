@@ -4,9 +4,13 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.IRObsCorrect.TwoCell.Run
 --
--- The TEN-STEP RUN of the two-cell build (`curry`, `Ana` — D190): the trace,
--- its states and the chain. Split from `TwoCellBuild` for the per-module
--- check cap; the facts about the states are there.
+-- The TEN-ROW RUN of the two-cell build (`curry`, `in-ν`, `Ana` — D190): a
+-- node `[cell 0, code]`, cell 0 the word in `Input1` (D386: a closure's
+-- environment word). plan 0.123 B.4 α: the cells are written by `store-at`
+-- into the fresh block, so the run is one straight segment, its effect
+-- `exec-trace`'s (the two stores in their block, `FlatAlloc.alloc-in`) and its
+-- chain `StraightRun.straight-steps`. The facts about the end state are in
+-- `TwoCellBuild`.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
@@ -20,10 +24,17 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ; LabelId)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
-open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; mov-to-output; store-at-slot; instr-alloc-heap; mov-to-input; load-from-slot; store-indirect; instr-load-code-addr; store-indirect-suc; LocState; StoredValue; readReg; Output; sv-as-loc; Input1; module LocState; module AllocState)
-open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
+open import Once.CCC.Machine.SMCore
+  using (AllocState; AbstractTrace; mov-to-output; store-at-slot; instr-alloc-heap; mov-to-input; load-from-slot;
+         store-at; instr-load-code-addr; LocState; StoredValue; readReg; writeReg; Output; sv-as-loc; Input1;
+         SV-Ptr; SV-Code; sucLoc; module LocState; module AllocState; module ExecFinal)
+open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames; block-size)
 open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
+import Once.CCC.Machine.FlatAlloc as FlatAlloc
+open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
+open import Data.Nat using (z≤n; s≤s)
+open import Data.List.Relation.Unary.All using ([]; _∷_)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -38,13 +49,17 @@ import Once.IR.Semantics.Trace as TM
 module TwoCellRunC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
+  open SMCore.AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
+  open SMCore.MemOps {FS} using (writeLoc; writeLoc-halted; writeLoc-regs; writeLoc-preserves-other; writeLoc-read-same-stack)
+  open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
+  open FlatEventTrace {FS} using (chain-events-subst)
+  module SR = StraightRunAPI {FS}
 
   two-cell-trace : ℕ → ℕ → AbstractTrace
   two-cell-trace n l =
     mov-to-output ∷ store-at-slot n ∷ instr-alloc-heap 2 ∷ store-at-slot (suc n) ∷
-    mov-to-input ∷ load-from-slot n ∷ store-indirect ∷
-    instr-load-code-addr (ℓ o l) ∷ store-indirect-suc ∷ load-from-slot (suc n) ∷ []
+    mov-to-input ∷ load-from-slot n ∷ store-at 0 ∷
+    instr-load-code-addr (ℓ o l) ∷ store-at 1 ∷ load-from-slot (suc n) ∷ []
 
   module TwoCellRun
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
@@ -54,177 +69,139 @@ module TwoCellRunC {FS : FrameSemantics} where
     where
 
     cell0-stash obj-stash : ℕ
-    cell0-stash     = n
-    obj-stash = suc n
-
-    -- D182: this clause's instance of the shared ten-step invariant — the
-    -- same shape as `inl`'s, with the two middle rows swapped.
-    module TSP = TenStepPres n (load-from-slot n) (instr-load-code-addr (ℓ o l))
-                             prog base s alloc cl rs
+    cell0-stash = n
+    obj-stash   = suc n
 
     code-lbl : LabelId
     code-lbl = ℓ o l
 
-    fs0 fs1 fs2 fs3 fs4 fs5 fs6 fs7 fs8 fs9 fs10 : FlatState
-    fs0  = entry-flat base s alloc cl rs
-    fs1  = flat-exec-instr mov-to-output                  prog fs0
-    fs2  = flat-exec-instr (store-at-slot cell0-stash)      prog fs1
-    fs3  = flat-exec-instr (instr-alloc-heap 2)           prog fs2
-    fs4  = flat-exec-instr (store-at-slot obj-stash)  prog fs3
-    fs5  = flat-exec-instr mov-to-input                   prog fs4
-    fs6  = flat-exec-instr (load-from-slot cell0-stash)     prog fs5
-    fs7  = flat-exec-instr store-indirect                 prog fs6
-    fs8  = flat-exec-instr (instr-load-code-addr code-lbl) prog fs7
-    fs9  = flat-exec-instr store-indirect-suc             prog fs8
-    fs10 = flat-exec-instr (load-from-slot obj-stash) prog fs9
+    code : StoredValue FS
+    code = SV-Code code-lbl
+
+    A₁ = FlatAlloc.alloc-after {FS} 2 alloc
+    rd = FlatAlloc.fresh-ref {FS} alloc
 
     obj-hl : HeapLocation
-    obj-hl = heap-loc (mkHeapRef (next-heap-ref (falloc fs2))) 0
+    obj-hl = heap-loc rd 0
 
     obj-loc : ValueLocation FS
     obj-loc = AtDynamic obj-hl
 
-    -- ── ROW 6: the env value, stashed at fs1→fs2 and loaded back at fs5.
-    -- The only intervening STACK write targets `suc n`, so `n < suc n` keeps
-    -- it away; the allocation and `mov-to-input` touch no stack cell.
+    blk : StoredValue FS
+    blk = SV-Ptr obj-loc
+
+    cf = current-frame alloc
+
+    -- the rows' states
+    t₁ = proj₁ (exec-abstract mov-to-output s alloc)
+
+    -- cell 0's word: what `Input1` held, moved to `Output`
     cell0v : StoredValue FS
-    cell0v = readReg (regs (floc fs1)) Output
+    cell0v = readReg (regs t₁) Output
 
-    cf-fs5 : current-frame (falloc fs5) ≡ current-frame (falloc fs1)
-    cf-fs5 =
-      trans (exec-abstract-preserves-frame mov-to-input (floc fs4) (falloc fs4))
-     (trans (exec-abstract-preserves-frame (store-at-slot obj-stash) (floc fs3) (falloc fs3))
-     (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs2) (falloc fs2))
-            (exec-abstract-preserves-frame (store-at-slot cell0-stash) (floc fs1) (falloc fs1))))
+    t₂ = proj₁ (exec-abstract (store-at-slot n) t₁ alloc)
+    t₃ = proj₁ (exec-abstract (instr-alloc-heap 2) t₂ alloc)
+    t₄ = proj₁ (exec-abstract (store-at-slot (suc n)) t₃ A₁)
+    t₅ = proj₁ (exec-abstract mov-to-input t₄ A₁)
+    t₆ = record t₅ { regs = writeReg (regs t₅) Output cell0v }
+    t₇ = writeLoc t₆ obj-loc cell0v
+    t₈ = proj₁ (exec-abstract (instr-load-code-addr code-lbl) t₇ A₁)
+    t₉ = writeLoc t₈ (sucLoc obj-loc) code
+    t₁₀ = record t₉ { regs = writeReg (regs t₉) Output blk }
 
-    sf-fs5 : saved-frames (falloc fs5) ≡ saved-frames (falloc fs1)
-    sf-fs5 =
-      trans (exec-abstract-preserves-saved mov-to-input (floc fs4) (falloc fs4))
-     (trans (exec-abstract-preserves-saved (store-at-slot obj-stash) (floc fs3) (falloc fs3))
-     (trans (exec-abstract-preserves-saved (instr-alloc-heap 2) (floc fs2) (falloc fs2))
-            (exec-abstract-preserves-saved (store-at-slot cell0-stash) (floc fs1) (falloc fs1))))
+    R9 R8 R7 R6 R5 R4 R3 R2 R1 : AbstractTrace
+    R1 = load-from-slot (suc n) ∷ []
+    R2 = store-at 1 ∷ R1
+    R3 = instr-load-code-addr code-lbl ∷ R2
+    R4 = store-at 0 ∷ R3
+    R5 = load-from-slot n ∷ R4
+    R6 = mov-to-input ∷ R5
+    R7 = store-at-slot (suc n) ∷ R6
+    R8 = instr-alloc-heap 2 ∷ R7
+    R9 = store-at-slot n ∷ R8
 
-    read-cell0-fs2 : SMCore.MemOps.readLoc (floc fs2)
-                     (AtStack (current-frame (falloc fs1)) cell0-stash) ≡ just cell0v
-    read-cell0-fs2 =
-      SMCore.MemOps.writeLoc-read-same-stack (floc fs1) (current-frame (falloc fs1)) cell0-stash cell0v
+    h₇ : halted t₇ ≡ false
+    h₇ = trans (writeLoc-halted t₆ obj-loc cell0v) nh
 
-    read-cell0-fs5 : SMCore.MemOps.readLoc (floc fs5)
-                     (AtStack (current-frame (falloc fs1)) cell0-stash) ≡ just cell0v
-    read-cell0-fs5 =
-      trans (exec-abstract-preserves-stack-slot mov-to-input (floc fs4) (falloc fs4)
-               (current-frame (falloc fs1)) cell0-stash nhw-mov-to-input refl)
-     (trans (store-at-slot-preserves-below cell0-stash obj-stash (floc fs3) (falloc fs3) (n<1+n _))
-     (trans (exec-abstract-preserves-stack-slot (instr-alloc-heap 2) (floc fs2) (falloc fs2)
-               (current-frame (falloc fs1)) cell0-stash nhw-instr-alloc-heap refl)
-            read-cell0-fs2))
+    h₉ : halted t₉ ≡ false
+    h₉ = trans (writeLoc-halted t₈ (sucLoc obj-loc) code) h₇
 
-    wf-load-cell0 : InstrWF (floc fs5) (falloc fs5) (load-from-slot cell0-stash)
-    wf-load-cell0 =
-      cell0v , subst (λ f → SMCore.MemOps.readLoc (floc fs5) (AtStack f cell0-stash) ≡ just cell0v)
-                 (sym cf-fs5) read-cell0-fs5
+    slot-n₅ : SMCore.MemOps.readLoc t₅ (AtStack cf n) ≡ just cell0v
+    slot-n₅ =
+      trans (writeLoc-preserves-other t₃ (AtStack cf (suc n)) (AtStack cf n) blk
+               (λ e → <-irrefl (sym (cong slot-of e)) (n<1+n n)))
+            (writeLoc-read-same-stack t₁ cf n cell0v)
+      where
+        slot-of : ValueLocation FS → ℕ
+        slot-of (AtStack _ j) = j
+        slot-of (AtDynamic _) = 0
 
-    -- ── ROW 7: the closure pointer must survive the env load.
-    rdi-fs5 : sv-as-loc (readReg (regs (floc fs5)) Input1) ≡ just obj-loc
-    rdi-fs5 = refl
+    slot-b₉ : SMCore.MemOps.readLoc t₉ (AtStack cf (suc n)) ≡ just blk
+    slot-b₉ =
+      trans (writeLoc-preserves-other t₈ (sucLoc obj-loc) (AtStack cf (suc n)) code (λ ()))
+     (trans (writeLoc-preserves-other t₆ obj-loc (AtStack cf (suc n)) cell0v (λ ()))
+            (writeLoc-read-same-stack t₃ cf (suc n) blk))
 
-    input-fs6 : readReg (regs (floc fs6)) Input1 ≡ readReg (regs (floc fs5)) Input1
-    input-fs6 = load-slot-preserves-input cell0-stash (floc fs5) (falloc fs5) cell0v
-                  (proj₂ wf-load-cell0)
+    ib0 : InBlk A₁ obj-loc
+    ib0 = FlatAlloc.alloc-in {FS} 2 alloc 0 (s≤s z≤n)
 
-    rdi-fs6 : sv-as-loc (readReg (regs (floc fs6)) Input1) ≡ just obj-loc
-    rdi-fs6 = trans (cong sv-as-loc input-fs6) rdi-fs5
+    ib1 : InBlk A₁ (sucLoc obj-loc)
+    ib1 = FlatAlloc.alloc-in {FS} 2 alloc 1 (s≤s (s≤s z≤n))
 
-    wf-store-ind : InstrWF (floc fs6) (falloc fs6) store-indirect
-    wf-store-ind = obj-loc , rdi-fs6
+    st0 : exec-abstract (store-at 0) t₆ A₁ ≡ (t₇ , A₁)
+    st0 = cong (λ b → (ExecFinal.exec-store-in-block {FS} b obj-loc cell0v t₆ , A₁)) ib0
 
-    -- ── ROW 9: …and past the indirect store and the code-address load.
-    -- `instr-load-code-addr` writes `Output` and nothing else, so reading
-    -- `Input1` through it is definitional.
-    input-fs7 : readReg (regs (floc fs7)) Input1 ≡ readReg (regs (floc fs6)) Input1
-    input-fs7 = store-ind-preserves-input (floc fs6) (falloc fs6) obj-loc rdi-fs6
+    i1₈ : readReg (regs t₈) Input1 ≡ blk
+    i1₈ = cong (λ q → readReg q Input1) (writeLoc-regs t₆ obj-loc cell0v)
 
-    input-fs8 : readReg (regs (floc fs8)) Input1 ≡ readReg (regs (floc fs7)) Input1
-    input-fs8 = refl
+    st1 : exec-abstract (store-at 1) t₈ A₁ ≡ (t₉ , A₁)
+    st1 = trans (cong (λ v → (ExecFinal.exec-store-at-resolved {FS} (block-size A₁) 1 (sv-as-loc v) code t₈ , A₁)) i1₈)
+                (cong (λ b → (ExecFinal.exec-store-in-block {FS} b (sucLoc obj-loc) code t₈ , A₁)) ib1)
 
-    rdi-fs8 : sv-as-loc (readReg (regs (floc fs8)) Input1) ≡ just obj-loc
-    rdi-fs8 = trans (cong sv-as-loc (trans input-fs8 input-fs7)) rdi-fs6
+    whole : exec-trace (two-cell-trace n l) s alloc ≡ (t₁₀ , A₁)
+    whole =
+      trans (exec-trace-cons mov-to-output R9 s alloc nh)
+     (trans (exec-trace-cons (store-at-slot n) R8 t₁ alloc nh)
+     (trans (exec-trace-cons (instr-alloc-heap 2) R7 t₂ alloc nh)
+     (trans (exec-trace-cons (store-at-slot (suc n)) R6 t₃ A₁ nh)
+     (trans (exec-trace-cons mov-to-input R5 t₄ A₁ nh)
+     (trans (exec-trace-cons (load-from-slot n) R4 t₅ A₁ nh)
+     (trans (cong (λ mv → exec-trace R4 (proj₁ (exec-load-from-slot-with-value mv t₅ A₁))
+                                        (proj₂ (exec-load-from-slot-with-value mv t₅ A₁))) slot-n₅)
+     (trans (exec-trace-cons (store-at 0) R3 t₆ A₁ nh)
+     (trans (cong (λ r → exec-trace R3 (proj₁ r) (proj₂ r)) st0)
+     (trans (exec-trace-cons (instr-load-code-addr code-lbl) R2 t₇ A₁ h₇)
+     (trans (exec-trace-cons (store-at 1) R1 t₈ A₁ h₇)
+     (trans (cong (λ r → exec-trace R1 (proj₁ r) (proj₂ r)) st1)
+     (trans (exec-trace-cons (load-from-slot (suc n)) [] t₉ A₁ h₉)
+            (cong (λ mv → exec-load-from-slot-with-value mv t₉ A₁) slot-b₉)))))))))))))
 
-    wf-store-ind-suc : InstrWF (floc fs8) (falloc fs8) store-indirect-suc
-    wf-store-ind-suc = obj-loc , rdi-fs8
+    -- ── THE CHAIN
+    fs0 fs10 : FlatState
+    fs0  = entry-flat base s alloc cl rs
+    fs10 = record fs0 { floc = t₁₀ ; falloc = A₁ ; fpc = 10 + base }
 
-    -- ── ROW 10: the CLOSURE pointer, stashed at fs3→fs4 and read at fs9.
-    cf-fs9 : current-frame (falloc fs9) ≡ current-frame (falloc fs3)
-    cf-fs9 =
-      trans (exec-abstract-preserves-frame store-indirect-suc (floc fs8) (falloc fs8))
-     (trans (exec-abstract-preserves-frame (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7))
-     (trans (exec-abstract-preserves-frame store-indirect (floc fs6) (falloc fs6))
-     (trans (exec-abstract-preserves-frame (load-from-slot cell0-stash) (floc fs5) (falloc fs5))
-     (trans (exec-abstract-preserves-frame mov-to-input (floc fs4) (falloc fs4))
-            (exec-abstract-preserves-frame (store-at-slot obj-stash) (floc fs3) (falloc fs3))))))
-
-    sf-fs9 : saved-frames (falloc fs9) ≡ saved-frames (falloc fs3)
-    sf-fs9 =
-      trans (exec-abstract-preserves-saved store-indirect-suc (floc fs8) (falloc fs8))
-     (trans (exec-abstract-preserves-saved (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7))
-     (trans (exec-abstract-preserves-saved store-indirect (floc fs6) (falloc fs6))
-     (trans (exec-abstract-preserves-saved (load-from-slot cell0-stash) (floc fs5) (falloc fs5))
-     (trans (exec-abstract-preserves-saved mov-to-input (floc fs4) (falloc fs4))
-            (exec-abstract-preserves-saved (store-at-slot obj-stash) (floc fs3) (falloc fs3))))))
-
-    objv : StoredValue FS
-    objv = readReg (regs (floc fs3)) Output
-
-    read-obj-fs4 : SMCore.MemOps.readLoc (floc fs4)
-                     (AtStack (current-frame (falloc fs3)) obj-stash) ≡ just objv
-    read-obj-fs4 =
-      SMCore.MemOps.writeLoc-read-same-stack (floc fs3) (current-frame (falloc fs3)) obj-stash objv
-
-    read-obj-fs9 : SMCore.MemOps.readLoc (floc fs9)
-                     (AtStack (current-frame (falloc fs3)) obj-stash) ≡ just objv
-    read-obj-fs9 =
-      trans (store-ind-suc-preserves-slot (floc fs8) (falloc fs8) obj-hl obj-stash rdi-fs8)
-     (trans (exec-abstract-preserves-stack-slot (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7)
-               (current-frame (falloc fs3)) obj-stash nhw-instr-load-code-addr refl)
-     (trans (store-ind-preserves-slot (floc fs6) (falloc fs6) obj-hl obj-stash rdi-fs6)
-     (trans (exec-abstract-preserves-stack-slot (load-from-slot cell0-stash) (floc fs5) (falloc fs5)
-               (current-frame (falloc fs3)) obj-stash nhw-load-from-slot refl)
-     (trans (exec-abstract-preserves-stack-slot mov-to-input (floc fs4) (falloc fs4)
-               (current-frame (falloc fs3)) obj-stash nhw-mov-to-input refl)
-            read-obj-fs4))))
-
-    wf-load-obj : InstrWF (floc fs9) (falloc fs9) (load-from-slot obj-stash)
-    wf-load-obj =
-      objv , subst (λ f → SMCore.MemOps.readLoc (floc fs9) (AtStack f obj-stash) ≡ just objv)
-                 (sym cf-fs9) read-obj-fs9
-
-    -- ── The ten `halted ≡ false` obligations.
-    nh0 : halted (floc fs0) ≡ false
-    nh0 = nh
-    nh1 : halted (floc fs1) ≡ false
-    nh1 = exec-abstract-preserves-halted-WF mov-to-output (floc fs0) (falloc fs0) nh0 tt
-    nh2 : halted (floc fs2) ≡ false
-    nh2 = exec-abstract-preserves-halted-WF (store-at-slot cell0-stash) (floc fs1) (falloc fs1) nh1 tt
-    nh3 : halted (floc fs3) ≡ false
-    nh3 = exec-abstract-preserves-halted-WF (instr-alloc-heap 2) (floc fs2) (falloc fs2) nh2 tt
-    nh4 : halted (floc fs4) ≡ false
-    nh4 = exec-abstract-preserves-halted-WF (store-at-slot obj-stash) (floc fs3) (falloc fs3) nh3 tt
-    nh5 : halted (floc fs5) ≡ false
-    nh5 = exec-abstract-preserves-halted-WF mov-to-input (floc fs4) (falloc fs4) nh4 tt
-    nh6 : halted (floc fs6) ≡ false
-    nh6 = exec-abstract-preserves-halted-WF (load-from-slot cell0-stash) (floc fs5) (falloc fs5) nh5 wf-load-cell0
-    nh7 : halted (floc fs7) ≡ false
-    nh7 = exec-abstract-preserves-halted-WF store-indirect (floc fs6) (falloc fs6) nh6 wf-store-ind
-    nh8 : halted (floc fs8) ≡ false
-    nh8 = exec-abstract-preserves-halted-WF (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7) nh7 tt
-    nh9 : halted (floc fs9) ≡ false
-    nh9 = exec-abstract-preserves-halted-WF store-indirect-suc (floc fs8) (falloc fs8) nh8 wf-store-ind-suc
     nh10 : halted (floc fs10) ≡ false
-    nh10 = exec-abstract-preserves-halted-WF (load-from-slot obj-stash) (floc fs9) (falloc fs9) nh9 wf-load-obj
+    nh10 = h₉
+
+    he : halted (proj₁ (exec-trace (two-cell-trace n l) s alloc)) ≡ false
+    he = trans (cong (λ r → halted (proj₁ r)) whole) h₉
+
+    sts : All StraightStep (two-cell-trace n l)
+    sts = (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
+          (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
+
+    evs : All (λ i → ∀ fs′ → event-of i fs′ ≡ []) (two-cell-trace n l)
+    evs = (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷
+          (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ (λ _ → refl) ∷ []
+
+    run₀ = SR.straight-steps {prog} (two-cell-trace n l) fs0 sts span nh he
+
+    eq : SR.after (two-cell-trace n l) fs0 ≡ fs10
+    eq = cong (λ r → record fs0 { floc = proj₁ r ; falloc = proj₂ r ; fpc = 10 + base }) whole
 
     run : FlatSteps prog 10 fs0 fs10
-    run = (nh0 , span 0 _ refl) ∷ (nh1 , span 1 _ refl) ∷ (nh2 , span 2 _ refl)
-        ∷ (nh3 , span 3 _ refl) ∷ (nh4 , span 4 _ refl) ∷ (nh5 , span 5 _ refl)
-        ∷ (nh6 , span 6 _ refl) ∷ (nh7 , span 7 _ refl) ∷ (nh8 , span 8 _ refl)
-        ∷ (nh9 , span 9 _ refl) ∷ []
+    run = subst (FlatSteps prog 10 fs0) eq run₀
 
+    silent : chain-events run ≡ []
+    silent = trans (chain-events-subst eq run₀) (SR.straight-silent {prog} (two-cell-trace n l) fs0 sts span nh he evs)

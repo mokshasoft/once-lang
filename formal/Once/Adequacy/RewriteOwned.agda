@@ -40,9 +40,9 @@ open SigOpInfo using (name; sem; baseA; conB)
 open import Once.Arith.Prim using (ArithPrim; p-add; p-sub; p-mul; p-div; p-mod; p-neg;
                                    p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block; cmp-block-info)
+open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block; cmp-block-info; cmp-body)
 open import Once.Arith.SigOp.Block using (block-info; block-name)
-open import Once.Arith.Machine.IR using (ArithBlock; mk-block; module ArithBlock; shape-as-type; MArithIR)
+open import Once.Arith.Machine.IR using (ArithBlock; mk-block; module ArithBlock; shape-as-type; numtype-as-type; MArithIR)
 open import Once.Arith.Type using (NInt; NFloat)
 open ArithBlock using (block-body)
 open import Once.Arith.Machine.Rewrite using (rewrite-ir; walk-both; prefix-at; try-lift; bare-at; bare-sigop; shape-of; has-op; block-as-ir; sigop-blocks)
@@ -81,8 +81,15 @@ private
 ------------------------------------------------------------------------
 
 -- A compiler-owned SigOp names one of `bs`.
+-- plan 0.123 α′ (f1): …and its contract IS that block's body, so the block a
+-- call of its symbol runs (one symbol, one block: `DigestInjective`) computes
+-- what the SigOp means.
+data BlockOf {X Y} (si : SigOpInfo X Y) : ArithBlock → Set where
+  is-block : ∀ {sh n} (e : MArithIR sh n) (eA : X ≡ shape-as-type sh) (eB : Y ≡ numtype-as-type n)
+           → sem si ≡ blockV e eA eB → BlockOf si (mk-block sh n e)
+
 Named : List ArithBlock → ∀ {X Y} → SigOpInfo X Y → Set
-Named bs si = Internal (sem si) → Σ ArithBlock (λ b → b ∈ bs × name si ≡ bare (block-name (block-body b)))
+Named bs si = Internal (sem si) → Σ ArithBlock (λ b → b ∈ bs × name si ≡ bare (block-name (block-body b)) × BlockOf si b)
 
 Owned : List ArithBlock → ∀ {A B} → IR A B → Set
 Owned bs = SigLeaves (λ si → Calls (Named bs) si (cmp-of (sem si)))
@@ -120,8 +127,8 @@ private
 
   block-owned : ∀ {A sh n} (eq : A ≡ II.⌊ shape-as-type sh ⌋) (body : MArithIR sh n)
               → Owned (mk-block sh n body ∷ []) (block-as-ir eq body)
-  block-owned {n = NInt}   refl body _ = _ , here refl , refl
-  block-owned {n = NFloat} refl body _ = _ , here refl , refl
+  block-owned {n = NInt}   refl body _ = _ , here refl , refl , is-block body refl refl refl
+  block-owned {n = NFloat} refl body _ = _ , here refl , refl , is-block body refl refl refl
 
   try-lift-owned : ∀ {A B} (ir : IR A B) → JustOwned (try-lift ir)
   try-lift-owned {A} {II.Int} ir with shape-of A
@@ -154,12 +161,12 @@ private
 private
   prim-stays : ∀ {X Y} nm (p : ArithPrim X Y) bA cB → try-lift (SigOp (mk-info' nm (primV p) bA cB) ∘ id) ≡ nothing
              → (m : Maybe CmpOp) → cmp-of (primV p) ≡ m → Calls (Named (sigop-blocks m)) (mk-info' nm (primV p) bA cB) m
-  prim-stays nm p bA cB tl (just o) _ _   = cmp-block o , here refl , refl
+  prim-stays nm p bA cB tl (just o) _ _   = cmp-block o , here refl , refl , is-block (cmp-body o) refl refl refl
   prim-stays nm p bA cB tl nothing  c int = ⊥-elim (lifts-at nm p bA cB c tl)
 
   stays : ∀ {X Y} nm (s : SigOpSem X Y) bA cB → try-lift (SigOp (mk-info' nm s bA cB) ∘ id) ≡ nothing
         → Owned (proj₂ (bare-sigop nm s bA cB)) (proj₁ (bare-sigop nm s bA cB))
-  stays nm (blockV {sh} {n} e refl refl) bA cB tl _ = mk-block sh n e , here refl , refl
+  stays nm (blockV {sh} {n} e refl refl) bA cB tl _ = mk-block sh n e , here refl , refl , is-block e refl refl refl
   stays nm (primV p)  bA cB tl = prim-stays nm p bA cB tl (cmp-of (primV p)) refl
   stays nm ffiV       bA cB tl ()
   stays nm callsV     bA cB tl ()

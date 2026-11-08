@@ -22,6 +22,7 @@ open import Once.Spec.Trace using (Tr)
 open import Once.Adequacy.MachineTrace using (module Machine)
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.IR.Semantics.Trace using (Interp)
+open import Once.Target.Arch using (arch-numerics; x86-32)
 open import Once.Arith.Backend.CallAnswer using (CallResolver; answer-at)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 
@@ -68,9 +69,9 @@ postulate
 -- answered by `ι`, and the answer lands in the return register.
 -- Plan 0.107: the arith blocks are IN THE FILE, so which block a symbol names is
 -- a lookup, not a postulate (it was `arith-env-x86-32`).
-block-env : List (String × RF.Payload) → String → Maybe (List XInstr)
+block-env : List (String × RF.Payload) → String → Maybe RF.Payload
 block-env []              _ = nothing
-block-env ((s′ , p) ∷ bs) s = if s′ == s then just (proj₁ p) else block-env bs s
+block-env ((s′ , p) ∷ bs) s = if s′ == s then just p else block-env bs s
 
 -- Plan 0.129 B5: a symbol that is in the table is found.
 block-env-hit : ∀ (bs : List (String × RF.Payload)) (s : String) → Any (λ x → proj₁ x ≡ s) bs
@@ -79,16 +80,29 @@ block-env-hit []              s ()
 block-env-hit ((s′ , p) ∷ bs) s a = go (s′ ≟ s) a
   where
     go : (d : Dec (s′ ≡ s)) → Any (λ x → proj₁ x ≡ s) ((s′ , p) ∷ bs)
-       → Σ _ (λ pl → (if isYes d then just (proj₁ p) else block-env bs s) ≡ just pl)
-    go (yes _)  _            = (proj₁ p) , refl
+       → Σ _ (λ pl → (if isYes d then just p else block-env bs s) ≡ just pl)
+    go (yes _)  _            = p , refl
     go (no ¬e)  (here e)  = ⊥-elim (¬e e)
     go (no _)   (there a) = block-env-hit bs s a
+
+-- plan 0.123 α′ (f1): …and what is found is an entry under that symbol.
+open import Data.Maybe.Properties using (just-injective)
+open import Data.Product using (proj₂)
+block-env-sound : ∀ (bs : List (String × RF.Payload)) (s : String) {pl : RF.Payload} → block-env bs s ≡ just pl
+                → Any (λ x → proj₁ x ≡ s × proj₂ x ≡ pl) bs
+block-env-sound []              s ()
+block-env-sound ((s′ , p) ∷ bs) s {pl} eq = go (s′ ≟ s) eq
+  where
+    go : (d : Dec (s′ ≡ s)) → (if isYes d then just p else block-env bs s) ≡ just pl
+       → Any (λ x → proj₁ x ≡ s × proj₂ x ≡ pl) ((s′ , p) ∷ bs)
+    go (yes e) eq′ = here (e , just-injective eq′)
+    go (no _)  eq′ = there (block-env-sound bs s eq′)
 
 -- D320: the binary's TRACE — the machine read off step by step (`RT.Run.δ`,
 -- `MachineTrace`): no fuel, so a run that never calls again never arrives.
 run-trace-x86-32 : Interp → RF.Image → X32.State → Tr ⊤
 run-trace-x86-32 ι P s =
-  Machine.trace (RT.Run.δ val-x86-32 (answer-at ι call-at-x86-32) ev-x86-32 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
+  Machine.trace (RT.Run.δ val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 (block-env (RF.Image.blocks P)) (RF.Image.code P)) ([] , s)
 
 postulate
   decode-x86-32 : List Byte → Maybe RF.Image

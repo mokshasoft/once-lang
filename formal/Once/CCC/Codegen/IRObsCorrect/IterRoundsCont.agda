@@ -107,7 +107,7 @@ module IterRoundsContC {FS : FrameSemantics} where
                → ResultPlace {prog = prog} (B IRT.+ A) (VR.out-mode vb) (falloc S0) (VR.cont-alloc vb) (inj₂ a′) (floc S0)
                → RoundsRun Z prog σ a r
       cont-run a′ r″ q (at-loc loc vS bef rax _ _) = record
-        { steps = VR.steps vb + (15 + RoundsRun.steps rr) ; settle = RoundsRun.settle rr
+        { steps = VR.steps vb + (_ + RoundsRun.steps rr) ; settle = RoundsRun.settle rr
         ; out-mode = RoundsRun.out-mode rr ; cont-alloc = RoundsRun.cont-alloc rr
         ; run = FlatSteps-++ chainB (FlatSteps-++ C.chain (RoundsRun.run rr))
         ; live = λ p → RoundsRun.live rr (trans (cong is-stopped (sym res)) p)
@@ -136,6 +136,7 @@ module IterRoundsContC {FS : FrameSemantics} where
         ; frame = λ p → RoundsRun.frame rr (trans (sym res) p)
         ; frames = λ p → RoundsRun.frames rr (trans (sym res) p)
         ; bf0 = λ nc′ → RoundsRun.bf0 rr (subst NotCut res nc′)
+        ; bk0 = λ nc′ → RoundsRun.bk0 rr (subst NotCut res nc′)
         }
         where
           nc : NotCut ρ₁
@@ -144,7 +145,7 @@ module IterRoundsContC {FS : FrameSemantics} where
           ns = cong is-stopped q
           module C = Cont body n l prog base span la Z S0 a′ (Live.nh0 ns) (pc0-of q)
                        (cf0-of q) (sf0-of q) ns0 (NC.hr0 nc) (NC.memF0 nc) (NC.env0 nc) (ret0-of q) (NC.lnk0 nc)
-                       (NC.mem00 nc) (NC.bf00 nc) (Live.left0 ns) loc vS bef rax
+                       (NC.mem00 nc) (NC.bf00 nc) (Live.left0 ns) (NC.bkF0 nc) (NC.bk00 nc) loc vS bef rax
           lt : suc r″ ≤ r
           lt = done-≤ ιᶠ h r (round e a) q
           rr : RoundsRun Z prog C.σ′ a′ r″

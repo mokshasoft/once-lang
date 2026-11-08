@@ -20,7 +20,7 @@ module Once.CCC.Codegen.IRObsCorrect.IterBody (o : CanonicalName) (tbl : DL.List
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore
   using (AllocState; AbstractTrace; LocState; StoredValue; module LocState; module AllocState)
 open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
@@ -161,6 +161,21 @@ module IterBodyC {FS : FrameSemantics} where
 
       lnk0 : flink S0 ≡ nothing
       lnk0 = VR.no-link vb nc
+
+      -- D387: the blocks kept, through the round
+      liveF : ∀ l → Live (falloc fsF) l → Live (falloc σ) l
+      liveF (AtDynamic hl) lv with bfσ (AtDynamic hl) lv
+      ... | BeforeFrontier.heap-before q = BeforeFrontier.heap-before q
+
+      live0 : ∀ l → Live alloc₀ l → Live (falloc σ) l
+      live0 (AtDynamic hl) (BeforeFrontier.heap-before p) with bf0σ (AtDynamic hl) (BeforeFrontier.heap-before p)
+      ... | BeforeFrontier.heap-before q = BeforeFrontier.heap-before q
+
+      bkF0 : BlocksKept (falloc fsF) (falloc S0)
+      bkF0 = bk-trans {a = falloc fsF} {b = falloc σ} {c = falloc S0} I.bkF (VR.blocks-kept vb nc) liveF
+
+      bk00 : BlocksKept alloc₀ (falloc S0)
+      bk00 = bk-trans {a = alloc₀} {b = falloc σ} {c = falloc S0} I.bk0 (VR.blocks-kept vb nc) live0
 
     module Live (ns : stopsAt (floc σ) (⟪ round e a ⟫ r) ≡ false) where
       nh0 : halted (floc S0) ≡ false
