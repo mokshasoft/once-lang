@@ -19,8 +19,8 @@ let
     owner = "mokshasoft";
     repo = "once-lang";
     # At the release: tag = "v${version}";
-    rev = "aef06161cf5b9216a86414080a9bebfbc2e9c74f";
-    hash = "sha256-RlBQ/NdC3j7Jxv0qzKGCUhNol4AN7oW3jgEl5Mqg8jA=";
+    rev = "b96cddee082200bee43c42ed8208bdda211f1428";
+    hash = "sha256-L/b7+pmiFcAP6n6wJ9pS+vcA5tlMEIssuu9JSf3mfQY=";
   };
 
   once = haskellPackages.callPackage (
