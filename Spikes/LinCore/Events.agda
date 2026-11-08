@@ -61,6 +61,8 @@ data MV : LTy → Set where
   mmu   : ∀ {F} → Id → MV (LF∙ F (μt F)) → MV (μt F)
   -- a closure: one cell holding its environment (the body is code)
   mclo  : ∀ {E A B} → Id → MV E → LTm (E ⊗t A) B → MV (A ⇒t B)
+  -- a many-use closure: one cell holding its environment (the body reads it)
+  mcloB : ∀ {E A B} → Id → MV E → BTm E A B → MV (A ⇛t B)
   -- a ν not yet observed: one cell holding its seed (the coalgebra is code)
   mnu   : ∀ {S F} → Id → MV S → LTm S (LF∙ F S) → MV (νt F)
   -- a ν built from a layer (`lInν`): one cell holding the layer
@@ -75,6 +77,7 @@ er (minr b)          = inj₂ (er b)
 er (mbase x)         = x
 er (mmu {F} i v)     = inμ (coh F (μt F) (er v))
 er (mclo i env f)    = λ a → Lᶜ f (er env , a)
+er (mcloB i env b)   = λ a → Bᶜ b (er env) a
 er (mnu {F = F} i s c) = unfoldNu F c (er s)
 er (mnuv {F} i v)    = inν (coh F (νt F) (er v))
 
@@ -105,6 +108,8 @@ copy (mmu i v)     n with copy v (suc n)
 ... | (v' , n₁ , t₁) = (mmu n v' , n₁ , alloc n ∷ t₁)
 copy (mclo i e f)  n with copy e (suc n)
 ... | (e' , n₁ , t₁) = (mclo n e' f , n₁ , alloc n ∷ t₁)
+copy (mcloB i e b) n with copy e (suc n)
+... | (e' , n₁ , t₁) = (mcloB n e' b , n₁ , alloc n ∷ t₁)
 copy (mnu i s c)   n with copy s (suc n)
 ... | (s' , n₁ , t₁) = (mnu n s' c , n₁ , alloc n ∷ t₁)
 copy (mnuv i v)    n with copy v (suc n)
@@ -119,6 +124,7 @@ freeAll (minr b)     = freeAll b
 freeAll (mbase x)    = []
 freeAll (mmu i v)    = free i ∷ freeAll v
 freeAll (mclo i e f) = free i ∷ freeAll e
+freeAll (mcloB i e b) = free i ∷ freeAll e
 freeAll (mnu i s c)  = free i ∷ freeAll s
 freeAll (mnuv i v)   = free i ∷ freeAll v
 
@@ -186,6 +192,8 @@ data Run where
   r-Outμ  : ∀ {F} {v : MV (LF∙ F (μt F))} {i n} → Run (lOutμ {F}) (mmu i v) n v n (free i ∷ [])
   r-curry : ∀ {A B C} {f : LTm (A ⊗t B) C} {a : MV A} {n}
           → Run (lcurry f) a n (mclo n a f) (suc n) (alloc n ∷ [])
+  r-curryB : ∀ {E A B} {b : BTm E A B} {e : MV E} {n}
+          → Run (lcurryB b) e n (mcloB n e b) (suc n) (alloc n ∷ [])
   r-eval  : ∀ {E A B} {f : LTm (E ⊗t A) B} {env : MV E} {a : MV A} {i w n n′ t}
           → Run f (mpair env a) n w n′ t → Run leval (mpair (mclo i env f) a) n w n′ (free i ∷ t)
   r-Ana   : ∀ {S F} {c : LTm S (LF∙ F S)} {s : MV S} {n}
@@ -231,6 +239,9 @@ data RunB where
   -- keeping the lent value: a copy
   b-copy   : ∀ {E} {e : MV E} {n}
            → RunB bcopy e mone n (fst (copy e n)) (fst (snd (copy e n))) (snd (snd (copy e n)))
+  -- applying a lent many-use closure reads its cell and lends its environment on
+  b-app    : ∀ {E A B} {b : BTm E A B} {env : MV E} {i a w n n′ t}
+           → RunB b env a n w n′ t → RunB bapp (mcloB i env b) a n w n′ (peek i ∷ t)
   -- the fold consumes its node and reads `e` at every layer
   b-cata   : ∀ {E F A} {alg : BTm E (LF∙ F A) A} {e : MV E} {i v u w n n₁ n₂ t₁ t₂}
            → RunMapB F alg e F v n u n₁ t₁ → RunB alg e u n₁ w n₂ t₂
@@ -279,6 +290,8 @@ copy-er (mmu {F} i v) n with copy v (suc n) | copy-er v (suc n)
 ... | (v' , n₁ , t₁) | ev = cong (λ x → inμ (coh F (μt F) x)) ev
 copy-er (mclo i e f) n with copy e (suc n) | copy-er e (suc n)
 ... | (e' , n₁ , t₁) | ee = cong (λ x → λ a → Lᶜ f (x , a)) ee
+copy-er (mcloB i e b) n with copy e (suc n) | copy-er e (suc n)
+... | (e' , n₁ , t₁) | ee = cong (λ x → λ a → Bᶜ b x a) ee
 copy-er (mnu {F = F} i s c) n with copy s (suc n) | copy-er s (suc n)
 ... | (s' , n₁ , t₁) | es = cong (unfoldNu F c) es
 copy-er (mnuv {F} i v) n with copy v (suc n) | copy-er v (suc n)
@@ -339,6 +352,7 @@ sound (r-case₂ r) = sound r
 sound r-In   = refl
 sound (r-Outμ {F} {v}) = sym (coh⁻¹∘coh F (μt F) (er v))
 sound r-curry = refl
+sound r-curryB = refl
 sound (r-eval r) = sound r
 sound r-Ana  = refl
 sound r-Inν  = refl
@@ -363,6 +377,7 @@ soundB (b-caseE₂ r) = soundB r
 soundB (b-out {F} {f = f} {v = v} {a = a} r) =
   trans (soundB r) (cong (λ z → fst (Bᶜ f z (er a))) (sym (coh⁻¹∘coh F (μt F) (er v))))
 soundB (b-copy {e = e} {n}) = copy-er e n
+soundB (b-app r) = soundB r
 soundB (b-cata {F = F} {A} {alg} {e} {u = u} rm ra) =
   trans (soundB ra) (cong (λ z → fst (Bᶜ alg (er e) z)) (trans (sym (coh⁻¹∘coh F A (er u))) (cong (coh⁻¹ F A) (sound-mapB rm))))
 
@@ -477,6 +492,7 @@ cnt (minr b)     i = cnt b i
 cnt (mbase x)    i = 0
 cnt (mmu j v)    i = δ j i + cnt v i
 cnt (mclo j e f) i = δ j i + cnt e i
+cnt (mcloB j e b) i = δ j i + cnt e i
 cnt (mnu j s c)  i = δ j i + cnt s i
 cnt (mnuv j v)   i = δ j i + cnt v i
 
@@ -588,6 +604,8 @@ copy-mono (mmu i v) n with copy v (suc n) | copy-mono v (suc n)
 ... | (v' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
 copy-mono (mclo i e f) n with copy e (suc n) | copy-mono e (suc n)
 ... | (e' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
+copy-mono (mcloB i e b) n with copy e (suc n) | copy-mono e (suc n)
+... | (e' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
 copy-mono (mnu i s c) n with copy s (suc n) | copy-mono s (suc n)
 ... | (s' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
 copy-mono (mnuv i v) n with copy v (suc n) | copy-mono v (suc n)
@@ -606,6 +624,8 @@ copy-below (mbase x) n i le = refl
 copy-below (mmu j v) n i le with copy v (suc n) | copy-below v (suc n) | copy-mono v (suc n)
 ... | (v' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bv i le)
 copy-below (mclo j e f) n i le with copy e (suc n) | copy-below e (suc n) | copy-mono e (suc n)
+... | (e' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bv i le)
+copy-below (mcloB j e b) n i le with copy e (suc n) | copy-below e (suc n) | copy-mono e (suc n)
 ... | (e' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bv i le)
 copy-below (mnu j s c) n i le with copy s (suc n) | copy-below s (suc n) | copy-mono s (suc n)
 ... | (s' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bv i le)
@@ -640,6 +660,8 @@ copy-ok (mbase x) n h ab = (tt , λ i → sym (+0 (h i)))
 copy-ok (mmu j v) n h ab with copy v (suc n) | copy-ok v (suc n) (step (alloc n) h) (alloc-above n h ab)
 ... | (v' , n₁ , t₁) | (ok , eq) = ((ab n ≤-refl , ok) , alloc-eq n h (cnt v') (play t₁ (step (alloc n) h)) eq)
 copy-ok (mclo j e f) n h ab with copy e (suc n) | copy-ok e (suc n) (step (alloc n) h) (alloc-above n h ab)
+... | (e' , n₁ , t₁) | (ok , eq) = ((ab n ≤-refl , ok) , alloc-eq n h (cnt e') (play t₁ (step (alloc n) h)) eq)
+copy-ok (mcloB j e b) n h ab with copy e (suc n) | copy-ok e (suc n) (step (alloc n) h) (alloc-above n h ab)
 ... | (e' , n₁ , t₁) | (ok , eq) = ((ab n ≤-refl , ok) , alloc-eq n h (cnt e') (play t₁ (step (alloc n) h)) eq)
 copy-ok (mnu j s c) n h ab with copy s (suc n) | copy-ok s (suc n) (step (alloc n) h) (alloc-above n h ab)
 ... | (s' , n₁ , t₁) | (ok , eq) = ((ab n ≤-refl , ok) , alloc-eq n h (cnt s') (play t₁ (step (alloc n) h)) eq)
@@ -694,6 +716,7 @@ free-ok (minr b) h r le sb = free-ok b h r le sb
 free-ok (mbase x) h r le sb = (tt , λ i → +0 (h i))
 free-ok (mmu j v) h r le sb = free-cell j (cnt v) (freeAll v) h r le sb (λ h′ le′ sb′ → free-ok v h′ r le′ sb′)
 free-ok (mclo j e f) h r le sb = free-cell j (cnt e) (freeAll e) h r le sb (λ h′ le′ sb′ → free-ok e h′ r le′ sb′)
+free-ok (mcloB j e b) h r le sb = free-cell j (cnt e) (freeAll e) h r le sb (λ h′ le′ sb′ → free-ok e h′ r le′ sb′)
 free-ok (mnu j s c) h r le sb = free-cell j (cnt s) (freeAll s) h r le sb (λ h′ le′ sb′ → free-ok s h′ r le′ sb′)
 free-ok (mnuv j v) h r le sb = free-cell j (cnt v) (freeAll v) h r le sb (λ h′ le′ sb′ → free-ok v h′ r le′ sb′)
 
@@ -789,6 +812,7 @@ mono (r-case₂ r)   = mono r
 mono r-In          = n≤1+n _
 mono r-Outμ        = ≤-refl
 mono r-curry       = n≤1+n _
+mono r-curryB      = n≤1+n _
 mono (r-eval r)    = mono r
 mono r-Ana         = n≤1+n _
 mono r-Inν         = n≤1+n _
@@ -809,6 +833,7 @@ monoB (b-caseE₁ r) = monoB r
 monoB (b-caseE₂ r) = monoB r
 monoB (b-out r) = monoB r
 monoB (b-copy {e = e} {n}) = copy-mono e n
+monoB (b-app r) = monoB r
 monoB (b-cata rm ra) = ≤-trans (mono-mapB rm) (monoB ra)
 
 mono-mapB (mb-id r)      = monoB r
@@ -851,6 +876,7 @@ below (r-case₂ r) b = below r b
 below (r-In {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
 below (r-Outμ {v = v} {i = j}) b i le = +≡0ʳ (δ j i) (cnt v i) (b i le)
 below (r-curry {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
+below (r-curryB {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
 below (r-eval {env = env} {a = a} {i = j} r) b = below r (λ i le →
   cong₂ _+_ (+≡0ʳ (δ j i) (cnt env i) (+≡0ˡ (δ j i + cnt env i) (cnt a i) (b i le)))
             (+≡0ʳ (δ j i + cnt env i) (cnt a i) (b i le)))
@@ -878,6 +904,7 @@ belowB (b-caseE₁ r) b = belowB r b
 belowB (b-caseE₂ r) b = belowB r b
 belowB (b-out r) b = belowB r b
 belowB (b-copy {e = e} {n}) b = copy-below e n
+belowB (b-app r) b = belowB r b
 belowB (b-cata {i = j} {v} rm ra) b = belowB ra (below-mapB rm (λ i le → +≡0ʳ (δ j i) (cnt v i) (b i le)))
 
 below-mapB (mb-id r) b = belowB r b
@@ -1005,6 +1032,7 @@ exchange (r-Outμ {v = v} {i = j}) {h} {r} pre with free-step j (cnt v) h r (le1
   where r5 : ∀ P D V → P + (D + V) ≡ (P + D) + V
         r5 = solve-∀
 exchange (r-curry {a = a}) pre = alloc1 (cnt a) pre
+exchange (r-curryB {e = e}) pre = alloc1 (cnt e) pre
 exchange (r-eval {env = env} {a = a} {i = j} {t = t} r) {h} {rf} pre
   with free-step j (λ i → cnt env i + cnt a i) h rf (le1 pre)
          (λ i → subst (_≤ h i) (cong (_+ rf i) (assoc (δ j i) (cnt env i) (cnt a i))) (sub pre i))
@@ -1130,6 +1158,9 @@ exchangeB (b-out {i = i} {v} {a} r) {h} pre lent with exchangeB r pre (λ j p �
 ... | (ok , eq) = ((peek-live {a = a} {e = mmu i v} pre lent i (subst (λ x → 1 ≤ x + cnt v i) (sym (δ-same i)) (s≤s z≤n)) , ok) , eq)
 exchangeB (b-copy {e = e} {n}) {h} pre lent with copy-ok e n h (above pre)
 ... | (ok , eq) = (ok , λ i → trans (+0 _) (eq i))
+-- the closure's cell is read; its environment, lent with it, is lent to the body
+exchangeB (b-app {b = bd} {env = env} {i} {a} r) {h} pre lent with exchangeB r pre (λ j p → lent j (≤-trans p (m≤n+m (cnt env j) (δ i j))))
+... | (ok , eq) = ((peek-live {a = a} {e = mcloB i env bd} pre lent i (subst (λ x → 1 ≤ x + cnt env i) (sym (δ-same i)) (s≤s z≤n)) , ok) , eq)
 exchangeB (b-cata {i = j} {v} {u} {w} {t₁ = t₁} {t₂} rm ra) {h} {r} pre lent
   with free-step j (cnt v) h r (le1 pre) (sub pre)
 ... | (hj , le′ , sb′ , back)
