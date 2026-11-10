@@ -21996,3 +21996,29 @@ once). **Starts from**: `NbEPLinCore` (OCP-0009, `origin/plan-ref`).
   examples show runs exist.
 * **The gate** (plan 0.146 §4): both gate servers keep an `Int`, which frames alone would pass; the
   list-state server above is the proposed extra gate test (for the user to decide).
+
+### Amended (the user, 2026-11-10): the model is the backbone
+Still **Proposed**: the user's review of this entry's remaining points continues (`HANDOFF.md`).
+* **The spike's model is the compiler's backbone, decorated.** Its terms, machine values, run relation and
+  memory theorems become the linear core as they are, not a design that a separate core re-implements.
+  What the compiler needs attaches in two ways, leaving the theorems as they are. Parameters decided by the
+  type: base types, SigOps, cell sizes, layout, frame or cell. Choices on a term: in-place reuse, local
+  temporaries, later stack regions (the machine is not a decoration: it is a simulation, by induction on
+  the run).
+* **`NoLeak` comes from the backbone.** The machine's cell events, temporaries removed, equal the run's
+  trace; `lifetimes` then gives the claim. The value relation between machine and run is first-order,
+  since a run of an application already contains the run of the closure's body.
+* **One term language.** `LTm`, `BTm` and `ATm` merge into one language indexed by its lent context and
+  whether it may perform effects, so each theorem is proved once. This supersedes "effects sit above the
+  core" and closes finding (3): SigOps may occur inside folds and closures, as the IR allows.
+* **Local temporaries are allowed.** The lowering may allocate heap blocks the run does not have, if the
+  same generator's code frees them before it finishes and nothing in the result points into them. A
+  halt or `exhausted` in between falls under the exit exception. The space claim counts them: live data
+  plus temporaries.
+* **Termination of the run relation (finding 4) is a gate.** The memory theorems assume a run exists and
+  `NoLeak` covers every image, so every program must have one (D213, D360: a claim over an empty set).
+* **Stack or cell.** D403's split stands: words, pairs and sums in frames, μ/ν nodes and closures in cells,
+  free lists per size. Stack regions for nodes that stay inside a frame are a later optimization. A closure
+  with an empty environment gets no cell, decided with sizes (plan 0.146 A12).
+* **Order.** The spike continues until every question mark it can resolve is gone (plan 0.146 A10–A17); only
+  then does the integration (§4 B) start.
