@@ -28,7 +28,6 @@ Introduce a separate compilation path for arithmetic expressions that bypasses t
 | Recognition from main IR | ✓ | `compiler/src/Once/Arith/Recognize.hs` |
 | C backend (`--arith`) | ✓ | `compiler/src/Once/Arith/CodeGen/C.hs` |
 | x86-64 native backend | ✓ | `compiler/src/Once/Arith/Backend/X86/` |
-| AArch64 native backend | ✓ | `compiler/src/Once/Arith/Backend/AArch64/` |
 | RISC-V native backend | ✓ | `compiler/src/Once/Arith/Backend/RiscV/` |
 | Verified MAlonzo codegen | ✓ | `compiler/src/MAlonzo/Code/Once/Backend/` |
 | Agda type proofs | ✓ | `formal/Once/Arith/Type.agda` |
@@ -47,7 +46,6 @@ Introduce a separate compilation path for arithmetic expressions that bypasses t
 - Removed legacy `CmpIR` type in favor of unified `ACmp` in `ArithIR`
 - Added native comparison codegen to all backends:
   - X86: `cmp`/`setcc`/`movzx` pattern
-  - AArch64: `cmp`/`cset` pattern
   - RISC-V: `slt`/`slti` pattern
 - Fixed float negation in X86 backend with proper sign mask XOR
 - Added `movqToXMM` instruction for GPR to XMM constant loading
@@ -118,10 +116,6 @@ compiler/src/Once/Arith/
 │   └── C.hs           # ArithIR → C expressions
 └── Backend/
     ├── X86/           # x86-64 native codegen
-    │   ├── Syntax.hs
-    │   ├── CodeGen.hs
-    │   └── Emit.hs
-    ├── AArch64/       # ARM64 native codegen
     │   ├── Syntax.hs
     │   ├── CodeGen.hs
     │   └── Emit.hs
@@ -219,7 +213,7 @@ The `--arith` flag inlines arithmetic primitives as C expressions instead of fun
 Pure categorical IR (no primitives) can be compiled to verified native assembly:
 
 ```haskell
-import Once.Backend.Native (compileToX86, compileToAArch64, compileToRiscV64)
+import Once.Backend.Native (compileToX86, compileToRiscV64)
 
 -- Returns Just assembly if IR is pure categorical
 compileToX86 :: IR -> Maybe Text
@@ -290,6 +284,6 @@ This is purely an optimization - no surface syntax changes.
 Implementation completed 2025-12-27 with:
 - Full recognition from categorical IR
 - C backend with `--arith` flag
-- Three verified native backends (x86-64, AArch64, RISC-V)
+- Two verified native backends (x86-64, RISC-V)
 - Agda proofs for types, semantics, and correctness
 - 308 tests passing

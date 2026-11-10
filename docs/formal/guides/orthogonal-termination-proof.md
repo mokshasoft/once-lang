@@ -9,7 +9,7 @@
 This document describes a **formal termination proof** for the backend verification's `run-ir-star-at-offset` function that is completely **orthogonal** to the correctness proofs. The proof:
 
 - Uses **well-founded recursion** on IR structure size
-- Is **architecture-independent** (shared by RiscV64, X86, AArch64)
+- Is **architecture-independent** (shared by RiscV64, X86)
 - Provides **formal justification** for `{-# TERMINATING #-}` pragmas
 - **Doesn't change** the existing correctness proofs (separation of concerns)
 - Enables **fast compilation** (no sized types in main proofs)
@@ -40,7 +40,6 @@ Backend verification proofs in `MutualIR.agda` files have severe compilation per
 
 - **RiscV64**: 1,940 lines, 15-60 minutes to compile
 - **X86**: 2,150 lines, similar compile times
-- **AArch64**: 2,863 lines, can exceed 1 hour
 
 The root cause: **sized types + large mutual blocks** cause exponential constraint duplication in Agda's size solver (see [compilation-speed-optimization.md](compilation-speed-optimization.md)).
 
@@ -105,25 +104,24 @@ run-ir-star-at-offset (g ∘ f) ... =
 
 ### What Varies vs What's Constant
 
-| Aspect | RiscV64 | X86 | AArch64 | Termination Impact |
-|--------|---------|-----|---------|-------------------|
-| **IR input** | `IR A B` | `IR A B` | `IR A B` | ✅ Same |
-| **Recursion structure** | `(g ∘ f)` → `f`, `g` | `(g ∘ f)` → `f`, `g` | `(g ∘ f)` → `f`, `g` | ✅ Same |
-| **Assembly generated** | RISC-V code | x86-64 code | AArch64 code | ❌ Different (irrelevant!) |
-| **Register conventions** | a0, s1 | rdi, rax | x0, x19 | ❌ Different (irrelevant!) |
-| **Proof complexity** | 60 lines | 80 lines | 70 lines | ❌ Different (irrelevant!) |
+| Aspect | RiscV64 | X86 | Termination Impact |
+|--------|---------|-----|-------------------|
+| **IR input** | `IR A B` | `IR A B` | ✅ Same |
+| **Recursion structure** | `(g ∘ f)` → `f`, `g` | `(g ∘ f)` → `f`, `g` | ✅ Same |
+| **Assembly generated** | RISC-V code | x86-64 code | ❌ Different (irrelevant!) |
+| **Register conventions** | a0, s1 | rdi, rax | ❌ Different (irrelevant!) |
+| **Proof complexity** | 60 lines | 80 lines | ❌ Different (irrelevant!) |
 
 **Termination argument**: "Each recursive call is on a strict subterm of the input IR constructor"
 
 This is **the same** for all architectures!
 
-### One Proof, Three Backends
+### One Proof, Every Backend
 
 ```
 Once/Backend/Termination.agda  (300 lines, shared)
   ├─ used by RiscV64/Correct/MutualIR.agda  (1,940 lines)
-  ├─ used by X86/Correct/MutualIR.agda      (2,150 lines)
-  └─ used by AArch64/Correct/MutualIR.agda  (2,863 lines)
+  └─ used by X86/Correct/MutualIR.agda      (2,150 lines)
 ```
 
 **Benefit**: Write termination proof once, reuse three times. Total savings: ~600 lines if done per-backend.
@@ -657,7 +655,7 @@ Use the same technique for other mutually recursive modules:
 **What we built**: A 300-line proof module that formally establishes termination for all backend verification.
 
 **Key properties**:
-- ✅ Architecture-independent (one proof, three backends)
+- ✅ Architecture-independent (one proof, every backend)
 - ✅ Orthogonal (doesn't touch correctness proofs)
 - ✅ Reusable (abstract proof works for any IR processor)
 - ✅ Fast (enables 20-100x compilation speedup)

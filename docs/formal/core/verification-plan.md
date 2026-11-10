@@ -18,7 +18,6 @@ Verify the complete compilation pipeline from **RawExpr (parser output) to x86-6
 **Backend Status**:
 - **x86-64**: Core generators proven with **stateful proofs** (ZERO encoding postulates)
 - **RISC-V**: Core generators proven with non-stateful proofs (requires encoding postulates)
-- **AArch64**: In progress
 
 **Important**: x86-64 uses stateful proof architecture (`IRStarResultS` + validity predicates)
 to eliminate ALL encoding postulates. This is the RECOMMENDED approach for all backends.

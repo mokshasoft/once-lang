@@ -9,7 +9,7 @@ This document proposes a refactoring of the formal proof file structure to:
 4. Parameterize architecture-specific patterns where possible
 
 **Current State:**
-- 12,138 total lines in Correct.agda files (AArch64: 2,454 | RiscV64: 2,072 | x86-64: 7,612)
+- 9,684 total lines in Correct.agda files (RiscV64: 2,072 | x86-64: 7,612)
 - ~20 exact duplicate lemma pairs across backends
 - No Backend/Common/ directory - all sharing is at formal/Once/ level
 
@@ -37,11 +37,6 @@ formal/Once/
 ├── Primitive/             # Effect primitives
 ├── TypeSystem/            # Typing rules
 └── Backend/
-    ├── AArch64/
-    │   ├── Syntax.agda
-    │   ├── Semantics.agda
-    │   ├── CodeGen.agda
-    │   └── Correct.agda   # 2,454 lines, 12 postulates
     ├── RiscV64/
     │   ├── Syntax.agda
     │   ├── Semantics.agda
@@ -67,15 +62,6 @@ formal/Once/
     │   ├── Exec.agda                   # N-step execution lemmas
     │   ├── Memory.agda                 # Memory read/write lemmas
     │   └── StateHelpers.agda           # Generic state manipulation
-    ├── AArch64/
-    │   ├── ... (existing)
-    │   └── Correct/                    # Split Correct.agda into parts
-    │       ├── Main.agda               # Re-exports all
-    │       ├── Trivial.agda            # id, fold, unfold, arr, terminal, initial
-    │       ├── Projection.agda         # fst, snd
-    │       ├── Injection.agda          # inl, inr
-    │       ├── Compound.agda           # compose, pair, case
-    │       └── Exponential.agda        # curry, apply
     ├── RiscV64/
     │   └── ... (similar split)
     └── X86/
@@ -88,32 +74,32 @@ formal/Once/
 
 ### High Priority: Exact Duplicates (Move to Common/)
 
-| Lemma | AArch64 | RiscV64 | X86 | Lines | Target Module |
-|-------|---------|---------|-----|-------|---------------|
-| `fetch-0` | 330 | 391 | 454 | 2 | Common/Fetch.agda |
-| `fetch-1` | - | 395 | 458 | 2 | Common/Fetch.agda |
-| `fetch-2` | - | 399 | 462 | 2 | Common/Fetch.agda |
-| `fetch-3` | - | 403 | 466 | 2 | Common/Fetch.agda |
-| `fetch-4` | - | 407 | 540 | 2 | Common/Fetch.agda |
-| `fetch-5` | - | 411 | 544 | 2 | Common/Fetch.agda |
-| `fetch-append-left` | 343 | 431 | 490 | 5 | Common/Fetch.agda |
-| `fetch-append-right` | 351 | 438 | 484 | 4 | Common/Fetch.agda |
-| `exec-two-steps` | - | 544 | 1956 | 8 | Common/Exec.agda |
-| `exec-three-steps` | - | 553 | 1967 | 9 | Common/Exec.agda |
-| `exec-four-steps` | - | 563 | 1977 | 9 | Common/Exec.agda |
-| `exec-five-steps` | - | 574 | 1988 | 10 | Common/Exec.agda |
-| `step-exec-0..5` | - | 466-510 | 508-786 | 30 | Common/Exec.agda |
+| Lemma | RiscV64 | X86 | Lines | Target Module |
+|-------|---------|-----|-------|---------------|
+| `fetch-0` | 391 | 454 | 2 | Common/Fetch.agda |
+| `fetch-1` | 395 | 458 | 2 | Common/Fetch.agda |
+| `fetch-2` | 399 | 462 | 2 | Common/Fetch.agda |
+| `fetch-3` | 403 | 466 | 2 | Common/Fetch.agda |
+| `fetch-4` | 407 | 540 | 2 | Common/Fetch.agda |
+| `fetch-5` | 411 | 544 | 2 | Common/Fetch.agda |
+| `fetch-append-left` | 431 | 490 | 5 | Common/Fetch.agda |
+| `fetch-append-right` | 438 | 484 | 4 | Common/Fetch.agda |
+| `exec-two-steps` | 544 | 1956 | 8 | Common/Exec.agda |
+| `exec-three-steps` | 553 | 1967 | 9 | Common/Exec.agda |
+| `exec-four-steps` | 563 | 1977 | 9 | Common/Exec.agda |
+| `exec-five-steps` | 574 | 1988 | 10 | Common/Exec.agda |
+| `step-exec-0..5` | 466-510 | 508-786 | 30 | Common/Exec.agda |
 
 **Total: ~87 lines → Common/Fetch.agda + Common/Exec.agda**
 
 ### Medium Priority: Similar Patterns (Abstract Interface)
 
-| Lemma Pattern | AArch64 | RiscV64 | X86 | Pattern |
-|---------------|---------|---------|-----|---------|
-| `readMem-writeMem-same` | 293 | 362 | 425 | Same semantics, different proofs |
-| `readMem-writeMem-diff` | 298 | 379 | 442 | Same semantics, different proofs |
-| `exec-chain` | 474 | - | 1034 | Complex recursion |
-| `exec-one-step` | 365 | 528 | 897 | Varies by ISA |
+| Lemma Pattern | RiscV64 | X86 | Pattern |
+|---------------|---------|-----|---------|
+| `readMem-writeMem-same` | 362 | 425 | Same semantics, different proofs |
+| `readMem-writeMem-diff` | 379 | 442 | Same semantics, different proofs |
+| `exec-chain` | - | 1034 | Complex recursion |
+| `exec-one-step` | 528 | 897 | Varies by ISA |
 
 **Recommendation:** Create a shared interface/record in Common/Memory.agda with architecture-specific instantiation.
 
@@ -121,8 +107,6 @@ formal/Once/
 
 | Lemma | Location | Reason |
 |-------|----------|--------|
-| `readReg-writeReg-same` | AArch64:137 | 31 cases specific to x0-x30 |
-| `readSP-*` | AArch64:212 | SP handling varies by ISA |
 | `execInstr-*` | All | Instruction semantics differ |
 
 ---
@@ -229,7 +213,7 @@ fetch-past-end : ∀ {A} (xs : List A) (n : ℕ) → n ≥ length xs →
 ```
 
 **Estimated size:** 80-100 lines
-**Used by:** All three backends
+**Used by:** All backends
 
 ---
 
@@ -310,7 +294,6 @@ record ExecutionSemantics : Set₁ where
 ### Phase 2: Import Fetch in Backends
 
 **Modify:**
-- `AArch64/Correct.agda`: Add `open import Once.Backend.Common.Fetch`
 - `RiscV64/Correct.agda`: Same
 - `X86/Correct.agda`: Same
 
@@ -341,7 +324,6 @@ Correct/
 
 | Pattern | Blocker | Workaround |
 |---------|---------|------------|
-| `readReg-writeReg-same` | 31 cases for AArch64 registers | Keep architecture-specific |
 | `readMem-writeMem-*` | Equality decidability differs | Abstract interface |
 | `execInstr` | Instruction sets differ completely | No sharing possible |
 | `exec-concat-left` | PC tracking is ISA-specific | Share structure only |
@@ -355,10 +337,9 @@ Correct/
 
 | Backend | Correct.agda | Other Files | Total |
 |---------|-------------|-------------|-------|
-| AArch64 | 2,454 | ~500 | ~2,954 |
 | RiscV64 | 2,072 | ~400 | ~2,472 |
 | X86 | 7,612 | ~600 | ~8,212 |
-| **Total** | **12,138** | **~1,500** | **~13,638** |
+| **Total** | **9,684** | **~1,000** | **~10,684** |
 
 ### After Refactoring (Estimated)
 
@@ -367,10 +348,9 @@ Correct/
 | Common/Fetch.agda | 100 | New |
 | Common/Exec.agda | 200 | New |
 | Common/Memory.agda | 100 | New |
-| AArch64/Correct/* | 2,100 | -354 (-14%) |
 | RiscV64/Correct/* | 1,800 | -272 (-13%) |
 | X86/Correct/* | 6,800 | -812 (-11%) |
-| **Total** | **11,100** | **-1,038 (-8%)** |
+| **Total** | **9,000** | **-684 (-7%)** |
 
 **Note:** The savings are modest in percentage terms but significant in maintainability:
 - Common changes to fetch/exec lemmas now happen in one place

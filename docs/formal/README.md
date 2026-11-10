@@ -34,7 +34,6 @@ The actively maintained documentation for verification work:
 Detailed architecture documentation for each backend:
 
 - **[x86-64-backend-verification-plan.md](architecture/x86-64-backend-verification-plan.md)** - x86-64 stateful proof architecture (RECOMMENDED approach)
-- **[aarch64-backend-verification-plan.md](architecture/aarch64-backend-verification-plan.md)** - AArch64 backend architecture (in progress)
 - **[riscv64-backend-verification-plan.md](architecture/riscv64-backend-verification-plan.md)** - RISC-V backend architecture (non-stateful)
 
 ### `guides/` - How-To Guides and Examples
@@ -42,10 +41,9 @@ Detailed architecture documentation for each backend:
 Practical guides for implementing proofs:
 
 - **[stateful-runner-example.md](guides/stateful-runner-example.md)** - Example of stateful proof pattern
-- **[apply-proof-strategy.md](guides/apply-proof-strategy.md)** - Strategy for proving apply correctness
 - **[encoding-postulate-elimination-plan.md](guides/encoding-postulate-elimination-plan.md)** - How to eliminate encoding postulates
 - **[allocation-strategies-and-escape-analysis.md](guides/allocation-strategies-and-escape-analysis.md)** - Memory allocation strategies, escape analysis, and stack vs heap tradeoffs
-- **[proof-modularization-comparison.md](guides/proof-modularization-comparison.md)** - Comparing ARM and x86 proof modularization approaches (specialized records vs split modules)
+- **[proof-modularization-comparison.md](guides/proof-modularization-comparison.md)** - Comparing two proof modularization approaches (specialized records vs split modules)
 
 ### `historical/` - Historical Documentation
 
@@ -64,7 +62,6 @@ Complete investigation into the exchange₆ postulate problem:
 #### Other Historical Documents
 
 - **[lessons-learned.md](historical/lessons-learned.md)** - Lessons from verification work
-- **[proof-analysis.md](historical/proof-analysis.md)** - Historical proof analysis
 - **[proof-refactoring-proposal.md](historical/proof-refactoring-proposal.md)** - Completed refactoring proposals
 - **[shareable-proof-refactor.md](historical/shareable-proof-refactor.md)** - Completed refactoring work
 - **[fix-semantics-options.md](historical/fix-semantics-options.md)** - Resolved semantics issues

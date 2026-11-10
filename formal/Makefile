@@ -388,5 +388,4 @@ clean:
 
 # TODO: Add when needed:
 #   ccc-x86, arith-x86, compiler-x86
-#   ccc-aarch64, arith-aarch64, compiler-aarch64
 #   ccc-riscv64, arith-riscv64, compiler-riscv64

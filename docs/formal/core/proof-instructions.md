@@ -28,7 +28,7 @@ If IRStarResult requires x20/x21 preservation but pair/curry/case modify them:
 - Add "preconditions" that make false claims trivially true
 
 ✅ **RIGHT approach (principled):**
-- Recognize the code generator violates the ARM64 ABI
+- Recognize the code generator violates the ABI
 - Fix CodeGen.agda to save/restore x20/x21 properly
 - The proofs then work because the claims are TRUE
 
@@ -293,7 +293,7 @@ make malonzo
 # Extract specific components:
 make malonzo-core        # Type, IR, Semantics, Memory
 make malonzo-typecheck   # Verified type checker
-make malonzo-codegen     # Backend code generators (X86, AArch64, RiscV64)
+make malonzo-codegen     # Backend code generators (X86, RiscV64)
 ```
 
 ### What Gets Extracted

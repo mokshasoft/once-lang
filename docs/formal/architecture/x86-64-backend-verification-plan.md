@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The X86-64 backend verification is the **most mature and complete** of the three backend implementations, serving as the reference architecture for AArch64 and RISC-V backends.
+The X86-64 backend verification is the **most mature and complete** of the backend implementations, serving as the reference architecture for the RISC-V backend.
 
 **Status**: 14/15 generators proven (93% complete)
 **Total Code**: 25 files, 16,486 lines
@@ -377,22 +377,22 @@ Star is the "native" abstraction for execution proofs. Fuel-based exec is an imp
 
 ## Comparison with Other Backends
 
-| Aspect | X86 | AArch64 | RISC-V |
-|--------|-----|---------|--------|
-| **Files** | 25 | 19 | 13 |
-| **Lines** | 16,486 | 11,006 | 10,092 |
-| **Maturity** | Most complete | In progress | In progress |
-| **Generators** | 14/15 (93%) | 8/15 (53%) | 11/15 (73%) |
-| **Postulate Discipline** | ✅ Excellent (2 files) | ❌ Poor (5 files) | ⚠️ Moderate (4 files) |
-| **Helper Extraction** | ✅ Yes | ❌ Some inline | ✅ Yes |
-| **Transfer Overhead** | mov rdi,rax (1 inst) | nop (1 inst, unclear why) | None! (cleanest) |
-| **Register Model** | Complex (rdi≠rax) | Simple (x0=x0) | Simplest (a0=a0) |
+| Aspect | X86 | RISC-V |
+|--------|-----|--------|
+| **Files** | 25 | 13 |
+| **Lines** | 16,486 | 10,092 |
+| **Maturity** | Most complete | In progress |
+| **Generators** | 14/15 (93%) | 11/15 (73%) |
+| **Postulate Discipline** | ✅ Excellent (2 files) | ⚠️ Moderate (4 files) |
+| **Helper Extraction** | ✅ Yes | ✅ Yes |
+| **Transfer Overhead** | mov rdi,rax (1 inst) | None! (cleanest) |
+| **Register Model** | Complex (rdi≠rax) | Simplest (a0=a0) |
 
 **X86 serves as the reference implementation** - other backends should adopt its proven patterns (Star, helper extraction, centralized postulates).
 
 ## Key Lessons for Other Backends
 
-1. **Extract helpers** - Don't build records inline (see AArch64 compose)
+1. **Extract helpers** - Don't build records inline
 2. **Centralize postulates** - Only in Backend/*/Postulates.agda
 3. **Use Star throughout** - Never fuel-based exec in proofs
 4. **Follow X86 structure** - Proven to work at scale
@@ -402,7 +402,6 @@ Star is the "native" abstraction for execution proofs. Fuel-based exec is an imp
 - **Proof Instructions**: `formal/proof-instructions.md`
 - **Lessons Learned**: `docs/formal/lessons-learned.md`
 - **Decision Log**: `docs/compiler/decision-log.md` (D022: Agda, D032: Arrow effects)
-- **Proof Analysis**: `docs/formal/proof-analysis.md` (Apply unprovability analysis)
 - **What Is Proven**: `docs/formal/what-is-proven.md`
 
 ## Mechanical Postulate Elimination Progress

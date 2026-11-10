@@ -941,7 +941,7 @@ The non-recursive helpers (`run-inl-seq`, `run-inr-seq`, `run-curry-seq`) can be
 
 ### The `run-ir-at-offset` pattern for multi-backend proofs
 
-All backends (x86, RISC-V, AArch64) use the same fundamental pattern: prove execution at arbitrary program offsets WITHOUT halting, then derive the halting `run-generator` theorem.
+All backends (x86, RISC-V) use the same fundamental pattern: prove execution at arbitrary program offsets WITHOUT halting, then derive the halting `run-generator` theorem.
 
 **Key insight**: The main theorem `run-generator` proves that executing `compile ir` from the start halts with the correct result. But for recursive IR (compose, pair, case), we need to execute sub-IRs in the *middle* of a larger program. The `run-ir-at-offset` function handles this.
 
@@ -999,11 +999,10 @@ run-generator = offset-to-generator  -- QED
 |---------|-----------|------------|------------------|--------------|
 | x86-64  | rdi       | rax        | `mov rdi, rax`   | r14, r15     |
 | RISC-V  | a0        | a0         | None needed!     | s1           |
-| AArch64 | x0        | x0         | nop (placeholder)| x20          |
 
 RISC-V's use of a0 for both input and output simplifies compose—no register transfer instruction needed between f and g.
 
-### Memory frame preservation for pair proofs (TODO: AArch64 alignment)
+### Memory frame preservation for pair proofs
 
 **Problem**: The `pair` generator needs to prove that memory written in the "middle phase" (storing f's result) is preserved through g's execution. This requires `run-ir-at-offset` to guarantee memory frame preservation.
 
@@ -1027,30 +1026,6 @@ This allows proving `mem-fst-preserved` without postulates:
 mem-fst-preserved : readMem (memory s-after-g) (readReg (regs s-after-g) r15) ≡ just (encode (eval f x))
 mem-fst-preserved = trans (cong ... r15-preserved-g) (trans mem-preserved-g mem-fst-stored)
 ```
-
-**AArch64 current state**: Uses SP directly for pair pointer, and `run-ir-at-offset` only returns 5 components (no memory frame preservation). This requires postulates:
-
-```agda
--- AArch64's run-ir-at-offset signature (5 return values, missing memory frame)
-∃[ s' ] (exec (compile-length ir) (prefix ++ compile-aarch64 ir ++ suffix) s ≡ just s'
-       × halted s' ≡ false
-       × pc s' ≡ length prefix +ℕ compile-length ir
-       × readReg (regs s') x0 ≡ encode (eval ir x)
-       × readReg (regs s') x20 ≡ readReg (regs s) x20)
--- Missing: memory frame preservation
-
--- Result: pair proof requires postulates
-postulate
-  mem-fst : readMem (memory s-final) sp₁ ≡ just (encode (eval f x))
-```
-
-**TODO**: Align AArch64 with X86's approach:
-1. Change AArch64 codegen to use a callee-saved register (e.g., x19) for pair pointer instead of SP
-2. Add memory frame preservation to `run-ir-at-offset` signature
-3. Prove memory frame preservation for all IR cases
-4. Remove `mem-fst` postulate from pair proof
-
-This architectural change would make AArch64 proofs as complete as X86's.
 
 ### Type naming: Use `Void` from `Once.Type`, not `⊥` from `Data.Empty`
 

@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The RISC-V backend represents the **cleanest architectural design** of the three backends, with the simplest register model and no transfer instruction overhead. It achieves 73% completion (11/15 generators) with good postulate discipline and excellent code organization.
+The RISC-V backend represents the **cleanest architectural design** of the backends, with the simplest register model and no transfer instruction overhead. It achieves 73% completion (11/15 generators) with good postulate discipline and excellent code organization.
 
 **Status**: 11/15 generators proven (73% complete)
 **Total Code**: 13 files, 10,092 lines (most concise!)
@@ -66,7 +66,6 @@ compile-riscv (g ∘ f) = compile-riscv f ++ compile-riscv g
 | Backend | Transfer | Overhead | Reason |
 |---------|----------|----------|---------|
 | X86 | `mov rdi, rax` | ❌ 1 inst | rdi (input) ≠ rax (output) |
-| AArch64 | `nop` | ❌ 1 inst | Unclear why (x0 = x0!) |
 | **RISC-V** | **NONE** | ✅ 0 inst | **a0 = a0** |
 
 ### Advanced Stack Delta Tracking
@@ -89,7 +88,7 @@ record IRStarResult where
 - **Universal memory preservation** (quantified over all caller frame offsets)
 - Handles **arbitrary nesting** (pair, case, curry)
 
-**X86/AArch64 don't have this** - they use simpler boolean stack invariants.
+**X86 doesn't have this** - it uses a simpler boolean stack invariant.
 
 ### Stack Alignment
 
@@ -205,7 +204,7 @@ run-ir-star-at-offset (g ∘ f) prefix suffix x s ... =
 - **Pattern**: Recursive IH + star-trans composition
 - **Status**: 2/3 proven
 
-**Pair is FULLY PROVEN** (unlike X86/AArch64) - this is a major achievement!
+**Pair is FULLY PROVEN** (unlike X86) - this is a major achievement!
 
 ### Tier 5: Exponential (100-200+ lines, ❌ Postulated)
 - **curry**: Create closure with embedded thunk code
@@ -289,7 +288,7 @@ postulate
 2. **Curry/Apply incomplete** - ⚠️ Expected (same as all backends)
    - curry-output-wf postulated
    - run-apply-star postulated
-   - Matches X86/AArch64 state
+   - Matches X86 state
 
 ## Roadmap to Completion
 
@@ -380,18 +379,18 @@ timeout 900 make riscv64
 
 ## Comparison with Other Backends
 
-| Aspect | X86 | AArch64 | **RISC-V** |
-|--------|-----|---------|------------|
-| **Files** | 25 | 19 | **13** ⭐ Smallest |
-| **Lines** | 16,486 | 11,006 | **10,092** ⭐ Most concise |
-| **Maturity** | Reference | In progress | **In progress** |
-| **Generators** | 14/15 (93%) | 8/15 (53%) | **11/15 (73%)** |
-| **Postulate Discipline** | ✅ Excellent (2 files) | ❌ Poor (5 files) | **⚠️ Moderate (4 files, 1 bad)** |
-| **Helper Extraction** | ✅ Yes | ❌ Some inline | **✅ Yes** ⭐ |
-| **Transfer Overhead** | mov rdi,rax (1 inst) | nop (1 inst) | **None!** ⭐⭐⭐ |
-| **Register Model** | Complex (rdi≠rax) | Simple (x0=x0) | **Simplest (a0=a0)** ⭐ |
-| **Stack Tracking** | Boolean invariant | Boolean invariant | **SP-delta with bounds** ⭐ |
-| **Pair Proof** | Has postulates | Has postulates | **ZERO postulates!** ⭐⭐⭐ |
+| Aspect | X86 | **RISC-V** |
+|--------|-----|------------|
+| **Files** | 25 | **13** ⭐ Smallest |
+| **Lines** | 16,486 | **10,092** ⭐ Most concise |
+| **Maturity** | Reference | **In progress** |
+| **Generators** | 14/15 (93%) | **11/15 (73%)** |
+| **Postulate Discipline** | ✅ Excellent (2 files) | **⚠️ Moderate (4 files, 1 bad)** |
+| **Helper Extraction** | ✅ Yes | **✅ Yes** ⭐ |
+| **Transfer Overhead** | mov rdi,rax (1 inst) | **None!** ⭐⭐⭐ |
+| **Register Model** | Complex (rdi≠rax) | **Simplest (a0=a0)** ⭐ |
+| **Stack Tracking** | Boolean invariant | **SP-delta with bounds** ⭐ |
+| **Pair Proof** | Has postulates | **ZERO postulates!** ⭐⭐⭐ |
 
 **RISC-V is the cleanest architecture** - future backends should follow this model!
 
@@ -471,11 +470,6 @@ RISC-V demonstrates that **simpler is better**:
 
 ## Lessons for Other Backends
 
-### From RISC-V to AArch64
-- **Remove the nop!** - x0 is input/output like a0, no transfer needed
-- **Add sp-delta tracking** - More precise than boolean stack invariant
-- **Extract helpers** - Don't build records inline
-
 ### From RISC-V to Future Backends
 - **Choose simple register model** - Input = output register if possible
 - **Precise resource tracking** - SP-delta with static bounds
@@ -487,7 +481,6 @@ RISC-V demonstrates that **simpler is better**:
 - **Proof Instructions**: `formal/proof-instructions.md` - Prime directive
 - **Lessons Learned**: `docs/formal/lessons-learned.md` - Star pattern (lines 7-106)
 - **X86 Architecture**: `docs/formal/x86-full-proof-architecture.md` - Reference implementation
-- **AArch64 Architecture**: `docs/formal/aarch64-full-proof-architecture.md` - Similar register model
 - **Decision Log**: `docs/compiler/decision-log.md` (D022: Agda, D032: Arrow effects)
 
 ---

@@ -100,26 +100,6 @@
             '';
           };
 
-          # ARM64: cross-compilation for AArch64
-          arm64 = pkgs.mkShell {
-            buildInputs = [
-              haskellPackages.ghc
-              haskellPackages.cabal-install
-              pkgs.stack
-              pkgs.pkgsCross.aarch64-multiplatform.buildPackages.gcc
-              pkgs.qemu
-              pkgs.git
-            ];
-
-            shellHook = ''
-              if [ -t 0 ] && [ -z "$ONCE_QUIET" ]; then
-                echo "Once ARM64 cross-compilation"
-                echo "  gcc:  $(aarch64-unknown-linux-gnu-gcc --version | head -1)"
-                echo "  qemu: $(qemu-system-aarch64 --version | head -1)"
-              fi
-            '';
-          };
-
           # RISC-V 64: cross-compilation for RISC-V
           riscv64 = pkgs.mkShell {
             buildInputs = [
@@ -169,7 +149,6 @@
               haskellPackages.haskell-language-server
               haskellPackages.fourmolu
               pkgs.gcc
-              pkgs.pkgsCross.aarch64-multiplatform.buildPackages.gcc
               pkgs.pkgsCross.riscv64.buildPackages.gcc
               pkgs.qemu
               pkgs.agda
@@ -187,8 +166,8 @@
                 echo "  gcc:   $(gcc --version | head -1)"
                 echo "  agda:  $(agda --version)"
                 echo ""
-                echo "Cross-compilers: aarch64-unknown-linux-gnu-gcc, riscv64-unknown-linux-gnu-gcc"
-                echo "QEMU: qemu-system-{x86_64,aarch64,riscv64}"
+                echo "Cross-compiler: riscv64-unknown-linux-gnu-gcc"
+                echo "QEMU: qemu-system-{x86_64,riscv64}"
               fi
             '';
           };

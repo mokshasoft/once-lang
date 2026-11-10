@@ -1,17 +1,17 @@
-# Proof Modularization: Comparing ARM and x86 Approaches
+# Proof Modularization: Comparing Specialized Records and Split Modules
 
 **Date**: 2026-01-05
-**Branches**: `origin/arm-compiler-verification` vs `x86-compiler-finalization`
+**Branches**: the records branch vs `x86-compiler-finalization`
 **Status**: Analysis of complementary optimization strategies
 
 ## Executive Summary
 
 Both branches have made significant progress on proof modularization, but they've focused on **different aspects** of the compilation performance problem:
 
-- **ARM branch**: Specialized result records (PairResultS, ComposeResultS, etc.) to reduce type-checking overhead
+- **records branch**: Specialized result records (PairResultS, ComposeResultS, etc.) to reduce type-checking overhead
 - **x86 branch**: Split mutual blocks into separate modules (MutualIR/Dispatcher, MutualIR/Pair, etc.)
 
-**Key Finding**: **These approaches are complementary!** The x86 branch can adopt the ARM branch's specialized result records to get the best of both worlds.
+**Key Finding**: **These approaches are complementary!** The x86 branch can adopt the records branch's specialized result records to get the best of both worlds.
 
 ## The Core Problem
 
@@ -46,7 +46,7 @@ record IRStarResultS {i} {A B} (ir : IR i A B) ... : Set where
 - But we still have to prove: `ir-mem-rbp`, `ir-mem-rbp+8`, `ir-mem-above`, `ir-closure-wf`, etc.
 - **This wastes 70% of type-checking time!**
 
-## ARM Branch Solution: Specialized Result Records
+## Records Branch Solution: Specialized Result Records
 
 ### The Innovation
 
@@ -84,7 +84,7 @@ record CaseResultS {i} {A B C} (f : IR i A C) (g : IR i B C) ... : Set where
 
 ### The Mechanism: Dependent Type Family
 
-The ARM branch uses a **type family** to compute the correct result type per IR constructor:
+The records branch uses a **type family** to compute the correct result type per IR constructor:
 
 ```agda
 -- Type family: returns different types for different IR terms
@@ -109,7 +109,7 @@ run-ir-star-at-offset : (ir : IR i A B) → ... →
 2. **Specialized obligations**: Each IR node only proves what it actually needs
 3. **Compilation speedup**: Agda skips type-checking irrelevant fields
 
-**Measured impact** (ARM branch testing):
+**Measured impact** (records branch testing):
 - ⚠️ **Still slow for Apply case**: Type-checking time remains high despite specialization
 - ✅ **Faster for simple cases**: Id, Terminal, Fold, Unfold compile much faster
 - ⚠️ **Large mutual block**: All definitions still in one file (+723 lines in MutualIR.agda)
@@ -179,13 +179,13 @@ mutual
 **Measured impact** (x86 branch):
 - ✅ **Compilation succeeds**: Full backend compiles successfully
 - ✅ **Clear structure**: Easy to find relevant code
-- ⚠️ **Still uses monolithic IRStarResultS**: All the ARM branch's overhead remains
+- ⚠️ **Still uses monolithic IRStarResultS**: All the records branch's overhead remains
 
 ## Combining Both Approaches
 
 ### The Opportunity
 
-**The x86 split modules approach can adopt the ARM specialized records!**
+**The x86 split modules approach can adopt the specialized records!**
 
 Here's how:
 
@@ -194,7 +194,7 @@ Here's how:
 ```agda
 -- formal/Once/Backend/X86/Correct/StarBase.agda
 
--- Add specialized records (copy from ARM branch with x86 registers)
+-- Add specialized records (copy from records branch with x86 registers)
 record PairResultS {i} {A B C} (f : IR i C A) (g : IR i C B)
                    (prog : Program) (s s' : State)
                    (addr-f addr-g pair-addr : Word) (offset : ℕ) : Set where
@@ -337,7 +337,7 @@ IRResultFor ir prog s s' addr-out offset =
 
 ### Recommendation: Solution 2
 
-Solution 2 maintains the uniform external interface of the split modules approach while gaining the internal specialization benefits of the ARM approach.
+Solution 2 maintains the uniform external interface of the split modules approach while gaining the internal specialization benefits of the records approach.
 
 **Implementation sketch**:
 
@@ -372,7 +372,7 @@ run-ir-star-at-offset (Pair f g) prefix suffix x s ... =
 
 ### Expected Speedup from Specialized Records
 
-**Based on ARM branch observations:**
+**Based on records branch observations:**
 
 - Simple IR nodes (Id, Terminal): **2-5x faster** (fewer fields to check)
 - Recursive IR nodes (Pair, Compose, Case): **1.5-2x faster** (still recursive, but less overhead per call)
@@ -399,11 +399,11 @@ run-ir-star-at-offset (Pair f g) prefix suffix x s ... =
 
 ## Immediate Next Steps
 
-### Option 1: Port ARM Specialized Records to x86 (Recommended)
+### Option 1: Port Specialized Records to x86 (Recommended)
 
 **Effort**: Medium (2-3 days)
 **Impact**: High (3-5x compilation speedup)
-**Risk**: Low (well-tested on ARM branch)
+**Risk**: Low (well-tested on records branch)
 
 **Tasks**:
 1. Copy specialized record definitions to x86 StarBase.agda
@@ -413,32 +413,6 @@ run-ir-star-at-offset (Pair f g) prefix suffix x s ... =
 5. Update MutualIR/Case.agda to return CaseResultS
 6. Update main dispatcher in MutualIR.agda
 7. Test full compilation
-
-### Option 2: Port x86 Split Modules to ARM
-
-**Effort**: High (5-7 days)
-**Impact**: Medium (2-3x incremental compilation speedup)
-**Risk**: Medium (large structural change)
-
-**Tasks**:
-1. Create AArch64/Correct/MutualIR/ directory
-2. Extract Pair implementation to MutualIR/Pair.agda
-3. Extract Compose implementation to MutualIR/Compose.agda
-4. Extract Case implementation to MutualIR/Case.agda
-5. Create abstract Dispatcher interface
-6. Update all imports and mutual dependencies
-7. Test full compilation
-
-### Option 3: Do Both (Maximum Performance)
-
-**Effort**: High (7-10 days)
-**Impact**: Very High (10-20x development speedup)
-**Risk**: Medium (two large changes)
-
-**Recommended sequence**:
-1. Port ARM specialized records to x86 first (lower risk, immediate payoff)
-2. Verify compilation speedup
-3. Then port x86 split modules to ARM (incremental benefit)
 
 ## Architectural Insights
 
@@ -458,16 +432,16 @@ run-ir-star-at-offset (Pair f g) prefix suffix x s ... =
 
 ## Conclusion
 
-**The ARM and x86 branches have discovered complementary optimizations:**
+**The records and x86 branches have discovered complementary optimizations:**
 
-- **ARM branch**: Specialized result records (PairResultS, ComposeResultS, etc.)
+- **records branch**: Specialized result records (PairResultS, ComposeResultS, etc.)
 - **x86 branch**: Split module structure (MutualIR/Pair, MutualIR/Compose, etc.)
 
 **Both are valuable and should be combined!**
 
-**Immediate recommendation**: Port ARM's specialized records to x86 (Option 1) for quick wins, then consider full module splitting for ARM branch.
+**Immediate recommendation**: Port the specialized records to x86 (Option 1) for quick wins.
 
-**Long-term vision**: All backends (x86, AArch64, RISC-V) should use:
+**Long-term vision**: All backends (x86, RISC-V) should use:
 1. Specialized result records per IR constructor
 2. Split module structure with abstract dispatcher
 3. Type families for heterogeneous return types
@@ -477,7 +451,6 @@ This will make Once's verification codebase maintainable and efficient for years
 
 ## References
 
-- ARM branch commit: `51948b9` - Complete dependent type family refactoring
-- ARM branch docs: `irresultvariant-blocker.md`, `apply-postulate-status.md`
+- records branch commit: `51948b9` - Complete dependent type family refactoring
 - x86 branch commit: `63579c8` - Implement abstract dispatcher pattern
 - x86 branch structure: `MutualIR/{Dispatcher,Pair,Compose,Case}.agda`
