@@ -4,7 +4,9 @@ The steps below run in order. `master` takes only changes that have been analyse
 are green, and are recorded in the decision log. Heavy artifacts (MAlonzo, binaries) are
 regenerated only after the changes they would bake in have been approved.
 
-This file holds rules and steps. History, counts and worked examples go in the decision log
+This file holds rules and steps, and it stays general: it applies to every branch, so it names no
+particular plan, decision entry (`D###`) or branch, and a rule states its reason itself instead of
+citing one. History, counts and worked examples go in the decision log
 (`docs/compiler/decision-log.md`) or in the module headers they concern, not here.
 
 ## 1. Analyse the branch (first, before rebase or extraction)
@@ -32,7 +34,7 @@ The analysis must cover each of the following.
   states, why that is the standard and true one, why each hypothesis is needed (a counterexample
   without it), and why the statement is neither stronger nor weaker than the truth. "It was
   approved" is never the justification.
-- The Spec is the directory `formal/Once/Spec` (D306): it imports only itself, re-exports nothing
+- The Spec is the directory `formal/Once/Spec`: it imports only itself, re-exports nothing
   and owns its definitions. Diff it as a directory:
   `git diff master..HEAD --stat -- formal/Once/Spec`
   and check `make spec-gate`, which fails if its import closure gains a module outside it.
@@ -40,9 +42,9 @@ The analysis must cover each of the following.
   implementation meets the claim; it is not part of the claim. A proof added to the Spec stops
   the merge. Properties of the language go in `Once.Spec.Metatheory` as statements, proved under
   `Once/Metatheory`.
-  A new law or claim in `Once.Spec.Metatheory` comes with its instance in `LawsApply` (plan 0.143);
+  A new law or claim in `Once.Spec.Metatheory` comes with its instance in `LawsApply`;
   a law whose premises cannot be instantiated at an empty context does not merge.
-  The one exemption is `Once.Spec.Type.Substitution` (D335): substitution is functorial, and the
+  The one exemption is `Once.Spec.Type.Substitution`: substitution is functorial, and the
   meaning of a reference to a polymorphic definition is not well-typed without it. Nothing may be
   added to it, and no other Spec module may prove anything.
 - A meaning clause may omit or repeat a premise's meaning only if the premise is pure; an
