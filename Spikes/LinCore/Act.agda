@@ -9,7 +9,7 @@
 -- `iter round seed` over a round `Act A (B + A)`. The core stays pure; this
 -- layer sits on it:
 --
---   * `ATm E A B` — a ROUND: core steps (`BTm`, so it may read a lent `E`),
+--   * `ATm E A B` — a ROUND: core steps (`Tm`, so it may read a lent `E`),
 --     sequencing, both sides of a pair, a case, and the SigOps: `aop s` (Pure
 --     or Emits: an event, and the world's answer) and `ahalt s` (Halts: the
 --     run ends; its codomain is `Zero`).
@@ -57,7 +57,7 @@ open Pre
 infixl 5 _⨾_
 infixr 7 _⊗a_
 data ATm (E : LTy) : LTy → LTy → Set where
-  apure : ∀ {A B} → BTm E A B → ATm E A B
+  apure : ∀ {A B} → Tm E A B → ATm E A B
   _⨾_   : ∀ {A B C} → ATm E A B → ATm E B C → ATm E A C
   _⊗a_  : ∀ {A B C D} → ATm E A B → ATm E C D → ATm E (A ⊗t C) (B ⊗t D)   -- left, then right
   acase : ∀ {A B C} → ATm E A C → ATm E B C → ATm E (A ⊕t B) C
@@ -92,8 +92,8 @@ data Outcome (B : LTy) : Set where
   halted : Outcome B
 
 data RunA {E : LTy} : ∀ {A B} → ATm E A B → MV E → MV A → ℕ → Outcome B → List AEv → Set where
-  a-pure    : ∀ {A B} {b : BTm E A B} {e a w n n′ t}
-            → RunB b e a n w n′ t → RunA (apure b) e a n (ret w n′) (map mem t)
+  a-pure    : ∀ {A B} {b : Tm E A B} {e a w n n′ t}
+            → Run b e a n w n′ t → RunA (apure b) e a n (ret w n′) (map mem t)
   a-seq     : ∀ {A B C} {f : ATm E A B} {g : ATm E B C} {e a u n n₁ o t₁ t₂}
             → RunA f e a n (ret u n₁) t₁ → RunA g e u n₁ o t₂ → RunA (f ⨾ g) e a n o (t₁ ++ t₂)
   a-seq!    : ∀ {A B C} {f : ATm E A B} {g : ATm E B C} {e a n t₁}
@@ -155,7 +155,7 @@ private
   +≡0ʳ zero n e = e
 
 monoA : ∀ {E A B} {f : ATm E A B} {e a w n n′ t} → RunA f e a n (ret w n′) t → n ≤ n′
-monoA (a-pure r)    = monoB r
+monoA (a-pure r)    = mono r
 monoA (a-seq rf rg) = ≤-trans (monoA rf) (monoA rg)
 monoA (a-⊗ rf rg)   = ≤-trans (monoA rf) (monoA rg)
 monoA (a-case₁ r)   = monoA r
@@ -163,7 +163,7 @@ monoA (a-case₂ r)   = monoA r
 monoA a-op          = ≤-refl
 
 belowA : ∀ {E A B} {f : ATm E A B} {e a w n n′ t} → RunA f e a n (ret w n′) t → Below a n → Below w n′
-belowA (a-pure r)    b = belowB r b
+belowA (a-pure r)    b = below r b
 belowA (a-seq rf rg) b = belowA rg (belowA rf b)
 belowA (a-⊗ {a = a} {c = c} rf rg) b i le =
   cong₂ _+_ (belowA rf (λ j l → +≡0ˡ (cnt a j) (cnt c j) (b j l)) i (≤-trans (monoA rg) le))
@@ -180,7 +180,7 @@ Post t h a halted     = ⊤
 exchangeA : ∀ {E A B} {f : ATm E A B} {e a n o t} → RunA f e a n o t → ∀ {h r} → Pre h n a r → Lent e r
           → OK (memOf t) h × Post (memOf t) h a o
 exchangeA (a-pure {t = t} r) {h} pre lent
-  rewrite memOf-map t = exchangeB r pre lent
+  rewrite memOf-map t = exchange r pre lent
 exchangeA (a-seq {a = a} {u} {o = ret w n′} {t₁} {t₂} rf rg) {h} pre lent with exchangeA rf pre lent
 ... | (ok₁ , eq₁) with exchangeA rg (post-gen (monoA rf) (belowA rf) pre ok₁ eq₁) lent
 ...   | (ok₂ , eq₂) rewrite memOf-++ t₁ t₂ =

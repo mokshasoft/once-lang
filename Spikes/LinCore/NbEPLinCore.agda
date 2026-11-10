@@ -243,72 +243,70 @@ coh⁻¹ (F ⊗f G) X (x , y)  = (coh⁻¹ F X x , coh⁻¹ G X y)
 
 infixr 9 _∘l_
 infixr 7 _⊗l_
-data LTm : LTy → LTy → Set
 
--- ★ plan 0.146 A2: BORROWS, as a second context.  `BTm E A B` is a morphism
--- `A → B` that may READ a lent `E` but never owns it: never frees it, never
--- keeps it.  What a result keeps of `E` is copied out (`bcopy`, D402's choice
--- A), so the owner frees `E` whole, once, after the scope.  `E` is not a type
--- of the core (there is no borrow type), so a borrow cannot escape into a
--- result, a closure's environment or a ν's seed: `lend`'s result is an `LTy`.
-data BTm : LTy → LTy → LTy → Set
-
-data LTm where
-  lid     : ∀ {A} → LTm A A
-  _∘l_    : ∀ {A B C} → LTm B C → LTm A B → LTm A C
-  _⊗l_    : ∀ {A B C D} → LTm A B → LTm C D → LTm (A ⊗t C) (B ⊗t D)
+-- ★ plan 0.146 A10: ONE term language.  `Tm E A B` is a morphism `A → B` that
+-- OWNS its input and may READ a lent `E`: never frees it, never keeps it.  What
+-- a result keeps of `E` is copied out (`bcopy`, D402's choice A), so the owner
+-- frees `E` whole, once, after the scope.  `E` is not a type of the core's
+-- values (there is no borrow type), so a borrow cannot escape into a result, a
+-- closure's environment or a ν's seed: those bodies are closed over `One`.
+-- Every generator exists at every `E`; a term with nothing lent is `LTm`.
+-- `E` comes last among the implicits so that `lIn {F}`, `linl {A} {B}` still read.
+data Tm : LTy → LTy → LTy → Set where
+  lid     : ∀ {A E} → Tm E A A
+  _∘l_    : ∀ {A B C E} → Tm E B C → Tm E A B → Tm E A C
+  _⊗l_    : ∀ {A B C D E} → Tm E A B → Tm E C D → Tm E (A ⊗t C) (B ⊗t D)
   -- unitors, associator, braiding: the SMC structure.  All free — moving data
   -- is not copying it.
-  ρl      : ∀ {A} → LTm (A ⊗t One) A
-  ρl⁻     : ∀ {A} → LTm A (A ⊗t One)
-  lul     : ∀ {A} → LTm (One ⊗t A) A
-  lul⁻    : ∀ {A} → LTm A (One ⊗t A)
-  lassoc  : ∀ {A B C} → LTm ((A ⊗t B) ⊗t C) (A ⊗t (B ⊗t C))
-  lassoc⁻ : ∀ {A B C} → LTm (A ⊗t (B ⊗t C)) ((A ⊗t B) ⊗t C)
-  lswap   : ∀ {A B} → LTm (A ⊗t B) (B ⊗t A)
+  ρl      : ∀ {A E} → Tm E (A ⊗t One) A
+  ρl⁻     : ∀ {A E} → Tm E A (A ⊗t One)
+  lul     : ∀ {A E} → Tm E (One ⊗t A) A
+  lul⁻    : ∀ {A E} → Tm E A (One ⊗t A)
+  lassoc  : ∀ {A B C E} → Tm E ((A ⊗t B) ⊗t C) (A ⊗t (B ⊗t C))
+  lassoc⁻ : ∀ {A B C E} → Tm E (A ⊗t (B ⊗t C)) ((A ⊗t B) ⊗t C)
+  lswap   : ∀ {A B E} → Tm E (A ⊗t B) (B ⊗t A)
   -- ★ THE COMONOID — the only sources of duplication / discard
-  dup     : ∀ {A} → LTm A (A ⊗t A)
-  drop    : ∀ {A} → LTm A One
+  dup     : ∀ {A E} → Tm E A (A ⊗t A)
+  drop    : ∀ {A E} → Tm E A One
   -- additive coproducts, and the initial object
-  linl    : ∀ {A B} → LTm A (A ⊕t B)
-  linr    : ∀ {A B} → LTm B (A ⊕t B)
-  lcase   : ∀ {A B C} → LTm A C → LTm B C → LTm (A ⊕t B) C
-  lzero   : ∀ {A} → LTm Zero A
-  -- initial algebra: constructor, DESTRUCTOR, fold
-  lIn     : ∀ {F} → LTm (LF∙ F (μt F)) (μt F)
-  lOutμ   : ∀ {F} → LTm (μt F) (LF∙ F (μt F))
-  lcata   : ∀ F {A} → LTm (LF∙ F A) A → LTm (μt F) A
-  -- ★ final coalgebra: observation, unfold, and the dual constructor
-  lOut    : ∀ {F} → LTm (νt F) (LF∙ F (νt F))
-  lAna    : ∀ F {A} → LTm A (LF∙ F A) → LTm A (νt F)
-  lInν    : ∀ {F} → LTm (LF∙ F (νt F)) (νt F)
-  -- closed structure
-  lcurry  : ∀ {A B C} → LTm (A ⊗t B) C → LTm A (B ⇒t C)
-  leval   : ∀ {A B} → LTm ((A ⇒t B) ⊗t A) B
-  -- ★ the scope: lend `E` to a body that reads it; `E` comes back unchanged
-  lend    : ∀ {E A B} → BTm E A B → LTm (E ⊗t A) (E ⊗t B)
-  -- a many-use closure: it owns `E`; its body only reads it
-  lcurryB : ∀ {E A B} → BTm E A B → LTm E (A ⇛t B)
-
-infixr 9 _∘b_
-infixr 7 _⊗b_
-data BTm where
-  blift  : ∀ {E A B} → LTm A B → BTm E A B                       -- a step that does not read `E`
-  _∘b_   : ∀ {E A B C} → BTm E B C → BTm E A B → BTm E A C
-  _⊗b_   : ∀ {E A B C D} → BTm E A B → BTm E C D → BTm E (A ⊗t C) (B ⊗t D)
-  bcase  : ∀ {E A B C} → BTm E A C → BTm E B C → BTm E (A ⊕t B) C
+  linl    : ∀ {A B E} → Tm E A (A ⊕t B)
+  linr    : ∀ {A B E} → Tm E B (A ⊕t B)
+  lcase   : ∀ {A B C E} → Tm E A C → Tm E B C → Tm E (A ⊕t B) C
+  lzero   : ∀ {A E} → Tm E Zero A
+  -- initial algebra: constructor, DESTRUCTOR, fold (★ reads `E` at every layer,
+  -- with no copy of `E`)
+  lIn     : ∀ {F E} → Tm E (LF∙ F (μt F)) (μt F)
+  lOutμ   : ∀ {F E} → Tm E (μt F) (LF∙ F (μt F))
+  lcata   : ∀ F {A E} → Tm E (LF∙ F A) A → Tm E (μt F) A
+  -- ★ final coalgebra: observation, unfold, and the dual constructor.  A
+  -- coalgebra outlives every scope, so it reads nothing lent.
+  lOut    : ∀ {F E} → Tm E (νt F) (LF∙ F (νt F))
+  lAna    : ∀ F {A E} → Tm One A (LF∙ F A) → Tm E A (νt F)
+  lInν    : ∀ {F E} → Tm E (LF∙ F (νt F)) (νt F)
+  -- closed structure.  A closure outlives every scope too.
+  lcurry  : ∀ {A B C E} → Tm One (A ⊗t B) C → Tm E A (B ⇒t C)
+  leval   : ∀ {A B E} → Tm E ((A ⇒t B) ⊗t A) B
+  -- ★ the scope: lend `X` to a body, which also reads what was lent already;
+  -- `X` comes back unchanged.
+  lend    : ∀ {E X A B} → Tm (E ⊗t X) A B → Tm E (X ⊗t A) (X ⊗t B)
+  -- a many-use closure: it owns `X`; its body only reads it
+  lcurryB : ∀ {X A B E} → Tm X A B → Tm E X (A ⇛t B)
+  -- a step that reads nothing of what is lent
+  blift   : ∀ {A B E} → Tm One A B → Tm E A B
   -- reading the lent value: a part of it, its tag, inside a node (all views)
-  bfst   : ∀ {E₁ E₂ A B} → BTm E₁ A B → BTm (E₁ ⊗t E₂) A B
-  bsnd   : ∀ {E₁ E₂ A B} → BTm E₂ A B → BTm (E₁ ⊗t E₂) A B
-  bcaseE : ∀ {E₁ E₂ A B} → BTm E₁ A B → BTm E₂ A B → BTm (E₁ ⊕t E₂) A B
-  bout   : ∀ {F A B} → BTm (LF∙ F (μt F)) A B → BTm (μt F) A B
+  bfst    : ∀ {E₁ E₂ A B} → Tm E₁ A B → Tm (E₁ ⊗t E₂) A B
+  bsnd    : ∀ {E₁ E₂ A B} → Tm E₂ A B → Tm (E₁ ⊗t E₂) A B
+  bcaseE  : ∀ {E₁ E₂ A B} → Tm E₁ A B → Tm E₂ A B → Tm (E₁ ⊕t E₂) A B
+  bout    : ∀ {F A B} → Tm (LF∙ F (μt F)) A B → Tm (μt F) A B
   -- keeping it: a copy (fresh cells; a word costs nothing)
-  bcopy  : ∀ {E} → BTm E One E
-  -- ★ a fold that reads `E` at every layer, with no copy of `E`
-  bcata  : ∀ F {E A} → BTm E (LF∙ F A) A → BTm E (μt F) A
+  bcopy   : ∀ {E} → Tm E One E
   -- applying a LENT many-use closure (D131: a fold's algebra, obtained once,
   -- applied at every layer): its environment is lent on to its body
-  bapp   : ∀ {A B} → BTm (A ⇛t B) A B
+  bapp    : ∀ {A B} → Tm (A ⇛t B) A B
+
+-- a term with nothing lent
+LTm : LTy → LTy → Set
+LTm = Tm One
 
 ------------------------------------------------------------------------
 -- 6. ★ THE COST SEMANTICS, mutual with both recursion operators.
@@ -333,52 +331,46 @@ sumF (G ⊗f H)  (y , z)  =
   ((fst (sumF G y) , fst (sumF H z)) , (snd (sumF G y) +ℕ snd (sumF H z)))
 
 mutual
-  Lᶜ : ∀ {A B} → LTm A B → ⟦ A ⟧ → ⟦ B ⟧ × ℕ
-  Lᶜ lid            x              = retᶜ x
-  Lᶜ (f ∘l g)       x              = Lᶜ g x >>=ᶜ Lᶜ f
-  Lᶜ (f ⊗l g)       (a , b)        = Lᶜ f a >>=ᶜ λ a' → Lᶜ g b >>=ᶜ λ b' → retᶜ (a' , b')
-  Lᶜ ρl             (a , tt)       = retᶜ a
-  Lᶜ ρl⁻            a              = retᶜ (a , tt)
-  Lᶜ lul            (tt , a)       = retᶜ a
-  Lᶜ lul⁻           a              = retᶜ (tt , a)
-  Lᶜ lassoc         ((a , b) , c)  = retᶜ (a , (b , c))
-  Lᶜ lassoc⁻        (a , (b , c))  = retᶜ ((a , b) , c)
-  Lᶜ lswap          (a , b)        = retᶜ (b , a)
-  Lᶜ dup            a              = ((a , a) , suc zero)   -- ★ THE allocation
-  Lᶜ drop           a              = retᶜ tt
-  Lᶜ linl           a              = retᶜ (inj₁ a)
-  Lᶜ linr           b              = retᶜ (inj₂ b)
-  Lᶜ (lcase f g)    (inj₁ a)       = Lᶜ f a                 -- ★ only the branch taken
-  Lᶜ (lcase f g)    (inj₂ b)       = Lᶜ g b
-  Lᶜ lzero          ()
-  Lᶜ (lIn {F})      x              = retᶜ (inμ (coh F (μt F) x))
-  Lᶜ (lOutμ {F})    x              = retᶜ (coh⁻¹ F (μt F) (outμ x))
-  Lᶜ (lcata F alg)  x              = cataC F (λ y → Lᶜ alg (coh⁻¹ F _ y)) x
+  -- a term means a function of the lent value, which it does not consume, and
+  -- of its input, which it does
+  Lᶜ : ∀ {E A B} → Tm E A B → ⟦ E ⟧ → ⟦ A ⟧ → ⟦ B ⟧ × ℕ
+  Lᶜ lid            e         x              = retᶜ x
+  Lᶜ (f ∘l g)       e         x              = Lᶜ g e x >>=ᶜ Lᶜ f e
+  Lᶜ (f ⊗l g)       e         (a , b)        = Lᶜ f e a >>=ᶜ λ a' → Lᶜ g e b >>=ᶜ λ b' → retᶜ (a' , b')
+  Lᶜ ρl             e         (a , tt)       = retᶜ a
+  Lᶜ ρl⁻            e         a              = retᶜ (a , tt)
+  Lᶜ lul            e         (tt , a)       = retᶜ a
+  Lᶜ lul⁻           e         a              = retᶜ (tt , a)
+  Lᶜ lassoc         e         ((a , b) , c)  = retᶜ (a , (b , c))
+  Lᶜ lassoc⁻        e         (a , (b , c))  = retᶜ ((a , b) , c)
+  Lᶜ lswap          e         (a , b)        = retᶜ (b , a)
+  Lᶜ dup            e         a              = ((a , a) , suc zero)   -- ★ THE allocation
+  Lᶜ drop           e         a              = retᶜ tt
+  Lᶜ linl           e         a              = retᶜ (inj₁ a)
+  Lᶜ linr           e         b              = retᶜ (inj₂ b)
+  Lᶜ (lcase f g)    e         (inj₁ a)       = Lᶜ f e a               -- ★ only the branch taken
+  Lᶜ (lcase f g)    e         (inj₂ b)       = Lᶜ g e b
+  Lᶜ lzero          e         ()
+  Lᶜ (lIn {F})      e         x              = retᶜ (inμ (coh F (μt F) x))
+  Lᶜ (lOutμ {F})    e         x              = retᶜ (coh⁻¹ F (μt F) (outμ x))
+  Lᶜ (lcata F alg)  e         x              = cataC F (λ y → Lᶜ alg e (coh⁻¹ F _ y)) x
   -- ★ observing PAYS what this step reports…
-  Lᶜ (lOut {F})     x              = (coh⁻¹ F (νt F) (fst (force x)) , snd (force x))
+  Lᶜ (lOut {F})     e         x              = (coh⁻¹ F (νt F) (fst (force x)) , snd (force x))
   -- ★ …and building, either way, is FREE.
-  Lᶜ (lAna F c)     a              = retᶜ (unfoldNu F c a)
-  Lᶜ (lInν {F})     x              = retᶜ (inν (coh F (νt F) x))
-  Lᶜ (lcurry f)     a              = retᶜ (λ b → Lᶜ f (a , b))
-  Lᶜ leval          (f , a)        = f a
-  Lᶜ (lend b)       (e , a)        = Bᶜ b e a >>=ᶜ λ w → retᶜ (e , w)
-  Lᶜ (lcurryB b)    e              = retᶜ (λ a → Bᶜ b e a)
-
-  -- a borrowing morphism means a function of the lent value, which it does not consume
-  Bᶜ : ∀ {E A B} → BTm E A B → ⟦ E ⟧ → ⟦ A ⟧ → ⟦ B ⟧ × ℕ
-  Bᶜ (blift f)      e         a        = Lᶜ f a
-  Bᶜ (f ∘b g)       e         a        = Bᶜ g e a >>=ᶜ Bᶜ f e
-  Bᶜ (f ⊗b g)       e         (a , c)  = Bᶜ f e a >>=ᶜ λ b → Bᶜ g e c >>=ᶜ λ d → retᶜ (b , d)
-  Bᶜ (bcase f g)    e         (inj₁ a) = Bᶜ f e a
-  Bᶜ (bcase f g)    e         (inj₂ b) = Bᶜ g e b
-  Bᶜ (bfst f)       (e₁ , e₂) a        = Bᶜ f e₁ a
-  Bᶜ (bsnd f)       (e₁ , e₂) a        = Bᶜ f e₂ a
-  Bᶜ (bcaseE f g)   (inj₁ e)  a        = Bᶜ f e a
-  Bᶜ (bcaseE f g)   (inj₂ e)  a        = Bᶜ g e a
-  Bᶜ (bout {F} f)   e         a        = Bᶜ f (coh⁻¹ F (μt F) (outμ e)) a
-  Bᶜ bcopy          e         a        = (e , suc zero)          -- priced like `dup`
-  Bᶜ (bcata F alg)  e         x        = cataC F (λ y → Bᶜ alg e (coh⁻¹ F _ y)) x
-  Bᶜ bapp           f         a        = f a
+  Lᶜ (lAna F c)     e         a              = retᶜ (unfoldNu F c a)
+  Lᶜ (lInν {F})     e         x              = retᶜ (inν (coh F (νt F) x))
+  Lᶜ (lcurry f)     e         a              = retᶜ (λ b → Lᶜ f tt (a , b))
+  Lᶜ leval          e         (f , a)        = f a
+  Lᶜ (lend b)       e         (x , a)        = Lᶜ b (e , x) a >>=ᶜ λ w → retᶜ (x , w)
+  Lᶜ (lcurryB b)    e         x              = retᶜ (λ a → Lᶜ b x a)
+  Lᶜ (blift f)      e         a              = Lᶜ f tt a
+  Lᶜ (bfst f)       (e₁ , e₂) a              = Lᶜ f e₁ a
+  Lᶜ (bsnd f)       (e₁ , e₂) a              = Lᶜ f e₂ a
+  Lᶜ (bcaseE f g)   (inj₁ e)  a              = Lᶜ f e a
+  Lᶜ (bcaseE f g)   (inj₂ e)  a              = Lᶜ g e a
+  Lᶜ (bout {F} f)   e         a              = Lᶜ f (coh⁻¹ F (μt F) (outμ e)) a
+  Lᶜ bcopy          e         a              = (e , suc zero)         -- priced like `dup`
+  Lᶜ bapp           f         a              = f a
 
   cataC : ∀ F {X : Set} → (FS F X → X × ℕ) → Mu F → X × ℕ
   cataC F alg (inμ w) = sumF F (mapC F F alg w) >>=ᶜ alg
@@ -395,7 +387,7 @@ mutual
 
   unfoldNu : ∀ {A} F → LTm A (LF∙ F A) → ⟦ A ⟧ → Nu F
   force (unfoldNu {A} F c a) =
-    ( mapU F F c (coh F A (fst (Lᶜ c a))) , snd (Lᶜ c a) )
+    ( mapU F F c (coh F A (fst (Lᶜ c tt a))) , snd (Lᶜ c tt a) )
 
   mapU : ∀ {A} F G → LTm A (LF∙ F A) → FS G ⟦ A ⟧ → FS G (Nu F)
   mapU F Idf      c y        = unfoldNu F c y
@@ -411,33 +403,33 @@ mutual
 -- 7. THE LINEAR SUBLANGUAGE — every generator but `dup`.
 ------------------------------------------------------------------------
 
-data DupFree : ∀ {A B} → LTm A B → Set where
-  df-id      : ∀ {A} → DupFree (lid {A})
-  df-∘       : ∀ {A B C} {f : LTm B C} {g : LTm A B} →
+data DupFree : ∀ {E A B} → Tm E A B → Set where
+  df-id      : ∀ {A E} → DupFree (lid {A} {E})
+  df-∘       : ∀ {A B C E} {f : Tm E B C} {g : Tm E A B} →
                DupFree f → DupFree g → DupFree (f ∘l g)
-  df-⊗       : ∀ {A B C D} {f : LTm A B} {g : LTm C D} →
+  df-⊗       : ∀ {A B C D E} {f : Tm E A B} {g : Tm E C D} →
                DupFree f → DupFree g → DupFree (f ⊗l g)
-  df-ρl      : ∀ {A} → DupFree (ρl {A})
-  df-ρl⁻     : ∀ {A} → DupFree (ρl⁻ {A})
-  df-lul     : ∀ {A} → DupFree (lul {A})
-  df-lul⁻    : ∀ {A} → DupFree (lul⁻ {A})
-  df-lassoc  : ∀ {A B C} → DupFree (lassoc {A} {B} {C})
-  df-lassoc⁻ : ∀ {A B C} → DupFree (lassoc⁻ {A} {B} {C})
-  df-lswap   : ∀ {A B} → DupFree (lswap {A} {B})
-  df-drop    : ∀ {A} → DupFree (drop {A})
-  df-linl    : ∀ {A B} → DupFree (linl {A} {B})
-  df-linr    : ∀ {A B} → DupFree (linr {A} {B})
-  df-case    : ∀ {A B C} {f : LTm A C} {g : LTm B C} →
+  df-ρl      : ∀ {A E} → DupFree (ρl {A} {E})
+  df-ρl⁻     : ∀ {A E} → DupFree (ρl⁻ {A} {E})
+  df-lul     : ∀ {A E} → DupFree (lul {A} {E})
+  df-lul⁻    : ∀ {A E} → DupFree (lul⁻ {A} {E})
+  df-lassoc  : ∀ {A B C E} → DupFree (lassoc {A} {B} {C} {E})
+  df-lassoc⁻ : ∀ {A B C E} → DupFree (lassoc⁻ {A} {B} {C} {E})
+  df-lswap   : ∀ {A B E} → DupFree (lswap {A} {B} {E})
+  df-drop    : ∀ {A E} → DupFree (drop {A} {E})
+  df-linl    : ∀ {A B E} → DupFree (linl {A} {B} {E})
+  df-linr    : ∀ {A B E} → DupFree (linr {A} {B} {E})
+  df-case    : ∀ {A B C E} {f : Tm E A C} {g : Tm E B C} →
                DupFree f → DupFree g → DupFree (lcase f g)
-  df-zero    : ∀ {A} → DupFree (lzero {A})
-  df-In      : ∀ {F} → DupFree (lIn {F})
-  df-Outμ    : ∀ {F} → DupFree (lOutμ {F})
-  df-cata    : ∀ F {A} {alg : LTm (LF∙ F A) A} → DupFree alg → DupFree (lcata F alg)
-  df-Out     : ∀ {F} → DupFree (lOut {F})
-  df-Ana     : ∀ F {A} {c : LTm A (LF∙ F A)} → DupFree c → DupFree (lAna F c)
-  df-Inν     : ∀ {F} → DupFree (lInν {F})
-  df-curry   : ∀ {A B C} {f : LTm (A ⊗t B) C} → DupFree f → DupFree (lcurry f)
-  df-eval    : ∀ {A B} → DupFree (leval {A} {B})
+  df-zero    : ∀ {A E} → DupFree (lzero {A} {E})
+  df-In      : ∀ {F E} → DupFree (lIn {F} {E})
+  df-Outμ    : ∀ {F E} → DupFree (lOutμ {F} {E})
+  df-cata    : ∀ F {A E} {alg : Tm E (LF∙ F A) A} → DupFree alg → DupFree (lcata F alg)
+  df-Out     : ∀ {F E} → DupFree (lOut {F} {E})
+  df-Ana     : ∀ F {A E} {c : Tm One A (LF∙ F A)} → DupFree c → DupFree (lAna F {A} {E} c)
+  df-Inν     : ∀ {F E} → DupFree (lInν {F} {E})
+  df-curry   : ∀ {A B C E} {f : Tm One (A ⊗t B) C} → DupFree f → DupFree (lcurry {A} {B} {C} {E} f)
+  df-eval    : ∀ {A B E} → DupFree (leval {A} {B} {E})
 
 ------------------------------------------------------------------------
 -- 8. ★★ "ALLOCATES NOTHING" — AND WHY IT MUST BE STRATIFIED.
@@ -623,55 +615,55 @@ freeCoh⁻¹ (G ⊗f H) X (y , z)  (fy , fz) =
 ------------------------------------------------------------------------
 
 mutual
-  dyn-linear : ∀ {A B} {f : LTm A B} → DupFree f → (x : ⟦ A ⟧) → Free A x →
-               Free B (fst (Lᶜ f x)) × (snd (Lᶜ f x) ≡ zero)
-  dyn-linear df-id           x             fx        = (fx , refl)
-  dyn-linear (df-∘ p q)      x             fx        =
-    ( fst (dyn-linear p _ (fst (dyn-linear q x fx)))
-    , cong₂ _+ℕ_ (snd (dyn-linear q x fx))
-                 (snd (dyn-linear p _ (fst (dyn-linear q x fx)))) )
-  dyn-linear (df-⊗ p q)      (a , b)       (fa , fb) =
-    ( ( fst (dyn-linear p a fa) , fst (dyn-linear q b fb) )
-    , cong₂ _+ℕ_ (snd (dyn-linear p a fa))
-                 (cong₂ _+ℕ_ (snd (dyn-linear q b fb)) refl) )
-  dyn-linear df-ρl           (a , tt)      (fa , _)  = (fa , refl)
-  dyn-linear df-ρl⁻          a             fa        = ((fa , tt) , refl)
-  dyn-linear df-lul          (tt , a)      (_ , fa)  = (fa , refl)
-  dyn-linear df-lul⁻         a             fa        = ((tt , fa) , refl)
-  dyn-linear df-lassoc       ((a , b) , c) ((fa , fb) , fc) =
+  dyn-linear : ∀ {E A B} {f : Tm E A B} → DupFree f → (e : ⟦ E ⟧) (x : ⟦ A ⟧) → Free A x →
+               Free B (fst (Lᶜ f e x)) × (snd (Lᶜ f e x) ≡ zero)
+  dyn-linear df-id           e x             fx        = (fx , refl)
+  dyn-linear (df-∘ p q)      e x             fx        =
+    ( fst (dyn-linear p e _ (fst (dyn-linear q e x fx)))
+    , cong₂ _+ℕ_ (snd (dyn-linear q e x fx))
+                 (snd (dyn-linear p e _ (fst (dyn-linear q e x fx)))) )
+  dyn-linear (df-⊗ p q)      e (a , b)       (fa , fb) =
+    ( ( fst (dyn-linear p e a fa) , fst (dyn-linear q e b fb) )
+    , cong₂ _+ℕ_ (snd (dyn-linear p e a fa))
+                 (cong₂ _+ℕ_ (snd (dyn-linear q e b fb)) refl) )
+  dyn-linear df-ρl           e (a , tt)      (fa , _)  = (fa , refl)
+  dyn-linear df-ρl⁻          e a             fa        = ((fa , tt) , refl)
+  dyn-linear df-lul          e (tt , a)      (_ , fa)  = (fa , refl)
+  dyn-linear df-lul⁻         e a             fa        = ((tt , fa) , refl)
+  dyn-linear df-lassoc       e ((a , b) , c) ((fa , fb) , fc) =
     ((fa , (fb , fc)) , refl)
-  dyn-linear df-lassoc⁻      (a , (b , c)) (fa , (fb , fc)) =
+  dyn-linear df-lassoc⁻      e (a , (b , c)) (fa , (fb , fc)) =
     (((fa , fb) , fc) , refl)
-  dyn-linear df-lswap        (a , b)       (fa , fb) = ((fb , fa) , refl)
-  dyn-linear df-drop         a             fa        = (tt , refl)
-  dyn-linear df-linl         a             fa        = (fa , refl)
-  dyn-linear df-linr         b             fb        = (fb , refl)
-  dyn-linear (df-case p q)   (inj₁ a)      fa        = dyn-linear p a fa
-  dyn-linear (df-case p q)   (inj₂ b)      fb        = dyn-linear q b fb
-  dyn-linear df-zero         ()
+  dyn-linear df-lswap        e (a , b)       (fa , fb) = ((fb , fa) , refl)
+  dyn-linear df-drop         e a             fa        = (tt , refl)
+  dyn-linear df-linl         e a             fa        = (fa , refl)
+  dyn-linear df-linr         e b             fb        = (fb , refl)
+  dyn-linear (df-case p q)   e (inj₁ a)      fa        = dyn-linear p e a fa
+  dyn-linear (df-case p q)   e (inj₂ b)      fb        = dyn-linear q e b fb
+  dyn-linear df-zero         e ()
   -- μ: the two Lambek isos wrap and unwrap; neither copies.
-  dyn-linear (df-In {F})     x             fx        =
+  dyn-linear (df-In {F})     e x             fx        =
     ( freeMu (fs→muF F F (coh F (μt F) x) (freeCoh F (μt F) x fx)) , refl )
-  dyn-linear (df-Outμ {F})   (inμ w)       (freeMu fw) =
+  dyn-linear (df-Outμ {F})   e (inμ w)       (freeMu fw) =
     ( freeCoh⁻¹ F (μt F) w (muF→fs F F w fw) , refl )
-  dyn-linear (df-cata F p)   x             fx        =
-    cata-ok F _ (λ w fw → dyn-linear p (coh⁻¹ F _ w) (freeCoh⁻¹ F _ w fw)) x fx
+  dyn-linear (df-cata F p)   e x             fx        =
+    cata-ok F _ (λ w fw → dyn-linear p e (coh⁻¹ F _ w) (freeCoh⁻¹ F _ w fw)) x fx
   -- ★ ν: observing pays what the producer reports — and a `Free` producer
   --   reports zero and hands back a `Free` layer.  Both straight from `FreeNu`.
-  dyn-linear (df-Out {F})    x             fx        =
+  dyn-linear (df-Out {F})    e x             fx        =
     ( freeCoh⁻¹ F (νt F) (fst (force x))
                 (nuF→fs F F (fst (force x)) (next fx))
     , costZero fx )
   -- ★ building is free either way: `lAna` corecursively, `lInν` in one step
   --   because the layer is already there.
-  dyn-linear (df-Ana F p)    a             fa        = (freeAna p a fa , refl)
-  dyn-linear (df-Inν {F})    x             fx        =
+  dyn-linear (df-Ana F p)    e a             fa        = (freeAna p a fa , refl)
+  dyn-linear (df-Inν {F})    e x             fx        =
     ( freeInν (fs→nuF F F (coh F (νt F) x) (freeCoh F (νt F) x fx)) , refl )
   -- the closure cases: `Free` is exactly the hypothesis `leval` needs, and the
   -- only place it is consumed.
-  dyn-linear (df-curry p)    a             fa        =
-    ( (λ b fb → dyn-linear p (a , b) (fa , fb)) , refl )
-  dyn-linear df-eval         (f , a)       (ff , fa) = ff a fa
+  dyn-linear (df-curry p)    e a             fa        =
+    ( (λ b fb → dyn-linear p tt (a , b) (fa , fb)) , refl )
+  dyn-linear df-eval         e (f , a)       (ff , fa) = ff a fa
 
   freeInν : ∀ {F} {w : FS F (Nu F)} → FreeNuF F F w → FreeNu F (inν w)
   costZero (freeInν fw) = refl
@@ -706,10 +698,10 @@ mutual
 
   freeAna : ∀ {A F} {c : LTm A (LF∙ F A)} → DupFree c →
             (a : ⟦ A ⟧) → Free A a → FreeNu F (unfoldNu F c a)
-  costZero (freeAna dc a fa) = snd (dyn-linear dc a fa)
+  costZero (freeAna dc a fa) = snd (dyn-linear dc tt a fa)
   next (freeAna {A} {F} {c} dc a fa) =
-    freeMap dc F (coh F A (fst (Lᶜ c a)))
-                 (freeCoh F A (fst (Lᶜ c a)) (fst (dyn-linear dc a fa)))
+    freeMap dc F (coh F A (fst (Lᶜ c tt a)))
+                 (freeCoh F A (fst (Lᶜ c tt a)) (fst (dyn-linear dc tt a fa)))
 
   freeMap : ∀ {A F} {c : LTm A (LF∙ F A)} → DupFree c → ∀ G →
             (y : FS G ⟦ A ⟧) → FreeFS G A y → FreeNuF F G (mapU F G c y)
@@ -738,9 +730,9 @@ badAna : ∀ {A} → LTm A (νt badF)
 badAna = lAna badF dup
 
 badProd : Nu badF
-badProd = fst (Lᶜ (badAna {One}) tt)
+badProd = fst (Lᶜ (badAna {One}) tt tt)
 
-bad-build-free : snd (Lᶜ (badAna {One}) tt) ≡ zero
+bad-build-free : snd (Lᶜ (badAna {One}) tt tt) ≡ zero
 bad-build-free = refl
 
 spineL : ℕ → Nu badF → Nu badF
@@ -780,11 +772,11 @@ goodAna = lAna Idf lid
 good-linear : DupFree goodAna
 good-linear = df-Ana Idf df-id
 
-good-free : FreeNu Idf (fst (Lᶜ goodAna tt))
-good-free = fst (dyn-linear good-linear tt tt)
+good-free : FreeNu Idf (fst (Lᶜ goodAna tt tt))
+good-free = fst (dyn-linear good-linear tt tt tt)
 
-good-observe-free : snd (Lᶜ (lOut {Idf} ∘l goodAna) tt) ≡ zero
-good-observe-free = snd (dyn-linear (df-∘ df-Out good-linear) tt tt)
+good-observe-free : snd (Lᶜ (lOut {Idf} ∘l goodAna) tt tt) ≡ zero
+good-observe-free = snd (dyn-linear (df-∘ df-Out good-linear) tt tt tt)
 
 -- ★ and the μ side still works: a fold with a dup-free algebra is free.
 natF : LF
@@ -794,5 +786,5 @@ natAlg : LTm (LF∙ natF One) One
 natAlg = lcase lid lid
 
 nat-fold-free : ∀ (n : Mu natF) → FreeMu natF n →
-                snd (Lᶜ (lcata natF natAlg) n) ≡ zero
-nat-fold-free n fn = snd (dyn-linear (df-cata natF (df-case df-id df-id)) n fn)
+                snd (Lᶜ (lcata natF natAlg) tt n) ≡ zero
+nat-fold-free n fn = snd (dyn-linear (df-cata natF (df-case df-id df-id)) tt n fn)

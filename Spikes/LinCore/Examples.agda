@@ -61,21 +61,21 @@ trace-of {t = t} _ = t
 
 emit-round : ATm One (Bt int) (Zero ⊕t Bt int)
 emit-round =
-  apure (blift dup)                                  -- pair … id: the Int, twice (a word: no cell)
-  ⨾ (aop emit ⊗a apure (blift lid))                  -- emit the first
-  ⨾ apure (blift (lul ∘l (drop ⊗l lid)))             -- snd: drop the emit's Unit answer
+  apure dup                                          -- pair … id: the Int, twice (a word: no cell)
+  ⨾ (aop emit ⊗a apure lid)                          -- emit the first
+  ⨾ apure (lul ∘l (drop ⊗l lid))                     -- snd: drop the emit's Unit answer
   ⨾ aop succ                                         -- n + 1
-  ⨾ apure (blift linr)                               -- continue
+  ⨾ apure linr                                       -- continue
 
 -- one round, from the counter `x`, the world answering `tt` to the emit and
 -- `x′` to the successor
 emit-step : ∀ (x x′ : ℕ) n → RunA emit-round mone (mbase x) n (ret (minr (mbase x′)) n) _
 emit-step x x′ n =
-  a-seq (a-seq (a-seq (a-seq (a-pure (b-lift r-dup))
-                             (a-⊗ (a-op {y = tt}) (a-pure (b-lift r-id))))
-                      (a-pure (b-lift (r-∘ (r-⊗ r-drop r-id) r-λ))))
+  a-seq (a-seq (a-seq (a-seq (a-pure r-dup)
+                             (a-⊗ (a-op {y = tt}) (a-pure r-id)))
+                      (a-pure (r-∘ (r-⊗ r-drop r-id) r-λ)))
                (a-op {y = x′}))
-        (a-pure (b-lift r-inr))
+        (a-pure r-inr)
 
 -- two rounds: 0 → 1 → 2
 emit-server : Loop emit-round mone (mbase 0) 0 2 (mbase 2) 0 _
@@ -105,7 +105,7 @@ rebuild : LTm IntList IntList
 rebuild = lcata ListF lIn
 
 list-round : ATm One IntList (Zero ⊕t IntList)
-list-round = apure (blift rebuild) ⨾ apure (blift linr)
+list-round = apure rebuild ⨾ apure linr
 
 -- [x], in cells 0 (the cons) and 1 (the nil)
 one-list : ℕ → MV IntList
@@ -120,8 +120,8 @@ new-list x = mmu 3 (minr (mpair (mbase x) (mmu 2 (minl mone))))
 list-step : ∀ x → RunA list-round mone (one-list x) 2
                        (ret (minr (new-list x)) 4) _
 list-step x =
-  a-seq (a-pure (b-lift (r-cata (m-inr (m-pair m-b (m-id (r-cata (m-inl m-one) r-In)))) r-In)))
-        (a-pure (b-lift r-inr))
+  a-seq (a-pure (r-cata (m-inr (m-pair m-b (m-id (r-cata (m-inl m-one) r-In)))) r-In))
+        (a-pure r-inr)
 
 list-server : Loop list-round mone (one-list 5) 2 1 (new-list 5) 4 _
 list-server = l-suc (list-step 5) l-zero
@@ -176,22 +176,22 @@ emit-events = refl
 
 -- the algebra, as a closure value (its environment is `One` here)
 alg-closure : LTm One (LF∙ ListF IntList ⇛t IntList)
-alg-closure = lcurryB (blift lIn)
+alg-closure = lcurryB lIn
 
 -- build the closure, lend it to the fold, drop it
 closure-fold : LTm IntList IntList
-closure-fold = lul ∘l (drop ⊗l lid) ∘l lend (bcata ListF bapp) ∘l (alg-closure ⊗l lid) ∘l lul⁻
+closure-fold = lul ∘l (drop ⊗l lid) ∘l lend (bsnd (lcata ListF bapp)) ∘l (alg-closure ⊗l lid) ∘l lul⁻
 
 -- on [5] (cells 0, 1), from counter 2: the closure is cell 2; the new list is 4 → 3
-closure-fold-run : Run closure-fold (one-list 5) 2 (mmu 4 (minr (mpair (mbase 5) (mmu 3 (minl mone))))) 5 _
+closure-fold-run : Run closure-fold mone (one-list 5) 2 (mmu 4 (minr (mpair (mbase 5) (mmu 3 (minl mone))))) 5 _
 closure-fold-run =
   r-∘ (r-∘ (r-∘ (r-∘ r-λ⁻ (r-⊗ r-curryB r-id))
-                (r-lend (b-cata (mb-inr (mb-pair mb-b (mb-id (b-cata (mb-inl mb-one) (b-app (b-lift r-In))))))
-                                (b-app (b-lift r-In)))))
+                (r-lend (r-snd (r-cata (m-inr (m-pair m-b (m-id (r-cata (m-inl m-one) (r-app r-In)))))
+                                       (r-app r-In)))))
            (r-⊗ r-drop r-id))
       r-λ
 
-trace-of-run : ∀ {A C} {f : LTm A C} {v w n n′ t} → Run f v n w n′ t → Trace
+trace-of-run : ∀ {A C} {f : LTm A C} {v w n n′ t} → Run f mone v n w n′ t → Trace
 trace-of-run {t = t} _ = t
 
 -- ★ by evaluation: the closure allocated once (2), read once per layer
@@ -209,7 +209,7 @@ closure-fold-events = refl
 rebuild-in-place : LTm IntList IntList
 rebuild-in-place = lcata ListF (lIn ∘l lid)
 
-in-place-run : Run rebuild-in-place (one-list 5) 2 (one-list 5) 2 _
+in-place-run : Run rebuild-in-place mone (one-list 5) 2 (one-list 5) 2 _
 in-place-run = r-cata-reuse (m-inr (m-pair m-b (m-id (r-cata-reuse (m-inl m-one) r-id)))) r-id
 
 -- ★ by evaluation: no event at all — the list was rebuilt in its own cells
@@ -217,7 +217,7 @@ in-place-events : trace-of-run in-place-run ≡ []
 in-place-events = refl
 
 -- and it means the same as the rebuild that frees and allocates
-in-place-sound : er (one-list 5) ≡ Agda.Builtin.Sigma.fst (Lᶜ rebuild-in-place (er (one-list 5)))
+in-place-sound : er (one-list 5) ≡ Agda.Builtin.Sigma.fst (Lᶜ rebuild-in-place tt (er (one-list 5)))
 in-place-sound = sound in-place-run
 
 ------------------------------------------------------------------------
@@ -230,3 +230,18 @@ closure-life = refl
 
 closure-life-ok : Life dead (on 2 (trace-of-run closure-fold-run)) dead
 closure-life-ok = birth (use (use (death done)))
+
+------------------------------------------------------------------------
+-- 6. A10: NESTED LENDING. Two scopes, and the inner body reads what the OUTER
+--    one lent (a copy of it, D402's choice A). Neither lent value is touched.
+------------------------------------------------------------------------
+
+nested-lend : LTm (IntList ⊗t (Bt int ⊗t One)) (IntList ⊗t (Bt int ⊗t IntList))
+nested-lend = lend (lend (bfst (bsnd bcopy)))
+
+nested-run : Run nested-lend mone (mpair (one-list 5) (mpair (mbase 7) mone)) 2 _ 4 _
+nested-run = r-lend (r-lend (r-fst (r-snd r-copy)))
+
+-- ★ by evaluation: only the copy allocates; both lent values stay as they were
+nested-events : trace-of-run nested-run ≡ alloc 2 ∷ alloc 3 ∷ []
+nested-events = refl
