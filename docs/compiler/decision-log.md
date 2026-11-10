@@ -22008,9 +22008,24 @@ Still **Proposed**: the user's review of this entry's remaining points continues
 * **`NoLeak` comes from the backbone.** The machine's cell events, temporaries removed, equal the run's
   trace; `lifetimes` then gives the claim. The value relation between machine and run is first-order,
   since a run of an application already contains the run of the closure's body.
-* **One term language.** `LTm`, `BTm` and `ATm` merge into one language indexed by its lent context and
-  whether it may perform effects, so each theorem is proved once. This supersedes "effects sit above the
-  core" and closes finding (3): SigOps may occur inside folds and closures, as the IR allows.
+* **One term language.** `LTm`, `BTm` and `ATm` merge into one language `Tm E A B` indexed by its lent
+  context, so each theorem is proved once. This supersedes "effects sit above the core" and closes finding
+  (3): SigOps may occur inside folds, closures and coalgebras, and the loop is a generator (`liter`), as
+  the IR allows. A term means a computation in `T∞` (`evalᴰ`'s shape); `sound` says a run is a path through
+  that meaning.
+* **For the user's review: no effect index (A11, 2026-11-10).** The amendment first said the language would
+  also be indexed by whether a term may perform effects. Master's IR is ungraded (Plan 0.52 M2: one
+  exponential per `(A, B)`), and `evalᴰ` puts closures, ν layers and rounds in the one monad `T∞`. An index
+  would need graded arrows and a graded ν that the IR does not have, and a term built from an applied
+  closure could never be called pure. Set aside: (a) the index with graded arrows and ν; (b) an index where
+  "pure" forbids applying a closure. A term's effects are visible in its run's events; if a purity claim is
+  needed, it can be added as a predicate on terms or an index, mechanically.
+* **A run ends in an `Outcome`.** It gives a value, or it stopped: `halted`, or `exhausted`, which can happen
+  before any term or after a prefix of a term's events. A stopped run claims only that its events were legal
+  (the exit exception), and that what it did is a prefix of what the term means.
+* **Retired (A11): OCP-0009's cost count and `dyn-linear`** ("dup-free code allocates nothing"). It counted only
+  `dup`, the event trace has replaced that account, and with values in `T∞` the count has no place to live.
+  It remains on `origin/plan-ref` and in this branch's history.
 * **Local temporaries are allowed.** The lowering may allocate heap blocks the run does not have, if the
   same generator's code frees them before it finishes and nothing in the result points into them. A
   halt or `exhausted` in between falls under the exit exception. The space claim counts them: live data
