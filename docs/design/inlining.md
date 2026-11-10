@@ -471,7 +471,7 @@ The categorical laws guarantee that reordering and fusion preserve semantics at 
 ### Approach A: Compile-time Inlining (Pragmatic)
 
 **Strategy:**
-1. Parse interpretation assembly files (`.x86_64`, `.arm64`, `.riscv64`)
+1. Parse interpretation assembly files (`.x86_64`, `.riscv64`)
 2. Build lookup table: `primitive name → instruction sequence`
 3. During code generation, emit instructions directly instead of `call`
 

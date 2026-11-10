@@ -25,7 +25,7 @@ When encountering postulates (axioms without proofs), apply solutions in this pr
 **2. GENERALIZE (Acceptable)** - Move to `Once.Backend.Common.*` for all architectures
    - Create `BackendInterface` with parameterized types (State, Program, registers)
    - Single source of truth for universal properties
-   - Reduces duplication across X86/AArch64/RiscV64
+   - Reduces duplication across X86/RiscV64
    - Use when: Property is universal but architecture types differ
 
 **3. ARCH-SPECIFIC (Worst)** - Keep separate postulates per backend
@@ -61,7 +61,7 @@ When encountering duplication or postulates:
 | `curry-output-wf` | Arch-specific postulate | Bridge pattern in MutualIR eliminates it | Priority 1 ✓ |
 | `sp-bound-for-f-in-thunk` | Universal postulate (false) | Explicit stack preconditions | Priority 1 ✓ |
 | `run-apply-star` | Arch-specific postulate (Priority 3) | Generalized to `Once.Backend.Common.ApplyPostulate` | Priority 2 ✓ |
-| `StackAnalysis` | Duplicated in X86/AArch64/RiscV64 | Moved to Common | Priority 1 ✓ |
+| `StackAnalysis` | Duplicated in X86/RiscV64 | Moved to Common | Priority 1 ✓ |
 | `ClosureWellFormed` | Considered for Common | Kept arch-specific (calling conventions differ) | Priority 2 (justified) |
 
 ### Verification Scope: Compiler Correctness for Arbitrary Programs
@@ -412,7 +412,6 @@ The `--verified` flag enables opt-in verification with fallback to unverified Ha
 **Files**:
 - `formal/Once/Backend/RiscV64/Correct/IR/Curry.agda:66-74` (functionally eliminated)
 - `formal/Once/Backend/X86/Correct/IR/Curry.agda` (similar postulate exists)
-- `formal/Once/Backend/AArch64/Correct/IR/Curry.agda` (similar postulate exists)
 
 **Problem**:
 ```agda
@@ -435,7 +434,6 @@ Circular module dependency:
 **Status**:
 - RiscV64: **Functionally Eliminated** (2026-01-02) - postulate kept as internal placeholder
 - X86: Open (same pattern applicable)
-- AArch64: Open (same pattern applicable)
 
 **Solution Applied (RiscV64)**:
 
@@ -514,14 +512,13 @@ Returning `(CurryResult, IRStarResult)` tuple avoids proof duplication:
 
 **Cross-Architecture Applicability**:
 
-This pattern can be applied to X86 and AArch64 with architecture-specific adjustments:
+This pattern can be applied to X86 with architecture-specific adjustments:
 
 | Architecture | Differences from RiscV64 | Difficulty |
 |--------------|--------------------------|------------|
 | **X86** | - Return address on stack (not register)<br>- No stack-requirement parameter yet | Low |
-| **AArch64** | - Return address in x30 link register<br>- Different register names (x0/x19 vs a0/s0) | Low |
 
-All three backends have identical structure:
+All backends have identical structure:
 - `ClosureWellFormed` record with `code-ptr-valid` and `thunk-correct`
 - `CurryResult` record with `closure-wf` field
 - Same circular dependency (Curry.agda ↔ MutualIR.agda)
@@ -530,13 +527,12 @@ All three backends have identical structure:
 Keep architecture-specific implementations rather than creating Common modules because:
 1. Backend types (State, Program, registers) differ significantly
 2. Calling conventions differ (stack vs. link register for return address)
-3. RiscV64 has `stack-requirement` parameter that X86/AArch64 may need when eliminating their postulates
+3. RiscV64 has `stack-requirement` parameter that X86 may need when eliminating its postulates
 4. Current duplication is minimal (structure is identical, only register names differ)
 
 **Next Steps**:
 - Apply same pattern to `Once/Backend/X86/Correct/MutualIR.agda` (separate branch)
-- Apply same pattern to `Once/Backend/AArch64/Correct/MutualIR.agda` (separate branch)
-- Verify all three backends build successfully
+- Verify all backends build successfully
 - Update `what-is-proven.md` to reflect postulate elimination
 
 ---
@@ -738,7 +734,6 @@ run-fst-star-s addr-in (a , b) s ... =
 **Cross-Architecture**:
 - X86-64: Uses stateful proofs (ZERO encoding postulates)
 - RISC-V: Still uses non-stateful proofs (requires all encoding postulates)
-- AArch64: TBD (can adopt stateful approach)
 
 **Status**: Completed for x86-64 backend
 

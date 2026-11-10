@@ -6,11 +6,10 @@
 
 ## Context
 
-The generator correctness proofs across all three backend architectures suffer from severe compilation performance issues:
+The generator correctness proofs across all backend architectures suffer from severe compilation performance issues:
 
 - **RiscV64**: `Once/Backend/RiscV64/Correct/MutualIR.agda` (1,940 lines)
 - **X86**: `Once/Backend/X86/Correct/MutualIR.agda` (2,150 lines)
-- **AArch64**: `Once/Backend/AArch64/Correct/MutualIR.agda` (2,863 lines)
 
 Each file contains a massive mutual block with 25+ mutually recursive functions and uses `{-# OPTIONS --sized-types #-}`.
 
@@ -442,7 +441,7 @@ mutual
    - Minimal code changes
    - Document why termination is obvious
    - Test compilation time on RiscV64 first
-   - If successful, apply to X86 and AArch64
+   - If successful, apply to X86
 
 2. **Apply Proposal 2** (Add opaque to helpers)
    - Mark all `run-*-star` helpers (except main `run-ir-star-at-offset`) as opaque

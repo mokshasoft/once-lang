@@ -4,7 +4,7 @@ Once programs running on the seL4 microkernel (x86_64, x86_32 and riscv64, under
 a client, all written in Once. The client calls the server over an seL4 endpoint with the Ints 65 to
 90 and prints each answer; the server answers with what it received. No C runs in this path:
 the kernel starts the root task, and everything after that is Once code and the thin per-arch
-assembly of the seL4 Interpretations and Host ([plan 0.127](../../plans/0.127-sel4-runs-once.md)).
+assembly of the seL4 Interpretations and Host ([D403–D405](../../docs/compiler/decision-log.md)).
 
 ## Run it
 
@@ -13,8 +13,9 @@ nix build .#echo-test-x86_64 -L      # build compiler, kernel and image; boot un
 nix build .#exhausted-test-x86_64 -L # a root task that allocates without bound faults
 nix build .#monitored-test-x86_64 -L # a monitor receives a program's out-of-memory fault
 nix build .#caps-test-x86_64 -L      # a root task runs every CNode and Notification operation
+nix build .#words-test-x86_64 -L     # message words 2 and 3 of seL4_Call reach the kernel and back
 nix build .#numbers-check-x86_64 -L  # check every seL4 number in the Strata against the kernel
-nix build .#all -L                   # all five, on every architecture
+nix build .#all -L                   # all six, on every architecture
 nix run .#simulate-x86_64            # boot the echo interactively (Ctrl-A X quits QEMU)
 ```
 

@@ -2,7 +2,6 @@
 
 **Date**: 2026-01-04
 **Status**: BLOCKED - Fundamental Agda limitation
-**Related**: `aarch64-apply-postulate-elimination.md`
 
 ## Summary
 
@@ -28,7 +27,7 @@ data IRResultVariant {i : Size} {A B : Type} (ir : IR i A B) (prog : Program)
 ### Type Error
 
 ```
-/formal/Once/Backend/AArch64/Correct/MutualIR.agda:188.3-190.87: error: [UnequalTerms]
+/formal/Once/Backend/<arch>/Correct/MutualIR.agda:188.3-190.87: error: [UnequalTerms]
 B' Type.⇒[ Once.Type.Many ] C != B of type Type
 when checking the constructor CurryVariant in the declaration of IRResultVariant
 ```
@@ -174,7 +173,6 @@ Next step: Prototype Alternative 2 (dependent type family) to determine if it's 
 
 ## References
 
-- `docs/formal/guides/aarch64-apply-postulate-elimination.md` - Original elimination plan
-- `formal/Once/Backend/AArch64/Correct/MutualIR.agda` - Failed prototype (lines 170-218)
-- `formal/Once/Backend/AArch64/Postulates.agda` - Current postulates documentation
+- `formal/Once/Backend/<arch>/Correct/MutualIR.agda` - Failed prototype (lines 170-218)
+- `formal/Once/Backend/<arch>/Postulates.agda` - Current postulates documentation
 - Agda documentation on indexed families: https://agda.readthedocs.io/en/latest/language/data-types.html#indexed-datatypes

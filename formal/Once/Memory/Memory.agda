@@ -77,7 +77,7 @@ readMem-writeMem-diff m addr1 addr2 v addr1≢addr2 with addr2 ≡ᵇ addr1 | in
 ... | true | ⟦ eq ⟧ = ⊥-elim (addr1≢addr2 (sym (≡ᵇ⇒≡ addr2 addr1 (subst T (sym eq) tt))))
 
 -- | Reading from a different address after a write returns the old value
--- (boolean version - used by AArch64)
+-- (boolean version)
 readMem-writeMem-diff-bool : ∀ (m : Memory) (addr1 addr2 : Word) (v : Word) →
   (addr2 ≡ᵇ addr1) ≡ false →
   readMem (writeMem m addr1 v) addr2 ≡ readMem m addr2

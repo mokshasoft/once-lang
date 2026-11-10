@@ -11,8 +11,8 @@ When proving compiler correctness, we need to show that executing the generated 
 However, `apply` presents a unique challenge:
 
 ```agda
--- apply: 6 instructions (AArch64)
-compile-aarch64 apply =
+-- apply: 6 instructions
+compile apply =
   ldr x9 (base x0) ∷         -- load closure from pair.fst
   ldr x10 (base+imm x0 8) ∷  -- load arg from pair.snd
   ldr x19 (base x9) ∷        -- load env from closure
@@ -63,7 +63,7 @@ This means `blr x9` jumps to address 6, regardless of where `curry` appears in t
 
 1. **The code is only correct when curry is at position 0** (prefix = [])
 2. For general programs with curry at position N, `blr x9` would need to jump to N+6, but it jumps to 6
-3. This affects ALL backends (x86, RISC-V, AArch64)
+3. This affects ALL backends (x86, RISC-V)
 
 ### Correct Fix (Future Work)
 
@@ -73,7 +73,7 @@ The codegen should compute absolute addresses. One approach:
 mov x9 (imm 6) ∷
 
 -- Use position-independent code or compute:
-adr x9, thunk_label ∷  -- ARM's address-of-label instruction
+adr x9, thunk_label ∷  -- address-of-label instruction
 ```
 
 Or use a linker-style approach where labels are resolved to absolute addresses.
@@ -145,7 +145,7 @@ The proof would proceed as:
 
 | File | Changes |
 |------|---------|
-| `formal/Once/Backend/AArch64/Correct/Foundation.agda` | Added `step-blr-at-offset`, `blr-*` lemmas, `step-ret-at-offset`, cross-register lemmas |
+| `formal/Once/Backend/<arch>/Correct/Foundation.agda` | Added `step-blr-at-offset`, `blr-*` lemmas, `step-ret-at-offset`, cross-register lemmas |
 
 ## Success Criteria (POC)
 
@@ -153,7 +153,6 @@ The proof would proceed as:
 - [x] `blr-*` helper lemmas proven
 - [x] `step-ret-at-offset` proven
 - [x] Cross-register preservation lemmas for x30, x10
-- [x] `make aarch64` succeeds
 - [x] Documentation complete
 
 ## Second Limitation: Execution Count Mismatch (RESOLVED)
@@ -212,7 +211,7 @@ run-apply-setup : ∀ {A B} (prefix suffix : Program)
   (closure : ⟦ A ⇒ B ⟧) (arg : ⟦ A ⟧) (s : State) →
   halted s ≡ false → pc s ≡ length prefix →
   readReg (regs s) x0 ≡ encode (closure , arg) →
-  ∃[ s' ] (exec 6 (prefix ++ compile-aarch64 apply ++ suffix) s ≡ just s'
+  ∃[ s' ] (exec 6 (prefix ++ compile apply ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ closure-code-ptr closure        -- PC at thunk entry
          × readReg (regs s') x19 ≡ closure-env closure  -- env loaded
@@ -262,7 +261,6 @@ postulate
 Update all backends to use absolute addresses:
 
 1. **Option A**: Position-independent code (PC-relative addressing)
-   - AArch64: Use `adr` instruction
    - x86: Use RIP-relative addressing
    - RISC-V: Use `auipc` + `addi`
 
@@ -287,4 +285,4 @@ The apply proof is achievable but requires either:
 1. A codegen fix to use absolute addresses, OR
 2. A restricted proof for the case where curry is at position 0
 
-The POC demonstrates the proof structure and helper lemmas needed. The main blocker is the relative-address limitation in the current codegen, which affects all three backends.
+The POC demonstrates the proof structure and helper lemmas needed. The main blocker is the relative-address limitation in the current codegen, which affects all backends.

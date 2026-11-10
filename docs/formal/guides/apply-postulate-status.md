@@ -1,4 +1,4 @@
-# AArch64 Apply Postulate: Current Status
+# Apply Postulate: Current Status
 
 **Date**: 2026-01-04 (Updated)
 **Context**: Attempt to eliminate `apply-produces-result` postulate
@@ -56,7 +56,7 @@ when checking the constructor CurryVariant
 
 ### 3. Code Cleanup
 
-**Changed**: `formal/Once/Backend/AArch64/Correct/MutualIR.agda`
+**Changed**: `formal/Once/Backend/<arch>/Correct/MutualIR.agda`
 - Removed failed IRResultVariant prototype (49 lines deleted)
 - File verified to still type-check correctly
 - Ready for dependent type family prototype
@@ -212,7 +212,7 @@ run-ir-star-at-offset : (ir : IR i A B) → ... →
 
 ### Current State
 
-**Postulates in AArch64**:
+**Postulates**:
 1. `sp-bound-after-stack-op` - Runtime assumption (acceptable)
 2. `apply-produces-result` - Semantic boundary (could be acceptable)
 
@@ -228,7 +228,7 @@ The `apply-produces-result` postulate represents a **calling convention assumpti
 ### Documentation Path
 
 If we accept the postulate:
-1. Update `Once/Backend/AArch64/Postulates.agda` with stronger justification
+1. Update `Once/Backend/<arch>/Postulates.agda` with stronger justification
 2. Document that whole-program compositions of curry+apply can be proven without it
 3. Note that `run-apply-with-wf` provides the postulate-free path
 4. Consider this a "verified modulo calling convention" result
@@ -295,7 +295,7 @@ All options significantly complicate the proof architecture and may not be worth
 
 ### Final State
 
-**AArch64 Postulates**:
+**Postulates**:
 1. `sp-bound-after-stack-op` - Runtime assumption (acceptable)
 2. `apply-produces-result` - Calling convention model axiom (acceptable)
 
@@ -303,11 +303,10 @@ This is a **strong verification result**: modular IR correctness with well-justi
 
 ## References
 
-- `docs/formal/guides/aarch64-apply-postulate-elimination.md` - Original plan
 - `docs/formal/guides/irresultvariant-blocker.md` - Detailed blocker analysis
-- `formal/Once/Backend/AArch64/Postulates.agda` - Current postulates
-- `formal/Once/Backend/AArch64/Correct/MutualIR.agda` - Mutual proof block (line 1277)
-- `formal/Once/Backend/AArch64/Correct/ClosureWellFormed.agda` - CurryResultS definition
+- `formal/Once/Backend/<arch>/Postulates.agda` - Current postulates
+- `formal/Once/Backend/<arch>/Correct/MutualIR.agda` - Mutual proof block (line 1277)
+- `formal/Once/Backend/<arch>/Correct/ClosureWellFormed.agda` - CurryResultS definition
 
 ## Session Summary
 

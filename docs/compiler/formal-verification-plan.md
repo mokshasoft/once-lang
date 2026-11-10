@@ -40,7 +40,6 @@ Each generator compiles to a handful of instructions. For linear code: no heap, 
 ### Formal Semantics Available
 
 - **x86-64**: Sail specification from REMS project (Cambridge) / ACL2
-- **ARM64**: Official Sail specs from ARM Ltd. (future target)
 - **RISC-V**: Clean formal Sail specs (future target)
 
 ## Compiler Pipeline
@@ -442,11 +441,9 @@ After x86-64 verification is complete:
 
 ### Additional Verified Backends
 
-1. **ARM64 backend** - Use ARM's official Sail specifications. High value due to Apple Silicon, AWS Graviton, mobile devices. Following the same pattern as x86-64, estimated ~1500 lines Agda.
+1. **RISC-V backend** - Clean ISA with excellent formal semantics. Good for embedded systems and future hardware. Estimated ~1500 lines Agda.
 
-2. **RISC-V backend** - Clean ISA with excellent formal semantics. Good for embedded systems and future hardware. Estimated ~1500 lines Agda.
-
-3. **WebAssembly backend** - Formal semantics exist. Enables browser deployment with verification. Estimated ~1200 lines Agda.
+2. **WebAssembly backend** - Formal semantics exist. Enables browser deployment with verification. Estimated ~1200 lines Agda.
 
 ### Compiler Improvements
 

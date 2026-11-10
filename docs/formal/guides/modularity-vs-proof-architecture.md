@@ -95,13 +95,13 @@ run-apply-proof : (x : ⟦ (A ⇒ B) * A ⟧) →
 
 **You can have BOTH modular code organization AND global invariants!**
 
-### Current AArch64 Architecture (Modular Code + Local Properties)
+### Current Architecture (Modular Code + Local Properties)
 
 ```agda
--- File: Once/Backend/AArch64/Correct/IR/Curry.agda
+-- File: Once/Backend/<arch>/Correct/IR/Curry.agda
 run-curry-star-direct : (f : IR i (A * B) C) → (x : ⟦ A ⟧) → ... → Result
 
--- File: Once/Backend/AArch64/Correct/IR/Apply.agda
+-- File: Once/Backend/<arch>/Correct/IR/Apply.agda
 run-apply-star-direct : (x : ⟦ (A ⇒ B) * A ⟧) → ... → Result
 run-apply-star-direct x ... =
   -- Problem: We don't know if x is well-formed!
@@ -115,13 +115,13 @@ run-apply-star-direct x ... =
 ### Proposed Architecture (Modular Code + Global Properties)
 
 ```agda
--- File: Once/Backend/AArch64/Correct/IR/Curry.agda
+-- File: Once/Backend/<arch>/Correct/IR/Curry.agda
 run-curry-star-direct : (f : IR i (A * B) C) → (x : ⟦ A ⟧) →
                         AllClosuresWellFormed prog →  -- ← Thread invariant
                         ... →
                         Result × AllClosuresWellFormed prog'  -- ← Preserve invariant
 
--- File: Once/Backend/AArch64/Correct/IR/Apply.agda
+-- File: Once/Backend/<arch>/Correct/IR/Apply.agda
 run-apply-star-direct : (x : ⟦ (A ⇒ B) * A ⟧) →
                         AllClosuresWellFormed prog →  -- ← Receive invariant
                         ... → Result
@@ -163,7 +163,7 @@ run-apply-star-direct x inv ... =
 ### Step 1: Define Global Invariant
 
 ```agda
--- Once/Backend/AArch64/Correct/GlobalInvariant.agda
+-- Once/Backend/<arch>/Correct/GlobalInvariant.agda
 
 data AllClosuresWellFormed (prog : Program) : Set where
   all-closures-wf :
@@ -206,7 +206,7 @@ initial-invariant : ∀ (prog : Program) →
 ### Step 4: Update Apply Implementation
 
 ```agda
--- Once/Backend/AArch64/Correct/IR/Apply.agda
+-- Once/Backend/<arch>/Correct/IR/Apply.agda
 
 run-apply-star-direct :
   (x : ⟦ (A ⇒ B) * A ⟧) →
@@ -281,7 +281,7 @@ To avoid confusion, use:
 
 ## References
 
-- `Once/Backend/AArch64/Correct/ClosureWellFormed.agda` - Infrastructure already exists!
+- `Once/Backend/<arch>/Correct/ClosureWellFormed.agda` - Infrastructure already exists!
 - `docs/formal/guides/apply-postulate-status.md` - Previous investigation
 - `docs/formal/guides/apply-postulate-elimination-attempt.md` - Implementation attempt
 

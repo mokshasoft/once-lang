@@ -379,7 +379,7 @@ main = effCompose (println@F) (pure "Hello for Once")
 
 #### Thread Primitives (`Strata/Interpretations/Linux/Thread.once`)
 
-Found on branches: `origin/allocator-implementation`, `origin/arm-*`, `origin/competetive`, etc.
+Found on branches: `origin/allocator-implementation`, `origin/competetive`, etc.
 
 ```once
 -- Thread creation

@@ -2,9 +2,9 @@
 
 ## Executive Summary
 
-This document outlines a plan to extract common proof infrastructure from the three backend architectures (X86-64, AArch64, RiscV64) to a shared `Once/Backend/Common/` directory. The primary focus is the Star (reflexive-transitive closure) abstraction, which is nearly identical across all backends.
+This document outlines a plan to extract common proof infrastructure from the backend architectures (X86-64, RiscV64) to a shared `Once/Backend/Common/` directory. The primary focus is the Star (reflexive-transitive closure) abstraction, which is nearly identical across all backends.
 
-**Current Status**: RiscV64 refactored ✓, X86 and AArch64 pending
+**Current Status**: RiscV64 refactored ✓, X86 pending
 
 **Total Potential Savings**: ~226 lines (18% reduction in Star-related code)
 
@@ -19,11 +19,11 @@ The codebase already has a well-designed `Once/Backend/Common/` directory with s
 - **Fetch.agda** - Polymorphic instruction fetch lemmas (used by all backends)
 - **Memory.agda** - Memory read/write lemmas (used by all backends)
 - **ProgramLemmas.agda** - List manipulation for composition (used by all backends)
-- **Exec.agda** - Fuel-based execution (used by X86, AArch64; NOT RiscV64)
+- **Exec.agda** - Fuel-based execution (used by X86; NOT RiscV64)
 
 ### Analysis Findings
 
-The Plan agent analyzed all three backends and found:
+The Plan agent analyzed the backends and found:
 
 1. **Star.agda core is 100% identical** across all architectures (~115 lines)
 2. **Helper combinators** follow same pattern but vary in count per backend
@@ -75,7 +75,6 @@ The Plan agent analyzed all three backends and found:
 
 2. **Register conventions** (varies)
    - X86: `rax` for result
-   - AArch64: `x0` for result
    - RiscV64: `a0` for result
 
 ### 2. Helper Combinator Inventory
@@ -83,10 +82,8 @@ The Plan agent analyzed all three backends and found:
 | Backend  | star-step2 | star-step3 | star-step4 | star-step5 | star-step6 |
 |----------|------------|------------|------------|------------|------------|
 | X86      | ✓          | ✓          | ✓          | ✗          | ✗          |
-| AArch64  | ✓          | ✓          | ✓          | ✓          | ✓          |
 | RiscV64  | ✓          | ✓          | ✓          | ✓          | ✗          |
 
-**Maximum needed**: star-step6 (for AArch64's apply instruction sequence)
 
 **Usage**: Rarely used directly; most code uses `⟨_,_⟩◅_` combinator
 
@@ -95,9 +92,8 @@ The Plan agent analyzed all three backends and found:
 | File | Lines | Extractable | Remaining | % Reduction |
 |------|-------|-------------|-----------|-------------|
 | X86/Correct/Star.agda | 432 | ~112 | ~320 | 26% |
-| AArch64/Correct/Star.agda | 372 | ~117 | ~255 | 31% |
 | RiscV64/Correct/Star.agda | 462 | ~117 | ~345 | 25% |
-| **Total** | **1266** | **~346** | **~920** | **27%** |
+| **Total** | **894** | **~229** | **~665** | **26%** |
 
 **New Common/Star.agda**: ~120 lines
 
@@ -180,22 +176,6 @@ module Once.Backend.Common.Star
 
 **Status**: Documented, not yet executed
 
-### Phase 4: Refactor AArch64 (Future Work)
-
-**File**: `Once/Backend/AArch64/Correct/Star.agda`
-
-**Changes**: Same as X86
-
-**Expected reduction**: ~117 lines
-
-**Dependencies to update**:
-- `Once/Backend/AArch64/Correct/StarBase.agda`
-- `Once/Backend/AArch64/Correct/MutualIR.agda`
-
-**Test**: Full AArch64 backend build
-
-**Status**: Documented, not yet executed
-
 ---
 
 ## Risk Assessment
@@ -207,7 +187,6 @@ module Once.Backend.Common.Star
 | Create Common/Star | **Low** | None (new file) | Trivial (delete file) |
 | Refactor RiscV64 | **Medium** | Build breaks | Easy (git revert) |
 | Refactor X86 | **Medium** | Build breaks | Easy (git revert) |
-| Refactor AArch64 | **Medium** | Build breaks | Easy (git revert) |
 
 **Confidence factors**:
 1. Pure extraction (no logic changes)
@@ -221,7 +200,7 @@ module Once.Backend.Common.Star
 ```
 Common.Star
   ← depends on: Data.Bool, Data.Maybe, PropEq (stdlib only)
-  → depended by: RiscV64.Star (X86.Star, AArch64.Star in future)
+  → depended by: RiscV64.Star (X86.Star in future)
 
 RiscV64.Star
   ← depends on: RiscV64.Syntax, RiscV64.Semantics, Common.Star
@@ -260,7 +239,6 @@ RiscV64.Star
 
 **Line counts**:
 - X86: 216 lines
-- AArch64: 247 lines
 - RiscV64: 220 lines
 
 **Common pattern**: All have `length-++` helper (already in stdlib)
@@ -271,7 +249,6 @@ RiscV64.Star
 
 **Line counts**:
 - X86: 204 lines
-- AArch64: 235 lines
 - RiscV64: 266 lines
 
 **Structure similarities**:
@@ -280,7 +257,6 @@ RiscV64.Star
 
 **Key differences** (cannot abstract):
 - **X86**: `rdi` (arg), `r12` (env), stack-based return, needs StackInvariant
-- **AArch64**: `x0` (arg), `x19` (env), `x30` (return), different ABI
 - **RiscV64**: `a0` (arg), `s0` (env), `ra` register (return), no StackInvariant
 
 **Verdict**: Architecture-specific due to calling conventions
@@ -289,23 +265,22 @@ RiscV64.Star
 
 **Line counts**:
 - X86: 157 lines (mostly re-exports)
-- AArch64: 1,227 lines (includes instruction lemmas)
 - RiscV64: 1,029 lines (includes instruction lemmas)
 
 **Current state**: Already well-organized
 - X86's approach is cleanest (just consolidates imports)
-- AArch64 and RiscV64 include instruction execution lemmas
+- RiscV64 includes instruction execution lemmas
 
 **Verdict**: Already optimal - Foundation is the "one-stop shop" import
 
 ### MemoryValid.agda & StackInvariant.agda
 
-**Present in**: X86, AArch64
+**Present in**: X86
 **Absent in**: RiscV64
 
 **Key insight**: RiscV64's simpler approach (star-only, no stack invariants) works fine
 
-**Recommendation**: Consider if X86/AArch64 could simplify by adopting RiscV64's approach
+**Recommendation**: Consider if X86 could simplify by adopting RiscV64's approach
 
 ---
 
@@ -320,9 +295,8 @@ RiscV64.Star
 ### Future Work
 
 - Phase 4: Refactor X86 backend
-- Phase 5: Refactor AArch64 backend
-- Phase 6: Consider additional extractions if pattern proves successful
-- Phase 7: Explore simplifying X86/AArch64 to match RiscV64's cleaner approach
+- Phase 5: Consider additional extractions if pattern proves successful
+- Phase 6: Explore simplifying X86 to match RiscV64's cleaner approach
 
 ---
 
@@ -332,14 +306,14 @@ RiscV64.Star
 
 **Date**: 2026-01-01
 
-All three backends had a similar postulate claiming universal stack bounds:
+All backends had a similar postulate claiming universal stack bounds:
 
 ```agda
 -- RiscV64 (Foundation.agda):
 postulate
   stackDepth-leq-stackBase : ∀ ir → StackDepth ir ≤ 0x7FFF0000
 
--- Similar postulates in X86 and AArch64
+-- Similar postulates in X86
 ```
 
 **Problem**: This postulate is **mathematically FALSE**. Any fixed bound can be exceeded by sufficiently deep nesting (compose chains, nested pairs, etc.). The bound `0x7FFF0000` (2GB) came from an arbitrary choice of initial stack pointer.
@@ -459,26 +433,21 @@ in star-codegen-correct myProgram provided x proof
 
 **Code Sharing**:
 - ~55 lines eliminated per backend (RiscV64 done)
-- X86 and AArch64 have similar StackDelta/StackDepth (pending extraction)
+- X86 has similar StackDelta/StackDepth (pending extraction)
 - Single source of truth for stack analysis logic
 
-### Future Work: X86 and AArch64
+### Future Work: X86
 
 **Expected reductions**:
 - X86: ~50 lines (StackDelta/StackDepth in CodeGen.agda)
-- AArch64: ~50 lines (StackDelta/StackDepth in CodeGen.agda)
 
 **Dependencies to update**:
 - X86/Correct/Foundation.agda (remove postulate, parameterize initWithInput)
-- AArch64/Correct/Foundation.agda (remove postulate, parameterize initWithInput)
 - X86/Correct.agda (update theorem signatures)
-- AArch64/Correct.agda (update theorem signatures)
 - X86/Postulates.agda (update documentation)
-- AArch64/Postulates.agda (update documentation)
 
 **Different allocation sizes** (to be verified):
 - X86 uses different calling conventions (stack-based vs register-based)
-- AArch64 uses different frame sizes (AArch64 ABI)
 
 **Status**: Documented, not yet executed
 

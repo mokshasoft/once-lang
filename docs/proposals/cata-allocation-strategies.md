@@ -303,7 +303,7 @@ TreeTrace (proof layer)
     ↓ optimizing translation
 AbstractTrace (operational layer)
     ↓ 1-to-1 mapping
-Machine instructions (x86, RISC-V, ARM, WASM)
+Machine instructions (x86, RISC-V, WASM)
 ```
 
 ### Layer 1: TreeTrace (Proof Space)

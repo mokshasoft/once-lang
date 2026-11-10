@@ -20,10 +20,8 @@ The full compilation pipeline from surface syntax to x86-64 assembly is proven c
 | Optimization | ✓ Proven | Categorical rewrites preserve semantics |
 | x86-64 code gen | ✓ Proven | All 14 generators proven |
 | End-to-end theorem (x86) | ✓ Proven | Full pipeline: Surface → x86 preserves semantics |
-| End-to-end theorem (AArch64) | ✓ Theorem exists | Full pipeline: Surface → AArch64 (backend postulated) |
 | Polynomial functors | ✓ Proven | SPF module with proper recursive type semantics |
 | Primitive specs | ✓ Axiomatized | Memory, IO, Thread axioms (orthogonal to type system) |
-| AArch64 code gen | ◐ Structure defined | Syntax, Semantics, CodeGen complete; Correct postulated |
 | C code generation | Not started | IR → C semantics preservation |
 | QTT enforcement | Not started | Linear resource tracking |
 
@@ -149,37 +147,6 @@ e2e-correct : ∃[ s ] (run prog s0 ≡ just s
 This proof validates the full proof architecture described in `docs/formal/x86-full-proof-architecture.md`.
 
 **Key insight**: Apply cannot be proven in isolation because `call r15` jumps to thunk code. But by proving apply **in composition with curry**, where the thunk code is part of the same program, we achieve a complete proof.
-
-### AArch64 Code Generation Correctness (In Progress)
-
-The AArch64 backend follows the same structure as x86-64, targeting the ARM64 architecture verified by seL4.
-
-**Status**: Backend definition files created, end-to-end theorem established, proofs postulated.
-
-```
-codegen-aarch64-correct : ∀ {A B} (ir : IR A B) (x : ⟦ A ⟧) →
-  ∃[ s ] (run (compile-aarch64 ir) (initWithInput x) ≡ just s
-        × readReg (regs s) x0 ≡ encode (eval ir x))
-```
-
-**Files**:
-- `Once/Backend/AArch64/Syntax.agda` - 31 GPRs, AAPCS64 instruction subset
-- `Once/Backend/AArch64/Semantics.agda` - PSTATE flags, SP handling
-- `Once/Backend/AArch64/CodeGen.agda` - IR → AArch64 translation
-- `Once/Backend/AArch64/Correct.agda` - Correctness theorem (postulated)
-- `Once/EndToEndAArch64.agda` - End-to-end compilation theorem
-
-The end-to-end theorem (`compilation-correct-aarch64`) composes:
-1. `compile-preserves-semantics` (shared with x86, fully proven)
-2. `codegen-aarch64-correct` (currently postulated)
-
-**Key differences from x86-64**:
-- Single input/output register (x0) instead of rdi/rax
-- Zero register (xzr) for efficient tag=0 stores
-- PSTATE condition flags (NZCV) instead of EFLAGS
-- 16-byte stack alignment requirement
-
-See `docs/formal/aarch64-remaining-proofs.md` for detailed progress tracking.
 
 ## Assumptions and Postulates
 
@@ -502,7 +469,6 @@ formal/Once/
 ├── Compile.agda           # Compilation pipeline (desugar + optimize)
 ├── Optimize.agda          # Optimizer
 ├── EndToEnd.agda          # ★ End-to-end compilation theorem (x86) ★
-├── EndToEndAArch64.agda   # ★ End-to-end compilation theorem (AArch64) ★
 ├── Category/
 │   └── Laws.agda          # 18 CCC law proofs
 ├── TypeSystem/
@@ -523,16 +489,11 @@ formal/Once/
 │   ├── IO.agda            # ★ I/O axioms ★
 │   └── Thread.agda        # ★ Concurrency axioms ★
 └── Backend/
-    ├── X86/
-    │   ├── Syntax.agda    # x86-64 instruction AST
-    │   ├── Semantics.agda # x86-64 operational semantics
-    │   ├── CodeGen.agda   # IR → x86-64 compilation
-    │   └── Correct.agda   # Code gen correctness (imports P2-P4)
-    └── AArch64/
-        ├── Syntax.agda    # AArch64 instruction AST (31 GPRs, AAPCS64)
-        ├── Semantics.agda # AArch64 operational semantics (PSTATE)
-        ├── CodeGen.agda   # IR → AArch64 compilation
-        └── Correct.agda   # Code gen correctness (postulated)
+    └── X86/
+        ├── Syntax.agda    # x86-64 instruction AST
+        ├── Semantics.agda # x86-64 operational semantics
+        ├── CodeGen.agda   # IR → x86-64 compilation
+        └── Correct.agda   # Code gen correctness (imports P2-P4)
 ```
 
 **Important**: `Postulates.agda` is the authoritative source for core assumptions. Backend-specific postulates (P2-P4) are in `Backend/X86/Correct.agda`. Primitive specifications (Memory, IO, Thread) are orthogonal to the type system.

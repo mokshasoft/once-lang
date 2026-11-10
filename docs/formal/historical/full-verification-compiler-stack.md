@@ -1736,13 +1736,10 @@ This architectural choice ensures Once can evolve from a simple categorical lang
 - ✅ Extraction working: MAlonzo generates Haskell from these proofs
 
 **What's missing (THIS IS WHAT WE'RE FIXING)**:
-- ❌ CCC IR → AArch64 assembly (in progress - Phase 5 complete, Phase 6-7 remain)
 - ❌ CCC IR → x86-64 assembly (exists but with postulates)
 - ❌ CCC IR → RISC-V assembly (exists but with postulates)
 
 **Impact**: Can't claim end-to-end verification from Surface → Assembly until backend proofs are complete.
-
-**Current work**: The AArch64 migration (Phases 0-5 completed) is EXACTLY addressing this gap!
 
 ---
 
@@ -1816,7 +1813,6 @@ Each backend postulates 15+ instruction sequence behaviors:
 
 **Current status**:
 - x86-64: Some WF threading exists (see `Once/Backend/X86/Correct/StarBase.agda`)
-- AArch64: Foundation ready (Phase 1-5 complete)
 - RISC-V: `run-apply-with-wf` pattern established
 
 **For pure Once programs**: Can achieve CompCert-level verification (zero axioms for compilation)
@@ -1878,10 +1874,10 @@ Each backend postulates 15+ instruction sequence behaviors:
 - ✅ ArithIR codegen: `Once.Arith.Backend.X86.CodeGen` → MAlonzo
 
 **What's NOT extracted (yet)**:
-- ❌ CCC IR → Assembly compilation (AArch64/x86-64/RISC-V)
+- ❌ CCC IR → Assembly compilation (x86-64/RISC-V)
 - ❌ Backend orchestration (intentionally unverified - "glue code")
 
-**Why**: Backend compilation is the current work-in-progress (our AArch64 migration!).
+**Why**: Backend compilation is the current work-in-progress.
 
 **Path forward**: Once backend proofs are complete (Gap 1), extract to MAlonzo.
 
@@ -1934,7 +1930,7 @@ Each backend postulates 15+ instruction sequence behaviors:
 4. ~~"Comparable to CompCert/CakeML"~~ → Getting there, but not yet
 
 **🟡 ASPIRATIONAL (Path forward)**:
-1. **Backend IR → Assembly verification** (Gap 1) → AArch64 Phases 6-7 + extract other backends
+1. **Backend IR → Assembly verification** (Gap 1)
 2. **Eliminate memory encoding postulates** (Gap 2) → Use validity predicates (x86 proof-of-concept exists)
 3. **Implement ClosureWellFormed threading** (Gap 3) → **Achieve ZERO postulates for pure programs!**
    - Thread WF proofs through IR combinators (2-4 weeks/backend)
@@ -1956,7 +1952,7 @@ Each backend postulates 15+ instruction sequence behaviors:
 >
 > **Arithmetic compilation** (ArithIR → x86-64) is fully verified and extracted via MAlonzo.
 >
-> **Backend compilation** (CCC IR → Assembly for AArch64/x86-64/RISC-V) is under active development with formal correctness proofs in progress. Current backend code generation works correctly but relies on ~30 postulates for instruction semantics and memory encoding, with documented paths to elimination.
+> **Backend compilation** (CCC IR → Assembly for x86-64/RISC-V) is under active development with formal correctness proofs in progress. Current backend code generation works correctly but relies on ~30 postulates for instruction semantics and memory encoding, with documented paths to elimination.
 >
 > Programs are accepted only if they pass the verified type checker (depth ≤7 constraint, provably correct bound). **No unverified fallback paths exist** - compilation either succeeds with verification guarantees or fails with clear errors.
 >
@@ -1970,11 +1966,11 @@ Each backend postulates 15+ instruction sequence behaviors:
 
 **Current State** (2026-01-02):
 - **Verified**: Type checking (✅), Surface → IR elaboration (✅), ArithIR → x86-64 (✅)
-- **In Progress**: CCC IR → Assembly backends (🔄 AArch64 Phase 5 complete!)
+- **In Progress**: CCC IR → Assembly backends (🔄)
 - **Known Gaps**: 30+ postulates (eliminable), recursive type semantics (fixable)
 
 **Next 6-12 Months**:
-1. **Complete AArch64 backend proofs** (Phases 6-7) + extract to MAlonzo
+1. **Complete the backend proofs** + extract to MAlonzo
 2. **Port proven patterns to x86-64 and RISC-V**
 3. **Eliminate memory encoding postulates** (use x86 validity predicate approach)
 4. **Prove instruction execution helpers** (step-by-step semantics)

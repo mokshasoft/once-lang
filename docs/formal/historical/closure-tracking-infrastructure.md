@@ -1,8 +1,8 @@
-# Closure Tracking Infrastructure for AArch64 Backend
+# Closure Tracking Infrastructure
 
 ## Overview
 
-This document describes the closure tracking infrastructure added to the AArch64 backend formal verification. While the `apply-produces-result` postulate remains as an accepted model axiom (similar to CompCert's calling convention axioms), we've built infrastructure that enables postulate-free proofs for specific whole-program compositions.
+This document describes the closure tracking infrastructure added to the backend formal verification. While the `apply-produces-result` postulate remains as an accepted model axiom (similar to CompCert's calling convention axioms), we've built infrastructure that enables postulate-free proofs for specific whole-program compositions.
 
 ## Status: Phase 5 Complete (2026-01-06)
 
@@ -25,25 +25,25 @@ This document describes the closure tracking infrastructure added to the AArch64
 
 ## Key Files Modified
 
-- `Once/Backend/AArch64/Correct/StarBase.agda`
+- `Once/Backend/<arch>/Correct/StarBase.agda`
   - Added ir-closure-entry field
   - Changed universe level to Set₁
 
-- `Once/Backend/AArch64/Correct/MutualIR.agda`
+- `Once/Backend/<arch>/Correct/MutualIR.agda`
   - Modified run-curry-star-direct-compat
   - Constructs and returns ClosureEntry
 
-- `Once/Backend/AArch64/Correct/ClosureContext.agda`
+- `Once/Backend/<arch>/Correct/ClosureContext.agda`
   - Defines ClosureEntry and ClosureContext types
   - Provides infrastructure for tracking closures
 
-- `Once/Backend/AArch64/Correct/ClosureWellFormed.agda`
+- `Once/Backend/<arch>/Correct/ClosureWellFormed.agda`
   - Defines ClosureWellFormed predicate
   - Contains run-apply-with-wf for postulate-free proofs
 
 ## Understanding the Apply Postulate
 
-The `apply-produces-result` postulate (Once/Backend/AArch64/Postulates.agda:215-237) is **NOT a fundamental limitation** and should be eliminated:
+The `apply-produces-result` postulate (Once/Backend/<arch>/Postulates.agda:215-237) is **NOT a fundamental limitation** and should be eliminated:
 
 1. **For Once-generated programs**: All closures are created by the Once compiler's curry operation, so the postulate SHOULD be eliminatable
 

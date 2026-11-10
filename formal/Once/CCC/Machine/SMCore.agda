@@ -1385,7 +1385,6 @@ link-block-split u before after lbl b t eq =
 -- PORTABILITY:
 --   These primitives map cleanly to all backends:
 --   - x86-64: call/ret sequences, conditional jumps
---   - ARM64: bl/ret sequences, conditional branches
 --   - WASM: call instruction, br_if blocks
 --   - RISC-V: jal/jalr sequences
 --

@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This analysis examines the formal verification status across AArch64, x86-64, and RISC-V backends for the categorical generators. The core finding is that **apply is universally unprovable** with the current execution model, and **compose/pair/case** have difficulties due to program concatenation reasoning.
+This analysis examines the formal verification status across the x86-64 and RISC-V backends for the categorical generators. The core finding is that **apply is universally unprovable** with the current execution model, and **compose/pair/case** have difficulties due to program concatenation reasoning.
 
 **Key Strategic Insight:** We can maintain **multiple generator implementations** - some optimized for proof simplicity, others for performance. This allows us to first prove correctness with simpler implementations, then optionally prove equivalence to faster versions.
 
@@ -12,28 +12,27 @@ This analysis examines the formal verification status across AArch64, x86-64, an
 
 Generators grouped by category. Status: ✅ Proven | ⚠️ Partially Proven | ❌ Postulated
 
-| Category | Generator | AArch64 | x86-64 | RISC-V | Difficulty |
-|----------|-----------|---------|--------|--------|------------|
-| **Identity** | id | ✅ | ✅ | ✅ | Trivial |
-| **Composition** | compose | ❌ | ✅ | ❌ | Medium |
-| **Product** | fst | ⚠️ | ✅ | ✅ | Low |
-| **Product** | snd | ⚠️ | ✅ | ✅ | Low |
-| **Product** | pair | ❌ | ✅ | ❌ | Medium-High |
-| **Coproduct** | inl | ⚠️ | ✅ | ✅ | Low |
-| **Coproduct** | inr | ⚠️ | ✅ | ✅ | Low |
-| **Coproduct** | case | ❌ | ✅ | ❌ | Medium-High |
-| **Terminal** | terminal | ✅ | ✅ | ✅ | Trivial |
-| **Initial** | initial | ✅ | ✅ | ✅ | Trivial |
-| **Exponential** | curry | ❌ | ✅ | ✅ | High |
-| **Exponential** | apply | ❌ | ❌ | ❌ | **FUNDAMENTAL** |
-| **Recursive** | fold | ✅ | ✅ | ✅ | Trivial |
-| **Recursive** | unfold | ✅ | ✅ | ✅ | Trivial |
-| **Effect** | arr | ✅ | ✅ | ✅ | Trivial |
+| Category | Generator | x86-64 | RISC-V | Difficulty |
+|----------|-----------|--------|--------|------------|
+| **Identity** | id | ✅ | ✅ | Trivial |
+| **Composition** | compose | ✅ | ❌ | Medium |
+| **Product** | fst | ✅ | ✅ | Low |
+| **Product** | snd | ✅ | ✅ | Low |
+| **Product** | pair | ✅ | ❌ | Medium-High |
+| **Coproduct** | inl | ✅ | ✅ | Low |
+| **Coproduct** | inr | ✅ | ✅ | Low |
+| **Coproduct** | case | ✅ | ❌ | Medium-High |
+| **Terminal** | terminal | ✅ | ✅ | Trivial |
+| **Initial** | initial | ✅ | ✅ | Trivial |
+| **Exponential** | curry | ✅ | ✅ | High |
+| **Exponential** | apply | ❌ | ❌ | **FUNDAMENTAL** |
+| **Recursive** | fold | ✅ | ✅ | Trivial |
+| **Recursive** | unfold | ✅ | ✅ | Trivial |
+| **Effect** | arr | ✅ | ✅ | Trivial |
 
 **Summary by backend:**
 - **x86-64**: 14/15 proven (apply intentionally postulated)
 - **RISC-V**: 11/15 proven
-- **AArch64**: 8/15 proven (active development)
 
 ---
 
@@ -55,65 +54,52 @@ Generators grouped by category. Status: ✅ Proven | ⚠️ Partially Proven | �
 
 Estimates for modern out-of-order CPUs (Cortex-A76, Zen 4, SiFive U74). Cycles shown are approximate latency, not throughput.
 
-| Generator | AArch64 | x86-64 | RISC-V | Notes |
-|-----------|---------|--------|--------|-------|
-| id | 0-1 | 1 | 0-1 | nop or mov (zero-latency on some CPUs) |
-| compose | |f|+|g| | |f|+1+|g| | |f|+|g| | x86 needs mov rdi,rax |
-| fst | 3-4 | 3-4 | 3-4 | Single load, L1 hit |
-| snd | 3-4 | 3-4 | 3-4 | Single load, L1 hit |
-| pair | 10+ + |f| + |g| | 15+ + |f| + |g| | 10+ + |f| + |g| | Stack ops + 2 stores |
-| inl | 5-6 | 6-7 | 5-6 | Stack alloc + 2 stores |
-| inr | 6-7 | 6-7 | 6-7 | Stack alloc + 3 stores |
-| case | 8-10 + |branch| | 10-12 + |branch| | 7-9 + |branch| | Branch + loads |
-| terminal | 1 | 1 | 1 | Immediate load |
-| initial | - | - | - | Trap, doesn't return |
-| curry | 15-20 + skip | 18-22 + skip | 15-20 + skip | Closure alloc + jump over thunk |
-| apply | 20-30 | 25-35 | 20-30 | Load chain + indirect call |
-| fold | 0-1 | 1 | 0-1 | nop/mov |
-| unfold | 0-1 | 1 | 0-1 | nop/mov |
-| arr | 0-1 | 1 | 0-1 | nop/mov |
+| Generator | x86-64 | RISC-V | Notes |
+|-----------|--------|--------|-------|
+| id | 1 | 0-1 | nop or mov (zero-latency on some CPUs) |
+| compose | |f|+1+|g| | |f|+|g| | x86 needs mov rdi,rax |
+| fst | 3-4 | 3-4 | Single load, L1 hit |
+| snd | 3-4 | 3-4 | Single load, L1 hit |
+| pair | 15+ + |f| + |g| | 10+ + |f| + |g| | Stack ops + 2 stores |
+| inl | 6-7 | 5-6 | Stack alloc + 2 stores |
+| inr | 6-7 | 6-7 | Stack alloc + 3 stores |
+| case | 10-12 + |branch| | 7-9 + |branch| | Branch + loads |
+| terminal | 1 | 1 | Immediate load |
+| initial | - | - | Trap, doesn't return |
+| curry | 18-22 + skip | 15-20 + skip | Closure alloc + jump over thunk |
+| apply | 25-35 | 20-30 | Load chain + indirect call |
+| fold | 1 | 0-1 | nop/mov |
+| unfold | 1 | 0-1 | nop/mov |
+| arr | 1 | 0-1 | nop/mov |
 
 ---
 
 ## Table 4: Key Instructions and Their Costs
 
-| Instruction | AArch64 | x86-64 | RISC-V | Cycles | Notes |
-|-------------|---------|--------|--------|--------|-------|
-| nop | nop | nop | nop | 0-1 | Often eliminated |
-| mov reg,reg | mov xD,xS | mov %rs,%rd | mv rd,rs | 0-1 | Register rename |
-| mov reg,imm | mov xD,#imm | mov $imm,%rd | li rd,imm | 1 | Immediate |
-| load | ldr xD,[xS] | mov (rs),rd | ld rd,0(rs) | 3-4 | L1 cache hit |
-| store | str xD,[xS] | mov rd,(rs) | sd rs,0(rd) | 1 | Store buffer |
-| sub sp | sub sp,sp,#N | sub $N,%rsp | addi sp,sp,-N | 1 | Stack allocation |
-| add sp | add sp,sp,#N | add $N,%rsp | addi sp,sp,N | 1 | Stack deallocation |
-| push | - | push %r | - | 1 | x86 only |
-| pop | - | pop %r | - | 1 | x86 only |
-| cmp | cmp xN,#imm | cmp $imm,%r | - | 1 | Sets flags (x86/ARM) |
-| bne/jne | b.ne label | jne label | bne r,zero,L | 1-3 | Branch, 1 if predicted |
-| b/jmp | b label | jmp label | j label | 1 | Unconditional |
-| bl/call | bl label | call label | jal ra,label | 1-3 | Direct call |
-| blr/call* | blr xN | call *%r | jalr ra,rs,0 | 5-10 | **Indirect call** |
-| ret | ret | ret | ret | 1-3 | Return prediction |
-| trap | brk #0 | ud2 | ebreak | - | Exception |
+| Instruction | x86-64 | RISC-V | Cycles | Notes |
+|-------------|--------|--------|--------|-------|
+| nop | nop | nop | 0-1 | Often eliminated |
+| mov reg,reg | mov %rs,%rd | mv rd,rs | 0-1 | Register rename |
+| mov reg,imm | mov $imm,%rd | li rd,imm | 1 | Immediate |
+| load | mov (rs),rd | ld rd,0(rs) | 3-4 | L1 cache hit |
+| store | mov rd,(rs) | sd rs,0(rd) | 1 | Store buffer |
+| sub sp | sub $N,%rsp | addi sp,sp,-N | 1 | Stack allocation |
+| add sp | add $N,%rsp | addi sp,sp,N | 1 | Stack deallocation |
+| push | push %r | - | 1 | x86 only |
+| pop | pop %r | - | 1 | x86 only |
+| cmp | cmp $imm,%r | - | 1 | Sets flags (x86) |
+| bne/jne | jne label | bne r,zero,L | 1-3 | Branch, 1 if predicted |
+| b/jmp | jmp label | j label | 1 | Unconditional |
+| bl/call | call label | jal ra,label | 1-3 | Direct call |
+| blr/call* | call *%r | jalr ra,rs,0 | 5-10 | **Indirect call** |
+| ret | ret | ret | 1-3 | Return prediction |
+| trap | ud2 | ebreak | - | Exception |
 
 **Critical observation:** Indirect calls (blr/call*/jalr) are the most expensive operations and are used only by **apply**.
 
 ---
 
 ## Table 4b: Detailed Cycle Analysis by Microarchitecture
-
-### AArch64 - Apple M1/M2 (Firestorm cores)
-
-| Generator | Instructions | Issue Slots | Latency | Throughput | Notes |
-|-----------|-------------|-------------|---------|------------|-------|
-| id | 1 nop | 0 | 0 | - | Eliminated in decode |
-| fst | 1 ldr | 2 load | 4 | 2/cycle | L1 hit assumed |
-| snd | 1 ldr | 2 load | 4 | 2/cycle | L1 hit assumed |
-| inl | 4 | 1+1+1+1 | 5 | 1/cycle | Stack ops pipeline |
-| inr | 5 | 1+1+1+1+1 | 6 | 1/cycle | Extra mov for tag |
-| terminal | 1 mov | 1 | 1 | 4/cycle | Fast immediate |
-| curry | 8+|f| | 6+|f| | 10+|f| | - | Jump over thunk |
-| apply | 6 | 4ld+1+1 | **18-25** | - | **blr has 12-18 cycle penalty** |
 
 ### x86-64 - AMD Zen 4
 
@@ -160,7 +146,7 @@ Estimates for modern out-of-order CPUs (Cortex-A76, Zen 4, SiFive U74). Cycles s
    - Branch mispredictions stall completely (5+ cycles)
 
 4. **The a0 = input AND output optimization:**
-   - RISC-V and AArch64 use same register for input/output
+   - RISC-V uses the same register for input/output
    - Saves 1 instruction per compose vs x86-64
    - Cumulative savings significant in deeply nested IR
 
@@ -230,7 +216,7 @@ By using the stack exclusively for temporaries, we can make proofs **purely loca
 #### Implementation 1: Stack-Only Pair
 
 ```asm
-; AArch64 Stack-Only Pair
+; Stack-Only Pair
 ; Input: x0 = value
 ; Output: x0 = pointer to (f(value), g(value))
 
@@ -257,7 +243,7 @@ By using the stack exclusively for temporaries, we can make proofs **purely loca
 #### Implementation 2: Stack-Only Case
 
 ```asm
-; AArch64 Stack-Only Case
+; Stack-Only Case
 ; Input: x0 = pointer to sum [tag, value]
 
     sub     sp, sp, #8          ; allocate: [saved_value]
@@ -285,7 +271,7 @@ By using the stack exclusively for temporaries, we can make proofs **purely loca
 #### Implementation 3: Stack-Only Compose
 
 ```asm
-; AArch64 Stack-Only Compose
+; Stack-Only Compose
 ; Already simple, but with explicit frame:
 
     ; --- compile f --- (x0 -> x0)
@@ -483,7 +469,7 @@ exec-concat-left : ∀ (prog1 prog2 : Program) (s : State) (n : ℕ) →
 2. Must prove PC stays within prog1 bounds during execution
 3. Must handle the interaction between `fetch` and list concatenation
 
-### Current Proof Structure in AArch64 (lines 600-665)
+### Current Proof Structure (lines 600-665)
 
 ```agda
 exec-concat-left prog1 prog2 s n run-eq halted-eq = goal
@@ -792,10 +778,10 @@ Keep apply postulated as a trusted semantic axiom.
 
 ## Recommended Plan to Tackle Proof Difficulties
 
-### Phase 1: Complete AArch64 exec-concat Infrastructure (Priority: HIGH)
+### Phase 1: Complete exec-concat Infrastructure (Priority: HIGH)
 
 **Target files:**
-- `formal/Once/Backend/AArch64/Correct.agda` (lines 600-665)
+- `formal/Once/Backend/<arch>/Correct.agda` (lines 600-665)
 
 **Tasks:**
 1. Prove `pc-in-bounds` helper (pc stays within prog1 during execution)
@@ -803,7 +789,7 @@ Keep apply postulated as a trusted semantic axiom.
 3. Complete `exec-concat-left` proof
 4. Derive `run-concat-seq` from exec-concat-left
 
-**Why first:** This unblocks compose, pair, case for AArch64.
+**Why first:** This unblocks compose, pair, case .
 
 ### Phase 2: Abstract Pattern Match Workaround (Priority: MEDIUM)
 
@@ -839,7 +825,6 @@ Keep apply postulated as a trusted semantic axiom.
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `formal/Once/Backend/AArch64/Correct.agda` | Modify | Complete exec-concat proofs |
 | `formal/Once/Backend/RiscV64/Correct.agda` | Modify | Add exec-concat infrastructure |
 | `formal/Once/Backend/Common/ExecConcat.agda` | Create | Shared concat proof infrastructure |
 | `docs/formal/apply-tcb.md` | Create | Document apply's trusted status |
@@ -928,7 +913,7 @@ apply (closure, arg):
 ### Branchless case via Speculation + Select
 
 ```asm
-; Branchless case [f, g] on AArch64
+; Branchless case [f, g]
 ; Input: x0 = pointer to sum [tag, value]
 
     ldr     x9, [x0]            ; tag
@@ -1194,11 +1179,11 @@ data IR : Type → Type → Profile → Set where
 
 ## Conclusion
 
-This is a **research analysis** of the formal verification status across all three backends.
+This is a **research analysis** of the formal verification status across the backends.
 
 ### Key Findings
 
-1. **x86-64 is most complete** (14/15 proven), followed by RISC-V (11/15), then AArch64 (8/15)
+1. **x86-64 is most complete** (14/15 proven), followed by RISC-V (11/15)
 
 2. **apply cannot be proven** with the current isolated-program model - but can be made provable via:
    - Defunctionalization (recommended for Verified/Crypto profiles)
@@ -1238,7 +1223,6 @@ Simple generators (id, fst, snd, terminal, fold, unfold, arr): **0-4 cycles** ac
 | Architecture | Proof Friendliness | Performance | Best For |
 |--------------|-------------------|-------------|----------|
 | RISC-V | **Best** | Good | Verified profile, in-order CPUs |
-| AArch64 | Good | **Best** | Fast profile, branchless (csel) |
 | x86-64 | Medium | Good | Mature ecosystem, cmov support |
 
 ### Research Questions for Future Work
@@ -1256,10 +1240,8 @@ Simple generators (id, fst, snd, terminal, fold, unfold, arr): **0-4 cycles** ac
 
 | File | Purpose |
 |------|---------|
-| `formal/Once/Backend/AArch64/Correct.agda` | AArch64 proofs (2,454 lines) |
 | `formal/Once/Backend/X86/Correct.agda` | x86-64 proofs (7,612 lines) |
 | `formal/Once/Backend/RiscV64/Correct.agda` | RISC-V proofs (2,072 lines) |
-| `Strata/Generators/Generators.arm64` | AArch64 reference assembly |
 | `Strata/Generators/Generators.x86_64` | x86-64 reference assembly |
 | `Strata/Generators/Generators.riscv64` | RISC-V reference assembly |
 | `docs/formal/lessons-learned.md` | Proof techniques documentation |

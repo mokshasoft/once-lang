@@ -89,7 +89,7 @@ The generators are the same regardless of what programs use them! The distinctio
 │                                                              │
 │  Components:                                                 │
 │  1. Surface → IR elaboration                                │
-│  2. IR → Machine code generation (AArch64, x86-64, RV64)   │
+│  2. IR → Machine code generation (x86-64, RV64)            │
 │  3. Interpretation semantic contracts                        │
 │                                                              │
 │  Result: Compiler is proven correct for ALL Once programs   │
@@ -130,7 +130,7 @@ The Once compiler has three verification layers, all proven simultaneously:
 
 **What**: Prove IR combinators compile to correct machine code
 
-**For each backend** (AArch64, x86-64, RV64):
+**For each backend** (x86-64, RV64):
 ```agda
 ∀ (IR term f : IR i A B) (input : ⟦ A ⟧),
   executing compile-backend(f) on encode(input)
@@ -144,7 +144,6 @@ The Once compiler has three verification layers, all proven simultaneously:
 - Effectful: arr (lift pure to Eff)
 
 **Current Status**:
-- AArch64: Phase 1 (eliminate postulates in IR generators)
 - x86-64: Not started
 - RV64: Partially done (Star-based proofs exist)
 
@@ -239,7 +238,7 @@ Interpretations (verified)
 parse(syscalls.once)
   → type-check
   → elaborate to IR
-  → compile to AArch64/x86/RV64
+  → compile to x86/RV64
   = Linux.Derived (proven correct!)
 ```
 
@@ -249,7 +248,7 @@ parse(syscalls.once)
 
 ## Implementation Roadmap
 
-### Current Focus: Layer 1 (AArch64 IR Generators)
+### Current Focus: Layer 1 (IR Generators)
 
 **Phase 1**: Eliminate postulates in IR code generation
 - ✅ Phase 1.0: Document architecture
@@ -262,7 +261,7 @@ parse(syscalls.once)
 - ⏳ Phase 1.3: Write example proofs (1-2 days)
 - ⏳ Phase 1.4: Validation (1-2 hours)
 
-**Result**: AArch64 IR generators proven correct (1 runtime axiom: sp-bound)
+**Result**: IR generators proven correct (1 runtime axiom: sp-bound)
 
 ---
 
@@ -317,7 +316,7 @@ This composes:
 |--------|----------|------------------|
 | **What's Verified** | C compiler | Once compiler |
 | **Scope** | C → Assembly | Surface → IR → Machine code |
-| **Backends** | ARM, x86, PowerPC, RISC-V | AArch64, x86-64, RV64 |
+| **Backends** | ARM, x86, PowerPC, RISC-V | x86-64, RV64 |
 | **FFI/External** | Axiomatized external functions | Axiomatized Interpretations |
 | **Frontend** | C parsing + typing | Surface parsing + QTT typing |
 | **Middle** | RTL, LTL optimizations | IR combinators (categorical) |
@@ -381,8 +380,8 @@ Users can then build program-specific verification on top of this infrastructure
 
 ## Next Steps
 
-1. **Complete Layer 1 (AArch64)**: Eliminate IR generator postulates (1-2 weeks)
-2. **Port to other backends**: x86-64, RV64 (use AArch64 as template)
+1. **Complete Layer 1**: Eliminate IR generator postulates (1-2 weeks)
+2. **Apply to the backends**: x86-64, RV64
 3. **Start Layer 2**: Begin Surface → IR elaboration proofs
 4. **Document Interpretations**: Write semantic contracts for each Interpretation
 

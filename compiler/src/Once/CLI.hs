@@ -94,7 +94,6 @@ data OutputMode
 data Target
   = TargetX86_64  -- ^ x86-64 assembly (active, full IR coverage)
   | TargetX86_32  -- ^ x86-32 assembly (active via abstract-trace, simple-IR subset)
-  | TargetArm64   -- ^ ARM64 assembly (not yet implemented)
   | TargetRiscV64 -- ^ RISC-V 64-bit (active via abstract-trace, simple-IR subset)
   deriving (Eq, Show)
 
@@ -102,7 +101,6 @@ data Target
 parseTarget :: String -> Maybe Target
 parseTarget "x86_64" = Just TargetX86_64
 parseTarget "x86_32" = Just TargetX86_32
-parseTarget "arm64" = Just TargetArm64
 parseTarget "riscv64" = Just TargetRiscV64
 parseTarget _ = Nothing
 
@@ -114,14 +112,12 @@ hostTarget = case SysInfo.arch of
   "x86_64"  -> Just TargetX86_64
   "i386"    -> Just TargetX86_32
   "riscv64" -> Just TargetRiscV64
-  "aarch64" -> Just TargetArm64
   _         -> Nothing
 
 -- | Interpretation type for explicit imports (for future use)
 data InterpType
   = InterpX86_64  -- ^ x86-64 interpretation
   | InterpX86_32  -- ^ x86-32 interpretation
-  | InterpArm64   -- ^ ARM64 interpretation
   | InterpRiscV64 -- ^ RISC-V interpretation
   deriving (Eq, Show)
 
@@ -129,7 +125,6 @@ data InterpType
 parseInterpType :: String -> Maybe InterpType
 parseInterpType "x86_64" = Just InterpX86_64
 parseInterpType "x86_32" = Just InterpX86_32
-parseInterpType "arm64" = Just InterpArm64
 parseInterpType "riscv64" = Just InterpRiscV64
 parseInterpType _ = Nothing
 
@@ -242,7 +237,6 @@ bridgeArch :: Target -> Maybe Bridge.Arch
 bridgeArch TargetX86_64  = Just Bridge.X86_64
 bridgeArch TargetX86_32  = Just Bridge.X86_32
 bridgeArch TargetRiscV64 = Just Bridge.RiscV64
-bridgeArch TargetArm64   = Nothing
 
 ------------------------------------------------------------------------
 -- Fmt Command
@@ -314,12 +308,6 @@ runBuild opts = do
       Nothing -> do
         TIO.putStrLn $ "Error: no backend for this host (" <> T.pack SysInfo.arch <> ")"
         TIO.putStrLn "Use --target {x86_64|x86_32|riscv64}"
-        exitFailure
-
-      -- Other targets not yet implemented
-      Just TargetArm64 -> do
-        TIO.putStrLn "Error: ARM64 backend not yet implemented"
-        TIO.putStrLn "Use --target {x86_64|x86_32|riscv64} for the active backends"
         exitFailure
 
 -- | Run the verified pipeline for a Bridge.Arch and write the resulting

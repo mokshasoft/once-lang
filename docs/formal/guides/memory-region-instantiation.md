@@ -409,7 +409,7 @@ X86.Layout
 ### Why This Works
 
 1. **Proofs never import X86.Layout** - they use abstract Common modules
-2. **Adding AArch64** = new `AArch64.Layout`, same Common modules
+2. **Adding a backend** = new `<arch>.Layout`, same Common modules
 3. **X86.Layout is small** - just concrete values + postulates + wiring
 4. **Abstraction enforced by imports** - wrong abstraction level = import error
 

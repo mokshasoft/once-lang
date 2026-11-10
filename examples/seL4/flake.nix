@@ -247,6 +247,18 @@
             verify = "grep -qx '00002' console.txt";
           };
 
+          # Message words 2 and 3 of seL4_Call, with the kernel as the other
+          # end (on x86_32 they go through the root task's IPC buffer). The
+          # last digit reads the third register of a new thread: flags on x86
+          words = {
+            programs = [ ./Words/Root.once ];
+            until = "Once: returned";
+            verify = ''
+              case $arch in riscv64) want=0001100 ;; *) want=0001101 ;; esac
+              grep -qx "$want" console.txt
+            '';
+          };
+
           # A root task runs every CNode and Notification operation and prints
           # one digit per step (plan 0.127 D.1). Two steps fail on purpose, and
           # the debug kernel reports each failure in the middle of the
@@ -268,6 +280,7 @@
           pkgs.runCommand "seL4-once-${name}-test-${arch}" {
             nativeBuildInputs = [ pkgs.qemu pkgs.gnugrep pkgs.gnused pkgs.coreutils ];
           } ''
+            arch=${arch}
             serial=$PWD/serial.txt
             timeout 120 ${boot} -serial file:$serial &
             qemu=$!

@@ -10,7 +10,7 @@ The user's application **requires** the apply postulate to be proven (zero-postu
 
 ## Current Situation
 
-**File**: `Once/Backend/AArch64/Correct/MutualIR.agda`
+**File**: `Once/Backend/<arch>/Correct/MutualIR.agda`
 **Function**: `run-compose-star-direct` (lines 1667-1866)
 **Postulate usage**: Line 1836 calls `run-ir-star-at-offset g`, which leads to postulate when `g` is `apply`
 
@@ -46,7 +46,7 @@ run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
                     (cl : Closure A B) (a : ⟦ A ⟧) (s : State)
                     (code-ptr env-addr : ℕ) →
   ClosureWellFormed {A} {B}
-    (prefix ++ compile-aarch64 (apply {_} {A} {B}) ++ suffix)
+    (prefix ++ compile (apply {_} {A} {B}) ++ suffix)
     code-ptr env-addr (Closure.semantics cl) →
   -- ... more parameters ...
   ∃[ s' ] ApplyWithWFResult ...
@@ -199,7 +199,7 @@ This confirms the analysis in `apply-postulate-status.md` lines 236-283: elimina
 
 ## References
 
-- `formal/Once/Backend/AArch64/Correct/MutualIR.agda` (line 1667-1866)
-- `formal/Once/Backend/AArch64/Correct/ClosureWellFormed.agda` (line 378-834)
+- `formal/Once/Backend/<arch>/Correct/MutualIR.agda` (line 1667-1866)
+- `formal/Once/Backend/<arch>/Correct/ClosureWellFormed.agda` (line 378-834)
 - `docs/formal/guides/apply-postulate-status.md` - Investigation history
 - `docs/formal/guides/irresultvariant-blocker.md` - Previous blocker analysis

@@ -159,7 +159,7 @@ usage = do
   TIO.putStrLn "  (default)           Infer: executable if the module defines `main`, else library"
   TIO.putStrLn "  --lib               Force library output (no entry point)"
   TIO.putStrLn "  --exe               Force standalone executable (requires a `main`)"
-  TIO.putStrLn "  --target ARCH       Target architecture (x86_64|x86_32|arm64|riscv64) [default: the host's]"
+  TIO.putStrLn "  --target ARCH       Target architecture (x86_64|x86_32|riscv64) [default: the host's]"
   TIO.putStrLn "  --save-temps        Keep intermediate files (.s, .o)"
   TIO.putStrLn "  --no-optimize       Skip optimizer"
   TIO.putStrLn "  --strata PATH       Path to Strata directory for imports"
@@ -169,6 +169,5 @@ usage = do
   TIO.putStrLn "Target architectures:"
   TIO.putStrLn "  x86_64  - x86-64 native (verified via MAlonzo, full IR coverage)"
   TIO.putStrLn "  x86_32  - x86-32 native (verified via abstract-trace, simple-IR subset)"
-  TIO.putStrLn "  arm64   - ARM64 native (not yet implemented)"
   TIO.putStrLn "  riscv64 - RISC-V 64-bit (verified via abstract-trace, simple-IR subset)"
   exitFailure

@@ -1,0 +1,138 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Root.once: message words 2 and 3 of seL4_Call, in both directions
+--
+-- On x86_32 these words go through the root task's IPC buffer, not registers.
+-- The kernel is the other end, so no second thread needs a buffer. On a new
+-- thread, never started:
+--
+--   TCB_WriteRegisters (flags 0, count 2, 4096, 8192): the two numbers are
+--   message words 2 and 3, and the kernel stores them as the first two
+--   registers.
+--   TCB_ReadRegisters (flags 0, count 2): answers them in words 0 and 1, which
+--   shows that the words sent as 2 and 3 arrived.
+--   TCB_ReadRegisters (flags 0, count 4): answers the third register in word 2.
+--   On x86 that is the flags of a new thread, 514 (FLAGS_USER_DEFAULT).
+--
+-- The line printed: '0' + the retype's error; '0' + each call's reply label;
+-- '1' for each word that matches. `0001101` on x86, and `0001100` on riscv64,
+-- whose third register is `sp`, zero on a new thread.
+
+import I.SeL4.BootInfo as B
+import I.SeL4.Untyped as U
+import I.SeL4.IPC as I
+import I.SeL4.Debug as D
+
+no : Unit -> Int
+no _ = 0
+
+yes : Unit -> Int
+yes _ = 1
+
+bit : Unit + Unit -> Int
+bit = case no yes
+
+bootinfo : Unit -> Int
+bootinfo _ = getBootInfo@B unit
+
+-- Untyped number i: ((paddr, sizeBits), isDevice)
+untyped : Int -> (Int * Int) * Int
+untyped i = bootinfo_getUntyped@B (bootinfo unit, i)
+
+-- RAM (not device memory) of at least 64 KiB
+usable : Int -> Unit + Unit
+usable i = bit (snd (untyped i) == 0) * bit (snd (fst (untyped i)) >= 16) == 1
+
+found : Int -> Unit -> Int + Void
+found i _ = inl (bootinfo_untypedStart@B (bootinfo unit) + i)
+
+more : Int -> Unit -> Void + Int
+more i _ = inr (i + 1)
+
+search : Int -> Int + Int
+search i = case (more i) (found i) (usable i)
+
+-- The slot of the first usable untyped
+findRAM : Eff Int Int
+findRAM = ana search
+
+zero : Unit -> Int
+zero _ = 0
+
+firstFree : Int -> Int * Int
+firstFree ut = (ut, bootinfo_emptyStart@B (bootinfo unit))
+
+-- (untyped, first empty slot): the thread's TCB is in that slot
+setup : Eff Unit (Int * Int)
+setup = compose firstFree (compose findRAM zero)
+
+-- Print '0' + a number
+digit : Int -> Int
+digit e = 48 + e
+
+check : Act Int Unit
+check = compose putChar@D digit
+
+-- One TCB (type 1) into the first empty slot of the root CNode
+retypeArgs : Int * Int -> ((((((Int * Int) * Int) * Int) * Int) * Int) * Int) * Int
+retypeArgs s = (((((((fst s, 1), 0), 2), 0), 0), snd s), 1)
+
+makeTCB : Act (Int * Int) (Int * Int)
+makeTCB = compose snd (pair (compose check (compose seL4_Untyped_Retype@U retypeArgs)) id)
+
+-- seL4_Call's argument: (cap, msgInfo, mr0, mr1, mr2, mr3)
+-- msgInfo = MSG_INFO(TCBWriteRegisters = 3, 0, 0, 4) = 12292
+writeArgs : Int * Int -> ((((Int * Int) * Int) * Int) * Int) * Int
+writeArgs s = (((((snd s, 12292), 0), 2), 4096), 8192)
+
+-- msgInfo = MSG_INFO(TCBReadRegisters = 2, 0, 0, 2) = 8194
+readTwo : Int * Int -> ((((Int * Int) * Int) * Int) * Int) * Int
+readTwo s = (((((snd s, 8194), 0), 2), 0), 0)
+
+readFour : Int * Int -> ((((Int * Int) * Int) * Int) * Int) * Int
+readFour s = (((((snd s, 8194), 0), 4), 0), 0)
+
+-- seL4_Call's answer: (msgInfo, mr0, mr1, mr2, mr3)
+info : (((Int * Int) * Int) * Int) * Int -> Int
+info r = fst (fst (fst (fst r)))
+
+printLabel : Act ((((Int * Int) * Int) * Int) * Int) ((((Int * Int) * Int) * Int) * Int)
+printLabel = compose snd (pair (compose check (compose msgLabel@I info)) id)
+
+word0Is4096 : (((Int * Int) * Int) * Int) * Int -> Int
+word0Is4096 r = bit (snd (fst (fst (fst r))) == 4096)
+
+word1Is8192 : (((Int * Int) * Int) * Int) * Int -> Int
+word1Is8192 r = bit (snd (fst (fst r)) == 8192)
+
+word2IsNewFlags : (((Int * Int) * Int) * Int) * Int -> Int
+word2IsNewFlags r = bit (snd (fst r) == 514)
+
+printWord0 : Act ((((Int * Int) * Int) * Int) * Int) ((((Int * Int) * Int) * Int) * Int)
+printWord0 = compose snd (pair (compose check word0Is4096) id)
+
+printWord1 : Act ((((Int * Int) * Int) * Int) * Int) Unit
+printWord1 = compose check word1Is8192
+
+printWord2 : Act ((((Int * Int) * Int) * Int) * Int) Unit
+printWord2 = compose check word2IsNewFlags
+
+-- Each step: do it, print what it answered, keep the state
+write : Act (Int * Int) (Int * Int)
+write = compose snd (pair (compose check (compose msgLabel@I (compose info (compose seL4_Call@I writeArgs)))) id)
+
+readBack : Act (Int * Int) (Int * Int)
+readBack = compose snd (pair (compose printWord1 (compose printWord0 (compose printLabel (compose seL4_Call@I readTwo)))) id)
+
+readThird : Act (Int * Int) Unit
+readThird = compose printWord2 (compose printLabel (compose seL4_Call@I readFour))
+
+newline : Unit -> Int
+newline _ = 10
+
+endLine : Act Unit Unit
+endLine = compose putChar@D newline
+
+main : Eff Unit Unit
+main = compose endLine (compose readThird (compose readBack (compose write (compose makeTCB setup))))
