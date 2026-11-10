@@ -375,6 +375,8 @@ decision-log entry updates the rule it changes here, in the same commit.
   output) and is found by `--strata`, walking up from the input, then the
   CWD, then `<bindir>/../share/once/Strata`; the default target is the
   host's; there is no C backend. Package `once-lang`, binary `once`. (D341)
+- **seL4's numbers are checked**: every one sits in a `seL4 numbers` block of
+  its file and is compiled against the pinned kernel's headers. (D406)
 - **Nix flakes** configure projects; **fourmolu defaults** format Haskell;
   the three layers are the **Strata** (`Generators`, `Derived`,
   `Interpretations`). (D028, D006, D016)

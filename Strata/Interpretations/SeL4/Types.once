@@ -17,17 +17,21 @@
 -- All kernel resources are accessed through capabilities.
 type Capability = Int
 
+-- seL4 numbers
 -- | Null capability constant (invalid/empty slot)
 seL4_CapNull : Int
 seL4_CapNull = 0
+
+-- end seL4 numbers
 
 ------------------------------------------------------------------------
 -- Message Info
 ------------------------------------------------------------------------
 
 -- | seL4 MessageInfo (packed into single word)
--- Layout on AArch64: [label:52][capsUnwrapped:3][extraCaps:2][length:7]
--- The exact layout depends on seL4 configuration (word size, MCS mode).
+-- Layout on 64-bit: [label:52][capsUnwrapped:3][extraCaps:2][length:7]
+-- (libsel4 `shared_types.bf`; the impl files' message info words are
+-- checked against the kernel's constructor.)
 type MessageInfo = Int
 
 ------------------------------------------------------------------------
@@ -37,6 +41,10 @@ type MessageInfo = Int
 -- | seL4 error type
 type seL4_Error = Int
 
+-- The seL4 numbers in this file are checked against the pinned kernel's
+-- headers by examples/seL4 `check-numbers.sh`.
+
+-- seL4 numbers
 -- | No error - operation succeeded
 seL4_NoError : Int
 seL4_NoError = 0
@@ -82,34 +90,35 @@ seL4_NotEnoughMemory : Int
 seL4_NotEnoughMemory = 10
 
 ------------------------------------------------------------------------
--- System Call Numbers (AArch64)
+-- System Call Numbers
 ------------------------------------------------------------------------
 
--- | seL4 syscall numbers are negative on AArch64
--- These go in register x7 before the svc instruction
-seL4_SysSend : Int
-seL4_SysSend = -1
-
-seL4_SysNBSend : Int
-seL4_SysNBSend = -2
-
-seL4_SysRecv : Int
-seL4_SysRecv = -3
-
-seL4_SysReply : Int
-seL4_SysReply = -4
+-- | The non-MCS kernel's syscall numbers (the kernel names them `Sys…`)
+seL4_SysCall : Int
+seL4_SysCall = -1 -- = SysCall
 
 seL4_SysReplyRecv : Int
-seL4_SysReplyRecv = -5
+seL4_SysReplyRecv = -2 -- = SysReplyRecv
 
-seL4_SysCall : Int
-seL4_SysCall = -6
+seL4_SysSend : Int
+seL4_SysSend = -3 -- = SysSend
+
+seL4_SysNBSend : Int
+seL4_SysNBSend = -4 -- = SysNBSend
+
+seL4_SysRecv : Int
+seL4_SysRecv = -5 -- = SysRecv
+
+seL4_SysReply : Int
+seL4_SysReply = -6 -- = SysReply
 
 seL4_SysYield : Int
-seL4_SysYield = -7
+seL4_SysYield = -7 -- = SysYield
 
 seL4_SysNBRecv : Int
-seL4_SysNBRecv = -8
+seL4_SysNBRecv = -8 -- = SysNBRecv
+
+-- end seL4 numbers
 
 ------------------------------------------------------------------------
 -- MessageInfo Helpers
@@ -119,9 +128,6 @@ seL4_SysNBRecv = -8
 -- Arguments: (label, capsUnwrapped, extraCaps, length)
 -- Returns packed MessageInfo word
 signature mkMessageInfo : Act (Int * Int * Int * Int) Int
-
--- | Extract label from MessageInfo (bits 12-63 on 64-bit)
-signature msgLabel : Act Int Int
 
 -- | Extract message length from MessageInfo (bits 0-6)
 signature msgLength : Act Int Int

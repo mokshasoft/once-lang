@@ -76,6 +76,7 @@ data BuildConfig = BuildConfig
   , bcExplicit  :: [(InterpType, String)]
   , bcHost      :: String
   , bcInput     :: Maybe String
+  , bcPrograms  :: [String]
   }
 
 defaultBuildConfig :: BuildConfig
@@ -90,6 +91,7 @@ defaultBuildConfig = BuildConfig
   , bcExplicit  = []
   , bcHost      = "Linux"
   , bcInput     = Nothing
+  , bcPrograms  = []
   }
 
 -- | Parse build command arguments
@@ -101,6 +103,7 @@ parseBuild args = go args defaultBuildConfig
       Nothing -> Nothing  -- no input file
       Just input -> Just $ Build BuildOptions
         { buildInput     = input
+        , buildPrograms  = bcPrograms cfg
         , buildOutput    = bcOutput cfg
         , buildMode      = bcMode cfg
         , buildTarget    = bcTarget cfg
@@ -130,7 +133,9 @@ parseBuild args = go args defaultBuildConfig
             Nothing -> Nothing  -- invalid interpretation type
     go (x : rest) cfg = case x of
       ('-':_) -> Nothing  -- unknown flag
-      _ -> go rest cfg { bcInput = Just x }  -- treat as input file
+      _ -> go rest $ case bcInput cfg of
+        Nothing -> cfg { bcInput = Just x }  -- the input file, or program 0 of an image
+        Just _  -> cfg { bcPrograms = bcPrograms cfg ++ [x] }  -- a further program
 
 -- | Print usage information
 usage :: IO ()
@@ -153,6 +158,7 @@ usage = do
   TIO.putStrLn ""
   TIO.putStrLn "Full compile:"
   TIO.putStrLn "  build [options] <file.once>   Full compile → assembly, optionally to executable"
+  TIO.putStrLn "  build [options] <file.once> <program.once>...  One image of several programs, if the Host has them"
   TIO.putStrLn ""
   TIO.putStrLn "Build options:"
   TIO.putStrLn "  -o OUTPUT           Output base name (default: input file name)"

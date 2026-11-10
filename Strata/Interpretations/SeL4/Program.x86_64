@@ -1,0 +1,111 @@
+# ======================================================================
+# seL4 Programs of an Image - x86_64 Implementation
+# ======================================================================
+#
+# The image's programs are the seL4 Host's (Host.x86_64): their starts
+# (`once_sel4_program_entry`), initial stack pointers
+# (`once_sel4_program_sp`), and the TCB and argument each was started
+# with (`once_sel4_program_tcb`, `once_sel4_program_arg`); `once_sel4_self`
+# answers which program the calling thread runs.
+#
+# `start` is seL4_TCB_WriteRegisters on the thread with resume_target = 1
+# and two registers, rip and rsp (seL4_UserContext's first two; rip is the
+# Host's `once_sel4_program_enter`, which sets the program's heap and jumps
+# to its start, plan 0.123 C.5): message
+# words resume/arch flags, count, rip, rsp — four words, so no IPC buffer.
+# The seL4 numbers are the kernel's names, checked against the pinned
+# kernel by examples/seL4 `check-numbers.sh`.
+#
+# SigOp ABI: the argument in rdi (a tuple is one flat block of words, D381),
+# the answer in rax; every other register
+# is preserved (r15, Once's heap pointer, is seL4's fourth message word).
+#
+# ======================================================================
+
+# seL4 numbers
+.equ SysCall, -1
+.equ TCBWriteRegisters, 3
+.equ seL4_InvalidArgument, 1
+.equ UC_RIP, 0                  # = offsetof(seL4_UserContext, rip) / sizeof(seL4_Word)
+.equ UC_RSP, 1                  # = offsetof(seL4_UserContext, rsp) / sizeof(seL4_Word)
+# end seL4 numbers
+
+.equ WRITE_REGISTERS_INFO,  (TCBWriteRegisters << 12) | 4
+.equ PROGRAM_SLOTS,         4
+
+.text
+.align 16
+
+# ----------------------------------------------------------------------
+# start : ((tcb, program), arg) -> seL4_Error
+# ----------------------------------------------------------------------
+.global start
+.type start, @function
+start:
+    pushq   %r15
+    pushq   %r12
+    pushq   %r11
+    pushq   %r10
+    pushq   %r9
+    pushq   %r8
+    pushq   %rdi
+    pushq   %rsi
+    pushq   %rdx
+    pushq   %rcx
+    pushq   %rbx
+    movq    0(%rdi), %rbx               # tcb
+    movq    8(%rdi), %r12               # program
+    movq    16(%rdi), %rdx              # arg
+    movq    $seL4_InvalidArgument, %rax
+    cmpq    $1, %r12
+    jb      1f
+    cmpq    $PROGRAM_SLOTS, %r12
+    jae     1f
+    leaq    once_sel4_program_entry(%rip), %rcx
+    movq    (%rcx,%r12,8), %r9          # the program's start (0: none)
+    testq   %r9, %r9
+    jz      1f
+    leaq    once_sel4_program_enter(%rip), %r9  # rip: the Host's entry, which sets the heap
+    leaq    once_sel4_program_sp(%rip), %rcx
+    movq    (%rcx,%r12,8), %r15         # rsp: the program's stack
+    leaq    once_sel4_program_tcb(%rip), %rcx
+    movq    %rbx, (%rcx,%r12,8)
+    leaq    once_sel4_program_arg(%rip), %rcx
+    movq    %rdx, (%rcx,%r12,8)
+    movq    %rbx, %rdi                  # the thread
+    movq    $WRITE_REGISTERS_INFO, %rsi
+    movq    $1, %r10                    # resume_target = 1, arch_flags = 0
+    movq    $2, %r8                     # count: rip, rsp (UC_RIP, UC_RSP)
+    movq    $SysCall, %rdx
+    movq    %rsp, %rbx
+    syscall
+    movq    %rbx, %rsp
+    movq    %rsi, %rax                  # the reply's label: the error
+    shrq    $12, %rax
+1:  popq    %rbx
+    popq    %rcx
+    popq    %rdx
+    popq    %rsi
+    popq    %rdi
+    popq    %r8
+    popq    %r9
+    popq    %r10
+    popq    %r11
+    popq    %r12
+    popq    %r15
+    ret
+.size start, .-start
+
+# ----------------------------------------------------------------------
+# arg : Unit -> Int
+# ----------------------------------------------------------------------
+.global arg
+.type arg, @function
+arg:
+    pushq   %rcx
+    call    once_sel4_self
+    leaq    once_sel4_program_arg(%rip), %rcx
+    movq    (%rcx,%rax,8), %rax
+    popq    %rcx
+    ret
+.size arg, .-arg

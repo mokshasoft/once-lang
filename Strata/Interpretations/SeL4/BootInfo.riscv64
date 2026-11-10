@@ -1,186 +1,157 @@
-// ======================================================================
-// seL4 BootInfo Primitives - RISC-V64 Implementation
-// ======================================================================
-//
-// The rootserver receives BootInfo at a known location.
-// On RISC-V, the BootInfo pointer is typically at a fixed virtual address.
-//
-// ======================================================================
+# ======================================================================
+# seL4 BootInfo Primitives - riscv64 Implementation
+# ======================================================================
+#
+# The kernel passes the BootInfo pointer to the root task in a0; the seL4
+# Host saves it at entry (`once_sel4_bootinfo`). Offsets are seL4_BootInfo's,
+# checked against the pinned kernel.
+#
+# SigOp ABI: the argument in t0 (Input1; a tuple is one flat block of
+# words, D381), the answer in a0; every other register is preserved.
+#
+# ======================================================================
 
 .text
-.align 2
+.balign 4
 
-#ifndef ONCE_SEL4_BOOTINFO_RISCV64_DEFINED
-#define ONCE_SEL4_BOOTINFO_RISCV64_DEFINED
+# seL4 numbers
+.equ BI_IPC_BUFFER, 0x20            # = offsetof(seL4_BootInfo, ipcBuffer)
+.equ BI_EMPTY, 0x28                 # = offsetof(seL4_BootInfo, empty)
+.equ BI_USER_IMAGE_FRAMES, 0x48     # = offsetof(seL4_BootInfo, userImageFrames)
+.equ BI_INIT_DOMAIN, 0x90           # = offsetof(seL4_BootInfo, initThreadDomain)
+.equ BI_UNTYPED, 0x98               # = offsetof(seL4_BootInfo, untyped)
+.equ BI_UNTYPED_LIST, 0xA8          # = offsetof(seL4_BootInfo, untypedList)
+.equ SLOT_REGION_END, 8             # = offsetof(seL4_SlotRegion, end)
+.equ UNTYPED_DESC_SIZE_BITS, 4      # = (sizeof(seL4_UntypedDesc) == 16) ? 4 : -1
+.equ UD_PADDR, 0                    # = offsetof(seL4_UntypedDesc, paddr)
+.equ UD_SIZE_BITS, 8                # = offsetof(seL4_UntypedDesc, sizeBits)
+.equ UD_IS_DEVICE, 9                # = offsetof(seL4_UntypedDesc, isDevice)
+.equ seL4_CapInitThreadTCB, 1
+.equ seL4_CapInitThreadCNode, 2
+.equ seL4_CapInitThreadVSpace, 3
+.equ WORD_BITS, 64                  # = seL4_WordBits
+# end seL4 numbers
 
-// Known BootInfo location (platform-specific)
-.equ BOOTINFO_ADDR, 0x10000000
-
-// BootInfo structure offsets
-.equ BI_NODE_ID,            0x00
-.equ BI_NUM_NODES,          0x08
-.equ BI_NUM_IOPT_LEVELS,    0x10
-.equ BI_IPC_BUFFER,         0x18
-.equ BI_EMPTY,              0x20
-.equ BI_SHARED_FRAMES,      0x30
-.equ BI_USER_IMAGE_FRAMES,  0x40
-.equ BI_USER_IMAGE_PAGING,  0x50
-.equ BI_IO_SPACE_CAPS,      0x60
-.equ BI_EXTRA_BI_PAGES,     0x70
-.equ BI_INIT_CNODE_SIZE,    0x80
-.equ BI_INIT_DOMAIN,        0x88
-.equ BI_UNTYPED,            0x90
-.equ BI_UNTYPED_LIST,       0xA0
-
-.equ UNTYPED_DESC_SIZE, 16
-
-// ----------------------------------------------------------------------
-// getBootInfo - Get pointer to seL4_BootInfo
-// ----------------------------------------------------------------------
-// Input: Unit (ignored)
-// Output: Int (pointer to BootInfo)
+.global wordBits
+.type wordBits, @function
+wordBits:
+    li      a0, WORD_BITS
+    ret
+.size wordBits, .-wordBits
 
 .global getBootInfo
 .type getBootInfo, @function
 getBootInfo:
-    li      a0, BOOTINFO_ADDR
+    lla     a0, once_sel4_bootinfo
+    ld      a0, 0(a0)
     ret
 .size getBootInfo, .-getBootInfo
-
-// ----------------------------------------------------------------------
-// getIPCBuffer - Get IPC buffer pointer
-// ----------------------------------------------------------------------
-// Input: Unit (ignored)
-// Output: Int (pointer to IPC buffer)
 
 .global getIPCBuffer
 .type getIPCBuffer, @function
 getIPCBuffer:
-    li      t0, BOOTINFO_ADDR
-    ld      a0, BI_IPC_BUFFER(t0)
+    lla     a0, once_sel4_bootinfo
+    ld      a0, 0(a0)
+    ld      a0, BI_IPC_BUFFER(a0)
     ret
 .size getIPCBuffer, .-getIPCBuffer
 
-// ----------------------------------------------------------------------
-// bootinfo_untypedCount - Get number of untyped caps
-// ----------------------------------------------------------------------
-// Input: bootinfo pointer in a0
-// Output: count
+.global bootinfo_emptyStart
+.type bootinfo_emptyStart, @function
+bootinfo_emptyStart:
+    ld      a0, BI_EMPTY(t0)
+    ret
+.size bootinfo_emptyStart, .-bootinfo_emptyStart
+
+.global bootinfo_emptyEnd
+.type bootinfo_emptyEnd, @function
+bootinfo_emptyEnd:
+    ld      a0, (BI_EMPTY + SLOT_REGION_END)(t0)
+    ret
+.size bootinfo_emptyEnd, .-bootinfo_emptyEnd
 
 .global bootinfo_untypedCount
 .type bootinfo_untypedCount, @function
 bootinfo_untypedCount:
-    ld      t0, BI_UNTYPED(a0)          // start
-    ld      t1, (BI_UNTYPED + 8)(a0)    // end
-    sub     a0, t1, t0
+    addi    sp, sp, -16
+    sd      t1, 0(sp)
+    ld      a0, (BI_UNTYPED + SLOT_REGION_END)(t0)
+    ld      t1, BI_UNTYPED(t0)
+    sub     a0, a0, t1
+    ld      t1, 0(sp)
+    addi    sp, sp, 16
     ret
 .size bootinfo_untypedCount, .-bootinfo_untypedCount
-
-// ----------------------------------------------------------------------
-// bootinfo_untypedStart - Get start of untyped caps range
-// ----------------------------------------------------------------------
-// Input: bootinfo pointer in a0
-// Output: first untyped cap slot
 
 .global bootinfo_untypedStart
 .type bootinfo_untypedStart, @function
 bootinfo_untypedStart:
-    ld      a0, BI_UNTYPED(a0)
+    ld      a0, BI_UNTYPED(t0)
     ret
 .size bootinfo_untypedStart, .-bootinfo_untypedStart
-
-// ----------------------------------------------------------------------
-// bootinfo_initThreadTCB - Get initial thread's TCB cap slot
-// ----------------------------------------------------------------------
 
 .global bootinfo_initThreadTCB
 .type bootinfo_initThreadTCB, @function
 bootinfo_initThreadTCB:
-    li      a0, 1
+    li      a0, seL4_CapInitThreadTCB
     ret
 .size bootinfo_initThreadTCB, .-bootinfo_initThreadTCB
-
-// ----------------------------------------------------------------------
-// bootinfo_initThreadCNode - Get initial thread's CNode cap slot
-// ----------------------------------------------------------------------
 
 .global bootinfo_initThreadCNode
 .type bootinfo_initThreadCNode, @function
 bootinfo_initThreadCNode:
-    li      a0, 2
+    li      a0, seL4_CapInitThreadCNode
     ret
 .size bootinfo_initThreadCNode, .-bootinfo_initThreadCNode
-
-// ----------------------------------------------------------------------
-// bootinfo_initThreadVSpace - Get initial thread's VSpace cap slot
-// ----------------------------------------------------------------------
 
 .global bootinfo_initThreadVSpace
 .type bootinfo_initThreadVSpace, @function
 bootinfo_initThreadVSpace:
-    li      a0, 3
+    li      a0, seL4_CapInitThreadVSpace
     ret
 .size bootinfo_initThreadVSpace, .-bootinfo_initThreadVSpace
-
-// ----------------------------------------------------------------------
-// bootinfo_userImageFrames - Get number of user image frames
-// ----------------------------------------------------------------------
 
 .global bootinfo_userImageFrames
 .type bootinfo_userImageFrames, @function
 bootinfo_userImageFrames:
-    ld      t0, BI_USER_IMAGE_FRAMES(a0)
-    ld      t1, (BI_USER_IMAGE_FRAMES + 8)(a0)
-    sub     a0, t1, t0
+    addi    sp, sp, -16
+    sd      t1, 0(sp)
+    ld      a0, (BI_USER_IMAGE_FRAMES + SLOT_REGION_END)(t0)
+    ld      t1, BI_USER_IMAGE_FRAMES(t0)
+    sub     a0, a0, t1
+    ld      t1, 0(sp)
+    addi    sp, sp, 16
     ret
 .size bootinfo_userImageFrames, .-bootinfo_userImageFrames
-
-// ----------------------------------------------------------------------
-// bootinfo_domainInfo - Get domain info pointer
-// ----------------------------------------------------------------------
 
 .global bootinfo_domainInfo
 .type bootinfo_domainInfo, @function
 bootinfo_domainInfo:
-    ld      a0, BI_INIT_DOMAIN(a0)
+    ld      a0, BI_INIT_DOMAIN(t0)
     ret
 .size bootinfo_domainInfo, .-bootinfo_domainInfo
 
-// ----------------------------------------------------------------------
-// bootinfo_getUntyped - Get untyped descriptor
-// ----------------------------------------------------------------------
-// Input: (bootinfo, index) tuple in a0
-// Output: (paddr, sizeBits, isDevice) triple
-
+# bootinfo_getUntyped : (bootinfo, index) -> ((paddr, sizeBits), isDevice)
 .global bootinfo_getUntyped
 .type bootinfo_getUntyped, @function
 bootinfo_getUntyped:
-    addi    sp, sp, -32
-    sd      ra, 24(sp)
-    sd      s0, 16(sp)
-    sd      s1, 8(sp)
-    addi    s0, sp, 32
-
-    // Unpack tuple
-    ld      s0, 0(a0)           // bootinfo
-    ld      s1, 8(a0)           // index
-
-    // Calculate address: bootinfo + BI_UNTYPED_LIST + index * UNTYPED_DESC_SIZE
-    li      t0, UNTYPED_DESC_SIZE
-    mul     t1, s1, t0
-    add     t1, s0, t1
-    addi    t1, t1, BI_UNTYPED_LIST
-
-    // Read untyped descriptor
-    ld      a0, 0(t1)           // paddr
-    lbu     a2, 9(t1)           // isDevice
-    lbu     a1, 10(t1)          // sizeBits
-
-    ld      s1, 8(sp)
-    ld      s0, 16(sp)
-    ld      ra, 24(sp)
-    addi    sp, sp, 32
+    addi    sp, sp, -16
+    sd      t1, 0(sp)
+    ld      t1, 8(t0)                   # index
+    slli    t1, t1, UNTYPED_DESC_SIZE_BITS
+    ld      a0, 0(t0)                   # bootinfo
+    add     t1, t1, a0
+    addi    t1, t1, BI_UNTYPED_LIST     # = &untypedList[index]
+    ld      a0, UD_PADDR(t1)
+    sd      a0, 0(s2)                   # flat: [paddr, sizeBits, isDevice]
+    lbu     a0, UD_SIZE_BITS(t1)
+    sd      a0, 8(s2)
+    lbu     a0, UD_IS_DEVICE(t1)
+    sd      a0, 16(s2)
+    mv      a0, s2
+    addi    s2, s2, 24
+    ld      t1, 0(sp)
+    addi    sp, sp, 16
     ret
 .size bootinfo_getUntyped, .-bootinfo_getUntyped
 
-#endif // ONCE_SEL4_BOOTINFO_RISCV64_DEFINED

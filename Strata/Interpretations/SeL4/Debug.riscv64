@@ -1,0 +1,69 @@
+# ======================================================================
+# seL4 Debug Output - riscv64 Implementation
+# ======================================================================
+#
+# seL4_DebugPutChar is syscall SysDebugPutChar (debug kernel) with the
+# character in a0. The syscall convention is in Host.riscv64.
+#
+# SigOp ABI: the argument in t0 (Input1; a tuple is one flat block of
+# words, D381), the answer in a0; every other register is preserved.
+#
+# ======================================================================
+
+# seL4 numbers
+.equ SysDebugPutChar, -9
+# end seL4 numbers
+
+.macro SAVE_ALL
+    addi    sp, sp, -128
+    sd      ra, 0(sp)
+    sd      a1, 8(sp)
+    sd      a2, 16(sp)
+    sd      a3, 24(sp)
+    sd      a4, 32(sp)
+    sd      a5, 40(sp)
+    sd      a6, 48(sp)
+    sd      a7, 56(sp)
+    sd      t0, 64(sp)
+    sd      t1, 72(sp)
+    sd      t2, 80(sp)
+    sd      t3, 88(sp)
+    sd      t4, 96(sp)
+    sd      t5, 104(sp)
+    sd      t6, 112(sp)
+.endm
+
+.macro RESTORE_ALL
+    ld      ra, 0(sp)
+    ld      a1, 8(sp)
+    ld      a2, 16(sp)
+    ld      a3, 24(sp)
+    ld      a4, 32(sp)
+    ld      a5, 40(sp)
+    ld      a6, 48(sp)
+    ld      a7, 56(sp)
+    ld      t0, 64(sp)
+    ld      t1, 72(sp)
+    ld      t2, 80(sp)
+    ld      t3, 88(sp)
+    ld      t4, 96(sp)
+    ld      t5, 104(sp)
+    ld      t6, 112(sp)
+    addi    sp, sp, 128
+.endm
+
+.text
+.balign 4
+
+.global putChar
+.type putChar, @function
+putChar:
+    SAVE_ALL
+    andi    a0, t0, 0xff
+    li      a1, 0
+    li      a7, SysDebugPutChar
+    ecall
+    RESTORE_ALL
+    li      a0, 0
+    ret
+.size putChar, .-putChar

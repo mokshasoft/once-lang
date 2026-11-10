@@ -67,7 +67,11 @@ entry updates the rule it changes here, in the same commit.
   contract is a hypothesis of the apex. An explicit `exit` is an ordinary
   operation into `Void`: the run halts and never reaches `leave`. Running out
   is the Host's third entry, `once_exhausted`: the run ends `exhausted`, and
-  the Host decides how that looks (Linux SIGABRT). (D374 ← D320)
+  the Host decides how that looks (Linux SIGABRT; seL4 a fault the kernel
+  delivers, D405). (D374 ← D320)
+- **An seL4 image holds several programs**, each built alone with its own
+  `main`, stack and heap, and started by number: a signature is first-order,
+  so the world cannot call a Once closure. (D404)
 - **The observable is Spec**: an event records the operation's canonical name,
   its domain and the argument as a typed value. (D114)
 
@@ -467,7 +471,7 @@ entry updates the rule it changes here, in the same commit.
 - **Trust only `as`**: the one trusted translation is the assembler's; the
   emitted code is the verified image, and its entry `once_main` is proved
   code; the run's memory and process entry are the Host's `enter` (Linux:
-  `_start`, D376), how the run ends its `leave` (D320). A
+  `_start`, D376; seL4: `_start`, D403), how the run ends its `leave` (D320). A
   toolchain axiom may never certify compiler logic. (D262 ← D165, D161, D261)
 - **Agda, extracted with MAlonzo**, is the current proof vehicle — scaffolding
   toward Once in Once and the TCB0 bootstrap. (D022, D036, GOAL.md)

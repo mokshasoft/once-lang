@@ -1,0 +1,272 @@
+# ======================================================================
+# The seL4 Host — x86_64 (D320, plan 0.127)
+#
+# A Host is how a platform runs a program: `enter ; main ; leave`.
+#
+# THE HOST OWNS EACH RUN'S MEMORY (plan 0.123 C.5): one region per program,
+# its cells at the bottom growing up (the frontier register `%r15`), its
+# stack at the top growing down. Running out is the two meeting, which the
+# compiled program's room checks see first: they call `once_exhausted`.
+#
+# `enter` (`_start`, the ELF entry, as on Linux: D376). The kernel
+# starts the root task at the ELF entry with the bootinfo pointer in `rdi`
+# and no stack (seL4 `create_initial_thread`). `enter` points `%rsp` at the
+# top of the root task's region and `%r15` at its bottom, saves the bootinfo
+# pointer for the Interpretations (`once_sel4_bootinfo`), and jumps to the
+# compiler's portable entry `once_main`. This is what seL4's own runtime
+# does for C (`sel4runtime`, `_sel4_start`), plus the heap.
+#
+# An image may hold further programs (plan 0.127 B.1): program 0 is the
+# root task; programs 1-3 are linked beside it with their `once_main`
+# renamed `once_program_<n>` (weak here: an image without them links).
+# `I.SeL4.Program.start` starts one on a thread at `once_sel4_program_enter`
+# with the stack pointer at the top of its region; that points `%r15` at the
+# region's bottom and jumps to the program. `once_sel4_self` answers which
+# program the calling thread runs, from its stack pointer.
+#
+# The Interpretations' shared routines are here too, since every seL4
+# program links this Host: `once_sel4_copy_arg` / `once_sel4_answer` (a
+# SigOp's tuple argument and answer) and `once_sel4_invoke` (an object
+# invocation).
+#
+# `leave` (`once_leave`): calling it ends the run, observed as `returned`.
+# seL4 has no exit status and no parent to give one to, so the Host passes
+# nothing: it suspends its own thread (the root task's is
+# `seL4_CapInitThreadTCB`, a started program's is the TCB it was started
+# on). A program that wants its end known signals an endpoint itself.
+#
+# The seL4 numbers are the kernel's names (non-MCS),
+# checked against the pinned kernel's headers (examples/seL4
+# `check-numbers.sh`). A syscall saves `%rsp` in `%rbx` around `syscall`,
+# as libsel4 does.
+# ======================================================================
+
+# seL4 numbers
+.equ SysCall, -1
+.equ SysYield, -7
+.equ seL4_CapInitThreadTCB, 1
+.equ SUSPEND_INFO, 0xB000           # = MSG_INFO(TCBSuspend, 0, 0, 0)
+.equ MSG_LABEL_SHIFT, 12            # = __builtin_ctzl(MSG_INFO(1, 0, 0, 0))
+.equ MSG_EXTRA_CAPS_SHIFT, 7        # = __builtin_ctzl(MSG_INFO(0, 0, 1, 0))
+.equ MSG_EXTRA_CAPS_MASK, 3         # = MSG_INFO(0, 0, 3, 0) >> __builtin_ctzl(MSG_INFO(0, 0, 1, 0))
+.equ MSG_LENGTH_MASK, 0x7f          # = MSG_INFO(0, 0, 0, 0x7f)
+.equ BI_IPC_BUFFER, 0x20            # = offsetof(seL4_BootInfo, ipcBuffer)
+.equ IPC_MSG, 8                     # = offsetof(seL4_IPCBuffer, msg)
+.equ IPC_CAPS, 976                  # = offsetof(seL4_IPCBuffer, caps_or_badges)
+.equ ONCE_EXHAUSTED, 0x4F4F4D       # = NOT_A_SYSCALL(0x4F4F4D)
+# end seL4 numbers
+
+.equ ROOT_REGION_SIZE,        1048576     # 1 MiB
+.equ PROGRAM_SLOTS,           4
+.equ PROGRAM_REGION_SIZE,     1048576     # 1 MiB
+.equ PROGRAM_REGION_SHIFT,    20          # log2 PROGRAM_REGION_SIZE
+
+.bss
+.align 16
+once_sel4_root_region:
+    .space ROOT_REGION_SIZE
+once_sel4_root_region_end:
+
+.global once_sel4_bootinfo
+.align 8
+once_sel4_bootinfo:
+    .space 8
+
+# Programs 1..PROGRAM_SLOTS-1: one region each (cells up, stack down)
+.align 16
+once_sel4_program_regions:
+    .space (PROGRAM_SLOTS - 1) * PROGRAM_REGION_SIZE
+once_sel4_program_regions_end:
+
+# Per program: the TCB and the Int it was started with (0: root task)
+.global once_sel4_program_tcb
+.align 8
+once_sel4_program_tcb:
+    .space 8 * PROGRAM_SLOTS
+.global once_sel4_program_arg
+once_sel4_program_arg:
+    .space 8 * PROGRAM_SLOTS
+
+.data
+.weak once_program_1
+.weak once_program_2
+.weak once_program_3
+
+# Per program: its start (0: the image has no such program)
+.global once_sel4_program_entry
+.align 8
+once_sel4_program_entry:
+    .quad 0
+    .quad once_program_1
+    .quad once_program_2
+    .quad once_program_3
+
+# Per program: its initial stack pointer (the top of its region, less 16)
+.global once_sel4_program_sp
+once_sel4_program_sp:
+    .quad 0
+    .quad once_sel4_program_regions + 1 * PROGRAM_REGION_SIZE - 16
+    .quad once_sel4_program_regions + 2 * PROGRAM_REGION_SIZE - 16
+    .quad once_sel4_program_regions + 3 * PROGRAM_REGION_SIZE - 16
+
+.text
+.global _start
+.type _start, @function
+_start:
+    leaq    once_sel4_root_region_end(%rip), %rsp   # the stack: the region's top
+    leaq    once_sel4_root_region(%rip), %r15       # the frontier: its bottom
+    movq    %rdi, once_sel4_bootinfo(%rip)
+    jmp     once_main
+.size _start, .-_start
+
+# once_sel4_program_enter: where `I.SeL4.Program.start` starts program n
+# (1..PROGRAM_SLOTS-1), its stack pointer at the top of region n. Points the
+# frontier at the region's bottom and jumps to the program's `once_main`.
+.global once_sel4_program_enter
+.type once_sel4_program_enter, @function
+once_sel4_program_enter:
+    call    once_sel4_self              # n, in rax
+    movq    %rax, %r15
+    decq    %r15
+    shlq    $PROGRAM_REGION_SHIFT, %r15
+    leaq    once_sel4_program_regions(%rip), %rcx
+    addq    %rcx, %r15                  # the frontier: region n's bottom
+    leaq    once_sel4_program_entry(%rip), %rcx
+    jmp     *(%rcx,%rax,8)
+.size once_sel4_program_enter, .-once_sel4_program_enter
+
+# once_sel4_self: the program the calling thread runs, in rax (0 for the
+# root task: a stack pointer outside the programs' stacks). Preserves
+# every other register.
+.global once_sel4_self
+.type once_sel4_self, @function
+once_sel4_self:
+    pushq   %rcx
+    leaq    once_sel4_program_regions(%rip), %rcx
+    movq    %rsp, %rax
+    subq    %rcx, %rax
+    jb      1f                          # below the programs' regions
+    leaq    once_sel4_program_regions_end(%rip), %rcx
+    cmpq    %rcx, %rsp
+    jae     1f                          # above them
+    shrq    $PROGRAM_REGION_SHIFT, %rax
+    incq    %rax
+    popq    %rcx
+    ret
+1:  xorq    %rax, %rax
+    popq    %rcx
+    ret
+.size once_sel4_self, .-once_sel4_self
+
+# once_sel4_copy_arg: the n-tuple at rdi (n >= 1, in rcx) into the words at
+# rsi: how the Interpretations read a SigOp's argument, one flat block of
+# words (D381). Clobbers rax, rcx.
+.global once_sel4_copy_arg
+.type once_sel4_copy_arg, @function
+once_sel4_copy_arg:
+1:  decq    %rcx
+    movq    (%rdi,%rcx,8), %rax
+    movq    %rax, (%rsi,%rcx,8)
+    jnz     1b
+    ret
+.size once_sel4_copy_arg, .-once_sel4_copy_arg
+
+# once_sel4_answer: the n words at rsi (n >= 1, in rcx) as a flat block
+# allocated at the heap pointer r15 (advanced); the block in rax (D381).
+# Clobbers rcx, rdx.
+.global once_sel4_answer
+.type once_sel4_answer, @function
+once_sel4_answer:
+    movq    %r15, %rax
+    leaq    (%r15,%rcx,8), %r15
+1:  decq    %rcx
+    movq    (%rsi,%rcx,8), %rdx
+    movq    %rdx, (%rax,%rcx,8)
+    jnz     1b
+    ret
+.size once_sel4_answer, .-once_sel4_answer
+
+# once_sel4_invoke: an object invocation, seL4_Call on cap rdi with
+# message info rsi; message words at r12 (at least 4: words 0-3 go in
+# r10, r8, r9, r15), extra caps at r13. Words 4.. and the extra caps go
+# in the root task's IPC buffer (`bootinfo->ipcBuffer`; only the root
+# task has one). Answers the reply's label, the seL4_Error, in rax.
+# Clobbers everything but rsp, rbp, r12, r13: the caller saves r15.
+.global once_sel4_invoke
+.type once_sel4_invoke, @function
+once_sel4_invoke:
+    movq    once_sel4_bootinfo(%rip), %r14
+    movq    BI_IPC_BUFFER(%r14), %r14
+    movq    %rsi, %rcx                  # the extra caps
+    shrq    $MSG_EXTRA_CAPS_SHIFT, %rcx
+    andq    $MSG_EXTRA_CAPS_MASK, %rcx
+    xorq    %rdx, %rdx
+1:  cmpq    %rcx, %rdx
+    je      2f
+    movq    (%r13,%rdx,8), %rax
+    movq    %rax, IPC_CAPS(%r14,%rdx,8)
+    incq    %rdx
+    jmp     1b
+2:  movq    %rsi, %rcx                  # the length
+    andq    $MSG_LENGTH_MASK, %rcx
+    movq    $4, %rdx
+3:  cmpq    %rcx, %rdx
+    jae     4f
+    movq    (%r12,%rdx,8), %rax
+    movq    %rax, IPC_MSG(%r14,%rdx,8)
+    incq    %rdx
+    jmp     3b
+4:  movq    0(%r12), %r10
+    movq    8(%r12), %r8
+    movq    16(%r12), %r9
+    movq    24(%r12), %r15
+    movq    $SysCall, %rdx
+    movq    %rsp, %rbx
+    syscall
+    movq    %rbx, %rsp
+    movq    %rsi, %rax                  # the reply's label: the error
+    shrq    $MSG_LABEL_SHIFT, %rax
+    ret
+.size once_sel4_invoke, .-once_sel4_invoke
+
+.global once_leave
+.type once_leave, @function
+once_leave:
+    # seL4_TCB_Suspend(own TCB): seL4_Call with label TCBSuspend and no
+    # message words
+    movq    $seL4_CapInitThreadTCB, %rdi
+    call    once_sel4_self
+    testq   %rax, %rax
+    jz      1f
+    leaq    once_sel4_program_tcb(%rip), %rcx
+    movq    (%rcx,%rax,8), %rdi
+1:  movq    $SUSPEND_INFO, %rsi
+    movq    $SysCall, %rdx
+    movq    %rsp, %rbx
+    syscall
+    movq    %rbx, %rsp
+    # Not reached: a suspended thread never runs again
+2:  movq    $SysYield, %rdx
+    movq    %rsp, %rbx
+    syscall
+    movq    %rbx, %rsp
+    jmp     2b
+.size once_leave, .-once_leave
+
+# once_exhausted — the run ran out of memory (plan 0.123): a room check found
+# no room. It never returns. Like any seL4 thread that cannot go on, it
+# faults: a syscall number the kernel does not have is
+# seL4_Fault_UnknownSyscall, which the kernel sends to the thread's fault
+# endpoint, and the thread waits there for its supervisor. With no fault
+# endpoint (the root task has none) the kernel reports the fault and stops
+# the thread. A supervisor's reply only raises the fault again.
+.global once_exhausted
+.type once_exhausted, @function
+once_exhausted:
+    movq    $ONCE_EXHAUSTED, %rdx
+    movq    %rsp, %rbx
+    syscall
+    movq    %rbx, %rsp
+    jmp     once_exhausted
+.size once_exhausted, .-once_exhausted
+

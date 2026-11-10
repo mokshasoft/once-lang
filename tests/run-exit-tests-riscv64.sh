@@ -74,4 +74,5 @@ for f in "$TESTDIR"/*.once; do
   fi
 done
 echo "=== riscv64/qemu exit-code tests: $pass passed, $fail failed, $skip skipped ==="
+"$ROOT/tests/run-sel4-tests.sh" riscv64 || fail=$((fail+1))
 [ "$fail" -eq 0 ]

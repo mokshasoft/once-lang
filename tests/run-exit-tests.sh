@@ -67,4 +67,5 @@ for f in "$TESTDIR"/*.once; do
   fi
 done
 echo "=== exit-code tests: $pass passed, $fail failed, $skip skipped ==="
+"$ROOT/tests/run-sel4-tests.sh" x86_64 || fail=$((fail+1))
 [ "$fail" -eq 0 ]

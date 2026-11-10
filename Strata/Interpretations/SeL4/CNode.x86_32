@@ -1,0 +1,99 @@
+# ======================================================================
+# seL4 CNode Primitives - x86_32 Implementation
+# ======================================================================
+#
+# As CNode.x86_64: an object invocation is an seL4_Call made by the seL4
+# Host's `once_sel4_invoke` (root task only). Every seL4 number is in the
+# block below, checked against the pinned kernel.
+#
+# SigOp ABI: the argument in %ecx (a tuple is one flat block of words,
+# D381), the answer in %eax; every other register is preserved, %esi
+# (Once's heap pointer, and seL4's message-info register) too.
+#
+# ======================================================================
+
+# seL4 numbers
+.equ REVOKE_INFO, 0x11002           # = MSG_INFO(CNodeRevoke, 0, 0, 2)
+.equ DELETE_INFO, 0x12002           # = MSG_INFO(CNodeDelete, 0, 0, 2)
+.equ COPY_INFO, 0x14085             # = MSG_INFO(CNodeCopy, 0, 1, 5)
+.equ MINT_INFO, 0x15086             # = MSG_INFO(CNodeMint, 0, 1, 6)
+.equ MOVE_INFO, 0x16084             # = MSG_INFO(CNodeMove, 0, 1, 4)
+# end seL4 numbers
+
+# Frame: the arguments, the message words, the extra caps
+.equ ARGS,   0
+.equ WORDS,  32
+.equ CAPS,   56
+.equ FRAME,  72
+.equ SAVED_EAX, FRAME + 28          # pushal's slot for %eax
+
+# Copy argument `idx` (or 0 when idx < 0) to the frame slot `off`
+.macro ARG_TO off, idx
+.if \idx < 0
+    movl    $0, \off(%esp)
+.else
+    movl    (ARGS + 4 * \idx)(%esp), %eax
+    movl    %eax, \off(%esp)
+.endif
+.endm
+
+# An invocation on argument 0's capability: `n` arguments, message info
+# `info`, message words from arguments w0..w5, extra caps from c0..c2.
+.macro SEL4_INVOCATION name, n, info, w0=-1, w1=-1, w2=-1, w3=-1, w4=-1, w5=-1, c0=-1, c1=-1, c2=-1
+.global \name
+.type \name, @function
+\name:
+    pushal
+    subl    $FRAME, %esp
+.if \n == 1
+    movl    %ecx, ARGS(%esp)
+.else
+    movl    %ecx, %eax
+    leal    ARGS(%esp), %edx
+    movl    $\n, %ecx
+    call    once_sel4_copy_arg
+.endif
+    ARG_TO  (WORDS + 0), \w0
+    ARG_TO  (WORDS + 4), \w1
+    ARG_TO  (WORDS + 8), \w2
+    ARG_TO  (WORDS + 12), \w3
+    ARG_TO  (WORDS + 16), \w4
+    ARG_TO  (WORDS + 20), \w5
+    ARG_TO  (CAPS + 0), \c0
+    ARG_TO  (CAPS + 4), \c1
+    ARG_TO  (CAPS + 8), \c2
+    movl    ARGS(%esp), %ebx
+    movl    $\info, %esi
+    leal    WORDS(%esp), %edi
+    leal    CAPS(%esp), %ebp
+    call    once_sel4_invoke
+    movl    %eax, SAVED_EAX(%esp)
+    addl    $FRAME, %esp
+    popal
+    ret
+.size \name, .-\name
+.endm
+
+.text
+.align 16
+
+# seL4_CNode_Copy : (destRoot, destIndex, destDepth, srcRoot, srcIndex,
+#                    srcDepth, rights) -> seL4_Error
+# Words: destIndex, destDepth, srcIndex, srcDepth, rights; cap: srcRoot.
+SEL4_INVOCATION seL4_CNode_Copy, 7, COPY_INFO, w0=1, w1=2, w2=4, w3=5, w4=6, c0=3
+
+# seL4_CNode_Mint : (destRoot, destIndex, destDepth, srcRoot, srcIndex,
+#                    srcDepth, rights, badge) -> seL4_Error
+# Words: destIndex, destDepth, srcIndex, srcDepth, rights, badge;
+# cap: srcRoot.
+SEL4_INVOCATION seL4_CNode_Mint, 8, MINT_INFO, w0=1, w1=2, w2=4, w3=5, w4=6, w5=7, c0=3
+
+# seL4_CNode_Move : (destRoot, destIndex, destDepth, srcRoot, srcIndex,
+#                    srcDepth, rights) -> seL4_Error
+# Words: destIndex, destDepth, srcIndex, srcDepth; cap: srcRoot. (A move
+# keeps the capability's rights: the `rights` argument is not sent.)
+SEL4_INVOCATION seL4_CNode_Move, 7, MOVE_INFO, w0=1, w1=2, w2=4, w3=5, c0=3
+
+# seL4_CNode_Delete / seL4_CNode_Revoke : (root, index, depth) -> seL4_Error
+SEL4_INVOCATION seL4_CNode_Delete, 3, DELETE_INFO, w0=1, w1=2
+SEL4_INVOCATION seL4_CNode_Revoke, 3, REVOKE_INFO, w0=1, w1=2

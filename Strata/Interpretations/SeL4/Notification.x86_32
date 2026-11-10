@@ -1,0 +1,69 @@
+# ======================================================================
+# seL4 Notification Primitives - x86_32 Implementation
+# ======================================================================
+#
+# As Notification.x86_64. The syscall convention is in Host.x86_32.
+#
+# SigOp ABI: the argument in %ecx (a tuple is one flat block of words,
+# D381), the answer in %eax; every other register is preserved, %esi
+# (Once's heap pointer, and seL4's message-info register) too.
+#
+# ======================================================================
+
+# seL4 numbers
+.equ SysSend, -3
+.equ SysRecv, -5
+.equ SysNBRecv, -8
+.equ EMPTY_INFO, 0                  # = MSG_INFO(0, 0, 0, 0)
+# end seL4 numbers
+
+.equ SAVED_EAX, 28                  # pushal's slot for %eax
+
+.macro SYSCALL_SEL4 number
+    movl    $\number, %eax
+    movl    %esp, %ecx
+    movl    $9f, %edx
+9:  sysenter
+.endm
+
+.text
+.align 16
+
+# seL4_Signal : cap -> Unit
+.global seL4_Signal
+.type seL4_Signal, @function
+seL4_Signal:
+    pushal
+    movl    %ecx, %ebx
+    movl    $EMPTY_INFO, %esi
+    xorl    %edi, %edi
+    xorl    %ebp, %ebp
+    SYSCALL_SEL4 SysSend
+    popal
+    xorl    %eax, %eax
+    ret
+.size seL4_Signal, .-seL4_Signal
+
+# seL4_Wait : (src, reply) -> the notification word (reply: MCS only)
+.global seL4_Wait
+.type seL4_Wait, @function
+seL4_Wait:
+    pushal
+    movl    (%ecx), %ebx
+    SYSCALL_SEL4 SysRecv
+    movl    %ebx, SAVED_EAX(%esp)       # the badge: the notification word
+    popal
+    ret
+.size seL4_Wait, .-seL4_Wait
+
+# seL4_Poll : cap -> the notification word (0 if none)
+.global seL4_Poll
+.type seL4_Poll, @function
+seL4_Poll:
+    pushal
+    movl    %ecx, %ebx
+    SYSCALL_SEL4 SysNBRecv
+    movl    %ebx, SAVED_EAX(%esp)
+    popal
+    ret
+.size seL4_Poll, .-seL4_Poll

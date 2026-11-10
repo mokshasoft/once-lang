@@ -21913,3 +21913,97 @@ Recorded in plan 0.123 B.1 as its D6 and D7; moved here when plan 0.123 closed (
 * D379/D380 (frames first, values that can live on the stack do) follow from the two heaps.
 * Plan 0.146 (the linear core) meets these by construction: a linear core's `drop`s are the frees, its
   values are owned, and `dup` is the copy. Plan 0.123's allocator design (its D1–D5) is not carried over.
+
+## D403 — ON seL4 THE HOST SUPPLIES THE ENTRY `_start`, AS seL4'S OWN RUNTIME DOES FOR C (2026-10-28)
+
+**Refines** D376 (the Host owns the process entry and the region). **Decided** by the user 2026-10-28 (plan
+0.127 A.1); the entry was deferred until the merge.
+
+### Context
+The seL4 kernel starts the root task at the ELF entry with the bootinfo pointer in a register and no stack
+(`create_initial_thread`). For C, `sel4runtime`'s `_sel4_start` sets a static stack and calls into the
+runtime. A Once program has only `once_main`, whose ABI (D376) needs the frontier register at the region's
+bottom and the stack pointer at its top.
+
+### Decision
+* **The seL4 Host's `enter` is `_start`, the ELF entry**, on x86_64, x86_32 and riscv64
+  (`Strata/Hosts/SeL4/Host.<arch>`). It points the stack pointer at the top of the root task's region and the
+  frontier register at its bottom, saves the bootinfo pointer (`rdi`, `ebx`, `a0`) for the Interpretations
+  in `once_sel4_bootinfo`, and jumps to `once_main`.
+* **No Host linker script and no compiler change.** The compiler stays ignorant of the platform, as D376
+  requires; seL4 differs from Linux only in what `_start` receives and where the region comes from.
+* **`leave` suspends the thread and says nothing.** Decided by the user 2026-11-10. seL4 has no exit status and
+  no parent to give one to, and `seL4_DebugPutChar` exists only in debug kernels, so the Host uses neither. A
+  program that wants its end known signals an endpoint itself.
+
+### Consequences
+* What the kernel's start state must be is an assumption about seL4, and it is written in the Host.
+* What differs per architecture is the entry register, the syscall and its message registers, the layouts
+  and the word size. The Host's shape is the same on all three.
+
+## D404 — SEVERAL PROGRAMS IN ONE seL4 IMAGE, EACH WITH ITS OWN `main` (2026-10-28)
+
+**Decided** by the user 2026-10-28 (plan 0.127 B.1); the entry was deferred until the merge.
+
+### Context
+An seL4 system is several threads. Closures as thread bodies were the first choice, and they are rejected
+by `IsConcrete` (plan 0.58): a signature is first-order, so the world cannot call back into Once code.
+
+### Decision
+* **An image holds several Once programs, each built alone** with its own `main`, run, stack and heap.
+  Program 0 is the root task, which the kernel starts at the Host's entry.
+* **Programs are named by number.** `once build ROOT PROGRAM...` links the image: it renames each further
+  program's only global, `once_main`, to `once_program_<n>`, and the Host's table names programs 1-3, weakly, so
+  an image without them links. `once` refuses a program its Host does not name, so the compiler knows no platform
+  and no program is silently never started.
+* **`I.SeL4.Program.start : Act ((Int * Int) * Int) Int`** (TCB, program, argument) starts a program on a
+  thread, by `seL4_TCB_WriteRegisters` of its entry and stack pointer with resume. `arg : Act Unit Int`
+  reads the argument. Holds on x86_64, x86_32 and riscv64.
+
+### Consequences
+* The programs share the root task's VSpace and CSpace for now, and `once_sel4_self` finds the calling
+  program from its stack pointer. A started program has no IPC buffer, so on x86_32 it has two message
+  words. Isolation and IPC buffers are plan 0.148.
+* Signatures stay first-order: nothing in the language changed for this.
+
+## D405 — ON seL4 RUNNING OUT OF MEMORY IS AN seL4 FAULT (2026-11-08)
+
+**Refines** D374 (running out is the Host's `once_exhausted`; the Host decides how that looks). **Decided** by the
+user 2026-11-08 (plan 0.127 D.3): "handled in the usual seL4 way".
+
+### Decision
+* **`once_exhausted` on seL4 raises a fault**, as any seL4 thread that cannot go on does. It makes a syscall
+  with a number the kernel does not have (`ONCE_EXHAUSTED`), which is `seL4_Fault_UnknownSyscall`. It never
+  returns: a supervisor's reply only raises the fault again. Holds on x86_64, x86_32 and riscv64.
+* **The kernel delivers it.** With a fault endpoint, the fault goes there and the thread waits for its
+  supervisor (`Exhausted/Monitor.once`, `monitored-test`; `I.SeL4.IPC.msgLabel` reads the fault's type). With
+  none, as for the root task, the kernel reports the fault and stops the thread (`exhausted-test`).
+* **The number is checked to be no syscall.** Every syscall number counts down from -1, in every kernel
+  configuration. `ONCE_EXHAUSTED` is positive, and the number check fails if it is not above `SYSCALL_MAX` (D406).
+
+### Consequences
+* Out of memory is observable and supervisable with seL4's own mechanism; the Host adds no protocol.
+* Nothing is reclaimed yet, so a long-running program reaches this end (plan 0.146).
+
+## D406 — EVERY seL4 NUMBER IN THE STRATA IS CHECKED AGAINST THE PINNED KERNEL (2026-10-28)
+
+**Decided** at the user's request 2026-10-28 (plan 0.127 B′): "do something about the wrong system-call numbers".
+
+### Context
+The seL4 Host and Interpretations are assembly and Once that hold the kernel's numbers: syscall numbers,
+invocation labels, object types, struct offsets, capability slots and rights bits. Nothing tied them to the
+kernel. The syscall numbers were wrong, and so were `seL4_SlotBits` and the read and write rights.
+
+### Decision
+* **The kernel is pinned** to one commit in `examples/seL4/flake.nix`, and the numbers are those of that commit.
+* **Every seL4 number sits in a `seL4 numbers` block of its file**, as `.equ NAME, VALUE [# = EXPR]` in assembly
+  or `NAME = VALUE [-- = EXPR]` in Once. It carries the kernel's name, or the C expression it must equal.
+* **`examples/seL4/check-numbers.sh` compiles each entry against the pinned kernel's own headers**, generated for
+  that architecture's configuration, and fails on any difference, on an unknown name, on a line in a block that is
+  not an entry, and on a Host or assembly file with no block. The `numbers-check-<arch>` builds run it on x86_64,
+  x86_32 and riscv64, as part of `nix build .#all`.
+
+### Consequences
+* Moving the pin rechecks every number.
+* The check sees only what is in a block: a kernel number written inline is not checked, and a `.once` file with
+  no block is not required to have one. Which register carries what is covered by the boot tests, not by this.

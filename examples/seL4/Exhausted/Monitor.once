@@ -1,0 +1,126 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Monitor.once: a root task that supervises a program which runs out of memory
+--
+-- The usual seL4 way: a thread that cannot go on faults, and the kernel sends
+-- the fault to the endpoint named in the thread's TCB. The root task makes a
+-- thread and that endpoint, starts program 1 (Hungry.once) on the thread, and
+-- waits on the endpoint. The message that arrives comes from the kernel; its
+-- label is the type of fault. Each step prints '0' + its seL4_Error and the
+-- last prints '0' + the label, so the line is `00002`: four successes and
+-- seL4_Fault_UnknownSyscall, which is how the seL4 Host's `once_exhausted`
+-- faults.
+
+import I.SeL4.BootInfo as B
+import I.SeL4.Untyped as U
+import I.SeL4.TCB as T
+import I.SeL4.IPC as I
+import I.SeL4.Program as P
+import I.SeL4.Debug as D
+
+no : Unit -> Int
+no _ = 0
+
+yes : Unit -> Int
+yes _ = 1
+
+bit : Unit + Unit -> Int
+bit = case no yes
+
+bootinfo : Unit -> Int
+bootinfo _ = getBootInfo@B unit
+
+-- Untyped number i: ((paddr, sizeBits), isDevice)
+untyped : Int -> Int * Int * Int
+untyped i = bootinfo_getUntyped@B (bootinfo unit, i)
+
+-- RAM (not device memory) of at least 64 KiB
+usable : Int -> Unit + Unit
+usable i = bit (snd (untyped i) == 0) * bit (snd (fst (untyped i)) >= 16) == 1
+
+found : Int -> Unit -> Int + Void
+found i _ = inl (bootinfo_untypedStart@B (bootinfo unit) + i)
+
+more : Int -> Unit -> Void + Int
+more i _ = inr (i + 1)
+
+search : Int -> Int + Int
+search i = case (more i) (found i) (usable i)
+
+-- The slot of the first usable untyped
+findRAM : Eff Int Int
+findRAM = ana search
+
+zero : Unit -> Int
+zero _ = 0
+
+firstFree : Int -> Int * Int
+firstFree ut = (ut, bootinfo_emptyStart@B (bootinfo unit))
+
+-- (untyped, first empty slot): the thread's TCB is in slot free, the
+-- endpoint in free + 1
+setup : Eff Unit (Int * Int)
+setup = firstFree . (findRAM . zero)
+
+-- Print '0' + a number
+digit : Int -> Int
+digit e = 48 + e
+
+check : Act Int Unit
+check = putChar@D . digit
+
+-- ((untyped, type), slot): one object of `type` into `slot` of the root CNode
+retypeArgs : Int * Int * Int -> Int * Int * Int * Int * Int * Int * Int * Int
+retypeArgs a = (((((((fst (fst a), snd (fst a)), 0), 2), 0), 0), snd a), 1)
+
+retype : Act (Int * Int * Int) Int
+retype = seL4_Untyped_Retype@U . retypeArgs
+
+tcbObject : Int * Int -> Int * Int * Int
+tcbObject s = ((fst s, 1), snd s)
+
+endpointObject : Int * Int -> Int * Int * Int
+endpointObject s = ((fst s, 2), snd s + 1)
+
+-- The TCB: the endpoint is its fault endpoint, the root CNode (2) and VSpace
+-- (3) are its spaces, no IPC buffer
+configureArgs : Int * Int -> Int * Int * Int * Int * Int * Int * Int * Int
+configureArgs s = (((((((snd s, snd s + 1), 2), 0), 3), 0), 0), 0)
+
+-- ((tcb, program), arg): program 1 on the TCB
+startArgs : Int * Int -> Int * Int * Int
+startArgs s = ((snd s, 1), 0)
+
+-- Each step: do it, print its error, keep the state
+makeTCB : Act (Int * Int) (Int * Int)
+makeTCB = snd . pair (check . (retype . tcbObject)) id
+
+makeEndpoint : Act (Int * Int) (Int * Int)
+makeEndpoint = snd . pair (check . (retype . endpointObject)) id
+
+configure : Act (Int * Int) (Int * Int)
+configure = snd . pair (check . (seL4_TCB_Configure@T . configureArgs)) id
+
+run : Act (Int * Int) (Int * Int)
+run = snd . pair (check . (start@P . startArgs)) id
+
+-- The msgInfo of seL4_Recv's answer (badge, msgInfo, mr0..mr3)
+info : Int * Int * Int * Int * Int * Int -> Int
+info r = snd (fst (fst (fst (fst r))))
+
+recvArgs : Int * Int -> Int * Int
+recvArgs s = (snd s + 1, 0)
+
+-- Wait on the fault endpoint; print the label of what arrives
+fault : Act (Int * Int) Unit
+fault = check . (msgLabel@I . (info . (seL4_Recv@I . recvArgs)))
+
+newline : Unit -> Int
+newline _ = 10
+
+endLine : Act Unit Unit
+endLine = putChar@D . newline
+
+main : Eff Unit Unit
+main = endLine . (fault . (run . (configure . (makeEndpoint . (makeTCB . setup)))))

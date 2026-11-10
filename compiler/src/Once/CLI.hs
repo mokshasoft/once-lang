@@ -24,14 +24,14 @@ module Once.CLI
   ) where
 
 import Control.Exception (try, SomeException)
-import Control.Monad (foldM)
+import Control.Monad (foldM, forM, forM_, unless, when)
 import Data.Char (isSpace)
-import Data.List (isPrefixOf, intercalate)
+import Data.List (isPrefixOf, intercalate, nub)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import System.Directory (removeFile, doesFileExist, doesDirectoryExist, getCurrentDirectory, makeAbsolute)
 import System.Exit (ExitCode(..), exitFailure, exitSuccess)
-import System.IO (hPutStrLn, stderr)
+import System.IO (IOMode (ReadMode), char8, hPutStrLn, hSetEncoding, stderr, withFile)
 import System.FilePath (takeBaseName, takeDirectory, (</>))
 import System.Environment (getExecutablePath, lookupEnv)
 import System.Process (readProcessWithExitCode)
@@ -136,6 +136,7 @@ parseInterpType _ = Nothing
 -- | Options for the build command
 data BuildOptions = BuildOptions
   { buildInput     :: FilePath
+  , buildPrograms  :: [FilePath]                  -- ^ D404: further programs of one image
   , buildOutput    :: Maybe FilePath              -- ^ Output base name (without extension)
   , buildMode      :: OutputMode                  -- ^ Library or executable
   , buildTarget    :: Maybe Target                -- ^ Target architecture (default: hostTarget; Nothing on an unknown host)
@@ -289,6 +290,7 @@ runStats opts = runInspection (stageInput opts) (stageOutput opts) (Measure.stat
 -- For x86_64: calls Agda pipeline via MAlonzo, then assembles/links
 -- Other targets: not yet implemented
 runBuild :: BuildOptions -> IO ()
+runBuild opts | not (null (buildPrograms opts)) = runImageBuild opts
 runBuild opts = do
   let inputPath = buildInput opts
       outputBase = case buildOutput opts of
@@ -421,6 +423,69 @@ runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths = do
     Left err -> do
       TIO.putStrLn $ "Compilation error: " <> err
       exitFailure
+
+-- | Print the failure and stop, or go on with the result.
+orDie :: String -> Either String a -> IO a
+orDie what (Left err) = TIO.putStrLn (T.pack (what ++ ": " ++ err)) >> exitFailure
+orDie _    (Right a)  = pure a
+
+-- | D404: several programs in one image. Each is compiled alone; the first
+-- keeps `once_main`, program n's becomes `once_program_<n>`; each Interpretation
+-- is assembled once, and one Host is linked. Which programs an image can hold
+-- is the Host's: it must name `once_program_<n>`, so the compiler knows no
+-- platform and a program the Host would never start is refused, not dropped.
+runImageBuild :: BuildOptions -> IO ()
+runImageBuild opts = do
+  let inputs     = buildInput opts : buildPrograms opts
+      outputBase = maybe (takeBaseName (buildInput opts)) id (buildOutput opts)
+      lastN      = length (buildPrograms opts)
+  when (buildMode opts == Library) $
+    orDie "Error" (Left "several programs make an executable image, not a library")
+  arch <- orDie "Error" (maybe (Left "no backend for this host; use --target") Right
+                           (buildTarget opts >>= bridgeArch))
+  compiled <- forM (zip [0 :: Int ..] inputs) $ \(n, input) -> do
+    source <- TIO.readFile input
+    (mod_, strataDir, importPaths) <- orDie "Error" =<< loadAndResolve input (buildStrata opts) source
+    unless (Bridge.isProgram mod_) $
+      orDie "Error" (Left (input ++ " defines no `main`, so it cannot be a program of an image"))
+    emitWarnings arch source mod_
+    asmText <- orDie "Compilation error"
+                 (either (Left . T.unpack) Right (Bridge.assemblyFromModule (buildOptimize opts) arch mod_))
+    let base    = outputBase ++ ".p" ++ show n
+        asmPath = base ++ ".s"
+        objPath = base ++ ".o"
+    TIO.writeFile asmPath asmText
+    _ <- orDie "Assembly failed" =<< assemble arch asmPath objPath
+    when (n > 0) $
+      orDie "Failed to rename the entry" =<<
+        redefineSymbols objPath [(T.pack "once_main", "once_program_" ++ show n)]
+    pure (asmPath, objPath, strataDir, importPaths)
+  let strataDir = case compiled of
+        (_, _, dir, _) : _ -> dir
+        []                 -> "."
+      hostPath  = hostFile strataDir arch (buildHost opts)
+  hostExists <- doesFileExist hostPath
+  unless hostExists $
+    orDie "Error" (Left ("no Host " ++ buildHost opts ++ " for this target: " ++ hostPath ++ " is missing"))
+  -- char8: a Host's comments need not be in the locale's encoding
+  hostText <- withFile hostPath ReadMode (\h -> hSetEncoding h char8 >> TIO.hGetContents h)
+  forM_ [1 .. lastN] $ \n ->
+    unless (T.pack ("once_program_" ++ show n) `T.isInfixOf` hostText) $
+      orDie "Error" (Left ("the Host " ++ buildHost opts ++ " has no program " ++ show n
+                           ++ ": this image holds more programs than it can start"))
+  implObjs <- orDie "Impl-file assembly failed" =<<
+    assembleImplFiles strataDir outputBase arch (nub (concat [ ps | (_, _, _, ps) <- compiled ]))
+  hostObj <- orDie "Host assembly failed" =<< assembleHost strataDir outputBase arch (buildHost opts)
+  let programObjs = [ o | (_, o, _, _) <- compiled ]
+      temps       = [ a | (a, _, _, _) <- compiled ] ++ programObjs ++ implObjs ++ [hostObj]
+  exePath <- orDie "Link failed" =<< link arch (programObjs ++ implObjs ++ [hostObj]) outputBase
+  unless (buildSaveTemps opts) $ mapM_ removeFile temps
+  TIO.putStrLn $ "Generated: " <> T.pack exePath
+  exitSuccess
+
+-- | The Host's source (`Strata/Hosts/<host>/Host.<arch>`).
+hostFile :: FilePath -> Bridge.Arch -> String -> FilePath
+hostFile strataDir arch host = strataDir </> "Hosts" </> host </> ("Host." ++ archImplExtension arch)
 
 -- | D320: assemble the Host (`Strata/Hosts/<host>/Host.<arch>`).
 -- Plan 0.125: its object goes beside the output (`<output>.Host.<host>.o`);
