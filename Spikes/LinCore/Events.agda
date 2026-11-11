@@ -46,7 +46,7 @@ open import Data.Nat.Tactic.RingSolver using (solve-∀)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-identityʳ)
 open import Relation.Nullary using (yes; no; ¬_)
-open import Data.Empty using (⊥-elim)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (subst; _≢_)
 open import LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_)
 
@@ -114,6 +114,14 @@ _≟ᵢ_ : (i j : Id) → Dec (i ≡ j)
 ...   | yes refl = yes refl
 ...   | no ne    = no (λ e → ne (cong fst e))
 
+-- ★ A12: where a closure's environment lives. An environment of no words
+-- needs no cell: the closure is a pointer to its code alone (a static block),
+-- so building, applying and dropping it touch no heap. Which one a closure
+-- has is decided by its environment's type (`newS`, `Sized`).
+data Slot : Set where
+  none : Slot
+  cell : Id → Slot
+
 data MV : LTy → Set where
   mone  : MV One
   mpair : ∀ {A B} → MV A → MV B → MV (A ⊗t B)
@@ -122,10 +130,10 @@ data MV : LTy → Set where
   mbase : ∀ {b} → ⟦ b ⟧b → MV (Bt b)
   -- a μ node: one cell holding its layer
   mmu   : ∀ {F} → Id → MV (LF∙ F (μt F)) → MV (μt F)
-  -- a closure: one cell holding its environment (the body is code)
-  mclo  : ∀ {E A B} → Id → MV E → LTm (E ⊗t A) B → MV (A ⇒t B)
-  -- a many-use closure: one cell holding its environment (the body reads it)
-  mcloB : ∀ {E A B} → Id → MV E → Tm E A B → MV (A ⇛t B)
+  -- a closure: a cell holding its environment, or none (the body is code)
+  mclo  : ∀ {E A B} → Slot → MV E → LTm (E ⊗t A) B → MV (A ⇒t B)
+  -- a many-use closure: likewise (the body reads the environment)
+  mcloB : ∀ {E A B} → Slot → MV E → Tm E A B → MV (A ⇛t B)
   -- a ν not yet observed: one cell holding its seed (the coalgebra is code)
   mnu   : ∀ {S F} → Id → MV S → LTm S (LF∙ F S) → MV (νt F)
   -- a ν built from a layer (`lInν`): one cell holding the layer
@@ -167,6 +175,21 @@ data Ev : Set where
 Trace : Set
 Trace = List Ev
 
+-- ★ A12: a new slot for an environment of `w` words, at serial `n`: the slot,
+-- the next serial, the events (none, or one `alloc` of a code word and `w`)
+newS : ℕ → ℕ → Slot × ℕ × Trace
+newS zero    n = (none , n , [])
+newS (suc k) n = (cell (suc (suc k) , n) , suc n , alloc (suc (suc k) , n) ∷ [])
+
+-- freeing a slot, and reading it, before `t`
+freeS : Slot → Trace → Trace
+freeS none     t = t
+freeS (cell j) t = free j ∷ t
+
+peekS : Slot → Trace → Trace
+peekS none     t = t
+peekS (cell j) t = peek j ∷ t
+
 -- `dup`: copy every cell, fresh ids from the counter
 copy : ∀ {A} → MV A → ℕ → MV A × ℕ × Trace
 copy mone          n = (mone , n , [])
@@ -180,10 +203,12 @@ copy (minr b)      n with copy b n
 copy (mbase x)     n = (mbase x , n , [])
 copy (mmu {F} i v)     n with copy v (suc n)
 ... | (v' , n₁ , t₁) = (mmu (szμ F , n) v' , n₁ , alloc (szμ F , n) ∷ t₁)
-copy (mclo {E} i e f)  n with copy e (suc n)
-... | (e' , n₁ , t₁) = (mclo (szclo E , n) e' f , n₁ , alloc (szclo E , n) ∷ t₁)
-copy (mcloB {E} i e b) n with copy e (suc n)
-... | (e' , n₁ , t₁) = (mcloB (szclo E , n) e' b , n₁ , alloc (szclo E , n) ∷ t₁)
+copy (mclo {E} i e f)  n with newS (words E) n
+... | (s′ , n₀ , t₀) with copy e n₀
+...   | (e' , n₁ , t₁) = (mclo s′ e' f , n₁ , t₀ ++ t₁)
+copy (mcloB {E} i e b) n with newS (words E) n
+... | (s′ , n₀ , t₀) with copy e n₀
+...   | (e' , n₁ , t₁) = (mcloB s′ e' b , n₁ , t₀ ++ t₁)
 copy (mnu {S} i s c)   n with copy s (suc n)
 ... | (s' , n₁ , t₁) = (mnu (szν S , n) s' c , n₁ , alloc (szν S , n) ∷ t₁)
 copy (mnuv {F} i v)    n with copy v (suc n)
@@ -197,8 +222,8 @@ freeAll (minl a)     = freeAll a
 freeAll (minr b)     = freeAll b
 freeAll (mbase x)    = []
 freeAll (mmu i v)    = free i ∷ freeAll v
-freeAll (mclo i e f) = free i ∷ freeAll e
-freeAll (mcloB i e b) = free i ∷ freeAll e
+freeAll (mclo i e f) = freeS i (freeAll e)
+freeAll (mcloB i e b) = freeS i (freeAll e)
 freeAll (mnu i s c)  = free i ∷ freeAll s
 freeAll (mnuv i v)   = free i ∷ freeAll v
 
@@ -283,12 +308,15 @@ data Run where
   r-In    : ∀ {E F} {e : MV E} {v : MV (LF∙ F (μt F))} {n}
           → Run (lIn {F}) e v n (gives (mmu (szμ F , n) v) (suc n)) (alloc (szμ F , n) ∷ [])
   r-Outμ  : ∀ {E F} {e : MV E} {v : MV (LF∙ F (μt F))} {i n} → Run (lOutμ {F}) e (mmu i v) n (gives v n) (free i ∷ [])
+  -- ★ A12: a closure gets a cell only if its environment has words
   r-curry : ∀ {E A B C} {f : LTm (A ⊗t B) C} {e : MV E} {a : MV A} {n}
-          → Run (lcurry f) e a n (gives (mclo (szclo A , n) a f) (suc n)) (alloc (szclo A , n) ∷ [])
+          → Run (lcurry f) e a n (gives (mclo (fst (newS (words A) n)) a f) (fst (snd (newS (words A) n))))
+                (snd (snd (newS (words A) n)))
   r-curryB : ∀ {E X A B} {b : Tm X A B} {e : MV E} {x : MV X} {n}
-          → Run (lcurryB b) e x n (gives (mcloB (szclo X , n) x b) (suc n)) (alloc (szclo X , n) ∷ [])
+          → Run (lcurryB b) e x n (gives (mcloB (fst (newS (words X) n)) x b) (fst (snd (newS (words X) n))))
+                (snd (snd (newS (words X) n)))
   r-eval  : ∀ {E X A B} {f : LTm (X ⊗t A) B} {e : MV E} {env : MV X} {a : MV A} {i o n t}
-          → Run f mone (mpair env a) n o t → Run leval e (mpair (mclo i env f) a) n o (free i ∷ t)
+          → Run f mone (mpair env a) n o t → Run leval e (mpair (mclo i env f) a) n o (freeS i t)
   r-Ana   : ∀ {E S F} {c : LTm S (LF∙ F S)} {e : MV E} {s : MV S} {n}
           → Run (lAna F c) e s n (gives (mnu (szν S , n) s c) (suc n)) (alloc (szν S , n) ∷ [])
   r-Inν   : ∀ {E F} {e : MV E} {v : MV (LF∙ F (νt F))} {n}
@@ -346,7 +374,7 @@ data Run where
           → Run bcopy e mone n (gives (fst (copy e n)) (fst (snd (copy e n)))) (snd (snd (copy e n)))
   -- applying a lent many-use closure reads its cell and lends its environment on
   r-app   : ∀ {E A B} {b : Tm E A B} {env : MV E} {i a o n t}
-          → Run b env a n o t → Run bapp (mcloB i env b) a n o (peek i ∷ t)
+          → Run b env a n o t → Run bapp (mcloB i env b) a n o (peekS i t)
   -- ★ A11: a SigOp: an event, and whatever the world answers (A12: a flat
   -- value, no cell)
   r-op    : ∀ {E} {s} {e : MV E} {x : MV ⌜ sdom s ⌝} {y n}
@@ -423,6 +451,14 @@ ios-≼ (∷≼ {x = peek _} q)    = ios-≼ q
 ios-≼ (∷≼ {x = io s x y} q)  = ∷≼ (ios-≼ q)
 ios-≼ (∷≼ {x = stp s x} q)   = ∷≼ (ios-≼ q)
 
+ios-newS : ∀ w n → ios (snd (snd (newS w n))) ≡ []
+ios-newS zero    n = refl
+ios-newS (suc k) n = refl
+
+ios-freeS : ∀ s t → ios (freeS s t) ≡ ios t
+ios-freeS none     t = refl
+ios-freeS (cell j) t = refl
+
 ios-copy : ∀ {A} (v : MV A) n → ios (snd (snd (copy v n))) ≡ []
 ios-copy mone n = refl
 ios-copy (mpair a b) n with copy a n | ios-copy a n
@@ -435,10 +471,12 @@ ios-copy (minr b) n with copy b n | ios-copy b n
 ios-copy (mbase x) n = refl
 ios-copy (mmu i v) n with copy v (suc n) | ios-copy v (suc n)
 ... | (v' , n₁ , t₁) | ev = ev
-ios-copy (mclo i e f) n with copy e (suc n) | ios-copy e (suc n)
-... | (e' , n₁ , t₁) | ev = ev
-ios-copy (mcloB i e b) n with copy e (suc n) | ios-copy e (suc n)
-... | (e' , n₁ , t₁) | ev = ev
+ios-copy (mclo {E} i e f) n with newS (words E) n | ios-newS (words E) n
+... | (s′ , n₀ , t₀) | e₀ with copy e n₀ | ios-copy e n₀
+...   | (e' , n₁ , t₁) | ev = trans (ios-++ t₀ t₁) (cong₂ _++_ e₀ ev)
+ios-copy (mcloB {E} i e b) n with newS (words E) n | ios-newS (words E) n
+... | (s′ , n₀ , t₀) | e₀ with copy e n₀ | ios-copy e n₀
+...   | (e' , n₁ , t₁) | ev = trans (ios-++ t₀ t₁) (cong₂ _++_ e₀ ev)
 ios-copy (mnu i s c) n with copy s (suc n) | ios-copy s (suc n)
 ... | (s' , n₁ , t₁) | ev = ev
 ios-copy (mnuv i v) n with copy v (suc n) | ios-copy v (suc n)
@@ -451,8 +489,8 @@ ios-freeAll (minl a) = ios-freeAll a
 ios-freeAll (minr b) = ios-freeAll b
 ios-freeAll (mbase x) = refl
 ios-freeAll (mmu i v) = ios-freeAll v
-ios-freeAll (mclo i e f) = ios-freeAll e
-ios-freeAll (mcloB i e b) = ios-freeAll e
+ios-freeAll (mclo i e f) = trans (ios-freeS i (freeAll e)) (ios-freeAll e)
+ios-freeAll (mcloB i e b) = trans (ios-freeS i (freeAll e)) (ios-freeAll e)
 ios-freeAll (mnu i s c) = ios-freeAll s
 ios-freeAll (mnuv i v) = ios-freeAll v
 
@@ -562,10 +600,12 @@ copy-er (minr b)     n with copy b n | copy-er b n
 copy-er (mbase x)    n = refl
 copy-er (mmu {F} i v) n with copy v (suc n) | copy-er v (suc n)
 ... | (v' , n₁ , t₁) | ev = cong (λ x → inμ (coh F (μt F) x)) ev
-copy-er (mclo i e f) n with copy e (suc n) | copy-er e (suc n)
-... | (e' , n₁ , t₁) | ee = cong (λ x → λ a → Lᶜ f tt (x , a)) ee
-copy-er (mcloB i e b) n with copy e (suc n) | copy-er e (suc n)
-... | (e' , n₁ , t₁) | ee = cong (λ x → λ a → Lᶜ b x a) ee
+copy-er (mclo {E} i e f) n with newS (words E) n
+... | (s′ , n₀ , t₀) with copy e n₀ | copy-er e n₀
+...   | (e' , n₁ , t₁) | ee = cong (λ x → λ a → Lᶜ f tt (x , a)) ee
+copy-er (mcloB {E} i e b) n with newS (words E) n
+... | (s′ , n₀ , t₀) with copy e n₀ | copy-er e n₀
+...   | (e' , n₁ , t₁) | ee = cong (λ x → λ a → Lᶜ b x a) ee
 copy-er (mnu {F = F} i s c) n with copy s (suc n) | copy-er s (suc n)
 ... | (s' , n₁ , t₁) | es = cong (unfoldNu F c) es
 copy-er (mnuv {F} i v) n with copy v (suc n) | copy-er v (suc n)
@@ -643,9 +683,10 @@ sound (r-case₁ r) = sound r
 sound (r-case₂ r) = sound r
 sound r-In   = b-ret
 sound (r-Outμ {F = F} {v = v}) = ret-eq (sym (coh⁻¹∘coh F (μt F) (er v))) refl
-sound r-curry = b-ret
-sound r-curryB = b-ret
-sound (r-eval r) = sound r
+sound (r-curry {A = A} {n = n}) = ret-eq refl (ios-newS (words A) n)
+sound (r-curryB {X = X} {n = n}) = ret-eq refl (ios-newS (words X) n)
+sound (r-eval {i = none} r) = sound r
+sound (r-eval {i = cell j} r) = sound r
 sound r-Ana  = b-ret
 sound r-Inν  = b-ret
 sound (r-cata {F = F} {A} {alg} {e} {u = u} {o} {t₁ = t₁} {t₂} rm ra) rewrite ios-++ t₁ t₂ =
@@ -681,7 +722,8 @@ sound (r-caseE₂ r) = sound r
 sound (r-out {F} {f = f} {v = v} {a} {o} {t = t} r) =
   subst (λ z → RB (block (Lᶜ f z (er a))) (ios t) (erO o)) (sym (coh⁻¹∘coh F (μt F) (er v))) (sound r)
 sound (r-copy {e = e} {n}) = ret-eq (copy-er e n) (ios-copy e n)
-sound (r-app r) = sound r
+sound (r-app {i = none} r) = sound r
+sound (r-app {i = cell j} r) = sound r
 sound (r-op {s = s} {y = y}) = b-call (ret-eq (er-mvF (scod s) y) refl)
 sound r-halt = b-halt
 sound (r-iter-done r) = iter-done (sound r)
@@ -712,6 +754,17 @@ sound-map (m-pair!₂ {t₁ = t₁} {t₂} r r′) rewrite ios-++ t₁ t₂ = bi
 -- the size the block was allocated with (the `free` names the same block).
 ------------------------------------------------------------------------
 
+-- a slot for an environment of `w` words: none for no words, else a cell
+-- of a code word and `w`
+SizedS : ℕ → Slot → Set
+SizedS zero    s        = s ≡ none
+SizedS (suc k) none     = ⊥
+SizedS (suc k) (cell j) = fst j ≡ suc (suc k)
+
+newS-sized : ∀ w n → SizedS w (fst (newS w n))
+newS-sized zero    n = refl
+newS-sized (suc k) n = refl
+
 Sized : ∀ {A} → MV A → Set
 Sized mone              = ⊤
 Sized (mpair a b)       = Sized a × Sized b
@@ -719,8 +772,8 @@ Sized (minl a)          = Sized a
 Sized (minr b)          = Sized b
 Sized (mbase x)         = ⊤
 Sized (mmu {F} i v)     = fst i ≡ szμ F × Sized v
-Sized (mclo {E} i e f)  = fst i ≡ szclo E × Sized e
-Sized (mcloB {E} i e b) = fst i ≡ szclo E × Sized e
+Sized (mclo {E} s e f)  = SizedS (words E) s × Sized e
+Sized (mcloB {E} s e b) = SizedS (words E) s × Sized e
 Sized (mnu {S} i s c)   = fst i ≡ szν S × Sized s
 Sized (mnuv {F} i v)    = fst i ≡ szνv F × Sized v
 
@@ -737,10 +790,12 @@ copy-sized (minr b) n with copy b n | copy-sized b n
 copy-sized (mbase x) n = tt
 copy-sized (mmu i v) n with copy v (suc n) | copy-sized v (suc n)
 ... | (v' , n₁ , t₁) | s = (refl , s)
-copy-sized (mclo i e f) n with copy e (suc n) | copy-sized e (suc n)
-... | (e' , n₁ , t₁) | s = (refl , s)
-copy-sized (mcloB i e b) n with copy e (suc n) | copy-sized e (suc n)
-... | (e' , n₁ , t₁) | s = (refl , s)
+copy-sized (mclo {E} i e f) n with newS (words E) n | newS-sized (words E) n
+... | (s′ , n₀ , t₀) | z₀ with copy e n₀ | copy-sized e n₀
+...   | (e' , n₁ , t₁) | s = (z₀ , s)
+copy-sized (mcloB {E} i e b) n with newS (words E) n | newS-sized (words E) n
+... | (s′ , n₀ , t₀) | z₀ with copy e n₀ | copy-sized e n₀
+...   | (e' , n₁ , t₁) | s = (z₀ , s)
 copy-sized (mnu i s c) n with copy s (suc n) | copy-sized s (suc n)
 ... | (s' , n₁ , t₁) | z = (refl , z)
 copy-sized (mnuv i v) n with copy v (suc n) | copy-sized v (suc n)
@@ -791,8 +846,8 @@ sized (r-case₁ r) se sv = sized r se sv
 sized (r-case₂ r) se sv = sized r se sv
 sized r-In se sv = (refl , sv)
 sized r-Outμ se (_ , sv) = sv
-sized r-curry se sv = (refl , sv)
-sized r-curryB se sv = (refl , sv)
+sized (r-curry {A = A} {n = n}) se sv = (newS-sized (words A) n , sv)
+sized (r-curryB {X = X} {n = n}) se sv = (newS-sized (words X) n , sv)
 sized (r-eval r) se ((_ , senv) , sa) = sized r tt (senv , sa)
 sized r-Ana se sv = (refl , sv)
 sized r-Inν se sv = (refl , sv)
@@ -907,6 +962,20 @@ private
 δ-fresh : ∀ {k n i} → suc n ≤ serial i → δ (k , n) i ≡ 0
 δ-fresh lt = δ-≢ (λ e → <⇒≢ lt (cong snd e))
 
+-- what a slot counts at block `i`
+δs : Slot → Id → ℕ
+δs none     i = 0
+δs (cell j) i = δ j i
+
+-- a new slot's serial is the counter; the counter moves past it
+newS-mono : ∀ w n → n ≤ fst (snd (newS w n))
+newS-mono zero    n = ≤-refl
+newS-mono (suc k) n = n≤1+n n
+
+newS-below : ∀ w n i → fst (snd (newS w n)) ≤ serial i → δs (fst (newS w n)) i ≡ 0
+newS-below zero    n i le = refl
+newS-below (suc k) n i le = δ-fresh le
+
 cnt : ∀ {A} → MV A → Id → ℕ
 cnt mone         i = 0
 cnt (mpair a b)  i = cnt a i + cnt b i
@@ -914,8 +983,8 @@ cnt (minl a)     i = cnt a i
 cnt (minr b)     i = cnt b i
 cnt (mbase x)    i = 0
 cnt (mmu j v)    i = δ j i + cnt v i
-cnt (mclo j e f) i = δ j i + cnt e i
-cnt (mcloB j e b) i = δ j i + cnt e i
+cnt (mclo j e f) i = δs j i + cnt e i
+cnt (mcloB j e b) i = δs j i + cnt e i
 cnt (mnu j s c)  i = δ j i + cnt s i
 cnt (mnuv j v)   i = δ j i + cnt v i
 
@@ -1051,10 +1120,12 @@ copy-mono (minr b) n with copy b n | copy-mono b n
 copy-mono (mbase x) n = ≤-refl
 copy-mono (mmu i v) n with copy v (suc n) | copy-mono v (suc n)
 ... | (v' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
-copy-mono (mclo i e f) n with copy e (suc n) | copy-mono e (suc n)
-... | (e' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
-copy-mono (mcloB i e b) n with copy e (suc n) | copy-mono e (suc n)
-... | (e' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
+copy-mono (mclo {E} i e f) n with newS (words E) n | newS-mono (words E) n
+... | (s′ , n₀ , t₀) | m₀ with copy e n₀ | copy-mono e n₀
+...   | (e' , n₁ , t₁) | m₁ = ≤-trans m₀ m₁
+copy-mono (mcloB {E} i e b) n with newS (words E) n | newS-mono (words E) n
+... | (s′ , n₀ , t₀) | m₀ with copy e n₀ | copy-mono e n₀
+...   | (e' , n₁ , t₁) | m₁ = ≤-trans m₀ m₁
 copy-mono (mnu i s c) n with copy s (suc n) | copy-mono s (suc n)
 ... | (s' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
 copy-mono (mnuv i v) n with copy v (suc n) | copy-mono v (suc n)
@@ -1072,10 +1143,12 @@ copy-below (minr b) n i le with copy b n | copy-below b n
 copy-below (mbase x) n i le = refl
 copy-below (mmu j v) n i le with copy v (suc n) | copy-below v (suc n) | copy-mono v (suc n)
 ... | (v' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bv i le)
-copy-below (mclo j e f) n i le with copy e (suc n) | copy-below e (suc n) | copy-mono e (suc n)
-... | (e' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bv i le)
-copy-below (mcloB j e b) n i le with copy e (suc n) | copy-below e (suc n) | copy-mono e (suc n)
-... | (e' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bv i le)
+copy-below (mclo {E} j e f) n i le with newS (words E) n | newS-below (words E) n
+... | (s′ , n₀ , t₀) | b₀ with copy e n₀ | copy-below e n₀ | copy-mono e n₀
+...   | (e' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (b₀ i (≤-trans m₁ le)) (bv i le)
+copy-below (mcloB {E} j e b) n i le with newS (words E) n | newS-below (words E) n
+... | (s′ , n₀ , t₀) | b₀ with copy e n₀ | copy-below e n₀ | copy-mono e n₀
+...   | (e' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (b₀ i (≤-trans m₁ le)) (bv i le)
 copy-below (mnu j s c) n i le with copy s (suc n) | copy-below s (suc n) | copy-mono s (suc n)
 ... | (s' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bv i le)
 copy-below (mnuv j v) n i le with copy v (suc n) | copy-below v (suc n) | copy-mono v (suc n)
@@ -1089,6 +1162,15 @@ private
   alloc-eq : ∀ j (h : Heap) (V : Heap) (P : Heap) → (∀ i → P i ≡ step (alloc j) h i + V i)
            → ∀ i → P i ≡ h i + (δ j i + V i)
   alloc-eq j h V P e i = trans (e i) (assoc (h i) (δ j i) (V i))
+
+  -- a new slot: legal, it adds its cell (if any), and the heap stays empty
+  -- from the new counter on
+  newS-ok : ∀ w n (h : Heap) → (∀ i → n ≤ serial i → h i ≡ 0)
+          → OK (snd (snd (newS w n))) h
+            × (∀ i → play (snd (snd (newS w n))) h i ≡ h i + δs (fst (newS w n)) i)
+            × (∀ i → fst (snd (newS w n)) ≤ serial i → play (snd (snd (newS w n))) h i ≡ 0)
+  newS-ok zero    n h ab = (tt , (λ i → sym (+0 (h i))) , ab)
+  newS-ok (suc k) n h ab = ((ab (suc (suc k) , n) ≤-refl , tt) , (λ i → refl) , alloc-above (suc (suc k)) n h ab)
 
 -- `dup`'s copy: legal, and it adds exactly the copy's cells
 copy-ok : ∀ {A} (v : MV A) n (h : Heap) → (∀ i → n ≤ serial i → h i ≡ 0)
@@ -1108,10 +1190,16 @@ copy-ok (minr b) n h ab with copy b n | copy-ok b n h ab
 copy-ok (mbase x) n h ab = (tt , λ i → sym (+0 (h i)))
 copy-ok (mmu {F} j v) n h ab with copy v (suc n) | copy-ok v (suc n) (step (alloc (szμ F , n)) h) (alloc-above (szμ F) n h ab)
 ... | (v' , n₁ , t₁) | (ok , eq) = ((ab (szμ F , n) ≤-refl , ok) , alloc-eq (szμ F , n) h (cnt v') (play t₁ (step (alloc (szμ F , n)) h)) eq)
-copy-ok (mclo {E} j e f) n h ab with copy e (suc n) | copy-ok e (suc n) (step (alloc (szclo E , n)) h) (alloc-above (szclo E) n h ab)
-... | (e' , n₁ , t₁) | (ok , eq) = ((ab (szclo E , n) ≤-refl , ok) , alloc-eq (szclo E , n) h (cnt e') (play t₁ (step (alloc (szclo E , n)) h)) eq)
-copy-ok (mcloB {E} j e b) n h ab with copy e (suc n) | copy-ok e (suc n) (step (alloc (szclo E , n)) h) (alloc-above (szclo E) n h ab)
-... | (e' , n₁ , t₁) | (ok , eq) = ((ab (szclo E , n) ≤-refl , ok) , alloc-eq (szclo E , n) h (cnt e') (play t₁ (step (alloc (szclo E , n)) h)) eq)
+copy-ok (mclo {E} j e f) n h ab with newS (words E) n | newS-ok (words E) n h ab
+... | (s′ , n₀ , t₀) | (ok₀ , eq₀ , ab₀) with copy e n₀ | copy-ok e n₀ (play t₀ h) ab₀
+...   | (e' , n₁ , t₁) | (ok₁ , eq₁) =
+  ( OK-++ t₀ t₁ h ok₀ ok₁
+  , λ i → trans (cong (λ x → x i) (play-++ t₀ t₁ h)) (trans (eq₁ i) (trans (cong (_+ cnt e' i) (eq₀ i)) (assoc (h i) (δs s′ i) (cnt e' i)))))
+copy-ok (mcloB {E} j e b) n h ab with newS (words E) n | newS-ok (words E) n h ab
+... | (s′ , n₀ , t₀) | (ok₀ , eq₀ , ab₀) with copy e n₀ | copy-ok e n₀ (play t₀ h) ab₀
+...   | (e' , n₁ , t₁) | (ok₁ , eq₁) =
+  ( OK-++ t₀ t₁ h ok₀ ok₁
+  , λ i → trans (cong (λ x → x i) (play-++ t₀ t₁ h)) (trans (eq₁ i) (trans (cong (_+ cnt e' i) (eq₀ i)) (assoc (h i) (δs s′ i) (cnt e' i)))))
 copy-ok (mnu {S} j s c) n h ab with copy s (suc n) | copy-ok s (suc n) (step (alloc (szν S , n)) h) (alloc-above (szν S) n h ab)
 ... | (s' , n₁ , t₁) | (ok , eq) = ((ab (szν S , n) ≤-refl , ok) , alloc-eq (szν S , n) h (cnt s') (play t₁ (step (alloc (szν S , n)) h)) eq)
 copy-ok (mnuv {F} j v) n h ab with copy v (suc n) | copy-ok v (suc n) (step (alloc (szνv F , n)) h) (alloc-above (szνv F) n h ab)
@@ -1164,8 +1252,10 @@ free-ok (minl a) h r le sb = free-ok a h r le sb
 free-ok (minr b) h r le sb = free-ok b h r le sb
 free-ok (mbase x) h r le sb = (tt , λ i → +0 (h i))
 free-ok (mmu j v) h r le sb = free-cell j (cnt v) (freeAll v) h r le sb (λ h′ le′ sb′ → free-ok v h′ r le′ sb′)
-free-ok (mclo j e f) h r le sb = free-cell j (cnt e) (freeAll e) h r le sb (λ h′ le′ sb′ → free-ok e h′ r le′ sb′)
-free-ok (mcloB j e b) h r le sb = free-cell j (cnt e) (freeAll e) h r le sb (λ h′ le′ sb′ → free-ok e h′ r le′ sb′)
+free-ok (mclo none e f) h r le sb = free-ok e h r le sb
+free-ok (mclo (cell j) e f) h r le sb = free-cell j (cnt e) (freeAll e) h r le sb (λ h′ le′ sb′ → free-ok e h′ r le′ sb′)
+free-ok (mcloB none e b) h r le sb = free-ok e h r le sb
+free-ok (mcloB (cell j) e b) h r le sb = free-cell j (cnt e) (freeAll e) h r le sb (λ h′ le′ sb′ → free-ok e h′ r le′ sb′)
 free-ok (mnu j s c) h r le sb = free-cell j (cnt s) (freeAll s) h r le sb (λ h′ le′ sb′ → free-ok s h′ r le′ sb′)
 free-ok (mnuv j v) h r le sb = free-cell j (cnt v) (freeAll v) h r le sb (λ h′ le′ sb′ → free-ok v h′ r le′ sb′)
 
@@ -1257,8 +1347,8 @@ mono (r-case₁ r)   = mono r
 mono (r-case₂ r)   = mono r
 mono r-In          = n≤1+n _
 mono r-Outμ        = ≤-refl
-mono r-curry       = n≤1+n _
-mono r-curryB      = n≤1+n _
+mono (r-curry {A = A} {n = n})  = newS-mono (words A) n
+mono (r-curryB {X = X} {n = n}) = newS-mono (words X) n
 mono (r-eval r)    = mono r
 mono r-Ana         = n≤1+n _
 mono r-Inν         = n≤1+n _
@@ -1309,11 +1399,11 @@ below (r-case₁ r) b = below r b
 below (r-case₂ r) b = below r b
 below (r-In {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
 below (r-Outμ {v = v} {i = j}) b i le = +≡0ʳ (δ j i) (cnt v i) (b i le)
-below (r-curry {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
-below (r-curryB {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
+below (r-curry {A = A} {n = n}) b i le = cong₂ _+_ (newS-below (words A) n i le) (b i (≤-trans (newS-mono (words A) n) le))
+below (r-curryB {X = X} {n = n}) b i le = cong₂ _+_ (newS-below (words X) n i le) (b i (≤-trans (newS-mono (words X) n) le))
 below (r-eval {env = env} {a = a} {i = j} r) b = below r (λ i le →
-  cong₂ _+_ (+≡0ʳ (δ j i) (cnt env i) (+≡0ˡ (δ j i + cnt env i) (cnt a i) (b i le)))
-            (+≡0ʳ (δ j i + cnt env i) (cnt a i) (b i le)))
+  cong₂ _+_ (+≡0ʳ (δs j i) (cnt env i) (+≡0ˡ (δs j i + cnt env i) (cnt a i) (b i le)))
+            (+≡0ʳ (δs j i + cnt env i) (cnt a i) (b i le)))
 below (r-Ana {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
 below (r-Inν {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
 below (r-cata {i = j} {v} rm ra) b = below ra (below-map rm (λ i le → +≡0ʳ (δ j i) (cnt v i) (b i le)))
@@ -1444,6 +1534,13 @@ private
          → OK (alloc (k , n) ∷ []) h × (∀ i → play (alloc (k , n) ∷ []) h i + V i ≡ h i + (δ (k , n) i + V i))
   alloc1 {h} {n} k V pre = ((above pre (k , n) ≤-refl , tt) , λ i → assoc (h i) (δ (k , n) i) (V i))
 
+  -- a new slot holding `V`: a cell allocated at the counter, or nothing
+  allocS : ∀ {h n A} {v : MV A} {r} w (V : Heap) → Pre h n v r
+         → OK (snd (snd (newS w n))) h
+           × (∀ i → play (snd (snd (newS w n))) h i + V i ≡ h i + (δs (fst (newS w n)) i + V i))
+  allocS zero    V pre = (tt , λ i → refl)
+  allocS (suc k) V pre = alloc1 (suc (suc k)) V pre
+
   -- the precondition after the first event freed cell `j`
   pre-free : ∀ {h n A B} {v : MV A} {v′ : MV B} {r} j → Pre h n v r → (∀ i → step (free j) h i ≤ 1)
            → (∀ i → cnt v′ i + r i ≤ step (free j) h i) → Pre (step (free j) h) n v′ r
@@ -1521,9 +1618,12 @@ exchange (r-Outμ {v = v} {i = j}) {h} {r} pre lent with free-step j (cnt v) h r
 ... | (hj , _ , _ , back) = ((hj , tt) , λ i → trans (r5 (step (free j) h i) (δ j i) (cnt v i)) (cong (_+ cnt v i) (back i)))
   where r5 : ∀ P D V → P + (D + V) ≡ (P + D) + V
         r5 = solve-∀
-exchange (r-curry {A = A} {a = a}) pre lent = alloc1 (szclo A) (cnt a) pre
-exchange (r-curryB {X = X} {x = x}) pre lent = alloc1 (szclo X) (cnt x) pre
-exchange (r-eval {env = env} {a = a} {i = j} {o} {t = t} r) {h} {rf} pre lent
+exchange (r-curry {A = A} {a = a}) pre lent = allocS (words A) (cnt a) pre
+exchange (r-curryB {X = X} {x = x}) pre lent = allocS (words X) (cnt x) pre
+-- a closure with no cell: applying it is running its body, nothing freed
+exchange (r-eval {i = none} r) pre lent =
+  exchange r record { le1 = le1 pre ; above = above pre ; sub = sub pre } lent₀
+exchange (r-eval {env = env} {a = a} {i = cell j} {o} {t = t} r) {h} {rf} pre lent
   with free-step j (λ i → cnt env i + cnt a i) h rf (le1 pre)
          (λ i → subst (_≤ h i) (cong (_+ rf i) (assoc (δ j i) (cnt env i) (cnt a i))) (sub pre i))
 ... | (hj , le′ , sb′ , back)
@@ -1621,8 +1721,9 @@ exchange (r-out {i = i} {v} {a} {o} {t = t} r) {h} pre lent with exchange r pre 
 exchange (r-copy {e = e} {n}) {h} pre lent with copy-ok e n h (above pre)
 ... | (ok , eq) = (ok , λ i → trans (+0 _) (eq i))
 -- the closure's cell is read; its environment, lent with it, is lent to the body
-exchange (r-app {b = bd} {env = env} {i} {a} {o} {t = t} r) {h} pre lent with exchange r pre (λ j p → lent j (≤-trans p (m≤n+m (cnt env j) (δ i j))))
-... | (ok , eq) = ((peek-live {a = a} {e = mcloB i env bd} pre lent i (subst (λ x → 1 ≤ x + cnt env i) (sym (δ-same i)) (s≤s z≤n)) , ok) , peekP o i t h (cnt a) eq)
+exchange (r-app {i = none} r) pre lent = exchange r pre lent
+exchange (r-app {b = bd} {env = env} {cell i} {a} {o} {t = t} r) {h} pre lent with exchange r pre (λ j p → lent j (≤-trans p (m≤n+m (cnt env j) (δ i j))))
+... | (ok , eq) = ((peek-live {a = a} {e = mcloB (cell i) env bd} pre lent i (subst (λ x → 1 ≤ x + cnt env i) (sym (δ-same i)) (s≤s z≤n)) , ok) , peekP o i t h (cnt a) eq)
 exchange (r-op {s = s} {x = x} {y = y}) {h} pre lent =
   (tt , λ i → trans (cong (h i +_) (cnt-flat (sdom s) x i)) (sym (cong (h i +_) (cnt-flat (scod s) (mvF (scod s) y) i))))
 exchange r-halt pre lent = (tt , tt)
@@ -1759,9 +1860,9 @@ lifetimes {t = t} run i with noleak run
 -- last one may be open: the block is live at the exit
 lifetimes-exit : ∀ {A B} {f : LTm A B} {a : MV A} {y t} → (∀ i → cnt a i ≡ 0) → Run f mone a 0 (stop y) t
                → ∀ i → Σ St (λ s → Life dead (on i t) s)
-lifetimes-exit {a = a} {t = t} none run i =
+lifetimes-exit {a = a} {t = t} no-cells run i =
   ( _ , life t (λ _ → 0) i
           (fst (exchange run {λ _ → 0} {λ _ → 0}
                   record { le1 = λ _ → z≤n ; above = λ _ _ → refl
-                         ; sub = λ i → subst (_≤ 0) (sym (trans (+0 (cnt a i)) (none i))) z≤n } lent₀))
+                         ; sub = λ i → subst (_≤ 0) (sym (trans (+0 (cnt a i)) (no-cells i))) z≤n } lent₀))
           z≤n )
