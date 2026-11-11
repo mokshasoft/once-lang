@@ -34,6 +34,7 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (just; nothing; _>>=_)
 import Data.Maybe
 import LinCore.Alloc as Al
+import LinCore.Region as Rg
 import LinCore.AllocRun
 open import LinCore.Flat using (FTy; funit; fvoid; fw)
 open import LinCore.Free using (Weave; w-[]; w-run; w-tmp)
@@ -645,3 +646,23 @@ list-blocks : Data.Maybe.map (λ p → Al.own p 2 , Al.own p 3 , Al.top p)
                 (Al.born 0 Al.empty >>= Al.born 1 >>= Al.died 1 >>= Al.died 0 >>= Al.born 2 >>= Al.born 3)
             ≡ just (0 , 1 , 2)
 list-blocks = refl
+
+------------------------------------------------------------------------
+-- 19. ★ D411: ONE REGION FOR EVERY SIZE. §18's events in the region: the
+--     list's two blocks take words 0–2 and 3–5, and the round's new nil and
+--     cons take them again: six words, the peak of size 3 (two nodes) times
+--     three. Then two sizes sharing the region: a 3-word block, a 2-word
+--     block above it, the 3-word one freed and taken again by a 3-word cell
+--     (never by a 2-word one), and a second 2-word block above the top.
+------------------------------------------------------------------------
+
+list-region : Data.Maybe.map (λ r → Rg.wtop r , Rg.addr r 3 0 , Rg.addr r 3 1 , Rg.tops r 3)
+                (Rg.grun (AR.gops (trace-of-run build-run ++ trace-of list-server)) Rg.empty)
+            ≡ just (6 , 0 , 3 , 2)
+list-region = refl
+
+two-sizes : Data.Maybe.map (λ r → Rg.wtop r , Rg.addr r 3 0 , Rg.addr r 2 0 , Rg.addr r 2 1)
+              (Rg.grun ((3 , Al.birth 0) ∷ (2 , Al.birth 1) ∷ (3 , Al.death 0) ∷ (3 , Al.birth 2) ∷ (2 , Al.birth 3) ∷ [])
+                       Rg.empty)
+          ≡ just (7 , 0 , 3 , 5)
+two-sizes = refl
