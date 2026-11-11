@@ -380,3 +380,93 @@ grows-only-when-full p iv grows j lt | just _ = ⊥-elim (<-irrefl refl grows)
 ...   | freeW   = ⊥-elim (ff-nothing (who p) (top p) eq j lt wj)
 ...   | cellW s = inj₁ (s , subst (λ z → who p z ≡ cellW s) (sym (cells iv j s wj)) wj , cells iv j s wj)
 ...   | tempW m = inj₂ (m , tmps iv j m wj)
+
+------------------------------------------------------------------------
+-- 6. WHAT EACH STEP DOES TO WHO IS LIVE (for the link with the run).
+------------------------------------------------------------------------
+
+bornP : ℕ → Pool → Pool
+bornP s p = pool (snd (take p)) (upd (who p) (fst (take p)) (cellW s)) (upd (own p) s (fst (take p))) (temps p) (tc p)
+
+diedP : ℕ → Pool → Pool
+diedP s p = pool (top p) (upd (who p) (own p s) freeW) (own p) (temps p) (tc p)
+
+born-ok : ∀ s p → ¬ Live p s → born s p ≡ just (bornP s p)
+born-ok s p nl with who p (own p s) ≟w cellW s
+... | yes l = ⊥-elim (nl l)
+... | no _  = refl
+
+died-ok : ∀ s p → Live p s → died s p ≡ just (diedP s p)
+died-ok s p l with who p (own p s) ≟w cellW s
+... | yes _ = refl
+... | no nl = ⊥-elim (nl l)
+
+tdied-ok : ∀ p {m j ts} → temps p ≡ (m , j) ∷ ts → tdied p ≡ just (pool (top p) (upd (who p) j freeW) (own p) ts (tc p))
+tdied-ok p eq with temps p
+tdied-ok p refl | _ = refl
+
+private
+  cellW≢ : ∀ {s s′} → s ≢ s′ → cellW s ≢ cellW s′
+  cellW≢ ne e = ne (cellW-inj e)
+
+born-live : ∀ s p → Live (bornP s p) s
+born-live s p rewrite upd-same (own p) s (fst (take p)) = upd-same (who p) (fst (take p)) (cellW s)
+
+born-to : ∀ s p {s′} → s′ ≢ s → Live (bornP s p) s′ → Live p s′
+born-to s p {s′} ne l with s ≟ s′
+... | yes e = ⊥-elim (ne (sym e))
+... | no _ with fst (take p) ≟ own p s′
+...   | yes _ = ⊥-elim (cellW≢ (λ e → ne (sym e)) l)
+...   | no _  = l
+
+born-from : ∀ s p {s′} → Inv p → s′ ≢ s → Live p s′ → Live (bornP s p) s′
+born-from s p {s′} iv ne l with s ≟ s′
+... | yes e = ⊥-elim (ne (sym e))
+... | no _ with fst (take p) ≟ own p s′
+...   | yes e = ⊥-elim (free-cell′ (fst (take-free p iv)) (subst (λ z → who p z ≡ cellW s′) (sym e) l))
+  where free-cell′ : ∀ {w} → w ≡ freeW → w ≡ cellW s′ → ⊥
+        free-cell′ refl ()
+...   | no _  = l
+
+died-dead : ∀ s p → Live (diedP s p) s → ⊥
+died-dead s p l with own p s ≟ own p s
+... | yes _ with l
+...   | ()
+died-dead s p l | no ne = ne refl
+
+died-to : ∀ s p {s′} → Live (diedP s p) s′ → Live p s′
+died-to s p {s′} l with own p s ≟ own p s′
+... | yes _ with l
+...   | ()
+died-to s p {s′} l | no _ = l
+
+died-from : ∀ s p {s′} → Live p s → s′ ≢ s → Live p s′ → Live (diedP s p) s′
+died-from s p {s′} ls ne l with own p s ≟ own p s′
+... | yes e = ⊥-elim (ne (live-injective p l ls (sym e)))
+... | no _  = l
+
+tborn-to : ∀ p {s} → Live (tborn p) s → Live p s
+tborn-to p {s} l with fst (take p) ≟ own p s
+... | yes _ with l
+...   | ()
+tborn-to p {s} l | no _ = l
+
+tborn-from : ∀ p {s} → Inv p → Live p s → Live (tborn p) s
+tborn-from p {s} iv l with fst (take p) ≟ own p s
+... | yes e = ⊥-elim (free-cell″ (fst (take-free p iv)) (subst (λ z → who p z ≡ cellW s) (sym e) l))
+  where free-cell″ : ∀ {w} → w ≡ freeW → w ≡ cellW s → ⊥
+        free-cell″ refl ()
+... | no _  = l
+
+tdied-to : ∀ p {j ts s} → Live (pool (top p) (upd (who p) j freeW) (own p) ts (tc p)) s → Live p s
+tdied-to p {j} {s = s} l with j ≟ own p s
+... | yes _ with l
+...   | ()
+tdied-to p {j} {s = s} l | no _ = l
+
+tdied-from : ∀ p {m j ts s} → Inv p → temps p ≡ (m , j) ∷ ts → Live p s
+           → Live (pool (top p) (upd (who p) j freeW) (own p) ts (tc p)) s
+tdied-from p {m} {j} {s = s} iv eq l with j ≟ own p s
+... | yes e with trans (sym (stack iv m j (subst ((m , j) ∈_) (sym eq) (here refl)))) (subst (λ z → who p z ≡ cellW s) (sym e) l)
+...   | ()
+tdied-from p iv eq l | no _ = l

@@ -1,0 +1,250 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+------------------------------------------------------------------------
+-- LinCore.AllocRun — plan 0.146 A17: A LEGAL RUN NEVER MAKES THE ALLOCATOR
+-- FAIL.
+--
+-- Each size class follows the run's events of its size (`ops`): a cell born
+-- or freed, a temporary born or freed. If the run's events are legal — on the
+-- cell heap (`OK`: a cell born is free, one freed is live) and on the
+-- temporaries' ledger (`TOK`: a temporary freed is live) — the allocator
+-- makes every step (`never-fails`), its invariant holding all along. The
+-- link, kept event by event: a cell of size `k` is live in the pool exactly
+-- when the heap holds it, and the pool's stack of temporaries is as long as
+-- the ledger counts.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe --guardedness #-}
+
+open import Agda.Builtin.Equality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst; _≢_)
+open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
+open import Data.Product using (_×_)
+open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≤_; z≤n; s≤s; _≟_)
+open import Data.Nat.Properties using (+-identityʳ; +-comm)
+open import Data.List using (List; []; _∷_; _++_; length; concatMap)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
+open import LinCore.Flat using (FTy)
+import LinCore.Alloc as A
+
+module LinCore.AllocRun
+  (Base : Set) (⟦_⟧b : Base → Set)
+  (Sig : Set) (sdom scod : Sig → FTy Base)
+  (bw : Base → ℕ)
+  where
+
+open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
+open import LinCore.Events Base ⟦_⟧b Sig sdom scod bw
+
+------------------------------------------------------------------------
+-- 1. A size class's operations, from the run's events.
+------------------------------------------------------------------------
+
+opOf : ℕ → Ev → List A.Op
+opOf k (alloc (k′ , s)) with k′ ≟ k
+... | yes _ = A.birth s ∷ []
+... | no _  = []
+opOf k (free (k′ , s)) with k′ ≟ k
+... | yes _ = A.death s ∷ []
+... | no _  = []
+opOf k (tmp (tnew k′)) with k′ ≟ k
+... | yes _ = A.tbirth ∷ []
+... | no _  = []
+opOf k (tmp (tdel k′)) with k′ ≟ k
+... | yes _ = A.tdeath ∷ []
+... | no _  = []
+opOf k (peek _)     = []
+opOf k (io _ _ _)   = []
+opOf k (stp _ _)    = []
+
+ops : ℕ → Trace → List A.Op
+ops k = concatMap (opOf k)
+
+steps-++ : ∀ {p p′ p″ os os′} → A.Steps p os p′ → A.Steps p′ os′ p″ → A.Steps p (os ++ os′) p″
+steps-++ A.done        st = st
+steps-++ (e A.⟫ st₁)   st = e A.⟫ steps-++ st₁ st
+
+------------------------------------------------------------------------
+-- 2. THE LINK between the run's heap and ledger and the pool of size `k`.
+------------------------------------------------------------------------
+
+record Link (k : ℕ) (h : Heap) (L : TL) (p : A.Pool) : Set where
+  field
+    live⇒ : ∀ s → A.Live p s → h (k , s) ≡ 1
+    ⇒live : ∀ s → h (k , s) ≡ 1 → A.Live p s
+    ntemp : length (A.temps p) ≡ L k
+open Link
+
+link₀ : ∀ k → Link k (λ _ → 0) none A.empty
+link₀ k = record { live⇒ = λ s () ; ⇒live = λ s () ; ntemp = refl }
+
+
+private
+  δ-s : ∀ {k s s′} → s ≢ s′ → δ (k , s) (k , s′) ≡ 0
+  δ-s ne = δ-≢ (λ e → ne (cong snd e))
+
+  δ-k : ∀ {k k′ s s′} → k′ ≢ k → δ (k′ , s) (k , s′) ≡ 0
+  δ-k ne = δ-≢ (λ e → ne (cong fst e))
+
+  δn-same : ∀ k → δn k k ≡ 1
+  δn-same k with k ≟ k
+  ... | yes _ = refl
+  ... | no ne = ⊥-elim (ne refl)
+
+  δn-other : ∀ {k k′} → k′ ≢ k → δn k′ k ≡ 0
+  δn-other {k} {k′} ne with k′ ≟ k
+  ... | yes e = ⊥-elim (ne e)
+  ... | no _  = refl
+
+  1≢0 : 1 ≡ 0 → ⊥
+  1≢0 ()
+
+  sym≢ : ∀ {a b : ℕ} → a ≢ b → b ≢ a
+  sym≢ ne e = ne (sym e)
+
+-- an event of another size class asks nothing of this one
+alloc-none : ∀ {k k′ s} → k′ ≢ k → opOf k (alloc (k′ , s)) ≡ []
+alloc-none {k} {k′} ne with k′ ≟ k
+... | yes e = ⊥-elim (ne e)
+... | no _  = refl
+
+free-none : ∀ {k k′ s} → k′ ≢ k → opOf k (free (k′ , s)) ≡ []
+free-none {k} {k′} ne with k′ ≟ k
+... | yes e = ⊥-elim (ne e)
+... | no _  = refl
+
+tnew-none : ∀ {k k′} → k′ ≢ k → opOf k (tmp (tnew k′)) ≡ []
+tnew-none {k} {k′} ne with k′ ≟ k
+... | yes e = ⊥-elim (ne e)
+... | no _  = refl
+
+tdel-none : ∀ {k k′} → k′ ≢ k → opOf k (tmp (tdel k′)) ≡ []
+tdel-none {k} {k′} ne with k′ ≟ k
+... | yes e = ⊥-elim (ne e)
+... | no _  = refl
+
+-- an event of this size class: its one operation
+alloc-one : ∀ k s → opOf k (alloc (k , s)) ≡ A.birth s ∷ []
+alloc-one k s with k ≟ k
+... | yes _ = refl
+... | no ne = ⊥-elim (ne refl)
+
+free-one : ∀ k s → opOf k (free (k , s)) ≡ A.death s ∷ []
+free-one k s with k ≟ k
+... | yes _ = refl
+... | no ne = ⊥-elim (ne refl)
+
+tnew-one : ∀ k → opOf k (tmp (tnew k)) ≡ A.tbirth ∷ []
+tnew-one k with k ≟ k
+... | yes _ = refl
+... | no ne = ⊥-elim (ne refl)
+
+tdel-one : ∀ k → opOf k (tmp (tdel k)) ≡ A.tdeath ∷ []
+tdel-one k with k ≟ k
+... | yes _ = refl
+... | no ne = ⊥-elim (ne refl)
+
+-- one step, as the steps of that one operation
+one : ∀ {p p′ os o} → os ≡ o ∷ [] → A.step o p ≡ just p′ → A.Steps p os p′
+one refl e = e A.⟫ A.done
+
+-- one event: the allocator's steps for it, its invariant, the link kept
+record After (k : ℕ) (x : Ev) (h : Heap) (L : TL) (p : A.Pool) : Set where
+  constructor after
+  field
+    p₁    : A.Pool
+    steps : A.Steps p (opOf k x) p₁
+    inv   : A.Inv p₁
+    link  : Link k (step x h) (tstep x L) p₁
+
+same : ∀ {k x h L p} → A.Inv p → Link k h L p → opOf k x ≡ [] → (∀ s → step x h (k , s) ≡ h (k , s))
+     → tstep x L k ≡ L k → After k x h L p
+same {k} {x} {h} {L} {p} iv lk e hs ls =
+  after p (subst (λ os → A.Steps p os p) (sym e) A.done) iv
+    (record { live⇒ = λ s l → trans (hs s) (live⇒ lk s l)
+            ; ⇒live = λ s q → ⇒live lk s (trans (sym (hs s)) q)
+            ; ntemp = trans (ntemp lk) (sym ls) })
+
+event : ∀ k x {h L p} → okPre x h → tpre x L → A.Inv p → Link k h L p → After k x h L p
+event k (alloc (k′ , s)) {h} {L} {p} ok _ iv lk with k′ ≟ k
+... | no ne = same iv lk (alloc-none ne) (λ s′ → trans (cong (h (k , s′) +_) (δ-k {s = s} {s′ = s′} ne)) (+-identityʳ _)) refl
+... | yes refl = after (A.bornP s p) (one (alloc-one k s) (A.born-ok s p nl)) (A.born-inv s p iv (A.born-ok s p nl))
+                   (record { live⇒ = lv ; ⇒live = vl ; ntemp = ntemp lk })
+  where
+    nl : ¬ A.Live p s
+    nl l = 1≢0 (trans (sym (live⇒ lk s l)) ok)
+    lv′ : ∀ s′ → Dec (s ≡ s′) → A.Live (A.bornP s p) s′ → h (k , s′) + δ (k , s) (k , s′) ≡ 1
+    lv′ s′ (yes refl) l = trans (cong (_+ δ (k , s) (k , s)) ok) (δ-same (k , s))
+    lv′ s′ (no ne)    l = trans (cong (h (k , s′) +_) (δ-s ne)) (trans (+-identityʳ _) (live⇒ lk s′ (A.born-to s p (sym≢ ne) l)))
+    lv : ∀ s′ → A.Live (A.bornP s p) s′ → h (k , s′) + δ (k , s) (k , s′) ≡ 1
+    lv s′ = lv′ s′ (s ≟ s′)
+    vl′ : ∀ s′ → Dec (s ≡ s′) → h (k , s′) + δ (k , s) (k , s′) ≡ 1 → A.Live (A.bornP s p) s′
+    vl′ s′ (yes refl) q = A.born-live s p
+    vl′ s′ (no ne)    q = A.born-from s p iv (sym≢ ne) (⇒live lk s′ (trans (sym (trans (cong (h (k , s′) +_) (δ-s ne)) (+-identityʳ _))) q))
+    vl : ∀ s′ → h (k , s′) + δ (k , s) (k , s′) ≡ 1 → A.Live (A.bornP s p) s′
+    vl s′ = vl′ s′ (s ≟ s′)
+event k (free (k′ , s)) {h} {L} {p} ok _ iv lk with k′ ≟ k
+... | no ne = same iv lk (free-none ne) (λ s′ → cong (h (k , s′) ∸_) (δ-k {s = s} {s′ = s′} ne)) refl
+... | yes refl = after (A.diedP s p) (one (free-one k s) (A.died-ok s p ls)) (A.died-inv s p iv (A.died-ok s p ls))
+                   (record { live⇒ = lv ; ⇒live = vl ; ntemp = ntemp lk })
+  where
+    ls : A.Live p s
+    ls = ⇒live lk s ok
+    lv′ : ∀ s′ → Dec (s ≡ s′) → A.Live (A.diedP s p) s′ → h (k , s′) ∸ δ (k , s) (k , s′) ≡ 1
+    lv′ s′ (yes refl) l = ⊥-elim (A.died-dead s p l)
+    lv′ s′ (no ne)    l = trans (cong (h (k , s′) ∸_) (δ-s ne)) (live⇒ lk s′ (A.died-to s p l))
+    lv : ∀ s′ → A.Live (A.diedP s p) s′ → h (k , s′) ∸ δ (k , s) (k , s′) ≡ 1
+    lv s′ = lv′ s′ (s ≟ s′)
+    cong∸ : ∀ {a b c d : ℕ} → a ≡ c → b ≡ d → a ∸ b ≡ c ∸ d
+    cong∸ refl refl = refl
+    vl′ : ∀ s′ → Dec (s ≡ s′) → h (k , s′) ∸ δ (k , s) (k , s′) ≡ 1 → A.Live (A.diedP s p) s′
+    vl′ s′ (yes refl) q = ⊥-elim (1≢0 (trans (sym q) (cong∸ ok (δ-same (k , s)))))
+    vl′ s′ (no ne)    q = A.died-from s p ls (sym≢ ne) (⇒live lk s′ (trans (sym (cong (h (k , s′) ∸_) (δ-s ne))) q))
+    vl : ∀ s′ → h (k , s′) ∸ δ (k , s) (k , s′) ≡ 1 → A.Live (A.diedP s p) s′
+    vl s′ = vl′ s′ (s ≟ s′)
+event k (peek _)   ok _ iv lk = same iv lk refl (λ _ → refl) refl
+event k (io _ _ _) ok _ iv lk = same iv lk refl (λ _ → refl) refl
+event k (stp _ _)  ok _ iv lk = same iv lk refl (λ _ → refl) refl
+event k (tmp (tnew k′)) {h} {L} {p} _ _ iv lk with k′ ≟ k
+... | no ne = same iv lk (tnew-none ne) (λ _ → refl) (trans (cong (L k +_) (δn-other ne)) (+-identityʳ _))
+... | yes refl = after (A.tborn p) (one (tnew-one k) refl) (A.tborn-inv p iv)
+                   (record { live⇒ = λ s l → live⇒ lk s (A.tborn-to p l)
+                           ; ⇒live = λ s q → A.tborn-from p iv (⇒live lk s q)
+                           ; ntemp = trans (cong suc (ntemp lk))
+                                           (sym (trans (cong (L k +_) (δn-same k)) (+-comm (L k) 1))) })
+event k (tmp (tdel k′)) {h} {L} {p} _ tp iv lk with k′ ≟ k
+... | no ne = same iv lk (tdel-none ne) (λ _ → refl) (cong (L k ∸_) (δn-other ne))
+... | yes refl with A.temps p in eq
+...   | [] = ⊥-elim (z≰ (subst (1 ≤_) (trans (sym (ntemp lk)) (cong length eq)) tp))
+  where z≰ : 1 ≤ 0 → ⊥
+        z≰ ()
+...   | (m , j) ∷ ts =
+  after _ (one (tdel-one k) (A.tdied-ok p eq)) (A.tdied-inv p iv (A.tdied-ok p eq))
+        (record { live⇒ = λ s l → live⇒ lk s (A.tdied-to p {j = j} {ts = ts} l)
+                ; ⇒live = λ s q → A.tdied-from p iv eq (⇒live lk s q)
+                ; ntemp = trans (cong (_∸ 1) (trans (sym (cong length eq)) (ntemp lk)))
+                                (sym (cong (L k ∸_) (δn-same k))) })
+
+------------------------------------------------------------------------
+-- 3. ★ THE THEOREM.
+------------------------------------------------------------------------
+
+-- along a legal stretch, the allocator makes every step, its invariant and
+-- the link holding
+along : ∀ k t {h L p} → OK t h → TOK t L → A.Inv p → Link k h L p
+      → Σ A.Pool λ p′ → A.Steps p (ops k t) p′ × A.Inv p′
+along k []      _          _          iv lk = (_ , A.done , iv)
+along k (x ∷ t) (ox , ot) (tx , tt′) iv lk with event k x ox tx iv lk
+... | after p₁ st₁ iv₁ lk₁ with along k t ot tt′ iv₁ lk₁
+...   | (p′ , st , iv′) = (p′ , steps-++ st₁ st , iv′)
+
+-- ★ a legal run, from nothing: every size class's allocator makes every
+-- step, from an empty region, its invariant holding — so the region grows
+-- only when full (`A.grows-only-when-full`), and live blocks have distinct
+-- addresses (`A.live-injective`)
+never-fails : ∀ t → OK t (λ _ → 0) → TLeg t → ∀ k → Σ A.Pool λ p′ → A.Steps A.empty (ops k t) p′ × A.Inv p′
+never-fails t ok tl k = along k t ok tl A.inv-empty (link₀ k)
