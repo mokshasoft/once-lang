@@ -30,6 +30,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ; zero; suc; z≤n; s≤s; _+_; _≤_)
 open import Data.Nat.Properties using (n∸n≡0)
 open import Data.List using (List; []; _∷_; _++_)
+open import Data.Maybe using (just; nothing)
 open import LinCore.Flat using (FTy; funit; fvoid; fw)
 
 module LinCore.Examples where
@@ -60,6 +61,7 @@ open import LinCore.NbEPLinCore B ⟦_⟧B Op odom ocod
 open import LinCore.Events B ⟦_⟧B Op odom ocod bw
 open import LinCore.Act B ⟦_⟧B Op odom ocod bw
 open import LinCore.Temps B ⟦_⟧B Op odom ocod bw
+open import LinCore.Total B ⟦_⟧B Op odom ocod bw
 
 -- the events of a loop run, and of a run
 trace-of : ∀ {E A C} {round : Tm Γ E A (C ⊕t A)} {e s n k s′ n′ t} → Loop ds round e s n k s′ n′ t → Trace
@@ -517,3 +519,31 @@ stack-server = l-suc stack-step l-zero
 stack-exchange : OK (trace-of stack-server) heap₀
                × (∀ i → play (trace-of stack-server) heap₀ i + cnt (one-list 5) i ≡ heap₀ i + cnt (new-list 5) i)
 stack-exchange = loop-exchange stack-server pre-list lent₀
+
+------------------------------------------------------------------------
+-- 13. ★ A14: RUNS, FOUND. A world that answers `emit` and `succ` (and, as
+--     no world can, never `exit`), and the evaluator: the runs above, which
+--     were built rule by rule, come out of `exec` with the same events.
+------------------------------------------------------------------------
+
+world : World
+world = record { WSt = ⊤ ; ans = λ { _ emit x → just (tt , tt) ; _ succ x → just (suc x , tt) ; _ exit x → nothing } }
+
+-- the counter server, two rounds of fuel: the hand-built run of §10
+emit-found : Ran.trace (exec world ε 2 (liter emit-round) mone (mbase 0) 0 tt) ≡ trace-of-run ran-out
+emit-found = refl
+
+-- the list server, two rounds: §2's round, then the same on the new list
+list-found : Ran.trace (exec world ε 2 (liter list-round) mone (one-list 5) 2 tt)
+           ≡ free (3 , 1) ∷ free (3 , 0) ∷ alloc (3 , 2) ∷ alloc (3 , 3)
+           ∷ free (3 , 3) ∷ free (3 , 2) ∷ alloc (3 , 4) ∷ alloc (3 , 5) ∷ []
+list-found = refl
+
+-- a composition of closures, through the table: §8½'s events
+composed-found : Ran.trace (exec world defs 0 composed mone (mbase 5) 0 tt) ≡ io succ 5 6 ∷ io emit 6 tt ∷ []
+composed-found = refl
+
+-- the naturals, observed twice: §11's events and result
+nats-found : Ran.out (exec world defsν 0 nats-two mone (mbase 5) 0 tt)
+           ≡ gives (mpair (mbase 5) (mpair (mbase 6) (mct (mbase 7)))) 0
+nats-found = refl
