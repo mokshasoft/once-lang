@@ -50,9 +50,13 @@ cod emit = funit
 cod succ = fw int
 cod exit = fvoid
 
+-- an Int is one word (`Spec.ABI`)
+bw : B → ℕ
+bw int = 1
+
 open import LinCore.NbEPLinCore B ⟦_⟧B Op dom cod
-open import LinCore.Events B ⟦_⟧B Op dom cod
-open import LinCore.Act B ⟦_⟧B Op dom cod
+open import LinCore.Events B ⟦_⟧B Op dom cod bw
+open import LinCore.Act B ⟦_⟧B Op dom cod bw
 
 -- the events of a loop run, and of a run
 trace-of : ∀ {E A C} {round : Tm E A (C ⊕t A)} {e s n k s′ n′ t} → Loop round e s n k s′ n′ t → Trace
@@ -118,16 +122,43 @@ rebuild = lcata ListF lIn
 list-round : LTm IntList (Zero ⊕t IntList)
 list-round = linr ∘l rebuild
 
--- [x], in cells 0 (the cons) and 1 (the nil)
+-- ★ A12: a list node is 3 words (a tag, then the larger alternative: an Int
+-- and a pointer), so every list block is named `(3 , serial)`
+node-size : szμ ListF ≡ 3
+node-size = refl
+
+-- [x], built by a run from the empty heap: the nil in block (3 , 0), the cons
+-- in block (3 , 1)
+build : LTm (Bt int) IntList
+build = lIn ∘l linr ∘l (lid ⊗l (lIn ∘l linl)) ∘l ρl⁻
+
 one-list : ℕ → MV IntList
-one-list x = mmu 0 (minr (mpair (mbase x) (mmu 1 (minl mone))))
+one-list x = mmu (3 , 1) (minr (mpair (mbase x) (mmu (3 , 0) (minl mone))))
 
--- [x] again, in fresh cells 3 (the cons) and 2 (the nil)
+build-run : Run build mone (mbase 5) 0 (gives (one-list 5) 2) _
+build-run = r-∘ (r-∘ (r-∘ r-ρ⁻ (r-⊗ r-id (r-∘ r-inl r-In))) r-inr) r-In
+
+build-events : trace-of-run build-run ≡ alloc (3 , 0) ∷ alloc (3 , 1) ∷ []
+build-events = refl
+
+-- the heap after it, and the precondition there, from the theorems
+private
+  pre₀ : Pre (λ _ → 0) 0 (mbase 5) (λ _ → 0)
+  pre₀ = record { le1 = λ _ → z≤n ; above = λ _ _ → refl ; sub = λ _ → z≤n }
+
+heap₀ : Heap
+heap₀ = play (trace-of-run build-run) (λ _ → 0)
+
+pre-list : Pre heap₀ 2 (one-list 5) (λ _ → 0)
+pre-list with exchange build-run pre₀ lent₀
+... | (ok , eq) = post build-run pre₀ ok eq
+
+-- [x] again, in fresh blocks: the nil (3 , 2) and the cons (3 , 3)
 new-list : ℕ → MV IntList
-new-list x = mmu 3 (minr (mpair (mbase x) (mmu 2 (minl mone))))
+new-list x = mmu (3 , 3) (minr (mpair (mbase x) (mmu (3 , 2) (minl mone))))
 
--- one round from counter 2: the cons cell 0 and the nil cell 1 are freed, a new
--- nil (2) and a new cons (3) are allocated
+-- one round from counter 2: the old cons and nil are freed, a new nil and a
+-- new cons are allocated
 list-step : ∀ x → Run list-round mone (one-list x) 2 (gives (minr (new-list x)) 4) _
 list-step x =
   r-∘ (r-cata (m-inr (m-pair m-b (m-id (r-cata (m-inl m-one) r-In)))) r-In)
@@ -136,43 +167,26 @@ list-step x =
 list-server : Loop list-round mone (one-list 5) 2 1 (new-list 5) 4 _
 list-server = l-suc (list-step 5) l-zero
 
--- the heap before: exactly the old list's cells, 0 and 1
-heap₀ : Heap
-heap₀ i = cnt (one-list 5) i
-
 -- ★ the round's events are legal, and afterwards the heap holds exactly the
--- new list's cells (2 and 3) instead of the old one's
+-- new list's cells instead of the old one's
 list-server-exchange : OK (trace-of list-server) heap₀
                      × (∀ i → play (trace-of list-server) heap₀ i + cnt (one-list 5) i
                             ≡ heap₀ i + cnt (new-list 5) i)
-list-server-exchange = loop-exchange list-server {heap₀} {λ _ → 0}
-  record { le1   = le1′
-         ; above = above′
-         ; sub   = λ i → sub′ i }
-  lent₀
-  where
-    le1′ : ∀ i → heap₀ i ≤ 1
-    le1′ zero = s≤s z≤n
-    le1′ (suc zero) = s≤s z≤n
-    le1′ (suc (suc i)) = z≤n
-    above′ : ∀ i → 2 ≤ i → heap₀ i ≡ 0
-    above′ zero ()
-    above′ (suc zero) (s≤s ())
-    above′ (suc (suc i)) _ = refl
-    sub′ : ∀ i → cnt (one-list 5) i + 0 ≤ heap₀ i
-    sub′ zero = s≤s z≤n
-    sub′ (suc zero) = s≤s z≤n
-    sub′ (suc (suc i)) = z≤n
+list-server-exchange = loop-exchange list-server pre-list lent₀
 
--- ★ what the round actually did, by evaluation: the old cons (0) and nil (1)
--- freed, the new nil (2) and cons (3) allocated, nothing else
-list-events : trace-of list-server ≡ free 0 ∷ free 1 ∷ alloc 2 ∷ alloc 3 ∷ []
+-- ★ what the round actually did, by evaluation: the old cons and nil freed,
+-- the new nil and cons allocated, nothing else; every block 3 words
+list-events : trace-of list-server ≡ free (3 , 1) ∷ free (3 , 0) ∷ alloc (3 , 2) ∷ alloc (3 , 3) ∷ []
 list-events = refl
 
 -- and the heap afterwards holds exactly the new list
-list-after : (play (trace-of list-server) heap₀ 0 ≡ 0) × (play (trace-of list-server) heap₀ 1 ≡ 0)
-           × (play (trace-of list-server) heap₀ 2 ≡ 1) × (play (trace-of list-server) heap₀ 3 ≡ 1)
+list-after : (play (trace-of list-server) heap₀ (3 , 0) ≡ 0) × (play (trace-of list-server) heap₀ (3 , 1) ≡ 0)
+           × (play (trace-of list-server) heap₀ (3 , 2) ≡ 1) × (play (trace-of list-server) heap₀ (3 , 3) ≡ 1)
 list-after = refl , refl , refl , refl
+
+-- ★ A12: the new list's blocks carry the node size, by the theorem
+list-sized : Sized {Zero ⊕t IntList} (minr (new-list 5))
+list-sized = sized (list-step 5) tt (sized build-run tt tt)
 
 ------------------------------------------------------------------------
 -- 3. D131: a fold whose algebra is a CLOSURE, obtained once and applied at
@@ -188,8 +202,9 @@ alg-closure = lcurryB lIn
 closure-fold : LTm IntList IntList
 closure-fold = lul ∘l (drop ⊗l lid) ∘l lend (bsnd (lcata ListF bapp)) ∘l (alg-closure ⊗l lid) ∘l lul⁻
 
--- on [5] (cells 0, 1), from counter 2: the closure is cell 2; the new list is 4 → 3
-closure-fold-run : Run closure-fold mone (one-list 5) 2 (gives (mmu 4 (minr (mpair (mbase 5) (mmu 3 (minl mone))))) 5) _
+-- on [5], from counter 2: the closure is block (1 , 2) (a code word, nothing
+-- else); the new list is (3 , 4) → (3 , 3)
+closure-fold-run : Run closure-fold mone (one-list 5) 2 (gives (mmu (3 , 4) (minr (mpair (mbase 5) (mmu (3 , 3) (minl mone))))) 5) _
 closure-fold-run =
   r-∘ (r-∘ (r-∘ (r-∘ r-λ⁻ (r-⊗ r-curryB r-id))
                 (r-lend (r-snd (r-cata (m-inr (m-pair m-b (m-id (r-cata (m-inl m-one) (r-app r-In)))))
@@ -197,10 +212,11 @@ closure-fold-run =
            (r-⊗ r-drop r-id))
       r-λ
 
--- ★ by evaluation: the closure allocated once (2), read once per layer
--- (peek 2, twice), never copied, freed once at the end
+-- ★ by evaluation: the closure allocated once, read once per layer (twice),
+-- never copied, freed once at the end
 closure-fold-events : trace-of-run closure-fold-run
-                    ≡ alloc 2 ∷ free 0 ∷ free 1 ∷ peek 2 ∷ alloc 3 ∷ peek 2 ∷ alloc 4 ∷ free 2 ∷ []
+                    ≡ alloc (1 , 2) ∷ free (3 , 1) ∷ free (3 , 0) ∷ peek (1 , 2) ∷ alloc (3 , 3)
+                      ∷ peek (1 , 2) ∷ alloc (3 , 4) ∷ free (1 , 2) ∷ []
 closure-fold-events = refl
 
 ------------------------------------------------------------------------
@@ -225,13 +241,13 @@ in-place-sound = sound in-place-run
 
 ------------------------------------------------------------------------
 -- 5. The lifetime of one block, by evaluation: the algebra closure of §3
---    (block 2) is born, read once per layer, and dies once.
+--    (block (1 , 2)) is born, read once per layer, and dies once.
 ------------------------------------------------------------------------
 
-closure-life : on 2 (trace-of-run closure-fold-run) ≡ born ∷ read ∷ read ∷ died ∷ []
+closure-life : on (1 , 2) (trace-of-run closure-fold-run) ≡ born ∷ read ∷ read ∷ died ∷ []
 closure-life = refl
 
-closure-life-ok : Life dead (on 2 (trace-of-run closure-fold-run)) dead
+closure-life-ok : Life dead (on (1 , 2) (trace-of-run closure-fold-run)) dead
 closure-life-ok = birth (use (use (death done)))
 
 ------------------------------------------------------------------------
@@ -246,7 +262,7 @@ nested-run : Run nested-lend mone (mpair (one-list 5) (mpair (mbase 7) mone)) 2 
 nested-run = r-lend (r-lend (r-fst (r-snd r-copy)))
 
 -- ★ by evaluation: only the copy allocates; both lent values stay as they were
-nested-events : trace-of-run nested-run ≡ alloc 2 ∷ alloc 3 ∷ []
+nested-events : trace-of-run nested-run ≡ alloc (3 , 2) ∷ alloc (3 , 3) ∷ []
 nested-events = refl
 
 ------------------------------------------------------------------------
@@ -263,7 +279,7 @@ emit-fold-run =
          (r-case₂ (r-∘ (r-∘ r-ρ (r-op {y = tt})) r-drop))
 
 -- ★ by evaluation: both cells freed, then the emit
-emit-fold-events : trace-of-run emit-fold-run ≡ free 0 ∷ free 1 ∷ io emit 5 tt ∷ []
+emit-fold-events : trace-of-run emit-fold-run ≡ free (3 , 1) ∷ free (3 , 0) ∷ io emit 5 tt ∷ []
 emit-fold-events = refl
 
 ------------------------------------------------------------------------
@@ -278,7 +294,7 @@ emit-closure-run =
   r-∘ (r-∘ r-λ⁻ (r-⊗ r-curry r-id))
       (r-eval (r-∘ r-λ (r-op {y = tt})))
 
-emit-closure-events : trace-of-run emit-closure-run ≡ alloc 0 ∷ free 0 ∷ io emit 5 tt ∷ []
+emit-closure-events : trace-of-run emit-closure-run ≡ alloc (1 , 0) ∷ free (1 , 0) ∷ io emit 5 tt ∷ []
 emit-closure-events = refl
 
 ------------------------------------------------------------------------
@@ -294,11 +310,11 @@ halting-run =
   r-∘ (r-∘ r-ρ⁻ (r-⊗ r-id (r-∘ r-inl r-In)))
       (r-⊗!₁ r-halt)
 
-halting-events : trace-of-run halting-run ≡ alloc 0 ∷ stp exit 5 ∷ []
+halting-events : trace-of-run halting-run ≡ alloc (3 , 0) ∷ stp exit 5 ∷ []
 halting-events = refl
 
--- ★ block 0 is born and never dies: legal, because the program halted
-halting-open : Life dead (on 0 (trace-of-run halting-run)) live
+-- ★ block (3 , 0) is born and never dies: legal, because the program halted
+halting-open : Life dead (on (3 , 0) (trace-of-run halting-run)) live
 halting-open = birth done
 
 -- and every block's events are lifetimes, by the theorem

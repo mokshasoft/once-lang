@@ -34,10 +34,11 @@ open import LinCore.Flat using (FTy)
 module LinCore.Act
   (Base : Set) (⟦_⟧b : Base → Set)
   (Sig : Set) (sdom scod : Sig → FTy Base)
+  (bw : Base → ℕ)
   where
 
 open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import LinCore.Events Base ⟦_⟧b Sig sdom scod
+open import LinCore.Events Base ⟦_⟧b Sig sdom scod bw
 
 data Loop {E A B : LTy} (round : Tm E A (B ⊕t A)) (e : MV E)
   : MV A → ℕ → ℕ → MV A → ℕ → Trace → Set where
