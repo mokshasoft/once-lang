@@ -17,7 +17,8 @@
 --     afterwards holds exactly the new list (`loop-exchange`).
 --   * Closures, lending, in-place reuse, and (A11) SigOps inside a fold and a
 --     closure, a halt with a block live, a loop that ends, a server that runs
---     out.
+--     out; (D406) a ν, defunctionalised; (A13) a fold's work stack, a
+--     temporary block.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe --guardedness #-}
@@ -27,6 +28,7 @@ open import Agda.Builtin.Sigma using (_,_)
 open import Data.Product using (_×_)
 open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ; zero; suc; z≤n; s≤s; _+_; _≤_)
+open import Data.Nat.Properties using (n∸n≡0)
 open import Data.List using (List; []; _∷_; _++_)
 open import LinCore.Flat using (FTy; funit; fvoid; fw)
 
@@ -57,6 +59,7 @@ bw int = 1
 open import LinCore.NbEPLinCore B ⟦_⟧B Op odom ocod
 open import LinCore.Events B ⟦_⟧B Op odom ocod bw
 open import LinCore.Act B ⟦_⟧B Op odom ocod bw
+open import LinCore.Temps B ⟦_⟧B Op odom ocod bw
 
 -- the events of a loop run, and of a run
 trace-of : ∀ {E A C} {round : Tm Γ E A (C ⊕t A)} {e s n k s′ n′ t} → Loop ds round e s n k s′ n′ t → Trace
@@ -472,3 +475,45 @@ nats-two-events = refl
 -- and it means what it does
 nats-two-sound : RB (block (Lᶜ ⟦ defsν ⟧D nats-two tt 5)) (io-call succ 5 6 ∷ io-call succ 6 7 ∷ []) (returns (5 , (6 , 7)))
 nats-two-sound = sound nats-two-run
+
+------------------------------------------------------------------------
+-- 12. ★ A13 (D407): a fold's WORK STACK. §2's round again, its fold lowered
+--     with a work stack in one temporary block of 4 words: allocated before
+--     the fold descends, freed after the list is rebuilt. The temporary is
+--     the fold's own: woven into its events, freed before it finishes.
+------------------------------------------------------------------------
+
+stack-weave : Weave (free (3 , 1) ∷ free (3 , 0) ∷ alloc (3 , 2) ∷ alloc (3 , 3) ∷ [])
+                    (tnew 4 ∷ tdel 4 ∷ [])
+                    (tmp (tnew 4) ∷ free (3 , 1) ∷ free (3 , 0) ∷ alloc (3 , 2) ∷ alloc (3 , 3) ∷ tmp (tdel 4) ∷ [])
+stack-weave = w-tmp (w-run (w-run (w-run (w-run (w-tmp w-[])))))
+
+stack-step : Run ε list-round mone (one-list 5) 2 (gives (minr (new-list 5)) 4) _
+stack-step =
+  r-∘ (r-tmp (r-cata (m-inr (m-pair m-b (m-id (r-cata (m-inl m-one) r-In)))) r-In)
+             stack-weave ((s≤s z≤n , tt) , λ k → n∸n≡0 (δn 4 k)))
+      r-inr
+
+-- by evaluation: the block is born first and freed last, around the cells
+stack-events : trace-of-run stack-step
+             ≡ tmp (tnew 4) ∷ free (3 , 1) ∷ free (3 , 0) ∷ alloc (3 , 2) ∷ alloc (3 , 3) ∷ tmp (tdel 4) ∷ []
+stack-events = refl
+
+-- ★ the theorems: erased, it is §2's round, cell for cell ...
+stack-plain : Run ε list-round mone (one-list 5) 2 (gives (minr (new-list 5)) 4) (erase (trace-of-run stack-step))
+stack-plain = plain stack-step
+
+stack-erased : erase (trace-of-run stack-step) ≡ trace-of list-server
+stack-erased = refl
+
+-- ... its temporaries are all freed ...
+stack-temps : TBal (trace-of-run stack-step)
+stack-temps = tsound stack-step
+
+-- ... and the memory theorem holds as it was: the cells are the round's
+stack-server : Loop ε list-round mone (one-list 5) 2 1 (new-list 5) 4 _
+stack-server = l-suc stack-step l-zero
+
+stack-exchange : OK (trace-of stack-server) heap₀
+               × (∀ i → play (trace-of stack-server) heap₀ i + cnt (one-list 5) i ≡ heap₀ i + cnt (new-list 5) i)
+stack-exchange = loop-exchange stack-server pre-list lent₀
