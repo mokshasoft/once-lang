@@ -22198,5 +22198,5 @@ amendment; for the user's review). Worked out in `Spikes/LinCore/` (plan 0.146 A
 ### Open for the review
 * An unanswered call ends the run as `exhausted`, the reason D374 gives to running out of memory. A
   separate reason (the world did not answer) would need a new `Why` and an `RB` case.
-* Step 2: that `exhausted` comes only from the fuel or an unanswered call, never from the evaluator,
-  so that `noleak` and `lifetimes` hold of runs that do something.
+* Step 2 DONE: `Ran.cause` — a run found `exhausted` ran out of fuel at a loop or met a call the world
+  refused (`unanswered`, with the equation); `fuel-only`: a world that always answers cuts only at a loop.

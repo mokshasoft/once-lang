@@ -556,3 +556,7 @@ composed-found = refl
 nats-found : Ran.out (exec world defsν 0 nats-two mone (mbase 5) 0 tt)
            ≡ gives (mpair (mbase 5) (mpair (mbase 6) (mct (mbase 7)))) 0
 nats-found = refl
+
+-- ★ A14 step 2: the list server, cut after two rounds — because its fuel ran out
+list-cause : Ran.cause (exec world ε 2 (liter list-round) mone (one-list 5) 2 tt) ≡ out-of-fuel
+list-cause = refl
