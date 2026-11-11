@@ -22241,3 +22241,31 @@ The choices, each principled, with different costs:
 
 `Call` (named definitions) is the same question: a call graph without cycles inlines or becomes labels;
 a cycle needs 1. `in-ν` and a ν's observation are labels too (D406).
+
+## D410 — A MODEL MACHINE: CODE, FRAMES IN HEAP BLOCKS, A SIMULATION BY THE RUN (2026-11-11)
+
+**Proposed** (made unattended; for the user's review). Worked out in `Spikes/LinCore/Machine.agda` (plan
+0.146 A16).
+
+### Decision
+* **A typed stack machine with code**: instructions over an operand stack (`unpair`, `pair`, `swap`, a
+  generator's own step, `untag`), branching code on a sum's tag (`case`), and FRAMES (`enter` … `leave`).
+  A generator with no control of its own is one instruction whose step is its run (its events are the
+  generator's, by the run's rule).
+* **The lowering is continuation-passing** (`comp`): a term is compiled in front of the code after it; a
+  branch carries the code after it on both sides (no jumps yet: the real labels are B's).
+* **A fold and a closure's body run in a frame**, and a frame is a heap block: `enter`/`leave` are a
+  temporary's birth and death (A13, D407). A fold expands node by node (`fold` → the node freed, then in a
+  frame its children re-entering the fold, then the algebra), so the work stack is in the heap.
+* **The simulation** (`sim`), by induction on the run: the machine on the compiled code reaches the code
+  after it with the run's result; its events are the run's (temporaries erased) with BALANCED
+  temporaries woven in. No relation on values beyond the run's own (the stack holds the run's values).
+* **`machine-noleak`**: for a finished run of a closed program, the machine's own trace is legal on the
+  cell heap, leaves it empty, and frees every frame.
+* **The fragment**: every generator but the lent views, the loop and `lhalt`, and a fold that rebuilds in
+  place (A8; this lowering always folds plainly). Their lowering is the same pattern (an environment
+  register, a back jump, a stop) and is left for B.
+
+### Open for the review
+* Values on the machine's stack are the run's values: cells are still the run's, by id. Addresses, and an
+  allocator that reuses them, are A17.
