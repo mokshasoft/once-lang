@@ -93,6 +93,10 @@ emit-round =
   ∘l (lop emit ⊗l lid)              -- emit the first
   ∘l dup                            -- pair … id: the Int, twice (a word: no cell)
 
+-- a round is a finite block (the Spec's `⊢iter`)
+emit-blk : Blk emit-round
+emit-blk = k-∘ k-inr (k-∘ k-op (k-∘ (k-∘ k-lul (k-⊗ k-drop k-id)) (k-∘ (k-⊗ k-op k-id) k-dup)))
+
 -- one round, from the counter `x`, the world answering `tt` to the emit and
 -- `x′` to the successor
 emit-step : ∀ (x x′ : ℕ) n → Run ε emit-round mone (mbase x) n (gives (minr (mbase x′)) n) _
@@ -135,6 +139,9 @@ rebuild = lcata ListF lIn
 
 list-round : LTm ε IntList (Zero ⊕t IntList)
 list-round = linr ∘l rebuild
+
+list-blk : Blk list-round
+list-blk = k-∘ k-inr (k-cata k-in)
 
 -- ★ A12: a list node is 3 words (a tag, then the larger alternative: an Int
 -- and a pointer), so every list block is named `(3 , serial)`
@@ -215,12 +222,12 @@ list-sized = sized (list-step 5) tt (sized build-run tt tt)
 ------------------------------------------------------------------------
 
 σ-alg : LTy → Sg
-σ-alg X = sg many X (LF∙ ListF IntList) IntList
+σ-alg X = sg many act X (LF∙ ListF IntList) IntList
 
 σ-emit σ-succ σ-comp : Sg
-σ-emit = sg once One (Bt int) One
-σ-succ = sg once One (Bt int) (Bt int)
-σ-comp = sg once (Ct 2 One ⊗t Ct 3 One) (Bt int) One
+σ-emit = sg once act One (Bt int) One
+σ-succ = sg once act One (Bt int) (Bt int)
+σ-comp = sg once act (Ct 2 One ⊗t Ct 3 One) (Bt int) One
 
 Γ₄ Γₚ : Cx
 Γ₄ = ε ▸ σ-alg (Bt int) ▸ σ-alg One ▸ σ-emit ▸ σ-succ
@@ -231,7 +238,8 @@ comp-body : LTm Γ₄ ((Ct 2 One ⊗t Ct 3 One) ⊗t Bt int) One
 comp-body = lapp (there here) ∘l (lid ⊗l lapp here) ∘l lassoc
 
 defs : Defs Γₚ
-defs = ε ▸ bω lIn ▸ bω lIn ▸ b1 (lop emit ∘l lul) ▸ b1 (lop succ ∘l lul) ▸ b1 comp-body
+defs = ε ▸ bω lIn k-in ▸ bω lIn k-in ▸ b1 (lop emit ∘l lul) (k-∘ k-op k-lul) ▸ b1 (lop succ ∘l lul) (k-∘ k-op k-lul)
+     ▸ b1 comp-body (k-∘ k-app (k-∘ (k-⊗ k-id k-app) k-assoc))
 
 -- the labels, in the whole program
 p0 : Γₚ ∋[ 0 ] σ-alg (Bt int)
@@ -269,7 +277,7 @@ meet-words = refl
 closure-fold : LTm Γₚ (Bt int ⊗t IntList) IntList
 closure-fold = lul ∘l (drop ⊗l lid) ∘l lend (bsnd (lcata ListF (bapp p0))) ∘l (lclo Idf p0 ⊗l lid)
 
-q0 : Look defs p0 ε (bω lIn)
+q0 : Look defs p0 ε (bω lIn k-in)
 q0 = lk-there (lk-there (lk-there (lk-there lk-here)))
 
 -- on 7 and [5], from counter 2: the new list is (3 , 3) → (3 , 2)
@@ -359,7 +367,7 @@ emit-fold-events = refl
 emit-closure : LTm Γₚ (Bt int) One
 emit-closure = lapp p2 ∘l (lclo Idf p2 ⊗l lid) ∘l lul⁻
 
-q2 : Look defs p2 _ (b1 (lop emit ∘l lul))
+q2 : Look defs p2 _ (b1 (lop emit ∘l lul) _)
 q2 = lk-there (lk-there lk-here)
 
 emit-closure-run : Run defs emit-closure mone (mbase 5) 0 (gives mone 0) _
@@ -380,7 +388,7 @@ emit-closure-events = refl
 composed : LTm Γₚ (Bt int) One
 composed = lapp p4 ∘l ((lclo Idf p4 ∘l (lclo Idf p2 ⊗l lclo Idf p3) ∘l lul⁻) ⊗l lid) ∘l lul⁻
 
-q4 : Look defs p4 _ (b1 comp-body)
+q4 : Look defs p4 _ (b1 comp-body _)
 q4 = lk-here
 
 composed-run : Run defs composed mone (mbase 5) 0 (gives mone 0) _
@@ -429,17 +437,20 @@ halting-legal = lifetimes-exit (λ i → refl) halting-run
 count-round : LTm ε (One ⊕t One) (One ⊕t (One ⊕t One))
 count-round = lcase (linr ∘l linr) linl
 
-count-run : Run ε (liter count-round) mone (minl mone) 0 (gives mone 0) _
+count-blk : Blk count-round
+count-blk = k-case (k-∘ k-inr k-inr) k-inl
+
+count-run : Run ε (liter count-round count-blk) mone (minl mone) 0 (gives mone 0) _
 count-run = r-iter (r-case₁ (r-∘ r-inr (go-on r-inr))) (go-on (again (r-iter (r-case₂ r-inl) (go-on done))))
 
-ran-out : Run ε (liter emit-round) mone (mbase 0) 0 (stop exhausted) _
+ran-out : Run ε (liter emit-round emit-blk) mone (mbase 0) 0 (stop exhausted) _
 ran-out = loop-run emit-server r-exh
 
 ran-out-events : trace-of-run ran-out ≡ io emit 0 tt ∷ io succ 0 1 ∷ io emit 1 tt ∷ io succ 1 2 ∷ []
 ran-out-events = refl
 
 -- ★ and what it did is a prefix of what the server means
-ran-out-sound : RB (block (Lᶜ ε (liter emit-round) tt 0))
+ran-out-sound : RB (block (Lᶜ ε (liter emit-round emit-blk) tt 0))
                    (io-call emit 0 tt ∷ io-call succ 0 1 ∷ io-call emit 1 tt ∷ io-call succ 1 2 ∷ [])
                    (ended exhausted)
 ran-out-sound = sound ran-out
@@ -455,7 +466,7 @@ NatsF : LF
 NatsF = Kb int ⊗f Idf
 
 σ-nats : Sg
-σ-nats = sg once (Bt int) One (LF∙ NatsF (Bt int))
+σ-nats = sg once act (Bt int) One (LF∙ NatsF (Bt int))
 
 Γν : Cx
 Γν = ε ▸ σ-nats
@@ -464,7 +475,7 @@ nats-body : LTm ε (Bt int ⊗t One) (Bt int ⊗t Bt int)
 nats-body = (lid ⊗l lop succ) ∘l dup ∘l ρl
 
 defsν : Defs Γν
-defsν = ε ▸ b1 nats-body
+defsν = ε ▸ b1 nats-body (k-∘ (k-⊗ k-id k-op) (k-∘ k-dup k-ρ))
 
 pν : Γν ∋[ 0 ] σ-nats
 pν = here
@@ -547,11 +558,11 @@ world : World
 world = record { WSt = ⊤ ; ans = λ { _ emit x → just (tt , tt) ; _ succ x → just (suc x , tt) ; _ exit x → nothing } }
 
 -- the counter server, two rounds of fuel: the hand-built run of §10
-emit-found : Ran.trace (exec world ε 2 (liter emit-round) mone (mbase 0) 0 tt) ≡ trace-of-run ran-out
+emit-found : Ran.trace (exec world ε 2 (liter emit-round emit-blk) mone (mbase 0) 0 tt) ≡ trace-of-run ran-out
 emit-found = refl
 
 -- the list server, two rounds: §2's round, then the same on the new list
-list-found : Ran.trace (exec world ε 2 (liter list-round) mone (one-list 5) 2 tt)
+list-found : Ran.trace (exec world ε 2 (liter list-round list-blk) mone (one-list 5) 2 tt)
            ≡ free (3 , 1) ∷ free (3 , 0) ∷ alloc (3 , 2) ∷ alloc (3 , 3)
            ∷ free (3 , 3) ∷ free (3 , 2) ∷ alloc (3 , 4) ∷ alloc (3 , 5) ∷ []
 list-found = refl
@@ -566,7 +577,7 @@ nats-found : Ran.out (exec world defsν 0 nats-two mone (mbase 5) 0 tt)
 nats-found = refl
 
 -- ★ A14 step 2: the list server, cut after two rounds — because its fuel ran out
-list-cause : Ran.cause (exec world ε 2 (liter list-round) mone (one-list 5) 2 tt) ≡ out-of-fuel
+list-cause : Ran.cause (exec world ε 2 (liter list-round list-blk) mone (one-list 5) 2 tt) ≡ out-of-fuel
 list-cause = refl
 
 ------------------------------------------------------------------------
@@ -577,7 +588,8 @@ list-cause = refl
 ------------------------------------------------------------------------
 
 counter-ir : IR One One
-counter-ir = Iter (inr ∘ snd ∘ ⟨ SigOp emit ∘ snd , SigOp succ ∘ snd ⟩) ∘ ⟨ terminal , const 0 ⟩
+counter-ir = Iter (inr ∘ snd ∘ ⟨ SigOp emit ∘ snd , SigOp succ ∘ snd ⟩)
+                  (i-∘ i-inr (i-∘ i-snd (i-pair (i-∘ i-op i-snd) (i-∘ i-op i-snd)))) ∘ ⟨ terminal , const 0 ⟩
 
 counter-ios : ios (Ran.trace (exec world ε 2 (tr counter-ir) mone mone 0 tt))
             ≡ io-call emit 0 tt ∷ io-call succ 0 1 ∷ io-call emit 1 tt ∷ io-call succ 1 2 ∷ []

@@ -22346,3 +22346,40 @@ The choices:
   allocator fail, its invariant holding along the run. The link, kept event by event: a cell of size `k`
   is live in the pool exactly when the heap holds it; the pool's stack of temporaries is as long as the
   ledger counts. Example: the list server's events, the new list taking the old blocks.
+
+## D412 — THE SPIKE CARRIES THE SPEC'S GRADES: A ROUND AND A COALGEBRA ARE FINITE BLOCKS (2026-11-11)
+
+**Decided by the user, 2026-11-11** ("first fix the spike so that it aligns with GOAL.md and the Spec regarding the
+iter problem"). **Amends**: A11's choice (plan 0.146 §3, "the effect index ... set aside"), which was made
+for review. Worked out in `Spikes/LinCore/NbEPLinCore.agda`, `Grade.agda`, `Pass.agda` (plan 0.146 §3).
+
+### Context
+* **The Spec.** `⊢iter` takes a round of grade `act`, a finite block, so a round never contains a loop.
+  `⊢unfold` takes a coalgebra of a finite grade. GOAL.md says "every round of a server is computed in
+  finite time".
+* **The spike before this entry.** `liter` took any term as its round. Every term meant a computation in
+  `T∞`, with no grade at all.
+
+### Decision
+* **A grade judgment, Curry-style, as the Spec's `⊢ t ∷ A ! π` is on its raw terms.** `Blk t` says that
+  `t` has grade `act`. Every generator except the loop is a block when its parts are. Building a closure
+  is a value, so it is always a block. Applying a closure is a block when its label has grade `act`.
+* **A label carries its arrow's grade.** `sg kd gr env dom cod`: `kd` is the Spec's quantity and `gr` its
+  purity, as in `mk-kind q π`. The core distinguishes only `act` and `eff`; the Spec's `pure` is a block
+  with no event. The table holds each body together with its judgment at its label's grade (`Gd`).
+* **The Spec's two restrictions:**
+  * `liter f φ` takes `φ : Blk f`;
+  * `lana`/`lobs` take a coalgebra label of grade `act`.
+* **★ The theorem (`LinCore.Grade`).**
+  * A block means a FINITE computation: its first block ends with a value or a halt, never with a silent
+    step (`blk-finite`, with every table's `act` labels finite, `defs-ok`). That is a block of `T`,
+    embedded (`toT`, `emb-toT`).
+  * So the core's loop means the Spec's `loop` of a round in `T`, up to bisimilarity (`liter-loop`).
+* **The spike's IR copy is graded the same way** (`BlkIR`, with `Iter` taking one), and the pass maps
+  blocks to blocks (`tr-blk`). Master's IR is ungraded (plan 0.52 M2), so B's pass carries the grade
+  from the typing.
+* The trace action in `Temps` is renamed `tact`, so that the grade keeps the Spec's name `act`.
+
+### Consequences
+Every theorem is unchanged: the run relation, the machine and the evaluator take the judgment along. The
+examples' rounds and bodies carry their judgments.

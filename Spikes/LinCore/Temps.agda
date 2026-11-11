@@ -320,16 +320,16 @@ ledgers = ℕ →-setoid ℕ
 module Endo = Function.Endo.Setoid ledgers
 
 -- a trace acts on ledgers
-act : Trace → Endo.Endo
-act t = record { to = tplay t ; cong = tplay-ext t }
+tact : Trace → Endo.Endo
+tact t = record { to = tplay t ; cong = tplay-ext t }
 
 open MonoidMorphisms (Monoid.rawMonoid trace-monoid) (Monoid.rawMonoid Endo.∘-id-monoid)
   using (IsMonoidHomomorphism)
 
 -- ★ the action is a monoid homomorphism: `[]` acts as the identity, and
 -- `t₁ ++ t₂` as `t₁`, then `t₂` (stdlib's composition is diagrammatic)
-act-isMonoidHomomorphism : IsMonoidHomomorphism act
-act-isMonoidHomomorphism = record
+tact-isMonoidHomomorphism : IsMonoidHomomorphism tact
+tact-isMonoidHomomorphism = record
   { isMagmaHomomorphism = record
     { isRelHomomorphism = record { cong = λ { refl L k → refl } }
     ; homo = λ t₁ t₂ L k → cong (λ M → M k) (tplay-++ t₁ t₂ L) }
@@ -351,7 +351,7 @@ balanced = record
   ; ε-∈    = (tt , λ k → refl)
   ; ∙-∈    = λ {t₁} {t₂} (l₁ , z₁) (l₂ , z₂) →
       ( IsSubmonoid.∙-∈ legal {t₁} {t₂} l₁ l₂
-      , λ k → trans (IsMonoidHomomorphism.homo act-isMonoidHomomorphism t₁ t₂ none k)
+      , λ k → trans (IsMonoidHomomorphism.homo tact-isMonoidHomomorphism t₁ t₂ none k)
                     (trans (tplay-ext t₂ z₁ k) (z₂ k)) ) }
 
 -- what a run claims of its temporaries, after a balanced prefix: a product

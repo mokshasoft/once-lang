@@ -300,7 +300,7 @@ data Fmap {B C : LTy} (f : MV B → MV C) (R : Outcome B → Trace → Set) : Ou
 data Run {Γ : Cx} (ds : Defs Γ) : ∀ {E A B} → Tm Γ E A B → MV E → MV A → ℕ → Outcome B → Trace → Set
 
 -- after a loop's round: done, or the loop again from the next state
-data Next {Γ : Cx} (ds : Defs Γ) {E A B : LTy} (f : Tm Γ E A (B ⊕t A)) (e : MV E)
+data Next {Γ : Cx} (ds : Defs Γ) {E A B : LTy} (f : Tm Γ E A (B ⊕t A)) (φ : Blk f) (e : MV E)
   : MV (B ⊕t A) → ℕ → Outcome B → Trace → Set
 
 -- folding the recursive positions of a layer (the `Idf` positions run the
@@ -339,13 +339,13 @@ data Run {Γ} ds where
   r-Outμ  : ∀ {E F} {e : MV E} {v : MV (LF∙ F (μt F))} {i n} → Run ds (lOutμ {F = F}) e (mmu i v) n (gives v n) (free i ∷ [])
   -- ★ D405: building a closure is tagging its environment: no event (D406:
   -- likewise the seeds of a layer, which is building a ν, or observing one)
-  r-clo   : ∀ {E F l k X A B} {p : Γ ∋[ l ] sg k X A B} {e : MV E} {x : MV (LF∙ F X)} {n}
+  r-clo   : ∀ {E F l k g X A B} {p : Γ ∋[ l ] sg k g X A B} {e : MV E} {x : MV (LF∙ F X)} {n}
           → Run ds (lclo F p) e x n (gives (tag F x) n) []
   -- applying one calls its label's body, over the body's own prefix of the
   -- table, with the environment and the argument (the body owns both)
-  r-app   : ∀ {E l X A B Δ} {p : Γ ∋[ l ] sg once X A B} {ds′ : Defs Δ} {b : LTm Δ (X ⊗t A) B}
-              {e : MV E} {x a o n t}
-          → Look ds p ds′ (b1 b) → Run ds′ b mone (mpair x a) n o t
+  r-app   : ∀ {E l g X A B Δ} {p : Γ ∋[ l ] sg once g X A B} {ds′ : Defs Δ} {b : LTm Δ (X ⊗t A) B}
+              {γ : Gd g b} {e : MV E} {x a o n t}
+          → Look ds p ds′ (b1 b γ) → Run ds′ b mone (mpair x a) n o t
           → Run ds (lapp p) e (mpair (mct x) a) n o t
   -- the fold frees the node, folds its positions, runs the algebra; it reads
   -- `e` at every layer
@@ -379,8 +379,8 @@ data Run {Γ} ds where
   r-copy  : ∀ {E} {e : MV E} {n}
           → Run ds bcopy e mone n (gives (fst (copy e n)) (fst (snd (copy e n)))) (snd (snd (copy e n)))
   -- applying a lent many-use closure lends its environment on to its body
-  r-bapp  : ∀ {l X A B Δ} {p : Γ ∋[ l ] sg many X A B} {ds′ : Defs Δ} {b : Tm Δ X A B} {x a o n t}
-          → Look ds p ds′ (bω b) → Run ds′ b x a n o t → Run ds (bapp p) (mct x) a n o t
+  r-bapp  : ∀ {l g X A B Δ} {p : Γ ∋[ l ] sg many g X A B} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b} {x a o n t}
+          → Look ds p ds′ (bω b γ) → Run ds′ b x a n o t → Run ds (bapp p) (mct x) a n o t
   -- ★ A11: a SigOp: an event, and whatever the world answers (A12: a flat
   -- value, no cell)
   r-const : ∀ {E b} {v : ⟦ b ⟧b} {e : MV E} {n} → Run ds (lconst v) e mone n (gives (mbase v) n) []
@@ -389,8 +389,8 @@ data Run {Γ} ds where
   r-halt  : ∀ {E} {s} {e : MV E} {x : MV ⌜ sdom s ⌝} {n}
           → Run ds (lhalt s) e x n (stop halted) (stp s (toF (sdom s) (er x)) ∷ [])
   -- ★ A11: the loop: a round, then what it says (`Next`)
-  r-iter  : ∀ {E A B} {f : Tm Γ E A (B ⊕t A)} {e a o₁ o n t₁ t₂}
-          → Run ds f e a n o₁ t₁ → Then (Next ds f e) o₁ o t₂ → Run ds (liter f) e a n o (t₁ ++ t₂)
+  r-iter  : ∀ {E A B} {f : Tm Γ E A (B ⊕t A)} {φ : Blk f} {e a o₁ o n t₁ t₂}
+          → Run ds f e a n o₁ t₁ → Then (Next ds f φ e) o₁ o t₂ → Run ds (liter f φ) e a n o (t₁ ++ t₂)
   -- ★ A11: the memory may run out before any term (D374; a server that never
   -- returns has no finished run to cut), or inside one, after a prefix of its
   -- events (a `dup` that copied part of its value)
@@ -413,9 +413,9 @@ data RunMap {Γ} ds {E} {A} F alg e where
          → RunMap ds F alg e G x n o₁ t₁ → Then (λ y n₁ → Fmap (mpair y) (RunMap ds F alg e H x′ n₁)) o₁ o t₂
          → RunMap ds F alg e (G ⊗f H) (mpair x x′) n o (t₁ ++ t₂)
 
-data Next {Γ} ds f e where
-  done  : ∀ {b n} → Next ds f e (minl b) n (gives b n) []
-  again : ∀ {a o n t} → Run ds (liter f) e a n o t → Next ds f e (minr a) n o t
+data Next {Γ} ds f φ e where
+  done  : ∀ {b n} → Next ds f φ e (minl b) n (gives b n) []
+  again : ∀ {a o n t} → Run ds (liter f φ) e a n o t → Next ds f φ e (minr a) n o t
 
 ------------------------------------------------------------------------
 -- 4. SOUNDNESS: a run is a path through the term's meaning.

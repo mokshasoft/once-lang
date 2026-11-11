@@ -58,11 +58,11 @@ loop-below l-zero       b = b
 loop-below (l-suc r rs) b = loop-below rs (below r b)
 
 -- `k` rounds, then what the loop does next
-loop-run : ∀ {E A B} {round : Tm Γ E A (B ⊕t A)} {e s n k s′ n₁ o t₁ t₂}
-         → Loop ds round e s n k s′ n₁ t₁ → Run ds (liter round) e s′ n₁ o t₂ → Run ds (liter round) e s n o (t₁ ++ t₂)
+loop-run : ∀ {E A B} {round : Tm Γ E A (B ⊕t A)} {φ : Blk round} {e s n k s′ n₁ o t₁ t₂}
+         → Loop ds round e s n k s′ n₁ t₁ → Run ds (liter round φ) e s′ n₁ o t₂ → Run ds (liter round φ) e s n o (t₁ ++ t₂)
 loop-run l-zero q = q
-loop-run {ds = ds} {round = round} {e = e} {s = s} {n = n} {o = o} {t₂ = t₃} (l-suc {t₁ = t₁} {t₂} r rs) q =
-  subst (Run ds (liter round) e s n o) (sym (++-assoc t₁ t₂ t₃)) (r-iter r (go-on (again (loop-run rs q))))
+loop-run {ds = ds} {round = round} {φ = φ} {e = e} {s = s} {n = n} {o = o} {t₂ = t₃} (l-suc {t₁ = t₁} {t₂} r rs) q =
+  subst (Run ds (liter round φ) e s n o) (sym (++-assoc t₁ t₂ t₃)) (r-iter r (go-on (again (loop-run rs q))))
 
 -- ★ after any number of rounds, the heap is the frame plus the current state
 loop-exchange : ∀ {E A B} {round : Tm Γ E A (B ⊕t A)} {e s n k s′ n′ t} → Loop ds round e s n k s′ n′ t

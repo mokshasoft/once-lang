@@ -120,9 +120,16 @@ mutual
 -- 2. THE IR, FIRST-ORDER: master's constructors, over the core's types.
 ------------------------------------------------------------------------
 
+-- ★ The Spec's grades (`⊢iter`): a loop's round is a finite block, here as
+-- on the core (`Blk`). Master's IR is ungraded (plan 0.52 M2); its programs
+-- come from Spec-typed sources, whose rounds are blocks, so B's pass carries
+-- the grade from the typing into the IR (plan 0.146 §3).
 infixr 9 _∘_
-data IR : LTy → LTy → Set where
-  id       : ∀ {A} → IR A A
+data IR : LTy → LTy → Set
+data BlkIR : ∀ {A B} → IR A B → Set
+
+data IR where
+  id      : ∀ {A} → IR A A
   _∘_      : ∀ {A B C} → IR B C → IR A B → IR A C
   ⟨_,_⟩    : ∀ {A B C} → IR A B → IR A C → IR A (B ⊗t C)
   fst      : ∀ {A B} → IR (A ⊗t B) A
@@ -137,9 +144,27 @@ data IR : LTy → LTy → Set where
   -- the parameterised fold (D131): the algebra reads a fixed environment
   Cata     : ∀ F {E A} → IR (E ⊗t LF∙ F A) A → IR (E ⊗t μt F) A
   -- the loop (D317): the round reads a fixed environment and the state
-  Iter     : ∀ {E A B} → IR (E ⊗t A) (B ⊕t A) → IR (E ⊗t A) B
+  Iter     : ∀ {E A B} (body : IR (E ⊗t A) (B ⊕t A)) → BlkIR body → IR (E ⊗t A) B
   const    : ∀ {b} → ⟦ b ⟧b → IR One (Bt b)
   SigOp    : (s : Sig) → IR ⌜ sdom s ⌝ ⌜ scod s ⌝
+
+-- a finite block: no loop inside
+data BlkIR where
+  i-id    : ∀ {A} → BlkIR (id {A})
+  i-∘     : ∀ {A B C} {g : IR B C} {f : IR A B} → BlkIR g → BlkIR f → BlkIR (g ∘ f)
+  i-pair  : ∀ {A B C} {f : IR A B} {g : IR A C} → BlkIR f → BlkIR g → BlkIR ⟨ f , g ⟩
+  i-fst   : ∀ {A B} → BlkIR (fst {A} {B})
+  i-snd   : ∀ {A B} → BlkIR (snd {A} {B})
+  i-inl   : ∀ {A B} → BlkIR (inl {A} {B})
+  i-inr   : ∀ {A B} → BlkIR (inr {A} {B})
+  i-case  : ∀ {A B C} {f : IR A C} {g : IR B C} → BlkIR f → BlkIR g → BlkIR (case f g)
+  i-term  : ∀ {A} → BlkIR (terminal {A})
+  i-init  : ∀ {A} → BlkIR (initial {A})
+  i-In    : ∀ {F} → BlkIR (In F)
+  i-out   : ∀ {F} → BlkIR (out-μ F)
+  i-cata  : ∀ {F E A} {alg : IR (E ⊗t LF∙ F A) A} → BlkIR alg → BlkIR (Cata F alg)
+  i-const : ∀ {b} {v : ⟦ b ⟧b} → BlkIR (const v)
+  i-op    : ∀ {s} → BlkIR (SigOp s)
 
 -- its meaning, clause for clause master's `evalᴰ`
 ev : ∀ {A B} → IR A B → ⟦ A ⟧ → T∞ ⟦ B ⟧
@@ -157,7 +182,7 @@ ev initial       ()
 ev (In F)        x        = return∞ (inμ (coh F (μt F) x))
 ev (out-μ F)     x        = return∞ (coh⁻¹ F (μt F) (outμ x))
 ev (Cata F alg)  (e , x)  = cataC ε F (λ y → ev alg (e , coh⁻¹ F _ y)) x
-ev (Iter body)   (e , a)  = iter∞ (λ a′ → ev body (e , a′)) a
+ev (Iter body _) (e , a)  = iter∞ (λ a′ → ev body (e , a′)) a
 ev (const v)     _        = return∞ v
 ev (SigOp s)     x        = callT s x
 
@@ -173,7 +198,14 @@ dropl = lul ∘l (drop ⊗l lid)
 withE : ∀ {E A B} → LTm ε (E ⊗t A) B → Tm ε (One ⊗t E) A B
 withE b = blift b ∘l (bsnd bcopy ⊗l lid) ∘l lul⁻
 
+-- copying the lent `E` in is a block
+k-withE : ∀ {E A B} {b : LTm ε (E ⊗t A) B} → Blk b → Blk (withE b)
+k-withE β = k-∘ (k-lift β) (k-∘ (k-⊗ (k-snd k-copy) k-id) k-lul⁻)
+
 tr : ∀ {A B} → IR A B → LTm ε A B
+-- a block translates to a block
+tr-blk : ∀ {A B} {f : IR A B} → BlkIR f → Blk (tr f)
+
 tr id           = lid
 tr (g ∘ f)      = tr g ∘l tr f
 tr ⟨ f , g ⟩    = (tr f ⊗l tr g) ∘l dup
@@ -187,9 +219,28 @@ tr initial      = lzero
 tr (In F)       = lIn
 tr (out-μ F)    = lOutμ
 tr (Cata F alg) = dropl ∘l lend (lcata F (withE (tr alg)))
-tr (Iter body)  = dropl ∘l lend (liter (withE (tr body)))
+tr (Iter body φ) = dropl ∘l lend (liter (withE (tr body)) (k-withE (tr-blk φ)))
 tr (const v)    = lconst v
 tr (SigOp s)    = lop s
+
+k-dropl : ∀ {Γ E A B} → Blk (dropl {Γ} {E} {A} {B})
+k-dropl = k-∘ k-lul (k-⊗ k-drop k-id)
+
+tr-blk i-id         = k-id
+tr-blk (i-∘ g f)    = k-∘ (tr-blk g) (tr-blk f)
+tr-blk (i-pair f g) = k-∘ (k-⊗ (tr-blk f) (tr-blk g)) k-dup
+tr-blk i-fst        = k-∘ k-ρ (k-⊗ k-id k-drop)
+tr-blk i-snd        = k-dropl
+tr-blk i-inl        = k-inl
+tr-blk i-inr        = k-inr
+tr-blk (i-case f g) = k-case (tr-blk f) (tr-blk g)
+tr-blk i-term       = k-drop
+tr-blk i-init       = k-zero
+tr-blk i-In         = k-in
+tr-blk i-out        = k-out
+tr-blk (i-cata a)   = k-∘ k-dropl (k-lend (k-cata (k-withE (tr-blk a))))
+tr-blk i-const      = k-const
+tr-blk i-op         = k-op
 
 ------------------------------------------------------------------------
 -- 4. ★ THE THEOREM: the translation means what the IR means.
@@ -229,7 +280,7 @@ pass-ok (out-μ F)    x        = ≈-refl
 pass-ok (Cata F {E} {R} alg) (e , x) =
   ≈-trans (pair-drop (e ,_) (λ p → Lᶜ ε (dropl {E = One} {A = E} {B = R}) tt p) (λ _ → refl))
           (cata-cong F (λ y → ≈-blk refl (pass-ok alg (e , coh⁻¹ F R y))) x)
-pass-ok (Iter {E} {S} {R} body) (e , a) =
+pass-ok (Iter {E} {S} {R} body _) (e , a) =
   ≈-trans (pair-drop (e ,_) (λ p → Lᶜ ε (dropl {E = One} {A = E} {B = R}) tt p) (λ _ → refl))
           (iter-cong (λ a′ → ≈-blk refl (pass-ok body (e , a′))) (≈-blk refl (pass-ok body (e , a))))
 pass-ok (const v)    _        = ≈-refl
