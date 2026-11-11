@@ -46,7 +46,14 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_; _<_; z≤n
 open import Relation.Nullary using (Dec)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n; m∸n≤m; m∸n+n≡m; n≤0⇒n≡0; ≤-antisym; m≤m+n; m≤n+m; <⇒≢)
 open import Data.Nat.Tactic.RingSolver using (solve-∀)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.List using (List; []; _∷_; _++_; map; concatMap; foldl)
+open import Data.List.Properties using (foldl-++)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
+import Data.List.Relation.Unary.All as All
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import LinCore.Free
+  using (_≼_; []≼; ∷≼; Weave; w-[]; w-run; w-tmp; Along)
+open import LinCore.Free using (cmap-++; cmap-≼; cmap-weave; cmap-nil; foldl-weave; Along-++; Along-≼; Along-weave)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (subst; _≢_)
@@ -229,36 +236,33 @@ tstep (stp _ _)        L   = L
 tstep (tmp (tnew k))   L j = L j + δn k j
 tstep (tmp (tdel k))   L j = L j ∸ δn k j
 
+-- a trace acts on the ledger, an event at a time
 tplay : Trace → TL → TL
-tplay []      L = L
-tplay (x ∷ t) L = tplay t (tstep x L)
+tplay t L = foldl (λ M x → tstep x M) L t
 
--- no temporary is freed that is not live
+-- what an event needs of the ledger: a temporary freed is live
+tpre : Ev → TL → Set
+tpre (alloc _)      L = ⊤
+tpre (free _)       L = ⊤
+tpre (peek _)       L = ⊤
+tpre (io _ _ _)     L = ⊤
+tpre (stp _ _)      L = ⊤
+tpre (tmp (tnew k)) L = ⊤
+tpre (tmp (tdel k)) L = 1 ≤ L k
+
+-- no temporary is freed that is not live: where the action is defined
 TOK : Trace → TL → Set
-TOK []                  L = ⊤
-TOK (alloc _ ∷ t)       L = TOK t L
-TOK (free _ ∷ t)        L = TOK t L
-TOK (peek _ ∷ t)        L = TOK t L
-TOK (io _ _ _ ∷ t)      L = TOK t L
-TOK (stp _ _ ∷ t)       L = TOK t L
-TOK (tmp (tnew k) ∷ t)  L = TOK t (tstep (tmp (tnew k)) L)
-TOK (tmp (tdel k) ∷ t)  L = 1 ≤ L k × TOK t (tstep (tmp (tdel k)) L)
+TOK = Along tpre (λ M x → tstep x M)
 
 -- legal, from none live; balanced: legal, and none live at the end
 TLeg TBal : Trace → Set
 TLeg t = TOK t none
 TBal t = TLeg t × (∀ k → tplay t none k ≡ 0)
 
--- the temporaries alone, as events
+-- the temporaries alone, as events (a run's events with temporaries woven
+-- in is a `Weave tmp`, `Free`)
 tmps : List TEv → Trace
-tmps []       = []
-tmps (y ∷ ys) = tmp y ∷ tmps ys
-
--- `t′` is the run's events `t` with the temporaries `ts` woven in, in order
-data Weave : Trace → List TEv → Trace → Set where
-  w-[]  : Weave [] [] []
-  w-run : ∀ {x t ts t′} → Weave t ts t′ → Weave (x ∷ t) ts (x ∷ t′)
-  w-tmp : ∀ {y t ts t′} → Weave t ts t′ → Weave t (y ∷ ts) (tmp y ∷ t′)
+tmps = map tmp
 
 ------------------------------------------------------------------------
 -- 3. THE RUN.
@@ -281,12 +285,6 @@ data Outcome (B : LTy) : Set where
 TPost : ∀ {B} → Outcome B → Trace → Set
 TPost (gives _ _) t = TBal t
 TPost (stop _)    t = TLeg t
-
--- one list is a prefix of another
-infix 4 _≼_
-data _≼_ {X : Set} : List X → List X → Set where
-  []≼ : ∀ {t} → [] ≼ t
-  ∷≼  : ∀ {x t t′} → t ≼ t′ → (x ∷ t) ≼ (x ∷ t′)
 
 data Run {Γ : Cx} (ds : Defs Γ) : ∀ {E A B} → Tm Γ E A B → MV E → MV A → ℕ → Outcome B → Trace → Set
 
@@ -407,7 +405,7 @@ data Run {Γ} ds where
   -- ★ A13 (D407): the lowering of `f` may use temporaries of its own, woven
   -- into its events: all freed before it finishes, if it gives a value
   r-tmp   : ∀ {E A B} {f : Tm Γ E A B} {e v o n t ts t′}
-          → Run ds f e v n o t → Weave t ts t′ → TPost o (tmps ts) → Run ds f e v n o t′
+          → Run ds f e v n o t → Weave tmp t ts t′ → TPost o (tmps ts) → Run ds f e v n o t′
 
 data RunMap {Γ} ds {E} {A} F alg e where
   m-id   : ∀ {x o n t} → Run ds (lcata F alg) e x n o t → RunMap ds F alg e Idf x n o t
@@ -438,68 +436,67 @@ data Io : Set where
   io-call : (s : Sig) → ⟦ sdom s ⟧f → ⟦ scod s ⟧f → Io
   io-halt : (s : Sig) → ⟦ sdom s ⟧f → Io
 
--- what a trace shows of the world
+-- what an event shows the world
+ioOf : Ev → List Io
+ioOf (alloc _)  = []
+ioOf (free _)   = []
+ioOf (peek _)   = []
+ioOf (io s x y) = io-call s x y ∷ []
+ioOf (stp s x)  = io-halt s x ∷ []
+ioOf (tmp _)    = []
+
+-- what a trace shows: the homomorphism of free monoids it lifts to
 ios : Trace → List Io
-ios []             = []
-ios (alloc _ ∷ t)  = ios t
-ios (free _ ∷ t)   = ios t
-ios (peek _ ∷ t)   = ios t
-ios (io s x y ∷ t) = io-call s x y ∷ ios t
-ios (stp s x ∷ t)  = io-halt s x ∷ ios t
-ios (tmp _ ∷ t)    = ios t
+ios = concatMap ioOf
 
 ios-++ : ∀ t₁ t₂ → ios (t₁ ++ t₂) ≡ ios t₁ ++ ios t₂
-ios-++ []             t₂ = refl
-ios-++ (alloc _ ∷ t₁) t₂ = ios-++ t₁ t₂
-ios-++ (free _ ∷ t₁)  t₂ = ios-++ t₁ t₂
-ios-++ (peek _ ∷ t₁)  t₂ = ios-++ t₁ t₂
-ios-++ (io s x y ∷ t₁) t₂ = cong (io-call s x y ∷_) (ios-++ t₁ t₂)
-ios-++ (stp s x ∷ t₁) t₂ = cong (io-halt s x ∷_) (ios-++ t₁ t₂)
-ios-++ (tmp _ ∷ t₁)   t₂ = ios-++ t₁ t₂
+ios-++ = cmap-++ ioOf
 
 ios-≼ : ∀ {t′ t} → t′ ≼ t → ios t′ ≼ ios t
-ios-≼ []≼                    = []≼
-ios-≼ (∷≼ {x = alloc _} q)   = ios-≼ q
-ios-≼ (∷≼ {x = free _} q)    = ios-≼ q
-ios-≼ (∷≼ {x = peek _} q)    = ios-≼ q
-ios-≼ (∷≼ {x = io s x y} q)  = ∷≼ (ios-≼ q)
-ios-≼ (∷≼ {x = stp s x} q)   = ∷≼ (ios-≼ q)
-ios-≼ (∷≼ {x = tmp _} q)     = ios-≼ q
+ios-≼ = cmap-≼ ioOf
 
 -- ★ A13: the temporaries show nothing to the world
-ios-weave : ∀ {t ts t′} → Weave t ts t′ → ios t′ ≡ ios t
-ios-weave w-[]                    = refl
-ios-weave (w-run {x = alloc _} w) = ios-weave w
-ios-weave (w-run {x = free _} w)  = ios-weave w
-ios-weave (w-run {x = peek _} w)  = ios-weave w
-ios-weave (w-run {x = io s x y} w) = cong (io-call s x y ∷_) (ios-weave w)
-ios-weave (w-run {x = stp s x} w) = cong (io-halt s x ∷_) (ios-weave w)
-ios-weave (w-run {x = tmp _} w)   = ios-weave w
-ios-weave (w-tmp w)               = ios-weave w
+ios-weave : ∀ {t ts t′} → Weave tmp t ts t′ → ios t′ ≡ ios t
+ios-weave = cmap-weave ioOf (λ _ → refl)
+
+-- a CELL event: all that `dup` and `drop` emit
+data Mem : Ev → Set where
+  m-alloc : ∀ {i} → Mem (alloc i)
+  m-free  : ∀ {i} → Mem (free i)
+
+mem-io : ∀ {x} → Mem x → ioOf x ≡ []
+mem-io m-alloc = refl
+mem-io m-free  = refl
+
+copy-mem : ∀ {A} (v : MV A) n → All Mem (snd (snd (copy v n)))
+copy-mem mone n = []
+copy-mem (mpair a b) n with copy a n | copy-mem a n
+... | (a' , n₁ , t₁) | ma with copy b n₁ | copy-mem b n₁
+...   | (b' , n₂ , t₂) | mb = ++⁺ ma mb
+copy-mem (minl a) n with copy a n | copy-mem a n
+... | (a' , n₁ , t₁) | ma = ma
+copy-mem (minr b) n with copy b n | copy-mem b n
+... | (b' , n₁ , t₁) | mb = mb
+copy-mem (mbase x) n = []
+copy-mem (mmu i v) n with copy v (suc n) | copy-mem v (suc n)
+... | (v' , n₁ , t₁) | mv = m-alloc ∷ mv
+copy-mem (mct x) n with copy x n | copy-mem x n
+... | (x' , n₁ , t₁) | mx = mx
+
+freeAll-mem : ∀ {A} (v : MV A) → All Mem (freeAll v)
+freeAll-mem mone        = []
+freeAll-mem (mpair a b) = ++⁺ (freeAll-mem a) (freeAll-mem b)
+freeAll-mem (minl a)    = freeAll-mem a
+freeAll-mem (minr b)    = freeAll-mem b
+freeAll-mem (mbase x)   = []
+freeAll-mem (mmu i v)   = m-free ∷ freeAll-mem v
+freeAll-mem (mct x)     = freeAll-mem x
 
 ios-copy : ∀ {A} (v : MV A) n → ios (snd (snd (copy v n))) ≡ []
-ios-copy mone n = refl
-ios-copy (mpair a b) n with copy a n | ios-copy a n
-... | (a' , n₁ , t₁) | ea with copy b n₁ | ios-copy b n₁
-...   | (b' , n₂ , t₂) | eb = trans (ios-++ t₁ t₂) (cong₂ _++_ ea eb)
-ios-copy (minl a) n with copy a n | ios-copy a n
-... | (a' , n₁ , t₁) | ea = ea
-ios-copy (minr b) n with copy b n | ios-copy b n
-... | (b' , n₁ , t₁) | eb = eb
-ios-copy (mbase x) n = refl
-ios-copy (mmu i v) n with copy v (suc n) | ios-copy v (suc n)
-... | (v' , n₁ , t₁) | ev = ev
-ios-copy (mct x) n with copy x n | ios-copy x n
-... | (x' , n₁ , t₁) | ex = ex
+ios-copy v n = cmap-nil ioOf (All.map mem-io (copy-mem v n))
 
 ios-freeAll : ∀ {A} (v : MV A) → ios (freeAll v) ≡ []
-ios-freeAll mone = refl
-ios-freeAll (mpair a b) = trans (ios-++ (freeAll a) (freeAll b)) (cong₂ _++_ (ios-freeAll a) (ios-freeAll b))
-ios-freeAll (minl a) = ios-freeAll a
-ios-freeAll (minr b) = ios-freeAll b
-ios-freeAll (mbase x) = refl
-ios-freeAll (mmu i v) = ios-freeAll v
-ios-freeAll (mct x) = ios-freeAll x
+ios-freeAll v = cmap-nil ioOf (All.map mem-io (freeAll-mem v))
 
 data Res (X : Set) : Set where
   returns : X → Res X
@@ -911,41 +908,40 @@ step (io _ _ _) h j = h j
 step (stp _ _)  h j = h j
 step (tmp _)    h j = h j     -- ★ A13: a temporary is not a cell of the run
 
+-- a trace acts on the heap, an event at a time
 play : Trace → Heap → Heap
-play []      h = h
-play (e ∷ t) h = play t (step e h)
+play t h = foldl (λ g x → step x g) h t
 
+-- what an event needs of the heap: a cell allocated is free, one freed or
+-- read is live
+okPre : Ev → Heap → Set
+okPre (alloc i)  h = h i ≡ 0
+okPre (free i)   h = h i ≡ 1
+okPre (peek i)   h = h i ≡ 1
+okPre (io _ _ _) h = ⊤
+okPre (stp _ _)  h = ⊤
+okPre (tmp _)    h = ⊤
+
+-- a legal trace: where the action is defined
 OK : Trace → Heap → Set
-OK []            h = ⊤
-OK (alloc i ∷ t) h = h i ≡ 0 × OK t (step (alloc i) h)
-OK (free i ∷ t)  h = h i ≡ 1 × OK t (step (free i) h)
-OK (peek i ∷ t)  h = h i ≡ 1 × OK t (step (peek i) h)
-OK (io _ _ _ ∷ t) h = OK t h
-OK (stp _ _ ∷ t)  h = OK t h
-OK (tmp _ ∷ t)    h = OK t h
+OK = Along okPre (λ g x → step x g)
 
--- a prefix of a legal trace is legal
+-- the laws, from the free monoid's (`Free`)
 OK-≼ : ∀ {t′ t h} → t′ ≼ t → OK t h → OK t′ h
-OK-≼ []≼                   ok       = tt
-OK-≼ (∷≼ {x = alloc _} q)  (p , ok) = (p , OK-≼ q ok)
-OK-≼ (∷≼ {x = free _} q)   (p , ok) = (p , OK-≼ q ok)
-OK-≼ (∷≼ {x = peek _} q)   (p , ok) = (p , OK-≼ q ok)
-OK-≼ (∷≼ {x = io _ _ _} q) ok       = OK-≼ q ok
-OK-≼ (∷≼ {x = stp _ _} q)  ok       = OK-≼ q ok
-OK-≼ (∷≼ {x = tmp _} q)    ok       = OK-≼ q ok
+OK-≼ = Along-≼
 
 play-++ : ∀ t₁ t₂ h → play (t₁ ++ t₂) h ≡ play t₂ (play t₁ h)
-play-++ []       t₂ h = refl
-play-++ (e ∷ t₁) t₂ h = play-++ t₁ t₂ (step e h)
+play-++ t₁ t₂ h = foldl-++ (λ g x → step x g) h t₁ t₂
 
 OK-++ : ∀ t₁ t₂ h → OK t₁ h → OK t₂ (play t₁ h) → OK (t₁ ++ t₂) h
-OK-++ []             t₂ h ok₁         ok₂ = ok₂
-OK-++ (alloc i ∷ t₁) t₂ h (p , ok₁) ok₂ = (p , OK-++ t₁ t₂ _ ok₁ ok₂)
-OK-++ (free i ∷ t₁)  t₂ h (p , ok₁) ok₂ = (p , OK-++ t₁ t₂ _ ok₁ ok₂)
-OK-++ (peek i ∷ t₁)  t₂ h (p , ok₁) ok₂ = (p , OK-++ t₁ t₂ _ ok₁ ok₂)
-OK-++ (io _ _ _ ∷ t₁) t₂ h ok₁ ok₂ = OK-++ t₁ t₂ h ok₁ ok₂
-OK-++ (stp _ _ ∷ t₁)  t₂ h ok₁ ok₂ = OK-++ t₁ t₂ h ok₁ ok₂
-OK-++ (tmp _ ∷ t₁)    t₂ h ok₁ ok₂ = OK-++ t₁ t₂ h ok₁ ok₂
+OK-++ = Along-++
+
+-- ★ A13: the temporaries do not touch the run's cells
+play-weave : ∀ {t ts t′} → Weave tmp t ts t′ → ∀ h → play t′ h ≡ play t h
+play-weave = foldl-weave (λ g x → step x g) (λ _ _ → refl)
+
+OK-weave : ∀ {t ts t′} → Weave tmp t ts t′ → ∀ h → OK t h → OK t′ h
+OK-weave = Along-weave (λ _ _ → refl) (λ _ _ → tt)
 
 -- legal events keep a heap sound
 OK-le1 : ∀ t h → OK t h → (∀ i → h i ≤ 1) → ∀ i → play t h i ≤ 1
@@ -960,25 +956,9 @@ OK-le1 (alloc i ∷ t) h (p , ok) le = OK-le1 t _ ok le′
             +0 = solve-∀
 OK-le1 (free i ∷ t)  h (p , ok) le = OK-le1 t _ ok (λ j → ≤-trans (m∸n≤m (h j) (δ i j)) (le j))
 OK-le1 (peek i ∷ t)  h (p , ok) le = OK-le1 t _ ok le
-OK-le1 (io _ _ _ ∷ t) h ok le = OK-le1 t _ ok le
-OK-le1 (stp _ _ ∷ t)  h ok le = OK-le1 t _ ok le
-OK-le1 (tmp _ ∷ t)    h ok le = OK-le1 t _ ok le
-
--- ★ A13: the temporaries do not touch the run's cells
-play-weave : ∀ {t ts t′} → Weave t ts t′ → ∀ h → play t′ h ≡ play t h
-play-weave w-[]      h = refl
-play-weave (w-run {x = x} w) h = play-weave w (step x h)
-play-weave (w-tmp w) h = play-weave w h
-
-OK-weave : ∀ {t ts t′} → Weave t ts t′ → ∀ h → OK t h → OK t′ h
-OK-weave w-[]                      h ok       = ok
-OK-weave (w-run {x = alloc _} w)   h (p , ok) = (p , OK-weave w _ ok)
-OK-weave (w-run {x = free _} w)    h (p , ok) = (p , OK-weave w _ ok)
-OK-weave (w-run {x = peek _} w)    h (p , ok) = (p , OK-weave w _ ok)
-OK-weave (w-run {x = io _ _ _} w)  h ok       = OK-weave w h ok
-OK-weave (w-run {x = stp _ _} w)   h ok       = OK-weave w h ok
-OK-weave (w-run {x = tmp _} w)     h ok       = OK-weave w h ok
-OK-weave (w-tmp w)                 h ok       = OK-weave w h ok
+OK-le1 (io _ _ _ ∷ t) h (_ , ok) le = OK-le1 t _ ok le
+OK-le1 (stp _ _ ∷ t)  h (_ , ok) le = OK-le1 t _ ok le
+OK-le1 (tmp _ ∷ t)    h (_ , ok) le = OK-le1 t _ ok le
 
 record Pre (h : Heap) (n : ℕ) {A} (v : MV A) (r : Heap) : Set where
   field
@@ -1340,7 +1320,7 @@ postV (stop _)     t h e p   = tt
 postV (gives w n′) t h e p i = trans (cong (play t h i +_) (sym (e i))) (p i)
 
 -- ★ A13: the same claim with temporaries woven in
-post-weave : ∀ {B} (o : Outcome B) {t ts t′} → Weave t ts t′ → ∀ h V → Post t h V o → Post t′ h V o
+post-weave : ∀ {B} (o : Outcome B) {t ts t′} → Weave tmp t ts t′ → ∀ h V → Post t h V o → Post t′ h V o
 post-weave (stop _)     w h V p = tt
 post-weave (gives u n′) w h V p = subst (λ z → ∀ i → z i + V i ≡ h i + cnt u i) (sym (play-weave w h)) p
 
@@ -1510,8 +1490,8 @@ exchange (r-copy {e = e} {n}) {h} pre lent with copy-ok e n h (above pre)
 -- ★ D405: a lent closure is its lent environment, lent on to the body
 exchange (r-bapp q r) pre lent = exchange r pre lent
 exchange (r-op {s = s} {x = x} {y = y}) {h} pre lent =
-  (tt , λ i → trans (cong (h i +_) (cnt-flat (sdom s) x i)) (sym (cong (h i +_) (cnt-flat (scod s) (mvF (scod s) y) i))))
-exchange r-halt pre lent = (tt , tt)
+  ((tt , tt) , λ i → trans (cong (h i +_) (cnt-flat (sdom s) x i)) (sym (cong (h i +_) (cnt-flat (scod s) (mvF (scod s) y) i))))
+exchange r-halt pre lent = ((tt , tt) , tt)
 exchange (r-iter-done r) pre lent = exchange r pre lent
 exchange (r-iter-next {a = a} {a′} {o} {t₁ = t₁} {t₂} r rn) {h} pre lent with exchange r pre lent
 ... | (ok₁ , eq₁) with exchange rn (post-gen {v = a} {w = a′} {t = t₁} (mono r) (below r) pre ok₁ eq₁) lent
@@ -1576,21 +1556,24 @@ noleak run with exchange run {λ _ → 0} {λ _ → 0}
 data Kind : Set where
   born read died : Kind
 
--- the events on block `i`, in order
+-- what an event does to block `i`
+kind : Id → Ev → List Kind
+kind i (alloc j) with j ≟ᵢ i
+... | yes _ = born ∷ []
+... | no  _ = []
+kind i (free j)  with j ≟ᵢ i
+... | yes _ = died ∷ []
+... | no  _ = []
+kind i (peek j)  with j ≟ᵢ i
+... | yes _ = read ∷ []
+... | no  _ = []
+kind i (io _ _ _) = []
+kind i (stp _ _)  = []
+kind i (tmp _)    = []
+
+-- the events on block `i`, in order: a homomorphism of free monoids
 on : Id → Trace → List Kind
-on i []            = []
-on i (alloc j ∷ t) with j ≟ᵢ i
-... | yes _ = born ∷ on i t
-... | no  _ = on i t
-on i (free j ∷ t)  with j ≟ᵢ i
-... | yes _ = died ∷ on i t
-... | no  _ = on i t
-on i (peek j ∷ t)  with j ≟ᵢ i
-... | yes _ = read ∷ on i t
-... | no  _ = on i t
-on i (io _ _ _ ∷ t) = on i t
-on i (stp _ _ ∷ t)  = on i t
-on i (tmp _ ∷ t)    = on i t
+on i = concatMap (kind i)
 
 data St : Set where
   dead live : St
@@ -1633,9 +1616,9 @@ life (peek j ∷ t)  h i (p , ok) le with j ≟ᵢ i
   subst (λ x → Life x (read ∷ on j t) z) (cong st (sym p))
         (use (subst (λ x → Life x (on j t) z) (cong st p) (life t h j ok le)))
 ... | no _ = life t h i ok le
-life (io _ _ _ ∷ t) h i ok le = life t h i ok le
-life (stp _ _ ∷ t)  h i ok le = life t h i ok le
-life (tmp _ ∷ t)    h i ok le = life t h i ok le
+life (io _ _ _ ∷ t) h i (_ , ok) le = life t h i ok le
+life (stp _ _ ∷ t)  h i (_ , ok) le = life t h i ok le
+life (tmp _ ∷ t)    h i (_ , ok) le = life t h i ok le
 
 -- ★ the invariant, for a whole program that returns: every block it
 -- allocates is freed exactly once, read only in between, and none is open at
