@@ -32,8 +32,13 @@ open import Data.Empty using (⊥)
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≤_; z≤n; s≤s; _≟_)
 open import Data.Nat.Properties using (≤-trans; m≤m+n; m≤n+m; +-assoc; +-∸-comm; +-∸-assoc; +-monoˡ-≤; ∸-monoˡ-≤)
 open import Data.Nat.Tactic.RingSolver using (solve-∀)
-open import Data.List using (List; []; _∷_; _++_)
-open import Data.List.Properties using (++-monoid)
+open import Data.List using (List; []; _∷_; _++_; concatMap)
+open import Data.List.Properties using (++-monoid; foldl-++)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
+import Data.List.Relation.Unary.All as All
+open import LinCore.Free
+  using (_≼_; []≼; ∷≼; Weave; w-[]; w-run; w-tmp; Along; Along-++; Along-≼; Along-pres; Along-all;
+         cmap-++; cmap-≼; cmap-weave; cmap-id; cmap-All; foldl-pres; foldl-all)
 open import Algebra using (Monoid)
 open import Algebra.Morphism.Structures using (module MonoidMorphisms)
 open import Relation.Binary.Bundles using (Setoid)
@@ -56,105 +61,73 @@ open import LinCore.Events Base ⟦_⟧b Sig sdom scod bw
 -- 1. ERASURE: a run without its temporaries is a run.
 ------------------------------------------------------------------------
 
+-- an event that is not a temporary
+data Kept : Ev → Set where
+  k-alloc : ∀ {i} → Kept (alloc i)
+  k-free  : ∀ {i} → Kept (free i)
+  k-peek  : ∀ {i} → Kept (peek i)
+  k-io    : ∀ {s x y} → Kept (io s x y)
+  k-stp   : ∀ {s x} → Kept (stp s x)
+
+-- what an event leaves when the temporaries are erased
+keep : Ev → Trace
+keep (alloc i)  = alloc i ∷ []
+keep (free i)   = free i ∷ []
+keep (peek i)   = peek i ∷ []
+keep (io s x y) = io s x y ∷ []
+keep (stp s x)  = stp s x ∷ []
+keep (tmp _)    = []
+
+-- what is left of each event is kept, and a kept event is left as it was
+keep-kept : ∀ x → All Kept (keep x)
+keep-kept (alloc _)  = k-alloc ∷ []
+keep-kept (free _)   = k-free ∷ []
+keep-kept (peek _)   = k-peek ∷ []
+keep-kept (io _ _ _) = k-io ∷ []
+keep-kept (stp _ _)  = k-stp ∷ []
+keep-kept (tmp _)    = []
+
+kept-keep : ∀ {x} → Kept x → keep x ≡ x ∷ []
+kept-keep k-alloc = refl
+kept-keep k-free  = refl
+kept-keep k-peek  = refl
+kept-keep k-io    = refl
+kept-keep k-stp   = refl
+
+mem-kept : ∀ {x} → Mem x → Kept x
+mem-kept m-alloc = k-alloc
+mem-kept m-free  = k-free
+
+-- the trace without its temporaries: a homomorphism of free monoids
 erase : Trace → Trace
-erase []             = []
-erase (alloc i ∷ t)  = alloc i ∷ erase t
-erase (free i ∷ t)   = free i ∷ erase t
-erase (peek i ∷ t)   = peek i ∷ erase t
-erase (io s x y ∷ t) = io s x y ∷ erase t
-erase (stp s x ∷ t)  = stp s x ∷ erase t
-erase (tmp _ ∷ t)    = erase t
+erase = concatMap keep
 
 -- a trace with no temporaries
 NoT : Trace → Set
-NoT []             = ⊤
-NoT (alloc _ ∷ t)  = NoT t
-NoT (free _ ∷ t)   = NoT t
-NoT (peek _ ∷ t)   = NoT t
-NoT (io _ _ _ ∷ t) = NoT t
-NoT (stp _ _ ∷ t)  = NoT t
-NoT (tmp _ ∷ t)    = ⊥
+NoT = All Kept
 
+-- the laws, from the free monoid's (`Free`)
 erase-++ : ∀ t₁ t₂ → erase (t₁ ++ t₂) ≡ erase t₁ ++ erase t₂
-erase-++ []             t₂ = refl
-erase-++ (alloc i ∷ t₁) t₂ = cong (alloc i ∷_) (erase-++ t₁ t₂)
-erase-++ (free i ∷ t₁)  t₂ = cong (free i ∷_) (erase-++ t₁ t₂)
-erase-++ (peek i ∷ t₁)  t₂ = cong (peek i ∷_) (erase-++ t₁ t₂)
-erase-++ (io s x y ∷ t₁) t₂ = cong (io s x y ∷_) (erase-++ t₁ t₂)
-erase-++ (stp s x ∷ t₁) t₂ = cong (stp s x ∷_) (erase-++ t₁ t₂)
-erase-++ (tmp _ ∷ t₁)   t₂ = erase-++ t₁ t₂
-
-erase-NoT : ∀ t → NoT t → erase t ≡ t
-erase-NoT []             _ = refl
-erase-NoT (alloc i ∷ t)  n = cong (alloc i ∷_) (erase-NoT t n)
-erase-NoT (free i ∷ t)   n = cong (free i ∷_) (erase-NoT t n)
-erase-NoT (peek i ∷ t)   n = cong (peek i ∷_) (erase-NoT t n)
-erase-NoT (io s x y ∷ t) n = cong (io s x y ∷_) (erase-NoT t n)
-erase-NoT (stp s x ∷ t)  n = cong (stp s x ∷_) (erase-NoT t n)
-erase-NoT (tmp _ ∷ t)    ()
-
--- what erasure leaves has no temporaries
-erase-clean : ∀ t → NoT (erase t)
-erase-clean []             = tt
-erase-clean (alloc _ ∷ t)  = erase-clean t
-erase-clean (free _ ∷ t)   = erase-clean t
-erase-clean (peek _ ∷ t)   = erase-clean t
-erase-clean (io _ _ _ ∷ t) = erase-clean t
-erase-clean (stp _ _ ∷ t)  = erase-clean t
-erase-clean (tmp _ ∷ t)    = erase-clean t
-
-erase-weave : ∀ {t ts t′} → Weave t ts t′ → erase t′ ≡ erase t
-erase-weave w-[]                       = refl
-erase-weave (w-run {x = alloc i} w)    = cong (alloc i ∷_) (erase-weave w)
-erase-weave (w-run {x = free i} w)     = cong (free i ∷_) (erase-weave w)
-erase-weave (w-run {x = peek i} w)     = cong (peek i ∷_) (erase-weave w)
-erase-weave (w-run {x = io s x y} w)   = cong (io s x y ∷_) (erase-weave w)
-erase-weave (w-run {x = stp s x} w)    = cong (stp s x ∷_) (erase-weave w)
-erase-weave (w-run {x = tmp _} w)      = erase-weave w
-erase-weave (w-tmp w)                  = erase-weave w
+erase-++ = cmap-++ keep
 
 erase-≼ : ∀ {t′ t} → t′ ≼ t → erase t′ ≼ erase t
-erase-≼ []≼                    = []≼
-erase-≼ (∷≼ {x = alloc _} q)   = ∷≼ (erase-≼ q)
-erase-≼ (∷≼ {x = free _} q)    = ∷≼ (erase-≼ q)
-erase-≼ (∷≼ {x = peek _} q)    = ∷≼ (erase-≼ q)
-erase-≼ (∷≼ {x = io _ _ _} q)  = ∷≼ (erase-≼ q)
-erase-≼ (∷≼ {x = stp _ _} q)   = ∷≼ (erase-≼ q)
-erase-≼ (∷≼ {x = tmp _} q)     = erase-≼ q
+erase-≼ = cmap-≼ keep
 
-NoT-++ : ∀ t₁ t₂ → NoT t₁ → NoT t₂ → NoT (t₁ ++ t₂)
-NoT-++ []             t₂ _  n₂ = n₂
-NoT-++ (alloc _ ∷ t₁) t₂ n₁ n₂ = NoT-++ t₁ t₂ n₁ n₂
-NoT-++ (free _ ∷ t₁)  t₂ n₁ n₂ = NoT-++ t₁ t₂ n₁ n₂
-NoT-++ (peek _ ∷ t₁)  t₂ n₁ n₂ = NoT-++ t₁ t₂ n₁ n₂
-NoT-++ (io _ _ _ ∷ t₁) t₂ n₁ n₂ = NoT-++ t₁ t₂ n₁ n₂
-NoT-++ (stp _ _ ∷ t₁) t₂ n₁ n₂ = NoT-++ t₁ t₂ n₁ n₂
-NoT-++ (tmp _ ∷ t₁)   t₂ ()  n₂
+erase-weave : ∀ {t ts t′} → Weave tmp t ts t′ → erase t′ ≡ erase t
+erase-weave = cmap-weave keep (λ _ → refl)
 
--- `dup`'s and `drop`'s own events are cell events
+erase-NoT : ∀ t → NoT t → erase t ≡ t
+erase-NoT t n = cmap-id keep (All.map kept-keep n)
+
+erase-clean : ∀ t → NoT (erase t)
+erase-clean = cmap-All keep keep-kept
+
+-- `dup`'s and `drop`'s own events are cell events (`Events.copy-mem`)
 NoT-copy : ∀ {A} (v : MV A) n → NoT (snd (snd (copy v n)))
-NoT-copy mone n = tt
-NoT-copy (mpair a b) n with copy a n | NoT-copy a n
-... | (a' , n₁ , t₁) | na with copy b n₁ | NoT-copy b n₁
-...   | (b' , n₂ , t₂) | nb = NoT-++ t₁ t₂ na nb
-NoT-copy (minl a) n with copy a n | NoT-copy a n
-... | (a' , n₁ , t₁) | na = na
-NoT-copy (minr b) n with copy b n | NoT-copy b n
-... | (b' , n₁ , t₁) | nb = nb
-NoT-copy (mbase x) n = tt
-NoT-copy (mmu i v) n with copy v (suc n) | NoT-copy v (suc n)
-... | (v' , n₁ , t₁) | nv = nv
-NoT-copy (mct x) n with copy x n | NoT-copy x n
-... | (x' , n₁ , t₁) | nx = nx
+NoT-copy v n = All.map mem-kept (copy-mem v n)
 
 NoT-freeAll : ∀ {A} (v : MV A) → NoT (freeAll v)
-NoT-freeAll mone        = tt
-NoT-freeAll (mpair a b) = NoT-++ (freeAll a) (freeAll b) (NoT-freeAll a) (NoT-freeAll b)
-NoT-freeAll (minl a)    = NoT-freeAll a
-NoT-freeAll (minr b)    = NoT-freeAll b
-NoT-freeAll (mbase x)   = tt
-NoT-freeAll (mmu i v)   = NoT-freeAll v
-NoT-freeAll (mct x)     = NoT-freeAll x
+NoT-freeAll v = All.map mem-kept (freeAll-mem v)
 
 private
   retrace : ∀ {E A B} {f : Tm Γ E A B} {e v n o t t′} → t ≡ t′ → Run ds f e v n o t → Run ds f e v n o t′
@@ -230,89 +203,92 @@ plain-map (m-pair!₁ r) = m-pair!₁ (plain-map r)
 plain-map (m-pair!₂ {t₁ = t₁} {t₂} r r′) = retraceM (sym (erase-++ t₁ t₂)) (m-pair!₂ (plain-map r) (plain-map r′))
 
 ------------------------------------------------------------------------
--- 2. THE LEDGER of live temporaries, by size.
+-- 2. THE LEDGER of live temporaries, by size: what one event does, then
+-- lifted (`Free`).
 ------------------------------------------------------------------------
 
+-- ledgers equal, or one below another, pointwise
+_≗_ _≤̇_ : TL → TL → Set
+L ≗ L′ = ∀ k → L k ≡ L′ k
+L ≤̇ L′ = ∀ k → L k ≤ L′ k
+
+-- one event respects both
+tstep-≗ : ∀ x {L L′} → L ≗ L′ → tstep x L ≗ tstep x L′
+tstep-≗ (alloc _)      e k = e k
+tstep-≗ (free _)       e k = e k
+tstep-≗ (peek _)       e k = e k
+tstep-≗ (io _ _ _)     e k = e k
+tstep-≗ (stp _ _)      e k = e k
+tstep-≗ (tmp (tnew j)) e k = cong (_+ δn j k) (e k)
+tstep-≗ (tmp (tdel j)) e k = cong (_∸ δn j k) (e k)
+
+tstep-≤ : ∀ x {L L′} → L ≤̇ L′ → tstep x L ≤̇ tstep x L′
+tstep-≤ (alloc _)      le k = le k
+tstep-≤ (free _)       le k = le k
+tstep-≤ (peek _)       le k = le k
+tstep-≤ (io _ _ _)     le k = le k
+tstep-≤ (stp _ _)      le k = le k
+tstep-≤ (tmp (tnew j)) le k = +-monoˡ-≤ (δn j k) (le k)
+tstep-≤ (tmp (tdel j)) le k = ∸-monoˡ-≤ (δn j k) (le k)
+
+tpre-≗ : ∀ x {L L′} → L ≗ L′ → tpre x L → tpre x L′
+tpre-≗ (alloc _)      e p = p
+tpre-≗ (free _)       e p = p
+tpre-≗ (peek _)       e p = p
+tpre-≗ (io _ _ _)     e p = p
+tpre-≗ (stp _ _)      e p = p
+tpre-≗ (tmp (tnew j)) e p = p
+tpre-≗ (tmp (tdel j)) e p = subst (1 ≤_) (e j) p
+
+tpre-≤ : ∀ x {L L′} → L ≤̇ L′ → tpre x L → tpre x L′
+tpre-≤ (alloc _)      le p = p
+tpre-≤ (free _)       le p = p
+tpre-≤ (peek _)       le p = p
+tpre-≤ (io _ _ _)     le p = p
+tpre-≤ (stp _ _)      le p = p
+tpre-≤ (tmp (tnew j)) le p = p
+tpre-≤ (tmp (tdel j)) le p = ≤-trans p (le j)
+
+-- a kept event leaves the ledger as it is and asks nothing of it
+kept-tstep : ∀ {x} → Kept x → ∀ L → tstep x L ≡ L
+kept-tstep k-alloc L = refl
+kept-tstep k-free  L = refl
+kept-tstep k-peek  L = refl
+kept-tstep k-io    L = refl
+kept-tstep k-stp   L = refl
+
+kept-tpre : ∀ {x} → Kept x → ∀ L → tpre x L
+kept-tpre k-alloc L = tt
+kept-tpre k-free  L = tt
+kept-tpre k-peek  L = tt
+kept-tpre k-io    L = tt
+kept-tpre k-stp   L = tt
+
+-- lifted: the laws of the action and of where it is defined
 tplay-++ : ∀ t₁ t₂ L → tplay (t₁ ++ t₂) L ≡ tplay t₂ (tplay t₁ L)
-tplay-++ []       t₂ L = refl
-tplay-++ (x ∷ t₁) t₂ L = tplay-++ t₁ t₂ (tstep x L)
+tplay-++ t₁ t₂ L = foldl-++ (λ M x → tstep x M) L t₁ t₂
 
--- the same ledger, written differently
-tstep-ext : ∀ x {L L′ : TL} → (∀ k → L k ≡ L′ k) → ∀ k → tstep x L k ≡ tstep x L′ k
-tstep-ext (alloc _)      e k = e k
-tstep-ext (free _)       e k = e k
-tstep-ext (peek _)       e k = e k
-tstep-ext (io _ _ _)     e k = e k
-tstep-ext (stp _ _)      e k = e k
-tstep-ext (tmp (tnew j)) e k = cong (_+ δn j k) (e k)
-tstep-ext (tmp (tdel j)) e k = cong (_∸ δn j k) (e k)
+tplay-ext : ∀ t {L L′ : TL} → L ≗ L′ → tplay t L ≗ tplay t L′
+tplay-ext = foldl-pres _≗_ (λ M x → tstep x M) tstep-≗
 
-tplay-ext : ∀ t {L L′ : TL} → (∀ k → L k ≡ L′ k) → ∀ k → tplay t L k ≡ tplay t L′ k
-tplay-ext []      e = e
-tplay-ext (x ∷ t) e = tplay-ext t (tstep-ext x e)
-
-TOK-ext : ∀ t {L L′ : TL} → (∀ k → L k ≡ L′ k) → TOK t L → TOK t L′
-TOK-ext []                 e ok       = tt
-TOK-ext (alloc _ ∷ t)      e ok       = TOK-ext t e ok
-TOK-ext (free _ ∷ t)       e ok       = TOK-ext t e ok
-TOK-ext (peek _ ∷ t)       e ok       = TOK-ext t e ok
-TOK-ext (io _ _ _ ∷ t)     e ok       = TOK-ext t e ok
-TOK-ext (stp _ _ ∷ t)      e ok       = TOK-ext t e ok
-TOK-ext (tmp (tnew j) ∷ t) e ok       = TOK-ext t (tstep-ext (tmp (tnew j)) e) ok
-TOK-ext (tmp (tdel j) ∷ t) e (p , ok) = (subst (1 ≤_) (e j) p , TOK-ext t (tstep-ext (tmp (tdel j)) e) ok)
-
-TOK-++ : ∀ t₁ t₂ L → TOK t₁ L → TOK t₂ (tplay t₁ L) → TOK (t₁ ++ t₂) L
-TOK-++ []                  t₂ L ok₁       ok₂ = ok₂
-TOK-++ (alloc _ ∷ t₁)      t₂ L ok₁       ok₂ = TOK-++ t₁ t₂ L ok₁ ok₂
-TOK-++ (free _ ∷ t₁)       t₂ L ok₁       ok₂ = TOK-++ t₁ t₂ L ok₁ ok₂
-TOK-++ (peek _ ∷ t₁)       t₂ L ok₁       ok₂ = TOK-++ t₁ t₂ L ok₁ ok₂
-TOK-++ (io _ _ _ ∷ t₁)     t₂ L ok₁       ok₂ = TOK-++ t₁ t₂ L ok₁ ok₂
-TOK-++ (stp _ _ ∷ t₁)      t₂ L ok₁       ok₂ = TOK-++ t₁ t₂ L ok₁ ok₂
-TOK-++ (tmp (tnew j) ∷ t₁) t₂ L ok₁       ok₂ = TOK-++ t₁ t₂ _ ok₁ ok₂
-TOK-++ (tmp (tdel j) ∷ t₁) t₂ L (p , ok₁) ok₂ = (p , TOK-++ t₁ t₂ _ ok₁ ok₂)
-
-TOK-≼ : ∀ {t′ t L} → t′ ≼ t → TOK t L → TOK t′ L
-TOK-≼ []≼                          ok       = tt
-TOK-≼ (∷≼ {x = alloc _} q)         ok       = TOK-≼ q ok
-TOK-≼ (∷≼ {x = free _} q)          ok       = TOK-≼ q ok
-TOK-≼ (∷≼ {x = peek _} q)          ok       = TOK-≼ q ok
-TOK-≼ (∷≼ {x = io _ _ _} q)        ok       = TOK-≼ q ok
-TOK-≼ (∷≼ {x = stp _ _} q)         ok       = TOK-≼ q ok
-TOK-≼ (∷≼ {x = tmp (tnew _)} q)    ok       = TOK-≼ q ok
-TOK-≼ (∷≼ {x = tmp (tdel _)} q)    (p , ok) = (p , TOK-≼ q ok)
-
--- a trace with no temporaries leaves the ledger as it was
-NoT-TOK : ∀ t {L} → NoT t → TOK t L
-NoT-TOK []             _ = tt
-NoT-TOK (alloc _ ∷ t)  n = NoT-TOK t n
-NoT-TOK (free _ ∷ t)   n = NoT-TOK t n
-NoT-TOK (peek _ ∷ t)   n = NoT-TOK t n
-NoT-TOK (io _ _ _ ∷ t) n = NoT-TOK t n
-NoT-TOK (stp _ _ ∷ t)  n = NoT-TOK t n
-NoT-TOK (tmp _ ∷ t)    ()
-
-NoT-tplay : ∀ t {L} → NoT t → tplay t L ≡ L
-NoT-tplay []             _ = refl
-NoT-tplay (alloc _ ∷ t)  n = NoT-tplay t n
-NoT-tplay (free _ ∷ t)   n = NoT-tplay t n
-NoT-tplay (peek _ ∷ t)   n = NoT-tplay t n
-NoT-tplay (io _ _ _ ∷ t) n = NoT-tplay t n
-NoT-tplay (stp _ _ ∷ t)  n = NoT-tplay t n
-NoT-tplay (tmp _ ∷ t)    ()
-
-NoT-Bal : ∀ t → NoT t → TBal t
-NoT-Bal t n = (NoT-TOK t n , λ k → cong (λ L → L k) (NoT-tplay t n))
+TOK-ext : ∀ t {L L′ : TL} → L ≗ L′ → TOK t L → TOK t L′
+TOK-ext = Along-pres _≗_ tpre-≗ tstep-≗
 
 -- more live temporaries never make a free illegal
-TOK-mono : ∀ t {L L′ : TL} → (∀ k → L k ≤ L′ k) → TOK t L → TOK t L′
-TOK-mono []                 le ok       = tt
-TOK-mono (alloc _ ∷ t)      le ok       = TOK-mono t le ok
-TOK-mono (free _ ∷ t)       le ok       = TOK-mono t le ok
-TOK-mono (peek _ ∷ t)       le ok       = TOK-mono t le ok
-TOK-mono (io _ _ _ ∷ t)     le ok       = TOK-mono t le ok
-TOK-mono (stp _ _ ∷ t)      le ok       = TOK-mono t le ok
-TOK-mono (tmp (tnew j) ∷ t) le ok       = TOK-mono t (λ k → +-monoˡ-≤ (δn j k) (le k)) ok
-TOK-mono (tmp (tdel j) ∷ t) le (p , ok) = (≤-trans p (le j) , TOK-mono t (λ k → ∸-monoˡ-≤ (δn j k) (le k)) ok)
+TOK-mono : ∀ t {L L′ : TL} → L ≤̇ L′ → TOK t L → TOK t L′
+TOK-mono = Along-pres _≤̇_ tpre-≤ tstep-≤
+
+TOK-++ : ∀ t₁ t₂ L → TOK t₁ L → TOK t₂ (tplay t₁ L) → TOK (t₁ ++ t₂) L
+TOK-++ = Along-++
+
+TOK-≼ : ∀ {t′ t L} → t′ ≼ t → TOK t L → TOK t′ L
+TOK-≼ = Along-≼
+
+-- a trace with no temporaries leaves the ledger as it was
+NoT-Bal : ∀ t → NoT t → TBal t
+NoT-Bal t n = ( Along-all kept-tpre kept-tstep n none
+              , λ k → cong (λ L → L k) (foldl-all (λ M x → tstep x M) kept-tstep n none) )
+
 
 ------------------------------------------------------------------------
 -- 2½. ★ THE STRUCTURE. Traces are the free monoid on events (`++`, `[]`);
@@ -384,12 +360,12 @@ Post-Leg (stop _)    t p = p
 
 -- a cell event first changes nothing of the claim
 TPost-free : ∀ {B} (o : Outcome B) i t → TPost o t → TPost o (free i ∷ t)
-TPost-free (gives _ _) i t p = p
-TPost-free (stop _)    i t p = p
+TPost-free (gives _ _) i t (ok , z) = ((tt , ok) , z)
+TPost-free (stop _)    i t ok      = (tt , ok)
 
 TPost-peek : ∀ {B} (o : Outcome B) i t → TPost o t → TPost o (peek i ∷ t)
-TPost-peek (gives _ _) i t p = p
-TPost-peek (stop _)    i t p = p
+TPost-peek (gives _ _) i t (ok , z) = ((tt , ok) , z)
+TPost-peek (stop _)    i t ok      = (tt , ok)
 
 ------------------------------------------------------------------------
 -- 3. WEAVING: the live temporaries are those of both.
@@ -404,27 +380,32 @@ private
   swap+ : ∀ a b d → (a + b) + d ≡ (a + d) + b
   swap+ = solve-∀
 
-weave-ok : ∀ {t ts t′} → Weave t ts t′ → ∀ (L₁ L₂ L : TL) → (∀ k → L k ≡ L₁ k + L₂ k)
+  -- an event that asks nothing, first: as the rest
+  skip : ∀ {P Q : Set} → P × Q → (⊤ × P) × Q
+  skip (p , q) = ((tt , p) , q)
+
+-- ★ two legal traces woven: legal, and the live temporaries are those of both
+weave-ok : ∀ {t ts t′} → Weave tmp t ts t′ → ∀ (L₁ L₂ L : TL) → (∀ k → L k ≡ L₁ k + L₂ k)
          → TOK t L₁ → TOK (tmps ts) L₂
          → TOK t′ L × (∀ k → tplay t′ L k ≡ tplay t L₁ k + tplay (tmps ts) L₂ k)
 weave-ok w-[] L₁ L₂ L e ok₁ ok₂ = (tt , e)
-weave-ok (w-run {x = alloc _} w)  L₁ L₂ L e ok₁ ok₂ = weave-ok w L₁ L₂ L e ok₁ ok₂
-weave-ok (w-run {x = free _} w)   L₁ L₂ L e ok₁ ok₂ = weave-ok w L₁ L₂ L e ok₁ ok₂
-weave-ok (w-run {x = peek _} w)   L₁ L₂ L e ok₁ ok₂ = weave-ok w L₁ L₂ L e ok₁ ok₂
-weave-ok (w-run {x = io _ _ _} w) L₁ L₂ L e ok₁ ok₂ = weave-ok w L₁ L₂ L e ok₁ ok₂
-weave-ok (w-run {x = stp _ _} w)  L₁ L₂ L e ok₁ ok₂ = weave-ok w L₁ L₂ L e ok₁ ok₂
-weave-ok (w-run {x = tmp (tnew k)} w) L₁ L₂ L e ok₁ ok₂ =
-  weave-ok w _ L₂ _ (λ j → trans (cong (_+ δn k j) (e j)) (swap+ (L₁ j) (L₂ j) (δn k j))) ok₁ ok₂
+weave-ok (w-run {x = alloc _} w)  L₁ L₂ L e (_ , ok₁) ok₂ = skip (weave-ok w L₁ L₂ L e ok₁ ok₂)
+weave-ok (w-run {x = free _} w)   L₁ L₂ L e (_ , ok₁) ok₂ = skip (weave-ok w L₁ L₂ L e ok₁ ok₂)
+weave-ok (w-run {x = peek _} w)   L₁ L₂ L e (_ , ok₁) ok₂ = skip (weave-ok w L₁ L₂ L e ok₁ ok₂)
+weave-ok (w-run {x = io _ _ _} w) L₁ L₂ L e (_ , ok₁) ok₂ = skip (weave-ok w L₁ L₂ L e ok₁ ok₂)
+weave-ok (w-run {x = stp _ _} w)  L₁ L₂ L e (_ , ok₁) ok₂ = skip (weave-ok w L₁ L₂ L e ok₁ ok₂)
+weave-ok (w-run {x = tmp (tnew k)} w) L₁ L₂ L e (_ , ok₁) ok₂ =
+  skip (weave-ok w _ L₂ _ (λ j → trans (cong (_+ δn k j) (e j)) (swap+ (L₁ j) (L₂ j) (δn k j))) ok₁ ok₂)
 weave-ok (w-run {x = tmp (tdel k)} w) L₁ L₂ L e (p , ok₁) ok₂
   with weave-ok w _ L₂ _ (λ j → trans (cong (_∸ δn k j) (e j)) (+-∸-comm (L₂ j) (δn-≤ k p j))) ok₁ ok₂
 ... | (ok , eq) = ((subst (1 ≤_) (sym (e k)) (≤-trans p (m≤m+n (L₁ k) (L₂ k))) , ok) , eq)
-weave-ok (w-tmp {y = tnew k} w) L₁ L₂ L e ok₁ ok₂ =
-  weave-ok w L₁ _ _ (λ j → trans (cong (_+ δn k j) (e j)) (+-assoc (L₁ j) (L₂ j) (δn k j))) ok₁ ok₂
+weave-ok (w-tmp {y = tnew k} w) L₁ L₂ L e ok₁ (_ , ok₂) =
+  skip (weave-ok w L₁ _ _ (λ j → trans (cong (_+ δn k j) (e j)) (+-assoc (L₁ j) (L₂ j) (δn k j))) ok₁ ok₂)
 weave-ok (w-tmp {y = tdel k} w) L₁ L₂ L e ok₁ (p , ok₂)
   with weave-ok w L₁ _ _ (λ j → trans (cong (_∸ δn k j) (e j)) (+-∸-assoc (L₁ j) (δn-≤ k p j))) ok₁ ok₂
 ... | (ok , eq) = ((subst (1 ≤_) (sym (e k)) (≤-trans p (m≤n+m (L₂ k) (L₁ k))) , ok) , eq)
 
-weave-post : ∀ {B} (o : Outcome B) {t ts t′} → Weave t ts t′ → TPost o t → TPost o (tmps ts) → TPost o t′
+weave-post : ∀ {B} (o : Outcome B) {t ts t′} → Weave tmp t ts t′ → TPost o t → TPost o (tmps ts) → TPost o t′
 weave-post (gives _ _) w (ok₁ , z₁) (ok₂ , z₂) with weave-ok w none none none (λ _ → refl) ok₁ ok₂
 ... | (ok , eq) = (ok , λ k → trans (eq k) (cong₂ _+_ (z₁ k) (z₂ k)))
 weave-post (stop _) w ok₁ ok₂ = fst (weave-ok w none none none (λ _ → refl) ok₁ ok₂)
@@ -436,7 +417,6 @@ weave-post (stop _) w ok₁ ok₂ = fst (weave-ok w none none none (λ _ → ref
 private
   bal[] : TBal []
   bal[] = IsSubmonoid.ε-∈ balanced
-
 tsound-map : ∀ {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t}
            → RunMap ds F alg e G x n o t → TPost o t
 
@@ -460,12 +440,12 @@ tsound r-inl = bal[]
 tsound r-inr = bal[]
 tsound (r-case₁ r) = tsound r
 tsound (r-case₂ r) = tsound r
-tsound r-In = bal[]
-tsound r-Outμ = bal[]
+tsound r-In = ((tt , tt) , λ k → refl)
+tsound r-Outμ = ((tt , tt) , λ k → refl)
 tsound r-clo = bal[]
 tsound (r-app q r) = tsound r
 tsound (r-cata {i = i} {o = o} {t₁ = t₁} {t₂} rm ra) = TPost-free o i (t₁ ++ t₂) (Bal-++ o t₁ t₂ (tsound-map rm) (tsound ra))
-tsound (r-cata! rm) = tsound-map rm
+tsound (r-cata! {A = A} {i = i} {y = y} {t = t} rm) = TPost-free (stop {A} y) i t (tsound-map rm)
 tsound (r-cata-reuse {t₁ = t₁} {t₂} rm rg) = IsSubmonoid.∙-∈ balanced {t₁} {t₂} (tsound-map rm) (tsound rg)
 tsound (r-cata-reuse!₁ rm) = tsound-map rm
 tsound (r-cata-reuse!₂ {y = y} {t₁ = t₁} {t₂} rm rg) = IsSubmonoid.∙-∈ legal {t₁} {t₂} (fst (tsound-map rm)) (tsound rg)
@@ -479,8 +459,8 @@ tsound (r-caseE₂ r) = tsound r
 tsound (r-out {i = i} {o = o} {t = t} r) = TPost-peek o i t (tsound r)
 tsound (r-copy {e = e} {n}) = NoT-Bal (snd (snd (copy e n))) (NoT-copy e n)
 tsound (r-bapp q r) = tsound r
-tsound r-op = bal[]
-tsound r-halt = tt
+tsound r-op = ((tt , tt) , λ k → refl)
+tsound r-halt = (tt , tt)
 tsound (r-iter-done r) = tsound r
 tsound (r-iter-next {o = o} {t₁ = t₁} {t₂} r rn) = Bal-++ o t₁ t₂ (tsound r) (tsound rn)
 tsound (r-iter! r) = tsound r

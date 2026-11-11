@@ -32,6 +32,7 @@ open import Data.Nat.Properties using (n∸n≡0)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (just; nothing)
 open import LinCore.Flat using (FTy; funit; fvoid; fw)
+open import LinCore.Free using (Weave; w-[]; w-run; w-tmp)
 
 module LinCore.Examples where
 
@@ -485,7 +486,7 @@ nats-two-sound = sound nats-two-run
 --     the fold's own: woven into its events, freed before it finishes.
 ------------------------------------------------------------------------
 
-stack-weave : Weave (free (3 , 1) ∷ free (3 , 0) ∷ alloc (3 , 2) ∷ alloc (3 , 3) ∷ [])
+stack-weave : Weave tmp (free (3 , 1) ∷ free (3 , 0) ∷ alloc (3 , 2) ∷ alloc (3 , 3) ∷ [])
                     (tnew 4 ∷ tdel 4 ∷ [])
                     (tmp (tnew 4) ∷ free (3 , 1) ∷ free (3 , 0) ∷ alloc (3 , 2) ∷ alloc (3 , 3) ∷ tmp (tdel 4) ∷ [])
 stack-weave = w-tmp (w-run (w-run (w-run (w-run (w-tmp w-[])))))
@@ -493,7 +494,7 @@ stack-weave = w-tmp (w-run (w-run (w-run (w-run (w-tmp w-[])))))
 stack-step : Run ε list-round mone (one-list 5) 2 (gives (minr (new-list 5)) 4) _
 stack-step =
   r-∘ (r-tmp (r-cata (m-inr (m-pair m-b (m-id (r-cata (m-inl m-one) r-In)))) r-In)
-             stack-weave ((s≤s z≤n , tt) , λ k → n∸n≡0 (δn 4 k)))
+             stack-weave ((tt , (s≤s z≤n , tt)) , λ k → n∸n≡0 (δn 4 k)))
       r-inr
 
 -- by evaluation: the block is born first and freed last, around the cells
