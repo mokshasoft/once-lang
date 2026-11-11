@@ -8,10 +8,12 @@
 -- term language of the spike:
 --
 --   * `LF` — polynomial functor codes, kept OBJECT-LANGUAGE-INDEPENDENT. A
---     constant is `Kone`, an inert leaf `Kb`, or a CODE (`Kμ`/`Kν`), never an
+--     constant is `Kone`, an inert leaf `Kb`, or a CODE (`Kμ`), never an
 --     arbitrary `LTy`: that is what makes `Mu` strictly positive with no pragma.
---   * `LTy` — with `νt` and base leaves from the start. ★ D405: no arrow
---     type; a closure is `Ct l X`, its environment tagged with its label.
+--   * `LTy` — with base leaves from the start. ★ D405: no arrow type and no
+--     ν type; a closure is `Ct l X`, its environment tagged with its label,
+--     and a ν is a closure too: its label is its coalgebra, its environment
+--     its seed (D406).
 --   * `Cx`, `Defs` — the program's labels and their bodies, each typed over
 --     the labels before it (one-shot or many-use, D131).
 --   * `Tm E A B` — every generator: symmetric monoidal over `⊗t`, additive
@@ -19,12 +21,14 @@
 --     a lent context `E` (A10), and the SigOps and the loop (A11).
 --   * `Lᶜ` — the meaning of a term: a computation in `T∞`.
 --
--- NO GENERAL FIXPOINT. `Mu`/`Nu` are the initial algebra and final coalgebra of
--- a polynomial code; the recursion generators are `lcata` (structural),
--- `lAna` (guarded) and `liter` (the loop, which may run forever).
+-- NO GENERAL FIXPOINT. `Mu` is the initial algebra of a polynomial code; the
+-- recursion generators are `lcata` (structural) and `liter` (the loop, which
+-- may run forever). ★ D406: a ν is DEFUNCTIONALISED (its coalgebra is a
+-- label, its value its seed), so its meaning needs no coinductive type:
+-- observing it is a call (`lobs`).
 --
 -- ★ A11: ONE MEANING, as master's `evalᴰ`. The IR is ungraded (Plan 0.52 M2:
--- one exponential per `(A, B)`), so a closure, a ν layer and a loop's round are
+-- one exponential per `(A, B)`), so a closure, a ν observation and a loop's round are
 -- all computations in the one monad `T∞`, which may perform SigOps or run
 -- forever (D317, `Once.IR.Semantics.Iterative`, copied below). A term's
 -- effects are visible in its run's events; no index on the term is needed.
@@ -113,11 +117,12 @@ iter∞ f a = iterRun f (f a)
 -- 1. POLYNOMIAL FUNCTOR CODES.
 --
 -- ★ `LF` mentions no `LTy`.  Its constants are the Unit leaf, an INERT base
--- leaf, or the CODE of another fixpoint — `Kμ`/`Kν`, never an arbitrary object
--- type.  That restriction is the reason `Mu` below is strictly positive with
--- no pragma AND the reason `Mu` and `Nu` can share one interpretation knot.
--- It is also the honest reading of what a functor code is FOR: codes store
--- sub-codes and leaves; a function type is never a functor position.
+-- leaf, or the CODE of another inductive type — `Kμ`, never an arbitrary
+-- object type.  That restriction is the reason `Mu` below is strictly positive
+-- with no pragma. It is also the honest reading of what a functor code is FOR:
+-- codes store sub-codes and leaves; a function type is never a functor
+-- position. ★ D406: nor is a ν (the Spec's functor constants are base types,
+-- `WFFun`): a ν is a closure, and its label is not a code.
 ------------------------------------------------------------------------
 
 infixr 6 _⊕f_
@@ -128,7 +133,6 @@ data LF : Set where
   Kzero : LF                -- ★ A12: the constant `Void` (the Spec's `K Void`)
   Kb   : Base → LF          -- ★ inert leaf
   Kμ   : LF → LF            -- a code: the initial algebra of another functor
-  Kν   : LF → LF            -- ★ a code: the final coalgebra of another functor
   _⊕f_ : LF → LF → LF
   _⊗f_ : LF → LF → LF
 
@@ -147,10 +151,10 @@ data LTy : Set where
   -- `l` of one lambda of the program (`Cx`). Its type names the code, so
   -- nothing at run time does: no code word, no cell. Where lambdas meet, the
   -- type is a sum of these, and the sum's tag is the run-time choice.
+  -- ★ D406: a ν is one of these: its coalgebra's label and its seed.
   Ct   : ℕ → LTy → LTy
   μt   : LF → LTy
-  νt   : LF → LTy          -- ★ present because the theory wants it
-  Bt   : Base → LTy        -- ★ likewise
+  Bt   : Base → LTy        -- ★ present because the theory wants it
 
 -- the functor acting on object types
 LF∙ : LF → LTy → LTy
@@ -159,17 +163,15 @@ LF∙ Kone      X = One
 LF∙ Kzero     X = Zero
 LF∙ (Kb b)    X = Bt b
 LF∙ (Kμ G)    X = μt G
-LF∙ (Kν G)    X = νt G
 LF∙ (F ⊕f G)  X = LF∙ F X ⊕t LF∙ G X
 LF∙ (F ⊗f G)  X = LF∙ F X ⊗t LF∙ G X
 
 ------------------------------------------------------------------------
--- 3. ★ THE VALUES — one knot for both fixpoints.
+-- 3. ★ THE VALUES.
 --
--- `Mu` (inductive) and `Nu` (coinductive: observing it is a computation, as
--- master's `νᴵ`) share `FS`. Putting them in ONE mutual block is the payoff of
--- §1's restriction on `LF`: neither mentions `⟦_⟧`, so no object type can
--- taint their positivity.
+-- `Mu` and `FS` in one mutual block: the payoff of §1's restriction on `LF`:
+-- neither mentions `⟦_⟧`, so no object type can taint `Mu`'s positivity.
+-- ★ D406: no `Nu`: a ν means its seed (it is a closure, §5).
 ------------------------------------------------------------------------
 
 mutual
@@ -179,24 +181,14 @@ mutual
   FS Kzero    X = ⊥
   FS (Kb b)   X = ⟦ b ⟧b
   FS (Kμ G)   X = Mu G
-  FS (Kν G)   X = Nu G
   FS (F ⊕f G) X = FS F X ⊎ FS G X
   FS (F ⊗f G) X = FS F X × FS G X
 
   data Mu (F : LF) : Set where
     inμ : FS F (Mu F) → Mu F
 
-  record Nu (F : LF) : Set where
-    coinductive
-    field force : T∞ (FS F (Nu F))
-open Nu public
-
 outμ : ∀ {F} → Mu F → FS F (Mu F)
 outμ (inμ w) = w
-
--- a ν built from a layer: observing it gives the layer, with no event
-inν : ∀ {F} → FS F (Nu F) → Nu F
-force (inν w) = return∞ w
 
 ⟦_⟧ : LTy → Set
 ⟦ One ⟧      = ⊤
@@ -205,7 +197,6 @@ force (inν w) = return∞ w
 ⟦ A ⊕t B ⟧   = ⟦ A ⟧ ⊎ ⟦ B ⟧
 ⟦ Ct l X ⟧   = ⟦ X ⟧                -- defunctionalised: a closure means its environment
 ⟦ μt F ⟧     = Mu F
-⟦ νt F ⟧     = Nu F
 ⟦ Bt b ⟧     = ⟦ b ⟧b
 
 ------------------------------------------------------------------------
@@ -219,7 +210,6 @@ coh Kone     X x        = x
 coh Kzero    X ()
 coh (Kb b)   X x        = x
 coh (Kμ G)   X x        = x
-coh (Kν G)   X x        = x
 coh (F ⊕f G) X (inj₁ x) = inj₁ (coh F X x)
 coh (F ⊕f G) X (inj₂ y) = inj₂ (coh G X y)
 coh (F ⊗f G) X (x , y)  = (coh F X x , coh G X y)
@@ -230,7 +220,6 @@ coh⁻¹ Kone     X x        = x
 coh⁻¹ Kzero    X ()
 coh⁻¹ (Kb b)   X x        = x
 coh⁻¹ (Kμ G)   X x        = x
-coh⁻¹ (Kν G)   X x        = x
 coh⁻¹ (F ⊕f G) X (inj₁ x) = inj₁ (coh⁻¹ F X x)
 coh⁻¹ (F ⊕f G) X (inj₂ y) = inj₂ (coh⁻¹ G X y)
 coh⁻¹ (F ⊗f G) X (x , y)  = (coh⁻¹ F X x , coh⁻¹ G X y)
@@ -270,8 +259,8 @@ block (callT s x) = call s (toF (sdom s) x) (λ y → ret (inj₁ (fromF (scod s
 ------------------------------------------------------------------------
 -- 5. THE LINEAR CORE.
 --
--- `dup`/`drop` are the only sources of duplication and discard. `lOutμ` and
--- `lInν` are the two Lambek isomorphisms: one unwrapping each, no recursion.
+-- `dup`/`drop` are the only sources of duplication and discard. `lIn` and
+-- `lOutμ` are the Lambek isomorphism: one wrapping, one unwrapping, no recursion.
 ------------------------------------------------------------------------
 
 infixr 9 _∘l_
@@ -341,15 +330,13 @@ data Tm (Γ : Cx) : LTy → LTy → LTy → Set where
   lIn     : ∀ {F E} → Tm Γ E (LF∙ F (μt F)) (μt F)
   lOutμ   : ∀ {F E} → Tm Γ E (μt F) (LF∙ F (μt F))
   lcata   : ∀ F {A E} → Tm Γ E (LF∙ F A) A → Tm Γ E (μt F) A
-  -- ★ final coalgebra: observation, unfold, and the dual constructor.  A
-  -- coalgebra outlives every scope, so it reads nothing lent.
-  lOut    : ∀ {F E} → Tm Γ E (νt F) (LF∙ F (νt F))
-  lAna    : ∀ F {A E} → Tm Γ One A (LF∙ F A) → Tm Γ E A (νt F)
-  lInν    : ∀ {F E} → Tm Γ E (LF∙ F (νt F)) (νt F)
   -- ★ D405, closed structure, defunctionalised: a closure of label `l` is its
   -- environment, tagged (no event); applying it calls `l`'s body directly.
   -- A one-shot closure is applied owned, a many-use one (D131) lent.
-  lclo    : ∀ {l k X A B E} → Γ ∋[ l ] sg k X A B → Tm Γ E X (Ct l X)
+  -- ★ D406: `lclo F` tags every environment at the `Idf` positions of a layer
+  -- (`lclo Idf` tags one): what observing a ν does to the seeds its
+  -- coalgebra returns. The final coalgebra is `lobs` below, no generator.
+  lclo    : ∀ F {l k X A B E} → Γ ∋[ l ] sg k X A B → Tm Γ E (LF∙ F X) (LF∙ F (Ct l X))
   lapp    : ∀ {l X A B E} → Γ ∋[ l ] sg once X A B → Tm Γ E (Ct l X ⊗t A) B
   -- ★ the scope: lend `X` to a body, which also reads what was lent already;
   -- `X` comes back unchanged.
@@ -378,6 +365,20 @@ data Tm (Γ : Cx) : LTy → LTy → LTy → Set where
 LTm : Cx → LTy → LTy → Set
 LTm Γ = Tm Γ One
 
+-- ★ D406: THE FINAL COALGEBRA, DEFUNCTIONALISED. A coalgebra of `F` on seeds
+-- `S` is a one-shot label of argument `One`, whose body (over the labels
+-- before it, as every body) returns a layer of seeds. A ν of it is a closure
+-- `Ct l S`: its seed, tagged — so `ana` is `lclo Idf`, no cell. Observing it
+-- calls the coalgebra on the seed and tags the seeds of the layer it returns
+-- with the same label: no cell, no event beyond what the body does. A ν
+-- built from a layer (the IR's `in-ν`) is another label, whose body returns
+-- that layer (A15).
+lana : ∀ {Γ l S C E} → Γ ∋[ l ] sg once S One C → Tm Γ E S (Ct l S)
+lana p = lclo Idf p
+
+lobs : ∀ F {Γ l S E} → Γ ∋[ l ] sg once S One (LF∙ F S) → Tm Γ E (Ct l S) (LF∙ F (Ct l S))
+lobs F p = lclo F p ∘l lapp p ∘l ρl⁻
+
 -- ★ D405: a label's body, by its kind: a one-shot body owns its environment,
 -- a many-use body reads it lent
 data Body (Γ : Cx) : Sg → Set where
@@ -399,7 +400,7 @@ data Look : ∀ {Γ Δ l σ} → Defs Γ → Γ ∋[ l ] σ → Defs Δ → Body
 -- 6. ★ THE MEANING, mutual with the recursion operators (`evalᴰ`'s shape).
 --
 -- `cataC`/`travC` descend a shrinking `Mu`, children left to right, then the
--- algebra; `unfoldNu` and its helpers corecurse under `force`/`block`.
+-- algebra. ★ D406: nothing corecurses: a ν is observed by a call.
 --
 -- ★ D405: at the meaning `ρ` of the labels in scope. A label means a function
 -- of its environment and its argument; applying a closure looks it up. The
@@ -441,10 +442,7 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᶜ (lIn {F})      e         x              = return∞ (inμ (coh F (μt F) x))
     Lᶜ (lOutμ {F})    e         x              = return∞ (coh⁻¹ F (μt F) (outμ x))
     Lᶜ (lcata F alg)  e         x              = cataC F (λ y → Lᶜ alg e (coh⁻¹ F _ y)) x
-    Lᶜ (lOut {F})     e         x              = fmap∞ (coh⁻¹ F (νt F)) (force x)
-    Lᶜ (lAna F c)     e         a              = return∞ (unfoldNu F c a)
-    Lᶜ (lInν {F})     e         x              = return∞ (inν (coh F (νt F) x))
-    Lᶜ (lclo p)       e         x              = return∞ x
+    Lᶜ (lclo F {l = l} {X = X} p) e x        = return∞ (coh⁻¹ F (Ct l X) (coh F X x))
     Lᶜ (lapp p)       e         (x , a)        = lookup ρ p x a
     Lᶜ (lend b)       e         (x , a)        = fmap∞ (x ,_) (Lᶜ b (e , x) a)
     Lᶜ (blift f)      e         a              = Lᶜ f tt a
@@ -468,34 +466,9 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     travC F Kzero    alg ()
     travC F (Kb _)   alg y        = return∞ y
     travC F (Kμ _)   alg y        = return∞ y
-    travC F (Kν _)   alg y        = return∞ y
     travC F (G ⊕f H) alg (inj₁ y) = fmap∞ inj₁ (travC F G alg y)
     travC F (G ⊕f H) alg (inj₂ z) = fmap∞ inj₂ (travC F H alg z)
     travC F (G ⊗f H) alg (y , z)  = travC F G alg y >>=∞ λ u → fmap∞ (u ,_) (travC F H alg z)
-
-    unfoldNu : ∀ {A} F → LTm Γ A (LF∙ F A) → ⟦ A ⟧ → Nu F
-    force (unfoldNu F c a) = unfoldRun F c (Lᶜ c tt a)
-
-    -- written out, not `fmap∞`: the corecursive call must stay guarded
-    unfoldRun : ∀ {A} F → LTm Γ A (LF∙ F A) → T∞ ⟦ LF∙ F A ⟧ → T∞ (FS F (Nu F))
-    block (unfoldRun F c m) = unfoldBlock F c (block m)
-
-    unfoldBlock : ∀ {A} F → LTm Γ A (LF∙ F A) → T (⟦ LF∙ F A ⟧ ⊎ T∞ ⟦ LF∙ F A ⟧) → T (FS F (Nu F) ⊎ T∞ (FS F (Nu F)))
-    unfoldBlock {A} F c (ret (inj₁ y)) = ret (inj₁ (mapU F F c (coh F A y)))
-    unfoldBlock F c (ret (inj₂ m))     = ret (inj₂ (unfoldRun F c m))
-    unfoldBlock F c (call s x k)       = call s x (λ v → unfoldBlock F c (k v))
-    unfoldBlock F c (halt s x)         = halt s x
-
-    mapU : ∀ {A} F G → LTm Γ A (LF∙ F A) → FS G ⟦ A ⟧ → FS G (Nu F)
-    mapU F Idf      c y        = unfoldNu F c y
-    mapU F Kone     c y        = y
-    mapU F Kzero    c ()
-    mapU F (Kb _)   c y        = y
-    mapU F (Kμ _)   c y        = y
-    mapU F (Kν _)   c y        = y
-    mapU F (G ⊕f H) c (inj₁ y) = inj₁ (mapU F G c y)
-    mapU F (G ⊕f H) c (inj₂ z) = inj₂ (mapU F H c z)
-    mapU F (G ⊗f H) c (y , z)  = (mapU F G c y , mapU F H c z)
 
 open Sem public
 

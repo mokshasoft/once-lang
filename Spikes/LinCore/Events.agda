@@ -4,19 +4,19 @@
 ------------------------------------------------------------------------
 -- LinCore.Events — plan 0.146 A3: what the linear core does to MEMORY.
 --
--- `NbEPLinCore.Lᶜ` is a denotation with a cost count: values are Agda values
--- (a ν is an Agda coinductive record), and nothing is ever freed because
--- nothing is ever allocated. Here a value is laid out the way D402's two heaps
--- lay it out, and a run emits the cell events it causes:
+-- `NbEPLinCore.Lᶜ` is a denotation with a cost count: values are Agda values,
+-- and nothing is ever freed because nothing is ever allocated. Here a value is
+-- laid out the way D402's two heaps lay it out, and a run emits the cell
+-- events it causes:
 --
 --   * FLAT (no cell; a frame slot or registers): `One`, `⊗t`, `⊕t`, base
---     words, and (D405) a closure, which is its environment.
---   * CELLS (the cell heap, one id each): a μ node, a ν suspension (its seed
---     and its coalgebra) or an observed ν layer.
+--     words, and (D405) a closure, which is its environment — (D406) a ν
+--     among them, which is its seed.
+--   * CELLS (the cell heap, one id each): a μ node.
 --
 -- `dup` copies every cell of its value (fresh ids); `drop` frees every cell of
--- its value; `lIn`/`lAna`/`lInν` allocate one cell; `lOutμ` frees one. Nothing
--- else touches the heap: moving data is not copying it.
+-- its value; `lIn` allocates one cell; `lOutμ` frees one. Nothing else touches
+-- the heap: moving data is not copying it.
 --
 -- The run is a RELATION (`Run ds`, over the program's label table): applying
 -- a closure runs its label's body, which is not structurally smaller. The
@@ -45,7 +45,6 @@ open import Relation.Nullary using (Dec)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n; m∸n≤m; m∸n+n≡m; n≤0⇒n≡0; ≤-antisym; m≤m+n; m≤n+m; <⇒≢)
 open import Data.Nat.Tactic.RingSolver using (solve-∀)
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.List.Properties using (++-identityʳ)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (subst; _≢_)
@@ -71,9 +70,8 @@ variable
 -- A flat value takes `words` words, as `Spec.ABI` lays a base value out at the
 -- boundary: `One`/`Zero` none, a pair both halves, a sum a tag word and the
 -- larger alternative. ★ D405: a closure is laid out as its environment (its
--- type names its code: no code word, no cell). A μ and a ν are a pointer to
--- their cell: one word. A cell's size is what it holds: a μ node its layer; a
--- ν suspension or a ν layer a code word and its seed or layer (until step 2).
+-- type names its code: no code word, no cell); (D406) so is a ν, as its seed.
+-- A μ is a pointer to its cell: one word. A μ node's size is its layer's.
 ------------------------------------------------------------------------
 
 words : LTy → ℕ
@@ -83,17 +81,10 @@ words (A ⊗t B)  = words A + words B
 words (A ⊕t B)  = suc (words A ⊔ words B)
 words (Ct l X)  = words X
 words (μt F)    = 1
-words (νt F)    = 1
 words (Bt b)    = bw b
 
 szμ : LF → ℕ                -- a μ node of `F`
 szμ F = words (LF∙ F (μt F))
-
-szν : LTy → ℕ               -- a ν suspension with a seed `S`
-szν S = suc (words S)
-
-szνv : LF → ℕ               -- a ν layer of `F`
-szνv F = suc (words (LF∙ F (νt F)))
 
 ------------------------------------------------------------------------
 -- 1. MACHINE VALUES: a value as it sits in memory.
@@ -116,14 +107,6 @@ _≟ᵢ_ : (i j : Id) → Dec (i ≡ j)
 ...   | yes refl = yes refl
 ...   | no ne    = no (λ e → ne (cong fst e))
 
--- a ν's coalgebra, with the table it was built over (until step 2 makes it a
--- label: then a suspension is its seed, as a closure is its environment)
-data Coalg (S : LTy) (F : LF) : Set where
-  co : ∀ {Γ} → Defs Γ → LTm Γ S (LF∙ F S) → Coalg S F
-
-unfoldC : ∀ {S F} → Coalg S F → ⟦ S ⟧ → Nu F
-unfoldC {F = F} (co ds c) = unfoldNu ⟦ ds ⟧D F c
-
 data MV : LTy → Set where
   mone  : MV One
   mpair : ∀ {A B} → MV A → MV B → MV (A ⊗t B)
@@ -132,12 +115,9 @@ data MV : LTy → Set where
   mbase : ∀ {b} → ⟦ b ⟧b → MV (Bt b)
   -- a μ node: one cell holding its layer
   mmu   : ∀ {F} → Id → MV (LF∙ F (μt F)) → MV (μt F)
-  -- ★ D405: a closure is its environment, where it is (its label is its type)
+  -- ★ D405: a closure is its environment, where it is (its label is its type);
+  -- D406: a ν is its seed
   mct   : ∀ {l X} → MV X → MV (Ct l X)
-  -- a ν not yet observed: one cell holding its seed (the coalgebra is code)
-  mnu   : ∀ {S F} → Id → MV S → Coalg S F → MV (νt F)
-  -- a ν built from a layer (`lInν`): one cell holding the layer
-  mnuv  : ∀ {F} → Id → MV (LF∙ F (νt F)) → MV (νt F)
 
 -- what a machine value means
 er : ∀ {A} → MV A → ⟦ A ⟧
@@ -148,8 +128,6 @@ er (minr b)          = inj₂ (er b)
 er (mbase x)         = x
 er (mmu {F} i v)     = inμ (coh F (μt F) (er v))
 er (mct x)           = er x
-er (mnu i s c)       = unfoldC c (er s)
-er (mnuv {F} i v)    = inν (coh F (νt F) (er v))
 
 -- ★ A12: a flat value (a SigOp's answer) as it sits in memory: no cell
 mvF : ∀ a → ⟦ a ⟧f → MV ⌜ a ⌝
@@ -189,10 +167,6 @@ copy (mmu {F} i v)     n with copy v (suc n)
 ... | (v' , n₁ , t₁) = (mmu (szμ F , n) v' , n₁ , alloc (szμ F , n) ∷ t₁)
 copy (mct x)       n with copy x n
 ... | (x' , n₁ , t₁) = (mct x' , n₁ , t₁)
-copy (mnu {S} i s c)   n with copy s (suc n)
-... | (s' , n₁ , t₁) = (mnu (szν S , n) s' c , n₁ , alloc (szν S , n) ∷ t₁)
-copy (mnuv {F} i v)    n with copy v (suc n)
-... | (v' , n₁ , t₁) = (mnuv (szνv F , n) v' , n₁ , alloc (szνv F , n) ∷ t₁)
 
 -- `drop`: free every cell
 freeAll : ∀ {A} → MV A → Trace
@@ -203,25 +177,19 @@ freeAll (minr b)     = freeAll b
 freeAll (mbase x)    = []
 freeAll (mmu i v)    = free i ∷ freeAll v
 freeAll (mct x)      = freeAll x
-freeAll (mnu i s c)  = free i ∷ freeAll s
-freeAll (mnuv i v)   = free i ∷ freeAll v
 
--- observing a suspension: each recursive position of the layer becomes a new
--- suspension cell holding that position's seed (one `alloc` per position)
-wrap : ∀ {S} F (c : Coalg S F) G → MV (LF∙ G S) → ℕ → MV (LF∙ G (νt F)) × ℕ × Trace
-wrap {S} F c Idf  s n = (mnu (szν S , n) s c , suc n , alloc (szν S , n) ∷ [])
-wrap F c Kone     x n = (x , n , [])
-wrap F c Kzero    () n
-wrap F c (Kb b)   x n = (x , n , [])
-wrap F c (Kμ G)   x n = (x , n , [])
-wrap F c (Kν G)   x n = (x , n , [])
-wrap F c (G ⊕f H) (minl x) n with wrap F c G x n
-... | (y , n₁ , t₁) = (minl y , n₁ , t₁)
-wrap F c (G ⊕f H) (minr x) n with wrap F c H x n
-... | (y , n₁ , t₁) = (minr y , n₁ , t₁)
-wrap F c (G ⊗f H) (mpair x x′) n with wrap F c G x n
-... | (y , n₁ , t₁) with wrap F c H x′ n₁
-...   | (y′ , n₂ , t₂) = (mpair y y′ , n₂ , t₁ ++ t₂)
+-- ★ D405/D406: `lclo F`: each environment at an `Idf` position of the layer
+-- becomes a closure, where it is (observing a ν tags the seeds its
+-- coalgebra returned): no cell, no event, no counter
+tag : ∀ {l X} F → MV (LF∙ F X) → MV (LF∙ F (Ct l X))
+tag Idf      x            = mct x
+tag Kone     x            = x
+tag Kzero    ()
+tag (Kb b)   x            = x
+tag (Kμ G)   x            = x
+tag (G ⊕f H) (minl x)     = minl (tag G x)
+tag (G ⊕f H) (minr x)     = minr (tag H x)
+tag (G ⊗f H) (mpair x x′) = mpair (tag G x) (tag H x′)
 
 ------------------------------------------------------------------------
 -- 3. THE RUN.
@@ -287,19 +255,16 @@ data Run {Γ} ds where
   r-In    : ∀ {E F} {e : MV E} {v : MV (LF∙ F (μt F))} {n}
           → Run ds (lIn {F = F}) e v n (gives (mmu (szμ F , n) v) (suc n)) (alloc (szμ F , n) ∷ [])
   r-Outμ  : ∀ {E F} {e : MV E} {v : MV (LF∙ F (μt F))} {i n} → Run ds (lOutμ {F = F}) e (mmu i v) n (gives v n) (free i ∷ [])
-  -- ★ D405: building a closure is tagging its environment: no event
-  r-clo   : ∀ {E l k X A B} {p : Γ ∋[ l ] sg k X A B} {e : MV E} {x : MV X} {n}
-          → Run ds (lclo p) e x n (gives (mct x) n) []
+  -- ★ D405: building a closure is tagging its environment: no event (D406:
+  -- likewise the seeds of a layer, which is building a ν, or observing one)
+  r-clo   : ∀ {E F l k X A B} {p : Γ ∋[ l ] sg k X A B} {e : MV E} {x : MV (LF∙ F X)} {n}
+          → Run ds (lclo F p) e x n (gives (tag F x) n) []
   -- applying one calls its label's body, over the body's own prefix of the
   -- table, with the environment and the argument (the body owns both)
   r-app   : ∀ {E l X A B Δ} {p : Γ ∋[ l ] sg once X A B} {ds′ : Defs Δ} {b : LTm Δ (X ⊗t A) B}
               {e : MV E} {x a o n t}
           → Look ds p ds′ (b1 b) → Run ds′ b mone (mpair x a) n o t
           → Run ds (lapp p) e (mpair (mct x) a) n o t
-  r-Ana   : ∀ {E S F} {c : LTm Γ S (LF∙ F S)} {e : MV E} {s : MV S} {n}
-          → Run ds (lAna F c) e s n (gives (mnu (szν S , n) s (co ds c)) (suc n)) (alloc (szν S , n) ∷ [])
-  r-Inν   : ∀ {E F} {e : MV E} {v : MV (LF∙ F (νt F))} {n}
-          → Run ds (lInν {F = F}) e v n (gives (mnuv (szνv F , n) v) (suc n)) (alloc (szνv F , n) ∷ [])
   -- the fold frees the node, folds its positions, runs the algebra; it reads
   -- `e` at every layer
   r-cata  : ∀ {E F A} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {i v u o n n₁ t₁ t₂}
@@ -308,15 +273,6 @@ data Run {Γ} ds where
   r-cata! : ∀ {E F A} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {i v y n t}
           → RunMap ds F alg e F v n (stop y) t
           → Run ds (lcata F alg) e (mmu i v) n (stop y) (free i ∷ t)
-  -- observing a built layer frees its cell
-  r-Outν  : ∀ {E F} {e : MV E} {v : MV (LF∙ F (νt F))} {i n} → Run ds (lOut {F = F}) e (mnuv i v) n (gives v n) (free i ∷ [])
-  -- observing a suspension frees its cell, runs the coalgebra, wraps the seeds
-  r-Out   : ∀ {E S F Δ} {ds′ : Defs Δ} {c : LTm Δ S (LF∙ F S)} {e : MV E} {s u i n n₁ t₁}
-          → Run ds′ c mone s n (gives u n₁) t₁
-          → Run ds (lOut {F = F}) e (mnu i s (co ds′ c)) n (gives (fst (wrap F (co ds′ c) F u n₁)) (fst (snd (wrap F (co ds′ c) F u n₁))))
-                (free i ∷ (t₁ ++ snd (snd (wrap F (co ds′ c) F u n₁))))
-  r-Out!  : ∀ {E S F Δ} {ds′ : Defs Δ} {c : LTm Δ S (LF∙ F S)} {e : MV E} {s y i n t}
-          → Run ds′ c mone s n (stop y) t → Run ds (lOut {F = F}) e (mnu i s (co ds′ c)) n (stop y) (free i ∷ t)
   -- ★ A8, IN-PLACE REUSE: a fold that rebuilds each node with the same functor
   -- (`lIn ∘l g`) may keep the consumed node's cell for the rebuilt node — no
   -- `free i`, no fresh `alloc`. The other rule (`r-cata`) still applies; the
@@ -380,7 +336,6 @@ data RunMap {Γ} ds {E} {A} F alg e where
   m-one  : ∀ {x n} → RunMap ds F alg e Kone x n (gives x n) []
   m-b    : ∀ {b x n} → RunMap ds F alg e (Kb b) x n (gives x n) []
   m-μ    : ∀ {G x n} → RunMap ds F alg e (Kμ G) x n (gives x n) []
-  m-ν    : ∀ {G x n} → RunMap ds F alg e (Kν G) x n (gives x n) []
   m-inl  : ∀ {G H x y n n′ t} → RunMap ds F alg e G x n (gives y n′) t → RunMap ds F alg e (G ⊕f H) (minl x) n (gives (minl y) n′) t
   m-inl! : ∀ {G H x y n t} → RunMap ds F alg e G x n (stop y) t → RunMap ds F alg e (G ⊕f H) (minl x) n (stop y) t
   m-inr  : ∀ {G H x y n n′ t} → RunMap ds F alg e H x n (gives y n′) t → RunMap ds F alg e (G ⊕f H) (minr x) n (gives (minr y) n′) t
@@ -444,10 +399,6 @@ ios-copy (mmu i v) n with copy v (suc n) | ios-copy v (suc n)
 ... | (v' , n₁ , t₁) | ev = ev
 ios-copy (mct x) n with copy x n | ios-copy x n
 ... | (x' , n₁ , t₁) | ex = ex
-ios-copy (mnu i s c) n with copy s (suc n) | ios-copy s (suc n)
-... | (s' , n₁ , t₁) | ev = ev
-ios-copy (mnuv i v) n with copy v (suc n) | ios-copy v (suc n)
-... | (v' , n₁ , t₁) | ev = ev
 
 ios-freeAll : ∀ {A} (v : MV A) → ios (freeAll v) ≡ []
 ios-freeAll mone = refl
@@ -457,23 +408,6 @@ ios-freeAll (minr b) = ios-freeAll b
 ios-freeAll (mbase x) = refl
 ios-freeAll (mmu i v) = ios-freeAll v
 ios-freeAll (mct x) = ios-freeAll x
-ios-freeAll (mnu i s c) = ios-freeAll s
-ios-freeAll (mnuv i v) = ios-freeAll v
-
-ios-wrap : ∀ {S} F (c : Coalg S F) G (u : MV (LF∙ G S)) n → ios (snd (snd (wrap F c G u n))) ≡ []
-ios-wrap F c Idf      s n = refl
-ios-wrap F c Kone     x n = refl
-ios-wrap F c Kzero    () n
-ios-wrap F c (Kb b)   x n = refl
-ios-wrap F c (Kμ G)   x n = refl
-ios-wrap F c (Kν G)   x n = refl
-ios-wrap F c (G ⊕f H) (minl x) n with wrap F c G x n | ios-wrap F c G x n
-... | (y , n₁ , t₁) | e = e
-ios-wrap F c (G ⊕f H) (minr x) n with wrap F c H x n | ios-wrap F c H x n
-... | (y , n₁ , t₁) | e = e
-ios-wrap F c (G ⊗f H) (mpair x x′) n with wrap F c G x n | ios-wrap F c G x n
-... | (y , n₁ , t₁) | e with wrap F c H x′ n₁ | ios-wrap F c H x′ n₁
-...   | (y′ , n₂ , t₂) | e′ = trans (ios-++ t₁ t₂) (cong₂ _++_ e e′)
 
 data Res (X : Set) : Set where
   returns : X → Res X
@@ -524,19 +458,6 @@ iter-end (b-call h) = b-call (iter-end h)
 iter-end b-halt     = b-halt
 iter-end b-cut      = b-cut
 
-unfold-ret : ∀ {A} F {ρ : Env Γ} {c : LTm Γ A (LF∙ F A)} {m p x}
-           → RB m p (returns x) → RB (unfoldBlock ρ F c m) p (returns (mapU ρ F F c (coh F A x)))
-unfold-ret F b-ret      = b-ret
-unfold-ret F (b-next h) = b-next (unfold-ret F h)
-unfold-ret F (b-call h) = b-call (unfold-ret F h)
-
-unfold-end : ∀ {A} F {ρ : Env Γ} {c : LTm Γ A (LF∙ F A)} {m p y}
-           → RB m p (ended y) → RB (unfoldBlock ρ F c m) p (ended y)
-unfold-end F (b-next h) = b-next (unfold-end F h)
-unfold-end F (b-call h) = b-call (unfold-end F h)
-unfold-end F b-halt     = b-halt
-unfold-end F b-cut      = b-cut
-
 -- following a prefix of a path is running out on the way
 cut-pre : ∀ {X} {m : T (X ⊎ T∞ X)} {p r} → RB m p r → ∀ {p′} → p′ ≼ p → RB m p′ (ended exhausted)
 cut-pre b-ret      []≼      = b-cut
@@ -547,8 +468,6 @@ cut-pre b-halt     []≼      = b-cut
 cut-pre b-halt     (∷≼ []≼) = b-halt
 cut-pre b-cut      []≼      = b-cut
 
-reach-eq : ∀ {X} {m : T (X ⊎ T∞ X)} {p q : List Io} {x y} → p ≡ q → x ≡ y → RB m p (returns x) → RB m q (returns y)
-reach-eq refl refl h = h
 
 ret-eq : ∀ {X} {x y : X} {p : List Io} → x ≡ y → p ≡ [] → RB (ret (inj₁ y)) p (returns x)
 ret-eq refl refl = b-ret
@@ -568,10 +487,6 @@ copy-er (mmu {F} i v) n with copy v (suc n) | copy-er v (suc n)
 ... | (v' , n₁ , t₁) | ev = cong (λ x → inμ (coh F (μt F) x)) ev
 copy-er (mct x)      n with copy x n | copy-er x n
 ... | (x' , n₁ , t₁) | ex = ex
-copy-er (mnu {F = F} i s c) n with copy s (suc n) | copy-er s (suc n)
-... | (s' , n₁ , t₁) | es = cong (unfoldC c) es
-copy-er (mnuv {F} i v) n with copy v (suc n) | copy-er v (suc n)
-... | (v' , n₁ , t₁) | ev = cong (λ x → inν (coh F (νt F) x)) ev
 
 -- a flat answer in memory means the answer
 er-mvF : ∀ a (y : ⟦ a ⟧f) → er (mvF a y) ≡ fromF a y
@@ -589,30 +504,20 @@ coh⁻¹∘coh Kone     X x        = refl
 coh⁻¹∘coh Kzero    X ()
 coh⁻¹∘coh (Kb b)   X x        = refl
 coh⁻¹∘coh (Kμ G)   X x        = refl
-coh⁻¹∘coh (Kν G)   X x        = refl
 coh⁻¹∘coh (F ⊕f G) X (inj₁ x) = cong inj₁ (coh⁻¹∘coh F X x)
 coh⁻¹∘coh (F ⊕f G) X (inj₂ y) = cong inj₂ (coh⁻¹∘coh G X y)
 coh⁻¹∘coh (F ⊗f G) X (x , y)  = cong₂ _,_ (coh⁻¹∘coh F X x) (coh⁻¹∘coh G X y)
 
--- wrapping builds exactly the core's unfold
-mapC : ∀ {S} F → Coalg S F → ∀ G → FS G ⟦ S ⟧ → FS G (Nu F)
-mapC F (co ds c) G = mapU ⟦ ds ⟧D F G c
-
-wrap-er : ∀ {S} F (c : Coalg S F) G (u : MV (LF∙ G S)) n
-        → coh G (νt F) (er (fst (wrap F c G u n))) ≡ mapC F c G (coh G S (er u))
-wrap-er F (co ds c) Idf s n = refl
-wrap-er F (co ds c) Kone     x n = refl
-wrap-er F (co ds c) Kzero    () n
-wrap-er F (co ds c) (Kb b)   x n = refl
-wrap-er F (co ds c) (Kμ G)   x n = refl
-wrap-er F (co ds c) (Kν G)   x n = refl
-wrap-er F (co ds c) (G ⊕f H) (minl x) n with wrap F (co ds c) G x n | wrap-er F (co ds c) G x n
-... | (y , n₁ , t₁) | e = cong inj₁ e
-wrap-er F (co ds c) (G ⊕f H) (minr x) n with wrap F (co ds c) H x n | wrap-er F (co ds c) H x n
-... | (y , n₁ , t₁) | e = cong inj₂ e
-wrap-er F (co ds c) (G ⊗f H) (mpair x x′) n with wrap F (co ds c) G x n | wrap-er F (co ds c) G x n
-... | (y , n₁ , t₁) | e with wrap F (co ds c) H x′ n₁ | wrap-er F (co ds c) H x′ n₁
-...   | (y′ , n₂ , t₂) | e′ = cong₂ _,_ e e′
+-- ★ D406: tagging the seeds of a layer means retyping them, nothing else
+tag-er : ∀ {l X} F (x : MV (LF∙ F X)) → er (tag {l} F x) ≡ coh⁻¹ F (Ct l X) (coh F X (er x))
+tag-er Idf      x            = refl
+tag-er Kone     x            = refl
+tag-er Kzero    ()
+tag-er (Kb b)   x            = refl
+tag-er (Kμ G)   x            = refl
+tag-er (G ⊕f H) (minl x)     = cong inj₁ (tag-er G x)
+tag-er (G ⊕f H) (minr x)     = cong inj₂ (tag-er H x)
+tag-er (G ⊗f H) (mpair x x′) = cong₂ _,_ (tag-er G x) (tag-er H x′)
 
 -- what an outcome means
 erOver : ∀ {B} {Z : Set} → (MV B → Z) → Outcome B → Res Z
@@ -648,23 +553,13 @@ sound (r-case₁ r) = sound r
 sound (r-case₂ r) = sound r
 sound r-In   = b-ret
 sound (r-Outμ {F = F} {v = v}) = ret-eq (sym (coh⁻¹∘coh F (μt F) (er v))) refl
-sound r-clo = b-ret
+sound (r-clo {F = F} {x = x}) = ret-eq (tag-er F x) refl
 sound (r-app {x = x} {a = a} {o = o} {t = t} q r) =
   subst (λ m → RB (block m) (ios t) (erO o)) (sym (lookup-look q (er x) (er a))) (sound r)
-sound r-Ana  = b-ret
-sound r-Inν  = b-ret
 sound (r-cata {F = F} {A} {alg} {e} {u = u} {o} {t₁ = t₁} {t₂} rm ra) rewrite ios-++ t₁ t₂ =
   bind-ret (sound-map rm)
            (subst (λ z → RB (block (Lᶜ _ alg (er e) z)) (ios t₂) (erO o)) (sym (coh⁻¹∘coh F A (er u))) (sound ra))
 sound (r-cata! rm) = bind-end (sound-map rm)
-sound (r-Outν {F = F} {v = v}) = ret-eq (sym (coh⁻¹∘coh F (νt F) (er v))) refl
-sound (r-Out {S = S} {F} {ds′ = ds′} {c = c₀} {u = u} {n₁ = n₁} {t₁} rc) =
-  reach-eq
-    (trans (sym (++-identityʳ (ios t₁)))
-       (trans (cong (ios t₁ ++_) (sym (ios-wrap F (co ds′ c₀) F u n₁))) (sym (ios-++ t₁ (snd (snd (wrap F (co ds′ c₀) F u n₁)))))))
-    (trans (cong (coh⁻¹ F (νt F)) (sym (wrap-er F (co ds′ c₀) F u n₁))) (coh⁻¹∘coh F (νt F) (er (fst (wrap F (co ds′ c₀) F u n₁)))))
-    (fmap-ret (unfold-ret F (sound rc)))
-sound (r-Out! {F = F} rc) = bind-end (unfold-end F (sound rc))
 sound (r-cata-reuse {F = F} {g} {e} {u = u} {u′} {t₁ = t₁} {t₂} rm rg) rewrite ios-++ t₁ t₂ =
   bind-ret (sound-map rm)
            (subst (λ z → RB (block (Lᶜ _ (lIn ∘l g) (er e) z)) (ios t₂) (returns (inμ (coh F (μt F) (er u′)))))
@@ -700,7 +595,6 @@ sound-map (m-id r)       = sound r
 sound-map m-one          = b-ret
 sound-map m-b            = b-ret
 sound-map m-μ            = b-ret
-sound-map m-ν            = b-ret
 sound-map (m-inl r)      = fmap-ret (sound-map r)
 sound-map (m-inl! r)     = bind-end (sound-map r)
 sound-map (m-inr r)      = fmap-ret (sound-map r)
@@ -726,8 +620,6 @@ Sized (minr b)          = Sized b
 Sized (mbase x)         = ⊤
 Sized (mmu {F} i v)     = fst i ≡ szμ F × Sized v
 Sized (mct x)           = Sized x
-Sized (mnu {S} i s c)   = fst i ≡ szν S × Sized s
-Sized (mnuv {F} i v)    = fst i ≡ szνv F × Sized v
 
 -- a copy is sized, whatever it copied: its cells are fresh, named by the type
 copy-sized : ∀ {A} (v : MV A) n → Sized (fst (copy v n))
@@ -744,10 +636,6 @@ copy-sized (mmu i v) n with copy v (suc n) | copy-sized v (suc n)
 ... | (v' , n₁ , t₁) | s = (refl , s)
 copy-sized (mct x) n with copy x n | copy-sized x n
 ... | (x' , n₁ , t₁) | s = s
-copy-sized (mnu i s c) n with copy s (suc n) | copy-sized s (suc n)
-... | (s' , n₁ , t₁) | z = (refl , z)
-copy-sized (mnuv i v) n with copy v (suc n) | copy-sized v (suc n)
-... | (v' , n₁ , t₁) | s = (refl , s)
 
 mvF-sized : ∀ a (y : ⟦ a ⟧f) → Sized (mvF a y)
 mvF-sized funit    y        = tt
@@ -757,20 +645,15 @@ mvF-sized (a f* b) (x , y)  = (mvF-sized a x , mvF-sized b y)
 mvF-sized (a f+ b) (inj₁ x) = mvF-sized a x
 mvF-sized (a f+ b) (inj₂ y) = mvF-sized b y
 
-wrap-sized : ∀ {S} F (c : Coalg S F) G (u : MV (LF∙ G S)) n → Sized u → Sized (fst (wrap F c G u n))
-wrap-sized F c Idf      s n z = (refl , z)
-wrap-sized F c Kone     x n z = z
-wrap-sized F c Kzero    () n z
-wrap-sized F c (Kb b)   x n z = z
-wrap-sized F c (Kμ G)   x n z = z
-wrap-sized F c (Kν G)   x n z = z
-wrap-sized F c (G ⊕f H) (minl x) n z with wrap F c G x n | wrap-sized F c G x n z
-... | (y , n₁ , t₁) | s = s
-wrap-sized F c (G ⊕f H) (minr x) n z with wrap F c H x n | wrap-sized F c H x n z
-... | (y , n₁ , t₁) | s = s
-wrap-sized F c (G ⊗f H) (mpair x x′) n (z , z′) with wrap F c G x n | wrap-sized F c G x n z
-... | (y , n₁ , t₁) | s with wrap F c H x′ n₁ | wrap-sized F c H x′ n₁ z′
-...   | (y′ , n₂ , t₂) | s′ = (s , s′)
+tag-sized : ∀ {l X} F (x : MV (LF∙ F X)) → Sized x → Sized (tag {l} F x)
+tag-sized Idf      x            z        = z
+tag-sized Kone     x            z        = z
+tag-sized Kzero    ()
+tag-sized (Kb b)   x            z        = z
+tag-sized (Kμ G)   x            z        = z
+tag-sized (G ⊕f H) (minl x)     z        = tag-sized G x z
+tag-sized (G ⊕f H) (minr x)     z        = tag-sized H x z
+tag-sized (G ⊗f H) (mpair x x′) (z , z′) = (tag-sized G x z , tag-sized H x′ z′)
 
 sized-map : ∀ {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n y n′ t}
           → RunMap ds F alg e G x n (gives y n′) t → Sized e → Sized x → Sized y
@@ -794,13 +677,9 @@ sized (r-case₁ r) se sv = sized r se sv
 sized (r-case₂ r) se sv = sized r se sv
 sized r-In se sv = (refl , sv)
 sized r-Outμ se (_ , sv) = sv
-sized r-clo se sv = sv
+sized (r-clo {F = F} {x = x}) se sv = tag-sized F x sv
 sized (r-app q r) se (sx , sa) = sized r tt (sx , sa)
-sized r-Ana se sv = (refl , sv)
-sized r-Inν se sv = (refl , sv)
 sized (r-cata rm ra) se (_ , sv) = sized ra se (sized-map rm se sv)
-sized r-Outν se (_ , sv) = sv
-sized (r-Out {F = F} {ds′ = ds′} {c = c} {u = u} {n₁ = n₁} rc) se (_ , ss) = wrap-sized F (co ds′ c) F u n₁ (sized rc tt ss)
 sized (r-cata-reuse rm rg) se (p , sv) = (p , sized rg se (sized-map rm se sv))
 sized (r-lend r) se (sx , sa) = (sx , sized r (se , sx) sa)
 sized (r-lift r) se sv = sized r tt sv
@@ -819,7 +698,6 @@ sized-map (m-id r) se sx = sized r se sx
 sized-map m-one se sx = sx
 sized-map m-b se sx = sx
 sized-map m-μ se sx = sx
-sized-map m-ν se sx = sx
 sized-map (m-inl r) se sx = sized-map r se sx
 sized-map (m-inr r) se sx = sized-map r se sx
 sized-map (m-pair r r′) se (sx , sx′) = (sized-map r se sx , sized-map r′ se sx′)
@@ -917,8 +795,6 @@ cnt (minr b)     i = cnt b i
 cnt (mbase x)    i = 0
 cnt (mmu j v)    i = δ j i + cnt v i
 cnt (mct x)      i = cnt x i
-cnt (mnu j s c)  i = δ j i + cnt s i
-cnt (mnuv j v)   i = δ j i + cnt v i
 
 -- ★ A12: a flat value has no cell
 cnt-flat : ∀ a (x : MV ⌜ a ⌝) i → cnt x i ≡ 0
@@ -1054,10 +930,6 @@ copy-mono (mmu i v) n with copy v (suc n) | copy-mono v (suc n)
 ... | (v' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
 copy-mono (mct x) n with copy x n | copy-mono x n
 ... | (x' , n₁ , t₁) | m₁ = m₁
-copy-mono (mnu i s c) n with copy s (suc n) | copy-mono s (suc n)
-... | (s' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
-copy-mono (mnuv i v) n with copy v (suc n) | copy-mono v (suc n)
-... | (v' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
 
 copy-below : ∀ {A} (v : MV A) n i → fst (snd (copy v n)) ≤ serial i → cnt (fst (copy v n)) i ≡ 0
 copy-below mone n i le = refl
@@ -1073,10 +945,6 @@ copy-below (mmu j v) n i le with copy v (suc n) | copy-below v (suc n) | copy-mo
 ... | (v' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bv i le)
 copy-below (mct x) n i le with copy x n | copy-below x n
 ... | (x' , n₁ , t₁) | bx = bx i le
-copy-below (mnu j s c) n i le with copy s (suc n) | copy-below s (suc n) | copy-mono s (suc n)
-... | (s' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bv i le)
-copy-below (mnuv j v) n i le with copy v (suc n) | copy-below v (suc n) | copy-mono v (suc n)
-... | (v' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bv i le)
 
 -- one allocated cell, at the counter, onto a heap empty from the counter on
 private
@@ -1107,10 +975,6 @@ copy-ok (mmu {F} j v) n h ab with copy v (suc n) | copy-ok v (suc n) (step (allo
 ... | (v' , n₁ , t₁) | (ok , eq) = ((ab (szμ F , n) ≤-refl , ok) , alloc-eq (szμ F , n) h (cnt v') (play t₁ (step (alloc (szμ F , n)) h)) eq)
 copy-ok (mct x) n h ab with copy x n | copy-ok x n h ab
 ... | (x' , n₁ , t₁) | r = r
-copy-ok (mnu {S} j s c) n h ab with copy s (suc n) | copy-ok s (suc n) (step (alloc (szν S , n)) h) (alloc-above (szν S) n h ab)
-... | (s' , n₁ , t₁) | (ok , eq) = ((ab (szν S , n) ≤-refl , ok) , alloc-eq (szν S , n) h (cnt s') (play t₁ (step (alloc (szν S , n)) h)) eq)
-copy-ok (mnuv {F} j v) n h ab with copy v (suc n) | copy-ok v (suc n) (step (alloc (szνv F , n)) h) (alloc-above (szνv F) n h ab)
-... | (v' , n₁ , t₁) | (ok , eq) = ((ab (szνv F , n) ≤-refl , ok) , alloc-eq (szνv F , n) h (cnt v') (play t₁ (step (alloc (szνv F , n)) h)) eq)
 
 -- freeing one live cell `j` whose contents count `V`
 free-step : ∀ j (V : Heap) (h r : Heap) → (∀ i → h i ≤ 1) → (∀ i → (δ j i + V i) + r i ≤ h i)
@@ -1160,74 +1024,21 @@ free-ok (minr b) h r le sb = free-ok b h r le sb
 free-ok (mbase x) h r le sb = (tt , λ i → +0 (h i))
 free-ok (mmu j v) h r le sb = free-cell j (cnt v) (freeAll v) h r le sb (λ h′ le′ sb′ → free-ok v h′ r le′ sb′)
 free-ok (mct x) h r le sb = free-ok x h r le sb
-free-ok (mnu j s c) h r le sb = free-cell j (cnt s) (freeAll s) h r le sb (λ h′ le′ sb′ → free-ok s h′ r le′ sb′)
-free-ok (mnuv j v) h r le sb = free-cell j (cnt v) (freeAll v) h r le sb (λ h′ le′ sb′ → free-ok v h′ r le′ sb′)
 
--- `wrap`'s cells come from the counter, legally, and hold exactly the layer's seeds
-wrap-mono : ∀ {S} F (c : Coalg S F) G (u : MV (LF∙ G S)) n → n ≤ fst (snd (wrap F c G u n))
-wrap-mono F c Idf      s n = n≤1+n n
-wrap-mono F c Kone     x n = ≤-refl
-wrap-mono F c Kzero    () n
-wrap-mono F c (Kb b)   x n = ≤-refl
-wrap-mono F c (Kμ G)   x n = ≤-refl
-wrap-mono F c (Kν G)   x n = ≤-refl
-wrap-mono F c (G ⊕f H) (minl x) n with wrap F c G x n | wrap-mono F c G x n
-... | (y , n₁ , t₁) | m = m
-wrap-mono F c (G ⊕f H) (minr x) n with wrap F c H x n | wrap-mono F c H x n
-... | (y , n₁ , t₁) | m = m
-wrap-mono F c (G ⊗f H) (mpair x x′) n with wrap F c G x n | wrap-mono F c G x n
-... | (y , n₁ , t₁) | m with wrap F c H x′ n₁ | wrap-mono F c H x′ n₁
-...   | (y′ , n₂ , t₂) | m′ = ≤-trans m m′
+-- ★ D405/D406: a tagged layer holds exactly the cells it held
+cnt-tag : ∀ {l X} F (x : MV (LF∙ F X)) i → cnt (tag {l} F x) i ≡ cnt x i
+cnt-tag Idf      x            i = refl
+cnt-tag Kone     x            i = refl
+cnt-tag Kzero    ()
+cnt-tag (Kb b)   x            i = refl
+cnt-tag (Kμ G)   x            i = refl
+cnt-tag (G ⊕f H) (minl x)     i = cnt-tag G x i
+cnt-tag (G ⊕f H) (minr x)     i = cnt-tag H x i
+cnt-tag (G ⊗f H) (mpair x x′) i = cong₂ _+_ (cnt-tag G x i) (cnt-tag H x′ i)
 
 Below : ∀ {A} → MV A → ℕ → Set
 Below v n = ∀ i → n ≤ serial i → cnt v i ≡ 0
 
-wrap-below : ∀ {S} F (c : Coalg S F) G (u : MV (LF∙ G S)) n
-           → Below u n → Below (fst (wrap F c G u n)) (fst (snd (wrap F c G u n)))
-wrap-below F c Idf      s n b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
-wrap-below F c Kone     x n b = b
-wrap-below F c Kzero    () n b
-wrap-below F c (Kb bb)  x n b = b
-wrap-below F c (Kμ G)   x n b = b
-wrap-below F c (Kν G)   x n b = b
-wrap-below F c (G ⊕f H) (minl x) n b with wrap F c G x n | wrap-below F c G x n b
-... | (y , n₁ , t₁) | bb = bb
-wrap-below F c (G ⊕f H) (minr x) n b with wrap F c H x n | wrap-below F c H x n b
-... | (y , n₁ , t₁) | bb = bb
-wrap-below F c (G ⊗f H) (mpair x x′) n b
-  with wrap F c G x n | wrap-below F c G x n (λ i le → +≡0ˡ (cnt x i) (cnt x′ i) (b i le)) | wrap-mono F c G x n
-... | (y , n₁ , t₁) | b₁ | m
-  with wrap F c H x′ n₁ | wrap-below F c H x′ n₁ (λ i le → +≡0ʳ (cnt x i) (cnt x′ i) (b i (≤-trans m le))) | wrap-mono F c H x′ n₁
-...   | (y′ , n₂ , t₂) | b₂ | m′ = λ i le → cong₂ _+_ (b₁ i (≤-trans m′ le)) (b₂ i le)
-
-wrap-ok : ∀ {S} F (c : Coalg S F) G (u : MV (LF∙ G S)) n (h : Heap)
-        → (∀ i → n ≤ serial i → h i ≡ 0) → Below u n
-        → OK (snd (snd (wrap F c G u n))) h
-          × (∀ i → play (snd (snd (wrap F c G u n))) h i + cnt u i ≡ h i + cnt (fst (wrap F c G u n)) i)
-wrap-ok {S} F c Idf  s n h ab b = ((ab (szν S , n) ≤-refl , tt) , λ i → assoc (h i) (δ (szν S , n) i) (cnt s i))
-wrap-ok F c Kone     x n h ab b = (tt , λ i → refl)
-wrap-ok F c Kzero    () n h ab b
-wrap-ok F c (Kb bb)  x n h ab b = (tt , λ i → refl)
-wrap-ok F c (Kμ G)   x n h ab b = (tt , λ i → refl)
-wrap-ok F c (Kν G)   x n h ab b = (tt , λ i → refl)
-wrap-ok F c (G ⊕f H) (minl x) n h ab b with wrap F c G x n | wrap-ok F c G x n h ab b
-... | (y , n₁ , t₁) | r = r
-wrap-ok F c (G ⊕f H) (minr x) n h ab b with wrap F c H x n | wrap-ok F c H x n h ab b
-... | (y , n₁ , t₁) | r = r
-wrap-ok F c (G ⊗f H) (mpair x x′) n h ab b
-  with wrap F c G x n | wrap-ok F c G x n h ab (λ i le → +≡0ˡ (cnt x i) (cnt x′ i) (b i le))
-     | wrap-below F c G x n (λ i le → +≡0ˡ (cnt x i) (cnt x′ i) (b i le)) | wrap-mono F c G x n
-... | (y , n₁ , t₁) | (ok₁ , eq₁) | b₁ | m
-  with wrap F c H x′ n₁
-     | wrap-ok F c H x′ n₁ (play t₁ h)
-         (λ i le → trans (sym (+0 (play t₁ h i)))
-                     (trans (cong (play t₁ h i +_) (sym (+≡0ˡ (cnt x i) (cnt x′ i) (b i (≤-trans m le)))))
-                       (trans (eq₁ i) (cong₂ _+_ (ab i (≤-trans m le)) (b₁ i le)))))
-         (λ i le → +≡0ʳ (cnt x i) (cnt x′ i) (b i (≤-trans m le)))
-...   | (y′ , n₂ , t₂) | (ok₂ , eq₂) =
-  ( OK-++ t₁ t₂ h ok₁ ok₂
-  , λ i → trans (cong (λ z → z i + (cnt x i + cnt x′ i)) (play-++ t₁ t₂ h))
-            (chain⊗ (play t₂ (play t₁ h) i) (cnt x′ i) (play t₁ h i) (cnt y′ i) (cnt x i) (h i) (cnt y i) (eq₂ i) (eq₁ i)) )
 
 mono-map : ∀ {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n y n′ t} → RunMap ds F alg e G x n (gives y n′) t → n ≤ n′
 below-map : ∀ {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n y n′ t} → RunMap ds F alg e G x n (gives y n′) t → Below x n → Below y n′
@@ -1253,11 +1064,7 @@ mono r-In          = n≤1+n _
 mono r-Outμ        = ≤-refl
 mono r-clo         = ≤-refl
 mono (r-app q r)   = mono r
-mono r-Ana         = n≤1+n _
-mono r-Inν         = n≤1+n _
 mono (r-cata rm ra) = ≤-trans (mono-map rm) (mono ra)
-mono r-Outν        = ≤-refl
-mono (r-Out {F = F} {ds′ = ds′} {c = c} {u = u} {n₁ = n₁} rc) = ≤-trans (mono rc) (wrap-mono F (co ds′ c) F u n₁)
 mono (r-cata-reuse rm rg) = ≤-trans (mono-map rm) (mono rg)
 mono (r-lend r)    = mono r
 mono (r-lift r)    = mono r
@@ -1276,7 +1083,6 @@ mono-map (m-id r)      = mono r
 mono-map m-one         = ≤-refl
 mono-map m-b           = ≤-refl
 mono-map m-μ           = ≤-refl
-mono-map m-ν           = ≤-refl
 mono-map (m-inl r)     = mono-map r
 mono-map (m-inr r)     = mono-map r
 mono-map (m-pair r r′) = ≤-trans (mono-map r) (mono-map r′)
@@ -1302,14 +1108,9 @@ below (r-case₁ r) b = below r b
 below (r-case₂ r) b = below r b
 below (r-In {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
 below (r-Outμ {v = v} {i = j}) b i le = +≡0ʳ (δ j i) (cnt v i) (b i le)
-below r-clo b = b
+below (r-clo {F = F} {x = x}) b i le = trans (cnt-tag F x i) (b i le)
 below (r-app q r) b = below r b
-below (r-Ana {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
-below (r-Inν {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
 below (r-cata {i = j} {v} rm ra) b = below ra (below-map rm (λ i le → +≡0ʳ (δ j i) (cnt v i) (b i le)))
-below (r-Outν {v = v} {i = j}) b i le = +≡0ʳ (δ j i) (cnt v i) (b i le)
-below (r-Out {F = F} {ds′ = ds′} {c = c} {s = s} {u} {i = j} {n₁ = n₁} rc) b =
-  wrap-below F (co ds′ c) F u n₁ (below rc (λ i le → +≡0ʳ (δ j i) (cnt s i) (b i le)))
 below (r-cata-reuse {i = j} {v} rm rg) b i le =
   cong₂ _+_ (+≡0ˡ (δ j i) (cnt v i) (b i (≤-trans (≤-trans (mono-map rm) (mono rg)) le)))
             (below rg (below-map rm (λ k l → +≡0ʳ (δ j k) (cnt v k) (b k l))) i le)
@@ -1332,7 +1133,6 @@ below-map (m-id r) b = below r b
 below-map m-one b = b
 below-map m-b b = b
 below-map m-μ b = b
-below-map m-ν b = b
 below-map (m-inl r) b = below-map r b
 below-map (m-inr r) b = below-map r b
 below-map (m-pair {x = x} {x′} r r′) b i le =
@@ -1512,12 +1312,11 @@ exchange (r-Outμ {v = v} {i = j}) {h} {r} pre lent with free-step j (cnt v) h r
   where r5 : ∀ P D V → P + (D + V) ≡ (P + D) + V
         r5 = solve-∀
 -- ★ D405: a closure is its environment: building one is no event, and
--- applying one is running its body on the environment and the argument
-exchange r-clo pre lent = (tt , λ i → refl)
+-- applying one is running its body on the environment and the argument.
+-- D406: so is a ν, built (`lana`) or observed (`lobs`): no event of its own
+exchange (r-clo {F = F} {x = x}) {h} pre lent = (tt , λ i → cong (h i +_) (sym (cnt-tag F x i)))
 exchange (r-app q r) pre lent =
   exchange r record { le1 = le1 pre ; above = above pre ; sub = sub pre } lent₀
-exchange (r-Ana {S = S} {s = s}) pre lent = alloc1 (szν S) (cnt s) pre
-exchange (r-Inν {F = F} {v = v}) pre lent = alloc1 (szνv F) (cnt v) pre
 exchange (r-cata {i = j} {v} {u} {o} {t₁ = t₁} {t₂} rm ra) {h} {r} pre lent
   with free-step j (cnt v) h r (le1 pre) (sub pre)
 ... | (hj , le′ , sb′ , back)
@@ -1530,25 +1329,6 @@ exchange (r-cata {i = j} {v} {u} {o} {t₁ = t₁} {t₂} rm ra) {h} {r} pre len
 exchange (r-cata! {i = j} {v} rm) {h} {r} pre lent
   with free-step j (cnt v) h r (le1 pre) (sub pre)
 ... | (hj , le′ , sb′ , back) = ((hj , fst (exchange-map rm {step (free j) h} {r} (pre-free {v′ = v} j pre le′ sb′) lent)) , tt)
-exchange (r-Outν {v = v} {i = j}) {h} {r} pre lent with free-step j (cnt v) h r (le1 pre) (sub pre)
-... | (hj , _ , _ , back) = ((hj , tt) , λ i → trans (r5 (step (free j) h i) (δ j i) (cnt v i)) (cong (_+ cnt v i) (back i)))
-  where r5 : ∀ P D V → P + (D + V) ≡ (P + D) + V
-        r5 = solve-∀
-exchange (r-Out {F = F} {ds′ = ds′} {c = c₀} {s = s} {u} {i = j} {n₁ = n₁} {t₁} rc) {h} {r} pre lent
-  with free-step j (cnt s) h r (le1 pre) (sub pre)
-... | (hj , le′ , sb′ , back)
-  with exchange rc {step (free j) h} {r} (pre-free {v′ = s} j pre le′ sb′) lent₀
-...   | (okc , eqc)
-  with post rc (pre-free {v′ = s} j pre le′ sb′) okc eqc
-...     | pre₁
-  with wrap-ok F (co ds′ c₀) F u n₁ (play t₁ (step (free j) h)) (above pre₁) (pre-below pre₁)
-...       | (okw , eqw) =
-  ( (hj , OK-++ t₁ (snd (snd (wrap F (co ds′ c₀) F u n₁))) (step (free j) h) okc okw)
-  , freeP (gives (fst (wrap F (co ds′ c₀) F u n₁)) (fst (snd (wrap F (co ds′ c₀) F u n₁)))) j (t₁ ++ snd (snd (wrap F (co ds′ c₀) F u n₁))) h (cnt s) back
-      (seqP (gives (fst (wrap F (co ds′ c₀) F u n₁)) (fst (snd (wrap F (co ds′ c₀) F u n₁)))) t₁ (snd (snd (wrap F (co ds′ c₀) F u n₁))) (step (free j) h) (cnt s) (cnt u) eqc eqw) )
-exchange (r-Out! {s = s} {i = j} rc) {h} {r} pre lent
-  with free-step j (cnt s) h r (le1 pre) (sub pre)
-... | (hj , le′ , sb′ , back) = ((hj , fst (exchange rc {step (free j) h} {r} (pre-free {v′ = s} j pre le′ sb′) lent₀)) , tt)
 
 -- ★ A8: the reused cell sits in the frame while the node is folded and rebuilt
 exchange (r-cata-reuse {i = j} {v} {u} {u′} {t₁ = t₁} {t₂} rm rg) {h} {r} pre lent
@@ -1621,7 +1401,6 @@ exchange-map (m-id r) pre lent = exchange r record { le1 = le1 pre ; above = abo
 exchange-map m-one pre lent = (tt , λ i → refl)
 exchange-map m-b pre lent = (tt , λ i → refl)
 exchange-map m-μ pre lent = (tt , λ i → refl)
-exchange-map m-ν pre lent = (tt , λ i → refl)
 exchange-map (m-inl r) pre lent = exchange-map r record { le1 = le1 pre ; above = above pre ; sub = sub pre } lent
 exchange-map (m-inl! r) pre lent = exchange-map r record { le1 = le1 pre ; above = above pre ; sub = sub pre } lent
 exchange-map (m-inr r) pre lent = exchange-map r record { le1 = le1 pre ; above = above pre ; sub = sub pre } lent

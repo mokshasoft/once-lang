@@ -22116,3 +22116,32 @@ several can, what is unknown is WHICH OF THEM, a sum's tag, not a code address.
   the baseline (cold: Act 49 s including Events, Examples 12 s).
 * Whole-program: the table is the program's. Only flat values cross the boundary (`Spec.ABI`), so a
   closure never leaves it.
+
+## D406 — A ν IS A CLOSURE: ITS COALGEBRA A LABEL, ITS VALUE ITS SEED (2026-11-11)
+
+**Proposed** (made unattended under D405's "ν the same way"; for the user's review). **Applies**: D405
+(step 2), D404 (amended: no ν cell, no ν code word). Worked out in `Spikes/LinCore/` (plan 0.146 A12′).
+
+### Decision
+* **No ν type in the core.** A coalgebra of `F` on seeds `S` is a one-shot LABEL of argument `One`,
+  `sg once S One (LF∙ F S)`, its body over the labels before it as every body. A ν of it is a closure
+  `Ct l S`: it means its seed and is laid out as its seed (a stream of `Int`s is one word, no cell).
+* **`ana` is tagging the seed** (`lana = lclo Idf`): no event.
+* **Observing is a call** (`lobs F p = lclo F p ∘l lapp p ∘l ρl⁻`): the coalgebra runs on the seed, and
+  the seeds of the layer it returns are tagged with the same label. The one generator change: `lclo F`
+  tags every environment at the `Idf` positions of a layer (`lclo Idf` is D405's `lclo`). No event
+  beyond what the body does: no cell freed, none allocated, no code word read.
+* **`in-ν` (a ν built from a layer) is another label**, whose body returns that layer; where it meets an
+  unfolded ν the type is a sum (D405). The pass's job (A15), not a generator.
+* **No ν inside a functor code** (`Kν` removed): the Spec's functor constants are base types (`WFFun`,
+  `wf-K : Base Δ A`), so no IR type holds a ν inside data.
+* **No coinductive type in the meaning**: `Nu`, `unfoldNu` and the `Coalg` package go; the meaning stays a
+  structural recursion. The IR's `νᴵ` is related to a seed and a label by the pass's proof (A15), as a
+  function is to a closure.
+
+### Consequences
+* `sound`, `sized`, `exchange`, `noleak`, the lifetimes, unchanged in statement; five run rules and the
+  six `wrap` lemmas replaced by `tag` and three lemmas (`tag-er`, `tag-sized`, `cnt-tag`).
+* Cold build 67 s (74 s before).
+* Open for the review: the coalgebra's kind is one-shot (it owns its seed). A many-use coalgebra (one that
+  reads its seed lent and returns copies) is not needed by any IR constructor seen so far.

@@ -252,7 +252,7 @@ meet-words = refl
 
 -- build the closure, lend it to the fold, drop it
 closure-fold : LTm Γₚ (Bt int ⊗t IntList) IntList
-closure-fold = lul ∘l (drop ⊗l lid) ∘l lend (bsnd (lcata ListF (bapp p0))) ∘l (lclo p0 ⊗l lid)
+closure-fold = lul ∘l (drop ⊗l lid) ∘l lend (bsnd (lcata ListF (bapp p0))) ∘l (lclo Idf p0 ⊗l lid)
 
 q0 : Look defs p0 ε (bω lIn)
 q0 = lk-there (lk-there (lk-there (lk-there lk-here)))
@@ -339,7 +339,7 @@ emit-fold-events = refl
 ------------------------------------------------------------------------
 
 emit-closure : LTm Γₚ (Bt int) One
-emit-closure = lapp p2 ∘l (lclo p2 ⊗l lid) ∘l lul⁻
+emit-closure = lapp p2 ∘l (lclo Idf p2 ⊗l lid) ∘l lul⁻
 
 q2 : Look defs p2 _ (b1 (lop emit ∘l lul))
 q2 = lk-there (lk-there lk-here)
@@ -360,7 +360,7 @@ emit-closure-events = refl
 ------------------------------------------------------------------------
 
 composed : LTm Γₚ (Bt int) One
-composed = lapp p4 ∘l ((lclo p4 ∘l (lclo p2 ⊗l lclo p3) ∘l lul⁻) ⊗l lid) ∘l lul⁻
+composed = lapp p4 ∘l ((lclo Idf p4 ∘l (lclo Idf p2 ⊗l lclo Idf p3) ∘l lul⁻) ⊗l lid) ∘l lul⁻
 
 q4 : Look defs p4 _ (b1 comp-body)
 q4 = lk-here
@@ -424,3 +424,51 @@ ran-out-sound : RB (block (Lᶜ ε (liter emit-round) tt 0))
                    (io-call emit 0 tt ∷ io-call succ 0 1 ∷ io-call emit 1 tt ∷ io-call succ 1 2 ∷ [])
                    (ended exhausted)
 ran-out-sound = sound ran-out
+
+------------------------------------------------------------------------
+-- 11. ★ D406: a ν, DEFUNCTIONALISED. The naturals from a seed: the
+--     coalgebra is label 0 (the head is the seed, the next seed its
+--     successor), the stream is its seed, tagged: ONE word, no cell. Two
+--     observations: the two successor calls are the only events.
+------------------------------------------------------------------------
+
+NatsF : LF
+NatsF = Kb int ⊗f Idf
+
+σ-nats : Sg
+σ-nats = sg once (Bt int) One (LF∙ NatsF (Bt int))
+
+Γν : Cx
+Γν = ε ▸ σ-nats
+
+nats-body : LTm ε (Bt int ⊗t One) (Bt int ⊗t Bt int)
+nats-body = (lid ⊗l lop succ) ∘l dup ∘l ρl
+
+defsν : Defs Γν
+defsν = ε ▸ b1 nats-body
+
+pν : Γν ∋[ 0 ] σ-nats
+pν = here
+
+-- a stream of Ints is its seed: one word
+stream-words : words (Ct 0 (Bt int)) ≡ 1
+stream-words = refl
+
+-- build the stream at a seed, observe it, observe its tail
+nats-two : LTm Γν (Bt int) (Bt int ⊗t (Bt int ⊗t Ct 0 (Bt int)))
+nats-two = (lid ⊗l lobs NatsF pν) ∘l lobs NatsF pν ∘l lana pν
+
+nats-two-run : Run defsν nats-two mone (mbase 5) 0
+                 (gives (mpair (mbase 5) (mpair (mbase 6) (mct (mbase 7)))) 0) _
+nats-two-run =
+  r-∘ (r-∘ r-clo
+           (r-∘ (r-∘ r-ρ⁻ (r-app lk-here (r-∘ (r-∘ r-ρ r-dup) (r-⊗ r-id (r-op {y = 6}))))) r-clo))
+      (r-⊗ r-id
+           (r-∘ (r-∘ r-ρ⁻ (r-app lk-here (r-∘ (r-∘ r-ρ r-dup) (r-⊗ r-id (r-op {y = 7}))))) r-clo))
+
+nats-two-events : trace-of-run nats-two-run ≡ io succ 5 6 ∷ io succ 6 7 ∷ []
+nats-two-events = refl
+
+-- and it means what it does
+nats-two-sound : RB (block (Lᶜ ⟦ defsν ⟧D nats-two tt 5)) (io-call succ 5 6 ∷ io-call succ 6 7 ∷ []) (returns (5 , (6 , 7)))
+nats-two-sound = sound nats-two-run
