@@ -100,7 +100,9 @@ fmap∞ f m = m >>=∞ λ x → return∞ (f x)
 haltT : ∀ {X} (s : Sig) → ⟦ sdom s ⟧f → T∞ X
 block (haltT s x) = halt s x
 
--- Elgot iteration: a round's end that continues is a silent step
+-- the loop (D317): the unfold into `T∞ B`, the final coalgebra of
+-- `T (B + −)`, of a round `A → T∞ (B + A)`; a round's end that continues
+-- is a silent step
 iterRun   : ∀ {A B : Set} → (A → T∞ (B ⊎ A)) → T∞ (B ⊎ A) → T∞ B
 iterBlock : ∀ {A B : Set} → (A → T∞ (B ⊎ A)) → T ((B ⊎ A) ⊎ T∞ (B ⊎ A)) → T (B ⊎ T∞ B)
 block (iterRun f m) = iterBlock f (block m)
