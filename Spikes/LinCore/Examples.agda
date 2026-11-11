@@ -25,6 +25,7 @@
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Agda.Builtin.Sigma using (_,_)
+import Agda.Builtin.Sigma as Σ
 open import Data.Product using (_×_)
 open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ; zero; suc; z≤n; s≤s; _+_; _≤_)
@@ -591,7 +592,7 @@ counter-sound = whole-sound world 2 counter-ir tt
 --     around the body's events; erased, the events are the run's.
 ------------------------------------------------------------------------
 
-composed-machine : Out.mt (sim composed-run _ []ˢ end)
+composed-machine : Out.mt (sim composed-run _ []ˢ []ˢ end)
                  ≡ tmp (tnew 1) ∷ tmp (tnew 1) ∷ io succ 5 6 ∷ tmp (tdel 1)
                  ∷ tmp (tnew 1) ∷ io emit 6 tt ∷ tmp (tdel 1) ∷ tmp (tdel 1) ∷ []
 composed-machine = refl
@@ -605,3 +606,13 @@ reuse : Data.Maybe.map (λ p → Al.own p 2 , Al.top p)
           (Al.born 0 Al.empty >>= Al.born 1 >>= Al.died 0 >>= Al.born 2)
       ≡ just (0 , 2)
 reuse = refl
+
+------------------------------------------------------------------------
+-- 17. ★ A16: A SERVER ON THE MACHINE. §14's counter server, compiled from the
+--     IR (its loop reads a lent environment), cut after two rounds: the
+--     machine runs at least as far, and what it did up to the cut is legal.
+------------------------------------------------------------------------
+
+counter-machine : Σ.fst (machine-legal (Ran.run (exec world ε 2 (tr counter-ir) mone mone 0 tt)) _)
+                ≡ io emit 0 tt ∷ io succ 0 1 ∷ io emit 1 tt ∷ io succ 1 2 ∷ []
+counter-machine = refl

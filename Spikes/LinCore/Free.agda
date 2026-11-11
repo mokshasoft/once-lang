@@ -22,7 +22,7 @@
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; subst)
-open import Agda.Builtin.Sigma using (_,_)
+open import Agda.Builtin.Sigma using (Σ; _,_)
 open import Data.Product using (_×_)
 open import Data.Unit using (⊤; tt)
 open import Data.List using (List; []; _∷_; _++_; concatMap; foldl)
@@ -163,3 +163,21 @@ w-++ (w-tmp w) w₂ = w-tmp (w-++ w w₂)
 w-self : ∀ {inj : Y → X} t → Weave inj t [] t
 w-self []      = w-[]
 w-self (x ∷ t) = w-run (w-self t)
+
+≼-trans : ∀ {a b c : List X} → a ≼ b → b ≼ c → a ≼ c
+≼-trans []≼      _        = []≼
+≼-trans (∷≼ p)   (∷≼ q)   = ∷≼ (≼-trans p q)
+
+≼-refl : ∀ (a : List X) → a ≼ a
+≼-refl []      = []≼
+≼-refl (x ∷ a) = ∷≼ (≼-refl a)
+
+-- the weave of a prefix: a prefix of the weave
+weave-pre : ∀ {inj : Y → X} {t₀ ts mt t} → Weave inj t₀ ts mt → t ≼ t₀
+          → Σ (List Y) λ ts′ → Σ (List X) λ mt′ → Weave inj t ts′ mt′ × mt′ ≼ mt
+weave-pre w-[]       []≼     = ([] , [] , w-[] , []≼)
+weave-pre (w-run w)  []≼     = ([] , [] , w-[] , []≼)
+weave-pre (w-run w)  (∷≼ q)  with weave-pre w q
+... | (ts′ , mt′ , w′ , p) = (ts′ , _ ∷ mt′ , w-run w′ , ∷≼ p)
+weave-pre (w-tmp w)  q       with weave-pre w q
+... | (ts′ , mt′ , w′ , p) = (_ ∷ ts′ , _ ∷ mt′ , w-tmp w′ , ∷≼ p)
