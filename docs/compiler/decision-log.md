@@ -22242,6 +22242,28 @@ The choices, each principled, with different costs:
 `Call` (named definitions) is the same question: a call graph without cycles inlines or becomes labels;
 a cycle needs 1. `in-ν` and a ν's observation are labels too (D406).
 
+### Part 2, decided by the user (2026-11-11): per-lambda labels, closures as data only where data decides
+Checked against GOAL.md and the Spec, not only against the log. The log's later entries override its
+earlier ones, and GOAL.md overrides both.
+* **The Spec's facts.**
+  * `⊢fold` takes any carrier, function types included, and `⊢iter` takes any state. So closures can nest
+    as deep as a fold's input, or as many rounds as a server has run.
+  * `μ` holds no functions (`WFFun`: base constants), so that nesting is never a surface data type.
+  * A definition refers only to earlier ones (`Core.Syntax`, GOAL.md "no definition that refers to
+    itself"), so `Call` never cycles. Each call becomes a label or is inlined, which needs no decision.
+* **Option 3 is rejected.** It rejects programs that the Spec types.
+* **D405's "start coarse" is withdrawn.** One sum per arrow type keeps a tag where the compiler knows the
+  lambda, which GOAL.md forbids ("no code pointer where the compiler knows which function is meant").
+* **Decision: option 2, with option 1 confined.**
+  * Flow analysis gives each application site the lambdas that reach it. Where one lambda reaches a site,
+    the call is direct and stores nothing.
+  * Closures as data, applied by the interpreter loop, are used only where closures nest through a fold's
+    carrier or a loop's state. There, which lambda is meant is decided by data at run time, the case
+    GOAL.md allows a tag for.
+  * The recursive type of environments is internal to the core and never a surface type.
+* **Order.** Build option 1 first (the general pass, proved like `pass-ok`), then option 2 as a refinement
+  proved against it.
+
 ## D410 — A MODEL MACHINE: CODE, FRAMES IN HEAP BLOCKS, A SIMULATION BY THE RUN (2026-11-11)
 
 **Proposed** (made unattended; for the user's review). Worked out in `Spikes/LinCore/Machine.agda` (plan
