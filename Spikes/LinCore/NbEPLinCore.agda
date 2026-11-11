@@ -355,6 +355,8 @@ data Tm (Γ : Cx) : LTy → LTy → LTy → Set where
   bapp    : ∀ {l X A B} → Γ ∋[ l ] sg many X A B → Tm Γ (Ct l X) A B
   -- ★ A11: the SigOps, anywhere a term can be. `lop`: Pure or Emits, an event
   -- and the world's answer; `lhalt`: Halts, the run ends
+  -- ★ A15: a constant of a base type (the IR's `const`): a word, no event
+  lconst  : ∀ {b E} → ⟦ b ⟧b → Tm Γ E One (Bt b)
   lop     : (s : Sig) → ∀ {E} → Tm Γ E ⌜ sdom s ⌝ ⌜ scod s ⌝
   lhalt   : (s : Sig) → ∀ {E} → Tm Γ E ⌜ sdom s ⌝ Zero
   -- ★ A11: the loop (D317): the round reads `E` and the state, and ends with
@@ -453,6 +455,7 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᶜ (bout {F} f)   e         a              = Lᶜ f (coh⁻¹ F (μt F) (outμ e)) a
     Lᶜ bcopy          e         a              = return∞ e
     Lᶜ (bapp p)       x         a              = lookup ρ p x a
+    Lᶜ (lconst v)     e         _              = return∞ v
     Lᶜ (lop s)        e         x              = callT s x
     Lᶜ (lhalt s)      e         x              = haltT s (toF (sdom s) x)
     Lᶜ (liter f)      e         a              = iter∞ (Lᶜ f e) a

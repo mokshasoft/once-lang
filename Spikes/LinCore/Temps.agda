@@ -184,6 +184,7 @@ plain (r-caseE₂ r) = r-caseE₂ (plain r)
 plain (r-out r) = r-out (plain r)
 plain (r-copy {e = e} {n}) = retrace (sym (erase-NoT _ (NoT-copy e n))) r-copy
 plain (r-bapp q r) = r-bapp q (plain r)
+plain r-const = r-const
 plain r-op = r-op
 plain r-halt = r-halt
 plain (r-iter {t₁ = t₁} r (go-on done)) = retrace (sym (erase-++ t₁ [])) (r-iter (plain r) (go-on done))
@@ -468,6 +469,7 @@ tsound (r-caseE₂ r) = tsound r
 tsound (r-out {i = i} {o = o} {t = t} r) = TPost-peek o i t (tsound r)
 tsound (r-copy {e = e} {n}) = NoT-Bal (snd (snd (copy e n))) (NoT-copy e n)
 tsound (r-bapp q r) = tsound r
+tsound r-const = bal[]
 tsound r-op = ((tt , tt) , λ k → refl)
 tsound r-halt = (tt , tt)
 tsound (r-iter {t₁ = t₁} r (go-on done)) = IsSubmonoid.∙-∈ balanced {t₁} {[]} (tsound r) bal[]
