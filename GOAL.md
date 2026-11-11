@@ -85,6 +85,20 @@ Spec where possible, so a change that breaks it fails the formal build:
 - **Bare metal.** No garbage collector, no runtime system; memory is managed by
   the compiler from the program's structure.
 
+## Nothing known at compile time is kept at run time
+
+A compiled program stores and tests only what the compiler cannot know: the
+data the world answers with, and the choices that data drives. Anything that
+follows from the program's types or structure is decided when the program is
+compiled and emitted as code, never carried in a word at run time. So there
+are no reference counts, ownership flags or type tags, no stored sizes, and no
+code pointer where the compiler knows which function is meant. A sum's tag is
+kept only because which side was taken really is decided at run time.
+
+This is the counterpart of bare metal: no runtime system also means no runtime
+bookkeeping. A word stored for something the compiler already knew costs
+memory and time, and it is a fact the proof must track twice.
+
 ## Verified, without axioms
 
 The compiler is proved correct in Agda, and the proof rests on **no axioms** —
