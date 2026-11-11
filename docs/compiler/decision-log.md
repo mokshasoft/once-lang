@@ -22176,3 +22176,27 @@ amendment; for the user's review). Worked out in `Spikes/LinCore/` (plan 0.146 A
 * A finer form: balanced = the kernel of a homomorphism into the bicyclic monoid per size (unmatched
   frees, unmatched allocations). Not needed by any proof so far; the ledger action is what the weave
   needs.
+
+## D408 — EVERY PROGRAM HAS A RUN: AN EVALUATOR THAT BUILDS IT; A WORLD MAY NOT ANSWER (2026-11-11)
+
+**Proposed** (made unattended; for the user's review). Worked out in `Spikes/LinCore/Total.agda` (plan
+0.146 A14, step 1).
+
+### Decision
+* **Totality by construction.** `exec` builds a `Run` of every term, from every lent value, input,
+  counter and world state, given FUEL: a number of loop rounds. A run that uses its fuel ends
+  `exhausted` after the rounds it ran (D374: a server's run is cut a round at a time).
+* **No relation on the type is needed** (D405 pays off). Applying a closure runs a body over a strictly
+  shorter prefix of the table, so the table's runners are built in order (`runners`, as `⟦_⟧D`); a fold
+  recurses on the value; the term shrinks everywhere else. Termination: fuel, then term, then value.
+* **A world is any machine answering SigOps** (a state and an answer function: every history-dependent
+  strategy). **It may give no answer**, and then the run is cut at that call (`r-exh`, which `sound`
+  already covers). It must not answer an op whose answer type is empty (an exit called by `lop`, not
+  `lhalt`): a world that had to answer every op would not exist for such a signature, and the theorem
+  would be vacuous.
+
+### Open for the review
+* An unanswered call ends the run as `exhausted`, the reason D374 gives to running out of memory. A
+  separate reason (the world did not answer) would need a new `Why` and an `RB` case.
+* Step 2: that `exhausted` comes only from the fuel or an unanswered call, never from the evaluator,
+  so that `noleak` and `lifetimes` hold of runs that do something.
