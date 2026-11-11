@@ -194,19 +194,21 @@ list-sized = sized (list-step 5) tt (sized build-run tt tt)
 --    (`lend`, `bapp` at each layer) and it is freed once, after.
 ------------------------------------------------------------------------
 
--- the algebra, as a closure value (its environment is `One` here)
-alg-closure : LTm One (LF∙ ListF IntList ⇛t IntList)
+-- the algebra, as a closure value; its environment is an Int (unused by the
+-- body here: what matters is that the closure has a cell)
+alg-closure : LTm (Bt int) (LF∙ ListF IntList ⇛t IntList)
 alg-closure = lcurryB lIn
 
 -- build the closure, lend it to the fold, drop it
-closure-fold : LTm IntList IntList
-closure-fold = lul ∘l (drop ⊗l lid) ∘l lend (bsnd (lcata ListF bapp)) ∘l (alg-closure ⊗l lid) ∘l lul⁻
+closure-fold : LTm (Bt int ⊗t IntList) IntList
+closure-fold = lul ∘l (drop ⊗l lid) ∘l lend (bsnd (lcata ListF bapp)) ∘l (alg-closure ⊗l lid)
 
--- on [5], from counter 2: the closure is block (1 , 2) (a code word, nothing
--- else); the new list is (3 , 4) → (3 , 3)
-closure-fold-run : Run closure-fold mone (one-list 5) 2 (gives (mmu (3 , 4) (minr (mpair (mbase 5) (mmu (3 , 3) (minl mone))))) 5) _
+-- on 7 and [5], from counter 2: the closure is block (2 , 2) (a code word and
+-- the Int); the new list is (3 , 4) → (3 , 3)
+closure-fold-run : Run closure-fold mone (mpair (mbase 7) (one-list 5)) 2
+                       (gives (mmu (3 , 4) (minr (mpair (mbase 5) (mmu (3 , 3) (minl mone))))) 5) _
 closure-fold-run =
-  r-∘ (r-∘ (r-∘ (r-∘ r-λ⁻ (r-⊗ r-curryB r-id))
+  r-∘ (r-∘ (r-∘ (r-⊗ r-curryB r-id)
                 (r-lend (r-snd (r-cata (m-inr (m-pair m-b (m-id (r-cata (m-inl m-one) (r-app r-In)))))
                                        (r-app r-In)))))
            (r-⊗ r-drop r-id))
@@ -215,9 +217,29 @@ closure-fold-run =
 -- ★ by evaluation: the closure allocated once, read once per layer (twice),
 -- never copied, freed once at the end
 closure-fold-events : trace-of-run closure-fold-run
-                    ≡ alloc (1 , 2) ∷ free (3 , 1) ∷ free (3 , 0) ∷ peek (1 , 2) ∷ alloc (3 , 3)
-                      ∷ peek (1 , 2) ∷ alloc (3 , 4) ∷ free (1 , 2) ∷ []
+                    ≡ alloc (2 , 2) ∷ free (3 , 1) ∷ free (3 , 0) ∷ peek (2 , 2) ∷ alloc (3 , 3)
+                      ∷ peek (2 , 2) ∷ alloc (3 , 4) ∷ free (2 , 2) ∷ []
 closure-fold-events = refl
+
+-- ★ A12: the same fold with a closure over `One`: an environment of no words,
+-- so no cell. Building, lending, applying and dropping the closure are no
+-- events; what is left is the list's own
+alg-closure₀ : LTm One (LF∙ ListF IntList ⇛t IntList)
+alg-closure₀ = lcurryB lIn
+
+closure-fold₀ : LTm IntList IntList
+closure-fold₀ = lul ∘l (drop ⊗l lid) ∘l lend (bsnd (lcata ListF bapp)) ∘l (alg-closure₀ ⊗l lid) ∘l lul⁻
+
+closure-fold₀-run : Run closure-fold₀ mone (one-list 5) 2 (gives (new-list 5) 4) _
+closure-fold₀-run =
+  r-∘ (r-∘ (r-∘ (r-∘ r-λ⁻ (r-⊗ r-curryB r-id))
+                (r-lend (r-snd (r-cata (m-inr (m-pair m-b (m-id (r-cata (m-inl m-one) (r-app r-In)))))
+                                       (r-app r-In)))))
+           (r-⊗ r-drop r-id))
+      r-λ
+
+closure-fold₀-events : trace-of-run closure-fold₀-run ≡ free (3 , 1) ∷ free (3 , 0) ∷ alloc (3 , 2) ∷ alloc (3 , 3) ∷ []
+closure-fold₀-events = refl
 
 ------------------------------------------------------------------------
 -- 4. A8: the same round, IN PLACE. Written `lcata ListF (lIn ∘l lid)` (the
@@ -241,13 +263,13 @@ in-place-sound = sound in-place-run
 
 ------------------------------------------------------------------------
 -- 5. The lifetime of one block, by evaluation: the algebra closure of §3
---    (block (1 , 2)) is born, read once per layer, and dies once.
+--    (block (2 , 2)) is born, read once per layer, and dies once.
 ------------------------------------------------------------------------
 
-closure-life : on (1 , 2) (trace-of-run closure-fold-run) ≡ born ∷ read ∷ read ∷ died ∷ []
+closure-life : on (2 , 2) (trace-of-run closure-fold-run) ≡ born ∷ read ∷ read ∷ died ∷ []
 closure-life = refl
 
-closure-life-ok : Life dead (on (1 , 2) (trace-of-run closure-fold-run)) dead
+closure-life-ok : Life dead (on (2 , 2) (trace-of-run closure-fold-run)) dead
 closure-life-ok = birth (use (use (death done)))
 
 ------------------------------------------------------------------------
@@ -289,12 +311,13 @@ emit-fold-events = refl
 emit-closure : LTm (Bt int) One
 emit-closure = leval ∘l (lcurry (lop emit ∘l lul) ⊗l lid) ∘l lul⁻
 
-emit-closure-run : Run emit-closure mone (mbase 5) 0 (gives mone 1) _
+emit-closure-run : Run emit-closure mone (mbase 5) 0 (gives mone 0) _
 emit-closure-run =
   r-∘ (r-∘ r-λ⁻ (r-⊗ r-curry r-id))
       (r-eval (r-∘ r-λ (r-op {y = tt})))
 
-emit-closure-events : trace-of-run emit-closure-run ≡ alloc (1 , 0) ∷ free (1 , 0) ∷ io emit 5 tt ∷ []
+-- its environment is `One`: no cell (A12), so the emit is the only event
+emit-closure-events : trace-of-run emit-closure-run ≡ io emit 5 tt ∷ []
 emit-closure-events = refl
 
 ------------------------------------------------------------------------
