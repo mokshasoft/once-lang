@@ -22037,3 +22037,38 @@ Still **Proposed**: the user's review of this entry's remaining points continues
   with an empty environment gets no cell, decided with sizes (plan 0.146 A12).
 * **Order.** The spike continues until every question mark it can resolve is gone (plan 0.146 A10–A17); only
   then does the integration (§4 B) start.
+
+## D404 — THE LINEAR CORE'S DECORATIONS: SIZED BLOCK NAMES, THE ABI LAYOUT, FLAT SIGOPS, NO CELL FOR AN EMPTY ENVIRONMENT (2026-11-11)
+
+**Proposed** (plan 0.146 A12, made unattended per the standing rule, for the user's review with D403).
+**Applies**: D403 (amended: decorations decided by the type, the theorems unchanged), D402 (free lists
+per size), `Spec.ABI` (the layout of a base value), `Spec.Signature` (`BTy`, an operation answering `void`
+halts), plan 0.123 D6 (no run-time ownership information). Worked out in `Spikes/LinCore/` (`--safe`, no
+postulates); `exchange`, `noleak`, `lifetimes` and `lifetimes-exit` are stated as before.
+
+### Decision
+* **A block's name is its size and a serial** (`Events.Id = ℕ × ℕ`). A `free` names the block it frees,
+  so it carries the size its `alloc` did: what free lists per size need, given by `lifetimes` with no new
+  proof. Fresh means a serial at or above the run's counter.
+* **The layout is `Spec.ABI`'s, decided by the type** (`Events.words`): `Unit`/`Void` no words, a pair
+  both halves, a sum a tag word and the larger alternative, a base word `bw b` (a parameter; one word on
+  every target). A μ, a ν and a closure are a one-word pointer to their cell.
+* **What a cell holds.** A μ node: its layer (`szμ F`). A closure, a ν suspension, a ν layer: a CODE WORD
+  and the environment, seed or layer (`szclo`, `szν`, `szνv`). The code word is what applying, observing
+  or dropping the value runs, so an untagged machine knows what to do with it; it is the value's
+  behaviour, not ownership information (D6). Theorem `sized`: from a sized input and lent value, every
+  value a run gives names each cell with its type's size.
+* **No cell for an environment of no words** (`Events.Slot`, `newS`). A closure whose environment's type
+  has no words (`words E ≡ 0`) is a pointer to a static code block: building, applying, reading and
+  dropping it are no events. Decided by the environment's type at `lcurry`/`lcurryB` and at a copy;
+  `Sized` records it.
+* **SigOps take and answer flat types** (`LinCore.Flat.FTy`, the Spec's `BTy`: `unit void word * +`). A
+  flat value has no cell (`cnt-flat`). An emit answers `unit`, an exit `void`, as in the Spec.
+* **`Kzero`**: the constant `Void` in `LF`, as the Spec's `K Void`.
+
+### For the review
+* `lhalt` stays a generator of its own (the term chooses to halt), where the Spec halts by the TYPE (an
+  operation answering `void`). A `lop` at a `void` answer has no run that gives a value, only `exhausted`
+  ones; the pass (A15) maps such an operation to `lhalt`, and A14's totality is stated with that.
+* Not done, the same pattern: a ν suspension whose seed has no words could also be a static block; a μ
+  node whose layer has no words still gets a cell. Neither occurs in the corpus's servers.
