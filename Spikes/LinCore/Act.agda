@@ -29,10 +29,11 @@ open import Data.Nat.Properties using (≤-refl; ≤-trans)
 open import Data.Nat.Tactic.RingSolver using (solve-∀)
 open import Data.List using ([]; _∷_; _++_)
 open import Data.List.Properties using (++-assoc)
+open import LinCore.Flat using (FTy)
 
 module LinCore.Act
   (Base : Set) (⟦_⟧b : Base → Set)
-  (Sig : Set) (sdom scod : Sig → Base)
+  (Sig : Set) (sdom scod : Sig → FTy Base)
   where
 
 open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
