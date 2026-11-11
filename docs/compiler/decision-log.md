@@ -22072,3 +22072,47 @@ postulates); `exchange`, `noleak`, `lifetimes` and `lifetimes-exit` are stated a
   ones; the pass (A15) maps such an operation to `lhalt`, and A14's totality is stated with that.
 * Not done, the same pattern: a ν suspension whose seed has no words could also be a static block; a μ
   node whose layer has no words still gets a cell. Neither occurs in the corpus's servers.
+
+## D405 — NOTHING KNOWN AT COMPILE TIME IS KEPT AT RUN TIME: CLOSURES DEFUNCTIONALISED BY LABEL, A STRATIFIED TABLE (2026-11-11)
+
+**Accepted** (the user, 2026-11-11: the principle, and option 2 over option 1). **Applies**: `GOAL.md`
+("Nothing known at compile time is kept at run time"), D404 (amended: no code word, no closure cell),
+D403 point 5 (the two closure types, superseded), D131 (many-use closures, kept as a label kind), plan
+0.123 D6 (subsumed). Worked out in `Spikes/LinCore/` (plan 0.146 A12, step 1).
+
+### The principle
+A compiled program stores and tests only what the compiler cannot know. D404 put a code word in every
+closure and ν cell; the code is not run-time information when only one function can arrive, and when
+several can, what is unknown is WHICH OF THEM, a sum's tag, not a code address.
+
+### Decision
+* **A closure's type names its code.** `Ct l X`: an environment `X`, tagged with a LABEL `l` (one per
+  lambda of the program). It means its environment (`⟦ Ct l X ⟧ = ⟦ X ⟧`) and is laid out as it
+  (`words (Ct l X) = words X`): no code word, no cell, no pointer; an empty environment is no words.
+  Applying it is a direct call to `l`'s body. Where lambdas meet (a `case` returning different ones),
+  the type is a sum `Ct l₁ X₁ ⊕t Ct l₂ X₂`, and the sum's tag is the only run-time word, there because
+  the branch was taken at run time.
+* **The label table is STRATIFIED** (`Cx`, `Defs`): each body is typed over the labels before it, as a
+  lambda's body only builds the lambdas nested in it. `Tm Γ E A B` is indexed by the labels in scope;
+  a label is a position counted from the oldest, so it names the same entry in every extension. The
+  meaning is a structural recursion over the table (no knot, no silent step, no funext); the meaning of
+  a closure call is `lookup-body`, proved by induction on the label.
+  - Rejected: a table whose bodies may call any label. Its meaning is a knot that `--safe` Agda cannot
+    tie (no sized types; `>>=∞`'s continuation hides the guard). Probed and refused, 2026-11-11.
+* **Two kinds of label** (D131 kept): a ONE-SHOT body owns its environment (`Tm Γ One (X ⊗t A) B`); a
+  MANY-USE body reads it lent (`Tm Γ X A B`), so it can be applied while lent, at every layer of a fold.
+* **Option 2 contains option 1.** Per-type defunctionalisation is the table with one coarse sum per arrow
+  type. How fine the sums are is the pass's choice (A15), not the core's: start coarse, refine later, the
+  core and its theorems unchanged.
+* **A chain of closures of unbounded depth is data.** A body cannot call its own label, so a fold whose
+  carrier is a function (each layer's closure holding the previous one) is not a table entry: A15 turns
+  it into a μ (the chain, as Reynolds' defunctionalised continuation) applied by a loop. The unbounded
+  structure is then visible as what it is at run time, a list or a stack, in a cell per node.
+* **ν the same way** (step 2): a suspension is a labelled coalgebra and its seed, laid out as the seed.
+
+### What it costs
+* Build time of the proofs, not compile or run time: the index `Γ` is a plain variable, never computed
+  (DirectedHoTT LESSONS §3, "Generalise into functions, not into datatype indices"), and measured against
+  the baseline (cold: Act 49 s including Events, Examples 12 s).
+* Whole-program: the table is the program's. Only flat values cross the boundary (`Spec.ABI`), so a
+  closure never leaves it.
