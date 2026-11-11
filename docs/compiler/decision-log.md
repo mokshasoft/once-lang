@@ -22355,6 +22355,16 @@ Checked against GOAL.md and the Spec.
   corollary.
 * **Rejected:** two claims (finished runs, plus round boundaries for servers), since it special-cases the
   loop; and master's form as it is, since it would restrict server state to words.
+* **Proved in the spike** (`Spikes/LinCore/Held.agda`, `held-always`): from a closed program's start, at
+  every configuration the machine reaches, every event so far was legal and the live cells are exactly
+  the cells of the values it holds (its operands, and the value each lend's slot keeps). It holds of any
+  code, not only compiled code, since the instruction set is linear: only `dup`/`ecopy` make a second
+  value (by allocating), only `drop` and a fold's node end one (by freeing), views come and go with no
+  event. To say which slot owns, an environment slot is a view or a lend's (`Machine.Slots`); the tag is
+  the lowering's knowledge, and the machine reads only the view. Frames (temporaries) are outside the
+  cells: each is freed by the `leave` its `enter` is matched with (`Machine.framed`). Example
+  (`Examples` §20): §2's list server as a closed program, compiled, run on the machine and cut after two
+  rounds; there it holds the last round's nil and cons and nothing of the earlier lists.
 * **Consequences.**
   * The spike proves it on the model machine, of every reachable configuration (plan A16).
   * B replaces `LeakFree.freed` in `formal/Once/Implementation.agda` by the per-step form. That file is
