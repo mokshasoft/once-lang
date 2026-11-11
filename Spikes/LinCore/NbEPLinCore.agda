@@ -10,8 +10,10 @@
 --   * `LF` — polynomial functor codes, kept OBJECT-LANGUAGE-INDEPENDENT. A
 --     constant is `Kone`, an inert leaf `Kb`, or a CODE (`Kμ`/`Kν`), never an
 --     arbitrary `LTy`: that is what makes `Mu` strictly positive with no pragma.
---   * `LTy` — with `νt` and base leaves from the start, and two arrows: `⇒t`
---     (one-shot) and `⇛t` (many-use).
+--   * `LTy` — with `νt` and base leaves from the start. ★ D405: no arrow
+--     type; a closure is `Ct l X`, its environment tagged with its label.
+--   * `Cx`, `Defs` — the program's labels and their bodies, each typed over
+--     the labels before it (one-shot or many-use, D131).
 --   * `Tm E A B` — every generator: symmetric monoidal over `⊗t`, additive
 --     coproducts, an EXPLICIT comonoid (`dup`/`drop`), both fixpoints, closures,
 --     a lent context `E` (A10), and the SigOps and the loop (A11).
@@ -41,6 +43,8 @@ open import Data.Empty using (⊥)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Nat using (ℕ; zero; suc)
+open import Agda.Builtin.Equality using (_≡_; refl)
 open import LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_; ⟦_⟧F)
 
 module LinCore.NbEPLinCore
@@ -134,17 +138,16 @@ data LF : Set where
 
 infixr 5 _⊗t_
 infixr 4 _⊕t_
-infixr 3 _⇒t_ _⇛t_
 data LTy : Set where
   One  : LTy
   Zero : LTy
   _⊗t_ : LTy → LTy → LTy
   _⊕t_ : LTy → LTy → LTy
-  _⇒t_ : LTy → LTy → LTy
-  -- ★ plan 0.146 A2 (D131): a MANY-USE closure — its body only reads its
-  -- environment, so it can be applied while lent, any number of times, and is
-  -- freed once (QTT's ω arrow; `⇒t` is the one-shot, 1-graded one)
-  _⇛t_ : LTy → LTy → LTy
+  -- ★ D405: a CLOSURE is its environment `X`, tagged with its code: the label
+  -- `l` of one lambda of the program (`Cx`). Its type names the code, so
+  -- nothing at run time does: no code word, no cell. Where lambdas meet, the
+  -- type is a sum of these, and the sum's tag is the run-time choice.
+  Ct   : ℕ → LTy → LTy
   μt   : LF → LTy
   νt   : LF → LTy          -- ★ present because the theory wants it
   Bt   : Base → LTy        -- ★ likewise
@@ -165,8 +168,8 @@ LF∙ (F ⊗f G)  X = LF∙ F X ⊗t LF∙ G X
 --
 -- `Mu` (inductive) and `Nu` (coinductive: observing it is a computation, as
 -- master's `νᴵ`) share `FS`. Putting them in ONE mutual block is the payoff of
--- §1's restriction on `LF`: neither mentions `⟦_⟧`, so `⇒t`'s negative
--- occurrence cannot taint their positivity.
+-- §1's restriction on `LF`: neither mentions `⟦_⟧`, so no object type can
+-- taint their positivity.
 ------------------------------------------------------------------------
 
 mutual
@@ -200,8 +203,7 @@ force (inν w) = return∞ w
 ⟦ Zero ⟧     = ⊥
 ⟦ A ⊗t B ⟧   = ⟦ A ⟧ × ⟦ B ⟧
 ⟦ A ⊕t B ⟧   = ⟦ A ⟧ ⊎ ⟦ B ⟧
-⟦ A ⇒t B ⟧   = ⟦ A ⟧ → T∞ ⟦ B ⟧
-⟦ A ⇛t B ⟧   = ⟦ A ⟧ → T∞ ⟦ B ⟧    -- the same meaning; the difference is in memory
+⟦ Ct l X ⟧   = ⟦ X ⟧                -- defunctionalised: a closure means its environment
 ⟦ μt F ⟧     = Mu F
 ⟦ νt F ⟧     = Nu F
 ⟦ Bt b ⟧     = ⟦ b ⟧b
@@ -275,6 +277,34 @@ block (callT s x) = call s (toF (sdom s) x) (λ y → ret (inj₁ (fromF (scod s
 infixr 9 _∘l_
 infixr 7 _⊗l_
 
+-- ★ D405: THE LABELS. A label's signature: its kind, environment, domain and
+-- codomain. A ONE-SHOT body owns its environment; a MANY-USE one (D131) reads
+-- it lent, so it can be applied while lent, at every layer of a fold.
+data Kd : Set where
+  once many : Kd
+
+record Sg : Set where
+  constructor sg
+  field kd : Kd
+        env dom cod : LTy
+open Sg public
+
+-- the labels in scope, oldest first: each body is typed over the ones before
+-- it, as a lambda's body only builds the lambdas nested in it
+infixl 4 _▸_
+data Cx : Set where
+  ε   : Cx
+  _▸_ : Cx → Sg → Cx
+
+len : Cx → ℕ
+len ε       = zero
+len (Γ ▸ _) = suc (len Γ)
+
+-- label `l`, counted from the oldest: it names the same entry in every extension
+data _∋[_]_ : Cx → ℕ → Sg → Set where
+  here  : ∀ {Γ σ} → (Γ ▸ σ) ∋[ len Γ ] σ
+  there : ∀ {Γ σ τ l} → Γ ∋[ l ] σ → (Γ ▸ τ) ∋[ l ] σ
+
 -- ★ plan 0.146 A10: ONE term language.  `Tm E A B` is a morphism `A → B` that
 -- OWNS its input and may READ a lent `E`: never frees it, never keeps it.  What
 -- a result keeps of `E` is copied out (`bcopy`, D402's choice A), so the owner
@@ -283,153 +313,208 @@ infixr 7 _⊗l_
 -- closure's environment or a ν's seed: those bodies are closed over `One`.
 -- Every generator exists at every `E`; a term with nothing lent is `LTm`.
 -- `E` comes last among the implicits so that `lIn {F}`, `linl {A} {B}` still read.
-data Tm : LTy → LTy → LTy → Set where
-  lid     : ∀ {A E} → Tm E A A
-  _∘l_    : ∀ {A B C E} → Tm E B C → Tm E A B → Tm E A C
-  _⊗l_    : ∀ {A B C D E} → Tm E A B → Tm E C D → Tm E (A ⊗t C) (B ⊗t D)
+-- ★ D405: `Γ`, the labels in scope, is a parameter: a body is not a term's
+-- part but a table entry (`Defs`), so every generator is at the same `Γ`.
+data Tm (Γ : Cx) : LTy → LTy → LTy → Set where
+  lid     : ∀ {A E} → Tm Γ E A A
+  _∘l_    : ∀ {A B C E} → Tm Γ E B C → Tm Γ E A B → Tm Γ E A C
+  _⊗l_    : ∀ {A B C D E} → Tm Γ E A B → Tm Γ E C D → Tm Γ E (A ⊗t C) (B ⊗t D)
   -- unitors, associator, braiding: the SMC structure.  All free — moving data
   -- is not copying it.
-  ρl      : ∀ {A E} → Tm E (A ⊗t One) A
-  ρl⁻     : ∀ {A E} → Tm E A (A ⊗t One)
-  lul     : ∀ {A E} → Tm E (One ⊗t A) A
-  lul⁻    : ∀ {A E} → Tm E A (One ⊗t A)
-  lassoc  : ∀ {A B C E} → Tm E ((A ⊗t B) ⊗t C) (A ⊗t (B ⊗t C))
-  lassoc⁻ : ∀ {A B C E} → Tm E (A ⊗t (B ⊗t C)) ((A ⊗t B) ⊗t C)
-  lswap   : ∀ {A B E} → Tm E (A ⊗t B) (B ⊗t A)
+  ρl      : ∀ {A E} → Tm Γ E (A ⊗t One) A
+  ρl⁻     : ∀ {A E} → Tm Γ E A (A ⊗t One)
+  lul     : ∀ {A E} → Tm Γ E (One ⊗t A) A
+  lul⁻    : ∀ {A E} → Tm Γ E A (One ⊗t A)
+  lassoc  : ∀ {A B C E} → Tm Γ E ((A ⊗t B) ⊗t C) (A ⊗t (B ⊗t C))
+  lassoc⁻ : ∀ {A B C E} → Tm Γ E (A ⊗t (B ⊗t C)) ((A ⊗t B) ⊗t C)
+  lswap   : ∀ {A B E} → Tm Γ E (A ⊗t B) (B ⊗t A)
   -- ★ THE COMONOID — the only sources of duplication / discard
-  dup     : ∀ {A E} → Tm E A (A ⊗t A)
-  drop    : ∀ {A E} → Tm E A One
+  dup     : ∀ {A E} → Tm Γ E A (A ⊗t A)
+  drop    : ∀ {A E} → Tm Γ E A One
   -- additive coproducts, and the initial object
-  linl    : ∀ {A B E} → Tm E A (A ⊕t B)
-  linr    : ∀ {A B E} → Tm E B (A ⊕t B)
-  lcase   : ∀ {A B C E} → Tm E A C → Tm E B C → Tm E (A ⊕t B) C
-  lzero   : ∀ {A E} → Tm E Zero A
+  linl    : ∀ {A B E} → Tm Γ E A (A ⊕t B)
+  linr    : ∀ {A B E} → Tm Γ E B (A ⊕t B)
+  lcase   : ∀ {A B C E} → Tm Γ E A C → Tm Γ E B C → Tm Γ E (A ⊕t B) C
+  lzero   : ∀ {A E} → Tm Γ E Zero A
   -- initial algebra: constructor, DESTRUCTOR, fold (★ reads `E` at every layer,
   -- with no copy of `E`)
-  lIn     : ∀ {F E} → Tm E (LF∙ F (μt F)) (μt F)
-  lOutμ   : ∀ {F E} → Tm E (μt F) (LF∙ F (μt F))
-  lcata   : ∀ F {A E} → Tm E (LF∙ F A) A → Tm E (μt F) A
+  lIn     : ∀ {F E} → Tm Γ E (LF∙ F (μt F)) (μt F)
+  lOutμ   : ∀ {F E} → Tm Γ E (μt F) (LF∙ F (μt F))
+  lcata   : ∀ F {A E} → Tm Γ E (LF∙ F A) A → Tm Γ E (μt F) A
   -- ★ final coalgebra: observation, unfold, and the dual constructor.  A
   -- coalgebra outlives every scope, so it reads nothing lent.
-  lOut    : ∀ {F E} → Tm E (νt F) (LF∙ F (νt F))
-  lAna    : ∀ F {A E} → Tm One A (LF∙ F A) → Tm E A (νt F)
-  lInν    : ∀ {F E} → Tm E (LF∙ F (νt F)) (νt F)
-  -- closed structure.  A closure outlives every scope too.
-  lcurry  : ∀ {A B C E} → Tm One (A ⊗t B) C → Tm E A (B ⇒t C)
-  leval   : ∀ {A B E} → Tm E ((A ⇒t B) ⊗t A) B
+  lOut    : ∀ {F E} → Tm Γ E (νt F) (LF∙ F (νt F))
+  lAna    : ∀ F {A E} → Tm Γ One A (LF∙ F A) → Tm Γ E A (νt F)
+  lInν    : ∀ {F E} → Tm Γ E (LF∙ F (νt F)) (νt F)
+  -- ★ D405, closed structure, defunctionalised: a closure of label `l` is its
+  -- environment, tagged (no event); applying it calls `l`'s body directly.
+  -- A one-shot closure is applied owned, a many-use one (D131) lent.
+  lclo    : ∀ {l k X A B E} → Γ ∋[ l ] sg k X A B → Tm Γ E X (Ct l X)
+  lapp    : ∀ {l X A B E} → Γ ∋[ l ] sg once X A B → Tm Γ E (Ct l X ⊗t A) B
   -- ★ the scope: lend `X` to a body, which also reads what was lent already;
   -- `X` comes back unchanged.
-  lend    : ∀ {E X A B} → Tm (E ⊗t X) A B → Tm E (X ⊗t A) (X ⊗t B)
-  -- a many-use closure: it owns `X`; its body only reads it
-  lcurryB : ∀ {X A B E} → Tm X A B → Tm E X (A ⇛t B)
+  lend    : ∀ {E X A B} → Tm Γ (E ⊗t X) A B → Tm Γ E (X ⊗t A) (X ⊗t B)
   -- a step that reads nothing of what is lent
-  blift   : ∀ {A B E} → Tm One A B → Tm E A B
+  blift   : ∀ {A B E} → Tm Γ One A B → Tm Γ E A B
   -- reading the lent value: a part of it, its tag, inside a node (all views)
-  bfst    : ∀ {E₁ E₂ A B} → Tm E₁ A B → Tm (E₁ ⊗t E₂) A B
-  bsnd    : ∀ {E₁ E₂ A B} → Tm E₂ A B → Tm (E₁ ⊗t E₂) A B
-  bcaseE  : ∀ {E₁ E₂ A B} → Tm E₁ A B → Tm E₂ A B → Tm (E₁ ⊕t E₂) A B
-  bout    : ∀ {F A B} → Tm (LF∙ F (μt F)) A B → Tm (μt F) A B
+  bfst    : ∀ {E₁ E₂ A B} → Tm Γ E₁ A B → Tm Γ (E₁ ⊗t E₂) A B
+  bsnd    : ∀ {E₁ E₂ A B} → Tm Γ E₂ A B → Tm Γ (E₁ ⊗t E₂) A B
+  bcaseE  : ∀ {E₁ E₂ A B} → Tm Γ E₁ A B → Tm Γ E₂ A B → Tm Γ (E₁ ⊕t E₂) A B
+  bout    : ∀ {F A B} → Tm Γ (LF∙ F (μt F)) A B → Tm Γ (μt F) A B
   -- keeping it: a copy (fresh cells; a word costs nothing)
-  bcopy   : ∀ {E} → Tm E One E
+  bcopy   : ∀ {E} → Tm Γ E One E
   -- applying a LENT many-use closure (D131: a fold's algebra, obtained once,
   -- applied at every layer): its environment is lent on to its body
-  bapp    : ∀ {A B} → Tm (A ⇛t B) A B
+  bapp    : ∀ {l X A B} → Γ ∋[ l ] sg many X A B → Tm Γ (Ct l X) A B
   -- ★ A11: the SigOps, anywhere a term can be. `lop`: Pure or Emits, an event
   -- and the world's answer; `lhalt`: Halts, the run ends
-  lop     : (s : Sig) → ∀ {E} → Tm E ⌜ sdom s ⌝ ⌜ scod s ⌝
-  lhalt   : (s : Sig) → ∀ {E} → Tm E ⌜ sdom s ⌝ Zero
+  lop     : (s : Sig) → ∀ {E} → Tm Γ E ⌜ sdom s ⌝ ⌜ scod s ⌝
+  lhalt   : (s : Sig) → ∀ {E} → Tm Γ E ⌜ sdom s ⌝ Zero
   -- ★ A11: the loop (D317): the round reads `E` and the state, and ends with
   -- the result (`inl`) or the next state (`inr`)
-  liter   : ∀ {A B E} → Tm E A (B ⊕t A) → Tm E A B
+  liter   : ∀ {A B E} → Tm Γ E A (B ⊕t A) → Tm Γ E A B
 
 -- a term with nothing lent
-LTm : LTy → LTy → Set
-LTm = Tm One
+LTm : Cx → LTy → LTy → Set
+LTm Γ = Tm Γ One
+
+-- ★ D405: a label's body, by its kind: a one-shot body owns its environment,
+-- a many-use body reads it lent
+data Body (Γ : Cx) : Sg → Set where
+  b1 : ∀ {X A B} → LTm Γ (X ⊗t A) B → Body Γ (sg once X A B)
+  bω : ∀ {X A B} → Tm Γ X A B → Body Γ (sg many X A B)
+
+-- ★ D405: the program's table, each body over the labels before it
+data Defs : Cx → Set where
+  ε   : Defs ε
+  _▸_ : ∀ {Γ σ} → Defs Γ → Body Γ σ → Defs (Γ ▸ σ)
+
+-- what label `l` runs: its body, over its own prefix of the table
+data Look : ∀ {Γ Δ l σ} → Defs Γ → Γ ∋[ l ] σ → Defs Δ → Body Δ σ → Set where
+  lk-here  : ∀ {Γ σ} {ds : Defs Γ} {b : Body Γ σ} → Look (ds ▸ b) here ds b
+  lk-there : ∀ {Γ Δ l σ τ} {ds : Defs Γ} {p : Γ ∋[ l ] σ} {ds′ : Defs Δ} {b} {c : Body Γ τ}
+           → Look ds p ds′ b → Look (ds ▸ c) (there p) ds′ b
 
 ------------------------------------------------------------------------
 -- 6. ★ THE MEANING, mutual with the recursion operators (`evalᴰ`'s shape).
 --
 -- `cataC`/`travC` descend a shrinking `Mu`, children left to right, then the
 -- algebra; `unfoldNu` and its helpers corecurse under `force`/`block`.
+--
+-- ★ D405: at the meaning `ρ` of the labels in scope. A label means a function
+-- of its environment and its argument; applying a closure looks it up. The
+-- recursion is structural: a body is met only when the table is built
+-- (`⟦_⟧D`), over the labels before it.
 ------------------------------------------------------------------------
 
-mutual
-  -- a term means a function of the lent value, which it does not consume, and
-  -- of its input, which it does
-  Lᶜ : ∀ {E A B} → Tm E A B → ⟦ E ⟧ → ⟦ A ⟧ → T∞ ⟦ B ⟧
-  Lᶜ lid            e         x              = return∞ x
-  Lᶜ (f ∘l g)       e         x              = Lᶜ g e x >>=∞ Lᶜ f e
-  Lᶜ (f ⊗l g)       e         (a , b)        = Lᶜ f e a >>=∞ λ a' → fmap∞ (a' ,_) (Lᶜ g e b)
-  Lᶜ ρl             e         (a , tt)       = return∞ a
-  Lᶜ ρl⁻            e         a              = return∞ (a , tt)
-  Lᶜ lul            e         (tt , a)       = return∞ a
-  Lᶜ lul⁻           e         a              = return∞ (tt , a)
-  Lᶜ lassoc         e         ((a , b) , c)  = return∞ (a , (b , c))
-  Lᶜ lassoc⁻        e         (a , (b , c))  = return∞ ((a , b) , c)
-  Lᶜ lswap          e         (a , b)        = return∞ (b , a)
-  Lᶜ dup            e         a              = return∞ (a , a)
-  Lᶜ drop           e         a              = return∞ tt
-  Lᶜ linl           e         a              = return∞ (inj₁ a)
-  Lᶜ linr           e         b              = return∞ (inj₂ b)
-  Lᶜ (lcase f g)    e         (inj₁ a)       = Lᶜ f e a
-  Lᶜ (lcase f g)    e         (inj₂ b)       = Lᶜ g e b
-  Lᶜ lzero          e         ()
-  Lᶜ (lIn {F})      e         x              = return∞ (inμ (coh F (μt F) x))
-  Lᶜ (lOutμ {F})    e         x              = return∞ (coh⁻¹ F (μt F) (outμ x))
-  Lᶜ (lcata F alg)  e         x              = cataC F (λ y → Lᶜ alg e (coh⁻¹ F _ y)) x
-  Lᶜ (lOut {F})     e         x              = fmap∞ (coh⁻¹ F (νt F)) (force x)
-  Lᶜ (lAna F c)     e         a              = return∞ (unfoldNu F c a)
-  Lᶜ (lInν {F})     e         x              = return∞ (inν (coh F (νt F) x))
-  Lᶜ (lcurry f)     e         a              = return∞ (λ b → Lᶜ f tt (a , b))
-  Lᶜ leval          e         (f , a)        = f a
-  Lᶜ (lend b)       e         (x , a)        = fmap∞ (x ,_) (Lᶜ b (e , x) a)
-  Lᶜ (lcurryB b)    e         x              = return∞ (λ a → Lᶜ b x a)
-  Lᶜ (blift f)      e         a              = Lᶜ f tt a
-  Lᶜ (bfst f)       (e₁ , e₂) a              = Lᶜ f e₁ a
-  Lᶜ (bsnd f)       (e₁ , e₂) a              = Lᶜ f e₂ a
-  Lᶜ (bcaseE f g)   (inj₁ e)  a              = Lᶜ f e a
-  Lᶜ (bcaseE f g)   (inj₂ e)  a              = Lᶜ g e a
-  Lᶜ (bout {F} f)   e         a              = Lᶜ f (coh⁻¹ F (μt F) (outμ e)) a
-  Lᶜ bcopy          e         a              = return∞ e
-  Lᶜ bapp           f         a              = f a
-  Lᶜ (lop s)        e         x              = callT s x
-  Lᶜ (lhalt s)      e         x              = haltT s (toF (sdom s) x)
-  Lᶜ (liter f)      e         a              = iter∞ (Lᶜ f e) a
+-- the meaning of the labels in scope
+data Env : Cx → Set where
+  ε   : Env ε
+  _▸_ : ∀ {Γ σ} → Env Γ → (⟦ env σ ⟧ → ⟦ dom σ ⟧ → T∞ ⟦ cod σ ⟧) → Env (Γ ▸ σ)
 
-  cataC : ∀ F {X : Set} → (FS F X → T∞ X) → Mu F → T∞ X
-  cataC F alg (inμ w) = travC F F alg w >>=∞ alg
+lookup : ∀ {Γ l σ} → Env Γ → Γ ∋[ l ] σ → ⟦ env σ ⟧ → ⟦ dom σ ⟧ → T∞ ⟦ cod σ ⟧
+lookup (ρ ▸ f) here      = f
+lookup (ρ ▸ f) (there p) = lookup ρ p
 
-  travC : ∀ F G {X : Set} → (FS F X → T∞ X) → FS G (Mu F) → T∞ (FS G X)
-  travC F Idf      alg y        = cataC F alg y
-  travC F Kone     alg y        = return∞ y
-  travC F Kzero    alg ()
-  travC F (Kb _)   alg y        = return∞ y
-  travC F (Kμ _)   alg y        = return∞ y
-  travC F (Kν _)   alg y        = return∞ y
-  travC F (G ⊕f H) alg (inj₁ y) = fmap∞ inj₁ (travC F G alg y)
-  travC F (G ⊕f H) alg (inj₂ z) = fmap∞ inj₂ (travC F H alg z)
-  travC F (G ⊗f H) alg (y , z)  = travC F G alg y >>=∞ λ u → fmap∞ (u ,_) (travC F H alg z)
+module Sem {Γ : Cx} (ρ : Env Γ) where
+  mutual
+    -- a term means a function of the lent value, which it does not consume, and
+    -- of its input, which it does
+    Lᶜ : ∀ {E A B} → Tm Γ E A B → ⟦ E ⟧ → ⟦ A ⟧ → T∞ ⟦ B ⟧
+    Lᶜ lid            e         x              = return∞ x
+    Lᶜ (f ∘l g)       e         x              = Lᶜ g e x >>=∞ Lᶜ f e
+    Lᶜ (f ⊗l g)       e         (a , b)        = Lᶜ f e a >>=∞ λ a' → fmap∞ (a' ,_) (Lᶜ g e b)
+    Lᶜ ρl             e         (a , tt)       = return∞ a
+    Lᶜ ρl⁻            e         a              = return∞ (a , tt)
+    Lᶜ lul            e         (tt , a)       = return∞ a
+    Lᶜ lul⁻           e         a              = return∞ (tt , a)
+    Lᶜ lassoc         e         ((a , b) , c)  = return∞ (a , (b , c))
+    Lᶜ lassoc⁻        e         (a , (b , c))  = return∞ ((a , b) , c)
+    Lᶜ lswap          e         (a , b)        = return∞ (b , a)
+    Lᶜ dup            e         a              = return∞ (a , a)
+    Lᶜ drop           e         a              = return∞ tt
+    Lᶜ linl           e         a              = return∞ (inj₁ a)
+    Lᶜ linr           e         b              = return∞ (inj₂ b)
+    Lᶜ (lcase f g)    e         (inj₁ a)       = Lᶜ f e a
+    Lᶜ (lcase f g)    e         (inj₂ b)       = Lᶜ g e b
+    Lᶜ lzero          e         ()
+    Lᶜ (lIn {F})      e         x              = return∞ (inμ (coh F (μt F) x))
+    Lᶜ (lOutμ {F})    e         x              = return∞ (coh⁻¹ F (μt F) (outμ x))
+    Lᶜ (lcata F alg)  e         x              = cataC F (λ y → Lᶜ alg e (coh⁻¹ F _ y)) x
+    Lᶜ (lOut {F})     e         x              = fmap∞ (coh⁻¹ F (νt F)) (force x)
+    Lᶜ (lAna F c)     e         a              = return∞ (unfoldNu F c a)
+    Lᶜ (lInν {F})     e         x              = return∞ (inν (coh F (νt F) x))
+    Lᶜ (lclo p)       e         x              = return∞ x
+    Lᶜ (lapp p)       e         (x , a)        = lookup ρ p x a
+    Lᶜ (lend b)       e         (x , a)        = fmap∞ (x ,_) (Lᶜ b (e , x) a)
+    Lᶜ (blift f)      e         a              = Lᶜ f tt a
+    Lᶜ (bfst f)       (e₁ , e₂) a              = Lᶜ f e₁ a
+    Lᶜ (bsnd f)       (e₁ , e₂) a              = Lᶜ f e₂ a
+    Lᶜ (bcaseE f g)   (inj₁ e)  a              = Lᶜ f e a
+    Lᶜ (bcaseE f g)   (inj₂ e)  a              = Lᶜ g e a
+    Lᶜ (bout {F} f)   e         a              = Lᶜ f (coh⁻¹ F (μt F) (outμ e)) a
+    Lᶜ bcopy          e         a              = return∞ e
+    Lᶜ (bapp p)       x         a              = lookup ρ p x a
+    Lᶜ (lop s)        e         x              = callT s x
+    Lᶜ (lhalt s)      e         x              = haltT s (toF (sdom s) x)
+    Lᶜ (liter f)      e         a              = iter∞ (Lᶜ f e) a
 
-  unfoldNu : ∀ {A} F → LTm A (LF∙ F A) → ⟦ A ⟧ → Nu F
-  force (unfoldNu F c a) = unfoldRun F c (Lᶜ c tt a)
+    cataC : ∀ F {X : Set} → (FS F X → T∞ X) → Mu F → T∞ X
+    cataC F alg (inμ w) = travC F F alg w >>=∞ alg
 
-  -- written out, not `fmap∞`: the corecursive call must stay guarded
-  unfoldRun : ∀ {A} F → LTm A (LF∙ F A) → T∞ ⟦ LF∙ F A ⟧ → T∞ (FS F (Nu F))
-  block (unfoldRun F c m) = unfoldBlock F c (block m)
+    travC : ∀ F G {X : Set} → (FS F X → T∞ X) → FS G (Mu F) → T∞ (FS G X)
+    travC F Idf      alg y        = cataC F alg y
+    travC F Kone     alg y        = return∞ y
+    travC F Kzero    alg ()
+    travC F (Kb _)   alg y        = return∞ y
+    travC F (Kμ _)   alg y        = return∞ y
+    travC F (Kν _)   alg y        = return∞ y
+    travC F (G ⊕f H) alg (inj₁ y) = fmap∞ inj₁ (travC F G alg y)
+    travC F (G ⊕f H) alg (inj₂ z) = fmap∞ inj₂ (travC F H alg z)
+    travC F (G ⊗f H) alg (y , z)  = travC F G alg y >>=∞ λ u → fmap∞ (u ,_) (travC F H alg z)
 
-  unfoldBlock : ∀ {A} F → LTm A (LF∙ F A) → T (⟦ LF∙ F A ⟧ ⊎ T∞ ⟦ LF∙ F A ⟧) → T (FS F (Nu F) ⊎ T∞ (FS F (Nu F)))
-  unfoldBlock {A} F c (ret (inj₁ y)) = ret (inj₁ (mapU F F c (coh F A y)))
-  unfoldBlock F c (ret (inj₂ m))     = ret (inj₂ (unfoldRun F c m))
-  unfoldBlock F c (call s x k)       = call s x (λ v → unfoldBlock F c (k v))
-  unfoldBlock F c (halt s x)         = halt s x
+    unfoldNu : ∀ {A} F → LTm Γ A (LF∙ F A) → ⟦ A ⟧ → Nu F
+    force (unfoldNu F c a) = unfoldRun F c (Lᶜ c tt a)
 
-  mapU : ∀ {A} F G → LTm A (LF∙ F A) → FS G ⟦ A ⟧ → FS G (Nu F)
-  mapU F Idf      c y        = unfoldNu F c y
-  mapU F Kone     c y        = y
-  mapU F Kzero    c ()
-  mapU F (Kb _)   c y        = y
-  mapU F (Kμ _)   c y        = y
-  mapU F (Kν _)   c y        = y
-  mapU F (G ⊕f H) c (inj₁ y) = inj₁ (mapU F G c y)
-  mapU F (G ⊕f H) c (inj₂ z) = inj₂ (mapU F H c z)
-  mapU F (G ⊗f H) c (y , z)  = (mapU F G c y , mapU F H c z)
+    -- written out, not `fmap∞`: the corecursive call must stay guarded
+    unfoldRun : ∀ {A} F → LTm Γ A (LF∙ F A) → T∞ ⟦ LF∙ F A ⟧ → T∞ (FS F (Nu F))
+    block (unfoldRun F c m) = unfoldBlock F c (block m)
+
+    unfoldBlock : ∀ {A} F → LTm Γ A (LF∙ F A) → T (⟦ LF∙ F A ⟧ ⊎ T∞ ⟦ LF∙ F A ⟧) → T (FS F (Nu F) ⊎ T∞ (FS F (Nu F)))
+    unfoldBlock {A} F c (ret (inj₁ y)) = ret (inj₁ (mapU F F c (coh F A y)))
+    unfoldBlock F c (ret (inj₂ m))     = ret (inj₂ (unfoldRun F c m))
+    unfoldBlock F c (call s x k)       = call s x (λ v → unfoldBlock F c (k v))
+    unfoldBlock F c (halt s x)         = halt s x
+
+    mapU : ∀ {A} F G → LTm Γ A (LF∙ F A) → FS G ⟦ A ⟧ → FS G (Nu F)
+    mapU F Idf      c y        = unfoldNu F c y
+    mapU F Kone     c y        = y
+    mapU F Kzero    c ()
+    mapU F (Kb _)   c y        = y
+    mapU F (Kμ _)   c y        = y
+    mapU F (Kν _)   c y        = y
+    mapU F (G ⊕f H) c (inj₁ y) = inj₁ (mapU F G c y)
+    mapU F (G ⊕f H) c (inj₂ z) = inj₂ (mapU F H c z)
+    mapU F (G ⊗f H) c (y , z)  = (mapU F G c y , mapU F H c z)
+
+open Sem public
+
+------------------------------------------------------------------------
+-- 7. ★ D405: THE TABLE'S MEANING, built in order: each body means a function
+-- over the labels before it.
+------------------------------------------------------------------------
+
+-- what a body means, at the meaning of its prefix
+⟦_⟧Bd : ∀ {Γ σ} → Body Γ σ → Env Γ → ⟦ env σ ⟧ → ⟦ dom σ ⟧ → T∞ ⟦ cod σ ⟧
+⟦ b1 b ⟧Bd ρ x a = Lᶜ ρ b tt (x , a)
+⟦ bω b ⟧Bd ρ x a = Lᶜ ρ b x a
+
+⟦_⟧D : ∀ {Γ} → Defs Γ → Env Γ
+⟦ ε ⟧D      = ε
+⟦ ds ▸ b ⟧D = ⟦ ds ⟧D ▸ ⟦ b ⟧Bd ⟦ ds ⟧D
+
+-- applying a closure means running its label's body (by induction on the label)
+lookup-look : ∀ {Γ Δ l σ} {ds : Defs Γ} {p : Γ ∋[ l ] σ} {ds′ : Defs Δ} {b : Body Δ σ}
+            → Look ds p ds′ b → ∀ x a → lookup ⟦ ds ⟧D p x a ≡ ⟦ b ⟧Bd ⟦ ds′ ⟧D x a
+lookup-look lk-here      x a = refl
+lookup-look (lk-there q) x a = lookup-look q x a
