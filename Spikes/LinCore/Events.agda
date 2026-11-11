@@ -146,6 +146,7 @@ freeAll (mnuv i v)   = free i ∷ freeAll v
 wrap : ∀ {S} F (c : LTm S (LF∙ F S)) G → MV (LF∙ G S) → ℕ → MV (LF∙ G (νt F)) × ℕ × Trace
 wrap F c Idf      s n = (mnu n s c , suc n , alloc n ∷ [])
 wrap F c Kone     x n = (x , n , [])
+wrap F c Kzero    () n
 wrap F c (Kb b)   x n = (x , n , [])
 wrap F c (Kμ G)   x n = (x , n , [])
 wrap F c (Kν G)   x n = (x , n , [])
@@ -392,6 +393,7 @@ ios-freeAll (mnuv i v) = ios-freeAll v
 ios-wrap : ∀ {S} F (c : LTm S (LF∙ F S)) G (u : MV (LF∙ G S)) n → ios (snd (snd (wrap F c G u n))) ≡ []
 ios-wrap F c Idf      s n = refl
 ios-wrap F c Kone     x n = refl
+ios-wrap F c Kzero    () n
 ios-wrap F c (Kb b)   x n = refl
 ios-wrap F c (Kμ G)   x n = refl
 ios-wrap F c (Kν G)   x n = refl
@@ -507,6 +509,7 @@ copy-er (mnuv {F} i v) n with copy v (suc n) | copy-er v (suc n)
 coh⁻¹∘coh : ∀ F X (x : ⟦ LF∙ F X ⟧) → coh⁻¹ F X (coh F X x) ≡ x
 coh⁻¹∘coh Idf      X x        = refl
 coh⁻¹∘coh Kone     X x        = refl
+coh⁻¹∘coh Kzero    X ()
 coh⁻¹∘coh (Kb b)   X x        = refl
 coh⁻¹∘coh (Kμ G)   X x        = refl
 coh⁻¹∘coh (Kν G)   X x        = refl
@@ -519,6 +522,7 @@ wrap-er : ∀ {S} F (c : LTm S (LF∙ F S)) G (u : MV (LF∙ G S)) n
         → coh G (νt F) (er (fst (wrap F c G u n))) ≡ mapU F G c (coh G S (er u))
 wrap-er F c Idf      s n = refl
 wrap-er F c Kone     x n = refl
+wrap-er F c Kzero    () n
 wrap-er F c (Kb b)   x n = refl
 wrap-er F c (Kμ G)   x n = refl
 wrap-er F c (Kν G)   x n = refl
@@ -966,6 +970,7 @@ free-ok (mnuv j v) h r le sb = free-cell j (cnt v) (freeAll v) h r le sb (λ h�
 wrap-mono : ∀ {S} F (c : LTm S (LF∙ F S)) G (u : MV (LF∙ G S)) n → n ≤ fst (snd (wrap F c G u n))
 wrap-mono F c Idf      s n = n≤1+n n
 wrap-mono F c Kone     x n = ≤-refl
+wrap-mono F c Kzero    () n
 wrap-mono F c (Kb b)   x n = ≤-refl
 wrap-mono F c (Kμ G)   x n = ≤-refl
 wrap-mono F c (Kν G)   x n = ≤-refl
@@ -984,6 +989,7 @@ wrap-below : ∀ {S} F (c : LTm S (LF∙ F S)) G (u : MV (LF∙ G S)) n
            → Below u n → Below (fst (wrap F c G u n)) (fst (snd (wrap F c G u n)))
 wrap-below F c Idf      s n b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
 wrap-below F c Kone     x n b = b
+wrap-below F c Kzero    () n b
 wrap-below F c (Kb bb)  x n b = b
 wrap-below F c (Kμ G)   x n b = b
 wrap-below F c (Kν G)   x n b = b
@@ -1003,6 +1009,7 @@ wrap-ok : ∀ {S} F (c : LTm S (LF∙ F S)) G (u : MV (LF∙ G S)) n (h : Heap)
           × (∀ i → play (snd (snd (wrap F c G u n))) h i + cnt u i ≡ h i + cnt (fst (wrap F c G u n)) i)
 wrap-ok F c Idf      s n h ab b = ((ab n ≤-refl , tt) , λ i → assoc (h i) (δ n i) (cnt s i))
 wrap-ok F c Kone     x n h ab b = (tt , λ i → refl)
+wrap-ok F c Kzero    () n h ab b
 wrap-ok F c (Kb bb)  x n h ab b = (tt , λ i → refl)
 wrap-ok F c (Kμ G)   x n h ab b = (tt , λ i → refl)
 wrap-ok F c (Kν G)   x n h ab b = (tt , λ i → refl)
