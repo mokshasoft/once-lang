@@ -30,7 +30,9 @@ open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ; zero; suc; z≤n; s≤s; _+_; _≤_)
 open import Data.Nat.Properties using (n∸n≡0)
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.Maybe using (just; nothing)
+open import Data.Maybe using (just; nothing; _>>=_)
+import Data.Maybe
+import LinCore.Alloc as Al
 open import LinCore.Flat using (FTy; funit; fvoid; fw)
 open import LinCore.Free using (Weave; w-[]; w-run; w-tmp)
 
@@ -593,3 +595,13 @@ composed-machine : Out.mt (sim composed-run _ []ˢ end)
                  ≡ tmp (tnew 1) ∷ tmp (tnew 1) ∷ io succ 5 6 ∷ tmp (tdel 1)
                  ∷ tmp (tnew 1) ∷ io emit 6 tt ∷ tmp (tdel 1) ∷ tmp (tdel 1) ∷ []
 composed-machine = refl
+
+------------------------------------------------------------------------
+-- 16. ★ A17: THE ALLOCATOR. Cells 0 and 1 born, 0 dies, 2 is born: 2 takes
+--     0's block (the lowest free one), and the region still holds two blocks.
+------------------------------------------------------------------------
+
+reuse : Data.Maybe.map (λ p → Al.own p 2 , Al.top p)
+          (Al.born 0 Al.empty >>= Al.born 1 >>= Al.died 0 >>= Al.born 2)
+      ≡ just (0 , 2)
+reuse = refl

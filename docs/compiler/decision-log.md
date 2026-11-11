@@ -22269,3 +22269,37 @@ a cycle needs 1. `in-ν` and a ν's observation are labels too (D406).
 ### Open for the review
 * Values on the machine's stack are the run's values: cells are still the run's, by id. Addresses, and an
   allocator that reuses them, are A17.
+
+## D411 — THE ALLOCATOR PER SIZE; THE SPACE CLAIM PER SIZE CLASS; ITS STRONG FORM IS THE USER'S (2026-11-11)
+
+**Part 1 Proposed** (made unattended; for the user's review). **Part 2 OPEN: the user's decision** (plan
+0.146 §3, "the space claim", open since 2026-11-08). Worked out in `Spikes/LinCore/Alloc.agda` (A17).
+
+### Part 1: the allocator, proved
+* One size class (free lists per size, D403). Block `j` of size `k` is the words `[base k + j·k, …)`;
+  the region holds blocks `0 … top-1`. A cell born takes the LOWEST FREE block below the top, else the top
+  grows by one; a cell freed frees its block; a temporary (a frame) likewise, newest first.
+* Every block has one owner (`who`: free, a cell by serial, a temporary by name). So addresses are reused,
+  the run's ids are not, and the map from ids to blocks is injective on live blocks BY CONSTRUCTION
+  (`live-injective`; a cell's block is never a temporary's, `cell-not-temp`).
+* The invariant (`Inv`: free above the top; a cell's block where its owner says; temporaries on a stack of
+  descending names) holds along every run of steps (`steps-inv`).
+* ★ **The space claim, per size**: the region grows only when it is FULL — every block below the top holds
+  a live cell or a live temporary, each its own (`grows-only-when-full`). So a run is cut for lack of room
+  of size `k` only when more blocks of size `k` are live at once (cells and frames) than the room holds.
+
+### Part 2, open: the claim's strong form
+The plan's form, "a run ends `exhausted` only when what it keeps live does not fit the region", is FALSE
+for free lists per size: blocks freed in one size cannot serve another (fragmentation). Counterexample: a
+run that frees a thousand one-word cells, then asks for a three-word one, with a region of a thousand words.
+The choices:
+1. **The claim per size class** (Part 1): honest, proved; the region is the sum of per-size peaks.
+2. **One size class per program**: every cell padded to the program's largest node (a program has finitely
+   many node types); then "live blocks × the largest size fit" is the claim, at the cost of padding.
+3. **A coalescing or compacting allocator**: the strong claim for the cost of a smarter allocator (and, if
+   it moves blocks, of updating the one pointer to each — a linear core has exactly one).
+
+### Not yet
+* The link from a legal run (`OK`, `TOK`) to the allocator never failing (a legal free is of a live cell;
+  a temporary freed is on the stack): the invariant's form says how; the proof is the relation between the
+  heap and `Live`, event by event.
