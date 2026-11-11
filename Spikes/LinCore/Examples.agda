@@ -71,6 +71,7 @@ open import LinCore.Total B ⟦_⟧B Op odom ocod bw
 open import LinCore.Pass B ⟦_⟧B Op odom ocod
 open import LinCore.Whole B ⟦_⟧B Op odom ocod bw
 open import LinCore.Machine B ⟦_⟧B Op odom ocod bw
+open import LinCore.Held B ⟦_⟧B Op odom ocod bw
 module AR = LinCore.AllocRun B ⟦_⟧B Op odom ocod bw
 
 -- the events of a loop run, and of a run
@@ -607,7 +608,7 @@ counter-sound = whole-sound world 2 counter-ir tt
 --     around the body's events; erased, the events are the run's.
 ------------------------------------------------------------------------
 
-composed-machine : Out.mt (sim composed-run _ []ˢ []ˢ end)
+composed-machine : Out.mt (sim composed-run _ (vw mone []ᵉ) refl []ˢ end)
                  ≡ tmp (tnew 1) ∷ tmp (tnew 1) ∷ io succ 5 6 ∷ tmp (tdel 1)
                  ∷ tmp (tnew 1) ∷ io emit 6 tt ∷ tmp (tdel 1) ∷ tmp (tdel 1) ∷ []
 composed-machine = refl
@@ -666,3 +667,29 @@ two-sizes : Data.Maybe.map (λ r → Rg.wtop r , Rg.addr r 3 0 , Rg.addr r 2 0 ,
                        Rg.empty)
           ≡ just (7 , 0 , 3 , 5)
 two-sizes = refl
+
+------------------------------------------------------------------------
+-- 20. ★ D410 amended: NO LEAK AT EVERY STEP, a server's state included.
+--     §2's list server as a closed program (the list [5] built, then rounds
+--     forever), compiled, run on the machine and cut after two rounds. Where
+--     the machine stands, the live cells are exactly those of the values it
+--     holds (`held-always`): the list of the last round, nothing of the
+--     lists before it.
+------------------------------------------------------------------------
+
+list-prog : LTm ε One One
+list-prog = lzero ∘l (liter list-round list-blk ∘l (build ∘l lconst 5))
+
+list-on-machine = machine-legal (Ran.run (exec world ε 2 list-prog mone mone 0 tt)) (_ , ((_ , (_ , refl)) , _))
+
+-- ★ where the machine stands, the events it made to get there, and the
+-- theorem of them: legal, and the live cells exactly those it holds
+stands : Σ.Σ Sh λ sh → Σ.Σ (Cfg sh) λ m → Σ.Σ Trace λ mt
+         → OK mt (λ _ → 0) × (∀ i → play mt (λ _ → 0) i ≡ Owned m i)
+stands with list-on-machine
+... | (_ , _ , _ , _ , _ , mt , _ , sh , _ , m , _ , st) = (sh , m , mt , held-always st)
+
+-- what it holds there, by evaluation: the last round's nil and cons
+list-held : (Owned (Σ.fst (Σ.snd stands)) (3 , 0) ≡ 0) × (Owned (Σ.fst (Σ.snd stands)) (3 , 3) ≡ 0)
+          × (Owned (Σ.fst (Σ.snd stands)) (3 , 4) ≡ 1) × (Owned (Σ.fst (Σ.snd stands)) (3 , 5) ≡ 1)
+list-held = (refl , refl , refl , refl)

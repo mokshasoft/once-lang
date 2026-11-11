@@ -9,7 +9,10 @@
 -- (owned values) and the ENVIRONMENT (lent views: what a scope lends, a part
 -- of it, a node looked into, a closure's environment) — branching on a sum's
 -- tag (`case` on an operand, `ecase` on a view), its own events per
--- instruction. The lowering (`comp`) is continuation-passing: a term is
+-- instruction. An environment slot is a view (`vw`) or a lend's (`ln`), which
+-- owns the value lent beside the view until `eunlend` hands it back; which
+-- is which the lowering knows, and the machine reads only the view (`see`).
+-- `LinCore.Held` proves what every reachable configuration holds. The lowering (`comp`) is continuation-passing: a term is
 -- compiled in front of the code that follows it.
 --
 -- Two generators run INSIDE A FRAME (`enter` … `leave`): a fold, node by node,
@@ -80,10 +83,24 @@ data Stk : List LTy → Set where
   []ˢ  : Stk []
   _∷ˢ_ : ∀ {A S} → MV A → Stk S → Stk (A ∷ S)
 
+-- the environment's slots (D410 amended): a VIEW, or a LEND's slot, whose
+-- view is the pair of what was lent and the value `x` lent beside it, which
+-- the slot owns until `eunlend` hands it back. Which slots are lends is the
+-- lowering's (each `elend` is matched by an `eunlend` in the code); the tag is
+-- kept here for the proof, and the machine reads only `see`
+data Slots : List LTy → Set where
+  []ᵉ : Slots []
+  vw  : ∀ {E Es} → MV E → Slots Es → Slots (E ∷ Es)
+  ln  : ∀ {E X Es} → MV E → MV X → Slots (E ∷ Es) → Slots ((E ⊗t X) ∷ E ∷ Es)
+
+see : ∀ {E Es} → Slots (E ∷ Es) → MV E
+see (vw e _)   = e
+see (ln e x _) = mpair e x
+
 infix 4 _∥_
 record Cfg (sh : Sh) : Set where
   constructor _∥_
-  field envs : Stk (Sh.env sh)
+  field envs : Slots (Sh.env sh)
         opds : Stk (Sh.ops sh)
 
 data Ins : Sh → Sh → Set where
@@ -206,33 +223,33 @@ data Step {T : Sh} : ∀ {sh sh′} → Code sh T → Cfg sh → ℕ → Trace �
            → Step (case c₁ c₂) (es ∥ minl a ∷ˢ os) n [] c₁ (es ∥ a ∷ˢ os) n
   s-case₂  : ∀ {Es A B S} {c₁ : Code (Es ∣ A ∷ S) T} {c₂ : Code (Es ∣ B ∷ S) T} {es b os n}
            → Step (case c₁ c₂) (es ∥ minr b ∷ˢ os) n [] c₂ (es ∥ b ∷ˢ os) n
-  s-elend  : ∀ {E Es X A S} {k : Code ((E ⊗t X) ∷ E ∷ Es ∣ A ∷ S) T} {e : MV E} {es} {x : MV X} {a : MV A} {os n}
-           → Step (elend ⨾ k) (e ∷ˢ es ∥ mpair x a ∷ˢ os) n [] k (mpair e x ∷ˢ e ∷ˢ es ∥ a ∷ˢ os) n
-  s-eunlend : ∀ {E Es X B S} {k : Code (E ∷ Es ∣ (X ⊗t B) ∷ S) T} {e e′ : MV E} {es} {x : MV X} {w : MV B} {os n}
-           → Step (eunlend ⨾ k) (mpair e x ∷ˢ e′ ∷ˢ es ∥ w ∷ˢ os) n [] k (e′ ∷ˢ es ∥ mpair x w ∷ˢ os) n
+  s-elend  : ∀ {E Es X A S} {k : Code ((E ⊗t X) ∷ E ∷ Es ∣ A ∷ S) T} {es : Slots (E ∷ Es)} {x : MV X} {a : MV A} {os n}
+           → Step (elend ⨾ k) (es ∥ mpair x a ∷ˢ os) n [] k (ln (see es) x es ∥ a ∷ˢ os) n
+  s-eunlend : ∀ {E Es X B S} {k : Code (E ∷ Es ∣ (X ⊗t B) ∷ S) T} {e : MV E} {es : Slots (E ∷ Es)} {x : MV X} {w : MV B} {os n}
+           → Step (eunlend ⨾ k) (ln e x es ∥ w ∷ˢ os) n [] k (es ∥ mpair x w ∷ˢ os) n
   s-elift  : ∀ {Es S} {k : Code (One ∷ Es ∣ S) T} {es os n}
-           → Step (elift ⨾ k) (es ∥ os) n [] k (mone ∷ˢ es ∥ os) n
+           → Step (elift ⨾ k) (es ∥ os) n [] k (vw mone es ∥ os) n
   s-efst   : ∀ {E₁ E₂ Es S} {k : Code (E₁ ∷ (E₁ ⊗t E₂) ∷ Es ∣ S) T} {e₁ : MV E₁} {e₂ : MV E₂} {es os n}
-           → Step (efst ⨾ k) (mpair e₁ e₂ ∷ˢ es ∥ os) n [] k (e₁ ∷ˢ mpair e₁ e₂ ∷ˢ es ∥ os) n
+           → see es ≡ mpair e₁ e₂ → Step (efst ⨾ k) (es ∥ os) n [] k (vw e₁ es ∥ os) n
   s-esnd   : ∀ {E₁ E₂ Es S} {k : Code (E₂ ∷ (E₁ ⊗t E₂) ∷ Es ∣ S) T} {e₁ : MV E₁} {e₂ : MV E₂} {es os n}
-           → Step (esnd ⨾ k) (mpair e₁ e₂ ∷ˢ es ∥ os) n [] k (e₂ ∷ˢ mpair e₁ e₂ ∷ˢ es ∥ os) n
-  s-eout   : ∀ {F Es S} {k : Code (LF∙ F (μt F) ∷ μt F ∷ Es ∣ S) T} {i v es os n}
-           → Step (eout ⨾ k) (mmu i v ∷ˢ es ∥ os) n (peek i ∷ []) k (v ∷ˢ mmu i v ∷ˢ es ∥ os) n
+           → see es ≡ mpair e₁ e₂ → Step (esnd ⨾ k) (es ∥ os) n [] k (vw e₂ es ∥ os) n
+  s-eout   : ∀ {F Es S} {k : Code (LF∙ F (μt F) ∷ μt F ∷ Es ∣ S) T} {i v} {es : Slots (μt F ∷ Es)} {os n}
+           → see es ≡ mmu i v → Step (eout ⨾ k) (es ∥ os) n (peek i ∷ []) k (vw v es ∥ os) n
   s-ecase₁ : ∀ {E₁ E₂ Es S} {c₁ : Code (E₁ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) T} {c₂ : Code (E₂ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) T} {e es os n}
-           → Step (ecase c₁ c₂) (minl e ∷ˢ es ∥ os) n [] c₁ (e ∷ˢ minl e ∷ˢ es ∥ os) n
+           → see es ≡ minl e → Step (ecase c₁ c₂) (es ∥ os) n [] c₁ (vw e es ∥ os) n
   s-ecase₂ : ∀ {E₁ E₂ Es S} {c₁ : Code (E₁ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) T} {c₂ : Code (E₂ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) T} {e es os n}
-           → Step (ecase c₁ c₂) (minr e ∷ˢ es ∥ os) n [] c₂ (e ∷ˢ minr e ∷ˢ es ∥ os) n
+           → see es ≡ minr e → Step (ecase c₁ c₂) (es ∥ os) n [] c₂ (vw e es ∥ os) n
   s-eapp   : ∀ {l X Es S} {k : Code (X ∷ Ct l X ∷ Es ∣ S) T} {x : MV X} {es os n}
-           → Step (eapp ⨾ k) (mct x ∷ˢ es ∥ os) n [] k (x ∷ˢ mct x ∷ˢ es ∥ os) n
+           → see es ≡ mct x → Step (eapp ⨾ k) (es ∥ os) n [] k (vw x es ∥ os) n
   s-epop   : ∀ {E Es S} {k : Code (Es ∣ S) T} {e : MV E} {es os n}
-           → Step (epop ⨾ k) (e ∷ˢ es ∥ os) n [] k (es ∥ os) n
-  s-ecopy  : ∀ {E Es S} {k : Code (E ∷ Es ∣ E ∷ S) T} {e : MV E} {es os n}
-           → Step (ecopy ⨾ k) (e ∷ˢ es ∥ mone ∷ˢ os) n (snd (snd (copy e n))) k (e ∷ˢ es ∥ fst (copy e n) ∷ˢ os) (fst (snd (copy e n)))
+           → Step (epop ⨾ k) (vw e es ∥ os) n [] k (es ∥ os) n
+  s-ecopy  : ∀ {E Es S} {k : Code (E ∷ Es ∣ E ∷ S) T} {es : Slots (E ∷ Es)} {os n}
+           → Step (ecopy ⨾ k) (es ∥ mone ∷ˢ os) n (snd (snd (copy (see es) n))) k (es ∥ fst (copy (see es) n) ∷ˢ os) (fst (snd (copy (see es) n)))
   s-ehalt  : ∀ {Es} {s : Sig} {S} {k : Code (Es ∣ Zero ∷ S) T} {es} {x : MV ⌜ sdom s ⌝} {os n}
            → Step (ehalt s ⨾ k) (es ∥ x ∷ˢ os) n (stp s (toF (sdom s) (er x)) ∷ []) halted (es ∥ os) n
-  s-fold   : ∀ {Γ} {ds : Defs Γ} {F E A Es S} {alg : Tm Γ E (LF∙ F A) A} {k : Code (E ∷ Es ∣ A ∷ S) T} {e es i v os n}
-           → Step (fold ds F alg ⨾ k) (e ∷ˢ es ∥ mmu i v ∷ˢ os) n (free i ∷ [])
-                  (enter ⨾ trav ds F alg F (comp ds alg (leave ⨾ k))) (e ∷ˢ es ∥ v ∷ˢ os) n
+  s-fold   : ∀ {Γ} {ds : Defs Γ} {F E A Es S} {alg : Tm Γ E (LF∙ F A) A} {k : Code (E ∷ Es ∣ A ∷ S) T} {es i v os n}
+           → Step (fold ds F alg ⨾ k) (es ∥ mmu i v ∷ˢ os) n (free i ∷ [])
+                  (enter ⨾ trav ds F alg F (comp ds alg (leave ⨾ k))) (es ∥ v ∷ˢ os) n
   s-loop   : ∀ {Γ} {ds : Defs Γ} {E A B Es S} {f : Tm Γ E A (B ⊕t A)} {k : Code (E ∷ Es ∣ B ∷ S) T} {m n}
            → Step (loop ds f ⨾ k) m n [] (comp ds f (case k (loop ds f ⨾ k))) m n
 
@@ -285,9 +302,9 @@ record Paused {T sh} (c : Code sh T) (m : Cfg sh) (n : ℕ) (t : Trace) : Set wh
     leg   : TLeg (tmps ts)
 
 -- by the run's outcome
-SimR : ∀ {T sh E Es B S} → Outcome B → Code sh T → Cfg sh → ℕ → Trace → Code (E ∷ Es ∣ B ∷ S) T → MV E → Stk Es → Stk S → Set
-SimR (gives w n′) c m n t k e es os = Out c m n t k (e ∷ˢ es ∥ w ∷ˢ os) n′
-SimR (stop y)     c m n t k e es os = Paused c m n t
+SimR : ∀ {T sh E Es B S} → Outcome B → Code sh T → Cfg sh → ℕ → Trace → Code (E ∷ Es ∣ B ∷ S) T → Slots (E ∷ Es) → Stk S → Set
+SimR (gives w n′) c m n t k es os = Out c m n t k (es ∥ w ∷ˢ os) n′
+SimR (stop y)     c m n t k es os = Paused c m n t
 
 private
   δn-same : ∀ k → δn k k ≡ 1
@@ -333,8 +350,8 @@ preP : ∀ {T sh sh′} {c : Code sh T} {c′ : Code sh′ T} {m m′ n n′ t}
 preP x (paused c′ m′ n′ ts mt t₀ st w p cl l) = paused c′ m′ n′ ts mt t₀ (x ⟫ st) w p cl l
 
 preR : ∀ {T sh sh′ E Es B S} (o : Outcome B) {c : Code sh T} {c′ : Code sh′ T} {m m′ n t}
-       {k : Code (E ∷ Es ∣ B ∷ S) T} {e es os}
-     → Step c m n [] c′ m′ n → SimR o c′ m′ n t k e es os → SimR o c m n t k e es os
+       {k : Code (E ∷ Es ∣ B ∷ S) T} {es os}
+     → Step c m n [] c′ m′ n → SimR o c′ m′ n t k es os → SimR o c m n t k es os
 preR (gives _ _) x r = pre x r
 preR (stop _)    x r = preP x r
 
@@ -366,8 +383,8 @@ thenP {t₁ = t₁} {t₂} (out ts₁ m₁ st₁ w₁ b₁) (paused c″ m″ n�
          (subst TLeg (sym (map-++ tmp ts₁ ts₂)) (IsSubmonoid.∙-∈ legal {tmps ts₁} {tmps ts₂} (fst b₁) l))
 
 thenR : ∀ {T sh sh′ E Es B S} (o : Outcome B) {c : Code sh T} {c′ : Code sh′ T} {m m′ n n′ t₁ t₂}
-        {k : Code (E ∷ Es ∣ B ∷ S) T} {e es os}
-      → Out c m n t₁ c′ m′ n′ → SimR o c′ m′ n′ t₂ k e es os → SimR o c m n (t₁ ++ t₂) k e es os
+        {k : Code (E ∷ Es ∣ B ∷ S) T} {es os}
+      → Out c m n t₁ c′ m′ n′ → SimR o c′ m′ n′ t₂ k es os → SimR o c m n (t₁ ++ t₂) k es os
 thenR (gives _ _) a r = then a r
 thenR (stop _)    a r = thenP a r
 
@@ -385,17 +402,17 @@ framedP : ∀ {T sh} {c : Code sh T} {m n t} → Paused c m n t → Paused (ente
 framedP (paused c′ m′ n′ ts mt t₀ st w p cl l) =
   paused c′ m′ n′ (tnew fsz ∷ ts) (tmp (tnew fsz) ∷ mt) t₀ (s-enter ⟫ st) (w-tmp w) p cl (opened fsz ts l)
 
-framedR : ∀ {T sh E Es B S} (o : Outcome B) {c : Code sh T} {m n t} {k : Code (E ∷ Es ∣ B ∷ S) T} {e es os}
-        → SimR o c m n t (leave ⨾ k) e es os → SimR o (enter ⨾ c) m n t k e es os
+framedR : ∀ {T sh E Es B S} (o : Outcome B) {c : Code sh T} {m n t} {k : Code (E ∷ Es ∣ B ∷ S) T} {es os}
+        → SimR o c m n t (leave ⨾ k) es os → SimR o (enter ⨾ c) m n t k es os
 framedR (gives _ _) r = framed r
 framedR (stop _)    r = framedP r
 
 -- a view opened by a silent step, closed after
 around : ∀ {T E E′ Es B S S₀} (o : Outcome B) {c₀ : Code (E ∷ Es ∣ S₀) T} {c₁ : Code (E′ ∷ E ∷ Es ∣ S₀) T}
-           {e : MV E} {e′ : MV E′} {es : Stk Es} {v : Stk S₀} {os : Stk S} {n t} {k : Code (E ∷ Es ∣ B ∷ S) T}
-       → Step c₀ (e ∷ˢ es ∥ v) n [] c₁ (e′ ∷ˢ e ∷ˢ es ∥ v) n
-       → SimR o c₁ (e′ ∷ˢ e ∷ˢ es ∥ v) n t (epop ⨾ k) e′ (e ∷ˢ es) os
-       → SimR o c₀ (e ∷ˢ es ∥ v) n t k e es os
+           {e′ : MV E′} {es : Slots (E ∷ Es)} {v : Stk S₀} {os : Stk S} {n t} {k : Code (E ∷ Es ∣ B ∷ S) T}
+       → Step c₀ (es ∥ v) n [] c₁ (vw e′ es ∥ v) n
+       → SimR o c₁ (vw e′ es ∥ v) n t (epop ⨾ k) (vw e′ es) os
+       → SimR o c₀ (es ∥ v) n t k es os
 around (gives _ _) x r = pre x (after r s-epop)
 around (stop _)    x r = preP x r
 
@@ -410,15 +427,15 @@ O-[] {t = t} (out ts mt st w b) =
   out ts mt st (subst (λ z → Weave tmp z ts mt) (sym (trans (erase-++ t []) (++-identityʳ (erase t)))) w) b
 
 -- the run's own temporaries: erased, the same events
-tmpR : ∀ {T sh E Es B S} (o : Outcome B) {c : Code sh T} {m n t t″ ts₀} {k : Code (E ∷ Es ∣ B ∷ S) T} {e es os}
-     → Weave tmp t ts₀ t″ → SimR o c m n t k e es os → SimR o c m n t″ k e es os
+tmpR : ∀ {T sh E Es B S} (o : Outcome B) {c : Code sh T} {m n t t″ ts₀} {k : Code (E ∷ Es ∣ B ∷ S) T} {es os}
+     → Weave tmp t ts₀ t″ → SimR o c m n t k es os → SimR o c m n t″ k es os
 tmpR (gives _ _) w (out ts mt st wv b) = out ts mt st (subst (λ z → Weave tmp z ts mt) (sym (erase-weave w)) wv) b
 tmpR (stop _)    w (paused c′ m′ n′ ts mt t₀ st wv p cl l) =
   paused c′ m′ n′ ts mt t₀ st wv (subst (_≼ t₀) (sym (erase-weave w)) p) cl l
 
 -- a run cut short: what the machine did for the whole run covers the prefix
-cutR : ∀ {T sh E Es B S} (o : Outcome B) {c : Code sh T} {m n t t′} {k : Code (E ∷ Es ∣ B ∷ S) T} {e es os}
-     → t′ ≼ t → SimR o c m n t k e es os → Paused c m n t′
+cutR : ∀ {T sh E Es B S} (o : Outcome B) {c : Code sh T} {m n t t′} {k : Code (E ∷ Es ∣ B ∷ S) T} {es os}
+     → t′ ≼ t → SimR o c m n t k es os → Paused c m n t′
 cutR (gives _ _) {t = t} q (out ts mt st w b) = paused _ _ _ ts mt (erase t) st w (erase-≼ q) (erase-clean t) (fst b)
 cutR (stop _) q (paused c′ m′ n′ ts mt t₀ st w p cl l) = paused c′ m′ n′ ts mt t₀ st w (≼-trans (erase-≼ q) p) cl l
 
@@ -482,87 +499,88 @@ look-fragω (lk-there q) fr = look-fragω q fr
 
 simM : ∀ {Γ} {ds : Defs Γ} {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x o n t}
      → RunMap ds F alg e G x n o t → Frag ds alg → isReuse alg ≡ false
-     → ∀ {Es S T} (es : Stk Es) (os : Stk S) (k : Code (E ∷ Es ∣ LF∙ G A ∷ S) T)
-     → SimR o (trav ds F alg G k) (e ∷ˢ es ∥ x ∷ˢ os) n t k e es os
+     → ∀ {Es S T} (es : Slots (E ∷ Es)) → see es ≡ e → (os : Stk S) (k : Code (E ∷ Es ∣ LF∙ G A ∷ S) T)
+     → SimR o (trav ds F alg G k) (es ∥ x ∷ˢ os) n t k es os
 
--- ★ the machine runs the compiled code as the term runs, for every outcome
+-- ★ the machine runs the compiled code as the term runs, for every outcome;
+-- the environment's top slot shows the run's lent value
 sim : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v o n t}
     → Run ds f e v n o t → Frag ds f
-    → ∀ {Es S T} (es : Stk Es) (os : Stk S) (k : Code (E ∷ Es ∣ B ∷ S) T)
-    → SimR o (comp ds f k) (e ∷ˢ es ∥ v ∷ˢ os) n t k e es os
-sim r-id fr es os k = done∅
-sim (r-∘ rg (go-on {o = o} rf)) (ff , fg) es os k = thenR o (sim rg fg es os _) (sim rf ff es os k)
-sim (r-∘ rg stopped) (ff , fg) es os k = P-[] (sim rg fg es os _)
-sim (r-⊗ {c = c} rf (go-on {u = a′} (fm-gives rg))) (ff , fg) es os k =
-  pre s-unpair (then (sim rf ff es (c ∷ˢ os) _) (pre s-swap (after (after (sim rg fg es (a′ ∷ˢ os) _) s-swap) s-pair)))
-sim (r-⊗ {c = c} rf (go-on {u = a′} (fm-stop rg))) (ff , fg) es os k =
-  preP s-unpair (thenP (sim rf ff es (c ∷ˢ os) _) (preP s-swap (sim rg fg es (a′ ∷ˢ os) _)))
-sim (r-⊗ {c = c} rf stopped) (ff , fg) es os k = P-[] (preP s-unpair (sim rf ff es (c ∷ˢ os) _))
-sim r-ρ     fr es os k = leaf (s-prim r-ρ) []
-sim r-ρ⁻    fr es os k = leaf (s-prim r-ρ⁻) []
-sim r-λ     fr es os k = leaf (s-prim r-λ) []
-sim r-λ⁻    fr es os k = leaf (s-prim r-λ⁻) []
-sim r-α     fr es os k = leaf (s-prim r-α) []
-sim r-α⁻    fr es os k = leaf (s-prim r-α⁻) []
-sim r-swap  fr es os k = leaf (s-prim r-swap) []
-sim (r-dup {v = v} {n}) fr es os k = leaf (s-prim r-dup) (NoT-copy v n)
-sim (r-drop {v = v}) fr es os k = leaf (s-prim r-drop) (NoT-freeAll v)
-sim r-inl   fr es os k = leaf (s-prim r-inl) []
-sim r-inr   fr es os k = leaf (s-prim r-inr) []
-sim (r-case₁ {o = o} r) (ff , fg) es os k = preR o s-case₁ (sim r ff es os k)
-sim (r-case₂ {o = o} r) (ff , fg) es os k = preR o s-case₂ (sim r fg es os k)
-sim r-In    fr es os k = leaf (s-prim r-In) (k-alloc ∷ [])
-sim r-Outμ  fr es os k = leaf (s-prim r-Outμ) (k-free ∷ [])
-sim r-clo   fr es os k = leaf (s-prim r-clo) []
-sim (r-app {e = e} {o = o} q r) fr es os k
+    → ∀ {Es S T} (es : Slots (E ∷ Es)) → see es ≡ e → (os : Stk S) (k : Code (E ∷ Es ∣ B ∷ S) T)
+    → SimR o (comp ds f k) (es ∥ v ∷ˢ os) n t k es os
+sim r-id fr es eq os k = done∅
+sim (r-∘ rg (go-on {o = o} rf)) (ff , fg) es eq os k = thenR o (sim rg fg es eq os _) (sim rf ff es eq os k)
+sim (r-∘ rg stopped) (ff , fg) es eq os k = P-[] (sim rg fg es eq os _)
+sim (r-⊗ {c = c} rf (go-on {u = a′} (fm-gives rg))) (ff , fg) es eq os k =
+  pre s-unpair (then (sim rf ff es eq (c ∷ˢ os) _) (pre s-swap (after (after (sim rg fg es eq (a′ ∷ˢ os) _) s-swap) s-pair)))
+sim (r-⊗ {c = c} rf (go-on {u = a′} (fm-stop rg))) (ff , fg) es eq os k =
+  preP s-unpair (thenP (sim rf ff es eq (c ∷ˢ os) _) (preP s-swap (sim rg fg es eq (a′ ∷ˢ os) _)))
+sim (r-⊗ {c = c} rf stopped) (ff , fg) es eq os k = P-[] (preP s-unpair (sim rf ff es eq (c ∷ˢ os) _))
+sim r-ρ     fr es eq os k = leaf (s-prim r-ρ) []
+sim r-ρ⁻    fr es eq os k = leaf (s-prim r-ρ⁻) []
+sim r-λ     fr es eq os k = leaf (s-prim r-λ) []
+sim r-λ⁻    fr es eq os k = leaf (s-prim r-λ⁻) []
+sim r-α     fr es eq os k = leaf (s-prim r-α) []
+sim r-α⁻    fr es eq os k = leaf (s-prim r-α⁻) []
+sim r-swap  fr es eq os k = leaf (s-prim r-swap) []
+sim (r-dup {v = v} {n}) fr es eq os k = leaf (s-prim r-dup) (NoT-copy v n)
+sim (r-drop {v = v}) fr es eq os k = leaf (s-prim r-drop) (NoT-freeAll v)
+sim r-inl   fr es eq os k = leaf (s-prim r-inl) []
+sim r-inr   fr es eq os k = leaf (s-prim r-inr) []
+sim (r-case₁ {o = o} r) (ff , fg) es eq os k = preR o s-case₁ (sim r ff es eq os k)
+sim (r-case₂ {o = o} r) (ff , fg) es eq os k = preR o s-case₂ (sim r fg es eq os k)
+sim r-In    fr es eq os k = leaf (s-prim r-In) (k-alloc ∷ [])
+sim r-Outμ  fr es eq os k = leaf (s-prim r-Outμ) (k-free ∷ [])
+sim r-clo   fr es eq os k = leaf (s-prim r-clo) []
+sim (r-app {o = o} q r) fr es eq os k
   rewrite look-body q {Es = _ ∷ _} (epop ⨾ leave ⨾ k) =
-  preR o s-untag (framedR o (around o s-elift (sim r (look-frag q fr) (e ∷ˢ es) os _)))
-sim (r-cata rm (go-on {o = o} ra)) (fa , nr) es os k =
-  thenR o (leaf s-fold (k-free ∷ [])) (framedR o (thenR o (simM rm fa nr es os _) (sim ra fa es os (leave ⨾ k))))
-sim (r-cata rm stopped) (fa , nr) es os k =
-  thenP (leaf s-fold (k-free ∷ [])) (framedP (P-[] (simM rm fa nr es os _)))
-sim (r-cata-reuse rm th) (fa , ()) es os k
-sim (r-lend {e = e} (fm-gives r)) fr es os k = pre s-elend (after (sim r fr (e ∷ˢ es) os _) s-eunlend)
-sim (r-lend {e = e} (fm-stop r))  fr es os k = preP s-elend (sim r fr (e ∷ˢ es) os _)
-sim (r-lift {e = e} {o = o} r) fr es os k = around o s-elift (sim r fr (e ∷ˢ es) os _)
-sim (r-fst {e₁ = e₁} {e₂} {o = o} r) fr es os k = around o s-efst (sim r fr (mpair e₁ e₂ ∷ˢ es) os _)
-sim (r-snd {e₁ = e₁} {e₂} {o = o} r) fr es os k = around o s-esnd (sim r fr (mpair e₁ e₂ ∷ˢ es) os _)
-sim (r-caseE₁ {e = e} {o = o} r) (ff , fg) es os k = around o s-ecase₁ (sim r ff (minl e ∷ˢ es) os _)
-sim (r-caseE₂ {e = e} {o = o} r) (ff , fg) es os k = around o s-ecase₂ (sim r fg (minr e ∷ˢ es) os _)
-sim (r-out {B = B} {i = i} {v} {a} {o = o} {n} r) fr es os k = outR o (sim r fr (mmu i v ∷ˢ es) os _)
+  preR o s-untag (framedR o (around o s-elift (sim r (look-frag q fr) (vw mone es) refl os _)))
+sim (r-cata rm (go-on {o = o} ra)) (fa , nr) es eq os k =
+  thenR o (leaf s-fold (k-free ∷ [])) (framedR o (thenR o (simM rm fa nr es eq os _) (sim ra fa es eq os (leave ⨾ k))))
+sim (r-cata rm stopped) (fa , nr) es eq os k =
+  thenP (leaf s-fold (k-free ∷ [])) (framedP (P-[] (simM rm fa nr es eq os _)))
+sim (r-cata-reuse rm th) (fa , ()) es eq os k
+sim (r-lend {x = x} (fm-gives r)) fr es refl os k = pre s-elend (after (sim r fr (ln (see es) x es) refl os _) s-eunlend)
+sim (r-lend {x = x} (fm-stop r))  fr es refl os k = preP s-elend (sim r fr (ln (see es) x es) refl os _)
+sim (r-lift {o = o} r) fr es eq os k = around o s-elift (sim r fr (vw mone es) refl os _)
+sim (r-fst {e₁ = e₁} {o = o} r) fr es eq os k = around o (s-efst eq) (sim r fr (vw e₁ es) refl os _)
+sim (r-snd {e₂ = e₂} {o = o} r) fr es eq os k = around o (s-esnd eq) (sim r fr (vw e₂ es) refl os _)
+sim (r-caseE₁ {e = e} {o = o} r) (ff , fg) es eq os k = around o (s-ecase₁ eq) (sim r ff (vw e es) refl os _)
+sim (r-caseE₂ {e = e} {o = o} r) (ff , fg) es eq os k = around o (s-ecase₂ eq) (sim r fg (vw e es) refl os _)
+sim (r-out {B = B} {i = i} {v} {a} {o = o} {n} r) fr es eq os k = outR o (sim r fr (vw v es) refl os _)
   where
-    outR : (o : Outcome B) → ∀ {c₁ t} → SimR o c₁ (v ∷ˢ mmu i v ∷ˢ es ∥ a ∷ˢ os) n t (epop ⨾ k) v (mmu i v ∷ˢ es) os
-         → SimR o (eout ⨾ c₁) (mmu i v ∷ˢ es ∥ a ∷ˢ os) n (peek i ∷ t) k (mmu i v) es os
-    outR (gives _ _) r′ = then (leaf s-eout (k-peek ∷ [])) (after r′ s-epop)
-    outR (stop _)    r′ = thenP (leaf s-eout (k-peek ∷ [])) r′
-sim (r-copy {e = e} {n}) fr es os k = leaf s-ecopy (NoT-copy e n)
-sim (r-bapp {x = x} {o = o} q r) fr es os k
+    outR : (o : Outcome B) → ∀ {c₁ t} → SimR o c₁ (vw v es ∥ a ∷ˢ os) n t (epop ⨾ k) (vw v es) os
+         → SimR o (eout ⨾ c₁) (es ∥ a ∷ˢ os) n (peek i ∷ t) k es os
+    outR (gives _ _) r′ = then (leaf (s-eout eq) (k-peek ∷ [])) (after r′ s-epop)
+    outR (stop _)    r′ = thenP (leaf (s-eout eq) (k-peek ∷ [])) r′
+sim (r-copy {n = n}) fr es refl os k = leaf s-ecopy (NoT-copy (see es) n)
+sim (r-bapp {x = x} {o = o} q r) fr es eq os k
   rewrite look-bodyω q {Es = _ ∷ _} (leave ⨾ epop ⨾ k) =
-  around o s-eapp (framedR o (sim r (look-fragω q fr) (mct x ∷ˢ es) os _))
-sim r-const fr es os k = leaf (s-prim r-const) []
-sim r-op    fr es os k = leaf (s-prim r-op) (k-io ∷ [])
-sim r-halt  fr es os k = paused halted _ _ [] _ _ (one s-ehalt) (w-self _) (≼-refl _) (k-stp ∷ []) tt
-sim (r-iter r (go-on done)) fr es os k = O-[] (pre s-loop (after (sim r fr es os _) s-case₁))
-sim (r-iter r (go-on (again {o = o} rn))) fr es os k =
-  preR o s-loop (thenR o (sim r fr es os _) (preR o s-case₂ (sim rn fr es os k)))
-sim (r-iter r stopped) fr es os k = P-[] (preP s-loop (sim r fr es os _))
-sim r-exh fr es os k = paused _ _ _ [] [] [] done w-[] []≼ [] tt
-sim (r-cut {o = o} r q) fr es os k = cutR o q (sim r fr es os k)
-sim (r-tmp {o = o} r w p) fr es os k = tmpR o w (sim r fr es os k)
+  around o (s-eapp eq) (framedR o (sim r (look-fragω q fr) (vw x es) refl os _))
+sim r-const fr es eq os k = leaf (s-prim r-const) []
+sim r-op    fr es eq os k = leaf (s-prim r-op) (k-io ∷ [])
+sim r-halt  fr es eq os k = paused halted _ _ [] _ _ (one s-ehalt) (w-self _) (≼-refl _) (k-stp ∷ []) tt
+sim (r-iter r (go-on done)) fr es eq os k = O-[] (pre s-loop (after (sim r fr es eq os _) s-case₁))
+sim (r-iter r (go-on (again {o = o} rn))) fr es eq os k =
+  preR o s-loop (thenR o (sim r fr es eq os _) (preR o s-case₂ (sim rn fr es eq os k)))
+sim (r-iter r stopped) fr es eq os k = P-[] (preP s-loop (sim r fr es eq os _))
+sim r-exh fr es eq os k = paused _ _ _ [] [] [] done w-[] []≼ [] tt
+sim (r-cut {o = o} r q) fr es eq os k = cutR o q (sim r fr es eq os k)
+sim (r-tmp {o = o} r w p) fr es eq os k = tmpR o w (sim r fr es eq os k)
 
-simM (m-id r) fa nr es os k = sim r (fa , nr) es os k
-simM m-one fa nr es os k = done∅
-simM m-b fa nr es os k = done∅
-simM m-μ fa nr es os k = done∅
-simM (m-inl (fm-gives r)) fa nr es os k = pre s-case₁ (after (simM r fa nr es os _) (s-prim r-inl))
-simM (m-inl (fm-stop r))  fa nr es os k = preP s-case₁ (simM r fa nr es os _)
-simM (m-inr (fm-gives r)) fa nr es os k = pre s-case₂ (after (simM r fa nr es os _) (s-prim r-inr))
-simM (m-inr (fm-stop r))  fa nr es os k = preP s-case₂ (simM r fa nr es os _)
-simM (m-pair {x′ = x′} r (go-on {u = y} (fm-gives r′))) fa nr es os k =
-  pre s-unpair (then (simM r fa nr es (x′ ∷ˢ os) _) (pre s-swap (after (after (simM r′ fa nr es (y ∷ˢ os) _) s-swap) s-pair)))
-simM (m-pair {x′ = x′} r (go-on {u = y} (fm-stop r′))) fa nr es os k =
-  preP s-unpair (thenP (simM r fa nr es (x′ ∷ˢ os) _) (preP s-swap (simM r′ fa nr es (y ∷ˢ os) _)))
-simM (m-pair {x′ = x′} r stopped) fa nr es os k = P-[] (preP s-unpair (simM r fa nr es (x′ ∷ˢ os) _))
+simM (m-id r) fa nr es eq os k = sim r (fa , nr) es eq os k
+simM m-one fa nr es eq os k = done∅
+simM m-b fa nr es eq os k = done∅
+simM m-μ fa nr es eq os k = done∅
+simM (m-inl (fm-gives r)) fa nr es eq os k = pre s-case₁ (after (simM r fa nr es eq os _) (s-prim r-inl))
+simM (m-inl (fm-stop r))  fa nr es eq os k = preP s-case₁ (simM r fa nr es eq os _)
+simM (m-inr (fm-gives r)) fa nr es eq os k = pre s-case₂ (after (simM r fa nr es eq os _) (s-prim r-inr))
+simM (m-inr (fm-stop r))  fa nr es eq os k = preP s-case₂ (simM r fa nr es eq os _)
+simM (m-pair {x′ = x′} r (go-on {u = y} (fm-gives r′))) fa nr es eq os k =
+  pre s-unpair (then (simM r fa nr es eq (x′ ∷ˢ os) _) (pre s-swap (after (after (simM r′ fa nr es eq (y ∷ˢ os) _) s-swap) s-pair)))
+simM (m-pair {x′ = x′} r (go-on {u = y} (fm-stop r′))) fa nr es eq os k =
+  preP s-unpair (thenP (simM r fa nr es eq (x′ ∷ˢ os) _) (preP s-swap (simM r′ fa nr es eq (y ∷ˢ os) _)))
+simM (m-pair {x′ = x′} r stopped) fa nr es eq os k = P-[] (preP s-unpair (simM r fa nr es eq (x′ ∷ˢ os) _))
 
 ------------------------------------------------------------------------
 -- 7. ★ ON THE MACHINE.
@@ -572,13 +590,17 @@ private
   pre₀ : Pre (λ _ → 0) 0 mone (λ _ → 0)
   pre₀ = record { le1 = λ _ → z≤n ; above = λ _ _ → refl ; sub = λ _ → z≤n }
 
+-- a closed program starts with nothing lent and nothing given
+start : Cfg (One ∷ [] ∣ One ∷ [])
+start = vw mone []ᵉ ∥ mone ∷ˢ []ˢ
+
 -- a finished run of a closed program: the machine on its compiled code is
 -- legal on the cell heap, leaves it empty, and frees every frame it entered
 machine-noleak : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {n′ t}
                → Run ds f mone mone 0 (gives mone n′) t → Frag ds f
-               → Σ Trace λ mt → Steps (comp ds f end) (mone ∷ˢ []ˢ ∥ mone ∷ˢ []ˢ) 0 mt end (mone ∷ˢ []ˢ ∥ mone ∷ˢ []ˢ) n′
+               → Σ Trace λ mt → Steps (comp ds f end) start 0 mt end start n′
                  × OK mt (λ _ → 0) × (∀ i → play mt (λ _ → 0) i ≡ 0) × TBal mt
-machine-noleak {t = t} run fr with sim run fr []ˢ []ˢ end | noleak (plain run)
+machine-noleak {t = t} run fr with sim run fr (vw mone []ᵉ) refl []ˢ end | noleak (plain run)
 ... | out ts mt st w b | (ok , clean) =
   ( mt , st
   , OK-weave w (λ _ → 0) ok
@@ -594,8 +616,8 @@ machine-legal : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {y t}
               → Σ Trace λ mt′ → Σ (List TEv) λ ts′ → Weave tmp (erase t) ts′ mt′
                  × OK mt′ (λ _ → 0) × TLeg mt′
                  × Σ Trace λ mt → mt′ ≼ mt × Σ Sh λ sh → Σ (Code sh (_ ∣ _)) λ c′ → Σ (Cfg sh) λ m′ → Σ ℕ λ n′
-                   → Steps (comp ds f end) (mone ∷ˢ []ˢ ∥ mone ∷ˢ []ˢ) 0 mt c′ m′ n′
-machine-legal {t = t} run fr with sim run fr []ˢ []ˢ end
+                   → Steps (comp ds f end) start 0 mt c′ m′ n′
+machine-legal {t = t} run fr with sim run fr (vw mone []ᵉ) refl []ˢ end
 ... | paused {sh′} c′ m′ n′ ts mt t₀ st w p cl l with weave-pre w p
 ...   | (ts′ , mt′ , w′ , q) =
   ( mt′ , ts′ , w′
