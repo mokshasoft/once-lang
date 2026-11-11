@@ -12,7 +12,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 SAFE="$HERE/../formal/scripts/agda-safe.sh"
 cd "$HERE"
 unset AGDA_DIR   # as formal/Makefile: a stale nix AGDA_DIR only warns
-STD_LIB=$(find /nix/store -maxdepth 2 -name standard-library.agda-lib 2>/dev/null | head -1)
+STD_LIB=$(find /nix/store -maxdepth 2 -name standard-library.agda-lib -print -quit 2>/dev/null)
 [ -n "$STD_LIB" ] || { echo "check.sh: standard-library not found in the nix store" >&2; exit 2; }
 if [ $# -eq 0 ]; then
   mapfile -t mods < <(find . -name '*.agda' -not -path './_build/*' -printf '%P\n' | LC_ALL=C sort)
