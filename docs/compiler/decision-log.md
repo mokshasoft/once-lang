@@ -22292,9 +22292,9 @@ earlier ones, and GOAL.md overrides both.
 * Values on the machine's stack are the run's values: cells are still the run's, by id. Addresses, and an
   allocator that reuses them, are A17.
 
-## D411 — THE ALLOCATOR PER SIZE; THE SPACE CLAIM PER SIZE CLASS; ITS STRONG FORM IS THE USER'S (2026-11-11)
+## D411 — THE ALLOCATOR PER SIZE; THE SPACE CLAIM PER SIZE'S PEAK, IN ONE SHARED REGION (2026-11-11)
 
-**Part 1 Proposed** (made unattended; for the user's review). **Part 2 OPEN: the user's decision** (plan
+**Part 1 Proposed** (made unattended; for the user's review). **Part 2 DECIDED by the user, 2026-11-11** (plan
 0.146 §3, "the space claim", open since 2026-11-08). Worked out in `Spikes/LinCore/Alloc.agda` (A17).
 
 ### Part 1: the allocator, proved
@@ -22346,6 +22346,30 @@ The choices:
   allocator fail, its invariant holding along the run. The link, kept event by event: a cell of size `k`
   is live in the pool exactly when the heap holds it; the pool's stack of temporaries is as long as the
   ledger counts. Example: the list server's events, the new list taking the old blocks.
+
+### D411 part 2, decided by the user (2026-11-11): the claim per size's peak, over one shared region
+Checked against GOAL.md and the Spec.
+* **The Spec leaves the space claim to the implementation.** The source has unlimited memory
+  (`never-exhausted`), and a compiled run may end `exhausted` anywhere (`⊑`, D374).
+* **The strong form is impossible without moving blocks.** No allocator that never moves a block can
+  promise "only when the live data does not fit" (Robson 1974: some request sequence needs more, by a
+  factor that grows with the logarithm of the ratio of the largest to the smallest block size). Moving
+  blocks needs a runtime that finds and rewrites pointers, which is a collector, and GOAL.md excludes it.
+  So option 3 is rejected.
+* **Option 2 (padding to one size) is rejected.** It spends words at run time on a size difference the
+  compiler knows (GOAL.md, "nothing known at compile time is kept at run time").
+* **Decision: option 1, over ONE region.**
+  * The Host's region is shared by every size, with one top used from the bottom up. The compiler does
+    not split it between sizes, since it cannot know how.
+  * Each size keeps its pool, with lowest-free reuse. A pool that must grow takes the next `k` words.
+* **Proved** (`Spikes/LinCore/Region.agda`, `AllocRun.in-one-region`):
+  * the blocks of every size lie apart and below the top (`rinv`);
+  * the words in use are at most `Σ k · topₖ` (`space`);
+  * each `topₖ` is a peak: at some moment of the run, every block of size `k` below it had an owner
+    (`peak`, via `Alloc.grow-full`);
+  * a legal run drives the region from empty without a failed step.
+* **The claim (plan B2):** a run ends `exhausted` only when `Σ k · peakₖ`, over the program's sizes, does
+  not fit the region.
 
 ## D412 — THE SPIKE CARRIES THE SPEC'S GRADES: A ROUND AND A COALGEBRA ARE FINITE BLOCKS (2026-11-11)
 

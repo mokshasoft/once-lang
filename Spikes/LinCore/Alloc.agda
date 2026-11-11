@@ -2,14 +2,15 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Alloc — plan 0.146 A17 (D411): THE ALLOCATOR AND THE SPACE CLAIM.
+-- LinCore.Alloc — plan 0.146 A17 (D411): ONE SIZE CLASS'S POOL.
 --
--- One SIZE CLASS (free lists per size, D403): its blocks are numbered from 0
--- (block `j` of size `k` is the words `[base k + j·k, base k + (j+1)·k)`);
--- the region holds blocks `0 … top-1`. The allocator follows the run's
--- events of its size: a cell born takes the lowest free block below the top,
--- or the top grows by one; a cell freed frees its block; a temporary (a
--- frame) likewise, newest first.
+-- A pool of size `k` (free lists per size, D403) numbers its blocks from 0;
+-- the pool holds blocks `0 … top-1`, and where each lies in the one region
+-- is `LinCore.Region`'s (`addr k j`: the region gives a growing pool the next
+-- `k` words at its top). The pool follows the run's events of its size: a
+-- cell born takes the lowest free block below the top, or the top grows by
+-- one; a cell freed frees its block; a temporary (a frame) likewise, newest
+-- first.
 --
 -- Every block has one OWNER (`who`: free, a cell by its serial, a
 -- temporary by its name); a cell's block is `own s`. So:
@@ -17,15 +18,16 @@
 --   * ADDRESSES ARE REUSED (the lowest free block first), the run's ids are
 --     not, and the map from ids to blocks is INJECTIVE ON LIVE BLOCKS — by
 --     construction: `who` is a function (`live-injective`);
---   * ★ THE SPACE CLAIM, per size: the region grows only when it is FULL —
---     every block below the top holds a live cell or a live temporary of
---     its own (`grows-only-when-full`). So a run is cut for lack of room of
---     size `k` only when more blocks of size `k` are live at once (cells and
---     temporaries) than the room for them holds.
+--   * ★ the pool grows only when it is FULL — every block below the top
+--     holds a live cell or a live temporary of its own
+--     (`grows-only-when-full`), and after growing it is full again
+--     (`grow-full`). `LinCore.Region` makes this the space claim.
 --
--- The stronger claim, "only when the live data of all sizes does not fit the
--- region", is false for free lists per size (fragmentation: blocks freed in
--- one size cannot serve another); it is the user's decision (D411).
+-- Free lists per size cannot serve one size from another's freed blocks,
+-- so "a run runs out only when its live data does not fit" is false for
+-- them; no allocator that never moves a block can promise it (Robson 1974),
+-- and moving blocks is a collector (GOAL.md excludes it). The claim is per
+-- size's peak (D411 part 2, decided: `LinCore.Region`).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe --guardedness #-}
@@ -380,6 +382,58 @@ grows-only-when-full p iv grows j lt | just _ = ⊥-elim (<-irrefl refl grows)
 ...   | freeW   = ⊥-elim (ff-nothing (who p) (top p) eq j lt wj)
 ...   | cellW s = inj₁ (s , subst (λ z → who p z ≡ cellW s) (sym (cells iv j s wj)) wj , cells iv j s wj)
 ...   | tempW m = inj₂ (m , tmps iv j m wj)
+
+-- every block below the top has an owner
+Full : Pool → Set
+Full p = ∀ j → j < top p → who p j ≢ freeW
+
+-- the top grows by one, at the old top, only when nothing was free
+take-grow : ∀ p → top p < snd (take p)
+          → fst (take p) ≡ top p × snd (take p) ≡ suc (top p) × (∀ j → j < top p → who p j ≢ freeW)
+take-grow p lt with firstFree (who p) (top p) in eq
+... | just _  = ⊥-elim (<-irrefl refl lt)
+... | nothing = (refl , refl , ff-nothing (who p) (top p) eq)
+
+take-same : ∀ p → snd (take p) ≡ top p ⊎ snd (take p) ≡ suc (top p)
+take-same p with firstFree (who p) (top p)
+... | just _  = inj₁ refl
+... | nothing = inj₂ refl
+
+upd-full : ∀ p {x} → x ≢ freeW → top p < snd (take p)
+         → ∀ j → j < snd (take p) → upd (who p) (fst (take p)) x j ≢ freeW
+upd-full p {x} nx lt j jl with take-grow p lt
+... | (e₁ , e₂ , nf) with fst (take p) ≟ j
+...   | yes _ = nx
+...   | no ne with m≤n⇒m<n∨m≡n (≤-pred (subst (j <_) e₂ jl))
+...     | inj₁ lt′  = nf j lt′
+...     | inj₂ refl = ⊥-elim (ne e₁)
+
+-- ★ a step that grows the region leaves it FULL: every block below the new
+-- top has an owner (so as many things of this size are live at once)
+grow-full : ∀ o p {p′} → step o p ≡ just p′ → top p < top p′ → Full p′
+grow-full (birth s) p e lt with who p (own p s) ≟w cellW s
+grow-full (birth s) p () lt | yes _
+grow-full (birth s) p refl lt | no _ = upd-full p (λ ()) lt
+grow-full (death s) p e lt with who p (own p s) ≟w cellW s
+grow-full (death s) p refl lt | yes _ = ⊥-elim (<-irrefl refl lt)
+grow-full (death s) p () lt | no _
+grow-full tbirth p refl lt = upd-full p (λ ()) lt
+grow-full tdeath p e lt with temps p
+grow-full tdeath p () lt | []
+grow-full tdeath p refl lt | _ ∷ _ = ⊥-elim (<-irrefl refl lt)
+
+-- a step keeps the top, or grows it by one
+step-top : ∀ o p {p′} → step o p ≡ just p′ → top p′ ≡ top p ⊎ top p′ ≡ suc (top p)
+step-top (birth s) p e with who p (own p s) ≟w cellW s
+step-top (birth s) p () | yes _
+step-top (birth s) p refl | no _ = take-same p
+step-top (death s) p e with who p (own p s) ≟w cellW s
+step-top (death s) p refl | yes _ = inj₁ refl
+step-top (death s) p () | no _
+step-top tbirth p refl = take-same p
+step-top tdeath p e with temps p
+step-top tdeath p () | []
+step-top tdeath p refl | _ ∷ _ = inj₁ refl
 
 ------------------------------------------------------------------------
 -- 6. WHAT EACH STEP DOES TO WHO IS LIVE (for the link with the run).

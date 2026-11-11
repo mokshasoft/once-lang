@@ -13,6 +13,11 @@
 -- link, kept event by event: a cell of size `k` is live in the pool exactly
 -- when the heap holds it, and the pool's stack of temporaries is as long as
 -- the ledger counts.
+--
+-- ★ §4 (D411 part 2): every size at once, in ONE region (`LinCore.Region`):
+-- a legal run drives the region from empty without a failed step, its blocks
+-- of every size lie apart, and the words it uses are at most `Σ k · peakₖ`
+-- over the program's sizes (`in-one-region`).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe --guardedness #-}
@@ -30,6 +35,8 @@ open import Data.List using (List; []; _∷_; _++_; length; concatMap)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import LinCore.Flat using (FTy)
 import LinCore.Alloc as A
+import LinCore.Region as R
+open import Data.Sum using (inj₁; inj₂)
 
 module LinCore.AllocRun
   (Base : Set) (⟦_⟧b : Base → Set)
@@ -248,3 +255,88 @@ along k (x ∷ t) (ox , ot) (tx , tt′) iv lk with event k x ox tx iv lk
 -- addresses (`A.live-injective`)
 never-fails : ∀ t → OK t (λ _ → 0) → TLeg t → ∀ k → Σ A.Pool λ p′ → A.Steps A.empty (ops k t) p′ × A.Inv p′
 never-fails t ok tl k = along k t ok tl A.inv-empty (link₀ k)
+
+------------------------------------------------------------------------
+-- 4. ★ ONE REGION FOR EVERY SIZE (D411 part 2, `LinCore.Region`).
+------------------------------------------------------------------------
+
+-- the run's events, as operations on the region: each on its own size
+gopOf : Ev → List (ℕ × A.Op)
+gopOf (alloc (k , s))  = (k , A.birth s) ∷ []
+gopOf (free (k , s))   = (k , A.death s) ∷ []
+gopOf (tmp (tnew k))   = (k , A.tbirth) ∷ []
+gopOf (tmp (tdel k))   = (k , A.tdeath) ∷ []
+gopOf (peek _)         = []
+gopOf (io _ _ _)       = []
+gopOf (stp _ _)        = []
+
+gops : Trace → List (ℕ × A.Op)
+gops = concatMap gopOf
+
+-- every size's pool linked to the run
+GLink : Heap → TL → R.Region → Set
+GLink h L r = ∀ k → Link k h L (R.pools r k)
+
+-- an event that asks nothing of size `k` leaves its pool as it was
+after-none : ∀ {k x h L p} → opOf k x ≡ [] → After k x h L p → Link k (step x h) (tstep x L) p
+after-none e (after p₁ st _ lk) with subst (λ os → A.Steps _ os p₁) e st
+... | A.done = lk
+
+-- an event of size `k`: its one operation is the pool's step
+after-one : ∀ {k x h L p o} → opOf k x ≡ o ∷ [] → (a : After k x h L p) → A.step o p ≡ just (After.p₁ a)
+after-one e (after p₁ st _ _) with subst (λ os → A.Steps _ os p₁) e st
+... | e′ A.⟫ A.done = e′
+
+GAfter : Ev → Heap → TL → R.Region → Set
+GAfter x h L r = Σ R.Region λ r′ → R.GSteps r (gopOf x) r′ × R.RInv r′ × GLink (step x h) (tstep x L) r′
+
+-- an event of one size: that pool steps, the others stay
+gone : ∀ x {h L r} k₀ o → gopOf x ≡ (k₀ , o) ∷ [] → opOf k₀ x ≡ o ∷ [] → (∀ k → k₀ ≢ k → opOf k x ≡ [])
+     → okPre x h → tpre x L → R.RInv r → GLink h L r → GAfter x h L r
+gone x {h} {L} {r} k₀ o eg e₀ en ok tp iv lk =
+  (R.place k₀ p₁ r , subst (λ gs → R.GSteps r gs (R.place k₀ p₁ r)) (sym eg) (R.gstep-ok {k₀} {o} {r} ep R.⟫ R.done)
+  , R.rinv-place k₀ o r iv ep , lk′)
+  where
+    a  = event k₀ x ok tp (R.pinv iv k₀) (lk k₀)
+    p₁ = After.p₁ a
+    ep = after-one e₀ a
+    lk′ : GLink (step x h) (tstep x L) (R.place k₀ p₁ r)
+    lk′ k rewrite R.place-pools k₀ p₁ r with R.upd-view (R.pools r) k₀ p₁ k
+    ... | inj₁ (refl , q) = subst (Link k _ _) (sym q) (After.link a)
+    ... | inj₂ (ne , q)   = subst (Link k _ _) (sym q) (after-none (en k ne) (event k x ok tp (R.pinv iv k) (lk k)))
+
+-- an event of no size: nothing steps
+gzero : ∀ x {h L r} → gopOf x ≡ [] → (∀ k → opOf k x ≡ []) → okPre x h → tpre x L → R.RInv r → GLink h L r
+      → GAfter x h L r
+gzero x {r = r} eg en ok tp iv lk =
+  (r , subst (λ gs → R.GSteps r gs r) (sym eg) R.done , iv
+  , λ k → after-none (en k) (event k x ok tp (R.pinv iv k) (lk k)))
+
+gevent : ∀ x {h L r} → okPre x h → tpre x L → R.RInv r → GLink h L r → GAfter x h L r
+gevent (alloc (k , s))  = gone (alloc (k , s)) k (A.birth s) refl (alloc-one k s) (λ _ ne → alloc-none ne)
+gevent (free (k , s))   = gone (free (k , s)) k (A.death s) refl (free-one k s) (λ _ ne → free-none ne)
+gevent (tmp (tnew k))   = gone (tmp (tnew k)) k A.tbirth refl (tnew-one k) (λ _ ne → tnew-none ne)
+gevent (tmp (tdel k))   = gone (tmp (tdel k)) k A.tdeath refl (tdel-one k) (λ _ ne → tdel-none ne)
+gevent (peek i)         = gzero (peek i) refl (λ _ → refl)
+gevent (io s x y)       = gzero (io s x y) refl (λ _ → refl)
+gevent (stp s x)        = gzero (stp s x) refl (λ _ → refl)
+
+galong : ∀ t {h L r} → OK t h → TOK t L → R.RInv r → GLink h L r
+       → Σ R.Region λ r′ → R.GSteps r (gops t) r′ × R.RInv r′
+galong []      _          _          iv lk = (_ , R.done , iv)
+galong (x ∷ t) (ox , ot) (tx , tt′) iv lk with gevent x ox tx iv lk
+... | (r₁ , st₁ , iv₁ , lk₁) with galong t ot tt′ iv₁ lk₁
+...   | (r′ , st , iv′) = (r′ , R.gsteps-++ st₁ st , iv′)
+
+-- ★ A LEGAL RUN IN ONE REGION, over the program's sizes `ks`:
+--   * the region makes every step, from empty;
+--   * the blocks of every size lie apart, below the top (`R.RInv`);
+--   * the words in use are at most `Σ k · topₖ`;
+--   * and every `topₖ` is a peak: at some moment of the run that many
+--     blocks of size `k` were owned at once.
+-- So the run runs out of a region of `M` words only if `Σ k · peakₖ > M`.
+in-one-region : ∀ ks t → OK t (λ _ → 0) → TLeg t → R.Sizes ks (gops t)
+              → Σ R.Region λ r → R.GSteps R.empty (gops t) r × R.RInv r
+                               × R.wtop r ≤ R.Words ks r × (∀ k → R.Peak (gops t) k (R.tops r k))
+in-one-region ks t ok tl sz with galong t ok tl R.rinv-empty (λ k → link₀ k)
+... | (r , st , iv) = (r , st , iv , R.space ks sz z≤n st , R.peak st)
