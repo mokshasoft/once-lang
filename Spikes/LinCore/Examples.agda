@@ -65,6 +65,7 @@ open import LinCore.Temps B ⟦_⟧B Op odom ocod bw
 open import LinCore.Total B ⟦_⟧B Op odom ocod bw
 open import LinCore.Pass B ⟦_⟧B Op odom ocod
 open import LinCore.Whole B ⟦_⟧B Op odom ocod bw
+open import LinCore.Machine B ⟦_⟧B Op odom ocod bw
 
 -- the events of a loop run, and of a run
 trace-of : ∀ {E A C} {round : Tm Γ E A (C ⊕t A)} {e s n k s′ n′ t} → Loop ds round e s n k s′ n′ t → Trace
@@ -581,3 +582,14 @@ counter-sound : RB (block (ev counter-ir tt))
                    (io-call emit 0 tt ∷ io-call succ 0 1 ∷ io-call emit 1 tt ∷ io-call succ 1 2 ∷ [])
                    (ended exhausted)
 counter-sound = whole-sound world 2 counter-ir tt
+
+------------------------------------------------------------------------
+-- 15. ★ A16: THE MACHINE. §8½'s composition, lowered and run: each call is
+--     a frame in a heap block of its own (a temporary), entered and left
+--     around the body's events; erased, the events are the run's.
+------------------------------------------------------------------------
+
+composed-machine : Out.mt (sim composed-run _ []ˢ end)
+                 ≡ tmp (tnew 1) ∷ tmp (tnew 1) ∷ io succ 5 6 ∷ tmp (tdel 1)
+                 ∷ tmp (tnew 1) ∷ io emit 6 tt ∷ tmp (tdel 1) ∷ tmp (tdel 1) ∷ []
+composed-machine = refl

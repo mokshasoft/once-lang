@@ -152,3 +152,14 @@ foldl-all g e {_ ∷ xs} (px ∷ ps) a = trans (cong (λ b → foldl g b xs) (e 
 cmap-All : ∀ {P : Y → Set} (f : X → List Y) → (∀ x → All P (f x)) → ∀ xs → All P (concatMap f xs)
 cmap-All f p []       = []
 cmap-All f p (x ∷ xs) = ++⁺ (p x) (cmap-All f p xs)
+
+-- weaves compose along `++`, and a word is a weave of itself with nothing
+w-++ : ∀ {inj : Y → X} {t₁ ts₁ t₁′ t₂ ts₂ t₂′} → Weave inj t₁ ts₁ t₁′ → Weave inj t₂ ts₂ t₂′
+     → Weave inj (t₁ ++ t₂) (ts₁ ++ ts₂) (t₁′ ++ t₂′)
+w-++ w-[]      w₂ = w₂
+w-++ (w-run w) w₂ = w-run (w-++ w w₂)
+w-++ (w-tmp w) w₂ = w-tmp (w-++ w w₂)
+
+w-self : ∀ {inj : Y → X} t → Weave inj t [] t
+w-self []      = w-[]
+w-self (x ∷ t) = w-run (w-self t)
