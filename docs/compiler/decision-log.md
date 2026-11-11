@@ -22274,16 +22274,24 @@ Found before building option 1; the user's decision.
   (neither). Termination is the simply typed calculus's normalization (Tait), not a fold over the closure
   data. A fold into an arrow carrier kept as suspended data (applied by re-running the fold with the
   argument) is structural, but does not cover closures that return closures or a server's closure state.
-* **The candidates:**
-  1. a recursive apply (a label sum whose bodies may call the same sum), its meaning in `T∞`, and its
-     finiteness carried from the IR's meaning, which the Spec makes total, through `pass-ok`'s
-     bisimilarity. `Blk` then also admits such an apply on that evidence. "Structured recursion only"
-     stays a property of the source; the compiled code recurses where the source's types guarantee it
-     ends;
-  2. option 1 as written, with `Blk` relaxed to admit the interpreter loop (weakens D412 for every
-     program);
-  3. only the structural part (suspended folds), rejecting the Spec-typed programs it does not cover
-     (rejected for the same reason as part 2's option 3).
+* **Checked against GOAL.md and the Spec (the user, 2026-11-11), every candidate first proposed here
+  is WITHDRAWN:**
+  * **The interpreter loop (part 2's option 1) is withdrawn.** It is not in the Spec. The Spec's recursion
+    is `fold`, `unfold`, and the server `ana` into `Eff` (surface `c-loop`; core `iter`, D317), whose
+    rounds are finite blocks. A loop that runs `apply` is a while-loop inside a finite block. With it goes
+    part 2's order "option 1 first".
+  * **A label that may call itself is withdrawn.** It is fixpoint recursion: GOAL.md, "no general
+    recursion, no fixed-point combinator, no definition that refers to itself", and `Spec.Core.Program`,
+    "may refer only to the definitions before it". Arguing that only the source must be structured was a
+    deviation from GOAL.md, not a principled choice.
+  * **Rejecting what suspended folds don't cover is withdrawn**: it rejects Spec-typed programs.
+* **The principled direction, to be spiked:** keep the source's structure instead of defunctionalising it
+  away. The Spec's `fold` into an arrow (System T's strength: Ackermann is definable, so no first-order
+  fold can stand in for it) becomes a core generator of its own, its meaning a fold into a function
+  space, which Agda's termination checker accepts as structural or rejects, with no fuel. A closure it
+  produces is the data node and the environment; applying it runs the algebra at that node, as the
+  machine already runs a first-order fold. The open part: a server whose state is a closure, and
+  closures that calls return. Part 2's per-lambda labels (option 2) stand where one lambda reaches a site.
 
 ## D410 — A MODEL MACHINE: CODE, FRAMES IN HEAP BLOCKS, A SIMULATION BY THE RUN (2026-11-11)
 
