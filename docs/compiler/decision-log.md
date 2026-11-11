@@ -22264,6 +22264,27 @@ earlier ones, and GOAL.md overrides both.
 * **Order.** Build option 1 first (the general pass, proved like `pass-ok`), then option 2 as a refinement
   proved against it.
 
+### Part 3, OPEN (2026-11-11): how a data-decided apply recurses, after D412
+Found before building option 1; the user's decision.
+* **Option 1 as written makes `apply` a `liter`.** D412 (decided later) makes a round, a fold's algebra
+  and a coalgebra finite BLOCKS, and a loop is not a block. So any of them that applies a closure nested
+  through data would no longer type: the pass could not produce what D412 requires.
+* **No structural measure covers it.** Applying a closure calls closures from its environment
+  (structurally smaller), from its argument (of a smaller type), and closures RETURNED by those calls
+  (neither). Termination is the simply typed calculus's normalization (Tait), not a fold over the closure
+  data. A fold into an arrow carrier kept as suspended data (applied by re-running the fold with the
+  argument) is structural, but does not cover closures that return closures or a server's closure state.
+* **The candidates:**
+  1. a recursive apply (a label sum whose bodies may call the same sum), its meaning in `T∞`, and its
+     finiteness carried from the IR's meaning, which the Spec makes total, through `pass-ok`'s
+     bisimilarity. `Blk` then also admits such an apply on that evidence. "Structured recursion only"
+     stays a property of the source; the compiled code recurses where the source's types guarantee it
+     ends;
+  2. option 1 as written, with `Blk` relaxed to admit the interpreter loop (weakens D412 for every
+     program);
+  3. only the structural part (suspended folds), rejecting the Spec-typed programs it does not cover
+     (rejected for the same reason as part 2's option 3).
+
 ## D410 — A MODEL MACHINE: CODE, FRAMES IN HEAP BLOCKS, A SIMULATION BY THE RUN (2026-11-11)
 
 **Proposed** (made unattended; for the user's review). Worked out in `Spikes/LinCore/Machine.agda` (plan
