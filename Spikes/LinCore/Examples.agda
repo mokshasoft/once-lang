@@ -63,6 +63,8 @@ open import LinCore.Events B ⟦_⟧B Op odom ocod bw
 open import LinCore.Act B ⟦_⟧B Op odom ocod bw
 open import LinCore.Temps B ⟦_⟧B Op odom ocod bw
 open import LinCore.Total B ⟦_⟧B Op odom ocod bw
+open import LinCore.Pass B ⟦_⟧B Op odom ocod
+open import LinCore.Whole B ⟦_⟧B Op odom ocod bw
 
 -- the events of a loop run, and of a run
 trace-of : ∀ {E A C} {round : Tm Γ E A (C ⊕t A)} {e s n k s′ n′ t} → Loop ds round e s n k s′ n′ t → Trace
@@ -560,3 +562,22 @@ nats-found = refl
 -- ★ A14 step 2: the list server, cut after two rounds — because its fuel ran out
 list-cause : Ran.cause (exec world ε 2 (liter list-round) mone (one-list 5) 2 tt) ≡ out-of-fuel
 list-cause = refl
+
+------------------------------------------------------------------------
+-- 14. ★ A15: an IR PROGRAM, COMPILED. The counter server written in the
+--     IR (`Iter` over an `Int`, from the constant 0), translated by the
+--     pass, run by the evaluator: the world sees what §1's hand-written
+--     server showed it, and the run means what the IR program means.
+------------------------------------------------------------------------
+
+counter-ir : IR One One
+counter-ir = Iter (inr ∘ snd ∘ ⟨ SigOp emit ∘ snd , SigOp succ ∘ snd ⟩) ∘ ⟨ terminal , const 0 ⟩
+
+counter-ios : ios (Ran.trace (exec world ε 2 (tr counter-ir) mone mone 0 tt))
+            ≡ io-call emit 0 tt ∷ io-call succ 0 1 ∷ io-call emit 1 tt ∷ io-call succ 1 2 ∷ []
+counter-ios = refl
+
+counter-sound : RB (block (ev counter-ir tt))
+                   (io-call emit 0 tt ∷ io-call succ 0 1 ∷ io-call emit 1 tt ∷ io-call succ 1 2 ∷ [])
+                   (ended exhausted)
+counter-sound = whole-sound world 2 counter-ir tt

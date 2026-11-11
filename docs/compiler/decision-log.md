@@ -22200,3 +22200,44 @@ amendment; for the user's review). Worked out in `Spikes/LinCore/` (plan 0.146 A
   separate reason (the world did not answer) would need a new `Why` and an `RB` case.
 * Step 2 DONE: `Ran.cause` — a run found `exhausted` ran out of fuel at a loop or met a call the world
   refused (`unanswered`, with the equation); `fuel-only`: a world that always answers cuts only at a loop.
+
+## D409 — THE PASS, FIRST-ORDER, PROVED; THE HIGHER-ORDER PASS NEEDS A LABELLING DECISION (2026-11-11)
+
+**Part 1 Proposed** (made unattended; for the user's review). **Part 2 OPEN: the user's decision.** Worked
+out in `Spikes/LinCore/Pass.agda`, `Whole.agda` (plan 0.146 A15).
+
+### Part 1: the first-order IR
+* `Pass.IR`: master's constructors but `curry`/`apply`, `Ana`/`Out`/`in-ν`, `Call`, over the core's types;
+  `ev`, their meaning clause for clause master's `evalᴰ` (`Once.Denotation.DenotTrace`).
+* `tr`: the faithful translation. `⟨f,g⟩` duplicates its input; `fst`/`snd`/`terminal` drop; a fold's and
+  a loop's environment is lent to the body and copied per use (`withE`: the IR's algebra owns `E`). The
+  cheaper choices (lend a pair's input, no copy of an environment the body only reads) are refinements of
+  this translation, to be proved the same way.
+* `pass-ok`: `Lᶜ (tr f) ≈ ev f`, BISIMILARITY of computations (a loop's meaning is coinductive). Proved
+  with the monad's congruences (`>>=-cong`, `iter-cong`, `cata-cong`) and one identity (`pair-drop`).
+* `Whole`: an IR program, translated, run by `exec` in any world: what the world saw is a path through the
+  IR program's meaning; a finished run leaks nothing. Example: the counter server, written in the IR.
+* The core gains `lconst` (the IR's `const`: a word, no event), with a case in every theorem.
+
+### Part 2, open: labelling the higher-order IR
+The pass must give every lambda (`curry`) and coalgebra (`Ana`) a label, and every arrow and ν type a sum of
+labels (D405, D406). D405 said "start coarse: one sum per arrow type". That is NOT expressible:
+* The coarse sum of `Int ⇛ Int` contains the closure of `compose f g`, whose environment holds two
+  `Int ⇛ Int` closures: the sum type is RECURSIVE. The core's only recursive types are `μ` codes, which
+  hold base data and other codes, never closures (`LF`, by design: positivity).
+* Its apply would call itself (applying `f` inside `compose`'s body): the label table is stratified, so a
+  body cannot call its own label (D405).
+
+The choices, each principled, with different costs:
+1. **Closures as data, apply as an interpreter loop** (Reynolds' defunctionalisation, D405's "chain as
+   data" made general): every arrow type is a `μ` code of its lambdas' environments; `apply` is a `liter`
+   with an explicit stack. Total coverage; every higher-order call goes through the loop, and closures with
+   cells for every node; the proof is a simulation through the loop.
+2. **A flow analysis (0-CFA-like) with per-lambda labels**: each application site gets the finite set of
+   lambdas that reach it; sums only of those; the table stays stratified when no lambda reaches its own
+   body. Fast code; needs the analysis and its soundness proof; falls back to 1 where a cycle exists.
+3. **Restrict the surface** (no higher-order recursion through closures of the same type): simplest,
+   rejects programs the IR accepts today.
+
+`Call` (named definitions) is the same question: a call graph without cycles inlines or becomes labels;
+a cycle needs 1. `in-ν` and a ν's observation are labels too (D406).

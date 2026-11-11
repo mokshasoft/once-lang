@@ -173,6 +173,7 @@ module _ (W : World) where
       go k (bapp p) (mct x) a n σ with find ρ p
       ... | found {b = bω b} q r with r k x a n σ
       ...   | ran o t rb σ₁ c = ran o t (r-bapp q rb) σ₁ c
+      go k (lconst v) e mone n σ = ran _ _ r-const σ tt
       go k (lop s) e x n σ with ans σ s (toF (sdom s) (er x)) in eq
       ... | just (y , σ₁) = ran _ _ (r-op {y = y}) σ₁ tt
       ... | nothing       = ran _ _ r-exh σ (unanswered σ s _ eq)

@@ -383,6 +383,7 @@ data Run {Γ} ds where
           → Look ds p ds′ (bω b) → Run ds′ b x a n o t → Run ds (bapp p) (mct x) a n o t
   -- ★ A11: a SigOp: an event, and whatever the world answers (A12: a flat
   -- value, no cell)
+  r-const : ∀ {E b} {v : ⟦ b ⟧b} {e : MV E} {n} → Run ds (lconst v) e mone n (gives (mbase v) n) []
   r-op    : ∀ {E} {s} {e : MV E} {x : MV ⌜ sdom s ⌝} {y n}
           → Run ds (lop s) e x n (gives (mvF (scod s) y) n) (io s (toF (sdom s) (er x)) y ∷ [])
   r-halt  : ∀ {E} {s} {e : MV E} {x : MV ⌜ sdom s ⌝} {n}
@@ -671,6 +672,7 @@ sound (r-out {F} {f = f} {v = v} {a} {o} {t = t} r) =
 sound (r-copy {e = e} {n}) = ret-eq (copy-er e n) (ios-copy e n)
 sound (r-bapp {x = x} {a = a} {o = o} {t = t} q r) =
   subst (λ m → RB (block m) (ios t) (erO o)) (sym (lookup-look q (er x) (er a))) (sound r)
+sound r-const = b-ret
 sound (r-op {s = s} {y = y}) = b-call (ret-eq (er-mvF (scod s) y) refl)
 sound r-halt = b-halt
 sound (r-iter {t₁ = t₁} {t₂} r th) rewrite ios-++ t₁ t₂ with th
@@ -782,6 +784,7 @@ sized (r-caseE₂ r) se sv = sized r se sv
 sized (r-out r) (_ , se) sv = sized r se sv
 sized (r-copy {e = e} {n}) se sv = copy-sized e n
 sized (r-bapp q r) sx sv = sized r sx sv
+sized r-const se sv = tt
 sized (r-op {s = s} {y = y}) se sv = mvF-sized (scod s) y
 sized (r-iter r (go-on done)) se sv = sized r se sv
 sized (r-iter r (go-on (again rn))) se sv = sized rn se (sized r se sv)
@@ -1172,6 +1175,7 @@ mono (r-caseE₂ r)  = mono r
 mono (r-out r)     = mono r
 mono (r-copy {e = e} {n}) = copy-mono e n
 mono (r-bapp q r)  = mono r
+mono r-const       = ≤-refl
 mono r-op          = ≤-refl
 mono (r-iter r (go-on done))    = mono r
 mono (r-iter r (go-on (again rn))) = ≤-trans (mono r) (mono rn)
@@ -1223,6 +1227,7 @@ below (r-caseE₂ r) b = below r b
 below (r-out r) b = below r b
 below (r-copy {e = e} {n}) b = copy-below e n
 below (r-bapp q r) b = below r b
+below r-const b i le = refl
 below (r-op {s = s} {y = y}) b i le = cnt-flat (scod s) (mvF (scod s) y) i
 below (r-iter r (go-on done)) b = below r b
 below (r-iter r (go-on (again rn))) b = below rn (below r b)
@@ -1493,6 +1498,7 @@ exchange (r-copy {e = e} {n}) {h} pre lent with copy-ok e n h (above pre)
 ... | (ok , eq) = (ok , λ i → trans (+0 _) (eq i))
 -- ★ D405: a lent closure is its lent environment, lent on to the body
 exchange (r-bapp q r) pre lent = exchange r pre lent
+exchange r-const pre lent = (tt , λ i → refl)
 exchange (r-op {s = s} {x = x} {y = y}) {h} pre lent =
   ((tt , tt) , λ i → trans (cong (h i +_) (cnt-flat (sdom s) x i)) (sym (cong (h i +_) (cnt-flat (scod s) (mvF (scod s) y) i))))
 exchange r-halt pre lent = ((tt , tt) , tt)
