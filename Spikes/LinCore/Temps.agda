@@ -143,11 +143,11 @@ plain-map : ∀ {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t}
 -- ★ a run without its temporaries: the same term, values and cell events
 plain : ∀ {E A B} {f : Tm Γ E A B} {e v n o t} → Run ds f e v n o t → Run ds f e v n o (erase t)
 plain r-id = r-id
-plain (r-∘ {t₁ = t₁} {t₂} rg rf) = retrace (sym (erase-++ t₁ t₂)) (r-∘ (plain rg) (plain rf))
-plain (r-∘! r) = r-∘! (plain r)
-plain (r-⊗ {t₁ = t₁} {t₂} rf rg) = retrace (sym (erase-++ t₁ t₂)) (r-⊗ (plain rf) (plain rg))
-plain (r-⊗!₁ r) = r-⊗!₁ (plain r)
-plain (r-⊗!₂ {t₁ = t₁} {t₂} rf rg) = retrace (sym (erase-++ t₁ t₂)) (r-⊗!₂ (plain rf) (plain rg))
+plain (r-∘ {t₁ = t₁} {t₂} rg (go-on rf)) = retrace (sym (erase-++ t₁ t₂)) (r-∘ (plain rg) (go-on (plain rf)))
+plain (r-∘ {t₁ = t₁} rg stopped) = retrace (sym (erase-++ t₁ [])) (r-∘ (plain rg) stopped)
+plain (r-⊗ {t₁ = t₁} {t₂} rf (go-on (fm-gives rg))) = retrace (sym (erase-++ t₁ t₂)) (r-⊗ (plain rf) (go-on (fm-gives (plain rg))))
+plain (r-⊗ {t₁ = t₁} {t₂} rf (go-on (fm-stop rg))) = retrace (sym (erase-++ t₁ t₂)) (r-⊗ (plain rf) (go-on (fm-stop (plain rg))))
+plain (r-⊗ {t₁ = t₁} rf stopped) = retrace (sym (erase-++ t₁ [])) (r-⊗ (plain rf) stopped)
 plain r-ρ = r-ρ
 plain r-ρ⁻ = r-ρ⁻
 plain r-λ = r-λ
@@ -165,14 +165,17 @@ plain r-In = r-In
 plain r-Outμ = r-Outμ
 plain r-clo = r-clo
 plain (r-app q r) = r-app q (plain r)
-plain (r-cata {i = i} {t₁ = t₁} {t₂} rm ra) =
-  retrace (cong (free i ∷_) (sym (erase-++ t₁ t₂))) (r-cata (plain-map rm) (plain ra))
-plain (r-cata! rm) = r-cata! (plain-map rm)
-plain (r-cata-reuse {t₁ = t₁} {t₂} rm rg) = retrace (sym (erase-++ t₁ t₂)) (r-cata-reuse (plain-map rm) (plain rg))
-plain (r-cata-reuse!₁ rm) = r-cata-reuse!₁ (plain-map rm)
-plain (r-cata-reuse!₂ {t₁ = t₁} {t₂} rm rg) = retrace (sym (erase-++ t₁ t₂)) (r-cata-reuse!₂ (plain-map rm) (plain rg))
-plain (r-lend r) = r-lend (plain r)
-plain (r-lend! r) = r-lend! (plain r)
+plain (r-cata {i = i} {t₁ = t₁} {t₂} rm (go-on ra)) =
+  retrace (cong (free i ∷_) (sym (erase-++ t₁ t₂))) (r-cata (plain-map rm) (go-on (plain ra)))
+plain (r-cata {i = i} {t₁ = t₁} rm stopped) =
+  retrace (cong (free i ∷_) (sym (erase-++ t₁ []))) (r-cata (plain-map rm) stopped)
+plain (r-cata-reuse {t₁ = t₁} {t₂} rm (go-on (fm-gives rg))) =
+  retrace (sym (erase-++ t₁ t₂)) (r-cata-reuse (plain-map rm) (go-on (fm-gives (plain rg))))
+plain (r-cata-reuse {t₁ = t₁} {t₂} rm (go-on (fm-stop rg))) =
+  retrace (sym (erase-++ t₁ t₂)) (r-cata-reuse (plain-map rm) (go-on (fm-stop (plain rg))))
+plain (r-cata-reuse {t₁ = t₁} rm stopped) = retrace (sym (erase-++ t₁ [])) (r-cata-reuse (plain-map rm) stopped)
+plain (r-lend (fm-gives r)) = r-lend (fm-gives (plain r))
+plain (r-lend (fm-stop r))  = r-lend (fm-stop (plain r))
 plain (r-lift r) = r-lift (plain r)
 plain (r-fst r) = r-fst (plain r)
 plain (r-snd r) = r-snd (plain r)
@@ -183,9 +186,9 @@ plain (r-copy {e = e} {n}) = retrace (sym (erase-NoT _ (NoT-copy e n))) r-copy
 plain (r-bapp q r) = r-bapp q (plain r)
 plain r-op = r-op
 plain r-halt = r-halt
-plain (r-iter-done r) = r-iter-done (plain r)
-plain (r-iter-next {t₁ = t₁} {t₂} r rn) = retrace (sym (erase-++ t₁ t₂)) (r-iter-next (plain r) (plain rn))
-plain (r-iter! r) = r-iter! (plain r)
+plain (r-iter {t₁ = t₁} r (go-on done)) = retrace (sym (erase-++ t₁ [])) (r-iter (plain r) (go-on done))
+plain (r-iter {t₁ = t₁} {t₂} r (go-on (again rn))) = retrace (sym (erase-++ t₁ t₂)) (r-iter (plain r) (go-on (again (plain rn))))
+plain (r-iter {t₁ = t₁} r stopped) = retrace (sym (erase-++ t₁ [])) (r-iter (plain r) stopped)
 plain r-exh = r-exh
 plain (r-cut r q) = r-cut (plain r) (erase-≼ q)
 plain (r-tmp r w p) = retrace (sym (erase-weave w)) (plain r)
@@ -194,13 +197,15 @@ plain-map (m-id r) = m-id (plain r)
 plain-map m-one = m-one
 plain-map m-b = m-b
 plain-map m-μ = m-μ
-plain-map (m-inl r) = m-inl (plain-map r)
-plain-map (m-inl! r) = m-inl! (plain-map r)
-plain-map (m-inr r) = m-inr (plain-map r)
-plain-map (m-inr! r) = m-inr! (plain-map r)
-plain-map (m-pair {t₁ = t₁} {t₂} r r′) = retraceM (sym (erase-++ t₁ t₂)) (m-pair (plain-map r) (plain-map r′))
-plain-map (m-pair!₁ r) = m-pair!₁ (plain-map r)
-plain-map (m-pair!₂ {t₁ = t₁} {t₂} r r′) = retraceM (sym (erase-++ t₁ t₂)) (m-pair!₂ (plain-map r) (plain-map r′))
+plain-map (m-inl (fm-gives r)) = m-inl (fm-gives (plain-map r))
+plain-map (m-inl (fm-stop r))  = m-inl (fm-stop (plain-map r))
+plain-map (m-inr (fm-gives r)) = m-inr (fm-gives (plain-map r))
+plain-map (m-inr (fm-stop r))  = m-inr (fm-stop (plain-map r))
+plain-map (m-pair {t₁ = t₁} {t₂} r (go-on (fm-gives r′))) =
+  retraceM (sym (erase-++ t₁ t₂)) (m-pair (plain-map r) (go-on (fm-gives (plain-map r′))))
+plain-map (m-pair {t₁ = t₁} {t₂} r (go-on (fm-stop r′))) =
+  retraceM (sym (erase-++ t₁ t₂)) (m-pair (plain-map r) (go-on (fm-stop (plain-map r′))))
+plain-map (m-pair {t₁ = t₁} r stopped) = retraceM (sym (erase-++ t₁ [])) (m-pair (plain-map r) stopped)
 
 ------------------------------------------------------------------------
 -- 2. THE LEDGER of live temporaries, by size: what one event does, then
@@ -417,16 +422,20 @@ weave-post (stop _) w ok₁ ok₂ = fst (weave-ok w none none none (λ _ → ref
 private
   bal[] : TBal []
   bal[] = IsSubmonoid.ε-∈ balanced
+
+  -- a stop adds no events: what it ran is the claim
+  leg-[] : ∀ t → TLeg t → TLeg (t ++ [])
+  leg-[] t l = IsSubmonoid.∙-∈ legal {t} {[]} l tt
 tsound-map : ∀ {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t}
            → RunMap ds F alg e G x n o t → TPost o t
 
 tsound : ∀ {E A B} {f : Tm Γ E A B} {e v n o t} → Run ds f e v n o t → TPost o t
 tsound r-id = bal[]
-tsound (r-∘ {o = o} {t₁ = t₁} {t₂} rg rf) = Bal-++ o t₁ t₂ (tsound rg) (tsound rf)
-tsound (r-∘! r) = tsound r
-tsound (r-⊗ {t₁ = t₁} {t₂} rf rg) = IsSubmonoid.∙-∈ balanced {t₁} {t₂} (tsound rf) (tsound rg)
-tsound (r-⊗!₁ r) = tsound r
-tsound (r-⊗!₂ {y = y} {t₁ = t₁} {t₂} rf rg) = IsSubmonoid.∙-∈ legal {t₁} {t₂} (fst (tsound rf)) (tsound rg)
+tsound (r-∘ {t₁ = t₁} {t₂} rg (go-on {o = o} rf)) = Bal-++ o t₁ t₂ (tsound rg) (tsound rf)
+tsound (r-∘ {t₁ = t₁} rg stopped) = leg-[] t₁ (tsound rg)
+tsound (r-⊗ {t₁ = t₁} {t₂} rf (go-on (fm-gives rg))) = IsSubmonoid.∙-∈ balanced {t₁} {t₂} (tsound rf) (tsound rg)
+tsound (r-⊗ {t₁ = t₁} {t₂} rf (go-on (fm-stop rg))) = IsSubmonoid.∙-∈ legal {t₁} {t₂} (fst (tsound rf)) (tsound rg)
+tsound (r-⊗ {t₁ = t₁} rf stopped) = leg-[] t₁ (tsound rf)
 tsound r-ρ = bal[]
 tsound r-ρ⁻ = bal[]
 tsound r-λ = bal[]
@@ -444,13 +453,13 @@ tsound r-In = ((tt , tt) , λ k → refl)
 tsound r-Outμ = ((tt , tt) , λ k → refl)
 tsound r-clo = bal[]
 tsound (r-app q r) = tsound r
-tsound (r-cata {i = i} {o = o} {t₁ = t₁} {t₂} rm ra) = TPost-free o i (t₁ ++ t₂) (Bal-++ o t₁ t₂ (tsound-map rm) (tsound ra))
-tsound (r-cata! {A = A} {i = i} {y = y} {t = t} rm) = TPost-free (stop {A} y) i t (tsound-map rm)
-tsound (r-cata-reuse {t₁ = t₁} {t₂} rm rg) = IsSubmonoid.∙-∈ balanced {t₁} {t₂} (tsound-map rm) (tsound rg)
-tsound (r-cata-reuse!₁ rm) = tsound-map rm
-tsound (r-cata-reuse!₂ {y = y} {t₁ = t₁} {t₂} rm rg) = IsSubmonoid.∙-∈ legal {t₁} {t₂} (fst (tsound-map rm)) (tsound rg)
-tsound (r-lend r) = tsound r
-tsound (r-lend! r) = tsound r
+tsound (r-cata {i = i} {t₁ = t₁} {t₂} rm (go-on {o = o} ra)) = TPost-free o i (t₁ ++ t₂) (Bal-++ o t₁ t₂ (tsound-map rm) (tsound ra))
+tsound (r-cata {A = A} {i = i} {t₁ = t₁} rm (stopped {y = y})) = TPost-free (stop {A} y) i (t₁ ++ []) (leg-[] t₁ (tsound-map rm))
+tsound (r-cata-reuse {t₁ = t₁} {t₂} rm (go-on (fm-gives rg))) = IsSubmonoid.∙-∈ balanced {t₁} {t₂} (tsound-map rm) (tsound rg)
+tsound (r-cata-reuse {t₁ = t₁} {t₂} rm (go-on (fm-stop rg))) = IsSubmonoid.∙-∈ legal {t₁} {t₂} (fst (tsound-map rm)) (tsound rg)
+tsound (r-cata-reuse {t₁ = t₁} rm stopped) = leg-[] t₁ (tsound-map rm)
+tsound (r-lend (fm-gives r)) = tsound r
+tsound (r-lend (fm-stop r))  = tsound r
 tsound (r-lift r) = tsound r
 tsound (r-fst r) = tsound r
 tsound (r-snd r) = tsound r
@@ -461,9 +470,9 @@ tsound (r-copy {e = e} {n}) = NoT-Bal (snd (snd (copy e n))) (NoT-copy e n)
 tsound (r-bapp q r) = tsound r
 tsound r-op = ((tt , tt) , λ k → refl)
 tsound r-halt = (tt , tt)
-tsound (r-iter-done r) = tsound r
-tsound (r-iter-next {o = o} {t₁ = t₁} {t₂} r rn) = Bal-++ o t₁ t₂ (tsound r) (tsound rn)
-tsound (r-iter! r) = tsound r
+tsound (r-iter {t₁ = t₁} r (go-on done)) = IsSubmonoid.∙-∈ balanced {t₁} {[]} (tsound r) bal[]
+tsound (r-iter {t₁ = t₁} {t₂} r (go-on (again {o = o} rn))) = Bal-++ o t₁ t₂ (tsound r) (tsound rn)
+tsound (r-iter {t₁ = t₁} r stopped) = leg-[] t₁ (tsound r)
 tsound r-exh = tt
 tsound (r-cut {o = o} {t = t} r q) = TOK-≼ q (Post-Leg o t (tsound r))
 tsound (r-tmp {o = o} r w p) = weave-post o w (tsound r) p
@@ -472,10 +481,10 @@ tsound-map (m-id r) = tsound r
 tsound-map m-one = bal[]
 tsound-map m-b = bal[]
 tsound-map m-μ = bal[]
-tsound-map (m-inl r) = tsound-map r
-tsound-map (m-inl! r) = tsound-map r
-tsound-map (m-inr r) = tsound-map r
-tsound-map (m-inr! r) = tsound-map r
-tsound-map (m-pair {t₁ = t₁} {t₂} r r′) = IsSubmonoid.∙-∈ balanced {t₁} {t₂} (tsound-map r) (tsound-map r′)
-tsound-map (m-pair!₁ r) = tsound-map r
-tsound-map (m-pair!₂ {w = w} {t₁ = t₁} {t₂} r r′) = IsSubmonoid.∙-∈ legal {t₁} {t₂} (fst (tsound-map r)) (tsound-map r′)
+tsound-map (m-inl (fm-gives r)) = tsound-map r
+tsound-map (m-inl (fm-stop r))  = tsound-map r
+tsound-map (m-inr (fm-gives r)) = tsound-map r
+tsound-map (m-inr (fm-stop r))  = tsound-map r
+tsound-map (m-pair {t₁ = t₁} {t₂} r (go-on (fm-gives r′))) = IsSubmonoid.∙-∈ balanced {t₁} {t₂} (tsound-map r) (tsound-map r′)
+tsound-map (m-pair {t₁ = t₁} {t₂} r (go-on (fm-stop r′))) = IsSubmonoid.∙-∈ legal {t₁} {t₂} (fst (tsound-map r)) (tsound-map r′)
+tsound-map (m-pair {t₁ = t₁} r stopped) = leg-[] t₁ (tsound-map r)
