@@ -31,7 +31,13 @@
 -- one exponential per `(A, B)`), so a closure, a ν observation and a loop's round are
 -- all computations in the one monad `T∞`, which may perform SigOps or run
 -- forever (D317, `Once.IR.Semantics.Iterative`, copied below). A term's
--- effects are visible in its run's events; no index on the term is needed.
+-- effects are visible in its run's events.
+--
+-- ★ THE SPEC'S GRADES (D412): a term's grade is a judgment on it, as the
+-- Spec's `⊢ t ∷ A ! π` is on its raw terms. `Blk t` is grade `act` (a finite
+-- block); a label carries its arrow's grade; the loop's round is a `Blk`
+-- (`⊢iter`), so is a coalgebra (`⊢unfold`). `LinCore.Grade` proves that a
+-- block means a finite computation and the loop the Spec's `loop` of it.
 --
 -- Base leaves and SigOps are PARAMETERS: nothing below depends on what an
 -- `Int` is or which operations exist.
@@ -274,9 +280,18 @@ infixr 7 _⊗l_
 data Kd : Set where
   once many : Kd
 
+-- ★ the Spec's grades (`Spec.Grade`), as far as the core tells them apart: a
+-- FINITE BLOCK (`act`: finitely many events, then a value or a halt; the
+-- Spec's `pure` is the block with no event) or a computation that may run
+-- forever (`eff`: it contains a loop). A label's grade is its arrow's (the
+-- Spec's `mk-kind q π`: `kd` is `q`, `gr` is `π`).
+data Gr : Set where
+  act eff : Gr
+
 record Sg : Set where
   constructor sg
   field kd : Kd
+        gr : Gr
         env dom cod : LTy
 open Sg public
 
@@ -306,8 +321,11 @@ data _∋[_]_ : Cx → ℕ → Sg → Set where
 -- `E` comes last among the implicits so that `lIn {F}`, `linl {A} {B}` still read.
 -- ★ D405: `Γ`, the labels in scope, is a parameter: a body is not a term's
 -- part but a table entry (`Defs`), so every generator is at the same `Γ`.
-data Tm (Γ : Cx) : LTy → LTy → LTy → Set where
-  lid     : ∀ {A E} → Tm Γ E A A
+data Tm (Γ : Cx) : LTy → LTy → LTy → Set
+data Blk {Γ : Cx} : ∀ {E A B} → Tm Γ E A B → Set
+
+data Tm Γ where
+  lid    : ∀ {A E} → Tm Γ E A A
   _∘l_    : ∀ {A B C E} → Tm Γ E B C → Tm Γ E A B → Tm Γ E A C
   _⊗l_    : ∀ {A B C D E} → Tm Γ E A B → Tm Γ E C D → Tm Γ E (A ⊗t C) (B ⊗t D)
   -- unitors, associator, braiding: the SMC structure.  All free — moving data
@@ -338,8 +356,8 @@ data Tm (Γ : Cx) : LTy → LTy → LTy → Set where
   -- ★ D406: `lclo F` tags every environment at the `Idf` positions of a layer
   -- (`lclo Idf` tags one): what observing a ν does to the seeds its
   -- coalgebra returns. The final coalgebra is `lobs` below, no generator.
-  lclo    : ∀ F {l k X A B E} → Γ ∋[ l ] sg k X A B → Tm Γ E (LF∙ F X) (LF∙ F (Ct l X))
-  lapp    : ∀ {l X A B E} → Γ ∋[ l ] sg once X A B → Tm Γ E (Ct l X ⊗t A) B
+  lclo    : ∀ F {l k g X A B E} → Γ ∋[ l ] sg k g X A B → Tm Γ E (LF∙ F X) (LF∙ F (Ct l X))
+  lapp    : ∀ {l g X A B E} → Γ ∋[ l ] sg once g X A B → Tm Γ E (Ct l X ⊗t A) B
   -- ★ the scope: lend `X` to a body, which also reads what was lent already;
   -- `X` comes back unchanged.
   lend    : ∀ {E X A B} → Tm Γ (E ⊗t X) A B → Tm Γ E (X ⊗t A) (X ⊗t B)
@@ -354,7 +372,7 @@ data Tm (Γ : Cx) : LTy → LTy → LTy → Set where
   bcopy   : ∀ {E} → Tm Γ E One E
   -- applying a LENT many-use closure (D131: a fold's algebra, obtained once,
   -- applied at every layer): its environment is lent on to its body
-  bapp    : ∀ {l X A B} → Γ ∋[ l ] sg many X A B → Tm Γ (Ct l X) A B
+  bapp    : ∀ {l g X A B} → Γ ∋[ l ] sg many g X A B → Tm Γ (Ct l X) A B
   -- ★ A11: the SigOps, anywhere a term can be. `lop`: Pure or Emits, an event
   -- and the world's answer; `lhalt`: Halts, the run ends
   -- ★ A15: a constant of a base type (the IR's `const`): a word, no event
@@ -362,8 +380,49 @@ data Tm (Γ : Cx) : LTy → LTy → LTy → Set where
   lop     : (s : Sig) → ∀ {E} → Tm Γ E ⌜ sdom s ⌝ ⌜ scod s ⌝
   lhalt   : (s : Sig) → ∀ {E} → Tm Γ E ⌜ sdom s ⌝ Zero
   -- ★ A11: the loop (D317): the round reads `E` and the state, and ends with
-  -- the result (`inl`) or the next state (`inr`)
-  liter   : ∀ {A B E} → Tm Γ E A (B ⊕t A) → Tm Γ E A B
+  -- the result (`inl`) or the next state (`inr`). ★ The Spec's `⊢iter`: the
+  -- round is a FINITE BLOCK (`Blk`, the Spec's grade `act`), so a round never
+  -- contains a loop (structured recursion; GOAL.md: "every round of a server
+  -- is computed in finite time").
+  liter   : ∀ {A B E} (f : Tm Γ E A (B ⊕t A)) → Blk f → Tm Γ E A B
+
+-- ★ THE GRADE JUDGMENT (the Spec's `⊢ t ∷ A ! act`, Curry-style over the
+-- intrinsically typed terms): `t` is a finite block. Every generator but the
+-- loop is one when its parts are; applying a closure is one when its label's
+-- grade is `act`; building a closure is a value, whatever its body does.
+data Blk {Γ} where
+  k-id     : ∀ {A E} → Blk (lid {A = A} {E})
+  k-∘      : ∀ {A B C E} {f : Tm Γ E B C} {g : Tm Γ E A B} → Blk f → Blk g → Blk (f ∘l g)
+  k-⊗      : ∀ {A B C D E} {f : Tm Γ E A B} {g : Tm Γ E C D} → Blk f → Blk g → Blk (f ⊗l g)
+  k-ρ      : ∀ {A E} → Blk (ρl {A = A} {E})
+  k-ρ⁻     : ∀ {A E} → Blk (ρl⁻ {A = A} {E})
+  k-lul    : ∀ {A E} → Blk (lul {A = A} {E})
+  k-lul⁻   : ∀ {A E} → Blk (lul⁻ {A = A} {E})
+  k-assoc  : ∀ {A B C E} → Blk (lassoc {A = A} {B} {C} {E})
+  k-assoc⁻ : ∀ {A B C E} → Blk (lassoc⁻ {A = A} {B} {C} {E})
+  k-swap   : ∀ {A B E} → Blk (lswap {A = A} {B} {E})
+  k-dup    : ∀ {A E} → Blk (dup {A = A} {E})
+  k-drop   : ∀ {A E} → Blk (drop {A = A} {E})
+  k-inl    : ∀ {A B E} → Blk (linl {A = A} {B} {E})
+  k-inr    : ∀ {A B E} → Blk (linr {A = A} {B} {E})
+  k-case   : ∀ {A B C E} {f : Tm Γ E A C} {g : Tm Γ E B C} → Blk f → Blk g → Blk (lcase f g)
+  k-zero   : ∀ {A E} → Blk (lzero {A = A} {E})
+  k-in     : ∀ {F E} → Blk (lIn {F = F} {E})
+  k-out    : ∀ {F E} → Blk (lOutμ {F = F} {E})
+  k-cata   : ∀ {F A E} {alg : Tm Γ E (LF∙ F A) A} → Blk alg → Blk (lcata F alg)
+  k-clo    : ∀ {F l k g X A B E} {p : Γ ∋[ l ] sg k g X A B} → Blk (lclo F {E = E} p)
+  k-app    : ∀ {l X A B E} {p : Γ ∋[ l ] sg once act X A B} → Blk (lapp {E = E} p)
+  k-lend   : ∀ {E X A B} {b : Tm Γ (E ⊗t X) A B} → Blk b → Blk (lend b)
+  k-lift   : ∀ {A B E} {f : Tm Γ One A B} → Blk f → Blk (blift {E = E} f)
+  k-fst    : ∀ {E₁ E₂ A B} {f : Tm Γ E₁ A B} → Blk f → Blk (bfst {E₂ = E₂} f)
+  k-snd    : ∀ {E₁ E₂ A B} {f : Tm Γ E₂ A B} → Blk f → Blk (bsnd {E₁ = E₁} f)
+  k-caseE  : ∀ {E₁ E₂ A B} {f : Tm Γ E₁ A B} {g : Tm Γ E₂ A B} → Blk f → Blk g → Blk (bcaseE f g)
+  k-bout   : ∀ {F A B} {f : Tm Γ (LF∙ F (μt F)) A B} → Blk f → Blk (bout f)
+  k-copy   : ∀ {E} → Blk (bcopy {E = E})
+  k-bapp   : ∀ {l X A B} {p : Γ ∋[ l ] sg many act X A B} → Blk (bapp p)
+  k-const  : ∀ {b E} {v : ⟦ b ⟧b} → Blk (lconst {E = E} v)
+  k-op     : ∀ {s E} → Blk (lop s {E})
+  k-halt   : ∀ {s E} → Blk (lhalt s {E})
 
 -- a term with nothing lent
 LTm : Cx → LTy → LTy → Set
@@ -377,17 +436,28 @@ LTm Γ = Tm Γ One
 -- with the same label: no cell, no event beyond what the body does. A ν
 -- built from a layer (the IR's `in-ν`) is another label, whose body returns
 -- that layer (A15).
-lana : ∀ {Γ l S C E} → Γ ∋[ l ] sg once S One C → Tm Γ E S (Ct l S)
+-- ★ The Spec's `⊢unfold`: a coalgebra is a finite block (grade `act`), so a
+-- ν's layer is computed in finite time.
+lana : ∀ {Γ l S C E} → Γ ∋[ l ] sg once act S One C → Tm Γ E S (Ct l S)
 lana p = lclo Idf p
 
-lobs : ∀ F {Γ l S E} → Γ ∋[ l ] sg once S One (LF∙ F S) → Tm Γ E (Ct l S) (LF∙ F (Ct l S))
+lobs : ∀ F {Γ l S E} → Γ ∋[ l ] sg once act S One (LF∙ F S) → Tm Γ E (Ct l S) (LF∙ F (Ct l S))
 lobs F p = lclo F p ∘l lapp p ∘l ρl⁻
 
+-- observing a ν is a finite block
+k-obs : ∀ F {Γ l S E} {p : Γ ∋[ l ] sg once act S One (LF∙ F S)} → Blk (lobs F {E = E} p)
+k-obs F = k-∘ k-clo (k-∘ k-app k-ρ⁻)
+
+-- a body at its label's grade: a label of grade `act` has a finite block
+Gd : ∀ {Γ E A B} → Gr → Tm Γ E A B → Set
+Gd act t = Blk t
+Gd eff t = ⊤
+
 -- ★ D405: a label's body, by its kind: a one-shot body owns its environment,
--- a many-use body reads it lent
+-- a many-use body reads it lent; at its label's grade
 data Body (Γ : Cx) : Sg → Set where
-  b1 : ∀ {X A B} → LTm Γ (X ⊗t A) B → Body Γ (sg once X A B)
-  bω : ∀ {X A B} → Tm Γ X A B → Body Γ (sg many X A B)
+  b1 : ∀ {g X A B} (b : LTm Γ (X ⊗t A) B) → Gd g b → Body Γ (sg once g X A B)
+  bω : ∀ {g X A B} (b : Tm Γ X A B) → Gd g b → Body Γ (sg many g X A B)
 
 -- ★ D405: the program's table, each body over the labels before it
 data Defs : Cx → Set where
@@ -460,7 +530,7 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᶜ (lconst v)     e         _              = return∞ v
     Lᶜ (lop s)        e         x              = callT s x
     Lᶜ (lhalt s)      e         x              = haltT s (toF (sdom s) x)
-    Lᶜ (liter f)      e         a              = iter∞ (Lᶜ f e) a
+    Lᶜ (liter f _)    e         a              = iter∞ (Lᶜ f e) a
 
     cataC : ∀ F {X : Set} → (FS F X → T∞ X) → Mu F → T∞ X
     cataC F alg (inμ w) = travC F F alg w >>=∞ alg
@@ -484,8 +554,8 @@ open Sem public
 
 -- what a body means, at the meaning of its prefix
 ⟦_⟧Bd : ∀ {Γ σ} → Body Γ σ → Env Γ → ⟦ env σ ⟧ → ⟦ dom σ ⟧ → T∞ ⟦ cod σ ⟧
-⟦ b1 b ⟧Bd ρ x a = Lᶜ ρ b tt (x , a)
-⟦ bω b ⟧Bd ρ x a = Lᶜ ρ b x a
+⟦ b1 b _ ⟧Bd ρ x a = Lᶜ ρ b tt (x , a)
+⟦ bω b _ ⟧Bd ρ x a = Lᶜ ρ b x a
 
 ⟦_⟧D : ∀ {Γ} → Defs Γ → Env Γ
 ⟦ ε ⟧D      = ε

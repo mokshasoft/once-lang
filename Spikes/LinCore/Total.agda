@@ -87,8 +87,8 @@ module _ (W : World) where
 
   -- what a label's body does, for any fuel, environment, argument, counter, world
   Runner : ∀ {Δ σ} → Defs Δ → Body Δ σ → Set
-  Runner ds (b1 b) = ∀ (k : ℕ) x a n → WSt → Ran ds b mone (mpair x a) n
-  Runner ds (bω b) = ∀ (k : ℕ) x a n → WSt → Ran ds b x a n
+  Runner ds (b1 b _) = ∀ (k : ℕ) x a n → WSt → Ran ds b mone (mpair x a) n
+  Runner ds (bω b _) = ∀ (k : ℕ) x a n → WSt → Ran ds b x a n
 
   -- the runners of a table, in order (as `Env`)
   data REnv : ∀ {Γ} → Defs Γ → Set where
@@ -152,7 +152,7 @@ module _ (W : World) where
       go k (lcata F alg) e x n σ = cata k F alg e x n σ
       go k (lclo F p) e x n σ = ran _ _ r-clo σ tt
       go k (lapp p) e (mpair (mct x) a) n σ with find ρ p
-      ... | found {b = b1 b} q r with r k x a n σ
+      ... | found {b = b1 b _} q r with r k x a n σ
       ...   | ran o t rb σ₁ c = ran o t (r-app q rb) σ₁ c
       go k (lend b) e (mpair x a) n σ with go k b (mpair e x) a n σ
       ... | ran (gives w n′) t r σ₁ _ = ran _ t (r-lend (fm-gives r)) σ₁ tt
@@ -171,7 +171,7 @@ module _ (W : World) where
       ... | ran o t r σ₁ c = ran o (peek i ∷ t) (r-out r) σ₁ c
       go k bcopy e mone n σ = ran _ _ r-copy σ tt
       go k (bapp p) (mct x) a n σ with find ρ p
-      ... | found {b = bω b} q r with r k x a n σ
+      ... | found {b = bω b _} q r with r k x a n σ
       ...   | ran o t rb σ₁ c = ran o t (r-bapp q rb) σ₁ c
       go k (lconst v) e mone n σ = ran _ _ r-const σ tt
       go k (lop s) e x n σ with ans σ s (toF (sdom s) (er x)) in eq
@@ -179,11 +179,11 @@ module _ (W : World) where
       ... | nothing       = ran _ _ r-exh σ (unanswered σ s _ eq)
       go k (lhalt s) e x n σ = ran _ _ r-halt σ tt
       -- ★ the loop: a round, then (if it continues) the loop on one less fuel
-      go zero (liter f) e a n σ = ran _ _ r-exh σ out-of-fuel
-      go (suc k) (liter f) e a n σ with go (suc k) f e a n σ
+      go zero (liter f φ) e a n σ = ran _ _ r-exh σ out-of-fuel
+      go (suc k) (liter f φ) e a n σ with go (suc k) f e a n σ
       ... | ran (gives (minl b) n′) t r σ₁ _ = ran _ (t ++ []) (r-iter r (go-on done)) σ₁ tt
       ... | ran (stop y) t r σ₁ c = ran (stop y) (t ++ []) (r-iter r stopped) σ₁ c
-      ... | ran (gives (minr a′) n₁) t₁ r σ₁ _ with go k (liter f) e a′ n₁ σ₁
+      ... | ran (gives (minr a′) n₁) t₁ r σ₁ _ with go k (liter f φ) e a′ n₁ σ₁
       ...   | ran o t₂ rn σ₂ c = ran o (t₁ ++ t₂) (r-iter r (go-on (again rn))) σ₂ c
 
       -- the fold: free the node, fold its positions, run the algebra
@@ -218,8 +218,8 @@ module _ (W : World) where
   -- the runners of a table, built in order: each body runs over its prefix
   runners : ∀ {Γ} (ds : Defs Γ) → REnv ds
   runners ε            = ε
-  runners (ds ▸ b1 b)  = runners ds ▸ λ k x a n σ → Eval.go ds (runners ds) k b mone (mpair x a) n σ
-  runners (ds ▸ bω b)  = runners ds ▸ λ k x a n σ → Eval.go ds (runners ds) k b x a n σ
+  runners (ds ▸ b1 b _)  = runners ds ▸ λ k x a n σ → Eval.go ds (runners ds) k b mone (mpair x a) n σ
+  runners (ds ▸ bω b _)  = runners ds ▸ λ k x a n σ → Eval.go ds (runners ds) k b x a n σ
 
   -- ★ A14: EVERY TERM HAS A RUN, from every lent value, input, counter and
   -- world state, with any number of loop rounds

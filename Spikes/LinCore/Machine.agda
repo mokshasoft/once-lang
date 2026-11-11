@@ -133,7 +133,7 @@ mutual
   comp ds (f ⊗l g) k       = unpair ⨾ comp ds f (swap ⨾ comp ds g (swap ⨾ pair ⨾ k))
   comp ds (lcase f g) k    = case (comp ds f k) (comp ds g k)
   comp ds (lcata F alg) k  = fold ds F alg ⨾ k
-  comp ds (liter f) k      = loop ds f ⨾ k
+  comp ds (liter f φ) k      = loop ds f ⨾ k
   comp ds (lapp p) k       = untag ⨾ enter ⨾ elift ⨾ body ds p (epop ⨾ leave ⨾ k)
   comp ds (lend b) k       = elend ⨾ comp ds b (eunlend ⨾ k)
   comp ds (blift f) k      = elift ⨾ comp ds f (epop ⨾ k)
@@ -163,16 +163,16 @@ mutual
   comp ds lzero k          = stuck ⨾ k
 
   -- a one-shot label's body (nothing lent), compiled in place over its prefix
-  body : ∀ {Γ l X A B} (ds : Defs Γ) → Γ ∋[ l ] sg once X A B → ∀ {Es S T}
+  body : ∀ {Γ l g X A B} (ds : Defs Γ) → Γ ∋[ l ] sg once g X A B → ∀ {Es S T}
        → Code (One ∷ Es ∣ B ∷ S) T → Code (One ∷ Es ∣ (X ⊗t A) ∷ S) T
   body (ds ▸ _)    (there p) k = body ds p k
-  body (ds ▸ b1 b) here      k = comp ds b k
+  body (ds ▸ b1 b _) here      k = comp ds b k
 
   -- a many-use label's body (its environment lent)
-  bodyω : ∀ {Γ l X A B} (ds : Defs Γ) → Γ ∋[ l ] sg many X A B → ∀ {Es S T}
+  bodyω : ∀ {Γ l g X A B} (ds : Defs Γ) → Γ ∋[ l ] sg many g X A B → ∀ {Es S T}
         → Code (X ∷ Es ∣ B ∷ S) T → Code (X ∷ Es ∣ A ∷ S) T
   bodyω (ds ▸ _)    (there p) k = bodyω ds p k
-  bodyω (ds ▸ bω b) here      k = comp ds b k
+  bodyω (ds ▸ bω b _) here      k = comp ds b k
 
 -- a fold's node: its children folded in order, the layer rebuilt
 trav : ∀ {Γ} (ds : Defs Γ) F {E A} (alg : Tm Γ E (LF∙ F A) A) G → ∀ {Es S T}
@@ -441,7 +441,7 @@ mutual
   Frag ds (f ⊗l g)      = Frag ds f × Frag ds g
   Frag ds (lcase f g)   = Frag ds f × Frag ds g
   Frag ds (lcata F alg) = Frag ds alg × isReuse alg ≡ false
-  Frag ds (liter f)     = Frag ds f
+  Frag ds (liter f φ)     = Frag ds f
   Frag ds (lapp p)      = FragB ds p
   Frag ds (lend b)      = Frag ds b
   Frag ds (blift f)     = Frag ds f
@@ -452,31 +452,31 @@ mutual
   Frag ds (bapp p)      = FragΩ ds p
   Frag ds _             = ⊤
 
-  FragB : ∀ {Γ l X A B} (ds : Defs Γ) → Γ ∋[ l ] sg once X A B → Set
+  FragB : ∀ {Γ l g X A B} (ds : Defs Γ) → Γ ∋[ l ] sg once g X A B → Set
   FragB (ds ▸ _)    (there p) = FragB ds p
-  FragB (ds ▸ b1 b) here      = Frag ds b
+  FragB (ds ▸ b1 b _) here      = Frag ds b
 
-  FragΩ : ∀ {Γ l X A B} (ds : Defs Γ) → Γ ∋[ l ] sg many X A B → Set
+  FragΩ : ∀ {Γ l g X A B} (ds : Defs Γ) → Γ ∋[ l ] sg many g X A B → Set
   FragΩ (ds ▸ _)    (there p) = FragΩ ds p
-  FragΩ (ds ▸ bω b) here      = Frag ds b
+  FragΩ (ds ▸ bω b _) here      = Frag ds b
 
-look-body : ∀ {Γ Δ l X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg once X A B} {ds′ : Defs Δ} {b : LTm Δ (X ⊗t A) B}
-          → Look ds p ds′ (b1 b) → ∀ {Es S T} (k : Code (One ∷ Es ∣ B ∷ S) T) → body ds p k ≡ comp ds′ b k
+look-body : ∀ {Γ Δ l g X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg once g X A B} {ds′ : Defs Δ} {b : LTm Δ (X ⊗t A) B} {γ : Gd g b}
+          → Look ds p ds′ (b1 b γ) → ∀ {Es S T} (k : Code (One ∷ Es ∣ B ∷ S) T) → body ds p k ≡ comp ds′ b k
 look-body lk-here      k = refl
 look-body (lk-there q) k = look-body q k
 
-look-frag : ∀ {Γ Δ l X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg once X A B} {ds′ : Defs Δ} {b : LTm Δ (X ⊗t A) B}
-          → Look ds p ds′ (b1 b) → FragB ds p → Frag ds′ b
+look-frag : ∀ {Γ Δ l g X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg once g X A B} {ds′ : Defs Δ} {b : LTm Δ (X ⊗t A) B} {γ : Gd g b}
+          → Look ds p ds′ (b1 b γ) → FragB ds p → Frag ds′ b
 look-frag lk-here      fr = fr
 look-frag (lk-there q) fr = look-frag q fr
 
-look-bodyω : ∀ {Γ Δ l X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg many X A B} {ds′ : Defs Δ} {b : Tm Δ X A B}
-           → Look ds p ds′ (bω b) → ∀ {Es S T} (k : Code (X ∷ Es ∣ B ∷ S) T) → bodyω ds p k ≡ comp ds′ b k
+look-bodyω : ∀ {Γ Δ l g X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg many g X A B} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b}
+           → Look ds p ds′ (bω b γ) → ∀ {Es S T} (k : Code (X ∷ Es ∣ B ∷ S) T) → bodyω ds p k ≡ comp ds′ b k
 look-bodyω lk-here      k = refl
 look-bodyω (lk-there q) k = look-bodyω q k
 
-look-fragω : ∀ {Γ Δ l X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg many X A B} {ds′ : Defs Δ} {b : Tm Δ X A B}
-           → Look ds p ds′ (bω b) → FragΩ ds p → Frag ds′ b
+look-fragω : ∀ {Γ Δ l g X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg many g X A B} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b}
+           → Look ds p ds′ (bω b γ) → FragΩ ds p → Frag ds′ b
 look-fragω lk-here      fr = fr
 look-fragω (lk-there q) fr = look-fragω q fr
 
