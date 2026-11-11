@@ -22303,3 +22303,24 @@ The choices:
 * The link from a legal run (`OK`, `TOK`) to the allocator never failing (a legal free is of a live cell;
   a temporary freed is on the stack): the invariant's form says how; the proof is the relation between the
   heap and `Live`, event by event.
+
+### D410, amended (2026-11-11): the whole core lowered; stopped runs; master's `LeakFree` form
+* The machine lowers EVERY generator but in-place reuse: an environment stack of lent views (`lend`,
+  `blift`, `bfst`, `bsnd`, `bcaseE`, `bout` with its read, `bcopy`, `bapp`), the loop as a round-by-round
+  expansion, `ehalt`. `sim` covers EVERY outcome: a stopped run (halted, or cut, a server after its last
+  round) is matched by a machine run whose events, erased, have the run's as a prefix; `machine-legal`:
+  what the machine did up to the run's last event is legal on the cell heap, its frames too. Example: the
+  IR counter server, compiled and cut after two rounds.
+* **For the review (a decision): master's `LeakFree` form does not fit a server with heap state.** Its
+  second field asks that every live block be freed LATER unless the run stops. A server whose round passes
+  a heap block through unchanged (state the linear core keeps by moving it) never frees it: live data, not
+  a leak, but `LeakFree` calls it one. What the spike proves instead: every finished run frees everything
+  (`machine-noleak`), and every prefix of a server is legal (`machine-legal`). The claim for an infinite
+  server could be "at every round boundary, the live cells are exactly the state's" (a per-round
+  `exchange`, `loop-exchange` already proves it of the run).
+
+### D411, amended (2026-11-11): the legal-run link, done
+* `AllocRun.never-fails`: a legal run (cell heap `OK`, temporaries `TLeg`) never makes any size class's
+  allocator fail, its invariant holding along the run. The link, kept event by event: a cell of size `k`
+  is live in the pool exactly when the heap holds it; the pool's stack of temporaries is as long as the
+  ledger counts. Example: the list server's events, the new list taking the old blocks.

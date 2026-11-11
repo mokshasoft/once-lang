@@ -34,6 +34,7 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (just; nothing; _>>=_)
 import Data.Maybe
 import LinCore.Alloc as Al
+import LinCore.AllocRun
 open import LinCore.Flat using (FTy; funit; fvoid; fw)
 open import LinCore.Free using (Weave; w-[]; w-run; w-tmp)
 
@@ -69,6 +70,7 @@ open import LinCore.Total B ⟦_⟧B Op odom ocod bw
 open import LinCore.Pass B ⟦_⟧B Op odom ocod
 open import LinCore.Whole B ⟦_⟧B Op odom ocod bw
 open import LinCore.Machine B ⟦_⟧B Op odom ocod bw
+module AR = LinCore.AllocRun B ⟦_⟧B Op odom ocod bw
 
 -- the events of a loop run, and of a run
 trace-of : ∀ {E A C} {round : Tm Γ E A (C ⊕t A)} {e s n k s′ n′ t} → Loop ds round e s n k s′ n′ t → Trace
@@ -616,3 +618,18 @@ reuse = refl
 counter-machine : Σ.fst (machine-legal (Ran.run (exec world ε 2 (tr counter-ir) mone mone 0 tt)) _)
                 ≡ io emit 0 tt ∷ io succ 0 1 ∷ io emit 1 tt ∷ io succ 1 2 ∷ []
 counter-machine = refl
+
+------------------------------------------------------------------------
+-- 18. ★ A17: THE ALLOCATOR ON A RUN. §2's list built, then one round: the
+--     size-3 class sees two births, two deaths, two births; the new nil and
+--     cons take the old blocks, lowest first, and the region stays at two.
+------------------------------------------------------------------------
+
+list-ops : AR.ops 3 (trace-of-run build-run ++ trace-of list-server)
+         ≡ Al.birth 0 ∷ Al.birth 1 ∷ Al.death 1 ∷ Al.death 0 ∷ Al.birth 2 ∷ Al.birth 3 ∷ []
+list-ops = refl
+
+list-blocks : Data.Maybe.map (λ p → Al.own p 2 , Al.own p 3 , Al.top p)
+                (Al.born 0 Al.empty >>= Al.born 1 >>= Al.died 1 >>= Al.died 0 >>= Al.born 2 >>= Al.born 3)
+            ≡ just (0 , 1 , 2)
+list-blocks = refl
