@@ -62,7 +62,7 @@ loop-run : ∀ {E A B} {round : Tm Γ E A (B ⊕t A)} {e s n k s′ n₁ o t₁ 
          → Loop ds round e s n k s′ n₁ t₁ → Run ds (liter round) e s′ n₁ o t₂ → Run ds (liter round) e s n o (t₁ ++ t₂)
 loop-run l-zero q = q
 loop-run {ds = ds} {round = round} {e = e} {s = s} {n = n} {o = o} {t₂ = t₃} (l-suc {t₁ = t₁} {t₂} r rs) q =
-  subst (Run ds (liter round) e s n o) (sym (++-assoc t₁ t₂ t₃)) (r-iter-next r (loop-run rs q))
+  subst (Run ds (liter round) e s n o) (sym (++-assoc t₁ t₂ t₃)) (r-iter r (go-on (again (loop-run rs q))))
 
 -- ★ after any number of rounds, the heap is the frame plus the current state
 loop-exchange : ∀ {E A B} {round : Tm Γ E A (B ⊕t A)} {e s n k s′ n′ t} → Loop ds round e s n k s′ n′ t

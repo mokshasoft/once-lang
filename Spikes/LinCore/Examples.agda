@@ -89,10 +89,10 @@ emit-round =
 -- `x′` to the successor
 emit-step : ∀ (x x′ : ℕ) n → Run ε emit-round mone (mbase x) n (gives (minr (mbase x′)) n) _
 emit-step x x′ n =
-  r-∘ (r-∘ (r-∘ (r-∘ r-dup (r-⊗ (r-op {y = tt}) r-id))
-                (r-∘ (r-⊗ r-drop r-id) r-λ))
-           (r-op {y = x′}))
-      r-inr
+  r-∘ (r-∘ (r-∘ (r-∘ r-dup (go-on (r-⊗ (r-op {y = tt}) (go-on (fm-gives r-id)))))
+                (go-on (r-∘ (r-⊗ r-drop (go-on (fm-gives r-id))) (go-on r-λ))))
+           (go-on (r-op {y = x′})))
+      (go-on r-inr)
 
 -- two rounds: 0 → 1 → 2
 emit-server : Loop ε emit-round mone (mbase 0) 0 2 (mbase 2) 0 _
@@ -142,7 +142,7 @@ one-list : ℕ → MV IntList
 one-list x = mmu (3 , 1) (minr (mpair (mbase x) (mmu (3 , 0) (minl mone))))
 
 build-run : Run ε build mone (mbase 5) 0 (gives (one-list 5) 2) _
-build-run = r-∘ (r-∘ (r-∘ r-ρ⁻ (r-⊗ r-id (r-∘ r-inl r-In))) r-inr) r-In
+build-run = r-∘ (r-∘ (r-∘ r-ρ⁻ (go-on (r-⊗ r-id (go-on (fm-gives (r-∘ r-inl (go-on r-In))))))) (go-on r-inr)) (go-on r-In)
 
 build-events : trace-of-run build-run ≡ alloc (3 , 0) ∷ alloc (3 , 1) ∷ []
 build-events = refl
@@ -167,8 +167,9 @@ new-list x = mmu (3 , 3) (minr (mpair (mbase x) (mmu (3 , 2) (minl mone))))
 -- new cons are allocated
 list-step : ∀ x → Run ε list-round mone (one-list x) 2 (gives (minr (new-list x)) 4) _
 list-step x =
-  r-∘ (r-cata (m-inr (m-pair m-b (m-id (r-cata (m-inl m-one) r-In)))) r-In)
-      r-inr
+  r-∘ (r-cata (m-inr (fm-gives (m-pair m-b (go-on (fm-gives (m-id (r-cata (m-inl (fm-gives m-one)) (go-on r-In))))))))
+              (go-on r-In))
+      (go-on r-inr)
 
 list-server : Loop ε list-round mone (one-list 5) 2 1 (new-list 5) 4 _
 list-server = l-suc (list-step 5) l-zero
@@ -266,11 +267,12 @@ q0 = lk-there (lk-there (lk-there (lk-there lk-here)))
 -- on 7 and [5], from counter 2: the new list is (3 , 3) → (3 , 2)
 closure-fold-run : Run defs closure-fold mone (mpair (mbase 7) (one-list 5)) 2 (gives (new-list 5) 4) _
 closure-fold-run =
-  r-∘ (r-∘ (r-∘ (r-⊗ r-clo r-id)
-                (r-lend (r-snd (r-cata (m-inr (m-pair m-b (m-id (r-cata (m-inl m-one) (r-bapp q0 r-In)))))
-                                       (r-bapp q0 r-In)))))
-           (r-⊗ r-drop r-id))
-      r-λ
+  r-∘ (r-∘ (r-∘ (r-⊗ r-clo (go-on (fm-gives r-id)))
+                (go-on (r-lend (fm-gives (r-snd (r-cata (m-inr (fm-gives (m-pair m-b (go-on (fm-gives
+                                    (m-id (r-cata (m-inl (fm-gives m-one)) (go-on (r-bapp q0 r-In)))))))))
+                                       (go-on (r-bapp q0 r-In))))))))
+           (go-on (r-⊗ r-drop (go-on (fm-gives r-id)))))
+      (go-on r-λ)
 
 -- ★ by evaluation: only the list's own events. (Under D404 the closure was a
 -- block of a code word and the Int: allocated, read once per layer, freed.)
@@ -287,7 +289,9 @@ rebuild-in-place : LTm ε IntList IntList
 rebuild-in-place = lcata ListF (lIn ∘l lid)
 
 in-place-run : Run ε rebuild-in-place mone (one-list 5) 2 (gives (one-list 5) 2) _
-in-place-run = r-cata-reuse (m-inr (m-pair m-b (m-id (r-cata-reuse (m-inl m-one) r-id)))) r-id
+in-place-run =
+  r-cata-reuse (m-inr (fm-gives (m-pair m-b (go-on (fm-gives (m-id (r-cata-reuse (m-inl (fm-gives m-one)) (go-on (fm-gives r-id)))))))))
+               (go-on (fm-gives r-id))
 
 -- ★ by evaluation: no event at all — the list was rebuilt in its own cells
 in-place-events : trace-of-run in-place-run ≡ []
@@ -317,7 +321,7 @@ nested-lend : LTm ε (IntList ⊗t (Bt int ⊗t One)) (IntList ⊗t (Bt int ⊗t
 nested-lend = lend (lend (bfst (bsnd bcopy)))
 
 nested-run : Run ε nested-lend mone (mpair (one-list 5) (mpair (mbase 7) mone)) 2 (gives _ 4) _
-nested-run = r-lend (r-lend (r-fst (r-snd r-copy)))
+nested-run = r-lend (fm-gives (r-lend (fm-gives (r-fst (r-snd r-copy)))))
 
 -- ★ by evaluation: only the copy allocates; both lent values stay as they were
 nested-events : trace-of-run nested-run ≡ alloc (3 , 2) ∷ alloc (3 , 3) ∷ []
@@ -333,8 +337,8 @@ emit-fold = lcata ListF (lcase lid (drop ∘l lop emit ∘l ρl))
 
 emit-fold-run : Run ε emit-fold mone (one-list 5) 2 (gives mone 2) _
 emit-fold-run =
-  r-cata (m-inr (m-pair m-b (m-id (r-cata (m-inl m-one) (r-case₁ r-id)))))
-         (r-case₂ (r-∘ (r-∘ r-ρ (r-op {y = tt})) r-drop))
+  r-cata (m-inr (fm-gives (m-pair m-b (go-on (fm-gives (m-id (r-cata (m-inl (fm-gives m-one)) (go-on (r-case₁ r-id)))))))))
+         (go-on (r-case₂ (r-∘ (r-∘ r-ρ (go-on (r-op {y = tt}))) (go-on r-drop))))
 
 -- ★ by evaluation: both cells freed, then the emit
 emit-fold-events : trace-of-run emit-fold-run ≡ free (3 , 1) ∷ free (3 , 0) ∷ io emit 5 tt ∷ []
@@ -352,8 +356,8 @@ q2 = lk-there (lk-there lk-here)
 
 emit-closure-run : Run defs emit-closure mone (mbase 5) 0 (gives mone 0) _
 emit-closure-run =
-  r-∘ (r-∘ r-λ⁻ (r-⊗ r-clo r-id))
-      (r-app q2 (r-∘ r-λ (r-op {y = tt})))
+  r-∘ (r-∘ r-λ⁻ (go-on (r-⊗ r-clo (go-on (fm-gives r-id)))))
+      (go-on (r-app q2 (r-∘ r-λ (go-on (r-op {y = tt})))))
 
 -- the emit is the only event
 emit-closure-events : trace-of-run emit-closure-run ≡ io emit 5 tt ∷ []
@@ -373,9 +377,10 @@ q4 = lk-here
 
 composed-run : Run defs composed mone (mbase 5) 0 (gives mone 0) _
 composed-run =
-  r-∘ (r-∘ r-λ⁻ (r-⊗ (r-∘ (r-∘ r-λ⁻ (r-⊗ r-clo r-clo)) r-clo) r-id))
-      (r-app q4 (r-∘ (r-∘ r-α (r-⊗ r-id (r-app lk-here (r-∘ r-λ (r-op {y = 6})))))
-                     (r-app (lk-there lk-here) (r-∘ r-λ (r-op {y = tt})))))
+  r-∘ (r-∘ r-λ⁻ (go-on (r-⊗ (r-∘ (r-∘ r-λ⁻ (go-on (r-⊗ r-clo (go-on (fm-gives r-clo))))) (go-on r-clo))
+                              (go-on (fm-gives r-id)))))
+      (go-on (r-app q4 (r-∘ (r-∘ r-α (go-on (r-⊗ r-id (go-on (fm-gives (r-app lk-here (r-∘ r-λ (go-on (r-op {y = 6})))))))))
+                            (go-on (r-app (lk-there lk-here) (r-∘ r-λ (go-on (r-op {y = tt}))))))))
 
 composed-events : trace-of-run composed-run ≡ io succ 5 6 ∷ io emit 6 tt ∷ []
 composed-events = refl
@@ -394,8 +399,8 @@ halting = (lhalt exit ⊗l lid) ∘l (lid ⊗l (lIn ∘l linl)) ∘l ρl⁻
 
 halting-run : Run ε halting mone (mbase 5) 0 (stop halted) _
 halting-run =
-  r-∘ (r-∘ r-ρ⁻ (r-⊗ r-id (r-∘ r-inl r-In)))
-      (r-⊗!₁ r-halt)
+  r-∘ (r-∘ r-ρ⁻ (go-on (r-⊗ r-id (go-on (fm-gives (r-∘ r-inl (go-on r-In)))))))
+      (go-on (r-⊗ r-halt stopped))
 
 halting-events : trace-of-run halting-run ≡ alloc (3 , 0) ∷ stp exit 5 ∷ []
 halting-events = refl
@@ -417,7 +422,7 @@ count-round : LTm ε (One ⊕t One) (One ⊕t (One ⊕t One))
 count-round = lcase (linr ∘l linr) linl
 
 count-run : Run ε (liter count-round) mone (minl mone) 0 (gives mone 0) _
-count-run = r-iter-next (r-case₁ (r-∘ r-inr r-inr)) (r-iter-done (r-case₂ r-inl))
+count-run = r-iter (r-case₁ (r-∘ r-inr (go-on r-inr))) (go-on (again (r-iter (r-case₂ r-inl) (go-on done))))
 
 ran-out : Run ε (liter emit-round) mone (mbase 0) 0 (stop exhausted) _
 ran-out = loop-run emit-server r-exh
@@ -468,9 +473,11 @@ nats-two-run : Run defsν nats-two mone (mbase 5) 0
                  (gives (mpair (mbase 5) (mpair (mbase 6) (mct (mbase 7)))) 0) _
 nats-two-run =
   r-∘ (r-∘ r-clo
-           (r-∘ (r-∘ r-ρ⁻ (r-app lk-here (r-∘ (r-∘ r-ρ r-dup) (r-⊗ r-id (r-op {y = 6}))))) r-clo))
-      (r-⊗ r-id
-           (r-∘ (r-∘ r-ρ⁻ (r-app lk-here (r-∘ (r-∘ r-ρ r-dup) (r-⊗ r-id (r-op {y = 7}))))) r-clo))
+           (go-on (r-∘ (r-∘ r-ρ⁻ (go-on (r-app lk-here (r-∘ (r-∘ r-ρ (go-on r-dup))
+                                                            (go-on (r-⊗ r-id (go-on (fm-gives (r-op {y = 6}))))))))) (go-on r-clo))))
+      (go-on (r-⊗ r-id
+           (go-on (fm-gives (r-∘ (r-∘ r-ρ⁻ (go-on (r-app lk-here (r-∘ (r-∘ r-ρ (go-on r-dup))
+                                                            (go-on (r-⊗ r-id (go-on (fm-gives (r-op {y = 7}))))))))) (go-on r-clo))))))
 
 nats-two-events : trace-of-run nats-two-run ≡ io succ 5 6 ∷ io succ 6 7 ∷ []
 nats-two-events = refl
@@ -493,9 +500,10 @@ stack-weave = w-tmp (w-run (w-run (w-run (w-run (w-tmp w-[])))))
 
 stack-step : Run ε list-round mone (one-list 5) 2 (gives (minr (new-list 5)) 4) _
 stack-step =
-  r-∘ (r-tmp (r-cata (m-inr (m-pair m-b (m-id (r-cata (m-inl m-one) r-In)))) r-In)
+  r-∘ (r-tmp (r-cata (m-inr (fm-gives (m-pair m-b (go-on (fm-gives (m-id (r-cata (m-inl (fm-gives m-one)) (go-on r-In))))))))
+                     (go-on r-In))
              stack-weave ((tt , (s≤s z≤n , tt)) , λ k → n∸n≡0 (δn 4 k)))
-      r-inr
+      (go-on r-inr)
 
 -- by evaluation: the block is born first and freed last, around the cells
 stack-events : trace-of-run stack-step

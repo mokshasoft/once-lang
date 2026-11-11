@@ -102,13 +102,13 @@ module _ (W : World) where
       go k lid e v n σ = ran _ _ r-id σ
       go k (f ∘l g) e v n σ with go k g e v n σ
       ... | ran (gives u n₁) t₁ rg σ₁ with go k f e u n₁ σ₁
-      ...   | ran o t₂ rf σ₂ = ran o (t₁ ++ t₂) (r-∘ rg rf) σ₂
-      go k (f ∘l g) e v n σ | ran (stop y) t rg σ₁ = ran (stop y) t (r-∘! rg) σ₁
+      ...   | ran o t₂ rf σ₂ = ran o (t₁ ++ t₂) (r-∘ rg (go-on rf)) σ₂
+      go k (f ∘l g) e v n σ | ran (stop y) t rg σ₁ = ran (stop y) (t ++ []) (r-∘ rg stopped) σ₁
       go k (f ⊗l g) e (mpair a c) n σ with go k f e a n σ
-      ... | ran (stop y) t rf σ₁ = ran (stop y) t (r-⊗!₁ rf) σ₁
+      ... | ran (stop y) t rf σ₁ = ran (stop y) (t ++ []) (r-⊗ rf stopped) σ₁
       ... | ran (gives a′ n₁) t₁ rf σ₁ with go k g e c n₁ σ₁
-      ...   | ran (gives c′ n₂) t₂ rg σ₂ = ran _ (t₁ ++ t₂) (r-⊗ rf rg) σ₂
-      ...   | ran (stop y) t₂ rg σ₂ = ran (stop y) (t₁ ++ t₂) (r-⊗!₂ rf rg) σ₂
+      ...   | ran (gives c′ n₂) t₂ rg σ₂ = ran _ (t₁ ++ t₂) (r-⊗ rf (go-on (fm-gives rg))) σ₂
+      ...   | ran (stop y) t₂ rg σ₂ = ran (stop y) (t₁ ++ t₂) (r-⊗ rf (go-on (fm-stop rg))) σ₂
       go k ρl e (mpair a mone) n σ = ran _ _ r-ρ σ
       go k ρl⁻ e a n σ = ran _ _ r-ρ⁻ σ
       go k lul e (mpair mone a) n σ = ran _ _ r-λ σ
@@ -133,8 +133,8 @@ module _ (W : World) where
       ... | found {b = b1 b} q r with r k x a n σ
       ...   | ran o t rb σ₁ = ran o t (r-app q rb) σ₁
       go k (lend b) e (mpair x a) n σ with go k b (mpair e x) a n σ
-      ... | ran (gives w n′) t r σ₁ = ran _ t (r-lend r) σ₁
-      ... | ran (stop y) t r σ₁ = ran (stop y) t (r-lend! r) σ₁
+      ... | ran (gives w n′) t r σ₁ = ran _ t (r-lend (fm-gives r)) σ₁
+      ... | ran (stop y) t r σ₁ = ran (stop y) t (r-lend (fm-stop r)) σ₁
       go k (blift f) e a n σ with go k f mone a n σ
       ... | ran o t r σ₁ = ran o t (r-lift r) σ₁
       go k (bfst f) (mpair e₁ e₂) a n σ with go k f e₁ a n σ
@@ -158,18 +158,18 @@ module _ (W : World) where
       -- ★ the loop: a round, then (if it continues) the loop on one less fuel
       go zero (liter f) e a n σ = ran _ _ r-exh σ
       go (suc k) (liter f) e a n σ with go (suc k) f e a n σ
-      ... | ran (gives (minl b) n′) t r σ₁ = ran _ t (r-iter-done r) σ₁
-      ... | ran (stop y) t r σ₁ = ran (stop y) t (r-iter! r) σ₁
+      ... | ran (gives (minl b) n′) t r σ₁ = ran _ (t ++ []) (r-iter r (go-on done)) σ₁
+      ... | ran (stop y) t r σ₁ = ran (stop y) (t ++ []) (r-iter r stopped) σ₁
       ... | ran (gives (minr a′) n₁) t₁ r σ₁ with go k (liter f) e a′ n₁ σ₁
-      ...   | ran o t₂ rn σ₂ = ran o (t₁ ++ t₂) (r-iter-next r rn) σ₂
+      ...   | ran o t₂ rn σ₂ = ran o (t₁ ++ t₂) (r-iter r (go-on (again rn))) σ₂
 
       -- the fold: free the node, fold its positions, run the algebra
       cata : ∀ {E A} (k : ℕ) F (alg : Tm Γ E (LF∙ F A) A) (e : MV E) (x : MV (μt F)) (n : ℕ) → WSt
            → Ran ds (lcata F alg) e x n
       cata k F alg e (mmu i v) n σ with fold k F alg e F v n σ
-      ... | ranM (stop y) t rm σ₁ = ran (stop y) (free i ∷ t) (r-cata! rm) σ₁
+      ... | ranM (stop y) t rm σ₁ = ran (stop y) (free i ∷ (t ++ [])) (r-cata rm stopped) σ₁
       ... | ranM (gives u n₁) t₁ rm σ₁ with go k alg e u n₁ σ₁
-      ...   | ran o t₂ ra σ₂ = ran o (free i ∷ (t₁ ++ t₂)) (r-cata rm ra) σ₂
+      ...   | ran o t₂ ra σ₂ = ran o (free i ∷ (t₁ ++ t₂)) (r-cata rm (go-on ra)) σ₂
 
       fold : ∀ {E A} (k : ℕ) F (alg : Tm Γ E (LF∙ F A) A) (e : MV E) G (x : MV (LF∙ G (μt F))) (n : ℕ) → WSt
            → RanM ds F alg e G x n
@@ -180,16 +180,16 @@ module _ (W : World) where
       fold k F alg e (Kb b) x n σ = ranM _ _ m-b σ
       fold k F alg e (Kμ G) x n σ = ranM _ _ m-μ σ
       fold k F alg e (G ⊕f H) (minl x) n σ with fold k F alg e G x n σ
-      ... | ranM (gives y n′) t r σ₁ = ranM _ t (m-inl r) σ₁
-      ... | ranM (stop w) t r σ₁ = ranM (stop w) t (m-inl! r) σ₁
+      ... | ranM (gives y n′) t r σ₁ = ranM _ t (m-inl (fm-gives r)) σ₁
+      ... | ranM (stop w) t r σ₁ = ranM (stop w) t (m-inl (fm-stop r)) σ₁
       fold k F alg e (G ⊕f H) (minr x) n σ with fold k F alg e H x n σ
-      ... | ranM (gives y n′) t r σ₁ = ranM _ t (m-inr r) σ₁
-      ... | ranM (stop w) t r σ₁ = ranM (stop w) t (m-inr! r) σ₁
+      ... | ranM (gives y n′) t r σ₁ = ranM _ t (m-inr (fm-gives r)) σ₁
+      ... | ranM (stop w) t r σ₁ = ranM (stop w) t (m-inr (fm-stop r)) σ₁
       fold k F alg e (G ⊗f H) (mpair x x′) n σ with fold k F alg e G x n σ
-      ... | ranM (stop w) t r σ₁ = ranM (stop w) t (m-pair!₁ r) σ₁
+      ... | ranM (stop w) t r σ₁ = ranM (stop w) (t ++ []) (m-pair r stopped) σ₁
       ... | ranM (gives y n₁) t₁ r σ₁ with fold k F alg e H x′ n₁ σ₁
-      ...   | ranM (gives y′ n₂) t₂ r′ σ₂ = ranM _ (t₁ ++ t₂) (m-pair r r′) σ₂
-      ...   | ranM (stop w) t₂ r′ σ₂ = ranM (stop w) (t₁ ++ t₂) (m-pair!₂ r r′) σ₂
+      ...   | ranM (gives y′ n₂) t₂ r′ σ₂ = ranM _ (t₁ ++ t₂) (m-pair r (go-on (fm-gives r′))) σ₂
+      ...   | ranM (stop w) t₂ r′ σ₂ = ranM (stop w) (t₁ ++ t₂) (m-pair r (go-on (fm-stop r′))) σ₂
 
   -- the runners of a table, built in order: each body runs over its prefix
   runners : ∀ {Γ} (ds : Defs Γ) → REnv ds
