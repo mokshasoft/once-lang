@@ -119,6 +119,7 @@ infixr 7 _⊗f_
 data LF : Set where
   Idf  : LF
   Kone : LF
+  Kzero : LF                -- ★ A12: the constant `Void` (the Spec's `K Void`)
   Kb   : Base → LF          -- ★ inert leaf
   Kμ   : LF → LF            -- a code: the initial algebra of another functor
   Kν   : LF → LF            -- ★ a code: the final coalgebra of another functor
@@ -150,6 +151,7 @@ data LTy : Set where
 LF∙ : LF → LTy → LTy
 LF∙ Idf       X = X
 LF∙ Kone      X = One
+LF∙ Kzero     X = Zero
 LF∙ (Kb b)    X = Bt b
 LF∙ (Kμ G)    X = μt G
 LF∙ (Kν G)    X = νt G
@@ -169,6 +171,7 @@ mutual
   FS : LF → Set → Set
   FS Idf      X = X
   FS Kone     X = ⊤
+  FS Kzero    X = ⊥
   FS (Kb b)   X = ⟦ b ⟧b
   FS (Kμ G)   X = Mu G
   FS (Kν G)   X = Nu G
@@ -209,6 +212,7 @@ force (inν w) = return∞ w
 coh : ∀ F X → ⟦ LF∙ F X ⟧ → FS F ⟦ X ⟧
 coh Idf      X x        = x
 coh Kone     X x        = x
+coh Kzero    X ()
 coh (Kb b)   X x        = x
 coh (Kμ G)   X x        = x
 coh (Kν G)   X x        = x
@@ -219,6 +223,7 @@ coh (F ⊗f G) X (x , y)  = (coh F X x , coh G X y)
 coh⁻¹ : ∀ F X → FS F ⟦ X ⟧ → ⟦ LF∙ F X ⟧
 coh⁻¹ Idf      X x        = x
 coh⁻¹ Kone     X x        = x
+coh⁻¹ Kzero    X ()
 coh⁻¹ (Kb b)   X x        = x
 coh⁻¹ (Kμ G)   X x        = x
 coh⁻¹ (Kν G)   X x        = x
@@ -363,6 +368,7 @@ mutual
   travC : ∀ F G {X : Set} → (FS F X → T∞ X) → FS G (Mu F) → T∞ (FS G X)
   travC F Idf      alg y        = cataC F alg y
   travC F Kone     alg y        = return∞ y
+  travC F Kzero    alg ()
   travC F (Kb _)   alg y        = return∞ y
   travC F (Kμ _)   alg y        = return∞ y
   travC F (Kν _)   alg y        = return∞ y
@@ -386,6 +392,7 @@ mutual
   mapU : ∀ {A} F G → LTm A (LF∙ F A) → FS G ⟦ A ⟧ → FS G (Nu F)
   mapU F Idf      c y        = unfoldNu F c y
   mapU F Kone     c y        = y
+  mapU F Kzero    c ()
   mapU F (Kb _)   c y        = y
   mapU F (Kμ _)   c y        = y
   mapU F (Kν _)   c y        = y
