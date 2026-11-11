@@ -16,7 +16,9 @@
 --
 -- `dup` copies every cell of its value (fresh ids); `drop` frees every cell of
 -- its value; `lIn` allocates one cell; `lOutμ` frees one. Nothing else touches
--- the heap: moving data is not copying it.
+-- the heap: moving data is not copying it. ★ A13 (D407): the lowering's own
+-- TEMPORARIES (`r-tmp`) are events beside the cells, counted by size, not
+-- cells of the run; `Temps` proves them freed and erasable.
 --
 -- The run is a RELATION (`Run ds`, over the program's label table): applying
 -- a closure runs its label's body, which is not structurally smaller. The
@@ -142,12 +144,19 @@ mvF (a f+ b) (inj₂ y) = minr (mvF b y)
 -- 2. EVENTS.
 ------------------------------------------------------------------------
 
+-- ★ A13 (D407): a TEMPORARY block of the lowering (a fold's work stack, …),
+-- of a size: no id, for it is not a value — nothing can point into it
+data TEv : Set where
+  tnew : ℕ → TEv
+  tdel : ℕ → TEv
+
 data Ev : Set where
   alloc : Id → Ev
   free  : Id → Ev
   peek  : Id → Ev     -- a read of a lent cell (A2): legal only while the cell is live
   io    : (s : Sig) → ⟦ sdom s ⟧f → ⟦ scod s ⟧f → Ev   -- a SigOp call and the world's answer
   stp   : (s : Sig) → ⟦ sdom s ⟧f → Ev                  -- a `Halts` SigOp: the run ends
+  tmp   : TEv → Ev                                     -- ★ A13: a temporary born or freed
 
 Trace : Set
 Trace = List Ev
@@ -192,6 +201,66 @@ tag (G ⊕f H) (minr x)     = minr (tag H x)
 tag (G ⊗f H) (mpair x x′) = mpair (tag G x) (tag H x′)
 
 ------------------------------------------------------------------------
+-- 2½. ★ A13 (D407): TEMPORARIES. The lowering may allocate heap blocks the
+-- run does not have (a fold's work stack), if the same generator frees them
+-- before it finishes (the user, 2026-11-10). They are counted by size: how
+-- many of each size are live. A halt or `exhausted` in between is the exit
+-- exception: then they need only have been legal.
+------------------------------------------------------------------------
+
+-- the live temporaries, by size
+TL : Set
+TL = ℕ → ℕ
+
+none : TL
+none _ = 0
+
+δn : ℕ → ℕ → ℕ
+δn k j with k ≟ j
+... | yes _ = 1
+... | no _  = 0
+
+tstep : Ev → TL → TL
+tstep (alloc _)        L   = L
+tstep (free _)         L   = L
+tstep (peek _)         L   = L
+tstep (io _ _ _)       L   = L
+tstep (stp _ _)        L   = L
+tstep (tmp (tnew k))   L j = L j + δn k j
+tstep (tmp (tdel k))   L j = L j ∸ δn k j
+
+tplay : Trace → TL → TL
+tplay []      L = L
+tplay (x ∷ t) L = tplay t (tstep x L)
+
+-- no temporary is freed that is not live
+TOK : Trace → TL → Set
+TOK []                  L = ⊤
+TOK (alloc _ ∷ t)       L = TOK t L
+TOK (free _ ∷ t)        L = TOK t L
+TOK (peek _ ∷ t)        L = TOK t L
+TOK (io _ _ _ ∷ t)      L = TOK t L
+TOK (stp _ _ ∷ t)       L = TOK t L
+TOK (tmp (tnew k) ∷ t)  L = TOK t (tstep (tmp (tnew k)) L)
+TOK (tmp (tdel k) ∷ t)  L = 1 ≤ L k × TOK t (tstep (tmp (tdel k)) L)
+
+-- legal, from none live; balanced: legal, and none live at the end
+TLeg TBal : Trace → Set
+TLeg t = TOK t none
+TBal t = TLeg t × (∀ k → tplay t none k ≡ 0)
+
+-- the temporaries alone, as events
+tmps : List TEv → Trace
+tmps []       = []
+tmps (y ∷ ys) = tmp y ∷ tmps ys
+
+-- `t′` is the run's events `t` with the temporaries `ts` woven in, in order
+data Weave : Trace → List TEv → Trace → Set where
+  w-[]  : Weave [] [] []
+  w-run : ∀ {x t ts t′} → Weave t ts t′ → Weave (x ∷ t) ts (x ∷ t′)
+  w-tmp : ∀ {y t ts t′} → Weave t ts t′ → Weave t (y ∷ ts) (tmp y ∷ t′)
+
+------------------------------------------------------------------------
 -- 3. THE RUN.
 --
 -- `Run ds f e v n o t`: `f`, reading the lent `e`, takes `v` from counter `n` to
@@ -207,6 +276,11 @@ data Why : Set where
 data Outcome (B : LTy) : Set where
   gives : MV B → ℕ → Outcome B
   stop  : Why → Outcome B
+
+-- ★ A13: what a run claims of its temporaries, by how it ended
+TPost : ∀ {B} → Outcome B → Trace → Set
+TPost (gives _ _) t = TBal t
+TPost (stop _)    t = TLeg t
 
 -- one list is a prefix of another
 infix 4 _≼_
@@ -330,6 +404,10 @@ data Run {Γ} ds where
   r-exh   : ∀ {E A B} {f : Tm Γ E A B} {e v n} → Run ds f e v n (stop exhausted) []
   r-cut   : ∀ {E A B} {f : Tm Γ E A B} {e v o n t t′}
           → Run ds f e v n o t → t′ ≼ t → Run ds f e v n (stop exhausted) t′
+  -- ★ A13 (D407): the lowering of `f` may use temporaries of its own, woven
+  -- into its events: all freed before it finishes, if it gives a value
+  r-tmp   : ∀ {E A B} {f : Tm Γ E A B} {e v o n t ts t′}
+          → Run ds f e v n o t → Weave t ts t′ → TPost o (tmps ts) → Run ds f e v n o t′
 
 data RunMap {Γ} ds {E} {A} F alg e where
   m-id   : ∀ {x o n t} → Run ds (lcata F alg) e x n o t → RunMap ds F alg e Idf x n o t
@@ -368,6 +446,7 @@ ios (free _ ∷ t)   = ios t
 ios (peek _ ∷ t)   = ios t
 ios (io s x y ∷ t) = io-call s x y ∷ ios t
 ios (stp s x ∷ t)  = io-halt s x ∷ ios t
+ios (tmp _ ∷ t)    = ios t
 
 ios-++ : ∀ t₁ t₂ → ios (t₁ ++ t₂) ≡ ios t₁ ++ ios t₂
 ios-++ []             t₂ = refl
@@ -376,6 +455,7 @@ ios-++ (free _ ∷ t₁)  t₂ = ios-++ t₁ t₂
 ios-++ (peek _ ∷ t₁)  t₂ = ios-++ t₁ t₂
 ios-++ (io s x y ∷ t₁) t₂ = cong (io-call s x y ∷_) (ios-++ t₁ t₂)
 ios-++ (stp s x ∷ t₁) t₂ = cong (io-halt s x ∷_) (ios-++ t₁ t₂)
+ios-++ (tmp _ ∷ t₁)   t₂ = ios-++ t₁ t₂
 
 ios-≼ : ∀ {t′ t} → t′ ≼ t → ios t′ ≼ ios t
 ios-≼ []≼                    = []≼
@@ -384,6 +464,18 @@ ios-≼ (∷≼ {x = free _} q)    = ios-≼ q
 ios-≼ (∷≼ {x = peek _} q)    = ios-≼ q
 ios-≼ (∷≼ {x = io s x y} q)  = ∷≼ (ios-≼ q)
 ios-≼ (∷≼ {x = stp s x} q)   = ∷≼ (ios-≼ q)
+ios-≼ (∷≼ {x = tmp _} q)     = ios-≼ q
+
+-- ★ A13: the temporaries show nothing to the world
+ios-weave : ∀ {t ts t′} → Weave t ts t′ → ios t′ ≡ ios t
+ios-weave w-[]                    = refl
+ios-weave (w-run {x = alloc _} w) = ios-weave w
+ios-weave (w-run {x = free _} w)  = ios-weave w
+ios-weave (w-run {x = peek _} w)  = ios-weave w
+ios-weave (w-run {x = io s x y} w) = cong (io-call s x y ∷_) (ios-weave w)
+ios-weave (w-run {x = stp s x} w) = cong (io-halt s x ∷_) (ios-weave w)
+ios-weave (w-run {x = tmp _} w)   = ios-weave w
+ios-weave (w-tmp w)               = ios-weave w
 
 ios-copy : ∀ {A} (v : MV A) n → ios (snd (snd (copy v n))) ≡ []
 ios-copy mone n = refl
@@ -590,6 +682,8 @@ sound (r-iter-next {t₁ = t₁} {t₂} r rn) rewrite ios-++ t₁ t₂ = iter-ne
 sound (r-iter! r) = iter-end (sound r)
 sound r-exh = b-cut
 sound (r-cut r q) = cut-pre (sound r) (ios-≼ q)
+sound {f = f} {e = e} {v = v} {o = o} (r-tmp r w p) =
+  subst (λ z → RB (block (Lᶜ _ f (er e) (er v))) z (erO o)) (sym (ios-weave w)) (sound r)
 
 sound-map (m-id r)       = sound r
 sound-map m-one          = b-ret
@@ -693,6 +787,7 @@ sized (r-bapp q r) sx sv = sized r sx sv
 sized (r-op {s = s} {y = y}) se sv = mvF-sized (scod s) y
 sized (r-iter-done r) se sv = sized r se sv
 sized (r-iter-next r rn) se sv = sized rn se (sized r se sv)
+sized (r-tmp r w p) se sv = sized r se sv
 
 sized-map (m-id r) se sx = sized r se sx
 sized-map m-one se sx = sx
@@ -814,6 +909,7 @@ step (free i)  h j = h j ∸ δ i j
 step (peek i)  h j = h j
 step (io _ _ _) h j = h j
 step (stp _ _)  h j = h j
+step (tmp _)    h j = h j     -- ★ A13: a temporary is not a cell of the run
 
 play : Trace → Heap → Heap
 play []      h = h
@@ -826,6 +922,7 @@ OK (free i ∷ t)  h = h i ≡ 1 × OK t (step (free i) h)
 OK (peek i ∷ t)  h = h i ≡ 1 × OK t (step (peek i) h)
 OK (io _ _ _ ∷ t) h = OK t h
 OK (stp _ _ ∷ t)  h = OK t h
+OK (tmp _ ∷ t)    h = OK t h
 
 -- a prefix of a legal trace is legal
 OK-≼ : ∀ {t′ t h} → t′ ≼ t → OK t h → OK t′ h
@@ -835,6 +932,7 @@ OK-≼ (∷≼ {x = free _} q)   (p , ok) = (p , OK-≼ q ok)
 OK-≼ (∷≼ {x = peek _} q)   (p , ok) = (p , OK-≼ q ok)
 OK-≼ (∷≼ {x = io _ _ _} q) ok       = OK-≼ q ok
 OK-≼ (∷≼ {x = stp _ _} q)  ok       = OK-≼ q ok
+OK-≼ (∷≼ {x = tmp _} q)    ok       = OK-≼ q ok
 
 play-++ : ∀ t₁ t₂ h → play (t₁ ++ t₂) h ≡ play t₂ (play t₁ h)
 play-++ []       t₂ h = refl
@@ -847,6 +945,7 @@ OK-++ (free i ∷ t₁)  t₂ h (p , ok₁) ok₂ = (p , OK-++ t₁ t₂ _ ok₁
 OK-++ (peek i ∷ t₁)  t₂ h (p , ok₁) ok₂ = (p , OK-++ t₁ t₂ _ ok₁ ok₂)
 OK-++ (io _ _ _ ∷ t₁) t₂ h ok₁ ok₂ = OK-++ t₁ t₂ h ok₁ ok₂
 OK-++ (stp _ _ ∷ t₁)  t₂ h ok₁ ok₂ = OK-++ t₁ t₂ h ok₁ ok₂
+OK-++ (tmp _ ∷ t₁)    t₂ h ok₁ ok₂ = OK-++ t₁ t₂ h ok₁ ok₂
 
 -- legal events keep a heap sound
 OK-le1 : ∀ t h → OK t h → (∀ i → h i ≤ 1) → ∀ i → play t h i ≤ 1
@@ -863,6 +962,23 @@ OK-le1 (free i ∷ t)  h (p , ok) le = OK-le1 t _ ok (λ j → ≤-trans (m∸n�
 OK-le1 (peek i ∷ t)  h (p , ok) le = OK-le1 t _ ok le
 OK-le1 (io _ _ _ ∷ t) h ok le = OK-le1 t _ ok le
 OK-le1 (stp _ _ ∷ t)  h ok le = OK-le1 t _ ok le
+OK-le1 (tmp _ ∷ t)    h ok le = OK-le1 t _ ok le
+
+-- ★ A13: the temporaries do not touch the run's cells
+play-weave : ∀ {t ts t′} → Weave t ts t′ → ∀ h → play t′ h ≡ play t h
+play-weave w-[]      h = refl
+play-weave (w-run {x = x} w) h = play-weave w (step x h)
+play-weave (w-tmp w) h = play-weave w h
+
+OK-weave : ∀ {t ts t′} → Weave t ts t′ → ∀ h → OK t h → OK t′ h
+OK-weave w-[]                      h ok       = ok
+OK-weave (w-run {x = alloc _} w)   h (p , ok) = (p , OK-weave w _ ok)
+OK-weave (w-run {x = free _} w)    h (p , ok) = (p , OK-weave w _ ok)
+OK-weave (w-run {x = peek _} w)    h (p , ok) = (p , OK-weave w _ ok)
+OK-weave (w-run {x = io _ _ _} w)  h ok       = OK-weave w h ok
+OK-weave (w-run {x = stp _ _} w)   h ok       = OK-weave w h ok
+OK-weave (w-run {x = tmp _} w)     h ok       = OK-weave w h ok
+OK-weave (w-tmp w)                 h ok       = OK-weave w h ok
 
 record Pre (h : Heap) (n : ℕ) {A} (v : MV A) (r : Heap) : Set where
   field
@@ -1078,6 +1194,7 @@ mono (r-bapp q r)  = mono r
 mono r-op          = ≤-refl
 mono (r-iter-done r)    = mono r
 mono (r-iter-next r rn) = ≤-trans (mono r) (mono rn)
+mono (r-tmp r w p)      = mono r
 
 mono-map (m-id r)      = mono r
 mono-map m-one         = ≤-refl
@@ -1128,6 +1245,7 @@ below (r-bapp q r) b = below r b
 below (r-op {s = s} {y = y}) b i le = cnt-flat (scod s) (mvF (scod s) y) i
 below (r-iter-done r) b = below r b
 below (r-iter-next r rn) b = below rn (below r b)
+below (r-tmp r w p) b = below r b
 
 below-map (m-id r) b = below r b
 below-map m-one b = b
@@ -1220,6 +1338,11 @@ peekP (gives w n′) j t h V p = p
 postV : ∀ {B} (o : Outcome B) t h {V V′ : Heap} → (∀ i → V i ≡ V′ i) → Post t h V o → Post t h V′ o
 postV (stop _)     t h e p   = tt
 postV (gives w n′) t h e p i = trans (cong (play t h i +_) (sym (e i))) (p i)
+
+-- ★ A13: the same claim with temporaries woven in
+post-weave : ∀ {B} (o : Outcome B) {t ts t′} → Weave t ts t′ → ∀ h V → Post t h V o → Post t′ h V o
+post-weave (stop _)     w h V p = tt
+post-weave (gives u n′) w h V p = subst (λ z → ∀ i → z i + V i ≡ h i + cnt u i) (sym (play-weave w h)) p
 
 exchange-map : ∀ {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t} → RunMap ds F alg e G x n o t
              → ∀ {h r} → Pre h n x r → Lent e r → OK t h × Post t h (cnt x) o
@@ -1396,6 +1519,9 @@ exchange (r-iter-next {a = a} {a′} {o} {t₁ = t₁} {t₂} r rn) {h} pre lent
 exchange (r-iter! r) pre lent = (fst (exchange r pre lent) , tt)
 exchange r-exh pre lent = (tt , tt)
 exchange (r-cut r q) pre lent = (OK-≼ q (fst (exchange r pre lent)) , tt)
+-- ★ A13: temporaries are not the run's cells: the claim is the run's
+exchange (r-tmp {v = v} {o = o} r w p) {h} pre lent with exchange r pre lent
+... | (ok , po) = (OK-weave w h ok , post-weave o w h (cnt v) po)
 
 exchange-map (m-id r) pre lent = exchange r record { le1 = le1 pre ; above = above pre ; sub = sub pre } lent
 exchange-map m-one pre lent = (tt , λ i → refl)
@@ -1464,6 +1590,7 @@ on i (peek j ∷ t)  with j ≟ᵢ i
 ... | no  _ = on i t
 on i (io _ _ _ ∷ t) = on i t
 on i (stp _ _ ∷ t)  = on i t
+on i (tmp _ ∷ t)    = on i t
 
 data St : Set where
   dead live : St
@@ -1508,6 +1635,7 @@ life (peek j ∷ t)  h i (p , ok) le with j ≟ᵢ i
 ... | no _ = life t h i ok le
 life (io _ _ _ ∷ t) h i ok le = life t h i ok le
 life (stp _ _ ∷ t)  h i ok le = life t h i ok le
+life (tmp _ ∷ t)    h i ok le = life t h i ok le
 
 -- ★ the invariant, for a whole program that returns: every block it
 -- allocates is freed exactly once, read only in between, and none is open at

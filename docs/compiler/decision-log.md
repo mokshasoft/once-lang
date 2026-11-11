@@ -22145,3 +22145,34 @@ several can, what is unknown is WHICH OF THEM, a sum's tag, not a code address.
 * Cold build 67 s (74 s before).
 * Open for the review: the coalgebra's kind is one-shot (it owns its seed). A many-use coalgebra (one that
   reads its seed lent and returns copies) is not needed by any IR constructor seen so far.
+
+## D407 — TEMPORARIES: A DECORATION OF THE RUN, COUNTED BY SIZE, WITHOUT IDS (2026-11-11)
+
+**Proposed** (made unattended, under plan 0.146 §3 "local temporaries are allowed" and D404's
+amendment; for the user's review). Worked out in `Spikes/LinCore/` (plan 0.146 A13: `Events`, `Temps`).
+
+### Decision
+* **A temporary is an event, not a cell.** `tmp (tnew k)` / `tmp (tdel k)`: a block of `k` words the
+  lowering allocates (a fold's work stack, a deep copy's), with NO id. It is not a value, so nothing in a
+  result can point into it, by construction. The cell heap (`step`, `OK`), the world's view (`ios`) and
+  the lifetimes (`on`) ignore it, so every theorem of the run holds unchanged.
+* **A choice on a term** (as in-place reuse, D404): the rule `r-tmp` decorates a run of any term with its
+  own temporaries, WOVEN into its events. If the run gives a value they are BALANCED (each freed, by
+  size, before the term finishes); if it stopped, only LEGAL (the exit exception).
+* **The structure** (the user, 2026-11-11: proper structures, proved, not invented lemmas): traces are
+  the free monoid on events; a trace ACTS on ledgers (live temporaries by size) as a proved
+  `IsMonoidHomomorphism` into stdlib's endomaps of the ledger setoid (`Function.Endo.Setoid`); the legal
+  traces and the balanced ones are SUBMONOIDS (`IsSubmonoid`, defined here: stdlib 2.3 has no
+  substructures), the balanced ones the stabiliser of the empty ledger.
+* **The theorems** (`Temps`): `plain` — every run ERASES to a run of the same term with the same values
+  and cell events and no temporaries; `tsound` — every run's temporaries are balanced if it gives a value,
+  legal if it stopped. Weaving balanced temporaries into a balanced trace is balanced (`weave-post`).
+* **The run's ids are the machine's names for cells**; temporaries take none, so the map from the run's
+  ids to the machine's is the identity on cells. Addresses for both are the allocator's (A17).
+
+### Open for the review
+* Temporaries are attributed to the wrapped term, not placed: `r-tmp` allows them anywhere in its events,
+  including inside a sub-term's. The machine (A16) places them at the generator's own code.
+* A finer form: balanced = the kernel of a homomorphism into the bicyclic monoid per size (unmatched
+  frees, unmatched allocations). Not needed by any proof so far; the ledger action is what the weave
+  needs.
