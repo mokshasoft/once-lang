@@ -28,26 +28,27 @@ open import Data.Product using (_×_)
 open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ; zero; suc; z≤n; s≤s; _+_; _≤_)
 open import Data.List using (List; []; _∷_)
+open import LinCore.Flat using (FTy; funit; fvoid; fw)
 
 module LinCore.Examples where
 
 data B : Set where
-  int unit : B
+  int : B
 
 ⟦_⟧B : B → Set
 ⟦ int ⟧B  = ℕ
-⟦ unit ⟧B = ⊤
 
 data Op : Set where
   emit succ exit : Op
 
-dom cod : Op → B
-dom emit = int
-dom succ = int
-dom exit = int
-cod emit = unit
-cod succ = int
-cod exit = unit
+-- A12: flat types, as the Spec's: an emit answers `unit`, an exit `void`
+dom cod : Op → FTy B
+dom emit = fw int
+dom succ = fw int
+dom exit = fw int
+cod emit = funit
+cod succ = fw int
+cod exit = fvoid
 
 open import LinCore.NbEPLinCore B ⟦_⟧B Op dom cod
 open import LinCore.Events B ⟦_⟧B Op dom cod
@@ -269,10 +270,10 @@ emit-fold-events = refl
 -- 8. A11: a SigOp INSIDE A CLOSURE.
 ------------------------------------------------------------------------
 
-emit-closure : LTm (Bt int) (Bt unit)
+emit-closure : LTm (Bt int) One
 emit-closure = leval ∘l (lcurry (lop emit ∘l lul) ⊗l lid) ∘l lul⁻
 
-emit-closure-run : Run emit-closure mone (mbase 5) 0 (gives (mbase tt) 1) _
+emit-closure-run : Run emit-closure mone (mbase 5) 0 (gives mone 1) _
 emit-closure-run =
   r-∘ (r-∘ r-λ⁻ (r-⊗ r-curry r-id))
       (r-eval (r-∘ r-λ (r-op {y = tt})))

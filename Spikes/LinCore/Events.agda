@@ -47,10 +47,11 @@ open import Data.List.Properties using (++-identityʳ)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (subst; _≢_)
+open import LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_)
 
 module LinCore.Events
   (Base : Set) (⟦_⟧b : Base → Set)
-  (Sig : Set) (sdom scod : Sig → Base)
+  (Sig : Set) (sdom scod : Sig → FTy Base)
   where
 
 open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
@@ -92,6 +93,15 @@ er (mcloB i env b)   = λ a → Lᶜ b (er env) a
 er (mnu {F = F} i s c) = unfoldNu F c (er s)
 er (mnuv {F} i v)    = inν (coh F (νt F) (er v))
 
+-- ★ A12: a flat value (a SigOp's answer) as it sits in memory: no cell
+mvF : ∀ a → ⟦ a ⟧f → MV ⌜ a ⌝
+mvF funit    x        = mone
+mvF fvoid    ()
+mvF (fw b)   x        = mbase x
+mvF (a f* b) (x , y)  = mpair (mvF a x) (mvF b y)
+mvF (a f+ b) (inj₁ x) = minl (mvF a x)
+mvF (a f+ b) (inj₂ y) = minr (mvF b y)
+
 ------------------------------------------------------------------------
 -- 2. EVENTS.
 ------------------------------------------------------------------------
@@ -100,8 +110,8 @@ data Ev : Set where
   alloc : Id → Ev
   free  : Id → Ev
   peek  : Id → Ev     -- a read of a lent cell (A2): legal only while the cell is live
-  io    : (s : Sig) → ⟦ sdom s ⟧b → ⟦ scod s ⟧b → Ev   -- a SigOp call and the world's answer
-  stp   : (s : Sig) → ⟦ sdom s ⟧b → Ev                  -- a `Halts` SigOp: the run ends
+  io    : (s : Sig) → ⟦ sdom s ⟧f → ⟦ scod s ⟧f → Ev   -- a SigOp call and the world's answer
+  stp   : (s : Sig) → ⟦ sdom s ⟧f → Ev                  -- a `Halts` SigOp: the run ends
 
 Trace : Set
 Trace = List Ev
@@ -284,9 +294,12 @@ data Run where
   -- applying a lent many-use closure reads its cell and lends its environment on
   r-app   : ∀ {E A B} {b : Tm E A B} {env : MV E} {i a o n t}
           → Run b env a n o t → Run bapp (mcloB i env b) a n o (peek i ∷ t)
-  -- ★ A11: a SigOp: an event, and whatever the world answers (a word: no cell)
-  r-op    : ∀ {E} {s} {e : MV E} {x y n} → Run (lop s) e (mbase x) n (gives (mbase y) n) (io s x y ∷ [])
-  r-halt  : ∀ {E} {s} {e : MV E} {x n} → Run (lhalt s) e (mbase x) n (stop halted) (stp s x ∷ [])
+  -- ★ A11: a SigOp: an event, and whatever the world answers (A12: a flat
+  -- value, no cell)
+  r-op    : ∀ {E} {s} {e : MV E} {x : MV ⌜ sdom s ⌝} {y n}
+          → Run (lop s) e x n (gives (mvF (scod s) y) n) (io s (toF (sdom s) (er x)) y ∷ [])
+  r-halt  : ∀ {E} {s} {e : MV E} {x : MV ⌜ sdom s ⌝} {n}
+          → Run (lhalt s) e x n (stop halted) (stp s (toF (sdom s) (er x)) ∷ [])
   -- ★ A11: the loop: a round that ends with `inl` is done, one with `inr` goes on
   r-iter-done : ∀ {E A B} {f : Tm E A (B ⊕t A)} {e a b n n′ t}
           → Run f e a n (gives (minl b) n′) t → Run (liter f) e a n (gives b n′) t
@@ -329,8 +342,8 @@ data RunMap {E} {A} F alg e where
 ------------------------------------------------------------------------
 
 data Io : Set where
-  io-call : (s : Sig) → ⟦ sdom s ⟧b → ⟦ scod s ⟧b → Io
-  io-halt : (s : Sig) → ⟦ sdom s ⟧b → Io
+  io-call : (s : Sig) → ⟦ sdom s ⟧f → ⟦ scod s ⟧f → Io
+  io-halt : (s : Sig) → ⟦ sdom s ⟧f → Io
 
 -- what a trace shows of the world
 ios : Trace → List Io
@@ -505,6 +518,15 @@ copy-er (mnu {F = F} i s c) n with copy s (suc n) | copy-er s (suc n)
 copy-er (mnuv {F} i v) n with copy v (suc n) | copy-er v (suc n)
 ... | (v' , n₁ , t₁) | ev = cong (λ x → inν (coh F (νt F) x)) ev
 
+-- a flat answer in memory means the answer
+er-mvF : ∀ a (y : ⟦ a ⟧f) → er (mvF a y) ≡ fromF a y
+er-mvF funit    y        = refl
+er-mvF fvoid    ()
+er-mvF (fw b)   y        = refl
+er-mvF (a f* b) (x , y)  = cong₂ _,_ (er-mvF a x) (er-mvF b y)
+er-mvF (a f+ b) (inj₁ x) = cong inj₁ (er-mvF a x)
+er-mvF (a f+ b) (inj₂ y) = cong inj₂ (er-mvF b y)
+
 -- `lOutμ ∘ lIn` round trip at the denotation: `coh⁻¹ ∘ coh` is the identity
 coh⁻¹∘coh : ∀ F X (x : ⟦ LF∙ F X ⟧) → coh⁻¹ F X (coh F X x) ≡ x
 coh⁻¹∘coh Idf      X x        = refl
@@ -607,7 +629,7 @@ sound (r-out {F} {f = f} {v = v} {a} {o} {t = t} r) =
   subst (λ z → RB (block (Lᶜ f z (er a))) (ios t) (erO o)) (sym (coh⁻¹∘coh F (μt F) (er v))) (sound r)
 sound (r-copy {e = e} {n}) = ret-eq (copy-er e n) (ios-copy e n)
 sound (r-app r) = sound r
-sound r-op = b-call b-ret
+sound (r-op {s = s} {y = y}) = b-call (ret-eq (er-mvF (scod s) y) refl)
 sound r-halt = b-halt
 sound (r-iter-done r) = iter-done (sound r)
 sound (r-iter-next {t₁ = t₁} {t₂} r rn) rewrite ios-++ t₁ t₂ = iter-next (sound r) (sound rn)
@@ -724,6 +746,15 @@ cnt (mclo j e f) i = δ j i + cnt e i
 cnt (mcloB j e b) i = δ j i + cnt e i
 cnt (mnu j s c)  i = δ j i + cnt s i
 cnt (mnuv j v)   i = δ j i + cnt v i
+
+-- ★ A12: a flat value has no cell
+cnt-flat : ∀ a (x : MV ⌜ a ⌝) i → cnt x i ≡ 0
+cnt-flat funit    mone        i = refl
+cnt-flat fvoid    ()          i
+cnt-flat (fw b)   (mbase x)   i = refl
+cnt-flat (a f* b) (mpair x y) i = cong₂ _+_ (cnt-flat a x i) (cnt-flat b y i)
+cnt-flat (a f+ b) (minl x)    i = cnt-flat a x i
+cnt-flat (a f+ b) (minr y)    i = cnt-flat b y i
 
 Heap : Set
 Heap = Id → ℕ
@@ -1131,7 +1162,7 @@ below (r-caseE₂ r) b = below r b
 below (r-out r) b = below r b
 below (r-copy {e = e} {n}) b = copy-below e n
 below (r-app r) b = below r b
-below r-op b i le = refl
+below (r-op {s = s} {y = y}) b i le = cnt-flat (scod s) (mvF (scod s) y) i
 below (r-iter-done r) b = below r b
 below (r-iter-next r rn) b = below rn (below r b)
 
@@ -1420,7 +1451,8 @@ exchange (r-copy {e = e} {n}) {h} pre lent with copy-ok e n h (above pre)
 -- the closure's cell is read; its environment, lent with it, is lent to the body
 exchange (r-app {b = bd} {env = env} {i} {a} {o} {t = t} r) {h} pre lent with exchange r pre (λ j p → lent j (≤-trans p (m≤n+m (cnt env j) (δ i j))))
 ... | (ok , eq) = ((peek-live {a = a} {e = mcloB i env bd} pre lent i (subst (λ x → 1 ≤ x + cnt env i) (sym (δ-same i)) (s≤s z≤n)) , ok) , peekP o i t h (cnt a) eq)
-exchange r-op pre lent = (tt , λ i → refl)
+exchange (r-op {s = s} {x = x} {y = y}) {h} pre lent =
+  (tt , λ i → trans (cong (h i +_) (cnt-flat (sdom s) x i)) (sym (cong (h i +_) (cnt-flat (scod s) (mvF (scod s) y) i))))
 exchange r-halt pre lent = (tt , tt)
 exchange (r-iter-done r) pre lent = exchange r pre lent
 exchange (r-iter-next {a = a} {a′} {o} {t₁ = t₁} {t₂} r rn) {h} pre lent with exchange r pre lent

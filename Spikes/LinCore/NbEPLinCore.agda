@@ -41,13 +41,18 @@ open import Data.Empty using (⊥)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_; ⟦_⟧F)
 
 module LinCore.NbEPLinCore
   (Base : Set) (⟦_⟧b : Base → Set)
-  -- the SigOps: each takes a base value and answers one (an `Int → Int` op, an
-  -- emit answering `Unit`, …); which ones halt is the term's choice
-  (Sig : Set) (sdom scod : Sig → Base)
+  -- ★ A12: the SigOps take and answer FLAT values (the Spec's `BTy`: an
+  -- `Int → Int` op, an emit answering `unit`, an exit answering `void`, …)
+  (Sig : Set) (sdom scod : Sig → FTy Base)
   where
+
+-- a flat value
+⟦_⟧f : FTy Base → Set
+⟦_⟧f = ⟦ ⟦_⟧b ⟧F
 
 ------------------------------------------------------------------------
 -- 0. THE COMPUTATION MONAD (D317; `Once.IR.Semantics.Trace`/`.Iterative`).
@@ -60,8 +65,8 @@ module LinCore.NbEPLinCore
 
 data T (X : Set) : Set where
   ret  : X → T X
-  call : (s : Sig) → ⟦ sdom s ⟧b → (⟦ scod s ⟧b → T X) → T X
-  halt : (s : Sig) → ⟦ sdom s ⟧b → T X
+  call : (s : Sig) → ⟦ sdom s ⟧f → (⟦ scod s ⟧f → T X) → T X
+  halt : (s : Sig) → ⟦ sdom s ⟧f → T X
 
 record T∞ (X : Set) : Set where
   coinductive
@@ -83,11 +88,8 @@ bindBlock (halt s a)     k = halt s a
 fmap∞ : ∀ {X Y} → (X → Y) → T∞ X → T∞ Y
 fmap∞ f m = m >>=∞ λ x → return∞ (f x)
 
--- one SigOp, and one that ends the program
-callT : (s : Sig) → ⟦ sdom s ⟧b → T∞ ⟦ scod s ⟧b
-block (callT s x) = call s x (λ y → ret (inj₁ y))
-
-haltT : ∀ {X} (s : Sig) → ⟦ sdom s ⟧b → T∞ X
+-- a SigOp that ends the program
+haltT : ∀ {X} (s : Sig) → ⟦ sdom s ⟧f → T∞ X
 block (haltT s x) = halt s x
 
 -- Elgot iteration: a round's end that continues is a silent step
@@ -232,6 +234,38 @@ coh⁻¹ (F ⊕f G) X (inj₂ y) = inj₂ (coh⁻¹ G X y)
 coh⁻¹ (F ⊗f G) X (x , y)  = (coh⁻¹ F X x , coh⁻¹ G X y)
 
 ------------------------------------------------------------------------
+-- 4½. ★ A12: FLAT TYPES IN THE CORE. A flat type is a core type with no cell
+-- (no μ, ν or arrow); its values and the core's are the same, by recursion.
+------------------------------------------------------------------------
+
+⌜_⌝ : FTy Base → LTy
+⌜ funit ⌝    = One
+⌜ fvoid ⌝    = Zero
+⌜ fw b ⌝     = Bt b
+⌜ a f* b ⌝   = ⌜ a ⌝ ⊗t ⌜ b ⌝
+⌜ a f+ b ⌝   = ⌜ a ⌝ ⊕t ⌜ b ⌝
+
+toF : ∀ a → ⟦ ⌜ a ⌝ ⟧ → ⟦ a ⟧f
+toF funit    x        = x
+toF fvoid    ()
+toF (fw b)   x        = x
+toF (a f* b) (x , y)  = (toF a x , toF b y)
+toF (a f+ b) (inj₁ x) = inj₁ (toF a x)
+toF (a f+ b) (inj₂ y) = inj₂ (toF b y)
+
+fromF : ∀ a → ⟦ a ⟧f → ⟦ ⌜ a ⌝ ⟧
+fromF funit    x        = x
+fromF fvoid    ()
+fromF (fw b)   x        = x
+fromF (a f* b) (x , y)  = (fromF a x , fromF b y)
+fromF (a f+ b) (inj₁ x) = inj₁ (fromF a x)
+fromF (a f+ b) (inj₂ y) = inj₂ (fromF b y)
+
+-- one SigOp call: the argument out as a flat value, the world's answer back
+callT : (s : Sig) → ⟦ ⌜ sdom s ⌝ ⟧ → T∞ ⟦ ⌜ scod s ⌝ ⟧
+block (callT s x) = call s (toF (sdom s) x) (λ y → ret (inj₁ (fromF (scod s) y)))
+
+------------------------------------------------------------------------
 -- 5. THE LINEAR CORE.
 --
 -- `dup`/`drop` are the only sources of duplication and discard. `lOutμ` and
@@ -302,8 +336,8 @@ data Tm : LTy → LTy → LTy → Set where
   bapp    : ∀ {A B} → Tm (A ⇛t B) A B
   -- ★ A11: the SigOps, anywhere a term can be. `lop`: Pure or Emits, an event
   -- and the world's answer; `lhalt`: Halts, the run ends
-  lop     : (s : Sig) → ∀ {E} → Tm E (Bt (sdom s)) (Bt (scod s))
-  lhalt   : (s : Sig) → ∀ {E} → Tm E (Bt (sdom s)) Zero
+  lop     : (s : Sig) → ∀ {E} → Tm E ⌜ sdom s ⌝ ⌜ scod s ⌝
+  lhalt   : (s : Sig) → ∀ {E} → Tm E ⌜ sdom s ⌝ Zero
   -- ★ A11: the loop (D317): the round reads `E` and the state, and ends with
   -- the result (`inl`) or the next state (`inr`)
   liter   : ∀ {A B E} → Tm E A (B ⊕t A) → Tm E A B
@@ -359,7 +393,7 @@ mutual
   Lᶜ bcopy          e         a              = return∞ e
   Lᶜ bapp           f         a              = f a
   Lᶜ (lop s)        e         x              = callT s x
-  Lᶜ (lhalt s)      e         x              = haltT s x
+  Lᶜ (lhalt s)      e         x              = haltT s (toF (sdom s) x)
   Lᶜ (liter f)      e         a              = iter∞ (Lᶜ f e) a
 
   cataC : ∀ F {X : Set} → (FS F X → T∞ X) → Mu F → T∞ X
