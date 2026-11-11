@@ -22341,6 +22341,25 @@ The choices:
   server could be "at every round boundary, the live cells are exactly the state's" (a per-round
   `exchange`, `loop-exchange` already proves it of the run).
 
+### D410 amended, decided by the user (2026-11-11): no leak is a SAFETY claim, at every step
+Checked against GOAL.md and the Spec.
+* **The Spec says nothing about memory**, so the claim is the implementation's. GOAL.md asks for memory
+  "managed by the compiler from the program's structure", and a server's meaning is an infinite sequence
+  of effects. D400 settled what is live: a value's cells are its footprint.
+* **Master's form is a liveness claim**, "every live block is freed later, unless the run stops". It calls
+  a server's held state a leak, so no correct compiler meets it for a server with heap state. In a linear
+  core garbage cannot arise; what that form detects there is data the program holds forever.
+* **Decision: option 1.** "No leak" is: every free hits a live block, and AT EVERY STEP the allocated
+  blocks are exactly the footprints of the values the program still holds. One claim for runs that
+  finish, halt or run forever. A finished run holds nothing, so it frees everything: today's claim is a
+  corollary.
+* **Rejected:** two claims (finished runs, plus round boundaries for servers), since it special-cases the
+  loop; and master's form as it is, since it would restrict server state to words.
+* **Consequences.**
+  * The spike proves it on the model machine, of every reachable configuration (plan A16).
+  * B replaces `LeakFree.freed` in `formal/Once/Implementation.agda` by the per-step form. That file is
+    the apex but not a Spec module: no `spec-freeze` approval is needed, the user decided the form here.
+
 ### D411, amended (2026-11-11): the legal-run link, done
 * `AllocRun.never-fails`: a legal run (cell heap `OK`, temporaries `TLeg`) never makes any size class's
   allocator fail, its invariant holding along the run. The link, kept event by event: a cell of size `k`
