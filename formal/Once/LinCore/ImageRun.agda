@@ -131,8 +131,8 @@ data StepI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg
                {b : Tm Δ X A B} {γ : Gd g b} {i x} {es : Slots (Fn many g A B ∷ Es)} {os n}
            → see es ≡ mfn i (cω ds′ b γ) x
            → StepI (icallω ⨾ k) r (es ∥ os) n (peek i ∷ []) (call (kbodyω ds′ b γ) ⨾ epop ⨾ k) r (vw x es ∥ os) n
-  i-iobs   : ∀ {Es F S S′ U} {k : Codeᴵ (Es ∣ LF∙ F (Nu F) ∷ S′) U} {r : Ret U T} {es i} {p : MV (Coalg F S ⊗t S)} {os n}
-           → StepI (iobs ⨾ k) r (es ∥ mnu i p ∷ˢ os) n (free i ∷ []) (call (kobs F S) ⨾ k) r (es ∥ p ∷ˢ os) n
+  i-iobs   : ∀ {Γ} {ds : Defs Γ} {Es F S S′ U} {k : Codeᴵ (Es ∣ LF∙ F (Nu F) ∷ S′) U} {r : Ret U T} {es i} {p : MV (Coalg F S ⊗t S)} {os n}
+           → StepI (iobs ds ⨾ k) r (es ∥ mnu i p ∷ˢ os) n (free i ∷ []) (call (kobs ds F S) ⨾ k) r (es ∥ p ∷ˢ os) n
   -- a copy: what the cell holds, then a cell with the same code word
   i-ccopy1 : ∀ {Es g X A B S U} {k : Codeᴵ (Fn once g A B ∷ Es ∣ Fn once g A B ∷ S) U} {r : Ret U T} {Δ}
                {ds′ : Defs Δ} {b : Tm Δ One (X ⊗t A) B} {γ : Gd g b} {i x} {es : Slots (Fn once g A B ∷ Es)} {os n}
