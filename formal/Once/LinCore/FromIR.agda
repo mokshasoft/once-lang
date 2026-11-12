@@ -31,6 +31,7 @@ open import Once.IRTy
 open import Once.IRTy using (⌊_⌋)
 import Once.Spec.Type as ST
 open import Data.Maybe using (Maybe; just; nothing; _>>=_)
+open import Data.Product using (Σ; _,_; _×_)
 import Data.Maybe
 open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ)
@@ -260,3 +261,92 @@ entry P rs e b with blk? b
 trTable : List IRFun → Maybe TrProg
 trTable []       = just (trProg P.ε (λ _ _ _ → nothing))
 trTable (e ∷ es) = trTable es >>= λ t → trI (rs t) (fbody e) >>= λ b → just (entry (prog t) (rs t) e b)
+
+------------------------------------------------------------------------
+-- 7. THE TRANSLATION AS A RELATION: `Tr rs ir c`, `c` translates `ir`
+-- (what `trI` gives, `trI-Tr`), for the proof by induction on it.
+------------------------------------------------------------------------
+
+module _ {Γ : Cx} (rs : Resolver Γ) where
+
+  data Tr : ∀ {A B} → M.IR A B → P.IR Γ ⟪ A ⟫ ⟪ B ⟫ → Set where
+    t-id    : ∀ {A} → Tr (M.id {A}) P.id
+    t-∘     : ∀ {A B C} {g : M.IR B C} {f : M.IR A B} {g′ f′} → Tr g g′ → Tr f f′ → Tr (g M.∘ f) (g′ P.∘ f′)
+    t-pair  : ∀ {A B C} {f : M.IR A B} {g : M.IR A C} {f′ g′} → Tr f f′ → Tr g g′ → Tr M.⟨ f , g ⟩ P.⟨ f′ , g′ ⟩
+    t-fst   : ∀ {A B} → Tr (M.fst {A} {B}) P.fst
+    t-snd   : ∀ {A B} → Tr (M.snd {A} {B}) P.snd
+    t-inl   : ∀ {A B} → Tr (M.inl {A} {B}) P.inl
+    t-inr   : ∀ {A B} → Tr (M.inr {A} {B}) P.inr
+    t-case  : ∀ {A B C} {f : M.IR A C} {g : M.IR B C} {f′ g′} → Tr f f′ → Tr g g′ → Tr (M.case f g) (P.case f′ g′)
+    t-term  : ∀ {A} → Tr (M.terminal {A}) P.terminal
+    t-init  : ∀ {A} → Tr (M.initial {A}) P.initial
+    t-curry : ∀ {A B C π} {f : M.IR (A * B) C} {f′ γ} → Tr f f′ → Tr (M.curry {π = π} f) (P.curry (grade π) f′ γ)
+    t-apply : ∀ {A B π} → Tr (M.apply {A} {B} {π}) (P.apply {g = grade π})
+    t-In    : ∀ {F} (wf : WellFormedFI F) →
+              Tr (M.In wf) (subst (λ X → P.IR Γ X ⟪ μ-type F ⟫) (sym (⟪⟫-TI wf (μ-type F))) (P.In (lf F)))
+    t-out   : ∀ {F} (wf : WellFormedFI F) →
+              Tr (M.out-μ wf) (subst (λ X → P.IR Γ ⟪ μ-type F ⟫ X) (sym (⟪⟫-TI wf (μ-type F))) (P.out-μ (lf F)))
+    t-cata  : ∀ {F} (wf : WellFormedFI F) {E A} {alg : M.IR (E * ⟦ F ⟧TI A) A} {a′} → Tr alg a′ →
+              Tr (M.Cata wf alg) (P.Cata (lf F) (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t X) ⟪ A ⟫) (⟪⟫-TI wf A) a′))
+    t-Out   : ∀ {F} (wf : WellFormedFI F) →
+              Tr (M.Out wf) (subst (λ X → P.IR Γ ⟪ ν-type F ⟫ X) (sym (⟪⟫-TI wf (ν-type F))) (P.Out (lf F)))
+    t-inν   : ∀ {F} (wf : WellFormedFI F) →
+              Tr (M.in-ν wf) (subst (λ X → P.IR Γ X ⟪ ν-type F ⟫) (sym (⟪⟫-TI wf (ν-type F))) (P.in-ν (lf F)))
+    t-ana   : ∀ {F} (wf : WellFormedFI F) {E A} {c : M.IR (E * A) (⟦ F ⟧TI A)} {c′} → Tr c c′ → ∀ φ →
+              Tr (M.Ana wf c) (P.Ana (lf F) (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′) φ)
+    t-iter  : ∀ {E A B} {b : M.IR (E * A) (B + A)} {b′} → Tr b b′ → ∀ φ → Tr (M.Iter b) (P.Iter b′ φ)
+    t-int   : ∀ {v} → Tr (M.const fits-int v) (P.const {b = int} (OnceWord.Width.fromℤ (int-bits fmt) v))
+    t-float : ∀ {v} → Tr (M.const fits-float v) (P.const {b = float} (round (float-format fmt) v))
+    t-op    : ∀ {A B} (si : SigOpInfo A B) →
+              Tr (M.SigOp si) (subst₂ (P.IR Γ) (sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si))) (sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si)))
+                                      (P.SigOp (sig si)))
+    t-hit   : ∀ {A B f g l} {p : Γ ∋[ l ] sg once g One ⟪ A ⟫ ⟪ B ⟫} → rs f A B ≡ just (hit g p) → Tr (M.Call f) (P.Call p)
+    t-miss  : ∀ {A B f} → rs f A B ≡ nothing → Tr (M.Call {A} {B} f) unlinked
+
+  -- what `trI` gives, it translates
+  private
+    bind-just : ∀ {X Y : Set} {m : Maybe X} {k : X → Maybe Y} {y} → (m >>= k) ≡ just y
+              → Σ X (λ x → m ≡ just x × k x ≡ just y)
+    bind-just {m = just x} e = x , refl , e
+
+  trI-Tr : ∀ {A B} (ir : M.IR A B) {c} → trI rs ir ≡ just c → Tr ir c
+  trI-Tr M.id refl = t-id
+  trI-Tr (g M.∘ f) e with bind-just {m = trI rs g} e
+  ... | g′ , eg , e₁ with bind-just {m = trI rs f} e₁
+  ...   | f′ , ef , refl = t-∘ (trI-Tr g eg) (trI-Tr f ef)
+  trI-Tr M.⟨ f , g ⟩ e with bind-just {m = trI rs f} e
+  ... | f′ , ef , e₁ with bind-just {m = trI rs g} e₁
+  ...   | g′ , eg , refl = t-pair (trI-Tr f ef) (trI-Tr g eg)
+  trI-Tr M.fst refl = t-fst
+  trI-Tr M.snd refl = t-snd
+  trI-Tr M.inl refl = t-inl
+  trI-Tr M.inr refl = t-inr
+  trI-Tr (M.case f g) e with bind-just {m = trI rs f} e
+  ... | f′ , ef , e₁ with bind-just {m = trI rs g} e₁
+  ...   | g′ , eg , refl = t-case (trI-Tr f ef) (trI-Tr g eg)
+  trI-Tr M.terminal refl = t-term
+  trI-Tr M.initial refl = t-init
+  trI-Tr (M.curry {π = π} f) e with bind-just {m = trI rs f} e
+  ... | f′ , ef , e₁ with bind-just {m = gd? (grade π) f′} e₁
+  ...   | γ , _ , refl = t-curry (trI-Tr f ef)
+  trI-Tr M.apply refl = t-apply
+  trI-Tr (M.In wf) refl = t-In wf
+  trI-Tr (M.out-μ wf) refl = t-out wf
+  trI-Tr (M.Cata wf alg) e with bind-just {m = trI rs alg} e
+  ... | a′ , ea , refl = t-cata wf (trI-Tr alg ea)
+  trI-Tr (M.Out wf) refl = t-Out wf
+  trI-Tr (M.in-ν wf) refl = t-inν wf
+  trI-Tr (M.Ana {F} wf {E} {A} c) e with bind-just {m = trI rs c} e
+  ... | c′ , ec , e₁
+      with bind-just {m = blk? (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′)}
+                     {k = λ φ → just (P.Ana (lf F) (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′) φ)} e₁
+  ...   | φ , _ , refl = t-ana wf (trI-Tr c ec) φ
+  trI-Tr (M.Iter b) e with bind-just {m = trI rs b} e
+  ... | b′ , eb , e₁ with bind-just {m = blk? b′} e₁
+  ...   | φ , _ , refl = t-iter (trI-Tr b eb) φ
+  trI-Tr (M.const fits-int v) refl = t-int
+  trI-Tr (M.const fits-float v) refl = t-float
+  trI-Tr (M.SigOp si) refl = t-op si
+  trI-Tr (M.Call {A} {B} f) e with rs f A B in eq
+  trI-Tr (M.Call f) refl | just (hit g p) = t-hit eq
+  trI-Tr (M.Call f) refl | nothing        = t-miss eq
