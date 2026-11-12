@@ -26,6 +26,8 @@ open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 import Once.IR.Semantics.Trace as Tr
 open import Once.IR.Semantics.Iterative using (embed)
+import Once.IR.Semantics.Iterative
+open import Once.IR.Semantics.StreamInf using (in-νᴵ)
 open import Once.Spec.Type using (Type; ∅ₖ; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+)
 open import Once.IRTy using (IRTy; ⌊_⌋; _*_; _+_)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; forgetᵇ; injectᵇ)
@@ -338,3 +340,81 @@ module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A 
            ≈[ W (⟦ F ⟧TI (μ-type F)) ] evalᴰ fmt (callEnv cs ans) (M.out-μ wf) a′
   out≈ {F} wf {inμ w} (wmu r) rewrite ev-subst-cod δ (⟪⟫-TI wf (μ-type F)) (P.out-μ (lf F)) (inμ w) =
     ≈-subst (sym (⟪⟫-TI wf (μ-type F))) (ret≈R (Out-layer wf r))
+
+------------------------------------------------------------------------
+-- 5. ★ ν: a layer `in-ν` takes and `Out` gives (master's ν coercions are its
+-- μ ones), and an observation mapped on each side.
+------------------------------------------------------------------------
+
+Inν-layer : ∀ {F G} (wg : WellFormedFI G) {a a′} → W (⟦ G ⟧TI (ν-type F)) a a′
+          → WLν F G (coh (lf G) (Nu (lf F)) (subst ⟦_⟧ (⟪⟫-TI wg (ν-type F)) a))
+                    (Val.coerce-μ-in ⌈ G ⌉F ⟦ ⌈ ν-type F ⌉ ⟧ᴰ
+                       (coerce-functor-D (wf-⌈⌉ wg) ⌈ ν-type F ⌉ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute G (ν-type F)) a′)))
+Inν-layer {F} (wf-K b) w = K-lay b (Nu (lf F)) w
+Inν-layer wf-Id w = w
+Inν-layer {F} {G ⊕ᴵ H} (wf-Sum f g) {a = inj₁ x} {a′ = inj₁ x′} (⊎₁ w)
+  rewrite subst-⊕₁ (⟪⟫-TI f (ν-type F)) (⟪⟫-TI g (ν-type F)) x
+        | substᴰ-+₁ (⌈⟧TI-commute G (ν-type F)) (⌈⟧TI-commute H (ν-type F)) x′ = ⊎₁ (Inν-layer f w)
+Inν-layer {F} {G ⊕ᴵ H} (wf-Sum f g) {a = inj₂ y} {a′ = inj₂ y′} (⊎₂ w)
+  rewrite subst-⊕₂ (⟪⟫-TI f (ν-type F)) (⟪⟫-TI g (ν-type F)) y
+        | substᴰ-+₂ (⌈⟧TI-commute G (ν-type F)) (⌈⟧TI-commute H (ν-type F)) y′ = ⊎₂ (Inν-layer g w)
+Inν-layer {F} {G ⊗ᴵ H} (wf-Prod f g) {a = x , y} {a′ = x′ , y′} (w₁ , w₂)
+  rewrite subst-⊗ (⟪⟫-TI f (ν-type F)) (⟪⟫-TI g (ν-type F)) x y
+        | substᴰ-* (⌈⟧TI-commute G (ν-type F)) (⌈⟧TI-commute H (ν-type F)) x′ y′ = Inν-layer f w₁ , Inν-layer g w₂
+
+Outν-layer : ∀ {F G} (wg : WellFormedFI G) {w w′} → WLν F G w w′
+           → W (⟦ G ⟧TI (ν-type F))
+               (subst ⟦_⟧ (sym (⟪⟫-TI wg (ν-type F))) (coh⁻¹ (lf G) (Nu (lf F)) w))
+               (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute G (ν-type F)))
+                  (coerce-functor⁻¹-D (wf-⌈⌉ wg) ⌈ ν-type F ⌉ (Val.coerce-μ-out (wf-⌈⌉ wg) ⟦ ⌈ ν-type F ⌉ ⟧ᴰ w′)))
+Outν-layer {F} {K A} (wf-K b) {w} {w′} r =
+  subst (λ z → W A z (injectᵇ (base-⌈⌉ b) (Val.coerce-base-to-full (base-⌈⌉ b) w′)))
+        (sym (subst-sym² (⟪⟫-K b (Nu (lf F))) (coh⁻¹ (lfK A) (Nu (lf F)) w)))
+        (K-lay⁻ b (Nu (lf F)) r)
+Outν-layer wf-Id r = r
+Outν-layer {F} {G ⊕ᴵ H} (wf-Sum f g) {w = inj₁ x} {w′ = inj₁ x′} (⊎₁ r)
+  rewrite subst-⊕₁⁻ (⟪⟫-TI f (ν-type F)) (⟪⟫-TI g (ν-type F)) (coh⁻¹ (lf G) (Nu (lf F)) x)
+        | substᴰ-+₁⁻ (⌈⟧TI-commute G (ν-type F)) (⌈⟧TI-commute H (ν-type F))
+                     (coerce-functor⁻¹-D (wf-⌈⌉ f) ⌈ ν-type F ⌉ (Val.coerce-μ-out (wf-⌈⌉ f) ⟦ ⌈ ν-type F ⌉ ⟧ᴰ x′)) =
+  ⊎₁ (Outν-layer f r)
+Outν-layer {F} {G ⊕ᴵ H} (wf-Sum f g) {w = inj₂ y} {w′ = inj₂ y′} (⊎₂ r)
+  rewrite subst-⊕₂⁻ (⟪⟫-TI f (ν-type F)) (⟪⟫-TI g (ν-type F)) (coh⁻¹ (lf H) (Nu (lf F)) y)
+        | substᴰ-+₂⁻ (⌈⟧TI-commute G (ν-type F)) (⌈⟧TI-commute H (ν-type F))
+                     (coerce-functor⁻¹-D (wf-⌈⌉ g) ⌈ ν-type F ⌉ (Val.coerce-μ-out (wf-⌈⌉ g) ⟦ ⌈ ν-type F ⌉ ⟧ᴰ y′)) =
+  ⊎₂ (Outν-layer g r)
+Outν-layer {F} {G ⊗ᴵ H} (wf-Prod f g) {w = x , y} {w′ = x′ , y′} (r₁ , r₂)
+  rewrite subst-⊗⁻ (⟪⟫-TI f (ν-type F)) (⟪⟫-TI g (ν-type F)) (coh⁻¹ (lf G) (Nu (lf F)) x) (coh⁻¹ (lf H) (Nu (lf F)) y)
+        | substᴰ-*⁻ (⌈⟧TI-commute G (ν-type F)) (⌈⟧TI-commute H (ν-type F))
+                    (coerce-functor⁻¹-D (wf-⌈⌉ f) ⌈ ν-type F ⌉ (Val.coerce-μ-out (wf-⌈⌉ f) ⟦ ⌈ ν-type F ⌉ ⟧ᴰ x′))
+                    (coerce-functor⁻¹-D (wf-⌈⌉ g) ⌈ ν-type F ⌉ (Val.coerce-μ-out (wf-⌈⌉ g) ⟦ ⌈ ν-type F ⌉ ⟧ᴰ y′)) =
+  Outν-layer f r₁ , Outν-layer g r₂
+
+-- a block related to a computation, each mapped
+embfmap≈ : ∀ {X X′ Y Y′ : Set} {S : X → X′ → Set} {R : Y → Y′ → Set} {f : X → Y} {g : X′ → Y′}
+           (m : T X) {m′ : T∞ X′} → emb m ≈[ S ] m′ → (∀ {x y} → S x y → R (f x) (g y))
+         → emb (fmapT f m) ≈[ R ] fmap∞ g m′
+_≈[_]_.blockR (embfmap≈ {S = S} {R} {f} {g} m {m′} p r) = go m (_≈[_]_.blockR p)
+  where
+  go : ∀ (m : T _) {b′} → BlR S (embB m) b′ → BlR R (embB (fmapT f m)) (Once.IR.Semantics.Iterative.bindBlock b′ (λ y → Once.IR.Semantics.Iterative.return∞ (g y)))
+  go (ret x)      (≈retR s)  = ≈retR (r s)
+  go (call o a k) (≈callR h) = ≈callR (λ z → go (k z) (h z))
+  go (halt o a)   ≈haltR     = ≈haltR
+
+-- a ν built from a layer: its one observation is the layer
+inν-W : ∀ {F l l′} → WLν F F l l′ → WNu F (P.inν l) (in-νᴵ l′)
+_≈[_]_.blockR (wout (inν-W r)) = ≈retR r
+
+module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) where
+
+  -- ★ `Out` against master's
+  Out≈ : ∀ {F} (wf : WellFormedFI F) {a a′} → W (ν-type F) a a′ →
+         P.ev δ (subst (λ X → P.IR Γ ⟪ ν-type F ⟫ X) (sym (⟪⟫-TI wf (ν-type F))) (P.Out (lf F))) a
+           ≈[ W (⟦ F ⟧TI (ν-type F)) ] evalᴰ fmt (callEnv cs ans) (M.Out wf) a′
+  Out≈ {F} wf {v} w rewrite ev-subst-cod δ (⟪⟫-TI wf (ν-type F)) (P.Out (lf F)) v =
+    ≈-subst (sym (⟪⟫-TI wf (ν-type F))) (embfmap≈ (outν v) (wout w) (Outν-layer wf))
+
+  -- ★ `in-ν` against master's
+  inν≈ : ∀ {F} (wf : WellFormedFI F) {a a′} → W (⟦ F ⟧TI (ν-type F)) a a′ →
+         P.ev δ (subst (λ X → P.IR Γ X ⟪ ν-type F ⟫) (sym (⟪⟫-TI wf (ν-type F))) (P.in-ν (lf F))) a
+           ≈[ W (ν-type F) ] evalᴰ fmt (callEnv cs ans) (M.in-ν wf) a′
+  inν≈ {F} wf {a} w rewrite ev-subst-dom δ (⟪⟫-TI wf (ν-type F)) (P.in-ν (lf F)) a = ret≈R (inν-W (Inν-layer wf w))
