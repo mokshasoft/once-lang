@@ -22689,3 +22689,30 @@ indexed stacks, and every block's code would have to be shown the same at every 
   arrives as an address.
 * `ImageRun` (`Ret`'s call entry, `i-call`, `i-ret`), `ImageSim` (the call combinators), `HeldI` and
   `KeysRun` follow. No theorem changes its statement.
+
+## D416 — THE IMAGE'S WORDS: ABI VALUES IN FRAMES, CELLS `[contents-word, code, contents]` (2026-11-12)
+
+**Proposed** (made unattended, plan 0.146 B1.4b, for the user's review). **Applies**: D379/D380 (values
+whose type fixes their size live in frames), D381 (flat values are their `Spec.ABI` words), D386/D390 (a
+closure node `[env-word, code]`, code at word 1), D147, D415.
+
+### Decision
+* **A value is words.** A flat value is its `Spec.ABI` words (`words`: `Unit` none, a scalar one, a pair
+  its two in order, a sum its tag then its payload padded to the larger side); a tagged closure (`Ct l X`)
+  is `X`'s words; a μ node, a closure and a ν are one word, the address of their cell.
+* **A frame is two regions at fixed offsets**: the environment's (a view is the ADDRESS of what it sees;
+  a lend is a buffer holding the lent pair's words, its view the buffer's address) and the operand
+  stack's, which grows DOWNWARD, so a pair on the stack is its two components in place: `pair`, `unpair`,
+  `untag` and `tag` move nothing. Each region is sized by its block's maximum.
+* **A cell** is a heap block: a μ node holds its layer's words; a closure and a ν are
+  `[contents-word, code, contents…]` — D386's header, with the contents (the environment; the coalgebra
+  and seed) in the same block, the contents-word their address. One block per cell, as the run has one
+  `alloc` per cell.
+* **A ν's code word names its observation block**, as a closure's names its body: `kobs` at the table
+  where the ν was built (a `lunf` site's table is an observer's too). Observing compiles `obsT`, which
+  names no label, so its block's code is the same at every table, and the image's `kobs` at the
+  observer's table runs the block the cell names.
+
+### Consequences
+* Calls pass the argument's (and result's) address in `Input1` and the top view's in `Output` (both
+  survive a call); the callee copies its argument in and its result out (D147).
