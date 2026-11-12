@@ -21,6 +21,7 @@ open import Data.Nat.Properties using (n∸n≡0)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc; ++-identityʳ; map-++)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Agda.Builtin.Sigma using (_,_; fst; snd)
 open import Data.Unit using (tt)
@@ -216,3 +217,50 @@ O-[] : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ 
      → OutI c r m n t c′ r′ m′ n′ → OutI c r m n (t ++ []) c′ r′ m′ n′
 O-[] {t = t} (out ts mt st w b) =
   out ts mt st (subst (λ z → Weave tmp z ts mt) (sym (trans (erase-++ t []) (++-identityʳ (erase t)))) w) b
+
+------------------------------------------------------------------------
+-- 3. ★ THE COPY BLOCK: `Events.copy` (post-order), by induction on the
+-- value; each cell's contents copied by a call, then the cell built.
+------------------------------------------------------------------------
+
+doneO : ∀ {T sh U} {c : Codeᴵ sh U} {r : Ret U T} {m n} → OutI c r m n [] c r m n
+doneO = out [] [] done w-[] bal∅
+
+-- a stretch, then one whose trace is empty
+thenL : ∀ {T sh U sh′ U′ sh″ U″} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+          {c″ : Codeᴵ sh″ U″} {r″ : Ret U″ T} {m m′ m″ n n′ n″ t}
+      → OutI c r m n t c′ r′ m′ n′ → OutI c′ r′ m′ n′ [] c″ r″ m″ n″ → OutI c r m n t c″ r″ m″ n″
+thenL {t = t} a b = subst (λ z → OutI _ _ _ _ z _ _ _ _) (++-identityʳ t) (then a b)
+
+mutual
+  copyS : ∀ {T A} (v : MV A) {Es S U} {es : Slots (A ∷ Es)} → see es ≡ v → (os : Stk S)
+          {k : Codeᴵ (A ∷ Es ∣ A ∷ S) U} {r : Ret U T} (n : ℕ)
+        → OutI (call (kcopy A) ⨾ k) r (es ∥ mone ∷ˢ os) n (snd (snd (copy v n)))
+               k r (es ∥ fst (copy v n) ∷ˢ os) (fst (snd (copy v n)))
+  copyS v e os n = called (copyB v e os n) doneO
+
+  copyB : ∀ {T A} (v : MV A) {Es S U} {es : Slots (A ∷ Es)} → see es ≡ v → (os : Stk S)
+          {k : Codeᴵ (A ∷ Es ∣ A ∷ S) U} {r : Ret U T} (n : ℕ)
+        → OutI (blockᴵ (kcopy A)) (k ∷ᶜ r) (es ∥ mone ∷ˢ os) n (snd (snd (copy v n)))
+               end (k ∷ᶜ r) (es ∥ fst (copy v n) ∷ˢ os) (fst (snd (copy v n)))
+  copyB mone e os n = doneO
+  copyB (mbase x) e os n = leaf (i-eword e) []
+  copyB (mpair a b) e os n with copy a n | copyS a refl os n
+  ... | (a′ , n₁ , t₁) | ca with copy b n₁ | copyS b refl (a′ ∷ˢ os) n₁
+  ...   | (b′ , n₂ , t₂) | cb =
+    pre (i-efst e) (then (after ca i-epop)
+      (pre i-unit (pre (i-esnd e) (after (after (after cb i-epop) i-swap) i-pair))))
+  copyB (minl a) e os n with copy a n | copyS a refl os n
+  ... | (a′ , n₁ , t₁) | ca = pre (i-ecase₁ e) (thenL (after ca i-epop) (leaf (i-prim r-inl) []))
+  copyB (minr b) e os n with copy b n | copyS b refl os n
+  ... | (b′ , n₁ , t₁) | cb = pre (i-ecase₂ e) (thenL (after cb i-epop) (leaf (i-prim r-inr) []))
+  copyB (mmu i v) e os n with copy v n | copyS v refl os n
+  ... | (v′ , n₁ , t₁) | cv = pre (i-eoutq e) (then (after cv i-epop) (leaf (i-prim r-In) (k-alloc ∷ [])))
+  copyB (mct x) e os n with copy x n | copyS x refl os n
+  ... | (x′ , n₁ , t₁) | cx = pre (i-eapp e) (after (after cx i-epop) i-tag₁)
+  copyB (mfn i (c1 ds b γ) x) e os n with copy x n | copyS x refl os n
+  ... | (x′ , n₁ , t₁) | cx = pre (i-ccopy1 e) (then (after cx i-epop) (leaf (i-prim r-lam) (k-alloc ∷ [])))
+  copyB (mfn i (cω ds b γ) x) e os n with copy x n | copyS x refl os n
+  ... | (x′ , n₁ , t₁) | cx = pre (i-ccopyω e) (then (after cx i-epop) (leaf (i-prim r-lamω) (k-alloc ∷ [])))
+  copyB (mnu i p) e os n with copy p n | copyS p refl os n
+  ... | (p′ , n₁ , t₁) | cp = pre (i-ncopy e) (then (after cp i-epop) (leaf (i-prim r-unf) (k-alloc ∷ [])))
