@@ -20,7 +20,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_)
 open import Data.List using ([]; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float; ⌈_⌉) renaming (_+_ to _+ᵀ_)
+open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛[_]_; μ-type; ν-type; Int; Float; ⌈_⌉) renaming (_+_ to _+ᵀ_)
 open import Once.Spec.Type using (Ty; Fun; var)
 import Once.Spec.Type as T
 open import Once.CCC.Codegen.Size using (size)
@@ -35,7 +35,7 @@ kind Unit       = flat
 kind Void       = flat
 kind (_ * _)    = flat
 kind (_ +ᵀ _)   = flat
-kind (_ ⇛ _)    = word
+kind (_ ⇛[ _ ] _)    = word
 kind (μ-type _) = word
 kind (ν-type _) = word
 kind Int        = word
@@ -193,7 +193,7 @@ size-ssize Unit       = refl
 size-ssize Void       = refl
 size-ssize (A * B)    = cong₂ _+_ (size-ssize A) (size-ssize B)
 size-ssize (A +ᵀ B)   = cong suc (cong₂ _⊔_ (size-ssize A) (size-ssize B))
-size-ssize (A ⇛ B)    = refl
+size-ssize (A ⇛[ _ ] B)    = refl
 size-ssize (μ-type F) = refl
 size-ssize (ν-type F) = refl
 size-ssize Int        = refl
@@ -204,7 +204,7 @@ kind-skind Unit       = refl
 kind-skind Void       = refl
 kind-skind (A * B)    = refl
 kind-skind (A +ᵀ B)   = refl
-kind-skind (A ⇛ B)    = refl
+kind-skind (A ⇛[ _ ] B)    = refl
 kind-skind (μ-type F) = refl
 kind-skind (ν-type F) = refl
 kind-skind Int        = refl

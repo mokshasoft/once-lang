@@ -32,7 +32,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 open import Once.IRTy
-  using (IRTy; IRFunctor; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; _*_; _+_; _⇛_; μ-type; ν-type;
+  using (IRTy; IRFunctor; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; _*_; _+_; _⇛[_]_; μ-type; ν-type;
          FitsInRegI; fits-int; fits-float; ⟦_⟧TI)
 
 data MuRep : Set where
@@ -45,7 +45,7 @@ mu-rep (K Int)         = mu-box
 mu-rep (K Float)       = mu-box
 mu-rep (K (A * B))     = mu-ptr
 mu-rep (K (A + B))     = mu-ptr
-mu-rep (K (A ⇛ B))     = mu-ptr
+mu-rep (K (A ⇛[ _ ] B))     = mu-ptr
 mu-rep (K (μ-type G))  = mu-ptr
 mu-rep (K (ν-type G))  = mu-ptr
 mu-rep Id              = mu-ptr
@@ -72,7 +72,7 @@ box-view (K Unit)  ()
 box-view (K Void)  ()
 box-view (K (A * B)) ()
 box-view (K (A + B)) ()
-box-view (K (A ⇛ B)) ()
+box-view (K (A ⇛[ _ ] B)) ()
 box-view (K (μ-type G)) ()
 box-view (K (ν-type G)) ()
 box-view Id ()

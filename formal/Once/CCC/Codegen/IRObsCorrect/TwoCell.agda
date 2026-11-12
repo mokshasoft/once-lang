@@ -59,9 +59,9 @@ module TwoCellC {FS : FrameSemantics} where
   open Core {FS}
   open NuV
 
-  curry-denot-[] : ∀ {A B C} (body : IR (A * B) C) (m : AllocMode)
+  curry-denot-[] : ∀ {A B C π} (body : IR (A * B) C) (m : AllocMode)
                    {x : ⟦ A ⟧} (s : LocState FS)
-                 → ∀ k → eventsAt s (⟪ evalᴰ (curry body) x ⟫ k) ≡ []
+                 → ∀ k → eventsAt s (⟪ evalᴰ (curry {π = π} body) x ⟫ k) ≡ []
   curry-denot-[] body m s k = refl
 
 
@@ -89,7 +89,7 @@ module TwoCellC {FS : FrameSemantics} where
   -- correctness (`ihb`) through the block-call lemma (S2). The block is the
   -- head of this fragment's `BlocksAt`; the body's blocks are its tail.
   -- D399: stated over the build's END STATE (`fsE`), whichever build it was.
-  module CurryCore {A B C} (body : IR (A * B) C) (ihb : IRObsCorrectF body)
+  module CurryCore {A B C π} (body : IR (A * B) C) (ihb : IRObsCorrectF body)
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ) (ss : AllSlotStable prog) (cr : BlockRuns prog)
     (j : ℕ) (feq : find-thunk prog (ℓ o l) ≡ just j)
     (sp : SpanAt prog j (block-layout (ℓ o l , proj₁ (ir-to-trace' (proj₁ (env-entry (kind A) A B)) (suc (suc l)) body)
@@ -99,7 +99,7 @@ module TwoCellC {FS : FrameSemantics} where
     (x : ⟦ A ⟧) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) (rs : List ℕ) (k : ℕ)
     (len : ℕ) (fsE : FlatState) (run : FlatSteps prog len (entry-flat base s alloc cl rs) fsE)
     (silent : chain-events run ≡ []) (nhE : halted (floc fsE) ≡ false)
-    (atE : fpc fsE ≡ length (emitted n l (curry body)) + base)
+    (atE : fpc fsE ≡ length (emitted n l (curry {π = π} body)) + base)
     (retE : fret fsE ≡ rs) (linkE : flink fsE ≡ nothing)
     (mem-pres : ∀ (loc : ValueLocation FS) → BeforeFrontier (record alloc { next-slot = n }) loc
               → readLoc (floc fsE) loc ≡ readLoc s loc)
@@ -119,7 +119,7 @@ module TwoCellC {FS : FrameSemantics} where
     obj-loc : ValueLocation FS
     obj-loc = AtDynamic objhl
 
-    denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (curry body) x ⟫ k) ≡ []
+    denot-[] : ∀ k → eventsAt s (⟪ evalᴰ (curry {π = π} body) x ⟫ k) ≡ []
     denot-[] k = refl
 
     -- D400: the environment's footprint, which the closure carries
@@ -152,7 +152,7 @@ module TwoCellC {FS : FrameSemantics} where
     word-size : kind A ≡ word → size A ≡ 1
     word-size = ws A
       where ws : ∀ (T′ : IRTy) → kind T′ ≡ word → size T′ ≡ 1
-            ws (_ IRTy′.⇛ _) _ = refl
+            ws (_ IRTy′.⇛[ _ ] _) _ = refl
             ws (IRTy′.μ-type _) _ = refl
             ws (IRTy′.ν-type _) _ = refl
             ws IRTy′.Int _ = refl
@@ -261,21 +261,21 @@ module TwoCellC {FS : FrameSemantics} where
     mk : EnvSrc
     mk = mk-gen env cell0
 
-    mk-valid : ValidAtWF {prog = prog} Heap (falloc fsE) {B IRTy′.⇛ C}
-                 (retVal (evalᴰ (curry body) x)) obj-loc (floc fsE)
+    mk-valid : ValidAtWF {prog = prog} Heap (falloc fsE) {B IRTy′.⇛[ π ] C}
+                 (retVal (evalᴰ (curry {π = π} body) x)) obj-loc (floc fsE)
     mk-valid = by-env env cell0
       where
         by-env : ∀ {cv′} → EnvRes {prog} A x (falloc fsE) (floc fsE) cv′ → readLoc (floc fsE) obj-loc ≡ just cv′
-               → ValidAtWF {prog = prog} Heap (falloc fsE) {B IRTy′.⇛ C} (retVal (evalᴰ (curry body) x)) obj-loc (floc fsE)
+               → ValidAtWF {prog = prog} Heap (falloc fsE) {B IRTy′.⇛[ π ] C} (retVal (evalᴰ (curry {π = π} body) x)) obj-loc (floc fsE)
         by-env (env-reg fit)        c = valid-closure-reg-wf tt c code before-suc (env-foot-live env) feq (runs-from mk)
         by-env (env-unit _)         c = valid-closure-reg-wf tt c code before-suc (env-foot-live env) feq (runs-from mk)
         by-env (env-loc lb _)       c = valid-closure-wf tt c code lb before-suc (env-foot-live env) feq (runs-from mk)
 
-    place : ResultPlace (B IRTy′.⇛ C) Heap (falloc fsE) (falloc fsE)
-                        (retVal (evalᴰ (curry body) x)) (floc fsE)
+    place : ResultPlace (B IRTy′.⇛[ π ] C) Heap (falloc fsE) (falloc fsE)
+                        (retVal (evalᴰ (curry {π = π} body) x)) (floc fsE)
     place = at-loc obj-loc mk-valid before out-eq mk-valid before
 
-    result : MachineRefinesObsF prog base n l (curry body) x s alloc cl rs k
+    result : MachineRefinesObsF prog base n l (curry {π = π} body) x s alloc cl rs k
     result = record
       { traces-agree   = trans silent (sym (denot-[] k))
       ; value-realized =
@@ -292,16 +292,16 @@ module TwoCellC {FS : FrameSemantics} where
                    (λ _ → bkE)
       }
 
-  obs-correct-curry : ∀ {A B C} (body : IR (A * B) C) → IRObsCorrectF body → IRObsCorrectF (curry body)
-  obs-correct-curry {A} {B} {C} body ihb n l prog base ss cr span ((j , feq , sp , lab) ∷ bl′) _ mIn x s alloc cl ns0 nh inp k rs =
+  obs-correct-curry : ∀ {A B C π} (body : IR (A * B) C) → IRObsCorrectF body → IRObsCorrectF (curry {π = π} body)
+  obs-correct-curry {A} {B} {C} {π} body ihb n l prog base ss cr span ((j , feq , sp , lab) ∷ bl′) _ mIn x s alloc cl ns0 nh inp k rs =
     by-kind (kind A) refl
     where
       n≤ = ns≤ {alloc} n ns0
 
-      at-kd : ∀ kd → kind A ≡ kd → length (with-copy kd A n (λ m → two-cell m (ℓ o l))) + base ≡ length (emitted n l (curry body)) + base
+      at-kd : ∀ kd → kind A ≡ kd → length (with-copy kd A n (λ m → two-cell m (ℓ o l))) + base ≡ length (emitted n l (curry {π = π} body)) + base
       at-kd kd e = cong (λ kd′ → length (with-copy kd′ A n (λ m → two-cell m (ℓ o l))) + base) (sym e)
 
-      by-kind : ∀ kd → kind A ≡ kd → MachineRefinesObsF prog base n l (curry body) x s alloc cl rs k
+      by-kind : ∀ kd → kind A ≡ kd → MachineRefinesObsF prog base n l (curry {π = π} body) x s alloc cl rs k
       -- a WORD environment: the plain build; cell 0 is what `Input1` held
       by-kind word kw = CC.result
         where

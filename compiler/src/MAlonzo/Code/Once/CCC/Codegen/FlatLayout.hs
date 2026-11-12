@@ -37,7 +37,8 @@ d_kind_14 v0
       MAlonzo.Code.Once.IRTy.C_Void_18 -> coe C_flat_12
       MAlonzo.Code.Once.IRTy.C__'42'__20 v1 v2 -> coe C_flat_12
       MAlonzo.Code.Once.IRTy.C__'43'__22 v1 v2 -> coe C_flat_12
-      MAlonzo.Code.Once.IRTy.C__'8667'__24 v1 v2 -> coe C_word_10
+      MAlonzo.Code.Once.IRTy.C__'8667''91'_'93'__24 v1 v2 v3
+        -> coe C_word_10
       MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v1 -> coe C_word_10
       MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v1 -> coe C_word_10
       MAlonzo.Code.Once.IRTy.C_Int_30 -> coe C_word_10

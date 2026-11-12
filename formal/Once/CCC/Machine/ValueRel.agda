@@ -32,6 +32,7 @@ open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Relation.Unary.Any.Properties using (++⁺ˡ; ++⁺ʳ; ++⁻)
 open import Once.Denotation.Program using (IRFun; tableEnv)
 module Once.CCC.Machine.ValueRel where
+open import Once.Spec.Grade using (eff)
 
 
 open import Data.Nat using (ℕ; _<_; _≤_; _≥_; suc)
@@ -69,7 +70,7 @@ open import Once.IR.Semantics.Iterative using (T∞; valueNow)
 -- `SV-Lit` (SMCore's `SV-Lit` is Type-indexed) in the strengthened primitive leaves.
 open import Once.Type using () renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
 open import Once.IR
-open import Once.IRTy using (IRTy; IRFunctor; FitsInRegI; fits-int; fits-float; Unit; _*_; _⇛_; WellFormedFI; ⟦_⟧TI; ν-type; _+_; μ-type; Int; Float)
+open import Once.IRTy using (IRTy; IRFunctor; FitsInRegI; fits-int; fits-float; Unit; _*_; _⇛[_]_; WellFormedFI; ⟦_⟧TI; ν-type; _+_; μ-type; Int; Float)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 import Once.Semantics.Machine as EvV
 open import Once.IR.Size
@@ -215,7 +216,7 @@ module ClosureWellFormedBase {FS : FrameSemantics} where
   IsNode : IRTy → Set
   IsNode (μ-type _) = ⊤
   IsNode (ν-type _) = ⊤
-  IsNode (_ ⇛ _)    = ⊤
+  IsNode (_ ⇛[ _ ] _)    = ⊤
   {-# CATCHALL #-}
   IsNode _          = ⊥
 
@@ -689,7 +690,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   -- (S3); `apply` spends it.
   ------------------------------------------------------------------------
   CallRuns : ∀ {A B : IRTy} → VTy A → VTy B → AllocState {FS} → LocState FS
-           → Foot → ValueLocation FS → ℕ → ⟦ A ⇛ B ⟧ → Set
+           → Foot → ValueLocation FS → ℕ → ⟦ A ⇛[ eff ] B ⟧ → Set
   CallRuns {A} {B} VA VB alloc s E cloc j f =
     ∀ (fs : FlatState) (pre : AllocState {FS}) (a : ⟦ A ⟧) (pair-loc : ValueLocation FS)
       (ret-pc k : ℕ) (rs : List ℕ)
@@ -710,8 +711,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
   -- The env's own validity is GONE (see `CallRuns`); the code cell's label
   -- now resolves (`find-thunk`) and the block's behaviour is `runs`.
   data ArrowV {A B : IRTy} (VA : VTy A) (VB : VTy B) :
-       AllocMode → AllocState {FS} → ⟦ A ⇛ B ⟧ → ValueLocation FS → LocState FS → Set where
-    closure-wf : ∀ {f : ⟦ A ⇛ B ⟧}
+       AllocMode → AllocState {FS} → ⟦ A ⇛[ eff ] B ⟧ → ValueLocation FS → LocState FS → Set where
+    closure-wf : ∀ {f : ⟦ A ⇛[ eff ] B ⟧}
       {alloc : AllocState {FS}}
       {closure-loc env-loc : ValueLocation FS} {s : LocState FS}
       {body-label : LabelId} {j : ℕ} {E : Foot} →
@@ -728,7 +729,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     -- or a Unit, whose register word is arbitrary) is just the WORD the env
     -- cell holds: the call passes that word on (`CallRuns`), and nothing
     -- else reads it.
-    closure-reg-wf : ∀ {f : ⟦ A ⇛ B ⟧} {w : StoredValue FS}
+    closure-reg-wf : ∀ {f : ⟦ A ⇛[ eff ] B ⟧} {w : StoredValue FS}
       {alloc : AllocState {FS}}
       {closure-loc : ValueLocation FS} {s : LocState FS}
       {body-label : LabelId} {j : ℕ} {E : Foot} →
@@ -885,7 +886,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     VCase Void       = VoidV
     VCase (A * B)    = PairV {A} {B} (VAt A) (VAt B)
     VCase (A + B)    = SumV {A} {B} (VAt A) (VAt B)
-    VCase (A ⇛ B)    = ArrowV {A} {B} (VAt A) (VAt B)
+    VCase (A ⇛[ _ ] B)    = ArrowV {A} {B} (VAt A) (VAt B)
     VCase (μ-type F) = λ m alloc → ValidFO m alloc {μ-type F}
     VCase (ν-type F) = NuV {F}
     VCase Int        = IntV
@@ -961,8 +962,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     foot (A + B) loc (wrap (inr-reg-wf _ _ _ _ _ _)) = loc ∷ []
     foot (A + B) loc (wrap (inl-flat-wf _ _ _ _ _ _ pv)) = loc ∷ foot A (sucLoc loc) pv
     foot (A + B) loc (wrap (inr-flat-wf _ _ _ _ _ _ pv)) = loc ∷ foot B (sucLoc loc) pv
-    foot (A ⇛ B) loc (wrap (closure-wf {env-loc = el} {E = E} _ _ _ _ _ _ _ _)) = loc ∷ el ∷ E
-    foot (A ⇛ B) loc (wrap (closure-reg-wf {E = E} _ _ _ _ _ _ _)) = loc ∷ E
+    foot (A ⇛[ _ ] B) loc (wrap (closure-wf {env-loc = el} {E = E} _ _ _ _ _ _ _ _)) = loc ∷ el ∷ E
+    foot (A ⇛[ _ ] B) loc (wrap (closure-reg-wf {E = E} _ _ _ _ _ _ _)) = loc ∷ E
     foot (μ-type F) loc (wrap w) = foot-fo loc w
     foot (ν-type F) loc (wrap n) = loc ∷ nu-fp n
     foot Int loc (wrap ())
@@ -1030,11 +1031,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
     foot-live (A + B) loc (wrap (inl-flat-wf _ _ _ slb _ _ pv)) l (there f) = foot-live A (sucLoc loc) pv l f
     foot-live (A + B) loc (wrap (inr-flat-wf _ _ _ slb _ _ pv)) l (here b) = blk-live loc slb b
     foot-live (A + B) loc (wrap (inr-flat-wf _ _ _ slb _ _ pv)) l (there f) = foot-live B (sucLoc loc) pv l f
-    foot-live (A ⇛ B) loc (wrap (closure-wf _ _ _ eb slb el _ _)) l (here b) = blk-live loc slb b
-    foot-live (A ⇛ B) loc (wrap (closure-wf {env-loc = el′} _ _ _ eb slb el _ _)) l (there (here b)) = blk-live0 el′ eb b
-    foot-live (A ⇛ B) loc (wrap (closure-wf _ _ _ eb slb el _ _)) l (there (there e)) = el l e
-    foot-live (A ⇛ B) loc (wrap (closure-reg-wf _ _ _ slb el _ _)) l (here b) = blk-live loc slb b
-    foot-live (A ⇛ B) loc (wrap (closure-reg-wf _ _ _ slb el _ _)) l (there e) = el l e
+    foot-live (A ⇛[ _ ] B) loc (wrap (closure-wf _ _ _ eb slb el _ _)) l (here b) = blk-live loc slb b
+    foot-live (A ⇛[ _ ] B) loc (wrap (closure-wf {env-loc = el′} _ _ _ eb slb el _ _)) l (there (here b)) = blk-live0 el′ eb b
+    foot-live (A ⇛[ _ ] B) loc (wrap (closure-wf _ _ _ eb slb el _ _)) l (there (there e)) = el l e
+    foot-live (A ⇛[ _ ] B) loc (wrap (closure-reg-wf _ _ _ slb el _ _)) l (here b) = blk-live loc slb b
+    foot-live (A ⇛[ _ ] B) loc (wrap (closure-reg-wf _ _ _ slb el _ _)) l (there e) = el l e
     foot-live (μ-type F) loc (wrap w) l f = foot-fo-live loc w l f
     foot-live (ν-type F) loc (wrap n) l (here b) = blk-live loc (nu-live1 n) b
     foot-live (ν-type F) loc (wrap n) l (there e) = nu-fp-live n l e
@@ -1302,7 +1303,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
                 → EnvAt alloc env closure-loc s
 
   record ClosureValidWF (alloc : AllocState {FS}) {A B : IRTy}
-                        (f : ⟦ A ⇛ B ⟧)
+                        (f : ⟦ A ⇛[ eff ] B ⟧)
                         (closure-loc : ValueLocation FS)
                         (s : LocState FS) : Set where
     field
@@ -1321,8 +1322,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
       env-foot-live : ∀ l → l ∈ᶠ env-foot → Live alloc l
       runs : CallRuns {A} {B} (VAt A) (VAt B) alloc s env-foot closure-loc code-j f
 
-  decomposeClosureWF : ∀ {m alloc A B} {f : ⟦ A ⇛ B ⟧} {loc s} →
-    ValidAtWF m alloc {A ⇛ B} f loc s → ClosureValidWF alloc {A} {B} f loc s
+  decomposeClosureWF : ∀ {m alloc A B π} {f : ⟦ A ⇛[ eff ] B ⟧} {loc s} →
+    ValidAtWF m alloc {A ⇛[ π ] B} f loc s → ClosureValidWF alloc {A} {B} f loc s
   decomposeClosureWF (valid-closure-wf {env-loc = el′} {E = E} lmm ep cp eb slb el fd rn) = record
     { EnvType = Unit ; env = tt ; body-label = _ ; loc-mode = lmm
     ; env-at = env-at-loc el′ ep (live→bf eb) ; code-ptr = cp ; sucLoc-before = live→bf slb
@@ -1666,12 +1667,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} {prog : AbstractTrace} where
         valid-inr-flat-wf fl lmm (transport-SumTag (rd _ q) tg) (bft _ (sub _ (here (blk-suc loc slb))) slb)
           (λ p → ibt _ (sub _ (here (blk-suc loc slb))) slb (ib p)) (pad-tr slb (λ x b → sub x (here b)) pd)
           (v-tr B pv (sub _ (here (blk-suc loc slb))) (λ l f → sub l (there f)))
-      v-tr (A ⇛ B) {loc = loc} (wrap (closure-wf {env-loc = el′} lmm ep cp eb slb el fd runs)) q sub =
+      v-tr (A ⇛[ _ ] B) {loc = loc} (wrap (closure-wf {env-loc = el′} lmm ep cp eb slb el fd runs)) q sub =
         valid-closure-wf lmm (trans (rd _ q) ep) (trans (rd _ (sub _ (here (blk-suc loc slb)))) cp)
           (bft _ (sub el′ (there (here (blk-refl el′)))) eb) (bft _ (sub _ (here (blk-suc loc slb))) slb)
           (λ l e → bft l (sub l (there (there e))) (el l e))
           fd (runs-tr q (λ l e → sub l (there (there e))) el runs)
-      v-tr (A ⇛ B) {loc = loc} (wrap (closure-reg-wf {w = w} lmm ep cp slb el fd runs)) q sub =
+      v-tr (A ⇛[ _ ] B) {loc = loc} (wrap (closure-reg-wf {w = w} lmm ep cp slb el fd runs)) q sub =
         valid-closure-reg-wf {w = w} lmm (trans (rd _ q) ep) (trans (rd _ (sub _ (here (blk-suc loc slb)))) cp)
           (bft _ (sub _ (here (blk-suc loc slb))) slb)
           (λ l e → bft l (sub l (there e)) (el l e))

@@ -41,6 +41,7 @@ import Once.Spec.Type as ST
 open import Once.Type.Core as T using (wk₀; wk₀F)
 open import Once.Spec.Type using (Fun)
 import Once.Spec.Type as T
+open import Once.Type.DecEq using (_≟p_)
 
 ------------------------------------------------------------------------
 -- The ungraded object language (mirror of Type/Functor, minus the grade)
@@ -60,7 +61,9 @@ mutual
     Void   : IRTy                      -- Initial object
     _*_    : IRTy → IRTy → IRTy        -- Product
     _+_    : IRTy → IRTy → IRTy        -- Coproduct (sum)
-    _⇛_    : IRTy → IRTy → IRTy        -- UNGRADED exponential (grade erased)
+    -- D413: the exponential carries the Spec's PURITY (the linear core needs it:
+    -- an `act` arrow is a finite block, D412); the quantity stays erased.
+    _⇛[_]_ : IRTy → Purity → IRTy → IRTy
     μ-type : IRFunctor → IRTy          -- Initial algebra
     ν-type : IRFunctor → IRTy          -- Final coalgebra
     Int    : IRTy                      -- Machine integers
@@ -73,7 +76,7 @@ mutual
 
 infixr 40 _⊕_
 infixr 50 _⊗_
-infixr 30 _⇛_
+infixr 30 _⇛[_]_
 infixr 40 _+_
 infixr 50 _*_
 
@@ -91,10 +94,11 @@ infixr 50 _*_
 -- direction, which has no canonical inhabitant when only one side forgets.
 
 -- | The arrow's runtime shape, decided by its QUANTITY.
-eraseArrow : Quantity → IRTy → IRTy → IRTy
-eraseArrow Zero a b = Unit ⇛ b
-eraseArrow One  a b = a ⇛ b
-eraseArrow Many a b = a ⇛ b
+-- (D413: and keeps its PURITY.)
+eraseArrow : Quantity → Purity → IRTy → IRTy → IRTy
+eraseArrow Zero π a b = Unit ⇛[ π ] b
+eraseArrow One  π a b = a ⇛[ π ] b
+eraseArrow Many π a b = a ⇛[ π ] b
 
 mutual
   ⌊_⌋ : ∀ {m} → Ty m → IRTy
@@ -102,7 +106,7 @@ mutual
   ⌊ ST.Void        ⌋ = Void
   ⌊ A ST.* B       ⌋ = ⌊ A ⌋ * ⌊ B ⌋
   ⌊ A ST.+ B       ⌋ = ⌊ A ⌋ + ⌊ B ⌋
-  ⌊ A ST.⇒[ k ] B  ⌋ = eraseArrow (T.ArrowKind.quantity k) ⌊ A ⌋ ⌊ B ⌋
+  ⌊ A ST.⇒[ k ] B  ⌋ = eraseArrow (T.ArrowKind.quantity k) (T.ArrowKind.purity k) ⌊ A ⌋ ⌊ B ⌋
   ⌊ ST.μ F    ⌋ = μ-type (eraseF F)
   ⌊ ST.ν F _  ⌋ = ν-type (eraseF F)   -- D233: the grade is erased, as an arrow's
   ⌊ ST.Int         ⌋ = Int
@@ -175,7 +179,7 @@ irtyTag Unit       = 0
 irtyTag Void       = 1
 irtyTag (_ * _)    = 2
 irtyTag (_ + _)    = 3
-irtyTag (_ ⇛ _)    = 4
+irtyTag (_ ⇛[ _ ] _) = 4
 irtyTag (μ-type _) = 5
 irtyTag (ν-type _) = 6
 irtyTag Int        = 7
@@ -202,11 +206,13 @@ mutual
   ... | no ne    | _        = no (λ { refl → ne refl })
   {-# CATCHALL #-}
   ... | _        | no ne    = no (λ { refl → ne refl })
-  ≟IRTy-diag (A ⇛ B) (C ⇛ D) _ with A ≟IRTy C | B ≟IRTy D
-  ... | yes refl | yes refl = yes refl
-  ... | no ne    | _        = no (λ { refl → ne refl })
+  ≟IRTy-diag (A ⇛[ π ] B) (C ⇛[ π′ ] D) _ with A ≟IRTy C | π ≟p π′ | B ≟IRTy D
+  ... | yes refl | yes refl | yes refl = yes refl
+  ... | no ne    | _        | _        = no (λ { refl → ne refl })
   {-# CATCHALL #-}
-  ... | _        | no ne    = no (λ { refl → ne refl })
+  ... | _        | no ne    | _        = no (λ { refl → ne refl })
+  {-# CATCHALL #-}
+  ... | _        | _        | no ne    = no (λ { refl → ne refl })
   ≟IRTy-diag (μ-type F) (μ-type G) _ with F ≟IRFun G
   ... | yes refl = yes refl
   ... | no ne    = no (λ { refl → ne refl })
@@ -260,24 +266,11 @@ data FitsInRegI : IRTy → Set where
 ⟦ IntRep , FloatRep ⟧-baseI Void      = ⊥
 ⟦ IntRep , FloatRep ⟧-baseI (A * B)   = ⟦ IntRep , FloatRep ⟧-baseI A × ⟦ IntRep , FloatRep ⟧-baseI B
 ⟦ IntRep , FloatRep ⟧-baseI (A + B)   = ⟦ IntRep , FloatRep ⟧-baseI A ⊎ ⟦ IntRep , FloatRep ⟧-baseI B
-⟦ IntRep , FloatRep ⟧-baseI (_ ⇛ _)   = ⊤
+⟦ IntRep , FloatRep ⟧-baseI (_ ⇛[ _ ] _) = ⊤
 ⟦ IntRep , FloatRep ⟧-baseI (μ-type _) = ⊤
 ⟦ IntRep , FloatRep ⟧-baseI (ν-type _) = ⊤
 ⟦ IntRep , FloatRep ⟧-baseI Int       = IntRep
 ⟦ IntRep , FloatRep ⟧-baseI Float     = FloatRep
-
-------------------------------------------------------------------------
--- The load-bearing definitional fact for Plan 0.52 M2: erasure sends
--- EVERY graded arrow to the single ungraded arrow object, so a pure and
--- an effectful arrow over the same A, B are the SAME IR object. `IR.arr`
--- becomes an identity morphism once `IR` is re-indexed over `IRTy`.
-
-erase-⇒-purity-irrelevant
-  : ∀ {m} {A B : Ty m} (q : Quantity) (π₁ π₂ : Purity)
-  → ⌊ A ST.⇒[ T.mk-kind q π₁ ] B ⌋ ≡ ⌊ A ST.⇒[ T.mk-kind q π₂ ] B ⌋
-erase-⇒-purity-irrelevant Zero _ _ = refl
-erase-⇒-purity-irrelevant One  _ _ = refl
-erase-⇒-purity-irrelevant Many _ _ = refl
 
 ------------------------------------------------------------------------
 -- Canonical section `⌈_⌉ : IRTy → Type` — picks a canonical graded
@@ -285,7 +278,8 @@ erase-⇒-purity-irrelevant Many _ _ = refl
 -- denotation REUSE the surface value domain: `⟦_⟧ᴵ A := ⟦ ⌈ A ⌉ ⟧`
 -- (in `Once.Semantics.Value`), no fixpoint machinery re-built. Since the
 -- value domain is grade-blind, the choice of grade is denotationally
--- irrelevant, and `⌊ ⌈ A ⌉ ⌋ ≡ A` (round-trip, `retract-⌈⌉` below).
+-- irrelevant. (D413: the IR's arrow now keeps its purity, which the
+-- meaning still ignores, so `⌈_⌉` is no longer a section of `⌊_⌋`.)
 
 mutual
   ⌈_⌉ : IRTy → Type
@@ -293,7 +287,7 @@ mutual
   ⌈ Void     ⌉ = T.Void
   ⌈ A * B    ⌉ = ⌈ A ⌉ T.* ⌈ B ⌉
   ⌈ A + B    ⌉ = ⌈ A ⌉ T.+ ⌈ B ⌉
-  ⌈ A ⇛ B    ⌉ = ⌈ A ⌉ T.⇒[ Once.Type.Grade.effK ] ⌈ B ⌉   -- canonical grade
+  ⌈ A ⇛[ _ ] B ⌉ = ⌈ A ⌉ T.⇒[ Once.Type.Grade.effK ] ⌈ B ⌉   -- canonical grade
   ⌈ μ-type F ⌉ = T.μ ⌈ F ⌉F
   ⌈ ν-type F ⌉ = T.ν ⌈ F ⌉F T.actᶠ   -- canonical grade (the top finite one, D318)
   ⌈ Int      ⌉ = T.Int
@@ -304,26 +298,6 @@ mutual
   ⌈ Id    ⌉F = T.Id
   ⌈ F ⊕ G ⌉F = ⌈ F ⌉F T.⊕ ⌈ G ⌉F
   ⌈ F ⊗ G ⌉F = ⌈ F ⌉F T.⊗ ⌈ G ⌉F
-
--- `⌈_⌉` is a section of `⌊_⌋`: erasing the canonical representative gives
--- back the ungraded object (the grade `⌈_⌉` invented is dropped again).
-mutual
-  retract-⌈⌉ : ∀ (A : IRTy) → ⌊ ⌈ A ⌉ ⌋ ≡ A
-  retract-⌈⌉ Unit       = refl
-  retract-⌈⌉ Void       = refl
-  retract-⌈⌉ (A * B)    = cong₂ _*_ (retract-⌈⌉ A) (retract-⌈⌉ B)
-  retract-⌈⌉ (A + B)    = cong₂ _+_ (retract-⌈⌉ A) (retract-⌈⌉ B)
-  retract-⌈⌉ (A ⇛ B)    = cong₂ _⇛_ (retract-⌈⌉ A) (retract-⌈⌉ B)
-  retract-⌈⌉ (μ-type F) = cong μ-type (retract-⌈⌉F F)
-  retract-⌈⌉ (ν-type F) = cong ν-type (retract-⌈⌉F F)
-  retract-⌈⌉ Int        = refl
-  retract-⌈⌉ Float      = refl
-
-  retract-⌈⌉F : ∀ (F : IRFunctor) → eraseF ⌈ F ⌉F ≡ F
-  retract-⌈⌉F (K A)   = cong K (retract-⌈⌉ A)
-  retract-⌈⌉F Id      = refl
-  retract-⌈⌉F (F ⊕ G) = cong₂ _⊕_ (retract-⌈⌉F F) (retract-⌈⌉F G)
-  retract-⌈⌉F (F ⊗ G) = cong₂ _⊗_ (retract-⌈⌉F F) (retract-⌈⌉F G)
 
 -- `⌈_⌉` commutes with functor application. Needed to re-thread the IR
 -- recursion schemes' evaluator (Plan 0.52 M2 S2): their operand lives at
@@ -353,7 +327,7 @@ mutual
   ⌊wk₀⌋ ST.Float        = refl
   ⌊wk₀⌋ (A ST.* B)      = cong₂ _*_ (⌊wk₀⌋ A) (⌊wk₀⌋ B)
   ⌊wk₀⌋ (A ST.+ B)      = cong₂ _+_ (⌊wk₀⌋ A) (⌊wk₀⌋ B)
-  ⌊wk₀⌋ (A ST.⇒[ k ] B) = cong₂ (eraseArrow (T.ArrowKind.quantity k)) (⌊wk₀⌋ A) (⌊wk₀⌋ B)
+  ⌊wk₀⌋ (A ST.⇒[ k ] B) = cong₂ (eraseArrow (T.ArrowKind.quantity k) (T.ArrowKind.purity k)) (⌊wk₀⌋ A) (⌊wk₀⌋ B)
   ⌊wk₀⌋ (ST.μ F)        = cong μ-type (eraseF-wk₀ F)
   ⌊wk₀⌋ (ST.ν F _)      = cong ν-type (eraseF-wk₀ F)
 

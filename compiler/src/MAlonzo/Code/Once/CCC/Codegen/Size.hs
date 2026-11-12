@@ -37,7 +37,8 @@ d_size_8 v0
              (coe
                 MAlonzo.Code.Data.Nat.Base.d__'8852'__208 (coe d_size_8 (coe v1))
                 (coe d_size_8 (coe v2)))
-      MAlonzo.Code.Once.IRTy.C__'8667'__24 v1 v2 -> coe (1 :: Integer)
+      MAlonzo.Code.Once.IRTy.C__'8667''91'_'93'__24 v1 v2 v3
+        -> coe (1 :: Integer)
       MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v1 -> coe (1 :: Integer)
       MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v1 -> coe (1 :: Integer)
       MAlonzo.Code.Once.IRTy.C_Int_30 -> coe (1 :: Integer)

@@ -19,7 +19,7 @@ module Once.CCC.Codegen.Size where
 
 open import Data.Nat using (ℕ; suc; _⊔_) renaming (_+_ to _+ℕ_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
-open import Once.IRTy using (IRTy; Unit; Void; _*_; _+_; _⇛_; μ-type; ν-type; Int; Float; ⌈_⌉)
+open import Once.IRTy using (IRTy; Unit; Void; _*_; _+_; _⇛[_]_; μ-type; ν-type; Int; Float; ⌈_⌉)
 open import Once.Spec.Type using (Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; ∅ₖ)
 open import Once.Spec.Signature using (Signature)
 import Once.Spec.ABI
@@ -29,7 +29,7 @@ size Unit       = 0
 size Void       = 0
 size (A * B)    = size A +ℕ size B
 size (A + B)    = suc (size A ⊔ size B)
-size (A ⇛ B)    = 1
+size (A ⇛[ _ ] B)    = 1
 size (μ-type F) = 1
 size (ν-type F) = 1
 size Int        = 1

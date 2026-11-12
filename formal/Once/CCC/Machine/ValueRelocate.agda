@@ -31,7 +31,7 @@ open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap; AbstractTrace)
 open MemOps {FS}
 open import Once.IR using (AllocMode; Stack; Heap)
-open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float; FitsInRegI; fits-int; fits-float) renaming (_+_ to _+ᵀ_)
+open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛[_]_; μ-type; ν-type; Int; Float; FitsInRegI; fits-int; fits-float) renaming (_+_ to _+ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Machine.ValueRel
 open ClosureWellFormedBase {FS}
@@ -45,7 +45,7 @@ private
   node-size : ∀ {C : IRTy} → IsNode C → size C ≡ 1
   node-size {μ-type _} _ = refl
   node-size {ν-type _} _ = refl
-  node-size {_ ⇛ _}    _ = refl
+  node-size {_ ⇛[ _ ] _}    _ = refl
 
   scalar-size : ∀ {C : IRTy} → FitsInRegI C → size C ≡ 1
   scalar-size fits-int   = refl

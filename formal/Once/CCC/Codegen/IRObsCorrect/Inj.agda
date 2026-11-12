@@ -36,7 +36,7 @@ open import Once.CCC.Machine.SMCore
 open LocState using (regs; halted)
 open AllocState using (current-frame; next-slot; next-heap-ref)
 open import Once.Memory.HeapAddress using (HeapRef; HeapLocation; heap-loc; offsetHL; mkHeapRef)
-open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float; FitsInRegI)
+open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛[_]_; μ-type; ν-type; Int; Float; FitsInRegI)
   renaming (_+_ to _+ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (fill; put; put-All; fill-All)
@@ -329,7 +329,7 @@ module InjC {FS : FrameSemantics} where
     src-loc (A +ᵀ B)   v lv = src-flat tt lv v
     src-loc (μ-type F) v lv = src-node tt lv v
     src-loc (ν-type F) v lv = src-node tt lv v
-    src-loc (A ⇛ B)    v lv = src-node tt lv v
+    src-loc (A ⇛[ _ ] B)    v lv = src-node tt lv v
     src-loc Int        (wrap ()) _
     src-loc Float      (wrap ()) _
     src-loc Void       {c = ()} _ _

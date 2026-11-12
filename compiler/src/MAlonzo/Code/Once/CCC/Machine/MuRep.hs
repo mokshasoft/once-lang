@@ -34,7 +34,8 @@ d_mu'45'rep_16 v0
              MAlonzo.Code.Once.IRTy.C_Void_18 -> coe C_mu'45'ptr_14
              MAlonzo.Code.Once.IRTy.C__'42'__20 v2 v3 -> coe C_mu'45'ptr_14
              MAlonzo.Code.Once.IRTy.C__'43'__22 v2 v3 -> coe C_mu'45'ptr_14
-             MAlonzo.Code.Once.IRTy.C__'8667'__24 v2 v3 -> coe C_mu'45'ptr_14
+             MAlonzo.Code.Once.IRTy.C__'8667''91'_'93'__24 v2 v3 v4
+               -> coe C_mu'45'ptr_14
              MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v2 -> coe C_mu'45'ptr_14
              MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v2 -> coe C_mu'45'ptr_14
              MAlonzo.Code.Once.IRTy.C_Int_30 -> coe C_mu'45'box_10
@@ -53,7 +54,7 @@ d_Unboxed_44 = erased
 -- Once.CCC.Machine.MuRep.BoxView
 d_BoxView_48 a0 = ()
 newtype T_BoxView_48
-  = C_bv_52 MAlonzo.Code.Once.IRTy.T_FitsInRegI_514
+  = C_bv_52 MAlonzo.Code.Once.IRTy.T_FitsInRegI_552
 -- Once.CCC.Machine.MuRep.box-view
 d_box'45'view_56 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
@@ -66,20 +67,20 @@ du_box'45'view_56 v0
       MAlonzo.Code.Once.IRTy.C_K_8 v1
         -> case coe v1 of
              MAlonzo.Code.Once.IRTy.C_Int_30
-               -> coe C_bv_52 (coe MAlonzo.Code.Once.IRTy.C_fits'45'int_516)
+               -> coe C_bv_52 (coe MAlonzo.Code.Once.IRTy.C_fits'45'int_554)
              MAlonzo.Code.Once.IRTy.C_Float_32
-               -> coe C_bv_52 (coe MAlonzo.Code.Once.IRTy.C_fits'45'float_518)
+               -> coe C_bv_52 (coe MAlonzo.Code.Once.IRTy.C_fits'45'float_556)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.MuRep.box-fit
 d_box'45'fit_84 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.IRTy.T_FitsInRegI_514
+  MAlonzo.Code.Once.IRTy.T_FitsInRegI_552
 d_box'45'fit_84 v0 ~v1 = du_box'45'fit_84 v0
 du_box'45'fit_84 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
-  MAlonzo.Code.Once.IRTy.T_FitsInRegI_514
+  MAlonzo.Code.Once.IRTy.T_FitsInRegI_552
 du_box'45'fit_84 v0
   = let v1 = coe du_box'45'view_56 (coe v0) in
     coe
@@ -95,7 +96,7 @@ d_box'45'not'45'unboxed_102 = erased
 -- Once.CCC.Machine.MuRep.fit-not-unit
 d_fit'45'not'45'unit_110 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
-  MAlonzo.Code.Once.IRTy.T_FitsInRegI_514 ->
+  MAlonzo.Code.Once.IRTy.T_FitsInRegI_552 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
 d_fit'45'not'45'unit_110 = erased

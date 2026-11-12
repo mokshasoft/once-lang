@@ -635,7 +635,7 @@ module _ (G : String → Set) where
                 (there (there (there (∈-++⁺ʳ pE (∈-++⁺ʳ pA (there (there (there (here refl))))))))))))))))
       cb = close b (suc (suc (suc (suc n)))) (suc (suc l))
                  (defd-⊆ (++-⊆ bt L (⊆-trans btT inT) (⊆-++ʳ T L)) d) okb
-  close (curry {E} {A} b) n l {D} d okb =
+  close (curry {E} {A} {_} {π} b) n l {D} d okb =
     wc-closes (kind E) E n (ℓ o l) (inj₁ (thk∈ (ℓ o l) d thk∈U) ∷ [])
     , closes-++ (block-layout (ℓ o l , bb , bt)) (blocks-layout bbs)
                 (closes-++ bt (instr-ctrl (c-ret bb) ∷ [])
@@ -646,7 +646,7 @@ module _ (G : String → Set) where
       X = ir-to-trace' (proj₁ (env-entry (kind E) E A)) (suc (suc l)) b
       bb = proj₁ X ; bt₀ = trace-of X ; bbs = bodies-of X
       bt = pro ++ bt₀
-      T = trace-of (ir-to-trace' n l (curry {E} {A} b))
+      T = trace-of (ir-to-trace' n l (curry {E} {A} {_} {π} b))
       L = blocks-layout ((ℓ o l , bb , bt) ∷ bbs)
       thk∈U : instr-ctrl (c-thunk (ℓ o l) bb) ∈ T ++ L
       thk∈U = ∈-++⁺ʳ T (here refl)

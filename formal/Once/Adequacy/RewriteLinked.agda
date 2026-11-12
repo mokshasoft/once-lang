@@ -82,7 +82,7 @@ try-lift-linked tbl {A} {II.Unit}       ir = tt
 try-lift-linked tbl {A} {II.Void}       ir = tt
 try-lift-linked tbl {A} {_ II.* _}      ir = tt
 try-lift-linked tbl {A} {_ II.+ _}      ir = tt
-try-lift-linked tbl {A} {_ II.⇛ _}      ir = tt
+try-lift-linked tbl {A} {_ II.⇛[ _ ] _}      ir = tt
 try-lift-linked tbl {A} {II.μ-type _}   ir = tt
 try-lift-linked tbl {A} {II.ν-type _}   ir = tt
 

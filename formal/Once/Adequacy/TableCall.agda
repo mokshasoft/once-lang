@@ -93,8 +93,8 @@ abiT Float        M = M
 -- The direct-call form (`directCallIR`) of an arrow entry, run on an argument:
 -- the closure its body computes, applied to it — related to any run related to
 -- the body's, applied to a related argument.
-uncurry-app : ∀ {D E : IRTy} (ρ : CallEnv) (ir : IR Once.IRTy.Unit (D Once.IRTy.⇛ E)) {n : T∞ ⟦ D Once.IRTy.⇛ E ⟧ᴰᴵ}
-            → RelS (RelD ⌈ D Once.IRTy.⇛ E ⌉) (evalᴰ fmt ρ ir tt) n
+uncurry-app : ∀ {D E : IRTy} {π} (ρ : CallEnv) (ir : IR Once.IRTy.Unit (D Once.IRTy.⇛[ π ] E)) {n : T∞ ⟦ D Once.IRTy.⇛[ π ] E ⟧ᴰᴵ}
+            → RelS (RelD ⌈ D Once.IRTy.⇛[ π ] E ⌉) (evalᴰ fmt ρ ir tt) n
             → ∀ {a a′} → RelD ⌈ D ⌉ a a′
             → RelS (RelD ⌈ E ⌉) (evalᴰ fmt ρ (IR.apply IR.∘ IR.⟨ ir IR.∘ IR.terminal , IR.id ⟩) a) (n >>=∞ λ c → c a′)
 uncurry-app ρ ir h ra = retargetˡ refl (RelS-assocˡ h (λ rc → retargetˡ refl (rc ra)))

@@ -52,7 +52,7 @@ module KindFacts {FS : FrameSemantics} where
   open Core {FS}
 
   flat-not-node : ∀ (T : IRTy) → kind T ≡ flat → IsNode T → ⊥
-  flat-not-node (_ IT.⇛ _)    () _
+  flat-not-node (_ IT.⇛[ _ ] _)    () _
   flat-not-node (IT.μ-type _) () _
   flat-not-node (IT.ν-type _) () _
   flat-not-node IT.Unit       _ ()

@@ -37,8 +37,11 @@ open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P�
 open import Once.Type.Poly
 open import Once.Type
 open import Once.IR
-open import Once.IRTy using (Unit; Void; _*_; _+_; _⇛_; Int; Float; IRTy; _≟IRTy_)
+open import Once.IRTy using (Unit; Void; _*_; _+_; _⇛[_]_; Int; Float; IRTy; _≟IRTy_)
 import Once.IRTy as II
+open import Once.Spec.Grade using (Purity)
+
+private variable π : Purity
 
 open import Data.Bool using (Bool; true; false; _∨_; _∧_; not)
 open import Data.Nat using (ℕ; zero; suc)
@@ -94,7 +97,7 @@ data ComposeFirstView : ∀ {B C : IRTy} → IR B C → Set where
   cf-snd : ∀ {A B} → ComposeFirstView {A * B} {B} snd
   cf-case : ∀ {A B C} (h : IR A C) (k : IR B C) → ComposeFirstView {A + B} {C} (case h k)
   cf-comp : ∀ {A X C} (h : IR X C) (k : IR A X) → ComposeFirstView (h ∘ k)
-  cf-apply : ∀ {A B} → ComposeFirstView (apply {A} {B})
+  cf-apply : ∀ {A B} → ComposeFirstView (apply {A} {B} {π})
   cf-other : ∀ {B C} (g : IR B C) → ComposeFirstView g
 
 -- View: classify IR by optimization-relevant structure (second argument of compose)
@@ -104,9 +107,9 @@ data ComposeSecondView : ∀ {A B : IRTy} → IR A B → Set where
   cs-other : ∀ {A B} (f : IR A B) → ComposeSecondView f
 
 -- View: a closure built in place (`curry f`), or another term into an arrow
-data CurryView : ∀ {X A B : IRTy} → IR X (A ⇛ B) → Set where
-  is-curry : ∀ {X A B} (f : IR (X * A) B) → CurryView (curry f)
-  is-other-curry : ∀ {X A B} (c : IR X (A ⇛ B)) → CurryView c
+data CurryView : ∀ {X A B : IRTy} → IR X (A ⇛[ π ] B) → Set where
+  is-curry : ∀ {X A B} (f : IR (X * A) B) → CurryView (curry {π = π} f)
+  is-other-curry : ∀ {X A B} (c : IR X (A ⇛[ π ] B)) → CurryView c
 
 -- View: classify IR as fst, snd, or other (for pair eta law)
 data FstSndView : ∀ {A B : IRTy} → IR A B → Set where
@@ -167,7 +170,7 @@ pairView : ∀ {A B C} → (f : IR A (B * C)) → PairView f
 pairView f = pairView-gen f refl
 
 -- CurryView: target is an arrow (the PairView pattern: a free codomain and an equation)
-curryView-gen : ∀ {X T} (c : IR X T) → ∀ {A B} → (eq : T ≡ A ⇛ B) → CurryView {X} {A} {B} (subst (IR X) eq c)
+curryView-gen : ∀ {X T} (c : IR X T) → ∀ {A B} → (eq : T ≡ A ⇛[ π ] B) → CurryView {X = X} {A = A} {B = B} (subst (IR X) eq c)
 curryView-gen (curry f) refl = is-curry f
 curryView-gen id eq = is-other-curry (subst (IR _) eq id)
 curryView-gen (f ∘ g) eq = is-other-curry (subst (IR _) eq (f ∘ g))
@@ -191,7 +194,7 @@ curryView-gen (SigOp si) eq = is-other-curry (subst (IR _) eq (SigOp si))
 curryView-gen (Call f) eq = is-other-curry (subst (IR _) eq (Call f))
 curryView-gen (const p v) eq = is-other-curry (subst (IR _) eq (const p v))
 
-curryView : ∀ {X A B} → (c : IR X (A ⇛ B)) → CurryView c
+curryView : ∀ {X A B} → (c : IR X (A ⇛[ π ] B)) → CurryView c
 curryView c = curryView-gen c refl
 
 -- CoprodView: target is A + B (same stuck-unification pattern as PairView)
@@ -483,45 +486,45 @@ optimize-post-case h k f = post-case-aux h k f (coprodView f)
 -- | Closure beta: `apply ∘ ⟨ curry f ∘ k , x ⟩ = f ∘ ⟨ k , x ⟩`. The closure is
 -- built in place, so applying it runs its body; `k` and `x` keep their order
 -- and nothing is dropped. (Also with no `k`, and through a chain.)
-beta-head : ∀ {X Y A B} (c : IR Y (A ⇛ B)) (k : IR X Y) (x : IR X A) → CurryView c → IR X B
+beta-head : ∀ {X Y A B} (c : IR Y (A ⇛[ π ] B)) (k : IR X Y) (x : IR X A) → CurryView c → IR X B
 beta-head _ k x (is-curry f)       = f ∘ ⟨ k , x ⟩
 beta-head c k x (is-other-curry _) = apply ∘ ⟨ c ∘ k , x ⟩
 
-beta-bare : ∀ {X A B} (c : IR X (A ⇛ B)) (x : IR X A) → CurryView c → IR X B
+beta-bare : ∀ {X A B} (c : IR X (A ⇛[ π ] B)) (x : IR X A) → CurryView c → IR X B
 beta-bare _ x (is-curry f)       = f ∘ ⟨ id , x ⟩
 beta-bare c x (is-other-curry _) = apply ∘ ⟨ c , x ⟩
 
-closure-beta : ∀ {X A B} (c : IR X (A ⇛ B)) (x : IR X A) → ChainView c → IR X B
+closure-beta : ∀ {X A B} (c : IR X (A ⇛[ π ] B)) (x : IR X A) → ChainView c → IR X B
 closure-beta _ x (is-comp h k) = beta-head h k x (curryView h)
 closure-beta _ x (not-comp c)  = beta-bare c x (curryView c)
 
 -- (through a chain the result stays right-nested, and is unchanged when no
 -- closure is found: a pass must not undo the re-association)
-beta-head-chain : ∀ {X Z Y A B} (c : IR Y (A ⇛ B)) (k : IR Z Y) (x : IR Z A) (m : IR X Z) → CurryView c → IR X B
+beta-head-chain : ∀ {X Z Y A B} (c : IR Y (A ⇛[ π ] B)) (k : IR Z Y) (x : IR Z A) (m : IR X Z) → CurryView c → IR X B
 beta-head-chain _ k x m (is-curry f)       = f ∘ (⟨ k , x ⟩ ∘ m)
 beta-head-chain c k x m (is-other-curry _) = apply ∘ (⟨ c ∘ k , x ⟩ ∘ m)
 
-beta-bare-chain : ∀ {X Z A B} (c : IR Z (A ⇛ B)) (x : IR Z A) (m : IR X Z) → CurryView c → IR X B
+beta-bare-chain : ∀ {X Z A B} (c : IR Z (A ⇛[ π ] B)) (x : IR Z A) (m : IR X Z) → CurryView c → IR X B
 beta-bare-chain _ x m (is-curry f)       = f ∘ (⟨ id , x ⟩ ∘ m)
 beta-bare-chain c x m (is-other-curry _) = apply ∘ (⟨ c , x ⟩ ∘ m)
 
-closure-beta-chain : ∀ {X Z A B} (c : IR Z (A ⇛ B)) (x : IR Z A) (m : IR X Z) → ChainView c → IR X B
+closure-beta-chain : ∀ {X Z A B} (c : IR Z (A ⇛[ π ] B)) (x : IR Z A) (m : IR X Z) → ChainView c → IR X B
 closure-beta-chain _ x m (is-comp h k) = beta-head-chain h k x m (curryView h)
 closure-beta-chain _ x m (not-comp c)  = beta-bare-chain c x m (curryView c)
 
-apply-chain-aux : ∀ {X Z A B} (p : IR Z ((A ⇛ B) * A)) (m : IR X Z) → PairView p → IR X B
+apply-chain-aux : ∀ {X Z A B} (p : IR Z ((A ⇛[ π ] B) * A)) (m : IR X Z) → PairView p → IR X B
 apply-chain-aux _ m (is-pair c x)     = closure-beta-chain c x m (chainView c)
 apply-chain-aux _ m (is-other-pair p) = apply ∘ (p ∘ m)
 
-apply-chain : ∀ {X A B} (F : IR X ((A ⇛ B) * A)) → ChainView F → IR X B
+apply-chain : ∀ {X A B} (F : IR X ((A ⇛[ π ] B) * A)) → ChainView F → IR X B
 apply-chain _ (is-comp p m) = apply-chain-aux p m (pairView p)
 apply-chain _ (not-comp F)  = optimize-compose-second apply F
 
-apply-aux : ∀ {X A B} (F : IR X ((A ⇛ B) * A)) → PairView F → IR X B
+apply-aux : ∀ {X A B} (F : IR X ((A ⇛[ π ] B) * A)) → PairView F → IR X B
 apply-aux _ (is-pair c x)     = closure-beta c x (chainView c)
 apply-aux _ (is-other-pair F) = apply-chain F (chainView F)
 
-optimize-apply : ∀ {X A B} → IR X ((A ⇛ B) * A) → IR X B
+optimize-apply : ∀ {X A B} → IR X ((A ⇛[ π ] B) * A) → IR X B
 optimize-apply F = apply-aux F (pairView F)
 
 -- | `terminal ∘ f = terminal`, when `f` has no effect (it would be dropped).
