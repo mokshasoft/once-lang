@@ -129,49 +129,53 @@ mutual
 
 infix 4 _≈[_]_
 mutual
-  record _≈[_]_ {X : Set} (m : T∞ X) (R : X → X → Set) (m′ : T∞ X) : Set where
+  -- (heterogeneous, B1.3: the core's values against master's)
+  record _≈[_]_ {X Y : Set} (m : T∞ X) (R : X → Y → Set) (m′ : T∞ Y) : Set where
     coinductive
     field blockR : BlR R (block m) (block m′)
 
-  data BlR {X : Set} (R : X → X → Set) : T (X ⊎ T∞ X) → T (X ⊎ T∞ X) → Set where
+  data BlR {X Y : Set} (R : X → Y → Set) : T (X ⊎ T∞ X) → T (Y ⊎ T∞ Y) → Set where
     ≈retR  : ∀ {x y} → R x y → BlR R (ret (inj₁ x)) (ret (inj₁ y))
     ≈stepR : ∀ {m m′} → m ≈[ R ] m′ → BlR R (ret (inj₂ m)) (ret (inj₂ m′))
     ≈callR : ∀ {s x k k′} → (∀ y → BlR R (k y) (k′ y)) → BlR R (call s x k) (call s x k′)
     ≈haltR : ∀ {s x} → BlR R (halt s x) (halt s x)
 open _≈[_]_ public
 
-ret≈R : ∀ {X} {R : X → X → Set} {x y} → R x y → return∞ x ≈[ R ] return∞ y
+ret≈R : ∀ {X Y} {R : X → Y → Set} {x y} → R x y → return∞ x ≈[ R ] return∞ y
 blockR (ret≈R r) = ≈retR r
 
-≈R-blk : ∀ {X} {R : X → X → Set} {m₁ m₂ m′ : T∞ X} → block m₁ ≡ block m₂ → m₂ ≈[ R ] m′ → m₁ ≈[ R ] m′
+≈R-blk : ∀ {X Y} {R : X → Y → Set} {m₁ m₂ : T∞ X} {m′ : T∞ Y} → block m₁ ≡ block m₂ → m₂ ≈[ R ] m′ → m₁ ≈[ R ] m′
 blockR (≈R-blk {R = R} {m′ = m′} e q) = subst (λ b → BlR R b (block m′)) (sym e) (blockR q)
 
 -- BIND respects it: related results, related continuations
 mutual
-  >>=-congR : ∀ {X Y} {R : X → X → Set} {S : Y → Y → Set} {m m′ : T∞ X} {k k′ : X → T∞ Y}
+  >>=-congR : ∀ {X X′ Y Y′} {R : X → X′ → Set} {S : Y → Y′ → Set} {m : T∞ X} {m′ : T∞ X′}
+              {k : X → T∞ Y} {k′ : X′ → T∞ Y′}
             → m ≈[ R ] m′ → (∀ {x y} → R x y → k x ≈[ S ] k′ y) → (m >>=∞ k) ≈[ S ] (m′ >>=∞ k′)
   blockR (>>=-congR p kk) = bind-BlR (blockR p) kk
 
-  bind-BlR : ∀ {X Y} {R : X → X → Set} {S : Y → Y → Set} {b b′ : T (X ⊎ T∞ X)} {k k′ : X → T∞ Y}
+  bind-BlR : ∀ {X X′ Y Y′} {R : X → X′ → Set} {S : Y → Y′ → Set} {b : T (X ⊎ T∞ X)} {b′ : T (X′ ⊎ T∞ X′)}
+             {k : X → T∞ Y} {k′ : X′ → T∞ Y′}
            → BlR R b b′ → (∀ {x y} → R x y → k x ≈[ S ] k′ y) → BlR S (bindBlock b k) (bindBlock b′ k′)
   bind-BlR (≈retR r)  kk = blockR (kk r)
   bind-BlR (≈stepR p) kk = ≈stepR (>>=-congR p kk)
   bind-BlR (≈callR f) kk = ≈callR (λ y → bind-BlR (f y) kk)
   bind-BlR ≈haltR     kk = ≈haltR
 
-fmap-congR : ∀ {X Y} {R : X → X → Set} {S : Y → Y → Set} {m m′ : T∞ X} {f f′ : X → Y}
+fmap-congR : ∀ {X X′ Y Y′} {R : X → X′ → Set} {S : Y → Y′ → Set} {m : T∞ X} {m′ : T∞ X′} {f : X → Y} {f′ : X′ → Y′}
            → m ≈[ R ] m′ → (∀ {x y} → R x y → S (f x) (f′ y)) → fmap∞ f m ≈[ S ] fmap∞ f′ m′
 fmap-congR p ff = >>=-congR p (λ r → ret≈R (ff r))
 
 -- THE LOOP respects it: the states related by `RA`, the results by `RB`
 mutual
-  iter-congR : ∀ {A B : Set} {RA : A → A → Set} {RB : B → B → Set} {f f′ : A → T∞ (B ⊎ A)} {m m′ : T∞ (B ⊎ A)}
+  iter-congR : ∀ {A A′ B B′ : Set} {RA : A → A′ → Set} {RB : B → B′ → Set} {f : A → T∞ (B ⊎ A)} {f′ : A′ → T∞ (B′ ⊎ A′)}
+               {m : T∞ (B ⊎ A)} {m′ : T∞ (B′ ⊎ A′)}
              → (∀ {a a′} → RA a a′ → f a ≈[ Pointwise RB RA ] f′ a′) → m ≈[ Pointwise RB RA ] m′
              → iterRun f m ≈[ RB ] iterRun f′ m′
   blockR (iter-congR ff p) = iter-BlR ff (blockR p)
 
-  iter-BlR : ∀ {A B : Set} {RA : A → A → Set} {RB : B → B → Set} {f f′ : A → T∞ (B ⊎ A)}
-             {b b′ : T ((B ⊎ A) ⊎ T∞ (B ⊎ A))}
+  iter-BlR : ∀ {A A′ B B′ : Set} {RA : A → A′ → Set} {RB : B → B′ → Set} {f : A → T∞ (B ⊎ A)} {f′ : A′ → T∞ (B′ ⊎ A′)}
+             {b : T ((B ⊎ A) ⊎ T∞ (B ⊎ A))} {b′ : T ((B′ ⊎ A′) ⊎ T∞ (B′ ⊎ A′))}
            → (∀ {a a′} → RA a a′ → f a ≈[ Pointwise RB RA ] f′ a′) → BlR (Pointwise RB RA) b b′
            → BlR RB (iterBlock f b) (iterBlock f′ b′)
   iter-BlR ff (≈retR (⊎₁ r)) = ≈retR r
@@ -182,20 +186,20 @@ mutual
 
 -- the two kinds meet: plain bisimilarity on either side
 mutual
-  ≈-≈R : ∀ {X} {R : X → X → Set} {m m′ m″ : T∞ X} → m ≈ m′ → m′ ≈[ R ] m″ → m ≈[ R ] m″
+  ≈-≈R : ∀ {X Y} {R : X → Y → Set} {m m′ : T∞ X} {m″ : T∞ Y} → m ≈ m′ → m′ ≈[ R ] m″ → m ≈[ R ] m″
   blockR (≈-≈R p q) = Bl-BlR (block≈ p) (blockR q)
 
-  Bl-BlR : ∀ {X} {R : X → X → Set} {b b′ b″ : T (X ⊎ T∞ X)} → Bl b b′ → BlR R b′ b″ → BlR R b b″
+  Bl-BlR : ∀ {X Y} {R : X → Y → Set} {b b′ : T (X ⊎ T∞ X)} {b″ : T (Y ⊎ T∞ Y)} → Bl b b′ → BlR R b′ b″ → BlR R b b″
   Bl-BlR ≈ret      (≈retR r)  = ≈retR r
   Bl-BlR (≈step p) (≈stepR q) = ≈stepR (≈-≈R p q)
   Bl-BlR (≈call f) (≈callR g) = ≈callR (λ y → Bl-BlR (f y) (g y))
   Bl-BlR ≈halt     ≈haltR     = ≈haltR
 
 mutual
-  ≈R-≈ : ∀ {X} {R : X → X → Set} {m m′ m″ : T∞ X} → m ≈[ R ] m′ → m′ ≈ m″ → m ≈[ R ] m″
+  ≈R-≈ : ∀ {X Y} {R : X → Y → Set} {m : T∞ X} {m′ m″ : T∞ Y} → m ≈[ R ] m′ → m′ ≈ m″ → m ≈[ R ] m″
   blockR (≈R-≈ p q) = BlR-Bl (blockR p) (block≈ q)
 
-  BlR-Bl : ∀ {X} {R : X → X → Set} {b b′ b″ : T (X ⊎ T∞ X)} → BlR R b b′ → Bl b′ b″ → BlR R b b″
+  BlR-Bl : ∀ {X Y} {R : X → Y → Set} {b : T (X ⊎ T∞ X)} {b′ b″ : T (Y ⊎ T∞ Y)} → BlR R b b′ → Bl b′ b″ → BlR R b b″
   BlR-Bl (≈retR r)  ≈ret      = ≈retR r
   BlR-Bl (≈stepR p) (≈step q) = ≈stepR (≈R-≈ p q)
   BlR-Bl (≈callR f) (≈call g) = ≈callR (λ y → BlR-Bl (f y) (g y))
@@ -241,10 +245,10 @@ TR-bind (tcall f) kk = tcall (λ y → TR-bind (f y) kk)
 TR-bind thalt     kk = thalt
 
 -- embedded, a related block is a related computation, and back
-emb-TR : ∀ {X} {R : X → X → Set} {a b : T X} → TR R a b → emb a ≈[ R ] emb b
+emb-TR : ∀ {X Y} {R : X → Y → Set} {a : T X} {b : T Y} → TR R a b → emb a ≈[ R ] emb b
 blockR (emb-TR p) = embB-TR p
   where
-  embB-TR : ∀ {X} {R : X → X → Set} {a b : T X} → TR R a b → BlR R (embB a) (embB b)
+  embB-TR : ∀ {X Y} {R : X → Y → Set} {a : T X} {b : T Y} → TR R a b → BlR R (embB a) (embB b)
   embB-TR (tret r)  = ≈retR r
   embB-TR (tcall f) = ≈callR (λ y → embB-TR (f y))
   embB-TR thalt     = ≈haltR
