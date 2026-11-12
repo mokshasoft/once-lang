@@ -1218,3 +1218,163 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
       fitS = ≤-trans (c-sfit C) (m≤n+m (OP φ) (EP φ))
       in-env : ∀ k → k < wL → k + suc (ws Es) < EP φ
       in-env k k< = <-≤-trans (+-monoˡ-< (suc (ws Es)) k<) fit
+
+  ----------------------------------------------------------------------
+  -- 12. ★ A SWAP: the top element to the words below the stack, the next
+  -- one up, the first back above it.
+  ----------------------------------------------------------------------
+
+  private
+    swap-words : ∀ a b s → a + (b + s) ≡ b + (a + s)
+    swap-words = solve-∀
+
+  -- a slot outside a move's range is kept
+  outside-move : ∀ {fs fs′ a b n} x → MovedS fs fs′ a b n → (x < b) ⊎ (n + b ≤ x) → slot fs′ x ≡ slot fs x
+  outside-move x M (inj₁ x<b) = m-rest M x (λ k _ e → Data.Nat.Properties.<-irrefl e (<-≤-trans x<b (m≤n+m _ k)))
+    where import Data.Nat.Properties
+  outside-move {b = b} x M (inj₂ ge) = m-rest M x (λ k k< e → Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans (+-monoˡ-< b k<) ge))
+    where import Data.Nat.Properties
+
+  -- words disjoint from a move's range are kept
+  kept-words : ∀ {fs fs′ a b n o} (w : List W) → MovedS fs fs′ a b n
+             → (length w + o ≤ b) ⊎ (n + b ≤ o) → SlotsAt (slot fs) o w → SlotsAt (slot fs′) o w
+  kept-words {fs} {fs′} {a} {b} {n} {o} w M d s = slots-frame {slot fs} {slot fs′} w (λ k k< → outside-move (k + o) M (side k k< d)) s
+    where
+      import Data.Nat.Properties
+      side : ∀ k → k < length w → (length w + o ≤ b) ⊎ (n + b ≤ o) → (k + o < b) ⊎ (n + b ≤ k + o)
+      side k k< (inj₁ le) = inj₁ (<-≤-trans (+-monoˡ-< o k<) le)
+      side k k< (inj₂ ge) = inj₂ (≤-trans ge (m≤n+m o k))
+
+  swap-sim : ∀ prog (fs : FlatState) (φ : Frame) {Es A B S} {es : Slots Es} {os : Stk S} {a : MV A} {b : MV B}
+           → let t = budget φ ∸ ws (A ∷ B ∷ S) in
+             Seg prog (fpc fs) (mvSS t (t ∸ wsz A) (wsz A) ++ mvSS (t + wsz A) t (wsz B) ++ mvSS (t ∸ wsz A) (t + wsz B) (wsz A))
+           → fhalted (floc fs) ≡ false
+           → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ a ∷ˢ b ∷ˢ os)
+           → wsz A + ws (A ∷ B ∷ S) ≤ OP φ
+           → Σ FlatState λ fs₃ → FlatSteps prog (nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))) fs fs₃
+               × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os)
+  swap-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h C fitT with c-stk C
+  ... | ((wa , pa , sa) , (wb , pb , sb) , rest)
+    with mvSS-run prog fs t (t ∸ wsz A) (wsz A) (Seg-++ˡ prog (fpc fs) X₁ _ s) h
+           (λ k k< → slots-def {slot fs} {t} wa sa k (subst (k <_) (sym (vw-len pa)) k<))
+           (λ k k′ lt _ → no-clash-down (Data.Nat.Properties.m∸n≤m t (wsz A)) lt)
+    where
+      import Data.Nat.Properties
+      t = budget φ ∸ ws (A ∷ B ∷ S)
+      X₁ = mvSS t (t ∸ wsz A) (wsz A)
+  ... | (fs₁ , st₁ , M₁)
+    with mvSS-run prog fs₁ (t + wsz A) t (wsz B) s₂ (trans (m-halt M₁) h) def₂ (λ k k′ lt _ → no-clash-down (m≤m+n t (wsz A)) lt)
+    where
+      import Data.Nat.Properties
+      t = budget φ ∸ ws (A ∷ B ∷ S)
+      scr = t ∸ wsz A
+      X₁ = mvSS t scr (wsz A)
+      X₂ = mvSS (t + wsz A) t (wsz B)
+      X₃ = mvSS scr (t + wsz B) (wsz A)
+      fitT0 : wsz A + (wsz B + ws S) ≤ budget φ
+      fitT0 = ≤-trans (c-sfit C) (m≤n+m (OP φ) (EP φ))
+      wA≤t : wsz A ≤ t
+      wA≤t = ≤∸ (wsz A) (ws (A ∷ B ∷ S)) (budget φ) (≤-trans fitT (m≤n+m (OP φ) (EP φ)))
+      tmpEnd : wsz A + scr ≡ t
+      tmpEnd = Data.Nat.Properties.m+[n∸m]≡n wA≤t
+      s₂ : Seg prog (fpc fs₁) X₂
+      s₂ = subst (λ z → Seg prog z X₂)
+             (trans (cong (fpc fs +_) (len-mvSS t scr (wsz A))) (trans (+-comm (fpc fs) (nsteps (wsz A))) (sym (m-pc M₁))))
+             (Seg-++ˡ prog (fpc fs + length X₁) X₂ X₃ (Seg-++ʳ prog (fpc fs) X₁ _ s))
+      sb′ : SlotsAt (slot fs) (t + wsz A) wb
+      sb′ = subst (λ z → SlotsAt (slot fs) z wb) (trans (sym (pair-at (budget φ) (wsz A) (wsz B) (ws S) fitT0)) (+-comm (wsz A) t)) sb
+      def₂ : ∀ k → k < wsz B → Σ W λ x → slot fs₁ (k + (t + wsz A)) ≡ just x
+      def₂ k k< with slots-def {slot fs} {t + wsz A} wb sb′ k (subst (k <_) (sym (vw-len pb)) k<)
+      ... | (x , ex) = x , trans (outside-move (k + (t + wsz A)) M₁
+                                    (inj₂ (≤-trans (Data.Nat.Properties.≤-reflexive tmpEnd) (≤-trans (m≤m+n t (wsz A)) (m≤n+m (t + wsz A) k)))))
+                                 ex
+  ... | (fs₂ , st₂ , M₂)
+    with mvSS-run prog fs₂ (t ∸ wsz A) (t + wsz B) (wsz A) s₃ (trans (m-halt M₂) (trans (m-halt M₁) h)) def₃
+           (λ k k′ _ lt′ → no-clash {k = k} (≤-trans (Data.Nat.Properties.≤-reflexive (trans (+-comm (t ∸ wsz A) (wsz A)) tmpEnd)) (m≤m+n t (wsz B))) lt′)
+    where
+      import Data.Nat.Properties
+      t = budget φ ∸ ws (A ∷ B ∷ S)
+      scr = t ∸ wsz A
+      X₁ = mvSS t scr (wsz A)
+      X₂ = mvSS (t + wsz A) t (wsz B)
+      X₃ = mvSS scr (t + wsz B) (wsz A)
+      wA≤t : wsz A ≤ t
+      wA≤t = ≤∸ (wsz A) (ws (A ∷ B ∷ S)) (budget φ) (≤-trans fitT (m≤n+m (OP φ) (EP φ)))
+      tmpEnd : wsz A + scr ≡ t
+      tmpEnd = Data.Nat.Properties.m+[n∸m]≡n wA≤t
+      s₃ : Seg prog (fpc fs₂) X₃
+      s₃ = subst (λ z → Seg prog z X₃)
+             (trans (cong (_+ length X₂) (cong (fpc fs +_) (len-mvSS t scr (wsz A))))
+               (trans (cong ((fpc fs + nsteps (wsz A)) +_) (len-mvSS (t + wsz A) t (wsz B)))
+                 (trans (+-comm (fpc fs + nsteps (wsz A)) (nsteps (wsz B)))
+                   (trans (cong (nsteps (wsz B) +_) (+-comm (fpc fs) (nsteps (wsz A))))
+                     (trans (cong (nsteps (wsz B) +_) (sym (m-pc M₁))) (sym (m-pc M₂)))))))
+             (Seg-++ʳ prog (fpc fs + length X₁) X₂ X₃ (Seg-++ʳ prog (fpc fs) X₁ _ s))
+      -- the first element's words, in the words below the stack, kept by the second move
+      sa₂ : SlotsAt (slot fs₂) scr wa
+      sa₂ = kept-words wa M₂ (inj₁ (≤-reflexive′ (trans (cong (_+ scr) (vw-len pa)) tmpEnd))) (slots-moved wa M₁ sa (vw-len pa))
+        where ≤-reflexive′ = Data.Nat.Properties.≤-reflexive
+      def₃ : ∀ k → k < wsz A → Σ W λ x → slot fs₂ (k + scr) ≡ just x
+      def₃ k k< = slots-def {slot fs₂} {scr} wa sa₂ k (subst (k <_) (sym (vw-len pa)) k<)
+  ... | (fs₃ , st₃ , M₃) =
+    fs₃ , FlatSteps-++ st₁ (FlatSteps-++ st₂ st₃) ,
+    record { c-env  = subst (λ r → EnvW r (slot fs₃) es) (sym hp)
+                        (envW-frame es (λ x x< → kept₃ x (inj₁ (x<scr x x<))) (c-env C))
+           ; c-stk  = ( wb , subst (λ r → VW r b wb) (sym hp) pb
+                      , subst (λ z → SlotsAt (slot fs₃) z wb) (cong (budget φ ∸_) (swap-words (wsz A) (wsz B) (ws S))) sbF )
+                    , ( wa , subst (λ r → VW r a wa) (sym hp) pa
+                      , subst (λ z → SlotsAt (slot fs₃) z wa) aPos (slots-moved wa M₃ sa₂ (vw-len pa)) )
+                    , subst (λ r → StkW r (slot fs₃) φ os) (sym hp)
+                        (stkW-frame os fitS (λ x lo _ → kept₃ x (inj₂ lo)) rest)
+           ; c-efit = c-efit C
+           ; c-sfit = subst (_≤ OP φ) (swap-words (wsz A) (wsz B) (ws S)) (c-sfit C) }
+    where
+      import Data.Nat.Properties
+      ≤-reflexive′ = Data.Nat.Properties.≤-reflexive
+      t = budget φ ∸ ws (A ∷ B ∷ S)
+      scr = t ∸ wsz A
+      fitT0 : wsz A + (wsz B + ws S) ≤ budget φ
+      fitT0 = ≤-trans (c-sfit C) (m≤n+m (OP φ) (EP φ))
+      fitS : ws S ≤ budget φ
+      fitS = ≤-trans (m≤n+m (ws S) (wsz A + wsz B)) (≤-trans (≤-reflexive′ (+-assoc (wsz A) (wsz B) (ws S))) fitT0)
+      wA≤t : wsz A ≤ t
+      wA≤t = ≤∸ (wsz A) (ws (A ∷ B ∷ S)) (budget φ) (≤-trans fitT (m≤n+m (OP φ) (EP φ)))
+      scrEnd : wsz A + scr ≡ t
+      scrEnd = Data.Nat.Properties.m+[n∸m]≡n wA≤t
+      hp : heapMem (floc fs₃) ≡ heapMem (floc fs)
+      hp = trans (m-heap M₃) (trans (m-heap M₂) (m-heap M₁))
+      -- where the moves endW: the rest of the stack
+      bPos : wsz A + t ≡ budget φ ∸ (wsz B + ws S)
+      bPos = pair-at (budget φ) (wsz A) (wsz B) (ws S) fitT0
+      endW : wsz A + (t + wsz B) ≡ budget φ ∸ ws S
+      endW = trans (r (wsz A) t (wsz B))
+              (trans (cong (wsz B +_) bPos)
+                (pair-at (budget φ) (wsz B) 0 (ws S) (≤-trans (m≤n+m (wsz B + ws S) (wsz A)) fitT0)))
+        where r : ∀ a t b → a + (t + b) ≡ b + (a + t)
+              r = solve-∀
+      aPos : t + wsz B ≡ budget φ ∸ ws (A ∷ S)
+      aPos = trans (+-comm t (wsz B))
+               (trans (cong (λ z → wsz B + (budget φ ∸ z)) (swap-words (wsz A) (wsz B) (ws S)))
+                 (pair-at (budget φ) (wsz B) (wsz A) (ws S) (≤-trans (≤-reflexive′ (sym (swap-words (wsz A) (wsz B) (ws S)))) fitT0)))
+      -- a slot below all three moves, or above them all, is kept
+      kept₃ : ∀ x → (x < scr) ⊎ (budget φ ∸ ws S ≤ x) → slot fs₃ x ≡ slot fs x
+      kept₃ x (inj₁ x<) =
+        trans (outside-move x M₃ (inj₁ (<-≤-trans x< (≤-trans (Data.Nat.Properties.m∸n≤m t (wsz A)) (m≤m+n t (wsz B))))))
+          (trans (outside-move x M₂ (inj₁ (<-≤-trans x< (Data.Nat.Properties.m∸n≤m t (wsz A)))))
+                 (outside-move x M₁ (inj₁ x<)))
+      kept₃ x (inj₂ ge) =
+        trans (outside-move x M₃ (inj₂ (≤-trans (≤-reflexive′ endW) ge)))
+          (trans (outside-move x M₂ (inj₂ (≤-trans (≤-trans (≤-reflexive′ (+-comm (wsz B) t)) (m≤n+m (t + wsz B) (wsz A))) (≤-trans (≤-reflexive′ endW) ge))))
+                 (outside-move x M₁ (inj₂ (≤-trans (≤-reflexive′ scrEnd) (≤-trans (≤-trans (m≤m+n t (wsz B)) (m≤n+m (t + wsz B) (wsz A))) (≤-trans (≤-reflexive′ endW) ge))))))
+      -- the environment lies below the words used
+      x<scr : ∀ x → x < ws Es → x < scr
+      x<scr x x< = <-≤-trans x< (≤-trans (c-efit C)
+                     (subst (EP φ ≤_) (sym (new-top (budget φ) (wsz A) (ws (A ∷ B ∷ S)))) (env-below φ (wsz A + ws (A ∷ B ∷ S)) fitT)))
+      -- the words: the second element's moved up, kept by the third move
+      sb′ : SlotsAt (slot fs) (t + wsz A) wb
+      sb′ = subst (λ z → SlotsAt (slot fs) z wb) (trans (sym bPos) (+-comm (wsz A) t)) sb
+      sbF : SlotsAt (slot fs₃) t wb
+      sbF = kept-words wb M₃ (inj₁ (≤-reflexive′ (trans (cong (_+ t) (vw-len pb)) (+-comm (wsz B) t))))
+              (slots-moved wb M₂ (kept-words wb M₁ (inj₂ (≤-trans (≤-reflexive′ scrEnd) (m≤m+n t (wsz A)))) sb′) (vw-len pb))
+      sa₂ : SlotsAt (slot fs₂) scr wa
+      sa₂ = kept-words wa M₂ (inj₁ (≤-reflexive′ (trans (cong (_+ scr) (vw-len pa)) scrEnd))) (slots-moved wa M₁ sa (vw-len pa))
