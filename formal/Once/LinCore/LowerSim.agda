@@ -656,7 +656,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   open import Data.List.Properties using (length-replicate)
   open import Data.Nat using (_⊔_)
   open import Once.CCC.Machine.SMCore using (SV-Tag; store-at-slot; instr-load-tag-lit; readReg; writeReg; Output; module MemOps)
-  open FlatStepsAPI {FS} using (step-at; _∷_)
+  open FlatStepsAPI {FS} using (step-at; _∷_; [])
 
   -- a move down never clobbers a word it reads later
   no-clash-down : ∀ {a b k k′} → b ≤ a → k < k′ → ¬ k + b ≡ k′ + a
@@ -898,7 +898,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   -- 9. ★ THE HEAP STEPS.
   ----------------------------------------------------------------------
 
-  open import Once.LinCore.Moves {FS} using (mvPS-run; MovedP; p-moved; p-rest; p-heap; p-halt; p-pc; p-in; restore-step; free-step)
+  open import Once.LinCore.Moves {FS} using (mvPS-run; MovedP; p-moved; p-rest; p-heap; p-pc; p-in; restore-step) renaming (p-halt to pm-halt; free-step to ffree-step)
   open import Once.LinCore.MoveCode using (mvPS)
   open import Once.CCC.Machine.Locations using (AtDynamic)
   open import Once.CCC.Machine.SMCore using (offsetLoc; restore-input; instr-free-heap; SV-Ptr; Input1; module ExecFinal)
@@ -921,3 +921,72 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
       go (x ∷ v) j (e , a) h =
         trans (h j (subst (j <_) (sym (+-suc j (length v))) (s≤s (m≤m+n j (length v))))) (trans (at′ j) e) ,
         go v (suc j) a (λ k k< → h k (subst (k <_) (sym (+-suc j (length v))) k<))
+
+  len-mvPS : ∀ o b n → length (mvPS o b n) ≡ nsteps n
+  len-mvPS o b zero    = refl
+  len-mvPS o b (suc n) = cong (λ z → suc (suc z)) (len-mvPS (suc o) (suc b) n)
+
+  -- a cell's words are defined
+  at-def : ∀ {rd i o} (w : List W) → At rd i o w → ∀ k → k < length w → Σ W λ x → rd (cellLoc i (k + o)) ≡ just x
+  at-def (x ∷ w) (e , a) zero    _        = x , e
+  at-def {rd} {i} {o} (x ∷ w) (e , a) (suc k) (s≤s k<) with at-def {rd} {i} {suc o} w a k k<
+  ... | (y , ey) = y , trans (cong (λ z → rd (cellLoc i z)) (sym (+-suc k o))) ey
+
+  -- ★ `lOutμ`: the node's layer, out of its cell onto the stack; the cell freed
+  lOutμ-sim : ∀ prog (fs : FlatState) (φ : Frame) {Es F S} {es : Slots Es} {os : Stk S} {i} {v : MV (LF∙ F (μt F))}
+            → Seg prog (fpc fs) (restore-input ((budget φ ∸ ws S) ∸ 1)
+                                 ∷ mvPS 0 ((budget φ ∸ ws S) ∸ wsz (LF∙ F (μt F))) (wsz (LF∙ F (μt F)))
+                                 ++ instr-free-heap (wsz (LF∙ F (μt F))) ∷ [])
+            → fhalted (floc fs) ≡ false
+            → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ mmu i v ∷ˢ os)
+            → ws (LF∙ F (μt F) ∷ S) ≤ OP φ
+            → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps (wsz (LF∙ F (μt F))) + 1)) fs fs′
+                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ v ∷ˢ os)
+  lOutμ-sim prog fs φ {Es} {F} {S} {es} {os} {i} {v} (f₀ , s) h C fit with c-stk C
+  ... | ((_ , vmu {wv = wv} pv ca , (ep , _)) , rest)
+    with mvPS-run prog fs₁ (AtDynamic (cellLoc i 0)) 0 dst wL (Seg-++ˡ prog (suc (fpc fs)) (mvPS 0 dst wL) _ s) h refl def
+           (λ k k′ _ _ ())
+    where
+      wL = wsz (LF∙ F (μt F))
+      bot = budget φ ∸ ws S
+      dst = bot ∸ wL
+      fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 (cellPtr i) } ; fpc = suc (fpc fs) }
+      def : ∀ k → k < wL → Σ W λ x → MemOps.readLoc {FS} (floc fs₁) (offsetLoc (AtDynamic (cellLoc i 0)) (k + 0)) ≡ just x
+      def k k< with at-def wv ca k (subst (k <_) (sym (vw-len pv)) k<)
+      ... | (x , ex) = x , trans (cong (λ z → heapMem (floc fs) (heap-loc (mkHeapRef (serial i)) z))
+                                       (trans (Data.Nat.Properties.+-identityʳ (k + 0)) refl)) ex
+        where import Data.Nat.Properties
+  ... | (fs₂ , st₂ , P) =
+    fs₃ ,
+    step-at fs₁ (h , f₀) (restore-step fs (bot ∸ 1) ptrEq) (FlatSteps-++ st₂ (step-at fs₃ (h₂ , ffree) (ffree-step fs₂ wL) [])) ,
+    record { c-env  = subst (λ r → EnvW r (slot fs₃) es) (sym (p-heap P))
+                        (envW-frame es (λ x x< → p-rest P x (λ k _ e → Data.Nat.Properties.<-irrefl e (<-≤-trans (env< x x<) (m≤n+m dst k)))) (c-env C))
+           ; c-stk  = ( wv , subst (λ r → VW r v wv) (sym (p-heap P)) pv
+                      , subst (λ z → SlotsAt (slot fs₃) z wv) (new-top (budget φ) wL (ws S)) (cell-slots wv P ca (vw-len pv)) )
+                    , subst (λ r → StkW r (slot fs₃) φ os) (sym (p-heap P))
+                        (stkW-frame os fitS (λ x lo _ → p-rest P x (λ k k< e → Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans (in-stk k k<) lo))) rest)
+           ; c-efit = c-efit C ; c-sfit = fit }
+    where
+      import Data.Nat.Properties
+      wL = wsz (LF∙ F (μt F))
+      bot = budget φ ∸ ws S
+      dst = bot ∸ wL
+      fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 (cellPtr i) } ; fpc = suc (fpc fs) }
+      fs₃ = record fs₂ { fpc = suc (fpc fs₂) }
+      ptrEq : slot fs (bot ∸ 1) ≡ just (cellPtr i)
+      ptrEq = trans (cong (slot fs) (new-top (budget φ) 1 (ws S))) ep
+      h₂ : fhalted (floc fs₂) ≡ false
+      h₂ = trans (pm-halt P) h
+      ffree : fetch prog (fpc fs₂) ≡ just (instr-free-heap wL)
+      ffree = subst (λ z → fetch prog z ≡ just (instr-free-heap wL))
+                (trans (cong (suc (fpc fs) +_) (len-mvPS 0 dst wL)) (trans (+-comm (suc (fpc fs)) (nsteps wL)) (sym (p-pc P))))
+                (proj₁ (Seg-++ʳ prog (suc (fpc fs)) (mvPS 0 dst wL) _ s))
+      fitB : wL + ws S ≤ budget φ
+      fitB = ≤-trans fit (m≤n+m (OP φ) (EP φ))
+      fitS : ws S ≤ budget φ
+      fitS = ≤-trans (m≤n+m (ws S) wL) fitB
+      env< : ∀ x → x < ws Es → x < dst
+      env< x x< = <-≤-trans x< (≤-trans (c-efit C) (subst (EP φ ≤_) (sym (new-top (budget φ) wL (ws S))) (env-below φ (ws (LF∙ F (μt F) ∷ S)) fit)))
+      in-stk : ∀ k → k < wL → k + dst < bot
+      in-stk k k< = <-≤-trans (+-monoˡ-< dst k<)
+                      (Data.Nat.Properties.≤-reflexive (trans (cong (wL +_) (new-top (budget φ) wL (ws S))) (pair-at (budget φ) wL 0 (ws S) fitB)))
