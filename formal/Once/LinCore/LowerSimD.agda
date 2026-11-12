@@ -124,3 +124,89 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                                                    (Data.Nat.Properties.<-≤-trans (in-dst k k<) lo))) st)
                ; c-efit = efit ; c-sfit = fit } ,
         d-pc M
+
+  open FlatMachine {FS} using (do-jump; tag-test; flat-read-tag)
+
+  private
+    -- the sum's place, its payload's
+    sum-at : ∀ (φ : Frame) A B S → budget φ ∸ ws ((A ⊕t B) ∷ S) ≡ (budget φ ∸ ws S) ∸ suc (wsz A ⊔ wsz B)
+    sum-at φ A B S = sym (new-top (budget φ) (suc (wsz A ⊔ wsz B)) (ws S))
+
+    pay-up : ∀ (φ : Frame) A B S P → wsz P ≤ wsz A ⊔ wsz B → ws ((A ⊕t B) ∷ S) ≤ OP φ
+           → suc (budget φ ∸ ws ((A ⊕t B) ∷ S)) ≤ (budget φ ∸ ws S) ∸ wsz P
+    pay-up φ A B S P pM fit =
+      ≤-trans (≤-reflexive (trans (cong suc (sum-at φ A B S)) (suc-∸ (budget φ ∸ ws S) (wsz A ⊔ wsz B) M<)))
+              (Data.Nat.Properties.∸-monoʳ-≤ (budget φ ∸ ws S) pM)
+      where M< : wsz A ⊔ wsz B < budget φ ∸ ws S
+            M< = ≤∸ (suc (wsz A ⊔ wsz B)) (ws S) (budget φ) (≤-trans fit (m≤n+m (OP φ) (EP φ)))
+
+  -- ★ `case`, `inl`: the tag is 0, the branch taken to the label; the label;
+  -- the payload shifted up
+  case₁-sim : ∀ prog (fs : FlatState) (φ : Frame) {Es A B S} {es : Slots Es} {os : Stk S} {a : MV A}
+                (L₁ : LabelId) (q : ℕ)
+            → let t = budget φ ∸ ws ((A ⊕t B) ∷ S) ; bot = budget φ ∸ ws S in
+              Seg prog (fpc fs) (lea-slot t ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero L₁) ∷ [])
+            → find-label prog L₁ ≡ just q
+            → Seg prog q (instr-ctrl (c-label L₁) ∷ mvSSd (suc t) (bot ∸ wsz A) (wsz A))
+            → fhalted (floc fs) ≡ false
+            → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ minl {B = B} a ∷ˢ os)
+            → Σ FlatState λ fs′ → FlatSteps prog (4 + nsteps (wsz A)) fs fs′
+                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ a ∷ˢ os) × fpc fs′ ≡ nsteps (wsz A) + suc q
+  case₁-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} L₁ q (f₁ , f₂ , f₃ , _) fl (fq , sq) h C = fin (c-stk C)
+    where
+      t = budget φ ∸ ws ((A ⊕t B) ∷ S)
+      cf = AllocState.current-frame (falloc fs)
+      fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (SV-Ptr (AtStack cf t)) } ; fpc = suc (fpc fs) }
+      fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Input1 (SV-Ptr (AtStack cf t)) } ; fpc = suc (fpc fs₁) }
+      fs₃ = record fs₂ { fpc = q }
+      fs₄ = record fs₃ { fpc = suc q }
+      Res = Σ FlatState λ fs′ → FlatSteps prog (4 + nsteps (wsz A)) fs fs′
+              × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ a ∷ˢ os) × fpc fs′ ≡ nsteps (wsz A) + suc q
+      fin : StkW (heapMem (floc fs)) (slot fs) φ (minl {B = B} a ∷ˢ os) → Res
+      fin ((_ , vinl {wa = wa} {pad} pa len , (e0 , s′)) , rest) = done-shift (shift-sim prog fs₄ φ {Es} {A} {S} {es} {os} {a} (suc t) wa sq h
+                                         (c-env C) rest pa (proj₁ (slots-++ {slot fs} wa pad s′))
+                                         (pay-up φ A B S A (Data.Nat.Properties.m≤m⊔n (wsz A) (wsz B)) (c-sfit C))
+                                         (≤-trans (env-below φ (ws ((A ⊕t B) ∷ S)) (c-sfit C)) (Data.Nat.Properties.n≤1+n t))
+                                         (c-efit C)
+                                         (≤-trans (Data.Nat.Properties.+-monoˡ-≤ (ws S) (≤-trans (Data.Nat.Properties.m≤m⊔n (wsz A) (wsz B)) (Data.Nat.Properties.n≤1+n _))) (c-sfit C)))
+        where
+          branch : FlatMachine.flat-exec-instr {FS} (instr-ctrl (c-branch-tag-zero L₁)) prog fs₂ ≡ fs₃
+          branch = trans (flat-tag-branch-yes prog fs₂ L₁ (cong tag-test e0)) (cong (λ m → do-jump m fs₂) fl)
+          done-shift : Σ FlatState (λ fs′ → FlatSteps prog (nsteps (wsz A)) fs₄ fs′
+                         × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ a ∷ˢ os) × fpc fs′ ≡ nsteps (wsz A) + fpc fs₄) → Res
+          done-shift (fs′ , st , C′ , pc) =
+            fs′ , step-at fs₁ (h , f₁) (lea-step fs t) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
+                    (step-at fs₃ (h , f₃) branch (step-at fs₄ (h , fq) (flat-label prog fs₃ L₁) st))) ,
+            C′ , pc
+
+  -- ★ `case`, `inr`: the tag is 1, the branch falls through; the payload shifted up
+  case₂-sim : ∀ prog (fs : FlatState) (φ : Frame) {Es A B S} {es : Slots Es} {os : Stk S} {b : MV B} (L₁ : LabelId)
+            → let t = budget φ ∸ ws ((A ⊕t B) ∷ S) ; bot = budget φ ∸ ws S in
+              Seg prog (fpc fs) (lea-slot t ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero L₁) ∷ mvSSd (suc t) (bot ∸ wsz B) (wsz B))
+            → fhalted (floc fs) ≡ false
+            → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ minr {A = A} b ∷ˢ os)
+            → Σ FlatState λ fs′ → FlatSteps prog (3 + nsteps (wsz B)) fs fs′
+                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os) × fpc fs′ ≡ nsteps (wsz B) + (3 + fpc fs)
+  case₂-sim prog fs φ {Es} {A} {B} {S} {es} {os} {b} L₁ (f₁ , f₂ , f₃ , sq) h C = fin (c-stk C)
+    where
+      t = budget φ ∸ ws ((A ⊕t B) ∷ S)
+      cf = AllocState.current-frame (falloc fs)
+      fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (SV-Ptr (AtStack cf t)) } ; fpc = suc (fpc fs) }
+      fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Input1 (SV-Ptr (AtStack cf t)) } ; fpc = suc (fpc fs₁) }
+      fs₃ = record fs₂ { fpc = suc (fpc fs₂) }
+      Res = Σ FlatState λ fs′ → FlatSteps prog (3 + nsteps (wsz B)) fs fs′
+              × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os) × fpc fs′ ≡ nsteps (wsz B) + (3 + fpc fs)
+      fin : StkW (heapMem (floc fs)) (slot fs) φ (minr {A = A} b ∷ˢ os) → Res
+      fin ((_ , vinr {wb = wb} {pad} pb len , (e1 , s′)) , rest) = done-shift (shift-sim prog fs₃ φ {Es} {B} {S} {es} {os} {b} (suc t) wb sq h
+                                         (c-env C) rest pb (proj₁ (slots-++ {slot fs} wb pad s′))
+                                         (pay-up φ A B S B (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) (c-sfit C))
+                                         (≤-trans (env-below φ (ws ((A ⊕t B) ∷ S)) (c-sfit C)) (Data.Nat.Properties.n≤1+n t))
+                                         (c-efit C)
+                                         (≤-trans (Data.Nat.Properties.+-monoˡ-≤ (ws S) (≤-trans (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) (Data.Nat.Properties.n≤1+n _))) (c-sfit C)))
+        where
+          done-shift : Σ FlatState (λ fs′ → FlatSteps prog (nsteps (wsz B)) fs₃ fs′
+                         × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os) × fpc fs′ ≡ nsteps (wsz B) + fpc fs₃) → Res
+          done-shift (fs′ , st , C′ , pc) =
+            fs′ , step-at fs₁ (h , f₁) (lea-step fs t) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
+                    (step-at fs₃ (h , f₃) (flat-tag-branch-not prog fs₂ L₁ (cong tag-test e1)) st)) ,
+            C′ , pc
