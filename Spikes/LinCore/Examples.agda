@@ -68,7 +68,7 @@ open import LinCore.Events B ⟦_⟧B Op odom ocod bw
 open import LinCore.Act B ⟦_⟧B Op odom ocod bw
 open import LinCore.Temps B ⟦_⟧B Op odom ocod bw
 open import LinCore.Total B ⟦_⟧B Op odom ocod bw
-open import LinCore.Pass B ⟦_⟧B Op odom ocod
+open import LinCore.Pass B ⟦_⟧B Op odom ocod renaming (Out to Outν)
 open import LinCore.Whole B ⟦_⟧B Op odom ocod bw
 open import LinCore.Machine B ⟦_⟧B Op odom ocod bw
 open import LinCore.Held B ⟦_⟧B Op odom ocod bw
@@ -803,3 +803,45 @@ nu-empty = Σ.snd (noleak (Ran.run nu-run))
 
 -- and on the machine
 nu-machine = machine-noleak (Ran.run nu-run) _
+
+------------------------------------------------------------------------
+-- 23. ★ A15 part 2: AN IR PROGRAM WITH AN ARROW AND ν's, COMPILED. The IR's
+--     `curry`/`apply` and `Ana`/`Out`/`in-ν`, translated by the pass: a ν
+--     built from a layer (Lambek's inverse) around the naturals from 3,
+--     observed twice; the head of the second layer kept in a closure that
+--     emits it when applied. The world sees the one coalgebra call and the
+--     emit; the run means what the IR program means; nothing leaks.
+------------------------------------------------------------------------
+
+-- a closure that keeps an Int and emits it when called
+emitter : IR (Bt int) (Fn many act One One)
+emitter = curry act (SigOp emit ∘ fst) (i-∘ i-op i-fst)
+
+-- the naturals from the seed, by an IR unfold that reads nothing
+nats-ir : IR (One ⊗t Bt int) (Nu NatsF)
+nats-ir = Ana NatsF ⟨ snd , SigOp succ ∘ snd ⟩ (i-pair i-snd (i-∘ i-op i-snd))
+
+ho-ir : IR One One
+ho-ir = apply ∘ ⟨ emitter ∘ fst ∘ Outν NatsF ∘ snd ∘ Outν NatsF ∘ in-ν NatsF
+                    ∘ ⟨ const 1 , nats-ir ∘ ⟨ terminal , const 3 ⟩ ⟩
+                , terminal ⟩
+
+ho-run : Ran world ε (tr ho-ir) mone mone 0
+ho-run = exec world ε 0 (tr ho-ir) mone mone 0 tt
+
+-- the first observation gives the layer as it was built (no call); the
+-- second runs the coalgebra once; the closure emits the head it kept
+ho-ios : ios (Ran.trace ho-run) ≡ io-call succ 3 4 ∷ io-call emit 3 tt ∷ []
+ho-ios = refl
+
+-- what the world saw is a path through the IR program's meaning
+ho-sound : RB (block (ev ho-ir tt)) (io-call succ 3 4 ∷ io-call emit 3 tt ∷ []) (returns tt)
+ho-sound = whole-sound world 0 ho-ir tt
+
+-- every cell freed: the ν's, their coalgebras', the closure's
+ho-empty : ∀ i → play (Ran.trace ho-run) (λ _ → 0) i ≡ 0
+ho-empty = Σ.snd (noleak (Ran.run ho-run))
+
+-- (On the machine, `machine-noleak` covers this run as every run; its
+-- instance is not spelled out here: normalising the lowered run of the pass's
+-- faithful translation exceeds the type-checker's 4.8 GB heap.)

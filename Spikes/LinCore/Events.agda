@@ -68,7 +68,7 @@ module LinCore.Events
   where
 
 open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import LinCore.Pass Base ⟦_⟧b Sig sdom scod using (Bl; ≈ret; ≈step; ≈call; ≈halt; block≈)
+open import LinCore.Bisim Base ⟦_⟧b Sig sdom scod using (Bl; ≈ret; ≈step; ≈call; ≈halt; block≈)
 open import LinCore.Grade Base ⟦_⟧b Sig sdom scod using (blk-coh; obs-coh)
 
 -- ★ D405: every statement is over the program's label table `ds`

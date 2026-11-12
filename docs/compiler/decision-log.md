@@ -22368,6 +22368,41 @@ unfolds, or a fold whose carrier is a ν, had no type. Done in `Spikes/LinCore/`
   one free per observation of a stream. Moving it into the one recursive position would cost nothing, but
   needs a case analysis on the layer. That is a refinement of `obsT`, like in-place reuse (A8).
 
+### D409 part 3, the pass (2026-11-12, made unattended, for the user's review): the IR's arrows and ν's
+Plan 0.146 A15 part 2. Master's IR has `curry`/`apply` (real exponentials) and `Ana`/`Out`/`in-ν`, and no
+recursion; with D409 part 3 the core has the same, so the pass translates them directly. Done in
+`Spikes/LinCore/`:
+* **The IR copy, graded as the Spec** (as `Iter` already was, D412): `curry g f γ` takes its body at the
+  arrow's grade (`GdIR`: a block at `act`), into `Fn many g` (the IR's arrows are many-use, D131);
+  `Ana` takes a block coalgebra (`⊢unfold`). Its meaning: `ev` in `T∞` as master's `evalᴰ`, and a block's
+  in `T` (`evB`), as an `act` arrow means; `ev-coh` proves they agree (as `Grade.blk-coh` does for the
+  core). The IR's ν means the core's `Nuᵐ` (the Spec's `νM act`); `in-ν` is Lambek's inverse (`inν`, whose
+  observation is the layer given).
+* **The translation, faithful**:
+  * `curry`: the environment moves into the closure's cell (`llamω`) and is copied in per call
+    (`copyIn`), since the IR's body owns it;
+  * `apply`: the closure is applied while lent (`bev`), then dropped;
+  * `Ana`: the environment moves into the coalgebra's cell, beside the seed (`lunf`);
+  * `Out`: `lout`;
+  * `in-ν`: an unfold whose seeds are a layer still to give or a ν to observe (`InS F = F (ν F) + ν F`):
+    the layer is given as it is, a ν observed once and its layer given. (Observing the children while
+    building the ν would run their coalgebras early, so the meaning would differ.)
+* **★ The theorem is up to a LOGICAL RELATION** (`Pass.V`). A computation returning a function or a ν
+  cannot be compared by `≡` (no function extensionality; a ν is coinductive). So `pass-ok` says: related
+  inputs give computations bisimilar up to `V` (`Bisim._≈[_]_`). `V` relates arrows pointwise (related
+  arguments, related computations), ν's by a coinductive BISIMULATION (each observation, the same calls and
+  related layers: `VNu`), and first-order values by `≡`. An unfold is related to a ν when each seed's block
+  is related to the ν's observation (`Sim.ana-sim`, guarded corecursion like `anaN`); `ana-V` and `inν-V`
+  are its two uses.
+* **First-order programs keep the plain statement**: on flat types `V` is `≡` (`Vf≡`, `Vf-refl`), so
+  `pass-okᶠ` gives `≈`, which `Whole` uses unchanged.
+* **Bisimilarity moved to `LinCore.Bisim`**, with the relational form and `TR` (one block, up to a
+  relation), so that `Pass` can use `Grade`.
+* **Example §23**: an IR program with a closure, an unfold and `in-ν`, compiled, run, sound against the
+  IR's meaning (`whole-sound`), and leak-free. Its machine instance is not spelled out (normalising it
+  exceeds the type-checker's heap); `machine-noleak` covers it as every run.
+* **Not yet**: the IR's `Call` (D409 part 2: a label or inlined).
+
 ## D410 — A MODEL MACHINE: CODE, FRAMES IN HEAP BLOCKS, A SIMULATION BY THE RUN (2026-11-11)
 
 **Proposed** (made unattended; for the user's review). Worked out in `Spikes/LinCore/Machine.agda` (plan
