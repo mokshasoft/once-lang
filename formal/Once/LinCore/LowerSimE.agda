@@ -41,3 +41,33 @@ ret-step : ∀ prog (fs : FlatState) b {pc rest} → fret fs ≡ pc ∷ rest
          → flat-exec-instr (instr-ctrl (c-ret b)) prog fs
            ≡ record fs { falloc = leave-frame (falloc fs) ; fpc = pc ; fret = rest }
 ret-step prog fs b e = cong (λ r → do-ret r fs) e
+
+------------------------------------------------------------------------
+-- ★ The callee's frame is not the caller's (nor any frame above it), and
+-- clearing it leaves every other frame alone.
+------------------------------------------------------------------------
+
+open import Once.CCC.FrameSemantics using (module FrameSemantics)
+open FrameSemantics FS using (Frame; shift-frame; _≺_; ≺-irrefl; shift-≺; shift-below; _≟F_)
+open import Once.CCC.Machine.SMCore using (StackMem; module MemOps; module AllocState)
+open MemOps {FS} using (clear-frame)
+open import Data.Nat using (_<_; s≤s; z≤n)
+open import Relation.Nullary using (¬_; yes; no)
+open import Data.Empty using (⊥-elim)
+
+-- a call's callee frame: one slot down, then its budget
+callee-frame : Frame → ℕ → Frame
+callee-frame cf b = shift-frame (shift-frame cf 1) b
+
+callee-below : ∀ cf b → callee-frame cf b ≺ cf
+callee-below cf b = shift-below b (shift-≺ cf 1 (s≤s z≤n))
+
+callee-≢ : ∀ cf b → ¬ callee-frame cf b ≡ cf
+callee-≢ cf b e = ≺-irrefl (subst′ e (callee-below cf b))
+  where subst′ : ∀ {f g} → f ≡ g → f ≺ cf → g ≺ cf
+        subst′ refl p = p
+
+clear-other : ∀ (mem : StackMem FS) f b f′ k → ¬ f ≡ f′ → clear-frame mem f b f′ k ≡ mem f′ k
+clear-other mem f b f′ k ne with f ≟F f′
+... | yes e = ⊥-elim (ne e)
+... | no  _ = refl
