@@ -96,3 +96,39 @@ module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   vw-len (vct p)         = vw-len p
   vw-len (vfn _ _ _ p c) = refl
   vw-len (vnu _ _ _ p c) = refl
+
+  ----------------------------------------------------------------------
+  -- ★ A VALUE'S WORDS STAND while its cells' blocks do: the heap may change
+  -- anywhere else (a move, a fresh cell, another value's cell).
+  ----------------------------------------------------------------------
+
+  At-frame : ∀ {rd rd′ : HeapLocation → Maybe W} {j o ws}
+           → (∀ k → rd′ (cellLoc j k) ≡ rd (cellLoc j k)) → At rd j o ws → At rd′ j o ws
+  At-frame {ws = []}     e tt      = tt
+  At-frame {o = o} {ws = w ∷ ws} e (r , a) = trans (e o) r , At-frame e a
+
+  private
+    lft : ∀ {a b} → 1 Data.Nat.≤ a → 1 Data.Nat.≤ a + b
+    lft {a} {b} p = Data.Nat.Properties.≤-trans p (Data.Nat.Properties.m≤m+n a b)
+      where import Data.Nat.Properties
+    rgt : ∀ {a b} → 1 Data.Nat.≤ b → 1 Data.Nat.≤ a + b
+    rgt {a} {b} p = Data.Nat.Properties.≤-trans p (Data.Nat.Properties.m≤n+m b a)
+      where import Data.Nat.Properties
+    self : ∀ j n → 1 Data.Nat.≤ δ j j + n
+    self j n = Data.Nat.Properties.≤-trans (Data.Nat.Properties.≤-reflexive (sym (δ-same j))) (Data.Nat.Properties.m≤m+n (δ j j) n)
+      where import Data.Nat.Properties
+
+  vw-frame : ∀ {rd rd′ : HeapLocation → Maybe W} {A} {v : MV A} {ws} → VW rd v ws
+           → (∀ i k → 1 Data.Nat.≤ cnt v i → rd′ (cellLoc i k) ≡ rd (cellLoc i k)) → VW rd′ v ws
+  vw-frame vone h = vone
+  vw-frame (vpair p q) h = vpair (vw-frame p (λ i k c → h i k (lft c))) (vw-frame q (λ i k c → h i k (rgt c)))
+  vw-frame (vinl p e) h = vinl (vw-frame p h) e
+  vw-frame (vinr p e) h = vinr (vw-frame p h) e
+  vw-frame vbase h = vbase
+  vw-frame (vmu {i = j} {v = v} p c) h =
+    vmu (vw-frame p (λ i k c′ → h i k (rgt {a = δ j i} c′))) (At-frame (λ k → h j k (self j (cnt v j))) c)
+  vw-frame (vct p) h = vct (vw-frame p h)
+  vw-frame (vfn {i = j} {x = x} cb cc cf p c) h =
+    vfn cb cc cf (vw-frame p (λ i k c′ → h i k (rgt {a = δ j i} c′))) (At-frame (λ k → h j k (self j (cnt x j))) c)
+  vw-frame (vnu {i = j} {p = q} co cc cf p c) h =
+    vnu co cc cf (vw-frame p (λ i k c′ → h i k (rgt {a = δ j i} c′))) (At-frame (λ k → h j k (self j (cnt q j))) c)
