@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.AllocRun — plan 0.146 A17: A LEGAL RUN NEVER MAKES THE ALLOCATOR
+-- Once.LinCore.AllocRun — plan 0.146 A17: A LEGAL RUN NEVER MAKES THE ALLOCATOR
 -- FAIL.
 --
 -- Each size class follows the run's events of its size (`ops`): a cell born
@@ -14,7 +14,7 @@
 -- when the heap holds it, and the pool's stack of temporaries is as long as
 -- the ledger counts.
 --
--- ★ §4 (D411 part 2): every size at once, in ONE region (`LinCore.Region`):
+-- ★ §4 (D411 part 2): every size at once, in ONE region (`Once.LinCore.Region`):
 -- a legal run drives the region from empty without a failed step, its blocks
 -- of every size lie apart, and the words it uses are at most `Σ k · peakₖ`
 -- over the program's sizes (`in-one-region`).
@@ -33,19 +33,19 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≤_; z≤n; s≤s; _�
 open import Data.Nat.Properties using (+-identityʳ; +-comm)
 open import Data.List using (List; []; _∷_; _++_; length; concatMap)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import LinCore.Flat using (FTy)
-import LinCore.Alloc as A
-import LinCore.Region as R
+open import Once.LinCore.Flat using (FTy)
+import Once.LinCore.Alloc as A
+import Once.LinCore.Region as R
 open import Data.Sum using (inj₁; inj₂)
 
-module LinCore.AllocRun
+module Once.LinCore.AllocRun
   (Base : Set) (⟦_⟧b : Base → Set)
   (Sig : Set) (sdom scod : Sig → FTy Base)
   (bw : Base → ℕ)
   where
 
-open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import LinCore.Events Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.Events Base ⟦_⟧b Sig sdom scod bw
 
 ------------------------------------------------------------------------
 -- 1. A size class's operations, from the run's events.
@@ -257,7 +257,7 @@ never-fails : ∀ t → OK t (λ _ → 0) → TLeg t → ∀ k → Σ A.Pool λ 
 never-fails t ok tl k = along k t ok tl A.inv-empty (link₀ k)
 
 ------------------------------------------------------------------------
--- 4. ★ ONE REGION FOR EVERY SIZE (D411 part 2, `LinCore.Region`).
+-- 4. ★ ONE REGION FOR EVERY SIZE (D411 part 2, `Once.LinCore.Region`).
 ------------------------------------------------------------------------
 
 -- the run's events, as operations on the region: each on its own size

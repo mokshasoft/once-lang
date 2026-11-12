@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Total — plan 0.146 A14: EVERY PROGRAM HAS A RUN.
+-- Once.LinCore.Total — plan 0.146 A14: EVERY PROGRAM HAS A RUN.
 --
 -- The memory theorems are about every run that exists; a term with no run
 -- would satisfy them vacuously. Here an evaluator BUILDS a run of every
@@ -34,16 +34,16 @@ open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_)
+open import Once.LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_)
 
-module LinCore.Total
+module Once.LinCore.Total
   (Base : Set) (⟦_⟧b : Base → Set)
   (Sig : Set) (sdom scod : Sig → FTy Base)
   (bw : Base → ℕ)
   where
 
-open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import LinCore.Events Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.Events Base ⟦_⟧b Sig sdom scod bw
 
 ------------------------------------------------------------------------
 -- 0. THE SAME VALUE, up to its cells' names: what a copy is of its original.

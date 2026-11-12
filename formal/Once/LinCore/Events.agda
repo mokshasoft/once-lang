@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Events — plan 0.146 A3: what the linear core does to MEMORY.
+-- Once.LinCore.Events — plan 0.146 A3: what the linear core does to MEMORY.
 --
 -- `NbEPLinCore.Lᶜ` is a denotation with a cost count: values are Agda values,
 -- and nothing is ever freed because nothing is ever allocated. Here a value is
@@ -52,24 +52,24 @@ open import Data.List.Properties using (foldl-++; ++-identityʳ)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All as All
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
-open import LinCore.Free
+open import Once.LinCore.Free
   using (_≼_; []≼; ∷≼; Weave; w-[]; w-run; w-tmp; Along)
-open import LinCore.Free using (cmap-++; cmap-≼; cmap-weave; cmap-nil; foldl-weave; Along-++; Along-≼; Along-weave)
+open import Once.LinCore.Free using (cmap-++; cmap-≼; cmap-weave; cmap-nil; foldl-weave; Along-++; Along-≼; Along-weave)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (subst; _≢_)
-open import LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_)
+open import Once.LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_)
 
-module LinCore.Events
+module Once.LinCore.Events
   (Base : Set) (⟦_⟧b : Base → Set)
   (Sig : Set) (sdom scod : Sig → FTy Base)
   -- ★ A12: how many words a base value takes (`Spec.ABI`: one on every target)
   (bw : Base → ℕ)
   where
 
-open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import LinCore.Bisim Base ⟦_⟧b Sig sdom scod using (Bl; ≈ret; ≈step; ≈call; ≈halt; block≈)
-open import LinCore.Grade Base ⟦_⟧b Sig sdom scod using (blk-coh; obs-coh)
+open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.Bisim Base ⟦_⟧b Sig sdom scod using (Bl; ≈ret; ≈step; ≈call; ≈halt; block≈)
+open import Once.LinCore.Grade Base ⟦_⟧b Sig sdom scod using (blk-coh; obs-coh)
 
 -- ★ D405: every statement is over the program's label table `ds`
 variable
@@ -631,7 +631,10 @@ RB-Bl ≈ret      b-ret      = b-ret
 RB-Bl (≈step q) (b-next h) = b-next (RB-Bl (block≈ q) h)
 RB-Bl (≈call f) (b-call h) = b-call (RB-Bl (f _) h)
 RB-Bl ≈halt     b-halt     = b-halt
-RB-Bl _         b-cut      = b-cut
+RB-Bl ≈ret      b-cut      = b-cut
+RB-Bl (≈step _) b-cut      = b-cut
+RB-Bl (≈call _) b-cut      = b-cut
+RB-Bl ≈halt     b-cut      = b-cut
 
 -- ★ a body at its grade: a path through its computation is a path through
 -- its graded meaning (at `act`, the block, embedded: `Grade.blk-coh`)

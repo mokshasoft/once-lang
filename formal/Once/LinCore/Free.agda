@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Free — plan 0.146 A14½: THE FREE MONOID, as traces use it.
+-- Once.LinCore.Free — plan 0.146 A14½: THE FREE MONOID, as traces use it.
 --
 -- A trace is a word in the free monoid on events (`List`, `++`, `[]`). Every
 -- consumer of traces is given on ONE event and lifted by the free monoid's
@@ -30,7 +30,7 @@ open import Data.List.Properties using (++-assoc)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 
-module LinCore.Free where
+module Once.LinCore.Free where
 
 private
   variable

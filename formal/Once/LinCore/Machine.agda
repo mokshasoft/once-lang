@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Machine — plan 0.146 A16 (D410): A MODEL MACHINE, AND THE
+-- Once.LinCore.Machine — plan 0.146 A16 (D410): A MODEL MACHINE, AND THE
 -- SIMULATION.
 --
 -- A stack machine with CODE: instructions over two stacks — the OPERANDS
@@ -12,7 +12,7 @@
 -- instruction. An environment slot is a view (`vw`) or a lend's (`ln`), which
 -- owns the value lent beside the view until `eunlend` hands it back; which
 -- is which the lowering knows, and the machine reads only the view (`see`).
--- `LinCore.Held` proves what every reachable configuration holds. The lowering (`comp`) is continuation-passing: a term is
+-- `Once.LinCore.Held` proves what every reachable configuration holds. The lowering (`comp`) is continuation-passing: a term is
 -- compiled in front of the code that follows it.
 --
 -- Two generators run INSIDE A FRAME (`enter` … `leave`): a fold, node by node,
@@ -50,19 +50,19 @@ open import Data.List.Properties using (++-assoc; ++-identityʳ; map-++)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Relation.Nullary using (yes; no)
-open import LinCore.Flat using (FTy)
-open import LinCore.Free
+open import Once.LinCore.Flat using (FTy)
+open import Once.LinCore.Free
   using (_≼_; []≼; ∷≼; ++-≼; ≼-trans; ≼-refl; Weave; w-[]; w-run; w-tmp; w-++; w-self; weave-pre; Along-++)
 
-module LinCore.Machine
+module Once.LinCore.Machine
   (Base : Set) (⟦_⟧b : Base → Set)
   (Sig : Set) (sdom scod : Sig → FTy Base)
   (bw : Base → ℕ)
   where
 
-open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import LinCore.Events Base ⟦_⟧b Sig sdom scod bw
-open import LinCore.Temps Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.Events Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.Temps Base ⟦_⟧b Sig sdom scod bw
 
 ------------------------------------------------------------------------
 -- 1. THE MACHINE.
@@ -507,6 +507,8 @@ mutual
   Plain (r-iter r stopped)              = Plain r
   Plain (r-cut r q)                     = Plain r
   Plain (r-tmp r w p)                   = Plain r
+  -- every other rule has no sub-run, or none that holds a fold
+  {-# CATCHALL #-}
   Plain _                               = ⊤
 
   PlainM : ∀ {Γ} {ds : Defs Γ} {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t}
@@ -519,6 +521,8 @@ mutual
   PlainM (m-pair r (go-on (fm-gives r′)))   = PlainM r × PlainM r′
   PlainM (m-pair r (go-on (fm-stop r′)))    = PlainM r × PlainM r′
   PlainM (m-pair r stopped)                 = PlainM r
+  -- the constant positions: no sub-run
+  {-# CATCHALL #-}
   PlainM _                                  = ⊤
 
 look-body : ∀ {Γ Δ l g X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg once g X A B} {ds′ : Defs Δ} {b : LTm Δ (X ⊗t A) B} {γ : Gd g b}

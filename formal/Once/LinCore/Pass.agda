@@ -2,12 +2,12 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Pass — plan 0.146 A15 (D409): THE PASS.
+-- Once.LinCore.Pass — plan 0.146 A15 (D409): THE PASS.
 --
 -- A copy of `Once.IR`'s constructors, their meaning shaped as master's
 -- `evalᴰ` (`Once.Denotation.DenotTrace`: a computation in `T∞`), the
 -- translation into the linear core, and the theorem: the translation MEANS
--- THE SAME, up to bisimilarity (`LinCore.Bisim`).
+-- THE SAME, up to bisimilarity (`Once.LinCore.Bisim`).
 --
 -- Part 1: the first-order constructors. Part 2 (D409 part 3): `Call`, a
 -- direct call of an earlier definition of the program (a label of the core;
@@ -42,16 +42,16 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Relation.Binary.Pointwise using (Pointwise)
   renaming (inj₁ to ⊎₁; inj₂ to ⊎₂)
 open import Data.Unit using (⊤; tt)
-open import LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_)
+open import Once.LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_)
 
-module LinCore.Pass
+module Once.LinCore.Pass
   (Base : Set) (⟦_⟧b : Base → Set)
   (Sig : Set) (sdom scod : Sig → FTy Base)
   where
 
-open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import LinCore.Bisim Base ⟦_⟧b Sig sdom scod
-open import LinCore.Grade Base ⟦_⟧b Sig sdom scod using (same; ret≈; bind≈; blk-coh; cata-coh)
+open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.Bisim Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.Grade Base ⟦_⟧b Sig sdom scod using (same; ret≈; bind≈; blk-coh; cata-coh)
 
 ------------------------------------------------------------------------
 -- 1. THE IR: master's constructors, over the core's types.

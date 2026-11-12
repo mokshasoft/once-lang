@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Flat — plan 0.146 A12: the FLAT types a SigOp takes and answers.
+-- Once.LinCore.Flat — plan 0.146 A12: the FLAT types a SigOp takes and answers.
 --
 -- The Spec's `Spec.Signature.BTy` (`unit void int float * +`), over a set of
 -- base words: what crosses the boundary to an Interpretation is a flat value,
@@ -13,7 +13,7 @@
 
 {-# OPTIONS --safe #-}
 
-module LinCore.Flat where
+module Once.LinCore.Flat where
 
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤)

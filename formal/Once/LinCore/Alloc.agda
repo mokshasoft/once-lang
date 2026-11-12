@@ -2,11 +2,11 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Alloc — plan 0.146 A17 (D411): ONE SIZE CLASS'S POOL.
+-- Once.LinCore.Alloc — plan 0.146 A17 (D411): ONE SIZE CLASS'S POOL.
 --
 -- A pool of size `k` (free lists per size, D403) numbers its blocks from 0;
 -- the pool holds blocks `0 … top-1`, and where each lies in the one region
--- is `LinCore.Region`'s (`addr k j`: the region gives a growing pool the next
+-- is `Once.LinCore.Region`'s (`addr k j`: the region gives a growing pool the next
 -- `k` words at its top). The pool follows the run's events of its size: a
 -- cell born takes the lowest free block below the top, or the top grows by
 -- one; a cell freed frees its block; a temporary (a frame) likewise, newest
@@ -21,13 +21,13 @@
 --   * ★ the pool grows only when it is FULL — every block below the top
 --     holds a live cell or a live temporary of its own
 --     (`grows-only-when-full`), and after growing it is full again
---     (`grow-full`). `LinCore.Region` makes this the space claim.
+--     (`grow-full`). `Once.LinCore.Region` makes this the space claim.
 --
 -- Free lists per size cannot serve one size from another's freed blocks,
 -- so "a run runs out only when its live data does not fit" is false for
 -- them; no allocator that never moves a block can promise it (Robson 1974),
 -- and moving blocks is a collector (GOAL.md excludes it). The claim is per
--- size's peak (D411 part 2, decided: `LinCore.Region`).
+-- size's peak (D411 part 2, decided: `Once.LinCore.Region`).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe --guardedness #-}
@@ -47,7 +47,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 
-module LinCore.Alloc where
+module Once.LinCore.Alloc where
 
 ------------------------------------------------------------------------
 -- 1. THE STATE of one size class.

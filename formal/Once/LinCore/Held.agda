@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Held — plan 0.146 A16 (D410 amended): NO LEAK AS A SAFETY CLAIM.
+-- Once.LinCore.Held — plan 0.146 A16 (D410 amended): NO LEAK AS A SAFETY CLAIM.
 --
 -- What a configuration of the machine HOLDS: its operands, and the value each
 -- lend's slot keeps until it hands it back (`ln`). The other slots are views,
@@ -35,17 +35,17 @@ open import Data.Nat.Properties
   using (≤-refl; ≤-trans; ≤-reflexive; ≤-antisym; m≤m+n; m≤n+m; m∸n≤m; 0∸n≡0; +-comm; suc-injective)
 open import Data.Nat.Tactic.RingSolver using (solve-∀)
 open import Data.List using (List; []; _∷_)
-open import LinCore.Flat using (FTy)
+open import Once.LinCore.Flat using (FTy)
 
-module LinCore.Held
+module Once.LinCore.Held
   (Base : Set) (⟦_⟧b : Base → Set)
   (Sig : Set) (sdom scod : Sig → FTy Base)
   (bw : Base → ℕ)
   where
 
-open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import LinCore.Events Base ⟦_⟧b Sig sdom scod bw
-open import LinCore.Machine Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.Events Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.Machine Base ⟦_⟧b Sig sdom scod bw
 
 ------------------------------------------------------------------------
 -- 1. WHAT A CONFIGURATION HOLDS.

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Temps — plan 0.146 A13 (D407): TEMPORARIES.
+-- Once.LinCore.Temps — plan 0.146 A13 (D407): TEMPORARIES.
 --
 -- The lowering may allocate heap blocks the run does not have (a fold's work
 -- stack), if the same generator frees them before it finishes and nothing in
@@ -36,7 +36,7 @@ open import Data.List using (List; []; _∷_; _++_; concatMap)
 open import Data.List.Properties using (++-monoid; foldl-++)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All as All
-open import LinCore.Free
+open import Once.LinCore.Free
   using (_≼_; []≼; ∷≼; Weave; w-[]; w-run; w-tmp; Along; Along-++; Along-≼; Along-pres; Along-all;
          cmap-++; cmap-≼; cmap-weave; cmap-id; cmap-All; foldl-pres; foldl-all)
 open import Algebra using (Monoid)
@@ -46,16 +46,16 @@ open import Relation.Binary.PropositionalEquality using (_→-setoid_)
 open import Level using (0ℓ; _⊔_)
 import Function.Endo.Setoid
 open import Relation.Nullary using (yes; no)
-open import LinCore.Flat using (FTy)
+open import Once.LinCore.Flat using (FTy)
 
-module LinCore.Temps
+module Once.LinCore.Temps
   (Base : Set) (⟦_⟧b : Base → Set)
   (Sig : Set) (sdom scod : Sig → FTy Base)
   (bw : Base → ℕ)
   where
 
-open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import LinCore.Events Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.Events Base ⟦_⟧b Sig sdom scod bw
 
 ------------------------------------------------------------------------
 -- 1. ERASURE: a run without its temporaries is a run.
