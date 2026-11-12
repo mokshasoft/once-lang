@@ -128,10 +128,12 @@ module Lowering (U : Univ)
     in mvSS t tmp wA ++ mvSS (t + wA) t wB ++ mvSS tmp (t + wB) wA
   lowP ds (linl {A = A} {B = B}) φ S p =
     let bot = Tp φ S ; M = wsz A ⊔ wsz B
-    in mvSS (bot ∸ wsz A) (bot ∸ M) (wsz A) ++ instr-load-tag-lit 0 ∷ store-at-slot (bot ∸ suc M) ∷ []
+    in mvSS (bot ∸ wsz A) (bot ∸ M) (wsz A) ++ instr-load-tag-lit 0 ∷ store-at-slot (bot ∸ suc M)
+       ∷ stores (bot ∸ (M ∸ wsz A)) (M ∸ wsz A)
   lowP ds (linr {A = A} {B = B}) φ S p =
     let bot = Tp φ S ; M = wsz A ⊔ wsz B
-    in mvSS (bot ∸ wsz B) (bot ∸ M) (wsz B) ++ instr-load-tag-lit 1 ∷ store-at-slot (bot ∸ suc M) ∷ []
+    in mvSS (bot ∸ wsz B) (bot ∸ M) (wsz B) ++ instr-load-tag-lit 1 ∷ store-at-slot (bot ∸ suc M)
+       ∷ stores (bot ∸ (M ∸ wsz B)) (M ∸ wsz B)
   lowP ds (lIn {F = F}) φ S p =
     let bot = Tp φ S ; wL = wsz (LF∙ F (μt F))
     in instr-alloc-heap wL ∷ mov-to-input ∷ mvSP (bot ∸ wL) 0 wL ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ []
