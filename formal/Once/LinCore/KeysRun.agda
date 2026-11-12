@@ -83,14 +83,20 @@ module Keep (U : Univ) where
   MIn : ∀ {sh} → Cfg sh → Set
   MIn (es ∥ os) = EIn es × SIn os
 
+  -- a saved frame: its continuation and its configuration
   RIn : ∀ {U′ T} → Ret U′ T → Set
-  RIn []ʳ      = ⊤
-  RIn (k ∷ᶜ r) = CIn k × RIn r
-  RIn (k ∷ⁱ r) = CIn k × RIn r
+  RIn []ʳ             = ⊤
+  RIn (frm k es os r) = CIn k × EIn es × SIn os × RIn r
+  RIn (k ∷ⁱ r)        = CIn k × RIn r
 
   see-in : ∀ {E Es} (es : Slots (E ∷ Es)) → EIn es → VIn (see es)
   see-in (vw e es)   (v , _)     = v
   see-in (ln e x es) (v , w , _) = v , w
+
+  -- a called block's frame sees the caller's top view
+  topv-in : ∀ t {Es} (es : Slots (t ⊳ Es)) → EIn es → EIn (topv t es)
+  topv-in nothing  es E = tt
+  topv-in (just X) es E = see-in es E , tt
 
   -- what a view sees, through an equation
   seen : ∀ {E Es} {es : Slots (E ∷ Es)} {v : MV E} → see es ≡ v → EIn es → VIn v
@@ -192,8 +198,8 @@ module Keep (U : Univ) where
     keep (i-eapp eq) (_ , ck) R (E , os)        = ck , R , (seen eq E , E) , os
     keep i-epop   (_ , ck) R ((_ , E) , os)     = ck , R , E , os
     keep (i-eword _) (_ , ck) R (E , _ , os)    = ck , R , E , tt , os
-    keep i-call   (κ , ck) R M                  = blk κ , (ck , R) , M
-    keep i-ret    _ (ck , R) M                  = ck , R , M
+    keep (i-call {σ = σ} {es = es}) (κ , ck) R (E , a , os) = blk κ , (ck , E , os , R) , topv-in (top σ) es E , a , tt
+    keep i-ret    _ (ck , E , os , R) (_ , b , _) = ck , R , E , b , os
     keep i-reti   _ (ck , R) M                  = ck , R , M
     keep i-loop   (cb , ck) R M                 = cb , ((ck , cb , ck) , R) , M
     keep i-icall  (_ , ck) R (E , ((l , x) , a) , os) = (proj₁ l , ck) , R , E , (x , a) , os

@@ -11,9 +11,10 @@
 --   * a closure's body (the `Lam` the run's closure value holds is its code
 --     word), a fold of an algebra, an observation of a ν, and the copy and
 --     the free of a type;
---   * a block's code is a FUNCTION of its key, polymorphic in the rest of
---     both stacks: compiled once, called from anywhere, in a frame of its
---     own (A16's `enter … leave`); a fold's block calls itself on each child;
+--   * a block's code is a FUNCTION of its key, at a closed shape (D415):
+--     compiled once, called from anywhere, in a frame of its own (A16's
+--     `enter … leave`): a configuration holding the caller's top view and the
+--     argument; a fold's block calls itself on each child;
 --   * the values are the run's (`Events.MV`): a cell's code word is its
 --     `Lam`, so copying or freeing a closure or a ν dispatches on what its
 --     cell holds;
@@ -132,9 +133,15 @@ data Codeᴵ where
          → Codeᴵ ((E₁ ⊕t E₂) ∷ Es ∣ S) T
   halted : ∀ {sh T} → Codeᴵ sh T
 
--- ★ a block: its signature's code, polymorphic in the rest of both stacks
+-- ★ a block: its signature's code, at a CLOSED shape (D415): a call runs it
+-- in a configuration of its own, the caller's top view and the argument
 Block : BSig → Set
-Block σ = ∀ {Es S} → Codeᴵ (top σ ⊳ Es ∣ dom σ ∷ S) (top σ ⊳ Es ∣ cod σ ∷ S)
+Block σ = Codeᴵ (top σ ⊳ [] ∣ dom σ ∷ []) (top σ ⊳ [] ∣ cod σ ∷ [])
+
+-- what a called block sees of the caller's environment: its top view
+topv : ∀ t {Es} → Slots (t ⊳ Es) → Slots (t ⊳ [])
+topv nothing  es = []ᵉ
+topv (just E) es = vw (see es) []ᵉ
 
 ------------------------------------------------------------------------
 -- 3. THE COMPILER: A16's `comp`, calling blocks.

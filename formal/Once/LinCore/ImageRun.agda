@@ -41,11 +41,13 @@ open import Once.LinCore.Image fmt ans bw
 -- 1. THE RETURN STACK: what runs when the current code ends.
 ------------------------------------------------------------------------
 
-infixr 5 _∷ᶜ_ _∷ⁱ_
+infixr 5 _∷ⁱ_
 data Ret : Sh → Sh → Set where
   []ʳ  : ∀ {T} → Ret T T
-  -- a call's continuation: its frame closes when it is resumed
-  _∷ᶜ_ : ∀ {sh U T} → Codeᴵ sh U → Ret U T → Ret sh T
+  -- ★ a call's (D415): the caller's continuation and its configuration below
+  -- the argument; the callee's frame closes when it is resumed
+  frm  : ∀ {t Es B S U T} → Codeᴵ (t ⊳ Es ∣ B ∷ S) U → Slots (t ⊳ Es) → Stk S → Ret U T
+       → Ret (t ⊳ [] ∣ B ∷ []) T
   -- a loop's: no frame
   _∷ⁱ_ : ∀ {sh U T} → Codeᴵ sh U → Ret U T → Ret sh T
 
@@ -107,11 +109,15 @@ data StepI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg
            → StepI (epop ⨾ k) r (vw e es ∥ os) n [] k r (es ∥ os) n
   i-eword  : ∀ {b Es S U} {k : Codeᴵ (Bt b ∷ Es ∣ Bt b ∷ S) U} {r : Ret U T} {x} {es : Slots (Bt b ∷ Es)} {os n}
            → see es ≡ mbase x → StepI (eword ⨾ k) r (es ∥ mone ∷ˢ os) n [] k r (es ∥ mbase x ∷ˢ os) n
-  -- ★ a call opens a frame; reaching the end of a block returns
-  i-call   : ∀ {σ Es S U} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) U} {r : Ret U T} {m n}
-           → StepI (call κ ⨾ k) r m n (tmp (tnew fsz) ∷ []) (blockᴵ κ) (k ∷ᶜ r) m n
-  i-ret    : ∀ {sh U} {k : Codeᴵ sh U} {r : Ret U T} {m n}
-           → StepI end (k ∷ᶜ r) m n (tmp (tdel fsz) ∷ []) k r m n
+  -- ★ a call opens a frame of its own (D415): the caller's top view and the
+  -- argument; reaching the end of a block returns its result to the caller
+  i-call   : ∀ {σ Es S U} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) U} {r : Ret U T}
+               {es : Slots (top σ ⊳ Es)} {a : MV (dom σ)} {os : Stk S} {n}
+           → StepI (call κ ⨾ k) r (es ∥ a ∷ˢ os) n (tmp (tnew fsz) ∷ [])
+                   (blockᴵ κ) (frm k es os r) (topv (top σ) es ∥ a ∷ˢ []ˢ) n
+  i-ret    : ∀ {t Es B S U} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots (t ⊳ Es)} {os : Stk S}
+               {e′ : Slots (t ⊳ [])} {b : MV B} {n}
+           → StepI end (frm k es os r) (e′ ∥ b ∷ˢ []ˢ) n (tmp (tdel fsz) ∷ []) k r (es ∥ b ∷ˢ os) n
   i-reti   : ∀ {sh U} {k : Codeᴵ sh U} {r : Ret U T} {m n}
            → StepI end (k ∷ⁱ r) m n [] k r m n
   -- ★ the loop: the round, then what it says

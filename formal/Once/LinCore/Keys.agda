@@ -422,7 +422,7 @@ module In (U : Univ) where
   ----------------------------------------------------------------------
 
   BIn : AKey → Set
-  BIn (σ , κ) = ∀ {Es S} → CIn (blockᴵ κ {Es} {S})
+  BIn (σ , κ) = CIn (blockᴵ κ)
 
   travI-in : ∀ {Γ} {ds : Defs Γ} {F E A} {alg : Tm Γ E (LF∙ F A) A} G {Es S T} {k : Codeᴵ (E ∷ Es ∣ LF∙ G A ∷ S) T}
            → (_ , kfold ds F alg) ∈ allK U → CIn k → CIn (travᴵ ds F alg G k)
