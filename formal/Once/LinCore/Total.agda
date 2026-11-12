@@ -97,13 +97,13 @@ copy-~ (minl a) n with copy a n | copy-~ a n
 copy-~ (minr b) n with copy b n | copy-~ b n
 ... | (b′ , n₁ , t₁) | pb = ~inr pb
 copy-~ (mbase x) n = ~base
-copy-~ (mmu i v) n with copy v (suc n) | copy-~ v (suc n)
+copy-~ (mmu i v) n with copy v n | copy-~ v n
 ... | (v′ , n₁ , t₁) | pv = ~mu pv
 copy-~ (mct x) n with copy x n | copy-~ x n
 ... | (x′ , n₁ , t₁) | px = ~ct px
-copy-~ (mfn i c x) n with copy x (suc n) | copy-~ x (suc n)
+copy-~ (mfn i c x) n with copy x n | copy-~ x n
 ... | (x′ , n₁ , t₁) | px = ~fn px
-copy-~ (mnu i p) n with copy p (suc n) | copy-~ p (suc n)
+copy-~ (mnu i p) n with copy p n | copy-~ p n
 ... | (p′ , n₁ , t₁) | pp = ~nu pp
 
 -- ★ a WORLD: any machine that answers SigOps (its state may be the whole
