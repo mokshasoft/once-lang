@@ -34,21 +34,13 @@ open import LinCore.Events Base ⟦_⟧b Sig sdom scod bw
 open import LinCore.Total Base ⟦_⟧b Sig sdom scod bw
 open import LinCore.Pass Base ⟦_⟧b Sig sdom scod
 
--- a path through a computation is a path through any bisimilar one
-RB-Bl : ∀ {X} {b b′} {p} {r : Res X} → RB b p r → Bl b b′ → RB b′ p r
-RB-Bl b-ret      ≈ret      = b-ret
-RB-Bl (b-next h) (≈step q) = b-next (RB-Bl h (block≈ q))
-RB-Bl (b-call h) (≈call f) = b-call (RB-Bl h (f _))
-RB-Bl b-halt     ≈halt     = b-halt
-RB-Bl b-cut      _         = b-cut
-
 module _ (W : World) where
   -- ★ a closed IR program, compiled and run: what the world saw is a path
   -- through what the IR program means
   whole-sound : ∀ (k : ℕ) (f : IR One One) σ
               → RB (block (ev f tt)) (ios (Ran.trace (exec W ε k (tr f) mone mone 0 σ)))
                    (erO (Ran.out (exec W ε k (tr f) mone mone 0 σ)))
-  whole-sound k f σ = RB-Bl (sound (Ran.run (exec W ε k (tr f) mone mone 0 σ))) (block≈ (pass-ok f tt))
+  whole-sound k f σ = RB-Bl (block≈ (pass-ok f tt)) (sound (Ran.run (exec W ε k (tr f) mone mone 0 σ)))
 
 -- ★ and every run of it that finishes leaks nothing
 whole-noleak : ∀ (f : IR One One) {n′ t} → Run ε (tr f) mone mone 0 (gives mone n′) t

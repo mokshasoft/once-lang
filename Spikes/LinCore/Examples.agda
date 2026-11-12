@@ -680,7 +680,7 @@ two-sizes = refl
 list-prog : LTm ε One One
 list-prog = lzero ∘l (liter list-round list-blk ∘l (build ∘l lconst 5))
 
-list-on-machine = machine-legal (Ran.run (exec world ε 2 list-prog mone mone 0 tt)) (_ , ((_ , (_ , refl)) , _))
+list-on-machine = machine-legal (Ran.run (exec world ε 2 list-prog mone mone 0 tt)) _
 
 -- ★ where the machine stands, the events it made to get there, and the
 -- theorem of them: legal, and the live cells exactly those it holds
@@ -693,3 +693,62 @@ stands with list-on-machine
 list-held : (Owned (Σ.fst (Σ.snd stands)) (3 , 0) ≡ 0) × (Owned (Σ.fst (Σ.snd stands)) (3 , 3) ≡ 0)
           × (Owned (Σ.fst (Σ.snd stands)) (3 , 4) ≡ 1) × (Owned (Σ.fst (Σ.snd stands)) (3 , 5) ≡ 1)
 list-held = (refl , refl , refl , refl)
+
+------------------------------------------------------------------------
+-- 21. ★ D409 part 3: A FOLD INTO AN ARROW (the Spec's `⊢fold` at a function
+--     carrier). Folding the list [7, 5] builds a closure per node, each
+--     holding the one built before it: which body runs at each call is
+--     decided by the list, at run time, and no label table could name the
+--     chain's type. Applied to 0, it emits 7, then 5, counting up; every
+--     node and every closure cell is freed, by the run and on the machine.
+------------------------------------------------------------------------
+
+-- the carrier: a function on Ints whose call is a finite block
+IntFn : LTy
+IntFn = Fn once act (Bt int) (Bt int)
+
+-- nil: the identity
+fn-nil : LTm ε One IntFn
+fn-nil = llam lul k-lul
+
+-- cons x f: emit x, then f on the successor
+cons-body : LTm ε ((Bt int ⊗t IntFn) ⊗t Bt int) (Bt int)
+cons-body = lev ∘l (lid ⊗l lop succ) ∘l lul ∘l (lop emit ⊗l lid) ∘l lassoc
+
+fn-cons : LTm ε (Bt int ⊗t IntFn) IntFn
+fn-cons = llam cons-body (k-∘ k-ev (k-∘ (k-⊗ k-id k-op) (k-∘ k-lul (k-∘ (k-⊗ k-op k-id) k-assoc))))
+
+-- the list [7, 5]
+two-list : LTm ε One IntList
+two-list = lIn ∘l linr ∘l (lconst 7 ⊗l (build ∘l lconst 5)) ∘l ρl⁻
+
+-- fold it into a function, apply that to 0
+fn-prog : LTm ε One One
+fn-prog = drop ∘l lev ∘l (lid ⊗l lconst 0) ∘l ρl⁻ ∘l lcata ListF (lcase fn-nil fn-cons) ∘l two-list
+
+fn-run : Ran world ε fn-prog mone mone 0
+fn-run = exec world ε 0 fn-prog mone mone 0 tt
+
+-- its events: the list built (three 3-word nodes) and freed by the fold, a
+-- closure cell born per layer (nil's, one word: its code word; each cons's,
+-- three: code word, Int, the closure before it), then each freed by the
+-- indirect call that runs it, outermost first
+fn-events : trace-of-run (Ran.run fn-run)
+          ≡ alloc (3 , 0) ∷ alloc (3 , 1) ∷ alloc (3 , 2)
+          ∷ free (3 , 2) ∷ free (3 , 1) ∷ free (3 , 0)
+          ∷ alloc (1 , 3) ∷ alloc (3 , 4) ∷ alloc (3 , 5)
+          ∷ free (3 , 5) ∷ io emit 7 tt ∷ io succ 0 1
+          ∷ free (3 , 4) ∷ io emit 5 tt ∷ io succ 1 2
+          ∷ free (1 , 3) ∷ []
+fn-events = refl
+
+-- what the world saw
+fn-io : ios (Ran.trace fn-run) ≡ io-call emit 7 tt ∷ io-call succ 0 1 ∷ io-call emit 5 tt ∷ io-call succ 1 2 ∷ []
+fn-io = refl
+
+-- every cell freed: the list's nodes and the closures' cells
+fn-empty : ∀ i → play (Ran.trace fn-run) (λ _ → 0) i ≡ 0
+fn-empty = Σ.snd (noleak (Ran.run fn-run))
+
+-- and on the machine: the indirect calls, each in a frame, every cell freed
+fn-machine = machine-noleak (Ran.run fn-run) _

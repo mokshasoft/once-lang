@@ -125,6 +125,11 @@ data Ins : Sh → Sh → Set where
   epop    : ∀ {E Es S} → Ins (E ∷ Es ∣ S) (Es ∣ S)
   ecopy   : ∀ {E Es S} → Ins (E ∷ Es ∣ One ∷ S) (E ∷ Es ∣ E ∷ S)
   ehalt   : ∀ {Es} (s : Sig) {S} → Ins (Es ∣ ⌜ sdom s ⌝ ∷ S) (Es ∣ Zero ∷ S)
+  -- ★ D409 part 3, AN INDIRECT CALL: apply the closure on the operands (one
+  -- shot: free its cell), or the one the top view sees (many-use: read its
+  -- cell); its code word says which body runs, decided by the data
+  apply   : ∀ {Es g A B S} → Ins (Es ∣ (Fn once g A B ⊗t A) ∷ S) (Es ∣ B ∷ S)
+  eapply  : ∀ {Es g A B S} → Ins (Fn many g A B ∷ Es ∣ A ∷ S) (Fn many g A B ∷ Es ∣ B ∷ S)
   -- a fold's node, a loop's round: expanded when reached
   fold    : ∀ {Γ} (ds : Defs Γ) F {E A Es S} → Tm Γ E (LF∙ F A) A → Ins (E ∷ Es ∣ μt F ∷ S) (E ∷ Es ∣ A ∷ S)
   loop    : ∀ {Γ} (ds : Defs Γ) {E A B Es S} → Tm Γ E A (B ⊕t A) → Ins (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ B ∷ S)
@@ -178,6 +183,10 @@ mutual
   comp ds (lconst v) k     = prim ds (lconst v) ⨾ k
   comp ds (lop s) k        = prim ds (lop s) ⨾ k
   comp ds lzero k          = stuck ⨾ k
+  comp ds (llam b γ) k     = prim ds (llam b γ) ⨾ k
+  comp ds (llamω b γ) k    = prim ds (llamω b γ) ⨾ k
+  comp ds lev k            = apply ⨾ k
+  comp ds bev k            = eapply ⨾ k
 
   -- a one-shot label's body (nothing lent), compiled in place over its prefix
   body : ∀ {Γ l g X A B} (ds : Defs Γ) → Γ ∋[ l ] sg once g X A B → ∀ {Es S T}
@@ -252,6 +261,16 @@ data Step {T : Sh} : ∀ {sh sh′} → Code sh T → Cfg sh → ℕ → Trace �
                   (enter ⨾ trav ds F alg F (comp ds alg (leave ⨾ k))) (es ∥ v ∷ˢ os) n
   s-loop   : ∀ {Γ} {ds : Defs Γ} {E A B Es S} {f : Tm Γ E A (B ⊕t A)} {k : Code (E ∷ Es ∣ B ∷ S) T} {m n}
            → Step (loop ds f ⨾ k) m n [] (comp ds f (case k (loop ds f ⨾ k))) m n
+  -- ★ D409 part 3: the indirect call, to the code the closure's code word
+  -- names, compiled as a label's body is (in a frame, nothing lent)
+  s-apply  : ∀ {Es g X A B S} {k : Code (Es ∣ B ∷ S) T} {Δ} {ds′ : Defs Δ} {b : Tm Δ One (X ⊗t A) B} {γ : Gd g b}
+               {es i x a os n}
+           → Step (apply ⨾ k) (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) n (free i ∷ [])
+                  (enter ⨾ elift ⨾ comp ds′ b (epop ⨾ leave ⨾ k)) (es ∥ mpair x a ∷ˢ os) n
+  s-eapply : ∀ {Es g X A B S} {k : Code (Fn many g A B ∷ Es ∣ B ∷ S) T} {Δ} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b}
+               {i x} {es : Slots (Fn many g A B ∷ Es)} {os n}
+           → see es ≡ mfn i (cω ds′ b γ) x
+           → Step (eapply ⨾ k) (es ∥ os) n (peek i ∷ []) (enter ⨾ comp ds′ b (leave ⨾ epop ⨾ k)) (vw x es ∥ os) n
 
 infixr 5 _⟫_
 data Steps {T : Sh} : ∀ {sh sh′} → Code sh T → Cfg sh → ℕ → Trace → Code sh′ T → Cfg sh′ → ℕ → Set where
@@ -446,76 +465,82 @@ done∅ = out [] [] done w-[] bal∅
 -- 6. ★ THE SIMULATION.
 ------------------------------------------------------------------------
 
--- this lowering folds plainly; a fold that may rebuild in place (A8) is the
--- compiler's other choice
-isReuse : ∀ {Γ E A B} → Tm Γ E A B → Bool
-isReuse (lIn ∘l g) = true
-isReuse _          = false
-
+-- ★ THE RUNS THIS LOWERING FOLLOWS: every fold plain. A fold that rebuilds in
+-- place (A8, `r-cata-reuse`) is the compiler's other choice, which this
+-- lowering does not make. Stated of the run, not the term: a closure's body
+-- comes from the data (D409 part 3), and its run is part of the run.
 mutual
-  Frag : ∀ {Γ} (ds : Defs Γ) {E A B} → Tm Γ E A B → Set
-  Frag ds (f ∘l g)      = Frag ds f × Frag ds g
-  Frag ds (f ⊗l g)      = Frag ds f × Frag ds g
-  Frag ds (lcase f g)   = Frag ds f × Frag ds g
-  Frag ds (lcata F alg) = Frag ds alg × isReuse alg ≡ false
-  Frag ds (liter f φ)     = Frag ds f
-  Frag ds (lapp p)      = FragB ds p
-  Frag ds (lend b)      = Frag ds b
-  Frag ds (blift f)     = Frag ds f
-  Frag ds (bfst f)      = Frag ds f
-  Frag ds (bsnd f)      = Frag ds f
-  Frag ds (bcaseE f g)  = Frag ds f × Frag ds g
-  Frag ds (bout f)      = Frag ds f
-  Frag ds (bapp p)      = FragΩ ds p
-  Frag ds _             = ⊤
+  Plain : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n o t} → Run ds f e v n o t → Set
+  Plain (r-∘ rg (go-on rf))             = Plain rg × Plain rf
+  Plain (r-∘ rg stopped)                = Plain rg
+  Plain (r-⊗ rf (go-on (fm-gives rg)))  = Plain rf × Plain rg
+  Plain (r-⊗ rf (go-on (fm-stop rg)))   = Plain rf × Plain rg
+  Plain (r-⊗ rf stopped)                = Plain rf
+  Plain (r-case₁ r)                     = Plain r
+  Plain (r-case₂ r)                     = Plain r
+  Plain (r-app q r)                     = Plain r
+  Plain (r-cata rm (go-on ra))          = PlainM rm × Plain ra
+  Plain (r-cata rm stopped)             = PlainM rm
+  Plain (r-cata-reuse rm th)            = ⊥
+  Plain (r-lend (fm-gives r))           = Plain r
+  Plain (r-lend (fm-stop r))            = Plain r
+  Plain (r-lift r)                      = Plain r
+  Plain (r-fst r)                       = Plain r
+  Plain (r-snd r)                       = Plain r
+  Plain (r-caseE₁ r)                    = Plain r
+  Plain (r-caseE₂ r)                    = Plain r
+  Plain (r-out r)                       = Plain r
+  Plain (r-bapp q r)                    = Plain r
+  Plain (r-ev r)                        = Plain r
+  Plain (r-bev r)                       = Plain r
+  Plain (r-iter r (go-on done))         = Plain r
+  Plain (r-iter r (go-on (again rn)))   = Plain r × Plain rn
+  Plain (r-iter r stopped)              = Plain r
+  Plain (r-cut r q)                     = Plain r
+  Plain (r-tmp r w p)                   = Plain r
+  Plain _                               = ⊤
 
-  FragB : ∀ {Γ l g X A B} (ds : Defs Γ) → Γ ∋[ l ] sg once g X A B → Set
-  FragB (ds ▸ _)    (there p) = FragB ds p
-  FragB (ds ▸ b1 b _) here      = Frag ds b
-
-  FragΩ : ∀ {Γ l g X A B} (ds : Defs Γ) → Γ ∋[ l ] sg many g X A B → Set
-  FragΩ (ds ▸ _)    (there p) = FragΩ ds p
-  FragΩ (ds ▸ bω b _) here      = Frag ds b
+  PlainM : ∀ {Γ} {ds : Defs Γ} {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t}
+         → RunMap ds F alg e G x n o t → Set
+  PlainM (m-id r)                           = Plain r
+  PlainM (m-inl (fm-gives r))               = PlainM r
+  PlainM (m-inl (fm-stop r))                = PlainM r
+  PlainM (m-inr (fm-gives r))               = PlainM r
+  PlainM (m-inr (fm-stop r))                = PlainM r
+  PlainM (m-pair r (go-on (fm-gives r′)))   = PlainM r × PlainM r′
+  PlainM (m-pair r (go-on (fm-stop r′)))    = PlainM r × PlainM r′
+  PlainM (m-pair r stopped)                 = PlainM r
+  PlainM _                                  = ⊤
 
 look-body : ∀ {Γ Δ l g X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg once g X A B} {ds′ : Defs Δ} {b : LTm Δ (X ⊗t A) B} {γ : Gd g b}
           → Look ds p ds′ (b1 b γ) → ∀ {Es S T} (k : Code (One ∷ Es ∣ B ∷ S) T) → body ds p k ≡ comp ds′ b k
 look-body lk-here      k = refl
 look-body (lk-there q) k = look-body q k
 
-look-frag : ∀ {Γ Δ l g X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg once g X A B} {ds′ : Defs Δ} {b : LTm Δ (X ⊗t A) B} {γ : Gd g b}
-          → Look ds p ds′ (b1 b γ) → FragB ds p → Frag ds′ b
-look-frag lk-here      fr = fr
-look-frag (lk-there q) fr = look-frag q fr
-
 look-bodyω : ∀ {Γ Δ l g X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg many g X A B} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b}
            → Look ds p ds′ (bω b γ) → ∀ {Es S T} (k : Code (X ∷ Es ∣ B ∷ S) T) → bodyω ds p k ≡ comp ds′ b k
 look-bodyω lk-here      k = refl
 look-bodyω (lk-there q) k = look-bodyω q k
 
-look-fragω : ∀ {Γ Δ l g X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg many g X A B} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b}
-           → Look ds p ds′ (bω b γ) → FragΩ ds p → Frag ds′ b
-look-fragω lk-here      fr = fr
-look-fragω (lk-there q) fr = look-fragω q fr
-
 simM : ∀ {Γ} {ds : Defs Γ} {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x o n t}
-     → RunMap ds F alg e G x n o t → Frag ds alg → isReuse alg ≡ false
+     → (rm : RunMap ds F alg e G x n o t) → PlainM rm
      → ∀ {Es S T} (es : Slots (E ∷ Es)) → see es ≡ e → (os : Stk S) (k : Code (E ∷ Es ∣ LF∙ G A ∷ S) T)
      → SimR o (trav ds F alg G k) (es ∥ x ∷ˢ os) n t k es os
 
 -- ★ the machine runs the compiled code as the term runs, for every outcome;
 -- the environment's top slot shows the run's lent value
 sim : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v o n t}
-    → Run ds f e v n o t → Frag ds f
+    → (r : Run ds f e v n o t) → Plain r
     → ∀ {Es S T} (es : Slots (E ∷ Es)) → see es ≡ e → (os : Stk S) (k : Code (E ∷ Es ∣ B ∷ S) T)
     → SimR o (comp ds f k) (es ∥ v ∷ˢ os) n t k es os
 sim r-id fr es eq os k = done∅
-sim (r-∘ rg (go-on {o = o} rf)) (ff , fg) es eq os k = thenR o (sim rg fg es eq os _) (sim rf ff es eq os k)
-sim (r-∘ rg stopped) (ff , fg) es eq os k = P-[] (sim rg fg es eq os _)
-sim (r-⊗ {c = c} rf (go-on {u = a′} (fm-gives rg))) (ff , fg) es eq os k =
-  pre s-unpair (then (sim rf ff es eq (c ∷ˢ os) _) (pre s-swap (after (after (sim rg fg es eq (a′ ∷ˢ os) _) s-swap) s-pair)))
-sim (r-⊗ {c = c} rf (go-on {u = a′} (fm-stop rg))) (ff , fg) es eq os k =
-  preP s-unpair (thenP (sim rf ff es eq (c ∷ˢ os) _) (preP s-swap (sim rg fg es eq (a′ ∷ˢ os) _)))
-sim (r-⊗ {c = c} rf stopped) (ff , fg) es eq os k = P-[] (preP s-unpair (sim rf ff es eq (c ∷ˢ os) _))
+sim (r-∘ rg (go-on {o = o} rf)) (pg , pf) es eq os k = thenR o (sim rg pg es eq os _) (sim rf pf es eq os k)
+sim (r-∘ rg stopped) pg es eq os k = P-[] (sim rg pg es eq os _)
+sim (r-⊗ {c = c} rf (go-on {u = a′} (fm-gives rg))) (pf , pg) es eq os k =
+  pre s-unpair (then (sim rf pf es eq (c ∷ˢ os) _) (pre s-swap (after (after (sim rg pg es eq (a′ ∷ˢ os) _) s-swap) s-pair)))
+sim (r-⊗ {c = c} rf (go-on {u = a′} (fm-stop rg))) (pf , pg) es eq os k =
+  preP s-unpair (thenP (sim rf pf es eq (c ∷ˢ os) _) (preP s-swap (sim rg pg es eq (a′ ∷ˢ os) _)))
+sim (r-⊗ {c = c} rf stopped) pf es eq os k = P-[] (preP s-unpair (sim rf pf es eq (c ∷ˢ os) _))
 sim r-ρ     fr es eq os k = leaf (s-prim r-ρ) []
 sim r-ρ⁻    fr es eq os k = leaf (s-prim r-ρ⁻) []
 sim r-λ     fr es eq os k = leaf (s-prim r-λ) []
@@ -527,26 +552,26 @@ sim (r-dup {v = v} {n}) fr es eq os k = leaf (s-prim r-dup) (NoT-copy v n)
 sim (r-drop {v = v}) fr es eq os k = leaf (s-prim r-drop) (NoT-freeAll v)
 sim r-inl   fr es eq os k = leaf (s-prim r-inl) []
 sim r-inr   fr es eq os k = leaf (s-prim r-inr) []
-sim (r-case₁ {o = o} r) (ff , fg) es eq os k = preR o s-case₁ (sim r ff es eq os k)
-sim (r-case₂ {o = o} r) (ff , fg) es eq os k = preR o s-case₂ (sim r fg es eq os k)
+sim (r-case₁ {o = o} r) p es eq os k = preR o s-case₁ (sim r p es eq os k)
+sim (r-case₂ {o = o} r) p es eq os k = preR o s-case₂ (sim r p es eq os k)
 sim r-In    fr es eq os k = leaf (s-prim r-In) (k-alloc ∷ [])
 sim r-Outμ  fr es eq os k = leaf (s-prim r-Outμ) (k-free ∷ [])
 sim r-clo   fr es eq os k = leaf (s-prim r-clo) []
-sim (r-app {o = o} q r) fr es eq os k
+sim (r-app {o = o} q r) p es eq os k
   rewrite look-body q {Es = _ ∷ _} (epop ⨾ leave ⨾ k) =
-  preR o s-untag (framedR o (around o s-elift (sim r (look-frag q fr) (vw mone es) refl os _)))
-sim (r-cata rm (go-on {o = o} ra)) (fa , nr) es eq os k =
-  thenR o (leaf s-fold (k-free ∷ [])) (framedR o (thenR o (simM rm fa nr es eq os _) (sim ra fa es eq os (leave ⨾ k))))
-sim (r-cata rm stopped) (fa , nr) es eq os k =
-  thenP (leaf s-fold (k-free ∷ [])) (framedP (P-[] (simM rm fa nr es eq os _)))
-sim (r-cata-reuse rm th) (fa , ()) es eq os k
+  preR o s-untag (framedR o (around o s-elift (sim r p (vw mone es) refl os _)))
+sim (r-cata rm (go-on {o = o} ra)) (pm , pa) es eq os k =
+  thenR o (leaf s-fold (k-free ∷ [])) (framedR o (thenR o (simM rm pm es eq os _) (sim ra pa es eq os (leave ⨾ k))))
+sim (r-cata rm stopped) pm es eq os k =
+  thenP (leaf s-fold (k-free ∷ [])) (framedP (P-[] (simM rm pm es eq os _)))
+sim (r-cata-reuse rm th) () es eq os k
 sim (r-lend {x = x} (fm-gives r)) fr es refl os k = pre s-elend (after (sim r fr (ln (see es) x es) refl os _) s-eunlend)
 sim (r-lend {x = x} (fm-stop r))  fr es refl os k = preP s-elend (sim r fr (ln (see es) x es) refl os _)
 sim (r-lift {o = o} r) fr es eq os k = around o s-elift (sim r fr (vw mone es) refl os _)
 sim (r-fst {e₁ = e₁} {o = o} r) fr es eq os k = around o (s-efst eq) (sim r fr (vw e₁ es) refl os _)
 sim (r-snd {e₂ = e₂} {o = o} r) fr es eq os k = around o (s-esnd eq) (sim r fr (vw e₂ es) refl os _)
-sim (r-caseE₁ {e = e} {o = o} r) (ff , fg) es eq os k = around o (s-ecase₁ eq) (sim r ff (vw e es) refl os _)
-sim (r-caseE₂ {e = e} {o = o} r) (ff , fg) es eq os k = around o (s-ecase₂ eq) (sim r fg (vw e es) refl os _)
+sim (r-caseE₁ {e = e} {o = o} r) fr es eq os k = around o (s-ecase₁ eq) (sim r fr (vw e es) refl os _)
+sim (r-caseE₂ {e = e} {o = o} r) fr es eq os k = around o (s-ecase₂ eq) (sim r fr (vw e es) refl os _)
 sim (r-out {B = B} {i = i} {v} {a} {o = o} {n} r) fr es eq os k = outR o (sim r fr (vw v es) refl os _)
   where
     outR : (o : Outcome B) → ∀ {c₁ t} → SimR o c₁ (vw v es ∥ a ∷ˢ os) n t (epop ⨾ k) (vw v es) os
@@ -556,31 +581,43 @@ sim (r-out {B = B} {i = i} {v} {a} {o = o} {n} r) fr es eq os k = outR o (sim r 
 sim (r-copy {n = n}) fr es refl os k = leaf s-ecopy (NoT-copy (see es) n)
 sim (r-bapp {x = x} {o = o} q r) fr es eq os k
   rewrite look-bodyω q {Es = _ ∷ _} (leave ⨾ epop ⨾ k) =
-  around o (s-eapp eq) (framedR o (sim r (look-fragω q fr) (vw x es) refl os _))
+  around o (s-eapp eq) (framedR o (sim r fr (vw x es) refl os _))
+-- ★ D409 part 3: building a closure is one step; applying one is the
+-- indirect call into its body, in a frame, as a label's
+sim r-lam   fr es eq os k = leaf (s-prim r-lam) (k-alloc ∷ [])
+sim r-lamω  fr es eq os k = leaf (s-prim r-lamω) (k-alloc ∷ [])
+sim (r-ev {o = o} r) p es eq os k =
+  thenR o (leaf s-apply (k-free ∷ [])) (framedR o (around o s-elift (sim r p (vw mone es) refl os _)))
+sim (r-bev {B = B} {ds′ = ds′} {b = b} {i = i} {x} {a} {o} {n} r) p es eq os k = bevR o (framedR o (sim r p (vw x es) refl os (leave ⨾ epop ⨾ k)))
+  where
+    bevR : (o : Outcome B) → ∀ {t} → SimR o (enter ⨾ comp ds′ b (leave ⨾ epop ⨾ k)) (vw x es ∥ a ∷ˢ os) n t (epop ⨾ k) (vw x es) os
+         → SimR o (eapply ⨾ k) (es ∥ a ∷ˢ os) n (peek i ∷ t) k es os
+    bevR (gives _ _) r′ = then (leaf (s-eapply eq) (k-peek ∷ [])) (after r′ s-epop)
+    bevR (stop _)    r′ = thenP (leaf (s-eapply eq) (k-peek ∷ [])) r′
 sim r-const fr es eq os k = leaf (s-prim r-const) []
 sim r-op    fr es eq os k = leaf (s-prim r-op) (k-io ∷ [])
 sim r-halt  fr es eq os k = paused halted _ _ [] _ _ (one s-ehalt) (w-self _) (≼-refl _) (k-stp ∷ []) tt
 sim (r-iter r (go-on done)) fr es eq os k = O-[] (pre s-loop (after (sim r fr es eq os _) s-case₁))
-sim (r-iter r (go-on (again {o = o} rn))) fr es eq os k =
-  preR o s-loop (thenR o (sim r fr es eq os _) (preR o s-case₂ (sim rn fr es eq os k)))
+sim (r-iter r (go-on (again {o = o} rn))) (p , pn) es eq os k =
+  preR o s-loop (thenR o (sim r p es eq os _) (preR o s-case₂ (sim rn pn es eq os k)))
 sim (r-iter r stopped) fr es eq os k = P-[] (preP s-loop (sim r fr es eq os _))
 sim r-exh fr es eq os k = paused _ _ _ [] [] [] done w-[] []≼ [] tt
 sim (r-cut {o = o} r q) fr es eq os k = cutR o q (sim r fr es eq os k)
 sim (r-tmp {o = o} r w p) fr es eq os k = tmpR o w (sim r fr es eq os k)
 
-simM (m-id r) fa nr es eq os k = sim r (fa , nr) es eq os k
-simM m-one fa nr es eq os k = done∅
-simM m-b fa nr es eq os k = done∅
-simM m-μ fa nr es eq os k = done∅
-simM (m-inl (fm-gives r)) fa nr es eq os k = pre s-case₁ (after (simM r fa nr es eq os _) (s-prim r-inl))
-simM (m-inl (fm-stop r))  fa nr es eq os k = preP s-case₁ (simM r fa nr es eq os _)
-simM (m-inr (fm-gives r)) fa nr es eq os k = pre s-case₂ (after (simM r fa nr es eq os _) (s-prim r-inr))
-simM (m-inr (fm-stop r))  fa nr es eq os k = preP s-case₂ (simM r fa nr es eq os _)
-simM (m-pair {x′ = x′} r (go-on {u = y} (fm-gives r′))) fa nr es eq os k =
-  pre s-unpair (then (simM r fa nr es eq (x′ ∷ˢ os) _) (pre s-swap (after (after (simM r′ fa nr es eq (y ∷ˢ os) _) s-swap) s-pair)))
-simM (m-pair {x′ = x′} r (go-on {u = y} (fm-stop r′))) fa nr es eq os k =
-  preP s-unpair (thenP (simM r fa nr es eq (x′ ∷ˢ os) _) (preP s-swap (simM r′ fa nr es eq (y ∷ˢ os) _)))
-simM (m-pair {x′ = x′} r stopped) fa nr es eq os k = P-[] (preP s-unpair (simM r fa nr es eq (x′ ∷ˢ os) _))
+simM (m-id r) p es eq os k = sim r p es eq os k
+simM m-one p es eq os k = done∅
+simM m-b p es eq os k = done∅
+simM m-μ p es eq os k = done∅
+simM (m-inl (fm-gives r)) p es eq os k = pre s-case₁ (after (simM r p es eq os _) (s-prim r-inl))
+simM (m-inl (fm-stop r))  p es eq os k = preP s-case₁ (simM r p es eq os _)
+simM (m-inr (fm-gives r)) p es eq os k = pre s-case₂ (after (simM r p es eq os _) (s-prim r-inr))
+simM (m-inr (fm-stop r))  p es eq os k = preP s-case₂ (simM r p es eq os _)
+simM (m-pair {x′ = x′} r (go-on {u = y} (fm-gives r′))) (p , p′) es eq os k =
+  pre s-unpair (then (simM r p es eq (x′ ∷ˢ os) _) (pre s-swap (after (after (simM r′ p′ es eq (y ∷ˢ os) _) s-swap) s-pair)))
+simM (m-pair {x′ = x′} r (go-on {u = y} (fm-stop r′))) (p , p′) es eq os k =
+  preP s-unpair (thenP (simM r p es eq (x′ ∷ˢ os) _) (preP s-swap (simM r′ p′ es eq (y ∷ˢ os) _)))
+simM (m-pair {x′ = x′} r stopped) p es eq os k = P-[] (preP s-unpair (simM r p es eq (x′ ∷ˢ os) _))
 
 ------------------------------------------------------------------------
 -- 7. ★ ON THE MACHINE.
@@ -597,7 +634,7 @@ start = vw mone []ᵉ ∥ mone ∷ˢ []ˢ
 -- a finished run of a closed program: the machine on its compiled code is
 -- legal on the cell heap, leaves it empty, and frees every frame it entered
 machine-noleak : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {n′ t}
-               → Run ds f mone mone 0 (gives mone n′) t → Frag ds f
+               → (run : Run ds f mone mone 0 (gives mone n′) t) → Plain run
                → Σ Trace λ mt → Steps (comp ds f end) start 0 mt end start n′
                  × OK mt (λ _ → 0) × (∀ i → play mt (λ _ → 0) i ≡ 0) × TBal mt
 machine-noleak {t = t} run fr with sim run fr (vw mone []ᵉ) refl []ˢ end | noleak (plain run)
@@ -612,7 +649,7 @@ machine-noleak {t = t} run fr with sim run fr (vw mone []ᵉ) refl []ˢ end | no
 -- and what it did up to the run's last event is legal on the cell heap, with
 -- legal frames
 machine-legal : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {y t}
-              → Run ds f mone mone 0 (stop y) t → Frag ds f
+              → (run : Run ds f mone mone 0 (stop y) t) → Plain run
               → Σ Trace λ mt′ → Σ (List TEv) λ ts′ → Weave tmp (erase t) ts′ mt′
                  × OK mt′ (λ _ → 0) × TLeg mt′
                  × Σ Trace λ mt → mt′ ≼ mt × Σ Sh λ sh → Σ (Code sh (_ ∣ _)) λ c′ → Σ (Cfg sh) λ m′ → Σ ℕ λ n′

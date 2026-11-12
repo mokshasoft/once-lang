@@ -10,10 +10,12 @@
 --   * `LF` — polynomial functor codes, kept OBJECT-LANGUAGE-INDEPENDENT. A
 --     constant is `Kone`, an inert leaf `Kb`, or a CODE (`Kμ`), never an
 --     arbitrary `LTy`: that is what makes `Mu` strictly positive with no pragma.
---   * `LTy` — with base leaves from the start. ★ D405: no arrow type and no
---     ν type; a closure is `Ct l X`, its environment tagged with its label,
---     and a ν is a closure too: its label is its coalgebra, its environment
---     its seed (D406).
+--   * `LTy` — with base leaves from the start. ★ D409 part 3: the EXPONENTIAL
+--     `Fn k g A B`, the Spec's `A ⇒[ mk-kind q π ] B`, meaning
+--     `⟦ A ⟧ → M π ⟦ B ⟧`; a closure whose lambda one site alone receives may
+--     instead be `Ct l X`, its environment tagged with its label (D405), and
+--     a ν is such a closure: its label is its coalgebra, its environment its
+--     seed (D406).
 --   * `Cx`, `Defs` — the program's labels and their bodies, each typed over
 --     the labels before it (one-shot or many-use, D131).
 --   * `Tm E A B` — every generator: symmetric monoidal over `⊗t`, additive
@@ -121,6 +123,24 @@ iterBlock f (halt s x)            = halt s x
 iter∞ : ∀ {A B : Set} → (A → T∞ (B ⊎ A)) → A → T∞ B
 iter∞ f a = iterRun f (f a)
 
+-- ★ a FINITE BLOCK's monad, the Spec's `M act` (`Spec.Effect`: `M (fin f)`)
+bindT : ∀ {X Y} → T X → (X → T Y) → T Y
+bindT (ret x)      k = k x
+bindT (call s a c) k = call s a (λ b → bindT (c b) k)
+bindT (halt s a)   k = halt s a
+
+fmapT : ∀ {X Y} → (X → Y) → T X → T Y
+fmapT f m = bindT m λ x → ret (f x)
+
+-- one block is a computation: the monad morphism `T → T∞` (the Spec's `embed`)
+embB : ∀ {X} → T X → T (X ⊎ T∞ X)
+embB (ret x)      = ret (inj₁ x)
+embB (call s a k) = call s a (λ y → embB (k y))
+embB (halt s a)   = halt s a
+
+emb : ∀ {X} → T X → T∞ X
+block (emb b) = embB b
+
 ------------------------------------------------------------------------
 -- 1. POLYNOMIAL FUNCTOR CODES.
 --
@@ -148,6 +168,29 @@ data LF : Set where
 -- 2. THE OBJECT LANGUAGE.
 ------------------------------------------------------------------------
 
+-- an arrow's quantity (the Spec's `q`): a ONE-SHOT closure owns its
+-- environment; a MANY-USE one (D131) reads it lent
+data Kd : Set where
+  once many : Kd
+
+-- ★ the Spec's grades (`Spec.Grade`), as far as the core tells them apart: a
+-- FINITE BLOCK (`act`: finitely many events, then a value or a halt; the
+-- Spec's `pure` is the block with no event) or a computation that may run
+-- forever (`eff`: it contains a loop). An arrow's grade (the Spec's
+-- `mk-kind q π`: `Kd` is `q`, `Gr` is `π`).
+data Gr : Set where
+  act eff : Gr
+
+-- ★ the Spec's `M π`: a finite block means a `T`, the rest a `T∞`
+Mg : Gr → Set → Set
+Mg act X = T X
+Mg eff X = T∞ X
+
+-- the Spec's `act ⊑ eff`
+up : ∀ g {X} → Mg g X → T∞ X
+up act m = emb m
+up eff m = m
+
 infixr 5 _⊗t_
 infixr 4 _⊕t_
 data LTy : Set where
@@ -161,6 +204,11 @@ data LTy : Set where
   -- type is a sum of these, and the sum's tag is the run-time choice.
   -- ★ D406: a ν is one of these: its coalgebra's label and its seed.
   Ct   : ℕ → LTy → LTy
+  -- ★ D409 part 3: THE EXPONENTIAL, the Spec's `A ⇒[ mk-kind q π ] B`: a
+  -- closure whose lambda need not be known at compile time (it may be decided
+  -- by data: nested through a fold's carrier or a server's state). `Ct` is
+  -- its representation where one lambda reaches a site.
+  Fn   : Kd → Gr → LTy → LTy → LTy
   μt   : LF → LTy
   Bt   : Base → LTy        -- ★ present because the theory wants it
 
@@ -204,6 +252,7 @@ outμ (inμ w) = w
 ⟦ A ⊗t B ⟧   = ⟦ A ⟧ × ⟦ B ⟧
 ⟦ A ⊕t B ⟧   = ⟦ A ⟧ ⊎ ⟦ B ⟧
 ⟦ Ct l X ⟧   = ⟦ X ⟧                -- defunctionalised: a closure means its environment
+⟦ Fn k g A B ⟧ = ⟦ A ⟧ → Mg g ⟦ B ⟧ -- ★ the exponential, the Spec's `⟦ A ⟧ → M π ⟦ B ⟧`
 ⟦ μt F ⟧     = Mu F
 ⟦ Bt b ⟧     = ⟦ b ⟧b
 
@@ -264,6 +313,10 @@ fromF (a f+ b) (inj₂ y) = inj₂ (fromF b y)
 callT : (s : Sig) → ⟦ ⌜ sdom s ⌝ ⟧ → T∞ ⟦ ⌜ scod s ⌝ ⟧
 block (callT s x) = call s (toF (sdom s) x) (λ y → ret (inj₁ (fromF (scod s) y)))
 
+-- the same call, as a block
+callB : (s : Sig) → ⟦ ⌜ sdom s ⌝ ⟧ → T ⟦ ⌜ scod s ⌝ ⟧
+callB s x = call s (toF (sdom s) x) (λ y → ret (fromF (scod s) y))
+
 ------------------------------------------------------------------------
 -- 5. THE LINEAR CORE.
 --
@@ -275,19 +328,9 @@ infixr 9 _∘l_
 infixr 7 _⊗l_
 
 -- ★ D405: THE LABELS. A label's signature: its kind, environment, domain and
--- codomain. A ONE-SHOT body owns its environment; a MANY-USE one (D131) reads
--- it lent, so it can be applied while lent, at every layer of a fold.
-data Kd : Set where
-  once many : Kd
-
--- ★ the Spec's grades (`Spec.Grade`), as far as the core tells them apart: a
--- FINITE BLOCK (`act`: finitely many events, then a value or a halt; the
--- Spec's `pure` is the block with no event) or a computation that may run
--- forever (`eff`: it contains a loop). A label's grade is its arrow's (the
--- Spec's `mk-kind q π`: `kd` is `q`, `gr` is `π`).
-data Gr : Set where
-  act eff : Gr
-
+-- codomain (`Kd`, `Gr`: §2). A ONE-SHOT body owns its environment; a MANY-USE
+-- one (D131) reads it lent, so it can be applied while lent, at every layer of
+-- a fold.
 record Sg : Set where
   constructor sg
   field kd : Kd
@@ -323,6 +366,8 @@ data _∋[_]_ : Cx → ℕ → Sg → Set where
 -- part but a table entry (`Defs`), so every generator is at the same `Γ`.
 data Tm (Γ : Cx) : LTy → LTy → LTy → Set
 data Blk {Γ : Cx} : ∀ {E A B} → Tm Γ E A B → Set
+-- a body at its arrow's grade: an arrow of grade `act` has a finite block
+Gd : ∀ {Γ E A B} → Gr → Tm Γ E A B → Set
 
 data Tm Γ where
   lid    : ∀ {A E} → Tm Γ E A A
@@ -373,6 +418,15 @@ data Tm Γ where
   -- applying a LENT many-use closure (D131: a fold's algebra, obtained once,
   -- applied at every layer): its environment is lent on to its body
   bapp    : ∀ {l g X A B} → Γ ∋[ l ] sg many g X A B → Tm Γ (Ct l X) A B
+  -- ★ D409 part 3: THE EXPONENTIAL (the Spec's `⊢lam`/`⊢app`). The body is a
+  -- SUBTERM, over the same labels, so no table and no stratification is
+  -- needed and the meaning stays structural. A one-shot closure owns its
+  -- environment `X` (its body closed over `One`: a borrow never escapes into
+  -- it); a many-use one reads `X` lent (D131), so it is applied while lent.
+  llam    : ∀ {g X A B E} (b : Tm Γ One (X ⊗t A) B) → Gd g b → Tm Γ E X (Fn once g A B)
+  llamω   : ∀ {g X A B E} (b : Tm Γ X A B) → Gd g b → Tm Γ E X (Fn many g A B)
+  lev     : ∀ {g A B E} → Tm Γ E (Fn once g A B ⊗t A) B
+  bev     : ∀ {g A B} → Tm Γ (Fn many g A B) A B
   -- ★ A11: the SigOps, anywhere a term can be. `lop`: Pure or Emits, an event
   -- and the world's answer; `lhalt`: Halts, the run ends
   -- ★ A15: a constant of a base type (the IR's `const`): a word, no event
@@ -420,6 +474,10 @@ data Blk {Γ} where
   k-bout   : ∀ {F A B} {f : Tm Γ (LF∙ F (μt F)) A B} → Blk f → Blk (bout f)
   k-copy   : ∀ {E} → Blk (bcopy {E = E})
   k-bapp   : ∀ {l X A B} {p : Γ ∋[ l ] sg many act X A B} → Blk (bapp p)
+  k-lam    : ∀ {g X A B E} {b : Tm Γ One (X ⊗t A) B} {γ : Gd g b} → Blk (llam {E = E} b γ)
+  k-lamω   : ∀ {g X A B E} {b : Tm Γ X A B} {γ : Gd g b} → Blk (llamω {E = E} b γ)
+  k-ev     : ∀ {A B E} → Blk (lev {g = act} {A} {B} {E})
+  k-bev    : ∀ {A B} → Blk (bev {g = act} {A} {B})
   k-const  : ∀ {b E} {v : ⟦ b ⟧b} → Blk (lconst {E = E} v)
   k-op     : ∀ {s E} → Blk (lop s {E})
   k-halt   : ∀ {s E} → Blk (lhalt s {E})
@@ -448,8 +506,6 @@ lobs F p = lclo F p ∘l lapp p ∘l ρl⁻
 k-obs : ∀ F {Γ l S E} {p : Γ ∋[ l ] sg once act S One (LF∙ F S)} → Blk (lobs F {E = E} p)
 k-obs F = k-∘ k-clo (k-∘ k-app k-ρ⁻)
 
--- a body at its label's grade: a label of grade `act` has a finite block
-Gd : ∀ {Γ E A B} → Gr → Tm Γ E A B → Set
 Gd act t = Blk t
 Gd eff t = ⊤
 
@@ -485,9 +541,9 @@ data Look : ∀ {Γ Δ l σ} → Defs Γ → Γ ∋[ l ] σ → Defs Δ → Body
 -- the meaning of the labels in scope
 data Env : Cx → Set where
   ε   : Env ε
-  _▸_ : ∀ {Γ σ} → Env Γ → (⟦ env σ ⟧ → ⟦ dom σ ⟧ → T∞ ⟦ cod σ ⟧) → Env (Γ ▸ σ)
+  _▸_ : ∀ {Γ σ} → Env Γ → (⟦ env σ ⟧ → ⟦ dom σ ⟧ → Mg (gr σ) ⟦ cod σ ⟧) → Env (Γ ▸ σ)
 
-lookup : ∀ {Γ l σ} → Env Γ → Γ ∋[ l ] σ → ⟦ env σ ⟧ → ⟦ dom σ ⟧ → T∞ ⟦ cod σ ⟧
+lookup : ∀ {Γ l σ} → Env Γ → Γ ∋[ l ] σ → ⟦ env σ ⟧ → ⟦ dom σ ⟧ → Mg (gr σ) ⟦ cod σ ⟧
 lookup (ρ ▸ f) here      = f
 lookup (ρ ▸ f) (there p) = lookup ρ p
 
@@ -517,7 +573,7 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᶜ (lOutμ {F})    e         x              = return∞ (coh⁻¹ F (μt F) (outμ x))
     Lᶜ (lcata F alg)  e         x              = cataC F (λ y → Lᶜ alg e (coh⁻¹ F _ y)) x
     Lᶜ (lclo F {l = l} {X = X} p) e x        = return∞ (coh⁻¹ F (Ct l X) (coh F X x))
-    Lᶜ (lapp p)       e         (x , a)        = lookup ρ p x a
+    Lᶜ (lapp {g = g} p) e       (x , a)        = up g (lookup ρ p x a)
     Lᶜ (lend b)       e         (x , a)        = fmap∞ (x ,_) (Lᶜ b (e , x) a)
     Lᶜ (blift f)      e         a              = Lᶜ f tt a
     Lᶜ (bfst f)       (e₁ , e₂) a              = Lᶜ f e₁ a
@@ -526,7 +582,14 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᶜ (bcaseE f g)   (inj₂ e)  a              = Lᶜ g e a
     Lᶜ (bout {F} f)   e         a              = Lᶜ f (coh⁻¹ F (μt F) (outμ e)) a
     Lᶜ bcopy          e         a              = return∞ e
-    Lᶜ (bapp p)       x         a              = lookup ρ p x a
+    Lᶜ (bapp {g = g} p) x       a              = up g (lookup ρ p x a)
+    -- ★ D409 part 3: a closure means a function of its argument, its body's
+    -- meaning at its grade (`Lg`) at the environment it holds; applying it is
+    -- applying that function. Structural: the body is a subterm.
+    Lᶜ (llam {g = g} b γ) e     x              = return∞ (λ a → Lg g b γ tt (x , a))
+    Lᶜ (llamω {g = g} b γ) e    x              = return∞ (λ a → Lg g b γ x a)
+    Lᶜ (lev {g = g})  e         (f , a)        = up g (f a)
+    Lᶜ (bev {g = g})  f         a              = up g (f a)
     Lᶜ (lconst v)     e         _              = return∞ v
     Lᶜ (lop s)        e         x              = callT s x
     Lᶜ (lhalt s)      e         x              = haltT s (toF (sdom s) x)
@@ -545,6 +608,66 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     travC F (G ⊕f H) alg (inj₂ z) = fmap∞ inj₂ (travC F H alg z)
     travC F (G ⊗f H) alg (y , z)  = travC F G alg y >>=∞ λ u → fmap∞ (u ,_) (travC F H alg z)
 
+    -- ★ a body at its arrow's grade: a block means a `T` (the Spec's `M act`)
+    Lg : ∀ g {E A B} (t : Tm Γ E A B) → Gd g t → ⟦ E ⟧ → ⟦ A ⟧ → Mg g ⟦ B ⟧
+    Lg act t φ = Lᴮ φ
+    Lg eff t _ = Lᶜ t
+
+    -- ★ A FINITE BLOCK'S MEANING, by induction on the grade judgment: the
+    -- Spec's meaning at `act`, a `T`. (`LinCore.Grade`: `Lᶜ t ≈ emb (Lᴮ φ)`.)
+    Lᴮ : ∀ {E A B} {t : Tm Γ E A B} → Blk t → ⟦ E ⟧ → ⟦ A ⟧ → T ⟦ B ⟧
+    Lᴮ k-id          e         x             = ret x
+    Lᴮ (k-∘ φ ψ)     e         x             = bindT (Lᴮ ψ e x) (Lᴮ φ e)
+    Lᴮ (k-⊗ φ ψ)     e         (a , b)       = bindT (Lᴮ φ e a) λ a' → fmapT (a' ,_) (Lᴮ ψ e b)
+    Lᴮ k-ρ           e         (a , tt)      = ret a
+    Lᴮ k-ρ⁻          e         a             = ret (a , tt)
+    Lᴮ k-lul         e         (tt , a)      = ret a
+    Lᴮ k-lul⁻        e         a             = ret (tt , a)
+    Lᴮ k-assoc       e         ((a , b) , c) = ret (a , (b , c))
+    Lᴮ k-assoc⁻      e         (a , (b , c)) = ret ((a , b) , c)
+    Lᴮ k-swap        e         (a , b)       = ret (b , a)
+    Lᴮ k-dup         e         a             = ret (a , a)
+    Lᴮ k-drop        e         a             = ret tt
+    Lᴮ k-inl         e         a             = ret (inj₁ a)
+    Lᴮ k-inr         e         b             = ret (inj₂ b)
+    Lᴮ (k-case φ ψ)  e         (inj₁ a)      = Lᴮ φ e a
+    Lᴮ (k-case φ ψ)  e         (inj₂ b)      = Lᴮ ψ e b
+    Lᴮ k-zero        e         ()
+    Lᴮ (k-in {F})    e         x             = ret (inμ (coh F (μt F) x))
+    Lᴮ (k-out {F})   e         x             = ret (coh⁻¹ F (μt F) (outμ x))
+    Lᴮ (k-cata {F} φ) e        x             = cataB F (λ y → Lᴮ φ e (coh⁻¹ F _ y)) x
+    Lᴮ (k-clo {F} {l} {X = X}) e x           = ret (coh⁻¹ F (Ct l X) (coh F X x))
+    Lᴮ (k-app {p = p}) e       (x , a)       = lookup ρ p x a
+    Lᴮ (k-lend φ)    e         (x , a)       = fmapT (x ,_) (Lᴮ φ (e , x) a)
+    Lᴮ (k-lift φ)    e         a             = Lᴮ φ tt a
+    Lᴮ (k-fst φ)     (e₁ , e₂) a             = Lᴮ φ e₁ a
+    Lᴮ (k-snd φ)     (e₁ , e₂) a             = Lᴮ φ e₂ a
+    Lᴮ (k-caseE φ ψ) (inj₁ e)  a             = Lᴮ φ e a
+    Lᴮ (k-caseE φ ψ) (inj₂ e)  a             = Lᴮ ψ e a
+    Lᴮ (k-bout {F} φ) e        a             = Lᴮ φ (coh⁻¹ F (μt F) (outμ e)) a
+    Lᴮ k-copy        e         a             = ret e
+    Lᴮ (k-bapp {p = p}) x      a             = lookup ρ p x a
+    Lᴮ (k-lam {g} {b = b} {γ}) e x           = ret (λ a → Lg g b γ tt (x , a))
+    Lᴮ (k-lamω {g} {b = b} {γ}) e x          = ret (λ a → Lg g b γ x a)
+    Lᴮ k-ev          e         (f , a)       = f a
+    Lᴮ k-bev         f         a             = f a
+    Lᴮ (k-const {v = v}) e     _             = ret v
+    Lᴮ (k-op {s})    e         x             = callB s x
+    Lᴮ (k-halt {s})  e         x             = halt s (toF (sdom s) x)
+
+    cataB : ∀ F {X : Set} → (FS F X → T X) → Mu F → T X
+    cataB F alg (inμ w) = bindT (travB F F alg w) alg
+
+    travB : ∀ F G {X : Set} → (FS F X → T X) → FS G (Mu F) → T (FS G X)
+    travB F Idf      alg y        = cataB F alg y
+    travB F Kone     alg y        = ret y
+    travB F Kzero    alg ()
+    travB F (Kb _)   alg y        = ret y
+    travB F (Kμ _)   alg y        = ret y
+    travB F (G ⊕f H) alg (inj₁ y) = fmapT inj₁ (travB F G alg y)
+    travB F (G ⊕f H) alg (inj₂ z) = fmapT inj₂ (travB F H alg z)
+    travB F (G ⊗f H) alg (y , z)  = bindT (travB F G alg y) λ u → fmapT (u ,_) (travB F H alg z)
+
 open Sem public
 
 ------------------------------------------------------------------------
@@ -553,9 +676,9 @@ open Sem public
 ------------------------------------------------------------------------
 
 -- what a body means, at the meaning of its prefix
-⟦_⟧Bd : ∀ {Γ σ} → Body Γ σ → Env Γ → ⟦ env σ ⟧ → ⟦ dom σ ⟧ → T∞ ⟦ cod σ ⟧
-⟦ b1 b _ ⟧Bd ρ x a = Lᶜ ρ b tt (x , a)
-⟦ bω b _ ⟧Bd ρ x a = Lᶜ ρ b x a
+⟦_⟧Bd : ∀ {Γ σ} → Body Γ σ → Env Γ → ⟦ env σ ⟧ → ⟦ dom σ ⟧ → Mg (gr σ) ⟦ cod σ ⟧
+⟦ b1 {g} b γ ⟧Bd ρ x a = Lg ρ g b γ tt (x , a)
+⟦ bω {g} b γ ⟧Bd ρ x a = Lg ρ g b γ x a
 
 ⟦_⟧D : ∀ {Γ} → Defs Γ → Env Γ
 ⟦ ε ⟧D      = ε
