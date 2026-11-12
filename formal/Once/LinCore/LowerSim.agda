@@ -229,7 +229,68 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
 
   open import Once.LinCore.MoveCode using (mvSS)
 
-  -- ★ `efst`: the pair's first component's words, into a new buffer above
+  -- ★ A NEW VIEW: words inside the top buffer (what a part of the viewed value
+  -- is), copied into a new buffer above it; the buffers below and the
+  -- operand stack stand, the heap is untouched
+  view-sim : ∀ prog (fs : FlatState) (φ : Frame) {E E′ Es S} {es : Slots (E ∷ Es)} {os : Stk S} {v′ : MV E′}
+               (src : ℕ) (w′ : List W)
+           → VW (heapMem (floc fs)) v′ w′ → SlotsAt (slot fs) src w′ → src + wsz E′ ≤ ws (E ∷ Es)
+           → Seg prog (fpc fs) (mvSS src (ws Es + wsz E) (wsz E′))
+           → fhalted (floc fs) ≡ false
+           → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ os)
+           → ws (E′ ∷ E ∷ Es) ≤ EP φ
+           → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz E′)) fs fs′
+               × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw v′ es ∥ os) × MovedS fs fs′ src (ws Es + wsz E) (wsz E′)
+  view-sim prog fs φ {E} {E′} {Es} {S} {es} {os} {v′} src w′ pv sv inside s h C fit
+    with mvSS-run prog fs src (ws Es + wsz E) (wsz E′) s h def nc
+    where
+      def : ∀ k → k < wsz E′ → Σ W λ v → slot fs (k + src) ≡ just v
+      def k k< = slots-def w′ sv k (subst (k <_) (sym (vw-len pv)) k<)
+      nc : ∀ k k′ → k < k′ → k′ < wsz E′ → ¬ k + (ws Es + wsz E) ≡ k′ + src
+      nc k k′ _ lt = no-clash {k = k} (≤-trans inside (Data.Nat.Properties.≤-reflexive (+-comm (wsz E) (ws Es)))) lt
+        where import Data.Nat.Properties
+  ... | (fs′ , st , M) =
+    fs′ , st ,
+    record { c-env  = (w′ , heap pv , subst (λ z → SlotsAt (slot fs′) z w′) (+-comm (ws Es) (wsz E))
+                                            (slots-moved w′ M sv (vw-len pv)))
+                    , envW-frame {heapMem (floc fs′)} es (λ x x< → m-rest M x (λ k _ e → above x x< k e)) (envH (c-env C))
+           ; c-stk  = stkW-frame os fitS (λ x lo hi → m-rest M x (λ k k< e → under x lo k k< e)) (stkH (c-stk C))
+           ; c-efit = fit ; c-sfit = c-sfit C }
+    , M
+    where
+      heap : ∀ {A} {v : MV A} {ws′} → VW (heapMem (floc fs)) v ws′ → VW (heapMem (floc fs′)) v ws′
+      heap p = subst (λ r → VW r _ _) (sym (m-heap M)) p
+      envH : EnvW (heapMem (floc fs)) (slot fs) es → EnvW (heapMem (floc fs′)) (slot fs) es
+      envH e = subst (λ r → EnvW r (slot fs) es) (sym (m-heap M)) e
+      stkH : StkW (heapMem (floc fs)) (slot fs) φ os → StkW (heapMem (floc fs′)) (slot fs) φ os
+      stkH e = subst (λ r → StkW r (slot fs) φ os) (sym (m-heap M)) e
+      fitS : ws S ≤ budget φ
+      fitS = ≤-trans (c-sfit C) (m≤n+m (OP φ) (EP φ))
+      above : ∀ x → x < ws (E ∷ Es) → ∀ k → ¬ x ≡ k + (ws Es + wsz E)
+      above x x< k e = Data.Nat.Properties.<-irrefl e
+                         (<-≤-trans x< (≤-trans (Data.Nat.Properties.≤-reflexive (+-comm (wsz E) (ws Es))) (m≤n+m (ws Es + wsz E) k)))
+        where import Data.Nat.Properties
+      under : ∀ x → budget φ ∸ ws S ≤ x → ∀ k → k < wsz E′ → ¬ x ≡ k + (ws Es + wsz E)
+      under x lo k k< e = Data.Nat.Properties.<-irrefl (sym e)
+                            (<-≤-trans (+-monoˡ-< (ws Es + wsz E) k<)
+                              (≤-trans (Data.Nat.Properties.≤-reflexive top-words)
+                                (≤-trans fit (≤-trans (env-below φ (ws S) (c-sfit C)) lo))))
+        where import Data.Nat.Properties
+              top-words : wsz E′ + (ws Es + wsz E) ≡ ws (E′ ∷ E ∷ Es)
+              top-words = cong (wsz E′ +_) (+-comm (ws Es) (wsz E))
+
+  -- the top buffer, and the words of a pair it sees
+  private
+    top-pair : ∀ {rd sm E₁ E₂ Es} (es : Slots ((E₁ ⊗t E₂) ∷ Es)) {e₁ : MV E₁} {e₂ : MV E₂} → see es ≡ mpair e₁ e₂
+             → EnvW rd sm es
+             → Σ (List W) λ wa → Σ (List W) λ wb → VW rd e₁ wa × VW rd e₂ wb
+               × SlotsAt sm (ws Es) wa × SlotsAt sm (length wa + ws Es) wb
+    top-pair {rd} {sm} es eq ev with topW es ev
+    ... | (w , pw , sw) with vpair-inv (subst (λ z → VW rd z w) eq pw)
+    ...   | (wa , wb , refl , pa , pb) with slots-++ {sm} wa wb sw
+    ...     | (sa , sb) = wa , wb , pa , pb , sa , sb
+
+  -- ★ `efst`
   efst-sim : ∀ prog (fs : FlatState) (φ : Frame) {E₁ E₂ Es S} {es : Slots ((E₁ ⊗t E₂) ∷ Es)} {os : Stk S}
                {e₁ : MV E₁} {e₂ : MV E₂}
            → see es ≡ mpair e₁ e₂
@@ -239,45 +300,44 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
            → ws (E₁ ∷ (E₁ ⊗t E₂) ∷ Es) ≤ EP φ
            → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz E₁)) fs fs′
                × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₁ es ∥ os) × MovedS fs fs′ (ws Es) (ws Es + wsz (E₁ ⊗t E₂)) (wsz E₁)
-  efst-sim prog fs φ {E₁} {E₂} {Es} {S} {es} {os} {e₁} {e₂} eq s h C fit with topW es (c-env C)
-  ... | (w , pw , sw) with vpair-inv (subst (λ z → VW (heapMem (floc fs)) z w) eq pw)
-  ...   | (wa , wb , refl , pa , pb) with slots-++ {slot fs} wa wb sw
-  ...     | (sa , _) with mvSS-run prog fs (ws Es) (ws Es + wsz (E₁ ⊗t E₂)) (wsz E₁) s h def nc
-    where
-      def : ∀ k → k < wsz E₁ → Σ W λ v → slot fs (k + ws Es) ≡ just v
-      def k k< = slots-def wa sa k (subst (k <_) (sym (vw-len pa)) k<)
-      nc : ∀ k k′ → k < k′ → k′ < wsz E₁ → ¬ k + (ws Es + wsz (E₁ ⊗t E₂)) ≡ k′ + ws Es
-      nc k k′ _ lt = no-clash {k = k} (Data.Nat.Properties.+-monoʳ-≤ (ws Es) (m≤m+n (wsz E₁) (wsz E₂))) lt
-        where import Data.Nat.Properties
-  ...       | (fs′ , st , M) =
-    fs′ , st ,
-    record { c-env  = (wa , heap pa , subst (λ z → SlotsAt (slot fs′) z wa) (+-comm (ws Es) (wsz (E₁ ⊗t E₂)))
-                                             (slots-moved wa M sa (vw-len pa)))
-                    , envW-frame {heapMem (floc fs′)} es (λ x x< → m-rest M x (λ k _ e → above x x< k e)) (envH (c-env C))
-           ; c-stk  = stkW-frame os (fitS) (λ x lo hi → m-rest M x (λ k k< e → under x lo k k< e)) (stkH (c-stk C))
-           ; c-efit = fit ; c-sfit = c-sfit C }
-    , M
-    where
-      w12 = wsz (E₁ ⊗t E₂)
-      heap : ∀ {A} {v : MV A} {ws′} → VW (heapMem (floc fs)) v ws′ → VW (heapMem (floc fs′)) v ws′
-      heap p = subst (λ r → VW r _ _) (sym (m-heap M)) p
-      envH : EnvW (heapMem (floc fs)) (slot fs) es → EnvW (heapMem (floc fs′)) (slot fs) es
-      envH e = subst (λ r → EnvW r (slot fs) es) (sym (m-heap M)) e
-      stkH : StkW (heapMem (floc fs)) (slot fs) φ os → StkW (heapMem (floc fs′)) (slot fs) φ os
-      stkH e = subst (λ r → StkW r (slot fs) φ os) (sym (m-heap M)) e
-      fitS : ws S ≤ budget φ
-      fitS = ≤-trans (c-sfit C) (m≤n+m (OP φ) (EP φ))
-      -- the new buffer is above the old ones
-      above : ∀ x → x < ws ((E₁ ⊗t E₂) ∷ Es) → ∀ k → ¬ x ≡ k + (ws Es + w12)
-      above x x< k e = Data.Nat.Properties.<-irrefl e
-                         (<-≤-trans x< (≤-trans (Data.Nat.Properties.≤-reflexive (+-comm w12 (ws Es))) (m≤n+m (ws Es + w12) k)))
-        where import Data.Nat.Properties
-      -- …and below the operand stack
-      under : ∀ x → budget φ ∸ ws S ≤ x → ∀ k → k < wsz E₁ → ¬ x ≡ k + (ws Es + w12)
-      under x lo k k< e = Data.Nat.Properties.<-irrefl (sym e)
-                            (<-≤-trans (+-monoˡ-< (ws Es + w12) k<)
-                              (≤-trans (Data.Nat.Properties.≤-reflexive (top-words))
-                                (≤-trans fit (≤-trans (env-below φ (ws S) (c-sfit C)) lo))))
-        where import Data.Nat.Properties
-              top-words : wsz E₁ + (ws Es + w12) ≡ ws (E₁ ∷ (E₁ ⊗t E₂) ∷ Es)
-              top-words = cong (wsz E₁ +_) (+-comm (ws Es) w12)
+  efst-sim prog fs φ {E₁} {E₂} {Es} {es = es} eq s h C fit with top-pair es eq (c-env C)
+  ... | (wa , wb , pa , pb , sa , sb) =
+    view-sim prog fs φ (ws Es) wa pa sa
+      (≤-trans (Data.Nat.Properties.≤-reflexive (+-comm (ws Es) (wsz E₁)))
+        (Data.Nat.Properties.+-monoˡ-≤ (ws Es) (m≤m+n (wsz E₁) (wsz E₂))))
+      s h C fit
+    where import Data.Nat.Properties
+
+  -- ★ `esnd`
+  esnd-sim : ∀ prog (fs : FlatState) (φ : Frame) {E₁ E₂ Es S} {es : Slots ((E₁ ⊗t E₂) ∷ Es)} {os : Stk S}
+               {e₁ : MV E₁} {e₂ : MV E₂}
+           → see es ≡ mpair e₁ e₂
+           → Seg prog (fpc fs) (mvSS (ws Es + wsz E₁) (ws Es + wsz (E₁ ⊗t E₂)) (wsz E₂))
+           → fhalted (floc fs) ≡ false
+           → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ os)
+           → ws (E₂ ∷ (E₁ ⊗t E₂) ∷ Es) ≤ EP φ
+           → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz E₂)) fs fs′
+               × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₂ es ∥ os)
+               × MovedS fs fs′ (ws Es + wsz E₁) (ws Es + wsz (E₁ ⊗t E₂)) (wsz E₂)
+  esnd-sim prog fs φ {E₁} {E₂} {Es} {es = es} eq s h C fit with top-pair es eq (c-env C)
+  ... | (wa , wb , pa , pb , sa , sb) =
+    view-sim prog fs φ (ws Es + wsz E₁) wb pb
+      (subst (λ z → SlotsAt (slot fs) z wb) (trans (cong (_+ ws Es) (vw-len pa)) (+-comm (wsz E₁) (ws Es))) sb)
+      (≤-trans (Data.Nat.Properties.≤-reflexive (+-assoc (ws Es) (wsz E₁) (wsz E₂)))
+        (Data.Nat.Properties.≤-reflexive (+-comm (ws Es) (wsz E₁ + wsz E₂))))
+      s h C fit
+    where import Data.Nat.Properties
+
+  -- ★ `eapp`: a tagged closure's view is its environment's words
+  eapp-sim : ∀ prog (fs : FlatState) (φ : Frame) {l X Es S} {es : Slots (Ct l X ∷ Es)} {os : Stk S} {x : MV X}
+           → see es ≡ mct x
+           → Seg prog (fpc fs) (mvSS (ws Es) (ws Es + wsz X) (wsz X))
+           → fhalted (floc fs) ≡ false
+           → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ os)
+           → ws (X ∷ Ct l X ∷ Es) ≤ EP φ
+           → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz X)) fs fs′
+               × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw x es ∥ os) × MovedS fs fs′ (ws Es) (ws Es + wsz X) (wsz X)
+  eapp-sim prog fs φ {l} {X} {Es} {es = es} {x = x} eq s h C fit with topW es (c-env C)
+  ... | (w , pw , sw) with subst (λ z → VW (heapMem (floc fs)) z w) eq pw
+  ...   | vct px = view-sim prog fs φ (ws Es) w px sw (Data.Nat.Properties.≤-reflexive (+-comm (ws Es) (wsz X))) s h C fit
+    where import Data.Nat.Properties
