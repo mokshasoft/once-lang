@@ -22660,3 +22660,32 @@ D404 (SigOps take and answer flat values), D408 (an unanswered call ends the run
   cover an op's path by four small lemmas (it touches no cell and has no temporary).
 * `Examples` instantiates the core at x86-64's numerics; its world answers master's calls. An answered
   `Int` is normalised to the target's width (`atTarget`), as `evalᴰ` reads it.
+
+## D415 — THE IMAGE'S CALL OPENS A FRAME OF ITS OWN: BLOCKS AT A CLOSED SHAPE (2026-11-12)
+
+**Proposed** (made unattended, plan 0.146 B1.4b, for the user's review). **Applies**: D410 ("a model
+machine: code, frames"), D407 (a frame is a temporary), D147 (a result goes to the caller's destination),
+D386 (a closure node `[env-word, code]`).
+
+### Context
+B1.4a's image ran a called block on the CALLER's two stacks: a block's code was polymorphic in the rest of
+both (`Block σ = ∀ {Es S} → …`), so one stack ran through every call. The flat machine has one frame per
+call, with its own slots. Lowering the shared stack would have to cut it at every call boundary (the
+continuation's type says where), so every frame's slots would be stated through list-append casts on the
+indexed stacks, and every block's code would have to be shown the same at every instantiation.
+
+### Decision
+* **A call opens a configuration of its own.** `call κ` runs `κ`'s block on a fresh configuration: the
+  caller's top view (a view: it owns nothing) and the argument. The return stack's call entry keeps the
+  continuation AND the caller's configuration below the argument; the return puts the result back on it.
+* **A block has a closed shape**: `Block σ = Codeᴵ (top σ ⊳ [] ∣ dom σ ∷ []) (top σ ⊳ [] ∣ cod σ ∷ [])`.
+  It is lowered once, at that shape, and every offset in it is a constant.
+* **The held invariant spans the frames.** The cells held are the current configuration's plus every
+  saved one's; a view sees cells owned by the slots below it, in its frame or in its callers'.
+
+### Consequences
+* Each image frame is one flat frame (B1.4b): its slots are its two stacks' words at offsets fixed by the
+  shape; the argument arrives at, and the result leaves to, the caller's destination (D147); the top view
+  arrives as an address.
+* `ImageRun` (`Ret`'s call entry, `i-call`, `i-ret`), `ImageSim` (the call combinators), `HeldI` and
+  `KeysRun` follow. No theorem changes its statement.
