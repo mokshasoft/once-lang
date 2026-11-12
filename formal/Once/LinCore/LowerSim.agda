@@ -121,3 +121,47 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
 
   epop-W : ∀ {rd sm E Es} {e : MV E} {es : Slots Es} → EnvW rd sm (vw e es) → EnvW rd sm es
   epop-W (_ , ev) = ev
+
+  ----------------------------------------------------------------------
+  -- 3. ★ FRAME STABILITY: a region's words stand while its slots do.
+  ----------------------------------------------------------------------
+
+  open import Data.Nat using (_<_; s≤s; z≤n)
+  open import Data.Nat.Properties using (≤-refl; +-monoʳ-≤; +-monoˡ-<; <-≤-trans; ≤-<-trans; m∸n≤m; +-suc)
+
+  slots-frame : ∀ {sm sm′ : ℕ → Maybe W} {o} (w : List W)
+              → (∀ k → k < length w → sm′ (k + o) ≡ sm (k + o)) → SlotsAt sm o w → SlotsAt sm′ o w
+  slots-frame []       h tt      = tt
+  slots-frame {sm} {sm′} {o} (x ∷ w) h (e , s) =
+    trans (h 0 (s≤s z≤n)) e ,
+    slots-frame {sm} {sm′} {suc o} w (λ k k< → trans (cong sm′ (+-suc k o)) (trans (h (suc k) (s≤s k<)) (cong sm (sym (+-suc k o))))) s
+
+  -- the environment's buffers lie below its words
+  envW-frame : ∀ {rd} {sm sm′ : ℕ → Maybe W} {Es} (es : Slots Es)
+             → (∀ x → x < ws Es → sm′ x ≡ sm x) → EnvW rd sm es → EnvW rd sm′ es
+  envW-frame []ᵉ h tt = tt
+  envW-frame {rd} {sm} {sm′} (vw {E = E} {Es = Es} e es) h ((w , p , s) , ev) =
+    (w , p , slots-frame {sm} {sm′} w (λ k k< → h (k + ws Es) (+-monoˡ-< (ws Es) (subst (k <_) (vw-len p) k<))) s) ,
+    envW-frame es (λ x x< → h x (<-≤-trans x< (m≤n+m (ws Es) (wsz E)))) ev
+  envW-frame {rd} {sm} {sm′} (ln {E = E} {X = X} {Es = Es} e x es) h ((w , p , s) , ev) =
+    (w , p , slots-frame {sm} {sm′} w (λ k k< → h (k + ws (E ∷ Es)) (+-monoˡ-< (ws (E ∷ Es)) (subst (k <_) (vw-len p) k<))) s) ,
+    envW-frame es (λ y y< → h y (<-≤-trans y< (m≤n+m (ws (E ∷ Es)) (wsz (E ⊗t X))))) ev
+
+  -- the operand stack's words lie in [budget ∸ its words, budget)
+  open import Data.Nat.Properties using (∸-monoʳ-≤)
+
+  stkW-frame : ∀ {rd} {sm sm′ : ℕ → Maybe W} {φ S} (os : Stk S) → ws S ≤ budget φ
+             → (∀ x → budget φ ∸ ws S ≤ x → x < budget φ → sm′ x ≡ sm x) → StkW rd sm φ os → StkW rd sm′ φ os
+  stkW-frame []ˢ fit h tt = tt
+  stkW-frame {rd} {sm} {sm′} {φ} (_∷ˢ_ {A} {S} v os) fit h ((w , p , s) , st) =
+    (w , p , slots-frame {sm} {sm′} w (λ k k< → h (k + o) (m≤n+m o k) (in-range k (subst (k <_) (vw-len p) k<))) s) ,
+    stkW-frame os fitS (λ x lo hi → h x (≤-trans (∸-monoʳ-≤ (budget φ) (m≤n+m (ws S) (wsz A))) lo) hi) st
+    where
+      o = budget φ ∸ ws (A ∷ S)
+      fitS : ws S ≤ budget φ
+      fitS = ≤-trans (m≤n+m (ws S) (wsz A)) fit
+      in-range : ∀ k → k < wsz A → k + o < budget φ
+      in-range k k< = <-≤-trans (+-monoˡ-< o k<)
+                        (≤-trans (Data.Nat.Properties.≤-reflexive (pair-at (budget φ) (wsz A) 0 (ws S) fit))
+                                 (m∸n≤m (budget φ) (ws S)))
+        where import Data.Nat.Properties
