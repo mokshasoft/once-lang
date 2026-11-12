@@ -217,14 +217,17 @@ copy (minl a)      n with copy a n
 copy (minr b)      n with copy b n
 ... | (b' , n₁ , t₁) = (minr b' , n₁ , t₁)
 copy (mbase x)     n = (mbase x , n , [])
-copy (mmu {F} i v)     n with copy v (suc n)
-... | (v' , n₁ , t₁) = (mmu (szμ F , n) v' , n₁ , alloc (szμ F , n) ∷ t₁)
+-- ★ B1.4 (post-order): a cell's contents are copied first, then its own
+-- cell is allocated, as `lIn` (and a closure's, a ν's construction) allocates;
+-- so a copy routine is "copy what it holds, then build the cell"
+copy (mmu {F} i v)     n with copy v n
+... | (v' , n₁ , t₁) = (mmu (szμ F , n₁) v' , suc n₁ , t₁ ++ alloc (szμ F , n₁) ∷ [])
 copy (mct x)       n with copy x n
 ... | (x' , n₁ , t₁) = (mct x' , n₁ , t₁)
-copy (mfn {X = X} i c x) n with copy x (suc n)
-... | (x' , n₁ , t₁) = (mfn (szc X , n) c x' , n₁ , alloc (szc X , n) ∷ t₁)
-copy (mnu {F} {S} i p) n with copy p (suc n)
-... | (p' , n₁ , t₁) = (mnu (szν F S , n) p' , n₁ , alloc (szν F S , n) ∷ t₁)
+copy (mfn {X = X} i c x) n with copy x n
+... | (x' , n₁ , t₁) = (mfn (szc X , n₁) c x' , suc n₁ , t₁ ++ alloc (szc X , n₁) ∷ [])
+copy (mnu {F} {S} i p) n with copy p n
+... | (p' , n₁ , t₁) = (mnu (szν F S , n₁) p' , suc n₁ , t₁ ++ alloc (szν F S , n₁) ∷ [])
 
 -- `drop`: free every cell
 freeAll : ∀ {A} → MV A → Trace
@@ -547,14 +550,14 @@ copy-mem (minl a) n with copy a n | copy-mem a n
 copy-mem (minr b) n with copy b n | copy-mem b n
 ... | (b' , n₁ , t₁) | mb = mb
 copy-mem (mbase x) n = []
-copy-mem (mmu i v) n with copy v (suc n) | copy-mem v (suc n)
-... | (v' , n₁ , t₁) | mv = m-alloc ∷ mv
+copy-mem (mmu i v) n with copy v n | copy-mem v n
+... | (v' , n₁ , t₁) | mv = ++⁺ mv (m-alloc ∷ [])
 copy-mem (mct x) n with copy x n | copy-mem x n
 ... | (x' , n₁ , t₁) | mx = mx
-copy-mem (mfn i c x) n with copy x (suc n) | copy-mem x (suc n)
-... | (x' , n₁ , t₁) | mx = m-alloc ∷ mx
-copy-mem (mnu i p) n with copy p (suc n) | copy-mem p (suc n)
-... | (p' , n₁ , t₁) | mp = m-alloc ∷ mp
+copy-mem (mfn i c x) n with copy x n | copy-mem x n
+... | (x' , n₁ , t₁) | mx = ++⁺ mx (m-alloc ∷ [])
+copy-mem (mnu i p) n with copy p n | copy-mem p n
+... | (p' , n₁ , t₁) | mp = ++⁺ mp (m-alloc ∷ [])
 
 freeAll-mem : ∀ {A} (v : MV A) → All Mem (freeAll v)
 freeAll-mem mone        = []
@@ -681,13 +684,13 @@ copy-er (minl a)     n with copy a n | copy-er a n
 copy-er (minr b)     n with copy b n | copy-er b n
 ... | (b' , n₁ , t₁) | eb = cong inj₂ eb
 copy-er (mbase x)    n = refl
-copy-er (mmu {F} i v) n with copy v (suc n) | copy-er v (suc n)
+copy-er (mmu {F} i v) n with copy v n | copy-er v n
 ... | (v' , n₁ , t₁) | ev = cong (λ x → inμ (coh F (μt F) x)) ev
 copy-er (mct x)      n with copy x n | copy-er x n
 ... | (x' , n₁ , t₁) | ex = ex
-copy-er (mfn i c x)  n with copy x (suc n) | copy-er x (suc n)
+copy-er (mfn i c x)  n with copy x n | copy-er x n
 ... | (x' , n₁ , t₁) | ex = cong (cmean c) ex
-copy-er (mnu {F} {S} i p) n with copy p (suc n) | copy-er p (suc n)
+copy-er (mnu {F} {S} i p) n with copy p n | copy-er p n
 ... | (p' , n₁ , t₁) | ep = cong (λ z → anaN F (cohc F S (fst z)) (snd z)) ep
 
 -- a flat answer in memory means the answer
@@ -854,13 +857,13 @@ copy-sized (minl a) n with copy a n | copy-sized a n
 copy-sized (minr b) n with copy b n | copy-sized b n
 ... | (b' , n₁ , t₁) | sb = sb
 copy-sized (mbase x) n = tt
-copy-sized (mmu i v) n with copy v (suc n) | copy-sized v (suc n)
+copy-sized (mmu i v) n with copy v n | copy-sized v n
 ... | (v' , n₁ , t₁) | s = (refl , s)
 copy-sized (mct x) n with copy x n | copy-sized x n
 ... | (x' , n₁ , t₁) | s = s
-copy-sized (mfn i c x) n with copy x (suc n) | copy-sized x (suc n)
+copy-sized (mfn i c x) n with copy x n | copy-sized x n
 ... | (x' , n₁ , t₁) | s = (refl , s)
-copy-sized (mnu i p) n with copy p (suc n) | copy-sized p (suc n)
+copy-sized (mnu i p) n with copy p n | copy-sized p n
 ... | (p' , n₁ , t₁) | s = (refl , s)
 
 mvF-sized : ∀ a (y : ⟦ a ⟧f) → Sized (mvF a y)
@@ -1179,14 +1182,14 @@ copy-mono (minl a) n with copy a n | copy-mono a n
 copy-mono (minr b) n with copy b n | copy-mono b n
 ... | (b' , n₁ , t₁) | m₁ = m₁
 copy-mono (mbase x) n = ≤-refl
-copy-mono (mmu i v) n with copy v (suc n) | copy-mono v (suc n)
-... | (v' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
+copy-mono (mmu i v) n with copy v n | copy-mono v n
+... | (v' , n₁ , t₁) | m₁ = ≤-trans m₁ (n≤1+n n₁)
 copy-mono (mct x) n with copy x n | copy-mono x n
 ... | (x' , n₁ , t₁) | m₁ = m₁
-copy-mono (mfn i c x) n with copy x (suc n) | copy-mono x (suc n)
-... | (x' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
-copy-mono (mnu i p) n with copy p (suc n) | copy-mono p (suc n)
-... | (p' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
+copy-mono (mfn i c x) n with copy x n | copy-mono x n
+... | (x' , n₁ , t₁) | m₁ = ≤-trans m₁ (n≤1+n n₁)
+copy-mono (mnu i p) n with copy p n | copy-mono p n
+... | (p' , n₁ , t₁) | m₁ = ≤-trans m₁ (n≤1+n n₁)
 
 copy-below : ∀ {A} (v : MV A) n i → fst (snd (copy v n)) ≤ serial i → cnt (fst (copy v n)) i ≡ 0
 copy-below mone n i le = refl
@@ -1198,14 +1201,14 @@ copy-below (minl a) n i le with copy a n | copy-below a n
 copy-below (minr b) n i le with copy b n | copy-below b n
 ... | (b' , n₁ , t₁) | bb = bb i le
 copy-below (mbase x) n i le = refl
-copy-below (mmu j v) n i le with copy v (suc n) | copy-below v (suc n) | copy-mono v (suc n)
-... | (v' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bv i le)
+copy-below (mmu j v) n i le with copy v n | copy-below v n
+... | (v' , n₁ , t₁) | bv = cong₂ _+_ (δ-fresh le) (bv i (≤-trans (n≤1+n n₁) le))
 copy-below (mct x) n i le with copy x n | copy-below x n
 ... | (x' , n₁ , t₁) | bx = bx i le
-copy-below (mfn j c x) n i le with copy x (suc n) | copy-below x (suc n) | copy-mono x (suc n)
-... | (x' , n₁ , t₁) | bx | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bx i le)
-copy-below (mnu j p) n i le with copy p (suc n) | copy-below p (suc n) | copy-mono p (suc n)
-... | (p' , n₁ , t₁) | bp | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bp i le)
+copy-below (mfn j c x) n i le with copy x n | copy-below x n
+... | (x' , n₁ , t₁) | bx = cong₂ _+_ (δ-fresh le) (bx i (≤-trans (n≤1+n n₁) le))
+copy-below (mnu j p) n i le with copy p n | copy-below p n
+... | (p' , n₁ , t₁) | bp = cong₂ _+_ (δ-fresh le) (bp i (≤-trans (n≤1+n n₁) le))
 
 -- one allocated cell, at the counter, onto a heap empty from the counter on
 private
@@ -1215,6 +1218,17 @@ private
   alloc-eq : ∀ j (h : Heap) (V : Heap) (P : Heap) → (∀ i → P i ≡ step (alloc j) h i + V i)
            → ∀ i → P i ≡ h i + (δ j i + V i)
   alloc-eq j h V P e i = trans (e i) (assoc (h i) (δ j i) (V i))
+
+  -- ★ B1.4 (post-order copy): a cell allocated after its contents' events
+  rearr : ∀ a b c → (a + b) + c ≡ a + (c + b)
+  rearr = solve-∀
+
+  cell-ok : ∀ j (t : Trace) (h V : Heap) → OK t h → (∀ i → play t h i ≡ h i + V i) → h j ≡ 0 → V j ≡ 0
+          → OK (t ++ alloc j ∷ []) h × (∀ i → play (t ++ alloc j ∷ []) h i ≡ h i + (δ j i + V i))
+  cell-ok j t h V ok eq hj Vj =
+    ( OK-++ t (alloc j ∷ []) h ok (trans (eq j) (cong₂ _+_ hj Vj) , tt)
+    , λ i → trans (cong (λ x → x i) (play-++ t (alloc j ∷ []) h))
+                  (trans (cong (_+ δ j i) (eq i)) (rearr (h i) (V i) (δ j i))) )
 
 -- `dup`'s copy: legal, and it adds exactly the copy's cells
 copy-ok : ∀ {A} (v : MV A) n (h : Heap) → (∀ i → n ≤ serial i → h i ≡ 0)
@@ -1232,14 +1246,14 @@ copy-ok (minl a) n h ab with copy a n | copy-ok a n h ab
 copy-ok (minr b) n h ab with copy b n | copy-ok b n h ab
 ... | (b' , n₁ , t₁) | r = r
 copy-ok (mbase x) n h ab = (tt , λ i → sym (+0 (h i)))
-copy-ok (mmu {F} j v) n h ab with copy v (suc n) | copy-ok v (suc n) (step (alloc (szμ F , n)) h) (alloc-above (szμ F) n h ab)
-... | (v' , n₁ , t₁) | (ok , eq) = ((ab (szμ F , n) ≤-refl , ok) , alloc-eq (szμ F , n) h (cnt v') (play t₁ (step (alloc (szμ F , n)) h)) eq)
+copy-ok (mmu {F} j v) n h ab with copy v n | copy-ok v n h ab | copy-mono v n | copy-below v n
+... | (v' , n₁ , t₁) | (ok , eq) | m₁ | bv = cell-ok (szμ F , n₁) t₁ h (cnt v') ok eq (ab (szμ F , n₁) m₁) (bv (szμ F , n₁) ≤-refl)
 copy-ok (mct x) n h ab with copy x n | copy-ok x n h ab
 ... | (x' , n₁ , t₁) | r = r
-copy-ok (mfn {X = X} j c x) n h ab with copy x (suc n) | copy-ok x (suc n) (step (alloc (szc X , n)) h) (alloc-above (szc X) n h ab)
-... | (x' , n₁ , t₁) | (ok , eq) = ((ab (szc X , n) ≤-refl , ok) , alloc-eq (szc X , n) h (cnt x') (play t₁ (step (alloc (szc X , n)) h)) eq)
-copy-ok (mnu {F} {S} j p) n h ab with copy p (suc n) | copy-ok p (suc n) (step (alloc (szν F S , n)) h) (alloc-above (szν F S) n h ab)
-... | (p' , n₁ , t₁) | (ok , eq) = ((ab (szν F S , n) ≤-refl , ok) , alloc-eq (szν F S , n) h (cnt p') (play t₁ (step (alloc (szν F S , n)) h)) eq)
+copy-ok (mfn {X = X} j c x) n h ab with copy x n | copy-ok x n h ab | copy-mono x n | copy-below x n
+... | (x' , n₁ , t₁) | (ok , eq) | m₁ | bx = cell-ok (szc X , n₁) t₁ h (cnt x') ok eq (ab (szc X , n₁) m₁) (bx (szc X , n₁) ≤-refl)
+copy-ok (mnu {F} {S} j p) n h ab with copy p n | copy-ok p n h ab | copy-mono p n | copy-below p n
+... | (p' , n₁ , t₁) | (ok , eq) | m₁ | bp = cell-ok (szν F S , n₁) t₁ h (cnt p') ok eq (ab (szν F S , n₁) m₁) (bp (szν F S , n₁) ≤-refl)
 
 -- freeing one live cell `j` whose contents count `V`
 free-step : ∀ j (V : Heap) (h r : Heap) → (∀ i → h i ≤ 1) → (∀ i → (δ j i + V i) + r i ≤ h i)
