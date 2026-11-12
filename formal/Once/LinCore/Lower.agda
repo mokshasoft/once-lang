@@ -57,25 +57,7 @@ open import Once.LinCore.Layout fmt ans bw
 -- 1. MOVES, word by word through `Output`.
 ------------------------------------------------------------------------
 
--- `n` words from slots `a…` to slots `b…`, lowest first (safe when b ≤ a)
-mvSS : ℕ → ℕ → ℕ → AbstractTrace
-mvSS a b zero    = []
-mvSS a b (suc n) = load-from-slot a ∷ store-at-slot b ∷ mvSS (suc a) (suc b) n
-
--- …highest first (safe when a ≤ b)
-mvSSd : ℕ → ℕ → ℕ → AbstractTrace
-mvSSd a b zero    = []
-mvSSd a b (suc n) = load-from-slot (a + n) ∷ store-at-slot (b + n) ∷ mvSSd a b n
-
--- from `Input1`'s words `o…` to slots `b…`
-mvPS : ℕ → ℕ → ℕ → AbstractTrace
-mvPS o b zero    = []
-mvPS o b (suc n) = load-at o ∷ store-at-slot b ∷ mvPS (suc o) (suc b) n
-
--- from slots `a…` to `Input1`'s words `o…`
-mvSP : ℕ → ℕ → ℕ → AbstractTrace
-mvSP a o zero    = []
-mvSP a o (suc n) = load-from-slot a ∷ store-at o ∷ mvSP (suc a) (suc o) n
+open import Once.LinCore.MoveCode public
 
 ------------------------------------------------------------------------
 -- 2. NAMES: a block by its index, its jump labels, its trampoline.
