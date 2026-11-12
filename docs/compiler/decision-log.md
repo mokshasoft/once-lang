@@ -22720,3 +22720,31 @@ closure node `[env-word, code]`, code at word 1), D147, D415.
 ### Consequences
 * Calls pass the argument's (and result's) address in `Input1` and the top view's in `Output` (both
   survive a call); the callee copies its argument in and its result out (D147).
+
+## D417 — THE IMAGE'S CONTROL IS THE FLAT MACHINE'S: TRAMPOLINES ARE BLOCKS, POINTS BEFORE WORDS (2026-11-12)
+
+**Decided by the user** (2026-11-12, plan 0.146 B1.4b). **Applies**: D415 (a call opens a frame of its
+own), D416 (cells name their code), GOAL.md (proved correct; no runtime added).
+
+### Decision
+* **A dispatch through a cell calls a trampoline BLOCK.** `Key` gains a trampoline key per cell kind; the
+  image's `icall`, `icallω`, `iobs`, `ccopy`, `ncopy`, `cfree`, `nfree` call it, and its image code is the
+  cell's part, `call κ`, then the tail. The image's frames are then the flat run's frames, one to one.
+* **The image's simulation of the flat run goes through PROGRAM POINTS.** A word-free layer runs the
+  image over points (a block and a position in its code; a loop's continuation is its dispatch point),
+  in lock-step with the image's steps. The word layer then has one relation: the flat `pc` is the
+  point's address and the flat code there is the lowering at that point; each return-stack point a flat
+  saved frame.
+* **The flat code is unchanged.** A trampoline block lowers to the code `tramp` emits now; the loop's
+  dispatch is as now. No run-time cost.
+
+### Why
+The image built code at run time that was never lowered (a loop's continuation) and called a cell's
+block directly where the flat run goes through a trampoline's frame. A by-cases implementation relation
+would carry both mismatches inside the word-level proof, the heaviest layer (Agda's heap cap); moving
+them to the image's semantics and a word-free layer keeps every per-instruction lemma as is and makes
+the whole-run relation one case.
+
+### Consequences
+* `ImageRun`, `Keys`/`KeysRun`, `HeldI` and `ImageSim` are updated for the trampoline keys (symbolic).
+* New module `ImagePt` (points, the lock-step), then the word layer's relation and step theorem.
