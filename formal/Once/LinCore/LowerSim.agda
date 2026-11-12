@@ -893,3 +893,31 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
       env< : ∀ x → x < ws Es → x < (budget φ ∸ ws S) ∸ suc (wsz A ⊔ wsz B)
       env< x x< = <-≤-trans x< (≤-trans (c-efit C)
                     (subst (EP φ ≤_) (sym (new-top (budget φ) (suc (wsz A ⊔ wsz B)) (ws S))) (env-below φ (ws ((A ⊕t B) ∷ S)) fit)))
+
+  ----------------------------------------------------------------------
+  -- 9. ★ THE HEAP STEPS.
+  ----------------------------------------------------------------------
+
+  open import Once.LinCore.Moves {FS} using (mvPS-run; MovedP; p-moved; p-rest; p-heap; p-halt; p-pc; p-in; restore-step; free-step)
+  open import Once.LinCore.MoveCode using (mvPS)
+  open import Once.CCC.Machine.Locations using (AtDynamic)
+  open import Once.CCC.Machine.SMCore using (offsetLoc; restore-input; instr-free-heap; SV-Ptr; Input1; module ExecFinal)
+  open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef)
+
+  -- a cell's words, moved by a pointer move from its first word
+  cell-slots : ∀ {fs fs′ : FlatState} {i b n} (w : List W)
+             → MovedP fs fs′ (AtDynamic (cellLoc i 0)) 0 b n
+             → At (heapMem (floc fs)) i 0 w → length w ≡ n → SlotsAt (slot fs′) b w
+  cell-slots {fs} {fs′} {i} {b} {n} w P a refl = go w 0 a (λ k k< → p-moved P k k<)
+    where
+      at′ : ∀ k → MemOps.readLoc {FS} (floc fs) (offsetLoc (AtDynamic (cellLoc i 0)) (k + 0)) ≡ heapMem (floc fs) (cellLoc i k)
+      at′ k = cong (λ z → heapMem (floc fs) (heap-loc (mkHeapRef (serial i)) z))
+                  (trans (Data.Nat.Properties.+-identityʳ (k + 0)) (Data.Nat.Properties.+-identityʳ k))
+        where import Data.Nat.Properties
+      go : ∀ (v : List W) j → At (heapMem (floc fs)) i j v
+         → (∀ k → k < j + length v → slot fs′ (k + b) ≡ MemOps.readLoc {FS} (floc fs) (offsetLoc (AtDynamic (cellLoc i 0)) (k + 0)))
+         → SlotsAt (slot fs′) (j + b) v
+      go []      j a h = tt
+      go (x ∷ v) j (e , a) h =
+        trans (h j (subst (j <_) (sym (+-suc j (length v))) (s≤s (m≤m+n j (length v))))) (trans (at′ j) e) ,
+        go v (suc j) a (λ k k< → h k (subst (k <_) (sym (+-suc j (length v))) k<))
