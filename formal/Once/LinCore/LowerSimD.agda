@@ -300,3 +300,45 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                 fs′ , step-at fs₁ (h , f₁) (lea-step fs (ws Es)) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
                         (step-at fs₃ (h , f₃) (flat-tag-branch-not prog fs₂ L₁ (cong tag-test e1)) st)) ,
                 C′ , m-pc M
+
+  ----------------------------------------------------------------------
+  -- ★ `lconst`: a base word onto the stack, in place of a unit. The loader
+  -- (`Lower`'s parameter `ldConst`) is given by what it does: `Output` its word.
+  ----------------------------------------------------------------------
+
+  open import Once.CCC.Machine.SMCore using (AbstractInstr; store-at-slot)
+  open import Once.LinCore.Moves {FS} using (store-step; store-same; store-other)
+  open import Once.LinCore.Events fmt ans bw using (mone; mbase)
+
+  lconst-sim : ∀ prog (fs : FlatState) (φ : Frame) {b Es S} {es : Slots Es} {os : Stk S} (v : ⟦ b ⟧b) (ld : AbstractInstr)
+             → FlatMachine.flat-exec-instr {FS} ld prog fs
+               ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (fpc fs) }
+             → Seg prog (fpc fs) (ld ∷ store-at-slot ((budget φ ∸ ws S) ∸ 1) ∷ [])
+             → fhalted (floc fs) ≡ false
+             → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ mone ∷ˢ os)
+             → ws (Bt b ∷ S) ≤ OP φ
+             → Σ FlatState λ fs′ → FlatSteps prog 2 fs fs′ × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mbase v ∷ˢ os)
+  lconst-sim prog fs φ {b} {Es} {S} {es} {os} v ld eld (f₁ , f₂ , _) h C fit =
+    fs₂ ,
+    step-at fs₁ (h , f₁) eld (step-at fs₂ (h , f₂) (store-step fs₁ dst) done) ,
+    record { c-env  = envW-frame es (λ x x< → store-other (floc fs₁) cf dst (wordOf v) x
+                                     (λ e → Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans x< env≤))) (c-env C)
+           ; c-stk  = ( wordOf v ∷ [] , vbase
+                      , (trans (cong (slot fs₂) (sym (new-top (budget φ) 1 (ws S)))) (store-same (floc fs₁) cf dst (wordOf v)) , tt) )
+                    , stkW-frame os fitS (λ x lo _ → store-other (floc fs₁) cf dst (wordOf v) x
+                                             (λ e → Data.Nat.Properties.<-irrefl e (<-≤-trans b1<b lo))) (proj₂ (c-stk C))
+           ; c-efit = c-efit C ; c-sfit = fit }
+    where
+      cf = AllocState.current-frame (falloc fs)
+      bot = budget φ ∸ ws S
+      dst = bot ∸ 1
+      fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (fpc fs) }
+      fs₂ = record fs₁ { floc = MemOps.writeLoc {FS} (floc fs₁) (AtStack cf dst) (wordOf v) ; fpc = suc (fpc fs₁) }
+      fitB : 1 + ws S ≤ budget φ
+      fitB = ≤-trans fit (m≤n+m (OP φ) (EP φ))
+      fitS : ws S ≤ budget φ
+      fitS = ≤-trans (m≤n+m (ws S) 1) fitB
+      env≤ : ws Es ≤ dst
+      env≤ = ≤-trans (c-efit C) (subst (EP φ ≤_) (sym (new-top (budget φ) 1 (ws S))) (env-below φ (1 + ws S) fit))
+      b1<b : dst < bot
+      b1<b = Data.Nat.Properties.∸-monoʳ-< {o = 0} (s≤s z≤n) (≤∸ 1 (ws S) (budget φ) fitB)
