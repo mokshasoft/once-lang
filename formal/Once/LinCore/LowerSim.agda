@@ -198,7 +198,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   open LocState using (heapMem) renaming (halted to fhalted)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
-  open import Data.Bool using (false)
+  open import Data.Bool using (false; true)
 
   slots-moved : ∀ {fs fs′ a b n} (w : List W) → MovedS fs fs′ a b n → SlotsAt (slot fs) a w → length w ≡ n
               → SlotsAt (slot fs′) b w
@@ -1024,3 +1024,25 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   stkW-heap []ˢ h tt = tt
   stkW-heap (v ∷ˢ os) h ((w , p , s) , st) =
     (w , vw-frame p (λ i k c → h i k (lft′ c)) , s) , stkW-heap os (λ i k c → h i k (rgt′ c)) st
+
+  ----------------------------------------------------------------------
+  -- 11. ★ A FRESH CELL: the block the counter names, of its words.
+  ----------------------------------------------------------------------
+
+  open import Once.CCC.Machine.SMCore using (size-with; size-with-aux)
+  open import Data.Nat using (_<ᵇ_; _≟_)
+  open import Relation.Nullary using (yes; no)
+
+  -- the fresh block has its size
+  size-with-same : ∀ n r (szs : ℕ → ℕ) → size-with n r szs r ≡ n
+  size-with-same n r szs with r ≟ r
+  ... | yes _ = refl
+  ... | no ne = Data.Empty.⊥-elim (ne refl)
+
+  <ᵇ-true : ∀ {m n} → m < n → (m <ᵇ n) ≡ true
+  <ᵇ-true {zero}  {suc n} _        = refl
+  <ᵇ-true {suc m} {suc n} (s≤s lt) = <ᵇ-true lt
+
+  -- a block's words are no other block's
+  other-block : ∀ {r s o o′} → ¬ r ≡ s → ¬ AtDynamic {FS} (heap-loc (mkHeapRef s) o′) ≡ AtDynamic (heap-loc (mkHeapRef r) o)
+  other-block ne refl = ne refl
