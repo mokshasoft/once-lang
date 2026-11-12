@@ -137,3 +137,102 @@ data Codeᴵ where
 -- ★ a block: its signature's code, polymorphic in the rest of both stacks
 Block : BSig → Set
 Block σ = ∀ {Es S} → Codeᴵ (top σ ⊳ Es ∣ dom σ ∷ S) (top σ ⊳ Es ∣ cod σ ∷ S)
+
+------------------------------------------------------------------------
+-- 3. THE COMPILER: A16's `comp`, calling blocks.
+------------------------------------------------------------------------
+
+-- a label's body, as the key of its block
+key1 : ∀ {Γ l g X A B} (ds : Defs Γ) → Γ ∋[ l ] sg once g X A B → Key (bsig nothing (X ⊗t A) B)
+key1 (ds ▸ _)      (there p) = key1 ds p
+key1 (ds ▸ b1 b γ) here      = kbody1 ds b γ
+
+keyω : ∀ {Γ l g X A B} (ds : Defs Γ) → Γ ∋[ l ] sg many g X A B → Key (bsig (just X) A B)
+keyω (ds ▸ _)      (there p) = keyω ds p
+keyω (ds ▸ bω b γ) here      = kbodyω ds b γ
+
+compᴵ : ∀ {Γ} (ds : Defs Γ) {E A B} → Tm Γ E A B → ∀ {Es S T} → Codeᴵ (E ∷ Es ∣ B ∷ S) T → Codeᴵ (E ∷ Es ∣ A ∷ S) T
+compᴵ ds lid k            = k
+compᴵ ds (f ∘l g) k       = compᴵ ds g (compᴵ ds f k)
+compᴵ ds (f ⊗l g) k       = unpair ⨾ compᴵ ds f (swap ⨾ compᴵ ds g (swap ⨾ pair ⨾ k))
+compᴵ ds (lcase f g) k    = case (compᴵ ds f k) (compᴵ ds g k)
+compᴵ ds (lcata F alg) k  = call (kfold ds F alg) ⨾ k
+compᴵ ds (liter f φ) k    = loop (compᴵ ds f end) ⨾ k
+compᴵ ds (lapp p) k       = untag ⨾ call (key1 ds p) ⨾ k
+compᴵ ds (lend b) k       = elend ⨾ compᴵ ds b (eunlend ⨾ k)
+compᴵ ds (blift f) k      = elift ⨾ compᴵ ds f (epop ⨾ k)
+compᴵ ds (bfst f) k       = efst ⨾ compᴵ ds f (epop ⨾ k)
+compᴵ ds (bsnd f) k       = esnd ⨾ compᴵ ds f (epop ⨾ k)
+compᴵ ds (bcaseE f g) k   = ecase (compᴵ ds f (epop ⨾ k)) (compᴵ ds g (epop ⨾ k))
+compᴵ ds (bout f) k       = eout ⨾ compᴵ ds f (epop ⨾ k)
+compᴵ ds (bcopy {E = E}) k = call (kcopy E) ⨾ k
+compᴵ ds (bapp p) k       = eapp ⨾ call (keyω ds p) ⨾ epop ⨾ k
+compᴵ ds ρl k             = prim ds ρl ⨾ k
+compᴵ ds ρl⁻ k            = prim ds ρl⁻ ⨾ k
+compᴵ ds lul k            = prim ds lul ⨾ k
+compᴵ ds lul⁻ k           = prim ds lul⁻ ⨾ k
+compᴵ ds lassoc k         = prim ds lassoc ⨾ k
+compᴵ ds lassoc⁻ k        = prim ds lassoc⁻ ⨾ k
+compᴵ ds lswap k          = prim ds lswap ⨾ k
+compᴵ ds (dup {A = A}) k  = epush ⨾ unit ⨾ call (kcopy A) ⨾ epull ⨾ pair ⨾ k
+compᴵ ds (drop {A = A}) k = call (kfree A) ⨾ k
+compᴵ ds linl k           = prim ds linl ⨾ k
+compᴵ ds linr k           = prim ds linr ⨾ k
+compᴵ ds lIn k            = prim ds lIn ⨾ k
+compᴵ ds lOutμ k          = prim ds lOutμ ⨾ k
+compᴵ ds (lclo F p) k     = prim ds (lclo F p) ⨾ k
+compᴵ ds (lconst v) k     = prim ds (lconst v) ⨾ k
+compᴵ ds (lop s) k        = prim ds (lop s) ⨾ k
+compᴵ ds lzero k          = stuck ⨾ k
+compᴵ ds (llam b γ) k     = prim ds (llam b γ) ⨾ k
+compᴵ ds (llamω b γ) k    = prim ds (llamω b γ) ⨾ k
+compᴵ ds lev k            = icall ⨾ k
+compᴵ ds bev k            = icallω ⨾ k
+compᴵ ds lunf k           = prim ds lunf ⨾ k
+compᴵ ds lout k           = iobs ⨾ k
+
+-- a fold's node: its children folded in order (calls), the layer rebuilt
+travᴵ : ∀ {Γ} (ds : Defs Γ) F {E A} (alg : Tm Γ E (LF∙ F A) A) G → ∀ {Es S T}
+      → Codeᴵ (E ∷ Es ∣ LF∙ G A ∷ S) T → Codeᴵ (E ∷ Es ∣ LF∙ G (μt F) ∷ S) T
+travᴵ ds F alg Idf      k = call (kfold ds F alg) ⨾ k
+travᴵ ds F alg Kone     k = k
+travᴵ ds F alg Kzero    k = k
+travᴵ ds F alg (Kb _)   k = k
+travᴵ ds F alg (Kμ _)   k = k
+travᴵ ds F alg (G ⊕f H) k = case (travᴵ ds F alg G (prim ε linl ⨾ k)) (travᴵ ds F alg H (prim ε linr ⨾ k))
+travᴵ ds F alg (G ⊗f H) k = unpair ⨾ travᴵ ds F alg G (swap ⨾ travᴵ ds F alg H (swap ⨾ pair ⨾ k))
+
+-- a COPY of the viewed value, by its type: what a cell holds first, then
+-- the cell (`Events.copy`, post-order)
+copyᴵ : ∀ A → Block (bsig (just A) One A)
+copyᴵ One          = end
+copyᴵ Zero         = stuck ⨾ end
+copyᴵ (A ⊗t B)     = efst ⨾ call (kcopy A) ⨾ epop ⨾ unit ⨾ esnd ⨾ call (kcopy B) ⨾ epop ⨾ swap ⨾ pair ⨾ end
+copyᴵ (A ⊕t B)     = ecase (call (kcopy A) ⨾ epop ⨾ prim ε linl ⨾ end) (call (kcopy B) ⨾ epop ⨾ prim ε linr ⨾ end)
+copyᴵ (Bt b)       = eword ⨾ end
+copyᴵ (μt F)       = eoutq ⨾ call (kcopy (LF∙ F (μt F))) ⨾ epop ⨾ prim ε lIn ⨾ end
+copyᴵ (Ct l X)     = eapp ⨾ call (kcopy X) ⨾ epop ⨾ tag₁ ⨾ end
+copyᴵ (Fn k g A B) = ccopy ⨾ end
+copyᴵ (Nu F)       = ncopy ⨾ end
+
+-- a FREE of every cell of the operand, by its type: a cell, then what it
+-- held (`Events.freeAll`)
+freeᴵ : ∀ A → Block (bsig nothing A One)
+freeᴵ One          = end
+freeᴵ Zero         = stuck ⨾ end
+freeᴵ (A ⊗t B)     = unpair ⨾ call (kfree A) ⨾ swap ⨾ call (kfree B) ⨾ pair ⨾ prim ε lul ⨾ end
+freeᴵ (A ⊕t B)     = case (call (kfree A) ⨾ end) (call (kfree B) ⨾ end)
+freeᴵ (Bt b)       = prim ε drop ⨾ end
+freeᴵ (μt F)       = prim ε lOutμ ⨾ call (kfree (LF∙ F (μt F))) ⨾ end
+freeᴵ (Ct l X)     = untag₁ ⨾ call (kfree X) ⨾ end
+freeᴵ (Fn k g A B) = cfree ⨾ end
+freeᴵ (Nu F)       = nfree ⨾ end
+
+-- ★ THE BLOCKS: each key's code
+blockᴵ : ∀ {σ} → Key σ → Block σ
+blockᴵ (kbody1 ds b γ)  = elift ⨾ compᴵ ds b (epop ⨾ end)
+blockᴵ (kbodyω ds b γ)  = compᴵ ds b end
+blockᴵ (kfold ds F alg) = prim ds lOutμ ⨾ travᴵ ds F alg F (compᴵ ds alg end)
+blockᴵ (kobs F S)       = elift ⨾ compᴵ ε (obsT F S) (epop ⨾ end)
+blockᴵ (kcopy A)        = copyᴵ A
+blockᴵ (kfree A)        = freeᴵ A
