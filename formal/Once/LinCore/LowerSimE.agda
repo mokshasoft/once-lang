@@ -12,7 +12,7 @@
 
 {-# OPTIONS --guardedness #-}
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
@@ -132,3 +132,82 @@ call-in prog fs a f e q b s₁ s₂ (g₁ , g₂ , g₃ , _) ff (h₁ , h₂ , h
     fs₅ = record fs₄ { floc = MemOps.writeLoc {FS} (floc fs₄) (AtStack cf′ s₂) ptr ; fpc = suc (fpc fs₄) }
     fs₆ = record fs₅ { floc = record (floc fs₅) { regs = writeReg (LocState.regs (floc fs₅)) Output ptr } ; fpc = suc (fpc fs₅) }
     fs₇ = record fs₆ { floc = MemOps.writeLoc {FS} (floc fs₆) (AtStack cf′ s₁) ptr ; fpc = suc (fpc fs₆) }
+
+------------------------------------------------------------------------
+-- ★ A CALL'S WAY OUT: the caller's area back in `Input1`, the result's
+-- words stored into it (another frame: the caller's), the return.
+------------------------------------------------------------------------
+
+open import Once.CCC.Machine.SMCore using (restore-input; offsetLoc; StoredValue)
+open import Once.LinCore.MoveCode using (mvSP)
+open import Once.LinCore.Moves {FS} using (slot; restore-step; mvSP-run; MovedW; w-moved; w-rest; w-pc; w-alloc; w-in; Seg-++ˡ; Seg-++ʳ)
+  renaming (ln to nsteps; w-halt to wm-halt)
+open MemOps {FS} using (readLoc)
+open import Once.CCC.Machine.Locations using (ValueLocation)
+open import Relation.Binary.PropositionalEquality using (subst)
+open import Data.List using (length; _++_)
+open import Data.Nat.Properties using (+-comm)
+open FlatStepsAPI {FS} using (FlatSteps-++)
+
+record CallOut (fs fs′ : FlatState) (cfc : Frame) (a src o n pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ) : Set where
+  field
+    co-frame : current-frame (falloc fs′) ≡ cfc
+    co-slots : frame-slots (falloc fs′) ≡ sl
+    co-saved : saved-frames (falloc fs′) ≡ sv
+    co-ret   : fret fs′ ≡ rest
+    co-pc    : fpc fs′ ≡ pc
+    co-moved : ∀ k → k < n → stackMem (floc fs′) cfc ((k + o) + a) ≡ slot fs (k + src)
+    co-rest  : ∀ (l : ValueLocation FS) → (∀ k → k < n → ¬ l ≡ AtStack cfc ((k + o) + a)) → readLoc (floc fs′) l ≡ readLoc (floc fs) l
+    co-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
+    co-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
+    co-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
+open CallOut public
+
+open import Once.LinCore.Moves {FS} using (readLoc-regs; w-ret)
+open import Data.Nat using (_<_)
+
+len-mvSP : ∀ x y m → length (mvSP x y m) ≡ nsteps m
+len-mvSP x y zero    = refl
+len-mvSP x y (suc m) = cong (λ z → suc (suc z)) (len-mvSP (suc x) (suc y) m)
+
+call-out : ∀ prog (fs : FlatState) (cfc : Frame) (a s₁ src o n b pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ)
+         → fret fs ≡ pc ∷ rest → saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+         → ¬ cfc ≡ current-frame (falloc fs)
+         → slot fs s₁ ≡ just (SV-Ptr (AtStack cfc a))
+         → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (k + src) ≡ just v)
+         → Seg prog (fpc fs) (restore-input s₁ ∷ mvSP src o n ++ instr-ctrl (c-ret b) ∷ [])
+         → fhalted (floc fs) ≡ false
+         → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOut fs fs′ cfc a src o n pc rest sv sl
+call-out prog fs cfc a s₁ src o n b pc rest sv sl hret hsv ne ep def (g₁ , s) h =
+  fin (mvSP-run prog fs₁ (AtStack cfc a) src o n (Seg-++ˡ prog (suc (fpc fs)) (mvSP src o n) _ s) h refl def (λ k _ → refl)
+         (λ k k′ _ _ e → ne (frame-of-eq e)))
+  where
+    fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 (SV-Ptr (AtStack cfc a)) } ; fpc = suc (fpc fs) }
+    frame-of-eq : ∀ {x y f} → AtStack {FS} cfc x ≡ AtStack f y → cfc ≡ f
+    frame-of-eq refl = refl
+    fin : Σ FlatState (λ fs₂ → FlatSteps prog (nsteps n) fs₁ fs₂ × MovedW fs₁ fs₂ (AtStack cfc a) src o n)
+        → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOut fs fs′ cfc a src o n pc rest sv sl
+    fin (fs₂ , st₂ , W) =
+      fs₃ ,
+      step-at fs₁ (h , g₁) (restore-step fs s₁ ep) (FlatSteps-++ st₂ (step-at fs₃ (trans (wm-halt W) h , fret′) (ret-step prog fs₂ b eqR) done)) ,
+      record { co-frame = cong (λ L → current-frame (leave-frame-aux L (falloc fs₂))) eqL
+             ; co-slots = cong (λ L → frame-slots (leave-frame-aux L (falloc fs₂))) eqL
+             ; co-saved = cong (λ L → saved-frames (leave-frame-aux L (falloc fs₂))) eqL
+             ; co-ret = refl ; co-pc = refl
+             ; co-moved = λ k k< → w-moved W k k<
+             ; co-rest = λ l nl → trans (w-rest W l nl) (readLoc-regs (floc fs) _ l)
+             ; co-next = trans (cong (λ L → next-heap-ref (leave-frame-aux L (falloc fs₂))) eqL) (cong next-heap-ref (w-alloc W))
+             ; co-size = trans (cong (λ L → block-size (leave-frame-aux L (falloc fs₂))) eqL) (cong block-size (w-alloc W))
+             ; co-halt = wm-halt W }
+      where
+        eqL : saved-frames (falloc fs₂) ≡ (cfc , sl) ∷ sv
+        eqL = trans (cong saved-frames (w-alloc W)) hsv
+        eqR : fret fs₂ ≡ pc ∷ rest
+        eqR = trans (w-ret W) hret
+        fs₃ = record fs₂ { falloc = leave-frame (falloc fs₂) ; fpc = pc ; fret = rest }
+        fret′ : fetch prog (fpc fs₂) ≡ just (instr-ctrl (c-ret b))
+        fret′ = subst (λ z → fetch prog z ≡ just (instr-ctrl (c-ret b)))
+                  (trans (cong (suc (fpc fs) +_) (len-mvSP src o n)) (trans (+-comm (suc (fpc fs)) (nsteps n)) (sym (w-pc W))))
+                  (proj₁′ (Seg-++ʳ prog (suc (fpc fs)) (mvSP src o n) _ s))
+          where proj₁′ : ∀ {A : Set} {B : Set} → A × B → A
+                proj₁′ (x , _) = x
