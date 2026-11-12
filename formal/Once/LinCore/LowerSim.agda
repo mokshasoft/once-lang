@@ -21,6 +21,7 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
+import Data.Empty
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
@@ -341,3 +342,69 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   ... | (w , pw , sw) with subst (λ z → VW (heapMem (floc fs)) z w) eq pw
   ...   | vct px = view-sim prog fs φ (ws Es) w px sw (Data.Nat.Properties.≤-reflexive (+-comm (ws Es) (wsz X))) s h C fit
     where import Data.Nat.Properties
+
+
+  ----------------------------------------------------------------------
+  -- 6. ★ FROM A VIEW TO THE STACK.
+  ----------------------------------------------------------------------
+
+  private
+    -- the stack's new top, just below it
+    new-top : ∀ B a s → (B ∸ s) ∸ a ≡ B ∸ (a + s)
+    new-top B a s = trans (Data.Nat.Properties.∸-+-assoc B s a) (cong (B ∸_) (+-comm s a))
+      where import Data.Nat.Properties
+
+    -- a move of one word clobbers nothing it reads later
+    single : ∀ {k k′} → k < k′ → k′ < 1 → Data.Empty.⊥
+    single {k′ = zero}  () _
+    single {k′ = suc _} _  (s≤s ())
+
+  -- ★ `eword`: the viewed word onto the stack (in place of a unit)
+  eword-sim : ∀ prog (fs : FlatState) (φ : Frame) {b Es S} {es : Slots (Bt b ∷ Es)} {os : Stk S} {x : ⟦ b ⟧b}
+            → see es ≡ mbase x
+            → Seg prog (fpc fs) (mvSS (ws Es) ((budget φ ∸ ws S) ∸ 1) 1)
+            → fhalted (floc fs) ≡ false
+            → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ mone ∷ˢ os)
+            → ws (Bt b ∷ S) ≤ OP φ
+            → Σ FlatState λ fs′ → FlatSteps prog (nsteps 1) fs fs′
+                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mbase x ∷ˢ os) × MovedS fs fs′ (ws Es) ((budget φ ∸ ws S) ∸ 1) 1
+  eword-sim prog fs φ {b} {Es} {S} {es} {os} {x} eq s h C fit with topW es (c-env C)
+  ... | (w , pw , sw) with subst (λ z → VW (heapMem (floc fs)) z w) eq pw
+  ...   | vbase with mvSS-run prog fs (ws Es) ((budget φ ∸ ws S) ∸ 1) 1 s h (λ k k< → slots-def {slot fs} {ws Es} w sw k k<)
+                       (λ k k′ lt lt′ → Data.Empty.⊥-elim (single lt lt′))
+  ...     | (fs′ , st , M) =
+    fs′ , st ,
+    record { c-env  = envW-frame {heapMem (floc fs′)} es (λ y y< → m-rest M y (λ k k< e → env-ok y y< k k< e)) (envH (c-env C))
+           ; c-stk  = ( wordOf x ∷ [] , vbase
+                      , subst (λ z → SlotsAt (slot fs′) z (wordOf x ∷ [])) (new-top (budget φ) 1 (ws S))
+                          (slots-moved (wordOf x ∷ []) M sw refl) )
+                    , stkW-frame os fitS (λ y lo hi → m-rest M y (λ k k< e → stk-ok y lo k k< e)) (stkH (proj₂ (c-stk C)))
+           ; c-efit = c-efit C ; c-sfit = fit }
+    , M
+    where
+      dst = (budget φ ∸ ws S) ∸ 1
+      envH : EnvW (heapMem (floc fs)) (slot fs) es → EnvW (heapMem (floc fs′)) (slot fs) es
+      envH e = subst (λ r → EnvW r (slot fs) es) (sym (m-heap M)) e
+      stkH : StkW (heapMem (floc fs)) (slot fs) φ os → StkW (heapMem (floc fs′)) (slot fs) φ os
+      stkH e = subst (λ r → StkW r (slot fs) φ os) (sym (m-heap M)) e
+      fitB : 1 + ws S ≤ budget φ
+      fitB = ≤-trans fit (m≤n+m (OP φ) (EP φ))
+      fitS : ws S ≤ budget φ
+      fitS = ≤-trans (m≤n+m (ws S) 1) fitB
+      dst< : dst < budget φ ∸ ws S
+      dst< = subst (_< budget φ ∸ ws S) (sym (new-top (budget φ) 1 (ws S)))
+               (Data.Nat.Properties.∸-monoʳ-< (Data.Nat.Properties.n<1+n (ws S)) fitB)
+        where import Data.Nat.Properties
+      -- the word lands below the stack…
+      stk-ok : ∀ y → budget φ ∸ ws S ≤ y → ∀ k → k < 1 → ¬ y ≡ k + dst
+      stk-ok y lo zero _ e = Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans dst< lo)
+        where import Data.Nat.Properties
+      stk-ok y lo (suc k) (s≤s ())
+      -- …and above the environment
+      env-ok : ∀ y → y < ws (Bt b ∷ Es) → ∀ k → k < 1 → ¬ y ≡ k + dst
+      env-ok y y< zero _ e =
+        Data.Nat.Properties.<-irrefl e
+          (<-≤-trans y< (≤-trans (c-efit C)
+            (subst (EP φ ≤_) (sym (new-top (budget φ) 1 (ws S))) (env-below φ (1 + ws S) fit))))
+        where import Data.Nat.Properties
+      env-ok y y< (suc k) (s≤s ())
