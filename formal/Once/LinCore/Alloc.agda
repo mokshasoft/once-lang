@@ -30,7 +30,7 @@
 -- size's peak (D411 part 2, decided: `Once.LinCore.Region`).
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; subst; _≢_)

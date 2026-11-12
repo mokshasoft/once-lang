@@ -32,7 +32,7 @@
 -- translation, proved the same way.
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (sym; cong; cong₂; subst)
@@ -42,16 +42,17 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Relation.Binary.Pointwise using (Pointwise)
   renaming (inj₁ to ⊎₁; inj₂ to ⊎₂)
 open import Data.Unit using (⊤; tt)
-open import Once.LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.LinCore.Flat using (Base; FTy; funit; fvoid; fw; _f*_; _f+_)
 
 module Once.LinCore.Pass
-  (Base : Set) (⟦_⟧b : Base → Set)
-  (Sig : Set) (sdom scod : Sig → FTy Base)
+  (fmt : TargetNum) (ans : FFIAnswers)
   where
 
-open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import Once.LinCore.Bisim Base ⟦_⟧b Sig sdom scod
-open import Once.LinCore.Grade Base ⟦_⟧b Sig sdom scod using (same; ret≈; bind≈; blk-coh; cata-coh)
+open import Once.LinCore.NbEPLinCore fmt ans
+open import Once.LinCore.Bisim fmt ans
+open import Once.LinCore.Grade fmt ans using (same; ret≈; bind≈; blk-coh; cata-coh)
 
 ------------------------------------------------------------------------
 -- 1. THE IR: master's constructors, over the core's types.
@@ -165,7 +166,7 @@ module _ {Γ : Cx} (δ : Env Γ) where
     ev (in-ν F)         x        = return∞ (inν (coh F (Nu F) x))
     ev (Iter body _)    (e , a)  = iter∞ (λ a′ → ev body (e , a′)) a
     ev (const v)        _        = return∞ v
-    ev (SigOp s)        x        = callT s x
+    ev (SigOp s)        x        = emb (opB s x)
     ev (Call {g = g} p) a        = up g (lookup δ p tt a)
 
     evB : ∀ {A B} {f : IR Γ A B} → BlkIR Γ f → ⟦ A ⟧ → T ⟦ B ⟧
@@ -189,7 +190,7 @@ module _ {Γ : Cx} (δ : Env Γ) where
     evB (i-Out {F})     v        = fmapT (coh⁻¹ F (Nu F)) (outν v)
     evB (i-inν {F})     x        = ret (inν (coh F (Nu F) x))
     evB (i-const {v = v}) _      = ret v
-    evB (i-op {s})      x        = callB s x
+    evB (i-op {s})      x        = opB s x
     evB (i-call {p = p}) a       = lookup δ p tt a
 
     evG : ∀ g {A B} (f : IR Γ A B) → GdIR Γ g f → ⟦ A ⟧ → Mg g ⟦ B ⟧
@@ -675,7 +676,7 @@ module _ {Γ : Cx} {ρ ρ′ : Env Γ} (vρ : VEnv ρ ρ′) where
            (iter-congR (λ rs → ≈R-blk refl (pass-ok body (re , rs))) (≈R-blk refl (pass-ok body (re , ra))))
     pass-ok (const v)    r = ret≈R refl
     pass-ok (SigOp s)    {x} {x′} r =
-      subst (λ z → callT s x ≈[ V ⌜ scod s ⌝ ] callT s z) (Vf≡ (sdom s) r) (≈→≈R (Vf-refl (scod s)) ≈-refl)
+      subst (λ z → emb (opB s x) ≈[ V ⌜ scod s ⌝ ] emb (opB s z)) (Vf≡ (sdom s) r) (≈→≈R (Vf-refl (scod s)) ≈-refl)
     -- a call: the two meanings of the label, at related arguments
     pass-ok (Call p)     r = ≈R-blk refl (lookupV vρ p tt r)
 

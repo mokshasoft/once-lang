@@ -21,7 +21,7 @@
 --     temporary block.
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Agda.Builtin.Sigma using (_,_)
@@ -36,43 +36,74 @@ import Data.Maybe
 import Once.LinCore.Alloc as Al
 import Once.LinCore.Region as Rg
 import Once.LinCore.AllocRun
-open import Once.LinCore.Flat using (FTy; funit; fvoid; fw)
 open import Once.LinCore.Free using (Weave; w-[]; w-run; w-tmp)
+import Once.LinCore.Flat as Fl
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.Target.Arch using (arch-numerics; x86-64)
+open import Once.IR.Semantics.Trace using (FFIAnswers; callOp; haltOp)
+open import Once.Res using (stopped)
+open import Once.Spec.Name using (bare)
+open import Once.Spec.Type using (Int; Unit; Void; b-Int; b-Unit; b-Void)
+open import Once.SigOp.Info using (SigOpInfo; mk-info'; emitsV; callsV; haltsV)
+open import Once.Spec.Word using (Carrier)
+open import Once.IR.Semantics.Boundary using (atTarget)
+import Once.IR.Semantics.Value Carrier Carrier as Val
 
 module Once.LinCore.Examples where
 
-data B : Set where
-  int : B
+-- ★ B1.2: the core is master's: x86-64's numerics, no pure FFI answers
+fmt₀ : TargetNum
+fmt₀ = arch-numerics x86-64
 
-⟦_⟧B : B → Set
-⟦ int ⟧B  = ℕ
+ans₀ : FFIAnswers
+ans₀ _ _ _ _ = stopped
 
-data Op : Set where
-  emit succ exit : Op
+-- master's SigOps: an emit (answers `unit`), a call the world answers (an
+-- `Int → Int`), and an exit (halts)
+emit-i : SigOpInfo Int Unit
+emit-i = mk-info' (bare "emit") (emitsV refl) b-Int b-Unit
 
--- A12: flat types, as the Spec's: an emit answers `unit`, an exit `void`
-odom ocod : Op → FTy B
-odom emit = fw int
-odom succ = fw int
-odom exit = fw int
-ocod emit = funit
-ocod succ = fw int
-ocod exit = fvoid
+succ-i : SigOpInfo Int Int
+succ-i = mk-info' (bare "succ") callsV b-Int b-Int
+
+exit-i : SigOpInfo Int Void
+exit-i = mk-info' (bare "exit") (haltsV refl) b-Int b-Void
 
 -- an Int is one word (`Spec.ABI`)
-bw : B → ℕ
-bw int = 1
+bw : Fl.Base → ℕ
+bw Fl.int   = 1
+bw Fl.float = 1
 
-open import Once.LinCore.NbEPLinCore B ⟦_⟧B Op odom ocod
-open import Once.LinCore.Events B ⟦_⟧B Op odom ocod bw
-open import Once.LinCore.Act B ⟦_⟧B Op odom ocod bw
-open import Once.LinCore.Temps B ⟦_⟧B Op odom ocod bw
-open import Once.LinCore.Total B ⟦_⟧B Op odom ocod bw
-open import Once.LinCore.Pass B ⟦_⟧B Op odom ocod renaming (Out to Outν)
-open import Once.LinCore.Whole B ⟦_⟧B Op odom ocod bw
-open import Once.LinCore.Machine B ⟦_⟧B Op odom ocod bw
-open import Once.LinCore.Held B ⟦_⟧B Op odom ocod bw
-module AR = Once.LinCore.AllocRun B ⟦_⟧B Op odom ocod bw
+open import Once.LinCore.NbEPLinCore fmt₀ ans₀
+open import Once.LinCore.Events fmt₀ ans₀ bw
+open import Once.LinCore.Act fmt₀ ans₀ bw
+open import Once.LinCore.Temps fmt₀ ans₀ bw
+open import Once.LinCore.Total fmt₀ ans₀ bw
+open import Once.LinCore.Pass fmt₀ ans₀ renaming (Out to Outν)
+open import Once.LinCore.Whole fmt₀ ans₀ bw
+open import Once.LinCore.Machine fmt₀ ans₀ bw
+open import Once.LinCore.Held fmt₀ ans₀ bw
+module AR = Once.LinCore.AllocRun fmt₀ ans₀ bw
+
+emit succ exit : Sig
+emit = sig emit-i
+succ = sig succ-i
+exit = sig exit-i
+
+-- the operations the events name (`DenotTrace.sigOpT`)
+emitO succO : CallOp
+emitO = callOp (bare "emit") Int b-Int Unit
+succO = callOp (bare "succ") Int b-Int Int
+
+exitH : HaltOp
+exitH = haltOp (bare "exit") Int b-Int
+
+-- an `Int` word (two base words share `Carrier`, so a literal names its own)
+pattern mi x = mbase {int} x
+
+-- what an answer is at the target (`atTarget`): an `Int` modulo 2⁶⁴
+nrm : ℕ → ℕ
+nrm a = atTarget fmt₀ (Int {0}) a
 
 -- the events of a loop run, and of a run
 trace-of : ∀ {E A C} {round : Tm Γ E A (C ⊕t A)} {e s n k s′ n′ t} → Loop ds round e s n k s′ n′ t → Trace
@@ -101,15 +132,15 @@ emit-blk = k-∘ k-inr (k-∘ k-op (k-∘ (k-∘ k-lul (k-⊗ k-drop k-id)) (k-�
 
 -- one round, from the counter `x`, the world answering `tt` to the emit and
 -- `x′` to the successor
-emit-step : ∀ (x x′ : ℕ) n → Run ε emit-round mone (mbase x) n (gives (minr (mbase x′)) n) _
+emit-step : ∀ (x x′ : ℕ) n → Run ε emit-round mone (mi x) n (gives (minr (mi (nrm x′))) n) _
 emit-step x x′ n =
-  r-∘ (r-∘ (r-∘ (r-∘ r-dup (go-on (r-⊗ (r-op {y = tt}) (go-on (fm-gives r-id)))))
+  r-∘ (r-∘ (r-∘ (r-∘ r-dup (go-on (r-⊗ (r-op (p-call {y = tt} p-ret)) (go-on (fm-gives r-id)))))
                 (go-on (r-∘ (r-⊗ r-drop (go-on (fm-gives r-id))) (go-on r-λ))))
-           (go-on (r-op {y = x′})))
+           (go-on (r-op (p-call {y = x′} p-ret))))
       (go-on r-inr)
 
 -- two rounds: 0 → 1 → 2
-emit-server : Loop ε emit-round mone (mbase 0) 0 2 (mbase 2) 0 _
+emit-server : Loop ε emit-round mone (mi 0) 0 2 (mi 2) 0 _
 emit-server = l-suc (emit-step 0 1 0) (l-suc (emit-step 1 2 0) l-zero)
 
 -- ★ after both rounds the heap is the one it started with
@@ -121,7 +152,7 @@ emit-server-constant = snd′ (word-server emit-server {λ _ → 0} {λ _ → 0}
         snd′ (_ , q) = q
 
 -- the emit server's two rounds touch no cell at all: its events are SigOp calls
-emit-events : trace-of emit-server ≡ io emit 0 tt ∷ io succ 0 1 ∷ io emit 1 tt ∷ io succ 1 2 ∷ []
+emit-events : trace-of emit-server ≡ io emitO 0 tt ∷ io succO 0 1 ∷ io emitO 1 tt ∷ io succO 1 2 ∷ []
 emit-events = refl
 
 ------------------------------------------------------------------------
@@ -156,9 +187,9 @@ build : LTm ε (Bt int) IntList
 build = lIn ∘l linr ∘l (lid ⊗l (lIn ∘l linl)) ∘l ρl⁻
 
 one-list : ℕ → MV IntList
-one-list x = mmu (3 , 1) (minr (mpair (mbase x) (mmu (3 , 0) (minl mone))))
+one-list x = mmu (3 , 1) (minr (mpair (mi x) (mmu (3 , 0) (minl mone))))
 
-build-run : Run ε build mone (mbase 5) 0 (gives (one-list 5) 2) _
+build-run : Run ε build mone (mi 5) 0 (gives (one-list 5) 2) _
 build-run = r-∘ (r-∘ (r-∘ r-ρ⁻ (go-on (r-⊗ r-id (go-on (fm-gives (r-∘ r-inl (go-on r-In))))))) (go-on r-inr)) (go-on r-In)
 
 build-events : trace-of-run build-run ≡ alloc (3 , 0) ∷ alloc (3 , 1) ∷ []
@@ -166,7 +197,7 @@ build-events = refl
 
 -- the heap after it, and the precondition there, from the theorems
 private
-  pre₀ : Pre (λ _ → 0) 0 (mbase 5) (λ _ → 0)
+  pre₀ : Pre (λ _ → 0) 0 (mi 5) (λ _ → 0)
   pre₀ = record { le1 = λ _ → z≤n ; above = λ _ _ → refl ; sub = λ _ → z≤n }
 
 heap₀ : Heap
@@ -178,7 +209,7 @@ pre-list with exchange build-run pre₀ lent₀
 
 -- [x] again, in fresh blocks: the nil (3 , 2) and the cons (3 , 3)
 new-list : ℕ → MV IntList
-new-list x = mmu (3 , 3) (minr (mpair (mbase x) (mmu (3 , 2) (minl mone))))
+new-list x = mmu (3 , 3) (minr (mpair (mi x) (mmu (3 , 2) (minl mone))))
 
 -- one round from counter 2: the old cons and nil are freed, a new nil and a
 -- new cons are allocated
@@ -283,7 +314,7 @@ q0 : Look defs p0 ε (bω lIn k-in)
 q0 = lk-there (lk-there (lk-there (lk-there lk-here)))
 
 -- on 7 and [5], from counter 2: the new list is (3 , 3) → (3 , 2)
-closure-fold-run : Run defs closure-fold mone (mpair (mbase 7) (one-list 5)) 2 (gives (new-list 5) 4) _
+closure-fold-run : Run defs closure-fold mone (mpair (mi 7) (one-list 5)) 2 (gives (new-list 5) 4) _
 closure-fold-run =
   r-∘ (r-∘ (r-∘ (r-⊗ r-clo (go-on (fm-gives r-id)))
                 (go-on (r-lend (fm-gives (r-snd (r-cata (m-inr (fm-gives (m-pair m-b (go-on (fm-gives
@@ -338,7 +369,7 @@ nil-life-ok = birth (death done)
 nested-lend : LTm ε (IntList ⊗t (Bt int ⊗t One)) (IntList ⊗t (Bt int ⊗t IntList))
 nested-lend = lend (lend (bfst (bsnd bcopy)))
 
-nested-run : Run ε nested-lend mone (mpair (one-list 5) (mpair (mbase 7) mone)) 2 (gives _ 4) _
+nested-run : Run ε nested-lend mone (mpair (one-list 5) (mpair (mi 7) mone)) 2 (gives _ 4) _
 nested-run = r-lend (fm-gives (r-lend (fm-gives (r-fst (r-snd r-copy)))))
 
 -- ★ by evaluation: only the copy allocates; both lent values stay as they were
@@ -356,10 +387,10 @@ emit-fold = lcata ListF (lcase lid (drop ∘l lop emit ∘l ρl))
 emit-fold-run : Run ε emit-fold mone (one-list 5) 2 (gives mone 2) _
 emit-fold-run =
   r-cata (m-inr (fm-gives (m-pair m-b (go-on (fm-gives (m-id (r-cata (m-inl (fm-gives m-one)) (go-on (r-case₁ r-id)))))))))
-         (go-on (r-case₂ (r-∘ (r-∘ r-ρ (go-on (r-op {y = tt}))) (go-on r-drop))))
+         (go-on (r-case₂ (r-∘ (r-∘ r-ρ (go-on (r-op (p-call {y = tt} p-ret)))) (go-on r-drop))))
 
 -- ★ by evaluation: both cells freed, then the emit
-emit-fold-events : trace-of-run emit-fold-run ≡ free (3 , 1) ∷ free (3 , 0) ∷ io emit 5 tt ∷ []
+emit-fold-events : trace-of-run emit-fold-run ≡ free (3 , 1) ∷ free (3 , 0) ∷ io emitO 5 tt ∷ []
 emit-fold-events = refl
 
 ------------------------------------------------------------------------
@@ -372,13 +403,13 @@ emit-closure = lapp p2 ∘l (lclo Idf p2 ⊗l lid) ∘l lul⁻
 q2 : Look defs p2 _ (b1 (lop emit ∘l lul) _)
 q2 = lk-there (lk-there lk-here)
 
-emit-closure-run : Run defs emit-closure mone (mbase 5) 0 (gives mone 0) _
+emit-closure-run : Run defs emit-closure mone (mi 5) 0 (gives mone 0) _
 emit-closure-run =
   r-∘ (r-∘ r-λ⁻ (go-on (r-⊗ r-clo (go-on (fm-gives r-id)))))
-      (go-on (r-app q2 (r-∘ r-λ (go-on (r-op {y = tt})))))
+      (go-on (r-app q2 (r-∘ r-λ (go-on (r-op (p-call {y = tt} p-ret))))))
 
 -- the emit is the only event
-emit-closure-events : trace-of-run emit-closure-run ≡ io emit 5 tt ∷ []
+emit-closure-events : trace-of-run emit-closure-run ≡ io emitO 5 tt ∷ []
 emit-closure-events = refl
 
 ------------------------------------------------------------------------
@@ -393,18 +424,18 @@ composed = lapp p4 ∘l ((lclo Idf p4 ∘l (lclo Idf p2 ⊗l lclo Idf p3) ∘l l
 q4 : Look defs p4 _ (b1 comp-body _)
 q4 = lk-here
 
-composed-run : Run defs composed mone (mbase 5) 0 (gives mone 0) _
+composed-run : Run defs composed mone (mi 5) 0 (gives mone 0) _
 composed-run =
   r-∘ (r-∘ r-λ⁻ (go-on (r-⊗ (r-∘ (r-∘ r-λ⁻ (go-on (r-⊗ r-clo (go-on (fm-gives r-clo))))) (go-on r-clo))
                               (go-on (fm-gives r-id)))))
-      (go-on (r-app q4 (r-∘ (r-∘ r-α (go-on (r-⊗ r-id (go-on (fm-gives (r-app lk-here (r-∘ r-λ (go-on (r-op {y = 6})))))))))
-                            (go-on (r-app (lk-there lk-here) (r-∘ r-λ (go-on (r-op {y = tt}))))))))
+      (go-on (r-app q4 (r-∘ (r-∘ r-α (go-on (r-⊗ r-id (go-on (fm-gives (r-app lk-here (r-∘ r-λ (go-on (r-op (p-call {y = 6} p-ret))))))))))
+                            (go-on (r-app (lk-there lk-here) (r-∘ r-λ (go-on (r-op (p-call {y = tt} p-ret)))))))))
 
-composed-events : trace-of-run composed-run ≡ io succ 5 6 ∷ io emit 6 tt ∷ []
+composed-events : trace-of-run composed-run ≡ io succO 5 6 ∷ io emitO 6 tt ∷ []
 composed-events = refl
 
 -- and it means what it does
-composed-sound : RB (block (Lᶜ ⟦ defs ⟧D composed tt 5)) (io-call succ 5 6 ∷ io-call emit 6 tt ∷ []) (returns tt)
+composed-sound : RB (block (Lᶜ ⟦ defs ⟧D composed tt 5)) (io-call succO 5 6 ∷ io-call emitO 6 tt ∷ []) (returns tt)
 composed-sound = sound composed-run
 
 ------------------------------------------------------------------------
@@ -413,14 +444,14 @@ composed-sound = sound composed-run
 ------------------------------------------------------------------------
 
 halting : LTm ε (Bt int) (Zero ⊗t IntList)
-halting = (lhalt exit ⊗l lid) ∘l (lid ⊗l (lIn ∘l linl)) ∘l ρl⁻
+halting = (lop exit ⊗l lid) ∘l (lid ⊗l (lIn ∘l linl)) ∘l ρl⁻
 
-halting-run : Run ε halting mone (mbase 5) 0 (stop halted) _
+halting-run : Run ε halting mone (mi 5) 0 (stop halted) _
 halting-run =
   r-∘ (r-∘ r-ρ⁻ (go-on (r-⊗ r-id (go-on (fm-gives (r-∘ r-inl (go-on r-In)))))))
-      (go-on (r-⊗ r-halt stopped))
+      (go-on (r-⊗ (r-opend p-halt) stopped))
 
-halting-events : trace-of-run halting-run ≡ alloc (3 , 0) ∷ stp exit 5 ∷ []
+halting-events : trace-of-run halting-run ≡ alloc (3 , 0) ∷ stp exitH 5 ∷ []
 halting-events = refl
 
 -- ★ block (3 , 0) is born and never dies: legal, because the program halted
@@ -445,15 +476,15 @@ count-blk = k-case (k-∘ k-inr k-inr) k-inl
 count-run : Run ε (liter count-round count-blk) mone (minl mone) 0 (gives mone 0) _
 count-run = r-iter (r-case₁ (r-∘ r-inr (go-on r-inr))) (go-on (again (r-iter (r-case₂ r-inl) (go-on done))))
 
-ran-out : Run ε (liter emit-round emit-blk) mone (mbase 0) 0 (stop exhausted) _
+ran-out : Run ε (liter emit-round emit-blk) mone (mi 0) 0 (stop exhausted) _
 ran-out = loop-run emit-server r-exh
 
-ran-out-events : trace-of-run ran-out ≡ io emit 0 tt ∷ io succ 0 1 ∷ io emit 1 tt ∷ io succ 1 2 ∷ []
+ran-out-events : trace-of-run ran-out ≡ io emitO 0 tt ∷ io succO 0 1 ∷ io emitO 1 tt ∷ io succO 1 2 ∷ []
 ran-out-events = refl
 
 -- ★ and what it did is a prefix of what the server means
 ran-out-sound : RB (block (Lᶜ ε (liter emit-round emit-blk) tt 0))
-                   (io-call emit 0 tt ∷ io-call succ 0 1 ∷ io-call emit 1 tt ∷ io-call succ 1 2 ∷ [])
+                   (io-call emitO 0 tt ∷ io-call succO 0 1 ∷ io-call emitO 1 tt ∷ io-call succO 1 2 ∷ [])
                    (ended exhausted)
 ran-out-sound = sound ran-out
 
@@ -490,21 +521,21 @@ stream-words = refl
 nats-two : LTm Γν (Bt int) (Bt int ⊗t (Bt int ⊗t Ct 0 (Bt int)))
 nats-two = (lid ⊗l lobs NatsF pν) ∘l lobs NatsF pν ∘l lana pν
 
-nats-two-run : Run defsν nats-two mone (mbase 5) 0
-                 (gives (mpair (mbase 5) (mpair (mbase 6) (mct (mbase 7)))) 0) _
+nats-two-run : Run defsν nats-two mone (mi 5) 0
+                 (gives (mpair (mi 5) (mpair (mi 6) (mct (mi 7)))) 0) _
 nats-two-run =
   r-∘ (r-∘ r-clo
            (go-on (r-∘ (r-∘ r-ρ⁻ (go-on (r-app lk-here (r-∘ (r-∘ r-ρ (go-on r-dup))
-                                                            (go-on (r-⊗ r-id (go-on (fm-gives (r-op {y = 6}))))))))) (go-on r-clo))))
+                                                            (go-on (r-⊗ r-id (go-on (fm-gives (r-op (p-call {y = 6} p-ret)))))))))) (go-on r-clo))))
       (go-on (r-⊗ r-id
            (go-on (fm-gives (r-∘ (r-∘ r-ρ⁻ (go-on (r-app lk-here (r-∘ (r-∘ r-ρ (go-on r-dup))
-                                                            (go-on (r-⊗ r-id (go-on (fm-gives (r-op {y = 7}))))))))) (go-on r-clo))))))
+                                                            (go-on (r-⊗ r-id (go-on (fm-gives (r-op (p-call {y = 7} p-ret)))))))))) (go-on r-clo))))))
 
-nats-two-events : trace-of-run nats-two-run ≡ io succ 5 6 ∷ io succ 6 7 ∷ []
+nats-two-events : trace-of-run nats-two-run ≡ io succO 5 6 ∷ io succO 6 7 ∷ []
 nats-two-events = refl
 
 -- and it means what it does
-nats-two-sound : RB (block (Lᶜ ⟦ defsν ⟧D nats-two tt 5)) (io-call succ 5 6 ∷ io-call succ 6 7 ∷ []) (returns (5 , (6 , 7)))
+nats-two-sound : RB (block (Lᶜ ⟦ defsν ⟧D nats-two tt 5)) (io-call succO 5 6 ∷ io-call succO 6 7 ∷ []) (returns (5 , (6 , 7)))
 nats-two-sound = sound nats-two-run
 
 ------------------------------------------------------------------------
@@ -556,11 +587,20 @@ stack-exchange = loop-exchange stack-server pre-list lent₀
 --     were built rule by rule, come out of `exec` with the same events.
 ------------------------------------------------------------------------
 
+-- ★ B1.2: it answers an `Int → Int` call with the successor, a call
+-- answered by `unit` with it, and nothing else
+world-answer : ⊤ → (o : CallOp) → Val.⟦ CallOp.cdom o ⟧ → Data.Maybe.Maybe (Val.⟦ CallOp.ccod o ⟧ × ⊤)
+world-answer _ (callOp _ Int _ Int) x = just (suc x , tt)
+{-# CATCHALL #-}
+world-answer _ (callOp _ _ _ Unit)  x = just (tt , tt)
+{-# CATCHALL #-}
+world-answer _ _                    _ = nothing
+
 world : World
-world = record { WSt = ⊤ ; ans = λ { _ emit x → just (tt , tt) ; _ succ x → just (suc x , tt) ; _ exit x → nothing } }
+world = record { WSt = ⊤ ; answer = world-answer }
 
 -- the counter server, two rounds of fuel: the hand-built run of §10
-emit-found : Ran.trace (exec world ε 2 (liter emit-round emit-blk) mone (mbase 0) 0 tt) ≡ trace-of-run ran-out
+emit-found : Ran.trace (exec world ε 2 (liter emit-round emit-blk) mone (mi 0) 0 tt) ≡ trace-of-run ran-out
 emit-found = refl
 
 -- the list server, two rounds: §2's round, then the same on the new list
@@ -570,12 +610,12 @@ list-found : Ran.trace (exec world ε 2 (liter list-round list-blk) mone (one-li
 list-found = refl
 
 -- a composition of closures, through the table: §8½'s events
-composed-found : Ran.trace (exec world defs 0 composed mone (mbase 5) 0 tt) ≡ io succ 5 6 ∷ io emit 6 tt ∷ []
+composed-found : Ran.trace (exec world defs 0 composed mone (mi 5) 0 tt) ≡ io succO 5 6 ∷ io emitO 6 tt ∷ []
 composed-found = refl
 
 -- the naturals, observed twice: §11's events and result
-nats-found : Ran.out (exec world defsν 0 nats-two mone (mbase 5) 0 tt)
-           ≡ gives (mpair (mbase 5) (mpair (mbase 6) (mct (mbase 7)))) 0
+nats-found : Ran.out (exec world defsν 0 nats-two mone (mi 5) 0 tt)
+           ≡ gives (mpair (mi 5) (mpair (mi 6) (mct (mi 7)))) 0
 nats-found = refl
 
 -- ★ A14 step 2: the list server, cut after two rounds — because its fuel ran out
@@ -594,11 +634,11 @@ counter-ir = Iter (inr ∘ snd ∘ ⟨ SigOp emit ∘ snd , SigOp succ ∘ snd �
                   (i-∘ i-inr (i-∘ i-snd (i-pair (i-∘ i-op i-snd) (i-∘ i-op i-snd)))) ∘ ⟨ terminal , const 0 ⟩
 
 counter-ios : ios (Ran.trace (exec world ε 2 (tr counter-ir) mone mone 0 tt))
-            ≡ io-call emit 0 tt ∷ io-call succ 0 1 ∷ io-call emit 1 tt ∷ io-call succ 1 2 ∷ []
+            ≡ io-call emitO 0 tt ∷ io-call succO 0 1 ∷ io-call emitO 1 tt ∷ io-call succO 1 2 ∷ []
 counter-ios = refl
 
 counter-sound : RB (block (ev ε counter-ir tt))
-                   (io-call emit 0 tt ∷ io-call succ 0 1 ∷ io-call emit 1 tt ∷ io-call succ 1 2 ∷ [])
+                   (io-call emitO 0 tt ∷ io-call succO 0 1 ∷ io-call emitO 1 tt ∷ io-call succO 1 2 ∷ [])
                    (ended exhausted)
 counter-sound = whole-sound world 2 ε counter-ir tt
 
@@ -609,8 +649,8 @@ counter-sound = whole-sound world 2 ε counter-ir tt
 ------------------------------------------------------------------------
 
 composed-machine : Out.mt (sim composed-run _ (vw mone []ᵉ) refl []ˢ end)
-                 ≡ tmp (tnew 1) ∷ tmp (tnew 1) ∷ io succ 5 6 ∷ tmp (tdel 1)
-                 ∷ tmp (tnew 1) ∷ io emit 6 tt ∷ tmp (tdel 1) ∷ tmp (tdel 1) ∷ []
+                 ≡ tmp (tnew 1) ∷ tmp (tnew 1) ∷ io succO 5 6 ∷ tmp (tdel 1)
+                 ∷ tmp (tnew 1) ∷ io emitO 6 tt ∷ tmp (tdel 1) ∷ tmp (tdel 1) ∷ []
 composed-machine = refl
 
 ------------------------------------------------------------------------
@@ -630,7 +670,7 @@ reuse = refl
 ------------------------------------------------------------------------
 
 counter-machine : Σ.fst (machine-legal (Ran.run (exec world ε 2 (tr counter-ir) mone mone 0 tt)) _)
-                ≡ io emit 0 tt ∷ io succ 0 1 ∷ io emit 1 tt ∷ io succ 1 2 ∷ []
+                ≡ io emitO 0 tt ∷ io succO 0 1 ∷ io emitO 1 tt ∷ io succO 1 2 ∷ []
 counter-machine = refl
 
 ------------------------------------------------------------------------
@@ -737,13 +777,13 @@ fn-events : trace-of-run (Ran.run fn-run)
           ≡ alloc (3 , 0) ∷ alloc (3 , 1) ∷ alloc (3 , 2)
           ∷ free (3 , 2) ∷ free (3 , 1) ∷ free (3 , 0)
           ∷ alloc (1 , 3) ∷ alloc (3 , 4) ∷ alloc (3 , 5)
-          ∷ free (3 , 5) ∷ io emit 7 tt ∷ io succ 0 1
-          ∷ free (3 , 4) ∷ io emit 5 tt ∷ io succ 1 2
+          ∷ free (3 , 5) ∷ io emitO 7 tt ∷ io succO 0 1
+          ∷ free (3 , 4) ∷ io emitO 5 tt ∷ io succO 1 2
           ∷ free (1 , 3) ∷ []
 fn-events = refl
 
 -- what the world saw
-fn-io : ios (Ran.trace fn-run) ≡ io-call emit 7 tt ∷ io-call succ 0 1 ∷ io-call emit 5 tt ∷ io-call succ 1 2 ∷ []
+fn-io : ios (Ran.trace fn-run) ≡ io-call emitO 7 tt ∷ io-call succO 0 1 ∷ io-call emitO 5 tt ∷ io-call succO 1 2 ∷ []
 fn-io = refl
 
 -- every cell freed: the list's nodes and the closures' cells
@@ -781,7 +821,7 @@ nu-run : Ran world ε nu-prog mone mone 0
 nu-run = exec world ε 0 nu-prog mone mone 0 tt
 
 -- what the world saw: each observation runs the coalgebra once
-nu-io : ios (Ran.trace nu-run) ≡ io-call succ 3 4 ∷ io-call emit 3 tt ∷ io-call succ 4 5 ∷ io-call emit 4 tt ∷ []
+nu-io : ios (Ran.trace nu-run) ≡ io-call succO 3 4 ∷ io-call emitO 3 tt ∷ io-call succO 4 5 ∷ io-call emitO 4 tt ∷ []
 nu-io = refl
 
 -- its events: the coalgebra's cell (one word: its code word) and the ν's (two:
@@ -790,10 +830,10 @@ nu-io = refl
 -- and makes the new ν; dropping the stream frees its cell and its coalgebra's
 nu-events : trace-of-run (Ran.run nu-run)
           ≡ alloc (1 , 0) ∷ alloc (2 , 1)
-          ∷ free (2 , 1) ∷ peek (1 , 0) ∷ io succ 3 4 ∷ alloc (1 , 2) ∷ free (1 , 0) ∷ alloc (2 , 3)
-          ∷ io emit 3 tt
-          ∷ free (2 , 3) ∷ peek (1 , 2) ∷ io succ 4 5 ∷ alloc (1 , 4) ∷ free (1 , 2) ∷ alloc (2 , 5)
-          ∷ io emit 4 tt
+          ∷ free (2 , 1) ∷ peek (1 , 0) ∷ io succO 3 4 ∷ alloc (1 , 2) ∷ free (1 , 0) ∷ alloc (2 , 3)
+          ∷ io emitO 3 tt
+          ∷ free (2 , 3) ∷ peek (1 , 2) ∷ io succO 4 5 ∷ alloc (1 , 4) ∷ free (1 , 2) ∷ alloc (2 , 5)
+          ∷ io emitO 4 tt
           ∷ free (2 , 5) ∷ free (1 , 4) ∷ []
 nu-events = refl
 
@@ -831,11 +871,11 @@ ho-run = exec world ε 0 (tr ho-ir) mone mone 0 tt
 
 -- the first observation gives the layer as it was built (no call); the
 -- second runs the coalgebra once; the closure emits the head it kept
-ho-ios : ios (Ran.trace ho-run) ≡ io-call succ 3 4 ∷ io-call emit 3 tt ∷ []
+ho-ios : ios (Ran.trace ho-run) ≡ io-call succO 3 4 ∷ io-call emitO 3 tt ∷ []
 ho-ios = refl
 
 -- what the world saw is a path through the IR program's meaning
-ho-sound : RB (block (ev ε ho-ir tt)) (io-call succ 3 4 ∷ io-call emit 3 tt ∷ []) (returns tt)
+ho-sound : RB (block (ev ε ho-ir tt)) (io-call succO 3 4 ∷ io-call emitO 3 tt ∷ []) (returns tt)
 ho-sound = whole-sound world 0 ε ho-ir tt
 
 -- every cell freed: the ν's, their coalgebras', the closure's
@@ -865,12 +905,12 @@ calls-main = Call here ∘ Call (there here) ∘ const 9
 calls-run : Ran world (trP calls-P) (tr calls-main) mone mone 0
 calls-run = exec world (trP calls-P) 0 (tr calls-main) mone mone 0 tt
 
-calls-ios : ios (Ran.trace calls-run) ≡ io-call succ 9 10 ∷ io-call succ 10 11 ∷ io-call emit 11 tt ∷ []
+calls-ios : ios (Ran.trace calls-run) ≡ io-call succO 9 10 ∷ io-call succO 10 11 ∷ io-call emitO 11 tt ∷ []
 calls-ios = refl
 
 -- what the world saw is a path through the program's meaning
 calls-sound : RB (block (ev ⟦ calls-P ⟧P calls-main tt))
-                 (io-call succ 9 10 ∷ io-call succ 10 11 ∷ io-call emit 11 tt ∷ []) (returns tt)
+                 (io-call succO 9 10 ∷ io-call succO 10 11 ∷ io-call emitO 11 tt ∷ []) (returns tt)
 calls-sound = whole-sound world 0 calls-P calls-main tt
 
 calls-empty : ∀ i → play (Ran.trace calls-run) (λ _ → 0) i ≡ 0

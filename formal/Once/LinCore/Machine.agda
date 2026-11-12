@@ -34,7 +34,7 @@
 -- the compiler's choice; this lowering folds plainly).
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; subst)
@@ -50,19 +50,21 @@ open import Data.List.Properties using (++-assoc; ++-identityʳ; map-++)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Relation.Nullary using (yes; no)
-open import Once.LinCore.Flat using (FTy)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Data.Sum using (inj₁; inj₂)
+open import Once.LinCore.Flat using (Base; FTy)
 open import Once.LinCore.Free
   using (_≼_; []≼; ∷≼; ++-≼; ≼-trans; ≼-refl; Weave; w-[]; w-run; w-tmp; w-++; w-self; weave-pre; Along-++)
 
 module Once.LinCore.Machine
-  (Base : Set) (⟦_⟧b : Base → Set)
-  (Sig : Set) (sdom scod : Sig → FTy Base)
+  (fmt : TargetNum) (ans : FFIAnswers)
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import Once.LinCore.Events Base ⟦_⟧b Sig sdom scod bw
-open import Once.LinCore.Temps Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.NbEPLinCore fmt ans
+open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Temps fmt ans bw
 
 ------------------------------------------------------------------------
 -- 1. THE MACHINE.
@@ -124,7 +126,6 @@ data Ins : Sh → Sh → Set where
   eapp    : ∀ {l X Es S} → Ins (Ct l X ∷ Es ∣ S) (X ∷ Ct l X ∷ Es ∣ S)
   epop    : ∀ {E Es S} → Ins (E ∷ Es ∣ S) (Es ∣ S)
   ecopy   : ∀ {E Es S} → Ins (E ∷ Es ∣ One ∷ S) (E ∷ Es ∣ E ∷ S)
-  ehalt   : ∀ {Es} (s : Sig) {S} → Ins (Es ∣ ⌜ sdom s ⌝ ∷ S) (Es ∣ Zero ∷ S)
   -- ★ D409 part 3, AN INDIRECT CALL: apply the closure on the operands (one
   -- shot: free its cell), or the one the top view sees (many-use: read its
   -- cell); its code word says which body runs, decided by the data
@@ -168,7 +169,6 @@ mutual
   comp ds (bout f) k       = eout ⨾ comp ds f (epop ⨾ k)
   comp ds bcopy k          = ecopy ⨾ k
   comp ds (bapp p) k       = eapp ⨾ enter ⨾ bodyω ds p (leave ⨾ epop ⨾ k)
-  comp ds (lhalt s) k      = ehalt s ⨾ k
   comp ds ρl k             = prim ds ρl ⨾ k
   comp ds ρl⁻ k            = prim ds ρl⁻ ⨾ k
   comp ds lul k            = prim ds lul ⨾ k
@@ -259,8 +259,11 @@ data Step {T : Sh} : ∀ {sh sh′} → Code sh T → Cfg sh → ℕ → Trace �
            → Step (epop ⨾ k) (vw e es ∥ os) n [] k (es ∥ os) n
   s-ecopy  : ∀ {E Es S} {k : Code (E ∷ Es ∣ E ∷ S) T} {es : Slots (E ∷ Es)} {os n}
            → Step (ecopy ⨾ k) (es ∥ mone ∷ˢ os) n (snd (snd (copy (see es) n))) k (es ∥ fst (copy (see es) n) ∷ˢ os) (fst (snd (copy (see es) n)))
-  s-ehalt  : ∀ {Es} {s : Sig} {S} {k : Code (Es ∣ Zero ∷ S) T} {es} {x : MV ⌜ sdom s ⌝} {os n}
-           → Step (ehalt s ⨾ k) (es ∥ x ∷ˢ os) n (stp s (toF (sdom s) (er x)) ∷ []) halted (es ∥ os) n
+  -- ★ B1.2: an op whose block ends (a halting op, or a call the world does
+  -- not answer): the machine stops there
+  s-opend  : ∀ {Γ} {ds : Defs Γ} {Es} {s : Sig} {S} {k : Code (Es ∣ ⌜ scod s ⌝ ∷ S) T} {es} {x : MV ⌜ sdom s ⌝} {os n t w}
+           → OpPath (opF s (toF (sdom s) (er x))) t (inj₂ w)
+           → Step (prim ds (lop s) ⨾ k) (es ∥ x ∷ˢ os) n t halted (es ∥ os) n
   s-fold   : ∀ {Γ} {ds : Defs Γ} {F E A Es S} {alg : Tm Γ E (LF∙ F A) A} {k : Code (E ∷ Es ∣ A ∷ S) T} {es i v os n}
            → Step (fold ds F alg ⨾ k) (es ∥ mmu i v ∷ˢ os) n (free i ∷ [])
                   (enter ⨾ trav ds F alg F (comp ds alg (leave ⨾ k))) (es ∥ v ∷ˢ os) n
@@ -540,6 +543,13 @@ simM : ∀ {Γ} {ds : Defs Γ} {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} 
      → ∀ {Es S T} (es : Slots (E ∷ Es)) → see es ≡ e → (os : Stk S) (k : Code (E ∷ Es ∣ LF∙ G A ∷ S) T)
      → SimR o (trav ds F alg G k) (es ∥ x ∷ˢ os) n t k es os
 
+-- ★ B1.2: an op's path has no temporaries
+op-NoT : ∀ {X} {b : T X} {t r} → OpPath b t r → NoT t
+op-NoT p-ret      = []
+op-NoT (p-call q) = k-io ∷ op-NoT q
+op-NoT p-halt     = k-stp ∷ []
+op-NoT p-cut      = []
+
 -- ★ the machine runs the compiled code as the term runs, for every outcome;
 -- the environment's top slot shows the run's lent value
 sim : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v o n t}
@@ -613,8 +623,8 @@ sim (r-bev {B = B} {ds′ = ds′} {b = b} {i = i} {x} {a} {o} {n} r) p es eq os
     bevR (gives _ _) r′ = then (leaf (s-eapply eq) (k-peek ∷ [])) (after r′ s-epop)
     bevR (stop _)    r′ = thenP (leaf (s-eapply eq) (k-peek ∷ [])) r′
 sim r-const fr es eq os k = leaf (s-prim r-const) []
-sim r-op    fr es eq os k = leaf (s-prim r-op) (k-io ∷ [])
-sim r-halt  fr es eq os k = paused halted _ _ [] _ _ (one s-ehalt) (w-self _) (≼-refl _) (k-stp ∷ []) tt
+sim (r-op p) fr es eq os k = leaf (s-prim (r-op p)) (op-NoT p)
+sim (r-opend p) fr es eq os k = paused halted _ _ [] _ _ (one (s-opend p)) (w-self _) (subst (_≼ _) (sym (erase-NoT _ (op-NoT p))) (≼-refl _)) (op-NoT p) tt
 sim (r-iter r (go-on done)) fr es eq os k = O-[] (pre s-loop (after (sim r fr es eq os _) s-case₁))
 sim (r-iter r (go-on (again {o = o} rn))) (p , pn) es eq os k =
   preR o s-loop (thenR o (sim r p es eq os _) (preR o s-case₂ (sim rn pn es eq os k)))

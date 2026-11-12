@@ -35,7 +35,7 @@
 -- any run the world allows.
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂)
@@ -58,18 +58,21 @@ open import Once.LinCore.Free using (cmap-++; cmap-≼; cmap-weave; cmap-nil; fo
 open import Relation.Nullary using (yes; no; ¬_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (subst; _≢_)
-open import Once.LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.Spec.Word using (Carrier)
+import Once.IR.Semantics.Value Carrier Carrier as Val
+open import Once.LinCore.Flat using (Base; FTy; funit; fvoid; fw; _f*_; _f+_)
 
 module Once.LinCore.Events
-  (Base : Set) (⟦_⟧b : Base → Set)
-  (Sig : Set) (sdom scod : Sig → FTy Base)
+  (fmt : TargetNum) (ans : FFIAnswers)
   -- ★ A12: how many words a base value takes (`Spec.ABI`: one on every target)
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import Once.LinCore.Bisim Base ⟦_⟧b Sig sdom scod using (Bl; ≈ret; ≈step; ≈call; ≈halt; block≈)
-open import Once.LinCore.Grade Base ⟦_⟧b Sig sdom scod using (blk-coh; obs-coh)
+open import Once.LinCore.NbEPLinCore fmt ans
+open import Once.LinCore.Bisim fmt ans using (Bl; ≈ret; ≈step; ≈call; ≈halt; block≈)
+open import Once.LinCore.Grade fmt ans using (blk-coh; obs-coh)
 
 -- ★ D405: every statement is over the program's label table `ds`
 variable
@@ -196,8 +199,8 @@ data Ev : Set where
   alloc : Id → Ev
   free  : Id → Ev
   peek  : Id → Ev     -- a read of a lent cell (A2): legal only while the cell is live
-  io    : (s : Sig) → ⟦ sdom s ⟧f → ⟦ scod s ⟧f → Ev   -- a SigOp call and the world's answer
-  stp   : (s : Sig) → ⟦ sdom s ⟧f → Ev                  -- a `Halts` SigOp: the run ends
+  io    : (o : CallOp) → Val.⟦ CallOp.cdom o ⟧ → Val.⟦ CallOp.ccod o ⟧ → Ev   -- a SigOp call and the world's answer (B1.2: master's)
+  stp   : (o : HaltOp) → Val.⟦ HaltOp.hdom o ⟧ → Ev        -- a `Halts` SigOp: the run ends
   tmp   : TEv → Ev                                     -- ★ A13: a temporary born or freed
 
 Trace : Set
@@ -322,6 +325,15 @@ data Outcome (B : LTy) : Set where
   gives : MV B → ℕ → Outcome B
   stop  : Why → Outcome B
 
+-- ★ B1.2: a path through an op's contract block: its calls, each with the
+-- answer the world gave, then a value (`inj₁`), or the end: a halt, or cut
+-- where the world gave no answer (`inj₂`)
+data OpPath {X : Set} : T X → Trace → X ⊎ Why → Set where
+  p-ret  : ∀ {x} → OpPath (ret x) [] (inj₁ x)
+  p-call : ∀ {o a k y t r} → OpPath (k y) t r → OpPath (call o a k) (io o a y ∷ t) r
+  p-halt : ∀ {o a} → OpPath (halt o a) (stp o a ∷ []) (inj₂ halted)
+  p-cut  : ∀ {b} → OpPath b [] (inj₂ exhausted)
+
 -- ★ A13: what a run claims of its temporaries, by how it ended
 TPost : ∀ {B} → Outcome B → Trace → Set
 TPost (gives _ _) t = TBal t
@@ -443,13 +455,16 @@ data Run {Γ} ds where
           → Run ds (lunf {F = F} {S}) e p n (gives (mnu (szν F S , n) p) (suc n)) (alloc (szν F S , n) ∷ [])
   r-nout  : ∀ {E F S} {e : MV E} {i} {p : MV (Coalg F S ⊗t S)} {o n t}
           → Run ds (obsT F S) mone p n o t → Run ds (lout {F = F}) e (mnu i p) n o (free i ∷ t)
-  -- ★ A11: a SigOp: an event, and whatever the world answers (A12: a flat
-  -- value, no cell)
   r-const : ∀ {E b} {v : ⟦ b ⟧b} {e : MV E} {n} → Run ds (lconst v) e mone n (gives (mbase v) n) []
-  r-op    : ∀ {E} {s} {e : MV E} {x : MV ⌜ sdom s ⌝} {y n}
-          → Run ds (lop s) e x n (gives (mvF (scod s) y) n) (io s (toF (sdom s) (er x)) y ∷ [])
-  r-halt  : ∀ {E} {s} {e : MV E} {x : MV ⌜ sdom s ⌝} {n}
-          → Run ds (lhalt s) e x n (stop halted) (stp s (toF (sdom s) (er x)) ∷ [])
+  -- ★ A11, B1.2: a SigOp follows its contract's block (`opF`): its calls are
+  -- events, each answered as the world chooses; it gives a flat value (no
+  -- cell), or a halting op ends the run
+  r-op    : ∀ {E} {s} {e : MV E} {x : MV ⌜ sdom s ⌝} {y n t}
+          → OpPath (opF s (toF (sdom s) (er x))) t (inj₁ y)
+          → Run ds (lop s) e x n (gives (mvF (scod s) y) n) t
+  r-opend : ∀ {E} {s} {e : MV E} {x : MV ⌜ sdom s ⌝} {n t w}
+          → OpPath (opF s (toF (sdom s) (er x))) t (inj₂ w)
+          → Run ds (lop s) e x n (stop w) t
   -- ★ A11: the loop: a round, then what it says (`Next`)
   r-iter  : ∀ {E A B} {f : Tm Γ E A (B ⊕t A)} {φ : Blk f} {e a o₁ o n t₁ t₂}
           → Run ds f e a n o₁ t₁ → Then (Next ds f φ e) o₁ o t₂ → Run ds (liter f φ) e a n o (t₁ ++ t₂)
@@ -487,8 +502,8 @@ data Next {Γ} ds f φ e where
 ------------------------------------------------------------------------
 
 data Io : Set where
-  io-call : (s : Sig) → ⟦ sdom s ⟧f → ⟦ scod s ⟧f → Io
-  io-halt : (s : Sig) → ⟦ sdom s ⟧f → Io
+  io-call : (o : CallOp) → Val.⟦ CallOp.cdom o ⟧ → Val.⟦ CallOp.ccod o ⟧ → Io
+  io-halt : (o : HaltOp) → Val.⟦ HaltOp.hdom o ⟧ → Io
 
 -- what an event shows the world
 ioOf : Ev → List Io
@@ -587,6 +602,18 @@ fmap-ret : ∀ {X Y} {f : X → Y} {m : T (X ⊎ T∞ X)} {p x}
 fmap-ret b-ret      = b-ret
 fmap-ret (b-next h) = b-next (fmap-ret h)
 fmap-ret (b-call h) = b-call (fmap-ret h)
+
+-- ★ B1.2: a path through an op's block is a path through its meaning
+op-ret : ∀ {X Y} {f : X → Y} {b : T X} {t y}
+       → OpPath b t (inj₁ y) → RB (embB (fmapT f b)) (ios t) (returns (f y))
+op-ret p-ret      = b-ret
+op-ret (p-call h) = b-call (op-ret h)
+
+op-halt : ∀ {X Y} {f : X → Y} {b : T X} {t w}
+        → OpPath b t (inj₂ w) → RB (embB (fmapT f b)) (ios t) (ended w)
+op-halt (p-call h) = b-call (op-halt h)
+op-halt p-halt     = b-halt
+op-halt p-cut      = b-cut
 
 iter-done : ∀ {A B : Set} {f : A → T∞ (B ⊎ A)} {m p b}
           → RB m p (returns (inj₁ b)) → RB (iterBlock f m) p (returns b)
@@ -772,8 +799,8 @@ sound r-unf = b-ret
 sound {ds = ds} (r-nout {E = E} {F} {S} {e = e} {p = p} r) =
   RB-Bl (block≈ (obs-coh ⟦ ds ⟧D F S (fst (er p)) (snd (er p)) {E} (er e))) (sound r)
 sound r-const = b-ret
-sound (r-op {s = s} {y = y}) = b-call (ret-eq (er-mvF (scod s) y) refl)
-sound r-halt = b-halt
+sound (r-op {s = s} {y = y} p) = subst (λ z → RB _ _ (returns z)) (sym (er-mvF (scod s) y)) (op-ret p)
+sound (r-opend p) = op-halt p
 sound (r-iter {t₁ = t₁} {t₂} r th) rewrite ios-++ t₁ t₂ with th
 ... | go-on done       = ++[] (iter-done (sound r))
 ... | go-on (again rn) = iter-next (sound r) (sound rn)
@@ -896,7 +923,7 @@ sized (r-bev r) (_ , sx) sv = sized r sx sv
 sized r-unf se sp = (refl , sp)
 sized (r-nout r) se (_ , sp) = sized r tt sp
 sized r-const se sv = tt
-sized (r-op {s = s} {y = y}) se sv = mvF-sized (scod s) y
+sized (r-op {s = s} {y = y} _) se sv = mvF-sized (scod s) y
 sized (r-iter r (go-on done)) se sv = sized r se sv
 sized (r-iter r (go-on (again rn))) se sv = sized rn se (sized r se sv)
 sized (r-tmp r w p) se sv = sized r se sv
@@ -1049,6 +1076,19 @@ OK-≼ = Along-≼
 
 play-++ : ∀ t₁ t₂ h → play (t₁ ++ t₂) h ≡ play t₂ (play t₁ h)
 play-++ t₁ t₂ h = foldl-++ (λ g x → step x g) h t₁ t₂
+
+-- ★ B1.2: an op's path touches no cell
+op-OK : ∀ {X} {b : T X} {t r} → OpPath b t r → ∀ h → OK t h
+op-OK p-ret      h = tt
+op-OK (p-call q) h = (tt , op-OK q h)
+op-OK p-halt     h = (tt , tt)
+op-OK p-cut      h = tt
+
+op-play : ∀ {X} {b : T X} {t r} → OpPath b t r → ∀ h → play t h ≡ h
+op-play p-ret      h = refl
+op-play (p-call q) h = op-play q h
+op-play p-halt     h = refl
+op-play p-cut      h = refl
 
 OK-++ : ∀ t₁ t₂ h → OK t₁ h → OK t₂ (play t₁ h) → OK (t₁ ++ t₂) h
 OK-++ = Along-++
@@ -1309,7 +1349,7 @@ mono (r-bev r)     = mono r
 mono r-unf         = n≤1+n _
 mono (r-nout r)    = mono r
 mono r-const       = ≤-refl
-mono r-op          = ≤-refl
+mono (r-op _)      = ≤-refl
 mono (r-iter r (go-on done))    = mono r
 mono (r-iter r (go-on (again rn))) = ≤-trans (mono r) (mono rn)
 mono (r-tmp r w p)      = mono r
@@ -1369,7 +1409,7 @@ below (r-bev r) b = below r b
 below (r-unf {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
 below (r-nout {i = j} {p} r) b = below r (λ k le → +≡0ʳ (δ j k) (cnt p k) (b k le))
 below r-const b i le = refl
-below (r-op {s = s} {y = y}) b i le = cnt-flat (scod s) (mvF (scod s) y) i
+below (r-op {s = s} {y = y} _) b i le = cnt-flat (scod s) (mvF (scod s) y) i
 below (r-iter r (go-on done)) b = below r b
 below (r-iter r (go-on (again rn))) b = below rn (below r b)
 below (r-tmp r w p) b = below r b
@@ -1666,9 +1706,11 @@ exchange (r-bev {ds′ = ds′} {b = b} {γ = γ} {i = i} {x} {a} {o} {t = t} r)
   ( (peek-live {a = a} {e = mfn i (cω ds′ b γ) x} pre lent i (subst (λ z → 1 ≤ z + cnt x i) (sym (δ-same i)) (s≤s z≤n)) , ok)
   , peekP o i t h (cnt a) eq )
 exchange r-const pre lent = (tt , λ i → refl)
-exchange (r-op {s = s} {x = x} {y = y}) {h} pre lent =
-  ((tt , tt) , λ i → trans (cong (h i +_) (cnt-flat (sdom s) x i)) (sym (cong (h i +_) (cnt-flat (scod s) (mvF (scod s) y) i))))
-exchange r-halt pre lent = ((tt , tt) , tt)
+exchange (r-op {s = s} {x = x} {y = y} p) {h} pre lent =
+  ( op-OK p h
+  , λ i → trans (cong (λ g → g i + cnt x i) (op-play p h))
+                (trans (cong (h i +_) (cnt-flat (sdom s) x i)) (sym (cong (h i +_) (cnt-flat (scod s) (mvF (scod s) y) i)))) )
+exchange (r-opend p) {h} pre lent = (op-OK p h , tt)
 exchange (r-iter {a = a} {t₁ = t₁} r (go-on done)) {h} pre lent with exchange r pre lent
 ... | (ok , eq) = (OK-++ t₁ [] h ok tt , λ i → trans (cong (λ z → z i + cnt a i) (play-++ t₁ [] h)) (eq i))
 exchange (r-iter {a = a} {t₁ = t₁} {t₂} r (go-on (again {a = a′} {o = o} rn))) {h} pre lent with exchange r pre lent

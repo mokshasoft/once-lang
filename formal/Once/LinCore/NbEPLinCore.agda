@@ -41,14 +41,17 @@
 -- (`⊢iter`), so is a coalgebra (`⊢unfold`). `Once.LinCore.Grade` proves that a
 -- block means a finite computation and the loop the Spec's `loop` of it.
 --
--- Base leaves and SigOps are PARAMETERS: nothing below depends on what an
--- `Int` is or which operations exist.
+-- ★ B1.2 (plan 0.146): the core is MASTER'S. Its monad is master's `T`/`T∞`
+-- (`Once.IR.Semantics.Trace`/`.Iterative`), its base words master's `Int` and
+-- `Float`, and a SigOp is master's `SigOpInfo`, meaning its contract's block
+-- (`DenotTrace.sigOpT`: a pure op returns, an effect calls, a halting op
+-- halts). The target's numerics and the pure FFI answers are the module's
+-- parameters, as they are `evalᴰ`'s.
 --
--- `--safe --guardedness`, no sized types, no postulates, no holes; imports:
--- the standard library only.
+-- `--safe --guardedness`, no sized types, no postulates, no holes.
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 
 open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
 open import Data.Empty using (⊥)
@@ -57,14 +60,23 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Nat using (ℕ; zero; suc)
 open import Agda.Builtin.Equality using (_≡_; refl)
-open import Once.LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_; ⟦_⟧F)
+import Once.LinCore.Flat
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.Spec.Word using (Carrier)
+open import Once.Spec.Type using (Type; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; ∅ₖ)
+import Once.Spec.Type as ST
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+import Once.IR.Semantics.Value Carrier Carrier as Val
+open import Once.Denotation.DenotTrace using (sigOpT)
 
-module Once.LinCore.NbEPLinCore
-  (Base : Set) (⟦_⟧b : Base → Set)
-  -- ★ A12: the SigOps take and answer FLAT values (the Spec's `BTy`: an
-  -- `Int → Int` op, an emit answering `unit`, an exit answering `void`, …)
-  (Sig : Set) (sdom scod : Sig → FTy Base)
-  where
+module Once.LinCore.NbEPLinCore (fmt : TargetNum) (ans : FFIAnswers) where
+
+open Once.LinCore.Flat public using (FTy; funit; fvoid; fw; _f*_; _f+_; ⟦_⟧F; Base; int; float; ⟦_⟧b)
+
+open import Once.IR.Semantics.Trace using (T; ret; call; halt; CallOp; HaltOp) public
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBlock; fmap∞; iterRun; iterBlock; iter∞) public
+open T∞ public renaming (force to block)
 
 -- a flat value
 ⟦_⟧f : FTy Base → Set
@@ -79,49 +91,6 @@ module Once.LinCore.NbEPLinCore
 -- is).
 ------------------------------------------------------------------------
 
-data T (X : Set) : Set where
-  ret  : X → T X
-  call : (s : Sig) → ⟦ sdom s ⟧f → (⟦ scod s ⟧f → T X) → T X
-  halt : (s : Sig) → ⟦ sdom s ⟧f → T X
-
-record T∞ (X : Set) : Set where
-  coinductive
-  field block : T (X ⊎ T∞ X)
-open T∞ public
-
-return∞ : ∀ {X} → X → T∞ X
-block (return∞ x) = ret (inj₁ x)
-
-infixl 1 _>>=∞_
-_>>=∞_    : ∀ {X Y} → T∞ X → (X → T∞ Y) → T∞ Y
-bindBlock : ∀ {X Y} → T (X ⊎ T∞ X) → (X → T∞ Y) → T (Y ⊎ T∞ Y)
-block (m >>=∞ k) = bindBlock (block m) k
-bindBlock (ret (inj₁ x)) k = block (k x)
-bindBlock (ret (inj₂ m)) k = ret (inj₂ (m >>=∞ k))
-bindBlock (call s a c)   k = call s a (λ b → bindBlock (c b) k)
-bindBlock (halt s a)     k = halt s a
-
-fmap∞ : ∀ {X Y} → (X → Y) → T∞ X → T∞ Y
-fmap∞ f m = m >>=∞ λ x → return∞ (f x)
-
--- a SigOp that ends the program
-haltT : ∀ {X} (s : Sig) → ⟦ sdom s ⟧f → T∞ X
-block (haltT s x) = halt s x
-
--- the loop (D317): the unfold into `T∞ B`, the final coalgebra of
--- `T (B + −)`, of a round `A → T∞ (B + A)`; a round's end that continues
--- is a silent step
-iterRun   : ∀ {A B : Set} → (A → T∞ (B ⊎ A)) → T∞ (B ⊎ A) → T∞ B
-iterBlock : ∀ {A B : Set} → (A → T∞ (B ⊎ A)) → T ((B ⊎ A) ⊎ T∞ (B ⊎ A)) → T (B ⊎ T∞ B)
-block (iterRun f m) = iterBlock f (block m)
-iterBlock f (ret (inj₁ (inj₁ b))) = ret (inj₁ b)
-iterBlock f (ret (inj₁ (inj₂ a))) = ret (inj₂ (iterRun f (f a)))
-iterBlock f (ret (inj₂ m))        = ret (inj₂ (iterRun f m))
-iterBlock f (call s x k)          = call s x (λ v → iterBlock f (k v))
-iterBlock f (halt s x)            = halt s x
-
-iter∞ : ∀ {A B : Set} → (A → T∞ (B ⊎ A)) → A → T∞ B
-iter∞ f a = iterRun f (f a)
 
 -- ★ a FINITE BLOCK's monad, the Spec's `M act` (`Spec.Effect`: `M (fin f)`)
 bindT : ∀ {X Y} → T X → (X → T Y) → T Y
@@ -339,13 +308,60 @@ fromF (a f* b) (x , y)  = (fromF a x , fromF b y)
 fromF (a f+ b) (inj₁ x) = inj₁ (fromF a x)
 fromF (a f+ b) (inj₂ y) = inj₂ (fromF b y)
 
--- one SigOp call: the argument out as a flat value, the world's answer back
-callT : (s : Sig) → ⟦ ⌜ sdom s ⌝ ⟧ → T∞ ⟦ ⌜ scod s ⌝ ⟧
-block (callT s x) = call s (toF (sdom s) x) (λ y → ret (inj₁ (fromF (scod s) y)))
+-- ★ B1.2: a Spec base type (`Spec.Type.Base`, closed) is a flat type, and its
+-- master value (`Val.⟦_⟧`) is the flat value, by recursion on the evidence
+flat : ∀ {A : Type} → ST.Base ∅ₖ A → FTy Base
+flat (ST.b-var {i = ()} _)
+flat b-Unit    = funit
+flat b-Void    = fvoid
+flat b-Int     = fw int
+flat b-Float   = fw float
+flat (b-* a b) = flat a f* flat b
+flat (b-+ a b) = flat a f+ flat b
 
--- the same call, as a block
-callB : (s : Sig) → ⟦ ⌜ sdom s ⌝ ⟧ → T ⟦ ⌜ scod s ⌝ ⟧
-callB s x = call s (toF (sdom s) x) (λ y → ret (fromF (scod s) y))
+toV : ∀ {A : Type} (b : ST.Base ∅ₖ A) → ⟦ flat b ⟧f → Val.⟦ A ⟧
+toV (ST.b-var {i = ()} _)
+toV b-Unit    x        = x
+toV b-Void    ()
+toV b-Int     x        = x
+toV b-Float   x        = x
+toV (b-* a b) (x , y)  = (toV a x , toV b y)
+toV (b-+ a b) (inj₁ x) = inj₁ (toV a x)
+toV (b-+ a b) (inj₂ y) = inj₂ (toV b y)
+
+fromV : ∀ {A : Type} (b : ST.Base ∅ₖ A) → Val.⟦ A ⟧ → ⟦ flat b ⟧f
+fromV (ST.b-var {i = ()} _)
+fromV b-Unit    x        = x
+fromV b-Void    ()
+fromV b-Int     x        = x
+fromV b-Float   x        = x
+fromV (b-* a b) (x , y)  = (fromV a x , fromV b y)
+fromV (b-+ a b) (inj₁ x) = inj₁ (fromV a x)
+fromV (b-+ a b) (inj₂ y) = inj₂ (fromV b y)
+
+-- ★ B1.2: a SigOp is master's (`SigOpInfo`): its argument and answer are base
+-- types (`baseA`, `conB`)
+record Sig : Set where
+  constructor sig
+  field
+    {sA sB} : Type
+    info    : SigOpInfo sA sB
+open Sig public
+
+sdom scod : Sig → FTy Base
+sdom s = flat (SigOpInfo.baseA (info s))
+scod s = flat (SigOpInfo.conB (info s))
+
+-- ★ B1.2: a SigOp means its contract's BLOCK (`DenotTrace.sigOpT`, as
+-- `evalᴰ`'s `SigOp` clause): a pure op returns with no event, an emitting or
+-- answering one calls, a halting one halts
+opF : (s : Sig) → ⟦ sdom s ⟧f → T ⟦ scod s ⟧f
+opF s x = fmapT (fromV (SigOpInfo.conB (info s)))
+                (sigOpT fmt ans (info s) (toV (SigOpInfo.baseA (info s)) x))
+
+-- the same, on the core's values
+opB : (s : Sig) → ⟦ ⌜ sdom s ⌝ ⟧ → T ⟦ ⌜ scod s ⌝ ⟧
+opB s x = fmapT (fromF (scod s)) (opF s (toF (sdom s) x))
 
 ------------------------------------------------------------------------
 -- 5. THE LINEAR CORE.
@@ -462,12 +478,13 @@ data Tm Γ where
   -- one observation, a finite block
   lunf    : ∀ {F S E} → Tm Γ E (Fn many act S (LF∙ F S) ⊗t S) (Nu F)
   lout    : ∀ {F E} → Tm Γ E (Nu F) (LF∙ F (Nu F))
-  -- ★ A11: the SigOps, anywhere a term can be. `lop`: Pure or Emits, an event
-  -- and the world's answer; `lhalt`: Halts, the run ends
   -- ★ A15: a constant of a base type (the IR's `const`): a word, no event
   lconst  : ∀ {b E} → ⟦ b ⟧b → Tm Γ E One (Bt b)
+  -- ★ A11, B1.2: the SigOps, anywhere a term can be. `lop s` runs the op's
+  -- contract block (`opB`): no event (pure), an event and the world's answer
+  -- (emits, answers), or the run ends (halts: the Spec's halt by the op's
+  -- contract, so the core has no `lhalt` of its own)
   lop     : (s : Sig) → ∀ {E} → Tm Γ E ⌜ sdom s ⌝ ⌜ scod s ⌝
-  lhalt   : (s : Sig) → ∀ {E} → Tm Γ E ⌜ sdom s ⌝ Zero
   -- ★ A11: the loop (D317): the round reads `E` and the state, and ends with
   -- the result (`inl`) or the next state (`inr`). ★ The Spec's `⊢iter`: the
   -- round is a FINITE BLOCK (`Blk`, the Spec's grade `act`), so a round never
@@ -517,7 +534,6 @@ data Blk {Γ} where
   k-nout   : ∀ {F E} → Blk (lout {F = F} {E})
   k-const  : ∀ {b E} {v : ⟦ b ⟧b} → Blk (lconst {E = E} v)
   k-op     : ∀ {s E} → Blk (lop s {E})
-  k-halt   : ∀ {s E} → Blk (lhalt s {E})
 
 -- a term with nothing lent
 LTm : Cx → LTy → LTy → Set
@@ -665,8 +681,7 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᶜ (lunf {F} {S}) e         cs             = return∞ (anaN F (cohc F S (fst cs)) (snd cs))
     Lᶜ (lout {F})     e         v              = emb (fmapT (coh⁻¹ F (Nu F)) (outν v))
     Lᶜ (lconst v)     e         _              = return∞ v
-    Lᶜ (lop s)        e         x              = callT s x
-    Lᶜ (lhalt s)      e         x              = haltT s (toF (sdom s) x)
+    Lᶜ (lop s)        e         x              = emb (opB s x)
     Lᶜ (liter f _)    e         a              = iter∞ (Lᶜ f e) a
 
     cataC : ∀ F {X : Set} → (FS F X → T∞ X) → Mu F → T∞ X
@@ -728,8 +743,7 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᴮ (k-unf {F} {S}) e       cs            = ret (anaN F (cohc F S (fst cs)) (snd cs))
     Lᴮ (k-nout {F})  e         v             = fmapT (coh⁻¹ F (Nu F)) (outν v)
     Lᴮ (k-const {v = v}) e     _             = ret v
-    Lᴮ (k-op {s})    e         x             = callB s x
-    Lᴮ (k-halt {s})  e         x             = halt s (toF (sdom s) x)
+    Lᴮ (k-op {s})    e         x             = opB s x
 
     cataB : ∀ F {X : Set} → (FS F X → T X) → Mu F → T X
     cataB F alg (inμ w) = bindT (travB F F alg w) alg

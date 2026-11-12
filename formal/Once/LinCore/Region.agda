@@ -27,7 +27,7 @@
 -- live data); moving blocks is a collector, which GOAL.md excludes.
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 
 module Once.LinCore.Region where
 
