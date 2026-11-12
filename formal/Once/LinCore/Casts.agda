@@ -27,7 +27,7 @@ open import Once.IR.Semantics.Trace using (FFIAnswers)
 import Once.IR.Semantics.Trace as Tr
 open import Once.IR.Semantics.Iterative using (embed)
 open import Once.Spec.Type using (Type; ∅ₖ; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+)
-open import Once.IRTy using (IRTy; ⌊_⌋)
+open import Once.IRTy using (IRTy; ⌊_⌋; _*_; _+_)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; forgetᵇ; injectᵇ)
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type using () renaming (Base to SBase)
@@ -37,6 +37,10 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open import Once.Denotation.DenotTrace using (evalᴰ; sigOpT; callEnv)
 import Once.IR as M
+import Once.Spec.Type as ST
+open import Once.IRTy using (K; IsBaseTypeI; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; ⟦_⟧TI; μ-type; ν-type; ⌈_⌉; ⌈_⌉F; ⌈⟧TI-commute) renaming (_⊕_ to _⊕ᴵ_; _⊗_ to _⊗ᴵ_)
+open import Once.IRTy.WF using (base-⌈⌉; wf-⌈⌉)
+open import Once.Denotation.ValueDomain using (coerce-functor-D; coerce-functor⁻¹-D)
 import Once.LinCore.FromIR
 import Once.LinCore.Bridge
 import Once.LinCore.Bisim
@@ -46,7 +50,7 @@ module Once.LinCore.Casts (fmt : TargetNum) (ans : FFIAnswers) where
 open import Once.LinCore.NbEPLinCore fmt ans
 open Once.LinCore.FromIR fmt ans
 open Once.LinCore.Bridge fmt ans
-open Once.LinCore.Bisim fmt ans using (_≈[_]_; module _≈[_]_; BlR; ≈retR; ≈callR; ≈haltR)
+open Once.LinCore.Bisim fmt ans using (_≈[_]_; module _≈[_]_; BlR; ≈retR; ≈callR; ≈haltR; ret≈R)
 
 ------------------------------------------------------------------------
 -- 1. TRANSPORTS.
@@ -185,3 +189,152 @@ module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A 
                         (λ v → subst (λ S → S) (sym (cohᴰ B)) (injectᵇ (SigOpInfo.conB si) v))
                         (sigOpT fmt ans si (forgetᵇ (SigOpInfo.baseA si) (subst (λ S → S) (cohᴰ A) a′)))
                         (res-W (SigOpInfo.conB si))))
+
+------------------------------------------------------------------------
+-- 3. ★ μ: a layer built by `In` (the core's `coh` on its code against
+-- master's `coerce-functor-D` then `coerce-μ-in`), by the functor's
+-- well-formedness.
+------------------------------------------------------------------------
+
+-- master's types, transported: a sum's and a pair's are their parts'
+substᴰ-+₁ : ∀ {A A′ B B′ : ST.Type} (p : A ≡ A′) (q : B ≡ B′) (x : ⟦ A ⟧ᴰ)
+          → subst (λ Ty → ⟦ Ty ⟧ᴰ) (cong₂ ST._+_ p q) (inj₁ x) ≡ inj₁ (subst (λ Ty → ⟦ Ty ⟧ᴰ) p x)
+substᴰ-+₁ refl refl x = refl
+
+substᴰ-+₂ : ∀ {A A′ B B′ : ST.Type} (p : A ≡ A′) (q : B ≡ B′) (y : ⟦ B ⟧ᴰ)
+          → subst (λ Ty → ⟦ Ty ⟧ᴰ) (cong₂ ST._+_ p q) (inj₂ y) ≡ inj₂ (subst (λ Ty → ⟦ Ty ⟧ᴰ) q y)
+substᴰ-+₂ refl refl y = refl
+
+substᴰ-* : ∀ {A A′ B B′ : ST.Type} (p : A ≡ A′) (q : B ≡ B′) (x : ⟦ A ⟧ᴰ) (y : ⟦ B ⟧ᴰ)
+         → subst (λ Ty → ⟦ Ty ⟧ᴰ) (cong₂ ST._*_ p q) (x , y) ≡ (subst (λ Ty → ⟦ Ty ⟧ᴰ) p x , subst (λ Ty → ⟦ Ty ⟧ᴰ) q y)
+substᴰ-* refl refl x y = refl
+
+-- a base constant: the core's code against master's base value
+K-lay : ∀ {A} (b : IsBaseTypeI A) (X : LTy) {a a′} → W A a a′
+      → WK A {⟦ X ⟧} (coh (lfK A) X (subst ⟦_⟧ (sym (⟪⟫-K b X)) a))
+                     (Val.coerce-full-to-base ⌈ A ⌉ (forgetᵇ (base-⌈⌉ b) a′))
+K-lay base-Unit  X w = tt
+K-lay base-Void  X {a = ()}
+K-lay base-Int   X w = w
+K-lay base-Float X w = w
+K-lay (base-Prod a b) X {a = x , y} {a′ = x′ , y′} (w₁ , w₂)
+  rewrite subst-⊗⁻ (⟪⟫-K a X) (⟪⟫-K b X) x y = K-lay a X w₁ , K-lay b X w₂
+K-lay (base-Sum a b) X {a = inj₁ x} {a′ = inj₁ x′} (⊎₁ w)
+  rewrite subst-⊕₁⁻ (⟪⟫-K a X) (⟪⟫-K b X) x = ⊎₁ (K-lay a X w)
+K-lay (base-Sum a b) X {a = inj₂ y} {a′ = inj₂ y′} (⊎₂ w)
+  rewrite subst-⊕₂⁻ (⟪⟫-K a X) (⟪⟫-K b X) y = ⊎₂ (K-lay b X w)
+
+-- a layer `In` builds, at the position's functor `G`
+In-layer : ∀ {F G} (wg : WellFormedFI G) {a a′} → W (⟦ G ⟧TI (μ-type F)) a a′
+         → WLμ F G (coh (lf G) (μt (lf F)) (subst ⟦_⟧ (⟪⟫-TI wg (μ-type F)) a))
+                   (Val.coerce-μ-in ⌈ G ⌉F (Val.⟦μ⟧ ⌈ F ⌉F)
+                      (coerce-functor-D (wf-⌈⌉ wg) ⌈ μ-type F ⌉ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute G (μ-type F)) a′)))
+In-layer {F} (wf-K b) w = K-lay b (μt (lf F)) w
+In-layer wf-Id w = w
+In-layer {F} {G ⊕ᴵ H} (wf-Sum f g) {a = inj₁ x} {a′ = inj₁ x′} (⊎₁ w)
+  rewrite subst-⊕₁ (⟪⟫-TI f (μ-type F)) (⟪⟫-TI g (μ-type F)) x
+        | substᴰ-+₁ (⌈⟧TI-commute G (μ-type F)) (⌈⟧TI-commute H (μ-type F)) x′ = ⊎₁ (In-layer f w)
+In-layer {F} {G ⊕ᴵ H} (wf-Sum f g) {a = inj₂ y} {a′ = inj₂ y′} (⊎₂ w)
+  rewrite subst-⊕₂ (⟪⟫-TI f (μ-type F)) (⟪⟫-TI g (μ-type F)) y
+        | substᴰ-+₂ (⌈⟧TI-commute G (μ-type F)) (⌈⟧TI-commute H (μ-type F)) y′ = ⊎₂ (In-layer g w)
+In-layer {F} {G ⊗ᴵ H} (wf-Prod f g) {a = x , y} {a′ = x′ , y′} (w₁ , w₂)
+  rewrite subst-⊗ (⟪⟫-TI f (μ-type F)) (⟪⟫-TI g (μ-type F)) x y
+        | substᴰ-* (⌈⟧TI-commute G (μ-type F)) (⌈⟧TI-commute H (μ-type F)) x′ y′ = In-layer f w₁ , In-layer g w₂
+
+-- a term moved along equal domains
+ev-subst-dom : ∀ {Γ} (δ : Env Γ) {X X′ Y} (e : X′ ≡ X) (c : P.IR Γ X Y) (a : ⟦ X′ ⟧)
+             → P.ev δ (subst (λ Z → P.IR Γ Z Y) (sym e) c) a ≡ P.ev δ c (subst ⟦_⟧ e a)
+ev-subst-dom δ refl c a = refl
+
+module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) where
+
+  -- ★ `In` against master's
+  In≈ : ∀ {F} (wf : WellFormedFI F) {a a′} → W (⟦ F ⟧TI (μ-type F)) a a′ →
+        P.ev δ (subst (λ X → P.IR Γ X ⟪ μ-type F ⟫) (sym (⟪⟫-TI wf (μ-type F))) (P.In (lf F))) a
+          ≈[ W (μ-type F) ] evalᴰ fmt (callEnv cs ans) (M.In wf) a′
+  In≈ {F} wf {a} w rewrite ev-subst-dom δ (⟪⟫-TI wf (μ-type F)) (P.In (lf F)) a = ret≈R (wmu (In-layer wf w))
+
+------------------------------------------------------------------------
+-- 4. ★ μ, the other way: a layer `out-μ` exposes (the core's `coh⁻¹`
+-- against master's `coerce-μ-out` then `coerce-functor⁻¹-D`).
+------------------------------------------------------------------------
+
+substᴰ-+₁⁻ : ∀ {A A′ B B′ : ST.Type} (p : A ≡ A′) (q : B ≡ B′) (x : ⟦ A′ ⟧ᴰ)
+           → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (cong₂ ST._+_ p q)) (inj₁ x) ≡ inj₁ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym p) x)
+substᴰ-+₁⁻ refl refl x = refl
+
+substᴰ-+₂⁻ : ∀ {A A′ B B′ : ST.Type} (p : A ≡ A′) (q : B ≡ B′) (y : ⟦ B′ ⟧ᴰ)
+           → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (cong₂ ST._+_ p q)) (inj₂ y) ≡ inj₂ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym q) y)
+substᴰ-+₂⁻ refl refl y = refl
+
+substᴰ-*⁻ : ∀ {A A′ B B′ : ST.Type} (p : A ≡ A′) (q : B ≡ B′) (x : ⟦ A′ ⟧ᴰ) (y : ⟦ B′ ⟧ᴰ)
+          → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (cong₂ ST._*_ p q)) (x , y)
+            ≡ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym p) x , subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym q) y)
+substᴰ-*⁻ refl refl x y = refl
+
+subst-sym² : ∀ {X X′ : LTy} (e : X ≡ X′) (x : ⟦ X ⟧) → subst ⟦_⟧ (sym (sym e)) x ≡ subst ⟦_⟧ e x
+subst-sym² refl x = refl
+
+-- a base constant, back: master's base value against the core's code
+K-lay⁻ : ∀ {A} (b : IsBaseTypeI A) (X : LTy) {w w′} → WK A {⟦ X ⟧} w w′
+       → W A (subst ⟦_⟧ (⟪⟫-K b X) (coh⁻¹ (lfK A) X w))
+             (injectᵇ (base-⌈⌉ b) (Val.coerce-base-to-full (base-⌈⌉ b) w′))
+K-lay⁻ base-Unit  X w = tt
+K-lay⁻ base-Void  X {w = ()}
+K-lay⁻ base-Int   X w = w
+K-lay⁻ base-Float X w = w
+K-lay⁻ (base-Prod {A₁} {A₂} a b) X {w = x , y} {w′ = x′ , y′} (w₁ , w₂) =
+  subst (λ z → W (A₁ * A₂) z (injectᵇ (base-⌈⌉ a) (Val.coerce-base-to-full (base-⌈⌉ a) x′)
+                              , injectᵇ (base-⌈⌉ b) (Val.coerce-base-to-full (base-⌈⌉ b) y′)))
+        (sym (subst-⊗ (⟪⟫-K a X) (⟪⟫-K b X) (coh⁻¹ (lfK A₁) X x) (coh⁻¹ (lfK A₂) X y)))
+        (K-lay⁻ a X w₁ , K-lay⁻ b X w₂)
+K-lay⁻ (base-Sum {A₁} {A₂} a b) X {w = inj₁ x} {w′ = inj₁ x′} (⊎₁ w) =
+  subst (λ z → W (A₁ + A₂) z (inj₁ (injectᵇ (base-⌈⌉ a) (Val.coerce-base-to-full (base-⌈⌉ a) x′))))
+        (sym (subst-⊕₁ (⟪⟫-K a X) (⟪⟫-K b X) (coh⁻¹ (lfK A₁) X x)))
+        (⊎₁ (K-lay⁻ a X w))
+K-lay⁻ (base-Sum {A₁} {A₂} a b) X {w = inj₂ y} {w′ = inj₂ y′} (⊎₂ w) =
+  subst (λ z → W (A₁ + A₂) z (inj₂ (injectᵇ (base-⌈⌉ b) (Val.coerce-base-to-full (base-⌈⌉ b) y′))))
+        (sym (subst-⊕₂ (⟪⟫-K a X) (⟪⟫-K b X) (coh⁻¹ (lfK A₂) X y)))
+        (⊎₂ (K-lay⁻ b X w))
+
+-- a layer `out-μ` exposes, at the position's functor `G`
+Out-layer : ∀ {F G} (wg : WellFormedFI G) {w w′} → WLμ F G w w′
+          → W (⟦ G ⟧TI (μ-type F))
+              (subst ⟦_⟧ (sym (⟪⟫-TI wg (μ-type F))) (coh⁻¹ (lf G) (μt (lf F)) w))
+              (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute G (μ-type F)))
+                 (coerce-functor⁻¹-D (wf-⌈⌉ wg) ⌈ μ-type F ⌉ (Val.coerce-μ-out (wf-⌈⌉ wg) (Val.⟦μ⟧ ⌈ F ⌉F) w′)))
+Out-layer {F} {K A} (wf-K b) {w} {w′} r =
+  subst (λ z → W A z (injectᵇ (base-⌈⌉ b) (Val.coerce-base-to-full (base-⌈⌉ b) w′)))
+        (sym (subst-sym² (⟪⟫-K b (μt (lf F))) (coh⁻¹ (lfK A) (μt (lf F)) w)))
+        (K-lay⁻ b (μt (lf F)) r)
+Out-layer wf-Id r = r
+Out-layer {F} {G ⊕ᴵ H} (wf-Sum f g) {w = inj₁ x} {w′ = inj₁ x′} (⊎₁ r)
+  rewrite subst-⊕₁⁻ (⟪⟫-TI f (μ-type F)) (⟪⟫-TI g (μ-type F)) (coh⁻¹ (lf G) (μt (lf F)) x)
+        | substᴰ-+₁⁻ (⌈⟧TI-commute G (μ-type F)) (⌈⟧TI-commute H (μ-type F))
+                     (coerce-functor⁻¹-D (wf-⌈⌉ f) ⌈ μ-type F ⌉ (Val.coerce-μ-out (wf-⌈⌉ f) (Val.⟦μ⟧ ⌈ F ⌉F) x′)) =
+  ⊎₁ (Out-layer f r)
+Out-layer {F} {G ⊕ᴵ H} (wf-Sum f g) {w = inj₂ y} {w′ = inj₂ y′} (⊎₂ r)
+  rewrite subst-⊕₂⁻ (⟪⟫-TI f (μ-type F)) (⟪⟫-TI g (μ-type F)) (coh⁻¹ (lf H) (μt (lf F)) y)
+        | substᴰ-+₂⁻ (⌈⟧TI-commute G (μ-type F)) (⌈⟧TI-commute H (μ-type F))
+                     (coerce-functor⁻¹-D (wf-⌈⌉ g) ⌈ μ-type F ⌉ (Val.coerce-μ-out (wf-⌈⌉ g) (Val.⟦μ⟧ ⌈ F ⌉F) y′)) =
+  ⊎₂ (Out-layer g r)
+Out-layer {F} {G ⊗ᴵ H} (wf-Prod f g) {w = x , y} {w′ = x′ , y′} (r₁ , r₂)
+  rewrite subst-⊗⁻ (⟪⟫-TI f (μ-type F)) (⟪⟫-TI g (μ-type F)) (coh⁻¹ (lf G) (μt (lf F)) x) (coh⁻¹ (lf H) (μt (lf F)) y)
+        | substᴰ-*⁻ (⌈⟧TI-commute G (μ-type F)) (⌈⟧TI-commute H (μ-type F))
+                    (coerce-functor⁻¹-D (wf-⌈⌉ f) ⌈ μ-type F ⌉ (Val.coerce-μ-out (wf-⌈⌉ f) (Val.⟦μ⟧ ⌈ F ⌉F) x′))
+                    (coerce-functor⁻¹-D (wf-⌈⌉ g) ⌈ μ-type F ⌉ (Val.coerce-μ-out (wf-⌈⌉ g) (Val.⟦μ⟧ ⌈ F ⌉F) y′)) =
+  Out-layer f r₁ , Out-layer g r₂
+
+-- a term moved along equal codomains
+ev-subst-cod : ∀ {Γ} (δ : Env Γ) {X Y Y′} (e : Y′ ≡ Y) (c : P.IR Γ X Y) (a : ⟦ X ⟧)
+             → P.ev δ (subst (λ Z → P.IR Γ X Z) (sym e) c) a ≡ subst (λ Z → T∞ ⟦ Z ⟧) (sym e) (P.ev δ c a)
+ev-subst-cod δ refl c a = refl
+
+module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) where
+
+  -- ★ `out-μ` against master's
+  out≈ : ∀ {F} (wf : WellFormedFI F) {a a′} → W (μ-type F) a a′ →
+         P.ev δ (subst (λ X → P.IR Γ ⟪ μ-type F ⟫ X) (sym (⟪⟫-TI wf (μ-type F))) (P.out-μ (lf F))) a
+           ≈[ W (⟦ F ⟧TI (μ-type F)) ] evalᴰ fmt (callEnv cs ans) (M.out-μ wf) a′
+  out≈ {F} wf {inμ w} (wmu r) rewrite ev-subst-cod δ (⟪⟫-TI wf (μ-type F)) (P.out-μ (lf F)) (inμ w) =
+    ≈-subst (sym (⟪⟫-TI wf (μ-type F))) (ret≈R (Out-layer wf r))
