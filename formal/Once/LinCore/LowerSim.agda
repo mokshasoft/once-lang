@@ -644,3 +644,43 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
       below-os : ∀ y → budget φ ∸ ws S ≤ y → ∀ k → k < wsz X → ¬ y ≡ k + dst
       below-os y lo k k< e′ = Data.Nat.Properties.<-irrefl (sym e′)
                                 (<-≤-trans (d<b k k<) (≤-trans (∸-monoʳ-≤ (budget φ) (m≤n+m (ws S) (wsz B))) lo))
+
+  ----------------------------------------------------------------------
+  -- 8. ★ A SUM BUILT: the payload moved down, the tag, the padding.
+  ----------------------------------------------------------------------
+
+  open import Once.LinCore.Moves {FS} using (tag-step; store-step; stores-run; Filled; f-set; f-rest; f-heap; f-halt; f-regs; f-pc)
+  open import Once.LinCore.MoveCode using (stores)
+  open import Data.List using (replicate)
+  open import Data.List.Properties using (length-replicate)
+  open import Data.Nat using (_⊔_)
+  open import Once.CCC.Machine.SMCore using (SV-Tag; store-at-slot; instr-load-tag-lit; readReg; writeReg; Output; module MemOps)
+  open FlatStepsAPI {FS} using (step-at; _∷_)
+
+  -- a move down never clobbers a word it reads later
+  no-clash-down : ∀ {a b k k′} → b ≤ a → k < k′ → ¬ k + b ≡ k′ + a
+  no-clash-down {a} {b} {k} {k′} le lt eq =
+    Data.Nat.Properties.<-irrefl eq (Data.Nat.Properties.<-≤-trans (+-monoˡ-< b lt) (Data.Nat.Properties.+-monoʳ-≤ k′ le))
+    where import Data.Nat.Properties
+
+  private
+    suc-∸ : ∀ m n → n < m → suc (m ∸ suc n) ≡ m ∸ n
+    suc-∸ (suc m) zero    _        = refl
+    suc-∸ (suc m) (suc n) (s≤s lt) = suc-∸ m n lt
+
+    pad-at : ∀ p M bot → p ≤ M → M ≤ bot → p + (bot ∸ M) ≡ bot ∸ (M ∸ p)
+    pad-at p M bot pM Mb =
+      sym (trans (cong (_∸ (M ∸ p)) (sym eq))
+             (trans (Data.Nat.Properties.m+n∸n≡m ((bot ∸ M) + p) (M ∸ p)) (+-comm (bot ∸ M) p)))
+      where
+        import Data.Nat.Properties
+        -- bot = (bot ∸ M) + p + (M ∸ p)
+        eq : ((bot ∸ M) + p) + (M ∸ p) ≡ bot
+        eq = trans (+-assoc (bot ∸ M) p (M ∸ p))
+               (trans (cong ((bot ∸ M) +_) (Data.Nat.Properties.m+[n∸m]≡n pM)) (m∸n+n≡m Mb))
+
+  -- a run of one word
+  slots-replicate : ∀ {sm : ℕ → Maybe W} {b} n (v : W) → (∀ k → k < n → sm (k + b) ≡ just v) → SlotsAt sm b (replicate n v)
+  slots-replicate zero    v h = tt
+  slots-replicate {sm} {b} (suc n) v h =
+    h 0 (s≤s z≤n) , slots-replicate {sm} {suc b} n v (λ k k< → trans (cong sm (+-suc k b)) (h (suc k) (s≤s k<)))
