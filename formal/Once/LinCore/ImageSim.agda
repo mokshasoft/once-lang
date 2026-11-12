@@ -106,8 +106,8 @@ record PausedI {T sh U} (c : Codeᴵ sh U) (r : Ret U T) (m : Cfg sh) (n : ℕ) 
     leg   : TLeg (tmps ts)
 
 -- by the run's outcome
-SimRI : ∀ {T sh U E Es B S U′} → Outcome B → Codeᴵ sh U → Ret U T → Cfg sh → ℕ → Trace
-      → Codeᴵ (E ∷ Es ∣ B ∷ S) U′ → Ret U′ T → Slots (E ∷ Es) → Stk S → Set
+SimRI : ∀ {T sh U Es B S U′} → Outcome B → Codeᴵ sh U → Ret U T → Cfg sh → ℕ → Trace
+      → Codeᴵ (Es ∣ B ∷ S) U′ → Ret U′ T → Slots Es → Stk S → Set
 SimRI (gives w n′) c r m n t k r′ es os = OutI c r m n t k r′ (es ∥ w ∷ˢ os) n′
 SimRI (stop y)     c r m n t k r′ es os = PausedI c r m n t
 
@@ -149,8 +149,8 @@ preP : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ 
      → StepI c r m n [] c′ r′ m′ n′ → PausedI c′ r′ m′ n′ t → PausedI c r m n t
 preP x (paused c′ r′ m′ n′ ts mt t₀ st w p cl l) = paused c′ r′ m′ n′ ts mt t₀ (x ⟫ st) w p cl l
 
-preR : ∀ {T sh U sh′ U′ E Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
-         {m m′ n t} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
+preR : ∀ {T sh U sh′ U′ Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+         {m m′ n t} {k : Codeᴵ (Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
      → StepI c r m n [] c′ r′ m′ n → SimRI o c′ r′ m′ n t k ρ es os → SimRI o c r m n t k ρ es os
 preR (gives _ _) x s = pre x s
 preR (stop _)    x s = preP x s
@@ -184,18 +184,20 @@ thenP {t₁ = t₁} {t₂} (out ts₁ m₁ st₁ w₁ b₁) (paused c″ r″ m�
          (++⁺ (erase-clean t₁) cl)
          (subst TLeg (sym (map-++ tmp ts₁ ts₂)) (IsSubmonoid.∙-∈ legal {tmps ts₁} {tmps ts₂} (fst b₁) l))
 
-thenR : ∀ {T sh U sh′ U′ E Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
-          {m m′ n n′ t₁ t₂} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
+thenR : ∀ {T sh U sh′ U′ Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
+          {m m′ n n′ t₁ t₂} {k : Codeᴵ (Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
       → OutI c r m n t₁ c′ r′ m′ n′ → SimRI o c′ r′ m′ n′ t₂ k ρ es os → SimRI o c r m n (t₁ ++ t₂) k ρ es os
 thenR (gives _ _) a s = then a s
 thenR (stop _)    a s = thenP a s
 
--- ★ A CALL: the block run to its end under the pushed continuation, then
--- the return (A16's `enter … leave`)
+-- ★ A CALL: the block run to its end in a frame of its own (D415: the
+-- caller's top view and the argument), the caller's configuration saved
+-- below; then the return puts the result back on it (A16's `enter … leave`)
 called : ∀ {T σ Es S U sh′ U′} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) U} {r : Ret U T}
-           {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m₁ m′ n n₁ n′ t}
-       → OutI (blockᴵ κ) (k ∷ᶜ r) m n t end (k ∷ᶜ r) m₁ n₁ → OutI k r m₁ n₁ [] c′ r′ m′ n′
-       → OutI (call κ ⨾ k) r m n t c′ r′ m′ n′
+           {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {es : Slots (top σ ⊳ Es)} {a os} {e₁ b₁} {m′ n n₁ n′ t}
+       → OutI (blockᴵ κ) (frm {t = top σ} k es os r) (topv (top σ) es ∥ a ∷ˢ []ˢ) n t end (frm {t = top σ} k es os r) (e₁ ∥ b₁ ∷ˢ []ˢ) n₁
+       → OutI k r (es ∥ b₁ ∷ˢ os) n₁ [] c′ r′ m′ n′
+       → OutI (call κ ⨾ k) r (es ∥ a ∷ˢ os) n t c′ r′ m′ n′
 called {t = t} (out ts mt st w b) (out ts₂ mt₂ st₂ w₂ b₂) =
   subst (λ z → OutI _ _ _ _ z _ _ _ _) (++-identityʳ t)
     (then {t₁ = t} {t₂ = []} (out (tnew fsz ∷ (ts ++ tdel fsz ∷ [])) (tmp (tnew fsz) ∷ (mt ++ tmp (tdel fsz) ∷ []))
@@ -205,8 +207,9 @@ called {t = t} (out ts mt st w b) (out ts₂ mt₂ st₂ w₂ b₂) =
                (bracket fsz ts b))
           (out ts₂ mt₂ st₂ w₂ b₂))
 
-calledP : ∀ {T σ Es S U} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) U} {r : Ret U T} {m n t}
-        → PausedI (blockᴵ κ) (k ∷ᶜ r) m n t → PausedI (call κ ⨾ k) r m n t
+calledP : ∀ {T σ Es S U} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) U} {r : Ret U T}
+            {es : Slots (top σ ⊳ Es)} {a os n t}
+        → PausedI (blockᴵ κ) (frm {t = top σ} k es os r) (topv (top σ) es ∥ a ∷ˢ []ˢ) n t → PausedI (call κ ⨾ k) r (es ∥ a ∷ˢ os) n t
 calledP (paused c′ r′ m′ n′ ts mt t₀ st w p cl l) =
   paused c′ r′ m′ n′ (tnew fsz ∷ ts) (tmp (tnew fsz) ∷ mt) t₀ (i-call ⟫ st) (w-tmp w) p cl (opened fsz ts l)
 
@@ -239,32 +242,32 @@ mutual
           {k : Codeᴵ (A ∷ Es ∣ A ∷ S) U} {r : Ret U T} (n : ℕ)
         → OutI (call (kcopy A) ⨾ k) r (es ∥ mone ∷ˢ os) n (snd (snd (copy v n)))
                k r (es ∥ fst (copy v n) ∷ˢ os) (fst (snd (copy v n)))
-  copyS v e os n = called (copyB v e os n) doneO
+  copyS v e os n = called (copyB v e n) doneO
 
-  copyB : ∀ {T A} (v : MV A) {Es S U} {es : Slots (A ∷ Es)} → see es ≡ v → (os : Stk S)
-          {k : Codeᴵ (A ∷ Es ∣ A ∷ S) U} {r : Ret U T} (n : ℕ)
-        → OutI (blockᴵ (kcopy A)) (k ∷ᶜ r) (es ∥ mone ∷ˢ os) n (snd (snd (copy v n)))
-               end (k ∷ᶜ r) (es ∥ fst (copy v n) ∷ˢ os) (fst (snd (copy v n)))
-  copyB mone e os n = doneO
-  copyB (mbase x) e os n = leaf (i-eword e) []
-  copyB (mpair a b) e os n with copy a n | copyS a refl os n
-  ... | (a′ , n₁ , t₁) | ca with copy b n₁ | copyS b refl (a′ ∷ˢ os) n₁
+  -- the copy block, in its own frame: the view, the unit it fills
+  copyB : ∀ {T A} (v : MV A) {es : Slots (A ∷ [])} → see es ≡ v → {r : Ret (A ∷ [] ∣ A ∷ []) T} (n : ℕ)
+        → OutI (blockᴵ (kcopy A)) r (es ∥ mone ∷ˢ []ˢ) n (snd (snd (copy v n)))
+               end r (es ∥ fst (copy v n) ∷ˢ []ˢ) (fst (snd (copy v n)))
+  copyB mone e n = doneO
+  copyB (mbase x) e n = leaf (i-eword e) []
+  copyB (mpair a b) e n with copy a n | copyS a refl []ˢ n
+  ... | (a′ , n₁ , t₁) | ca with copy b n₁ | copyS b refl (a′ ∷ˢ []ˢ) n₁
   ...   | (b′ , n₂ , t₂) | cb =
     pre (i-efst e) (then (after ca i-epop)
       (pre i-unit (pre (i-esnd e) (after (after (after cb i-epop) i-swap) i-pair))))
-  copyB (minl a) e os n with copy a n | copyS a refl os n
+  copyB (minl a) e n with copy a n | copyS a refl []ˢ n
   ... | (a′ , n₁ , t₁) | ca = pre (i-ecase₁ e) (thenL (after ca i-epop) (leaf (i-prim r-inl) []))
-  copyB (minr b) e os n with copy b n | copyS b refl os n
+  copyB (minr b) e n with copy b n | copyS b refl []ˢ n
   ... | (b′ , n₁ , t₁) | cb = pre (i-ecase₂ e) (thenL (after cb i-epop) (leaf (i-prim r-inr) []))
-  copyB (mmu i v) e os n with copy v n | copyS v refl os n
+  copyB (mmu i v) e n with copy v n | copyS v refl []ˢ n
   ... | (v′ , n₁ , t₁) | cv = pre (i-eoutq e) (then (after cv i-epop) (leaf (i-prim r-In) (k-alloc ∷ [])))
-  copyB (mct x) e os n with copy x n | copyS x refl os n
+  copyB (mct x) e n with copy x n | copyS x refl []ˢ n
   ... | (x′ , n₁ , t₁) | cx = pre (i-eapp e) (after (after cx i-epop) i-tag₁)
-  copyB (mfn i (c1 ds b γ) x) e os n with copy x n | copyS x refl os n
+  copyB (mfn i (c1 ds b γ) x) e n with copy x n | copyS x refl []ˢ n
   ... | (x′ , n₁ , t₁) | cx = pre (i-ccopy1 e) (then (after cx i-epop) (leaf (i-prim r-lam) (k-alloc ∷ [])))
-  copyB (mfn i (cω ds b γ) x) e os n with copy x n | copyS x refl os n
+  copyB (mfn i (cω ds b γ) x) e n with copy x n | copyS x refl []ˢ n
   ... | (x′ , n₁ , t₁) | cx = pre (i-ccopyω e) (then (after cx i-epop) (leaf (i-prim r-lamω) (k-alloc ∷ [])))
-  copyB (mnu i p) e os n with copy p n | copyS p refl os n
+  copyB (mnu i p) e n with copy p n | copyS p refl []ˢ n
   ... | (p′ , n₁ , t₁) | cp = pre (i-ncopy e) (then (after cp i-epop) (leaf (i-prim r-unf) (k-alloc ∷ [])))
 
 ------------------------------------------------------------------------
@@ -275,21 +278,22 @@ mutual
 mutual
   freeS : ∀ {T A} (v : MV A) {Es S U} {es : Slots Es} (os : Stk S) {k : Codeᴵ (Es ∣ One ∷ S) U} {r : Ret U T} (n : ℕ)
         → OutI (call (kfree A) ⨾ k) r (es ∥ v ∷ˢ os) n (freeAll v) k r (es ∥ mone ∷ˢ os) n
-  freeS v os n = called (freeB v os n) doneO
+  freeS v os n = called (freeB v n) doneO
 
-  freeB : ∀ {T A} (v : MV A) {Es S U} {es : Slots Es} (os : Stk S) {k : Codeᴵ (Es ∣ One ∷ S) U} {r : Ret U T} (n : ℕ)
-        → OutI (blockᴵ (kfree A)) (k ∷ᶜ r) (es ∥ v ∷ˢ os) n (freeAll v) end (k ∷ᶜ r) (es ∥ mone ∷ˢ os) n
-  freeB mone os n = doneO
-  freeB (mbase x) os n = leaf (i-prim r-drop) []
-  freeB (mpair a b) os n =
-    pre i-unpair (then (after (freeS a (b ∷ˢ os) n) i-swap)
-                       (thenL (after (freeS b (mone ∷ˢ os) n) i-pair) (leaf (i-prim r-λ) [])))
-  freeB (minl a) os n = pre i-case₁ (freeS a os n)
-  freeB (minr b) os n = pre i-case₂ (freeS b os n)
-  freeB (mmu i v) os n = then (leaf (i-prim r-Outμ) (k-free ∷ [])) (freeS v os n)
-  freeB (mct x) os n = pre i-untag₁ (freeS x os n)
-  freeB (mfn i lam x) os n = then (leaf i-cfree (k-free ∷ [])) (freeS x os n)
-  freeB (mnu i p) os n = then (leaf i-nfree (k-free ∷ [])) (freeS p os n)
+  -- the free block, in its own frame: no view, the operand
+  freeB : ∀ {T A} (v : MV A) {r : Ret ([] ∣ One ∷ []) T} (n : ℕ)
+        → OutI (blockᴵ (kfree A)) r ([]ᵉ ∥ v ∷ˢ []ˢ) n (freeAll v) end r ([]ᵉ ∥ mone ∷ˢ []ˢ) n
+  freeB mone n = doneO
+  freeB (mbase x) n = leaf (i-prim r-drop) []
+  freeB (mpair a b) n =
+    pre i-unpair (then (after (freeS a (b ∷ˢ []ˢ) n) i-swap)
+                       (thenL (after (freeS b (mone ∷ˢ []ˢ) n) i-pair) (leaf (i-prim r-λ) [])))
+  freeB (minl a) n = pre i-case₁ (freeS a []ˢ n)
+  freeB (minr b) n = pre i-case₂ (freeS b []ˢ n)
+  freeB (mmu i v) n = then (leaf (i-prim r-Outμ) (k-free ∷ [])) (freeS v []ˢ n)
+  freeB (mct x) n = pre i-untag₁ (freeS x []ˢ n)
+  freeB (mfn i lam x) n = then (leaf i-cfree (k-free ∷ [])) (freeS x []ˢ n)
+  freeB (mnu i p) n = then (leaf i-nfree (k-free ∷ [])) (freeS p []ˢ n)
 
 ------------------------------------------------------------------------
 -- 5. MORE COMBINATORS: a view around, a call by outcome, a cut, the run's
@@ -298,24 +302,24 @@ mutual
 
 -- a call by the run's outcome: a block that reads no view, and one that
 -- reads the top view
-calledR : ∀ {T A E Es B S U} (o : Outcome B) {κ : Key (bsig nothing A B)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) U} {ρ : Ret U T}
-            {m n t} {es : Slots (E ∷ Es)} {os : Stk S}
-          → SimRI o (blockᴵ κ) (k ∷ᶜ ρ) m n t end (k ∷ᶜ ρ) es os
-          → SimRI o (call κ ⨾ k) ρ m n t k ρ es os
+calledR : ∀ {T A Es B S U} (o : Outcome B) {κ : Key (bsig nothing A B)} {k : Codeᴵ (Es ∣ B ∷ S) U} {ρ : Ret U T}
+            {a n t} {es : Slots Es} {os : Stk S}
+          → SimRI o (blockᴵ κ) (frm {t = nothing} k es os ρ) ([]ᵉ ∥ a ∷ˢ []ˢ) n t end (frm {t = nothing} k es os ρ) []ᵉ []ˢ
+          → SimRI o (call κ ⨾ k) ρ (es ∥ a ∷ˢ os) n t k ρ es os
 calledR (gives _ _) s = called s doneO
 calledR (stop _)    s = calledP s
 
 calledRω : ∀ {T X A Es B S U} (o : Outcome B) {κ : Key (bsig (just X) A B)} {k : Codeᴵ (X ∷ Es ∣ B ∷ S) U} {ρ : Ret U T}
-             {m n t} {es : Slots (X ∷ Es)} {os : Stk S}
-           → SimRI o (blockᴵ κ) (k ∷ᶜ ρ) m n t end (k ∷ᶜ ρ) es os
-           → SimRI o (call κ ⨾ k) ρ m n t k ρ es os
+             {a n t} {es : Slots (X ∷ Es)} {os : Stk S}
+           → SimRI o (blockᴵ κ) (frm {t = just X} k es os ρ) (vw (see es) []ᵉ ∥ a ∷ˢ []ˢ) n t end (frm {t = just X} k es os ρ) (vw (see es) []ᵉ) []ˢ
+           → SimRI o (call κ ⨾ k) ρ (es ∥ a ∷ˢ os) n t k ρ es os
 calledRω (gives _ _) s = called s doneO
 calledRω (stop _)    s = calledP s
 
 -- a view opened by a silent step, closed after
-around : ∀ {T E E′ Es B S S₀ U V} (o : Outcome B) {c₀ : Codeᴵ (E ∷ Es ∣ S₀) U} {r₀ : Ret U T}
-           {c₁ : Codeᴵ (E′ ∷ E ∷ Es ∣ S₀) U} {e′ : MV E′} {es : Slots (E ∷ Es)} {v : Stk S₀} {os : Stk S} {n t}
-           {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} {ρ : Ret V T}
+around : ∀ {T E′ Es B S S₀ U V} (o : Outcome B) {c₀ : Codeᴵ (Es ∣ S₀) U} {r₀ : Ret U T}
+           {c₁ : Codeᴵ (E′ ∷ Es ∣ S₀) U} {e′ : MV E′} {es : Slots Es} {v : Stk S₀} {os : Stk S} {n t}
+           {k : Codeᴵ (Es ∣ B ∷ S) V} {ρ : Ret V T}
        → StepI c₀ r₀ (es ∥ v) n [] c₁ r₀ (vw e′ es ∥ v) n
        → SimRI o c₁ r₀ (vw e′ es ∥ v) n t (epop ⨾ k) ρ (vw e′ es) os
        → SimRI o c₀ r₀ (es ∥ v) n t k ρ es os
@@ -323,15 +327,15 @@ around (gives _ _) x s = pre x (after s i-epop)
 around (stop _)    x s = preP x s
 
 -- a run cut short: what the image did for the whole run covers the prefix
-cutR : ∀ {T sh U E Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {m n t t′}
-         {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
+cutR : ∀ {T sh U Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {m n t t′}
+         {k : Codeᴵ (Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
      → t′ ≼ t → SimRI o c r m n t k ρ es os → PausedI c r m n t′
 cutR (gives _ _) {t = t} q (out ts mt st w b) = paused _ _ _ _ ts mt (erase t) st w (erase-≼ q) (erase-clean t) (fst b)
 cutR (stop _) q (paused c′ r′ m′ n′ ts mt t₀ st w p cl l) = paused c′ r′ m′ n′ ts mt t₀ st w (≼-trans (erase-≼ q) p) cl l
 
 -- the run's own temporaries: erased, the same events
-tmpR : ∀ {T sh U E Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {m n t t″ ts₀}
-         {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
+tmpR : ∀ {T sh U Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {m n t t″ ts₀}
+         {k : Codeᴵ (Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
      → Weave tmp t ts₀ t″ → SimRI o c r m n t k ρ es os → SimRI o c r m n t″ k ρ es os
 tmpR (gives _ _) w (out ts mt st wv b) = out ts mt st (subst (λ z → Weave tmp z ts mt) (sym (erase-weave w)) wv) b
 tmpR (stop _)    w (paused c′ r′ m′ n′ ts mt t₀ st wv p cl l) =
@@ -409,14 +413,15 @@ mutual
   simI r-clo   fr es eq os k ρ = leaf (i-prim r-clo) []
   -- ★ a label's body: a call into its block
   simI (r-app {o = o} q r) p es eq os k ρ rewrite look-key1 q =
-    preR o i-untag (calledR o (around o i-elift (simI r p (vw mone es) refl os _ (k ∷ᶜ ρ))))
+    preR o i-untag (calledR o (around o i-elift (simI r p (vw mone []ᵉ) refl []ˢ _ (frm {t = nothing} k es os ρ))))
   -- ★ a fold: a call; the block frees the node, folds each child (calls),
   -- runs the algebra
   simI (r-cata rm (go-on {o = o} ra)) (pm , pa) es eq os k ρ =
     calledRω o (thenR o (leaf (i-prim r-Outμ) (k-free ∷ []))
-                        (thenR o (simMI rm pm es eq os _ (k ∷ᶜ ρ)) (simI ra pa es eq os end (k ∷ᶜ ρ))))
+                        (thenR o (simMI rm pm (vw (see es) []ᵉ) eq []ˢ _ (frm {t = just _} k es os ρ))
+                                 (simI ra pa (vw (see es) []ᵉ) eq []ˢ end (frm {t = just _} k es os ρ))))
   simI (r-cata {e = e} rm stopped) pm es eq os k ρ =
-    calledP (thenP (leaf (i-prim r-Outμ) (k-free ∷ [])) (P-[] (simMI rm pm es eq os _ (k ∷ᶜ ρ))))
+    calledP (thenP (leaf (i-prim r-Outμ) (k-free ∷ [])) (P-[] (simMI rm pm (vw (see es) []ᵉ) eq []ˢ _ (frm {t = just _} k es os ρ))))
   simI (r-cata-reuse rm th) () es eq os k ρ
   simI (r-lend {x = x} (fm-gives r)) fr es refl os k ρ =
     pre i-elend (after (simI r fr (ln (see es) x es) refl os _ ρ) i-eunlend)
@@ -435,17 +440,17 @@ mutual
   -- ★ a lent copy: the copy block on the view
   simI (r-copy {n = n}) fr es refl os k ρ = copyS (see es) refl os n
   simI (r-bapp {x = x} {o = o} q r) fr es eq os k ρ rewrite look-keyω q =
-    around o (i-eapp eq) (calledRω o (simI r fr (vw x es) refl os end ((epop ⨾ k) ∷ᶜ ρ)))
+    around o (i-eapp eq) (calledRω o (simI r fr (vw x []ᵉ) refl []ˢ end (frm {t = just _} (epop ⨾ k) (vw x es) os ρ)))
   simI r-lam   fr es eq os k ρ = leaf (i-prim r-lam) (k-alloc ∷ [])
   simI r-lamω  fr es eq os k ρ = leaf (i-prim r-lamω) (k-alloc ∷ [])
   simI r-unf   fr es eq os k ρ = leaf (i-prim r-unf) (k-alloc ∷ [])
   -- ★ through a cell's code word: a call of the block it names
   simI (r-nout {o = o} r) p es eq os k ρ =
-    thenR o (leaf i-iobs (k-free ∷ [])) (calledR o (around o i-elift (simI r p (vw mone es) refl os _ (k ∷ᶜ ρ))))
+    thenR o (leaf i-iobs (k-free ∷ [])) (calledR o (around o i-elift (simI r p (vw mone []ᵉ) refl []ˢ _ (frm {t = nothing} k es os ρ))))
   simI (r-ev {o = o} r) p es eq os k ρ =
-    thenR o (leaf i-icall (k-free ∷ [])) (calledR o (around o i-elift (simI r p (vw mone es) refl os _ (k ∷ᶜ ρ))))
+    thenR o (leaf i-icall (k-free ∷ [])) (calledR o (around o i-elift (simI r p (vw mone []ᵉ) refl []ˢ _ (frm {t = nothing} k es os ρ))))
   simI (r-bev {B = B} {ds′ = ds′} {b = b} {γ = γ} {i = i} {x} {a} {o} {n} r) p es eq os k ρ =
-    bevR o (calledRω o (simI r p (vw x es) refl os end ((epop ⨾ k) ∷ᶜ ρ)))
+    bevR o (calledRω o (simI r p (vw x []ᵉ) refl []ˢ end (frm {t = just _} (epop ⨾ k) (vw x es) os ρ)))
     where
       bevR : (o : Outcome B) → ∀ {t} → SimRI o (call (kbodyω ds′ b γ) ⨾ epop ⨾ k) ρ (vw x es ∥ a ∷ˢ os) n t (epop ⨾ k) ρ (vw x es) os
            → SimRI o (icallω ⨾ k) ρ (es ∥ a ∷ˢ os) n (peek i ∷ t) k ρ es os
