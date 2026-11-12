@@ -990,3 +990,37 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
       in-stk : ∀ k → k < wL → k + dst < bot
       in-stk k k< = <-≤-trans (+-monoˡ-< dst k<)
                       (Data.Nat.Properties.≤-reflexive (trans (cong (wL +_) (new-top (budget φ) wL (ws S))) (pair-at (budget φ) wL 0 (ws S) fitB)))
+
+  ----------------------------------------------------------------------
+  -- 10. A CONFIGURATION'S CELLS, and its words while the heap changes
+  -- elsewhere (a fresh cell's block is no held cell's).
+  ----------------------------------------------------------------------
+
+  cntE : ∀ {Es} → Slots Es → Id → ℕ
+  cntE []ᵉ         i = 0
+  cntE (vw e es)   i = cnt e i + cntE es i
+  cntE (ln e x es) i = (cnt e i + cnt x i) + cntE es i
+
+  cntS : ∀ {S} → Stk S → Id → ℕ
+  cntS []ˢ       i = 0
+  cntS (v ∷ˢ os) i = cnt v i + cntS os i
+
+  private
+    lft′ : ∀ {a b} → 1 ≤ a → 1 ≤ a + b
+    lft′ {a} {b} p = ≤-trans p (m≤m+n a b)
+    rgt′ : ∀ {a b} → 1 ≤ b → 1 ≤ a + b
+    rgt′ {a} {b} p = ≤-trans p (m≤n+m b a)
+
+  envW-heap : ∀ {rd rd′ sm Es} (es : Slots Es)
+            → (∀ i k → 1 ≤ cntE es i → rd′ (cellLoc i k) ≡ rd (cellLoc i k)) → EnvW rd sm es → EnvW rd′ sm es
+  envW-heap []ᵉ h tt = tt
+  envW-heap (vw e es) h ((w , p , s) , ev) =
+    (w , vw-frame p (λ i k c → h i k (lft′ c)) , s) , envW-heap es (λ i k c → h i k (rgt′ c)) ev
+  envW-heap (ln e x es) h ((w , p , s) , ev) =
+    (w , vw-frame p (λ i k c → h i k (lft′ c)) , s) , envW-heap es (λ i k c → h i k (rgt′ c)) ev
+
+  stkW-heap : ∀ {rd rd′ sm φ S} (os : Stk S)
+            → (∀ i k → 1 ≤ cntS os i → rd′ (cellLoc i k) ≡ rd (cellLoc i k)) → StkW rd sm φ os → StkW rd′ sm φ os
+  stkW-heap []ˢ h tt = tt
+  stkW-heap (v ∷ˢ os) h ((w , p , s) , st) =
+    (w , vw-frame p (λ i k c → h i k (lft′ c)) , s) , stkW-heap os (λ i k c → h i k (rgt′ c)) st
