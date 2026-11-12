@@ -474,3 +474,60 @@ mvSSd-run prog fs a b (suc n) (f₁ , f₂ , s) h d nc with d n (n<1+n n)
             (store-other (floc fs₁) cf (b + n) v x (λ eq → nx n (n<1+n n) (sym eq)))
     frm : ∀ f x → ¬ f ≡ cf → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x
     frm f x ne = trans (d-frame M f x ne) (store-frame (floc fs₁) cf (b + n) v f x (λ eq → ne (sym eq)))
+
+------------------------------------------------------------------------
+-- 7. ★ A TAG, AND `Output`'s WORD INTO SLOTS (`MoveCode.stores`).
+------------------------------------------------------------------------
+
+open import Once.LinCore.MoveCode using (stores)
+
+-- a tag into `Output`
+tag-step : ∀ (fs : FlatState) n
+         → flat-step-straight (instr-load-tag-lit n) fs
+           ≡ record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output (SV-Tag n) } ; fpc = suc (fpc fs) }
+tag-step fs n = refl
+
+-- what `n` stores of `Output`'s word leave
+record Filled (fs fs′ : FlatState) (b n : ℕ) : Set where
+  field
+    f-pc    : fpc fs′ ≡ n + fpc fs
+    f-alloc : falloc fs′ ≡ falloc fs
+    f-ret   : fret fs′ ≡ fret fs
+    f-clo   : fclosure fs′ ≡ fclosure fs
+    f-link  : flink fs′ ≡ flink fs
+    f-heap  : heapMem (floc fs′) ≡ heapMem (floc fs)
+    f-halt  : halted (floc fs′) ≡ halted (floc fs)
+    f-regs  : regs (floc fs′) ≡ regs (floc fs)
+    f-set   : ∀ k → k < n → slot fs′ (k + b) ≡ just (readReg (regs (floc fs)) Output)
+    f-rest  : ∀ x → (∀ k → k < n → ¬ x ≡ k + b) → slot fs′ x ≡ slot fs x
+    f-frame : ∀ f x → ¬ f ≡ current-frame (falloc fs) → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x
+open Filled public
+
+stores-run : ∀ prog (fs : FlatState) b n → Seg prog (fpc fs) (stores b n) → halted (floc fs) ≡ false
+           → Σ FlatState λ fs′ → FlatSteps prog n fs fs′ × Filled fs fs′ b n
+stores-run prog fs b zero s h =
+  fs , [] , record { f-pc = refl ; f-alloc = refl ; f-ret = refl ; f-clo = refl ; f-link = refl ; f-heap = refl
+                   ; f-halt = refl ; f-regs = refl ; f-set = λ k () ; f-rest = λ x _ → refl ; f-frame = λ _ _ _ → refl }
+stores-run prog fs b (suc n) (f₁ , s) h with stores-run prog fs₁ (suc b) n s h
+  where
+    cf = current-frame (falloc fs)
+    fs₁ = record fs { floc = writeLoc (floc fs) (AtStack cf b) (readReg (regs (floc fs)) Output) ; fpc = suc (fpc fs) }
+... | (fs′ , st , F) =
+  fs′ , step-at _ (h , f₁) (store-step fs b) st
+  , record { f-pc = trans (f-pc F) (+-suc n (fpc fs))
+           ; f-alloc = f-alloc F ; f-ret = f-ret F ; f-clo = f-clo F ; f-link = f-link F
+           ; f-heap = f-heap F ; f-halt = f-halt F ; f-regs = f-regs F
+           ; f-set = set ; f-rest = rest ; f-frame = frm }
+  where
+    cf = current-frame (falloc fs)
+    v = readReg (regs (floc fs)) Output
+    fs₁ = record fs { floc = writeLoc (floc fs) (AtStack cf b) v ; fpc = suc (fpc fs) }
+    set : ∀ k → k < suc n → slot fs′ (k + b) ≡ just v
+    set zero _ = trans (f-rest F b (λ k _ eq → Data.Nat.Properties.m≢1+n+m b (trans eq (+-suc k b)))) (store-same (floc fs) cf b v)
+      where import Data.Nat.Properties
+    set (suc k) (s≤s k<n) = trans (cong (slot fs′) (sym (+-suc k b))) (f-set F k k<n)
+    rest : ∀ x → (∀ k → k < suc n → ¬ x ≡ k + b) → slot fs′ x ≡ slot fs x
+    rest x nx = trans (f-rest F x (λ k k<n eq → nx (suc k) (s≤s k<n) (trans eq (+-suc k b))))
+                      (store-other (floc fs) cf b v x (λ eq → nx 0 (s≤s z≤n) (sym eq)))
+    frm : ∀ f x → ¬ f ≡ cf → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x
+    frm f x ne = trans (f-frame F f x ne) (store-frame (floc fs) cf b v f x (λ eq → ne (sym eq)))
