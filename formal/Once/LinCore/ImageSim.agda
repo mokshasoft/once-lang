@@ -25,13 +25,14 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Agda.Builtin.Sigma using (_,_; fst; snd)
 open import Data.Unit using (tt)
+open import Data.Maybe using (just; nothing)
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (subst; sym; cong; trans)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
-open import Once.LinCore.Free using (_≼_; ++-≼; Weave; w-[]; w-run; w-tmp; w-++; w-self; Along-++)
+open import Once.LinCore.Free using (_≼_; []≼; ≼-trans; ≼-refl; ++-≼; Weave; w-[]; w-run; w-tmp; w-++; w-self; Along-++)
 
 module Once.LinCore.ImageSim
   (fmt : TargetNum) (ans : FFIAnswers)
@@ -41,7 +42,7 @@ module Once.LinCore.ImageSim
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Temps fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_; fsz)
+open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_; fsz; Plain; PlainM; op-NoT)
 open import Once.LinCore.Image fmt ans bw
 open import Once.LinCore.ImageRun fmt ans bw
 
@@ -288,3 +289,60 @@ mutual
   freeB (mct x) os n = pre i-untag₁ (freeS x os n)
   freeB (mfn i lam x) os n = then (leaf i-cfree (k-free ∷ [])) (freeS x os n)
   freeB (mnu i p) os n = then (leaf i-nfree (k-free ∷ [])) (freeS p os n)
+
+------------------------------------------------------------------------
+-- 5. MORE COMBINATORS: a view around, a call by outcome, a cut, the run's
+-- own temporaries.
+------------------------------------------------------------------------
+
+-- a call by the run's outcome: a block that reads no view, and one that
+-- reads the top view
+calledR : ∀ {T A E Es B S U} (o : Outcome B) {κ : Key (bsig nothing A B)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) U} {ρ : Ret U T}
+            {m n t} {es : Slots (E ∷ Es)} {os : Stk S}
+          → SimRI o (blockᴵ κ) (k ∷ᶜ ρ) m n t end (k ∷ᶜ ρ) es os
+          → SimRI o (call κ ⨾ k) ρ m n t k ρ es os
+calledR (gives _ _) s = called s doneO
+calledR (stop _)    s = calledP s
+
+calledRω : ∀ {T X A Es B S U} (o : Outcome B) {κ : Key (bsig (just X) A B)} {k : Codeᴵ (X ∷ Es ∣ B ∷ S) U} {ρ : Ret U T}
+             {m n t} {es : Slots (X ∷ Es)} {os : Stk S}
+           → SimRI o (blockᴵ κ) (k ∷ᶜ ρ) m n t end (k ∷ᶜ ρ) es os
+           → SimRI o (call κ ⨾ k) ρ m n t k ρ es os
+calledRω (gives _ _) s = called s doneO
+calledRω (stop _)    s = calledP s
+
+-- a view opened by a silent step, closed after
+around : ∀ {T E E′ Es B S S₀ U V} (o : Outcome B) {c₀ : Codeᴵ (E ∷ Es ∣ S₀) U} {r₀ : Ret U T}
+           {c₁ : Codeᴵ (E′ ∷ E ∷ Es ∣ S₀) U} {e′ : MV E′} {es : Slots (E ∷ Es)} {v : Stk S₀} {os : Stk S} {n t}
+           {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} {ρ : Ret V T}
+       → StepI c₀ r₀ (es ∥ v) n [] c₁ r₀ (vw e′ es ∥ v) n
+       → SimRI o c₁ r₀ (vw e′ es ∥ v) n t (epop ⨾ k) ρ (vw e′ es) os
+       → SimRI o c₀ r₀ (es ∥ v) n t k ρ es os
+around (gives _ _) x s = pre x (after s i-epop)
+around (stop _)    x s = preP x s
+
+-- a run cut short: what the image did for the whole run covers the prefix
+cutR : ∀ {T sh U E Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {m n t t′}
+         {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
+     → t′ ≼ t → SimRI o c r m n t k ρ es os → PausedI c r m n t′
+cutR (gives _ _) {t = t} q (out ts mt st w b) = paused _ _ _ _ ts mt (erase t) st w (erase-≼ q) (erase-clean t) (fst b)
+cutR (stop _) q (paused c′ r′ m′ n′ ts mt t₀ st w p cl l) = paused c′ r′ m′ n′ ts mt t₀ st w (≼-trans (erase-≼ q) p) cl l
+
+-- the run's own temporaries: erased, the same events
+tmpR : ∀ {T sh U E Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {m n t t″ ts₀}
+         {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
+     → Weave tmp t ts₀ t″ → SimRI o c r m n t k ρ es os → SimRI o c r m n t″ k ρ es os
+tmpR (gives _ _) w (out ts mt st wv b) = out ts mt st (subst (λ z → Weave tmp z ts mt) (sym (erase-weave w)) wv) b
+tmpR (stop _)    w (paused c′ r′ m′ n′ ts mt t₀ st wv p cl l) =
+  paused c′ r′ m′ n′ ts mt t₀ st wv (subst (_≼ t₀) (sym (erase-weave w)) p) cl l
+
+-- a label's key is its body's block
+look-key1 : ∀ {Γ Δ l g X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg once g X A B} {ds′ : Defs Δ} {b : LTm Δ (X ⊗t A) B} {γ : Gd g b}
+          → Look ds p ds′ (b1 b γ) → key1 ds p ≡ kbody1 ds′ b γ
+look-key1 lk-here      = refl
+look-key1 (lk-there q) = look-key1 q
+
+look-keyω : ∀ {Γ Δ l g X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg many g X A B} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b}
+          → Look ds p ds′ (bω b γ) → keyω ds p ≡ kbodyω ds′ b γ
+look-keyω lk-here      = refl
+look-keyω (lk-there q) = look-keyω q
