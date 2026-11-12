@@ -210,3 +210,93 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             fs′ , step-at fs₁ (h , f₁) (lea-step fs t) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
                     (step-at fs₃ (h , f₃) (flat-tag-branch-not prog fs₂ L₁ (cong tag-test e1)) st)) ,
             C′ , pc
+
+  open import Once.LinCore.Machine fmt ans bw using (see; vw)
+  open import Once.LinCore.Moves {FS} using (MovedS; m-pc)
+  open import Once.LinCore.MoveCode using (mvSS)
+
+  private
+    pay-in : ∀ e P E₁ E₂ → wsz P ≤ wsz E₁ ⊔ wsz E₂ → suc e + wsz P ≤ suc (wsz E₁ ⊔ wsz E₂) + e
+    pay-in e P E₁ E₂ pM = s≤s (≤-trans (≤-reflexive (+-comm e (wsz P)))
+                                       (Data.Nat.Properties.+-monoˡ-≤ e pM))
+
+  -- ★ `ecase`, `inl`: the viewed tag is 0, the branch taken; the left payload a new view
+  ecase₁-sim : ∀ prog (fs : FlatState) (φ : Frame) {E₁ E₂ Es S} {es : Slots ((E₁ ⊕t E₂) ∷ Es)} {os : Stk S} {e₁ : MV E₁}
+                 (L₁ : LabelId) (q : ℕ)
+             → see es ≡ minl e₁
+             → Seg prog (fpc fs) (lea-slot (ws Es) ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero L₁) ∷ [])
+             → find-label prog L₁ ≡ just q
+             → Seg prog q (instr-ctrl (c-label L₁) ∷ mvSS (suc (ws Es)) (ws Es + wsz (E₁ ⊕t E₂)) (wsz E₁))
+             → fhalted (floc fs) ≡ false
+             → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ os)
+             → ws (E₁ ∷ (E₁ ⊕t E₂) ∷ Es) ≤ EP φ
+             → Σ FlatState λ fs′ → FlatSteps prog (4 + nsteps (wsz E₁)) fs fs′
+                 × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₁ es ∥ os)
+                 × fpc fs′ ≡ nsteps (wsz E₁) + suc q
+  ecase₁-sim prog fs φ {E₁} {E₂} {Es} {S} {es} {os} {e₁} L₁ q eq (f₁ , f₂ , f₃ , _) fl (fq , sq) h C fit = fin (topW es (c-env C))
+    where
+      cf = AllocState.current-frame (falloc fs)
+      fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (SV-Ptr (AtStack cf (ws Es))) } ; fpc = suc (fpc fs) }
+      fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Input1 (SV-Ptr (AtStack cf (ws Es))) } ; fpc = suc (fpc fs₁) }
+      fs₃ = record fs₂ { fpc = q }
+      fs₄ = record fs₃ { fpc = suc q }
+      Res = Σ FlatState λ fs′ → FlatSteps prog (4 + nsteps (wsz E₁)) fs fs′
+              × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₁ es ∥ os)
+              × fpc fs′ ≡ nsteps (wsz E₁) + suc q
+      fin : Σ (List W) (λ w → VW (heapMem (floc fs)) (see es) w × SlotsAt (slot fs) (ws Es) w) → Res
+      fin (w , pw , sw) = inv (subst (λ z → VW (heapMem (floc fs)) z w) eq pw) sw
+        where
+          inv : VW (heapMem (floc fs)) (minl {B = E₂} e₁) w → SlotsAt (slot fs) (ws Es) w → Res
+          inv (vinl {wa = wa} {pad} pa len) (e0 , s′) =
+            done-view (view-sim prog fs₄ φ {E₁ ⊕t E₂} {E₁} {Es} {S} {es} {os} {e₁} (suc (ws Es)) wa pa
+                         (proj₁ (slots-++ {slot fs} wa pad s′))
+                         (pay-in (ws Es) E₁ E₁ E₂ (Data.Nat.Properties.m≤m⊔n (wsz E₁) (wsz E₂)))
+                         sq h C fit)
+            where
+              branch : FlatMachine.flat-exec-instr {FS} (instr-ctrl (c-branch-tag-zero L₁)) prog fs₂ ≡ fs₃
+              branch = trans (flat-tag-branch-yes prog fs₂ L₁ (cong tag-test e0)) (cong (λ m → do-jump m fs₂) fl)
+              done-view : Σ FlatState (λ fs′ → FlatSteps prog (nsteps (wsz E₁)) fs₄ fs′
+                            × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₁ es ∥ os)
+                            × MovedS fs₄ fs′ (suc (ws Es)) (ws Es + wsz (E₁ ⊕t E₂)) (wsz E₁)) → Res
+              done-view (fs′ , st , C′ , M) =
+                fs′ , step-at fs₁ (h , f₁) (lea-step fs (ws Es)) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
+                        (step-at fs₃ (h , f₃) branch (step-at fs₄ (h , fq) (flat-label prog fs₃ L₁) st))) ,
+                C′ , m-pc M
+
+  -- ★ `ecase`, `inr`: the viewed tag is 1, the branch falls through; the right payload a new view
+  ecase₂-sim : ∀ prog (fs : FlatState) (φ : Frame) {E₁ E₂ Es S} {es : Slots ((E₁ ⊕t E₂) ∷ Es)} {os : Stk S} {e₂ : MV E₂}
+                 (L₁ : LabelId)
+             → see es ≡ minr e₂
+             → Seg prog (fpc fs) (lea-slot (ws Es) ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero L₁)
+                                  ∷ mvSS (suc (ws Es)) (ws Es + wsz (E₁ ⊕t E₂)) (wsz E₂))
+             → fhalted (floc fs) ≡ false
+             → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ os)
+             → ws (E₂ ∷ (E₁ ⊕t E₂) ∷ Es) ≤ EP φ
+             → Σ FlatState λ fs′ → FlatSteps prog (3 + nsteps (wsz E₂)) fs fs′
+                 × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₂ es ∥ os)
+                 × fpc fs′ ≡ nsteps (wsz E₂) + (3 + fpc fs)
+  ecase₂-sim prog fs φ {E₁} {E₂} {Es} {S} {es} {os} {e₂} L₁ eq (f₁ , f₂ , f₃ , sq) h C fit = fin (topW es (c-env C))
+    where
+      cf = AllocState.current-frame (falloc fs)
+      fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (SV-Ptr (AtStack cf (ws Es))) } ; fpc = suc (fpc fs) }
+      fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Input1 (SV-Ptr (AtStack cf (ws Es))) } ; fpc = suc (fpc fs₁) }
+      fs₃ = record fs₂ { fpc = suc (fpc fs₂) }
+      Res = Σ FlatState λ fs′ → FlatSteps prog (3 + nsteps (wsz E₂)) fs fs′
+              × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₂ es ∥ os) × fpc fs′ ≡ nsteps (wsz E₂) + (3 + fpc fs)
+      fin : Σ (List W) (λ w → VW (heapMem (floc fs)) (see es) w × SlotsAt (slot fs) (ws Es) w) → Res
+      fin (w , pw , sw) = inv (subst (λ z → VW (heapMem (floc fs)) z w) eq pw) sw
+        where
+          inv : VW (heapMem (floc fs)) (minr {A = E₁} e₂) w → SlotsAt (slot fs) (ws Es) w → Res
+          inv (vinr {wb = wb} {pad} pb len) (e1 , s′) =
+            done-view (view-sim prog fs₃ φ {E₁ ⊕t E₂} {E₂} {Es} {S} {es} {os} {e₂} (suc (ws Es)) wb pb
+                         (proj₁ (slots-++ {slot fs} wb pad s′))
+                         (pay-in (ws Es) E₂ E₁ E₂ (Data.Nat.Properties.m≤n⊔m (wsz E₁) (wsz E₂)))
+                         sq h C fit)
+            where
+              done-view : Σ FlatState (λ fs′ → FlatSteps prog (nsteps (wsz E₂)) fs₃ fs′
+                            × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₂ es ∥ os)
+                            × MovedS fs₃ fs′ (suc (ws Es)) (ws Es + wsz (E₁ ⊕t E₂)) (wsz E₂)) → Res
+              done-view (fs′ , st , C′ , M) =
+                fs′ , step-at fs₁ (h , f₁) (lea-step fs (ws Es)) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
+                        (step-at fs₃ (h , f₃) (flat-tag-branch-not prog fs₂ L₁ (cong tag-test e1)) st)) ,
+                C′ , m-pc M
