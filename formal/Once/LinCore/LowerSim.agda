@@ -165,3 +165,44 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
                         (≤-trans (Data.Nat.Properties.≤-reflexive (pair-at (budget φ) (wsz A) 0 (ws S) fit))
                                  (m∸n≤m (budget φ) (ws S)))
         where import Data.Nat.Properties
+
+  ----------------------------------------------------------------------
+  -- 4. HELPERS for the moving steps.
+  ----------------------------------------------------------------------
+
+  -- the top environment slot's buffer: the words of what it sees
+  topW : ∀ {rd sm E Es} (es : Slots (E ∷ Es)) → EnvW rd sm es → Σ (List W) λ w → VW rd (see es) w × SlotsAt sm (ws Es) w
+  topW (vw e es)   (b , _) = b
+  topW (ln e x es) (b , _) = b
+
+  -- a pair's words are its components'
+  vpair-inv : ∀ {rd A B} {a : MV A} {b : MV B} {w} → VW rd (mpair a b) w
+            → Σ (List W) λ wa → Σ (List W) λ wb → w ≡ wa ++ wb × VW rd a wa × VW rd b wb
+  vpair-inv (vpair {wa = wa} {wb} p q) = wa , wb , refl , p , q
+
+  -- defined words at slots
+  slots-def : ∀ {sm o} (w : List W) → SlotsAt sm o w → ∀ k → k < length w → Σ W λ v → sm (k + o) ≡ just v
+  slots-def (x ∷ w) (e , s) zero    _        = x , e
+  slots-def {sm} {o} (x ∷ w) (e , s) (suc k) (s≤s k<) with slots-def {sm} {suc o} w s k k<
+  ... | (v , ev) = v , trans (cong sm (sym (+-suc k o))) ev
+
+  -- the words a move leaves at its destination
+  open import Once.LinCore.Moves {FS} using (Seg; slot; mvSS-run; MovedS; m-moved; m-rest; m-heap; m-halt; m-pc; ln)
+  open import Once.CCC.Machine.Flat using (module FlatMachine)
+  open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
+  open import Once.CCC.Machine.SMCore using (module LocState; module AllocState)
+  open LocState using (heapMem; halted)
+  open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+  open FlatStepsAPI {FS} using (FlatSteps)
+  open import Data.Bool using (false)
+
+  slots-moved : ∀ {fs fs′ a b n} (w : List W) → MovedS fs fs′ a b n → SlotsAt (slot fs) a w → length w ≡ n
+              → SlotsAt (slot fs′) b w
+  slots-moved {fs} {fs′} {a} {b} {n} w M s refl = go w 0 s (λ k k< → m-moved M k k<)
+    where
+      go : ∀ (v : List W) j → SlotsAt (slot fs) (j + a) v
+         → (∀ k → k < j + length v → slot fs′ (k + b) ≡ slot fs (k + a)) → SlotsAt (slot fs′) (j + b) v
+      go []      j s h = tt
+      go (x ∷ v) j (e , s) h =
+        trans (h j (subst (j <_) (sym (+-suc j (length v))) (s≤s (m≤m+n j (length v))))) e ,
+        go v (suc j) s (λ k k< → h k (subst (k <_) (sym (+-suc j (length v))) k<))
