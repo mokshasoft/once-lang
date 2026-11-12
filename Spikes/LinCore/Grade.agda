@@ -35,7 +35,7 @@ module LinCore.Grade
   where
 
 open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import LinCore.Pass Base ⟦_⟧b Sig sdom scod
+open import LinCore.Bisim Base ⟦_⟧b Sig sdom scod
   using (_≈_; block≈; Bl; ≈ret; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-blk; Bl-refl; >>=-cong; iter-cong)
 
 ------------------------------------------------------------------------

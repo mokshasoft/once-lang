@@ -8,8 +8,9 @@
 -- (`Total.exec`):
 --
 --   * its dialogue with the world is a path through THE IR'S OWN MEANING
---     (`sound`, then `Pass.pass-ok`: bisimilar computations have the same
---     paths);
+--     (`sound`, then `Pass.pass-okᶠ`: bisimilar computations have the same
+--     paths; inside, the program may use arrows and ν's, related by
+--     `Pass.V`);
 --   * if it finishes, it leaks nothing (`noleak`), and every block it
 --     allocated is freed exactly once (`lifetimes`);
 --   * if it was cut, the cause is a loop out of fuel or a refused call.
@@ -21,7 +22,7 @@ open import Agda.Builtin.Equality using (_≡_; refl)
 open import Data.Product using (_×_)
 open import Data.Unit using (tt)
 open import Data.Nat using (ℕ)
-open import LinCore.Flat using (FTy)
+open import LinCore.Flat using (FTy; funit)
 
 module LinCore.Whole
   (Base : Set) (⟦_⟧b : Base → Set)
@@ -33,6 +34,7 @@ open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
 open import LinCore.Events Base ⟦_⟧b Sig sdom scod bw
 open import LinCore.Total Base ⟦_⟧b Sig sdom scod bw
 open import LinCore.Pass Base ⟦_⟧b Sig sdom scod
+open import LinCore.Bisim Base ⟦_⟧b Sig sdom scod using (block≈)
 
 module _ (W : World) where
   -- ★ a closed IR program, compiled and run: what the world saw is a path
@@ -40,7 +42,7 @@ module _ (W : World) where
   whole-sound : ∀ (k : ℕ) (f : IR One One) σ
               → RB (block (ev f tt)) (ios (Ran.trace (exec W ε k (tr f) mone mone 0 σ)))
                    (erO (Ran.out (exec W ε k (tr f) mone mone 0 σ)))
-  whole-sound k f σ = RB-Bl (block≈ (pass-ok f tt)) (sound (Ran.run (exec W ε k (tr f) mone mone 0 σ)))
+  whole-sound k f σ = RB-Bl (block≈ (pass-okᶠ funit funit f tt)) (sound (Ran.run (exec W ε k (tr f) mone mone 0 σ)))
 
 -- ★ and every run of it that finishes leaks nothing
 whole-noleak : ∀ (f : IR One One) {n′ t} → Run ε (tr f) mone mone 0 (gives mone n′) t
