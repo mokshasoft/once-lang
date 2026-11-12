@@ -790,3 +790,106 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
           (trans (store-other (floc fs₂) cf tp (SV-Tag t) x
                     (λ e → Data.Nat.Properties.<-irrefl e (<-≤-trans (<-≤-trans tp<pp pp≤bot) bx)))
             (m-rest M₁ x (λ k k< e → Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans (in-pay k k<) (≤-trans pp≤bot bx)))))
+
+  -- ★ `linl`, `linr`: the sum's words on the stack, the rest as it was
+  private
+    inj-W : ∀ {rd A B S} (φ : Frame) {os : Stk S} (fs fs₄ : FlatState) t (P : LTy) (w : List W)
+          → let bot = budget φ ∸ ws S ; M = wsz A ⊔ wsz B in
+            P ≡ A ⊎ P ≡ B → wsz P ≤ M → suc M + ws S ≤ budget φ
+          → SlotsAt (slot fs₄) (bot ∸ suc M) (SV-Tag t ∷ w ++ replicate (M ∸ wsz P) (SV-Tag t))
+          → (∀ x → (x < bot ∸ suc M) ⊎ (bot ≤ x) → slot fs₄ x ≡ slot fs x)
+          → StkW rd (slot fs) φ os → ws S ≤ budget φ
+          → SlotsAt (slot fs₄) (budget φ ∸ ws ((A ⊕t B) ∷ S)) (SV-Tag t ∷ w ++ replicate (M ∸ wsz P) (SV-Tag t))
+            × StkW rd (slot fs₄) φ os
+    inj-W {rd} {A} {B} {S} φ {os} fs fs₄ t P w _ pM fit sl out st fitS =
+      subst (λ z → SlotsAt (slot fs₄) z (SV-Tag t ∷ w ++ replicate ((wsz A ⊔ wsz B) ∸ wsz P) (SV-Tag t))) (new-top (budget φ) (suc (wsz A ⊔ wsz B)) (ws S)) sl ,
+      stkW-frame os fitS (λ x lo _ → out x (inj₂ lo)) st
+
+  pad-len : ∀ (w : List W) P M t → length w ≡ wsz P → wsz P ≤ M → length (w ++ replicate (M ∸ wsz P) (SV-Tag t)) ≡ M
+  pad-len w P M t lw pM =
+    trans (length-++ w) (trans (cong₂ _+_ lw (length-replicate (M ∸ wsz P))) (Data.Nat.Properties.m+[n∸m]≡n pM))
+    where import Data.Nat.Properties
+          open import Data.List.Properties using (length-++)
+          open Relation.Binary.PropositionalEquality using (cong₂)
+
+  ≤∸ : ∀ m n o → m + n ≤ o → m ≤ o ∸ n
+  ≤∸ m n o le = ≤-trans (Data.Nat.Properties.≤-reflexive (sym (Data.Nat.Properties.m+n∸n≡m m n))) (Data.Nat.Properties.∸-monoˡ-≤ n le)
+    where import Data.Nat.Properties
+
+  linl-sim : ∀ prog (fs : FlatState) (φ : Frame) {Es A B S} {es : Slots Es} {os : Stk S} {a : MV A}
+           → Seg prog (fpc fs) (mvSS ((budget φ ∸ ws S) ∸ wsz A) ((budget φ ∸ ws S) ∸ (wsz A ⊔ wsz B)) (wsz A)
+                                ++ instr-load-tag-lit 0 ∷ store-at-slot ((budget φ ∸ ws S) ∸ suc (wsz A ⊔ wsz B))
+                                ∷ stores ((budget φ ∸ ws S) ∸ ((wsz A ⊔ wsz B) ∸ wsz A)) ((wsz A ⊔ wsz B) ∸ wsz A))
+           → fhalted (floc fs) ≡ false
+           → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ a ∷ˢ os)
+           → ws ((A ⊕t B) ∷ S) ≤ OP φ
+           → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz A) + suc (suc ((wsz A ⊔ wsz B) ∸ wsz A))) fs fs′
+               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ minl {B = B} a ∷ˢ os)
+  linl-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} s h C fit with c-stk C
+  ... | ((wa , pa , sa) , rest)
+    with inj-core prog fs (budget φ ∸ ws S) (wsz A ⊔ wsz B) (wsz A) 0 wa (Data.Nat.Properties.m≤m⊔n (wsz A) (wsz B)) M<bot (vw-len pa)
+           (subst (λ z → SlotsAt (slot fs) z wa) (sym (new-top (budget φ) (wsz A) (ws S))) sa) s h
+    where
+      import Data.Nat.Properties
+      fitB : suc (wsz A ⊔ wsz B) + ws S ≤ budget φ
+      fitB = ≤-trans fit (m≤n+m (OP φ) (EP φ))
+      M<bot : wsz A ⊔ wsz B < budget φ ∸ ws S
+      M<bot = ≤∸ (suc (wsz A ⊔ wsz B)) (ws S) (budget φ) fitB
+  ... | (fs₄ , st , sl , out , hp) =
+    fs₄ , st ,
+    record { c-env  = subst (λ r → EnvW r (slot fs₄) es) (sym hp)
+                        (envW-frame es (λ x x< → out x (inj₁ (env< x x<))) (c-env C))
+           ; c-stk  = ( SV-Tag 0 ∷ wa ++ replicate ((wsz A ⊔ wsz B) ∸ wsz A) (SV-Tag 0)
+                      , subst (λ r → VW r _ _) (sym hp)
+                          (vinl pa (pad-len wa A (wsz A ⊔ wsz B) 0 (vw-len pa) (Data.Nat.Properties.m≤m⊔n (wsz A) (wsz B))))
+                      , proj₁ W₄ )
+                    , subst (λ r → StkW r (slot fs₄) φ os) (sym hp) (proj₂ W₄)
+           ; c-efit = c-efit C ; c-sfit = fit }
+    where
+      import Data.Nat.Properties
+      fitB : suc (wsz A ⊔ wsz B) + ws S ≤ budget φ
+      fitB = ≤-trans fit (m≤n+m (OP φ) (EP φ))
+      W₄ = inj-W {heapMem (floc fs)} {A} {B} {S} φ {os} fs fs₄ 0 A wa (inj₁ refl) (Data.Nat.Properties.m≤m⊔n (wsz A) (wsz B)) fitB
+             sl out rest (≤-trans (m≤n+m (ws S) (suc (wsz A ⊔ wsz B))) fitB)
+      env< : ∀ x → x < ws Es → x < (budget φ ∸ ws S) ∸ suc (wsz A ⊔ wsz B)
+      env< x x< = <-≤-trans x< (≤-trans (c-efit C)
+                    (subst (EP φ ≤_) (sym (new-top (budget φ) (suc (wsz A ⊔ wsz B)) (ws S))) (env-below φ (ws ((A ⊕t B) ∷ S)) fit)))
+
+  linr-sim : ∀ prog (fs : FlatState) (φ : Frame) {Es A B S} {es : Slots Es} {os : Stk S} {b : MV B}
+           → Seg prog (fpc fs) (mvSS ((budget φ ∸ ws S) ∸ wsz B) ((budget φ ∸ ws S) ∸ (wsz A ⊔ wsz B)) (wsz B)
+                                ++ instr-load-tag-lit 1 ∷ store-at-slot ((budget φ ∸ ws S) ∸ suc (wsz A ⊔ wsz B))
+                                ∷ stores ((budget φ ∸ ws S) ∸ ((wsz A ⊔ wsz B) ∸ wsz B)) ((wsz A ⊔ wsz B) ∸ wsz B))
+           → fhalted (floc fs) ≡ false
+           → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ b ∷ˢ os)
+           → ws ((A ⊕t B) ∷ S) ≤ OP φ
+           → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz B) + suc (suc ((wsz A ⊔ wsz B) ∸ wsz B))) fs fs′
+               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ minr {A = A} b ∷ˢ os)
+  linr-sim prog fs φ {Es} {A} {B} {S} {es} {os} {b} s h C fit with c-stk C
+  ... | ((wb , pb , sb) , rest)
+    with inj-core prog fs (budget φ ∸ ws S) (wsz A ⊔ wsz B) (wsz B) 1 wb (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) M<bot (vw-len pb)
+           (subst (λ z → SlotsAt (slot fs) z wb) (sym (new-top (budget φ) (wsz B) (ws S))) sb) s h
+    where
+      import Data.Nat.Properties
+      fitB : suc (wsz A ⊔ wsz B) + ws S ≤ budget φ
+      fitB = ≤-trans fit (m≤n+m (OP φ) (EP φ))
+      M<bot : wsz A ⊔ wsz B < budget φ ∸ ws S
+      M<bot = ≤∸ (suc (wsz A ⊔ wsz B)) (ws S) (budget φ) fitB
+  ... | (fs₄ , st , sl , out , hp) =
+    fs₄ , st ,
+    record { c-env  = subst (λ r → EnvW r (slot fs₄) es) (sym hp)
+                        (envW-frame es (λ x x< → out x (inj₁ (env< x x<))) (c-env C))
+           ; c-stk  = ( SV-Tag 1 ∷ wb ++ replicate ((wsz A ⊔ wsz B) ∸ wsz B) (SV-Tag 1)
+                      , subst (λ r → VW r _ _) (sym hp)
+                          (vinr pb (pad-len wb B (wsz A ⊔ wsz B) 1 (vw-len pb) (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B))))
+                      , proj₁ W₄ )
+                    , subst (λ r → StkW r (slot fs₄) φ os) (sym hp) (proj₂ W₄)
+           ; c-efit = c-efit C ; c-sfit = fit }
+    where
+      import Data.Nat.Properties
+      fitB : suc (wsz A ⊔ wsz B) + ws S ≤ budget φ
+      fitB = ≤-trans fit (m≤n+m (OP φ) (EP φ))
+      W₄ = inj-W {heapMem (floc fs)} {A} {B} {S} φ {os} fs fs₄ 1 B wb (inj₂ refl) (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) fitB
+             sl out rest (≤-trans (m≤n+m (ws S) (suc (wsz A ⊔ wsz B))) fitB)
+      env< : ∀ x → x < ws Es → x < (budget φ ∸ ws S) ∸ suc (wsz A ⊔ wsz B)
+      env< x x< = <-≤-trans x< (≤-trans (c-efit C)
+                    (subst (EP φ ≤_) (sym (new-top (budget φ) (suc (wsz A ⊔ wsz B)) (ws S))) (env-below φ (ws ((A ⊕t B) ∷ S)) fit)))
