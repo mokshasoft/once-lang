@@ -102,3 +102,88 @@ module _ (Σ : List BSig) where
     mct   : ∀ {l X} → MVᴵ X → MVᴵ (Ct l X)
     mfn   : ∀ {k g X A B} → ℕ × ℕ → Vt k X A B → MVᴵ X → MVᴵ (Fn k g A B)
     mnu   : ∀ {F S} → ℕ × ℕ → NVt F S → MVᴵ (Coalg F S ⊗t S) → MVᴵ (Nu F)
+
+  ------------------------------------------------------------------------
+  -- 3. THE MACHINE: A16's, with calls in place of expansion.
+  ------------------------------------------------------------------------
+
+  infixr 5 _∷ᴵ_
+  data Stkᴵ : List LTy → Set where
+    []ᴵ  : Stkᴵ []
+    _∷ᴵ_ : ∀ {A S} → MVᴵ A → Stkᴵ S → Stkᴵ (A ∷ S)
+
+  -- the environment's slots: a view, or a lend's slot (A16's `Slots`)
+  data Slotsᴵ : List LTy → Set where
+    []ᵉ : Slotsᴵ []
+    vw  : ∀ {E Es} → MVᴵ E → Slotsᴵ Es → Slotsᴵ (E ∷ Es)
+    ln  : ∀ {E X Es} → MVᴵ E → MVᴵ X → Slotsᴵ (E ∷ Es) → Slotsᴵ ((E ⊗t X) ∷ E ∷ Es)
+
+  infix 4 _∥_
+  record Cfgᴵ (env ops : List LTy) : Set where
+    constructor _∥_
+    field envs : Slotsᴵ env
+          opds : Stkᴵ ops
+
+  -- the shapes: the environment's types and the operands'
+  infix 4 _∣_
+  record Shᴵ : Set where
+    constructor _∣_
+    field env ops : List LTy
+
+  data Codeᴵ : Shᴵ → Shᴵ → Set
+  data Insᴵ : Shᴵ → Shᴵ → Set where
+    unpair  : ∀ {Es A B S} → Insᴵ (Es ∣ (A ⊗t B) ∷ S) (Es ∣ A ∷ B ∷ S)
+    pair    : ∀ {Es A B S} → Insᴵ (Es ∣ A ∷ B ∷ S) (Es ∣ (A ⊗t B) ∷ S)
+    swap    : ∀ {Es A B S} → Insᴵ (Es ∣ A ∷ B ∷ S) (Es ∣ B ∷ A ∷ S)
+    -- a generator that moves no cell's contents but its own (no call, no
+    -- view): one step
+    prim    : ∀ {Γ} (ds : Defs Γ) {Es A B S} → LTm Γ A B → Insᴵ (Es ∣ A ∷ S) (Es ∣ B ∷ S)
+    untag   : ∀ {Es l X A S} → Insᴵ (Es ∣ (Ct l X ⊗t A) ∷ S) (Es ∣ (X ⊗t A) ∷ S)
+    -- the views (A16's)
+    elend   : ∀ {E Es X A S} → Insᴵ (E ∷ Es ∣ (X ⊗t A) ∷ S) ((E ⊗t X) ∷ E ∷ Es ∣ A ∷ S)
+    eunlend : ∀ {E Es X B S} → Insᴵ ((E ⊗t X) ∷ E ∷ Es ∣ B ∷ S) (E ∷ Es ∣ (X ⊗t B) ∷ S)
+    elift   : ∀ {Es S} → Insᴵ (Es ∣ S) (One ∷ Es ∣ S)
+    efst    : ∀ {E₁ E₂ Es S} → Insᴵ ((E₁ ⊗t E₂) ∷ Es ∣ S) (E₁ ∷ (E₁ ⊗t E₂) ∷ Es ∣ S)
+    esnd    : ∀ {E₁ E₂ Es S} → Insᴵ ((E₁ ⊗t E₂) ∷ Es ∣ S) (E₂ ∷ (E₁ ⊗t E₂) ∷ Es ∣ S)
+    eout    : ∀ {F Es S} → Insᴵ (μt F ∷ Es ∣ S) (LF∙ F (μt F) ∷ μt F ∷ Es ∣ S)
+    eapp    : ∀ {l X Es S} → Insᴵ (Ct l X ∷ Es ∣ S) (X ∷ Ct l X ∷ Es ∣ S)
+    epop    : ∀ {E Es S} → Insᴵ (E ∷ Es ∣ S) (Es ∣ S)
+    -- ★ a cell built with its code word: a closure (A16's `llam`/`llamω`)
+    -- and a ν (`lunf`)
+    mkfn    : ∀ {Es k g X A B S} → Vt k X A B → Insᴵ (Es ∣ X ∷ S) (Es ∣ Fn k g A B ∷ S)
+    mknu    : ∀ {Es F S′ S} → NVt F S′ → Insᴵ (Es ∣ (Coalg F S′ ⊗t S′) ∷ S) (Es ∣ Nu F ∷ S)
+    -- ★ a CALL: a block, in a frame of its own, on the caller's environment
+    call    : ∀ {σ Es S} → σ ∈ᴮ Σ → Insᴵ (top σ ⊳ Es ∣ dom σ ∷ S) (top σ ⊳ Es ∣ cod σ ∷ S)
+    -- ★ through a cell's code word: apply a one-shot closure (its cell
+    -- freed), a lent many-use one (read), observe a ν (freed); copy and free
+    -- a closure's or a ν's cell with what it holds
+    icall   : ∀ {Es g A B S} → Insᴵ (Es ∣ (Fn once g A B ⊗t A) ∷ S) (Es ∣ B ∷ S)
+    icallω  : ∀ {Es g A B S} → Insᴵ (Fn many g A B ∷ Es ∣ A ∷ S) (Fn many g A B ∷ Es ∣ B ∷ S)
+    iobs    : ∀ {Es F S} → Insᴵ (Es ∣ Nu F ∷ S) (Es ∣ LF∙ F (Nu F) ∷ S)
+    icopy   : ∀ {Es k g A B S} → Insᴵ (Es ∣ Fn k g A B ∷ S) (Es ∣ (Fn k g A B ⊗t Fn k g A B) ∷ S)
+    ifree   : ∀ {Es k g A B S} → Insᴵ (Es ∣ Fn k g A B ∷ S) (Es ∣ One ∷ S)
+    ncopy   : ∀ {Es F S} → Insᴵ (Es ∣ Nu F ∷ S) (Es ∣ (Nu F ⊗t Nu F) ∷ S)
+    nfree   : ∀ {Es F S} → Insᴵ (Es ∣ Nu F ∷ S) (Es ∣ One ∷ S)
+    -- a μ node's cell: copied, freed (its layer by the code that follows)
+    mcopy   : ∀ {Es F S} → Insᴵ (Es ∣ μt F ∷ S) (Es ∣ LF∙ F (μt F) ∷ S)
+    -- ★ the loop (D317): a finite round, run again while it says so
+    loop    : ∀ {E Es A B S} → Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S) → Insᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ B ∷ S)
+    stuck   : ∀ {sh sh′} → Insᴵ sh sh′
+
+  infixr 5 _⨾_
+  data Codeᴵ where
+    end    : ∀ {sh} → Codeᴵ sh sh
+    _⨾_    : ∀ {sh sh′ T} → Insᴵ sh sh′ → Codeᴵ sh′ T → Codeᴵ sh T
+    case   : ∀ {Es A B S T} → Codeᴵ (Es ∣ A ∷ S) T → Codeᴵ (Es ∣ B ∷ S) T → Codeᴵ (Es ∣ (A ⊕t B) ∷ S) T
+    ecase  : ∀ {E₁ E₂ Es S T} → Codeᴵ (E₁ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) T → Codeᴵ (E₂ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) T
+           → Codeᴵ ((E₁ ⊕t E₂) ∷ Es ∣ S) T
+    halted : ∀ {sh T} → Codeᴵ sh T
+
+  -- ★ a block: its signature's code, polymorphic in the rest of both stacks
+  Block : BSig → Set
+  Block σ = ∀ {Es S} → Codeᴵ (top σ ⊳ Es ∣ dom σ ∷ S) (top σ ⊳ Es ∣ cod σ ∷ S)
+
+  -- ★ AN IMAGE: a block for every signature
+  data Blocks : List BSig → Set where
+    []ᵇ  : Blocks []
+    _∷ᵇ_ : ∀ {σ Σ′} → Block σ → Blocks Σ′ → Blocks (σ ∷ Σ′)
