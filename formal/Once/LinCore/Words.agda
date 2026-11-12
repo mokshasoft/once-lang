@@ -77,12 +77,12 @@ module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
     vct   : ∀ {l X} {x : MV X} {w} → VW rd x w → VW rd (mct {l = l} x) w
     vfn   : ∀ {k g X A B i} {lam : Lam k g X A B} {x : MV X} {wx wb wc wf}
           → CodeOf (key-of lam) wb → CodeOf (kc X) wc → CodeOf (kf X) wf → VW rd x wx
-          → At rd i 0 (SV-Ptr (AtDynamic (cellLoc i hdr)) ∷ wb ∷ wc ∷ wf ∷ wx)
+          → At rd i 0 (cellPtr i ∷ wb ∷ wc ∷ wf ∷ wx)
           → VW rd (mfn i lam x) (cellPtr i ∷ [])
     vnu   : ∀ {F S i} {p : MV (Coalg F S ⊗t S)} {wp wo wc wf}
           → (Σ DS λ d → CodeOf (_ , kobs (proj₂ d) F S) wo) → CodeOf (kc (cty (F , S))) wc → CodeOf (kf (cty (F , S))) wf
           → VW rd p wp
-          → At rd i 0 (SV-Ptr (AtDynamic (cellLoc i hdr)) ∷ wo ∷ wc ∷ wf ∷ wp)
+          → At rd i 0 (cellPtr i ∷ wo ∷ wc ∷ wf ∷ wp)
           → VW rd (mnu i p) (cellPtr i ∷ [])
 
   -- a value's words are its type's

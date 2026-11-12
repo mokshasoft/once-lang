@@ -22706,7 +22706,9 @@ closure node `[env-word, code]`, code at word 1), D147, D415.
   `untag` and `tag` move nothing. Each region is sized by its block's maximum.
 * **A cell** is a heap block: a μ node holds its layer's words; a closure and a ν are
   `[contents-word, code, copy-code, free-code, contents…]` — D386's header (code at word 1), with the
-  contents (the environment; the coalgebra and seed) in the same block, the contents-word their address.
+  contents (the environment; the coalgebra and seed) in the same block. (Amended: word 0 holds the cell's own
+  address — no code reads it, a trampoline reads the contents at `hdr` from the cell's pointer; an address
+  past a zero-word contents would be outside the block, which the flat machine faults on.)
   The copy and free codes are the contents' type's (`kcopy`/`kfree`): a copy or a free of a closure or a ν
   is deep (D403) and its contents' type is known only to the cell, so the cell names them, as it names its
   body. One block per cell, as the run has one `alloc` per cell.
