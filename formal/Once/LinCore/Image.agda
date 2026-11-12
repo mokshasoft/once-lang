@@ -96,7 +96,7 @@ data Insᴵ : Sh → Sh → Set where
   untag   : ∀ {Es l X A S} → Insᴵ (Es ∣ (Ct l X ⊗t A) ∷ S) (Es ∣ (X ⊗t A) ∷ S)
   untag₁  : ∀ {Es l X S} → Insᴵ (Es ∣ Ct l X ∷ S) (Es ∣ X ∷ S)
   tag₁    : ∀ {Es l X S} → Insᴵ (Es ∣ X ∷ S) (Es ∣ Ct l X ∷ S)
-  -- the views (A16's); an owned operand lent and taken back (to copy it)
+  -- the views (A16's); `dup` lends its operand (a lend's slot owns it) to copy it
   elend   : ∀ {E Es X A S} → Insᴵ (E ∷ Es ∣ (X ⊗t A) ∷ S) ((E ⊗t X) ∷ E ∷ Es ∣ A ∷ S)
   eunlend : ∀ {E Es X B S} → Insᴵ ((E ⊗t X) ∷ E ∷ Es ∣ B ∷ S) (E ∷ Es ∣ (X ⊗t B) ∷ S)
   elift   : ∀ {Es S} → Insᴵ (Es ∣ S) (One ∷ Es ∣ S)
@@ -106,8 +106,6 @@ data Insᴵ : Sh → Sh → Set where
   eoutq   : ∀ {F Es S} → Insᴵ (μt F ∷ Es ∣ S) (LF∙ F (μt F) ∷ μt F ∷ Es ∣ S)   -- no event: a copy's read
   eapp    : ∀ {l X Es S} → Insᴵ (Ct l X ∷ Es ∣ S) (X ∷ Ct l X ∷ Es ∣ S)
   epop    : ∀ {E Es S} → Insᴵ (E ∷ Es ∣ S) (Es ∣ S)
-  epush   : ∀ {Es A S} → Insᴵ (Es ∣ A ∷ S) (A ∷ Es ∣ S)
-  epull   : ∀ {Es A S} → Insᴵ (A ∷ Es ∣ S) (Es ∣ A ∷ S)
   eword   : ∀ {b Es S} → Insᴵ (Bt b ∷ Es ∣ One ∷ S) (Bt b ∷ Es ∣ Bt b ∷ S)
   -- ★ a CALL: a block, in a frame of its own, on the caller's environment
   call    : ∀ {σ Es S} → Key σ → Insᴵ (top σ ⊳ Es ∣ dom σ ∷ S) (top σ ⊳ Es ∣ cod σ ∷ S)
@@ -174,7 +172,7 @@ compᴵ ds lul⁻ k           = prim ds lul⁻ ⨾ k
 compᴵ ds lassoc k         = prim ds lassoc ⨾ k
 compᴵ ds lassoc⁻ k        = prim ds lassoc⁻ ⨾ k
 compᴵ ds lswap k          = prim ds lswap ⨾ k
-compᴵ ds (dup {A = A}) k  = epush ⨾ unit ⨾ call (kcopy A) ⨾ epull ⨾ pair ⨾ k
+compᴵ ds (dup {A = A}) k  = unit ⨾ swap ⨾ pair ⨾ elend ⨾ esnd ⨾ call (kcopy A) ⨾ epop ⨾ eunlend ⨾ k
 compᴵ ds (drop {A = A}) k = call (kfree A) ⨾ k
 compᴵ ds linl k           = prim ds linl ⨾ k
 compᴵ ds linr k           = prim ds linr ⨾ k
