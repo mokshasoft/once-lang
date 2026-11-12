@@ -1177,3 +1177,44 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
       env≤ = ≤-trans (c-efit C) (subst (EP φ ≤_) (sym (new-top (budget φ) 1 (ws S))) (env-below φ (ws (μt F ∷ S)) fit))
       b1<b : bot ∸ 1 < bot
       b1<b = Data.Nat.Properties.∸-monoʳ-< {o = 0} (s≤s z≤n) (≤∸ 1 (ws S) (budget φ) fitB)
+
+  -- ★ `eout`, `eoutq`: the viewed node's layer, read out of its cell into a
+  -- new buffer above
+  eout-sim : ∀ prog (fs : FlatState) (φ : Frame) {F Es S} {es : Slots (μt F ∷ Es)} {os : Stk S} {i} {v : MV (LF∙ F (μt F))}
+           → see es ≡ mmu i v
+           → Seg prog (fpc fs) (restore-input (ws Es) ∷ mvPS 0 (suc (ws Es)) (wsz (LF∙ F (μt F))))
+           → fhalted (floc fs) ≡ false
+           → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ os)
+           → ws (LF∙ F (μt F) ∷ μt F ∷ Es) ≤ EP φ
+           → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps (wsz (LF∙ F (μt F))))) fs fs′
+               × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw v es ∥ os)
+  eout-sim prog fs φ {F} {Es} {S} {es} {os} {i} {v} eq (f₀ , s) h C fit with topW es (c-env C)
+  ... | (w , pw , sw) with subst (λ z → VW (heapMem (floc fs)) z w) eq pw | sw
+  ...   | vmu {wv = wv} pv ca | (ep , _)
+    with mvPS-run prog fs₁ (AtDynamic (cellLoc i 0)) 0 (suc (ws Es)) wL s h refl def (λ k k′ _ _ ())
+    where
+      wL = wsz (LF∙ F (μt F))
+      fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 (cellPtr i) } ; fpc = suc (fpc fs) }
+      def : ∀ k → k < wL → Σ W λ x → MemOps.readLoc {FS} (floc fs₁) (offsetLoc (AtDynamic (cellLoc i 0)) (k + 0)) ≡ just x
+      def k k< with at-def wv ca k (subst (k <_) (sym (vw-len pv)) k<)
+      ... | (x , ex) = x , trans (cong (λ z → heapMem (floc fs) (heap-loc (mkHeapRef (serial i)) z))
+                                       (Data.Nat.Properties.+-identityʳ (k + 0))) ex
+        where import Data.Nat.Properties
+  ... | (fs₂ , st₂ , P) =
+    fs₂ ,
+    step-at fs₁ (h , f₀) (restore-step fs (ws Es) ep) st₂ ,
+    record { c-env  = ( wv , subst (λ r → VW r v wv) (sym (p-heap P)) pv , cell-slots wv P ca (vw-len pv) )
+                    , subst (λ r → EnvW r (slot fs₂) es) (sym (p-heap P))
+                        (envW-frame es (λ x x< → p-rest P x (λ k _ e → Data.Nat.Properties.<-irrefl e (<-≤-trans x< (m≤n+m (suc (ws Es)) k))))
+                          (c-env C))
+           ; c-stk  = subst (λ r → StkW r (slot fs₂) φ os) (sym (p-heap P))
+                        (stkW-frame os fitS (λ x lo _ → p-rest P x (λ k k< e → apart φ (c-sfit C) (in-env k k<) lo e)) (c-stk C))
+           ; c-efit = fit ; c-sfit = c-sfit C }
+    where
+      import Data.Nat.Properties
+      wL = wsz (LF∙ F (μt F))
+      fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 (cellPtr i) } ; fpc = suc (fpc fs) }
+      fitS : ws S ≤ budget φ
+      fitS = ≤-trans (c-sfit C) (m≤n+m (OP φ) (EP φ))
+      in-env : ∀ k → k < wL → k + suc (ws Es) < EP φ
+      in-env k k< = <-≤-trans (+-monoˡ-< (suc (ws Es)) k<) fit
