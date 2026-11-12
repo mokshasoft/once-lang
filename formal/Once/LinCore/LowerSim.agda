@@ -20,6 +20,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Nullary using (¬_)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
@@ -187,11 +188,11 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   ... | (v , ev) = v , trans (cong sm (sym (+-suc k o))) ev
 
   -- the words a move leaves at its destination
-  open import Once.LinCore.Moves {FS} using (Seg; slot; mvSS-run; MovedS; m-moved; m-rest; m-heap; m-halt; m-pc; ln)
+  open import Once.LinCore.Moves {FS} using (Seg; slot; mvSS-run; MovedS; m-moved; m-rest; m-heap; m-halt; m-pc) renaming (ln to nsteps)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
   open import Once.CCC.Machine.SMCore using (module LocState; module AllocState)
-  open LocState using (heapMem; halted)
+  open LocState using (heapMem) renaming (halted to fhalted)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
   open import Data.Bool using (false)
@@ -206,3 +207,77 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
       go (x ∷ v) j (e , s) h =
         trans (h j (subst (j <_) (sym (+-suc j (length v))) (s≤s (m≤m+n j (length v))))) e ,
         go v (suc j) s (λ k k< → h k (subst (k <_) (sym (+-suc j (length v))) k<))
+
+  -- a store above a read never clobbers it
+  no-clash : ∀ {a b k k′ n} → a + n ≤ b → k′ < n → ¬ k + b ≡ k′ + a
+  no-clash {a} {b} {k} {k′} {n} le lt eq =
+    Data.Nat.Properties.<-irrefl (sym eq)
+      (Data.Nat.Properties.<-≤-trans (+-monoˡ-< a lt)
+        (≤-trans (Data.Nat.Properties.≤-reflexive (+-comm n a)) (≤-trans le (m≤n+m b k))))
+    where import Data.Nat.Properties
+
+  -- the environment region lies below the operand region
+  env-below : ∀ φ s → s ≤ OP φ → EP φ ≤ budget φ ∸ s
+  env-below φ s le = ≤-trans (m≤m+n (EP φ) (OP φ ∸ s)) (Data.Nat.Properties.≤-reflexive (sym (Data.Nat.Properties.+-∸-assoc (EP φ) le)))
+    where import Data.Nat.Properties
+
+  open CfgW
+
+  ----------------------------------------------------------------------
+  -- 5. ★ THE VIEW STEPS.
+  ----------------------------------------------------------------------
+
+  open import Once.LinCore.MoveCode using (mvSS)
+
+  -- ★ `efst`: the pair's first component's words, into a new buffer above
+  efst-sim : ∀ prog (fs : FlatState) (φ : Frame) {E₁ E₂ Es S} {es : Slots ((E₁ ⊗t E₂) ∷ Es)} {os : Stk S}
+               {e₁ : MV E₁} {e₂ : MV E₂}
+           → see es ≡ mpair e₁ e₂
+           → Seg prog (fpc fs) (mvSS (ws Es) (ws Es + wsz (E₁ ⊗t E₂)) (wsz E₁))
+           → fhalted (floc fs) ≡ false
+           → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ os)
+           → ws (E₁ ∷ (E₁ ⊗t E₂) ∷ Es) ≤ EP φ
+           → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz E₁)) fs fs′
+               × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₁ es ∥ os) × MovedS fs fs′ (ws Es) (ws Es + wsz (E₁ ⊗t E₂)) (wsz E₁)
+  efst-sim prog fs φ {E₁} {E₂} {Es} {S} {es} {os} {e₁} {e₂} eq s h C fit with topW es (c-env C)
+  ... | (w , pw , sw) with vpair-inv (subst (λ z → VW (heapMem (floc fs)) z w) eq pw)
+  ...   | (wa , wb , refl , pa , pb) with slots-++ {slot fs} wa wb sw
+  ...     | (sa , _) with mvSS-run prog fs (ws Es) (ws Es + wsz (E₁ ⊗t E₂)) (wsz E₁) s h def nc
+    where
+      def : ∀ k → k < wsz E₁ → Σ W λ v → slot fs (k + ws Es) ≡ just v
+      def k k< = slots-def wa sa k (subst (k <_) (sym (vw-len pa)) k<)
+      nc : ∀ k k′ → k < k′ → k′ < wsz E₁ → ¬ k + (ws Es + wsz (E₁ ⊗t E₂)) ≡ k′ + ws Es
+      nc k k′ _ lt = no-clash {k = k} (Data.Nat.Properties.+-monoʳ-≤ (ws Es) (m≤m+n (wsz E₁) (wsz E₂))) lt
+        where import Data.Nat.Properties
+  ...       | (fs′ , st , M) =
+    fs′ , st ,
+    record { c-env  = (wa , heap pa , subst (λ z → SlotsAt (slot fs′) z wa) (+-comm (ws Es) (wsz (E₁ ⊗t E₂)))
+                                             (slots-moved wa M sa (vw-len pa)))
+                    , envW-frame {heapMem (floc fs′)} es (λ x x< → m-rest M x (λ k _ e → above x x< k e)) (envH (c-env C))
+           ; c-stk  = stkW-frame os (fitS) (λ x lo hi → m-rest M x (λ k k< e → under x lo k k< e)) (stkH (c-stk C))
+           ; c-efit = fit ; c-sfit = c-sfit C }
+    , M
+    where
+      w12 = wsz (E₁ ⊗t E₂)
+      heap : ∀ {A} {v : MV A} {ws′} → VW (heapMem (floc fs)) v ws′ → VW (heapMem (floc fs′)) v ws′
+      heap p = subst (λ r → VW r _ _) (sym (m-heap M)) p
+      envH : EnvW (heapMem (floc fs)) (slot fs) es → EnvW (heapMem (floc fs′)) (slot fs) es
+      envH e = subst (λ r → EnvW r (slot fs) es) (sym (m-heap M)) e
+      stkH : StkW (heapMem (floc fs)) (slot fs) φ os → StkW (heapMem (floc fs′)) (slot fs) φ os
+      stkH e = subst (λ r → StkW r (slot fs) φ os) (sym (m-heap M)) e
+      fitS : ws S ≤ budget φ
+      fitS = ≤-trans (c-sfit C) (m≤n+m (OP φ) (EP φ))
+      -- the new buffer is above the old ones
+      above : ∀ x → x < ws ((E₁ ⊗t E₂) ∷ Es) → ∀ k → ¬ x ≡ k + (ws Es + w12)
+      above x x< k e = Data.Nat.Properties.<-irrefl e
+                         (<-≤-trans x< (≤-trans (Data.Nat.Properties.≤-reflexive (+-comm w12 (ws Es))) (m≤n+m (ws Es + w12) k)))
+        where import Data.Nat.Properties
+      -- …and below the operand stack
+      under : ∀ x → budget φ ∸ ws S ≤ x → ∀ k → k < wsz E₁ → ¬ x ≡ k + (ws Es + w12)
+      under x lo k k< e = Data.Nat.Properties.<-irrefl (sym e)
+                            (<-≤-trans (+-monoˡ-< (ws Es + w12) k<)
+                              (≤-trans (Data.Nat.Properties.≤-reflexive (top-words))
+                                (≤-trans fit (≤-trans (env-below φ (ws S) (c-sfit C)) lo))))
+        where import Data.Nat.Properties
+              top-words : wsz E₁ + (ws Es + w12) ≡ ws (E₁ ∷ (E₁ ⊗t E₂) ∷ Es)
+              top-words = cong (wsz E₁ +_) (+-comm (ws Es) w12)
