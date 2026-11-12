@@ -21987,6 +21987,11 @@ once). **Starts from**: `NbEPLinCore` (OCP-0009, `origin/plan-ref`).
 * Costs: a `dup` of a structure is a deep copy (no sharing without run-time counts, D402); a `⇛`'s and a
   lent value's reads cost nothing; frees are compiler-placed. In-place reuse removes the free/alloc pair
   of every shape-preserving rebuild.
+* **Decided (the user, 2026-11-12): `dup` stays a deep copy; cheaper forms come later as proved
+  refinements.** A copy is needed only where BOTH sides own the value. Where one side only reads, the
+  pass lends instead (`lend`, no copy, no run-time bookkeeping); that is a refinement of D409 part 1's
+  faithful translation. Sharing between two owners without counts needs a static proof of which owner
+  frees (plan 0.145). Practical programs are mostly linear, so the copy is rare.
 * **Findings, open**: (1) `Ana` with an environment and a BRANCHING functor copies the environment once
   per extra recursive position per unfold (a single-position functor — every stream and every `Eff`
   loop — moves it, no copy); the corpus has no branching codata. (2) Cell SIZES are not yet in the
