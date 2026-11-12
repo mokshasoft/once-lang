@@ -462,8 +462,8 @@ module Unique {FS : FrameSemantics} where
   defs-uniq (inr {A} {B})         n l = none-nt (inj-trace 1 B (A +ᵀ B) n) (inj-nt 1 B (A +ᵀ B) n)
   defs-uniq terminal              n l = []
   defs-uniq initial               n l = []
-  defs-uniq (apply {A} {B})       n l =
-    none-nt (trace-of (ir-to-trace' n l (apply {A} {B})))
+  defs-uniq (apply {A} {B} {π})       n l =
+    none-nt (trace-of (ir-to-trace' n l (apply {A} {B} {π})))
       (All-++⁺ (get-nt A 1)
            (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
             All-++⁺ (put-nt A n (suc (suc n)) 1) (refl ∷ refl ∷ refl ∷ [])))
@@ -479,7 +479,7 @@ module Unique {FS : FrameSemantics} where
   defs-uniq (in-ν {F} w)              n l = wc-du (kind (⟦ F ⟧TI (ν-type F))) _ n (ℓ o l) (bodies-of (ir-to-trace' n l (in-ν w))) ([] ∷ [])
   -- THE THREE THAT MINT AT `l` ITSELF. The child starts at a strictly larger
   -- counter, so the minted label is below everything the child defines.
-  defs-uniq (curry {E} {A} b)     n l = wc-du (kind E) E n (ℓ o l) (bodies-of (ir-to-trace' n l (curry {E} {A} b))) (
+  defs-uniq (curry {E} {A} {_} {π} b)     n l = wc-du (kind E) E n (ℓ o l) (bodies-of (ir-to-trace' n l (curry {E} {A} {_} {π} b))) (
     subst (λ z → AllPairs _≢_ (ℓ o l ∷ (z ++ block-defs (bodies-of (ir-to-trace' bs (s² l) b)))))
           (sym (tl-pre (proj₂ (env-entry (kind E) E A)) (trace-of (ir-to-trace' bs (s² l) b)) (entry-nt (kind E) E A)))
           (head-fresh′ l (n≤1+n (suc l)) (defsA b bs (s² l)) ∷ defs-uniq b bs (s² l)))

@@ -67,7 +67,7 @@ ir-size (const _ _) = 1
 ⟨,⟩-g-smaller : ∀ {A B C} (f : IR A B) (g : IR A C) → ir-size g < ir-size ⟨ f , g ⟩
 ⟨,⟩-g-smaller f g = s≤s (m≤n+m (ir-size g) (ir-size f))
 
-curry-smaller : ∀ {A B C} (f : IR (A * B) C) {m : AllocMode} → ir-size f < ir-size (curry f)
+curry-smaller : ∀ {A B C π} (f : IR (A * B) C) {m : AllocMode} → ir-size f < ir-size (curry {π = π} f)
 curry-smaller f {m} = m≤n⇒m≤1+n (n<1+n (ir-size f))
 
 case-f-smaller : ∀ {A B C} (f : IR A C) (g : IR B C) → ir-size f < ir-size (case f g)

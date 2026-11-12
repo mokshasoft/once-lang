@@ -613,7 +613,7 @@ module Simp {FS : FrameSemantics} where
     --     denotation of a value construction emits none either. Same shape as
     --     `obs-correct-free-heap`.
     --   * `value-realized` — a 5-step (resp. 10-step) straight-line chain, with
-    --     `place` a `ResultPlace (A ⇛ B)` whose `ValidAtWF` is
+    --     `place` a `ResultPlace (A ⇛[ _ ] B)` whose `ValidAtWF` is
     --     `valid-closure-wf` applied to the two `readLoc` equations those
     --     instructions establish (`SV-Ptr env-loc` at the closure cell,
     --     `SV-Code (ℓ o this-label)` at its successor) plus the env's validity.

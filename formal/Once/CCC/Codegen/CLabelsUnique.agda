@@ -704,8 +704,8 @@ frag (curry {E} {A} b) n l =
     wX = All-++⁺ (proj₁ (proj₂ Fb)) (proj₂ (proj₂ Fb))
     l<ssl : l < ssl
     l<ssl = ≤-trans (n<1+n l) (n≤1+n (suc l))
-frag (apply {A} {B}) n l =
-  none-nc (trace-of (ir-to-trace' n l (apply {A} {B})))
+frag (apply {A} {B} {π}) n l =
+  none-nc (trace-of (ir-to-trace' n l (apply {A} {B} {π})))
     (All-++⁺ (SC.get-P A 1)
       (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
        All-++⁺ (SC.put-P A n (suc (suc n)) 1) (refl ∷ refl ∷ refl ∷ [])))
@@ -995,8 +995,8 @@ frag-nf (curry {E} {A} b) n l =
   where
     pro = proj₂ (env-entry (kind E) E A)
     Xb = ir-to-trace' (proj₁ (env-entry (kind E) E A)) (suc (suc l)) b
-frag-nf (apply {A} {B}) n l =
-  nf-all {t = trace-of (ir-to-trace' n l (apply {A} {B}))}
+frag-nf (apply {A} {B} {π}) n l =
+  nf-all {t = trace-of (ir-to-trace' n l (apply {A} {B} {π}))}
     (All-++⁺ (SF.get-P A 1)
       (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
        All-++⁺ (SF.put-P A n (suc (suc n)) 1) (refl ∷ refl ∷ refl ∷ [])))

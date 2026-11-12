@@ -36,18 +36,22 @@ open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; 
 open import Once.Type.SubDecide
 open import Once.Laws.Sub
 open import Once.IR
-open import Once.IRTy using (_⇛_; Unit; ⌊_⌋; _*_; _+_)
+open import Once.IRTy using (_⇛[_]_; Unit; ⌊_⌋; _*_; _+_)
+open import Once.Type.DecEq using (_≟p_)
+open import Once.Spec.Grade using (Purity)
+
+private variable π π′ : Purity
 
 ------------------------------------------------------------------------
 -- The structural conversion.
 ------------------------------------------------------------------------
 
 -- A closure converted: the argument backwards, the result forwards.
-wrapArr : ∀ {X X′ Y Y′} → IR X′ X → IR Y Y′ → IR (X ⇛ Y) (X′ ⇛ Y′)
+wrapArr : ∀ {X X′ Y Y′} → IR X′ X → IR Y Y′ → IR (X ⇛[ π ] Y) (X′ ⇛[ π′ ] Y′)
 wrapArr f g = curry (g ∘ (apply ∘ ⟨ fst , f ∘ snd ⟩))
 
 -- An erased (`Zero`) arrow takes no argument, so only its result converts.
-wrapArr₀ : ∀ {Y Y′} → IR Y Y′ → IR (Unit ⇛ Y) (Unit ⇛ Y′)
+wrapArr₀ : ∀ {Y Y′} → IR Y Y′ → IR (Unit ⇛[ π ] Y) (Unit ⇛[ π′ ] Y′)
 wrapArr₀ g = curry (g ∘ apply)
 
 coeIR : ∀ {m} {A B : Ty m} → A <: B → IR ⌊ A ⌋ ⌊ B ⌋
@@ -74,8 +78,10 @@ data VoidFree {m} : ∀ {A B : Ty m} → A <: B → Set where
   vf-int    : VoidFree sub-int
   vf-float  : VoidFree sub-float
   vf-var    : ∀ {i} → VoidFree (sub-var {i = i})
-  vf-arr    : ∀ {A A′ B B′ q π π′} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π′}
-            → VoidFree a → VoidFree b → VoidFree (sub-arr {q = q} a b g)
+  -- D413: an arrow's purity is in its IR type, so only a coercion that keeps
+  -- it is the identity; one that raises it is `coeIR`'s eta-expanded closure.
+  vf-arr    : ∀ {A A′ B B′ q π} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π}
+            → VoidFree a → VoidFree b → VoidFree (sub-arr {q = q} {π = π} {π′ = π} a b g)
   vf-prod   : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′}
             → VoidFree a → VoidFree b → VoidFree (sub-* a b)
   vf-sum    : ∀ {A A′ B B′} {a : A <: A′} {b : B <: B′}
@@ -117,7 +123,9 @@ voidFree? (sub-void {B = T.ν _ _})     = no λ ()
 voidFree? sub-unit   = yes vf-unit
 voidFree? sub-int    = yes vf-int
 voidFree? sub-float  = yes vf-float
-voidFree? (sub-arr a b g) = two vf-arr arr-a arr-b (voidFree? a) (voidFree? b)
+voidFree? (sub-arr {π = π} {π′ = π′} a b g) with π ≟p π′
+... | yes refl = two vf-arr arr-a arr-b (voidFree? a) (voidFree? b)
+... | no ne    = no λ { (vf-arr _ _) → ne refl }
 voidFree? (sub-* a b)  = two vf-prod prod-a prod-b (voidFree? a) (voidFree? b)
 voidFree? (sub-+ a b)   = two vf-sum sum-a sum-b (voidFree? a) (voidFree? b)
 voidFree? sub-μ = yes vf-μ
@@ -132,9 +140,9 @@ erase-eq _ vf-unit   = refl
 erase-eq _ vf-int    = refl
 erase-eq _ vf-float  = refl
 erase-eq _ vf-var    = refl
-erase-eq (sub-arr {q = Zero} a b _) (vf-arr va vb) = cong (Unit ⇛_) (erase-eq b vb)
-erase-eq (sub-arr {q = One}  a b _) (vf-arr va vb) = cong₂ _⇛_ (sym (erase-eq a va)) (erase-eq b vb)
-erase-eq (sub-arr {q = Many} a b _) (vf-arr va vb) = cong₂ _⇛_ (sym (erase-eq a va)) (erase-eq b vb)
+erase-eq (sub-arr {q = Zero} a b _) (vf-arr va vb) = cong (Unit ⇛[ _ ]_) (erase-eq b vb)
+erase-eq (sub-arr {q = One}  a b _) (vf-arr va vb) = cong₂ (λ x y → x ⇛[ _ ] y) (sym (erase-eq a va)) (erase-eq b vb)
+erase-eq (sub-arr {q = Many} a b _) (vf-arr va vb) = cong₂ (λ x y → x ⇛[ _ ] y) (sym (erase-eq a va)) (erase-eq b vb)
 erase-eq (sub-* a b) (vf-prod va vb) = cong₂ _*_ (erase-eq a va) (erase-eq b vb)
 erase-eq (sub-+ a b)  (vf-sum va vb)  = cong₂ _+_ (erase-eq a va) (erase-eq b vb)
 erase-eq _ vf-μ = refl

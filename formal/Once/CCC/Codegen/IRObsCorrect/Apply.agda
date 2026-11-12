@@ -107,13 +107,13 @@ module ApplyC {FS : FrameSemantics} where
     sne : ∀ {fr} {a b : ℕ} → a < b → AtStack {FS} fr b ≢ AtStack fr a
     sne a<b e = <-irrefl (sym (cong slot-of e)) a<b
 
-  obs-correct-apply : ∀ {A B} → IRObsCorrectF (apply {A} {B})
+  obs-correct-apply : ∀ {A B π} → IRObsCorrectF (apply {A} {B} {π})
   -- A PAIR fits no register and is not `Unit`, so the two off-pointer input
   -- residences are refuted outright; a live location is a heap cell.
   obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-reg () _) k rs
   obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-unit ()) k rs
   obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-loc (AtStack _ _) _ () _) k rs
-  obs-correct-apply {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh
+  obs-correct-apply {A} {B} {π} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh
     (in-loc (AtDynamic (heap-loc pr po)) valid bf rdi) k rs =
     go (PairValidWF.fst-cell d)
     where
@@ -122,8 +122,8 @@ module ApplyC {FS : FrameSemantics} where
       d = decomposePairWF valid
 
       -- A CLOSURE is never inline, and D184 pins it to the HEAP.
-      go : CellAt {prog = prog} alloc (A IRTy′.⇛ B) (proj₁ x) pair-loc s
-         → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl rs k
+      go : CellAt {prog = prog} alloc (A IRTy′.⇛[ _ ] B) (proj₁ x) pair-loc s
+         → MachineRefinesObsF prog base n l (apply {A} {B} {π}) x s alloc cl rs k
       go (cell-inline (rep-prim ()) _)
       go (cell-ptr {comp-loc = AtStack _ _} _ _ _ fv) =
         ⊥-elim (ClosureValidWF.loc-mode (decomposeClosureWF fv))
@@ -148,7 +148,7 @@ module ApplyC {FS : FrameSemantics} where
           env-cell-of (env-in-cell _ ep)  = ep
 
           assemble : EnvAt {prog = prog} alloc {E} env fst-loc s
-                   → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl rs k
+                   → MachineRefinesObsF prog base n l (apply {A} {B} {π}) x s alloc cl rs k
           assemble ea = result
             where
               ev = env-sv-of ea
@@ -165,7 +165,7 @@ module ApplyC {FS : FrameSemantics} where
                     mov-to-input ∷ load-from-slot (suc n) ∷ store-at 0 ∷ (put A n (suc (suc n)) 1 ++ T2 ++ instr-call-closure ∷ [])
               E′ = get-i A 1 ∷ (T1 ++ instr-save-closure-reg ∷ S2c)
 
-              shape : emitted n l (apply {A} {B}) ≡ E′
+              shape : emitted n l (apply {A} {B} {π}) ≡ E′
               shape = cong (_++ (T1 ++ instr-save-closure-reg ∷ S2c)) (get-one A 1)
 
               span′ : SpanAt prog base E′
@@ -462,7 +462,7 @@ module ApplyC {FS : FrameSemantics} where
               silent-setup = trans (chain-events-++ G.step c2) (cong₂ DL._++_ G.silent s2)
 
               -- the call returns past the text's end
-              at-end-eq : suc (fpc fsS) ≡ length (emitted n l (apply {A} {B})) + base
+              at-end-eq : suc (fpc fsS) ≡ length (emitted n l (apply {A} {B} {π})) + base
               at-end-eq =
                 trans arith
                       (cong (λ t → length t + base)
@@ -479,25 +479,25 @@ module ApplyC {FS : FrameSemantics} where
               run : FlatSteps prog (SETUP + CalleeRun.steps crun) fs0 (CalleeRun.settle crun)
               run = FlatSteps-++ run-setup (CalleeRun.run crun)
 
-              denot-eq : proj₁ x (proj₂ x) ≡ evalᴰ (apply {A} {B}) x
+              denot-eq : proj₁ x (proj₂ x) ≡ evalᴰ (apply {A} {B} {π}) x
               denot-eq = refl
 
               h-eq : SMCore.LocState.ev-log (floc callFs) ≡ SMCore.LocState.ev-log s
               h-eq = trans (log-of run-setup silent-setup) (++-identityʳ _)
 
-              RE : runAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k) ≡ runAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
+              RE : runAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k) ≡ runAt s (⟪ evalᴰ (apply {A} {B} {π}) x ⟫ k)
               RE = runAt-≡ {st = floc callFs} {st′ = s} h-eq (cong (⟪_⟫ k) denot-eq)
 
-              st-eq : stopsAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k) ≡ stopsAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
+              st-eq : stopsAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k) ≡ stopsAt s (⟪ evalᴰ (apply {A} {B} {π}) x ⟫ k)
               st-eq = cong (λ r → is-stopped (proj₂ r)) RE
 
-              res-eq : resultAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k) ≡ resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)
+              res-eq : resultAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k) ≡ resultAt s (⟪ evalᴰ (apply {A} {B} {π}) x ⟫ k)
               res-eq = cong proj₂ RE
 
-              nc′ : NotCut (resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k)) → NotCut (resultAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k))
+              nc′ : NotCut (resultAt s (⟪ evalᴰ (apply {A} {B} {π}) x ⟫ k)) → NotCut (resultAt (floc callFs) (⟪ proj₁ x (proj₂ x) ⟫ k))
               nc′ = subst NotCut (sym res-eq)
 
-              place : ∀ {v r} → resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k) ≡ returns (done v r)
+              place : ∀ {v r} → resultAt s (⟪ evalᴰ (apply {A} {B} {π}) x ⟫ k) ≡ returns (done v r)
                     → ResultPlace B (CalleeRun.out-mode crun)
                         (falloc (CalleeRun.settle crun)) (CalleeRun.cont-alloc crun)
                         v (floc (CalleeRun.settle crun))
@@ -522,7 +522,7 @@ module ApplyC {FS : FrameSemantics} where
                       → BeforeFrontier (record A₁ { next-slot = m }) loc
               bf-call m = frontier-monotone (record alloc { next-slot = m }) (record A₁ { next-slot = m }) refl ≤-refl (n≤1+n _)
 
-              result : MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl rs k
+              result : MachineRefinesObsF prog base n l (apply {A} {B} {π}) x s alloc cl rs k
               result = record
                 { value-realized =
                     realized (SETUP + CalleeRun.steps crun) (CalleeRun.settle crun)
@@ -552,7 +552,7 @@ module ApplyC {FS : FrameSemantics} where
                                               (trans (CalleeRun.events crun) (cong proj₁ RE)))
                 }
                 where
-                  mem-pres-apply : NotCut (resultAt s (⟪ evalᴰ (apply {A} {B}) x ⟫ k))
+                  mem-pres-apply : NotCut (resultAt s (⟪ evalᴰ (apply {A} {B} {π}) x ⟫ k))
                                  → ∀ (loc : ValueLocation FS)
                                  → BeforeFrontier (record alloc { next-slot = n }) loc
                                  → SMCore.MemOps.readLoc (floc (CalleeRun.settle crun)) loc ≡ SMCore.MemOps.readLoc s loc

@@ -311,12 +311,12 @@ module _ (fmt : TargetNum) {ρ ρ′ : CallEnv} (re : RelEnv fmt ρ ρ′) where
         rhs = ≈∞-trans trans (≈∞-bind (≈∞-assoc K (λ e → return∞ (clo e)) P) (cong-k AP))
                 (≈∞-trans trans (≈∞-assoc K (λ e → return∞ (clo e) >>=∞ P) AP) (≈∞-bind (≈∞-refl ≡refl K) innerR))
 
-    head-eq : ∀ {X Y A B} (c : IR Y (A II.⇛ B)) (k : IR X Y) (x : IR X A) (v : CurryView c) (a : ⟦ X ⟧ᴰᴵ)
+    head-eq : ∀ {X Y A B π} (c : IR Y (A II.⇛[ π ] B)) (k : IR X Y) (x : IR X A) (v : CurryView c) (a : ⟦ X ⟧ᴰᴵ)
             → TreeEq∞ _≡_ (E (beta-head c k x v) a) (E (apply ∘ ⟨ c ∘ k , x ⟩) a)
     head-eq _ k x (is-curry f)       a = clo-beta≈ (E k a) (E x a) (E f)
     head-eq c k x (is-other-curry _) a = ≈∞-refl ≡refl (E (apply ∘ ⟨ c ∘ k , x ⟩) a)
 
-    bare-eq : ∀ {X A B} (c : IR X (A II.⇛ B)) (x : IR X A) (v : CurryView c) (a : ⟦ X ⟧ᴰᴵ)
+    bare-eq : ∀ {X A B π} (c : IR X (A II.⇛[ π ] B)) (x : IR X A) (v : CurryView c) (a : ⟦ X ⟧ᴰᴵ)
             → TreeEq∞ _≡_ (E (beta-bare c x v) a) (E (apply ∘ ⟨ c , x ⟩) a)
     bare-eq _ x (is-curry f) a =
       ≈∞-trans trans (clo-beta≈ (return∞ a) (E x a) (E f))
@@ -324,7 +324,7 @@ module _ (fmt : TargetNum) {ρ ρ′ : CallEnv} (re : RelEnv fmt ρ ρ′) where
                  (cong-k (λ p → proj₁ p (proj₂ p))))
     bare-eq c x (is-other-curry _) a = ≈∞-refl ≡refl (E (apply ∘ ⟨ c , x ⟩) a)
 
-    closure-eq : ∀ {X A B} (c : IR X (A II.⇛ B)) (x : IR X A) (w : ChainView c) (a : ⟦ X ⟧ᴰᴵ)
+    closure-eq : ∀ {X A B π} (c : IR X (A II.⇛[ π ] B)) (x : IR X A) (w : ChainView c) (a : ⟦ X ⟧ᴰᴵ)
                → TreeEq∞ _≡_ (E (closure-beta c x w) a) (E (apply ∘ ⟨ c , x ⟩) a)
     closure-eq _ x (is-comp h k) a = head-eq h k x (curryView h) a
     closure-eq _ x (not-comp c)  a = bare-eq c x (curryView c) a
@@ -339,37 +339,37 @@ module _ (fmt : TargetNum) {ρ ρ′ : CallEnv} (re : RelEnv fmt ρ ρ′) where
         pt : ∀ {y y′} → y ≡ y′ → TreeEq∞ _≡_ (E P y >>=∞ E f) (E Q y′ >>=∞ E g)
         pt {y} refl = h y
 
-    head-chain-eq : ∀ {X Z Y A B} (c : IR Y (A II.⇛ B)) (k : IR Z Y) (x : IR Z A) (m : IR X Z) (v : CurryView c) (a : ⟦ X ⟧ᴰᴵ)
+    head-chain-eq : ∀ {X Z Y A B π} (c : IR Y (A II.⇛[ π ] B)) (k : IR Z Y) (x : IR Z A) (m : IR X Z) (v : CurryView c) (a : ⟦ X ⟧ᴰᴵ)
                   → TreeEq∞ _≡_ (E (beta-head-chain c k x m v) a) (E (apply ∘ (⟨ c ∘ k , x ⟩ ∘ m)) a)
-    head-chain-eq _ k x m (is-curry f) a =
-      via-chain m ⟨ k , x ⟩ f ⟨ curry f ∘ k , x ⟩ apply a (head-eq (curry f) k x (is-curry f))
+    head-chain-eq {π = π} _ k x m (is-curry f) a =
+      via-chain m ⟨ k , x ⟩ f ⟨ curry {π = π} f ∘ k , x ⟩ (apply {π = π}) a (head-eq (curry {π = π} f) k x (is-curry f))
     head-chain-eq c k x m (is-other-curry _) a = ≈∞-refl ≡refl (E (apply ∘ (⟨ c ∘ k , x ⟩ ∘ m)) a)
 
-    bare-chain-eq : ∀ {X Z A B} (c : IR Z (A II.⇛ B)) (x : IR Z A) (m : IR X Z) (v : CurryView c) (a : ⟦ X ⟧ᴰᴵ)
+    bare-chain-eq : ∀ {X Z A B π} (c : IR Z (A II.⇛[ π ] B)) (x : IR Z A) (m : IR X Z) (v : CurryView c) (a : ⟦ X ⟧ᴰᴵ)
                   → TreeEq∞ _≡_ (E (beta-bare-chain c x m v) a) (E (apply ∘ (⟨ c , x ⟩ ∘ m)) a)
-    bare-chain-eq _ x m (is-curry f) a =
-      via-chain m ⟨ id , x ⟩ f ⟨ curry f , x ⟩ apply a (bare-eq (curry f) x (is-curry f))
+    bare-chain-eq {π = π} _ x m (is-curry f) a =
+      via-chain m ⟨ id , x ⟩ f ⟨ curry {π = π} f , x ⟩ (apply {π = π}) a (bare-eq (curry {π = π} f) x (is-curry f))
     bare-chain-eq c x m (is-other-curry _) a = ≈∞-refl ≡refl (E (apply ∘ (⟨ c , x ⟩ ∘ m)) a)
 
-    closure-chain-eq : ∀ {X Z A B} (c : IR Z (A II.⇛ B)) (x : IR Z A) (m : IR X Z) (w : ChainView c) (a : ⟦ X ⟧ᴰᴵ)
+    closure-chain-eq : ∀ {X Z A B π} (c : IR Z (A II.⇛[ π ] B)) (x : IR Z A) (m : IR X Z) (w : ChainView c) (a : ⟦ X ⟧ᴰᴵ)
                      → TreeEq∞ _≡_ (E (closure-beta-chain c x m w) a) (E (apply ∘ (⟨ c , x ⟩ ∘ m)) a)
     closure-chain-eq _ x m (is-comp h k) a = head-chain-eq h k x m (curryView h) a
     closure-chain-eq _ x m (not-comp c)  a = bare-chain-eq c x m (curryView c) a
 
     -- `apply ∘ ⟨ curry f ∘ k , x ⟩ → f ∘ ⟨ k , x ⟩` (and through a chain)
-    apply-chain-aux-rel : ∀ {X Z A B} (p : IR Z ((A II.⇛ B) II.* A)) (m : IR X Z) (F : IR X ((A II.⇛ B) II.* A))
-                          (g : IR ((A II.⇛ B) II.* A) B) → Rel (p ∘ m) F → Rel apply g
+    apply-chain-aux-rel : ∀ {X Z A B π} (p : IR Z ((A II.⇛[ π ] B) II.* A)) (m : IR X Z) (F : IR X ((A II.⇛[ π ] B) II.* A))
+                          (g : IR ((A II.⇛[ π ] B) II.* A) B) → Rel (p ∘ m) F → Rel apply g
                         → (v : PairView p) → Rel (apply-chain-aux p m v) (g ∘ F)
     apply-chain-aux-rel _ m F g rF rg (is-pair c x) {a} r =
       RelS-≈ˡ (closure-chain-eq c x m (chainView c) a) (RelS-bind (rF r) rg)
     apply-chain-aux-rel _ m F g rF rg (is-other-pair p) r = RelS-bind (rF r) rg
 
-    apply-chain-rel : ∀ {X A B} (F′ F : IR X ((A II.⇛ B) II.* A)) (g : IR ((A II.⇛ B) II.* A) B)
+    apply-chain-rel : ∀ {X A B π} (F′ F : IR X ((A II.⇛[ π ] B) II.* A)) (g : IR ((A II.⇛[ π ] B) II.* A) B)
                     → Rel F′ F → Rel apply g → (w : ChainView F′) → Rel (apply-chain F′ w) (g ∘ F)
     apply-chain-rel _ F g rF rg (is-comp p m) = apply-chain-aux-rel p m F g rF rg (pairView p)
     apply-chain-rel _ F g rF rg (not-comp F′) = compose-second-rel apply g F′ F rg rF (composeSecondView F′)
 
-    apply-rel : ∀ {X A B} (F′ F : IR X ((A II.⇛ B) II.* A)) (g : IR ((A II.⇛ B) II.* A) B)
+    apply-rel : ∀ {X A B π} (F′ F : IR X ((A II.⇛[ π ] B) II.* A)) (g : IR ((A II.⇛[ π ] B) II.* A) B)
               → Rel F′ F → Rel apply g → (v : PairView F′) → Rel (apply-aux F′ v) (g ∘ F)
     apply-rel _ F g rF rg (is-pair c x) {a} r = RelS-≈ˡ (closure-eq c x (chainView c) a) (RelS-bind (rF r) rg)
     apply-rel _ F g rF rg (is-other-pair F′) = apply-chain-rel F′ F g rF rg (chainView F′)

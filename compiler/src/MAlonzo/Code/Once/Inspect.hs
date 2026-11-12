@@ -171,10 +171,10 @@ d_showCompiledFun_52 v0
                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
                   (MAlonzo.Code.Once.IR.Show.d_showIR_14
                      (coe
-                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                         (coe MAlonzo.Code.Once.Spec.Type.C_Unit_18))
                      (coe
-                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                         (coe MAlonzo.Code.Once.Compile.d_cfType_548 (coe v0)))
                      (coe MAlonzo.Code.Once.Compile.d_cfIR_550 (coe v0)))
                   ("\n" :: Data.Text.Text)))))

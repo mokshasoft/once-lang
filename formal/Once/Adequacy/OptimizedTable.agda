@@ -47,7 +47,7 @@ open import Once.Adequacy.OptimizedModule using (optCF; optCFs; optRes; crm-opt)
 module _ (fmt : TargetNum) where
 
   -- the direct-call form at an arrow keeps the relation
-  dc-rel : ∀ {ρ ρ′} (re : RelEnv fmt ρ ρ′) {X Y : II.IRTy} (x′ x : IR II.Unit (X II.⇛ Y))
+  dc-rel : ∀ {ρ ρ′} (re : RelEnv fmt ρ ρ′) {X Y : II.IRTy} {π} (x′ x : IR II.Unit (X II.⇛[ π ] Y))
          → Rel fmt re x′ x → Rel fmt re (apply ∘ ⟨ x′ ∘ terminal , id ⟩) (apply ∘ ⟨ x ∘ terminal , id ⟩)
   dc-rel re x′ x rx r =
     RelS-bind (RelS-bind (RelS-bind (relS-ret tt) (λ _ → rx tt)) (λ r₁ → RelS-bind (relS-ret r) (λ r₂ → relS-ret (r₁ , r₂))))

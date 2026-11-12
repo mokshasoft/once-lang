@@ -149,7 +149,7 @@ private
   try-lift-owned {A} {II.Void}     ir = tt
   try-lift-owned {A} {_ II.* _}    ir = tt
   try-lift-owned {A} {_ II.+ _}    ir = tt
-  try-lift-owned {A} {_ II.⇛ _}    ir = tt
+  try-lift-owned {A} {_ II.⇛[ _ ] _}    ir = tt
   try-lift-owned {A} {II.μ-type _} ir = tt
   try-lift-owned {A} {II.ν-type _} ir = tt
 

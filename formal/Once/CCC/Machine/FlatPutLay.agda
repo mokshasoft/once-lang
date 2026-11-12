@@ -37,7 +37,7 @@ open MemoryOps {FS} using (readLoc-writeLoc-same)
 open AllocState using (current-frame)
 open LocState using (halted; regs)
 open import Once.IR using (AllocMode; Stack; Heap)
-open import Once.IRTy using (IRTy; Unit; ν-type; μ-type; _⇛_; _*_; FitsInRegI; fits-int; fits-float; IRFunctor; WellFormedFI; ⟦_⟧TI) renaming (_+_ to _+ᵀ_)
+open import Once.IRTy using (IRTy; Unit; ν-type; μ-type; _⇛[_]_; _*_; FitsInRegI; fits-int; fits-float; IRFunctor; WellFormedFI; ⟦_⟧TI) renaming (_+_ to _+ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; kind; put; copy-from)
 open import Once.CCC.Machine.ValueRel
@@ -87,7 +87,7 @@ module PutLay {F : IRFunctor} (R : VTy (ν-type F))
     node-kind : ∀ {C : IRTy} → IsNode C → kind C ≡ word
     node-kind {μ-type _} _ = refl
     node-kind {ν-type _} _ = refl
-    node-kind {_ ⇛ _} _ = refl
+    node-kind {_ ⇛[ _ ] _} _ = refl
 
     scalar-kind : ∀ {C : IRTy} → FitsInRegI C → kind C ≡ word
     scalar-kind fits-int   = refl
@@ -101,7 +101,7 @@ module PutLay {F : IRFunctor} (R : VTy (ν-type F))
     node-size : ∀ {C : IRTy} → IsNode C → size C ≡ 1
     node-size {μ-type _} _ = refl
     node-size {ν-type _} _ = refl
-    node-size {_ ⇛ _} _ = refl
+    node-size {_ ⇛[ _ ] _} _ = refl
 
     scalar-size : ∀ {C : IRTy} → FitsInRegI C → size C ≡ 1
     scalar-size fits-int   = refl

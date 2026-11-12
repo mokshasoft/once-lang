@@ -219,18 +219,18 @@ d_directCallIR_84 v0 v1 v2
                                     (coe
                                        MAlonzo.Code.Once.IRTy.C__'42'__20
                                        (coe
-                                          MAlonzo.Code.Once.IRTy.C__'8667'__24
-                                          (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
+                                          MAlonzo.Code.Once.IRTy.C__'8667''91'_'93'__24
+                                          (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v8)
                                           (coe
-                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe v0)
+                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v0)
                                              (coe v6)))
                                        (coe MAlonzo.Code.Once.IRTy.C_Unit_16))
-                                    (coe MAlonzo.Code.Once.IR.C_apply_90)
+                                    (coe MAlonzo.Code.Once.IR.C_apply_94)
                                     (coe
                                        MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_36
                                        (coe
                                           MAlonzo.Code.Once.IR.C__'8728'__28
-                                          (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50
+                                          (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56
                                              (coe (0 :: Integer))
                                              (coe MAlonzo.Code.Once.Spec.Type.C_Unit_18))
                                           v2 (coe MAlonzo.Code.Once.IR.C_terminal_72))
@@ -245,22 +245,23 @@ d_directCallIR_84 v0 v1 v2
                                     (coe
                                        MAlonzo.Code.Once.IRTy.C__'42'__20
                                        (coe
-                                          MAlonzo.Code.Once.IRTy.C__'8667'__24
+                                          MAlonzo.Code.Once.IRTy.C__'8667''91'_'93'__24
                                           (coe
-                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe v0)
+                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v0)
                                              (coe v4))
+                                          (coe v8)
                                           (coe
-                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe v0)
+                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v0)
                                              (coe v6)))
                                        (coe
-                                          MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe v0)
+                                          MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v0)
                                           (coe v4)))
-                                    (coe MAlonzo.Code.Once.IR.C_apply_90)
+                                    (coe MAlonzo.Code.Once.IR.C_apply_94)
                                     (coe
                                        MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_36
                                        (coe
                                           MAlonzo.Code.Once.IR.C__'8728'__28
-                                          (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50
+                                          (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56
                                              (coe (0 :: Integer))
                                              (coe MAlonzo.Code.Once.Spec.Type.C_Unit_18))
                                           v2 (coe MAlonzo.Code.Once.IR.C_terminal_72))
@@ -275,22 +276,23 @@ d_directCallIR_84 v0 v1 v2
                                     (coe
                                        MAlonzo.Code.Once.IRTy.C__'42'__20
                                        (coe
-                                          MAlonzo.Code.Once.IRTy.C__'8667'__24
+                                          MAlonzo.Code.Once.IRTy.C__'8667''91'_'93'__24
                                           (coe
-                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe v0)
+                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v0)
                                              (coe v4))
+                                          (coe v8)
                                           (coe
-                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe v0)
+                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v0)
                                              (coe v6)))
                                        (coe
-                                          MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe v0)
+                                          MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe v0)
                                           (coe v4)))
-                                    (coe MAlonzo.Code.Once.IR.C_apply_90)
+                                    (coe MAlonzo.Code.Once.IR.C_apply_94)
                                     (coe
                                        MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_36
                                        (coe
                                           MAlonzo.Code.Once.IR.C__'8728'__28
-                                          (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50
+                                          (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56
                                              (coe (0 :: Integer))
                                              (coe MAlonzo.Code.Once.Spec.Type.C_Unit_18))
                                           v2 (coe MAlonzo.Code.Once.IR.C_terminal_72))
@@ -353,15 +355,15 @@ du_compileFunBody'45'aux_134 v0 v1 v2 v3 v4 v5 v6 v7 v8
              (coe
                 MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v2)
                 (coe
-                   MAlonzo.Code.Once.Optimize.d_optimize_1846
-                   (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50
+                   MAlonzo.Code.Once.Optimize.d_optimize_1848
+                   (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56
                       (coe (0 :: Integer))
                       (coe
                          MAlonzo.Code.Once.Context.du_'10214'_'10215''7580'_14 (coe v1)))
-                   (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50
+                   (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56
                       (coe (0 :: Integer)) (coe v7))
                    (coe
-                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1046
+                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1054
                       (coe (0 :: Integer)) (coe v0) (coe v1) (coe v9) (coe v7)
                       (coe
                          MAlonzo.Code.Once.TypeCheck.Link.du_resolveExpr_718
@@ -372,7 +374,7 @@ du_compileFunBody'45'aux_134 v0 v1 v2 v3 v4 v5 v6 v7 v8
                             (coe MAlonzo.Code.Once.TypeCheck.Classify.d_tdefs_340 (coe v3)))
                          (coe (0 :: Integer)) (coe v10))))
                 (coe
-                   MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1046
+                   MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1054
                    (coe (0 :: Integer)) (coe v0) (coe v1) (coe v9) (coe v7)
                    (coe
                       MAlonzo.Code.Once.TypeCheck.Link.du_resolveExpr_718
@@ -575,15 +577,15 @@ du_compileFunBodyI'45'at_316 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                        (coe
                           MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v4)
                           (coe
-                             MAlonzo.Code.Once.Optimize.d_optimize_1846
-                             (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50
+                             MAlonzo.Code.Once.Optimize.d_optimize_1848
+                             (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56
                                 (coe (0 :: Integer))
                                 (coe
                                    MAlonzo.Code.Once.Context.du_'10214'_'10215''7580'_14 (coe v1)))
-                             (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50
+                             (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56
                                 (coe (0 :: Integer)) (coe v9))
                              (coe
-                                MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1046
+                                MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1054
                                 (coe (0 :: Integer)) (coe v0) (coe v1) (coe v2) (coe v9)
                                 (coe
                                    MAlonzo.Code.Once.TypeCheck.Link.du_resolveExpr_718
@@ -597,7 +599,7 @@ du_compileFunBodyI'45'at_316 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                          MAlonzo.Code.Once.TypeCheck.Classify.d_tdefs_340 (coe v5)))
                                    (coe (0 :: Integer)) (coe v3))))
                           (coe
-                             MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1046
+                             MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_1054
                              (coe (0 :: Integer)) (coe v0) (coe v1) (coe v2) (coe v9)
                              (coe
                                 MAlonzo.Code.Once.TypeCheck.Link.du_resolveExpr_718
@@ -1766,7 +1768,7 @@ du_mainEntry_1222 v0
              (coe MAlonzo.Code.Once.IRTy.C_Void_18)
              (coe MAlonzo.Code.Once.IR.C_initial_76)
              (coe
-                MAlonzo.Code.Once.IR.C_Call_146
+                MAlonzo.Code.Once.IR.C_Call_150
                 (MAlonzo.Code.Once.Spec.Name.d_bare_14
                    (coe ("main" :: Data.Text.Text))))
       MAlonzo.Code.Once.Spec.Sub.C_sub'45'arr_40 v8 v9 v10
@@ -1777,12 +1779,12 @@ du_mainEntry_1222 v0
                     (coe MAlonzo.Code.Once.IRTy.C_Void_18)
                     (coe MAlonzo.Code.Once.IR.C_initial_76)
                     (coe
-                       MAlonzo.Code.Once.IR.C_Call_146
+                       MAlonzo.Code.Once.IR.C_Call_150
                        (MAlonzo.Code.Once.Spec.Name.d_bare_14
                           (coe ("main" :: Data.Text.Text))))
              MAlonzo.Code.Once.Spec.Sub.C_sub'45'unit_20
                -> coe
-                    MAlonzo.Code.Once.IR.C_Call_146
+                    MAlonzo.Code.Once.IR.C_Call_150
                     (MAlonzo.Code.Once.Spec.Name.d_bare_14
                        (coe ("main" :: Data.Text.Text)))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -1870,11 +1872,11 @@ d_irFunOf_1264 v0
       MAlonzo.Code.Once.Denotation.Program.C_irFun_24
       (coe d_cfName_546 (coe v0))
       (coe
-         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
          (coe
             MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe d_dc_1272 (coe v0))))
       (coe
-         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
          (coe
             MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
             (coe

@@ -21,7 +21,9 @@ open import Once.Type.Poly
 open import Once.Type
 open import Once.Spec.Float.Decimal using (Decimal)
 open import Once.IR
-open import Once.IRTy using (Int; fits-int; Float; fits-float; _*_; Unit; _+_; ⌊_⌋; _⇛_; ⌊⟧T-commute; ⌊wk₀⌋)
+open import Once.IRTy using (Int; fits-int; Float; fits-float; _*_; Unit; _+_; ⌊_⌋; _⇛[_]_; ⌊⟧T-commute; ⌊wk₀⌋)
+
+private variable π π₁ π₂ π₃ : Purity
 open import Once.IR.Ref using (refIR)
 open import Once.Context
 open import Once.Spec.Context using (Ctx; Usage; []; _*ᵘ_; _+ᵘ_; _⊑ᵘ_; lookup; singleUse; zeroUsage; ∅)
@@ -250,13 +252,13 @@ swap' m = ⟨ snd , fst ⟩
 distribute : ∀ {Γ A B} → AllocMode → IR (Γ * (A + B)) ((Γ * A) + (Γ * B))
 distribute {Γ} {A} {B} m = distrib' ∘ swap' m
   where
-    curryInlSwap : IR A (Γ ⇛ ((Γ * A) + (Γ * B)))
+    curryInlSwap : IR A (Γ ⇛[ pure ] ((Γ * A) + (Γ * B)))
     curryInlSwap = curry (inl ∘ swap' m)
 
-    curryInrSwap : IR B (Γ ⇛ ((Γ * A) + (Γ * B)))
+    curryInrSwap : IR B (Γ ⇛[ pure ] ((Γ * A) + (Γ * B)))
     curryInrSwap = curry (inr ∘ swap' m)
 
-    curryDistrib : IR (A + B) (Γ ⇛ ((Γ * A) + (Γ * B)))
+    curryDistrib : IR (A + B) (Γ ⇛[ pure ] ((Γ * A) + (Γ * B)))
     curryDistrib = case curryInlSwap curryInrSwap
 
     distrib' : IR ((A + B) * Γ) ((Γ * A) + (Γ * B))
@@ -293,32 +295,32 @@ swapIR m = ⟨ snd , fst ⟩
 
 distribIR : ∀ {G A B} → (m : AllocMode) → IR (G * (A + B)) ((G * A) + (G * B))
 distribIR m =
-  apply ∘ ⟨ case (curry (inl ∘ swapIR m)) (curry (inr ∘ swapIR m)) ∘ snd
+  apply {π = pure} ∘ ⟨ case (curry (inl ∘ swapIR m)) (curry (inr ∘ swapIR m)) ∘ snd
           , fst ⟩
 
 -- D127: the four combinator morphisms. CLOSED — they mention no arm, so an
 -- arm's effects happen once, where `⟨_,_⟩` runs it, and not per call.
-compIR : ∀ {A B C} → (m : AllocMode) → IR ((B ⇛ C) * (A ⇛ B)) (A ⇛ C)
+compIR : ∀ {A B C} → (m : AllocMode) → IR ((B ⇛[ π₁ ] C) * (A ⇛[ π₂ ] B)) (A ⇛[ π₃ ] C)
 compIR m = curry (apply ∘ ⟨ fst ∘ fst , apply ∘ ⟨ snd ∘ fst , snd ⟩ ⟩)
 
-copairIR : ∀ {A B C} → (m : AllocMode) → IR ((A ⇛ C) * (B ⇛ C)) ((A + B) ⇛ C)
+copairIR : ∀ {A B C} → (m : AllocMode) → IR ((A ⇛[ π₁ ] C) * (B ⇛[ π₂ ] C)) ((A + B) ⇛[ π₃ ] C)
 copairIR m =
   curry (case (apply ∘ ⟨ fst ∘ fst , snd ⟩)
               (apply ∘ ⟨ snd ∘ fst , snd ⟩)
          ∘ distribIR m)
 
-forkIR : ∀ {A B C} → (m : AllocMode) → IR ((A ⇛ B) * (A ⇛ C)) (A ⇛ (B * C))
+forkIR : ∀ {A B C} → (m : AllocMode) → IR ((A ⇛[ π₁ ] B) * (A ⇛[ π₂ ] C)) (A ⇛[ π₃ ] (B * C))
 forkIR m = curry (⟨ apply ∘ ⟨ fst ∘ fst , snd ⟩
                   , apply ∘ ⟨ snd ∘ fst , snd ⟩ ⟩)
 
-curryIR : ∀ {A B C} → (m : AllocMode) → IR ((A * B) ⇛ C) (A ⇛ (B ⇛ C))
+curryIR : ∀ {A B C} → (m : AllocMode) → IR ((A * B) ⇛[ π₁ ] C) (A ⇛[ π₂ ] (B ⇛[ π₃ ] C))
 curryIR m = curry (curry (apply ∘ ⟨ fst ∘ fst , ⟨ snd ∘ fst , snd ⟩ ⟩))
 
 cataM : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} → WFFun Δₖ F → AllocMode
-      → IR (⌊ ⟦ F ⟧F A ⌋ ⇛ ⌊ A ⌋) (⌊ μ F ⌋ ⇛ ⌊ A ⌋)
+      → IR (⌊ ⟦ F ⟧F A ⌋ ⇛[ π₁ ] ⌊ A ⌋) (⌊ μ F ⌋ ⇛[ π₂ ] ⌊ A ⌋)
 cataM {F = F} {A = A} wfF m =
   curry (Cata (wf-⌊⌋ wfF)
-              (subst (λ o → IR ((⌊ ⟦ F ⟧F A ⌋ ⇛ ⌊ A ⌋) * o) ⌊ A ⌋)
+              (subst (λ o → IR ((⌊ ⟦ F ⟧F A ⌋ ⇛[ _ ] ⌊ A ⌋) * o) ⌊ A ⌋)
                      (⌊⟧T-commute F A)
                      (apply ∘ ⟨ fst , snd ⟩)))
 
@@ -326,16 +328,16 @@ cataM {F = F} {A = A} wfF m =
 -- parameterized `Ana`, so the arm is evaluated once and applied per forced
 -- layer, and it may capture locals.
 anaM : ∀ {m} {Δₖ : KCtx m} {F : Fun m} {A : Ty m} {φ : Finite} → WFFun Δₖ F → AllocMode
-     → IR (⌊ A ⌋ ⇛ ⌊ ⟦ F ⟧F A ⌋) (⌊ A ⌋ ⇛ ⌊ ν F φ ⌋)
+     → IR (⌊ A ⌋ ⇛[ π₁ ] ⌊ ⟦ F ⟧F A ⌋) (⌊ A ⌋ ⇛[ π₂ ] ⌊ ν F φ ⌋)
 anaM {F = F} {A = A} wfF m =
   curry (Ana (wf-⌊⌋ wfF)
-             (subst (λ o → IR ((⌊ A ⌋ ⇛ ⌊ ⟦ F ⟧F A ⌋) * ⌊ A ⌋) o)
+             (subst (λ o → IR ((⌊ A ⌋ ⇛[ _ ] ⌊ ⟦ F ⟧F A ⌋) * ⌊ A ⌋) o)
                     (⌊⟧T-commute F A)
                     (apply ∘ ⟨ fst , snd ⟩)))
 
 -- The loop (D317/D319): the round CLOSURE is the environment of `Iter`, so
 -- the round is obtained once and applied per iteration (`anaM`'s shape).
-loopM : ∀ {m} {A B : Ty m} → AllocMode → IR (⌊ A ⌋ ⇛ ⌊ B + A ⌋) (⌊ A ⌋ ⇛ ⌊ B ⌋)
+loopM : ∀ {m} {A B : Ty m} → AllocMode → IR (⌊ A ⌋ ⇛[ π₁ ] ⌊ B + A ⌋) (⌊ A ⌋ ⇛[ π₂ ] ⌊ B ⌋)
 loopM m = curry (Iter (apply ∘ ⟨ fst , snd ⟩))
 
 -- D142 / plan 0.86 step B: the environment is `Γ ↾ Ψ` — EXACTLY the variables

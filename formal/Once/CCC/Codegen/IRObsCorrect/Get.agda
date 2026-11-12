@@ -33,7 +33,7 @@ open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc)
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; kind; get; get-k)
 open import Once.CCC.Codegen.Size using (size)
-open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float)
+open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛[_]_; μ-type; ν-type; Int; Float)
   renaming (_+_ to _+ᵀ_)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 
@@ -47,7 +47,7 @@ module GetC {FS : FrameSemantics} where
   node-kind : ∀ {C : IRTy} → IsNode C → kind C ≡ word
   node-kind {μ-type _} _ = refl
   node-kind {ν-type _} _ = refl
-  node-kind {_ ⇛ _}    _ = refl
+  node-kind {_ ⇛[ _ ] _}    _ = refl
 
   scalar-kind : ∀ {C : IRTy} → FitsInRegI C → kind C ≡ word
   scalar-kind fits-int   = refl
@@ -61,7 +61,7 @@ module GetC {FS : FrameSemantics} where
   node-size : ∀ {C : IRTy} → IsNode C → size C ≡ 1
   node-size {μ-type _} _ = refl
   node-size {ν-type _} _ = refl
-  node-size {_ ⇛ _}    _ = refl
+  node-size {_ ⇛[ _ ] _}    _ = refl
 
   scalar-size : ∀ {C : IRTy} → FitsInRegI C → size C ≡ 1
   scalar-size fits-int   = refl
@@ -141,7 +141,7 @@ module GetC {FS : FrameSemantics} where
           (zero-c B r (size A + o) (m+n≡0⇒n≡0 (size A) z) (live-any lv) c₂)
       zero-v (A +ᵀ B)    r o _  () _ _
       zero-v Void        r o () _  _ _
-      zero-v (A ⇛ B)     r o () _  _ _
+      zero-v (A ⇛[ _ ] B)     r o () _  _ _
       zero-v (μ-type F)  r o () _  _ _
       zero-v (ν-type F)  r o () _  _ _
       zero-v Int         r o () _  _ _

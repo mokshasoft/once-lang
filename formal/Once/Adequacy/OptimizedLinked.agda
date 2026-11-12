@@ -34,7 +34,7 @@ open import Relation.Nullary using (yes; no)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (var; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; μ; ν)
 open import Once.IR
-open import Once.IRTy using (⌊_⌋; _⇛_)
+open import Once.IRTy using (⌊_⌋; _⇛[_]_)
 open import Once.Contract using (ISig)
 open import Once.Denotation.Program using (IRFun; irFun; irProgram; Linked; LinkedAt; LinkedProgram; TeleLinked; NamesDistinct)
 open import Once.Adequacy.ImageUnique using (table-names-distinct)
@@ -107,7 +107,7 @@ private
   opt-l {σ} {t} {t′} h ir l = optimize-linked σ t′ ir (linked-mono h ir l)
 
   -- the direct-call form: `apply ∘ ⟨ ir ∘ terminal , id ⟩`
-  dc-l : ∀ {σ : ISig} {t t′ : List IRFun} (h : ∀ {f A B} → LinkedAt t f A B → LinkedAt t′ f A B) {X Z} (ir : IR Once.IRTy.Unit (X ⇛ Z))
+  dc-l : ∀ {σ : ISig} {t t′ : List IRFun} (h : ∀ {f A B} → LinkedAt t f A B → LinkedAt t′ f A B) {X Z π} (ir : IR Once.IRTy.Unit (X ⇛[ π ] Z))
        → Linked σ t (apply ∘ ⟨ ir ∘ terminal , id ⟩) → Linked σ t′ (apply ∘ ⟨ optimize ir ∘ terminal , id ⟩)
   dc-l h ir (_ , ((l , _) , _)) = tt , ((opt-l h ir l , tt) , tt)
 

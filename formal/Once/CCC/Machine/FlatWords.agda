@@ -26,7 +26,7 @@ open import Once.Memory.HeapAddress using (heap-loc)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap; AbstractTrace)
 open import Once.IR using (AllocMode; Stack; Heap)
-open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float; FitsInRegI; fits-int; fits-float)
+open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛[_]_; μ-type; ν-type; Int; Float; FitsInRegI; fits-int; fits-float)
   renaming (_+_ to _+ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Machine.ValueRel
@@ -55,7 +55,7 @@ private
   node-size : ∀ {C : IRTy} → IsNode C → size C ≡ 1
   node-size {μ-type _} _ = refl
   node-size {ν-type _} _ = refl
-  node-size {_ ⇛ _}    _ = refl
+  node-size {_ ⇛[ _ ] _}    _ = refl
 
   scalar-size : ∀ {C : IRTy} → FitsInRegI C → size C ≡ 1
   scalar-size fits-int   = refl
@@ -126,7 +126,7 @@ mutual
   words (A +ᵀ B) {l = l} {s} _ (valid-inr-flat-wf fl lmm tg slb ib pd pv) (suc j) (s≤s j<) =
     sum-tail {s = s} {l = l} (size B) _ (m≤n⊔m (size A) (size B)) (shift-1 {l = l} (words B fl pv)) pd j j<
   words Void       () _
-  words (A ⇛ B)    () _
+  words (A ⇛[ _ ] B)    () _
   words (μ-type F) () _
   words (ν-type F) () _
   words Int        () _

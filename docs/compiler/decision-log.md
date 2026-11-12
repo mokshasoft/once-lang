@@ -22597,3 +22597,38 @@ for review. Worked out in `Spikes/LinCore/NbEPLinCore.agda`, `Grade.agda`, `Pass
 ### Consequences
 Every theorem is unchanged: the run relation, the machine and the evaluator take the judgment along. The
 examples' rounds and bodies carry their judgments.
+
+## D413 — THE IR'S ARROW CARRIES THE SPEC'S PURITY (2026-11-12)
+
+**Proposed** (made unattended, plan 0.146 B1, for the user's review). **Amends**: plan 0.52 M2 (the IR's
+exponential ungraded, "one exponential per `(A, B)`"). **Applies**: D412 (a round and a coalgebra are finite
+blocks), plan 0.146 §3 ("owed for B: the pass must carry the grade from the typing into the IR").
+
+### Context
+* The core needs every arrow's grade: `Fn k g A B` means `⟦A⟧ → Mg g ⟦B⟧`, and `liter` takes a round that is
+  a BLOCK (D412). Master's IR erases the grade (`IRTy._⇛_`), so the pass cannot tell an `act` closure from
+  an `eff` one.
+* It is needed for every server: the elaborator compiles the Spec's `iter` as
+  `loopM = curry (Iter (apply ∘ ⟨ fst , snd ⟩))`, a round that APPLIES the round closure. With ungraded
+  arrows no server's round is a block.
+
+### Decision
+* **`IRTy`'s exponential is `A ⇛[ π ] B`, `π` the Spec's `Purity`** (`pure`, `act`, `eff`). `⌊_⌋` keeps the
+  arrow's purity; the quantity stays erased (the IR's arrows are many-use, D131; `Zero` is `Unit ⇛`).
+* **ν stays ungraded.** The Spec's ν is `ν F f` with `f : Finite`, never `eff`; the core's `Nu F` is
+  `νM act`, and a pure ν enters by `sub`. No pass needs its grade.
+* **Subsumption between arrow grades is the IR term the elaborator already emits**: `coeIR (sub-arr …)` is
+  `wrapArr`, an eta-expanded closure, and it types at the new grade. No new IR constructor.
+* **The IR's meaning stays grade-blind**: `⌈ A ⇛[ π ] B ⌉` is the canonical `effK` arrow, as before, so
+  `⟦_⟧ᴵ`, `evalᴰ` and the old backend's proofs read the grade nowhere.
+* The pass checks that each round and coalgebra is a block (the spike's `BlkIR`, decidable on the graded
+  IR). That every elaborated program passes is owed to the elaborator's grade preservation (the Spec
+  types a round at `act`).
+
+### Set aside
+* **Grade inference on the ungraded IR** (least solution of the constraints `curry`, `apply` and `Iter`
+  give over a lattice): no kernel change, but it re-derives a fact the typing already had, and its
+  completeness needs the same link to the Spec typing. GOAL.md: a fact the compiler knew is not to be
+  tracked twice.
+* **A second, graded IR beside master's**: two elaborations, two optimizers, or a proof that the optimizer
+  preserves a separate grading.

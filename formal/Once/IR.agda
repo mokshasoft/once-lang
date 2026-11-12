@@ -165,8 +165,11 @@ data IR where
   -- Heap→Stack was `Once.Escape`, whose rules were a header comment rather
   -- than code; it is DELETED. The heap lowering was the only one a program
   -- could select, so dropping the Stack clause preserves behaviour.
-  curry : ∀ {A B C} → IR (A * B) C → IR A (B ⇛ C)
-  apply : ∀ {A B} → IR ((A ⇛ B) * A) B
+  -- D413: the arrow keeps the Spec's purity `π`. `curry` and `apply` are
+  -- Curry-style in it, as the IR is in every grade: that a body is a block
+  -- at `act` is a judgment on the term (the linear core's pass checks it).
+  curry : ∀ {A B C π} → IR (A * B) C → IR A (B ⇛[ π ] C)
+  apply : ∀ {A B π} → IR ((A ⇛[ π ] B) * A) B
 
   -- `arr` RETIRED (Plan 0.52 M2): it coerced `A ⇒[pure] B` to
   -- `A ⇒[eff] B`, but with the grade erased both are the SAME object
