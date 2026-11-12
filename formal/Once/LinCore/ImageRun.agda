@@ -105,10 +105,6 @@ data StepI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg
            → see es ≡ mct x → StepI (eapp ⨾ k) r (es ∥ os) n [] k r (vw x es ∥ os) n
   i-epop   : ∀ {E Es S U} {k : Codeᴵ (Es ∣ S) U} {r : Ret U T} {e : MV E} {es os n}
            → StepI (epop ⨾ k) r (vw e es ∥ os) n [] k r (es ∥ os) n
-  i-epush  : ∀ {Es A S U} {k : Codeᴵ (A ∷ Es ∣ S) U} {r : Ret U T} {es} {a : MV A} {os n}
-           → StepI (epush ⨾ k) r (es ∥ a ∷ˢ os) n [] k r (vw a es ∥ os) n
-  i-epull  : ∀ {Es A S U} {k : Codeᴵ (Es ∣ A ∷ S) U} {r : Ret U T} {es} {a : MV A} {os n}
-           → StepI (epull ⨾ k) r (vw a es ∥ os) n [] k r (es ∥ a ∷ˢ os) n
   i-eword  : ∀ {b Es S U} {k : Codeᴵ (Bt b ∷ Es ∣ Bt b ∷ S) U} {r : Ret U T} {x} {es : Slots (Bt b ∷ Es)} {os n}
            → see es ≡ mbase x → StepI (eword ⨾ k) r (es ∥ mone ∷ˢ os) n [] k r (es ∥ mbase x ∷ˢ os) n
   -- ★ a call opens a frame; reaching the end of a block returns

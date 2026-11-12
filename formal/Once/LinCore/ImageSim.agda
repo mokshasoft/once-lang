@@ -393,9 +393,11 @@ mutual
   simI r-α     fr es eq os k ρ = leaf (i-prim r-α) []
   simI r-α⁻    fr es eq os k ρ = leaf (i-prim r-α⁻) []
   simI r-swap  fr es eq os k ρ = leaf (i-prim r-swap) []
-  -- ★ `dup`: the operand lent, the copy block called on it, taken back
+  -- ★ `dup`: the operand lent (a lend's slot owns it), the copy block called
+  -- on it, taken back beside its copy
   simI (r-dup {v = v} {n}) fr es eq os k ρ =
-    pre i-epush (pre i-unit (after (after (copyS v refl os n) i-epull) i-pair))
+    pre i-unit (pre i-swap (pre i-pair (pre i-elend (pre (i-esnd refl)
+      (after (after (copyS v refl os n) i-epop) i-eunlend)))))
   -- ★ `drop`: the free block
   simI (r-drop {v = v} {n}) fr es eq os k ρ = freeS v os n
   simI r-inl   fr es eq os k ρ = leaf (i-prim r-inl) []
