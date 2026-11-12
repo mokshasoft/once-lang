@@ -16,8 +16,10 @@
 --     `enter … leave`): a configuration holding the caller's top view and the
 --     argument; a fold's block calls itself on each child;
 --   * the values are the run's (`Events.MV`): a cell's code word is its
---     `Lam`, so copying or freeing a closure or a ν dispatches on what its
---     cell holds;
+--     `Lam`, so applying, copying or freeing a closure or a ν dispatches on
+--     what its cell holds: a call of the cell's TRAMPOLINE (D417), a block
+--     that does the cell's part and calls the block above, as the flat run
+--     does (`Lower.tramp`), frame for frame;
 --   * the loop is a structured instruction over its round's finite code.
 --
 -- Finiteness — a program reaches finitely many keys (its subterms and their
@@ -76,11 +78,28 @@ data Key : BSig → Set where
   -- FREE of every cell of the operand (`drop`'s)
   kcopy  : ∀ A → Key (bsig (just A) One A)
   kfree  : ∀ A → Key (bsig nothing A One)
+  -- ★ D417: a TRAMPOLINE, the block a cell's code word names: the cell's
+  -- part (its contents out, the cell freed or kept), then the block above,
+  -- in a frame of its own — the flat run's (`Lower.tramp`), frame for frame.
+  -- A copy's and a free's are per contents type `X` (the cell's type `C`
+  -- only types the frame)
+  ktr1   : ∀ {Γ g X A B} → Defs Γ → (b : Tm Γ One (X ⊗t A) B) → Gd g b → Key (bsig nothing (Fn once g A B ⊗t A) B)
+  ktrω   : ∀ {Γ g X A B} → Defs Γ → (b : Tm Γ X A B) → Gd g b → Key (bsig (just (Fn many g A B)) A B)
+  ktro   : ∀ {Γ} → Defs Γ → ∀ F (S : LTy) → Key (bsig nothing (Nu F) (LF∙ F (Nu F)))
+  ktrc   : ∀ (X C : LTy) → Key (bsig (just C) One C)
+  ktrf   : ∀ (X C : LTy) → Key (bsig nothing C One)
 
 -- the block a closure's code word names
 key-of : ∀ {k g X A B} → Lam k g X A B → Σ BSig Key
 key-of (c1 ds b γ) = _ , kbody1 ds b γ
 key-of (cω ds b γ) = _ , kbodyω ds b γ
+
+-- the trampoline a closure's code word enters
+tr1 : ∀ {g X A B} → Lam once g X A B → Key (bsig nothing (Fn once g A B ⊗t A) B)
+tr1 (c1 ds b γ) = ktr1 ds b γ
+
+trω : ∀ {g X A B} → Lam many g X A B → Key (bsig (just (Fn many g A B)) A B)
+trω (cω ds b γ) = ktrω ds b γ
 
 ------------------------------------------------------------------------
 -- 2. THE INSTRUCTIONS: A16's, with calls in place of expansion.
@@ -110,9 +129,9 @@ data Insᴵ : Sh → Sh → Set where
   eword   : ∀ {b Es S} → Insᴵ (Bt b ∷ Es ∣ One ∷ S) (Bt b ∷ Es ∣ Bt b ∷ S)
   -- ★ a CALL: a block, in a frame of its own, on the caller's environment
   call    : ∀ {σ Es S} → Key σ → Insᴵ (top σ ⊳ Es ∣ dom σ ∷ S) (top σ ⊳ Es ∣ cod σ ∷ S)
-  -- ★ THROUGH A CELL'S CODE WORD: apply a one-shot closure (its cell freed),
-  -- a lent many-use one (read), observe a ν (freed); copy a viewed closure
-  -- or ν (what it holds, then a cell with the same code word); free one
+  -- ★ THROUGH A CELL'S CODE WORD (D417): a call of the trampoline the cell
+  -- names — apply a one-shot closure, a lent many-use one, observe a ν; copy
+  -- a viewed closure or ν; free one
   icall   : ∀ {Es g A B S} → Insᴵ (Es ∣ (Fn once g A B ⊗t A) ∷ S) (Es ∣ B ∷ S)
   icallω  : ∀ {Es g A B S} → Insᴵ (Fn many g A B ∷ Es ∣ A ∷ S) (Fn many g A B ∷ Es ∣ B ∷ S)
   iobs    : ∀ {Γ} (ds : Defs Γ) {Es F S} → Insᴵ (Es ∣ Nu F ∷ S) (Es ∣ LF∙ F (Nu F) ∷ S)
@@ -120,6 +139,16 @@ data Insᴵ : Sh → Sh → Set where
   ncopy   : ∀ {Es F S} → Insᴵ (Nu F ∷ Es ∣ One ∷ S) (Nu F ∷ Es ∣ Nu F ∷ S)
   cfree   : ∀ {Es k g A B S} → Insᴵ (Es ∣ Fn k g A B ∷ S) (Es ∣ One ∷ S)
   nfree   : ∀ {Es F S} → Insᴵ (Es ∣ Nu F ∷ S) (Es ∣ One ∷ S)
+  -- ★ a trampoline's cell part (D417): a one-shot closure's environment out
+  -- (the cell freed), a many-use one's viewed, a ν's coalgebra and seed out
+  -- (freed); a cell's contents viewed (a copy's), a fresh cell with the
+  -- viewed cell's code words (a copy's), a cell's contents out (freed)
+  open1   : ∀ {Es g X A B S} → Insᴵ (Es ∣ (Fn once g A B ⊗t A) ∷ S) (Es ∣ (X ⊗t A) ∷ S)
+  openω   : ∀ {Es g X A B S} → Insᴵ (Fn many g A B ∷ Es ∣ S) (X ∷ Fn many g A B ∷ Es ∣ S)
+  nopen   : ∀ {Es F S S′} → Insᴵ (Es ∣ Nu F ∷ S′) (Es ∣ (Coalg F S ⊗t S) ∷ S′)
+  copen   : ∀ {X C Es S} → Insᴵ (C ∷ Es ∣ S) (X ∷ C ∷ Es ∣ S)
+  reclose : ∀ {X C Es S} → Insᴵ (C ∷ Es ∣ X ∷ S) (C ∷ Es ∣ C ∷ S)
+  fopen   : ∀ {X C Es S} → Insᴵ (Es ∣ C ∷ S) (Es ∣ X ∷ S)
   -- ★ the loop (D317): a finite round, run again while it says so
   loop    : ∀ {E Es A B S} → Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S) → Insᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ B ∷ S)
   stuck   : ∀ {sh sh′} → Insᴵ sh sh′
@@ -241,3 +270,9 @@ blockᴵ (kfold ds F alg) = prim ds lOutμ ⨾ travᴵ ds F alg F (compᴵ ds al
 blockᴵ (kobs ds F S)    = elift ⨾ compᴵ ds (obsT F S) (epop ⨾ end)
 blockᴵ (kcopy A)        = copyᴵ A
 blockᴵ (kfree A)        = freeᴵ A
+-- ★ the trampolines (D417): the cell's part, the block, what is left
+blockᴵ (ktr1 {X = X} ds b γ) = open1 {X = X} ⨾ call (kbody1 ds b γ) ⨾ end
+blockᴵ (ktrω {X = X} ds b γ) = openω {X = X} ⨾ call (kbodyω ds b γ) ⨾ epop ⨾ end
+blockᴵ (ktro ds F S)         = nopen {S = S} ⨾ call (kobs ds F S) ⨾ end
+blockᴵ (ktrc X C)            = copen {X = X} ⨾ call (kcopy X) ⨾ epop ⨾ reclose ⨾ end
+blockᴵ (ktrf X C)            = fopen {X = X} ⨾ call (kfree X) ⨾ end

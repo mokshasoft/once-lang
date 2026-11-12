@@ -171,8 +171,7 @@ module Keep (U : Univ) where
   ----------------------------------------------------------------------
 
   module Steps (blk : ∀ {κ} → κ ∈ allK U → BIn κ)
-               (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
-               (ε∈ : (_ , ε) ∈ obs U) where
+               (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U) where
 
     keep : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m m′ n n′ t}
          → StepI c r m n t c′ r′ m′ n′ → CIn c → RIn r → MIn m → CIn c′ × RIn r′ × MIn m′
@@ -203,18 +202,29 @@ module Keep (U : Univ) where
     keep i-ret    _ (ck , E , os , R) (_ , b , _) = ck , R , E , b , os
     keep i-reti   _ (ck , R) M                  = ck , R , M
     keep i-loop   (cb , ck) R M                 = cb , ((ck , cb , ck) , R) , M
-    keep i-icall  (_ , ck) R (E , ((l , x) , a) , os) = (proj₁ l , ck) , R , E , (x , a) , os
-    keep (i-icallω eq) (_ , ck) R (E , os) with seen eq E
-    ... | (l , x) = (proj₁ l , tt , ck) , R , (x , E) , os
-    keep (i-iobs {ds = ds} {F = F} {S = S}) (o , ck) R (E , (n , p) , os) = (inO o n , ck) , R , E , p , os
-    keep (i-ccopy1 eq) (_ , ck) R (E , _ , os) with seen eq E
-    ... | (l , x) = (inC (proj₂ l) , tt , l , ck) , R , (x , E) , tt , os
-    keep (i-ccopyω eq) (_ , ck) R (E , _ , os) with seen eq E
-    ... | (l , x) = (inC (proj₂ l) , tt , l , ck) , R , (x , E) , tt , os
-    keep (i-ncopy eq) (_ , ck) R (E , _ , os) with seen eq E
-    ... | (n , p) = (inC (ncty n) , tt , (n , ε∈) , ck) , R , (p , E) , tt , os
-    keep (i-cfree {lam = lam}) (_ , ck) R (E , (l , x) , os) = (inF (lam-X lam l) , ck) , R , E , x , os
-    keep i-nfree  (_ , ck) R (E , (n , p) , os) = (inF (ncty n) , ck) , R , E , p , os
+    -- ★ a dispatch: the trampoline the cell names (D417) calls a block the
+    -- cell's values name
+    keep (i-icall {lam = c1 ds b γ}) (_ , ck) R (E , ((l , x) , a) , os) =
+      (tt , proj₁ l , tt) , (ck , E , os , R) , tt , ((l , x) , a) , tt
+    keep (i-icallω {lam = cω ds b γ} {es = es} eq) (_ , ck) R (E , a , os) =
+      (tt , proj₁ (proj₁ (seen eq E)) , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , a , tt
+    keep i-iobs (o , ck) R (E , (n , p) , os) = (tt , inO o n , tt) , (ck , E , os , R) , tt , (n , p) , tt
+    keep (i-ccopy {lam = lam} {es = es} eq) (_ , ck) R (E , _ , os) =
+      (tt , inC (lam-X lam (proj₁ (seen eq E))) , tt , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , tt , tt
+    keep (i-ncopy {es = es} eq) (_ , ck) R (E , _ , os) =
+      (tt , inC (ncty (proj₁ (seen eq E))) , tt , tt , tt) , (ck , E , os , R) , (see-in es E , tt) , tt , tt
+    keep (i-cfree {lam = lam}) (_ , ck) R (E , (l , x) , os) = (tt , inF (lam-X lam l) , tt) , (ck , E , os , R) , tt , (l , x) , tt
+    keep i-nfree  (_ , ck) R (E , (n , p) , os) = (tt , inF (ncty n) , tt) , (ck , E , os , R) , tt , (n , p) , tt
+    -- a trampoline's cell part
+    keep i-open1  (_ , ck) R (E , ((l , x) , a) , os) = ck , R , E , (x , a) , os
+    keep (i-openω eq) (_ , ck) R (E , os)       = ck , R , (proj₂ (seen eq E) , E) , os
+    keep i-nopen  (_ , ck) R (E , (n , p) , os) = ck , R , E , p , os
+    keep (i-copen eq) (_ , ck) R (E , os)       = ck , R , (proj₂ (seen eq E) , E) , os
+    keep (i-copenν eq) (_ , ck) R (E , os)      = ck , R , (proj₂ (seen eq E) , E) , os
+    keep (i-reclose eq) (_ , ck) R (E , x′ , os)  = ck , R , E , (proj₁ (seen eq E) , x′) , os
+    keep (i-recloseν eq) (_ , ck) R (E , p′ , os) = ck , R , E , (proj₁ (seen eq E) , p′) , os
+    keep i-fopen  (_ , ck) R (E , (l , x) , os) = ck , R , E , x , os
+    keep i-fopenν (_ , ck) R (E , (n , p) , os) = ck , R , E , p , os
 
     keeps : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m m′ n n′ t}
           → StepsI c r m n t c′ r′ m′ n′ → CIn c → RIn r → MIn m → CIn c′ × RIn r′ × MIn m′
@@ -234,7 +244,7 @@ module ProgramRun {Γ} (ds : Defs Γ) (f : LTm Γ One One) where
   ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U
   ncty n = ∈-++⁺ʳ (cmap subs (ts g₀)) (∈-cmap⁺ (ns g₀) n (here refl))
 
-  open Steps blocks-in ncty (here refl) public
+  open Steps blocks-in ncty public
 
   inside : ∀ {sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′ mt}
          → StepsI (compᴵ ds f end) ([]ʳ {T = One ∷ [] ∣ One ∷ []}) start 0 mt c′ r′ m′ n′
