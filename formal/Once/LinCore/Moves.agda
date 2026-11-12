@@ -408,3 +408,69 @@ mvSP-run prog fs loc a o (suc n) (f₁ , f₂ , s) h i d ib nc with d 0 (s≤s z
       trans (w-rest M l (λ k k<n eq → nl (suc k) (s≤s k<n) (trans eq (cong (offsetLoc loc) (+-suc k o)))))
         (trans (writeLoc-preserves-other (floc fs₁) (offsetLoc loc o) l v (λ eq → nl 0 (s≤s z≤n) (sym eq)))
                (readLoc-regs (floc fs) _ l))
+
+------------------------------------------------------------------------
+-- 6. ★ A MOVE BETWEEN SLOTS, HIGHEST FIRST (`Lower.mvSSd`): for a shift
+-- to higher slots that overlaps.
+------------------------------------------------------------------------
+
+open import Once.LinCore.MoveCode using (mvSSd)
+open import Data.Nat.Properties using (m<1+n⇒m<n∨m≡n; m<n⇒m<1+n; n<1+n; <⇒≢; +-cancelˡ-≡)
+open import Data.Sum using (inj₁; inj₂)
+
+record MovedD (fs fs′ : FlatState) (a b n : ℕ) : Set where
+  field
+    d-pc    : fpc fs′ ≡ ln n + fpc fs
+    d-alloc : falloc fs′ ≡ falloc fs
+    d-ret   : fret fs′ ≡ fret fs
+    d-clo   : fclosure fs′ ≡ fclosure fs
+    d-link  : flink fs′ ≡ flink fs
+    d-heap  : heapMem (floc fs′) ≡ heapMem (floc fs)
+    d-halt  : halted (floc fs′) ≡ halted (floc fs)
+    d-in    : readReg (regs (floc fs′)) Input1 ≡ readReg (regs (floc fs)) Input1
+    d-moved : ∀ k → k < n → slot fs′ (b + k) ≡ slot fs (a + k)
+    d-rest  : ∀ x → (∀ k → k < n → ¬ x ≡ b + k) → slot fs′ x ≡ slot fs x
+    d-frame : ∀ f x → ¬ f ≡ current-frame (falloc fs) → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x
+open MovedD public
+
+-- ★ highest first, its stores never clobbering a word still to be read
+mvSSd-run : ∀ prog (fs : FlatState) a b n → Seg prog (fpc fs) (mvSSd a b n) → halted (floc fs) ≡ false
+          → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (a + k) ≡ just v)
+          → (∀ k k′ → k′ < k → k < n → ¬ b + k ≡ a + k′)
+          → Σ FlatState λ fs′ → FlatSteps prog (ln n) fs fs′ × MovedD fs fs′ a b n
+mvSSd-run prog fs a b zero s h d nc =
+  fs , [] , record { d-pc = refl ; d-alloc = refl ; d-ret = refl ; d-clo = refl ; d-link = refl ; d-heap = refl
+                   ; d-halt = refl ; d-in = refl ; d-moved = λ k () ; d-rest = λ x _ → refl ; d-frame = λ _ _ _ → refl }
+mvSSd-run prog fs a b (suc n) (f₁ , f₂ , s) h d nc with d n (n<1+n n)
+... | (v , e) with mvSSd-run prog fs₂ a b n s h d₂ nc₂
+  where
+    cf = current-frame (falloc fs)
+    fs₁ = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output v } ; fpc = suc (fpc fs) }
+    fs₂ = record fs₁ { floc = writeLoc (floc fs₁) (AtStack cf (b + n)) v ; fpc = suc (fpc fs₁) }
+    d₂ : ∀ k → k < n → Σ (StoredValue FS) λ w → slot fs₂ (a + k) ≡ just w
+    d₂ k k<n with d k (m<n⇒m<1+n k<n)
+    ... | (w , ew) = w , trans (store-other (floc fs₁) cf (b + n) v (a + k) (nc n k k<n (n<1+n n))) ew
+    nc₂ : ∀ k k′ → k′ < k → k < n → ¬ b + k ≡ a + k′
+    nc₂ k k′ lt lt′ = nc k k′ lt (m<n⇒m<1+n lt′)
+... | (fs′ , st , M) =
+  fs′ , step-at _ (h , f₁) (load-step fs (a + n) e) (step-at _ (h , f₂) (store-step _ (b + n)) st)
+  , record { d-pc = trans (d-pc M) (ln-pc n (fpc fs))
+           ; d-alloc = d-alloc M ; d-ret = d-ret M ; d-clo = d-clo M ; d-link = d-link M
+           ; d-heap = d-heap M ; d-halt = d-halt M ; d-in = d-in M
+           ; d-moved = moved ; d-rest = rest ; d-frame = frm }
+  where
+    cf = current-frame (falloc fs)
+    fs₁ = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output v } ; fpc = suc (fpc fs) }
+    fs₂ = record fs₁ { floc = writeLoc (floc fs₁) (AtStack cf (b + n)) v ; fpc = suc (fpc fs₁) }
+    moved : ∀ k → k < suc n → slot fs′ (b + k) ≡ slot fs (a + k)
+    moved k k<sn with m<1+n⇒m<n∨m≡n k<sn
+    ... | inj₁ k<n = trans (d-moved M k k<n) (store-other (floc fs₁) cf (b + n) v (a + k) (nc n k k<n (n<1+n n)))
+    ... | inj₂ refl =
+      trans (d-rest M (b + k) (λ k′ k′<n eq → <⇒≢ k′<n (sym (+-cancelˡ-≡ b _ _ eq))))
+            (trans (store-same (floc fs₁) cf (b + k) v) (sym e))
+    rest : ∀ x → (∀ k → k < suc n → ¬ x ≡ b + k) → slot fs′ x ≡ slot fs x
+    rest x nx =
+      trans (d-rest M x (λ k k<n → nx k (m<n⇒m<1+n k<n)))
+            (store-other (floc fs₁) cf (b + n) v x (λ eq → nx n (n<1+n n) (sym eq)))
+    frm : ∀ f x → ¬ f ≡ cf → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x
+    frm f x ne = trans (d-frame M f x ne) (store-frame (floc fs₁) cf (b + n) v f x (λ eq → ne (sym eq)))
