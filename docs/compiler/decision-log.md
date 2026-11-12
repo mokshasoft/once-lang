@@ -22021,8 +22021,10 @@ ambiguity, and the error names the name's type and the known type.
   own polymorphic definition has no instance at the known type (`swap 5`: "`swap: Int is not an instance of
   (a * b)`"). It replaces the "Unbound or unspecialized variable" these reported, and `BuiltinTypeMismatch` at the
   wrong function types of the seven generators.
-* **An ambiguity keeps its own reason.** `g = inl`/`inr`/`initial` give D323's reason with the construct's own
-  inner one (`InlInInferMode`, …), as when they are applied in infer mode.
+* **An ambiguity keeps its own reason.** A bare generator with no target type (`g = inl`) gives D323's reason
+  with the construct's own inner one: `InlInInferMode`, `InrInInferMode`, `InitialInInferMode` as when they are
+  applied in infer mode, and the new `GeneratorInInferMode name` for `id`, `fst`, `snd`, `terminal` ("`id
+  requires check mode (needs target type)`"), which said "Unbound or unspecialized variable" before.
 * **`compose`: the error is the first route's that determined a middle type** (`g`'s given its input, then `f`'s
   synthesized one). `ComposeMiddleUndetermined` only when neither route did; then its advice, an annotation on
   either argument, is right. Before, an annotated second argument that determined the middle and failed (an `Act`
@@ -22039,5 +22041,4 @@ in substance (failure soundness is `tt`; `compose-f-complete` takes the carried 
 ### Consequences
 * The D368 tests pin the new texts and carry no "Pinned" note. PuritySpec's coalgebra test is back to its
   unannotated form, and an annotated-second-arm case is added.
-* Not changed: a bare `id`/`fst`/`snd`/`terminal` without a signature still says "Unbound or unspecialized
-  variable" as D323's inner reason (they have no infer-mode variant of their own).
+* `UnboundVariable` is now only an unbound name: no generator reports it.

@@ -34,26 +34,28 @@ data T_TypeError_6
                               MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
     C_LambdaInInferMode_22 | C_LambdaRequiresFunctionType_24 |
     C_InlInInferMode_26 | C_InrInInferMode_28 |
-    C_InitialInInferMode_30 | C_InlNeedsSumType_32 |
-    C_InrNeedsSumType_34 | C_FstNeedsPair_36 | C_SndNeedsPair_38 |
-    C_CaseScrutineeNotSum_40 | C_CaseBranchMismatch_42 |
-    C_TypeMismatch_50 Integer MAlonzo.Code.Once.Spec.Type.T_Ty_8
+    C_InitialInInferMode_30 |
+    C_GeneratorInInferMode_34 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_InlNeedsSumType_36 | C_InrNeedsSumType_38 | C_FstNeedsPair_40 |
+    C_SndNeedsPair_42 | C_CaseScrutineeNotSum_44 |
+    C_CaseBranchMismatch_46 |
+    C_TypeMismatch_54 Integer MAlonzo.Code.Once.Spec.Type.T_Ty_8
                       MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
-    C_NotFunction_56 Integer MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
-    C_UsageViolation_64 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_NotFunction_60 Integer MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
+    C_UsageViolation_68 MAlonzo.Code.Agda.Builtin.String.T_String_6
                         MAlonzo.Code.Once.Spec.Grade.T_Quantity_6
                         MAlonzo.Code.Once.Spec.Grade.T_Quantity_6 |
-    C_BuiltinTypeMismatch_68 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_NoInstance_78 Integer MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_BuiltinTypeMismatch_72 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_NoInstance_82 Integer MAlonzo.Code.Agda.Builtin.String.T_String_6
                     MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10
                     MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
-    C_ComposeMiddleUndetermined_80 |
-    C_BinOpLeftError_82 T_TypeError_6 |
-    C_BinOpRightError_84 T_TypeError_6
+    C_ComposeMiddleUndetermined_84 |
+    C_BinOpLeftError_86 T_TypeError_6 |
+    C_BinOpRightError_88 T_TypeError_6
 -- Once.TypeCheck.Error.renderError
-d_renderError_86 ::
+d_renderError_90 ::
   T_TypeError_6 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_renderError_86 v0
+d_renderError_90 v0
   = case coe v0 of
       C_UnboundVariable_8 v1
         -> coe
@@ -111,19 +113,23 @@ d_renderError_86 v0
              ("initial requires check mode (needs target type)"
               ::
               Data.Text.Text)
-      C_InlNeedsSumType_32
+      C_GeneratorInInferMode_34 v1
+        -> coe
+             MAlonzo.Code.Data.String.Base.d__'43''43'__20 v1
+             (" requires check mode (needs target type)" :: Data.Text.Text)
+      C_InlNeedsSumType_36
         -> coe ("inl expects a sum type in check mode" :: Data.Text.Text)
-      C_InrNeedsSumType_34
+      C_InrNeedsSumType_38
         -> coe ("inr expects a sum type in check mode" :: Data.Text.Text)
-      C_FstNeedsPair_36
+      C_FstNeedsPair_40
         -> coe ("fst requires a pair argument" :: Data.Text.Text)
-      C_SndNeedsPair_38
+      C_SndNeedsPair_42
         -> coe ("snd requires a pair argument" :: Data.Text.Text)
-      C_CaseScrutineeNotSum_40
+      C_CaseScrutineeNotSum_44
         -> coe ("Case requires a sum-typed scrutinee" :: Data.Text.Text)
-      C_CaseBranchMismatch_42
+      C_CaseBranchMismatch_46
         -> coe ("Case branches have different types" :: Data.Text.Text)
-      C_TypeMismatch_50 v1 v2 v3
+      C_TypeMismatch_54 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("Type mismatch: expected " :: Data.Text.Text)
@@ -134,12 +140,12 @@ d_renderError_86 v0
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" but got " :: Data.Text.Text)
                    (MAlonzo.Code.Once.Type.d_showType_36 (coe v1) (coe v3))))
-      C_NotFunction_56 v1 v2
+      C_NotFunction_60 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("expected function type, got " :: Data.Text.Text)
              (MAlonzo.Code.Once.Type.d_showType_36 (coe v1) (coe v2))
-      C_UsageViolation_64 v1 v2 v3
+      C_UsageViolation_68 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("Parameter '" :: Data.Text.Text)
@@ -155,11 +161,11 @@ d_renderError_86 v0
                          MAlonzo.Code.Data.String.Base.d__'43''43'__20
                          (" but declared with quantity " :: Data.Text.Text)
                          (MAlonzo.Code.Once.Type.d_showQuantity_4 (coe v2))))))
-      C_BuiltinTypeMismatch_68 v1
+      C_BuiltinTypeMismatch_72 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20 v1
              (": expected type mismatch" :: Data.Text.Text)
-      C_NoInstance_78 v1 v2 v3 v4
+      C_NoInstance_82 v1 v2 v3 v4
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20 v2
              (coe
@@ -172,7 +178,7 @@ d_renderError_86 v0
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
                       (" is not an instance of " :: Data.Text.Text)
                       (MAlonzo.Code.Once.Type.d_showPolyType_134 (coe v3)))))
-      C_ComposeMiddleUndetermined_80
+      C_ComposeMiddleUndetermined_84
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("compose: cannot determine the middle type \8212 neither the second argument's "
@@ -184,12 +190,12 @@ d_renderError_86 v0
                  ::
                  Data.Text.Text)
                 ("annotate one of them" :: Data.Text.Text))
-      C_BinOpLeftError_82 v1
+      C_BinOpLeftError_86 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             ("binop left: " :: Data.Text.Text) (d_renderError_86 (coe v1))
-      C_BinOpRightError_84 v1
+             ("binop left: " :: Data.Text.Text) (d_renderError_90 (coe v1))
+      C_BinOpRightError_88 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             ("binop right: " :: Data.Text.Text) (d_renderError_86 (coe v1))
+             ("binop right: " :: Data.Text.Text) (d_renderError_90 (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError

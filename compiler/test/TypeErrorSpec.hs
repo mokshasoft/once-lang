@@ -226,11 +226,11 @@ destructErrorTests = testGroup "destruct errors"
 ------------------------------------------------------------------------
 
 -- D323: without a signature, a definition has the type its body SYNTHESIZES.
--- These bodies only check (a lambda takes a context; `inl`, `inr` and
--- `initial` leave their target open), so each needs a signature. The outer
+-- These bodies only check (a lambda takes a context; the polymorphic
+-- generators leave their target open), so each needs a signature. The outer
 -- reason is D323's; the inner one is the construct's own (plan 0.139).
 modeErrorTests :: TestTree
-modeErrorTests = testGroup "Check-only bodies need a signature (D323)"
+modeErrorTests = testGroup "Check-only bodies need a signature (D323)" $
   [ rejects "bare lambda without a type signature" "The body has no type of its own (Lambda without type annotation"
       [ "f = \\x -> x"
       ]
@@ -243,6 +243,10 @@ modeErrorTests = testGroup "Check-only bodies need a signature (D323)"
   , rejects "initial with no target type" "The body has no type of its own (initial requires check mode"
       [ "g = initial"
       ]
+  ] ++
+  [ rejects (g ++ " with no target type") ("The body has no type of its own (" ++ g ++ " requires check mode")
+      [ T.pack ("g = " ++ g) ]
+  | g <- ["id", "fst", "snd", "terminal"]
   ]
 
 ------------------------------------------------------------------------

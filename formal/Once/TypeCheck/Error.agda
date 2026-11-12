@@ -72,6 +72,9 @@ data TypeError : Set where
   InlInInferMode            : TypeError
   InrInInferMode            : TypeError
   InitialInInferMode        : TypeError
+  -- `id`, `fst`, `snd`, `terminal` used bare where nothing gives their type:
+  -- polymorphic, so they take their instance from a target (plan 0.139).
+  GeneratorInInferMode      : (name : String) → TypeError
   InlNeedsSumType           : TypeError
   InrNeedsSumType           : TypeError
 
@@ -146,6 +149,8 @@ renderError InrInInferMode =
   "inr requires check mode (needs target sum type)"
 renderError InitialInInferMode =
   "initial requires check mode (needs target type)"
+renderError (GeneratorInInferMode name) =
+  name ++ " requires check mode (needs target type)"
 renderError InlNeedsSumType =
   "inl expects a sum type in check mode"
 renderError InrNeedsSumType =

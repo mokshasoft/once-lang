@@ -393,7 +393,7 @@ du_compileFunBody'45'aux_134 v0 v1 v2 v3 v4 v5 v6 v7 v8
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
                       (": " :: Data.Text.Text)
-                      (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_86 (coe v9)))))
+                      (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_90 (coe v9)))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.compileFunBody
 d_compileFunBody_184 ::
@@ -672,7 +672,7 @@ du_compileFunBodyI'45'aux_370 v0 v1 v2 v3 v4 v5 v6 v7 v8
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
                       (": " :: Data.Text.Text)
-                      (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_86 (coe v9)))))
+                      (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_90 (coe v9)))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.compileFunBodyI
 d_compileFunBodyI_414 ::
@@ -921,7 +921,7 @@ d_inferType_580 v0 v1 v2
                    ("The body has no type of its own (" :: Data.Text.Text)
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                      (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_86 (coe v4))
+                      (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_90 (coe v4))
                       ("): a definition without a signature must synthesize its type; give it a signature"
                        ::
                        Data.Text.Text)))
@@ -961,7 +961,7 @@ du_checkOK_632 v0
       MAlonzo.Code.Once.TypeCheck.Elaborate.C_failure_128 v1
         -> coe
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
-             (coe MAlonzo.Code.Once.TypeCheck.Error.d_renderError_86 (coe v1))
+             (coe MAlonzo.Code.Once.TypeCheck.Error.d_renderError_90 (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.CScope
 d_CScope_636 = ()

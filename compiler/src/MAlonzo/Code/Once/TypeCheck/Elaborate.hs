@@ -256,7 +256,7 @@ du_given'45'infer'45'dec_220 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                                          (coe
                                             C_failure_194
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe v0)
                                                (coe
                                                   MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
@@ -281,7 +281,7 @@ du_given'45'infer'45'dec_220 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                     (coe
                        C_failure_194
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                           (coe
                              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v1)
                              (coe
@@ -317,7 +317,7 @@ du_given'45'infer_296 v0 v1 v2 v3
                  = coe
                      C_failure_194
                      (coe
-                        MAlonzo.Code.Once.TypeCheck.Error.C_ComposeMiddleUndetermined_80) in
+                        MAlonzo.Code.Once.TypeCheck.Error.C_ComposeMiddleUndetermined_84) in
            coe
              (case coe v4 of
                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v10 v11 v12
@@ -425,7 +425,7 @@ du_given'45'cata'45'dec_402 v0 v1 v2 v3 v4 v5 v6 v7 v8
                        (coe
                           C_failure_194
                           (coe
-                             MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                             MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                              (coe ("cata" :: Data.Text.Text))))
                        (coe v1)
                        (coe
@@ -444,7 +444,7 @@ du_given'45'cata'45'dec_402 v0 v1 v2 v3 v4 v5 v6 v7 v8
                     (coe
                        C_failure_194
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                           (coe ("cata" :: Data.Text.Text))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.given-cata
@@ -472,7 +472,7 @@ du_given'45'cata_466 v0 v1 v2 v3 v4 v5
                  = coe
                      C_failure_194
                      (coe
-                        MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                        MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                         (coe ("cata" :: Data.Text.Text))) in
            coe
              (case coe v6 of
@@ -535,7 +535,7 @@ du_embedOrSubsume'45'dec_532 v0 v1 v2 v3 v4 v5 v6 v7
                     (coe
                        C_failure_128
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                           (coe v2) (coe v3)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.embedOrSubsume
@@ -1560,7 +1560,7 @@ du_matchInferResult_954 v0 v1 v2
                               (coe
                                  C_failure_128
                                  (coe
-                                    MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                                    MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                                     (coe v2) (coe v3)))
                 _ -> MAlonzo.RTE.mazUnreachableError)
       C_failure_100 v3 -> coe C_failure_128 (coe v3)
@@ -1597,31 +1597,31 @@ du_asFun_1042 v0 v1
                -> coe
                     C_notFun_1034
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60 (coe v0)
                        (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_Unit_18
                -> coe
                     C_notFun_1034
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                        (coe (0 :: Integer)) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_Void_20
                -> coe
                     C_notFun_1034
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                        (coe (0 :: Integer)) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C__'42'__22 v7 v8
                -> coe
                     C_notFun_1034
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60 (coe v0)
                        (coe v2))
              MAlonzo.Code.Once.Spec.Type.C__'43'__24 v7 v8
                -> coe
                     C_notFun_1034
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60 (coe v0)
                        (coe v2))
              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v7 v8 v9
                -> case coe v8 of
@@ -1639,13 +1639,13 @@ du_asFun_1042 v0 v1
                                            -> coe
                                                 C_notFun_1034
                                                 (coe
-                                                   MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                                                   MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                                                    (coe v0) (coe v2))
                                          MAlonzo.Code.Once.Spec.Grade.C_One_10
                                            -> coe
                                                 C_notFun_1034
                                                 (coe
-                                                   MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                                                   MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                                                    (coe v0) (coe v2))
                                          MAlonzo.Code.Once.Spec.Grade.C_Many_12
                                            -> coe
@@ -1661,13 +1661,13 @@ du_asFun_1042 v0 v1
                                     -> coe
                                          C_notFun_1034
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                                             (coe v0) (coe v2))
                                   MAlonzo.Code.Once.Spec.Grade.C_One_10
                                     -> coe
                                          C_notFun_1034
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                                             (coe v0) (coe v2))
                                   MAlonzo.Code.Once.Spec.Grade.C_Many_12
                                     -> coe
@@ -1681,25 +1681,25 @@ du_asFun_1042 v0 v1
                -> coe
                     C_notFun_1034
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60 (coe v0)
                        (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_ν_30 v7 v8
                -> coe
                     C_notFun_1034
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60 (coe v0)
                        (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_Int_32
                -> coe
                     C_notFun_1034
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                        (coe (0 :: Integer)) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_Float_34
                -> coe
                     C_notFun_1034
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                       MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                        (coe (0 :: Integer)) (coe v2))
              _ -> MAlonzo.RTE.mazUnreachableError
       C_failure_100 v2 -> coe C_notFun_1034 (coe v2)
@@ -1727,51 +1727,51 @@ du_asInt_1152 v0 v1
                -> coe
                     C_notInt_1144
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_Unit_18
                -> coe
                     C_notInt_1144
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                        (coe (0 :: Integer)) (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
                        (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_Void_20
                -> coe
                     C_notInt_1144
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                        (coe (0 :: Integer)) (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
                        (coe v2))
              MAlonzo.Code.Once.Spec.Type.C__'42'__22 v7 v8
                -> coe
                     C_notInt_1144
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C__'43'__24 v7 v8
                -> coe
                     C_notInt_1144
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v7 v8 v9
                -> coe
                     C_notInt_1144
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_μ_28 v7
                -> coe
                     C_notInt_1144
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_ν_30 v7 v8
                -> coe
                     C_notInt_1144
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_Int_32
                -> coe C_isInt_1142 (coe v3) (coe v4) (coe v5) (coe v6)
@@ -1779,7 +1779,7 @@ du_asInt_1152 v0 v1
                -> coe
                     C_notInt_1144
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                        (coe (0 :: Integer)) (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
                        (coe v2))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -1805,51 +1805,51 @@ du_notNumeric_1192 v0 v1
                -> coe
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_Unit_18
                -> coe
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                        (coe (0 :: Integer)) (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
                        (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_Void_20
                -> coe
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                        (coe (0 :: Integer)) (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
                        (coe v2))
              MAlonzo.Code.Once.Spec.Type.C__'42'__22 v7 v8
                -> coe
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C__'43'__24 v7 v8
                -> coe
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v7 v8 v9
                -> coe
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_μ_28 v7
                -> coe
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_ν_30 v7 v8
                -> coe
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_Int_32
                -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -1994,7 +1994,7 @@ du_given'45'poly'45'k_1292 v0 v1 v2 v3 v4 v5 v6 v7 v8
                     (coe
                        C_failure_194
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_78 (coe v0) (coe v2)
+                          MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_82 (coe v0) (coe v2)
                           (coe v6)
                           (coe
                              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v3)
@@ -2076,7 +2076,7 @@ du_given'45'poly'45'π_1380 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                     (coe
                        C_failure_194
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_78 (coe v0) (coe v2)
+                          MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_82 (coe v0) (coe v2)
                           (coe v5)
                           (coe
                              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v3)
@@ -2145,7 +2145,7 @@ du_given'45'poly'45'm_1472 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
         -> coe
              C_failure_194
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_78 (coe v0) (coe v2)
+                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_82 (coe v0) (coe v2)
                 (coe v6) (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.given-poly-d
@@ -2431,7 +2431,7 @@ du_checkElabV'45'RVar'45'poly'45'inst'45'aux_1858 v0 v1 v2 v3 v4 v5
                     (coe
                        C_failure_128
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_78 (coe v0) (coe v2)
+                          MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_82 (coe v0) (coe v2)
                           (coe v4) (coe v3)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.checkElabV-RVar-poly-ground-aux
@@ -2782,7 +2782,7 @@ d_elabGivenLeaf_2142 v0 v1 v2 v3 v4 v5 v6
                 (coe
                    C_failure_194
                    (coe
-                      MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                      MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                       (coe ("id" :: Data.Text.Text))))
                 (coe v4)
                 (coe
@@ -2801,7 +2801,7 @@ d_elabGivenLeaf_2142 v0 v1 v2 v3 v4 v5 v6
                     = coe
                         C_failure_194
                         (coe
-                           MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_78 (coe v0)
+                           MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_82 (coe v0)
                            (coe ("fst" :: Data.Text.Text))
                            (coe
                               MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'42'__28
@@ -2820,7 +2820,7 @@ d_elabGivenLeaf_2142 v0 v1 v2 v3 v4 v5 v6
                           (coe
                              C_failure_194
                              (coe
-                                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                 (coe ("fst" :: Data.Text.Text))))
                           (coe v4)
                           (coe
@@ -2840,7 +2840,7 @@ d_elabGivenLeaf_2142 v0 v1 v2 v3 v4 v5 v6
                     = coe
                         C_failure_194
                         (coe
-                           MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_78 (coe v0)
+                           MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_82 (coe v0)
                            (coe ("snd" :: Data.Text.Text))
                            (coe
                               MAlonzo.Code.Once.Spec.Surface.Syntax.C__P'42'__28
@@ -2859,7 +2859,7 @@ d_elabGivenLeaf_2142 v0 v1 v2 v3 v4 v5 v6
                           (coe
                              C_failure_194
                              (coe
-                                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                 (coe ("snd" :: Data.Text.Text))))
                           (coe v4)
                           (coe
@@ -2880,7 +2880,7 @@ d_elabGivenLeaf_2142 v0 v1 v2 v3 v4 v5 v6
                 (coe
                    C_failure_194
                    (coe
-                      MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                      MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                       (coe ("terminal" :: Data.Text.Text))))
                 (coe v4)
                 (coe
@@ -2899,7 +2899,7 @@ d_elabGivenLeaf_2142 v0 v1 v2 v3 v4 v5 v6
                     = coe
                         C_failure_194
                         (coe
-                           MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_78 (coe v0)
+                           MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_82 (coe v0)
                            (coe ("initial" :: Data.Text.Text))
                            (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_PVoid_22) (coe v3)) in
               coe
@@ -2910,7 +2910,7 @@ d_elabGivenLeaf_2142 v0 v1 v2 v3 v4 v5 v6
                           (coe
                              C_failure_194
                              (coe
-                                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                 (coe ("initial" :: Data.Text.Text))))
                           (coe v4)
                           (coe
@@ -3036,7 +3036,7 @@ du_inferOutGo_2252 v0 v1 v2 v3 v4 v5 v6 v7 v8
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("Out" :: Data.Text.Text)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.inferOutAt
@@ -3080,7 +3080,7 @@ du_inferOutAt_2322 v0 v1 v2 v3 v4 v5 v6 v7
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("Out" :: Data.Text.Text)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.inferOutOn
@@ -3149,7 +3149,7 @@ du_inferFstAt_2396 v0 v1 v2 v3 v4 v5 v6
       MAlonzo.Code.Once.TypeCheck.TargetView.C_prod'45'other_332
         -> coe
              C_failure_100
-             (coe MAlonzo.Code.Once.TypeCheck.Error.C_FstNeedsPair_36)
+             (coe MAlonzo.Code.Once.TypeCheck.Error.C_FstNeedsPair_40)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.inferFstOn
 d_inferFstOn_2432 ::
@@ -3217,7 +3217,7 @@ du_inferSndAt_2470 v0 v1 v2 v3 v4 v5 v6
       MAlonzo.Code.Once.TypeCheck.TargetView.C_prod'45'other_332
         -> coe
              C_failure_100
-             (coe MAlonzo.Code.Once.TypeCheck.Error.C_SndNeedsPair_38)
+             (coe MAlonzo.Code.Once.TypeCheck.Error.C_SndNeedsPair_42)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.inferSndOn
 d_inferSndOn_2506 ::
@@ -3326,7 +3326,7 @@ du_inferApplyAt_2544 v0 v1 v2 v3 v4 v5 v6 v7
                                                                  (coe
                                                                     C_failure_100
                                                                     (coe
-                                                                       MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                                                       MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                                                        (coe
                                                                           ("apply"
                                                                            ::
@@ -3415,7 +3415,7 @@ du_inferApplyAt_2544 v0 v1 v2 v3 v4 v5 v6 v7
                                                                  (coe
                                                                     C_failure_100
                                                                     (coe
-                                                                       MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                                                       MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                                                        (coe
                                                                           ("apply"
                                                                            ::
@@ -3502,7 +3502,7 @@ du_inferApplyAt_2544 v0 v1 v2 v3 v4 v5 v6 v7
                                                           (coe
                                                              C_failure_100
                                                              (coe
-                                                                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                                                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                                                 (coe ("apply" :: Data.Text.Text))))
                                             _ -> MAlonzo.RTE.mazUnreachableError)
                                   _ -> MAlonzo.RTE.mazUnreachableError
@@ -3513,7 +3513,7 @@ du_inferApplyAt_2544 v0 v1 v2 v3 v4 v5 v6 v7
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("apply" :: Data.Text.Text)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.inferApplyOn
@@ -3608,51 +3608,51 @@ du_inferElabV'45'RNeg'45'aux_2850 v0 v1
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_Unit_18
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                        (coe (0 :: Integer)) (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
                        (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_Void_20
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                        (coe (0 :: Integer)) (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
                        (coe v2))
              MAlonzo.Code.Once.Spec.Type.C__'42'__22 v7 v8
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C__'43'__24 v7 v8
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v7 v8 v9
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_μ_28 v7
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_ν_30 v7 v8
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                        (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v2))
              MAlonzo.Code.Once.Spec.Type.C_Int_32
                -> coe
@@ -3663,7 +3663,7 @@ du_inferElabV'45'RNeg'45'aux_2850 v0 v1
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                       MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                        (coe (0 :: Integer)) (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
                        (coe v2))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -3703,7 +3703,7 @@ d_checkElabV'45'neg'45'int'45'aux_2936 v0 v1 v2 v3
                        (coe
                           C_failure_128
                           (coe
-                             MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                             MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                              (coe v3) (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.TypeCheck.Elaborate.checkElabV-neg-float-aux
@@ -3745,7 +3745,7 @@ d_checkElabV'45'neg'45'float'45'aux_2974 v0 v1 v2 v3 v4 v5
                        (coe
                           C_failure_128
                           (coe
-                             MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                             MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                              (coe v5) (coe MAlonzo.Code.Once.Spec.Type.C_Float_34)))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.TypeCheck.Elaborate.inferElabV-RBinOp-aux
@@ -3772,67 +3772,67 @@ du_inferElabV'45'RBinOp'45'aux_3022 v0 v1 v2 v3
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                           (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v4)))
              MAlonzo.Code.Once.Spec.Type.C_Unit_18
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                           (coe (0 :: Integer)) (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
                           (coe v4)))
              MAlonzo.Code.Once.Spec.Type.C_Void_20
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                           (coe (0 :: Integer)) (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
                           (coe v4)))
              MAlonzo.Code.Once.Spec.Type.C__'42'__22 v9 v10
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                           (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v4)))
              MAlonzo.Code.Once.Spec.Type.C__'43'__24 v9 v10
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                           (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v4)))
              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v9 v10 v11
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                           (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v4)))
              MAlonzo.Code.Once.Spec.Type.C_μ_28 v9
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                           (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v4)))
              MAlonzo.Code.Once.Spec.Type.C_ν_30 v9 v10
                -> coe
                     C_failure_100
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                       MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                          MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                           (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v4)))
              MAlonzo.Code.Once.Spec.Type.C_Int_32
                -> case coe v3 of
@@ -3842,65 +3842,65 @@ du_inferElabV'45'RBinOp'45'aux_3022 v0 v1 v2 v3
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                                         (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C_Unit_18
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                         (coe (0 :: Integer)) (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C_Void_20
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                         (coe (0 :: Integer)) (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C__'42'__22 v14 v15
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                                         (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C__'43'__24 v14 v15
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                                         (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v14 v15 v16
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                                         (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C_μ_28 v14
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                                         (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C_ν_30 v14 v15
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                                         (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C_Int_32
                              -> case coe v1 of
@@ -4124,57 +4124,57 @@ du_inferElabV'45'RBinOp'45'aux_3022 v0 v1 v2 v3
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer)) (coe v4) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpLt_56
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer)) (coe v4) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpLe_58
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer)) (coe v4) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpGt_60
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer)) (coe v4) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpGe_62
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer)) (coe v4) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpEq_64
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer)) (coe v4) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpNe_66
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer)) (coe v4) (coe v9)))
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            _ -> MAlonzo.RTE.mazUnreachableError
@@ -4182,7 +4182,7 @@ du_inferElabV'45'RBinOp'45'aux_3022 v0 v1 v2 v3
                       -> coe
                            C_failure_100
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84 (coe v9))
+                              MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88 (coe v9))
                     _ -> MAlonzo.RTE.mazUnreachableError
              MAlonzo.Code.Once.Spec.Type.C_Float_34
                -> case coe v3 of
@@ -4192,65 +4192,65 @@ du_inferElabV'45'RBinOp'45'aux_3022 v0 v1 v2 v3
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                                         (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C_Unit_18
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                         (coe (0 :: Integer)) (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C_Void_20
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                         (coe (0 :: Integer)) (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C__'42'__22 v14 v15
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                                         (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C__'43'__24 v14 v15
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                                         (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v14 v15 v16
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                                         (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C_μ_28 v14
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                                         (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C_ν_30 v14 v15
                              -> coe
                                   C_failure_100
                                   (coe
-                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                     MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                      (coe
-                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                                        MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                                         (coe v4) (coe v9)))
                            MAlonzo.Code.Once.Spec.Type.C_Int_32
                              -> case coe v1 of
@@ -4310,57 +4310,57 @@ du_inferElabV'45'RBinOp'45'aux_3022 v0 v1 v2 v3
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer)) (coe v4) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpLt_56
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer)) (coe v4) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpLe_58
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer)) (coe v4) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpGt_60
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer)) (coe v4) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpGe_62
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer)) (coe v4) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpEq_64
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer)) (coe v4) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpNe_66
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer)) (coe v4) (coe v9)))
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            MAlonzo.Code.Once.Spec.Type.C_Float_34
@@ -4421,63 +4421,63 @@ du_inferElabV'45'RBinOp'45'aux_3022 v0 v1 v2 v3
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer))
                                                (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpLt_56
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer))
                                                (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpLe_58
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer))
                                                (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpGt_60
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer))
                                                (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpGe_62
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer))
                                                (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpEq_64
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer))
                                                (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v9)))
                                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_OpNe_66
                                     -> coe
                                          C_failure_100
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82
+                                            MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86
                                             (coe
-                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                               MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                (coe (0 :: Integer))
                                                (coe MAlonzo.Code.Once.Spec.Type.C_Int_32) (coe v9)))
                                   _ -> MAlonzo.RTE.mazUnreachableError
@@ -4486,14 +4486,14 @@ du_inferElabV'45'RBinOp'45'aux_3022 v0 v1 v2 v3
                       -> coe
                            C_failure_100
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_84 (coe v9))
+                              MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_88 (coe v9))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       C_failure_100 v4
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_82 (coe v4))
+                MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_86 (coe v4))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.inferElabV-RLet-aux2
 d_inferElabV'45'RLet'45'aux2_3964 ::
@@ -4629,7 +4629,7 @@ du_inferElabV'45'RDestruct'45'join_4054 v0 v1 v2 v3 v4 v5 v6 v7 v8
       MAlonzo.Code.Once.Type.Join.C_apart_176
         -> coe
              C_failure_100
-             (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseBranchMismatch_42)
+             (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseBranchMismatch_46)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.given-case-join
 d_given'45'case'45'join_4152 ::
@@ -4730,7 +4730,7 @@ du_given'45'case'45'join_4152 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
         -> coe
              C_failure_194
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                 (coe v4) (coe v8))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.inferElabV-RDestruct-auxR
@@ -5644,7 +5644,7 @@ d_checkElabV'45'RVar'45'bbc'45'id'45'aux_5414 v0 v1 v2 v3
              d_checkElabV'45'RVar'45'bbc'45'id'45'failure'45'aux_4572 (coe v0)
              (coe v1) (coe v2)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_78 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_82 (coe v0)
                 (coe ("id" :: Data.Text.Text)) (coe d_schema'45'id_2118) (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.checkElabV-RVar-bbc-fst-aux
@@ -5662,7 +5662,7 @@ d_checkElabV'45'RVar'45'bbc'45'fst'45'aux_5434 v0 v1 v2 v3
              d_checkElabV'45'RVar'45'bbc'45'fst'45'failure'45'aux_4664 (coe v0)
              (coe v1) (coe v2)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_78 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_82 (coe v0)
                 (coe ("fst" :: Data.Text.Text)) (coe d_schema'45'fst_2120)
                 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -5681,7 +5681,7 @@ d_checkElabV'45'RVar'45'bbc'45'snd'45'aux_5454 v0 v1 v2 v3
              d_checkElabV'45'RVar'45'bbc'45'snd'45'failure'45'aux_4800 (coe v0)
              (coe v1) (coe v2)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_78 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_82 (coe v0)
                 (coe ("snd" :: Data.Text.Text)) (coe d_schema'45'snd_2122)
                 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -5700,7 +5700,7 @@ d_checkElabV'45'RVar'45'bbc'45'terminal'45'aux_5474 v0 v1 v2 v3
              du_checkElabV'45'RVar'45'bbc'45'terminal'45'failure'45'aux_4936
              (coe v1) (coe v2)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_78 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_82 (coe v0)
                 (coe ("terminal" :: Data.Text.Text))
                 (coe d_schema'45'terminal_2124) (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -5719,7 +5719,7 @@ d_checkElabV'45'RVar'45'bbc'45'initial'45'aux_5494 v0 v1 v2 v3
              du_checkElabV'45'RVar'45'bbc'45'initial'45'failure'45'aux_5040
              (coe v1) (coe v2)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_78 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_82 (coe v0)
                 (coe ("initial" :: Data.Text.Text)) (coe d_schema'45'initial_2126)
                 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -5738,7 +5738,7 @@ d_checkElabV'45'RVar'45'bbc'45'inl'45'aux_5514 v0 v1 v2 v3
              d_checkElabV'45'RVar'45'bbc'45'inl'45'failure'45'aux_5144 (coe v0)
              (coe v1) (coe v2)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_78 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_82 (coe v0)
                 (coe ("inl" :: Data.Text.Text)) (coe d_schema'45'inl_2128)
                 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -5757,7 +5757,7 @@ d_checkElabV'45'RVar'45'bbc'45'inr'45'aux_5534 v0 v1 v2 v3
              d_checkElabV'45'RVar'45'bbc'45'inr'45'failure'45'aux_5280 (coe v0)
              (coe v1) (coe v2)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_78 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Error.C_NoInstance_82 (coe v0)
                 (coe ("inr" :: Data.Text.Text)) (coe d_schema'45'inr_2130)
                 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -5774,25 +5774,25 @@ d_inferElabV'45'RResolved'45'dispatch_5554 v0 v1 v2 v3
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_UnboundVariable_8
+                MAlonzo.Code.Once.TypeCheck.Error.C_GeneratorInInferMode_34
                 (coe ("id" :: Data.Text.Text)))
       MAlonzo.Code.Once.TypeCheck.Classify.C_gv'45'fst_644
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_UnboundVariable_8
+                MAlonzo.Code.Once.TypeCheck.Error.C_GeneratorInInferMode_34
                 (coe ("fst" :: Data.Text.Text)))
       MAlonzo.Code.Once.TypeCheck.Classify.C_gv'45'snd_646
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_UnboundVariable_8
+                MAlonzo.Code.Once.TypeCheck.Error.C_GeneratorInInferMode_34
                 (coe ("snd" :: Data.Text.Text)))
       MAlonzo.Code.Once.TypeCheck.Classify.C_gv'45'terminal_648
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_UnboundVariable_8
+                MAlonzo.Code.Once.TypeCheck.Error.C_GeneratorInInferMode_34
                 (coe ("terminal" :: Data.Text.Text)))
       MAlonzo.Code.Once.TypeCheck.Classify.C_gv'45'initial_650
         -> coe
@@ -5958,7 +5958,7 @@ d_checkElabV'45'RFloat'45'aux_5730 v0 v1 v2 v3 v4 v5
                        (coe
                           C_failure_128
                           (coe
-                             MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                             MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                              (coe v5) (coe MAlonzo.Code.Once.Spec.Type.C_Float_34)))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.TypeCheck.Elaborate.inferElabV-RFloat-aux
@@ -6048,7 +6048,7 @@ d_checkPairOn_5798 v0 v1 v2 v3 v4 v5
         -> coe
              C_failure_128
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("pair" :: Data.Text.Text)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.checkPairLit
@@ -6109,7 +6109,7 @@ d_checkCaseOn_5824 v0 v1 v2 v3 v4 v5
         -> coe
              C_failure_128
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("case" :: Data.Text.Text)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.checkCaseGo
@@ -6190,7 +6190,7 @@ d_checkComposeOn_5854 v0 v1 v2 v3 v4 v5
         -> coe
              C_failure_128
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("compose" :: Data.Text.Text)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.elabGiven
@@ -6246,7 +6246,7 @@ d_elabGiven_5866 v0 v1 v2 v3 v4
                                            (coe
                                               C_failure_194
                                               (coe
-                                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                                  (coe ("lambda" :: Data.Text.Text))))
                                            (coe v4)
                                            (coe
@@ -6262,7 +6262,7 @@ d_elabGiven_5866 v0 v1 v2 v3 v4
                                       -> coe
                                            C_failure_194
                                            (coe
-                                              MAlonzo.Code.Once.TypeCheck.Error.C_UsageViolation_64
+                                              MAlonzo.Code.Once.TypeCheck.Error.C_UsageViolation_68
                                               (coe v6) (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12)
                                               (coe v15))
                                     _ -> MAlonzo.RTE.mazUnreachableError)
@@ -6290,7 +6290,7 @@ d_elabGivenApp_5880 v0 v1 v2 v3 v4 v5 v6 v7
                     = coe
                         C_failure_194
                         (coe
-                           MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                           MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                            (coe ("cata" :: Data.Text.Text))) in
               coe
                 (case coe v4 of
@@ -6310,7 +6310,7 @@ d_elabGivenApp_5880 v0 v1 v2 v3 v4 v5 v6 v7
                                -> coe
                                     C_failure_194
                                     (coe
-                                       MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                       MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                        (coe ("cata" :: Data.Text.Text)))
                              _ -> MAlonzo.RTE.mazUnreachableError)
                    _ -> coe v9)
@@ -6394,7 +6394,7 @@ d_elabGivenApp_5880 v0 v1 v2 v3 v4 v5 v6 v7
                            = coe
                                C_failure_194
                                (coe
-                                  MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                  MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                   (coe ("case" :: Data.Text.Text))) in
                      coe
                        (case coe v4 of
@@ -6499,7 +6499,7 @@ d_checkCompose'45'f_5912 v0 v1 v2 v3 v4 v5 v6 v7
                  (coe
                     MAlonzo.Code.Data.Maybe.Base.du_fromMaybe_46
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Error.C_ComposeMiddleUndetermined_80)
+                       MAlonzo.Code.Once.TypeCheck.Error.C_ComposeMiddleUndetermined_84)
                     v7) in
        coe
          (case coe v8 of
@@ -6581,7 +6581,7 @@ d_checkCompose'45'f_5912 v0 v1 v2 v3 v4 v5 v6 v7
                                                             (coe
                                                                MAlonzo.Code.Data.Maybe.Base.du_fromMaybe_46
                                                                (coe
-                                                                  MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                                                  MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                                   (coe v0)
                                                                   (coe
                                                                      MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26
@@ -6648,7 +6648,7 @@ d_checkCurryOn_5932 v0 v1 v2 v3 v4
                                                    (coe
                                                       C_failure_128
                                                       (coe
-                                                         MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                                         MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                                          (coe ("curry" :: Data.Text.Text))))
                                                    (coe v14)
                                                    (coe
@@ -6671,7 +6671,7 @@ d_checkCurryOn_5932 v0 v1 v2 v3 v4
         -> coe
              C_failure_128
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("curry" :: Data.Text.Text)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.inferOut
@@ -6719,7 +6719,7 @@ d_checkInOn_5960 v0 v1 v2 v3 v4
         -> coe
              C_failure_128
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("In" :: Data.Text.Text)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.checkInGo
@@ -6780,7 +6780,7 @@ du_checkInGo_5972 v0 v1 v2 v3 v4
         -> coe
              C_failure_128
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("In" :: Data.Text.Text)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.checkCata
@@ -6825,7 +6825,7 @@ d_checkCataOn_5992 v0 v1 v2 v3 v4
         -> coe
              C_failure_128
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("cata" :: Data.Text.Text)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.checkCataGo
@@ -6873,7 +6873,7 @@ du_checkCataGo_6008 v0 v1 v2 v3 v4 v5 v6
                        (coe
                           C_failure_128
                           (coe
-                             MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                             MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                              (coe ("cata" :: Data.Text.Text))))
                        (coe v5)
                        (coe
@@ -6893,7 +6893,7 @@ du_checkCataGo_6008 v0 v1 v2 v3 v4 v5 v6
         -> coe
              C_failure_128
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("cata" :: Data.Text.Text)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.checkAna
@@ -6955,7 +6955,7 @@ d_checkAnaOn_6028 v0 v1 v2 v3 v4
         -> coe
              C_failure_128
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("ana" :: Data.Text.Text)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.checkAnaGo
@@ -7006,7 +7006,7 @@ du_checkAnaGo_6046 v0 v1 v2 v3 v4 v5 v6 v7
                        (coe
                           C_failure_128
                           (coe
-                             MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                             MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                              (coe ("ana" :: Data.Text.Text))))
                        (coe v5)
                        (coe
@@ -7026,7 +7026,7 @@ du_checkAnaGo_6046 v0 v1 v2 v3 v4 v5 v6 v7
         -> coe
              C_failure_128
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("ana" :: Data.Text.Text)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Elaborate.checkLoop
@@ -7238,7 +7238,7 @@ du_checkElab'45'wf_6086 v0 v1 v2 v3
                                                             (coe
                                                                C_failure_128
                                                                (coe
-                                                                  MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                                                  MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                                                   (coe
                                                                      ("lambda" :: Data.Text.Text))))
                                                             (coe v12)
@@ -7257,7 +7257,7 @@ du_checkElab'45'wf_6086 v0 v1 v2 v3
                                                        -> coe
                                                             C_failure_128
                                                             (coe
-                                                               MAlonzo.Code.Once.TypeCheck.Error.C_UsageViolation_64
+                                                               MAlonzo.Code.Once.TypeCheck.Error.C_UsageViolation_68
                                                                (coe v5) (coe v11) (coe v19))
                                                      _ -> MAlonzo.RTE.mazUnreachableError)
                                            _ -> MAlonzo.RTE.mazUnreachableError
@@ -7434,19 +7434,19 @@ du_inferElabV'45'RDestruct'45'aux_6150 v0 v1 v2 v3 v4 v5 v6
              MAlonzo.Code.Once.Spec.Type.C_var_16 v12
                -> coe
                     C_failure_100
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_40)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_44)
              MAlonzo.Code.Once.Spec.Type.C_Unit_18
                -> coe
                     C_failure_100
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_40)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_44)
              MAlonzo.Code.Once.Spec.Type.C_Void_20
                -> coe
                     C_failure_100
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_40)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_44)
              MAlonzo.Code.Once.Spec.Type.C__'42'__22 v12 v13
                -> coe
                     C_failure_100
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_40)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_44)
              MAlonzo.Code.Once.Spec.Type.C__'43'__24 v12 v13
                -> coe
                     du_inferElabV'45'RDestruct'45'auxL_6178 (coe v0) (coe v1) (coe v4)
@@ -7460,23 +7460,23 @@ du_inferElabV'45'RDestruct'45'aux_6150 v0 v1 v2 v3 v4 v5 v6
              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v12 v13 v14
                -> coe
                     C_failure_100
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_40)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_44)
              MAlonzo.Code.Once.Spec.Type.C_μ_28 v12
                -> coe
                     C_failure_100
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_40)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_44)
              MAlonzo.Code.Once.Spec.Type.C_ν_30 v12 v13
                -> coe
                     C_failure_100
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_40)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_44)
              MAlonzo.Code.Once.Spec.Type.C_Int_32
                -> coe
                     C_failure_100
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_40)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_44)
              MAlonzo.Code.Once.Spec.Type.C_Float_34
                -> coe
                     C_failure_100
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_40)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_CaseScrutineeNotSum_44)
              _ -> MAlonzo.RTE.mazUnreachableError
       C_failure_100 v7 -> coe v6
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -7551,7 +7551,7 @@ du_inferElabV'45'RApp'45'other'45'aux_6190 v0 v1 v2 v3 v4
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe
                    ("unreachable: ahv-other \8658 classifyAppHead nothing"
                     ::
@@ -7566,31 +7566,31 @@ du_inferElabV'45'RApp'45'other'45'aux_6190 v0 v1 v2 v3 v4
                          -> coe
                               C_failure_100
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56 (coe v0)
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60 (coe v0)
                                  (coe v6))
                        MAlonzo.Code.Once.Spec.Type.C_Unit_18
                          -> coe
                               C_failure_100
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                                  (coe (0 :: Integer)) (coe v6))
                        MAlonzo.Code.Once.Spec.Type.C_Void_20
                          -> coe
                               C_failure_100
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                                  (coe (0 :: Integer)) (coe v6))
                        MAlonzo.Code.Once.Spec.Type.C__'42'__22 v11 v12
                          -> coe
                               C_failure_100
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56 (coe v0)
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60 (coe v0)
                                  (coe v6))
                        MAlonzo.Code.Once.Spec.Type.C__'43'__24 v11 v12
                          -> coe
                               C_failure_100
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56 (coe v0)
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60 (coe v0)
                                  (coe v6))
                        MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v11 v12 v13
                          -> case coe v12 of
@@ -7630,13 +7630,13 @@ du_inferElabV'45'RApp'45'other'45'aux_6190 v0 v1 v2 v3 v4
                                                      -> coe
                                                           C_failure_100
                                                           (coe
-                                                             MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                                                             MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                                                              (coe v0) (coe v6))
                                                    MAlonzo.Code.Once.Spec.Grade.C_One_10
                                                      -> coe
                                                           C_failure_100
                                                           (coe
-                                                             MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                                                             MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                                                              (coe v0) (coe v6))
                                                    MAlonzo.Code.Once.Spec.Grade.C_Many_12
                                                      -> let v17
@@ -7680,13 +7680,13 @@ du_inferElabV'45'RApp'45'other'45'aux_6190 v0 v1 v2 v3 v4
                                               -> coe
                                                    C_failure_100
                                                    (coe
-                                                      MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                                                      MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                                                       (coe v0) (coe v6))
                                             MAlonzo.Code.Once.Spec.Grade.C_One_10
                                               -> coe
                                                    C_failure_100
                                                    (coe
-                                                      MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                                                      MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                                                       (coe v0) (coe v6))
                                             MAlonzo.Code.Once.Spec.Grade.C_Many_12
                                               -> let v16
@@ -7729,25 +7729,25 @@ du_inferElabV'45'RApp'45'other'45'aux_6190 v0 v1 v2 v3 v4
                          -> coe
                               C_failure_100
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56 (coe v0)
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60 (coe v0)
                                  (coe v6))
                        MAlonzo.Code.Once.Spec.Type.C_ν_30 v11 v12
                          -> coe
                               C_failure_100
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56 (coe v0)
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60 (coe v0)
                                  (coe v6))
                        MAlonzo.Code.Once.Spec.Type.C_Int_32
                          -> coe
                               C_failure_100
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                                  (coe (0 :: Integer)) (coe v6))
                        MAlonzo.Code.Once.Spec.Type.C_Float_34
                          -> coe
                               C_failure_100
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_56
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_NotFunction_60
                                  (coe (0 :: Integer)) (coe v6))
                        _ -> MAlonzo.RTE.mazUnreachableError
                 C_failure_100 v6
@@ -7842,7 +7842,7 @@ du_inferElabV'45'RApp'45'dispatch_6202 v0 v1 v2 v3 v4
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("curry" :: Data.Text.Text)))
       MAlonzo.Code.Once.TypeCheck.Scope.C_ahv'45'apply_322
         -> coe
@@ -7852,19 +7852,19 @@ du_inferElabV'45'RApp'45'dispatch_6202 v0 v1 v2 v3 v4
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("In" :: Data.Text.Text)))
       MAlonzo.Code.Once.TypeCheck.Scope.C_ahv'45'cata_326
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("cata" :: Data.Text.Text)))
       MAlonzo.Code.Once.TypeCheck.Scope.C_ahv'45'ana_328
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("ana" :: Data.Text.Text)))
       MAlonzo.Code.Once.TypeCheck.Scope.C_ahv'45'Out_330
         -> coe d_inferOut_5940 (coe v0) (coe v1) (coe v3)
@@ -7872,19 +7872,19 @@ du_inferElabV'45'RApp'45'dispatch_6202 v0 v1 v2 v3 v4
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("pair" :: Data.Text.Text)))
       MAlonzo.Code.Once.TypeCheck.Scope.C_ahv'45'compose'45'applied_338
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("compose" :: Data.Text.Text)))
       MAlonzo.Code.Once.TypeCheck.Scope.C_ahv'45'case'45'applied_342
         -> coe
              C_failure_100
              (coe
-                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                 (coe ("case" :: Data.Text.Text)))
       MAlonzo.Code.Once.TypeCheck.Scope.C_ahv'45'other_346
         -> coe
@@ -7996,19 +7996,19 @@ du_checkElabV'45'RApp'45'dispatch_6216 v0 v1 v2 v3 v4 v5
              MAlonzo.Code.Once.Spec.Type.C_var_16 v6
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_32)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_36)
              MAlonzo.Code.Once.Spec.Type.C_Unit_18
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_32)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_36)
              MAlonzo.Code.Once.Spec.Type.C_Void_20
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_32)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_36)
              MAlonzo.Code.Once.Spec.Type.C__'42'__22 v6 v7
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_32)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_36)
              MAlonzo.Code.Once.Spec.Type.C__'43'__24 v6 v7
                -> let v8
                         = coe
@@ -8035,42 +8035,42 @@ du_checkElabV'45'RApp'45'dispatch_6216 v0 v1 v2 v3 v4 v5
              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v6 v7 v8
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_32)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_36)
              MAlonzo.Code.Once.Spec.Type.C_μ_28 v6
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_32)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_36)
              MAlonzo.Code.Once.Spec.Type.C_ν_30 v6 v7
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_32)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_36)
              MAlonzo.Code.Once.Spec.Type.C_Int_32
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_32)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_36)
              MAlonzo.Code.Once.Spec.Type.C_Float_34
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_32)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InlNeedsSumType_36)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Scope.C_ahv'45'inr_316
         -> case coe v4 of
              MAlonzo.Code.Once.Spec.Type.C_var_16 v6
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_34)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_38)
              MAlonzo.Code.Once.Spec.Type.C_Unit_18
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_34)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_38)
              MAlonzo.Code.Once.Spec.Type.C_Void_20
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_34)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_38)
              MAlonzo.Code.Once.Spec.Type.C__'42'__22 v6 v7
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_34)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_38)
              MAlonzo.Code.Once.Spec.Type.C__'43'__24 v6 v7
                -> let v8
                         = coe
@@ -8097,23 +8097,23 @@ du_checkElabV'45'RApp'45'dispatch_6216 v0 v1 v2 v3 v4 v5
              MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v6 v7 v8
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_34)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_38)
              MAlonzo.Code.Once.Spec.Type.C_μ_28 v6
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_34)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_38)
              MAlonzo.Code.Once.Spec.Type.C_ν_30 v6 v7
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_34)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_38)
              MAlonzo.Code.Once.Spec.Type.C_Int_32
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_34)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_38)
              MAlonzo.Code.Once.Spec.Type.C_Float_34
                -> coe
                     C_failure_128
-                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_34)
+                    (coe MAlonzo.Code.Once.TypeCheck.Error.C_InrNeedsSumType_38)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Scope.C_ahv'45'initial_318
         -> let v6
@@ -8295,7 +8295,7 @@ d_checkElabV'45'RPair'45'aux_6248 v0 v1 v2 v3 v4 v5
                       -> coe
                            C_failure_128
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50 (coe v0)
+                              MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54 (coe v0)
                               (coe
                                  MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v10)
                                  (coe
@@ -8329,19 +8329,19 @@ d_checkApply_9628 v0 v1 v2 v3
                   -> coe
                        C_failure_128
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                           (coe ("apply" :: Data.Text.Text)))
                 MAlonzo.Code.Once.Spec.Type.C_Unit_18
                   -> coe
                        C_failure_128
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                           (coe ("apply" :: Data.Text.Text)))
                 MAlonzo.Code.Once.Spec.Type.C_Void_20
                   -> coe
                        C_failure_128
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                           (coe ("apply" :: Data.Text.Text)))
                 MAlonzo.Code.Once.Spec.Type.C__'42'__22 v10 v11
                   -> case coe v10 of
@@ -8349,31 +8349,31 @@ d_checkApply_9628 v0 v1 v2 v3
                          -> coe
                               C_failure_128
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                  (coe ("apply" :: Data.Text.Text)))
                        MAlonzo.Code.Once.Spec.Type.C_Unit_18
                          -> coe
                               C_failure_128
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                  (coe ("apply" :: Data.Text.Text)))
                        MAlonzo.Code.Once.Spec.Type.C_Void_20
                          -> coe
                               C_failure_128
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                  (coe ("apply" :: Data.Text.Text)))
                        MAlonzo.Code.Once.Spec.Type.C__'42'__22 v12 v13
                          -> coe
                               C_failure_128
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                  (coe ("apply" :: Data.Text.Text)))
                        MAlonzo.Code.Once.Spec.Type.C__'43'__24 v12 v13
                          -> coe
                               C_failure_128
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                  (coe ("apply" :: Data.Text.Text)))
                        MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v12 v13 v14
                          -> case coe v13 of
@@ -8387,13 +8387,13 @@ d_checkApply_9628 v0 v1 v2 v3
                                                    (coe
                                                       C_failure_128
                                                       (coe
-                                                         MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                                         MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                                          (coe ("apply" :: Data.Text.Text))))
                                             MAlonzo.Code.Once.Spec.Grade.C_eff_44
                                               -> coe
                                                    C_failure_128
                                                    (coe
-                                                      MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                                      MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                                       (coe ("apply" :: Data.Text.Text)))
                                             _ -> MAlonzo.RTE.mazUnreachableError
                                      MAlonzo.Code.Once.Spec.Grade.C_One_10
@@ -8404,13 +8404,13 @@ d_checkApply_9628 v0 v1 v2 v3
                                                    (coe
                                                       C_failure_128
                                                       (coe
-                                                         MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                                         MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                                          (coe ("apply" :: Data.Text.Text))))
                                             MAlonzo.Code.Once.Spec.Grade.C_eff_44
                                               -> coe
                                                    C_failure_128
                                                    (coe
-                                                      MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                                      MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                                       (coe ("apply" :: Data.Text.Text)))
                                             _ -> MAlonzo.RTE.mazUnreachableError
                                      MAlonzo.Code.Once.Spec.Grade.C_Many_12
@@ -8482,7 +8482,7 @@ d_checkApply_9628 v0 v1 v2 v3
                                                                                                (coe
                                                                                                   C_failure_128
                                                                                                   (coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_50
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_54
                                                                                                      (coe
                                                                                                         v0)
                                                                                                      (coe
@@ -8495,7 +8495,7 @@ d_checkApply_9628 v0 v1 v2 v3
                                                                               (coe
                                                                                  C_failure_128
                                                                                  (coe
-                                                                                    MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                                                                    MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                                                                     (coe
                                                                                        ("apply"
                                                                                         ::
@@ -8505,14 +8505,14 @@ d_checkApply_9628 v0 v1 v2 v3
                                                      -> coe
                                                           C_failure_128
                                                           (coe
-                                                             MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                                             MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                                              (coe ("apply" :: Data.Text.Text)))
                                                    _ -> MAlonzo.RTE.mazUnreachableError
                                             MAlonzo.Code.Once.Spec.Grade.C_eff_44
                                               -> coe
                                                    C_failure_128
                                                    (coe
-                                                      MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                                      MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                                       (coe ("apply" :: Data.Text.Text)))
                                             _ -> MAlonzo.RTE.mazUnreachableError
                                      _ -> MAlonzo.RTE.mazUnreachableError
@@ -8521,62 +8521,62 @@ d_checkApply_9628 v0 v1 v2 v3
                          -> coe
                               C_failure_128
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                  (coe ("apply" :: Data.Text.Text)))
                        MAlonzo.Code.Once.Spec.Type.C_ν_30 v12 v13
                          -> coe
                               C_failure_128
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                  (coe ("apply" :: Data.Text.Text)))
                        MAlonzo.Code.Once.Spec.Type.C_Int_32
                          -> coe
                               C_failure_128
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                  (coe ("apply" :: Data.Text.Text)))
                        MAlonzo.Code.Once.Spec.Type.C_Float_34
                          -> coe
                               C_failure_128
                               (coe
-                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                                 MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                                  (coe ("apply" :: Data.Text.Text)))
                        _ -> MAlonzo.RTE.mazUnreachableError
                 MAlonzo.Code.Once.Spec.Type.C__'43'__24 v10 v11
                   -> coe
                        C_failure_128
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                           (coe ("apply" :: Data.Text.Text)))
                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v10 v11 v12
                   -> coe
                        C_failure_128
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                           (coe ("apply" :: Data.Text.Text)))
                 MAlonzo.Code.Once.Spec.Type.C_μ_28 v10
                   -> coe
                        C_failure_128
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                           (coe ("apply" :: Data.Text.Text)))
                 MAlonzo.Code.Once.Spec.Type.C_ν_30 v10 v11
                   -> coe
                        C_failure_128
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                           (coe ("apply" :: Data.Text.Text)))
                 MAlonzo.Code.Once.Spec.Type.C_Int_32
                   -> coe
                        C_failure_128
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                           (coe ("apply" :: Data.Text.Text)))
                 MAlonzo.Code.Once.Spec.Type.C_Float_34
                   -> coe
                        C_failure_128
                        (coe
-                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_68
+                          MAlonzo.Code.Once.TypeCheck.Error.C_BuiltinTypeMismatch_72
                           (coe ("apply" :: Data.Text.Text)))
                 _ -> MAlonzo.RTE.mazUnreachableError
          C_failure_100 v5 -> coe C_failure_128 (coe v5)

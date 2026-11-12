@@ -310,6 +310,11 @@ decision-log entry updates the rule it changes here, in the same commit.
 - **A rejecting test names its reason**: `Rejection.assertRejects` with a
   fragment of the error that names the rule; a bare "rejected" check passes
   for any error. (D368)
+- **A rejection names the rule the program breaks**: a polymorphic name at a
+  known type it has no instance at is `NoInstance` (its type and the known
+  one), a check-only construct with no target says it needs check mode,
+  `compose` reports the route that determined its middle type; every
+  `TypeError` variant is produced by the elaborator. (D407)
 - **Measuring Agda**: `touch` does not force a recheck; confirm a `Checking`
   line. (D200)
 - **Both builds are tested**: the exit suites and `traceCases` build each

@@ -64,7 +64,7 @@ open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatAri
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined;
   LambdaInInferMode; LambdaRequiresFunctionType;
-  InlInInferMode; InrInInferMode; InitialInInferMode;
+  InlInInferMode; InrInInferMode; InitialInInferMode; GeneratorInInferMode;
   InlNeedsSumType; InrNeedsSumType;
   FstNeedsPair; SndNeedsPair;
   CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; NotFunction;
@@ -1604,15 +1604,15 @@ inferElabV-RResolved-dispatch ctx _ gv-unit =
 -- the user's import table is meaningless — these fail directly rather than
 -- routing through `inferElabV-RResolved-aux`. The seven point-free
 -- generators are polymorphic and do not infer; they must appear applied or
--- in check mode. `inl`, `inr` and `initial` say so with their own variants
--- (plan 0.139, as when they are applied in infer mode); the other four keep
--- `UnboundVariable`'s "unspecialized" text.
+-- in check mode, and each says so (plan 0.139): `inl`, `inr` and `initial`
+-- with their own variants (as when applied in infer mode), the other four
+-- with `GeneratorInInferMode`.
 -- Failing directly is also what lets the `checkElab-fallback-RVar-*` lemmas
 -- reduce without a "Generators.* is not imported" premise nobody could supply.
-inferElabV-RResolved-dispatch ctx cn gv-id       = failure (UnboundVariable "id")
-inferElabV-RResolved-dispatch ctx cn gv-fst      = failure (UnboundVariable "fst")
-inferElabV-RResolved-dispatch ctx cn gv-snd      = failure (UnboundVariable "snd")
-inferElabV-RResolved-dispatch ctx cn gv-terminal = failure (UnboundVariable "terminal")
+inferElabV-RResolved-dispatch ctx cn gv-id       = failure (GeneratorInInferMode "id")
+inferElabV-RResolved-dispatch ctx cn gv-fst      = failure (GeneratorInInferMode "fst")
+inferElabV-RResolved-dispatch ctx cn gv-snd      = failure (GeneratorInInferMode "snd")
+inferElabV-RResolved-dispatch ctx cn gv-terminal = failure (GeneratorInInferMode "terminal")
 inferElabV-RResolved-dispatch ctx cn gv-initial  = failure InitialInInferMode
 inferElabV-RResolved-dispatch ctx cn gv-inl      = failure InlInInferMode
 inferElabV-RResolved-dispatch ctx cn gv-inr      = failure InrInInferMode
