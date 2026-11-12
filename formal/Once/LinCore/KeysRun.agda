@@ -139,7 +139,7 @@ module Keep (U : Univ) where
   prim-in (r-clo {F = F} {x = x}) p v = tag-in F x v
   prim-in r-lam  p v             = p , v
   prim-in r-lamω p v             = p , v
-  prim-in r-unf  p v             = p , v
+  prim-in r-unf  p v             = proj₁ p , v
   prim-in r-const p v            = tt
   prim-in (r-op {s = s} {y = y} _) p v = mvF-in (scod s) y
   prim-in r-id () v
@@ -171,7 +171,8 @@ module Keep (U : Univ) where
   ----------------------------------------------------------------------
 
   module Steps (blk : ∀ {κ} → κ ∈ allK U → BIn κ)
-               (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U) where
+               (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
+               (ε∈ : (_ , ε) ∈ obs U) where
 
     keep : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m m′ n n′ t}
          → StepI c r m n t c′ r′ m′ n′ → CIn c → RIn r → MIn m → CIn c′ × RIn r′ × MIn m′
@@ -211,7 +212,7 @@ module Keep (U : Univ) where
     keep (i-ccopyω eq) (_ , ck) R (E , _ , os) with seen eq E
     ... | (l , x) = (inC (proj₂ l) , tt , l , ck) , R , (x , E) , tt , os
     keep (i-ncopy eq) (_ , ck) R (E , _ , os) with seen eq E
-    ... | (n , p) = (inC (ncty n) , tt , n , ck) , R , (p , E) , tt , os
+    ... | (n , p) = (inC (ncty n) , tt , (n , ε∈) , ck) , R , (p , E) , tt , os
     keep (i-cfree {lam = lam}) (_ , ck) R (E , (l , x) , os) = (inF (lam-X lam l) , ck) , R , E , x , os
     keep i-nfree  (_ , ck) R (E , (n , p) , os) = (inF (ncty n) , ck) , R , E , p , os
 
@@ -233,7 +234,7 @@ module ProgramRun {Γ} (ds : Defs Γ) (f : LTm Γ One One) where
   ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U
   ncty n = ∈-++⁺ʳ (cmap subs (ts g₀)) (∈-cmap⁺ (ns g₀) n (here refl))
 
-  open Steps blocks-in ncty public
+  open Steps blocks-in ncty (here refl) public
 
   inside : ∀ {sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′ mt}
          → StepsI (compᴵ ds f end) ([]ʳ {T = One ∷ [] ∣ One ∷ []}) start 0 mt c′ r′ m′ n′
