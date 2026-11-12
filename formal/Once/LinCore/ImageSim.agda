@@ -23,8 +23,9 @@ open import Data.List.Properties using (++-assoc; ++-identityʳ; map-++)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Agda.Builtin.Equality using (_≡_; refl)
-open import Agda.Builtin.Sigma using (_,_; fst; snd)
+open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
 open import Data.Unit using (tt)
+open import Data.Product using (_×_)
 open import Data.Maybe using (just; nothing)
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (yes; no)
@@ -32,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (subst; sym; cong; trans
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
-open import Once.LinCore.Free using (_≼_; []≼; ≼-trans; ≼-refl; ++-≼; Weave; w-[]; w-run; w-tmp; w-++; w-self; Along-++)
+open import Once.LinCore.Free using (_≼_; []≼; ≼-trans; ≼-refl; ++-≼; weave-pre; Weave; w-[]; w-run; w-tmp; w-++; w-self; Along-++)
 
 module Once.LinCore.ImageSim
   (fmt : TargetNum) (ans : FFIAnswers)
@@ -461,3 +462,45 @@ mutual
   simI r-exh fr es eq os k ρ = paused _ ρ _ _ [] [] [] done w-[] []≼ [] tt
   simI (r-cut {o = o} r q) fr es eq os k ρ = cutR o q (simI r fr es eq os k ρ)
   simI (r-tmp {o = o} r w p) fr es eq os k ρ = tmpR o w (simI r fr es eq os k ρ)
+
+------------------------------------------------------------------------
+-- 7. ★ ON THE IMAGE (A16's §7).
+------------------------------------------------------------------------
+
+private
+  pre₀ : Pre (λ _ → 0) 0 mone (λ _ → 0)
+  pre₀ = record { le1 = λ _ → z≤n ; above = λ _ _ → refl ; sub = λ _ → z≤n }
+
+-- a closed program starts with nothing lent and nothing given
+start : Cfg (One ∷ [] ∣ One ∷ [])
+start = vw mone []ᵉ ∥ mone ∷ˢ []ˢ
+
+-- ★ a finished run of a closed program: the image on its compiled code is
+-- legal on the cell heap, leaves it empty, and closes every frame it opened
+image-noleak : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {n′ t}
+             → (run : Run ds f mone mone 0 (gives mone n′) t) → Plain run
+             → Σ Trace λ mt → StepsI (compᴵ ds f end) ([]ʳ {T = One ∷ [] ∣ One ∷ []}) start 0 mt end []ʳ start n′
+               × OK mt (λ _ → 0) × (∀ i → play mt (λ _ → 0) i ≡ 0) × TBal mt
+image-noleak {t = t} run fr with simI run fr (vw mone []ᵉ) refl []ˢ end []ʳ | noleak (plain run)
+... | out ts mt st w b | (ok , clean) =
+  ( mt , st
+  , OK-weave w (λ _ → 0) ok
+  , (λ i → trans (cong (λ h → h i) (play-weave w (λ _ → 0))) (clean i))
+  , weave-post (gives mone 0) w (NoT-Bal (erase t) (erase-clean t)) b )
+
+-- ★ ANY stopped run of a closed program from nothing (a server cut after its
+-- last round, a halt): the image runs at least as far, and what it did up to
+-- the run's last event is legal on the cell heap, with legal frames
+image-legal : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {y t}
+            → (run : Run ds f mone mone 0 (stop y) t) → Plain run
+            → Σ Trace λ mt′ → Σ (List TEv) λ ts′ → Weave tmp (erase t) ts′ mt′
+               × OK mt′ (λ _ → 0) × TLeg mt′
+               × Σ Trace λ mt → mt′ ≼ mt × Σ Sh λ sh → Σ Sh λ U → Σ (Codeᴵ sh U) λ c′ → Σ (Ret U (One ∷ [] ∣ One ∷ [])) λ r′
+                 → Σ (Cfg sh) λ m′ → Σ ℕ λ n′ → StepsI (compᴵ ds f end) []ʳ start 0 mt c′ r′ m′ n′
+image-legal {t = t} run fr with simI run fr (vw mone []ᵉ) refl []ˢ end []ʳ
+... | paused {sh′} {U′} c′ r′ m′ n′ ts mt t₀ st w p cl l with weave-pre w p
+...   | (ts′ , mt′ , w′ , q) =
+  ( mt′ , ts′ , w′
+  , OK-weave w′ (λ _ → 0) (fst (exchange (plain run) pre₀ lent₀))
+  , TOK-≼ q (weave-post (stop {One} exhausted) w (fst (NoT-Bal t₀ cl)) l)
+  , mt , q , sh′ , U′ , c′ , r′ , m′ , n′ , st )
