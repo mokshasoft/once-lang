@@ -43,6 +43,13 @@ import Once.Spec.Type as ST
 open import Once.IRTy using (K; IsBaseTypeI; base-Unit; base-Void; base-Int; base-Float; base-Prod; base-Sum; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; ⟦_⟧TI; μ-type; ν-type; ⌈_⌉; ⌈_⌉F; ⌈⟧TI-commute) renaming (_⊕_ to _⊕ᴵ_; _⊗_ to _⊗ᴵ_)
 open import Once.IRTy.WF using (base-⌈⌉; wf-⌈⌉)
 open import Once.Denotation.ValueDomain using (coerce-functor-D; coerce-functor⁻¹-D)
+open import Once.Denotation.DenotTrace using (cata-ev-algᴰ)
+open import Once.IR.Semantics.Iterative using (seqF∞)
+import Once.IR.Semantics.Polynomial as Pol
+open import Data.Empty using (⊥)
+open import Data.Sum.Relation.Binary.Pointwise using (Pointwise)
+open import Once.IRTy using (IRFunctor; Id; Unit; Void; Int; Float; _⇛[_]_)
+open import Once.Spec.Polynomial using (⟦_⟧SF)
 import Once.LinCore.FromIR
 import Once.LinCore.Bridge
 import Once.LinCore.Bisim
@@ -52,7 +59,7 @@ module Once.LinCore.Casts (fmt : TargetNum) (ans : FFIAnswers) where
 open import Once.LinCore.NbEPLinCore fmt ans
 open Once.LinCore.FromIR fmt ans
 open Once.LinCore.Bridge fmt ans
-open Once.LinCore.Bisim fmt ans using (_≈[_]_; module _≈[_]_; BlR; ≈retR; ≈callR; ≈haltR; ret≈R)
+open Once.LinCore.Bisim fmt ans using (_≈[_]_; module _≈[_]_; BlR; ≈retR; ≈callR; ≈haltR; ret≈R; >>=-congR; fmap-congR)
 
 ------------------------------------------------------------------------
 -- 1. TRANSPORTS.
@@ -418,3 +425,151 @@ module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A 
          P.ev δ (subst (λ X → P.IR Γ X ⟪ ν-type F ⟫) (sym (⟪⟫-TI wf (ν-type F))) (P.in-ν (lf F))) a
            ≈[ W (ν-type F) ] evalᴰ fmt (callEnv cs ans) (M.in-ν wf) a′
   inν≈ {F} wf {a} w rewrite ev-subst-dom δ (⟪⟫-TI wf (ν-type F)) (P.in-ν (lf F)) a = ret≈R (inν-W (Inν-layer wf w))
+
+------------------------------------------------------------------------
+-- 6. ★ THE FOLD: the core's `cataC`/`travC` against master's `sem-cata`
+-- with `seqF∞` (children left to right, then the algebra), by induction on
+-- the μ value.
+------------------------------------------------------------------------
+
+-- a base constant's code against master's FULL value (a fold's layer)
+WKf : ∀ (B : IRTy) {X} → FS (lfK B) X → Val.⟦ ⌈ B ⌉ ⟧ → Set
+WKf Unit         _ _               = ⊤
+WKf Void         () _
+WKf Int          x x′              = x ≡ x′
+WKf Float        x x′              = x ≡ x′
+WKf (A * B)      (x , y) (x′ , y′) = WKf A x x′ × WKf B y y′
+WKf (A + B)      x x′              = Pointwise (WKf A) (WKf B) x x′
+WKf (μ-type G)   _ _               = ⊥
+WKf (_ ⇛[ _ ] _) () _
+WKf (ν-type _)   () _
+
+-- a layer of results: the core's against master's
+WLA : ∀ (A : IRTy) (G : IRFunctor) → FS (lf G) ⟦ ⟪ A ⟫ ⟧ → Val.⟦ ⌈ G ⌉F ⟧F ⟦ ⌈ A ⌉ ⟧ᴰ → Set
+WLA A (K B)     x x′ = WKf B x x′
+WLA A Id        x x′ = W A x x′
+WLA A (G ⊕ᴵ H)  x x′ = Pointwise (WLA A G) (WLA A H) x x′
+WLA A (G ⊗ᴵ H)  (x , y) (x′ , y′) = WLA A G x x′ × WLA A H y y′
+
+-- a computation given by a block equal to its own
+≈R-blkʳ : ∀ {X Y} {R : X → Y → Set} {m : T∞ X} {m₁ m₂ : T∞ Y} → block m₂ ≡ block m₁ → m ≈[ R ] m₁ → m ≈[ R ] m₂
+_≈[_]_.blockR (≈R-blkʳ {R = R} {m} e p) = subst (BlR R (block m)) (sym e) (_≈[_]_.blockR p)
+
+-- a base constant, base to full
+K-full : ∀ {B} (b : IsBaseTypeI B) {X} {y y′} → WK B {X} y y′ → WKf B y (Val.coerce-base-to-full (base-⌈⌉ b) y′)
+K-full base-Unit  w = tt
+K-full base-Void  {y = ()}
+K-full base-Int   w = w
+K-full base-Float w = w
+K-full (base-Prod a b) {y = _ , _} {y′ = _ , _} (w₁ , w₂) = K-full a w₁ , K-full b w₂
+K-full (base-Sum a b) {y = inj₁ _} {y′ = inj₁ _} (⊎₁ w) = ⊎₁ (K-full a w)
+K-full (base-Sum a b) {y = inj₂ _} {y′ = inj₂ _} (⊎₂ w) = ⊎₂ (K-full b w)
+
+-- a base constant of a fold's layer, back into the relation by type
+K-back : ∀ {B} (b : IsBaseTypeI B) (X : LTy) {w w′} → WKf B {⟦ X ⟧} w w′
+       → W B (subst ⟦_⟧ (⟪⟫-K b X) (coh⁻¹ (lfK B) X w)) (injectᵇ (base-⌈⌉ b) w′)
+K-back base-Unit  X w = tt
+K-back base-Void  X {w = ()}
+K-back base-Int   X w = w
+K-back base-Float X w = w
+K-back (base-Prod {A₁} {A₂} a b) X {w = x , y} {w′ = x′ , y′} (w₁ , w₂) =
+  subst (λ z → W (A₁ * A₂) z (injectᵇ (base-⌈⌉ a) x′ , injectᵇ (base-⌈⌉ b) y′))
+        (sym (subst-⊗ (⟪⟫-K a X) (⟪⟫-K b X) (coh⁻¹ (lfK A₁) X x) (coh⁻¹ (lfK A₂) X y)))
+        (K-back a X w₁ , K-back b X w₂)
+K-back (base-Sum {A₁} {A₂} a b) X {w = inj₁ x} {w′ = inj₁ x′} (⊎₁ w) =
+  subst (λ z → W (A₁ + A₂) z (inj₁ (injectᵇ (base-⌈⌉ a) x′)))
+        (sym (subst-⊕₁ (⟪⟫-K a X) (⟪⟫-K b X) (coh⁻¹ (lfK A₁) X x)))
+        (⊎₁ (K-back a X w))
+K-back (base-Sum {A₁} {A₂} a b) X {w = inj₂ y} {w′ = inj₂ y′} (⊎₂ w) =
+  subst (λ z → W (A₁ + A₂) z (inj₂ (injectᵇ (base-⌈⌉ b) y′)))
+        (sym (subst-⊕₂ (⟪⟫-K a X) (⟪⟫-K b X) (coh⁻¹ (lfK A₂) X y)))
+        (⊎₂ (K-back b X w))
+
+-- a layer of results, back into the relation by type (the algebra's input)
+A-back : ∀ {A G} (wg : WellFormedFI G) {u u′} → WLA A G u u′
+       → W (⟦ G ⟧TI A) (subst ⟦_⟧ (sym (⟪⟫-TI wg A)) (coh⁻¹ (lf G) ⟪ A ⟫ u))
+                       (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute G A)) (coerce-functor⁻¹-D (wf-⌈⌉ wg) ⌈ A ⌉ u′))
+A-back {A} {K B} (wf-K b) {u} {u′} r =
+  subst (λ z → W B z (injectᵇ (base-⌈⌉ b) u′))
+        (sym (subst-sym² (⟪⟫-K b ⟪ A ⟫) (coh⁻¹ (lfK B) ⟪ A ⟫ u)))
+        (K-back b ⟪ A ⟫ r)
+A-back wf-Id r = r
+A-back {A} {G ⊕ᴵ H} (wf-Sum f g) {u = inj₁ x} {u′ = inj₁ x′} (⊎₁ r)
+  rewrite subst-⊕₁⁻ (⟪⟫-TI f A) (⟪⟫-TI g A) (coh⁻¹ (lf G) ⟪ A ⟫ x)
+        | substᴰ-+₁⁻ (⌈⟧TI-commute G A) (⌈⟧TI-commute H A) (coerce-functor⁻¹-D (wf-⌈⌉ f) ⌈ A ⌉ x′) =
+  ⊎₁ (A-back f r)
+A-back {A} {G ⊕ᴵ H} (wf-Sum f g) {u = inj₂ y} {u′ = inj₂ y′} (⊎₂ r)
+  rewrite subst-⊕₂⁻ (⟪⟫-TI f A) (⟪⟫-TI g A) (coh⁻¹ (lf H) ⟪ A ⟫ y)
+        | substᴰ-+₂⁻ (⌈⟧TI-commute G A) (⌈⟧TI-commute H A) (coerce-functor⁻¹-D (wf-⌈⌉ g) ⌈ A ⌉ y′) =
+  ⊎₂ (A-back g r)
+A-back {A} {G ⊗ᴵ H} (wf-Prod f g) {u = x , y} {u′ = x′ , y′} (r₁ , r₂)
+  rewrite subst-⊗⁻ (⟪⟫-TI f A) (⟪⟫-TI g A) (coh⁻¹ (lf G) ⟪ A ⟫ x) (coh⁻¹ (lf H) ⟪ A ⟫ y)
+        | substᴰ-*⁻ (⌈⟧TI-commute G A) (⌈⟧TI-commute H A)
+                    (coerce-functor⁻¹-D (wf-⌈⌉ f) ⌈ A ⌉ x′) (coerce-functor⁻¹-D (wf-⌈⌉ g) ⌈ A ⌉ y′) =
+  A-back f r₁ , A-back g r₂
+
+-- the algebra's term moved along its layer's types
+ev-subst-alg : ∀ {Γ} (δ : Env Γ) {E X X′ A} (e : X ≡ X′) (c : P.IR Γ (E ⊗t X) A) (x : ⟦ E ⟧) (y : ⟦ X′ ⟧)
+             → P.ev δ (subst (λ Z → P.IR Γ (E ⊗t Z) A) e c) (x , y) ≡ P.ev δ c (x , subst ⟦_⟧ (sym e) y)
+ev-subst-alg δ refl c x y = refl
+
+module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) where
+
+  module Fold {F} (wf : WellFormedFI F) {E A} (alg : M.IR (E * ⟦ F ⟧TI A) A) (a′ : P.IR Γ (⟪ E ⟫ ⊗t ⟪ ⟦ F ⟧TI A ⟫) ⟪ A ⟫)
+              (ih : ∀ {x x′} → W (E * ⟦ F ⟧TI A) x x′ → P.ev δ a′ x ≈[ W A ] evalᴰ fmt (callEnv cs ans) alg x′)
+              (e : ⟦ ⟪ E ⟫ ⟧) (e′ : ⟦ E ⟧ᴰᴵ) (we : W E e e′) where
+
+    a″ : P.IR Γ (⟪ E ⟫ ⊗t LF∙ (lf F) ⟪ A ⟫) ⟪ A ⟫
+    a″ = subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t X) ⟪ A ⟫) (⟪⟫-TI wf A) a′
+
+    algC : FS (lf F) ⟦ ⟪ A ⟫ ⟧ → T∞ ⟦ ⟪ A ⟫ ⟧
+    algC y = P.ev δ a″ (e , coh⁻¹ (lf F) _ y)
+
+    algM : Val.⟦ ⌈ F ⌉F ⟧F (T∞ ⟦ ⌈ A ⌉ ⟧ᴰ) → T∞ ⟦ ⌈ A ⌉ ⟧ᴰ
+    algM = cata-ev-algᴰ fmt (callEnv cs ans) wf alg e′
+
+    alg″ : ⟦ SF F ⟧SF (T∞ ⟦ ⌈ A ⌉ ⟧ᴰ) → T∞ ⟦ ⌈ A ⌉ ⟧ᴰ
+    alg″ x = algM (Val.coerce-μ-out (wf-⌈⌉ wf) _ x)
+
+    -- the algebra, on related layers
+    alg≈ : ∀ {u u′} → WLA A F u u′ → algC u ≈[ W A ]
+             evalᴰ fmt (callEnv cs ans) alg (e′ , subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F A))
+                                                     (coerce-functor⁻¹-D (wf-⌈⌉ wf) ⌈ A ⌉ u′))
+    alg≈ {u} r rewrite ev-subst-alg δ (⟪⟫-TI wf A) a′ e (coh⁻¹ (lf F) ⟪ A ⟫ u) = ih (we , A-back wf r)
+
+
+    -- a base constant's traversal: its value
+    travK : ∀ {B} (b : IsBaseTypeI B) {y y′} → WK B y y′
+          → travC δ (lf F) (lfK B) algC y ≈[ WKf B ] return∞ (Val.coerce-base-to-full (base-⌈⌉ b) y′)
+    travK base-Unit  w = ret≈R tt
+    travK base-Void  {y = ()}
+    travK base-Int   w = ret≈R w
+    travK base-Float w = ret≈R w
+    travK (base-Prod a b) {y = _ , _} {y′ = _ , _} (w₁ , w₂) =
+      ≈R-blkʳ refl (>>=-congR (travK a w₁) (λ r → fmap-congR (travK b w₂) (λ r′ → r , r′)))
+    travK (base-Sum a b) {y = inj₁ _} {y′ = inj₁ _} (⊎₁ w) = ≈R-blkʳ refl (fmap-congR (travK a w) ⊎₁)
+    travK (base-Sum a b) {y = inj₂ _} {y′ = inj₂ _} (⊎₂ w) = ≈R-blkʳ refl (fmap-congR (travK b w) ⊎₂)
+
+    mutual
+      -- ★ the fold, by induction on the μ value
+      cata-rel : ∀ {x x′} → WMu F x x′ → cataC δ (lf F) algC x ≈[ W A ] Pol.cataS alg″ x′
+      cata-rel (wmu r) = >>=-congR (trav-rel wf r) alg≈
+
+      -- a layer's children, left to right
+      trav-rel : ∀ {G} (wg : WellFormedFI G) {w w′} → WLμ F G w w′
+               → travC δ (lf F) (lf G) algC w
+                   ≈[ WLA A G ] seqF∞ ⌈ G ⌉F (Val.coerce-μ-out (wf-⌈⌉ wg) _ (Pol.sfmapCata (SF G) alg″ w′))
+      trav-rel (wf-K b) r = travK b r
+      trav-rel wf-Id r = cata-rel r
+      trav-rel (wf-Sum f g) {w = inj₁ _} {w′ = inj₁ _} (⊎₁ r) = fmap-congR (trav-rel f r) ⊎₁
+      trav-rel (wf-Sum f g) {w = inj₂ _} {w′ = inj₂ _} (⊎₂ r) = fmap-congR (trav-rel g r) ⊎₂
+      trav-rel (wf-Prod f g) {w = _ , _} {w′ = _ , _} (r₁ , r₂) =
+        >>=-congR (trav-rel f r₁) (λ r → >>=-congR (trav-rel g r₂) (λ r′ → ret≈R (r , r′)))
+
+  -- ★ `Cata` against master's
+  cata≈ : ∀ {F} (wf : WellFormedFI F) {E A} (alg : M.IR (E * ⟦ F ⟧TI A) A) a′ →
+          (∀ {x x′} → W (E * ⟦ F ⟧TI A) x x′ → P.ev δ a′ x ≈[ W A ] evalᴰ fmt (callEnv cs ans) alg x′) →
+          ∀ {a b} → W (E * μ-type F) a b →
+          P.ev δ (P.Cata (lf F) (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t X) ⟪ A ⟫) (⟪⟫-TI wf A) a′)) a
+            ≈[ W A ] evalᴰ fmt (callEnv cs ans) (M.Cata wf alg) b
+  cata≈ wf alg a′ ih {e , x} {e′ , x′} (we , wx) = Fold.cata-rel wf alg a′ ih e e′ we wx
