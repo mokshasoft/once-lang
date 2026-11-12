@@ -157,10 +157,17 @@ module Lowering (U : Univ)
     let bot = Tp φ S ; wL = wsz (LF∙ F (μt F))
     in restore-input (bot ∸ 1) ∷ mvPS 0 (bot ∸ wL) wL ++ instr-free-heap wL ∷ []
   lowP ds (lconst v) φ S p = ldConst v ∷ store-at-slot (Tp φ S ∸ 1) ∷ []
+  -- a SigOp: its argument's address in `Input1`, its answer in `Output`
+  -- (one word, or none; a wider answer is not a SigOp's — the flat machine's
+  -- answer is a register)
   lowP ds (lop s) φ S p =
     let bot = Tp φ S
-    in lea-slot (bot ∸ wsz ⌜ sdom s ⌝) ∷ mov-to-input ∷ instr-sigop (info s)
-       ∷ store-at-slot (bot ∸ wsz ⌜ scod s ⌝) ∷ []
+    in lea-slot (bot ∸ wsz ⌜ sdom s ⌝) ∷ mov-to-input ∷ instr-sigop (info s) ∷ answer (wsz ⌜ scod s ⌝) bot
+    where
+      answer : ℕ → ℕ → AbstractTrace
+      answer (suc zero) bot = store-at-slot (bot ∸ 1) ∷ []
+      {-# CATCHALL #-}
+      answer _          bot = []
   lowP ds (llam {X = X} b γ) φ S (kb , x) =
     let bot = Tp φ S ; wX = wsz X
     in header wX (idx kb) (idx (inC x)) (idx (inF x)) ++ mvSP (bot ∸ wX) hdr wX
