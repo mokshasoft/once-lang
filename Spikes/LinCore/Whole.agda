@@ -37,14 +37,16 @@ open import LinCore.Pass Base ⟦_⟧b Sig sdom scod
 open import LinCore.Bisim Base ⟦_⟧b Sig sdom scod using (block≈)
 
 module _ (W : World) where
-  -- ★ a closed IR program, compiled and run: what the world saw is a path
-  -- through what the IR program means
-  whole-sound : ∀ (k : ℕ) (f : IR One One) σ
-              → RB (block (ev f tt)) (ios (Ran.trace (exec W ε k (tr f) mone mone 0 σ)))
-                   (erO (Ran.out (exec W ε k (tr f) mone mone 0 σ)))
-  whole-sound k f σ = RB-Bl (block≈ (pass-okᶠ funit funit f tt)) (sound (Ran.run (exec W ε k (tr f) mone mone 0 σ)))
+  -- ★ an IR program (its definitions `P`, each calling only earlier ones, and
+  -- its main `f`), compiled and run: what the world saw is a path through
+  -- what the IR program means
+  whole-sound : ∀ (k : ℕ) {Γ} (P : Prog Γ) (f : IR Γ One One) σ
+              → RB (block (ev ⟦ P ⟧P f tt)) (ios (Ran.trace (exec W (trP P) k (tr f) mone mone 0 σ)))
+                   (erO (Ran.out (exec W (trP P) k (tr f) mone mone 0 σ)))
+  whole-sound k P f σ = RB-Bl (block≈ (pass-okᶠ (pass-okP P) funit funit f tt))
+                              (sound (Ran.run (exec W (trP P) k (tr f) mone mone 0 σ)))
 
 -- ★ and every run of it that finishes leaks nothing
-whole-noleak : ∀ (f : IR One One) {n′ t} → Run ε (tr f) mone mone 0 (gives mone n′) t
+whole-noleak : ∀ {Γ} (P : Prog Γ) (f : IR Γ One One) {n′ t} → Run (trP P) (tr f) mone mone 0 (gives mone n′) t
              → OK t (λ _ → 0) × (∀ i → play t (λ _ → 0) i ≡ 0)
-whole-noleak f = noleak
+whole-noleak P f = noleak

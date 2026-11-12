@@ -9,7 +9,9 @@
 -- translation into the linear core, and the theorem: the translation MEANS
 -- THE SAME, up to bisimilarity (`LinCore.Bisim`).
 --
--- Part 1: the first-order constructors. Part 2 (D409 part 3): the
+-- Part 1: the first-order constructors. Part 2 (D409 part 3): `Call`, a
+-- direct call of an earlier definition of the program (a label of the core;
+-- a program is a table, `Prog`, as the Spec's `Program`); the
 -- EXPONENTIAL (`curry`/`apply`) and the FINAL COALGEBRA (`Ana`/`Out`/`in-ν`),
 -- as the Spec has them: the arrow graded (`⟦ A ⇒[ q π ] B ⟧ = ⟦ A ⟧ → M π ⟦ B ⟧`,
 -- an `act` arrow's body a finite block, as `Iter`'s round), a ν the Spec's
@@ -58,66 +60,75 @@ open import LinCore.Grade Base ⟦_⟧b Sig sdom scod using (same; ret≈; bind�
 -- ★ The Spec's grades (`⊢iter`, `⊢lam`, `⊢unfold`): a loop's round, an `act`
 -- arrow's body and a coalgebra are finite blocks, here as on the core
 -- (`Blk`, `Gd`).
-infixr 9 _∘_
-data IR : LTy → LTy → Set
-data BlkIR : ∀ {A B} → IR A B → Set
--- a body at its arrow's grade
-GdIR : ∀ {A B} → Gr → IR A B → Set
+-- ★ `Γ`: the program's definitions before this one (the Spec's `Program`: a
+-- definition refers only to EARLIER ones, so there is no recursion), each a
+-- label of the core with nothing in its environment.
+module _ (Γ : Cx) where
+  infixr 9 _∘_
+  data IR : LTy → LTy → Set
+  data BlkIR : ∀ {A B} → IR A B → Set
+  -- a body at its arrow's grade
+  GdIR : ∀ {A B} → Gr → IR A B → Set
 
-data IR where
-  id      : ∀ {A} → IR A A
-  _∘_      : ∀ {A B C} → IR B C → IR A B → IR A C
-  ⟨_,_⟩    : ∀ {A B C} → IR A B → IR A C → IR A (B ⊗t C)
-  fst      : ∀ {A B} → IR (A ⊗t B) A
-  snd      : ∀ {A B} → IR (A ⊗t B) B
-  inl      : ∀ {A B} → IR A (A ⊕t B)
-  inr      : ∀ {A B} → IR B (A ⊕t B)
-  case     : ∀ {A B C} → IR A C → IR B C → IR (A ⊕t B) C
-  terminal : ∀ {A} → IR A One
-  initial  : ∀ {A} → IR Zero A
-  -- ★ the exponential (the IR's `A ⇛ B`, graded as the Spec's arrow; the
-  -- IR's arrows are many-use)
-  curry    : ∀ {A B C} g (f : IR (A ⊗t B) C) → GdIR g f → IR A (Fn many g B C)
-  apply    : ∀ {g A B} → IR (Fn many g A B ⊗t A) B
-  In       : ∀ F → IR (LF∙ F (μt F)) (μt F)
-  out-μ    : ∀ F → IR (μt F) (LF∙ F (μt F))
-  -- the parameterised fold (D131): the algebra reads a fixed environment
-  Cata     : ∀ F {E A} → IR (E ⊗t LF∙ F A) A → IR (E ⊗t μt F) A
-  -- ★ the parameterised unfold (D273): the coalgebra reads a fixed
-  -- environment at every observation; the observation; Lambek's inverse
-  Ana      : ∀ F {E A} (c : IR (E ⊗t A) (LF∙ F A)) → BlkIR c → IR (E ⊗t A) (Nu F)
-  Out      : ∀ F → IR (Nu F) (LF∙ F (Nu F))
-  in-ν     : ∀ F → IR (LF∙ F (Nu F)) (Nu F)
-  -- the loop (D317): the round reads a fixed environment and the state
-  Iter     : ∀ {E A B} (body : IR (E ⊗t A) (B ⊕t A)) → BlkIR body → IR (E ⊗t A) B
-  const    : ∀ {b} → ⟦ b ⟧b → IR One (Bt b)
-  SigOp    : (s : Sig) → IR ⌜ sdom s ⌝ ⌜ scod s ⌝
+  data IR where
+    id      : ∀ {A} → IR A A
+    _∘_      : ∀ {A B C} → IR B C → IR A B → IR A C
+    ⟨_,_⟩    : ∀ {A B C} → IR A B → IR A C → IR A (B ⊗t C)
+    fst      : ∀ {A B} → IR (A ⊗t B) A
+    snd      : ∀ {A B} → IR (A ⊗t B) B
+    inl      : ∀ {A B} → IR A (A ⊕t B)
+    inr      : ∀ {A B} → IR B (A ⊕t B)
+    case     : ∀ {A B C} → IR A C → IR B C → IR (A ⊕t B) C
+    terminal : ∀ {A} → IR A One
+    initial  : ∀ {A} → IR Zero A
+    -- ★ the exponential (the IR's `A ⇛ B`, graded as the Spec's arrow; the
+    -- IR's arrows are many-use)
+    curry    : ∀ {A B C} g (f : IR (A ⊗t B) C) → GdIR g f → IR A (Fn many g B C)
+    apply    : ∀ {g A B} → IR (Fn many g A B ⊗t A) B
+    In       : ∀ F → IR (LF∙ F (μt F)) (μt F)
+    out-μ    : ∀ F → IR (μt F) (LF∙ F (μt F))
+    -- the parameterised fold (D131): the algebra reads a fixed environment
+    Cata     : ∀ F {E A} → IR (E ⊗t LF∙ F A) A → IR (E ⊗t μt F) A
+    -- ★ the parameterised unfold (D273): the coalgebra reads a fixed
+    -- environment at every observation; the observation; Lambek's inverse
+    Ana      : ∀ F {E A} (c : IR (E ⊗t A) (LF∙ F A)) → BlkIR c → IR (E ⊗t A) (Nu F)
+    Out      : ∀ F → IR (Nu F) (LF∙ F (Nu F))
+    in-ν     : ∀ F → IR (LF∙ F (Nu F)) (Nu F)
+    -- the loop (D317): the round reads a fixed environment and the state
+    Iter     : ∀ {E A B} (body : IR (E ⊗t A) (B ⊕t A)) → BlkIR body → IR (E ⊗t A) B
+    const    : ∀ {b} → ⟦ b ⟧b → IR One (Bt b)
+    SigOp    : (s : Sig) → IR ⌜ sdom s ⌝ ⌜ scod s ⌝
+    -- ★ D245: a direct call of an earlier definition of the program (the D064
+    -- direct-call ABI, `call once_f`)
+    Call     : ∀ {l g A B} → Γ ∋[ l ] sg once g One A B → IR A B
 
--- a finite block: no loop inside
-data BlkIR where
-  i-id    : ∀ {A} → BlkIR (id {A})
-  i-∘     : ∀ {A B C} {g : IR B C} {f : IR A B} → BlkIR g → BlkIR f → BlkIR (g ∘ f)
-  i-pair  : ∀ {A B C} {f : IR A B} {g : IR A C} → BlkIR f → BlkIR g → BlkIR ⟨ f , g ⟩
-  i-fst   : ∀ {A B} → BlkIR (fst {A} {B})
-  i-snd   : ∀ {A B} → BlkIR (snd {A} {B})
-  i-inl   : ∀ {A B} → BlkIR (inl {A} {B})
-  i-inr   : ∀ {A B} → BlkIR (inr {A} {B})
-  i-case  : ∀ {A B C} {f : IR A C} {g : IR B C} → BlkIR f → BlkIR g → BlkIR (case f g)
-  i-term  : ∀ {A} → BlkIR (terminal {A})
-  i-init  : ∀ {A} → BlkIR (initial {A})
-  i-curry : ∀ {A B C g} {f : IR (A ⊗t B) C} {γ : GdIR g f} → BlkIR (curry g f γ)
-  i-apply : ∀ {A B} → BlkIR (apply {act} {A} {B})
-  i-In    : ∀ {F} → BlkIR (In F)
-  i-out   : ∀ {F} → BlkIR (out-μ F)
-  i-cata  : ∀ {F E A} {alg : IR (E ⊗t LF∙ F A) A} → BlkIR alg → BlkIR (Cata F alg)
-  i-ana   : ∀ {F E A} {c : IR (E ⊗t A) (LF∙ F A)} {φ : BlkIR c} → BlkIR (Ana F c φ)
-  i-Out   : ∀ {F} → BlkIR (Out F)
-  i-inν   : ∀ {F} → BlkIR (in-ν F)
-  i-const : ∀ {b} {v : ⟦ b ⟧b} → BlkIR (const v)
-  i-op    : ∀ {s} → BlkIR (SigOp s)
+  -- a finite block: no loop inside
+  data BlkIR where
+    i-id    : ∀ {A} → BlkIR (id {A})
+    i-∘     : ∀ {A B C} {g : IR B C} {f : IR A B} → BlkIR g → BlkIR f → BlkIR (g ∘ f)
+    i-pair  : ∀ {A B C} {f : IR A B} {g : IR A C} → BlkIR f → BlkIR g → BlkIR ⟨ f , g ⟩
+    i-fst   : ∀ {A B} → BlkIR (fst {A} {B})
+    i-snd   : ∀ {A B} → BlkIR (snd {A} {B})
+    i-inl   : ∀ {A B} → BlkIR (inl {A} {B})
+    i-inr   : ∀ {A B} → BlkIR (inr {A} {B})
+    i-case  : ∀ {A B C} {f : IR A C} {g : IR B C} → BlkIR f → BlkIR g → BlkIR (case f g)
+    i-term  : ∀ {A} → BlkIR (terminal {A})
+    i-init  : ∀ {A} → BlkIR (initial {A})
+    i-curry : ∀ {A B C g} {f : IR (A ⊗t B) C} {γ : GdIR g f} → BlkIR (curry g f γ)
+    i-apply : ∀ {A B} → BlkIR (apply {act} {A} {B})
+    i-In    : ∀ {F} → BlkIR (In F)
+    i-out   : ∀ {F} → BlkIR (out-μ F)
+    i-cata  : ∀ {F E A} {alg : IR (E ⊗t LF∙ F A) A} → BlkIR alg → BlkIR (Cata F alg)
+    i-ana   : ∀ {F E A} {c : IR (E ⊗t A) (LF∙ F A)} {φ : BlkIR c} → BlkIR (Ana F c φ)
+    i-Out   : ∀ {F} → BlkIR (Out F)
+    i-inν   : ∀ {F} → BlkIR (in-ν F)
+    i-const : ∀ {b} {v : ⟦ b ⟧b} → BlkIR (const v)
+    i-op    : ∀ {s} → BlkIR (SigOp s)
+    -- a call of a definition of grade `act` is a block
+    i-call  : ∀ {l A B} {p : Γ ∋[ l ] sg once act One A B} → BlkIR (Call p)
 
-GdIR act f = BlkIR f
-GdIR eff f = ⊤
+  GdIR act f = BlkIR f
+  GdIR eff f = ⊤
 
 ------------------------------------------------------------------------
 -- 2. ITS MEANING, clause for clause master's `evalᴰ`, at the Spec's grades:
@@ -128,84 +139,91 @@ GdIR eff f = ⊤
 inν : ∀ {F} → FS F (Nuᵐ F) → Nuᵐ F
 outν (inν w) = ret w
 
-mutual
-  ev : ∀ {A B} → IR A B → ⟦ A ⟧ → T∞ ⟦ B ⟧
-  ev id               a        = return∞ a
-  ev (g ∘ f)          a        = ev f a >>=∞ ev g
-  ev ⟨ f , g ⟩        a        = ev f a >>=∞ λ b → ev g a >>=∞ λ c → return∞ (b , c)
-  ev fst              (a , b)  = return∞ a
-  ev snd              (a , b)  = return∞ b
-  ev inl              a        = return∞ (inj₁ a)
-  ev inr              b        = return∞ (inj₂ b)
-  ev (case f g)       (inj₁ a) = ev f a
-  ev (case f g)       (inj₂ b) = ev g b
-  ev terminal         _        = return∞ tt
-  ev initial          ()
-  ev (curry g f γ)    a        = return∞ (λ b → evG g f γ (a , b))
-  ev (apply {g})      (f , a)  = up g (f a)
-  ev (In F)           x        = return∞ (inμ (coh F (μt F) x))
-  ev (out-μ F)        x        = return∞ (coh⁻¹ F (μt F) (outμ x))
-  ev (Cata F alg)     (e , x)  = cataC ε F (λ y → ev alg (e , coh⁻¹ F _ y)) x
-  ev (Ana F {A = A} c φ) (e , a) = return∞ (anaN F (λ a′ → fmapT (coh F A) (evB φ (e , a′))) a)
-  ev (Out F)          v        = emb (fmapT (coh⁻¹ F (Nu F)) (outν v))
-  ev (in-ν F)         x        = return∞ (inν (coh F (Nu F) x))
-  ev (Iter body _)    (e , a)  = iter∞ (λ a′ → ev body (e , a′)) a
-  ev (const v)        _        = return∞ v
-  ev (SigOp s)        x        = callT s x
+-- at `δ`, the meaning of the definitions before (a label means a function of
+-- its environment, here `One`, and its argument: master's `CallEnv`)
+module _ {Γ : Cx} (δ : Env Γ) where
+  mutual
+    ev : ∀ {A B} → IR Γ A B → ⟦ A ⟧ → T∞ ⟦ B ⟧
+    ev id               a        = return∞ a
+    ev (g ∘ f)          a        = ev f a >>=∞ ev g
+    ev ⟨ f , g ⟩        a        = ev f a >>=∞ λ b → ev g a >>=∞ λ c → return∞ (b , c)
+    ev fst              (a , b)  = return∞ a
+    ev snd              (a , b)  = return∞ b
+    ev inl              a        = return∞ (inj₁ a)
+    ev inr              b        = return∞ (inj₂ b)
+    ev (case f g)       (inj₁ a) = ev f a
+    ev (case f g)       (inj₂ b) = ev g b
+    ev terminal         _        = return∞ tt
+    ev initial          ()
+    ev (curry g f γ)    a        = return∞ (λ b → evG g f γ (a , b))
+    ev (apply {g})      (f , a)  = up g (f a)
+    ev (In F)           x        = return∞ (inμ (coh F (μt F) x))
+    ev (out-μ F)        x        = return∞ (coh⁻¹ F (μt F) (outμ x))
+    ev (Cata F alg)     (e , x)  = cataC δ F (λ y → ev alg (e , coh⁻¹ F _ y)) x
+    ev (Ana F {A = A} c φ) (e , a) = return∞ (anaN F (λ a′ → fmapT (coh F A) (evB φ (e , a′))) a)
+    ev (Out F)          v        = emb (fmapT (coh⁻¹ F (Nu F)) (outν v))
+    ev (in-ν F)         x        = return∞ (inν (coh F (Nu F) x))
+    ev (Iter body _)    (e , a)  = iter∞ (λ a′ → ev body (e , a′)) a
+    ev (const v)        _        = return∞ v
+    ev (SigOp s)        x        = callT s x
+    ev (Call {g = g} p) a        = up g (lookup δ p tt a)
 
-  evB : ∀ {A B} {f : IR A B} → BlkIR f → ⟦ A ⟧ → T ⟦ B ⟧
-  evB i-id            a        = ret a
-  evB (i-∘ φ ψ)       a        = bindT (evB ψ a) (evB φ)
-  evB (i-pair φ ψ)    a        = bindT (evB φ a) λ b → bindT (evB ψ a) λ c → ret (b , c)
-  evB i-fst           (a , b)  = ret a
-  evB i-snd           (a , b)  = ret b
-  evB i-inl           a        = ret (inj₁ a)
-  evB i-inr           b        = ret (inj₂ b)
-  evB (i-case φ ψ)    (inj₁ a) = evB φ a
-  evB (i-case φ ψ)    (inj₂ b) = evB ψ b
-  evB i-term          _        = ret tt
-  evB i-init          ()
-  evB (i-curry {g = g} {f} {γ}) a = ret (λ b → evG g f γ (a , b))
-  evB i-apply         (f , a)  = f a
-  evB (i-In {F})      x        = ret (inμ (coh F (μt F) x))
-  evB (i-out {F})     x        = ret (coh⁻¹ F (μt F) (outμ x))
-  evB (i-cata {F} φ)  (e , x)  = cataB ε F (λ y → evB φ (e , coh⁻¹ F _ y)) x
-  evB (i-ana {F} {A = A} {φ = φ}) (e , a) = ret (anaN F (λ a′ → fmapT (coh F A) (evB φ (e , a′))) a)
-  evB (i-Out {F})     v        = fmapT (coh⁻¹ F (Nu F)) (outν v)
-  evB (i-inν {F})     x        = ret (inν (coh F (Nu F) x))
-  evB (i-const {v = v}) _      = ret v
-  evB (i-op {s})      x        = callB s x
+    evB : ∀ {A B} {f : IR Γ A B} → BlkIR Γ f → ⟦ A ⟧ → T ⟦ B ⟧
+    evB i-id            a        = ret a
+    evB (i-∘ φ ψ)       a        = bindT (evB ψ a) (evB φ)
+    evB (i-pair φ ψ)    a        = bindT (evB φ a) λ b → bindT (evB ψ a) λ c → ret (b , c)
+    evB i-fst           (a , b)  = ret a
+    evB i-snd           (a , b)  = ret b
+    evB i-inl           a        = ret (inj₁ a)
+    evB i-inr           b        = ret (inj₂ b)
+    evB (i-case φ ψ)    (inj₁ a) = evB φ a
+    evB (i-case φ ψ)    (inj₂ b) = evB ψ b
+    evB i-term          _        = ret tt
+    evB i-init          ()
+    evB (i-curry {g = g} {f} {γ}) a = ret (λ b → evG g f γ (a , b))
+    evB i-apply         (f , a)  = f a
+    evB (i-In {F})      x        = ret (inμ (coh F (μt F) x))
+    evB (i-out {F})     x        = ret (coh⁻¹ F (μt F) (outμ x))
+    evB (i-cata {F} φ)  (e , x)  = cataB δ F (λ y → evB φ (e , coh⁻¹ F _ y)) x
+    evB (i-ana {F} {A = A} {φ = φ}) (e , a) = ret (anaN F (λ a′ → fmapT (coh F A) (evB φ (e , a′))) a)
+    evB (i-Out {F})     v        = fmapT (coh⁻¹ F (Nu F)) (outν v)
+    evB (i-inν {F})     x        = ret (inν (coh F (Nu F) x))
+    evB (i-const {v = v}) _      = ret v
+    evB (i-op {s})      x        = callB s x
+    evB (i-call {p = p}) a       = lookup δ p tt a
 
-  evG : ∀ g {A B} (f : IR A B) → GdIR g f → ⟦ A ⟧ → Mg g ⟦ B ⟧
-  evG act f φ = evB φ
-  evG eff f _ = ev f
+    evG : ∀ g {A B} (f : IR Γ A B) → GdIR Γ g f → ⟦ A ⟧ → Mg g ⟦ B ⟧
+    evG act f φ = evB φ
+    evG eff f _ = ev f
 
--- ★ an IR block's computation is its block (as the core's, `Grade.blk-coh`)
-ev-coh : ∀ {A B} {f : IR A B} (φ : BlkIR f) a → ev f a ≈ emb (evB φ a)
-ev-coh i-id           a        = ret≈
-ev-coh (i-∘ φ ψ)      a        = bind≈ (ev-coh ψ a) (ev-coh φ)
-ev-coh (i-pair φ ψ)   a        = bind≈ (ev-coh φ a) (λ b → bind≈ (ev-coh ψ a) (λ c → ret≈))
-ev-coh i-fst          (a , b)  = ret≈
-ev-coh i-snd          (a , b)  = ret≈
-ev-coh i-inl          a        = ret≈
-ev-coh i-inr          b        = ret≈
-ev-coh (i-case φ ψ)   (inj₁ a) = ev-coh φ a
-ev-coh (i-case φ ψ)   (inj₂ b) = ev-coh ψ b
-ev-coh i-term         _        = ret≈
-ev-coh i-init         ()
-ev-coh i-curry        a        = ret≈
-ev-coh i-apply        (f , a)  = ≈-refl
-ev-coh i-In           x        = ret≈
-ev-coh i-out          x        = ret≈
-ev-coh (i-cata {F} φ) (e , x)  = cata-coh ε F (λ y → ev-coh φ (e , coh⁻¹ F _ y)) x
-ev-coh i-ana          a        = ret≈
-ev-coh i-Out          v        = ≈-refl
-ev-coh i-inν          x        = ret≈
-ev-coh i-const        _        = ret≈
-ev-coh i-op           x        = same refl
+  -- ★ an IR block's computation is its block (as the core's, `Grade.blk-coh`)
+  ev-coh : ∀ {A B} {f : IR Γ A B} (φ : BlkIR Γ f) a → ev f a ≈ emb (evB φ a)
+  ev-coh i-id           a        = ret≈
+  ev-coh (i-∘ φ ψ)      a        = bind≈ (ev-coh ψ a) (ev-coh φ)
+  ev-coh (i-pair φ ψ)   a        = bind≈ (ev-coh φ a) (λ b → bind≈ (ev-coh ψ a) (λ c → ret≈))
+  ev-coh i-fst          (a , b)  = ret≈
+  ev-coh i-snd          (a , b)  = ret≈
+  ev-coh i-inl          a        = ret≈
+  ev-coh i-inr          b        = ret≈
+  ev-coh (i-case φ ψ)   (inj₁ a) = ev-coh φ a
+  ev-coh (i-case φ ψ)   (inj₂ b) = ev-coh ψ b
+  ev-coh i-term         _        = ret≈
+  ev-coh i-init         ()
+  ev-coh i-curry        a        = ret≈
+  ev-coh i-apply        (f , a)  = ≈-refl
+  ev-coh i-In           x        = ret≈
+  ev-coh i-out          x        = ret≈
+  ev-coh (i-cata {F} φ) (e , x)  = cata-coh δ F (λ y → ev-coh φ (e , coh⁻¹ F _ y)) x
+  ev-coh i-ana          a        = ret≈
+  ev-coh i-Out          v        = ≈-refl
+  ev-coh i-inν          x        = ret≈
+  ev-coh i-const        _        = ret≈
+  ev-coh i-op           x        = same refl
+  ev-coh i-call         a        = ≈-refl
 
 ------------------------------------------------------------------------
--- 3. THE TRANSLATION into the core (closed: nothing lent, no labels).
+-- 3. THE TRANSLATION into the core (nothing lent; the program's earlier
+-- definitions are the core's labels, `Γ` the same).
 ------------------------------------------------------------------------
 
 -- drop the left of a pair
@@ -216,17 +234,17 @@ k-dropl : ∀ {Γ E A B} → Blk (dropl {Γ} {E} {A} {B})
 k-dropl = k-∘ k-lul (k-⊗ k-drop k-id)
 
 -- a body that owns `E`, run where `E` is lent: copy it in
-withE : ∀ {E A B} → LTm ε (E ⊗t A) B → Tm ε (One ⊗t E) A B
+withE : ∀ {Γ E A B} → LTm Γ (E ⊗t A) B → Tm Γ (One ⊗t E) A B
 withE b = blift b ∘l (bsnd bcopy ⊗l lid) ∘l lul⁻
 
-k-withE : ∀ {E A B} {b : LTm ε (E ⊗t A) B} → Blk b → Blk (withE b)
+k-withE : ∀ {Γ E A B} {b : LTm Γ (E ⊗t A) B} → Blk b → Blk (withE b)
 k-withE β = k-∘ (k-lift β) (k-∘ (k-⊗ (k-snd k-copy) k-id) k-lul⁻)
 
 -- the same, where `X` is all that is lent (a closure's environment)
-copyIn : ∀ {X A B} → LTm ε (X ⊗t A) B → Tm ε X A B
+copyIn : ∀ {Γ X A B} → LTm Γ (X ⊗t A) B → Tm Γ X A B
 copyIn b = blift b ∘l (bcopy ⊗l lid) ∘l lul⁻
 
-k-copyIn : ∀ {X A B} {b : LTm ε (X ⊗t A) B} → Blk b → Blk (copyIn b)
+k-copyIn : ∀ {Γ X A B} {b : LTm Γ (X ⊗t A) B} → Blk b → Blk (copyIn b)
 k-copyIn β = k-∘ (k-lift β) (k-∘ (k-⊗ k-copy k-id) k-lul⁻)
 
 -- the functor's action on a step
@@ -255,17 +273,17 @@ k-mapL (G ⊗f H) φ = k-⊗ (k-mapL G φ) (k-mapL H φ)
 InS : LF → LTy
 InS F = LF∙ F (Nu F) ⊕t Nu F
 
-inco : ∀ F → Tm ε One (InS F) (LF∙ F (InS F))
+inco : ∀ {Γ} F → Tm Γ One (InS F) (LF∙ F (InS F))
 inco F = lcase (mapL F linr) (mapL F linr ∘l lout)
 
-k-inco : ∀ F → Blk (inco F)
+k-inco : ∀ {Γ} F → Blk (inco {Γ} F)
 k-inco F = k-case (k-mapL F k-inr) (k-∘ (k-mapL F k-inr) k-nout)
 
-tr : ∀ {A B} → IR A B → LTm ε A B
+tr : ∀ {Γ A B} → IR Γ A B → LTm Γ A B
 -- a block translates to a block
-tr-blk : ∀ {A B} {f : IR A B} → BlkIR f → Blk (tr f)
+tr-blk : ∀ {Γ A B} {f : IR Γ A B} → BlkIR Γ f → Blk (tr f)
 -- a body at its grade, to the core's
-tr-gd : ∀ g {A B C} {f : IR (A ⊗t B) C} → GdIR g f → Gd g (copyIn (tr f))
+tr-gd : ∀ g {Γ A B C} {f : IR Γ (A ⊗t B) C} → GdIR Γ g f → Gd g (copyIn (tr f))
 
 tr id           = lid
 tr (g ∘ f)      = tr g ∘l tr f
@@ -291,6 +309,8 @@ tr (in-ν F)     = lunf ∘l (llamω (inco F) (k-inco F) ⊗l linl) ∘l lul⁻
 tr (Iter body φ) = dropl ∘l lend (liter (withE (tr body)) (k-withE (tr-blk φ)))
 tr (const v)    = lconst v
 tr (SigOp s)    = lop s
+-- the label's closure (its environment is `One`: no cell, no word), called
+tr (Call p)     = lapp p ∘l (lclo Idf p ⊗l lid) ∘l lul⁻
 
 tr-gd act φ = k-copyIn (tr-blk φ)
 tr-gd eff _ = tt
@@ -315,6 +335,31 @@ tr-blk i-Out        = k-nout
 tr-blk i-inν        = k-∘ k-unf (k-∘ (k-⊗ k-lamω k-inl) k-lul⁻)
 tr-blk i-const      = k-const
 tr-blk i-op         = k-op
+tr-blk i-call       = k-∘ k-app (k-∘ (k-⊗ k-clo k-id) k-lul⁻)
+
+------------------------------------------------------------------------
+-- 3½. ★ A PROGRAM: its definitions in order, each over the ones before
+-- (the Spec's `Program`), and its meaning and translation built in order.
+------------------------------------------------------------------------
+
+infixl 4 _▹_∣_
+data Prog : Cx → Set where
+  ε     : Prog ε
+  _▹_∣_ : ∀ {Γ g A B} → Prog Γ → (f : IR Γ A B) → GdIR Γ g f → Prog (Γ ▸ sg once g One A B)
+
+-- each definition means its body, at the meaning of the ones before
+⟦_⟧P : ∀ {Γ} → Prog Γ → Env Γ
+⟦ ε ⟧P                       = ε
+⟦ _▹_∣_ {g = g} P f γ ⟧P = ⟦ P ⟧P ▸ (λ _ a → evG ⟦ P ⟧P g f γ a)
+
+-- each definition, a label whose body is its translation
+tr-def : ∀ g {Γ A B} {f : IR Γ A B} → GdIR Γ g f → Gd g (tr f ∘l lul)
+tr-def act φ = k-∘ (tr-blk φ) k-lul
+tr-def eff _ = tt
+
+trP : ∀ {Γ} → Prog Γ → Defs Γ
+trP ε                       = ε
+trP (_▹_∣_ {g = g} P f γ) = trP P ▸ b1 (tr f ∘l lul) (tr-def g γ)
 
 ------------------------------------------------------------------------
 -- 4. ★ THE VALUE RELATION: the same value, up to what the meaning cannot
@@ -386,6 +431,21 @@ Vf-refl (fw b)   x        = refl
 Vf-refl (a f* b) (x , y)  = Vf-refl a x , Vf-refl b y
 Vf-refl (a f+ b) (inj₁ x) = ⊎₁ (Vf-refl a x)
 Vf-refl (a f+ b) (inj₂ y) = ⊎₂ (Vf-refl b y)
+
+-- ★ two meanings of the labels in scope, related entry by entry (as arrows)
+data VEnv : ∀ {Γ} → Env Γ → Env Γ → Set where
+  ε   : VEnv ε ε
+  _▸_ : ∀ {Γ σ} {ρ ρ′ : Env Γ} {f f′ : ⟦ env σ ⟧ → ⟦ dom σ ⟧ → Mg (gr σ) ⟦ cod σ ⟧}
+      → VEnv ρ ρ′
+      → (∀ {x x′ a a′} → V (env σ) x x′ → V (dom σ) a a′
+                       → up (gr σ) (f x a) ≈[ V (cod σ) ] up (gr σ) (f′ x′ a′))
+      → VEnv (_▸_ {σ = σ} ρ f) (_▸_ {σ = σ} ρ′ f′)
+
+lookupV : ∀ {Γ l σ} {ρ ρ′ : Env Γ} → VEnv ρ ρ′ → (p : Γ ∋[ l ] σ) → ∀ {x x′ a a′}
+        → V (env σ) x x′ → V (dom σ) a a′
+        → up (gr σ) (lookup ρ p x a) ≈[ V (cod σ) ] up (gr σ) (lookup ρ′ p x′ a′)
+lookupV (vρ ▸ h) here      = h
+lookupV (vρ ▸ h) (there p) = lookupV vρ p
 
 -- a layer of ν's, between the two views of it
 module _ {F : LF} where
@@ -480,7 +540,7 @@ module _ (F : LF) (A : LTy) (c₀ c₀′ : ⟦ A ⟧ → T ⟦ LF∙ F A ⟧)
   ana-V r = ana-sim (λ x → fmapT (coh F A) (c₀ x)) h (_ , refl , r)
 
 -- ★ Lambek's inverse, as the unfold `tr` builds, is the layer given
-module _ (F : LF) where
+module _ (F : LF) {Γ : Cx} (ρ : Env Γ) where
   private
     S : LTy
     S = InS F
@@ -502,7 +562,7 @@ module _ (F : LF) where
     mapI (G ⊕f H) (inj₂ y) = inj₂ (mapI H y)
     mapI (G ⊗f H) (x , y)  = (mapI G x , mapI H y)
 
-    mapI-ret : ∀ G y → Lᴮ ε (k-mapL G (k-inr {A = LF∙ F (Nu F)} {B = Nu F} {E = One})) tt y ≡ ret (mapI G y)
+    mapI-ret : ∀ G y → Lᴮ ρ (k-mapL G (k-inr {A = LF∙ F (Nu F)} {B = Nu F} {E = One})) tt y ≡ ret (mapI G y)
     mapI-ret Idf      u        = refl
     mapI-ret Kone     x        = refl
     mapI-ret Kzero    ()
@@ -533,7 +593,7 @@ module _ (F : LF) where
     lay₂ (G ⊗f H) {l₁ , l₂} (r , r′) = lay₂ G r , lay₂ H r′
 
     c : ⟦ S ⟧ → T (FS F ⟦ S ⟧)
-    c s = fmapT (coh F S) (Lᴮ ε (k-inco F) tt s)
+    c s = fmapT (coh F S) (Lᴮ ρ (k-inco F) tt s)
 
     -- a layer still to give: given now
     h₁ : ∀ {y m′} → TR (LR F F) (ret (coh F (Nu F) y)) m′ → TR (QL F) (ret (coh F S (mapI F y))) m′
@@ -542,7 +602,7 @@ module _ (F : LF) where
     -- a ν: observed once, its layer given
     h₂ : ∀ {m m′} → TR (LR F F) m m′
        → TR (QL F) (fmapT (coh F S) (bindT (fmapT (coh⁻¹ F (Nu F)) m)
-                                          (Lᴮ ε (k-mapL F (k-inr {A = LF∙ F (Nu F)} {B = Nu F} {E = One})) tt))) m′
+                                          (Lᴮ ρ (k-mapL F (k-inr {A = LF∙ F (Nu F)} {B = Nu F} {E = One})) tt))) m′
     h₂ (tret {x = l} r) = subst (λ z → TR (QL F) (fmapT (coh F S) z) _) (sym (mapI-ret F (coh⁻¹ F (Nu F) l)))
                                 (tret (lay₂ F r))
     h₂ (tcall f)        = tcall (λ y → h₂ (f y))
@@ -560,17 +620,17 @@ module _ (F : LF) where
 ------------------------------------------------------------------------
 
 -- the fold respects related algebras
-module _ {F : LF} {A : LTy} where
+module _ {Γ : Cx} {ρ ρ′ : Env Γ} {F : LF} {A : LTy} where
   RL : ∀ G → FS G ⟦ A ⟧ → FS G ⟦ A ⟧ → Set
   RL G y y′ = V (LF∙ G A) (coh⁻¹ G A y) (coh⁻¹ G A y′)
 
   mutual
     cata-congR : {alg alg′ : FS F ⟦ A ⟧ → T∞ ⟦ A ⟧} → (∀ {y y′} → RL F y y′ → alg y ≈[ V A ] alg′ y′)
-               → ∀ x → cataC ε F alg x ≈[ V A ] cataC ε F alg′ x
+               → ∀ x → cataC ρ F alg x ≈[ V A ] cataC ρ′ F alg′ x
     cata-congR aa (inμ w) = >>=-congR (trav-congR F aa w) aa
 
     trav-congR : ∀ G {alg alg′ : FS F ⟦ A ⟧ → T∞ ⟦ A ⟧} → (∀ {y y′} → RL F y y′ → alg y ≈[ V A ] alg′ y′)
-               → ∀ w → travC ε F G alg w ≈[ RL G ] travC ε F G alg′ w
+               → ∀ w → travC ρ F G alg w ≈[ RL G ] travC ρ′ F G alg′ w
     trav-congR Idf      aa y        = cata-congR aa y
     trav-congR Kone     aa y        = ret≈R tt
     trav-congR Kzero    aa ()
@@ -581,48 +641,61 @@ module _ {F : LF} {A : LTy} where
     trav-congR (G ⊗f H) aa (y , z)  =
       >>=-congR (trav-congR G aa y) (λ r → fmap-congR (trav-congR H aa z) (λ r′ → r , r′))
 
-mutual
-  pass-ok : ∀ {A B} (f : IR A B) {a a′} → V A a a′ → Lᶜ ε (tr f) tt a ≈[ V B ] ev f a′
-  pass-ok id           r = ret≈R r
-  pass-ok (g ∘ f)      r = >>=-congR (pass-ok f r) (pass-ok g)
-  pass-ok ⟨ f , g ⟩    r = ≈R-blk refl (>>=-congR (pass-ok f r) (λ rb → >>=-congR (pass-ok g r) (λ rc → ret≈R (rb , rc))))
-  pass-ok fst          {a , b} {a′ , b′} (ra , rb) = ≈R-blk refl (ret≈R ra)
-  pass-ok snd          {a , b} {a′ , b′} (ra , rb) = ≈R-blk refl (ret≈R rb)
-  pass-ok inl          r = ret≈R (⊎₁ r)
-  pass-ok inr          r = ret≈R (⊎₂ r)
-  pass-ok (case f g)   (⊎₁ r) = pass-ok f r
-  pass-ok (case f g)   (⊎₂ r) = pass-ok g r
-  pass-ok terminal     r = ret≈R tt
-  pass-ok initial      {()}
-  pass-ok (curry eff f γ) r = ret≈R (λ rb → ≈R-blk refl (pass-ok f (r , rb)))
-  pass-ok (curry act f φ) r = ret≈R (λ rb → blk-V f φ r rb)
-  pass-ok (apply {g} {A} {B}) {f , a} {f′ , a′} (rf , ra) =
-    ≈-≈R (pair-drop (f ,_) (λ p → Lᶜ ε (dropl {E = One} {A = Fn many g A B} {B = B}) tt p) (λ _ → refl)) (rf ra)
-  pass-ok (In F)       r = ret≈R (cong (λ z → inμ (coh F (μt F) z)) (VL≡ {X = μt F} F (λ e → e) r))
-  pass-ok (out-μ F)    refl = ret≈R (VL-refl {X = μt F} F (λ _ → refl) _)
-  pass-ok (Cata F {E} {R} alg) {e , x} {e′ , x′} (re , refl) =
-    ≈-≈R (pair-drop (e ,_) (λ p → Lᶜ ε (dropl {E = One} {A = E} {B = R}) tt p) (λ _ → refl))
-         (cata-congR {F = F} {A = R} (λ ry → ≈R-blk refl (pass-ok alg (re , ry))) x)
-  pass-ok (Ana F {E} {A} c φ) {e , a} {e′ , a′} (re , ra) =
-    ≈R-blk refl (ret≈R (ana-V F A (Lᴮ ε (k-copyIn (tr-blk φ)) e) (λ s → evB φ (e′ , s))
-                              (λ {s} {s′} rs → TR-emb _ _ (blk-V c φ re rs)) ra))
-  pass-ok (Out F)      {v} {v′} q = emb-TR (TR-bind (vout q) (λ r → tret (LR→V {F = F} F r)))
-  pass-ok (in-ν F)     r = ≈R-blk refl (ret≈R (inν-V F r))
-  pass-ok (Iter {E} {S} {R} body _) {e , a} {e′ , a′} (re , ra) =
-    ≈-≈R (pair-drop (e ,_) (λ p → Lᶜ ε (dropl {E = One} {A = E} {B = R}) tt p) (λ _ → refl))
-         (iter-congR (λ rs → ≈R-blk refl (pass-ok body (re , rs))) (≈R-blk refl (pass-ok body (re , ra))))
-  pass-ok (const v)    r = ret≈R refl
-  pass-ok (SigOp s)    {x} {x′} r =
-    subst (λ z → callT s x ≈[ V ⌜ scod s ⌝ ] callT s z) (Vf≡ (sdom s) r) (≈→≈R (Vf-refl (scod s)) ≈-refl)
+-- at related meanings of the definitions before
+module _ {Γ : Cx} {ρ ρ′ : Env Γ} (vρ : VEnv ρ ρ′) where
+  mutual
+    pass-ok : ∀ {A B} (f : IR Γ A B) {a a′} → V A a a′ → Lᶜ ρ (tr f) tt a ≈[ V B ] ev ρ′ f a′
+    pass-ok id           r = ret≈R r
+    pass-ok (g ∘ f)      r = >>=-congR (pass-ok f r) (pass-ok g)
+    pass-ok ⟨ f , g ⟩    r = ≈R-blk refl (>>=-congR (pass-ok f r) (λ rb → >>=-congR (pass-ok g r) (λ rc → ret≈R (rb , rc))))
+    pass-ok fst          {a , b} {a′ , b′} (ra , rb) = ≈R-blk refl (ret≈R ra)
+    pass-ok snd          {a , b} {a′ , b′} (ra , rb) = ≈R-blk refl (ret≈R rb)
+    pass-ok inl          r = ret≈R (⊎₁ r)
+    pass-ok inr          r = ret≈R (⊎₂ r)
+    pass-ok (case f g)   (⊎₁ r) = pass-ok f r
+    pass-ok (case f g)   (⊎₂ r) = pass-ok g r
+    pass-ok terminal     r = ret≈R tt
+    pass-ok initial      {()}
+    pass-ok (curry eff f γ) r = ret≈R (λ rb → ≈R-blk refl (pass-ok f (r , rb)))
+    pass-ok (curry act f φ) r = ret≈R (λ rb → blk-V f φ r rb)
+    pass-ok (apply {g} {A} {B}) {f , a} {f′ , a′} (rf , ra) =
+      ≈-≈R (pair-drop (f ,_) (λ p → Lᶜ ρ (dropl {E = One} {A = Fn many g A B} {B = B}) tt p) (λ _ → refl)) (rf ra)
+    pass-ok (In F)       r = ret≈R (cong (λ z → inμ (coh F (μt F) z)) (VL≡ {X = μt F} F (λ e → e) r))
+    pass-ok (out-μ F)    refl = ret≈R (VL-refl {X = μt F} F (λ _ → refl) _)
+    pass-ok (Cata F {E} {R} alg) {e , x} {e′ , x′} (re , refl) =
+      ≈-≈R (pair-drop (e ,_) (λ p → Lᶜ ρ (dropl {E = One} {A = E} {B = R}) tt p) (λ _ → refl))
+           (cata-congR {ρ = ρ} {ρ′} {F = F} {A = R} (λ ry → ≈R-blk refl (pass-ok alg (re , ry))) x)
+    pass-ok (Ana F {E} {A} c φ) {e , a} {e′ , a′} (re , ra) =
+      ≈R-blk refl (ret≈R (ana-V F A (Lᴮ ρ (k-copyIn (tr-blk φ)) e) (λ s → evB ρ′ φ (e′ , s))
+                                (λ {s} {s′} rs → TR-emb _ _ (blk-V c φ re rs)) ra))
+    pass-ok (Out F)      {v} {v′} q = emb-TR (TR-bind (vout q) (λ r → tret (LR→V {F = F} F r)))
+    pass-ok (in-ν F)     r = ≈R-blk refl (ret≈R (inν-V F ρ r))
+    pass-ok (Iter {E} {S} {R} body _) {e , a} {e′ , a′} (re , ra) =
+      ≈-≈R (pair-drop (e ,_) (λ p → Lᶜ ρ (dropl {E = One} {A = E} {B = R}) tt p) (λ _ → refl))
+           (iter-congR (λ rs → ≈R-blk refl (pass-ok body (re , rs))) (≈R-blk refl (pass-ok body (re , ra))))
+    pass-ok (const v)    r = ret≈R refl
+    pass-ok (SigOp s)    {x} {x′} r =
+      subst (λ z → callT s x ≈[ V ⌜ scod s ⌝ ] callT s z) (Vf≡ (sdom s) r) (≈→≈R (Vf-refl (scod s)) ≈-refl)
+    -- a call: the two meanings of the label, at related arguments
+    pass-ok (Call p)     r = ≈R-blk refl (lookupV vρ p tt r)
 
-  -- a body of grade `act`, in its closure: its block, related to the IR's
-  blk-V : ∀ {X A B} (f : IR (X ⊗t A) B) (φ : BlkIR f) {x x′ a a′} → V X x x′ → V A a a′
-        → emb (Lᴮ ε (k-copyIn (tr-blk φ)) x a) ≈[ V B ] emb (evB φ (x′ , a′))
-  blk-V f φ {x} {x′} {a} {a′} rx ra =
-    ≈-≈R (≈-sym (blk-coh ε (k-copyIn (tr-blk φ)) x a))
-         (≈R-blk refl (≈R-≈ (pass-ok f (rx , ra)) (ev-coh φ (x′ , a′))))
+    -- a body of grade `act`, in its closure: its block, related to the IR's
+    blk-V : ∀ {X A B} (f : IR Γ (X ⊗t A) B) (φ : BlkIR Γ f) {x x′ a a′} → V X x x′ → V A a a′
+          → emb (Lᴮ ρ (k-copyIn (tr-blk φ)) x a) ≈[ V B ] emb (evB ρ′ φ (x′ , a′))
+    blk-V f φ {x} {x′} {a} {a′} rx ra =
+      ≈-≈R (≈-sym (blk-coh ρ (k-copyIn (tr-blk φ)) x a))
+           (≈R-blk refl (≈R-≈ (pass-ok f (rx , ra)) (ev-coh ρ′ φ (x′ , a′))))
 
--- ★ where the program's types are first-order, the relation is `≡`: plain
--- bisimilarity (`Whole`)
-pass-okᶠ : ∀ a b (f : IR ⌜ a ⌝ ⌜ b ⌝) x → Lᶜ ε (tr f) tt x ≈ ev f x
-pass-okᶠ a b f x = ≈R→≈ (Vf≡ b) (pass-ok f (Vf-refl a x))
+  -- ★ where the types are first-order, the relation is `≡`: plain
+  -- bisimilarity (`Whole`)
+  pass-okᶠ : ∀ a b (f : IR Γ ⌜ a ⌝ ⌜ b ⌝) x → Lᶜ ρ (tr f) tt x ≈ ev ρ′ f x
+  pass-okᶠ a b f x = ≈R→≈ (Vf≡ b) (pass-ok f (Vf-refl a x))
+
+-- ★ A PROGRAM: its translated table means what its definitions mean, label
+-- by label (each by the theorem, at the ones before it)
+pass-okP : ∀ {Γ} (P : Prog Γ) → VEnv ⟦ trP P ⟧D ⟦ P ⟧P
+pass-okP ε = ε
+pass-okP (_▹_∣_ {g = eff} P f γ) = pass-okP P ▸ λ rx ra → ≈R-blk refl (pass-ok (pass-okP P) f ra)
+pass-okP (_▹_∣_ {g = act} P f φ) = pass-okP P ▸ λ {x} {x′} {a} {a′} rx ra →
+  ≈-≈R (≈-sym (blk-coh ⟦ trP P ⟧D (k-∘ (tr-blk φ) k-lul) tt (x , a)))
+       (≈R-blk refl (≈R-≈ (pass-ok (pass-okP P) f ra) (ev-coh ⟦ P ⟧P φ a′)))
