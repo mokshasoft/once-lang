@@ -244,6 +244,14 @@ module Lowering (U : Univ)
     let c = Tp φ S ∸ 1
     in restore-input c ∷ addr-at 2 ∷ mov-to-input ∷ instr-save-closure-reg
        ∷ restore-input c ∷ mov-to-output ∷ instr-call-closure ∷ [] , m
+  -- a trampoline's cell part (D417): only in a trampoline's block, which is
+  -- never lowered here — a trampoline's flat code is `tramp`, below
+  lowI φ j m open1 ev   = [] , m
+  lowI φ j m openω ev   = [] , m
+  lowI φ j m nopen ev   = [] , m
+  lowI φ j m copen ev   = [] , m
+  lowI φ j m reclose ev = [] , m
+  lowI φ j m fopen ev   = [] , m
   -- ★ the loop: the round, its end the dispatch; `inr` turns, `inl` falls through
   lowI φ j m (loop {E} {Es} {A} {B} {S} c) ev =
     let Lh = jl j m ; Ld = jl j (suc m) ; Li = jl j (suc (suc m))
@@ -342,6 +350,13 @@ module Lowering (U : Univ)
        ∷ lea-slot 0 ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf j)) ∷ instr-ctrl (c-ret (suc w)) ∷ []
   -- a fold is never called through a cell
   tramp j (kfold ds F alg) = []
+  -- the image's trampoline keys (D417) are not in the universe: their
+  -- blocks' flat code is the code above, at their block's key
+  tramp j (ktr1 ds b γ) = []
+  tramp j (ktrω ds b γ) = []
+  tramp j (ktro ds F S) = []
+  tramp j (ktrc X C)    = []
+  tramp j (ktrf X C)    = []
 
   ----------------------------------------------------------------------
   -- 5. ★ THE IMAGE: the start, then every key's block and trampoline.

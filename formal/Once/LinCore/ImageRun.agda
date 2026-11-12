@@ -12,12 +12,13 @@
 --   * a loop's round runs with its continuation pushed silently (no frame:
 --     A16 expands it inline);
 --   * the code-word instructions dispatch on the cell's `Lam` (or its ν's
---     contents): each becomes a direct call of the block the cell names.
+--     contents): each calls the trampoline the cell names (D417), which
+--     does the cell's part and calls the block, as the flat run does.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --guardedness #-}
 
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; suc)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (just; nothing)
 open import Data.Sum using (inj₁; inj₂)
@@ -124,35 +125,71 @@ data StepI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg
   i-loop   : ∀ {E Es A B S U} {body : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)}
                {k : Codeᴵ (E ∷ Es ∣ B ∷ S) U} {r : Ret U T} {m n}
            → StepI (loop body ⨾ k) r m n [] body (case k (loop body ⨾ k) ∷ⁱ r) m n
-  -- ★ THROUGH A CELL'S CODE WORD: each a direct call of the block it names
-  i-icall  : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {Δ} {ds′ : Defs Δ}
-               {b : Tm Δ One (X ⊗t A) B} {γ : Gd g b} {es i x a os n}
-           → StepI (icall ⨾ k) r (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) n (free i ∷ [])
-                   (call (kbody1 ds′ b γ) ⨾ k) r (es ∥ mpair x a ∷ˢ os) n
-  i-icallω : ∀ {Es g X A B S U} {k : Codeᴵ (Fn many g A B ∷ Es ∣ B ∷ S) U} {r : Ret U T} {Δ} {ds′ : Defs Δ}
-               {b : Tm Δ X A B} {γ : Gd g b} {i x} {es : Slots (Fn many g A B ∷ Es)} {os n}
-           → see es ≡ mfn i (cω ds′ b γ) x
-           → StepI (icallω ⨾ k) r (es ∥ os) n (peek i ∷ []) (call (kbodyω ds′ b γ) ⨾ epop ⨾ k) r (vw x es ∥ os) n
-  i-iobs   : ∀ {Γ} {ds : Defs Γ} {Es F S S′ U} {k : Codeᴵ (Es ∣ LF∙ F (Nu F) ∷ S′) U} {r : Ret U T} {es i} {p : MV (Coalg F S ⊗t S)} {os n}
-           → StepI (iobs ds ⨾ k) r (es ∥ mnu i p ∷ˢ os) n (free i ∷ []) (call (kobs ds F S) ⨾ k) r (es ∥ p ∷ˢ os) n
-  -- a copy: what the cell holds, then a cell with the same code word
-  i-ccopy1 : ∀ {Es g X A B S U} {k : Codeᴵ (Fn once g A B ∷ Es ∣ Fn once g A B ∷ S) U} {r : Ret U T} {Δ}
-               {ds′ : Defs Δ} {b : Tm Δ One (X ⊗t A) B} {γ : Gd g b} {i x} {es : Slots (Fn once g A B ∷ Es)} {os n}
-           → see es ≡ mfn i (c1 ds′ b γ) x
-           → StepI (ccopy ⨾ k) r (es ∥ mone ∷ˢ os) n []
-                   (call (kcopy X) ⨾ epop ⨾ prim ds′ (llam b γ) ⨾ k) r (vw x es ∥ mone ∷ˢ os) n
-  i-ccopyω : ∀ {Es g X A B S U} {k : Codeᴵ (Fn many g A B ∷ Es ∣ Fn many g A B ∷ S) U} {r : Ret U T} {Δ}
-               {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b} {i x} {es : Slots (Fn many g A B ∷ Es)} {os n}
-           → see es ≡ mfn i (cω ds′ b γ) x
-           → StepI (ccopy ⨾ k) r (es ∥ mone ∷ˢ os) n []
-                   (call (kcopy X) ⨾ epop ⨾ prim ds′ (llamω b γ) ⨾ k) r (vw x es ∥ mone ∷ˢ os) n
+  -- ★ THROUGH A CELL'S CODE WORD (D417): a call of the trampoline the cell
+  -- names, in a frame of its own, as `i-call` (the flat run's
+  -- `instr-call-closure`): the caller's top view (a copy's) and the operand
+  i-icall  : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots Es} {i}
+               {lam : Lam once g X A B} {x a} {os : Stk S} {n}
+           → StepI (icall ⨾ k) r (es ∥ mpair (mfn i lam x) a ∷ˢ os) n (tmp (tnew fsz) ∷ [])
+                   (blockᴵ (tr1 lam)) (frm {t = nothing} k es os r) ([]ᵉ ∥ mpair (mfn i lam x) a ∷ˢ []ˢ) n
+  i-icallω : ∀ {Es g X A B S U} {k : Codeᴵ (Fn many g A B ∷ Es ∣ B ∷ S) U} {r : Ret U T}
+               {lam : Lam many g X A B} {i x} {es : Slots (Fn many g A B ∷ Es)} {a} {os : Stk S} {n}
+           → see es ≡ mfn i lam x
+           → StepI (icallω ⨾ k) r (es ∥ a ∷ˢ os) n (tmp (tnew fsz) ∷ [])
+                   (blockᴵ (trω lam)) (frm {t = just _} k es os r) (vw (see es) []ᵉ ∥ a ∷ˢ []ˢ) n
+  i-iobs   : ∀ {Γ} {ds : Defs Γ} {Es F S S′ U} {k : Codeᴵ (Es ∣ LF∙ F (Nu F) ∷ S′) U} {r : Ret U T} {es : Slots Es} {i}
+               {p : MV (Coalg F S ⊗t S)} {os : Stk S′} {n}
+           → StepI (iobs ds ⨾ k) r (es ∥ mnu i p ∷ˢ os) n (tmp (tnew fsz) ∷ [])
+                   (blockᴵ (ktro ds F S)) (frm {t = nothing} k es os r) ([]ᵉ ∥ mnu i p ∷ˢ []ˢ) n
+  i-ccopy  : ∀ {Es kd g X A B S U} {k : Codeᴵ (Fn kd g A B ∷ Es ∣ Fn kd g A B ∷ S) U} {r : Ret U T}
+               {lam : Lam kd g X A B} {i x} {es : Slots (Fn kd g A B ∷ Es)} {os : Stk S} {n}
+           → see es ≡ mfn i lam x
+           → StepI (ccopy ⨾ k) r (es ∥ mone ∷ˢ os) n (tmp (tnew fsz) ∷ [])
+                   (blockᴵ (ktrc X (Fn kd g A B))) (frm {t = just _} k es os r) (vw (see es) []ᵉ ∥ mone ∷ˢ []ˢ) n
   i-ncopy  : ∀ {Es F S S′ U} {k : Codeᴵ (Nu F ∷ Es ∣ Nu F ∷ S′) U} {r : Ret U T} {i} {p : MV (Coalg F S ⊗t S)}
-               {es : Slots (Nu F ∷ Es)} {os n}
+               {es : Slots (Nu F ∷ Es)} {os : Stk S′} {n}
            → see es ≡ mnu i p
-           → StepI (ncopy ⨾ k) r (es ∥ mone ∷ˢ os) n []
-                   (call (kcopy (Coalg F S ⊗t S)) ⨾ epop ⨾ prim ε (lunf {F = F} {S}) ⨾ k) r (vw p es ∥ mone ∷ˢ os) n
-  -- a free: the cell, then what it held
-  i-cfree  : ∀ {Es k g X A B S U} {c : Codeᴵ (Es ∣ One ∷ S) U} {r : Ret U T} {es i} {lam : Lam k g X A B} {x : MV X} {os n}
-           → StepI (cfree ⨾ c) r (es ∥ mfn i lam x ∷ˢ os) n (free i ∷ []) (call (kfree X) ⨾ c) r (es ∥ x ∷ˢ os) n
-  i-nfree  : ∀ {Es F S S′ U} {c : Codeᴵ (Es ∣ One ∷ S′) U} {r : Ret U T} {es i} {p : MV (Coalg F S ⊗t S)} {os n}
-           → StepI (nfree ⨾ c) r (es ∥ mnu i p ∷ˢ os) n (free i ∷ []) (call (kfree (Coalg F S ⊗t S)) ⨾ c) r (es ∥ p ∷ˢ os) n
+           → StepI (ncopy ⨾ k) r (es ∥ mone ∷ˢ os) n (tmp (tnew fsz) ∷ [])
+                   (blockᴵ (ktrc (Coalg F S ⊗t S) (Nu F))) (frm {t = just _} k es os r) (vw (see es) []ᵉ ∥ mone ∷ˢ []ˢ) n
+  i-cfree  : ∀ {Es kd g X A B S U} {c : Codeᴵ (Es ∣ One ∷ S) U} {r : Ret U T} {es : Slots Es} {i}
+               {lam : Lam kd g X A B} {x : MV X} {os : Stk S} {n}
+           → StepI (cfree ⨾ c) r (es ∥ mfn i lam x ∷ˢ os) n (tmp (tnew fsz) ∷ [])
+                   (blockᴵ (ktrf X (Fn kd g A B))) (frm {t = nothing} c es os r) ([]ᵉ ∥ mfn i lam x ∷ˢ []ˢ) n
+  i-nfree  : ∀ {Es F S S′ U} {c : Codeᴵ (Es ∣ One ∷ S′) U} {r : Ret U T} {es : Slots Es} {i}
+               {p : MV (Coalg F S ⊗t S)} {os : Stk S′} {n}
+           → StepI (nfree ⨾ c) r (es ∥ mnu i p ∷ˢ os) n (tmp (tnew fsz) ∷ [])
+                   (blockᴵ (ktrf (Coalg F S ⊗t S) (Nu F))) (frm {t = nothing} c es os r) ([]ᵉ ∥ mnu i p ∷ˢ []ˢ) n
+  -- ★ a trampoline's cell part (D417)
+  -- a one-shot closure: its environment beside the argument, the cell freed
+  i-open1  : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ (X ⊗t A) ∷ S) U} {r : Ret U T} {es i}
+               {lam : Lam once g X A B} {x a os n}
+           → StepI (open1 ⨾ k) r (es ∥ mpair (mfn i lam x) a ∷ˢ os) n (free i ∷ []) k r (es ∥ mpair x a ∷ˢ os) n
+  -- a many-use closure: its environment viewed
+  i-openω  : ∀ {Es g X A B S U} {k : Codeᴵ (X ∷ Fn many g A B ∷ Es ∣ S) U} {r : Ret U T}
+               {lam : Lam many g X A B} {i x} {es : Slots (Fn many g A B ∷ Es)} {os n}
+           → see es ≡ mfn i lam x → StepI (openω ⨾ k) r (es ∥ os) n (peek i ∷ []) k r (vw x es ∥ os) n
+  -- a ν: its coalgebra and seed, the cell freed
+  i-nopen  : ∀ {Es F S S′ U} {k : Codeᴵ (Es ∣ (Coalg F S ⊗t S) ∷ S′) U} {r : Ret U T} {es i}
+               {p : MV (Coalg F S ⊗t S)} {os n}
+           → StepI (nopen ⨾ k) r (es ∥ mnu i p ∷ˢ os) n (free i ∷ []) k r (es ∥ p ∷ˢ os) n
+  -- a copy: the viewed cell's contents viewed …
+  i-copen  : ∀ {Es kd g X A B S U} {k : Codeᴵ (X ∷ Fn kd g A B ∷ Es ∣ S) U} {r : Ret U T}
+               {lam : Lam kd g X A B} {i x} {es : Slots (Fn kd g A B ∷ Es)} {os n}
+           → see es ≡ mfn i lam x → StepI (copen ⨾ k) r (es ∥ os) n [] k r (vw x es ∥ os) n
+  i-copenν : ∀ {Es F S S′ U} {k : Codeᴵ ((Coalg F S ⊗t S) ∷ Nu F ∷ Es ∣ S′) U} {r : Ret U T}
+               {i} {p : MV (Coalg F S ⊗t S)} {es : Slots (Nu F ∷ Es)} {os n}
+           → see es ≡ mnu i p → StepI (copen ⨾ k) r (es ∥ os) n [] k r (vw p es ∥ os) n
+  -- … then a fresh cell around their copy, with the viewed cell's code words
+  i-reclose : ∀ {Es kd g X A B S U} {k : Codeᴵ (Fn kd g A B ∷ Es ∣ Fn kd g A B ∷ S) U} {r : Ret U T}
+                {lam : Lam kd g X A B} {i x} {es : Slots (Fn kd g A B ∷ Es)} {x′ : MV X} {os n}
+            → see es ≡ mfn i lam x
+            → StepI (reclose ⨾ k) r (es ∥ x′ ∷ˢ os) n (alloc (szc X , n) ∷ []) k r (es ∥ mfn (szc X , n) lam x′ ∷ˢ os) (suc n)
+  i-recloseν : ∀ {Es F S S′ U} {k : Codeᴵ (Nu F ∷ Es ∣ Nu F ∷ S′) U} {r : Ret U T}
+                 {i} {p : MV (Coalg F S ⊗t S)} {es : Slots (Nu F ∷ Es)} {p′ : MV (Coalg F S ⊗t S)} {os n}
+             → see es ≡ mnu i p
+             → StepI (reclose ⨾ k) r (es ∥ p′ ∷ˢ os) n (alloc (szν F S , n) ∷ []) k r (es ∥ mnu (szν F S , n) p′ ∷ˢ os) (suc n)
+  -- a free: the cell freed, what it held out
+  i-fopen  : ∀ {Es kd g X A B S U} {k : Codeᴵ (Es ∣ X ∷ S) U} {r : Ret U T} {es i} {lam : Lam kd g X A B} {x : MV X} {os n}
+           → StepI (fopen ⨾ k) r (es ∥ mfn i lam x ∷ˢ os) n (free i ∷ []) k r (es ∥ x ∷ˢ os) n
+  i-fopenν : ∀ {Es F S S′ U} {k : Codeᴵ (Es ∣ (Coalg F S ⊗t S) ∷ S′) U} {r : Ret U T} {es i} {p : MV (Coalg F S ⊗t S)} {os n}
+           → StepI (fopen ⨾ k) r (es ∥ mnu i p ∷ˢ os) n (free i ∷ []) k r (es ∥ p ∷ˢ os) n

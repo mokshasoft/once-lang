@@ -193,25 +193,47 @@ thenR (stop _)    a s = thenP a s
 -- ★ A CALL: the block run to its end in a frame of its own (D415: the
 -- caller's top view and the argument), the caller's configuration saved
 -- below; then the return puts the result back on it (A16's `enter … leave`)
+-- ★ ENTERED by a step that opens the frame: a call, or a dispatch through a
+-- cell's code word into its trampoline (D417)
+Enters : ∀ {T} t {Es A B S U} → Codeᴵ (t ⊳ Es ∣ A ∷ S) U → Codeᴵ (t ⊳ [] ∣ A ∷ []) (t ⊳ [] ∣ B ∷ [])
+       → Codeᴵ (t ⊳ Es ∣ B ∷ S) U → Ret U T → Slots (t ⊳ Es) → MV A → Stk S → ℕ → Set
+Enters t c₀ blk k r es a os n =
+  StepI c₀ r (es ∥ a ∷ˢ os) n (tmp (tnew fsz) ∷ []) blk (frm {t = t} k es os r) (topv t es ∥ a ∷ˢ []ˢ) n
+
+called′ : ∀ {T t Es A B S U sh′ U′} {c₀ : Codeᴵ (t ⊳ Es ∣ A ∷ S) U} {blk : Codeᴵ (t ⊳ [] ∣ A ∷ []) (t ⊳ [] ∣ B ∷ [])}
+            {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) U} {r : Ret U T}
+            {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {es : Slots (t ⊳ Es)} {a os} {e₁ b₁} {m′ n n₁ n′ tr}
+        → Enters t c₀ blk k r es a os n
+        → OutI blk (frm {t = t} k es os r) (topv t es ∥ a ∷ˢ []ˢ) n tr end (frm {t = t} k es os r) (e₁ ∥ b₁ ∷ˢ []ˢ) n₁
+        → OutI k r (es ∥ b₁ ∷ˢ os) n₁ [] c′ r′ m′ n′
+        → OutI c₀ r (es ∥ a ∷ˢ os) n tr c′ r′ m′ n′
+called′ {tr = tr} x (out ts mt st w b) (out ts₂ mt₂ st₂ w₂ b₂) =
+  subst (λ z → OutI _ _ _ _ z _ _ _ _) (++-identityʳ tr)
+    (then {t₁ = tr} {t₂ = []} (out (tnew fsz ∷ (ts ++ tdel fsz ∷ [])) (tmp (tnew fsz) ∷ (mt ++ tmp (tdel fsz) ∷ []))
+               (x ⟫ stepsI-++ st (oneI i-ret))
+               (w-tmp (subst (λ z → Weave tmp z (ts ++ tdel fsz ∷ []) (mt ++ tmp (tdel fsz) ∷ []))
+                             (++-identityʳ (erase tr)) (w-++ w (w-tmp w-[]))))
+               (bracket fsz ts b))
+          (out ts₂ mt₂ st₂ w₂ b₂))
+
+calledP′ : ∀ {T t Es A B S U} {c₀ : Codeᴵ (t ⊳ Es ∣ A ∷ S) U} {blk : Codeᴵ (t ⊳ [] ∣ A ∷ []) (t ⊳ [] ∣ B ∷ [])}
+             {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots (t ⊳ Es)} {a os n tr}
+         → Enters t c₀ blk k r es a os n
+         → PausedI blk (frm {t = t} k es os r) (topv t es ∥ a ∷ˢ []ˢ) n tr → PausedI c₀ r (es ∥ a ∷ˢ os) n tr
+calledP′ x (paused c′ r′ m′ n′ ts mt t₀ st w p cl l) =
+  paused c′ r′ m′ n′ (tnew fsz ∷ ts) (tmp (tnew fsz) ∷ mt) t₀ (x ⟫ st) (w-tmp w) p cl (opened fsz ts l)
+
 called : ∀ {T σ Es S U sh′ U′} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) U} {r : Ret U T}
            {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {es : Slots (top σ ⊳ Es)} {a os} {e₁ b₁} {m′ n n₁ n′ t}
        → OutI (blockᴵ κ) (frm {t = top σ} k es os r) (topv (top σ) es ∥ a ∷ˢ []ˢ) n t end (frm {t = top σ} k es os r) (e₁ ∥ b₁ ∷ˢ []ˢ) n₁
        → OutI k r (es ∥ b₁ ∷ˢ os) n₁ [] c′ r′ m′ n′
        → OutI (call κ ⨾ k) r (es ∥ a ∷ˢ os) n t c′ r′ m′ n′
-called {t = t} (out ts mt st w b) (out ts₂ mt₂ st₂ w₂ b₂) =
-  subst (λ z → OutI _ _ _ _ z _ _ _ _) (++-identityʳ t)
-    (then {t₁ = t} {t₂ = []} (out (tnew fsz ∷ (ts ++ tdel fsz ∷ [])) (tmp (tnew fsz) ∷ (mt ++ tmp (tdel fsz) ∷ []))
-               (i-call ⟫ stepsI-++ st (oneI i-ret))
-               (w-tmp (subst (λ z → Weave tmp z (ts ++ tdel fsz ∷ []) (mt ++ tmp (tdel fsz) ∷ []))
-                             (++-identityʳ (erase t)) (w-++ w (w-tmp w-[]))))
-               (bracket fsz ts b))
-          (out ts₂ mt₂ st₂ w₂ b₂))
+called = called′ i-call
 
 calledP : ∀ {T σ Es S U} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) U} {r : Ret U T}
             {es : Slots (top σ ⊳ Es)} {a os n t}
         → PausedI (blockᴵ κ) (frm {t = top σ} k es os r) (topv (top σ) es ∥ a ∷ˢ []ˢ) n t → PausedI (call κ ⨾ k) r (es ∥ a ∷ˢ os) n t
-calledP (paused c′ r′ m′ n′ ts mt t₀ st w p cl l) =
-  paused c′ r′ m′ n′ (tnew fsz ∷ ts) (tmp (tnew fsz) ∷ mt) t₀ (i-call ⟫ st) (w-tmp w) p cl (opened fsz ts l)
+calledP = calledP′ i-call
 
 -- a stretch whose trace gains `++ []`
 P-[] : ∀ {T sh U} {c : Codeᴵ sh U} {r : Ret U T} {m n t} → PausedI c r m n t → PausedI c r m n (t ++ [])
@@ -263,12 +285,14 @@ mutual
   ... | (v′ , n₁ , t₁) | cv = pre (i-eoutq e) (then (after cv i-epop) (leaf (i-prim r-In) (k-alloc ∷ [])))
   copyB (mct x) e n with copy x n | copyS x refl []ˢ n
   ... | (x′ , n₁ , t₁) | cx = pre (i-eapp e) (after (after cx i-epop) i-tag₁)
-  copyB (mfn i (c1 ds b γ) x) e n with copy x n | copyS x refl []ˢ n
-  ... | (x′ , n₁ , t₁) | cx = pre (i-ccopy1 e) (then (after cx i-epop) (leaf (i-prim r-lam) (k-alloc ∷ [])))
-  copyB (mfn i (cω ds b γ) x) e n with copy x n | copyS x refl []ˢ n
-  ... | (x′ , n₁ , t₁) | cx = pre (i-ccopyω e) (then (after cx i-epop) (leaf (i-prim r-lamω) (k-alloc ∷ [])))
+  -- ★ a cell: its trampoline (D417) views the contents, copies them, and
+  -- builds a cell with the same code words
+  copyB (mfn i lam x) e n with copy x n | copyS x refl []ˢ n
+  ... | (x′ , n₁ , t₁) | cx =
+    called′ (i-ccopy e) (pre (i-copen e) (then (after cx i-epop) (leaf (i-reclose e) (k-alloc ∷ [])))) doneO
   copyB (mnu i p) e n with copy p n | copyS p refl []ˢ n
-  ... | (p′ , n₁ , t₁) | cp = pre (i-ncopy e) (then (after cp i-epop) (leaf (i-prim r-unf) (k-alloc ∷ [])))
+  ... | (p′ , n₁ , t₁) | cp =
+    called′ (i-ncopy e) (pre (i-copenν e) (then (after cp i-epop) (leaf (i-recloseν e) (k-alloc ∷ [])))) doneO
 
 ------------------------------------------------------------------------
 -- 4. ★ THE FREE BLOCK: `Events.freeAll`, by induction on the value; each
@@ -292,8 +316,9 @@ mutual
   freeB (minr b) n = pre i-case₂ (freeS b []ˢ n)
   freeB (mmu i v) n = then (leaf (i-prim r-Outμ) (k-free ∷ [])) (freeS v []ˢ n)
   freeB (mct x) n = pre i-untag₁ (freeS x []ˢ n)
-  freeB (mfn i lam x) n = then (leaf i-cfree (k-free ∷ [])) (freeS x []ˢ n)
-  freeB (mnu i p) n = then (leaf i-nfree (k-free ∷ [])) (freeS p []ˢ n)
+  -- ★ a cell: its trampoline (D417) frees it, then frees what it held
+  freeB (mfn i lam x) n = called′ i-cfree (then (leaf i-fopen (k-free ∷ [])) (freeS x []ˢ n)) doneO
+  freeB (mnu i p) n = called′ i-nfree (then (leaf i-fopenν (k-free ∷ [])) (freeS p []ˢ n)) doneO
 
 ------------------------------------------------------------------------
 -- 5. MORE COMBINATORS: a view around, a call by outcome, a cut, the run's
@@ -302,19 +327,25 @@ mutual
 
 -- a call by the run's outcome: a block that reads no view, and one that
 -- reads the top view
+calledR′ : ∀ {T t A Es B S U} (o : Outcome B) {c₀ : Codeᴵ (t ⊳ Es ∣ A ∷ S) U} {blk : Codeᴵ (t ⊳ [] ∣ A ∷ []) (t ⊳ [] ∣ B ∷ [])}
+             {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) U} {ρ : Ret U T} {a n tr} {es : Slots (t ⊳ Es)} {os : Stk S}
+         → Enters t c₀ blk k ρ es a os n
+         → SimRI o blk (frm {t = t} k es os ρ) (topv t es ∥ a ∷ˢ []ˢ) n tr end (frm {t = t} k es os ρ) (topv t es) []ˢ
+         → SimRI o c₀ ρ (es ∥ a ∷ˢ os) n tr k ρ es os
+calledR′ (gives _ _) x s = called′ x s doneO
+calledR′ (stop _)    x s = calledP′ x s
+
 calledR : ∀ {T A Es B S U} (o : Outcome B) {κ : Key (bsig nothing A B)} {k : Codeᴵ (Es ∣ B ∷ S) U} {ρ : Ret U T}
             {a n t} {es : Slots Es} {os : Stk S}
           → SimRI o (blockᴵ κ) (frm {t = nothing} k es os ρ) ([]ᵉ ∥ a ∷ˢ []ˢ) n t end (frm {t = nothing} k es os ρ) []ᵉ []ˢ
           → SimRI o (call κ ⨾ k) ρ (es ∥ a ∷ˢ os) n t k ρ es os
-calledR (gives _ _) s = called s doneO
-calledR (stop _)    s = calledP s
+calledR o = calledR′ o i-call
 
 calledRω : ∀ {T X A Es B S U} (o : Outcome B) {κ : Key (bsig (just X) A B)} {k : Codeᴵ (X ∷ Es ∣ B ∷ S) U} {ρ : Ret U T}
              {a n t} {es : Slots (X ∷ Es)} {os : Stk S}
            → SimRI o (blockᴵ κ) (frm {t = just X} k es os ρ) (vw (see es) []ᵉ ∥ a ∷ˢ []ˢ) n t end (frm {t = just X} k es os ρ) (vw (see es) []ᵉ) []ˢ
            → SimRI o (call κ ⨾ k) ρ (es ∥ a ∷ˢ os) n t k ρ es os
-calledRω (gives _ _) s = called s doneO
-calledRω (stop _)    s = calledP s
+calledRω o = calledR′ o i-call
 
 -- a view opened by a silent step, closed after
 around : ∀ {T E′ Es B S S₀ U V} (o : Outcome B) {c₀ : Codeᴵ (Es ∣ S₀) U} {r₀ : Ret U T}
@@ -444,18 +475,23 @@ mutual
   simI r-lam   fr es eq os k ρ = leaf (i-prim r-lam) (k-alloc ∷ [])
   simI r-lamω  fr es eq os k ρ = leaf (i-prim r-lamω) (k-alloc ∷ [])
   simI r-unf   fr es eq os k ρ = leaf (i-prim r-unf) (k-alloc ∷ [])
-  -- ★ through a cell's code word: a call of the block it names
+  -- ★ through a cell's code word: its trampoline (D417), which does the
+  -- cell's part and calls the block
   simI (r-nout {o = o} r) p es eq os k ρ =
-    thenR o (leaf i-iobs (k-free ∷ [])) (calledR o (around o i-elift (simI r p (vw mone []ᵉ) refl []ˢ _ (frm {t = nothing} k es os ρ))))
+    calledR′ o i-iobs (thenR o (leaf i-nopen (k-free ∷ []))
+      (calledR o (around o i-elift (simI r p (vw mone []ᵉ) refl []ˢ _ (frm {t = nothing} end []ᵉ []ˢ (frm {t = nothing} k es os ρ))))))
   simI (r-ev {o = o} r) p es eq os k ρ =
-    thenR o (leaf i-icall (k-free ∷ [])) (calledR o (around o i-elift (simI r p (vw mone []ᵉ) refl []ˢ _ (frm {t = nothing} k es os ρ))))
+    calledR′ o i-icall (thenR o (leaf i-open1 (k-free ∷ []))
+      (calledR o (around o i-elift (simI r p (vw mone []ᵉ) refl []ˢ _ (frm {t = nothing} end []ᵉ []ˢ (frm {t = nothing} k es os ρ))))))
   simI (r-bev {B = B} {ds′ = ds′} {b = b} {γ = γ} {i = i} {x} {a} {o} {n} r) p es eq os k ρ =
-    bevR o (calledRω o (simI r p (vw x []ᵉ) refl []ˢ end (frm {t = just _} (epop ⨾ k) (vw x es) os ρ)))
+    calledR′ o (i-icallω eq) (bevR o (calledRω o (simI r p (vw x []ᵉ) refl []ˢ end (frm {t = just _} (epop ⨾ end) (vw x E′) []ˢ R′))))
     where
-      bevR : (o : Outcome B) → ∀ {t} → SimRI o (call (kbodyω ds′ b γ) ⨾ epop ⨾ k) ρ (vw x es ∥ a ∷ˢ os) n t (epop ⨾ k) ρ (vw x es) os
-           → SimRI o (icallω ⨾ k) ρ (es ∥ a ∷ˢ os) n (peek i ∷ t) k ρ es os
-      bevR (gives _ _) r′ = then (leaf (i-icallω eq) (k-peek ∷ [])) (after r′ i-epop)
-      bevR (stop _)    r′ = thenP (leaf (i-icallω eq) (k-peek ∷ [])) r′
+      E′ = vw (see es) []ᵉ
+      R′ = frm {t = just _} k es os ρ
+      bevR : (o : Outcome B) → ∀ {t} → SimRI o (call (kbodyω ds′ b γ) ⨾ epop ⨾ end) R′ (vw x E′ ∥ a ∷ˢ []ˢ) n t (epop ⨾ end) R′ (vw x E′) []ˢ
+           → SimRI o (openω ⨾ call (kbodyω ds′ b γ) ⨾ epop ⨾ end) R′ (E′ ∥ a ∷ˢ []ˢ) n (peek i ∷ t) end R′ E′ []ˢ
+      bevR (gives _ _) r′ = then (leaf (i-openω eq) (k-peek ∷ [])) (after r′ i-epop)
+      bevR (stop _)    r′ = thenP (leaf (i-openω eq) (k-peek ∷ [])) r′
   simI r-const fr es eq os k ρ = leaf (i-prim r-const) []
   simI (r-op p) fr es eq os k ρ = leaf (i-prim (r-op p)) (op-NoT p)
   simI (r-opend p) fr es eq os k ρ =
