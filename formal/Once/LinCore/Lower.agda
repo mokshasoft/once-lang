@@ -77,9 +77,17 @@ idx : ∀ {A : Set} {x : A} {xs} → x ∈ xs → ℕ
 idx (here _)  = 0
 idx (there p) = suc (idx p)
 
--- a cell's header: contents-word, code, copy, free
+-- a cell's header: word 0 its own address (no code reads it: a trampoline reads the
+-- contents at `hdr` from the cell's pointer), then code, copy, free
 hdr : ℕ
 hdr = 4
+
+-- the address of a cell's contents (`Input1` the cell), as a view: past the
+-- header, or, for no words (an address there would be outside the block),
+-- the cell itself — a view of no words is never read
+contentsAddr : ℕ → AbstractInstr
+contentsAddr zero    = mov-to-output
+contentsAddr (suc _) = addr-at hdr
 
 ------------------------------------------------------------------------
 -- 3. ★ THE LOWERING of a program's code, inside its universe.
@@ -109,7 +117,7 @@ module Lowering (U : Univ)
   -- a cell's code words, from its keys' indices
   header : ℕ → ℕ → ℕ → ℕ → AbstractTrace
   header w jb jc jf =
-    instr-alloc-heap (hdr + w) ∷ mov-to-input ∷ addr-at hdr ∷ store-at 0
+    instr-alloc-heap (hdr + w) ∷ mov-to-input ∷ mov-to-output ∷ store-at 0
     ∷ instr-load-code-addr (tl jb) ∷ store-at 1 ∷ instr-load-code-addr (tl jc) ∷ store-at 2
     ∷ instr-load-code-addr (tl jf) ∷ store-at 3 ∷ []
 
@@ -300,9 +308,9 @@ module Lowering (U : Univ)
        ∷ lea-slot 0 ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf j))
        ∷ restore-input (suc M) ∷ mvSP (M ∸ wB) (Mc ∸ wB) wB ++ instr-ctrl (c-ret (suc (suc M))) ∷ []
   -- many-use body: the caller's area as is, the view the cell's contents
-  tramp j (kbodyω ds b γ) =
+  tramp j (kbodyω {X = X} ds b γ) =
     instr-ctrl (c-entry (e-thunk (tl j)) 1)
-    ∷ store-at-slot 0 ∷ addr-at hdr ∷ restore-input 0 ∷ instr-ctrl (c-call-fn (nameOf j))
+    ∷ store-at-slot 0 ∷ contentsAddr (wsz X) ∷ restore-input 0 ∷ instr-ctrl (c-call-fn (nameOf j))
     ∷ instr-ctrl (c-ret 1) ∷ []
   -- observation: the coalgebra and seed out of the cell, the cell freed
   tramp j (kobs ds F S) =
@@ -318,13 +326,13 @@ module Lowering (U : Univ)
     let w = wsz T₀ ; s₁ = w ; s₂ = suc w ; s₃ = suc (suc w) ; b = suc s₃
     in instr-ctrl (c-entry (e-thunk (tl j)) b)
        ∷ store-at-slot s₂ ∷ mov-to-output ∷ store-at-slot s₁
-       ∷ restore-input s₂ ∷ addr-at hdr ∷ store-at-slot s₃
+       ∷ restore-input s₂ ∷ contentsAddr w ∷ store-at-slot s₃
        ∷ lea-slot 0 ∷ mov-to-input ∷ load-from-slot s₃ ∷ instr-ctrl (c-call-fn (nameOf j))
        ∷ instr-alloc-heap (hdr + w) ∷ store-at-slot s₃
        ∷ restore-input s₂ ∷ load-at 1 ∷ restore-input s₃ ∷ store-at 1
        ∷ restore-input s₂ ∷ load-at 2 ∷ restore-input s₃ ∷ store-at 2
        ∷ restore-input s₂ ∷ load-at 3 ∷ restore-input s₃ ∷ store-at 3
-       ∷ addr-at hdr ∷ store-at 0 ∷ mvSP 0 hdr w
+       ∷ mov-to-output ∷ store-at 0 ∷ mvSP 0 hdr w
        ++ restore-input s₁ ∷ load-from-slot s₃ ∷ store-at 0 ∷ instr-ctrl (c-ret b) ∷ []
   -- a free of a cell: its contents out, the cell freed, then their free
   tramp j (kfree T₀) =
