@@ -29,6 +29,7 @@ open import Once.LinCore.Flat using (Base)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (StoredValue)
 open import Once.Memory.HeapAddress using (HeapLocation)
+open import Once.CCC.Machine.Locations using (AtStack)
 
 module Once.LinCore.LowerSim
   (fmt : TargetNum) (ans : FFIAnswers)
@@ -684,3 +685,108 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   slots-replicate zero    v h = tt
   slots-replicate {sm} {b} (suc n) v h =
     h 0 (s≤s z≤n) , slots-replicate {sm} {suc b} n v (λ k k< → trans (cong sm (+-suc k b)) (h (suc k) (s≤s k<)))
+
+  open import Data.Sum using (_⊎_; inj₁; inj₂)
+  open import Once.LinCore.Moves {FS} using (m-alloc; store-same; store-other)
+  open FlatMachine {FS} using (fetch)
+
+  -- ★ a sum's words built on the stack: the payload moved down to just past
+  -- the tag's slot, the tag, the padding; nothing outside [tag, bot) moves
+  inj-core : ∀ prog (fs : FlatState) (bot M wP t : ℕ) (w : List W)
+           → wP ≤ M → M < bot → length w ≡ wP → SlotsAt (slot fs) (bot ∸ wP) w
+           → Seg prog (fpc fs) (mvSS (bot ∸ wP) (bot ∸ M) wP
+                                ++ instr-load-tag-lit t ∷ store-at-slot (bot ∸ suc M) ∷ stores (bot ∸ (M ∸ wP)) (M ∸ wP))
+           → fhalted (floc fs) ≡ false
+           → Σ FlatState λ fs₄ → FlatSteps prog (nsteps wP + suc (suc (M ∸ wP))) fs fs₄
+               × SlotsAt (slot fs₄) (bot ∸ suc M) (SV-Tag t ∷ w ++ replicate (M ∸ wP) (SV-Tag t))
+               × (∀ x → (x < bot ∸ suc M) ⊎ (bot ≤ x) → slot fs₄ x ≡ slot fs x)
+               × heapMem (floc fs₄) ≡ heapMem (floc fs)
+  inj-core prog fs bot M wP t w pM Mb lw sw s h
+    with mvSS-run prog fs (bot ∸ wP) (bot ∸ M) wP (Seg-++ˡ prog (fpc fs) (mvSS (bot ∸ wP) (bot ∸ M) wP) _ s) h
+           (λ k k< → slots-def {slot fs} {bot ∸ wP} w sw k (subst (k <_) (sym lw) k<))
+           (λ k k′ lt _ → no-clash-down (∸-monoʳ-≤ bot pM) lt)
+  ... | (fs₁ , st₁ , M₁) with stores-run prog fs₃ (bot ∸ (M ∸ wP)) (M ∸ wP) seg₄ (trans (m-halt M₁) h)
+    where
+      tp = bot ∸ suc M
+      fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Output (SV-Tag t) } ; fpc = suc (fpc fs₁) }
+      fs₃ = record fs₂ { floc = MemOps.writeLoc {FS} (floc fs₂) (AtStack (AllocState.current-frame (falloc fs₂)) tp)
+                                  (readReg (LocState.regs (floc fs₂)) Output) ; fpc = suc (fpc fs₂) }
+      rest = Seg-++ʳ prog (fpc fs) (mvSS (bot ∸ wP) (bot ∸ M) wP) _ s
+      pcEq : fpc fs + length (mvSS (bot ∸ wP) (bot ∸ M) wP) ≡ fpc fs₁
+      pcEq = trans (cong (fpc fs +_) (len-mvSS (bot ∸ wP) (bot ∸ M) wP)) (trans (+-comm (fpc fs) (nsteps wP)) (sym (m-pc M₁)))
+      seg₄ : Seg prog (fpc fs₃) (stores (bot ∸ (M ∸ wP)) (M ∸ wP))
+      seg₄ = subst (λ z → Seg prog (suc (suc z)) (stores (bot ∸ (M ∸ wP)) (M ∸ wP))) pcEq (proj₂ (proj₂ rest))
+  ...   | (fs₄ , st₄ , F) =
+    fs₄ ,
+    FlatSteps-++ st₁ (step-at fs₂ (h₁ , ftag) (tag-step fs₁ t) (step-at fs₃ (h₁ , fstore) (store-step fs₂ tp) st₄)) ,
+    (tagEq , subst (λ z → SlotsAt (slot fs₄) z (w ++ pad)) (sym (suc-∸ bot M Mb))
+               (slots-join {slot fs₄} w pad payload padS)) ,
+    outside ,
+    trans (f-heap F) (m-heap M₁)
+    where
+      import Data.Nat.Properties
+      tp = bot ∸ suc M
+      dst = bot ∸ M
+      pp = bot ∸ (M ∸ wP)
+      cf = AllocState.current-frame (falloc fs₁)
+      fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Output (SV-Tag t) } ; fpc = suc (fpc fs₁) }
+      fs₃ = record fs₂ { floc = MemOps.writeLoc {FS} (floc fs₂) (AtStack cf tp) (SV-Tag t) ; fpc = suc (fpc fs₂) }
+      h₁ : fhalted (floc fs₁) ≡ false
+      h₁ = trans (m-halt M₁) h
+      rest = Seg-++ʳ prog (fpc fs) (mvSS (bot ∸ wP) (bot ∸ M) wP) _ s
+      pcEq : fpc fs + length (mvSS (bot ∸ wP) (bot ∸ M) wP) ≡ fpc fs₁
+      pcEq = trans (cong (fpc fs +_) (len-mvSS (bot ∸ wP) (bot ∸ M) wP)) (trans (+-comm (fpc fs) (nsteps wP)) (sym (m-pc M₁)))
+      ftag : fetch prog (fpc fs₁) ≡ just (instr-load-tag-lit t)
+      ftag = subst (λ z → fetch prog z ≡ just (instr-load-tag-lit t)) pcEq (proj₁ rest)
+      fstore : fetch prog (fpc fs₂) ≡ just (store-at-slot tp)
+      fstore = subst (λ z → fetch prog (suc z) ≡ just (store-at-slot tp)) pcEq (proj₁ (proj₂ rest))
+      pad = replicate (M ∸ wP) (SV-Tag t)
+      -- where things are
+      tp<dst : tp < dst
+      tp<dst = Data.Nat.Properties.≤-reflexive (suc-∸ bot M Mb)
+      pp≡ : wP + dst ≡ pp
+      pp≡ = pad-at wP M bot pM (Data.Nat.Properties.<⇒≤ Mb)
+      ppEnd : (M ∸ wP) + pp ≡ bot
+      ppEnd = trans (cong ((M ∸ wP) +_) (sym pp≡))
+                (trans (sym (+-assoc (M ∸ wP) wP dst))
+                  (trans (cong (_+ dst) (trans (+-comm (M ∸ wP) wP) (Data.Nat.Properties.m+[n∸m]≡n pM)))
+                    (trans (+-comm M dst) (m∸n+n≡m (Data.Nat.Properties.<⇒≤ Mb)))))
+      in-pay : ∀ k → k < wP → k + dst < pp
+      in-pay k k< = <-≤-trans (+-monoˡ-< dst k<) (Data.Nat.Properties.≤-reflexive pp≡)
+      in-pad : ∀ k → k < M ∸ wP → k + pp < bot
+      in-pad k k< = <-≤-trans (+-monoˡ-< pp k<) (Data.Nat.Properties.≤-reflexive ppEnd)
+      tp<pp : tp < pp
+      tp<pp = <-≤-trans tp<dst (≤-trans (m≤n+m dst wP) (Data.Nat.Properties.≤-reflexive pp≡))
+      -- the tag
+      tagEq : slot fs₄ tp ≡ just (SV-Tag t)
+      tagEq = trans (f-rest F tp (λ k _ e → Data.Nat.Properties.<-irrefl e (<-≤-trans tp<pp (m≤n+m pp k))))
+                    (store-same (floc fs₂) cf tp (SV-Tag t))
+      -- the payload, moved, kept by the tag's store and the padding
+      payload : SlotsAt (slot fs₄) dst w
+      payload =
+        slots-frame {slot fs₃} {slot fs₄} w
+          (λ k k< → f-rest F (k + dst) (λ k′ _ e → Data.Nat.Properties.<-irrefl e
+                                                     (<-≤-trans (in-pay k (subst (k <_) lw k<)) (m≤n+m pp k′))))
+          (slots-frame {slot fs₁} {slot fs₃} w
+             (λ k k< → store-other (floc fs₂) cf tp (SV-Tag t) (k + dst)
+                         (λ e → Data.Nat.Properties.<-irrefl e (<-≤-trans tp<dst (m≤n+m dst k))))
+             (slots-moved w M₁ sw lw))
+      -- the padding
+      padS : SlotsAt (slot fs₄) (length w + dst) pad
+      padS = subst (λ z → SlotsAt (slot fs₄) z pad) (sym (trans (cong (_+ dst) lw) pp≡))
+               (slots-replicate {slot fs₄} {pp} (M ∸ wP) (SV-Tag t) (λ k k< → f-set F k k<))
+      -- nothing outside [tag, bot) moves
+      pp≤bot : pp ≤ bot
+      pp≤bot = ≤-trans (m≤n+m pp (M ∸ wP)) (Data.Nat.Properties.≤-reflexive ppEnd)
+      outside : ∀ x → (x < tp) ⊎ (bot ≤ x) → slot fs₄ x ≡ slot fs x
+      outside x (inj₁ x<tp) =
+        trans (f-rest F x (λ k k< e → Data.Nat.Properties.<-irrefl e
+                                        (Data.Nat.Properties.<-trans x<tp (<-≤-trans tp<pp (m≤n+m pp k)))))
+          (trans (store-other (floc fs₂) cf tp (SV-Tag t) x (λ e → Data.Nat.Properties.<-irrefl (sym e) x<tp))
+            (m-rest M₁ x (λ k k< e → Data.Nat.Properties.<-irrefl e
+                                        (Data.Nat.Properties.<-trans x<tp (<-≤-trans tp<dst (m≤n+m dst k))))))
+      outside x (inj₂ bx) =
+        trans (f-rest F x (λ k k< e → Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans (in-pad k k<) bx)))
+          (trans (store-other (floc fs₂) cf tp (SV-Tag t) x
+                    (λ e → Data.Nat.Properties.<-irrefl e (<-≤-trans (<-≤-trans tp<pp pp≤bot) bx)))
+            (m-rest M₁ x (λ k k< e → Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans (in-pay k k<) (≤-trans pp≤bot bx)))))
