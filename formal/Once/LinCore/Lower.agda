@@ -123,8 +123,9 @@ module Lowering (U : Univ)
   lowP ds lassoc⁻ φ S p           = []
   lowP ds (lclo F q) φ S p        = []
   lowP ds drop φ S p              = []
+  -- (the pair's words are its components' in place: `swap`'s code, at their offsets)
   lowP ds (lswap {A = A} {B = B}) φ S p =
-    let t = Tp φ ((A ⊗t B) ∷ S) ; wA = wsz A ; wB = wsz B ; tmp = t ∸ wA
+    let t = Tp φ (A ∷ B ∷ S) ; wA = wsz A ; wB = wsz B ; tmp = t ∸ wA
     in mvSS t tmp wA ++ mvSS (t + wA) t wB ++ mvSS tmp (t + wB) wA
   lowP ds (linl {A = A} {B = B}) φ S p =
     let bot = Tp φ S ; M = wsz A ⊔ wsz B
