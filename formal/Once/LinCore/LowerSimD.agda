@@ -72,3 +72,55 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
         subst (λ z → SlotsAt (slot fs′) z v) (+-suc b j)
           (go v (suc j) (subst (λ z → SlotsAt (slot fs) z v) (sym (+-suc a j)) s)
              (λ k k< → h k (subst (k <_) (sym (+-suc j (length v))) k<)))
+
+  -- the arithmetic of a sum on the stack
+  private
+    new-top : ∀ B a s → (B ∸ s) ∸ a ≡ B ∸ (a + s)
+    new-top B a s = trans (Data.Nat.Properties.∸-+-assoc B s a) (cong (B ∸_) (+-comm s a))
+
+    suc-∸ : ∀ m n → n < m → suc (m ∸ suc n) ≡ m ∸ n
+    suc-∸ (suc m) zero    _        = refl
+    suc-∸ (suc m) (suc n) (s≤s lt) = suc-∸ m n lt
+
+  -- ★ a sum's payload shifted up from just past its tag to its own place
+  -- (the result of a `case`): the rest of the stack and the environment kept
+  shift-sim : ∀ prog (fs : FlatState) (φ : Frame) {Es P S} {es : Slots Es} {os : Stk S} {p : MV P} (src : ℕ) (wP : List W)
+            → Seg prog (fpc fs) (mvSSd src ((budget φ ∸ ws S) ∸ wsz P) (wsz P))
+            → fhalted (floc fs) ≡ false
+            → EnvW (heapMem (floc fs)) (slot fs) es → StkW (heapMem (floc fs)) (slot fs) φ os
+            → VW (heapMem (floc fs)) p wP → SlotsAt (slot fs) src wP
+            → src ≤ (budget φ ∸ ws S) ∸ wsz P → EP φ ≤ src → ws Es ≤ EP φ → ws (P ∷ S) ≤ OP φ
+            → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz P)) fs fs′
+                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ p ∷ˢ os) × fpc fs′ ≡ nsteps (wsz P) + fpc fs
+  shift-sim prog fs φ {Es} {P} {S} {es} {os} {p} src wP s h ev st pp sp up ep efit fit =
+    fin (mvSSd-run prog fs src dst (wsz P) s h
+           (λ k k< → def k k<)
+           (λ k k′ lt _ e → Data.Nat.Properties.<-irrefl (sym e)
+                              (Data.Nat.Properties.<-≤-trans (Data.Nat.Properties.+-monoʳ-< src lt) (Data.Nat.Properties.+-monoˡ-≤ k up))))
+    where
+      dst = (budget φ ∸ ws S) ∸ wsz P
+      def : ∀ k → k < wsz P → Σ W λ v → slot fs (src + k) ≡ just v
+      def k k< with slots-def {slot fs} {src} wP sp k (subst (k <_) (sym (vw-len pp)) k<)
+      ... | (v , e) = v , trans (cong (slot fs) (+-comm src k)) e
+      fitB : wsz P + ws S ≤ budget φ
+      fitB = ≤-trans fit (m≤n+m (OP φ) (EP φ))
+      fitS : ws S ≤ budget φ
+      fitS = ≤-trans (m≤n+m (ws S) (wsz P)) fitB
+      -- the destination: [dst, bot)
+      in-dst : ∀ k → k < wsz P → dst + k < budget φ ∸ ws S
+      in-dst k k< = Data.Nat.Properties.<-≤-trans (Data.Nat.Properties.+-monoʳ-< dst k<) (≤-reflexive (Data.Nat.Properties.m∸n+n≡m (≤∸ (wsz P) (ws S) (budget φ) fitB)))
+      fin : Σ FlatState (λ fs′ → FlatSteps prog (nsteps (wsz P)) fs fs′ × MovedD fs fs′ src dst (wsz P))
+          → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz P)) fs fs′
+              × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ p ∷ˢ os) × fpc fs′ ≡ nsteps (wsz P) + fpc fs
+      fin (fs′ , st′ , M) =
+        fs′ , st′ ,
+        record { c-env  = subst (λ r → EnvW r (slot fs′) es) (sym (d-heap M))
+                            (envW-frame es (λ x x< → d-rest M x (λ k k< e → Data.Nat.Properties.<-irrefl e
+                                              (Data.Nat.Properties.<-≤-trans x< (≤-trans efit (≤-trans ep (≤-trans up (m≤m+n dst k))))))) ev)
+               ; c-stk  = ( wP , subst (λ r → VW r p wP) (sym (d-heap M)) pp
+                          , subst (λ z → SlotsAt (slot fs′) z wP) (new-top (budget φ) (wsz P) (ws S)) (slots-movedD wP M sp (vw-len pp)) )
+                        , subst (λ r → StkW r (slot fs′) φ os) (sym (d-heap M))
+                            (stkW-frame os fitS (λ x lo _ → d-rest M x (λ k k< e → Data.Nat.Properties.<-irrefl (sym e)
+                                                   (Data.Nat.Properties.<-≤-trans (in-dst k k<) lo))) st)
+               ; c-efit = efit ; c-sfit = fit } ,
+        d-pc M
