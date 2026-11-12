@@ -613,7 +613,7 @@ du_resolvePolyCase_34 v0 v1 v2 v3 v4 v5 v6
                            du_applySplice_56 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                            (coe v5) (coe v11)
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_6032 (coe v0)
+                              MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_6076 (coe v0)
                               (coe
                                  MAlonzo.Code.Once.TypeCheck.Classify.du_ctxAt_354
                                  (coe MAlonzo.Code.Once.TypeCheck.Classify.d_baseKinds_364 (coe v0))

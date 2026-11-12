@@ -137,8 +137,7 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
             ]
           r @?= Right ()
       , testCase "a polymorphic head applied to a non-instance is rejected (d-poly)" $ do
-          -- No instance of `a * b` is `Int`. Pinned (plan 0.139): the
-          -- diagnostic is the generic "unspecialized variable", not the mismatch.
+          -- No instance of `a * b` is `Int` (plan 0.139, `NoInstance`).
           r <- checkLib
             [ "swap : a * b -> b * a"
             , "swap p = (snd p, fst p)"
@@ -146,7 +145,7 @@ specMatrixTests = testGroup "Spec-change matrix (plan 0.113 D)"
             , "x : Int * Int"
             , "x = swap 5"
             ]
-          assertRejects "Should reject swap at a non-product" "Unbound or unspecialized variable: swap" r
+          assertRejects "Should reject swap at a non-product" "swap: Int is not an instance of (a * b)" r
       , testCase "an annotation may not mention a type parameter (D252)" $ do
           -- Rejected already by the GRAMMAR: an expression annotation's type is
           -- ground (no type variables), the strictest form of D252's rule.

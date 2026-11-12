@@ -34,7 +34,8 @@ module Once.TypeCheck.Error where
 open import Data.String using (String; _++_)
 open import Once.Spec.Grade using (Quantity)
 open import Once.Spec.Type using (Ty; Type)
-open import Once.Type using (showQuantity; showType)
+open import Once.Type using (showQuantity; showType; showPolyType)
+open import Once.Spec.Surface.Syntax using (PolyType)
 
 ------------------------------------------------------------------------
 -- Structured error categories
@@ -47,14 +48,13 @@ open import Once.Type using (showQuantity; showType)
 --
 --   * Variable lookups — `UnboundVariable`, `UnboundQualified`.
 --   * Mode mismatches — `LambdaInInferMode`, `InlInInferMode`, etc.
---   * Type-shape mismatches — `FstNeedsPair`, `NegationNotInt`, …
---   * Application/annotation — `ApplicationTypeMismatch`,
---     `TypeMismatch`.
+--   * Type-shape mismatches — `FstNeedsPair`, `SndNeedsPair`, …
+--   * Annotation / check-mode — `TypeMismatch`, `NoInstance`.
 --   * Usage (QTT) — `UsageViolation`.
 --   * Builtin specialization — `BuiltinTypeMismatch`.
 --
 -- The list mirrors every distinct `failure "…"` call site in
--- `Once.TypeCheck.Elaborate`. Adding a new failure mode to the
+-- `Once.TypeCheck.Elaborate`, and every variant is produced by one (plan 0.139). Adding a new failure mode to the
 -- elaborator is a deliberate act: it must correspond to a new
 -- variant here, or re-use an existing one.
 data TypeError : Set where
@@ -65,14 +65,6 @@ data TypeError : Set where
   -- Plan 0.58: a SigOp/FFI reference whose type is not concrete (not a base
   -- type nor a first-order function pointer) cannot cross the register ABI.
   NonConcreteSigOpType    : (name : String) (T : Type) → TypeError
-
-
-  -- PLAN 0.71/0.72, in flight: the lexer and parser accept a float literal and
-  -- the IR carrier is ready for one, but the ELABORATOR has no rule yet — that
-  -- needs the Surface node and the typing judgment (0.71 F3b). Rejecting with a
-  -- distinct error is the honest intermediate state: the front half of the
-  -- feature works and says so, rather than a literal silently meaning nothing.
-  FloatLiteralUnsupported  : TypeError
 
   -- Mode-specific rejections
   LambdaInInferMode         : TypeError
@@ -86,13 +78,10 @@ data TypeError : Set where
   -- Type-shape mismatches on builtin-specific argument forms
   FstNeedsPair        : TypeError
   SndNeedsPair        : TypeError
-  ArrNeedsFunction    : TypeError
-  NegationNotInt      : TypeError
   CaseScrutineeNotSum : TypeError
   CaseBranchMismatch  : TypeError
 
-  -- Application / annotation / check-mode mismatches
-  ApplicationTypeMismatch : ∀ {m} (expected actual : Ty m) → TypeError
+  -- Annotation / check-mode mismatches
   TypeMismatch            : ∀ {m} (expected actual : Ty m) → TypeError
 
   -- Type-shape errors emitted by the `asInt` / `asFun` projection
@@ -107,6 +96,14 @@ data TypeError : Set where
   -- Per-builtin type-shape mismatches in check mode
   BuiltinTypeMismatch : (builtin-name : String) → TypeError
 
+  -- Plan 0.139 (D1/D2): a polymorphic name (a generator such as `id`, or an
+  -- own definition with type parameters) is used where its type is known, and
+  -- no instance of its schema is that type: `schema` is the part of the
+  -- name's type that was matched (the whole type, or its domain when the
+  -- name is applied), `actual` the known type. A type mismatch, not an
+  -- ambiguity: the target is known and nothing fits it.
+  NoInstance : ∀ {m} (name : String) (schema : PolyType) (actual : Ty m) → TypeError
+
   -- Plan 0.94 §10: `compose f g`'s middle type is determined locally — by `g`
   -- given its input, or by `f`'s synthesized type — and here neither determines
   -- it. The fix is an annotation.
@@ -116,12 +113,6 @@ data TypeError : Set where
   BinOpLeftError  : TypeError → TypeError
   BinOpRightError : TypeError → TypeError
 
-  -- Catch-all for strings we don't yet classify. Using this variant
-  -- is an admission of incomplete coverage — flagged in reviews so
-  -- each use gets promoted to a structured variant over time.
-  -- D252: an annotation mentions a definition's type parameter.
-  AnnotationMentionsParameter : (T : Type) → TypeError
-  UnclassifiedError : String → TypeError
 
 ------------------------------------------------------------------------
 -- Rendering
@@ -145,9 +136,6 @@ renderError (UnboundQualified name alias) =
 renderError (NonConcreteSigOpType name T) =
   "Reference '" ++ name ++ "' has non-concrete type " ++ showType T
     ++ " (FFI/SigOp references must be base types or first-order function pointers)"
-renderError FloatLiteralUnsupported =
-  "Float literals are not supported yet (the lexer and parser accept them; the"
-    ++ " elaborator's rule lands with plan 0.71 F3b)"
 renderError LambdaInInferMode =
   "Lambda without type annotation not supported in inference mode."
 renderError LambdaRequiresFunctionType =
@@ -166,17 +154,10 @@ renderError FstNeedsPair =
   "fst requires a pair argument"
 renderError SndNeedsPair =
   "snd requires a pair argument"
-renderError ArrNeedsFunction =
-  "arr requires a function argument (A → B)"
-renderError NegationNotInt =
-  "Negation requires Int operand"
 renderError CaseScrutineeNotSum =
   "Case requires a sum-typed scrutinee"
 renderError CaseBranchMismatch =
   "Case branches have different types"
-renderError (ApplicationTypeMismatch expected actual) =
-  "Application: argument type " ++ showType actual
-    ++ " does not match function domain " ++ showType expected
 renderError (TypeMismatch expected actual) =
   "Type mismatch: expected " ++ showType expected
     ++ " but got " ++ showType actual
@@ -188,6 +169,8 @@ renderError (UsageViolation name declared actual) =
     ++ showQuantity declared
 renderError (BuiltinTypeMismatch name) =
   name ++ ": expected type mismatch"
+renderError (NoInstance name schema actual) =
+  name ++ ": " ++ showType actual ++ " is not an instance of " ++ showPolyType schema
 renderError ComposeMiddleUndetermined =
   "compose: cannot determine the middle type — neither the second argument's "
     ++ "output (given its input) nor the first argument's input is known; "
@@ -196,6 +179,3 @@ renderError (BinOpLeftError sub) =
   "binop left: " ++ renderError sub
 renderError (BinOpRightError sub) =
   "binop right: " ++ renderError sub
-renderError (AnnotationMentionsParameter T) =
-  "An annotation may not mention a type parameter: " ++ showType T
-renderError (UnclassifiedError s) = s

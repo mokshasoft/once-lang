@@ -93,9 +93,9 @@ typeMismatchTests = testGroup "Type mismatches"
             , "x = id"
             ]
       result <- typeCheckSource source
-      -- Pinned (plan 0.139): the rule is a type mismatch (a function at
-      -- Int); the elaborator reports the polymorphic `id` as unspecialized.
-      assertRejects "Should reject function for Int type" "Unbound or unspecialized variable: id" result
+      -- A type mismatch, not an ambiguity: the target is known and no
+      -- instance of `id`'s type is `Int` (plan 0.139, `NoInstance`).
+      assertRejects "Should reject function for Int type" "id: Int is not an instance of (a ω→ a)" result
 
   , testCase "wrong argument type to function" $ do
       let source = T.unlines
@@ -227,21 +227,20 @@ destructErrorTests = testGroup "destruct errors"
 
 -- D323: without a signature, a definition has the type its body SYNTHESIZES.
 -- These bodies only check (a lambda takes a context; `inl`, `inr` and
--- `initial` leave their target open), so each needs a signature. (The inner
--- message for `inl`/`inr`/`initial` says "unbound or unspecialized", not the
--- `InlInInferMode` family's text; the outer reason is D323's. Plan 0.139.)
+-- `initial` leave their target open), so each needs a signature. The outer
+-- reason is D323's; the inner one is the construct's own (plan 0.139).
 modeErrorTests :: TestTree
 modeErrorTests = testGroup "Check-only bodies need a signature (D323)"
   [ rejects "bare lambda without a type signature" "The body has no type of its own (Lambda without type annotation"
       [ "f = \\x -> x"
       ]
-  , rejects "inl with no target sum type" "The body has no type of its own"
+  , rejects "inl with no target sum type" "The body has no type of its own (inl requires check mode"
       [ "g = inl"
       ]
-  , rejects "inr with no target sum type" "The body has no type of its own"
+  , rejects "inr with no target sum type" "The body has no type of its own (inr requires check mode"
       [ "g = inr"
       ]
-  , rejects "initial with no target type" "The body has no type of its own"
+  , rejects "initial with no target type" "The body has no type of its own (initial requires check mode"
       [ "g = initial"
       ]
   ]
