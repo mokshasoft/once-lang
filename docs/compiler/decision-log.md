@@ -22690,7 +22690,7 @@ indexed stacks, and every block's code would have to be shown the same at every 
 * `ImageRun` (`Ret`'s call entry, `i-call`, `i-ret`), `ImageSim` (the call combinators), `HeldI` and
   `KeysRun` follow. No theorem changes its statement.
 
-## D416 — THE IMAGE'S WORDS: ABI VALUES IN FRAMES, CELLS `[contents-word, code, contents]` (2026-11-12)
+## D416 — THE IMAGE'S WORDS: ABI VALUES IN FRAMES, CELLS `[contents-word, code, copy, free, contents]` (2026-11-12)
 
 **Proposed** (made unattended, plan 0.146 B1.4b, for the user's review). **Applies**: D379/D380 (values
 whose type fixes their size live in frames), D381 (flat values are their `Spec.ABI` words), D386/D390 (a
@@ -22705,13 +22705,15 @@ closure node `[env-word, code]`, code at word 1), D147, D415.
   stack's, which grows DOWNWARD, so a pair on the stack is its two components in place: `pair`, `unpair`,
   `untag` and `tag` move nothing. Each region is sized by its block's maximum.
 * **A cell** is a heap block: a μ node holds its layer's words; a closure and a ν are
-  `[contents-word, code, contents…]` — D386's header, with the contents (the environment; the coalgebra
-  and seed) in the same block, the contents-word their address. One block per cell, as the run has one
-  `alloc` per cell.
+  `[contents-word, code, copy-code, free-code, contents…]` — D386's header (code at word 1), with the
+  contents (the environment; the coalgebra and seed) in the same block, the contents-word their address.
+  The copy and free codes are the contents' type's (`kcopy`/`kfree`): a copy or a free of a closure or a ν
+  is deep (D403) and its contents' type is known only to the cell, so the cell names them, as it names its
+  body. One block per cell, as the run has one `alloc` per cell.
 * **A ν's code word names its observation block**, as a closure's names its body: `kobs` at the table
-  where the ν was built (a `lunf` site's table is an observer's too). Observing compiles `obsT`, which
-  names no label, so its block's code is the same at every table, and the image's `kobs` at the
-  observer's table runs the block the cell names.
+  where the ν was built (a `lunf` site's table is an observer's too, and so is the empty table, where a
+  copy rebuilds a ν). Observing compiles `obsT`, which names no label, so its block's code is the same at
+  every table, and the image's `kobs` at the observer's table runs the block the cell names.
 
 ### Consequences
 * Calls pass the argument's (and result's) address in `Input1` and the top view's in `Output` (both

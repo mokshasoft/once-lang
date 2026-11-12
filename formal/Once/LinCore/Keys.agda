@@ -237,7 +237,7 @@ tmGot ds (dup {A = A})       = t! A
 tmGot ds (drop {A = A})      = t! A
 tmGot ds (llam {X = X} b γ)  = k! (_ , kbody1 ds b γ) ⊹ t! X ⊹ tmGot ds b
 tmGot ds (llamω {X = X} b γ) = k! (_ , kbodyω ds b γ) ⊹ t! X ⊹ tmGot ds b
-tmGot ds (lunf {F = F} {S})  = n! (F , S)
+tmGot ds (lunf {F = F} {S})  = n! (F , S) ⊹ o! (_ , ds)
 tmGot ds (lout {F = F})      = o! (_ , ds)
 {-# CATCHALL #-}
 tmGot ds _                   = ∅
@@ -278,7 +278,7 @@ record Univ : Set where
 open Univ public
 
 close : Got → Univ
-close g = univ′ (ks g) (cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) (ns g) (os g)
+close g = univ′ (ks g) (cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) (ns g) ((_ , ε) ∷ os g)
 
 allK : Univ → List AKey
 allK U = keys U ++ map kc (tys U) ++ map kf (tys U) ++ obsK (obs U) (nus U)
@@ -340,7 +340,7 @@ module In (U : Univ) where
   PrimIn : ∀ {Γ} → Defs Γ → ∀ {E A B} → Tm Γ E A B → Set
   PrimIn ds (llam {X = X} b γ)  = (_ , kbody1 ds b γ) ∈ allK U × X ∈ tys U
   PrimIn ds (llamω {X = X} b γ) = (_ , kbodyω ds b γ) ∈ allK U × X ∈ tys U
-  PrimIn ds (lunf {F = F} {S})  = (F , S) ∈ nus U
+  PrimIn ds (lunf {F = F} {S})  = (F , S) ∈ nus U × (_ , ds) ∈ obs U
   PrimIn ds ρl        = ⊤
   PrimIn ds ρl⁻       = ⊤
   PrimIn ds lul       = ⊤
@@ -414,7 +414,7 @@ module In (U : Univ) where
   comp-in ds (llamω b γ) g ck    = (inK (gk g (here refl)) , gt g (∈-++⁺ʳ [] (here refl))) , ck
   comp-in ds lev g ck            = tt , ck
   comp-in ds bev g ck            = tt , ck
-  comp-in ds lunf g ck           = gn g (here refl) , ck
+  comp-in ds lunf g ck           = (gn g (here refl) , go g (here refl)) , ck
   comp-in ds lout g ck           = go g (here refl) , ck
 
   ----------------------------------------------------------------------
@@ -467,19 +467,19 @@ module In (U : Univ) where
   strL-got d F (G ⊕f H) S c = ⊹-join (⊹-join ∅⊑ (strL-got d F G S c)) (⊹-join ∅⊑ (strL-got d F H S c))
   strL-got d F (G ⊗f H) S c = ⊹-join (strL-got d F G S c) (strL-got d F H S c)
 
-  mapNu-got : ∀ {Γ} (d : Defs Γ) F G S → (F , S) ∈ nus U → tmGot d (mapNu F G S) ⊑U
-  mapNu-got d F Idf      S n = sub (λ ()) (λ ()) (one n) (λ ())
-  mapNu-got d F Kone     S n = ∅⊑
-  mapNu-got d F Kzero    S n = ∅⊑
-  mapNu-got d F (Kb b)   S n = ∅⊑
-  mapNu-got d F (Kμ G)   S n = ∅⊑
-  mapNu-got d F (G ⊕f H) S n = ⊹-join (⊹-join ∅⊑ (mapNu-got d F G S n)) (⊹-join ∅⊑ (mapNu-got d F H S n))
-  mapNu-got d F (G ⊗f H) S n = ⊹-join (mapNu-got d F G S n) (mapNu-got d F H S n)
+  mapNu-got : ∀ {Γ} (d : Defs Γ) F G S → (F , S) ∈ nus U → (_ , d) ∈ obs U → tmGot d (mapNu F G S) ⊑U
+  mapNu-got d F Idf      S n o = sub (λ ()) (λ ()) (one n) (one o)
+  mapNu-got d F Kone     S n o = ∅⊑
+  mapNu-got d F Kzero    S n o = ∅⊑
+  mapNu-got d F (Kb b)   S n o = ∅⊑
+  mapNu-got d F (Kμ G)   S n o = ∅⊑
+  mapNu-got d F (G ⊕f H) S n o = ⊹-join (⊹-join ∅⊑ (mapNu-got d F G S n o)) (⊹-join ∅⊑ (mapNu-got d F H S n o))
+  mapNu-got d F (G ⊗f H) S n o = ⊹-join (mapNu-got d F G S n o) (mapNu-got d F H S n o)
 
-  obs-in : ∀ {Γ} (d : Defs Γ) F S → (F , S) ∈ nus U → Coalg F S ∈ tys U → BIn (_ , kobs d F S)
-  obs-in d F S n c =
+  obs-in : ∀ {Γ} (d : Defs Γ) F S → (F , S) ∈ nus U → Coalg F S ∈ tys U → (_ , d) ∈ obs U → BIn (_ , kobs d F S)
+  obs-in d F S n c o =
     tt , comp-in d (obsT F S)
-           (⊹-join (mapNu-got d F F S n)
+           (⊹-join (mapNu-got d F F S n o)
              (⊹-join ∅⊑ (⊹-join (⊹-join (sub (λ ()) (one c) (λ ()) (λ ())) ∅⊑)
                                  (⊹-join (strL-got d F F S c) ∅⊑))))
            (tt , tt)
@@ -584,7 +584,7 @@ module Program {Γ} (ds : Defs Γ) (f : LTm Γ One One) where
   open In U public
 
   g₀⊑ : g₀ ⊑U
-  g₀⊑ = sub (λ m → m) (λ {T} m → ∈-++⁺ˡ (∈-cmap⁺ (ts g₀) m (here refl))) (λ m → m) (λ m → m)
+  g₀⊑ = sub (λ m → m) (λ {T} m → ∈-++⁺ˡ (∈-cmap⁺ (ts g₀) m (here refl))) (λ m → m) there
 
   -- the types are closed under a copy's or a free's parts
   ts-closed : ∀ {T} → T ∈ tys U → comps T ⊆ tys U
@@ -612,7 +612,7 @@ module Program {Γ} (ds : Defs Γ) (f : LTm Γ One One) where
   ...   | (T , t , refl) = free-in T (ts-closed t)
   blocks-in m | inj₂ p | inj₂ q | inj₂ r with ∈-cmap⁻ (obs U) r
   ... | ((Δ , d) , o , s) with ∈-map⁻ (λ n → _ , kobs d (proj₁ n) (proj₂ n)) s
-  ...   | ((F , S) , n , refl) = obs-in d F S n (ns-coalg n)
+  ...   | ((F , S) , n , refl) = obs-in d F S n (ns-coalg n) o
 
   -- ★ and so is the program's start
   start-in : ∀ {Es S T} {k : Codeᴵ (One ∷ Es ∣ One ∷ S) T} → CIn k → CIn (compᴵ ds f k)
