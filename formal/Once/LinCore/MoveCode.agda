@@ -31,3 +31,9 @@ mvPS o b (suc n) = load-at o ∷ store-at-slot b ∷ mvPS (suc o) (suc b) n
 mvSP : ℕ → ℕ → ℕ → AbstractTrace
 mvSP a o zero    = []
 mvSP a o (suc n) = load-from-slot a ∷ store-at o ∷ mvSP (suc a) (suc o) n
+
+-- `Output`'s word into slots `b…` (a sum's padding: every word of a value is
+-- written, so a copy of it never reads an empty slot)
+stores : ℕ → ℕ → AbstractTrace
+stores b zero    = []
+stores b (suc n) = store-at-slot b ∷ stores (suc b) n
