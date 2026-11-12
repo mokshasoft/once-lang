@@ -21995,7 +21995,9 @@ once). **Starts from**: `NbEPLinCore` (OCP-0009, `origin/plan-ref`).
   memory pattern one layer up, not yet written. (4) Termination of the run relation is not proved; the
   examples show runs exist.
 * **The gate** (plan 0.146 §4): both gate servers keep an `Int`, which frames alone would pass; the
-  list-state server above is the proposed extra gate test (for the user to decide).
+  list-state server above is the proposed extra gate test (for the user to decide). Decided (the user,
+  2026-11-12): it is a gate test, `compiler/test/loop-forever-list.once` (a list of two nodes rebuilt by
+  an emitting fold every round; today it ends `exhausted` after about 3000 rounds on all three arches).
 
 ### Amended (the user, 2026-11-10): the model is the backbone
 Still **Proposed**: the user's review of this entry's remaining points continues (`HANDOFF.md`).
