@@ -188,6 +188,8 @@ plain r-lam = r-lam
 plain r-lamω = r-lamω
 plain (r-ev r) = r-ev (plain r)
 plain (r-bev r) = r-bev (plain r)
+plain r-unf = r-unf
+plain (r-nout r) = r-nout (plain r)
 plain r-const = r-const
 plain r-op = r-op
 plain r-halt = r-halt
@@ -477,6 +479,8 @@ tsound r-lam = ((tt , tt) , λ k → refl)
 tsound r-lamω = ((tt , tt) , λ k → refl)
 tsound (r-ev {i = i} {o = o} {t = t} r) = TPost-free o i t (tsound r)
 tsound (r-bev {i = i} {o = o} {t = t} r) = TPost-peek o i t (tsound r)
+tsound r-unf = ((tt , tt) , λ k → refl)
+tsound (r-nout {i = i} {o = o} {t = t} r) = TPost-free o i t (tsound r)
 tsound r-const = bal[]
 tsound r-op = ((tt , tt) , λ k → refl)
 tsound r-halt = (tt , tt)

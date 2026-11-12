@@ -130,6 +130,9 @@ data Ins : Sh → Sh → Set where
   -- cell); its code word says which body runs, decided by the data
   apply   : ∀ {Es g A B S} → Ins (Es ∣ (Fn once g A B ⊗t A) ∷ S) (Es ∣ B ∷ S)
   eapply  : ∀ {Es g A B S} → Ins (Fn many g A B ∷ Es ∣ A ∷ S) (Fn many g A B ∷ Es ∣ B ∷ S)
+  -- ★ observe a ν: free its cell, run `obsT` on its coalgebra and seed
+  -- (expanded when reached: the seed's type is the cell's)
+  nopen   : ∀ {Γ} (ds : Defs Γ) {F Es S} → Ins (Es ∣ Nu F ∷ S) (Es ∣ LF∙ F (Nu F) ∷ S)
   -- a fold's node, a loop's round: expanded when reached
   fold    : ∀ {Γ} (ds : Defs Γ) F {E A Es S} → Tm Γ E (LF∙ F A) A → Ins (E ∷ Es ∣ μt F ∷ S) (E ∷ Es ∣ A ∷ S)
   loop    : ∀ {Γ} (ds : Defs Γ) {E A B Es S} → Tm Γ E A (B ⊕t A) → Ins (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ B ∷ S)
@@ -187,6 +190,8 @@ mutual
   comp ds (llamω b γ) k    = prim ds (llamω b γ) ⨾ k
   comp ds lev k            = apply ⨾ k
   comp ds bev k            = eapply ⨾ k
+  comp ds lunf k           = prim ds lunf ⨾ k
+  comp ds lout k           = nopen ds ⨾ k
 
   -- a one-shot label's body (nothing lent), compiled in place over its prefix
   body : ∀ {Γ l g X A B} (ds : Defs Γ) → Γ ∋[ l ] sg once g X A B → ∀ {Es S T}
@@ -271,6 +276,9 @@ data Step {T : Sh} : ∀ {sh sh′} → Code sh T → Cfg sh → ℕ → Trace �
                {i x} {es : Slots (Fn many g A B ∷ Es)} {os n}
            → see es ≡ mfn i (cω ds′ b γ) x
            → Step (eapply ⨾ k) (es ∥ os) n (peek i ∷ []) (enter ⨾ comp ds′ b (leave ⨾ epop ⨾ k)) (vw x es ∥ os) n
+  s-nopen  : ∀ {Γ} {ds : Defs Γ} {F S Es S′} {k : Code (Es ∣ LF∙ F (Nu F) ∷ S′) T} {es i} {p : MV (Coalg F S ⊗t S)} {os n}
+           → Step (nopen ds ⨾ k) (es ∥ mnu i p ∷ˢ os) n (free i ∷ [])
+                  (elift ⨾ comp ds (obsT F S) (epop ⨾ k)) (es ∥ p ∷ˢ os) n
 
 infixr 5 _⟫_
 data Steps {T : Sh} : ∀ {sh sh′} → Code sh T → Cfg sh → ℕ → Trace → Code sh′ T → Cfg sh′ → ℕ → Set where
@@ -493,6 +501,7 @@ mutual
   Plain (r-bapp q r)                    = Plain r
   Plain (r-ev r)                        = Plain r
   Plain (r-bev r)                       = Plain r
+  Plain (r-nout r)                      = Plain r
   Plain (r-iter r (go-on done))         = Plain r
   Plain (r-iter r (go-on (again rn)))   = Plain r × Plain rn
   Plain (r-iter r stopped)              = Plain r
@@ -586,6 +595,11 @@ sim (r-bapp {x = x} {o = o} q r) fr es eq os k
 -- indirect call into its body, in a frame, as a label's
 sim r-lam   fr es eq os k = leaf (s-prim r-lam) (k-alloc ∷ [])
 sim r-lamω  fr es eq os k = leaf (s-prim r-lamω) (k-alloc ∷ [])
+-- ★ a ν: building it is one step; observing it frees its cell and runs the
+-- compiled `obsT`, nothing lent
+sim r-unf   fr es eq os k = leaf (s-prim r-unf) (k-alloc ∷ [])
+sim (r-nout {o = o} r) p es eq os k =
+  thenR o (leaf s-nopen (k-free ∷ [])) (around o s-elift (sim r p (vw mone es) refl os _))
 sim (r-ev {o = o} r) p es eq os k =
   thenR o (leaf s-apply (k-free ∷ [])) (framedR o (around o s-elift (sim r p (vw mone es) refl os _)))
 sim (r-bev {B = B} {ds′ = ds′} {b = b} {i = i} {x} {a} {o} {n} r) p es eq os k = bevR o (framedR o (sim r p (vw x es) refl os (leave ⨾ epop ⨾ k)))

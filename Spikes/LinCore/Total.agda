@@ -59,6 +59,7 @@ data _~_ : ∀ {A} → MV A → MV A → Set where
   ~mu   : ∀ {F i j} {v v′ : MV (LF∙ F (μt F))} → v ~ v′ → mmu i v ~ mmu j v′
   ~ct   : ∀ {l X} {x x′ : MV X} → x ~ x′ → mct {l} x ~ mct x′
   ~fn   : ∀ {k g X A B} {c : Lam k g X A B} {i j x x′} → x ~ x′ → mfn i c x ~ mfn j c x′
+  ~nu   : ∀ {F S i j} {p p′ : MV (Coalg F S ⊗t S)} → p ~ p′ → mnu i p ~ mnu j p′
 
 ~-refl : ∀ {A} (v : MV A) → v ~ v
 ~-refl mone        = ~one
@@ -69,6 +70,7 @@ data _~_ : ∀ {A} → MV A → MV A → Set where
 ~-refl (mmu i v)   = ~mu (~-refl v)
 ~-refl (mct x)     = ~ct (~-refl x)
 ~-refl (mfn i c x) = ~fn (~-refl x)
+~-refl (mnu i p)   = ~nu (~-refl p)
 
 ~-trans : ∀ {A} {u v w : MV A} → u ~ v → v ~ w → u ~ w
 ~-trans ~one        ~one          = ~one
@@ -79,6 +81,7 @@ data _~_ : ∀ {A} → MV A → MV A → Set where
 ~-trans (~mu p)     (~mu p′)      = ~mu (~-trans p p′)
 ~-trans (~ct p)     (~ct p′)      = ~ct (~-trans p p′)
 ~-trans (~fn p)     (~fn p′)      = ~fn (~-trans p p′)
+~-trans (~nu p)     (~nu p′)      = ~nu (~-trans p p′)
 
 -- a copy is its original, its cells renamed
 copy-~ : ∀ {A} (v : MV A) n → fst (copy v n) ~ v
@@ -97,6 +100,8 @@ copy-~ (mct x) n with copy x n | copy-~ x n
 ... | (x′ , n₁ , t₁) | px = ~ct px
 copy-~ (mfn i c x) n with copy x (suc n) | copy-~ x (suc n)
 ... | (x′ , n₁ , t₁) | px = ~fn px
+copy-~ (mnu i p) n with copy p (suc n) | copy-~ p (suc n)
+... | (p′ , n₁ , t₁) | pp = ~nu pp
 
 -- ★ a WORLD: any machine that answers SigOps (its state may be the whole
 -- history, so this is every strategy). It may give NO answer — it must, for
@@ -152,8 +157,36 @@ module _ (W : World) where
   -- run with a good outcome. μ data holds no closures (`LF`), so it is good.
   ----------------------------------------------------------------------
 
+  -- ★ a ν is good when every observation of it (or of a copy) has a run whose
+  -- layer's νs are good again: COINDUCTIVE, as the Spec's ν is
+  mutual
+    record GoodNu (F : LF) (v : MV (Nu F)) : Set where
+      coinductive
+      field obs : ∀ v′ → v′ ~ v → ∀ {Γ} (ds : Defs Γ) {E} (e : MV E) (k : ℕ) n (σ : WSt)
+                → Σ (Ran ds (lout {F = F}) e v′ n) (λ r → GoodLO F (Ran.out r))
+
+    GoodLayer : ∀ F G → MV (LF∙ G (Nu F)) → Set
+    GoodLayer F Idf      v            = GoodNu F v
+    GoodLayer F Kone     _            = ⊤
+    GoodLayer F Kzero    _            = ⊤
+    GoodLayer F (Kb b)   _            = ⊤
+    GoodLayer F (Kμ G)   _            = ⊤
+    GoodLayer F (G ⊕f H) (minl w)     = GoodLayer F G w
+    GoodLayer F (G ⊕f H) (minr w)     = GoodLayer F H w
+    GoodLayer F (G ⊗f H) (mpair w w′) = GoodLayer F G w × GoodLayer F H w′
+
+    GoodLO : ∀ F → Outcome (LF∙ F (Nu F)) → Set
+    GoodLO F (gives w _) = GoodLayer F F w
+    GoodLO F (stop _)    = ⊤
+  open GoodNu public
+
+  -- a ν's goodness holds of its copies
+  goodNu~ : ∀ {F} {v v′ : MV (Nu F)} → v′ ~ v → GoodNu F v → GoodNu F v′
+  obs (goodNu~ q g) v″ q′ = obs g v″ (~-trans q′ q)
+
   mutual
     Good : (A : LTy) → MV A → Set
+    Good (Nu F)      v            = GoodNu F v
     Good One         _            = ⊤
     Good Zero        _            = ⊤
     Good (A ⊗t B)    (mpair a b)  = Good A a × Good B b
@@ -192,6 +225,7 @@ module _ (W : World) where
   good-~ (~ct p)     g        = good-~ p g
   good-~ (~fn {c = c1 ds b γ} p) g = λ x″ q → g x″ (~-trans q p)
   good-~ (~fn {c = cω ds b γ} p) g = λ x″ q → g x″ (~-trans q p)
+  good-~ (~nu p)     g        = goodNu~ (~nu p) g
 
   -- a layer of μ data is good: it holds no closure
   goodμ : ∀ G {F} (v : MV (LF∙ G (μt F))) → Good (LF∙ G (μt F)) v
@@ -223,6 +257,116 @@ module _ (W : World) where
   good-tag (G ⊕f H) (minl x)     g        = good-tag G x g
   good-tag (G ⊕f H) (minr x)     g        = good-tag H x g
   good-tag (G ⊗f H) (mpair x x′) (g , g′) = (good-tag G x g , good-tag H x′ g′)
+
+  -- a good layer of νs is a good value
+  layer-good : ∀ F G (w : MV (LF∙ G (Nu F))) → GoodLayer F G w → Good (LF∙ G (Nu F)) w
+  layer-good F Idf      w            g        = g
+  layer-good F Kone     w            g        = tt
+  layer-good F Kzero    ()
+  layer-good F (Kb b)   w            g        = tt
+  layer-good F (Kμ G)   w            g        = tt
+  layer-good F (G ⊕f H) (minl w)     g        = layer-good F G w g
+  layer-good F (G ⊕f H) (minr w)     g        = layer-good F H w g
+  layer-good F (G ⊗f H) (mpair w w′) (g , g′) = (layer-good F G w g , layer-good F H w′ g′)
+
+  glo : ∀ F (o : Outcome (LF∙ F (Nu F))) → GoodLO F o → GoodO (LF∙ F (Nu F)) o
+  glo F (gives w _) g = layer-good F F w g
+  glo F (stop _)    g = tt
+
+  ----------------------------------------------------------------------
+  -- 1½. ★ OBSERVING A GOOD ν: the run of `obsT`, built from the goodness of
+  -- its coalgebra (Tait: no evaluator is called), and the new νs good again,
+  -- by a guarded corecursion (the Spec's `anaA`/`mapA`).
+  ----------------------------------------------------------------------
+
+  -- a run that gives a value with a property
+  record GaveP {Γ} (ds : Defs Γ) {E A B} (f : Tm Γ E A B) (e : MV E) (v : MV A) (n : ℕ) (P : MV B → Set) : Set where
+    constructor gaveP
+    field
+      {w}  : MV B
+      {n′} : ℕ
+      {t}  : Trace
+      run  : Run ds f e v n (gives w n′) t
+      good : P w
+
+  -- a copy of the coalgebra beside each seed
+  strRun : ∀ {Γ} (ds : Defs Γ) {F S} G (c : MV (Coalg F S)) → Good (Coalg F S) c
+         → (w : MV (LF∙ G S)) → Good (LF∙ G S) w → ∀ n
+         → GaveP ds (strL F G S) (mpair mone c) w n (Good (LF∙ G (Coalg F S ⊗t S)))
+  strRun ds Idf c gc s gs n =
+    gaveP (r-∘ r-λ⁻ (go-on (r-⊗ (r-snd r-copy) (go-on (fm-gives r-id))))) (good-~ (copy-~ c n) gc , gs)
+  strRun ds Kone     c gc w gw n = gaveP r-id tt
+  strRun ds Kzero    c gc () gw n
+  strRun ds (Kb b)   c gc w gw n = gaveP r-id tt
+  strRun ds (Kμ G)   c gc w gw n = gaveP r-id tt
+  strRun ds (G ⊕f H) c gc (minl w) gw n with strRun ds G c gc w gw n
+  ... | gaveP r g = gaveP (r-case₁ (r-∘ r (go-on r-inl))) g
+  strRun ds (G ⊕f H) c gc (minr w) gw n with strRun ds H c gc w gw n
+  ... | gaveP r g = gaveP (r-case₂ (r-∘ r (go-on r-inr))) g
+  strRun ds (G ⊗f H) c gc (mpair w w′) (g₁ , g₂) n with strRun ds G c gc w g₁ n
+  ... | gaveP {n′ = n₁} r₁ h₁ with strRun ds H c gc w′ g₂ n₁
+  ...   | gaveP r₂ h₂ = gaveP (r-⊗ r₁ (go-on (fm-gives r₂))) (h₁ , h₂)
+
+  -- each pair of a layer a ν: the values, at a counter, and their run
+  mapV : ∀ {F S} G → MV (LF∙ G (Coalg F S ⊗t S)) → ℕ → MV (LF∙ G (Nu F)) × ℕ
+  mapV {F} {S} Idf p n   = (mnu (szν F S , n) p , suc n)
+  mapV Kone     w n      = (w , n)
+  mapV Kzero    () n
+  mapV (Kb b)   w n      = (w , n)
+  mapV (Kμ G)   w n      = (w , n)
+  mapV (G ⊕f H) (minl w) n = (minl (fst (mapV G w n)) , snd (mapV G w n))
+  mapV (G ⊕f H) (minr w) n = (minr (fst (mapV H w n)) , snd (mapV H w n))
+  mapV (G ⊗f H) (mpair w w′) n =
+    (mpair (fst (mapV G w n)) (fst (mapV H w′ (snd (mapV G w n)))) , snd (mapV H w′ (snd (mapV G w n))))
+
+  mapRun : ∀ {Γ} (ds : Defs Γ) {F S} G (w : MV (LF∙ G (Coalg F S ⊗t S))) n
+         → Σ Trace λ t → Run ds (mapNu F G S) mone w n (gives (fst (mapV G w n)) (snd (mapV G w n))) t
+  mapRun ds Idf      p n = (_ , r-unf)
+  mapRun ds Kone     w n = (_ , r-id)
+  mapRun ds Kzero    () n
+  mapRun ds (Kb b)   w n = (_ , r-id)
+  mapRun ds (Kμ G)   w n = (_ , r-id)
+  mapRun ds {F} {S} (G ⊕f H) (minl w) n = (_ , r-case₁ (r-∘ (snd (mapRun ds {F} {S} G w n)) (go-on r-inl)))
+  mapRun ds {F} {S} (G ⊕f H) (minr w) n = (_ , r-case₂ (r-∘ (snd (mapRun ds {F} {S} H w n)) (go-on r-inr)))
+  mapRun ds {F} {S} (G ⊗f H) (mpair w w′) n =
+    (_ , r-⊗ (snd (mapRun ds {F} {S} G w n)) (go-on (fm-gives (snd (mapRun ds {F} {S} H w′ (snd (mapV G w n)))))))
+
+  mutual
+    -- ★ a ν built from a good coalgebra and seed is good: its observation (of
+    -- it or of a copy) runs, and the νs it gives are good again (corecursion,
+    -- guarded by `obs`, as the Spec's `anaA` by `outν`)
+    goodν : ∀ {F S} (p : MV (Coalg F S ⊗t S)) → Good (Coalg F S ⊗t S) p → ∀ i → GoodNu F (mnu i p)
+    obs (goodν p gp i) (mnu i′ p′) (~nu q) ds e k n σ = observe p′ (good-~ q gp) i′ ds e k n σ
+
+    -- one observation: the coalgebra (good) on the seed, then the layer
+    observe : ∀ {F S} (p : MV (Coalg F S ⊗t S)) → Good (Coalg F S ⊗t S) p → ∀ i {Γ} (ds : Defs Γ) {E} (e : MV E)
+              (k : ℕ) n (σ : WSt) → Σ (Ran ds (lout {F = F}) e (mnu i p) n) (λ r → GoodLO F (Ran.out r))
+    observe {F} {S} (mpair (mfn j (cω ds′ b γ) x) s) (gc , gs) i ds e k n σ with gc x (~-refl x) k s n σ gs
+    ... | (ran (stop y) t rb σ₁ cz , _) =
+      ( ran (stop y) _ (r-nout (r-∘ (r-∘ (r-∘ (r-∘ (r-lend (fm-stop (r-snd (r-bev rb)))) stopped) stopped) stopped) stopped))
+            σ₁ cz
+      , tt )
+    ... | (ran (gives w n₁) t rb σ₁ _ , gw) with strRun ds F (mfn j (cω ds′ b γ) x) gc w gw n₁
+    ...   | gaveP {w = w₂} {n′ = n₂} r₂ g₂ =
+      ( ran _ _ (r-nout (r-∘ (r-∘ (r-∘ (r-∘ (r-lend (fm-gives (r-snd (r-bev rb)))) (go-on (r-lend (fm-gives r₂))))
+                                         (go-on (r-⊗ r-drop (go-on (fm-gives r-id)))))
+                                  (go-on r-λ))
+                           (go-on (snd (mapRun ds {F} {S} F w₂ n₂)))))
+            σ₁ tt
+      , layerGood F w₂ g₂ n₂ )
+
+    -- the layer's νs good again (the corecursive calls, in head position)
+    layerGood : ∀ {F S} G (w : MV (LF∙ G (Coalg F S ⊗t S))) → Good (LF∙ G (Coalg F S ⊗t S)) w → ∀ n
+              → GoodLayer F G (fst (mapV G w n))
+    layerGood {F} {S} Idf p gp n = goodν p gp (szν F S , n)
+    layerGood Kone     w gw n = tt
+    layerGood Kzero    () gw n
+    layerGood (Kb b)   w gw n = tt
+    layerGood (Kμ G)   w gw n = tt
+    layerGood {F} {S} (G ⊕f H) (minl w) gw n = layerGood {F} {S} G w gw n
+    layerGood {F} {S} (G ⊕f H) (minr w) gw n = layerGood {F} {S} H w gw n
+    layerGood {F} {S} (G ⊗f H) (mpair w w′) (g₁ , g₂) n =
+      (layerGood {F} {S} G w g₁ n , layerGood {F} {S} H w′ g₂ (snd (mapV G w n)))
 
   ----------------------------------------------------------------------
   -- 2. The label table's runners (D405): each takes good inputs to a good
@@ -330,6 +474,11 @@ module _ (W : World) where
       ... | (ran o t rb σ₁ c , gw) = (ran o (free i ∷ t) (r-ev rb) σ₁ c , gw)
       go k bev (mfn i (cω ds′ b γ) x) a n σ gf ga with gf x (~-refl x) k a n σ ga
       ... | (ran o t rb σ₁ c , gw) = (ran o (peek i ∷ t) (r-bev rb) σ₁ c , gw)
+      -- ★ a ν: built, it is good (by `goodν`); observed, it runs by its
+      -- goodness: no recursive call
+      go k lunf e p n σ ge gp = (ran _ _ r-unf σ tt , goodν p gp _)
+      go k (lout {F}) e v n σ ge gv with obs gv v (~-refl v) ds e k n σ
+      ... | (r , g) = (r , glo F (Ran.out r) g)
       go k (lconst v) e mone n σ ge gv = (ran _ _ r-const σ tt , tt)
       go k (lop s) e x n σ ge gx with ans σ s (toF (sdom s) (er x)) in eq
       ... | just (y , σ₁) = (ran _ _ (r-op {y = y}) σ₁ tt , goodF (scod s) y)
@@ -394,6 +543,7 @@ module _ (W : World) where
   allGood (mbase x)   = tt
   allGood (mmu i v)   = tt
   allGood (mct x)     = allGood x
+  allGood (mnu i p)   = goodν p (allGood p) i
   allGood (mfn i (c1 ds b γ) x) =
     λ x′ p k a n σ ga → Eval.go ds (runners ds) k b mone (mpair x′ a) n σ tt (good-~ p (allGood x) , ga)
   allGood (mfn i (cω ds b γ) x) =
