@@ -132,3 +132,37 @@ module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
     vfn cb cc cf (vw-frame p (λ i k c′ → h i k (rgt {a = δ j i} c′))) (At-frame (λ k → h j k (self j (cnt x j))) c)
   vw-frame (vnu {i = j} {p = q} co cc cf p c) h =
     vnu co cc cf (vw-frame p (λ i k c′ → h i k (rgt {a = δ j i} c′))) (At-frame (λ k → h j k (self j (cnt q j))) c)
+
+  ----------------------------------------------------------------------
+  -- LAYER (3): A CONFIGURATION IN A FRAME. `sm` the frame's slots.
+  ----------------------------------------------------------------------
+
+  open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
+  open import Data.Nat using (_≤_; _∸_)
+
+  -- words at consecutive slots
+  SlotsAt : (ℕ → Maybe W) → ℕ → List W → Set
+  SlotsAt sm o []       = ⊤
+  SlotsAt sm o (w ∷ ws) = sm o ≡ just w × SlotsAt sm (suc o) ws
+
+  -- the environment's buffers: each slot holds the words of what it sees,
+  -- at the words of the slots below it
+  EnvW : (HeapLocation → Maybe W) → (ℕ → Maybe W) → ∀ {Es} → Slots Es → Set
+  EnvW rd sm []ᵉ = ⊤
+  EnvW rd sm (vw {Es = Es} e es) = Σ (List W) (λ w → VW rd e w × SlotsAt sm (ws Es) w) × EnvW rd sm es
+  EnvW rd sm (ln {E = E} {Es = Es} e x es) =
+    Σ (List W) (λ w → VW rd (mpair e x) w × SlotsAt sm (ws (E ∷ Es)) w) × EnvW rd sm es
+
+  -- the operand stack, downward from the region's top: each value's words
+  -- at the region's top less the words of it and those below it
+  StkW : (HeapLocation → Maybe W) → (ℕ → Maybe W) → Frame → ∀ {S} → Stk S → Set
+  StkW rd sm φ []ˢ = ⊤
+  StkW rd sm φ (_∷ˢ_ {A} {S} v os) = Σ (List W) (λ w → VW rd v w × SlotsAt sm (budget φ ∸ ws (A ∷ S)) w) × StkW rd sm φ os
+
+  -- ★ a configuration in its frame: both regions hold their words, and fit
+  record CfgW (rd : HeapLocation → Maybe W) (sm : ℕ → Maybe W) (φ : Frame) {sh : Sh} (m : Cfg sh) : Set where
+    field
+      c-env  : EnvW rd sm (Cfg.envs m)
+      c-stk  : StkW rd sm φ (Cfg.opds m)
+      c-efit : envW sh ≤ EP φ
+      c-sfit : opW sh ≤ OP φ
