@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Examples — plan 0.146 A6: concrete RUNS.
+-- Once.LinCore.Examples — plan 0.146 A6: concrete RUNS.
 --
 -- The theorems of `Events` and `Act` are about every run that exists; a
 -- relation with no runs would make them vacuous. These are concrete runs,
@@ -33,13 +33,13 @@ open import Data.Nat.Properties using (n∸n≡0)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (just; nothing; _>>=_)
 import Data.Maybe
-import LinCore.Alloc as Al
-import LinCore.Region as Rg
-import LinCore.AllocRun
-open import LinCore.Flat using (FTy; funit; fvoid; fw)
-open import LinCore.Free using (Weave; w-[]; w-run; w-tmp)
+import Once.LinCore.Alloc as Al
+import Once.LinCore.Region as Rg
+import Once.LinCore.AllocRun
+open import Once.LinCore.Flat using (FTy; funit; fvoid; fw)
+open import Once.LinCore.Free using (Weave; w-[]; w-run; w-tmp)
 
-module LinCore.Examples where
+module Once.LinCore.Examples where
 
 data B : Set where
   int : B
@@ -63,16 +63,16 @@ ocod exit = fvoid
 bw : B → ℕ
 bw int = 1
 
-open import LinCore.NbEPLinCore B ⟦_⟧B Op odom ocod
-open import LinCore.Events B ⟦_⟧B Op odom ocod bw
-open import LinCore.Act B ⟦_⟧B Op odom ocod bw
-open import LinCore.Temps B ⟦_⟧B Op odom ocod bw
-open import LinCore.Total B ⟦_⟧B Op odom ocod bw
-open import LinCore.Pass B ⟦_⟧B Op odom ocod renaming (Out to Outν)
-open import LinCore.Whole B ⟦_⟧B Op odom ocod bw
-open import LinCore.Machine B ⟦_⟧B Op odom ocod bw
-open import LinCore.Held B ⟦_⟧B Op odom ocod bw
-module AR = LinCore.AllocRun B ⟦_⟧B Op odom ocod bw
+open import Once.LinCore.NbEPLinCore B ⟦_⟧B Op odom ocod
+open import Once.LinCore.Events B ⟦_⟧B Op odom ocod bw
+open import Once.LinCore.Act B ⟦_⟧B Op odom ocod bw
+open import Once.LinCore.Temps B ⟦_⟧B Op odom ocod bw
+open import Once.LinCore.Total B ⟦_⟧B Op odom ocod bw
+open import Once.LinCore.Pass B ⟦_⟧B Op odom ocod renaming (Out to Outν)
+open import Once.LinCore.Whole B ⟦_⟧B Op odom ocod bw
+open import Once.LinCore.Machine B ⟦_⟧B Op odom ocod bw
+open import Once.LinCore.Held B ⟦_⟧B Op odom ocod bw
+module AR = Once.LinCore.AllocRun B ⟦_⟧B Op odom ocod bw
 
 -- the events of a loop run, and of a run
 trace-of : ∀ {E A C} {round : Tm Γ E A (C ⊕t A)} {e s n k s′ n′ t} → Loop ds round e s n k s′ n′ t → Trace

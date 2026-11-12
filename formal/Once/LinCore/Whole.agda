@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Whole — plan 0.146 A15: THE CHAIN, END TO END (first-order).
+-- Once.LinCore.Whole — plan 0.146 A15: THE CHAIN, END TO END (first-order).
 --
 -- An IR program, translated (`Pass.tr`), run in any world with any fuel
 -- (`Total.exec`):
@@ -22,19 +22,19 @@ open import Agda.Builtin.Equality using (_≡_; refl)
 open import Data.Product using (_×_)
 open import Data.Unit using (tt)
 open import Data.Nat using (ℕ)
-open import LinCore.Flat using (FTy; funit)
+open import Once.LinCore.Flat using (FTy; funit)
 
-module LinCore.Whole
+module Once.LinCore.Whole
   (Base : Set) (⟦_⟧b : Base → Set)
   (Sig : Set) (sdom scod : Sig → FTy Base)
   (bw : Base → ℕ)
   where
 
-open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import LinCore.Events Base ⟦_⟧b Sig sdom scod bw
-open import LinCore.Total Base ⟦_⟧b Sig sdom scod bw
-open import LinCore.Pass Base ⟦_⟧b Sig sdom scod
-open import LinCore.Bisim Base ⟦_⟧b Sig sdom scod using (block≈)
+open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.Events Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.Total Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.Pass Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.Bisim Base ⟦_⟧b Sig sdom scod using (block≈)
 
 module _ (W : World) where
   -- ★ an IR program (its definitions `P`, each calling only earlier ones, and

@@ -10,7 +10,7 @@ Each spike directory names its plan:
 
 | directory | plan | what it shapes |
 |---|---|---|
-| `LinCore/` | 0.146 (memory by a linear core) | the linear core Once compiles through: its terms, its alloc/free events over D402's two heaps, `NoLeak` and the space claim, then the pass from `Once.IR` |
+| (`LinCore/`, migrated 2026-11-12 to `formal/Once/LinCore/`) | 0.146 (memory by a linear core) | the linear core Once compiles through: its terms, its alloc/free events over D402's two heaps, `NoLeak` and the space claim, then the pass from `Once.IR` |
 
 Check with `Spikes/check.sh [module.agda ...]` (each module in its own Agda process, under
 `formal/scripts/agda-safe.sh`'s memory cap).

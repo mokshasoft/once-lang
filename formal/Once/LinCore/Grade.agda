@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Grade — THE GRADE MEANS WHAT THE SPEC SAYS (plan 0.146 §3).
+-- Once.LinCore.Grade — THE GRADE MEANS WHAT THE SPEC SAYS (plan 0.146 §3).
 --
 -- The Spec means a derivation of grade `π` in `M π` (`Spec.Core.Meaning`,
 -- D317: `M act = T`, finite blocks; `M eff = T∞`), and its loop takes a round
@@ -27,15 +27,15 @@ open import Agda.Builtin.Sigma using (fst; snd)
 open import Agda.Builtin.Sigma using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
-open import LinCore.Flat using (FTy)
+open import Once.LinCore.Flat using (FTy)
 
-module LinCore.Grade
+module Once.LinCore.Grade
   (Base : Set) (⟦_⟧b : Base → Set)
   (Sig : Set) (sdom scod : Sig → FTy Base)
   where
 
-open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import LinCore.Bisim Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.Bisim Base ⟦_⟧b Sig sdom scod
   using (_≈_; block≈; Bl; ≈ret; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-blk; Bl-refl; >>=-cong; iter-cong)
 
 ------------------------------------------------------------------------

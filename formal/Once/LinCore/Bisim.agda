@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Bisim — BISIMILARITY of computations (plan 0.146 A15).
+-- Once.LinCore.Bisim — BISIMILARITY of computations (plan 0.146 A15).
 --
 --   * `_≈_`: the same blocks, step for step, for every answer of the world,
 --     ending in the same value (a loop's meaning is coinductive, so `≡` would
@@ -22,14 +22,14 @@ open import Agda.Builtin.Sigma using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Relation.Binary.Pointwise using (Pointwise)
   renaming (inj₁ to ⊎₁; inj₂ to ⊎₂)
-open import LinCore.Flat using (FTy)
+open import Once.LinCore.Flat using (FTy)
 
-module LinCore.Bisim
+module Once.LinCore.Bisim
   (Base : Set) (⟦_⟧b : Base → Set)
   (Sig : Set) (sdom scod : Sig → FTy Base)
   where
 
-open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
 
 ------------------------------------------------------------------------
 -- 1. BISIMILARITY: the same blocks, step for step, for every answer of the

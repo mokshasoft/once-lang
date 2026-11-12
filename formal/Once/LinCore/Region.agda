@@ -2,13 +2,13 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Region — plan 0.146 A17 (D411 part 2, decided): ONE REGION,
+-- Once.LinCore.Region — plan 0.146 A17 (D411 part 2, decided): ONE REGION,
 -- SHARED BY EVERY SIZE.
 --
 -- The Host supplies one region; the compiler does not split it between
 -- sizes (it cannot know how, so a split would be arbitrary). The region is
 -- used from the bottom up (`wtop` words in use). Each size has its own pool
--- (`LinCore.Alloc`: a free list, lowest free block first); a pool that must
+-- (`Once.LinCore.Alloc`: a free list, lowest free block first); a pool that must
 -- grow takes the next `k` words at the top of the region (`place`). Block `j`
 -- of size `k` is the words `[addr k j, addr k j + k)`. Nothing is stored at
 -- run time that the compiler knows: a block's size is its type's (D404).
@@ -29,7 +29,7 @@
 
 {-# OPTIONS --safe --guardedness #-}
 
-module LinCore.Region where
+module Once.LinCore.Region where
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; subst; _≢_)
@@ -47,7 +47,7 @@ open import Data.List.Properties using (++-identityʳ; ++-assoc)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Relation.Nullary using (yes; no)
-import LinCore.Alloc as A
+import Once.LinCore.Alloc as A
 open A using (Pool; Op; upd; upd-same; upd-other)
 
 ------------------------------------------------------------------------

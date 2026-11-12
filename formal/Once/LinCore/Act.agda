@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.Act — plan 0.146 A1: a server, round after round.
+-- Once.LinCore.Act — plan 0.146 A1: a server, round after round.
 --
 -- Since A11 a round is an ordinary term and the loop a generator (`liter`),
 -- whose finished runs are `Run`'s. A server does not finish, so this module
@@ -29,16 +29,16 @@ open import Data.Nat.Properties using (≤-refl; ≤-trans)
 open import Data.Nat.Tactic.RingSolver using (solve-∀)
 open import Data.List using ([]; _∷_; _++_)
 open import Data.List.Properties using (++-assoc)
-open import LinCore.Flat using (FTy)
+open import Once.LinCore.Flat using (FTy)
 
-module LinCore.Act
+module Once.LinCore.Act
   (Base : Set) (⟦_⟧b : Base → Set)
   (Sig : Set) (sdom scod : Sig → FTy Base)
   (bw : Base → ℕ)
   where
 
-open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import LinCore.Events Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.Events Base ⟦_⟧b Sig sdom scod bw
 
 
 data Loop {Γ : Cx} (ds : Defs Γ) {E A B : LTy} (round : Tm Γ E A (B ⊕t A)) (e : MV E)

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- LinCore.NbEPLinCore — THE LINEAR CORE (plan 0.146; D403).
+-- Once.LinCore.NbEPLinCore — THE LINEAR CORE (plan 0.146; D403).
 --
 -- Started as OCP-0009's `NbEPLinCore` (`origin/plan-ref`), and now the one
 -- term language of the spike:
@@ -38,7 +38,7 @@
 -- ★ THE SPEC'S GRADES (D412): a term's grade is a judgment on it, as the
 -- Spec's `⊢ t ∷ A ! π` is on its raw terms. `Blk t` is grade `act` (a finite
 -- block); a label carries its arrow's grade; the loop's round is a `Blk`
--- (`⊢iter`), so is a coalgebra (`⊢unfold`). `LinCore.Grade` proves that a
+-- (`⊢iter`), so is a coalgebra (`⊢unfold`). `Once.LinCore.Grade` proves that a
 -- block means a finite computation and the loop the Spec's `loop` of it.
 --
 -- Base leaves and SigOps are PARAMETERS: nothing below depends on what an
@@ -57,9 +57,9 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Nat using (ℕ; zero; suc)
 open import Agda.Builtin.Equality using (_≡_; refl)
-open import LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_; ⟦_⟧F)
+open import Once.LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_; ⟦_⟧F)
 
-module LinCore.NbEPLinCore
+module Once.LinCore.NbEPLinCore
   (Base : Set) (⟦_⟧b : Base → Set)
   -- ★ A12: the SigOps take and answer FLAT values (the Spec's `BTy`: an
   -- `Int → Int` op, an emit answering `unit`, an exit answering `void`, …)
@@ -688,7 +688,7 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lg eff t _ = Lᶜ t
 
     -- ★ A FINITE BLOCK'S MEANING, by induction on the grade judgment: the
-    -- Spec's meaning at `act`, a `T`. (`LinCore.Grade`: `Lᶜ t ≈ emb (Lᴮ φ)`.)
+    -- Spec's meaning at `act`, a `T`. (`Once.LinCore.Grade`: `Lᶜ t ≈ emb (Lᴮ φ)`.)
     Lᴮ : ∀ {E A B} {t : Tm Γ E A B} → Blk t → ⟦ E ⟧ → ⟦ A ⟧ → T ⟦ B ⟧
     Lᴮ k-id          e         x             = ret x
     Lᴮ (k-∘ φ ψ)     e         x             = bindT (Lᴮ ψ e x) (Lᴮ φ e)
