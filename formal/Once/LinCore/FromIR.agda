@@ -36,7 +36,7 @@ import Data.Maybe
 open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (subst; subst₂; sym)
 open import Once.IRTy using (_≟IRTy_; fits-int; fits-float)
 import Once.IR as M
@@ -247,16 +247,26 @@ weaken : ∀ {Γ τ A B} → Hit Γ A B → Hit (Γ ▸ τ) A B
 weaken (hit g p) = hit g (there p)
 
 -- one more definition: its label answers its name, the rest as before
+-- (on the decisions as master's `tableEnv-at` takes them, so the two reduce
+-- together)
+extend-at : ∀ {Γ} g (rs : Resolver Γ) (e : IRFun) f A B
+          → Dec (fname e ≡ f) → Dec (fdom e ≡ A) → Dec (fcod e ≡ B)
+          → Maybe (Hit (Γ ▸ sg once g One ⟪ fdom e ⟫ ⟪ fcod e ⟫) ⟪ A ⟫ ⟪ B ⟫)
+extend-at g rs e f A B (yes _) (yes p)    (yes q)    =
+  just (subst₂ (λ X Y → Hit (_ ▸ sg once g One ⟪ fdom e ⟫ ⟪ fcod e ⟫) ⟪ X ⟫ ⟪ Y ⟫) p q (hit g here))
+extend-at g rs e f A B (yes _) (yes _)    (no _)     = Data.Maybe.map weaken (rs f A B)
+extend-at g rs e f A B (yes _) (no _)     _          = Data.Maybe.map weaken (rs f A B)
+extend-at g rs e f A B (no _)  _          _          = Data.Maybe.map weaken (rs f A B)
+
 extend : ∀ {Γ} g (rs : Resolver Γ) (e : IRFun) → Resolver (Γ ▸ sg once g One ⟪ fdom e ⟫ ⟪ fcod e ⟫)
-extend g rs e f A B with fname e ≟ᶜ f | fdom e ≟IRTy A | fcod e ≟IRTy B
-... | yes _ | yes refl | yes refl = just (hit g here)
-{-# CATCHALL #-}
-... | _     | _        | _        = Data.Maybe.map weaken (rs f A B)
+extend g rs e f A B = extend-at g rs e f A B (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B)
+
+entry-at : ∀ {Γ} → P.Prog Γ → Resolver Γ → (e : IRFun) (b : P.IR Γ ⟪ fdom e ⟫ ⟪ fcod e ⟫) → Maybe (P.BlkIR Γ b) → TrProg
+entry-at P rs e b (just φ) = trProg (P P.▹ b ∣ φ)  (extend act rs e)
+entry-at P rs e b nothing  = trProg (P P.▹ b ∣ tt) (extend eff rs e)
 
 entry : ∀ {Γ} → P.Prog Γ → Resolver Γ → (e : IRFun) → P.IR Γ ⟪ fdom e ⟫ ⟪ fcod e ⟫ → TrProg
-entry P rs e b with blk? b
-... | just φ  = trProg (P P.▹ b ∣ φ)  (extend act rs e)
-... | nothing = trProg (P P.▹ b ∣ tt) (extend eff rs e)
+entry P rs e b = entry-at P rs e b (blk? b)
 
 trTable : List IRFun → Maybe TrProg
 trTable []       = just (trProg P.ε (λ _ _ _ → nothing))
