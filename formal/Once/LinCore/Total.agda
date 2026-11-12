@@ -23,27 +23,30 @@
 -- hypothesis. Labels (D405) are run in table order, as before.
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 
 open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Once.LinCore.Flat using (FTy; funit; fvoid; fw; _f*_; _f+_)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.Spec.Word using (Carrier)
+import Once.IR.Semantics.Value Carrier Carrier as Val
+open import Once.LinCore.Flat using (Base; FTy; funit; fvoid; fw; _f*_; _f+_)
 
 module Once.LinCore.Total
-  (Base : Set) (⟦_⟧b : Base → Set)
-  (Sig : Set) (sdom scod : Sig → FTy Base)
+  (fmt : TargetNum) (ans : FFIAnswers)
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import Once.LinCore.Events Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.NbEPLinCore fmt ans
+open import Once.LinCore.Events fmt ans bw
 
 ------------------------------------------------------------------------
 -- 0. THE SAME VALUE, up to its cells' names: what a copy is of its original.
@@ -110,7 +113,8 @@ copy-~ (mnu i p) n with copy p (suc n) | copy-~ p (suc n)
 record World : Set₁ where
   field
     WSt : Set
-    ans : WSt → (s : Sig) → ⟦ sdom s ⟧f → Maybe (⟦ scod s ⟧f × WSt)
+    -- ★ B1.2: it answers master's calls (`CallOp`), or gives no answer
+    answer : WSt → (o : CallOp) → Val.⟦ CallOp.cdom o ⟧ → Maybe (Val.⟦ CallOp.ccod o ⟧ × WSt)
 
 module _ (W : World) where
   open World W
@@ -119,7 +123,7 @@ module _ (W : World) where
   -- world gave no answer to a call. Nothing else.
   data Spent : Set where
     out-of-fuel : Spent
-    unanswered  : ∀ σ s x → ans σ s x ≡ nothing → Spent
+    unanswered  : ∀ σ o x → answer σ o x ≡ nothing → Spent
 
   Because : Why → Set
   Because halted    = ⊤
@@ -139,6 +143,31 @@ module _ (W : World) where
       run   : Run ds f e v n out trace
       after : WSt
       cause : Cause out
+
+  -- ★ B1.2: an op's contract block, run in the world: each call answered, or
+  -- the run cut where the world gave no answer
+  Ends : ∀ {X : Set} → X ⊎ Why → Set
+  Ends (inj₁ _) = ⊤
+  Ends (inj₂ w) = Because w
+
+  record OpRan {X : Set} (b : T X) : Set where
+    constructor opran
+    field
+      otrace : Trace
+      oend   : X ⊎ Why
+      opath  : OpPath b otrace oend
+      oafter : WSt
+      ocause : Ends oend
+
+  runOp   : ∀ {X} (b : T X) → WSt → OpRan b
+  runCall : ∀ {X} o a (k : Val.⟦ CallOp.ccod o ⟧ → T X) σ (m : Maybe (Val.⟦ CallOp.ccod o ⟧ × WSt))
+          → answer σ o a ≡ m → OpRan (call o a k)
+  runOp (ret x)      σ = opran [] (inj₁ x) p-ret σ tt
+  runOp (call o a k) σ = runCall o a k σ (answer σ o a) refl
+  runOp (halt o a)   σ = opran _ (inj₂ halted) p-halt σ tt
+  runCall o a k σ (just (y , σ₁)) eq with runOp (k y) σ₁
+  ... | opran t r p σ₂ c = opran (io o a y ∷ t) r (p-call p) σ₂ c
+  runCall o a k σ nothing eq = opran [] (inj₂ exhausted) p-cut σ (unanswered σ o a eq)
 
   record RanM {Γ} (ds : Defs Γ) {E A} (F : LF) (alg : Tm Γ E (LF∙ F A) A) (e : MV E)
               (G : LF) (x : MV (LF∙ G (μt F))) (n : ℕ) : Set where
@@ -480,10 +509,9 @@ module _ (W : World) where
       go k (lout {F}) e v n σ ge gv with obs gv v (~-refl v) ds e k n σ
       ... | (r , g) = (r , glo F (Ran.out r) g)
       go k (lconst v) e mone n σ ge gv = (ran _ _ r-const σ tt , tt)
-      go k (lop s) e x n σ ge gx with ans σ s (toF (sdom s) (er x)) in eq
-      ... | just (y , σ₁) = (ran _ _ (r-op {y = y}) σ₁ tt , goodF (scod s) y)
-      ... | nothing       = (ran _ _ r-exh σ (unanswered σ s _ eq) , tt)
-      go k (lhalt s) e x n σ ge gx = (ran _ _ r-halt σ tt , tt)
+      go k (lop s) e x n σ ge gx with runOp (opF s (toF (sdom s) (er x))) σ
+      ... | opran t (inj₁ y) p σ₁ c = (ran _ _ (r-op p) σ₁ tt , goodF (scod s) y)
+      ... | opran t (inj₂ w) p σ₁ c = (ran _ _ (r-opend p) σ₁ c , tt)
       go k (liter f φ) e a n σ ge ga = loop k f φ e a n σ ge ga
 
       -- ★ the loop: a round, then (if it continues) the loop on one less fuel.
@@ -557,8 +585,8 @@ module _ (W : World) where
   -- ★ a world that always answers: a run it allows ends `exhausted` only
   -- because a loop ran out of rounds
   Answers : Set
-  Answers = ∀ σ s x → ans σ s x ≡ nothing → ⊥
+  Answers = ∀ σ o x → answer σ o x ≡ nothing → ⊥
 
   fuel-only : Answers → (c : Spent) → c ≡ out-of-fuel
   fuel-only always out-of-fuel             = refl
-  fuel-only always (unanswered σ s x eq)   = ⊥-elim (always σ s x eq)
+  fuel-only always (unanswered σ o x eq)   = ⊥-elim (always σ o x eq)

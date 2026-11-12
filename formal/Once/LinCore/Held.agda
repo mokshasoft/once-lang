@@ -23,7 +23,7 @@
 -- each is freed by the `leave` its `enter` is matched with (`Machine.framed`).
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; subst)
@@ -35,17 +35,18 @@ open import Data.Nat.Properties
   using (≤-refl; ≤-trans; ≤-reflexive; ≤-antisym; m≤m+n; m≤n+m; m∸n≤m; 0∸n≡0; +-comm; suc-injective)
 open import Data.Nat.Tactic.RingSolver using (solve-∀)
 open import Data.List using (List; []; _∷_)
-open import Once.LinCore.Flat using (FTy)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.LinCore.Flat using (Base; FTy)
 
 module Once.LinCore.Held
-  (Base : Set) (⟦_⟧b : Base → Set)
-  (Sig : Set) (sdom scod : Sig → FTy Base)
+  (fmt : TargetNum) (ans : FFIAnswers)
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import Once.LinCore.Events Base ⟦_⟧b Sig sdom scod bw
-open import Once.LinCore.Machine Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.NbEPLinCore fmt ans
+open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Machine fmt ans bw
 
 ------------------------------------------------------------------------
 -- 1. WHAT A CONFIGURATION HOLDS.
@@ -203,9 +204,10 @@ inv-step {m = es ∥ mone ∷ˢ os} {n = n} {h = h} s-ecopy inv =
     r = solve-∀
     cong₂′ : ∀ {a b} → a ≡ 0 → b ≡ 0 → a + b ≡ 0
     cong₂′ refl refl = refl
-inv-step {m = es ∥ x ∷ˢ os} (s-ehalt {s = s}) inv =
-  ( (tt , tt)
-  , same inv (λ i → cong (λ z → own es i + (z + held os i)) (cnt-flat (sdom s) x i)) (i-sees inv) )
+inv-step {m = es ∥ x ∷ˢ os} {h = h} (s-opend {s = s} p) inv =
+  ( op-OK p h
+  , subst (Inv _ _) (sym (op-play p h))
+      (same inv (λ i → cong (λ z → own es i + (z + held os i)) (cnt-flat (sdom s) x i)) (i-sees inv)) )
 inv-step {m = es ∥ mmu j v ∷ˢ os} {h = h} s-fold inv =
   ( (fst fr , tt)
   , record { i-le1   = fst (snd fr)

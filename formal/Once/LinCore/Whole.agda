@@ -16,25 +16,26 @@
 --   * if it was cut, the cause is a loop out of fuel or a refused call.
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Data.Product using (_×_)
 open import Data.Unit using (tt)
 open import Data.Nat using (ℕ)
-open import Once.LinCore.Flat using (FTy; funit)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.LinCore.Flat using (Base; FTy)
 
 module Once.LinCore.Whole
-  (Base : Set) (⟦_⟧b : Base → Set)
-  (Sig : Set) (sdom scod : Sig → FTy Base)
+  (fmt : TargetNum) (ans : FFIAnswers)
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import Once.LinCore.Events Base ⟦_⟧b Sig sdom scod bw
-open import Once.LinCore.Total Base ⟦_⟧b Sig sdom scod bw
-open import Once.LinCore.Pass Base ⟦_⟧b Sig sdom scod
-open import Once.LinCore.Bisim Base ⟦_⟧b Sig sdom scod using (block≈)
+open import Once.LinCore.NbEPLinCore fmt ans
+open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Total fmt ans bw
+open import Once.LinCore.Pass fmt ans
+open import Once.LinCore.Bisim fmt ans using (block≈)
 
 module _ (W : World) where
   -- ★ an IR program (its definitions `P`, each calling only earlier ones, and

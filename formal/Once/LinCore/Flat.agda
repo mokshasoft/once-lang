@@ -11,7 +11,7 @@
 -- It has no parameters, so the core's modules can take a signature over it.
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe #-}
+{-# OPTIONS --guardedness #-}
 
 module Once.LinCore.Flat where
 
@@ -19,6 +19,7 @@ open import Data.Empty using (⊥)
 open import Data.Unit using (⊤)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
+open import Once.Spec.Word using (Carrier)
 
 infixr 40 _f+_
 infixr 50 _f*_
@@ -35,3 +36,11 @@ data FTy (B : Set) : Set where
 ⟦ m ⟧F (fw b)   = m b
 ⟦ m ⟧F (a f* b) = ⟦ m ⟧F a × ⟦ m ⟧F b
 ⟦ m ⟧F (a f+ b) = ⟦ m ⟧F a ⊎ ⟦ m ⟧F b
+
+-- ★ B1.2: the core's base words, master's `Int` and `Float`
+data Base : Set where
+  int float : Base
+
+⟦_⟧b : Base → Set
+⟦ int ⟧b   = Carrier
+⟦ float ⟧b = Carrier

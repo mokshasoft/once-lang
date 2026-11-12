@@ -14,7 +14,7 @@
 --   * `TR`: the same, for one finite block (`T`, the Spec's `M act`).
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (sym; subst)
@@ -22,14 +22,15 @@ open import Agda.Builtin.Sigma using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Relation.Binary.Pointwise using (Pointwise)
   renaming (inj₁ to ⊎₁; inj₂ to ⊎₂)
-open import Once.LinCore.Flat using (FTy)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.LinCore.Flat using (Base; FTy)
 
 module Once.LinCore.Bisim
-  (Base : Set) (⟦_⟧b : Base → Set)
-  (Sig : Set) (sdom scod : Sig → FTy Base)
+  (fmt : TargetNum) (ans : FFIAnswers)
   where
 
-open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.NbEPLinCore fmt ans
 
 ------------------------------------------------------------------------
 -- 1. BISIMILARITY: the same blocks, step for step, for every answer of the

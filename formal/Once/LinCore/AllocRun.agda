@@ -20,7 +20,7 @@
 -- over the program's sizes (`in-one-region`).
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst; _≢_)
@@ -33,19 +33,20 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≤_; z≤n; s≤s; _�
 open import Data.Nat.Properties using (+-identityʳ; +-comm)
 open import Data.List using (List; []; _∷_; _++_; length; concatMap)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import Once.LinCore.Flat using (FTy)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.LinCore.Flat using (Base; FTy)
 import Once.LinCore.Alloc as A
 import Once.LinCore.Region as R
 open import Data.Sum using (inj₁; inj₂)
 
 module Once.LinCore.AllocRun
-  (Base : Set) (⟦_⟧b : Base → Set)
-  (Sig : Set) (sdom scod : Sig → FTy Base)
+  (fmt : TargetNum) (ans : FFIAnswers)
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import Once.LinCore.Events Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.NbEPLinCore fmt ans
+open import Once.LinCore.Events fmt ans bw
 
 ------------------------------------------------------------------------
 -- 1. A size class's operations, from the run's events.

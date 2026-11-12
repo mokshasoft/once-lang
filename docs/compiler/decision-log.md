@@ -22632,3 +22632,31 @@ blocks), plan 0.146 §3 ("owed for B: the pass must carry the grade from the typ
   tracked twice.
 * **A second, graded IR beside master's**: two elaborations, two optimizers, or a proof that the optimizer
   preserves a separate grading.
+
+## D414 — THE CORE IS MASTER'S: ITS MONAD, ITS VALUES, ITS SIGOPS (2026-11-12)
+
+**Proposed** (made unattended, plan 0.146 B1.2, for the user's review). **Applies**: D403 amended ("the
+model is the backbone, decorated": what the compiler needs attaches as parameters decided by the type),
+D404 (SigOps take and answer flat values), D408 (an unanswered call ends the run `exhausted`).
+
+### Decision
+* **One meaning monad.** The core's `T`/`T∞` are master's (`Once.IR.Semantics.Trace`/`.Iterative`), no
+  longer a copy; so are `iterRun`, `fmap∞`, `return∞`. The apex's trace semantics (`trT∞`) reads the
+  core's meaning as it reads `evalᴰ`'s.
+* **Master's values and SigOps.** The core's base words are `int`/`float`, each a `Carrier`. A core SigOp
+  is a `SigOpInfo` (`Sig`), its argument and answer the flat types of its base evidence (`baseA`, `conB`).
+  The core is parameterised, as `evalᴰ` is, by the target's numerics and the pure FFI answers.
+* **A SigOp means its contract's block** (`opF`/`opB`, from `DenotTrace.sigOpT`): a pure op (arith, pure
+  FFI) returns with no event; an emitting or answering op is a call; a halting op halts. Its run follows
+  that block (`OpPath`): each call an event with the world's answer, then a value, a halt, or a cut where
+  the world gave no answer (`r-op`, `r-opend`). Machine: `s-opend`, the machine stops there.
+* **`lhalt` is gone.** D404 kept it as a generator of its own while the Spec halts by an operation's
+  contract; now the core halts the way the Spec does.
+* **`--safe` is dropped from the core's modules**, as from every `formal/` module: master's are not
+  `--safe`, and `make pragma-gate` is how `formal/` rules out check-disabling pragmas.
+
+### Consequences
+* Every theorem keeps its statement. `exchange`, `noleak`, `lifetimes`, `tsound`, `sim`, `held-always`
+  cover an op's path by four small lemmas (it touches no cell and has no temporary).
+* `Examples` instantiates the core at x86-64's numerics; its world answers master's calls. An answered
+  `Int` is normalised to the target's width (`atTarget`), as `evalᴰ` reads it.

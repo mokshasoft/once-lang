@@ -19,7 +19,7 @@
 --     (GOAL.md).
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (sym; cong; cong₂; subst)
@@ -27,15 +27,16 @@ open import Agda.Builtin.Sigma using (fst; snd)
 open import Agda.Builtin.Sigma using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Once.LinCore.Flat using (FTy)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.LinCore.Flat using (Base; FTy)
 
 module Once.LinCore.Grade
-  (Base : Set) (⟦_⟧b : Base → Set)
-  (Sig : Set) (sdom scod : Sig → FTy Base)
+  (fmt : TargetNum) (ans : FFIAnswers)
   where
 
-open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import Once.LinCore.Bisim Base ⟦_⟧b Sig sdom scod
+open import Once.LinCore.NbEPLinCore fmt ans
+open import Once.LinCore.Bisim fmt ans
   using (_≈_; block≈; Bl; ≈ret; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-blk; Bl-refl; >>=-cong; iter-cong)
 
 ------------------------------------------------------------------------
@@ -111,7 +112,6 @@ module _ {Γ : Cx} (ρ : Env Γ) where
     blk-coh k-unf           e x             = ret≈
     blk-coh k-nout          e v             = ≈-refl
     blk-coh k-op            e x             = same refl
-    blk-coh k-halt          e x             = same refl
 
     -- the fold of a block algebra is the block fold
     cata-coh : ∀ F {X : Set} {alg : FS F X → T∞ X} {algB : FS F X → T X}

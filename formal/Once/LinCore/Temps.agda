@@ -21,7 +21,7 @@
 -- The run's ids are the machine's names for cells: temporaries take none.
 ------------------------------------------------------------------------
 
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst)
@@ -46,16 +46,17 @@ open import Relation.Binary.PropositionalEquality using (_→-setoid_)
 open import Level using (0ℓ; _⊔_)
 import Function.Endo.Setoid
 open import Relation.Nullary using (yes; no)
-open import Once.LinCore.Flat using (FTy)
+open import Once.Spec.Numerics using (TargetNum)
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.LinCore.Flat using (Base; FTy)
 
 module Once.LinCore.Temps
-  (Base : Set) (⟦_⟧b : Base → Set)
-  (Sig : Set) (sdom scod : Sig → FTy Base)
+  (fmt : TargetNum) (ans : FFIAnswers)
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
-open import Once.LinCore.Events Base ⟦_⟧b Sig sdom scod bw
+open import Once.LinCore.NbEPLinCore fmt ans
+open import Once.LinCore.Events fmt ans bw
 
 ------------------------------------------------------------------------
 -- 1. ERASURE: a run without its temporaries is a run.
@@ -140,6 +141,13 @@ private
 plain-map : ∀ {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t}
           → RunMap ds F alg e G x n o t → RunMap ds F alg e G x n o (erase t)
 
+-- ★ B1.2: an op's path has no temporaries
+op-erase : ∀ {X} {b : T X} {t r} → OpPath b t r → OpPath b (erase t) r
+op-erase p-ret      = p-ret
+op-erase (p-call q) = p-call (op-erase q)
+op-erase p-halt     = p-halt
+op-erase p-cut      = p-cut
+
 -- ★ a run without its temporaries: the same term, values and cell events
 plain : ∀ {E A B} {f : Tm Γ E A B} {e v n o t} → Run ds f e v n o t → Run ds f e v n o (erase t)
 plain r-id = r-id
@@ -191,8 +199,8 @@ plain (r-bev r) = r-bev (plain r)
 plain r-unf = r-unf
 plain (r-nout r) = r-nout (plain r)
 plain r-const = r-const
-plain r-op = r-op
-plain r-halt = r-halt
+plain (r-op p) = r-op (op-erase p)
+plain (r-opend p) = r-opend (op-erase p)
 plain (r-iter {t₁ = t₁} r (go-on done)) = retrace (sym (erase-++ t₁ [])) (r-iter (plain r) (go-on done))
 plain (r-iter {t₁ = t₁} {t₂} r (go-on (again rn))) = retrace (sym (erase-++ t₁ t₂)) (r-iter (plain r) (go-on (again (plain rn))))
 plain (r-iter {t₁ = t₁} r stopped) = retrace (sym (erase-++ t₁ [])) (r-iter (plain r) stopped)
@@ -436,6 +444,19 @@ private
 tsound-map : ∀ {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t}
            → RunMap ds F alg e G x n o t → TPost o t
 
+-- ★ B1.2: an op's path is legal, and balanced when it gives a value
+op-TLeg : ∀ {X} {b : T X} {t r} → OpPath b t r → TLeg t
+op-TLeg p-ret      = tt
+op-TLeg (p-call q) = (tt , op-TLeg q)
+op-TLeg p-halt     = (tt , tt)
+op-TLeg p-cut      = tt
+
+op-tplay : ∀ {X} {b : T X} {t r} → OpPath b t r → ∀ k → tplay t none k ≡ 0
+op-tplay p-ret      k = refl
+op-tplay (p-call q) k = op-tplay q k
+op-tplay p-halt     k = refl
+op-tplay p-cut      k = refl
+
 tsound : ∀ {E A B} {f : Tm Γ E A B} {e v n o t} → Run ds f e v n o t → TPost o t
 tsound r-id = bal[]
 tsound (r-∘ {t₁ = t₁} {t₂} rg (go-on {o = o} rf)) = Bal-++ o t₁ t₂ (tsound rg) (tsound rf)
@@ -482,8 +503,8 @@ tsound (r-bev {i = i} {o = o} {t = t} r) = TPost-peek o i t (tsound r)
 tsound r-unf = ((tt , tt) , λ k → refl)
 tsound (r-nout {i = i} {o = o} {t = t} r) = TPost-free o i t (tsound r)
 tsound r-const = bal[]
-tsound r-op = ((tt , tt) , λ k → refl)
-tsound r-halt = (tt , tt)
+tsound (r-op p) = (op-TLeg p , op-tplay p)
+tsound (r-opend p) = op-TLeg p
 tsound (r-iter {t₁ = t₁} r (go-on done)) = IsSubmonoid.∙-∈ balanced {t₁} {[]} (tsound r) bal[]
 tsound (r-iter {t₁ = t₁} {t₂} r (go-on (again {o = o} rn))) = Bal-++ o t₁ t₂ (tsound r) (tsound rn)
 tsound (r-iter {t₁ = t₁} r stopped) = leg-[] t₁ (tsound r)
