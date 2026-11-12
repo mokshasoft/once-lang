@@ -79,6 +79,9 @@ peakI : ∀ {sh sh′} → Insᴵ sh sh′ → ℕ × ℕ
 peakC : ∀ {sh T} → Codeᴵ sh T → ℕ × ℕ
 
 peakI (loop c) = peakC c
+-- a swap keeps its top element below the stack while it moves the next
+peakI (swap {A = A} {B} {S}) = 0 , wsz A + ws (A ∷ B ∷ S)
+peakI (prim ds {S = S} (lswap {A = A} {B = B})) = 0 , wsz A + ws ((A ⊗t B) ∷ S)
 {-# CATCHALL #-}
 peakI _        = 0 , 0
 
