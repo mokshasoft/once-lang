@@ -22340,6 +22340,34 @@ exponential back, the Spec's fold into an arrow is `lcata` at an arrow carrier.
   by data has no type, the same gap as the arrows had), the pass of the IR's `curry`/`apply` (A15), and
   the Spec's quantity `Zero` and its grade `pure` (the core has once/many and act/eff).
 
+### D409 part 3, ν (2026-11-12, made unattended, for the user's review): the Spec's ν restored
+The same deviation as the arrow's: D406's ν is `Ct l S`, so its type names its coalgebra, while the
+Spec's `ν F` does not (`⊢unfold` takes any coalgebra term of arrow type). So a `case` choosing between two
+unfolds, or a fold whose carrier is a ν, had no type. Done in `Spikes/LinCore/`:
+* **Core**: `Nu F`, meaning `Nuᵐ F`, the Spec's `νM act` (a coinductive record, `outν : T (F (Nuᵐ F))`),
+  with `anaN`/`treeN`/`mapN` mirroring the Spec's `anaA`/`treeA`/`mapA` (guarded, no sized types).
+  `lunf` takes the coalgebra as a VALUE (`Fn many act S (F S)`) and a seed; `lout` observes, a block.
+* **Observation is a term**: `obsT F S`, made of the core's own generators. It applies the lent coalgebra
+  to the seed (`bev`), copies the coalgebra beside each new seed (`bcopy`), drops the original, and wraps
+  each pair (`lunf`). So it is linear, with one copy per recursive position (one for a stream, none at a
+  leaf). `Grade.obs-coh` proves it means the Spec's observation, block for block. Because observing a ν
+  runs `obsT`, `sound`, `exchange`, `noleak`, `tsound`, the simulation and `Held` all cover it.
+* **Memory**: a ν is one cell (`mnu`), holding its coalgebra and its seed. The seed's type is not the ν's,
+  so neither is its size. `r-unf` allocates the cell; `r-nout` frees it and runs `obsT`.
+* **`Total`**: Good for ν is COINDUCTIVE (`GoodNu`): every observation of it, or of a copy, has a run
+  whose layer's νs are good. `goodν` builds it by guarded corecursion (as `anaA`), from a good coalgebra
+  (Tait: the observation's run comes from the coalgebra's goodness, with no evaluator called).
+* **`Machine`/`Held`**: `nopen` frees the cell and continues into the compiled `obsT`, expanded when
+  reached, as `fold` is.
+* **Example §22**: a `case` picks one of two coalgebras (count up, stand still), both unfolding into
+  `Nu NatsF`. The stream from 3 is observed twice (3, then 4), then dropped, and every cell is freed, on
+  the machine too (`nu-events`).
+* **Kept**: D406's labelled ν (`lana`/`lobs`, `Ct l S`) as the representation where one coalgebra reaches
+  a site, as `Ct` is for closures.
+* **For review**: copying the coalgebra per position, then dropping the original, costs one copy and
+  one free per observation of a stream. Moving it into the one recursive position would cost nothing, but
+  needs a case analysis on the layer. That is a refinement of `obsT`, like in-place reuse (A8).
+
 ## D410 — A MODEL MACHINE: CODE, FRAMES IN HEAP BLOCKS, A SIMULATION BY THE RUN (2026-11-11)
 
 **Proposed** (made unattended; for the user's review). Worked out in `Spikes/LinCore/Machine.agda` (plan

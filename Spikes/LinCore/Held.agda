@@ -237,6 +237,21 @@ inv-step {m = es ∥ mpair (mfn j _ x) a ∷ˢ os} {h = h} s-apply inv =
     r₂ = solve-∀
     fr = free-step j (λ i → cnt x i + cnt a i) h (λ i → own es i + held os i) (i-le1 inv)
            (λ i → ≤-reflexive (sym (trans (i-exact inv i) (r₁ (own es i) (δ j i) (cnt x i) (cnt a i) (held os i)))))
+-- ★ observing a ν frees its cell; its coalgebra and seed stay held
+inv-step {m = es ∥ mnu j p ∷ˢ os} {h = h} s-nopen inv =
+  ( (fst fr , tt)
+  , record { i-le1   = fst (snd fr)
+           ; i-above = λ i le → trans (cong (_∸ δ j i) (i-above inv i le)) (0∸n≡0 (δ j i))
+           ; i-exact = λ i → cancelʳ (δ j i) (trans (snd (snd (snd fr)) i)
+                                                    (trans (i-exact inv i) (r₂ (own es i) (δ j i) (cnt p i) (held os i))))
+           ; i-sees  = i-sees inv } )
+  where
+    r₁ : ∀ O D V H → O + ((D + V) + H) ≡ (D + V) + (O + H)
+    r₁ = solve-∀
+    r₂ : ∀ O D V H → O + ((D + V) + H) ≡ (O + (V + H)) + D
+    r₂ = solve-∀
+    fr = free-step j (cnt p) h (λ i → own es i + held os i) (i-le1 inv)
+           (λ i → ≤-reflexive (sym (trans (i-exact inv i) (r₁ (own es i) (δ j i) (cnt p i) (held os i)))))
 -- a lent closure's cell is read; its environment is viewed, owned below
 inv-step {m = es ∥ os} {h = h} (s-eapply {i = j} {x} eq) inv =
   ( (≤-antisym (i-le1 inv j) alive , tt)

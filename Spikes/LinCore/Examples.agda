@@ -752,3 +752,54 @@ fn-empty = Σ.snd (noleak (Ran.run fn-run))
 
 -- and on the machine: the indirect calls, each in a frame, every cell freed
 fn-machine = machine-noleak (Ran.run fn-run) _
+
+------------------------------------------------------------------------
+-- 22. ★ A ν WHOSE COALGEBRA DATA DECIDES (the Spec's `⊢unfold` takes any
+--     coalgebra value). A `case` gives one of two coalgebras, counting up or
+--     standing still, and both unfold into the one type `Nu NatsF`: no label
+--     names which. The stream from 3, counting, is observed twice (3, then
+--     4), then dropped: its cell, its coalgebra's, every one freed.
+------------------------------------------------------------------------
+
+NatsCo : LTy
+NatsCo = Coalg NatsF (Bt int)
+
+-- s ↦ (s, s + 1), and s ↦ (s, s): many-use closures with nothing in them
+count-up stand-still : LTm ε One NatsCo
+count-up    = llamω ((lid ⊗l lop succ) ∘l dup) (k-∘ (k-⊗ k-id k-op) k-dup)
+stand-still = llamω dup k-dup
+
+-- which one, decided by a sum's tag
+pick : LTm ε (One ⊕t One) NatsCo
+pick = lcase count-up stand-still
+
+nu-prog : LTm ε One One
+nu-prog = drop ∘l lul ∘l (lop emit ⊗l lid) ∘l lul ∘l (lop emit ⊗l lout) ∘l lout
+        ∘l lunf ∘l ((pick ∘l linl) ⊗l lconst 3) ∘l ρl⁻
+
+nu-run : Ran world ε nu-prog mone mone 0
+nu-run = exec world ε 0 nu-prog mone mone 0 tt
+
+-- what the world saw: each observation runs the coalgebra once
+nu-io : ios (Ran.trace nu-run) ≡ io-call succ 3 4 ∷ io-call emit 3 tt ∷ io-call succ 4 5 ∷ io-call emit 4 tt ∷ []
+nu-io = refl
+
+-- its events: the coalgebra's cell (one word: its code word) and the ν's (two:
+-- the coalgebra's pointer and the seed); each observation frees the ν's
+-- cell, reads the coalgebra's, copies it for the new seed and drops the old,
+-- and makes the new ν; dropping the stream frees its cell and its coalgebra's
+nu-events : trace-of-run (Ran.run nu-run)
+          ≡ alloc (1 , 0) ∷ alloc (2 , 1)
+          ∷ free (2 , 1) ∷ peek (1 , 0) ∷ io succ 3 4 ∷ alloc (1 , 2) ∷ free (1 , 0) ∷ alloc (2 , 3)
+          ∷ io emit 3 tt
+          ∷ free (2 , 3) ∷ peek (1 , 2) ∷ io succ 4 5 ∷ alloc (1 , 4) ∷ free (1 , 2) ∷ alloc (2 , 5)
+          ∷ io emit 4 tt
+          ∷ free (2 , 5) ∷ free (1 , 4) ∷ []
+nu-events = refl
+
+-- every cell freed
+nu-empty : ∀ i → play (Ran.trace nu-run) (λ _ → 0) i ≡ 0
+nu-empty = Σ.snd (noleak (Ran.run nu-run))
+
+-- and on the machine
+nu-machine = machine-noleak (Ran.run nu-run) _

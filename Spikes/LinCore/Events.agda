@@ -69,7 +69,7 @@ module LinCore.Events
 
 open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
 open import LinCore.Pass Base ⟦_⟧b Sig sdom scod using (Bl; ≈ret; ≈step; ≈call; ≈halt; block≈)
-open import LinCore.Grade Base ⟦_⟧b Sig sdom scod using (blk-coh)
+open import LinCore.Grade Base ⟦_⟧b Sig sdom scod using (blk-coh; obs-coh)
 
 -- ★ D405: every statement is over the program's label table `ds`
 variable
@@ -93,6 +93,7 @@ words (A ⊗t B)  = words A + words B
 words (A ⊕t B)  = suc (words A ⊔ words B)
 words (Ct l X)  = words X
 words (Fn k g A B) = 1      -- ★ a pointer to the closure's cell
+words (Nu F)    = 1         -- ★ a pointer to the ν's cell
 words (μt F)    = 1
 words (Bt b)    = bw b
 
@@ -104,6 +105,11 @@ szμ F = words (LF∙ F (μt F))
 -- decides it, GOAL.md's case for a tag), nor so the environment's size.
 szc : LTy → ℕ
 szc X = suc (words X)
+
+-- ★ a ν: its coalgebra (a pointer to a closure) and its seed. The seed's type
+-- is not the ν's, so neither is its size: a cell
+szν : LF → LTy → ℕ
+szν F S = words (Coalg F S ⊗t S)
 
 ------------------------------------------------------------------------
 -- 1. MACHINE VALUES: a value as it sits in memory.
@@ -152,6 +158,8 @@ data MV : LTy → Set where
   -- ★ D409 part 3: a closure of an arrow type: one cell, its code and its
   -- environment
   mfn   : ∀ {k g X A B} → Id → Lam k g X A B → MV X → MV (Fn k g A B)
+  -- ★ a ν: one cell, holding its coalgebra and its seed
+  mnu   : ∀ {F S} → Id → MV (Coalg F S ⊗t S) → MV (Nu F)
 
 -- what a machine value means
 er : ∀ {A} → MV A → ⟦ A ⟧
@@ -163,6 +171,7 @@ er (mbase x)         = x
 er (mmu {F} i v)     = inμ (coh F (μt F) (er v))
 er (mct x)           = er x
 er (mfn i c x)       = cmean c (er x)
+er (mnu {F} {S} i p) = anaN F (cohc F S (fst (er p))) (snd (er p))
 
 -- ★ A12: a flat value (a SigOp's answer) as it sits in memory: no cell
 mvF : ∀ a → ⟦ a ⟧f → MV ⌜ a ⌝
@@ -211,6 +220,8 @@ copy (mct x)       n with copy x n
 ... | (x' , n₁ , t₁) = (mct x' , n₁ , t₁)
 copy (mfn {X = X} i c x) n with copy x (suc n)
 ... | (x' , n₁ , t₁) = (mfn (szc X , n) c x' , n₁ , alloc (szc X , n) ∷ t₁)
+copy (mnu {F} {S} i p) n with copy p (suc n)
+... | (p' , n₁ , t₁) = (mnu (szν F S , n) p' , n₁ , alloc (szν F S , n) ∷ t₁)
 
 -- `drop`: free every cell
 freeAll : ∀ {A} → MV A → Trace
@@ -222,6 +233,7 @@ freeAll (mbase x)    = []
 freeAll (mmu i v)    = free i ∷ freeAll v
 freeAll (mct x)      = freeAll x
 freeAll (mfn i c x)  = free i ∷ freeAll x
+freeAll (mnu i p)    = free i ∷ freeAll p
 
 -- ★ D405/D406: `lclo F`: each environment at an `Idf` position of the layer
 -- becomes a closure, where it is (observing a ν tags the seeds its
@@ -424,6 +436,13 @@ data Run {Γ} ds where
           → Run ds (lev {g = g}) e (mpair (mfn i (c1 ds′ b γ) x) a) n o (free i ∷ t)
   r-bev   : ∀ {g X A B Δ} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b} {i x a o n t}
           → Run ds′ b x a n o t → Run ds (bev {g = g}) (mfn i (cω ds′ b γ) x) a n o (peek i ∷ t)
+  -- ★ THE FINAL COALGEBRA: building a ν moves its coalgebra and seed into a
+  -- fresh cell; observing one frees the cell and runs `obsT` on them (the
+  -- coalgebra on the seed, a copy of it beside each new seed, each a ν again)
+  r-unf   : ∀ {E F S} {e : MV E} {p : MV (Coalg F S ⊗t S)} {n}
+          → Run ds (lunf {F = F} {S}) e p n (gives (mnu (szν F S , n) p) (suc n)) (alloc (szν F S , n) ∷ [])
+  r-nout  : ∀ {E F S} {e : MV E} {i} {p : MV (Coalg F S ⊗t S)} {o n t}
+          → Run ds (obsT F S) mone p n o t → Run ds (lout {F = F}) e (mnu i p) n o (free i ∷ t)
   -- ★ A11: a SigOp: an event, and whatever the world answers (A12: a flat
   -- value, no cell)
   r-const : ∀ {E b} {v : ⟦ b ⟧b} {e : MV E} {n} → Run ds (lconst v) e mone n (gives (mbase v) n) []
@@ -519,6 +538,8 @@ copy-mem (mct x) n with copy x n | copy-mem x n
 ... | (x' , n₁ , t₁) | mx = mx
 copy-mem (mfn i c x) n with copy x (suc n) | copy-mem x (suc n)
 ... | (x' , n₁ , t₁) | mx = m-alloc ∷ mx
+copy-mem (mnu i p) n with copy p (suc n) | copy-mem p (suc n)
+... | (p' , n₁ , t₁) | mp = m-alloc ∷ mp
 
 freeAll-mem : ∀ {A} (v : MV A) → All Mem (freeAll v)
 freeAll-mem mone        = []
@@ -529,6 +550,7 @@ freeAll-mem (mbase x)   = []
 freeAll-mem (mmu i v)   = m-free ∷ freeAll-mem v
 freeAll-mem (mct x)     = freeAll-mem x
 freeAll-mem (mfn i c x) = m-free ∷ freeAll-mem x
+freeAll-mem (mnu i p)   = m-free ∷ freeAll-mem p
 
 ios-copy : ∀ {A} (v : MV A) n → ios (snd (snd (copy v n))) ≡ []
 ios-copy v n = cmap-nil ioOf (All.map mem-io (copy-mem v n))
@@ -635,6 +657,8 @@ copy-er (mct x)      n with copy x n | copy-er x n
 ... | (x' , n₁ , t₁) | ex = ex
 copy-er (mfn i c x)  n with copy x (suc n) | copy-er x (suc n)
 ... | (x' , n₁ , t₁) | ex = cong (cmean c) ex
+copy-er (mnu {F} {S} i p) n with copy p (suc n) | copy-er p (suc n)
+... | (p' , n₁ , t₁) | ep = cong (λ z → anaN F (cohc F S (fst z)) (snd z)) ep
 
 -- a flat answer in memory means the answer
 er-mvF : ∀ a (y : ⟦ a ⟧f) → er (mvF a y) ≡ fromF a y
@@ -741,6 +765,9 @@ sound r-lam  = b-ret
 sound r-lamω = b-ret
 sound (r-ev {g = g} {ds′ = ds′} {b = b} {γ = γ} {x = x} {a = a} r) = up-Lg g ⟦ ds′ ⟧D b γ tt (er x , er a) (sound r)
 sound (r-bev {g = g} {ds′ = ds′} {b = b} {γ = γ} {x = x} {a = a} r) = up-Lg g ⟦ ds′ ⟧D b γ (er x) (er a) (sound r)
+sound r-unf = b-ret
+sound {ds = ds} (r-nout {E = E} {F} {S} {e = e} {p = p} r) =
+  RB-Bl (block≈ (obs-coh ⟦ ds ⟧D F S (fst (er p)) (snd (er p)) {E} (er e))) (sound r)
 sound r-const = b-ret
 sound (r-op {s = s} {y = y}) = b-call (ret-eq (er-mvF (scod s) y) refl)
 sound r-halt = b-halt
@@ -784,6 +811,7 @@ Sized (mbase x)         = ⊤
 Sized (mmu {F} i v)     = fst i ≡ szμ F × Sized v
 Sized (mct x)           = Sized x
 Sized (mfn {X = X} i c x) = fst i ≡ szc X × Sized x
+Sized (mnu {F} {S} i p) = fst i ≡ szν F S × Sized p
 
 -- a copy is sized, whatever it copied: its cells are fresh, named by the type
 copy-sized : ∀ {A} (v : MV A) n → Sized (fst (copy v n))
@@ -802,6 +830,8 @@ copy-sized (mct x) n with copy x n | copy-sized x n
 ... | (x' , n₁ , t₁) | s = s
 copy-sized (mfn i c x) n with copy x (suc n) | copy-sized x (suc n)
 ... | (x' , n₁ , t₁) | s = (refl , s)
+copy-sized (mnu i p) n with copy p (suc n) | copy-sized p (suc n)
+... | (p' , n₁ , t₁) | s = (refl , s)
 
 mvF-sized : ∀ a (y : ⟦ a ⟧f) → Sized (mvF a y)
 mvF-sized funit    y        = tt
@@ -860,6 +890,8 @@ sized r-lam se sv = (refl , sv)
 sized r-lamω se sv = (refl , sv)
 sized (r-ev r) se ((_ , sx) , sa) = sized r tt (sx , sa)
 sized (r-bev r) (_ , sx) sv = sized r sx sv
+sized r-unf se sp = (refl , sp)
+sized (r-nout r) se (_ , sp) = sized r tt sp
 sized r-const se sv = tt
 sized (r-op {s = s} {y = y}) se sv = mvF-sized (scod s) y
 sized (r-iter r (go-on done)) se sv = sized r se sv
@@ -968,6 +1000,7 @@ cnt (mbase x)    i = 0
 cnt (mmu j v)    i = δ j i + cnt v i
 cnt (mct x)      i = cnt x i
 cnt (mfn j c x)  i = δ j i + cnt x i
+cnt (mnu j p)    i = δ j i + cnt p i
 
 -- ★ A12: a flat value has no cell
 cnt-flat : ∀ a (x : MV ⌜ a ⌝) i → cnt x i ≡ 0
@@ -1109,6 +1142,8 @@ copy-mono (mct x) n with copy x n | copy-mono x n
 ... | (x' , n₁ , t₁) | m₁ = m₁
 copy-mono (mfn i c x) n with copy x (suc n) | copy-mono x (suc n)
 ... | (x' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
+copy-mono (mnu i p) n with copy p (suc n) | copy-mono p (suc n)
+... | (p' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
 
 copy-below : ∀ {A} (v : MV A) n i → fst (snd (copy v n)) ≤ serial i → cnt (fst (copy v n)) i ≡ 0
 copy-below mone n i le = refl
@@ -1126,6 +1161,8 @@ copy-below (mct x) n i le with copy x n | copy-below x n
 ... | (x' , n₁ , t₁) | bx = bx i le
 copy-below (mfn j c x) n i le with copy x (suc n) | copy-below x (suc n) | copy-mono x (suc n)
 ... | (x' , n₁ , t₁) | bx | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bx i le)
+copy-below (mnu j p) n i le with copy p (suc n) | copy-below p (suc n) | copy-mono p (suc n)
+... | (p' , n₁ , t₁) | bp | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bp i le)
 
 -- one allocated cell, at the counter, onto a heap empty from the counter on
 private
@@ -1158,6 +1195,8 @@ copy-ok (mct x) n h ab with copy x n | copy-ok x n h ab
 ... | (x' , n₁ , t₁) | r = r
 copy-ok (mfn {X = X} j c x) n h ab with copy x (suc n) | copy-ok x (suc n) (step (alloc (szc X , n)) h) (alloc-above (szc X) n h ab)
 ... | (x' , n₁ , t₁) | (ok , eq) = ((ab (szc X , n) ≤-refl , ok) , alloc-eq (szc X , n) h (cnt x') (play t₁ (step (alloc (szc X , n)) h)) eq)
+copy-ok (mnu {F} {S} j p) n h ab with copy p (suc n) | copy-ok p (suc n) (step (alloc (szν F S , n)) h) (alloc-above (szν F S) n h ab)
+... | (p' , n₁ , t₁) | (ok , eq) = ((ab (szν F S , n) ≤-refl , ok) , alloc-eq (szν F S , n) h (cnt p') (play t₁ (step (alloc (szν F S , n)) h)) eq)
 
 -- freeing one live cell `j` whose contents count `V`
 free-step : ∀ j (V : Heap) (h r : Heap) → (∀ i → h i ≤ 1) → (∀ i → (δ j i + V i) + r i ≤ h i)
@@ -1208,6 +1247,7 @@ free-ok (mbase x) h r le sb = (tt , λ i → +0 (h i))
 free-ok (mmu j v) h r le sb = free-cell j (cnt v) (freeAll v) h r le sb (λ h′ le′ sb′ → free-ok v h′ r le′ sb′)
 free-ok (mct x) h r le sb = free-ok x h r le sb
 free-ok (mfn j c x) h r le sb = free-cell j (cnt x) (freeAll x) h r le sb (λ h′ le′ sb′ → free-ok x h′ r le′ sb′)
+free-ok (mnu j p) h r le sb = free-cell j (cnt p) (freeAll p) h r le sb (λ h′ le′ sb′ → free-ok p h′ r le′ sb′)
 
 -- ★ D405/D406: a tagged layer holds exactly the cells it held
 cnt-tag : ∀ {l X} F (x : MV (LF∙ F X)) i → cnt (tag {l} F x) i ≡ cnt x i
@@ -1263,6 +1303,8 @@ mono r-lam         = n≤1+n _
 mono r-lamω        = n≤1+n _
 mono (r-ev r)      = mono r
 mono (r-bev r)     = mono r
+mono r-unf         = n≤1+n _
+mono (r-nout r)    = mono r
 mono r-const       = ≤-refl
 mono r-op          = ≤-refl
 mono (r-iter r (go-on done))    = mono r
@@ -1321,6 +1363,8 @@ below (r-ev {i = j} {x} {a} r) b =
   below r (λ k le → cong₂ _+_ (+≡0ʳ (δ j k) (cnt x k) (+≡0ˡ (δ j k + cnt x k) (cnt a k) (b k le)))
                               (+≡0ʳ (δ j k + cnt x k) (cnt a k) (b k le)))
 below (r-bev r) b = below r b
+below (r-unf {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
+below (r-nout {i = j} {p} r) b = below r (λ k le → +≡0ʳ (δ j k) (cnt p k) (b k le))
 below r-const b i le = refl
 below (r-op {s = s} {y = y}) b i le = cnt-flat (scod s) (mvF (scod s) y) i
 below (r-iter r (go-on done)) b = below r b
@@ -1605,6 +1649,13 @@ exchange (r-ev {i = j} {x} {a} {o} {t = t} r) {h} {rf} pre lent
   ( (hj , ok)
   , postV o (free j ∷ t) h (λ k → sym (assoc (δ j k) (cnt x k) (cnt a k)))
       (freeP o j t h (λ k → cnt x k + cnt a k) back po) )
+-- ★ building a ν allocates its cell, holding coalgebra and seed; observing one
+-- frees the cell, and `obsT` takes both, reading nothing lent
+exchange (r-unf {F = F} {S} {p = p}) pre lent = alloc1 (szν F S) (cnt p) pre
+exchange (r-nout {i = j} {p} {o} {t = t} r) {h} {rf} pre lent
+  with free-step j (cnt p) h rf (le1 pre) (sub pre)
+... | (hj , le′ , sb′ , back) with exchange r (pre-free {v′ = p} j pre le′ sb′) lent₀
+...   | (ok , po) = ((hj , ok) , freeP o j t h (cnt p) back po)
 -- applying a lent many-use closure reads its live cell, lends the environment on
 exchange (r-bev {ds′ = ds′} {b = b} {γ = γ} {i = i} {x} {a} {o} {t = t} r) {h} pre lent
   with exchange r pre (λ j p → lent j (≤-trans p (m≤n+m (cnt x j) (δ i j))))

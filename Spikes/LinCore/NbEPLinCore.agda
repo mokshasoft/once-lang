@@ -209,6 +209,10 @@ data LTy : Set where
   -- by data: nested through a fold's carrier or a server's state). `Ct` is
   -- its representation where one lambda reaches a site.
   Fn   : Kd → Gr → LTy → LTy → LTy
+  -- ★ the Spec's `ν F`, observed in finite blocks: a value of it may come
+  -- from any coalgebra, which data may decide (D406's `Ct l S` is its
+  -- representation where one coalgebra reaches a site)
+  Nu   : LF → LTy
   μt   : LF → LTy
   Bt   : Base → LTy        -- ★ present because the theory wants it
 
@@ -246,6 +250,31 @@ mutual
 outμ : ∀ {F} → Mu F → FS F (Mu F)
 outμ (inμ w) = w
 
+-- ★ THE FINAL COALGEBRA of `T ∘ F`, the Spec's `νM act` (`Spec.Effect`):
+-- observing a value runs a finite block that gives a layer
+record Nuᵐ (F : LF) : Set where
+  coinductive
+  field outν : T (FS F (Nuᵐ F))
+open Nuᵐ public
+
+-- the unfold, as the Spec's `anaA`: each observation runs the coalgebra on the
+-- seed, and the layer's seeds become the unfolds of the same coalgebra
+anaN  : ∀ F {X : Set} → (X → T (FS F X)) → X → Nuᵐ F
+treeN : ∀ F {X : Set} → (X → T (FS F X)) → T (FS F X) → T (FS F (Nuᵐ F))
+mapN  : ∀ F G {X : Set} → (X → T (FS F X)) → FS G X → FS G (Nuᵐ F)
+outν (anaN F c x) = treeN F c (c x)
+treeN F c (ret l)      = ret (mapN F F c l)
+treeN F c (call s a k) = call s a (λ b → treeN F c (k b))
+treeN F c (halt s a)   = halt s a
+mapN F Idf      c x        = anaN F c x
+mapN F Kone     c x        = x
+mapN F Kzero    c ()
+mapN F (Kb b)   c x        = x
+mapN F (Kμ G)   c x        = x
+mapN F (G ⊕f H) c (inj₁ x) = inj₁ (mapN F G c x)
+mapN F (G ⊕f H) c (inj₂ y) = inj₂ (mapN F H c y)
+mapN F (G ⊗f H) c (x , y)  = (mapN F G c x , mapN F H c y)
+
 ⟦_⟧ : LTy → Set
 ⟦ One ⟧      = ⊤
 ⟦ Zero ⟧     = ⊥
@@ -253,6 +282,7 @@ outμ (inμ w) = w
 ⟦ A ⊕t B ⟧   = ⟦ A ⟧ ⊎ ⟦ B ⟧
 ⟦ Ct l X ⟧   = ⟦ X ⟧                -- defunctionalised: a closure means its environment
 ⟦ Fn k g A B ⟧ = ⟦ A ⟧ → Mg g ⟦ B ⟧ -- ★ the exponential, the Spec's `⟦ A ⟧ → M π ⟦ B ⟧`
+⟦ Nu F ⟧     = Nuᵐ F               -- ★ the Spec's `νM act F`
 ⟦ μt F ⟧     = Mu F
 ⟦ Bt b ⟧     = ⟦ b ⟧b
 
@@ -427,6 +457,11 @@ data Tm Γ where
   llamω   : ∀ {g X A B E} (b : Tm Γ X A B) → Gd g b → Tm Γ E X (Fn many g A B)
   lev     : ∀ {g A B E} → Tm Γ E (Fn once g A B ⊗t A) B
   bev     : ∀ {g A B} → Tm Γ (Fn many g A B) A B
+  -- ★ THE FINAL COALGEBRA (the Spec's `⊢unfold`/`⊢out`): a ν from a many-use
+  -- coalgebra of grade `act` (a value: data may decide it) and a seed; and
+  -- one observation, a finite block
+  lunf    : ∀ {F S E} → Tm Γ E (Fn many act S (LF∙ F S) ⊗t S) (Nu F)
+  lout    : ∀ {F E} → Tm Γ E (Nu F) (LF∙ F (Nu F))
   -- ★ A11: the SigOps, anywhere a term can be. `lop`: Pure or Emits, an event
   -- and the world's answer; `lhalt`: Halts, the run ends
   -- ★ A15: a constant of a base type (the IR's `const`): a word, no event
@@ -478,6 +513,8 @@ data Blk {Γ} where
   k-lamω   : ∀ {g X A B E} {b : Tm Γ X A B} {γ : Gd g b} → Blk (llamω {E = E} b γ)
   k-ev     : ∀ {A B E} → Blk (lev {g = act} {A} {B} {E})
   k-bev    : ∀ {A B} → Blk (bev {g = act} {A} {B})
+  k-unf    : ∀ {F S E} → Blk (lunf {F = F} {S} {E})
+  k-nout   : ∀ {F E} → Blk (lout {F = F} {E})
   k-const  : ∀ {b E} {v : ⟦ b ⟧b} → Blk (lconst {E = E} v)
   k-op     : ∀ {s E} → Blk (lop s {E})
   k-halt   : ∀ {s E} → Blk (lhalt s {E})
@@ -485,6 +522,40 @@ data Blk {Γ} where
 -- a term with nothing lent
 LTm : Cx → LTy → LTy → Set
 LTm Γ = Tm Γ One
+
+-- ★ OBSERVING A ν, in the core's own generators (what `lout` runs, on the ν's
+-- coalgebra and seed): the coalgebra, lent, on the seed; a copy of it beside
+-- each seed of the layer, the original dropped; each pair a ν again. Linear:
+-- one copy per recursive position (a stream: one), none for a leaf.
+Coalg : LF → LTy → LTy
+Coalg F S = Fn many act S (LF∙ F S)
+
+-- a copy of the lent coalgebra beside each seed of a layer
+strL : ∀ {Γ} F G S → Tm Γ (One ⊗t Coalg F S) (LF∙ G S) (LF∙ G (Coalg F S ⊗t S))
+strL F Idf      S = (bsnd bcopy ⊗l lid) ∘l lul⁻
+strL F Kone     S = lid
+strL F Kzero    S = lid
+strL F (Kb b)   S = lid
+strL F (Kμ G)   S = lid
+strL F (G ⊕f H) S = lcase (linl ∘l strL F G S) (linr ∘l strL F H S)
+strL F (G ⊗f H) S = strL F G S ⊗l strL F H S
+
+-- each pair of a layer a ν
+mapNu : ∀ {Γ} F G S → LTm Γ (LF∙ G (Coalg F S ⊗t S)) (LF∙ G (Nu F))
+mapNu F Idf      S = lunf
+mapNu F Kone     S = lid
+mapNu F Kzero    S = lid
+mapNu F (Kb b)   S = lid
+mapNu F (Kμ G)   S = lid
+mapNu F (G ⊕f H) S = lcase (linl ∘l mapNu F G S) (linr ∘l mapNu F H S)
+mapNu F (G ⊗f H) S = mapNu F G S ⊗l mapNu F H S
+
+obsT : ∀ {Γ} F S → LTm Γ (Coalg F S ⊗t S) (LF∙ F (Nu F))
+obsT F S = mapNu F F S ∘l lul ∘l (drop ⊗l lid) ∘l lend (strL F F S) ∘l lend (bsnd bev)
+
+-- a coalgebra's meaning, on the functor's values
+cohc : ∀ F S → ⟦ Coalg F S ⟧ → ⟦ S ⟧ → T (FS F ⟦ S ⟧)
+cohc F S c s = fmapT (coh F S) (c s)
 
 -- ★ D406: THE FINAL COALGEBRA, DEFUNCTIONALISED. A coalgebra of `F` on seeds
 -- `S` is a one-shot label of argument `One`, whose body (over the labels
@@ -590,6 +661,9 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᶜ (llamω {g = g} b γ) e    x              = return∞ (λ a → Lg g b γ x a)
     Lᶜ (lev {g = g})  e         (f , a)        = up g (f a)
     Lᶜ (bev {g = g})  f         a              = up g (f a)
+    -- ★ the Spec's unfold and observation
+    Lᶜ (lunf {F} {S}) e         cs             = return∞ (anaN F (cohc F S (fst cs)) (snd cs))
+    Lᶜ (lout {F})     e         v              = emb (fmapT (coh⁻¹ F (Nu F)) (outν v))
     Lᶜ (lconst v)     e         _              = return∞ v
     Lᶜ (lop s)        e         x              = callT s x
     Lᶜ (lhalt s)      e         x              = haltT s (toF (sdom s) x)
@@ -651,6 +725,8 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᴮ (k-lamω {g} {b = b} {γ}) e x          = ret (λ a → Lg g b γ x a)
     Lᴮ k-ev          e         (f , a)       = f a
     Lᴮ k-bev         f         a             = f a
+    Lᴮ (k-unf {F} {S}) e       cs            = ret (anaN F (cohc F S (fst cs)) (snd cs))
+    Lᴮ (k-nout {F})  e         v             = fmapT (coh⁻¹ F (Nu F)) (outν v)
     Lᴮ (k-const {v = v}) e     _             = ret v
     Lᴮ (k-op {s})    e         x             = callB s x
     Lᴮ (k-halt {s})  e         x             = halt s (toF (sdom s) x)
