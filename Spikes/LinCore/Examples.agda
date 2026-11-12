@@ -589,7 +589,7 @@ list-cause = refl
 --     server showed it, and the run means what the IR program means.
 ------------------------------------------------------------------------
 
-counter-ir : IR One One
+counter-ir : IR ε One One
 counter-ir = Iter (inr ∘ snd ∘ ⟨ SigOp emit ∘ snd , SigOp succ ∘ snd ⟩)
                   (i-∘ i-inr (i-∘ i-snd (i-pair (i-∘ i-op i-snd) (i-∘ i-op i-snd)))) ∘ ⟨ terminal , const 0 ⟩
 
@@ -597,10 +597,10 @@ counter-ios : ios (Ran.trace (exec world ε 2 (tr counter-ir) mone mone 0 tt))
             ≡ io-call emit 0 tt ∷ io-call succ 0 1 ∷ io-call emit 1 tt ∷ io-call succ 1 2 ∷ []
 counter-ios = refl
 
-counter-sound : RB (block (ev counter-ir tt))
+counter-sound : RB (block (ev ε counter-ir tt))
                    (io-call emit 0 tt ∷ io-call succ 0 1 ∷ io-call emit 1 tt ∷ io-call succ 1 2 ∷ [])
                    (ended exhausted)
-counter-sound = whole-sound world 2 counter-ir tt
+counter-sound = whole-sound world 2 ε counter-ir tt
 
 ------------------------------------------------------------------------
 -- 15. ★ A16: THE MACHINE. §8½'s composition, lowered and run: each call is
@@ -814,14 +814,14 @@ nu-machine = machine-noleak (Ran.run nu-run) _
 ------------------------------------------------------------------------
 
 -- a closure that keeps an Int and emits it when called
-emitter : IR (Bt int) (Fn many act One One)
+emitter : IR ε (Bt int) (Fn many act One One)
 emitter = curry act (SigOp emit ∘ fst) (i-∘ i-op i-fst)
 
 -- the naturals from the seed, by an IR unfold that reads nothing
-nats-ir : IR (One ⊗t Bt int) (Nu NatsF)
+nats-ir : IR ε (One ⊗t Bt int) (Nu NatsF)
 nats-ir = Ana NatsF ⟨ snd , SigOp succ ∘ snd ⟩ (i-pair i-snd (i-∘ i-op i-snd))
 
-ho-ir : IR One One
+ho-ir : IR ε One One
 ho-ir = apply ∘ ⟨ emitter ∘ fst ∘ Outν NatsF ∘ snd ∘ Outν NatsF ∘ in-ν NatsF
                     ∘ ⟨ const 1 , nats-ir ∘ ⟨ terminal , const 3 ⟩ ⟩
                 , terminal ⟩
@@ -835,8 +835,8 @@ ho-ios : ios (Ran.trace ho-run) ≡ io-call succ 3 4 ∷ io-call emit 3 tt ∷ [
 ho-ios = refl
 
 -- what the world saw is a path through the IR program's meaning
-ho-sound : RB (block (ev ho-ir tt)) (io-call succ 3 4 ∷ io-call emit 3 tt ∷ []) (returns tt)
-ho-sound = whole-sound world 0 ho-ir tt
+ho-sound : RB (block (ev ε ho-ir tt)) (io-call succ 3 4 ∷ io-call emit 3 tt ∷ []) (returns tt)
+ho-sound = whole-sound world 0 ε ho-ir tt
 
 -- every cell freed: the ν's, their coalgebras', the closure's
 ho-empty : ∀ i → play (Ran.trace ho-run) (λ _ → 0) i ≡ 0
@@ -845,3 +845,36 @@ ho-empty = Σ.snd (noleak (Ran.run ho-run))
 -- (On the machine, `machine-noleak` covers this run as every run; its
 -- instance is not spelled out here: normalising the lowered run of the pass's
 -- faithful translation exceeds the type-checker's 4.8 GB heap.)
+
+------------------------------------------------------------------------
+-- 24. ★ A15 part 2: AN IR PROGRAM OF DEFINITIONS (the Spec's `Program`: each
+--     calls only earlier ones). `bump` is the successor, `show` emits the
+--     successor of its argument by calling `bump`; main calls `bump` on 9,
+--     then `show`. Each `Call` is the core's direct call of a label.
+------------------------------------------------------------------------
+
+Defs₂ : Cx
+Defs₂ = ε ▸ sg once act One (Bt int) (Bt int) ▸ sg once act One (Bt int) One
+
+calls-P : Prog Defs₂
+calls-P = (ε ▹ SigOp succ ∣ i-op) ▹ (SigOp emit ∘ Call here) ∣ i-∘ i-op i-call
+
+calls-main : IR Defs₂ One One
+calls-main = Call here ∘ Call (there here) ∘ const 9
+
+calls-run : Ran world (trP calls-P) (tr calls-main) mone mone 0
+calls-run = exec world (trP calls-P) 0 (tr calls-main) mone mone 0 tt
+
+calls-ios : ios (Ran.trace calls-run) ≡ io-call succ 9 10 ∷ io-call succ 10 11 ∷ io-call emit 11 tt ∷ []
+calls-ios = refl
+
+-- what the world saw is a path through the program's meaning
+calls-sound : RB (block (ev ⟦ calls-P ⟧P calls-main tt))
+                 (io-call succ 9 10 ∷ io-call succ 10 11 ∷ io-call emit 11 tt ∷ []) (returns tt)
+calls-sound = whole-sound world 0 calls-P calls-main tt
+
+calls-empty : ∀ i → play (Ran.trace calls-run) (λ _ → 0) i ≡ 0
+calls-empty = Σ.snd (noleak (Ran.run calls-run))
+
+-- and on the machine: each call a frame
+calls-machine = machine-noleak (Ran.run calls-run) _

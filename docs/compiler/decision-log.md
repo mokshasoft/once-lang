@@ -22401,7 +22401,17 @@ recursion; with D409 part 3 the core has the same, so the pass translates them d
 * **Example §23**: an IR program with a closure, an unfold and `in-ν`, compiled, run, sound against the
   IR's meaning (`whole-sound`), and leak-free. Its machine instance is not spelled out (normalising it
   exceeds the type-checker's heap); `machine-noleak` covers it as every run.
-* **Not yet**: the IR's `Call` (D409 part 2: a label or inlined).
+* **`Call` is a LABEL** (D409 part 2 allowed a label or inlining; the label is master's D064 direct call,
+  `call once_f`, and inlining would copy code). The IR copy is indexed by the program's earlier
+  definitions (`IR Γ A B`, `Γ` the core's own `Cx`); a program is a table `Prog Γ`, each definition over
+  the ones before (the Spec's `Program`: no recursion). A definition is a one-shot label with nothing in
+  its environment, `sg once g One A B`, its body `tr f` after `lul`; `Call p` is `lapp p` on the label's
+  closure (`lclo Idf p`, on `One`: no cell, no word). Its meaning reads the table's meaning, as
+  `evalᴰ`'s `CallEnv` does. The theorem holds at RELATED meanings of the labels (`VEnv`, entry by entry as
+  arrows), and `pass-okP` builds that relation for a whole program, definition by definition. `Whole`
+  takes a program and its main. Example §24: two definitions, one calling the other, main calling both;
+  on the machine too.
+* **With this, every constructor of master's IR is in the pass.**
 
 ## D410 — A MODEL MACHINE: CODE, FRAMES IN HEAP BLOCKS, A SIMULATION BY THE RUN (2026-11-11)
 
