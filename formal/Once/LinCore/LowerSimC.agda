@@ -164,3 +164,53 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                        (λ k k< → trans (cong (λ z → heapMem (floc fs₂) (heap-loc (mkHeapRef r) z)) (sym (Data.Nat.Properties.+-identityʳ (k + hdr))))
                                    (trans (w-moved M k (subst (k <_) lw k<)) (slot₁ (k + src))))
                        sw
+
+  ----------------------------------------------------------------------
+  -- ★ After a cell's build: the environment and the rest of the stack kept
+  -- (every held cell is older than the fresh block), the pointer the top.
+  ----------------------------------------------------------------------
+
+  open import Once.LinCore.Machine fmt ans bw using (Stk; _∷ˢ_; Slots; _∥_)
+  open import Once.LinCore.Events fmt ans bw using (MV; cnt)
+  open CfgW
+  open import Data.Sum using (inj₁; inj₂)
+
+  -- the stack's new top, just below it (as `LowerSim`'s)
+  new-top : ∀ B a s → (B ∸ s) ∸ a ≡ B ∸ (a + s)
+  new-top B a s = trans (Data.Nat.Properties.∸-+-assoc B s a) (cong (B ∸_) (+-comm s a))
+    where import Data.Nat.Properties
+
+  after-cell : ∀ {fs fs′ : FlatState} (φ : Frame) {Es A S} {es : Slots Es} {os : Stk S} {v : MV A} {sz w lb lc lf}
+             → Built fs fs′ (budget φ ∸ ws S) sz w lb lc lf
+             → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ v ∷ˢ os)
+             → (∀ j → AllocState.next-heap-ref (falloc fs) ≤ serial j → cntE es j ≡ 0 × cntS (v ∷ˢ os) j ≡ 0)
+             → 1 + ws S ≤ OP φ
+             → EnvW (heapMem (floc fs′)) (slot fs′) es × StkW (heapMem (floc fs′)) (slot fs′) φ os
+               × slot fs′ (budget φ ∸ (1 + ws S)) ≡ just (cellPtr (sz , AllocState.next-heap-ref (falloc fs)))
+               × (∀ j k → 1 ≤ cnt v j → heapMem (floc fs′) (cellLoc j k) ≡ heapMem (floc fs) (cellLoc j k))
+  after-cell {fs} {fs′} φ {Es} {A} {S} {es} {os} {v} Bd C fresh fit =
+    envW-heap es (λ j k c → b-heap Bd (cellLoc j k) (ne-of j (≤-trans c (m≤m+n (cntE es j) _))))
+      (envW-frame es (λ x x< → b-slots Bd x (λ e → Data.Nat.Properties.<-irrefl e (<-≤-trans x< env≤))) (c-env C)) ,
+    stkW-heap os (λ j k c → b-heap Bd (cellLoc j k) (ne-of j (≤-trans c (≤-trans (m≤n+m (cntS os j) (cnt v j)) (m≤n+m _ (cntE es j))))))
+      (stkW-frame os fitS (λ x lo _ → b-slots Bd x (λ e → Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans b1<b lo))) (proj₂ (c-stk C))) ,
+    trans (cong (slot fs′) (sym (new-top (budget φ) 1 (ws S)))) (b-top Bd) ,
+    (λ j k c → b-heap Bd (cellLoc j k) (ne-of j (≤-trans c (≤-trans (m≤m+n (cnt v j) (cntS os j)) (m≤n+m _ (cntE es j))))))
+    where
+      import Data.Nat.Properties
+      r = AllocState.next-heap-ref (falloc fs)
+      bot = budget φ ∸ ws S
+      ne-of : ∀ j → 1 ≤ cntE es j + cntS (v ∷ˢ os) j → ¬ mkHeapRef (serial j) ≡ mkHeapRef r
+      ne-of j c e with fresh j (≤-reflexive (sym (cong ref-id e)))
+        where open import Once.Memory.HeapAddress using (module HeapRef)
+              ref-id = HeapRef.ref-id
+      ... | (z₁ , z₂) = Data.Nat.Properties.<-irrefl refl (subst (λ q → 0 < q) (zero₂ z₁ z₂) c)
+        where zero₂ : cntE es j ≡ 0 → cntS (v ∷ˢ os) j ≡ 0 → cntE es j + cntS (v ∷ˢ os) j ≡ 0
+              zero₂ a b rewrite a | b = refl
+      fitB : 1 + ws S ≤ budget φ
+      fitB = ≤-trans fit (m≤n+m (OP φ) (EP φ))
+      fitS : ws S ≤ budget φ
+      fitS = ≤-trans (m≤n+m (ws S) 1) fitB
+      env≤ : ws Es ≤ bot ∸ 1
+      env≤ = ≤-trans (c-efit C) (subst (EP φ ≤_) (sym (new-top (budget φ) 1 (ws S))) (env-below φ (1 + ws S) fit))
+      b1<b : bot ∸ 1 < bot
+      b1<b = Data.Nat.Properties.∸-monoʳ-< {o = 0} (s≤s z≤n) (≤∸ 1 (ws S) (budget φ) fitB)
