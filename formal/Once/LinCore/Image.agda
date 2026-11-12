@@ -70,7 +70,7 @@ data Key : BSig → Set where
   -- block calling itself), the algebra on the layer
   kfold  : ∀ {Γ} → Defs Γ → ∀ F {E A} → Tm Γ E (LF∙ F A) A → Key (bsig (just E) (μt F) A)
   -- a ν's observation: `obsT` on its coalgebra and seed
-  kobs   : ∀ F S → Key (bsig nothing (Coalg F S ⊗t S) (LF∙ F (Nu F)))
+  kobs   : ∀ {Γ} → Defs Γ → ∀ F S → Key (bsig nothing (Coalg F S ⊗t S) (LF∙ F (Nu F)))
   -- a COPY of the value the top view sees (`dup`'s, D403: deep), and the
   -- FREE of every cell of the operand (`drop`'s)
   kcopy  : ∀ A → Key (bsig (just A) One A)
@@ -116,7 +116,7 @@ data Insᴵ : Sh → Sh → Set where
   -- or ν (what it holds, then a cell with the same code word); free one
   icall   : ∀ {Es g A B S} → Insᴵ (Es ∣ (Fn once g A B ⊗t A) ∷ S) (Es ∣ B ∷ S)
   icallω  : ∀ {Es g A B S} → Insᴵ (Fn many g A B ∷ Es ∣ A ∷ S) (Fn many g A B ∷ Es ∣ B ∷ S)
-  iobs    : ∀ {Es F S} → Insᴵ (Es ∣ Nu F ∷ S) (Es ∣ LF∙ F (Nu F) ∷ S)
+  iobs    : ∀ {Γ} (ds : Defs Γ) {Es F S} → Insᴵ (Es ∣ Nu F ∷ S) (Es ∣ LF∙ F (Nu F) ∷ S)
   ccopy   : ∀ {Es k g A B S} → Insᴵ (Fn k g A B ∷ Es ∣ One ∷ S) (Fn k g A B ∷ Es ∣ Fn k g A B ∷ S)
   ncopy   : ∀ {Es F S} → Insᴵ (Nu F ∷ Es ∣ One ∷ S) (Nu F ∷ Es ∣ Nu F ∷ S)
   cfree   : ∀ {Es k g A B S} → Insᴵ (Es ∣ Fn k g A B ∷ S) (Es ∣ One ∷ S)
@@ -189,7 +189,7 @@ compᴵ ds (llamω b γ) k    = prim ds (llamω b γ) ⨾ k
 compᴵ ds lev k            = icall ⨾ k
 compᴵ ds bev k            = icallω ⨾ k
 compᴵ ds lunf k           = prim ds lunf ⨾ k
-compᴵ ds lout k           = iobs ⨾ k
+compᴵ ds lout k           = iobs ds ⨾ k
 
 -- a fold's node: its children folded in order (calls), the layer rebuilt
 travᴵ : ∀ {Γ} (ds : Defs Γ) F {E A} (alg : Tm Γ E (LF∙ F A) A) G → ∀ {Es S T}
@@ -233,6 +233,6 @@ blockᴵ : ∀ {σ} → Key σ → Block σ
 blockᴵ (kbody1 ds b γ)  = elift ⨾ compᴵ ds b (epop ⨾ end)
 blockᴵ (kbodyω ds b γ)  = compᴵ ds b end
 blockᴵ (kfold ds F alg) = prim ds lOutμ ⨾ travᴵ ds F alg F (compᴵ ds alg end)
-blockᴵ (kobs F S)       = elift ⨾ compᴵ ε (obsT F S) (epop ⨾ end)
+blockᴵ (kobs ds F S)    = elift ⨾ compᴵ ds (obsT F S) (epop ⨾ end)
 blockᴵ (kcopy A)        = copyᴵ A
 blockᴵ (kfree A)        = freeᴵ A
