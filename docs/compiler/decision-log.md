@@ -21916,7 +21916,8 @@ Recorded in plan 0.123 B.1 as its D6 and D7; moved here when plan 0.123 closed (
 
 ## D403 — THE LINEAR CORE'S SHAPE: CELLS AND FRAMES, A LENDING CONTEXT, MANY-USE CLOSURES, EFFECTS ABOVE, REUSE AS A RULE (2026-11-08)
 
-**Proposed** (plan 0.146 §4 A, for the user's review before §4 B, the migration, starts). Worked out
+**Decided** by the user 2026-11-12, after the review of the spike (every point, as amended below;
+point 3 with its decision). Was proposed (plan 0.146 §4 A, for the user's review before §4 B, the migration, starts). Worked out
 unattended in `Spikes/LinCore/` (POC-first, the user 2026-11-08), each part a checked Agda module
 (`--safe`, no postulates). **Applies**: D402 (static ownership, two heaps, choice A), D400 (no read of an
 unwritten cell), D317 (a server is the loop over a round), D131 (a fold's algebra is a closure obtained
@@ -22005,7 +22006,7 @@ once). **Starts from**: `NbEPLinCore` (OCP-0009, `origin/plan-ref`).
   an emitting fold every round; today it ends `exhausted` after about 3000 rounds on all three arches).
 
 ### Amended (the user, 2026-11-10): the model is the backbone
-Still **Proposed**: the user's review of this entry's remaining points continues (`HANDOFF.md`).
+**Decided** by the user 2026-11-12 (the spike's review).
 * **The spike's model is the compiler's backbone, decorated.** Its terms, machine values, run relation and
   memory theorems become the linear core as they are, not a design that a separate core re-implements.
   What the compiler needs attaches in two ways, leaving the theorems as they are. Parameters decided by the
@@ -22047,7 +22048,8 @@ Still **Proposed**: the user's review of this entry's remaining points continues
 
 ## D404 — THE LINEAR CORE'S DECORATIONS: SIZED BLOCK NAMES, THE ABI LAYOUT, FLAT SIGOPS, NO CELL FOR AN EMPTY ENVIRONMENT (2026-11-11)
 
-**Proposed** (plan 0.146 A12, made unattended per the standing rule, for the user's review with D403).
+**Decided** by the user 2026-11-12 (the spike's review; `lhalt` as its own generator accepted, the pass
+maps a `void`-answering operation to it). Was proposed (plan 0.146 A12, made unattended per the standing rule).
 **Applies**: D403 (amended: decorations decided by the type, the theorems unchanged), D402 (free lists
 per size), `Spec.ABI` (the layout of a base value), `Spec.Signature` (`BTy`, an operation answering `void`
 halts), plan 0.123 D6 (no run-time ownership information). Worked out in `Spikes/LinCore/` (`--safe`, no
@@ -22126,7 +22128,8 @@ several can, what is unknown is WHICH OF THEM, a sum's tag, not a code address.
 
 ## D406 — A ν IS A CLOSURE: ITS COALGEBRA A LABEL, ITS VALUE ITS SEED (2026-11-11)
 
-**Proposed** (made unattended under D405's "ν the same way"; for the user's review). **Applies**: D405
+**Superseded** by D409 part 3 (ν), decided 2026-11-12; kept only as the representation where one
+coalgebra reaches a site. Was proposed (made unattended under D405's "ν the same way"). **Applies**: D405
 (step 2), D404 (amended: no ν cell, no ν code word). Worked out in `Spikes/LinCore/` (plan 0.146 A12′).
 
 ### Decision
@@ -22155,7 +22158,7 @@ several can, what is unknown is WHICH OF THEM, a sum's tag, not a code address.
 
 ## D407 — TEMPORARIES: A DECORATION OF THE RUN, COUNTED BY SIZE, WITHOUT IDS (2026-11-11)
 
-**Proposed** (made unattended, under plan 0.146 §3 "local temporaries are allowed" and D404's
+**Decided** by the user 2026-11-12 (the spike's review). Was proposed (made unattended, under plan 0.146 §3 "local temporaries are allowed" and D404's
 amendment; for the user's review). Worked out in `Spikes/LinCore/` (plan 0.146 A13: `Events`, `Temps`).
 
 ### Decision
@@ -22186,7 +22189,8 @@ amendment; for the user's review). Worked out in `Spikes/LinCore/` (plan 0.146 A
 
 ## D408 — EVERY PROGRAM HAS A RUN: AN EVALUATOR THAT BUILDS IT; A WORLD MAY NOT ANSWER (2026-11-11)
 
-**Proposed** (made unattended; for the user's review). Worked out in `Spikes/LinCore/Total.agda` (plan
+**Decided** by the user 2026-11-12 (the spike's review; an unanswered call ends `exhausted`, accepted).
+Worked out in `Spikes/LinCore/Total.agda` (plan
 0.146 A14, step 1).
 
 ### Decision
@@ -22210,7 +22214,8 @@ amendment; for the user's review). Worked out in `Spikes/LinCore/` (plan 0.146 A
 
 ## D409 — THE PASS, FIRST-ORDER, PROVED; THE HIGHER-ORDER PASS NEEDS A LABELLING DECISION (2026-11-11)
 
-**Part 1 Proposed** (made unattended; for the user's review). **Part 2 OPEN: the user's decision.** Worked
+**Part 1 Decided** by the user 2026-11-12 (the spike's review). **Part 2 and part 3 decided below**;
+part 3's unattended entries (the ν, the pass) accepted 2026-11-12. Worked
 out in `Spikes/LinCore/Pass.agda`, `Whole.agda` (plan 0.146 A15).
 
 ### Part 1: the first-order IR
@@ -22422,7 +22427,7 @@ recursion; with D409 part 3 the core has the same, so the pass translates them d
 
 ## D410 — A MODEL MACHINE: CODE, FRAMES IN HEAP BLOCKS, A SIMULATION BY THE RUN (2026-11-11)
 
-**Proposed** (made unattended; for the user's review). Worked out in `Spikes/LinCore/Machine.agda` (plan
+**Decided** by the user 2026-11-12 (the spike's review). Worked out in `Spikes/LinCore/Machine.agda` (plan
 0.146 A16).
 
 ### Decision
@@ -22450,7 +22455,7 @@ recursion; with D409 part 3 the core has the same, so the pass translates them d
 
 ## D411 — THE ALLOCATOR PER SIZE; THE SPACE CLAIM PER SIZE'S PEAK, IN ONE SHARED REGION (2026-11-11)
 
-**Part 1 Proposed** (made unattended; for the user's review). **Part 2 DECIDED by the user, 2026-11-11** (plan
+**Part 1 Decided** by the user 2026-11-12 (the spike's review). **Part 2 DECIDED by the user, 2026-11-11** (plan
 0.146 §3, "the space claim", open since 2026-11-08). Worked out in `Spikes/LinCore/Alloc.agda` (A17).
 
 ### Part 1: the allocator, proved
