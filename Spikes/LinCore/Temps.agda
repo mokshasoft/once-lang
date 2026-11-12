@@ -184,6 +184,10 @@ plain (r-caseE₂ r) = r-caseE₂ (plain r)
 plain (r-out r) = r-out (plain r)
 plain (r-copy {e = e} {n}) = retrace (sym (erase-NoT _ (NoT-copy e n))) r-copy
 plain (r-bapp q r) = r-bapp q (plain r)
+plain r-lam = r-lam
+plain r-lamω = r-lamω
+plain (r-ev r) = r-ev (plain r)
+plain (r-bev r) = r-bev (plain r)
 plain r-const = r-const
 plain r-op = r-op
 plain r-halt = r-halt
@@ -469,6 +473,10 @@ tsound (r-caseE₂ r) = tsound r
 tsound (r-out {i = i} {o = o} {t = t} r) = TPost-peek o i t (tsound r)
 tsound (r-copy {e = e} {n}) = NoT-Bal (snd (snd (copy e n))) (NoT-copy e n)
 tsound (r-bapp q r) = tsound r
+tsound r-lam = ((tt , tt) , λ k → refl)
+tsound r-lamω = ((tt , tt) , λ k → refl)
+tsound (r-ev {i = i} {o = o} {t = t} r) = TPost-free o i t (tsound r)
+tsound (r-bev {i = i} {o = o} {t = t} r) = TPost-peek o i t (tsound r)
 tsound r-const = bal[]
 tsound r-op = ((tt , tt) , λ k → refl)
 tsound r-halt = (tt , tt)

@@ -12,7 +12,8 @@
 --   * FLAT (no cell; a frame slot or registers): `One`, `⊗t`, `⊕t`, base
 --     words, and (D405) a closure, which is its environment — (D406) a ν
 --     among them, which is its seed.
---   * CELLS (the cell heap, one id each): a μ node.
+--   * CELLS (the cell heap, one id each): a μ node; ★ (D409 part 3) a closure
+--     of an arrow type: its code word and its environment.
 --
 -- `dup` copies every cell of its value (fresh ids); `drop` frees every cell of
 -- its value; `lIn` allocates one cell; `lOutμ` frees one. Nothing else touches
@@ -67,6 +68,8 @@ module LinCore.Events
   where
 
 open import LinCore.NbEPLinCore Base ⟦_⟧b Sig sdom scod
+open import LinCore.Pass Base ⟦_⟧b Sig sdom scod using (Bl; ≈ret; ≈step; ≈call; ≈halt; block≈)
+open import LinCore.Grade Base ⟦_⟧b Sig sdom scod using (blk-coh)
 
 -- ★ D405: every statement is over the program's label table `ds`
 variable
@@ -89,11 +92,18 @@ words Zero      = 0
 words (A ⊗t B)  = words A + words B
 words (A ⊕t B)  = suc (words A ⊔ words B)
 words (Ct l X)  = words X
+words (Fn k g A B) = 1      -- ★ a pointer to the closure's cell
 words (μt F)    = 1
 words (Bt b)    = bw b
 
 szμ : LF → ℕ                -- a μ node of `F`
 szμ F = words (LF∙ F (μt F))
+
+-- ★ D409 part 3: a closure of an arrow type, its environment `X`: a code word
+-- and the environment. The arrow's type does not fix which lambda (data
+-- decides it, GOAL.md's case for a tag), nor so the environment's size.
+szc : LTy → ℕ
+szc X = suc (words X)
 
 ------------------------------------------------------------------------
 -- 1. MACHINE VALUES: a value as it sits in memory.
@@ -116,6 +126,18 @@ _≟ᵢ_ : (i j : Id) → Dec (i ≡ j)
 ...   | yes refl = yes refl
 ...   | no ne    = no (λ e → ne (cong fst e))
 
+-- ★ D409 part 3: a closure's CODE: its lambda's body, over the table it was
+-- built at, at its arrow's grade (one-shot: it owns its environment;
+-- many-use: it reads it lent)
+data Lam : Kd → Gr → LTy → LTy → LTy → Set where
+  c1 : ∀ {Γ g X A B} → Defs Γ → (b : Tm Γ One (X ⊗t A) B) → Gd g b → Lam once g X A B
+  cω : ∀ {Γ g X A B} → Defs Γ → (b : Tm Γ X A B) → Gd g b → Lam many g X A B
+
+-- what a code means: the Spec's `⟦ A ⟧ → M π ⟦ B ⟧`, at an environment
+cmean : ∀ {k g X A B} → Lam k g X A B → ⟦ X ⟧ → ⟦ A ⟧ → Mg g ⟦ B ⟧
+cmean (c1 {g = g} ds b γ) x a = Lg ⟦ ds ⟧D g b γ tt (x , a)
+cmean (cω {g = g} ds b γ) x a = Lg ⟦ ds ⟧D g b γ x a
+
 data MV : LTy → Set where
   mone  : MV One
   mpair : ∀ {A B} → MV A → MV B → MV (A ⊗t B)
@@ -127,6 +149,9 @@ data MV : LTy → Set where
   -- ★ D405: a closure is its environment, where it is (its label is its type);
   -- D406: a ν is its seed
   mct   : ∀ {l X} → MV X → MV (Ct l X)
+  -- ★ D409 part 3: a closure of an arrow type: one cell, its code and its
+  -- environment
+  mfn   : ∀ {k g X A B} → Id → Lam k g X A B → MV X → MV (Fn k g A B)
 
 -- what a machine value means
 er : ∀ {A} → MV A → ⟦ A ⟧
@@ -137,6 +162,7 @@ er (minr b)          = inj₂ (er b)
 er (mbase x)         = x
 er (mmu {F} i v)     = inμ (coh F (μt F) (er v))
 er (mct x)           = er x
+er (mfn i c x)       = cmean c (er x)
 
 -- ★ A12: a flat value (a SigOp's answer) as it sits in memory: no cell
 mvF : ∀ a → ⟦ a ⟧f → MV ⌜ a ⌝
@@ -183,6 +209,8 @@ copy (mmu {F} i v)     n with copy v (suc n)
 ... | (v' , n₁ , t₁) = (mmu (szμ F , n) v' , n₁ , alloc (szμ F , n) ∷ t₁)
 copy (mct x)       n with copy x n
 ... | (x' , n₁ , t₁) = (mct x' , n₁ , t₁)
+copy (mfn {X = X} i c x) n with copy x (suc n)
+... | (x' , n₁ , t₁) = (mfn (szc X , n) c x' , n₁ , alloc (szc X , n) ∷ t₁)
 
 -- `drop`: free every cell
 freeAll : ∀ {A} → MV A → Trace
@@ -193,6 +221,7 @@ freeAll (minr b)     = freeAll b
 freeAll (mbase x)    = []
 freeAll (mmu i v)    = free i ∷ freeAll v
 freeAll (mct x)      = freeAll x
+freeAll (mfn i c x)  = free i ∷ freeAll x
 
 -- ★ D405/D406: `lclo F`: each environment at an `Idf` position of the layer
 -- becomes a closure, where it is (observing a ν tags the seeds its
@@ -381,6 +410,20 @@ data Run {Γ} ds where
   -- applying a lent many-use closure lends its environment on to its body
   r-bapp  : ∀ {l g X A B Δ} {p : Γ ∋[ l ] sg many g X A B} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b} {x a o n t}
           → Look ds p ds′ (bω b γ) → Run ds′ b x a n o t → Run ds (bapp p) (mct x) a n o t
+  -- ★ D409 part 3, THE EXPONENTIAL: building a closure moves its environment
+  -- into a fresh cell beside its code; applying a one-shot one frees the
+  -- cell and runs the code on the environment and the argument (the body owns
+  -- both); applying a lent many-use one reads the cell and lends the
+  -- environment on to the body
+  r-lam   : ∀ {E g X A B} {b : Tm Γ One (X ⊗t A) B} {γ : Gd g b} {e : MV E} {x : MV X} {n}
+          → Run ds (llam b γ) e x n (gives (mfn (szc X , n) (c1 ds b γ) x) (suc n)) (alloc (szc X , n) ∷ [])
+  r-lamω  : ∀ {E g X A B} {b : Tm Γ X A B} {γ : Gd g b} {e : MV E} {x : MV X} {n}
+          → Run ds (llamω b γ) e x n (gives (mfn (szc X , n) (cω ds b γ) x) (suc n)) (alloc (szc X , n) ∷ [])
+  r-ev    : ∀ {E g X A B Δ} {ds′ : Defs Δ} {b : Tm Δ One (X ⊗t A) B} {γ : Gd g b} {e : MV E} {i x a o n t}
+          → Run ds′ b mone (mpair x a) n o t
+          → Run ds (lev {g = g}) e (mpair (mfn i (c1 ds′ b γ) x) a) n o (free i ∷ t)
+  r-bev   : ∀ {g X A B Δ} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b} {i x a o n t}
+          → Run ds′ b x a n o t → Run ds (bev {g = g}) (mfn i (cω ds′ b γ) x) a n o (peek i ∷ t)
   -- ★ A11: a SigOp: an event, and whatever the world answers (A12: a flat
   -- value, no cell)
   r-const : ∀ {E b} {v : ⟦ b ⟧b} {e : MV E} {n} → Run ds (lconst v) e mone n (gives (mbase v) n) []
@@ -474,6 +517,8 @@ copy-mem (mmu i v) n with copy v (suc n) | copy-mem v (suc n)
 ... | (v' , n₁ , t₁) | mv = m-alloc ∷ mv
 copy-mem (mct x) n with copy x n | copy-mem x n
 ... | (x' , n₁ , t₁) | mx = mx
+copy-mem (mfn i c x) n with copy x (suc n) | copy-mem x (suc n)
+... | (x' , n₁ , t₁) | mx = m-alloc ∷ mx
 
 freeAll-mem : ∀ {A} (v : MV A) → All Mem (freeAll v)
 freeAll-mem mone        = []
@@ -483,6 +528,7 @@ freeAll-mem (minr b)    = freeAll-mem b
 freeAll-mem (mbase x)   = []
 freeAll-mem (mmu i v)   = m-free ∷ freeAll-mem v
 freeAll-mem (mct x)     = freeAll-mem x
+freeAll-mem (mfn i c x) = m-free ∷ freeAll-mem x
 
 ios-copy : ∀ {A} (v : MV A) n → ios (snd (snd (copy v n))) ≡ []
 ios-copy v n = cmap-nil ioOf (All.map mem-io (copy-mem v n))
@@ -557,6 +603,21 @@ ret-eq refl refl = b-ret
 ++[] : ∀ {X} {m : T (X ⊎ T∞ X)} {p r} → RB m p r → RB m (p ++ []) r
 ++[] {m = m} {p} {r} h = subst (λ q → RB m q r) (sym (++-identityʳ p)) h
 
+-- a path through a computation is a path through every bisimilar one
+RB-Bl : ∀ {X} {b b′ : T (X ⊎ T∞ X)} {p r} → Bl b b′ → RB b p r → RB b′ p r
+RB-Bl ≈ret      b-ret      = b-ret
+RB-Bl (≈step q) (b-next h) = b-next (RB-Bl (block≈ q) h)
+RB-Bl (≈call f) (b-call h) = b-call (RB-Bl (f _) h)
+RB-Bl ≈halt     b-halt     = b-halt
+RB-Bl _         b-cut      = b-cut
+
+-- ★ a body at its grade: a path through its computation is a path through
+-- its graded meaning (at `act`, the block, embedded: `Grade.blk-coh`)
+up-Lg : ∀ g {Δ} (ρ : Env Δ) {E A B} (b : Tm Δ E A B) (γ : Gd g b) e x {p r}
+      → RB (block (Lᶜ ρ b e x)) p r → RB (block (up g (Lg ρ g b γ e x))) p r
+up-Lg act ρ b γ e x h = RB-Bl (block≈ (blk-coh ρ γ e x)) h
+up-Lg eff ρ b γ e x h = h
+
 
 copy-er : ∀ {A} (v : MV A) n → er (fst (copy v n)) ≡ er v
 copy-er mone         n = refl
@@ -572,6 +633,8 @@ copy-er (mmu {F} i v) n with copy v (suc n) | copy-er v (suc n)
 ... | (v' , n₁ , t₁) | ev = cong (λ x → inμ (coh F (μt F) x)) ev
 copy-er (mct x)      n with copy x n | copy-er x n
 ... | (x' , n₁ , t₁) | ex = ex
+copy-er (mfn i c x)  n with copy x (suc n) | copy-er x (suc n)
+... | (x' , n₁ , t₁) | ex = cong (cmean c) ex
 
 -- a flat answer in memory means the answer
 er-mvF : ∀ a (y : ⟦ a ⟧f) → er (mvF a y) ≡ fromF a y
@@ -641,8 +704,9 @@ sound (r-case₂ r) = sound r
 sound r-In   = b-ret
 sound (r-Outμ {F = F} {v = v}) = ret-eq (sym (coh⁻¹∘coh F (μt F) (er v))) refl
 sound (r-clo {F = F} {x = x}) = ret-eq (tag-er F x) refl
-sound (r-app {x = x} {a = a} {o = o} {t = t} q r) =
-  subst (λ m → RB (block m) (ios t) (erO o)) (sym (lookup-look q (er x) (er a))) (sound r)
+sound (r-app {g = g} {ds′ = ds′} {b = b} {γ = γ} {x = x} {a = a} {o = o} {t = t} q r) =
+  subst (λ m → RB (block (up g m)) (ios t) (erO o)) (sym (lookup-look q (er x) (er a)))
+        (up-Lg g ⟦ ds′ ⟧D b γ tt (er x , er a) (sound r))
 sound (r-cata {F = F} {A} {alg} {e} {t₁ = t₁} {t₂} rm th) rewrite ios-++ t₁ t₂ with th
 ... | go-on {u = u} {o = o} ra =
   bind-ret (sound-map rm)
@@ -670,8 +734,13 @@ sound (r-caseE₂ r) = sound r
 sound (r-out {F} {f = f} {v = v} {a} {o} {t = t} r) =
   subst (λ z → RB (block (Lᶜ _ f z (er a))) (ios t) (erO o)) (sym (coh⁻¹∘coh F (μt F) (er v))) (sound r)
 sound (r-copy {e = e} {n}) = ret-eq (copy-er e n) (ios-copy e n)
-sound (r-bapp {x = x} {a = a} {o = o} {t = t} q r) =
-  subst (λ m → RB (block m) (ios t) (erO o)) (sym (lookup-look q (er x) (er a))) (sound r)
+sound (r-bapp {g = g} {ds′ = ds′} {b = b} {γ = γ} {x = x} {a = a} {o = o} {t = t} q r) =
+  subst (λ m → RB (block (up g m)) (ios t) (erO o)) (sym (lookup-look q (er x) (er a)))
+        (up-Lg g ⟦ ds′ ⟧D b γ (er x) (er a) (sound r))
+sound r-lam  = b-ret
+sound r-lamω = b-ret
+sound (r-ev {g = g} {ds′ = ds′} {b = b} {γ = γ} {x = x} {a = a} r) = up-Lg g ⟦ ds′ ⟧D b γ tt (er x , er a) (sound r)
+sound (r-bev {g = g} {ds′ = ds′} {b = b} {γ = γ} {x = x} {a = a} r) = up-Lg g ⟦ ds′ ⟧D b γ (er x) (er a) (sound r)
 sound r-const = b-ret
 sound (r-op {s = s} {y = y}) = b-call (ret-eq (er-mvF (scod s) y) refl)
 sound r-halt = b-halt
@@ -714,6 +783,7 @@ Sized (minr b)          = Sized b
 Sized (mbase x)         = ⊤
 Sized (mmu {F} i v)     = fst i ≡ szμ F × Sized v
 Sized (mct x)           = Sized x
+Sized (mfn {X = X} i c x) = fst i ≡ szc X × Sized x
 
 -- a copy is sized, whatever it copied: its cells are fresh, named by the type
 copy-sized : ∀ {A} (v : MV A) n → Sized (fst (copy v n))
@@ -730,6 +800,8 @@ copy-sized (mmu i v) n with copy v (suc n) | copy-sized v (suc n)
 ... | (v' , n₁ , t₁) | s = (refl , s)
 copy-sized (mct x) n with copy x n | copy-sized x n
 ... | (x' , n₁ , t₁) | s = s
+copy-sized (mfn i c x) n with copy x (suc n) | copy-sized x (suc n)
+... | (x' , n₁ , t₁) | s = (refl , s)
 
 mvF-sized : ∀ a (y : ⟦ a ⟧f) → Sized (mvF a y)
 mvF-sized funit    y        = tt
@@ -784,6 +856,10 @@ sized (r-caseE₂ r) se sv = sized r se sv
 sized (r-out r) (_ , se) sv = sized r se sv
 sized (r-copy {e = e} {n}) se sv = copy-sized e n
 sized (r-bapp q r) sx sv = sized r sx sv
+sized r-lam se sv = (refl , sv)
+sized r-lamω se sv = (refl , sv)
+sized (r-ev r) se ((_ , sx) , sa) = sized r tt (sx , sa)
+sized (r-bev r) (_ , sx) sv = sized r sx sv
 sized r-const se sv = tt
 sized (r-op {s = s} {y = y}) se sv = mvF-sized (scod s) y
 sized (r-iter r (go-on done)) se sv = sized r se sv
@@ -891,6 +967,7 @@ cnt (minr b)     i = cnt b i
 cnt (mbase x)    i = 0
 cnt (mmu j v)    i = δ j i + cnt v i
 cnt (mct x)      i = cnt x i
+cnt (mfn j c x)  i = δ j i + cnt x i
 
 -- ★ A12: a flat value has no cell
 cnt-flat : ∀ a (x : MV ⌜ a ⌝) i → cnt x i ≡ 0
@@ -1030,6 +1107,8 @@ copy-mono (mmu i v) n with copy v (suc n) | copy-mono v (suc n)
 ... | (v' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
 copy-mono (mct x) n with copy x n | copy-mono x n
 ... | (x' , n₁ , t₁) | m₁ = m₁
+copy-mono (mfn i c x) n with copy x (suc n) | copy-mono x (suc n)
+... | (x' , n₁ , t₁) | m₁ = ≤-trans (n≤1+n n) m₁
 
 copy-below : ∀ {A} (v : MV A) n i → fst (snd (copy v n)) ≤ serial i → cnt (fst (copy v n)) i ≡ 0
 copy-below mone n i le = refl
@@ -1045,6 +1124,8 @@ copy-below (mmu j v) n i le with copy v (suc n) | copy-below v (suc n) | copy-mo
 ... | (v' , n₁ , t₁) | bv | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bv i le)
 copy-below (mct x) n i le with copy x n | copy-below x n
 ... | (x' , n₁ , t₁) | bx = bx i le
+copy-below (mfn j c x) n i le with copy x (suc n) | copy-below x (suc n) | copy-mono x (suc n)
+... | (x' , n₁ , t₁) | bx | m₁ = cong₂ _+_ (δ-fresh (≤-trans m₁ le)) (bx i le)
 
 -- one allocated cell, at the counter, onto a heap empty from the counter on
 private
@@ -1075,6 +1156,8 @@ copy-ok (mmu {F} j v) n h ab with copy v (suc n) | copy-ok v (suc n) (step (allo
 ... | (v' , n₁ , t₁) | (ok , eq) = ((ab (szμ F , n) ≤-refl , ok) , alloc-eq (szμ F , n) h (cnt v') (play t₁ (step (alloc (szμ F , n)) h)) eq)
 copy-ok (mct x) n h ab with copy x n | copy-ok x n h ab
 ... | (x' , n₁ , t₁) | r = r
+copy-ok (mfn {X = X} j c x) n h ab with copy x (suc n) | copy-ok x (suc n) (step (alloc (szc X , n)) h) (alloc-above (szc X) n h ab)
+... | (x' , n₁ , t₁) | (ok , eq) = ((ab (szc X , n) ≤-refl , ok) , alloc-eq (szc X , n) h (cnt x') (play t₁ (step (alloc (szc X , n)) h)) eq)
 
 -- freeing one live cell `j` whose contents count `V`
 free-step : ∀ j (V : Heap) (h r : Heap) → (∀ i → h i ≤ 1) → (∀ i → (δ j i + V i) + r i ≤ h i)
@@ -1124,6 +1207,7 @@ free-ok (minr b) h r le sb = free-ok b h r le sb
 free-ok (mbase x) h r le sb = (tt , λ i → +0 (h i))
 free-ok (mmu j v) h r le sb = free-cell j (cnt v) (freeAll v) h r le sb (λ h′ le′ sb′ → free-ok v h′ r le′ sb′)
 free-ok (mct x) h r le sb = free-ok x h r le sb
+free-ok (mfn j c x) h r le sb = free-cell j (cnt x) (freeAll x) h r le sb (λ h′ le′ sb′ → free-ok x h′ r le′ sb′)
 
 -- ★ D405/D406: a tagged layer holds exactly the cells it held
 cnt-tag : ∀ {l X} F (x : MV (LF∙ F X)) i → cnt (tag {l} F x) i ≡ cnt x i
@@ -1175,6 +1259,10 @@ mono (r-caseE₂ r)  = mono r
 mono (r-out r)     = mono r
 mono (r-copy {e = e} {n}) = copy-mono e n
 mono (r-bapp q r)  = mono r
+mono r-lam         = n≤1+n _
+mono r-lamω        = n≤1+n _
+mono (r-ev r)      = mono r
+mono (r-bev r)     = mono r
 mono r-const       = ≤-refl
 mono r-op          = ≤-refl
 mono (r-iter r (go-on done))    = mono r
@@ -1227,6 +1315,12 @@ below (r-caseE₂ r) b = below r b
 below (r-out r) b = below r b
 below (r-copy {e = e} {n}) b = copy-below e n
 below (r-bapp q r) b = below r b
+below (r-lam {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
+below (r-lamω {n = n}) b i le = cong₂ _+_ (δ-fresh le) (b i (≤-trans (n≤1+n n) le))
+below (r-ev {i = j} {x} {a} r) b =
+  below r (λ k le → cong₂ _+_ (+≡0ʳ (δ j k) (cnt x k) (+≡0ˡ (δ j k + cnt x k) (cnt a k) (b k le)))
+                              (+≡0ʳ (δ j k + cnt x k) (cnt a k) (b k le)))
+below (r-bev r) b = below r b
 below r-const b i le = refl
 below (r-op {s = s} {y = y}) b i le = cnt-flat (scod s) (mvF (scod s) y) i
 below (r-iter r (go-on done)) b = below r b
@@ -1498,6 +1592,25 @@ exchange (r-copy {e = e} {n}) {h} pre lent with copy-ok e n h (above pre)
 ... | (ok , eq) = (ok , λ i → trans (+0 _) (eq i))
 -- ★ D405: a lent closure is its lent environment, lent on to the body
 exchange (r-bapp q r) pre lent = exchange r pre lent
+-- ★ D409 part 3: building a closure allocates its cell, holding the environment
+exchange (r-lam {X = X} {x = x}) pre lent = alloc1 (szc X) (cnt x) pre
+exchange (r-lamω {X = X} {x = x}) pre lent = alloc1 (szc X) (cnt x) pre
+-- applying a one-shot closure frees its cell; the body takes the environment
+-- and the argument, and reads nothing lent
+exchange (r-ev {i = j} {x} {a} {o} {t = t} r) {h} {rf} pre lent
+  with free-step j (λ k → cnt x k + cnt a k) h rf (le1 pre)
+         (λ k → subst (λ z → z + rf k ≤ h k) (assoc (δ j k) (cnt x k) (cnt a k)) (sub pre k))
+... | (hj , le′ , sb′ , back) with exchange r (pre-free {v′ = mpair x a} j pre le′ sb′) lent₀
+...   | (ok , po) =
+  ( (hj , ok)
+  , postV o (free j ∷ t) h (λ k → sym (assoc (δ j k) (cnt x k) (cnt a k)))
+      (freeP o j t h (λ k → cnt x k + cnt a k) back po) )
+-- applying a lent many-use closure reads its live cell, lends the environment on
+exchange (r-bev {ds′ = ds′} {b = b} {γ = γ} {i = i} {x} {a} {o} {t = t} r) {h} pre lent
+  with exchange r pre (λ j p → lent j (≤-trans p (m≤n+m (cnt x j) (δ i j))))
+... | (ok , eq) =
+  ( (peek-live {a = a} {e = mfn i (cω ds′ b γ) x} pre lent i (subst (λ z → 1 ≤ z + cnt x i) (sym (δ-same i)) (s≤s z≤n)) , ok)
+  , peekP o i t h (cnt a) eq )
 exchange r-const pre lent = (tt , λ i → refl)
 exchange (r-op {s = s} {x = x} {y = y}) {h} pre lent =
   ((tt , tt) , λ i → trans (cong (h i +_) (cnt-flat (sdom s) x i)) (sym (cong (h i +_) (cnt-flat (scod s) (mvF (scod s) y) i))))

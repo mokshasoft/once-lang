@@ -221,6 +221,33 @@ inv-step {m = es ∥ mmu j v ∷ˢ os} {h = h} s-fold inv =
     fr = free-step j (cnt v) h (λ i → own es i + held os i) (i-le1 inv)
            (λ i → ≤-reflexive (sym (trans (i-exact inv i) (r₁ (own es i) (δ j i) (cnt v i) (held os i)))))
 inv-step s-loop inv = (tt , inv)
+-- ★ D409 part 3: the indirect call frees the closure's cell; its environment
+-- and the argument stay held, as the body's input
+inv-step {m = es ∥ mpair (mfn j _ x) a ∷ˢ os} {h = h} s-apply inv =
+  ( (fst fr , tt)
+  , record { i-le1   = fst (snd fr)
+           ; i-above = λ i le → trans (cong (_∸ δ j i) (i-above inv i le)) (0∸n≡0 (δ j i))
+           ; i-exact = λ i → cancelʳ (δ j i) (trans (snd (snd (snd fr)) i)
+                                                    (trans (i-exact inv i) (r₂ (own es i) (δ j i) (cnt x i) (cnt a i) (held os i))))
+           ; i-sees  = i-sees inv } )
+  where
+    r₁ : ∀ O D X A H → O + (((D + X) + A) + H) ≡ (D + (X + A)) + (O + H)
+    r₁ = solve-∀
+    r₂ : ∀ O D X A H → O + (((D + X) + A) + H) ≡ (O + ((X + A) + H)) + D
+    r₂ = solve-∀
+    fr = free-step j (λ i → cnt x i + cnt a i) h (λ i → own es i + held os i) (i-le1 inv)
+           (λ i → ≤-reflexive (sym (trans (i-exact inv i) (r₁ (own es i) (δ j i) (cnt x i) (cnt a i) (held os i)))))
+-- a lent closure's cell is read; its environment is viewed, owned below
+inv-step {m = es ∥ os} {h = h} (s-eapply {i = j} {x} eq) inv =
+  ( (≤-antisym (i-le1 inv j) alive , tt)
+  , same inv (λ i → refl)
+      ((λ i p → see-own es (i-sees inv) i (subst (λ z → 1 ≤ cnt z i) (sym eq) (≤-trans p (m≤n+m (cnt x i) (δ j i)))))
+      , i-sees inv) )
+  where
+    seen : 1 ≤ cnt (see es) j
+    seen = subst (λ z → 1 ≤ cnt z j) (sym eq) (subst (λ d → 1 ≤ d + cnt x j) (sym (δ-same j)) (s≤s z≤n))
+    alive : 1 ≤ h j
+    alive = subst (1 ≤_) (sym (i-exact inv j)) (≤-trans (see-own es (i-sees inv) j seen) (m≤m+n (own es j) (held os j)))
 
 -- along a stretch of steps
 inv-steps : ∀ {T sh sh′} {c : Code sh T} {c′ : Code sh′ T} {m m′ n n′ t h}

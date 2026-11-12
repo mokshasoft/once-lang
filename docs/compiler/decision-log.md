@@ -22293,6 +22293,53 @@ Found before building option 1; the user's decision.
   machine already runs a first-order fold. The open part: a server whose state is a closure, and
   closures that calls return. Part 2's per-lambda labels (option 2) stand where one lambda reaches a site.
 
+### D409 part 3, decided by the user (2026-11-12): the exponential restored, with the Spec's graded meaning
+**The deviation, named.** D405 took the arrow out of the core: `Ct l X` names one lambda in its type,
+over a stratified label table. That is Reynolds' defunctionalisation, a compilation technique, written
+into the core's types. The Spec has graded exponentials (`⊢lam`/`⊢app` at `A ⇒[ mk-kind q π ] B`), and
+`⊢fold`/`⊢iter` take arrow carriers and state. Master's IR has `curry`/`apply`. So the core could not type
+a closure whose lambda is decided by data, and every repair withdrawn above was a workaround for that
+gap. The suggested direction above (a fold into an arrow as its own generator) is subsumed: with the
+exponential back, the Spec's fold into an arrow is `lcata` at an arrow carrier.
+* **Decided (the user): the arrow's meaning is the Spec's, graded.** `⟦ Fn k g A B ⟧ = ⟦ A ⟧ → Mg g ⟦ B ⟧`,
+  where `Mg act = T` (a finite block) and `Mg eff = T∞` (`Spec.Domain`: `⟦ A ⇒[ q π ] B ⟧ᵛ = ⟦ A ⟧ᵛ → M π ⟦ B ⟧ᵛ`).
+  Rejected: keeping every arrow in `T∞` with a finiteness predicate beside it. That is a precondition on
+  the meaning of a type, which then holds values the type does not mean, and the fact is tracked twice
+  (GOAL.md).
+* **Done, in `Spikes/LinCore/` (made unattended, for the user's review):**
+  * **Core** (`NbEPLinCore`): `Fn k g A B` (quantity once/many, grade act/eff), `llam`/`llamω` (the body a
+    subterm, closed over `One` or reading its environment lent), `lev`/`bev`. A block also means a `T`,
+    by induction on `Blk` (`Lᴮ`, with `cataB`); labels mean `Mg (gr σ)` too. Every meaning is structural
+    under `--safe`, with no fuel and no fixpoint.
+  * **`Grade`**: `blk-coh`: a block's computation is its block embedded, `Lᶜ t ≈ emb (Lᴮ φ)`. From it,
+    `blk-finite` and `liter-loop` (the loop is the Spec's `loop` of `Lᴮ`). `EnvOK`/`defs-ok` retired.
+  * **`Events`**: a closure of arrow type is ONE CELL holding a code word and its environment
+    (`mfn`, `Lam`; `words (Fn …) = 1`, `szc X = suc (words X)`). GOAL.md allows the code word: the arrow's
+    type does not say which lambda, data does. `r-lam`/`r-lamω` allocate it; `r-ev` frees it and runs
+    the body; `r-bev` reads it (`peek`). `sound`, `sized`, `exchange`, `noleak` and `lifetimes` cover them.
+    `sound` uses `blk-coh` for the act-graded bodies.
+  * **`Total`, by Tait's method**: `Good A v` by recursion on the type, where a closure is good when its
+    code, on any environment the same up to cell names and any good argument, has a run with a good
+    outcome. The evaluator takes good inputs to good outcomes. Building a closure proves it good by
+    running its body (a subterm, at any fuel), and applying it uses that proof. The measure is the term,
+    then the fuel, so the loop is its own function (`loop`). `allGood` holds by induction on the value, so
+    `exec` keeps its signature. This is the simply typed calculus's normalisation (the Spec's), not
+    fuel at applications.
+  * **`Machine`**: `apply`/`eapply`, an INDIRECT CALL into the body the closure's code word names,
+    compiled as a label's body (in a frame). Checked against GOAL.md, this is not the case the handoff
+    asked to bring back. "No code pointer where the compiler knows which function is meant": here it
+    does not know. `Frag` (a restriction on the term) is replaced by `Plain` (a restriction on the run:
+    every fold plain, the lowering's choice), because a closure's body comes from the data. `Held` covers
+    the two steps, so the instruction set stays linear.
+  * **Example §21**: the list [7, 5] folded into `Int → Int` (each layer's closure holds the one before),
+    applied to 0. It emits 7, then 5. Its events (`fn-events`) show every node and closure cell freed;
+    `noleak`, and `machine-noleak` on the machine.
+* **Kept**: `Ct l X` and the label table, as the representation where one lambda reaches a site (D409
+  part 2's flow analysis). It is a refinement of `Fn`, never the only closure.
+* **Still to align (next)**: ν (D406 makes a ν a label and its seed, so a ν whose coalgebra is decided
+  by data has no type, the same gap as the arrows had), the pass of the IR's `curry`/`apply` (A15), and
+  the Spec's quantity `Zero` and its grade `pure` (the core has once/many and act/eff).
+
 ## D410 — A MODEL MACHINE: CODE, FRAMES IN HEAP BLOCKS, A SIMULATION BY THE RUN (2026-11-11)
 
 **Proposed** (made unattended; for the user's review). Worked out in `Spikes/LinCore/Machine.agda` (plan
