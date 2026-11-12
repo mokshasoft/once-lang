@@ -121,6 +121,12 @@ module Lowering (U : Univ)
     ∷ instr-load-code-addr (tl jb) ∷ store-at 1 ∷ instr-load-code-addr (tl jc) ∷ store-at 2
     ∷ instr-load-code-addr (tl jf) ∷ store-at 3 ∷ []
 
+  -- a SigOp's answer stored: one word, or none
+  answer : ℕ → ℕ → AbstractTrace
+  answer (suc zero) bot = store-at-slot (bot ∸ 1) ∷ []
+  {-# CATCHALL #-}
+  answer _          bot = []
+
   -- a `prim`: a generator that touches at most one cell
   lowP : ∀ {Γ} (ds : Defs Γ) {A B} (g : LTm Γ A B) → Frame → (S : List LTy) → PrimIn ds g → AbstractTrace
   lowP ds ρl φ S p                = []
@@ -156,11 +162,6 @@ module Lowering (U : Univ)
   lowP ds (lop s) φ S p =
     let bot = Tp φ S
     in lea-slot (bot ∸ wsz ⌜ sdom s ⌝) ∷ mov-to-input ∷ instr-sigop (info s) ∷ answer (wsz ⌜ scod s ⌝) bot
-    where
-      answer : ℕ → ℕ → AbstractTrace
-      answer (suc zero) bot = store-at-slot (bot ∸ 1) ∷ []
-      {-# CATCHALL #-}
-      answer _          bot = []
   lowP ds (llam {X = X} b γ) φ S (kb , x) =
     let bot = Tp φ S ; wX = wsz X
     in header wX (idx kb) (idx (inC x)) (idx (inF x)) ++ mvSP (bot ∸ wX) hdr wX
@@ -287,6 +288,11 @@ module Lowering (U : Univ)
   -- 4. BLOCKS AND TRAMPOLINES.
   ----------------------------------------------------------------------
 
+  -- a block's prologue copy of the caller's top view's words
+  view-in : Maybe LTy → Frame → AbstractTrace
+  view-in nothing  φ = []
+  view-in (just E) φ = restore-input (sv₂ φ) ∷ mvPS 0 0 (wsz E)
+
   -- ★ block `j`: save the argument's area and the view's buffer, copy them
   -- in, run, copy the result out, return
   lowBlock : ∀ {σ} (j : ℕ) (κ : Key σ) → CIn (blockᴵ κ) → AbstractTrace
@@ -298,10 +304,6 @@ module Lowering (U : Univ)
        ∷ store-at-slot (sv₂ φ) ∷ mov-to-output ∷ store-at-slot (sv₁ φ)
        ∷ mvPS (M ∸ wsz A) (Tp φ (A ∷ [])) (wsz A) ++ view φ
        ++ proj₁ (lowC φ j 0 fin (blockᴵ κ) ev)
-    where
-      view-in : Maybe LTy → Frame → AbstractTrace
-      view-in nothing  φ = []
-      view-in (just E) φ = restore-input (sv₂ φ) ∷ mvPS 0 0 (wsz E)
 
   -- ★ block `j`'s trampoline, by its key: the cell's part, then the block
   tramp : ∀ {σ} (j : ℕ) → Key σ → AbstractTrace
