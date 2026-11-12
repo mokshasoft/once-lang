@@ -44,7 +44,9 @@ open Once.LinCore.FromIR fmt ans
 open Once.LinCore.Bridge fmt ans using (W)
 module BP = Once.LinCore.BridgeProof fmt ans
 open Once.LinCore.Casts fmt ans using (casts)
-open Once.LinCore.Bisim fmt ans using (_≈[_]_; ≈-≈R; ≈-sym)
+open Once.LinCore.Bisim fmt ans using (_≈[_]_; ≈-≈R; ≈-sym; ≈R-∘)
+import Once.IR as M
+open import Once.IRTy using (Unit)
 open TrProg using (prog; rs)
 
 private
@@ -127,3 +129,14 @@ env-ok (e ∷ es) eq with bind-just {m = trTable es} eq
   at : (m : Maybe (P.BlkIR _ b)) → EnvOKT (entry-at (prog t) (rs t) e b m) (e ∷ es)
   at (just φ) = entry-ok (prog t) (rs t) es ok e tr act φ
   at nothing  = entry-ok (prog t) (rs t) es ok e tr eff tt
+
+-- ★ B1.3: master's program, compiled into the core (`Pass.tr` of its
+-- translation, over the translated table's labels), means what master's
+-- `evalᴰ` says: the core against the resolved IR (`Pass.pass-ok`), that
+-- against master's (`BridgeProof.bridge`)
+compile-ok : ∀ (tbl : List IRFun) (main : M.IR Unit Unit) {t c} → trTable tbl ≡ just t → trI (rs t) main ≡ just c
+           → Lᶜ ⟦ P.trP (prog t) ⟧D (P.tr c) tt tt ≈[ _ ] evalᴰ fmt (callEnv (tableCalls fmt ans tbl) ans) main tt
+compile-ok tbl main {t} {c} et ec =
+  ≈R-∘ (P.pass-ok (P.pass-okP (prog t)) c {tt} {tt} tt)
+       (BP.bridge P.⟦ prog t ⟧P (tableCalls fmt ans tbl) (casts P.⟦ prog t ⟧P (tableCalls fmt ans tbl))
+                  (env-ok tbl et) (trI-Tr (rs t) main ec) tt)

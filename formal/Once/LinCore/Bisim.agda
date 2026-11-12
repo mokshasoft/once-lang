@@ -18,7 +18,8 @@
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (sym; subst)
-open import Agda.Builtin.Sigma using (_,_)
+open import Agda.Builtin.Sigma using (Σ; _,_)
+open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Relation.Binary.Pointwise using (Pointwise)
   renaming (inj₁ to ⊎₁; inj₂ to ⊎₂)
@@ -225,6 +226,20 @@ mutual
   Bl→BlR rf (≈step p)      = ≈stepR (≈→≈R rf p)
   Bl→BlR rf (≈call f)      = ≈callR (λ y → Bl→BlR rf (f y))
   Bl→BlR rf ≈halt          = ≈haltR
+
+-- ★ B1.3: two relations compose (the core against `Pass.ev`, `Pass.ev`
+-- against master's `evalᴰ`)
+mutual
+  ≈R-∘ : ∀ {X Y Z} {R : X → Y → Set} {S : Y → Z → Set} {m : T∞ X} {m′ : T∞ Y} {m″ : T∞ Z}
+       → m ≈[ R ] m′ → m′ ≈[ S ] m″ → m ≈[ (λ x z → Σ Y (λ y → R x y × S y z)) ] m″
+  blockR (≈R-∘ p q) = BlR-∘ (blockR p) (blockR q)
+
+  BlR-∘ : ∀ {X Y Z} {R : X → Y → Set} {S : Y → Z → Set} {b : T (X ⊎ T∞ X)} {b′ : T (Y ⊎ T∞ Y)} {b″ : T (Z ⊎ T∞ Z)}
+        → BlR R b b′ → BlR S b′ b″ → BlR (λ x z → Σ Y (λ y → R x y × S y z)) b b″
+  BlR-∘ (≈retR r)  (≈retR s)  = ≈retR (_ , r , s)
+  BlR-∘ (≈stepR p) (≈stepR q) = ≈stepR (≈R-∘ p q)
+  BlR-∘ (≈callR f) (≈callR g) = ≈callR (λ y → BlR-∘ (f y) (g y))
+  BlR-∘ ≈haltR     ≈haltR     = ≈haltR
 
 ------------------------------------------------------------------------
 -- 3. ONE FINITE BLOCK, up to a relation on its value (`T`, the Spec's
