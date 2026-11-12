@@ -170,7 +170,7 @@ d_firstChecking_36 v0 v1 v2 v3
         -> coe
              d_fc'45'step_46 (coe v0) (coe v1) (coe v2) (coe v4) (coe v5)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_6032 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_6076 (coe v0)
                 (coe v1) (coe v2) (coe v4))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.fc-step
@@ -393,7 +393,7 @@ du_compileFunBody'45'aux_134 v0 v1 v2 v3 v4 v5 v6 v7 v8
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
                       (": " :: Data.Text.Text)
-                      (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_96 (coe v9)))))
+                      (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_90 (coe v9)))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.compileFunBody
 d_compileFunBody_184 ::
@@ -425,7 +425,7 @@ du_compileFunBody_184 v0 v1 v2 v3 v4 v5 v6
       (coe MAlonzo.Code.Once.Spec.Context.C_'8709'_12) (coe v0) (coe v1)
       (coe v2) (coe v3) (coe v4) (coe v5)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_6032
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_6076
          (coe (0 :: Integer))
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
@@ -672,7 +672,7 @@ du_compileFunBodyI'45'aux_370 v0 v1 v2 v3 v4 v5 v6 v7 v8
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
                       (": " :: Data.Text.Text)
-                      (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_96 (coe v9)))))
+                      (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_90 (coe v9)))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.compileFunBodyI
 d_compileFunBodyI_414 ::
@@ -704,7 +704,7 @@ du_compileFunBodyI_414 v0 v1 v2 v3 v4 v5 v6
       (coe MAlonzo.Code.Once.Spec.Context.C_'8709'_12) (coe v0) (coe v1)
       (coe v2) (coe v3) (coe v4) (coe v5)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_6022
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_6066
          (coe (0 :: Integer))
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
@@ -903,7 +903,7 @@ d_inferType_580 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_inferType_580 v0 v1 v2
   = let v3
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_6022
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_6066
               (coe (0 :: Integer))
               (coe
                  MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_346
@@ -921,7 +921,7 @@ d_inferType_580 v0 v1 v2
                    ("The body has no type of its own (" :: Data.Text.Text)
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                      (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_96 (coe v4))
+                      (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_90 (coe v4))
                       ("): a definition without a signature must synthesize its type; give it a signature"
                        ::
                        Data.Text.Text)))
@@ -961,7 +961,7 @@ du_checkOK_632 v0
       MAlonzo.Code.Once.TypeCheck.Elaborate.C_failure_128 v1
         -> coe
              MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
-             (coe MAlonzo.Code.Once.TypeCheck.Error.d_renderError_96 (coe v1))
+             (coe MAlonzo.Code.Once.TypeCheck.Error.d_renderError_90 (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.CScope
 d_CScope_636 = ()
@@ -1404,7 +1404,7 @@ d_ce'45'poly'45'p_780 v0 v1 v2 v3 v4 v5
              (coe
                 du_checkOK_632
                 (coe
-                   MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_6032
+                   MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_6076
                    (coe
                       MAlonzo.Code.Once.Type.Instance.d_arityOf_86
                       (coe MAlonzo.Code.Once.Parser.d_pfunType_108 (coe v3)))
@@ -1661,13 +1661,13 @@ d_lw'45'bodyM_1092 v0 v1 v2 v3
         -> coe
              du_lw'45'body_1078 (coe v3)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_6032
+                MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_6076
                 (coe (0 :: Integer)) (coe v1) (coe v2) (coe v3))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe
              du_lw'45'bodyI_1084
              (coe
-                MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_6022
+                MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_6066
                 (coe (0 :: Integer)) (coe v1) (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.lw-name

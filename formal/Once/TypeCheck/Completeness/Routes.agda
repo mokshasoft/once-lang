@@ -283,11 +283,11 @@ given-cata-complete {F = F} {A = A} {π = π} wfF {Ψ = Ψ} u (success _ _ _ _ _
 -- compose, `f`'s route: `f` synthesizes, converts, and `g` is checked at the
 -- middle it names.
 compose-f-complete : ∀ {m} {ctx : NamedCtx m} (f g : Syn.Expr) (A B C C′ : Ty m) (π π′ : T.Purity)
-    {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)} {fE : _} {gE : _} {df ff dg fg : ℕ}
+    {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)} {fE : _} {gE : _} {df ff dg fg : ℕ} {me : Maybe Error.TypeError}
   → inferElab ctx f ≡ success (B T.⇒[ T.mk-kind T.Many π′ ] C′) Ψ₁ fE df ff
   → (B T.⇒[ T.mk-kind T.Many π′ ] C′) <: (B T.⇒[ T.mk-kind T.Many π ] C)
   → checkElab ctx g (A T.⇒[ T.mk-kind T.Many π ] B) ≡ success Ψ₂ gE dg fg
-  → ∃[ eE ] ∃[ d ] ∃[ fr ] (checkCompose-f ctx f g A C π) ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
+  → ∃[ eE ] ∃[ d ] ∃[ fr ] (checkCompose-f ctx f g A C π me) ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
 compose-f-complete {ctx = ctx} f g A B C C′ π π′ eqF p eqG
   with inferElab ctx f | eqF
 ... | success _ _ _ _ _  | refl

@@ -22007,3 +22007,38 @@ kernel. The syscall numbers were wrong, and so were `seL4_SlotBits` and the read
 * Moving the pin rechecks every number.
 * The check sees only what is in a block: a kernel number written inline is not checked, and a `.once` file with
   no block is not required to have one. Which register carries what is covered by the boot tests, not by this.
+
+## D407 — A REJECTION NAMES THE RULE THE PROGRAM BREAKS: `NoInstance`, AND NO UNUSED ERROR VARIANT (2026-11-12)
+
+**Refines** D368 (its five pinned diagnostics), D323, D230 (`compose`'s two routes). **Decided** by the user
+2026-11-12 (plan 0.139 D1/D2): a polymorphic name at a known type that does not fit is a type mismatch, not an
+ambiguity, and the error names the name's type and the known type.
+
+### Decision
+* **`NoInstance name schema actual`** ("`id: Int is not an instance of (a ω→ a)`"). Reported when a generator
+  (`id`, `fst`, `snd`, `terminal`, `initial`, `inl`, `inr`) is checked at a type its type has no instance at, when
+  one is applied to an argument its domain does not fit (`fst 5`: the schema is the domain `a * b`), and when an
+  own polymorphic definition has no instance at the known type (`swap 5`: "`swap: Int is not an instance of
+  (a * b)`"). It replaces the "Unbound or unspecialized variable" these reported, and `BuiltinTypeMismatch` at the
+  wrong function types of the seven generators.
+* **An ambiguity keeps its own reason.** A bare generator with no target type (`g = inl`) gives D323's reason
+  with the construct's own inner one: `InlInInferMode`, `InrInInferMode`, `InitialInInferMode` as when they are
+  applied in infer mode, and the new `GeneratorInInferMode name` for `id`, `fst`, `snd`, `terminal` ("`id
+  requires check mode (needs target type)`"), which said "Unbound or unspecialized variable" before.
+* **`compose`: the error is the first route's that determined a middle type** (`g`'s given its input, then `f`'s
+  synthesized one). `ComposeMiddleUndetermined` only when neither route did; then its advice, an annotation on
+  either argument, is right. Before, an annotated second argument that determined the middle and failed (an `Act`
+  arm in a pure coalgebra) was reported as an undetermined middle.
+* **Every `TypeError` variant is produced by the elaborator.** Removed as never produced: `NegationNotInt` (the
+  Spec's `s-neg` asks only that the operand synthesize `Int`, so the operand's `TypeMismatch` is the rule),
+  `FloatLiteralUnsupported` (floats elaborate), `ArrNeedsFunction`, `ApplicationTypeMismatch` (gone with D230),
+  `AnnotationMentionsParameter` (D252 is the grammar's) and `UnclassifiedError`.
+
+### Spec
+Unchanged: the elaborator rejects the same programs; only the reported error differs. The proofs are unchanged
+in substance (failure soundness is `tt`; `compose-f-complete` takes the carried error as an implicit).
+
+### Consequences
+* The D368 tests pin the new texts and carry no "Pinned" note. PuritySpec's coalgebra test is back to its
+  unannotated form, and an annotated-second-arm case is added.
+* `UnboundVariable` is now only an unbound name: no generator reports it.

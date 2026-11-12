@@ -90,14 +90,25 @@ purityTests = testGroup "Purity (pure emits nothing)"
         [ "import I.Test.Emit as E"
         , ""
         , "mkNu : Int -> Nu (K Int)"
-        -- D368: the first arm is annotated so that `compose`'s middle type
-        -- is known; unannotated, the program failed on the middle type before
-        -- the purity check was reached.
-        , "mkNu = ana (compose ((\\_ -> 7) : Unit -> Int) emit@E)"
+        -- `emit@E` synthesizes, so it determines `compose`'s middle type; the
+        -- error is its purity, not the middle (plan 0.139; D368 had to
+        -- annotate the first arm to get here).
+        , "mkNu = ana (compose (\\_ -> 7) emit@E)"
         , ""
         -- Typed at its declaration (plan 0.103 phase 1), used or not.
         , "run : Int"
         , "run = Out (mkNu 3)"
+        ]
+      assertRejects "Should reject an effectful coalgebra at a pure stream type" "Type mismatch: expected (Int ω→ Unit) but got Act Int Unit" r
+
+  , testCase "an annotated second arm of compose determines the middle type" $ do
+      -- Plan 0.139: the advice "annotate one of them" did not help when the
+      -- annotated arm was the second one; the purity error is reported.
+      r <- checkLib
+        [ "import I.Test.Emit as E"
+        , ""
+        , "mkNu : Int -> Nu (K Int)"
+        , "mkNu = ana (compose (\\_ -> 7) (emit@E : Act Int Unit))"
         ]
       assertRejects "Should reject an effectful coalgebra at a pure stream type" "Type mismatch: expected (Int ω→ Unit) but got Act Int Unit" r
 

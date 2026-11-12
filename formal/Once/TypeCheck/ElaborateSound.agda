@@ -57,7 +57,7 @@ import Once.Spec.Surface.Syntax as Syn
 open import Once.Spec.Surface.Syntax as Raw using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatArithmeticOp)
 open import Once.TypeCheck.Raw as Raw
-open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined; AnnotationMentionsParameter;
+open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined;
   LambdaInInferMode; LambdaRequiresFunctionType;
   InlInInferMode; InrInInferMode; InitialInInferMode;
   InlNeedsSumType; InrNeedsSumType;
@@ -1409,7 +1409,7 @@ checkElabV-RVar-bbc-id-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
 checkElabV-RVar-bbc-id-aux-sound ctx T r@(success _ _ _ _ _) rˢ =
   embedOrSubsume-sound ctx (Raw.RResolved (gen "id")) T r rˢ
 checkElabV-RVar-bbc-id-aux-sound ctx T (failure err) _ =
-  checkElabV-RVar-bbc-id-failure-aux-sound ctx T err
+  checkElabV-RVar-bbc-id-failure-aux-sound ctx T _
 
 checkElabV-RVar-bbc-fst-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
     → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved (gen "fst")) r3
@@ -1417,7 +1417,7 @@ checkElabV-RVar-bbc-fst-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
 checkElabV-RVar-bbc-fst-aux-sound ctx T r@(success _ _ _ _ _) rˢ =
   embedOrSubsume-sound ctx (Raw.RResolved (gen "fst")) T r rˢ
 checkElabV-RVar-bbc-fst-aux-sound ctx T (failure err) _ =
-  checkElabV-RVar-bbc-fst-failure-aux-sound ctx T err
+  checkElabV-RVar-bbc-fst-failure-aux-sound ctx T _
 
 checkElabV-RVar-bbc-snd-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
     → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved (gen "snd")) r3
@@ -1425,7 +1425,7 @@ checkElabV-RVar-bbc-snd-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
 checkElabV-RVar-bbc-snd-aux-sound ctx T r@(success _ _ _ _ _) rˢ =
   embedOrSubsume-sound ctx (Raw.RResolved (gen "snd")) T r rˢ
 checkElabV-RVar-bbc-snd-aux-sound ctx T (failure err) _ =
-  checkElabV-RVar-bbc-snd-failure-aux-sound ctx T err
+  checkElabV-RVar-bbc-snd-failure-aux-sound ctx T _
 
 checkElabV-RVar-bbc-terminal-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
     → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved (gen "terminal")) r3
@@ -1433,7 +1433,7 @@ checkElabV-RVar-bbc-terminal-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
 checkElabV-RVar-bbc-terminal-aux-sound ctx T r@(success _ _ _ _ _) rˢ =
   embedOrSubsume-sound ctx (Raw.RResolved (gen "terminal")) T r rˢ
 checkElabV-RVar-bbc-terminal-aux-sound ctx T (failure err) _ =
-  checkElabV-RVar-bbc-terminal-failure-aux-sound ctx T err
+  checkElabV-RVar-bbc-terminal-failure-aux-sound ctx T _
 
 checkElabV-RVar-bbc-initial-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
     → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved (gen "initial")) r3
@@ -1441,7 +1441,7 @@ checkElabV-RVar-bbc-initial-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
 checkElabV-RVar-bbc-initial-aux-sound ctx T r@(success _ _ _ _ _) rˢ =
   embedOrSubsume-sound ctx (Raw.RResolved (gen "initial")) T r rˢ
 checkElabV-RVar-bbc-initial-aux-sound ctx T (failure err) _ =
-  checkElabV-RVar-bbc-initial-failure-aux-sound ctx T err
+  checkElabV-RVar-bbc-initial-failure-aux-sound ctx T _
 
 checkElabV-RVar-bbc-inl-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
     → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved (gen "inl")) r3
@@ -1449,7 +1449,7 @@ checkElabV-RVar-bbc-inl-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
 checkElabV-RVar-bbc-inl-aux-sound ctx T r@(success _ _ _ _ _) rˢ =
   embedOrSubsume-sound ctx (Raw.RResolved (gen "inl")) T r rˢ
 checkElabV-RVar-bbc-inl-aux-sound ctx T (failure err) _ =
-  checkElabV-RVar-bbc-inl-failure-aux-sound ctx T err
+  checkElabV-RVar-bbc-inl-failure-aux-sound ctx T _
 
 checkElabV-RVar-bbc-inr-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
     → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved (gen "inr")) r3
@@ -1457,7 +1457,7 @@ checkElabV-RVar-bbc-inr-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
 checkElabV-RVar-bbc-inr-aux-sound ctx T r@(success _ _ _ _ _) rˢ =
   embedOrSubsume-sound ctx (Raw.RResolved (gen "inr")) T r rˢ
 checkElabV-RVar-bbc-inr-aux-sound ctx T (failure err) _ =
-  checkElabV-RVar-bbc-inr-failure-aux-sound ctx T err
+  checkElabV-RVar-bbc-inr-failure-aux-sound ctx T _
 
 inferElabV-RResolved-dispatch-sound : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName)
     → (a1 : GenView cn)
@@ -1580,7 +1580,8 @@ mutual
 
   checkCompose-f-sound : ∀ {m}
       → (ctx : NamedCtx m) (f g : Syn.Expr) (A C : Ty m) (π : Once.Spec.Grade.Purity)
-      → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "compose")) f) g) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C) (checkCompose-f ctx f g A C π)
+      → (me : Maybe TypeError)
+      → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "compose")) f) g) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C) (checkCompose-f ctx f g A C π me)
 
   checkCurry-sound : ∀ {m}
       → (ctx : NamedCtx m)
@@ -1770,10 +1771,10 @@ mutual
   ...  | (success Ψf fE df frf) | wF =
     wt-compose-check-g wG wF
   ...  | (failure _) | _ =
-    checkCompose-f-sound ctx f g A C π
+    checkCompose-f-sound ctx f g A C π _
   checkCompose-g-sound ctx f g A C π (failure _) _ =
-    checkCompose-f-sound ctx f g A C π
-  checkCompose-f-sound ctx f g A C π
+    checkCompose-f-sound ctx f g A C π _
+  checkCompose-f-sound ctx f g A C π me
       with inferElab ctx f | inferElab-sound ctx f
   ...  | (success (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] C′) Ψf fE df frf) | wF
       with (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] C′)
@@ -1786,29 +1787,29 @@ mutual
     tt
   ...      | (success Ψg gE dg frg) | wG =
     wt-compose-check-f wF p wG
-  checkCompose-f-sound ctx f g A C π | success (var x) Ψ x₁ depth fresh | w =
+  checkCompose-f-sound ctx f g A C π me | success (var x) Ψ x₁ depth fresh | w =
     tt
-  checkCompose-f-sound ctx f g A C π | success Unit Ψ x depth fresh | w =
+  checkCompose-f-sound ctx f g A C π me | success Unit Ψ x depth fresh | w =
     tt
-  checkCompose-f-sound ctx f g A C π | success Void Ψ x depth fresh | w =
+  checkCompose-f-sound ctx f g A C π me | success Void Ψ x depth fresh | w =
     tt
-  checkCompose-f-sound ctx f g A C π | success (A₁ * A₂) Ψ x depth fresh | w =
+  checkCompose-f-sound ctx f g A C π me | success (A₁ * A₂) Ψ x depth fresh | w =
     tt
-  checkCompose-f-sound ctx f g A C π | success (A₁ + A₂) Ψ x depth fresh | w =
+  checkCompose-f-sound ctx f g A C π me | success (A₁ + A₂) Ψ x depth fresh | w =
     tt
-  checkCompose-f-sound ctx f g A C π | success (A₁ ⇒[ mk-kind Zero purity ] A₂) Ψ x depth fresh | w =
+  checkCompose-f-sound ctx f g A C π me | success (A₁ ⇒[ mk-kind Zero purity ] A₂) Ψ x depth fresh | w =
     tt
-  checkCompose-f-sound ctx f g A C π | success (A₁ ⇒[ mk-kind One purity ] A₂) Ψ x depth fresh | w =
+  checkCompose-f-sound ctx f g A C π me | success (A₁ ⇒[ mk-kind One purity ] A₂) Ψ x depth fresh | w =
     tt
-  checkCompose-f-sound ctx f g A C π | success (μ x) Ψ x₁ depth fresh | w =
+  checkCompose-f-sound ctx f g A C π me | success (μ x) Ψ x₁ depth fresh | w =
     tt
-  checkCompose-f-sound ctx f g A C π | success (ν x x₁) Ψ x₂ depth fresh | w =
+  checkCompose-f-sound ctx f g A C π me | success (ν x x₁) Ψ x₂ depth fresh | w =
     tt
-  checkCompose-f-sound ctx f g A C π | success Int Ψ x depth fresh | w =
+  checkCompose-f-sound ctx f g A C π me | success Int Ψ x depth fresh | w =
     tt
-  checkCompose-f-sound ctx f g A C π | success Float Ψ x depth fresh | w =
+  checkCompose-f-sound ctx f g A C π me | success Float Ψ x depth fresh | w =
     tt
-  checkCompose-f-sound ctx f g A C π | failure x | w =
+  checkCompose-f-sound ctx f g A C π me | failure x | w =
     tt
   elabGiven-sound ctx (Raw.RLam x body) A π
       with inferElab (extendNamedCtx ctx x A) body | inferElab-sound (extendNamedCtx ctx x A) body

@@ -33,7 +33,7 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc)
 open import Data.Fin using (zero; suc)
 open import Data.Bool using (Bool; true; false; T)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
 open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -62,13 +62,13 @@ import Once.Spec.Surface.Syntax as Syn
 open import Once.Spec.Surface.Syntax as Raw using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatArithmeticOp)
 open import Once.TypeCheck.Raw as Raw
-open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined; AnnotationMentionsParameter;
+open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined;
   LambdaInInferMode; LambdaRequiresFunctionType;
-  InlInInferMode; InrInInferMode; InitialInInferMode;
+  InlInInferMode; InrInInferMode; InitialInInferMode; GeneratorInInferMode;
   InlNeedsSumType; InrNeedsSumType;
   FstNeedsPair; SndNeedsPair;
   CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; NotFunction;
-  UsageViolation; BuiltinTypeMismatch;
+  UsageViolation; BuiltinTypeMismatch; NoInstance;
   BinOpLeftError; BinOpRightError;
   UnboundVariable; UnboundQualified; NonConcreteSigOpType)
 import Once.TypeCheck.Context
@@ -715,7 +715,8 @@ given-poly-k : ∀ {m} (ctx : NamedCtx m) (x : String) (A B : Ty m) (π π′ : 
   → ¬ Ground schema → ArrowSchema schema sd sc π′ → CodVarsInDom sd sc → π′ ⊑π π
   → Dec (KindedInstance (NamedCtx.kinds ctx) schema (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] B))
   → GivenElabResult (NamedCtx.debruijn ctx) A π
-given-poly-k ctx x A B π π′ err eL eI eP ¬g as inc g (no _) = failure err
+given-poly-k ctx x A B π π′ err {schema = schema} eL eI eP ¬g as inc g (no _) =
+  failure (NoInstance x schema (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] B))
 given-poly-k ctx x A B π π′ err eL eI eP ¬g as inc g (yes ki) =
   success B Surface.zeroUsage
     (Surface.coerce (sub-arr {q = Once.Spec.Grade.Many} (<:-refl A) (<:-refl B) g)
@@ -729,7 +730,8 @@ given-poly-π : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : Once.Sp
   → ¬ Ground schema → ArrowSchema schema sd sc π′ → CodVarsInDom sd sc
   → (θ : String → Ty m) → substPoly θ sd ≡ A
   → Dec (π′ ⊑π π) → GivenElabResult (NamedCtx.debruijn ctx) A π
-given-poly-π ctx x A π err eL eI eP ¬g as inc θ eθ (no _) = failure err
+given-poly-π ctx x A π err {schema = schema} {sc = sc} eL eI eP ¬g as inc θ eθ (no _) =
+  failure (NoInstance x schema (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] substPoly θ sc))
 given-poly-π ctx x A π err {schema = schema} {sc = sc} {π′ = π′} eL eI eP ¬g as inc θ eθ (yes g) =
   given-poly-k ctx x A (substPoly θ sc) π π′ err eL eI eP ¬g as inc g
     (kindedInstance? (NamedCtx.kinds ctx) schema (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] substPoly θ sc))
@@ -740,7 +742,7 @@ given-poly-m : ∀ {m} (ctx : NamedCtx m) (x : String) (A : Ty m) (π : Once.Spe
   → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
   → ¬ Ground schema → ArrowSchema schema sd sc π′ → CodVarsInDom sd sc
   → (mσ : Maybe (Subst m)) → instantiate sd A ≡ mσ → GivenElabResult (NamedCtx.debruijn ctx) A π
-given-poly-m ctx x A π err eL eI eP ¬g as inc nothing _ = failure err
+given-poly-m ctx x A π err {sd = sd} eL eI eP ¬g as inc nothing _ = failure (NoInstance x sd A)
 given-poly-m ctx x A π err {sd = sd} {π′ = π′} eL eI eP ¬g as inc (just σ) eS =
   given-poly-π ctx x A π err eL eI eP ¬g as inc
     (Data.Product.proj₁ (instantiate-sound sd A eS)) (Data.Product.proj₂ (instantiate-sound sd A eS)) (π′ ⊑π? π)
@@ -804,7 +806,7 @@ checkElabV-RVar-poly-inst-aux : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty 
   → ¬ Ground schema
   → Dec (KindedInstance (NamedCtx.kinds ctx) schema T)
   → CheckElabResult (NamedCtx.debruijn ctx) T
-checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (no _) = failure err
+checkElabV-RVar-poly-inst-aux ctx x T err {schema = schema} eL eI eP ¬g (no _) = failure (NoInstance x schema T)
 checkElabV-RVar-poly-inst-aux ctx x T err eL eI eP ¬g (yes ki) =
   success Surface.zeroUsage (Surface.poly x T) 0 0
 
@@ -872,6 +874,29 @@ inferElabV-RVar-poly-aux ctx x eL eI =
   inferElabV-RVar-poly-lookup-aux ctx x eL eI (lookupPoly (NamedCtx.polys ctx) x) refl
 
 
+-- Plan 0.139: the `g` route of `compose` failed with `err`. It determined a
+-- middle when `g` synthesizes a type of its own; then `err` is the program's
+-- error, otherwise the middle is still open.
+determinedErr : ∀ {m} (ctx : NamedCtx m) → InferElabResult (NamedCtx.debruijn ctx) → TypeError → Maybe TypeError
+determinedErr _ (success _ _ _ _ _) err = just err
+determinedErr _ (failure _)         _   = nothing
+
+-- Plan 0.139 (D1): the point-free generators' types, as the schemas a
+-- `NoInstance` error names. Only the message reads them; the rules below
+-- match each generator's shape directly.
+private
+  a⇒b : PolyType → PolyType → PolyType
+  a⇒b A B = A P⇒[ Once.Spec.Grade.Many ] B
+
+schema-id schema-fst schema-snd schema-terminal schema-initial schema-inl schema-inr : PolyType
+schema-id       = a⇒b (PTVar "a") (PTVar "a")
+schema-fst      = a⇒b (PTVar "a" P* PTVar "b") (PTVar "a")
+schema-snd      = a⇒b (PTVar "a" P* PTVar "b") (PTVar "b")
+schema-terminal = a⇒b (PTVar "a") PUnit
+schema-initial  = a⇒b PVoid (PTVar "a")
+schema-inl      = a⇒b (PTVar "a") (PTVar "a" P+ PTVar "b")
+schema-inr      = a⇒b (PTVar "b") (PTVar "a" P+ PTVar "b")
+
 -- Not mutually recursive with the block below: these never call back into
 -- it, so they stand outside it (its positivity and termination graphs span
 -- only what actually recurses).
@@ -885,17 +910,17 @@ elabGivenLeaf ctx .(gen "id") A π ahv-id _ = withUnit (failure (BuiltinTypeMism
 elabGivenLeaf ctx .(gen "fst") (A Once.Spec.Type.* B) π ahv-fst _ = withUnit (failure (BuiltinTypeMismatch "fst")) π λ u →
   success A _ (Surface.lift-morphism IR.fst) 0 0
 {-# CATCHALL #-}
-elabGivenLeaf ctx .(gen "fst") _ π ahv-fst _ = failure (BuiltinTypeMismatch "fst")
+elabGivenLeaf ctx .(gen "fst") A π ahv-fst _ = failure (NoInstance "fst" (PTVar "a" P* PTVar "b") A)
 elabGivenLeaf ctx .(gen "snd") (A Once.Spec.Type.* B) π ahv-snd _ = withUnit (failure (BuiltinTypeMismatch "snd")) π λ u →
   success B _ (Surface.lift-morphism IR.snd) 0 0
 {-# CATCHALL #-}
-elabGivenLeaf ctx .(gen "snd") _ π ahv-snd _ = failure (BuiltinTypeMismatch "snd")
+elabGivenLeaf ctx .(gen "snd") A π ahv-snd _ = failure (NoInstance "snd" (PTVar "a" P* PTVar "b") A)
 elabGivenLeaf ctx .(gen "terminal") A π ahv-terminal _ = withUnit (failure (BuiltinTypeMismatch "terminal")) π λ u →
   success Unit _ (Surface.lift-morphism IR.terminal) 0 0
 elabGivenLeaf ctx .(gen "initial") Void π ahv-initial _ = withUnit (failure (BuiltinTypeMismatch "initial")) π λ u →
   success Void _ (Surface.lift-morphism IR.initial) 0 0
 {-# CATCHALL #-}
-elabGivenLeaf ctx .(gen "initial") _ π ahv-initial _ = failure (BuiltinTypeMismatch "initial")
+elabGivenLeaf ctx .(gen "initial") A π ahv-initial _ = failure (NoInstance "initial" PVoid A)
 {-# CATCHALL #-}
 elabGivenLeaf ctx cn A π _ r = given-res ctx cn A π r
 
@@ -1304,9 +1329,9 @@ checkElabV-RVar-bbc-id-failure-aux : ∀ {m} (ctx : NamedCtx m) (T : Ty m) (err 
 -- canonical builtin shape and on the lookup results. Success iff
 -- T = canonical & both lookups nothing & inner type-checks pass.
 checkElabV-RVar-bbc-id-failure-aux ctx (X Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] Y) err with X ≟T Y
-... | yes refl = withUnit (failure (BuiltinTypeMismatch "id")) π λ u →
+... | yes refl = withUnit (failure err) π λ u →
       success Surface.zeroUsage (Surface.lift-morphism IR.id) 0 0
-... | no _ = failure (BuiltinTypeMismatch "id")
+... | no _ = failure err
 checkElabV-RVar-bbc-id-failure-aux ctx Unit err = failure err
 checkElabV-RVar-bbc-id-failure-aux ctx Void err = failure err
 checkElabV-RVar-bbc-id-failure-aux ctx Int err = failure err
@@ -1322,9 +1347,9 @@ checkElabV-RVar-bbc-id-failure-aux ctx (Once.Spec.Type.ν _ _) err = failure err
 checkElabV-RVar-bbc-fst-failure-aux : ∀ {m} (ctx : NamedCtx m) (T : Ty m) (err : TypeError)
   → CheckElabResult (NamedCtx.debruijn ctx) T
 checkElabV-RVar-bbc-fst-failure-aux ctx ((A Once.Spec.Type.* B) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A') err with A ≟T A'
-... | yes refl = withUnit (failure (BuiltinTypeMismatch "fst")) π λ u →
+... | yes refl = withUnit (failure err) π λ u →
       success Surface.zeroUsage (Surface.lift-morphism IR.fst) 0 0
-... | no _ = failure (BuiltinTypeMismatch "fst")
+... | no _ = failure err
 checkElabV-RVar-bbc-fst-failure-aux ctx Unit err = failure err
 checkElabV-RVar-bbc-fst-failure-aux ctx Void err = failure err
 checkElabV-RVar-bbc-fst-failure-aux ctx Int err = failure err
@@ -1350,9 +1375,9 @@ checkElabV-RVar-bbc-snd-failure-aux : ∀ {m} (ctx : NamedCtx m) (T : Ty m) (err
   → CheckElabResult (NamedCtx.debruijn ctx) T
 -- bbc-snd: canonical T = (A * B) ⇒[Many,pure] B'
 checkElabV-RVar-bbc-snd-failure-aux ctx ((A Once.Spec.Type.* B) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B') err with B ≟T B'
-... | yes refl = withUnit (failure (BuiltinTypeMismatch "snd")) π λ u →
+... | yes refl = withUnit (failure err) π λ u →
       success Surface.zeroUsage (Surface.lift-morphism IR.snd) 0 0
-... | no _ = failure (BuiltinTypeMismatch "snd")
+... | no _ = failure err
 checkElabV-RVar-bbc-snd-failure-aux ctx Unit err = failure err
 checkElabV-RVar-bbc-snd-failure-aux ctx Void err = failure err
 checkElabV-RVar-bbc-snd-failure-aux ctx Int err = failure err
@@ -1378,7 +1403,7 @@ checkElabV-RVar-bbc-terminal-failure-aux : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
   → CheckElabResult (NamedCtx.debruijn ctx) T
 -- bbc-terminal: canonical T = A ⇒[Many,pure] Unit
 checkElabV-RVar-bbc-terminal-failure-aux ctx (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] Unit) err =
-  withUnit (failure (BuiltinTypeMismatch "terminal")) π λ u →
+  withUnit (failure err) π λ u →
   success Surface.zeroUsage (Surface.lift-morphism IR.terminal) 0 0
 checkElabV-RVar-bbc-terminal-failure-aux ctx Unit err = failure err
 checkElabV-RVar-bbc-terminal-failure-aux ctx Void err = failure err
@@ -1414,7 +1439,7 @@ checkElabV-RVar-bbc-initial-failure-aux : ∀ {m} (ctx : NamedCtx m) (T : Ty m) 
   → CheckElabResult (NamedCtx.debruijn ctx) T
 -- bbc-initial: canonical T = Void ⇒[Many,pure] A
 checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A) err =
-  withUnit (failure (BuiltinTypeMismatch "initial")) π λ u →
+  withUnit (failure err) π λ u →
   success Surface.zeroUsage (Surface.lift-morphism IR.initial) 0 0
 checkElabV-RVar-bbc-initial-failure-aux ctx Unit err = failure err
 checkElabV-RVar-bbc-initial-failure-aux ctx Void err = failure err
@@ -1441,9 +1466,9 @@ checkElabV-RVar-bbc-inl-failure-aux : ∀ {m} (ctx : NamedCtx m) (T : Ty m) (err
   → CheckElabResult (NamedCtx.debruijn ctx) T
 -- bbc-inl: canonical T = A ⇒[Many,pure] (A' + B)
 checkElabV-RVar-bbc-inl-failure-aux ctx (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] (A' Once.Spec.Type.+ B)) err with A ≟T A'
-... | yes refl = withUnit (failure (BuiltinTypeMismatch "inl")) π λ u →
+... | yes refl = withUnit (failure err) π λ u →
       success Surface.zeroUsage (Surface.lift-morphism (IR.inl)) 0 0
-... | no _ = failure (BuiltinTypeMismatch "inl")
+... | no _ = failure err
 checkElabV-RVar-bbc-inl-failure-aux ctx Unit err = failure err
 checkElabV-RVar-bbc-inl-failure-aux ctx Void err = failure err
 checkElabV-RVar-bbc-inl-failure-aux ctx Int err = failure err
@@ -1478,9 +1503,9 @@ checkElabV-RVar-bbc-inr-failure-aux : ∀ {m} (ctx : NamedCtx m) (T : Ty m) (err
   → CheckElabResult (NamedCtx.debruijn ctx) T
 -- bbc-inr: canonical T = B ⇒[Many,pure] (A + B')
 checkElabV-RVar-bbc-inr-failure-aux ctx (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] (A Once.Spec.Type.+ B')) err with B ≟T B'
-... | yes refl = withUnit (failure (BuiltinTypeMismatch "inr")) π λ u →
+... | yes refl = withUnit (failure err) π λ u →
       success Surface.zeroUsage (Surface.lift-morphism (IR.inr)) 0 0
-... | no _ = failure (BuiltinTypeMismatch "inr")
+... | no _ = failure err
 checkElabV-RVar-bbc-inr-failure-aux ctx Unit err = failure err
 checkElabV-RVar-bbc-inr-failure-aux ctx Void err = failure err
 checkElabV-RVar-bbc-inr-failure-aux ctx Int err = failure err
@@ -1522,49 +1547,49 @@ checkElabV-RVar-bbc-id-aux : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
 -- bbc-X-failure-aux.
 checkElabV-RVar-bbc-id-aux ctx T r@(success _ _ _ _ _) = embedOrSubsume ctx (Raw.RResolved (gen "id")) T r
 checkElabV-RVar-bbc-id-aux ctx T (failure err) =
-  checkElabV-RVar-bbc-id-failure-aux ctx T err
+  checkElabV-RVar-bbc-id-failure-aux ctx T (NoInstance "id" schema-id T)
 
 checkElabV-RVar-bbc-fst-aux : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
   → InferElabResult (NamedCtx.debruijn ctx)
   → CheckElabResult (NamedCtx.debruijn ctx) T
 checkElabV-RVar-bbc-fst-aux ctx T r@(success _ _ _ _ _) = embedOrSubsume ctx (Raw.RResolved (gen "fst")) T r
 checkElabV-RVar-bbc-fst-aux ctx T (failure err) =
-  checkElabV-RVar-bbc-fst-failure-aux ctx T err
+  checkElabV-RVar-bbc-fst-failure-aux ctx T (NoInstance "fst" schema-fst T)
 
 checkElabV-RVar-bbc-snd-aux : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
   → InferElabResult (NamedCtx.debruijn ctx)
   → CheckElabResult (NamedCtx.debruijn ctx) T
 checkElabV-RVar-bbc-snd-aux ctx T r@(success _ _ _ _ _) = embedOrSubsume ctx (Raw.RResolved (gen "snd")) T r
 checkElabV-RVar-bbc-snd-aux ctx T (failure err) =
-  checkElabV-RVar-bbc-snd-failure-aux ctx T err
+  checkElabV-RVar-bbc-snd-failure-aux ctx T (NoInstance "snd" schema-snd T)
 
 checkElabV-RVar-bbc-terminal-aux : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
   → InferElabResult (NamedCtx.debruijn ctx)
   → CheckElabResult (NamedCtx.debruijn ctx) T
 checkElabV-RVar-bbc-terminal-aux ctx T r@(success _ _ _ _ _) = embedOrSubsume ctx (Raw.RResolved (gen "terminal")) T r
 checkElabV-RVar-bbc-terminal-aux ctx T (failure err) =
-  checkElabV-RVar-bbc-terminal-failure-aux ctx T err
+  checkElabV-RVar-bbc-terminal-failure-aux ctx T (NoInstance "terminal" schema-terminal T)
 
 checkElabV-RVar-bbc-initial-aux : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
   → InferElabResult (NamedCtx.debruijn ctx)
   → CheckElabResult (NamedCtx.debruijn ctx) T
 checkElabV-RVar-bbc-initial-aux ctx T r@(success _ _ _ _ _) = embedOrSubsume ctx (Raw.RResolved (gen "initial")) T r
 checkElabV-RVar-bbc-initial-aux ctx T (failure err) =
-  checkElabV-RVar-bbc-initial-failure-aux ctx T err
+  checkElabV-RVar-bbc-initial-failure-aux ctx T (NoInstance "initial" schema-initial T)
 
 checkElabV-RVar-bbc-inl-aux : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
   → InferElabResult (NamedCtx.debruijn ctx)
   → CheckElabResult (NamedCtx.debruijn ctx) T
 checkElabV-RVar-bbc-inl-aux ctx T r@(success _ _ _ _ _) = embedOrSubsume ctx (Raw.RResolved (gen "inl")) T r
 checkElabV-RVar-bbc-inl-aux ctx T (failure err) =
-  checkElabV-RVar-bbc-inl-failure-aux ctx T err
+  checkElabV-RVar-bbc-inl-failure-aux ctx T (NoInstance "inl" schema-inl T)
 
 checkElabV-RVar-bbc-inr-aux : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
   → InferElabResult (NamedCtx.debruijn ctx)
   → CheckElabResult (NamedCtx.debruijn ctx) T
 checkElabV-RVar-bbc-inr-aux ctx T r@(success _ _ _ _ _) = embedOrSubsume ctx (Raw.RResolved (gen "inr")) T r
 checkElabV-RVar-bbc-inr-aux ctx T (failure err) =
-  checkElabV-RVar-bbc-inr-failure-aux ctx T err
+  checkElabV-RVar-bbc-inr-failure-aux ctx T (NoInstance "inr" schema-inr T)
 
 -- D136 dispatchers. View + its defining equation, so a caller can recover
 -- `classifyGen cn ≡ gv` after a `with`-match (the `viewBundle` idiom).
@@ -1579,16 +1604,18 @@ inferElabV-RResolved-dispatch ctx _ gv-unit =
 -- the user's import table is meaningless — these fail directly rather than
 -- routing through `inferElabV-RResolved-aux`. The seven point-free
 -- generators are polymorphic and do not infer; they must appear applied or
--- in check mode, which is what `UnboundVariable` has always reported here.
+-- in check mode, and each says so (plan 0.139): `inl`, `inr` and `initial`
+-- with their own variants (as when applied in infer mode), the other four
+-- with `GeneratorInInferMode`.
 -- Failing directly is also what lets the `checkElab-fallback-RVar-*` lemmas
 -- reduce without a "Generators.* is not imported" premise nobody could supply.
-inferElabV-RResolved-dispatch ctx cn gv-id       = failure (UnboundVariable "id")
-inferElabV-RResolved-dispatch ctx cn gv-fst      = failure (UnboundVariable "fst")
-inferElabV-RResolved-dispatch ctx cn gv-snd      = failure (UnboundVariable "snd")
-inferElabV-RResolved-dispatch ctx cn gv-terminal = failure (UnboundVariable "terminal")
-inferElabV-RResolved-dispatch ctx cn gv-initial  = failure (UnboundVariable "initial")
-inferElabV-RResolved-dispatch ctx cn gv-inl      = failure (UnboundVariable "inl")
-inferElabV-RResolved-dispatch ctx cn gv-inr      = failure (UnboundVariable "inr")
+inferElabV-RResolved-dispatch ctx cn gv-id       = failure (GeneratorInInferMode "id")
+inferElabV-RResolved-dispatch ctx cn gv-fst      = failure (GeneratorInInferMode "fst")
+inferElabV-RResolved-dispatch ctx cn gv-snd      = failure (GeneratorInInferMode "snd")
+inferElabV-RResolved-dispatch ctx cn gv-terminal = failure (GeneratorInInferMode "terminal")
+inferElabV-RResolved-dispatch ctx cn gv-initial  = failure InitialInInferMode
+inferElabV-RResolved-dispatch ctx cn gv-inl      = failure InlInInferMode
+inferElabV-RResolved-dispatch ctx cn gv-inr      = failure InrInInferMode
 inferElabV-RResolved-dispatch ctx cn (gv-other ng) = inferElabV-RResolved-aux ctx cn ng _ refl
 
 -- A resolved reference that infers is embedded; one that does not may be an
@@ -1698,6 +1725,7 @@ mutual
                  → GivenElabResult (NamedCtx.debruijn ctx) A π
                  → CheckElabResult (NamedCtx.debruijn ctx) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)
   checkCompose-f : ∀ {m} → (ctx : NamedCtx m) (f g : Syn.Expr) (A C : Ty m) (π : Once.Spec.Grade.Purity)
+                 → Maybe TypeError
                  → CheckElabResult (NamedCtx.debruijn ctx) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)
   checkCurry : ∀ {m} → (ctx : NamedCtx m) → (arg : Syn.Expr) → (T : Ty m)
              → CheckElabResult (NamedCtx.debruijn ctx) T
@@ -1915,23 +1943,28 @@ mutual
 
   -- `g` determined the middle: check `f` there; if `f` does not fit, `f`'s own
   -- synthesized input may still (it can name a LARGER middle `g` converts to).
+  -- Plan 0.139: when both routes fail, the error is the first route's that
+  -- DETERMINED a middle (`g`'s, then `f`'s); only when neither did is it
+  -- `ComposeMiddleUndetermined`. `checkCompose-f` carries the `g` route's.
   checkCompose-g ctx f g A C π (success B Ψg gE dg frg)
         with checkElab ctx f (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)
   ... | success Ψf fE df frf =
           success _ (Surface.comp' fE gE) (suc (df Data.Nat.⊔ dg)) frf
-  ... | failure _ = checkCompose-f ctx f g A C π
-  checkCompose-g ctx f g A C π (failure _) = checkCompose-f ctx f g A C π
+  ... | failure errf = checkCompose-f ctx f g A C π (just errf)
+  checkCompose-g ctx f g A C π (failure errg) =
+    checkCompose-f ctx f g A C π (determinedErr ctx (inferElab ctx g) errg)
 
-  checkCompose-f ctx f g A C π with inferElab ctx f
+  checkCompose-f ctx f g A C π me with inferElab ctx f
   ... | success (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] C′) Ψf fE df frf with (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] C′)
                <:? (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)
-  ...   | no _ = failure ComposeMiddleUndetermined
+  ...   | no _ = failure (fromMaybe (TypeMismatch (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)
+                                                   (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] C′)) me)
   ...   | yes p with checkElab ctx g (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B)
   ...     | failure err = failure err
   ...     | success Ψg gE dg frg =
               success _ (Surface.comp' (Surface.coerce p fE) gE) (suc (df Data.Nat.⊔ dg)) frg
   {-# CATCHALL #-}
-  checkCompose-f ctx f g A C π | _ = failure ComposeMiddleUndetermined
+  checkCompose-f ctx f g A C π me | _ = failure (fromMaybe ComposeMiddleUndetermined me)
 
   -- The domain-given mode, one clause per `⊢ᵈ` rule.
   elabGiven ctx (Raw.RLam x body) A π with inferElab (extendNamedCtx ctx x A) body

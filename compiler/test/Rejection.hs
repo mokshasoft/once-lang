@@ -13,7 +13,8 @@
 -- message of the stage that rejected (parse, import resolution, the Spec
 -- checks of the driver). Pick a fragment that names the rule (and the names
 -- or types it is about, where they tell two causes apart). Where the text is
--- known to be a poor diagnostic, the test pins it and says so (plan 0.139).
+-- known to be a poor diagnostic, the test pins it and says so in a comment
+-- (none does since D407).
 module Rejection (assertRejects) where
 
 import Data.List (isInfixOf)
