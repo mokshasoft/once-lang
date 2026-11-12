@@ -531,3 +531,74 @@ stores-run prog fs b (suc n) (f₁ , s) h with stores-run prog fs₁ (suc b) n s
                       (store-other (floc fs) cf b v x (λ eq → nx 0 (s≤s z≤n) (sym eq)))
     frm : ∀ f x → ¬ f ≡ cf → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x
     frm f x ne = trans (f-frame F f x ne) (store-frame (floc fs) cf b v f x (λ eq → ne (sym eq)))
+
+------------------------------------------------------------------------
+-- 8. ★ THE OTHER STRAIGHT STEPS the lowering uses, by computation.
+------------------------------------------------------------------------
+
+open import Once.Memory.HeapAddress using (mkHeapRef)
+open import Once.CCC.Label using (LabelId)
+
+-- `Input1` from a defined slot
+restore-step : ∀ (fs : FlatState) a {v} → slot fs a ≡ just v
+             → flat-step-straight (restore-input a) fs
+               ≡ record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Input1 v } ; fpc = suc (fpc fs) }
+restore-step fs a e =
+  cong (λ m → record fs { floc   = Data.Product.proj₁ (exec-restore-input-with-value m (floc fs) (falloc fs))
+                        ; falloc = Data.Product.proj₂ (exec-restore-input-with-value m (floc fs) (falloc fs))
+                        ; fpc    = suc (fpc fs) }) e
+  where import Data.Product
+        open AbstractExec {FS} using (exec-restore-input-with-value)
+
+-- the register moves
+mov-in-step : ∀ (fs : FlatState)
+            → flat-step-straight mov-to-input fs
+              ≡ record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Input1 (readReg (regs (floc fs)) Output) }
+                          ; fpc = suc (fpc fs) }
+mov-in-step fs = refl
+
+mov-out-step : ∀ (fs : FlatState)
+             → flat-step-straight mov-to-output fs
+               ≡ record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output (readReg (regs (floc fs)) Input1) }
+                           ; fpc = suc (fpc fs) }
+mov-out-step fs = refl
+
+-- a slot's address
+lea-step : ∀ (fs : FlatState) a
+         → flat-step-straight (lea-slot a) fs
+           ≡ record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output (SV-Ptr (AtStack (current-frame (falloc fs)) a)) }
+                       ; fpc = suc (fpc fs) }
+lea-step fs a = refl
+
+-- a code address
+code-step : ∀ (fs : FlatState) (ℓ : LabelId)
+          → flat-step-straight (instr-load-code-addr ℓ) fs
+            ≡ record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output (SV-Code ℓ) } ; fpc = suc (fpc fs) }
+code-step fs ℓ = refl
+
+-- a free changes no state (the bump allocator never reuses a block; what is
+-- freed is read off the run: `Once.Implementation.NoLeak`)
+free-step : ∀ (fs : FlatState) n → flat-step-straight (instr-free-heap n) fs ≡ record fs { fpc = suc (fpc fs) }
+free-step fs n = refl
+
+-- an allocation: the counter names the fresh block, of `n` words
+alloc-step : ∀ (fs : FlatState) n
+           → flat-step-straight (instr-alloc-heap n) fs
+             ≡ record fs { floc   = record (floc fs) { regs = writeReg (regs (floc fs)) Output
+                                                                (SV-Ptr (AtDynamic (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 0))) }
+                         ; falloc = record (falloc fs) { next-heap-ref = suc (AllocState.next-heap-ref (falloc fs))
+                                                       ; block-size = size-with n (AllocState.next-heap-ref (falloc fs)) (block-size (falloc fs)) }
+                         ; fpc    = suc (fpc fs) }
+alloc-step fs n = refl
+
+open ExecFinal {FS} using (exec-addr-at-resolved; exec-addr-in-block)
+
+-- an address at an offset from `Input1`'s pointer, inside its block
+addr-step : ∀ (fs : FlatState) o {loc} → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+          → in-block? (block-size (falloc fs)) (offsetLoc loc o) ≡ true
+          → flat-step-straight (addr-at o) fs
+            ≡ record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output (SV-Ptr (offsetLoc loc o)) }
+                        ; fpc = suc (fpc fs) }
+addr-step fs o {loc} e₁ e₂ =
+  trans (cong (λ r → record fs { floc = exec-addr-at-resolved (block-size (falloc fs)) o (sv-as-loc r) (floc fs) ; fpc = suc (fpc fs) }) e₁)
+        (cong (λ q → record fs { floc = exec-addr-in-block q (offsetLoc loc o) (floc fs) ; fpc = suc (fpc fs) }) e₂)
