@@ -23,7 +23,7 @@
 {-# OPTIONS --guardedness #-}
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_)
-open import Data.List using (List; []; _∷_; _++_; concat)
+open import Data.List using (List; []; _∷_; _++_; concat; length)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -375,9 +375,13 @@ module Program′ {Γ} (ds : Defs Γ) (f : LTm Γ One One) (ldConst : ∀ {b} �
   open Lowering U ncty ldConst public
 
   -- ★ the program's image: its start (the main term, ending in the Host's
-  -- `leave`), then its blocks
+  -- `leave`), then its blocks. The start's jump labels are named by an
+  -- index no block has (`length (allK U)`), so no two labels coincide
+  j₀ : ℕ
+  j₀ = length (allK U)
+
   image : AbstractTrace
   image =
     let main = compᴵ ds f {[]} {[]} end ; φ = frameOf main ; b = fbudget φ
-    in instr-ctrl (c-start b) ∷ proj₁ (lowC φ 0 0 (instr-ctrl c-leave ∷ []) main (start-in {[]} {[]} tt))
+    in instr-ctrl (c-start b) ∷ proj₁ (lowC φ j₀ 0 (instr-ctrl c-leave ∷ []) main (start-in {[]} {[]} tt))
        ++ blocksOf (allK U) blocks-in 0
