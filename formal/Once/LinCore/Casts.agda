@@ -27,7 +27,8 @@ open import Once.IR.Semantics.Trace using (FFIAnswers)
 import Once.IR.Semantics.Trace as Tr
 open import Once.IR.Semantics.Iterative using (embed)
 import Once.IR.Semantics.Iterative
-open import Once.IR.Semantics.StreamInf using (in-νᴵ)
+open import Once.IR.Semantics.StreamInf using (in-νᴵ; anaFᴵ)
+import Once.IR.Semantics.StreamInf as SI
 open import Once.Spec.Type using (Type; ∅ₖ; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+)
 open import Once.IRTy using (IRTy; ⌊_⌋; _*_; _+_)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; cohᴰ; forgetᵇ; injectᵇ)
@@ -53,13 +54,15 @@ open import Once.Spec.Polynomial using (⟦_⟧SF)
 import Once.LinCore.FromIR
 import Once.LinCore.Bridge
 import Once.LinCore.Bisim
+import Once.LinCore.BridgeProof
 
 module Once.LinCore.Casts (fmt : TargetNum) (ans : FFIAnswers) where
 
 open import Once.LinCore.NbEPLinCore fmt ans
 open Once.LinCore.FromIR fmt ans
 open Once.LinCore.Bridge fmt ans
-open Once.LinCore.Bisim fmt ans using (_≈[_]_; module _≈[_]_; BlR; ≈retR; ≈callR; ≈haltR; ret≈R; >>=-congR; fmap-congR)
+module BP = Once.LinCore.BridgeProof fmt ans
+open Once.LinCore.Bisim fmt ans using (_≈[_]_; module _≈[_]_; BlR; ≈retR; ≈stepR; ≈callR; ≈haltR; ret≈R; >>=-congR; fmap-congR; ≈-≈R; ≈-sym)
 
 ------------------------------------------------------------------------
 -- 1. TRANSPORTS.
@@ -573,3 +576,144 @@ module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A 
           P.ev δ (P.Cata (lf F) (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t X) ⟪ A ⟫) (⟪⟫-TI wf A) a′)) a
             ≈[ W A ] evalᴰ fmt (callEnv cs ans) (M.Cata wf alg) b
   cata≈ wf alg a′ ih {e , x} {e′ , x′} (we , wx) = Fold.cata-rel wf alg a′ ih e e′ we wx
+
+------------------------------------------------------------------------
+-- 7. ★ THE UNFOLD: the core's `anaN` against master's `anaFᴵ`, by guarded
+-- corecursion (each observation: the coalgebra's block against master's
+-- run, its seeds unfolded again).
+------------------------------------------------------------------------
+
+-- a layer of seeds: the core's against master's
+WLS : ∀ (A : IRTy) (G : IRFunctor) → FS (lf G) ⟦ ⟪ A ⟫ ⟧ → ⟦ SF G ⟧SF ⟦ ⌈ A ⌉ ⟧ᴰ → Set
+WLS A (K B)     x x′ = WK B x x′
+WLS A Id        x x′ = W A x x′
+WLS A (G ⊕ᴵ H)  x x′ = Pointwise (WLS A G) (WLS A H) x x′
+WLS A (G ⊗ᴵ H)  (x , y) (x′ , y′) = WLS A G x x′ × WLS A H y y′
+
+-- a layer of seeds a coalgebra gives, at the position's functor `G`
+Seed-layer : ∀ {A G} (wg : WellFormedFI G) {a a′} → W (⟦ G ⟧TI A) a a′
+           → WLS A G (coh (lf G) ⟪ A ⟫ (subst ⟦_⟧ (⟪⟫-TI wg A) a))
+                     (Val.coerce-μ-in ⌈ G ⌉F ⟦ ⌈ A ⌉ ⟧ᴰ
+                        (coerce-functor-D (wf-⌈⌉ wg) ⌈ A ⌉ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute G A) a′)))
+Seed-layer {A} (wf-K b) w = K-lay b ⟪ A ⟫ w
+Seed-layer wf-Id w = w
+Seed-layer {A} {G ⊕ᴵ H} (wf-Sum f g) {a = inj₁ x} {a′ = inj₁ x′} (⊎₁ w)
+  rewrite subst-⊕₁ (⟪⟫-TI f A) (⟪⟫-TI g A) x
+        | substᴰ-+₁ (⌈⟧TI-commute G A) (⌈⟧TI-commute H A) x′ = ⊎₁ (Seed-layer f w)
+Seed-layer {A} {G ⊕ᴵ H} (wf-Sum f g) {a = inj₂ y} {a′ = inj₂ y′} (⊎₂ w)
+  rewrite subst-⊕₂ (⟪⟫-TI f A) (⟪⟫-TI g A) y
+        | substᴰ-+₂ (⌈⟧TI-commute G A) (⌈⟧TI-commute H A) y′ = ⊎₂ (Seed-layer g w)
+Seed-layer {A} {G ⊗ᴵ H} (wf-Prod f g) {a = x , y} {a′ = x′ , y′} (w₁ , w₂)
+  rewrite subst-⊗ (⟪⟫-TI f A) (⟪⟫-TI g A) x y
+        | substᴰ-* (⌈⟧TI-commute G A) (⌈⟧TI-commute H A) x′ y′ = Seed-layer f w₁ , Seed-layer g w₂
+
+-- a base constant's map over the ν: its value
+K-map : ∀ {F B} (b : IsBaseTypeI B) {X} {c : X → T (FS (lf F) X)} {x x′} → WK B x x′
+      → WK B {Nuᵐ (lf F)} (mapN (lf F) (lfK B) c x) x′
+K-map base-Unit  w = tt
+K-map base-Void  {x = ()}
+K-map base-Int   w = w
+K-map base-Float w = w
+K-map {F} (base-Prod a b) {x = _ , _} {x′ = _ , _} (w₁ , w₂) = K-map {F} a w₁ , K-map {F} b w₂
+K-map {F} (base-Sum a b) {x = inj₁ _} {x′ = inj₁ _} (⊎₁ w) = ⊎₁ (K-map {F} a w)
+K-map {F} (base-Sum a b) {x = inj₂ _} {x′ = inj₂ _} (⊎₂ w) = ⊎₂ (K-map {F} b w)
+
+-- a relation with a map on the right side only
+mutual
+  fmapʳ : ∀ {X Y Z} {R : X → Z → Set} {f : Y → Z} {m : T∞ X} {m′ : T∞ Y}
+        → m ≈[ (λ x y → R x (f y)) ] m′ → m ≈[ R ] fmap∞ f m′
+  _≈[_]_.blockR (fmapʳ p) = fmapʳ-B (_≈[_]_.blockR p)
+
+  fmapʳ-B : ∀ {X Y Z} {R : X → Z → Set} {f : Y → Z} {b : T (X ⊎ T∞ X)} {b′ : T (Y ⊎ T∞ Y)}
+          → BlR (λ x y → R x (f y)) b b′ → BlR R b (Once.IR.Semantics.Iterative.bindBlock b′ (λ y → Once.IR.Semantics.Iterative.return∞ (f y)))
+  fmapʳ-B (≈retR r)  = ≈retR r
+  fmapʳ-B (≈stepR p) = ≈stepR (fmapʳ p)
+  fmapʳ-B (≈callR h) = ≈callR (λ y → fmapʳ-B (h y))
+  fmapʳ-B ≈haltR     = ≈haltR
+
+-- a computation transported along its codomain, related with its result moved back
+≈-transport : ∀ {Y Y′ Z} {R : ⟦ Y ⟧ → Z → Set} (e : Y ≡ Y′) {m : T∞ ⟦ Y ⟧} {m′ : T∞ Z}
+            → m ≈[ R ] m′ → subst (λ V → T∞ ⟦ V ⟧) e m ≈[ (λ y z → R (subst ⟦_⟧ (sym e) y) z) ] m′
+≈-transport refl p = p
+
+subst-sym-subst : ∀ {X X′ : LTy} (e : X ≡ X′) (x : ⟦ X′ ⟧) → subst ⟦_⟧ e (subst ⟦_⟧ (sym e) x) ≡ x
+subst-sym-subst refl x = refl
+
+-- a term moved forward along equal codomains
+ev-subst-cod⁺ : ∀ {Γ} (δ : Env Γ) {X Y Y′} (e : Y ≡ Y′) (c : P.IR Γ X Y) (a : ⟦ X ⟧)
+              → P.ev δ (subst (λ Z → P.IR Γ X Z) e c) a ≡ subst (λ Z → T∞ ⟦ Z ⟧) e (P.ev δ c a)
+ev-subst-cod⁺ δ refl c a = refl
+
+module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) where
+
+  module Unfold {F} (wf : WellFormedFI F) {E A} (c : M.IR (E * A) (⟦ F ⟧TI A)) (c′ : P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) ⟪ ⟦ F ⟧TI A ⟫)
+                (φ : P.BlkIR Γ (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′))
+                (ih : ∀ {x x′} → W (E * A) x x′ → P.ev δ c′ x ≈[ W (⟦ F ⟧TI A) ] evalᴰ fmt (callEnv cs ans) c x′)
+                (e : ⟦ ⟪ E ⟫ ⟧) (e′ : ⟦ E ⟧ᴰᴵ) (we : W E e e′) where
+
+    c″ : P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) (LF∙ (lf F) ⟪ A ⟫)
+    c″ = subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′
+
+    -- the two coalgebras, per seed
+    cC : ⟦ ⟪ A ⟫ ⟧ → T (FS (lf F) ⟦ ⟪ A ⟫ ⟧)
+    cC a = fmapT (coh (lf F) ⟪ A ⟫) (P.evB δ φ (e , a))
+
+    cM : ⟦ ⌈ A ⌉ ⟧ᴰ → T∞ (⟦ SF F ⟧SF ⟦ ⌈ A ⌉ ⟧ᴰ)
+    cM a′ = fmap∞ (Val.coerce-μ-in ⌈ F ⌉F ⟦ ⌈ A ⌉ ⟧ᴰ)
+              (fmap∞ (λ x → coerce-functor-D (wf-⌈⌉ wf) ⌈ A ⌉ (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F A) x))
+                     (evalᴰ fmt (callEnv cs ans) c (e′ , a′)))
+
+    -- a seed's coalgebra, against master's
+    seed≈ : ∀ {a a′} → W A a a′ → emb (cC a) ≈[ WLS A F ] cM a′
+    seed≈ {a} {a′} w =
+      fmapʳ (embfmap≈ (P.evB δ φ (e , a))
+               (≈-≈R (≈-sym (P.ev-coh δ φ (e , a)))
+                     (subst (λ m → m ≈[ _ ] evalᴰ fmt (callEnv cs ans) c (e′ , a′))
+                            (sym (ev-subst-cod⁺ δ (⟪⟫-TI wf A) c′ (e , a)))
+                            (≈-transport (⟪⟫-TI wf A) (ih (we , w)))))
+               (λ {x} {x′} s → subst (λ z → WLS A F (coh (lf F) ⟪ A ⟫ z) _) (subst-sym-subst (⟪⟫-TI wf A) x)
+                                      (Seed-layer wf s)))
+
+    mutual
+      -- ★ the unfold, coinductively
+      ana-W : ∀ {a a′} → W A a a′ → WNu F (anaN (lf F) cC a) (anaFᴵ ⌈ F ⌉F _ a′)
+      _≈[_]_.blockR (wout (ana-W {a} w)) = tree (cC a) (_≈[_]_.blockR (seed≈ w))
+
+      tree : ∀ (b : T (FS (lf F) ⟦ ⟪ A ⟫ ⟧)) {m′} → BlR (WLS A F) (embB b) m′
+           → BlR (WLν F F) (embB (treeN (lf F) cC b)) (SI.anaBlock (SF F) cM m′)
+      tree (ret l)      (≈retR s)  = ≈retR (mapR wf s)
+      tree (call o a k) (≈callR h) = ≈callR (λ y → tree (k y) (h y))
+      tree (halt o a)   ≈haltR     = ≈haltR
+
+      mapR : ∀ {G} (wg : WellFormedFI G) {l l′} → WLS A G l l′
+           → WLν F G (mapN (lf F) (lf G) cC l) (SI.mapAnaᴵ (SF F) (SF G) cM l′)
+      mapR (wf-K b) s = K-map {F} b s
+      mapR wf-Id s = ana-W s
+      mapR (wf-Sum f g) {l = inj₁ _} {l′ = inj₁ _} (⊎₁ s) = ⊎₁ (mapR f s)
+      mapR (wf-Sum f g) {l = inj₂ _} {l′ = inj₂ _} (⊎₂ s) = ⊎₂ (mapR g s)
+      mapR (wf-Prod f g) {l = _ , _} {l′ = _ , _} (s₁ , s₂) = mapR f s₁ , mapR g s₂
+
+  -- ★ `Ana` against master's
+  ana≈ : ∀ {F} (wf : WellFormedFI F) {E A} (c : M.IR (E * A) (⟦ F ⟧TI A)) c′ φ →
+         (∀ {x x′} → W (E * A) x x′ → P.ev δ c′ x ≈[ W (⟦ F ⟧TI A) ] evalᴰ fmt (callEnv cs ans) c x′) →
+         ∀ {a b} → W (E * A) a b →
+         P.ev δ (P.Ana (lf F) (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′) φ) a
+           ≈[ W (ν-type F) ] evalᴰ fmt (callEnv cs ans) (M.Ana wf c) b
+  ana≈ wf c c′ φ ih {e , a} {e′ , a′} (we , wa) = ret≈R (Unfold.ana-W wf c c′ φ ih e e′ we wa)
+
+------------------------------------------------------------------------
+-- 8. ★ THE OBLIGATIONS, discharged.
+------------------------------------------------------------------------
+
+module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) where
+
+  casts : BP.Casts δ cs
+  casts = record
+    { In≈   = In≈ δ cs
+    ; out≈  = out≈ δ cs
+    ; Out≈  = Out≈ δ cs
+    ; inν≈  = inν≈ δ cs
+    ; op≈   = op≈ δ cs
+    ; cata≈ = cata≈ δ cs
+    ; ana≈  = ana≈ δ cs
+    }
