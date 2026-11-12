@@ -264,3 +264,27 @@ mutual
   ... | (x′ , n₁ , t₁) | cx = pre (i-ccopyω e) (then (after cx i-epop) (leaf (i-prim r-lamω) (k-alloc ∷ [])))
   copyB (mnu i p) e os n with copy p n | copyS p refl os n
   ... | (p′ , n₁ , t₁) | cp = pre (i-ncopy e) (then (after cp i-epop) (leaf (i-prim r-unf) (k-alloc ∷ [])))
+
+------------------------------------------------------------------------
+-- 4. ★ THE FREE BLOCK: `Events.freeAll`, by induction on the value; each
+-- cell freed, then what it held by a call.
+------------------------------------------------------------------------
+
+mutual
+  freeS : ∀ {T A} (v : MV A) {Es S U} {es : Slots Es} (os : Stk S) {k : Codeᴵ (Es ∣ One ∷ S) U} {r : Ret U T} (n : ℕ)
+        → OutI (call (kfree A) ⨾ k) r (es ∥ v ∷ˢ os) n (freeAll v) k r (es ∥ mone ∷ˢ os) n
+  freeS v os n = called (freeB v os n) doneO
+
+  freeB : ∀ {T A} (v : MV A) {Es S U} {es : Slots Es} (os : Stk S) {k : Codeᴵ (Es ∣ One ∷ S) U} {r : Ret U T} (n : ℕ)
+        → OutI (blockᴵ (kfree A)) (k ∷ᶜ r) (es ∥ v ∷ˢ os) n (freeAll v) end (k ∷ᶜ r) (es ∥ mone ∷ˢ os) n
+  freeB mone os n = doneO
+  freeB (mbase x) os n = leaf (i-prim r-drop) []
+  freeB (mpair a b) os n =
+    pre i-unpair (then (after (freeS a (b ∷ˢ os) n) i-swap)
+                       (thenL (after (freeS b (mone ∷ˢ os) n) i-pair) (leaf (i-prim r-λ) [])))
+  freeB (minl a) os n = pre i-case₁ (freeS a os n)
+  freeB (minr b) os n = pre i-case₂ (freeS b os n)
+  freeB (mmu i v) os n = then (leaf (i-prim r-Outμ) (k-free ∷ [])) (freeS v os n)
+  freeB (mct x) os n = pre i-untag₁ (freeS x os n)
+  freeB (mfn i lam x) os n = then (leaf i-cfree (k-free ∷ [])) (freeS x os n)
+  freeB (mnu i p) os n = then (leaf i-nfree (k-free ∷ [])) (freeS p os n)
