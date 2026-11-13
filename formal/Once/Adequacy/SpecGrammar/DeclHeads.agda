@@ -23,8 +23,7 @@ open import Relation.Nullary using (¬_)
 open import Once.Spec.Surface.Lexing using (Token)
 open Token
 open import Once.Spec.Surface.Grammar
-  using (Starts; starts; StartsWord; starts-word; OpChar; oc-dot; oc-plus; oc-minus; oc-star; oc-slash; oc-pct;
-         oc-lt; oc-gt; oc-pipe; oc-amp; oc-at; Trailing; trail-nl; trail-eof; SkipNewlines; skip-nl; skip-done)
+  using (Starts; starts; StartsWord; starts-word; OpChar; oc-dot; oc-op; oc-pipe; oc-amp; oc-at; Trailing; trail-nl; trail-eof; SkipNewlines; skip-nl; skip-done)
 import Once.Parser.Token as P
 open import Once.Parser.Core using (skipNewlines)
 open import Once.Parser.Module.Core using (wordHead)
@@ -36,6 +35,7 @@ open import Once.Parser.Module.OpName using (OpTok; otClose; otChar; otNone; opT
 open import Once.Parser using (allTrailing)
 open import Once.Parser.Module using (parseDeclB)
 open import Once.Adequacy.SpecTokNames
+open import Once.Spec.Surface.Lexing using (g+; g-; g*; g/; g%; g<; g>)
 open import Once.Adequacy.SpecLexing using (forget)
 
 private
@@ -328,19 +328,19 @@ optok-view P.TSemicolon = otv-none (λ ()) (λ ())
 optok-view P.TAt = otv-char oc-at
 optok-view P.TPipe = otv-char oc-pipe
 optok-view P.TDot = otv-char oc-dot
-optok-view P.TPlus = otv-char oc-plus
-optok-view P.TMinus = otv-char oc-minus
-optok-view P.TStar = otv-char oc-star
-optok-view P.TSlash = otv-char oc-slash
-optok-view P.TPercent = otv-char oc-pct
+optok-view P.TPlus = otv-char (oc-op g+)
+optok-view P.TMinus = otv-char (oc-op (g- (λ ()) (λ ())))
+optok-view P.TStar = otv-char (oc-op g*)
+optok-view P.TSlash = otv-char (oc-op g/)
+optok-view P.TPercent = otv-char (oc-op g%)
 optok-view P.TAmpersand = otv-char oc-amp
-optok-view P.TLt = otv-char oc-lt
-optok-view P.TLe = otv-none (λ ()) (λ ())
-optok-view P.TGt = otv-char oc-gt
-optok-view P.TGe = otv-none (λ ()) (λ ())
-optok-view P.TEqEq = otv-none (λ ()) (λ ())
-optok-view P.TNeq = otv-none (λ ()) (λ ())
-optok-view P.TOpD _ = otv-none (λ ()) (λ ())
+optok-view P.TLt = otv-char (oc-op (g< (λ ())))
+optok-view P.TLe = otv-none (λ ()) (λ { (oc-op ()) })
+optok-view P.TGt = otv-char (oc-op (g> (λ ())))
+optok-view P.TGe = otv-none (λ ()) (λ { (oc-op ()) })
+optok-view P.TEqEq = otv-none (λ ()) (λ { (oc-op ()) })
+optok-view P.TNeq = otv-none (λ ()) (λ { (oc-op ()) })
+optok-view (P.TOpD _) = otv-none (λ ()) (λ ())
 optok-view P.TBang = otv-none (λ ()) (λ ())
 optok-view P.TNewline = otv-none (λ ()) (λ ())
 optok-view P.TEOF = otv-none (λ ()) (λ ())
