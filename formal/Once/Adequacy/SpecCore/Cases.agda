@@ -77,63 +77,38 @@ private
   ff = g-* g-float g-float
   bb = g-+ g-unit g-unit
 
+import Once.Spec.Theory as Th
+
 module _ {m} (σ : TySub m 0) where
 
   gDom : ∀ p → GR (primDom {0} p ⟨ noVars ⟩) (primDom p ⟨ σ ⟩)
-  gDom SC.p-add  = ii
-  gDom SC.p-sub  = ii
-  gDom SC.p-mul  = ii
-  gDom SC.p-div  = ii
-  gDom SC.p-mod  = ii
-  gDom SC.p-neg  = g-int
-  gDom SC.p-lt   = ii
-  gDom SC.p-le   = ii
-  gDom SC.p-gt   = ii
-  gDom SC.p-ge   = ii
-  gDom SC.p-eq   = ii
-  gDom SC.p-ne   = ii
-  gDom SC.p-fadd = ff
-  gDom SC.p-fsub = ff
-  gDom SC.p-fmul = ff
-  gDom SC.p-fdiv = ff
+  gDom (SC.num {Th.int}   {k = Th.unary}   h o) = g-int
+  gDom (SC.num {Th.int}   {k = Th.binary}  h o) = ii
+  gDom (SC.num {Th.int}   {k = Th.compare} h o) = ii
+  gDom (SC.num {Th.float} {k = Th.unary}   h o) = g-float
+  gDom (SC.num {Th.float} {k = Th.binary}  h o) = ff
+  gDom (SC.num {Th.float} {k = Th.compare} h o) = ff
   gDom SC.p-i2f  = g-int
 
   gCod : ∀ p → GR (primCod {0} p ⟨ noVars ⟩) (primCod p ⟨ σ ⟩)
-  gCod SC.p-add  = g-int
-  gCod SC.p-sub  = g-int
-  gCod SC.p-mul  = g-int
-  gCod SC.p-div  = g-int
-  gCod SC.p-mod  = g-int
-  gCod SC.p-neg  = g-int
-  gCod SC.p-lt   = bb
-  gCod SC.p-le   = bb
-  gCod SC.p-gt   = bb
-  gCod SC.p-ge   = bb
-  gCod SC.p-eq   = bb
-  gCod SC.p-ne   = bb
-  gCod SC.p-fadd = g-float
-  gCod SC.p-fsub = g-float
-  gCod SC.p-fmul = g-float
-  gCod SC.p-fdiv = g-float
+  gCod (SC.num {Th.int}   {k = Th.unary}   h o) = g-int
+  gCod (SC.num {Th.int}   {k = Th.binary}  h o) = g-int
+  gCod (SC.num {Th.int}   {k = Th.compare} h o) = bb
+  gCod (SC.num {Th.float} {k = Th.unary}   h o) = g-float
+  gCod (SC.num {Th.float} {k = Th.binary}  h o) = g-float
+  gCod (SC.num {Th.float} {k = Th.compare} h o) = bb
   gCod SC.p-i2f  = g-float
 
+  -- a primitive's meaning does not read the type substitution
   prim-R : ∀ p {x x′} → ValR (gDom p) x x′ → ValR (gCod p) (SM.primᵛ noVars p x) (SM.primᵛ σ p x′)
-  prim-R SC.p-add  (refl , refl) = refl
-  prim-R SC.p-sub  (refl , refl) = refl
-  prim-R SC.p-mul  (refl , refl) = refl
-  prim-R SC.p-div  (refl , refl) = refl
-  prim-R SC.p-mod  (refl , refl) = refl
-  prim-R SC.p-neg  refl          = refl
-  prim-R SC.p-lt {a , b} {.a , .b} (refl , refl) = bool-refl (SM.primᵛ noVars SC.p-lt (a , b))
-  prim-R SC.p-le {a , b} {.a , .b} (refl , refl) = bool-refl (SM.primᵛ noVars SC.p-le (a , b))
-  prim-R SC.p-gt {a , b} {.a , .b} (refl , refl) = bool-refl (SM.primᵛ noVars SC.p-gt (a , b))
-  prim-R SC.p-ge {a , b} {.a , .b} (refl , refl) = bool-refl (SM.primᵛ noVars SC.p-ge (a , b))
-  prim-R SC.p-eq {a , b} {.a , .b} (refl , refl) = bool-refl (SM.primᵛ noVars SC.p-eq (a , b))
-  prim-R SC.p-ne {a , b} {.a , .b} (refl , refl) = bool-refl (SM.primᵛ noVars SC.p-ne (a , b))
-  prim-R SC.p-fadd (refl , refl) = refl
-  prim-R SC.p-fsub (refl , refl) = refl
-  prim-R SC.p-fmul (refl , refl) = refl
-  prim-R SC.p-fdiv (refl , refl) = refl
+  prim-R (SC.num {Th.int}   {k = Th.unary}   h o) refl          = refl
+  prim-R (SC.num {Th.int}   {k = Th.binary}  h o) (refl , refl) = refl
+  prim-R (SC.num {Th.int}   {k = Th.compare} h o) {a , b} {.a , .b} (refl , refl) =
+    bool-refl (SM.primᵛ noVars (SC.num h o) (a , b))
+  prim-R (SC.num {Th.float} {k = Th.unary}   h o) refl          = refl
+  prim-R (SC.num {Th.float} {k = Th.binary}  h o) (refl , refl) = refl
+  prim-R (SC.num {Th.float} {k = Th.compare} h o) {a , b} {.a , .b} (refl , refl) =
+    bool-refl (SM.primᵛ noVars (SC.num h o) (a , b))
   prim-R SC.p-i2f  refl          = refl
 
 ------------------------------------------------------------------------
