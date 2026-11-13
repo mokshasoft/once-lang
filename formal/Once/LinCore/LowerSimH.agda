@@ -197,3 +197,59 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               sa₃ = slots-movedP wa (subst (MovedP fs₂ fs₃ (AtStack cfc area) (Mc ∸ wA) (a′ + wX)) (sym (vw-len pa)) M₃) sa₂
               both : SlotsAt (slot fs₃) a′ (wx ++ wa)
               both = slots-join wx wa sx (subst (λ z → SlotsAt (slot fs₃) z wa) (trans (+-comm a′ wX) (cong (_+ a′) (sym (vw-len px)))) sa₃)
+
+  -- ★ AN OBSERVATION'S CELL PART (`nopen`, D421): the contents to the top of
+  -- the frame `frame 0 M`, the cell freed (no argument from the caller)
+  open0-sim : ∀ prog (fs : FlatState) (M o fr : ℕ) {X} {x : MV X} (i : Id) (wx : List W)
+            → wsz X ≤ M
+            → readReg (LocState.regs (floc fs)) Input1 ≡ cellPtr i
+            → slot fs M ≡ just (cellPtr i)
+            → VW (LocState.heapMem (floc fs)) x wx → At (LocState.heapMem (floc fs)) i o wx
+            → Seg prog (fpc fs) (mvPS o (M ∸ wsz X) (wsz X) ++ restore-input M ∷ instr-free-heap fr ∷ [])
+            → LocState.halted (floc fs) ≡ false
+            → Σ FlatState λ fs′
+                → FlatSteps prog (Once.LinCore.Moves.ln {FS} (wsz X) + (1 + 1)) fs fs′
+                × CfgW (LocState.heapMem (floc fs′)) (slot fs′) (frame 0 M) ([]ᵉ ∥ x ∷ˢ []ˢ)
+                × Ran (Once.LinCore.Moves.ln {FS} (wsz X) + (1 + 1)) 0 (AllocState.next-heap-ref (falloc fs)) M fs fs′
+  open0-sim prog fs M o fr {X} {x} i wx le inp eM px ax seg h =
+    after₁ (mvPS-run prog fs (AtDynamic (cellLoc i 0)) o a′ (wsz X) seg₁ h inp def₁ (λ k k′ _ _ ()))
+    where
+      wX = wsz X
+      a′ = M ∸ wX
+      b₁ : a′ + wX ≤ M
+      b₁ = ≤-reflexive (Data.Nat.Properties.m∸n+n≡m le)
+      MV₁ = mvPS o a′ wX
+      seg₁ : Seg prog (fpc fs) MV₁
+      seg₁ = Seg-++ˡ prog (fpc fs) MV₁ _ seg
+      def₁ : ∀ k → k < wX → Σ W λ v → MemOps.readLoc {FS} (floc fs) (offsetLoc (AtDynamic (cellLoc i 0)) (k + o)) ≡ just v
+      def₁ k k< = rd (at-def-o wx ax k (subst (k <_) (sym (vw-len px)) k<))
+        where
+          rd : Σ W (λ v → LocState.heapMem (floc fs) (cellLoc i (k + o)) ≡ just v)
+             → Σ W λ v → MemOps.readLoc {FS} (floc fs) (offsetLoc (AtDynamic (cellLoc i 0)) (k + o)) ≡ just v
+          rd (v , e) = v , trans (cong (λ z → LocState.heapMem (floc fs) (heap-loc (mkHeapRef (serial i)) z)) (Data.Nat.Properties.+-identityʳ (k + o))) e
+      after₁ : Σ FlatState (λ fs₁ → FlatSteps prog (Once.LinCore.Moves.ln {FS} wX) fs fs₁ × MovedP fs fs₁ (AtDynamic (cellLoc i 0)) o a′ wX) → _
+      after₁ (fs₁ , st₁ , M₁) =
+        fs₃ ,
+        FlatSteps-++ st₁ (step-at fs₂ (h₁ , proj₁ rest₁) (restore-step fs₁ M eM₁)
+          (step-at fs₃ (h₁ , proj₁ (proj₂ rest₁)) (free-step fs₂ fr) FlatStepsAPI.[])) ,
+        record { c-env = tt
+               ; c-stk = ((wx , subst (λ r → VW r x wx) (sym hp) px
+                          , subst (λ z → SlotsAt (slot fs₁) z wx) (cong (M ∸_) (sym (Data.Nat.Properties.+-identityʳ wX))) sx) , tt)
+               ; c-efit = z≤n
+               ; c-sfit = ≤-trans (≤-reflexive (Data.Nat.Properties.+-identityʳ wX)) le } ,
+        ran-trans (ranP M₁ b₁) (ran-trans (ran-regs _) ran-pc)
+        where
+          h₁ : LocState.halted (floc fs₁) ≡ false
+          h₁ = trans (p-halt M₁) h
+          rest₁ : Seg prog (fpc fs₁) (restore-input M ∷ instr-free-heap fr ∷ [])
+          rest₁ = subst (λ z → Seg prog z (restore-input M ∷ instr-free-heap fr ∷ []))
+                    (trans (cong (fpc fs +_) (len-mvPS o a′ wX)) (trans (+-comm (fpc fs) _) (sym (p-pc M₁))))
+                    (Seg-++ʳ prog (fpc fs) MV₁ _ seg)
+          eM₁ : slot fs₁ M ≡ just (cellPtr i)
+          eM₁ = trans (p-rest M₁ M (λ k k< → neq< (in-run k< b₁))) eM
+          fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Input1 (cellPtr i) } ; fpc = suc (fpc fs₁) }
+          fs₃ = record fs₂ { fpc = suc (fpc fs₂) }
+          hp : LocState.heapMem (floc fs₁) ≡ LocState.heapMem (floc fs)
+          hp = p-heap M₁
+          sx : SlotsAt (slot fs₁) a′ wx
+          sx = cell-slots-at wx (subst (MovedP fs fs₁ (AtDynamic (cellLoc i 0)) o a′) (sym (vw-len px)) M₁) ax
