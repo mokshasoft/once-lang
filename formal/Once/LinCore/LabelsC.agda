@@ -31,7 +31,7 @@ open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Label using (LabelId)
+open import Once.CCC.Label using (LabelId; EntryId)
 open import Once.CCC.Codegen.LabelDefs using (Dst; Dj; Win; dj-sym; dj-++ʳ; dst-++; dj-win; win-weaken; fresh-below)
 
 module Once.LinCore.LabelsC
@@ -49,7 +49,7 @@ open import Once.LinCore.Labels fmt ans bw
 
 module LabsC {FS : FrameSemantics} where
   open import Once.CCC.Machine.Flat using (module FlatMachine)
-  open FlatMachine {FS} using (label-of?)
+  open FlatMachine {FS} using (label-of?; entry-of?)
   open NoLabels {FS}
 
   ----------------------------------------------------------------------
@@ -79,6 +79,30 @@ module LabsC {FS : FrameSemantics} where
       go : ∀ mo → mo ≡ nothing → lab mo (Labs xs) ≡ []
       go nothing refl = Labs-nl p
 
+  -- …and its callable entries
+  ent : Maybe EntryId → List EntryId → List EntryId
+  ent (just e) r = e ∷ r
+  ent nothing  r = r
+
+  Ents : AbstractTrace → List EntryId
+  Ents []       = []
+  Ents (x ∷ xs) = ent (entry-of? x) (Ents xs)
+
+  Ents-++ : ∀ xs ys → Ents (xs ++ ys) ≡ Ents xs ++ Ents ys
+  Ents-++ []       ys = refl
+  Ents-++ (x ∷ xs) ys = go (entry-of? x)
+    where
+      go : ∀ mo → ent mo (Ents (xs ++ ys)) ≡ ent mo (Ents xs) ++ Ents ys
+      go (just e) = cong (e ∷_) (Ents-++ xs ys)
+      go nothing  = Ents-++ xs ys
+
+  Ents-nl : ∀ {xs} → NoLab xs → Ents xs ≡ []
+  Ents-nl {[]}     []      = refl
+  Ents-nl {x ∷ xs} (e ∷ p) = go (entry-of? x) (mark-e x e)
+    where
+      go : ∀ mo → mo ≡ nothing → ent mo (Ents xs) ≡ []
+      go nothing refl = Ents-nl p
+
   ----------------------------------------------------------------------
   -- 2. ★ BLOCK `j`'s LABELS IN A WINDOW, DISTINCT.
   ----------------------------------------------------------------------
@@ -90,18 +114,19 @@ module LabsC {FS : FrameSemantics} where
       eq  : Labs xs ≡ map (jl j) idxs
       win : Win a b idxs
       dst : Dst idxs
+      ne  : Ents xs ≡ []
   open Ok public
 
   ok-nl : ∀ {j a b xs} → NoLab xs → Ok j a b xs
-  ok-nl p = ok [] (Labs-nl p) [] []
+  ok-nl p = ok [] (Labs-nl p) [] [] (Ents-nl p)
 
   widen : ∀ {j a b a′ b′ xs} → a′ ≤ a → b ≤ b′ → Ok j a b xs → Ok j a′ b′ xs
-  widen l r (ok ks e w d) = ok ks e (win-weaken l r w) d
+  widen l r (ok ks e w d n) = ok ks e (win-weaken l r w) d n
 
   join : ∀ {j a b xs ys} (o₁ : Ok j a b xs) (o₂ : Ok j a b ys) → Dj (idxs o₁) (idxs o₂) → Ok j a b (xs ++ ys)
-  join {j} {xs = xs} {ys} (ok k₁ e₁ w₁ d₁) (ok k₂ e₂ w₂ d₂) dj =
+  join {j} {xs = xs} {ys} (ok k₁ e₁ w₁ d₁ n₁) (ok k₂ e₂ w₂ d₂ n₂) dj =
     ok (k₁ ++ k₂) (trans (Labs-++ xs ys) (trans (cong₂ _++_ e₁ e₂) (sym (map-++ (jl j) k₁ k₂))))
-       (All-++⁺ w₁ w₂) (dst-++ d₁ d₂ dj)
+       (All-++⁺ w₁ w₂) (dst-++ d₁ d₂ dj) (trans (Ents-++ xs ys) (cong₂ _++_ n₁ n₂))
 
   -- label-free code in front
   ok-pre : ∀ {j a b xs} P → NoLab P → Ok j a b xs → Ok j a b (P ++ xs)
@@ -109,7 +134,7 @@ module LabsC {FS : FrameSemantics} where
 
   -- a label defined in front
   ok-lab : ∀ {j a b xs} k → a ≤ k → k < b → (o : Ok j a b xs) → All (k ≢_) (idxs o) → Ok j a b (instr-ctrl (c-label (jl j k)) ∷ xs)
-  ok-lab {j} k a≤k k<b (ok ks e w d) fr = ok (k ∷ ks) (cong (jl j k ∷_) e) ((a≤k , k<b) ∷ w) (fr ∷ d)
+  ok-lab {j} k a≤k k<b (ok ks e w d n) fr = ok (k ∷ ks) (cong (jl j k ∷_) e) ((a≤k , k<b) ∷ w) (fr ∷ d) n
 
   -- a code's counter and labels
   Good : ℕ → ℕ → AbstractTrace × ℕ → Set
