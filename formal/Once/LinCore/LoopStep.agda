@@ -18,7 +18,7 @@
 
 {-# OPTIONS --guardedness #-}
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≤_)
 open import Data.Nat.Properties using (+-comm; +-suc)
 open import Data.Nat.Tactic.RingSolver using (solve-∀)
 open import Data.List using (List; []; _∷_; _++_; length)
@@ -74,7 +74,7 @@ module Loops {FS : FrameSemantics} (U : Univ)
   open Fetch {FS} using (in-seg)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc; find-label; do-jump)
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++; flat-label; flat-jmp)
-  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; k-halt; keep-pc; keep-trans)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; k-halt; keep-pc; keep-trans; Old)
 
   ----------------------------------------------------------------------
   -- 1. AT AN ADDRESS: the flat pc, running, the configuration in the frame.
@@ -123,12 +123,13 @@ module Loops {FS : FrameSemantics} (U : Univ)
            → Here s m fs
            → Σ FlatState λ fs′ → FlatSteps prog 1 fs fs′ × HereQ (length (proj₁ ins′)) m fs′ × Keep fs fs′
                × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+               × Old (AllocState.next-heap-ref (falloc fs)) fs fs′ × (∀ x → budget φ ≤ x → slot fs′ x ≡ slot fs x)
   end-jump s {L} {fs = fs} lab e ins′ H =
     record fs { fpc = length (proj₁ ins′) } ,
     step-at _ (h-run H , proj₁ (subst (Seg prog (fpc fs)) e (seg-at s H)))
       (trans (flat-jmp prog fs L) (cong (λ x → do-jump x fs) (lab ins′))) FlatStepsAPI.[] ,
     record { q-pc = refl ; q-run = h-run H ; q-cfg = h-cfg H } ,
-    keep-pc _ , refl
+    keep-pc _ , refl , (λ _ _ → refl) , (λ _ _ → refl)
 
   ----------------------------------------------------------------------
   -- 4. ★ THE DISPATCH: its label, the tag read; on 0 the jump to `Li` and
