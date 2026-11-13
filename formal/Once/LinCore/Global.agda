@@ -152,7 +152,23 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       t-ne   : ¬ t-cfc ≡ AllocState.current-frame (falloc fs)
       t-arg  : SlotsAt (LocState.stackMem (floc fs) t-cfc) ((Mc ∸ wsz A) + t-area) t-wa
 
-  -- the trampoline points related so far: a one-shot body's three
+  -- ★ an observation's trampoline before its cell part (D421): as `Tr0`, no
+  -- argument (the ν's coalgebra and seed are all in the cell)
+  record TrO0 {X} (M q : ℕ) (i : Id) (x : MV X) (fs : FlatState) : Set where
+    field
+      o-pc   : fpc fs ≡ q
+      o-run  : LocState.halted (floc fs) ≡ false
+      o-wx   : List (StoredValue FS)
+      o-cfc  : FrameSemantics.Frame FS
+      o-area : ℕ
+      o-x    : VW (LocState.heapMem (floc fs)) x o-wx
+      o-at   : Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i hdr o-wx
+      o-in   : readReg (LocState.regs (floc fs)) Input1 ≡ cellPtr i
+      o-M    : slot fs M ≡ just (cellPtr i)
+      o-sM   : slot fs (suc M) ≡ just (SV-Ptr (AtStack o-cfc o-area))
+      o-ne   : ¬ o-cfc ≡ AllocState.current-frame (falloc fs)
+
+  -- the trampoline points related so far: a one-shot body's three, an observation's three
   data TrPt : ∀ {σ sh V} {κ : Key σ} {c : Codeᴵ sh V} → under κ ∈ allK U → Pt (blockᴵ κ) c → Set where
     tp0 : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b} (p : under (ktr1 ds′ b γ) ∈ allK U)
         → TrPt {κ = ktr1 ds′ b γ} p (at whole)
@@ -160,12 +176,18 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         → TrPt {κ = ktr1 ds′ b γ} p (at (next whole))
     tp2 : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b} (p : under (ktr1 ds′ b γ) ∈ allK U)
         → TrPt {κ = ktr1 ds′ b γ} p (at (next (next whole)))
+    to0 : ∀ {Γ′} {ds′ : Defs Γ′} {F S} (p : under (ktro ds′ F S) ∈ allK U) → TrPt {κ = ktro ds′ F S} p (at whole)
+    to1 : ∀ {Γ′} {ds′ : Defs Γ′} {F S} (p : under (ktro ds′ F S) ∈ allK U) → TrPt {κ = ktro ds′ F S} p (at (next whole))
+    to2 : ∀ {Γ′} {ds′ : Defs Γ′} {F S} (p : under (ktro ds′ F S) ∈ allK U) → TrPt {κ = ktro ds′ F S} p (at (next (next whole)))
 
   HereTr : ∀ {σ sh V} {κ : Key σ} {c : Codeᴵ sh V} {p : under κ ∈ allK U} {pt : Pt (blockᴵ κ) c} → TrPt p pt → Cfg sh → FlatState → Set
   HereTr (tp0 {X = X} {A} {B} {ds′} {b} {γ} p) (es ∥ (mpair (mfn i lam x) a ∷ˢ os)) fs =
     Tr0 ((wsz X + wsz A) ⊔ wsz B) (suc (wsz A) ⊔ wsz B) (trPos (ktr1 ds′ b γ) p 0) i x a fs
   HereTr (tp1 {ds′ = ds′} {b} {γ} p) m fs = HereF (trφ (ktr1 ds′ b γ)) (trPos (ktr1 ds′ b γ) p 1) m fs
   HereTr (tp2 {ds′ = ds′} {b} {γ} p) m fs = HereF (trφ (ktr1 ds′ b γ)) (trPos (ktr1 ds′ b γ) p 2) m fs
+  HereTr (to0 {ds′ = ds′} {F} {S} p) (es ∥ (mnu i x ∷ˢ os)) fs = TrO0 (trM (ktro ds′ F S)) (trPos (ktro ds′ F S) p 0) i x fs
+  HereTr (to1 {ds′ = ds′} {F} {S} p) m fs = HereF (trφ (ktro ds′ F S)) (trPos (ktro ds′ F S) p 1) m fs
+  HereTr (to2 {ds′ = ds′} {F} {S} p) m fs = HereF (trφ (ktro ds′ F S)) (trPos (ktro ds′ F S) p 2) m fs
 
   -- ★ at a point, in its root's frame (a trampoline's point, and the stop: owed)
   HereP : ∀ {sh V} {c : Codeᴵ sh V} → Pnt c → Cfg sh → FlatState → Set
@@ -197,34 +219,42 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     -- a one-shot trampoline's inner call (D421)
     s-tramp : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b} (p : under (ktr1 ds′ b γ) ∈ allK U)
             → Site {t = nothing} {Es = []} {S = []} (kbody1 ds′ b γ) (end {sh = [] ∣ B ∷ []})
+    -- an observation's trampoline's inner call (D421)
+    s-trampo : ∀ {Γ′} {ds′ : Defs Γ′} {F S′} (p : under (ktro ds′ F S′) ∈ allK U)
+             → Site {t = nothing} {Es = []} {S = []} (kobs ds′ F S′) (end {sh = [] ∣ LF∙ F (Nu F) ∷ []})
 
   module _ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} where
     siteRoot : Site κ k → RootId
     siteRoot (s-start _)    = rstart
     siteRoot (s-block p′ _) = rblock p′
     siteRoot (s-tramp {ds′ = ds′} {b} {γ} p) = rtramp {κ = ktr1 ds′ b γ} p
+    siteRoot (s-trampo {ds′ = ds′} {F} {S′} p) = rtramp {κ = ktro ds′ F S′} p
 
     -- the block the call was lowered to reach
     siteCallee : Site κ k → (bsig t A B , κ) ∈ allK U
     siteCallee (s-start s)    = FrS.callee s
     siteCallee (s-block p′ s) = FrK.callee p′ s
     siteCallee (s-tramp p)    = p
+    siteCallee (s-trampo p)   = p
 
     -- the caller's frame, the address after the call, its way out
     siteφ : Site κ k → Frame
     siteφ (s-start _)                 = frameOf main
     siteφ (s-block {κ′ = κ′} p′ _)    = frameOf (blockᴵ κ′)
     siteφ (s-tramp {ds′ = ds′} {b} {γ} p) = trφ (ktr1 ds′ b γ)
+    siteφ (s-trampo {ds′ = ds′} {F} {S′} p) = trφ (ktro ds′ F S′)
 
     sitePos : Site κ k → ℕ
     sitePos (s-start s)    = FrS.C.pos (next s)
     sitePos (s-block p′ s) = FrK.C.pos p′ (next s)
     sitePos (s-tramp {ds′ = ds′} {b} {γ} p) = trPos (ktr1 ds′ b γ) p 2
+    sitePos (s-trampo {ds′ = ds′} {F} {S′} p) = trPos (ktro ds′ F S′) p 2
 
     siteFin : Site κ k → AbstractTrace
     siteFin (s-start s)    = SA.lfin (S.lowAt s)
     siteFin (s-block p′ s) = KA.lfin {p = p′} (K.lowAt p′ s)
     siteFin (s-tramp {ds′ = ds′} {b} {γ} p) = trAt (idx p) (ktr1 ds′ b γ) 2
+    siteFin (s-trampo {ds′ = ds′} {F} {S′} p) = trAt (idx p) (ktro ds′ F S′) 2
 
   -- ★ a dispatch site: a dispatch through a cell's code word (`icall`,
   -- `iobs`) in the start's code or a block's (D421)
