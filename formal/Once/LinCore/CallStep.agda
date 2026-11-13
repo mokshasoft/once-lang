@@ -423,6 +423,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × C.Here (next s) (es ∥ b ∷ˢ os) fs′
             × CallOut fs fs′ cfc (Tp C.φ S ∸ (wsz A ⊔ wsz B)) (budget (frameOf (blockᴵ κ)) ∸ ws (B ∷ []))
                       ((wsz A ⊔ wsz B) ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl
+            × (∀ x → budget C.φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
     return {t} {A} {B} {Es} {S} {κ = κ} s e {e′} {b} {es} {os} {fs} cfc rest sv sl lf H hret hsv ne ep ev st =
       with-res (Rel.CfgW.c-stk (K.Here.h-cfg {p = callee s} H))
       where
@@ -443,6 +444,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         with-res : StkW (LocState.heapMem (floc fs)) (slot fs) φ′ (b ∷ˢ []ˢ)
                  → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × C.Here (next s) (es ∥ b ∷ˢ os) fs′
                      × CallOut fs fs′ cfc (Tp C.φ S ∸ M) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl
+                     × (∀ x → budget C.φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
         with-res ((wb , pb , sb) , _) =
           fin (leave image fs C.φ φ′ cfc (Tp C.φ S ∸ M) M (fbudget φ′) (C.pos (next s)) rest sv sl
                  {es = es} {os = os} {b = b} wb hret hsv ne ep pb sb ev st refl
@@ -451,10 +453,12 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           where
             fin : Σ FlatState (λ fs′ → FlatSteps image (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′
                     × CfgW (LocState.heapMem (floc fs′)) (slot fs′) C.φ (es ∥ b ∷ˢ os)
-                    × CallOut fs fs′ cfc (Tp C.φ S ∸ M) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl)
+                    × CallOut fs fs′ cfc (Tp C.φ S ∸ M) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl
+                    × (∀ x → budget C.φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x))
                 → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × C.Here (next s) (es ∥ b ∷ˢ os) fs′
                     × CallOut fs fs′ cfc (Tp C.φ S ∸ M) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl
-            fin (fs′ , st′ , C′ , CO) =
+                    × (∀ x → budget C.φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
+            fin (fs′ , st′ , C′ , CO , tk) =
               _ , fs′ , st′ ,
               record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (K.Here.h-run {p = callee s} H) ; h-cfg = C′ } ,
-              CO
+              CO , tk

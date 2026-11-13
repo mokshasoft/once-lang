@@ -29,7 +29,7 @@ open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Machine.Locations using (AtStack)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.Memory.HeapAddress
 
@@ -275,11 +275,16 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
   open Img {FS} ds f ldConst ld-nl using (image-label)
 
+  -- the frame context, by equations
+  ctx-to : ∀ {T U′ R fin} {r : Ret U′ T} {c c′ rs rs′ sv sv′ X} → c ≡ c′ → rs ≡ rs′ → sv ≡ sv′
+         → RetOK R fin r c rs sv X → RetOK R fin r c′ rs′ sv′ X
+  ctx-to refl refl refl ok = ok
+
   -- the frame context, kept
   ctx-keep : ∀ {T U′ R fin} {r : Ret U′ T} {fs fs′ X} → Keep fs fs′
            → RetOK R fin r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) X
            → RetOK R fin r (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) X
-  ctx-keep K ok rewrite k-frame K | k-ret K | k-saved K = ok
+  ctx-keep {R = R} {fin} {r} {X = X} K ok = ctx-to (sym (k-frame K)) (sym (k-ret K)) (sym (k-saved K)) ok
 
   -- the current frame's slots from a bound up, by the frame's name
   top-at : ∀ {fs fs′ B} → Keep fs fs′ → (∀ x → B ≤ x → slot fs′ x ≡ slot fs x)
@@ -451,7 +456,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   open Frames {FS} using (Called)
   open Called
-  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢)
+  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next)
   open Rel {FS} U wordOf using (CfgW)
 
   private
@@ -523,3 +528,41 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                            (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
                                            (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
     gcall (p-tramp _ _) inv () nx ok
+
+    -- ★ a return: the caller's frame back, the result on its stack
+    private
+      frame-eq : ∀ {f g x y} → AtStack {FS} f x ≡ AtStack g y → f ≡ g
+      frame-eq refl = refl
+
+      back : ∀ {T U′ R fin} {r : Ret U′ T} {fs fs′ cfc a src o nb pc rets′ sv′ sl}
+           → CallOut fs fs′ cfc a src o nb pc rets′ sv′ sl
+           → (∀ x → budget (rootφ R) ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
+           → FreshR r (AllocState.next-heap-ref (falloc fs))
+           → RetOK R fin r cfc rets′ sv′ fs
+           → RetOK R fin r (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) fs′
+      back {cfc = cfc} CO tk fr ok =
+        ctx-to (sym (co-frame CO)) (sym (co-ret CO)) (sym (co-saved CO))
+          (ret-top (λ f x ne → co-rest CO (AtStack f x) (λ k k< e → ne (frame-eq e))) tk
+                   (λ hl _ → co-rest CO (AtDynamic hl) (λ k k< ())) fr ok)
+
+    gret : ∀ {T t B Es S V} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} {r : Ret V T} {es : Slots (t ⊳ Es)} {os : Stk S}
+             {e′ : Slots (t ⊳ [])} {b : MV B} {n h fs} (P : Pnt (end {sh = t ⊳ [] ∣ B ∷ []}))
+         → InvI (e′ ∥ b ∷ˢ []ˢ) (frm {t = t} {Es = Es} k es os r) n h → HereP P (e′ ∥ b ∷ˢ []ˢ) fs
+         → AllocState.next-heap-ref (falloc fs) ≡ n
+         → RetOK (rootOf P) (ptFin P) (frm {t = t} {Es = Es} k es os r)
+                 (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+         → ArrivesAt k r (es ∥ b ∷ˢ os) n fs
+    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} (p-block p (at e)) inv H nx
+         (ok-call _ (s-start s) cfc sl sv′ rets′ refl eF refl eRets eSv abv area ev sk rest) =
+      case FrS.return s e cfc rets′ sv′ sl eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″)) area ev sk of λ where
+        (N , fs′ , run , H′ , CO , tk) →
+          N , fs′ , run , record { g-pt = p-start (at (next s)) ; g-here = H′ ; g-next = trans (co-next CO) nx
+                                 ; g-ret = back CO tk (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest }
+    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} (p-block p (at e)) inv H nx
+         (ok-call _ (s-block p′ s) cfc sl sv′ rets′ refl eF refl eRets eSv abv area ev sk rest) =
+      case FrK.return p′ s e cfc rets′ sv′ sl eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″)) area ev sk of λ where
+        (N , fs′ , run , H′ , CO , tk) →
+          N , fs′ , run , record { g-pt = p-block p′ (at (next s)) ; g-here = H′ ; g-next = trans (co-next CO) nx
+                                 ; g-ret = back CO tk (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest }
+    gret (p-start (at e)) inv H nx (ok-call _ _ _ _ _ _ () _ _ _ _ _ _ _ _ _)
+    gret (p-tramp _ _) inv () nx ok

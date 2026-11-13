@@ -263,6 +263,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
         → Σ FlatState λ fs′ → FlatSteps prog (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′
             × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os)
             × CallOut fs fs′ cfc area (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) pc rest sv sl
+            × (∀ x → budget φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
   leave prog fs φ φ′ cfc area M bb pc rest sv sl {Es} {B} {S} {es} {os} {b} wb hret hsv ne ep pb sb ev st refl le fitM fitE fitB seg h
     with call-out prog fs cfc area (budget φ′) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) bb pc rest sv sl hret hsv ne ep
            (λ k k< → slots-def wb sb k (subst (k <_) (sym (vw-len pb)) k<)) seg h
@@ -278,7 +279,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                        , stkW-heap os (λ i k _ → hp (cellLoc i k))
                            (stkW-frame os fitS (λ x lo _ → kept x (inj₂ lo)) st)
               ; c-efit = fitE ; c-sfit = fitB }) ,
-    CO
+    CO , (λ x le → kept x (inj₂ (≤-trans (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) le)))
     where
       import Data.Nat.Properties
       open import Data.Sum using (_⊎_; inj₁; inj₂)
