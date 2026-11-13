@@ -108,7 +108,7 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   ----------------------------------------------------------------------
 
   open import Once.LinCore.LowerSimH fmt ans bw using (module SimH)
-  open SimH {FS} U wordOf using (open1-sim)
+  open SimH {FS} U wordOf using (open1-sim; open0-sim)
   open import Once.LinCore.LowAt fmt ans bw using (in-trans; in-r)
   open import Once.LinCore.EntriesI fmt ans bw using (module ImgE)
   open ImgE {FS} ds f ldConst ld-nl using (image-at)
@@ -189,6 +189,94 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → pc ≡ trPos (ktr1 ds′ b γ) p 1 → Seg image pc (t1L3 p)
     t1-seg1 {ds′ = ds′} {b} {γ} p {pc} e =
       Seg-++ˡ image pc (t1L3 p) _ (subst (λ z → Seg image z (trAt (idx p) (ktr1 ds′ b γ) 1)) (sym e) (in-seg (image-tr (ktr1 ds′ b γ) p 1)))
+
+  -- ★ an observation's trampoline's code, by its parts (D421)
+  tOM : LF → LTy → ℕ
+  tOM F S = wsz (cty (F , S)) ⊔ wsz (LF∙ F (Nu F))
+
+  private
+    tOCELL : LF → LTy → AbstractTrace
+    tOCELL F S = mvPS hdr (tOM F S ∸ wsz (cty (F , S))) (wsz (cty (F , S))) ++ restore-input (tOM F S) ∷ instr-free-heap (hdr + wsz (cty (F , S))) ∷ []
+
+    tON : LF → LTy → ℕ
+    tON F S = Once.LinCore.Moves.ln {FS} (wsz (cty (F , S))) + (1 + 1)
+
+    tO-cell-len : ∀ F S → length (tOCELL F S) ≡ tON F S
+    tO-cell-len F S =
+      trans (length-++ (mvPS hdr (tOM F S ∸ wsz (cty (F , S))) (wsz (cty (F , S)))))
+        (cong (_+ 2) (len-mvPS hdr (tOM F S ∸ wsz (cty (F , S))) (wsz (cty (F , S)))))
+
+    tOP0 : ∀ {Γ′} {ds′ : Defs Γ′} {F S} → under (ktro ds′ F S) ∈ allK U → AbstractTrace
+    tOP0 {F = F} {S} p =
+      instr-ctrl (c-entry (e-thunk (tl (idx p))) (suc (suc (tOM F S)))) ∷ store-at-slot (suc (tOM F S)) ∷ mov-to-output
+      ∷ store-at-slot (tOM F S) ∷ []
+
+    tOQ : ∀ {Γ′} {ds′ : Defs Γ′} {F S} → under (ktro ds′ F S) ∈ allK U → AbstractTrace
+    tOQ {ds′ = ds′} {F} {S} p =
+      proj₁ (in-trans (image-at p) (in-r (lowBlock (idx p) (kobs ds′ F S) (blocks-in p)) (tramp (idx p) (kobs ds′ F S))))
+
+    tOL3 : ∀ {Γ′} {ds′ : Defs Γ′} {F S} → under (ktro ds′ F S) ∈ allK U → AbstractTrace
+    tOL3 p = lea-slot 0 ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf (idx p))) ∷ []
+
+    -- a code with a tail of two, as the code then the tail
+    tail-split2 : ∀ (A : AbstractTrace) c₂ c₃ (K : AbstractTrace) → A ++ (c₂ ∷ c₃ ∷ K) ≡ (A ++ (c₂ ∷ c₃ ∷ [])) ++ K
+    tail-split2 A c₂ c₃ K = sym (++-assoc A (c₂ ∷ c₃ ∷ []) K)
+
+  -- the addresses after the cell part, after the inner call
+  tO-pos₁ : ∀ {Γ′} {ds′ : Defs Γ′} {F S} (p : under (ktro ds′ F S) ∈ allK U)
+          → trPos (ktro ds′ F S) p 1 ≡ tON F S + trPos (ktro ds′ F S) p 0
+  tO-pos₁ {ds′ = ds′} {F} {S} p =
+    trans (pre-len (tOQ p) (tOP0 p) (tOCELL F S))
+      (trans (cong (trPos (ktro ds′ F S) p 0 +_) (tO-cell-len F S)) (Data.Nat.Properties.+-comm (trPos (ktro ds′ F S) p 0) (tON F S)))
+
+  tO-pos₂ : ∀ {Γ′} {ds′ : Defs Γ′} {F S} (p : under (ktro ds′ F S) ∈ allK U)
+          → trPos (ktro ds′ F S) p 2 ≡ suc (suc (suc (trPos (ktro ds′ F S) p 1)))
+  tO-pos₂ {ds′ = ds′} {F} {S} p =
+    trans (pre-len (tOQ p) (tOP0 p ++ tOCELL F S) (tOL3 p)) (Data.Nat.Properties.+-comm (trPos (ktro ds′ F S) p 1) 3)
+
+  private
+    -- the cell part's code, and the inner call's, at their addresses
+    tO-seg0 : ∀ {Γ′} {ds′ : Defs Γ′} {F S} (p : under (ktro ds′ F S) ∈ allK U) {pc}
+            → pc ≡ trPos (ktro ds′ F S) p 0 → Seg image pc (tOCELL F S)
+    tO-seg0 {ds′ = ds′} {F} {S} p {pc} e =
+      Seg-++ˡ image pc (tOCELL F S) _
+        (subst (Seg image pc) (tail-split2 (mvPS hdr (tOM F S ∸ wsz (cty (F , S))) (wsz (cty (F , S)))) _ _ _)
+          (subst (λ z → Seg image z (trAt (idx p) (ktro ds′ F S) 0)) (sym e) (in-seg (image-tr (ktro ds′ F S) p 0))))
+
+    tO-seg1 : ∀ {Γ′} {ds′ : Defs Γ′} {F S} (p : under (ktro ds′ F S) ∈ allK U) {pc}
+            → pc ≡ trPos (ktro ds′ F S) p 1 → Seg image pc (tOL3 p)
+    tO-seg1 {ds′ = ds′} {F} {S} p {pc} e =
+      Seg-++ˡ image pc (tOL3 p) _ (subst (λ z → Seg image z (trAt (idx p) (ktro ds′ F S) 1)) (sym e) (in-seg (image-tr (ktro ds′ F S) p 1)))
+
+    tO-area : ∀ F S → (tOM F S ∸ wsz (cty (F , S))) + 0 ≡ tOM F S ∸ (wsz (cty (F , S)) + 0)
+    tO-area F S = trans (Data.Nat.Properties.+-identityʳ (tOM F S ∸ wsz (cty (F , S))))
+                    (cong (tOM F S ∸_) (sym (Data.Nat.Properties.+-identityʳ (wsz (cty (F , S))))))
+
+  -- ★ an observation's cell part (`nopen`): the coalgebra and seed into the frame, the cell freed
+  to-open : ∀ {Γ′} {ds′ : Defs Γ′} {F S} (p : under (ktro ds′ F S) ∈ allK U) {i} {x : MV (cty (F , S))} {fs}
+          → TrO0 (tOM F S) (trPos (ktro ds′ F S) p 0) i x fs
+          → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
+              × HereF (frame 0 (tOM F S)) (trPos (ktro ds′ F S) p 1) ([]ᵉ ∥ x ∷ˢ []ˢ) fs′
+              × Ran N 0 (AllocState.next-heap-ref (falloc fs)) (tOM F S) fs fs′
+  to-open {F = F} {S} p {i} {x} {fs} T =
+    case open0-sim image fs (tOM F S) hdr (hdr + wsz (cty (F , S))) i (TrO0.o-wx T)
+           (Data.Nat.Properties.m≤m⊔n (wsz (cty (F , S))) (wsz (LF∙ F (Nu F)))) (TrO0.o-in T) (TrO0.o-M T)
+           (TrO0.o-x T) (TrO0.o-at T) (tO-seg0 p (TrO0.o-pc T)) (TrO0.o-run T) of λ where
+      (fs′ , run , C′ , Rn) →
+        tON F S , fs′ , run ,
+        record { f-pc = trans (r-pc Rn) (trans (cong (tON F S +_) (TrO0.o-pc T)) (sym (tO-pos₁ p)))
+               ; f-run = trans (k-halt (r-keep Rn)) (TrO0.o-run T) ; f-cfg = C′ } ,
+        Rn
+
+  -- ★ its inner call: the observation's block, the area at the frame's bottom
+  to-call : ∀ {Γ′} {ds′ : Defs Γ′} {F S} (p : under (ktro ds′ F S) ∈ allK U) {es : Slots []} {v : MV (cty (F , S))} {os : Stk []} {fs}
+          → HereF (frame 0 (tOM F S)) (trPos (ktro ds′ F S) p 1) (es ∥ v ∷ˢ os) fs
+          → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
+              × K.Here p whole ([]ᵉ ∥ v ∷ˢ []ˢ) fs′
+              × Called fs fs′ (suc (suc (suc (fpc fs)))) (fbudget (frameOf (blockᴵ (kobs ds′ F S))))
+                       (sv₁ (frameOf (blockᴵ (kobs ds′ F S)))) 0
+  to-call {F = F} {S} p H =
+    call-core p (frame 0 (tOM F S)) 0 (tO-seg1 p (HereF.f-pc H)) (HereF.f-run H) (HereF.f-cfg H) (tO-area F S)
 
   -- ★ the cell part: the contents and the argument into the frame, the cell freed
   tr-open1 : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b}
@@ -359,6 +447,35 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       seg = subst (λ z → Seg image (fpc fs) (restore-input (suc M) ∷ mvSP (M ∸ z) (Mc ∸ wsz B) (wsz B) ++ instr-ctrl (c-ret (suc (suc M))) ∷ []))
               (sym (Data.Nat.Properties.+-identityʳ (wsz B)))
               (subst (λ z → Seg image z E) (sym (HereF.f-pc H)) (in-seg (image-tr (ktr1 ds′ b γ) p 2)))
+
+  -- ★ an observation's trampoline's way out: the layer into the caller's area
+  to-end : ∀ {Γ′} {ds′ : Defs Γ′} {F S} (p : under (ktro ds′ F S) ∈ allK U) {w : MV (LF∙ F (Nu F))} {fs} (φ : Frame)
+             {Es S″} {es : Slots Es} {os : Stk S″}
+             (cfc : FrameSemantics.Frame FS) (pc : ℕ) (rest : List ℕ) (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ)
+         → HereF (frame 0 (tOM F S)) (trPos (ktro ds′ F S) p 2) ([]ᵉ ∥ w ∷ˢ []ˢ) fs
+         → fret fs ≡ pc ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+         → ¬ cfc ≡ AllocState.current-frame (falloc fs)
+         → slot fs (suc (tOM F S)) ≡ just (SV-Ptr (AtStack cfc ((budget φ ∸ ws S″) ∸ (1 ⊔ wsz (LF∙ F (Nu F))))))
+         → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
+         → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) φ os
+         → (1 ⊔ wsz (LF∙ F (Nu F))) + ws S″ ≤ OP φ → ws Es ≤ EP φ → ws (LF∙ F (Nu F) ∷ S″) ≤ OP φ
+         → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
+             × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ (es ∥ w ∷ˢ os)
+             × CallOut fs fs′ cfc ((budget φ ∸ ws S″) ∸ (1 ⊔ wsz (LF∙ F (Nu F)))) (tOM F S ∸ ws (LF∙ F (Nu F) ∷ []))
+                       ((1 ⊔ wsz (LF∙ F (Nu F))) ∸ wsz (LF∙ F (Nu F))) (wsz (LF∙ F (Nu F))) pc rest sv sl
+             × (∀ x → budget φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
+  to-end {ds′ = ds′} {F} {S} p {w} {fs} φ cfc pc rest sv sl H hret hsv ne ep ev st fitM fitE fitB =
+    tr-end′ M Mc φ cfc pc rest sv sl (Data.Nat.Properties.m≤n⊔m 1 wL) seg (HereF.f-run H) (HereF.f-cfg H)
+      hret hsv ne ep ev st fitM fitE fitB
+    where
+      import Data.Nat.Properties
+      wL = wsz (LF∙ F (Nu F))
+      M = tOM F S ; Mc = 1 ⊔ wL
+      E = restore-input (suc M) ∷ mvSP (M ∸ wL) (Mc ∸ wL) wL ++ instr-ctrl (c-ret (suc (suc M))) ∷ []
+      seg : Seg image (fpc fs) (restore-input (suc M) ∷ mvSP (M ∸ ws (LF∙ F (Nu F) ∷ [])) (Mc ∸ wL) wL ++ instr-ctrl (c-ret (suc (suc M))) ∷ [])
+      seg = subst (λ z → Seg image (fpc fs) (restore-input (suc M) ∷ mvSP (M ∸ z) (Mc ∸ wL) wL ++ instr-ctrl (c-ret (suc (suc M))) ∷ []))
+              (sym (Data.Nat.Properties.+-identityʳ wL))
+              (subst (λ z → Seg image z E) (sym (HereF.f-pc H)) (in-seg (image-tr (ktro ds′ F S) p 2)))
 
   -- ★ the dispatch: a one-shot closure applied, through its cell's code word
   open import Once.LinCore.LowerSimG {FS} using (ClosIn; closure-in)
