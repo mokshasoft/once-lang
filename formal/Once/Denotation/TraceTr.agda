@@ -17,7 +17,9 @@
 -- meaning and the compiled program's are compared.
 ------------------------------------------------------------------------
 
-module Once.Denotation.TraceTr where
+open import Once.Spec.Numerics using (TargetNum; module TargetNum)
+
+module Once.Denotation.TraceTr (tn : TargetNum) where
 
 open import Data.List using (List; []; _∷_; _++_; [_]; map)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -57,10 +59,10 @@ module _ (ι : Interp) where
   δ∞ : ∀ {X} → Conf X → Step (Conf X)
   δ∞ (h , ret (inj₁ x)) = stop [] (returned tt)
   δ∞ (h , ret (inj₂ m)) = silent (h , force m)
-  δ∞ (h , halt o a)     = stop [ toEvent (haltEvent o a) ] halted
+  δ∞ (h , halt o a)     = stop [ toEvent (TargetNum.float-format tn) (haltEvent o a) ] halted
   δ∞ (h , call o a k)   = answer h o a k (callAnswer ι h o a)
-  answer h o a k (just b) = emit [ toEvent (callEvent o a) ] (h ++ [ callEvent o a ] , k b)
-  answer h o a k nothing  = stop [ toEvent (haltEvent unlinkedOp tt) ] halted
+  answer h o a k (just b) = emit [ toEvent (TargetNum.float-format tn) (callEvent o a) ] (h ++ [ callEvent o a ] , k b)
+  answer h o a k nothing  = stop [ toEvent (TargetNum.float-format tn) (haltEvent unlinkedOp tt) ] halted
 
   -- The trace of a computation, from the calls made before it.
   trT∞ : ∀ {X} → List SigOpEvent → T∞ X → Tr ⊤
@@ -68,7 +70,7 @@ module _ (ι : Interp) where
 
   -- The trace of a finite run: its calls, then how it ended.
   runTr : ∀ {X} → List SigOpEvent → T X → Tr ⊤
-  runTr h t = listTr (map toEvent (proj₁ (run ι h t))) (endOf (proj₂ (run ι h t)))
+  runTr h t = listTr (map (toEvent (TargetNum.float-format tn)) (proj₁ (run ι h t))) (endOf (proj₂ (run ι h t)))
 
   module _ {X Y : Set} {R : X → Y → Set} where
     open Machine (δ∞ {X}) using (Reaches; r-silent; r-emit; r-stop; reaches-≈)
@@ -76,11 +78,11 @@ module _ (ι : Interp) where
     private
       reachC : ∀ h o a {k : V.⟦ ccod o ⟧ → T (X ⊎ T∞ X)} {k′ : V.⟦ ccod o ⟧ → T Y} (r : Maybe V.⟦ ccod o ⟧)
              → δ∞ (h , call o a k) ≡ answer h o a k r → (∀ b → RelB R (k b) (k′ b))
-             → Reaches (h , call o a k) (map toEvent (proj₁ (run-call ι h o a k′ r))) (endOf (proj₂ (run-call ι h o a k′ r)))
+             → Reaches (h , call o a k) (map (toEvent (TargetNum.float-format tn)) (proj₁ (run-call ι h o a k′ r))) (endOf (proj₂ (run-call ι h o a k′ r)))
 
     -- A block related to a finite tree reaches the finite run's end, after its calls.
     RelB-reaches : ∀ h {l : T (X ⊎ T∞ X)} {t : T Y} → RelB R l t
-                 → Reaches (h , l) (map toEvent (proj₁ (run ι h t))) (endOf (proj₂ (run ι h t)))
+                 → Reaches (h , l) (map (toEvent (TargetNum.float-format tn)) (proj₁ (run ι h t))) (endOf (proj₂ (run ι h t)))
     RelB-reaches h (b-ret _)  = r-stop refl
     RelB-reaches h (b-tau r)  = r-silent refl (RelB-reaches h r)
     RelB-reaches h b-halt     = r-stop refl
@@ -107,7 +109,7 @@ open import Once.Denotation.Approx using (Ap; done; cut; approx; approxBlock; en
 open import Once.Adequacy.FuelTrace using (Obs; module Fuel)
 
 obsAp : ∀ {X} → Run (Ap X) → Obs
-obsAp ρ = map toEvent (proj₁ ρ) , endAp (proj₂ ρ)
+obsAp ρ = map (toEvent (TargetNum.float-format tn)) (proj₁ ρ) , endAp (proj₂ ρ)
 
 module _ (ι : Interp) {X : Set} where
   open Fuel (δ∞ ι {X}) using (runN)
@@ -125,7 +127,7 @@ module _ (ι : Interp) {X : Set} where
   approx-runB k       h (call o a c) with approx-call k h o a c (callAnswer ι h o a)
   ... | n , e , le = suc n , e , le
   approx-call k h o a c (just b) with approx-runB k (h ++ [ callEvent o a ]) (c b)
-  ... | n , e , le = n , cong (λ ob → toEvent (callEvent o a) ∷ proj₁ ob , proj₂ ob) e , λ q → m≤n⇒m≤1+n (le q)
+  ... | n , e , le = n , cong (λ ob → toEvent (TargetNum.float-format tn) (callEvent o a) ∷ proj₁ ob , proj₂ ob) e , λ q → m≤n⇒m≤1+n (le q)
   approx-call k h o a c nothing  = 0 , refl , λ ()
 
   approx-run : ∀ (k : ℕ) h (m : T∞ X)
@@ -156,7 +158,7 @@ module _ (ι : Interp) {X Y : Set} {R : X → Y → Set} where
   RelSB-runN (suc n) h (s-next r) = RelSB-runN n h (forceS r)
   RelSB-runN (suc n) h (s-call {o = o} {a = a} f) = RelSB-ans n h o a f (callAnswer ι h o a)
   RelSB-runN (suc n) h s-halt     = refl
-  RelSB-ans n h o a f (just v) = cong (λ ob → toEvent (callEvent o a) ∷ proj₁ ob , proj₂ ob) (RelSB-runN n (h ++ [ callEvent o a ]) (f v))
+  RelSB-ans n h o a f (just v) = cong (λ ob → toEvent (TargetNum.float-format tn) (callEvent o a) ∷ proj₁ ob , proj₂ ob) (RelSB-runN n (h ++ [ callEvent o a ]) (f v))
   RelSB-ans n h o a f nothing  = refl
 
   RelS-tr : ∀ h {m : T∞ X} {m′ : T∞ Y} → RelS R m m′ → trT∞ ι h m ≈ᵗ⟨ _≡_ ⟩ trT∞ ι h m′

@@ -245,5 +245,5 @@ module _ (fmt : TargetNum) (φ : FFIAnswers) where
 
 -- D320 / plan 0.119 D5: the rewritten program has the same TRACE.
 rewrite-program-trace : ∀ (fmt : TargetNum) (ι : Interp) (p : IRProgram)
-                      → trT∞ ι [] (runIR fmt (pureHalf ι) (rewrite-program p)) ≈ᵗ⟨ _≡_ ⟩ trT∞ ι [] (runIR fmt (pureHalf ι) p)
-rewrite-program-trace fmt ι p = RelS-tr ι [] (program-rel fmt (pureHalf ι) p)
+                      → trT∞ fmt ι [] (runIR fmt (pureHalf ι) (rewrite-program p)) ≈ᵗ⟨ _≡_ ⟩ trT∞ fmt ι [] (runIR fmt (pureHalf ι) p)
+rewrite-program-trace fmt ι p = RelS-tr fmt ι [] (program-rel fmt (pureHalf ι) p)

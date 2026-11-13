@@ -18,7 +18,9 @@
 
 open import Once.Spec.Signature using (Signature)
 
-module Once.Adequacy.SpecObserve (Σ : Signature) where
+open import Once.Spec.Numerics using (TargetNum)
+
+module Once.Adequacy.SpecObserve (Σ : Signature) (fmt : TargetNum) where
 
 open import Data.Empty using (⊥-elim)
 import Data.Empty
@@ -34,6 +36,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Spec.Word using (Carrier)
 import Once.IR.Semantics.Value Carrier Carrier as V
 open import Once.IR.Semantics.Event using (SigOpEvent; toEvent)
+open import Once.Spec.Numerics using (module TargetNum)
+
+-- A machine event as the Spec's, its floats read at the target's format.
+ev : SigOpEvent → Once.Spec.Signature.Event
+ev = toEvent (TargetNum.float-format fmt)
 import Once.IR.Semantics.Trace as LTr
 import Once.IR.Semantics.Iterative as LI
 open import Once.Denotation.TraceTr using (trT∞; δ∞; Conf)
@@ -48,7 +55,7 @@ open Tr using (next)
 open _≈ᵗ⟨_⟩_ using (same)
 open import Once.Spec.Observation Σ using (World; module World; trace; blockD; after)
 import Once.Spec.Effect Σ as SE
-open import Once.Adequacy.SpecRun Σ
+open import Once.Adequacy.SpecRun Σ fmt
 open RunR using (forceR)
 
 ------------------------------------------------------------------------
@@ -63,11 +70,11 @@ record Agree (ι : LTr.Interp) (w : World) : Set where
              → NotEmpty (ans o)
                × (∀ p → notEmpty? (ans o) ≡ yes p
                   → Σ[ b ∈ V.⟦ LTr.CallOp.ccod o′ ⟧ ] (LTr.callAnswer ι h o′ a′ ≡ just b)
-                      × ansR c (World.answer w o (map toEvent h) a p) b)
+                      × ansR c (World.answer w o (map ev h) a p) b)
     -- and shows the same event
-    call-event : ∀ {o o′} (c : CallR o o′) {a a′} → argR c a a′ → toEvent (LTr.callEvent o′ a′) ≡ eventOf o a
+    call-event : ∀ {o o′} (c : CallR o o′) {a a′} → argR c a a′ → ev (LTr.callEvent o′ a′) ≡ eventOf o a
     -- a halt shows its call, and the Spec's call answers nothing
-    halt-event : ∀ {o o′} (h : HaltR o o′) {a a′} → hargR h a a′ → toEvent (LTr.haltEvent o′ a′) ≡ eventOf o a
+    halt-event : ∀ {o o′} (h : HaltR o o′) {a a′} → hargR h a a′ → ev (LTr.haltEvent o′ a′) ≡ eventOf o a
     halt-void  : ∀ {o o′} → HaltR o o′ → ¬ NotEmpty (ans o)
 
 ------------------------------------------------------------------------
@@ -133,27 +140,27 @@ bwd-later e k (laterLS r₁) x = bwd r₁ (λ q → k (later⇓ (sym e) q)) _ x
 module _ (ι : LTr.Interp) (w : World) (ag : Agree ι w) {X : Set} {R : ⊤ → X → Set} where
   open Agree ag
   private
-    module M = Machine (δ∞ ι {X})
+    module M = Machine (δ∞ fmt ι {X})
 
     haltLS : TLS (listTr [] halted) (record { next = now (inj₁ halted) })
     ls (tls haltLS) = nowEnd halted≈
 
-    hist : ∀ {h h′} (e : map toEvent h ≡ h′) (ce : SigOpEvent) {v} → toEvent ce ≡ v
-         → map toEvent (h ++ [ ce ]) ≡ h′ ++ [ v ]
-    hist {h} refl ce refl = map-++ toEvent h [ ce ]
+    hist : ∀ {h h′} (e : map ev h ≡ h′) (ce : SigOpEvent) {v} → ev ce ≡ v
+         → map ev (h ++ [ ce ]) ≡ h′ ++ [ v ]
+    hist {h} refl ce refl = map-++ ev h [ ce ]
 
     just-inj : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
     just-inj refl = refl
 
   -- (`b` the Spec's block, `b′` the implementation's)
-  blockLS : ∀ {h h′ b b′} → map toEvent h ≡ h′ → BlockR (SumR R (RunR R)) b b′
-          → LS (M.go (δ∞ ι (h , b′))) (blockD w h′ b)
-  callStep : ∀ {h h′ o o′ a a′ k k′} (c : CallR o o′) → map toEvent h ≡ h′ → (ra : argR c a a′)
+  blockLS : ∀ {h h′ b b′} → map ev h ≡ h′ → BlockR (SumR R (RunR R)) b b′
+          → LS (M.go (δ∞ fmt ι (h , b′))) (blockD w h′ b)
+  callStep : ∀ {h h′ o o′ a a′ k k′} (c : CallR o o′) → map ev h ≡ h′ → (ra : argR c a a′)
            → (∀ {b b′} → ansR c b b′ → BlockR (SumR R (RunR R)) (k b) (k′ b′))
            → ∀ mb → LTr.callAnswer ι h o′ a′ ≡ mb
-           → StepLS (step (M.go (TT.answer ι h o′ a′ k′ mb)))
+           → StepLS (step (M.go (TT.answer fmt ι h o′ a′ k′ mb)))
                     (inj₁ (inj₂ (eventOf o a , after w h′ o a k (notEmpty? (ans o)))))
-  afterR  : ∀ {h h′ o o′ a a′ k k′ b′} (c : CallR o o′) → map toEvent h ≡ h′ → argR c a a′
+  afterR  : ∀ {h h′ o o′ a a′ k k′ b′} (c : CallR o o′) → map ev h ≡ h′ → argR c a a′
           → (∀ {b b′} → ansR c b b′ → BlockR (SumR R (RunR R)) (k b) (k′ b′))
           → NotEmpty (ans o) → (∀ p → notEmpty? (ans o) ≡ yes p → ansR c (World.answer w o h′ a p) b′)
           → ∀ dec → notEmpty? (ans o) ≡ dec → TLS (M.tr [] (h ++ [ LTr.callEvent o′ a′ ] , k′ b′)) (after w h′ o a k dec)
@@ -179,7 +186,7 @@ module _ (ι : LTr.Interp) (w : World) (ag : Agree ι w) {X : Set} {R : ⊤ → 
       just≢nothing : ∀ {A : Set} {x : A} → just x ≡ nothing → Data.Empty.⊥
       just≢nothing ()
       no-answer : ∀ dec → notEmpty? (ans o) ≡ dec
-                → StepLS (step (M.go (TT.answer ι h o′ a′ kk′ nothing)))
+                → StepLS (step (M.go (TT.answer fmt ι h o′ a′ kk′ nothing)))
                          (inj₁ (inj₂ (eventOf o a , after w h′ o a kk (notEmpty? (ans o)))))
       no-answer (yes p) d = ⊥-elim (just≢nothing (trans (sym (proj₁ (proj₂ (proj₂ (answered c ra h) p d)))) q))
       no-answer (no ¬p) d = ⊥-elim (¬p (proj₁ (answered c ra h)))
@@ -190,9 +197,9 @@ module _ (ι : LTr.Interp) (w : World) (ag : Agree ι w) {X : Set} {R : ⊤ → 
   haltR hh ra (yes p) = ⊥-elim (halt-void hh p)
   tls (haltR hh ra (no _)) = tls haltLS
 
-  observeLS : ∀ {h m m′} → RunR R m m′ → TLS (trT∞ ι h m′) (trace w (map toEvent h) m)
+  observeLS : ∀ {h m m′} → RunR R m m′ → TLS (trT∞ fmt ι h m′) (trace w (map ev h) m)
   tls (observeLS r) = blockLS refl (forceR r)
 
   -- Related computations have the same trace.
-  observe-R : ∀ {h m m′} → RunR R m m′ → trT∞ ι h m′ ≈ᵗ⟨ _≡_ ⟩ trace w (map toEvent h) m
+  observe-R : ∀ {h m m′} → RunR R m m′ → trT∞ fmt ι h m′ ≈ᵗ⟨ _≡_ ⟩ trace w (map ev h) m
   observe-R r = TLS⇒≈ (observeLS r)

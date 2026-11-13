@@ -129,7 +129,7 @@ open import Once.IR.Semantics.Trace using (FFIAnswers)
 σ₀ = noVars
 
 open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ)
-open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGM; GM-D; RelGM-wk₀)
+open import Once.Adequacy.GradedRelation Σ σ₀ fmt using (RelGM; GM-D; RelGM-wk₀)
 open import Once.IR.Semantics.Iterative using (T∞)
 open import Once.Denotation.TraceMonadInfLaws using (RelS)
 open import Once.Denotation.ValueRel using (RelD)

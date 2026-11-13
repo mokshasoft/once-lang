@@ -22,7 +22,11 @@ open import Once.Spec.Signature using (Signature)
 
 open import Once.Spec.Type using (TySub)
 
-module Once.Adequacy.GradedRelation (Σ : Signature) (σ : TySub 0 0) where
+open import Once.Spec.Numerics using (TargetNum; module TargetNum)
+
+open import Once.Spec.Float.Encoding using (decode)
+
+module Once.Adequacy.GradedRelation (Σ : Signature) (σ : TySub 0 0) (fmt : TargetNum) where
 
 open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.Sum using (inj₁; inj₂)
@@ -55,7 +59,7 @@ import Once.Spec.Domain Σ as SD
 open import Once.Type.Core using (wk₀)
 open import Once.Weaken using (wk₀-id; ⟦wk₀⟧ᴰ)
 open import Once.Denotation.SpecDomain Σ σ using (⟦wk₀⟧ᵛ)
-open import Once.Adequacy.SpecRun Σ
+open import Once.Adequacy.SpecRun Σ fmt
   using (RunR; BlockR; ret; call; halt; SumR; left; right; return∞-R; bind∞-R; embed-R; embed-bind-R; bindT-R; mapT-R; BlockR-mono; RunR-mono; CallR; cr)
 open RunR using (forceR)
 import Once.Adequacy.SpecInterp as SI
@@ -69,7 +73,7 @@ BR : (A : Type) → SD.⟦ A ⟨ σ ⟩ ⟧ᵛ → ⟦ Carrier , Carrier ⟧-bas
 BR Unit    _ _ = ⊤
 BR Void    () _
 BR Int     x y = x ≡ y
-BR Float   x y = x ≡ y
+BR Float   x y = x ≡ decode (TargetNum.float-format fmt) y     -- a word means its value
 BR (A * B) (x , x′) (y , y′) = BR A x y × BR B x′ y′
 BR (A + B) (inj₁ x) (inj₁ y) = BR A x y
 BR (A + B) (inj₂ x) (inj₂ y) = BR B x y
@@ -132,7 +136,7 @@ RelGT A t₁ t₂ = RelGM act A t₁ t₂
 RelGV Unit        _ _ = ⊤
 RelGV Void        () _
 RelGV Int         x y = x ≡ y
-RelGV Float       x y = x ≡ y
+RelGV Float       x y = x ≡ decode (TargetNum.float-format fmt) y
 RelGV (μ F)       x y = μR F x y
 RelGV (ν F pureᶠ) x y = x ∼ᵖᵈ y
 RelGV (ν F actᶠ)  x y = x ∼ᵈ y
@@ -315,7 +319,7 @@ module _ {F : Fun 0} where
   forceS (pd-run r) = pd-block (forceR r)
   pd-block (ret (left r))  = s-ret (pd-layer F r)
   pd-block (ret (right r)) = s-next (pd-run r)
-  pd-block (call (cr {b = b} m ne) a k) = s-call (λ x → pd-block (k (sym (SI.fromB-toB b x))))
+  pd-block (call (cr {b = b} m ne) a k) = s-call (λ x → pd-block (k (SI.fromB-toB fmt b x)))
   pd-block (halt x a)      = s-halt
   pd-layer (K A)     e = refl
   pd-layer Id        r = pd-self r
@@ -331,7 +335,7 @@ module _ {F : Fun 0} where
   forceS (ad-run r) = ad-block (forceR r)
   ad-block (ret (left r))  = s-ret (ad-layer F r)
   ad-block (ret (right r)) = s-next (ad-run r)
-  ad-block (call (cr {b = b} m ne) a k) = s-call (λ x → ad-block (k (sym (SI.fromB-toB b x))))
+  ad-block (call (cr {b = b} m ne) a k) = s-call (λ x → ad-block (k (SI.fromB-toB fmt b x)))
   ad-block (halt x a)      = s-halt
   ad-layer (K A)     e = refl
   ad-layer Id        r = ad-self r
@@ -399,7 +403,7 @@ mutual
   GV-D Unit r d = tt
   GV-D Void {()}
   GV-D Int r d = trans r (sym d)
-  GV-D Float r d = trans r (sym d)
+  GV-D Float r d = trans r (cong (decode (TargetNum.float-format fmt)) (sym d))
   GV-D (μ F) {c} r d = subst (μR F c) (sym d) r
   GV-D (ν F pureᶠ) r d = pd-D r d
   GV-D (ν F actᶠ) r d = ad-D r d

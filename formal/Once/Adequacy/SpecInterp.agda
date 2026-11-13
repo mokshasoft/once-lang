@@ -27,13 +27,18 @@ open import Data.List using (List; []; _∷_; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Product using (_×_; _,_)
-open import Once.Spec.Numerics using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum; module TargetNum)
+open TargetNum using (float-format)
+open import Once.Spec.Float.Value using (fitV)
+open import Once.Spec.Float.Encoding using (encode; decode)
+import Once.Float.Word as FW
+open import Once.Float.EncodingLaws using (decode-encode; fitV-inRange; fitV-idem)
 open import Once.Spec.Boundary using (readAt)
 open import Once.IR.Semantics.Boundary using (atTarget)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; cong; cong₂)
 open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Spec.Word using (Carrier)
@@ -71,51 +76,73 @@ qL SG.Many = G.Many
 declTy : DeclType → T.Type
 declTy = S.⌜_⌝ᵈ
 
-toB : ∀ b → M.⟦ ⌞ b ⌟ ⟧ → S.⟦ b ⟧ᵇ
-fromB : ∀ b → S.⟦ b ⟧ᵇ → M.⟦ ⌞ b ⌟ ⟧
-toB S.unit  v = v
-toB S.void  v = v
-toB S.int   v = v
-toB S.float v = v
-toB (a S.* b) (x , y) = toB a x , toB b y
-toB (a S.+ b) (inj₁ x) = inj₁ (toB a x)
-toB (a S.+ b) (inj₂ y) = inj₂ (toB b y)
-fromB S.unit  v = v
-fromB S.void  v = v
-fromB S.int   v = v
-fromB S.float v = v
-fromB (a S.* b) (x , y) = fromB a x , fromB b y
-fromB (a S.+ b) (inj₁ x) = inj₁ (fromB a x)
-fromB (a S.+ b) (inj₂ y) = inj₂ (fromB b y)
+-- The base conversions, at a target: a `Float` crosses as its value
+-- (`decode`) one way and as the encoding of the value read at the format
+-- (`encode ∘ fitV`, plan 0.150 R2) the other; the rest is the identity.
+toB : TargetNum → ∀ b → M.⟦ ⌞ b ⌟ ⟧ → S.⟦ b ⟧ᵇ
+fromB : TargetNum → ∀ b → S.⟦ b ⟧ᵇ → M.⟦ ⌞ b ⌟ ⟧
+toB tn S.unit  v = v
+toB tn S.void  v = v
+toB tn S.int   v = v
+toB tn S.float v = decode (float-format tn) v
+toB tn (a S.* b) (x , y) = toB tn a x , toB tn b y
+toB tn (a S.+ b) (inj₁ x) = inj₁ (toB tn a x)
+toB tn (a S.+ b) (inj₂ y) = inj₂ (toB tn b y)
+fromB tn S.unit  v = v
+fromB tn S.void  v = v
+fromB tn S.int   v = v
+fromB tn S.float v = encode (float-format tn) (fitV (float-format tn) v)
+fromB tn (a S.* b) (x , y) = fromB tn a x , fromB tn b y
+fromB tn (a S.+ b) (inj₁ x) = inj₁ (fromB tn a x)
+fromB tn (a S.+ b) (inj₂ y) = inj₂ (fromB tn b y)
 
--- The two are inverse.
-fromB-toB : ∀ b x → fromB b (toB b x) ≡ x
-fromB-toB S.unit  x = refl
-fromB-toB S.void  x = refl
-fromB-toB S.int   x = refl
-fromB-toB S.float x = refl
-fromB-toB (a S.* b) (x , y) = cong₂ _,_ (fromB-toB a x) (fromB-toB b y)
-fromB-toB (a S.+ b) (inj₁ x) = cong inj₁ (fromB-toB a x)
-fromB-toB (a S.+ b) (inj₂ y) = cong inj₂ (fromB-toB b y)
+-- | A machine value with its floats read at the format (`Float.Word.fit`):
+-- what a `Float` word means, as a word.
+canonB : TargetNum → ∀ b → M.⟦ ⌞ b ⌟ ⟧ → M.⟦ ⌞ b ⌟ ⟧
+canonB tn S.unit  v = v
+canonB tn S.void  v = v
+canonB tn S.int   v = v
+canonB tn S.float v = FW.fit (float-format tn) v
+canonB tn (a S.* b) (x , y) = canonB tn a x , canonB tn b y
+canonB tn (a S.+ b) (inj₁ x) = inj₁ (canonB tn a x)
+canonB tn (a S.+ b) (inj₂ y) = inj₂ (canonB tn b y)
 
--- D397: reading a world value at the target commutes with taking it in — the
--- implementation's `atTarget` is the Spec's `readAt`, leaf by leaf.
-fromB-at : ∀ (tn : TargetNum) b (v : S.⟦ b ⟧ᵇ) → atTarget tn ⌞ b ⌟ (fromB b v) ≡ fromB b (readAt tn b v)
+-- | A machine value, read and written back, is its canonical form.
+fromB-toB : ∀ tn b x → canonB tn b x ≡ fromB tn b (toB tn b x)
+fromB-toB tn S.unit  x = refl
+fromB-toB tn S.void  x = refl
+fromB-toB tn S.int   x = refl
+fromB-toB tn S.float x = refl
+fromB-toB tn (a S.* b) (x , y) = cong₂ _,_ (fromB-toB tn a x) (fromB-toB tn b y)
+fromB-toB tn (a S.+ b) (inj₁ x) = cong inj₁ (fromB-toB tn a x)
+fromB-toB tn (a S.+ b) (inj₂ y) = cong inj₂ (fromB-toB tn b y)
+
+private
+  -- A value read at the format is one, so its encoding decodes back to it.
+  fit-enc : ∀ F v → FW.fit F (encode F (fitV F v)) ≡ encode F (fitV F (fitV F v))
+  fit-enc F v = cong (λ u → encode F (fitV F u)) (decode-encode F (fitV F v) (fitV-inRange F v))
+
+-- | A written value is canonical.
+canonB-fromB : ∀ tn b y → canonB tn b (fromB tn b y) ≡ fromB tn b y
+canonB-fromB tn S.unit  y = refl
+canonB-fromB tn S.void  y = refl
+canonB-fromB tn S.int   y = refl
+canonB-fromB tn S.float y = trans (fit-enc F y) (cong (encode F) (fitV-idem F y))
+  where F = float-format tn
+canonB-fromB tn (a S.* b) (x , y) = cong₂ _,_ (canonB-fromB tn a x) (canonB-fromB tn b y)
+canonB-fromB tn (a S.+ b) (inj₁ x) = cong inj₁ (canonB-fromB tn a x)
+canonB-fromB tn (a S.+ b) (inj₂ y) = cong inj₂ (canonB-fromB tn b y)
+
+-- | The implementation's `atTarget` is the Spec's `readAt`, leaf by leaf.
+fromB-at : ∀ (tn : TargetNum) b (v : S.⟦ b ⟧ᵇ) → atTarget tn ⌞ b ⌟ (fromB tn b v) ≡ fromB tn b (readAt tn b v)
 fromB-at tn S.unit  v = refl
 fromB-at tn S.void  v = refl
 fromB-at tn S.int   v = refl
-fromB-at tn S.float v = refl
+fromB-at tn S.float v = fit-enc (float-format tn) v
 fromB-at tn (a S.* b) (x , y)  = cong₂ _,_ (fromB-at tn a x) (fromB-at tn b y)
 fromB-at tn (a S.+ b) (inj₁ x) = cong inj₁ (fromB-at tn a x)
 fromB-at tn (a S.+ b) (inj₂ y) = cong inj₂ (fromB-at tn b y)
 
-------------------------------------------------------------------------
--- The contract a declaration owes
-------------------------------------------------------------------------
-
--- What `contractOf` makes of a declaration: a constant and a pure function are
--- values (an erased argument read as `Unit`, D143); an operation answers, or
--- owes nothing when its answer type is `Unit` (it emits) or `Void` (it halts).
 data DeclContract (s : String) : DeclType → Contract → Set where
   dc-const     : ∀ {b} → DeclContract s (constant b) (C.value (key s T.Unit ⌞ b ⌟))
   dc-value     : ∀ {a q b} → DeclContract s (S.value a q b) (C.value (key s ⌞ argAt q a ⌟ ⌞ b ⌟))
@@ -158,7 +185,7 @@ answer-inhabited (inj₂ (inj₂ (ne , _)))    ¬v ¬u = ne
 -- The implementation
 ------------------------------------------------------------------------
 
-module _ (Σ : Signature) (J : Obs.Interp Σ) where
+module _ (tn : TargetNum) (Σ : Signature) (J : Obs.Interp Σ) where
   open Obs Σ using (Model; World; module Model; module World)
   open Obs.Interp J using (model; world)
   open Model model using (constantᵐ; valueᵐ)
@@ -172,8 +199,8 @@ module _ (Σ : Signature) (J : Obs.Interp Σ) where
            → (k : Key) → k ∈ value-step ct (valueKeys (toISig Σ′)) → M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
   pureAt []              inj k ()
   pureAt ((c ∶ t) ∷ Σ′) inj k p = pureStep Σ′ inj (declContract (showCanonical c) t) k p
-  pureStep {t = constant b}    Σ′ inj dc-const     k (here refl) x = fromB b (constantᵐ (inj (here refl)))
-  pureStep {t = S.value a q b} Σ′ inj dc-value     k (here refl) x = fromB b (valueᵐ (inj (here refl)) (toB (argAt q a) x))
+  pureStep {t = constant b}    Σ′ inj dc-const     k (here refl) x = fromB tn b (constantᵐ (inj (here refl)))
+  pureStep {t = S.value a q b} Σ′ inj dc-value     k (here refl) x = fromB tn b (valueᵐ (inj (here refl)) (toB tn (argAt q a) x))
   pureStep Σ′ inj dc-const           k (there p) x = pureAt Σ′ (λ m → inj (there m)) k p x
   pureStep Σ′ inj dc-value           k (there p) x = pureAt Σ′ (λ m → inj (there m)) k p x
   pureStep Σ′ inj (dc-op-answer _ _) k p x         = pureAt Σ′ (λ m → inj (there m)) k p x
@@ -195,7 +222,7 @@ module _ (Σ : Signature) (J : Obs.Interp Σ) where
   answerAt []              inj wf       h k ()
   answerAt ((c ∶ t) ∷ Σ′) inj (w S.∷ wf) h k p = answerStep Σ′ inj w wf (declContract (showCanonical c) t) h k p
   answerStep {t = operation a q b} Σ′ inj w wf (dc-op-answer ¬v ¬u) h k (here refl) x =
-    fromB b (answerAt-dec (op (inj (here refl))) (map toEvent h) (toB (argAt q a) x) (S.notEmpty? b)
+    fromB tn b (answerAt-dec (op (inj (here refl))) (map (toEvent (float-format tn)) h) (toB tn (argAt q a) x) (S.notEmpty? b)
                           (answer-inhabited {a = a} {q = q} w ¬v ¬u))
   answerStep Σ′ inj w wf (dc-op-answer _ _) h k (there p) x = answerAt Σ′ (λ m → inj (there m)) wf h k p x
   answerStep Σ′ inj w wf dc-const           h k p x = answerAt Σ′ (λ m → inj (there m)) wf h k p x
@@ -210,8 +237,8 @@ module _ (Σ : Signature) (J : Obs.Interp Σ) where
     }
 
 -- The compiler's Interpretation of a well-formed Spec signature.
-toInterp : (Σ : Signature) → WellFormed Σ → Obs.Interp Σ → Interp
-toInterp Σ wf J = interp (toISig Σ) (toImpl Σ J wf)
+toInterp : TargetNum → (Σ : Signature) → WellFormed Σ → Obs.Interp Σ → Interp
+toInterp tn Σ wf J = interp (toISig Σ) (toImpl tn Σ J wf)
 
 ------------------------------------------------------------------------
 -- Well-formedness, decided

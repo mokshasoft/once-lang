@@ -48,7 +48,7 @@ open import Once.Type.Instance using (rigidOf; KindedInstance)
 open import Once.Adequacy.SpecFront.SchemaOf using (ki-of; ki-of-τ)
 open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ)
 import Once.Denotation.SourceDenote as SD
-open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGM)
+open import Once.Adequacy.GradedRelation Σ σ₀ fmt using (RelGM)
 open import Once.Adequacy.MeaningBridge fmt Σ σ₀ σ using (MRel; imprel-at; envrel-at; callSD)
 open DefsSem using (refs)
 open import Once.Denotation.RefMeanings Σ σ₀ using (Meanings)

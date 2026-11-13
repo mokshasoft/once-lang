@@ -118,12 +118,12 @@ import Data.List as L
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.Name using (showCanonical; WordName)
 import Once.Denotation.SourceDenote as SD
-open import Once.Adequacy.GradedRelation Σ σ₀
+open import Once.Adequacy.GradedRelation Σ σ₀ fmt
   using (RelGV; RelGT; RelGM; RelM; RelM-fmap; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret;
          RelGM-fmap; embνᵃ-∼; right-self; GM-D; RelGᵖ-app; RelGM-wk₀; LayerR; μR; inR; _∼ᵖᵈ_; _∼ᵈ_)
 open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
 open _∼ᵈ_ using (force-∼)
-open import Once.Adequacy.SpecRun Σ using (≡ʳ-R; retargetʳ-R; retargetˡ-R; fmapʳ-R; loop-iter-R; RunR; BlockR; ret; left; return∞-R)
+open import Once.Adequacy.SpecRun Σ fmt using (≡ʳ-R; retargetʳ-R; retargetˡ-R; fmapʳ-R; loop-iter-R; RunR; BlockR; ret; left; return∞-R)
 open RunR using (forceR)
 open import Once.Semantics.Machine using (coerce-ν-out)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-functor-D; forgetᵇ; injectᵇ)
@@ -139,7 +139,7 @@ open T∞ using (force)
 open import Once.Type.Core using (isVoid?; isUnit?; wk₀)
 import Once.Semantics.Machine as Val
 open import Once.Arith.SigOp.Builders using (arrow-info)
-open import Once.Adequacy.SpecRecursion Σ σ₀ using (cata-bridgeᵍ; ana-bridgeᵍ; toL-rel; outL-rel; fromL-rel)
+open import Once.Adequacy.SpecRecursion Σ σ₀ fmt using (cata-bridgeᵍ; ana-bridgeᵍ; toL-rel; outL-rel; fromL-rel)
 open import Once.Adequacy.OutErased fmt (calls σ) using (Out-ir; liftFn-Out)
 
 ------------------------------------------------------------------------

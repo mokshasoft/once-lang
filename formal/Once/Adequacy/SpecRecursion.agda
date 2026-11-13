@@ -20,7 +20,9 @@ open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Type using (b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗)
 open import Once.Spec.Type using (TySub)
 
-module Once.Adequacy.SpecRecursion (Σ : Signature) (σ : TySub 0 0) where
+open import Once.Spec.Numerics using (TargetNum)
+
+module Once.Adequacy.SpecRecursion (Σ : Signature) (σ : TySub 0 0) (fmt : TargetNum) where
 
 open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.Sum using (inj₁; inj₂)
@@ -48,12 +50,12 @@ import Once.Spec.Effect Σ as SE
 import Once.Spec.Domain Σ as SD
 import Once.Spec.Polynomial as SPoly
 open import Once.Denotation.SpecDomain Σ σ using (⟦_⟧ᵛ; M; cata-semᵛ; ana-semᵛ)
-open import Once.Adequacy.GradedRelation Σ σ
+open import Once.Adequacy.GradedRelation Σ σ fmt
   using (RelGV; RelGM; RelM; RelM-return; RelM-bind; RelM-fmap; BR; LayerR; μR; inR;
          _∼ᵖᵈ_; _∼ᵈ_)
 open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
 open _∼ᵈ_ using (force-∼)
-open import Once.Adequacy.SpecRun Σ using (fmapʳ-R; RunR; BlockR; ret; call; halt; SumR; left; right)
+open import Once.Adequacy.SpecRun Σ fmt using (fmapʳ-R; RunR; BlockR; ret; call; halt; SumR; left; right)
 open RunR using (forceR)
 
 ------------------------------------------------------------------------

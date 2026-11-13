@@ -637,5 +637,5 @@ module _ (fmt : TargetNum) (φ : FFIAnswers) where
 
 -- | Programs with related tables and the same `main` have the same TRACE.
 table-trace : ∀ (fmt : TargetNum) (ι : Interp) {t′ t} → TblRel fmt t′ t → (main : IR II.Unit II.Unit)
-            → trT∞ ι [] (runIR fmt (pureHalf ι) (irProgram t′ main)) ≈ᵗ⟨ _≡_ ⟩ trT∞ ι [] (runIR fmt (pureHalf ι) (irProgram t main))
-table-trace fmt ι tr main = RelS-tr ι [] (program-rel fmt (pureHalf ι) tr main)
+            → trT∞ fmt ι [] (runIR fmt (pureHalf ι) (irProgram t′ main)) ≈ᵗ⟨ _≡_ ⟩ trT∞ fmt ι [] (runIR fmt (pureHalf ι) (irProgram t main))
+table-trace fmt ι tr main = RelS-tr fmt ι [] (program-rel fmt (pureHalf ι) tr main)

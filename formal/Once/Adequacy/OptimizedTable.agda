@@ -80,10 +80,10 @@ module _ (fmt : TargetNum) where
 -- | The optimized build's program, run with the same `main`, has the trace of
 -- the source program.
 optimized-trace : ∀ (fmt : TargetNum) (ι : Interp) (mod : P.Resolved) (main : IR II.Unit II.Unit)
-                → trT∞ ι [] (runIR fmt (pureHalf ι) (irProgram (C.tableOfResult (C.compileResolvedModule Heap true mod)) main))
-                  ≈ᵗ⟨ _≡_ ⟩ trT∞ ι [] (runIR fmt (pureHalf ι) (irProgram (C.moduleTable mod) main))
+                → trT∞ fmt ι [] (runIR fmt (pureHalf ι) (irProgram (C.tableOfResult (C.compileResolvedModule Heap true mod)) main))
+                  ≈ᵗ⟨ _≡_ ⟩ trT∞ fmt ι [] (runIR fmt (pureHalf ι) (irProgram (C.moduleTable mod) main))
 optimized-trace fmt ι mod main =
-  subst (λ r → trT∞ ι [] (runIR fmt (pureHalf ι) (irProgram (C.tableOfResult r) main))
-               ≈ᵗ⟨ _≡_ ⟩ trT∞ ι [] (runIR fmt (pureHalf ι) (irProgram (C.moduleTable mod) main)))
+  subst (λ r → trT∞ fmt ι [] (runIR fmt (pureHalf ι) (irProgram (C.tableOfResult r) main))
+               ≈ᵗ⟨ _≡_ ⟩ trT∞ fmt ι [] (runIR fmt (pureHalf ι) (irProgram (C.moduleTable mod) main)))
         (Relation.Binary.PropositionalEquality.sym (crm-opt Heap mod))
         (table-trace fmt ι (table-opt fmt (C.compileResolvedModule Heap false mod)) main)
