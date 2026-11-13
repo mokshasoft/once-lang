@@ -27,6 +27,9 @@ module Once.LinCore.ObsTable
 
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Machine fmt ans bw using (Plain)
+open import Data.Unit using (tt)
+open import Data.Product using (_,_)
 
 ------------------------------------------------------------------------
 -- 1. A TABLE-FREE TERM, and its form at another context.
@@ -156,3 +159,43 @@ obs-tbl : ∀ {Γ Δ} {ds : Defs Γ} {ds′ : Defs Δ} {F S} {p : MV (Coalg F S 
         → Run ds (obsT {Γ} F S) mone p n o t → Run ds′ (obsT {Δ} F S) mone p n o t
 obs-tbl {Γ} {Δ} {ds} {ds′} {F} {S} {p} {n} {o} {t} r =
   subst (λ u → Run ds′ u mone p n o t) (rt-obsT {Γ} {Δ} F S) (run-tf {ds = ds} {ds′ = ds′} r (obsT-tf F S))
+
+------------------------------------------------------------------------
+-- 4. A PLAIN RUN STAYS PLAIN (no fold reused: `Machine.Plain`).
+------------------------------------------------------------------------
+
+module _ {Γ Δ} {ds : Defs Γ} {ds′ : Defs Δ} where
+  plain-tf : ∀ {E A B} {t : Tm Γ E A B} {e a n o τ} (r : Run ds t e a n o τ) (w : TF t)
+           → Plain r → Plain (run-tf {ds′ = ds′} r w)
+  plain-tf (r-tmp r wv tp) w p                              = plain-tf r w p
+  plain-tf r-exh w p                                        = tt
+  plain-tf (r-cut r le) w p                                 = plain-tf r w p
+  plain-tf r-id tf-id p                                     = tt
+  plain-tf (r-∘ rg (go-on rf)) (tf-∘ wf wg) (pg , pf)       = plain-tf rg wg pg , plain-tf rf wf pf
+  plain-tf (r-∘ rg stopped) (tf-∘ wf wg) pg                 = plain-tf rg wg pg
+  plain-tf (r-⊗ rf (go-on (fm-gives rg))) (tf-⊗ wf wg) (pf , pg) = plain-tf rf wf pf , plain-tf rg wg pg
+  plain-tf (r-⊗ rf (go-on (fm-stop rg))) (tf-⊗ wf wg) (pf , pg)  = plain-tf rf wf pf , plain-tf rg wg pg
+  plain-tf (r-⊗ rf stopped) (tf-⊗ wf wg) pf                 = plain-tf rf wf pf
+  plain-tf (r-case₁ r) (tf-case wf wg) p                    = plain-tf r wf p
+  plain-tf (r-case₂ r) (tf-case wf wg) p                    = plain-tf r wg p
+  plain-tf r-inl tf-inl p                                   = tt
+  plain-tf r-inr tf-inr p                                   = tt
+  plain-tf r-λ tf-lul p                                     = tt
+  plain-tf r-λ⁻ tf-lul⁻ p                                   = tt
+  plain-tf r-drop tf-drop p                                 = tt
+  plain-tf (r-lend (fm-gives r)) (tf-lend wb) p             = plain-tf r wb p
+  plain-tf (r-lend (fm-stop r)) (tf-lend wb) p              = plain-tf r wb p
+  plain-tf (r-snd r) (tf-bsnd wf) p                         = plain-tf r wf p
+  plain-tf r-copy tf-bcopy p                                = tt
+  plain-tf (r-bev r) tf-bev p                               = p
+  plain-tf r-unf tf-unf p                                   = tt
+
+plain-subst : ∀ {Δ} {ds′ : Defs Δ} {E A B} {t t′ : Tm Δ E A B} {e a n o τ} (eq : t ≡ t′) (r : Run ds′ t e a n o τ)
+            → Plain r → Plain (subst (λ u → Run ds′ u e a n o τ) eq r)
+plain-subst refl r p = p
+
+-- the observation's run at the other table is plain when the run is
+plain-obs : ∀ {Γ Δ} {ds : Defs Γ} {ds′ : Defs Δ} {F S} {p : MV (Coalg F S ⊗t S)} {n o t}
+          → (r : Run ds (obsT {Γ} F S) mone p n o t) → Plain r → Plain (obs-tbl {ds′ = ds′} r)
+plain-obs {Γ} {Δ} {ds} {ds′} {F} {S} r pr =
+  plain-subst (rt-obsT {Γ} {Δ} F S) (run-tf {ds = ds} {ds′ = ds′} r (obsT-tf F S)) (plain-tf r (obsT-tf F S) pr)
