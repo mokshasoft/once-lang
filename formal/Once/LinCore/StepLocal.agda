@@ -150,8 +150,16 @@ module Loc {FS : FrameSemantics} (U : Univ)
   here-in : ∀ {sh U′} {c : Codeᴵ sh U′} (s : Sub root c) → Inside prog (code (lowAt s))
   here-in s = in-trans R (ins (sub-low L₀ s))
 
-  pos : ∀ {sh U′} {c : Codeᴵ sh U′} → Sub root c → ℕ
-  pos s = length (proj₁ (here-in s))
+  -- opaque: its value is the length of the whole image's prefix, which a
+  -- conversion check would otherwise compute (tens of seconds a time)
+  opaque
+    pos : ∀ {sh U′} {c : Codeᴵ sh U′} → Sub root c → ℕ
+    pos s = length (proj₁ (here-in s))
+
+  opaque
+    unfolding pos
+    pos-def : ∀ {sh U′} {c : Codeᴵ sh U′} (s : Sub root c) → pos s ≡ length (proj₁ (here-in s))
+    pos-def s = refl
 
   -- ★ at a path, in the frame
   record Here {sh U′} {c : Codeᴵ sh U′} (s : Sub root c) (m : Cfg sh) (fs : FlatState) : Set where
@@ -162,7 +170,7 @@ module Loc {FS : FrameSemantics} (U : Univ)
   open Here
 
   seg-at : ∀ {sh U′} {c : Codeᴵ sh U′} (s : Sub root c) {m fs} → Here s m fs → Seg prog (fpc fs) (code (lowAt s))
-  seg-at s H = subst (λ z → Seg prog z _) (sym (h-pc H)) (in-seg (here-in s))
+  seg-at s H = subst (λ z → Seg prog z _) (sym (trans (h-pc H) (pos-def s))) (in-seg (here-in s))
 
   -- the frame holds every shape the root reaches
   fits : ∀ {sh U′} {c : Codeᴵ sh U′} → Sub root c → peakC c ≤² (EP φ , OP φ)
@@ -190,8 +198,8 @@ module Loc {FS : FrameSemantics} (U : Univ)
   pos-next : ∀ {sa sb V} {i : Insᴵ sa sb} {k : Codeᴵ sb V} (s : Sub root (i ⨾ k)) → pos (next s) ≡ pos s + length (insC s)
   pos-next s =
     let pR = proj₁ R ; pS = proj₁ (ins (sub-low L₀ s)) in
-    trans (length-++ pR) (trans (cong (length pR +_) (length-++ pS))
-      (sym (trans (cong (_+ length (insC s)) (length-++ pR)) (+-assoc (length pR) (length pS) (length (insC s))))))
+    trans (pos-def (next s)) (trans (length-++ pR) (trans (cong (length pR +_) (length-++ pS))
+      (sym (trans (cong (_+ length (insC s)) (trans (pos-def s) (length-++ pR))) (+-assoc (length pR) (length pS) (length (insC s)))))))
 
   -- what a step's lemma gives: its steps, the next configuration, a straight run
   Gives : ∀ {s′} → (fs : FlatState) → ℕ → ℕ → Cfg s′ → Set
@@ -420,9 +428,10 @@ module Loc {FS : FrameSemantics} (U : Univ)
       fin (fs′ , st , C′ , pc , K , nx , hp , tp) =
         _ , fs′ , st ,
         record { h-pc  = trans pc (trans (cong (λ z → Once.LinCore.Moves.ln {FS} (wsz B) + (3 + z)) (h-pc H))
-                           (sym (trans (fall-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB)
+                           (sym (trans (pos-def (right s)) (trans (fall-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB)
+                                  (trans (cong (λ z → z + suc (suc (suc (length MB)))) (sym (pos-def s)))
                                   (trans (cong (λ z → pos s + suc (suc (suc z))) (len-mvSSd (suc t) (Tp φ S ∸ wsz B) (wsz B)))
-                                    (three (pos s) _)))))
+                                    (three (pos s) _)))))))
                ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
         K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
 
@@ -446,8 +455,8 @@ module Loc {FS : FrameSemantics} (U : Univ)
       fin : _ → Moved (left s) fs 0 _
       fin (fs′ , st , C′ , pc , K , nx , hp , tp) =
         _ , fs′ , st ,
-        record { h-pc  = trans pc (sym (trans (jump-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB (proj₁ l₂) (instr-ctrl (c-label L₁) ∷ MA))
-                                         (trans (cong (λ z → q + suc z) (len-mvSSd (suc t) (Tp φ S ∸ wsz A) (wsz A))) (past q _))))
+        record { h-pc  = trans pc (sym (trans (pos-def (left s)) (trans (jump-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB (proj₁ l₂) (instr-ctrl (c-label L₁) ∷ MA))
+                                         (trans (cong (λ z → q + suc z) (len-mvSSd (suc t) (Tp φ S ∸ wsz A) (wsz A))) (past q _)))))
                ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
         K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
 
@@ -464,9 +473,10 @@ module Loc {FS : FrameSemantics} (U : Univ)
       fin (fs′ , st , C′ , pc , K , nx , hp , tp) =
         _ , fs′ , st ,
         record { h-pc  = trans pc (trans (cong (λ z → Once.LinCore.Moves.ln {FS} (wsz E₂) + (3 + z)) (h-pc H))
-                           (sym (trans (fall-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB)
+                           (sym (trans (pos-def (eright s)) (trans (fall-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB)
+                                  (trans (cong (λ z → z + suc (suc (suc (length MB)))) (sym (pos-def s)))
                                   (trans (cong (λ z → pos s + suc (suc (suc z))) (len-mvSS (suc e) nb (wsz E₂)))
-                                    (three (pos s) _)))))
+                                    (three (pos s) _)))))))
                ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
         K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
 
@@ -491,7 +501,7 @@ module Loc {FS : FrameSemantics} (U : Univ)
       fin : _ → Moved (eleft s) fs 0 _
       fin (fs′ , st , C′ , pc , K , nx , hp , tp) =
         _ , fs′ , st ,
-        record { h-pc  = trans pc (sym (trans (jump-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB (proj₁ l₂) (instr-ctrl (c-label L₁) ∷ MA))
-                                         (trans (cong (λ z → q + suc z) (len-mvSS (suc e) nb (wsz E₁))) (past q _))))
+        record { h-pc  = trans pc (sym (trans (pos-def (eleft s)) (trans (jump-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB (proj₁ l₂) (instr-ctrl (c-label L₁) ∷ MA))
+                                         (trans (cong (λ z → q + suc z) (len-mvSS (suc e) nb (wsz E₁))) (past q _)))))
                ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
         K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp

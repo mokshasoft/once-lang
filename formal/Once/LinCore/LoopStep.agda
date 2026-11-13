@@ -111,8 +111,8 @@ module Loops {FS : FrameSemantics} (U : Univ)
     where
       pR = proj₁ R ; pS = proj₁ (ins (sub-low L₀ s))
       pos-body : pos (body s) ≡ suc (pos s)
-      pos-body = trans (cong length (sym (++-assoc pR pS (instr-ctrl (c-label (jl j (lm (lowAt s)))) ∷ []))))
-                   (trans (length-++ (pR ++ pS)) (+-comm (length (pR ++ pS)) 1))
+      pos-body = trans (pos-def (body s)) (trans (cong length (sym (++-assoc pR pS (instr-ctrl (c-label (jl j (lm (lowAt s)))) ∷ []))))
+                   (trans (length-++ (pR ++ pS)) (trans (+-comm (length (pR ++ pS)) 1) (cong suc (sym (pos-def s))))))
 
   ----------------------------------------------------------------------
   -- 3. ★ A BODY'S END: the jump to its loop's dispatch.
@@ -181,8 +181,8 @@ module Loops {FS : FrameSemantics} (U : Univ)
                   (trans (++-assoc (pR ++ pS) (instr-ctrl (c-label Lh) ∷ proj₁ lb) Y′)
                          (++-assoc pR pS (instr-ctrl (c-label Lh) ∷ (proj₁ lb ++ Y′)))))
       pos-exit : pos (next s) ≡ Once.LinCore.Moves.ln {FS} (wsz B) + suc q
-      pos-exit = trans (cong length (sym lists))
-                   (trans (length-++ (dP ++ Y)) (trans (cong (λ z → q + suc z) (len-mvSSd (suc t) (bot ∸ wsz B) (wsz B))) (past q _)))
+      pos-exit = trans (pos-def (next s)) (trans (cong length (sym lists))
+                   (trans (length-++ (dP ++ Y)) (trans (cong (λ z → q + suc z) (len-mvSSd (suc t) (bot ∸ wsz B) (wsz B))) (past q _))))
       fin : _ → Moved (next s) fs 0 (es ∥ v ∷ˢ os)
       fin (fs′ , st , C′ , pc , K , nx , hp , tp) =
         _ , fs′ , step-at fs₁ (q-run H , proj₁ sD) (flat-label prog fs Ld) st ,
@@ -221,7 +221,8 @@ module Loops {FS : FrameSemantics} (U : Univ)
         _ , record fs₂ { fpc = pos s } ,
         step-at fs₁ (q-run H , proj₁ sD) (flat-label prog fs Ld)
           (FlatSteps-++ st (step-at {i = instr-ctrl (c-jmp Lh)} _ (h₂ , proj₁ (subst (λ z → Seg prog z (instr-ctrl (c-jmp Lh) ∷ instr-ctrl (c-label Li) ∷ MB ++ kcode)) (sym (trans pc at-jmp)) (in-seg jmpIn)))
-                              (trans (flat-jmp prog fs₂ Lh) (cong (λ x → do-jump x fs₂) (lab (here-in s)))) FlatStepsAPI.[])) ,
+                              (trans (flat-jmp prog fs₂ Lh) (trans (cong (λ x → do-jump x fs₂) (lab (here-in s)))
+                                                                   (cong (λ z → record fs₂ { fpc = z }) (sym (pos-def s))))) FlatStepsAPI.[])) ,
         record { h-pc = refl ; h-run = h₂ ; h-cfg = C′ } ,
         keep-trans (keep-pc _) (keep-trans K (keep-pc _)) , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
         where

@@ -46,54 +46,11 @@ open import Once.LinCore.ImagePt fmt ans bw using (Sub; next; left; right; eleft
 open import Once.LinCore.LowAt fmt ans bw using (Inside; module At)
 open import Once.LinCore.StepLocal fmt ans bw using (module Loc)
 open import Once.LinCore.StepPrim fmt ans bw using (module Prims)
+-- which steps are local: by the code's head
+open import Once.LinCore.StepKinds fmt ans bw using (NotOp; Local)
 
 ------------------------------------------------------------------------
--- 1. WHICH STEPS ARE LOCAL.
-------------------------------------------------------------------------
-
--- a primitive other than a SigOp (whose lemma is owed)
-NotOp : ∀ {Γ A B} → LTm Γ A B → Set
-NotOp (lop s) = ⊥
-{-# CATCHALL #-}
-NotOp _       = ⊤
-
--- by the code: its first instruction (checked once, cheaply; a step's kind
--- is its code's head)
-LocalI : ∀ {sh sh′} → Insᴵ sh sh′ → Set
-LocalI unpair       = ⊤
-LocalI pair         = ⊤
-LocalI swap         = ⊤
-LocalI unit         = ⊤
-LocalI (prim ds g)  = NotOp g
-LocalI untag        = ⊤
-LocalI untag₁       = ⊤
-LocalI tag₁         = ⊤
-LocalI elend        = ⊤
-LocalI eunlend      = ⊤
-LocalI elift        = ⊤
-LocalI efst         = ⊤
-LocalI esnd         = ⊤
-LocalI eout         = ⊤
-LocalI eoutq        = ⊤
-LocalI eapp         = ⊤
-LocalI epop         = ⊤
-LocalI eword        = ⊤
-{-# CATCHALL #-}
-LocalI _            = ⊥
-
-LocalC : ∀ {sh U} → Codeᴵ sh U → Set
-LocalC (i ⨾ k)       = LocalI i
-LocalC (case _ _)    = ⊤
-LocalC (ecase _ _)   = ⊤
-LocalC end           = ⊥
-LocalC halted        = ⊥
-
-Local : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
-      → StepI c r m n t c′ r′ m′ n′ → Set
-Local {c = c} _ = LocalC c
-
-------------------------------------------------------------------------
--- 2. ★ THE THEOREM, at a root.
+-- ★ THE THEOREM, at a root.
 ------------------------------------------------------------------------
 
 module Steps {FS : FrameSemantics} (U : Univ)

@@ -20,6 +20,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Unit using (tt)
 open import Data.Bool using (false)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
@@ -80,6 +81,10 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   module SL = Loops {FS} U ncty ldConst wordOf image main j₀ L₀ˢ start-root using (HereQ; posD; dispIn; loop-enter; end-jump; disp-exit; disp-again)
   module KA {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = At U ncty ldConst (frameOf (blockᴵ κ)) (idx p) using (lcin; lfin; lm)
   module KL {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = Loops {FS} U ncty ldConst wordOf image (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p) using (HereQ; posD; dispIn; loop-enter; end-jump; disp-exit; disp-again)
+  -- the calls from each root; a site's return address is theirs (`C.pos`),
+  -- so a call's facts and a return's meet it without unfolding
+  module FrS = From main j₀ L₀ˢ start-root using (callee; call-n; call-v; return; module C)
+  module FrK {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = From (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p) using (callee; call-n; call-v; return; module C)
 
   ----------------------------------------------------------------------
   -- 1. ROOTS AND POINTS.
@@ -203,8 +208,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     siteφ (s-tramp {ds′ = ds′} {b} {γ} p) = trφ (ktr1 ds′ b γ)
 
     sitePos : Site κ k → ℕ
-    sitePos (s-start s)    = S.pos (next s)
-    sitePos (s-block p′ s) = K.pos p′ (next s)
+    sitePos (s-start s)    = FrS.C.pos (next s)
+    sitePos (s-block p′ s) = FrK.C.pos p′ (next s)
     sitePos (s-tramp {ds′ = ds′} {b} {γ} p) = trPos (ktr1 ds′ b γ) p 2
 
     siteFin : Site κ k → AbstractTrace
@@ -337,7 +342,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   ----------------------------------------------------------------------
 
   open import Once.LinCore.ImageRun fmt ans bw using (StepI)
-  open import Once.LinCore.LocalStep fmt ans bw using (Local; LocalI; LocalC; module Steps)
+  open import Once.LinCore.LocalStep fmt ans bw using (module Steps)
+  open import Once.LinCore.StepKinds fmt ans bw using (Local; LocalC; StraightC; straight-local; CoveredC; covered-elim)
   open import Once.LinCore.HeldI fmt ans bw using (InvI)
   open import Once.LinCore.LabelsI fmt ans bw using (module Img)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
@@ -441,34 +447,71 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                → FreshR r (AllocState.next-heap-ref (falloc fs))
       fresh-at {r = r} inv nx = subst (FreshR r) (sym nx) (fresh-ret inv)
 
-    -- at a point, by the point
+    -- a local step at a path of the start's or a block's code
+    gat-start : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
+                (s : Sub main c) (st : StepI c r m n t c′ r′ m′ n′) (l : Local st)
+              → InvI m r n h → S.Here s m fs → AllocState.next-heap-ref (falloc fs) ≡ n
+              → RetOK rstart (ptFin (p-start (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+              → Onward c′ r′ m′ n′ fs
+    gat-start s st l inv H nx ok = case AS.glocal st l s inv H nx ok of λ where
+      (N , fs′ , run , H′ , nx′ , ok′) → N , fs′ , run , record { g-pt = p-start (at (AS.LS.succ st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ }
+
+    gat-block : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
+                  {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) (s : Sub (blockᴵ κ) c) (st : StepI c r m n t c′ r′ m′ n′) (l : Local st)
+              → InvI m r n h → K.Here p s m fs → AllocState.next-heap-ref (falloc fs) ≡ n
+              → RetOK (rblock p) (ptFin (p-block p (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+              → Onward c′ r′ m′ n′ fs
+    gat-block p s st l inv H nx ok = case AK.glocal p st l s inv H nx ok of λ where
+      (N , fs′ , run , H′ , nx′ , ok′) → N , fs′ , run , record { g-pt = p-block p (at (AK.LS.succ p st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ }
+
+    -- ★ a straight step (local, not a `case`): only at a path; no case
+    -- split on the step (StepKinds)
     gstep-at : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
-               (P : Pnt c) (st : StepI c r m n t c′ r′ m′ n′) (l : Local st)
+               (P : Pnt c) (st : StepI c r m n t c′ r′ m′ n′) (l : StraightC c)
              → InvI m r n h → HereP P m fs → AllocState.next-heap-ref (falloc fs) ≡ n
              → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
              → Onward c′ r′ m′ n′ fs
-    gstep-at (p-start (at s)) st l inv H nx ok = case AS.glocal st l s inv H nx ok of λ where
-      (N , fs′ , run , H′ , nx′ , ok′) → N , fs′ , run , record { g-pt = p-start (at (AS.LS.succ st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ }
-    gstep-at (p-block p (at s)) st l inv H nx ok = case AK.glocal p st l s inv H nx ok of λ where
-      (N , fs′ , run , H′ , nx′ , ok′) → N , fs′ , run , record { g-pt = p-block p (at (AK.LS.succ p st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ }
-    gstep-at {r = r} {fs = fs} (p-start (disp s)) StepI.i-case₁ l inv H nx ok = case SL.disp-exit image-label s H of λ where
+    gstep-at {c = c} (p-start (at s)) st l inv H nx ok = gat-start s st (straight-local c l) inv H nx ok
+    gstep-at {c = c} (p-block p (at s)) st l inv H nx ok = gat-block p s st (straight-local c l) inv H nx ok
+    gstep-at (p-start (disp s)) st () inv H nx ok
+    gstep-at (p-block p (disp s)) st () inv H nx ok
+    gstep-at {c = c} (p-tramp p pt) st l inv (tp , H) nx ok = ⊥-elim (tr-nolocal tp (straight-local c l))
+
+    gstep-local : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
+                  (st : StepI c r m n t c′ r′ m′ n′) → StraightC c → InvI m r n h → Related c r m n fs → Onward c′ r′ m′ n′ fs
+    gstep-local st l inv G = gstep-at (g-pt G) st l inv (g-here G) (g-next G) (g-ret G)
+
+    -- ★ a `case`'s left: a local step at a path, or a loop's dispatch out
+    gcase₁ : ∀ {T Es A B S U′} {c₁ : Codeᴵ (Es ∣ A ∷ S) U′} {c₂ : Codeᴵ (Es ∣ B ∷ S) U′} {r : Ret U′ T}
+               {es : Slots Es} {a : MV A} {os : Stk S} {n h fs} (P : Pnt (case c₁ c₂))
+           → InvI (es ∥ minl {B = B} a ∷ˢ os) r n h → HereP P (es ∥ minl {B = B} a ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
+           → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+           → Onward c₁ r (es ∥ a ∷ˢ os) n fs
+    gcase₁ (p-start (at s)) inv H nx ok = gat-start s StepI.i-case₁ tt inv H nx ok
+    gcase₁ (p-block p (at s)) inv H nx ok = gat-block p s StepI.i-case₁ tt inv H nx ok
+    gcase₁ {r = r} {fs = fs} (p-start (disp s)) inv H nx ok = case SL.disp-exit image-label s H of λ where
       (N , fs′ , run , H′ , K , nx′ , old , tp) →
         N , fs′ , run , record { g-pt = p-start (at (next s)) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok }
-    gstep-at {r = r} {fs = fs} (p-start (disp s)) StepI.i-case₂ l inv H nx ok = case SL.disp-again image-label s H of λ where
-      (N , fs′ , run , H′ , K , nx′ , old , tp) →
-        N , fs′ , run , record { g-pt = p-start (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok }
-    gstep-at {r = r} {fs = fs} (p-block p (disp s)) StepI.i-case₁ l inv H nx ok = case KL.disp-exit p image-label s H of λ where
+    gcase₁ {r = r} {fs = fs} (p-block p (disp s)) inv H nx ok = case KL.disp-exit p image-label s H of λ where
       (N , fs′ , run , H′ , K , nx′ , old , tp) →
         N , fs′ , run , record { g-pt = p-block p (at (next s)) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok }
-    gstep-at {r = r} {fs = fs} (p-block p (disp s)) StepI.i-case₂ l inv H nx ok = case KL.disp-again p image-label s H of λ where
+    gcase₁ (p-tramp p pt) inv (tp , H) nx ok = ⊥-elim (tr-nolocal tp tt)
+
+    -- ★ a `case`'s right: a local step at a path, or a loop's dispatch again
+    gcase₂ : ∀ {T Es A B S U′} {c₁ : Codeᴵ (Es ∣ A ∷ S) U′} {c₂ : Codeᴵ (Es ∣ B ∷ S) U′} {r : Ret U′ T}
+               {es : Slots Es} {b : MV B} {os : Stk S} {n h fs} (P : Pnt (case c₁ c₂))
+           → InvI (es ∥ minr {A = A} b ∷ˢ os) r n h → HereP P (es ∥ minr {A = A} b ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
+           → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+           → Onward c₂ r (es ∥ b ∷ˢ os) n fs
+    gcase₂ (p-start (at s)) inv H nx ok = gat-start s StepI.i-case₂ tt inv H nx ok
+    gcase₂ (p-block p (at s)) inv H nx ok = gat-block p s StepI.i-case₂ tt inv H nx ok
+    gcase₂ {r = r} {fs = fs} (p-start (disp s)) inv H nx ok = case SL.disp-again image-label s H of λ where
+      (N , fs′ , run , H′ , K , nx′ , old , tp) →
+        N , fs′ , run , record { g-pt = p-start (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok }
+    gcase₂ {r = r} {fs = fs} (p-block p (disp s)) inv H nx ok = case KL.disp-again p image-label s H of λ where
       (N , fs′ , run , H′ , K , nx′ , old , tp) →
         N , fs′ , run , record { g-pt = p-block p (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok }
-    gstep-at (p-tramp p pt) st l inv (tp , H) nx ok = ⊥-elim (tr-nolocal tp l)
-
-    -- ★ every step that stays in its root keeps the relation
-    gstep-local : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
-                  (st : StepI c r m n t c′ r′ m′ n′) → Local st → InvI m r n h → Related c r m n fs → Onward c′ r′ m′ n′ fs
-    gstep-local st l inv G = gstep-at (g-pt G) st l inv (g-here G) (g-next G) (g-ret G)
+    gcase₂ (p-tramp p pt) inv (tp , H) nx ok = ⊥-elim (tr-nolocal tp tt)
 
     -- ★ the loop's turn: the body, its dispatch pushed
     gloop : ∀ {T E Es A B S V} {b : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V}
@@ -842,12 +885,60 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       kept x = cd-others CD cfc x (callee-≢ cfc b)
 
   module GCall where
-    module FrS = From main j₀ L₀ˢ start-root using (callee; call-n; call-v; return)
-    module FrK {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = From (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p) using (callee; call-n; call-v; return)
     open Related
 
     ArrivesAt : ∀ {T sh U′} → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
     ArrivesAt c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′
+
+    -- a call's cases, each by itself
+    private
+      gcall-sn : ∀ {T A B Es S V} {κ : Key (bsig nothing A B)} {k : Codeᴵ (Es ∣ B ∷ S) V} {r : Ret V T}
+                   {es : Slots Es} {a : MV A} {os : Stk S} {n h fs} (s : Sub main (call κ ⨾ k))
+               → InvI (es ∥ a ∷ˢ os) r n h → S.Here s (es ∥ a ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
+               → RetOK rstart (ptFin (p-start (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+               → ArrivesAt (blockᴵ κ) (frm {t = nothing} {Es = Es} k es os r) (topv nothing es ∥ a ∷ˢ []ˢ) n fs
+      gcall-sn {r = r} s inv H nx ok = case FrS.call-n s H of λ where
+        (N , fs′ , run , H′ , CD) →
+          N , fs′ , run , record { g-pt = p-block (FrS.callee s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
+                                 ; g-ret = mk-call (FrS.callee s) (s-start s) refl CD (S.Here.h-cfg H)
+                                             (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
+                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+
+      gcall-sv : ∀ {T E A B Es S V} {κ : Key (bsig (just E) A B)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} {r : Ret V T}
+                   {es : Slots (E ∷ Es)} {a : MV A} {os : Stk S} {n h fs} (s : Sub main (call κ ⨾ k))
+               → InvI (es ∥ a ∷ˢ os) r n h → S.Here s (es ∥ a ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
+               → RetOK rstart (ptFin (p-start (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+               → ArrivesAt (blockᴵ κ) (frm {t = just E} {Es = Es} k es os r) (topv (just E) es ∥ a ∷ˢ []ˢ) n fs
+      gcall-sv {r = r} s inv H nx ok = case FrS.call-v s H of λ where
+        (N , fs′ , run , H′ , CD) →
+          N , fs′ , run , record { g-pt = p-block (FrS.callee s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
+                                 ; g-ret = mk-call (FrS.callee s) (s-start s) refl CD (S.Here.h-cfg H)
+                                             (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
+                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+
+      gcall-bn : ∀ {T A B Es S V} {κ : Key (bsig nothing A B)} {k : Codeᴵ (Es ∣ B ∷ S) V} {r : Ret V T}
+                   {es : Slots Es} {a : MV A} {os : Stk S} {n h fs} {σ′} {κ′ : Key σ′} (p′ : (σ′ , κ′) ∈ allK U) (s : Sub (blockᴵ κ′) (call κ ⨾ k))
+               → InvI (es ∥ a ∷ˢ os) r n h → K.Here p′ s (es ∥ a ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
+               → RetOK (rblock p′) (ptFin (p-block p′ (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+               → ArrivesAt (blockᴵ κ) (frm {t = nothing} {Es = Es} k es os r) (topv nothing es ∥ a ∷ˢ []ˢ) n fs
+      gcall-bn {r = r} p′ s inv H nx ok = case FrK.call-n p′ s H of λ where
+        (N , fs′ , run , H′ , CD) →
+          N , fs′ , run , record { g-pt = p-block (FrK.callee p′ s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
+                                 ; g-ret = mk-call (FrK.callee p′ s) (s-block p′ s) refl CD (K.Here.h-cfg {p = p′} H)
+                                             (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
+                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+
+      gcall-bv : ∀ {T E A B Es S V} {κ : Key (bsig (just E) A B)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} {r : Ret V T}
+                   {es : Slots (E ∷ Es)} {a : MV A} {os : Stk S} {n h fs} {σ′} {κ′ : Key σ′} (p′ : (σ′ , κ′) ∈ allK U) (s : Sub (blockᴵ κ′) (call κ ⨾ k))
+               → InvI (es ∥ a ∷ˢ os) r n h → K.Here p′ s (es ∥ a ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
+               → RetOK (rblock p′) (ptFin (p-block p′ (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+               → ArrivesAt (blockᴵ κ) (frm {t = just E} {Es = Es} k es os r) (topv (just E) es ∥ a ∷ˢ []ˢ) n fs
+      gcall-bv {r = r} p′ s inv H nx ok = case FrK.call-v p′ s H of λ where
+        (N , fs′ , run , H′ , CD) →
+          N , fs′ , run , record { g-pt = p-block (FrK.callee p′ s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
+                                 ; g-ret = mk-call (FrK.callee p′ s) (s-block p′ s) refl CD (K.Here.h-cfg {p = p′} H)
+                                             (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
+                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
 
     -- ★ a call: from either kind of root, into either kind of block
     gcall : ∀ {T t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} {r : Ret V T}
@@ -855,30 +946,10 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → InvI (es ∥ a ∷ˢ os) r n h → HereP P (es ∥ a ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
           → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
           → ArrivesAt (blockᴵ κ) (frm {t = t} {Es = Es} k es os r) (topv t es ∥ a ∷ˢ []ˢ) n fs
-    gcall {t = nothing} {r = r} {fs = fs} (p-start (at s)) inv H nx ok = case FrS.call-n s H of λ where
-      (N , fs′ , run , H′ , CD) →
-        N , fs′ , run , record { g-pt = p-block (FrS.callee s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
-                               ; g-ret = mk-call (FrS.callee s) (s-start s) refl CD (S.Here.h-cfg H)
-                                           (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
-    gcall {t = just E} {r = r} {fs = fs} (p-start (at s)) inv H nx ok = case FrS.call-v s H of λ where
-      (N , fs′ , run , H′ , CD) →
-        N , fs′ , run , record { g-pt = p-block (FrS.callee s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
-                               ; g-ret = mk-call (FrS.callee s) (s-start s) refl CD (S.Here.h-cfg H)
-                                           (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
-    gcall {t = nothing} {r = r} {fs = fs} (p-block p′ (at s)) inv H nx ok = case FrK.call-n p′ s H of λ where
-      (N , fs′ , run , H′ , CD) →
-        N , fs′ , run , record { g-pt = p-block (FrK.callee p′ s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
-                               ; g-ret = mk-call (FrK.callee p′ s) (s-block p′ s) refl CD (K.Here.h-cfg {p = p′} H)
-                                           (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
-    gcall {t = just E} {r = r} {fs = fs} (p-block p′ (at s)) inv H nx ok = case FrK.call-v p′ s H of λ where
-      (N , fs′ , run , H′ , CD) →
-        N , fs′ , run , record { g-pt = p-block (FrK.callee p′ s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
-                               ; g-ret = mk-call (FrK.callee p′ s) (s-block p′ s) refl CD (K.Here.h-cfg {p = p′} H)
-                                           (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+    gcall {t = nothing} (p-start (at s)) inv H nx ok = gcall-sn s inv H nx ok
+    gcall {t = just E} (p-start (at s)) inv H nx ok = gcall-sv s inv H nx ok
+    gcall {t = nothing} (p-block p′ (at s)) inv H nx ok = gcall-bn p′ s inv H nx ok
+    gcall {t = just E} (p-block p′ (at s)) inv H nx ok = gcall-bv p′ s inv H nx ok
     gcall {r = r} {fs = fs} (p-tramp p _) inv (tp1 {X = X} {A} {B} _ , H) nx ok = case tr-call p H of λ where
       (N , fs′ , run , H′ , CD) →
         N , fs′ , run , record { g-pt = p-block p (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
@@ -960,78 +1031,28 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- code word and the trampolines' cell parts (per key, D418), `lop`.
   ----------------------------------------------------------------------
 
-  -- by the code's head, as `Local` (no case split on the step)
-  CoveredI : ∀ {sh sh′} → Insᴵ sh sh′ → Set
-  CoveredI (loop _) = Data.Unit.⊤
-    where import Data.Unit
-  CoveredI (call _) = Data.Unit.⊤
-    where import Data.Unit
-  {-# CATCHALL #-}
-  CoveredI i = LocalI i
-
-  CoveredC : ∀ {sh U′} → Codeᴵ sh U′ → Set
-  CoveredC (i ⨾ k)     = CoveredI i
-  CoveredC (case _ _)  = Data.Unit.⊤
-    where import Data.Unit
-  CoveredC (ecase _ _) = Data.Unit.⊤
-    where import Data.Unit
-  CoveredC end         = Data.Unit.⊤
-    where import Data.Unit
-  CoveredC halted      = ⊥
-
-  Covered : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
-          → StepI c r m n t c′ r′ m′ n′ → Set
-  Covered {c = c} _ = CoveredC c
-
   module Theorem (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
                        → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
                          ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (FlatMachine.fpc fs) }) where
-    open Whole ld using (gstep-local; gloop; greti)
+    open Whole ld using (gstep-local; gcase₁; gcase₂; gloop; greti)
     open GCall using (gcall; gret; ArrivesAt)
     open Related
 
+    -- what a step owes: from a related state, a related one after it
+    Owes : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m : Cfg sh} {n : ℕ} {t}
+             {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ : Cfg sh′} {n′ : ℕ} → StepI c r m n t c′ r′ m′ n′ → Set
+    Owes {c = c} {r} {m} {n} {c′ = c′} {r′} {m′} {n′} _ = ∀ {h fs} → InvI m r n h → Related c r m n fs → ArrivesAt c′ r′ m′ n′ fs
+
+    -- ★ by the step's kind (the one split on a step is StepKinds')
     word-step : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
-           (st : StepI c r m n t c′ r′ m′ n′) → Covered st → InvI m r n h → Related c r m n fs → ArrivesAt c′ r′ m′ n′ fs
-    word-step StepI.i-loop  _ inv G = gloop (g-pt G) inv (g-here G) (g-next G) (g-ret G)
-    word-step StepI.i-reti  _ inv G = greti (g-pt G) inv (g-here G) (g-next G) (g-ret G)
-    word-step StepI.i-call  _ inv G = gcall (g-pt G) inv (g-here G) (g-next G) (g-ret G)
-    word-step StepI.i-ret   _ inv G = gret (g-pt G) inv (g-here G) (g-next G) (g-ret G)
-    word-step st@StepI.i-unpair       cv inv G = gstep-local st cv inv G
-    word-step st@StepI.i-pair         cv inv G = gstep-local st cv inv G
-    word-step st@StepI.i-swap         cv inv G = gstep-local st cv inv G
-    word-step st@StepI.i-unit         cv inv G = gstep-local st cv inv G
-    word-step st@(StepI.i-prim _)     cv inv G = gstep-local st cv inv G
-    word-step st@StepI.i-untag        cv inv G = gstep-local st cv inv G
-    word-step st@StepI.i-untag₁       cv inv G = gstep-local st cv inv G
-    word-step st@StepI.i-tag₁         cv inv G = gstep-local st cv inv G
-    word-step st@StepI.i-case₁        cv inv G = gstep-local st cv inv G
-    word-step st@StepI.i-case₂        cv inv G = gstep-local st cv inv G
-    word-step st@StepI.i-elend        cv inv G = gstep-local st cv inv G
-    word-step st@StepI.i-eunlend      cv inv G = gstep-local st cv inv G
-    word-step st@StepI.i-elift        cv inv G = gstep-local st cv inv G
-    word-step st@(StepI.i-efst _)     cv inv G = gstep-local st cv inv G
-    word-step st@(StepI.i-esnd _)     cv inv G = gstep-local st cv inv G
-    word-step st@(StepI.i-eout _)     cv inv G = gstep-local st cv inv G
-    word-step st@(StepI.i-eoutq _)    cv inv G = gstep-local st cv inv G
-    word-step st@(StepI.i-ecase₁ _)   cv inv G = gstep-local st cv inv G
-    word-step st@(StepI.i-ecase₂ _)   cv inv G = gstep-local st cv inv G
-    word-step st@(StepI.i-eapp _)     cv inv G = gstep-local st cv inv G
-    word-step st@StepI.i-epop         cv inv G = gstep-local st cv inv G
-    word-step st@(StepI.i-eword _)    cv inv G = gstep-local st cv inv G
-    word-step (StepI.i-opend _)       () inv G
-    word-step StepI.i-icall           () inv G
-    word-step (StepI.i-icallω _)      () inv G
-    word-step StepI.i-iobs            () inv G
-    word-step (StepI.i-ccopy _)       () inv G
-    word-step (StepI.i-ncopy _)       () inv G
-    word-step StepI.i-cfree           () inv G
-    word-step StepI.i-nfree           () inv G
-    word-step StepI.i-open1           () inv G
-    word-step (StepI.i-openω _)       () inv G
-    word-step StepI.i-nopen           () inv G
-    word-step (StepI.i-copen _)       () inv G
-    word-step (StepI.i-copenν _)      () inv G
-    word-step (StepI.i-reclose _)     () inv G
-    word-step (StepI.i-recloseν _)    () inv G
-    word-step StepI.i-fopen           () inv G
-    word-step StepI.i-fopenν          () inv G
+           (st : StepI c r m n t c′ r′ m′ n′) → CoveredC c → InvI m r n h → Related c r m n fs → ArrivesAt c′ r′ m′ n′ fs
+    word-step st cv inv G =
+      covered-elim Owes
+        (λ st′ l inv′ G′ → gstep-local st′ l inv′ G′)
+        (λ inv′ G′ → gcase₁ (g-pt G′) inv′ (g-here G′) (g-next G′) (g-ret G′))
+        (λ inv′ G′ → gcase₂ (g-pt G′) inv′ (g-here G′) (g-next G′) (g-ret G′))
+        (λ inv′ G′ → gloop (g-pt G′) inv′ (g-here G′) (g-next G′) (g-ret G′))
+        (λ inv′ G′ → greti (g-pt G′) inv′ (g-here G′) (g-next G′) (g-ret G′))
+        (λ inv′ G′ → gcall (g-pt G′) inv′ (g-here G′) (g-next G′) (g-ret G′))
+        (λ inv′ G′ → gret (g-pt G′) inv′ (g-here G′) (g-next G′) (g-ret G′))
+        st cv inv G
