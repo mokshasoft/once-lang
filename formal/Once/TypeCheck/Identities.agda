@@ -15,8 +15,7 @@
 --   * `decideLeq` returns `just _` exactly when `q' ≤qᵇ q ≡ true`
 --     (both directions).
 --   * `GType ↔ Type` round-trip is injective.
---   * `isArithmeticOp` and `isComparisonOp` are mutually exclusive
---     and exhaustive.
+--   * every binary operator's symbol takes two operands (plan 0.150).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Type using (Ty)
@@ -38,9 +37,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many)
 open import Once.Spec.Type using (Type)
-open import Once.Spec.Surface.Syntax using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; RResolved)
+open import Once.Spec.Surface.Syntax using (RResolved)
+open import Once.Spec.Surface.Operator using (BinOp; binSym; BinSym)
+open BinSym using (shape)
+open import Once.TypeCheck.NumTable using (Binary; binary?)
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.TypeCheck.Raw using (isArithmeticOp; isComparisonOp)
 open import Once.Spec.Name using (gen)
 open import Once.TypeCheck.Elaborate
   using (decideLeq)
@@ -117,39 +118,12 @@ decideLeq-correct-nothing One  Many ()
 decideLeq-correct-nothing Many Many ()
 
 ------------------------------------------------------------------------
--- isArithmeticOp / isComparisonOp exhaustiveness
+-- Every binary operator is a symbol with two operands (plan 0.150: the
+-- table, `Spec.Surface.Operator.binSym`)
 ------------------------------------------------------------------------
 
--- Every BinOp is either arithmetic or comparison, never both.
-binop-classification-exhaustive : ∀ (op : BinOp) → (isArithmeticOp op ≡ true) ⊎ (isComparisonOp op ≡ true)
-binop-classification-exhaustive OpAdd = inj₁ refl
-binop-classification-exhaustive OpSub = inj₁ refl
-binop-classification-exhaustive OpMul = inj₁ refl
-binop-classification-exhaustive OpDiv = inj₁ refl
-binop-classification-exhaustive OpMod = inj₁ refl
-binop-classification-exhaustive OpLt  = inj₂ refl
-binop-classification-exhaustive OpLe  = inj₂ refl
-binop-classification-exhaustive OpGt  = inj₂ refl
-binop-classification-exhaustive OpGe  = inj₂ refl
-binop-classification-exhaustive OpEq  = inj₂ refl
-binop-classification-exhaustive OpNe  = inj₂ refl
-
--- Arithmetic and comparison are mutually exclusive.
-binop-classification-exclusive : ∀ (op : BinOp)
-  → isArithmeticOp op ≡ true
-  → isComparisonOp op ≡ true
-  → ⊥
-binop-classification-exclusive OpAdd _ ()
-binop-classification-exclusive OpSub _ ()
-binop-classification-exclusive OpMul _ ()
-binop-classification-exclusive OpDiv _ ()
-binop-classification-exclusive OpMod _ ()
-binop-classification-exclusive OpLt  () _
-binop-classification-exclusive OpLe  () _
-binop-classification-exclusive OpGt  () _
-binop-classification-exclusive OpGe  () _
-binop-classification-exclusive OpEq  () _
-binop-classification-exclusive OpNe  () _
+binop-binary : ∀ (op : BinOp) → Binary (shape (binSym op))
+binop-binary = binary?
 
 ------------------------------------------------------------------------
 -- `classifyAppHead`: structural identities on the GENERATORS (D136: a

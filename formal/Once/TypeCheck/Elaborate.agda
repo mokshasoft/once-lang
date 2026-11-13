@@ -605,6 +605,20 @@ asInt (success (ν F π) _ _ _ _)                       = notInt (TypeMismatch I
 -- operand is not a number at all.
 --
 -- The errors are `asInt`'s verbatim, so no message changes.
+-- | The error for an operand of type `T` where a number of type `a` was
+-- expected (`Unit` and `Void` stated at index 0, as before plan 0.150).
+numErr : ∀ {m} → NumTy → Ty m → TypeError
+numErr a Unit                       = TypeMismatch {0} ⌜ a ⌝ⁿ Unit
+numErr a Void                       = TypeMismatch {0} ⌜ a ⌝ⁿ Void
+numErr {m} a Int                    = TypeMismatch {m} ⌜ a ⌝ⁿ Int
+numErr {m} a Float                  = TypeMismatch {m} ⌜ a ⌝ⁿ Float
+numErr a (var i)                    = TypeMismatch ⌜ a ⌝ⁿ (var i)
+numErr a (A Once.Spec.Type.* B)     = TypeMismatch ⌜ a ⌝ⁿ (A Once.Spec.Type.* B)
+numErr a (A Once.Spec.Type.+ B)     = TypeMismatch ⌜ a ⌝ⁿ (A Once.Spec.Type.+ B)
+numErr a (A ⇒[ k ] B)               = TypeMismatch ⌜ a ⌝ⁿ (A ⇒[ k ] B)
+numErr a (μ F)                      = TypeMismatch ⌜ a ⌝ⁿ (μ F)
+numErr a (ν F π)                    = TypeMismatch ⌜ a ⌝ⁿ (ν F π)
+
 notNumeric : ∀ {m} {n} {Δ : SCtx m n} → InferElabResult Δ → Maybe TypeError
 notNumeric (failure err)                                 = just err
 notNumeric (success Int _ _ _ _)                         = nothing
@@ -1046,7 +1060,7 @@ inferElabV-RNeg-num : ∀ {m} → (ctx : NamedCtx m) {T : Ty m} {Ψ : Surface.Us
   → SExpr (NamedCtx.debruijn ctx) Ψ T → (d fr : ℕ) → NumView T
   → InferElabResult (NamedCtx.debruijn ctx)
 inferElabV-RNeg-num ctx eE d fr (is-num a)    = inferElabV-RNeg-has ctx a eE d fr (has? a Neg)
-inferElabV-RNeg-num ctx {T} eE d fr not-num   = failure (TypeMismatch Int T)
+inferElabV-RNeg-num ctx {T} eE d fr not-num   = failure (numErr nint T)
 
 inferElabV-RNeg-aux : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr)
   → InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
@@ -1078,14 +1092,14 @@ inferElabV-RBinOp-R : ∀ {m} → (ctx : NamedCtx m) (op : BinOp) (a₁ : NumTy)
   → NumView T₂
   → InferElabResult (NamedCtx.debruijn ctx)
 inferElabV-RBinOp-R ctx op a₁ e₁E e₂E d fr (is-num a₂) = inferElabV-RBinOp-num ctx op a₁ a₂ e₁E e₂E d fr (a₁ ≟ⁿ a₂)
-inferElabV-RBinOp-R ctx op a₁ {T₂} e₁E e₂E d fr not-num = failure (BinOpRightError (TypeMismatch ⌜ a₁ ⌝ⁿ T₂))
+inferElabV-RBinOp-R ctx op a₁ {T₂} e₁E e₂E d fr not-num = failure (BinOpRightError (numErr a₁ T₂))
 
 -- The left operand, then the right's result.
 inferElabV-RBinOp-L : ∀ {m} → (ctx : NamedCtx m) (op : BinOp) {T₁ : Ty m}
   {Ψ₁ : Surface.Usage (NamedCtx.size ctx)}
   → SExpr (NamedCtx.debruijn ctx) Ψ₁ T₁ → (d₁ : ℕ) → NumView T₁
   → InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
-inferElabV-RBinOp-L ctx op {T₁} e₁E d₁ not-num r₂ = failure (BinOpLeftError (TypeMismatch Int T₁))
+inferElabV-RBinOp-L ctx op {T₁} e₁E d₁ not-num r₂ = failure (BinOpLeftError (numErr nint T₁))
 inferElabV-RBinOp-L ctx op e₁E d₁ (is-num a₁) (failure err) = failure (BinOpRightError err)
 inferElabV-RBinOp-L ctx op e₁E d₁ (is-num a₁) (success T₂ Ψ₂ e₂E d₂ f₂) =
   inferElabV-RBinOp-R ctx op a₁ e₁E e₂E (d₁ ⊔ d₂) f₂ (numView T₂)
