@@ -20,6 +20,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥)
+open import Data.Bool using (false)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -44,7 +45,7 @@ open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_
 open import Once.LinCore.Image fmt ans bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt ans bw
-open import Once.LinCore.Layout fmt ans bw using (Frame; frameOf; budget; wsz; ws)
+open import Once.LinCore.Layout fmt ans bw using (Frame; frame; frameOf; budget; wsz; ws)
 open import Once.LinCore.Lower fmt ans bw
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; next; body; whole)
@@ -55,6 +56,7 @@ open import Once.LinCore.StepLocal fmt ans bw using (module Loc)
 open import Once.LinCore.LoopStep fmt ans bw using (module Loops)
 open import Once.LinCore.CallStep fmt ans bw using (module Calls; module Frames)
 open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
+open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg)
 
 module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
@@ -84,12 +86,52 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   data RootId : Set where
     rstart : RootId
     rblock : ∀ {σ} {κ : Key σ} → (σ , κ) ∈ allK U → RootId
+    rtramp : ∀ {σ} {κ : Key σ} → under κ ∈ allK U → RootId
 
   rootOf : ∀ {sh V} {c : Codeᴵ sh V} → Pnt c → RootId
   rootOf (p-start _)   = rstart
   rootOf (p-block p _) = rblock p
-  rootOf (p-tramp _ _) = rstart
+  rootOf (p-tramp p _) = rtramp p
   rootOf p-halt        = rstart
+
+  -- ★ A TRAMPOLINE (D421): its frame, the address at a depth
+  open TrImg {FS} ds f ldConst ld-nl using (image-tr)
+  open Rel {FS} U wordOf using (CfgW; VW; SlotsAt; cellPtr)
+  open FlatMachine {FS} using (fpc)
+  open import Once.LinCore.Moves {FS} using (slot)
+
+  trφ : ∀ {σ} → Key σ → Frame
+  trφ (ktr1 {X = X} {A = A} {B = B} ds′ b γ) = frame 0 ((wsz X + wsz A) ⊔ wsz B)
+  {-# CATCHALL #-}
+  trφ _ = frame 0 0
+
+  trPos : ∀ {σ} (κ : Key σ) → under κ ∈ allK U → ℕ → ℕ
+  trPos κ p d = length (proj₁ (image-tr κ p d))
+
+  -- at an address, in a frame
+  record HereF {sh} (φ : Frame) (q : ℕ) (m : Cfg sh) (fs : FlatState) : Set where
+    field
+      f-pc  : fpc fs ≡ q
+      f-run : LocState.halted (floc fs) ≡ false
+      f-cfg : CfgW (LocState.heapMem (floc fs)) (slot fs) φ m
+
+  -- ★ a one-shot trampoline before its cell part: the cell in `Input1` and
+  -- the first save slot, its words in the heap; the caller's area in the
+  -- second, the argument's words there
+  record Tr0 {g A B} (M Mc wA q : ℕ) (v : MV (Fn once g A B ⊗t A)) (fs : FlatState) : Set where
+    field
+      t-pc   : fpc fs ≡ q
+      t-run  : LocState.halted (floc fs) ≡ false
+      t-cell : Id
+      t-wa   : List (StoredValue FS)
+      t-cfc  : FrameSemantics.Frame FS
+      t-area : ℕ
+      t-v    : VW (LocState.heapMem (floc fs)) v (cellPtr t-cell ∷ t-wa)
+      t-in   : readReg (LocState.regs (floc fs)) Input1 ≡ cellPtr t-cell
+      t-M    : slot fs M ≡ just (cellPtr t-cell)
+      t-sM   : slot fs (suc M) ≡ just (SV-Ptr (AtStack t-cfc t-area))
+      t-ne   : ¬ t-cfc ≡ AllocState.current-frame (falloc fs)
+      t-arg  : SlotsAt (LocState.stackMem (floc fs) t-cfc) ((Mc ∸ wA) + t-area) t-wa
 
   -- ★ at a point, in its root's frame (a trampoline's point, and the stop: owed)
   HereP : ∀ {sh V} {c : Codeᴵ sh V} → Pnt c → Cfg sh → FlatState → Set
@@ -192,6 +234,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   rootφ : RootId → Frame
   rootφ rstart                  = frameOf main
   rootφ (rblock {κ = κ} p)      = frameOf (blockᴵ κ)
+  rootφ (rtramp {κ = κ} p)      = trφ κ
 
   private
     ≺-≢ : ∀ {f g} → f ≺ g → f ≡ g → ⊥
@@ -271,7 +314,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
-  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other; slot)
+  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other)
   open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
   open Img {FS} ds f ldConst ld-nl using (image-label)
 
@@ -457,7 +500,6 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Frames {FS} using (Called)
   open Called
   open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next)
-  open Rel {FS} U wordOf using (CfgW)
 
   private
     nat-r0 : ∀ {a b : ℕ} → a + b ≡ 0 → b ≡ 0
