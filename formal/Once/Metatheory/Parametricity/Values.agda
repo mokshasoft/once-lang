@@ -36,7 +36,8 @@ open import Once.Spec.Signature
 import Once.Spec.Signature as S
 open import Once.Spec.Sub
 open import Once.Spec.Core.Syntax using (Prim; primDom; primCod;
-  p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-lt; p-le; p-gt; p-ge; p-eq; p-ne; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
+  num; p-i2f)
+open import Once.Spec.Theory using (int; float; unary; binary; compare)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toB; fromB; toL; fromL; conv)
 open import Once.Spec.Boundary using (readAt)
@@ -175,20 +176,12 @@ module _ {m : ℕ} {σ σ′ : TySub m 0} (ρ : RelSub σ σ′) where
 
   primRel : ∀ {fmt s S} (p : Prim) {x y} → Rel (primDom p) ρ x y
           → Rel (primCod p) ρ (Meaning.primᵛ Σ fmt {s} S σ p x) (Meaning.primᵛ Σ fmt {s} S σ′ p y)
-  primRel p-add {a , b} {.a , .b} (refl , refl) = refl
-  primRel p-sub {a , b} {.a , .b} (refl , refl) = refl
-  primRel p-mul {a , b} {.a , .b} (refl , refl) = refl
-  primRel p-div {a , b} {.a , .b} (refl , refl) = refl
-  primRel p-mod {a , b} {.a , .b} (refl , refl) = refl
-  primRel p-neg  refl = refl
-  primRel {fmt} {s} {S} p-lt {a , b} {.a , .b} (refl , refl) = boolRefl (Meaning.primᵛ Σ fmt {s} S σ p-lt (a , b))
-  primRel {fmt} {s} {S} p-le {a , b} {.a , .b} (refl , refl) = boolRefl (Meaning.primᵛ Σ fmt {s} S σ p-le (a , b))
-  primRel {fmt} {s} {S} p-gt {a , b} {.a , .b} (refl , refl) = boolRefl (Meaning.primᵛ Σ fmt {s} S σ p-gt (a , b))
-  primRel {fmt} {s} {S} p-ge {a , b} {.a , .b} (refl , refl) = boolRefl (Meaning.primᵛ Σ fmt {s} S σ p-ge (a , b))
-  primRel {fmt} {s} {S} p-eq {a , b} {.a , .b} (refl , refl) = boolRefl (Meaning.primᵛ Σ fmt {s} S σ p-eq (a , b))
-  primRel {fmt} {s} {S} p-ne {a , b} {.a , .b} (refl , refl) = boolRefl (Meaning.primᵛ Σ fmt {s} S σ p-ne (a , b))
-  primRel p-fadd {a , b} {.a , .b} (refl , refl) = refl
-  primRel p-fsub {a , b} {.a , .b} (refl , refl) = refl
-  primRel p-fmul {a , b} {.a , .b} (refl , refl) = refl
-  primRel p-fdiv {a , b} {.a , .b} (refl , refl) = refl
+  primRel (num {int}   {k = unary}   h o) refl = refl
+  primRel (num {int}   {k = binary}  h o) {a , b} {.a , .b} (refl , refl) = refl
+  primRel {fmt} {s} {S} (num {int} {k = compare} h o) {a , b} {.a , .b} (refl , refl) =
+    boolRefl (Meaning.primᵛ Σ fmt {s} S σ (num h o) (a , b))
+  primRel (num {float} {k = unary}   h o) refl = refl
+  primRel (num {float} {k = binary}  h o) {a , b} {.a , .b} (refl , refl) = refl
+  primRel {fmt} {s} {S} (num {float} {k = compare} h o) {a , b} {.a , .b} (refl , refl) =
+    boolRefl (Meaning.primᵛ Σ fmt {s} S σ (num h o) (a , b))
   primRel p-i2f  refl = refl

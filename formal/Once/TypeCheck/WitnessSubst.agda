@@ -40,7 +40,10 @@ open import Once.Spec.Core.Syntax using (Tm; _⟪_⟫ₜ; _!!_; coerce; module S
 open Schema using (type)
 open import Once.Core.Decl using (declS)
 import Once.Spec.Core.Syntax
-open import Once.Metatheory.TermModel.TySubst Σ S using (⟦⟧F-⟨⟩; <:-⟨⟩; wf-⟨⟩)
+open import Once.Metatheory.TermModel.TySubst Σ S using (⟦⟧F-⟨⟩; <:-⟨⟩; wf-⟨⟩; symCod-⟨⟩)
+open import Once.Spec.Theory using (int; float)
+open import Once.Spec.Surface.Operator using (binSym; BinSym)
+open BinSym using (shape)
 open import Once.Type.Join using (Joins; j-refl; j-voidˡ; j-voidʳ; j-prod; j-sum; j-arr; j-ν; sound; complete)
 open import Once.Spec.Sub using (_⊔_≔_)
 import Once.Spec.Surface.Typing Σ S nm as SU
@@ -147,7 +150,8 @@ subW↦ : ∀ {n} {L : Locals m n} {e A π B t Ψ} {d : U._⊢_⇐_⇒[_]↦_↝
       → W↦ (L ⟨ σ ⟩ˡ) e (A ⟨ σ ⟩) π (B ⟨ σ ⟩) (t ⟪ σ ⟫ₜ) Ψ
 
 subW⇒ (U.u-int {i})               = W′.w-int i
-subW⇒ (U.u-float {i} {f} {l})     = W′.w-float i f l
+subW⇒ (U.u-float {sg} {i} {f} {l} {nz}) = W′.w-float sg i f l nz
+subW⇒ U.u-toFloat                 = W′.w-toFloat
 subW⇒ U.u-unit                    = W′.w-unit
 subW⇒ U.u-unit-g                  = W′.w-unit-g
 subW⇒ (U.u-var {v = v})           = W′.w-var (∋-⟨⟩ v)
@@ -158,15 +162,14 @@ subW⇒ {d = SU.s-def d e τ a} (U.u-def {ok = ok}) =
 subW⇒ {d = SU.s-annot {T = T} _} (U.u-annot u) =
   ≡W⇒ (sym (↑-⟨⟩ T)) refl (W′.w-annot (≡W⇐ (↑-⟨⟩ T) refl (subW⇐ u)))
 subW⇒ (U.u-pair ua ub)            = W′.w-pair (subW⇒ ua) (subW⇒ ub)
-subW⇒ (U.u-neg u)                 = W′.w-neg (subW⇒ u)
-subW⇒ (U.u-neg-float {i} {f} {l}) = W′.w-neg-float i f l
+subW⇒ (U.u-neg {A = int} {h = h} u)   = W′.w-neg h (subW⇒ u)
+subW⇒ (U.u-neg {A = float} {h = h} u) = W′.w-neg h (subW⇒ u)
 subW⇒ (U.u-let {q = q} u₁ u₂)     = W′.w-let q (subW⇒ u₁) (subW⇒ u₂)
 subW⇒ (U.u-case {ql = ql} {qr = qr} {j = j} us ul ur) = W′.w-case ql qr (subW⇒ us) (subW⇒ ul) (subW⇒ ur) (⊔-⟨⟩ j)
-subW⇒ (U.u-arith {o = o} u₁ u₂)            = W′.w-arith o (subW⇒ u₁) (subW⇒ u₂)
-subW⇒ (U.u-arith-float {o = o} u₁ u₂)      = W′.w-arith-float o (subW⇒ u₁) (subW⇒ u₂)
-subW⇒ (U.u-arith-float-il {o = o} u₁ u₂)   = W′.w-arith-float-il o (subW⇒ u₁) (subW⇒ u₂)
-subW⇒ (U.u-arith-float-ir {o = o} u₁ u₂)   = W′.w-arith-float-ir o (subW⇒ u₁) (subW⇒ u₂)
-subW⇒ (U.u-compare {o = o} u₁ u₂)          = W′.w-compare o (subW⇒ u₁) (subW⇒ u₂)
+subW⇒ (U.u-binop {op = op} {A = int} {h = h} u₁ u₂) =
+  ≡W⇒ (sym (symCod-⟨⟩ σ int (shape (binSym op)))) refl (W′.w-binop h (subW⇒ u₁) (subW⇒ u₂))
+subW⇒ (U.u-binop {op = op} {A = float} {h = h} u₁ u₂) =
+  ≡W⇒ (sym (symCod-⟨⟩ σ float (shape (binSym op)))) refl (W′.w-binop h (subW⇒ u₁) (subW⇒ u₂))
 subW⇒ (U.u-id-app u)              = W′.w-id-app (subW⇒ u)
 subW⇒ (U.u-fst-app u)             = W′.w-fst-app (subW⇒ u)
 subW⇒ (U.u-snd-app u)             = W′.w-snd-app (subW⇒ u)
