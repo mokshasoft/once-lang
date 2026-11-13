@@ -47,7 +47,7 @@ open import Once.LinCore.Keys fmt ans bw
 open import Once.LinCore.Layout fmt ans bw using (Frame; frameOf; budget; wsz; ws)
 open import Once.LinCore.Lower fmt ans bw
 open import Once.LinCore.Words fmt ans bw
-open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; next)
+open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; next; body)
 open import Once.LinCore.LowAt fmt ans bw using (module At)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open import Once.LinCore.PointAt fmt ans bw using (module Ctl)
@@ -401,3 +401,46 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gstep-local : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
                   (st : StepI c r m n t c′ r′ m′ n′) → Local st → InvI m r n h → Related c r m n fs → Onward c′ r′ m′ n′ fs
     gstep-local st l inv G = gstep-at (g-pt G) st l inv (g-here G) (g-next G) (g-ret G)
+
+    -- ★ the loop's turn: the body, its dispatch pushed
+    gloop : ∀ {T E Es A B S V} {b : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V}
+              {r : Ret V T} {m n h fs} (P : Pnt (loop b ⨾ k))
+          → InvI m r n h → HereP P m fs → AllocState.next-heap-ref (falloc fs) ≡ n
+          → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+          → Onward b (case k (loop b ⨾ k) ∷ⁱ r) m n fs
+    gloop {r = r} {fs = fs} (p-start (at s)) inv H nx ok = case SL.loop-enter s H of λ where
+      (N , fs′ , run , H′ , K , nx′ , old , tp) →
+        N , fs′ , run , record { g-pt = p-start (at (body s)) ; g-here = H′ ; g-next = trans nx′ nx
+                               ; g-ret = ok-loop (p-start (disp s)) (refl , refl) (ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok) }
+    gloop {r = r} {fs = fs} (p-block p (at s)) inv H nx ok = case KL.loop-enter p s H of λ where
+      (N , fs′ , run , H′ , K , nx′ , old , tp) →
+        N , fs′ , run , record { g-pt = p-block p (at (body s)) ; g-here = H′ ; g-next = trans nx′ nx
+                               ; g-ret = ok-loop (p-block p (disp s)) (refl , refl) (ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok) }
+    gloop (p-tramp _ _) inv () nx ok
+
+    -- ★ a body's end: the jump to its loop's dispatch
+    greti : ∀ {T sh U′} {k : Codeᴵ sh U′} {r : Ret U′ T} {m n h fs} (P : Pnt (end {sh}))
+          → InvI m (k ∷ⁱ r) n h → HereP P m fs → AllocState.next-heap-ref (falloc fs) ≡ n
+          → RetOK (rootOf P) (ptFin P) (k ∷ⁱ r) (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+          → Onward k r m n fs
+    greti {k = k} {r = r} {fs = fs} (p-start (at e)) inv H nx (ok-loop (p-start (disp s′)) (refl , efin) rest) =
+      case SL.end-jump e image-label efin (SL.dispIn s′) H of λ where
+        (fs′ , run , Hq , K , nx′ , old , tp) →
+          1 , fs′ , run , record { g-pt = p-start (disp s′) ; g-here = Hq ; g-next = trans nx′ nx
+                                 ; g-ret = ret-step K old tp (fresh-at {r = k ∷ⁱ r} {fs = fs} inv nx) rest }
+    greti {k = k} {r = r} {fs = fs} (p-block p (at e)) inv H nx (ok-loop (p-block p′ (disp s′)) (refl , efin) rest) =
+      case KL.end-jump p e image-label efin (KL.dispIn p s′) H of λ where
+        (fs′ , run , Hq , K , nx′ , old , tp) →
+          1 , fs′ , run , record { g-pt = p-block p (disp s′) ; g-here = Hq ; g-next = trans nx′ nx
+                                 ; g-ret = ret-step K old tp (fresh-at {r = k ∷ⁱ r} {fs = fs} inv nx) rest }
+    greti (p-start (at e)) inv H nx (ok-loop (p-block _ (disp _)) (() , _) rest)
+    greti (p-start (at e)) inv H nx (ok-loop (p-start (at _)) () rest)
+    greti (p-start (at e)) inv H nx (ok-loop (p-block _ (at _)) () rest)
+    greti (p-start (at e)) inv H nx (ok-loop (p-tramp _ _) () rest)
+    greti (p-start (at e)) inv H nx (ok-loop p-halt () rest)
+    greti (p-block p (at e)) inv H nx (ok-loop (p-start (disp _)) (() , _) rest)
+    greti (p-block p (at e)) inv H nx (ok-loop (p-start (at _)) () rest)
+    greti (p-block p (at e)) inv H nx (ok-loop (p-block _ (at _)) () rest)
+    greti (p-block p (at e)) inv H nx (ok-loop (p-tramp _ _) () rest)
+    greti (p-block p (at e)) inv H nx (ok-loop p-halt () rest)
+    greti (p-tramp _ _) inv () nx ok
