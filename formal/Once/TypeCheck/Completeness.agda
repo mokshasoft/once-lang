@@ -169,28 +169,11 @@ at-nameC ctx refl r = r
 ↑≡wk₀ T = sub0 T _ _
 
 -- the Spec's operator classes are the checker's
-open import Once.Spec.Surface.Syntax using (BinOp)
-import Once.TypeCheck.Raw as IS
-ia-op : ∀ {Σ s S nm op p} → SUT.IntArith Σ {s} S nm op p → IS.isArithmeticOp op ≡ true
-ia-op SUT.ia-add = refl
-ia-op SUT.ia-sub = refl
-ia-op SUT.ia-mul = refl
-ia-op SUT.ia-div = refl
-ia-op SUT.ia-mod = refl
-
-fa-op : ∀ {Σ s S nm op p} → SUT.FloatArith Σ {s} S nm op p → IS.isFloatArithmeticOp op ≡ true
-fa-op SUT.fa-add = refl
-fa-op SUT.fa-sub = refl
-fa-op SUT.fa-mul = refl
-fa-op SUT.fa-div = refl
-
-cmp-op : ∀ {Σ s S nm op p} → SUT.Compare Σ {s} S nm op p → IS.isComparisonOp op ≡ true
-cmp-op SUT.cmp-lt = refl
-cmp-op SUT.cmp-le = refl
-cmp-op SUT.cmp-gt = refl
-cmp-op SUT.cmp-ge = refl
-cmp-op SUT.cmp-eq = refl
-cmp-op SUT.cmp-ne = refl
+open import Once.Spec.Surface.Operator using (BinOp)
+open import Once.Spec.Surface.Operator using (binSym; BinSym)
+open BinSym using (shape)
+open import Once.Spec.Theory using (⌜_⌝ⁿ; symCod)
+open import Once.TypeCheck.NumTable using (negZero?)
 
 -- An ordinary application's head is not one the checker takes apart.
 open import Once.TypeCheck.Scope using (AppHeadView; classifyAppHead; classifyAppHeadView; viewToPba)
@@ -245,7 +228,7 @@ open import Once.TypeCheck.Elaborate
 import Once.TypeCheck.Elaborate as E
 open import Once.TypeCheck.SpecWitness using (WC; WI; wt-case-copair-check)
 open import Once.TypeCheck.ElaborateProofs
-  using (checkElab-fallback-RInt; checkElab-fallback-RFloat; checkElab-fallback-RUnit; checkElab-fallback-RVar-unit; checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst; checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal; checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl; checkElab-fallback-RVar-inr; checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply; checkElab-fallback-RApp-apply-effclosure; checkElab-fallback-RApp-apply-actclosure; checkElab-fallback-RResolved; checkElab-fallback-RAnnot; checkElab-fallback-RLet; checkElab-fallback-RDestruct; checkElab-fallback-RNeg; checkElab-fallback-RBinOp; checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst; checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out; checkElab-fallback-RApp-generic; checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success; checkLoopV-J; withUnit-elim)
+  using (checkElab-fallback-RInt; checkElab-fallback-RFloat; checkElab-fallback-RUnit; checkElab-fallback-RVar-unit; checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst; checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal; checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl; checkElab-fallback-RVar-inr; checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply; checkElab-fallback-RApp-apply-effclosure; checkElab-fallback-RApp-apply-actclosure; checkElab-fallback-RResolved; checkElab-fallback-RAnnot; checkElab-fallback-RLet; checkElab-fallback-RDestruct; checkElab-fallback-RNeg; checkElab-fallback-RNeg-sub; checkElab-fallback-RBinOp; checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst; checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out; checkElab-fallback-RApp-generic; checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success; checkLoopV-J; withUnit-elim)
 open import Once.TypeCheck.DeciderComplete using (wfFun?-complete-at)
 open import Once.Type.Join using (join?-complete)
 open import Once.Type.Sub using (pure-⊑; <:-refl)
@@ -376,6 +359,7 @@ given-infer-routeS P u-int A π _ = refl
 given-infer-routeS P u-float A π _ = refl
 given-infer-routeS P u-unit A π _ = refl
 given-infer-routeS P u-unit-g A π _ = refl
+given-infer-routeS P u-toFloat A π _ = refl
 given-infer-routeS P u-var A π _ = refl
 given-infer-routeS {ctx = ctx} P (u-sigop {c = c} {ng = ng} _ _) A π (_ , _ , _ , ok) =
   leaf-route ctx c A π (inferElab ctx (Raw.RResolved c)) ng (classifyAppHeadView (Raw.RResolved c)) ok
@@ -384,14 +368,9 @@ given-infer-routeS {ctx = ctx} P (u-def {c = c} {d = d} {e = e} {ok = ok′}) A 
 given-infer-routeS P (u-annot _) A π _ = refl
 given-infer-routeS P (u-pair _ _) A π _ = refl
 given-infer-routeS P (u-neg _) A π _ = refl
-given-infer-routeS P u-neg-float A π _ = refl
 given-infer-routeS P (u-let _ _) A π _ = refl
 given-infer-routeS P (u-case _ _ _) A π _ = refl
-given-infer-routeS P (u-arith _ _) A π _ = refl
-given-infer-routeS P (u-arith-float _ _) A π _ = refl
-given-infer-routeS P (u-arith-float-il _ _) A π _ = refl
-given-infer-routeS P (u-arith-float-ir _ _) A π _ = refl
-given-infer-routeS P (u-compare _ _) A π _ = refl
+given-infer-routeS P (u-binop _ _) A π _ = refl
 given-infer-routeS P (u-id-app _) A π _ = refl
 given-infer-routeS P (u-fst-app _) A π _ = refl
 given-infer-routeS P (u-snd-app _) A π _ = refl
@@ -420,7 +399,10 @@ mutual
   infer-completeS : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) {e A t Ψ} {d : Syn P e A t}
                   → U⇒ P d Ψ → ∃[ eE ] ∃[ dd ] ∃[ f ] inferElab ctx e ≡ success A Ψ eE dd f
   infer-completeS {ctx = ctx} P (u-int {i}) = infer-complete-RInt {ctx = ctx} i
-  infer-completeS P u-float = _ , _ , _ , refl
+  infer-completeS P (u-float {sg} {i} {f} {nz = nz}) with negZero? sg i f
+  ... | yes z = ⊥-elim (nz z)
+  ... | no _  = _ , _ , _ , refl
+  infer-completeS P u-toFloat = _ , _ , _ , refl
   infer-completeS {ctx = ctx} P u-unit = infer-complete-RUnit {ctx = ctx}
   infer-completeS {ctx = ctx} P u-unit-g = infer-complete-RVar-unit {ctx = ctx}
   infer-completeS {ctx = ctx} P (u-var {x = x} {v = v}) =
@@ -442,8 +424,7 @@ mutual
   infer-completeS P (u-pair {a = a} {b = b} ua ub) =
     let (_ , _ , _ , eq₁) = infer-completeS P ua ; (_ , _ , _ , eq₂) = infer-completeS P ub
     in infer-complete-RPair a b eq₁ eq₂
-  infer-completeS P (u-neg {e = e} u) = let (_ , _ , _ , eq) = infer-completeS P u in infer-complete-RNeg e eq
-  infer-completeS P u-neg-float = _ , _ , _ , refl
+  infer-completeS P (u-neg {e = e} {A = A} {h = h} u) = let (_ , _ , _ , eq) = infer-completeS P u in infer-complete-RNeg e A h eq
   infer-completeS P (u-let {x = x} {e₁ = e₁} {e₂ = e₂} {A = A} u₁ u₂) =
     let (_ , _ , _ , eq₁) = infer-completeS P u₁ ; (_ , _ , _ , eq₂) = infer-completeS (pack▸ x A P) u₂
     in infer-complete-RLet x e₁ e₂ eq₁ eq₂
@@ -452,21 +433,9 @@ mutual
         (_ , _ , _ , eqL) = infer-completeS (pack▸ xl A P) ul
         (_ , _ , _ , eqR) = infer-completeS (pack▸ xr B P) ur
     in infer-complete-RDestruct sc xl el xr er Cl Cr C j eqS eqL eqR
-  infer-completeS P (u-arith {op = op} {e₁ = e₁} {e₂ = e₂} {o = o} u₁ u₂) =
+  infer-completeS P (u-binop {op = op} {e₁ = e₁} {e₂ = e₂} {A = A} {h = h} u₁ u₂) =
     let (_ , _ , _ , eq₁) = infer-completeS P u₁ ; (_ , _ , _ , eq₂) = infer-completeS P u₂
-    in infer-complete-RBinOp-arith op (ia-op o) e₁ e₂ eq₁ eq₂
-  infer-completeS P (u-arith-float {op = op} {e₁ = e₁} {e₂ = e₂} {o = o} u₁ u₂) =
-    let (_ , _ , _ , eq₁) = infer-completeS P u₁ ; (_ , _ , _ , eq₂) = infer-completeS P u₂
-    in infer-complete-RBinOp-arith-float op (fa-op o) e₁ e₂ eq₁ eq₂
-  infer-completeS P (u-arith-float-il {op = op} {e₁ = e₁} {e₂ = e₂} {o = o} u₁ u₂) =
-    let (_ , _ , _ , eq₁) = infer-completeS P u₁ ; (_ , _ , _ , eq₂) = infer-completeS P u₂
-    in infer-complete-RBinOp-arith-float-il op (fa-op o) e₁ e₂ eq₁ eq₂
-  infer-completeS P (u-arith-float-ir {op = op} {e₁ = e₁} {e₂ = e₂} {o = o} u₁ u₂) =
-    let (_ , _ , _ , eq₁) = infer-completeS P u₁ ; (_ , _ , _ , eq₂) = infer-completeS P u₂
-    in infer-complete-RBinOp-arith-float-ir op (fa-op o) e₁ e₂ eq₁ eq₂
-  infer-completeS P (u-compare {op = op} {e₁ = e₁} {e₂ = e₂} {o = o} u₁ u₂) =
-    let (_ , _ , _ , eq₁) = infer-completeS P u₁ ; (_ , _ , _ , eq₂) = infer-completeS P u₂
-    in infer-complete-RBinOp-cmp op (cmp-op o) e₁ e₂ eq₁ eq₂
+    in infer-complete-RBinOp op A h e₁ e₂ eq₁ eq₂
   infer-completeS P (u-id-app {e = e} u) = let (_ , _ , _ , eq) = infer-completeS P u in infer-complete-RApp-id e eq
   infer-completeS P (u-fst-app {e = e} u) = let (_ , _ , _ , eq) = infer-completeS P u in infer-complete-RApp-fst e eq
   infer-completeS P (u-snd-app {e = e} u) = let (_ , _ , _ , eq) = infer-completeS P u in infer-complete-RApp-snd e eq
@@ -695,7 +664,9 @@ mutual
   iFromInferSubS : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) {e A B t Ψ} {d : Syn P e A t}
                  → U⇒ P d Ψ → A <: B → ∃[ eE ] ∃[ dd ] ∃[ f ] checkElab ctx e B ≡ success Ψ eE dd f
   iFromInferSubS {ctx = ctx} P (u-int {i}) sub-int = checkElab-fallback-RInt {ctx = ctx} i
-  iFromInferSubS {ctx = ctx} P (u-float {i} {f} {l}) sub-float = checkElab-fallback-RFloat {ctx = ctx} i f l
+  iFromInferSubS {ctx = ctx} P (u-float {sg} {i} {f} {l} {nz}) sub-float = checkElab-fallback-RFloat {ctx = ctx} sg i f l nz
+  iFromInferSubS {ctx = ctx} P u@u-toFloat sb =
+    checkElab-fallback-RResolved {ctx = ctx} (gen "toFloat") _ (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
   iFromInferSubS {ctx = ctx} P u-unit sub-unit = checkElab-fallback-RUnit {ctx = ctx}
   iFromInferSubS {ctx = ctx} P u-unit-g sub-unit = checkElab-fallback-RVar-unit {ctx = ctx}
   iFromInferSubS {ctx = ctx} P u@(u-var {x = x} {A = T}) sb =
@@ -711,22 +682,13 @@ mutual
   iFromInferSubS {ctx = ctx} P (u-pair {a = a} {b = b} ua ub) (sub-* pa pb)
     with iFromInferSubS P ua pa | iFromInferSubS P ub pb
   ... | (_ , _ , _ , eqA) | (_ , _ , _ , eqB) = pair-lit-reduce {ctx = ctx} {a = a} {b = b} eqA eqB
-  iFromInferSubS P u@(u-neg {e = e} _) sub-int = checkElab-fallback-RNeg e ST.Int (proj₂ (proj₂ (proj₂ (infer-completeS P u))))
-  iFromInferSubS {ctx = ctx} P (u-neg-float {i} {f} {l}) sub-float = checkElab-fallback-RNeg {ctx = ctx} (Raw.RFloat i f l) ST.Float refl
+  iFromInferSubS P u@(u-neg {e = e} {A = A} _) sb = checkElab-fallback-RNeg-sub e ⌜ A ⌝ⁿ (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
   iFromInferSubS P u@(u-let {x = x} {e₁ = e₁} {e₂ = e₂} {B = B} _ _) sb =
     checkElab-fallback-RLet x e₁ e₂ B (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
   iFromInferSubS P u@(u-case {e = sc} {xl = xl} {el = el} {xr = xr} {er = er} {C = C} _ _ _) sb =
     checkElab-fallback-RDestruct sc xl el xr er C (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-arith {op = op} {e₁ = e₁} {e₂ = e₂} _ _) sb =
-    checkElab-fallback-RBinOp op e₁ e₂ ST.Int (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-arith-float {op = op} {e₁ = e₁} {e₂ = e₂} _ _) sb =
-    checkElab-fallback-RBinOp op e₁ e₂ ST.Float (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-arith-float-il {op = op} {e₁ = e₁} {e₂ = e₂} _ _) sb =
-    checkElab-fallback-RBinOp op e₁ e₂ ST.Float (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-arith-float-ir {op = op} {e₁ = e₁} {e₂ = e₂} _ _) sb =
-    checkElab-fallback-RBinOp op e₁ e₂ ST.Float (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-compare {op = op} {e₁ = e₁} {e₂ = e₂} _ _) sb =
-    checkElab-fallback-RBinOp op e₁ e₂ (ST.Unit ST.+ ST.Unit) (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
+  iFromInferSubS P u@(u-binop {op = op} {e₁ = e₁} {e₂ = e₂} {A = A} _ _) sb =
+    checkElab-fallback-RBinOp op e₁ e₂ (symCod A (shape (binSym op))) (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
   iFromInferSubS P u@(u-id-app {e = e} {T = T} _) sb = checkElab-fallback-RApp-id e T (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
   iFromInferSubS P u@(u-fst-app {e = e} {A = A} _) sb = checkElab-fallback-RApp-fst e A (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
   iFromInferSubS P u@(u-snd-app {e = e} {B = B} _) sb = checkElab-fallback-RApp-snd e B (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
