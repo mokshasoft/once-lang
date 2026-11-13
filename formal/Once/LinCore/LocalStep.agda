@@ -57,32 +57,40 @@ NotOp (lop s) = ⊥
 {-# CATCHALL #-}
 NotOp _       = ⊤
 
+-- by the code: its first instruction (checked once, cheaply; a step's kind
+-- is its code's head)
+LocalI : ∀ {sh sh′} → Insᴵ sh sh′ → Set
+LocalI unpair       = ⊤
+LocalI pair         = ⊤
+LocalI swap         = ⊤
+LocalI unit         = ⊤
+LocalI (prim ds g)  = NotOp g
+LocalI untag        = ⊤
+LocalI untag₁       = ⊤
+LocalI tag₁         = ⊤
+LocalI elend        = ⊤
+LocalI eunlend      = ⊤
+LocalI elift        = ⊤
+LocalI efst         = ⊤
+LocalI esnd         = ⊤
+LocalI eout         = ⊤
+LocalI eoutq        = ⊤
+LocalI eapp         = ⊤
+LocalI epop         = ⊤
+LocalI eword        = ⊤
+{-# CATCHALL #-}
+LocalI _            = ⊥
+
+LocalC : ∀ {sh U} → Codeᴵ sh U → Set
+LocalC (i ⨾ k)       = LocalI i
+LocalC (case _ _)    = ⊤
+LocalC (ecase _ _)   = ⊤
+LocalC end           = ⊥
+LocalC halted        = ⊥
+
 Local : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
       → StepI c r m n t c′ r′ m′ n′ → Set
-Local i-unpair       = ⊤
-Local i-pair         = ⊤
-Local i-swap         = ⊤
-Local i-unit         = ⊤
-Local (i-prim {g = g} _) = NotOp g
-Local i-untag        = ⊤
-Local i-untag₁       = ⊤
-Local i-tag₁         = ⊤
-Local i-case₁        = ⊤
-Local i-case₂        = ⊤
-Local i-elend        = ⊤
-Local i-eunlend      = ⊤
-Local i-elift        = ⊤
-Local (i-efst _)     = ⊤
-Local (i-esnd _)     = ⊤
-Local (i-eout _)     = ⊤
-Local (i-eoutq _)    = ⊤
-Local (i-ecase₁ _)   = ⊤
-Local (i-ecase₂ _)   = ⊤
-Local (i-eapp _)     = ⊤
-Local i-epop         = ⊤
-Local (i-eword _)    = ⊤
-{-# CATCHALL #-}
-Local _              = ⊥
+Local {c = c} _ = LocalC c
 
 ------------------------------------------------------------------------
 -- 2. ★ THE THEOREM, at a root.
@@ -99,7 +107,7 @@ module Steps {FS : FrameSemantics} (U : Univ)
 
   open Loc {FS} U ncty ldConst wordOf prog root j L₀ R
   open Prims {FS} U ncty ldConst wordOf prog root j L₀ R
-  open At U ncty ldConst φ j using (lcin)
+  open At U ncty ldConst φ j using (lcin; lfin)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
   open FlatStepsAPI {FS} using (FlatSteps)
   open import Once.LinCore.Moves {FS} using (Keep; Old; slot)
@@ -169,30 +177,40 @@ module Steps {FS : FrameSemantics} (U : Univ)
   prim-step s ld (r-iter _ _)       _ H nx fr = ⊥-elim (proj₁ (lcin (lowAt s)))
 
   -- the next path of a local step
+  -- the next path of a local step, and what stays: the return stack, the way out
+  record Succ {T sh U sh′ U′} {c : Codeᴵ sh U} {c′ : Codeᴵ sh′ U′} (r : Ret U T) (r′ : Ret U′ T) (s : Sub root c) : Set₁ where
+    field
+      sub   : Sub root c′
+      carry : ∀ (P : ∀ {V} → AbstractTrace → Ret V T → Set) → P (lfin (lowAt s)) r → P (lfin (lowAt sub)) r′
+
+  succ′ : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
+        → (st : StepI c r m n t c′ r′ m′ n′) → Local st → (s : Sub root c) → Succ {c′ = c′} r r′ s
+  succ′ i-unpair     _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ i-pair       _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ i-swap       _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ i-unit       _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ (i-prim _)   _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ i-untag      _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ i-untag₁     _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ i-tag₁       _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ i-case₁      _ s = record { sub = left s ; carry = λ P x → x }
+  succ′ i-case₂      _ s = record { sub = right s ; carry = λ P x → x }
+  succ′ i-elend      _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ i-eunlend    _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ i-elift      _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ (i-efst _)   _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ (i-esnd _)   _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ (i-eout _)   _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ (i-eoutq _)  _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ (i-ecase₁ _) _ s = record { sub = eleft s ; carry = λ P x → x }
+  succ′ (i-ecase₂ _) _ s = record { sub = eright s ; carry = λ P x → x }
+  succ′ (i-eapp _)   _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ i-epop       _ s = record { sub = next s ; carry = λ P x → x }
+  succ′ (i-eword _)  _ s = record { sub = next s ; carry = λ P x → x }
+
   succ : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
        → (st : StepI c r m n t c′ r′ m′ n′) → Local st → Sub root c → Sub root c′
-  succ i-unpair     _ s = next s
-  succ i-pair       _ s = next s
-  succ i-swap       _ s = next s
-  succ i-unit       _ s = next s
-  succ (i-prim _)   _ s = next s
-  succ i-untag      _ s = next s
-  succ i-untag₁     _ s = next s
-  succ i-tag₁       _ s = next s
-  succ i-case₁      _ s = left s
-  succ i-case₂      _ s = right s
-  succ i-elend      _ s = next s
-  succ i-eunlend    _ s = next s
-  succ i-elift      _ s = next s
-  succ (i-efst _)   _ s = next s
-  succ (i-esnd _)   _ s = next s
-  succ (i-eout _)   _ s = next s
-  succ (i-eoutq _)  _ s = next s
-  succ (i-ecase₁ _) _ s = eleft s
-  succ (i-ecase₂ _) _ s = eright s
-  succ (i-eapp _)   _ s = next s
-  succ i-epop       _ s = next s
-  succ (i-eword _)  _ s = next s
+  succ st l s = Succ.sub (succ′ st l s)
 
   -- ★ THE LOCAL STEP THEOREM
   local-step : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′} {fs}
