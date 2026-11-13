@@ -73,6 +73,7 @@ private
   writes-rdi (XI.Xfsub-rr d _)         = ar≢rdi d ∷ []
   writes-rdi (XI.Xfmul-rr d _)         = ar≢rdi d ∷ []
   writes-rdi (XI.Xfdiv-rrr d _ _)      = ar≢rdi d ∷ []
+  writes-rdi (XI.Xfcmp-rrr _ d _ _)    = ar≢rdi d ∷ (λ ()) ∷ (λ ()) ∷ []
   writes-rdi (XI.Xfsubr-rr d _)        = ar≢rdi d ∷ []
   writes-rdi (XI.Xfneg-r d)            = ar≢rdi d ∷ []
   writes-rdi (XI.Xi2f-r d _)           = ar≢rdi d ∷ []
@@ -135,6 +136,7 @@ spill? (XI.Xfadd-rr _ _)         = sv-other (λ _ _ _ → refl)
 spill? (XI.Xfsub-rr _ _)         = sv-other (λ _ _ _ → refl)
 spill? (XI.Xfmul-rr _ _)         = sv-other (λ _ _ _ → refl)
 spill? (XI.Xfdiv-rrr _ _ _)      = sv-other (λ _ _ _ → refl)
+spill? (XI.Xfcmp-rrr _ _ _ _)    = sv-other (λ _ _ _ → refl)
 spill? (XI.Xfsubr-rr _ _)        = sv-other (λ _ _ _ → refl)
 spill? (XI.Xfneg-r _)            = sv-other (λ _ _ _ → refl)
 spill? (XI.Xi2f-r _ _)           = sv-other (λ _ _ _ → refl)

@@ -34,7 +34,9 @@ open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _++_)
 
 open import Once.Arith.Backend.XInstr.Syntax
-open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
+open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne; FCmpOp; fcmp)
+open import Once.Spec.Theory
+  using (float-rounded; float-order; float-equality; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
@@ -93,6 +95,101 @@ canon-nan-32 dst =
 -- D391: a leaf of the flat input (D381) is ONE word at its offset `k` from the
 -- input pointer `%ecx`; a whole-input scalar (`[]`) is `%ecx` itself. (A float
 -- leaf is loaded exactly as an integer one is.)
+------------------------------------------------------------------------
+-- plan 0.150: the FLOAT COMPARISONS (`Xfcmp-rrr`), at binary32 — the x86-64
+-- sequences one format narrower, with ONE difference forced by the register
+-- file: `%edx` is an ARITH register here (XR0), so the only GPR scratch is
+-- `%eax` (the `Xdiv-rrr`/`Xcmp-rrr` footprint, `ExecArith.writes`). The second
+-- key therefore waits on the stack (`pushl`, as `Xdiv-rrr` stashes its
+-- divisor) and is compared from memory; the `%esp` restore comes after the
+-- `setcc`, since `addl` clobbers the flags. Both operands are copied to
+-- `%xmm0`/`%xmm1` before anything is written, so `dst` may alias either.
+--
+-- IEEE row: `ucomiss` (unordered sets ZF, PF, CF), `==.`/`!=.` combining the
+-- parity flag through `%ah`. Order row: canonical NaN `0x7fc00000`, then the
+-- unsigned key (sign bit set if non-negative, complemented if negative).
+-- Identity row: word equality of the NaN-canonicalised patterns.
+------------------------------------------------------------------------
+
+-- | The NaN-canonical pattern of `xmm` into `%eax`, labels `l1`/`l2`.
+fcanon-32 : String → String → String → String
+fcanon-32 xmm l1 l2 =
+  "    ucomiss " ++ xmm ++ ", " ++ xmm ++ "\n" ++
+  "    jnp " ++ l1 ++ "f\n" ++
+  "    movl $0x7fc00000, %eax\n" ++
+  "    jmp " ++ l2 ++ "f\n" ++
+  l1 ++ ":\n" ++
+  "    movd " ++ xmm ++ ", %eax\n" ++
+  l2 ++ ":\n"
+
+-- | The unsigned-sortable totalOrder key of `%eax`, in place.
+fkey-32 : String → String → String
+fkey-32 l3 l4 =
+  "    testl %eax, %eax\n" ++
+  "    js " ++ l3 ++ "f\n" ++
+  "    btcl $31, %eax\n" ++
+  "    jmp " ++ l4 ++ "f\n" ++
+  l3 ++ ":\n" ++
+  "    notl %eax\n" ++
+  l4 ++ ":\n"
+
+fload-32 : String → String → String
+fload-32 a b =
+  "    movd " ++ a ++ ", %xmm0\n" ++
+  "    movd " ++ b ++ ", %xmm1\n"
+
+-- | The 0/1 result in `%al`, zero-extended into `dst`.
+fset-32 : String → String
+fset-32 dst =
+  "    movzbl %al, %eax\n" ++
+  "    movl %eax, " ++ dst ++ "\n"
+
+-- | Key (or canonical pattern) of `b` pushed, of `a` in `%eax`, then the
+-- compare `a − b`, `setcc`, and the stack restored.
+fstack-cmp-32 : String → String
+fstack-cmp-32 setcc =
+  "    cmpl (%esp), %eax\n" ++
+  "    " ++ setcc ++ " %al\n" ++
+  "    addl $4, %esp\n"
+
+forder-32 : String → String → String → String
+forder-32 a b setcc =
+  fload-32 a b ++
+  fcanon-32 "%xmm1" "1" "2" ++ fkey-32 "3" "4" ++
+  "    pushl %eax\n" ++
+  fcanon-32 "%xmm0" "5" "6" ++ fkey-32 "7" "8" ++
+  fstack-cmp-32 setcc
+
+fident-32 : String → String → String → String
+fident-32 a b setcc =
+  fload-32 a b ++
+  fcanon-32 "%xmm1" "1" "2" ++
+  "    pushl %eax\n" ++
+  fcanon-32 "%xmm0" "3" "4" ++
+  fstack-cmp-32 setcc
+
+fcmp-text-32 : FCmpOp → (dst a b : String) → String
+fcmp-text-32 (fcmp float-rounded ‵<ᵈ) d a b =
+  fload-32 a b ++ "    ucomiss %xmm0, %xmm1\n    seta %al\n" ++ fset-32 d
+fcmp-text-32 (fcmp float-rounded ‵<=ᵈ) d a b =
+  fload-32 a b ++ "    ucomiss %xmm0, %xmm1\n    setae %al\n" ++ fset-32 d
+fcmp-text-32 (fcmp float-rounded ‵>ᵈ) d a b =
+  fload-32 a b ++ "    ucomiss %xmm1, %xmm0\n    seta %al\n" ++ fset-32 d
+fcmp-text-32 (fcmp float-rounded ‵>=ᵈ) d a b =
+  fload-32 a b ++ "    ucomiss %xmm1, %xmm0\n    setae %al\n" ++ fset-32 d
+fcmp-text-32 (fcmp float-rounded ‵==ᵈ) d a b =
+  fload-32 a b ++
+  "    ucomiss %xmm1, %xmm0\n    sete %al\n    setnp %ah\n    andb %ah, %al\n" ++ fset-32 d
+fcmp-text-32 (fcmp float-rounded ‵!=ᵈ) d a b =
+  fload-32 a b ++
+  "    ucomiss %xmm1, %xmm0\n    setne %al\n    setp %ah\n    orb %ah, %al\n" ++ fset-32 d
+fcmp-text-32 (fcmp float-order ‵<)  d a b = forder-32 a b "setb"  ++ fset-32 d
+fcmp-text-32 (fcmp float-order ‵<=) d a b = forder-32 a b "setbe" ++ fset-32 d
+fcmp-text-32 (fcmp float-order ‵>)  d a b = forder-32 a b "seta"  ++ fset-32 d
+fcmp-text-32 (fcmp float-order ‵>=) d a b = forder-32 a b "setae" ++ fset-32 d
+fcmp-text-32 (fcmp float-equality ‵==) d a b = fident-32 a b "sete"  ++ fset-32 d
+fcmp-text-32 (fcmp float-equality ‵!=) d a b = fident-32 a b "setne" ++ fset-32 d
+
 arg-load-text : XReg → InputPath → ℕ → String
 arg-load-text dst [] _      = "    movl %ecx, " ++ reg-text dst ++ "\n"
 arg-load-text dst (_ ∷ _) k = "    movl " ++ showℕ (4 * k) ++ "(%ecx), " ++ reg-text dst ++ "\n"
@@ -248,6 +345,7 @@ instr-text (Xfdiv-rrr dst a b) =
   "    movd " ++ reg-text b ++ ", %xmm1\n" ++
   "    divss %xmm1, %xmm0\n" ++
   canon-nan-32 (reg-text dst)
+instr-text (Xfcmp-rrr o dst a b) = fcmp-text-32 o (reg-text dst) (reg-text a) (reg-text b)
 instr-text (Xfneg-r dst) =
   "    xorl $-2147483648, " ++ reg-text dst ++ "\n"
 instr-text (Xi2f-r dst src) =

@@ -63,7 +63,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 -- `X64.run`'s step semantics, replacing the old opaque observable postulate.
 open import Once.Arith.Backend.XInstr.Syntax as XI
 import Once.Float.Word as FA
-open import Once.Arith.CmpOp using (cmp-bit)
+open import Once.Arith.CmpOp using (cmp-bit; fcmp-bit)
 open import Once.Float.Word using (round)
 open import Once.Spec.Float.Dyadic using (binary64)
 open import Once.Target.X86-64.PhysReg using (Reg; rsp; rdi)
@@ -152,6 +152,8 @@ val-x86-64 (XI.Xfsub-rr d src)         s _ = FA.fsub binary64 (rd s d) (rd s src
 val-x86-64 (XI.Xfmul-rr d src)         s _ = FA.fmul binary64 (rd s d) (rd s src)
 -- Three-address, so both operands are read from their own registers.
 val-x86-64 (XI.Xfdiv-rrr d a b)         s _ = FA.fdiv binary64 (rd s a) (rd s b)
+-- plan 0.150: the float comparison's 0/1 word, defined the same way.
+val-x86-64 (XI.Xfcmp-rrr o d a b) s _ = fcmp-bit binary64 o (rd s a) (rd s b)
 val-x86-64 (XI.Xfsubr-rr d src)        s _ = FA.fsub binary64 (rd s src) (rd s d)
 val-x86-64 (XI.Xfneg-r d)              s _ = FA.fneg binary64 (rd s d)
 val-x86-64 (XI.Xi2f-r d src)           s _ = FA.i2f binary64 (W.toℤ (rd s src))

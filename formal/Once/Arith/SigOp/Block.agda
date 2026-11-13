@@ -23,7 +23,9 @@
 
 module Once.Arith.SigOp.Block where
 
-open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
+open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne; FCmpOp; fcmp)
+open import Once.Spec.Theory
+  using (float-rounded; float-order; float-equality; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=)
 open import Once.Spec.Type using (Base; b-*; b-Float; b-Int; b-Unit; ∅ₖ)
 open import Data.Integer using (ℤ; +_; -[1+_]) renaming ()
 import Data.Integer as ℤ
@@ -41,7 +43,7 @@ open import Once.Spec.Name using (bare)
 
 open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; numtype-as-type; shape-as-type)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; afcmp; numtype-as-type; shape-as-type)
 
 open import Once.Spec.Float.Decimal using (Decimal)
 open Once.Spec.Float.Decimal.Decimal using (exp10; sig)
@@ -117,6 +119,21 @@ show-arith-ir (acmp o a b) = "K" ++ show-cmp o ++ show-arith-ir a ++ show-arith-
         show-cmp c-ge = "3"
         show-cmp c-eq = "4"
         show-cmp c-ne = "5"
+-- plan 0.150: a FLOAT comparison — one letter per row and symbol of the table.
+show-arith-ir (afcmp o a b) = "Q" ++ show-fcmp o ++ show-arith-ir a ++ show-arith-ir b
+  where show-fcmp : FCmpOp → String
+        show-fcmp (fcmp float-rounded  ‵==ᵈ) = "a"
+        show-fcmp (fcmp float-rounded  ‵!=ᵈ) = "b"
+        show-fcmp (fcmp float-rounded  ‵<ᵈ)  = "c"
+        show-fcmp (fcmp float-rounded  ‵<=ᵈ) = "d"
+        show-fcmp (fcmp float-rounded  ‵>ᵈ)  = "e"
+        show-fcmp (fcmp float-rounded  ‵>=ᵈ) = "f"
+        show-fcmp (fcmp float-order    ‵<)   = "g"
+        show-fcmp (fcmp float-order    ‵<=)  = "h"
+        show-fcmp (fcmp float-order    ‵>)   = "i"
+        show-fcmp (fcmp float-order    ‵>=)  = "j"
+        show-fcmp (fcmp float-equality ‵==)  = "k"
+        show-fcmp (fcmp float-equality ‵!=)  = "l"
 
 -- | D395: the block's INPUT SHAPE, prefix-free (Polish notation, lower case so
 -- it never reads as a tree letter). Since D391 a leaf's load is at its flat

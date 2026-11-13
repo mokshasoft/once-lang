@@ -27,7 +27,7 @@ module Once.Arith.Backend.XInstr.Syntax where
 
 open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)
-open import Once.Arith.CmpOp using (CmpOp)
+open import Once.Arith.CmpOp using (CmpOp; FCmpOp)
 open import Data.List using (List)
 
 open import Once.Arith.Machine.Shape using (InputPath)
@@ -149,6 +149,13 @@ data XInstr : Set where
   -- `dst := dst op src` form cannot express `dst := a / b` when `dst` is
   -- `b` — which is exactly the register assignment `compile-go` produces.
   Xfdiv-rrr : XReg → XReg → XReg → XInstr    -- dst := a / b (correctly rounded)
+
+  -- | plan 0.150: a FLOAT COMPARISON into a 0/1 word, three-address like
+  -- `Xcmp-rrr` (`dst := if a ⋚ b then 1 else 0`, the Spec's symbol on the
+  -- values the words encode). Per-arch Emit renders `ucomis*`/`setcc` (IEEE
+  -- row) or a canonical-NaN key compare (order / identity rows) on x86, and
+  -- `flt.d`/`fle.d`/`feq.d` or the same key compare on RISC-V.
+  Xfcmp-rrr : FCmpOp → XReg → XReg → XReg → XInstr
 
   -- | REVERSE subtract: `dst := src − dst`. It exists to avoid a PROOF, and
   -- that is worth stating. `compile-go` leaves the subtrahend in `dst`, so the

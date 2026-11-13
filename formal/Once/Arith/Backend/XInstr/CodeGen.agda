@@ -25,7 +25,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Once.Arith.Machine.Shape using (InputPath; Fst; Snd)
 open import Once.Arith.Machine.AbsInstr
   using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
-         div-rrr; rem-rrr; cmp-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri;
+         div-rrr; rem-rrr; cmp-rrr; fcmp-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri;
          neg-rr; spill; reload; move-to-out)
 open import Once.Arith.Backend.XInstr.Syntax
 
@@ -123,6 +123,11 @@ emit (rem-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 -- plan 0.108: a comparison, three-address like division (`dst := a ⋚ b`).
 emit (cmp-rrr o dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ... | just xd | just xa | just xb          = Xcmp-rrr o xd xa xb ∷ []
+{-# CATCHALL #-}
+... | _       | _       | _                = []
+-- plan 0.150: a FLOAT comparison, the same three-address shape.
+emit (fcmp-rrr o dst a b) with abs-reg dst | abs-reg a | abs-reg b
+... | just xd | just xa | just xb          = Xfcmp-rrr o xd xa xb ∷ []
 {-# CATCHALL #-}
 ... | _       | _       | _                = []
 -- `-safe` variants: same 3-address shape, guard-elided Emit downstream.

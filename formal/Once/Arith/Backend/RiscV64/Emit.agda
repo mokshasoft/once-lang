@@ -35,7 +35,9 @@ open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _++_)
 
 open import Once.Arith.Backend.XInstr.Syntax
-open import Once.Arith.CmpOp using (c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
+open import Once.Arith.CmpOp using (c-lt; c-le; c-gt; c-ge; c-eq; c-ne; FCmpOp; fcmp)
+open import Once.Spec.Theory
+  using (float-rounded; float-order; float-equality; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
@@ -82,6 +84,103 @@ scratch-text record { slot = s } =
 -- D391: a leaf of the flat input (D381) is ONE doubleword at its offset `k` from
 -- the input pointer `t0`; a whole-input scalar (`[]`) is `t0` itself. An offset
 -- past the 12-bit immediate is formed in `dst` (no other register written).
+------------------------------------------------------------------------
+-- plan 0.150: the FLOAT COMPARISONS (`Xfcmp-rrr`), at binary64.
+--
+-- Both operands go to `ft0`/`ft1` FIRST; after that `a`/`b` are never read,
+-- so `dst` is free scratch even when it aliases one of them. The only other
+-- register written is the io scratch `a0` (the `Xsdiv-pow2-rri` footprint,
+-- `Confine.writes`); the IEEE row writes `dst` alone.
+--
+-- IEEE row: `flt.d`/`fle.d`/`feq.d` (0 on NaN), operands swapped for `>.`/
+-- `>=.`, `!=.` the negated `feq.d`.
+--
+-- Order row (totalOrder: −∞ < … < −0 < +0 < … < +∞ < NaN): each operand's
+-- pattern, NaN replaced by THE canonical NaN `0x7ff8000000000000` (`feq.d
+-- f, f` is 0 exactly on NaN), is mapped to a SIGNED-sortable key
+-- `w xor ((w srai 63) srli 1)` — a non-negative pattern is unchanged, a
+-- negative one keeps its sign and complements the rest. (This is the
+-- unsigned key `w xor ((w srai 63) or 1<<63)` with bit 63 flipped, so `slt`
+-- on it IS `sltu` on that one; it needs no second scratch for the constant.)
+-- `b`'s key is computed in `a0` (temp `dst`) and parked bit-exactly in `ft1`
+-- (`fmv` is a raw move), `a`'s key then lands in `a0`, `b`'s back in `dst`.
+-- Identity row (NaN == NaN, −0 ≠ +0): the same with no key, then `xor` and
+-- `seqz`/`snez`.
+------------------------------------------------------------------------
+
+-- | The NaN-canonical pattern of `ft` into `a0`, testing through `dst`,
+-- labels `l1`/`l2`.
+fcanon-rv : String → String → String → String → String
+fcanon-rv d ft l1 l2 =
+  "    feq.d " ++ d ++ ", " ++ ft ++ ", " ++ ft ++ "\n" ++
+  "    bnez " ++ d ++ ", " ++ l1 ++ "f\n" ++
+  "    li a0, 0x7ff8000000000000\n" ++
+  "    j " ++ l2 ++ "f\n" ++
+  l1 ++ ":\n" ++
+  "    fmv.x.d a0, " ++ ft ++ "\n" ++
+  l2 ++ ":\n"
+
+-- | The signed-sortable key of `a0`, in place (temp `dst`).
+fkey-rv : String → String
+fkey-rv d =
+  "    srai " ++ d ++ ", a0, 63\n" ++
+  "    srli " ++ d ++ ", " ++ d ++ ", 1\n" ++
+  "    xor a0, a0, " ++ d ++ "\n"
+
+fload-rv : String → String → String
+fload-rv a b =
+  "    fmv.d.x ft0, " ++ a ++ "\n" ++
+  "    fmv.d.x ft1, " ++ b ++ "\n"
+
+-- | Keys: `a`'s in `a0`, `b`'s in `dst`.
+fkeys-rv : String → String → String → String
+fkeys-rv d a b =
+  fload-rv a b ++
+  fcanon-rv d "ft1" "1" "2" ++ fkey-rv d ++
+  "    fmv.d.x ft1, a0\n" ++
+  fcanon-rv d "ft0" "3" "4" ++ fkey-rv d ++
+  "    fmv.x.d " ++ d ++ ", ft1\n"
+
+-- | Canonical patterns: `a`'s in `a0`, `b`'s in `dst`.
+fcanons-rv : String → String → String → String
+fcanons-rv d a b =
+  fload-rv a b ++
+  fcanon-rv d "ft1" "1" "2" ++
+  "    fmv.d.x ft1, a0\n" ++
+  fcanon-rv d "ft0" "3" "4" ++
+  "    fmv.x.d " ++ d ++ ", ft1\n"
+
+fcmp-text-rv : FCmpOp → (dst a b : String) → String
+fcmp-text-rv (fcmp float-rounded ‵<ᵈ) d a b =
+  fload-rv a b ++ "    flt.d " ++ d ++ ", ft0, ft1\n"
+fcmp-text-rv (fcmp float-rounded ‵<=ᵈ) d a b =
+  fload-rv a b ++ "    fle.d " ++ d ++ ", ft0, ft1\n"
+fcmp-text-rv (fcmp float-rounded ‵>ᵈ) d a b =
+  fload-rv a b ++ "    flt.d " ++ d ++ ", ft1, ft0\n"
+fcmp-text-rv (fcmp float-rounded ‵>=ᵈ) d a b =
+  fload-rv a b ++ "    fle.d " ++ d ++ ", ft1, ft0\n"
+fcmp-text-rv (fcmp float-rounded ‵==ᵈ) d a b =
+  fload-rv a b ++ "    feq.d " ++ d ++ ", ft0, ft1\n"
+fcmp-text-rv (fcmp float-rounded ‵!=ᵈ) d a b =
+  fload-rv a b ++ "    feq.d " ++ d ++ ", ft0, ft1\n" ++
+  "    xori " ++ d ++ ", " ++ d ++ ", 1\n"
+fcmp-text-rv (fcmp float-order ‵<) d a b =
+  fkeys-rv d a b ++ "    slt " ++ d ++ ", a0, " ++ d ++ "\n"
+fcmp-text-rv (fcmp float-order ‵>) d a b =
+  fkeys-rv d a b ++ "    slt " ++ d ++ ", " ++ d ++ ", a0\n"
+fcmp-text-rv (fcmp float-order ‵<=) d a b =
+  fkeys-rv d a b ++ "    slt " ++ d ++ ", " ++ d ++ ", a0\n" ++
+  "    xori " ++ d ++ ", " ++ d ++ ", 1\n"
+fcmp-text-rv (fcmp float-order ‵>=) d a b =
+  fkeys-rv d a b ++ "    slt " ++ d ++ ", a0, " ++ d ++ "\n" ++
+  "    xori " ++ d ++ ", " ++ d ++ ", 1\n"
+fcmp-text-rv (fcmp float-equality ‵==) d a b =
+  fcanons-rv d a b ++ "    xor " ++ d ++ ", a0, " ++ d ++ "\n" ++
+  "    seqz " ++ d ++ ", " ++ d ++ "\n"
+fcmp-text-rv (fcmp float-equality ‵!=) d a b =
+  fcanons-rv d a b ++ "    xor " ++ d ++ ", a0, " ++ d ++ "\n" ++
+  "    snez " ++ d ++ ", " ++ d ++ "\n"
+
 arg-load-text : XReg → InputPath → ℕ → String
 arg-load-text dst [] _ = "    mv " ++ reg-text dst ++ ", t0\n"
 arg-load-text dst (_ ∷ _) k with (8 * k) <ᵇ 2048
@@ -130,6 +229,7 @@ instr-text (Xfdiv-rrr dst a b) =
   "    fmv.d.x ft1, " ++ reg-text b ++ "\n" ++
   "    fdiv.d ft0, ft0, ft1\n" ++
   "    fmv.x.d " ++ reg-text dst ++ ", ft0\n"
+instr-text (Xfcmp-rrr o dst a b) = fcmp-text-rv o (reg-text dst) (reg-text a) (reg-text b)
 instr-text (Xfneg-r dst) =
   "    fmv.d.x ft0, " ++ reg-text dst ++ "\n" ++
   "    fneg.d ft0, ft0\n" ++

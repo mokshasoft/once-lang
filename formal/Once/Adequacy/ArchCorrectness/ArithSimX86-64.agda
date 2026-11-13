@@ -122,6 +122,7 @@ module _ (N : ℕ) where
   mem-keep (XI.Xneg-r _) s addr _ = refl
   mem-keep (XI.Xshl-rri _ _ _) s addr _ = refl
   mem-keep (XI.Xdiv-rrr _ _ _) s addr _ = refl
+  mem-keep (XI.Xfcmp-rrr _ _ _ _) s addr _ = refl
   mem-keep (XI.Xrem-rrr _ _ _) s addr _ = refl
   mem-keep (XI.Xcmp-rrr _ _ _ _) s addr _ = refl
   mem-keep (XI.Xdiv-safe-rrr _ _ _) s addr _ = refl
@@ -166,6 +167,9 @@ module _ (N : ℕ) where
   rf-other (XI.Xdiv-rrr d a b) s x h =
     trans (wr-rdx-arith (writeReg (writeReg (regs s) (arith-reg d) (V (XI.Xdiv-rrr d a b) s)) rax (V (XI.Xdiv-rrr d a b) s)) x (V (XI.Xdiv-rrr d a b) s))
       (trans (wr-rax-arith (writeReg (regs s) (arith-reg d) (V (XI.Xdiv-rrr d a b) s)) x (V (XI.Xdiv-rrr d a b) s)) (readReg-wr-arith-other (regs s) d x (V (XI.Xdiv-rrr d a b) s) (¬d≡x d x h)))
+  rf-other (XI.Xfcmp-rrr o d a b) s x h =
+    trans (wr-rdx-arith (writeReg (writeReg (regs s) (arith-reg d) (V (XI.Xfcmp-rrr o d a b) s)) rax (V (XI.Xfcmp-rrr o d a b) s)) x (V (XI.Xfcmp-rrr o d a b) s))
+      (trans (wr-rax-arith (writeReg (regs s) (arith-reg d) (V (XI.Xfcmp-rrr o d a b) s)) x (V (XI.Xfcmp-rrr o d a b) s)) (readReg-wr-arith-other (regs s) d x (V (XI.Xfcmp-rrr o d a b) s) (¬d≡x d x h)))
   rf-other (XI.Xrem-rrr d a b) s x h =
     trans (wr-rdx-arith (writeReg (writeReg (regs s) (arith-reg d) (V (XI.Xrem-rrr d a b) s)) rax (V (XI.Xrem-rrr d a b) s)) x (V (XI.Xrem-rrr d a b) s))
       (trans (wr-rax-arith (writeReg (regs s) (arith-reg d) (V (XI.Xrem-rrr d a b) s)) x (V (XI.Xrem-rrr d a b) s)) (readReg-wr-arith-other (regs s) d x (V (XI.Xrem-rrr d a b) s) (¬d≡x d x h)))
@@ -203,6 +207,7 @@ module _ (N : ℕ) where
   rdi-inv (XI.Xneg-r d) s = wr-arith-rdi (regs s) d (V (XI.Xneg-r d) s)
   rdi-inv (XI.Xshl-rri d src imm) s = wr-arith-rdi (regs s) d (V (XI.Xshl-rri d src imm) s)
   rdi-inv (XI.Xdiv-rrr d a b) s = wr-arith-rdi (regs s) d (V (XI.Xdiv-rrr d a b) s)
+  rdi-inv (XI.Xfcmp-rrr o d a b) s = wr-arith-rdi (regs s) d (V (XI.Xfcmp-rrr o d a b) s)
   rdi-inv (XI.Xrem-rrr d a b) s = wr-arith-rdi (regs s) d (V (XI.Xrem-rrr d a b) s)
   rdi-inv (XI.Xcmp-rrr o d a b) s = wr-arith-rdi (regs s) d (V (XI.Xcmp-rrr o d a b) s)
   rdi-inv (XI.Xdiv-safe-rrr d a b) s = wr-arith-rdi (regs s) d (V (XI.Xdiv-safe-rrr d a b) s)
@@ -250,6 +255,7 @@ module _ (N : ℕ) where
   pl-inv (XI.Xneg-r d′) s _ p k _ = pl-inv-ns (XI.Xneg-r d′) s p k refl
   pl-inv (XI.Xshl-rri d′ src′ imm′) s _ p k _ = pl-inv-ns (XI.Xshl-rri d′ src′ imm′) s p k refl
   pl-inv (XI.Xdiv-rrr d′ a′ b′) s _ p k _ = pl-inv-ns (XI.Xdiv-rrr d′ a′ b′) s p k refl
+  pl-inv (XI.Xfcmp-rrr o′ d′ a′ b′) s _ p k _ = pl-inv-ns (XI.Xfcmp-rrr o′ d′ a′ b′) s p k refl
   pl-inv (XI.Xrem-rrr d′ a′ b′) s _ p k _ = pl-inv-ns (XI.Xrem-rrr d′ a′ b′) s p k refl
   pl-inv (XI.Xcmp-rrr o′ d′ a′ b′) s _ p k _ = pl-inv-ns (XI.Xcmp-rrr o′ d′ a′ b′) s p k refl
   pl-inv (XI.Xdiv-safe-rrr d′ a′ b′) s _ p k _ = pl-inv-ns (XI.Xdiv-safe-rrr d′ a′ b′) s p k refl
@@ -321,6 +327,8 @@ module _ (N : ℕ) where
     (λ d dc s   → readReg-wr-arith-same (regs s) d _)
     -- rt-fdiv
     (λ d a b s  → readReg-wr-arith-same (regs s) d _)
+    -- rt-fcmp (peel rdx, rax)
+    (λ o d a b s → trans (wr-rdx-arith _ d _) (trans (wr-rax-arith (writeReg (regs s) (arith-reg d) _) d _) (readReg-wr-arith-same (regs s) d _)))
 
 ------------------------------------------------------------------------
 -- plan 0.123 α′ (f3c): THE BLOCK'S ENTRY STATE. The dispatch enters the
@@ -396,6 +404,7 @@ private
   in-frame n (XI.Xneg-r _) _ = tt
   in-frame n (XI.Xshl-rri _ _ _) _ = tt
   in-frame n (XI.Xdiv-rrr _ _ _) _ = tt
+  in-frame n (XI.Xfcmp-rrr _ _ _ _) _ = tt
   in-frame n (XI.Xrem-rrr _ _ _) _ = tt
   in-frame n (XI.Xcmp-rrr _ _ _ _) _ = tt
   in-frame n (XI.Xdiv-safe-rrr _ _ _) _ = tt

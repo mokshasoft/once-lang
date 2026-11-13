@@ -39,7 +39,7 @@ open import Data.Empty using (⊥-elim)
 
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch)
 import Once.Float.Word as FA
-open import Once.Arith.CmpOp using (cmp-bit)
+open import Once.Arith.CmpOp using (cmp-bit; fcmp-bit)
 open import Once.Float.Word using (round)
 open import Once.Spec.Float.Dyadic using (binary64)
 open XI using (XR0; XR1)
@@ -130,6 +130,8 @@ val-riscv64 (XI.Xfadd-rr d src)          s _ = FA.fadd binary64 (rd s d) (rd s s
 val-riscv64 (XI.Xfsub-rr d src)          s _ = FA.fsub binary64 (rd s d) (rd s src)
 val-riscv64 (XI.Xfmul-rr d src)          s _ = FA.fmul binary64 (rd s d) (rd s src)
 val-riscv64 (XI.Xfdiv-rrr d a b)          s _ = FA.fdiv binary64 (rd s a) (rd s b)
+-- plan 0.150: the float comparison's 0/1 word, defined the same way.
+val-riscv64 (XI.Xfcmp-rrr o d a b) s _ = fcmp-bit binary64 o (rd s a) (rd s b)
 -- Three-address: both sources are named, so unlike the 2-address float ops
 -- the destination is not also an operand.
 val-riscv64 (XI.Xfsubr-rr d src)         s _ = FA.fsub binary64 (rd s src) (rd s d)
@@ -219,6 +221,7 @@ module _ (N : ℕ) where
   mem-keep (XI.Xdiv-rrr _ _ _)       s addr _ = refl
   mem-keep (XI.Xrem-rrr _ _ _)       s addr _ = refl
   mem-keep (XI.Xcmp-rrr _ _ _ _)     s addr _ = refl
+  mem-keep (XI.Xfcmp-rrr _ _ _ _)     s addr _ = refl
   mem-keep (XI.Xdiv-safe-rrr _ _ _)  s addr _ = refl
   mem-keep (XI.Xrem-safe-rrr _ _ _)  s addr _ = refl
   mem-keep (XI.Xsdiv-pow2-rri _ _ _) s addr _ = refl
@@ -271,6 +274,9 @@ module _ (N : ℕ) where
   rf-other (XI.Xsdiv-pow2-rri d src imm) s x h =
     trans (readReg-wr-a0-arith (writeReg (regs s) (arith-reg d) (V (XI.Xsdiv-pow2-rri d src imm) s)) x (V (XI.Xsdiv-pow2-rri d src imm) s))
           (readReg-wr-arith-other (regs s) d x (V (XI.Xsdiv-pow2-rri d src imm) s) (¬d≡x d x h))
+  rf-other (XI.Xfcmp-rrr o d a b) s x h =
+    trans (readReg-wr-a0-arith (writeReg (regs s) (arith-reg d) (V (XI.Xfcmp-rrr o d a b) s)) x (V (XI.Xfcmp-rrr o d a b) s))
+          (readReg-wr-arith-other (regs s) d x (V (XI.Xfcmp-rrr o d a b) s) (¬d≡x d x h))
   -- …and each writes exactly its destination.
   rf-other (XI.Xfadd-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfadd-rr d src) s) (¬d≡x d x h)
   rf-other (XI.Xfsub-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfsub-rr d src) s) (¬d≡x d x h)
@@ -315,6 +321,9 @@ module _ (N : ℕ) where
   t0-inv (XI.Xsdiv-pow2-rri d src imm) s =
     trans (wr-a0-t0 (writeReg (regs s) (arith-reg d) (V (XI.Xsdiv-pow2-rri d src imm) s)) (V (XI.Xsdiv-pow2-rri d src imm) s))
           (wr-arith-t0 (regs s) d (V (XI.Xsdiv-pow2-rri d src imm) s))
+  t0-inv (XI.Xfcmp-rrr o d a b) s =
+    trans (wr-a0-t0 (writeReg (regs s) (arith-reg d) (V (XI.Xfcmp-rrr o d a b) s)) (V (XI.Xfcmp-rrr o d a b) s))
+          (wr-arith-t0 (regs s) d (V (XI.Xfcmp-rrr o d a b) s))
   t0-inv (XI.Xmov-out src) s = wr-a0-t0 (regs s) (V (XI.Xmov-out src) s)
   t0-inv (XI.Xmov-r-m sc src) s = refl
 
@@ -374,6 +383,7 @@ module _ (N : ℕ) where
   pl-inv (XI.Xdiv-rrr d a b) s _ p k _ = pl-inv-ns (XI.Xdiv-rrr d a b) s p k refl
   pl-inv (XI.Xrem-rrr d a b) s _ p k _ = pl-inv-ns (XI.Xrem-rrr d a b) s p k refl
   pl-inv (XI.Xcmp-rrr o d a b) s _ p k _ = pl-inv-ns (XI.Xcmp-rrr o d a b) s p k refl
+  pl-inv (XI.Xfcmp-rrr o d a b) s _ p k _ = pl-inv-ns (XI.Xfcmp-rrr o d a b) s p k refl
   pl-inv (XI.Xdiv-safe-rrr d a b) s _ p k _ = pl-inv-ns (XI.Xdiv-safe-rrr d a b) s p k refl
   pl-inv (XI.Xrem-safe-rrr d a b) s _ p k _ = pl-inv-ns (XI.Xrem-safe-rrr d a b) s p k refl
   pl-inv (XI.Xsdiv-pow2-rri d src imm) s _ p k _ = pl-inv-ns (XI.Xsdiv-pow2-rri d src imm) s p k refl
@@ -444,6 +454,9 @@ module _ (N : ℕ) where
     (λ d dc s   → readReg-wr-arith-same (regs s) d _)
     -- rt-fdiv: three-address, so four binders rather than three.
     (λ d a b s  → readReg-wr-arith-same (regs s) d _)
+    -- rt-fcmp (peel a0, as rt-sdiv)
+    (λ o d a b s → trans (readReg-wr-a0-arith (writeReg (regs s) (arith-reg d) _) d _)
+                         (readReg-wr-arith-same (regs s) d _))
 
 ------------------------------------------------------------------------
 -- plan 0.123 α′ (f3c): THE BLOCK'S ENTRY STATE. The dispatch enters the
@@ -512,6 +525,7 @@ private
   in-frame n (XI.Xdiv-rrr _ _ _) _ = tt
   in-frame n (XI.Xrem-rrr _ _ _) _ = tt
   in-frame n (XI.Xcmp-rrr _ _ _ _) _ = tt
+  in-frame n (XI.Xfcmp-rrr _ _ _ _) _ = tt
   in-frame n (XI.Xdiv-safe-rrr _ _ _) _ = tt
   in-frame n (XI.Xrem-safe-rrr _ _ _) _ = tt
   in-frame n (XI.Xsdiv-pow2-rri _ _ _) _ = tt

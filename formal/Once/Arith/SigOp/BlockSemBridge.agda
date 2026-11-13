@@ -30,11 +30,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Once.Arith.Machine.Shape
   using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath; Fst; Snd; project; projectF; Path; here-int; here-flt; go-fst; go-snd; readLeaf)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; shape-as-type)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; afcmp; shape-as-type)
 open import Once.Arith.Machine.WordSem using (module Sem)
 open import Once.Arith.Type using (NInt; NFloat)
 import Once.Float.Word as FA
-open import Once.Arith.CmpOp using (cmp-bit)
+open import Once.Arith.CmpOp using (cmp-bit; fcmp-bit)
 
 import Once.Spec.Word as OnceWord
 import Once.Word as OnceWordL
@@ -148,3 +148,4 @@ module _ (tn : TargetNum) where
   eval≡semM {n = NFloat} (aneg a)   env = cong  (FA.fneg F) (eval≡semM a env)
   eval≡semM (ai2f a)   env = cong (λ w → FA.i2f F (W.toℤ w)) (eval≡semM a env)
   eval≡semM (acmp o a b) env = cong₂ (cmp-bit (int-bits tn) o) (eval≡semM a env) (eval≡semM b env)
+  eval≡semM (afcmp o a b) env = cong₂ (fcmp-bit F o) (eval≡semM a env) (eval≡semM b env)

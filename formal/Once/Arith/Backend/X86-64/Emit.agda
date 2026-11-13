@@ -44,7 +44,9 @@ open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _++_)
 
 open import Once.Arith.Backend.XInstr.Syntax
-open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
+open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne; FCmpOp; fcmp)
+open import Once.Spec.Theory
+  using (float-rounded; float-order; float-equality; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
@@ -107,6 +109,98 @@ canon-nan-64 dst =
 -- D391: a leaf of the flat input (D381) is ONE word at its offset `k` from the
 -- input pointer `%rdi`; a whole-input scalar (`[]`) is `%rdi` itself. (A float
 -- leaf is loaded exactly as an integer one is.)
+------------------------------------------------------------------------
+-- plan 0.150: the FLOAT COMPARISONS (`Xfcmp-rrr`), at binary64.
+--
+-- Both operands are copied out (to `%xmm0`/`%xmm1`, or to the keys in
+-- `%rax`/`%rdx`) BEFORE `dst` is written, so `dst` may alias either. Scratch:
+-- `%rax`, `%rdx`, `%xmm0`, `%xmm1` — the `Xdiv-rrr` footprint (`Confine`).
+--
+-- The IEEE row (`==. !=. <. <=. >. >=.`) is `ucomisd`: unordered sets ZF, PF
+-- and CF, so `seta`/`setae` (CF = 0) are false on NaN; `==.` additionally
+-- needs "not unordered" (`setnp`) and `!=.` is "≠ or unordered" (`setp`).
+-- (AT&T `ucomisd %xmm1, %xmm0` sets the flags of `xmm0 − xmm1`.)
+--
+-- The order row (`< <= > >=`, totalOrder on level-2 values: −∞ < … < −0 <
+-- +0 < … < +∞ < NaN) maps each operand to an UNSIGNED-sortable key: a NaN
+-- becomes THE canonical NaN `0x7ff8000000000000` (so every NaN is one value,
+-- above +∞), then a non-negative pattern gets its sign bit set and a negative
+-- one is complemented. The identity row (`== !=`, NaN == NaN, −0 ≠ +0) is the
+-- word equality of the NaN-canonicalised patterns.
+------------------------------------------------------------------------
+
+-- | `movq src, %xmm` then the NaN-canonical pattern into `gpr`, with the
+-- numeric local labels `l1`/`l2`.
+fcanon-64 : String → String → String → String → String → String
+fcanon-64 src xmm gpr l1 l2 =
+  "    movq " ++ src ++ ", " ++ xmm ++ "\n" ++
+  "    ucomisd " ++ xmm ++ ", " ++ xmm ++ "\n" ++
+  "    jnp " ++ l1 ++ "f\n" ++
+  "    movabsq $0x7ff8000000000000, " ++ gpr ++ "\n" ++
+  "    jmp " ++ l2 ++ "f\n" ++
+  l1 ++ ":\n" ++
+  "    movq " ++ xmm ++ ", " ++ gpr ++ "\n" ++
+  l2 ++ ":\n"
+
+-- | The unsigned-sortable totalOrder key of the pattern in `gpr`, in place.
+fkey-64 : String → String → String → String
+fkey-64 gpr l3 l4 =
+  "    testq " ++ gpr ++ ", " ++ gpr ++ "\n" ++
+  "    js " ++ l3 ++ "f\n" ++
+  "    btcq $63, " ++ gpr ++ "\n" ++
+  "    jmp " ++ l4 ++ "f\n" ++
+  l3 ++ ":\n" ++
+  "    notq " ++ gpr ++ "\n" ++
+  l4 ++ ":\n"
+
+-- | The 0/1 result in `%al`, zero-extended into `dst`.
+fset-64 : String → String
+fset-64 dst =
+  "    movzbq %al, %rax\n" ++
+  "    movq %rax, " ++ dst ++ "\n"
+
+-- | The IEEE row: both operands to `%xmm0`/`%xmm1`, then `ucomisd`.
+fieee-64 : String → String → String
+fieee-64 a b =
+  "    movq " ++ a ++ ", %xmm0\n" ++
+  "    movq " ++ b ++ ", %xmm1\n"
+
+-- | The order row: keys of `a` in `%rax`, of `b` in `%rdx`, then `cmpq`.
+forder-64 : String → String → String
+forder-64 a b =
+  fcanon-64 a "%xmm0" "%rax" "1" "2" ++ fkey-64 "%rax" "3" "4" ++
+  fcanon-64 b "%xmm1" "%rdx" "5" "6" ++ fkey-64 "%rdx" "7" "8" ++
+  "    cmpq %rdx, %rax\n"
+
+-- | The identity row: canonical patterns of `a` in `%rax`, of `b` in `%rdx`.
+fident-64 : String → String → String
+fident-64 a b =
+  fcanon-64 a "%xmm0" "%rax" "1" "2" ++
+  fcanon-64 b "%xmm1" "%rdx" "3" "4" ++
+  "    cmpq %rdx, %rax\n"
+
+fcmp-text-64 : FCmpOp → (dst a b : String) → String
+fcmp-text-64 (fcmp float-rounded ‵<ᵈ) d a b =
+  fieee-64 a b ++ "    ucomisd %xmm0, %xmm1\n    seta %al\n" ++ fset-64 d
+fcmp-text-64 (fcmp float-rounded ‵<=ᵈ) d a b =
+  fieee-64 a b ++ "    ucomisd %xmm0, %xmm1\n    setae %al\n" ++ fset-64 d
+fcmp-text-64 (fcmp float-rounded ‵>ᵈ) d a b =
+  fieee-64 a b ++ "    ucomisd %xmm1, %xmm0\n    seta %al\n" ++ fset-64 d
+fcmp-text-64 (fcmp float-rounded ‵>=ᵈ) d a b =
+  fieee-64 a b ++ "    ucomisd %xmm1, %xmm0\n    setae %al\n" ++ fset-64 d
+fcmp-text-64 (fcmp float-rounded ‵==ᵈ) d a b =
+  fieee-64 a b ++
+  "    ucomisd %xmm1, %xmm0\n    sete %al\n    setnp %dl\n    andb %dl, %al\n" ++ fset-64 d
+fcmp-text-64 (fcmp float-rounded ‵!=ᵈ) d a b =
+  fieee-64 a b ++
+  "    ucomisd %xmm1, %xmm0\n    setne %al\n    setp %dl\n    orb %dl, %al\n" ++ fset-64 d
+fcmp-text-64 (fcmp float-order ‵<)  d a b = forder-64 a b ++ "    setb %al\n" ++ fset-64 d
+fcmp-text-64 (fcmp float-order ‵<=) d a b = forder-64 a b ++ "    setbe %al\n" ++ fset-64 d
+fcmp-text-64 (fcmp float-order ‵>)  d a b = forder-64 a b ++ "    seta %al\n" ++ fset-64 d
+fcmp-text-64 (fcmp float-order ‵>=) d a b = forder-64 a b ++ "    setae %al\n" ++ fset-64 d
+fcmp-text-64 (fcmp float-equality ‵==) d a b = fident-64 a b ++ "    sete %al\n" ++ fset-64 d
+fcmp-text-64 (fcmp float-equality ‵!=) d a b = fident-64 a b ++ "    setne %al\n" ++ fset-64 d
+
 arg-load-text : XReg → InputPath → ℕ → String
 arg-load-text dst [] _      = "    movq %rdi, " ++ reg-text dst ++ "\n"
 arg-load-text dst (_ ∷ _) k = "    movq " ++ showℕ (8 * k) ++ "(%rdi), " ++ reg-text dst ++ "\n"
@@ -281,6 +375,7 @@ instr-text (Xfdiv-rrr dst a b) =
   "    movq " ++ reg-text b ++ ", %xmm1\n" ++
   "    divsd %xmm1, %xmm0\n" ++
   canon-nan-64 (reg-text dst)
+instr-text (Xfcmp-rrr o dst a b) = fcmp-text-64 o (reg-text dst) (reg-text a) (reg-text b)
 instr-text (Xfneg-r dst) =
   "    btcq $63, " ++ reg-text dst ++ "\n"
 instr-text (Xi2f-r dst src) =

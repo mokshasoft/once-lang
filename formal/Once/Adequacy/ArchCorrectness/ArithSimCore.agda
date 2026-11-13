@@ -58,7 +58,7 @@ import Once.Arith.Backend.Correct as Correct
 -- scratch registers (`XR0`/`XR1`); a float block needs its own register file
 -- and has no correspondence here yet. Stated in the type so the gate sees it.
 open import Once.Arith.Type using (NInt; NFloat)
-open import Once.Arith.Machine.IR using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
+open import Once.Arith.Machine.IR using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; afcmp)
 open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_; emit; emit-program)
 open import Once.Arith.Machine.Compile using (compile-abs; compile-go; mul-op; div-op; rem-op; mul-choose; div-choose; div-instr; rem-instr; pow2?; safe-divisor?)
 open import Once.Arith.SigOp.BlockSem using (block-semM)
@@ -77,7 +77,7 @@ import Once.Word as OnceWordL
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 import Once.Float.Word as FA
-open import Once.Arith.CmpOp using (cmp-bit)
+open import Once.Arith.CmpOp using (cmp-bit; fcmp-bit)
 open import Once.Float.Word using (round)
 
 ------------------------------------------------------------------------
@@ -109,6 +109,7 @@ module At (tn : TargetNum) where
   tgt (XI.Xshl-rri d _ _)       = just d
   tgt (XI.Xdiv-rrr d _ _)       = just d
   tgt (XI.Xcmp-rrr _ d _ _)     = just d
+  tgt (XI.Xfcmp-rrr _ d _ _)    = just d
   tgt (XI.Xfdiv-rrr d _ _)      = just d
   tgt (XI.Xrem-rrr d _ _)       = just d
   tgt (XI.Xdiv-safe-rrr d _ _)  = just d
@@ -268,6 +269,7 @@ module At (tn : TargetNum) where
     lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) (_ , lw-++ (emit (div-op b)) [] (lw-div-op b) _)
   compile-loads {n = NFloat} d (adiv a b) = lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) _
   compile-loads d (acmp o a b) = lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) _
+  compile-loads d (afcmp o a b) = lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) _
   compile-loads d (amod a b) =
     lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) (_ , lw-++ (emit (rem-op b)) [] (lw-rem-op b) _)
   compile-loads {n = NInt}   d (aneg a) = lw-un d a _ (compile-loads d a) _
@@ -302,6 +304,7 @@ module At (tn : TargetNum) where
   scratch-unchanged (XI.Xshl-rri _ _ _)       _ s = refl
   scratch-unchanged (XI.Xdiv-rrr _ _ _)       _ s = refl
   scratch-unchanged (XI.Xcmp-rrr _ _ _ _)    _ s = refl
+  scratch-unchanged (XI.Xfcmp-rrr _ _ _ _)   _ s = refl
   scratch-unchanged (XI.Xfdiv-rrr _ _ _)      _ s = refl
   scratch-unchanged (XI.Xrem-rrr _ _ _)       _ s = refl
   scratch-unchanged (XI.Xdiv-safe-rrr _ _ _)  _ s = refl
@@ -332,6 +335,7 @@ module At (tn : TargetNum) where
   input-unchanged (XI.Xshl-rri _ _ _)       s = refl
   input-unchanged (XI.Xdiv-rrr _ _ _)       s = refl
   input-unchanged (XI.Xcmp-rrr _ _ _ _)    s = refl
+  input-unchanged (XI.Xfcmp-rrr _ _ _ _)   s = refl
   input-unchanged (XI.Xfdiv-rrr _ _ _)      s = refl
   input-unchanged (XI.Xrem-rrr _ _ _)       s = refl
   input-unchanged (XI.Xdiv-safe-rrr _ _ _)  s = refl
@@ -431,6 +435,9 @@ module At (tn : TargetNum) where
     -- Float division is THREE-address, so its read-back names both sources —
     -- unlike `rt-fmul`'s 2-address `dst := dst op src`.
     (rt-fdiv    : ∀ d a b s  → rr (e1 (XI.Xfdiv-rrr d a b) s)     (arith-reg d) ≡ FA.fdiv (float-format tn) (rr s (arith-reg a)) (rr s (arith-reg b)))
+    -- plan 0.150: the FLOAT comparison writes its 0/1 word (the Spec's symbol
+    -- at the target's format, defined — hardware agreement is the residual).
+    (rt-fcmp    : ∀ o d a b s → rr (e1 (XI.Xfcmp-rrr o d a b) s) (arith-reg d) ≡ fcmp-bit (float-format tn) o (rr s (arith-reg a)) (rr s (arith-reg b)))
     where
 
     ----------------------------------------------------------------------
@@ -710,6 +717,10 @@ module At (tn : TargetNum) where
     ... | yes refl = trans (bin-value (cmp-bit (int-bits tn) o) a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-cmp o d a b s-conc))
     ... | no ¬eq = step-other (XI.Xcmp-rrr o d a b) d x w s-abs s-conc refl r ¬eq eq
+    R-step-full (XI.Xfcmp-rrr o d a b) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    ... | yes refl = trans (bin-value (fcmp-bit (float-format tn) o) a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+                           (sym (rt-fcmp o d a b s-conc))
+    ... | no ¬eq = step-other (XI.Xfcmp-rrr o d a b) d x w s-abs s-conc refl r ¬eq eq
     R-step-full (XI.Xfdiv-rrr d a b) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (bin-value (FA.fdiv (float-format tn)) a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-fdiv d a b s-conc))
@@ -784,6 +795,7 @@ module At (tn : TargetNum) where
     scratch-frame (XI.Xshl-rri d src imm) s-abs s-conc r rsc = nonspill-sf (XI.Xshl-rri d src imm) tt s-abs s-conc rsc
     scratch-frame (XI.Xdiv-rrr d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xdiv-rrr d a b) tt s-abs s-conc rsc
     scratch-frame (XI.Xcmp-rrr o d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xcmp-rrr o d a b) tt s-abs s-conc rsc
+    scratch-frame (XI.Xfcmp-rrr o d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xfcmp-rrr o d a b) tt s-abs s-conc rsc
     scratch-frame (XI.Xfdiv-rrr d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xfdiv-rrr d a b) tt s-abs s-conc rsc
     scratch-frame (XI.Xrem-rrr d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xrem-rrr d a b) tt s-abs s-conc rsc
     scratch-frame (XI.Xdiv-safe-rrr d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xdiv-safe-rrr d a b) tt s-abs s-conc rsc

@@ -33,7 +33,7 @@ open import Once.Arith.Machine.AbsInstr using (AbstractInstr; spill)
 open import Once.Arith.Machine.Compile
   using (compile-abs; compile-go; required-scratch; mul-op; div-op; rem-op; mul-choose; div-choose; div-instr; rem-instr; pow2?; safe-divisor?)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; afcmp)
 open import Once.Arith.Type using (NInt; NFloat)
 
 -- a spill's slot is below `k`; nothing else is constrained
@@ -124,6 +124,8 @@ spills-below d k (amod a b) le =
   sw-bin d a b _ (spills-below d k a (≤-trans (l≤ d _ _) le)) (≤-trans (d< d _ _) le) (spills-below (suc d) k b (≤-trans (r≤ d _ _) le))
     (_ , sw-++ (emit (rem-op b)) [] (sw-rem-instr (safe-divisor? b)) _)
 spills-below d k (acmp o a b) le =
+  sw-bin d a b _ (spills-below d k a (≤-trans (l≤ d _ _) le)) (≤-trans (d< d _ _) le) (spills-below (suc d) k b (≤-trans (r≤ d _ _) le)) _
+spills-below d k (afcmp o a b) le =
   sw-bin d a b _ (spills-below d k a (≤-trans (l≤ d _ _) le)) (≤-trans (d< d _ _) le) (spills-below (suc d) k b (≤-trans (r≤ d _ _) le)) _
 spills-below {n = NInt}   d k (aneg a) le = sw-cat (compile-go d a) _ (spills-below d k a le) _
 spills-below {n = NFloat} d k (aneg a) le = sw-cat (compile-go d a) _ (spills-below d k a le) _
