@@ -249,59 +249,66 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
     slot-eq : ∀ {f g x y} → AtStack {FS} f x ≡ AtStack g y → x ≡ y
     slot-eq refl = refl
 
-  leave : ∀ prog (fs : FlatState) (φ φ′ : Frame) (cfc : FrameSemantics.Frame FS) (area M bb pc : ℕ) (rest : List ℕ)
+  leave : ∀ prog (fs : FlatState) (φ φ′ : Frame) (cfc : FrameSemantics.Frame FS) (s₀ area M bb pc : ℕ) (rest : List ℕ)
             (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ) {Es B S} {es : Slots Es} {os : Stk S} {b : MV B} (wb : List W)
         → fret fs ≡ pc ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
         → ¬ cfc ≡ AllocState.current-frame (falloc fs)
-        → slot fs (budget φ′) ≡ just (SV-Ptr (AtStack cfc area))
+        → slot fs s₀ ≡ just (SV-Ptr (AtStack cfc area))
         → VW (LocState.heapMem (floc fs)) b wb → SlotsAt (slot fs) (budget φ′ ∸ ws (B ∷ [])) wb
         → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
         → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) φ os
         → area ≡ (budget φ ∸ ws S) ∸ M → wsz B ≤ M → M + ws S ≤ OP φ → ws Es ≤ EP φ → ws (B ∷ S) ≤ OP φ
-        → Seg prog (fpc fs) (restore-input (budget φ′) ∷ mvSP (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) ++ instr-ctrl (c-ret bb) ∷ [])
+        → Seg prog (fpc fs) (restore-input s₀ ∷ mvSP (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) ++ instr-ctrl (c-ret bb) ∷ [])
         → LocState.halted (floc fs) ≡ false
         → Σ FlatState λ fs′ → FlatSteps prog (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′
             × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os)
             × CallOut fs fs′ cfc area (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) pc rest sv sl
             × (∀ x → budget φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
-  leave prog fs φ φ′ cfc area M bb pc rest sv sl {Es} {B} {S} {es} {os} {b} wb hret hsv ne ep pb sb ev st refl le fitM fitE fitB seg h
-    with call-out prog fs cfc area (budget φ′) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) bb pc rest sv sl hret hsv ne ep
-           (λ k k< → slots-def wb sb k (subst (k <_) (sym (vw-len pb)) k<)) seg h
-  ... | (fs′ , st′ , CO) =
-    fs′ , st′ ,
-    subst (λ g → CfgW (LocState.heapMem (floc fs′)) (LocState.stackMem (floc fs′) g) φ (es ∥ b ∷ˢ os)) (sym (co-frame CO))
-      (record { c-env  = envW-heap es (λ i k _ → hp (cellLoc i k)) (envW-frame es (λ x x< → kept x (inj₁ x<)) ev)
-              ; c-stk  = ( wb , vw-frame pb (λ i k _ → hp (cellLoc i k))
-                         , subst (λ z → SlotsAt (LocState.stackMem (floc fs′) cfc) z wb)
-                             (area-gen (budget φ) (wsz B) M (ws S) le (≤-trans fitM (m≤n+m (OP φ) (EP φ))))
-                             (slots-copied wb (λ k k< → trans (cong (LocState.stackMem (floc fs′) cfc) (sym (+-assoc k (M ∸ wsz B) area)))
-                                                            (co-moved CO k (subst (k <_) (vw-len pb) k<))) sb) )
-                       , stkW-heap os (λ i k _ → hp (cellLoc i k))
-                           (stkW-frame os fitS (λ x lo _ → kept x (inj₂ lo)) st)
-              ; c-efit = fitE ; c-sfit = fitB }) ,
-    CO , (λ x le → kept x (inj₂ (≤-trans (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) le)))
+  leave prog fs φ φ′ cfc s₀ area M bb pc rest sv sl {Es} {B} {S} {es} {os} {b} wb hret hsv ne ep pb sb ev st refl le fitM fitE fitB seg h
+    = fin (call-out prog fs cfc area s₀ (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) bb pc rest sv sl hret hsv ne ep
+             (λ k k< → slots-def wb sb k (subst (k <_) (sym (vw-len pb)) k<)) seg h)
     where
-      import Data.Nat.Properties
-      open import Data.Sum using (_⊎_; inj₁; inj₂)
-      bot = budget φ ∸ ws S
-      hp : ∀ hl → LocState.heapMem (floc fs′) hl ≡ LocState.heapMem (floc fs) hl
-      hp hl = co-rest CO (AtDynamic hl) (λ k k< ())
-      fitS : ws S ≤ budget φ
-      fitS = ≤-trans (m≤n+m (ws S) M) (≤-trans fitM (m≤n+m (OP φ) (EP φ)))
-      -- the area lies above the environment and below the rest of the stack
-      area≥ : ws Es ≤ (budget φ ∸ ws S) ∸ M
-      area≥ = ≤-trans fitE (≤-trans (env-below φ (M + ws S) fitM)
-                (≤-reflexive (trans (cong (budget φ ∸_) (+-comm M (ws S))) (sym (Data.Nat.Properties.∸-+-assoc (budget φ) (ws S) M)))))
-      area-top : ((budget φ ∸ ws S) ∸ M) + M ≡ bot
-      area-top = Data.Nat.Properties.m∸n+n≡m (≤∸ M (ws S) (budget φ) (≤-trans fitM (m≤n+m (OP φ) (EP φ))))
-      moved< : ∀ k → k < wsz B → (k + (M ∸ wsz B)) + ((budget φ ∸ ws S) ∸ M) < bot
-      moved< k k< = <-≤-trans (Data.Nat.Properties.+-monoˡ-< _ (<-≤-trans (Data.Nat.Properties.+-monoˡ-< (M ∸ wsz B) k<)
-                                (≤-reflexive (Data.Nat.Properties.m+[n∸m]≡n le))))
-                      (≤-reflexive (trans (+-comm M _) area-top))
-      kept : ∀ x → (x < ws Es) ⊎ (bot ≤ x) → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x
-      kept x side = co-rest CO (AtStack cfc x) (λ k k< e′ → off-area k k< (slot-eq e′) side)
+      fin : Σ FlatState (λ fs′ → FlatSteps prog (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′
+              × CallOut fs fs′ cfc area (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) pc rest sv sl)
+          → Σ FlatState λ fs′ → FlatSteps prog (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′
+              × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os)
+              × CallOut fs fs′ cfc area (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) pc rest sv sl
+              × (∀ x → budget φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
+      fin (fs′ , st′ , CO) =
+        fs′ , st′ ,
+        subst (λ g → CfgW (LocState.heapMem (floc fs′)) (LocState.stackMem (floc fs′) g) φ (es ∥ b ∷ˢ os)) (sym (co-frame CO))
+          (record { c-env  = envW-heap es (λ i k _ → hp (cellLoc i k)) (envW-frame es (λ x x< → kept x (inj₁ x<)) ev)
+                  ; c-stk  = ( wb , vw-frame pb (λ i k _ → hp (cellLoc i k))
+                             , subst (λ z → SlotsAt (LocState.stackMem (floc fs′) cfc) z wb)
+                                 (area-gen (budget φ) (wsz B) M (ws S) le (≤-trans fitM (m≤n+m (OP φ) (EP φ))))
+                                 (slots-copied wb (λ k k< → trans (cong (LocState.stackMem (floc fs′) cfc) (sym (+-assoc k (M ∸ wsz B) area)))
+                                                                (co-moved CO k (subst (k <_) (vw-len pb) k<))) sb) )
+                           , stkW-heap os (λ i k _ → hp (cellLoc i k))
+                               (stkW-frame os fitS (λ x lo _ → kept x (inj₂ lo)) st)
+                  ; c-efit = fitE ; c-sfit = fitB }) ,
+        CO , (λ x le → kept x (inj₂ (≤-trans (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) le)))
         where
-          off-area : ∀ k → k < wsz B → x ≡ (k + (M ∸ wsz B)) + ((budget φ ∸ ws S) ∸ M) → (x < ws Es) ⊎ (bot ≤ x) → ⊥
-          off-area k k< e (inj₁ x<) = Data.Nat.Properties.<-irrefl e
-                                     (<-≤-trans x< (≤-trans area≥ (m≤n+m _ (k + (M ∸ wsz B)))))
-          off-area k k< e (inj₂ ge) = Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans (moved< k k<) ge)
+          import Data.Nat.Properties
+          open import Data.Sum using (_⊎_; inj₁; inj₂)
+          bot = budget φ ∸ ws S
+          hp : ∀ hl → LocState.heapMem (floc fs′) hl ≡ LocState.heapMem (floc fs) hl
+          hp hl = co-rest CO (AtDynamic hl) (λ k k< ())
+          fitS : ws S ≤ budget φ
+          fitS = ≤-trans (m≤n+m (ws S) M) (≤-trans fitM (m≤n+m (OP φ) (EP φ)))
+          -- the area lies above the environment and below the rest of the stack
+          area≥ : ws Es ≤ (budget φ ∸ ws S) ∸ M
+          area≥ = ≤-trans fitE (≤-trans (env-below φ (M + ws S) fitM)
+                    (≤-reflexive (trans (cong (budget φ ∸_) (+-comm M (ws S))) (sym (Data.Nat.Properties.∸-+-assoc (budget φ) (ws S) M)))))
+          area-top : ((budget φ ∸ ws S) ∸ M) + M ≡ bot
+          area-top = Data.Nat.Properties.m∸n+n≡m (≤∸ M (ws S) (budget φ) (≤-trans fitM (m≤n+m (OP φ) (EP φ))))
+          moved< : ∀ k → k < wsz B → (k + (M ∸ wsz B)) + ((budget φ ∸ ws S) ∸ M) < bot
+          moved< k k< = <-≤-trans (Data.Nat.Properties.+-monoˡ-< _ (<-≤-trans (Data.Nat.Properties.+-monoˡ-< (M ∸ wsz B) k<)
+                                    (≤-reflexive (Data.Nat.Properties.m+[n∸m]≡n le))))
+                          (≤-reflexive (trans (+-comm M _) area-top))
+          kept : ∀ x → (x < ws Es) ⊎ (bot ≤ x) → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x
+          kept x side = co-rest CO (AtStack cfc x) (λ k k< e′ → off-area k k< (slot-eq e′) side)
+            where
+              off-area : ∀ k → k < wsz B → x ≡ (k + (M ∸ wsz B)) + ((budget φ ∸ ws S) ∸ M) → (x < ws Es) ⊎ (bot ≤ x) → ⊥
+              off-area k k< e (inj₁ x<) = Data.Nat.Properties.<-irrefl e
+                                         (<-≤-trans x< (≤-trans area≥ (m≤n+m _ (k + (M ∸ wsz B)))))
+              off-area k k< e (inj₂ ge) = Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans (moved< k k<) ge)
