@@ -22887,3 +22887,31 @@ construction of the compiled code, and `NoCell` states it.
 
 ### Consequences
 * The step theorem covers `open1` (at a trampoline's depth 0, by `tr-open1`; elsewhere absurd).
+
+## D423 — A ν IS OBSERVED AT THE EMPTY TABLE: ONE OBSERVATION BLOCK PER (F , S) (2026-11-13)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Refines**: D416 (a ν's
+code word names `kobs` at the table where the ν was built). **Status**: the relation's parts for `ktro` are
+in (its depth-0 relation, cell part, inner call, return, way out); the dispatch `i-iobs` is OWED on this.
+
+### The problem
+A ν's code word names `kobs d F S` for the table `d` where the ν was built (D416); the image's `iobs ds`
+enters `ktro ds F S` at the OBSERVER's table `ds`. When the two differ (a ν built in a body, observed in
+the start's code), the flat run jumps to one trampoline and the image runs another: their flat codes are
+the same (D416: `obsT` names no label), but they sit at different places in the image and the image codes
+differ syntactically (`compᴵ ds (obsT F S)` carries `ds` in its `prim ds …`), so the word layer's point
+(`p-tramp`, a membership and a path into one key's block) cannot relate them.
+
+### Decision (proposed)
+* **Observation blocks are table-free: compiled at the empty table `ε`.** A ν's code word names
+  `kobs ε F S`; `iobs` enters `ktro ε F S`; `lunf`/`lout` gather `(_ , ε)` (already in every universe).
+  One observation block per `(F , S)` — fewer blocks, the same flat code.
+* **Owed for it**: the source run observes at the observer's table (`Run ds (obsT F S)`, `Events.r-nout`),
+  so `ImageSim`'s `r-nout` case needs `obsT`'s runs to be table-independent:
+  `Run ds (obsT {Γ} F S) e p n o t → Run ε (obsT {∅} F S) e p n o t` — true, since `obsT` only restructures
+  and applies the lent coalgebra (`bev`, whose closure carries its own table).
+
+### Alternatives
+* The ν's value carrying its table (`mnu` with a `DS`): changes the core's values and every proof over them.
+* A cross-table point (the image in one key's block, the flat pc in another's of the same code): a second
+  point kind, a path translation between two syntactically different codes — larger and less clear.
