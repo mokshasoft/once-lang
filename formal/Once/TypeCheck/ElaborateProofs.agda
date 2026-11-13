@@ -61,10 +61,14 @@ open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Name using (CanonicalName; gen; own)
 open import Once.Name using (showCanonical)
 import Once.Spec.Surface.Syntax as Syn
-open import Once.Spec.Surface.Syntax as Raw using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatArithmeticOp)
+open import Once.Spec.Surface.Operator using (BinOp; Dottable; plain; dotted; ‹_›; o%; o+; o-; o/; o<; o<=)
+open import Once.Spec.Surface.Syntax as Raw using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; NegativeZero)
+open import Once.Spec.Float.Value using (Sign; pos; neg)
+open import Once.Spec.Theory using (float; Has; Sym; symDom)
+open import Once.TypeCheck.NumTable using (negZero?)
+open import Relation.Nullary using (¬_)
 open import Once.TypeCheck.Raw as Raw
-open import Once.TypeCheck.Error using (TypeError; TypeMismatch; BinOpLeftError; BinOpRightError; UnboundVariable)
+open import Once.TypeCheck.Error using (TypeError; TypeMismatch; BinOpLeftError; BinOpRightError; UnboundVariable; OperatorUndefined; MixedOperands; NegativeZeroLiteral)
 import Once.TypeCheck.Context
 import Once.Spec.Context as Surface
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
@@ -108,13 +112,15 @@ checkElab-fallback-RInt {m = m} {ctx = ctx} n with Int {m} <:? Int
 -- decider agrees with the derivation, so `inferElabV`'s dispatch unsticks.
 -- K3: no acceptance witness rides in, because there is none. Every float
 -- literal checks at `Float`.
-checkElab-fallback-RFloat : ∀ {m} {ctx : NamedCtx m} (i f l : ℕ)
+checkElab-fallback-RFloat : ∀ {m} {ctx : NamedCtx m} (sg : Sign) (i f l : ℕ) → ¬ NegativeZero sg i f
   → ∃-syntax (λ eE → ∃-syntax (λ dd → ∃-syntax (λ fr →
-      checkElab ctx (Raw.RFloat i f l) Float
+      checkElab ctx (Raw.RFloat sg i f l) Float
         ≡ success Surface.zeroUsage eE dd fr)))
-checkElab-fallback-RFloat {m = m} {ctx = ctx} i f l with Float {m} <:? Float
-... | yes _    = _ , _ , _ , refl
-... | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
+checkElab-fallback-RFloat {m = m} {ctx = ctx} sg i f l nz with negZero? sg i f
+... | yes z = ⊥-elim (nz z)
+... | no _ with Float {m} <:? Float
+...   | yes _    = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
 
 -- RUnit always infers at type `Unit`.
 checkElab-fallback-RUnit : ∀ {m} {ctx : NamedCtx m}
@@ -171,6 +177,10 @@ checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-inr | succ
 ... | no ¬eq   = ⊥-elim (¬eq sb)
 checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-unit | failure _  | ()
 checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-unit | success T' Ψ' eE' d' fr' | refl with T <:? τ
+... | yes _    = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq sb)
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-toFloat | failure _  | ()
+checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-toFloat | success T' Ψ' eE' d' fr' | refl with T <:? τ
 ... | yes _    = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq sb)
 checkElab-fallback-RResolved {ctx = ctx} {τ = τ} cn T eqInf sb | gv-other _ | failure _  | ()
@@ -263,29 +273,14 @@ checkElab-fallback-RNeg : ∀ {m} {ctx : NamedCtx m} (e : Syn.Expr) (T : Ty m)
   → inferElab ctx (Raw.RNeg e) ≡ success T Ψ eE d f
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RNeg e) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RNeg {m = m} {ctx = ctx} e T eqInf
-  with negOperandView e | eqInf
-... | nov-int n | refl with Int {m} <:? Int
-...   | yes _    = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq (<:-refl Int))
-checkElab-fallback-RNeg {m = m} {ctx = ctx} e T eqInf
-  | nov-float i f l | refl with Float {m} <:? Float
-...   | yes _    = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
 checkElab-fallback-RNeg {ctx = ctx} e T eqInf
-  -- NAME THE REDUCED FORM. Under the abstracted view the goal and `eqI` both
-  -- mention `inferElabV-RNeg-aux ctx e (inferElab ctx e)`, not
-  -- `inferElabV ctx (RNeg e)` — that unfolds back into the view and
-  -- would be stuck. Same convention as `RealizeAgrees`' neg branch.
-  | nov-other .e | eqI with inferElabV-RNeg-aux ctx e (inferElab ctx e) | eqI
-...   | failure _  | ()
-...   | success T' Ψ' eE' d' fr' | refl with T <:? T
-...     | yes _    = _ , _ , _ , refl
-...     | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
+  with inferElabV-RNeg-aux ctx e (inferElab ctx e) | eqInf
+... | failure _  | ()
+... | success T' Ψ' eE' d' fr' | refl with T <:? T
+...   | yes _    = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq (<:-refl T))
 
--- D229 / plan 0.94 §13: the same, at any SUPERtype of the inferred one (a
--- `Void` result converts to every type). A numeral's fold infers `Int`/`Float`,
--- whose only supertypes are themselves.
+-- D229 / plan 0.94 §13: the same, at any SUPERtype of the inferred one.
 checkElab-fallback-RNeg-sub : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (e : Syn.Expr) (T : Ty m)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
@@ -294,23 +289,12 @@ checkElab-fallback-RNeg-sub : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (e : Syn.Ex
   → T <: τ
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RNeg e) τ ≡ success Ψ eE' d' f')))
-checkElab-fallback-RNeg-sub {m = m} {ctx = ctx} {τ = τ} e T eqInf sb
-  with negOperandView e | eqInf
-... | nov-int n | refl with sb
-...   | sub-int with Int {m} <:? Int
-...     | yes _    = _ , _ , _ , refl
-...     | no ¬eq   = ⊥-elim (¬eq (<:-refl Int))
-checkElab-fallback-RNeg-sub {m = m} {ctx = ctx} {τ = τ} e T eqInf sb
-  | nov-float i f l | refl with sb
-...   | sub-float with Float {m} <:? Float
-...     | yes _    = _ , _ , _ , refl
-...     | no ¬eq   = ⊥-elim (¬eq (<:-refl Float))
 checkElab-fallback-RNeg-sub {ctx = ctx} {τ = τ} e T eqInf sb
-  | nov-other .e | eqI with inferElabV-RNeg-aux ctx e (inferElab ctx e) | eqI
-...   | failure _  | ()
-...   | success T' Ψ' eE' d' fr' | refl with T <:? τ
-...     | yes _    = _ , _ , _ , refl
-...     | no ¬eq   = ⊥-elim (¬eq sb)
+  with inferElabV-RNeg-aux ctx e (inferElab ctx e) | eqInf
+... | failure _  | ()
+... | success T' Ψ' eE' d' fr' | refl with T <:? τ
+...   | yes _    = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq sb)
 
 -- D229 / plan 0.94 §13: `apply p` checks through its inference whatever `p`
 -- synthesizes (a `Void` `p` included).
@@ -759,91 +743,12 @@ resolveExpr-int : ∀ {m} {n} {Γ : Surface.Ctx m n} (polys : PolyCtx) (imps : S
   → resolveExpr {Γ = Γ} polys imps userFns fresh (Surface.int z) ≡ Surface.int z
 resolveExpr-int _ _ _ _ _ = refl
 
--- Resolution commutes with arithmetic (add / sub / mul / div / mod').
-resolveExpr-add : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ₁ Ψ₂ : Surface.Usage n}
+-- Resolution commutes with a numeric operation.
+resolveExpr-num : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ : Surface.Usage n} {A U k} (h : Has A U) (o : Sym U k)
     (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
-  → resolveExpr polys imps userFns fresh (Surface.add a b)
-      ≡ Surface.add (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
-resolveExpr-add _ _ _ _ _ _ = refl
-
-resolveExpr-sub : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
-  → resolveExpr polys imps userFns fresh (Surface.sub a b)
-      ≡ Surface.sub (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
-resolveExpr-sub _ _ _ _ _ _ = refl
-
-resolveExpr-mul : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
-  → resolveExpr polys imps userFns fresh (Surface.mul a b)
-      ≡ Surface.mul (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
-resolveExpr-mul _ _ _ _ _ _ = refl
-
-resolveExpr-div : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
-  → resolveExpr polys imps userFns fresh (Surface.div a b)
-      ≡ Surface.div (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
-resolveExpr-div _ _ _ _ _ _ = refl
-
-resolveExpr-mod' : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
-  → resolveExpr polys imps userFns fresh (Surface.mod' a b)
-      ≡ Surface.mod' (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
-resolveExpr-mod' _ _ _ _ _ _ = refl
-
--- Resolution commutes with neg.
-resolveExpr-neg : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (e : Surface.Expr Γ Ψ Int)
-  → resolveExpr polys imps userFns fresh (Surface.neg e) ≡ Surface.neg (resolveExpr polys imps userFns fresh e)
-resolveExpr-neg _ _ _ _ _ = refl
-
--- Resolution commutes with comparison ops (lt / le / gt / ge / eq / ne).
-resolveExpr-lt : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
-  → resolveExpr polys imps userFns fresh (Surface.lt a b)
-      ≡ Surface.lt (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
-resolveExpr-lt _ _ _ _ _ _ = refl
-
-resolveExpr-le : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
-  → resolveExpr polys imps userFns fresh (Surface.le a b)
-      ≡ Surface.le (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
-resolveExpr-le _ _ _ _ _ _ = refl
-
-resolveExpr-gt : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
-  → resolveExpr polys imps userFns fresh (Surface.gt a b)
-      ≡ Surface.gt (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
-resolveExpr-gt _ _ _ _ _ _ = refl
-
-resolveExpr-ge : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
-  → resolveExpr polys imps userFns fresh (Surface.ge a b)
-      ≡ Surface.ge (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
-resolveExpr-ge _ _ _ _ _ _ = refl
-
-resolveExpr-eq : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
-  → resolveExpr polys imps userFns fresh (Surface.eq a b)
-      ≡ Surface.eq (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
-resolveExpr-eq _ _ _ _ _ _ = refl
-
-resolveExpr-ne : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ₁ Ψ₂ : Surface.Usage n}
-    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
-    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
-  → resolveExpr polys imps userFns fresh (Surface.ne a b)
-      ≡ Surface.ne (resolveExpr polys imps userFns fresh a) (resolveExpr polys imps userFns fresh b)
-resolveExpr-ne _ _ _ _ _ _ = refl
+    (e : Surface.Expr Γ Ψ (symDom A k))
+  → resolveExpr polys imps userFns fresh (Surface.num h o e) ≡ Surface.num h o (resolveExpr polys imps userFns fresh e)
+resolveExpr-num _ _ _ _ _ _ _ = refl
 
 -- Resolution commutes with a conversion (D226; the former `arr'`).
 resolveExpr-coerce : ∀ {m} {n} {Γ : Surface.Ctx m n} {Ψ : Surface.Usage n} {A B : Ty m}
@@ -1190,7 +1095,7 @@ checkElab-fallback-RApp-Out {ctx = ctx} {τ = τ} arg T eqInf sb
 ...   | yes _    = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq sb)
 
-checkElab-fallback-RBinOp : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (op : Raw.BinOp) (e₁ e₂ : Syn.Expr) (T : Ty m)
+checkElab-fallback-RBinOp : ∀ {m} {ctx : NamedCtx m} {τ : Ty m} (op : BinOp) (e₁ e₂ : Syn.Expr) (T : Ty m)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
@@ -1251,80 +1156,78 @@ checkElabProj ctx e T = (checkElab ctx e T)
   where open import Data.Product using (proj₁)
 
 ------------------------------------------------------------------------
--- PLAN 0.75 F4: WHAT THE FRONT END ACTUALLY ANSWERS
+-- PLAN 0.150: WHAT THE FRONT END ANSWERS, over the table
 --
--- `1.5 - 2.1` was `binop left: Type mismatch: expected Int but got Float`.
--- These pin the new answers in the REAL path — `inferElab` itself, at the
--- empty context — rather than asserting them in a comment. `refl` decides
--- each, so a dispatch that stopped reducing would fail here first.
+-- Pinned in the REAL path — `inferElab` at the empty context — so a dispatch
+-- that stopped reducing fails here first.
 ------------------------------------------------------------------------
 
--- Both operands `Float`, and the result is `Float` — the whole point.
+private
+  flt : ℕ → ℕ → ℕ → Syn.Expr
+  flt = Raw.RFloat pos
+  dot plus : Dottable → BinOp
+  dot = dotted
+  plus d = plain ‹ d ›
+
+-- The dotted operators at `Float`: rounded arithmetic.
 _ : ∃-syntax (λ Ψ → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      inferElab emptyCtx (Raw.RBinOp Raw.OpSub (Raw.RFloat 1 5 1) (Raw.RFloat 2 1 1))
+      inferElab emptyCtx (Raw.RBinOp (dot o-) (flt 1 5 1) (flt 2 1 1))
         ≡ success Float Ψ eE d f))))
 _ = _ , _ , _ , _ , refl
 
 _ : ∃-syntax (λ Ψ → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RFloat 1 5 1) (Raw.RFloat 2 5 1))
+      inferElab emptyCtx (Raw.RBinOp (dot o/) (flt 1 5 1) (flt 2 0 1))
         ≡ success Float Ψ eE d f))))
 _ = _ , _ , _ , _ , refl
 
+-- …and the dotted comparisons answer a `Bool`.
 _ : ∃-syntax (λ Ψ → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      inferElab emptyCtx (Raw.RBinOp Raw.OpMul (Raw.RFloat 3 14 2) (Raw.RFloat 2 0 1))
+      inferElab emptyCtx (Raw.RBinOp (dot o<=) (flt 1 5 1) (flt 2 0 1))
+        ≡ success (Unit + Unit) Ψ eE d f))))
+_ = _ , _ , _ , _ , refl
+
+-- `<` and `==` at `Float`: totalOrder and identity (N7).
+_ : ∃-syntax (λ Ψ → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      inferElab emptyCtx (Raw.RBinOp (plus o<) (flt 1 5 1) (flt 2 0 1))
+        ≡ success (Unit + Unit) Ψ eE d f))))
+_ = _ , _ , _ , _ , refl
+
+-- Undotted `+` has no row at `Float` (N8): the error names the operator.
+_ : inferElab emptyCtx (Raw.RBinOp (plus o+) (flt 1 5 1) (flt 2 5 1))
+      ≡ failure (OperatorUndefined "+" float)
+_ = refl
+
+_ : inferElab emptyCtx (Raw.RBinOp (plain o%) (flt 1 5 1) (flt 2 0 1))
+      ≡ failure (OperatorUndefined "%" float)
+_ = refl
+
+-- No implicit widening (D408): an `Int` and a `Float` meet only through
+-- `toFloat`, under any operator.
+_ : inferElab emptyCtx (Raw.RBinOp (dot o+) (Raw.RInt (+ 1)) (flt 1 5 1))
+      ≡ failure (MixedOperands "+.")
+_ = refl
+
+_ : inferElab emptyCtx (Raw.RBinOp (plain o%) (flt 1 5 1) (Raw.RInt (+ 1)))
+      ≡ failure (MixedOperands "%")
+_ = refl
+
+-- `toFloat` infers `Int ⇒ Float`.
+_ : ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      inferElab emptyCtx (Raw.RResolved (gen "toFloat"))
+        ≡ success (Int ⇒[ mk-kind Many pure ] Float) zeroUsage eE d f)))
+_ = _ , _ , _ , refl
+
+-- Negation at both types; `-0.0` as a literal is rejected (N5).
+_ : ∃-syntax (λ Ψ → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      inferElab emptyCtx (Raw.RNeg (flt 1 5 1))
         ≡ success Float Ψ eE d f))))
 _ = _ , _ , _ , _ , refl
 
--- `Int` WIDENS TO `Float` (D125), and these two pins were the OPPOSITE claim
--- one commit ago — they are what caught the change, which is the point of
--- pinning behaviour rather than describing it.
---
--- The elaborated term is pinned in FULL, not just its type: `i2f` is really
--- there. A coercion that silently retyped the operand would satisfy a
--- type-only pin and would be the "silent" half of "silent precision loss".
-_ : inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RInt (+ 1)) (Raw.RFloat 1 5 1))
-      ≡ success Float (zeroUsage +ᵘ zeroUsage)
-          (Surface.fadd (Surface.i2f (Surface.int (+ 1)))
-                        (Surface.float (decimalOf 1 5 1)))
-          (0 ⊔ 0) 0
+_ : inferElab emptyCtx (Raw.RFloat neg 0 0 1) ≡ failure NegativeZeroLiteral
 _ = refl
 
-_ : inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RFloat 1 5 1) (Raw.RInt (+ 1)))
-      ≡ success Float (zeroUsage +ᵘ zeroUsage)
-          (Surface.fadd (Surface.float (decimalOf 1 5 1))
-                        (Surface.i2f (Surface.int (+ 1))))
-          (0 ⊔ 0) 0
-_ = refl
-
--- The OTHER direction is still refused, and that asymmetry is D125's second
--- half: the hardware diverges on `Float → Int` (x86 "integer indefinite",
--- RISC-V saturates), so it is a D055 situation AND a narrowing where
--- truncate-versus-round is the programmer's call. `%` is the witness, since
--- it is not a float op at all.
-_ : inferElab emptyCtx (Raw.RBinOp Raw.OpMod (Raw.RFloat 1 5 1) (Raw.RInt (+ 1)))
-      ≡ failure (BinOpRightError (TypeMismatch {0} Float Int))
-_ = refl
-
--- `/` on floats LOWERS now: `Once.Spec.Float.Arith.fdiv` is the correctly-rounded
--- quotient (a sticky bit through the division), pinned against the machine on
--- both formats, so the restriction this pin used to record is gone. The pin is
--- kept and FLIPPED rather than deleted, so the change is legible here.
-_ : inferElab emptyCtx (Raw.RBinOp Raw.OpDiv (Raw.RFloat 1 5 1) (Raw.RFloat 2 0 1))
-      ≡ success Float (zeroUsage +ᵘ zeroUsage)
-          (Surface.fdiv (Surface.float (decimalOf 1 5 1)) (Surface.float (decimalOf 2 0 1)))
-          (0 ⊔ 0) 0
-_ = refl
-
--- `%` still reports: IEEE's `fmod` is a different function from integer
--- remainder and D055's `a = (a/b)*b + (a%b)` does not survive rounding, so it
--- needs its own decision before it can have a lowering.
-_ : inferElab emptyCtx (Raw.RBinOp Raw.OpMod (Raw.RFloat 1 5 1) (Raw.RFloat 2 0 1))
-      ≡ failure (BinOpLeftError (TypeMismatch {0} Int Float))
-_ = refl
-
--- …and the INTEGER family is untouched, which is the other half of "the
--- operand types decide".
+-- …and the INTEGER family is untouched.
 _ : ∃-syntax (λ Ψ → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RInt (+ 1)) (Raw.RInt (+ 2)))
+      inferElab emptyCtx (Raw.RBinOp (plus o+) (Raw.RInt (+ 1)) (Raw.RInt (+ 2)))
         ≡ success Int Ψ eE d f))))
 _ = _ , _ , _ , _ , refl

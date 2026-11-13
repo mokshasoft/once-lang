@@ -14,7 +14,8 @@
 
 module Once.TypeCheck.NumTable where
 
-open import Data.Empty using (⊥)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Product using (∃-syntax)
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc)
 open import Once.Spec.Float.Value using (Sign; pos; neg)
@@ -141,3 +142,31 @@ negZero? pos _       _       = no (λ ())
 negZero? neg zero    zero    = yes neg-zero
 negZero? neg zero    (suc _) = no (λ ())
 negZero? neg (suc _) _       = no (λ ())
+
+------------------------------------------------------------------------
+-- The decisions reduce on their witnesses (for completeness)
+------------------------------------------------------------------------
+
+numView-num : ∀ {m} (a : NumTy) → numView {m} ⌜ a ⌝ⁿ ≡ is-num a
+numView-num int   = refl
+numView-num float = refl
+
+≟ⁿ-refl : ∀ a → (a ≟ⁿ a) ≡ yes refl
+≟ⁿ-refl int   = refl
+≟ⁿ-refl float = refl
+
+has?-yes : ∀ {A U} (h : Has A U) → has? A U ≡ yes h
+has?-yes int-neg        = refl
+has?-yes int-ring       = refl
+has?-yes int-division   = refl
+has?-yes int-order      = refl
+has?-yes int-equality   = refl
+has?-yes float-neg      = refl
+has?-yes float-rounded  = refl
+has?-yes float-order    = refl
+has?-yes float-equality = refl
+
+negZero?-no : ∀ {sg i f} (nz : ¬ NegativeZero sg i f) → ∃[ nz′ ] (negZero? sg i f ≡ no nz′)
+negZero?-no {sg} {i} {f} nz with negZero? sg i f
+... | yes z  = ⊥-elim (nz z)
+... | no nz′ = nz′ , refl
