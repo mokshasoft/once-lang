@@ -35,7 +35,10 @@ open import Once.Spec.Core.Derived
 open Schema using (arity; kinds; type)
 import Once.Spec.Surface.Syntax as SX
 import Once.Spec.Surface.Typing Σ S nm as U
-open import Once.Metatheory.TermModel.TySubst Σ S using (⟦⟧F-⟨⟩; <:-⟨⟩; wf-⟨⟩; ⌜⌝ᵈ-⟨⟩)
+open import Once.Metatheory.TermModel.TySubst Σ S using (⟦⟧F-⟨⟩; <:-⟨⟩; wf-⟨⟩; ⌜⌝ᵈ-⟨⟩; symCod-⟨⟩)
+open import Once.Spec.Theory using (int; float)
+open import Once.Spec.Surface.Operator using (binSym; BinSym)
+open BinSym using (shape)
 open import Once.Core.TySubstRen Σ S using (⟪⟫-wk)
 
 ------------------------------------------------------------------------
@@ -198,23 +201,21 @@ module Bij {m k : ℕ} (σ : Fin m → Fin k) (σ⁻ : Fin k → Fin m)
       → U._⊢_⇐_⇒[_]↦_↝_ Δ′ (lt L) e (A ⟨ sv ⟩) π (B ⟨ sv ⟩) (t ⟪ sv ⟫ₜ)
 
   syn (U.s-int i)                 = U.s-int i
-  syn (U.s-float i f l)           = U.s-float i f l
+  syn (U.s-float sg i f l nz)     = U.s-float sg i f l nz
   syn U.s-unit                    = U.s-unit
   syn U.s-unit-g                  = U.s-unit-g
+  syn U.s-toFloat                 = U.s-toFloat
   syn (U.s-var v)                 = U.s-var (lv v)
   syn (U.s-sigop {t = t} g M)     = s≡ (sym (⌜⌝ᵈ-⟨⟩ sv t)) refl (U.s-sigop g M)
   syn (U.s-def d e τ z)           = s≡ (sym (⟨⟩-∘′ (type (S !! d)) τ)) refl (U.s-def d e _ z)
   syn (U.s-annot {T = T} D)       = s≡ (sym (↑-ren T)) refl (U.s-annot (c≡ (↑-ren T) refl (chk D)))
   syn (U.s-pair D E)              = U.s-pair (syn D) (syn E)
-  syn (U.s-neg D)                 = U.s-neg (syn D)
-  syn (U.s-neg-float i f l)       = U.s-neg-float i f l
+  syn (U.s-neg {A = int}   h D)   = U.s-neg h (syn D)
+  syn (U.s-neg {A = float} h D)   = U.s-neg h (syn D)
   syn (U.s-let q D E)             = U.s-let q (syn D) (syn E)
   syn (U.s-case ql qr D E F j)    = U.s-case ql qr (syn D) (syn E) (syn F) (⊔-ren j)
-  syn (U.s-arith a D E)           = U.s-arith a (syn D) (syn E)
-  syn (U.s-arith-float a D E)     = U.s-arith-float a (syn D) (syn E)
-  syn (U.s-arith-float-il a D E)  = U.s-arith-float-il a (syn D) (syn E)
-  syn (U.s-arith-float-ir a D E)  = U.s-arith-float-ir a (syn D) (syn E)
-  syn (U.s-compare c D E)         = U.s-compare c (syn D) (syn E)
+  syn (U.s-binop {op = op} {A = int}   h D E) = s≡ (sym (symCod-⟨⟩ sv int (shape (binSym op)))) refl (U.s-binop h (syn D) (syn E))
+  syn (U.s-binop {op = op} {A = float} h D E) = s≡ (sym (symCod-⟨⟩ sv float (shape (binSym op)))) refl (U.s-binop h (syn D) (syn E))
   syn (U.s-id-app D)              = U.s-id-app (syn D)
   syn (U.s-fst-app D)             = U.s-fst-app (syn D)
   syn (U.s-snd-app D)             = U.s-snd-app (syn D)
