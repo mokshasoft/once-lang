@@ -22790,6 +22790,12 @@ area), so "other frames unchanged" is a fact about the run, which the move recor
   the heap is unchanged. A move into a block (`ranW`) is allowed only at or past `lo` (`fresh-block`).
 * With the run's steps and the heap counter (`r-next`), this is what keeps a saved frame's values' words
   (`VW`) standing while a callee runs: every cell a frame holds is below the counter when it is saved.
+* **And its frame's slots from the budget up stand** (`Ran n a lo hi`, field `r-top`, `hi` = the frame's
+  budget): a block's save slots (`sv₁`, `sv₂`, at the budget) hold the caller's area until the way out
+  reads them. Every move is bounded inside the frame's regions (`ranS`/`ranP`/`ranD`/`ranF`/`ran-store`
+  take the bound; `ranW` writes no slot of the frame).
+* Freshness (no cell at or past the counter in any frame's slots or operands) is not part of the
+  relation: it follows from the image's own invariant (`FreshI`, from `HeldI.InvI`).
 
 ### Why
 The flat machine today allocates by bump and its free leaves memory as it was (`keep-pc`), so a run writes
