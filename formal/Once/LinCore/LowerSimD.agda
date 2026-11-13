@@ -326,7 +326,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
              → fhalted (floc fs) ≡ false
              → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ mone ∷ˢ os)
              → ws (Bt b ∷ S) ≤ OP φ
-             → Σ FlatState λ fs′ → FlatSteps prog 2 fs fs′ × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mbase v ∷ˢ os) × Ran 2 fs fs′
+             → Σ FlatState λ fs′ → FlatSteps prog 2 fs fs′ × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mbase v ∷ˢ os) × Ran 2 0 fs fs′
   lconst-sim prog fs φ {b} {Es} {S} {es} {os} v ld eld (f₁ , f₂ , _) h C fit =
     fs₂ ,
     step-at fs₁ (h , f₁) eld (step-at fs₂ (h , f₂) (store-step fs₁ dst) done) ,
