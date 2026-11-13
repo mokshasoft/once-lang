@@ -51,23 +51,7 @@ Refs Ps Pc Pp (absurd e)          = Refs Ps Pc Pp e
 Refs Ps Pc Pp (let' e₁ e₂)        = Refs Ps Pc Pp e₁ × Refs Ps Pc Pp e₂
 Refs Ps Pc Pp (int _)             = ⊤
 Refs Ps Pc Pp (float _)           = ⊤
-Refs Ps Pc Pp (add a b)           = Refs Ps Pc Pp a × Refs Ps Pc Pp b
-Refs Ps Pc Pp (sub a b)           = Refs Ps Pc Pp a × Refs Ps Pc Pp b
-Refs Ps Pc Pp (mul a b)           = Refs Ps Pc Pp a × Refs Ps Pc Pp b
-Refs Ps Pc Pp (fadd a b)          = Refs Ps Pc Pp a × Refs Ps Pc Pp b
-Refs Ps Pc Pp (fsub a b)          = Refs Ps Pc Pp a × Refs Ps Pc Pp b
-Refs Ps Pc Pp (fmul a b)          = Refs Ps Pc Pp a × Refs Ps Pc Pp b
-Refs Ps Pc Pp (fdiv a b)          = Refs Ps Pc Pp a × Refs Ps Pc Pp b
-Refs Ps Pc Pp (i2f a)             = Refs Ps Pc Pp a
-Refs Ps Pc Pp (div a b)           = Refs Ps Pc Pp a × Refs Ps Pc Pp b
-Refs Ps Pc Pp (mod' a b)          = Refs Ps Pc Pp a × Refs Ps Pc Pp b
-Refs Ps Pc Pp (neg a)             = Refs Ps Pc Pp a
-Refs Ps Pc Pp (lt a b)            = Refs Ps Pc Pp a × Refs Ps Pc Pp b
-Refs Ps Pc Pp (le a b)            = Refs Ps Pc Pp a × Refs Ps Pc Pp b
-Refs Ps Pc Pp (gt a b)            = Refs Ps Pc Pp a × Refs Ps Pc Pp b
-Refs Ps Pc Pp (ge a b)            = Refs Ps Pc Pp a × Refs Ps Pc Pp b
-Refs Ps Pc Pp (eq a b)            = Refs Ps Pc Pp a × Refs Ps Pc Pp b
-Refs Ps Pc Pp (ne a b)            = Refs Ps Pc Pp a × Refs Ps Pc Pp b
+Refs Ps Pc Pp (num _ _ a)         = Refs Ps Pc Pp a
 Refs Ps Pc Pp (coerce _ e)        = Refs Ps Pc Pp e
 -- plan 0.105: every FFI reference satisfies `Ps` (in the end: it is declared in
 -- the signatures the program is compiled against, D257 amendment 2).

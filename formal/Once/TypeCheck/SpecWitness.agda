@@ -225,12 +225,16 @@ open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Instance using (KindedInstance)
 open import Once.Type.Schema using (kinded-instance)
 open import Once.Context using (svar; _⊔ᵘ_)
-open import Once.TypeCheck.Raw using (isArithmeticOp; isFloatArithmeticOp; isComparisonOp)
 open import Once.TypeCheck.Scope using (lookupLocal; classifyAppHead)
 open import Once.Core.Decl using (⌜declS⌝)
 open import Once.Type.Grade using (_≤qᵇ_)
 open import Once.Type.Rigid using (ground-kinded)
-open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; BinOp)
+open import Once.Spec.Surface.Syntax using (signedDecimal; NegativeZero)
+open import Once.Spec.Surface.Operator using (BinOp; binSym; BinSym)
+open BinSym using (theory; shape; symbol)
+open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; symCod; ‵neg)
+open import Once.TypeCheck.NumTable using (binDom)
+open import Once.Surface.Numeric using (numBin; toFloatIR)
 open import Data.Unit using (⊤; tt)
 
 -- The compiler's weakening is the Spec's `↑`.
@@ -315,46 +319,6 @@ module At {m} {ctx : NamedCtx m} (P : Pack ctx) where
   not-special () SU.sh-compose
   not-special () SU.sh-case
 
-  -- the Spec's classification of a binary operator the compiler classifies
-  arith-of : ∀ {op} → isArithmeticOp op ≡ true → Σ[ p ∈ SC.Prim ] SU.IntArith op p
-  arith-of {OpAdd} _ = _ , SU.ia-add
-  arith-of {OpSub} _ = _ , SU.ia-sub
-  arith-of {OpMul} _ = _ , SU.ia-mul
-  arith-of {OpDiv} _ = _ , SU.ia-div
-  arith-of {OpMod} _ = _ , SU.ia-mod
-  arith-of {OpLt} ()
-  arith-of {OpLe} ()
-  arith-of {OpGt} ()
-  arith-of {OpGe} ()
-  arith-of {OpEq} ()
-  arith-of {OpNe} ()
-
-  float-of : ∀ {op} → isFloatArithmeticOp op ≡ true → Σ[ p ∈ SC.Prim ] SU.FloatArith op p
-  float-of {OpAdd} _ = _ , SU.fa-add
-  float-of {OpSub} _ = _ , SU.fa-sub
-  float-of {OpMul} _ = _ , SU.fa-mul
-  float-of {OpDiv} _ = _ , SU.fa-div
-  float-of {OpMod} ()
-  float-of {OpLt} ()
-  float-of {OpLe} ()
-  float-of {OpGt} ()
-  float-of {OpGe} ()
-  float-of {OpEq} ()
-  float-of {OpNe} ()
-
-  cmp-of : ∀ {op} → isComparisonOp op ≡ true → Σ[ p ∈ SC.Prim ] SU.Compare op p
-  cmp-of {OpLt} _ = _ , SU.cmp-lt
-  cmp-of {OpLe} _ = _ , SU.cmp-le
-  cmp-of {OpGt} _ = _ , SU.cmp-gt
-  cmp-of {OpGe} _ = _ , SU.cmp-ge
-  cmp-of {OpEq} _ = _ , SU.cmp-eq
-  cmp-of {OpNe} _ = _ , SU.cmp-ne
-  cmp-of {OpAdd} ()
-  cmp-of {OpSub} ()
-  cmp-of {OpMul} ()
-  cmp-of {OpDiv} ()
-  cmp-of {OpMod} ()
-
   -- A witness, retyped along an equation.
   retype⇒ : ∀ {e A B t Ψ} → A ≡ B → W⇒ (L P) e A t Ψ → W⇒ (L P) e B t Ψ
   retype⇒ refl w = w
@@ -382,91 +346,16 @@ module At {m} {ctx : NamedCtx m} (P : Pack ctx) where
 -- Synthesis
 ------------------------------------------------------------------------
 
--- The term former of an operator the compiler classifies.
-arithE : ∀ {m n} {Γ : SCx.Ctx m n} {Ψ₁ Ψ₂} (op : BinOp) → isArithmeticOp op ≡ true
-       → SExpr Γ Ψ₁ ST.Int → SExpr Γ Ψ₂ ST.Int → SExpr Γ (Ψ₁ SCx.+ᵘ Ψ₂) ST.Int
-arithE OpAdd _ = SS.add
-arithE OpSub _ = SS.sub
-arithE OpMul _ = SS.mul
-arithE OpDiv _ = SS.div
-arithE OpMod _ = SS.mod'
-arithE OpLt ()
-arithE OpLe ()
-arithE OpGt ()
-arithE OpGe ()
-arithE OpEq ()
-arithE OpNe ()
+-- A numeric term's references: its operands' (through the transport of its
+-- domain).
+refs-subst : ∀ {m} {ctx : NamedCtx m} {n} {Γ : SCx.Ctx m n} {Ψ A B} (p : A ≡ B) {e : SExpr Γ Ψ A}
+           → InScope ctx e → InScope ctx (subst (SExpr Γ Ψ) p e)
+refs-subst refl r = r
 
-floatE : ∀ {m n} {Γ : SCx.Ctx m n} {Ψ₁ Ψ₂} (op : BinOp) → isFloatArithmeticOp op ≡ true
-       → SExpr Γ Ψ₁ ST.Float → SExpr Γ Ψ₂ ST.Float → SExpr Γ (Ψ₁ SCx.+ᵘ Ψ₂) ST.Float
-floatE OpAdd _ = SS.fadd
-floatE OpSub _ = SS.fsub
-floatE OpMul _ = SS.fmul
-floatE OpDiv _ = SS.fdiv
-floatE OpMod ()
-floatE OpLt ()
-floatE OpLe ()
-floatE OpGt ()
-floatE OpGe ()
-floatE OpEq ()
-floatE OpNe ()
-
-cmpE : ∀ {m n} {Γ : SCx.Ctx m n} {Ψ₁ Ψ₂} (op : BinOp) → isComparisonOp op ≡ true
-     → SExpr Γ Ψ₁ ST.Int → SExpr Γ Ψ₂ ST.Int → SExpr Γ (Ψ₁ SCx.+ᵘ Ψ₂) (ST.Unit ST.+ ST.Unit)
-cmpE OpLt _ = SS.lt
-cmpE OpLe _ = SS.le
-cmpE OpGt _ = SS.gt
-cmpE OpGe _ = SS.ge
-cmpE OpEq _ = SS.eq
-cmpE OpNe _ = SS.ne
-cmpE OpAdd ()
-cmpE OpSub ()
-cmpE OpMul ()
-cmpE OpDiv ()
-cmpE OpMod ()
-
--- Their references: the operands'.
-refs-arithE : ∀ {m} {ctx : NamedCtx m} {Ψ₁ Ψ₂} (op : BinOp) (ia : isArithmeticOp op ≡ true) {a : SExpr (debruijn ctx) Ψ₁ ST.Int} {b : SExpr (debruijn ctx) Ψ₂ ST.Int}
-            → InScope ctx a → InScope ctx b → InScope ctx (arithE op ia a b)
-refs-arithE OpAdd _ ra rb = ra , rb
-refs-arithE OpSub _ ra rb = ra , rb
-refs-arithE OpMul _ ra rb = ra , rb
-refs-arithE OpDiv _ ra rb = ra , rb
-refs-arithE OpMod _ ra rb = ra , rb
-refs-arithE OpLt () ra rb
-refs-arithE OpLe () ra rb
-refs-arithE OpGt () ra rb
-refs-arithE OpGe () ra rb
-refs-arithE OpEq () ra rb
-refs-arithE OpNe () ra rb
-
-refs-floatE : ∀ {m} {ctx : NamedCtx m} {Ψ₁ Ψ₂} (op : BinOp) (fa : isFloatArithmeticOp op ≡ true) {a : SExpr (debruijn ctx) Ψ₁ ST.Float} {b : SExpr (debruijn ctx) Ψ₂ ST.Float}
-            → InScope ctx a → InScope ctx b → InScope ctx (floatE op fa a b)
-refs-floatE OpAdd _ ra rb = ra , rb
-refs-floatE OpSub _ ra rb = ra , rb
-refs-floatE OpMul _ ra rb = ra , rb
-refs-floatE OpDiv _ ra rb = ra , rb
-refs-floatE OpMod () ra rb
-refs-floatE OpLt () ra rb
-refs-floatE OpLe () ra rb
-refs-floatE OpGt () ra rb
-refs-floatE OpGe () ra rb
-refs-floatE OpEq () ra rb
-refs-floatE OpNe () ra rb
-
-refs-cmpE : ∀ {m} {ctx : NamedCtx m} {Ψ₁ Ψ₂} (op : BinOp) (c : isComparisonOp op ≡ true) {a : SExpr (debruijn ctx) Ψ₁ ST.Int} {b : SExpr (debruijn ctx) Ψ₂ ST.Int}
-          → InScope ctx a → InScope ctx b → InScope ctx (cmpE op c a b)
-refs-cmpE OpLt _ ra rb = ra , rb
-refs-cmpE OpLe _ ra rb = ra , rb
-refs-cmpE OpGt _ ra rb = ra , rb
-refs-cmpE OpGe _ ra rb = ra , rb
-refs-cmpE OpEq _ ra rb = ra , rb
-refs-cmpE OpNe _ ra rb = ra , rb
-refs-cmpE OpAdd () ra rb
-refs-cmpE OpSub () ra rb
-refs-cmpE OpMul () ra rb
-refs-cmpE OpDiv () ra rb
-refs-cmpE OpMod () ra rb
+refs-numBin : ∀ {m} {ctx : NamedCtx m} {Ψ₁ Ψ₂} op (a : NumTy) (h : Has a (theory (binSym op)))
+              {x : SExpr (debruijn ctx) Ψ₁ ⌜ a ⌝ⁿ} {y : SExpr (debruijn ctx) Ψ₂ ⌜ a ⌝ⁿ}
+            → InScope ctx x → InScope ctx y → InScope ctx (numBin op a h x y)
+refs-numBin {ctx = ctx} op a h rx ry = refs-subst {ctx = ctx} (sym (binDom op a)) (rx , ry)
 
 -- A local's binder adds no reference.
 ext-refs : ∀ {m} {ctx : NamedCtx m} {x A} {n} {Γ : SCx.Ctx m n} {Ψ B} {e : SExpr Γ Ψ B} → InScope (extendNamedCtx ctx x A) e → InScope ctx e
@@ -479,88 +368,6 @@ private
 
   Linked-substʳ : ∀ {X Y Z : IRTy} (eq : Y ≡ Z) (ir : IR X Y) → Linked [] [] ir → Linked [] [] (subst (λ o → IR X o) eq ir)
   Linked-substʳ refl ir l = l
-
-module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
-  open At P
-  open WMP P
-
-  -- The realization of an operator's rule is its term former.
-  rz-arith : ∀ {op e₁ e₂ t₁ t₂ Ψ₁ Ψ₂} (ia : isArithmeticOp op ≡ true)
-             (w₁ : W⇒ (L P) e₁ ST.Int t₁ Ψ₁) (w₂ : W⇒ (L P) e₂ ST.Int t₂ Ψ₂)
-           → realize⇒ sh (proj₂ (w-arith (proj₂ (arith-of ia)) w₁ w₂)) ≡ arithE op ia (realize⇒ sh (proj₂ w₁)) (realize⇒ sh (proj₂ w₂))
-  rz-arith {OpAdd} ia w₁ w₂ = refl
-  rz-arith {OpSub} ia w₁ w₂ = refl
-  rz-arith {OpMul} ia w₁ w₂ = refl
-  rz-arith {OpDiv} ia w₁ w₂ = refl
-  rz-arith {OpMod} ia w₁ w₂ = refl
-  rz-arith {OpLt} () w₁ w₂
-  rz-arith {OpLe} () w₁ w₂
-  rz-arith {OpGt} () w₁ w₂
-  rz-arith {OpGe} () w₁ w₂
-  rz-arith {OpEq} () w₁ w₂
-  rz-arith {OpNe} () w₁ w₂
-
-  rz-float : ∀ {op e₁ e₂ t₁ t₂ Ψ₁ Ψ₂} (fa : isFloatArithmeticOp op ≡ true)
-             (w₁ : W⇒ (L P) e₁ ST.Float t₁ Ψ₁) (w₂ : W⇒ (L P) e₂ ST.Float t₂ Ψ₂)
-           → realize⇒ sh (proj₂ (w-arith-float (proj₂ (float-of fa)) w₁ w₂)) ≡ floatE op fa (realize⇒ sh (proj₂ w₁)) (realize⇒ sh (proj₂ w₂))
-  rz-float {OpAdd} fa w₁ w₂ = refl
-  rz-float {OpSub} fa w₁ w₂ = refl
-  rz-float {OpMul} fa w₁ w₂ = refl
-  rz-float {OpDiv} fa w₁ w₂ = refl
-  rz-float {OpMod} () w₁ w₂
-  rz-float {OpLt} () w₁ w₂
-  rz-float {OpLe} () w₁ w₂
-  rz-float {OpGt} () w₁ w₂
-  rz-float {OpGe} () w₁ w₂
-  rz-float {OpEq} () w₁ w₂
-  rz-float {OpNe} () w₁ w₂
-
-  rz-float-il : ∀ {op e₁ e₂ t₁ t₂ Ψ₁ Ψ₂} (fa : isFloatArithmeticOp op ≡ true)
-                (w₁ : W⇒ (L P) e₁ ST.Int t₁ Ψ₁) (w₂ : W⇒ (L P) e₂ ST.Float t₂ Ψ₂)
-              → realize⇒ sh (proj₂ (w-arith-float-il (proj₂ (float-of fa)) w₁ w₂))
-                ≡ floatE op fa (SS.i2f (realize⇒ sh (proj₂ w₁))) (realize⇒ sh (proj₂ w₂))
-  rz-float-il {OpAdd} fa w₁ w₂ = refl
-  rz-float-il {OpSub} fa w₁ w₂ = refl
-  rz-float-il {OpMul} fa w₁ w₂ = refl
-  rz-float-il {OpDiv} fa w₁ w₂ = refl
-  rz-float-il {OpMod} () w₁ w₂
-  rz-float-il {OpLt} () w₁ w₂
-  rz-float-il {OpLe} () w₁ w₂
-  rz-float-il {OpGt} () w₁ w₂
-  rz-float-il {OpGe} () w₁ w₂
-  rz-float-il {OpEq} () w₁ w₂
-  rz-float-il {OpNe} () w₁ w₂
-
-  rz-float-ir : ∀ {op e₁ e₂ t₁ t₂ Ψ₁ Ψ₂} (fa : isFloatArithmeticOp op ≡ true)
-                (w₁ : W⇒ (L P) e₁ ST.Float t₁ Ψ₁) (w₂ : W⇒ (L P) e₂ ST.Int t₂ Ψ₂)
-              → realize⇒ sh (proj₂ (w-arith-float-ir (proj₂ (float-of fa)) w₁ w₂))
-                ≡ floatE op fa (realize⇒ sh (proj₂ w₁)) (SS.i2f (realize⇒ sh (proj₂ w₂)))
-  rz-float-ir {OpAdd} fa w₁ w₂ = refl
-  rz-float-ir {OpSub} fa w₁ w₂ = refl
-  rz-float-ir {OpMul} fa w₁ w₂ = refl
-  rz-float-ir {OpDiv} fa w₁ w₂ = refl
-  rz-float-ir {OpMod} () w₁ w₂
-  rz-float-ir {OpLt} () w₁ w₂
-  rz-float-ir {OpLe} () w₁ w₂
-  rz-float-ir {OpGt} () w₁ w₂
-  rz-float-ir {OpGe} () w₁ w₂
-  rz-float-ir {OpEq} () w₁ w₂
-  rz-float-ir {OpNe} () w₁ w₂
-
-  rz-cmp : ∀ {op e₁ e₂ t₁ t₂ Ψ₁ Ψ₂} (c : isComparisonOp op ≡ true)
-           (w₁ : W⇒ (L P) e₁ ST.Int t₁ Ψ₁) (w₂ : W⇒ (L P) e₂ ST.Int t₂ Ψ₂)
-         → realize⇒ sh (proj₂ (w-compare (proj₂ (cmp-of c)) w₁ w₂)) ≡ cmpE op c (realize⇒ sh (proj₂ w₁)) (realize⇒ sh (proj₂ w₂))
-  rz-cmp {OpLt} c w₁ w₂ = refl
-  rz-cmp {OpLe} c w₁ w₂ = refl
-  rz-cmp {OpGt} c w₁ w₂ = refl
-  rz-cmp {OpGe} c w₁ w₂ = refl
-  rz-cmp {OpEq} c w₁ w₂ = refl
-  rz-cmp {OpNe} c w₁ w₂ = refl
-  rz-cmp {OpAdd} () w₁ w₂
-  rz-cmp {OpSub} () w₁ w₂
-  rz-cmp {OpMul} () w₁ w₂
-  rz-cmp {OpDiv} () w₁ w₂
-  rz-cmp {OpMod} () w₁ w₂
 
 private
   cong₃ : ∀ {a b c d} {A : Set a} {B : Set b} {C : Set c} {D : Set d} (f : A → B → C → D)
@@ -575,8 +382,13 @@ module _ {m} {ctx : NamedCtx m} where
   wt-int : (n : ℤ) → WI ctx (SX.RInt n) ST.Int SCx.zeroUsage (SS.int n)
   wt-int n = tt , λ P → let open WMP P using (w-int) in _ , w-int n , refl
 
-  wt-float : ∀ i f l → WI ctx (SX.RFloat i f l) ST.Float SCx.zeroUsage (SS.float (decimalOf i f l))
-  wt-float i f l = tt , λ P → let open WMP P using (w-float) in _ , w-float i f l , refl
+  wt-float : ∀ sg i f l → ¬ NegativeZero sg i f → WI ctx (SX.RFloat sg i f l) ST.Float SCx.zeroUsage (SS.float (signedDecimal sg i f l))
+  wt-float sg i f l nz = tt , λ P → let open WMP P using (w-float) in _ , w-float sg i f l nz , refl
+
+  -- `toFloat` (D408).
+  wt-toFloat : WI ctx (SX.RResolved (gen "toFloat")) (ST.Int ST.⇒[ LG.mk-kind LG.Many LG.pure ] ST.Float) SCx.zeroUsage
+                  (SS.lift-morphism toFloatIR)
+  wt-toFloat = tt , λ P → let open WMP P using (w-toFloat) in _ , w-toFloat , refl
 
   wt-unit : WI ctx SX.RUnit ST.Unit SCx.zeroUsage SS.unit
   wt-unit = tt , λ P → let open WMP P using (w-unit) in _ , w-unit , refl
@@ -638,11 +450,8 @@ module _ {m} {ctx : NamedCtx m} where
   wt-pair wa wb = (proj₁ wa , proj₁ wb) , λ P → let open WMP P using (w-pair) in
     let (_ , ua , ra) = proj₂ wa P ; (_ , ub , rb) = proj₂ wb P in _ , w-pair ua ub , cong₂ SS.pair ra rb
 
-  wt-neg : ∀ {e Ψ eE} → WI ctx e ST.Int Ψ eE → WI ctx (SX.RNeg e) ST.Int Ψ (SS.neg eE)
-  wt-neg w = proj₁ w , λ P → let open WMP P using (w-neg) in let (_ , u , r) = proj₂ w P in _ , w-neg u , cong SS.neg r
-
-  wt-neg-float : ∀ i f l → WI ctx (SX.RNeg (SX.RFloat i f l)) ST.Float SCx.zeroUsage (SS.float (negate (decimalOf i f l)))
-  wt-neg-float i f l = tt , λ P → let open WMP P using (w-neg-float) in _ , w-neg-float i f l , refl
+  wt-neg : ∀ {e A Ψ eE} (h : Has A Neg) → WI ctx e ⌜ A ⌝ⁿ Ψ eE → WI ctx (SX.RNeg e) ⌜ A ⌝ⁿ Ψ (SS.num h ‵neg eE)
+  wt-neg h w = proj₁ w , λ P → let open WMP P using (w-neg) in let (_ , u , r) = proj₂ w P in _ , w-neg h u , cong (SS.num h ‵neg) r
 
   wt-let : ∀ {x e₁ e₂ A B q Ψ₁ Ψ₂ e₁E e₂E} → WI ctx e₁ A Ψ₁ e₁E → WI (extendNamedCtx ctx x A) e₂ B (q SCx.∷ Ψ₂) e₂E
          → WI ctx (SX.RLet x e₁ e₂) B (Ψ₂ SCx.+ᵘ (q SCx.*ᵘ Ψ₁)) (SS.let' e₁E e₂E)
@@ -660,35 +469,14 @@ module _ {m} {ctx : NamedCtx m} where
     in _ , w-case ql qr us ul ur j
        , cong₃ (λ a b c → SS.case' a (SS.coerce (<:ᶜ⇒<: (left j)) b) (SS.coerce (<:ᶜ⇒<: (right j)) c)) rs rl rr
 
-  wt-binop-arith : ∀ {op e₁ e₂ Ψ₁ Ψ₂ e₁E e₂E} → (ia : isArithmeticOp op ≡ true) → WI ctx e₁ ST.Int Ψ₁ e₁E → WI ctx e₂ ST.Int Ψ₂ e₂E
-                 → WI ctx (SX.RBinOp op e₁ e₂) ST.Int (Ψ₁ SCx.+ᵘ Ψ₂) (arithE op ia e₁E e₂E)
-  wt-binop-arith {op} ia w₁ w₂ = refs-arithE {ctx = ctx} op ia (proj₁ w₁) (proj₁ w₂) , λ P → let open At P using (arith-of) ; open WMP P using (w-arith) in
+  -- A binary operator at a number type with its theory: `numBin`, as the
+  -- realization builds it.
+  wt-binop : ∀ {op e₁ e₂ a Ψ₁ Ψ₂ e₁E e₂E} (h : Has a (theory (binSym op)))
+           → WI ctx e₁ ⌜ a ⌝ⁿ Ψ₁ e₁E → WI ctx e₂ ⌜ a ⌝ⁿ Ψ₂ e₂E
+           → WI ctx (SX.RBinOp op e₁ e₂) (symCod a (shape (binSym op))) (Ψ₁ SCx.+ᵘ Ψ₂) (numBin op a h e₁E e₂E)
+  wt-binop {op} {a = a} h w₁ w₂ = refs-numBin {ctx = ctx} op a h (proj₁ w₁) (proj₁ w₂) , λ P → let open WMP P using (w-binop) in
     let (_ , u₁ , r₁) = proj₂ w₁ P ; (_ , u₂ , r₂) = proj₂ w₂ P
-    in _ , w-arith (proj₂ (arith-of ia)) u₁ u₂ , trans (rz-arith P ia u₁ u₂) (cong₂ (arithE op ia) r₁ r₂)
-
-  wt-binop-arith-float : ∀ {op e₁ e₂ Ψ₁ Ψ₂ e₁E e₂E} → (fa : isFloatArithmeticOp op ≡ true) → WI ctx e₁ ST.Float Ψ₁ e₁E → WI ctx e₂ ST.Float Ψ₂ e₂E
-                       → WI ctx (SX.RBinOp op e₁ e₂) ST.Float (Ψ₁ SCx.+ᵘ Ψ₂) (floatE op fa e₁E e₂E)
-  wt-binop-arith-float {op} fa w₁ w₂ = refs-floatE {ctx = ctx} op fa (proj₁ w₁) (proj₁ w₂) , λ P → let open At P using (float-of) ; open WMP P using (w-arith-float) in
-    let (_ , u₁ , r₁) = proj₂ w₁ P ; (_ , u₂ , r₂) = proj₂ w₂ P
-    in _ , w-arith-float (proj₂ (float-of fa)) u₁ u₂ , trans (rz-float P fa u₁ u₂) (cong₂ (floatE op fa) r₁ r₂)
-
-  wt-binop-arith-float-il : ∀ {op e₁ e₂ Ψ₁ Ψ₂ e₁E e₂E} → (fa : isFloatArithmeticOp op ≡ true) → WI ctx e₁ ST.Int Ψ₁ e₁E → WI ctx e₂ ST.Float Ψ₂ e₂E
-                          → WI ctx (SX.RBinOp op e₁ e₂) ST.Float (Ψ₁ SCx.+ᵘ Ψ₂) (floatE op fa (SS.i2f e₁E) e₂E)
-  wt-binop-arith-float-il {op} fa w₁ w₂ = refs-floatE {ctx = ctx} op fa (proj₁ w₁) (proj₁ w₂) , λ P → let open At P using (float-of) ; open WMP P using (w-arith-float-il) in
-    let (_ , u₁ , r₁) = proj₂ w₁ P ; (_ , u₂ , r₂) = proj₂ w₂ P
-    in _ , w-arith-float-il (proj₂ (float-of fa)) u₁ u₂ , trans (rz-float-il P fa u₁ u₂) (cong₂ (λ a b → floatE op fa (SS.i2f a) b) r₁ r₂)
-
-  wt-binop-arith-float-ir : ∀ {op e₁ e₂ Ψ₁ Ψ₂ e₁E e₂E} → (fa : isFloatArithmeticOp op ≡ true) → WI ctx e₁ ST.Float Ψ₁ e₁E → WI ctx e₂ ST.Int Ψ₂ e₂E
-                          → WI ctx (SX.RBinOp op e₁ e₂) ST.Float (Ψ₁ SCx.+ᵘ Ψ₂) (floatE op fa e₁E (SS.i2f e₂E))
-  wt-binop-arith-float-ir {op} fa w₁ w₂ = refs-floatE {ctx = ctx} op fa (proj₁ w₁) (proj₁ w₂) , λ P → let open At P using (float-of) ; open WMP P using (w-arith-float-ir) in
-    let (_ , u₁ , r₁) = proj₂ w₁ P ; (_ , u₂ , r₂) = proj₂ w₂ P
-    in _ , w-arith-float-ir (proj₂ (float-of fa)) u₁ u₂ , trans (rz-float-ir P fa u₁ u₂) (cong₂ (λ a b → floatE op fa a (SS.i2f b)) r₁ r₂)
-
-  wt-binop-cmp : ∀ {op e₁ e₂ Ψ₁ Ψ₂ e₁E e₂E} → (c : isComparisonOp op ≡ true) → WI ctx e₁ ST.Int Ψ₁ e₁E → WI ctx e₂ ST.Int Ψ₂ e₂E
-               → WI ctx (SX.RBinOp op e₁ e₂) (ST.Unit ST.+ ST.Unit) (Ψ₁ SCx.+ᵘ Ψ₂) (cmpE op c e₁E e₂E)
-  wt-binop-cmp {op} c w₁ w₂ = refs-cmpE {ctx = ctx} op c (proj₁ w₁) (proj₁ w₂) , λ P → let open At P using (cmp-of) ; open WMP P using (w-compare) in
-    let (_ , u₁ , r₁) = proj₂ w₁ P ; (_ , u₂ , r₂) = proj₂ w₂ P
-    in _ , w-compare (proj₂ (cmp-of c)) u₁ u₂ , trans (rz-cmp P c u₁ u₂) (cong₂ (cmpE op c) r₁ r₂)
+    in _ , w-binop h u₁ u₂ , cong₂ (numBin op a h) r₁ r₂
 
   -- A generator applied to a synthesizing argument.
   wt-id-app : ∀ {e T Ψ eE} → WI ctx e T Ψ eE

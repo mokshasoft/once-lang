@@ -54,8 +54,13 @@ open import Once.Spec.Name using (CanonicalName; canonical; own; bare; gen; NotG
 open import Once.Name using (showCanonical; WordName; wordNameB)
 open import Once.CanonicalName using (genWord?)
 import Once.Spec.Surface.Syntax as Syn
-open import Once.Spec.Surface.Syntax as Raw using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatArithmeticOp)
+open import Once.Spec.Surface.Operator using (BinOp; binSym; BinSym)
+open BinSym using (theory)
+open import Once.Spec.Surface.Syntax as Raw using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg)
+open import Once.TypeCheck.NumTable using (NumView; is-num; not-num; numView; _≟ⁿ_; has?; negZero?)
+open import Once.Spec.Surface.Syntax using (NegativeZero)
+open import Once.Spec.Float.Value using (Sign)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined;
   LambdaInInferMode; LambdaRequiresFunctionType;
@@ -643,200 +648,67 @@ inferElabV-RAnnot-aux-sound ctx e T (success Ψ eE d fr) witness =
 inferElabV-RAnnot-aux-sound ctx e T (failure err) _ =
   tt
 
+-- The numeric operators: one dispatch (plan 0.150 N10), mirrored.
+inferElabV-RNeg-has-sound : ∀ {m} (ctx : NamedCtx m) (e : Syn.Expr) (a : NumTy) {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    (eE : SExpr (NamedCtx.debruijn ctx) Ψ ⌜ a ⌝ⁿ) (d fr : ℕ) → WI ctx e ⌜ a ⌝ⁿ Ψ eE → (dh : Dec (Has a Neg))
+    → soundOf ctx (Raw.RNeg e) (inferElabV-RNeg-has ctx a eE d fr dh)
+inferElabV-RNeg-has-sound ctx e a eE d fr w (yes h) = wt-neg h w
+inferElabV-RNeg-has-sound ctx e a eE d fr w (no _)  = tt
+
+inferElabV-RNeg-num-sound : ∀ {m} (ctx : NamedCtx m) (e : Syn.Expr) {T : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    (eE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ) → WI ctx e T Ψ eE → (v : NumView T)
+    → soundOf ctx (Raw.RNeg e) (inferElabV-RNeg-num ctx eE d fr v)
+inferElabV-RNeg-num-sound ctx e eE d fr w (is-num a) = inferElabV-RNeg-has-sound ctx e a eE d fr w (has? a Neg)
+inferElabV-RNeg-num-sound ctx e eE d fr w not-num    = tt
+
 inferElabV-RNeg-aux-sound : ∀ {m}
     → (ctx : NamedCtx m) (e : Syn.Expr)
     → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx e r3
     → soundOf ctx (Raw.RNeg e) (inferElabV-RNeg-aux ctx e r3)
-inferElabV-RNeg-aux-sound ctx e (failure err) _ =
-  tt
-inferElabV-RNeg-aux-sound ctx e (success Unit   _ _ _ _) _ =
-  tt
-inferElabV-RNeg-aux-sound ctx e (success Void   _ _ _ _) _ =
-  tt
-inferElabV-RNeg-aux-sound ctx e (success Int    Ψ eE d fr) w =
-  wt-neg w
-inferElabV-RNeg-aux-sound ctx e (success Float  _ _ _ _) _ =
-  tt
-inferElabV-RNeg-aux-sound ctx e (success (var iᵣ) _ _ _ _) _ =
-  tt
-inferElabV-RNeg-aux-sound ctx e (success (A Once.Spec.Type.* B)      _ _ _ _) _ =
-  tt
-inferElabV-RNeg-aux-sound ctx e (success (A Once.Spec.Type.+ B)      _ _ _ _) _ =
-  tt
-inferElabV-RNeg-aux-sound ctx e (success (A Once.Spec.Type.⇒[ k ] B) _ _ _ _) _ =
-  tt
-inferElabV-RNeg-aux-sound ctx e (success (Once.Spec.Type.μ F)   _ _ _ _) _ =
-  tt
-inferElabV-RNeg-aux-sound ctx e (success (Once.Spec.Type.ν F π)   _ _ _ _) _ =
-  tt
+inferElabV-RNeg-aux-sound ctx e (failure err) _ = tt
+inferElabV-RNeg-aux-sound ctx e (success T Ψ eE d fr) w = inferElabV-RNeg-num-sound ctx e eE d fr w (numView T)
 
-checkElabV-neg-int-aux-sound : ∀ {m}
-    → (ctx : NamedCtx m) (n : ℤ) (T : Ty m)
-    → checkSoundOf ctx (Raw.RNeg (Raw.RInt n)) T (checkElabV-neg-int-aux ctx n T)
-checkElabV-neg-int-aux-sound ctx n T
-    with Int <:? T
-...  | yes p =
-  wt-sub (wt-neg (wt-int n)) p
-...  | no _ =
-  tt
+module _ {m} (ctx : NamedCtx m) (op : BinOp) (e₁ e₂ : Syn.Expr) where
+  private
+    E = SExpr (NamedCtx.debruijn ctx)
+    U = Surface.Usage (NamedCtx.size ctx)
 
-checkElabV-neg-float-aux-sound : ∀ {m}
-    → (ctx : NamedCtx m) (i f l : ℕ) (T : Ty m)
-    → checkSoundOf ctx (Raw.RNeg (Raw.RFloat i f l)) T (checkElabV-neg-float-aux ctx i f l T)
-checkElabV-neg-float-aux-sound ctx i f l T
-    with Once.Spec.Type.Float <:? T
-...  | yes s =
-  wt-sub (wt-neg-float i f l) s
-...  | no _ =
-  tt
+  inferElabV-RBinOp-has-sound : (a : NumTy) {Ψ₁ Ψ₂ : U} (e₁E : E Ψ₁ ⌜ a ⌝ⁿ) (e₂E : E Ψ₂ ⌜ a ⌝ⁿ) (d fr : ℕ)
+      → WI ctx e₁ ⌜ a ⌝ⁿ Ψ₁ e₁E → WI ctx e₂ ⌜ a ⌝ⁿ Ψ₂ e₂E → (dh : Dec (Has a (theory (binSym op))))
+      → soundOf ctx (Raw.RBinOp op e₁ e₂) (inferElabV-RBinOp-has ctx op a e₁E e₂E d fr dh)
+  inferElabV-RBinOp-has-sound a e₁E e₂E d fr w₁ w₂ (yes h) = wt-binop h w₁ w₂
+  inferElabV-RBinOp-has-sound a e₁E e₂E d fr w₁ w₂ (no _)  = tt
+
+  inferElabV-RBinOp-num-sound : (a₁ a₂ : NumTy) {Ψ₁ Ψ₂ : U} (e₁E : E Ψ₁ ⌜ a₁ ⌝ⁿ) (e₂E : E Ψ₂ ⌜ a₂ ⌝ⁿ) (d fr : ℕ)
+      → WI ctx e₁ ⌜ a₁ ⌝ⁿ Ψ₁ e₁E → WI ctx e₂ ⌜ a₂ ⌝ⁿ Ψ₂ e₂E → (q : Dec (a₁ ≡ a₂))
+      → soundOf ctx (Raw.RBinOp op e₁ e₂) (inferElabV-RBinOp-num ctx op a₁ a₂ e₁E e₂E d fr q)
+  inferElabV-RBinOp-num-sound a .a e₁E e₂E d fr w₁ w₂ (yes refl) =
+    inferElabV-RBinOp-has-sound a e₁E e₂E d fr w₁ w₂ (has? a (theory (binSym op)))
+  inferElabV-RBinOp-num-sound a₁ a₂ e₁E e₂E d fr w₁ w₂ (no _) = tt
+
+  inferElabV-RBinOp-R-sound : (a₁ : NumTy) {T₂ : Ty m} {Ψ₁ Ψ₂ : U} (e₁E : E Ψ₁ ⌜ a₁ ⌝ⁿ) (e₂E : E Ψ₂ T₂) (d fr : ℕ)
+      → WI ctx e₁ ⌜ a₁ ⌝ⁿ Ψ₁ e₁E → WI ctx e₂ T₂ Ψ₂ e₂E → (v : NumView T₂)
+      → soundOf ctx (Raw.RBinOp op e₁ e₂) (inferElabV-RBinOp-R ctx op a₁ e₁E e₂E d fr v)
+  inferElabV-RBinOp-R-sound a₁ e₁E e₂E d fr w₁ w₂ (is-num a₂) =
+    inferElabV-RBinOp-num-sound a₁ a₂ e₁E e₂E d fr w₁ w₂ (a₁ ≟ⁿ a₂)
+  inferElabV-RBinOp-R-sound a₁ e₁E e₂E d fr w₁ w₂ not-num = tt
+
+  inferElabV-RBinOp-L-sound : {T₁ : Ty m} {Ψ₁ : U} (e₁E : E Ψ₁ T₁) (d₁ : ℕ) → WI ctx e₁ T₁ Ψ₁ e₁E → (v : NumView T₁)
+      → (r₂ : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx e₂ r₂
+      → soundOf ctx (Raw.RBinOp op e₁ e₂) (inferElabV-RBinOp-L ctx op e₁E d₁ v r₂)
+  inferElabV-RBinOp-L-sound e₁E d₁ w₁ not-num r₂ _ = tt
+  inferElabV-RBinOp-L-sound e₁E d₁ w₁ (is-num a₁) (failure err) _ = tt
+  inferElabV-RBinOp-L-sound e₁E d₁ w₁ (is-num a₁) (success T₂ Ψ₂ e₂E d₂ f₂) w₂ =
+    inferElabV-RBinOp-R-sound a₁ e₁E e₂E (d₁ ⊔ d₂) f₂ w₁ w₂ (numView T₂)
 
 inferElabV-RBinOp-aux-sound : ∀ {m}
-    → (ctx : NamedCtx m) (op : Raw.BinOp) (e₁ e₂ : Syn.Expr)
+    → (ctx : NamedCtx m) (op : BinOp) (e₁ e₂ : Syn.Expr)
     → (r5 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx e₁ r5
     → (r6 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx e₂ r6
     → soundOf ctx (Raw.RBinOp op e₁ e₂) (inferElabV-RBinOp-aux ctx op e₁ e₂ r5 r6)
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (failure err) _ _ _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Unit   _ _ _ _) _ _ _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Void   _ _ _ _) _ _ _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success (var iᵣ) _ _ _ _) _ _ _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success (A Once.Spec.Type.* B)      _ _ _ _) _ _ _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success (A Once.Spec.Type.+ B)      _ _ _ _) _ _ _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success (A Once.Spec.Type.⇒[ k ] B) _ _ _ _) _ _ _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success (Once.Spec.Type.μ F)   _ _ _ _) _ _ _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success (Once.Spec.Type.ν F π)   _ _ _ _) _ _ _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Int _ _ _ _) _ (failure err) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Int _ _ _ _) _ (success Unit   _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Int _ _ _ _) _ (success Void   _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Int _ _ _ _) _ (success (var iᵣ) _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Int _ _ _ _) _ (success (A Once.Spec.Type.* B)      _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Int _ _ _ _) _ (success (A Once.Spec.Type.+ B)      _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Int _ _ _ _) _ (success (A Once.Spec.Type.⇒[ k ] B) _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Int _ _ _ _) _ (success (Once.Spec.Type.μ F)   _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Int _ _ _ _) _ (success (Once.Spec.Type.ν F π)   _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpAdd e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpSub e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpMul e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpDiv e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpMod e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpLt e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-cmp refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpLe e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-cmp refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpGt e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-cmp refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpGe e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-cmp refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpEq e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-cmp refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpNe e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-cmp refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Float _ _ _ _) _ (failure err) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Float _ _ _ _) _ (success Unit _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Float _ _ _ _) _ (success Void _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Float _ _ _ _) _ (success (var iᵣ) _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Float _ _ _ _) _ (success (A Once.Spec.Type.* B) _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Float _ _ _ _) _ (success (A Once.Spec.Type.+ B) _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Float _ _ _ _) _ (success (A Once.Spec.Type.⇒[ k ] B) _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Float _ _ _ _) _ (success (Once.Spec.Type.μ F) _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success Float _ _ _ _) _ (success (Once.Spec.Type.ν F π) _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpAdd e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) w₁ (success Float Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith-float refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpSub e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) w₁ (success Float Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith-float refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpMul e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) w₁ (success Float Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith-float refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpDiv e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) w₁ (success Float Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith-float refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpMod e₁ e₂ (success Float _ _ _ _) _ (success Float _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpLt e₁ e₂ (success Float _ _ _ _) _ (success Float _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpLe e₁ e₂ (success Float _ _ _ _) _ (success Float _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpGt e₁ e₂ (success Float _ _ _ _) _ (success Float _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpGe e₁ e₂ (success Float _ _ _ _) _ (success Float _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpEq e₁ e₂ (success Float _ _ _ _) _ (success Float _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpNe e₁ e₂ (success Float _ _ _ _) _ (success Float _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpAdd e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Float Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith-float-il refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpSub e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Float Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith-float-il refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpMul e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Float Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith-float-il refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpDiv e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) w₁ (success Float Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith-float-il refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpAdd e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith-float-ir refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpSub e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith-float-ir refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpMul e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith-float-ir refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpDiv e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) w₁ (success Int Ψ₂ e₂E d₂ f₂) w₂ =
-  wt-binop-arith-float-ir refl w₁ w₂
-inferElabV-RBinOp-aux-sound ctx Raw.OpMod e₁ e₂ (success Int _ _ _ _) _ (success Float _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpLt e₁ e₂ (success Int _ _ _ _) _ (success Float _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpLe e₁ e₂ (success Int _ _ _ _) _ (success Float _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpGt e₁ e₂ (success Int _ _ _ _) _ (success Float _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpGe e₁ e₂ (success Int _ _ _ _) _ (success Float _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpEq e₁ e₂ (success Int _ _ _ _) _ (success Float _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpNe e₁ e₂ (success Int _ _ _ _) _ (success Float _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpMod e₁ e₂ (success Float _ _ _ _) _ (success Int _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpLt e₁ e₂ (success Float _ _ _ _) _ (success Int _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpLe e₁ e₂ (success Float _ _ _ _) _ (success Int _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpGt e₁ e₂ (success Float _ _ _ _) _ (success Int _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpGe e₁ e₂ (success Float _ _ _ _) _ (success Int _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpEq e₁ e₂ (success Float _ _ _ _) _ (success Int _ _ _ _) _ =
-  tt
-inferElabV-RBinOp-aux-sound ctx Raw.OpNe e₁ e₂ (success Float _ _ _ _) _ (success Int _ _ _ _) _ =
-  tt
+inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (failure err) _ _ _ = tt
+inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (success T₁ Ψ₁ e₁E d₁ f₁) w₁ r₂ w₂ =
+  inferElabV-RBinOp-L-sound ctx op e₁ e₂ e₁E d₁ w₁ (numView T₁) r₂ w₂
 
 inferElabV-RLet-aux2-sound : ∀ {m}
     → (ctx : NamedCtx m) (x : String) (e₁ e₂ : Syn.Expr) {A : Ty m} {Ψ₁ : Surface.Usage (NamedCtx.size ctx)} (e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ A) (d₁ f₁ : ℕ) (w₁ : WI ctx e₁ A Ψ₁ e₁E)
@@ -1464,6 +1336,8 @@ inferElabV-RResolved-dispatch-sound : ∀ {m} (ctx : NamedCtx m) (cn : Canonical
     → soundOf ctx (Raw.RResolved cn) (inferElabV-RResolved-dispatch ctx cn a1)
 inferElabV-RResolved-dispatch-sound ctx _ gv-unit =
   wt-unit-var
+inferElabV-RResolved-dispatch-sound ctx _ gv-toFloat =
+  wt-toFloat
 inferElabV-RResolved-dispatch-sound ctx cn gv-id =
   tt
 inferElabV-RResolved-dispatch-sound ctx cn gv-fst =
@@ -1513,6 +1387,8 @@ checkElabV-RResolved-dispatch-sound ctx _ T gv-inr rInfV rInfVˢ =
   checkElabV-RVar-bbc-inr-aux-sound ctx T rInfV rInfVˢ
 checkElabV-RResolved-dispatch-sound ctx cn T gv-unit rInfV rInfVˢ =
   embedOrSubsume-sound ctx (Raw.RResolved cn) T rInfV rInfVˢ
+checkElabV-RResolved-dispatch-sound ctx cn T gv-toFloat rInfV rInfVˢ =
+  embedOrSubsume-sound ctx (Raw.RResolved cn) T rInfV rInfVˢ
 checkElabV-RResolved-dispatch-sound ctx cn T (gv-other ng) rInfV rInfVˢ =
   checkElabV-RResolved-other-sound ctx cn T rInfV rInfVˢ
 
@@ -1522,19 +1398,28 @@ checkElabV-RVar-bbc-other-aux-sound : ∀ {m} (ctx : NamedCtx m) (x : String) (T
 checkElabV-RVar-bbc-other-aux-sound ctx x T r rˢ =
   embedOrSubsume-sound ctx (Raw.RVar x) T r rˢ
 
-checkElabV-RFloat-aux-sound : ∀ {m} (ctx : NamedCtx m) (i f l : ℕ) (T : Ty m)
-    → checkSoundOf ctx (Raw.RFloat i f l) T (checkElabV-RFloat-aux ctx i f l T)
-checkElabV-RFloat-aux-sound ctx i f l T
+checkElabV-RFloat-at-sound : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ) (T : Ty m) (nz : Dec (NegativeZero sg i f))
+    → checkSoundOf ctx (Raw.RFloat sg i f l) T (checkElabV-RFloat-at ctx sg i f l T nz)
+checkElabV-RFloat-at-sound ctx sg i f l T (yes _) = tt
+checkElabV-RFloat-at-sound ctx sg i f l T (no nz)
     with Once.Spec.Type.Float <:? T
 ...  | yes s =
-  wt-sub (wt-float i f l) s
+  wt-sub (wt-float sg i f l nz) s
 ...  | no _ =
   tt
 
-inferElabV-RFloat-aux-sound : ∀ {m} (ctx : NamedCtx m) (i f l : ℕ)
-    → soundOf ctx (Raw.RFloat i f l) (inferElabV-RFloat-aux ctx i f l)
-inferElabV-RFloat-aux-sound ctx i f l =
-  wt-float i f l
+checkElabV-RFloat-aux-sound : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ) (T : Ty m)
+    → checkSoundOf ctx (Raw.RFloat sg i f l) T (checkElabV-RFloat-aux ctx sg i f l T)
+checkElabV-RFloat-aux-sound ctx sg i f l T = checkElabV-RFloat-at-sound ctx sg i f l T (negZero? sg i f)
+
+inferElabV-RFloat-at-sound : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ) (nz : Dec (NegativeZero sg i f))
+    → soundOf ctx (Raw.RFloat sg i f l) (inferElabV-RFloat-at ctx sg i f l nz)
+inferElabV-RFloat-at-sound ctx sg i f l (yes _)  = tt
+inferElabV-RFloat-at-sound ctx sg i f l (no nz) = wt-float sg i f l nz
+
+inferElabV-RFloat-aux-sound : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ)
+    → soundOf ctx (Raw.RFloat sg i f l) (inferElabV-RFloat-aux ctx sg i f l)
+inferElabV-RFloat-aux-sound ctx sg i f l = inferElabV-RFloat-at-sound ctx sg i f l (negZero? sg i f)
 
 mutual
 
@@ -1674,19 +1559,6 @@ mutual
       → (ctx : NamedCtx m) (f x : Syn.Expr)
       → soundOf ctx (Raw.RApp f x) (inferElabV-RApp-other ctx f x)
 
-  inferElabV-neg-dispatch-sound : ∀ {m}
-      → (ctx : NamedCtx m) (e : Syn.Expr)
-      → soundOf ctx (Raw.RNeg e) (inferElabV-neg-dispatch ctx e)
-
-  inferElabV-neg-aux-sound : ∀ {m}
-      → (ctx : NamedCtx m) (e : Syn.Expr)
-      → (a1 : NegOperandView e)
-      → soundOf ctx (Raw.RNeg e) (inferElabV-neg-aux ctx e a1)
-
-  checkElabV-neg-dispatch-sound : ∀ {m}
-      → (ctx : NamedCtx m) (e : Syn.Expr) (T : Ty m)
-      → (a1 : NegOperandView e)
-      → checkSoundOf ctx (Raw.RNeg e) T (checkElabV-neg-dispatch ctx e T a1)
 
   inferElabV-RLet-aux-sound : ∀ {m}
       → (ctx : NamedCtx m) (x : String) (e₁ e₂ : Syn.Expr)
@@ -1839,8 +1711,8 @@ mutual
     given-infer-sound ctx RUnit A π (inferElab ctx RUnit) (inferElab-sound ctx RUnit)
   elabGiven-sound ctx (RInt x) A π =
     given-infer-sound ctx (RInt x) A π (inferElab ctx (RInt x)) (inferElab-sound ctx (RInt x))
-  elabGiven-sound ctx (RFloat x x₁ x₂) A π =
-    given-infer-sound ctx (RFloat x x₁ x₂) A π (inferElab ctx (RFloat x x₁ x₂)) (inferElab-sound ctx (RFloat x x₁ x₂))
+  elabGiven-sound ctx (RFloat x₀ x x₁ x₂) A π =
+    given-infer-sound ctx (RFloat x₀ x x₁ x₂) A π (inferElab ctx (RFloat x₀ x x₁ x₂)) (inferElab-sound ctx (RFloat x₀ x x₁ x₂))
   elabGiven-sound ctx (RAnnot e x) A π =
     given-infer-sound ctx (RAnnot e x) A π (inferElab ctx (RAnnot e x)) (inferElab-sound ctx (RAnnot e x))
   elabGiven-sound ctx (RBinOp x e e₁) A π =
@@ -1963,8 +1835,8 @@ mutual
     given-infer-sound ctx (Raw.RApp RUnit g) A π r7 x
   elabGivenApp-sound ctx (RInt x₁) g A π ahv-other r7 x =
     given-infer-sound ctx (Raw.RApp (RInt x₁) g) A π r7 x
-  elabGivenApp-sound ctx (RFloat x₁ x₂ x₃) g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp (RFloat x₁ x₂ x₃) g) A π r7 x
+  elabGivenApp-sound ctx (RFloat x₀ x₁ x₂ x₃) g A π ahv-other r7 x =
+    given-infer-sound ctx (Raw.RApp (RFloat x₀ x₁ x₂ x₃) g) A π r7 x
   elabGivenApp-sound ctx (RAnnot f x₁) g A π ahv-other r7 x =
     given-infer-sound ctx (Raw.RApp (RAnnot f x₁) g) A π r7 x
   elabGivenApp-sound ctx (RBinOp x₁ f f₁) g A π ahv-other r7 x =
@@ -2033,8 +1905,8 @@ mutual
     wt-loop-check w
   inferElab-sound ctx (Raw.RInt n) =
     wt-int n
-  inferElab-sound ctx (Raw.RFloat i f l) =
-    inferElabV-RFloat-aux-sound ctx i f l
+  inferElab-sound ctx (Raw.RFloat sg i f l) =
+    inferElabV-RFloat-aux-sound ctx sg i f l
   inferElab-sound ctx Raw.RUnit =
     wt-unit
   inferElab-sound ctx (Raw.RLam _ _) =
@@ -2050,7 +1922,7 @@ mutual
   inferElab-sound ctx (Raw.RVar x) =
     inferElabV-RVar-lookup-aux-sound ctx x _ refl
   inferElab-sound ctx (Raw.RNeg e) =
-    inferElabV-neg-dispatch-sound ctx e
+    inferElabV-RNeg-aux-sound ctx e (inferElab ctx e) (inferElab-sound ctx e)
   inferElab-sound ctx (Raw.RLet x e₁ e₂) =
     inferElabV-RLet-aux-sound ctx x e₁ e₂ (inferElab ctx e₁) (inferElab-sound ctx e₁)
   inferElab-sound ctx (Raw.RDestruct scrut xL eL xR eR) =
@@ -2083,10 +1955,10 @@ mutual
     checkElabV-RPair-aux-sound ctx a b T (classifyRPairTarget T)
   checkElab-wf-sound ctx ac (Raw.RInt n) T =
     checkElabV-RInt-aux-sound ctx n T
-  checkElab-wf-sound ctx ac (Raw.RFloat i f l) T =
-    checkElabV-RFloat-aux-sound ctx i f l T
+  checkElab-wf-sound ctx ac (Raw.RFloat sg i f l) T =
+    checkElabV-RFloat-aux-sound ctx sg i f l T
   checkElab-wf-sound ctx ac (Raw.RNeg e) T =
-    checkElabV-neg-dispatch-sound ctx e T (negOperandView e)
+    embedOrSubsume-sound ctx (Raw.RNeg e) T (inferElabV-RNeg-aux ctx e (inferElab ctx e)) (inferElabV-RNeg-aux-sound ctx e (inferElab ctx e) (inferElab-sound ctx e))
   checkElab-wf-sound ctx a1 (RQualified x x₁) T₁ =
     embedOrSubsume-sound ctx (RQualified x x₁) T₁ (inferElab ctx (RQualified x x₁)) (inferElab-sound ctx (RQualified x x₁))
   checkElab-wf-sound ctx a1 (RLam x e) (var x₁) =
@@ -2121,20 +1993,6 @@ mutual
     checkElab-wf-sound ctx (<-wellFounded (length (NamedCtx.polys ctx))) e T
   inferElabV-RApp-other-sound ctx f x =
     inferElabV-RApp-other-aux-sound ctx f x _ refl
-  inferElabV-neg-dispatch-sound ctx e =
-    inferElabV-neg-aux-sound ctx e (negOperandView e)
-  inferElabV-neg-aux-sound ctx .(Raw.RInt n) (nov-int n) =
-    wt-neg (wt-int n)
-  inferElabV-neg-aux-sound ctx .(Raw.RFloat i f l) (nov-float i f l) =
-    wt-neg-float i f l
-  inferElabV-neg-aux-sound ctx e (nov-other .e) =
-    inferElabV-RNeg-aux-sound ctx e (inferElab ctx e) (inferElab-sound ctx e)
-  checkElabV-neg-dispatch-sound ctx .(Raw.RInt n) T (nov-int n) =
-    checkElabV-neg-int-aux-sound ctx n T
-  checkElabV-neg-dispatch-sound ctx .(Raw.RFloat i f l) T (nov-float i f l) =
-    checkElabV-neg-float-aux-sound ctx i f l T
-  checkElabV-neg-dispatch-sound ctx e T (nov-other .e) =
-    embedOrSubsume-sound ctx (Raw.RNeg e) T (inferElabV-RNeg-aux ctx e (inferElab ctx e)) (inferElabV-RNeg-aux-sound ctx e (inferElab ctx e) (inferElab-sound ctx e))
   inferElabV-RLet-aux-sound ctx x e₁ e₂ (failure err) _ =
     tt
   inferElabV-RLet-aux-sound ctx x e₁ e₂ (success A Ψ₁ e₁E d₁ f₁) w₁ =
