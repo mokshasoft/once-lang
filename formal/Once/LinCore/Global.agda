@@ -566,3 +566,75 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                  ; g-ret = back CO tk (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest }
     gret (p-start (at e)) inv H nx (ok-call _ _ _ _ _ _ () _ _ _ _ _ _ _ _ _)
     gret (p-tramp _ _) inv () nx ok
+
+  ----------------------------------------------------------------------
+  -- 8. ★★ THE STEP THEOREM: every covered image step is matched by flat
+  -- steps that keep the relation. Owed: the dispatches through a cell's
+  -- code word and the trampolines' cell parts (per key, D418), `lop`.
+  ----------------------------------------------------------------------
+
+  Covered : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
+          → StepI c r m n t c′ r′ m′ n′ → Set
+  Covered StepI.i-loop = Data.Unit.⊤
+    where import Data.Unit
+  Covered StepI.i-reti = Data.Unit.⊤
+    where import Data.Unit
+  Covered StepI.i-call = Data.Unit.⊤
+    where import Data.Unit
+  Covered StepI.i-ret  = Data.Unit.⊤
+    where import Data.Unit
+  {-# CATCHALL #-}
+  Covered st = Local st
+
+  module Theorem (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
+                       → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
+                         ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (FlatMachine.fpc fs) }) where
+    open Whole ld using (gstep-local; gloop; greti)
+    open GCall using (gcall; gret; ArrivesAt)
+    open Related
+
+    word-step : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
+           (st : StepI c r m n t c′ r′ m′ n′) → Covered st → InvI m r n h → Related c r m n fs → ArrivesAt c′ r′ m′ n′ fs
+    word-step StepI.i-loop  _ inv G = gloop (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+    word-step StepI.i-reti  _ inv G = greti (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+    word-step StepI.i-call  _ inv G = gcall (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+    word-step StepI.i-ret   _ inv G = gret (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+    word-step st@StepI.i-unpair       cv inv G = gstep-local st cv inv G
+    word-step st@StepI.i-pair         cv inv G = gstep-local st cv inv G
+    word-step st@StepI.i-swap         cv inv G = gstep-local st cv inv G
+    word-step st@StepI.i-unit         cv inv G = gstep-local st cv inv G
+    word-step st@(StepI.i-prim _)     cv inv G = gstep-local st cv inv G
+    word-step st@StepI.i-untag        cv inv G = gstep-local st cv inv G
+    word-step st@StepI.i-untag₁       cv inv G = gstep-local st cv inv G
+    word-step st@StepI.i-tag₁         cv inv G = gstep-local st cv inv G
+    word-step st@StepI.i-case₁        cv inv G = gstep-local st cv inv G
+    word-step st@StepI.i-case₂        cv inv G = gstep-local st cv inv G
+    word-step st@StepI.i-elend        cv inv G = gstep-local st cv inv G
+    word-step st@StepI.i-eunlend      cv inv G = gstep-local st cv inv G
+    word-step st@StepI.i-elift        cv inv G = gstep-local st cv inv G
+    word-step st@(StepI.i-efst _)     cv inv G = gstep-local st cv inv G
+    word-step st@(StepI.i-esnd _)     cv inv G = gstep-local st cv inv G
+    word-step st@(StepI.i-eout _)     cv inv G = gstep-local st cv inv G
+    word-step st@(StepI.i-eoutq _)    cv inv G = gstep-local st cv inv G
+    word-step st@(StepI.i-ecase₁ _)   cv inv G = gstep-local st cv inv G
+    word-step st@(StepI.i-ecase₂ _)   cv inv G = gstep-local st cv inv G
+    word-step st@(StepI.i-eapp _)     cv inv G = gstep-local st cv inv G
+    word-step st@StepI.i-epop         cv inv G = gstep-local st cv inv G
+    word-step st@(StepI.i-eword _)    cv inv G = gstep-local st cv inv G
+    word-step (StepI.i-opend _)       () inv G
+    word-step StepI.i-icall           () inv G
+    word-step (StepI.i-icallω _)      () inv G
+    word-step StepI.i-iobs            () inv G
+    word-step (StepI.i-ccopy _)       () inv G
+    word-step (StepI.i-ncopy _)       () inv G
+    word-step StepI.i-cfree           () inv G
+    word-step StepI.i-nfree           () inv G
+    word-step StepI.i-open1           () inv G
+    word-step (StepI.i-openω _)       () inv G
+    word-step StepI.i-nopen           () inv G
+    word-step (StepI.i-copen _)       () inv G
+    word-step (StepI.i-copenν _)      () inv G
+    word-step (StepI.i-reclose _)     () inv G
+    word-step (StepI.i-recloseν _)    () inv G
+    word-step StepI.i-fopen           () inv G
+    word-step StepI.i-fopenν          () inv G
