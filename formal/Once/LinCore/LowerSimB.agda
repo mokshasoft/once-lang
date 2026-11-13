@@ -239,12 +239,11 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   keepH : ∀ {fs fs′ w lb lc lf} → Header fs fs′ w lb lc lf → Keep fs fs′
   keepH H = record { k-frame = cong AllocState.current-frame (h-alloc H) ; k-slots = cong AllocState.frame-slots (h-alloc H)
                    ; k-saved = cong AllocState.saved-frames (h-alloc H) ; k-ret = h-ret H
-                   ; k-other = λ f x _ → cong (λ m → m f x) (h-stack H) ; k-halt = h-halt H }
+                   ; k-other = λ f x _ → cong (λ m → m f x) (h-stack H) ; k-halt = h-halt H ; k-inb = h-inb H }
 
   ranH : ∀ {hi fs fs′ w lb lc lf} → Header fs fs′ w lb lc lf → Ran 10 1 (AllocState.next-heap-ref (falloc fs)) hi fs fs′
   ranH {fs′ = fs′} H = record { r-keep = keepH H ; r-pc = h-pc H ; r-next = cong AllocState.next-heap-ref (h-alloc H)
                   ; r-old = λ hl lt → h-other H hl (λ e → Data.Nat.Properties.<-irrefl (cong Once.Memory.HeapAddress.HeapRef.ref-id e) lt)
                   ; r-top = λ x _ → trans (cong (λ g → LocState.stackMem (floc fs′) g x) (cong AllocState.current-frame (h-alloc H)))
-                                         (cong (λ m → m _ x) (h-stack H))
-                  ; r-inb = h-inb H }
+                                         (cong (λ m → m _ x) (h-stack H)) }
     where import Data.Nat.Properties

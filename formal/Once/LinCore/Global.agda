@@ -106,7 +106,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Tr U ncty ldConst using (trAt)
   open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; SlotsAt; cellPtr)
   open FlatMachine {FS} using (fpc)
-  open import Once.LinCore.Moves {FS} using (slot)
+  open import Once.LinCore.Moves {FS} using (slot; InBlk)
 
   -- a frame-0 trampoline's (D421) region `M`, and the caller's area's size `Mc`
   trM trMc : ∀ {σ} → Key σ → ℕ
@@ -350,6 +350,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       g-next : AllocState.next-heap-ref (falloc fs) ≡ n
       g-ret  : RetOK (rootOf g-pt) (ptFin g-pt) r (AllocState.current-frame (falloc fs)) (fret fs)
                      (AllocState.saved-frames (falloc fs)) fs
+      -- D424: every written heap word in its block (for an address formed inside a cell)
+      g-blk  : InBlk fs
 
   ----------------------------------------------------------------------
   -- 4. ★ THE RETURN STACK STANDS while a run changes only the current
@@ -467,7 +469,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
-  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other)
+  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other; k-inb)
   open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
   open Img {FS} ds f ldConst ld-nl using (image-label)
 
@@ -505,11 +507,13 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              (st : StepI c r m n t c′ r′ m′ n′) (l : Local st) (s : Sub root c)
            → InvI m r n h → L.Here s m fs → AllocState.next-heap-ref (falloc fs) ≡ n
            → RetOK R (RA.lfin (L.lowAt s)) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+           → InBlk fs
            → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × L.Here (LS.succ st l s) m′ fs′
                × AllocState.next-heap-ref (falloc fs′) ≡ n′
                × RetOK R (RA.lfin (L.lowAt (LS.succ st l s))) r′ (AllocState.current-frame (falloc fs′)) (fret fs′)
                        (AllocState.saved-frames (falloc fs′)) fs′
-    glocal {r = r} {fs = fs} st l s inv H nx ok = fin (LS.local-step ld image-label st l s H nx fr)
+               × InBlk fs′
+    glocal {r = r} {fs = fs} st l s inv H nx ok I = fin (LS.local-step ld image-label st l s H nx fr)
       where
         fr : ∀ i → AllocState.next-heap-ref (falloc fs) ≤ serial i → _
         fr i le = fresh-cfg inv i (subst (_≤ serial i) nx le)
@@ -519,7 +523,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         fin (N , fs′ , run , H′ , K , nx′ , old , tp) =
           N , fs′ , run , H′ , nx′ ,
           ctx-keep K (LS.Succ.carry (LS.succ′ st l s) (λ fin r₀ → RetOK R fin r₀ _ _ _ fs′)
-            (ret-top (k-other K) (λ x le → top-at K tp x (subst (_≤ x) eφ le)) old frR ok))
+            (ret-top (k-other K) (λ x le → top-at K tp x (subst (_≤ x) eφ le)) old frR ok)) ,
+          k-inb K I
 
   -- the return stack over a run that kept what `Keep` says, the old heap and the frame's top
   ret-step : ∀ {T U′ R fin} {r : Ret U′ T} {fs fs′}

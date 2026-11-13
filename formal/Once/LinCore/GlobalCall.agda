@@ -80,7 +80,7 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Tr U ncty ldConst using (trAt)
   open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; SlotsAt; cellPtr)
   open FlatMachine {FS} using (fpc)
-  open import Once.LinCore.Moves {FS} using (slot)
+  open import Once.LinCore.Moves {FS} using (slot; InBlk)
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
   open Sim {FS} U wordOf using (envW-heap; stkW-heap; envW-frame; slots-frame; cntE; cntS)
   open Rel {FS} U wordOf using (cellLoc)
@@ -163,61 +163,66 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                    {es : Slots Es} {a : MV A} {os : Stk S} {n h fs} (s : Sub main (call κ ⨾ k))
                → InvI (es ∥ a ∷ˢ os) r n h → S.Here s (es ∥ a ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
                → RetOK rstart (ptFin (p-start (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+               → InBlk fs
                → ArrivesAt (blockᴵ κ) (frm {t = nothing} {Es = Es} k es os r) (topv nothing es ∥ a ∷ˢ []ˢ) n fs
-      gcall-sn {r = r} s inv H nx ok = case FrS.call-n s H of λ where
+      gcall-sn {r = r} s inv H nx ok I = case FrS.call-n s H of λ where
         (N , fs′ , run , H′ , CD) →
           N , fs′ , run , record { g-pt = p-block (FrS.callee s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
                                  ; g-ret = mk-call (FrS.callee s) (s-start s) refl CD (S.Here.h-cfg H)
                                              (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
 
       gcall-sv : ∀ {T E A B Es S V} {κ : Key (bsig (just E) A B)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} {r : Ret V T}
                    {es : Slots (E ∷ Es)} {a : MV A} {os : Stk S} {n h fs} (s : Sub main (call κ ⨾ k))
                → InvI (es ∥ a ∷ˢ os) r n h → S.Here s (es ∥ a ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
                → RetOK rstart (ptFin (p-start (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+               → InBlk fs
                → ArrivesAt (blockᴵ κ) (frm {t = just E} {Es = Es} k es os r) (topv (just E) es ∥ a ∷ˢ []ˢ) n fs
-      gcall-sv {r = r} s inv H nx ok = case FrS.call-v s H of λ where
+      gcall-sv {r = r} s inv H nx ok I = case FrS.call-v s H of λ where
         (N , fs′ , run , H′ , CD) →
           N , fs′ , run , record { g-pt = p-block (FrS.callee s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
                                  ; g-ret = mk-call (FrS.callee s) (s-start s) refl CD (S.Here.h-cfg H)
                                              (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
 
       gcall-bn : ∀ {T A B Es S V} {κ : Key (bsig nothing A B)} {k : Codeᴵ (Es ∣ B ∷ S) V} {r : Ret V T}
                    {es : Slots Es} {a : MV A} {os : Stk S} {n h fs} {σ′} {κ′ : Key σ′} (p′ : (σ′ , κ′) ∈ allK U) (s : Sub (blockᴵ κ′) (call κ ⨾ k))
                → InvI (es ∥ a ∷ˢ os) r n h → K.Here p′ s (es ∥ a ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
                → RetOK (rblock p′) (ptFin (p-block p′ (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+               → InBlk fs
                → ArrivesAt (blockᴵ κ) (frm {t = nothing} {Es = Es} k es os r) (topv nothing es ∥ a ∷ˢ []ˢ) n fs
-      gcall-bn {r = r} p′ s inv H nx ok = case FrK.call-n p′ s H of λ where
+      gcall-bn {r = r} p′ s inv H nx ok I = case FrK.call-n p′ s H of λ where
         (N , fs′ , run , H′ , CD) →
           N , fs′ , run , record { g-pt = p-block (FrK.callee p′ s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
                                  ; g-ret = mk-call (FrK.callee p′ s) (s-block p′ s) refl CD (K.Here.h-cfg {p = p′} H)
                                              (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
 
       gcall-bv : ∀ {T E A B Es S V} {κ : Key (bsig (just E) A B)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} {r : Ret V T}
                    {es : Slots (E ∷ Es)} {a : MV A} {os : Stk S} {n h fs} {σ′} {κ′ : Key σ′} (p′ : (σ′ , κ′) ∈ allK U) (s : Sub (blockᴵ κ′) (call κ ⨾ k))
                → InvI (es ∥ a ∷ˢ os) r n h → K.Here p′ s (es ∥ a ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
                → RetOK (rblock p′) (ptFin (p-block p′ (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+               → InBlk fs
                → ArrivesAt (blockᴵ κ) (frm {t = just E} {Es = Es} k es os r) (topv (just E) es ∥ a ∷ˢ []ˢ) n fs
-      gcall-bv {r = r} p′ s inv H nx ok = case FrK.call-v p′ s H of λ where
+      gcall-bv {r = r} p′ s inv H nx ok I = case FrK.call-v p′ s H of λ where
         (N , fs′ , run , H′ , CD) →
           N , fs′ , run , record { g-pt = p-block (FrK.callee p′ s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
                                  ; g-ret = mk-call (FrK.callee p′ s) (s-block p′ s) refl CD (K.Here.h-cfg {p = p′} H)
                                              (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
 
     -- ★ a call: from either kind of root, into either kind of block
     gcall : ∀ {T t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} {r : Ret V T}
               {es : Slots (t ⊳ Es)} {a : MV A} {os : Stk S} {n h fs} (P : Pnt (call κ ⨾ k))
           → InvI (es ∥ a ∷ˢ os) r n h → HereP P (es ∥ a ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
           → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+          → InBlk fs
           → ArrivesAt (blockᴵ κ) (frm {t = t} {Es = Es} k es os r) (topv t es ∥ a ∷ˢ []ˢ) n fs
-    gcall {t = nothing} (p-start (at s)) inv H nx ok = gcall-sn s inv H nx ok
-    gcall {t = just E} (p-start (at s)) inv H nx ok = gcall-sv s inv H nx ok
-    gcall {t = nothing} (p-block p′ (at s)) inv H nx ok = gcall-bn p′ s inv H nx ok
-    gcall {t = just E} (p-block p′ (at s)) inv H nx ok = gcall-bv p′ s inv H nx ok
-    gcall {r = r} {fs = fs} (p-tramp p _) inv (tp1 {X = X} {A} {B} _ , H) nx ok = case tr-call p H of λ where
+    gcall {t = nothing} (p-start (at s)) inv H nx ok I = gcall-sn s inv H nx ok I
+    gcall {t = just E} (p-start (at s)) inv H nx ok I = gcall-sv s inv H nx ok I
+    gcall {t = nothing} (p-block p′ (at s)) inv H nx ok I = gcall-bn p′ s inv H nx ok I
+    gcall {t = just E} (p-block p′ (at s)) inv H nx ok I = gcall-bv p′ s inv H nx ok I
+    gcall {r = r} {fs = fs} (p-tramp p _) inv (tp1 {X = X} {A} {B} _ , H) nx ok I = case tr-call p H of λ where
       (N , fs′ , run , H′ , CD) →
         N , fs′ , run , record { g-pt = p-block p (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-call p (s-tramp p) refl
@@ -225,8 +230,8 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                                       (sym (Data.Nat.Properties.n∸n≡0 (t1M X A B))) CD)
                                            (HereF.f-cfg H)
                                            (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
-    gcall {r = r} {fs = fs} (p-tramp p _) inv (to1 {F = F} {S} _ , H) nx ok = case to-call p H of λ where
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
+    gcall {r = r} {fs = fs} (p-tramp p _) inv (to1 {F = F} {S} _ , H) nx ok I = case to-call p H of λ where
       (N , fs′ , run , H′ , CD) →
         N , fs′ , run , record { g-pt = p-block p (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-call p (s-trampo p) refl
@@ -234,4 +239,4 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                                       (sym (Data.Nat.Properties.n∸n≡0 (tOM F S))) CD)
                                            (HereF.f-cfg H)
                                            (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }

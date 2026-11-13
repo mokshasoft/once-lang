@@ -22922,9 +22922,11 @@ differ syntactically (`compᴵ ds (obsT F S)` carries `ds` in its `prim ds …`)
 
 **Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Applies**: D385/D386 (an
 embedded value records that its address is a live cell of its block; block sizes stay with the
-allocator), D416 (a cell is one heap block). **Status**: in progress — `Moves.InBlk` and every `Ran`'s
-`r-inb` implemented (the cell header's `Header.h-inb` too); not yet carried by `Related` or the call
-records, not yet used by the `ktrf`/`ktrc`/`ktrω` dispatches.
+allocator), D416 (a cell is one heap block). **Status**: in progress — `Moves.InBlk` is carried by
+`Keep` (`k-inb`; so by every `Ran`, `r-inb`), by the call records (`Called.cd-inb`; from `CallIn`'s
+`ci-size`, `ClosIn`'s `cl-size`, `CallOut`'s `co-size` by `inb-pt`) and by the relation
+(`Related.g-blk`): every step of the step theorem keeps it. Not yet used: the `ktrf`/`ktrc`/`ktrω`
+dispatches.
 
 ### The problem
 The dispatches through a cell's copy and free words (`ccopy`, `ncopy`, `cfree`, `nfree`: `addr-at 2`) and

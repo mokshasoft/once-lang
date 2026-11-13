@@ -62,6 +62,7 @@ record ClosIn (fs fs′ : FlatState) (cell : StoredValue FS) (y b s₁ s₂ q : 
              → LocState.stackMem (floc fs′) f′ x ≡ LocState.stackMem (floc fs) f′ x
     cl-heap  : LocState.heapMem (floc fs′) ≡ LocState.heapMem (floc fs)
     cl-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
+    cl-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
     cl-halt  : LocState.halted (floc fs′) ≡ LocState.halted (floc fs)
 
 -- ★ the dispatch, into a trampoline that saves the area and the cell
@@ -83,7 +84,7 @@ closure-in prog fs x y hl ℓ e q b s₁ s₂ s≢ sx code (g₁ , g₂ , g₃ ,
          ; cl-s₂ = trans (store-other (floc fs₇) cf′ s₁ cell s₂ s≢) (store-same (floc fs₅) cf′ s₂ area)
          ; cl-other = λ f′ x′ ne → trans (store-frame (floc fs₇) cf′ s₁ cell f′ x′ ne)
                                      (trans (store-frame (floc fs₅) cf′ s₂ area f′ x′ ne) (clear-other (LocState.stackMem (floc fs)) cf′ b f′ x′ ne))
-         ; cl-heap = refl ; cl-next = refl ; cl-halt = refl }
+         ; cl-heap = refl ; cl-next = refl ; cl-size = refl ; cl-halt = refl }
   where
     cf = current-frame (falloc fs)
     cf′ = callee-frame cf b
