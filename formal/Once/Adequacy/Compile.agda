@@ -473,9 +473,9 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
 
   ir-core-tr : ∀ (arch : Arch) (tp : Typed) (Σs : Signature) (u : SigOf tp Σs) (wf : WellFormed Σs) (J : Obs.Interp Σs)
                (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) → moduleToIR (proj₁ tp) ≡ just ir
-             → ⟦ moduleToProgram (proj₁ tp) ⟧IRᵗ (arch-numerics arch) (toInterp Σs wf J) ≈ᵗ⟨ _≡_ ⟩ ⟦ arch ⟧ᵈᴵ tp Σs u J
+             → ⟦ moduleToProgram (proj₁ tp) ⟧IRᵗ (arch-numerics arch) (toInterp (arch-numerics arch) Σs wf J) ≈ᵗ⟨ _≡_ ⟩ ⟦ arch ⟧ᵈᴵ tp Σs u J
   ir-core-tr arch (m , mt , hvm) Σs u wf J ir mi =
-    subst (λ x → ⟦ programAt (moduleTable m) x ⟧IRᵗ (arch-numerics arch) (toInterp Σs wf J) ≈ᵗ⟨ _≡_ ⟩ ⟦ arch ⟧ᵈᴵ (m , mt , hvm) Σs u J)
+    subst (λ x → ⟦ programAt (moduleTable m) x ⟧IRᵗ (arch-numerics arch) (toInterp (arch-numerics arch) Σs wf J) ≈ᵗ⟨ _≡_ ⟩ ⟦ arch ⟧ᵈᴵ (m , mt , hvm) Σs u J)
           (sym mi) (CB.program-core-tr (arch-numerics arch) m mt hvm Σs (SigOf.view u) wf J (SigOf.uniq u) ir mi)
 
   ----------------------------------------------------------------------
@@ -820,7 +820,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
     ( ∀ bytes → compile arch doOpt src ≡ just bytes →
         Σ-syntax Typed (λ tp → (src ⊢R tp) × Admissible arch tp
                                × (∀ (Σs : Signature) (u : SigOf tp Σs) (wf : WellFormed Σs) (J : Obs.Interp Σs)
-                                  → _≋_ (exec (toInterp Σs wf J) arch bytes) (⟦ arch ⟧ᵈᴵ tp Σs u J))) )
+                                  → _≋_ (exec (toInterp (arch-numerics arch) Σs wf J) arch bytes) (⟦ arch ⟧ᵈᴵ tp Σs u J))) )
     × ( ∀ tp → src ⊢R tp → Admissible arch tp →
         Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
   correctᵈ arch doOpt src = sound , (λ tp h adm → correctR-complete arch doOpt src tp h adm)
@@ -828,7 +828,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
       sound : ∀ bytes → compile arch doOpt src ≡ just bytes →
         Σ-syntax Typed (λ tp → (src ⊢R tp) × Admissible arch tp
                                × (∀ (Σs : Signature) (u : SigOf tp Σs) (wf : WellFormed Σs) (J : Obs.Interp Σs)
-                                  → _≋_ (exec (toInterp Σs wf J) arch bytes) (⟦ arch ⟧ᵈᴵ tp Σs u J)))
+                                  → _≋_ (exec (toInterp (arch-numerics arch) Σs wf J) arch bytes) (⟦ arch ⟧ᵈᴵ tp Σs u J)))
       sound bytes pf with accept-typed arch doOpt src bytes pf
       ... | (mR , stm-eq , MT) with compile-just-ir arch doOpt src mR bytes stm-eq pf
       ...   | (ir , mi) with srcToModule-inv src mR stm-eq
@@ -838,5 +838,5 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
                   , FB.parseStrict-sound (Source.srcText src) mU p-eq
                   , RBR.resolvesModule-complete (Source.srcImports src) (Syn.Module.decls mU) mR res-eq )
                 , accept-gm arch doOpt mR (trans (sym (cong (compile-gm arch doOpt) stm-eq)) pf)
-                , (λ Σs u wf J → ⊑≈-trans trans (sound-trace (toInterp Σs wf J) arch doOpt src bytes pf mR stm-eq ir mi (sym (SigOf.same u)))
+                , (λ Σs u wf J → ⊑≈-trans trans (sound-trace (toInterp (arch-numerics arch) Σs wf J) arch doOpt src bytes pf mR stm-eq ir mi (sym (SigOf.same u)))
                                  (ir-core-tr arch (mR , MT , MC.moduleToIR-sound mR MT mi) Σs u wf J ir mi))
