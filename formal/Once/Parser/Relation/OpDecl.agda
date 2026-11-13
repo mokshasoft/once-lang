@@ -20,7 +20,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Parser.Token
 open import Once.Spec.Surface.Syntax using (Decl; DTypeSig)
-open import Once.Parser.Module.OpName using (otClose; otChar; opTokClass)
+open import Once.Parser.Module.OpName using (otClose; otChar; otDotted; opTokClass)
 open import Once.Parser.Module.DeclTail using (colonHead; colDrop1)
 open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
 open import Once.Parser.Relation.FunDef using (ParsesFunDef)
@@ -34,6 +34,10 @@ data ParsesOpChars : List Token → List Char → String → List Token → Set 
               ParsesOpChars (tok ∷ rest) (c ∷ cs) (strFromList (reverse (c ∷ cs))) rest
   poc-char  : ∀ {tok rest cs ch s rest'} → opTokClass tok ≡ otChar ch →
               ParsesOpChars rest (ch ∷ cs) s rest' →
+              ParsesOpChars (tok ∷ rest) cs s rest'
+  -- plan 0.150: an IEEE form, its operator's character and `.`
+  poc-dotted : ∀ {tok rest cs ch s rest'} → opTokClass tok ≡ otDotted ch →
+              ParsesOpChars rest ('.' ∷ ch ∷ cs) s rest' →
               ParsesOpChars (tok ∷ rest) cs s rest'
 
 ------------------------------------------------------------------------

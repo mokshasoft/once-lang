@@ -36,7 +36,7 @@ import Once.Spec.Surface.Syntax as S
 open import Once.Spec.Surface.Lexing using (Token; TString; TWord; TLParen; TRParen; TColon; TEquals; TDot; TNewline; TEOF; Lexes)
 open import Once.Spec.Surface.Grammar as G
   using (Starts; starts; StartsWord; starts-word; NotKeyword; not-keyword; OpChar;
-         oc-dot; oc-plus; oc-minus; oc-star; oc-slash; oc-pct; oc-lt; oc-gt; oc-pipe; oc-amp; oc-at;
+         oc-dot; oc-op; op-dotted; oc-pipe; oc-amp; oc-at;
          op-close; op-char; op-sig; op-def; fundef; params-eq; params-cons; params-stop; params-none;
          path-cons; path-dotstop; path-end; import-as; import-plain; alias-eq; alias-param;
          decl-import; decl-alias; decl-signature; decl-typesig; decl-fundef; decl-op;
@@ -68,6 +68,8 @@ import Once.Parser.TypeRelation
 import Once.Parser.ExprRelation
 import Once.Parser.Generic.PolyInst
 open import Once.Adequacy.SpecTokNames
+open import Once.Spec.Surface.Lexing using (g+; g-; g*; g/; g%; g<; g>)
+open import Once.Spec.Surface.Operator using (o+; o-; o*; o/; o<; o>)
 open import Once.Adequacy.SpecLexing using (toNew; toOld; forget; isEOF; ended)
 import Once.Adequacy.SpecGrammar.Suffix as Suf
 open import Once.Adequacy.SpecGrammar.Tokens using (step; peel; peels; []; _∷_)
@@ -228,15 +230,25 @@ private
   oclose otv-close _ = op-close
   oclose (otv-char _) ()
   oclose (otv-none _ _) ()
+  oclose (otv-dotted _) ()
 
   ochar : ∀ {tok rest cs ch s rest′ k} → OpTokView tok k → k ≡ Once.Parser.Module.OpName.otChar ch
         → LO.ParsesOpChars rest (ch ∷ cs) s rest′ → G.ParsesOpChars (forget tok ∷ F rest) cs s (F rest′)
   ochar otv-close () d
   ochar (otv-char oc) refl d = op-char oc (opchars→ d)
   ochar (otv-none _ _) () d
+  ochar (otv-dotted _) () d
+
+  odot : ∀ {tok rest cs ch s rest′ k} → OpTokView tok k → k ≡ Once.Parser.Module.OpName.otDotted ch
+       → LO.ParsesOpChars rest ('.' ∷ ch ∷ cs) s rest′ → G.ParsesOpChars (forget tok ∷ F rest) cs s (F rest′)
+  odot otv-close () d
+  odot (otv-char _) () d
+  odot (otv-none _ _) () d
+  odot (otv-dotted g) refl d = op-dotted g (opchars→ d)
 
 opchars→ (LO.poc-close {tok} e) = oclose (optok-view tok) e
 opchars→ (LO.poc-char {tok} e d) = ochar (optok-view tok) e d
+opchars→ (LO.poc-dotted {tok} e d) = odot (optok-view tok) e d
 
 opafter→ : ∀ {name toks d rest} → LO.ParsesOpAfter name toks d rest → G.ParsesOpAfter name (F toks) d (F rest)
 
@@ -454,19 +466,30 @@ private
       → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars toks (ch ∷ cs) s rest × F rest ≡ r)
       → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars (tok ∷ toks) cs s rest × F rest ≡ r)
   oc← tok e (rest , d , er) = rest , LO.poc-char e d , er
+
+  od← : ∀ {cs ch s r toks} (tok : P.Token) → opTokClass tok ≡ Once.Parser.Module.OpName.otDotted ch
+      → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars toks ('.' ∷ ch ∷ cs) s rest × F rest ≡ r)
+      → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars (tok ∷ toks) cs s rest × F rest ≡ r)
+  od← tok e (rest , d , er) = rest , LO.poc-dotted e d , er
 opchars← op-close toks e =
   step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z (_ ∷ _) _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → toks′ , LO.poc-close refl , e′)
 opchars← (op-char oc-dot d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TDot refl (opchars← d toks′ e′))
-opchars← (op-char oc-plus d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TPlus refl (opchars← d toks′ e′))
-opchars← (op-char oc-minus d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TMinus refl (opchars← d toks′ e′))
-opchars← (op-char oc-star d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TStar refl (opchars← d toks′ e′))
-opchars← (op-char oc-slash d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TSlash refl (opchars← d toks′ e′))
-opchars← (op-char oc-pct d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TPercent refl (opchars← d toks′ e′))
-opchars← (op-char oc-lt d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TLt refl (opchars← d toks′ e′))
-opchars← (op-char oc-gt d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TGt refl (opchars← d toks′ e′))
+opchars← (op-char (oc-op g+) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TPlus refl (opchars← d toks′ e′))
+opchars← (op-char (oc-op (g- _ _)) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TMinus refl (opchars← d toks′ e′))
+opchars← (op-char (oc-op g*) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TStar refl (opchars← d toks′ e′))
+opchars← (op-char (oc-op g/) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TSlash refl (opchars← d toks′ e′))
+opchars← (op-char (oc-op g%) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TPercent refl (opchars← d toks′ e′))
+opchars← (op-char (oc-op (g< _)) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TLt refl (opchars← d toks′ e′))
+opchars← (op-char (oc-op (g> _)) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TGt refl (opchars← d toks′ e′))
 opchars← (op-char oc-pipe d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TPipe refl (opchars← d toks′ e′))
 opchars← (op-char oc-amp d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TAmpersand refl (opchars← d toks′ e′))
 opchars← (op-char oc-at d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → oc← P.TAt refl (opchars← d toks′ e′))
+opchars← (op-dotted g+ d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → od← (P.TOpD o+) refl (opchars← d toks′ e′))
+opchars← (op-dotted (g- _ _) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → od← (P.TOpD o-) refl (opchars← d toks′ e′))
+opchars← (op-dotted g* d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → od← (P.TOpD o*) refl (opchars← d toks′ e′))
+opchars← (op-dotted g/ d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → od← (P.TOpD o/) refl (opchars← d toks′ e′))
+opchars← (op-dotted (g< _) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → od← (P.TOpD o<) refl (opchars← d toks′ e′))
+opchars← (op-dotted (g> _) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (LO.ParsesOpChars z _ _ rest × F rest ≡ _)) refl e (λ {toks′} e′ → od← (P.TOpD o>) refl (opchars← d toks′ e′))
 
 opafter← : ∀ {x ts d′ r} → G.ParsesOpAfter x ts d′ r → ∀ toks → F toks ≡ ts → N r → BackD (LO.ParsesOpAfter x) toks d′ r
 opafter← (op-sig dT) toks e n =

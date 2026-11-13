@@ -67,7 +67,9 @@ mul-w (mul p q) = mulT-w q (unary-w p)
 mulT-w (mul-done _)   wl = wl
 mulT-w (mul-op _ p q) wl = mulT-w q (wl , unary-w p)
 
-unary-w (neg p)   = unary-w p
+unary-w (neg _ p) = unary-w p
+unary-w (neg-lit G.nn-int q)   = appT-w q tt
+unary-w (neg-lit G.nn-float q) = appT-w q tt
 unary-w (unary p) = app-w p
 
 app-w (app p q) = appT-w q (atom-w p)

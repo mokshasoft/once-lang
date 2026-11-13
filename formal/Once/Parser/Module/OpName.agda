@@ -18,7 +18,8 @@ open import Data.Maybe using (nothing; just; Maybe)
 open import Data.Product using (_,_; _×_)
 open import Data.String using (String)
 open import Once.Parser.Core using (Parser)
-open import Once.Parser.Token using (TAmpersand; TAt; TDot; TGt; TLParen; TLt; TMinus; TPercent; TPipe; TPlus; TRParen; TSlash; TStar; Token)
+open import Once.Parser.Token using (TAmpersand; TAt; TDot; TGt; TLParen; TLt; TMinus; TPercent; TPipe; TPlus; TRParen; TSlash; TStar; TOpD; Token)
+open import Once.Spec.Surface.Operator using (o+; o-; o*; o/; o<; o>)
 open import Data.Nat.Properties using (<-trans; ≤-refl)
 open import Data.Nat using (s≤s)
 open import Data.List using (List; []; _∷_)
@@ -28,6 +29,8 @@ open import Data.List using (List; []; _∷_)
 data OpTok : Set where
   otClose : OpTok
   otChar  : Char → OpTok
+  -- plan 0.150: an IEEE form, named by its operator's character and `.`
+  otDotted : Char → OpTok
   otNone  : OpTok
 
 opTokClass : Token → OpTok
@@ -43,6 +46,12 @@ opTokClass TGt        = otChar '>'
 opTokClass TPipe      = otChar '|'
 opTokClass TAmpersand = otChar '&'
 opTokClass TAt        = otChar '@'
+opTokClass (TOpD o+)  = otDotted '+'
+opTokClass (TOpD o-)  = otDotted '-'
+opTokClass (TOpD o*)  = otDotted '*'
+opTokClass (TOpD o/)  = otDotted '/'
+opTokClass (TOpD o<)  = otDotted '<'
+opTokClass (TOpD o>)  = otDotted '>'
 {-# CATCHALL #-}
 opTokClass _          = otNone
 
@@ -68,6 +77,7 @@ mutual
 
   pocGo : (tok : Token) (rest : List Token) (cs : List Char) → OpTok → ParseAtB {String} (tok ∷ rest)
   pocGo tok rest cs (otChar ch) = pocStep tok rest (parseOpCharsB rest (ch ∷ cs))
+  pocGo tok rest cs (otDotted ch) = pocStep tok rest (parseOpCharsB rest ('.' ∷ ch ∷ cs))
   pocGo tok rest cs otNone      = nothing
   pocGo tok rest cs otClose     = pocClose tok rest cs
 

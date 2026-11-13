@@ -31,11 +31,12 @@ open import Once.Parser.Module.Import using (dotHead)
 open import Once.Parser.Module.DeclTail using (colonHead; taEqHead)
 open import Once.Parser.Module.FunDef.Body using (eqHead)
 open import Once.Parser.Module.FunDef.Params using (SepK; skEq; skWord; skStop; sepClass)
-open import Once.Parser.Module.OpName using (OpTok; otClose; otChar; otNone; opTokClass)
+open import Once.Parser.Module.OpName using (OpTok; otClose; otChar; otDotted; otNone; opTokClass)
 open import Once.Parser using (allTrailing)
 open import Once.Parser.Module using (parseDeclB)
 open import Once.Adequacy.SpecTokNames
-open import Once.Spec.Surface.Lexing using (g+; g-; g*; g/; g%; g<; g>)
+open import Once.Spec.Surface.Lexing using (Glyph; g+; g-; g*; g/; g%; g<; g>)
+open import Once.Spec.Surface.Operator using (‹_›; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 open import Once.Adequacy.SpecLexing using (forget)
 
 private
@@ -306,6 +307,8 @@ data OpTokView : P.Token → OpTok → Set where
   otv-close : OpTokView P.TRParen otClose
   otv-char  : ∀ {t ch} → OpChar (forget t) ch → OpTokView t (otChar ch)
   otv-none  : ∀ {t} → (forget t ≡ TRParen → Data.Empty.⊥) → (∀ {ch} → ¬ OpChar (forget t) ch) → OpTokView t otNone
+  -- plan 0.150: an IEEE form, its operator's one character and `.`
+  otv-dotted : ∀ {d c} → Glyph (c ∷ []) ‹ d › [] → OpTokView (P.TOpD d) (otDotted c)
 
 optok-view : ∀ t → OpTokView t (opTokClass t)
 optok-view (P.TWord _) = otv-none (λ ()) (λ ())
@@ -340,7 +343,16 @@ optok-view P.TGt = otv-char (oc-op (g> (λ ())))
 optok-view P.TGe = otv-none (λ ()) (λ { (oc-op ()) })
 optok-view P.TEqEq = otv-none (λ ()) (λ { (oc-op ()) })
 optok-view P.TNeq = otv-none (λ ()) (λ { (oc-op ()) })
-optok-view (P.TOpD _) = otv-none (λ ()) (λ ())
+optok-view (P.TOpD o+) = otv-dotted g+
+optok-view (P.TOpD o-) = otv-dotted (g- (λ ()) (λ ()))
+optok-view (P.TOpD o*) = otv-dotted g*
+optok-view (P.TOpD o/) = otv-dotted g/
+optok-view (P.TOpD o<) = otv-dotted (g< (λ ()))
+optok-view (P.TOpD o>) = otv-dotted (g> (λ ()))
+optok-view (P.TOpD o<=) = otv-none (λ ()) (λ ())
+optok-view (P.TOpD o>=) = otv-none (λ ()) (λ ())
+optok-view (P.TOpD o==) = otv-none (λ ()) (λ ())
+optok-view (P.TOpD o!=) = otv-none (λ ()) (λ ())
 optok-view P.TBang = otv-none (λ ()) (λ ())
 optok-view P.TNewline = otv-none (λ ()) (λ ())
 optok-view P.TEOF = otv-none (λ ()) (λ ())
