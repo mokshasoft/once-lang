@@ -22835,3 +22835,29 @@ out (`jmp Ld`) and the loop's, exactly what `∷ⁱ` records.
 ### Consequences
 * `Global` (next): `HereP`, `RetOK`, the relation, and the step theorem from `local-step`, `LoopStep`,
   `CallStep.call-n`/`call-v`/`return`. Trampolines (per key, D418) and `lop` stay owed.
+
+## D421 — A TRAMPOLINE'S FRAME IS A BLOCK FRAME `frame 0 M` ONCE ITS CELL PART HAS RUN (2026-11-13)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Refines**: D418 (the
+per-key relation of trampoline points). Proof structure only: the flat code is unchanged.
+
+### Decision
+* **A one-shot body's and an observation's trampoline (`ktr1`, `ktro`) run in the frame `frame 0 M`**
+  (no environment region; `M` = `tramp`'s `M`): its entry's budget `suc (suc M)` is that frame's
+  `fbudget`, its two saves (`M`, `suc M`) are its `sv₁`, `sv₂`, and the cell part leaves the operand's
+  words (`mpair x a`, the coalgebra and seed) at the region's top. So from the cell part on, the
+  trampoline's points relate by the uniform `CfgW` (D420's `HereP`), its inner call is a call from a
+  third kind of root (a `Site` in a trampoline), and its way out is `leave` at its second save slot.
+* **Only the point before the cell part has a relation of its own**: the cell in the first save slot
+  and in the heap, the operand's other part in the caller's area (D418).
+* The many-use body's (`ktrω`, view by pointer into the cell), the copy's and the free's trampolines
+  keep per-key relations at every depth (they do not copy into the frame).
+
+### Why
+`tramp`'s layout for `ktr1`/`ktro` is exactly a block's at `frame 0 M`: the copy-in lands at
+`M ∸ (wX + wA)` = the region's top less the operand, the inner call's area is `0 = M ∸ M`, the body's
+result lands at `M ∸ wB`. Reusing the block relation avoids a second proof of the call and return.
+
+### Consequences
+* `leave` generalised to any save slot; `Site` gains `s-tramp`; `RetOK` a constructor for a trampoline
+  frame (its way out at `sv₂`, the caller's area `Mc`-sized); the cell parts' lemmas (`open1`, `nopen`).
