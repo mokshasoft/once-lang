@@ -253,3 +253,56 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           hp = p-heap M₁
           sx : SlotsAt (slot fs₁) a′ wx
           sx = cell-slots-at wx (subst (MovedP fs fs₁ (AtDynamic (cellLoc i 0)) o a′) (sym (vw-len px)) M₁) ax
+
+  -- ★ a free trampoline's cell part (D417, `fopen`): the cell from its save
+  -- slot `M`, its contents into the frame's slots below `M`, the cell freed
+  fopen-sim : ∀ prog (fs : FlatState) (M o fr : ℕ) {X} {x : MV X} (i : Id) (wx : List W)
+            → wsz X ≤ M
+            → slot fs M ≡ just (cellPtr i)
+            → VW (LocState.heapMem (floc fs)) x wx → At (LocState.heapMem (floc fs)) i o wx
+            → Seg prog (fpc fs) (restore-input M ∷ mvPS o (M ∸ wsz X) (wsz X) ++ instr-free-heap fr ∷ [])
+            → LocState.halted (floc fs) ≡ false
+            → Σ FlatState λ fs′
+                → FlatSteps prog (1 + (Once.LinCore.Moves.ln {FS} (wsz X) + 1)) fs fs′
+                × CfgW (LocState.heapMem (floc fs′)) (slot fs′) (frame 0 M) ([]ᵉ ∥ x ∷ˢ []ˢ)
+                × Ran (1 + (Once.LinCore.Moves.ln {FS} (wsz X) + 1)) 0 (AllocState.next-heap-ref (falloc fs)) M fs fs′
+  fopen-sim prog fs M o fr {X} {x} i wx le eM px ax seg h =
+    after₁ (mvPS-run prog fs₁ (AtDynamic (cellLoc i 0)) o a′ (wsz X) seg₁ h refl def₁ (λ k k′ _ _ ()))
+    where
+      wX = wsz X
+      a′ = M ∸ wX
+      b₁ : a′ + wX ≤ M
+      b₁ = ≤-reflexive (Data.Nat.Properties.m∸n+n≡m le)
+      MV₁ = mvPS o a′ wX
+      fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 (cellPtr i) } ; fpc = suc (fpc fs) }
+      seg₁ : Seg prog (fpc fs₁) MV₁
+      seg₁ = Seg-++ˡ prog (fpc fs₁) MV₁ _ (proj₂ seg)
+      def₁ : ∀ k → k < wX → Σ W λ v → MemOps.readLoc {FS} (floc fs₁) (offsetLoc (AtDynamic (cellLoc i 0)) (k + o)) ≡ just v
+      def₁ k k< = rd (at-def-o wx ax k (subst (k <_) (sym (vw-len px)) k<))
+        where
+          rd : Σ W (λ v → LocState.heapMem (floc fs) (cellLoc i (k + o)) ≡ just v)
+             → Σ W λ v → MemOps.readLoc {FS} (floc fs₁) (offsetLoc (AtDynamic (cellLoc i 0)) (k + o)) ≡ just v
+          rd (v , e) = v , trans (cong (λ z → LocState.heapMem (floc fs) (heap-loc (mkHeapRef (serial i)) z)) (Data.Nat.Properties.+-identityʳ (k + o))) e
+      after₁ : Σ FlatState (λ fs₂ → FlatSteps prog (Once.LinCore.Moves.ln {FS} wX) fs₁ fs₂ × MovedP fs₁ fs₂ (AtDynamic (cellLoc i 0)) o a′ wX) → _
+      after₁ (fs₂ , st₁ , M₁) =
+        fs₃ ,
+        step-at fs₁ (h , proj₁ seg) (restore-step fs M eM)
+          (FlatSteps-++ st₁ (step-at fs₃ (h₂ , proj₁ rest₁) (free-step fs₂ fr) FlatStepsAPI.[])) ,
+        record { c-env = tt
+               ; c-stk = ((wx , subst (λ r → VW r x wx) (sym hp) px
+                          , subst (λ z → SlotsAt (slot fs₂) z wx) (cong (M ∸_) (sym (Data.Nat.Properties.+-identityʳ wX))) sx) , tt)
+               ; c-efit = z≤n
+               ; c-sfit = ≤-trans (≤-reflexive (Data.Nat.Properties.+-identityʳ wX)) le } ,
+        ran-trans (ran-regs _) (ran-trans (ranP M₁ b₁) ran-pc)
+        where
+          h₂ : LocState.halted (floc fs₂) ≡ false
+          h₂ = trans (p-halt M₁) h
+          rest₁ : Seg prog (fpc fs₂) (instr-free-heap fr ∷ [])
+          rest₁ = subst (λ z → Seg prog z (instr-free-heap fr ∷ []))
+                    (trans (cong (fpc fs₁ +_) (len-mvPS o a′ wX)) (trans (+-comm (fpc fs₁) _) (sym (p-pc M₁))))
+                    (Seg-++ʳ prog (fpc fs₁) MV₁ _ (proj₂ seg))
+          fs₃ = record fs₂ { fpc = suc (fpc fs₂) }
+          hp : LocState.heapMem (floc fs₂) ≡ LocState.heapMem (floc fs)
+          hp = p-heap M₁
+          sx : SlotsAt (slot fs₂) a′ wx
+          sx = cell-slots-at wx (subst (MovedP fs₁ fs₂ (AtDynamic (cellLoc i 0)) o a′) (sym (vw-len px)) M₁) ax
