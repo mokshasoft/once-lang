@@ -21,9 +21,9 @@
 {-# OPTIONS --guardedness #-}
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_)
-open import Data.Nat.Properties using (+-comm; +-assoc; ≤-refl; ≤-trans; m≤m⊔n; m≤n⊔m; m≤n+m)
+open import Data.Nat.Properties using (+-comm; +-assoc; +-suc; ≤-refl; ≤-trans; m≤m⊔n; m≤n⊔m; m≤n+m)
 open import Data.List using (List; []; _∷_; _++_; length)
-open import Data.List.Properties using (length-++)
+open import Data.List.Properties using (length-++; ++-assoc; ++-identityʳ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (false)
@@ -52,8 +52,9 @@ open import Once.LinCore.Layout fmt ans bw
 open import Once.LinCore.Lower fmt ans bw
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
+open import Once.LinCore.LowerSimD fmt ans bw using (module SimD)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; whole; next; left; right; eleft; eright; body)
-open import Once.LinCore.LowAt fmt ans bw using (Inside; in-trans; in-r; module At)
+open import Once.LinCore.LowAt fmt ans bw using (Inside; in-trans; in-r; in-∷; module At)
 open import Once.LinCore.PointAt fmt ans bw using (module Fetch)
 import Once.LinCore.Moves
 
@@ -136,8 +137,9 @@ module Loc {FS : FrameSemantics} (U : Univ)
   open Sim {FS} U wordOf
   open CfgW
   open Fetch {FS} using (in-seg)
+  open SimD {FS} U wordOf using (case₁-sim; case₂-sim; ecase₁-sim; ecase₂-sim)
   open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; k-halt; Ran; r-keep; r-pc; r-next; ran-refl; ranS; MovedS)
-  open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
+  open FlatMachine {FS} using (FlatState; floc; falloc; fpc; find-label)
   open LocState using (heapMem)
   open FlatStepsAPI {FS} using (FlatSteps; [])
 
@@ -351,3 +353,131 @@ module Loc {FS : FrameSemantics} (U : Univ)
   st-eoutq {F} s {fs = fs} eq H =
     straight s H _ 0 (sym (cong suc (len-mvPS _ _ (wsz (LF∙ F (μt F))))))
       (λ sg h C → eout-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s))))
+
+  ----------------------------------------------------------------------
+  -- 6. ★ THE BRANCHES: the tag read; on 0 the jump to the left's label, on
+  -- 1 the fall into the right's code.
+  ----------------------------------------------------------------------
+
+  -- every label of the program is found where it is (the image's:
+  -- `LabelsI.image-label`)
+  Labelled : Set
+  Labelled = ∀ {l rest} (ins : Inside prog (instr-ctrl (c-label l) ∷ rest)) → find-label prog l ≡ just (length (proj₁ ins))
+
+  private
+    len-mvSSd : ∀ a b n → length (mvSSd a b n) ≡ Once.LinCore.Moves.ln {FS} n
+    len-mvSSd a b zero    = refl
+    len-mvSSd a b (suc n) = cong (λ z → suc (suc z)) (len-mvSSd a b n)
+
+    -- the right's point: past the read and the right's move
+    fall-pos : ∀ (pR pS : AbstractTrace) c₀ c₁ c₂ (MB : AbstractTrace)
+             → length (pR ++ (pS ++ (c₀ ∷ c₁ ∷ c₂ ∷ (MB ++ [])))) ≡ length (pR ++ pS) + suc (suc (suc (length MB)))
+    fall-pos pR pS c₀ c₁ c₂ MB =
+      trans (cong length (sym (++-assoc pR pS (c₀ ∷ c₁ ∷ c₂ ∷ (MB ++ [])))))
+        (trans (length-++ (pR ++ pS)) (cong (λ z → length (pR ++ pS) + suc (suc (suc z))) (cong length (++-identityʳ MB))))
+
+    -- the left's point: past its label, and its move
+    jump-pos : ∀ (pR pS : AbstractTrace) c₀ c₁ c₂ (MB p₂ Z : AbstractTrace)
+             → length (pR ++ (pS ++ (c₀ ∷ c₁ ∷ c₂ ∷ (MB ++ (p₂ ++ Z)))))
+               ≡ length ((pR ++ pS) ++ (c₀ ∷ c₁ ∷ c₂ ∷ (MB ++ p₂))) + length Z
+    jump-pos pR pS c₀ c₁ c₂ MB p₂ Z =
+      trans (cong length (sym (trans (++-assoc (pR ++ pS) (c₀ ∷ c₁ ∷ c₂ ∷ (MB ++ p₂)) Z)
+              (trans (++-assoc pR pS (c₀ ∷ c₁ ∷ c₂ ∷ ((MB ++ p₂) ++ Z)))
+                (cong (λ w → pR ++ (pS ++ (c₀ ∷ c₁ ∷ c₂ ∷ w))) (++-assoc MB p₂ Z))))))
+        (length-++ ((pR ++ pS) ++ (c₀ ∷ c₁ ∷ c₂ ∷ (MB ++ p₂))))
+
+    three : ∀ p n → p + suc (suc (suc n)) ≡ n + (3 + p)
+    three p n = trans (+-comm p (suc (suc (suc n))))
+                  (sym (trans (+-suc n (suc (suc p))) (cong suc (trans (+-suc n (suc p)) (cong suc (+-suc n p))))))
+
+    past : ∀ q n → q + suc n ≡ n + suc q
+    past q n = trans (+-suc q n) (trans (cong suc (+-comm q n)) (sym (+-suc n q)))
+
+  st-case₂ : ∀ {Es A B S V} {c₁ : Codeᴵ (Es ∣ A ∷ S) V} {c₂ : Codeᴵ (Es ∣ B ∷ S) V} (s : Sub root (case c₁ c₂))
+               {es : Slots Es} {b : MV B} {os : Stk S} {fs}
+           → Here s (es ∥ minr {A = A} b ∷ˢ os) fs → Moved (right s) fs 0 (es ∥ b ∷ˢ os)
+  st-case₂ {Es} {A} {B} {S} s {fs = fs} H = fin (case₂-sim prog fs φ L₁ seg (h-run H) (h-cfg H))
+    where
+      L₁ = jl j (lm (lowAt s))
+      t = Tp φ ((A ⊕t B) ∷ S)
+      MB = mvSSd (suc t) (Tp φ S ∸ wsz B) (wsz B)
+      seg = Seg-++ˡ prog (fpc fs) (lea-slot t ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero L₁) ∷ MB) _ (seg-at s H)
+      fin : _ → Moved (right s) fs 0 _
+      fin (fs′ , st , C′ , pc , K , nx) =
+        _ , fs′ , st ,
+        record { h-pc  = trans pc (trans (cong (λ z → Once.LinCore.Moves.ln {FS} (wsz B) + (3 + z)) (h-pc H))
+                           (sym (trans (fall-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB)
+                                  (trans (cong (λ z → pos s + suc (suc (suc z))) (len-mvSSd (suc t) (Tp φ S ∸ wsz B) (wsz B)))
+                                    (three (pos s) _)))))
+               ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
+        K , nx
+
+  st-case₁ : ∀ {Es A B S V} {c₁ : Codeᴵ (Es ∣ A ∷ S) V} {c₂ : Codeᴵ (Es ∣ B ∷ S) V} → Labelled → ∀ (s : Sub root (case c₁ c₂))
+               {es : Slots Es} {a : MV A} {os : Stk S} {fs}
+           → Here s (es ∥ minl {B = B} a ∷ˢ os) fs → Moved (left s) fs 0 (es ∥ a ∷ˢ os)
+  st-case₁ {Es} {A} {B} {S} {c₁ = c₁} {c₂} lab s {fs = fs} H =
+    fin (case₁-sim prog fs φ L₁ q seg (lab labIn) (Seg-++ˡ prog q (instr-ctrl (c-label L₁) ∷ MA) _ (in-seg labIn)) (h-run H) (h-cfg H))
+    where
+      m = lm (lowAt s) ; fin′ = lfin (lowAt s)
+      L₁ = jl j m
+      t = Tp φ ((A ⊕t B) ∷ S)
+      MB = mvSSd (suc t) (Tp φ S ∸ wsz B) (wsz B)
+      MA = mvSSd (suc t) (Tp φ S ∸ wsz A) (wsz A)
+      l₂ = lowC φ j (suc m) fin′ c₂ (proj₂ (lcin (lowAt s)))
+      l₁ = lowC φ j (proj₂ l₂) fin′ c₁ (proj₁ (lcin (lowAt s)))
+      labIn : Inside prog (instr-ctrl (c-label L₁) ∷ MA ++ proj₁ l₁)
+      labIn = in-trans (here-in s) (in-trans in-∷ (in-trans in-∷ (in-trans in-∷ (in-trans (in-r MB _) (in-r (proj₁ l₂) _)))))
+      q = length (proj₁ labIn)
+      seg = Seg-++ˡ prog (fpc fs) (lea-slot t ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero L₁) ∷ []) _ (seg-at s H)
+      fin : _ → Moved (left s) fs 0 _
+      fin (fs′ , st , C′ , pc , K , nx) =
+        _ , fs′ , st ,
+        record { h-pc  = trans pc (sym (trans (jump-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB (proj₁ l₂) (instr-ctrl (c-label L₁) ∷ MA))
+                                         (trans (cong (λ z → q + suc z) (len-mvSSd (suc t) (Tp φ S ∸ wsz A) (wsz A))) (past q _))))
+               ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
+        K , nx
+
+  st-ecase₂ : ∀ {E₁ E₂ Es S V} {c₁ : Codeᴵ (E₁ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) V} {c₂ : Codeᴵ (E₂ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) V}
+                (s : Sub root (ecase c₁ c₂)) {es : Slots ((E₁ ⊕t E₂) ∷ Es)} {os : Stk S} {e₂ : MV E₂} {fs}
+            → see es ≡ minr e₂ → Here s (es ∥ os) fs → Moved (eright s) fs 0 (vw e₂ es ∥ os)
+  st-ecase₂ {E₁} {E₂} {Es} s {fs = fs} eq H = fin (ecase₂-sim prog fs φ L₁ eq seg (h-run H) (h-cfg H) (proj₁ (shape-fits (eright s))))
+    where
+      L₁ = jl j (lm (lowAt s))
+      e = ws Es ; nb = e + wsz (E₁ ⊕t E₂)
+      MB = mvSS (suc e) nb (wsz E₂)
+      seg = Seg-++ˡ prog (fpc fs) (lea-slot e ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero L₁) ∷ MB) _ (seg-at s H)
+      fin : _ → Moved (eright s) fs 0 _
+      fin (fs′ , st , C′ , pc , K , nx) =
+        _ , fs′ , st ,
+        record { h-pc  = trans pc (trans (cong (λ z → Once.LinCore.Moves.ln {FS} (wsz E₂) + (3 + z)) (h-pc H))
+                           (sym (trans (fall-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB)
+                                  (trans (cong (λ z → pos s + suc (suc (suc z))) (len-mvSS (suc e) nb (wsz E₂)))
+                                    (three (pos s) _)))))
+               ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
+        K , nx
+
+  st-ecase₁ : ∀ {E₁ E₂ Es S V} {c₁ : Codeᴵ (E₁ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) V} {c₂ : Codeᴵ (E₂ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) V}
+              → Labelled → ∀ (s : Sub root (ecase c₁ c₂)) {es : Slots ((E₁ ⊕t E₂) ∷ Es)} {os : Stk S} {e₁ : MV E₁} {fs}
+              → see es ≡ minl e₁ → Here s (es ∥ os) fs → Moved (eleft s) fs 0 (vw e₁ es ∥ os)
+  st-ecase₁ {E₁} {E₂} {Es} {c₁ = c₁} {c₂} lab s {fs = fs} eq H =
+    fin (ecase₁-sim prog fs φ L₁ q eq seg (lab labIn) (Seg-++ˡ prog q (instr-ctrl (c-label L₁) ∷ MA) _ (in-seg labIn))
+           (h-run H) (h-cfg H) (proj₁ (shape-fits (eleft s))))
+    where
+      m = lm (lowAt s) ; fin′ = lfin (lowAt s)
+      L₁ = jl j m
+      e = ws Es ; nb = e + wsz (E₁ ⊕t E₂)
+      MB = mvSS (suc e) nb (wsz E₂)
+      MA = mvSS (suc e) nb (wsz E₁)
+      l₂ = lowC φ j (suc m) fin′ c₂ (proj₂ (lcin (lowAt s)))
+      l₁ = lowC φ j (proj₂ l₂) fin′ c₁ (proj₁ (lcin (lowAt s)))
+      labIn : Inside prog (instr-ctrl (c-label L₁) ∷ MA ++ proj₁ l₁)
+      labIn = in-trans (here-in s) (in-trans in-∷ (in-trans in-∷ (in-trans in-∷ (in-trans (in-r MB _) (in-r (proj₁ l₂) _)))))
+      q = length (proj₁ labIn)
+      seg = Seg-++ˡ prog (fpc fs) (lea-slot e ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero L₁) ∷ []) _ (seg-at s H)
+      fin : _ → Moved (eleft s) fs 0 _
+      fin (fs′ , st , C′ , pc , K , nx) =
+        _ , fs′ , st ,
+        record { h-pc  = trans pc (sym (trans (jump-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB (proj₁ l₂) (instr-ctrl (c-label L₁) ∷ MA))
+                                         (trans (cong (λ z → q + suc z) (len-mvSS (suc e) nb (wsz E₁))) (past q _))))
+               ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
+        K , nx
