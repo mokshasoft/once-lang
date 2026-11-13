@@ -135,18 +135,19 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- trampoline's frame `frame 0 M` (D421), the caller's area in `suc M`
   mk-tramp : ∀ {T Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b} {Es S V} {k : Codeᴵ (Es ∣ B ∷ S) V}
                {es : Slots Es} {os : Stk S} {r : Ret V T} {i} {x : MV X} {a : MV A} {fs fs′}
-               (p : under (ktr1 ds′ b γ) ∈ allK U) (d : DSite g A k)
+               (p : under (ktr1 ds′ b γ) ∈ allK U) (d : DSite (icall {g = g} {A = A}) k)
            → Called fs fs′ (dsitePos d) (suc (suc ((wsz X + wsz A) ⊔ wsz B))) (suc ((wsz X + wsz A) ⊔ wsz B))
                     (Tp (dsiteφ d) S ∸ (suc (wsz A) ⊔ wsz B))
+           → (suc (wsz A) ⊔ wsz B) + ws S ≤ OP (dsiteφ d)
            → CfgW (LocState.heapMem (floc fs)) (slot fs) (dsiteφ d) (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os)
            → (∀ j → AllocState.next-heap-ref (falloc fs) ≤ serial j → cntE es j ≡ 0 × cntS (mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) j ≡ 0)
            → FreshR r (AllocState.next-heap-ref (falloc fs))
            → RetOK (dsiteRoot d) (dsiteFin d) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
            → RetOK (rtramp {κ = ktr1 ds′ b γ} p) (trFin (idx p) (ktr1 ds′ b γ)) (frm {t = nothing} {Es = Es} k es os r)
                    (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) fs′
-  mk-tramp {X = X} {A} {B} {es = es} {os = os} {fs = fs} {fs′} p d CD C fr frR ok =
+  mk-tramp {X = X} {A} {B} {es = es} {os = os} {fs = fs} {fs′} p d CD fit C fr frR ok =
     ok-tramp p d cfc (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) (fret fs)
-      refl refl (cd-ret CD) (cd-saved CD) under-cfc (cd-area CD)
+      refl refl (cd-ret CD) (cd-saved CD) under-cfc (cd-area CD) fit
       (env-stand (λ j le → proj₁ (fr j le)) (cd-old CD) (envW-frame es (λ y _ → kept y) (CfgW.c-env C)))
       (stk-stand (λ j le → nat-r0 (proj₂ (fr j le))) (cd-old CD) (stk-all os kept (proj₂ (CfgW.c-stk C))))
       (ret-deep (AllocState.current-frame (falloc fs′)) under-cfc
@@ -172,7 +173,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     case tr-dispatch (frameOf main) seg (S.Here.h-run H) (S.Here.h-cfg H) fitM of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (tp0 m , T0) ; g-next = trans (cd-next CD) nx
-                               ; g-ret = mk-tramp m (d-start s) (called-re pos-eq refl CD) (S.Here.h-cfg H)
+                               ; g-ret = mk-tramp m (d-start s) (called-re pos-eq refl CD) fitM (S.Here.h-cfg H)
                                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
                                            (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
     where
@@ -202,7 +203,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     case tr-dispatch (frameOf (blockᴵ κ′)) seg (K.Here.h-run {p = p′} H) (K.Here.h-cfg {p = p′} H) fitM of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (tp0 m , T0) ; g-next = trans (cd-next CD) nx
-                               ; g-ret = mk-tramp m (d-block p′ s) (called-re pos-eq refl CD) (K.Here.h-cfg {p = p′} H)
+                               ; g-ret = mk-tramp m (d-block p′ s) (called-re pos-eq refl CD) fitM (K.Here.h-cfg {p = p′} H)
                                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
                                            (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
     where

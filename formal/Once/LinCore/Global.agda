@@ -108,10 +108,19 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open FlatMachine {FS} using (fpc)
   open import Once.LinCore.Moves {FS} using (slot)
 
-  trφ : ∀ {σ} → Key σ → Frame
-  trφ (ktr1 {X = X} {A = A} {B = B} ds′ b γ) = frame 0 ((wsz X + wsz A) ⊔ wsz B)
+  -- a frame-0 trampoline's (D421) region `M`, and the caller's area's size `Mc`
+  trM trMc : ∀ {σ} → Key σ → ℕ
+  trM (ktr1 {X = X} {A = A} {B = B} ds′ b γ) = (wsz X + wsz A) ⊔ wsz B
+  trM (ktro ds′ F S) = wsz (cty (F , S)) ⊔ wsz (LF∙ F (Nu F))
   {-# CATCHALL #-}
-  trφ _ = frame 0 0
+  trM _ = 0
+  trMc (ktr1 {A = A} {B = B} ds′ b γ) = suc (wsz A) ⊔ wsz B
+  trMc (ktro ds′ F S) = 1 ⊔ wsz (LF∙ F (Nu F))
+  {-# CATCHALL #-}
+  trMc _ = 0
+
+  trφ : ∀ {σ} → Key σ → Frame
+  trφ κ = frame 0 (trM κ)
 
   trPos : ∀ {σ} (κ : Key σ) → under κ ∈ allK U → ℕ → ℕ
   trPos κ p d = length (proj₁ (image-tr κ p d))
@@ -217,27 +226,28 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     siteFin (s-block p′ s) = KA.lfin {p = p′} (K.lowAt p′ s)
     siteFin (s-tramp {ds′ = ds′} {b} {γ} p) = trAt (idx p) (ktr1 ds′ b γ) 2
 
-  -- ★ a dispatch site: an `icall` in the start's code or a block's (D421)
-  data DSite : ∀ {Es B S V} → Gr → LTy → Codeᴵ (Es ∣ B ∷ S) V → Set where
-    d-start : ∀ {Es g A B S V} {k : Codeᴵ (Es ∣ B ∷ S) V} → Sub main (icall {g = g} {A = A} ⨾ k) → DSite g A k
-    d-block : ∀ {Es g A B S V} {k : Codeᴵ (Es ∣ B ∷ S) V} {σ′} {κ′ : Key σ′} (p′ : (σ′ , κ′) ∈ allK U)
-            → Sub (blockᴵ κ′) (icall {g = g} {A = A} ⨾ k) → DSite g A k
+  -- ★ a dispatch site: a dispatch through a cell's code word (`icall`,
+  -- `iobs`) in the start's code or a block's (D421)
+  data DSite : ∀ {Es D B S V} → Insᴵ (Es ∣ D ∷ S) (Es ∣ B ∷ S) → Codeᴵ (Es ∣ B ∷ S) V → Set where
+    d-start : ∀ {Es D B S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ B ∷ S)} {k : Codeᴵ (Es ∣ B ∷ S) V} → Sub main (i ⨾ k) → DSite i k
+    d-block : ∀ {Es D B S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ B ∷ S)} {k : Codeᴵ (Es ∣ B ∷ S) V} {σ′} {κ′ : Key σ′}
+              (p′ : (σ′ , κ′) ∈ allK U) → Sub (blockᴵ κ′) (i ⨾ k) → DSite i k
 
-  module _ {Es g A B S V} {k : Codeᴵ (Es ∣ B ∷ S) V} where
-    dsiteRoot : DSite g A k → RootId
+  module _ {Es D B S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ B ∷ S)} {k : Codeᴵ (Es ∣ B ∷ S) V} where
+    dsiteRoot : DSite i k → RootId
     dsiteRoot (d-start _)    = rstart
     dsiteRoot (d-block p′ _) = rblock p′
 
     -- the caller's frame, the address after the dispatch, its way out
-    dsiteφ : DSite g A k → Frame
+    dsiteφ : DSite i k → Frame
     dsiteφ (d-start _)              = frameOf main
     dsiteφ (d-block {κ′ = κ′} p′ _) = frameOf (blockᴵ κ′)
 
-    dsitePos : DSite g A k → ℕ
+    dsitePos : DSite i k → ℕ
     dsitePos (d-start s)    = S.pos (next s)
     dsitePos (d-block p′ s) = K.pos p′ (next s)
 
-    dsiteFin : DSite g A k → AbstractTrace
+    dsiteFin : DSite i k → AbstractTrace
     dsiteFin (d-start s)    = SA.lfin (S.lowAt s)
     dsiteFin (d-block p′ s) = KA.lfin {p = p′} (K.lowAt p′ s)
 
@@ -265,14 +275,15 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → RetOK R fin (frm {t = t} {Es = Es} k es os r) cur rets sv fs
     -- ★ in a one-shot trampoline (D421): the dispatch's caller saved above,
     -- its area in the trampoline frame's second save slot (`suc M`)
-    ok-tramp : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b} {Es S V} {k : Codeᴵ (Es ∣ B ∷ S) V}
+    ok-tramp : ∀ {σ} {κ : Key σ} {Es D B S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ B ∷ S)} {k : Codeᴵ (Es ∣ B ∷ S) V}
                  {es : Slots Es} {os : Stk S} {r : Ret V T} {R fin cur rets sv fs}
-                 (p : under (ktr1 ds′ b γ) ∈ allK U) (d : DSite g A k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
+                 (p : under κ ∈ allK U) (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
                  (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
-             → R ≡ rtramp {κ = ktr1 ds′ b γ} p → fin ≡ trFin (idx p) (ktr1 ds′ b γ)
+             → R ≡ rtramp {κ = κ} p → fin ≡ trFin (idx p) κ
              → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → cur ≺ cfc
-             → LocState.stackMem (floc fs) cur (suc ((wsz X + wsz A) ⊔ wsz B))
-               ≡ just (SV-Ptr (AtStack cfc (Tp (dsiteφ d) S ∸ (suc (wsz A) ⊔ wsz B))))
+             → LocState.stackMem (floc fs) cur (suc (trM κ))
+               ≡ just (SV-Ptr (AtStack cfc (Tp (dsiteφ d) S ∸ trMc κ)))
+             → trMc κ + ws S ≤ OP (dsiteφ d)
              → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
              → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) (dsiteφ d) os
              → RetOK (dsiteRoot d) (dsiteFin d) r cfc rets′ sv′ fs
@@ -354,9 +365,9 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-tramp {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv abv area ev sk rest) =
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-tramp {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv abv area fit ev sk rest) =
     ok-tramp p d cfc sl sv′ rets′ eR eF eRets eSv abv
-      (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) area)
+      (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) area) fit
       (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
       (ret-deep cur₀ (≺-trans lt abv) oth old fr rest)
@@ -383,9 +394,9 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       import Data.Nat.Properties
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old (fes , fr) (ok-tramp {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv abv area ev sk rest) =
+  ret-top {cur = cur} oth top old (fes , fr) (ok-tramp {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv abv area fit ev sk rest) =
     ok-tramp p d cfc sl sv′ rets′ refl eF eRets eSv abv
-      (trans (top _ (Data.Nat.Properties.n≤1+n _)) area)
+      (trans (top _ (Data.Nat.Properties.n≤1+n _)) area) fit
       (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
       (ret-deep cur abv oth old fr rest)
