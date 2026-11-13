@@ -27,6 +27,7 @@ open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.String using (String)
 open import Data.Unit using (tt)
 open import Relation.Nullary using (¬_)
@@ -132,7 +133,7 @@ sep₀ (j′ , k , _ , hi , refl) e = <-irrefl (sym (proj₁ (jl-inj e))) hi
 
 module Img {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-           (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → FlatMachine.label-of? {FS} (ldConst v) ≡ nothing) where
+           (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {FS} (ldConst v) ≡ nothing) where
   open FlatMachine {FS} using (label-of?; find-label)
   open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
   open Program ds f using (U; blocks-in; start-in)
@@ -145,6 +146,15 @@ module Img {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open C U ncty ldConst ld-nl
   open Find {FS}
 
+  -- a callable entry defines no jump label
+  ok-entry : ∀ {j a b xs e n} → Ok j a b xs → Ok j a b (instr-ctrl (c-entry e n) ∷ xs)
+  ok-entry (ok k e w d) = ok k e w d
+
+  -- a trampoline's labels: none
+  tramp-labs : ∀ {j xs} → TrampShape j xs → Labs xs ≡ []
+  tramp-labs (inj₁ refl)              = refl
+  tramp-labs (inj₂ (_ , _ , refl , p)) = Labs-nl p
+
   -- ★ block `j`'s code: its labels, distinct
   blockOk : ∀ j (a : AKey) (ev : BIn a) → Σ ℕ λ n → Ok j 0 n (lowBlock j (proj₂ a) ev)
   blockOk j (bsig t A B , κ) ev =
@@ -152,10 +162,10 @@ module Img {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         fin = restore-input (sv₁ φ) ∷ mvSP (Tp φ (B ∷ [])) (M ∸ wsz B) (wsz B) ++ instr-ctrl (c-ret b) ∷ []
         fin-nl = refl ∷ nl (mvSP (Tp φ (B ∷ [])) (M ∸ wsz B) (wsz B)) (mvSP-nl _ _ _) (refl ∷ [])
         r = lowC-ok φ j 0 fin fin-nl (blockᴵ κ) ev
-    in _ , ok-pre (instr-ctrl (c-entry (e-fn (nameOf j)) b) ∷ store-at-slot (sv₂ φ) ∷ mov-to-output ∷ store-at-slot (sv₁ φ) ∷ [])
-             (refl ∷ refl ∷ refl ∷ refl ∷ [])
+    in _ , ok-entry (ok-pre (store-at-slot (sv₂ φ) ∷ mov-to-output ∷ store-at-slot (sv₁ φ) ∷ [])
+             (refl ∷ refl ∷ refl ∷ [])
              (ok-pre (mvPS (M ∸ wsz A) (Tp φ (A ∷ [])) (wsz A)) (mvPS-nl _ _ _)
-               (ok-pre (view-in t φ) (view-nl t φ) (proj₂ r)))
+               (ok-pre (view-in t φ) (view-nl t φ) (proj₂ r))))
 
   -- ★ the blocks from `j`: distinct labels, each a block's in `[j, j + |ks|)`
   blocks-lab : ∀ ks (ev : ∀ {κ} → κ ∈ ks → BIn κ) j
@@ -174,7 +184,7 @@ module Img {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       finish (_ , o) (dR , wR) =
         let eqL : Labs (lowB ++ tramp j κ ++ rest) ≡ map (jl j) (idxs o) ++ Labs rest
             eqL = trans (Labs-++ lowB (tramp j κ ++ rest))
-                    (cong₂ _++_ (eq o) (trans (Labs-++ (tramp j κ) rest) (cong (_++ Labs rest) (Labs-nl (tramp-nl j κ)))))
+                    (cong₂ _++_ (eq o) (trans (Labs-++ (tramp j κ) rest) (cong (_++ Labs rest) (tramp-labs {j} (tramp-nl j κ)))))
             cross = tabulate {xs = idxs o} (λ _ → All-map sep wR)
             here-in = All-map⁺ (tabulate {xs = idxs o} (λ {i} _ → j , i , ≤-refl , m<m+n j (s≤s z≤n) , refl))
         in subst (AllPairs _≢_) (sym eqL) (AP-++⁺ (map-dst j (dst o)) dR (All-map⁺ cross))
