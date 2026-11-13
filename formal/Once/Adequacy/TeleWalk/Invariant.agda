@@ -32,7 +32,7 @@ open import Once.Adequacy.SpecInterp using (toInterp)
 
 -- The compiler's reading of `J`.
 ι : Interp
-ι = toInterp Σ wf J
+ι = toInterp fmt Σ wf J
 
 -- `J`'s model: what the program's FFI values are.
 mo : Obs.Model Σ
