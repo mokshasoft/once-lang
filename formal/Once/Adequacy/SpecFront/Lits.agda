@@ -111,7 +111,7 @@ mutual
   emb-lits (RDestruct s _ l _ r) = cong₂ _++_ (emb-lits s) (cong₂ _++_ (emb-lits l) (emb-lits r))
   emb-lits RUnit = refl
   emb-lits (RInt _) = refl
-  emb-lits (RFloat _ _ _) = refl
+  emb-lits (RFloat _ _ _ _) = refl
   emb-lits (RAnnot e _) = emb-lits e
   emb-lits (RBinOp _ a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
   emb-lits (RNeg e) = emb-neg e
@@ -127,7 +127,7 @@ mutual
   emb-neg (RDestruct s _ l _ r) = cong₂ _++_ (emb-lits s) (cong₂ _++_ (emb-lits l) (emb-lits r))
   emb-neg RUnit = refl
   emb-neg (RInt _) = refl
-  emb-neg (RFloat _ _ _) = refl
+  emb-neg (RFloat _ _ _ _) = refl
   emb-neg (RAnnot e _) = emb-lits e
   emb-neg (RBinOp _ a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
   emb-neg (RNeg e) = emb-neg e

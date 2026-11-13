@@ -290,7 +290,7 @@ cls-reflect bound um am (RApp _ _) ()
 cls-reflect bound um am (RLam _ _) ()
 cls-reflect bound um am (RPair _ _) ()
 cls-reflect bound um am (RInt _) ()
-cls-reflect bound um am (RFloat _ _ _) ()
+cls-reflect bound um am (RFloat _ _ _ _) ()
 cls-reflect bound um am (RNeg _) ()
 
 -- | Apply `canonExpr` to a decl's function body; everything else is untouched

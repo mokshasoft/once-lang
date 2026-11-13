@@ -36,6 +36,30 @@ open import Once.Spec.Grade using (Quantity)
 open import Once.Spec.Type using (Ty; Type)
 open import Once.Type using (showQuantity; showType; showPolyType)
 open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Theory using (NumTy; int; float)
+open import Once.Spec.Surface.Operator using (BinOp; Op; Dottable; plain; dotted; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
+
+-- | An operator as written.
+dottableText : Dottable → String
+dottableText o+  = "+"
+dottableText o-  = "-"
+dottableText o*  = "*"
+dottableText o/  = "/"
+dottableText o<  = "<"
+dottableText o<= = "<="
+dottableText o>  = ">"
+dottableText o>= = ">="
+dottableText o== = "=="
+dottableText o!= = "!="
+
+opText : BinOp → String
+opText (plain ‹ d ›) = dottableText d
+opText (plain o%)    = "%"
+opText (dotted d)    = dottableText d ++ "."
+
+numTyText : NumTy → String
+numTyText int   = "Int"
+numTyText float = "Float"
 
 ------------------------------------------------------------------------
 -- Structured error categories
@@ -112,6 +136,14 @@ data TypeError : Set where
   -- it. The fix is an annotation.
   ComposeMiddleUndetermined : TypeError
 
+  -- Plan 0.150: a numeric operator at a number type whose row lacks the
+  -- operator's theory (`+` at `Float`), and an undotted operator on an `Int`
+  -- and a `Float` (only the dotted ones widen).
+  OperatorUndefined : (op : String) (at : NumTy) → TypeError
+  MixedOperands     : (op : String) → TypeError
+  -- A literal `-0.0` (plan 0.150 N5): negative zero is reached by negation.
+  NegativeZeroLiteral : TypeError
+
   -- Binary operator sub-errors: wraps a sub-error from either side.
   BinOpLeftError  : TypeError → TypeError
   BinOpRightError : TypeError → TypeError
@@ -180,6 +212,12 @@ renderError ComposeMiddleUndetermined =
   "compose: cannot determine the middle type — neither the second argument's "
     ++ "output (given its input) nor the first argument's input is known; "
     ++ "annotate one of them"
+renderError (OperatorUndefined op A) =
+  "`" ++ op ++ "` is not defined at " ++ numTyText A
+renderError (MixedOperands op) =
+  "`" ++ op ++ "` needs operands of one type (only the dotted operators widen an Int)"
+renderError NegativeZeroLiteral =
+  "the literal -0.0 is not allowed: write -(0.0) for negative zero"
 renderError (BinOpLeftError sub) =
   "binop left: " ++ renderError sub
 renderError (BinOpRightError sub) =

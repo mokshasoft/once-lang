@@ -59,10 +59,17 @@ open import Once.Spec.Name using (CanonicalName; canonical; own; bare; gen; NotG
 open import Once.Name using (showCanonical; WordName; wordNameB)
 open import Once.CanonicalName using (genWord?)
 import Once.Spec.Surface.Syntax as Syn
-open import Once.Spec.Surface.Syntax as Raw using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatArithmeticOp)
+open import Once.Spec.Surface.Operator using (BinOp)
+open import Once.Spec.Surface.Syntax as Raw using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Spec.Float.Value using (Sign; pos; neg)
+open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; Rounded; Sym; symDom; symCod; ‵neg; float-rounded)
+  renaming (int to nint; float to nfloat)
+open import Once.TypeCheck.NumTable
+  using (NumView; is-num; not-num; numView; _≟ⁿ_; has?; binSym; theory; shape; symbol; binDom;
+         RoundedView; rounded; not-rounded; roundedView; pairDom; binary?; negZeroᵇ; mixedDom)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined;
+  OperatorUndefined; MixedOperands; NegativeZeroLiteral; opText;
   LambdaInInferMode; LambdaRequiresFunctionType;
   InlInInferMode; InrInInferMode; InitialInInferMode; GeneratorInInferMode;
   InlNeedsSumType; InrNeedsSumType;
@@ -198,31 +205,6 @@ data CheckElabResult {m} {n : ℕ} (Δ : SCtx m n) (A : Ty m) : Set where
           → CheckElabResult Δ A
   failure : TypeError → CheckElabResult Δ A
 
--- | WHICH literal, if any, is this unary minus applied to? (`RInt`: plan 0.74
--- J6 step 3, D120. `RFloat`: plan 0.73 F3.)
---
--- Indexed by `e`, so matching `nov-int n` rewrites `e` to `Raw.RInt n` and the
--- dispatch can build `wt-neg (wt-int n)` — the same refinement the earlier
--- `Maybe (Σ ℤ (λ n → e ≡ Raw.RInt n))` carried by hand.
---
--- ONE view, not two `Maybe`s. Two would make every downstream proof split on a
--- four-cell matrix whose fourth cell — `e` both an `RInt` and an `RFloat` —
--- cannot occur, with nothing in the types saying so. Three constructors, three
--- cases, no absurd cell.
---
--- `Syn.Expr` is a plain datatype, so the catch-all is safe: it reduces for every
--- concrete head, and the caller never matches on `e`. (Non-exact under
--- `--exact-split`, as its `isRIntView` predecessor was; see the census target.)
-data NegOperandView : Syn.Expr → Set where
-  nov-int   : (n : ℤ)       → NegOperandView (Raw.RInt n)
-  nov-float : (i f l : ℕ) → NegOperandView (Raw.RFloat i f l)
-  nov-other : (e : Syn.Expr) → NegOperandView e
-
-negOperandView : (e : Syn.Expr) → NegOperandView e
-negOperandView (Raw.RInt n)         = nov-int n
-negOperandView (Raw.RFloat i f l) = nov-float i f l
-{-# CATCHALL #-}
-negOperandView e                    = nov-other e
 
 
 -- Plan 0.94 §10: the DOMAIN-GIVEN mode — given the input type `A` (and grade),
@@ -514,7 +496,7 @@ spineOf e = go e []
     go (Raw.RDestruct e a b c d) args = mkSpine (Raw.RDestruct e a b c d) args
     go Raw.RUnit             args = mkSpine Raw.RUnit args
     go (Raw.RInt n)          args = mkSpine (Raw.RInt n) args
-    go (Raw.RFloat i f l)    args = mkSpine (Raw.RFloat i f l) args
+    go (Raw.RFloat sg i f l) args = mkSpine (Raw.RFloat sg i f l) args
     go (Raw.RAnnot e t)      args = mkSpine (Raw.RAnnot e t) args
     go (Raw.RBinOp op x y)   args = mkSpine (Raw.RBinOp op x y) args
     go (Raw.RNeg x)   args = mkSpine (Raw.RNeg x) args
@@ -1041,149 +1023,97 @@ inferElabV-RAnnot-aux : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr) (T : Type)
 inferElabV-RAnnot-aux ctx e T (success Ψ eE d fr) = success (wk₀ T) Ψ eE d fr
 inferElabV-RAnnot-aux ctx e T (failure err)             = failure err
 
+------------------------------------------------------------------------
+-- NUMERIC OPERATORS, over the Spec's table (plan 0.150 N10): an operand's
+-- type is a number type or not (`numView`), the type has the operator's
+-- theory or not (`has?`), and two number types that differ meet only under a
+-- dotted operator, which widens the `Int` (`roundedView`, D125). One dispatch;
+-- no case per operator or per type.
+------------------------------------------------------------------------
+
+-- `-e`: `s-neg`.
+inferElabV-RNeg-has : ∀ {m} → (ctx : NamedCtx m) (a : NumTy) {Ψ : Surface.Usage (NamedCtx.size ctx)}
+  → SExpr (NamedCtx.debruijn ctx) Ψ ⌜ a ⌝ⁿ → (d fr : ℕ) → Dec (Has a Neg)
+  → InferElabResult (NamedCtx.debruijn ctx)
+inferElabV-RNeg-has ctx a eE d fr (yes h) = success ⌜ a ⌝ⁿ _ (Surface.num h ‵neg eE) (suc d) fr
+inferElabV-RNeg-has ctx a eE d fr (no _)  = failure (OperatorUndefined "-" a)
+
+inferElabV-RNeg-num : ∀ {m} → (ctx : NamedCtx m) {T : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+  → SExpr (NamedCtx.debruijn ctx) Ψ T → (d fr : ℕ) → NumView T
+  → InferElabResult (NamedCtx.debruijn ctx)
+inferElabV-RNeg-num ctx eE d fr (is-num a)    = inferElabV-RNeg-has ctx a eE d fr (has? a Neg)
+inferElabV-RNeg-num ctx {T} eE d fr not-num   = failure (TypeMismatch Int T)
+
 inferElabV-RNeg-aux : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr)
   → InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
-inferElabV-RNeg-aux ctx e (failure err)                = failure err
-inferElabV-RNeg-aux ctx e (success Unit   _ _ _ _)     = failure (TypeMismatch {0} Int Unit)
-inferElabV-RNeg-aux ctx e (success Void   _ _ _ _)     = failure (TypeMismatch {0} Int Void)
-inferElabV-RNeg-aux ctx e (success Int    Ψ eE d fr)   = success Int _ (Surface.neg eE) (suc d) fr
-inferElabV-RNeg-aux ctx e (success Float  _ _ _ _)     = failure (TypeMismatch {0} Int Float)
-inferElabV-RNeg-aux ctx e (success (var iᵣ) _ _ _ _)     = failure (TypeMismatch Int (var iᵣ))
-inferElabV-RNeg-aux ctx e (success (A Once.Spec.Type.* B)      _ _ _ _) = failure (TypeMismatch Int (A Once.Spec.Type.* B))
-inferElabV-RNeg-aux ctx e (success (A Once.Spec.Type.+ B)      _ _ _ _) = failure (TypeMismatch Int (A Once.Spec.Type.+ B))
-inferElabV-RNeg-aux ctx e (success (A Once.Spec.Type.⇒[ k ] B) _ _ _ _) = failure (TypeMismatch Int (A Once.Spec.Type.⇒[ k ] B))
-inferElabV-RNeg-aux ctx e (success (Once.Spec.Type.μ F)   _ _ _ _) = failure (TypeMismatch Int (Once.Spec.Type.μ F))
-inferElabV-RNeg-aux ctx e (success (Once.Spec.Type.ν F π)   _ _ _ _) = failure (TypeMismatch Int (Once.Spec.Type.ν F π))
+inferElabV-RNeg-aux ctx e (failure err)          = failure err
+inferElabV-RNeg-aux ctx e (success T Ψ eE d fr)  = inferElabV-RNeg-num ctx eE d fr (numView T)
 
-checkElabV-neg-int-aux : ∀ {m} → (ctx : NamedCtx m) (n : ℤ) (T : Ty m)
-  → CheckElabResult (NamedCtx.debruijn ctx) T
--- Written out rather than routed through `inferElabV ctx (RNeg (RInt n))`,
--- which would be the same term but would stop reducing wherever the view has
--- been abstracted.
-checkElabV-neg-int-aux ctx n T with Int <:? T
-... | yes p = success Surface.zeroUsage (Surface.coerce p (Surface.neg (Surface.int n))) 2 0
-... | no _  = failure (TypeMismatch T Int)
+-- A mixed operand, widened (D125's `i2f` node).
+widenS : ∀ {m} {n} {Δ : SCtx m n} {Ψ} (a : NumTy) → SExpr Δ Ψ ⌜ a ⌝ⁿ → SExpr Δ Ψ Float
+widenS nint   e = Surface.i2f e
+widenS nfloat e = e
 
-checkElabV-neg-float-aux : ∀ {m} → (ctx : NamedCtx m) (i f l : ℕ) (T : Ty m)
-  → CheckElabResult (NamedCtx.debruijn ctx) T
-checkElabV-neg-float-aux ctx i f l T with Once.Spec.Type.Float <:? T
-... | yes s = success Surface.zeroUsage
-                      (Surface.coerce s (Surface.float (Decimal.negate (decimalOf i f l)))) 1
-                      0
-... | no _  = failure (TypeMismatch T Once.Spec.Type.Float)
+-- `e₁ op e₂` at one number type `a`: `s-binop`.
+inferElabV-RBinOp-has : ∀ {m} → (ctx : NamedCtx m) (op : BinOp) (a : NumTy)
+  {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+  → SExpr (NamedCtx.debruijn ctx) Ψ₁ ⌜ a ⌝ⁿ → SExpr (NamedCtx.debruijn ctx) Ψ₂ ⌜ a ⌝ⁿ → (d fr : ℕ)
+  → Dec (Has a (theory (binSym op)))
+  → InferElabResult (NamedCtx.debruijn ctx)
+inferElabV-RBinOp-has ctx op a {Ψ₁} {Ψ₂} e₁E e₂E d fr (yes h) =
+  success (symCod a (shape (binSym op))) _
+          (Surface.num h (symbol (binSym op))
+            (subst (SExpr (NamedCtx.debruijn ctx) (Ψ₁ Surface.+ᵘ Ψ₂)) (sym (binDom op a)) (Surface.pair e₁E e₂E)))
+          d fr
+inferElabV-RBinOp-has ctx op a e₁E e₂E d fr (no _) = failure (OperatorUndefined (opText op) a)
 
-inferElabV-RBinOp-aux : ∀ {m} → (ctx : NamedCtx m) (op : Raw.BinOp) (e₁ e₂ : Syn.Expr)
+-- An `Int` and a `Float`: `s-binop-mixed`, for a dotted operator only.
+inferElabV-RBinOp-mixed : ∀ {m} → (ctx : NamedCtx m) (op : BinOp) (a₁ a₂ : NumTy)
+  {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+  → SExpr (NamedCtx.debruijn ctx) Ψ₁ ⌜ a₁ ⌝ⁿ → SExpr (NamedCtx.debruijn ctx) Ψ₂ ⌜ a₂ ⌝ⁿ → (d fr : ℕ)
+  → RoundedView op
+  → InferElabResult (NamedCtx.debruijn ctx)
+inferElabV-RBinOp-mixed ctx op a₁ a₂ {Ψ₁} {Ψ₂} e₁E e₂E d fr (rounded k o eq) =
+  success (symCod nfloat k) _
+          (Surface.num float-rounded o
+            (subst (SExpr (NamedCtx.debruijn ctx) (Ψ₁ Surface.+ᵘ Ψ₂))
+                   (sym (mixedDom eq))
+                   (Surface.pair (widenS a₁ e₁E) (widenS a₂ e₂E))))
+          d fr
+inferElabV-RBinOp-mixed ctx op a₁ a₂ e₁E e₂E d fr (not-rounded _) = failure (MixedOperands (opText op))
+
+inferElabV-RBinOp-num : ∀ {m} → (ctx : NamedCtx m) (op : BinOp) (a₁ a₂ : NumTy)
+  {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+  → SExpr (NamedCtx.debruijn ctx) Ψ₁ ⌜ a₁ ⌝ⁿ → SExpr (NamedCtx.debruijn ctx) Ψ₂ ⌜ a₂ ⌝ⁿ → (d fr : ℕ)
+  → Dec (a₁ ≡ a₂)
+  → InferElabResult (NamedCtx.debruijn ctx)
+inferElabV-RBinOp-num ctx op a .a e₁E e₂E d fr (yes refl) = inferElabV-RBinOp-has ctx op a e₁E e₂E d fr (has? a (theory (binSym op)))
+inferElabV-RBinOp-num ctx op a₁ a₂ e₁E e₂E d fr (no _)    = inferElabV-RBinOp-mixed ctx op a₁ a₂ e₁E e₂E d fr (roundedView op)
+
+-- The right operand.
+inferElabV-RBinOp-R : ∀ {m} → (ctx : NamedCtx m) (op : BinOp) (a₁ : NumTy) {T₂ : Ty m}
+  {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+  → SExpr (NamedCtx.debruijn ctx) Ψ₁ ⌜ a₁ ⌝ⁿ → SExpr (NamedCtx.debruijn ctx) Ψ₂ T₂ → (d fr : ℕ)
+  → NumView T₂
+  → InferElabResult (NamedCtx.debruijn ctx)
+inferElabV-RBinOp-R ctx op a₁ e₁E e₂E d fr (is-num a₂) = inferElabV-RBinOp-num ctx op a₁ a₂ e₁E e₂E d fr (a₁ ≟ⁿ a₂)
+inferElabV-RBinOp-R ctx op a₁ {T₂} e₁E e₂E d fr not-num = failure (BinOpRightError (TypeMismatch ⌜ a₁ ⌝ⁿ T₂))
+
+-- The left operand, then the right's result.
+inferElabV-RBinOp-L : ∀ {m} → (ctx : NamedCtx m) (op : BinOp) {T₁ : Ty m}
+  {Ψ₁ : Surface.Usage (NamedCtx.size ctx)}
+  → SExpr (NamedCtx.debruijn ctx) Ψ₁ T₁ → (d₁ : ℕ) → NumView T₁
+  → InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
+inferElabV-RBinOp-L ctx op {T₁} e₁E d₁ not-num r₂ = failure (BinOpLeftError (TypeMismatch Int T₁))
+inferElabV-RBinOp-L ctx op e₁E d₁ (is-num a₁) (failure err) = failure (BinOpRightError err)
+inferElabV-RBinOp-L ctx op e₁E d₁ (is-num a₁) (success T₂ Ψ₂ e₂E d₂ f₂) =
+  inferElabV-RBinOp-R ctx op a₁ e₁E e₂E (d₁ ⊔ d₂) f₂ (numView T₂)
+
+inferElabV-RBinOp-aux : ∀ {m} → (ctx : NamedCtx m) (op : BinOp) (e₁ e₂ : Syn.Expr)
   → InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
   → InferElabResult (NamedCtx.debruijn ctx)
--- left non-Int → BinOpLeftError
 inferElabV-RBinOp-aux ctx op e₁ e₂ (failure err) _ = failure (BinOpLeftError err)
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Unit   _ _ _ _) _ = failure (BinOpLeftError (TypeMismatch {0} Int Unit))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Void   _ _ _ _) _ = failure (BinOpLeftError (TypeMismatch {0} Int Void))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success (var iᵣ) _ _ _ _) _ = failure (BinOpLeftError (TypeMismatch Int (var iᵣ)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success (A Once.Spec.Type.* B)      _ _ _ _) _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Spec.Type.* B)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success (A Once.Spec.Type.+ B)      _ _ _ _) _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Spec.Type.+ B)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success (A Once.Spec.Type.⇒[ k ] B) _ _ _ _) _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Spec.Type.⇒[ k ] B)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success (Once.Spec.Type.μ F)   _ _ _ _) _ = failure (BinOpLeftError (TypeMismatch Int (Once.Spec.Type.μ F)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success (Once.Spec.Type.ν F π)   _ _ _ _) _ = failure (BinOpLeftError (TypeMismatch Int (Once.Spec.Type.ν F π)))
--- left Int, right non-Int → BinOpRightError
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _) (failure err) = failure (BinOpRightError err)
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _) (success Unit   _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Int Unit))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _) (success Void   _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Int Void))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _) (success (var iᵣ) _ _ _ _) = failure (BinOpRightError (TypeMismatch Int (var iᵣ)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _) (success (A Once.Spec.Type.* B)      _ _ _ _) = failure (BinOpRightError (TypeMismatch Int (A Once.Spec.Type.* B)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _) (success (A Once.Spec.Type.+ B)      _ _ _ _) = failure (BinOpRightError (TypeMismatch Int (A Once.Spec.Type.+ B)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _) (success (A Once.Spec.Type.⇒[ k ] B) _ _ _ _) = failure (BinOpRightError (TypeMismatch Int (A Once.Spec.Type.⇒[ k ] B)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _) (success (Once.Spec.Type.μ F)   _ _ _ _) = failure (BinOpRightError (TypeMismatch Int (Once.Spec.Type.μ F)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Int _ _ _ _) (success (Once.Spec.Type.ν F π)   _ _ _ _) = failure (BinOpRightError (TypeMismatch Int (Once.Spec.Type.ν F π)))
--- both Int → op dispatch
-inferElabV-RBinOp-aux ctx Raw.OpAdd e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success Int _ (Surface.add e₁E e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpSub e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success Int _ (Surface.sub e₁E e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpMul e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success Int _ (Surface.mul e₁E e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpDiv e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success Int _ (Surface.div e₁E e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpMod e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success Int _ (Surface.mod' e₁E e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpLt e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success (Unit Once.Spec.Type.+ Unit) _ (Surface.lt e₁E e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpLe e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success (Unit Once.Spec.Type.+ Unit) _ (Surface.le e₁E e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpGt e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success (Unit Once.Spec.Type.+ Unit) _ (Surface.gt e₁E e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpGe e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success (Unit Once.Spec.Type.+ Unit) _ (Surface.ge e₁E e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpEq e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success (Unit Once.Spec.Type.+ Unit) _ (Surface.eq e₁E e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpNe e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success (Unit Once.Spec.Type.+ Unit) _ (Surface.ne e₁E e₂E) (d₁ ⊔ d₂) f₂
-----------------------------------------------------------------------
--- PLAN 0.75 F4: `Float` ON THE LEFT SELECTS THE FLOAT FAMILY.
---
--- It used to be `BinOpLeftError (TypeMismatch {0} Int Float)` with a catch-all
--- for the right operand — "arithmetic means Int" — which is what made
--- `1.5 - 2.1` report `expected Int but got Float`. The OPERAND TYPES decide
--- which arithmetic runs; `+` is the same operator either way.
---
--- A MIXED PAIR IS STILL AN ERROR, and that is the decision, not a gap:
--- there is no implicit widening, so `1 + 1.5` reports rather than silently
--- promoting. A coercion the programmer did not write is a value
--- substitution, which is D115's objection to a wrapped literal one type
--- over.
-----------------------------------------------------------------------
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _) (failure err) = failure (BinOpRightError err)
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _) (success Unit _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Float Unit))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _) (success Void _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Float Void))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _) (success (var iᵣ) _ _ _ _) = failure (BinOpRightError (TypeMismatch Float (var iᵣ)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _) (success (A Once.Spec.Type.* B) _ _ _ _) = failure (BinOpRightError (TypeMismatch Float (A Once.Spec.Type.* B)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _) (success (A Once.Spec.Type.+ B) _ _ _ _) = failure (BinOpRightError (TypeMismatch Float (A Once.Spec.Type.+ B)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _) (success (A Once.Spec.Type.⇒[ k ] B) _ _ _ _) = failure (BinOpRightError (TypeMismatch Float (A Once.Spec.Type.⇒[ k ] B)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _) (success (Once.Spec.Type.μ F) _ _ _ _) = failure (BinOpRightError (TypeMismatch Float (Once.Spec.Type.μ F)))
-inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _) (success (Once.Spec.Type.ν F π) _ _ _ _) = failure (BinOpRightError (TypeMismatch Float (Once.Spec.Type.ν F π)))
--- both Float → op dispatch. Only `+`, `−` and `×` exist here
--- (`isFloatArithmeticOp`), and `Once.Spec.Float.Arith` records why.
-inferElabV-RBinOp-aux ctx Raw.OpAdd e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) (success Float Ψ₂ e₂E d₂ f₂) = success Float _ (Surface.fadd e₁E e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpSub e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) (success Float Ψ₂ e₂E d₂ f₂) = success Float _ (Surface.fsub e₁E e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpMul e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) (success Float Ψ₂ e₂E d₂ f₂) = success Float _ (Surface.fmul e₁E e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpDiv e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) (success Float Ψ₂ e₂E d₂ f₂) = success Float _ (Surface.fdiv e₁E e₂E) (d₁ ⊔ d₂) f₂
--- `%` still has no float lowering — IEEE's `fmod` is a different function and
--- needs its own decision — and a float comparison needs the Bool encoding
--- `Int`'s own comparisons are STILL postulated over. Those six keep exactly
--- the error they gave before this clause family existed.
-inferElabV-RBinOp-aux ctx Raw.OpMod e₁ e₂ (success Float _ _ _ _) (success Float _ _ _ _) = failure (BinOpLeftError (TypeMismatch {0} Int Float))
-inferElabV-RBinOp-aux ctx Raw.OpLt e₁ e₂ (success Float _ _ _ _) (success Float _ _ _ _) = failure (BinOpLeftError (TypeMismatch {0} Int Float))
-inferElabV-RBinOp-aux ctx Raw.OpLe e₁ e₂ (success Float _ _ _ _) (success Float _ _ _ _) = failure (BinOpLeftError (TypeMismatch {0} Int Float))
-inferElabV-RBinOp-aux ctx Raw.OpGt e₁ e₂ (success Float _ _ _ _) (success Float _ _ _ _) = failure (BinOpLeftError (TypeMismatch {0} Int Float))
-inferElabV-RBinOp-aux ctx Raw.OpGe e₁ e₂ (success Float _ _ _ _) (success Float _ _ _ _) = failure (BinOpLeftError (TypeMismatch {0} Int Float))
-inferElabV-RBinOp-aux ctx Raw.OpEq e₁ e₂ (success Float _ _ _ _) (success Float _ _ _ _) = failure (BinOpLeftError (TypeMismatch {0} Int Float))
-inferElabV-RBinOp-aux ctx Raw.OpNe e₁ e₂ (success Float _ _ _ _) (success Float _ _ _ _) = failure (BinOpLeftError (TypeMismatch {0} Int Float))
-----------------------------------------------------------------------
--- MIXED OPERANDS — the `Int` side WIDENS (D125).
---
--- `1 + 1.5` compiles, and the conversion is an explicit `Surface.i2f` node
--- so it lowers to a real instruction rather than being a silent retyping.
--- The widening is CORRECTLY ROUNDED (IEEE lists `convertFromInt` beside
--- `+`), the error is bounded by half an ulp like every other rounding, and
--- both targets already agree bit-for-bit — measured, so no D055-style
--- decision and no backend guard.
---
--- Only `Int → Float`. `Float → Int` stays explicit: the hardware DIVERGES
--- (x86 "integer indefinite", RISC-V saturates) and it is a narrowing where
--- truncate-versus-round is the programmer's call.
-----------------------------------------------------------------------
-inferElabV-RBinOp-aux ctx Raw.OpAdd e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Float Ψ₂ e₂E d₂ f₂) = success Float _ (Surface.fadd (Surface.i2f e₁E) e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpSub e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Float Ψ₂ e₂E d₂ f₂) = success Float _ (Surface.fsub (Surface.i2f e₁E) e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpMul e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Float Ψ₂ e₂E d₂ f₂) = success Float _ (Surface.fmul (Surface.i2f e₁E) e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpDiv e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁) (success Float Ψ₂ e₂E d₂ f₂) = success Float _ (Surface.fdiv (Surface.i2f e₁E) e₂E) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpAdd e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success Float _ (Surface.fadd e₁E (Surface.i2f e₂E)) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpSub e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success Float _ (Surface.fsub e₁E (Surface.i2f e₂E)) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpMul e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success Float _ (Surface.fmul e₁E (Surface.i2f e₂E)) (d₁ ⊔ d₂) f₂
-inferElabV-RBinOp-aux ctx Raw.OpDiv e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁) (success Int Ψ₂ e₂E d₂ f₂) = success Float _ (Surface.fdiv e₁E (Surface.i2f e₂E)) (d₁ ⊔ d₂) f₂
--- `/`, `%` and the comparisons keep the error they gave before.
-inferElabV-RBinOp-aux ctx Raw.OpMod e₁ e₂ (success Int _ _ _ _) (success Float _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Int Float))
-inferElabV-RBinOp-aux ctx Raw.OpLt e₁ e₂ (success Int _ _ _ _) (success Float _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Int Float))
-inferElabV-RBinOp-aux ctx Raw.OpLe e₁ e₂ (success Int _ _ _ _) (success Float _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Int Float))
-inferElabV-RBinOp-aux ctx Raw.OpGt e₁ e₂ (success Int _ _ _ _) (success Float _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Int Float))
-inferElabV-RBinOp-aux ctx Raw.OpGe e₁ e₂ (success Int _ _ _ _) (success Float _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Int Float))
-inferElabV-RBinOp-aux ctx Raw.OpEq e₁ e₂ (success Int _ _ _ _) (success Float _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Int Float))
-inferElabV-RBinOp-aux ctx Raw.OpNe e₁ e₂ (success Int _ _ _ _) (success Float _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Int Float))
-inferElabV-RBinOp-aux ctx Raw.OpMod e₁ e₂ (success Float _ _ _ _) (success Int _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Float Int))
-inferElabV-RBinOp-aux ctx Raw.OpLt e₁ e₂ (success Float _ _ _ _) (success Int _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Float Int))
-inferElabV-RBinOp-aux ctx Raw.OpLe e₁ e₂ (success Float _ _ _ _) (success Int _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Float Int))
-inferElabV-RBinOp-aux ctx Raw.OpGt e₁ e₂ (success Float _ _ _ _) (success Int _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Float Int))
-inferElabV-RBinOp-aux ctx Raw.OpGe e₁ e₂ (success Float _ _ _ _) (success Int _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Float Int))
-inferElabV-RBinOp-aux ctx Raw.OpEq e₁ e₂ (success Float _ _ _ _) (success Int _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Float Int))
-inferElabV-RBinOp-aux ctx Raw.OpNe e₁ e₂ (success Float _ _ _ _) (success Int _ _ _ _) = failure (BinOpRightError (TypeMismatch {0} Float Int))
+inferElabV-RBinOp-aux ctx op e₁ e₂ (success T₁ Ψ₁ e₁E d₁ f₁) r₂ = inferElabV-RBinOp-L ctx op e₁E d₁ (numView T₁) r₂
 
 inferElabV-RLet-aux2 : ∀ {m} → (ctx : NamedCtx m) (x : String) (e₁ e₂ : Syn.Expr)
   {A : Ty m} {Ψ₁ : Surface.Usage (NamedCtx.size ctx)}
@@ -1660,35 +1590,32 @@ checkElabV-RVar-bbc-other-aux : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty 
 checkElabV-RVar-bbc-other-aux ctx x T r = embedOrSubsume ctx (Raw.RVar x) T r
 
 
-checkElabV-RFloat-aux : ∀ {m} (ctx : NamedCtx m) (i f l : ℕ) (T : Ty m)
+-- A float literal: its signed decimal (`s-float`), unless it is `-0.0`
+-- (plan 0.150 N5). The target rounds it; representability is no way to fail.
+-- Plan 0.150 N4: the sign is the literal's, built by the grammar.
+signedDecimalᵉ : Sign → ℕ → ℕ → ℕ → Decimal.Decimal
+signedDecimalᵉ pos i f l = decimalOf i f l
+signedDecimalᵉ neg i f l = Decimal.negate (decimalOf i f l)
+
+inferElabV-RFloat-at : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ) → Bool
+  → InferElabResult (NamedCtx.debruijn ctx)
+inferElabV-RFloat-at ctx sg i f l true  = failure NegativeZeroLiteral
+inferElabV-RFloat-at ctx sg i f l false = success Float _ (Surface.float (signedDecimalᵉ sg i f l)) 0 0
+
+inferElabV-RFloat-aux : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ)
+  → InferElabResult (NamedCtx.debruijn ctx)
+inferElabV-RFloat-aux ctx sg i f l = inferElabV-RFloat-at ctx sg i f l (negZeroᵇ sg i f)
+
+checkElabV-RFloat-at : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ) (T : Ty m) → Bool
   → CheckElabResult (NamedCtx.debruijn ctx) T
--- RInt: value-lift on a pure-arrow-to-Int target, else generic infer+match.
--- `refl` refines `T` to the arrow so `t-value-lift (g-int n)` types; the
--- `nothing` branch reproduces the old generic clause for RInt verbatim.
--- RFloat: value-lift on a pure-arrow-to-Float target; otherwise embed at
--- `Float` or report a genuine type mismatch. The only failure left is a type
--- mismatch — representability is no longer a way to fail.
-checkElabV-RFloat-aux ctx i f l T with Once.Spec.Type.Float <:? T
-... | yes s = success Surface.zeroUsage (Surface.coerce s (Surface.float (decimalOf i f l))) 0 0
+checkElabV-RFloat-at ctx sg i f l T true = failure NegativeZeroLiteral
+checkElabV-RFloat-at ctx sg i f l T false with Once.Spec.Type.Float <:? T
+... | yes s = success Surface.zeroUsage (Surface.coerce s (Surface.float (signedDecimalᵉ sg i f l))) 0 0
 ... | no _  = failure (TypeMismatch T Once.Spec.Type.Float)
 
--- RFloat infer-mode. No dispatch left at all — it is the `RInt` clause with
--- `decimalOf` in place of the digit.
-inferElabV-RFloat-aux : ∀ {m} (ctx : NamedCtx m) (i f l : ℕ)
-  → InferElabResult (NamedCtx.debruijn ctx)
--- RFloat: F4's decision, made once and passed in.
---
--- The accepted branch builds the Surface node from the literal the Spec's
--- `wt-float` types, so the elaborated term and its typing derivation cannot
--- disagree about which literals are legal.
---
--- The rejected branch is a REAL ERROR carrying the digits the user wrote,
--- not a rounded value. That is the whole point of plan 0.71: `0.1` does not
--- become the nearest double, it fails to compile.
--- TOTAL. `FloatNotRepresentable` is unreachable from here now; the literal
--- always elaborates and the target rounds it.
-inferElabV-RFloat-aux ctx i f l =
-  success Float _ (Surface.float (decimalOf i f l)) 0 0
+checkElabV-RFloat-aux : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ) (T : Ty m)
+  → CheckElabResult (NamedCtx.debruijn ctx) T
+checkElabV-RFloat-aux ctx sg i f l T = checkElabV-RFloat-at ctx sg i f l T (negZeroᵇ sg i f)
 
 mutual
   -- RVar dispatch helper (plan 0.6 Phase C.7 POC-1). Separates
@@ -1789,34 +1716,6 @@ mutual
   -- premises into the dispatch chain without navigating opaque
   -- `with`-helpers.
   inferElabV-RApp-other : ∀ {m} → (ctx : NamedCtx m) (f x : Syn.Expr) → InferElabResult (NamedCtx.debruijn ctx)
-  -- PLAN 0.74 J6 step 3: a minus directly on a NUMERAL is one literal, not a
-  -- runtime negation of another one. Split out as a named dispatch (the
-  -- file's `inferElabV-RApp-dispatch` convention) so the definitional
-  -- reduction that stops holding is confined to this function.
-  inferElabV-neg-dispatch : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr)
-    → InferElabResult (NamedCtx.debruijn ctx)
-  inferElabV-neg-aux : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr)
-    → NegOperandView e
-    → InferElabResult (NamedCtx.debruijn ctx)
-  -- CHECK-mode twin of the same dispatch. A negated literal at a pure-arrow
-  -- target is its constant morphism, exactly as a bare literal is; anything
-  -- else falls to the generic infer-and-match the `RNeg` clause used
-  -- before. ONE scrutinee per aux, the `checkElabV-RInt-aux` convention.
-  --
-  -- EACH BRANCH IS SELF-CONTAINED — no shared `inferElabV ctx (RNeg
-  -- e)` threaded in, and that is forced twice over. Once by TERMINATION: the
-  -- dispatch receives the OPERAND, so rebuilding `RNeg e` inside it
-  -- is growth to foetus. Once by REDUCTION: a downstream proof that has
-  -- with-abstracted `negOperandView e` needs the branch body to mention only
-  -- terms that still reduce under that abstraction, and
-  -- `inferElabV ctx (RNeg e)` does not — it unfolds back into the
-  -- view. So the literal branches state their folded result outright (they
-  -- know it: the fold has no premise) and only the non-literal branch calls
-  -- into inference, at the OPERAND, which is what `inferElabV-RNeg-aux`
-  -- takes anyway.
-  checkElabV-neg-dispatch : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr) (T : Ty m)
-    → NegOperandView e
-    → CheckElabResult (NamedCtx.debruijn ctx) T
   -- RLet/RDestruct: the later sub-expressions live in EXTENDED contexts whose
   -- types come from the earlier sub-results, so they fold through nested auxes
   -- (each takes the prior result's data explicitly — no inline `with`).
@@ -2151,7 +2050,7 @@ mutual
   inferElab ctx (Raw.RInt n) =
     success Int _ (Surface.int n) 0 0
 
-  inferElab ctx (Raw.RFloat i f l) = inferElabV-RFloat-aux ctx i f l
+  inferElab ctx (Raw.RFloat sg i f l) = inferElabV-RFloat-aux ctx sg i f l
 
 
   inferElab ctx Raw.RUnit =
@@ -2188,7 +2087,7 @@ mutual
   inferElab ctx (Raw.RVar x) =
     inferElabV-RVar-lookup-aux ctx x _ refl
 
-  inferElab ctx (Raw.RNeg e) = inferElabV-neg-dispatch ctx e
+  inferElab ctx (Raw.RNeg e) = inferElabV-RNeg-aux ctx e (inferElab ctx e)
 
   inferElab ctx (Raw.RLet x e₁ e₂) =
     inferElabV-RLet-aux ctx x e₁ e₂ (inferElab ctx e₁)
@@ -2288,14 +2187,14 @@ mutual
   -- the two outcomes don't overlap (no stuck `checkElabV (RInt n) T` for
   -- variable `T`). Behaviour is unchanged; the dispatch is now analysable.
   checkElab-wf ctx ac (Raw.RInt n) T = checkElabV-RInt-aux ctx n T
-  checkElab-wf ctx ac (Raw.RFloat i f l) T =
-    checkElabV-RFloat-aux ctx i f l T
+  checkElab-wf ctx ac (Raw.RFloat sg i f l) T =
+    checkElabV-RFloat-aux ctx sg i f l T
   -- PLAN 0.73 F3: `- <literal>` gets the same value-lift the bare literal
   -- does. Before this it fell through to the generic clause below, which
   -- infers `Int`/`Float` and then mismatches against the ARROW the position
   -- wants — which is why `compose emit@E (-5)` did not compile.
   checkElab-wf ctx ac (Raw.RNeg e) T =
-    checkElabV-neg-dispatch ctx e T (negOperandView e)
+    embedOrSubsume ctx (Raw.RNeg e) T (inferElabV-RNeg-aux ctx e (inferElab ctx e))
 
   -- Generic infer-and-match fallback — covers RInt, RUnit,
   -- RPair, RBinOp, RNeg, RLet, RDestruct, RAnnot, RQualified, RResolved.
@@ -2326,48 +2225,6 @@ mutual
     inferElabV-RApp-other-aux ctx f x _ refl
 
 
-  -- `-5` is `neg (int 5)`, as the Spec's realization builds it (plan 0.122
-  -- §5.6: the checker's term IS the realization of the Spec's derivation). The build
-  -- gate reads the SOURCE's literals (`admissibleM?`, `negLits`), so
-  -- `-2147483648` still fits x86-32; the wrapped `neg` of the wrapped `int`
-  -- is the same word (`Once.Word.Width.⊝-fromℤ`). Depth `suc 1`, as the
-  -- generic `RNeg` clause gives.
-  -- The decision is an ARGUMENT, not a `with` and not a pattern match on `e`,
-  -- so `inferElabV ctx (RNeg e)` still unfolds for an ABSTRACT `e`.
-  -- That is the difference between this and the first attempt: matching `e`
-  -- here would have forced every downstream proof to enumerate all sixteen
-  -- `Syn.Expr` heads just to make the dispatch reduce. Downstream now does
-  -- `with negOperandView e` and handles three cases. Same convention as
-  -- `cfm-build-gated` taking its `Dec`.
-  inferElabV-neg-dispatch ctx e = inferElabV-neg-aux ctx e (negOperandView e)
-
-  inferElabV-neg-aux ctx .(Raw.RInt n) (nov-int n) =
-    success Int _ (Surface.neg (Surface.int n)) 2 0
-  -- PLAN 0.73 F3: `-3.14` is the literal whose payload is `negate (decimalOf
-  -- i f l)`. Not a runtime negation of `3.14` — there is no float `neg` to
-  -- emit (`MArithIR` is Int-only, F4), which is why the fold is the only
-  -- lowering rather than the better of two. Both this and `Once.Denotation.
-  -- Meaning`'s `⟦ wt-neg-float ⟧ᵢ` name the SAME `negate ∘ decimalOf`, so
-  -- agreement is `refl`-shaped and cannot falsify `round` — the pins in
-  -- `Once.Spec.Float.Decimal` against externally computed patterns are the check
-  -- that means something (D117).
-  --
-  -- Depth `1` and the untouched fresh counter: one constructor deeper than
-  -- the bare literal, no name allocated.
-  inferElabV-neg-aux ctx .(Raw.RFloat i f l) (nov-float i f l) =
-    success Float _ (Surface.float (Decimal.negate (decimalOf i f l))) 1
-            0
-  inferElabV-neg-aux ctx e (nov-other .e) = inferElabV-RNeg-aux ctx e (inferElab ctx e)
-
-  checkElabV-neg-dispatch ctx .(Raw.RInt n) T (nov-int n) =
-    checkElabV-neg-int-aux ctx n T
-  checkElabV-neg-dispatch ctx .(Raw.RFloat i f l) T (nov-float i f l) =
-    checkElabV-neg-float-aux ctx i f l T
-  -- NOT a literal: the old generic clause verbatim, `embedOrSubsume` included,
-  -- so the pure→eff subsumption (`t-subsume`, plan 0.52 M1) is not lost.
-  checkElabV-neg-dispatch ctx e T (nov-other .e) =
-    embedOrSubsume ctx (Raw.RNeg e) T
-                   (inferElabV-RNeg-aux ctx e (inferElab ctx e))
 
 
   inferElabV-RLet-aux ctx x e₁ e₂ (failure err) = failure err

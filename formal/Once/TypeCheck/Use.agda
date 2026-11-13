@@ -89,7 +89,7 @@ data Use↦ {n} {L : Locals m n} : ∀ {e A π B t} → L ⊢ e ⇐ A ⇒[ π ]�
 
 data Use⇒ {n} {L} where
   u-int      : ∀ {i} → Use⇒ (s-int i) zeroUsage
-  u-float    : ∀ {i f l} → Use⇒ (s-float i f l) zeroUsage
+  u-float    : ∀ {sg i f l nz} → Use⇒ (s-float sg i f l nz) zeroUsage
   u-unit     : Use⇒ s-unit zeroUsage
   u-unit-g   : Use⇒ s-unit-g zeroUsage
   -- A local is used once.
@@ -101,8 +101,7 @@ data Use⇒ {n} {L} where
   u-annot    : ∀ {e T t} {d : L ⊢ e ⇐ _ ↝ t} {Ψ} → Use⇐ d Ψ → Use⇒ (s-annot {T = T} d) Ψ
   u-pair     : ∀ {a b A B ta tb} {da : L ⊢ a ⇒ A ↝ ta} {db : L ⊢ b ⇒ B ↝ tb} {Ψ₁ Ψ₂}
              → Use⇒ da Ψ₁ → Use⇒ db Ψ₂ → Use⇒ (s-pair da db) (Ψ₁ +ᵘ Ψ₂)
-  u-neg      : ∀ {e t} {d : L ⊢ e ⇒ _ ↝ t} {Ψ} → Use⇒ d Ψ → Use⇒ (s-neg d) Ψ
-  u-neg-float : ∀ {i f l} → Use⇒ (s-neg-float i f l) zeroUsage
+  u-neg      : ∀ {e A t} {h} {d : L ⊢ e ⇒ _ ↝ t} {Ψ} → Use⇒ d Ψ → Use⇒ (s-neg {A = A} h d) Ψ
   -- The body's usage of the bound variable scales the bound expression's.
   u-let      : ∀ {x e₁ e₂ A B t₁ t₂ q} {d₁ : L ⊢ e₁ ⇒ A ↝ t₁} {d₂ : (L ▹ x ∶ A) ⊢ e₂ ⇒ B ↝ t₂} {Ψ₁ Ψ₂}
              → Use⇒ d₁ Ψ₁ → Use⇒ d₂ (q ∷ Ψ₂) → Use⇒ (s-let q d₁ d₂) (Ψ₂ +ᵘ (q *ᵘ Ψ₁))
@@ -112,16 +111,11 @@ data Use⇒ {n} {L} where
                {Ψs Ψₗ Ψᵣ}
              → Use⇒ ds Ψs → Use⇒ dl (ql ∷ Ψₗ) → Use⇒ dr (qr ∷ Ψᵣ)
              → Use⇒ (s-case {C = C} ql qr ds dl dr j) (Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ))
-  u-arith    : ∀ {op p e₁ e₂ t₁ t₂} {o} {d₁ : L ⊢ e₁ ⇒ _ ↝ t₁} {d₂ : L ⊢ e₂ ⇒ _ ↝ t₂} {Ψ₁ Ψ₂}
-             → Use⇒ d₁ Ψ₁ → Use⇒ d₂ Ψ₂ → Use⇒ (s-arith {op = op} {p = p} o d₁ d₂) (Ψ₁ +ᵘ Ψ₂)
-  u-arith-float : ∀ {op p e₁ e₂ t₁ t₂} {o} {d₁ : L ⊢ e₁ ⇒ _ ↝ t₁} {d₂ : L ⊢ e₂ ⇒ _ ↝ t₂} {Ψ₁ Ψ₂}
-                → Use⇒ d₁ Ψ₁ → Use⇒ d₂ Ψ₂ → Use⇒ (s-arith-float {op = op} {p = p} o d₁ d₂) (Ψ₁ +ᵘ Ψ₂)
-  u-arith-float-il : ∀ {op p e₁ e₂ t₁ t₂} {o} {d₁ : L ⊢ e₁ ⇒ _ ↝ t₁} {d₂ : L ⊢ e₂ ⇒ _ ↝ t₂} {Ψ₁ Ψ₂}
-                   → Use⇒ d₁ Ψ₁ → Use⇒ d₂ Ψ₂ → Use⇒ (s-arith-float-il {op = op} {p = p} o d₁ d₂) (Ψ₁ +ᵘ Ψ₂)
-  u-arith-float-ir : ∀ {op p e₁ e₂ t₁ t₂} {o} {d₁ : L ⊢ e₁ ⇒ _ ↝ t₁} {d₂ : L ⊢ e₂ ⇒ _ ↝ t₂} {Ψ₁ Ψ₂}
-                   → Use⇒ d₁ Ψ₁ → Use⇒ d₂ Ψ₂ → Use⇒ (s-arith-float-ir {op = op} {p = p} o d₁ d₂) (Ψ₁ +ᵘ Ψ₂)
-  u-compare  : ∀ {op p e₁ e₂ t₁ t₂} {o} {d₁ : L ⊢ e₁ ⇒ _ ↝ t₁} {d₂ : L ⊢ e₂ ⇒ _ ↝ t₂} {Ψ₁ Ψ₂}
-             → Use⇒ d₁ Ψ₁ → Use⇒ d₂ Ψ₂ → Use⇒ (s-compare {op = op} {p = p} o d₁ d₂) (Ψ₁ +ᵘ Ψ₂)
+  u-binop    : ∀ {op e₁ e₂ A t₁ t₂} {h} {d₁ : L ⊢ e₁ ⇒ _ ↝ t₁} {d₂ : L ⊢ e₂ ⇒ _ ↝ t₂} {Ψ₁ Ψ₂}
+             → Use⇒ d₁ Ψ₁ → Use⇒ d₂ Ψ₂ → Use⇒ (s-binop {op = op} {A = A} h d₁ d₂) (Ψ₁ +ᵘ Ψ₂)
+  u-binop-mixed : ∀ {op k o e₁ e₂ a₁ a₂ t₁ t₂} {eq ne} {d₁ : L ⊢ e₁ ⇒ _ ↝ t₁} {d₂ : L ⊢ e₂ ⇒ _ ↝ t₂} {Ψ₁ Ψ₂}
+                → Use⇒ d₁ Ψ₁ → Use⇒ d₂ Ψ₂
+                → Use⇒ (s-binop-mixed {op = op} {k = k} {o = o} {a₁ = a₁} {a₂ = a₂} eq ne d₁ d₂) (Ψ₁ +ᵘ Ψ₂)
   -- A generator applied: its argument, in an application.
   u-id-app       : ∀ {e T t} {d : L ⊢ e ⇒ T ↝ t} {Ψ} → Use⇒ d Ψ → Use⇒ (s-id-app d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
   u-fst-app      : ∀ {e A B t} {d : L ⊢ e ⇒ _ ↝ t} {Ψ} → Use⇒ d Ψ → Use⇒ (s-fst-app {A = A} {B = B} d) (zeroUsage +ᵘ (Many *ᵘ Ψ))

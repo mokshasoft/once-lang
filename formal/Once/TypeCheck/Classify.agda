@@ -37,9 +37,8 @@ open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P‚ä
 open import Once.Type.Poly
 open import Once.Type
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.Spec.Surface.Syntax as Raw using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax as Raw using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatArithmeticOp)
 open import Once.TypeCheck.Raw as Raw
 open import Once.Spec.Name using (CanonicalName; canonical; gen; NotGenerator)
 open import Once.Spec.Name using (generatorNS)
