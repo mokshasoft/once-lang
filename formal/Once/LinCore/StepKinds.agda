@@ -15,9 +15,11 @@
 {-# OPTIONS --guardedness #-}
 
 open import Data.Nat using (ℕ)
+open import Level using (Level)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤; tt)
 open import Data.List using ([]; _∷_)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
@@ -29,7 +31,7 @@ module Once.LinCore.StepKinds
 
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; _∷ˢ_; Slots; Cfg; _∥_)
+open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; _∷ˢ_; Slots; Cfg; _∥_; see)
 open import Once.LinCore.Image fmt ans bw
 open import Once.LinCore.ImageRun fmt ans bw
 
@@ -110,75 +112,190 @@ CoveredC halted      = ⊥
 Covered : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
         → StepI c r m n t c′ r′ m′ n′ → Set
 Covered {c = c} _ = CoveredC c
-
 ------------------------------------------------------------------------
--- 3. ★ A COVERED STEP, BY ITS KIND (the one split on a step).
+-- 3. ★ THE SPLITS ON A STEP, as eliminators. Their cases come as one
+-- record: a split unifies a step's indices with the whole clause context,
+-- and a record variable keeps that context small (the cases as 22 separate
+-- arguments made one split 48 s, as one record ~6 s).
 ------------------------------------------------------------------------
 
-module _ {T : Sh}
-         (P : ∀ {sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m : Cfg sh} {n : ℕ} {t}
-                {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ : Cfg sh′} {n′ : ℕ} → StepI c r m n t c′ r′ m′ n′ → Set) where
+module _ {ℓ : Level} {T : Sh} where
 
-  covered-elim :
-      (loc : ∀ {sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
-             (st : StepI c r m n t c′ r′ m′ n′) → StraightC c → P st)
-    → (cs₁ : ∀ {Es A B S U} {c₁ : Codeᴵ (Es ∣ A ∷ S) U} {c₂ : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots Es} {a : MV A} {os : Stk S} {n}
-             → P (i-case₁ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {a = a} {os = os} {n = n}))
-    → (cs₂ : ∀ {Es A B S U} {c₁ : Codeᴵ (Es ∣ A ∷ S) U} {c₂ : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots Es} {b : MV B} {os : Stk S} {n}
-             → P (i-case₂ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {b = b} {os = os} {n = n}))
-    → (lp  : ∀ {E Es A B S U} {body : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) U}
-               {r : Ret U T} {m : Cfg (E ∷ Es ∣ A ∷ S)} {n}
-             → P (i-loop {body = body} {k = k} {r = r} {m = m} {n = n}))
-    → (rti : ∀ {sh U} {k : Codeᴵ sh U} {r : Ret U T} {m : Cfg sh} {n}
-             → P (i-reti {k = k} {r = r} {m = m} {n = n}))
-    → (cl  : ∀ {σ Es S U} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) U} {r : Ret U T}
-               {es : Slots (top σ ⊳ Es)} {a : MV (dom σ)} {os : Stk S} {n}
-             → P (i-call {κ = κ} {k = k} {r = r} {es = es} {a = a} {os = os} {n = n}))
-    → (rt  : ∀ {t Es B S U} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots (t ⊳ Es)} {os : Stk S}
-               {e′ : Slots (t ⊳ [])} {b : MV B} {n}
-             → P (i-ret {k = k} {r = r} {es = es} {os = os} {e′ = e′} {b = b} {n = n}))
-    → ∀ {sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
-      (st : StepI c r m n t c′ r′ m′ n′) → CoveredC c → P st
-  covered-elim loc cs₁ cs₂ lp rti cl rt i-loop          _ = lp
-  covered-elim loc cs₁ cs₂ lp rti cl rt i-reti          _ = rti
-  covered-elim loc cs₁ cs₂ lp rti cl rt i-call          _ = cl
-  covered-elim loc cs₁ cs₂ lp rti cl rt i-ret           _ = rt
-  covered-elim loc cs₁ cs₂ lp rti cl rt i-case₁         _ = cs₁
-  covered-elim loc cs₁ cs₂ lp rti cl rt i-case₂         _ = cs₂
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@i-unpair      v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@i-pair        v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@i-swap        v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@i-unit        v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@(i-prim _)    v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@i-untag       v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@i-untag₁      v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@i-tag₁        v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@i-elend       v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@i-eunlend     v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@i-elift       v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@(i-efst _)    v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@(i-esnd _)    v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@(i-eout _)    v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@(i-eoutq _)   v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@(i-ecase₁ _)  v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@(i-ecase₂ _)  v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@(i-eapp _)    v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@i-epop        v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt st@(i-eword _)   v = loc st v
-  covered-elim loc cs₁ cs₂ lp rti cl rt (i-opend _)      ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt i-icall          ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt (i-icallω _)     ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt i-iobs           ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt (i-ccopy _)      ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt (i-ncopy _)      ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt i-cfree          ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt i-nfree          ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt i-open1          ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt (i-openω _)      ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt i-nopen          ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt (i-copen _)      ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt (i-copenν _)     ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt (i-reclose _)    ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt (i-recloseν _)   ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt i-fopen          ()
-  covered-elim loc cs₁ cs₂ lp rti cl rt i-fopenν         ()
+  -- what a split gives, by the step
+  Motive : Set (Level.suc ℓ)
+  Motive = ∀ {sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m : Cfg sh} {n : ℕ} {t}
+             {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ : Cfg sh′} {n′ : ℕ} → StepI c r m n t c′ r′ m′ n′ → Set ℓ
+
+  -- a covered step, by its kind: a straight step, a `case` (a loop's
+  -- dispatch too), a loop's turn, a body's end, a call, a return
+  record CoveredCases : Set (Level.suc ℓ) where
+    field
+      P   : Motive
+      loc : ∀ {sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
+            (st : StepI c r m n t c′ r′ m′ n′) → StraightC c → P st
+      cs₁ : ∀ {Es A B S U} {c₁ : Codeᴵ (Es ∣ A ∷ S) U} {c₂ : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots Es} {a : MV A} {os : Stk S} {n}
+          → P (i-case₁ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {a = a} {os = os} {n = n})
+      cs₂ : ∀ {Es A B S U} {c₁ : Codeᴵ (Es ∣ A ∷ S) U} {c₂ : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots Es} {b : MV B} {os : Stk S} {n}
+          → P (i-case₂ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {b = b} {os = os} {n = n})
+      lp  : ∀ {E Es A B S U} {body : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) U}
+              {r : Ret U T} {m : Cfg (E ∷ Es ∣ A ∷ S)} {n}
+          → P (i-loop {body = body} {k = k} {r = r} {m = m} {n = n})
+      rti : ∀ {sh U} {k : Codeᴵ sh U} {r : Ret U T} {m : Cfg sh} {n}
+          → P (i-reti {k = k} {r = r} {m = m} {n = n})
+      cl  : ∀ {σ Es S U} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) U} {r : Ret U T}
+              {es : Slots (top σ ⊳ Es)} {a : MV (dom σ)} {os : Stk S} {n}
+          → P (i-call {κ = κ} {k = k} {r = r} {es = es} {a = a} {os = os} {n = n})
+      rt  : ∀ {t Es B S U} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots (t ⊳ Es)} {os : Stk S}
+              {e′ : Slots (t ⊳ [])} {b : MV B} {n}
+          → P (i-ret {k = k} {r = r} {es = es} {os = os} {e′ = e′} {b = b} {n = n})
+
+  covered-elim : (C : CoveredCases) → ∀ {sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
+                 (st : StepI c r m n t c′ r′ m′ n′) → CoveredC c → CoveredCases.P C st
+  covered-elim C i-loop          _ = CoveredCases.lp C
+  covered-elim C i-reti          _ = CoveredCases.rti C
+  covered-elim C i-call          _ = CoveredCases.cl C
+  covered-elim C i-ret           _ = CoveredCases.rt C
+  covered-elim C i-case₁         _ = CoveredCases.cs₁ C
+  covered-elim C i-case₂         _ = CoveredCases.cs₂ C
+  covered-elim C st@i-unpair      v = CoveredCases.loc C st v
+  covered-elim C st@i-pair        v = CoveredCases.loc C st v
+  covered-elim C st@i-swap        v = CoveredCases.loc C st v
+  covered-elim C st@i-unit        v = CoveredCases.loc C st v
+  covered-elim C st@(i-prim _)    v = CoveredCases.loc C st v
+  covered-elim C st@i-untag       v = CoveredCases.loc C st v
+  covered-elim C st@i-untag₁      v = CoveredCases.loc C st v
+  covered-elim C st@i-tag₁        v = CoveredCases.loc C st v
+  covered-elim C st@i-elend       v = CoveredCases.loc C st v
+  covered-elim C st@i-eunlend     v = CoveredCases.loc C st v
+  covered-elim C st@i-elift       v = CoveredCases.loc C st v
+  covered-elim C st@(i-efst _)    v = CoveredCases.loc C st v
+  covered-elim C st@(i-esnd _)    v = CoveredCases.loc C st v
+  covered-elim C st@(i-eout _)    v = CoveredCases.loc C st v
+  covered-elim C st@(i-eoutq _)   v = CoveredCases.loc C st v
+  covered-elim C st@(i-ecase₁ _)  v = CoveredCases.loc C st v
+  covered-elim C st@(i-ecase₂ _)  v = CoveredCases.loc C st v
+  covered-elim C st@(i-eapp _)    v = CoveredCases.loc C st v
+  covered-elim C st@i-epop        v = CoveredCases.loc C st v
+  covered-elim C st@(i-eword _)   v = CoveredCases.loc C st v
+  covered-elim C (i-opend _)      ()
+  covered-elim C i-icall          ()
+  covered-elim C (i-icallω _)     ()
+  covered-elim C i-iobs           ()
+  covered-elim C (i-ccopy _)      ()
+  covered-elim C (i-ncopy _)      ()
+  covered-elim C i-cfree          ()
+  covered-elim C i-nfree          ()
+  covered-elim C i-open1          ()
+  covered-elim C (i-openω _)      ()
+  covered-elim C i-nopen          ()
+  covered-elim C (i-copen _)      ()
+  covered-elim C (i-copenν _)     ()
+  covered-elim C (i-reclose _)    ()
+  covered-elim C (i-recloseν _)   ()
+  covered-elim C i-fopen          ()
+  covered-elim C i-fopenν         ()
+
+  -- a local step, by its constructor
+  record LocalCases : Set (Level.suc ℓ) where
+    field
+      P       : Motive
+      unpair′ : ∀ {Es A B S U} {k : Codeᴵ (Es ∣ A ∷ B ∷ S) U} {r : Ret U T} {es : Slots Es} {a : MV A} {b : MV B} {os : Stk S} {n}
+              → P (i-unpair {k = k} {r = r} {es = es} {a = a} {b = b} {os = os} {n = n})
+      pair′ : ∀ {Es A B S U} {k : Codeᴵ (Es ∣ (A ⊗t B) ∷ S) U} {r : Ret U T} {es : Slots Es} {a : MV A} {b : MV B} {os : Stk S} {n}
+            → P (i-pair {k = k} {r = r} {es = es} {a = a} {b = b} {os = os} {n = n})
+      swap′ : ∀ {Es A B S U} {k : Codeᴵ (Es ∣ B ∷ A ∷ S) U} {r : Ret U T} {es : Slots Es} {a : MV A} {b : MV B} {os : Stk S} {n}
+            → P (i-swap {k = k} {r = r} {es = es} {a = a} {b = b} {os = os} {n = n})
+      unit′ : ∀ {Es S U} {k : Codeᴵ (Es ∣ One ∷ S) U} {r : Ret U T} {es : Slots Es} {os : Stk S} {n}
+            → P (i-unit {k = k} {r = r} {es = es} {os = os} {n = n})
+      prim′ : ∀ {Γ} {ds : Defs Γ} {Es A B S U} {g : LTm Γ A B} {k : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots Es}
+                {v : MV A} {w : MV B} {os : Stk S} {n n′ t} (run : Run ds g mone v n (gives w n′) t) → NotOp g
+            → P (i-prim {k = k} {r = r} {es = es} {os = os} run)
+      untag′ : ∀ {Es l X A S U} {k : Codeᴵ (Es ∣ (X ⊗t A) ∷ S) U} {r : Ret U T} {es : Slots Es} {x : MV X} {a : MV A} {os : Stk S} {n}
+             → P (i-untag {l = l} {k = k} {r = r} {es = es} {x = x} {a = a} {os = os} {n = n})
+      untag₁′ : ∀ {Es l X S U} {k : Codeᴵ (Es ∣ X ∷ S) U} {r : Ret U T} {es : Slots Es} {x : MV X} {os : Stk S} {n}
+              → P (i-untag₁ {l = l} {k = k} {r = r} {es = es} {x = x} {os = os} {n = n})
+      tag₁′ : ∀ {Es l X S U} {k : Codeᴵ (Es ∣ Ct l X ∷ S) U} {r : Ret U T} {es : Slots Es} {x : MV X} {os : Stk S} {n}
+            → P (i-tag₁ {k = k} {r = r} {es = es} {x = x} {os = os} {n = n})
+      case₁′ : ∀ {Es A B S U} {c₁ : Codeᴵ (Es ∣ A ∷ S) U} {c₂ : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots Es} {a : MV A} {os : Stk S} {n}
+             → P (i-case₁ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {a = a} {os = os} {n = n})
+      case₂′ : ∀ {Es A B S U} {c₁ : Codeᴵ (Es ∣ A ∷ S) U} {c₂ : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots Es} {b : MV B} {os : Stk S} {n}
+             → P (i-case₂ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {b = b} {os = os} {n = n})
+      elend′ : ∀ {E Es X A S U} {k : Codeᴵ ((E ⊗t X) ∷ E ∷ Es ∣ A ∷ S) U} {r : Ret U T} {es : Slots (E ∷ Es)} {x : MV X} {a : MV A} {os : Stk S} {n}
+             → P (i-elend {k = k} {r = r} {es = es} {x = x} {a = a} {os = os} {n = n})
+      eunlend′ : ∀ {E Es X B S U} {k : Codeᴵ (E ∷ Es ∣ (X ⊗t B) ∷ S) U} {r : Ret U T} {e : MV E} {es : Slots (E ∷ Es)}
+                   {x : MV X} {w : MV B} {os : Stk S} {n}
+               → P (i-eunlend {k = k} {r = r} {e = e} {es = es} {x = x} {w = w} {os = os} {n = n})
+      elift′ : ∀ {Es S U} {k : Codeᴵ (One ∷ Es ∣ S) U} {r : Ret U T} {es : Slots Es} {os : Stk S} {n}
+             → P (i-elift {k = k} {r = r} {es = es} {os = os} {n = n})
+      efst′ : ∀ {E₁ E₂ Es S U} {k : Codeᴵ (E₁ ∷ (E₁ ⊗t E₂) ∷ Es ∣ S) U} {r : Ret U T} {e₁ : MV E₁} {e₂ : MV E₂}
+                {es : Slots ((E₁ ⊗t E₂) ∷ Es)} {os : Stk S} {n} (eq : see es ≡ mpair e₁ e₂)
+            → P (i-efst {k = k} {r = r} {es = es} {os = os} {n = n} eq)
+      esnd′ : ∀ {E₁ E₂ Es S U} {k : Codeᴵ (E₂ ∷ (E₁ ⊗t E₂) ∷ Es ∣ S) U} {r : Ret U T} {e₁ : MV E₁} {e₂ : MV E₂}
+                {es : Slots ((E₁ ⊗t E₂) ∷ Es)} {os : Stk S} {n} (eq : see es ≡ mpair e₁ e₂)
+            → P (i-esnd {k = k} {r = r} {es = es} {os = os} {n = n} eq)
+      eout′ : ∀ {F Es S U} {k : Codeᴵ (LF∙ F (μt F) ∷ μt F ∷ Es ∣ S) U} {r : Ret U T} {i v} {es : Slots (μt F ∷ Es)} {os : Stk S} {n}
+                (eq : see es ≡ mmu i v)
+            → P (i-eout {k = k} {r = r} {es = es} {os = os} {n = n} eq)
+      eoutq′ : ∀ {F Es S U} {k : Codeᴵ (LF∙ F (μt F) ∷ μt F ∷ Es ∣ S) U} {r : Ret U T} {i v} {es : Slots (μt F ∷ Es)} {os : Stk S} {n}
+                 (eq : see es ≡ mmu i v)
+             → P (i-eoutq {k = k} {r = r} {es = es} {os = os} {n = n} eq)
+      ecase₁′ : ∀ {E₁ E₂ Es S U} {c₁ : Codeᴵ (E₁ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) U} {c₂ : Codeᴵ (E₂ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) U}
+                  {r : Ret U T} {e : MV E₁} {es : Slots ((E₁ ⊕t E₂) ∷ Es)} {os : Stk S} {n} (eq : see es ≡ minl e)
+              → P (i-ecase₁ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {os = os} {n = n} eq)
+      ecase₂′ : ∀ {E₁ E₂ Es S U} {c₁ : Codeᴵ (E₁ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) U} {c₂ : Codeᴵ (E₂ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) U}
+                  {r : Ret U T} {e : MV E₂} {es : Slots ((E₁ ⊕t E₂) ∷ Es)} {os : Stk S} {n} (eq : see es ≡ minr e)
+              → P (i-ecase₂ {c₁ = c₁} {c₂ = c₂} {r = r} {es = es} {os = os} {n = n} eq)
+      eapp′ : ∀ {l X Es S U} {k : Codeᴵ (X ∷ Ct l X ∷ Es ∣ S) U} {r : Ret U T} {x : MV X} {es : Slots (Ct l X ∷ Es)} {os : Stk S} {n}
+                (eq : see es ≡ mct x)
+            → P (i-eapp {k = k} {r = r} {es = es} {os = os} {n = n} eq)
+      epop′ : ∀ {E Es S U} {k : Codeᴵ (Es ∣ S) U} {r : Ret U T} {e : MV E} {es : Slots Es} {os : Stk S} {n}
+            → P (i-epop {k = k} {r = r} {e = e} {es = es} {os = os} {n = n})
+      eword′ : ∀ {b Es S U} {k : Codeᴵ (Bt b ∷ Es ∣ Bt b ∷ S) U} {r : Ret U T} {x} {es : Slots (Bt b ∷ Es)} {os : Stk S} {n}
+                 (eq : see es ≡ mbase x)
+             → P (i-eword {k = k} {r = r} {es = es} {os = os} {n = n} eq)
+
+  local-elim : (C : LocalCases) → ∀ {sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
+               (st : StepI c r m n t c′ r′ m′ n′) → LocalC c → LocalCases.P C st
+  local-elim C i-unpair                  _ = LocalCases.unpair′ C
+  local-elim C i-pair                    _ = LocalCases.pair′ C
+  local-elim C i-swap                    _ = LocalCases.swap′ C
+  local-elim C i-unit                    _ = LocalCases.unit′ C
+  local-elim C (i-prim run)              l = LocalCases.prim′ C run l
+  local-elim C i-untag                   _ = LocalCases.untag′ C
+  local-elim C i-untag₁                  _ = LocalCases.untag₁′ C
+  local-elim C i-tag₁                    _ = LocalCases.tag₁′ C
+  local-elim C i-case₁                   _ = LocalCases.case₁′ C
+  local-elim C i-case₂                   _ = LocalCases.case₂′ C
+  local-elim C i-elend                   _ = LocalCases.elend′ C
+  local-elim C i-eunlend                 _ = LocalCases.eunlend′ C
+  local-elim C i-elift                   _ = LocalCases.elift′ C
+  local-elim C (i-efst {es = es} eq)     _ = LocalCases.efst′ C {es = es} eq
+  local-elim C (i-esnd {es = es} eq)     _ = LocalCases.esnd′ C {es = es} eq
+  local-elim C (i-eout {es = es} eq)     _ = LocalCases.eout′ C {es = es} eq
+  local-elim C (i-eoutq {es = es} eq)    _ = LocalCases.eoutq′ C {es = es} eq
+  local-elim C (i-ecase₁ {es = es} eq)   _ = LocalCases.ecase₁′ C {es = es} eq
+  local-elim C (i-ecase₂ {es = es} eq)   _ = LocalCases.ecase₂′ C {es = es} eq
+  local-elim C (i-eapp {es = es} eq)     _ = LocalCases.eapp′ C {es = es} eq
+  local-elim C i-epop                    _ = LocalCases.epop′ C
+  local-elim C (i-eword {es = es} eq)    _ = LocalCases.eword′ C {es = es} eq
+  local-elim C (i-opend _)    ()
+  local-elim C i-loop         ()
+  local-elim C i-call         ()
+  local-elim C i-ret          ()
+  local-elim C i-reti         ()
+  local-elim C i-icall        ()
+  local-elim C (i-icallω _)   ()
+  local-elim C i-iobs         ()
+  local-elim C (i-ccopy _)    ()
+  local-elim C (i-ncopy _)    ()
+  local-elim C i-cfree        ()
+  local-elim C i-nfree        ()
+  local-elim C i-open1        ()
+  local-elim C (i-openω _)    ()
+  local-elim C i-nopen        ()
+  local-elim C (i-copen _)    ()
+  local-elim C (i-copenν _)   ()
+  local-elim C (i-reclose _)  ()
+  local-elim C (i-recloseν _) ()
+  local-elim C i-fopen        ()
+  local-elim C i-fopenν       ()

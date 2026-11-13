@@ -30,6 +30,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.Memory.HeapAddress
 import Once.LinCore.Moves
 import Data.Nat.Properties
+import Level
 
 
 module Once.LinCore.WordStep
@@ -90,7 +91,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open FrameSemantics FS using (≺-trans; ≺-irrefl)
   open import Once.LinCore.ImageRun fmt ans bw using (StepI)
   open import Once.LinCore.LocalStep fmt ans bw using (module Steps)
-  open import Once.LinCore.StepKinds fmt ans bw using (Local; LocalC; StraightC; straight-local; CoveredC; covered-elim)
+  open import Once.LinCore.StepKinds fmt ans bw using (Local; LocalC; StraightC; straight-local; CoveredC; Motive; CoveredCases; covered-elim)
   open import Once.LinCore.HeldI fmt ans bw using (InvI)
   open import Once.LinCore.LabelsI fmt ans bw using (module Img)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
@@ -133,22 +134,25 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     open Whole ld using (gstep-local; gcase₁; gcase₂; gloop; greti)
     open GCall using (gcall; gret; ArrivesAt)
     open Related
-
     -- what a step owes: from a related state, a related one after it
-    Owes : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m : Cfg sh} {n : ℕ} {t}
-             {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ : Cfg sh′} {n′ : ℕ} → StepI c r m n t c′ r′ m′ n′ → Set
-    Owes {c = c} {r} {m} {n} {c′ = c′} {r′} {m′} {n′} _ = ∀ {h fs} → InvI m r n h → Related c r m n fs → ArrivesAt c′ r′ m′ n′ fs
+    Owes : ∀ {T} → Motive {Level.zero} {T}
+    Owes {c = c} {r = r} {m = m} {n = n} {c′ = c′} {r′ = r′} {m′ = m′} {n′ = n′} _ =
+      ∀ {h fs} → InvI m r n h → Related c r m n fs → ArrivesAt c′ r′ m′ n′ fs
+
+    -- the cases, by the step's kind
+    word-cases : ∀ {T} → CoveredCases {Level.zero} {T}
+    word-cases = record
+      { P   = Owes
+      ; loc = λ st l inv G → gstep-local st l inv G
+      ; cs₁ = λ inv G → gcase₁ (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+      ; cs₂ = λ inv G → gcase₂ (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+      ; lp  = λ inv G → gloop (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+      ; rti = λ inv G → greti (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+      ; cl  = λ inv G → gcall (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+      ; rt  = λ inv G → gret (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+      }
 
     -- ★ by the step's kind (the one split on a step is StepKinds')
     word-step : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
            (st : StepI c r m n t c′ r′ m′ n′) → CoveredC c → InvI m r n h → Related c r m n fs → ArrivesAt c′ r′ m′ n′ fs
-    word-step st cv inv G =
-      covered-elim Owes
-        (λ st′ l inv′ G′ → gstep-local st′ l inv′ G′)
-        (λ inv′ G′ → gcase₁ (g-pt G′) inv′ (g-here G′) (g-next G′) (g-ret G′))
-        (λ inv′ G′ → gcase₂ (g-pt G′) inv′ (g-here G′) (g-next G′) (g-ret G′))
-        (λ inv′ G′ → gloop (g-pt G′) inv′ (g-here G′) (g-next G′) (g-ret G′))
-        (λ inv′ G′ → greti (g-pt G′) inv′ (g-here G′) (g-next G′) (g-ret G′))
-        (λ inv′ G′ → gcall (g-pt G′) inv′ (g-here G′) (g-next G′) (g-ret G′))
-        (λ inv′ G′ → gret (g-pt G′) inv′ (g-here G′) (g-next G′) (g-ret G′))
-        st cv inv G
+    word-step st cv inv G = covered-elim word-cases st cv inv G
