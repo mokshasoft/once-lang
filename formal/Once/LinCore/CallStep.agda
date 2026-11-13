@@ -117,7 +117,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   blockR {κ = κ} p = in-trans (in-trans (image-at p) (in-l _ _)) (block-root (idx p) κ (blocks-in p))
 
   -- the callee, at its block's root
-  module K {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = Loc {FS} U ncty ldConst wordOf image (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p) using (Here; module Here; lowAt; pos; seg-at; shape-fits)
+  module K {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = Loc {FS} U ncty ldConst wordOf image (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p) using (Here; module Here; lowAt; pos; pos-def; seg-at; shape-fits)
 
   private
     sv-ne : ∀ n → ¬ n ≡ suc n
@@ -178,8 +178,8 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
     -- the callee's start
     start-pos : K.pos p whole ≡ q + suc (suc (suc (suc (Once.LinCore.Moves.ln {FS} (wsz A)))))
-    start-pos = trans (start-len (proj₁ (image-at p)) argMv _ _ _ _)
-                  (cong (λ z → q + suc (suc (suc (suc z)))) (len-mvPS (M ∸ wsz A) dst (wsz A)))
+    start-pos = trans (K.pos-def p whole) (trans (start-len (proj₁ (image-at p)) argMv _ _ _ _)
+                  (cong (λ z → q + suc (suc (suc (suc z)))) (len-mvPS (M ∸ wsz A) dst (wsz A))))
 
   private
     seg-join : ∀ {pc} (xs ys : AbstractTrace) → Seg image pc xs → Seg image (pc + length xs) ys → Seg image pc (xs ++ ys)
@@ -229,9 +229,9 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         (Seg-++ˡ image _ viewMv body (Once.LinCore.Moves.Seg-++ʳ {FS} image _ argMv (viewMv ++ body) s₀))
 
     start-pos : K.pos p whole ≡ q + suc (suc (suc (suc (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))))))
-    start-pos = trans (start-len-v (proj₁ (image-at p)) argMv viewMv _ _ _ _)
+    start-pos = trans (K.pos-def p whole) (trans (start-len-v (proj₁ (image-at p)) argMv viewMv _ _ _ _)
                   (cong (λ z → q + suc (suc (suc (suc z))))
-                    (cong₂ _+_ (len-mvPS (M ∸ wsz A) dst (wsz A)) (cong suc (len-mvPS 0 0 (wsz E)))))
+                    (cong₂ _+_ (len-mvPS (M ∸ wsz A) dst (wsz A)) (cong suc (len-mvPS 0 0 (wsz E))))))
 
   -- ★ THE CALL'S CORE, from any frame: the caller's configuration in its
   -- frame `φ`, the call's code at the pc, its area where the argument's words
