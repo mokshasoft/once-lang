@@ -50,6 +50,9 @@ open Distinct dist
 import Once.Metatheory.Surface.Basics Σ S nm as B
 open B hiding (module Modes)
 open import Once.Metatheory.OneName using (decl-unique)
+open import Once.Spec.Theory using (symCod)
+open import Once.Spec.Surface.Operator using (binSym; BinSym)
+open BinSym using (shape)
 open import Once.Metatheory.Types using (join-unique)
 open import Once.Spec.Sub using (_⊔_≔_)
 
@@ -78,13 +81,15 @@ module Modes {m} (Δ : KCtx m) where
   open B.Modes Δ hiding (Syn; Dom)
 
   module _ where
-    noSyn-gen : ∀ {n} {L : Locals m n} {w T t} → w ∈ genNames → w ≢ "unit" → ¬ Syn L (RResolved (gen w)) T t
-    noSyn-gen m₁ nu s-unit-g         = nu refl
-    noSyn-gen m₁ nu (s-sigop ng _)   = notGen m₁ ng
-    noSyn-gen m₁ nu (s-def d e _ _)  = def-gen d m₁ e
+    noSyn-gen : ∀ {n} {L : Locals m n} {w T t} → w ∈ genNames → w ≢ "unit" → w ≢ "toFloat" → ¬ Syn L (RResolved (gen w)) T t
+    noSyn-gen m₁ nu nt s-unit-g         = nu refl
+    noSyn-gen m₁ nu nt s-toFloat        = nt refl
+    noSyn-gen m₁ nu nt (s-sigop ng _)   = notGen m₁ ng
+    noSyn-gen m₁ nu nt (s-def d e _ _)  = def-gen d m₁ e
 
     noSyn-poly : ∀ {n} {L : Locals m n} {c T t} (d : Fin s) → nm d ≡ c → 0 < arity (S !! d) → ¬ Syn L (RResolved c) T t
     noSyn-poly d e lt s-unit-g          = def-gen d unit∈ e
+    noSyn-poly d e lt s-toFloat         = def-gen d toFloat∈ e
     noSyn-poly d e lt (s-sigop _ mem)   = def-sig d e mem
     noSyn-poly d e lt (s-def d′ e′ _ a0) = 0<0 (subst (λ x → arity (S !! x) ≡ 0) (sym (def-inj (trans e (sym e′)))) a0) lt
 
@@ -108,7 +113,12 @@ module Modes {m} (Δ : KCtx m) where
 
   -- Synthesis.
   synth-unique (s-int i)     (s-int .i)      = refl
-  synth-unique (s-float i f l) (s-float .i .f .l) = refl
+  synth-unique (s-float _ _ _ _ _) (s-float _ _ _ _ _) = refl
+  synth-unique s-toFloat     s-toFloat       = refl
+  synth-unique s-toFloat     (s-sigop ng _)  = ⊥-elim (notGen toFloat∈ ng)
+  synth-unique s-toFloat     (s-def d e _ _) = ⊥-elim (def-gen d toFloat∈ e)
+  synth-unique (s-sigop ng _) s-toFloat      = ⊥-elim (notGen toFloat∈ ng)
+  synth-unique (s-def d e _ _) s-toFloat     = ⊥-elim (def-gen d toFloat∈ e)
   synth-unique s-unit        s-unit          = refl
   synth-unique s-unit-g      s-unit-g        = refl
   synth-unique s-unit-g      (s-sigop ng _)  = ⊥-elim (notGen unit∈ ng)
@@ -122,40 +132,14 @@ module Modes {m} (Δ : KCtx m) where
   synth-unique (s-def d e _ _) (s-sigop _ mem) = ⊥-elim (def-sig d e mem)
   synth-unique (s-annot _)   (s-annot _)     = refl
   synth-unique (s-pair a b)  (s-pair a′ b′)  = cong₂ _*_ (synth-unique a a′) (synth-unique b b′)
-  synth-unique (s-neg _)     (s-neg _)       = refl
-  synth-unique (s-neg ())    (s-neg-float _ _ _)
-  synth-unique (s-neg-float _ _ _) (s-neg ())
-  synth-unique (s-neg-float _ _ _) (s-neg-float _ _ _) = refl
+  synth-unique (s-neg _ a)   (s-neg _ a′)    = synth-unique a a′
+  synth-unique (s-binop {op = op} _ a _) (s-binop _ a′ _) =
+    cong (λ X → symCod X (shape (binSym op))) (⌜⌝ⁿ-inj (synth-unique a a′))
   synth-unique (s-let q d₁ d₂) (s-let q′ d₁′ d₂′) = under (synth-unique d₁ d₁′) d₂ d₂′
   synth-unique (s-case ql qr ds dl dr j) (s-case ql′ qr′ ds′ dl′ dr′ j′) =
     joinUnder (under (proj₁ (+-inj (synth-unique ds ds′))) dl dl′)
               (under (proj₂ (+-inj (synth-unique ds ds′))) dr dr′) j j′
   -- arithmetic: the operand types decide the rule
-  synth-unique (s-arith _ _ _)          (s-arith _ _ _)          = refl
-  synth-unique (s-arith _ a _)          (s-arith-float _ a′ _)   = ⊥-elim (Int≢Float (synth-unique a a′))
-  synth-unique (s-arith _ _ b)          (s-arith-float-il _ _ b′) = ⊥-elim (Int≢Float (synth-unique b b′))
-  synth-unique (s-arith _ a _)          (s-arith-float-ir _ a′ _) = ⊥-elim (Int≢Float (synth-unique a a′))
-  synth-unique (s-arith ia _ _)         (s-compare c _ _)        = ⊥-elim (ia≢cmp ia c)
-  synth-unique (s-arith-float _ a _)    (s-arith _ a′ _)         = ⊥-elim (Int≢Float (synth-unique a′ a))
-  synth-unique (s-arith-float _ _ _)    (s-arith-float _ _ _)    = refl
-  synth-unique (s-arith-float _ a _)    (s-arith-float-il _ a′ _) = ⊥-elim (Int≢Float (synth-unique a′ a))
-  synth-unique (s-arith-float _ _ b)    (s-arith-float-ir _ _ b′) = ⊥-elim (Int≢Float (synth-unique b′ b))
-  synth-unique (s-arith-float fa _ _)   (s-compare c _ _)        = ⊥-elim (fa≢cmp fa c)
-  synth-unique (s-arith-float-il _ _ b) (s-arith _ _ b′)         = ⊥-elim (Int≢Float (synth-unique b′ b))
-  synth-unique (s-arith-float-il _ a _) (s-arith-float _ a′ _)   = ⊥-elim (Int≢Float (synth-unique a a′))
-  synth-unique (s-arith-float-il _ _ _) (s-arith-float-il _ _ _) = refl
-  synth-unique (s-arith-float-il _ a _) (s-arith-float-ir _ a′ _) = ⊥-elim (Int≢Float (synth-unique a a′))
-  synth-unique (s-arith-float-il fa _ _) (s-compare c _ _)       = ⊥-elim (fa≢cmp fa c)
-  synth-unique (s-arith-float-ir _ a _) (s-arith _ a′ _)         = ⊥-elim (Int≢Float (synth-unique a′ a))
-  synth-unique (s-arith-float-ir _ _ b) (s-arith-float _ _ b′)   = ⊥-elim (Int≢Float (synth-unique b b′))
-  synth-unique (s-arith-float-ir _ a _) (s-arith-float-il _ a′ _) = ⊥-elim (Int≢Float (synth-unique a′ a))
-  synth-unique (s-arith-float-ir _ _ _) (s-arith-float-ir _ _ _) = refl
-  synth-unique (s-arith-float-ir fa _ _) (s-compare c _ _)       = ⊥-elim (fa≢cmp fa c)
-  synth-unique (s-compare c _ _)        (s-arith ia _ _)         = ⊥-elim (ia≢cmp ia c)
-  synth-unique (s-compare c _ _)        (s-arith-float fa _ _)   = ⊥-elim (fa≢cmp fa c)
-  synth-unique (s-compare c _ _)        (s-arith-float-il fa _ _) = ⊥-elim (fa≢cmp fa c)
-  synth-unique (s-compare c _ _)        (s-arith-float-ir fa _ _) = ⊥-elim (fa≢cmp fa c)
-  synth-unique (s-compare _ _ _)        (s-compare _ _ _)        = refl
   -- the generators applied
   synth-unique (s-id-app d)       (s-id-app d′)       = synth-unique d d′
   synth-unique (s-fst-app d)      (s-fst-app d′)      = proj₁ (*-inj (synth-unique d d′))
@@ -253,11 +237,11 @@ module Modes {m} (Δ : KCtx m) where
   domain-exact (d-infer dg _ _) (d-poly d e lt _ _ _ _ _ _ _) = ⊥-elim (noSyn-poly d e lt dg)
   domain-exact (d-infer dg _ _) (d-lam _)        = ⊥-elim (noLam dg)
   domain-exact (d-infer dg _ _) (d-compose _ _)    = ⊥-elim (noSyn-compose dg)
-  domain-exact (d-infer dg _ _) d-id           = ⊥-elim (noSyn-gen id∈ (λ ()) dg)
-  domain-exact (d-infer dg _ _) d-fst          = ⊥-elim (noSyn-gen fst∈ (λ ()) dg)
-  domain-exact (d-infer dg _ _) d-snd          = ⊥-elim (noSyn-gen snd∈ (λ ()) dg)
-  domain-exact (d-infer dg _ _) d-terminal     = ⊥-elim (noSyn-gen terminal∈ (λ ()) dg)
-  domain-exact (d-infer dg _ _) d-initial      = ⊥-elim (noSyn-gen initial∈ (λ ()) dg)
+  domain-exact (d-infer dg _ _) d-id           = ⊥-elim (noSyn-gen id∈ (λ ()) (λ ()) dg)
+  domain-exact (d-infer dg _ _) d-fst          = ⊥-elim (noSyn-gen fst∈ (λ ()) (λ ()) dg)
+  domain-exact (d-infer dg _ _) d-snd          = ⊥-elim (noSyn-gen snd∈ (λ ()) (λ ()) dg)
+  domain-exact (d-infer dg _ _) d-terminal     = ⊥-elim (noSyn-gen terminal∈ (λ ()) (λ ()) dg)
+  domain-exact (d-infer dg _ _) d-initial      = ⊥-elim (noSyn-gen initial∈ (λ ()) (λ ()) dg)
   domain-exact (d-infer dg _ _) (d-case _ _ _)       = ⊥-elim (noSyn-case dg)
   domain-exact (d-infer dg _ _) (d-pair _ _)       = ⊥-elim (noSyn-pair dg)
   domain-exact (d-infer dg _ _) (d-cata _ _)     = ⊥-elim (noSyn-cata dg)
@@ -279,15 +263,15 @@ module Modes {m} (Δ : KCtx m) where
   domain-exact (d-compose dg df) (d-compose dg′ df′) = domUnder (domain-exact dg dg′) df df′
   domain-exact (d-compose _ _) (d-infer dg _ _)  = ⊥-elim (noSyn-compose dg)
   domain-exact d-id       d-id           = refl
-  domain-exact d-id       (d-infer dg _ _)   = ⊥-elim (noSyn-gen id∈ (λ ()) dg)
+  domain-exact d-id       (d-infer dg _ _)   = ⊥-elim (noSyn-gen id∈ (λ ()) (λ ()) dg)
   domain-exact d-fst      d-fst          = refl
-  domain-exact d-fst      (d-infer dg _ _)   = ⊥-elim (noSyn-gen fst∈ (λ ()) dg)
+  domain-exact d-fst      (d-infer dg _ _)   = ⊥-elim (noSyn-gen fst∈ (λ ()) (λ ()) dg)
   domain-exact d-snd      d-snd          = refl
-  domain-exact d-snd      (d-infer dg _ _)   = ⊥-elim (noSyn-gen snd∈ (λ ()) dg)
+  domain-exact d-snd      (d-infer dg _ _)   = ⊥-elim (noSyn-gen snd∈ (λ ()) (λ ()) dg)
   domain-exact d-terminal d-terminal     = refl
-  domain-exact d-terminal (d-infer dg _ _)   = ⊥-elim (noSyn-gen terminal∈ (λ ()) dg)
+  domain-exact d-terminal (d-infer dg _ _)   = ⊥-elim (noSyn-gen terminal∈ (λ ()) (λ ()) dg)
   domain-exact d-initial  d-initial      = refl
-  domain-exact d-initial  (d-infer dg _ _)   = ⊥-elim (noSyn-gen initial∈ (λ ()) dg)
+  domain-exact d-initial  (d-infer dg _ _)   = ⊥-elim (noSyn-gen initial∈ (λ ()) (λ ()) dg)
   domain-exact (d-case df dg j) (d-case df′ dg′ j′) = joinUnder (domain-exact df df′) (domain-exact dg dg′) j j′
   domain-exact (d-case _ _ _)   (d-infer dg _ _)   = ⊥-elim (noSyn-case dg)
   domain-exact (d-pair df dg) (d-pair df′ dg′)   = cong₂ _*_ (domain-exact df df′) (domain-exact dg dg′)
@@ -300,11 +284,11 @@ module Modes {m} (Δ : KCtx m) where
   agree (d-poly d e lt _ _ _ _ _ _ _) s = ⊥-elim (noSyn-poly d e lt s)
   agree (d-lam _) ()
   agree (d-compose _ _) s = ⊥-elim (noSyn-compose s)
-  agree d-id        s = ⊥-elim (noSyn-gen id∈ (λ ()) s)
-  agree d-fst       s = ⊥-elim (noSyn-gen fst∈ (λ ()) s)
-  agree d-snd       s = ⊥-elim (noSyn-gen snd∈ (λ ()) s)
-  agree d-terminal  s = ⊥-elim (noSyn-gen terminal∈ (λ ()) s)
-  agree d-initial   s = ⊥-elim (noSyn-gen initial∈ (λ ()) s)
+  agree d-id        s = ⊥-elim (noSyn-gen id∈ (λ ()) (λ ()) s)
+  agree d-fst       s = ⊥-elim (noSyn-gen fst∈ (λ ()) (λ ()) s)
+  agree d-snd       s = ⊥-elim (noSyn-gen snd∈ (λ ()) (λ ()) s)
+  agree d-terminal  s = ⊥-elim (noSyn-gen terminal∈ (λ ()) (λ ()) s)
+  agree d-initial   s = ⊥-elim (noSyn-gen initial∈ (λ ()) (λ ()) s)
   agree (d-case _ _ _)    s = ⊥-elim (noSyn-case s)
   agree (d-pair _ _)    s = ⊥-elim (noSyn-pair s)
   agree (d-cata _ _)  s = ⊥-elim (noSyn-cata s)
