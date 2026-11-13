@@ -46,6 +46,8 @@ open import Once.LinCore.Temps fmt ans bw
 open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_; fsz; Plain; PlainM; op-NoT)
 open import Once.LinCore.Image fmt ans bw
 open import Once.LinCore.ImageRun fmt ans bw
+-- a ν is observed at the empty table (D423)
+open import Once.LinCore.ObsTable fmt ans bw using (TF; tf-id; tf-∘; tf-⊗; tf-case; tf-inl; tf-inr; tf-lul; tf-lul⁻; tf-drop; tf-lend; tf-bsnd; tf-bcopy; tf-bev; tf-unf; rt; obsT-tf; rt-obsT)
 
 ------------------------------------------------------------------------
 -- 1. RUNS OF THE IMAGE.
@@ -110,6 +112,12 @@ SimRI : ∀ {T sh U Es B S U′} → Outcome B → Codeᴵ sh U → Ret U T → 
       → Codeᴵ (Es ∣ B ∷ S) U′ → Ret U′ T → Slots Es → Stk S → Set
 SimRI (gives w n′) c r m n t k r′ es os = OutI c r m n t k r′ (es ∥ w ∷ˢ os) n′
 SimRI (stop y)     c r m n t k r′ es os = PausedI c r m n t
+
+-- a simulation of a code is one of an equal code
+sim-code : ∀ {T sh U Es B S U′} {o : Outcome B} {c c′ : Codeᴵ sh U} {r : Ret U T} {m : Cfg sh} {n : ℕ} {t : Trace}
+             {k : Codeᴵ (Es ∣ B ∷ S) U′} {r′ : Ret U′ T} {es : Slots Es} {os : Stk S}
+         → c ≡ c′ → SimRI o c r m n t k r′ es os → SimRI o c′ r m n t k r′ es os
+sim-code refl x = x
 
 private
   δn-same : ∀ k → δn k k ≡ 1
@@ -477,9 +485,11 @@ mutual
   simI r-unf   fr es eq os k ρ = leaf (i-prim r-unf) (k-alloc ∷ [])
   -- ★ through a cell's code word: its trampoline (D417), which does the
   -- cell's part and calls the block
-  simI (r-nout {o = o} r) p es eq os k ρ =
+  simI (r-nout {F = F} {S} {o = o} r) p es eq os k ρ =
     calledR′ o i-iobs (thenR o (leaf i-nopen (k-free ∷ []))
-      (calledR o (around o i-elift (simI r p (vw mone []ᵉ) refl []ˢ _ (frm {t = nothing} end []ᵉ []ˢ (frm {t = nothing} k es os ρ))))))
+      (calledR o (around o i-elift
+        (sim-code (cong (λ u → compᴵ ε u (epop ⨾ end)) (rt-obsT F S))
+          (simTF r (obsT-tf F S) p (vw mone []ᵉ) refl []ˢ _ (frm {t = nothing} end []ᵉ []ˢ (frm {t = nothing} k es os ρ)))))))
   simI (r-ev {o = o} r) p es eq os k ρ =
     calledR′ o i-icall (thenR o (leaf i-open1 (k-free ∷ []))
       (calledR o (around o i-elift (simI r p (vw mone []ᵉ) refl []ˢ _ (frm {t = nothing} end []ᵉ []ˢ (frm {t = nothing} k es os ρ))))))
@@ -505,6 +515,48 @@ mutual
   simI r-exh fr es eq os k ρ = paused _ ρ _ _ [] [] [] done w-[] []≼ [] tt
   simI (r-cut {o = o} r q) fr es eq os k ρ = cutR o q (simI r fr es eq os k ρ)
   simI (r-tmp {o = o} r w p) fr es eq os k ρ = tmpR o w (simI r fr es eq os k ρ)
+
+  -- ★ a TABLE-FREE term's run, on its code at the empty table (D423): as
+  -- `simI`, by the run (the observation's block is `kobs ε`)
+  simTF : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v o n t}
+        → (r : Run ds f e v n o t) (w : TF f) → Plain r
+        → ∀ {Es S T U} (es : Slots (E ∷ Es)) → see es ≡ e → (os : Stk S) (k : Codeᴵ (E ∷ Es ∣ B ∷ S) U) (ρ : Ret U T)
+        → SimRI o (compᴵ ε (rt w) k) ρ (es ∥ v ∷ˢ os) n t k ρ es os
+  simTF (r-tmp {o = o} r wv tp) w fr es eq os k ρ = tmpR o wv (simTF r w fr es eq os k ρ)
+  simTF r-exh w fr es eq os k ρ = paused _ ρ _ _ [] [] [] done w-[] []≼ [] tt
+  simTF (r-cut {o = o} r q) w fr es eq os k ρ = cutR o q (simTF r w fr es eq os k ρ)
+  simTF r-id tf-id fr es eq os k ρ = doneO
+  simTF (r-∘ rg (go-on {o = o} rf)) (tf-∘ wf wg) (pg , pf) es eq os k ρ =
+    thenR o (simTF rg wg pg es eq os _ ρ) (simTF rf wf pf es eq os k ρ)
+  simTF (r-∘ rg stopped) (tf-∘ wf wg) pg es eq os k ρ = P-[] (simTF rg wg pg es eq os _ ρ)
+  simTF (r-⊗ {c = c} rf (go-on {u = a′} (fm-gives rg))) (tf-⊗ wf wg) (pf , pg) es eq os k ρ =
+    pre i-unpair (then (simTF rf wf pf es eq (c ∷ˢ os) _ ρ)
+                       (pre i-swap (after (after (simTF rg wg pg es eq (a′ ∷ˢ os) _ ρ) i-swap) i-pair)))
+  simTF (r-⊗ {c = c} rf (go-on {u = a′} (fm-stop rg))) (tf-⊗ wf wg) (pf , pg) es eq os k ρ =
+    preP i-unpair (thenP (simTF rf wf pf es eq (c ∷ˢ os) _ ρ) (preP i-swap (simTF rg wg pg es eq (a′ ∷ˢ os) _ ρ)))
+  simTF (r-⊗ {c = c} rf stopped) (tf-⊗ wf wg) pf es eq os k ρ = P-[] (preP i-unpair (simTF rf wf pf es eq (c ∷ˢ os) _ ρ))
+  simTF r-λ tf-lul fr es eq os k ρ = leaf (i-prim r-λ) []
+  simTF r-λ⁻ tf-lul⁻ fr es eq os k ρ = leaf (i-prim r-λ⁻) []
+  simTF (r-drop {v = v} {n}) tf-drop fr es eq os k ρ = freeS v os n
+  simTF r-inl tf-inl fr es eq os k ρ = leaf (i-prim r-inl) []
+  simTF r-inr tf-inr fr es eq os k ρ = leaf (i-prim r-inr) []
+  simTF (r-case₁ {o = o} r) (tf-case wf wg) p es eq os k ρ = preR o i-case₁ (simTF r wf p es eq os k ρ)
+  simTF (r-case₂ {o = o} r) (tf-case wf wg) p es eq os k ρ = preR o i-case₂ (simTF r wg p es eq os k ρ)
+  simTF (r-lend {x = x} (fm-gives r)) (tf-lend wb) fr es refl os k ρ =
+    pre i-elend (after (simTF r wb fr (ln (see es) x es) refl os _ ρ) i-eunlend)
+  simTF (r-lend {x = x} (fm-stop r)) (tf-lend wb) fr es refl os k ρ = preP i-elend (simTF r wb fr (ln (see es) x es) refl os _ ρ)
+  simTF (r-snd {e₂ = e₂} {o = o} r) (tf-bsnd wf) fr es eq os k ρ = around o (i-esnd eq) (simTF r wf fr (vw e₂ es) refl os _ ρ)
+  simTF (r-copy {n = n}) tf-bcopy fr es refl os k ρ = copyS (see es) refl os n
+  simTF r-unf tf-unf fr es eq os k ρ = leaf (i-prim r-unf) (k-alloc ∷ [])
+  simTF (r-bev {B = B} {ds′ = ds′} {b = b} {γ = γ} {i = i} {x} {a} {o} {n} r) tf-bev p es eq os k ρ =
+    calledR′ o (i-icallω eq) (bevR o (calledRω o (simI r p (vw x []ᵉ) refl []ˢ end (frm {t = just _} (epop ⨾ end) (vw x E′) []ˢ R′))))
+    where
+      E′ = vw (see es) []ᵉ
+      R′ = frm {t = just _} k es os ρ
+      bevR : (o : Outcome B) → ∀ {t} → SimRI o (call (kbodyω ds′ b γ) ⨾ epop ⨾ end) R′ (vw x E′ ∥ a ∷ˢ []ˢ) n t (epop ⨾ end) R′ (vw x E′) []ˢ
+           → SimRI o (openω ⨾ call (kbodyω ds′ b γ) ⨾ epop ⨾ end) R′ (E′ ∥ a ∷ˢ []ˢ) n (peek i ∷ t) end R′ E′ []ˢ
+      bevR (gives _ _) r′ = then (leaf (i-openω eq) (k-peek ∷ [])) (after r′ i-epop)
+      bevR (stop _)    r′ = thenP (leaf (i-openω eq) (k-peek ∷ [])) r′
 
 ------------------------------------------------------------------------
 -- 7. ★ ON THE IMAGE (A16's §7).

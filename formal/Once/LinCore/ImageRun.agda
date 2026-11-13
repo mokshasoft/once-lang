@@ -140,7 +140,7 @@ data StepI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg
   i-iobs   : ∀ {Γ} {ds : Defs Γ} {Es F S S′ U} {k : Codeᴵ (Es ∣ LF∙ F (Nu F) ∷ S′) U} {r : Ret U T} {es : Slots Es} {i}
                {p : MV (Coalg F S ⊗t S)} {os : Stk S′} {n}
            → StepI (iobs ds ⨾ k) r (es ∥ mnu i p ∷ˢ os) n (tmp (tnew fsz) ∷ [])
-                   (blockᴵ (ktro ds F S)) (frm {t = nothing} k es os r) ([]ᵉ ∥ mnu i p ∷ˢ []ˢ) n
+                   (blockᴵ (ktro ε F S)) (frm {t = nothing} k es os r) ([]ᵉ ∥ mnu i p ∷ˢ []ˢ) n
   i-ccopy  : ∀ {Es kd g X A B S U} {k : Codeᴵ (Fn kd g A B ∷ Es ∣ Fn kd g A B ∷ S) U} {r : Ret U T}
                {lam : Lam kd g X A B} {i x} {es : Slots (Fn kd g A B ∷ Es)} {os : Stk S} {n}
            → see es ≡ mfn i lam x

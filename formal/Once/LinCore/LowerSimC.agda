@@ -322,11 +322,11 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                        ; c-efit = c-efit C ; c-sfit = fit } ,
                 b-next Bd , ran-hi (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) (subst (λ z → Ran (10 + (nsteps z + 2)) 1 (AllocState.next-heap-ref (falloc fs)) bot fs fs′) (vw-len px) (b-ran Bd))
 
-  -- ★ `lunf`: a ν's cell, its code word its observation block at the table
-  -- where it is built, its copy and free its cell type's
-  lunf-sim : ∀ prog (fs : FlatState) (φ : Frame) {Γ} {ds : Defs Γ} {F S₀ Es S}
+  -- ★ `lunf`: a ν's cell, its code word its observation block at the empty
+  -- table (D423), its copy and free its cell type's
+  lunf-sim : ∀ prog (fs : FlatState) (φ : Frame) {F S₀ Es S}
                {es : Slots Es} {os : Stk S} {p : MV (Coalg F S₀ ⊗t S₀)}
-           → (n : (F , S₀) ∈ nus U) (o : (Γ , ds) ∈ obs U) (ct : cty (F , S₀) ∈ tys U)
+           → (n : (F , S₀) ∈ nus U) (o : (_ , ε) ∈ obs U) (ct : cty (F , S₀) ∈ tys U)
            → (∀ j → AllocState.next-heap-ref (falloc fs) ≤ serial j → cntE es j ≡ 0 × cntS (p ∷ˢ os) j ≡ 0)
            → Seg prog (fpc fs) (headerTr (wsz (cty (F , S₀))) (tl (idx (inO o n))) (tl (idx (inC ct))) (tl (idx (inF ct)))
                                 ++ mvSP ((budget φ ∸ ws S) ∸ wsz (cty (F , S₀))) hdr (wsz (cty (F , S₀)))
@@ -337,7 +337,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
            → Σ FlatState λ fs′ → FlatSteps prog (10 + (nsteps (wsz (cty (F , S₀))) + 2)) fs fs′
                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mnu (szν F S₀ , AllocState.next-heap-ref (falloc fs)) p ∷ˢ os)
                × AllocState.next-heap-ref (falloc fs′) ≡ suc (AllocState.next-heap-ref (falloc fs)) × Ran (10 + (nsteps (wsz (cty (F , S₀))) + 2)) 1 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
-  lunf-sim prog fs φ {Γ} {ds} {F} {S₀} {Es} {S} {es} {os} {p} n o ct fresh s h C fit = fin (c-stk C)
+  lunf-sim prog fs φ {F} {S₀} {Es} {S} {es} {os} {p} n o ct fresh s h C fit = fin (c-stk C)
     where
       import Data.Nat.Properties
       bot = budget φ ∸ ws S
@@ -364,7 +364,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                 fs′ , st ,
                 record { c-env  = ev
                        ; c-stk  = ( cellPtr (szν F S₀ , AllocState.next-heap-ref (falloc fs)) ∷ []
-                                  , vnu ((Γ , ds) , (inO o n , refl)) (inC ct , refl) (inF ct , refl) (vw-frame pp (λ j k c → cells j k c)) (b-cell Bd)
+                                  , vnu (inO o n , refl) (inC ct , refl) (inF ct , refl) (vw-frame pp (λ j k c → cells j k c)) (b-cell Bd)
                                   , (top , tt) )
                                 , st′
                        ; c-efit = c-efit C ; c-sfit = fit } ,
