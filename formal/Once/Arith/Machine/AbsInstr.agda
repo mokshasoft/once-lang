@@ -32,7 +32,7 @@ open import Once.Arith.Machine.AbsState
 open import Once.Arith.Machine.Shape
 open import Once.Spec.Word using (module Width)
 open import Once.Word using (module WidthLaws)
-open import Once.Arith.CmpOp using (CmpOp; cmp-bit)
+open import Once.Arith.CmpOp using (CmpOp; cmp-bit; FCmpOp; fcmp-bit)
 open import Once.Spec.Float.Dyadic using (FloatFormat)
 open import Once.Spec.Float.Decimal using (Decimal)
 open import Once.Float.Word using (round)
@@ -67,6 +67,11 @@ data AbstractInstr : Set where
 
   -- | plan 0.108: `cmp-rrr op dst a b` : reg dst := (reg a ⋚ reg b) as 0/1.
   cmp-rrr     : CmpOp → ℕ → ℕ → ℕ → AbstractInstr
+
+  -- | plan 0.150: `fcmp-rrr op dst a b` : reg dst := (reg a ⋚ reg b) as 0/1, a
+  -- comparison at `Float` by the Spec's symbol (`FCmpOp`), on the values the
+  -- two words encode.
+  fcmp-rrr    : FCmpOp → ℕ → ℕ → ℕ → AbstractInstr
 
   -- | `div-safe-rrr dst a b` / `rem-safe-rrr dst a b` : SEMANTICALLY IDENTICAL
   -- to `div-rrr`/`rem-rrr` (both denote `_/ˢ_`/`_%ˢ_`). The `-safe` marker is
@@ -212,6 +217,10 @@ module Exec (bits : ℕ) (F : FloatFormat) where
   step (cmp-rrr o dst a b) s = record s
     { regs = ArithAbsState.regs s [ dst ↦
         bin-op (cmp-bit bits o)
+               (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
+  step (fcmp-rrr o dst a b) s = record s
+    { regs = ArithAbsState.regs s [ dst ↦
+        bin-op (fcmp-bit F o)
                (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
   -- `-safe` variants: step is IDENTICAL to the guarded div-rrr/rem-rrr.
   step (div-safe-rrr dst a b) s = record s

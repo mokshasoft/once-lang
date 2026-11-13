@@ -15,10 +15,10 @@ module Once.Arith.SigOp.BlockSem where
 open import Data.List using ([]; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_,_)
-open import Once.Arith.CmpOp using (cmp-bit)
+open import Once.Arith.CmpOp using (cmp-bit; fcmp-bit)
 open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Fst; Snd; Path; here-int; here-flt; go-fst; go-snd)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; numtype-as-type; shape-as-type)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; afcmp; numtype-as-type; shape-as-type)
 import Once.Spec.Word as OnceWord
 -- PLAN 0.74 J5: was `module W = OnceWord.Word64`. `block-semM` is the
 -- definitional modular-`Word` evaluator an arith BLOCK denotes, and a block
@@ -117,6 +117,7 @@ block-semM {n = NInt}   (aneg a)   tn inp = W.⊝_   tn (block-semM a tn inp)
 block-semM {n = NFloat} (aneg a)   tn inp = FA.fneg (float-format tn) (block-semM a tn inp)
 block-semM (ai2f a)        tn inp = FA.i2f (float-format tn) (W.toℤ tn (block-semM a tn inp))
 block-semM (acmp o a b)    tn inp = cmp-bit (int-bits tn) o (block-semM a tn inp) (block-semM b tn inp)
+block-semM (afcmp o a b)   tn inp = fcmp-bit (float-format tn) o (block-semM a tn inp) (block-semM b tn inp)
 
 -- | …at the block's declared codomain, graded: what its contract denotes.
 -- Split on the kind so `M.⟦ numtype-as-type n ⟧ᵍ` reduces to `block-semM`'s

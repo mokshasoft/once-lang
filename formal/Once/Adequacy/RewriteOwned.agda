@@ -38,7 +38,7 @@ open import Once.SigOp.Info using (SigOpInfo; mk-info'; SigOpSem; Internal;
                                    blockV; primV; ffiV; callsV; emitsV; haltsV; module SigOpInfo)
 open SigOpInfo using (name; sem; baseA; conB)
 open import Once.Arith.Prim using (ArithPrim; p-add; p-sub; p-mul; p-div; p-mod; p-neg;
-                                   p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp)
+                                   p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp; p-fneg)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block; cmp-block-info; cmp-body)
 open import Once.Arith.SigOp.Block using (block-info; block-name)
@@ -74,6 +74,7 @@ private
   lifts-at nm p-fmul bA cB _ ()
   lifts-at nm p-fdiv bA cB _ ()
   lifts-at nm p-i2f  bA cB _ ()
+  lifts-at nm p-fneg bA cB _ ()
   lifts-at nm (p-cmp o) bA cB () _
 
 ------------------------------------------------------------------------

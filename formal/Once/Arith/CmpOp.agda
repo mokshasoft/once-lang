@@ -2,7 +2,8 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Arith.CmpOp — plan 0.108: THE SIX COMPARISONS, as one operation code.
+-- Once.Arith.CmpOp — plan 0.108: THE SIX COMPARISONS, as one operation code
+-- (and plan 0.150: the comparisons at `Float`, `FCmpOp`).
 --
 -- Signed word comparisons (D054) at a width: what the comparison SigOps mean
 -- (`Prim.cmp-semM`, into `Bool = Unit + Unit` with true = inr, D263), what the
@@ -31,3 +32,32 @@ cmp-word bits c-ne a b = not (Width._≡ʷ_ bits a b)
 -- into its destination register.
 cmp-bit : (bits : ℕ) → CmpOp → ℕ → ℕ → ℕ
 cmp-bit bits o a b = if cmp-word bits o a b then 1 else 0
+
+------------------------------------------------------------------------
+-- The comparisons at `Float` (plan 0.150): one code per row and symbol of
+-- the Spec's table (`Spec.Theory`: the IEEE comparisons of `Rounded`, the
+-- total order of `Order`, the identity of `Equality`), meaning the Spec's
+-- symbol on the values the words encode.
+------------------------------------------------------------------------
+
+open import Once.Spec.Numerics using (TargetNum; mkTargetNum)
+open import Once.Spec.Float.Dyadic using (FloatFormat)
+open import Data.Nat using (s≤s; z≤n)
+open import Once.Spec.Theory using (Has; Sym; compare; module Models; ⟦_⟧ₛ) renaming (float to nfloat)
+open import Once.Spec.Float.Encoding using (decode)
+open import Data.Product using (_,_)
+
+data FCmpOp : Set where
+  fcmp : ∀ {U} → Has nfloat U → Sym U compare → FCmpOp
+
+-- (The Float rows of the table read only the target's float format, so a
+-- comparison's meaning is stated at a format: `floatTarget` fills the width,
+-- which nothing here reads.)
+floatTarget : FloatFormat → TargetNum
+floatTarget F = mkTargetNum 1 F (s≤s z≤n)
+
+fcmp-word : FloatFormat → FCmpOp → ℕ → ℕ → Bool
+fcmp-word F (fcmp h o) a b = ⟦ o ⟧ₛ (Models.structure (floatTarget F) h) (decode F a , decode F b)
+
+fcmp-bit : FloatFormat → FCmpOp → ℕ → ℕ → ℕ
+fcmp-bit F o a b = if fcmp-word F o a b then 1 else 0

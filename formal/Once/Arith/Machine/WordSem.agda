@@ -20,7 +20,7 @@ open import Data.Nat using (ℕ)
 import Once.Spec.Word as W
 open import Once.Arith.Machine.Shape using (⟦_⟧S; readLeaf)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; afcmp)
 open import Once.Arith.Type using (NInt; NFloat)
 open import Once.Spec.Float.Dyadic using (FloatFormat)
 open import Once.Float.Word using (round)
@@ -31,7 +31,7 @@ import Once.Float.Word as FA
 -- float one, and neither is hard-coded here. A float result IS a bit pattern
 -- (D113), and a `Word` IS `Carrier` (`ℕ`), so the two kinds share a result
 -- type and `eval-arith-W` stays a single function.
-open import Once.Arith.CmpOp using (cmp-bit)
+open import Once.Arith.CmpOp using (cmp-bit; fcmp-bit)
 
 module Sem (bits : ℕ) (F : FloatFormat) where
   open W.Width bits using (Word; fromℤ; toℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_)
@@ -73,3 +73,4 @@ module Sem (bits : ℕ) (F : FloatFormat) where
   eval-arith-W (ai2f a) inp = FA.i2f F (toℤ (eval-arith-W a inp))
   -- plan 0.108: a signed comparison, as a 0/1 word.
   eval-arith-W (acmp o a b) inp = cmp-bit bits o (eval-arith-W a inp) (eval-arith-W b inp)
+  eval-arith-W (afcmp o a b) inp = fcmp-bit F o (eval-arith-W a inp) (eval-arith-W b inp)
