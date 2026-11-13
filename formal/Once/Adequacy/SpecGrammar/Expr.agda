@@ -25,7 +25,11 @@ open import Relation.Nullary using (¬_)
 
 open import Once.Spec.Surface.Syntax as O using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Surface.OpNames
-open import Once.Spec.Surface.Operator using (BinOp)
+open import Once.Spec.Surface.Operator using (BinOp; dotted; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=; comparison)
+open import Once.Spec.Surface.Lexing using (TOpD; Glyph; g+; g-; g*; g/; g%; g<; g>)
+open import Once.Spec.Float.Value using (neg)
+open import Data.Unit using (tt)
+import Data.Integer as ℤ
 open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand)
@@ -89,6 +93,78 @@ private
       → Σ[ s ∈ String ] (e ≡ RVar s × G.ParsesOpChars (F (t ∷ toks)) acc s (F rest))
   opc oc (s , eq , sd) = s , eq , op-char oc sd
 
+  -- an IEEE form's name: its operator's character and `.`
+  glyph1 : ∀ {d c} → OneCharGlyph d c → Glyph (c ∷ []) ‹ d › []
+  glyph1 ocg-+ = g+
+  glyph1 ocg-- = g- (λ ()) (λ ())
+  glyph1 ocg-* = g*
+  glyph1 ocg-/ = g/
+  glyph1 ocg-< = g< (λ ())
+  glyph1 ocg-> = g> (λ ())
+
+  opd : ∀ {d c acc toks e rest} → OneCharGlyph d c → Σ[ s ∈ String ] (e ≡ RVar s × G.ParsesOpChars (F toks) ('.' ∷ c ∷ acc) s (F rest))
+      → Σ[ s ∈ String ] (e ≡ RVar s × G.ParsesOpChars (F (P.TOpD d ∷ toks)) acc s (F rest))
+  opd w (s , eq , sd) = s , eq , op-dotted (glyph1 w) sd
+
+  notNumeral→ : ∀ toks → NotNumeral toks → ¬ NumeralStart (F toks)
+  notNumeral→ (P.TInt _ _ ∷ _) ()
+  notNumeral→ (P.TFloat _ _ _ _ ∷ _) ()
+  notNumeral→ [] _ ()
+  notNumeral→ (P.TWord _ ∷ _) _ ()
+  notNumeral→ (P.TString _ ∷ _) _ ()
+  notNumeral→ (P.TLParen ∷ _) _ ()
+  notNumeral→ (P.TRParen ∷ _) _ ()
+  notNumeral→ (P.TLBrace ∷ _) _ ()
+  notNumeral→ (P.TRBrace ∷ _) _ ()
+  notNumeral→ (P.TColon ∷ _) _ ()
+  notNumeral→ (P.TEquals ∷ _) _ ()
+  notNumeral→ (P.TArrow ∷ _) _ ()
+  notNumeral→ (P.TCaret1 ∷ _) _ ()
+  notNumeral→ (P.TCaret0 ∷ _) _ ()
+  notNumeral→ (P.TCaretW ∷ _) _ ()
+  notNumeral→ (P.TLambda ∷ _) _ ()
+  notNumeral→ (P.TComma ∷ _) _ ()
+  notNumeral→ (P.TSemicolon ∷ _) _ ()
+  notNumeral→ (P.TAt ∷ _) _ ()
+  notNumeral→ (P.TPipe ∷ _) _ ()
+  notNumeral→ (P.TDot ∷ _) _ ()
+  notNumeral→ (P.TOp _ ∷ _) _ ()
+  notNumeral→ (P.TOpD _ ∷ _) _ ()
+  notNumeral→ (P.TAmpersand ∷ _) _ ()
+  notNumeral→ (P.TBang ∷ _) _ ()
+  notNumeral→ (P.TNewline ∷ _) _ ()
+  notNumeral→ (P.TEOF ∷ _) _ ()
+
+  notNumeral← : ∀ toks → ¬ NumeralStart (F toks) → NotNumeral toks
+  notNumeral← (P.TInt _ _ ∷ _) n = n ns-int
+  notNumeral← (P.TFloat _ _ _ _ ∷ _) n = n ns-float
+  notNumeral← [] _ = tt
+  notNumeral← (P.TWord _ ∷ _) _ = tt
+  notNumeral← (P.TString _ ∷ _) _ = tt
+  notNumeral← (P.TLParen ∷ _) _ = tt
+  notNumeral← (P.TRParen ∷ _) _ = tt
+  notNumeral← (P.TLBrace ∷ _) _ = tt
+  notNumeral← (P.TRBrace ∷ _) _ = tt
+  notNumeral← (P.TColon ∷ _) _ = tt
+  notNumeral← (P.TEquals ∷ _) _ = tt
+  notNumeral← (P.TArrow ∷ _) _ = tt
+  notNumeral← (P.TCaret1 ∷ _) _ = tt
+  notNumeral← (P.TCaret0 ∷ _) _ = tt
+  notNumeral← (P.TCaretW ∷ _) _ = tt
+  notNumeral← (P.TLambda ∷ _) _ = tt
+  notNumeral← (P.TComma ∷ _) _ = tt
+  notNumeral← (P.TSemicolon ∷ _) _ = tt
+  notNumeral← (P.TAt ∷ _) _ = tt
+  notNumeral← (P.TPipe ∷ _) _ = tt
+  notNumeral← (P.TDot ∷ _) _ = tt
+  notNumeral← (P.TOp _ ∷ _) _ = tt
+  notNumeral← (P.TOpD _ ∷ _) _ = tt
+  notNumeral← (P.TAmpersand ∷ _) _ = tt
+  notNumeral← (P.TBang ∷ _) _ = tt
+  notNumeral← (P.TNewline ∷ _) _ = tt
+  notNumeral← (P.TEOF ∷ _) _ = tt
+
+
 expr→ (pe-mk d) = comp→ d
 
 comp→ (pc-mk dc dt) = expr (cmp→ dc) (ctail→ dt)
@@ -97,27 +173,32 @@ ctail→ {toks = toks} (pct-done n) = comp-done (notDot→TDot toks n)
 ctail→ (pct-dot dc dt) = comp-dot (cmp→ dc) (ctail→ dt)
 
 cmp→ {rest = rest} (pcm-noop da n) = cmp-none (add→ da) (notCmp→ rest n)
-cmp→ (pcm-lt dl dr) = cmp ct-lt (add→ dl) (add→ dr)
-cmp→ (pcm-le dl dr) = cmp ct-le (add→ dl) (add→ dr)
-cmp→ (pcm-gt dl dr) = cmp ct-gt (add→ dl) (add→ dr)
-cmp→ (pcm-ge dl dr) = cmp ct-ge (add→ dl) (add→ dr)
-cmp→ (pcm-eq dl dr) = cmp ct-eq (add→ dl) (add→ dr)
-cmp→ (pcm-ne dl dr) = cmp ct-ne (add→ dl) (add→ dr)
+cmp→ (pcm-lt dl dr) = cmp (ot-plain refl) (add→ dl) (add→ dr)
+cmp→ (pcm-le dl dr) = cmp (ot-plain refl) (add→ dl) (add→ dr)
+cmp→ (pcm-gt dl dr) = cmp (ot-plain refl) (add→ dl) (add→ dr)
+cmp→ (pcm-ge dl dr) = cmp (ot-plain refl) (add→ dl) (add→ dr)
+cmp→ (pcm-eq dl dr) = cmp (ot-plain refl) (add→ dl) (add→ dr)
+cmp→ (pcm-ne dl dr) = cmp (ot-plain refl) (add→ dl) (add→ dr)
+cmp→ (pcm-dot lv dl dr) = cmp (ot-dotted lv) (add→ dl) (add→ dr)
 
 add→ (pa-mk dm dt) = add (mul→ dm) (atail→ dt)
 
 atail→ {toks = toks} (pat-done n) = add-done (notAdd→ toks n)
-atail→ (pat-plus dm dt) = add-op at-plus (mul→ dm) (atail→ dt)
-atail→ (pat-minus dm dt) = add-op at-minus (mul→ dm) (atail→ dt)
+atail→ (pat-plus dm dt) = add-op (ot-plain refl) (mul→ dm) (atail→ dt)
+atail→ (pat-minus dm dt) = add-op (ot-plain refl) (mul→ dm) (atail→ dt)
+atail→ (pat-dot lv dm dt) = add-op (ot-dotted lv) (mul→ dm) (atail→ dt)
 
 mul→ (pm-mk du dt) = mul (unary→ du) (mtail→ dt)
 
 mtail→ {toks = toks} (pmt-done n) = mul-done (notMul→ toks n)
-mtail→ (pmt-star du dt) = mul-op mt-star (unary→ du) (mtail→ dt)
-mtail→ (pmt-slash du dt) = mul-op mt-slash (unary→ du) (mtail→ dt)
-mtail→ (pmt-percent du dt) = mul-op mt-pct (unary→ du) (mtail→ dt)
+mtail→ (pmt-star du dt) = mul-op (ot-plain refl) (unary→ du) (mtail→ dt)
+mtail→ (pmt-slash du dt) = mul-op (ot-plain refl) (unary→ du) (mtail→ dt)
+mtail→ (pmt-percent du dt) = mul-op (ot-plain refl) (unary→ du) (mtail→ dt)
+mtail→ (pmt-dot lv du dt) = mul-op (ot-dotted lv) (unary→ du) (mtail→ dt)
 
-unary→ (pu-neg du) = neg (unary→ du)
+unary→ {toks = P.TMinus ∷ toks} (pu-neg nn du) = neg (notNumeral→ toks nn) (unary→ du)
+unary→ (pu-neg-int dt) = neg-lit nn-int (aptail→ dt)
+unary→ (pu-neg-float dt) = neg-lit nn-float (aptail→ dt)
 unary→ (pu-app da) = unary (app→ da)
 
 app→ (papp-mk da dt) = app (atom→ da) (aptail→ dt)
@@ -145,16 +226,17 @@ pcont→ (ppc-annot dT) = paren-annot (annot→ dT)
 
 op→ poe-close = _ , refl , op-close
 op→ (poe-dot d) = opc oc-dot (op→ d)
-op→ (poe-plus d) = opc oc-plus (op→ d)
-op→ (poe-minus d) = opc oc-minus (op→ d)
-op→ (poe-star d) = opc oc-star (op→ d)
-op→ (poe-slash d) = opc oc-slash (op→ d)
-op→ (poe-percent d) = opc oc-pct (op→ d)
-op→ (poe-lt d) = opc oc-lt (op→ d)
-op→ (poe-gt d) = opc oc-gt (op→ d)
+op→ (poe-plus d) = opc (oc-op g+) (op→ d)
+op→ (poe-minus d) = opc (oc-op (g- (λ ()) (λ ()))) (op→ d)
+op→ (poe-star d) = opc (oc-op g*) (op→ d)
+op→ (poe-slash d) = opc (oc-op g/) (op→ d)
+op→ (poe-percent d) = opc (oc-op g%) (op→ d)
+op→ (poe-lt d) = opc (oc-op (g< (λ ()))) (op→ d)
+op→ (poe-gt d) = opc (oc-op (g> (λ ()))) (op→ d)
 op→ (poe-pipe d) = opc oc-pipe (op→ d)
 op→ (poe-amp d) = opc oc-amp (op→ d)
 op→ (poe-at d) = opc oc-at (op→ d)
+op→ (poe-dotted w d) = opd w (op→ d)
 
 ------------------------------------------------------------------------
 -- The Spec's derivation comes from the compiler's
@@ -167,14 +249,13 @@ ctail-ns (comp-dot _ _) n ()
 
 atail-ns : ∀ {l ts e r} → G.ParsesAddTail l ts e r → N r → N ts
 atail-ns (add-done _) n = n
-atail-ns (add-op at-plus _ _) n ()
-atail-ns (add-op at-minus _ _) n ()
+atail-ns (add-op (ot-plain _) _ _) n ()
+atail-ns (add-op (ot-dotted _) _ _) n ()
 
 mtail-ns : ∀ {l ts e r} → G.ParsesMulTail l ts e r → N r → N ts
 mtail-ns (mul-done _) n = n
-mtail-ns (mul-op mt-star _ _) n ()
-mtail-ns (mul-op mt-slash _ _) n ()
-mtail-ns (mul-op mt-pct _ _) n ()
+mtail-ns (mul-op (ot-plain _) _ _) n ()
+mtail-ns (mul-op (ot-dotted _) _ _) n ()
 
 aptail-ns : ∀ {l ts e r} → G.ParsesAppTail l ts e r → N r → N ts
 aptail-ns (app-done _) n = n
@@ -189,13 +270,9 @@ pcont-ns paren-close ()
 pcont-ns (paren-pair _) ()
 pcont-ns (paren-annot _) ()
 
-ct-ns : ∀ {t op ts} → CompareToken t op → N (t ∷ ts)
-ct-ns ct-lt ()
-ct-ns ct-le ()
-ct-ns ct-gt ()
-ct-ns ct-ge ()
-ct-ns ct-eq ()
-ct-ns ct-ne ()
+ct-ns : ∀ {l t op ts} → OpToken l t op → N (t ∷ ts)
+ct-ns (ot-plain _) ()
+ct-ns (ot-dotted _) ()
 
 -- A compiler derivation over `toks` of the tree.
 BackE : (List P.Token → Expr → List P.Token → Set) → List P.Token → S.Expr → List Token → Set
@@ -237,7 +314,7 @@ private
   ctdot← (toks₂ , dc , eq) dt n = ctdot←₂ dc (ctail← dt toks₂ eq n)
   ctdot←₂ dc (rest , dt , er) = rest , pct-dot dc dt , er
 
-  cmpn← : ∀ {toks e r} → BackE E.ParsesAdd toks e r → (∀ {t op} → Starts r t → ¬ CompareToken t op)
+  cmpn← : ∀ {toks e r} → BackE E.ParsesAdd toks e r → (∀ {t op} → Starts r t → ¬ OpToken comparison t op)
         → BackE E.ParsesCmp toks e r
   cmpn← (rest , da , refl) nc = rest , pcm-noop da (notCmp← rest nc) , refl
 
@@ -300,8 +377,14 @@ private
   mop← tok oop mk (toks₂ , du , eq) dt n = mop←₂ mk du (mtail← dt toks₂ eq n)
   mop←₂ mk du (rest , dt , er) = rest , mk du dt , er
 
-  neg←₁ : ∀ {toks e r} → BackE E.ParsesUnary toks e r → BackE E.ParsesUnary (P.TMinus ∷ toks) (RNeg e) r
-  neg←₁ (rest , du , er) = rest , pu-neg du , er
+  neg←₁ : ∀ {toks e r} → NotNumeral toks → BackE E.ParsesUnary toks e r → BackE E.ParsesUnary (P.TMinus ∷ toks) (RNeg e) r
+  neg←₁ nn (rest , du , er) = rest , pu-neg nn du , er
+
+  negint←₁ : ∀ {n p toks e r} → BackET E.ParsesAppTail (RInt (ℤ.- n)) toks e r → BackE E.ParsesUnary (P.TMinus ∷ P.TInt n p ∷ toks) e r
+  negint←₁ (rest , dt , er) = rest , pu-neg-int dt , er
+
+  negfloat←₁ : ∀ {i f l p toks e r} → BackET E.ParsesAppTail (RFloat neg i f l) toks e r → BackE E.ParsesUnary (P.TMinus ∷ P.TFloat i f l p ∷ toks) e r
+  negfloat←₁ (rest , dt , er) = rest , pu-neg-float dt , er
 
   un←₁ : ∀ {toks e r} → BackE E.ParsesApp toks e r → BackE E.ParsesUnary toks e r
   un←₁ (rest , da , er) = rest , pu-app da , er
@@ -412,6 +495,19 @@ private
        → Σ[ rest ∈ List P.Token ] (ParsesOpExpr acc (t ∷ toks) (RVar s) rest × F rest ≡ r)
   opc← t mk (rest , d , er) = rest , mk d , er
 
+  ocg : ∀ {c d} → Glyph (c ∷ []) ‹ d › [] → OneCharGlyph d c
+  ocg g+ = ocg-+
+  ocg (g- _ _) = ocg--
+  ocg g* = ocg-*
+  ocg g/ = ocg-/
+  ocg (g< _) = ocg-<
+  ocg (g> _) = ocg->
+
+  opd← : ∀ {d c toks acc s r} → OneCharGlyph d c
+       → Σ[ rest ∈ List P.Token ] (ParsesOpExpr ('.' ∷ c ∷ acc) toks (RVar s) rest × F rest ≡ r)
+       → Σ[ rest ∈ List P.Token ] (ParsesOpExpr acc (P.TOpD d ∷ toks) (RVar s) rest × F rest ≡ r)
+  opd← w (rest , d , er) = rest , poe-dotted w d , er
+
 expr← (expr dc dt) toks e n = comp← (cmp← dc toks e (ctail-ns dt n)) dt n
 
 ctail← (comp-done x) toks refl n = toks , pct-done (notDot← toks x) , refl
@@ -419,37 +515,71 @@ ctail← {l = l} (comp-dot dc dt) toks e n =
   step (λ z → BackET E.ParsesCompTail l z _ _) refl e (λ {toks′} e′ → ctdot← (cmp← dc toks′ e′ (ctail-ns dt n)) dt n)
 
 cmp← (cmp-none da nc) toks e n = cmpn← (add← da toks e n) nc
-cmp← (cmp ct-lt dl dr) toks e n = cmp-fin TLt OpLt pcm-lt refl (add← dl toks e (ct-ns ct-lt)) dr n
-cmp← (cmp ct-le dl dr) toks e n = cmp-fin TLe OpLe pcm-le refl (add← dl toks e (ct-ns ct-le)) dr n
-cmp← (cmp ct-gt dl dr) toks e n = cmp-fin TGt OpGt pcm-gt refl (add← dl toks e (ct-ns ct-gt)) dr n
-cmp← (cmp ct-ge dl dr) toks e n = cmp-fin TGe OpGe pcm-ge refl (add← dl toks e (ct-ns ct-ge)) dr n
-cmp← (cmp ct-eq dl dr) toks e n = cmp-fin TEqEq OpEq pcm-eq refl (add← dl toks e (ct-ns ct-eq)) dr n
-cmp← (cmp ct-ne dl dr) toks e n = cmp-fin TNeq OpNe pcm-ne refl (add← dl toks e (ct-ns ct-ne)) dr n
+cmp← (cmp (ot-plain {o = ‹ o< ›} refl) dl dr) toks e n = cmp-fin TLt OpLt pcm-lt refl (add← dl toks e (ct-ns (ot-plain {o = ‹ o< ›} refl))) dr n
+cmp← (cmp (ot-plain {o = ‹ o<= ›} refl) dl dr) toks e n = cmp-fin TLe OpLe pcm-le refl (add← dl toks e (ct-ns (ot-plain {o = ‹ o<= ›} refl))) dr n
+cmp← (cmp (ot-plain {o = ‹ o> ›} refl) dl dr) toks e n = cmp-fin TGt OpGt pcm-gt refl (add← dl toks e (ct-ns (ot-plain {o = ‹ o> ›} refl))) dr n
+cmp← (cmp (ot-plain {o = ‹ o>= ›} refl) dl dr) toks e n = cmp-fin TGe OpGe pcm-ge refl (add← dl toks e (ct-ns (ot-plain {o = ‹ o>= ›} refl))) dr n
+cmp← (cmp (ot-plain {o = ‹ o== ›} refl) dl dr) toks e n = cmp-fin TEqEq OpEq pcm-eq refl (add← dl toks e (ct-ns (ot-plain {o = ‹ o== ›} refl))) dr n
+cmp← (cmp (ot-plain {o = ‹ o!= ›} refl) dl dr) toks e n = cmp-fin TNeq OpNe pcm-ne refl (add← dl toks e (ct-ns (ot-plain {o = ‹ o!= ›} refl))) dr n
+cmp← (cmp (ot-plain {o = ‹ o+ ›} ()) dl dr) toks e n
+cmp← (cmp (ot-plain {o = ‹ o-  ›} ()) dl dr) toks e n
+cmp← (cmp (ot-plain {o = ‹ o* ›} ()) dl dr) toks e n
+cmp← (cmp (ot-plain {o = ‹ o/ ›} ()) dl dr) toks e n
+cmp← (cmp (ot-plain {o = o%} ()) dl dr) toks e n
+cmp← (cmp (ot-dotted {d} lv) dl dr) toks e n = cmp-fin (TOpD d) (dotted d) (pcm-dot lv) refl (add← dl toks e (ct-ns (ot-dotted lv))) dr n
 
 add← (add dm dt) toks e n = add←₁ (mul← dm toks e (atail-ns dt n)) dt n
 
 atail← (add-done x) toks refl n = toks , pat-done (notAdd← toks x) , refl
-atail← {l = l} (add-op at-plus dm dt) toks e n =
+atail← {l = l} (add-op (ot-plain {o = ‹ o+ ›} refl) dm dt) toks e n =
   step (λ z → BackET E.ParsesAddTail l z _ _) refl e (λ {toks′} e′ →
     aop← P.TPlus OpAdd pat-plus (mul← dm toks′ e′ (atail-ns dt n)) dt n)
-atail← {l = l} (add-op at-minus dm dt) toks e n =
+atail← {l = l} (add-op (ot-plain {o = ‹ o- ›} refl) dm dt) toks e n =
   step (λ z → BackET E.ParsesAddTail l z _ _) refl e (λ {toks′} e′ →
     aop← P.TMinus OpSub pat-minus (mul← dm toks′ e′ (atail-ns dt n)) dt n)
+atail← {l = l} (add-op (ot-dotted {d} lv) dm dt) toks e n =
+  step (λ z → BackET E.ParsesAddTail l z _ _) refl e (λ {toks′} e′ →
+    aop← (P.TOpD d) (dotted d) (pat-dot lv) (mul← dm toks′ e′ (atail-ns dt n)) dt n)
+atail← (add-op (ot-plain {o = ‹ o* ›} ()) dm dt) toks e n
+atail← (add-op (ot-plain {o = ‹ o/ ›} ()) dm dt) toks e n
+atail← (add-op (ot-plain {o = o%} ()) dm dt) toks e n
+atail← (add-op (ot-plain {o = ‹ o< ›} ()) dm dt) toks e n
+atail← (add-op (ot-plain {o = ‹ o<= ›} ()) dm dt) toks e n
+atail← (add-op (ot-plain {o = ‹ o> ›} ()) dm dt) toks e n
+atail← (add-op (ot-plain {o = ‹ o>= ›} ()) dm dt) toks e n
+atail← (add-op (ot-plain {o = ‹ o== ›} ()) dm dt) toks e n
+atail← (add-op (ot-plain {o = ‹ o!= ›} ()) dm dt) toks e n
 
 mul← (mul du dt) toks e n = mul←₁ (unary← du toks e (mtail-ns dt n)) dt n
 
 mtail← (mul-done x) toks refl n = toks , pmt-done (notMul← toks x) , refl
-mtail← {l = l} (mul-op mt-star du dt) toks e n =
+mtail← {l = l} (mul-op (ot-plain {o = ‹ o* ›} refl) du dt) toks e n =
   step (λ z → BackET E.ParsesMulTail l z _ _) refl e (λ {toks′} e′ →
     mop← P.TStar OpMul pmt-star (unary← du toks′ e′ (mtail-ns dt n)) dt n)
-mtail← {l = l} (mul-op mt-slash du dt) toks e n =
+mtail← {l = l} (mul-op (ot-plain {o = ‹ o/ ›} refl) du dt) toks e n =
   step (λ z → BackET E.ParsesMulTail l z _ _) refl e (λ {toks′} e′ →
     mop← P.TSlash OpDiv pmt-slash (unary← du toks′ e′ (mtail-ns dt n)) dt n)
-mtail← {l = l} (mul-op mt-pct du dt) toks e n =
+mtail← {l = l} (mul-op (ot-plain {o = o%} refl) du dt) toks e n =
   step (λ z → BackET E.ParsesMulTail l z _ _) refl e (λ {toks′} e′ →
     mop← P.TPercent OpMod pmt-percent (unary← du toks′ e′ (mtail-ns dt n)) dt n)
+mtail← {l = l} (mul-op (ot-dotted {d} lv) du dt) toks e n =
+  step (λ z → BackET E.ParsesMulTail l z _ _) refl e (λ {toks′} e′ →
+    mop← (P.TOpD d) (dotted d) (pmt-dot lv) (unary← du toks′ e′ (mtail-ns dt n)) dt n)
+mtail← (mul-op (ot-plain {o = ‹ o+ ›} ()) du dt) toks e n
+mtail← (mul-op (ot-plain {o = ‹ o- ›} ()) du dt) toks e n
+mtail← (mul-op (ot-plain {o = ‹ o< ›} ()) du dt) toks e n
+mtail← (mul-op (ot-plain {o = ‹ o<= ›} ()) du dt) toks e n
+mtail← (mul-op (ot-plain {o = ‹ o> ›} ()) du dt) toks e n
+mtail← (mul-op (ot-plain {o = ‹ o>= ›} ()) du dt) toks e n
+mtail← (mul-op (ot-plain {o = ‹ o== ›} ()) du dt) toks e n
+mtail← (mul-op (ot-plain {o = ‹ o!= ›} ()) du dt) toks e n
 
-unary← (neg du) toks e n = step (λ z → BackE E.ParsesUnary z _ _) refl e (λ {toks′} e′ → neg←₁ (unary← du toks′ e′ n))
+unary← (neg nn du) toks e n = step (λ z → BackE E.ParsesUnary z _ _) refl e (λ {toks′} e′ →
+  neg←₁ (notNumeral← toks′ (subst (λ z → ¬ NumeralStart z) (sym e′) nn)) (unary← du toks′ e′ n))
+unary← (neg-lit nn-int dt) toks e n = step (λ z → BackE E.ParsesUnary z _ _) refl e (λ e₁ →
+  stepInt (λ z → BackE E.ParsesUnary (P.TMinus ∷ z) _ _) e₁ (λ p {toks′} e′ → negint←₁ (aptail← dt toks′ e′ n)))
+unary← (neg-lit nn-float dt) toks e n = step (λ z → BackE E.ParsesUnary z _ _) refl e (λ e₁ →
+  stepFloat (λ z → BackE E.ParsesUnary (P.TMinus ∷ z) _ _) e₁ (λ p {toks′} e′ → negfloat←₁ (aptail← dt toks′ e′ n)))
 unary← (unary da) toks e n = un←₁ (app← da toks e n)
 
 app← (app da dt) toks e n = app←₁ (atom← da toks e (aptail-ns dt n)) dt n
@@ -499,19 +629,19 @@ op← op-close toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr
   (λ {toks′} e′ → toks′ , poe-close , e′)
 op← (op-char oc-dot d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
   (λ {toks′} e′ → opc← P.TDot poe-dot (op← d toks′ e′))
-op← (op-char oc-plus d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
+op← (op-char (oc-op g+) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
   (λ {toks′} e′ → opc← P.TPlus poe-plus (op← d toks′ e′))
-op← (op-char oc-minus d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
+op← (op-char (oc-op (g- _ _)) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
   (λ {toks′} e′ → opc← P.TMinus poe-minus (op← d toks′ e′))
-op← (op-char oc-star d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
+op← (op-char (oc-op g*) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
   (λ {toks′} e′ → opc← P.TStar poe-star (op← d toks′ e′))
-op← (op-char oc-slash d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
+op← (op-char (oc-op g/) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
   (λ {toks′} e′ → opc← P.TSlash poe-slash (op← d toks′ e′))
-op← (op-char oc-pct d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
+op← (op-char (oc-op g%) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
   (λ {toks′} e′ → opc← P.TPercent poe-percent (op← d toks′ e′))
-op← (op-char oc-lt d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
+op← (op-char (oc-op (g< _)) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
   (λ {toks′} e′ → opc← P.TLt poe-lt (op← d toks′ e′))
-op← (op-char oc-gt d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
+op← (op-char (oc-op (g> _)) d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
   (λ {toks′} e′ → opc← P.TGt poe-gt (op← d toks′ e′))
 op← (op-char oc-pipe d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
   (λ {toks′} e′ → opc← P.TPipe poe-pipe (op← d toks′ e′))
@@ -519,3 +649,5 @@ op← (op-char oc-amp d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (Pa
   (λ {toks′} e′ → opc← P.TAmpersand poe-amp (op← d toks′ e′))
 op← (op-char oc-at d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
   (λ {toks′} e′ → opc← P.TAt poe-at (op← d toks′ e′))
+op← (op-dotted g d) toks e = step (λ z → Σ[ rest ∈ List P.Token ] (ParsesOpExpr _ z (RVar _) rest × F rest ≡ _)) refl e
+  (λ {toks′} e′ → opd← (ocg g) (op← d toks′ e′))
