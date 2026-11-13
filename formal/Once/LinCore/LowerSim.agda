@@ -191,7 +191,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   ... | (v , ev) = v , trans (cong sm (sym (+-suc k o))) ev
 
   -- the words a move leaves at its destination
-  open import Once.LinCore.Moves {FS} using (Seg; slot; mvSS-run; MovedS; m-moved; m-rest; m-heap; m-halt; m-pc; Keep; keep-refl; keep-trans; keepS; keepP; keepF; keepW; keep-regs; keep-store; keep-pc; keep-heap; Ran; ran-trans; ranS; ranP; ranF; ranW; ran-regs; ran-store; ran-pc; ran-heap; fresh-block; ran-hi; pred<) renaming (ln to nsteps)
+  open import Once.LinCore.Moves {FS} using (Seg; slot; mvSS-run; MovedS; m-moved; m-rest; m-heap; m-halt; m-pc; Keep; keep-refl; keep-trans; keepS; keepP; keepF; keepW; keep-regs; keep-store; keep-pc; keep-heap; Ran; ran-trans; ranS; ranP; ranF; ranW; ran-regs; ran-store; ran-pc; ran-heap; fresh-block; ran-hi; pred<; inb-write) renaming (ln to nsteps)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
   open import Once.CCC.Machine.SMCore using (module LocState; module AllocState)
@@ -1144,7 +1144,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
            ; c-efit = c-efit C ; c-sfit = fit } ,
     cong AllocState.next-heap-ref (w-alloc Wd) ,
     ran-trans (ran-heap fs wL) (ran-trans (ran-regs _)
-      (ran-trans (ranW Wd (λ f x ne k k< ()) (λ x k k< ()) (λ hl lt k k< → fresh-block (AllocState.next-heap-ref (falloc fs)) hl (k + 0) lt)) (ran-trans (ran-regs _) (ran-store fs₄ (bot ∸ 1) _ (<-≤-trans b1<b (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)))))))
+      (ran-trans (ranW Wd (λ f x ne k k< ()) (λ x k k< ()) (λ hl lt k k< → fresh-block (AllocState.next-heap-ref (falloc fs)) hl (k + 0) lt) (inb-write r Wd lt₂ bnd₂)) (ran-trans (ran-regs _) (ran-store fs₄ (bot ∸ 1) _ (<-≤-trans b1<b (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)))))))
     where
       import Data.Nat.Properties
       wL = wsz (LF∙ F (μt F))
@@ -1170,6 +1170,12 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
       f₄ = subst (λ z → fetch prog z ≡ just mov-to-output) pcEq (proj₁ rest′)
       f₅ : fetch prog (fpc fs₄) ≡ just (store-at-slot (bot ∸ 1))
       f₅ = subst (λ z → fetch prog (suc z) ≡ just (store-at-slot (bot ∸ 1))) pcEq (proj₁ (proj₂ rest′))
+      -- the fresh block below the counter, its words inside it (D424)
+      lt₂ : r < AllocState.next-heap-ref (falloc fs₂)
+      lt₂ = Data.Nat.Properties.n<1+n r
+      bnd₂ : ∀ k → k < wL → (k + 0) < AllocState.block-size (falloc fs₂) r
+      bnd₂ k k< = subst (k + 0 <_) (sym (size-with-same wL r (AllocState.block-size (falloc fs))))
+                    (subst (_< wL) (sym (Data.Nat.Properties.+-identityʳ k)) k<)
       -- the heap: only the fresh block is written
       hp : ∀ s k → ¬ s ≡ r → heapMem (floc fs₅) (heap-loc (mkHeapRef s) k) ≡ heapMem (floc fs) (heap-loc (mkHeapRef s) k)
       hp s k ne = w-rest Wd (AtDynamic (heap-loc (mkHeapRef s) k)) (λ k′ _ e → other-block (λ e′ → ne (sym e′)) e)
