@@ -15,7 +15,7 @@
 
 {-# OPTIONS --guardedness #-}
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; suc; _≤_)
 open import Data.List using ([]; _∷_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -41,7 +41,7 @@ open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; _∷ˢ_; Slot
 open import Once.LinCore.Image fmt ans bw
 open import Once.LinCore.ImageRun fmt ans bw
 open import Once.LinCore.Keys fmt ans bw
-open import Once.LinCore.Layout fmt ans bw using (Frame; frameOf)
+open import Once.LinCore.Layout fmt ans bw using (Frame; frameOf; budget)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; next; left; right; eleft; eright)
 open import Once.LinCore.LowAt fmt ans bw using (Inside; module At)
 open import Once.LinCore.StepLocal fmt ans bw using (module Loc)
@@ -102,7 +102,7 @@ module Steps {FS : FrameSemantics} (U : Univ)
   open At U ncty ldConst φ j using (lcin)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
   open FlatStepsAPI {FS} using (FlatSteps)
-  open import Once.LinCore.Moves {FS} using (Keep; Old)
+  open import Once.LinCore.Moves {FS} using (Keep; Old; slot)
 
   -- a constant's loader puts its word in `Output` (the image's `ldConst`'s contract)
   LdOk : Set
@@ -115,15 +115,16 @@ module Steps {FS : FrameSemantics} (U : Univ)
   Out : ∀ {sh U′} {c : Codeᴵ sh U′} → Sub root c → FlatState → ℕ → Cfg sh → Set
   Out s′ fs n′ m′ = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps prog N fs fs′ × Here s′ m′ fs′ × Keep fs fs′
                     × AllocState.next-heap-ref (falloc fs′) ≡ n′ × Old (AllocState.next-heap-ref (falloc fs)) fs fs′
+                    × (∀ x → budget φ ≤ x → slot fs′ x ≡ slot fs x)
 
   private
     out0 : ∀ {sh U′} {c : Codeᴵ sh U′} {s′ : Sub root c} {fs n m′} → Moved s′ fs 0 m′
          → AllocState.next-heap-ref (falloc fs) ≡ n → Out s′ fs n m′
-    out0 (N , fs′ , st , H′ , K , nx′ , o) nx = N , fs′ , st , H′ , K , trans nx′ nx , o
+    out0 (N , fs′ , st , H′ , K , nx′ , o , tp) nx = N , fs′ , st , H′ , K , trans nx′ nx , o , tp
 
     out1 : ∀ {sh U′} {c : Codeᴵ sh U′} {s′ : Sub root c} {fs n m′} → Moved s′ fs 1 m′
          → AllocState.next-heap-ref (falloc fs) ≡ n → Out s′ fs (suc n) m′
-    out1 (N , fs′ , st , H′ , K , nx′ , o) nx = N , fs′ , st , H′ , K , trans nx′ (cong suc nx) , o
+    out1 (N , fs′ , st , H′ , K , nx′ , o , tp) nx = N , fs′ , st , H′ , K , trans nx′ (cong suc nx) , o , tp
 
   -- ★ a primitive, by its run
   prim-step : ∀ {Γ} {ds : Defs Γ} {Es A B S V} {g : LTm Γ A B} {k : Codeᴵ (Es ∣ B ∷ S) V} (s : Sub root (prim ds g ⨾ k))

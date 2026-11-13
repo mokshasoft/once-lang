@@ -294,7 +294,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                 seg₂ = subst (λ z → Seg image z argMv) (sym (ci-pc CI)) arg-seg
                 fin₂ : Σ FlatState (λ fs₂ → FlatSteps image (Once.LinCore.Moves.ln {FS} (wsz A)) fs₁ fs₂
                          × CfgW (LocState.heapMem (floc fs₂)) (slot fs₂) φ′ ([]ᵉ ∥ a ∷ˢ []ˢ)
-                         × Ran (Once.LinCore.Moves.ln {FS} (wsz A)) 0 (AllocState.next-heap-ref (falloc fs₁)) fs₁ fs₂
+                         × Ran (Once.LinCore.Moves.ln {FS} (wsz A)) 0 (AllocState.next-heap-ref (falloc fs₁)) (budget φ′) fs₁ fs₂
                          × (∀ x → budget φ′ ≤ x → slot fs₂ x ≡ slot fs₁ x))
                      → Into s a fs
                 fin₂ (fs₂ , st₂ , C₂ , Rn , top) =
@@ -383,7 +383,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                 nE = Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))
                 fin₂ : Σ FlatState (λ fs₂ → FlatSteps image nE fs₁ fs₂
                          × CfgW (LocState.heapMem (floc fs₂)) (slot fs₂) φ′ (vw (see es) []ᵉ ∥ a ∷ˢ []ˢ)
-                         × Ran nE 0 (AllocState.next-heap-ref (falloc fs₁)) fs₁ fs₂
+                         × Ran nE 0 (AllocState.next-heap-ref (falloc fs₁)) (budget φ′) fs₁ fs₂
                          × (∀ x → budget φ′ ≤ x → slot fs₂ x ≡ slot fs₁ x))
                      → IntoV s es a fs
                 fin₂ (fs₂ , st₂ , C₂ , Rn , top) =

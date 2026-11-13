@@ -138,7 +138,7 @@ module Loc {FS : FrameSemantics} (U : Univ)
   open CfgW
   open Fetch {FS} using (in-seg)
   open SimD {FS} U wordOf using (case₁-sim; case₂-sim; ecase₁-sim; ecase₂-sim)
-  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; k-halt; Ran; r-keep; r-pc; r-next; r-old; Old; ran-refl; ranS; MovedS)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; k-halt; Ran; r-keep; r-pc; r-next; r-old; r-top; Old; ran-refl; ranS; MovedS)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc; find-label)
   open LocState using (heapMem)
   open FlatStepsAPI {FS} using (FlatSteps; [])
@@ -195,12 +195,13 @@ module Loc {FS : FrameSemantics} (U : Univ)
 
   -- what a step's lemma gives: its steps, the next configuration, a straight run
   Gives : ∀ {s′} → (fs : FlatState) → ℕ → ℕ → Cfg s′ → Set
-  Gives fs N a m′ = Σ FlatState λ fs′ → FlatSteps prog N fs fs′ × CfgW (heapMem (floc fs′)) (slot fs′) φ m′ × Ran N a (AllocState.next-heap-ref (falloc fs)) fs fs′
+  Gives fs N a m′ = Σ FlatState λ fs′ → FlatSteps prog N fs fs′ × CfgW (heapMem (floc fs′)) (slot fs′) φ m′ × Ran N a (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
 
   -- what the local theorem gives
   Moved : ∀ {s′ V} {k : Codeᴵ s′ V} → Sub root k → FlatState → ℕ → Cfg s′ → Set
   Moved s′ fs a m′ = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps prog N fs fs′ × Here s′ m′ fs′ × Keep fs fs′
                      × AllocState.next-heap-ref (falloc fs′) ≡ a + AllocState.next-heap-ref (falloc fs) × Old (AllocState.next-heap-ref (falloc fs)) fs fs′
+                     × (∀ x → budget φ ≤ x → slot fs′ x ≡ slot fs x)
 
   straight : ∀ {sa sb V} {i : Insᴵ sa sb} {k : Codeᴵ sb V} (s : Sub root (i ⨾ k)) {m : Cfg sa} {m′ : Cfg sb} {fs} (H : Here s m fs)
            → (N a : ℕ) → N ≡ length (insC s)
@@ -215,7 +216,7 @@ module Loc {FS : FrameSemantics} (U : Univ)
                            (trans (cong (pos s +_) eN) (sym (pos-next s)))))
                ; h-run = trans (k-halt (r-keep Rn)) (h-run H)
                ; h-cfg = C′ }
-        , r-keep Rn , r-next Rn , r-old Rn
+        , r-keep Rn , r-next Rn , r-old Rn , r-top Rn
 
   -- an instruction with no code: the same state, the next configuration
   empty : ∀ {sa sb V} {i : Insᴵ sa sb} {k : Codeᴵ sb V} (s : Sub root (i ⨾ k)) {m : Cfg sa} {m′ : Cfg sb} {fs} (H : Here s m fs)
@@ -278,11 +279,24 @@ module Loc {FS : FrameSemantics} (U : Univ)
     len-++3 x y z = trans (length-++ x) (cong (length x +_) (length-++ y))
 
     -- a view step's move, as a straight run
-    viaS : ∀ {sb} {m′ : Cfg sb} {fs a b n}
+    viaS : ∀ {sb} {m′ : Cfg sb} {fs a b n} → b + n ≤ budget φ
          → Σ FlatState (λ fs′ → FlatSteps prog (Once.LinCore.Moves.ln {FS} n) fs fs′
                                 × CfgW (heapMem (floc fs′)) (slot fs′) φ m′ × MovedS fs fs′ a b n)
          → Gives fs (Once.LinCore.Moves.ln {FS} n) 0 m′
-    viaS (fs′ , st , C′ , M) = fs′ , st , C′ , ranS M
+    viaS bnd (fs′ , st , C′ , M) = fs′ , st , C′ , ranS M bnd
+
+    -- a new view's buffer ends inside the environment region
+    env-top : ∀ {x y e} → x + (y + e) ≤ EP φ → (e + y) + x ≤ budget φ
+    env-top {x} {y} {e} le = ≤-trans (Data.Nat.Properties.≤-reflexive (trans (+-comm (e + y) x) (cong (x +_) (+-comm e y))))
+                                     (≤-trans le (Data.Nat.Properties.m≤m+n (EP φ) (OP φ)))
+      where import Data.Nat.Properties
+
+    -- a word just below the stack's rest ends at it
+    word-top : ∀ {S} → 1 + ws S ≤ OP φ → ((budget φ ∸ ws S) ∸ 1) + 1 ≤ budget φ
+    word-top {S} fit = ≤-trans (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.m∸n+n≡m
+                                  (Data.Nat.Properties.m+n≤o⇒m≤o∸n 1 (≤-trans fit (m≤n+m (OP φ) (EP φ))))))
+                         (Data.Nat.Properties.m∸n≤m (budget φ) (ws S))
+      where import Data.Nat.Properties
 
   st-swap : ∀ {Es A B S V} {k : Codeᴵ (Es ∣ B ∷ A ∷ S) V} (s : Sub root (swap ⨾ k))
               {es : Slots Es} {a : MV A} {b : MV B} {os : Stk S} {fs}
@@ -315,30 +329,30 @@ module Loc {FS : FrameSemantics} (U : Univ)
   st-efst : ∀ {E₁ E₂ Es S V} {k : Codeᴵ (E₁ ∷ (E₁ ⊗t E₂) ∷ Es ∣ S) V} (s : Sub root (efst ⨾ k))
               {es : Slots ((E₁ ⊗t E₂) ∷ Es)} {os : Stk S} {e₁ : MV E₁} {e₂ : MV E₂} {fs}
           → see es ≡ mpair e₁ e₂ → Here s (es ∥ os) fs → Moved (next s) fs 0 (vw e₁ es ∥ os)
-  st-efst {E₁} s {fs = fs} eq H =
+  st-efst {E₁} {E₂} {Es} s {fs = fs} eq H =
     straight s H _ 0 (sym (len-mvSS _ _ (wsz E₁)))
-      (λ sg h C → viaS (efst-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s)))))
+      (λ sg h C → viaS (env-top {wsz E₁} {wsz (E₁ ⊗t E₂)} {ws Es} (proj₁ (shape-fits (next s)))) (efst-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s)))))
 
   st-esnd : ∀ {E₁ E₂ Es S V} {k : Codeᴵ (E₂ ∷ (E₁ ⊗t E₂) ∷ Es ∣ S) V} (s : Sub root (esnd ⨾ k))
               {es : Slots ((E₁ ⊗t E₂) ∷ Es)} {os : Stk S} {e₁ : MV E₁} {e₂ : MV E₂} {fs}
           → see es ≡ mpair e₁ e₂ → Here s (es ∥ os) fs → Moved (next s) fs 0 (vw e₂ es ∥ os)
-  st-esnd {E₂ = E₂} s {fs = fs} eq H =
+  st-esnd {E₁} {E₂} {Es} s {fs = fs} eq H =
     straight s H _ 0 (sym (len-mvSS _ _ (wsz E₂)))
-      (λ sg h C → viaS (esnd-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s)))))
+      (λ sg h C → viaS (env-top {wsz E₂} {wsz (E₁ ⊗t E₂)} {ws Es} (proj₁ (shape-fits (next s)))) (esnd-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s)))))
 
   st-eapp : ∀ {l X Es S V} {k : Codeᴵ (X ∷ Ct l X ∷ Es ∣ S) V} (s : Sub root (eapp ⨾ k))
               {es : Slots (Ct l X ∷ Es)} {os : Stk S} {x : MV X} {fs}
           → see es ≡ mct x → Here s (es ∥ os) fs → Moved (next s) fs 0 (vw x es ∥ os)
-  st-eapp {X = X} s {fs = fs} eq H =
+  st-eapp {l} {X} {Es} s {fs = fs} eq H =
     straight s H _ 0 (sym (len-mvSS _ _ (wsz X)))
-      (λ sg h C → viaS (eapp-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s)))))
+      (λ sg h C → viaS (env-top {wsz X} {wsz X} {ws Es} (proj₁ (shape-fits (next s)))) (eapp-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s)))))
 
   st-eword : ∀ {b Es S V} {k : Codeᴵ (Bt b ∷ Es ∣ Bt b ∷ S) V} (s : Sub root (eword ⨾ k))
                {es : Slots (Bt b ∷ Es)} {os : Stk S} {x : ⟦ b ⟧b} {fs}
            → see es ≡ mbase x → Here s (es ∥ mone ∷ˢ os) fs → Moved (next s) fs 0 (es ∥ mbase x ∷ˢ os)
-  st-eword s {fs = fs} eq H =
+  st-eword {S = S} s {fs = fs} eq H =
     straight s H _ 0 refl
-      (λ sg h C → viaS (eword-sim prog fs φ eq sg h C (proj₂ (shape-fits (next s)))))
+      (λ sg h C → viaS (word-top {S} (proj₂ (shape-fits (next s)))) (eword-sim prog fs φ eq sg h C (proj₂ (shape-fits (next s)))))
 
   st-eout : ∀ {F Es S V} {k : Codeᴵ (LF∙ F (μt F) ∷ μt F ∷ Es ∣ S) V} (s : Sub root (eout ⨾ k))
               {es : Slots (μt F ∷ Es)} {os : Stk S} {i} {v : MV (LF∙ F (μt F))} {fs}
@@ -403,14 +417,14 @@ module Loc {FS : FrameSemantics} (U : Univ)
       MB = mvSSd (suc t) (Tp φ S ∸ wsz B) (wsz B)
       seg = Seg-++ˡ prog (fpc fs) (lea-slot t ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero L₁) ∷ MB) _ (seg-at s H)
       fin : _ → Moved (right s) fs 0 _
-      fin (fs′ , st , C′ , pc , K , nx , hp) =
+      fin (fs′ , st , C′ , pc , K , nx , hp , tp) =
         _ , fs′ , st ,
         record { h-pc  = trans pc (trans (cong (λ z → Once.LinCore.Moves.ln {FS} (wsz B) + (3 + z)) (h-pc H))
                            (sym (trans (fall-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB)
                                   (trans (cong (λ z → pos s + suc (suc (suc z))) (len-mvSSd (suc t) (Tp φ S ∸ wsz B) (wsz B)))
                                     (three (pos s) _)))))
                ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
-        K , nx , (λ hl _ → cong (λ h → h hl) hp)
+        K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
 
   st-case₁ : ∀ {Es A B S V} {c₁ : Codeᴵ (Es ∣ A ∷ S) V} {c₂ : Codeᴵ (Es ∣ B ∷ S) V} → Labelled → ∀ (s : Sub root (case c₁ c₂))
                {es : Slots Es} {a : MV A} {os : Stk S} {fs}
@@ -430,12 +444,12 @@ module Loc {FS : FrameSemantics} (U : Univ)
       q = length (proj₁ labIn)
       seg = Seg-++ˡ prog (fpc fs) (lea-slot t ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero L₁) ∷ []) _ (seg-at s H)
       fin : _ → Moved (left s) fs 0 _
-      fin (fs′ , st , C′ , pc , K , nx , hp) =
+      fin (fs′ , st , C′ , pc , K , nx , hp , tp) =
         _ , fs′ , st ,
         record { h-pc  = trans pc (sym (trans (jump-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB (proj₁ l₂) (instr-ctrl (c-label L₁) ∷ MA))
                                          (trans (cong (λ z → q + suc z) (len-mvSSd (suc t) (Tp φ S ∸ wsz A) (wsz A))) (past q _))))
                ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
-        K , nx , (λ hl _ → cong (λ h → h hl) hp)
+        K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
 
   st-ecase₂ : ∀ {E₁ E₂ Es S V} {c₁ : Codeᴵ (E₁ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) V} {c₂ : Codeᴵ (E₂ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) V}
                 (s : Sub root (ecase c₁ c₂)) {es : Slots ((E₁ ⊕t E₂) ∷ Es)} {os : Stk S} {e₂ : MV E₂} {fs}
@@ -447,14 +461,14 @@ module Loc {FS : FrameSemantics} (U : Univ)
       MB = mvSS (suc e) nb (wsz E₂)
       seg = Seg-++ˡ prog (fpc fs) (lea-slot e ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero L₁) ∷ MB) _ (seg-at s H)
       fin : _ → Moved (eright s) fs 0 _
-      fin (fs′ , st , C′ , pc , K , nx , hp) =
+      fin (fs′ , st , C′ , pc , K , nx , hp , tp) =
         _ , fs′ , st ,
         record { h-pc  = trans pc (trans (cong (λ z → Once.LinCore.Moves.ln {FS} (wsz E₂) + (3 + z)) (h-pc H))
                            (sym (trans (fall-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB)
                                   (trans (cong (λ z → pos s + suc (suc (suc z))) (len-mvSS (suc e) nb (wsz E₂)))
                                     (three (pos s) _)))))
                ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
-        K , nx , (λ hl _ → cong (λ h → h hl) hp)
+        K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
 
   st-ecase₁ : ∀ {E₁ E₂ Es S V} {c₁ : Codeᴵ (E₁ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) V} {c₂ : Codeᴵ (E₂ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) V}
               → Labelled → ∀ (s : Sub root (ecase c₁ c₂)) {es : Slots ((E₁ ⊕t E₂) ∷ Es)} {os : Stk S} {e₁ : MV E₁} {fs}
@@ -475,9 +489,9 @@ module Loc {FS : FrameSemantics} (U : Univ)
       q = length (proj₁ labIn)
       seg = Seg-++ˡ prog (fpc fs) (lea-slot e ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero L₁) ∷ []) _ (seg-at s H)
       fin : _ → Moved (eleft s) fs 0 _
-      fin (fs′ , st , C′ , pc , K , nx , hp) =
+      fin (fs′ , st , C′ , pc , K , nx , hp , tp) =
         _ , fs′ , st ,
         record { h-pc  = trans pc (sym (trans (jump-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB (proj₁ l₂) (instr-ctrl (c-label L₁) ∷ MA))
                                          (trans (cong (λ z → q + suc z) (len-mvSS (suc e) nb (wsz E₁))) (past q _))))
                ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
-        K , nx , (λ hl _ → cong (λ h → h hl) hp)
+        K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
