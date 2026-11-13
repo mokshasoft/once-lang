@@ -90,14 +90,17 @@ open AllocState using (current-frame; saved-frames; frame-slots; next-heap-ref; 
 open import Data.Nat using (_+_)
 open import Relation.Binary.PropositionalEquality using (sym)
 
-record CallIn (fs fs′ : FlatState) (a b s₁ s₂ q : ℕ) : Set where
+-- `r` the return pc pushed, `w₂` what the second save slot holds (the
+-- caller's area, or its top view's buffer)
+record CallIn (fs fs′ : FlatState) (a b s₁ s₂ q r : ℕ) (w₂ : StoredValue FS) : Set where
   field
     ci-frame : current-frame (falloc fs′) ≡ callee-frame (current-frame (falloc fs)) b
     ci-saved : saved-frames (falloc fs′) ≡ (current-frame (falloc fs) , frame-slots (falloc fs)) ∷ saved-frames (falloc fs)
-    ci-ret   : fret fs′ ≡ suc (suc (suc (fpc fs))) ∷ fret fs
+    ci-ret   : fret fs′ ≡ r ∷ fret fs
     ci-pc    : fpc fs′ ≡ suc (suc (suc (suc q)))
     ci-in    : readReg (LocState.regs (floc fs′)) Input1 ≡ SV-Ptr (AtStack (current-frame (falloc fs)) a)
     ci-s₁    : stackMem (floc fs′) (callee-frame (current-frame (falloc fs)) b) s₁ ≡ just (SV-Ptr (AtStack (current-frame (falloc fs)) a))
+    ci-s₂    : stackMem (floc fs′) (callee-frame (current-frame (falloc fs)) b) s₂ ≡ just w₂
     ci-other : ∀ f′ x → ¬ callee-frame (current-frame (falloc fs)) b ≡ f′ → stackMem (floc fs′) f′ x ≡ stackMem (floc fs) f′ x
     ci-heap  : heapMem (floc fs′) ≡ heapMem (floc fs)
     ci-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
@@ -105,19 +108,21 @@ record CallIn (fs fs′ : FlatState) (a b s₁ s₂ q : ℕ) : Set where
     ci-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
 open CallIn public
 
-call-in : ∀ prog (fs : FlatState) (a : ℕ) (f : CanonicalName) (e : EntryId) (q b s₁ s₂ : ℕ)
+call-in : ∀ prog (fs : FlatState) (a : ℕ) (f : CanonicalName) (e : EntryId) (q b s₁ s₂ : ℕ) → ¬ s₁ ≡ s₂
         → Seg prog (fpc fs) (lea-slot a ∷ mov-to-input ∷ instr-ctrl (c-call-fn f) ∷ [])
         → find-fn prog f ≡ just q
         → Seg prog q (instr-ctrl (c-entry e b) ∷ store-at-slot s₂ ∷ mov-to-output ∷ store-at-slot s₁ ∷ [])
         → fhalted (floc fs) ≡ false
-        → Σ FlatState λ fs′ → FlatSteps prog 7 fs fs′ × CallIn fs fs′ a b s₁ s₂ q
-call-in prog fs a f e q b s₁ s₂ (g₁ , g₂ , g₃ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h =
+        → Σ FlatState λ fs′ → FlatSteps prog 7 fs fs′
+            × CallIn fs fs′ a b s₁ s₂ q (suc (suc (suc (fpc fs)))) (SV-Ptr (AtStack (current-frame (falloc fs)) a))
+call-in prog fs a f e q b s₁ s₂ s≢ (g₁ , g₂ , g₃ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h =
   fs₇ ,
   step-at fs₁ (h , g₁) (lea-step fs a) (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) (call-step prog fs₂ f ff)
   (step-at fs₄ (h , h₁) (entry-step prog fs₃ e b) (step-at fs₅ (h , h₂) (store-step fs₄ s₂)
   (step-at fs₆ (h , h₃) (mov-out-step fs₅) (step-at fs₇ (h , h₄) (store-step fs₆ s₁) done)))))) ,
   record { ci-frame = refl ; ci-saved = refl ; ci-ret = refl ; ci-pc = refl ; ci-in = refl
          ; ci-s₁ = store-same (floc fs₆) cf′ s₁ ptr
+         ; ci-s₂ = trans (store-other (floc fs₆) cf′ s₁ ptr s₂ s≢) (store-same (floc fs₄) cf′ s₂ ptr)
          ; ci-other = λ f′ x ne → trans (store-frame (floc fs₆) cf′ s₁ ptr f′ x ne)
                                     (trans (store-frame (floc fs₄) cf′ s₂ ptr f′ x ne) (clear-other (stackMem (floc fs)) cf′ b f′ x ne))
          ; ci-heap = refl ; ci-next = refl ; ci-size = refl ; ci-halt = refl }
@@ -132,6 +137,41 @@ call-in prog fs a f e q b s₁ s₂ (g₁ , g₂ , g₃ , _) ff (h₁ , h₂ , h
     fs₅ = record fs₄ { floc = MemOps.writeLoc {FS} (floc fs₄) (AtStack cf′ s₂) ptr ; fpc = suc (fpc fs₄) }
     fs₆ = record fs₅ { floc = record (floc fs₅) { regs = writeReg (LocState.regs (floc fs₅)) Output ptr } ; fpc = suc (fpc fs₅) }
     fs₇ = record fs₆ { floc = MemOps.writeLoc {FS} (floc fs₆) (AtStack cf′ s₁) ptr ; fpc = suc (fpc fs₆) }
+
+-- ★ a call of a block that reads the caller's top view: its buffer's address
+-- in `Output` at the call, so in the second save slot
+call-in-v : ∀ prog (fs : FlatState) (a v : ℕ) (f : CanonicalName) (e : EntryId) (q b s₁ s₂ : ℕ) → ¬ s₁ ≡ s₂
+          → Seg prog (fpc fs) (lea-slot a ∷ mov-to-input ∷ lea-slot v ∷ instr-ctrl (c-call-fn f) ∷ [])
+          → find-fn prog f ≡ just q
+          → Seg prog q (instr-ctrl (c-entry e b) ∷ store-at-slot s₂ ∷ mov-to-output ∷ store-at-slot s₁ ∷ [])
+          → fhalted (floc fs) ≡ false
+          → Σ FlatState λ fs′ → FlatSteps prog 8 fs fs′
+              × CallIn fs fs′ a b s₁ s₂ q (suc (suc (suc (suc (fpc fs))))) (SV-Ptr (AtStack (current-frame (falloc fs)) v))
+call-in-v prog fs a v f e q b s₁ s₂ s≢ (g₁ , g₂ , g₀ , g₃ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h =
+  fs₈ ,
+  step-at fs₁ (h , g₁) (lea-step fs a) (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₂′ (h , g₀) (lea-step fs₂ v)
+  (step-at fs₃ (h , g₃) (call-step prog fs₂′ f ff)
+  (step-at fs₄ (h , h₁) (entry-step prog fs₃ e b) (step-at fs₅ (h , h₂) (store-step fs₄ s₂)
+  (step-at fs₆ (h , h₃) (mov-out-step fs₅) (step-at fs₈ (h , h₄) (store-step fs₆ s₁) done))))))) ,
+  record { ci-frame = refl ; ci-saved = refl ; ci-ret = refl ; ci-pc = refl ; ci-in = refl
+         ; ci-s₁ = store-same (floc fs₆) cf′ s₁ ptr
+         ; ci-s₂ = trans (store-other (floc fs₆) cf′ s₁ ptr s₂ s≢) (store-same (floc fs₄) cf′ s₂ vptr)
+         ; ci-other = λ f′ x ne → trans (store-frame (floc fs₆) cf′ s₁ ptr f′ x ne)
+                                    (trans (store-frame (floc fs₄) cf′ s₂ vptr f′ x ne) (clear-other (stackMem (floc fs)) cf′ b f′ x ne))
+         ; ci-heap = refl ; ci-next = refl ; ci-size = refl ; ci-halt = refl }
+  where
+    cf = current-frame (falloc fs)
+    cf′ = callee-frame cf b
+    ptr = SV-Ptr (AtStack cf a)
+    vptr = SV-Ptr (AtStack cf v)
+    fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output ptr } ; fpc = suc (fpc fs) }
+    fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Input1 ptr } ; fpc = suc (fpc fs₁) }
+    fs₂′ = record fs₂ { floc = record (floc fs₂) { regs = writeReg (LocState.regs (floc fs₂)) Output vptr } ; fpc = suc (fpc fs₂) }
+    fs₃ = record fs₂′ { falloc = enter-call (falloc fs₂′) ; fret = suc (fpc fs₂′) ∷ fret fs₂′ ; flink = just (suc (fpc fs₂′)) ; fpc = q }
+    fs₄ = do-thunk b fs₃
+    fs₅ = record fs₄ { floc = MemOps.writeLoc {FS} (floc fs₄) (AtStack cf′ s₂) vptr ; fpc = suc (fpc fs₄) }
+    fs₆ = record fs₅ { floc = record (floc fs₅) { regs = writeReg (LocState.regs (floc fs₅)) Output ptr } ; fpc = suc (fpc fs₅) }
+    fs₈ = record fs₆ { floc = MemOps.writeLoc {FS} (floc fs₆) (AtStack cf′ s₁) ptr ; fpc = suc (fpc fs₆) }
 
 ------------------------------------------------------------------------
 -- ★ A CALL'S WAY OUT: the caller's area back in `Input1`, the result's
