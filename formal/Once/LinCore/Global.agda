@@ -20,6 +20,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥)
+open import Relation.Nullary using (¬_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Spec.Numerics using (TargetNum)
@@ -38,7 +39,7 @@ module Once.LinCore.Global
 
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; Slots; Cfg; _∥_)
+open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; Cfg; _∥_)
 open import Once.LinCore.Image fmt ans bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt ans bw
@@ -180,7 +181,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   ----------------------------------------------------------------------
 
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
-  open Sim {FS} U wordOf using (envW-heap; stkW-heap; cntE; cntS)
+  open Sim {FS} U wordOf using (envW-heap; stkW-heap; envW-frame; slots-frame; cntE; cntS)
   open Rel {FS} U wordOf using (cellLoc)
   open import Once.LinCore.FreshI fmt ans bw using (module Cells)
   open Cells {FS} U wordOf using (FreshR)
@@ -215,3 +216,45 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → StkW rd sm φ os → StkW rd′ sm φ os
     stk-stand {os = os} fr old = stkW-heap os (λ i k c → old (cellLoc i k) (held-below (λ le _ → zero-one (fr i le) c)))
 
+
+    stk-all : ∀ {rd sm sm′ φ S} (os : Stk S) → (∀ x → sm′ x ≡ sm x) → StkW rd sm φ os → StkW rd sm′ φ os
+    stk-all []ˢ       h _                   = Data.Unit.tt
+      where import Data.Unit
+    stk-all (v ∷ˢ os) h ((w , p , s) , st) = (w , p , slots-frame w (λ k _ → h _) s) , stk-all os h st
+
+  -- the levels whose frames are all above the one that changed
+  ret-deep : ∀ {T U′ R fin} {r : Ret U′ T} {cur rets sv fs fs′} (cur₀ : FrameSemantics.Frame FS) → cur₀ ≺ cur
+           → (∀ f x → ¬ f ≡ cur₀ → LocState.stackMem (floc fs′) f x ≡ LocState.stackMem (floc fs) f x)
+           → Old (AllocState.next-heap-ref (falloc fs)) fs fs′ → FreshR r (AllocState.next-heap-ref (falloc fs))
+           → RetOK R fin r cur rets sv fs → RetOK R fin r cur rets sv fs′
+  ret-deep cur₀ lt oth old fr (ok-top e₁ e₂) = ok-top e₁ e₂
+  ret-deep cur₀ lt oth old fr (ok-loop K lk rest) = ok-loop K lk (ret-deep cur₀ lt oth old fr rest)
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-call {es = es} {os = os} p st cfc sl sv′ rets′ eR eF eC eRets eSv abv area ev sk rest) =
+    ok-call p st cfc sl sv′ rets′ eR eF eC eRets eSv abv
+      (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) area)
+      (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
+      (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
+      (ret-deep cur₀ (≺-trans lt abv) oth old fr rest)
+    where
+      ne : ¬ cfc ≡ cur₀
+      ne e = ≺-≢ (≺-trans lt abv) (sym e)
+
+  -- ★ the whole return stack, over a run that changed the current frame
+  -- below its budget only
+  ret-top : ∀ {T U′ R fin} {r : Ret U′ T} {cur rets sv fs fs′}
+          → (∀ f x → ¬ f ≡ cur → LocState.stackMem (floc fs′) f x ≡ LocState.stackMem (floc fs) f x)
+          → (∀ x → budget (rootφ R) ≤ x → LocState.stackMem (floc fs′) cur x ≡ LocState.stackMem (floc fs) cur x)
+          → Old (AllocState.next-heap-ref (falloc fs)) fs fs′ → FreshR r (AllocState.next-heap-ref (falloc fs))
+          → RetOK R fin r cur rets sv fs → RetOK R fin r cur rets sv fs′
+  ret-top oth top old fr (ok-top e₁ e₂) = ok-top e₁ e₂
+  ret-top oth top old fr (ok-loop K lk rest) = ok-loop K lk (ret-top oth top old fr rest)
+  ret-top {cur = cur} oth top old (fes , fr) (ok-call {es = es} {os = os} p st cfc sl sv′ rets′ refl eF eC eRets eSv abv area ev sk rest) =
+    ok-call p st cfc sl sv′ rets′ refl eF eC eRets eSv abv
+      (trans (top _ Data.Nat.Properties.≤-refl) area)
+      (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
+      (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
+      (ret-deep cur abv oth old fr rest)
+    where
+      import Data.Nat.Properties
+      ne : ¬ cfc ≡ cur
+      ne e = ≺-≢ abv (sym e)
