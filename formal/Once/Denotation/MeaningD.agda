@@ -60,7 +60,9 @@ open import Once.TypeCheck.Scope using (NamedCtx; PolyCtx; Imports; lookupImport
 open import Once.Denotation.DefEnv using (DefEnvOf; defAt; ImpEnvOf; impAt)
 open import Once.Type.Instance using (KindedInstance)
 open import Once.Type.Rigid using (ground-kinded)
-open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax using ()
+open import Once.Surface.OpNames
+open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.SigOp.Info using (semP; int-prim)
 open import Once.Spec.Sub using (sub-arr)
 open import Once.Spec.Sub using (_⊔_≔_)

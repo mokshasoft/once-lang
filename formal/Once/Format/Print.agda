@@ -41,11 +41,9 @@ open import Relation.Nullary using (does)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Finite; pureᶠ; actᶠ; Purity; fin; eff; mk-kind)
 open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; Int; Float; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 import Once.Spec.Type as T
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_;
-  _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_; BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;
-  OpLt; OpLe; OpGt; OpGe; OpEq; OpNe; Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct;
-  RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport;
-  Import; mkImport; Module; mkModule)
+open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_; Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; Import; mkImport; Module; mkModule)
+open import Once.Surface.OpNames
+open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Parser.Token using (Token; TWord; TInt; TFloat; TNewline; TEOF)
 open import Once.Format.Lex using (Item; tok; comment; cont)

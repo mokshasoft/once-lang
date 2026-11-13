@@ -23,7 +23,9 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 open import Relation.Nullary using (¬_)
 
-open import Once.Spec.Surface.Syntax as O using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax as O using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Surface.OpNames
+open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals;
@@ -241,17 +243,17 @@ private
   cmpn← (rest , da , refl) nc = rest , pcm-noop da (notCmp← rest nc) , refl
 
   -- `l op e`, for the operator `oop` written `u`
-  cmp-fin  : ∀ {toks l ts₁ e r} (u : Token) (oop : O.BinOp)
+  cmp-fin  : ∀ {toks l ts₁ e r} (u : Token) (oop : BinOp)
            → (∀ {a b c x y} → E.ParsesAdd a x (back u ∷ b) → E.ParsesAdd b y c → E.ParsesCmp a (RBinOp oop x y) c)
            → isLit u ≡ false
            → BackE E.ParsesAdd toks l (u ∷ ts₁) → G.ParsesAdd ts₁ e r → N r
            → BackE E.ParsesCmp toks (RBinOp oop l e) r
-  cmp-fin₁ : ∀ {toks l rest₁ ts₁ e r} {tok : P.Token} (oop : O.BinOp)
+  cmp-fin₁ : ∀ {toks l rest₁ ts₁ e r} {tok : P.Token} (oop : BinOp)
            → (∀ {a b c x y} → E.ParsesAdd a x (tok ∷ b) → E.ParsesAdd b y c → E.ParsesCmp a (RBinOp oop x y) c)
            → E.ParsesAdd toks l rest₁
            → Σ[ toks₁ ∈ List P.Token ] (rest₁ ≡ tok ∷ toks₁ × F toks₁ ≡ ts₁)
            → G.ParsesAdd ts₁ e r → N r → BackE E.ParsesCmp toks (RBinOp oop l e) r
-  cmp-fin₂ : ∀ {toks l toks₁ e r} {tok : P.Token} (oop : O.BinOp)
+  cmp-fin₂ : ∀ {toks l toks₁ e r} {tok : P.Token} (oop : BinOp)
            → (∀ {a b c x y} → E.ParsesAdd a x (tok ∷ b) → E.ParsesAdd b y c → E.ParsesCmp a (RBinOp oop x y) c)
            → E.ParsesAdd toks l (tok ∷ toks₁) → BackE E.ParsesAdd toks₁ e r
            → BackE E.ParsesCmp toks (RBinOp oop l e) r
@@ -266,12 +268,12 @@ private
   add←₁ (toks₁ , dm , eq) dt n = add←₂ dm (atail← dt toks₁ eq n)
   add←₂ dm (rest , dt , er) = rest , pa-mk dm dt , er
 
-  aop← : ∀ {l toks₁ e₂ ts₂ e r} (tok : P.Token) (oop : O.BinOp)
+  aop← : ∀ {l toks₁ e₂ ts₂ e r} (tok : P.Token) (oop : BinOp)
        → (∀ {lft t1 t2 rt e rst} → E.ParsesMul t1 rt t2 → E.ParsesAddTail (RBinOp oop lft rt) t2 e rst
           → E.ParsesAddTail lft (tok ∷ t1) e rst)
        → BackE E.ParsesMul toks₁ e₂ ts₂ → G.ParsesAddTail (RBinOp oop l e₂) ts₂ e r → N r
        → BackET E.ParsesAddTail l (tok ∷ toks₁) e r
-  aop←₂ : ∀ {l toks₁ e₂ toks₂ e r} {tok : P.Token} {oop : O.BinOp}
+  aop←₂ : ∀ {l toks₁ e₂ toks₂ e r} {tok : P.Token} {oop : BinOp}
         → (∀ {lft t1 t2 rt e rst} → E.ParsesMul t1 rt t2 → E.ParsesAddTail (RBinOp oop lft rt) t2 e rst
            → E.ParsesAddTail lft (tok ∷ t1) e rst)
         → E.ParsesMul toks₁ e₂ toks₂ → BackET E.ParsesAddTail (RBinOp oop l e₂) toks₂ e r
@@ -286,12 +288,12 @@ private
   mul←₁ (toks₁ , du , eq) dt n = mul←₂ du (mtail← dt toks₁ eq n)
   mul←₂ du (rest , dt , er) = rest , pm-mk du dt , er
 
-  mop← : ∀ {l toks₁ e₂ ts₂ e r} (tok : P.Token) (oop : O.BinOp)
+  mop← : ∀ {l toks₁ e₂ ts₂ e r} (tok : P.Token) (oop : BinOp)
        → (∀ {lft t1 t2 rt e rst} → E.ParsesUnary t1 rt t2 → E.ParsesMulTail (RBinOp oop lft rt) t2 e rst
           → E.ParsesMulTail lft (tok ∷ t1) e rst)
        → BackE E.ParsesUnary toks₁ e₂ ts₂ → G.ParsesMulTail (RBinOp oop l e₂) ts₂ e r → N r
        → BackET E.ParsesMulTail l (tok ∷ toks₁) e r
-  mop←₂ : ∀ {l toks₁ e₂ toks₂ e r} {tok : P.Token} {oop : O.BinOp}
+  mop←₂ : ∀ {l toks₁ e₂ toks₂ e r} {tok : P.Token} {oop : BinOp}
         → (∀ {lft t1 t2 rt e rst} → E.ParsesUnary t1 rt t2 → E.ParsesMulTail (RBinOp oop lft rt) t2 e rst
            → E.ParsesMulTail lft (tok ∷ t1) e rst)
         → E.ParsesUnary toks₁ e₂ toks₂ → BackET E.ParsesMulTail (RBinOp oop l e₂) toks₂ e r

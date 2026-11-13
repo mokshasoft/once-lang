@@ -13,7 +13,7 @@ module Once.Parser.Token where
 open import Data.String using (String)
 open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)
-open import Once.Spec.Surface.Operator using (Op; Dottable)
+open import Once.Spec.Surface.Operator using (Op; Dottable; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 
 ------------------------------------------------------------------------
 -- Tokens
@@ -71,3 +71,17 @@ data Token : Set where
   -- Structure
   TNewline : Token              -- significant newline
   TEOF     : Token              -- end of file
+
+-- The plain operators by their old names (`TPlus` is `TOp ‹ o+ ›`): a match on
+-- all eleven covers `TOp`.
+pattern TPlus    = TOp ‹ o+ ›
+pattern TMinus   = TOp ‹ o- ›
+pattern TStar    = TOp ‹ o* ›
+pattern TSlash   = TOp ‹ o/ ›
+pattern TPercent = TOp o%
+pattern TLt      = TOp ‹ o< ›
+pattern TLe      = TOp ‹ o<= ›
+pattern TGt      = TOp ‹ o> ›
+pattern TGe      = TOp ‹ o>= ›
+pattern TEqEq    = TOp ‹ o== ›
+pattern TNeq     = TOp ‹ o!= ›

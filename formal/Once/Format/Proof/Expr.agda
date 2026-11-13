@@ -39,8 +39,9 @@ open import Once.Postulates using (toList∘fromList)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TComma; TColon; TSemicolon;
   TLBrace; TRBrace; TDot; TAt; TLambda; TArrow; TEquals; TMinus; TPlus; TStar; TSlash; TPercent; TLt; TLe; TGt; TGe;
   TEqEq; TNeq)
-open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct;
-  RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Surface.OpNames
+open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.Spec.Surface.Grammar
 open import Once.Format.Doc using (toks)
 open import Once.Format.Print

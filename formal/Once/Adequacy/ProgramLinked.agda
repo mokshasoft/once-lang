@@ -55,6 +55,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 open import Once.Spec.Type using (Type; Unit)
 open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Surface.OpNames
+open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.Type.Instance using (KindedInstance; rigidOf)
 open import Once.Type.Concrete using (con-fun)
 open import Once.Spec.Name using (CanonicalName; bare)
@@ -95,7 +97,7 @@ import Once.Core.Translate as TR
 import Once.Adequacy.ModuleProgram as MP
 open import Once.Adequacy.ModuleSig using (sigOf; sig-in)
 open import Data.Fin using (zero)
-open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax using ()
 open import Once.Type.Rigid using (ground-kinded)
 open import Once.IRTy using (⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)

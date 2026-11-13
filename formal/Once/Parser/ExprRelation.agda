@@ -58,8 +58,13 @@ open import Relation.Nullary using (yes; no)
 open import Data.String.Properties as StrProp using (_≟_)
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
+import Data.Integer as ℤ
+open import Once.Spec.Float.Value using (pos; neg)
+open import Once.Spec.Surface.Operator using (Dottable; dotted; ‹_›; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=; Level; level; comparison; additive; multiplicative)
 
-open import Once.Spec.Surface.Syntax using (RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax using (RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Surface.OpNames
+open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Parser.Token
 open import Once.Parser.TypeRelation using (ParsesType; ParsesType-shrinks)
@@ -96,6 +101,8 @@ NotAdd : List Token → Set
 NotAdd [] = ⊤
 NotAdd (TPlus  ∷ _) = ⊥
 NotAdd (TMinus ∷ _) = ⊥
+NotAdd (TOpD o+ ∷ _) = ⊥
+NotAdd (TOpD o- ∷ _) = ⊥
 {-# CATCHALL #-}
 NotAdd (_ ∷ _) = ⊤
 
@@ -105,6 +112,8 @@ NotMul [] = ⊤
 NotMul (TStar    ∷ _) = ⊥
 NotMul (TSlash   ∷ _) = ⊥
 NotMul (TPercent ∷ _) = ⊥
+NotMul (TOpD o* ∷ _) = ⊥
+NotMul (TOpD o/ ∷ _) = ⊥
 {-# CATCHALL #-}
 NotMul (_ ∷ _) = ⊤
 
@@ -117,8 +126,30 @@ NotCmp (TGt   ∷ _) = ⊥
 NotCmp (TGe   ∷ _) = ⊥
 NotCmp (TEqEq ∷ _) = ⊥
 NotCmp (TNeq  ∷ _) = ⊥
+NotCmp (TOpD o<  ∷ _) = ⊥
+NotCmp (TOpD o<= ∷ _) = ⊥
+NotCmp (TOpD o>  ∷ _) = ⊥
+NotCmp (TOpD o>= ∷ _) = ⊥
+NotCmp (TOpD o== ∷ _) = ⊥
+NotCmp (TOpD o!= ∷ _) = ⊥
 {-# CATCHALL #-}
 NotCmp (_ ∷ _) = ⊤
+
+-- Does NOT start with a numeral (a `-` before one is its sign, plan 0.150).
+NotNumeral : List Token → Set
+NotNumeral (TInt _ _ ∷ _)       = ⊥
+NotNumeral (TFloat _ _ _ _ ∷ _) = ⊥
+{-# CATCHALL #-}
+NotNumeral _                    = ⊤
+
+-- The operators whose glyph is one character.
+data OneCharGlyph : Dottable → Char → Set where
+  ocg-+ : OneCharGlyph o+ '+'
+  ocg-- : OneCharGlyph o- '-'
+  ocg-* : OneCharGlyph o* '*'
+  ocg-/ : OneCharGlyph o/ '/'
+  ocg-< : OneCharGlyph o< '<'
+  ocg-> : OneCharGlyph o> '>'
 
 -- Does NOT start with a token that parseAtomExpr would accept.
 -- Used to classify the "no-op" residual for parseAppTailWF.
@@ -161,6 +192,7 @@ data NotAtomStart : List Token → Set where
   nas-TGe        : ∀ {rest} → NotAtomStart (TGe        ∷ rest)
   nas-TEqEq      : ∀ {rest} → NotAtomStart (TEqEq      ∷ rest)
   nas-TNeq       : ∀ {rest} → NotAtomStart (TNeq       ∷ rest)
+  nas-TOpD       : ∀ {d rest} → NotAtomStart (TOpD d     ∷ rest)
   nas-TBang      : ∀ {rest} → NotAtomStart (TBang      ∷ rest)
   nas-TNewline   : ∀ {rest} → NotAtomStart (TNewline   ∷ rest)
   nas-TEOF       : ∀ {rest} → NotAtomStart (TEOF       ∷ rest)
@@ -225,6 +257,7 @@ data NotTWord : Token → Set where
   ntw-TBang      : NotTWord TBang
   ntw-TNewline   : NotTWord TNewline
   ntw-TEOF       : NotTWord TEOF
+  ntw-TOpD       : ∀ {d} → NotTWord (TOpD d)
   ntw-TInt       : ∀ {n p} → NotTWord (TInt n p)
   -- Plan 0.71 F1: the float token EXISTS but nothing consumes it yet. It gets
   -- the two NEGATIVE facts (not a word, not a qualified-name prefix) because
@@ -267,6 +300,7 @@ data NotQualPrefix : List Token → Set where
   nqp-TBang      : ∀ {rest} → NotQualPrefix (TBang      ∷ rest)
   nqp-TNewline   : ∀ {rest} → NotQualPrefix (TNewline   ∷ rest)
   nqp-TEOF       : ∀ {rest} → NotQualPrefix (TEOF       ∷ rest)
+  nqp-TOpD       : ∀ {d rest} → NotQualPrefix (TOpD d     ∷ rest)
   nqp-TWord      : ∀ {s rest} → NotQualPrefix (TWord s  ∷ rest)
   nqp-TInt       : ∀ {n p rest} → NotQualPrefix (TInt n p ∷ rest)
   nqp-TFloat     : ∀ {i f l p rest} → NotQualPrefix (TFloat i f l p ∷ rest)
@@ -364,6 +398,12 @@ mutual
              → ParsesAdd toks l (TNeq ∷ toks1)
              → ParsesAdd toks1 r rest
              → ParsesCmp toks (RBinOp OpNe l r) rest
+    -- plan 0.150: an IEEE comparison (`<.`, …, `!=.`)
+    pcm-dot  : ∀ {d toks toks1 rest l r}
+             → level ‹ d › ≡ comparison
+             → ParsesAdd toks l (TOpD d ∷ toks1)
+             → ParsesAdd toks1 r rest
+             → ParsesCmp toks (RBinOp (dotted d) l r) rest
 
   -- mul (+/- mul)*, left-assoc.
   data ParsesAdd : List Token → Expr → List Token → Set where
@@ -384,6 +424,12 @@ mutual
               → ParsesMul toks1 right toks2
               → ParsesAddTail (RBinOp OpSub left right) toks2 e rest
               → ParsesAddTail left (TMinus ∷ toks1) e rest
+    -- plan 0.150: `+.`, `-.`
+    pat-dot   : ∀ {d left toks1 toks2 rest right e}
+              → level ‹ d › ≡ additive
+              → ParsesMul toks1 right toks2
+              → ParsesAddTail (RBinOp (dotted d) left right) toks2 e rest
+              → ParsesAddTail left (TOpD d ∷ toks1) e rest
 
   -- unary (*,/,% unary)*, left-assoc.
   data ParsesMul : List Token → Expr → List Token → Set where
@@ -408,12 +454,26 @@ mutual
                 → ParsesUnary toks1 right toks2
                 → ParsesMulTail (RBinOp OpMod left right) toks2 e rest
                 → ParsesMulTail left (TPercent ∷ toks1) e rest
+    -- plan 0.150: `*.`, `/.`
+    pmt-dot     : ∀ {d left toks1 toks2 rest right e}
+                → level ‹ d › ≡ multiplicative
+                → ParsesUnary toks1 right toks2
+                → ParsesMulTail (RBinOp (dotted d) left right) toks2 e rest
+                → ParsesMulTail left (TOpD d ∷ toks1) e rest
 
-  -- (-)? app
+  -- (-)? app. A `-` before a numeral is the numeral's sign (plan 0.150 N4):
+  -- `-5` and `-1.5` are literals, so `RNeg` never wraps a numeral.
   data ParsesUnary : List Token → Expr → List Token → Set where
     pu-neg : ∀ {toks rest e}
+           → NotNumeral toks
            → ParsesUnary toks e rest
            → ParsesUnary (TMinus ∷ toks) (RNeg e) rest
+    pu-neg-int : ∀ {n p toks rest e}
+           → ParsesAppTail (RInt (ℤ.- n)) toks e rest
+           → ParsesUnary (TMinus ∷ TInt n p ∷ toks) e rest
+    pu-neg-float : ∀ {i f l p toks rest e}
+           → ParsesAppTail (RFloat neg i f l) toks e rest
+           → ParsesUnary (TMinus ∷ TFloat i f l p ∷ toks) e rest
     pu-app : ∀ {toks rest e}
            → ParsesApp toks e rest
            → ParsesUnary toks e rest
@@ -444,7 +504,7 @@ mutual
              → ParsesAtomExpr (TInt n p ∷ rest) (RInt n) rest
     -- (a float's position stays on its token: plan 0.122)
     pae-float : ∀ {i f l p rest}
-             → ParsesAtomExpr (TFloat i f l p ∷ rest) (RFloat i f l) rest
+             → ParsesAtomExpr (TFloat i f l p ∷ rest) (RFloat pos i f l) rest
 
 
     pae-var  : ∀ {name rest}
@@ -569,6 +629,10 @@ mutual
                 → ParsesOpExpr acc (TAmpersand ∷ toks) e rest
     poe-at      : ∀ {acc toks e rest} → ParsesOpExpr ('@' ∷ acc) toks e rest
                 → ParsesOpExpr acc (TAt        ∷ toks) e rest
+    -- plan 0.150: an IEEE form names its operator's character and `.`
+    -- (`(+.)` names what it named before `+.` was one token).
+    poe-dotted  : ∀ {d c acc toks e rest} → OneCharGlyph d c → ParsesOpExpr ('.' ∷ c ∷ acc) toks e rest
+                → ParsesOpExpr acc (TOpD d ∷ toks) e rest
 
   -- After `( expr`, the continuation is `)` (simple parens),
   -- `, expr ...)` (pair/triple), or `: type )` (annotation).
@@ -640,6 +704,9 @@ mutual
   ParsesCmp-shrinks (pcm-ne dL dR) =
     <-trans (ParsesAdd-shrinks dR)
             (<-trans (s≤s ≤-refl) (ParsesAdd-shrinks dL))
+  ParsesCmp-shrinks (pcm-dot _ dL dR) =
+    <-trans (ParsesAdd-shrinks dR)
+            (<-trans (s≤s ≤-refl) (ParsesAdd-shrinks dL))
 
   ParsesAdd-shrinks :
     ∀ {toks e rest} → ParsesAdd toks e rest → length rest < length toks
@@ -654,6 +721,9 @@ mutual
     <⇒≤ (≤-<-trans (ParsesAddTail-shrinks dT)
                    (<-trans (ParsesMul-shrinks dM) (s≤s ≤-refl)))
   ParsesAddTail-shrinks (pat-minus dM dT) =
+    <⇒≤ (≤-<-trans (ParsesAddTail-shrinks dT)
+                   (<-trans (ParsesMul-shrinks dM) (s≤s ≤-refl)))
+  ParsesAddTail-shrinks (pat-dot _ dM dT) =
     <⇒≤ (≤-<-trans (ParsesAddTail-shrinks dT)
                    (<-trans (ParsesMul-shrinks dM) (s≤s ≤-refl)))
 
@@ -675,10 +745,15 @@ mutual
   ParsesMulTail-shrinks (pmt-percent dU dT) =
     <⇒≤ (≤-<-trans (ParsesMulTail-shrinks dT)
                    (<-trans (ParsesUnary-shrinks dU) (s≤s ≤-refl)))
+  ParsesMulTail-shrinks (pmt-dot _ dU dT) =
+    <⇒≤ (≤-<-trans (ParsesMulTail-shrinks dT)
+                   (<-trans (ParsesUnary-shrinks dU) (s≤s ≤-refl)))
 
   ParsesUnary-shrinks :
     ∀ {toks e rest} → ParsesUnary toks e rest → length rest < length toks
-  ParsesUnary-shrinks (pu-neg dU) = <-trans (ParsesUnary-shrinks dU) (s≤s ≤-refl)
+  ParsesUnary-shrinks (pu-neg _ dU) = <-trans (ParsesUnary-shrinks dU) (s≤s ≤-refl)
+  ParsesUnary-shrinks (pu-neg-int dT) = ≤-<-trans (ParsesAppTail-shrinks dT) (s≤s (n≤1+n _))
+  ParsesUnary-shrinks (pu-neg-float dT) = ≤-<-trans (ParsesAppTail-shrinks dT) (s≤s (n≤1+n _))
   ParsesUnary-shrinks (pu-app dA) = ParsesApp-shrinks dA
 
   ParsesApp-shrinks :
@@ -726,6 +801,7 @@ mutual
   ParsesOpExpr-shrinks (poe-pipe    d)    = <-trans (ParsesOpExpr-shrinks d) (s≤s ≤-refl)
   ParsesOpExpr-shrinks (poe-amp     d)    = <-trans (ParsesOpExpr-shrinks d) (s≤s ≤-refl)
   ParsesOpExpr-shrinks (poe-at      d)    = <-trans (ParsesOpExpr-shrinks d) (s≤s ≤-refl)
+  ParsesOpExpr-shrinks (poe-dotted _ d)   = <-trans (ParsesOpExpr-shrinks d) (s≤s ≤-refl)
 
   ParsesLamParams-shrinks :
     ∀ {toks e rest} → ParsesLamParams toks e rest → length rest < length toks

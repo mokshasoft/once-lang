@@ -86,7 +86,9 @@ open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; 
 open import Once.Type.SubDecide
 open import Once.Laws.Sub
 open import Once.Denotation.Sub using (⟦_⟧<:)
-open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax using ()
+open import Once.Surface.OpNames
+open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
 open import Once.Denotation.PureBind using (_>>=ᵖ_)
 open import Once.Denotation.SpecDomain Σ σ₀
