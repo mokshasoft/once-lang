@@ -26,7 +26,7 @@ module Once.Grammar.ExprBridge where
 
 open import Data.List using (List; []; _∷_; length)
 open import Data.Maybe using (just; nothing)
-open import Data.Product using (_,_; ∃)
+open import Data.Product using (_,_; ∃; proj₂)
 open import Data.Nat using (_<_; s≤s)
 open import Data.Nat.Properties using (≤-refl; <-trans; n≤1+n; m≤n⇒m≤1+n)
 open import Data.Nat.Induction using (<-wellFounded)
@@ -36,9 +36,11 @@ open import Relation.Binary.PropositionalEquality using
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Bool using (Bool; true; false)
 
-open import Once.Spec.Surface.Syntax using (RVar; RApp; RBinOp; RNeg)
+open import Once.Spec.Surface.Syntax using (RVar; RApp; RBinOp; RNeg; RInt; RFloat)
 open import Once.Surface.OpNames
-open import Once.Spec.Surface.Operator using (BinOp)
+open import Once.Spec.Surface.Operator using (BinOp; dotted; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
+open import Once.Spec.Float.Value using (neg)
+import Data.Integer as ℤ
 open import Once.Parser.Token
 open import Once.Parser.Expr
 open import Once.Parser.ExprRelation
@@ -119,6 +121,24 @@ complete-opExprWFraw (poe-amp d)
 complete-opExprWFraw (poe-at d)
   with complete-opExprWFraw d
 ... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-dotted ocg-+ d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-dotted ocg-- d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-dotted ocg-* d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-dotted ocg-/ d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-dotted ocg-< d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-dotted ocg-> d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
 
 ------------------------------------------------------------------------
 -- parsesExpr→opFails
@@ -164,8 +184,10 @@ parsesApp→opFails (papp-mk dAE _) = parsesAtomExpr→opFails dAE
 parsesUnary→opFails :
   ∀ {toks e rest acc} → ParsesUnary toks e rest
   → parseOpExprWF toks acc ≡ nothing
-parsesUnary→opFails {acc = acc₀} (pu-neg dU)
+parsesUnary→opFails {acc = acc₀} (pu-neg _ dU)
   rewrite parsesUnary→opFails {acc = '-' ∷ acc₀} dU = refl
+parsesUnary→opFails (pu-neg-int _)   = refl
+parsesUnary→opFails (pu-neg-float _) = refl
 parsesUnary→opFails (pu-app dApp) = parsesApp→opFails dApp
 
 parsesMul→opFails :
@@ -188,6 +210,7 @@ parsesCmp→opFails (pcm-gt dL _)   = parsesAdd→opFails dL
 parsesCmp→opFails (pcm-ge dL _)   = parsesAdd→opFails dL
 parsesCmp→opFails (pcm-eq dL _)   = parsesAdd→opFails dL
 parsesCmp→opFails (pcm-ne dL _)   = parsesAdd→opFails dL
+parsesCmp→opFails (pcm-dot _ dL _) = parsesAdd→opFails dL
 
 parsesComp→opFails :
   ∀ {toks e rest acc} → ParsesComp toks e rest
@@ -253,6 +276,16 @@ private
   cmp-noop {rest = TGe  ∷ _} _ () _
   cmp-noop {rest = TEqEq ∷ _} _ () _
   cmp-noop {rest = TNeq  ∷ _} _ () _
+  cmp-noop {rest = TOpD o+ ∷ _} _ _ (dA' , eqA) rewrite eqA = _ , refl
+  cmp-noop {rest = TOpD o- ∷ _} _ _ (dA' , eqA) rewrite eqA = _ , refl
+  cmp-noop {rest = TOpD o* ∷ _} _ _ (dA' , eqA) rewrite eqA = _ , refl
+  cmp-noop {rest = TOpD o/ ∷ _} _ _ (dA' , eqA) rewrite eqA = _ , refl
+  cmp-noop {rest = TOpD o< ∷ _} _ () _
+  cmp-noop {rest = TOpD o<= ∷ _} _ () _
+  cmp-noop {rest = TOpD o> ∷ _} _ () _
+  cmp-noop {rest = TOpD o>= ∷ _} _ () _
+  cmp-noop {rest = TOpD o== ∷ _} _ () _
+  cmp-noop {rest = TOpD o!= ∷ _} _ () _
 
   unary-app : ∀ {toks e rest} (a : Acc _<_ (length toks))
             → (∃ λ (dApp' : ParsesApp toks e rest) → parseAppWF toks a ≡ just (e , rest , dApp'))
@@ -289,6 +322,7 @@ private
   unary-app {toks = TGe        ∷ _} _ (dApp' , eqApp) rewrite eqApp = _ , refl
   unary-app {toks = TEqEq      ∷ _} _ (dApp' , eqApp) rewrite eqApp = _ , refl
   unary-app {toks = TNeq       ∷ _} _ (dApp' , eqApp) rewrite eqApp = _ , refl
+  unary-app {toks = TOpD _     ∷ _} _ (dApp' , eqApp) rewrite eqApp = _ , refl
   unary-app {toks = TBang      ∷ _} _ (dApp' , eqApp) rewrite eqApp = _ , refl
   unary-app {toks = TNewline   ∷ _} _ (dApp' , eqApp) rewrite eqApp = _ , refl
   unary-app {toks = TEOF       ∷ _} _ (dApp' , eqApp) rewrite eqApp = _ , refl
@@ -423,10 +457,121 @@ private
   ... | rv-not-reserved _ rewrite eq1 with IH (ParsesAtomExpr-shrinks d1)
   ... | d2 , eq2 rewrite eq2 = _ , refl
 
-  unary-neg : ∀ {toks rest e} (rec : ∀ {y} → y < length (TMinus ∷ toks) → Acc _<_ y)
+  atail-dplus : ∀ {left toks1 toks2 rest right e} (rec : ∀ {y} → y < length (TOpD o+ ∷ toks1) → Acc _<_ y)
+    → (∃ λ (d1 : ParsesMul toks1 right toks2) → parseMulWF toks1 (rec (s≤s ≤-refl)) ≡ just (right , toks2 , d1))
+    → (∀ (lt : length toks2 < length (TOpD o+ ∷ toks1)) → ∃ λ (d2 : ParsesAddTail (RBinOp (dotted o+) left right) toks2 e rest) → parseAddTailWF (RBinOp (dotted o+) left right) toks2 (rec lt) ≡ just (e , rest , d2))
+    → ∃ λ (d' : ParsesAddTail left (TOpD o+ ∷ toks1) e rest) → parseAddTailWF left (TOpD o+ ∷ toks1) (acc rec) ≡ just (e , rest , d')
+  atail-dplus rec (d1 , eq1) IH rewrite eq1 with IH (<-trans (ParsesMul-shrinks d1) (s≤s ≤-refl))
+  ... | d2 , eq2 rewrite eq2 = _ , refl
+
+  atail-dminus : ∀ {left toks1 toks2 rest right e} (rec : ∀ {y} → y < length (TOpD o- ∷ toks1) → Acc _<_ y)
+    → (∃ λ (d1 : ParsesMul toks1 right toks2) → parseMulWF toks1 (rec (s≤s ≤-refl)) ≡ just (right , toks2 , d1))
+    → (∀ (lt : length toks2 < length (TOpD o- ∷ toks1)) → ∃ λ (d2 : ParsesAddTail (RBinOp (dotted o-) left right) toks2 e rest) → parseAddTailWF (RBinOp (dotted o-) left right) toks2 (rec lt) ≡ just (e , rest , d2))
+    → ∃ λ (d' : ParsesAddTail left (TOpD o- ∷ toks1) e rest) → parseAddTailWF left (TOpD o- ∷ toks1) (acc rec) ≡ just (e , rest , d')
+  atail-dminus rec (d1 , eq1) IH rewrite eq1 with IH (<-trans (ParsesMul-shrinks d1) (s≤s ≤-refl))
+  ... | d2 , eq2 rewrite eq2 = _ , refl
+
+  mtail-dstar : ∀ {left toks1 toks2 rest right e} (rec : ∀ {y} → y < length (TOpD o* ∷ toks1) → Acc _<_ y)
+    → (∃ λ (d1 : ParsesUnary toks1 right toks2) → parseUnaryWF toks1 (rec (s≤s ≤-refl)) ≡ just (right , toks2 , d1))
+    → (∀ (lt : length toks2 < length (TOpD o* ∷ toks1)) → ∃ λ (d2 : ParsesMulTail (RBinOp (dotted o*) left right) toks2 e rest) → parseMulTailWF (RBinOp (dotted o*) left right) toks2 (rec lt) ≡ just (e , rest , d2))
+    → ∃ λ (d' : ParsesMulTail left (TOpD o* ∷ toks1) e rest) → parseMulTailWF left (TOpD o* ∷ toks1) (acc rec) ≡ just (e , rest , d')
+  mtail-dstar rec (d1 , eq1) IH rewrite eq1 with IH (<-trans (ParsesUnary-shrinks d1) (s≤s ≤-refl))
+  ... | d2 , eq2 rewrite eq2 = _ , refl
+
+  mtail-dslash : ∀ {left toks1 toks2 rest right e} (rec : ∀ {y} → y < length (TOpD o/ ∷ toks1) → Acc _<_ y)
+    → (∃ λ (d1 : ParsesUnary toks1 right toks2) → parseUnaryWF toks1 (rec (s≤s ≤-refl)) ≡ just (right , toks2 , d1))
+    → (∀ (lt : length toks2 < length (TOpD o/ ∷ toks1)) → ∃ λ (d2 : ParsesMulTail (RBinOp (dotted o/) left right) toks2 e rest) → parseMulTailWF (RBinOp (dotted o/) left right) toks2 (rec lt) ≡ just (e , rest , d2))
+    → ∃ λ (d' : ParsesMulTail left (TOpD o/ ∷ toks1) e rest) → parseMulTailWF left (TOpD o/ ∷ toks1) (acc rec) ≡ just (e , rest , d')
+  mtail-dslash rec (d1 , eq1) IH rewrite eq1 with IH (<-trans (ParsesUnary-shrinks d1) (s≤s ≤-refl))
+  ... | d2 , eq2 rewrite eq2 = _ , refl
+
+  cmp-dlt : ∀ {toks toks1 rest l r} (rec : ∀ {y} → y < length toks → Acc _<_ y)
+    → (∃ λ (dL : ParsesAdd toks l (TOpD o< ∷ toks1)) → parseAddWF toks (acc rec) ≡ just (l , TOpD o< ∷ toks1 , dL))
+    → (∀ (lt : length toks1 < length toks) → ∃ λ (dR : ParsesAdd toks1 r rest) → parseAddWF toks1 (rec lt) ≡ just (r , rest , dR))
+    → ∃ λ (d' : ParsesCmp toks (RBinOp (dotted o<) l r) rest) → parseCmpWF toks (acc rec) ≡ just (RBinOp (dotted o<) l r , rest , d')
+  cmp-dlt rec (dL , eqL) IH rewrite eqL with IH (<-trans (s≤s ≤-refl) (ParsesAdd-shrinks dL))
+  ... | dR , eqR rewrite eqR = _ , refl
+
+  cmp-dle : ∀ {toks toks1 rest l r} (rec : ∀ {y} → y < length toks → Acc _<_ y)
+    → (∃ λ (dL : ParsesAdd toks l (TOpD o<= ∷ toks1)) → parseAddWF toks (acc rec) ≡ just (l , TOpD o<= ∷ toks1 , dL))
+    → (∀ (lt : length toks1 < length toks) → ∃ λ (dR : ParsesAdd toks1 r rest) → parseAddWF toks1 (rec lt) ≡ just (r , rest , dR))
+    → ∃ λ (d' : ParsesCmp toks (RBinOp (dotted o<=) l r) rest) → parseCmpWF toks (acc rec) ≡ just (RBinOp (dotted o<=) l r , rest , d')
+  cmp-dle rec (dL , eqL) IH rewrite eqL with IH (<-trans (s≤s ≤-refl) (ParsesAdd-shrinks dL))
+  ... | dR , eqR rewrite eqR = _ , refl
+
+  cmp-dgt : ∀ {toks toks1 rest l r} (rec : ∀ {y} → y < length toks → Acc _<_ y)
+    → (∃ λ (dL : ParsesAdd toks l (TOpD o> ∷ toks1)) → parseAddWF toks (acc rec) ≡ just (l , TOpD o> ∷ toks1 , dL))
+    → (∀ (lt : length toks1 < length toks) → ∃ λ (dR : ParsesAdd toks1 r rest) → parseAddWF toks1 (rec lt) ≡ just (r , rest , dR))
+    → ∃ λ (d' : ParsesCmp toks (RBinOp (dotted o>) l r) rest) → parseCmpWF toks (acc rec) ≡ just (RBinOp (dotted o>) l r , rest , d')
+  cmp-dgt rec (dL , eqL) IH rewrite eqL with IH (<-trans (s≤s ≤-refl) (ParsesAdd-shrinks dL))
+  ... | dR , eqR rewrite eqR = _ , refl
+
+  cmp-dge : ∀ {toks toks1 rest l r} (rec : ∀ {y} → y < length toks → Acc _<_ y)
+    → (∃ λ (dL : ParsesAdd toks l (TOpD o>= ∷ toks1)) → parseAddWF toks (acc rec) ≡ just (l , TOpD o>= ∷ toks1 , dL))
+    → (∀ (lt : length toks1 < length toks) → ∃ λ (dR : ParsesAdd toks1 r rest) → parseAddWF toks1 (rec lt) ≡ just (r , rest , dR))
+    → ∃ λ (d' : ParsesCmp toks (RBinOp (dotted o>=) l r) rest) → parseCmpWF toks (acc rec) ≡ just (RBinOp (dotted o>=) l r , rest , d')
+  cmp-dge rec (dL , eqL) IH rewrite eqL with IH (<-trans (s≤s ≤-refl) (ParsesAdd-shrinks dL))
+  ... | dR , eqR rewrite eqR = _ , refl
+
+  cmp-deqeq : ∀ {toks toks1 rest l r} (rec : ∀ {y} → y < length toks → Acc _<_ y)
+    → (∃ λ (dL : ParsesAdd toks l (TOpD o== ∷ toks1)) → parseAddWF toks (acc rec) ≡ just (l , TOpD o== ∷ toks1 , dL))
+    → (∀ (lt : length toks1 < length toks) → ∃ λ (dR : ParsesAdd toks1 r rest) → parseAddWF toks1 (rec lt) ≡ just (r , rest , dR))
+    → ∃ λ (d' : ParsesCmp toks (RBinOp (dotted o==) l r) rest) → parseCmpWF toks (acc rec) ≡ just (RBinOp (dotted o==) l r , rest , d')
+  cmp-deqeq rec (dL , eqL) IH rewrite eqL with IH (<-trans (s≤s ≤-refl) (ParsesAdd-shrinks dL))
+  ... | dR , eqR rewrite eqR = _ , refl
+
+  cmp-dneq : ∀ {toks toks1 rest l r} (rec : ∀ {y} → y < length toks → Acc _<_ y)
+    → (∃ λ (dL : ParsesAdd toks l (TOpD o!= ∷ toks1)) → parseAddWF toks (acc rec) ≡ just (l , TOpD o!= ∷ toks1 , dL))
+    → (∀ (lt : length toks1 < length toks) → ∃ λ (dR : ParsesAdd toks1 r rest) → parseAddWF toks1 (rec lt) ≡ just (r , rest , dR))
+    → ∃ λ (d' : ParsesCmp toks (RBinOp (dotted o!=) l r) rest) → parseCmpWF toks (acc rec) ≡ just (RBinOp (dotted o!=) l r , rest , d')
+  cmp-dneq rec (dL , eqL) IH rewrite eqL with IH (<-trans (s≤s ≤-refl) (ParsesAdd-shrinks dL))
+  ... | dR , eqR rewrite eqR = _ , refl
+
+  -- `-` before anything but a numeral: its view is `nv-other`.
+  numeral-other : ∀ {ts} → NotNumeral ts → ∃ λ nn′ → numeralView ts ≡ nv-other nn′
+  numeral-other {[]} _ = _ , refl
+  numeral-other {TInt _ _ ∷ _} ()
+  numeral-other {TFloat _ _ _ _ ∷ _} ()
+  numeral-other {TWord _ ∷ _} _ = _ , refl
+  numeral-other {TString _ ∷ _} _ = _ , refl
+  numeral-other {TLParen ∷ _} _ = _ , refl
+  numeral-other {TRParen ∷ _} _ = _ , refl
+  numeral-other {TLBrace ∷ _} _ = _ , refl
+  numeral-other {TRBrace ∷ _} _ = _ , refl
+  numeral-other {TColon ∷ _} _ = _ , refl
+  numeral-other {TEquals ∷ _} _ = _ , refl
+  numeral-other {TArrow ∷ _} _ = _ , refl
+  numeral-other {TCaret1 ∷ _} _ = _ , refl
+  numeral-other {TCaret0 ∷ _} _ = _ , refl
+  numeral-other {TCaretW ∷ _} _ = _ , refl
+  numeral-other {TLambda ∷ _} _ = _ , refl
+  numeral-other {TComma ∷ _} _ = _ , refl
+  numeral-other {TSemicolon ∷ _} _ = _ , refl
+  numeral-other {TAt ∷ _} _ = _ , refl
+  numeral-other {TPipe ∷ _} _ = _ , refl
+  numeral-other {TDot ∷ _} _ = _ , refl
+  numeral-other {TOp _ ∷ _} _ = _ , refl
+  numeral-other {TOpD _ ∷ _} _ = _ , refl
+  numeral-other {TAmpersand ∷ _} _ = _ , refl
+  numeral-other {TBang ∷ _} _ = _ , refl
+  numeral-other {TNewline ∷ _} _ = _ , refl
+  numeral-other {TEOF ∷ _} _ = _ , refl
+
+  unary-negint : ∀ {n p toks rest e} (rec : ∀ {y} → y < length (TMinus ∷ TInt n p ∷ toks) → Acc _<_ y)
+    → (∃ λ (d1 : ParsesAppTail (RInt (ℤ.- n)) toks e rest) → parseAppTailWF (RInt (ℤ.- n)) toks (rec (s≤s (n≤1+n _))) ≡ just (e , rest , d1))
+    → ∃ λ (d' : ParsesUnary (TMinus ∷ TInt n p ∷ toks) e rest) → parseUnaryWF (TMinus ∷ TInt n p ∷ toks) (acc rec) ≡ just (e , rest , d')
+  unary-negint rec (d1 , eq1) rewrite eq1 = _ , refl
+
+  unary-negfloat : ∀ {i f l p toks rest e} (rec : ∀ {y} → y < length (TMinus ∷ TFloat i f l p ∷ toks) → Acc _<_ y)
+    → (∃ λ (d1 : ParsesAppTail (RFloat neg i f l) toks e rest) → parseAppTailWF (RFloat neg i f l) toks (rec (s≤s (n≤1+n _))) ≡ just (e , rest , d1))
+    → ∃ λ (d' : ParsesUnary (TMinus ∷ TFloat i f l p ∷ toks) e rest) → parseUnaryWF (TMinus ∷ TFloat i f l p ∷ toks) (acc rec) ≡ just (e , rest , d')
+  unary-negfloat rec (d1 , eq1) rewrite eq1 = _ , refl
+
+  unary-neg : ∀ {toks rest e} (rec : ∀ {y} → y < length (TMinus ∷ toks) → Acc _<_ y) → NotNumeral toks
     → (∃ λ (d1 : ParsesUnary toks e rest) → parseUnaryWF toks (rec (s≤s ≤-refl)) ≡ just (e , rest , d1))
     → ∃ λ (d' : ParsesUnary (TMinus ∷ toks) (RNeg e) rest) → parseUnaryWF (TMinus ∷ toks) (acc rec) ≡ just (RNeg e , rest , d')
-  unary-neg rec (d1 , eq1) rewrite eq1 = _ , refl
+  unary-neg {toks} rec nn (d1 , eq1) with numeralView toks | proj₂ (numeral-other nn)
+  ... | _ | refl rewrite eq1 = _ , refl
 
   expr-mk : ∀ {toks e rest} (a : Acc _<_ (length toks))
     → (∃ λ (d1 : ParsesComp toks e rest) → parseCompWF toks a ≡ just (e , rest , d1))
@@ -620,6 +765,7 @@ mutual
   complete-compTailWFraw (pct-done {toks = TGe        ∷ _} _) _ = _ , refl
   complete-compTailWFraw (pct-done {toks = TEqEq      ∷ _} _) _ = _ , refl
   complete-compTailWFraw (pct-done {toks = TNeq       ∷ _} _) _ = _ , refl
+  complete-compTailWFraw (pct-done {toks = TOpD _     ∷ _} _) _ = _ , refl
   complete-compTailWFraw (pct-done {toks = TBang      ∷ _} _) _ = _ , refl
   complete-compTailWFraw (pct-done {toks = TNewline   ∷ _} _) _ = _ , refl
   complete-compTailWFraw (pct-done {toks = TEOF       ∷ _} _) _ = _ , refl
@@ -640,6 +786,16 @@ mutual
   complete-cmpWFraw (pcm-ge dL dR) (acc rec) = cmp-ge rec (complete-addWFraw dL (acc rec)) (λ lt → complete-addWFraw dR (rec lt))
   complete-cmpWFraw (pcm-eq dL dR) (acc rec) = cmp-eq rec (complete-addWFraw dL (acc rec)) (λ lt → complete-addWFraw dR (rec lt))
   complete-cmpWFraw (pcm-ne dL dR) (acc rec) = cmp-ne rec (complete-addWFraw dL (acc rec)) (λ lt → complete-addWFraw dR (rec lt))
+  complete-cmpWFraw (pcm-dot {d = o+} () dL dR) _
+  complete-cmpWFraw (pcm-dot {d = o- } () dL dR) _
+  complete-cmpWFraw (pcm-dot {d = o*} () dL dR) _
+  complete-cmpWFraw (pcm-dot {d = o/} () dL dR) _
+  complete-cmpWFraw (pcm-dot {d = o<} refl dL dR) (acc rec) = cmp-dlt rec (complete-addWFraw dL (acc rec)) (λ lt → complete-addWFraw dR (rec lt))
+  complete-cmpWFraw (pcm-dot {d = o<=} refl dL dR) (acc rec) = cmp-dle rec (complete-addWFraw dL (acc rec)) (λ lt → complete-addWFraw dR (rec lt))
+  complete-cmpWFraw (pcm-dot {d = o>} refl dL dR) (acc rec) = cmp-dgt rec (complete-addWFraw dL (acc rec)) (λ lt → complete-addWFraw dR (rec lt))
+  complete-cmpWFraw (pcm-dot {d = o>=} refl dL dR) (acc rec) = cmp-dge rec (complete-addWFraw dL (acc rec)) (λ lt → complete-addWFraw dR (rec lt))
+  complete-cmpWFraw (pcm-dot {d = o==} refl dL dR) (acc rec) = cmp-deqeq rec (complete-addWFraw dL (acc rec)) (λ lt → complete-addWFraw dR (rec lt))
+  complete-cmpWFraw (pcm-dot {d = o!=} refl dL dR) (acc rec) = cmp-dneq rec (complete-addWFraw dL (acc rec)) (λ lt → complete-addWFraw dR (rec lt))
 
   -- Add = Mul + AddTail
   complete-addWFraw (pa-mk dM dT) (acc rec) = add-mk rec (complete-mulWFraw dM (acc rec)) (λ lt → complete-addTailWFraw dT (rec lt))
@@ -684,6 +840,26 @@ mutual
 
   complete-addTailWFraw (pat-plus dM dT) (acc rec) = atail-plus rec (complete-mulWFraw dM (rec (s≤s ≤-refl))) (λ lt → complete-addTailWFraw dT (rec lt))
   complete-addTailWFraw (pat-minus dM dT) (acc rec) = atail-minus rec (complete-mulWFraw dM (rec (s≤s ≤-refl))) (λ lt → complete-addTailWFraw dT (rec lt))
+  complete-addTailWFraw (pat-dot {d = o+} refl dM dT) (acc rec) = atail-dplus rec (complete-mulWFraw dM (rec (s≤s ≤-refl))) (λ lt → complete-addTailWFraw dT (rec lt))
+  complete-addTailWFraw (pat-dot {d = o- } refl dM dT) (acc rec) = atail-dminus rec (complete-mulWFraw dM (rec (s≤s ≤-refl))) (λ lt → complete-addTailWFraw dT (rec lt))
+  complete-addTailWFraw (pat-dot {d = o*} () dM dT) _
+  complete-addTailWFraw (pat-dot {d = o/} () dM dT) _
+  complete-addTailWFraw (pat-dot {d = o<} () dM dT) _
+  complete-addTailWFraw (pat-dot {d = o<=} () dM dT) _
+  complete-addTailWFraw (pat-dot {d = o>} () dM dT) _
+  complete-addTailWFraw (pat-dot {d = o>=} () dM dT) _
+  complete-addTailWFraw (pat-dot {d = o==} () dM dT) _
+  complete-addTailWFraw (pat-dot {d = o!=} () dM dT) _
+  complete-addTailWFraw (pat-done {toks = TOpD o+ ∷ _} ()) _
+  complete-addTailWFraw (pat-done {toks = TOpD o- ∷ _} ()) _
+  complete-addTailWFraw (pat-done {toks = TOpD o* ∷ _} _) _ = _ , refl
+  complete-addTailWFraw (pat-done {toks = TOpD o/ ∷ _} _) _ = _ , refl
+  complete-addTailWFraw (pat-done {toks = TOpD o< ∷ _} _) _ = _ , refl
+  complete-addTailWFraw (pat-done {toks = TOpD o<= ∷ _} _) _ = _ , refl
+  complete-addTailWFraw (pat-done {toks = TOpD o> ∷ _} _) _ = _ , refl
+  complete-addTailWFraw (pat-done {toks = TOpD o>= ∷ _} _) _ = _ , refl
+  complete-addTailWFraw (pat-done {toks = TOpD o== ∷ _} _) _ = _ , refl
+  complete-addTailWFraw (pat-done {toks = TOpD o!= ∷ _} _) _ = _ , refl
 
   -- Mul = Unary + MulTail
   complete-mulWFraw (pm-mk dU dT) (acc rec) = mul-mk rec (complete-unaryWFraw dU (acc rec)) (λ lt → complete-mulTailWFraw dT (rec lt))
@@ -729,9 +905,31 @@ mutual
   complete-mulTailWFraw (pmt-star dU dT) (acc rec) = mtail-star rec (complete-unaryWFraw dU (rec (s≤s ≤-refl))) (λ lt → complete-mulTailWFraw dT (rec lt))
   complete-mulTailWFraw (pmt-slash dU dT) (acc rec) = mtail-slash rec (complete-unaryWFraw dU (rec (s≤s ≤-refl))) (λ lt → complete-mulTailWFraw dT (rec lt))
   complete-mulTailWFraw (pmt-percent dU dT) (acc rec) = mtail-percent rec (complete-unaryWFraw dU (rec (s≤s ≤-refl))) (λ lt → complete-mulTailWFraw dT (rec lt))
+  complete-mulTailWFraw (pmt-dot {d = o+} () dU dT) _
+  complete-mulTailWFraw (pmt-dot {d = o- } () dU dT) _
+  complete-mulTailWFraw (pmt-dot {d = o*} refl dU dT) (acc rec) = mtail-dstar rec (complete-unaryWFraw dU (rec (s≤s ≤-refl))) (λ lt → complete-mulTailWFraw dT (rec lt))
+  complete-mulTailWFraw (pmt-dot {d = o/} refl dU dT) (acc rec) = mtail-dslash rec (complete-unaryWFraw dU (rec (s≤s ≤-refl))) (λ lt → complete-mulTailWFraw dT (rec lt))
+  complete-mulTailWFraw (pmt-dot {d = o<} () dU dT) _
+  complete-mulTailWFraw (pmt-dot {d = o<=} () dU dT) _
+  complete-mulTailWFraw (pmt-dot {d = o>} () dU dT) _
+  complete-mulTailWFraw (pmt-dot {d = o>=} () dU dT) _
+  complete-mulTailWFraw (pmt-dot {d = o==} () dU dT) _
+  complete-mulTailWFraw (pmt-dot {d = o!=} () dU dT) _
+  complete-mulTailWFraw (pmt-done {toks = TOpD o+ ∷ _} _) _ = _ , refl
+  complete-mulTailWFraw (pmt-done {toks = TOpD o- ∷ _} _) _ = _ , refl
+  complete-mulTailWFraw (pmt-done {toks = TOpD o* ∷ _} ()) _
+  complete-mulTailWFraw (pmt-done {toks = TOpD o/ ∷ _} ()) _
+  complete-mulTailWFraw (pmt-done {toks = TOpD o< ∷ _} _) _ = _ , refl
+  complete-mulTailWFraw (pmt-done {toks = TOpD o<= ∷ _} _) _ = _ , refl
+  complete-mulTailWFraw (pmt-done {toks = TOpD o> ∷ _} _) _ = _ , refl
+  complete-mulTailWFraw (pmt-done {toks = TOpD o>= ∷ _} _) _ = _ , refl
+  complete-mulTailWFraw (pmt-done {toks = TOpD o== ∷ _} _) _ = _ , refl
+  complete-mulTailWFraw (pmt-done {toks = TOpD o!= ∷ _} _) _ = _ , refl
 
   -- Unary: neg + app-passthrough
-  complete-unaryWFraw (pu-neg dU) (acc rec) = unary-neg rec (complete-unaryWFraw dU (rec (s≤s ≤-refl)))
+  complete-unaryWFraw (pu-neg nn dU) (acc rec) = unary-neg rec nn (complete-unaryWFraw dU (rec (s≤s ≤-refl)))
+  complete-unaryWFraw (pu-neg-int dT) (acc rec) = unary-negint rec (complete-appTailWFraw dT (rec (s≤s (n≤1+n _))))
+  complete-unaryWFraw (pu-neg-float dT) (acc rec) = unary-negfloat rec (complete-appTailWFraw dT (rec (s≤s (n≤1+n _))))
   complete-unaryWFraw (pu-app dApp) a = unary-app a (complete-appWFraw dApp a)
   -- Minus: pu-neg handled above. pu-app with TMinus must go through
   -- parseAppWF; but parseUnaryWF on TMinus dispatches to the neg branch.
@@ -783,6 +981,7 @@ mutual
   complete-appTailWFraw (papp-done {toks = TGe        ∷ _} nas-TGe) _ = _ , refl
   complete-appTailWFraw (papp-done {toks = TEqEq      ∷ _} nas-TEqEq) _ = _ , refl
   complete-appTailWFraw (papp-done {toks = TNeq       ∷ _} nas-TNeq) _ = _ , refl
+  complete-appTailWFraw (papp-done {toks = TOpD _     ∷ _} nas-TOpD) _ = _ , refl
   complete-appTailWFraw (papp-done {toks = TBang      ∷ _} nas-TBang) _ = _ , refl
   complete-appTailWFraw (papp-done {toks = TNewline   ∷ _} nas-TNewline) _ = _ , refl
   complete-appTailWFraw (papp-done {toks = TEOF       ∷ _} nas-TEOF) _ = _ , refl
@@ -842,6 +1041,7 @@ mutual
       nqp-case nqp-TGe        = _ , refl
       nqp-case nqp-TEqEq      = _ , refl
       nqp-case nqp-TNeq       = _ , refl
+      nqp-case nqp-TOpD       = _ , refl
       nqp-case nqp-TBang      = _ , refl
       nqp-case nqp-TNewline   = _ , refl
       nqp-case nqp-TEOF       = _ , refl
@@ -878,6 +1078,7 @@ mutual
       nqp-case (nqp-TAt-cons ntw-TGe)        = _ , refl
       nqp-case (nqp-TAt-cons ntw-TEqEq)      = _ , refl
       nqp-case (nqp-TAt-cons ntw-TNeq)       = _ , refl
+      nqp-case (nqp-TAt-cons ntw-TOpD)       = _ , refl
       nqp-case (nqp-TAt-cons ntw-TBang)      = _ , refl
       nqp-case (nqp-TAt-cons ntw-TNewline)   = _ , refl
       nqp-case (nqp-TAt-cons ntw-TEOF)       = _ , refl
@@ -976,6 +1177,28 @@ mutual
   -- []. Every other leading token: either op-recurse (handled above),
   -- TRParen-close (needs non-[] acc, absurd), or "anything else" which
   -- has no constructor. The absurd cases:
+  complete-atomExprWFraw (pae-paren-op {toks = TOpD o+ ∷ _} dOp) (acc rec)
+    with complete-opExprWFraw dOp
+  ... | _ , eq rewrite eq = _ , refl
+  complete-atomExprWFraw (pae-paren-op {toks = TOpD o-  ∷ _} dOp) (acc rec)
+    with complete-opExprWFraw dOp
+  ... | _ , eq rewrite eq = _ , refl
+  complete-atomExprWFraw (pae-paren-op {toks = TOpD o* ∷ _} dOp) (acc rec)
+    with complete-opExprWFraw dOp
+  ... | _ , eq rewrite eq = _ , refl
+  complete-atomExprWFraw (pae-paren-op {toks = TOpD o/ ∷ _} dOp) (acc rec)
+    with complete-opExprWFraw dOp
+  ... | _ , eq rewrite eq = _ , refl
+  complete-atomExprWFraw (pae-paren-op {toks = TOpD o< ∷ _} dOp) (acc rec)
+    with complete-opExprWFraw dOp
+  ... | _ , eq rewrite eq = _ , refl
+  complete-atomExprWFraw (pae-paren-op {toks = TOpD o> ∷ _} dOp) (acc rec)
+    with complete-opExprWFraw dOp
+  ... | _ , eq rewrite eq = _ , refl
+  complete-atomExprWFraw (pae-paren-op {toks = TOpD o<= ∷ _} (poe-dotted () _)) _
+  complete-atomExprWFraw (pae-paren-op {toks = TOpD o>= ∷ _} (poe-dotted () _)) _
+  complete-atomExprWFraw (pae-paren-op {toks = TOpD o== ∷ _} (poe-dotted () _)) _
+  complete-atomExprWFraw (pae-paren-op {toks = TOpD o!= ∷ _} (poe-dotted () _)) _
   complete-atomExprWFraw (pae-paren-op {toks = TRParen ∷ _} ()) _
   complete-atomExprWFraw (pae-paren-op {toks = TLParen ∷ _} ()) _
   complete-atomExprWFraw (pae-paren-op {toks = TLBrace ∷ _} ()) _
@@ -1122,6 +1345,10 @@ mutual
   complete-pae-paren (TGe        ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
   complete-pae-paren (TEqEq      ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
   complete-pae-paren (TNeq       ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
+  complete-pae-paren (TOpD o<= ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
+  complete-pae-paren (TOpD o>= ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
+  complete-pae-paren (TOpD o== ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
+  complete-pae-paren (TOpD o!= ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
   complete-pae-paren (TBang      ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
   complete-pae-paren (TNewline   ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
   complete-pae-paren (TEOF       ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
@@ -1167,6 +1394,25 @@ mutual
   complete-pae-paren (TAt        ∷ toks') dE dC a
     rewrite parsesExpr→opFails {acc = []} dE
     = complete-pae-paren-body _ dE dC a
+  complete-pae-paren (TOpD o+ ∷ toks') dE dC a
+    rewrite parsesExpr→opFails {acc = []} dE
+    = complete-pae-paren-body _ dE dC a
+  complete-pae-paren (TOpD o-  ∷ toks') dE dC a
+    rewrite parsesExpr→opFails {acc = []} dE
+    = complete-pae-paren-body _ dE dC a
+  complete-pae-paren (TOpD o* ∷ toks') dE dC a
+    rewrite parsesExpr→opFails {acc = []} dE
+    = complete-pae-paren-body _ dE dC a
+  complete-pae-paren (TOpD o/ ∷ toks') dE dC a
+    rewrite parsesExpr→opFails {acc = []} dE
+    = complete-pae-paren-body _ dE dC a
+  complete-pae-paren (TOpD o< ∷ toks') dE dC a
+    rewrite parsesExpr→opFails {acc = []} dE
+    = complete-pae-paren-body _ dE dC a
+  complete-pae-paren (TOpD o> ∷ toks') dE dC a
+    rewrite parsesExpr→opFails {acc = []} dE
+    = complete-pae-paren-body _ dE dC a
+  complete-pae-paren (TRParen    ∷ _) (pe-mk (pc-mk (pcm-dot _ (pa-mk (pm-mk (pu-app (papp-mk () _)) _) _) _) _)) _ _
 
   complete-pae-paren-body toks dE dC (acc rec)
     with complete-exprWFraw dE (acc rec)
