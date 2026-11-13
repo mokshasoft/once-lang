@@ -14,7 +14,7 @@
 {-# OPTIONS --guardedness #-}
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≤_; _<_; z≤n)
-open import Data.Nat.Properties using (+-assoc; +-suc; ≤-trans; <-≤-trans; ≤-reflexive; m≤m+n; m≤n+m)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-trans; <-≤-trans; ≤-reflexive; m≤m+n; m≤n+m)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Maybe using (Maybe; just)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -22,12 +22,13 @@ open import Data.Unit using (tt)
 open import Data.Bool using (false)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
+open import Data.Empty using (⊥)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Machine.Locations using (AtStack)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 
@@ -49,7 +50,7 @@ import Once.LinCore.Moves
 module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf
-  open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
+  open FlatMachine {FS} using (FlatState; floc; falloc; fpc; fret)
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++)
   open import Once.LinCore.Moves {FS}
     using (Seg; Seg-++ˡ; Seg-++ʳ; slot; mvPS-run; MovedP; p-moved; p-rest; p-heap; p-halt; p-pc; restore-step; Ran; ranP; ran-trans; ran-regs)
@@ -206,3 +207,94 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           lt-env k′ k′< = <-≤-trans (subst (_< wsz E) (sym (Data.Nat.Properties.+-identityʳ k′)) k′<) wE≤dst
           past-env : ∀ k k′ → k′ < wsz E → ¬ k + dst ≡ k′ + 0
           past-env k k′ k′< e′ = Data.Nat.Properties.<-irrefl (sym e′) (<-≤-trans (lt-env k′ k′<) (m≤n+m dst k))
+
+  ----------------------------------------------------------------------
+  -- ★ THE WAY OUT: the result's words into the caller's area, the return;
+  -- the caller's configuration, with the result on top, in its frame.
+  ----------------------------------------------------------------------
+
+  open import Once.LinCore.LowerSimE {FS} using (CallOut; call-out; co-frame; co-moved; co-rest; co-halt)
+  open import Once.LinCore.MoveCode using (mvSP)
+
+  -- words copied, slot by slot
+  slots-copied : ∀ {sm sm′ : ℕ → Maybe W} {src d} (w : List W)
+               → (∀ k → k < length w → sm′ (k + d) ≡ sm (k + src)) → SlotsAt sm src w → SlotsAt sm′ d w
+  slots-copied {sm} {sm′} {src} {d} w h s = go w 0 s (λ k k< → h k k<)
+    where
+      go : ∀ (v : List W) j → SlotsAt sm (j + src) v → (∀ k → k < j + length v → sm′ (k + d) ≡ sm (k + src)) → SlotsAt sm′ (j + d) v
+      go []      j s h′ = tt
+      go (x ∷ v) j (e , s) h′ =
+        trans (h′ j (subst (j <_) (sym (+-suc j (length v))) (Data.Nat.s≤s (m≤m+n j (length v))))) e ,
+        go v (suc j) s (λ k k< → h′ k (subst (k <_) (sym (+-suc j (length v))) k<))
+
+  -- a value of `M` words' room below the stack's rest: where a part of it starts
+  area-gen : ∀ Bg wX M s → wX ≤ M → M + s ≤ Bg → (M ∸ wX) + ((Bg ∸ s) ∸ M) ≡ Bg ∸ (wX + s)
+  area-gen Bg wX M s le fit =
+    trans (+-comm (M ∸ wX) _)
+      (trans (sym (Data.Nat.Properties.+-∸-assoc ((Bg ∸ s) ∸ M) le))
+        (trans (cong (_∸ wX) (Data.Nat.Properties.m∸n+n≡m M≤))
+          (trans (Data.Nat.Properties.∸-+-assoc Bg s wX) (cong (Bg ∸_) (+-comm s wX)))))
+    where
+      import Data.Nat.Properties
+      M≤ : M ≤ Bg ∸ s
+      M≤ = ≤∸ M s Bg fit
+
+  private
+    slot-eq : ∀ {f g x y} → AtStack {FS} f x ≡ AtStack g y → x ≡ y
+    slot-eq refl = refl
+
+  leave : ∀ prog (fs : FlatState) (φ φ′ : Frame) (cfc : FrameSemantics.Frame FS) (area M bb pc : ℕ) (rest : List ℕ)
+            (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ) {Es B S} {es : Slots Es} {os : Stk S} {b : MV B} (wb : List W)
+        → fret fs ≡ pc ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+        → ¬ cfc ≡ AllocState.current-frame (falloc fs)
+        → slot fs (budget φ′) ≡ just (SV-Ptr (AtStack cfc area))
+        → VW (LocState.heapMem (floc fs)) b wb → SlotsAt (slot fs) (budget φ′ ∸ ws (B ∷ [])) wb
+        → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
+        → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) φ os
+        → area ≡ (budget φ ∸ ws S) ∸ M → wsz B ≤ M → M + ws S ≤ OP φ → ws Es ≤ EP φ → ws (B ∷ S) ≤ OP φ
+        → Seg prog (fpc fs) (restore-input (budget φ′) ∷ mvSP (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) ++ instr-ctrl (c-ret bb) ∷ [])
+        → LocState.halted (floc fs) ≡ false
+        → Σ FlatState λ fs′ → FlatSteps prog (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′
+            × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os)
+            × CallOut fs fs′ cfc area (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) pc rest sv sl
+  leave prog fs φ φ′ cfc area M bb pc rest sv sl {Es} {B} {S} {es} {os} {b} wb hret hsv ne ep pb sb ev st refl le fitM fitE fitB seg h
+    with call-out prog fs cfc area (budget φ′) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) bb pc rest sv sl hret hsv ne ep
+           (λ k k< → slots-def wb sb k (subst (k <_) (sym (vw-len pb)) k<)) seg h
+  ... | (fs′ , st′ , CO) =
+    fs′ , st′ ,
+    subst (λ g → CfgW (LocState.heapMem (floc fs′)) (LocState.stackMem (floc fs′) g) φ (es ∥ b ∷ˢ os)) (sym (co-frame CO))
+      (record { c-env  = envW-heap es (λ i k _ → hp (cellLoc i k)) (envW-frame es (λ x x< → kept x (inj₁ x<)) ev)
+              ; c-stk  = ( wb , vw-frame pb (λ i k _ → hp (cellLoc i k))
+                         , subst (λ z → SlotsAt (LocState.stackMem (floc fs′) cfc) z wb)
+                             (area-gen (budget φ) (wsz B) M (ws S) le (≤-trans fitM (m≤n+m (OP φ) (EP φ))))
+                             (slots-copied wb (λ k k< → trans (cong (LocState.stackMem (floc fs′) cfc) (sym (+-assoc k (M ∸ wsz B) area)))
+                                                            (co-moved CO k (subst (k <_) (vw-len pb) k<))) sb) )
+                       , stkW-heap os (λ i k _ → hp (cellLoc i k))
+                           (stkW-frame os fitS (λ x lo _ → kept x (inj₂ lo)) st)
+              ; c-efit = fitE ; c-sfit = fitB }) ,
+    CO
+    where
+      import Data.Nat.Properties
+      open import Data.Sum using (_⊎_; inj₁; inj₂)
+      bot = budget φ ∸ ws S
+      hp : ∀ hl → LocState.heapMem (floc fs′) hl ≡ LocState.heapMem (floc fs) hl
+      hp hl = co-rest CO (AtDynamic hl) (λ k k< ())
+      fitS : ws S ≤ budget φ
+      fitS = ≤-trans (m≤n+m (ws S) M) (≤-trans fitM (m≤n+m (OP φ) (EP φ)))
+      -- the area lies above the environment and below the rest of the stack
+      area≥ : ws Es ≤ (budget φ ∸ ws S) ∸ M
+      area≥ = ≤-trans fitE (≤-trans (env-below φ (M + ws S) fitM)
+                (≤-reflexive (trans (cong (budget φ ∸_) (+-comm M (ws S))) (sym (Data.Nat.Properties.∸-+-assoc (budget φ) (ws S) M)))))
+      area-top : ((budget φ ∸ ws S) ∸ M) + M ≡ bot
+      area-top = Data.Nat.Properties.m∸n+n≡m (≤∸ M (ws S) (budget φ) (≤-trans fitM (m≤n+m (OP φ) (EP φ))))
+      moved< : ∀ k → k < wsz B → (k + (M ∸ wsz B)) + ((budget φ ∸ ws S) ∸ M) < bot
+      moved< k k< = <-≤-trans (Data.Nat.Properties.+-monoˡ-< _ (<-≤-trans (Data.Nat.Properties.+-monoˡ-< (M ∸ wsz B) k<)
+                                (≤-reflexive (Data.Nat.Properties.m+[n∸m]≡n le))))
+                      (≤-reflexive (trans (+-comm M _) area-top))
+      kept : ∀ x → (x < ws Es) ⊎ (bot ≤ x) → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x
+      kept x side = co-rest CO (AtStack cfc x) (λ k k< e′ → off-area k k< (slot-eq e′) side)
+        where
+          off-area : ∀ k → k < wsz B → x ≡ (k + (M ∸ wsz B)) + ((budget φ ∸ ws S) ∸ M) → (x < ws Es) ⊎ (bot ≤ x) → ⊥
+          off-area k k< e (inj₁ x<) = Data.Nat.Properties.<-irrefl e
+                                     (<-≤-trans x< (≤-trans area≥ (m≤n+m _ (k + (M ∸ wsz B)))))
+          off-area k k< e (inj₂ ge) = Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans (moved< k k<) ge)
