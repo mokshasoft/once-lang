@@ -37,7 +37,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf
   open CfgW
-  open import Once.LinCore.Moves {FS} using (Seg; slot; Keep) renaming (ln to nsteps)
+  open import Once.LinCore.Moves {FS} using (Seg; slot; Keep; k-frame; k-slots; k-saved; k-ret; k-other) renaming (ln to nsteps)
   open import Once.LinCore.MoveCode using (mvSS)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; floc; fpc)
@@ -191,3 +191,9 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
         where
           ne′ : ∀ k → ¬ AtDynamic {FS} (p k) ≡ AtDynamic hl
           ne′ k refl = ne refl
+
+  -- a header leaves the frames alone (D418)
+  keepH : ∀ {fs fs′ w lb lc lf} → Header fs fs′ w lb lc lf → Keep fs fs′
+  keepH H = record { k-frame = cong AllocState.current-frame (h-alloc H) ; k-slots = cong AllocState.frame-slots (h-alloc H)
+                   ; k-saved = cong AllocState.saved-frames (h-alloc H) ; k-ret = h-ret H
+                   ; k-other = λ f x _ → cong (λ m → m f x) (h-stack H) }
