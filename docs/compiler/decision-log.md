@@ -22891,8 +22891,10 @@ construction of the compiled code, and `NoCell` states it.
 ## D423 — A ν IS OBSERVED AT THE EMPTY TABLE: ONE OBSERVATION BLOCK PER (F , S) (2026-11-13)
 
 **Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Refines**: D416 (a ν's
-code word names `kobs` at the table where the ν was built). **Status**: the relation's parts for `ktro` are
-in (its depth-0 relation, cell part, inner call, return, way out); the dispatch `i-iobs` is OWED on this.
+code word names `kobs` at the table where the ν was built). **Status** (implemented 2026-11-13): `Keys`
+gathers `(_ , ε)` for `lunf`/`lout`, `Words.vnu` names `kobs ε F S`, `ImageRun.i-iobs` enters `ktro ε F S`;
+`ObsTable` proves `obsT` table-free (`run-tf`, `obs-tbl`) and `ImageSim.simTF` simulates its run at `ε`
+(structurally, by the run). The word layer's dispatch `i-iobs` (`giobs`) is the next step.
 
 ### The problem
 A ν's code word names `kobs d F S` for the table `d` where the ν was built (D416); the image's `iobs ds`

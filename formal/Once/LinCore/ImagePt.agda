@@ -184,7 +184,7 @@ module Places {sh₀ U₀} (c₀ : Codeᴵ sh₀ U₀) where
   -- ★ a dispatch: the trampoline's start (D417)
   place (i-icall {lam = lam})   P R = entry (tr1 lam) , nxt P , R
   place (i-icallω {lam = lam} _) P R = entry (trω lam) , nxt P , R
-  place (i-iobs {ds = ds} {F = F} {S = S}) P R = entry (ktro ds F S) , nxt P , R
+  place (i-iobs {F = F} {S = S}) P R = entry (ktro ε F S) , nxt P , R
   place (i-ccopy {X = X} _)     P R = entry (ktrc X _) , nxt P , R
   place (i-ncopy {F = F} {S = S} _) P R = entry (ktrc (Coalg F S ⊗t S) (Nu F)) , nxt P , R
   place (i-cfree {X = X})       P R = entry (ktrf X _) , nxt P , R

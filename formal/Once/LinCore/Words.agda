@@ -80,7 +80,7 @@ module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
           → At rd i 0 (cellPtr i ∷ wb ∷ wc ∷ wf ∷ wx)
           → VW rd (mfn i lam x) (cellPtr i ∷ [])
     vnu   : ∀ {F S i} {p : MV (Coalg F S ⊗t S)} {wp wo wc wf}
-          → (Σ DS λ d → CodeOf (_ , kobs (proj₂ d) F S) wo) → CodeOf (kc (cty (F , S))) wc → CodeOf (kf (cty (F , S))) wf
+          → CodeOf (_ , kobs ε F S) wo → CodeOf (kc (cty (F , S))) wc → CodeOf (kf (cty (F , S))) wf
           → VW rd p wp
           → At rd i 0 (cellPtr i ∷ wo ∷ wc ∷ wf ∷ wp)
           → VW rd (mnu i p) (cellPtr i ∷ [])

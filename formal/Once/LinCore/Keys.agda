@@ -237,8 +237,8 @@ tmGot ds (dup {A = A})       = t! A
 tmGot ds (drop {A = A})      = t! A
 tmGot ds (llam {X = X} b γ)  = k! (_ , kbody1 ds b γ) ⊹ t! X ⊹ tmGot ds b
 tmGot ds (llamω {X = X} b γ) = k! (_ , kbodyω ds b γ) ⊹ t! X ⊹ tmGot ds b
-tmGot ds (lunf {F = F} {S})  = n! (F , S) ⊹ o! (_ , ds)
-tmGot ds (lout {F = F})      = o! (_ , ds)
+tmGot ds (lunf {F = F} {S})  = n! (F , S) ⊹ o! (_ , ε)
+tmGot ds (lout {F = F})      = o! (_ , ε)
 {-# CATCHALL #-}
 tmGot ds _                   = ∅
 
@@ -340,7 +340,7 @@ module In (U : Univ) where
   PrimIn : ∀ {Γ} → Defs Γ → ∀ {E A B} → Tm Γ E A B → Set
   PrimIn ds (llam {X = X} b γ)  = (_ , kbody1 ds b γ) ∈ allK U × X ∈ tys U
   PrimIn ds (llamω {X = X} b γ) = (_ , kbodyω ds b γ) ∈ allK U × X ∈ tys U
-  PrimIn ds (lunf {F = F} {S})  = (F , S) ∈ nus U × (_ , ds) ∈ obs U
+  PrimIn ds (lunf {F = F} {S})  = (F , S) ∈ nus U × (_ , ε) ∈ obs U
   PrimIn ds ρl        = ⊤
   PrimIn ds ρl⁻       = ⊤
   PrimIn ds lul       = ⊤
@@ -364,7 +364,7 @@ module In (U : Univ) where
 
   IIn (call {σ} κ)   = (σ , κ) ∈ allK U
   IIn (prim ds g)    = PrimIn ds g
-  IIn (iobs {Γ} ds)  = (Γ , ds) ∈ obs U
+  IIn (iobs ds)     = (_ , ε) ∈ obs U
   IIn (loop c)       = CIn c
   {-# CATCHALL #-}
   IIn _              = ⊤
@@ -467,7 +467,7 @@ module In (U : Univ) where
   strL-got d F (G ⊕f H) S c = ⊹-join (⊹-join ∅⊑ (strL-got d F G S c)) (⊹-join ∅⊑ (strL-got d F H S c))
   strL-got d F (G ⊗f H) S c = ⊹-join (strL-got d F G S c) (strL-got d F H S c)
 
-  mapNu-got : ∀ {Γ} (d : Defs Γ) F G S → (F , S) ∈ nus U → (_ , d) ∈ obs U → tmGot d (mapNu F G S) ⊑U
+  mapNu-got : ∀ {Γ} (d : Defs Γ) F G S → (F , S) ∈ nus U → (_ , ε) ∈ obs U → tmGot d (mapNu F G S) ⊑U
   mapNu-got d F Idf      S n o = sub (λ ()) (λ ()) (one n) (one o)
   mapNu-got d F Kone     S n o = ∅⊑
   mapNu-got d F Kzero    S n o = ∅⊑
@@ -476,7 +476,7 @@ module In (U : Univ) where
   mapNu-got d F (G ⊕f H) S n o = ⊹-join (⊹-join ∅⊑ (mapNu-got d F G S n o)) (⊹-join ∅⊑ (mapNu-got d F H S n o))
   mapNu-got d F (G ⊗f H) S n o = ⊹-join (mapNu-got d F G S n o) (mapNu-got d F H S n o)
 
-  obs-in : ∀ {Γ} (d : Defs Γ) F S → (F , S) ∈ nus U → Coalg F S ∈ tys U → (_ , d) ∈ obs U → BIn (_ , kobs d F S)
+  obs-in : ∀ {Γ} (d : Defs Γ) F S → (F , S) ∈ nus U → Coalg F S ∈ tys U → (_ , ε) ∈ obs U → BIn (_ , kobs d F S)
   obs-in d F S n c o =
     tt , comp-in d (obsT F S)
            (⊹-join (mapNu-got d F F S n o)
@@ -612,7 +612,7 @@ module Program {Γ} (ds : Defs Γ) (f : LTm Γ One One) where
   ...   | (T , t , refl) = free-in T (ts-closed t)
   blocks-in m | inj₂ p | inj₂ q | inj₂ r with ∈-cmap⁻ (obs U) r
   ... | ((Δ , d) , o , s) with ∈-map⁻ (λ n → _ , kobs d (proj₁ n) (proj₂ n)) s
-  ...   | ((F , S) , n , refl) = obs-in d F S n (ns-coalg n) o
+  ...   | ((F , S) , n , refl) = obs-in d F S n (ns-coalg n) (here refl)
 
   -- ★ and so is the program's start
   start-in : ∀ {Es S T} {k : Codeᴵ (One ∷ Es ∣ One ∷ S) T} → CIn k → CIn (compᴵ ds f k)
