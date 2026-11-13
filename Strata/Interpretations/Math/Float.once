@@ -10,18 +10,6 @@
 -- Basic Arithmetic
 ------------------------------------------------------------------------
 
--- | Addition
-signature fadd : Float * Float -> Float
-
--- | Subtraction
-signature fsub : Float * Float -> Float
-
--- | Multiplication
-signature fmul : Float * Float -> Float
-
--- | Division
-signature fdiv : Float * Float -> Float
-
 -- | Negation
 signature fneg : Float -> Float
 
