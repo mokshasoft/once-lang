@@ -62,7 +62,7 @@ open import Once.Type using (fits-int; fits-float)
 open import Once.Spec.Float.Dyadic using (binary64)
 open import Once.Spec.Float.Decimal using (Decimal)
 open import Once.Float.Word using (round)
-open import Once.Float.DecimalLaws using (round-fits)
+open import Once.Float.EncodingLaws using (round-fits)
 open import Data.Integer using (ℤ)
 -- …and riscv64's ENGINE INTERFACES (plan 0.65 G2). Imported here for the same
 -- reason this module's own siblings are: nothing else reaches them, and an
