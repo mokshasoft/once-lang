@@ -29,6 +29,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (AtStack)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+import Once.Memory.HeapAddress
 
 module Once.LinCore.Global
   (fmt : TargetNum) (ans : FFIAnswers)
@@ -172,3 +173,45 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       g-next : AllocState.next-heap-ref (falloc fs) ≡ n
       g-ret  : RetOK (rootOf g-pt) (ptFin g-pt) r (AllocState.current-frame (falloc fs)) (fret fs)
                      (AllocState.saved-frames (falloc fs)) fs
+
+  ----------------------------------------------------------------------
+  -- 4. ★ THE RETURN STACK STANDS while a run changes only the current
+  -- frame below its budget, and the heap only past the counter.
+  ----------------------------------------------------------------------
+
+  open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
+  open Sim {FS} U wordOf using (envW-heap; stkW-heap; cntE; cntS)
+  open Rel {FS} U wordOf using (cellLoc)
+  open import Once.LinCore.FreshI fmt ans bw using (module Cells)
+  open Cells {FS} U wordOf using (FreshR)
+  open import Once.LinCore.Moves {FS} using (Old)
+  open FrameSemantics FS using (≺-trans; ≺-irrefl)
+
+  rootφ : RootId → Frame
+  rootφ rstart                  = frameOf main
+  rootφ (rblock {κ = κ} p)      = frameOf (blockᴵ κ)
+
+  private
+    ≺-≢ : ∀ {f g} → f ≺ g → f ≡ g → ⊥
+    ≺-≢ lt refl = ≺-irrefl lt
+
+    zero-one : ∀ {a} → a ≡ 0 → 1 ≤ a → ⊥
+    zero-one refl ()
+
+    -- a cell a value holds is below the counter
+    held-below : ∀ {n} {c : ℕ} → (n ≤ c → c ≡ c → ⊥) → c Data.Nat.< n
+    held-below {n} {c} h = Data.Nat.Properties.≰⇒> (λ le → h le refl)
+      where import Data.Nat.Properties
+
+    env-stand : ∀ {Es} {es : Slots Es} {rd rd′ sm n}
+              → (∀ i → n ≤ serial i → cntE es i ≡ 0)
+              → (∀ hl → Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) Data.Nat.< n → rd′ hl ≡ rd hl)
+              → EnvW rd sm es → EnvW rd′ sm es
+    env-stand {es = es} fr old = envW-heap es (λ i k c → old (cellLoc i k) (held-below (λ le _ → zero-one (fr i le) c)))
+
+    stk-stand : ∀ {S} {os : Stk S} {rd rd′ sm φ n}
+              → (∀ i → n ≤ serial i → cntS os i ≡ 0)
+              → (∀ hl → Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) Data.Nat.< n → rd′ hl ≡ rd hl)
+              → StkW rd sm φ os → StkW rd′ sm φ os
+    stk-stand {os = os} fr old = stkW-heap os (λ i k c → old (cellLoc i k) (held-below (λ le _ → zero-one (fr i le) c)))
+
