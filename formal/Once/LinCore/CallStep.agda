@@ -233,6 +233,67 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                   (cong (λ z → q + suc (suc (suc (suc z))))
                     (cong₂ _+_ (len-mvPS (M ∸ wsz A) dst (wsz A)) (cong suc (len-mvPS 0 0 (wsz E)))))
 
+  -- ★ THE CALL'S CORE, from any frame: the caller's configuration in its
+  -- frame `φ`, the call's code at the pc, its area where the argument's words
+  -- are its `M ∸ wsz A` words in (a trampoline calls with these, D421)
+  call-core : ∀ {A B Es S} {κ : Key (bsig nothing A B)} (p : (bsig nothing A B , κ) ∈ allK U) (φ : Frame) (area : ℕ)
+                {es : Slots Es} {a : MV A} {os : Stk S} {fs}
+            → Seg image (fpc fs) (lea-slot area ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf (idx p))) ∷ [])
+            → LocState.halted (floc fs) ≡ false
+            → CfgW (LocState.heapMem (floc fs)) (slot fs) φ (es ∥ a ∷ˢ os)
+            → ((wsz A ⊔ wsz B) ∸ wsz A) + area ≡ budget φ ∸ ws (A ∷ S)
+            → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
+                × K.Here p whole ([]ᵉ ∥ a ∷ˢ []ˢ) fs′
+                × Called fs fs′ (suc (suc (suc (fpc fs)))) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) area
+  call-core {A} {B} {Es} {S} {κ} p φ area {es} {a} {os} {fs} seg h C eq = with-arg (Rel.CfgW.c-stk C)
+    where
+      open Callee p
+      b = fbudget φ′
+      cf = AllocState.current-frame (falloc fs)
+      with-arg : StkW (LocState.heapMem (floc fs)) (slot fs) φ (a ∷ˢ os) → _
+      with-arg ((wa , pa , sa) , _) =
+        fin (call-in image fs area (nameOf (idx p)) (e-fn (nameOf (idx p))) q b (sv₁ φ′) (sv₂ φ′)
+               (sv-ne (budget φ′)) seg (image-fn p) entry-seg h)
+        where
+          fin : Σ FlatState (λ fs₁ → FlatSteps image 7 fs fs₁
+                  × CallIn fs fs₁ area b (sv₁ φ′) (sv₂ φ′) q (suc (suc (suc (fpc fs)))) (SV-Ptr (AtStack cf area))) → _
+          fin (fs₁ , st₁ , CI) = fin₂ (enter-n image fs₁ φ′ cf area (M ∸ wsz A) wa ne₁ (ci-in CI) pa₁ sa₁ seg₂ h₁
+                                         (proj₂ (K.shape-fits p whole)))
+            where
+              ne₁ : ¬ AllocState.current-frame (falloc fs₁) ≡ cf
+              ne₁ e′ = callee-≢ cf b (trans (sym (ci-frame CI)) e′)
+              h₁ : LocState.halted (floc fs₁) ≡ false
+              h₁ = trans (ci-halt CI) h
+              pa₁ : VW (LocState.heapMem (floc fs₁)) a wa
+              pa₁ = subst (λ r → VW r a wa) (sym (ci-heap CI)) pa
+              sa₁ : SlotsAt (LocState.stackMem (floc fs₁) cf) ((M ∸ wsz A) + area) wa
+              sa₁ = slots-frame {LocState.stackMem (floc fs) cf} {LocState.stackMem (floc fs₁) cf} wa
+                      (λ k _ → ci-other CI cf (k + ((M ∸ wsz A) + area)) (callee-≢ cf b))
+                      (subst (λ z → SlotsAt (LocState.stackMem (floc fs) cf) z wa) (sym eq) sa)
+              seg₂ : Seg image (fpc fs₁) argMv
+              seg₂ = subst (λ z → Seg image z argMv) (sym (ci-pc CI)) arg-seg
+              fin₂ : Σ FlatState (λ fs₂ → FlatSteps image (Once.LinCore.Moves.ln {FS} (wsz A)) fs₁ fs₂
+                       × CfgW (LocState.heapMem (floc fs₂)) (slot fs₂) φ′ ([]ᵉ ∥ a ∷ˢ []ˢ)
+                       × Ran (Once.LinCore.Moves.ln {FS} (wsz A)) 0 (AllocState.next-heap-ref (falloc fs₁)) (budget φ′) fs₁ fs₂
+                       × (∀ x → budget φ′ ≤ x → slot fs₂ x ≡ slot fs₁ x))
+                   → _
+              fin₂ (fs₂ , st₂ , C₂ , Rn , top) =
+                _ , fs₂ , FlatSteps-++ st₁ st₂ ,
+                record { h-pc  = trans (r-pc Rn) (trans (cong (Once.LinCore.Moves.ln {FS} (wsz A) +_) (ci-pc CI))
+                                   (trans (shuffle _ q) (sym start-pos)))
+                       ; h-run = trans (k-halt (r-keep Rn)) h₁
+                       ; h-cfg = C₂ } ,
+                record { cd-ret    = trans (k-ret (r-keep Rn)) (ci-ret CI)
+                       ; cd-saved  = trans (k-saved (r-keep Rn)) (ci-saved CI)
+                       ; cd-frame  = trans (k-frame (r-keep Rn)) (ci-frame CI)
+                       ; cd-others = λ f′ x ne → trans (k-other (r-keep Rn) f′ x (λ e′ → ne (trans (sym (ci-frame CI)) (sym e′))))
+                                                       (ci-other CI f′ x ne)
+                       ; cd-area   = trans (top (sv₁ φ′) ≤-refl)
+                                       (subst (λ g → LocState.stackMem (floc fs₁) g (sv₁ φ′) ≡ just (SV-Ptr (AtStack cf area)))
+                                              (sym (ci-frame CI)) (ci-s₁ CI))
+                       ; cd-next   = trans (r-next Rn) (ci-next CI)
+                       ; cd-old    = λ hl lt → trans (r-old Rn hl (subst (_ <_) (sym (ci-next CI)) lt)) (cong (λ h′ → h′ hl) (ci-heap CI)) }
+
   -- ★ THE CALL of a block that reads no view
   module From {sh₀ U₀} (root : Codeᴵ sh₀ U₀) (j : ℕ)
               (L₀ : At.Low U ncty ldConst (frameOf root) j root)
