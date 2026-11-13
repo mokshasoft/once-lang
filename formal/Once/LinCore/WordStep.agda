@@ -151,16 +151,16 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     word-cases = record
       { P   = Owes
       ; loc = λ st l inv G → gstep-local st l inv G
-      ; cs₁ = λ inv G → gcase₁ (g-pt G) inv (g-here G) (g-next G) (g-ret G)
-      ; cs₂ = λ inv G → gcase₂ (g-pt G) inv (g-here G) (g-next G) (g-ret G)
-      ; lp  = λ inv G → gloop (g-pt G) inv (g-here G) (g-next G) (g-ret G)
-      ; rti = λ inv G → greti (g-pt G) inv (g-here G) (g-next G) (g-ret G)
-      ; cl  = λ inv G → gcall (g-pt G) inv (g-here G) (g-next G) (g-ret G)
-      ; rt  = λ inv G → gret (g-pt G) inv (g-here G) (g-next G) (g-ret G)
-      ; ic  = λ inv G → gicall (g-pt G) inv (g-here G) (g-next G) (g-ret G)
-      ; op1 = λ inv G → gopen1 (g-pt G) inv (g-here G) (g-next G) (g-ret G)
-      ; nop = λ inv G → gnopen (g-pt G) inv (g-here G) (g-next G) (g-ret G)
-      ; iob = λ inv G → giobs (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+      ; cs₁ = λ inv G → gcase₁ (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)
+      ; cs₂ = λ inv G → gcase₂ (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)
+      ; lp  = λ inv G → gloop (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)
+      ; rti = λ inv G → greti (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)
+      ; cl  = λ inv G → gcall (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)
+      ; rt  = λ inv G → gret (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)
+      ; ic  = λ inv G → gicall (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)
+      ; op1 = λ inv G → gopen1 (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)
+      ; nop = λ inv G → gnopen (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)
+      ; iob = λ inv G → giobs (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)
       }
 
     -- ★ by the step's kind (the one split on a step is StepKinds')

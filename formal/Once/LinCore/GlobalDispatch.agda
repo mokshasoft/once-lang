@@ -80,7 +80,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Tr U ncty ldConst using (trAt)
   open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; SlotsAt; cellPtr)
   open FlatMachine {FS} using (fpc)
-  open import Once.LinCore.Moves {FS} using (slot)
+  open import Once.LinCore.Moves {FS} using (slot; InBlk; r-inb)
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
   open Sim {FS} U wordOf using (envW-heap; stkW-heap; envW-frame; slots-frame; cntE; cntS)
   open Rel {FS} U wordOf using (cellLoc)
@@ -169,14 +169,15 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                → InvI (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) r n h → S.Here s (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) fs
                → AllocState.next-heap-ref (falloc fs) ≡ n
                → RetOK rstart (ptFin (p-start (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+               → InBlk fs
                → Arrives (blockᴵ (ktr1 ds′ b γ)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ []ˢ) n fs
-  gicall-start {g = g} {A = A} {B} {S = S} {r = r} {fs = fs} s inv H nx ok =
+  gicall-start {g = g} {A = A} {B} {S = S} {r = r} {fs = fs} s inv H nx ok I =
     case tr-dispatch (frameOf main) seg (S.Here.h-run H) (S.Here.h-cfg H) fitM of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (tp0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m (d-start s) (called-re pos-eq refl CD) fitM (S.Here.h-cfg H)
                                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
     where
       import Data.Nat.Properties
       φ = frameOf main
@@ -199,14 +200,15 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                → InvI (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) r n h → K.Here p′ s (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) fs
                → AllocState.next-heap-ref (falloc fs) ≡ n
                → RetOK (rblock p′) (ptFin (p-block p′ (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+               → InBlk fs
                → Arrives (blockᴵ (ktr1 ds′ b γ)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ []ˢ) n fs
-  gicall-block {g = g} {A = A} {B} {S = S} {r = r} {fs = fs} {κ′ = κ′} p′ s inv H nx ok =
+  gicall-block {g = g} {A = A} {B} {S = S} {r = r} {fs = fs} {κ′ = κ′} p′ s inv H nx ok I =
     case tr-dispatch (frameOf (blockᴵ κ′)) seg (K.Here.h-run {p = p′} H) (K.Here.h-cfg {p = p′} H) fitM of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (tp0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m (d-block p′ s) (called-re pos-eq refl CD) fitM (K.Here.h-cfg {p = p′} H)
                                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
     where
       import Data.Nat.Properties
       φ = frameOf (blockᴵ κ′)
@@ -229,10 +231,11 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → InvI (es ∥ mpair (mfn i lam x) a ∷ˢ os) r n h → HereP P (es ∥ mpair (mfn i lam x) a ∷ˢ os) fs
          → AllocState.next-heap-ref (falloc fs) ≡ n
          → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+         → InBlk fs
          → Arrives (blockᴵ (tr1 lam)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mpair (mfn i lam x) a ∷ˢ []ˢ) n fs
-  gicall {lam = c1 ds′ b γ} (p-start (at s)) inv H nx ok = gicall-start s inv H nx ok
-  gicall {lam = c1 ds′ b γ} (p-block p′ (at s)) inv H nx ok = gicall-block p′ s inv H nx ok
-  gicall (p-tramp p pt) inv (() , H) nx ok
+  gicall {lam = c1 ds′ b γ} (p-start (at s)) inv H nx ok I = gicall-start s inv H nx ok I
+  gicall {lam = c1 ds′ b γ} (p-block p′ (at s)) inv H nx ok I = gicall-block p′ s inv H nx ok I
+  gicall (p-tramp p pt) inv (() , H) nx ok I
 
   -- ★ A ONE-SHOT TRAMPOLINE'S CELL PART (i-open1): at its depth 0; at a root's
   -- path it is absurd (D422: a root's code has no cell part)
@@ -241,14 +244,15 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → InvI (es ∥ mpair (mfn i lam x) a ∷ˢ os) r n h → HereP P (es ∥ mpair (mfn i lam x) a ∷ˢ os) fs
          → AllocState.next-heap-ref (falloc fs) ≡ n
          → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+         → InBlk fs
          → Arrives k r (es ∥ mpair x a ∷ˢ os) n fs
-  gopen1 (p-start (at s)) inv H nx ok = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
-  gopen1 (p-block p (at s)) inv H nx ok = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
-  gopen1 {r = r} {es = []ᵉ} {os = []ˢ} (p-tramp p _) inv (tp0 _ , T0) nx ok =
+  gopen1 (p-start (at s)) inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
+  gopen1 (p-block p (at s)) inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
+  gopen1 {r = r} {es = []ᵉ} {os = []ˢ} (p-tramp p _) inv (tp0 _ , T0) nx ok I =
     case tr-open1 p T0 of λ where
       (N , fs′ , run , H′ , Rn) →
         N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (tp1 p , H′) ; g-next = trans (r-next Rn) nx
-                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I }
 
   -- ★ AN OBSERVATION'S TRAMPOLINE'S CELL PART (i-nopen): at its depth 0; at a
   -- root's path it is absurd (D422)
@@ -257,14 +261,15 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → InvI (es ∥ mnu i x ∷ˢ os) r n h → HereP P (es ∥ mnu i x ∷ˢ os) fs
          → AllocState.next-heap-ref (falloc fs) ≡ n
          → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+         → InBlk fs
          → Arrives k r (es ∥ x ∷ˢ os) n fs
-  gnopen (p-start (at s)) inv H nx ok = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
-  gnopen (p-block p (at s)) inv H nx ok = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
-  gnopen {r = r} {es = []ᵉ} {os = []ˢ} (p-tramp p _) inv (to0 _ , T0) nx ok =
+  gnopen (p-start (at s)) inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
+  gnopen (p-block p (at s)) inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
+  gnopen {r = r} {es = []ᵉ} {os = []ˢ} (p-tramp p _) inv (to0 _ , T0) nx ok I =
     case to-open p T0 of λ where
       (N , fs′ , run , H′ , Rn) →
         N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (to1 p , H′) ; g-next = trans (r-next Rn) nx
-                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I }
 
   -- ★ an observation's dispatch from the start's code: into the trampoline
   -- of the ν's observation block (`ktro ε`, D423), at its depth 0 (TrO0)
@@ -274,14 +279,15 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → InvI (es ∥ mnu i x ∷ˢ os) r n h → S.Here s (es ∥ mnu i x ∷ˢ os) fs
               → AllocState.next-heap-ref (falloc fs) ≡ n
               → RetOK rstart (ptFin (p-start (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+              → InBlk fs
               → Arrives (blockᴵ (ktro ε F S)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mnu i x ∷ˢ []ˢ) n fs
-  giobs-start {F = F} {S} {S′ = S′} {r = r} {fs = fs} s inv H nx ok =
+  giobs-start {F = F} {S} {S′ = S′} {r = r} {fs = fs} s inv H nx ok I =
     case to-dispatch (frameOf main) seg (S.Here.h-run H) (S.Here.h-cfg H) of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (to0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m (d-start s) (called-re pos-eq refl CD) fitM (S.Here.h-cfg H)
                                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
     where
       import Data.Nat.Properties
       φ = frameOf main
@@ -304,14 +310,15 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → InvI (es ∥ mnu i x ∷ˢ os) r n h → K.Here p′ s (es ∥ mnu i x ∷ˢ os) fs
               → AllocState.next-heap-ref (falloc fs) ≡ n
               → RetOK (rblock p′) (ptFin (p-block p′ (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+              → InBlk fs
               → Arrives (blockᴵ (ktro ε F S)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mnu i x ∷ˢ []ˢ) n fs
-  giobs-block {F = F} {S} {S′ = S′} {r = r} {fs = fs} {κ′ = κ′} p′ s inv H nx ok =
+  giobs-block {F = F} {S} {S′ = S′} {r = r} {fs = fs} {κ′ = κ′} p′ s inv H nx ok I =
     case to-dispatch (frameOf (blockᴵ κ′)) seg (K.Here.h-run {p = p′} H) (K.Here.h-cfg {p = p′} H) of λ where
       (m , N , fs′ , run , T0 , CD) →
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (to0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m (d-block p′ s) (called-re pos-eq refl CD) fitM (K.Here.h-cfg {p = p′} H)
                                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
     where
       import Data.Nat.Properties
       φ = frameOf (blockᴵ κ′)
@@ -335,7 +342,8 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         → InvI (es ∥ mnu i x ∷ˢ os) r n h → HereP P (es ∥ mnu i x ∷ˢ os) fs
         → AllocState.next-heap-ref (falloc fs) ≡ n
         → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+        → InBlk fs
         → Arrives (blockᴵ (ktro ε F S)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mnu i x ∷ˢ []ˢ) n fs
-  giobs (p-start (at s)) inv H nx ok = giobs-start s inv H nx ok
-  giobs (p-block p′ (at s)) inv H nx ok = giobs-block p′ s inv H nx ok
-  giobs (p-tramp p pt) inv (() , H) nx ok
+  giobs (p-start (at s)) inv H nx ok I = giobs-start s inv H nx ok I
+  giobs (p-block p′ (at s)) inv H nx ok I = giobs-block p′ s inv H nx ok I
+  giobs (p-tramp p pt) inv (() , H) nx ok I

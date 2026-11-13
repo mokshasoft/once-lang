@@ -119,7 +119,7 @@ module TrampO {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Sim {FS} U wordOf using (len-mvPS)
   open import Once.LinCore.PointAt fmt ans bw using (module Fetch)
   open Fetch {FS} using (in-seg)
-  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; Ran; r-pc; r-keep; k-halt)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; Ran; r-pc; r-keep; k-halt; inb-pt)
   open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
   open SimF {FS} U wordOf using (leave; area-gen)
   open import Once.LinCore.LowerSimE {FS} using (co-pc; co-halt)
@@ -322,4 +322,5 @@ module TrampO {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             record { cd-ret = cl-ret CL ; cd-saved = cl-saved CL ; cd-frame = cl-frame CL ; cd-others = cl-other CL
                    ; cd-area = subst (λ g′ → LocState.stackMem (floc fs′) g′ (suc M) ≡ just (SV-Ptr (AtStack cf area))) (sym (cl-frame CL)) (cl-s₂ CL)
                    ; cd-next = cl-next CL
-                   ; cd-old = λ hl _ → cong (λ h′ → h′ hl) (cl-heap CL) }
+                   ; cd-old = λ hl _ → cong (λ h′ → h′ hl) (cl-heap CL)
+                   ; cd-inb = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (cl-heap CL)) (cl-next CL) (cl-size CL) }
