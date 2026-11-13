@@ -24,7 +24,7 @@ open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; mk-kind; Finite; fin; pureᶠ; actᶠ)
-open import Once.Spec.Type using (Ty; Fun; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
+open import Once.Spec.Type using (Ty; Fun; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
 open import Once.Spec.Context using (Ctx; _▸_; lookup; Usage; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_)
 open import Once.Spec.Core.Syntax using (Tm; wk)
 open import Once.Spec.Core.Typing Σ S using (_⊩_⊢[_]_∷_!_)
@@ -61,6 +61,9 @@ module _ {n : ℕ} {Γ : Ctx m n} {Φ : Usage n} {X : Ty m} {π₀ : Purity} whe
 
   idᶜ-ty : ∀ {A π} → Δ ⊩ Γ ⊢[ Φ ] idᶜ A π ∷ X ! π₀ → X ≡ A ⇒⟨ π ⟩ A
   idᶜ-ty d = trans (lam-ty d) (cong (λ B → _ ⇒⟨ _ ⟩ B) (proj₁ (inv-var (ILam.body (inv-lam d)))))
+
+  toFloatᶜ-ty : Δ ⊩ Γ ⊢[ Φ ] toFloatᶜ ∷ X ! π₀ → X ≡ Int ⇒⟨ pure ⟩ Float
+  toFloatᶜ-ty d = trans (lam-ty d) (cong (λ B → _ ⇒⟨ _ ⟩ B) (IPrim.ty (inv-prim (ILam.body (inv-lam d)))))
 
   terminalᶜ-ty : ∀ {A π} → Δ ⊩ Γ ⊢[ Φ ] terminalᶜ A π ∷ X ! π₀ → X ≡ A ⇒⟨ π ⟩ Unit
   terminalᶜ-ty d = trans (lam-ty d) (cong (λ B → _ ⇒⟨ _ ⟩ B) (inv-unit (ILam.body (inv-lam d))))

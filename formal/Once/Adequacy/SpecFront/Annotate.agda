@@ -197,27 +197,6 @@ private
          → Δ ⊩ (Γ SCx.▸ A) ⊢[ Ψ ] t ∷ B ! π → Δ ⊩ (Γ SCx.▸ A′) ⊢[ Ψ ] t ∷ B ! π
   ty-ctx refl d = d
 
-  ia-cod : ∀ {op p} → SU.IntArith op p → primCod {m} p ≡ Int
-  ia-cod SU.ia-add = refl
-  ia-cod SU.ia-sub = refl
-  ia-cod SU.ia-mul = refl
-  ia-cod SU.ia-div = refl
-  ia-cod SU.ia-mod = refl
-
-  fa-cod : ∀ {op p} → SU.FloatArith op p → primCod {m} p ≡ Float
-  fa-cod SU.fa-add = refl
-  fa-cod SU.fa-sub = refl
-  fa-cod SU.fa-mul = refl
-  fa-cod SU.fa-div = refl
-
-  cmp-cod : ∀ {op p} → SU.Compare op p → primCod {m} p ≡ Unit + Unit
-  cmp-cod SU.cmp-lt = refl
-  cmp-cod SU.cmp-le = refl
-  cmp-cod SU.cmp-gt = refl
-  cmp-cod SU.cmp-ge = refl
-  cmp-cod SU.cmp-eq = refl
-  cmp-cod SU.cmp-ne = refl
-
 ------------------------------------------------------------------------
 -- References
 ------------------------------------------------------------------------
@@ -251,7 +230,7 @@ mutual
   ----------------------------------------------------------------------
 
   ann⇒ (SU.s-int i) x-int {Φ} T = inv-lit-int T , a⇒ (SU.s-int i) u-int (z⊑ Φ)
-  ann⇒ (SU.s-float i f l) x-float {Φ} T = inv-lit-float T , a⇒ (SU.s-float i f l) u-float (z⊑ Φ)
+  ann⇒ (SU.s-float sg i f l nz) x-float {Φ} T = inv-lit-float T , a⇒ (SU.s-float sg i f l nz) u-float (z⊑ Φ)
   ann⇒ SU.s-unit x-unit {Φ} T = inv-unit T , a⇒ SU.s-unit u-unit (z⊑ Φ)
   ann⇒ SU.s-unit-g (x-res _) {Φ} T = inv-unit T , a⇒ SU.s-unit-g u-unit-g (z⊑ Φ)
   ann⇒ (SU.s-var v) (x-local _) T =
@@ -264,10 +243,10 @@ mutual
     let p = inv-pair T
         (ea , a⇒ dA uA wA) = ann⇒ da xa (IPair.da p) ; (eb , a⇒ dB uB wB) = ann⇒ db xb (IPair.db p)
     in trans (IPair.ty p) (cong₂ _*_ ea eb) , a⇒ (SU.s-pair dA dB) (u-pair uA uB) (⊑ᵘ-trans (⊑ᵘ-+ wA wB) (IPair.use p))
-  ann⇒ (SU.s-neg d) (x-neg x) T =
+  ann⇒ (SU.s-neg h d) (x-neg x) T =
     let r = inv-prim T ; (_ , a⇒ der u w) = ann⇒ d x (IPrim.dt r)
-    in IPrim.ty r , a⇒ (SU.s-neg der) (u-neg u) (⊑ᵘ-trans w (IPrim.use r))
-  ann⇒ (SU.s-neg-float i f l) (x-neg x-float) {Φ} T = inv-lit-float T , a⇒ (SU.s-neg-float i f l) u-neg-float (z⊑ Φ)
+    in IPrim.ty r , a⇒ (SU.s-neg h der) (u-neg u) (⊑ᵘ-trans w (IPrim.use r))
+  ann⇒ SU.s-toFloat (x-res _) {Φ} T = toFloatᶜ-ty T , a⇒ SU.s-toFloat u-toFloat (z⊑ Φ)
   -- the binder takes the quantity its body uses
   ann⇒ (SU.s-let q d₁ d₂) (x-let x₁ x₂) T =
     let r = inv-let T ; (e₁ , a⇒ D₁ u₁ w₁) = ann⇒ d₁ x₁ (ILet.de r)
@@ -296,33 +275,11 @@ mutual
       branches r Ds us ws (a⇒ Dl {ql₀ ∷ Ψl} ul wl) (a⇒ Dr {qr₀ ∷ Ψr} ur wr) vl vr =
         a⇒ (SU.s-case {C = C} ql₀ qr₀ Ds Dl Dr J) (u-case us ul ur)
            (⊑ᵘ-trans (⊑ᵘ-+ ws (⊔⊑ (⊑-tail (⊑ᵘ-trans wl vl)) (⊑-tail (⊑ᵘ-trans wr vr)))) (ICase.use r))
-  ann⇒ (SU.s-arith ia d₁ d₂) (x-binop x₁ x₂) T =
+  ann⇒ (SU.s-binop h d₁ d₂) (x-binop x₁ x₂) T =
     let r = inv-prim T ; p = inv-pair (IPrim.dt r)
         (_ , a⇒ D₁ u₁ w₁) = ann⇒ d₁ x₁ (IPair.da p) ; (_ , a⇒ D₂ u₂ w₂) = ann⇒ d₂ x₂ (IPair.db p)
-    in trans (IPrim.ty r) (ia-cod ia)
-       , a⇒ (SU.s-arith ia D₁ D₂) (u-arith u₁ u₂) (⊑ᵘ-trans (⊑ᵘ-+ w₁ w₂) (⊑ᵘ-trans (IPair.use p) (IPrim.use r)))
-  ann⇒ (SU.s-arith-float fa d₁ d₂) (x-binop x₁ x₂) T =
-    let r = inv-prim T ; p = inv-pair (IPrim.dt r)
-        (_ , a⇒ D₁ u₁ w₁) = ann⇒ d₁ x₁ (IPair.da p) ; (_ , a⇒ D₂ u₂ w₂) = ann⇒ d₂ x₂ (IPair.db p)
-    in trans (IPrim.ty r) (fa-cod fa)
-       , a⇒ (SU.s-arith-float fa D₁ D₂) (u-arith-float u₁ u₂) (⊑ᵘ-trans (⊑ᵘ-+ w₁ w₂) (⊑ᵘ-trans (IPair.use p) (IPrim.use r)))
-  ann⇒ (SU.s-arith-float-il fa d₁ d₂) (x-binop x₁ x₂) T =
-    let r = inv-prim T ; p = inv-pair (IPrim.dt r) ; w = inv-prim (IPair.da p)
-        (_ , a⇒ D₁ u₁ w₁) = ann⇒ d₁ x₁ (IPrim.dt w) ; (_ , a⇒ D₂ u₂ w₂) = ann⇒ d₂ x₂ (IPair.db p)
-    in trans (IPrim.ty r) (fa-cod fa)
-       , a⇒ (SU.s-arith-float-il fa D₁ D₂) (u-arith-float-il u₁ u₂)
-            (⊑ᵘ-trans (⊑ᵘ-+ (⊑ᵘ-trans w₁ (IPrim.use w)) w₂) (⊑ᵘ-trans (IPair.use p) (IPrim.use r)))
-  ann⇒ (SU.s-arith-float-ir fa d₁ d₂) (x-binop x₁ x₂) T =
-    let r = inv-prim T ; p = inv-pair (IPrim.dt r) ; w = inv-prim (IPair.db p)
-        (_ , a⇒ D₁ u₁ w₁) = ann⇒ d₁ x₁ (IPair.da p) ; (_ , a⇒ D₂ u₂ w₂) = ann⇒ d₂ x₂ (IPrim.dt w)
-    in trans (IPrim.ty r) (fa-cod fa)
-       , a⇒ (SU.s-arith-float-ir fa D₁ D₂) (u-arith-float-ir u₁ u₂)
-            (⊑ᵘ-trans (⊑ᵘ-+ w₁ (⊑ᵘ-trans w₂ (IPrim.use w))) (⊑ᵘ-trans (IPair.use p) (IPrim.use r)))
-  ann⇒ (SU.s-compare c d₁ d₂) (x-binop x₁ x₂) T =
-    let r = inv-prim T ; p = inv-pair (IPrim.dt r)
-        (_ , a⇒ D₁ u₁ w₁) = ann⇒ d₁ x₁ (IPair.da p) ; (_ , a⇒ D₂ u₂ w₂) = ann⇒ d₂ x₂ (IPair.db p)
-    in trans (IPrim.ty r) (cmp-cod c)
-       , a⇒ (SU.s-compare c D₁ D₂) (u-compare u₁ u₂) (⊑ᵘ-trans (⊑ᵘ-+ w₁ w₂) (⊑ᵘ-trans (IPair.use p) (IPrim.use r)))
+    in IPrim.ty r
+       , a⇒ (SU.s-binop h D₁ D₂) (u-binop u₁ u₂) (⊑ᵘ-trans (⊑ᵘ-+ w₁ w₂) (⊑ᵘ-trans (IPair.use p) (IPrim.use r)))
   ann⇒ (SU.s-id-app d) (x-app (x-res _) x) T =
     let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (idᶜ-ty (IApp.df a)) ; (_ , a⇒ D u w) = ann⇒ d x (IApp.dx a)
     in eX , a⇒ (SU.s-id-app D) (u-id-app u) (gen⊑ w eq (IApp.use a))
