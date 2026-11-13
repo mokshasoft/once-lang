@@ -29,7 +29,9 @@ open import Once.Spec.Type using (Ty; TySub; _⇒[_]_; Respects; _⟨_⟩)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Once.Spec.Core.Syntax using (num; p-i2f; prim; pair; ref)
 open import Once.Spec.Theory using (NumTy; int; float; ⌜_⌝ⁿ; symDom; symCod; ‵neg; float-rounded)
-open import Once.TypeCheck.NumTableAgree Σ S nm using (binDom; mixedDom)
+open import Once.TypeCheck.NumTable using (binDom; mixedDom)
+open import Once.Spec.Surface.Operator using (binSym; BinSym)
+open BinSym using (symbol; shape)
 open import Once.Spec.Context using (Ctx; _+ᵘ_; zeroUsage)
 open import Once.Spec.Type using (Int; Float; Unit; _+_)
 open import Once.Spec.Sub using (sub-arr; _⊔_≔_)
@@ -41,8 +43,7 @@ open import Once.Core.DerivedTyping Σ S
 open import Once.Type.Sub using (·p-diag; pure-⊑; <:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open import Once.Type.Grade using (≤q-Many; ≤qᵇ→≤q)
 import Once.Spec.Surface.Typing Σ S nm as SU
-open SU using (Locals; binSym; asFloat)
-open SU.BinSym using (symbol; shape)
+open SU using (Locals; asFloat)
 open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
 
 -- An entry with no type variables respects any kinds.

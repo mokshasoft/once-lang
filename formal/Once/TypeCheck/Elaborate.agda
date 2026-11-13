@@ -65,8 +65,11 @@ open import Once.Spec.Float.Value using (Sign; pos; neg)
 open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; Rounded; Sym; symDom; symCod; ‵neg; float-rounded)
   renaming (int to nint; float to nfloat)
 open import Once.TypeCheck.NumTable
-  using (NumView; is-num; not-num; numView; _≟ⁿ_; has?; binSym; theory; shape; symbol; binDom;
-         RoundedView; rounded; not-rounded; roundedView; pairDom; binary?; negZeroᵇ; mixedDom)
+  using (NumView; is-num; not-num; numView; _≟ⁿ_; has?; binDom;
+         RoundedView; rounded; not-rounded; roundedView; pairDom; binary?; negZero?; mixedDom)
+open import Once.Spec.Surface.Operator using (binSym; BinSym)
+open BinSym using (theory; shape; symbol)
+open import Once.Spec.Surface.Syntax using (signedDecimal; NegativeZero)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined;
   OperatorUndefined; MixedOperands; NegativeZeroLiteral; opText;
@@ -1593,29 +1596,25 @@ checkElabV-RVar-bbc-other-aux ctx x T r = embedOrSubsume ctx (Raw.RVar x) T r
 -- A float literal: its signed decimal (`s-float`), unless it is `-0.0`
 -- (plan 0.150 N5). The target rounds it; representability is no way to fail.
 -- Plan 0.150 N4: the sign is the literal's, built by the grammar.
-signedDecimalᵉ : Sign → ℕ → ℕ → ℕ → Decimal.Decimal
-signedDecimalᵉ pos i f l = decimalOf i f l
-signedDecimalᵉ neg i f l = Decimal.negate (decimalOf i f l)
-
-inferElabV-RFloat-at : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ) → Bool
+inferElabV-RFloat-at : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ) → Dec (NegativeZero sg i f)
   → InferElabResult (NamedCtx.debruijn ctx)
-inferElabV-RFloat-at ctx sg i f l true  = failure NegativeZeroLiteral
-inferElabV-RFloat-at ctx sg i f l false = success Float _ (Surface.float (signedDecimalᵉ sg i f l)) 0 0
+inferElabV-RFloat-at ctx sg i f l (yes _) = failure NegativeZeroLiteral
+inferElabV-RFloat-at ctx sg i f l (no _)  = success Float _ (Surface.float (signedDecimal sg i f l)) 0 0
 
 inferElabV-RFloat-aux : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ)
   → InferElabResult (NamedCtx.debruijn ctx)
-inferElabV-RFloat-aux ctx sg i f l = inferElabV-RFloat-at ctx sg i f l (negZeroᵇ sg i f)
+inferElabV-RFloat-aux ctx sg i f l = inferElabV-RFloat-at ctx sg i f l (negZero? sg i f)
 
-checkElabV-RFloat-at : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ) (T : Ty m) → Bool
+checkElabV-RFloat-at : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ) (T : Ty m) → Dec (NegativeZero sg i f)
   → CheckElabResult (NamedCtx.debruijn ctx) T
-checkElabV-RFloat-at ctx sg i f l T true = failure NegativeZeroLiteral
-checkElabV-RFloat-at ctx sg i f l T false with Once.Spec.Type.Float <:? T
-... | yes s = success Surface.zeroUsage (Surface.coerce s (Surface.float (signedDecimalᵉ sg i f l))) 0 0
+checkElabV-RFloat-at ctx sg i f l T (yes _) = failure NegativeZeroLiteral
+checkElabV-RFloat-at ctx sg i f l T (no _) with Once.Spec.Type.Float <:? T
+... | yes s = success Surface.zeroUsage (Surface.coerce s (Surface.float (signedDecimal sg i f l))) 0 0
 ... | no _  = failure (TypeMismatch T Once.Spec.Type.Float)
 
 checkElabV-RFloat-aux : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ) (T : Ty m)
   → CheckElabResult (NamedCtx.debruijn ctx) T
-checkElabV-RFloat-aux ctx sg i f l T = checkElabV-RFloat-at ctx sg i f l T (negZeroᵇ sg i f)
+checkElabV-RFloat-aux ctx sg i f l T = checkElabV-RFloat-at ctx sg i f l T (negZero? sg i f)
 
 mutual
   -- RVar dispatch helper (plan 0.6 Phase C.7 POC-1). Separates

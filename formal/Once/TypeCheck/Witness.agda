@@ -28,7 +28,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (Σ-syntax; _,_)
 open import Data.String using (String)
 open import Data.Nat using (_<_)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Grade using (Quantity; Many; One; Purity; pure; act; eff; Finite; fin; pureᶠ; actᶠ; mk-kind; _⊑π_; EffGrade)
 open import Once.Spec.Type using (Ty; Type; TySub; Respects; WFFun; Occurs; _⟨_⟩; _⇒[_]_; _*_; _+_; Unit; Void; Int; Float; μ; ν; ⟦_⟧F)
@@ -38,7 +38,7 @@ open import Once.Spec.Name using (gen; NotGenerator)
 open import Once.Spec.Float.Decimal using (decimalOf; negate)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Core.Syntax
-  using (Tm; lit; lit-int; lit-float; unit; var; sigop; ref; pair; prim; p-neg; p-i2f; let′; case; coerce; app; lam;
+  using (Tm; lit; lit-int; lit-float; unit; var; sigop; ref; pair; prim; num; p-i2f; let′; case; coerce; app; lam;
          _!!_; module Schema)
 open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Derived
@@ -48,7 +48,10 @@ open import Once.Type.Core using (wk₀)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Grade using (_≤qᵇ_)
 import Once.Spec.Surface.Typing Σ S nm as SU
-open SU using (Locals; _▹_∶_; _∋_⦂_at_; SpecialHead; IntArith; FloatArith; Compare; _⇒⟨_⟩_; ↑)
+open SU using (Locals; _▹_∶_; _∋_⦂_at_; SpecialHead; _⇒⟨_⟩_; ↑; asFloat)
+open import Once.Spec.Surface.Operator using (binSym; BinSym; _∶_∶_)
+open BinSym using (theory; shape; symbol)
+open import Once.Spec.Theory using (Has; Neg; Rounded; float; float-rounded; ⌜_⌝ⁿ; symCod; ‵neg)
 open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Core.Decl using (declS; ⌜declS⌝)
@@ -75,8 +78,9 @@ module _ {n} {L : Locals m n} where
   w-int : ∀ (i : ℤ) → W⇒ L (RInt i) Int (lit (lit-int i)) zeroUsage
   w-int i = SU.s-int i , u-int
 
-  w-float : ∀ i f l → W⇒ L (RFloat i f l) Float (lit (lit-float (decimalOf i f l))) zeroUsage
-  w-float i f l = SU.s-float i f l , u-float
+  w-float : ∀ sg i f l (nz : ¬ NegativeZero sg i f)
+          → W⇒ L (RFloat sg i f l) Float (lit (lit-float (signedDecimal sg i f l))) zeroUsage
+  w-float sg i f l nz = SU.s-float sg i f l nz , u-float
 
   w-unit : W⇒ L RUnit Unit unit zeroUsage
   w-unit = SU.s-unit , u-unit
@@ -101,11 +105,8 @@ module _ {n} {L : Locals m n} where
   w-pair : ∀ {a b A B ta tb Ψ₁ Ψ₂} → W⇒ L a A ta Ψ₁ → W⇒ L b B tb Ψ₂ → W⇒ L (RPair a b) (A * B) (pair ta tb) (Ψ₁ +ᵘ Ψ₂)
   w-pair (da , ua) (db , ub) = SU.s-pair da db , u-pair ua ub
 
-  w-neg : ∀ {e t Ψ} → W⇒ L e Int t Ψ → W⇒ L (RNeg e) Int (prim p-neg t) Ψ
-  w-neg (d , u) = SU.s-neg d , u-neg u
-
-  w-neg-float : ∀ i f l → W⇒ L (RNeg (RFloat i f l)) Float (lit (lit-float (negate (decimalOf i f l)))) zeroUsage
-  w-neg-float i f l = SU.s-neg-float i f l , u-neg-float
+  w-neg : ∀ {e A t Ψ} (h : Has A Neg) → W⇒ L e ⌜ A ⌝ⁿ t Ψ → W⇒ L (RNeg e) ⌜ A ⌝ⁿ (prim (num h ‵neg) t) Ψ
+  w-neg h (d , u) = SU.s-neg h d , u-neg u
 
   w-let : ∀ {x e₁ e₂ A B t₁ t₂ Ψ₁ Ψ₂} (q : Quantity)
         → W⇒ L e₁ A t₁ Ψ₁ → W⇒ (L ▹ x ∶ A) e₂ B t₂ (q ∷ Ψ₂)
@@ -117,25 +118,14 @@ module _ {n} {L : Locals m n} where
          → W⇒ L (RDestruct e xl el xr er) C (case ql qr ts (coerce Cl C tl) (coerce Cr C tr)) (Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ))
   w-case ql qr (ds , us) (dl , ul) (dr , ur) j = SU.s-case ql qr ds dl dr j , u-case us ul ur
 
-  w-arith : ∀ {op p e₁ e₂ t₁ t₂ Ψ₁ Ψ₂} → IntArith op p → W⇒ L e₁ Int t₁ Ψ₁ → W⇒ L e₂ Int t₂ Ψ₂
-          → W⇒ L (RBinOp op e₁ e₂) Int (prim p (pair t₁ t₂)) (Ψ₁ +ᵘ Ψ₂)
-  w-arith o (d₁ , u₁) (d₂ , u₂) = SU.s-arith o d₁ d₂ , u-arith u₁ u₂
+  w-binop : ∀ {op e₁ e₂ A t₁ t₂ Ψ₁ Ψ₂} (h : Has A (theory (binSym op))) → W⇒ L e₁ ⌜ A ⌝ⁿ t₁ Ψ₁ → W⇒ L e₂ ⌜ A ⌝ⁿ t₂ Ψ₂
+          → W⇒ L (RBinOp op e₁ e₂) (symCod A (shape (binSym op))) (prim (num h (symbol (binSym op))) (pair t₁ t₂)) (Ψ₁ +ᵘ Ψ₂)
+  w-binop h (d₁ , u₁) (d₂ , u₂) = SU.s-binop h d₁ d₂ , u-binop u₁ u₂
 
-  w-arith-float : ∀ {op p e₁ e₂ t₁ t₂ Ψ₁ Ψ₂} → FloatArith op p → W⇒ L e₁ Float t₁ Ψ₁ → W⇒ L e₂ Float t₂ Ψ₂
-                → W⇒ L (RBinOp op e₁ e₂) Float (prim p (pair t₁ t₂)) (Ψ₁ +ᵘ Ψ₂)
-  w-arith-float o (d₁ , u₁) (d₂ , u₂) = SU.s-arith-float o d₁ d₂ , u-arith-float u₁ u₂
-
-  w-arith-float-il : ∀ {op p e₁ e₂ t₁ t₂ Ψ₁ Ψ₂} → FloatArith op p → W⇒ L e₁ Int t₁ Ψ₁ → W⇒ L e₂ Float t₂ Ψ₂
-                   → W⇒ L (RBinOp op e₁ e₂) Float (prim p (pair (prim p-i2f t₁) t₂)) (Ψ₁ +ᵘ Ψ₂)
-  w-arith-float-il o (d₁ , u₁) (d₂ , u₂) = SU.s-arith-float-il o d₁ d₂ , u-arith-float-il u₁ u₂
-
-  w-arith-float-ir : ∀ {op p e₁ e₂ t₁ t₂ Ψ₁ Ψ₂} → FloatArith op p → W⇒ L e₁ Float t₁ Ψ₁ → W⇒ L e₂ Int t₂ Ψ₂
-                   → W⇒ L (RBinOp op e₁ e₂) Float (prim p (pair t₁ (prim p-i2f t₂))) (Ψ₁ +ᵘ Ψ₂)
-  w-arith-float-ir o (d₁ , u₁) (d₂ , u₂) = SU.s-arith-float-ir o d₁ d₂ , u-arith-float-ir u₁ u₂
-
-  w-compare : ∀ {op p e₁ e₂ t₁ t₂ Ψ₁ Ψ₂} → Compare op p → W⇒ L e₁ Int t₁ Ψ₁ → W⇒ L e₂ Int t₂ Ψ₂
-            → W⇒ L (RBinOp op e₁ e₂) (Unit + Unit) (prim p (pair t₁ t₂)) (Ψ₁ +ᵘ Ψ₂)
-  w-compare o (d₁ , u₁) (d₂ , u₂) = SU.s-compare o d₁ d₂ , u-compare u₁ u₂
+  w-binop-mixed : ∀ {op k o e₁ e₂ a₁ a₂ t₁ t₂ Ψ₁ Ψ₂} → binSym op ≡ (Rounded ∶ k ∶ o) → a₁ ≢ a₂
+                → W⇒ L e₁ ⌜ a₁ ⌝ⁿ t₁ Ψ₁ → W⇒ L e₂ ⌜ a₂ ⌝ⁿ t₂ Ψ₂
+                → W⇒ L (RBinOp op e₁ e₂) (symCod float k) (prim (num float-rounded o) (pair (asFloat a₁ t₁) (asFloat a₂ t₂))) (Ψ₁ +ᵘ Ψ₂)
+  w-binop-mixed eq ne (d₁ , u₁) (d₂ , u₂) = SU.s-binop-mixed eq ne d₁ d₂ , u-binop-mixed u₁ u₂
 
   w-id-app : ∀ {e T t Ψ} → W⇒ L e T t Ψ → W⇒ L (RApp (RResolved (gen "id")) e) T (app (idᶜ T pure) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
   w-id-app (d , u) = SU.s-id-app d , u-id-app u

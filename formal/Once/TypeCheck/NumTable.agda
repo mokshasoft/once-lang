@@ -25,45 +25,10 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst)
 open import Once.Spec.Type using (Ty; Int; Float; Unit; Void; var; _*_; _+_; _⇒[_]_; μ; ν)
 open import Once.Spec.Theory
-open import Once.Spec.Surface.Operator using (BinOp; plain; dotted; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
+open import Once.Spec.Surface.Operator using (BinOp; plain; dotted; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=; BinSym; binSym; _∶_∶_)
+open BinSym
+open import Once.Spec.Surface.Syntax using (NegativeZero; neg-zero)
 
-------------------------------------------------------------------------
--- Each operator's symbol: the Spec's `binSym` (`Spec.Surface.Typing`),
--- outside the module parameters it sits under there (it reads none of them),
--- so the parameter-free checker can name it. `NumTableAgree.agree` proves the
--- two the same table.
-------------------------------------------------------------------------
-
-record BinSym : Set where
-  constructor _∶_∶_
-  field
-    theory : Theory
-    shape  : Shape
-    symbol : Sym theory shape
-open BinSym public
-
-binSym : BinOp → BinSym
-binSym (plain ‹ o+ ›)  = Ring     ∶ binary  ∶ ‵+
-binSym (plain ‹ o- ›)  = Ring     ∶ binary  ∶ ‵-
-binSym (plain ‹ o* ›)  = Ring     ∶ binary  ∶ ‵*
-binSym (plain ‹ o/ ›)  = Division ∶ binary  ∶ ‵/
-binSym (plain o%)      = Division ∶ binary  ∶ ‵%
-binSym (plain ‹ o< ›)  = Order    ∶ compare ∶ ‵<
-binSym (plain ‹ o<= ›) = Order    ∶ compare ∶ ‵<=
-binSym (plain ‹ o> ›)  = Order    ∶ compare ∶ ‵>
-binSym (plain ‹ o>= ›) = Order    ∶ compare ∶ ‵>=
-binSym (plain ‹ o== ›) = Equality ∶ compare ∶ ‵==
-binSym (plain ‹ o!= ›) = Equality ∶ compare ∶ ‵!=
-binSym (dotted o+)     = Rounded  ∶ binary  ∶ ‵+ᵈ
-binSym (dotted o-)     = Rounded  ∶ binary  ∶ ‵-ᵈ
-binSym (dotted o*)     = Rounded  ∶ binary  ∶ ‵*ᵈ
-binSym (dotted o/)     = Rounded  ∶ binary  ∶ ‵/ᵈ
-binSym (dotted o<)     = Rounded  ∶ compare ∶ ‵<ᵈ
-binSym (dotted o<=)    = Rounded  ∶ compare ∶ ‵<=ᵈ
-binSym (dotted o>)     = Rounded  ∶ compare ∶ ‵>ᵈ
-binSym (dotted o>=)    = Rounded  ∶ compare ∶ ‵>=ᵈ
-binSym (dotted o==)    = Rounded  ∶ compare ∶ ‵==ᵈ
-binSym (dotted o!=)    = Rounded  ∶ compare ∶ ‵!=ᵈ
 
 ------------------------------------------------------------------------
 -- Is a type a number type?
@@ -200,15 +165,14 @@ roundedView (plain ‹ o== ›) = not-rounded (λ ())
 roundedView (plain ‹ o!= ›) = not-rounded (λ ())
 
 ------------------------------------------------------------------------
--- A literal that is a negative zero (`-0.0`), rejected (plan 0.150 N5;
--- `Spec.Surface.Typing.NegativeZero`, by `NumTableAgree`)
+-- A literal that is a negative zero (`-0.0`, plan 0.150 N5)
 ------------------------------------------------------------------------
 
-negZeroᵇ : Sign → ℕ → ℕ → Bool
-negZeroᵇ pos _       _       = false
-negZeroᵇ neg zero    zero    = true
-negZeroᵇ neg zero    (suc _) = false
-negZeroᵇ neg (suc _) _       = false
+negZero? : ∀ sg i f → Dec (NegativeZero sg i f)
+negZero? pos _       _       = no (λ ())
+negZero? neg zero    zero    = yes neg-zero
+negZero? neg zero    (suc _) = no (λ ())
+negZero? neg (suc _) _       = no (λ ())
 
 -- | A dotted operator's domain, at `Float`.
 mixedDom : ∀ {m op k} {o : Sym Rounded k} → binSym op ≡ (Rounded ∶ k ∶ o) → symDom {m} float k ≡ Float * Float
