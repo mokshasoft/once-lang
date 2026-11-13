@@ -470,12 +470,16 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     -- the caller after the call, the result on its stack
     module KA {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = At U ncty ldConst (frameOf (blockᴵ κ)) (idx p) using (lfin)
 
+    -- the callee's membership as a variable `q` (with `callee s ≡ q`): a
+    -- caller's `q` meets `callee s` here by substitution, not by comparing
+    -- `K.Here`'s parameters (whose normal forms hold the image's prefix)
     return : ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} (s : Sub root (call κ ⨾ k))
             (e : Sub (blockᴵ κ) (end {sh = t ⊳ [] ∣ B ∷ []}))
             {e′ : Slots (t ⊳ [])} {b : MV B} {es : Slots (t ⊳ Es)} {os : Stk S} {fs}
             (cfc : FrameSemantics.Frame FS) (rest : List ℕ) (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ)
-        → KA.lfin {p = callee s} (K.lowAt (callee s) e) ≡ blockFin κ
-        → K.Here (callee s) e (e′ ∥ b ∷ˢ []ˢ) fs
+            (q : (bsig t A B , κ) ∈ allK U) → callee s ≡ q
+        → KA.lfin {p = q} (K.lowAt q e) ≡ blockFin κ
+        → K.Here q e (e′ ∥ b ∷ˢ []ˢ) fs
         → fret fs ≡ C.pos (next s) ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
         → ¬ cfc ≡ AllocState.current-frame (falloc fs)
         → slot fs (sv₁ (frameOf (blockᴵ κ))) ≡ just (SV-Ptr (AtStack cfc (Tp C.φ S ∸ (wsz A ⊔ wsz B))))
@@ -485,7 +489,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             × CallOut fs fs′ cfc (Tp C.φ S ∸ (wsz A ⊔ wsz B)) (budget (frameOf (blockᴵ κ)) ∸ ws (B ∷ []))
                       ((wsz A ⊔ wsz B) ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl
             × (∀ x → budget C.φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
-    return {t} {A} {B} {Es} {S} {κ = κ} s e {e′} {b} {es} {os} {fs} cfc rest sv sl lf H hret hsv ne ep ev st =
+    return {t} {A} {B} {Es} {S} {κ = κ} s e {e′} {b} {es} {os} {fs} cfc rest sv sl _ refl lf H hret hsv ne ep ev st =
       with-res (Rel.CfgW.c-stk (K.Here.h-cfg {p = callee s} H))
       where
         import Data.Nat.Properties
