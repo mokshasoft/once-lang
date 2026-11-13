@@ -8994,7 +8994,8 @@ elaborator folded without a rule in `_⊢ᵢ_∶_⨾_`, that `()` would not type
 
 ## D125: `Int` Widens to `Float` Implicitly; `Float` Does Not Narrow to `Int`
 
-**Date**: 2026-08-27 · **Status**: Decided (plan 0.75 F4) ·
+**Date**: 2026-08-27 · **Status**: Decided (plan 0.75 F4); **the widening is superseded by D408** (2026-11-13:
+no implicit widening, `toFloat` is explicit); `Float` not narrowing still stands ·
 **Amends OCP-0002's "domain separation"** · **Extends D116's argument**
 
 ### The decision
@@ -22042,3 +22043,47 @@ in substance (failure soundness is `tt`; `compose-f-complete` takes the carried 
 * The D368 tests pin the new texts and carry no "Pinned" note. PuritySpec's coalgebra test is back to its
   unannotated form, and an annotated-second-arm case is added.
 * `UnboundVariable` is now only an unbound name: no generator reports it.
+
+## D408 — NO IMPLICIT WIDENING: AN `Int` MEETS `Float` ARITHMETIC ONLY THROUGH `toFloat` (2026-11-13)
+
+**Supersedes** D125's widening (its other half stands: `Float` never narrows to `Int` implicitly). **Reverses**
+plan 0.150 N9. **Decided** by the user 2026-11-13 (plan 0.150 step 3, Spec review).
+
+### Context
+D125 let `1 + 1.5` compile by converting the `Int` operand to `Float` first. The intent was that an `Int` is a
+legal operand of `Float` arithmetic. Plan 0.150 makes the dotted operators IEEE's operations on level-2 values,
+each "exact, then rounded once" (IEEE 754 §4.3, `Spec.Float.Arith`): `x +. y = round (embed x + embed y)`. Read
+that way, an `Int` IS an exact number, and the faithful meaning of `n +. x` is `round (n + x)`, one rounding.
+D125's rule means `round (round n + x)`, two roundings, and the two differ once `n` is not exactly a `Float`:
+`|n| > 2^53` on x86_64 and riscv64 (binary64), `|n| > 2^24` on x86_32 (binary32). Worse, its comparisons lie:
+`9007199254740993 ==. 9007199254740992.0` is true (x86_32: `16777217 ==. 16777216.0`), because `n` is rounded
+onto the other operand before they are compared.
+
+### Options
+* **A. Exact mixed operands**: `n +. x = round (n + x)`. The right meaning, but no target has the instruction.
+  x86_32 can widen both operands to binary64 and narrow once (innocuous double rounding: 53 ≥ 2·24 + 2). The 64-bit
+  targets need a range guard and a software slow path above 2^53, a data-dependent performance cliff and
+  value-dependent timing hidden inside an innocent `n +. x`, or a branch-free exact sequence costing every mixed
+  operation 10–20 instructions.
+* **B. No implicit widening**: the programmer writes `toFloat n +. x`.
+* **C. Keep D125**: double rounding, and comparisons that are wrong above 2^p.
+
+### Decision
+* **B.** The dotted operators take two `Float`s. An `Int` operand is converted by `toFloat : Int -> Float`, IEEE's
+  `convertFromInt`, correctly rounded (one instruction on every target). The rounding is written where it happens,
+  and the cost of a mixed expression is visible in its source.
+* An undotted operator on an `Int` and a `Float`, and a dotted operator with an `Int` operand, are rejected; the
+  error names `toFloat`.
+* D125's literal warning (D123's channel: an `Int` literal above `2^(sig-bits+1)` does not convert exactly) applies
+  to `toFloat` of a literal.
+
+### Spec
+Plan 0.150 draft E: `s-binop-mixed` and `asFloat` leave `Spec.Surface.Typing`; `toFloat` is a generator whose rule
+means `prim p-i2f`. The `Rounded` theory is restated as the retraction of the exact numbers (`embed`, `round`),
+with the dotted operations derived from it.
+
+### Consequences
+* The corpus's mixed float tests are rewritten with `toFloat`. `Strata/Interpretations/Math/Float.once`'s
+  `intToFloat` signature goes (the conversion is the generator).
+* A remains open as a later extension: it only adds programs, so no program written under B changes meaning.
+  Whether its hidden cost is acceptable is that plan's question, not a formality.

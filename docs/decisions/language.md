@@ -313,8 +313,9 @@ entry updates the rule it changes here, in the same commit.
   substitution, so typing stays parametric. (D322)
 - **Eliminators consume their principal argument up to `<:`**; grades are
   never narrowed. (D229, its Void rules withdrawn by D251)
-- **Int widens to Float** only in mixed binary operations (two local rules);
-  Float never narrows implicitly. (D125)
+- **No implicit conversion between Int and Float**: an Int meets Float
+  arithmetic only through `toFloat` (correctly rounded); Float never narrows
+  implicitly. (D408 ← D125)
 
 ## 7. Typing the surface
 
