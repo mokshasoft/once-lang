@@ -99,6 +99,9 @@ straight-local (ecase _ _) l = l
 CoveredI : ∀ {sh sh′} → Insᴵ sh sh′ → Set
 CoveredI (loop _) = ⊤
 CoveredI (call _) = ⊤
+-- a dispatch through a one-shot cell's code word, and its trampoline's cell part (D421)
+CoveredI icall    = ⊤
+CoveredI open1    = ⊤
 {-# CATCHALL #-}
 CoveredI i = LocalI i
 
@@ -148,6 +151,12 @@ module _ {ℓ : Level} {T : Sh} where
       rt  : ∀ {t Es B S U} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots (t ⊳ Es)} {os : Stk S}
               {e′ : Slots (t ⊳ [])} {b : MV B} {n}
           → P (i-ret {k = k} {r = r} {es = es} {os = os} {e′ = e′} {b = b} {n = n})
+      ic  : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots Es} {i} {lam : Lam once g X A B}
+              {x : MV X} {a : MV A} {os : Stk S} {n}
+          → P (i-icall {k = k} {r = r} {es = es} {i = i} {lam = lam} {x = x} {a = a} {os = os} {n = n})
+      op1 : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ (X ⊗t A) ∷ S) U} {r : Ret U T} {es : Slots Es} {i} {lam : Lam once g X A B}
+              {x : MV X} {a : MV A} {os : Stk S} {n}
+          → P (i-open1 {k = k} {r = r} {es = es} {i = i} {lam = lam} {x = x} {a = a} {os = os} {n = n})
 
   covered-elim : (C : CoveredCases) → ∀ {sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
                  (st : StepI c r m n t c′ r′ m′ n′) → CoveredC c → CoveredCases.P C st
@@ -178,14 +187,14 @@ module _ {ℓ : Level} {T : Sh} where
   covered-elim C st@i-epop        v = CoveredCases.loc C st v
   covered-elim C st@(i-eword _)   v = CoveredCases.loc C st v
   covered-elim C (i-opend _)      ()
-  covered-elim C i-icall          ()
+  covered-elim C i-icall          _ = CoveredCases.ic C
   covered-elim C (i-icallω _)     ()
   covered-elim C i-iobs           ()
   covered-elim C (i-ccopy _)      ()
   covered-elim C (i-ncopy _)      ()
   covered-elim C i-cfree          ()
   covered-elim C i-nfree          ()
-  covered-elim C i-open1          ()
+  covered-elim C i-open1          _ = CoveredCases.op1 C
   covered-elim C (i-openω _)      ()
   covered-elim C i-nopen          ()
   covered-elim C (i-copen _)      ()
