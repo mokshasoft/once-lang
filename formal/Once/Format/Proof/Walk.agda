@@ -37,9 +37,8 @@ open import Data.List.Properties using (reverse-++)
 
 open import Once.Postulates using (toList∘fromList)
 import Once.Parser.Token as P
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace;
-  TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TPlus; TMinus;
-  TStar; TSlash; TPercent; TAmpersand; TLt; TLe; TGt; TGe; TEqEq; TNeq; TBang; TNewline; TEOF)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand; TBang; TNewline; TEOF)
+open import Once.Adequacy.SpecTokNames
 open import Once.Adequacy.SpecLexing using (forget)
 open import Once.Format.Doc using (Doc; Lexeme; lt; lsp; lnl; lind; lcm; chars; lexemes; render)
 open import Once.Format.Lex using (Item; tok; comment; cont; lexItems)

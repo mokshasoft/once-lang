@@ -34,11 +34,8 @@ open import Relation.Nullary using (¬_)
 open import Agda.Builtin.String.Properties using (primStringToListInjective)
 
 open import Once.Postulates using (toList∘fromList)
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace;
-  TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TPlus; TMinus;
-  TStar; TSlash; TPercent; TAmpersand; TLt; TLe; TGt; TGe; TEqEq; TNeq; TBang; TNewline; TEOF; Next; next;
-  isIdentContinue; IdentRest; id-end; id-stop; id-more; Digits; dg-end; dg-stop; dg-more; Fraction; fraction;
-  LineRest; lr-nl; lr-char; digitsToNat)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand; TBang; TNewline; TEOF; Next; next; isIdentContinue; IdentRest; id-end; id-stop; id-more; Digits; dg-end; dg-stop; dg-more; Fraction; fraction; LineRest; lr-nl; lr-char; digitsToNat)
+open import Once.Adequacy.SpecTokNames
 open import Once.Format.Spell using (spell; decimal; fixed)
 open import Once.Format.Doc using (Lexeme; lt; lsp; lnl; lind; lcm; chars)
 open import Once.Format.Proof.Digits using (decimal-val; decimal-digits; decimal-head; fixed-val; fixed-length;

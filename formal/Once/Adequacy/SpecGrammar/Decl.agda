@@ -67,6 +67,7 @@ import Once.Parser.Module.OpName
 import Once.Parser.TypeRelation
 import Once.Parser.ExprRelation
 import Once.Parser.Generic.PolyInst
+open import Once.Adequacy.SpecTokNames
 open import Once.Adequacy.SpecLexing using (toNew; toOld; forget; isEOF; ended)
 import Once.Adequacy.SpecGrammar.Suffix as Suf
 open import Once.Adequacy.SpecGrammar.Tokens using (step; peel; peels; []; _∷_)

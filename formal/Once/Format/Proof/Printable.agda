@@ -33,12 +33,9 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_; does)
 
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; Special; isIdentStart; isIdentContinue;
-  TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon;
-  TAt; TPipe; TDot; TPlus; TMinus; TStar; TSlash; TPercent; TAmpersand; TLt; TLe; TGt; TGe; TEqEq; TNeq; TBang)
-open import Once.Spec.Surface.Lexing using (sp-space; sp-tab; sp-cr; sp-nl; sp-backslash; sp-caret; sp-dash; sp-lbrace;
-  sp-lt; sp-gt; sp-eq; sp-bang; sp-lparen; sp-rparen; sp-rbrace; sp-colon; sp-comma; sp-semi; sp-at; sp-pipe; sp-plus;
-  sp-star; sp-slash; sp-pct; sp-amp; sp-dot; sp-quote)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; Special; isIdentStart; isIdentContinue; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand; TBang)
+open import Once.Adequacy.SpecTokNames
+open import Once.Spec.Surface.Lexing using (sp-space; sp-tab; sp-cr; sp-nl; sp-backslash; sp-caret; sp-dash; sp-lbrace; sp-lt; sp-gt; sp-eq; sp-bang; sp-lparen; sp-rparen; sp-rbrace; sp-colon; sp-comma; sp-semi; sp-at; sp-pipe; sp-plus; sp-star; sp-slash; sp-pct; sp-amp; sp-dot; sp-quote)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; pureᶠ; actᶠ; fin; eff; mk-kind)
 open import Once.Spec.Type using (Ty; Fun; Unit; Void; Int; Float; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 import Once.Spec.Type as T

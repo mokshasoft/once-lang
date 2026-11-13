@@ -28,8 +28,8 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Grade using (Quantity; Finite; pureᶠ; actᶠ)
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TNewline; TLParen; TRParen; TStar; TPlus;
-  TArrow; TCaret0; TCaret1; TCaretW)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TNewline; TLParen; TRParen; TArrow; TCaret0; TCaret1; TCaretW)
+open import Once.Adequacy.SpecTokNames
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_;
   _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_)
 open import Once.Spec.Surface.Grammar using (TypeAlg; module Types; GradeToken; g0; g1; gw)
@@ -262,8 +262,7 @@ private
 -- Expressions
 ------------------------------------------------------------------------
 
-open import Once.Spec.Surface.Lexing using (TAt; TDot; TComma; TColon; TLambda; TEquals; TLBrace; TRBrace;
-  TSemicolon; TMinus; TPlus; TStar; TSlash; TPercent; TLt; TLe; TGt; TGe; TEqEq; TNeq; TBang)
+open import Once.Spec.Surface.Lexing using (TAt; TDot; TComma; TColon; TLambda; TEquals; TLBrace; TRBrace; TSemicolon; TBang)
 open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct;
   RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Name using (canonical)

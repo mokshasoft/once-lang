@@ -28,9 +28,8 @@ open import Once.Surface.OpNames
 open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals;
-  TArrow; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TPlus; TMinus; TStar; TSlash; TPercent; TAmpersand; TLt; TLe;
-  TGt; TGe; TEqEq; TNeq)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand)
+open import Once.Adequacy.SpecTokNames
 open import Once.Spec.Surface.Grammar as G
   hiding (ParsesExpr; ParsesCompTail; ParsesCmp; ParsesAdd; ParsesAddTail; ParsesMul; ParsesMulTail; ParsesUnary;
           ParsesApp; ParsesAppTail; ParsesAtomExpr; ParsesLamParams; ParsesParenCont; ParsesOpChars)

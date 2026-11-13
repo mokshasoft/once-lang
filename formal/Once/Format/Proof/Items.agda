@@ -30,9 +30,8 @@ open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 import Once.Parser.Token as P
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace;
-  TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TPlus; TMinus;
-  TStar; TSlash; TPercent; TAmpersand; TLt; TLe; TGt; TGe; TEqEq; TNeq; TBang; TNewline; TEOF)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand; TBang; TNewline; TEOF)
+open import Once.Adequacy.SpecTokNames
 open import Once.Parser.Lexer using (collectStringB; collectDigitsB; collectFracB; collectIdentB; skipLineB; skipBlockB;
   drop1; drop1-≤; nlIndent; isEqHead; isDashHead; dashClass; caretClass; d-comment; d-arrow; d-minus; c-1; c-0; c-w;
   c-gen; headK; isIdentStart; digitsToNat; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang; hkLParen;

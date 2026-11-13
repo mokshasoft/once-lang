@@ -21,10 +21,8 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Data.Nat using (ℕ; zero; suc; _<ᵇ_; _/_; _%_)
 open import Data.String using (String; fromList) renaming (_++_ to _++ˢ_)
 
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace;
-  TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe;
-  TDot; TPlus; TMinus; TStar; TSlash; TPercent; TAmpersand; TLt; TLe; TGt; TGe; TEqEq; TNeq; TBang;
-  TNewline; TEOF)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand; TBang; TNewline; TEOF)
+open import Once.Adequacy.SpecTokNames
 
 -- A decimal digit.
 digit : ℕ → Char

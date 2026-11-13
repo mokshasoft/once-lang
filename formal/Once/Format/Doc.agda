@@ -36,8 +36,8 @@ import Data.String as Str
 open import Data.Char using (Char)
 import Data.Char as Ch
 open import Relation.Nullary using (does)
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TMinus; TArrow; TGt; TGe; TLt;
-  TEquals; TEqEq; TBang; TNeq; TLBrace; TPlus; TStar; TDot)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TArrow; TEquals; TBang; TLBrace; TDot)
+open import Once.Adequacy.SpecTokNames
 open import Once.Format.Spell using (spell)
 
 -- | The style (D342).

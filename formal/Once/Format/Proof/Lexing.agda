@@ -37,6 +37,7 @@ open import Agda.Builtin.String.Properties using (primStringToListInjective)
 
 open import Once.Postulates using (toList∘fromList)
 open import Once.Spec.Surface.Lexing
+open import Once.Adequacy.SpecTokNames
 open import Once.Format.Spell using (spell; decimal; fixed)
 open import Once.Format.Doc using (Lexeme; lt; lsp; lnl; lind; lcm; chars; apart; continues; number; dashes;
   greater; equals)

@@ -31,9 +31,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Relation.Nullary using (¬_; does; yes; no)
 open import Relation.Nullary.Decidable using (toWitness)
 
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TComma; TColon; TSemicolon;
-  TRBrace; TDot; TAt; TNewline; isIdentStart; TLambda; TPlus; TMinus; TStar; TSlash; TPercent; TLt; TGt; TPipe;
-  TAmpersand)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TComma; TColon; TSemicolon; TRBrace; TDot; TAt; TNewline; isIdentStart; TLambda; TPipe; TAmpersand)
+open import Once.Adequacy.SpecTokNames
 open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct;
   RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Grammar using (Starts; starts; ArgStart; as-paren; as-lambda; as-int; as-float; as-word;
