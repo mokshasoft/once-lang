@@ -22806,3 +22806,32 @@ every lemma already has it (`m-heap`, `h-other`, `w-rest`).
 * B1.6 (blocks reused, D411's allocator) breaks it: a freed block is reallocated below the counter. Then
   `r-old` becomes "the cells no saved frame holds" (`HeldI`: the live cells are exactly the held ones, so a
   freed cell is held by no frame), stated per run the same way.
+
+## D420 — THE WORD LAYER'S GLOBAL RELATION: A POINT, ITS FRAME, AND THE RETURN STACK BY ROOT AND WAY OUT (2026-11-13)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Applies**: D417, D418,
+D419. Proof structure only.
+
+### Decision
+* **The image's state `(c , r , m , n)` relates to a flat state `fs`** by: a point `P : Pnt c` (D418) with
+  `HereP P m fs` (a path of the start or a block: the root's `Loc.Here`; a loop's dispatch: `HereQ` at
+  its address; a trampoline point: owed, per key; stopped: owed with `lop`), `n` the flat heap counter,
+  and `RetOK (rootOf P) (ptFin P) r ctx fs` over the frame context `ctx` = the current frame, the return
+  pcs, the saved frames.
+* **The return stack is related by the ROOT and the WAY OUT of the current point, not by the point**:
+  `[]ʳ` ↔ the start, way out `leave`; `k ∷ⁱ r` ↔ way out `jmp Ld`, `k` the dispatch point at `Ld` of the
+  same root, and `r` by that dispatch's way out; `frm k es os r` ↔ a block root `p`, way out `blockFin`,
+  a call site (a root and a path `s` to `call κ ⨾ k` with `callee s = p`), the return pc `k`'s address,
+  the caller's frame saved (strictly above), the block's first save slot its area, the caller's `es`
+  and `os` words in that frame over the current heap, and `r` by the caller's root and `k`'s way out.
+* Freshness comes from `HeldI.InvI` (`FreshI`), not from the relation.
+
+### Why
+A step within a root changes the point but neither its root nor its way out (a path's way out is
+inherited), so `RetOK` is untouched by every local step but for the frame facts each step's `Keep`,
+`Old` and top-slots fact carry. A loop's turn, its dispatch and its exit move between the body's way
+out (`jmp Ld`) and the loop's, exactly what `∷ⁱ` records.
+
+### Consequences
+* `Global` (next): `HereP`, `RetOK`, the relation, and the step theorem from `local-step`, `LoopStep`,
+  `CallStep.call-n`/`call-v`/`return`. Trampolines (per key, D418) and `lop` stay owed.
