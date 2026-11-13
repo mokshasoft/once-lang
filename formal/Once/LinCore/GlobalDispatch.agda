@@ -133,19 +133,18 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   -- ★ the dispatch's caller, as the new top of the return stack: the
   -- trampoline's frame `frame 0 M` (D421), the caller's area in `suc M`
-  mk-tramp : ∀ {T Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b} {Es S V} {k : Codeᴵ (Es ∣ B ∷ S) V}
-               {es : Slots Es} {os : Stk S} {r : Ret V T} {i} {x : MV X} {a : MV A} {fs fs′}
-               (p : under (ktr1 ds′ b γ) ∈ allK U) (d : DSite (icall {g = g} {A = A}) k)
-           → Called fs fs′ (dsitePos d) (suc (suc ((wsz X + wsz A) ⊔ wsz B))) (suc ((wsz X + wsz A) ⊔ wsz B))
-                    (Tp (dsiteφ d) S ∸ (suc (wsz A) ⊔ wsz B))
-           → (suc (wsz A) ⊔ wsz B) + ws S ≤ OP (dsiteφ d)
-           → CfgW (LocState.heapMem (floc fs)) (slot fs) (dsiteφ d) (es ∥ mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os)
-           → (∀ j → AllocState.next-heap-ref (falloc fs) ≤ serial j → cntE es j ≡ 0 × cntS (mpair (mfn i (c1 ds′ b γ) x) a ∷ˢ os) j ≡ 0)
+  mk-tramp : ∀ {T σ} {κ : Key σ} {Es D B S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ B ∷ S)} {k : Codeᴵ (Es ∣ B ∷ S) V}
+               {es : Slots Es} {os : Stk S} {r : Ret V T} {v : MV D} {fs fs′}
+               (p : under κ ∈ allK U) (d : DSite i k)
+           → Called fs fs′ (dsitePos d) (suc (suc (trM κ))) (suc (trM κ)) (Tp (dsiteφ d) S ∸ trMc κ)
+           → trMc κ + ws S ≤ OP (dsiteφ d)
+           → CfgW (LocState.heapMem (floc fs)) (slot fs) (dsiteφ d) (es ∥ v ∷ˢ os)
+           → (∀ j → AllocState.next-heap-ref (falloc fs) ≤ serial j → cntE es j ≡ 0 × cntS (v ∷ˢ os) j ≡ 0)
            → FreshR r (AllocState.next-heap-ref (falloc fs))
            → RetOK (dsiteRoot d) (dsiteFin d) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-           → RetOK (rtramp {κ = ktr1 ds′ b γ} p) (trFin (idx p) (ktr1 ds′ b γ)) (frm {t = nothing} {Es = Es} k es os r)
+           → RetOK (rtramp {κ = κ} p) (trFin (idx p) κ) (frm {t = nothing} {Es = Es} k es os r)
                    (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) fs′
-  mk-tramp {X = X} {A} {B} {es = es} {os = os} {fs = fs} {fs′} p d CD fit C fr frR ok =
+  mk-tramp {κ = κ} {es = es} {os = os} {fs = fs} {fs′} p d CD fit C fr frR ok =
     ok-tramp p d cfc (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) (fret fs)
       refl refl (cd-ret CD) (cd-saved CD) under-cfc (cd-area CD) fit
       (env-stand (λ j le → proj₁ (fr j le)) (cd-old CD) (envW-frame es (λ y _ → kept y) (CfgW.c-env C)))
@@ -154,7 +153,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          (λ f′ y ne → cd-others CD f′ y (λ e → ne (trans (sym e) (sym (cd-frame CD))))) (cd-old CD) frR ok)
     where
       cfc = AllocState.current-frame (falloc fs)
-      bb = suc (suc ((wsz X + wsz A) ⊔ wsz B))
+      bb = suc (suc (trM κ))
       under-cfc : AllocState.current-frame (falloc fs′) ≺ cfc
       under-cfc = subst (_≺ cfc) (sym (cd-frame CD)) (callee-below cfc bb)
       kept : ∀ y → LocState.stackMem (floc fs′) cfc y ≡ LocState.stackMem (floc fs) cfc y
@@ -264,3 +263,77 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       (N , fs′ , run , H′ , Rn) →
         N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (to1 p , H′) ; g-next = trans (r-next Rn) nx
                                ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+
+  -- ★ an observation's dispatch from the start's code: into the trampoline
+  -- of the ν's observation block (`ktro ε`, D423), at its depth 0 (TrO0)
+  giobs-start : ∀ {T Γ} {ds : Defs Γ} {F S Es S′ V} {k : Codeᴵ (Es ∣ LF∙ F (Nu F) ∷ S′) V}
+                  {r : Ret V T} {es : Slots Es} {i} {x : MV (Coalg F S ⊗t S)} {os : Stk S′} {n h fs}
+                  (s : Sub main (iobs ds {F = F} {S = S′} ⨾ k))
+              → InvI (es ∥ mnu i x ∷ˢ os) r n h → S.Here s (es ∥ mnu i x ∷ˢ os) fs
+              → AllocState.next-heap-ref (falloc fs) ≡ n
+              → RetOK rstart (ptFin (p-start (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+              → Arrives (blockᴵ (ktro ε F S)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mnu i x ∷ˢ []ˢ) n fs
+  giobs-start {F = F} {S} {S′ = S′} {r = r} {fs = fs} s inv H nx ok =
+    case to-dispatch (frameOf main) seg (S.Here.h-run H) (S.Here.h-cfg H) of λ where
+      (m , N , fs′ , run , T0 , CD) →
+        N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (to0 m , T0) ; g-next = trans (cd-next CD) nx
+                               ; g-ret = mk-tramp m (d-start s) (called-re pos-eq refl CD) fitM (S.Here.h-cfg H)
+                                           (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+    where
+      import Data.Nat.Properties
+      φ = frameOf main
+      wL = wsz (LF∙ F (Nu F))
+      seg : Seg image (fpc fs) (restore-input (Tp φ S′ ∸ 1) ∷ lea-slot (Tp φ S′ ∸ (1 ⊔ wL)) ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [])
+      seg = Seg-++ˡ image (fpc fs) (restore-input (Tp φ S′ ∸ 1) ∷ lea-slot (Tp φ S′ ∸ (1 ⊔ wL)) ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [])
+              _ (S.seg-at s H)
+      fitM : (1 ⊔ wL) + ws S′ ≤ OP φ
+      fitM = Data.Nat.Properties.≤-trans
+               (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-distribʳ-⊔ (ws S′) 1 wL))
+               (Data.Nat.Properties.⊔-lub (proj₂ (S.shape-fits s)) (proj₂ (S.shape-fits (next s))))
+      pos-eq : suc (suc (suc (suc (fpc fs)))) ≡ S.pos (next s)
+      pos-eq = trans (cong (λ z → suc (suc (suc (suc z)))) (S.Here.h-pc H))
+                 (trans (Data.Nat.Properties.+-comm 4 (S.pos s)) (sym (S.pos-next s)))
+
+  -- ★ an observation's dispatch from a block's code
+  giobs-block : ∀ {T Γ} {ds : Defs Γ} {F S Es S′ V} {k : Codeᴵ (Es ∣ LF∙ F (Nu F) ∷ S′) V}
+                  {r : Ret V T} {es : Slots Es} {i} {x : MV (Coalg F S ⊗t S)} {os : Stk S′} {n h fs}
+                  {σ′} {κ′ : Key σ′} (p′ : (σ′ , κ′) ∈ allK U) (s : Sub (blockᴵ κ′) (iobs ds {F = F} {S = S′} ⨾ k))
+              → InvI (es ∥ mnu i x ∷ˢ os) r n h → K.Here p′ s (es ∥ mnu i x ∷ˢ os) fs
+              → AllocState.next-heap-ref (falloc fs) ≡ n
+              → RetOK (rblock p′) (ptFin (p-block p′ (at s))) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+              → Arrives (blockᴵ (ktro ε F S)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mnu i x ∷ˢ []ˢ) n fs
+  giobs-block {F = F} {S} {S′ = S′} {r = r} {fs = fs} {κ′ = κ′} p′ s inv H nx ok =
+    case to-dispatch (frameOf (blockᴵ κ′)) seg (K.Here.h-run {p = p′} H) (K.Here.h-cfg {p = p′} H) of λ where
+      (m , N , fs′ , run , T0 , CD) →
+        N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (to0 m , T0) ; g-next = trans (cd-next CD) nx
+                               ; g-ret = mk-tramp m (d-block p′ s) (called-re pos-eq refl CD) fitM (K.Here.h-cfg {p = p′} H)
+                                           (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+    where
+      import Data.Nat.Properties
+      φ = frameOf (blockᴵ κ′)
+      wL = wsz (LF∙ F (Nu F))
+      seg : Seg image (fpc fs) (restore-input (Tp φ S′ ∸ 1) ∷ lea-slot (Tp φ S′ ∸ (1 ⊔ wL)) ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [])
+      seg = Seg-++ˡ image (fpc fs) (restore-input (Tp φ S′ ∸ 1) ∷ lea-slot (Tp φ S′ ∸ (1 ⊔ wL)) ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [])
+              _ (K.seg-at p′ s H)
+      fitM : (1 ⊔ wL) + ws S′ ≤ OP φ
+      fitM = Data.Nat.Properties.≤-trans
+               (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-distribʳ-⊔ (ws S′) 1 wL))
+               (Data.Nat.Properties.⊔-lub (proj₂ (K.shape-fits p′ s)) (proj₂ (K.shape-fits p′ (next s))))
+      pos-eq : suc (suc (suc (suc (fpc fs)))) ≡ K.pos p′ (next s)
+      pos-eq = trans (cong (λ z → suc (suc (suc (suc z)))) (K.Here.h-pc {p = p′} H))
+                 (trans (Data.Nat.Properties.+-comm 4 (K.pos p′ s)) (sym (FrK.C.pos-next p′ s)))
+
+  -- ★ A DISPATCH THROUGH A ν'S CODE WORD (i-iobs): from a root's path (a
+  -- trampoline's code has no `iobs`)
+  giobs : ∀ {T Γ} {ds : Defs Γ} {F S Es S′ V} {k : Codeᴵ (Es ∣ LF∙ F (Nu F) ∷ S′) V}
+            {r : Ret V T} {es : Slots Es} {i} {x : MV (Coalg F S ⊗t S)} {os : Stk S′} {n h fs}
+            (P : Pnt (iobs ds {F = F} {S = S′} ⨾ k))
+        → InvI (es ∥ mnu i x ∷ˢ os) r n h → HereP P (es ∥ mnu i x ∷ˢ os) fs
+        → AllocState.next-heap-ref (falloc fs) ≡ n
+        → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+        → Arrives (blockᴵ (ktro ε F S)) (frm {t = nothing} {Es = Es} k es os r) ([]ᵉ ∥ mnu i x ∷ˢ []ˢ) n fs
+  giobs (p-start (at s)) inv H nx ok = giobs-start s inv H nx ok
+  giobs (p-block p′ (at s)) inv H nx ok = giobs-block p′ s inv H nx ok
+  giobs (p-tramp p pt) inv (() , H) nx ok
