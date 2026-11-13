@@ -67,8 +67,11 @@ private
   part₂ (canonical (_ ∷ []))      = ""
   part₂ (canonical (_ ∷ s ∷ _))   = s
 
-nameOf-inj : ∀ {i j} → nameOf i ≡ nameOf j → i ≡ j
-nameOf-inj {i} {j} e = charsInBase-injective 10 i j (primStringFromListInjective _ _ (cong part₂ e))
+opaque
+  unfolding nameOf
+
+  nameOf-inj : ∀ {i j} → nameOf i ≡ nameOf j → i ≡ j
+  nameOf-inj {i} {j} e = charsInBase-injective 10 i j (primStringFromListInjective _ _ (cong part₂ e))
 
 jl-inj : ∀ {j j′ m m′} → jl j m ≡ jl j′ m′ → j ≡ j′ × m ≡ m′
 jl-inj e = nameOf-inj (cong LabelId.owner e) , suc-injective (cong LabelId.idx e)

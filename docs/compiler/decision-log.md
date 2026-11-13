@@ -22918,11 +22918,13 @@ differ syntactically (`compᴵ ds (obsT F S)` carries `ds` in its `prim ds …`)
 * A cross-table point (the image in one key's block, the flat pc in another's of the same code): a second
   point kind, a path translation between two syntactically different codes — larger and less clear.
 
-## D424 — THE WORD LAYER KNOWS EVERY CELL'S BLOCK: A HEAP LEDGER INVARIANT (2026-11-13)
+## D424 — THE WORD LAYER KNOWS EVERY CELL'S BLOCK: A FLAT BLOCK INVARIANT (2026-11-13)
 
 **Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Applies**: D385/D386 (an
 embedded value records that its address is a live cell of its block; block sizes stay with the
-allocator), D416 (a cell is one heap block). **Status**: proposed; nothing implemented yet.
+allocator), D416 (a cell is one heap block). **Status**: in progress — `Moves.InBlk` and every `Ran`'s
+`r-inb` implemented (the cell header's `Header.h-inb` too); not yet carried by `Related` or the call
+records, not yet used by the `ktrf`/`ktrc`/`ktrω` dispatches.
 
 ### The problem
 The dispatches through a cell's copy and free words (`ccopy`, `ncopy`, `cfree`, `nfree`: `addr-at 2`) and
@@ -22932,12 +22934,18 @@ layer's relation (`VW`, `CfgW`) knows a cell's WORDS (`At`), not its block, so t
 proved.
 
 ### Decision (proposed)
-* **A block invariant over the abstract heap ledger**: every id the run has allocated keeps the block it
-  was allocated with — `block-size (falloc fs) (serial i)` is `i`'s size. A flat `instr-free-heap` does not
-  change block sizes and an allocation sizes only the fresh reference, so the invariant changes only at
-  an allocation step (its cell's id is `(size , next)`), where the allocator sets exactly that.
+* **A block invariant over the flat state itself** (`Moves.InBlk`): every written heap word lies in its
+  block, below the allocation counter — `heapMem hl ≡ just v → ref-id < next × in-block? block-size hl`.
+  It mentions no abstract ledger: a word is in its block or the machine never wrote it. A flat
+  `instr-free-heap` does not change block sizes; an allocation sizes only the fresh reference (above every
+  written word); a write lands in its block (`inb-write`, from the cell's bound). So the invariant moves
+  with every run (`Ran.r-inb`: `inb-same`, `inb-alloc`, `inb-write`).
+* An address formed from a cell's pointer (`addr-at 2`, `contentsAddr`) is in its block because the
+  cell's words were written (its `At` holds `just`): the invariant gives the block from the written word.
 * It travels beside the relation (a hypothesis and a conclusion of the step theorem), not inside `VW`:
   every simulation keeps `VW` over the heap's words only.
+* (First drafted as a ledger invariant, "every allocated id keeps its size"; the flat form needs no map
+  from ids to sizes and holds of the start state vacuously.)
 
 ### Alternatives
 * Block sizes inside `VW` (as D386's `cell-flat`): every `VW`, `EnvW`, `StkW` and every simulation over
