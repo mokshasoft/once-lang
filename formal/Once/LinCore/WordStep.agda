@@ -60,6 +60,7 @@ open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module T
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 open import Once.LinCore.GlobalLocal fmt ans bw using (module LocalR)
 open import Once.LinCore.GlobalCall fmt ans bw using (module CallR)
+open import Once.LinCore.GlobalRet fmt ans bw using (module RetR)
 open import Once.LinCore.GlobalDispatch fmt ans bw using (module DispR)
 
 module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
@@ -69,6 +70,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Relate {FS} ds f ldConst ld-nl wordOf
   open LocalR {FS} ds f ldConst ld-nl wordOf using (module Whole)
   open CallR {FS} ds f ldConst ld-nl wordOf using (module GCall)
+  open RetR {FS} ds f ldConst ld-nl wordOf using (module GRet)
   open DispR {FS} ds f ldConst ld-nl wordOf using (gicall; gopen1; gnopen; giobs)
   open Ctl {FS} ds f ldConst ld-nl using (main; L₀ˢ; L₀ᵇ; start-root; blockFin; Pnt; p-start; p-block; p-tramp; p-halt; ptFin)
   open Program ds f using (U)
@@ -136,7 +138,8 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                        → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
                          ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (FlatMachine.fpc fs) }) where
     open Whole ld using (gstep-local; gcase₁; gcase₂; gloop; greti)
-    open GCall using (gcall; gret; ArrivesAt)
+    open GCall using (gcall; ArrivesAt)
+    open GRet using (gret)
     open Related
     -- what a step owes: from a related state, a related one after it
     Owes : ∀ {T} → Motive {Level.zero} {T}

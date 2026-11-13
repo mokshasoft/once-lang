@@ -58,6 +58,7 @@ open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module T
 
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 open import Once.LinCore.GlobalTramp fmt ans bw using (module TrampR)
+open import Once.LinCore.GlobalTrampO fmt ans bw using (module TrampO)
 
 module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
@@ -65,6 +66,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Relate {FS} ds f ldConst ld-nl wordOf
   open TrampR {FS} ds f ldConst ld-nl wordOf
+  open TrampO {FS} ds f ldConst ld-nl wordOf
   open Ctl {FS} ds f ldConst ld-nl using (main; L₀ˢ; L₀ᵇ; start-root; blockFin; Pnt; p-start; p-block; p-tramp; p-halt; ptFin; trFin)
   open Program ds f using (U)
   open ProgramRun ds f using (ncty)

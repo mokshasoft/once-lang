@@ -216,12 +216,12 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → Sub main (call κ ⨾ k) → Site κ k
     s-block : ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V}
                 {σ′} {κ′ : Key σ′} (p′ : (σ′ , κ′) ∈ allK U) → Sub (blockᴵ κ′) (call κ ⨾ k) → Site κ k
-    -- a one-shot trampoline's inner call (D421)
+    -- a one-shot trampoline's inner call (D421); its callee named through `under` (one constructor copy, TrampAt's: no unfolding of the block's code and labels in conversion)
     s-tramp : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b} (p : under (ktr1 ds′ b γ) ∈ allK U)
-            → Site {t = nothing} {Es = []} {S = []} (kbody1 ds′ b γ) (end {sh = [] ∣ B ∷ []})
+            → Site {t = nothing} {Es = []} {S = []} (proj₂ (under (ktr1 ds′ b γ))) (end {sh = [] ∣ B ∷ []})
     -- an observation's trampoline's inner call (D421)
     s-trampo : ∀ {Γ′} {ds′ : Defs Γ′} {F S′} (p : under (ktro ds′ F S′) ∈ allK U)
-             → Site {t = nothing} {Es = []} {S = []} (kobs ds′ F S′) (end {sh = [] ∣ LF∙ F (Nu F) ∷ []})
+             → Site {t = nothing} {Es = []} {S = []} (proj₂ (under (ktro ds′ F S′))) (end {sh = [] ∣ LF∙ F (Nu F) ∷ []})
 
   module _ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} where
     siteRoot : Site κ k → RootId
@@ -255,6 +255,26 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     siteFin (s-block p′ s) = KA.lfin {p = p′} (K.lowAt p′ s)
     siteFin (s-tramp {ds′ = ds′} {b} {γ} p) = trAt (idx p) (ktr1 ds′ b γ) 2
     siteFin (s-trampo {ds′ = ds′} {F} {S′} p) = trAt (idx p) (ktro ds′ F S′) 2
+
+  -- ★ a site, by its kind: the one split on a site (its index unification
+  -- costs tens of seconds in a large context), its cases in one record
+  record SiteCases : Set₁ where
+    field
+      SP        : ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} → Site κ k → Set
+      on-start  : ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V}
+                  (s : Sub main (call κ ⨾ k)) → SP (s-start s)
+      on-block  : ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} {σ′} {κ′ : Key σ′}
+                  (p′ : (σ′ , κ′) ∈ allK U) (s : Sub (blockᴵ κ′) (call κ ⨾ k)) → SP (s-block p′ s)
+      on-tramp  : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b}
+                  (p : under (ktr1 ds′ b γ) ∈ allK U) → SP (s-tramp p)
+      on-trampo : ∀ {Γ′} {ds′ : Defs Γ′} {F S′} (p : under (ktro ds′ F S′) ∈ allK U) → SP (s-trampo p)
+
+  site-elim : (C : SiteCases) → ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V}
+              (st : Site κ k) → SiteCases.SP C st
+  site-elim C (s-start s)    = SiteCases.on-start C s
+  site-elim C (s-block p′ s) = SiteCases.on-block C p′ s
+  site-elim C (s-tramp p)    = SiteCases.on-tramp C p
+  site-elim C (s-trampo p)   = SiteCases.on-trampo C p
 
   -- ★ a dispatch site: a dispatch through a cell's code word (`icall`,
   -- `iobs`) in the start's code or a block's (D421)

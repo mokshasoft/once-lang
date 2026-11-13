@@ -63,8 +63,12 @@ open import Once.LinCore.MoveCode public
 -- 2. NAMES: a block by its index, its jump labels, its trampoline.
 ------------------------------------------------------------------------
 
-nameOf : ℕ → CanonicalName
-nameOf j = canonical ("once-lincore" ∷ showNat j ∷ [])
+-- opaque: a name is compared by its index, never by its digits (only `LabelsI.nameOf-inj`
+-- unfolds it); a transparent `showNat` is normalised (well-founded digit recursion) whenever a
+-- conversion meets two copies of a key's constructors above a name
+opaque
+  nameOf : ℕ → CanonicalName
+  nameOf j = canonical ("once-lincore" ∷ showNat j ∷ [])
 
 jl : ℕ → ℕ → LabelId
 jl j m = mkLabelId (nameOf j) [] (suc m)
