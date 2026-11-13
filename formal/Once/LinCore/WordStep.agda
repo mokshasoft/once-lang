@@ -69,7 +69,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Relate {FS} ds f ldConst ld-nl wordOf
   open LocalR {FS} ds f ldConst ld-nl wordOf using (module Whole)
   open CallR {FS} ds f ldConst ld-nl wordOf using (module GCall)
-  open DispR {FS} ds f ldConst ld-nl wordOf using (gicall; gopen1)
+  open DispR {FS} ds f ldConst ld-nl wordOf using (gicall; gopen1; gnopen)
   open Ctl {FS} ds f ldConst ld-nl using (main; L₀ˢ; L₀ᵇ; start-root; blockFin; Pnt; p-start; p-block; p-tramp; p-halt; ptFin)
   open Program ds f using (U)
   open ProgramRun ds f using (ncty)
@@ -155,6 +155,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       ; rt  = λ inv G → gret (g-pt G) inv (g-here G) (g-next G) (g-ret G)
       ; ic  = λ inv G → gicall (g-pt G) inv (g-here G) (g-next G) (g-ret G)
       ; op1 = λ inv G → gopen1 (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+      ; nop = λ inv G → gnopen (g-pt G) inv (g-here G) (g-next G) (g-ret G)
       }
 
     -- ★ by the step's kind (the one split on a step is StepKinds')

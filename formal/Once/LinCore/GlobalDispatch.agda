@@ -248,3 +248,19 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       (N , fs′ , run , H′ , Rn) →
         N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (tp1 p , H′) ; g-next = trans (r-next Rn) nx
                                ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+
+  -- ★ AN OBSERVATION'S TRAMPOLINE'S CELL PART (i-nopen): at its depth 0; at a
+  -- root's path it is absurd (D422)
+  gnopen : ∀ {T Es F S S′ V} {k : Codeᴵ (Es ∣ (Coalg F S ⊗t S) ∷ S′) V} {r : Ret V T} {es : Slots Es} {i}
+             {x : MV (Coalg F S ⊗t S)} {os : Stk S′} {n h fs} (P : Pnt (nopen {F = F} {S = S} ⨾ k))
+         → InvI (es ∥ mnu i x ∷ˢ os) r n h → HereP P (es ∥ mnu i x ∷ˢ os) fs
+         → AllocState.next-heap-ref (falloc fs) ≡ n
+         → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+         → Arrives k r (es ∥ x ∷ˢ os) n fs
+  gnopen (p-start (at s)) inv H nx ok = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
+  gnopen (p-block p (at s)) inv H nx ok = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
+  gnopen {r = r} {es = []ᵉ} {os = []ˢ} (p-tramp p _) inv (to0 _ , T0) nx ok =
+    case to-open p T0 of λ where
+      (N , fs′ , run , H′ , Rn) →
+        N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (to1 p , H′) ; g-next = trans (r-next Rn) nx
+                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
