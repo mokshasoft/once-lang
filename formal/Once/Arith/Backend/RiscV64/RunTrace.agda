@@ -28,6 +28,7 @@ open State using (halted; pc; regs)
 open import Once.Arith.Backend.RiscV64.Dispatch using (dispatch-arith)
 import Once.Arith.Backend.RunTraceCore as Core
 import Once.Arith.Backend.RunTraceMachine as RTM
+open import Once.Spec.Float.Dyadic using (binary64)
 
 matchCall : Instr → Maybe String
 matchCall (call-sym lbl) = just lbl
@@ -54,5 +55,5 @@ module _ (val : XInstr → State → Reg → Word) (answer : List SigOpEvent →
   open Core.RunTrace State Program Instr (List XInstr × ℕ)
     halted pc fetch execInstr matchCall (ret-call answer) (uncurry (dispatch-arith val)) public
   -- D320: the same machine as a machine whose trace is read off by corecursion.
-  module Run = RTM.RunMachine State Program Instr (List XInstr × ℕ)
+  module Run = RTM.RunMachine binary64 State Program Instr (List XInstr × ℕ)
     halted pc fetch execInstr matchCall (ret-call answer) (uncurry (dispatch-arith val))

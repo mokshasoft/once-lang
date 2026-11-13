@@ -34,7 +34,7 @@ open import Once.Type using (FitsInReg; fits-int; fits-float)
 open import Once.Res using (Res; returns; stopped)
 open import Once.IR.Semantics.Boundary using (atTarget)
 open import Once.SigOp.Info using (SigOpSem; blockV; ffiV; callsV; emitsV; haltsV; primV; semM-of)
-open import Once.Arith.Prim using (p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp)
+open import Once.Arith.Prim using (p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp; p-fneg; p-fcmp)
 open import Once.Arith.Type using (NInt; NFloat)
 open import Once.Arith.Machine.IR using (MArithIR; shape-as-type)
 open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; IntsBelow)
@@ -140,6 +140,8 @@ module _ (tn : TargetNum) where
   semM-of-word ans n (primV p-fdiv) fits-float x w = tt
   semM-of-word ans n (primV p-i2f)  fits-float x w = tt
   semM-of-word ans n (primV (p-cmp _)) () x w
+  semM-of-word ans n (primV p-fneg)  fits-float x w = tt
+  semM-of-word ans n (primV (p-fcmp _ _)) () x w
   semM-of-word {A} {B} ans n ffiV f x w with ans n A B x
   ... | returns v = atTarget-word f v
   ... | stopped   = tt

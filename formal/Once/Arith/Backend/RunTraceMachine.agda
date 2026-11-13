@@ -34,6 +34,7 @@ open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-sym
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.IR.Semantics.Event using (SigOpEvent; toEvent)
+open import Once.Spec.Float.Dyadic using (FloatFormat)
 open import Once.IR.Semantics.Out using (Out; _▹_)
 open import Once.Spec.Trace using (End)
 import Once.Spec.Trace as ST
@@ -41,6 +42,7 @@ import Once.Arith.Backend.RunTraceCore as Core
 open import Once.Adequacy.MachineTrace using (Step; silent; emit; stop; stuck; module Machine)
 
 module RunMachine
+  (F       : FloatFormat)   -- the target's float format: an event's floats are read at it
   (State   : Set)
   (Program : Set)
   (Instr   : Set)
@@ -85,7 +87,7 @@ module RunMachine
     δ-x lbl (yes _) h s = stop [] ST.exhausted
     δ-x lbl (no _)  h s = δ-c lbl (env lbl) h s
     δ-c lbl (just pl) h s = silent (h , dispatchArith pl s)
-    δ-c lbl nothing   h s = emit (map toEvent (ev lbl s)) (h ++ ev lbl s , ret-call h lbl s)
+    δ-c lbl nothing   h s = emit (map (toEvent F) (ev lbl s)) (h ++ ev lbl s , ret-call h lbl s)
     δ-e nothing   h = stop [] ST.halted
     δ-e (just s′) h = silent (h , s′)
 
@@ -93,7 +95,7 @@ module RunMachine
 
     -- What a run shows, read as the Spec's calls.
     calls : Out → List _
-    calls o = map toEvent (proj₁ o)
+    calls o = map (toEvent F) (proj₁ o)
 
     private
       -- One clause of `run-events` each, by its scrutinee (no `with`).
@@ -165,7 +167,7 @@ module RunMachine
                (reach M h (dispatchArith pl s) q)
     reach-c M h s i lbl nothing   eq dq xq mq fq hs {e} q =
       subst (λ es → Reaches (h , s) es e)
-            (sym (map-++ toEvent (ev lbl s) (proj₁ (run-events ev env (h ++ ev lbl s) M prog (ret-call h lbl s)))))
+            (sym (map-++ (toEvent F) (ev lbl s) (proj₁ (run-events ev env (h ++ ev lbl s) M prog (ret-call h lbl s)))))
             (r-emit (trans (cong (λ b → δ-h b h s) hs) (trans (cong (λ m → δ-f m h s) fq)
                     (trans (cong (λ m → δ-i i m h s) mq) (trans (cong (λ d → δ-s lbl d h s) dq)
                     (trans (cong (λ d → δ-x lbl d h s) xq) (cong (λ m → δ-c lbl m h s) eq))))))
@@ -181,7 +183,7 @@ module RunMachine
 
     -- THE BRIDGE: a fuelled run that ended is a run that reaches its end.
     ended-reaches : ∀ M h s {es e} → run-events ev env h M prog s ≡ (es , just e)
-                  → Reaches (h , s) (map toEvent es) e
+                  → Reaches (h , s) (map (toEvent F) es) e
     ended-reaches M h s {es} {e} q =
       subst (λ o → Reaches (h , s) (calls o) e) q (reach M h s (cong proj₂ q))
 
@@ -216,7 +218,7 @@ module RunMachine
     rn-x n h s lbl (no _)  = rn-c n h s lbl (env lbl)
     rn-c n h s lbl (just pl) = runN-events n h (dispatchArith pl s)
     rn-c n h s lbl nothing   =
-      trans (cong (λ ob → map toEvent (ev lbl s) ++ proj₁ ob , proj₂ ob) (runN-events n (h ++ ev lbl s) (ret-call h lbl s)))
-            (cong (_, proj₂ (run-events ev env (h ++ ev lbl s) n prog (ret-call h lbl s))) (sym (map-++ toEvent (ev lbl s) (proj₁ (run-events ev env (h ++ ev lbl s) n prog (ret-call h lbl s))))))
+      trans (cong (λ ob → map (toEvent F) (ev lbl s) ++ proj₁ ob , proj₂ ob) (runN-events n (h ++ ev lbl s) (ret-call h lbl s)))
+            (cong (_, proj₂ (run-events ev env (h ++ ev lbl s) n prog (ret-call h lbl s))) (sym (map-++ (toEvent F) (ev lbl s) (proj₁ (run-events ev env (h ++ ev lbl s) n prog (ret-call h lbl s))))))
     rn-e n h s nothing   = refl
     rn-e n h s (just s′) = runN-events n h s′
