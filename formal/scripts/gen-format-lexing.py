@@ -6,17 +6,30 @@ SYM=[('TLParen','('),('TRParen',')'),('TLBrace','{'),('TRBrace','}'),('TColon','
  ('TArrow','->'),('TCaret1','^1'),('TCaret0','^0'),('TCaretW','^w'),('TLambda','\\\\'),('TComma',','),
  ('TSemicolon',';'),('TAt','@'),('TPipe','|'),('TDot','.'),('TPlus','+'),('TMinus','-'),('TStar','*'),
  ('TSlash','/'),('TPercent','%'),('TAmpersand','&'),('TLt','<'),('TLe','<='),('TGt','>'),('TGe','>='),
- ('TEqEq','=='),('TNeq','!='),('TBang','!')]
+ ('TEqEq','=='),('TNeq','!='),('TBang','!'),
+ ('TPlusD','+.'),('TMinusD','-.'),('TStarD','*.'),('TSlashD','/.'),('TLtD','<.'),('TLeD','<=.'),('TGtD','>.'),
+ ('TGeD','>=.'),('TEqEqD','==.'),('TNeqD','!=.')]
 LEXC={'TLParen':'lex-lparen l','TRParen':'lex-rparen l','TLBrace':'lex-lbrace f l','TRBrace':'lex-rbrace l',
  'TColon':'lex-colon l','TEquals':'lex-equal f l','TArrow':'lex-arrow l','TCaret1':'lex-caret1 l',
  'TCaret0':'lex-caret0 l','TCaretW':'lex-caretw l','TLambda':'lex-lambda l','TComma':'lex-comma l',
- 'TSemicolon':'lex-semi l','TAt':'lex-at l','TPipe':'lex-pipe l','TDot':'lex-dot l','TPlus':'lex-plus l',
- 'TMinus':'lex-minus (proj₁ f) (proj₂ f) l','TStar':'lex-star l','TSlash':'lex-slash l','TPercent':'lex-pct l',
- 'TAmpersand':'lex-amp l','TLt':'lex-lt f l','TLe':'lex-le l','TGt':'lex-gt f l','TGe':'lex-ge l',
- 'TEqEq':'lex-eqeq l','TNeq':'lex-neq l','TBang':'lex-bang f l'}
-# Follows per token
-FOL={'TMinus':"¬ Next cs '-' × ¬ Next cs '>'",'TLt':"¬ Next cs '='",'TGt':"¬ Next cs '='",
-     'TEquals':"¬ Next cs '='",'TBang':"¬ Next cs '='",'TLBrace':"¬ Next cs '-'"}
+ 'TSemicolon':'lex-semi l','TAt':'lex-at l','TPipe':'lex-pipe l','TDot':'lex-dot l',
+ 'TPlus':'lex-op g+ (ud f) l',
+ 'TMinus':'lex-op (g- (proj₁ f) (proj₁ (proj₂ f))) (ud (proj₂ (proj₂ f))) l','TStar':'lex-op g* (ud f) l',
+ 'TSlash':'lex-op g/ (ud f) l','TPercent':'lex-op g% ud-% l',
+ 'TAmpersand':'lex-amp l','TLt':'lex-op (g< (proj₁ f)) (ud (proj₂ f)) l','TLe':'lex-op g<= (ud f) l',
+ 'TGt':'lex-op (g> (proj₁ f)) (ud (proj₂ f)) l','TGe':'lex-op g>= (ud f) l',
+ 'TEqEq':'lex-op g== (ud f) l','TNeq':'lex-op g!= (ud f) l','TBang':'lex-bang f l',
+ 'TPlusD':'lex-opd g+ l','TMinusD':'lex-opd (g- (λ ()) (λ ())) l','TStarD':'lex-opd g* l','TSlashD':'lex-opd g/ l',
+ 'TLtD':'lex-opd (g< (λ ())) l','TLeD':'lex-opd g<= l','TGtD':'lex-opd (g> (λ ())) l','TGeD':'lex-opd g>= l',
+ 'TEqEqD':'lex-opd g== l','TNeqD':'lex-opd g!= l'}
+# What may not follow a token: the characters that would lex with it as
+# something else. Each is a class of `Doc` (the tokens that start with it).
+NOT={'TMinus':['-','>','.'],'TLt':['=','.'],'TGt':['=','.'],'TEquals':['='],'TBang':['='],'TLBrace':['-'],
+     'TPlus':['.'],'TStar':['.'],'TSlash':['.'],'TLe':['.'],'TGe':['.'],'TEqEq':['.'],'TNeq':['.']}
+CLASS={'-':'dashes','>':'greater','=':'equals','.':'dots'}
+def folT(n): return ' × '.join(f"¬ Next cs '{c}'" for c in NOT[n])
+def blanks(n): return ' , '.join('(λ ())' for _ in NOT[n]) if len(NOT[n])>1 else 'λ ()'
+FOL={n:folT(n) for n in NOT}
 ALL=[('TWord _','TWord'),('TInt _','TInt'),('TFloat _ _ _','TFloat'),('TString _','TString')]+[(n,n) for n,_ in SYM]+[('TNewline','TNewline'),('TEOF','TEOF')]
 def sname(n): return 's-'+n[1:].lower()
 o=[]
@@ -60,9 +73,10 @@ open import Agda.Builtin.String.Properties using (primStringToListInjective)
 
 open import Once.Postulates using (toList∘fromList)
 open import Once.Spec.Surface.Lexing
+open import Once.Adequacy.SpecTokNames
 open import Once.Format.Spell using (spell; decimal; fixed)
 open import Once.Format.Doc using (Lexeme; lt; lsp; lnl; lind; lcm; chars; apart; continues; number; dashes;
-  greater; equals)
+  greater; equals; dots)
 open import Once.Format.Proof.Digits using (decimal-val; decimal-digits; decimal-nonempty; fixed-val;
   fixed-length; fixed-digits; fixed-nonempty; decimal-head)
 
@@ -177,8 +191,7 @@ for c,nm in [(" ","follows-sp"),("\\n","follows-nl")]:
         if n=='TWord': r='stop refl'
         elif n=='TInt': r="stop refl , (λ ())"
         elif n=='TFloat': r='stop refl'
-        elif n=='TMinus': r="(λ ()) , (λ ())"
-        elif n in FOL: r="λ ()"
+        elif n in NOT: r=blanks(n)
         else: r='tt'
         w(f'{nm} {P} = {r}')
 w('''
@@ -189,8 +202,7 @@ for pat,n in ALL:
     if n=='TWord': r='stop-end'
     elif n=='TInt': r="stop-end , λ ()"
     elif n=='TFloat': r='stop-end'
-    elif n=='TMinus': r="(λ ()) , (λ ())"
-    elif n in FOL: r="λ ()"
+    elif n in NOT: r=blanks(n)
     else: r='tt'
     w(f'follows-end {P} = {r}')
 open(OUT,'w').write('\n'.join(o)+'\n')
@@ -216,7 +228,7 @@ private
     headNext isDigit (trans (toList∘fromList (decimal i ++ '.' ∷ fixed l f)) (cong (_++ '.' ∷ fixed l f) eq)) p dd
 ''')
 TOKS=[('TWord _','TWord')]+[('TInt _','TInt'),('TFloat _ _ _','TFloat'),('TString _','TString')]+[(n,n) for n,_ in SYM]+[('TNewline','TNewline'),('TEOF','TEOF')]
-CONT={'TWord','TInt','TFloat','TPlus','TStar','TBang','TNeq'}
+CONT={'TWord','TInt','TFloat','TPlus','TStar','TBang','TNeq','TPlusD','TStarD','TNeqD'}
 FIRST=dict(SYM)
 def P(pat): return f'({pat})' if ' ' in pat else pat
 # printable pattern per token
@@ -252,12 +264,18 @@ gen('ft-word','continues t ≡ false → Printable t → Stop isIdentContinue (c
     lambda n: n in CONT, lambda n: 'stop refl')
 gen('ft-num',"number t ≡ false → Printable t → Stop isDigit (chars (lt t) ++ cs) × ¬ Next (chars (lt t) ++ cs) '.'",
     lambda n: n in CONT or n=='TDot', lambda n: 'stop refl , (λ ())')
-gen('ft-minus',"(dashes t ∨ greater t) ≡ false → Printable t → ¬ Next (chars (lt t) ++ cs) '-' × ¬ Next (chars (lt t) ++ cs) '>'",
-    lambda n: n in ('TMinus','TArrow','TGt','TGe'), lambda n: f"{firstneg(n,'-',0)} , {firstneg(n,'>',0)}")
-gen('ft-eq',"equals t ≡ false → Printable t → ¬ Next (chars (lt t) ++ cs) '='",
-    lambda n: n in ('TEquals','TEqEq'), lambda n: firstneg(n,'=',0))
-gen('ft-brace',"dashes t ≡ false → Printable t → ¬ Next (chars (lt t) ++ cs) '-'",
-    lambda n: n in ('TMinus','TArrow'), lambda n: firstneg(n,'-',0))
+FT={}
+for u in NOT:
+    key=tuple(NOT[u])
+    if key in FT: continue
+    nm='ft-'+''.join({'-':'dash','>':'gt','=':'eq','.':'dot'}[c] for c in key)
+    FT[key]=nm
+    hyp=' ∨ '.join(f'{CLASS[c]} t' for c in key)
+    hyp=f'({hyp})' if len(key)>1 else hyp
+    res=' × '.join(f"¬ Next (chars (lt t) ++ cs) '{c}'" for c in key)
+    gen(nm, f'{hyp} ≡ false → Printable t → {res}',
+        lambda n, key=key: any(FIRST.get(n,'')[:1]==c for c in key),
+        lambda n, key=key: ' , '.join(firstneg(n,c,0) for c in key))
 w('''
 -- | A token may follow a token it is not `apart` from.
 follows-tok : ∀ u t {cs} → apart u t ≡ false → Printable t → Follows u (chars (lt t) ++ cs)''')
@@ -266,9 +284,7 @@ for pat,n in TOKS:
     if n=='TWord': r='ft-word t h p'
     elif n=='TInt': r='ft-num t h p'
     elif n=='TFloat': r='proj₁ (ft-num t h p)'
-    elif n=='TMinus': r='ft-minus t h p'
-    elif n in ('TLt','TGt','TEquals','TBang'): r='ft-eq t h p'
-    elif n=='TLBrace': r='ft-brace t h p'
+    elif n in NOT: r=f'{FT[tuple(NOT[n])]} t h p'
     else: r='tt'
     w(f'follows-tok {up} t h p = {r}')
 open(OUT,'a').write('\n'.join(o2)+'\n')

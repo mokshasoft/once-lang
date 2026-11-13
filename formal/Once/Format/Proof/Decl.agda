@@ -78,7 +78,7 @@ private
   lams-wf (RDestruct s x el y er) w = w
   lams-wf RUnit w = w
   lams-wf (RInt z) w = w
-  lams-wf (RFloat i f l) w = w
+  lams-wf (RFloat s i f l) w = w
   lams-wf (RAnnot e T) w = w
   lams-wf (RBinOp op a b) w = w
   lams-wf (RNeg e) w = w
@@ -94,7 +94,7 @@ private
   lams-wrap (RDestruct s x el y er) = refl
   lams-wrap RUnit = refl
   lams-wrap (RInt z) = refl
-  lams-wrap (RFloat i f l) = refl
+  lams-wrap (RFloat s i f l) = refl
   lams-wrap (RAnnot e T) = refl
   lams-wrap (RBinOp op a b) = refl
   lams-wrap (RNeg e) = refl

@@ -268,12 +268,13 @@ open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; R
 open import Once.Spec.Name using (canonical)
 open import Once.Spec.Surface.Grammar using (ParsesExpr; ParsesCompTail; ParsesCmp; ParsesAdd; ParsesAddTail;
   ParsesMul; ParsesMulTail; ParsesUnary; ParsesApp; ParsesAppTail; ParsesAtomExpr; ParsesLamParams; ParsesParenCont;
-  expr; comp-done; comp-dot; cmp-none; cmp; add; add-done; add-op; mul; mul-done; mul-op; neg; unary; app;
+  expr; comp-done; comp-dot; cmp-none; cmp; add; add-done; add-op; mul; mul-done; mul-op; neg; neg-lit; unary; app;
   app-done; app-arg; atom-unit; atom-int; atom-float; atom-var; atom-qual; atom-paren; atom-op; atom-lambda;
   atom-let; atom-destruct; lam-body; lam-arg; paren-close; paren-pair; paren-annot;
-  CompareToken; ct-lt; ct-le; ct-gt; ct-ge; ct-eq; ct-ne; AddToken; at-plus; at-minus; MulToken; mt-star;
-  mt-slash; mt-pct; ParsesOpChars; op-close; op-char; OpChar; oc-dot; oc-plus; oc-minus; oc-star; oc-slash;
-  oc-pct; oc-lt; oc-gt; oc-pipe; oc-amp; oc-at)
+  OpToken; ot-plain; ot-dotted; NegNumeral; nn-int; nn-float; ParsesOpChars; op-close; op-char; op-dotted; OpChar;
+  oc-op; oc-dot; oc-pipe; oc-amp; oc-at)
+open import Once.Spec.Surface.Lexing using (TOp; TOpD)
+open import Once.Spec.Surface.Operator using (‹_›)
 open import Once.Format.Print using (isOperator)
 
 -- | The anchors of an expression, as written.
@@ -314,31 +315,27 @@ private
       (trans (sym (+-assoc base (anchors s₁) (anchors s₂))) (trans (cong (λ x → base + x + anchors s₂) e₁) e₂)) ,
     AllP.++⁺ n₁ n₂
 
-  ct-nl : ∀ {t op} → CompareToken t op → lineEndTok t ≡ false
-  ct-nl ct-lt = refl ; ct-nl ct-le = refl ; ct-nl ct-gt = refl ; ct-nl ct-ge = refl ; ct-nl ct-eq = refl ; ct-nl ct-ne = refl
-  ct-na : ∀ {t op} → CompareToken t op → (if anchorTok t then 1 else 0) ≡ 0
-  ct-na ct-lt = refl ; ct-na ct-le = refl ; ct-na ct-gt = refl ; ct-na ct-ge = refl ; ct-na ct-eq = refl ; ct-na ct-ne = refl
-  at-nl : ∀ {t op} → AddToken t op → lineEndTok t ≡ false
-  at-nl at-plus = refl ; at-nl at-minus = refl
-  at-na : ∀ {t op} → AddToken t op → (if anchorTok t then 1 else 0) ≡ 0
-  at-na at-plus = refl ; at-na at-minus = refl
-  mt-nl : ∀ {t op} → MulToken t op → lineEndTok t ≡ false
-  mt-nl mt-star = refl ; mt-nl mt-slash = refl ; mt-nl mt-pct = refl
-  mt-na : ∀ {t op} → MulToken t op → (if anchorTok t then 1 else 0) ≡ 0
-  mt-na mt-star = refl ; mt-na mt-slash = refl ; mt-na mt-pct = refl
+  -- an operator token: no anchor, no line end
+  ot-nl : ∀ {l t op} → OpToken l t op → lineEndTok t ≡ false
+  ot-nl (ot-plain _) = refl ; ot-nl (ot-dotted _) = refl
+  ot-na : ∀ {l t op} → OpToken l t op → (if anchorTok t then 1 else 0) ≡ 0
+  ot-na (ot-plain _) = refl ; ot-na (ot-dotted _) = refl
 
   -- an operator in parentheses: no anchor, and an operator name
   oc-nl : ∀ {t ch} → OpChar t ch → lineEndTok t ≡ false
-  oc-nl oc-dot = refl ; oc-nl oc-plus = refl ; oc-nl oc-minus = refl ; oc-nl oc-star = refl ; oc-nl oc-slash = refl ; oc-nl oc-pct = refl
-  oc-nl oc-lt = refl ; oc-nl oc-gt = refl ; oc-nl oc-pipe = refl ; oc-nl oc-amp = refl ; oc-nl oc-at = refl
+  oc-nl (oc-op _) = refl ; oc-nl oc-dot = refl ; oc-nl oc-pipe = refl ; oc-nl oc-amp = refl ; oc-nl oc-at = refl
   oc-na : ∀ {t ch} → OpChar t ch → (if anchorTok t then 1 else 0) ≡ 0
-  oc-na oc-dot = refl ; oc-na oc-plus = refl ; oc-na oc-minus = refl ; oc-na oc-star = refl ; oc-na oc-slash = refl
-  oc-na oc-pct = refl ; oc-na oc-lt = refl ; oc-na oc-gt = refl ; oc-na oc-pipe = refl ; oc-na oc-amp = refl
-  oc-na oc-at = refl
+  oc-na (oc-op _) = refl ; oc-na oc-dot = refl ; oc-na oc-pipe = refl ; oc-na oc-amp = refl ; oc-na oc-at = refl
 
   opchars-seg : ∀ {ts cs s r} → ParsesOpChars ts cs s r → Seg 0 ts r
   opchars-seg op-close        = seg-cons TRParen refl seg-nil
   opchars-seg (op-char {t = t} oc p) = seg-cast (cong (_+ 0) (oc-na oc)) (seg-cons t (oc-nl oc) (opchars-seg p))
+  opchars-seg (op-dotted {d} g p) = seg-cons (TOpD d) refl (opchars-seg p)
+
+  -- a negative literal's numeral
+  nn-seg : ∀ {ts a r} → NegNumeral ts a r → Seg (cE a) ts r
+  nn-seg (nn-int {n})         = seg-cons (TInt n) refl seg-nil
+  nn-seg (nn-float {i} {f} {l}) = seg-cons (TFloat i f l) refl seg-nil
 
 open import Data.Char using (Char)
 open import Data.List using (_∷ʳ_)
@@ -363,6 +360,7 @@ private
     let (d , ds , eq , all) = snoc-ne (reverse cs) c (all-rev cs os) o
     in d , ds , trans (toList∘fromList _) (trans (unfold-reverse c cs) eq) , all
   opchars-name (op-char {t = t} oc p) os = opchars-name p ((t , oc) ∷ os)
+  opchars-name (op-dotted {d} g p) os = opchars-name p ((TDot , oc-dot) ∷ (TOp ‹ d › , oc-op g) ∷ os)
 
   seg-tseg : ∀ {m n ts ts₁ r} → Seg m ts ts₁ → TSeg m n ts₁ r → Seg n ts r
   seg-tseg s t = tseg-arg {base = 0} s t
@@ -406,26 +404,28 @@ mutual
 
   e-cmp : ∀ {ts e r} → All Good ts → ParsesCmp ts e r → Seg (cE e) ts r
   e-cmp g (cmp-none a _) = e-add g a
-  e-cmp g (cmp ct a b)   = let s = e-add g a in seg-op (ct-nl ct) (ct-na ct) s (e-add (gtail (good-rest g s)) b)
+  e-cmp g (cmp ot a b)   = let s = e-add g a in seg-op (ot-nl ot) (ot-na ot) s (e-add (gtail (good-rest g s)) b)
 
   e-add : ∀ {ts e r} → All Good ts → ParsesAdd ts e r → Seg (cE e) ts r
   e-add g (add m t) = let s = e-mul g m in seg-tseg s (e-addT (good-rest g s) t)
 
   e-addT : ∀ {l ts e r} → All Good ts → ParsesAddTail l ts e r → TSeg (cE l) (cE e) ts r
   e-addT g (add-done _)        = tseg-nil
-  e-addT g₀ (add-op at m t) =
-    let g = gtail g₀ ; s = e-mul g m in tseg-step _ (at-nl at) (at-na at) refl s (e-addT (good-rest g s) t)
+  e-addT g₀ (add-op ot m t) =
+    let g = gtail g₀ ; s = e-mul g m in tseg-step _ (ot-nl ot) (ot-na ot) refl s (e-addT (good-rest g s) t)
 
   e-mul : ∀ {ts e r} → All Good ts → ParsesMul ts e r → Seg (cE e) ts r
   e-mul g (mul u t) = let s = e-unary g u in seg-tseg s (e-mulT (good-rest g s) t)
 
   e-mulT : ∀ {l ts e r} → All Good ts → ParsesMulTail l ts e r → TSeg (cE l) (cE e) ts r
   e-mulT g (mul-done _)        = tseg-nil
-  e-mulT g₀ (mul-op mt u t) =
-    let g = gtail g₀ ; s = e-unary g u in tseg-step _ (mt-nl mt) (mt-na mt) refl s (e-mulT (good-rest g s) t)
+  e-mulT g₀ (mul-op ot u t) =
+    let g = gtail g₀ ; s = e-unary g u in tseg-step _ (ot-nl ot) (ot-na ot) refl s (e-mulT (good-rest g s) t)
 
   e-unary : ∀ {ts e r} → All Good ts → ParsesUnary ts e r → Seg (cE e) ts r
-  e-unary g (neg u) = seg-cons TMinus refl (e-unary (gtail g) u)
+  e-unary g (neg _ u) = seg-cons TMinus refl (e-unary (gtail g) u)
+  e-unary g₀ (neg-lit nn t) =
+    let g = gtail g₀ ; s = nn-seg nn in seg-cons TMinus refl (seg-tseg s (e-appT (good-rest g s) t))
   e-unary g (unary a)     = e-app g a
 
   e-app : ∀ {ts e r} → All Good ts → ParsesApp ts e r → Seg (cE e) ts r

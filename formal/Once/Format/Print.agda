@@ -43,13 +43,17 @@ open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; Int; Float; _⇒[_]
 import Once.Spec.Type as T
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_; Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; Import; mkImport; Module; mkModule)
 open import Once.Surface.OpNames
-open import Once.Spec.Surface.Operator using (BinOp)
+open import Once.Spec.Surface.Operator using (BinOp; Dottable; ‹_›; o+; o-; o*; o/; o<; o>;
+  Level; comparison; additive; multiplicative; level)
+import Once.Spec.Surface.Operator as Op
+open import Once.Spec.Float.Value using (Sign; pos; neg)
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Parser.Token using (Token; TWord; TInt; TFloat; TNewline; TEOF)
 open import Once.Format.Lex using (Item; tok; comment; cont)
 open import Once.Format.Doc
 open import Once.Format.Comment using (commentRun; eolText)
 import Once.Spec.Surface.Lexing as S
+open import Once.Adequacy.SpecTokNames
 
 ------------------------------------------------------------------------
 -- The comments, anchored
@@ -313,13 +317,13 @@ hasComment (note-blank ∷ ns)     = hasComment ns
 opToken : Char → Maybe S.Token
 opToken c =
   if does (c Ch.≟ '.') then just S.TDot else
-  if does (c Ch.≟ '+') then just S.TPlus else
-  if does (c Ch.≟ '-') then just S.TMinus else
-  if does (c Ch.≟ '*') then just S.TStar else
-  if does (c Ch.≟ '/') then just S.TSlash else
-  if does (c Ch.≟ '%') then just S.TPercent else
-  if does (c Ch.≟ '<') then just S.TLt else
-  if does (c Ch.≟ '>') then just S.TGt else
+  if does (c Ch.≟ '+') then just TPlus else
+  if does (c Ch.≟ '-') then just TMinus else
+  if does (c Ch.≟ '*') then just TStar else
+  if does (c Ch.≟ '/') then just TSlash else
+  if does (c Ch.≟ '%') then just TPercent else
+  if does (c Ch.≟ '<') then just TLt else
+  if does (c Ch.≟ '>') then just TGt else
   if does (c Ch.≟ '|') then just S.TPipe else
   if does (c Ch.≟ '&') then just S.TAmpersand else
   if does (c Ch.≟ '@') then just S.TAt else nothing
@@ -339,14 +343,31 @@ opTok1 : Maybe S.Token → P Doc
 opTok1 (just x)  = t x
 opTok1 nothing   = pure′ empty
 
--- An operator's characters as tokens, a blank where two would lex as
--- something else (`--` a comment, `->` an arrow).
-opToks : List Char → P Doc
-opToks []             = pure′ empty
-opToks (c ∷ [])       = opTok1 (opToken c)
-opToks (c ∷ d ∷ cs)   =
-  opTok1 (opToken c) ⊕ᵈ pure′ (if does (c Ch.≟ '-') ∧ (does (d Ch.≟ '-') ∨ does (d Ch.≟ '>')) then sp else empty)
-    ⊕ᵈ opToks (d ∷ cs)
+-- An operator character with an IEEE form, then `.`: that form's token.
+dotToken : Char → Char → Maybe S.Token
+dotToken c d =
+  if not (does (d Ch.≟ '.')) then nothing else
+  if does (c Ch.≟ '+') then just TPlusD else
+  if does (c Ch.≟ '-') then just TMinusD else
+  if does (c Ch.≟ '*') then just TStarD else
+  if does (c Ch.≟ '/') then just TSlashD else
+  if does (c Ch.≟ '<') then just TLtD else
+  if does (c Ch.≟ '>') then just TGtD else nothing
+
+-- An operator's characters as tokens: a glyph and `.` as one (`+.`, as the
+-- lexer reads them), a blank where two would lex as something else (`--` a
+-- comment, `->` an arrow).
+mutual
+  opToks : List Char → P Doc
+  opToks []                 = pure′ empty
+  opToks (c ∷ [])           = opTok1 (opToken c)
+  opToks (c ∷ ds@(d ∷ cs))  = opPair c d ds cs (dotToken c d)
+
+  opPair : Char → Char → List Char → List Char → Maybe S.Token → P Doc
+  opPair c d ds cs (just x) = t x ⊕ᵈ opToks cs
+  opPair c d ds cs nothing  =
+    opTok1 (opToken c) ⊕ᵈ pure′ (if does (c Ch.≟ '-') ∧ (does (d Ch.≟ '-') ∨ does (d Ch.≟ '>')) then sp else empty)
+      ⊕ᵈ opToks ds
 
 isOperator : String → Bool
 isOperator s = allOp (toList s)
@@ -382,8 +403,8 @@ mutual
   pty l b PFloat        = word "Float"
   pty l b (PTVar x)     = word x
   pty l b (A P⇒[ q ] B) = paren (0 <ᵇ l) (pty 1 true A ⊕ᵈ grade q ⊕ᵈ ␣ ⊕ᵈ pty 0 (b ∨ (0 <ᵇ l)) B)
-  pty l b (A P+ B)      = paren (1 <ᵇ l) (pty 1 false A ⊕ᵈ infixOp S.TPlus ⊕ᵈ pty 2 (b ∨ (1 <ᵇ l)) B)
-  pty l b (A P* B)      = paren (2 <ᵇ l) (pty 2 false A ⊕ᵈ infixOp S.TStar ⊕ᵈ pty 3 (b ∨ (2 <ᵇ l)) B)
+  pty l b (A P+ B)      = paren (1 <ᵇ l) (pty 1 false A ⊕ᵈ infixOp TPlus ⊕ᵈ pty 2 (b ∨ (1 <ᵇ l)) B)
+  pty l b (A P* B)      = paren (2 <ᵇ l) (pty 2 false A ⊕ᵈ infixOp TStar ⊕ᵈ pty 3 (b ∨ (2 <ᵇ l)) B)
   pty l b (PEff A B)    = paren (3 <ᵇ l) (word "Eff" ⊕ᵈ ␣ ⊕ᵈ pty 3 false A ⊕ᵈ ␣ ⊕ᵈ pty 3 false B)
   pty l b (PAct A B)    = paren (3 <ᵇ l) (word "Act" ⊕ᵈ ␣ ⊕ᵈ pty 3 false A ⊕ᵈ ␣ ⊕ᵈ pty 3 false B)
   pty l b (Pμ F)        = paren (not b) (word "Mu" ⊕ᵈ ␣ ⊕ᵈ pfunArg F)
@@ -400,8 +421,8 @@ mutual
   pfun : ℕ → PolyFunctor → P Doc
   pfun l PId       = word "Id"
   pfun l (PK A)    = paren (1 <ᵇ l) (word "K" ⊕ᵈ ␣ ⊕ᵈ pty 3 false A)
-  pfun l (F P⊕ G)  = paren (0 <ᵇ l) (pfun 0 F ⊕ᵈ infixOp S.TPlus ⊕ᵈ pfun 1 G)
-  pfun l (F P⊗ G)  = paren (1 <ᵇ l) (pfun 1 F ⊕ᵈ infixOp S.TStar ⊕ᵈ pfun 2 G)
+  pfun l (F P⊕ G)  = paren (0 <ᵇ l) (pfun 0 F ⊕ᵈ infixOp TPlus ⊕ᵈ pfun 1 G)
+  pfun l (F P⊗ G)  = paren (1 <ᵇ l) (pfun 1 F ⊕ᵈ infixOp TStar ⊕ᵈ pfun 2 G)
 
 -- An annotation's (ground) type, as it is written: a pure arrow with its
 -- grade, `Eff`/`Act` for the effectful ones.
@@ -438,30 +459,17 @@ gty l b T = pty l b (toPoly T)
 -- the expression follows it (`w`, a whole expression).
 
 opTok : BinOp → S.Token
-opTok OpAdd = S.TPlus
-opTok OpSub = S.TMinus
-opTok OpMul = S.TStar
-opTok OpDiv = S.TSlash
-opTok OpMod = S.TPercent
-opTok OpLt  = S.TLt
-opTok OpLe  = S.TLe
-opTok OpGt  = S.TGt
-opTok OpGe  = S.TGe
-opTok OpEq  = S.TEqEq
-opTok OpNe  = S.TNeq
+opTok (Op.plain o)  = S.TOp o
+opTok (Op.dotted d) = S.TOpD d
+
+levelN : Level → ℕ
+levelN comparison     = 1
+levelN additive       = 2
+levelN multiplicative = 3
 
 opLevel : BinOp → ℕ
-opLevel OpAdd = 2
-opLevel OpSub = 2
-opLevel OpMul = 3
-opLevel OpDiv = 3
-opLevel OpMod = 3
-opLevel OpLt  = 1
-opLevel OpLe  = 1
-opLevel OpGt  = 1
-opLevel OpGe  = 1
-opLevel OpEq  = 1
-opLevel OpNe  = 1
+opLevel (Op.plain o)  = levelN (level o)
+opLevel (Op.dotted d) = levelN (level ‹ d ›)
 
 -- The parameters of leading lambdas, and the body.
 lams : Expr → List String × Expr
@@ -469,10 +477,14 @@ lams (RLam x e) = x ∷ proj₁ (lams e) , proj₂ (lams e)
 {-# CATCHALL #-}
 lams e = [] , e
 
+-- Written at level 4, `e` starts with `-` (a blank keeps `- -` from being a
+-- comment)…
 startsNeg : Expr → Bool
-startsNeg (RNeg _) = true
+startsNeg (RNeg _)            = true
+startsNeg (RInt -[1+ _ ])     = true
+startsNeg (RFloat neg _ _ _)  = true
 {-# CATCHALL #-}
-startsNeg _        = false
+startsNeg _                   = false
 
 isCompose : Expr → Bool
 isCompose (RVar x) = x == "compose"
@@ -490,6 +502,15 @@ leftLevel 1 = 2
 {-# CATCHALL #-}
 leftLevel l = l
 
+-- …or with a numeral (`-` before it would read as a negative literal, so
+-- `e` is parenthesized): a literal, or an application headed by one.
+startsNum : Expr → Bool
+startsNum (RInt (+ _))        = true
+startsNum (RFloat pos _ _ _)  = true
+startsNum (RApp f a)          = not (isCompose (headOf f)) ∧ startsNum f
+{-# CATCHALL #-}
+startsNum _                   = false
+
 -- A resolved name's path, dotted.
 dotted : List String → P Doc
 dotted []               = pure′ empty
@@ -502,10 +523,13 @@ mutual
   pex l wh (RApp f a)         = pcomp l (isCompose (headOf f)) f a
   pex l wh (RBinOp op a b)    =
     paren (opLevel op <ᵇ l) (pbin (opLevel op) op a b) >>=′ λ d → pure′ (group (nest indent d))
-  pex l wh (RNeg e)           = paren (4 <ᵇ l) (t S.TMinus ⊕ᵈ pure′ (if startsNeg e then sp else empty) ⊕ᵈ pex 4 false e)
+  pex l wh (RNeg e)           =
+    paren (4 <ᵇ l) (t TMinus ⊕ᵈ pure′ (if startsNeg e then sp else empty) ⊕ᵈ paren (startsNum e) (pex 4 false e))
   pex l wh RUnit              = t S.TLParen ⊕ᵈ t S.TRParen
-  pex l wh (RInt n)           = anchor (S.TInt n)
-  pex l wh (RFloat i f n)     = anchor (S.TFloat i f n)
+  pex l wh (RInt (+ n))       = anchor (S.TInt (+ n))
+  pex l wh (RInt -[1+ n ])    = paren (4 <ᵇ l) (t TMinus ⊕ᵈ anchor (S.TInt (+ suc n)))
+  pex l wh (RFloat pos i f n) = anchor (S.TFloat i f n)
+  pex l wh (RFloat neg i f n) = paren (4 <ᵇ l) (t TMinus ⊕ᵈ anchor (S.TFloat i f n))
   pex l wh (RVar x)           = name x
   pex l wh (RQualified x a)   = word x ⊕ᵈ t S.TAt ⊕ᵈ word a
   pex l wh (RResolved (canonical xs)) = dotted xs

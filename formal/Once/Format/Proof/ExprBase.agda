@@ -31,14 +31,18 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Relation.Nullary using (¬_; does; yes; no)
 open import Relation.Nullary.Decidable using (toWitness)
 
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TComma; TColon; TSemicolon; TRBrace; TDot; TAt; TNewline; isIdentStart; TLambda; TPipe; TAmpersand)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TComma; TColon; TSemicolon;
+  TRBrace; TDot; TAt; TNewline; isIdentStart; TLambda; TPipe; TAmpersand; TOp; TOpD; Glyph; g+; g-; g*; g/; g%; g<; g>)
 open import Once.Adequacy.SpecTokNames
+open import Once.Spec.Surface.Operator using (‹_›; Dottable; o+; o-; o*; o/; o<; o>; comparison; additive;
+  multiplicative)
 open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct;
   RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Grammar using (Starts; starts; ArgStart; as-paren; as-lambda; as-int; as-float; as-word;
-  QualSuffix; qual-suffix; Reserved; r-in; r-of; r-let; r-destruct; r-Left; r-Right; MulToken; AddToken;
-  CompareToken; OpChar; oc-dot; oc-plus; oc-minus; oc-star; oc-slash; oc-pct; oc-lt; oc-gt; oc-pipe; oc-amp; oc-at)
-open import Once.Format.Print using (isCompose; headOf; opToken; isOpChar; allOp; isOperator)
+  QualSuffix; qual-suffix; Reserved; r-in; r-of; r-let; r-destruct; r-Left; r-Right; OpToken; ot-plain; ot-dotted;
+  OpChar; oc-op; oc-dot;
+  oc-pipe; oc-amp; oc-at)
+open import Once.Format.Print using (isCompose; headOf; opToken; dotToken; isOpChar; allOp; isOperator)
 open import Once.Format.Proof.TypeAlgs using (GroundOK)
 
 ------------------------------------------------------------------------
@@ -65,7 +69,7 @@ WF (RPair a b)             = WF a × WF b
 WF (RDestruct s x el y er) = WF s × WF el × WF er
 WF RUnit                   = ⊤
 WF (RInt _)                = ⊤
-WF (RFloat _ _ _ _)          = ⊤
+WF (RFloat _ _ _ _)        = ⊤
 WF (RAnnot e T)            = WF e × GroundOK T
 WF (RBinOp op a b)         = WF a × WF b
 WF (RNeg e)                = WF e
@@ -80,9 +84,9 @@ AppDone r  = ¬ ArgStart r
 CompDone r = ¬ Starts r TDot
 
 MulDone AddDone CmpDone : List Token → Set
-MulDone r = ∀ {t op} → Starts r t → ¬ MulToken t op
-AddDone r = ∀ {t op} → Starts r t → ¬ AddToken t op
-CmpDone r = ∀ {t op} → Starts r t → ¬ CompareToken t op
+MulDone r = ∀ {t op} → Starts r t → ¬ OpToken multiplicative t op
+AddDone r = ∀ {t op} → Starts r t → ¬ OpToken additive t op
+CmpDone r = ∀ {t op} → Starts r t → ¬ OpToken comparison t op
 
 -- | Nothing of an expression follows.
 record Stops (r : List Token) : Set where
@@ -94,6 +98,11 @@ record Stops (r : List Token) : Set where
     add  : AddDone r
     cmp  : CmpDone r
     comp : CompDone r
+
+-- | An operator of one level is none of another.
+otherLevel : ∀ {l l′ t op op′} → OpToken l′ t op′ → l ≢ l′ → ¬ OpToken l t op
+otherLevel (ot-plain e′)  ne (ot-plain e)  = ne (trans (sym e) e′)
+otherLevel (ot-dotted e′) ne (ot-dotted e) = ne (trans (sym e) e′)
 
 -- `)`, `,`, `:`, `;`, `}`, a line end, `in`, `of` stop an expression.
 stops-rparen : ∀ {r} → Stops (TRParen ∷ r)
@@ -143,7 +152,7 @@ compose-true (RApp (RPair ca cb) g) ()
 compose-true (RApp (RDestruct cs cx cel cy cer) g) ()
 compose-true (RApp RUnit g) ()
 compose-true (RApp (RInt cz) g) ()
-compose-true (RApp (RFloat ci cf cl) g) ()
+compose-true (RApp (RFloat csg ci cf cl) g) ()
 compose-true (RApp (RAnnot ce cT) g) ()
 compose-true (RApp (RBinOp cop ca cb) g) ()
 compose-true (RApp (RNeg ce) g) ()
@@ -153,15 +162,15 @@ compose-true (RPair a b) ()
 compose-true (RDestruct s x el y er) ()
 compose-true RUnit ()
 compose-true (RInt z) ()
-compose-true (RFloat i f l) ()
+compose-true (RFloat sg i f l) ()
 compose-true (RAnnot e T) ()
 compose-true (RBinOp op a b) ()
 compose-true (RNeg e) ()
 
-private
-  ≟-true : ∀ {c d} → does (c Ch.≟ d) ≡ true → c ≡ d
-  ≟-true {c} {d} eq = ChP.toℕ-injective c d (ℕP.≡ᵇ⇒≡ (Ch.toℕ c) (Ch.toℕ d) (subst T (sym eq) tt))
+≟-true : ∀ {c d} → does (c Ch.≟ d) ≡ true → c ≡ d
+≟-true {c} {d} eq = ChP.toℕ-injective c d (ℕP.≡ᵇ⇒≡ (Ch.toℕ c) (Ch.toℕ d) (subst T (sym eq) tt))
 
+private
   start-not : ∀ {c d} → does (c Ch.≟ d) ≡ true → isIdentStart c ≡ true → isIdentStart d ≡ false → ⊥
   start-not {c} {d} eq st sd with ≟-true {c} {d} eq
   ... | refl with () ← trans (sym st) sd
@@ -195,13 +204,13 @@ ident-not-op c st | false | false | false | false | false | false | false | fals
 private
   op-isOp : ∀ {t d} → OpChar t d → isOpChar d ≡ true
   op-isOp oc-dot = refl
-  op-isOp oc-plus = refl
-  op-isOp oc-minus = refl
-  op-isOp oc-star = refl
-  op-isOp oc-slash = refl
-  op-isOp oc-pct = refl
-  op-isOp oc-lt = refl
-  op-isOp oc-gt = refl
+  op-isOp (oc-op g+) = refl
+  op-isOp (oc-op (g- _ _)) = refl
+  op-isOp (oc-op g*) = refl
+  op-isOp (oc-op g/) = refl
+  op-isOp (oc-op g%) = refl
+  op-isOp (oc-op (g< _)) = refl
+  op-isOp (oc-op (g> _)) = refl
   op-isOp oc-pipe = refl
   op-isOp oc-amp = refl
   op-isOp oc-at = refl
@@ -229,13 +238,44 @@ word-notOperator x c cs eq st = trans (cong allOp eq) (allOp-start c cs (isOpCha
 -- | An operator character's token.
 op-token : ∀ {t d} → OpChar t d → opToken d ≡ just t
 op-token oc-dot = refl
-op-token oc-plus = refl
-op-token oc-minus = refl
-op-token oc-star = refl
-op-token oc-slash = refl
-op-token oc-pct = refl
-op-token oc-lt = refl
-op-token oc-gt = refl
+op-token (oc-op g+) = refl
+op-token (oc-op (g- _ _)) = refl
+op-token (oc-op g*) = refl
+op-token (oc-op g/) = refl
+op-token (oc-op g%) = refl
+op-token (oc-op (g< _)) = refl
+op-token (oc-op (g> _)) = refl
 op-token oc-pipe = refl
 op-token oc-amp = refl
 op-token oc-at = refl
+
+-- | A glyph with an IEEE form and `.`: that form's token (`Print.dotToken`).
+dot-token : ∀ c d {x} → dotToken c d ≡ just x → ∃[ dd ] (x ≡ TOpD dd × d ≡ '.' × Glyph (c ∷ []) ‹ dd › [])
+dot-token c d e with does (d Ch.≟ '.') in ed
+dot-token c d () | false
+dot-token c d e | true with ≟-true {d} {'.'} ed
+... | refl = go e
+  where
+    go : ∀ {x} → (if does (c Ch.≟ '+') then just TPlusD else if does (c Ch.≟ '-') then just TMinusD else
+                  if does (c Ch.≟ '*') then just TStarD else if does (c Ch.≟ '/') then just TSlashD else
+                  if does (c Ch.≟ '<') then just TLtD else if does (c Ch.≟ '>') then just TGtD else nothing) ≡ just x
+       → ∃[ dd ] (x ≡ TOpD dd × '.' ≡ '.' × Glyph (c ∷ []) ‹ dd › [])
+    go e with does (c Ch.≟ '+') in e₀
+    go refl | true with ≟-true {c} {'+'} e₀
+    ... | refl = o+ , refl , refl , g+
+    go e | false with does (c Ch.≟ '-') in e₁
+    go refl | false | true with ≟-true {c} {'-'} e₁
+    ... | refl = o- , refl , refl , g- (λ ()) (λ ())
+    go e | false | false with does (c Ch.≟ '*') in e₂
+    go refl | false | false | true with ≟-true {c} {'*'} e₂
+    ... | refl = o* , refl , refl , g*
+    go e | false | false | false with does (c Ch.≟ '/') in e₃
+    go refl | false | false | false | true with ≟-true {c} {'/'} e₃
+    ... | refl = o/ , refl , refl , g/
+    go e | false | false | false | false with does (c Ch.≟ '<') in e₄
+    go refl | false | false | false | false | true with ≟-true {c} {'<'} e₄
+    ... | refl = o< , refl , refl , g< (λ ())
+    go e | false | false | false | false | false with does (c Ch.≟ '>') in e₅
+    go refl | false | false | false | false | false | true with ≟-true {c} {'>'} e₅
+    ... | refl = o> , refl , refl , g> (λ ())
+    go () | false | false | false | false | false | false

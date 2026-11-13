@@ -35,15 +35,17 @@ open import Relation.Nullary using (does)
 
 open import Once.Postulates using (toList∘fromList)
 open import Once.Spec.Surface.Lexing using (LineRest; lr-end; lr-nl; lr-char)
-open import Once.Parser.Token using (TLe; TLt; TGe; TGt; TEqEq; TEquals; TNeq; TOpD; TOp; TBang)
+open import Once.Parser.Token using (TEquals; TBang)
+open import Once.Spec.Surface.Operator using (o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
+open import Data.Nat.Properties using (≤-refl)
 open import Once.Parser.Lexer using (headK; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang;
   hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt; hkPipe; hkPlus; hkStar; hkSlash; hkPct;
   hkAmp; hkDot; hkStr; hkGen; d-comment; d-arrow; d-minus; c-1; c-0; c-w; c-gen; nlIndent; isEqHead; isDashHead;
-  dashClass; caretClass; drop1; adv; collectStringB; collectIdentB; collectDigitsB; collectFracB; skipLineB; skipBlockB;
+  dashClass; caretClass; drop1; drop1-≤; isDotHead; adv; collectStringB; collectIdentB; collectDigitsB; collectFracB; skipLineB; skipBlockB;
   isIdentStart)
 open import Once.Adequacy.SpecLexing using (line-sound)
 open import Once.Format.Lex using (Item; tok; comment; cont; consumed; items-WF; it-head; it-str; it-gen; it-num;
-  it-nl; it-op2; it-lbrace; it-minus; it-caret; lexItems)
+  it-nl; it-dot; it-cmp; it-eqop; it-lbrace; it-minus; it-caret; lexItems)
 open import Once.Format.Proof.Rerender using (NoNl; NoTrail; LineC; Src; src-line; src-block; is-true)
 
 ------------------------------------------------------------------------
@@ -90,7 +92,9 @@ ok-str : ∀ cs off (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) m → 
 ok-gen : ∀ c cs off (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) b₁ b₂ → All ComOK (it-gen c cs off rec b₁ b₂)
 ok-num : ∀ c cs off (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) ds rest bnd m → All ComOK (it-num c cs off rec ds rest bnd m)
 ok-nl  : ∀ cs off (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) b → All ComOK (it-nl cs off rec b)
-ok-op2 : ∀ cs off (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) t2 t1 b → All ComOK (it-op2 cs off rec t2 t1 b)
+ok-dot : ∀ cs rest off (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) bnd d b → All ComOK (it-dot cs rest off rec bnd d b)
+ok-cmp : ∀ cs off (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) d2 d1 b → All ComOK (it-cmp cs off rec d2 d1 b)
+ok-eqop : ∀ cs off (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) d2 t1 b → All ComOK (it-eqop cs off rec d2 t1 b)
 ok-dash  : ∀ cs off (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) → All ComOK (it-minus cs off rec (dashClass cs))
 ok-brace : ∀ cs off (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) → All ComOK (it-lbrace cs off rec (isDashHead cs))
 ok-caret : ∀ cs off (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) k → All ComOK (it-caret cs off rec k)
@@ -103,10 +107,10 @@ ok-head c cs off rec hkNL     = ok-nl cs off rec (nlIndent cs)
 ok-head c cs off rec hkCaret  = ok-caret cs off rec (caretClass cs)
 ok-head c cs off rec hkDash   = ok-dash cs off rec
 ok-head c cs off rec hkLBrace = ok-brace cs off rec
-ok-head c cs off rec hkLt     = ok-op2 cs off rec TLe TLt (isEqHead cs)
-ok-head c cs off rec hkGt     = ok-op2 cs off rec TGe TGt (isEqHead cs)
-ok-head c cs off rec hkEq     = ok-op2 cs off rec TEqEq TEquals (isEqHead cs)
-ok-head c cs off rec hkBang   = ok-op2 cs off rec TNeq TBang (isEqHead cs)
+ok-head c cs off rec hkLt     = ok-cmp cs off rec o<= o< (isEqHead cs)
+ok-head c cs off rec hkGt     = ok-cmp cs off rec o>= o> (isEqHead cs)
+ok-head c cs off rec hkEq     = ok-eqop cs off rec o== TEquals (isEqHead cs)
+ok-head c cs off rec hkBang   = ok-eqop cs off rec o!= TBang (isEqHead cs)
 ok-head c cs off rec hkLParen = tt ∷ (ok-WF cs _ _)
 ok-head c cs off rec hkRParen = tt ∷ (ok-WF cs _ _)
 ok-head c cs off rec hkRBrace = tt ∷ (ok-WF cs _ _)
@@ -116,9 +120,9 @@ ok-head c cs off rec hkComma  = tt ∷ (ok-WF cs _ _)
 ok-head c cs off rec hkSemi   = tt ∷ (ok-WF cs _ _)
 ok-head c cs off rec hkAt     = tt ∷ (ok-WF cs _ _)
 ok-head c cs off rec hkPipe   = tt ∷ (ok-WF cs _ _)
-ok-head c cs off rec hkPlus   = tt ∷ (ok-WF cs _ _)
-ok-head c cs off rec hkStar   = tt ∷ (ok-WF cs _ _)
-ok-head c cs off rec hkSlash  = tt ∷ (ok-WF cs _ _)
+ok-head c cs off rec hkPlus   = ok-dot cs cs off rec ≤-refl o+ (isDotHead cs)
+ok-head c cs off rec hkStar   = ok-dot cs cs off rec ≤-refl o* (isDotHead cs)
+ok-head c cs off rec hkSlash  = ok-dot cs cs off rec ≤-refl o/ (isDotHead cs)
 ok-head c cs off rec hkPct    = tt ∷ (ok-WF cs _ _)
 ok-head c cs off rec hkAmp    = tt ∷ (ok-WF cs _ _)
 ok-head c cs off rec hkDot    = tt ∷ (ok-WF cs _ _)
@@ -140,8 +144,14 @@ ok-num c cs off rec ds rest bnd nothing = tt ∷ (ok-WF rest _ _)
 ok-nl cs off rec true  = tt ∷ ok-WF cs _ _
 ok-nl cs off rec false = tt ∷ (ok-WF cs _ _)
 
-ok-op2 cs off rec t2 t1 true  = tt ∷ (ok-WF (drop1 cs) _ _)
-ok-op2 cs off rec t2 t1 false = tt ∷ (ok-WF cs _ _)
+ok-dot cs rest off rec bnd d true  = tt ∷ (ok-WF (drop1 rest) _ _)
+ok-dot cs rest off rec bnd d false = tt ∷ (ok-WF rest _ _)
+
+ok-cmp cs off rec d2 d1 true  = ok-dot cs (drop1 cs) off rec (drop1-≤ cs) d2 (isDotHead (drop1 cs))
+ok-cmp cs off rec d2 d1 false = ok-dot cs cs off rec ≤-refl d1 (isDotHead cs)
+
+ok-eqop cs off rec d2 t1 true  = ok-dot cs (drop1 cs) off rec (drop1-≤ cs) d2 (isDotHead (drop1 cs))
+ok-eqop cs off rec d2 t1 false = tt ∷ (ok-WF cs _ _)
 
 ok-brace []       off rec = tt ∷ tt ∷ []
 ok-brace (c ∷ cs) off rec = pick (does (c Ch.≟ '-')) refl
@@ -162,7 +172,7 @@ ok-dash (c ∷ cs) off rec = pick (does (c Ch.≟ '-')) refl
       where
         pick₂ : ∀ b → All ComOK (it-minus (c ∷ cs) off rec (if b then d-arrow else d-minus))
         pick₂ true  = tt ∷ ok-WF cs (adv (c ∷ cs) cs off) (rec _)
-        pick₂ false = tt ∷ ok-WF (c ∷ cs) (adv (c ∷ cs) (c ∷ cs) off) (rec _)
+        pick₂ false = ok-dot (c ∷ cs) (c ∷ cs) off rec ≤-refl o- (isDotHead (c ∷ cs))
 
 ok-caret cs off rec c-1   = tt ∷ (ok-WF (drop1 cs) _ _)
 ok-caret cs off rec c-0   = tt ∷ (ok-WF (drop1 cs) _ _)

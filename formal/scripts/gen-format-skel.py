@@ -42,6 +42,10 @@ open import Once.Spec.Grade using (Quantity; Zero; One; Many; pureᶠ; actᶠ)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Name using (canonical)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TNewline; TEOF)
+open import Once.Adequacy.SpecTokNames
+import Once.Spec.Surface.Operator as Op
+open import Once.Spec.Float.Value using (pos; neg)
+import Data.Integer as ℤ
 open import Once.Format.Doc using (Doc; empty; tk; sp; cmt; para; line; newline; blank; eol; _<>_; nest; group;
   indent; flatWidth)
 open import Once.Format.Comment using (commentRun; commentLinesDoc; commentLines; classify; prose; verbatim; lineDoc)
@@ -95,20 +99,19 @@ private
 
 opToken-sym : ∀ c → T (symM (opToken c))
 opToken-sym c =
-  ifM (does (c Ch.≟ '.')) {S.TDot} tt (ifM (does (c Ch.≟ '+')) {S.TPlus} tt (ifM (does (c Ch.≟ '-')) {S.TMinus} tt (ifM (does (c Ch.≟ '*')) {S.TStar} tt (ifM (does (c Ch.≟ '/')) {S.TSlash} tt (ifM (does (c Ch.≟ '%')) {S.TPercent} tt (ifM (does (c Ch.≟ '<')) {S.TLt} tt (ifM (does (c Ch.≟ '>')) {S.TGt} tt (ifM (does (c Ch.≟ '|')) {S.TPipe} tt (ifM (does (c Ch.≟ '&')) {S.TAmpersand} tt (ifM (does (c Ch.≟ '@')) {S.TAt} tt tt))))))))))
+  ifM (does (c Ch.≟ '.')) {S.TDot} tt (ifM (does (c Ch.≟ '+')) {TPlus} tt (ifM (does (c Ch.≟ '-')) {TMinus} tt (ifM (does (c Ch.≟ '*')) {TStar} tt (ifM (does (c Ch.≟ '/')) {TSlash} tt (ifM (does (c Ch.≟ '%')) {TPercent} tt (ifM (does (c Ch.≟ '<')) {TLt} tt (ifM (does (c Ch.≟ '>')) {TGt} tt (ifM (does (c Ch.≟ '|')) {S.TPipe} tt (ifM (does (c Ch.≟ '&')) {S.TAmpersand} tt (ifM (does (c Ch.≟ '@')) {S.TAt} tt tt))))))))))
+
+dotToken-sym : ∀ c d → T (symM (dotToken c d))
+dotToken-sym c d =
+  ifM′ (not (does (d Ch.≟ '.'))) tt (ifM (does (c Ch.≟ '+')) {TPlusD} tt (ifM (does (c Ch.≟ '-')) {TMinusD} tt (ifM (does (c Ch.≟ '*')) {TStarD} tt (ifM (does (c Ch.≟ '/')) {TSlashD} tt (ifM (does (c Ch.≟ '<')) {TLtD} tt (ifM (does (c Ch.≟ '>')) {TGtD} tt tt))))))
+  where
+    ifM′ : ∀ b {r} → T (symM nothing) → T (symM r) → T (symM (if b then nothing else r))
+    ifM′ true  p q = p
+    ifM′ false p q = q
 
 opTok-plain : ∀ op → T (plain (tk (opTok op)))
-opTok-plain OpAdd = tt
-opTok-plain OpSub = tt
-opTok-plain OpMul = tt
-opTok-plain OpDiv = tt
-opTok-plain OpMod = tt
-opTok-plain OpLt  = tt
-opTok-plain OpLe  = tt
-opTok-plain OpGt  = tt
-opTok-plain OpGe  = tt
-opTok-plain OpEq  = tt
-opTok-plain OpNe  = tt
+opTok-plain (Op.plain o)  = tt
+opTok-plain (Op.dotted d) = tt
 
 -- | The k-th anchor with its comments, as `anchor` prints it.
 anchorDoc : Trivia → ℕ → Token → Doc
@@ -199,9 +202,13 @@ body=body.replace("""  ind-infix : ∀ x → Ind (infixOp x)
   ind-infix x {p} = ind-pure ⊕ⁱ ind-plain p ⊕ⁱ ind-pure""")
 body=body.replace("ind-left lv a ⊕ⁱ ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-ex (suc lv) false b",
                   "ind-left lv a ⊕ⁱ ind-pure ⊕ⁱ ind-plain (opTok-plain op) ⊕ⁱ ind-pure ⊕ⁱ ind-ex (suc lv) false b")
-body=body.replace("opTok1′ (opToken c) {opToken-sym c} ⊕ⁱ ind-pure ⊕ⁱ ind-opToks (d ∷ cs)","opTok1′ (opToken c) {opToken-sym c} ⊕ⁱ ind-ifsp _ ⊕ⁱ ind-opToks (d ∷ cs)")
-body=body.replace("ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-ex 4 false e)","ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-ifsp (startsNeg e) ⊕ⁱ ind-ex 4 false e)")
-assert "ind-ifsp _ ⊕ⁱ ind-opToks" in body and "ind-ifsp (startsNeg e)" in body
+body=body.replace("opTok1′ (opToken c) {opToken-sym c} ⊕ⁱ ind-pure ⊕ⁱ ind-opToks ds","opTok1′ (opToken c) {opToken-sym c} ⊕ⁱ ind-ifsp _ ⊕ⁱ ind-opToks ds")
+body=body.replace("ind-opPair : ∀ c d ds cs m → Ind (opPair c d ds cs m)","ind-opPair : ∀ c d ds cs m {p : T (symM m)} → Ind (opPair c d ds cs m)")
+body=body.replace("ind-opPair c d ds cs (just x) = ind-pure ⊕ⁱ ind-opToks cs","ind-opPair c d ds cs (just x) {p} = ind-plain p ⊕ⁱ ind-opToks cs")
+body=body.replace("ind-opPair c d ds cs nothing  = ","ind-opPair c d ds cs nothing  {_} = ")
+body=body.replace("ind-opPair c d ds cs (dotToken c d)","ind-opPair c d ds cs (dotToken c d) {dotToken-sym c d}")
+body=body.replace("ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-paren (startsNum e) (ind-ex 4 false e))","ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-ifsp (startsNeg e) ⊕ⁱ ind-paren (startsNum e) (ind-ex 4 false e))")
+assert "ind-ifsp _ ⊕ⁱ ind-opToks" in body and "ind-ifsp (startsNeg e)" in body and "{dotToken-sym c d}" in body
 TAIL=r'''
 
   -- | A declaration, printed with two trivia, is one skeleton.

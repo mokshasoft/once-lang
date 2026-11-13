@@ -27,20 +27,27 @@ open import Relation.Nullary using (does)
 open import Data.List using (List; []; _∷_; reverse; reverseAcc)
 open import Data.List.Properties using (reverse-involutive)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.Maybe using (just; nothing)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.String using (String; toList; fromList)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Nullary using (¬_)
 open import Agda.Builtin.String.Properties using (primStringToListInjective)
 
 open import Once.Postulates using (toList∘fromList)
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TComma; TColon; TSemicolon; TLBrace; TRBrace; TDot; TAt; TLambda; TArrow; TEquals)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TComma; TColon; TSemicolon;
+  TLBrace; TRBrace; TDot; TAt; TLambda; TArrow; TEquals; TOpD)
 open import Once.Adequacy.SpecTokNames
-open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct;
+  RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Surface.OpNames
-open import Once.Spec.Surface.Operator using (BinOp)
+import Once.Spec.Surface.Operator as Op
+open import Once.Spec.Surface.Operator using (o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
+open import Once.Spec.Float.Value using (pos; neg)
+import Data.Integer as ℤ
 open import Once.Spec.Surface.Grammar
 open import Once.Format.Doc using (toks)
 open import Once.Format.Print
@@ -80,12 +87,22 @@ private
   fromList∘toList : ∀ s → fromList (toList s) ≡ s
   fromList∘toList s = primStringToListInjective _ _ (toList∘fromList (toList s))
 
-  -- An operator's characters, up to `)`.
+  -- An operator's characters, up to `)`: a glyph and `.` as its IEEE form.
   opchars : ∀ c cs acc tv k r → All (λ d → ∃[ t ] OpChar t d) (c ∷ cs)
           → ParsesOpChars (toks (proj₁ (opToks (c ∷ cs) tv k)) (TRParen ∷ r)) acc
                           (fromList (reverse (reverseAcc acc (c ∷ cs)))) r
+  opcharsPair : ∀ c d ds acc tv k r → (∃[ t ] OpChar t c) → All (λ d → ∃[ t ] OpChar t d) (d ∷ ds)
+              → ∀ m → dotToken c d ≡ m
+              → ParsesOpChars (toks (proj₁ (opPair c d (d ∷ ds) ds m tv k)) (TRParen ∷ r)) acc
+                              (fromList (reverse (reverseAcc acc (c ∷ d ∷ ds)))) r
   opchars c []       acc tv k r ((t , o) ∷ []) rewrite op-token o = op-char o op-close
-  opchars c (d ∷ ds) acc tv k r ((t , o) ∷ os) rewrite op-token o =
+  opchars c (d ∷ ds) acc tv k r (o₁ ∷ os) = opcharsPair c d ds acc tv k r o₁ os (dotToken c d) refl
+
+  opcharsPair c d ds acc tv k r o₁ os (just x) e with dot-token c d e
+  opcharsPair c .'.' [] acc tv k r o₁ os (just .(TOpD dd)) e | dd , refl , refl , g = op-dotted g op-close
+  opcharsPair c .'.' (e′ ∷ es) acc tv k r o₁ (_ ∷ os) (just .(TOpD dd)) e | dd , refl , refl , g =
+    op-dotted g (opchars e′ es ('.' ∷ c ∷ acc) tv _ r os)
+  opcharsPair c d ds acc tv k r (t , o) os nothing e rewrite op-token o =
     subst (λ ts → ParsesOpChars (t ∷ ts) acc _ r)
       (sym (if-space (does (c Ch.≟ '-') ∧ (does (d Ch.≟ '-') ∨ does (d Ch.≟ '>'))) (toks (proj₁ (opToks (d ∷ ds) tv k)) (TRParen ∷ r))))
       (op-char o (opchars d ds (c ∷ acc) tv _ r os))
@@ -128,8 +145,10 @@ argSt (RLet x v b) tv k r w = as-paren
 argSt (RPair a b) tv k r w = as-paren
 argSt (RDestruct s x el y er) tv k r w = as-paren
 argSt RUnit tv k r w = as-paren
-argSt (RInt z) tv k r w = subst ArgStart (sym (anchor-toks (TInt z) tv k r)) as-int
-argSt (RFloat i fr l) tv k r w = subst ArgStart (sym (anchor-toks (TFloat i fr l) tv k r)) as-float
+argSt (RInt (ℤ.+ n)) tv k r w = subst ArgStart (sym (anchor-toks (TInt (ℤ.+ n)) tv k r)) as-int
+argSt (RInt ℤ.-[1+ n ]) tv k r w = as-paren
+argSt (RFloat pos i fr l) tv k r w = subst ArgStart (sym (anchor-toks (TFloat i fr l) tv k r)) as-float
+argSt (RFloat neg i fr l) tv k r w = as-paren
 argSt (RAnnot e T) tv k r w = as-paren
 argSt (RBinOp OpAdd a b) tv k r w = as-paren
 argSt (RBinOp OpSub a b) tv k r w = as-paren
@@ -142,7 +161,152 @@ argSt (RBinOp OpGt a b) tv k r w = as-paren
 argSt (RBinOp OpGe a b) tv k r w = as-paren
 argSt (RBinOp OpEq a b) tv k r w = as-paren
 argSt (RBinOp OpNe a b) tv k r w = as-paren
+argSt (RBinOp (Op.dotted o+) a b) tv k r w = as-paren
+argSt (RBinOp (Op.dotted o-) a b) tv k r w = as-paren
+argSt (RBinOp (Op.dotted o*) a b) tv k r w = as-paren
+argSt (RBinOp (Op.dotted o/) a b) tv k r w = as-paren
+argSt (RBinOp (Op.dotted o<) a b) tv k r w = as-paren
+argSt (RBinOp (Op.dotted o<=) a b) tv k r w = as-paren
+argSt (RBinOp (Op.dotted o>) a b) tv k r w = as-paren
+argSt (RBinOp (Op.dotted o>=) a b) tv k r w = as-paren
+argSt (RBinOp (Op.dotted o==) a b) tv k r w = as-paren
+argSt (RBinOp (Op.dotted o!=) a b) tv k r w = as-paren
 argSt (RNeg e) tv k r w = as-paren
+
+private
+  -- A prefix-level reading in parentheses, as an atom.
+  unary→atom : ∀ {ts e r} → ParsesUnary ts e (TRParen ∷ r) → ParsesAtomExpr (TLParen ∷ ts) e r
+  unary→atom u = atom-paren (expr (cmp-none (add (mul u (mul-done (λ { starts () }))) (add-done (λ { starts () })))
+                   (λ { starts () })) (comp-done (λ ()))) paren-close
+
+  -- A negative literal, at the prefix level.
+  negIntU : ∀ n tv k r → AppDone r → ParsesUnary (E 4 (RInt ℤ.-[1+ n ]) tv k r) (RInt ℤ.-[1+ n ]) r
+  negIntU n tv k r ad =
+    subst (λ ts → ParsesUnary (TMinus ∷ ts) (RInt ℤ.-[1+ n ]) r) (sym (anchor-toks (TInt (ℤ.+ suc n)) tv k r))
+      (neg-lit nn-int (app-done ad))
+
+  negFloatU : ∀ i fr l tv k r → AppDone r → ParsesUnary (E 4 (RFloat neg i fr l) tv k r) (RFloat neg i fr l) r
+  negFloatU i fr l tv k r ad =
+    subst (λ ts → ParsesUnary (TMinus ∷ ts) (RFloat neg i fr l) r) (sym (anchor-toks (TFloat i fr l) tv k r))
+      (neg-lit nn-float (app-done ad))
+
+  nameNoNum : ∀ x tv k r → NameOK x → ¬ NumeralStart (toks (proj₁ (name x tv k)) r)
+  nameNoNum x tv k r (inj₁ op) rewrite op-isOperator x op = λ ()
+  nameNoNum x tv k r (inj₂ (¬res , c , cs , eq , st)) rewrite word-notOperator x c cs eq st =
+    subst (λ ts → ¬ NumeralStart ts) (sym (word-toks x tv k r)) (λ ())
+
+  -- Printed at level 6, at the head of an application, or at level 4, `e`
+  -- starts with a numeral only when `startsNum e` (so a `-` before it is a
+  -- prefix `-`, not a negative literal's).
+  noNum6 : ∀ e tv k r → WF e → startsNum e ≡ false → ¬ NumeralStart (E 6 e tv k r)
+  noNumApp6 : ∀ f a b tv k r → isCompose (headOf f) ≡ b → ¬ NumeralStart (toks (proj₁ (pcomp 6 b f a tv k)) r)
+  noNumSpine : ∀ f tv k r → WF f → startsNum f ≡ false → ¬ NumeralStart (toks (proj₁ (pspine f tv k)) r)
+  noNumSpine′ : ∀ f a b tv k r → isCompose (headOf f) ≡ b → WF f → (not b ∧ startsNum f) ≡ false
+              → ¬ NumeralStart (toks (proj₁ (pspine′ b f a tv k)) r)
+  noNum4 : ∀ e tv k r → WF e → startsNum e ≡ false → ¬ NumeralStart (E 4 e tv k r)
+  noNumApp4 : ∀ f a b tv k r → isCompose (headOf f) ≡ b → WF f → (not b ∧ startsNum f) ≡ false
+            → ¬ NumeralStart (toks (proj₁ (pcomp 4 b f a tv k)) r)
+
+  noNumApp6 f a true tv k r eq with compose-true f eq
+  ... | g , refl = λ ()
+  noNumApp6 f a false tv k r eq = λ ()
+
+  noNumSpine′ f a true tv k r eq wf h with compose-true f eq
+  ... | g , refl = λ ()
+  noNumSpine′ f a false tv k r eq wf h = noNumSpine f tv k _ wf h
+
+  noNumApp4 f a true tv k r eq wf h with compose-true f eq
+  ... | g , refl = λ ()
+  noNumApp4 f a false tv k r eq wf h = noNumSpine f tv k _ wf h
+
+  noNumSpine (RApp f a) tv k r (wf , wa) h = noNumSpine′ f a (isCompose (headOf f)) tv k r refl wf h
+  noNumSpine (RVar x) tv k r w h = noNum6 (RVar x) tv k r w h
+  noNumSpine (RQualified x q) tv k r w h = noNum6 (RQualified x q) tv k r w h
+  noNumSpine (RResolved n) tv k r () h
+  noNumSpine (RLam x e) tv k r w h = noNum6 (RLam x e) tv k r w h
+  noNumSpine (RLet x v b) tv k r w h = noNum6 (RLet x v b) tv k r w h
+  noNumSpine (RPair a b) tv k r w h = noNum6 (RPair a b) tv k r w h
+  noNumSpine (RDestruct s x el y er) tv k r w h = noNum6 (RDestruct s x el y er) tv k r w h
+  noNumSpine RUnit tv k r w h = noNum6 RUnit tv k r w h
+  noNumSpine (RInt (ℤ.+ n)) tv k r w h = noNum6 (RInt (ℤ.+ n)) tv k r w h
+  noNumSpine (RInt ℤ.-[1+ n ]) tv k r w h = noNum6 (RInt ℤ.-[1+ n ]) tv k r w h
+  noNumSpine (RFloat pos i fr l) tv k r w h = noNum6 (RFloat pos i fr l) tv k r w h
+  noNumSpine (RFloat neg i fr l) tv k r w h = noNum6 (RFloat neg i fr l) tv k r w h
+  noNumSpine (RAnnot e T) tv k r w h = noNum6 (RAnnot e T) tv k r w h
+  noNumSpine (RBinOp op a b) tv k r w h = noNum6 (RBinOp op a b) tv k r w h
+  noNumSpine (RNeg e) tv k r w h = noNum6 (RNeg e) tv k r w h
+  noNum6 (RVar x) tv k r w h = nameNoNum x tv k r w
+  noNum6 (RQualified x q) tv k r w h = subst (λ ts → ¬ NumeralStart ts) (sym (word-toks x tv k _)) (λ ())
+  noNum6 (RResolved n) tv k r () h
+  noNum6 (RApp f a) tv k r w h = noNumApp6 f a (isCompose (headOf f)) tv k r refl
+  noNum6 (RLam x e) tv k r w h = λ ()
+  noNum6 (RLet x v b) tv k r w h = λ ()
+  noNum6 (RPair a b) tv k r w h = λ ()
+  noNum6 (RDestruct s x el y er) tv k r w h = λ ()
+  noNum6 RUnit tv k r w h = λ ()
+  noNum6 (RInt (ℤ.+ n)) tv k r w ()
+  noNum6 (RInt ℤ.-[1+ n ]) tv k r w h = λ ()
+  noNum6 (RFloat pos i fr l) tv k r w ()
+  noNum6 (RFloat neg i fr l) tv k r w h = λ ()
+  noNum6 (RAnnot e T) tv k r w h = λ ()
+  noNum6 (RBinOp OpAdd a b) tv k r w h = λ ()
+  noNum6 (RBinOp OpSub a b) tv k r w h = λ ()
+  noNum6 (RBinOp OpMul a b) tv k r w h = λ ()
+  noNum6 (RBinOp OpDiv a b) tv k r w h = λ ()
+  noNum6 (RBinOp OpMod a b) tv k r w h = λ ()
+  noNum6 (RBinOp OpLt a b) tv k r w h = λ ()
+  noNum6 (RBinOp OpLe a b) tv k r w h = λ ()
+  noNum6 (RBinOp OpGt a b) tv k r w h = λ ()
+  noNum6 (RBinOp OpGe a b) tv k r w h = λ ()
+  noNum6 (RBinOp OpEq a b) tv k r w h = λ ()
+  noNum6 (RBinOp OpNe a b) tv k r w h = λ ()
+  noNum6 (RBinOp (Op.dotted o+) a b) tv k r w h = λ ()
+  noNum6 (RBinOp (Op.dotted o-) a b) tv k r w h = λ ()
+  noNum6 (RBinOp (Op.dotted o*) a b) tv k r w h = λ ()
+  noNum6 (RBinOp (Op.dotted o/) a b) tv k r w h = λ ()
+  noNum6 (RBinOp (Op.dotted o<) a b) tv k r w h = λ ()
+  noNum6 (RBinOp (Op.dotted o<=) a b) tv k r w h = λ ()
+  noNum6 (RBinOp (Op.dotted o>) a b) tv k r w h = λ ()
+  noNum6 (RBinOp (Op.dotted o>=) a b) tv k r w h = λ ()
+  noNum6 (RBinOp (Op.dotted o==) a b) tv k r w h = λ ()
+  noNum6 (RBinOp (Op.dotted o!=) a b) tv k r w h = λ ()
+  noNum6 (RNeg e) tv k r w h = λ ()
+  noNum4 (RVar x) tv k r w h = nameNoNum x tv k r w
+  noNum4 (RQualified x q) tv k r w h = subst (λ ts → ¬ NumeralStart ts) (sym (word-toks x tv k _)) (λ ())
+  noNum4 (RResolved n) tv k r () h
+  noNum4 (RApp f a) tv k r (wf , wa) h = noNumApp4 f a (isCompose (headOf f)) tv k r refl wf h
+  noNum4 (RLam x e) tv k r w h = λ ()
+  noNum4 (RLet x v b) tv k r w h = λ ()
+  noNum4 (RPair a b) tv k r w h = λ ()
+  noNum4 (RDestruct s x el y er) tv k r w h = λ ()
+  noNum4 RUnit tv k r w h = λ ()
+  noNum4 (RInt (ℤ.+ n)) tv k r w ()
+  noNum4 (RInt ℤ.-[1+ n ]) tv k r w h = λ ()
+  noNum4 (RFloat pos i fr l) tv k r w ()
+  noNum4 (RFloat neg i fr l) tv k r w h = λ ()
+  noNum4 (RAnnot e T) tv k r w h = λ ()
+  noNum4 (RBinOp OpAdd a b) tv k r w h = λ ()
+  noNum4 (RBinOp OpSub a b) tv k r w h = λ ()
+  noNum4 (RBinOp OpMul a b) tv k r w h = λ ()
+  noNum4 (RBinOp OpDiv a b) tv k r w h = λ ()
+  noNum4 (RBinOp OpMod a b) tv k r w h = λ ()
+  noNum4 (RBinOp OpLt a b) tv k r w h = λ ()
+  noNum4 (RBinOp OpLe a b) tv k r w h = λ ()
+  noNum4 (RBinOp OpGt a b) tv k r w h = λ ()
+  noNum4 (RBinOp OpGe a b) tv k r w h = λ ()
+  noNum4 (RBinOp OpEq a b) tv k r w h = λ ()
+  noNum4 (RBinOp OpNe a b) tv k r w h = λ ()
+  noNum4 (RBinOp (Op.dotted o+) a b) tv k r w h = λ ()
+  noNum4 (RBinOp (Op.dotted o-) a b) tv k r w h = λ ()
+  noNum4 (RBinOp (Op.dotted o*) a b) tv k r w h = λ ()
+  noNum4 (RBinOp (Op.dotted o/) a b) tv k r w h = λ ()
+  noNum4 (RBinOp (Op.dotted o<) a b) tv k r w h = λ ()
+  noNum4 (RBinOp (Op.dotted o<=) a b) tv k r w h = λ ()
+  noNum4 (RBinOp (Op.dotted o>) a b) tv k r w h = λ ()
+  noNum4 (RBinOp (Op.dotted o>=) a b) tv k r w h = λ ()
+  noNum4 (RBinOp (Op.dotted o==) a b) tv k r w h = λ ()
+  noNum4 (RBinOp (Op.dotted o!=) a b) tv k r w h = λ ()
+  noNum4 (RNeg e) tv k r w h = λ ()
 
 mutual
   -- | An atom (level 6).
@@ -160,9 +324,12 @@ mutual
   atomL (RPair a b) tv k r (wa , wb) nq =
     atom-paren (wholeL a tv k _ wa stops-comma) (paren-pair (wholeL b tv _ (TRParen ∷ r) wb stops-rparen))
   atomL RUnit tv k r w nq = atom-unit
-  atomL (RInt z) tv k r w nq = subst (λ ts → ParsesAtomExpr ts (RInt z) r) (sym (anchor-toks (TInt z) tv k r)) atom-int
-  atomL (RFloat i fr l) tv k r w nq =
-    subst (λ ts → ParsesAtomExpr ts (RFloat i fr l) r) (sym (anchor-toks (TFloat i fr l) tv k r)) atom-float
+  atomL (RInt (ℤ.+ n)) tv k r w nq =
+    subst (λ ts → ParsesAtomExpr ts (RInt (ℤ.+ n)) r) (sym (anchor-toks (TInt (ℤ.+ n)) tv k r)) atom-int
+  atomL (RInt ℤ.-[1+ n ]) tv k r w nq = unary→atom (negIntU n tv k (TRParen ∷ r) (λ ()))
+  atomL (RFloat pos i fr l) tv k r w nq =
+    subst (λ ts → ParsesAtomExpr ts (RFloat pos i fr l) r) (sym (anchor-toks (TFloat i fr l) tv k r)) atom-float
+  atomL (RFloat neg i fr l) tv k r w nq = unary→atom (negFloatU i fr l tv k (TRParen ∷ r) (λ ()))
   atomL (RAnnot e T) tv k r (we , wT) nq =
     atom-paren (wholeL e tv k _ we stops-colon)
       (paren-annot (subst (λ A → Annot.ParsesType (toks (proj₁ (pty 0 true (toPoly T) tv (proj₂ (pex 0 true e tv k)))) (TRParen ∷ r)) A (TRParen ∷ r))
@@ -170,32 +337,48 @@ mutual
         (TA.Ground.type′ (toPoly T) true tv (proj₂ (pex 0 true e tv k)) (TRParen ∷ r) (ground-wf T) ((λ ()) , (λ ()))
           ((λ ()) , (λ ()) , (λ ()) , (λ ())) (λ ()) (λ ()))))
   atomL (RBinOp OpAdd a b) tv k r (wa , wb) nq =
-    atom-paren (expr (cmp-none (leftAdd a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (add-op at-plus (mulL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (mul-done (λ { starts () }))) (add-done (λ { starts () })))) (λ { starts () })) (comp-done (λ ()))) paren-close
+    atom-paren (expr (cmp-none (leftAdd a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (add-op (ot-plain refl) (mulL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (mul-done (λ { starts () }))) (add-done (λ { starts () })))) (λ { starts () })) (comp-done (λ ()))) paren-close
   atomL (RBinOp OpSub a b) tv k r (wa , wb) nq =
-    atom-paren (expr (cmp-none (leftAdd a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (add-op at-minus (mulL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (mul-done (λ { starts () }))) (add-done (λ { starts () })))) (λ { starts () })) (comp-done (λ ()))) paren-close
+    atom-paren (expr (cmp-none (leftAdd a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (add-op (ot-plain refl) (mulL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (mul-done (λ { starts () }))) (add-done (λ { starts () })))) (λ { starts () })) (comp-done (λ ()))) paren-close
   atomL (RBinOp OpMul a b) tv k r (wa , wb) nq =
-    atom-paren (expr (cmp-none (add (leftMul a tv k _ wa (λ ()) (λ ()) (mul-op mt-star (unaryL b tv _ (TRParen ∷ r) wb (λ ()) (λ ())) (mul-done (λ { starts () })))) (add-done (λ { starts () }))) (λ { starts () })) (comp-done (λ ()))) paren-close
+    atom-paren (expr (cmp-none (add (leftMul a tv k _ wa (λ ()) (λ ()) (mul-op (ot-plain refl) (unaryL b tv _ (TRParen ∷ r) wb (λ ()) (λ ())) (mul-done (λ { starts () })))) (add-done (λ { starts () }))) (λ { starts () })) (comp-done (λ ()))) paren-close
   atomL (RBinOp OpDiv a b) tv k r (wa , wb) nq =
-    atom-paren (expr (cmp-none (add (leftMul a tv k _ wa (λ ()) (λ ()) (mul-op mt-slash (unaryL b tv _ (TRParen ∷ r) wb (λ ()) (λ ())) (mul-done (λ { starts () })))) (add-done (λ { starts () }))) (λ { starts () })) (comp-done (λ ()))) paren-close
+    atom-paren (expr (cmp-none (add (leftMul a tv k _ wa (λ ()) (λ ()) (mul-op (ot-plain refl) (unaryL b tv _ (TRParen ∷ r) wb (λ ()) (λ ())) (mul-done (λ { starts () })))) (add-done (λ { starts () }))) (λ { starts () })) (comp-done (λ ()))) paren-close
   atomL (RBinOp OpMod a b) tv k r (wa , wb) nq =
-    atom-paren (expr (cmp-none (add (leftMul a tv k _ wa (λ ()) (λ ()) (mul-op mt-pct (unaryL b tv _ (TRParen ∷ r) wb (λ ()) (λ ())) (mul-done (λ { starts () })))) (add-done (λ { starts () }))) (λ { starts () })) (comp-done (λ ()))) paren-close
+    atom-paren (expr (cmp-none (add (leftMul a tv k _ wa (λ ()) (λ ()) (mul-op (ot-plain refl) (unaryL b tv _ (TRParen ∷ r) wb (λ ()) (λ ())) (mul-done (λ { starts () })))) (add-done (λ { starts () }))) (λ { starts () })) (comp-done (λ ()))) paren-close
   atomL (RBinOp OpLt a b) tv k r (wa , wb) nq =
-    atom-paren (expr (cmp ct-lt (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (λ { starts () })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
+    atom-paren (expr (cmp (ot-plain refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (λ { starts → otherLevel (ot-plain refl) (λ ()) })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
   atomL (RBinOp OpLe a b) tv k r (wa , wb) nq =
-    atom-paren (expr (cmp ct-le (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (λ { starts () })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
+    atom-paren (expr (cmp (ot-plain refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (λ { starts → otherLevel (ot-plain refl) (λ ()) })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
   atomL (RBinOp OpGt a b) tv k r (wa , wb) nq =
-    atom-paren (expr (cmp ct-gt (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (λ { starts () })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
+    atom-paren (expr (cmp (ot-plain refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (λ { starts → otherLevel (ot-plain refl) (λ ()) })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
   atomL (RBinOp OpGe a b) tv k r (wa , wb) nq =
-    atom-paren (expr (cmp ct-ge (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (λ { starts () })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
+    atom-paren (expr (cmp (ot-plain refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (λ { starts → otherLevel (ot-plain refl) (λ ()) })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
   atomL (RBinOp OpEq a b) tv k r (wa , wb) nq =
-    atom-paren (expr (cmp ct-eq (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (λ { starts () })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
+    atom-paren (expr (cmp (ot-plain refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (λ { starts → otherLevel (ot-plain refl) (λ ()) })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
   atomL (RBinOp OpNe a b) tv k r (wa , wb) nq =
-    atom-paren (expr (cmp ct-ne (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (λ { starts () })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
-  atomL (RNeg e) tv k r w nq =
-    atom-paren (expr (cmp-none (add (mul
-      (subst (λ ts → ParsesUnary (TMinus ∷ ts) (RNeg e) (TRParen ∷ r)) (sym (if-space (startsNeg e) (E 4 e tv k (TRParen ∷ r))))
-        (neg (unaryL e tv k (TRParen ∷ r) w (λ ()) (λ ()))))
-      (mul-done (λ { starts () }))) (add-done (λ { starts () }))) (λ { starts () })) (comp-done (λ ()))) paren-close
+    atom-paren (expr (cmp (ot-plain refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (λ { starts → otherLevel (ot-plain refl) (λ ()) })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
+  atomL (RBinOp (Op.dotted o+) a b) tv k r (wa , wb) nq =
+    atom-paren (expr (cmp-none (leftAdd a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (add-op (ot-dotted refl) (mulL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (mul-done (λ { starts () }))) (add-done (λ { starts () })))) (λ { starts () })) (comp-done (λ ()))) paren-close
+  atomL (RBinOp (Op.dotted o-) a b) tv k r (wa , wb) nq =
+    atom-paren (expr (cmp-none (leftAdd a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (add-op (ot-dotted refl) (mulL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (mul-done (λ { starts () }))) (add-done (λ { starts () })))) (λ { starts () })) (comp-done (λ ()))) paren-close
+  atomL (RBinOp (Op.dotted o*) a b) tv k r (wa , wb) nq =
+    atom-paren (expr (cmp-none (add (leftMul a tv k _ wa (λ ()) (λ ()) (mul-op (ot-dotted refl) (unaryL b tv _ (TRParen ∷ r) wb (λ ()) (λ ())) (mul-done (λ { starts () })))) (add-done (λ { starts () }))) (λ { starts () })) (comp-done (λ ()))) paren-close
+  atomL (RBinOp (Op.dotted o/) a b) tv k r (wa , wb) nq =
+    atom-paren (expr (cmp-none (add (leftMul a tv k _ wa (λ ()) (λ ()) (mul-op (ot-dotted refl) (unaryL b tv _ (TRParen ∷ r) wb (λ ()) (λ ())) (mul-done (λ { starts () })))) (add-done (λ { starts () }))) (λ { starts () })) (comp-done (λ ()))) paren-close
+  atomL (RBinOp (Op.dotted o<) a b) tv k r (wa , wb) nq =
+    atom-paren (expr (cmp (ot-dotted refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (λ { starts → otherLevel (ot-dotted refl) (λ ()) })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
+  atomL (RBinOp (Op.dotted o<=) a b) tv k r (wa , wb) nq =
+    atom-paren (expr (cmp (ot-dotted refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (λ { starts → otherLevel (ot-dotted refl) (λ ()) })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
+  atomL (RBinOp (Op.dotted o>) a b) tv k r (wa , wb) nq =
+    atom-paren (expr (cmp (ot-dotted refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (λ { starts → otherLevel (ot-dotted refl) (λ ()) })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
+  atomL (RBinOp (Op.dotted o>=) a b) tv k r (wa , wb) nq =
+    atom-paren (expr (cmp (ot-dotted refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (λ { starts → otherLevel (ot-dotted refl) (λ ()) })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
+  atomL (RBinOp (Op.dotted o==) a b) tv k r (wa , wb) nq =
+    atom-paren (expr (cmp (ot-dotted refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (λ { starts → otherLevel (ot-dotted refl) (λ ()) })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
+  atomL (RBinOp (Op.dotted o!=) a b) tv k r (wa , wb) nq =
+    atom-paren (expr (cmp (ot-dotted refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (λ { starts → otherLevel (ot-dotted refl) (λ ()) })) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (λ { starts () }) (add-done (λ { starts () })))) (comp-done (λ ()))) paren-close
+  atomL (RNeg e) tv k r w nq = unary→atom (negL e (startsNum e) tv k (TRParen ∷ r) refl w (λ ()) (λ ()))
 
   -- An application at the atom level: parenthesized.
   atomApp : ∀ f a b tv k r → isCompose (headOf f) ≡ b → WF f → WF a → NoQual r
@@ -236,8 +419,10 @@ mutual
   spineL (RPair a b) tv k r wf nq tl = app (atomL (RPair a b) tv k r wf nq) tl
   spineL (RDestruct s x el y er) tv k r wf nq tl = app (atomL (RDestruct s x el y er) tv k r wf nq) tl
   spineL RUnit tv k r wf nq tl = app (atomL RUnit tv k r wf nq) tl
-  spineL (RInt z) tv k r wf nq tl = app (atomL (RInt z) tv k r wf nq) tl
-  spineL (RFloat i fr l) tv k r wf nq tl = app (atomL (RFloat i fr l) tv k r wf nq) tl
+  spineL (RInt (ℤ.+ n)) tv k r wf nq tl = app (atomL (RInt (ℤ.+ n)) tv k r wf nq) tl
+  spineL (RInt ℤ.-[1+ n ]) tv k r wf nq tl = app (atomL (RInt ℤ.-[1+ n ]) tv k r wf nq) tl
+  spineL (RFloat pos i fr l) tv k r wf nq tl = app (atomL (RFloat pos i fr l) tv k r wf nq) tl
+  spineL (RFloat neg i fr l) tv k r wf nq tl = app (atomL (RFloat neg i fr l) tv k r wf nq) tl
   spineL (RAnnot e T) tv k r wf nq tl = app (atomL (RAnnot e T) tv k r wf nq) tl
   spineL (RBinOp op a b) tv k r wf nq tl = app (atomL (RBinOp op a b) tv k r wf nq) tl
   spineL (RNeg e) tv k r wf nq tl = app (atomL (RNeg e) tv k r wf nq) tl
@@ -260,8 +445,10 @@ mutual
   chainL (RPair a b) tv k r wg nq ad md dd cd tl = expr (cmpL (RPair a b) tv k r wg nq ad md dd cd) tl
   chainL (RDestruct s x el y er) tv k r wg nq ad md dd cd tl = expr (cmpL (RDestruct s x el y er) tv k r wg nq ad md dd cd) tl
   chainL RUnit tv k r wg nq ad md dd cd tl = expr (cmpL RUnit tv k r wg nq ad md dd cd) tl
-  chainL (RInt z) tv k r wg nq ad md dd cd tl = expr (cmpL (RInt z) tv k r wg nq ad md dd cd) tl
-  chainL (RFloat i fr l) tv k r wg nq ad md dd cd tl = expr (cmpL (RFloat i fr l) tv k r wg nq ad md dd cd) tl
+  chainL (RInt (ℤ.+ n)) tv k r wg nq ad md dd cd tl = expr (cmpL (RInt (ℤ.+ n)) tv k r wg nq ad md dd cd) tl
+  chainL (RInt ℤ.-[1+ n ]) tv k r wg nq ad md dd cd tl = expr (cmpL (RInt ℤ.-[1+ n ]) tv k r wg nq ad md dd cd) tl
+  chainL (RFloat pos i fr l) tv k r wg nq ad md dd cd tl = expr (cmpL (RFloat pos i fr l) tv k r wg nq ad md dd cd) tl
+  chainL (RFloat neg i fr l) tv k r wg nq ad md dd cd tl = expr (cmpL (RFloat neg i fr l) tv k r wg nq ad md dd cd) tl
   chainL (RAnnot e T) tv k r wg nq ad md dd cd tl = expr (cmpL (RAnnot e T) tv k r wg nq ad md dd cd) tl
   chainL (RBinOp op a b) tv k r wg nq ad md dd cd tl = expr (cmpL (RBinOp op a b) tv k r wg nq ad md dd cd) tl
   chainL (RNeg e) tv k r wg nq ad md dd cd tl = expr (cmpL (RNeg e) tv k r wg nq ad md dd cd) tl
@@ -286,8 +473,10 @@ mutual
   appL (RPair a b) tv k r w nq tl = app (atomL (RPair a b) tv k r w nq) tl
   appL (RDestruct s x el y er) tv k r w nq tl = app (atomL (RDestruct s x el y er) tv k r w nq) tl
   appL RUnit tv k r w nq tl = app (atomL RUnit tv k r w nq) tl
-  appL (RInt z) tv k r w nq tl = app (atomL (RInt z) tv k r w nq) tl
-  appL (RFloat i fr l) tv k r w nq tl = app (atomL (RFloat i fr l) tv k r w nq) tl
+  appL (RInt (ℤ.+ n)) tv k r w nq tl = app (atomL (RInt (ℤ.+ n)) tv k r w nq) tl
+  appL (RInt ℤ.-[1+ n ]) tv k r w nq tl = app (atomL (RInt ℤ.-[1+ n ]) tv k r w nq) tl
+  appL (RFloat pos i fr l) tv k r w nq tl = app (atomL (RFloat pos i fr l) tv k r w nq) tl
+  appL (RFloat neg i fr l) tv k r w nq tl = app (atomL (RFloat neg i fr l) tv k r w nq) tl
   appL (RAnnot e T) tv k r w nq tl = app (atomL (RAnnot e T) tv k r w nq) tl
   appL (RNeg e) tv k r w nq tl = app (atomL (RNeg e) tv k r w nq) tl
   appL (RBinOp OpAdd a b) tv k r w nq tl = app (atomL (RBinOp OpAdd a b) tv k r w nq) tl
@@ -301,6 +490,16 @@ mutual
   appL (RBinOp OpGe a b) tv k r w nq tl = app (atomL (RBinOp OpGe a b) tv k r w nq) tl
   appL (RBinOp OpEq a b) tv k r w nq tl = app (atomL (RBinOp OpEq a b) tv k r w nq) tl
   appL (RBinOp OpNe a b) tv k r w nq tl = app (atomL (RBinOp OpNe a b) tv k r w nq) tl
+  appL (RBinOp (Op.dotted o+) a b) tv k r w nq tl = app (atomL (RBinOp (Op.dotted o+) a b) tv k r w nq) tl
+  appL (RBinOp (Op.dotted o-) a b) tv k r w nq tl = app (atomL (RBinOp (Op.dotted o-) a b) tv k r w nq) tl
+  appL (RBinOp (Op.dotted o*) a b) tv k r w nq tl = app (atomL (RBinOp (Op.dotted o*) a b) tv k r w nq) tl
+  appL (RBinOp (Op.dotted o/) a b) tv k r w nq tl = app (atomL (RBinOp (Op.dotted o/) a b) tv k r w nq) tl
+  appL (RBinOp (Op.dotted o<) a b) tv k r w nq tl = app (atomL (RBinOp (Op.dotted o<) a b) tv k r w nq) tl
+  appL (RBinOp (Op.dotted o<=) a b) tv k r w nq tl = app (atomL (RBinOp (Op.dotted o<=) a b) tv k r w nq) tl
+  appL (RBinOp (Op.dotted o>) a b) tv k r w nq tl = app (atomL (RBinOp (Op.dotted o>) a b) tv k r w nq) tl
+  appL (RBinOp (Op.dotted o>=) a b) tv k r w nq tl = app (atomL (RBinOp (Op.dotted o>=) a b) tv k r w nq) tl
+  appL (RBinOp (Op.dotted o==) a b) tv k r w nq tl = app (atomL (RBinOp (Op.dotted o==) a b) tv k r w nq) tl
+  appL (RBinOp (Op.dotted o!=) a b) tv k r w nq tl = app (atomL (RBinOp (Op.dotted o!=) a b) tv k r w nq) tl
 
   appApp : ∀ f a b tv k r {e′ r′} → isCompose (headOf f) ≡ b → WF f → WF a → NoQual r → ParsesAppTail (RApp f a) r e′ r′
          → ParsesApp (toks (proj₁ (pcomp 5 b f a tv k)) r) e′ r′
@@ -310,9 +509,9 @@ mutual
 
   -- | A prefix `-` (level 4).
   unaryL : ∀ e tv k r → WF e → NoQual r → AppDone r → ParsesUnary (E 4 e tv k r) e r
-  unaryL (RNeg e) tv k r w nq ad =
-    subst (λ ts → ParsesUnary (TMinus ∷ ts) (RNeg e) r) (sym (if-space (startsNeg e) (E 4 e tv k r)))
-      (neg (unaryL e tv k r w nq ad))
+  unaryL (RNeg e) tv k r w nq ad = negL e (startsNum e) tv k r refl w nq ad
+  unaryL (RInt ℤ.-[1+ n ]) tv k r w nq ad = negIntU n tv k r ad
+  unaryL (RFloat neg i fr l) tv k r w nq ad = negFloatU i fr l tv k r ad
   unaryL (RApp f a) tv k r (wf , wa) nq ad = unaryApp f a (isCompose (headOf f)) tv k r refl wf wa nq ad
   unaryL (RResolved n) tv k r () nq ad
   unaryL (RVar x) tv k r w nq ad = unary (appL (RVar x) tv k r w nq (app-done ad))
@@ -322,8 +521,8 @@ mutual
   unaryL (RPair a b) tv k r w nq ad = unary (appL (RPair a b) tv k r w nq (app-done ad))
   unaryL (RDestruct s x el y er) tv k r w nq ad = unary (appL (RDestruct s x el y er) tv k r w nq (app-done ad))
   unaryL RUnit tv k r w nq ad = unary (appL RUnit tv k r w nq (app-done ad))
-  unaryL (RInt z) tv k r w nq ad = unary (appL (RInt z) tv k r w nq (app-done ad))
-  unaryL (RFloat i fr l) tv k r w nq ad = unary (appL (RFloat i fr l) tv k r w nq (app-done ad))
+  unaryL (RInt (ℤ.+ n)) tv k r w nq ad = unary (appL (RInt (ℤ.+ n)) tv k r w nq (app-done ad))
+  unaryL (RFloat pos i fr l) tv k r w nq ad = unary (appL (RFloat pos i fr l) tv k r w nq (app-done ad))
   unaryL (RAnnot e T) tv k r w nq ad = unary (appL (RAnnot e T) tv k r w nq (app-done ad))
   unaryL (RBinOp OpAdd a b) tv k r w nq ad = unary (appL (RBinOp OpAdd a b) tv k r w nq (app-done ad))
   unaryL (RBinOp OpSub a b) tv k r w nq ad = unary (appL (RBinOp OpSub a b) tv k r w nq (app-done ad))
@@ -336,6 +535,27 @@ mutual
   unaryL (RBinOp OpGe a b) tv k r w nq ad = unary (appL (RBinOp OpGe a b) tv k r w nq (app-done ad))
   unaryL (RBinOp OpEq a b) tv k r w nq ad = unary (appL (RBinOp OpEq a b) tv k r w nq (app-done ad))
   unaryL (RBinOp OpNe a b) tv k r w nq ad = unary (appL (RBinOp OpNe a b) tv k r w nq (app-done ad))
+  unaryL (RBinOp (Op.dotted o+) a b) tv k r w nq ad = unary (appL (RBinOp (Op.dotted o+) a b) tv k r w nq (app-done ad))
+  unaryL (RBinOp (Op.dotted o-) a b) tv k r w nq ad = unary (appL (RBinOp (Op.dotted o-) a b) tv k r w nq (app-done ad))
+  unaryL (RBinOp (Op.dotted o*) a b) tv k r w nq ad = unary (appL (RBinOp (Op.dotted o*) a b) tv k r w nq (app-done ad))
+  unaryL (RBinOp (Op.dotted o/) a b) tv k r w nq ad = unary (appL (RBinOp (Op.dotted o/) a b) tv k r w nq (app-done ad))
+  unaryL (RBinOp (Op.dotted o<) a b) tv k r w nq ad = unary (appL (RBinOp (Op.dotted o<) a b) tv k r w nq (app-done ad))
+  unaryL (RBinOp (Op.dotted o<=) a b) tv k r w nq ad = unary (appL (RBinOp (Op.dotted o<=) a b) tv k r w nq (app-done ad))
+  unaryL (RBinOp (Op.dotted o>) a b) tv k r w nq ad = unary (appL (RBinOp (Op.dotted o>) a b) tv k r w nq (app-done ad))
+  unaryL (RBinOp (Op.dotted o>=) a b) tv k r w nq ad = unary (appL (RBinOp (Op.dotted o>=) a b) tv k r w nq (app-done ad))
+  unaryL (RBinOp (Op.dotted o==) a b) tv k r w nq ad = unary (appL (RBinOp (Op.dotted o==) a b) tv k r w nq (app-done ad))
+  unaryL (RBinOp (Op.dotted o!=) a b) tv k r w nq ad = unary (appL (RBinOp (Op.dotted o!=) a b) tv k r w nq (app-done ad))
+
+  -- `-e`: a prefix `-`, with `e` parenthesized when it would start a negative literal.
+  negL : ∀ e b tv k r → startsNum e ≡ b → WF e → NoQual r → AppDone r
+       → ParsesUnary (toks (proj₁ ((t TMinus ⊕ᵈ pure′ (if startsNeg e then Once.Format.Doc.sp else Once.Format.Doc.empty)
+                                     ⊕ᵈ paren b (pex 4 false e)) tv k)) r) (RNeg e) r
+  negL e false tv k r sn w nq ad =
+    subst (λ ts → ParsesUnary (TMinus ∷ ts) (RNeg e) r) (sym (if-space (startsNeg e) (E 4 e tv k r)))
+      (neg (noNum4 e tv k r w sn) (unaryL e tv k r w nq ad))
+  negL e true tv k r sn w nq ad =
+    subst (λ ts → ParsesUnary (TMinus ∷ ts) (RNeg e) r) (sym (if-space (startsNeg e) (TLParen ∷ E 4 e tv k (TRParen ∷ r))))
+      (neg (λ ()) (unary (app (unary→atom (unaryL e tv k (TRParen ∷ r) w (λ ()) (λ ()))) (app-done ad))))
 
   unaryApp : ∀ f a b tv k r → isCompose (headOf f) ≡ b → WF f → WF a → NoQual r → AppDone r
            → ParsesUnary (toks (proj₁ (pcomp 4 b f a tv k)) r) (RApp f a) r
@@ -354,24 +574,38 @@ mutual
   mulL (RPair a b) tv k r w nq ad tl = mul (unaryL (RPair a b) tv k r w nq ad) tl
   mulL (RDestruct s x el y er) tv k r w nq ad tl = mul (unaryL (RDestruct s x el y er) tv k r w nq ad) tl
   mulL RUnit tv k r w nq ad tl = mul (unaryL RUnit tv k r w nq ad) tl
-  mulL (RInt z) tv k r w nq ad tl = mul (unaryL (RInt z) tv k r w nq ad) tl
-  mulL (RFloat i fr l) tv k r w nq ad tl = mul (unaryL (RFloat i fr l) tv k r w nq ad) tl
+  mulL (RInt (ℤ.+ n)) tv k r w nq ad tl = mul (unaryL (RInt (ℤ.+ n)) tv k r w nq ad) tl
+  mulL (RInt ℤ.-[1+ n ]) tv k r w nq ad tl = mul (unaryL (RInt ℤ.-[1+ n ]) tv k r w nq ad) tl
+  mulL (RFloat pos i fr l) tv k r w nq ad tl = mul (unaryL (RFloat pos i fr l) tv k r w nq ad) tl
+  mulL (RFloat neg i fr l) tv k r w nq ad tl = mul (unaryL (RFloat neg i fr l) tv k r w nq ad) tl
   mulL (RAnnot e T) tv k r w nq ad tl = mul (unaryL (RAnnot e T) tv k r w nq ad) tl
   mulL (RNeg e) tv k r w nq ad tl = mul (unaryL (RNeg e) tv k r w nq ad) tl
   mulL (RBinOp OpAdd a b) tv k r w nq ad tl = mul (unaryL (RBinOp OpAdd a b) tv k r w nq ad) tl
   mulL (RBinOp OpSub a b) tv k r w nq ad tl = mul (unaryL (RBinOp OpSub a b) tv k r w nq ad) tl
   mulL (RBinOp OpMul a b) tv k r (wa , wb) nq ad tl =
-    leftMul a tv k _ wa (λ ()) (λ ()) (mul-op mt-star (unaryL b tv _ r wb nq ad) tl)
+    leftMul a tv k _ wa (λ ()) (λ ()) (mul-op (ot-plain refl) (unaryL b tv _ r wb nq ad) tl)
   mulL (RBinOp OpDiv a b) tv k r (wa , wb) nq ad tl =
-    leftMul a tv k _ wa (λ ()) (λ ()) (mul-op mt-slash (unaryL b tv _ r wb nq ad) tl)
+    leftMul a tv k _ wa (λ ()) (λ ()) (mul-op (ot-plain refl) (unaryL b tv _ r wb nq ad) tl)
   mulL (RBinOp OpMod a b) tv k r (wa , wb) nq ad tl =
-    leftMul a tv k _ wa (λ ()) (λ ()) (mul-op mt-pct (unaryL b tv _ r wb nq ad) tl)
+    leftMul a tv k _ wa (λ ()) (λ ()) (mul-op (ot-plain refl) (unaryL b tv _ r wb nq ad) tl)
   mulL (RBinOp OpLt a b) tv k r w nq ad tl = mul (unaryL (RBinOp OpLt a b) tv k r w nq ad) tl
   mulL (RBinOp OpLe a b) tv k r w nq ad tl = mul (unaryL (RBinOp OpLe a b) tv k r w nq ad) tl
   mulL (RBinOp OpGt a b) tv k r w nq ad tl = mul (unaryL (RBinOp OpGt a b) tv k r w nq ad) tl
   mulL (RBinOp OpGe a b) tv k r w nq ad tl = mul (unaryL (RBinOp OpGe a b) tv k r w nq ad) tl
   mulL (RBinOp OpEq a b) tv k r w nq ad tl = mul (unaryL (RBinOp OpEq a b) tv k r w nq ad) tl
   mulL (RBinOp OpNe a b) tv k r w nq ad tl = mul (unaryL (RBinOp OpNe a b) tv k r w nq ad) tl
+  mulL (RBinOp (Op.dotted o+) a b) tv k r w nq ad tl = mul (unaryL (RBinOp (Op.dotted o+) a b) tv k r w nq ad) tl
+  mulL (RBinOp (Op.dotted o-) a b) tv k r w nq ad tl = mul (unaryL (RBinOp (Op.dotted o-) a b) tv k r w nq ad) tl
+  mulL (RBinOp (Op.dotted o*) a b) tv k r (wa , wb) nq ad tl =
+    leftMul a tv k _ wa (λ ()) (λ ()) (mul-op (ot-dotted refl) (unaryL b tv _ r wb nq ad) tl)
+  mulL (RBinOp (Op.dotted o/) a b) tv k r (wa , wb) nq ad tl =
+    leftMul a tv k _ wa (λ ()) (λ ()) (mul-op (ot-dotted refl) (unaryL b tv _ r wb nq ad) tl)
+  mulL (RBinOp (Op.dotted o<) a b) tv k r w nq ad tl = mul (unaryL (RBinOp (Op.dotted o<) a b) tv k r w nq ad) tl
+  mulL (RBinOp (Op.dotted o<=) a b) tv k r w nq ad tl = mul (unaryL (RBinOp (Op.dotted o<=) a b) tv k r w nq ad) tl
+  mulL (RBinOp (Op.dotted o>) a b) tv k r w nq ad tl = mul (unaryL (RBinOp (Op.dotted o>) a b) tv k r w nq ad) tl
+  mulL (RBinOp (Op.dotted o>=) a b) tv k r w nq ad tl = mul (unaryL (RBinOp (Op.dotted o>=) a b) tv k r w nq ad) tl
+  mulL (RBinOp (Op.dotted o==) a b) tv k r w nq ad tl = mul (unaryL (RBinOp (Op.dotted o==) a b) tv k r w nq ad) tl
+  mulL (RBinOp (Op.dotted o!=) a b) tv k r w nq ad tl = mul (unaryL (RBinOp (Op.dotted o!=) a b) tv k r w nq ad) tl
 
   mulApp : ∀ f a b tv k r {e′ r′} → isCompose (headOf f) ≡ b → WF f → WF a → NoQual r → AppDone r → ParsesMulTail (RApp f a) r e′ r′
          → ParsesMul (toks (proj₁ (pcomp 3 b f a tv k)) r) e′ r′
@@ -384,17 +618,29 @@ mutual
   leftMul (RBinOp OpAdd x y) tv k r w nq ad tl = mulL (RBinOp OpAdd x y) tv k r w nq ad tl
   leftMul (RBinOp OpSub x y) tv k r w nq ad tl = mulL (RBinOp OpSub x y) tv k r w nq ad tl
   leftMul (RBinOp OpMul x y) tv k r (wx , wy) nq ad tl =
-    leftMul x tv k _ wx (λ ()) (λ ()) (mul-op mt-star (unaryL y tv _ r wy nq ad) tl)
+    leftMul x tv k _ wx (λ ()) (λ ()) (mul-op (ot-plain refl) (unaryL y tv _ r wy nq ad) tl)
   leftMul (RBinOp OpDiv x y) tv k r (wx , wy) nq ad tl =
-    leftMul x tv k _ wx (λ ()) (λ ()) (mul-op mt-slash (unaryL y tv _ r wy nq ad) tl)
+    leftMul x tv k _ wx (λ ()) (λ ()) (mul-op (ot-plain refl) (unaryL y tv _ r wy nq ad) tl)
   leftMul (RBinOp OpMod x y) tv k r (wx , wy) nq ad tl =
-    leftMul x tv k _ wx (λ ()) (λ ()) (mul-op mt-pct (unaryL y tv _ r wy nq ad) tl)
+    leftMul x tv k _ wx (λ ()) (λ ()) (mul-op (ot-plain refl) (unaryL y tv _ r wy nq ad) tl)
   leftMul (RBinOp OpLt x y) tv k r w nq ad tl = mulL (RBinOp OpLt x y) tv k r w nq ad tl
   leftMul (RBinOp OpLe x y) tv k r w nq ad tl = mulL (RBinOp OpLe x y) tv k r w nq ad tl
   leftMul (RBinOp OpGt x y) tv k r w nq ad tl = mulL (RBinOp OpGt x y) tv k r w nq ad tl
   leftMul (RBinOp OpGe x y) tv k r w nq ad tl = mulL (RBinOp OpGe x y) tv k r w nq ad tl
   leftMul (RBinOp OpEq x y) tv k r w nq ad tl = mulL (RBinOp OpEq x y) tv k r w nq ad tl
   leftMul (RBinOp OpNe x y) tv k r w nq ad tl = mulL (RBinOp OpNe x y) tv k r w nq ad tl
+  leftMul (RBinOp (Op.dotted o+) x y) tv k r w nq ad tl = mulL (RBinOp (Op.dotted o+) x y) tv k r w nq ad tl
+  leftMul (RBinOp (Op.dotted o-) x y) tv k r w nq ad tl = mulL (RBinOp (Op.dotted o-) x y) tv k r w nq ad tl
+  leftMul (RBinOp (Op.dotted o*) x y) tv k r (wx , wy) nq ad tl =
+    leftMul x tv k _ wx (λ ()) (λ ()) (mul-op (ot-dotted refl) (unaryL y tv _ r wy nq ad) tl)
+  leftMul (RBinOp (Op.dotted o/) x y) tv k r (wx , wy) nq ad tl =
+    leftMul x tv k _ wx (λ ()) (λ ()) (mul-op (ot-dotted refl) (unaryL y tv _ r wy nq ad) tl)
+  leftMul (RBinOp (Op.dotted o<) x y) tv k r w nq ad tl = mulL (RBinOp (Op.dotted o<) x y) tv k r w nq ad tl
+  leftMul (RBinOp (Op.dotted o<=) x y) tv k r w nq ad tl = mulL (RBinOp (Op.dotted o<=) x y) tv k r w nq ad tl
+  leftMul (RBinOp (Op.dotted o>) x y) tv k r w nq ad tl = mulL (RBinOp (Op.dotted o>) x y) tv k r w nq ad tl
+  leftMul (RBinOp (Op.dotted o>=) x y) tv k r w nq ad tl = mulL (RBinOp (Op.dotted o>=) x y) tv k r w nq ad tl
+  leftMul (RBinOp (Op.dotted o==) x y) tv k r w nq ad tl = mulL (RBinOp (Op.dotted o==) x y) tv k r w nq ad tl
+  leftMul (RBinOp (Op.dotted o!=) x y) tv k r w nq ad tl = mulL (RBinOp (Op.dotted o!=) x y) tv k r w nq ad tl
   leftMul (RVar x) tv k r w nq ad tl = mulL (RVar x) tv k r w nq ad tl
   leftMul (RQualified x q) tv k r w nq ad tl = mulL (RQualified x q) tv k r w nq ad tl
   leftMul (RResolved n) tv k r w nq ad tl = mulL (RResolved n) tv k r w nq ad tl
@@ -404,8 +650,10 @@ mutual
   leftMul (RPair a b) tv k r w nq ad tl = mulL (RPair a b) tv k r w nq ad tl
   leftMul (RDestruct s x el y er) tv k r w nq ad tl = mulL (RDestruct s x el y er) tv k r w nq ad tl
   leftMul RUnit tv k r w nq ad tl = mulL RUnit tv k r w nq ad tl
-  leftMul (RInt z) tv k r w nq ad tl = mulL (RInt z) tv k r w nq ad tl
-  leftMul (RFloat i fr l) tv k r w nq ad tl = mulL (RFloat i fr l) tv k r w nq ad tl
+  leftMul (RInt (ℤ.+ n)) tv k r w nq ad tl = mulL (RInt (ℤ.+ n)) tv k r w nq ad tl
+  leftMul (RInt ℤ.-[1+ n ]) tv k r w nq ad tl = mulL (RInt ℤ.-[1+ n ]) tv k r w nq ad tl
+  leftMul (RFloat pos i fr l) tv k r w nq ad tl = mulL (RFloat pos i fr l) tv k r w nq ad tl
+  leftMul (RFloat neg i fr l) tv k r w nq ad tl = mulL (RFloat neg i fr l) tv k r w nq ad tl
   leftMul (RAnnot e T) tv k r w nq ad tl = mulL (RAnnot e T) tv k r w nq ad tl
   leftMul (RNeg e) tv k r w nq ad tl = mulL (RNeg e) tv k r w nq ad tl
 
@@ -420,14 +668,16 @@ mutual
   addL (RPair a b) tv k r w nq ad md tl = add (mulL (RPair a b) tv k r w nq ad (mul-done md)) tl
   addL (RDestruct s x el y er) tv k r w nq ad md tl = add (mulL (RDestruct s x el y er) tv k r w nq ad (mul-done md)) tl
   addL RUnit tv k r w nq ad md tl = add (mulL RUnit tv k r w nq ad (mul-done md)) tl
-  addL (RInt z) tv k r w nq ad md tl = add (mulL (RInt z) tv k r w nq ad (mul-done md)) tl
-  addL (RFloat i fr l) tv k r w nq ad md tl = add (mulL (RFloat i fr l) tv k r w nq ad (mul-done md)) tl
+  addL (RInt (ℤ.+ n)) tv k r w nq ad md tl = add (mulL (RInt (ℤ.+ n)) tv k r w nq ad (mul-done md)) tl
+  addL (RInt ℤ.-[1+ n ]) tv k r w nq ad md tl = add (mulL (RInt ℤ.-[1+ n ]) tv k r w nq ad (mul-done md)) tl
+  addL (RFloat pos i fr l) tv k r w nq ad md tl = add (mulL (RFloat pos i fr l) tv k r w nq ad (mul-done md)) tl
+  addL (RFloat neg i fr l) tv k r w nq ad md tl = add (mulL (RFloat neg i fr l) tv k r w nq ad (mul-done md)) tl
   addL (RAnnot e T) tv k r w nq ad md tl = add (mulL (RAnnot e T) tv k r w nq ad (mul-done md)) tl
   addL (RNeg e) tv k r w nq ad md tl = add (mulL (RNeg e) tv k r w nq ad (mul-done md)) tl
   addL (RBinOp OpAdd a b) tv k r (wa , wb) nq ad md tl =
-    leftAdd a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (add-op at-plus (mulL b tv _ r wb nq ad (mul-done md)) tl)
+    leftAdd a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (add-op (ot-plain refl) (mulL b tv _ r wb nq ad (mul-done md)) tl)
   addL (RBinOp OpSub a b) tv k r (wa , wb) nq ad md tl =
-    leftAdd a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (add-op at-minus (mulL b tv _ r wb nq ad (mul-done md)) tl)
+    leftAdd a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (add-op (ot-plain refl) (mulL b tv _ r wb nq ad (mul-done md)) tl)
   addL (RBinOp OpMul a b) tv k r w nq ad md tl = add (mulL (RBinOp OpMul a b) tv k r w nq ad (mul-done md)) tl
   addL (RBinOp OpDiv a b) tv k r w nq ad md tl = add (mulL (RBinOp OpDiv a b) tv k r w nq ad (mul-done md)) tl
   addL (RBinOp OpMod a b) tv k r w nq ad md tl = add (mulL (RBinOp OpMod a b) tv k r w nq ad (mul-done md)) tl
@@ -437,6 +687,18 @@ mutual
   addL (RBinOp OpGe a b) tv k r w nq ad md tl = add (mulL (RBinOp OpGe a b) tv k r w nq ad (mul-done md)) tl
   addL (RBinOp OpEq a b) tv k r w nq ad md tl = add (mulL (RBinOp OpEq a b) tv k r w nq ad (mul-done md)) tl
   addL (RBinOp OpNe a b) tv k r w nq ad md tl = add (mulL (RBinOp OpNe a b) tv k r w nq ad (mul-done md)) tl
+  addL (RBinOp (Op.dotted o+) a b) tv k r (wa , wb) nq ad md tl =
+    leftAdd a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (add-op (ot-dotted refl) (mulL b tv _ r wb nq ad (mul-done md)) tl)
+  addL (RBinOp (Op.dotted o-) a b) tv k r (wa , wb) nq ad md tl =
+    leftAdd a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (add-op (ot-dotted refl) (mulL b tv _ r wb nq ad (mul-done md)) tl)
+  addL (RBinOp (Op.dotted o*) a b) tv k r w nq ad md tl = add (mulL (RBinOp (Op.dotted o*) a b) tv k r w nq ad (mul-done md)) tl
+  addL (RBinOp (Op.dotted o/) a b) tv k r w nq ad md tl = add (mulL (RBinOp (Op.dotted o/) a b) tv k r w nq ad (mul-done md)) tl
+  addL (RBinOp (Op.dotted o<) a b) tv k r w nq ad md tl = add (mulL (RBinOp (Op.dotted o<) a b) tv k r w nq ad (mul-done md)) tl
+  addL (RBinOp (Op.dotted o<=) a b) tv k r w nq ad md tl = add (mulL (RBinOp (Op.dotted o<=) a b) tv k r w nq ad (mul-done md)) tl
+  addL (RBinOp (Op.dotted o>) a b) tv k r w nq ad md tl = add (mulL (RBinOp (Op.dotted o>) a b) tv k r w nq ad (mul-done md)) tl
+  addL (RBinOp (Op.dotted o>=) a b) tv k r w nq ad md tl = add (mulL (RBinOp (Op.dotted o>=) a b) tv k r w nq ad (mul-done md)) tl
+  addL (RBinOp (Op.dotted o==) a b) tv k r w nq ad md tl = add (mulL (RBinOp (Op.dotted o==) a b) tv k r w nq ad (mul-done md)) tl
+  addL (RBinOp (Op.dotted o!=) a b) tv k r w nq ad md tl = add (mulL (RBinOp (Op.dotted o!=) a b) tv k r w nq ad (mul-done md)) tl
 
   addApp : ∀ f a b tv k r {e′ r′} → isCompose (headOf f) ≡ b → WF f → WF a → NoQual r → AppDone r → MulDone r
          → ParsesAddTail (RApp f a) r e′ r′ → ParsesAdd (toks (proj₁ (pcomp 2 b f a tv k)) r) e′ r′
@@ -447,9 +709,9 @@ mutual
   leftAdd : ∀ a tv k r {e′ r′} → WF a → NoQual r → AppDone r → MulDone r → ParsesAddTail a r e′ r′
           → ParsesAdd (toks (proj₁ (pleft 2 a tv k)) r) e′ r′
   leftAdd (RBinOp OpAdd x y) tv k r (wx , wy) nq ad md tl =
-    leftAdd x tv k _ wx (λ ()) (λ ()) (λ { starts () }) (add-op at-plus (mulL y tv _ r wy nq ad (mul-done md)) tl)
+    leftAdd x tv k _ wx (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (add-op (ot-plain refl) (mulL y tv _ r wy nq ad (mul-done md)) tl)
   leftAdd (RBinOp OpSub x y) tv k r (wx , wy) nq ad md tl =
-    leftAdd x tv k _ wx (λ ()) (λ ()) (λ { starts () }) (add-op at-minus (mulL y tv _ r wy nq ad (mul-done md)) tl)
+    leftAdd x tv k _ wx (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (add-op (ot-plain refl) (mulL y tv _ r wy nq ad (mul-done md)) tl)
   leftAdd (RBinOp OpMul x y) tv k r w nq ad md tl = addL (RBinOp OpMul x y) tv k r w nq ad md tl
   leftAdd (RBinOp OpDiv x y) tv k r w nq ad md tl = addL (RBinOp OpDiv x y) tv k r w nq ad md tl
   leftAdd (RBinOp OpMod x y) tv k r w nq ad md tl = addL (RBinOp OpMod x y) tv k r w nq ad md tl
@@ -459,6 +721,18 @@ mutual
   leftAdd (RBinOp OpGe x y) tv k r w nq ad md tl = addL (RBinOp OpGe x y) tv k r w nq ad md tl
   leftAdd (RBinOp OpEq x y) tv k r w nq ad md tl = addL (RBinOp OpEq x y) tv k r w nq ad md tl
   leftAdd (RBinOp OpNe x y) tv k r w nq ad md tl = addL (RBinOp OpNe x y) tv k r w nq ad md tl
+  leftAdd (RBinOp (Op.dotted o+) x y) tv k r (wx , wy) nq ad md tl =
+    leftAdd x tv k _ wx (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (add-op (ot-dotted refl) (mulL y tv _ r wy nq ad (mul-done md)) tl)
+  leftAdd (RBinOp (Op.dotted o-) x y) tv k r (wx , wy) nq ad md tl =
+    leftAdd x tv k _ wx (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (add-op (ot-dotted refl) (mulL y tv _ r wy nq ad (mul-done md)) tl)
+  leftAdd (RBinOp (Op.dotted o*) x y) tv k r w nq ad md tl = addL (RBinOp (Op.dotted o*) x y) tv k r w nq ad md tl
+  leftAdd (RBinOp (Op.dotted o/) x y) tv k r w nq ad md tl = addL (RBinOp (Op.dotted o/) x y) tv k r w nq ad md tl
+  leftAdd (RBinOp (Op.dotted o<) x y) tv k r w nq ad md tl = addL (RBinOp (Op.dotted o<) x y) tv k r w nq ad md tl
+  leftAdd (RBinOp (Op.dotted o<=) x y) tv k r w nq ad md tl = addL (RBinOp (Op.dotted o<=) x y) tv k r w nq ad md tl
+  leftAdd (RBinOp (Op.dotted o>) x y) tv k r w nq ad md tl = addL (RBinOp (Op.dotted o>) x y) tv k r w nq ad md tl
+  leftAdd (RBinOp (Op.dotted o>=) x y) tv k r w nq ad md tl = addL (RBinOp (Op.dotted o>=) x y) tv k r w nq ad md tl
+  leftAdd (RBinOp (Op.dotted o==) x y) tv k r w nq ad md tl = addL (RBinOp (Op.dotted o==) x y) tv k r w nq ad md tl
+  leftAdd (RBinOp (Op.dotted o!=) x y) tv k r w nq ad md tl = addL (RBinOp (Op.dotted o!=) x y) tv k r w nq ad md tl
   leftAdd (RVar x) tv k r w nq ad md tl = addL (RVar x) tv k r w nq ad md tl
   leftAdd (RQualified x q) tv k r w nq ad md tl = addL (RQualified x q) tv k r w nq ad md tl
   leftAdd (RResolved n) tv k r w nq ad md tl = addL (RResolved n) tv k r w nq ad md tl
@@ -468,8 +742,10 @@ mutual
   leftAdd (RPair a b) tv k r w nq ad md tl = addL (RPair a b) tv k r w nq ad md tl
   leftAdd (RDestruct s x el y er) tv k r w nq ad md tl = addL (RDestruct s x el y er) tv k r w nq ad md tl
   leftAdd RUnit tv k r w nq ad md tl = addL RUnit tv k r w nq ad md tl
-  leftAdd (RInt z) tv k r w nq ad md tl = addL (RInt z) tv k r w nq ad md tl
-  leftAdd (RFloat i fr l) tv k r w nq ad md tl = addL (RFloat i fr l) tv k r w nq ad md tl
+  leftAdd (RInt (ℤ.+ n)) tv k r w nq ad md tl = addL (RInt (ℤ.+ n)) tv k r w nq ad md tl
+  leftAdd (RInt ℤ.-[1+ n ]) tv k r w nq ad md tl = addL (RInt ℤ.-[1+ n ]) tv k r w nq ad md tl
+  leftAdd (RFloat pos i fr l) tv k r w nq ad md tl = addL (RFloat pos i fr l) tv k r w nq ad md tl
+  leftAdd (RFloat neg i fr l) tv k r w nq ad md tl = addL (RFloat neg i fr l) tv k r w nq ad md tl
   leftAdd (RAnnot e T) tv k r w nq ad md tl = addL (RAnnot e T) tv k r w nq ad md tl
   leftAdd (RNeg e) tv k r w nq ad md tl = addL (RNeg e) tv k r w nq ad md tl
 
@@ -484,8 +760,10 @@ mutual
   cmpL (RPair a b) tv k r w nq ad md dd cd = cmp-none (addL (RPair a b) tv k r w nq ad md (add-done dd)) cd
   cmpL (RDestruct s x el y er) tv k r w nq ad md dd cd = cmp-none (addL (RDestruct s x el y er) tv k r w nq ad md (add-done dd)) cd
   cmpL RUnit tv k r w nq ad md dd cd = cmp-none (addL RUnit tv k r w nq ad md (add-done dd)) cd
-  cmpL (RInt z) tv k r w nq ad md dd cd = cmp-none (addL (RInt z) tv k r w nq ad md (add-done dd)) cd
-  cmpL (RFloat i fr l) tv k r w nq ad md dd cd = cmp-none (addL (RFloat i fr l) tv k r w nq ad md (add-done dd)) cd
+  cmpL (RInt (ℤ.+ n)) tv k r w nq ad md dd cd = cmp-none (addL (RInt (ℤ.+ n)) tv k r w nq ad md (add-done dd)) cd
+  cmpL (RInt ℤ.-[1+ n ]) tv k r w nq ad md dd cd = cmp-none (addL (RInt ℤ.-[1+ n ]) tv k r w nq ad md (add-done dd)) cd
+  cmpL (RFloat pos i fr l) tv k r w nq ad md dd cd = cmp-none (addL (RFloat pos i fr l) tv k r w nq ad md (add-done dd)) cd
+  cmpL (RFloat neg i fr l) tv k r w nq ad md dd cd = cmp-none (addL (RFloat neg i fr l) tv k r w nq ad md (add-done dd)) cd
   cmpL (RAnnot e T) tv k r w nq ad md dd cd = cmp-none (addL (RAnnot e T) tv k r w nq ad md (add-done dd)) cd
   cmpL (RNeg e) tv k r w nq ad md dd cd = cmp-none (addL (RNeg e) tv k r w nq ad md (add-done dd)) cd
   cmpL (RBinOp OpAdd a b) tv k r w nq ad md dd cd = cmp-none (addL (RBinOp OpAdd a b) tv k r w nq ad md (add-done dd)) cd
@@ -494,17 +772,33 @@ mutual
   cmpL (RBinOp OpDiv a b) tv k r w nq ad md dd cd = cmp-none (addL (RBinOp OpDiv a b) tv k r w nq ad md (add-done dd)) cd
   cmpL (RBinOp OpMod a b) tv k r w nq ad md dd cd = cmp-none (addL (RBinOp OpMod a b) tv k r w nq ad md (add-done dd)) cd
   cmpL (RBinOp OpLt a b) tv k r (wa , wb) nq ad md dd cd =
-    cmp ct-lt (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (λ { starts () })) (addL b tv _ r wb nq ad md (add-done dd))
+    cmp (ot-plain refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (λ { starts → otherLevel (ot-plain refl) (λ ()) })) (addL b tv _ r wb nq ad md (add-done dd))
   cmpL (RBinOp OpLe a b) tv k r (wa , wb) nq ad md dd cd =
-    cmp ct-le (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (λ { starts () })) (addL b tv _ r wb nq ad md (add-done dd))
+    cmp (ot-plain refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (λ { starts → otherLevel (ot-plain refl) (λ ()) })) (addL b tv _ r wb nq ad md (add-done dd))
   cmpL (RBinOp OpGt a b) tv k r (wa , wb) nq ad md dd cd =
-    cmp ct-gt (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (λ { starts () })) (addL b tv _ r wb nq ad md (add-done dd))
+    cmp (ot-plain refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (λ { starts → otherLevel (ot-plain refl) (λ ()) })) (addL b tv _ r wb nq ad md (add-done dd))
   cmpL (RBinOp OpGe a b) tv k r (wa , wb) nq ad md dd cd =
-    cmp ct-ge (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (λ { starts () })) (addL b tv _ r wb nq ad md (add-done dd))
+    cmp (ot-plain refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (λ { starts → otherLevel (ot-plain refl) (λ ()) })) (addL b tv _ r wb nq ad md (add-done dd))
   cmpL (RBinOp OpEq a b) tv k r (wa , wb) nq ad md dd cd =
-    cmp ct-eq (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (λ { starts () })) (addL b tv _ r wb nq ad md (add-done dd))
+    cmp (ot-plain refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (λ { starts → otherLevel (ot-plain refl) (λ ()) })) (addL b tv _ r wb nq ad md (add-done dd))
   cmpL (RBinOp OpNe a b) tv k r (wa , wb) nq ad md dd cd =
-    cmp ct-ne (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts () }) (λ { starts () })) (addL b tv _ r wb nq ad md (add-done dd))
+    cmp (ot-plain refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-plain refl) (λ ()) }) (λ { starts → otherLevel (ot-plain refl) (λ ()) })) (addL b tv _ r wb nq ad md (add-done dd))
+  cmpL (RBinOp (Op.dotted o+) a b) tv k r w nq ad md dd cd = cmp-none (addL (RBinOp (Op.dotted o+) a b) tv k r w nq ad md (add-done dd)) cd
+  cmpL (RBinOp (Op.dotted o-) a b) tv k r w nq ad md dd cd = cmp-none (addL (RBinOp (Op.dotted o-) a b) tv k r w nq ad md (add-done dd)) cd
+  cmpL (RBinOp (Op.dotted o*) a b) tv k r w nq ad md dd cd = cmp-none (addL (RBinOp (Op.dotted o*) a b) tv k r w nq ad md (add-done dd)) cd
+  cmpL (RBinOp (Op.dotted o/) a b) tv k r w nq ad md dd cd = cmp-none (addL (RBinOp (Op.dotted o/) a b) tv k r w nq ad md (add-done dd)) cd
+  cmpL (RBinOp (Op.dotted o<) a b) tv k r (wa , wb) nq ad md dd cd =
+    cmp (ot-dotted refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (λ { starts → otherLevel (ot-dotted refl) (λ ()) })) (addL b tv _ r wb nq ad md (add-done dd))
+  cmpL (RBinOp (Op.dotted o<=) a b) tv k r (wa , wb) nq ad md dd cd =
+    cmp (ot-dotted refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (λ { starts → otherLevel (ot-dotted refl) (λ ()) })) (addL b tv _ r wb nq ad md (add-done dd))
+  cmpL (RBinOp (Op.dotted o>) a b) tv k r (wa , wb) nq ad md dd cd =
+    cmp (ot-dotted refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (λ { starts → otherLevel (ot-dotted refl) (λ ()) })) (addL b tv _ r wb nq ad md (add-done dd))
+  cmpL (RBinOp (Op.dotted o>=) a b) tv k r (wa , wb) nq ad md dd cd =
+    cmp (ot-dotted refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (λ { starts → otherLevel (ot-dotted refl) (λ ()) })) (addL b tv _ r wb nq ad md (add-done dd))
+  cmpL (RBinOp (Op.dotted o==) a b) tv k r (wa , wb) nq ad md dd cd =
+    cmp (ot-dotted refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (λ { starts → otherLevel (ot-dotted refl) (λ ()) })) (addL b tv _ r wb nq ad md (add-done dd))
+  cmpL (RBinOp (Op.dotted o!=) a b) tv k r (wa , wb) nq ad md dd cd =
+    cmp (ot-dotted refl) (leftCmp a tv k _ wa (λ ()) (λ ()) (λ { starts → otherLevel (ot-dotted refl) (λ ()) }) (λ { starts → otherLevel (ot-dotted refl) (λ ()) })) (addL b tv _ r wb nq ad md (add-done dd))
 
   cmpApp : ∀ f a b tv k r → isCompose (headOf f) ≡ b → WF f → WF a → NoQual r → AppDone r → MulDone r → AddDone r → CmpDone r
          → ParsesCmp (toks (proj₁ (pcomp 1 b f a tv k)) r) (RApp f a) r
@@ -526,6 +820,16 @@ mutual
   leftCmp (RBinOp OpGe x y) tv k r w nq ad md dd = addL (RBinOp OpGe x y) tv k r w nq ad md (add-done dd)
   leftCmp (RBinOp OpEq x y) tv k r w nq ad md dd = addL (RBinOp OpEq x y) tv k r w nq ad md (add-done dd)
   leftCmp (RBinOp OpNe x y) tv k r w nq ad md dd = addL (RBinOp OpNe x y) tv k r w nq ad md (add-done dd)
+  leftCmp (RBinOp (Op.dotted o+) x y) tv k r w nq ad md dd = addL (RBinOp (Op.dotted o+) x y) tv k r w nq ad md (add-done dd)
+  leftCmp (RBinOp (Op.dotted o-) x y) tv k r w nq ad md dd = addL (RBinOp (Op.dotted o-) x y) tv k r w nq ad md (add-done dd)
+  leftCmp (RBinOp (Op.dotted o*) x y) tv k r w nq ad md dd = addL (RBinOp (Op.dotted o*) x y) tv k r w nq ad md (add-done dd)
+  leftCmp (RBinOp (Op.dotted o/) x y) tv k r w nq ad md dd = addL (RBinOp (Op.dotted o/) x y) tv k r w nq ad md (add-done dd)
+  leftCmp (RBinOp (Op.dotted o<) x y) tv k r w nq ad md dd = addL (RBinOp (Op.dotted o<) x y) tv k r w nq ad md (add-done dd)
+  leftCmp (RBinOp (Op.dotted o<=) x y) tv k r w nq ad md dd = addL (RBinOp (Op.dotted o<=) x y) tv k r w nq ad md (add-done dd)
+  leftCmp (RBinOp (Op.dotted o>) x y) tv k r w nq ad md dd = addL (RBinOp (Op.dotted o>) x y) tv k r w nq ad md (add-done dd)
+  leftCmp (RBinOp (Op.dotted o>=) x y) tv k r w nq ad md dd = addL (RBinOp (Op.dotted o>=) x y) tv k r w nq ad md (add-done dd)
+  leftCmp (RBinOp (Op.dotted o==) x y) tv k r w nq ad md dd = addL (RBinOp (Op.dotted o==) x y) tv k r w nq ad md (add-done dd)
+  leftCmp (RBinOp (Op.dotted o!=) x y) tv k r w nq ad md dd = addL (RBinOp (Op.dotted o!=) x y) tv k r w nq ad md (add-done dd)
   leftCmp (RVar x) tv k r w nq ad md dd = addL (RVar x) tv k r w nq ad md (add-done dd)
   leftCmp (RQualified x q) tv k r w nq ad md dd = addL (RQualified x q) tv k r w nq ad md (add-done dd)
   leftCmp (RResolved n) tv k r w nq ad md dd = addL (RResolved n) tv k r w nq ad md (add-done dd)
@@ -535,8 +839,10 @@ mutual
   leftCmp (RPair a b) tv k r w nq ad md dd = addL (RPair a b) tv k r w nq ad md (add-done dd)
   leftCmp (RDestruct s x el y er) tv k r w nq ad md dd = addL (RDestruct s x el y er) tv k r w nq ad md (add-done dd)
   leftCmp RUnit tv k r w nq ad md dd = addL RUnit tv k r w nq ad md (add-done dd)
-  leftCmp (RInt z) tv k r w nq ad md dd = addL (RInt z) tv k r w nq ad md (add-done dd)
-  leftCmp (RFloat i fr l) tv k r w nq ad md dd = addL (RFloat i fr l) tv k r w nq ad md (add-done dd)
+  leftCmp (RInt (ℤ.+ n)) tv k r w nq ad md dd = addL (RInt (ℤ.+ n)) tv k r w nq ad md (add-done dd)
+  leftCmp (RInt ℤ.-[1+ n ]) tv k r w nq ad md dd = addL (RInt ℤ.-[1+ n ]) tv k r w nq ad md (add-done dd)
+  leftCmp (RFloat pos i fr l) tv k r w nq ad md dd = addL (RFloat pos i fr l) tv k r w nq ad md (add-done dd)
+  leftCmp (RFloat neg i fr l) tv k r w nq ad md dd = addL (RFloat neg i fr l) tv k r w nq ad md (add-done dd)
   leftCmp (RAnnot e T) tv k r w nq ad md dd = addL (RAnnot e T) tv k r w nq ad md (add-done dd)
   leftCmp (RNeg e) tv k r w nq ad md dd = addL (RNeg e) tv k r w nq ad md (add-done dd)
 
@@ -551,8 +857,10 @@ mutual
   wholeL (RQualified x q) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RQualified x q) tv k r w sq sa sm sd sc) (comp-done so)
   wholeL (RPair a b) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RPair a b) tv k r w sq sa sm sd sc) (comp-done so)
   wholeL RUnit tv k r w (stops sq sa sm sd sc so) = expr (cmpL RUnit tv k r w sq sa sm sd sc) (comp-done so)
-  wholeL (RInt z) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RInt z) tv k r w sq sa sm sd sc) (comp-done so)
-  wholeL (RFloat i fr l) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RFloat i fr l) tv k r w sq sa sm sd sc) (comp-done so)
+  wholeL (RInt (ℤ.+ n)) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RInt (ℤ.+ n)) tv k r w sq sa sm sd sc) (comp-done so)
+  wholeL (RInt ℤ.-[1+ n ]) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RInt ℤ.-[1+ n ]) tv k r w sq sa sm sd sc) (comp-done so)
+  wholeL (RFloat pos i fr l) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RFloat pos i fr l) tv k r w sq sa sm sd sc) (comp-done so)
+  wholeL (RFloat neg i fr l) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RFloat neg i fr l) tv k r w sq sa sm sd sc) (comp-done so)
   wholeL (RAnnot e T) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RAnnot e T) tv k r w sq sa sm sd sc) (comp-done so)
   wholeL (RNeg e) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RNeg e) tv k r w sq sa sm sd sc) (comp-done so)
   wholeL (RBinOp OpAdd x y) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RBinOp OpAdd x y) tv k r w sq sa sm sd sc) (comp-done so)
@@ -566,6 +874,16 @@ mutual
   wholeL (RBinOp OpGe x y) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RBinOp OpGe x y) tv k r w sq sa sm sd sc) (comp-done so)
   wholeL (RBinOp OpEq x y) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RBinOp OpEq x y) tv k r w sq sa sm sd sc) (comp-done so)
   wholeL (RBinOp OpNe x y) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RBinOp OpNe x y) tv k r w sq sa sm sd sc) (comp-done so)
+  wholeL (RBinOp (Op.dotted o+) x y) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RBinOp (Op.dotted o+) x y) tv k r w sq sa sm sd sc) (comp-done so)
+  wholeL (RBinOp (Op.dotted o-) x y) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RBinOp (Op.dotted o-) x y) tv k r w sq sa sm sd sc) (comp-done so)
+  wholeL (RBinOp (Op.dotted o*) x y) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RBinOp (Op.dotted o*) x y) tv k r w sq sa sm sd sc) (comp-done so)
+  wholeL (RBinOp (Op.dotted o/) x y) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RBinOp (Op.dotted o/) x y) tv k r w sq sa sm sd sc) (comp-done so)
+  wholeL (RBinOp (Op.dotted o<) x y) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RBinOp (Op.dotted o<) x y) tv k r w sq sa sm sd sc) (comp-done so)
+  wholeL (RBinOp (Op.dotted o<=) x y) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RBinOp (Op.dotted o<=) x y) tv k r w sq sa sm sd sc) (comp-done so)
+  wholeL (RBinOp (Op.dotted o>) x y) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RBinOp (Op.dotted o>) x y) tv k r w sq sa sm sd sc) (comp-done so)
+  wholeL (RBinOp (Op.dotted o>=) x y) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RBinOp (Op.dotted o>=) x y) tv k r w sq sa sm sd sc) (comp-done so)
+  wholeL (RBinOp (Op.dotted o==) x y) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RBinOp (Op.dotted o==) x y) tv k r w sq sa sm sd sc) (comp-done so)
+  wholeL (RBinOp (Op.dotted o!=) x y) tv k r w (stops sq sa sm sd sc so) = expr (cmpL (RBinOp (Op.dotted o!=) x y) tv k r w sq sa sm sd sc) (comp-done so)
 
   wholeApp : ∀ f a b tv k r → isCompose (headOf f) ≡ b → WF f → WF a → Stops r
            → ParsesExpr (toks (proj₁ (pcomp 0 b f a tv k)) r) (RApp f a) r
@@ -590,8 +908,10 @@ mutual
   paramsL (RPair a b) tv k r w st = lam-body (wholeL (RPair a b) tv k r w st)
   paramsL (RDestruct s x el y er) tv k r w st = lam-body (wholeL (RDestruct s x el y er) tv k r w st)
   paramsL RUnit tv k r w st = lam-body (wholeL RUnit tv k r w st)
-  paramsL (RInt z) tv k r w st = lam-body (wholeL (RInt z) tv k r w st)
-  paramsL (RFloat i fr l) tv k r w st = lam-body (wholeL (RFloat i fr l) tv k r w st)
+  paramsL (RInt (ℤ.+ n)) tv k r w st = lam-body (wholeL (RInt (ℤ.+ n)) tv k r w st)
+  paramsL (RInt ℤ.-[1+ n ]) tv k r w st = lam-body (wholeL (RInt ℤ.-[1+ n ]) tv k r w st)
+  paramsL (RFloat pos i fr l) tv k r w st = lam-body (wholeL (RFloat pos i fr l) tv k r w st)
+  paramsL (RFloat neg i fr l) tv k r w st = lam-body (wholeL (RFloat neg i fr l) tv k r w st)
   paramsL (RAnnot e T) tv k r w st = lam-body (wholeL (RAnnot e T) tv k r w st)
   paramsL (RBinOp op a b) tv k r w st = lam-body (wholeL (RBinOp op a b) tv k r w st)
   paramsL (RNeg e) tv k r w st = lam-body (wholeL (RNeg e) tv k r w st)
@@ -651,18 +971,30 @@ mutual
         (subst (λ ts → ParsesAtomExpr (TWord "let" ∷ TWord x ∷ TEquals ∷ toks (proj₁ (pex 0 true v tv _)) ts) _ r)
           (sym (word-toks "in" tv _ _))
           (atom-let (wholeL v tv _ _ wv stops-in) (wholeL RUnit tv 0 r wb st))))
-  letA x v (RInt bz) tv k r (wv , wb) st =
+  letA x v (RInt (ℤ.+ bn)) tv k r (wv , wb) st =
     subst (λ ts → ParsesAtomExpr ts _ r) (sym (word-toks "let" tv k _))
       (subst (λ ts → ParsesAtomExpr (TWord "let" ∷ ts) _ r) (sym (word-toks x tv _ _))
         (subst (λ ts → ParsesAtomExpr (TWord "let" ∷ TWord x ∷ TEquals ∷ toks (proj₁ (pex 0 true v tv _)) ts) _ r)
           (sym (word-toks "in" tv _ _))
-          (atom-let (wholeL v tv _ _ wv stops-in) (wholeL (RInt bz) tv _ r wb st))))
-  letA x v (RFloat bi bfr bl) tv k r (wv , wb) st =
+          (atom-let (wholeL v tv _ _ wv stops-in) (wholeL (RInt (ℤ.+ bn)) tv _ r wb st))))
+  letA x v (RInt ℤ.-[1+ bn ]) tv k r (wv , wb) st =
     subst (λ ts → ParsesAtomExpr ts _ r) (sym (word-toks "let" tv k _))
       (subst (λ ts → ParsesAtomExpr (TWord "let" ∷ ts) _ r) (sym (word-toks x tv _ _))
         (subst (λ ts → ParsesAtomExpr (TWord "let" ∷ TWord x ∷ TEquals ∷ toks (proj₁ (pex 0 true v tv _)) ts) _ r)
           (sym (word-toks "in" tv _ _))
-          (atom-let (wholeL v tv _ _ wv stops-in) (wholeL (RFloat bi bfr bl) tv _ r wb st))))
+          (atom-let (wholeL v tv _ _ wv stops-in) (wholeL (RInt ℤ.-[1+ bn ]) tv _ r wb st))))
+  letA x v (RFloat pos bi bfr bl) tv k r (wv , wb) st =
+    subst (λ ts → ParsesAtomExpr ts _ r) (sym (word-toks "let" tv k _))
+      (subst (λ ts → ParsesAtomExpr (TWord "let" ∷ ts) _ r) (sym (word-toks x tv _ _))
+        (subst (λ ts → ParsesAtomExpr (TWord "let" ∷ TWord x ∷ TEquals ∷ toks (proj₁ (pex 0 true v tv _)) ts) _ r)
+          (sym (word-toks "in" tv _ _))
+          (atom-let (wholeL v tv _ _ wv stops-in) (wholeL (RFloat pos bi bfr bl) tv _ r wb st))))
+  letA x v (RFloat neg bi bfr bl) tv k r (wv , wb) st =
+    subst (λ ts → ParsesAtomExpr ts _ r) (sym (word-toks "let" tv k _))
+      (subst (λ ts → ParsesAtomExpr (TWord "let" ∷ ts) _ r) (sym (word-toks x tv _ _))
+        (subst (λ ts → ParsesAtomExpr (TWord "let" ∷ TWord x ∷ TEquals ∷ toks (proj₁ (pex 0 true v tv _)) ts) _ r)
+          (sym (word-toks "in" tv _ _))
+          (atom-let (wholeL v tv _ _ wv stops-in) (wholeL (RFloat neg bi bfr bl) tv _ r wb st))))
   letA x v (RAnnot be bT) tv k r (wv , wb) st =
     subst (λ ts → ParsesAtomExpr ts _ r) (sym (word-toks "let" tv k _))
       (subst (λ ts → ParsesAtomExpr (TWord "let" ∷ ts) _ r) (sym (word-toks x tv _ _))

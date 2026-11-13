@@ -21,7 +21,8 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Data.Nat using (ℕ; zero; suc; _<ᵇ_; _/_; _%_)
 open import Data.String using (String; fromList) renaming (_++_ to _++ˢ_)
 
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand; TBang; TNewline; TEOF)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand; TBang; TNewline; TEOF; TOp; TOpD)
+open import Once.Spec.Surface.Operator using (Dottable; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 open import Once.Adequacy.SpecTokNames
 
 -- A decimal digit.
@@ -60,6 +61,19 @@ showInt -[1+ n ] = "-" ++ˢ fromList (decimal (suc n))
 showFloat : ℕ → ℕ → ℕ → String
 showFloat i f l = fromList (decimal i ++ '.' ∷ fixed l f)
 
+-- An operator's glyph (`Spec.Surface.Lexing.Glyph`); its IEEE form adds a `.`.
+dglyph : Dottable → String
+dglyph o+  = "+"
+dglyph o-  = "-"
+dglyph o*  = "*"
+dglyph o/  = "/"
+dglyph o<  = "<"
+dglyph o<= = "<="
+dglyph o>  = ">"
+dglyph o>= = ">="
+dglyph o== = "=="
+dglyph o!= = "!="
+
 spell : Token → String
 spell (TWord s)       = s
 spell (TInt z)        = showInt z
@@ -81,18 +95,10 @@ spell TSemicolon      = ";"
 spell TAt             = "@"
 spell TPipe           = "|"
 spell TDot            = "."
-spell TPlus           = "+"
-spell TMinus          = "-"
-spell TStar           = "*"
-spell TSlash          = "/"
-spell TPercent        = "%"
+spell (TOp ‹ d ›)      = dglyph d
+spell (TOp o%)        = "%"
+spell (TOpD d)        = dglyph d ++ˢ "."
 spell TAmpersand      = "&"
-spell TLt             = "<"
-spell TLe             = "<="
-spell TGt             = ">"
-spell TGe             = ">="
-spell TEqEq           = "=="
-spell TNeq            = "!="
 spell TBang           = "!"
 spell TNewline        = "\n"
 spell TEOF            = ""

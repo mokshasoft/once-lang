@@ -34,7 +34,11 @@ open import Relation.Nullary using (¬_)
 open import Agda.Builtin.String.Properties using (primStringToListInjective)
 
 open import Once.Postulates using (toList∘fromList)
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand; TBang; TNewline; TEOF; Next; next; isIdentContinue; IdentRest; id-end; id-stop; id-more; Digits; dg-end; dg-stop; dg-more; Fraction; fraction; LineRest; lr-nl; lr-char; digitsToNat)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace;
+  TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand;
+  TBang; TNewline; TEOF; Next; next;
+  isIdentContinue; IdentRest; id-end; id-stop; id-more; Digits; dg-end; dg-stop; dg-more; Fraction; fraction;
+  LineRest; lr-nl; lr-char; digitsToNat)
 open import Once.Adequacy.SpecTokNames
 open import Once.Format.Spell using (spell; decimal; fixed)
 open import Once.Format.Doc using (Lexeme; lt; lsp; lnl; lind; lcm; chars)
@@ -43,13 +47,14 @@ open import Once.Format.Proof.Digits using (decimal-val; decimal-digits; decimal
 open import Once.Format.Proof.Lexing using (Printable; p-word; p-int; p-float; p-sym; s-lparen; s-rparen; s-lbrace;
   s-rbrace; s-colon; s-equals; s-arrow; s-caret1; s-caret0; s-caretw; s-lambda; s-comma; s-semicolon; s-at; s-pipe;
   s-dot; s-plus; s-minus; s-star; s-slash; s-percent; s-ampersand; s-lt; s-le; s-gt; s-ge; s-eqeq; s-neq; s-bang;
+  s-plusd; s-minusd; s-stard; s-slashd; s-ltd; s-led; s-gtd; s-ged; s-eqeqd; s-neqd;
   LineComment; lc; Follows; Stop; stop-end; stop; follows-tok; follows-sp; follows-nl; follows-end; tok-blank;
   Valid; Adj; tok-tok; tok-sp; tok-nl; sp-tok; sp-sp; sp-cm; sp-nl; nl-nl; nl-ind; ind-tok; ind-cm; cm-nl;
   WS; ws-[]; ws-1; ws-∷)
 open import Once.Format.Proof.Items using (EItem; etok; ecomment; econt; ItemsChars)
 open import Once.Format.Proof.Items
 open import Once.Adequacy.SpecLexing using (gen-head; dns; dash-minus; dash-view; head-false; eq-view; dhead-view;
-  nl-false; nl-view; digits-eq; ident-eq; frac-just; frac-nothing; line-eq)
+  nl-false; nl-view; dot-view; digits-eq; ident-eq; frac-just; frac-nothing; line-eq)
 
 ------------------------------------------------------------------------
 -- The items of lexemes
@@ -160,17 +165,17 @@ tokI (TFloat i f (suc k)) {rest} {is} (p-float f<) sf d with decimal-head i | fi
 tokI (TString _) (p-sym ()) f d
 tokI TNewline (p-sym ()) f d
 tokI TEOF (p-sym ()) f d
-tokI TMinus (p-sym s-minus) (n₁ , n₂) d = i-minus refl (dash-minus (dash-view _) n₁ n₂) d
+tokI TMinus (p-sym s-minus) (n₁ , n₂ , n₃) d = i-minus refl (dash-minus (dash-view _) n₁ n₂) (head-false (dot-view _) n₃) d
 tokI TArrow (p-sym s-arrow) f d = i-arrow refl refl d
 tokI TLBrace (p-sym s-lbrace) f d = i-lbrace refl (head-false (dhead-view _) f) d
-tokI TLt (p-sym s-lt) f d = i-lt refl (head-false (eq-view _) f) d
-tokI TLe (p-sym s-le) f d = i-le refl refl d
-tokI TGt (p-sym s-gt) f d = i-gt refl (head-false (eq-view _) f) d
-tokI TGe (p-sym s-ge) f d = i-ge refl refl d
+tokI TLt (p-sym s-lt) (f₁ , f₂) d = i-lt refl (head-false (eq-view _) f₁) (head-false (dot-view _) f₂) d
+tokI TLe (p-sym s-le) f d = i-le refl refl (head-false (dot-view _) f) d
+tokI TGt (p-sym s-gt) (f₁ , f₂) d = i-gt refl (head-false (eq-view _) f₁) (head-false (dot-view _) f₂) d
+tokI TGe (p-sym s-ge) f d = i-ge refl refl (head-false (dot-view _) f) d
 tokI TEquals (p-sym s-equals) f d = i-equals refl (head-false (eq-view _) f) d
-tokI TEqEq (p-sym s-eqeq) f d = i-eqeq refl refl d
+tokI TEqEq (p-sym s-eqeq) f d = i-eqeq refl refl (head-false (dot-view _) f) d
 tokI TBang (p-sym s-bang) f d = i-bang refl (head-false (eq-view _) f) d
-tokI TNeq (p-sym s-neq) f d = i-neq refl refl d
+tokI TNeq (p-sym s-neq) f d = i-neq refl refl (head-false (dot-view _) f) d
 tokI TCaret1 (p-sym s-caret1) f d = i-caret1 refl refl d
 tokI TCaret0 (p-sym s-caret0) f d = i-caret0 refl refl d
 tokI TCaretW (p-sym s-caretw) f d = i-caretw refl refl d
@@ -185,10 +190,20 @@ tokI TSemicolon (p-sym s-semicolon) f d = i-semicolon refl d
 tokI TAt (p-sym s-at) f d = i-at refl d
 tokI TPipe (p-sym s-pipe) f d = i-pipe refl d
 tokI TDot (p-sym s-dot) f d = i-dot refl d
-tokI TPlus (p-sym s-plus) f d = i-plus refl d
-tokI TStar (p-sym s-star) f d = i-star refl d
-tokI TSlash (p-sym s-slash) f d = i-slash refl d
+tokI TPlus (p-sym s-plus) f d = i-plus refl (head-false (dot-view _) f) d
+tokI TStar (p-sym s-star) f d = i-star refl (head-false (dot-view _) f) d
+tokI TSlash (p-sym s-slash) f d = i-slash refl (head-false (dot-view _) f) d
 tokI TPercent (p-sym s-percent) f d = i-percent refl d
+tokI TPlusD (p-sym s-plusd) f d = i-plusd refl refl d
+tokI TMinusD (p-sym s-minusd) f d = i-minusd refl refl refl d
+tokI TStarD (p-sym s-stard) f d = i-stard refl refl d
+tokI TSlashD (p-sym s-slashd) f d = i-slashd refl refl d
+tokI TLtD (p-sym s-ltd) f d = i-ltd refl refl refl d
+tokI TLeD (p-sym s-led) f d = i-led refl refl refl d
+tokI TGtD (p-sym s-gtd) f d = i-gtd refl refl refl d
+tokI TGeD (p-sym s-ged) f d = i-ged refl refl refl d
+tokI TEqEqD (p-sym s-eqeqd) f d = i-eqeqd refl refl refl d
+tokI TNeqD (p-sym s-neqd) f d = i-neqd refl refl refl d
 tokI TAmpersand (p-sym s-ampersand) f d = i-ampersand refl d
 
 private

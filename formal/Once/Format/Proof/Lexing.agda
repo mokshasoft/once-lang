@@ -40,7 +40,7 @@ open import Once.Spec.Surface.Lexing
 open import Once.Adequacy.SpecTokNames
 open import Once.Format.Spell using (spell; decimal; fixed)
 open import Once.Format.Doc using (Lexeme; lt; lsp; lnl; lind; lcm; chars; apart; continues; number; dashes;
-  greater; equals)
+  greater; equals; dots)
 open import Once.Format.Proof.Digits using (decimal-val; decimal-digits; decimal-nonempty; fixed-val;
   fixed-length; fixed-digits; fixed-nonempty; decimal-head)
 
@@ -78,6 +78,16 @@ data Sym : Token → Set where
   s-eqeq : Sym TEqEq
   s-neq : Sym TNeq
   s-bang : Sym TBang
+  s-plusd : Sym TPlusD
+  s-minusd : Sym TMinusD
+  s-stard : Sym TStarD
+  s-slashd : Sym TSlashD
+  s-ltd : Sym TLtD
+  s-led : Sym TLeD
+  s-gtd : Sym TGtD
+  s-ged : Sym TGeD
+  s-eqeqd : Sym TEqEqD
+  s-neqd : Sym TNeqD
 
 -- A token that lexes back from its spelling: a word that is an identifier, a
 -- non-negative integer, a float whose fraction fits its digits, a symbol.
@@ -122,19 +132,29 @@ Follows TSemicolon cs = ⊤
 Follows TAt cs = ⊤
 Follows TPipe cs = ⊤
 Follows TDot cs = ⊤
-Follows TPlus cs = ⊤
-Follows TMinus cs = ¬ Next cs '-' × ¬ Next cs '>'
-Follows TStar cs = ⊤
-Follows TSlash cs = ⊤
+Follows TPlus cs = ¬ Next cs '.'
+Follows TMinus cs = ¬ Next cs '-' × ¬ Next cs '>' × ¬ Next cs '.'
+Follows TStar cs = ¬ Next cs '.'
+Follows TSlash cs = ¬ Next cs '.'
 Follows TPercent cs = ⊤
 Follows TAmpersand cs = ⊤
-Follows TLt cs = ¬ Next cs '='
-Follows TLe cs = ⊤
-Follows TGt cs = ¬ Next cs '='
-Follows TGe cs = ⊤
-Follows TEqEq cs = ⊤
-Follows TNeq cs = ⊤
+Follows TLt cs = ¬ Next cs '=' × ¬ Next cs '.'
+Follows TLe cs = ¬ Next cs '.'
+Follows TGt cs = ¬ Next cs '=' × ¬ Next cs '.'
+Follows TGe cs = ¬ Next cs '.'
+Follows TEqEq cs = ¬ Next cs '.'
+Follows TNeq cs = ¬ Next cs '.'
 Follows TBang cs = ¬ Next cs '='
+Follows TPlusD cs = ⊤
+Follows TMinusD cs = ⊤
+Follows TStarD cs = ⊤
+Follows TSlashD cs = ⊤
+Follows TLtD cs = ⊤
+Follows TLeD cs = ⊤
+Follows TGtD cs = ⊤
+Follows TGeD cs = ⊤
+Follows TEqEqD cs = ⊤
+Follows TNeqD cs = ⊤
 Follows TNewline cs = ⊤
 Follows TEOF cs = ⊤
 
@@ -215,19 +235,29 @@ lex-token (p-sym s-semicolon) f l = lex-semi l
 lex-token (p-sym s-at) f l = lex-at l
 lex-token (p-sym s-pipe) f l = lex-pipe l
 lex-token (p-sym s-dot) f l = lex-dot l
-lex-token (p-sym s-plus) f l = lex-plus l
-lex-token (p-sym s-minus) f l = lex-minus (proj₁ f) (proj₂ f) l
-lex-token (p-sym s-star) f l = lex-star l
-lex-token (p-sym s-slash) f l = lex-slash l
-lex-token (p-sym s-percent) f l = lex-pct l
+lex-token (p-sym s-plus) f l = lex-op g+ (ud f) l
+lex-token (p-sym s-minus) f l = lex-op (g- (proj₁ f) (proj₁ (proj₂ f))) (ud (proj₂ (proj₂ f))) l
+lex-token (p-sym s-star) f l = lex-op g* (ud f) l
+lex-token (p-sym s-slash) f l = lex-op g/ (ud f) l
+lex-token (p-sym s-percent) f l = lex-op g% ud-% l
 lex-token (p-sym s-ampersand) f l = lex-amp l
-lex-token (p-sym s-lt) f l = lex-lt f l
-lex-token (p-sym s-le) f l = lex-le l
-lex-token (p-sym s-gt) f l = lex-gt f l
-lex-token (p-sym s-ge) f l = lex-ge l
-lex-token (p-sym s-eqeq) f l = lex-eqeq l
-lex-token (p-sym s-neq) f l = lex-neq l
+lex-token (p-sym s-lt) f l = lex-op (g< (proj₁ f)) (ud (proj₂ f)) l
+lex-token (p-sym s-le) f l = lex-op g<= (ud f) l
+lex-token (p-sym s-gt) f l = lex-op (g> (proj₁ f)) (ud (proj₂ f)) l
+lex-token (p-sym s-ge) f l = lex-op g>= (ud f) l
+lex-token (p-sym s-eqeq) f l = lex-op g== (ud f) l
+lex-token (p-sym s-neq) f l = lex-op g!= (ud f) l
 lex-token (p-sym s-bang) f l = lex-bang f l
+lex-token (p-sym s-plusd) f l = lex-opd g+ l
+lex-token (p-sym s-minusd) f l = lex-opd (g- (λ ()) (λ ())) l
+lex-token (p-sym s-stard) f l = lex-opd g* l
+lex-token (p-sym s-slashd) f l = lex-opd g/ l
+lex-token (p-sym s-ltd) f l = lex-opd (g< (λ ())) l
+lex-token (p-sym s-led) f l = lex-opd g<= l
+lex-token (p-sym s-gtd) f l = lex-opd (g> (λ ())) l
+lex-token (p-sym s-ged) f l = lex-opd g>= l
+lex-token (p-sym s-eqeqd) f l = lex-opd g== l
+lex-token (p-sym s-neqd) f l = lex-opd g!= l
 
 ------------------------------------------------------------------------
 -- What follows a token, in the layout
@@ -255,19 +285,29 @@ follows-sp TSemicolon = tt
 follows-sp TAt = tt
 follows-sp TPipe = tt
 follows-sp TDot = tt
-follows-sp TPlus = tt
-follows-sp TMinus = (λ ()) , (λ ())
-follows-sp TStar = tt
-follows-sp TSlash = tt
+follows-sp TPlus = λ ()
+follows-sp TMinus = (λ ()) , (λ ()) , (λ ())
+follows-sp TStar = λ ()
+follows-sp TSlash = λ ()
 follows-sp TPercent = tt
 follows-sp TAmpersand = tt
-follows-sp TLt = λ ()
-follows-sp TLe = tt
-follows-sp TGt = λ ()
-follows-sp TGe = tt
-follows-sp TEqEq = tt
-follows-sp TNeq = tt
+follows-sp TLt = (λ ()) , (λ ())
+follows-sp TLe = λ ()
+follows-sp TGt = (λ ()) , (λ ())
+follows-sp TGe = λ ()
+follows-sp TEqEq = λ ()
+follows-sp TNeq = λ ()
 follows-sp TBang = λ ()
+follows-sp TPlusD = tt
+follows-sp TMinusD = tt
+follows-sp TStarD = tt
+follows-sp TSlashD = tt
+follows-sp TLtD = tt
+follows-sp TLeD = tt
+follows-sp TGtD = tt
+follows-sp TGeD = tt
+follows-sp TEqEqD = tt
+follows-sp TNeqD = tt
 follows-sp TNewline = tt
 follows-sp TEOF = tt
 
@@ -293,19 +333,29 @@ follows-nl TSemicolon = tt
 follows-nl TAt = tt
 follows-nl TPipe = tt
 follows-nl TDot = tt
-follows-nl TPlus = tt
-follows-nl TMinus = (λ ()) , (λ ())
-follows-nl TStar = tt
-follows-nl TSlash = tt
+follows-nl TPlus = λ ()
+follows-nl TMinus = (λ ()) , (λ ()) , (λ ())
+follows-nl TStar = λ ()
+follows-nl TSlash = λ ()
 follows-nl TPercent = tt
 follows-nl TAmpersand = tt
-follows-nl TLt = λ ()
-follows-nl TLe = tt
-follows-nl TGt = λ ()
-follows-nl TGe = tt
-follows-nl TEqEq = tt
-follows-nl TNeq = tt
+follows-nl TLt = (λ ()) , (λ ())
+follows-nl TLe = λ ()
+follows-nl TGt = (λ ()) , (λ ())
+follows-nl TGe = λ ()
+follows-nl TEqEq = λ ()
+follows-nl TNeq = λ ()
 follows-nl TBang = λ ()
+follows-nl TPlusD = tt
+follows-nl TMinusD = tt
+follows-nl TStarD = tt
+follows-nl TSlashD = tt
+follows-nl TLtD = tt
+follows-nl TLeD = tt
+follows-nl TGtD = tt
+follows-nl TGeD = tt
+follows-nl TEqEqD = tt
+follows-nl TNeqD = tt
 follows-nl TNewline = tt
 follows-nl TEOF = tt
 
@@ -331,19 +381,29 @@ follows-end TSemicolon = tt
 follows-end TAt = tt
 follows-end TPipe = tt
 follows-end TDot = tt
-follows-end TPlus = tt
-follows-end TMinus = (λ ()) , (λ ())
-follows-end TStar = tt
-follows-end TSlash = tt
+follows-end TPlus = λ ()
+follows-end TMinus = (λ ()) , (λ ()) , (λ ())
+follows-end TStar = λ ()
+follows-end TSlash = λ ()
 follows-end TPercent = tt
 follows-end TAmpersand = tt
-follows-end TLt = λ ()
-follows-end TLe = tt
-follows-end TGt = λ ()
-follows-end TGe = tt
-follows-end TEqEq = tt
-follows-end TNeq = tt
+follows-end TLt = (λ ()) , (λ ())
+follows-end TLe = λ ()
+follows-end TGt = (λ ()) , (λ ())
+follows-end TGe = λ ()
+follows-end TEqEq = λ ()
+follows-end TNeq = λ ()
 follows-end TBang = λ ()
+follows-end TPlusD = tt
+follows-end TMinusD = tt
+follows-end TStarD = tt
+follows-end TSlashD = tt
+follows-end TLtD = tt
+follows-end TLeD = tt
+follows-end TGtD = tt
+follows-end TGeD = tt
+follows-end TEqEqD = tt
+follows-end TNeqD = tt
 follows-end TNewline = tt
 follows-end TEOF = tt
 
@@ -400,6 +460,16 @@ ft-word TGe h _ = stop refl
 ft-word TEqEq h _ = stop refl
 ft-word TNeq () _
 ft-word TBang () _
+ft-word TPlusD () _
+ft-word TMinusD h _ = stop refl
+ft-word TStarD () _
+ft-word TSlashD h _ = stop refl
+ft-word TLtD h _ = stop refl
+ft-word TLeD h _ = stop refl
+ft-word TGtD h _ = stop refl
+ft-word TGeD h _ = stop refl
+ft-word TEqEqD h _ = stop refl
+ft-word TNeqD () _
 ft-word TNewline h (p-sym ())
 ft-word TEOF h (p-sym ())
 
@@ -437,45 +507,112 @@ ft-num TGe h _ = stop refl , (λ ())
 ft-num TEqEq h _ = stop refl , (λ ())
 ft-num TNeq () _
 ft-num TBang () _
+ft-num TPlusD () _
+ft-num TMinusD h _ = stop refl , (λ ())
+ft-num TStarD () _
+ft-num TSlashD h _ = stop refl , (λ ())
+ft-num TLtD h _ = stop refl , (λ ())
+ft-num TLeD h _ = stop refl , (λ ())
+ft-num TGtD h _ = stop refl , (λ ())
+ft-num TGeD h _ = stop refl , (λ ())
+ft-num TEqEqD h _ = stop refl , (λ ())
+ft-num TNeqD () _
 ft-num TNewline h (p-sym ())
 ft-num TEOF h (p-sym ())
 
-ft-minus : ∀ t {cs} → (dashes t ∨ greater t) ≡ false → Printable t → ¬ Next (chars (lt t) ++ cs) '-' × ¬ Next (chars (lt t) ++ cs) '>'
-ft-minus (TWord s) h (p-word eq ¬s ¬d st ps) = wordNext {s = s} eq st refl , wordNext {s = s} eq st refl
-ft-minus (TInt (+ n)) h p-int = intNext n refl , intNext n refl
-ft-minus (TFloat i f l) h (p-float _) = floatNext i f l refl , floatNext i f l refl
-ft-minus (TString _) h (p-sym ())
-ft-minus TLParen h _ = (λ ()) , (λ ())
-ft-minus TRParen h _ = (λ ()) , (λ ())
-ft-minus TLBrace h _ = (λ ()) , (λ ())
-ft-minus TRBrace h _ = (λ ()) , (λ ())
-ft-minus TColon h _ = (λ ()) , (λ ())
-ft-minus TEquals h _ = (λ ()) , (λ ())
-ft-minus TArrow () _
-ft-minus TCaret1 h _ = (λ ()) , (λ ())
-ft-minus TCaret0 h _ = (λ ()) , (λ ())
-ft-minus TCaretW h _ = (λ ()) , (λ ())
-ft-minus TLambda h _ = (λ ()) , (λ ())
-ft-minus TComma h _ = (λ ()) , (λ ())
-ft-minus TSemicolon h _ = (λ ()) , (λ ())
-ft-minus TAt h _ = (λ ()) , (λ ())
-ft-minus TPipe h _ = (λ ()) , (λ ())
-ft-minus TDot h _ = (λ ()) , (λ ())
-ft-minus TPlus h _ = (λ ()) , (λ ())
-ft-minus TMinus () _
-ft-minus TStar h _ = (λ ()) , (λ ())
-ft-minus TSlash h _ = (λ ()) , (λ ())
-ft-minus TPercent h _ = (λ ()) , (λ ())
-ft-minus TAmpersand h _ = (λ ()) , (λ ())
-ft-minus TLt h _ = (λ ()) , (λ ())
-ft-minus TLe h _ = (λ ()) , (λ ())
-ft-minus TGt () _
-ft-minus TGe () _
-ft-minus TEqEq h _ = (λ ()) , (λ ())
-ft-minus TNeq h _ = (λ ()) , (λ ())
-ft-minus TBang h _ = (λ ()) , (λ ())
-ft-minus TNewline h (p-sym ())
-ft-minus TEOF h (p-sym ())
+ft-dashgtdot : ∀ t {cs} → (dashes t ∨ greater t ∨ dots t) ≡ false → Printable t → ¬ Next (chars (lt t) ++ cs) '-' × ¬ Next (chars (lt t) ++ cs) '>' × ¬ Next (chars (lt t) ++ cs) '.'
+ft-dashgtdot (TWord s) h (p-word eq ¬s ¬d st ps) = wordNext {s = s} eq st refl , wordNext {s = s} eq st refl , wordNext {s = s} eq st refl
+ft-dashgtdot (TInt (+ n)) h p-int = intNext n refl , intNext n refl , intNext n refl
+ft-dashgtdot (TFloat i f l) h (p-float _) = floatNext i f l refl , floatNext i f l refl , floatNext i f l refl
+ft-dashgtdot (TString _) h (p-sym ())
+ft-dashgtdot TLParen h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TRParen h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TLBrace h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TRBrace h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TColon h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TEquals h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TArrow () _
+ft-dashgtdot TCaret1 h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TCaret0 h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TCaretW h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TLambda h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TComma h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TSemicolon h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TAt h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TPipe h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TDot () _
+ft-dashgtdot TPlus h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TMinus () _
+ft-dashgtdot TStar h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TSlash h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TPercent h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TAmpersand h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TLt h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TLe h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TGt () _
+ft-dashgtdot TGe () _
+ft-dashgtdot TEqEq h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TNeq h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TBang h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TPlusD h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TMinusD () _
+ft-dashgtdot TStarD h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TSlashD h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TLtD h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TLeD h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TGtD () _
+ft-dashgtdot TGeD () _
+ft-dashgtdot TEqEqD h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TNeqD h _ = (λ ()) , (λ ()) , (λ ())
+ft-dashgtdot TNewline h (p-sym ())
+ft-dashgtdot TEOF h (p-sym ())
+
+ft-eqdot : ∀ t {cs} → (equals t ∨ dots t) ≡ false → Printable t → ¬ Next (chars (lt t) ++ cs) '=' × ¬ Next (chars (lt t) ++ cs) '.'
+ft-eqdot (TWord s) h (p-word eq ¬s ¬d st ps) = wordNext {s = s} eq st refl , wordNext {s = s} eq st refl
+ft-eqdot (TInt (+ n)) h p-int = intNext n refl , intNext n refl
+ft-eqdot (TFloat i f l) h (p-float _) = floatNext i f l refl , floatNext i f l refl
+ft-eqdot (TString _) h (p-sym ())
+ft-eqdot TLParen h _ = (λ ()) , (λ ())
+ft-eqdot TRParen h _ = (λ ()) , (λ ())
+ft-eqdot TLBrace h _ = (λ ()) , (λ ())
+ft-eqdot TRBrace h _ = (λ ()) , (λ ())
+ft-eqdot TColon h _ = (λ ()) , (λ ())
+ft-eqdot TEquals () _
+ft-eqdot TArrow h _ = (λ ()) , (λ ())
+ft-eqdot TCaret1 h _ = (λ ()) , (λ ())
+ft-eqdot TCaret0 h _ = (λ ()) , (λ ())
+ft-eqdot TCaretW h _ = (λ ()) , (λ ())
+ft-eqdot TLambda h _ = (λ ()) , (λ ())
+ft-eqdot TComma h _ = (λ ()) , (λ ())
+ft-eqdot TSemicolon h _ = (λ ()) , (λ ())
+ft-eqdot TAt h _ = (λ ()) , (λ ())
+ft-eqdot TPipe h _ = (λ ()) , (λ ())
+ft-eqdot TDot () _
+ft-eqdot TPlus h _ = (λ ()) , (λ ())
+ft-eqdot TMinus h _ = (λ ()) , (λ ())
+ft-eqdot TStar h _ = (λ ()) , (λ ())
+ft-eqdot TSlash h _ = (λ ()) , (λ ())
+ft-eqdot TPercent h _ = (λ ()) , (λ ())
+ft-eqdot TAmpersand h _ = (λ ()) , (λ ())
+ft-eqdot TLt h _ = (λ ()) , (λ ())
+ft-eqdot TLe h _ = (λ ()) , (λ ())
+ft-eqdot TGt h _ = (λ ()) , (λ ())
+ft-eqdot TGe h _ = (λ ()) , (λ ())
+ft-eqdot TEqEq () _
+ft-eqdot TNeq h _ = (λ ()) , (λ ())
+ft-eqdot TBang h _ = (λ ()) , (λ ())
+ft-eqdot TPlusD h _ = (λ ()) , (λ ())
+ft-eqdot TMinusD h _ = (λ ()) , (λ ())
+ft-eqdot TStarD h _ = (λ ()) , (λ ())
+ft-eqdot TSlashD h _ = (λ ()) , (λ ())
+ft-eqdot TLtD h _ = (λ ()) , (λ ())
+ft-eqdot TLeD h _ = (λ ()) , (λ ())
+ft-eqdot TGtD h _ = (λ ()) , (λ ())
+ft-eqdot TGeD h _ = (λ ()) , (λ ())
+ft-eqdot TEqEqD () _
+ft-eqdot TNeqD h _ = (λ ()) , (λ ())
+ft-eqdot TNewline h (p-sym ())
+ft-eqdot TEOF h (p-sym ())
 
 ft-eq : ∀ t {cs} → equals t ≡ false → Printable t → ¬ Next (chars (lt t) ++ cs) '='
 ft-eq (TWord s) h (p-word eq ¬s ¬d st ps) = wordNext {s = s} eq st refl
@@ -511,45 +648,112 @@ ft-eq TGe h _ = (λ ())
 ft-eq TEqEq () _
 ft-eq TNeq h _ = (λ ())
 ft-eq TBang h _ = (λ ())
+ft-eq TPlusD h _ = (λ ())
+ft-eq TMinusD h _ = (λ ())
+ft-eq TStarD h _ = (λ ())
+ft-eq TSlashD h _ = (λ ())
+ft-eq TLtD h _ = (λ ())
+ft-eq TLeD h _ = (λ ())
+ft-eq TGtD h _ = (λ ())
+ft-eq TGeD h _ = (λ ())
+ft-eq TEqEqD () _
+ft-eq TNeqD h _ = (λ ())
 ft-eq TNewline h (p-sym ())
 ft-eq TEOF h (p-sym ())
 
-ft-brace : ∀ t {cs} → dashes t ≡ false → Printable t → ¬ Next (chars (lt t) ++ cs) '-'
-ft-brace (TWord s) h (p-word eq ¬s ¬d st ps) = wordNext {s = s} eq st refl
-ft-brace (TInt (+ n)) h p-int = intNext n refl
-ft-brace (TFloat i f l) h (p-float _) = floatNext i f l refl
-ft-brace (TString _) h (p-sym ())
-ft-brace TLParen h _ = (λ ())
-ft-brace TRParen h _ = (λ ())
-ft-brace TLBrace h _ = (λ ())
-ft-brace TRBrace h _ = (λ ())
-ft-brace TColon h _ = (λ ())
-ft-brace TEquals h _ = (λ ())
-ft-brace TArrow () _
-ft-brace TCaret1 h _ = (λ ())
-ft-brace TCaret0 h _ = (λ ())
-ft-brace TCaretW h _ = (λ ())
-ft-brace TLambda h _ = (λ ())
-ft-brace TComma h _ = (λ ())
-ft-brace TSemicolon h _ = (λ ())
-ft-brace TAt h _ = (λ ())
-ft-brace TPipe h _ = (λ ())
-ft-brace TDot h _ = (λ ())
-ft-brace TPlus h _ = (λ ())
-ft-brace TMinus () _
-ft-brace TStar h _ = (λ ())
-ft-brace TSlash h _ = (λ ())
-ft-brace TPercent h _ = (λ ())
-ft-brace TAmpersand h _ = (λ ())
-ft-brace TLt h _ = (λ ())
-ft-brace TLe h _ = (λ ())
-ft-brace TGt h _ = (λ ())
-ft-brace TGe h _ = (λ ())
-ft-brace TEqEq h _ = (λ ())
-ft-brace TNeq h _ = (λ ())
-ft-brace TBang h _ = (λ ())
-ft-brace TNewline h (p-sym ())
-ft-brace TEOF h (p-sym ())
+ft-dash : ∀ t {cs} → dashes t ≡ false → Printable t → ¬ Next (chars (lt t) ++ cs) '-'
+ft-dash (TWord s) h (p-word eq ¬s ¬d st ps) = wordNext {s = s} eq st refl
+ft-dash (TInt (+ n)) h p-int = intNext n refl
+ft-dash (TFloat i f l) h (p-float _) = floatNext i f l refl
+ft-dash (TString _) h (p-sym ())
+ft-dash TLParen h _ = (λ ())
+ft-dash TRParen h _ = (λ ())
+ft-dash TLBrace h _ = (λ ())
+ft-dash TRBrace h _ = (λ ())
+ft-dash TColon h _ = (λ ())
+ft-dash TEquals h _ = (λ ())
+ft-dash TArrow () _
+ft-dash TCaret1 h _ = (λ ())
+ft-dash TCaret0 h _ = (λ ())
+ft-dash TCaretW h _ = (λ ())
+ft-dash TLambda h _ = (λ ())
+ft-dash TComma h _ = (λ ())
+ft-dash TSemicolon h _ = (λ ())
+ft-dash TAt h _ = (λ ())
+ft-dash TPipe h _ = (λ ())
+ft-dash TDot h _ = (λ ())
+ft-dash TPlus h _ = (λ ())
+ft-dash TMinus () _
+ft-dash TStar h _ = (λ ())
+ft-dash TSlash h _ = (λ ())
+ft-dash TPercent h _ = (λ ())
+ft-dash TAmpersand h _ = (λ ())
+ft-dash TLt h _ = (λ ())
+ft-dash TLe h _ = (λ ())
+ft-dash TGt h _ = (λ ())
+ft-dash TGe h _ = (λ ())
+ft-dash TEqEq h _ = (λ ())
+ft-dash TNeq h _ = (λ ())
+ft-dash TBang h _ = (λ ())
+ft-dash TPlusD h _ = (λ ())
+ft-dash TMinusD () _
+ft-dash TStarD h _ = (λ ())
+ft-dash TSlashD h _ = (λ ())
+ft-dash TLtD h _ = (λ ())
+ft-dash TLeD h _ = (λ ())
+ft-dash TGtD h _ = (λ ())
+ft-dash TGeD h _ = (λ ())
+ft-dash TEqEqD h _ = (λ ())
+ft-dash TNeqD h _ = (λ ())
+ft-dash TNewline h (p-sym ())
+ft-dash TEOF h (p-sym ())
+
+ft-dot : ∀ t {cs} → dots t ≡ false → Printable t → ¬ Next (chars (lt t) ++ cs) '.'
+ft-dot (TWord s) h (p-word eq ¬s ¬d st ps) = wordNext {s = s} eq st refl
+ft-dot (TInt (+ n)) h p-int = intNext n refl
+ft-dot (TFloat i f l) h (p-float _) = floatNext i f l refl
+ft-dot (TString _) h (p-sym ())
+ft-dot TLParen h _ = (λ ())
+ft-dot TRParen h _ = (λ ())
+ft-dot TLBrace h _ = (λ ())
+ft-dot TRBrace h _ = (λ ())
+ft-dot TColon h _ = (λ ())
+ft-dot TEquals h _ = (λ ())
+ft-dot TArrow h _ = (λ ())
+ft-dot TCaret1 h _ = (λ ())
+ft-dot TCaret0 h _ = (λ ())
+ft-dot TCaretW h _ = (λ ())
+ft-dot TLambda h _ = (λ ())
+ft-dot TComma h _ = (λ ())
+ft-dot TSemicolon h _ = (λ ())
+ft-dot TAt h _ = (λ ())
+ft-dot TPipe h _ = (λ ())
+ft-dot TDot () _
+ft-dot TPlus h _ = (λ ())
+ft-dot TMinus h _ = (λ ())
+ft-dot TStar h _ = (λ ())
+ft-dot TSlash h _ = (λ ())
+ft-dot TPercent h _ = (λ ())
+ft-dot TAmpersand h _ = (λ ())
+ft-dot TLt h _ = (λ ())
+ft-dot TLe h _ = (λ ())
+ft-dot TGt h _ = (λ ())
+ft-dot TGe h _ = (λ ())
+ft-dot TEqEq h _ = (λ ())
+ft-dot TNeq h _ = (λ ())
+ft-dot TBang h _ = (λ ())
+ft-dot TPlusD h _ = (λ ())
+ft-dot TMinusD h _ = (λ ())
+ft-dot TStarD h _ = (λ ())
+ft-dot TSlashD h _ = (λ ())
+ft-dot TLtD h _ = (λ ())
+ft-dot TLeD h _ = (λ ())
+ft-dot TGtD h _ = (λ ())
+ft-dot TGeD h _ = (λ ())
+ft-dot TEqEqD h _ = (λ ())
+ft-dot TNeqD h _ = (λ ())
+ft-dot TNewline h (p-sym ())
+ft-dot TEOF h (p-sym ())
 
 -- | A token may follow a token it is not `apart` from.
 follows-tok : ∀ u t {cs} → apart u t ≡ false → Printable t → Follows u (chars (lt t) ++ cs)
@@ -559,7 +763,7 @@ follows-tok (TFloat _ _ _) t h p = proj₁ (ft-num t h p)
 follows-tok (TString _) t h p = tt
 follows-tok TLParen t h p = tt
 follows-tok TRParen t h p = tt
-follows-tok TLBrace t h p = ft-brace t h p
+follows-tok TLBrace t h p = ft-dash t h p
 follows-tok TRBrace t h p = tt
 follows-tok TColon t h p = tt
 follows-tok TEquals t h p = ft-eq t h p
@@ -573,19 +777,29 @@ follows-tok TSemicolon t h p = tt
 follows-tok TAt t h p = tt
 follows-tok TPipe t h p = tt
 follows-tok TDot t h p = tt
-follows-tok TPlus t h p = tt
-follows-tok TMinus t h p = ft-minus t h p
-follows-tok TStar t h p = tt
-follows-tok TSlash t h p = tt
+follows-tok TPlus t h p = ft-dot t h p
+follows-tok TMinus t h p = ft-dashgtdot t h p
+follows-tok TStar t h p = ft-dot t h p
+follows-tok TSlash t h p = ft-dot t h p
 follows-tok TPercent t h p = tt
 follows-tok TAmpersand t h p = tt
-follows-tok TLt t h p = ft-eq t h p
-follows-tok TLe t h p = tt
-follows-tok TGt t h p = ft-eq t h p
-follows-tok TGe t h p = tt
-follows-tok TEqEq t h p = tt
-follows-tok TNeq t h p = tt
+follows-tok TLt t h p = ft-eqdot t h p
+follows-tok TLe t h p = ft-dot t h p
+follows-tok TGt t h p = ft-eqdot t h p
+follows-tok TGe t h p = ft-dot t h p
+follows-tok TEqEq t h p = ft-dot t h p
+follows-tok TNeq t h p = ft-dot t h p
 follows-tok TBang t h p = ft-eq t h p
+follows-tok TPlusD t h p = tt
+follows-tok TMinusD t h p = tt
+follows-tok TStarD t h p = tt
+follows-tok TSlashD t h p = tt
+follows-tok TLtD t h p = tt
+follows-tok TLeD t h p = tt
+follows-tok TGtD t h p = tt
+follows-tok TGeD t h p = tt
+follows-tok TEqEqD t h p = tt
+follows-tok TNeqD t h p = tt
 follows-tok TNewline t h p = tt
 follows-tok TEOF t h p = tt
 
@@ -687,6 +901,16 @@ tok-blank TGe _ = (λ ()) , (λ ())
 tok-blank TEqEq _ = (λ ()) , (λ ())
 tok-blank TNeq _ = (λ ()) , (λ ())
 tok-blank TBang _ = (λ ()) , (λ ())
+tok-blank TPlusD _ = (λ ()) , (λ ())
+tok-blank TMinusD _ = (λ ()) , (λ ())
+tok-blank TStarD _ = (λ ()) , (λ ())
+tok-blank TSlashD _ = (λ ()) , (λ ())
+tok-blank TLtD _ = (λ ()) , (λ ())
+tok-blank TLeD _ = (λ ()) , (λ ())
+tok-blank TGtD _ = (λ ()) , (λ ())
+tok-blank TGeD _ = (λ ()) , (λ ())
+tok-blank TEqEqD _ = (λ ()) , (λ ())
+tok-blank TNeqD _ = (λ ()) , (λ ())
 tok-blank TNewline (p-sym ())
 tok-blank TEOF (p-sym ())
 

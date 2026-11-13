@@ -36,7 +36,7 @@ import Data.String as Str
 open import Data.Char using (Char)
 import Data.Char as Ch
 open import Relation.Nullary using (does)
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TArrow; TEquals; TBang; TLBrace; TDot)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TArrow; TEquals; TBang; TLBrace; TDot; TOpD)
 open import Once.Adequacy.SpecTokNames
 open import Once.Format.Spell using (spell)
 
@@ -65,8 +65,9 @@ data Doc : Set where
 -- What the layout writes
 ------------------------------------------------------------------------
 
--- The classes `apart` reads.
-continues dashes greater equals number : Token → Bool
+-- The classes `apart` reads: what continues a word, or a number; what starts
+-- with `-`, `>`, `=`, `.`.
+continues dashes greater equals dots number : Token → Bool
 continues (TWord _)      = true
 continues (TInt _)       = true
 continues (TFloat _ _ _) = true
@@ -74,6 +75,9 @@ continues TPlus          = true
 continues TStar          = true
 continues TBang          = true
 continues TNeq           = true
+continues TPlusD         = true
+continues TStarD         = true
+continues TNeqD          = true
 {-# CATCHALL #-}
 continues _              = false
 number TDot = true
@@ -81,16 +85,24 @@ number TDot = true
 number t    = continues t
 dashes TMinus = true
 dashes TArrow = true
+dashes TMinusD = true
 {-# CATCHALL #-}
 dashes _      = false
 greater TGt = true
 greater TGe = true
+greater TGtD = true
+greater TGeD = true
 {-# CATCHALL #-}
 greater _   = false
 equals TEquals = true
 equals TEqEq   = true
+equals TEqEqD  = true
 {-# CATCHALL #-}
 equals _       = false
+
+dots TDot = true
+{-# CATCHALL #-}
+dots _    = false
 
 -- After a comment's `--` (one is added when it has none).
 body : List Char → List Char
@@ -115,16 +127,25 @@ chars (lind i) = replicate i ' '
 chars (lcm c)  = c
 
 -- | Two tokens that would lex as one, or as something else, written together:
--- a word or a number before a word, a number, `+`, `*`, `!`, `!=` (they
--- continue a word) or, after a number, `.`; `-` before `-`, `->`, `>`, `>=`; `<`, `>`,
--- `=`, `!` before `=`, `==`; `{` before `-`, `->`.
+-- a word or a number before a word, a number, `+`, `*`, `!`, `!=`, `+.`, `*.`,
+-- `!=.` (they continue a word) or, after a number, `.`; `-` before what starts
+-- with `-` or `>`; `<`, `>`, `=`, `!` before what starts with `=`; `{` before
+-- what starts with `-`; an operator with an IEEE form before `.` (it would read
+-- as that form).
 apart : Token → Token → Bool
 apart (TWord _)      t    = continues t
 apart (TInt _)       t    = number t
 apart (TFloat _ _ _) t    = number t
-apart TMinus         t    = dashes t ∨ greater t
-apart TLt            t    = equals t
-apart TGt            t    = equals t
+apart TMinus         t    = dashes t ∨ greater t ∨ dots t
+apart TLt            t    = equals t ∨ dots t
+apart TGt            t    = equals t ∨ dots t
+apart TPlus          t    = dots t
+apart TStar          t    = dots t
+apart TSlash         t    = dots t
+apart TLe            t    = dots t
+apart TGe            t    = dots t
+apart TEqEq          t    = dots t
+apart TNeq           t    = dots t
 apart TEquals        t    = equals t
 apart TBang          t    = equals t
 apart TLBrace        t    = dashes t

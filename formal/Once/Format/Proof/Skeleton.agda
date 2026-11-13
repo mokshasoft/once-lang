@@ -36,6 +36,10 @@ open import Once.Spec.Grade using (Quantity; Zero; One; Many; pureᶠ; actᶠ)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Name using (canonical)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TNewline; TEOF)
+open import Once.Adequacy.SpecTokNames
+import Once.Spec.Surface.Operator as Op
+open import Once.Spec.Float.Value using (pos; neg)
+import Data.Integer as ℤ
 open import Once.Format.Doc using (Doc; empty; tk; sp; cmt; para; line; newline; blank; eol; _<>_; nest; group;
   indent; flatWidth)
 open import Once.Format.Comment using (commentRun; commentLinesDoc; commentLines; classify; prose; verbatim; lineDoc)
@@ -89,20 +93,19 @@ private
 
 opToken-sym : ∀ c → T (symM (opToken c))
 opToken-sym c =
-  ifM (does (c Ch.≟ '.')) {S.TDot} tt (ifM (does (c Ch.≟ '+')) {S.TPlus} tt (ifM (does (c Ch.≟ '-')) {S.TMinus} tt (ifM (does (c Ch.≟ '*')) {S.TStar} tt (ifM (does (c Ch.≟ '/')) {S.TSlash} tt (ifM (does (c Ch.≟ '%')) {S.TPercent} tt (ifM (does (c Ch.≟ '<')) {S.TLt} tt (ifM (does (c Ch.≟ '>')) {S.TGt} tt (ifM (does (c Ch.≟ '|')) {S.TPipe} tt (ifM (does (c Ch.≟ '&')) {S.TAmpersand} tt (ifM (does (c Ch.≟ '@')) {S.TAt} tt tt))))))))))
+  ifM (does (c Ch.≟ '.')) {S.TDot} tt (ifM (does (c Ch.≟ '+')) {TPlus} tt (ifM (does (c Ch.≟ '-')) {TMinus} tt (ifM (does (c Ch.≟ '*')) {TStar} tt (ifM (does (c Ch.≟ '/')) {TSlash} tt (ifM (does (c Ch.≟ '%')) {TPercent} tt (ifM (does (c Ch.≟ '<')) {TLt} tt (ifM (does (c Ch.≟ '>')) {TGt} tt (ifM (does (c Ch.≟ '|')) {S.TPipe} tt (ifM (does (c Ch.≟ '&')) {S.TAmpersand} tt (ifM (does (c Ch.≟ '@')) {S.TAt} tt tt))))))))))
+
+dotToken-sym : ∀ c d → T (symM (dotToken c d))
+dotToken-sym c d =
+  ifM′ (not (does (d Ch.≟ '.'))) tt (ifM (does (c Ch.≟ '+')) {TPlusD} tt (ifM (does (c Ch.≟ '-')) {TMinusD} tt (ifM (does (c Ch.≟ '*')) {TStarD} tt (ifM (does (c Ch.≟ '/')) {TSlashD} tt (ifM (does (c Ch.≟ '<')) {TLtD} tt (ifM (does (c Ch.≟ '>')) {TGtD} tt tt))))))
+  where
+    ifM′ : ∀ b {r} → T (symM nothing) → T (symM r) → T (symM (if b then nothing else r))
+    ifM′ true  p q = p
+    ifM′ false p q = q
 
 opTok-plain : ∀ op → T (plain (tk (opTok op)))
-opTok-plain OpAdd = tt
-opTok-plain OpSub = tt
-opTok-plain OpMul = tt
-opTok-plain OpDiv = tt
-opTok-plain OpMod = tt
-opTok-plain OpLt  = tt
-opTok-plain OpLe  = tt
-opTok-plain OpGt  = tt
-opTok-plain OpGe  = tt
-opTok-plain OpEq  = tt
-opTok-plain OpNe  = tt
+opTok-plain (Op.plain o)  = tt
+opTok-plain (Op.dotted d) = tt
 
 -- | The k-th anchor with its comments, as `anchor` prints it.
 anchorDoc : Trivia → ℕ → Token → Doc
@@ -181,13 +184,17 @@ module Same (tv₁ tv₂ : Trivia) where
   ind-word s = ind-word-pick s (s Data.String.== "compose") refl
 
   ind-opToks : ∀ cs → Ind (opToks cs)
+  ind-opPair : ∀ c d ds cs m {p : T (symM m)} → Ind (opPair c d ds cs m)
   ind-opToks []           = ind-pure
   ind-opToks (c ∷ [])     = opTok1′ (opToken c) {opToken-sym c}
     where
       opTok1′ : ∀ m {p : T (symM m)} → Ind (opTok1 m)
       opTok1′ (just x) {p} = ind-plain p
       opTok1′ nothing      = ind-pure
-  ind-opToks (c ∷ d ∷ cs) = opTok1′ (opToken c) {opToken-sym c} ⊕ⁱ ind-ifsp _ ⊕ⁱ ind-opToks (d ∷ cs)
+  ind-opToks (c ∷ ds@(d ∷ cs)) = ind-opPair c d ds cs (dotToken c d) {dotToken-sym c d}
+
+  ind-opPair c d ds cs (just x) {p} = ind-plain p ⊕ⁱ ind-opToks cs
+  ind-opPair c d ds cs nothing  {_} = opTok1′ (opToken c) {opToken-sym c} ⊕ⁱ ind-ifsp _ ⊕ⁱ ind-opToks ds
     where
       opTok1′ : ∀ m {p : T (symM m)} → Ind (opTok1 m)
       opTok1′ (just x) {p} = ind-plain p
@@ -249,11 +256,13 @@ module Same (tv₁ tv₂ : Trivia) where
             ⊕ⁱ ind-ex 0 true el ⊕ⁱ ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-word "Right" ⊕ⁱ ind-pure ⊕ⁱ ind-word y
             ⊕ⁱ ind-infix _ ⊕ⁱ ind-ex 0 true er ⊕ⁱ ind-pure ⊕ⁱ ind-pure)))
     ind-ex l wh RUnit = ind-pure ⊕ⁱ ind-pure
-    ind-ex l wh (RInt z) = ind-anchor (TInt z)
-    ind-ex l wh (RFloat i f n) = ind-anchor (TFloat i f n)
+    ind-ex l wh (RInt (ℤ.+ n)) = ind-anchor (TInt (ℤ.+ n))
+    ind-ex l wh (RInt ℤ.-[1+ n ]) = ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-anchor (TInt (ℤ.+ suc n)))
+    ind-ex l wh (RFloat pos i f n) = ind-anchor (TFloat i f n)
+    ind-ex l wh (RFloat neg i f n) = ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-anchor (TFloat i f n))
     ind-ex l wh (RAnnot e T) = ind-pure ⊕ⁱ ind-ex 0 true e ⊕ⁱ ind-infix _ ⊕ⁱ ind-ty 0 true (toPoly T) ⊕ⁱ ind-pure
     ind-ex l wh (RBinOp op a b) = ind-gn (ind-paren (opLevel op <ᵇ l) (ind-bin (opLevel op) op a b))
-    ind-ex l wh (RNeg e) = ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-ifsp (startsNeg e) ⊕ⁱ ind-ex 4 false e)
+    ind-ex l wh (RNeg e) = ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-ifsp (startsNeg e) ⊕ⁱ ind-paren (startsNum e) (ind-ex 4 false e))
 
     ind-dotted : ∀ xs → Ind (dotted xs)
     ind-dotted [] = ind-pure
@@ -271,7 +280,7 @@ module Same (tv₁ tv₂ : Trivia) where
     ind-comp l true (RDestruct us ux uel uy uer) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RDestruct us ux uel uy uer) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
     ind-comp l true RUnit a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine RUnit ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
     ind-comp l true (RInt uz) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RInt uz) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
-    ind-comp l true (RFloat ui ufr ul) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RFloat ui ufr ul) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
+    ind-comp l true (RFloat usg ui ufr ul) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RFloat usg ui ufr ul) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
     ind-comp l true (RAnnot ue uT) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RAnnot ue uT) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
     ind-comp l true (RBinOp uop ua ub) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RBinOp uop ua ub) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
     ind-comp l true (RNeg ue) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RNeg ue) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
@@ -291,7 +300,7 @@ module Same (tv₁ tv₂ : Trivia) where
     ind-chain (RDestruct s x el y er) = ind-ex 1 false (RDestruct s x el y er)
     ind-chain RUnit = ind-ex 1 false RUnit
     ind-chain (RInt z) = ind-ex 1 false (RInt z)
-    ind-chain (RFloat i fr l) = ind-ex 1 false (RFloat i fr l)
+    ind-chain (RFloat sg i fr l) = ind-ex 1 false (RFloat sg i fr l)
     ind-chain (RAnnot e T) = ind-ex 1 false (RAnnot e T)
     ind-chain (RBinOp op a b) = ind-ex 1 false (RBinOp op a b)
     ind-chain (RNeg e) = ind-ex 1 false (RNeg e)
@@ -307,7 +316,7 @@ module Same (tv₁ tv₂ : Trivia) where
     ind-chain′ true (RDestruct us ux uel uy uer) h = ind-comp 0 false (RDestruct us ux uel uy uer) h
     ind-chain′ true RUnit h = ind-comp 0 false RUnit h
     ind-chain′ true (RInt uz) h = ind-comp 0 false (RInt uz) h
-    ind-chain′ true (RFloat ui ufr ul) h = ind-comp 0 false (RFloat ui ufr ul) h
+    ind-chain′ true (RFloat usg ui ufr ul) h = ind-comp 0 false (RFloat usg ui ufr ul) h
     ind-chain′ true (RAnnot ue uT) h = ind-comp 0 false (RAnnot ue uT) h
     ind-chain′ true (RBinOp uop ua ub) h = ind-comp 0 false (RBinOp uop ua ub) h
     ind-chain′ true (RNeg ue) h = ind-comp 0 false (RNeg ue) h
@@ -328,7 +337,7 @@ module Same (tv₁ tv₂ : Trivia) where
     ind-left lv (RDestruct s x el y er) = ind-ex (leftLevel lv) false (RDestruct s x el y er)
     ind-left lv RUnit = ind-ex (leftLevel lv) false RUnit
     ind-left lv (RInt z) = ind-ex (leftLevel lv) false (RInt z)
-    ind-left lv (RFloat i fr l) = ind-ex (leftLevel lv) false (RFloat i fr l)
+    ind-left lv (RFloat sg i fr l) = ind-ex (leftLevel lv) false (RFloat sg i fr l)
     ind-left lv (RAnnot e T) = ind-ex (leftLevel lv) false (RAnnot e T)
     ind-left lv (RNeg e) = ind-ex (leftLevel lv) false (RNeg e)
 
@@ -343,7 +352,7 @@ module Same (tv₁ tv₂ : Trivia) where
     ind-spine (RDestruct s x el y er) = ind-ex 6 false (RDestruct s x el y er)
     ind-spine RUnit = ind-ex 6 false RUnit
     ind-spine (RInt z) = ind-ex 6 false (RInt z)
-    ind-spine (RFloat i fr l) = ind-ex 6 false (RFloat i fr l)
+    ind-spine (RFloat sg i fr l) = ind-ex 6 false (RFloat sg i fr l)
     ind-spine (RAnnot e T) = ind-ex 6 false (RAnnot e T)
     ind-spine (RBinOp op a b) = ind-ex 6 false (RBinOp op a b)
     ind-spine (RNeg e) = ind-ex 6 false (RNeg e)
@@ -359,7 +368,7 @@ module Same (tv₁ tv₂ : Trivia) where
     ind-spine′ true (RDestruct us ux uel uy uer) a = ind-spine (RDestruct us ux uel uy uer) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
     ind-spine′ true RUnit a = ind-spine RUnit ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
     ind-spine′ true (RInt uz) a = ind-spine (RInt uz) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
-    ind-spine′ true (RFloat ui ufr ul) a = ind-spine (RFloat ui ufr ul) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
+    ind-spine′ true (RFloat usg ui ufr ul) a = ind-spine (RFloat usg ui ufr ul) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
     ind-spine′ true (RAnnot ue uT) a = ind-spine (RAnnot ue uT) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
     ind-spine′ true (RBinOp uop ua ub) a = ind-spine (RBinOp uop ua ub) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
     ind-spine′ true (RNeg ue) a = ind-spine (RNeg ue) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
@@ -376,7 +385,7 @@ module Same (tv₁ tv₂ : Trivia) where
     ind-lam (RDestruct s x el y er) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RDestruct s x el y er))
     ind-lam RUnit = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true RUnit)
     ind-lam (RInt z) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RInt z))
-    ind-lam (RFloat i fr l) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RFloat i fr l))
+    ind-lam (RFloat sg i fr l) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RFloat sg i fr l))
     ind-lam (RAnnot e T) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RAnnot e T))
     ind-lam (RBinOp op a b) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RBinOp op a b))
     ind-lam (RNeg e) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RNeg e))
@@ -395,7 +404,7 @@ module Same (tv₁ tv₂ : Trivia) where
     ind-let x v (RDestruct bs bx bel by ber) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RDestruct bs bx bel by ber)
     ind-let x v RUnit = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true RUnit
     ind-let x v (RInt bz) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RInt bz)
-    ind-let x v (RFloat bi bfr bl) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RFloat bi bfr bl)
+    ind-let x v (RFloat bsg bi bfr bl) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RFloat bsg bi bfr bl)
     ind-let x v (RAnnot be bT) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RAnnot be bT)
     ind-let x v (RBinOp bop ba bb) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RBinOp bop ba bb)
     ind-let x v (RNeg be) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RNeg be)

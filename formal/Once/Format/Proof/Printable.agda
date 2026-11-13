@@ -21,7 +21,7 @@ open import Data.Bool using (Bool; true; false; not; _∧_; _∨_; if_then_else_
 open import Data.Char using (Char; isDigit)
 import Data.Char as Ch
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Integer using (ℤ; +_)
+open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -33,9 +33,16 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_; does)
 
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; Special; isIdentStart; isIdentContinue; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand; TBang)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; Special; isIdentStart; isIdentContinue;
+  TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon;
+  TAt; TPipe; TDot; TAmpersand; TBang; TOp; TOpD)
 open import Once.Adequacy.SpecTokNames
-open import Once.Spec.Surface.Lexing using (sp-space; sp-tab; sp-cr; sp-nl; sp-backslash; sp-caret; sp-dash; sp-lbrace; sp-lt; sp-gt; sp-eq; sp-bang; sp-lparen; sp-rparen; sp-rbrace; sp-colon; sp-comma; sp-semi; sp-at; sp-pipe; sp-plus; sp-star; sp-slash; sp-pct; sp-amp; sp-dot; sp-quote)
+import Once.Spec.Surface.Operator as Op
+open import Once.Spec.Surface.Operator using (‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
+open import Once.Spec.Float.Value using (pos; neg)
+open import Once.Spec.Surface.Lexing using (sp-space; sp-tab; sp-cr; sp-nl; sp-backslash; sp-caret; sp-dash; sp-lbrace;
+  sp-lt; sp-gt; sp-eq; sp-bang; sp-lparen; sp-rparen; sp-rbrace; sp-colon; sp-comma; sp-semi; sp-at; sp-pipe; sp-plus;
+  sp-star; sp-slash; sp-pct; sp-amp; sp-dot; sp-quote)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; pureᶠ; actᶠ; fin; eff; mk-kind)
 open import Once.Spec.Type using (Ty; Fun; Unit; Void; Int; Float; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 import Once.Spec.Type as T
@@ -44,8 +51,10 @@ open import Once.Format.Doc using (Doc; toks; indent)
 open import Once.Format.Print
 open import Once.Format.Proof.Lexing using (Printable; p-word; p-int; p-float; p-sym; Sym; s-lparen; s-rparen;
   s-lbrace; s-rbrace; s-colon; s-equals; s-arrow; s-caret1; s-caret0; s-caretw; s-lambda; s-comma; s-semicolon; s-at;
-  s-pipe; s-dot; s-plus; s-minus; s-star; s-slash; s-percent; s-ampersand; s-lt; s-le; s-gt; s-ge; s-eqeq; s-neq; s-bang)
+  s-pipe; s-dot; s-plus; s-minus; s-star; s-slash; s-percent; s-ampersand; s-lt; s-le; s-gt; s-ge; s-eqeq; s-neq; s-bang;
+  s-plusd; s-minusd; s-stard; s-slashd; s-ltd; s-led; s-gtd; s-ged; s-eqeqd; s-neqd)
 open import Once.Format.Proof.Tokens using (word-toks; anchor-toks)
+open import Once.Format.Proof.ExprBase using (dot-token)
 
 ------------------------------------------------------------------------
 -- Printers that write printable tokens
@@ -209,12 +218,46 @@ pr-opTok1 : ∀ m → (∀ {x} → m ≡ just x → Sym x) → Pr (opTok1 m)
 pr-opTok1 (just x) s = pr-t (p-sym (s refl))
 pr-opTok1 nothing  s = pr-empty
 
+-- | An operator's token, and its IEEE form's.
+glyphSym : ∀ o → Sym (TOp o)
+glyphSym ‹ o+ ›  = s-plus
+glyphSym ‹ o- ›  = s-minus
+glyphSym ‹ o* ›  = s-star
+glyphSym ‹ o/ ›  = s-slash
+glyphSym o%      = s-percent
+glyphSym ‹ o< ›  = s-lt
+glyphSym ‹ o<= › = s-le
+glyphSym ‹ o> ›  = s-gt
+glyphSym ‹ o>= › = s-ge
+glyphSym ‹ o== › = s-eqeq
+glyphSym ‹ o!= › = s-neq
+
+dotSym : ∀ d → Sym (TOpD d)
+dotSym o+  = s-plusd
+dotSym o-  = s-minusd
+dotSym o*  = s-stard
+dotSym o/  = s-slashd
+dotSym o<  = s-ltd
+dotSym o<= = s-led
+dotSym o>  = s-gtd
+dotSym o>= = s-ged
+dotSym o== = s-eqeqd
+dotSym o!= = s-neqd
+
+private
+  dotToken-sym : ∀ c d {x} → dotToken c d ≡ just x → Sym x
+  dotToken-sym c d e with dot-token c d e
+  ... | dd , refl , _ , _ = dotSym dd
+
 pr-opToks : ∀ cs → Pr (opToks cs)
-pr-opToks []           = pr-empty
-pr-opToks (c ∷ [])     = pr-opTok1 (opToken c) (opToken-sym c)
-pr-opToks (c ∷ d ∷ cs) =
+pr-opPair : ∀ c d ds cs m → (∀ {x} → m ≡ just x → Sym x) → Pr (opPair c d ds cs m)
+pr-opToks []                = pr-empty
+pr-opToks (c ∷ [])          = pr-opTok1 (opToken c) (opToken-sym c)
+pr-opToks (c ∷ ds@(d ∷ cs)) = pr-opPair c d ds cs (dotToken c d) (dotToken-sym c d)
+pr-opPair c d ds cs (just x) s = pr-t (p-sym (s refl)) ⊕ᵖ pr-opToks cs
+pr-opPair c d ds cs nothing  s =
   pr-opTok1 (opToken c) (opToken-sym c) ⊕ᵖ pr-pure (λ r → sp? (does (c Ch.≟ '-') ∧ (does (d Ch.≟ '-') ∨ does (d Ch.≟ '>'))) r)
-    ⊕ᵖ pr-opToks (d ∷ cs)
+    ⊕ᵖ pr-opToks ds
   where
     sp? : ∀ b r → toks (if b then Once.Format.Doc.sp else Once.Format.Doc.empty) r ≡ r
     sp? true  r = refl
@@ -330,8 +373,8 @@ PE (RLet x v b)            = Pw x × PE v × PE b
 PE (RPair a b)             = PE a × PE b
 PE (RDestruct s x el y er) = PE s × Pw x × PE el × Pw y × PE er
 PE RUnit                   = ⊤
-PE (RInt z)                = ∃[ n ] z ≡ + n
-PE (RFloat i f l)          = ∃[ l′ ] (l ≡ suc l′ × f < 10 ^ suc l′)
+PE (RInt z)                = ⊤
+PE (RFloat s i f l)        = ∃[ l′ ] (l ≡ suc l′ × f < 10 ^ suc l′)
 PE (RAnnot e T)            = PE e
 PE (RBinOp op a b)         = PE a × PE b
 PE (RNeg e)                = PE e
@@ -348,17 +391,8 @@ private
   sp?′ false r = refl
 
   opSym : ∀ op → Sym (opTok op)
-  opSym OpAdd = s-plus
-  opSym OpSub = s-minus
-  opSym OpMul = s-star
-  opSym OpDiv = s-slash
-  opSym OpMod = s-percent
-  opSym OpLt = s-lt
-  opSym OpLe = s-le
-  opSym OpGt = s-gt
-  opSym OpGe = s-ge
-  opSym OpEq = s-eqeq
-  opSym OpNe = s-neq
+  opSym (Op.plain o)  = glyphSym o
+  opSym (Op.dotted d) = dotSym d
 
 mutual
   pr-ex : ∀ l wh e → PE e → Pr (pex l wh e)
@@ -377,14 +411,16 @@ mutual
           ⊕ᵖ pr-ex 0 true el pl ⊕ᵖ pr-line ⊕ᵖ pr-t (p-sym s-semicolon) ⊕ᵖ pr-␣ ⊕ᵖ pr-word (kw "Right" refl) ⊕ᵖ pr-␣
           ⊕ᵖ pr-word py ⊕ᵖ pr-infix′ s-arrow ⊕ᵖ pr-ex 0 true er pq ⊕ᵖ pr-line ⊕ᵖ pr-t (p-sym s-rbrace))))
   pr-ex l wh RUnit _ = pr-t (p-sym s-lparen) ⊕ᵖ pr-t (p-sym s-rparen)
-  pr-ex l wh (RInt .(+ n)) (n , refl) = pr-anchor p-int
-  pr-ex l wh (RFloat i f .(suc l′)) (l′ , refl , f<) = pr-anchor (p-float f<)
+  pr-ex l wh (RInt (+ n)) _ = pr-anchor p-int
+  pr-ex l wh (RInt -[1+ n ]) _ = pr-paren (4 <ᵇ l) (pr-t (p-sym s-minus) ⊕ᵖ pr-anchor p-int)
+  pr-ex l wh (RFloat pos i f .(suc l′)) (l′ , refl , f<) = pr-anchor (p-float f<)
+  pr-ex l wh (RFloat neg i f .(suc l′)) (l′ , refl , f<) = pr-paren (4 <ᵇ l) (pr-t (p-sym s-minus) ⊕ᵖ pr-anchor (p-float f<))
   pr-ex l wh (RAnnot e T) pe =
     pr-t (p-sym s-lparen) ⊕ᵖ pr-ex 0 true e pe ⊕ᵖ pr-infix′ s-colon ⊕ᵖ pr-ty 0 true (toPoly T) (pt-ground T)
       ⊕ᵖ pr-t (p-sym s-rparen)
   pr-ex l wh (RBinOp op a b) (pa , pb) = pr-gn (pr-paren (opLevel op <ᵇ l) (pr-bin (opLevel op) op a b pa pb))
   pr-ex l wh (RNeg e) pe =
-    pr-paren (4 <ᵇ l) (pr-t (p-sym s-minus) ⊕ᵖ pr-pure (sp?′ (startsNeg e)) ⊕ᵖ pr-ex 4 false e pe)
+    pr-paren (4 <ᵇ l) (pr-t (p-sym s-minus) ⊕ᵖ pr-pure (sp?′ (startsNeg e)) ⊕ᵖ pr-paren (startsNum e) (pr-ex 4 false e pe))
 
   pr-infix′ : ∀ {x} → Sym x → Pr (infixOp x)
   pr-infix′ s = pr-␣ ⊕ᵖ pr-t (p-sym s) ⊕ᵖ pr-␣
@@ -400,7 +436,7 @@ mutual
   pr-comp l true (RDestruct us ux uel uy uer) a pf pa = pr-gn (pr-paren (5 <ᵇ l) (pr-spine (RDestruct us ux uel uy uer) pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa))
   pr-comp l true RUnit a pf pa = pr-gn (pr-paren (5 <ᵇ l) (pr-spine RUnit pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa))
   pr-comp l true (RInt uz) a pf pa = pr-gn (pr-paren (5 <ᵇ l) (pr-spine (RInt uz) pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa))
-  pr-comp l true (RFloat ui ufr ul) a pf pa = pr-gn (pr-paren (5 <ᵇ l) (pr-spine (RFloat ui ufr ul) pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa))
+  pr-comp l true (RFloat usg ui ufr ul) a pf pa = pr-gn (pr-paren (5 <ᵇ l) (pr-spine (RFloat usg ui ufr ul) pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa))
   pr-comp l true (RAnnot ue uT) a pf pa = pr-gn (pr-paren (5 <ᵇ l) (pr-spine (RAnnot ue uT) pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa))
   pr-comp l true (RBinOp uop ua ub) a pf pa = pr-gn (pr-paren (5 <ᵇ l) (pr-spine (RBinOp uop ua ub) pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa))
   pr-comp l true (RNeg ue) a pf pa = pr-gn (pr-paren (5 <ᵇ l) (pr-spine (RNeg ue) pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa))
@@ -420,7 +456,7 @@ mutual
   pr-chain (RDestruct s x el y er) p = pr-ex 1 false (RDestruct s x el y er) p
   pr-chain RUnit p = pr-ex 1 false RUnit p
   pr-chain (RInt z) p = pr-ex 1 false (RInt z) p
-  pr-chain (RFloat i fr l) p = pr-ex 1 false (RFloat i fr l) p
+  pr-chain (RFloat sg i fr l) p = pr-ex 1 false (RFloat sg i fr l) p
   pr-chain (RAnnot e T) p = pr-ex 1 false (RAnnot e T) p
   pr-chain (RBinOp op a b) p = pr-ex 1 false (RBinOp op a b) p
   pr-chain (RNeg e) p = pr-ex 1 false (RNeg e) p
@@ -436,7 +472,7 @@ mutual
   pr-chain′ true (RDestruct us ux uel uy uer) h pf ph = pr-comp 0 false (RDestruct us ux uel uy uer) h pf ph
   pr-chain′ true RUnit h pf ph = pr-comp 0 false RUnit h pf ph
   pr-chain′ true (RInt uz) h pf ph = pr-comp 0 false (RInt uz) h pf ph
-  pr-chain′ true (RFloat ui ufr ul) h pf ph = pr-comp 0 false (RFloat ui ufr ul) h pf ph
+  pr-chain′ true (RFloat usg ui ufr ul) h pf ph = pr-comp 0 false (RFloat usg ui ufr ul) h pf ph
   pr-chain′ true (RAnnot ue uT) h pf ph = pr-comp 0 false (RAnnot ue uT) h pf ph
   pr-chain′ true (RBinOp uop ua ub) h pf ph = pr-comp 0 false (RBinOp uop ua ub) h pf ph
   pr-chain′ true (RNeg ue) h pf ph = pr-comp 0 false (RNeg ue) h pf ph
@@ -457,7 +493,7 @@ mutual
   pr-left lv (RDestruct s x el y er) p = pr-ex (leftLevel lv) false (RDestruct s x el y er) p
   pr-left lv RUnit p = pr-ex (leftLevel lv) false RUnit p
   pr-left lv (RInt z) p = pr-ex (leftLevel lv) false (RInt z) p
-  pr-left lv (RFloat i fr l) p = pr-ex (leftLevel lv) false (RFloat i fr l) p
+  pr-left lv (RFloat sg i fr l) p = pr-ex (leftLevel lv) false (RFloat sg i fr l) p
   pr-left lv (RAnnot e T) p = pr-ex (leftLevel lv) false (RAnnot e T) p
   pr-left lv (RNeg e) p = pr-ex (leftLevel lv) false (RNeg e) p
 
@@ -472,7 +508,7 @@ mutual
   pr-spine (RDestruct s x el y er) p = pr-ex 6 false (RDestruct s x el y er) p
   pr-spine RUnit p = pr-ex 6 false RUnit p
   pr-spine (RInt z) p = pr-ex 6 false (RInt z) p
-  pr-spine (RFloat i fr l) p = pr-ex 6 false (RFloat i fr l) p
+  pr-spine (RFloat sg i fr l) p = pr-ex 6 false (RFloat sg i fr l) p
   pr-spine (RAnnot e T) p = pr-ex 6 false (RAnnot e T) p
   pr-spine (RBinOp op a b) p = pr-ex 6 false (RBinOp op a b) p
   pr-spine (RNeg e) p = pr-ex 6 false (RNeg e) p
@@ -488,7 +524,7 @@ mutual
   pr-spine′ true (RDestruct us ux uel uy uer) a pf pa = pr-spine (RDestruct us ux uel uy uer) pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa
   pr-spine′ true RUnit a pf pa = pr-spine RUnit pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa
   pr-spine′ true (RInt uz) a pf pa = pr-spine (RInt uz) pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa
-  pr-spine′ true (RFloat ui ufr ul) a pf pa = pr-spine (RFloat ui ufr ul) pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa
+  pr-spine′ true (RFloat usg ui ufr ul) a pf pa = pr-spine (RFloat usg ui ufr ul) pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa
   pr-spine′ true (RAnnot ue uT) a pf pa = pr-spine (RAnnot ue uT) pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa
   pr-spine′ true (RBinOp uop ua ub) a pf pa = pr-spine (RBinOp uop ua ub) pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa
   pr-spine′ true (RNeg ue) a pf pa = pr-spine (RNeg ue) pf ⊕ᵖ pr-line ⊕ᵖ pr-ex 6 false a pa
@@ -505,7 +541,7 @@ mutual
   pr-lam (RDestruct s x el y er) p = pr-␣ ⊕ᵖ pr-t (p-sym s-arrow) ⊕ᵖ pr-n (pr-line ⊕ᵖ pr-ex 0 true (RDestruct s x el y er) p)
   pr-lam RUnit p = pr-␣ ⊕ᵖ pr-t (p-sym s-arrow) ⊕ᵖ pr-n (pr-line ⊕ᵖ pr-ex 0 true RUnit p)
   pr-lam (RInt z) p = pr-␣ ⊕ᵖ pr-t (p-sym s-arrow) ⊕ᵖ pr-n (pr-line ⊕ᵖ pr-ex 0 true (RInt z) p)
-  pr-lam (RFloat i fr l) p = pr-␣ ⊕ᵖ pr-t (p-sym s-arrow) ⊕ᵖ pr-n (pr-line ⊕ᵖ pr-ex 0 true (RFloat i fr l) p)
+  pr-lam (RFloat sg i fr l) p = pr-␣ ⊕ᵖ pr-t (p-sym s-arrow) ⊕ᵖ pr-n (pr-line ⊕ᵖ pr-ex 0 true (RFloat sg i fr l) p)
   pr-lam (RAnnot e T) p = pr-␣ ⊕ᵖ pr-t (p-sym s-arrow) ⊕ᵖ pr-n (pr-line ⊕ᵖ pr-ex 0 true (RAnnot e T) p)
   pr-lam (RBinOp op a b) p = pr-␣ ⊕ᵖ pr-t (p-sym s-arrow) ⊕ᵖ pr-n (pr-line ⊕ᵖ pr-ex 0 true (RBinOp op a b) p)
   pr-lam (RNeg e) p = pr-␣ ⊕ᵖ pr-t (p-sym s-arrow) ⊕ᵖ pr-n (pr-line ⊕ᵖ pr-ex 0 true (RNeg e) p)
@@ -526,7 +562,7 @@ mutual
   pr-let x v (RDestruct bs bx bel by ber) (px , pv , pb) = pr-lhead x v px pv ⊕ᵖ pr-line ⊕ᵖ pr-word (kw "in" refl) ⊕ᵖ pr-␣ ⊕ᵖ pr-ex 0 true (RDestruct bs bx bel by ber) pb
   pr-let x v RUnit (px , pv , pb) = pr-lhead x v px pv ⊕ᵖ pr-line ⊕ᵖ pr-word (kw "in" refl) ⊕ᵖ pr-␣ ⊕ᵖ pr-ex 0 true RUnit pb
   pr-let x v (RInt bz) (px , pv , pb) = pr-lhead x v px pv ⊕ᵖ pr-line ⊕ᵖ pr-word (kw "in" refl) ⊕ᵖ pr-␣ ⊕ᵖ pr-ex 0 true (RInt bz) pb
-  pr-let x v (RFloat bi bfr bl) (px , pv , pb) = pr-lhead x v px pv ⊕ᵖ pr-line ⊕ᵖ pr-word (kw "in" refl) ⊕ᵖ pr-␣ ⊕ᵖ pr-ex 0 true (RFloat bi bfr bl) pb
+  pr-let x v (RFloat bsg bi bfr bl) (px , pv , pb) = pr-lhead x v px pv ⊕ᵖ pr-line ⊕ᵖ pr-word (kw "in" refl) ⊕ᵖ pr-␣ ⊕ᵖ pr-ex 0 true (RFloat bsg bi bfr bl) pb
   pr-let x v (RAnnot be bT) (px , pv , pb) = pr-lhead x v px pv ⊕ᵖ pr-line ⊕ᵖ pr-word (kw "in" refl) ⊕ᵖ pr-␣ ⊕ᵖ pr-ex 0 true (RAnnot be bT) pb
   pr-let x v (RBinOp bop ba bb) (px , pv , pb) = pr-lhead x v px pv ⊕ᵖ pr-line ⊕ᵖ pr-word (kw "in" refl) ⊕ᵖ pr-␣ ⊕ᵖ pr-ex 0 true (RBinOp bop ba bb) pb
   pr-let x v (RNeg be) (px , pv , pb) = pr-lhead x v px pv ⊕ᵖ pr-line ⊕ᵖ pr-word (kw "in" refl) ⊕ᵖ pr-␣ ⊕ᵖ pr-ex 0 true (RNeg be) pb
@@ -559,7 +595,7 @@ lams-pe (RPair a b) p = [] , p
 lams-pe (RDestruct s x el y er) p = [] , p
 lams-pe RUnit p = [] , p
 lams-pe (RInt z) p = [] , p
-lams-pe (RFloat i fr l) p = [] , p
+lams-pe (RFloat sg i fr l) p = [] , p
 lams-pe (RAnnot e T) p = [] , p
 lams-pe (RBinOp op a b) p = [] , p
 lams-pe (RNeg e) p = [] , p
