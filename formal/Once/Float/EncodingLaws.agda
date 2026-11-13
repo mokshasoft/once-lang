@@ -14,9 +14,8 @@
 --     idempotent (`fitV-idem`);
 --   * the encoding of a value in range fits the format's width
 --     (`encode-fits`, `round-fits`);
---   * decoding inverts encoding on values in range (`decode-encode`), for a
---     format with at least one exponent bit and one fraction bit
---     (`ValidFormat`).
+--   * decoding inverts encoding on values in range (`decode-encode`); a
+--     format has an exponent bit and a fraction bit (`FloatFormat`).
 ------------------------------------------------------------------------
 
 module Once.Float.EncodingLaws where
@@ -71,18 +70,16 @@ InRange F (fv-num s m e) =
 InRange F (fv-inf _)     = ⊤
 InRange F fv-nan         = ⊤
 
--- | A format with an exponent bit (so the all-ones exponent is not the zero
--- exponent) and a fraction bit (so the canonical NaN's quiet bit exists).
+-- | A format has an exponent bit (so the all-ones exponent is not the zero
+-- exponent) and a fraction bit (so the canonical NaN's quiet bit exists);
+-- `FloatFormat` carries both.
 record ValidFormat (F : FloatFormat) : Set where
   field
     exp-pos : 1 ≤ exp-bits F
     sig-pos : 1 ≤ sig-bits F
 
-valid-binary32 : ValidFormat binary32
-valid-binary32 = record { exp-pos = s≤s z≤n ; sig-pos = s≤s z≤n }
-
-valid-binary64 : ValidFormat binary64
-valid-binary64 = record { exp-pos = s≤s z≤n ; sig-pos = s≤s z≤n }
+valid : ∀ F → ValidFormat F
+valid F = record { exp-pos = FloatFormat.exp-pos F ; sig-pos = FloatFormat.sig-pos F }
 
 ------------------------------------------------------------------------
 -- Small facts
@@ -406,22 +403,22 @@ private
       (λ j hj → trans (cong (λ x → qmin F ℤ.+ x) (sym hj)) (ZS.back-sub e (qmin F)))
 
 -- | Decoding inverts encoding on values in range.
-decode-encode : ∀ F → ValidFormat F → ∀ v → InRange F v → decode F (encode F v) ≡ v
-decode-encode F vf (fv-zero s) _ =
+decode-encode-at : ∀ F → ValidFormat F → ∀ v → InRange F v → decode F (encode F v) ≡ v
+decode-encode-at F vf (fv-zero s) _ =
   trans (cong (decode F) (sym (trans (+-identityʳ (signBitOf s * signWeight F + 0))
                                      (+-identityʳ (signBitOf s * signWeight F)))))
         (decode-fields F s 0 0 (m^n>0 2 (exp-bits F)) (m^n>0 2 (sig-bits F)))
-decode-encode F vf (fv-num s m e) (h1 , m< , h3) with shape F m m<
+decode-encode-at F vf (fv-num s m e) (h1 , m< , h3) with shape F m m<
 ... | L′ , hL , hr =
   num-dec F vf s m e L′ hL hr h1 (subst (λ x → e ℤ.+ + x ℤ.≤ + (bias F + 1)) hL h3) _
     (cong (λ x → e ℤ.+ + (x ∸ 1 + bias F)) hL)
-decode-encode F vf (fv-inf s) _ =
+decode-encode-at F vf (fv-inf s) _ =
   trans (cong (decode F) (sym (+-identityʳ (infW F s))))
     (trans (decode-fields F s (2 ^ exp-bits F ∸ 1) 0 (pred< (m^n>0 2 (exp-bits F))) (m^n>0 2 (sig-bits F)))
       (cong₂ (decodeAt F s (2 ^ exp-bits F ∸ 1) 0)
              (≡ᵇ-false (max≢0 (exp-bits F) (ValidFormat.exp-pos vf)))
              (≡ᵇ-refl (2 ^ exp-bits F ∸ 1))))
-decode-encode F vf fv-nan _ =
+decode-encode-at F vf fv-nan _ =
   trans (decode-fields F pos (2 ^ exp-bits F ∸ 1) (2 ^ (sig-bits F ∸ 1))
            (pred< (m^n>0 2 (exp-bits F))) (nan-frac< (sig-bits F) (ValidFormat.sig-pos vf)))
     (trans (cong₂ (decodeAt F pos (2 ^ exp-bits F ∸ 1) (2 ^ (sig-bits F ∸ 1)))
@@ -510,3 +507,7 @@ fitV-inRange F fv-nan         = tt
 -- | Reading a value at a format twice is reading it once.
 fitV-idem : ∀ F v → fitV F (fitV F v) ≡ fitV F v
 fitV-idem F v = inRange-fits F (fitV F v) (fitV-inRange F v)
+
+-- | Decoding inverts encoding on the values of a format.
+decode-encode : ∀ F v → InRange F v → decode F (encode F v) ≡ v
+decode-encode F = decode-encode-at F (valid F)
