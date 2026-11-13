@@ -117,7 +117,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   blockR {κ = κ} p = in-trans (in-trans (image-at p) (in-l _ _)) (block-root (idx p) κ (blocks-in p))
 
   -- the callee, at its block's root
-  module K {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = Loc {FS} U ncty ldConst wordOf image (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p)
+  module K {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = Loc {FS} U ncty ldConst wordOf image (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p) using (Here; module Here; lowAt; pos; seg-at; shape-fits)
 
   private
     sv-ne : ∀ n → ¬ n ≡ suc n
@@ -298,8 +298,8 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   module From {sh₀ U₀} (root : Codeᴵ sh₀ U₀) (j : ℕ)
               (L₀ : At.Low U ncty ldConst (frameOf root) j root)
               (R : Inside image (At.code U ncty ldConst (frameOf root) j L₀)) where
-    module C = Loc {FS} U ncty ldConst wordOf image root j L₀ R
-    module CA = At U ncty ldConst (frameOf root) j
+    module C = Loc {FS} U ncty ldConst wordOf image root j L₀ R using (Here; module Here; lowAt; pos; pos-next; seg-at; shape-fits; φ)
+    module CA = At U ncty ldConst (frameOf root) j using (lcin)
     open Loc.Here
 
     -- the membership the call was lowered with
@@ -468,7 +468,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
     -- ★ THE RETURN: at the callee's `end` (its way out, `blockFin`), back to
     -- the caller after the call, the result on its stack
-    module KA {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = At U ncty ldConst (frameOf (blockᴵ κ)) (idx p)
+    module KA {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = At U ncty ldConst (frameOf (blockᴵ κ)) (idx p) using (lfin)
 
     return : ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} (s : Sub root (call κ ⨾ k))
             (e : Sub (blockᴵ κ) (end {sh = t ⊳ [] ∣ B ∷ []}))
