@@ -46,16 +46,16 @@ pattern own x = canonical (x ∷ [])
 genWords : List String
 genWords = "id" ∷ "fst" ∷ "snd" ∷ "inl" ∷ "inr" ∷ "unit" ∷ "pair" ∷ "terminal"
          ∷ "initial" ∷ "curry" ∷ "apply" ∷ "compose" ∷ "case" ∷ "cata" ∷ "ana"
-         ∷ "In" ∷ "Out" ∷ []
+         ∷ "In" ∷ "Out" ∷ "toFloat" ∷ []
 
 GenWord : String → Set
 GenWord x = Any (x ≡_) genWords
 
--- The eight generators that are names (the others are only applied).
+-- The nine generators that are names (the others are only applied).
 genNames : List String
-genNames = "id" ∷ "fst" ∷ "snd" ∷ "terminal" ∷ "initial" ∷ "inl" ∷ "inr" ∷ "unit" ∷ []
+genNames = "id" ∷ "fst" ∷ "snd" ∷ "terminal" ∷ "initial" ∷ "inl" ∷ "inr" ∷ "unit" ∷ "toFloat" ∷ []
 
--- `cn` is none of the eight.
+-- `cn` is none of the nine.
 NotGenerator : CanonicalName → Set
 NotGenerator cn = All (λ g → cn ≢ gen g) genNames
 

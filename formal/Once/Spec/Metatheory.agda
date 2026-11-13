@@ -49,7 +49,8 @@
 --   * numbers     — each row of the table of theories (`Spec.Theory`) has its
 --                   theories' laws, over the operations its primitives mean:
 --                   `Int` a commutative ring with `Neg`, a total order, `χ_Δ`;
---                   `Float` a rounded field with exact `Neg`, IEEE's
+--                   `Float` rounded arithmetic (a retract of the exact numbers,
+--                   with exact `Neg`), IEEE's
 --                   totalOrder, `χ_Δ` (plan 0.150).
 ------------------------------------------------------------------------
 
@@ -93,7 +94,6 @@ import Once.Spec.Core.Program as CoreProgram
 import Once.Spec.Surface.Typing as SurfaceTyping
 open import Once.Spec.Examples
 open import Data.Integer using (ℤ)
-open import Once.Spec.Float.Value using (flip; negV; roundQ)
 open import Once.Spec.Theory using (Has; module Models; module Laws)
 
 ------------------------------------------------------------------------
@@ -976,11 +976,9 @@ module _ (fmt : TargetNum) where
     field
       -- each type's structure for each theory it has (`Spec.Theory`) obeys
       -- the theory's laws, on the values the target's numbers take
+      -- (`Float`'s negation is exact and its rounding symmetric: the
+      -- `Rounded` laws, N3 (b).)
       lawful    : ∀ {A U} (h : Has A U) → Laws.Laws (Valid A) U (structure h)
-      -- `Float`'s negation is EXACT: it commutes with rounding (N3 (b);
-      -- roundTiesToEven is symmetric)
-      neg-exact : ∀ s n (E : ℤ) d → negV (roundQ float-format s n E d)
-                                   ≡ roundQ float-format (flip s) n E d
 
 ------------------------------------------------------------------------
 -- All of it

@@ -71,7 +71,7 @@ data Lit : Set where
 -- A numeric primitive is a theory's symbol at a number type that models the
 -- theory (`Spec.Theory`, plan 0.150): its type is the symbol's shape at that
 -- type, its meaning the type's structure. The conversion `Int` → `Float`
--- (D125's widening) is the one primitive outside the table.
+-- (`toFloat`, D408) is the one primitive outside the table.
 data Prim : Set where
   num   : ∀ {A U k} → Has A U → Sym U k → Prim
   p-i2f : Prim

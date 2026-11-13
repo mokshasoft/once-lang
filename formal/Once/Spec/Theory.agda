@@ -19,8 +19,9 @@
 --   Division  / %                (D055, total)       div mod
 --   Order     < <= > >=          (a total order)     lt
 --   Equality  == !=              (χ_Δ, identity)     eq
---   Rounded   +. -. *. /.  ==. !=. <. <=. >. >=.  (contains Neg)
---                                                    add mul div neg eqQ ltQ
+--   Rounded   +. -. *. /.  ==. !=. <. <=. >. >=.  (a retract of the exact
+--                                                    numbers; contains Neg)
+--                                                    embed round neg
 --
 --   Int    Neg Ring Division Order Equality
 --   Float  Neg Rounded Order Equality
@@ -28,9 +29,18 @@
 -- Every other symbol is DERIVED from the generators, once, for every model:
 -- `x - y` is `x + (-y)`, `x <= y` is `not (y < x)`, `x != y` is
 -- `not (x == y)`, `x <=. y` is `x <. y ∨ x ==. y`, and so on. Undotted
--- `+ - * /` have no row at `Float` (N8). `Neg` is its own theory, and each
--- type's `Neg` row is the negation of its Ring or Rounded structure, by
--- definition (N3 (b): negation does not round, so `-x` is undotted).
+-- `+ - * /` have no row at `Float` (N8). `Neg` is its own theory, included in
+-- `Ring` and in `Rounded` (`_⊑_`); each type's `Neg` row is its Ring or
+-- Rounded structure restricted along the inclusion (N3 (b): negation does
+-- not round, so `-x` is undotted).
+--
+-- ROUNDED ARITHMETIC IS A RETRACT OF THE EXACT NUMBERS (IEEE 754 §4.3: each
+-- operation is computed exactly, then rounded once). Its generators are the
+-- reading of a value as an exact number (`embed`, `Spec.Float.Arith.exact`)
+-- and the rounding back (`round`), with `round ∘ embed` the identity, and the
+-- exact negation. Every dotted symbol is derived: `x +. y` is
+-- `round (embed x + embed y)`, `x <. y` is the order of the exact numbers.
+-- Its laws are the retraction's; that `+.` commutes is the exact numbers'.
 --
 -- The laws each theory carries are records here (`Laws`), stated over a
 -- structure; `Spec.Metatheory.Numbers` says each row of the table has them.
@@ -38,7 +48,9 @@
 
 module Once.Spec.Theory where
 
-open import Data.Bool using (Bool; T; not; _∨_)
+open import Data.Bool using (Bool; T; not; _∨_; false)
+open import Data.Maybe using (Maybe)
+import Data.Maybe as Maybe
 open import Data.Empty using (⊥)
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Product using (_×_; _,_)
@@ -130,9 +142,25 @@ record EqualityOps (X : Set) : Set where
 
 record RoundedOps (X : Set) : Set where
   field
-    add mul div : X → X → X
-    neg         : X → X
-    eqQ ltQ     : X → X → Bool
+    embed : X → Maybe FA.Operand     -- a value, exactly (a NaN is no number)
+    round : FA.Exact → X             -- an exact result, rounded
+    neg   : X → X                    -- negation, which is exact (a law)
+
+-- | A dotted operation: the exact one on the operands read exactly, rounded.
+rounded : ∀ {X} → RoundedOps X → (FA.Operand → FA.Operand → FA.Exact) → X → X → X
+rounded o f x y = RoundedOps.round o (FA.both FA.invalid f (RoundedOps.embed o x) (RoundedOps.embed o y))
+
+-- | A dotted comparison: the exact numbers' relation, false with a NaN.
+exactly : ∀ {X} → RoundedOps X → (FA.Operand → FA.Operand → Bool) → X → X → Bool
+exactly o r x y = FA.both false r (RoundedOps.embed o x) (RoundedOps.embed o y)
+
+------------------------------------------------------------------------
+-- The inclusions of theories: `Neg` in `Ring` and in `Rounded`
+------------------------------------------------------------------------
+
+data _⊑_ : Theory → Theory → Set where
+  neg⊑ring    : Neg ⊑ Ring
+  neg⊑rounded : Neg ⊑ Rounded
 
 Ops : Theory → Set → Set
 Ops Neg      X = NegOps X
@@ -141,6 +169,12 @@ Ops Division X = DivisionOps X
 Ops Order    X = OrderOps X
 Ops Equality X = EqualityOps X
 Ops Rounded  X = RoundedOps X
+
+-- | A structure restricted along an inclusion: the smaller theory's
+-- operations are the larger one's.
+restrict : ∀ {U X} → Neg ⊑ U → Ops U X → Ops Neg X
+restrict neg⊑ring    o = record { neg = RingOps.neg o }
+restrict neg⊑rounded o = record { neg = RoundedOps.neg o }
 
 ------------------------------------------------------------------------
 -- What each symbol means in a structure: a generator, or its definition
@@ -164,16 +198,16 @@ SymFn X compare = X × X → Bool
 ⟦ ‵>= ⟧ₛ  o (x , y) = not (OrderOps.lt o x y)
 ⟦ ‵== ⟧ₛ  o (x , y) = EqualityOps.eq o x y
 ⟦ ‵!= ⟧ₛ  o (x , y) = not (EqualityOps.eq o x y)
-⟦ ‵+ᵈ ⟧ₛ  o (x , y) = RoundedOps.add o x y
-⟦ ‵-ᵈ ⟧ₛ  o (x , y) = RoundedOps.add o x (RoundedOps.neg o y)
-⟦ ‵*ᵈ ⟧ₛ  o (x , y) = RoundedOps.mul o x y
-⟦ ‵/ᵈ ⟧ₛ  o (x , y) = RoundedOps.div o x y
-⟦ ‵==ᵈ ⟧ₛ o (x , y) = RoundedOps.eqQ o x y
-⟦ ‵!=ᵈ ⟧ₛ o (x , y) = not (RoundedOps.eqQ o x y)
-⟦ ‵<ᵈ ⟧ₛ  o (x , y) = RoundedOps.ltQ o x y
-⟦ ‵<=ᵈ ⟧ₛ o (x , y) = RoundedOps.ltQ o x y ∨ RoundedOps.eqQ o x y
-⟦ ‵>ᵈ ⟧ₛ  o (x , y) = RoundedOps.ltQ o y x
-⟦ ‵>=ᵈ ⟧ₛ o (x , y) = RoundedOps.ltQ o y x ∨ RoundedOps.eqQ o y x
+⟦ ‵+ᵈ ⟧ₛ  o (x , y) = rounded o FA.addE x y
+⟦ ‵-ᵈ ⟧ₛ  o (x , y) = rounded o FA.addE x (RoundedOps.neg o y)
+⟦ ‵*ᵈ ⟧ₛ  o (x , y) = rounded o FA.mulE x y
+⟦ ‵/ᵈ ⟧ₛ  o (x , y) = rounded o FA.divE x y
+⟦ ‵==ᵈ ⟧ₛ o (x , y) = exactly o FA.eqR x y
+⟦ ‵!=ᵈ ⟧ₛ o (x , y) = not (exactly o FA.eqR x y)
+⟦ ‵<ᵈ ⟧ₛ  o (x , y) = exactly o FA.ltR x y
+⟦ ‵<=ᵈ ⟧ₛ o (x , y) = exactly o FA.ltR x y ∨ exactly o FA.eqR x y
+⟦ ‵>ᵈ ⟧ₛ  o (x , y) = exactly o FA.ltR y x
+⟦ ‵>=ᵈ ⟧ₛ o (x , y) = exactly o FA.ltR y x ∨ exactly o FA.eqR y x
 
 ------------------------------------------------------------------------
 -- The rows, at a target: each type's structures
@@ -200,16 +234,15 @@ module Models (fmt : TargetNum) where
   intRing = record { zero = 0 ; one = W.norm 1 ; add = W._⊕_ ; mul = W._⊗_ ; neg = W.⊝_ }
 
   floatRounded : RoundedOps FloatVal
-  floatRounded = record { add = FA.addV F ; mul = FA.mulV F ; div = FA.divV F ; neg = negV
-                        ; eqQ = FA.eqQ ; ltQ = FA.ltQ }
+  floatRounded = record { embed = FA.exact ; round = FA.round F ; neg = negV }
 
   structure : ∀ {A U} → Has A U → Ops U (Val A)
-  structure int-neg        = record { neg = RingOps.neg intRing }
+  structure int-neg        = restrict neg⊑ring intRing
   structure int-ring       = intRing
   structure int-division   = record { div = W._/ˢ_ ; mod = W._%ˢ_ }
   structure int-order      = record { lt = W._<ˢ_ }
   structure int-equality   = record { eq = W._≡ʷ_ }
-  structure float-neg      = record { neg = RoundedOps.neg floatRounded }
+  structure float-neg      = restrict neg⊑rounded floatRounded
   structure float-rounded  = floatRounded
   structure float-order    = record { lt = FA.ltT }
   structure float-equality = record { eq = FA.eqV }
@@ -261,19 +294,18 @@ module Laws {X : Set} (V : X → Set) where
       sound    : ∀ {x y} → V x → V y → T (eq x y) → x ≡ y
       complete : ∀ {x} → V x → T (eq x x)
 
-  -- | The rounded field: `+.` and `*.` commute, each operation lands in the
-  -- values, and negation commutes into a product. (0.147's error bound needs
-  -- the reals and is not stated; that negation is EXACT is stated at `Float`,
-  -- in `Spec.Metatheory.Numbers`.)
+  -- | Rounded arithmetic: a retract of the exact numbers, with exact
+  -- negation and a symmetric rounding. (That `+.` and `*.` commute, and that
+  -- negation commutes into a product, follow from the exact numbers; the
+  -- error bound needs the reals and is not stated.)
   record RoundedLaws (o : RoundedOps X) : Set where
     open RoundedOps o
     field
-      add-closed : ∀ {x y} → V x → V y → V (add x y)
-      mul-closed : ∀ {x y} → V x → V y → V (mul x y)
-      div-closed : ∀ {x y} → V x → V y → V (div x y)
-      add-comm   : ∀ {x y} → V x → V y → add x y ≡ add y x
-      mul-comm   : ∀ {x y} → V x → V y → mul x y ≡ mul y x
-      neg-mul    : ∀ {x y} → V x → V y → neg (mul x y) ≡ mul (neg x) y
+      round-closed : ∀ r → V (round r)
+      retract      : ∀ {x} → V x → round (FA.exactOf (embed x)) ≡ x
+      neg-closed   : ∀ {x} → V x → V (neg x)
+      neg-exact    : ∀ {x} → V x → embed (neg x) ≡ Maybe.map FA.negO (embed x)
+      round-odd    : ∀ r → round (FA.negE r) ≡ neg (round r)
 
   -- | `Division` (D055) is defined, not axiomatised: no laws.
   Laws : (U : Theory) → Ops U X → Set

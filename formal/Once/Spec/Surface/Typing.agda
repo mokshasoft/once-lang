@@ -101,11 +101,6 @@ data SpecialHead : Expr → Set where
   sh-compose : ∀ {f} → SpecialHead (RApp (RResolved (gen "compose")) f)
   sh-case    : ∀ {f} → SpecialHead (RApp (RResolved (gen "case")) f)
 
--- An operand at a number type, as a `Float`: an `Int` widens (D125).
-asFloat : ∀ {m n} → NumTy → Tm S m n → Tm S m n
-asFloat int   t = prim p-i2f t
-asFloat float t = t
-
 ------------------------------------------------------------------------
 -- The judgment
 ------------------------------------------------------------------------
@@ -126,6 +121,8 @@ module _ {m : ℕ} (Δ : KCtx m) where
              → L ⊢ RFloat s i f l ⇒ Float ↝ lit (lit-float (signedDecimal s i f l))
     s-unit   : L ⊢ RUnit ⇒ Unit ↝ unit
     s-unit-g : L ⊢ RResolved (gen "unit") ⇒ Unit ↝ unit
+    -- `Int` → `Float`, correctly rounded (IEEE's `convertFromInt`; D408).
+    s-toFloat : L ⊢ RResolved (gen "toFloat") ⇒ Int ⇒[ mk-kind Many pure ] Float ↝ toFloatᶜ
 
     -- A local variable.
     s-var : ∀ {x A i} → L ∋ x ⦂ A at i → L ⊢ RVar x ⇒ A ↝ var i
@@ -164,13 +161,8 @@ module _ {m : ℕ} (Δ : KCtx m) where
     s-binop : ∀ {op e₁ e₂ A t₁ t₂} (h : Has A (theory (binSym op)))
             → L ⊢ e₁ ⇒ ⌜ A ⌝ⁿ ↝ t₁ → L ⊢ e₂ ⇒ ⌜ A ⌝ⁿ ↝ t₂
             → L ⊢ RBinOp op e₁ e₂ ⇒ symCod A (shape (binSym op)) ↝ prim (num h (symbol (binSym op))) (pair t₁ t₂)
-    -- A dotted operator on an `Int` and a `Float`, either way round: the
-    -- `Int` widens (D125, plan 0.150 N9). Two `Float`s are `s-binop`'s; two
-    -- `Int`s have no rule.
-    s-binop-mixed : ∀ {op k o e₁ e₂ a₁ a₂ t₁ t₂} → binSym op ≡ (Rounded ∶ k ∶ o) → a₁ ≢ a₂
-                  → L ⊢ e₁ ⇒ ⌜ a₁ ⌝ⁿ ↝ t₁ → L ⊢ e₂ ⇒ ⌜ a₂ ⌝ⁿ ↝ t₂
-                  → L ⊢ RBinOp op e₁ e₂ ⇒ symCod float k
-                    ↝ prim (num float-rounded o) (pair (asFloat a₁ t₁) (asFloat a₂ t₂))
+    -- Operands of different number types have no rule: an `Int` meets `Float`
+    -- arithmetic through `toFloat` (D408).
 
     -- Generators applied to a synthesizing argument.
     s-id-app       : ∀ {e T t} → L ⊢ e ⇒ T ↝ t → L ⊢ RApp (RResolved (gen "id")) e ⇒ T ↝ app (idᶜ T pure) t

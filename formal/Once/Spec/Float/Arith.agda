@@ -66,6 +66,23 @@ round F invalid         = fv-nan
 round F (∞ s)           = fv-inf s
 round F (ratio s n e d) = roundQ F s n e d
 
+-- | An operand as an exact result: `round ∘ exactOf ∘ exact` is the identity on
+-- the format's values (a NaN, no number, is `invalid`).
+exactOf : Maybe Operand → Exact
+exactOf nothing            = invalid
+exactOf (just (inf s))     = ∞ s
+exactOf (just (fin s n e)) = ratio s n e 0
+
+-- | Negation, exactly.
+negO : Operand → Operand
+negO (inf s)     = inf (flip s)
+negO (fin s n e) = fin (flip s) n e
+
+negE : Exact → Exact
+negE invalid         = invalid
+negE (∞ s)           = ∞ (flip s)
+negE (ratio s n e d) = ratio (flip s) n e d
+
 ------------------------------------------------------------------------
 -- The exact operations
 ------------------------------------------------------------------------
@@ -132,7 +149,7 @@ addV F x y = round F (onNumbers invalid addE x y)
 mulV F x y = round F (onNumbers invalid mulE x y)
 divV F x y = round F (onNumbers invalid divE x y)
 
--- | `Int` → `Float` (D125): an integer is the exact value `z · 2^0`.
+-- | `Int` → `Float` (`toFloat`, D408): an integer is the exact value `z · 2^0`.
 fromℤ : ℤ → Exact
 fromℤ (+ n)    = ratio pos n (+ 0) 0
 fromℤ -[1+ n ] = ratio neg (suc n) (+ 0) 0
@@ -176,10 +193,14 @@ isZeroOf s (fv-num _ _ _) = false
 isZeroOf s (fv-inf _)     = false
 isZeroOf s fv-nan         = false
 
+-- | `x = y` numerically: neither below the other.
+eqR : Operand → Operand → Bool
+eqR a b = not (ltR a b) ∧ not (ltR b a)
+
 -- | IEEE's quiet comparisons: false when either operand is NaN.
 eqQ ltQ : FloatVal → FloatVal → Bool
 ltQ = onNumbers false ltR
-eqQ = onNumbers false (λ a b → not (ltR a b) ∧ not (ltR b a))
+eqQ = onNumbers false eqR
 
 -- | IEEE's totalOrder.
 ltT : FloatVal → FloatVal → Bool

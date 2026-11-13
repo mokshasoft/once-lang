@@ -42,6 +42,10 @@ module _ {s} {S : Defs s} {m : ℕ} where
   terminalᶜ A π = lam A Many π unit
   initialᶜ  A π = lam Void Many π (absurd A v0)
 
+  -- `Int` → `Float` (D408).
+  toFloatᶜ : ∀ {n} → Tm S m n
+  toFloatᶜ = lam Int Many pure (prim p-i2f v0)
+
   fstᶜ sndᶜ inlᶜ inrᶜ : ∀ {n} → Ty m → Ty m → Purity → Tm S m n
   fstᶜ A B π = lam (A * B) Many π (fst v0)
   sndᶜ A B π = lam (A * B) Many π (snd v0)
