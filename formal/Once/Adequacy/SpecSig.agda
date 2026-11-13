@@ -24,7 +24,9 @@
 open import Data.List using (List; map)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Once.Name using (showCanonical; WordName)
-open import Once.Spec.Numerics using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum; module TargetNum)
+open import Once.Spec.Float.Value using (fitV)
+open import Once.Float.EncodingLaws using (decode-encode; fitV-inRange; fitV-idem)
 open import Once.Spec.Boundary using (readAt)
 open import Once.IR.Semantics.Boundary using (atTarget)
 open import Once.Res using (mapRes)
@@ -100,7 +102,7 @@ private
   sname d = showCanonical (Decl.name d)
 
   I : Impl (toISig Σ)
-  I = toImpl Σ J wf
+  I = toImpl fmt Σ J wf
 
   mo : Model
   mo = Obs.Interp.model J
@@ -179,7 +181,7 @@ private
   ev-r refl refl = refl
 
 ev-val : ∀ a .(ib : (LW.Base LW.∅ₖ) ⌞ a ⌟) (x : M.⟦ ⌞ a ⌟ ⟧)
-       → _≡_ {A = BV′} (baseOf ⌞ a ⌟ ib , valOf ⌞ a ⌟ ib x) (a , SI.toB a x)
+       → _≡_ {A = BV′} (baseOf ⌞ a ⌟ ib , valOf (TargetNum.float-format fmt) ⌞ a ⌟ ib x) (a , SI.toB fmt a x)
 ev-val S.unit  _ x = refl
 ev-val S.void  _ x = refl
 ev-val S.int   _ x = refl
@@ -198,13 +200,13 @@ Fn k = M.⟦ kdom k ⟧ → M.⟦ kcod k ⟧
 -- A value key reads the model at a constant or a pure function of Σ.
 data PureG : (k : Key) → Fn k → Set where
   pg-const : ∀ {c b} (m : (c ∶ constant b) ∈ Σ)
-           → PureG (key (showCanonical c) T.Unit ⌞ b ⌟) (λ _ → SI.fromB b (Model.constantᵐ mo m))
+           → PureG (key (showCanonical c) T.Unit ⌞ b ⌟) (λ _ → SI.fromB fmt b (Model.constantᵐ mo m))
   pg-value : ∀ {c a q b} (m : (c ∶ value a q b) ∈ Σ)
-           → PureG (key (showCanonical c) ⌞ argAt q a ⌟ ⌞ b ⌟) (λ x → SI.fromB b (Model.valueᵐ mo m (SI.toB (argAt q a) x)))
+           → PureG (key (showCanonical c) ⌞ argAt q a ⌟ ⌞ b ⌟) (λ x → SI.fromB fmt b (Model.valueᵐ mo m (SI.toB fmt (argAt q a) x)))
 
-pure-G : ∀ (Σ′ : Signature) (inj : ∀ {d} → d ∈ Σ′ → d ∈ Σ) k (p : k ∈ valueKeys (toISig Σ′)) → PureG k (SI.pureAt Σ J Σ′ inj k p)
+pure-G : ∀ (Σ′ : Signature) (inj : ∀ {d} → d ∈ Σ′ → d ∈ Σ) k (p : k ∈ valueKeys (toISig Σ′)) → PureG k (SI.pureAt fmt Σ J Σ′ inj k p)
 pure-step : ∀ {c t ct} (Σ′ : Signature) (inj : ∀ {d} → d ∈ ((c ∶ t) ∷ Σ′) → d ∈ Σ) (dc : SI.DeclContract (showCanonical c) t ct)
-            k (p : k ∈ value-step ct (valueKeys (toISig Σ′))) → PureG k (SI.pureStep Σ J Σ′ inj dc k p)
+            k (p : k ∈ value-step ct (valueKeys (toISig Σ′))) → PureG k (SI.pureStep fmt Σ J Σ′ inj dc k p)
 pure-G []              inj k ()
 pure-G ((c ∶ t) ∷ Σ′) inj k p = pure-step Σ′ inj (SI.declContract (showCanonical c) t) k p
 pure-step {t = constant b}  Σ′ inj SI.dc-const k (here refl) = pg-const (inj (here refl))
@@ -216,13 +218,13 @@ pure-step Σ′ inj SI.dc-op-effect       k p         = pure-G Σ′ (λ m → i
 
 -- …so a value key of a declaration reads that declaration.
 pure-const : ∀ {k f} → PureG k f → ∀ {c b} (m : (c ∶ constant b) ∈ Σ) (e : k ≡ key (showCanonical c) T.Unit ⌞ b ⌟)
-           → subst Fn e f ≡ (λ _ → SI.fromB b (Model.constantᵐ mo m))
+           → subst Fn e f ≡ (λ _ → SI.fromB fmt b (Model.constantᵐ mo m))
 pure-const (pg-const m′) m e = pc (one-decl uniq m′ m (cong kname e)) e
   where
     pc : ∀ {c c′ b b′} {m : (c ∶ constant b) ∈ Σ} {m′ : (c′ ∶ constant b′) ∈ Σ}
        → _≡_ {A = Σ[ d ∈ Decl ] d ∈ Σ} ((c′ ∶ constant b′) , m′) ((c ∶ constant b) , m)
        → (e : key (showCanonical c′) T.Unit ⌞ b′ ⌟ ≡ key (showCanonical c) T.Unit ⌞ b ⌟)
-       → subst Fn e (λ _ → SI.fromB b′ (Model.constantᵐ mo m′)) ≡ (λ _ → SI.fromB b (Model.constantᵐ mo m))
+       → subst Fn e (λ _ → SI.fromB fmt b′ (Model.constantᵐ mo m′)) ≡ (λ _ → SI.fromB fmt b (Model.constantᵐ mo m))
     pc refl refl = refl
 pure-const (pg-value m′) m e = ⊥-elim (vc (one-decl uniq m′ m (cong kname e)))
   where
@@ -231,14 +233,14 @@ pure-const (pg-value m′) m e = ⊥-elim (vc (one-decl uniq m′ m (cong kname 
     vc ()
 
 pure-value : ∀ {k f} → PureG k f → ∀ {c a q b} (m : (c ∶ value a q b) ∈ Σ) (e : k ≡ key (showCanonical c) ⌞ argAt q a ⌟ ⌞ b ⌟)
-           → subst Fn e f ≡ (λ x → SI.fromB b (Model.valueᵐ mo m (SI.toB (argAt q a) x)))
+           → subst Fn e f ≡ (λ x → SI.fromB fmt b (Model.valueᵐ mo m (SI.toB fmt (argAt q a) x)))
 pure-value (pg-value m′) m e = pv (one-decl uniq m′ m (cong kname e)) e
   where
     pv : ∀ {c c′ a a′ q q′ b b′} {m : (c ∶ value a q b) ∈ Σ} {m′ : (c′ ∶ value a′ q′ b′) ∈ Σ}
        → _≡_ {A = Σ[ d ∈ Decl ] d ∈ Σ} ((c′ ∶ value a′ q′ b′) , m′) ((c ∶ value a q b) , m)
        → (e : key (showCanonical c′) ⌞ argAt q′ a′ ⌟ ⌞ b′ ⌟ ≡ key (showCanonical c) ⌞ argAt q a ⌟ ⌞ b ⌟)
-       → subst Fn e (λ x → SI.fromB b′ (Model.valueᵐ mo m′ (SI.toB (argAt q′ a′) x)))
-         ≡ (λ x → SI.fromB b (Model.valueᵐ mo m (SI.toB (argAt q a) x)))
+       → subst Fn e (λ x → SI.fromB fmt b′ (Model.valueᵐ mo m′ (SI.toB fmt (argAt q′ a′) x)))
+         ≡ (λ x → SI.fromB fmt b (Model.valueᵐ mo m (SI.toB fmt (argAt q a) x)))
     pv refl refl = refl
 pure-value (pg-const m′) m e = ⊥-elim (cv (one-decl uniq m′ m (cong kname e)))
   where
@@ -250,13 +252,13 @@ pure-value (pg-const m′) m e = ⊥-elim (cv (one-decl uniq m′ m (cong kname 
 data AnsG (h : List SigOpEvent) : (k : Key) → Fn k → Set where
   ag : ∀ {c a q b} (m : (c ∶ operation a q b) ∈ Σ) (ne : NotEmpty b)
      → AnsG h (key (showCanonical c) ⌞ argAt q a ⌟ ⌞ b ⌟)
-              (λ x → SI.fromB b (SI.answerAt-dec Σ J (op m) (map toEvent h) (SI.toB (argAt q a) x) (notEmpty? b) ne))
+              (λ x → SI.fromB fmt b (SI.answerAt-dec fmt Σ J (op m) (map (toEvent (TargetNum.float-format fmt)) h) (SI.toB fmt (argAt q a) x) (notEmpty? b) ne))
 
 ans-G : ∀ (Σ′ : Signature) (inj : ∀ {d} → d ∈ Σ′ → d ∈ Σ) (wf′ : WellFormed Σ′) h k (p : k ∈ answerKeys (toISig Σ′))
-      → AnsG h k (SI.answerAt Σ J Σ′ inj wf′ h k p)
+      → AnsG h k (SI.answerAt fmt Σ J Σ′ inj wf′ h k p)
 ans-step : ∀ {c t ct} (Σ′ : Signature) (inj : ∀ {d} → d ∈ ((c ∶ t) ∷ Σ′) → d ∈ Σ) (w′ : S.WellFormedDecl t) (wf′ : WellFormed Σ′)
            (dc : SI.DeclContract (showCanonical c) t ct) h k (p : k ∈ answer-step ct (answerKeys (toISig Σ′)))
-         → AnsG h k (SI.answerStep Σ J Σ′ inj w′ wf′ dc h k p)
+         → AnsG h k (SI.answerStep fmt Σ J Σ′ inj w′ wf′ dc h k p)
 ans-G []              inj wf′          h k ()
 ans-G ((c ∶ t) ∷ Σ′) inj (w′ S.∷ wf′) h k p = ans-step Σ′ inj w′ wf′ (SI.declContract (showCanonical c) t) h k p
 ans-step {t = operation a q b} Σ′ inj w′ wf′ (SI.dc-op-answer ¬v ¬u) h k (here refl) = ag (inj (here refl)) _
@@ -268,17 +270,17 @@ ans-step Σ′ inj w′ wf′ SI.dc-op-effect       h k p         = ans-G Σ′ 
 -- …so an operation's answer key reads that operation, at the decided inhabitant.
 ans-op : ∀ {h k f} → AnsG h k f → ∀ {c a q b} (m : (c ∶ operation a q b) ∈ Σ) (e : k ≡ key (showCanonical c) ⌞ argAt q a ⌟ ⌞ b ⌟)
        → ∀ p → notEmpty? b ≡ yes p → ∀ x
-       → subst Fn e f x ≡ SI.fromB b (World.answer w (op m) (map toEvent h) (SI.toB (argAt q a) x) p)
+       → subst Fn e f x ≡ SI.fromB fmt b (World.answer w (op m) (map (toEvent (TargetNum.float-format fmt)) h) (SI.toB fmt (argAt q a) x) p)
 ans-op {h} (ag m′ ne) m e p d x = ao (one-decl uniq m′ m (cong kname e)) e x p d
   where
     ao : ∀ {c c′ a a′ q q′ b b′} {m : (c ∶ operation a q b) ∈ Σ} {m′ : (c′ ∶ operation a′ q′ b′) ∈ Σ} {ne : NotEmpty b′}
        → _≡_ {A = Σ[ d ∈ Decl ] d ∈ Σ} ((c′ ∶ operation a′ q′ b′) , m′) ((c ∶ operation a q b) , m)
        → (e : key (showCanonical c′) ⌞ argAt q′ a′ ⌟ ⌞ b′ ⌟ ≡ key (showCanonical c) ⌞ argAt q a ⌟ ⌞ b ⌟) → ∀ x p
        → notEmpty? b ≡ yes p
-       → subst Fn e (λ x → SI.fromB b′ (SI.answerAt-dec Σ J (op m′) (map toEvent h) (SI.toB (argAt q′ a′) x) (notEmpty? b′) ne)) x
-         ≡ SI.fromB b (World.answer w (op m) (map toEvent h) (SI.toB (argAt q a) x) p)
+       → subst Fn e (λ x → SI.fromB fmt b′ (SI.answerAt-dec fmt Σ J (op m′) (map (toEvent (TargetNum.float-format fmt)) h) (SI.toB fmt (argAt q′ a′) x) (notEmpty? b′) ne)) x
+         ≡ SI.fromB fmt b (World.answer w (op m) (map (toEvent (TargetNum.float-format fmt)) h) (SI.toB fmt (argAt q a) x) p)
     ao {a = a} {q = q} {b = b} {m = m} {ne = ne} refl refl x p d′ =
-      cong (λ dd → SI.fromB b (SI.answerAt-dec Σ J (op m) (map toEvent h) (SI.toB (argAt q a) x) dd ne)) d′
+      cong (λ dd → SI.fromB fmt b (SI.answerAt-dec fmt Σ J (op m) (map (toEvent (TargetNum.float-format fmt)) h) (SI.toB fmt (argAt q a) x) dd ne)) d′
 
 private
   -- a constant's type is a base type
@@ -292,12 +294,12 @@ private
 
   -- what `valueOf` reads at a declaration's key, through its decision
   read-const : ∀ {c b} (M : (c ∶ constant b) ∈ Σ) {p} (dec : Dec (key (showCanonical c) T.Unit ⌞ b ⌟ ∈ valueKeys (toISig Σ)))
-             → valueOf-at I (key (showCanonical c) T.Unit ⌞ b ⌟) p dec tt ≡ SI.fromB b (Model.constantᵐ mo M)
+             → valueOf-at I (key (showCanonical c) T.Unit ⌞ b ⌟) p dec tt ≡ SI.fromB fmt b (Model.constantᵐ mo M)
   read-const M (yes p₀)    = cong (λ f → f tt) (pure-const (pure-G Σ (λ m → m) _ p₀) M refl)
   read-const M {p} (no ¬p) = ⊥-elim (¬p p)
 
   read-value : ∀ {c a q b} (M : (c ∶ value a q b) ∈ Σ) {p} (dec : Dec (key (showCanonical c) ⌞ argAt q a ⌟ ⌞ b ⌟ ∈ valueKeys (toISig Σ))) x
-             → valueOf-at I (key (showCanonical c) ⌞ argAt q a ⌟ ⌞ b ⌟) p dec x ≡ SI.fromB b (Model.valueᵐ mo M (SI.toB (argAt q a) x))
+             → valueOf-at I (key (showCanonical c) ⌞ argAt q a ⌟ ⌞ b ⌟) p dec x ≡ SI.fromB fmt b (Model.valueᵐ mo M (SI.toB fmt (argAt q a) x))
   read-value M (yes p₀)    x = cong (λ f → f x) (pure-value (pure-G Σ (λ m → m) _ p₀) M refl)
   read-value M {p} (no ¬p) x = ⊥-elim (¬p p)
 
@@ -313,16 +315,19 @@ private
 -- Base values: the Spec's against the implementation's
 ------------------------------------------------------------------------
 
-fromB-R : ∀ b (v : S.⟦ b ⟧ᵇ) → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b v) (injectᵇ (⌜⌝-base b) (SI.fromB b v))
+-- | A world value read at the target, on both sides.
+fromB-R : ∀ b (v : S.⟦ b ⟧ᵇ) → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v)) (injectᵇ (⌜⌝-base b) (SI.fromB fmt b (readAt fmt b v)))
 fromB-R S.unit  v = tt
 fromB-R S.void  ()
 fromB-R S.int   v = refl
-fromB-R S.float v = refl
+fromB-R S.float v =
+  sym (trans (decode-encode F (fitV F (fitV F v)) (fitV-inRange F (fitV F v))) (fitV-idem F v))
+  where F = TargetNum.float-format fmt
 fromB-R (a S.* b) (x , y)  = fromB-R a x , fromB-R b y
 fromB-R (a S.+ b) (inj₁ x) = fromB-R a x
 fromB-R (a S.+ b) (inj₂ y) = fromB-R b y
 
-toB-R : ∀ b {x y} → RelGV (S.⌜ b ⌝) x y → SI.toB b (forgetᵇ (⌜⌝-base b) y) ≡ SD.toB σ₀ b x
+toB-R : ∀ b {x y} → RelGV (S.⌜ b ⌝) x y → SI.toB fmt b (forgetᵇ (⌜⌝-base b) y) ≡ SD.toB σ₀ b x
 toB-R S.unit  r = refl
 toB-R S.void  {()}
 toB-R S.int   r = sym r
@@ -349,12 +354,12 @@ private
 
 private
   ι′ : LTr.Interp
-  ι′ = toInterp Σ wf J
+  ι′ = toInterp fmt Σ wf J
 
 -- A value read from the world's pure half, at a key the signature provides.
 val-R : ∀ (ψ : LTr.FFIAnswers) → ψ ≡ LTr.pureHalf ι′ → ∀ {D : T.Type} (c : _) b (x : M.⟦ D ⟧) (v : S.⟦ b ⟧ᵇ)
       → key (showCanonical c) D ⌞ b ⌟ ∈ valueKeys (toISig Σ)
-      → (∀ p₀ → LTr.pure ι′ (key (showCanonical c) D ⌞ b ⌟) p₀ x ≡ SI.fromB b v)
+      → (∀ p₀ → LTr.pure ι′ (key (showCanonical c) D ⌞ b ⌟) p₀ x ≡ SI.fromB fmt b v)
       → RelGM G.pure (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v))
               (embed (LTr.fmapT (injectᵇ (⌜⌝-base b)) (LTr.resT (mapRes (atTarget fmt ⌞ b ⌟) (ψ c D ⌞ b ⌟ x)))))
 val-R ψ refl {D} c b x v p h = go (key (showCanonical c) D ⌞ b ⌟ ∈K? valueKeys (toISig Σ))
@@ -365,7 +370,7 @@ val-R ψ refl {D} c b x v p h = go (key (showCanonical c) D ⌞ b ⌟ ∈K? valu
     -- D397: the world's value, read at the target, is the Spec's read value
     forceR (go (yes p₀)) = ret (left (subst (λ z → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v)) (injectᵇ (⌜⌝-base b) (atTarget fmt ⌞ b ⌟ z))) (sym (h p₀))
                                         (subst (λ w → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v)) (injectᵇ (⌜⌝-base b) w)) (sym (SI.fromB-at fmt b v))
-                                               (fromB-R b (readAt fmt b v)))))
+                                               (fromB-R b v))))
     go (no ¬p) = ⊥-elim (¬p p)
 
 module _ {s₀} (S₀ : SC.Defs s₀) (σ : SDn.DefsSem) (eψ : CallEnv.ffiE (SDn.DefsSem.calls σ) ≡ LTr.pureHalf ι′) where
@@ -373,9 +378,14 @@ module _ {s₀} (S₀ : SC.Defs s₀) (σ : SDn.DefsSem) (eψ : CallEnv.ffiE (SD
   private
     ψ = CallEnv.ffiE (SDn.DefsSem.calls σ)
 
+    -- the machine's answer, read at the target, is the world's read there
+    answer-at : ∀ b v v′ → SI.canonB fmt b v′ ≡ SI.fromB fmt b v → atTarget fmt ⌞ b ⌟ v′ ≡ SI.fromB fmt b (readAt fmt b v)
+    answer-at b v v′ e =
+      trans (sym (SI.atTarget-canonB fmt b v′)) (trans (cong (atTarget fmt ⌞ b ⌟) e) (SI.fromB-at fmt b v))
+
     -- an operation's call, by the form its answer type decides
     op-R : ∀ {c a q b} (M : (c ∶ operation a q b) ∈ Σ) (bDom : (LW.Base LW.∅ₖ) ⌞ argAt q a ⌟) {x y}
-         → SI.toB (argAt q a) x ≡ y → ∀ dv du
+         → SI.toB fmt (argAt q a) x ≡ y → ∀ dv du
          → RunR (RelGV (S.⌜ b ⌝)) (SE.embed (SE.performT (S.call (op M) y (λ v → SD.fromB σ₀ b (readAt fmt b v)))))
                 (embed (LTr.fmapT (injectᵇ (⌜⌝-base b)) (sigOpT fmt ψ (mk-info' c (arrow-sem-eff dv du) bDom (⌜⌝-base b)) x)))
     forceR (op-R {b = b} M bDom ra (yes e) du) with ⌞⌟-void b e
@@ -386,9 +396,9 @@ module _ {s₀} (S₀ : SC.Defs s₀) (σ : SDn.DefsSem) (eψ : CallEnv.ffiE (SD
     ...   | refl = call (cr M tt) ra (λ {v} {v′} _ → ret (left tt))
     forceR (op-R {b = b} M bDom ra (no ¬v) (no ¬u)) =
       call (cr M (data-ne b (wf-at wf M) ¬v ¬u)) ra
-           (λ {v} {v′} e → ret (left (subst (λ z → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v)) (injectᵇ (⌜⌝-base b) (atTarget fmt ⌞ b ⌟ z))) (sym e)
-                                      (subst (λ w → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v)) (injectᵇ (⌜⌝-base b) w)) (sym (SI.fromB-at fmt b v))
-                                             (fromB-R b (readAt fmt b v))))))
+           (λ {v} {v′} e → ret (left (subst (λ w → RelGV (S.⌜ b ⌝) (SD.fromB σ₀ b (readAt fmt b v)) (injectᵇ (⌜⌝-base b) w))
+                                             (sym (answer-at b v v′ e)) (fromB-R b v))))
+
 
   -- At each form of declaration.
   sig-SD : ∀ {c} t (M : (c ∶ t) ∈ Σ)
@@ -405,12 +415,12 @@ module _ {s₀} (S₀ : SC.Defs s₀) (σ : SDn.DefsSem) (eψ : CallEnv.ffiE (SD
   sig-SD {c} (value a SG.One b) M =
     return∞-R ( (λ {x} {y} r → val-R ψ eψ c b (forgetᵇ (⌜⌝-base a) y) (Model.valueᵐ mo M (SD.toB σ₀ a x)) (value-∈ (∈-toISig M) refl)
                                  (λ p₀ → trans (read-value M {p₀} (yes p₀) (forgetᵇ (⌜⌝-base a) y))
-                                               (cong (λ z → SI.fromB b (Model.valueᵐ mo M z)) (toB-R a r))))
+                                               (cong (λ z → SI.fromB fmt b (Model.valueᵐ mo M z)) (toB-R a r))))
               , ptr-self (⌜⌝-base a) (⌜⌝-base b) (λ x → sigOpT fmt ψ (arrow-info (G.mk-kind SG.One G.pure) c (⌜⌝-base a) (⌜⌝-base b)) x) )
   sig-SD {c} (value a SG.Many b) M =
     return∞-R ( (λ {x} {y} r → val-R ψ eψ c b (forgetᵇ (⌜⌝-base a) y) (Model.valueᵐ mo M (SD.toB σ₀ a x)) (value-∈ (∈-toISig M) refl)
                                  (λ p₀ → trans (read-value M {p₀} (yes p₀) (forgetᵇ (⌜⌝-base a) y))
-                                               (cong (λ z → SI.fromB b (Model.valueᵐ mo M z)) (toB-R a r))))
+                                               (cong (λ z → SI.fromB fmt b (Model.valueᵐ mo M z)) (toB-R a r))))
               , ptr-self (⌜⌝-base a) (⌜⌝-base b) (λ x → sigOpT fmt ψ (arrow-info (G.mk-kind SG.Many G.pure) c (⌜⌝-base a) (⌜⌝-base b)) x) )
   sig-SD {c} (operation a SG.Zero b) M =
     return∞-R ( op-R M LW.b-Unit refl (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟)
@@ -465,33 +475,39 @@ private
   ans-in {(c ∶ operation a SG.Many b) ∷ Σ′} (here refl) ¬v ¬u = eff-in _ _ _ (T.isVoid? ⌞ b ⌟) (T.isUnit? ⌞ b ⌟) ¬v ¬u _
 
   ι : LTr.Interp
-  ι = toInterp Σ wf J
+  ι = toInterp fmt Σ wf J
 
   unit-ans : ∀ {cn a q b bA x} (M : (cn ∶ operation a q b) ∈ Σ) h p (eb : b ≡ S.unit) (u : ⌞ b ⌟ ≡ T.Unit) dk {y}
            → Σ[ v ∈ M.⟦ ⌞ b ⌟ ⟧ ] (LTr.callAnswer-at ι h (LTr.callOp cn ⌞ argAt q a ⌟ bA ⌞ b ⌟) x (yes u) dk ≡ just v)
-               × (v ≡ SI.fromB b (World.answer w (op M) (map toEvent h) y p))
+               × (v ≡ SI.fromB fmt b (World.answer w (op M) (map (toEvent (TargetNum.float-format fmt)) h) y p))
   unit-ans M h p refl refl dk = tt , refl , refl
 
-  ans-at : ∀ {cn a q b bA} (M : (cn ∶ operation a q b) ∈ Σ) (ne : NotEmpty b) {x y} (ra : SI.toB (argAt q a) x ≡ y) h p
+  ans-at : ∀ {cn a q b bA} (M : (cn ∶ operation a q b) ∈ Σ) (ne : NotEmpty b) {x y} (ra : SI.toB fmt (argAt q a) x ≡ y) h p
          → notEmpty? b ≡ yes p → (du : Dec (⌞ b ⌟ ≡ T.Unit)) (dk : Dec (key (showCanonical cn) ⌞ argAt q a ⌟ ⌞ b ⌟ ∈ answerKeys (toISig Σ)))
          → Σ[ v ∈ M.⟦ ⌞ b ⌟ ⟧ ] (LTr.callAnswer-at ι h (LTr.callOp cn ⌞ argAt q a ⌟ bA ⌞ b ⌟) x du dk ≡ just v)
-             × (v ≡ SI.fromB b (World.answer w (op M) (map toEvent h) y p))
+             × (v ≡ SI.fromB fmt b (World.answer w (op M) (map (toEvent (TargetNum.float-format fmt)) h) y p))
   ans-at {b = b} {bA} M ne {x} {y} ra h p d (yes u) dk = unit-ans {bA = bA} {x = x} M h p (⌞⌟-unit b u) u dk {y}
   ans-at {a = a} {b = b} M ne {x} ra h p d (no ¬u) (yes p₁) =
     _ , refl , trans (ans-op (ans-G Σ (λ m → m) wf h _ p₁) M refl p d x)
-                     (cong (λ z → SI.fromB b (World.answer w (op M) (map toEvent h) z p)) ra)
+                     (cong (λ z → SI.fromB fmt b (World.answer w (op M) (map (toEvent (TargetNum.float-format fmt)) h) z p)) ra)
   ans-at {b = b} M ne ra h p d (no ¬u) (no ¬k) = ⊥-elim (¬k (ans-in M (λ e → ne-void ne (⌞⌟-void b e)) ¬u))
 
-  ev-eq : ∀ {cn} a .(bA : (LW.Base LW.∅ₖ) ⌞ a ⌟) {x y} → SI.toB a x ≡ y
-        → toEvent (Once.IR.Semantics.Event.mk-event cn ⌞ a ⌟ bA x) ≡ S.event cn a y
+  ev-eq : ∀ {cn} a .(bA : (LW.Base LW.∅ₖ) ⌞ a ⌟) {x y} → SI.toB fmt a x ≡ y
+        → toEvent (TargetNum.float-format fmt) (Once.IR.Semantics.Event.mk-event cn ⌞ a ⌟ bA x) ≡ S.event cn a y
   ev-eq {cn} a bA {x} ra = cong (λ { (b , v) → S.event cn b v }) (trans (ev-val a bA x) (cong (a ,_) ra))
+
+  -- the answer the implementation gives is the world's, written, so canonical
+  canon-ans : ∀ b {P : M.⟦ ⌞ b ⌟ ⟧ → Set} {u} → Σ[ v ∈ M.⟦ ⌞ b ⌟ ⟧ ] (P v × v ≡ SI.fromB fmt b u)
+            → Σ[ v ∈ M.⟦ ⌞ b ⌟ ⟧ ] (P v × SI.canonB fmt b v ≡ SI.fromB fmt b u)
+  canon-ans b {u = u} (v , pv , refl) = v , pv , SI.canonB-fromB fmt b u
 
 -- The compiler's interpretation of `J` and `J`'s world agree on every
 -- related call (`Observe.Agree`).
 agree : Agree ι w
 agree = record
   { answered   = λ { (cr {a = a} {q} {b} {bA} M ne) {y} {x} ra h →
-                     ne , λ p d → ans-at {bA = bA} M ne ra h p d (T.isUnit? ⌞ b ⌟) (key _ ⌞ argAt q a ⌟ ⌞ b ⌟ ∈K? answerKeys (toISig Σ)) }
+                     ne , λ p d → canon-ans b
+                                    (ans-at {bA = bA} M ne ra h p d (T.isUnit? ⌞ b ⌟) (key _ ⌞ argAt q a ⌟ ⌞ b ⌟ ∈K? answerKeys (toISig Σ))) }
   ; call-event = λ { (cr {a = a} {q} M ne) ra → ev-eq (argAt q a) _ ra }
   ; halt-event = λ { (hr {a = a} {q} M) ra → ev-eq (argAt q a) _ ra }
   ; halt-void  = λ { (hr M) () }

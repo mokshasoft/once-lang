@@ -133,6 +133,20 @@ canonB-fromB tn (a S.* b) (x , y) = cong₂ _,_ (canonB-fromB tn a x) (canonB-fr
 canonB-fromB tn (a S.+ b) (inj₁ x) = cong inj₁ (canonB-fromB tn a x)
 canonB-fromB tn (a S.+ b) (inj₂ y) = cong inj₂ (canonB-fromB tn b y)
 
+-- | Reading at the target sees through the canonical form (`fit` is
+-- idempotent on words).
+atTarget-canonB : ∀ tn b x → atTarget tn ⌞ b ⌟ (canonB tn b x) ≡ atTarget tn ⌞ b ⌟ x
+atTarget-canonB tn S.unit  x = refl
+atTarget-canonB tn S.void  x = refl
+atTarget-canonB tn S.int   x = refl
+atTarget-canonB tn S.float x =
+  trans (cong (λ u → encode F (fitV F u)) (decode-encode F (fitV F (decode F x)) (fitV-inRange F (decode F x))))
+        (cong (encode F) (fitV-idem F (decode F x)))
+  where F = float-format tn
+atTarget-canonB tn (a S.* b) (x , y)  = cong₂ _,_ (atTarget-canonB tn a x) (atTarget-canonB tn b y)
+atTarget-canonB tn (a S.+ b) (inj₁ x) = cong inj₁ (atTarget-canonB tn a x)
+atTarget-canonB tn (a S.+ b) (inj₂ y) = cong inj₂ (atTarget-canonB tn b y)
+
 -- | The implementation's `atTarget` is the Spec's `readAt`, leaf by leaf.
 fromB-at : ∀ (tn : TargetNum) b (v : S.⟦ b ⟧ᵇ) → atTarget tn ⌞ b ⌟ (fromB tn b v) ≡ fromB tn b (readAt tn b v)
 fromB-at tn S.unit  v = refl

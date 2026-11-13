@@ -20,7 +20,8 @@ open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Type using (b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗)
 open import Once.Spec.Type using (TySub)
 
-open import Once.Spec.Numerics using (TargetNum)
+open import Once.Spec.Numerics using (TargetNum; module TargetNum)
+open import Once.Spec.Float.Encoding using (decode)
 
 module Once.Adequacy.SpecRecursion (Σ : Signature) (σ : TySub 0 0) (fmt : TargetNum) where
 
@@ -67,7 +68,7 @@ BV : (A : Type) → SD.⟦ A ⟨ σ ⟩ ⟧ᵛ → Val.⟦ A ⟧ → Set
 BV Unit    _ _ = ⊤
 BV Void    () _
 BV Int     x y = x ≡ y
-BV Float   x y = x ≡ y
+BV Float   x y = x ≡ decode (TargetNum.float-format fmt) y     -- a word means its value
 BV (A * B) (x , x′) (y , y′) = BV A x y × BV B x′ y′
 BV (A + B) (inj₁ x) (inj₁ y) = BV A x y
 BV (A + B) (inj₂ x) (inj₂ y) = BV B x y
