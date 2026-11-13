@@ -661,3 +661,11 @@ keep-regs rs pc = keep-alloc refl refl (λ _ _ _ → refl)
 -- a store to the current frame
 keep-store : ∀ fs b v → Keep fs (record fs { floc = writeLoc (floc fs) (AtStack (current-frame (falloc fs)) b) v ; fpc = suc (fpc fs) })
 keep-store fs b v = keep-alloc refl refl (λ f x ne → store-frame (floc fs) (current-frame (falloc fs)) b v f x (λ e → ne (sym e)))
+
+-- a step on the pc alone (a free: the heap's blocks are the allocator's)
+keep-pc : ∀ {fs} pc → Keep fs (record fs { fpc = pc })
+keep-pc pc = keep-alloc refl refl (λ _ _ _ → refl)
+
+-- an allocation: the counter and the blocks' sizes move, the frames do not
+keep-heap : ∀ fs n → Keep fs (flat-step-straight (instr-alloc-heap n) fs)
+keep-heap fs n = record { k-frame = refl ; k-slots = refl ; k-saved = refl ; k-ret = refl ; k-other = λ _ _ _ → refl }
