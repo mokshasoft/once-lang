@@ -37,7 +37,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf
   open CfgW
-  open import Once.LinCore.Moves {FS} using (Seg; slot; Keep; k-frame; k-slots; k-saved; k-ret; k-other) renaming (ln to nsteps)
+  open import Once.LinCore.Moves {FS} using (Seg; slot; Keep; k-frame; k-slots; k-saved; k-ret; k-other; k-halt; Ran) renaming (ln to nsteps)
   open import Once.LinCore.MoveCode using (mvSS)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; floc; fpc)
@@ -54,7 +54,8 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ mpair a b ∷ˢ os)
             → wsz A + ws ((A ⊗t B) ∷ S) ≤ OP φ
             → Σ FlatState λ fs₃ → FlatSteps prog (nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))) fs fs₃
-                × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os) × Keep fs fs₃
+                × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os)
+                × Ran (nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))) fs fs₃
   lswap-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h C fitT
     = finish (swap-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h C′ fitT′)
     where
@@ -72,8 +73,8 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       fitT′ = subst (λ z → wsz A + z ≤ OP φ) assoc fitT
       t = budget φ ∸ ws (A ∷ B ∷ S)
       n = nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))
-      finish : Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os) × Keep fs fs₃)
-             → Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os) × Keep fs fs₃)
+      finish : Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os) × Ran n fs fs₃)
+             → Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os) × Ran n fs fs₃)
       finish (fs₃ , st , C₃ , K) =
         fs₃ , st ,
         record { c-env = c-env C₃
@@ -196,4 +197,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   keepH : ∀ {fs fs′ w lb lc lf} → Header fs fs′ w lb lc lf → Keep fs fs′
   keepH H = record { k-frame = cong AllocState.current-frame (h-alloc H) ; k-slots = cong AllocState.frame-slots (h-alloc H)
                    ; k-saved = cong AllocState.saved-frames (h-alloc H) ; k-ret = h-ret H
-                   ; k-other = λ f x _ → cong (λ m → m f x) (h-stack H) }
+                   ; k-other = λ f x _ → cong (λ m → m f x) (h-stack H) ; k-halt = h-halt H }
+
+  ranH : ∀ {fs fs′ w lb lc lf} → Header fs fs′ w lb lc lf → Ran 10 fs fs′
+  ranH H = record { r-keep = keepH H ; r-pc = h-pc H }
