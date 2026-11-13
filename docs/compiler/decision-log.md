@@ -22861,3 +22861,29 @@ result lands at `M ∸ wB`. Reusing the block relation avoids a second proof of 
 ### Consequences
 * `leave` generalised to any save slot; `Site` gains `s-tramp`; `RetOK` a constructor for a trampoline
   frame (its way out at `sv₂`, the caller's area `Mc`-sized); the cell parts' lemmas (`open1`, `nopen`).
+
+## D422 — A ROOT'S CODE HAS NO TRAMPOLINE CELL PART: A CELL PART AT A ROOT'S PATH IS ABSURD (2026-11-13)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Refines**: D417 (the
+cell-part instructions `open1 openω nopen copen reclose fopen`). Proof structure only: the flat code is
+unchanged.
+
+### Decision
+* **`NoCell`: the roots the word layer lowers have no cell part.** `NoCellC` (by the code: a cell part
+  is `⊥`) holds of `compᴵ`'s output, a fold's `travᴵ`, `copyᴵ`, `freeᴵ`, so of the start's code and of
+  every block of a non-trampoline key; every key of a program's universe is one (`allK-nt`, through
+  `tmGot`/`defsGot`/`key1`/`keyω` as `blocks-in`); a path keeps it (`sub-nc`).
+* So a cell-part step at a path of the start's or a block's code is refuted; only the trampoline points
+  (D418, D421) relate a cell part.
+* **Not chosen: `Keys.IIn` of a cell part `⊥`.** `CIn` is also the image run's universe invariant
+  (`KeysRun.keep`), which holds of a trampoline's block too (`i-icall` enters it); the lowering's
+  evidence and the run's invariant are one predicate, so it cannot exclude cell parts.
+
+### Why
+`lowI` of a cell part is `[]` (Lower: "only in a trampoline's block, which is never lowered here"); with
+nothing refuting an `open1` at a root's path, the step theorem would owe it a flat run of zero
+instructions that turns a cell pointer into the cell's contents — false. The fact is true by
+construction of the compiled code, and `NoCell` states it.
+
+### Consequences
+* The step theorem covers `open1` (at a trampoline's depth 0, by `tr-open1`; elsewhere absurd).
