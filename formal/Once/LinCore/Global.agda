@@ -337,7 +337,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   ----------------------------------------------------------------------
 
   open import Once.LinCore.ImageRun fmt ans bw using (StepI)
-  open import Once.LinCore.LocalStep fmt ans bw using (Local; module Steps)
+  open import Once.LinCore.LocalStep fmt ans bw using (Local; LocalI; LocalC; module Steps)
   open import Once.LinCore.HeldI fmt ans bw using (InvI)
   open import Once.LinCore.LabelsI fmt ans bw using (module Img)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
@@ -372,35 +372,9 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                 (Rin : Inside image (At.code U ncty ldConst (frameOf root) j L₀))
                 (eφ : budget (rootφ R) ≡ budget (frameOf root)) where
     module L  = Loc {FS} U ncty ldConst wordOf image root j L₀ Rin using (Here; lowAt)
-    module LS = Steps {FS} U ncty ldConst wordOf image root j L₀ Rin using (local-step; Out; succ)
+    module LS = Steps {FS} U ncty ldConst wordOf image root j L₀ Rin using (local-step; Out; succ; succ′; module Succ)
     module RA = At U ncty ldConst (frameOf root) j using (lfin)
 
-    -- a local step keeps the way out and the return stack
-    ret-succ : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′} {X Y Z W}
-               (st : StepI c r m n t c′ r′ m′ n′) (l : Local st) (s : Sub root c)
-             → RetOK R (RA.lfin (L.lowAt s)) r X Y Z W → RetOK R (RA.lfin (L.lowAt (LS.succ st l s))) r′ X Y Z W
-    ret-succ StepI.i-unpair     _ s ok = ok
-    ret-succ StepI.i-pair       _ s ok = ok
-    ret-succ StepI.i-swap       _ s ok = ok
-    ret-succ StepI.i-unit       _ s ok = ok
-    ret-succ (StepI.i-prim _)   _ s ok = ok
-    ret-succ StepI.i-untag      _ s ok = ok
-    ret-succ StepI.i-untag₁     _ s ok = ok
-    ret-succ StepI.i-tag₁       _ s ok = ok
-    ret-succ StepI.i-case₁      _ s ok = ok
-    ret-succ StepI.i-case₂      _ s ok = ok
-    ret-succ StepI.i-elend      _ s ok = ok
-    ret-succ StepI.i-eunlend    _ s ok = ok
-    ret-succ StepI.i-elift      _ s ok = ok
-    ret-succ (StepI.i-efst _)   _ s ok = ok
-    ret-succ (StepI.i-esnd _)   _ s ok = ok
-    ret-succ (StepI.i-eout _)   _ s ok = ok
-    ret-succ (StepI.i-eoutq _)  _ s ok = ok
-    ret-succ (StepI.i-ecase₁ _) _ s ok = ok
-    ret-succ (StepI.i-ecase₂ _) _ s ok = ok
-    ret-succ (StepI.i-eapp _)   _ s ok = ok
-    ret-succ StepI.i-epop       _ s ok = ok
-    ret-succ (StepI.i-eword _)  _ s ok = ok
 
     -- ★ the local step, with the whole relation
     glocal : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
@@ -420,7 +394,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         fin : LS.Out (LS.succ st l s) fs _ _ → _
         fin (N , fs′ , run , H′ , K , nx′ , old , tp) =
           N , fs′ , run , H′ , nx′ ,
-          ctx-keep K (ret-succ st l s
+          ctx-keep K (LS.Succ.carry (LS.succ′ st l s) (λ fin r₀ → RetOK R fin r₀ _ _ _ fs′)
             (ret-top (k-other K) (λ x le → top-at K tp x (subst (_≤ x) eφ le)) old frR ok))
 
   -- the return stack over a run that kept what `Keep` says, the old heap and the frame's top
@@ -445,18 +419,12 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   loop-not-tramp (p-tramp _ _) ()
   loop-not-tramp p-halt ()
 
-  -- no step at an `end` stays in its root
-  end-nonlocal : ∀ {T sh sh′ U″} {r : Ret sh T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
-                 → (st : StepI (end {sh = sh}) r m n t c′ r′ m′ n′) → Local st → ⊥
-  end-nonlocal StepI.i-ret  ()
-  end-nonlocal StepI.i-reti ()
-
-  -- no step that stays in its root runs at a trampoline's point
-  tr-nolocal : ∀ {T σ sh U′ sh′ U″} {κ : Key σ} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
-                 {p : under κ ∈ allK U} {pt : Pt (blockᴵ κ) c} → TrPt p pt → (st : StepI c r m n t c′ r′ m′ n′) → Local st → ⊥
-  tr-nolocal (tp0 _) StepI.i-open1 ()
-  tr-nolocal (tp1 _) StepI.i-call  ()
-  tr-nolocal (tp2 _) st l = end-nonlocal st l
+  -- no step that stays in its root runs at a trampoline's point (by its code)
+  tr-nolocal : ∀ {σ sh U′} {κ : Key σ} {c : Codeᴵ sh U′} {p : under κ ∈ allK U} {pt : Pt (blockᴵ κ) c}
+             → TrPt p pt → LocalC c → ⊥
+  tr-nolocal (tp0 _) ()
+  tr-nolocal (tp1 _) ()
+  tr-nolocal (tp2 _) ()
 
   module Whole (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
                     → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
@@ -495,7 +463,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gstep-at {r = r} {fs = fs} (p-block p (disp s)) StepI.i-case₂ l inv H nx ok = case KL.disp-again p image-label s H of λ where
       (N , fs′ , run , H′ , K , nx′ , old , tp) →
         N , fs′ , run , record { g-pt = p-block p (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok }
-    gstep-at (p-tramp p pt) st l inv (tp , H) nx ok = ⊥-elim (tr-nolocal tp st l)
+    gstep-at (p-tramp p pt) st l inv (tp , H) nx ok = ⊥-elim (tr-nolocal tp l)
 
     -- ★ every step that stays in its root keeps the relation
     gstep-local : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
@@ -992,18 +960,28 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- code word and the trampolines' cell parts (per key, D418), `lop`.
   ----------------------------------------------------------------------
 
-  Covered : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
-          → StepI c r m n t c′ r′ m′ n′ → Set
-  Covered StepI.i-loop = Data.Unit.⊤
+  -- by the code's head, as `Local` (no case split on the step)
+  CoveredI : ∀ {sh sh′} → Insᴵ sh sh′ → Set
+  CoveredI (loop _) = Data.Unit.⊤
     where import Data.Unit
-  Covered StepI.i-reti = Data.Unit.⊤
-    where import Data.Unit
-  Covered StepI.i-call = Data.Unit.⊤
-    where import Data.Unit
-  Covered StepI.i-ret  = Data.Unit.⊤
+  CoveredI (call _) = Data.Unit.⊤
     where import Data.Unit
   {-# CATCHALL #-}
-  Covered st = Local st
+  CoveredI i = LocalI i
+
+  CoveredC : ∀ {sh U′} → Codeᴵ sh U′ → Set
+  CoveredC (i ⨾ k)     = CoveredI i
+  CoveredC (case _ _)  = Data.Unit.⊤
+    where import Data.Unit
+  CoveredC (ecase _ _) = Data.Unit.⊤
+    where import Data.Unit
+  CoveredC end         = Data.Unit.⊤
+    where import Data.Unit
+  CoveredC halted      = ⊥
+
+  Covered : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
+          → StepI c r m n t c′ r′ m′ n′ → Set
+  Covered {c = c} _ = CoveredC c
 
   module Theorem (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
                        → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
