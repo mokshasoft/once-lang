@@ -40,20 +40,20 @@ module Once.LinCore.Global
 
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; Cfg; _∥_)
+open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt ans bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt ans bw
 open import Once.LinCore.Layout fmt ans bw using (Frame; frameOf; budget; wsz; ws)
 open import Once.LinCore.Lower fmt ans bw
 open import Once.LinCore.Words fmt ans bw
-open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; next; body)
+open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; next; body; whole)
 open import Once.LinCore.LowAt fmt ans bw using (module At)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open import Once.LinCore.PointAt fmt ans bw using (module Ctl)
 open import Once.LinCore.StepLocal fmt ans bw using (module Loc)
 open import Once.LinCore.LoopStep fmt ans bw using (module Loops)
-open import Once.LinCore.CallStep fmt ans bw using (module Calls)
+open import Once.LinCore.CallStep fmt ans bw using (module Calls; module Frames)
 open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
 
 module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
@@ -65,7 +65,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open ProgramRun ds f using (ncty)
   open Program′ ds f ldConst using (image; j₀)
   open Lowering U ncty ldConst
-  open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K)
+  open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From)
   open Rel {FS} U wordOf using (EnvW; StkW)
   open FlatMachine {FS} using (FlatState; floc; falloc; fret)
   open FrameSemantics FS using (_≺_)
@@ -444,3 +444,82 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     greti (p-block p (at e)) inv H nx (ok-loop (p-tramp _ _) () rest)
     greti (p-block p (at e)) inv H nx (ok-loop p-halt () rest)
     greti (p-tramp _ _) inv () nx ok
+
+  ----------------------------------------------------------------------
+  -- 7. ★ A CALL: the callee's frame opened, the caller's saved.
+  ----------------------------------------------------------------------
+
+  open Frames {FS} using (Called)
+  open Called
+  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢)
+  open Rel {FS} U wordOf using (CfgW)
+
+  private
+    nat-r0 : ∀ {a b : ℕ} → a + b ≡ 0 → b ≡ 0
+    nat-r0 {zero} e = e
+    nat-r0 {suc a} ()
+
+  -- ★ the caller's frame, as the new top of the return stack
+  mk-call : ∀ {T t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} {es : Slots (t ⊳ Es)} {a : MV A} {os : Stk S}
+              {r : Ret V T} {fs fs′} (p : (bsig t A B , κ) ∈ allK U) (st : Site κ k) → siteCallee st ≡ p
+          → Called fs fs′ (sitePos st) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (Tp (siteφ st) S ∸ (wsz A ⊔ wsz B))
+          → CfgW (LocState.heapMem (floc fs)) (slot fs) (siteφ st) (es ∥ a ∷ˢ os)
+          → (∀ i → AllocState.next-heap-ref (falloc fs) ≤ serial i → cntE es i ≡ 0 × cntS (a ∷ˢ os) i ≡ 0)
+          → FreshR r (AllocState.next-heap-ref (falloc fs))
+          → RetOK (siteRoot st) (siteFin st) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+          → RetOK (rblock p) (blockFin κ) (frm {t = t} {Es = Es} k es os r)
+                  (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) fs′
+  mk-call {κ = κ} {es = es} {a} {os} {fs = fs} {fs′} p st eC CD C fr frR ok =
+    ok-call p st cfc (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) (fret fs)
+      refl refl eC (cd-ret CD) (cd-saved CD) under-cfc (cd-area CD)
+      (env-stand (λ i le → proj₁ (fr i le)) (cd-old CD) (envW-frame es (λ x _ → kept x) (CfgW.c-env C)))
+      (stk-stand (λ i le → nat-r0 (proj₂ (fr i le))) (cd-old CD) (stk-all os kept (proj₂ (CfgW.c-stk C))))
+      (ret-deep (AllocState.current-frame (falloc fs′)) under-cfc
+         (λ f x ne → cd-others CD f x (λ e → ne (trans (sym e) (sym (cd-frame CD))))) (cd-old CD) frR ok)
+    where
+      cfc = AllocState.current-frame (falloc fs)
+      b = fbudget (frameOf (blockᴵ κ))
+      under-cfc : AllocState.current-frame (falloc fs′) ≺ cfc
+      under-cfc = subst (_≺ cfc) (sym (cd-frame CD)) (callee-below cfc b)
+      kept : ∀ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x
+      kept x = cd-others CD cfc x (callee-≢ cfc b)
+
+  module GCall where
+    module FrS = From main j₀ L₀ˢ start-root
+    module FrK {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = From (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p)
+    open Related
+
+    ArrivesAt : ∀ {T sh U′} → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
+    ArrivesAt c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′
+
+    -- ★ a call: from either kind of root, into either kind of block
+    gcall : ∀ {T t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} {r : Ret V T}
+              {es : Slots (t ⊳ Es)} {a : MV A} {os : Stk S} {n h fs} (P : Pnt (call κ ⨾ k))
+          → InvI (es ∥ a ∷ˢ os) r n h → HereP P (es ∥ a ∷ˢ os) fs → AllocState.next-heap-ref (falloc fs) ≡ n
+          → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+          → ArrivesAt (blockᴵ κ) (frm {t = t} {Es = Es} k es os r) (topv t es ∥ a ∷ˢ []ˢ) n fs
+    gcall {t = nothing} {r = r} {fs = fs} (p-start (at s)) inv H nx ok = case FrS.call-n s H of λ where
+      (N , fs′ , run , H′ , CD) →
+        N , fs′ , run , record { g-pt = p-block (FrS.callee s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
+                               ; g-ret = mk-call (FrS.callee s) (s-start s) refl CD (S.Here.h-cfg H)
+                                           (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+    gcall {t = just E} {r = r} {fs = fs} (p-start (at s)) inv H nx ok = case FrS.call-v s H of λ where
+      (N , fs′ , run , H′ , CD) →
+        N , fs′ , run , record { g-pt = p-block (FrS.callee s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
+                               ; g-ret = mk-call (FrS.callee s) (s-start s) refl CD (S.Here.h-cfg H)
+                                           (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+    gcall {t = nothing} {r = r} {fs = fs} (p-block p′ (at s)) inv H nx ok = case FrK.call-n p′ s H of λ where
+      (N , fs′ , run , H′ , CD) →
+        N , fs′ , run , record { g-pt = p-block (FrK.callee p′ s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
+                               ; g-ret = mk-call (FrK.callee p′ s) (s-block p′ s) refl CD (K.Here.h-cfg {p = p′} H)
+                                           (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+    gcall {t = just E} {r = r} {fs = fs} (p-block p′ (at s)) inv H nx ok = case FrK.call-v p′ s H of λ where
+      (N , fs′ , run , H′ , CD) →
+        N , fs′ , run , record { g-pt = p-block (FrK.callee p′ s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
+                               ; g-ret = mk-call (FrK.callee p′ s) (s-block p′ s) refl CD (K.Here.h-cfg {p = p′} H)
+                                           (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok }
+    gcall (p-tramp _ _) inv () nx ok
