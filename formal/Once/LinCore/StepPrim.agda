@@ -137,7 +137,7 @@ module Prims {FS : FrameSemantics} (U : Univ)
     -- a lemma that also states the heap counter: as a straight run
     drop-next : ∀ {sb} {m′ : Cfg sb} {fs N a} {P : FlatState → Set}
               → Σ FlatState (λ fs′ → FlatStepsAPI.FlatSteps {FS} prog N fs fs′
-                                     × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ m′ × P fs′ × Ran N a fs fs′)
+                                     × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ m′ × P fs′ × Ran N a (AllocState.next-heap-ref (falloc fs)) fs fs′)
               → Gives fs N a m′
     drop-next (fs′ , st , C′ , _ , Rn) = fs′ , st , C′ , Rn
 

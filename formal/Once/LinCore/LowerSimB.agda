@@ -40,8 +40,8 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open import Once.LinCore.Moves {FS} using (Seg; slot; Keep; k-frame; k-slots; k-saved; k-ret; k-other; k-halt; Ran) renaming (ln to nsteps)
   open import Once.LinCore.MoveCode using (mvSS)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
-  open FlatMachine {FS} using (FlatState; floc; fpc)
-  open import Once.CCC.Machine.SMCore using (module LocState)
+  open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
+  open import Once.CCC.Machine.SMCore using (module LocState; module AllocState)
   open LocState using (heapMem) renaming (halted to fhalted)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
@@ -55,7 +55,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             → wsz A + ws ((A ⊗t B) ∷ S) ≤ OP φ
             → Σ FlatState λ fs₃ → FlatSteps prog (nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))) fs fs₃
                 × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os)
-                × Ran (nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))) 0 fs fs₃
+                × Ran (nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))) 0 (AllocState.next-heap-ref (falloc fs)) fs fs₃
   lswap-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h C fitT
     = finish (swap-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h C′ fitT′)
     where
@@ -73,8 +73,8 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       fitT′ = subst (λ z → wsz A + z ≤ OP φ) assoc fitT
       t = budget φ ∸ ws (A ∷ B ∷ S)
       n = nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))
-      finish : Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os) × Ran n 0 fs fs₃)
-             → Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os) × Ran n 0 fs fs₃)
+      finish : Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os) × Ran n 0 (AllocState.next-heap-ref (falloc fs)) fs fs₃)
+             → Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os) × Ran n 0 (AllocState.next-heap-ref (falloc fs)) fs fs₃)
       finish (fs₃ , st , C₃ , K) =
         fs₃ , st ,
         record { c-env = c-env C₃
@@ -199,5 +199,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                    ; k-saved = cong AllocState.saved-frames (h-alloc H) ; k-ret = h-ret H
                    ; k-other = λ f x _ → cong (λ m → m f x) (h-stack H) ; k-halt = h-halt H }
 
-  ranH : ∀ {fs fs′ w lb lc lf} → Header fs fs′ w lb lc lf → Ran 10 1 fs fs′
-  ranH H = record { r-keep = keepH H ; r-pc = h-pc H ; r-next = cong AllocState.next-heap-ref (h-alloc H) }
+  ranH : ∀ {fs fs′ w lb lc lf} → Header fs fs′ w lb lc lf → Ran 10 1 (AllocState.next-heap-ref (falloc fs)) fs fs′
+  ranH H = record { r-keep = keepH H ; r-pc = h-pc H ; r-next = cong AllocState.next-heap-ref (h-alloc H)
+                  ; r-old = λ hl lt → h-other H hl (λ e → Data.Nat.Properties.<-irrefl (cong Once.Memory.HeapAddress.HeapRef.ref-id e) lt) }
+    where import Data.Nat.Properties

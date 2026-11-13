@@ -22778,3 +22778,25 @@ area), so "other frames unchanged" is a fact about the run, which the move recor
 * `PointAt` (done). Next: `Keep` in the `LowerSim*` results; the return-stack relation (`∷ⁱ`: the body's
   `c-jmp Ld` resolves to its dispatch point, `image-label`; `frm`: a saved flat frame, its return pc the
   continuation's point, the root's save slot the caller's area); the trampoline relation; the step theorem.
+
+## D419 — A RUN'S HEAP FACT: THE BLOCKS BELOW ITS START COUNTER STAND (2026-11-13)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Applies**: D418, D411
+(the allocator), plan step B1.6. Proof structure only: the flat code is unchanged.
+
+### Decision
+* **Every straight `LowerSim*` run states that the heap's blocks below the heap counter where it began are
+  as they were** (`Moves.Ran n a lo`, field `r-old`, `lo` = the start counter), and the branch lemmas that
+  the heap is unchanged. A move into a block (`ranW`) is allowed only at or past `lo` (`fresh-block`).
+* With the run's steps and the heap counter (`r-next`), this is what keeps a saved frame's values' words
+  (`VW`) standing while a callee runs: every cell a frame holds is below the counter when it is saved.
+
+### Why
+The flat machine today allocates by bump and its free leaves memory as it was (`keep-pc`), so a run writes
+the heap only in blocks it has just allocated. This is the weakest fact the return relation needs, and
+every lemma already has it (`m-heap`, `h-other`, `w-rest`).
+
+### Consequences
+* B1.6 (blocks reused, D411's allocator) breaks it: a freed block is reallocated below the counter. Then
+  `r-old` becomes "the cells no saved frame holds" (`HeldI`: the live cells are exactly the held ones, so a
+  freed cell is held by no frame), stated per run the same way.
