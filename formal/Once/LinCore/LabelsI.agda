@@ -146,26 +146,25 @@ module Img {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open C U ncty ldConst ld-nl
   open Find {FS}
 
-  -- a callable entry defines no jump label
-  ok-entry : ∀ {j a b xs e n} → Ok j a b xs → Ok j a b (instr-ctrl (c-entry e n) ∷ xs)
-  ok-entry (ok k e w d) = ok k e w d
-
   -- a trampoline's labels: none
   tramp-labs : ∀ {j xs} → TrampShape j xs → Labs xs ≡ []
   tramp-labs (inj₁ refl)              = refl
   tramp-labs (inj₂ (_ , _ , refl , p)) = Labs-nl p
 
-  -- ★ block `j`'s code: its labels, distinct
-  blockOk : ∀ j (a : AKey) (ev : BIn a) → Σ ℕ λ n → Ok j 0 n (lowBlock j (proj₂ a) ev)
+  -- ★ block `j`'s code: its entry `e-fn (nameOf j)`, then labels distinct and no entry
+  BlockOk : ℕ → AbstractTrace → Set
+  BlockOk j xs = Σ ℕ λ n → Σ ℕ λ b → Σ AbstractTrace λ r → xs ≡ instr-ctrl (c-entry (e-fn (nameOf j)) b) ∷ r × Ok j 0 n r
+
+  blockOk : ∀ j (a : AKey) (ev : BIn a) → BlockOk j (lowBlock j (proj₂ a) ev)
   blockOk j (bsig t A B , κ) ev =
     let φ = frameOf (blockᴵ κ) ; M = wsz A ⊔ wsz B ; b = fbudget φ
         fin = restore-input (sv₁ φ) ∷ mvSP (Tp φ (B ∷ [])) (M ∸ wsz B) (wsz B) ++ instr-ctrl (c-ret b) ∷ []
         fin-nl = refl ∷ nl (mvSP (Tp φ (B ∷ [])) (M ∸ wsz B) (wsz B)) (mvSP-nl _ _ _) (refl ∷ [])
         r = lowC-ok φ j 0 fin fin-nl (blockᴵ κ) ev
-    in _ , ok-entry (ok-pre (store-at-slot (sv₂ φ) ∷ mov-to-output ∷ store-at-slot (sv₁ φ) ∷ [])
+    in _ , _ , _ , refl , ok-pre (store-at-slot (sv₂ φ) ∷ mov-to-output ∷ store-at-slot (sv₁ φ) ∷ [])
              (refl ∷ refl ∷ refl ∷ [])
              (ok-pre (mvPS (M ∸ wsz A) (Tp φ (A ∷ [])) (wsz A)) (mvPS-nl _ _ _)
-               (ok-pre (view-in t φ) (view-nl t φ) (proj₂ r))))
+               (ok-pre (view-in t φ) (view-nl t φ) (proj₂ r)))
 
   -- ★ the blocks from `j`: distinct labels, each a block's in `[j, j + |ks|)`
   blocks-lab : ∀ ks (ev : ∀ {κ} → κ ∈ ks → BIn κ) j
@@ -178,13 +177,13 @@ module Img {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       n′ = length ks
       widen-in : ∀ {r} → InB (suc j) (suc j + n′) r → InB j (j + suc n′) r
       widen-in (j′ , k , lo , hi , e) = j′ , k , ≤-trans (n≤1+n j) lo , subst (j′ <_) (sym (+-suc j n′)) hi , e
-      finish : (Σ ℕ λ n → Ok j 0 n lowB)
+      finish : BlockOk j lowB
              → AllPairs _≢_ (Labs rest) × All (InB (suc j) (suc j + n′)) (Labs rest)
              → AllPairs _≢_ (Labs (lowB ++ tramp j κ ++ rest)) × All (InB j (j + suc n′)) (Labs (lowB ++ tramp j κ ++ rest))
-      finish (_ , o) (dR , wR) =
+      finish (_ , _ , _ , e , o) (dR , wR) =
         let eqL : Labs (lowB ++ tramp j κ ++ rest) ≡ map (jl j) (idxs o) ++ Labs rest
             eqL = trans (Labs-++ lowB (tramp j κ ++ rest))
-                    (cong₂ _++_ (eq o) (trans (Labs-++ (tramp j κ) rest) (cong (_++ Labs rest) (tramp-labs {j} (tramp-nl j κ)))))
+                    (cong₂ _++_ (trans (cong Labs e) (eq o)) (trans (Labs-++ (tramp j κ) rest) (cong (_++ Labs rest) (tramp-labs {j} (tramp-nl j κ)))))
             cross = tabulate {xs = idxs o} (λ _ → All-map sep wR)
             here-in = All-map⁺ (tabulate {xs = idxs o} (λ {i} _ → j , i , ≤-refl , m<m+n j (s≤s z≤n) , refl))
         in subst (AllPairs _≢_) (sym eqL) (AP-++⁺ (map-dst j (dst o)) dR (All-map⁺ cross))
