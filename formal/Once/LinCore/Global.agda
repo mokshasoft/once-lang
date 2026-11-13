@@ -68,7 +68,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open ProgramRun ds f using (ncty)
   open Program′ ds f ldConst using (image; j₀)
   open Lowering U ncty ldConst
-  open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From)
+  open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From; call-core)
   open Rel {FS} U wordOf using (EnvW; StkW)
   open FlatMachine {FS} using (FlatState; floc; falloc; fret)
   open FrameSemantics FS using (_≺_)
@@ -752,3 +752,21 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         record { f-pc = trans (r-pc Rn) (trans (cong (N +_) (Tr0.t-pc T)) (sym pos₁))
                ; f-run = trans (k-halt (r-keep Rn)) (Tr0.t-run T) ; f-cfg = C′ } ,
         Rn
+
+  -- ★ its inner call: the body's block, the area at the frame's bottom
+  tr-call : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b}
+              (p : under (ktr1 ds′ b γ) ∈ allK U) {v : MV (X ⊗t A)} {fs}
+          → HereF (frame 0 ((wsz X + wsz A) ⊔ wsz B)) (trPos (ktr1 ds′ b γ) p 1) ([]ᵉ ∥ v ∷ˢ []ˢ) fs
+          → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
+              × K.Here p whole ([]ᵉ ∥ v ∷ˢ []ˢ) fs′
+              × Called fs fs′ (suc (suc (suc (fpc fs)))) (fbudget (frameOf (blockᴵ (kbody1 ds′ b γ))))
+                       (sv₁ (frameOf (blockᴵ (kbody1 ds′ b γ)))) 0
+  tr-call {X = X} {A} {B} {ds′} {b} {γ} p {v} {fs} H =
+    call-core p (frame 0 M) 0 seg (HereF.f-run H) (HereF.f-cfg H)
+      (trans (Data.Nat.Properties.+-identityʳ (M ∸ (wsz X + wsz A))) (cong (M ∸_) (sym (Data.Nat.Properties.+-identityʳ (wsz X + wsz A)))))
+    where
+      import Data.Nat.Properties
+      M = (wsz X + wsz A) ⊔ wsz B
+      seg : Seg image (fpc fs) (lea-slot 0 ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf (idx p))) ∷ [])
+      seg = Seg-++ˡ image (fpc fs) (lea-slot 0 ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf (idx p))) ∷ []) _
+              (subst (λ z → Seg image z (trAt (idx p) (ktr1 ds′ b γ) 1)) (sym (HereF.f-pc H)) (in-seg (image-tr (ktr1 ds′ b γ) p 1)))
