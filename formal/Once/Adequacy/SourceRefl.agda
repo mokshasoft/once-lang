@@ -61,6 +61,7 @@ open SigOpInfo using (baseA; conB)
 open import Once.IR.Ref using (refIR)
 open import Once.Spec.Name using (bare)
 open import Once.Arith.SigOp.Builders
+open import Once.Spec.Theory using (unary; binary; compare) renaming (int to nint; float to nfloat)
 import Once.Denotation.SourceDenote as SD
 open SD using (DefsSem; module DefsSem)
 open DefsSem using (calls; refs)
@@ -210,38 +211,14 @@ module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
     RelS-bind (SD-rel e1 (restrict-rel {Γ = Γ} _ r)) λ rv → SD-rel e2 (restrict-rel {Γ = Γ} _ r , rv)
   SD-rel (int n) r = relS-ret refl
   SD-rel (float d) r = relS-ret refl
-  SD-rel (add {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel add-info (ra , rb)
-  SD-rel (sub {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel sub-info (ra , rb)
-  SD-rel (mul {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel mul-info (ra , rb)
-  SD-rel (fadd {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel fadd-info (ra , rb)
-  SD-rel (fsub {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel fsub-info (ra , rb)
-  SD-rel (fmul {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel fmul-info (ra , rb)
-  SD-rel (fdiv {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel fdiv-info (ra , rb)
-  SD-rel (div {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel div-info (ra , rb)
-  SD-rel (mod' {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel mod-info (ra , rb)
-  SD-rel (lt {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel lt-info (ra , rb))
-  SD-rel (le {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel le-info (ra , rb))
-  SD-rel (gt {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel gt-info (ra , rb))
-  SD-rel (ge {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel ge-info (ra , rb))
-  SD-rel (eq {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel eq-info (ra , rb))
-  SD-rel (ne {Γ = Γ} a b) r =
-    RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel ne-info (ra , rb))
-  SD-rel (i2f a) r = RelS-bind (SD-rel a r) (sigOp-rel i2f-info)
-  SD-rel (neg a) r = RelS-bind (SD-rel a r) (sigOp-rel neg-info)
+  SD-rel (num {A = nint} {k = unary} h o e) r = RelS-bind (SD-rel e r) (sigOp-rel (numInfo h o))
+  SD-rel (num {A = nint} {k = binary} h o e) r = RelS-bind (SD-rel e r) (sigOp-rel (numInfo h o))
+  SD-rel (num {A = nint} {k = compare} h o e) r =
+    RelS-bind (SD-rel e r) λ rv → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel (numInfo h o) rv)
+  SD-rel (num {A = nfloat} {k = unary} h o e) r = RelS-bind (SD-rel e r) (sigOp-rel (numInfo h o))
+  SD-rel (num {A = nfloat} {k = binary} h o e) r = RelS-bind (SD-rel e r) (sigOp-rel (numInfo h o))
+  SD-rel (num {A = nfloat} {k = compare} h o e) r =
+    RelS-bind (SD-rel e r) λ rv → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel (numInfo h o) rv)
   SD-rel (coerce p e) r = RelS-fmap (SD-rel e r) (<:-rel p)
   SD-rel (lift-morphism {A = A} {B = B} ir) r = relS-ret (liftFn-rel fmt (proj₁ rσ) {A} {B} ir)
   SD-rel (morph-app {Γ = Γ} {A = A} {B = B} ir e) r =

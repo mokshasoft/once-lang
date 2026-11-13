@@ -73,9 +73,8 @@ open import Once.IR.Semantics.Trace using (ret)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; bindBlock)
 open T∞ using (force)
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; fst; snd; curry; SigOp; terminal; case; initial)
-open import Once.Arith.SigOp.Builders using (arrow-info; value-info;
-                                             add-info; sub-info; mul-info; div-info; mod-info; fadd-info; fsub-info; fmul-info; fdiv-info;
-                                             lt-info; le-info; gt-info; ge-info; eq-info; ne-info; i2f-info; neg-info)
+open import Once.Arith.SigOp.Builders using (arrow-info; value-info; numInfo)
+open import Once.Spec.Theory using (unary; binary; compare) renaming (int to nint; float to nfloat)
 open import Once.Adequacy.CataErased fmt ρ using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt ρ
   using (liftFn-id; liftFn-fst; liftFn-snd; liftFn-inl; liftFn-inr; liftFn-∘; liftFn-pair; liftFn-terminal;
@@ -276,21 +275,6 @@ app-rel₁ {X = X} {A = A} {B = B} {π = π} ef ex dγ hf hx =
                                   liftFn fmt ρ {X} {A} ex dγ >>=∞ λ w → return∞ (u , w)) >>=∞ h)
                          (liftFn-apply₁ {_} {A} {B} {π}))))
      (RelS-assocˡ hf λ rf → RelS-assocˡ hx λ rx → retargetˡ refl (rf rx))
-
--- Two first-order operands, then a SigOp at the pair: the source's two binds
--- and its `sigOpˢ`.
-arith-rel : ∀ {X : Type} {A₁ A₂ C : Type} (si : SigOpInfo (A₁ * A₂) C)
-              (ea : IR ⌊ X ⌋ ⌊ A₁ ⌋) (eb : IR ⌊ X ⌋ ⌊ A₂ ⌋) (dγ : ⟦ X ⟧ᴰ) {sa : T∞ ⟦ A₁ ⟧ᴰ} {sb : T∞ ⟦ A₂ ⟧ᴰ}
-          → RelS (RelD A₁) (liftFn fmt ρ {X} {A₁} ea dγ) sa
-          → RelS (RelD A₂) (liftFn fmt ρ {X} {A₂} eb dγ) sb
-          → RelS (RelD C) (liftFn fmt ρ {X} {C} (SigOp si ∘ ⟨ ea , eb ⟩) dγ)
-                          (sa >>=∞ λ va → sb >>=∞ λ vb → SD.sigOpˢ fmt σ₀ si (va , vb))
-arith-rel {X = X} {A₁ = A₁} {A₂ = A₂} {C = C} si ea eb dγ ha hb =
-  ≡ˡ (trans (cong-app (liftFn-∘ {_} {A₁ * A₂} {C} {X} (SigOp si) ⟨ ea , eb ⟩) dγ)
-            (trans (cong (_>>=∞ liftFn fmt ρ {A₁ * A₂} {C} (SigOp si)) (cong-app (liftFn-pair {_} {X} {A₁} {A₂} ea eb) dγ))
-                   (cong (λ h → (liftFn fmt ρ {X} {A₁} ea dγ >>=∞ λ u → liftFn fmt ρ {X} {A₂} eb dγ >>=∞ λ w → return∞ (u , w)) >>=∞ h)
-                         (liftFn-SigOp si))))
-     (RelS-assocˡ ha λ ra → RelS-assocˡ hb λ rb → retargetˡ refl (sigOp-rel si (ra , rb)))
 
 -- One operand, then a SigOp.
 unop-rel : ∀ {X : Type} {A C : Type} (si : SigOpInfo A C) (ea : IR ⌊ X ⌋ ⌊ A ⌋) (dγ : ⟦ X ⟧ᴰ) {sa : T∞ ⟦ A ⟧ᴰ}
@@ -536,25 +520,14 @@ mutual
     post-rel {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {A} {A + B} IR.inl inj₁ (liftFn-inl {_} {A} {B}) (elaborate IR.Heap e) dγ (λ ra → ra) (faithful e r)
   faithful (inr' {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} e) {dγ} r =
     post-rel {_} {⟦ Γ ↾ Ψ ⟧ᶜ} {B} {A + B} IR.inr inj₂ (liftFn-inr {_} {B} {A}) (elaborate IR.Heap e) dγ (λ rb → rb) (faithful e r)
-  -- Two-operand arithmetic: `<op>IR ∘ ⟨ ea , eb ⟩`, denoted through the SAME
-  -- contract (`sigOpˢ`).
-  faithful (add {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop add-info a b r
-  faithful (sub {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop sub-info a b r
-  faithful (mul {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop mul-info a b r
-  faithful (fadd {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop fadd-info a b r
-  faithful (fsub {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop fsub-info a b r
-  faithful (fmul {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop fmul-info a b r
-  faithful (fdiv {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop fdiv-info a b r
-  faithful (div {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop div-info a b r
-  faithful (mod' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop mod-info a b r
-  faithful (lt {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop lt-info a b r
-  faithful (le {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop le-info a b r
-  faithful (gt {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop gt-info a b r
-  faithful (ge {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop ge-info a b r
-  faithful (eq {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop eq-info a b r
-  faithful (ne {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) {dγ} r = binop ne-info a b r
-  faithful (i2f {Γ = Γ} {Ψ = Ψ} a) {dγ} r = unop-rel {⟦ Γ ↾ Ψ ⟧ᶜ} i2f-info (elaborate IR.Heap a) dγ (faithful a r)
-  faithful (neg {Γ = Γ} {Ψ = Ψ} a) {dγ} r = unop-rel {⟦ Γ ↾ Ψ ⟧ᶜ} neg-info (elaborate IR.Heap a) dγ (faithful a r)
+  -- A number theory's symbol: its SigOp after the operand (a pair, for a
+  -- binary one), denoted through the SAME contract (`sigOpˢ`).
+  faithful (num {Γ = Γ} {Ψ = Ψ} {A = nint} {k = unary} h o e) {dγ} r = unop-rel {⟦ Γ ↾ Ψ ⟧ᶜ} (numInfo h o) (elaborate IR.Heap e) dγ (faithful e r)
+  faithful (num {Γ = Γ} {Ψ = Ψ} {A = nint} {k = binary} h o e) {dγ} r = unop-rel {⟦ Γ ↾ Ψ ⟧ᶜ} (numInfo h o) (elaborate IR.Heap e) dγ (faithful e r)
+  faithful (num {Γ = Γ} {Ψ = Ψ} {A = nint} {k = compare} h o e) {dγ} r = unop-rel {⟦ Γ ↾ Ψ ⟧ᶜ} (numInfo h o) (elaborate IR.Heap e) dγ (faithful e r)
+  faithful (num {Γ = Γ} {Ψ = Ψ} {A = nfloat} {k = unary} h o e) {dγ} r = unop-rel {⟦ Γ ↾ Ψ ⟧ᶜ} (numInfo h o) (elaborate IR.Heap e) dγ (faithful e r)
+  faithful (num {Γ = Γ} {Ψ = Ψ} {A = nfloat} {k = binary} h o e) {dγ} r = unop-rel {⟦ Γ ↾ Ψ ⟧ᶜ} (numInfo h o) (elaborate IR.Heap e) dγ (faithful e r)
+  faithful (num {Γ = Γ} {Ψ = Ψ} {A = nfloat} {k = compare} h o e) {dγ} r = unop-rel {⟦ Γ ↾ Ψ ⟧ᶜ} (numInfo h o) (elaborate IR.Heap e) dγ (faithful e r)
   faithful (pair {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} a b) {dγ} r =
     ≡ˡ (cong-app (liftFn-pair {_} {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {A} {B}
                    (elaborate IR.Heap a ∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-+ˡ Ψ₁ Ψ₂))
@@ -634,21 +607,6 @@ mutual
   -- the loop: the round reads the environment through `⊑ᵘ-*Many`, as `ana`'s coalgebra.
   faithful {Γ = Γ} (loop {Ψ = Ψ} round) {dγ} {dγ′} r =
     FL.loop-body {Γ = Γ} round dγ dγ′ (ih∘ (⊑ᵘ-*Many Ψ) round r)
-
-  -- Two-operand arithmetic, at its narrowed operands.
-  binop : ∀ {n} {Γ : Ctx 0 n} {Ψ₁ Ψ₂ : Usage n} {A₁ A₂ C : Ty 0} (si : SigOpInfo (A₁ * A₂) C)
-            (a : Expr Γ Ψ₁ A₁) (b : Expr Γ Ψ₂ A₂) {dγ dγ′ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ ⟧ᴰ}
-        → RelD ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ dγ dγ′
-        → RelS (RelD C) (liftFn fmt ρ {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {C}
-                           (SigOp si ∘ ⟨ elaborate IR.Heap a ∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-+ˡ Ψ₁ Ψ₂)
-                                       , elaborate IR.Heap b ∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-+ʳ Ψ₁ Ψ₂) ⟩) dγ)
-                        (SD.⟦ a ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ′) >>=∞ λ va →
-                         SD.⟦ b ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ′) >>=∞ λ vb → SD.sigOpˢ fmt σ₀ si (va , vb))
-  binop {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A₁ = A₁} {A₂ = A₂} {C = C} si a b {dγ} r =
-    arith-rel {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {A₁} {A₂} {C} si
-              (elaborate IR.Heap a ∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-+ˡ Ψ₁ Ψ₂))
-              (elaborate IR.Heap b ∘ restrictEnv {Γ = Γ} IR.Heap (⊑ᵘ-+ʳ Ψ₁ Ψ₂)) dγ
-              (ih∘ (⊑ᵘ-+ˡ Ψ₁ Ψ₂) a r) (ih∘ (⊑ᵘ-+ʳ Ψ₁ Ψ₂) b r)
 
   -- let' at a live binding: the bound term's run, then the body on the
   -- narrowed environment extended with its value.
