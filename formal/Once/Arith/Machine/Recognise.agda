@@ -37,7 +37,7 @@ open import Once.IR
 open import Once.IRTy using (⌊_⌋; fits-int; fits-float)
 open import Once.SigOp.Info using (SigOpSem; primV; module SigOpInfo; SigOpInfo)
 open SigOpInfo using (sem)
-open import Once.Arith.Prim using (p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
+open import Once.Arith.Prim using (p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-fneg)
 import Once.IRTy as II
 
 open import Once.Arith.Machine.Shape using (InputShape; InputPath; Fst; Snd; typePath?)
@@ -330,6 +330,7 @@ recognise-prim-float sh (primV p-fsub) e = binop asub (recognise-binop-float sh 
 recognise-prim-float sh (primV p-fmul) e = binop amul (recognise-binop-float sh e)
 recognise-prim-float sh (primV p-fdiv) e = binop adiv (recognise-binop-float sh e)
 recognise-prim-float sh (primV p-i2f)  e = unop ai2f (recognise-body sh e)
+recognise-prim-float sh (primV p-fneg) e = unop aneg (recognise-body-float sh e)
 {-# CATCHALL #-}
 recognise-prim-float sh _              e = nothing
 

@@ -57,7 +57,7 @@ open import Once.Arith.Machine.Recognise using (plumbing?; recognise-path-throug
   recognise-body-float; recognise-binop-float; recognise-prim-float; binop-at-float; rbf-at;
   lit-at; flit-at; path-at; binop; unop; recognise-path; rbin-at; rbinf-at; b-view; BView; bv-pair; bv-dist; bv-id; bv-reassoc; bv-other; pair-of)
 open import Once.SigOp.Info using (SigOpSem; mk-info'; primV; SigOpInfo)
-open import Once.Arith.Prim using (ArithPrim; primSem; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
+open import Once.Arith.Prim using (ArithPrim; primSem; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-fneg)
 import Once.Type.Core as Ty
 import Once.Spec.Type as Ty
 import Once.Type as Ty
@@ -464,6 +464,14 @@ fsig-at k sh nm (primV p-i2f) bA@b-Int cB@b-Float e lt eq a = conv (recognise-bo
     conv (just r) er refl with body-sound k sh e lt er a
     ... | b , eb , rb = _ , cong (λ t → bindBlock t (evalᴰ fmt ρ (SigOp (mk-info' nm (primV p-i2f) bA cB)))) eb
                           , cong (λ x → just (FW.i2f (float-format fmt) (W.toℤ fmt x))) (just-injective rb)
+
+fsig-at k sh nm (primV p-fneg) bA@b-Float cB@b-Float e lt eq a = neg (recognise-body-float sh e) refl eq
+  where
+    neg : ∀ (r : Maybe _) → recognise-body-float sh e ≡ r → ∀ {body} → unop aneg r ≡ just body
+        → BodyAt sh (SigOp (mk-info' nm (primV p-fneg) bA cB) ∘ e) body a
+    neg (just r) er refl with fbody-sound k sh e lt er a
+    ... | b , eb , rb = _ , cong (λ t → bindBlock t (evalᴰ fmt ρ (SigOp (mk-info' nm (primV p-fneg) bA cB)))) eb
+                          , cong (λ x → just (FW.fneg (float-format fmt) x)) (just-injective rb)
 
 fbin-case k sh nm p c op e lt (just (ra , rb)) er refl a with fbin-sound k sh e lt er a
 ... | (b₁ , b₂) , eb , r₁ , r₂ =
