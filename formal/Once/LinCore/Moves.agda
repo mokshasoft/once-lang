@@ -650,3 +650,14 @@ keepW : ∀ {fs fs′ loc a o n} → MovedW fs fs′ loc a o n
       → (∀ f x → ¬ f ≡ current-frame (falloc fs) → ∀ k → k Data.Nat.< n → ¬ AtStack f x ≡ offsetLoc loc (k + o))
       → Keep fs fs′
 keepW M h = keep-alloc (w-alloc M) (w-ret M) (λ f x ne → w-rest M (AtStack f x) (h f x ne))
+
+keepF : ∀ {fs fs′ b n} → Filled fs fs′ b n → Keep fs fs′
+keepF F = keep-alloc (f-alloc F) (f-ret F) (f-frame F)
+
+-- a step on the registers alone
+keep-regs : ∀ {fs} rs pc → Keep fs (record fs { floc = record (floc fs) { regs = rs } ; fpc = pc })
+keep-regs rs pc = keep-alloc refl refl (λ _ _ _ → refl)
+
+-- a store to the current frame
+keep-store : ∀ fs b v → Keep fs (record fs { floc = writeLoc (floc fs) (AtStack (current-frame (falloc fs)) b) v ; fpc = suc (fpc fs) })
+keep-store fs b v = keep-alloc refl refl (λ f x ne → store-frame (floc fs) (current-frame (falloc fs)) b v f x (λ e → ne (sym e)))
