@@ -602,3 +602,51 @@ addr-step : ∀ (fs : FlatState) o {loc} → readReg (regs (floc fs)) Input1 ≡
 addr-step fs o {loc} e₁ e₂ =
   trans (cong (λ r → record fs { floc = exec-addr-at-resolved (block-size (falloc fs)) o (sv-as-loc r) (floc fs) ; fpc = suc (fpc fs) }) e₁)
         (cong (λ q → record fs { floc = exec-addr-in-block q (offsetLoc loc o) (floc fs) ; fpc = suc (fpc fs) }) e₂)
+
+------------------------------------------------------------------------
+-- ★ WHAT A RUN LEAVES ALONE (D418): the frame, its slots' count, the saved
+-- frames, the return pcs, and every other frame's slots. A move says so in
+-- its record; a run of moves composes them.
+------------------------------------------------------------------------
+
+record Keep (fs fs′ : FlatState) : Set where
+  field
+    k-frame : current-frame (falloc fs′) ≡ current-frame (falloc fs)
+    k-slots : AllocState.frame-slots (falloc fs′) ≡ AllocState.frame-slots (falloc fs)
+    k-saved : AllocState.saved-frames (falloc fs′) ≡ AllocState.saved-frames (falloc fs)
+    k-ret   : fret fs′ ≡ fret fs
+    k-other : ∀ f x → ¬ f ≡ current-frame (falloc fs) → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x
+open Keep public
+
+keep-refl : ∀ {fs} → Keep fs fs
+keep-refl = record { k-frame = refl ; k-slots = refl ; k-saved = refl ; k-ret = refl ; k-other = λ _ _ _ → refl }
+
+keep-trans : ∀ {fs₁ fs₂ fs₃} → Keep fs₁ fs₂ → Keep fs₂ fs₃ → Keep fs₁ fs₃
+keep-trans K₁ K₂ = record
+  { k-frame = trans (k-frame K₂) (k-frame K₁)
+  ; k-slots = trans (k-slots K₂) (k-slots K₁)
+  ; k-saved = trans (k-saved K₂) (k-saved K₁)
+  ; k-ret   = trans (k-ret K₂) (k-ret K₁)
+  ; k-other = λ f x ne → trans (k-other K₂ f x (λ e → ne (trans e (k-frame K₁)))) (k-other K₁ f x ne) }
+
+-- a run that keeps the whole allocation state, the return pcs and the other frames
+keep-alloc : ∀ {fs fs′} → falloc fs′ ≡ falloc fs → fret fs′ ≡ fret fs
+           → (∀ f x → ¬ f ≡ current-frame (falloc fs) → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x)
+           → Keep fs fs′
+keep-alloc a r o = record { k-frame = cong current-frame a ; k-slots = cong AllocState.frame-slots a
+                          ; k-saved = cong AllocState.saved-frames a ; k-ret = r ; k-other = o }
+
+keepS : ∀ {fs fs′ a b n} → MovedS fs fs′ a b n → Keep fs fs′
+keepS M = keep-alloc (m-alloc M) (m-ret M) (m-frame M)
+
+keepP : ∀ {fs fs′ loc o b n} → MovedP fs fs′ loc o b n → Keep fs fs′
+keepP M = keep-alloc (p-alloc M) (p-ret M) (p-frame M)
+
+keepD : ∀ {fs fs′ a b n} → MovedD fs fs′ a b n → Keep fs fs′
+keepD M = keep-alloc (d-alloc M) (d-ret M) (d-frame M)
+
+-- a move into a block: no other frame's slot is written when none is the target
+keepW : ∀ {fs fs′ loc a o n} → MovedW fs fs′ loc a o n
+      → (∀ f x → ¬ f ≡ current-frame (falloc fs) → ∀ k → k Data.Nat.< n → ¬ AtStack f x ≡ offsetLoc loc (k + o))
+      → Keep fs fs′
+keepW M h = keep-alloc (w-alloc M) (w-ret M) (λ f x ne → w-rest M (AtStack f x) (h f x ne))
