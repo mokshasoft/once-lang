@@ -92,7 +92,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             → VW (heapMem (floc fs)) p wP → SlotsAt (slot fs) src wP
             → src ≤ (budget φ ∸ ws S) ∸ wsz P → EP φ ≤ src → ws Es ≤ EP φ → ws (P ∷ S) ≤ OP φ
             → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz P)) fs fs′
-                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ p ∷ˢ os) × fpc fs′ ≡ nsteps (wsz P) + fpc fs × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ p ∷ˢ os) × fpc fs′ ≡ nsteps (wsz P) + fpc fs × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs) × heapMem (floc fs′) ≡ heapMem (floc fs)
   shift-sim prog fs φ {Es} {P} {S} {es} {os} {p} src wP s h ev st pp sp up ep efit fit =
     fin (mvSSd-run prog fs src dst (wsz P) s h
            (λ k k< → def k k<)
@@ -112,7 +112,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       in-dst k k< = Data.Nat.Properties.<-≤-trans (Data.Nat.Properties.+-monoʳ-< dst k<) (≤-reflexive (Data.Nat.Properties.m∸n+n≡m (≤∸ (wsz P) (ws S) (budget φ) fitB)))
       fin : Σ FlatState (λ fs′ → FlatSteps prog (nsteps (wsz P)) fs fs′ × MovedD fs fs′ src dst (wsz P))
           → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz P)) fs fs′
-              × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ p ∷ˢ os) × fpc fs′ ≡ nsteps (wsz P) + fpc fs × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+              × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ p ∷ˢ os) × fpc fs′ ≡ nsteps (wsz P) + fpc fs × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs) × heapMem (floc fs′) ≡ heapMem (floc fs)
       fin (fs′ , st′ , M) =
         fs′ , st′ ,
         record { c-env  = subst (λ r → EnvW r (slot fs′) es) (sym (d-heap M))
@@ -124,7 +124,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                             (stkW-frame os fitS (λ x lo _ → d-rest M x (λ k k< e → Data.Nat.Properties.<-irrefl (sym e)
                                                    (Data.Nat.Properties.<-≤-trans (in-dst k k<) lo))) st)
                ; c-efit = efit ; c-sfit = fit } ,
-        d-pc M , keepD M , cong AllocState.next-heap-ref (d-alloc M)
+        d-pc M , keepD M , cong AllocState.next-heap-ref (d-alloc M) , d-heap M
 
   open FlatMachine {FS} using (do-jump; tag-test; flat-read-tag)
 
@@ -152,7 +152,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             → fhalted (floc fs) ≡ false
             → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ minl {B = B} a ∷ˢ os)
             → Σ FlatState λ fs′ → FlatSteps prog (4 + nsteps (wsz A)) fs fs′
-                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ a ∷ˢ os) × fpc fs′ ≡ nsteps (wsz A) + suc q × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ a ∷ˢ os) × fpc fs′ ≡ nsteps (wsz A) + suc q × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs) × heapMem (floc fs′) ≡ heapMem (floc fs)
   case₁-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} L₁ q (f₁ , f₂ , f₃ , _) fl (fq , sq) h C = fin (c-stk C)
     where
       t = budget φ ∸ ws ((A ⊕t B) ∷ S)
@@ -164,7 +164,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       k₄ : Keep fs fs₄
       k₄ = keep-trans {fs₂ = fs₁} (keep-regs _ _) (keep-trans {fs₂ = fs₂} (keep-regs _ _) (keep-trans {fs₂ = fs₃} (keep-pc _) (keep-pc _)))
       Res = Σ FlatState λ fs′ → FlatSteps prog (4 + nsteps (wsz A)) fs fs′
-              × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ a ∷ˢ os) × fpc fs′ ≡ nsteps (wsz A) + suc q × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+              × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ a ∷ˢ os) × fpc fs′ ≡ nsteps (wsz A) + suc q × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs) × heapMem (floc fs′) ≡ heapMem (floc fs)
       fin : StkW (heapMem (floc fs)) (slot fs) φ (minl {B = B} a ∷ˢ os) → Res
       fin ((_ , vinl {wa = wa} {pad} pa len , (e0 , s′)) , rest) = done-shift (shift-sim prog fs₄ φ {Es} {A} {S} {es} {os} {a} (suc t) wa sq h
                                          (c-env C) rest pa (proj₁ (slots-++ {slot fs} wa pad s′))
@@ -176,11 +176,11 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           branch : FlatMachine.flat-exec-instr {FS} (instr-ctrl (c-branch-tag-zero L₁)) prog fs₂ ≡ fs₃
           branch = trans (flat-tag-branch-yes prog fs₂ L₁ (cong tag-test e0)) (cong (λ m → do-jump m fs₂) fl)
           done-shift : Σ FlatState (λ fs′ → FlatSteps prog (nsteps (wsz A)) fs₄ fs′
-                         × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ a ∷ˢ os) × fpc fs′ ≡ nsteps (wsz A) + fpc fs₄ × Keep fs₄ fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs₄)) → Res
-          done-shift (fs′ , st , C′ , pc , K , nx) =
+                         × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ a ∷ˢ os) × fpc fs′ ≡ nsteps (wsz A) + fpc fs₄ × Keep fs₄ fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs₄) × heapMem (floc fs′) ≡ heapMem (floc fs₄)) → Res
+          done-shift (fs′ , st , C′ , pc , K , nx , hp) =
             fs′ , step-at fs₁ (h , f₁) (lea-step fs t) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
                     (step-at fs₃ (h , f₃) branch (step-at fs₄ (h , fq) (flat-label prog fs₃ L₁) st))) ,
-            C′ , pc , keep-trans k₄ K , nx
+            C′ , pc , keep-trans k₄ K , nx , hp
 
   -- ★ `case`, `inr`: the tag is 1, the branch falls through; the payload shifted up
   case₂-sim : ∀ prog (fs : FlatState) (φ : Frame) {Es A B S} {es : Slots Es} {os : Stk S} {b : MV B} (L₁ : LabelId)
@@ -189,7 +189,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             → fhalted (floc fs) ≡ false
             → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ minr {A = A} b ∷ˢ os)
             → Σ FlatState λ fs′ → FlatSteps prog (3 + nsteps (wsz B)) fs fs′
-                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os) × fpc fs′ ≡ nsteps (wsz B) + (3 + fpc fs) × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os) × fpc fs′ ≡ nsteps (wsz B) + (3 + fpc fs) × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs) × heapMem (floc fs′) ≡ heapMem (floc fs)
   case₂-sim prog fs φ {Es} {A} {B} {S} {es} {os} {b} L₁ (f₁ , f₂ , f₃ , sq) h C = fin (c-stk C)
     where
       t = budget φ ∸ ws ((A ⊕t B) ∷ S)
@@ -200,7 +200,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       k₃ : Keep fs fs₃
       k₃ = keep-trans {fs₂ = fs₁} (keep-regs _ _) (keep-trans {fs₂ = fs₂} (keep-regs _ _) (keep-pc _))
       Res = Σ FlatState λ fs′ → FlatSteps prog (3 + nsteps (wsz B)) fs fs′
-              × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os) × fpc fs′ ≡ nsteps (wsz B) + (3 + fpc fs) × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+              × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os) × fpc fs′ ≡ nsteps (wsz B) + (3 + fpc fs) × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs) × heapMem (floc fs′) ≡ heapMem (floc fs)
       fin : StkW (heapMem (floc fs)) (slot fs) φ (minr {A = A} b ∷ˢ os) → Res
       fin ((_ , vinr {wb = wb} {pad} pb len , (e1 , s′)) , rest) = done-shift (shift-sim prog fs₃ φ {Es} {B} {S} {es} {os} {b} (suc t) wb sq h
                                          (c-env C) rest pb (proj₁ (slots-++ {slot fs} wb pad s′))
@@ -210,14 +210,14 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                                          (≤-trans (Data.Nat.Properties.+-monoˡ-≤ (ws S) (≤-trans (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) (Data.Nat.Properties.n≤1+n _))) (c-sfit C)))
         where
           done-shift : Σ FlatState (λ fs′ → FlatSteps prog (nsteps (wsz B)) fs₃ fs′
-                         × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os) × fpc fs′ ≡ nsteps (wsz B) + fpc fs₃ × Keep fs₃ fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs₃)) → Res
-          done-shift (fs′ , st , C′ , pc , K , nx) =
+                         × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os) × fpc fs′ ≡ nsteps (wsz B) + fpc fs₃ × Keep fs₃ fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs₃) × heapMem (floc fs′) ≡ heapMem (floc fs₃)) → Res
+          done-shift (fs′ , st , C′ , pc , K , nx , hp) =
             fs′ , step-at fs₁ (h , f₁) (lea-step fs t) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
                     (step-at fs₃ (h , f₃) (flat-tag-branch-not prog fs₂ L₁ (cong tag-test e1)) st)) ,
-            C′ , pc , keep-trans k₃ K , nx
+            C′ , pc , keep-trans k₃ K , nx , hp
 
   open import Once.LinCore.Machine fmt ans bw using (see; vw)
-  open import Once.LinCore.Moves {FS} using (MovedS; m-pc; m-alloc)
+  open import Once.LinCore.Moves {FS} using (MovedS; m-pc; m-alloc; m-heap)
   open import Once.LinCore.MoveCode using (mvSS)
 
   private
@@ -237,7 +237,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
              → ws (E₁ ∷ (E₁ ⊕t E₂) ∷ Es) ≤ EP φ
              → Σ FlatState λ fs′ → FlatSteps prog (4 + nsteps (wsz E₁)) fs fs′
                  × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₁ es ∥ os)
-                 × fpc fs′ ≡ nsteps (wsz E₁) + suc q × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+                 × fpc fs′ ≡ nsteps (wsz E₁) + suc q × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs) × heapMem (floc fs′) ≡ heapMem (floc fs)
   ecase₁-sim prog fs φ {E₁} {E₂} {Es} {S} {es} {os} {e₁} L₁ q eq (f₁ , f₂ , f₃ , _) fl (fq , sq) h C fit = fin (topW es (c-env C))
     where
       cf = AllocState.current-frame (falloc fs)
@@ -249,7 +249,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       k₄ = keep-trans {fs₂ = fs₁} (keep-regs _ _) (keep-trans {fs₂ = fs₂} (keep-regs _ _) (keep-trans {fs₂ = fs₃} (keep-pc _) (keep-pc _)))
       Res = Σ FlatState λ fs′ → FlatSteps prog (4 + nsteps (wsz E₁)) fs fs′
               × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₁ es ∥ os)
-              × fpc fs′ ≡ nsteps (wsz E₁) + suc q × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+              × fpc fs′ ≡ nsteps (wsz E₁) + suc q × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs) × heapMem (floc fs′) ≡ heapMem (floc fs)
       fin : Σ (List W) (λ w → VW (heapMem (floc fs)) (see es) w × SlotsAt (slot fs) (ws Es) w) → Res
       fin (w , pw , sw) = inv (subst (λ z → VW (heapMem (floc fs)) z w) eq pw) sw
         where
@@ -268,7 +268,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               done-view (fs′ , st , C′ , M) =
                 fs′ , step-at fs₁ (h , f₁) (lea-step fs (ws Es)) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
                         (step-at fs₃ (h , f₃) branch (step-at fs₄ (h , fq) (flat-label prog fs₃ L₁) st))) ,
-                C′ , m-pc M , keep-trans k₄ (keepS M) , cong AllocState.next-heap-ref (m-alloc M)
+                C′ , m-pc M , keep-trans k₄ (keepS M) , cong AllocState.next-heap-ref (m-alloc M) , m-heap M
 
   -- ★ `ecase`, `inr`: the viewed tag is 1, the branch falls through; the right payload a new view
   ecase₂-sim : ∀ prog (fs : FlatState) (φ : Frame) {E₁ E₂ Es S} {es : Slots ((E₁ ⊕t E₂) ∷ Es)} {os : Stk S} {e₂ : MV E₂}
@@ -281,7 +281,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
              → ws (E₂ ∷ (E₁ ⊕t E₂) ∷ Es) ≤ EP φ
              → Σ FlatState λ fs′ → FlatSteps prog (3 + nsteps (wsz E₂)) fs fs′
                  × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₂ es ∥ os)
-                 × fpc fs′ ≡ nsteps (wsz E₂) + (3 + fpc fs) × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+                 × fpc fs′ ≡ nsteps (wsz E₂) + (3 + fpc fs) × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs) × heapMem (floc fs′) ≡ heapMem (floc fs)
   ecase₂-sim prog fs φ {E₁} {E₂} {Es} {S} {es} {os} {e₂} L₁ eq (f₁ , f₂ , f₃ , sq) h C fit = fin (topW es (c-env C))
     where
       cf = AllocState.current-frame (falloc fs)
@@ -291,7 +291,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       k₃ : Keep fs fs₃
       k₃ = keep-trans {fs₂ = fs₁} (keep-regs _ _) (keep-trans {fs₂ = fs₂} (keep-regs _ _) (keep-pc _))
       Res = Σ FlatState λ fs′ → FlatSteps prog (3 + nsteps (wsz E₂)) fs fs′
-              × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₂ es ∥ os) × fpc fs′ ≡ nsteps (wsz E₂) + (3 + fpc fs) × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+              × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw e₂ es ∥ os) × fpc fs′ ≡ nsteps (wsz E₂) + (3 + fpc fs) × Keep fs fs′ × AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs) × heapMem (floc fs′) ≡ heapMem (floc fs)
       fin : Σ (List W) (λ w → VW (heapMem (floc fs)) (see es) w × SlotsAt (slot fs) (ws Es) w) → Res
       fin (w , pw , sw) = inv (subst (λ z → VW (heapMem (floc fs)) z w) eq pw) sw
         where
@@ -308,7 +308,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               done-view (fs′ , st , C′ , M) =
                 fs′ , step-at fs₁ (h , f₁) (lea-step fs (ws Es)) (step-at fs₂ (h , f₂) (mov-in-step fs₁)
                         (step-at fs₃ (h , f₃) (flat-tag-branch-not prog fs₂ L₁ (cong tag-test e1)) st)) ,
-                C′ , m-pc M , keep-trans k₃ (keepS M) , cong AllocState.next-heap-ref (m-alloc M)
+                C′ , m-pc M , keep-trans k₃ (keepS M) , cong AllocState.next-heap-ref (m-alloc M) , m-heap M
 
   ----------------------------------------------------------------------
   -- ★ `lconst`: a base word onto the stack, in place of a unit. The loader
@@ -326,7 +326,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
              → fhalted (floc fs) ≡ false
              → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ mone ∷ˢ os)
              → ws (Bt b ∷ S) ≤ OP φ
-             → Σ FlatState λ fs′ → FlatSteps prog 2 fs fs′ × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mbase v ∷ˢ os) × Ran 2 0 fs fs′
+             → Σ FlatState λ fs′ → FlatSteps prog 2 fs fs′ × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mbase v ∷ˢ os) × Ran 2 0 (AllocState.next-heap-ref (falloc fs)) fs fs′
   lconst-sim prog fs φ {b} {Es} {S} {es} {os} v ld eld (f₁ , f₂ , _) h C fit =
     fs₂ ,
     step-at fs₁ (h , f₁) eld (step-at fs₂ (h , f₂) (store-step fs₁ dst) done) ,

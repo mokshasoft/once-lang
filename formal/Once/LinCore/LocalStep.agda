@@ -102,7 +102,7 @@ module Steps {FS : FrameSemantics} (U : Univ)
   open At U ncty ldConst φ j using (lcin)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
   open FlatStepsAPI {FS} using (FlatSteps)
-  open import Once.LinCore.Moves {FS} using (Keep)
+  open import Once.LinCore.Moves {FS} using (Keep; Old)
 
   -- a constant's loader puts its word in `Output` (the image's `ldConst`'s contract)
   LdOk : Set
@@ -114,16 +114,16 @@ module Steps {FS : FrameSemantics} (U : Univ)
   -- frames kept, the heap counter the image's
   Out : ∀ {sh U′} {c : Codeᴵ sh U′} → Sub root c → FlatState → ℕ → Cfg sh → Set
   Out s′ fs n′ m′ = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps prog N fs fs′ × Here s′ m′ fs′ × Keep fs fs′
-                    × AllocState.next-heap-ref (falloc fs′) ≡ n′
+                    × AllocState.next-heap-ref (falloc fs′) ≡ n′ × Old (AllocState.next-heap-ref (falloc fs)) fs fs′
 
   private
     out0 : ∀ {sh U′} {c : Codeᴵ sh U′} {s′ : Sub root c} {fs n m′} → Moved s′ fs 0 m′
          → AllocState.next-heap-ref (falloc fs) ≡ n → Out s′ fs n m′
-    out0 (N , fs′ , st , H′ , K , nx′) nx = N , fs′ , st , H′ , K , trans nx′ nx
+    out0 (N , fs′ , st , H′ , K , nx′ , o) nx = N , fs′ , st , H′ , K , trans nx′ nx , o
 
     out1 : ∀ {sh U′} {c : Codeᴵ sh U′} {s′ : Sub root c} {fs n m′} → Moved s′ fs 1 m′
          → AllocState.next-heap-ref (falloc fs) ≡ n → Out s′ fs (suc n) m′
-    out1 (N , fs′ , st , H′ , K , nx′) nx = N , fs′ , st , H′ , K , trans nx′ (cong suc nx)
+    out1 (N , fs′ , st , H′ , K , nx′ , o) nx = N , fs′ , st , H′ , K , trans nx′ (cong suc nx) , o
 
   -- ★ a primitive, by its run
   prim-step : ∀ {Γ} {ds : Defs Γ} {Es A B S V} {g : LTm Γ A B} {k : Codeᴵ (Es ∣ B ∷ S) V} (s : Sub root (prim ds g ⨾ k))
