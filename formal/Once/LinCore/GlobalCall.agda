@@ -266,6 +266,51 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           N , fs′ , run , record { g-pt = p-tramp p₂ (at (next (next whole))) ; g-here = (tp2 p₂ , H′)
                                  ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest }
 
+    -- ★ a one-shot trampoline's way out: the result into the dispatch's
+    -- caller, at the path after its `icall` (D421)
+    private
+      gret-out : ∀ {T Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b} {Es S V} {k : Codeᴵ (Es ∣ B ∷ S) V}
+                   {es : Slots Es} {os : Stk S} {r : Ret V T} {w : MV B} {n fs}
+                   (p : under (ktr1 ds′ b γ) ∈ allK U) (d : DSite g A k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
+                   (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
+               → HereF (frame 0 ((wsz X + wsz A) ⊔ wsz B)) (trPos (ktr1 ds′ b γ) p 2) ([]ᵉ ∥ w ∷ˢ []ˢ) fs
+               → fret fs ≡ dsitePos d ∷ rets′ → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv′
+               → AllocState.current-frame (falloc fs) ≺ cfc
+               → LocState.stackMem (floc fs) (AllocState.current-frame (falloc fs)) (suc ((wsz X + wsz A) ⊔ wsz B))
+                 ≡ just (SV-Ptr (AtStack cfc (Tp (dsiteφ d) S ∸ (suc (wsz A) ⊔ wsz B))))
+               → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
+               → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) (dsiteφ d) os
+               → FreshR r (AllocState.next-heap-ref (falloc fs))
+               → RetOK (dsiteRoot d) (dsiteFin d) r cfc rets′ sv′ fs
+               → AllocState.next-heap-ref (falloc fs) ≡ n
+               → ArrivesAt k r (es ∥ w ∷ˢ os) n fs
+      gret-out {A = A} {B} {S = S} p (d-start s) cfc sl sv′ rets′ H eRets eSv abv area ev sk fr rest nx =
+        case tr-end p (frameOf main) cfc (S.pos (next s)) rets′ sv′ sl H eRets eSv (λ e → ≺-≢ abv (sym e)) area ev sk
+               fitM (proj₁ (S.shape-fits (next s))) (proj₂ (S.shape-fits (next s))) of λ where
+          (N , fs′ , run , C′ , CO , tk) →
+            N , fs′ , run , record { g-pt = p-start (at (next s))
+                                   ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (HereF.f-run H) ; h-cfg = C′ }
+                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest }
+        where
+          import Data.Nat.Properties
+          fitM : (suc (wsz A) ⊔ wsz B) + ws S ≤ OP (frameOf main)
+          fitM = Data.Nat.Properties.≤-trans
+                   (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-distribʳ-⊔ (ws S) (suc (wsz A)) (wsz B)))
+                   (Data.Nat.Properties.⊔-lub (proj₂ (S.shape-fits s)) (proj₂ (S.shape-fits (next s))))
+      gret-out {A = A} {B} {S = S} p (d-block {κ′ = κ′} p′ s) cfc sl sv′ rets′ H eRets eSv abv area ev sk fr rest nx =
+        case tr-end p (frameOf (blockᴵ κ′)) cfc (K.pos p′ (next s)) rets′ sv′ sl H eRets eSv (λ e → ≺-≢ abv (sym e)) area ev sk
+               fitM (proj₁ (K.shape-fits p′ (next s))) (proj₂ (K.shape-fits p′ (next s))) of λ where
+          (N , fs′ , run , C′ , CO , tk) →
+            N , fs′ , run , record { g-pt = p-block p′ (at (next s))
+                                   ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (HereF.f-run H) ; h-cfg = C′ }
+                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest }
+        where
+          import Data.Nat.Properties
+          fitM : (suc (wsz A) ⊔ wsz B) + ws S ≤ OP (frameOf (blockᴵ κ′))
+          fitM = Data.Nat.Properties.≤-trans
+                   (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-distribʳ-⊔ (ws S) (suc (wsz A)) (wsz B)))
+                   (Data.Nat.Properties.⊔-lub (proj₂ (K.shape-fits p′ s)) (proj₂ (K.shape-fits p′ (next s))))
+
     gret : ∀ {T t B Es S V} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} {r : Ret V T} {es : Slots (t ⊳ Es)} {os : Stk S}
              {e′ : Slots (t ⊳ [])} {b : MV B} {n h fs} (P : Pnt (end {sh = t ⊳ [] ∣ B ∷ []}))
          → InvI (e′ ∥ b ∷ˢ []ˢ) (frm {t = t} {Es = Es} k es os r) n h → HereP P (e′ ∥ b ∷ˢ []ˢ) fs
@@ -290,4 +335,10 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          (ok-call _ (s-tramp p₂) cfc sl sv′ rets′ refl eF eC eRets eSv abv area ev sk rest) =
       gret-tr p₂ e cfc sl sv′ rets′ p eC eF H eRets eSv abv area ev sk (proj₂ (subst (FreshR (frm {t = nothing} {Es = []} k es os r)) (sym nx) (fresh-ret inv))) rest nx
     gret (p-tramp _ _) inv H nx (ok-call _ _ _ _ _ _ () _ _ _ _ _ _ _ _ _)
+    gret (p-start (at e)) inv H nx (ok-tramp _ _ _ _ _ _ () _ _ _ _ _ _ _ _)
+    gret (p-block p (at e)) inv H nx (ok-tramp _ _ _ _ _ _ () _ _ _ _ _ _ _ _)
+    gret {k = k} {r = r} {es = es} {os = os} {e′ = []ᵉ} {fs = fs} (p-tramp p₂ _) inv (tp2 _ , H) nx
+         (ok-tramp p d cfc sl sv′ rets′ refl eF eRets eSv abv area ev sk rest) =
+      gret-out p d cfc sl sv′ rets′ H eRets eSv abv area ev sk
+        (proj₂ (subst (FreshR (frm {t = nothing} {Es = _} k es os r)) (sym nx) (fresh-ret inv))) rest nx
 

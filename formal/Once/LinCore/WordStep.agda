@@ -60,6 +60,7 @@ open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module T
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 open import Once.LinCore.GlobalLocal fmt ans bw using (module LocalR)
 open import Once.LinCore.GlobalCall fmt ans bw using (module CallR)
+open import Once.LinCore.GlobalDispatch fmt ans bw using (module DispR)
 
 module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
@@ -68,6 +69,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Relate {FS} ds f ldConst ld-nl wordOf
   open LocalR {FS} ds f ldConst ld-nl wordOf using (module Whole)
   open CallR {FS} ds f ldConst ld-nl wordOf using (module GCall)
+  open DispR {FS} ds f ldConst ld-nl wordOf using (gicall; gopen1)
   open Ctl {FS} ds f ldConst ld-nl using (main; L₀ˢ; L₀ᵇ; start-root; blockFin; Pnt; p-start; p-block; p-tramp; p-halt; ptFin)
   open Program ds f using (U)
   open ProgramRun ds f using (ncty)
@@ -124,8 +126,9 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   ----------------------------------------------------------------------
   -- 8. ★★ THE STEP THEOREM: every covered image step is matched by flat
-  -- steps that keep the relation. Owed: the dispatches through a cell's
-  -- code word and the trampolines' cell parts (per key, D418), `lop`.
+  -- steps that keep the relation. Covered: the one-shot dispatch (`icall`)
+  -- and its trampoline (`open1`, the inner call, the way out; D421). Owed:
+  -- the other dispatches and cell parts (`ktrω ktro ktrc ktrf`, D418), `lop`.
   ----------------------------------------------------------------------
 
   module Theorem (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
@@ -150,6 +153,8 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       ; rti = λ inv G → greti (g-pt G) inv (g-here G) (g-next G) (g-ret G)
       ; cl  = λ inv G → gcall (g-pt G) inv (g-here G) (g-next G) (g-ret G)
       ; rt  = λ inv G → gret (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+      ; ic  = λ inv G → gicall (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+      ; op1 = λ inv G → gopen1 (g-pt G) inv (g-here G) (g-next G) (g-ret G)
       }
 
     -- ★ by the step's kind (the one split on a step is StepKinds')
