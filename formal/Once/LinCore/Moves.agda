@@ -680,44 +680,54 @@ keep-heap fs n = record { k-frame = refl ; k-slots = refl ; k-saved = refl ; k-r
 -- lemma's `Ran` count is its `FlatSteps` count.
 ------------------------------------------------------------------------
 
-record Ran (n : ℕ) (fs fs′ : FlatState) : Set where
+-- `n` steps, `a` of them allocations: the heap counter `a` past where it was
+record Ran (n a : ℕ) (fs fs′ : FlatState) : Set where
   field
     r-keep : Keep fs fs′
     r-pc   : fpc fs′ ≡ n + fpc fs
+    r-next : AllocState.next-heap-ref (falloc fs′) ≡ a + AllocState.next-heap-ref (falloc fs)
 open Ran public
 
-ran-trans : ∀ {a b fs₁ fs₂ fs₃} → Ran a fs₁ fs₂ → Ran b fs₂ fs₃ → Ran (a + b) fs₁ fs₃
-ran-trans {a} {b} {fs₁} R₁ R₂ = record
+private
+  add-trans : ∀ {u v w} a b → v ≡ a + u → w ≡ b + v → w ≡ (a + b) + u
+  add-trans {u} a b e₁ e₂ =
+    trans e₂ (trans (cong (b +_) e₁) (trans (sym (Data.Nat.Properties.+-assoc b a u)) (cong (_+ u) (Data.Nat.Properties.+-comm b a))))
+    where import Data.Nat.Properties
+
+ran-refl : ∀ {fs} → Ran 0 0 fs fs
+ran-refl = record { r-keep = keep-refl ; r-pc = refl ; r-next = refl }
+
+ran-trans : ∀ {n₁ n₂ a₁ a₂ fs₁ fs₂ fs₃} → Ran n₁ a₁ fs₁ fs₂ → Ran n₂ a₂ fs₂ fs₃ → Ran (n₁ + n₂) (a₁ + a₂) fs₁ fs₃
+ran-trans {n₁} {n₂} {a₁} {a₂} R₁ R₂ = record
   { r-keep = keep-trans (r-keep R₁) (r-keep R₂)
-  ; r-pc   = trans (r-pc R₂) (trans (cong (b +_) (r-pc R₁))
-               (trans (sym (Data.Nat.Properties.+-assoc b a (fpc fs₁))) (cong (_+ fpc fs₁) (Data.Nat.Properties.+-comm b a)))) }
-  where import Data.Nat.Properties
+  ; r-pc   = add-trans n₁ n₂ (r-pc R₁) (r-pc R₂)
+  ; r-next = add-trans a₁ a₂ (r-next R₁) (r-next R₂) }
 
-ranS : ∀ {fs fs′ a b n} → MovedS fs fs′ a b n → Ran (ln n) fs fs′
-ranS M = record { r-keep = keepS M ; r-pc = m-pc M }
+ranS : ∀ {fs fs′ a b n} → MovedS fs fs′ a b n → Ran (ln n) 0 fs fs′
+ranS M = record { r-keep = keepS M ; r-pc = m-pc M ; r-next = cong AllocState.next-heap-ref (m-alloc M) }
 
-ranP : ∀ {fs fs′ loc o b n} → MovedP fs fs′ loc o b n → Ran (ln n) fs fs′
-ranP M = record { r-keep = keepP M ; r-pc = p-pc M }
+ranP : ∀ {fs fs′ loc o b n} → MovedP fs fs′ loc o b n → Ran (ln n) 0 fs fs′
+ranP M = record { r-keep = keepP M ; r-pc = p-pc M ; r-next = cong AllocState.next-heap-ref (p-alloc M) }
 
-ranD : ∀ {fs fs′ a b n} → MovedD fs fs′ a b n → Ran (ln n) fs fs′
-ranD M = record { r-keep = keepD M ; r-pc = d-pc M }
+ranD : ∀ {fs fs′ a b n} → MovedD fs fs′ a b n → Ran (ln n) 0 fs fs′
+ranD M = record { r-keep = keepD M ; r-pc = d-pc M ; r-next = cong AllocState.next-heap-ref (d-alloc M) }
 
 ranW : ∀ {fs fs′ loc a o n} → MovedW fs fs′ loc a o n
      → (∀ f x → ¬ f ≡ current-frame (falloc fs) → ∀ k → k Data.Nat.< n → ¬ AtStack f x ≡ offsetLoc loc (k + o))
-     → Ran (ln n) fs fs′
-ranW M h = record { r-keep = keepW M h ; r-pc = w-pc M }
+     → Ran (ln n) 0 fs fs′
+ranW M h = record { r-keep = keepW M h ; r-pc = w-pc M ; r-next = cong AllocState.next-heap-ref (w-alloc M) }
 
-ranF : ∀ {fs fs′ b n} → Filled fs fs′ b n → Ran n fs fs′
-ranF F = record { r-keep = keepF F ; r-pc = f-pc F }
+ranF : ∀ {fs fs′ b n} → Filled fs fs′ b n → Ran n 0 fs fs′
+ranF F = record { r-keep = keepF F ; r-pc = f-pc F ; r-next = cong AllocState.next-heap-ref (f-alloc F) }
 
-ran-regs : ∀ {fs} rs → Ran 1 fs (record fs { floc = record (floc fs) { regs = rs } ; fpc = suc (fpc fs) })
-ran-regs rs = record { r-keep = keep-regs rs _ ; r-pc = refl }
+ran-regs : ∀ {fs} rs → Ran 1 0 fs (record fs { floc = record (floc fs) { regs = rs } ; fpc = suc (fpc fs) })
+ran-regs rs = record { r-keep = keep-regs rs _ ; r-pc = refl ; r-next = refl }
 
-ran-store : ∀ fs b v → Ran 1 fs (record fs { floc = writeLoc (floc fs) (AtStack (current-frame (falloc fs)) b) v ; fpc = suc (fpc fs) })
-ran-store fs b v = record { r-keep = keep-store fs b v ; r-pc = refl }
+ran-store : ∀ fs b v → Ran 1 0 fs (record fs { floc = writeLoc (floc fs) (AtStack (current-frame (falloc fs)) b) v ; fpc = suc (fpc fs) })
+ran-store fs b v = record { r-keep = keep-store fs b v ; r-pc = refl ; r-next = refl }
 
-ran-pc : ∀ {fs} → Ran 1 fs (record fs { fpc = suc (fpc fs) })
-ran-pc = record { r-keep = keep-pc _ ; r-pc = refl }
+ran-pc : ∀ {fs} → Ran 1 0 fs (record fs { fpc = suc (fpc fs) })
+ran-pc = record { r-keep = keep-pc _ ; r-pc = refl ; r-next = refl }
 
-ran-heap : ∀ fs n → Ran 1 fs (flat-step-straight (instr-alloc-heap n) fs)
-ran-heap fs n = record { r-keep = keep-heap fs n ; r-pc = refl }
+ran-heap : ∀ fs n → Ran 1 1 fs (flat-step-straight (instr-alloc-heap n) fs)
+ran-heap fs n = record { r-keep = keep-heap fs n ; r-pc = refl ; r-next = refl }
