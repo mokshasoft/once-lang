@@ -38,9 +38,9 @@ open import Once.SigOp.Info using (SigOpInfo; mk-info'; SigOpSem; Internal;
                                    blockV; primV; ffiV; callsV; emitsV; haltsV; module SigOpInfo)
 open SigOpInfo using (name; sem; baseA; conB)
 open import Once.Arith.Prim using (ArithPrim; p-add; p-sub; p-mul; p-div; p-mod; p-neg;
-                                   p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp; p-fneg)
+                                   p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp; p-fneg; p-fcmp)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block; cmp-block-info; cmp-body)
+open import Once.Arith.SigOp.Compare using (CmpAt; int-c; flt-c; cmp-of; cmp-block; cmp-block-info; cmp-body)
 open import Once.Arith.SigOp.Block using (block-info; block-name)
 open import Once.Arith.Machine.IR using (ArithBlock; mk-block; module ArithBlock; shape-as-type; numtype-as-type; MArithIR)
 open import Once.Arith.Type using (NInt; NFloat)
@@ -76,6 +76,7 @@ private
   lifts-at nm p-i2f  bA cB _ ()
   lifts-at nm p-fneg bA cB _ ()
   lifts-at nm (p-cmp o) bA cB () _
+  lifts-at nm (p-fcmp h o) bA cB () _
 
 ------------------------------------------------------------------------
 -- What the pass guarantees.
@@ -103,7 +104,7 @@ private
   Sub : List ArithBlock → List ArithBlock → Set
   Sub bs cs = ∀ {b} → b ∈ bs → b ∈ cs
 
-  calls-⊆ : ∀ {bs cs} → Sub bs cs → ∀ {X Y} (si : SigOpInfo X Y) (m : Maybe CmpOp)
+  calls-⊆ : ∀ {bs cs} → Sub bs cs → ∀ {X Y} (si : SigOpInfo X Y) (m : Maybe (CmpAt X))
           → Calls (Named bs) si m → Calls (Named cs) si m
   calls-⊆ s si nothing  c int = let (b , m , e) = c int in b , s m , e
   calls-⊆ s si (just o) c int = let (b , m , e) = c int in b , s m , e
@@ -161,8 +162,9 @@ private
 
 private
   prim-stays : ∀ {X Y} nm (p : ArithPrim X Y) bA cB → try-lift (SigOp (mk-info' nm (primV p) bA cB) ∘ id) ≡ nothing
-             → (m : Maybe CmpOp) → cmp-of (primV p) ≡ m → Calls (Named (sigop-blocks m)) (mk-info' nm (primV p) bA cB) m
-  prim-stays nm p bA cB tl (just o) _ _   = cmp-block o , here refl , refl , is-block (cmp-body o) refl refl refl
+             → (m : Maybe (CmpAt X)) → cmp-of (primV p) ≡ m → Calls (Named (sigop-blocks m)) (mk-info' nm (primV p) bA cB) m
+  prim-stays nm p bA cB tl (just c@(int-c _)) _ _ = cmp-block c , here refl , refl , is-block (cmp-body c) refl refl refl
+  prim-stays nm p bA cB tl (just c@(flt-c _)) _ _ = cmp-block c , here refl , refl , is-block (cmp-body c) refl refl refl
   prim-stays nm p bA cB tl nothing  c int = ⊥-elim (lifts-at nm p bA cB c tl)
 
   stays : ∀ {X Y} nm (s : SigOpSem X Y) bA cB → try-lift (SigOp (mk-info' nm s bA cB) ∘ id) ≡ nothing

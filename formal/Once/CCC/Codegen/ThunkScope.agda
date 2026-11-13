@@ -57,7 +57,7 @@ open import Once.Spec.Type using (Fun)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Codegen.IRToTrace o using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; with-copy; two-cell; out-trace; cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; push2; pop2; wrap-sum; resuspend-layer;
   cata-call-from; inj-trace; env-entry; getμ)
@@ -379,7 +379,7 @@ module Scope {FS : FrameSemantics} where
   ------------------------------------------------------------------------
 
   -- Plan 0.108: a comparison's lowering is straight-line, thunk-free.
-  sigop-thunks : ∀ {A B} (si : SigOpInfo A B) (n l : ℕ) (m : Maybe CmpOp)
+  sigop-thunks : ∀ {A B} (si : SigOpInfo A B) (n l : ℕ) (m : Maybe (CmpAt A))
                → ThunksIn l l (sigop-code si n m)
   sigop-thunks si n l nothing  = all-no-thunk-in _ refl
   sigop-thunks si n l (just _) = all-no-thunk-in _ refl

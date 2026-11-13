@@ -62,7 +62,7 @@ open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; ir-to-trace; ir-stack-budget; resuspend-layer; ir-to-trace-lab; ir-stack-budget-from; ir-to-unit; sigop-budget; sigop-code; CataStrategy; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; in-trace; with-copy; two-cell; copy-next; in-next; out-trace; fsize; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body; cata-call-setup; cata-call-from; env-entry; env-prologue; inj-trace)
 
@@ -153,7 +153,7 @@ cata-mono E A G (strat-branching F) bb n1 l1 at =
                (m≤m+n (((n1 + 7) + 4 * fsize F) + 4) 4)))
 
 -- Plan 0.108: a comparison stashes its tag and its sum, two slots.
-sigop-mono : ∀ (n : ℕ) (m : Maybe CmpOp) → n ≤ sigop-budget n m
+sigop-mono : ∀ {A} → ∀ (n : ℕ) (m : Maybe (CmpAt A)) → n ≤ sigop-budget n m
 sigop-mono n nothing  = ≤-refl
 sigop-mono n (just _) = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 
@@ -760,7 +760,7 @@ resuspend-below H E A n l lbl env (wf-Sum {F} {G} wfF wfG) e<n =
           (++⁺ (fill-SB _ c)
                (++⁺ (put-SB (⟦ P ⟧TI (ν-type H)) (suc (suc n)) (suc n) 1 base sn<B) (ss refl sn<B (λ _ ()) refl ∷ [])))))))
 
-sigop-below : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp)
+sigop-below : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe (CmpAt A))
             → SegOK (sigop-budget n m) (sigop-code si n m)
 sigop-below si n nothing  = segok-idle _ refl (sb-none refl ∷ [])
 sigop-below si n (just _) = segok-idle _ refl

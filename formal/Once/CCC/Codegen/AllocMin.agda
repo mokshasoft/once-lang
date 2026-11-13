@@ -57,7 +57,7 @@ open import Once.CCC.Codegen.FlatLayout
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
   (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; with-copy; two-cell; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-call-from; cata-trace-const; fsize; resuspend-layer; env-entry; env-prologue; inj-trace)
 open import Once.CCC.Codegen.FrameFreeTrace o using (trace-of; cata-trace-of)
@@ -237,7 +237,7 @@ cata-dispatch-am E A G strat-box           bb n1 l1 at am = cata-box-am E G bb n
 cata-dispatch-am E A G strat-const         bb n1 l1 at am = cata-const-am E G bb n1 l1 at am
 cata-dispatch-am E A G (strat-branching F) bb n1 l1 at am = cata-branching-am E A F bb n1 l1 at am
 
-sigop-alloc-min : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → AllocMinTrace (sigop-code si n m)
+sigop-alloc-min : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe (CmpAt A)) → AllocMinTrace (sigop-code si n m)
 sigop-alloc-min si n nothing  = tt ∷ []
 sigop-alloc-min si n (just _) = tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 

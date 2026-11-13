@@ -22,7 +22,7 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Name using (CanonicalName)
-open import Once.Spec.Type using (Base; b-*; b-+; b-Int; b-Unit; ∅ₖ)
+open import Once.Spec.Type using (Base; b-*; b-+; b-Int; b-Float; b-Unit; ∅ₖ)
 import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
@@ -46,18 +46,20 @@ open import Once.Denotation.ValueDomain using (forgetᵇ; injectᵇ; cohᴰ)
 open import Once.Res using (returns)
 open import Once.Res using (returns-inj)
 open import Once.Denotation.Program using (Declared)
-open import Once.SigOp.Info using (SigOpSem;
+open import Once.SigOp.Info using (SigOpSem; Pure;
                                    blockV; primV; emitsV; haltsV; ffiV; callsV; module SigOpInfo; SigOpInfo)
 open SigOpInfo using (sem; baseA; conB)
 open import Once.Arith.Prim using (p-add; p-sub; p-mul; p-div; p-mod; p-neg;
-                                   p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp; bool)
+                                   p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp; p-fneg; p-fcmp; bool; ArithPrim)
 open import Data.Bool using (Bool; if_then_else_)
 import Data.Nat as ℕ
-open import Once.Arith.CmpOp using (CmpOp; cmp-word)
-open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
+open import Once.Arith.CmpOp using (CmpOp; cmp-word; fcmp; fcmp-word-at)
+open import Once.Spec.Theory using (module Models; ⟦_⟧ₛ)
+open import Once.Spec.Float.Encoding using (decode)
+open import Once.Arith.SigOp.Compare using (CmpAt; int-c; flt-c; cmp-of; cmp-block-info)
 open import Once.CCC.Codegen.IRToTrace o using (sigop-code; cmp-trace)
 open import Once.Spec.Numerics using (module TargetNum)
-open TargetNum using (int-bits)
+open TargetNum using (int-bits; float-format)
 open import Once.CCC.Machine.SMCore using (instr-reg-op; out-nz; sv-nz; module AbstractExec; instr-sigop; load-from-slot; instr-load-tag-lit; readReg; Output; SV-Lit; writeReg-same; StoredValue; SV-Tag; mov-to-input; instr-alloc-heap; store-at-slot; sv-as-loc; Input1; store-indirect; store-indirect-suc; sucLoc; SV-Ptr; module LocState; module AllocState)
 open AllocState using (next-heap-ref; current-frame; saved-frames)
 open LocState using (regs; halted)
@@ -86,11 +88,61 @@ module CompareC {FS : FrameSemantics} where
     fmt = Once.CCC.FrameSemantics.fs-numerics FS
     σᶠ  = TM.Interp.sig ιᶠ
 
+  -- A comparison, read off its CONTRACT (plan 0.150: at `Int` or at `Float`).
+  cprim : ∀ {A} → CmpAt A → ArithPrim A (SpecTy.Unit SpecTy.+ SpecTy.Unit)
+  cprim (int-c op)         = p-cmp op
+  cprim (flt-c (fcmp h o)) = p-fcmp h o
+
+  cmp-of-cprim : ∀ {A} (cA : CmpAt A) → cmp-of (primV (cprim cA)) ≡ just cA
+  cmp-of-cprim (int-c _)          = refl
+  cmp-of-cprim (flt-c (fcmp _ _)) = refl
+
   -- A comparison's argument and result are each ONE base type, so the info's
   -- witnesses are the canonical ones — which is what lets the block's own
   -- info (`cmp-block-info`) decode the same argument.
-  bt-II : (b : Base ∅ₖ (SpecTy.Int SpecTy.* SpecTy.Int)) → b ≡ b-* b-Int b-Int
-  bt-II (b-* b-Int b-Int) = refl
+  canon : ∀ {A} → CmpAt A → Base ∅ₖ A
+  canon (int-c _) = b-* b-Int b-Int
+  canon (flt-c _) = b-* b-Float b-Float
+
+  bt : ∀ {A} (cA : CmpAt A) (b : Base ∅ₖ A) → b ≡ canon cA
+  bt (int-c _) (b-* b-Int b-Int)     = refl
+  bt (flt-c _) (b-* b-Float b-Float) = refl
+
+  -- The comparison's truth on an argument: on the words at `Int`, on the
+  -- values they decode to at `Float`.
+  cbool : ∀ {A} → CmpAt A → EvV.⟦ A ⟧ → Bool
+  cbool (int-c op)         a = cmp-word (int-bits fmt) op (proj₁ a) (proj₂ a)
+  cbool (flt-c (fcmp h o)) a =
+    ⟦ o ⟧ₛ (Models.structure fmt h) (decode (float-format fmt) (proj₁ a) , decode (float-format fmt) (proj₂ a))
+
+  -- The denotation: a pure value, `bool` of that truth.
+  E-at : ∀ {A} (si : SigOpInfo A (SpecTy.Unit SpecTy.+ SpecTy.Unit)) (cA : CmpAt A)
+       → sem si ≡ primV (cprim cA)
+       → ∀ x → E₀ si x ≡ TM.ret (resOf si (EvV.eraseᵍ {0} (bool (cbool cA (argOf si x)))))
+  E-at si (int-c op)         e x = evalᴰ-at si (primV (p-cmp op)) e x
+  E-at si (flt-c (fcmp h o)) e x = evalᴰ-at si (primV (p-fcmp h o)) e x
+
+  -- The block's step is pure (its contract is a block), at each comparison.
+  blk-output : ∀ {A} (cA : CmpAt A) s
+             → exec-sigop-output (cmp-block-info cA) s ≡ pure-sigop-output (cmp-block-info cA) s
+  blk-output c@(int-c _) s = output-at (cmp-block-info c) _ refl s
+  blk-output c@(flt-c _) s = output-at (cmp-block-info c) _ refl s
+
+  blk-halts : ∀ {A} (cA : CmpAt A) s
+            → exec-sigop-halts (cmp-block-info cA) s ≡ exec-sigop-faults-of Pure (cmp-block-info cA) s
+  blk-halts (int-c _) s = refl
+  blk-halts (flt-c _) s = refl
+
+  blk-events : ∀ {A} (cA : CmpAt A) fs → event-of (instr-sigop (cmp-block-info cA)) fs ≡ DL.[]
+  blk-events (int-c _) fs = refl
+  blk-events (flt-c _) fs = refl
+
+  -- The block: the 0/1 word of that truth.
+  blk-out : ∀ {A} (cA : CmpAt A) a
+          → pure-sigop-out-val (cmp-block-info cA) fits-intˢ (just a) ≡ SV-Lit fits-intˢ (if cbool cA a then 1 else 0)
+  blk-out (int-c op)         a = refl
+  blk-out (flt-c (fcmp h o)) a =
+    cong (λ b → SV-Lit fits-intˢ (if b then 1 else 0)) (fcmp-word-at h o fmt (proj₁ a) (proj₂ a))
 
   bt-UU : (b : Base ∅ₖ (SpecTy.Unit SpecTy.+ SpecTy.Unit)) → b ≡ b-+ b-Unit b-Unit
   bt-UU (b-+ b-Unit b-Unit) = refl
@@ -100,9 +152,9 @@ module CompareC {FS : FrameSemantics} where
   nz-bit true  = refl
   nz-bit false = refl
 
-  cmp-obs : ∀ (si : SigOpInfo (SpecTy.Int SpecTy.* SpecTy.Int) (SpecTy.Unit SpecTy.+ SpecTy.Unit)) (op : CmpOp)
-          → sem si ≡ primV (p-cmp op) → IRObsCorrectF (SigOp si)
-  cmp-obs si op e n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
+  cmp-obs : ∀ {A} (si : SigOpInfo A (SpecTy.Unit SpecTy.+ SpecTy.Unit)) (cA : CmpAt A)
+          → sem si ≡ primV (cprim cA) → IRObsCorrectF (SigOp si)
+  cmp-obs {A} si cA e n l prog base _ cr span _ _ mIn x s alloc cl ns0 nh inp k rs =
     record
       { traces-agree   = trans ev-run (trans silent₂ (sym (cong proj₁ ER)))
       ; value-realized =
@@ -128,28 +180,28 @@ module CompareC {FS : FrameSemantics} where
       tag-stash = n
       sum-stash = suc n
 
-      si′ = cmp-block-info op
+      si′ = cmp-block-info cA
 
       -- ── THE EMISSION: `sem si` names the comparison, so the emitter took
       -- the comparison's lowering.
-      em≡ : emitted n l (SigOp si) ≡ cmp-trace op n
-      em≡ = cong (sigop-code si n) (cong cmp-of e)
+      em≡ : emitted n l (SigOp si) ≡ cmp-trace cA n
+      em≡ = cong (sigop-code si n) (trans (cong cmp-of e) (cmp-of-cprim cA))
 
-      span′ : SpanAt prog base (cmp-trace op n)
+      span′ : SpanAt prog base (cmp-trace cA n)
       span′ = subst (SpanAt prog base) em≡ span
 
       -- ── THE DENOTATION: a pure value, `bool` of the comparison.
-      a : EvV.⟦ SpecTy.Int {0} SpecTy.* SpecTy.Int ⟧
+      a : EvV.⟦ A ⟧
       a = argOf si x
 
       c : Bool
-      c = cmp-word (int-bits fmt) op (proj₁ a) (proj₂ a)
+      c = cbool cA a
 
       t : ℕ
       t = if c then 1 else 0
 
       E≡ : E₀ si x ≡ TM.ret (resOf si (EvV.eraseᵍ (bool c)))
-      E≡ = evalᴰ-at si (primV (p-cmp op)) e x
+      E≡ = E-at si cA e x
 
       -- The node's budgeted run: the block's, at the untouched budget.
       RE : ∀ k → runAt s (⟪ evalᴰ (SigOp si) x ⟫ k) ≡ tagRun k (runAt s (E₀ si x))
@@ -161,7 +213,7 @@ module CompareC {FS : FrameSemantics} where
       -- The block's info decodes the SAME argument: the two base witnesses
       -- are the one canonical witness.
       a≡ : argOf si′ x ≡ a
-      a≡ = cong (λ b → forgetᵇ b (subst idᶠ (cohᴰ (SpecTy.Int {0} SpecTy.* SpecTy.Int)) x)) (sym (bt-II (baseA si)))
+      a≡ = cong (λ b → forgetᵇ b (subst idᶠ (cohᴰ A) x)) (trans (bt cA (baseA si′)) (sym (bt cA (baseA si))))
 
       -- ── THE STATES. Two register-only steps, then the nine of the build.
       fs0 fs1 fs2 : FlatState
@@ -196,9 +248,9 @@ module CompareC {FS : FrameSemantics} where
       out1 : readReg (regs (floc fs1)) Output ≡ SV-Lit fits-intˢ t
       out1 =
         trans (writeReg-same (regs s) Output (exec-sigop-output si′ s))
-       (trans (output-at si′ (sem si′) refl s)
+       (trans (blk-output cA s)
        (trans (pure-input si′ fits-intˢ (readable-base (baseA si′)) x s inp)
-              (cong (λ a′ → pure-sigop-out-val si′ fits-intˢ (just a′)) a≡)))
+              (trans (cong (λ a′ → pure-sigop-out-val si′ fits-intˢ (just a′)) a≡) (blk-out cA a))))
 
       tv : StoredValue FS
       tv = SV-Tag t
@@ -242,7 +294,7 @@ module CompareC {FS : FrameSemantics} where
 
       -- the SigOp step is pure: its contract is `primV`'s block, which does not halt
       nh2 : halted u ≡ false
-      nh2 = cong unread? (arg-agree (baseA si′) x s inp)
+      nh2 = trans (blk-halts cA s) (cong unread? (arg-agree (baseA si′) x s inp))
 
       h₇ : halted t₇ ≡ false
       h₇ = trans (SMCore.MemOps.writeLoc-halted t₅ L tvu) nh2
@@ -321,8 +373,9 @@ module CompareC {FS : FrameSemantics} where
           ∷ subst (λ z → FlatSteps prog 7 z fs11) (sym nz-eq) run₂
 
       ev-run : chain-events run ≡ chain-events run₂
-      ev-run = cong (λ l → event-of (instr-sigop si′) fs0 DL.++ (event-of (instr-reg-op out-nz) fs1 DL.++ l))
-                    (ev-subst nz-eq run₂)
+      ev-run = trans (cong (λ l → event-of (instr-sigop si′) fs0 DL.++ (event-of (instr-reg-op out-nz) fs1 DL.++ l))
+                          (ev-subst nz-eq run₂))
+                     (cong (DL._++ chain-events run₂) (blk-events cA fs0))
 
       -- ── WHAT THE RUN LEAVES ALONE: two slots at and above `n`, the fresh block.
       B = record alloc { next-slot = n }
@@ -382,12 +435,14 @@ module CompareC {FS : FrameSemantics} where
 
   ------------------------------------------------------------------------
   -- THE ROUTING. Enumerated on the contract (no catch-all): a comparison is
-  -- the one `primV (p-cmp op)`; every other contract is not one, which
+  -- the one `primV (p-cmp op)` or `primV (p-fcmp h o)`; every other contract is not one, which
   -- `cmp-of` sees by computation.
   ------------------------------------------------------------------------
   by-contract : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → Declared σᶠ si
               → IRObsCorrectF (SigOp si)
-  by-contract si (primV (p-cmp op)) e d = cmp-obs si op e
+  by-contract si (primV (p-cmp op)) e d = cmp-obs si (int-c op) e
+  by-contract si (primV (p-fcmp h o)) e d = cmp-obs si (flt-c (fcmp h o)) e
+  by-contract si (primV p-fneg) e d = obs-correct-sigop-nc si d (cong cmp-of e)
   by-contract si (primV p-add)  e d = obs-correct-sigop-nc si d (cong cmp-of e)
   by-contract si (primV p-sub)  e d = obs-correct-sigop-nc si d (cong cmp-of e)
   by-contract si (primV p-mul)  e d = obs-correct-sigop-nc si d (cong cmp-of e)

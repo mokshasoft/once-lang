@@ -58,7 +58,7 @@ open import Once.IRTy using (fits-int; fits-float)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
   using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; cata-body; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; in-trace; with-copy; two-cell; node-copy-trace; out-trace; inj-trace; env-entry)
 open import Once.CCC.Codegen.FlatLayout using (word; flat; put; get; kind; lkind; lsz)
@@ -428,7 +428,7 @@ module Unique {FS : FrameSemantics} where
   ------------------------------------------------------------------------
 
   -- Plan 0.108: neither SigOp lowering defines a label.
-  sigop-defs : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp)
+  sigop-defs : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe (CmpAt A))
              → AllPairs _≢_ (thunk-labels (sigop-code si n m) ++ [])
   sigop-defs si n nothing  = []
   sigop-defs si n (just _) = []

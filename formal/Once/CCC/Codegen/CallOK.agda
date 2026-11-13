@@ -18,7 +18,7 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.IRTy using (IRTy)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-block-info)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-block-info)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; instr-ctrl; c-call-fn; instr-sigop)
 
 -- CATCHALL: only a direct call and a SigOp call are constrained.
@@ -29,11 +29,11 @@ InstrOK C Q (instr-sigop si)           = Q si
 InstrOK C Q _                          = ⊤
 
 -- What a SigOp leaf's lowering calls: itself, or (a comparison, D264) its block.
-Calls : (∀ {A B} → SigOpInfo A B → Set) → ∀ {A B} → SigOpInfo A B → Maybe CmpOp → Set
+Calls : (∀ {A B} → SigOpInfo A B → Set) → ∀ {A B} → SigOpInfo A B → Maybe (CmpAt A) → Set
 Calls Q si nothing  = Q si
 Calls Q si (just o) = Q (cmp-block-info o)
 
 -- With no SigOp obligation, every lowering meets it.
-calls-⊤ : ∀ {A B} (si : SigOpInfo A B) (m : Maybe CmpOp) → Calls (λ _ → ⊤) si m
+calls-⊤ : ∀ {A B} (si : SigOpInfo A B) (m : Maybe (CmpAt A)) → Calls (λ _ → ⊤) si m
 calls-⊤ si nothing  = tt
 calls-⊤ si (just _) = tt

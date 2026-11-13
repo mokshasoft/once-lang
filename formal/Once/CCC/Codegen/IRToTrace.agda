@@ -83,7 +83,7 @@ open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of; cmp-block-info)
 open import Once.CCC.Label using (LabelId; ℓ)
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply; In; out-μ; Cata; Out; in-ν; Ana; Iter; SigOp; Call; const)
@@ -652,7 +652,7 @@ resuspend-layer H E A n l lbl env (wf-Sum {F} {G} wfF wfG) =
 -- its arith block (`Output := 0/1`), `out-nz` (the word as a tag), and the
 -- sum build of `inl`/`inr` with the tag taken from a slot and a unit payload
 -- (any word; `instr-load-tag-lit 0` fills the cell).
-cmp-trace : CmpOp → ℕ → AbstractTrace
+cmp-trace : ∀ {A} → CmpAt A → ℕ → AbstractTrace
 cmp-trace o n =
   instr-sigop (cmp-block-info o) ∷
   instr-reg-op out-nz ∷
@@ -666,15 +666,15 @@ cmp-trace o n =
 
 -- Only the budget and the code depend on the choice; the label counter and
 -- the (empty) block list do not, so they reduce at any SigOp.
-sigop-budget : ℕ → Maybe CmpOp → ℕ
+sigop-budget : ∀ {A} → ℕ → Maybe (CmpAt A) → ℕ
 sigop-budget n nothing  = n
 sigop-budget n (just _) = suc (suc n)
 
-sigop-code : ∀ {A B} → SigOpInfo A B → ℕ → Maybe CmpOp → AbstractTrace
+sigop-code : ∀ {A B} → SigOpInfo A B → ℕ → Maybe (CmpAt A) → AbstractTrace
 sigop-code si n nothing  = instr-sigop si ∷ []
 sigop-code si n (just o) = cmp-trace o n
 
-sigop-trace : ∀ {A B} → ℕ → ℕ → SigOpInfo A B → Maybe CmpOp
+sigop-trace : ∀ {A B} → ℕ → ℕ → SigOpInfo A B → Maybe (CmpAt A)
             → ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
 sigop-trace n l si m = sigop-budget n m , l , sigop-code si n m , []
 

@@ -326,7 +326,7 @@ open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Codegen.IRToTrace o
   using (ir-to-trace'; sigop-code; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; in-trace; with-copy; two-cell; node-copy-trace; out-trace; cata-call-setup; cata-call; cata-call-box; cata-br-I₁; cata-br-I₂; fsize; inj-trace; env-entry; cata-body)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
@@ -617,7 +617,7 @@ cata-frag E A G (strat-branching F) bb n1 l1 at ab {lo} lo≤l1 f wA wC =
 open import Once.CCC.Codegen.LabelRange o using (cata-label-mono)
 
 private
-  sig-frag : ∀ {A B} (si : SigOpInfo A B) (n l : ℕ) (m : Maybe CmpOp) → FragP l l (clabs (sigop-code si n m)) []
+  sig-frag : ∀ {A B} (si : SigOpInfo A B) (n l : ℕ) (m : Maybe (CmpAt A)) → FragP l l (clabs (sigop-code si n m)) []
   sig-frag si n l nothing  = ([] , [] , []) , [] , []
   sig-frag si n l (just _) = ([] , [] , []) , [] , []
 
@@ -954,7 +954,7 @@ private
       vw = visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4)
       rw = rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) (kind A) (size A) F (n1 + 7) (l1 + 4 + lsize F)
 
-  sig-nf : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → NoFn (sigop-code si n m)
+  sig-nf : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe (CmpAt A)) → NoFn (sigop-code si n m)
   sig-nf si n nothing  = refl
   sig-nf si n (just _) = refl
 

@@ -43,9 +43,10 @@ cmp-bit bits o a b = if cmp-word bits o a b then 1 else 0
 open import Once.Spec.Numerics using (TargetNum; mkTargetNum)
 open import Once.Spec.Float.Dyadic using (FloatFormat)
 open import Data.Nat using (s≤s; z≤n)
-open import Once.Spec.Theory using (Has; Sym; compare; module Models; ⟦_⟧ₛ) renaming (float to nfloat)
+open import Once.Spec.Theory using (Has; float-neg; float-rounded; float-order; float-equality; Sym; compare; module Models; ⟦_⟧ₛ) renaming (float to nfloat)
 open import Once.Spec.Float.Encoding using (decode)
 open import Data.Product using (_,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 data FCmpOp : Set where
   fcmp : ∀ {U} → Has nfloat U → Sym U compare → FCmpOp
@@ -61,3 +62,15 @@ fcmp-word F (fcmp h o) a b = ⟦ o ⟧ₛ (Models.structure (floatTarget F) h) (
 
 fcmp-bit : FloatFormat → FCmpOp → ℕ → ℕ → ℕ
 fcmp-bit F o a b = if fcmp-word F o a b then 1 else 0
+
+-- | …and that IS the comparison read at any target with that format: a Float
+-- row's structure reads only the format (row by row, since `structure` is
+-- defined by them).
+fcmp-word-at : ∀ {U} (h : Has nfloat U) (o : Sym U compare) (tn : TargetNum) (a b : ℕ)
+             → fcmp-word (TargetNum.float-format tn) (fcmp h o) a b
+               ≡ ⟦ o ⟧ₛ (Models.structure tn h)
+                        (decode (TargetNum.float-format tn) a , decode (TargetNum.float-format tn) b)
+fcmp-word-at float-rounded  o tn a b = refl
+fcmp-word-at float-order    o tn a b = refl
+fcmp-word-at float-equality o tn a b = refl
+fcmp-word-at float-neg      () tn a b

@@ -30,7 +30,7 @@ open import Once.CCC.Codegen.ImageSymbols using (instr-defs; ctrl-defs; adefs; e
 open import Once.CCC.Codegen.NodesOK using (sigop-syms; leaf-syms; leaf-syms-all)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (name; sem)
-open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of; cmp-block-info)
 open import Once.Arith.CmpOp using (CmpOp)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.Arith.Machine.IR using (ArithBlock)
@@ -146,7 +146,7 @@ lib-defs-valid : ∀ (T : List IRFun) → All AsmSym (lib-defs T)
 lib-defs-valid T = ++⁺ (adefs-asm (lib-image T)) (block-syms-asm (lib-blocks T))
 
 -- Every symbol a SigOp calls — itself or (a comparison) its block.
-sigop-syms-asm : ∀ {A B} (si : SigOpInfo A B) (m : Maybe CmpOp) → All AsmSym (sigop-syms si m)
+sigop-syms-asm : ∀ {A B} (si : SigOpInfo A B) (m : Maybe (CmpAt A)) → All AsmSym (sigop-syms si m)
 sigop-syms-asm si nothing  = once-symbol-path-asm (name si) ∷ []
 sigop-syms-asm si (just c) = once-symbol-path-asm (name (cmp-block-info c)) ∷ []
 
