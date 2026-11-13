@@ -191,7 +191,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   ... | (v , ev) = v , trans (cong sm (sym (+-suc k o))) ev
 
   -- the words a move leaves at its destination
-  open import Once.LinCore.Moves {FS} using (Seg; slot; mvSS-run; MovedS; m-moved; m-rest; m-heap; m-halt; m-pc; Keep; keep-refl; keep-trans; keepS; keepP; keepF; keepW; keep-regs; keep-store; keep-pc; keep-heap) renaming (ln to nsteps)
+  open import Once.LinCore.Moves {FS} using (Seg; slot; mvSS-run; MovedS; m-moved; m-rest; m-heap; m-halt; m-pc; Keep; keep-refl; keep-trans; keepS; keepP; keepF; keepW; keep-regs; keep-store; keep-pc; keep-heap; Ran; ran-trans; ranS; ranP; ranF; ranW; ran-regs; ran-store; ran-pc; ran-heap) renaming (ln to nsteps)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
   open import Once.CCC.Machine.SMCore using (module LocState; module AllocState)
@@ -466,7 +466,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
             → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ mpair x a ∷ˢ os)
             → ws ((E ⊗t X) ∷ E ∷ Es) ≤ EP φ
             → Σ FlatState λ fs₂ → FlatSteps prog (nsteps (wsz E) + nsteps (wsz X)) fs fs₂
-                × CfgW (heapMem (floc fs₂)) (slot fs₂) φ (ln (see es) x es ∥ a ∷ˢ os) × Keep fs fs₂
+                × CfgW (heapMem (floc fs₂)) (slot fs₂) φ (ln (see es) x es ∥ a ∷ˢ os) × Ran (nsteps (wsz E) + nsteps (wsz X)) fs fs₂
   elend-sim prog fs φ {E} {Es} {X} {A} {S} {es} {os} {x} {a} s h C fit
     with topW es (c-env C) | stk-pair {heapMem (floc fs)} {slot fs} {φ} fitXA (c-stk C)
     where fitXA = ≤-trans (c-sfit C) (m≤n+m (OP φ) (EP φ))
@@ -514,7 +514,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
                                                (kept₁ y (lo′ y lo))) stA)
            ; c-efit = fit
            ; c-sfit = ≤-trans (Data.Nat.Properties.+-monoˡ-≤ (ws S) (m≤n+m (wsz A) (wsz X))) (c-sfit C) }
-    , keep-trans (keepS M₁) (keepS M₂)
+    , ran-trans (ranS M₁) (ranS M₂)
     where
       import Data.Nat.Properties
       t = budget φ ∸ ws ((X ⊗t A) ∷ S)
@@ -576,7 +576,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
               → CfgW (heapMem (floc fs)) (slot fs) φ (ln e x es ∥ w ∷ˢ os)
               → ws ((X ⊗t B) ∷ S) ≤ OP φ
               → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz X)) fs fs′
-                  × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mpair x w ∷ˢ os) × Keep fs fs′
+                  × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mpair x w ∷ˢ os) × Ran (nsteps (wsz X)) fs fs′
   eunlend-sim prog fs φ {E} {Es} {X} {B} {S} {e} {x} {es} {w} {os} s h C fitN
     with c-env C | c-stk C
   ... | ((wp , pp , sp) , ev) | ((wb , pb , sb) , rest) with vpair-inv pp
@@ -610,7 +610,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
                     , stkH (stkW-frame os fitS (λ y lo _ → m-rest M y (λ k k< e′ → below-os y lo k k< e′)) rest)
            ; c-efit = ≤-trans (m≤n+m (ws (E ∷ Es)) (wsz (E ⊗t X))) (c-efit C)
            ; c-sfit = fitN }
-    , keepS M
+    , ranS M
     where
       import Data.Nat.Properties
       src = ws Es + wsz E + wsz E
@@ -702,7 +702,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
            → Σ FlatState λ fs₄ → FlatSteps prog (nsteps wP + suc (suc (M ∸ wP))) fs fs₄
                × SlotsAt (slot fs₄) (bot ∸ suc M) (SV-Tag t ∷ w ++ replicate (M ∸ wP) (SV-Tag t))
                × (∀ x → (x < bot ∸ suc M) ⊎ (bot ≤ x) → slot fs₄ x ≡ slot fs x)
-               × heapMem (floc fs₄) ≡ heapMem (floc fs) × Keep fs fs₄
+               × heapMem (floc fs₄) ≡ heapMem (floc fs) × Ran (nsteps wP + suc (suc (M ∸ wP))) fs fs₄
   inj-core prog fs bot M wP t w pM Mb lw sw s h
     with mvSS-run prog fs (bot ∸ wP) (bot ∸ M) wP (Seg-++ˡ prog (fpc fs) (mvSS (bot ∸ wP) (bot ∸ M) wP) _ s) h
            (λ k k< → slots-def {slot fs} {bot ∸ wP} w sw k (subst (k <_) (sym lw) k<))
@@ -725,7 +725,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
                (slots-join {slot fs₄} w pad payload padS)) ,
     outside ,
     trans (f-heap F) (m-heap M₁) ,
-    keep-trans (keepS M₁) (keep-trans (keep-regs _ _) (keep-trans (keep-store fs₂ tp (readReg (LocState.regs (floc fs₂)) Output)) (keepF F)))
+    ran-trans (ranS M₁) (ran-trans (ran-regs _) (ran-trans (ran-store fs₂ tp (readReg (LocState.regs (floc fs₂)) Output)) (ranF F)))
     where
       import Data.Nat.Properties
       tp = bot ∸ suc M
@@ -827,7 +827,8 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
            → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ a ∷ˢ os)
            → ws ((A ⊕t B) ∷ S) ≤ OP φ
            → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz A) + suc (suc ((wsz A ⊔ wsz B) ∸ wsz A))) fs fs′
-               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ minl {B = B} a ∷ˢ os) × Keep fs fs′
+               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ minl {B = B} a ∷ˢ os)
+               × Ran (nsteps (wsz A) + suc (suc ((wsz A ⊔ wsz B) ∸ wsz A))) fs fs′
   linl-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} s h C fit with c-stk C
   ... | ((wa , pa , sa) , rest)
     with inj-core prog fs (budget φ ∸ ws S) (wsz A ⊔ wsz B) (wsz A) 0 wa (Data.Nat.Properties.m≤m⊔n (wsz A) (wsz B)) M<bot (vw-len pa)
@@ -866,7 +867,8 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
            → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ b ∷ˢ os)
            → ws ((A ⊕t B) ∷ S) ≤ OP φ
            → Σ FlatState λ fs′ → FlatSteps prog (nsteps (wsz B) + suc (suc ((wsz A ⊔ wsz B) ∸ wsz B))) fs fs′
-               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ minr {A = A} b ∷ˢ os) × Keep fs fs′
+               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ minr {A = A} b ∷ˢ os)
+               × Ran (nsteps (wsz B) + suc (suc ((wsz A ⊔ wsz B) ∸ wsz B))) fs fs′
   linr-sim prog fs φ {Es} {A} {B} {S} {es} {os} {b} s h C fit with c-stk C
   ... | ((wb , pb , sb) , rest)
     with inj-core prog fs (budget φ ∸ ws S) (wsz A ⊔ wsz B) (wsz B) 1 wb (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) M<bot (vw-len pb)
@@ -949,7 +951,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
             → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ mmu i v ∷ˢ os)
             → ws (LF∙ F (μt F) ∷ S) ≤ OP φ
             → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps (wsz (LF∙ F (μt F))) + 1)) fs fs′
-                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ v ∷ˢ os) × Keep fs fs′
+                × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ v ∷ˢ os) × Ran (suc (nsteps (wsz (LF∙ F (μt F))) + 1)) fs fs′
   lOutμ-sim prog fs φ {Es} {F} {S} {es} {os} {i} {v} (f₀ , s) h C fit with c-stk C
   ... | ((_ , vmu {wv = wv} pv ca , (ep , _)) , rest)
     with mvPS-run prog fs₁ (AtDynamic (cellLoc i 0)) 0 dst wL (Seg-++ˡ prog (suc (fpc fs)) (mvPS 0 dst wL) _ s) h refl def
@@ -974,7 +976,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
                     , subst (λ r → StkW r (slot fs₃) φ os) (sym (p-heap P))
                         (stkW-frame os fitS (λ x lo _ → p-rest P x (λ k k< e → Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans (in-stk k k<) lo))) rest)
            ; c-efit = c-efit C ; c-sfit = fit }
-    , keep-trans (keep-regs _ _) (keep-trans (keepP P) (keep-pc _))
+    , ran-trans (ran-regs _) (ran-trans (ranP P) ran-pc)
     where
       import Data.Nat.Properties
       wL = wsz (LF∙ F (μt F))
@@ -1083,7 +1085,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
           → ws (μt F ∷ S) ≤ OP φ
           → Σ FlatState λ fs′ → FlatSteps prog (suc (suc (nsteps (wsz (LF∙ F (μt F))) + 2))) fs fs′
               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mmu (szμ F , n) v ∷ˢ os)
-              × AllocState.next-heap-ref (falloc fs′) ≡ suc n × Keep fs fs′
+              × AllocState.next-heap-ref (falloc fs′) ≡ suc n × Ran (suc (suc (nsteps (wsz (LF∙ F (μt F))) + 2))) fs fs′
   lIn-sim prog fs φ {Es} {F} {S} {es} {os} {v} refl fresh (f₀ , f₁ , s) h C fit with c-stk C
   ... | ((wv , pv , sv) , rest)
     with mvSP-run prog fs₂ loc src 0 wL (Seg-++ˡ prog (suc (suc (fpc fs))) (mvSP src 0 wL) _ s) h refl def ib (λ k k′ _ _ ())
@@ -1117,8 +1119,8 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
                         (stkW-frame os fitS (λ x lo _ → stk-kept x (λ e → Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans b1<b lo))) rest)
            ; c-efit = c-efit C ; c-sfit = fit } ,
     cong AllocState.next-heap-ref (w-alloc Wd) ,
-    keep-trans (keep-heap fs wL) (keep-trans (keep-regs _ _)
-      (keep-trans (keepW Wd (λ f x ne k k< ())) (keep-trans (keep-regs _ _) (keep-store fs₄ (bot ∸ 1) _))))
+    ran-trans (ran-heap fs wL) (ran-trans (ran-regs _)
+      (ran-trans (ranW Wd (λ f x ne k k< ())) (ran-trans (ran-regs _) (ran-store fs₄ (bot ∸ 1) _))))
     where
       import Data.Nat.Properties
       wL = wsz (LF∙ F (μt F))
@@ -1193,7 +1195,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
            → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ os)
            → ws (LF∙ F (μt F) ∷ μt F ∷ Es) ≤ EP φ
            → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps (wsz (LF∙ F (μt F))))) fs fs′
-               × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw v es ∥ os) × Keep fs fs′
+               × CfgW (heapMem (floc fs′)) (slot fs′) φ (vw v es ∥ os) × Ran (suc (nsteps (wsz (LF∙ F (μt F))))) fs fs′
   eout-sim prog fs φ {F} {Es} {S} {es} {os} {i} {v} eq (f₀ , s) h C fit with topW es (c-env C)
   ... | (w , pw , sw) with subst (λ z → VW (heapMem (floc fs)) z w) eq pw | sw
   ...   | vmu {wv = wv} pv ca | (ep , _)
@@ -1216,7 +1218,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
            ; c-stk  = subst (λ r → StkW r (slot fs₂) φ os) (sym (p-heap P))
                         (stkW-frame os fitS (λ x lo _ → p-rest P x (λ k k< e → apart φ (c-sfit C) (in-env k k<) lo e)) (c-stk C))
            ; c-efit = fit ; c-sfit = c-sfit C }
-    , keep-trans (keep-regs _ _) (keepP P)
+    , ran-trans (ran-regs _) (ranP P)
     where
       import Data.Nat.Properties
       wL = wsz (LF∙ F (μt F))
@@ -1259,7 +1261,8 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
            → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ a ∷ˢ b ∷ˢ os)
            → wsz A + ws (A ∷ B ∷ S) ≤ OP φ
            → Σ FlatState λ fs₃ → FlatSteps prog (nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))) fs fs₃
-               × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os) × Keep fs fs₃
+               × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os)
+               × Ran (nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))) fs fs₃
   swap-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h C fitT with c-stk C
   ... | ((wa , pa , sa) , (wb , pb , sb) , rest)
     with mvSS-run prog fs t (t ∸ wsz A) (wsz A) (Seg-++ˡ prog (fpc fs) X₁ _ s) h
@@ -1335,7 +1338,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
                         (stkW-frame os fitS (λ x lo _ → kept₃ x (inj₂ lo)) rest)
            ; c-efit = c-efit C
            ; c-sfit = subst (_≤ OP φ) (swap-words (wsz A) (wsz B) (ws S)) (c-sfit C) }
-    , keep-trans (keepS M₁) (keep-trans (keepS M₂) (keepS M₃))
+    , ran-trans (ranS M₁) (ran-trans (ranS M₂) (ranS M₃))
     where
       import Data.Nat.Properties
       ≤-reflexive′ = Data.Nat.Properties.≤-reflexive

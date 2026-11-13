@@ -49,7 +49,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open Sim {FS} U wordOf
   open CfgW
   open import Once.LinCore.Moves {FS} using (Seg; slot; mvSSd-run; MovedD; d-moved; d-rest; d-heap; d-pc; lea-step; mov-in-step
-                                           ; Keep; keep-trans; keepD; keepS; keep-regs; keep-pc; keep-store)
+                                           ; Keep; keep-trans; keepD; keepS; keep-regs; keep-pc; keep-store; Ran; ran-trans; ran-regs; ran-store)
     renaming (ln to nsteps; d-halt to dm-halt)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc; fetch; find-label)
@@ -326,7 +326,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
              → fhalted (floc fs) ≡ false
              → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ mone ∷ˢ os)
              → ws (Bt b ∷ S) ≤ OP φ
-             → Σ FlatState λ fs′ → FlatSteps prog 2 fs fs′ × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mbase v ∷ˢ os) × Keep fs fs′
+             → Σ FlatState λ fs′ → FlatSteps prog 2 fs fs′ × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ mbase v ∷ˢ os) × Ran 2 fs fs′
   lconst-sim prog fs φ {b} {Es} {S} {es} {os} v ld eld (f₁ , f₂ , _) h C fit =
     fs₂ ,
     step-at fs₁ (h , f₁) eld (step-at fs₂ (h , f₂) (store-step fs₁ dst) done) ,
@@ -337,7 +337,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                     , stkW-frame os fitS (λ x lo _ → store-other (floc fs₁) cf dst (wordOf v) x
                                              (λ e → Data.Nat.Properties.<-irrefl e (<-≤-trans b1<b lo))) (proj₂ (c-stk C))
            ; c-efit = c-efit C ; c-sfit = fit }
-    , keep-trans (keep-regs _ _) (keep-store fs₁ dst _)
+    , ran-trans (ran-regs _) (ran-store fs₁ dst _)
     where
       cf = AllocState.current-frame (falloc fs)
       bot = budget φ ∸ ws S

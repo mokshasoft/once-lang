@@ -616,10 +616,11 @@ record Keep (fs fs′ : FlatState) : Set where
     k-saved : AllocState.saved-frames (falloc fs′) ≡ AllocState.saved-frames (falloc fs)
     k-ret   : fret fs′ ≡ fret fs
     k-other : ∀ f x → ¬ f ≡ current-frame (falloc fs) → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x
+    k-halt  : halted (floc fs′) ≡ halted (floc fs)
 open Keep public
 
 keep-refl : ∀ {fs} → Keep fs fs
-keep-refl = record { k-frame = refl ; k-slots = refl ; k-saved = refl ; k-ret = refl ; k-other = λ _ _ _ → refl }
+keep-refl = record { k-frame = refl ; k-slots = refl ; k-saved = refl ; k-ret = refl ; k-other = λ _ _ _ → refl ; k-halt = refl }
 
 keep-trans : ∀ {fs₁ fs₂ fs₃} → Keep fs₁ fs₂ → Keep fs₂ fs₃ → Keep fs₁ fs₃
 keep-trans K₁ K₂ = record
@@ -627,45 +628,96 @@ keep-trans K₁ K₂ = record
   ; k-slots = trans (k-slots K₂) (k-slots K₁)
   ; k-saved = trans (k-saved K₂) (k-saved K₁)
   ; k-ret   = trans (k-ret K₂) (k-ret K₁)
-  ; k-other = λ f x ne → trans (k-other K₂ f x (λ e → ne (trans e (k-frame K₁)))) (k-other K₁ f x ne) }
+  ; k-other = λ f x ne → trans (k-other K₂ f x (λ e → ne (trans e (k-frame K₁)))) (k-other K₁ f x ne)
+  ; k-halt  = trans (k-halt K₂) (k-halt K₁) }
 
--- a run that keeps the whole allocation state, the return pcs and the other frames
+-- a run that keeps the whole allocation state, the return pcs, the other frames and the flag
 keep-alloc : ∀ {fs fs′} → falloc fs′ ≡ falloc fs → fret fs′ ≡ fret fs
            → (∀ f x → ¬ f ≡ current-frame (falloc fs) → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x)
+           → halted (floc fs′) ≡ halted (floc fs)
            → Keep fs fs′
-keep-alloc a r o = record { k-frame = cong current-frame a ; k-slots = cong AllocState.frame-slots a
-                          ; k-saved = cong AllocState.saved-frames a ; k-ret = r ; k-other = o }
+keep-alloc a r o h = record { k-frame = cong current-frame a ; k-slots = cong AllocState.frame-slots a
+                            ; k-saved = cong AllocState.saved-frames a ; k-ret = r ; k-other = o ; k-halt = h }
 
 keepS : ∀ {fs fs′ a b n} → MovedS fs fs′ a b n → Keep fs fs′
-keepS M = keep-alloc (m-alloc M) (m-ret M) (m-frame M)
+keepS M = keep-alloc (m-alloc M) (m-ret M) (m-frame M) (m-halt M)
 
 keepP : ∀ {fs fs′ loc o b n} → MovedP fs fs′ loc o b n → Keep fs fs′
-keepP M = keep-alloc (p-alloc M) (p-ret M) (p-frame M)
+keepP M = keep-alloc (p-alloc M) (p-ret M) (p-frame M) (p-halt M)
 
 keepD : ∀ {fs fs′ a b n} → MovedD fs fs′ a b n → Keep fs fs′
-keepD M = keep-alloc (d-alloc M) (d-ret M) (d-frame M)
+keepD M = keep-alloc (d-alloc M) (d-ret M) (d-frame M) (d-halt M)
 
 -- a move into a block: no other frame's slot is written when none is the target
 keepW : ∀ {fs fs′ loc a o n} → MovedW fs fs′ loc a o n
       → (∀ f x → ¬ f ≡ current-frame (falloc fs) → ∀ k → k Data.Nat.< n → ¬ AtStack f x ≡ offsetLoc loc (k + o))
       → Keep fs fs′
-keepW M h = keep-alloc (w-alloc M) (w-ret M) (λ f x ne → w-rest M (AtStack f x) (h f x ne))
+keepW M h = keep-alloc (w-alloc M) (w-ret M) (λ f x ne → w-rest M (AtStack f x) (h f x ne)) (w-halt M)
 
 keepF : ∀ {fs fs′ b n} → Filled fs fs′ b n → Keep fs fs′
-keepF F = keep-alloc (f-alloc F) (f-ret F) (f-frame F)
+keepF F = keep-alloc (f-alloc F) (f-ret F) (f-frame F) (f-halt F)
 
 -- a step on the registers alone
 keep-regs : ∀ {fs} rs pc → Keep fs (record fs { floc = record (floc fs) { regs = rs } ; fpc = pc })
-keep-regs rs pc = keep-alloc refl refl (λ _ _ _ → refl)
+keep-regs rs pc = keep-alloc refl refl (λ _ _ _ → refl) refl
 
 -- a store to the current frame
 keep-store : ∀ fs b v → Keep fs (record fs { floc = writeLoc (floc fs) (AtStack (current-frame (falloc fs)) b) v ; fpc = suc (fpc fs) })
 keep-store fs b v = keep-alloc refl refl (λ f x ne → store-frame (floc fs) (current-frame (falloc fs)) b v f x (λ e → ne (sym e)))
+                      (writeLoc-halted (floc fs) (AtStack (current-frame (falloc fs)) b) v)
 
 -- a step on the pc alone (a free: the heap's blocks are the allocator's)
 keep-pc : ∀ {fs} pc → Keep fs (record fs { fpc = pc })
-keep-pc pc = keep-alloc refl refl (λ _ _ _ → refl)
+keep-pc pc = keep-alloc refl refl (λ _ _ _ → refl) refl
 
 -- an allocation: the counter and the blocks' sizes move, the frames do not
 keep-heap : ∀ fs n → Keep fs (flat-step-straight (instr-alloc-heap n) fs)
-keep-heap fs n = record { k-frame = refl ; k-slots = refl ; k-saved = refl ; k-ret = refl ; k-other = λ _ _ _ → refl }
+keep-heap fs n = record { k-frame = refl ; k-slots = refl ; k-saved = refl ; k-ret = refl ; k-other = λ _ _ _ → refl ; k-halt = refl }
+
+------------------------------------------------------------------------
+-- ★ A STRAIGHT RUN of `n` steps: it keeps what `Keep` says, and ends `n`
+-- past where it began. Composed as `FlatSteps-++` composes the steps, so a
+-- lemma's `Ran` count is its `FlatSteps` count.
+------------------------------------------------------------------------
+
+record Ran (n : ℕ) (fs fs′ : FlatState) : Set where
+  field
+    r-keep : Keep fs fs′
+    r-pc   : fpc fs′ ≡ n + fpc fs
+open Ran public
+
+ran-trans : ∀ {a b fs₁ fs₂ fs₃} → Ran a fs₁ fs₂ → Ran b fs₂ fs₃ → Ran (a + b) fs₁ fs₃
+ran-trans {a} {b} {fs₁} R₁ R₂ = record
+  { r-keep = keep-trans (r-keep R₁) (r-keep R₂)
+  ; r-pc   = trans (r-pc R₂) (trans (cong (b +_) (r-pc R₁))
+               (trans (sym (Data.Nat.Properties.+-assoc b a (fpc fs₁))) (cong (_+ fpc fs₁) (Data.Nat.Properties.+-comm b a)))) }
+  where import Data.Nat.Properties
+
+ranS : ∀ {fs fs′ a b n} → MovedS fs fs′ a b n → Ran (ln n) fs fs′
+ranS M = record { r-keep = keepS M ; r-pc = m-pc M }
+
+ranP : ∀ {fs fs′ loc o b n} → MovedP fs fs′ loc o b n → Ran (ln n) fs fs′
+ranP M = record { r-keep = keepP M ; r-pc = p-pc M }
+
+ranD : ∀ {fs fs′ a b n} → MovedD fs fs′ a b n → Ran (ln n) fs fs′
+ranD M = record { r-keep = keepD M ; r-pc = d-pc M }
+
+ranW : ∀ {fs fs′ loc a o n} → MovedW fs fs′ loc a o n
+     → (∀ f x → ¬ f ≡ current-frame (falloc fs) → ∀ k → k Data.Nat.< n → ¬ AtStack f x ≡ offsetLoc loc (k + o))
+     → Ran (ln n) fs fs′
+ranW M h = record { r-keep = keepW M h ; r-pc = w-pc M }
+
+ranF : ∀ {fs fs′ b n} → Filled fs fs′ b n → Ran n fs fs′
+ranF F = record { r-keep = keepF F ; r-pc = f-pc F }
+
+ran-regs : ∀ {fs} rs → Ran 1 fs (record fs { floc = record (floc fs) { regs = rs } ; fpc = suc (fpc fs) })
+ran-regs rs = record { r-keep = keep-regs rs _ ; r-pc = refl }
+
+ran-store : ∀ fs b v → Ran 1 fs (record fs { floc = writeLoc (floc fs) (AtStack (current-frame (falloc fs)) b) v ; fpc = suc (fpc fs) })
+ran-store fs b v = record { r-keep = keep-store fs b v ; r-pc = refl }
+
+ran-pc : ∀ {fs} → Ran 1 fs (record fs { fpc = suc (fpc fs) })
+ran-pc = record { r-keep = keep-pc _ ; r-pc = refl }
+
+ran-heap : ∀ fs n → Ran 1 fs (flat-step-straight (instr-alloc-heap n) fs)
+ran-heap fs n = record { r-keep = keep-heap fs n ; r-pc = refl }
