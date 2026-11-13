@@ -37,13 +37,14 @@ open import Once.Postulates using (toList-++)
 open import Once.Target.Symbol using (showNat; once-symbol-own; mangle-component)
 open import Once.Target.SymbolInjective
   using (toList-showNat; charsInBase-all-digits; zencL; zencL-inj; mangL; toList-mangle; HeadNotDigit; digit-prefix-unique)
-open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
+open import Once.Arith.CmpOp using (CmpOp; FCmpOp; fcmp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
+open import Once.Spec.Theory using (float-rounded; float-order; float-equality; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.Shape
   using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd
         ; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; afcmp)
 open import Once.Spec.Float.Decimal using (Decimal; _/10^_)
 open import Once.Arith.SigOp.Block
   using (show-shape; show-path; show-zlit; show-dlit; show-arith-ir; block-digest; block-name)
@@ -82,6 +83,20 @@ cmp-c c-ge = '3'
 cmp-c c-eq = '4'
 cmp-c c-ne = '5'
 
+fcmp-c : FCmpOp → Char
+fcmp-c (fcmp _ ‵==ᵈ) = 'a'
+fcmp-c (fcmp _ ‵!=ᵈ) = 'b'
+fcmp-c (fcmp _ ‵<ᵈ) = 'c'
+fcmp-c (fcmp _ ‵<=ᵈ) = 'd'
+fcmp-c (fcmp _ ‵>ᵈ) = 'e'
+fcmp-c (fcmp _ ‵>=ᵈ) = 'f'
+fcmp-c (fcmp _ ‵<) = 'g'
+fcmp-c (fcmp _ ‵<=) = 'h'
+fcmp-c (fcmp _ ‵>) = 'i'
+fcmp-c (fcmp _ ‵>=) = 'j'
+fcmp-c (fcmp _ ‵==) = 'k'
+fcmp-c (fcmp _ ‵!=) = 'l'
+
 tree-cs : ∀ {sh n} → MArithIR sh n → List Char
 tree-cs (alit z)                 = 'L' ∷ zlit-cs z
 tree-cs (aflit d)                = 'F' ∷ dlit-cs d
@@ -95,6 +110,7 @@ tree-cs (amod a b)               = 'R' ∷ (tree-cs a ++ tree-cs b)
 tree-cs (aneg a)                 = 'G' ∷ tree-cs a
 tree-cs (ai2f a)                 = 'C' ∷ tree-cs a
 tree-cs (acmp o a b)             = 'K' ∷ cmp-c o ∷ (tree-cs a ++ tree-cs b)
+tree-cs (afcmp o a b)            = 'Q' ∷ fcmp-c o ∷ (tree-cs a ++ tree-cs b)
 
 ------------------------------------------------------------------------
 -- …are the strings' characters.
@@ -147,6 +163,18 @@ tree-br (acmp c-gt a b)         = br2 "K" "2" (show-arith-ir a ++ˢ show-arith-i
 tree-br (acmp c-ge a b)         = br2 "K" "3" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
 tree-br (acmp c-eq a b)         = br2 "K" "4" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
 tree-br (acmp c-ne a b)         = br2 "K" "5" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-rounded ‵==ᵈ) a b) = br2 "Q" "a" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-rounded ‵!=ᵈ) a b) = br2 "Q" "b" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-rounded ‵<ᵈ) a b) = br2 "Q" "c" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-rounded ‵<=ᵈ) a b) = br2 "Q" "d" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-rounded ‵>ᵈ) a b) = br2 "Q" "e" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-rounded ‵>=ᵈ) a b) = br2 "Q" "f" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-order ‵<) a b) = br2 "Q" "g" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-order ‵<=) a b) = br2 "Q" "h" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-order ‵>) a b) = br2 "Q" "i" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-order ‵>=) a b) = br2 "Q" "j" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-equality ‵==) a b) = br2 "Q" "k" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-equality ‵!=) a b) = br2 "Q" "l" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
 
 ------------------------------------------------------------------------
 -- Prefix-freeness: a rendering, then anything, determines both.
@@ -254,6 +282,20 @@ private
   cmp-inj c-eq c-eq _ = refl
   cmp-inj c-ne c-ne _ = refl
 
+  fcmp-inj : ∀ (o o′ : FCmpOp) → fcmp-c o ≡ fcmp-c o′ → o ≡ o′
+  fcmp-inj (fcmp float-rounded ‵==ᵈ) (fcmp float-rounded ‵==ᵈ) _ = refl
+  fcmp-inj (fcmp float-rounded ‵!=ᵈ) (fcmp float-rounded ‵!=ᵈ) _ = refl
+  fcmp-inj (fcmp float-rounded ‵<ᵈ) (fcmp float-rounded ‵<ᵈ) _ = refl
+  fcmp-inj (fcmp float-rounded ‵<=ᵈ) (fcmp float-rounded ‵<=ᵈ) _ = refl
+  fcmp-inj (fcmp float-rounded ‵>ᵈ) (fcmp float-rounded ‵>ᵈ) _ = refl
+  fcmp-inj (fcmp float-rounded ‵>=ᵈ) (fcmp float-rounded ‵>=ᵈ) _ = refl
+  fcmp-inj (fcmp float-order ‵<) (fcmp float-order ‵<) _ = refl
+  fcmp-inj (fcmp float-order ‵<=) (fcmp float-order ‵<=) _ = refl
+  fcmp-inj (fcmp float-order ‵>) (fcmp float-order ‵>) _ = refl
+  fcmp-inj (fcmp float-order ‵>=) (fcmp float-order ‵>=) _ = refl
+  fcmp-inj (fcmp float-equality ‵==) (fcmp float-equality ‵==) _ = refl
+  fcmp-inj (fcmp float-equality ‵!=) (fcmp float-equality ‵!=) _ = refl
+
 tree-inj : ∀ {sh n n′} (e : MArithIR sh n) (e′ : MArithIR sh n′) (r r′ : List Char)
          → tree-cs e ++ r ≡ tree-cs e′ ++ r′ → _≡_ {A = Σ NumType (MArithIR sh)} (n , e) (n′ , e′) × r ≡ r′
 tree-inj (alit z) (alit z′) r r′ eq with zlit-inj z z′ r r′ (∷-injectiveʳ eq)
@@ -298,6 +340,12 @@ tree-inj (acmp o a b) (acmp o′ a′ b′) r r′ eq
   with tree-inj a a′ _ _ (as2 (tree-cs a) (tree-cs b) (tree-cs a′) (tree-cs b′) r r′ (∷-injectiveʳ (∷-injectiveʳ eq)))
 ...   | refl , t with tree-inj b b′ r r′ t
 ...     | refl , t′ = refl , t′
+tree-inj (afcmp o a b) (afcmp o′ a′ b′) r r′ eq
+  with fcmp-inj o o′ (∷-injectiveˡ (∷-injectiveʳ eq))
+... | refl
+  with tree-inj a a′ _ _ (as2 (tree-cs a) (tree-cs b) (tree-cs a′) (tree-cs b′) r r′ (∷-injectiveʳ (∷-injectiveʳ eq)))
+...   | refl , t with tree-inj b b′ r r′ t
+...     | refl , t′ = refl , t′
 
 -- (an input on the right: its letter waits on its kind)
 tree-inj (alit _) (ainput {NInt} _) _ _ ()
@@ -320,6 +368,8 @@ tree-inj (ai2f _) (ainput {NInt} _) _ _ ()
 tree-inj (ai2f _) (ainput {NFloat} _) _ _ ()
 tree-inj (acmp _ _ _) (ainput {NInt} _) _ _ ()
 tree-inj (acmp _ _ _) (ainput {NFloat} _) _ _ ()
+tree-inj (afcmp _ _ _) (ainput {NInt} _) _ _ ()
+tree-inj (afcmp _ _ _) (ainput {NFloat} _) _ _ ()
 
 ------------------------------------------------------------------------
 -- THE THEOREM.
