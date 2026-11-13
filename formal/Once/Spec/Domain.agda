@@ -30,6 +30,7 @@ open import Once.Spec.Type
   using (Ty; Type; Fun; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float; K; Id; _⊕_; _⊗_; ⟦_⟧F; TySub; _⟨_⟩; _⟨_⟩F)
 open import Once.Spec.Sub
 open import Once.Spec.Word using (Carrier)
+open import Once.Spec.Float.Value using (FloatVal)
 open import Once.Spec.Signature using (BTy; unit; void; int; float; ⌜_⌝; ⟦_⟧ᵇ; Layer; call)
 import Once.Spec.Signature as S
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; inS)
@@ -53,7 +54,7 @@ code : Fun 0 → SFunctor
 ⟦ μ F ⟧ᵛ   = μS (code F)
 ⟦ ν F f ⟧ᵛ = νM f (code F)
 ⟦ Int ⟧ᵛ   = Carrier
-⟦ Float ⟧ᵛ = Carrier
+⟦ Float ⟧ᵛ = FloatVal
 code (K A)   = SK ⟦ A ⟧ᵛ
 code Id      = SId
 code (F ⊕ G) = code F S⊕ code G

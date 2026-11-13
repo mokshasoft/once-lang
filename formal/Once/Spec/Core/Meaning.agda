@@ -47,8 +47,9 @@ open import Once.Spec.Context
 open import Once.Spec.Numerics using (module TargetNum)
 open TargetNum fmt using (int-bits; float-format)
 import Once.Spec.Word as Word
-open import Once.Spec.Float.Decimal using (round)
+open import Once.Spec.Float.Decimal using (roundDec)
 import Once.Spec.Float.Arith as FA
+open import Once.Spec.Float.Value using (negV)
 open import Once.Spec.Bool using (truth)
 open import Once.Spec.Effect Σ using (M; bind; fmap; bindᵍ; sub; T; T∞; returnT; return∞; loop; performT; ana; module νM)
 open νM using (outν)
@@ -180,11 +181,11 @@ module _ {m : ℕ} (σ : TySub m 0) where
   primᵛ p-ge   (a , b) = truth (not (Word.Width._<ˢ_ int-bits a b))
   primᵛ p-eq   (a , b) = truth (Word.Width._≡ʷ_ int-bits a b)
   primᵛ p-ne   (a , b) = truth (not (Word.Width._≡ʷ_ int-bits a b))
-  primᵛ p-fadd (a , b) = FA.fadd float-format a b
-  primᵛ p-fsub (a , b) = FA.fsub float-format a b
-  primᵛ p-fmul (a , b) = FA.fmul float-format a b
-  primᵛ p-fdiv (a , b) = FA.fdiv float-format a b
-  primᵛ p-i2f  a       = FA.i2f float-format (Word.Width.toℤ int-bits a)
+  primᵛ p-fadd (a , b) = FA.addV float-format a b
+  primᵛ p-fsub (a , b) = FA.addV float-format a (negV b)
+  primᵛ p-fmul (a , b) = FA.mulV float-format a b
+  primᵛ p-fdiv (a , b) = FA.divV float-format a b
+  primᵛ p-i2f  a       = FA.i2fV float-format (Word.Width.toℤ int-bits a)
 
 ------------------------------------------------------------------------
 -- The meaning
@@ -263,7 +264,7 @@ module _ {m : ℕ} (σ : TySub m 0) where
 ⟦ ⊢coerce {π = π} p d ⟧ ρ σ r γ = fmap π (conv σ p) (⟦ d ⟧ ρ σ r γ)
 
 ⟦ ⊢lit-int {i = i} ⟧   ρ σ r γ = Word.Width.fromℤ int-bits i
-⟦ ⊢lit-float {d = d} ⟧ ρ σ r γ = round float-format d
+⟦ ⊢lit-float {d = d} ⟧ ρ σ r γ = roundDec float-format d
 
 ⟦ ⊢prim {π = π} p d ⟧ ρ σ r γ = fmap π (primᵛ σ p) (⟦ d ⟧ ρ σ r γ)
 

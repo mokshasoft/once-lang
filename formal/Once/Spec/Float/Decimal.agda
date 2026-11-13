@@ -3,8 +3,8 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Spec.Float.Decimal — THE LITERAL'S PAYLOAD, AND THE ONE ROUNDING
--- (plan 0.74 K0/K1, D116).
+-- Once.Spec.Float.Decimal — THE LITERAL'S PAYLOAD, AND ITS ROUNDING TO A VALUE
+-- (plan 0.74 K0/K1, D116; plan 0.150: the result is a level-2 value).
 --
 -- `3.14` IS NOT A DYADIC. `3.14 = 157/50` and 50 is not a power of two, so no
 -- `Dyadic` equals it — which is why `accept?` rejected it at the EXACTNESS
@@ -17,7 +17,7 @@
 -- exact, which is exactly the subset `accept?` was restricting us to.
 --
 -- WHY EXACTNESS OF THE PAYLOAD IS THE WHOLE POINT: with an exact payload there
--- is EXACTLY ONE rounding, at the backend, at the target's format. Agda's
+-- is EXACTLY ONE rounding, at the target's format (`Value.roundQ`). Agda's
 -- `Float` would round first and round again — harmless for binary32-via-
 -- binary64 by Figueroa (53 ≥ 2·24+2) but it CAPS PRECISION at the payload's
 -- format, so binary128 or x87-extended could never be served. It is also
@@ -31,20 +31,12 @@
 
 module Once.Spec.Float.Decimal where
 
-open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; NonZero)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Nat.DivMod using (_/_; _%_)
-open import Data.Nat.Properties
-  using (m^n≢0; m*n≢0; m^n>0; *-monoˡ-<; ∸-monoʳ-<; ^-distribˡ-+-*)
-open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
-import Once.Spec.Float.Dyadic
+open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
+open import Data.Integer using (ℤ; +_; -[1+_])
 import Data.Integer as ℤ
-open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
-open import Once.Spec.Float.Dyadic
-  using (FloatFormat; bitLen; binary32; binary64; bias; signBit; modPow)
-open Once.Spec.Float.Dyadic.FloatFormat using (exp-bits; sig-bits)
+open import Once.Spec.Float.Dyadic using (FloatFormat)
+open import Once.Spec.Float.Value using (FloatVal; Sign; pos; neg; roundQ)
 
 ------------------------------------------------------------------------
 -- The payload
@@ -53,9 +45,8 @@ open Once.Spec.Float.Dyadic.FloatFormat using (exp-bits; sig-bits)
 -- every decimal literal EXACTLY — `3.1` is `31 /10^ 1`, no rounding.
 --
 -- UNNORMALISED, exactly as `Dyadic` is: `0.5` and `0.50` are distinct records
--- (`5 /10^ 1` vs `50 /10^ 2`). They must round to the same word, and that is a
--- lemma to prove rather than a coincidence to assume — see the pins below,
--- which include the pair.
+-- (`5 /10^ 1` vs `50 /10^ 2`). They round to the same value because `roundQ`
+-- rounds the exact quotient.
 ------------------------------------------------------------------------
 
 record Decimal : Set where
@@ -70,8 +61,9 @@ open Decimal
 fromℕ : ℕ → Decimal
 fromℕ n = (+ n) /10^ 0
 
--- | Negation — total, and the reason `sig` is signed. Plan 0.73's F3
--- (negative float literals) is this and nothing more.
+-- | Negation — total, and the reason `sig` is signed: a negative literal
+-- (plan 0.150 N4) is `negate` of the digits. `ℤ` has no `−0`, and needs none:
+-- a negative literal whose value is zero is rejected (N5).
 negate : Decimal → Decimal
 negate (m /10^ e) = (ℤ.- m) /10^ e
 
@@ -86,176 +78,11 @@ decimalOf : ℕ → ℕ → ℕ → Decimal
 decimalOf i f l = (+ (i * 10 ^ l + f)) /10^ l
 
 ------------------------------------------------------------------------
--- ROUND-TO-NEAREST-EVEN, on integers
+-- The literal's value at a format
 ------------------------------------------------------------------------
 
--- | `q` or `q+1`, deciding by the remainder against half the divisor, and
--- breaking the exact tie TOWARDS EVEN.
---
--- Comparing `2r` with `den` rather than `r` with `den/2` is what keeps the
--- half-way case exact: `den/2` would itself truncate on an odd divisor and
--- turn a tie into a below-half.
-roundHalfEven : ℕ → ℕ → ℕ → ℕ
-roundHalfEven q r den =
-  if      (2 * r) ℕ.<ᵇ den then q
-  else if den ℕ.<ᵇ (2 * r) then suc q
-  else if (_%_ q 2 {{_}}) ℕ.≡ᵇ 0 then q else suc q
-
--- | `num / den`, correctly rounded.
-divRHE : ℕ → (den : ℕ) → {{NonZero den}} → ℕ
-divRHE num den = roundHalfEven (num / den) (num % den) den
-
-------------------------------------------------------------------------
--- THE ONE ROUNDING
---
--- `round F d` is the target's bit pattern for the decimal `d`. It is built as
--- "round to a `P`-bit dyadic, then encode that dyadic", which is worth stating
--- because it means the existing encoder is REUSED rather than reimplemented —
--- and `encode` is the function the pinned patterns at the bottom of
--- `Once.Spec.Float.Dyadic` already check.
---
--- `encode` TRUNCATES (`sigFieldN` drops low bits via `modPow`), and was
--- correct only because `accept?` guaranteed nothing was there to drop. Here
--- nothing is there to drop for a different and better reason: `roundToDyadic`
--- delivers a significand of at most `P = sig-bits + 1` bits, so the truncation
--- is a no-op and the rounding has already happened, once, in the right place.
-------------------------------------------------------------------------
-
--- | A shift big enough that `n · 2^S ≥ 10^e`, so the first division is
--- non-zero and its bit length is a true binary exponent.
---
--- `4e` because `2^4 = 16 > 10`; the `+ sig-bits + 4` is headroom for the
--- significand itself. Generous on purpose — it costs a wider intermediate and
--- buys not having to prove a tight bound.
-guardShift : FloatFormat → ℕ → ℕ
-guardShift F e = 4 * e + sig-bits F + 4
-
--- | `⌊log₂ (n / 10^e)⌋ + 1`, read off a scaled truncated division.
---
--- Truncation is safe HERE: flooring cannot cross a power-of-two boundary
--- downwards, so the bit length of the floor is the bit length of the value.
-binLen : FloatFormat → ℕ → ℕ → ℕ
-binLen F n e =
-  bitLen (_/_ (n * 2 ^ guardShift F e) (10 ^ e) {{m^n≢0 10 e}})
-
--- | The magnitude rounded to a `P`-bit significand, WITH ITS BINARY EXPONENT.
---
--- The value is `m · 2^E`, and `E` is a `ℤ` because a large literal needs a
--- positive one and a small literal a negative one. That asymmetry is exactly
--- what `Dyadic`'s ℕ `shift` cannot express, and it is why `round` does not
--- route through `Dyadic.encode`:
---
---     round binary64 1e41  =  0x4870000000000000   -- a pure power of two
---
--- Writing the value as `(m · 2^K) /2^ 0` to fit the ℕ shift put K zero bits
--- BELOW the significand, and `sigFieldN` can only left-align — its
--- `2 ^ (sig-bits ∸ (bitLen ∸ 1))` clamps to `2^0` and `modPow` then keeps the
--- low `sig-bits` bits, which were the zeros. The whole fraction was lost:
--- `0x25dfa371a19e7` became `0x0`. `encode`'s documented precondition (a
--- significand the format can hold) was being violated by the very step meant
--- to satisfy it.
---
--- NO CARRY HANDLING, deliberately: if rounding carries (`1.111…1` →
--- `10.000…0`) the result is `2^P`, and `bitLen`/`fracField` normalise it for
--- free — the leading-bit strip leaves 0 and the exponent comes out one larger.
-roundSig : FloatFormat → ℕ → ℕ → ℕ × ℤ
-roundSig F zero      e = 0 , (+ 0)
-roundSig F n@(suc _) e = go ((+ (suc (sig-bits F) + guardShift F e)) ℤ.- (+ binLen F n e))
-  where
-    go : ℤ → ℕ × ℤ
-    -- scale UP: m ≈ n·2^t / 10^e, so the value is m · 2^(−t)
-    go (+ t)    = divRHE (n * 2 ^ t) (10 ^ e) {{m^n≢0 10 e}} , ℤ.- (+ t)
-    -- scale DOWN: m ≈ n / (10^e·2^(k+1)), so the value is m · 2^(k+1)
-    go -[1+ k ] =
-      divRHE n (10 ^ e * 2 ^ suc k)
-             {{m*n≢0 (10 ^ e) (2 ^ suc k) {{m^n≢0 10 e}} {{m^n≢0 2 (suc k)}}}}
-      , (+ suc k)
-
-------------------------------------------------------------------------
--- THE EXPONENT RANGE (plan 0.74 K2)
---
--- `accept?`'s other two conditions were `exp-lo` and `exp-hi`: the value had
--- to land in the NORMAL exponent range. Deleting them (K3) means answering
--- what happens OUTSIDE it, and the answer cannot be "whatever `encode` does",
--- because what `encode` does is WRAP — `expFieldN` ends in
--- `modPow … (exp-bits F)`, so a stored exponent of 260 at binary32 came out as
--- 4 and `1e41` encoded as a small FINITE number. That is the same silent value
--- substitution D115 forbids for `Int` literals, and worse, because nothing
--- gated it at all.
---
--- IEEE's answer above the range is ±∞, and D116's own argument settles that
--- Once should give it: the promise `Float` makes is the hardware's, and the
--- hardware produces ±∞. `⟦ Float ⟧` is the target's bit pattern (D113), so an
--- infinity is just a pattern — nothing in the value model changes.
---
--- BELOW the range IEEE gives SUBNORMALS, and Once does not model them: the
--- result is ZERO. That is a REAL limitation, stated here rather than
--- discovered later — see the `1e-40` pin, which glibc stores as the subnormal
--- `0x000116c2` and we store as `0`. It is BOUNDED (the value was already tiny)
--- where the overflow wrap was not, which is why the two are not treated alike.
-------------------------------------------------------------------------
-
--- | `bias + (bitLen m − 1) + E`, in ℤ so it can be out of range in either
--- direction and be RANGE-CHECKED rather than wrapped.
-storedExp : FloatFormat → ℕ → ℤ → ℤ
-storedExp F m E = (+ (bias F + (bitLen m ∸ 1))) ℤ.+ E
-
--- | The largest stored exponent denoting a FINITE number. `2^e − 1` is
--- reserved for ±∞ and NaN.
-maxFiniteExp : FloatFormat → ℕ
-maxFiniteExp F = (2 ^ exp-bits F) ∸ 2
-
--- | The fraction field: the significand with its leading bit stripped, aligned
--- to `sig-bits`. Only ONE of the two shifts is ever non-trivial — `∸` picks —
--- and the RIGHT shift is exact, because `roundSig` already rounded those bits
--- away. That right shift is the thing `sigFieldN` could not do.
-fracField : FloatFormat → ℕ → ℕ
-fracField F m =
-  modPow (_/_ ((m ∸ 2 ^ (bitLen m ∸ 1)) * 2 ^ (sig-bits F ∸ (bitLen m ∸ 1)))
-              (2 ^ ((bitLen m ∸ 1) ∸ sig-bits F))
-              {{m^n≢0 2 ((bitLen m ∸ 1) ∸ sig-bits F)}})
-         (sig-bits F)
-
--- | ±∞: exponent all ones, significand zero.
-infinity : FloatFormat → ℕ → ℕ
-infinity F sb =
-  sb * (2 ^ (exp-bits F + sig-bits F)) + ((2 ^ exp-bits F) ∸ 1) * (2 ^ sig-bits F)
-
--- | ±0. The `+ 0` is deliberate: every pattern here is a sign bit above an
--- `(exp-bits + sig-bits)`-wide magnitude, and writing ±0 in that shape means
--- ONE range lemma covers all three branches.
-signedZero : FloatFormat → ℕ → ℕ
-signedZero F sb = sb * (2 ^ (exp-bits F + sig-bits F)) + 0
-
--- Each decision is a separate aux taking its scrutinee as an ARGUMENT rather
--- than a nested `if` under a `with`. Same convention as `cfm-build-gated`
--- taking its `Dec`: a proof that cases on the decision then reduces.
-packHi : FloatFormat → ℕ → ℕ → ℕ → Bool → ℕ
-packHi F sb m se true  = infinity F sb
-packHi F sb m se false =
-  sb * (2 ^ (exp-bits F + sig-bits F)) + (modPow se (exp-bits F) * (2 ^ sig-bits F) + fracField F m)
-
-packSE : FloatFormat → ℕ → ℕ → ℤ → ℕ
-packSE F sb m -[1+ _ ]  = signedZero F sb          -- underflow: no subnormals
-packSE F sb m (+ zero)  = signedZero F sb          -- likewise
-packSE F sb m (+ suc e) = packHi F sb m (suc e) (maxFiniteExp F ℕ.<ᵇ suc e)
-
-packAt : FloatFormat → ℕ → ℕ → ℤ → ℕ
-packAt F sb zero    E = signedZero F sb
-packAt F sb (suc m) E = packSE F sb (suc m) (storedExp F (suc m) E)
-
--- | THE function. Both the denotation and the codegen call THIS, which is what
--- makes their correspondence `refl`-shaped and needs no rounding theorem.
---
--- That `round` is the RIGHT function — IEEE round-to-nearest-even — is a
--- SPEC-quality question, not a compiler-correctness one, and it is a NAMED
--- trust point of the same kind as `assemble-correct`. What must not happen is
--- the version where nobody states it and the compiler is "correct" about a
--- rounding nobody checked: that is `emit`'s low byte again (D114).
-round : FloatFormat → Decimal → ℕ
--- Projected rather than destructured: a `where pack (m , E) = …` would stop
--- `round F d` reducing for an abstract `d`, and `round-fits` below needs it to.
-round F d = packAt F (signBit (sig d))
-                     (proj₁ (roundSig F ∣ sig d ∣ (exp10 d)))
-                     (proj₂ (roundSig F ∣ sig d ∣ (exp10 d)))
-
+-- | `sig / 10^k`, rounded once. A literal that is not zero but rounds to zero
+-- keeps its sign (`roundQ`).
+roundDec : FloatFormat → Decimal → FloatVal
+roundDec F ((+ n)    /10^ k) = roundQ F pos n (+ 0) (10 ^ k ∸ 1)
+roundDec F (-[1+ n ] /10^ k) = roundQ F neg (suc n) (+ 0) (10 ^ k ∸ 1)
