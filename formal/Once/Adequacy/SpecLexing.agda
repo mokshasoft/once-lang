@@ -38,13 +38,14 @@ open import Relation.Nullary.Decidable using (isYes)
 
 open import Once.Spec.Surface.Lexing
 import Once.Parser.Token as P
+open import Once.Spec.Surface.Operator using (‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 import Once.Parser.Relation.Lexing as L
 open import Once.Parser.Lexer
   using (HeadK; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang;
          hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt;
          hkPipe; hkPlus; hkStar; hkSlash; hkPct; hkAmp; hkDot; hkStr; hkGen; headK;
          Dash3; d-comment; d-arrow; d-minus; Caret4; c-1; c-0; c-w; c-gen;
-         nlIndent; isEqHead; isDashHead; dashClass; caretClass; drop1; adv;
+         nlIndent; isEqHead; isDotHead; isDashHead; dashClass; caretClass; drop1; adv;
          collectDigitsB; collectIdentB; collectFracB; frac-dot; frac-digit;
          collectStringB; str-char; str-cons; str-esc; str-esc′; escChar;
          skipLineB; skip-nl; skipBlockB; skipBlockB-WF; tokenizeString)
@@ -75,18 +76,9 @@ forget P.TSemicolon = TSemicolon
 forget P.TAt = TAt
 forget P.TPipe = TPipe
 forget P.TDot = TDot
-forget P.TPlus = TPlus
-forget P.TMinus = TMinus
-forget P.TStar = TStar
-forget P.TSlash = TSlash
-forget P.TPercent = TPercent
+forget (P.TOp o) = TOp o
+forget (P.TOpD d) = TOpD d
 forget P.TAmpersand = TAmpersand
-forget P.TLt = TLt
-forget P.TLe = TLe
-forget P.TGt = TGt
-forget P.TGe = TGe
-forget P.TEqEq = TEqEq
-forget P.TNeq = TNeq
 forget P.TBang = TBang
 forget P.TNewline = TNewline
 forget P.TEOF = TEOF
@@ -447,6 +439,13 @@ dhead-view (c ∷ t) = hi-step '-' c t (c Ch.≟ '-')
 dheadview : ∀ {cs b} → isDashHead cs ≡ b → HeadIs '-' cs b
 dheadview {cs} e = subst (HeadIs '-' cs) e (dhead-view cs)
 
+dot-view : ∀ cs → HeadIs '.' cs (isDotHead cs)
+dot-view []      = hi-no (λ ())
+dot-view (c ∷ t) = hi-step '.' c t (c Ch.≟ '.')
+
+dotview : ∀ {cs b} → isDotHead cs ≡ b → HeadIs '.' cs b
+dotview {cs} e = subst (HeadIs '.' cs) e (dot-view cs)
+
 head-false : ∀ {x cs b} → HeadIs x cs b → ¬ Next cs x → b ≡ false
 head-false hi-yes     n = ⊥-elim (n next)
 head-false (hi-no _)  n = refl
@@ -745,30 +744,58 @@ private
   n-comment hv-dash (dv-comment {t}) d = lex-comment (line-sound t) d
   n-arrow : ∀ {c cs ts} → HeadView c hkDash → DashView cs d-arrow → LexesChars (drop1 cs) ts → LexesChars (c ∷ cs) (TArrow ∷ ts)
   n-arrow hv-dash dv-arrow d = lex-arrow d
-  n-minus : ∀ {c cs ts} → HeadView c hkDash → DashView cs d-minus → LexesChars cs ts → LexesChars (c ∷ cs) (TMinus ∷ ts)
-  n-minus hv-dash (dv-minus a b) d = lex-minus a b d
 
   n-block : ∀ {c cs ts} → HeadView c hkLBrace → HeadIs '-' cs true → LexesChars (proj₁ (skipBlockB 1 (drop1 cs))) ts → LexesChars (c ∷ cs) ts
   n-block hv-lbrace (hi-yes {t}) d = lex-block (block-sound 1 t _) d
   n-lbrace : ∀ {c cs ts} → HeadView c hkLBrace → HeadIs '-' cs false → LexesChars cs ts → LexesChars (c ∷ cs) (TLBrace ∷ ts)
   n-lbrace hv-lbrace (hi-no n) d = lex-lbrace n d
 
-  n-le : ∀ {c cs ts} → HeadView c hkLt → HeadIs '=' cs true → LexesChars (drop1 cs) ts → LexesChars (c ∷ cs) (TLe ∷ ts)
-  n-le hv-lt hi-yes d = lex-le d
-  n-lt : ∀ {c cs ts} → HeadView c hkLt → HeadIs '=' cs false → LexesChars cs ts → LexesChars (c ∷ cs) (TLt ∷ ts)
-  n-lt hv-lt (hi-no n) d = lex-lt n d
-  n-ge : ∀ {c cs ts} → HeadView c hkGt → HeadIs '=' cs true → LexesChars (drop1 cs) ts → LexesChars (c ∷ cs) (TGe ∷ ts)
-  n-ge hv-gt hi-yes d = lex-ge d
-  n-gt : ∀ {c cs ts} → HeadView c hkGt → HeadIs '=' cs false → LexesChars cs ts → LexesChars (c ∷ cs) (TGt ∷ ts)
-  n-gt hv-gt (hi-no n) d = lex-gt n d
-  n-eqeq : ∀ {c cs ts} → HeadView c hkEq → HeadIs '=' cs true → LexesChars (drop1 cs) ts → LexesChars (c ∷ cs) (TEqEq ∷ ts)
-  n-eqeq hv-eq hi-yes d = lex-eqeq d
   n-equal : ∀ {c cs ts} → HeadView c hkEq → HeadIs '=' cs false → LexesChars cs ts → LexesChars (c ∷ cs) (TEquals ∷ ts)
   n-equal hv-eq (hi-no n) d = lex-equal n d
-  n-neq : ∀ {c cs ts} → HeadView c hkBang → HeadIs '=' cs true → LexesChars (drop1 cs) ts → LexesChars (c ∷ cs) (TNeq ∷ ts)
-  n-neq hv-bang hi-yes d = lex-neq d
   n-bang : ∀ {c cs ts} → HeadView c hkBang → HeadIs '=' cs false → LexesChars cs ts → LexesChars (c ∷ cs) (TBang ∷ ts)
   n-bang hv-bang (hi-no n) d = lex-bang n d
+
+  -- An operator with an IEEE form: its glyph (plan 0.150, `Spec.Surface.Lexing.Glyph`).
+  glyph : ∀ {c cs rest d} → L.OpHead c cs rest d → Glyph (c ∷ cs) ‹ d › rest
+  glyph (L.oh-plus eqh)     = g-plus (hview eqh)
+    where g-plus : ∀ {c cs} → HeadView c hkPlus → Glyph (c ∷ cs) ‹ o+ › cs
+          g-plus hv-plus = g+
+  glyph (L.oh-star eqh)     = g-star (hview eqh)
+    where g-star : ∀ {c cs} → HeadView c hkStar → Glyph (c ∷ cs) ‹ o* › cs
+          g-star hv-star = g*
+  glyph (L.oh-slash eqh)    = g-slash (hview eqh)
+    where g-slash : ∀ {c cs} → HeadView c hkSlash → Glyph (c ∷ cs) ‹ o/ › cs
+          g-slash hv-slash = g/
+  glyph (L.oh-minus eqh eq) = g-minus (hview eqh) (dview eq)
+    where g-minus : ∀ {c cs} → HeadView c hkDash → DashView cs d-minus → Glyph (c ∷ cs) ‹ o- › cs
+          g-minus hv-dash (dv-minus a b) = g- a b
+  glyph (L.oh-lt eqh eq)    = g-lt (hview eqh) (eqview eq)
+    where g-lt : ∀ {c cs} → HeadView c hkLt → HeadIs '=' cs false → Glyph (c ∷ cs) ‹ o< › cs
+          g-lt hv-lt (hi-no n) = g< n
+  glyph (L.oh-le eqh eq)    = g-le (hview eqh) (eqview eq)
+    where g-le : ∀ {c cs} → HeadView c hkLt → HeadIs '=' cs true → Glyph (c ∷ cs) ‹ o<= › (drop1 cs)
+          g-le hv-lt hi-yes = g<=
+  glyph (L.oh-gt eqh eq)    = g-gt (hview eqh) (eqview eq)
+    where g-gt : ∀ {c cs} → HeadView c hkGt → HeadIs '=' cs false → Glyph (c ∷ cs) ‹ o> › cs
+          g-gt hv-gt (hi-no n) = g> n
+  glyph (L.oh-ge eqh eq)    = g-ge (hview eqh) (eqview eq)
+    where g-ge : ∀ {c cs} → HeadView c hkGt → HeadIs '=' cs true → Glyph (c ∷ cs) ‹ o>= › (drop1 cs)
+          g-ge hv-gt hi-yes = g>=
+  glyph (L.oh-eqeq eqh eq)  = g-eqeq (hview eqh) (eqview eq)
+    where g-eqeq : ∀ {c cs} → HeadView c hkEq → HeadIs '=' cs true → Glyph (c ∷ cs) ‹ o== › (drop1 cs)
+          g-eqeq hv-eq hi-yes = g==
+  glyph (L.oh-neq eqh eq)   = g-neq (hview eqh) (eqview eq)
+    where g-neq : ∀ {c cs} → HeadView c hkBang → HeadIs '=' cs true → Glyph (c ∷ cs) ‹ o!= › (drop1 cs)
+          g-neq hv-bang hi-yes = g!=
+
+  n-op : ∀ {c cs rest d ts} → L.OpHead c cs rest d → HeadIs '.' rest false → LexesChars rest ts → LexesChars (c ∷ cs) (TOp ‹ d › ∷ ts)
+  n-op oh (hi-no n) d = lex-op (glyph oh) (ud n) d
+
+  n-opd : ∀ {c cs rest d ts} → L.OpHead c cs rest d → HeadIs '.' rest true → LexesChars (drop1 rest) ts → LexesChars (c ∷ cs) (TOpD d ∷ ts)
+  n-opd oh hi-yes d = lex-opd (glyph oh) d
+
+  n-pct : ∀ {c cs ts} → HeadView c hkPct → LexesChars cs ts → LexesChars (c ∷ cs) (TOp o% ∷ ts)
+  n-pct hv-pct d = lex-op g% ud-% d
 
   n-lparen : ∀ {c cs ts} → HeadView c hkLParen → LexesChars cs ts → LexesChars (c ∷ cs) (TLParen ∷ ts)
   n-lparen hv-lparen d = lex-lparen d
@@ -788,14 +815,6 @@ private
   n-at hv-at d = lex-at d
   n-pipe : ∀ {c cs ts} → HeadView c hkPipe → LexesChars cs ts → LexesChars (c ∷ cs) (TPipe ∷ ts)
   n-pipe hv-pipe d = lex-pipe d
-  n-plus : ∀ {c cs ts} → HeadView c hkPlus → LexesChars cs ts → LexesChars (c ∷ cs) (TPlus ∷ ts)
-  n-plus hv-plus d = lex-plus d
-  n-star : ∀ {c cs ts} → HeadView c hkStar → LexesChars cs ts → LexesChars (c ∷ cs) (TStar ∷ ts)
-  n-star hv-star d = lex-star d
-  n-slash : ∀ {c cs ts} → HeadView c hkSlash → LexesChars cs ts → LexesChars (c ∷ cs) (TSlash ∷ ts)
-  n-slash hv-slash d = lex-slash d
-  n-pct : ∀ {c cs ts} → HeadView c hkPct → LexesChars cs ts → LexesChars (c ∷ cs) (TPercent ∷ ts)
-  n-pct hv-pct d = lex-pct d
   n-amp : ∀ {c cs ts} → HeadView c hkAmp → LexesChars cs ts → LexesChars (c ∷ cs) (TAmpersand ∷ ts)
   n-amp hv-amp d = lex-amp d
   n-dot : ∀ {c cs ts} → HeadView c hkDot → LexesChars cs ts → LexesChars (c ∷ cs) (TDot ∷ ts)
@@ -829,16 +848,9 @@ toNew (L.lex-caretw eqh eq d) e = n-caretw (hview eqh) (cview eq) (toNew d e)
 toNew (L.lex-caret-err eqh eq) ()
 toNew (L.lex-lcomment-ind eqh eq d) e = n-comment (hview eqh) (dview eq) (toNew d e)
 toNew (L.lex-arrow-ind eqh eq d) e = n-arrow (hview eqh) (dview eq) (toNew d e)
-toNew (L.lex-minus eqh eq d) e = n-minus (hview eqh) (dview eq) (toNew d e)
 toNew (L.lex-bcomment-ind eqh eq d) e = n-block (hview eqh) (dheadview eq) (toNew d e)
 toNew (L.lex-lbrace eqh eq d) e = n-lbrace (hview eqh) (dheadview eq) (toNew d e)
-toNew (L.lex-le-ind eqh eq d) e = n-le (hview eqh) (eqview eq) (toNew d e)
-toNew (L.lex-lt eqh eq d) e = n-lt (hview eqh) (eqview eq) (toNew d e)
-toNew (L.lex-ge-ind eqh eq d) e = n-ge (hview eqh) (eqview eq) (toNew d e)
-toNew (L.lex-gt eqh eq d) e = n-gt (hview eqh) (eqview eq) (toNew d e)
-toNew (L.lex-eqeq-ind eqh eq d) e = n-eqeq (hview eqh) (eqview eq) (toNew d e)
 toNew (L.lex-equals eqh eq d) e = n-equal (hview eqh) (eqview eq) (toNew d e)
-toNew (L.lex-neq-ind eqh eq d) e = n-neq (hview eqh) (eqview eq) (toNew d e)
 toNew (L.lex-bang eqh eq d) e = n-bang (hview eqh) (eqview eq) (toNew d e)
 toNew (L.lex-lparen eqh d) e = n-lparen (hview eqh) (toNew d e)
 toNew (L.lex-rparen eqh d) e = n-rparen (hview eqh) (toNew d e)
@@ -849,10 +861,9 @@ toNew (L.lex-comma eqh d) e = n-comma (hview eqh) (toNew d e)
 toNew (L.lex-semi eqh d) e = n-semi (hview eqh) (toNew d e)
 toNew (L.lex-at eqh d) e = n-at (hview eqh) (toNew d e)
 toNew (L.lex-pipe eqh d) e = n-pipe (hview eqh) (toNew d e)
-toNew (L.lex-plus eqh d) e = n-plus (hview eqh) (toNew d e)
-toNew (L.lex-star eqh d) e = n-star (hview eqh) (toNew d e)
-toNew (L.lex-slash eqh d) e = n-slash (hview eqh) (toNew d e)
 toNew (L.lex-pct eqh d) e = n-pct (hview eqh) (toNew d e)
+toNew (L.lex-op oh eqd d) e = n-op oh (dotview eqd) (toNew d e)
+toNew (L.lex-op-dot oh eqd d) e = n-opd oh (dotview eqd) (toNew d e)
 toNew (L.lex-amp eqh d) e = n-amp (hview eqh) (toNew d e)
 toNew (L.lex-dot eqh d) e = n-dot (hview eqh) (toNew d e)
 toNew (L.lex-string {cs = cs} eqh s rest bnd eq d) e = n-string (hview eqh) (string-sound cs eq) (toNew d e)
@@ -866,6 +877,10 @@ toNew (L.lex-char-err eqh eqd eqi) ()
 ------------------------------------------------------------------------
 -- The Spec's relation gives the compiler's, at every offset
 ------------------------------------------------------------------------
+
+-- An operator not followed by `.`, as the compiler's classifier reads it.
+udot : ∀ {d r} → Undotted ‹ d › r → isDotHead r ≡ false
+udot {r = r} (ud n) = head-false (dot-view r) n
 
 Old : ℕ → List Char → List Token → Set
 Old off cs ts′ = Σ[ ts ∈ List P.Token ] (L.LexesChars off cs ts × map forget ts ≡ ts′)
@@ -909,16 +924,9 @@ toOld (lex-caret0 d) off = o-cons P.TCaret0 (L.lex-caret0 refl refl) (toOld d _)
 toOld (lex-caretw d) off = o-cons P.TCaretW (L.lex-caretw refl refl) (toOld d _)
 toOld (lex-comment lr d) off = o-skip (L.lex-lcomment-ind refl refl) (o-at (line-eq lr) (toOld d) _)
 toOld (lex-arrow d) off = o-cons P.TArrow (L.lex-arrow-ind refl refl) (toOld d _)
-toOld (lex-minus {cs = cs} a b d) off = o-cons P.TMinus (L.lex-minus refl (dash-minus (dash-view cs) a b)) (toOld d _)
 toOld (lex-block br d) off = o-skip (L.lex-bcomment-ind refl refl) (o-at (block-eq br) (toOld d) _)
 toOld (lex-lbrace {cs = cs} n d) off = o-cons P.TLBrace (L.lex-lbrace refl (head-false (dhead-view cs) n)) (toOld d _)
-toOld (lex-le d) off = o-cons P.TLe (L.lex-le-ind refl refl) (toOld d _)
-toOld (lex-lt {cs = cs} n d) off = o-cons P.TLt (L.lex-lt refl (head-false (eq-view cs) n)) (toOld d _)
-toOld (lex-ge d) off = o-cons P.TGe (L.lex-ge-ind refl refl) (toOld d _)
-toOld (lex-gt {cs = cs} n d) off = o-cons P.TGt (L.lex-gt refl (head-false (eq-view cs) n)) (toOld d _)
-toOld (lex-eqeq d) off = o-cons P.TEqEq (L.lex-eqeq-ind refl refl) (toOld d _)
 toOld (lex-equal {cs = cs} n d) off = o-cons P.TEquals (L.lex-equals refl (head-false (eq-view cs) n)) (toOld d _)
-toOld (lex-neq d) off = o-cons P.TNeq (L.lex-neq-ind refl refl) (toOld d _)
 toOld (lex-bang {cs = cs} n d) off = o-cons P.TBang (L.lex-bang refl (head-false (eq-view cs) n)) (toOld d _)
 toOld (lex-lparen d) off = o-cons P.TLParen (L.lex-lparen refl) (toOld d _)
 toOld (lex-rparen d) off = o-cons P.TRParen (L.lex-rparen refl) (toOld d _)
@@ -929,10 +937,27 @@ toOld (lex-comma d) off = o-cons P.TComma (L.lex-comma refl) (toOld d _)
 toOld (lex-semi d) off = o-cons P.TSemicolon (L.lex-semi refl) (toOld d _)
 toOld (lex-at d) off = o-cons P.TAt (L.lex-at refl) (toOld d _)
 toOld (lex-pipe d) off = o-cons P.TPipe (L.lex-pipe refl) (toOld d _)
-toOld (lex-plus d) off = o-cons P.TPlus (L.lex-plus refl) (toOld d _)
-toOld (lex-star d) off = o-cons P.TStar (L.lex-star refl) (toOld d _)
-toOld (lex-slash d) off = o-cons P.TSlash (L.lex-slash refl) (toOld d _)
-toOld (lex-pct d) off = o-cons P.TPercent (L.lex-pct refl) (toOld d _)
+toOld (lex-op g+ u d) off = o-cons (P.TOp ‹ o+ ›) (L.lex-op (L.oh-plus refl) (udot u)) (toOld d _)
+toOld (lex-opd g+ d) off = o-cons (P.TOpD o+) (L.lex-op-dot (L.oh-plus refl) refl) (toOld d _)
+toOld (lex-op g* u d) off = o-cons (P.TOp ‹ o* ›) (L.lex-op (L.oh-star refl) (udot u)) (toOld d _)
+toOld (lex-opd g* d) off = o-cons (P.TOpD o*) (L.lex-op-dot (L.oh-star refl) refl) (toOld d _)
+toOld (lex-op g/ u d) off = o-cons (P.TOp ‹ o/ ›) (L.lex-op (L.oh-slash refl) (udot u)) (toOld d _)
+toOld (lex-opd g/ d) off = o-cons (P.TOpD o/) (L.lex-op-dot (L.oh-slash refl) refl) (toOld d _)
+toOld (lex-op (g- {cs = cs} a b) u d) off = o-cons (P.TOp ‹ o- ›) (L.lex-op (L.oh-minus refl (dash-minus (dash-view cs) a b)) (udot u)) (toOld d _)
+toOld (lex-opd (g- {cs = cs} a b) d) off = o-cons (P.TOpD o-) (L.lex-op-dot (L.oh-minus refl (dash-minus (dash-view cs) a b)) refl) (toOld d _)
+toOld (lex-op (g< {cs = cs} n) u d) off = o-cons (P.TOp ‹ o< ›) (L.lex-op (L.oh-lt refl (head-false (eq-view cs) n)) (udot u)) (toOld d _)
+toOld (lex-opd (g< {cs = cs} n) d) off = o-cons (P.TOpD o<) (L.lex-op-dot (L.oh-lt refl (head-false (eq-view cs) n)) refl) (toOld d _)
+toOld (lex-op (g> {cs = cs} n) u d) off = o-cons (P.TOp ‹ o> ›) (L.lex-op (L.oh-gt refl (head-false (eq-view cs) n)) (udot u)) (toOld d _)
+toOld (lex-opd (g> {cs = cs} n) d) off = o-cons (P.TOpD o>) (L.lex-op-dot (L.oh-gt refl (head-false (eq-view cs) n)) refl) (toOld d _)
+toOld (lex-op g<= u d) off = o-cons (P.TOp ‹ o<= ›) (L.lex-op (L.oh-le refl refl) (udot u)) (toOld d _)
+toOld (lex-opd g<= d) off = o-cons (P.TOpD o<=) (L.lex-op-dot (L.oh-le refl refl) refl) (toOld d _)
+toOld (lex-op g>= u d) off = o-cons (P.TOp ‹ o>= ›) (L.lex-op (L.oh-ge refl refl) (udot u)) (toOld d _)
+toOld (lex-opd g>= d) off = o-cons (P.TOpD o>=) (L.lex-op-dot (L.oh-ge refl refl) refl) (toOld d _)
+toOld (lex-op g== u d) off = o-cons (P.TOp ‹ o== ›) (L.lex-op (L.oh-eqeq refl refl) (udot u)) (toOld d _)
+toOld (lex-opd g== d) off = o-cons (P.TOpD o==) (L.lex-op-dot (L.oh-eqeq refl refl) refl) (toOld d _)
+toOld (lex-op g!= u d) off = o-cons (P.TOp ‹ o!= ›) (L.lex-op (L.oh-neq refl refl) (udot u)) (toOld d _)
+toOld (lex-opd g!= d) off = o-cons (P.TOpD o!=) (L.lex-op-dot (L.oh-neq refl refl) refl) (toOld d _)
+toOld (lex-op g% ud-% d) off = o-cons (P.TOp o%) (L.lex-pct refl) (toOld d _)
 toOld (lex-amp d) off = o-cons P.TAmpersand (L.lex-amp refl) (toOld d _)
 toOld (lex-dot d) off = o-cons P.TDot (L.lex-dot refl) (toOld d _)
 toOld (lex-string {s = s} {r = r} body d) off =
