@@ -19,7 +19,8 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -42,10 +43,31 @@ open import Once.LinCore.Lower fmt ans bw
 
 module NoLabels {FS : FrameSemantics} where
   open import Once.CCC.Machine.Flat using (module FlatMachine)
-  open FlatMachine {FS} using (label-of?)
+  open FlatMachine {FS} using (label-of?; entry-of?)
+
+  -- an instruction that defines a jump label or a callable entry is MARKED;
+  -- `NoLab` code defines neither (each proof below is the same `refl`, as
+  -- both scans reduce on a concrete instruction)
+  both : ∀ {A B : Set} → Maybe A → Maybe B → Maybe ⊤
+  both nothing  nothing  = nothing
+  both nothing  (just _) = just tt
+  both (just _) _        = just tt
+
+  mark : AbstractInstr → Maybe ⊤
+  mark x = both (label-of? x) (entry-of? x)
+
+  mark-l : ∀ x → mark x ≡ nothing → label-of? x ≡ nothing
+  mark-l x e = go (label-of? x) (entry-of? x) e
+    where go : ∀ {A B : Set} (a : Maybe A) (b : Maybe B) → both a b ≡ nothing → a ≡ nothing
+          go nothing nothing refl = refl
+
+  mark-e : ∀ x → mark x ≡ nothing → entry-of? x ≡ nothing
+  mark-e x e = go (label-of? x) (entry-of? x) e
+    where go : ∀ {A B : Set} (a : Maybe A) (b : Maybe B) → both a b ≡ nothing → b ≡ nothing
+          go nothing nothing refl = refl
 
   NoLab : AbstractTrace → Set
-  NoLab = All (λ x → label-of? x ≡ nothing)
+  NoLab = All (λ x → mark x ≡ nothing)
 
   nl : ∀ xs {ys} → NoLab xs → NoLab ys → NoLab (xs ++ ys)
   nl xs p q = ++⁺ p q
@@ -81,7 +103,7 @@ module NoLabels {FS : FrameSemantics} where
   module Free (U : Univ)
               (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
               (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-              (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → label-of? (ldConst v) ≡ nothing) where
+              (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → mark (ldConst v) ≡ nothing) where
     open In U
     open Lowering U ncty ldConst
 
@@ -194,38 +216,42 @@ module NoLabels {FS : FrameSemantics} where
     lowI-nl φ j m fopen ei _   = []
     lowI-nl φ j m (loop c) ei ()
 
-    -- ★ a trampoline: label-free (its entry is a callable entry, not a label)
-    tramp-nl : ∀ {σ} j (κ : Key σ) → NoLab (tramp j κ)
+    -- ★ a trampoline: none, or its callable entry `e-thunk (tl j)`, then
+    -- code that defines no label and no entry
+    TrampShape : ℕ → AbstractTrace → Set
+    TrampShape j xs = xs ≡ [] ⊎ Σ ℕ λ b → Σ AbstractTrace λ r → xs ≡ instr-ctrl (c-entry (e-thunk (tl j)) b) ∷ r × NoLab r
+
+    tramp-nl : ∀ {σ} j (κ : Key σ) → TrampShape j (tramp j κ)
     tramp-nl j (kbody1 {X = X} {A = A} {B = B} ds b γ) =
       let wX = wsz X ; wA = wsz A ; wB = wsz B ; M = (wX + wA) ⊔ wB ; Mc = suc wA ⊔ wB ; a = M ∸ (wX + wA)
-      in refl ∷ refl ∷ refl ∷ refl ∷ nl (mvPS hdr a wX) (mvPS-nl hdr a wX)
+      in inj₂ (_ , _ , refl , refl ∷ refl ∷ refl ∷ nl (mvPS hdr a wX) (mvPS-nl hdr a wX)
            (refl ∷ nl (mvPS (Mc ∸ wA) (a + wX) wA) (mvPS-nl (Mc ∸ wA) (a + wX) wA)
-             (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ nl (mvSP (M ∸ wB) (Mc ∸ wB) wB) (mvSP-nl (M ∸ wB) (Mc ∸ wB) wB) (refl ∷ [])))
-    tramp-nl j (kbodyω {X = X} ds b γ) = refl ∷ refl ∷ cA (wsz X) ∷ refl ∷ refl ∷ refl ∷ []
-      where cA : ∀ w → label-of? (contentsAddr w) ≡ nothing
+             (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ nl (mvSP (M ∸ wB) (Mc ∸ wB) wB) (mvSP-nl (M ∸ wB) (Mc ∸ wB) wB) (refl ∷ []))))
+    tramp-nl j (kbodyω {X = X} ds b γ) = inj₂ (_ , _ , refl , refl ∷ cA (wsz X) ∷ refl ∷ refl ∷ refl ∷ [])
+      where cA : ∀ w → mark (contentsAddr w) ≡ nothing
             cA zero    = refl
             cA (suc w) = refl
     tramp-nl j (kobs ds F S) =
       let wP = wsz (cty (F , S)) ; wL = wsz (LF∙ F (Nu F)) ; M = wP ⊔ wL ; Mc = 1 ⊔ wL
-      in refl ∷ refl ∷ refl ∷ refl ∷ nl (mvPS hdr (M ∸ wP) wP) (mvPS-nl hdr (M ∸ wP) wP)
-           (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ nl (mvSP (M ∸ wL) (Mc ∸ wL) wL) (mvSP-nl (M ∸ wL) (Mc ∸ wL) wL) (refl ∷ []))
+      in inj₂ (_ , _ , refl , refl ∷ refl ∷ refl ∷ nl (mvPS hdr (M ∸ wP) wP) (mvPS-nl hdr (M ∸ wP) wP)
+           (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ nl (mvSP (M ∸ wL) (Mc ∸ wL) wL) (mvSP-nl (M ∸ wL) (Mc ∸ wL) wL) (refl ∷ [])))
     tramp-nl j (kcopy T₀) =
       let w = wsz T₀
-      in refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ cA w ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl
+      in inj₂ (_ , _ , refl , refl ∷ refl ∷ refl ∷ refl ∷ cA w ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl
          ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl
-         ∷ nl (mvSP 0 hdr w) (mvSP-nl 0 hdr w) (refl ∷ refl ∷ refl ∷ refl ∷ [])
-      where cA : ∀ w → label-of? (contentsAddr w) ≡ nothing
+         ∷ nl (mvSP 0 hdr w) (mvSP-nl 0 hdr w) (refl ∷ refl ∷ refl ∷ refl ∷ []))
+      where cA : ∀ w → mark (contentsAddr w) ≡ nothing
             cA zero    = refl
             cA (suc w) = refl
     tramp-nl j (kfree T₀) =
       let w = wsz T₀
-      in refl ∷ refl ∷ refl ∷ nl (mvPS hdr 0 w) (mvPS-nl hdr 0 w) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-    tramp-nl j (kfold ds F alg) = []
-    tramp-nl j (ktr1 ds b γ) = []
-    tramp-nl j (ktrω ds b γ) = []
-    tramp-nl j (ktro ds F S) = []
-    tramp-nl j (ktrc X C)    = []
-    tramp-nl j (ktrf X C)    = []
+      in inj₂ (_ , _ , refl , refl ∷ refl ∷ nl (mvPS hdr 0 w) (mvPS-nl hdr 0 w) (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
+    tramp-nl j (kfold ds F alg) = inj₁ refl
+    tramp-nl j (ktr1 ds b γ) = inj₁ refl
+    tramp-nl j (ktrω ds b γ) = inj₁ refl
+    tramp-nl j (ktro ds F S) = inj₁ refl
+    tramp-nl j (ktrc X C)    = inj₁ refl
+    tramp-nl j (ktrf X C)    = inj₁ refl
 
     -- a block's prologue: its entry, the saves, the copies in
     view-nl : ∀ t φ → NoLab (view-in t φ)

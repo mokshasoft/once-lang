@@ -74,7 +74,7 @@ module LabsC {FS : FrameSemantics} where
 
   Labs-nl : ∀ {xs} → NoLab xs → Labs xs ≡ []
   Labs-nl {[]}     []      = refl
-  Labs-nl {x ∷ xs} (e ∷ p) = go (label-of? x) e
+  Labs-nl {x ∷ xs} (e ∷ p) = go (label-of? x) (mark-l x e)
     where
       go : ∀ mo → mo ≡ nothing → lab mo (Labs xs) ≡ []
       go nothing refl = Labs-nl p
@@ -125,7 +125,7 @@ module LabsC {FS : FrameSemantics} where
   module C (U : Univ)
            (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-           (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → label-of? (ldConst v) ≡ nothing) where
+           (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → mark (ldConst v) ≡ nothing) where
     open In U
     open Lowering U ncty ldConst
     open Free U ncty ldConst ld-nl
