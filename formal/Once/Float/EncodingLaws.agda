@@ -49,6 +49,7 @@ open import Once.Spec.Float.Encoding
   using ( signBitOf; signWeight; maxExpField; zeroW; infW; nanW; normalW; subnormalW
         ; numAt; encode; decodeMax; decodeAt; decode)
 import Once.Float.Word as Word
+import Once.Spec.Float.Arith as FA
 
 open import Once.Float.DyadicLaws using (combine-bound)
 open import Once.Float.EncodingLaws.Nat
@@ -511,3 +512,13 @@ fitV-idem F v = inRange-fits F (fitV F v) (fitV-inRange F v)
 -- | Decoding inverts encoding on the values of a format.
 decode-encode : ∀ F v → InRange F v → decode F (encode F v) ≡ v
 decode-encode F = decode-encode-at F (valid F)
+
+-- | Every rounded result is in range: the arithmetic's results are values of
+-- the format.
+round-inRange : ∀ F x → InRange F (FA.round F x)
+round-inRange F FA.invalid           = tt
+round-inRange F (FA.∞ s)             = tt
+round-inRange F (FA.ratio s n e d)   = roundQ-inRange F s n e d
+
+-- | Negation on words is negation on values (`EncodingLaws.Neg`).
+open import Once.Float.EncodingLaws.Neg public using (decode-fneg)
