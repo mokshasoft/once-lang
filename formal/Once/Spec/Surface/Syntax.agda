@@ -23,7 +23,8 @@ open import Data.String using (String)
 open import Once.Spec.Grade using (Quantity; Finite)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Type using (Type)
-open import Once.Spec.Float.Value using (Sign)
+open import Once.Spec.Float.Value using (Sign; pos; neg)
+open import Once.Spec.Float.Decimal using (Decimal; decimalOf; negate)
 open import Once.Spec.Surface.Operator using (BinOp)
 
 ------------------------------------------------------------------------
@@ -71,6 +72,16 @@ data Expr : Set where
   RAnnot     : Expr → Type → Expr                  -- (e : T)
   RBinOp     : BinOp → Expr → Expr → Expr
   RNeg       : Expr → Expr                         -- -e
+
+-- A float literal's value as written: its sign on the digits.
+signedDecimal : Sign → ℕ → ℕ → ℕ → Decimal
+signedDecimal pos i f l = decimalOf i f l
+signedDecimal neg i f l = negate (decimalOf i f l)
+
+-- A literal that is a negative zero (`-0.0`, `-0.00`): rejected (plan 0.150
+-- N5). Negative zero is a value, reached by negation (`-x`, `-(0.0)`).
+data NegativeZero : Sign → ℕ → ℕ → Set where
+  neg-zero : NegativeZero neg 0 0
 
 ------------------------------------------------------------------------
 -- Modules

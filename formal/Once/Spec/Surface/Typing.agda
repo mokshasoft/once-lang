@@ -49,7 +49,8 @@ open import Once.Spec.Theory
          Shape; unary; binary; compare; Sym; ‵neg; ‵+; ‵-; ‵*; ‵/; ‵%; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=;
          ‵+ᵈ; ‵-ᵈ; ‵*ᵈ; ‵/ᵈ; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; symCod; Has; float-rounded)
 open import Once.Spec.Surface.Syntax
-open import Once.Spec.Surface.Operator using (BinOp; plain; dotted; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
+open import Once.Spec.Surface.Operator using (BinOp; BinSym; _∶_∶_; binSym)
+open BinSym
 open import Once.Spec.Core.Syntax
   using (Tm; var; lam; app; let′; unit; pair; inl; inr; case; lit; lit-int; lit-float; prim; Prim;
          num; p-i2f; coerce; sigop; ref; _!!_; module Schema)
@@ -82,47 +83,10 @@ infixr 30 _⇒⟨_⟩_
 -- The operators, and the heads with rules of their own
 ------------------------------------------------------------------------
 
--- Each binary operator is a symbol of one theory (`Spec.Theory`).
-record BinSym : Set where
-  constructor _∶_∶_
-  field
-    theory : Theory
-    shape  : Shape
-    symbol : Sym theory shape
-open BinSym
+-- Each binary operator is a symbol of one theory: `Spec.Surface.Operator.binSym`.
 
-binSym : BinOp → BinSym
-binSym (plain ‹ o+ ›)  = Ring     ∶ binary  ∶ ‵+
-binSym (plain ‹ o- ›)  = Ring     ∶ binary  ∶ ‵-
-binSym (plain ‹ o* ›)  = Ring     ∶ binary  ∶ ‵*
-binSym (plain ‹ o/ ›)  = Division ∶ binary  ∶ ‵/
-binSym (plain o%)      = Division ∶ binary  ∶ ‵%
-binSym (plain ‹ o< ›)  = Order    ∶ compare ∶ ‵<
-binSym (plain ‹ o<= ›) = Order    ∶ compare ∶ ‵<=
-binSym (plain ‹ o> ›)  = Order    ∶ compare ∶ ‵>
-binSym (plain ‹ o>= ›) = Order    ∶ compare ∶ ‵>=
-binSym (plain ‹ o== ›) = Equality ∶ compare ∶ ‵==
-binSym (plain ‹ o!= ›) = Equality ∶ compare ∶ ‵!=
-binSym (dotted o+)     = Rounded  ∶ binary  ∶ ‵+ᵈ
-binSym (dotted o-)     = Rounded  ∶ binary  ∶ ‵-ᵈ
-binSym (dotted o*)     = Rounded  ∶ binary  ∶ ‵*ᵈ
-binSym (dotted o/)     = Rounded  ∶ binary  ∶ ‵/ᵈ
-binSym (dotted o<)     = Rounded  ∶ compare ∶ ‵<ᵈ
-binSym (dotted o<=)    = Rounded  ∶ compare ∶ ‵<=ᵈ
-binSym (dotted o>)     = Rounded  ∶ compare ∶ ‵>ᵈ
-binSym (dotted o>=)    = Rounded  ∶ compare ∶ ‵>=ᵈ
-binSym (dotted o==)    = Rounded  ∶ compare ∶ ‵==ᵈ
-binSym (dotted o!=)    = Rounded  ∶ compare ∶ ‵!=ᵈ
-
--- A float literal's value as written: its sign on the digits.
-signedDecimal : Sign → ℕ → ℕ → ℕ → Decimal
-signedDecimal pos i f l = decimalOf i f l
-signedDecimal neg i f l = negate (decimalOf i f l)
-
--- A literal that is a negative zero (`-0.0`, `-0.00`): rejected (plan 0.150
--- N5). Negative zero is a value, reached by negation (`-x`, `-(0.0)`).
-data NegativeZero : Sign → ℕ → ℕ → Set where
-  neg-zero : NegativeZero neg 0 0
+-- A float literal's value and the `-0.0` side condition:
+-- `Spec.Surface.Syntax.signedDecimal`, `NegativeZero`.
 
 -- The generators applied by rules of their own.
 specialGenerators : List String
