@@ -44,12 +44,13 @@ open import Once.IR as IR using (IR)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Surface.Syntax
-  using (Expr; var; lam; app; effApp; pair; neg; let'; case'; int; float; unit; add; sub; mul; div; mod';
-         fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; closure; poly; lift-morphism;
+  using (Expr; var; lam; app; effApp; pair; num; let'; case'; int; float; unit; i2f; sigOp; closure; poly; lift-morphism;
          morph-app; coerce; cata; ana; loop; comp'; copair'; fork'; curry')
 import Once.Spec.Surface.Typing Σ S nm as SU
-open SU using (Locals; ia-add; ia-sub; ia-mul; ia-div; ia-mod; fa-add; fa-sub; fa-mul; fa-div;
-               cmp-lt; cmp-le; cmp-gt; cmp-ge; cmp-eq; cmp-ne)
+open SU using (Locals)
+open import Once.Spec.Surface.Syntax using (signedDecimal)
+open import Once.Spec.Theory using (‵neg)
+open import Once.Surface.Numeric using (numBin; numMixed)
 open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
 open import Once.Core.Decl using (⌜declS⌝)
 
@@ -64,7 +65,7 @@ realize↦ : ∀ {n} {L : Locals m n} {Γ} {e A π B t Ψ} {d : L ⊢ e ⇐ A �
          → Expr Γ Ψ (A ⇒[ mk-kind Many π ] B)
 
 realize⇒ sh (u-int {i})             = int i
-realize⇒ sh (u-float {i} {f} {l})   = float (decimalOf i f l)
+realize⇒ sh (u-float {sg} {i} {f} {l}) = float (signedDecimal sg i f l)
 realize⇒ sh u-unit                  = unit
 realize⇒ sh u-unit-g                = unit
 realize⇒ sh (u-var {v = v})         = subst (Expr _ _) (lookup-shape sh v) (var _)
@@ -72,35 +73,12 @@ realize⇒ sh (u-sigop {c = c} k h)   = subst (Expr _ _) (sym (⌜declS⌝ k h))
 realize⇒ sh (u-def {d = d} {τ = τ}) = ref d (type (S !! d) ⟨ τ ⟩) (inline d)
 realize⇒ sh (u-annot u)             = realize⇐ sh u
 realize⇒ sh (u-pair ua ub)          = pair (realize⇒ sh ua) (realize⇒ sh ub)
-realize⇒ sh (u-neg u)               = neg (realize⇒ sh u)
-realize⇒ sh (u-neg-float {i} {f} {l}) = float (negate (decimalOf i f l))
+realize⇒ sh (u-neg {h = h} u)       = num h ‵neg (realize⇒ sh u)
 realize⇒ sh (u-let u₁ u₂)           = let' (realize⇒ sh u₁) (realize⇒ (sh-▸ sh) u₂)
 realize⇒ sh (u-case {j = j} us ul ur) =
   case' (realize⇒ sh us) (coerce (<:ᶜ⇒<: (left j)) (realize⇒ (sh-▸ sh) ul)) (coerce (<:ᶜ⇒<: (right j)) (realize⇒ (sh-▸ sh) ur))
-realize⇒ sh (u-arith {o = ia-add} u₁ u₂) = add  (realize⇒ sh u₁) (realize⇒ sh u₂)
-realize⇒ sh (u-arith {o = ia-sub} u₁ u₂) = sub  (realize⇒ sh u₁) (realize⇒ sh u₂)
-realize⇒ sh (u-arith {o = ia-mul} u₁ u₂) = mul  (realize⇒ sh u₁) (realize⇒ sh u₂)
-realize⇒ sh (u-arith {o = ia-div} u₁ u₂) = div  (realize⇒ sh u₁) (realize⇒ sh u₂)
-realize⇒ sh (u-arith {o = ia-mod} u₁ u₂) = mod' (realize⇒ sh u₁) (realize⇒ sh u₂)
-realize⇒ sh (u-arith-float {o = fa-add} u₁ u₂) = fadd (realize⇒ sh u₁) (realize⇒ sh u₂)
-realize⇒ sh (u-arith-float {o = fa-sub} u₁ u₂) = fsub (realize⇒ sh u₁) (realize⇒ sh u₂)
-realize⇒ sh (u-arith-float {o = fa-mul} u₁ u₂) = fmul (realize⇒ sh u₁) (realize⇒ sh u₂)
-realize⇒ sh (u-arith-float {o = fa-div} u₁ u₂) = fdiv (realize⇒ sh u₁) (realize⇒ sh u₂)
--- D125: the `Int` side of a mixed operation widens.
-realize⇒ sh (u-arith-float-il {o = fa-add} u₁ u₂) = fadd (i2f (realize⇒ sh u₁)) (realize⇒ sh u₂)
-realize⇒ sh (u-arith-float-il {o = fa-sub} u₁ u₂) = fsub (i2f (realize⇒ sh u₁)) (realize⇒ sh u₂)
-realize⇒ sh (u-arith-float-il {o = fa-mul} u₁ u₂) = fmul (i2f (realize⇒ sh u₁)) (realize⇒ sh u₂)
-realize⇒ sh (u-arith-float-il {o = fa-div} u₁ u₂) = fdiv (i2f (realize⇒ sh u₁)) (realize⇒ sh u₂)
-realize⇒ sh (u-arith-float-ir {o = fa-add} u₁ u₂) = fadd (realize⇒ sh u₁) (i2f (realize⇒ sh u₂))
-realize⇒ sh (u-arith-float-ir {o = fa-sub} u₁ u₂) = fsub (realize⇒ sh u₁) (i2f (realize⇒ sh u₂))
-realize⇒ sh (u-arith-float-ir {o = fa-mul} u₁ u₂) = fmul (realize⇒ sh u₁) (i2f (realize⇒ sh u₂))
-realize⇒ sh (u-arith-float-ir {o = fa-div} u₁ u₂) = fdiv (realize⇒ sh u₁) (i2f (realize⇒ sh u₂))
-realize⇒ sh (u-compare {o = cmp-lt} u₁ u₂) = lt (realize⇒ sh u₁) (realize⇒ sh u₂)
-realize⇒ sh (u-compare {o = cmp-le} u₁ u₂) = le (realize⇒ sh u₁) (realize⇒ sh u₂)
-realize⇒ sh (u-compare {o = cmp-gt} u₁ u₂) = gt (realize⇒ sh u₁) (realize⇒ sh u₂)
-realize⇒ sh (u-compare {o = cmp-ge} u₁ u₂) = ge (realize⇒ sh u₁) (realize⇒ sh u₂)
-realize⇒ sh (u-compare {o = cmp-eq} u₁ u₂) = eq (realize⇒ sh u₁) (realize⇒ sh u₂)
-realize⇒ sh (u-compare {o = cmp-ne} u₁ u₂) = ne (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-binop {op = op} {A = A} {h = h} u₁ u₂) = numBin op A h (realize⇒ sh u₁) (realize⇒ sh u₂)
+realize⇒ sh (u-binop-mixed {op = op} {a₁ = a₁} {a₂ = a₂} {eq = eq} u₁ u₂) = numMixed op eq a₁ a₂ (realize⇒ sh u₁) (realize⇒ sh u₂)
 realize⇒ sh (u-id-app u)            = morph-app IR.id (realize⇒ sh u)
 realize⇒ sh (u-fst-app u)           = morph-app IR.fst (realize⇒ sh u)
 realize⇒ sh (u-snd-app u)           = morph-app IR.snd (realize⇒ sh u)

@@ -67,6 +67,7 @@ open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; Rounded; Sym; s
 open import Once.TypeCheck.NumTable
   using (NumView; is-num; not-num; numView; _≟ⁿ_; has?; binDom;
          RoundedView; rounded; not-rounded; roundedView; pairDom; binary?; negZero?; mixedDom)
+open import Once.Surface.Numeric using (numBin; numMixed)
 open import Once.Spec.Surface.Operator using (binSym; BinSym)
 open BinSym using (theory; shape; symbol)
 open import Once.Spec.Surface.Syntax using (signedDecimal; NegativeZero)
@@ -1052,22 +1053,14 @@ inferElabV-RNeg-aux : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr)
 inferElabV-RNeg-aux ctx e (failure err)          = failure err
 inferElabV-RNeg-aux ctx e (success T Ψ eE d fr)  = inferElabV-RNeg-num ctx eE d fr (numView T)
 
--- A mixed operand, widened (D125's `i2f` node).
-widenS : ∀ {m} {n} {Δ : SCtx m n} {Ψ} (a : NumTy) → SExpr Δ Ψ ⌜ a ⌝ⁿ → SExpr Δ Ψ Float
-widenS nint   e = Surface.i2f e
-widenS nfloat e = e
-
 -- `e₁ op e₂` at one number type `a`: `s-binop`.
 inferElabV-RBinOp-has : ∀ {m} → (ctx : NamedCtx m) (op : BinOp) (a : NumTy)
   {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
   → SExpr (NamedCtx.debruijn ctx) Ψ₁ ⌜ a ⌝ⁿ → SExpr (NamedCtx.debruijn ctx) Ψ₂ ⌜ a ⌝ⁿ → (d fr : ℕ)
   → Dec (Has a (theory (binSym op)))
   → InferElabResult (NamedCtx.debruijn ctx)
-inferElabV-RBinOp-has ctx op a {Ψ₁} {Ψ₂} e₁E e₂E d fr (yes h) =
-  success (symCod a (shape (binSym op))) _
-          (Surface.num h (symbol (binSym op))
-            (subst (SExpr (NamedCtx.debruijn ctx) (Ψ₁ Surface.+ᵘ Ψ₂)) (sym (binDom op a)) (Surface.pair e₁E e₂E)))
-          d fr
+inferElabV-RBinOp-has ctx op a e₁E e₂E d fr (yes h) =
+  success (symCod a (shape (binSym op))) _ (numBin op a h e₁E e₂E) d fr
 inferElabV-RBinOp-has ctx op a e₁E e₂E d fr (no _) = failure (OperatorUndefined (opText op) a)
 
 -- An `Int` and a `Float`: `s-binop-mixed`, for a dotted operator only.
@@ -1076,13 +1069,8 @@ inferElabV-RBinOp-mixed : ∀ {m} → (ctx : NamedCtx m) (op : BinOp) (a₁ a₂
   → SExpr (NamedCtx.debruijn ctx) Ψ₁ ⌜ a₁ ⌝ⁿ → SExpr (NamedCtx.debruijn ctx) Ψ₂ ⌜ a₂ ⌝ⁿ → (d fr : ℕ)
   → RoundedView op
   → InferElabResult (NamedCtx.debruijn ctx)
-inferElabV-RBinOp-mixed ctx op a₁ a₂ {Ψ₁} {Ψ₂} e₁E e₂E d fr (rounded k o eq) =
-  success (symCod nfloat k) _
-          (Surface.num float-rounded o
-            (subst (SExpr (NamedCtx.debruijn ctx) (Ψ₁ Surface.+ᵘ Ψ₂))
-                   (sym (mixedDom eq))
-                   (Surface.pair (widenS a₁ e₁E) (widenS a₂ e₂E))))
-          d fr
+inferElabV-RBinOp-mixed ctx op a₁ a₂ e₁E e₂E d fr (rounded k o eq) =
+  success (symCod nfloat k) _ (numMixed op eq a₁ a₂ e₁E e₂E) d fr
 inferElabV-RBinOp-mixed ctx op a₁ a₂ e₁E e₂E d fr (not-rounded _) = failure (MixedOperands (opText op))
 
 inferElabV-RBinOp-num : ∀ {m} → (ctx : NamedCtx m) (op : BinOp) (a₁ a₂ : NumTy)
