@@ -770,3 +770,57 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       seg : Seg image (fpc fs) (lea-slot 0 ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf (idx p))) ∷ [])
       seg = Seg-++ˡ image (fpc fs) (lea-slot 0 ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf (idx p))) ∷ []) _
               (subst (λ z → Seg image z (trAt (idx p) (ktr1 ds′ b γ) 1)) (sym (HereF.f-pc H)) (in-seg (image-tr (ktr1 ds′ b γ) p 1)))
+
+  -- ★ the body's return into the trampoline: its result at the frame's top
+  open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
+  open SimF {FS} U wordOf using (leave)
+  open import Once.LinCore.LowerSimE {FS} using (co-pc; co-halt)
+  module KA′ {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = At U ncty ldConst (frameOf (blockᴵ κ)) (idx p)
+
+  tr-back : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b}
+              (p : under (ktr1 ds′ b γ) ∈ allK U) (e : Sub (blockᴵ (kbody1 ds′ b γ)) (end {sh = [] ∣ B ∷ []}))
+              {e′ : Slots []} {w : MV B} {fs} (cfc : FrameSemantics.Frame FS) (pc : ℕ) (rest : List ℕ)
+              (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ)
+          → KA′.lfin {p = p} (K.lowAt p e) ≡ blockFin (kbody1 ds′ b γ)
+          → K.Here p e (e′ ∥ w ∷ˢ []ˢ) fs
+          → fret fs ≡ pc ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+          → ¬ cfc ≡ AllocState.current-frame (falloc fs)
+          → slot fs (sv₁ (frameOf (blockᴵ (kbody1 ds′ b γ)))) ≡ just (SV-Ptr (AtStack cfc 0))
+          → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
+              × HereF (frame 0 ((wsz X + wsz A) ⊔ wsz B)) pc ([]ᵉ ∥ w ∷ˢ []ˢ) fs′
+              × CallOut fs fs′ cfc (((wsz X + wsz A) ⊔ wsz B) ∸ ((wsz X + wsz A) ⊔ wsz B))
+                        (budget (frameOf (blockᴵ (kbody1 ds′ b γ))) ∸ ws (B ∷ []))
+                        (((wsz X + wsz A) ⊔ wsz B) ∸ wsz B) (wsz B) pc rest sv sl
+              × (∀ x → (wsz X + wsz A) ⊔ wsz B ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
+  tr-back {X = X} {A} {B} {ds′} {b} {γ} p e {e′} {w} {fs} cfc pc rest sv sl lf H hret hsv ne ep =
+    with-res (Rel.CfgW.c-stk (K.Here.h-cfg {p = p} H))
+    where
+      import Data.Nat.Properties
+      φ′ = frameOf (blockᴵ (kbody1 ds′ b γ))
+      M = (wsz X + wsz A) ⊔ wsz B
+      seg : Seg image (fpc fs) (restore-input (budget φ′) ∷ mvSP (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B)
+                                 ++ instr-ctrl (c-ret (fbudget φ′)) ∷ [])
+      seg = subst (Seg image (fpc fs)) lf (K.seg-at p e H)
+      ep′ : slot fs (budget φ′) ≡ just (SV-Ptr (AtStack cfc (M ∸ M)))
+      ep′ = subst (λ z → slot fs (budget φ′) ≡ just (SV-Ptr (AtStack cfc z))) (sym (Data.Nat.Properties.n∸n≡0 M)) ep
+      fitM : M + 0 ≤ M
+      fitM = Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-identityʳ M)
+      fitB : wsz B + 0 ≤ M
+      fitB = Data.Nat.Properties.≤-trans (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-identityʳ (wsz B)))
+               (Data.Nat.Properties.m≤n⊔m (wsz X + wsz A) (wsz B))
+      with-res : StkW (LocState.heapMem (floc fs)) (slot fs) φ′ (w ∷ˢ []ˢ) → _
+      with-res ((wb , pb , sb) , _) =
+        fin (leave image fs (frame 0 M) φ′ cfc (budget φ′) (M ∸ M) M (fbudget φ′) pc rest sv sl
+               {es = []ᵉ} {os = []ˢ} {b = w} wb hret hsv ne ep′ pb sb Data.Unit.tt Data.Unit.tt refl
+               (Data.Nat.Properties.m≤n⊔m (wsz X + wsz A) (wsz B)) fitM Data.Nat.z≤n fitB seg (K.Here.h-run {p = p} H))
+        where
+          import Data.Unit
+          fin : Σ FlatState (λ fs′ → FlatSteps image (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′
+                  × CfgW (LocState.heapMem (floc fs′)) (slot fs′) (frame 0 M) ([]ᵉ ∥ w ∷ˢ []ˢ)
+                  × CallOut fs fs′ cfc (M ∸ M) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) pc rest sv sl
+                  × (∀ x → budget (frame 0 M) ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x))
+              → _
+          fin (fs′ , run , C′ , CO , tk) =
+            _ , fs′ , run ,
+            record { f-pc = co-pc CO ; f-run = trans (co-halt CO) (K.Here.h-run {p = p} H) ; f-cfg = C′ } ,
+            CO , tk
