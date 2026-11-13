@@ -561,7 +561,6 @@ elaborate m (float d) = floatLit d
 
 -- A numeric operation: its operands, then its primitive.
 elaborate m (num h o e) = numIR h o ∘ elaborate m e
-elaborate m (i2f e) = i2fIR ∘ elaborate m e
 
 -- Effect lifting: arr f lifts pure function to effectful morphism
 -- IR arr : (A ⇒ B) → Eff A B

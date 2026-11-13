@@ -66,8 +66,8 @@ open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; Rounded; Sym; s
   renaming (int to nint; float to nfloat)
 open import Once.TypeCheck.NumTable
   using (NumView; is-num; not-num; numView; _≟ⁿ_; has?; binDom;
-         RoundedView; rounded; not-rounded; roundedView; pairDom; binary?; negZero?; mixedDom)
-open import Once.Surface.Numeric using (numBin; numMixed)
+         pairDom; binary?; negZero?)
+open import Once.Surface.Numeric using (numBin; toFloatIR)
 open import Once.Spec.Surface.Operator using (binSym; BinSym)
 open BinSym using (theory; shape; symbol)
 open import Once.Spec.Surface.Syntax using (signedDecimal; NegativeZero)
@@ -1063,23 +1063,13 @@ inferElabV-RBinOp-has ctx op a e₁E e₂E d fr (yes h) =
   success (symCod a (shape (binSym op))) _ (numBin op a h e₁E e₂E) d fr
 inferElabV-RBinOp-has ctx op a e₁E e₂E d fr (no _) = failure (OperatorUndefined (opText op) a)
 
--- An `Int` and a `Float`: `s-binop-mixed`, for a dotted operator only.
-inferElabV-RBinOp-mixed : ∀ {m} → (ctx : NamedCtx m) (op : BinOp) (a₁ a₂ : NumTy)
-  {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-  → SExpr (NamedCtx.debruijn ctx) Ψ₁ ⌜ a₁ ⌝ⁿ → SExpr (NamedCtx.debruijn ctx) Ψ₂ ⌜ a₂ ⌝ⁿ → (d fr : ℕ)
-  → RoundedView op
-  → InferElabResult (NamedCtx.debruijn ctx)
-inferElabV-RBinOp-mixed ctx op a₁ a₂ e₁E e₂E d fr (rounded k o eq) =
-  success (symCod nfloat k) _ (numMixed op eq a₁ a₂ e₁E e₂E) d fr
-inferElabV-RBinOp-mixed ctx op a₁ a₂ e₁E e₂E d fr (not-rounded _) = failure (MixedOperands (opText op))
-
 inferElabV-RBinOp-num : ∀ {m} → (ctx : NamedCtx m) (op : BinOp) (a₁ a₂ : NumTy)
   {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
   → SExpr (NamedCtx.debruijn ctx) Ψ₁ ⌜ a₁ ⌝ⁿ → SExpr (NamedCtx.debruijn ctx) Ψ₂ ⌜ a₂ ⌝ⁿ → (d fr : ℕ)
   → Dec (a₁ ≡ a₂)
   → InferElabResult (NamedCtx.debruijn ctx)
 inferElabV-RBinOp-num ctx op a .a e₁E e₂E d fr (yes refl) = inferElabV-RBinOp-has ctx op a e₁E e₂E d fr (has? a (theory (binSym op)))
-inferElabV-RBinOp-num ctx op a₁ a₂ e₁E e₂E d fr (no _)    = inferElabV-RBinOp-mixed ctx op a₁ a₂ e₁E e₂E d fr (roundedView op)
+inferElabV-RBinOp-num ctx op a₁ a₂ e₁E e₂E d fr (no _)    = failure (MixedOperands (opText op))
 
 -- The right operand.
 inferElabV-RBinOp-R : ∀ {m} → (ctx : NamedCtx m) (op : BinOp) (a₁ : NumTy) {T₂ : Ty m}
@@ -1521,6 +1511,10 @@ inferElabV-RResolved-dispatch : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName) 
 -- error for a bare use).
 inferElabV-RResolved-dispatch ctx _ gv-unit =
   success Unit _ Surface.unit 0 0
+-- `toFloat` is monomorphic, so it infers too (D408).
+inferElabV-RResolved-dispatch ctx _ gv-toFloat =
+  success (Int Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.pure ] Float) _
+          (Surface.lift-morphism toFloatIR) 0 0
 -- D136: a generator's canonical name is COMPILER-OWNED, so looking it up in
 -- the user's import table is meaningless — these fail directly rather than
 -- routing through `inferElabV-RResolved-aux`. The seven point-free
@@ -1573,6 +1567,7 @@ checkElabV-RResolved-dispatch ctx _ T gv-inl rInfV =
 checkElabV-RResolved-dispatch ctx _ T gv-inr rInfV =
   checkElabV-RVar-bbc-inr-aux ctx T rInfV
 checkElabV-RResolved-dispatch ctx cn T gv-unit  rInfV = embedOrSubsume ctx (Raw.RResolved cn) T rInfV
+checkElabV-RResolved-dispatch ctx cn T gv-toFloat rInfV = embedOrSubsume ctx (Raw.RResolved cn) T rInfV
 checkElabV-RResolved-dispatch ctx cn T (gv-other ng) rInfV = checkElabV-RResolved-other ctx cn T rInfV
 
 checkElabV-RVar-bbc-other-aux : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty m)

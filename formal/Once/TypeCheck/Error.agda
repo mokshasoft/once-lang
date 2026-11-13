@@ -137,8 +137,8 @@ data TypeError : Set where
   ComposeMiddleUndetermined : TypeError
 
   -- Plan 0.150: a numeric operator at a number type whose row lacks the
-  -- operator's theory (`+` at `Float`), and an undotted operator on an `Int`
-  -- and a `Float` (only the dotted ones widen).
+  -- operator's theory (`+` at `Float`), and an operator on an `Int` and a
+  -- `Float` (D408: no implicit conversion).
   OperatorUndefined : (op : String) (at : NumTy) → TypeError
   MixedOperands     : (op : String) → TypeError
   -- A literal `-0.0` (plan 0.150 N5): negative zero is reached by negation.
@@ -215,7 +215,7 @@ renderError ComposeMiddleUndetermined =
 renderError (OperatorUndefined op A) =
   "`" ++ op ++ "` is not defined at " ++ numTyText A
 renderError (MixedOperands op) =
-  "`" ++ op ++ "` needs operands of one type (only the dotted operators widen an Int)"
+  "`" ++ op ++ "` needs operands of one type: convert the Int with toFloat"
 renderError NegativeZeroLiteral =
   "the literal -0.0 is not allowed: write -(0.0) for negative zero"
 renderError (BinOpLeftError sub) =

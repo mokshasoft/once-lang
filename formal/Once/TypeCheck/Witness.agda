@@ -48,7 +48,7 @@ open import Once.Type.Core using (wk₀)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Grade using (_≤qᵇ_)
 import Once.Spec.Surface.Typing Σ S nm as SU
-open SU using (Locals; _▹_∶_; _∋_⦂_at_; SpecialHead; _⇒⟨_⟩_; ↑; asFloat)
+open SU using (Locals; _▹_∶_; _∋_⦂_at_; SpecialHead; _⇒⟨_⟩_; ↑)
 open import Once.Spec.Surface.Operator using (binSym; BinSym; _∶_∶_)
 open BinSym using (theory; shape; symbol)
 open import Once.Spec.Theory using (Has; Neg; Rounded; float; float-rounded; ⌜_⌝ⁿ; symCod; ‵neg)
@@ -84,6 +84,9 @@ module _ {n} {L : Locals m n} where
 
   w-unit : W⇒ L RUnit Unit unit zeroUsage
   w-unit = SU.s-unit , u-unit
+
+  w-toFloat : W⇒ L (RResolved (gen "toFloat")) (Int ⇒[ mk-kind Many pure ] Float) toFloatᶜ zeroUsage
+  w-toFloat = SU.s-toFloat , u-toFloat
 
   w-unit-g : W⇒ L (RResolved (gen "unit")) Unit unit zeroUsage
   w-unit-g = SU.s-unit-g , u-unit-g
@@ -122,10 +125,6 @@ module _ {n} {L : Locals m n} where
           → W⇒ L (RBinOp op e₁ e₂) (symCod A (shape (binSym op))) (prim (num h (symbol (binSym op))) (pair t₁ t₂)) (Ψ₁ +ᵘ Ψ₂)
   w-binop h (d₁ , u₁) (d₂ , u₂) = SU.s-binop h d₁ d₂ , u-binop u₁ u₂
 
-  w-binop-mixed : ∀ {op k o e₁ e₂ a₁ a₂ t₁ t₂ Ψ₁ Ψ₂} → binSym op ≡ (Rounded ∶ k ∶ o) → a₁ ≢ a₂
-                → W⇒ L e₁ ⌜ a₁ ⌝ⁿ t₁ Ψ₁ → W⇒ L e₂ ⌜ a₂ ⌝ⁿ t₂ Ψ₂
-                → W⇒ L (RBinOp op e₁ e₂) (symCod float k) (prim (num float-rounded o) (pair (asFloat a₁ t₁) (asFloat a₂ t₂))) (Ψ₁ +ᵘ Ψ₂)
-  w-binop-mixed eq ne (d₁ , u₁) (d₂ , u₂) = SU.s-binop-mixed eq ne d₁ d₂ , u-binop-mixed u₁ u₂
 
   w-id-app : ∀ {e T t Ψ} → W⇒ L e T t Ψ → W⇒ L (RApp (RResolved (gen "id")) e) T (app (idᶜ T pure) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
   w-id-app (d , u) = SU.s-id-app d , u-id-app u

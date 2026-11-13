@@ -21,7 +21,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sub
 
 open import Once.Spec.Grade using (mk-kind; Many; One; Zero; Quantity; Purity; pure; act; eff; _·p_; Finite; fin; pureᶠ; actᶠ; _⊑π_)
 open import Once.Type.Grade using (≤qᵇ→≤q)
-open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F)
 open import Once.Spec.Type using (⟦_⟧F)
 open import Once.Spec.Context using (Ctx; _▸_; lookup; _∷_)
 open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; z≤z; o≤o; m≤m)
@@ -93,6 +93,10 @@ module _ {m : ℕ} {Δ : KCtx m} where
 
   ⊢terminalᶜ : ∀ {n} {Γ : Ctx m n} {A : Ty m} {π : Purity} → pure ⊑π π → Δ ⊩ Γ ⊢[ zeroUsage ] terminalᶜ A π ∷ A ⇒[ mk-kind Many π ] Unit ! pure
   ⊢terminalᶜ u = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢sub-eff u ⊢unit)
+
+  -- `toFloat` (D408).
+  ⊢toFloatᶜ : ∀ {n} {Γ : Ctx m n} → Δ ⊩ Γ ⊢[ zeroUsage ] toFloatᶜ ∷ Int ⇒[ mk-kind Many pure ] Float ! pure
+  ⊢toFloatᶜ = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢prim p-i2f (⊢var zero))
 
   ⊢initialᶜ : ∀ {n} {Γ : Ctx m n} {A : Ty m} {π : Purity} → pure ⊑π π → Δ ⊩ Γ ⊢[ zeroUsage ] initialᶜ A π ∷ Void ⇒[ mk-kind Many π ] A ! pure
   ⊢initialᶜ u = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢sub-eff u (⊢absurd (⊢var zero)))

@@ -44,13 +44,13 @@ open import Once.IR as IR using (IR)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Surface.Syntax
-  using (Expr; var; lam; app; effApp; pair; num; let'; case'; int; float; unit; i2f; sigOp; closure; poly; lift-morphism;
+  using (Expr; var; lam; app; effApp; pair; num; let'; case'; int; float; unit; sigOp; closure; poly; lift-morphism;
          morph-app; coerce; cata; ana; loop; comp'; copair'; fork'; curry')
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals)
 open import Once.Spec.Surface.Syntax using (signedDecimal)
 open import Once.Spec.Theory using (‵neg)
-open import Once.Surface.Numeric using (numBin; numMixed)
+open import Once.Surface.Numeric using (numBin; toFloatIR)
 open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
 open import Once.Core.Decl using (⌜declS⌝)
 
@@ -68,6 +68,7 @@ realize⇒ sh (u-int {i})             = int i
 realize⇒ sh (u-float {sg} {i} {f} {l}) = float (signedDecimal sg i f l)
 realize⇒ sh u-unit                  = unit
 realize⇒ sh u-unit-g                = unit
+realize⇒ sh u-toFloat               = lift-morphism toFloatIR
 realize⇒ sh (u-var {v = v})         = subst (Expr _ _) (lookup-shape sh v) (var _)
 realize⇒ sh (u-sigop {c = c} k h)   = subst (Expr _ _) (sym (⌜declS⌝ k h)) (sigOp c k)
 realize⇒ sh (u-def {d = d} {τ = τ}) = ref d (type (S !! d) ⟨ τ ⟩) (inline d)
@@ -78,7 +79,6 @@ realize⇒ sh (u-let u₁ u₂)           = let' (realize⇒ sh u₁) (realize�
 realize⇒ sh (u-case {j = j} us ul ur) =
   case' (realize⇒ sh us) (coerce (<:ᶜ⇒<: (left j)) (realize⇒ (sh-▸ sh) ul)) (coerce (<:ᶜ⇒<: (right j)) (realize⇒ (sh-▸ sh) ur))
 realize⇒ sh (u-binop {op = op} {A = A} {h = h} u₁ u₂) = numBin op A h (realize⇒ sh u₁) (realize⇒ sh u₂)
-realize⇒ sh (u-binop-mixed {op = op} {a₁ = a₁} {a₂ = a₂} {eq = eq} u₁ u₂) = numMixed op eq a₁ a₂ (realize⇒ sh u₁) (realize⇒ sh u₂)
 realize⇒ sh (u-id-app u)            = morph-app IR.id (realize⇒ sh u)
 realize⇒ sh (u-fst-app u)           = morph-app IR.fst (realize⇒ sh u)
 realize⇒ sh (u-snd-app u)           = morph-app IR.snd (realize⇒ sh u)

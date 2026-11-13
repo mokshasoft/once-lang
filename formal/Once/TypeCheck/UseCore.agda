@@ -29,7 +29,7 @@ open import Once.Spec.Type using (Ty; TySub; _⇒[_]_; Respects; _⟨_⟩)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Once.Spec.Core.Syntax using (num; p-i2f; prim; pair; ref)
 open import Once.Spec.Theory using (NumTy; int; float; ⌜_⌝ⁿ; symDom; symCod; ‵neg; float-rounded)
-open import Once.TypeCheck.NumTable using (binDom; mixedDom)
+open import Once.TypeCheck.NumTable using (binDom)
 open import Once.Spec.Surface.Operator using (binSym; BinSym)
 open BinSym using (symbol; shape)
 open import Once.Spec.Context using (Ctx; _+ᵘ_; zeroUsage)
@@ -43,7 +43,7 @@ open import Once.Core.DerivedTyping Σ S
 open import Once.Type.Sub using (·p-diag; pure-⊑; <:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open import Once.Type.Grade using (≤q-Many; ≤qᵇ→≤q)
 import Once.Spec.Surface.Typing Σ S nm as SU
-open SU using (Locals; asFloat)
+open SU using (Locals)
 open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
 
 -- An entry with no type variables respects any kinds.
@@ -60,10 +60,6 @@ private
       → Δ ⊩ Γ ⊢[ Ψ₁ +ᵘ Ψ₂ ] prim (num {A} h (symbol (binSym op))) (pair t₁ t₂) ∷ symCod A (shape (binSym op)) ! pure
   bin op A h d e = ⊢prim (num h (symbol (binSym op))) (subst (λ X → Δ ⊩ _ ⊢[ _ ] _ ∷ X ! pure) (sym (binDom op A)) (⊢pair d e))
 
-  -- A mixed operand, widened.
-  widen : ∀ {n} {Γ : Ctx m n} {Ψ t} (a : NumTy) → Δ ⊩ Γ ⊢[ Ψ ] t ∷ ⌜ a ⌝ⁿ ! pure → Δ ⊩ Γ ⊢[ Ψ ] asFloat a t ∷ Float ! pure
-  widen int   d = ⊢prim p-i2f d
-  widen float d = d
 
 -- A polymorphic arrow's instance, from its domain and codomain's.
 poly-inst : ∀ (d : Fin s) (τ : TySub (arity (S !! d)) m) {sd sc A B π′}
@@ -81,6 +77,7 @@ typS⇒ sh u-int                       = ⊢lit-int
 typS⇒ sh u-float                     = ⊢lit-float
 typS⇒ sh u-unit                      = ⊢unit
 typS⇒ sh u-unit-g                    = ⊢unit
+typS⇒ sh u-toFloat                   = ⊢toFloatᶜ
 typS⇒ sh (u-var {v = v})             = subst (λ X → Δ ⊩ _ ⊢[ _ ] _ ∷ X ! pure) (lookup-shape sh v) (⊢var _)
 typS⇒ sh (u-sigop {mem = mem} k h)   = ⊢sigop mem
 typS⇒ sh (u-def {d = d} {τ = τ} {a = a}) = ⊢ref d τ (no-kinds d τ a)
@@ -92,8 +89,6 @@ typS⇒ sh (u-let {q = q} u₁ u₂)       = ⊢let-pure q (typS⇒ sh u₁) (ty
 typS⇒ sh (u-case {j = j} us ul ur)   =
   ⊢case⊔ (typS⇒ sh us) (⊢coerce (<:ᶜ⇒<: (left j)) (typS⇒ (sh-▸ sh) ul)) (⊢coerce (<:ᶜ⇒<: (right j)) (typS⇒ (sh-▸ sh) ur))
 typS⇒ sh (u-binop {op = op} {A = A} {h = h} u₁ u₂) = bin op A h (typS⇒ sh u₁) (typS⇒ sh u₂)
-typS⇒ sh (u-binop-mixed {op = op} {k = k} {o = o} {a₁ = a₁} {a₂ = a₂} {eq = eq} u₁ u₂) =
-  ⊢prim (num float-rounded o) (subst (λ X → Δ ⊩ _ ⊢[ _ ] _ ∷ X ! pure) (sym (mixedDom eq)) (⊢pair (widen a₁ (typS⇒ sh u₁)) (widen a₂ (typS⇒ sh u₂))))
 typS⇒ sh (u-id-app u)                = ⊢app (⊢idᶜ ⊑-pure) (typS⇒ sh u)
 typS⇒ sh (u-fst-app u)               = ⊢app (⊢fstᶜ ⊑-pure) (typS⇒ sh u)
 typS⇒ sh (u-snd-app u)               = ⊢app (⊢sndᶜ ⊑-pure) (typS⇒ sh u)

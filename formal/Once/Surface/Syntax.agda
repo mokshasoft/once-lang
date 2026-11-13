@@ -156,11 +156,6 @@ data Expr {m} : ∀ {n} → Ctx m n → Usage n → Ty m → Set where
   -- (`Surface.Elaborate.numIR`).
   num   : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A U k} → Has A U → Sym U k
         → Expr Γ Ψ (symDom A k) → Expr Γ Ψ (symCod A k)
-  -- D125: the widening itself, as a NODE rather than a silent retyping.
-  -- `1 +. 1.5` elaborates to `num float-rounded ‵+ᵈ (pair (i2f 1) 1.5)`, so the
-  -- conversion is visible in the surface term, has its own SigOp, and lowers
-  -- to a real instruction.
-  i2f   : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} → Expr Γ Ψ Int → Expr Γ Ψ Float
 
   -- Surface grade coercion (pure→eff subsumption; `t-subsume`'s witness).
   -- Plan 0.52 M2: STAYS (the grade lives at the surface, OCP-0007), but now

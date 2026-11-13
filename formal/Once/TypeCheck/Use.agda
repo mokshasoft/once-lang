@@ -91,6 +91,7 @@ data Use⇒ {n} {L} where
   u-int      : ∀ {i} → Use⇒ (s-int i) zeroUsage
   u-float    : ∀ {sg i f l nz} → Use⇒ (s-float sg i f l nz) zeroUsage
   u-unit     : Use⇒ s-unit zeroUsage
+  u-toFloat  : Use⇒ s-toFloat zeroUsage
   u-unit-g   : Use⇒ s-unit-g zeroUsage
   -- A local is used once.
   u-var      : ∀ {x A i} {v : L ∋ x ⦂ A at i} → Use⇒ (s-var v) (singleUse i One)
@@ -113,9 +114,6 @@ data Use⇒ {n} {L} where
              → Use⇒ (s-case {C = C} ql qr ds dl dr j) (Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ))
   u-binop    : ∀ {op e₁ e₂ A t₁ t₂} {h} {d₁ : L ⊢ e₁ ⇒ _ ↝ t₁} {d₂ : L ⊢ e₂ ⇒ _ ↝ t₂} {Ψ₁ Ψ₂}
              → Use⇒ d₁ Ψ₁ → Use⇒ d₂ Ψ₂ → Use⇒ (s-binop {op = op} {A = A} h d₁ d₂) (Ψ₁ +ᵘ Ψ₂)
-  u-binop-mixed : ∀ {op k o e₁ e₂ a₁ a₂ t₁ t₂} {eq ne} {d₁ : L ⊢ e₁ ⇒ _ ↝ t₁} {d₂ : L ⊢ e₂ ⇒ _ ↝ t₂} {Ψ₁ Ψ₂}
-                → Use⇒ d₁ Ψ₁ → Use⇒ d₂ Ψ₂
-                → Use⇒ (s-binop-mixed {op = op} {k = k} {o = o} {a₁ = a₁} {a₂ = a₂} eq ne d₁ d₂) (Ψ₁ +ᵘ Ψ₂)
   -- A generator applied: its argument, in an application.
   u-id-app       : ∀ {e T t} {d : L ⊢ e ⇒ T ↝ t} {Ψ} → Use⇒ d Ψ → Use⇒ (s-id-app d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
   u-fst-app      : ∀ {e A B t} {d : L ⊢ e ⇒ _ ↝ t} {Ψ} → Use⇒ d Ψ → Use⇒ (s-fst-app {A = A} {B = B} d) (zeroUsage +ᵘ (Many *ᵘ Ψ))

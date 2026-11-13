@@ -8,8 +8,7 @@
 -- The Spec types a numeric operator by its row: `s-neg` and `s-binop` need
 -- `Has A U`, `s-binop-mixed` needs the operator to be a `Rounded` symbol
 -- (`Spec.Surface.Typing`). The checker decides each, once, here: whether a
--- type is a number type, whether a number type has a theory, and whether an
--- operator is dotted. Every pass over the numeric rules uses these, so none of
+-- type is a number type, and whether a number type has a theory. Every pass over the numeric rules uses these, so none of
 -- them cases on the operators or the rows itself.
 ------------------------------------------------------------------------
 
@@ -134,37 +133,6 @@ binDom : ∀ {m} op (A : NumTy) → symDom {m} A (shape (binSym op)) ≡ ⌜ A �
 binDom op A = pairDom A (shape (binSym op)) (binary? op)
 
 ------------------------------------------------------------------------
--- Is an operator dotted (a `Rounded` symbol, which widens an `Int`)?
-------------------------------------------------------------------------
-
-data RoundedView (op : BinOp) : Set where
-  rounded     : ∀ k (o : Sym Rounded k) → binSym op ≡ (Rounded ∶ k ∶ o) → RoundedView op
-  not-rounded : ¬ (theory (binSym op) ≡ Rounded) → RoundedView op
-
-roundedView : ∀ op → RoundedView op
-roundedView (dotted o+)     = rounded _ _ refl
-roundedView (dotted o-)     = rounded _ _ refl
-roundedView (dotted o*)     = rounded _ _ refl
-roundedView (dotted o/)     = rounded _ _ refl
-roundedView (dotted o<)     = rounded _ _ refl
-roundedView (dotted o<=)    = rounded _ _ refl
-roundedView (dotted o>)     = rounded _ _ refl
-roundedView (dotted o>=)    = rounded _ _ refl
-roundedView (dotted o==)    = rounded _ _ refl
-roundedView (dotted o!=)    = rounded _ _ refl
-roundedView (plain ‹ o+ ›)  = not-rounded (λ ())
-roundedView (plain ‹ o- ›)  = not-rounded (λ ())
-roundedView (plain ‹ o* ›)  = not-rounded (λ ())
-roundedView (plain ‹ o/ ›)  = not-rounded (λ ())
-roundedView (plain o%)      = not-rounded (λ ())
-roundedView (plain ‹ o< ›)  = not-rounded (λ ())
-roundedView (plain ‹ o<= ›) = not-rounded (λ ())
-roundedView (plain ‹ o> ›)  = not-rounded (λ ())
-roundedView (plain ‹ o>= ›) = not-rounded (λ ())
-roundedView (plain ‹ o== ›) = not-rounded (λ ())
-roundedView (plain ‹ o!= ›) = not-rounded (λ ())
-
-------------------------------------------------------------------------
 -- A literal that is a negative zero (`-0.0`, plan 0.150 N5)
 ------------------------------------------------------------------------
 
@@ -173,7 +141,3 @@ negZero? pos _       _       = no (λ ())
 negZero? neg zero    zero    = yes neg-zero
 negZero? neg zero    (suc _) = no (λ ())
 negZero? neg (suc _) _       = no (λ ())
-
--- | A dotted operator's domain, at `Float`.
-mixedDom : ∀ {m op k} {o : Sym Rounded k} → binSym op ≡ (Rounded ∶ k ∶ o) → symDom {m} float k ≡ Float * Float
-mixedDom {op = op} eq = subst (λ k → symDom float k ≡ Float * Float) (cong shape eq) (binDom op float)
