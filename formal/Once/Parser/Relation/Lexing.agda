@@ -31,11 +31,12 @@ open import Data.Integer using (+_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Parser.Token
+open import Once.Spec.Surface.Operator using (Dottable; ‹_›; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 open import Once.Parser.Lexer
   using (adv; headK; isIdentStart;
          collectStringB; collectDigitsB; collectFracB; collectIdentB;
          skipLineB; skipBlockB; digitsToNat; drop1;
-         nlIndent; isEqHead; isDashHead; dashClass; caretClass;
+         nlIndent; isEqHead; isDotHead; isDashHead; dashClass; caretClass;
          d-comment; d-arrow; d-minus; c-1; c-0; c-w; c-gen;
          hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang;
          hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt;
@@ -58,7 +59,27 @@ open import Once.Parser.Lexer
 -- Every premise advances the offset by `adv`, the same function the worker
 -- uses — so the relation cannot disagree with the lexer about how far a
 -- clause moved.
+-- An operator with an IEEE form begins at `c ∷ cs` and, read, leaves `rest`
+-- (plan 0.150): the head and its secondary classifier, as the lexer's
+-- `tok-head` dispatches them.
+data OpHead (c : Char) (cs : List Char) : List Char → Dottable → Set where
+  oh-plus  : headK c ≡ hkPlus  → OpHead c cs cs o+
+  oh-star  : headK c ≡ hkStar  → OpHead c cs cs o*
+  oh-slash : headK c ≡ hkSlash → OpHead c cs cs o/
+  oh-minus : headK c ≡ hkDash → dashClass cs ≡ d-minus → OpHead c cs cs o-
+  oh-lt    : headK c ≡ hkLt   → isEqHead cs ≡ false → OpHead c cs cs o<
+  oh-le    : headK c ≡ hkLt   → isEqHead cs ≡ true  → OpHead c cs (drop1 cs) o<=
+  oh-gt    : headK c ≡ hkGt   → isEqHead cs ≡ false → OpHead c cs cs o>
+  oh-ge    : headK c ≡ hkGt   → isEqHead cs ≡ true  → OpHead c cs (drop1 cs) o>=
+  oh-eqeq  : headK c ≡ hkEq   → isEqHead cs ≡ true  → OpHead c cs (drop1 cs) o==
+  oh-neq   : headK c ≡ hkBang → isEqHead cs ≡ true  → OpHead c cs (drop1 cs) o!=
+
 data LexesChars : ℕ → List Char → List Token → Set where
+  -- an operator with an IEEE form: `TOpD` when `.` follows it, else `TOp`
+  lex-op     : ∀ {off c cs rest d ts} → OpHead c cs rest d → isDotHead rest ≡ false
+             → LexesChars (adv cs rest off) rest ts → LexesChars off (c ∷ cs) (TOp ‹ d › ∷ ts)
+  lex-op-dot : ∀ {off c cs rest d ts} → OpHead c cs rest d → isDotHead rest ≡ true
+             → LexesChars (adv cs (drop1 rest) off) (drop1 rest) ts → LexesChars off (c ∷ cs) (TOpD d ∷ ts)
   lex-eof : ∀ {off} → LexesChars off [] (TEOF ∷ [])
   lex-ws  : ∀ {off c cs ts} → headK c ≡ hkWS → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) ts
   -- newline (indent continuation vs significant TNewline)
@@ -72,18 +93,11 @@ data LexesChars : ℕ → List Char → List Token → Set where
   -- dash head: line comment / arrow / minus
   lex-lcomment-ind : ∀ {off c cs ts} → headK c ≡ hkDash → dashClass cs ≡ d-comment → LexesChars (adv cs (proj₁ (skipLineB (drop1 cs))) off) (proj₁ (skipLineB (drop1 cs))) ts → LexesChars off (c ∷ cs) ts
   lex-arrow-ind    : ∀ {off c cs ts} → headK c ≡ hkDash → dashClass cs ≡ d-arrow   → LexesChars (adv cs (drop1 cs) off) (drop1 cs) ts → LexesChars off (c ∷ cs) (TArrow ∷ ts)
-  lex-minus        : ∀ {off c cs ts} → headK c ≡ hkDash → dashClass cs ≡ d-minus   → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TMinus ∷ ts)
   -- brace head: block comment / lbrace
   lex-bcomment-ind : ∀ {off c cs ts} → headK c ≡ hkLBrace → isDashHead cs ≡ true  → LexesChars (adv cs (proj₁ (skipBlockB 1 (drop1 cs))) off) (proj₁ (skipBlockB 1 (drop1 cs))) ts → LexesChars off (c ∷ cs) ts
   lex-lbrace       : ∀ {off c cs ts} → headK c ≡ hkLBrace → isDashHead cs ≡ false → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TLBrace ∷ ts)
   -- `…=` operators
-  lex-le-ind   : ∀ {off c cs ts} → headK c ≡ hkLt   → isEqHead cs ≡ true  → LexesChars (adv cs (drop1 cs) off) (drop1 cs) ts → LexesChars off (c ∷ cs) (TLe ∷ ts)
-  lex-lt       : ∀ {off c cs ts} → headK c ≡ hkLt   → isEqHead cs ≡ false → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TLt ∷ ts)
-  lex-ge-ind   : ∀ {off c cs ts} → headK c ≡ hkGt   → isEqHead cs ≡ true  → LexesChars (adv cs (drop1 cs) off) (drop1 cs) ts → LexesChars off (c ∷ cs) (TGe ∷ ts)
-  lex-gt       : ∀ {off c cs ts} → headK c ≡ hkGt   → isEqHead cs ≡ false → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TGt ∷ ts)
-  lex-eqeq-ind : ∀ {off c cs ts} → headK c ≡ hkEq   → isEqHead cs ≡ true  → LexesChars (adv cs (drop1 cs) off) (drop1 cs) ts → LexesChars off (c ∷ cs) (TEqEq ∷ ts)
   lex-equals   : ∀ {off c cs ts} → headK c ≡ hkEq   → isEqHead cs ≡ false → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TEquals ∷ ts)
-  lex-neq-ind  : ∀ {off c cs ts} → headK c ≡ hkBang → isEqHead cs ≡ true  → LexesChars (adv cs (drop1 cs) off) (drop1 cs) ts → LexesChars off (c ∷ cs) (TNeq ∷ ts)
   lex-bang     : ∀ {off c cs ts} → headK c ≡ hkBang → isEqHead cs ≡ false → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TBang ∷ ts)
   -- single-char punctuation / operators
   lex-lparen : ∀ {off c cs ts} → headK c ≡ hkLParen → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TLParen ∷ ts)
@@ -95,9 +109,6 @@ data LexesChars : ℕ → List Char → List Token → Set where
   lex-semi   : ∀ {off c cs ts} → headK c ≡ hkSemi   → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TSemicolon ∷ ts)
   lex-at     : ∀ {off c cs ts} → headK c ≡ hkAt     → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TAt ∷ ts)
   lex-pipe   : ∀ {off c cs ts} → headK c ≡ hkPipe   → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TPipe ∷ ts)
-  lex-plus   : ∀ {off c cs ts} → headK c ≡ hkPlus   → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TPlus ∷ ts)
-  lex-star   : ∀ {off c cs ts} → headK c ≡ hkStar   → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TStar ∷ ts)
-  lex-slash  : ∀ {off c cs ts} → headK c ≡ hkSlash  → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TSlash ∷ ts)
   lex-pct    : ∀ {off c cs ts} → headK c ≡ hkPct    → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TPercent ∷ ts)
   lex-amp    : ∀ {off c cs ts} → headK c ≡ hkAmp    → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TAmpersand ∷ ts)
   lex-dot    : ∀ {off c cs ts} → headK c ≡ hkDot    → LexesChars (adv cs cs off) cs ts → LexesChars off (c ∷ cs) (TDot ∷ ts)
