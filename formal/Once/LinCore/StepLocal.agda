@@ -29,7 +29,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (false)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
@@ -45,7 +45,7 @@ module Once.LinCore.StepLocal
 
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
+open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt ans bw
 open import Once.LinCore.Keys fmt ans bw
 open import Once.LinCore.Layout fmt ans bw
@@ -55,6 +55,7 @@ open import Once.LinCore.LowerSim fmt ans bw
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; whole; next; left; right; eleft; eright; body)
 open import Once.LinCore.LowAt fmt ans bw using (Inside; in-trans; in-r; module At)
 open import Once.LinCore.PointAt fmt ans bw using (module Fetch)
+import Once.LinCore.Moves
 
 ------------------------------------------------------------------------
 -- 1. ★ A CODE INSIDE A ROOT REACHES NO FURTHER THAN THE ROOT.
@@ -135,7 +136,7 @@ module Loc {FS : FrameSemantics} (U : Univ)
   open Sim {FS} U wordOf
   open CfgW
   open Fetch {FS} using (in-seg)
-  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; k-halt; Ran; r-keep; r-pc; r-next; ran-refl)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; k-halt; Ran; r-keep; r-pc; r-next; ran-refl; ranS; MovedS)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
   open LocState using (heapMem)
   open FlatStepsAPI {FS} using (FlatSteps; [])
@@ -265,3 +266,88 @@ module Loc {FS : FrameSemantics} (U : Univ)
   st-epop : ∀ {E Es S V} {k : Codeᴵ (Es ∣ S) V} (s : Sub root (epop ⨾ k)) {e : MV E} {es : Slots Es} {os : Stk S} {fs}
           → Here s (vw e es ∥ os) fs → Moved (next s) fs 0 (es ∥ os)
   st-epop s H = empty s H refl (λ C → cfgK s (epop-W (c-env C)) (c-stk C))
+
+  ----------------------------------------------------------------------
+  -- 5. ★ THE MOVES, each by its `LowerSim` lemma.
+  ----------------------------------------------------------------------
+
+  private
+    len-++3 : ∀ (x y z : AbstractTrace) → length (x ++ y ++ z) ≡ length x + (length y + length z)
+    len-++3 x y z = trans (length-++ x) (cong (length x +_) (length-++ y))
+
+    -- a view step's move, as a straight run
+    viaS : ∀ {sb} {m′ : Cfg sb} {fs a b n}
+         → Σ FlatState (λ fs′ → FlatSteps prog (Once.LinCore.Moves.ln {FS} n) fs fs′
+                                × CfgW (heapMem (floc fs′)) (slot fs′) φ m′ × MovedS fs fs′ a b n)
+         → Gives fs (Once.LinCore.Moves.ln {FS} n) 0 m′
+    viaS (fs′ , st , C′ , M) = fs′ , st , C′ , ranS M
+
+  st-swap : ∀ {Es A B S V} {k : Codeᴵ (Es ∣ B ∷ A ∷ S) V} (s : Sub root (swap ⨾ k))
+              {es : Slots Es} {a : MV A} {b : MV B} {os : Stk S} {fs}
+          → Here s (es ∥ a ∷ˢ b ∷ˢ os) fs → Moved (next s) fs 0 (es ∥ b ∷ˢ a ∷ˢ os)
+  st-swap {A = A} {B} {S} s {fs = fs} H =
+    let t = Tp φ (A ∷ B ∷ S) in
+    straight s H _ 0
+      (sym (trans (len-++3 (mvSS t (t ∸ wsz A) (wsz A)) (mvSS (t + wsz A) t (wsz B)) (mvSS (t ∸ wsz A) (t + wsz B) (wsz A)))
+                  (cong₂ _+_ (len-mvSS t (t ∸ wsz A) (wsz A))
+                    (cong₂ _+_ (len-mvSS (t + wsz A) t (wsz B)) (len-mvSS (t ∸ wsz A) (t + wsz B) (wsz A))))))
+      (λ sg h C → swap-sim prog fs φ sg h C (proj₂ (ins-fits s)))
+
+  st-elend : ∀ {E Es X A S V} {k : Codeᴵ ((E ⊗t X) ∷ E ∷ Es ∣ A ∷ S) V} (s : Sub root (elend ⨾ k))
+               {es : Slots (E ∷ Es)} {x : MV X} {a : MV A} {os : Stk S} {fs}
+           → Here s (es ∥ mpair x a ∷ˢ os) fs → Moved (next s) fs 0 (ln (see es) x es ∥ a ∷ˢ os)
+  st-elend {E} {Es} {X} {A} {S} s {fs = fs} H =
+    let e = ws Es ; wE = wsz E in
+    straight s H _ 0
+      (sym (trans (length-++ (mvSS e (e + wE) wE) {mvSS (Tp φ ((X ⊗t A) ∷ S)) (e + wE + wE) (wsz X)})
+                  (cong₂ _+_ (len-mvSS e (e + wE) wE) (len-mvSS (Tp φ ((X ⊗t A) ∷ S)) (e + wE + wE) (wsz X)))))
+      (λ sg h C → elend-sim prog fs φ sg h C (proj₁ (shape-fits (next s))))
+
+  st-eunlend : ∀ {E Es X B S V} {k : Codeᴵ (E ∷ Es ∣ (X ⊗t B) ∷ S) V} (s : Sub root (eunlend ⨾ k))
+                 {e : MV E} {x : MV X} {es : Slots (E ∷ Es)} {w : MV B} {os : Stk S} {fs}
+             → Here s (ln e x es ∥ w ∷ˢ os) fs → Moved (next s) fs 0 (es ∥ mpair x w ∷ˢ os)
+  st-eunlend {X = X} s {fs = fs} H =
+    straight s H _ 0 (sym (len-mvSS _ _ (wsz X)))
+      (λ sg h C → eunlend-sim prog fs φ sg h C (proj₂ (shape-fits (next s))))
+
+  st-efst : ∀ {E₁ E₂ Es S V} {k : Codeᴵ (E₁ ∷ (E₁ ⊗t E₂) ∷ Es ∣ S) V} (s : Sub root (efst ⨾ k))
+              {es : Slots ((E₁ ⊗t E₂) ∷ Es)} {os : Stk S} {e₁ : MV E₁} {e₂ : MV E₂} {fs}
+          → see es ≡ mpair e₁ e₂ → Here s (es ∥ os) fs → Moved (next s) fs 0 (vw e₁ es ∥ os)
+  st-efst {E₁} s {fs = fs} eq H =
+    straight s H _ 0 (sym (len-mvSS _ _ (wsz E₁)))
+      (λ sg h C → viaS (efst-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s)))))
+
+  st-esnd : ∀ {E₁ E₂ Es S V} {k : Codeᴵ (E₂ ∷ (E₁ ⊗t E₂) ∷ Es ∣ S) V} (s : Sub root (esnd ⨾ k))
+              {es : Slots ((E₁ ⊗t E₂) ∷ Es)} {os : Stk S} {e₁ : MV E₁} {e₂ : MV E₂} {fs}
+          → see es ≡ mpair e₁ e₂ → Here s (es ∥ os) fs → Moved (next s) fs 0 (vw e₂ es ∥ os)
+  st-esnd {E₂ = E₂} s {fs = fs} eq H =
+    straight s H _ 0 (sym (len-mvSS _ _ (wsz E₂)))
+      (λ sg h C → viaS (esnd-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s)))))
+
+  st-eapp : ∀ {l X Es S V} {k : Codeᴵ (X ∷ Ct l X ∷ Es ∣ S) V} (s : Sub root (eapp ⨾ k))
+              {es : Slots (Ct l X ∷ Es)} {os : Stk S} {x : MV X} {fs}
+          → see es ≡ mct x → Here s (es ∥ os) fs → Moved (next s) fs 0 (vw x es ∥ os)
+  st-eapp {X = X} s {fs = fs} eq H =
+    straight s H _ 0 (sym (len-mvSS _ _ (wsz X)))
+      (λ sg h C → viaS (eapp-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s)))))
+
+  st-eword : ∀ {b Es S V} {k : Codeᴵ (Bt b ∷ Es ∣ Bt b ∷ S) V} (s : Sub root (eword ⨾ k))
+               {es : Slots (Bt b ∷ Es)} {os : Stk S} {x : ⟦ b ⟧b} {fs}
+           → see es ≡ mbase x → Here s (es ∥ mone ∷ˢ os) fs → Moved (next s) fs 0 (es ∥ mbase x ∷ˢ os)
+  st-eword s {fs = fs} eq H =
+    straight s H _ 0 refl
+      (λ sg h C → viaS (eword-sim prog fs φ eq sg h C (proj₂ (shape-fits (next s)))))
+
+  st-eout : ∀ {F Es S V} {k : Codeᴵ (LF∙ F (μt F) ∷ μt F ∷ Es ∣ S) V} (s : Sub root (eout ⨾ k))
+              {es : Slots (μt F ∷ Es)} {os : Stk S} {i} {v : MV (LF∙ F (μt F))} {fs}
+          → see es ≡ mmu i v → Here s (es ∥ os) fs → Moved (next s) fs 0 (vw v es ∥ os)
+  st-eout {F} s {fs = fs} eq H =
+    straight s H _ 0 (sym (cong suc (len-mvPS _ _ (wsz (LF∙ F (μt F))))))
+      (λ sg h C → eout-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s))))
+
+  st-eoutq : ∀ {F Es S V} {k : Codeᴵ (LF∙ F (μt F) ∷ μt F ∷ Es ∣ S) V} (s : Sub root (eoutq ⨾ k))
+               {es : Slots (μt F ∷ Es)} {os : Stk S} {i} {v : MV (LF∙ F (μt F))} {fs}
+           → see es ≡ mmu i v → Here s (es ∥ os) fs → Moved (next s) fs 0 (vw v es ∥ os)
+  st-eoutq {F} s {fs = fs} eq H =
+    straight s H _ 0 (sym (cong suc (len-mvPS _ _ (wsz (LF∙ F (μt F))))))
+      (λ sg h C → eout-sim prog fs φ eq sg h C (proj₁ (shape-fits (next s))))
