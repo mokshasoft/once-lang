@@ -136,7 +136,7 @@ data Resolves (E : Env) (bound : List String) : Expr → Expr → Set where
              → Resolves E bound (RDestruct e xl el xr er) (RDestruct e′ xl el′ xr er′)
   r-unit  : Resolves E bound RUnit RUnit
   r-int   : ∀ {i} → Resolves E bound (RInt i) (RInt i)
-  r-float : ∀ {i f l} → Resolves E bound (RFloat i f l) (RFloat i f l)
+  r-float : ∀ {s i f l} → Resolves E bound (RFloat s i f l) (RFloat s i f l)
   r-annot : ∀ {e e′ T} → Resolves E bound e e′ → Resolves E bound (RAnnot e T) (RAnnot e′ T)
   r-binop : ∀ {op a a′ b b′} → Resolves E bound a a′ → Resolves E bound b b′
           → Resolves E bound (RBinOp op a b) (RBinOp op a′ b′)

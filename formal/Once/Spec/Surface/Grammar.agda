@@ -28,6 +28,8 @@ module Once.Spec.Surface.Grammar where
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Char using (Char; isLower)
+import Data.Integer as ℤ
+open import Once.Spec.Float.Value using (pos; neg)
 open import Data.List using (List; []; _∷_; reverse)
 open import Data.Product using (_×_; Σ-syntax; ∃-syntax)
 open import Data.String using (String; toList; fromList)
@@ -39,10 +41,12 @@ open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; Int; Float; _*_; _+
 open import Once.Spec.Surface.Lexing
   using (Token; TWord; TInt; TFloat; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow;
          TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TPlus; TMinus;
-         TStar; TSlash; TPercent; TAmpersand; TLt; TLe; TGt; TGe; TEqEq; TNeq; TNewline; TEOF; Lexes)
+         TStar; TSlash; TPercent; TAmpersand; TLt; TLe; TGt; TGe; TEqEq; TNeq; TNewline; TEOF; Lexes;
+         TPlusD; TMinusD; TStarD; TSlashD; TLtD; TLeD; TGtD; TGeD; TEqEqD; TNeqD)
 open import Once.Spec.Surface.Syntax
   using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar;
          PK; PId; _P⊕_; _P⊗_; BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe;
+         OpAddD; OpSubD; OpMulD; OpDivD; OpEqD; OpNeD; OpLtD; OpLeD; OpGtD; OpGeD;
          Expr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg;
          Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkImport; Module)
 
@@ -208,6 +212,16 @@ data ArgStart : List Token → Set where
   as-float  : ∀ {i f l ts} → ArgStart (TFloat i f l ∷ ts)
   as-word   : ∀ {x ts} → ¬ Reserved x → ArgStart (TWord x ∷ ts)
 
+-- A numeral comes next.
+data NumeralStart : List Token → Set where
+  ns-int   : ∀ {n ts} → NumeralStart (TInt n ∷ ts)
+  ns-float : ∀ {i f l ts} → NumeralStart (TFloat i f l ∷ ts)
+
+-- A numeral after a `-`: the negative literal.
+data NegNumeral : List Token → Expr → List Token → Set where
+  nn-int   : ∀ {n r} → NegNumeral (TInt n ∷ r) (RInt (ℤ.- n)) r
+  nn-float : ∀ {i f l r} → NegNumeral (TFloat i f l ∷ r) (RFloat neg i f l) r
+
 -- `@alias` follows.
 data QualSuffix : List Token → Set where
   qual-suffix : ∀ {a ts} → QualSuffix (TAt ∷ TWord a ∷ ts)
@@ -226,10 +240,22 @@ data OpChar : Token → Char → Set where
   oc-amp   : OpChar TAmpersand '&'
   oc-at    : OpChar TAt '@'
 
+-- The dotted operator tokens, two characters each: `(+.)` names the same
+-- operator it named before `+.` was one token.
+data OpChar2 : Token → Char → Char → Set where
+  oc-plusd  : OpChar2 TPlusD '+' '.'
+  oc-minusd : OpChar2 TMinusD '-' '.'
+  oc-stard  : OpChar2 TStarD '*' '.'
+  oc-slashd : OpChar2 TSlashD '/' '.'
+  oc-ltd    : OpChar2 TLtD '<' '.'
+  oc-gtd    : OpChar2 TGtD '>' '.'
+
 -- An operator name up to its closing parenthesis (`cs`: read so far, reversed).
 data ParsesOpChars : List Token → List Char → String → List Token → Set where
   op-close : ∀ {c cs r} → ParsesOpChars (TRParen ∷ r) (c ∷ cs) (fromList (reverse (c ∷ cs))) r
   op-char  : ∀ {t ch cs s r ts} → OpChar t ch → ParsesOpChars ts (ch ∷ cs) s r → ParsesOpChars (t ∷ ts) cs s r
+  op-char2 : ∀ {t c₁ c₂ cs s r ts} → OpChar2 t c₁ c₂ → ParsesOpChars ts (c₂ ∷ c₁ ∷ cs) s r
+           → ParsesOpChars (t ∷ ts) cs s r
 
 data CompareToken : Token → BinOp → Set where
   ct-lt : CompareToken TLt OpLt
@@ -238,15 +264,25 @@ data CompareToken : Token → BinOp → Set where
   ct-ge : CompareToken TGe OpGe
   ct-eq : CompareToken TEqEq OpEq
   ct-ne : CompareToken TNeq OpNe
+  ct-ltd : CompareToken TLtD OpLtD
+  ct-led : CompareToken TLeD OpLeD
+  ct-gtd : CompareToken TGtD OpGtD
+  ct-ged : CompareToken TGeD OpGeD
+  ct-eqd : CompareToken TEqEqD OpEqD
+  ct-ned : CompareToken TNeqD OpNeD
 
 data AddToken : Token → BinOp → Set where
   at-plus  : AddToken TPlus OpAdd
   at-minus : AddToken TMinus OpSub
+  at-plusd  : AddToken TPlusD OpAddD
+  at-minusd : AddToken TMinusD OpSubD
 
 data MulToken : Token → BinOp → Set where
   mt-star  : MulToken TStar OpMul
   mt-slash : MulToken TSlash OpDiv
   mt-pct   : MulToken TPercent OpMod
+  mt-stard  : MulToken TStarD OpMulD
+  mt-slashd : MulToken TSlashD OpDivD
 
 data ParsesExpr     : List Token → Expr → List Token → Set
 data ParsesCompTail : Expr → List Token → Expr → List Token → Set
@@ -291,9 +327,13 @@ data ParsesMulTail where
   mul-op   : ∀ {l t op ts ts₂ r e₂ e} → MulToken t op → ParsesUnary ts e₂ ts₂ → ParsesMulTail (RBinOp op l e₂) ts₂ e r
            → ParsesMulTail l (t ∷ ts) e r
 
+-- `-` before a numeral is the numeral's sign: `-5` and `-1.5` are literals
+-- (plan 0.150 N4), so `RNeg` never wraps a numeral. A binary `-` is taken by
+-- the add-tail first (`x - 5`), and `f -5` is `f - 5` (`ArgStart` has no `-`).
 data ParsesUnary where
-  neg   : ∀ {ts r e} → ParsesUnary ts e r → ParsesUnary (TMinus ∷ ts) (RNeg e) r
-  unary : ∀ {ts r e} → ParsesApp ts e r → ParsesUnary ts e r
+  neg     : ∀ {ts r e} → ¬ NumeralStart ts → ParsesUnary ts e r → ParsesUnary (TMinus ∷ ts) (RNeg e) r
+  neg-lit : ∀ {ts ts₁ r a e} → NegNumeral ts a ts₁ → ParsesAppTail a ts₁ e r → ParsesUnary (TMinus ∷ ts) e r
+  unary   : ∀ {ts r e} → ParsesApp ts e r → ParsesUnary ts e r
 
 data ParsesApp where
   app : ∀ {ts ts₁ r f e} → ParsesAtomExpr ts f ts₁ → ParsesAppTail f ts₁ e r → ParsesApp ts e r
@@ -305,7 +345,7 @@ data ParsesAppTail where
 data ParsesAtomExpr where
   atom-unit   : ∀ {r} → ParsesAtomExpr (TLParen ∷ TRParen ∷ r) RUnit r
   atom-int    : ∀ {n r} → ParsesAtomExpr (TInt n ∷ r) (RInt n) r
-  atom-float  : ∀ {i f l r} → ParsesAtomExpr (TFloat i f l ∷ r) (RFloat i f l) r
+  atom-float  : ∀ {i f l r} → ParsesAtomExpr (TFloat i f l ∷ r) (RFloat pos i f l) r
   atom-var    : ∀ {x r} → ¬ Reserved x → ¬ QualSuffix r → ParsesAtomExpr (TWord x ∷ r) (RVar x) r
   atom-qual   : ∀ {x a r} → ¬ Reserved x → ParsesAtomExpr (TWord x ∷ TAt ∷ TWord a ∷ r) (RQualified x a) r
   atom-paren  : ∀ {ts ts₁ r e e′} → ParsesExpr ts e ts₁ → ParsesParenCont e ts₁ e′ r → ParsesAtomExpr (TLParen ∷ ts) e′ r

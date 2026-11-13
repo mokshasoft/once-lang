@@ -23,6 +23,7 @@ open import Data.String using (String)
 open import Once.Spec.Grade using (Quantity; Finite)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Type using (Type)
+open import Once.Spec.Float.Value using (Sign)
 
 ------------------------------------------------------------------------
 -- Types as written
@@ -54,9 +55,13 @@ infixr 50 _P*_
 -- Expressions
 ------------------------------------------------------------------------
 
+-- The dotted operators are IEEE's rounded arithmetic and quiet comparison at
+-- `Float` (plan 0.150 N7, N8): `+. -. *. /.` and `==. !=. <. <=. >. >=.`.
 data BinOp : Set where
   OpAdd OpSub OpMul OpDiv OpMod : BinOp
   OpLt OpLe OpGt OpGe OpEq OpNe : BinOp
+  OpAddD OpSubD OpMulD OpDivD   : BinOp
+  OpEqD OpNeD OpLtD OpLeD OpGtD OpGeD : BinOp
 
 data Expr : Set where
   RVar       : String → Expr                       -- x
@@ -68,8 +73,8 @@ data Expr : Set where
   RPair      : Expr → Expr → Expr                  -- (e₁, e₂)
   RDestruct  : Expr → String → Expr → String → Expr → Expr   -- destruct e | x -> e₁ | y -> e₂
   RUnit      : Expr                                -- ()
-  RInt       : ℤ → Expr
-  RFloat     : ℕ → ℕ → ℕ → Expr                    -- integer part, fraction digits, their number
+  RInt       : ℤ → Expr                            -- 5, -5 (a signed literal, plan 0.150 N4)
+  RFloat     : Sign → ℕ → ℕ → ℕ → Expr             -- sign, integer part, fraction digits, their number
   RAnnot     : Expr → Type → Expr                  -- (e : T)
   RBinOp     : BinOp → Expr → Expr → Expr
   RNeg       : Expr → Expr                         -- -e

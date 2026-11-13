@@ -32,6 +32,7 @@ open import Data.Nat using (ℕ; suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Integer using (ℤ)
 open import Once.Spec.Float.Decimal using (Decimal)
+open import Once.Spec.Theory using (Has; Sym; symDom; symCod)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Grade using (Quantity; Purity)
 open import Once.Spec.Signature using (DeclType)
@@ -67,50 +68,21 @@ data Lit : Set where
   lit-int   : ℤ → Lit
   lit-float : Decimal → Lit
 
+-- A numeric primitive is a theory's symbol at a number type that models the
+-- theory (`Spec.Theory`, plan 0.150): its type is the symbol's shape at that
+-- type, its meaning the type's structure. The conversion `Int` → `Float`
+-- (D125's widening) is the one primitive outside the table.
 data Prim : Set where
-  p-add p-sub p-mul p-div p-mod p-neg : Prim
-  p-lt p-le p-gt p-ge p-eq p-ne       : Prim
-  p-fadd p-fsub p-fmul p-fdiv         : Prim
-  p-i2f                               : Prim
+  num   : ∀ {A U k} → Has A U → Sym U k → Prim
+  p-i2f : Prim
 
 primDom : ∀ {m} → Prim → Ty m
-primDom p-neg  = Int
-primDom p-i2f  = Int
-primDom p-fadd = Float * Float
-primDom p-fsub = Float * Float
-primDom p-fmul = Float * Float
-primDom p-fdiv = Float * Float
-primDom p-add  = Int * Int
-primDom p-sub  = Int * Int
-primDom p-mul  = Int * Int
-primDom p-div  = Int * Int
-primDom p-mod  = Int * Int
-primDom p-lt   = Int * Int
-primDom p-le   = Int * Int
-primDom p-gt   = Int * Int
-primDom p-ge   = Int * Int
-primDom p-eq   = Int * Int
-primDom p-ne   = Int * Int
+primDom (num {A} {k = k} _ _) = symDom A k
+primDom p-i2f                 = Int
 
--- A comparison answers a `Bool = Unit + Unit`.
 primCod : ∀ {m} → Prim → Ty m
-primCod p-add  = Int
-primCod p-sub  = Int
-primCod p-mul  = Int
-primCod p-div  = Int
-primCod p-mod  = Int
-primCod p-neg  = Int
-primCod p-lt   = Unit + Unit
-primCod p-le   = Unit + Unit
-primCod p-gt   = Unit + Unit
-primCod p-ge   = Unit + Unit
-primCod p-eq   = Unit + Unit
-primCod p-ne   = Unit + Unit
-primCod p-fadd = Float
-primCod p-fsub = Float
-primCod p-fmul = Float
-primCod p-fdiv = Float
-primCod p-i2f  = Float
+primCod (num {A} {k = k} _ _) = symCod A k
+primCod p-i2f                 = Float
 
 ------------------------------------------------------------------------
 -- Terms

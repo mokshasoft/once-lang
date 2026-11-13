@@ -46,6 +46,11 @@
 --   * laws apply  — every law, and every claim with premises, has an
 --                   instance: a closed program meeting all its premises,
 --                   with two different sides (no law is vacuous).
+--   * numbers     — each row of the table of theories (`Spec.Theory`) has its
+--                   theories' laws, over the operations its primitives mean:
+--                   `Int` a commutative ring with `Neg`, a total order, `χ_Δ`;
+--                   `Float` a rounded field with exact `Neg`, IEEE's
+--                   totalOrder, `χ_Δ` (plan 0.150).
 ------------------------------------------------------------------------
 
 module Once.Spec.Metatheory where
@@ -87,6 +92,9 @@ import Once.Spec.Core.Meaning as Meaning
 import Once.Spec.Core.Program as CoreProgram
 import Once.Spec.Surface.Typing as SurfaceTyping
 open import Once.Spec.Examples
+open import Data.Integer using (ℤ)
+open import Once.Spec.Float.Value using (flip; negV; roundQ)
+open import Once.Spec.Theory using (Has; module Models; module Laws)
 
 ------------------------------------------------------------------------
 -- Types
@@ -957,6 +965,24 @@ module _ (fmt : TargetNum) where
                        X × (∀ x → EqLayer f (LayerEq G _≈ν_) (νM.outν (g x)) (fmap (fin f) (sfmap G g) (c x)))
 
 ------------------------------------------------------------------------
+-- Numbers: every row of the table has its theory's laws
+------------------------------------------------------------------------
+
+module _ (fmt : TargetNum) where
+  open TargetNum fmt using (float-format)
+  open Models fmt using (Val; Valid; structure)
+
+  record Numbers : Set where
+    field
+      -- each type's structure for each theory it has (`Spec.Theory`) obeys
+      -- the theory's laws, on the values the target's numbers take
+      lawful    : ∀ {A U} (h : Has A U) → Laws.Laws (Valid A) U (structure h)
+      -- `Float`'s negation is EXACT: it commutes with rounding (N3 (b);
+      -- roundTiesToEven is symmetric)
+      neg-exact : ∀ s n (E : ℤ) d → negV (roundQ float-format s n E d)
+                                   ≡ roundQ float-format (flip s) n E d
+
+------------------------------------------------------------------------
 -- All of it
 ------------------------------------------------------------------------
 
@@ -976,3 +1002,4 @@ record Metatheory : Set₁ where
     recursion  : ∀ (Σ : Signature) → Recursion Σ
     laws-apply : ∀ (fmt : TargetNum) → LawsApply fmt
     totality   : Totality
+    numbers    : ∀ (fmt : TargetNum) → Numbers fmt

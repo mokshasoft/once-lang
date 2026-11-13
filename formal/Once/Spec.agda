@@ -34,6 +34,7 @@ import Once.Spec.Float.Decimal   -- … its literals, rounded once …
 import Once.Spec.Float.Arith     -- … its arithmetic and comparisons …
 import Once.Spec.Float.Encoding  -- … and its bits
 import Once.Spec.Numerics        -- the target's numbers
+import Once.Spec.Theory          -- the theories the number types model
 import Once.Spec.Bool            -- truth values
 
 -- Effects, and what is observed.

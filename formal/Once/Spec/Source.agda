@@ -25,7 +25,7 @@
 
 module Once.Spec.Source where
 
-open import Data.Integer using (ℤ; -_)
+open import Data.Integer using (ℤ)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Binary.Pointwise using (Pointwise)
 open import Data.List.Relation.Unary.All using (All)
@@ -83,10 +83,11 @@ src ⊢ᴹ tm = Σ[ mm ∈ ModuleMap ]
 -- What a target can express
 ------------------------------------------------------------------------
 
-intLits  : Expr → List ℤ
-negLits : Expr → List ℤ   -- under a negation: a literal there is negative
+-- A negative numeral is a literal of its own (plan 0.150 N4), so the literal
+-- that must fit is the one written: `-9223372036854775808` fits 64 bits.
+intLits : Expr → List ℤ
 intLits (RInt i)              = i ∷ []
-intLits (RNeg e)              = negLits e
+intLits (RNeg e)              = intLits e
 intLits (RVar _)              = []
 intLits (RQualified _ _)      = []
 intLits (RResolved _)         = []
@@ -96,12 +97,9 @@ intLits (RLet _ e b)          = intLits e ++ intLits b
 intLits (RPair a b)           = intLits a ++ intLits b
 intLits (RDestruct e _ l _ r) = intLits e ++ intLits l ++ intLits r
 intLits RUnit                 = []
-intLits (RFloat _ _ _)        = []
+intLits (RFloat _ _ _ _)      = []
 intLits (RAnnot e _)          = intLits e
 intLits (RBinOp _ a b)        = intLits a ++ intLits b
-negLits (RInt i) = (- i) ∷ []
-{-# CATCHALL #-}
-negLits e        = intLits e
 
 declLits : List Decl → List ℤ
 declLits []                     = []

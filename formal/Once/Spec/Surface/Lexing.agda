@@ -9,7 +9,9 @@
 -- Blanks are skipped; a newline is a token unless the next line is indented
 -- (then it continues the line); `--` starts a comment to the end of the line,
 -- `{-` a nested comment closed by `-}`. Two-character operators (`->`, `<=`,
--- `>=`, `==`, `!=`, `^0`, `^1`, `^w`) are one token. A number is an integer or,
+-- `>=`, `==`, `!=`, `^0`, `^1`, `^w`) are one token, and so is an arithmetic
+-- or comparison operator followed by `.` (`+.`, `<=.`, …: IEEE's operators at
+-- `Float`, plan 0.150). A number is an integer or,
 -- with a `.` and a digit, a decimal; an identifier starts with a letter or
 -- `_`. Nothing is dropped silently: a text is lexed to its end, so its
 -- tokens end in `TEOF`, and one with an unterminated string literal, a `^`
@@ -46,6 +48,8 @@ data Token : Set where
   TLambda TComma TSemicolon TAt TPipe TDot      : Token   -- \ , ; @ | .
   TPlus TMinus TStar TSlash TPercent TAmpersand : Token   -- + - * / % &
   TLt TLe TGt TGe TEqEq TNeq TBang              : Token   -- < <= > >= == != !
+  TPlusD TMinusD TStarD TSlashD                 : Token   -- +. -. *. /.
+  TLtD TLeD TGtD TGeD TEqEqD TNeqD              : Token   -- <. <=. >. >=. ==. !=.
   TNewline TEOF                                 : Token
 
 ------------------------------------------------------------------------
@@ -177,18 +181,25 @@ data LexesChars : List Char → List Token → Set where
   -- `--`, `->`, `-`
   lex-comment : ∀ {cs r ts} → LineRest cs r → LexesChars r ts → LexesChars ('-' ∷ '-' ∷ cs) ts
   lex-arrow   : ∀ {cs ts} → LexesChars cs ts → LexesChars ('-' ∷ '>' ∷ cs) (TArrow ∷ ts)
-  lex-minus   : ∀ {cs ts} → ¬ Next cs '-' → ¬ Next cs '>' → LexesChars cs ts → LexesChars ('-' ∷ cs) (TMinus ∷ ts)
+  lex-minus   : ∀ {cs ts} → ¬ Next cs '-' → ¬ Next cs '>' → ¬ Next cs '.' → LexesChars cs ts → LexesChars ('-' ∷ cs) (TMinus ∷ ts)
+  lex-minusd  : ∀ {cs ts} → LexesChars cs ts → LexesChars ('-' ∷ '.' ∷ cs) (TMinusD ∷ ts)
   -- `{-`, `{`
   lex-block  : ∀ {cs r ts} → BlockRest 1 cs r → LexesChars r ts → LexesChars ('{' ∷ '-' ∷ cs) ts
   lex-lbrace : ∀ {cs ts} → ¬ Next cs '-' → LexesChars cs ts → LexesChars ('{' ∷ cs) (TLBrace ∷ ts)
   -- `x=` operators
-  lex-le    : ∀ {cs ts} → LexesChars cs ts → LexesChars ('<' ∷ '=' ∷ cs) (TLe ∷ ts)
-  lex-lt    : ∀ {cs ts} → ¬ Next cs '=' → LexesChars cs ts → LexesChars ('<' ∷ cs) (TLt ∷ ts)
-  lex-ge    : ∀ {cs ts} → LexesChars cs ts → LexesChars ('>' ∷ '=' ∷ cs) (TGe ∷ ts)
-  lex-gt    : ∀ {cs ts} → ¬ Next cs '=' → LexesChars cs ts → LexesChars ('>' ∷ cs) (TGt ∷ ts)
-  lex-eqeq  : ∀ {cs ts} → LexesChars cs ts → LexesChars ('=' ∷ '=' ∷ cs) (TEqEq ∷ ts)
+  lex-le    : ∀ {cs ts} → ¬ Next cs '.' → LexesChars cs ts → LexesChars ('<' ∷ '=' ∷ cs) (TLe ∷ ts)
+  lex-led   : ∀ {cs ts} → LexesChars cs ts → LexesChars ('<' ∷ '=' ∷ '.' ∷ cs) (TLeD ∷ ts)
+  lex-lt    : ∀ {cs ts} → ¬ Next cs '=' → ¬ Next cs '.' → LexesChars cs ts → LexesChars ('<' ∷ cs) (TLt ∷ ts)
+  lex-ltd   : ∀ {cs ts} → LexesChars cs ts → LexesChars ('<' ∷ '.' ∷ cs) (TLtD ∷ ts)
+  lex-ge    : ∀ {cs ts} → ¬ Next cs '.' → LexesChars cs ts → LexesChars ('>' ∷ '=' ∷ cs) (TGe ∷ ts)
+  lex-ged   : ∀ {cs ts} → LexesChars cs ts → LexesChars ('>' ∷ '=' ∷ '.' ∷ cs) (TGeD ∷ ts)
+  lex-gt    : ∀ {cs ts} → ¬ Next cs '=' → ¬ Next cs '.' → LexesChars cs ts → LexesChars ('>' ∷ cs) (TGt ∷ ts)
+  lex-gtd   : ∀ {cs ts} → LexesChars cs ts → LexesChars ('>' ∷ '.' ∷ cs) (TGtD ∷ ts)
+  lex-eqeq  : ∀ {cs ts} → ¬ Next cs '.' → LexesChars cs ts → LexesChars ('=' ∷ '=' ∷ cs) (TEqEq ∷ ts)
+  lex-eqeqd : ∀ {cs ts} → LexesChars cs ts → LexesChars ('=' ∷ '=' ∷ '.' ∷ cs) (TEqEqD ∷ ts)
   lex-equal : ∀ {cs ts} → ¬ Next cs '=' → LexesChars cs ts → LexesChars ('=' ∷ cs) (TEquals ∷ ts)
-  lex-neq   : ∀ {cs ts} → LexesChars cs ts → LexesChars ('!' ∷ '=' ∷ cs) (TNeq ∷ ts)
+  lex-neq   : ∀ {cs ts} → ¬ Next cs '.' → LexesChars cs ts → LexesChars ('!' ∷ '=' ∷ cs) (TNeq ∷ ts)
+  lex-neqd  : ∀ {cs ts} → LexesChars cs ts → LexesChars ('!' ∷ '=' ∷ '.' ∷ cs) (TNeqD ∷ ts)
   lex-bang  : ∀ {cs ts} → ¬ Next cs '=' → LexesChars cs ts → LexesChars ('!' ∷ cs) (TBang ∷ ts)
   -- one-character tokens
   lex-lparen : ∀ {cs ts} → LexesChars cs ts → LexesChars ('(' ∷ cs) (TLParen ∷ ts)
@@ -200,9 +211,12 @@ data LexesChars : List Char → List Token → Set where
   lex-semi   : ∀ {cs ts} → LexesChars cs ts → LexesChars (';' ∷ cs) (TSemicolon ∷ ts)
   lex-at     : ∀ {cs ts} → LexesChars cs ts → LexesChars ('@' ∷ cs) (TAt ∷ ts)
   lex-pipe   : ∀ {cs ts} → LexesChars cs ts → LexesChars ('|' ∷ cs) (TPipe ∷ ts)
-  lex-plus   : ∀ {cs ts} → LexesChars cs ts → LexesChars ('+' ∷ cs) (TPlus ∷ ts)
-  lex-star   : ∀ {cs ts} → LexesChars cs ts → LexesChars ('*' ∷ cs) (TStar ∷ ts)
-  lex-slash  : ∀ {cs ts} → LexesChars cs ts → LexesChars ('/' ∷ cs) (TSlash ∷ ts)
+  lex-plus   : ∀ {cs ts} → ¬ Next cs '.' → LexesChars cs ts → LexesChars ('+' ∷ cs) (TPlus ∷ ts)
+  lex-plusd  : ∀ {cs ts} → LexesChars cs ts → LexesChars ('+' ∷ '.' ∷ cs) (TPlusD ∷ ts)
+  lex-star   : ∀ {cs ts} → ¬ Next cs '.' → LexesChars cs ts → LexesChars ('*' ∷ cs) (TStar ∷ ts)
+  lex-stard  : ∀ {cs ts} → LexesChars cs ts → LexesChars ('*' ∷ '.' ∷ cs) (TStarD ∷ ts)
+  lex-slash  : ∀ {cs ts} → ¬ Next cs '.' → LexesChars cs ts → LexesChars ('/' ∷ cs) (TSlash ∷ ts)
+  lex-slashd : ∀ {cs ts} → LexesChars cs ts → LexesChars ('/' ∷ '.' ∷ cs) (TSlashD ∷ ts)
   lex-pct    : ∀ {cs ts} → LexesChars cs ts → LexesChars ('%' ∷ cs) (TPercent ∷ ts)
   lex-amp    : ∀ {cs ts} → LexesChars cs ts → LexesChars ('&' ∷ cs) (TAmpersand ∷ ts)
   lex-dot    : ∀ {cs ts} → LexesChars cs ts → LexesChars ('.' ∷ cs) (TDot ∷ ts)

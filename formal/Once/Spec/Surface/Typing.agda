@@ -42,12 +42,16 @@ open import Once.Spec.Type
          WFFun; Respects; _⟨_⟩; _⟨_⟩F; Occurs)
 open import Once.Spec.Sub using (_<:_; _⊔_≔_)
 open import Once.Spec.Signature using (_∶_; ⌜_⌝; ⌜_⌝ᵈ)
-open import Once.Spec.Float.Decimal using (decimalOf; negate)
+open import Once.Spec.Float.Decimal using (Decimal; decimalOf; negate)
+open import Once.Spec.Float.Value using (Sign; pos; neg)
+open import Once.Spec.Theory
+  using (NumTy; int; float; ⌜_⌝ⁿ; Theory; Neg; Ring; Division; Order; Equality; Rounded;
+         Shape; unary; binary; compare; Sym; ‵neg; ‵+; ‵-; ‵*; ‵/; ‵%; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=;
+         ‵+ᵈ; ‵-ᵈ; ‵*ᵈ; ‵/ᵈ; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; symCod; Has; float-rounded)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Core.Syntax
   using (Tm; var; lam; app; let′; unit; pair; inl; inr; case; lit; lit-int; lit-float; prim; Prim;
-         p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-lt; p-le; p-gt; p-ge; p-eq; p-ne;
-         p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; coerce; sigop; ref; _!!_; module Schema)
+         num; p-i2f; coerce; sigop; ref; _!!_; module Schema)
 open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Derived
 
@@ -77,27 +81,47 @@ infixr 30 _⇒⟨_⟩_
 -- The operators, and the heads with rules of their own
 ------------------------------------------------------------------------
 
-data IntArith : BinOp → Prim → Set where
-  ia-add : IntArith OpAdd p-add
-  ia-sub : IntArith OpSub p-sub
-  ia-mul : IntArith OpMul p-mul
-  ia-div : IntArith OpDiv p-div
-  ia-mod : IntArith OpMod p-mod
+-- Each binary operator is a symbol of one theory (`Spec.Theory`).
+record BinSym : Set where
+  constructor _∶_∶_
+  field
+    theory : Theory
+    shape  : Shape
+    symbol : Sym theory shape
+open BinSym
 
--- `%` has no float meaning.
-data FloatArith : BinOp → Prim → Set where
-  fa-add : FloatArith OpAdd p-fadd
-  fa-sub : FloatArith OpSub p-fsub
-  fa-mul : FloatArith OpMul p-fmul
-  fa-div : FloatArith OpDiv p-fdiv
+binSym : BinOp → BinSym
+binSym OpAdd  = Ring     ∶ binary  ∶ ‵+
+binSym OpSub  = Ring     ∶ binary  ∶ ‵-
+binSym OpMul  = Ring     ∶ binary  ∶ ‵*
+binSym OpDiv  = Division ∶ binary  ∶ ‵/
+binSym OpMod  = Division ∶ binary  ∶ ‵%
+binSym OpLt   = Order    ∶ compare ∶ ‵<
+binSym OpLe   = Order    ∶ compare ∶ ‵<=
+binSym OpGt   = Order    ∶ compare ∶ ‵>
+binSym OpGe   = Order    ∶ compare ∶ ‵>=
+binSym OpEq   = Equality ∶ compare ∶ ‵==
+binSym OpNe   = Equality ∶ compare ∶ ‵!=
+binSym OpAddD = Rounded  ∶ binary  ∶ ‵+ᵈ
+binSym OpSubD = Rounded  ∶ binary  ∶ ‵-ᵈ
+binSym OpMulD = Rounded  ∶ binary  ∶ ‵*ᵈ
+binSym OpDivD = Rounded  ∶ binary  ∶ ‵/ᵈ
+binSym OpEqD  = Rounded  ∶ compare ∶ ‵==ᵈ
+binSym OpNeD  = Rounded  ∶ compare ∶ ‵!=ᵈ
+binSym OpLtD  = Rounded  ∶ compare ∶ ‵<ᵈ
+binSym OpLeD  = Rounded  ∶ compare ∶ ‵<=ᵈ
+binSym OpGtD  = Rounded  ∶ compare ∶ ‵>ᵈ
+binSym OpGeD  = Rounded  ∶ compare ∶ ‵>=ᵈ
 
-data Compare : BinOp → Prim → Set where
-  cmp-lt : Compare OpLt p-lt
-  cmp-le : Compare OpLe p-le
-  cmp-gt : Compare OpGt p-gt
-  cmp-ge : Compare OpGe p-ge
-  cmp-eq : Compare OpEq p-eq
-  cmp-ne : Compare OpNe p-ne
+-- A float literal's value as written: its sign on the digits.
+signedDecimal : Sign → ℕ → ℕ → ℕ → Decimal
+signedDecimal pos i f l = decimalOf i f l
+signedDecimal neg i f l = negate (decimalOf i f l)
+
+-- A literal that is a negative zero (`-0.0`, `-0.00`): rejected (plan 0.150
+-- N5). Negative zero is a value, reached by negation (`-x`, `-(0.0)`).
+data NegativeZero : Sign → ℕ → ℕ → Set where
+  neg-zero : NegativeZero neg 0 0
 
 -- The generators applied by rules of their own.
 specialGenerators : List String
@@ -111,6 +135,11 @@ data SpecialHead : Expr → Set where
   sh-pair    : ∀ {f} → SpecialHead (RApp (RResolved (gen "pair")) f)
   sh-compose : ∀ {f} → SpecialHead (RApp (RResolved (gen "compose")) f)
   sh-case    : ∀ {f} → SpecialHead (RApp (RResolved (gen "case")) f)
+
+-- An operand at a number type, as a `Float`: an `Int` widens (D125).
+asFloat : ∀ {m n} → NumTy → Tm S m n → Tm S m n
+asFloat int   t = prim p-i2f t
+asFloat float t = t
 
 ------------------------------------------------------------------------
 -- The judgment
@@ -128,7 +157,8 @@ module _ {m : ℕ} (Δ : KCtx m) where
 
   data _⊢_⇒_↝_ {n} L where
     s-int    : ∀ (i : ℤ) → L ⊢ RInt i ⇒ Int ↝ lit (lit-int i)
-    s-float  : ∀ i f l → L ⊢ RFloat i f l ⇒ Float ↝ lit (lit-float (decimalOf i f l))
+    s-float  : ∀ s i f l → ¬ NegativeZero s i f
+             → L ⊢ RFloat s i f l ⇒ Float ↝ lit (lit-float (signedDecimal s i f l))
     s-unit   : L ⊢ RUnit ⇒ Unit ↝ unit
     s-unit-g : L ⊢ RResolved (gen "unit") ⇒ Unit ↝ unit
 
@@ -150,8 +180,9 @@ module _ {m : ℕ} (Δ : KCtx m) where
 
     s-pair : ∀ {a b A B ta tb} → L ⊢ a ⇒ A ↝ ta → L ⊢ b ⇒ B ↝ tb → L ⊢ RPair a b ⇒ A * B ↝ pair ta tb
 
-    s-neg       : ∀ {e t} → L ⊢ e ⇒ Int ↝ t → L ⊢ RNeg e ⇒ Int ↝ prim p-neg t
-    s-neg-float : ∀ i f l → L ⊢ RNeg (RFloat i f l) ⇒ Float ↝ lit (lit-float (negate (decimalOf i f l)))
+    -- `-e` at a number type that has `Neg`.
+    s-neg : ∀ {e A t} (h : Has A Neg)
+          → L ⊢ e ⇒ ⌜ A ⌝ⁿ ↝ t → L ⊢ RNeg e ⇒ ⌜ A ⌝ⁿ ↝ prim (num h ‵neg) t
 
     -- The binder's usage `q` is the body's (the core judgment checks it).
     s-let : ∀ {x e₁ e₂ A B t₁ t₂} (q : Quantity)
@@ -164,19 +195,17 @@ module _ {m : ℕ} (Δ : KCtx m) where
            → (L ▹ xl ∶ A) ⊢ el ⇒ Cl ↝ tl → (L ▹ xr ∶ B) ⊢ er ⇒ Cr ↝ tr → Cl ⊔ Cr ≔ C
            → L ⊢ RDestruct e xl el xr er ⇒ C ↝ case ql qr ts (coerce Cl C tl) (coerce Cr C tr)
 
-    s-arith : ∀ {op p e₁ e₂ t₁ t₂} → IntArith op p
-            → L ⊢ e₁ ⇒ Int ↝ t₁ → L ⊢ e₂ ⇒ Int ↝ t₂ → L ⊢ RBinOp op e₁ e₂ ⇒ Int ↝ prim p (pair t₁ t₂)
-    s-arith-float : ∀ {op p e₁ e₂ t₁ t₂} → FloatArith op p
-                  → L ⊢ e₁ ⇒ Float ↝ t₁ → L ⊢ e₂ ⇒ Float ↝ t₂ → L ⊢ RBinOp op e₁ e₂ ⇒ Float ↝ prim p (pair t₁ t₂)
-    -- An `Int` operand of a float operation widens (D125).
-    s-arith-float-il : ∀ {op p e₁ e₂ t₁ t₂} → FloatArith op p
-                     → L ⊢ e₁ ⇒ Int ↝ t₁ → L ⊢ e₂ ⇒ Float ↝ t₂
-                     → L ⊢ RBinOp op e₁ e₂ ⇒ Float ↝ prim p (pair (prim p-i2f t₁) t₂)
-    s-arith-float-ir : ∀ {op p e₁ e₂ t₁ t₂} → FloatArith op p
-                     → L ⊢ e₁ ⇒ Float ↝ t₁ → L ⊢ e₂ ⇒ Int ↝ t₂
-                     → L ⊢ RBinOp op e₁ e₂ ⇒ Float ↝ prim p (pair t₁ (prim p-i2f t₂))
-    s-compare : ∀ {op p e₁ e₂ t₁ t₂} → Compare op p
-              → L ⊢ e₁ ⇒ Int ↝ t₁ → L ⊢ e₂ ⇒ Int ↝ t₂ → L ⊢ RBinOp op e₁ e₂ ⇒ Unit + Unit ↝ prim p (pair t₁ t₂)
+    -- A binary operator at a number type that has the operator's theory.
+    s-binop : ∀ {op e₁ e₂ A t₁ t₂} (h : Has A (theory (binSym op)))
+            → L ⊢ e₁ ⇒ ⌜ A ⌝ⁿ ↝ t₁ → L ⊢ e₂ ⇒ ⌜ A ⌝ⁿ ↝ t₂
+            → L ⊢ RBinOp op e₁ e₂ ⇒ symCod A (shape (binSym op)) ↝ prim (num h (symbol (binSym op))) (pair t₁ t₂)
+    -- A dotted operator on an `Int` and a `Float`, either way round: the
+    -- `Int` widens (D125, plan 0.150 N9). Two `Float`s are `s-binop`'s; two
+    -- `Int`s have no rule.
+    s-binop-mixed : ∀ {op k o e₁ e₂ a₁ a₂ t₁ t₂} → binSym op ≡ (Rounded ∶ k ∶ o) → a₁ ≢ a₂
+                  → L ⊢ e₁ ⇒ ⌜ a₁ ⌝ⁿ ↝ t₁ → L ⊢ e₂ ⇒ ⌜ a₂ ⌝ⁿ ↝ t₂
+                  → L ⊢ RBinOp op e₁ e₂ ⇒ symCod float k
+                    ↝ prim (num float-rounded o) (pair (asFloat a₁ t₁) (asFloat a₂ t₂))
 
     -- Generators applied to a synthesizing argument.
     s-id-app       : ∀ {e T t} → L ⊢ e ⇒ T ↝ t → L ⊢ RApp (RResolved (gen "id")) e ⇒ T ↝ app (idᶜ T pure) t
