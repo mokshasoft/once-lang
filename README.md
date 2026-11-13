@@ -1,4 +1,4 @@
-# Once
+# <picture><source media="(prefers-color-scheme: dark)" srcset="icon/once-dark.svg"><img src="icon/once.svg" alt="" width="48" height="48" align="top"></picture> Once
 
 **Capture essence, write Once, compile everywhere.** A programming language founded on natural transformations.
 
