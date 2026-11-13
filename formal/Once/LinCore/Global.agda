@@ -24,7 +24,7 @@ open import Data.Bool using (false)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
@@ -33,6 +33,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.Memory.HeapAddress
+import Once.LinCore.Moves
 
 module Once.LinCore.Global
   (fmt : TargetNum) (ans : FFIAnswers)
@@ -56,7 +57,7 @@ open import Once.LinCore.StepLocal fmt ans bw using (module Loc)
 open import Once.LinCore.LoopStep fmt ans bw using (module Loops)
 open import Once.LinCore.CallStep fmt ans bw using (module Calls; module Frames)
 open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
-open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg)
+open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module Tr)
 
 module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
@@ -118,20 +119,22 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- ★ a one-shot trampoline before its cell part: the cell in `Input1` and
   -- the first save slot, its words in the heap; the caller's area in the
   -- second, the argument's words there
-  record Tr0 {g A B} (M Mc wA q : ℕ) (v : MV (Fn once g A B ⊗t A)) (fs : FlatState) : Set where
+  record Tr0 {X A} (M Mc q : ℕ) (i : Id) (x : MV X) (a : MV A) (fs : FlatState) : Set where
     field
       t-pc   : fpc fs ≡ q
       t-run  : LocState.halted (floc fs) ≡ false
-      t-cell : Id
+      t-wx   : List (StoredValue FS)
       t-wa   : List (StoredValue FS)
       t-cfc  : FrameSemantics.Frame FS
       t-area : ℕ
-      t-v    : VW (LocState.heapMem (floc fs)) v (cellPtr t-cell ∷ t-wa)
-      t-in   : readReg (LocState.regs (floc fs)) Input1 ≡ cellPtr t-cell
-      t-M    : slot fs M ≡ just (cellPtr t-cell)
+      t-x    : VW (LocState.heapMem (floc fs)) x t-wx
+      t-at   : Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i hdr t-wx
+      t-a    : VW (LocState.heapMem (floc fs)) a t-wa
+      t-in   : readReg (LocState.regs (floc fs)) Input1 ≡ cellPtr i
+      t-M    : slot fs M ≡ just (cellPtr i)
       t-sM   : slot fs (suc M) ≡ just (SV-Ptr (AtStack t-cfc t-area))
       t-ne   : ¬ t-cfc ≡ AllocState.current-frame (falloc fs)
-      t-arg  : SlotsAt (LocState.stackMem (floc fs) t-cfc) ((Mc ∸ wA) + t-area) t-wa
+      t-arg  : SlotsAt (LocState.stackMem (floc fs) t-cfc) ((Mc ∸ wsz A) + t-area) t-wa
 
   -- ★ at a point, in its root's frame (a trampoline's point, and the stop: owed)
   HereP : ∀ {sh V} {c : Codeᴵ sh V} → Pnt c → Cfg sh → FlatState → Set
@@ -680,3 +683,72 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     word-step (StepI.i-recloseν _)    () inv G
     word-step StepI.i-fopen           () inv G
     word-step StepI.i-fopenν          () inv G
+
+  ----------------------------------------------------------------------
+  -- 9. ★ A ONE-SHOT TRAMPOLINE (D421), step by step.
+  ----------------------------------------------------------------------
+
+  open import Once.LinCore.LowerSimH fmt ans bw using (module SimH)
+  open SimH {FS} U wordOf using (open1-sim)
+  open Tr U ncty ldConst using (trAt)
+  open import Once.LinCore.LowAt fmt ans bw using (in-trans; in-r)
+  open import Once.LinCore.EntriesI fmt ans bw using (module ImgE)
+  open ImgE {FS} ds f ldConst ld-nl using (image-at)
+  open Program ds f using (blocks-in)
+  open import Data.List.Properties using (length-++; ++-assoc)
+  open Sim {FS} U wordOf using (len-mvPS)
+  open import Once.LinCore.PointAt fmt ans bw using (module Fetch)
+  open Fetch {FS} using (in-seg)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; Ran; r-pc; r-keep; k-halt)
+
+  private
+    -- a code with a tail, as the code then the tail
+    tail-split : ∀ (A B : AbstractTrace) c₁ c₂ c₃ (K : AbstractTrace)
+               → A ++ (c₁ ∷ (B ++ (c₂ ∷ c₃ ∷ K))) ≡ (A ++ (c₁ ∷ (B ++ (c₂ ∷ c₃ ∷ [])))) ++ K
+    tail-split A B c₁ c₂ c₃ K =
+      sym (trans (++-assoc A (c₁ ∷ (B ++ (c₂ ∷ c₃ ∷ []))) K) (cong (λ z → A ++ (c₁ ∷ z)) (++-assoc B (c₂ ∷ c₃ ∷ []) K)))
+
+    pre-len : ∀ (Q P C : AbstractTrace) → length (Q ++ (P ++ C)) ≡ length (Q ++ P) + length C
+    pre-len Q P C = trans (cong length (sym (++-assoc Q P C))) (length-++ (Q ++ P))
+
+  -- ★ the cell part: the contents and the argument into the frame, the cell freed
+  tr-open1 : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b}
+               (p : under (ktr1 ds′ b γ) ∈ allK U) {i} {x : MV X} {a : MV A} {fs}
+           → Tr0 ((wsz X + wsz A) ⊔ wsz B) (suc (wsz A) ⊔ wsz B) (trPos (ktr1 ds′ b γ) p 0) i x a fs
+           → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
+               × HereF (frame 0 ((wsz X + wsz A) ⊔ wsz B)) (trPos (ktr1 ds′ b γ) p 1) ([]ᵉ ∥ mpair x a ∷ˢ []ˢ) fs′
+               × Ran N 0 (AllocState.next-heap-ref (falloc fs)) ((wsz X + wsz A) ⊔ wsz B) fs fs′
+  tr-open1 {X = X} {A} {B} {ds′} {b} {γ} p {i} {x} {a} {fs} T =
+    fin (open1-sim image fs (Tr0.t-cfc T) (Tr0.t-area T) M Mc hdr (hdr + wX) i (Tr0.t-wx T) (Tr0.t-wa T)
+           (Data.Nat.Properties.m≤m⊔n (wX + wA) (wsz B)) (Tr0.t-ne T) (Tr0.t-in T) (Tr0.t-M T) (Tr0.t-sM T)
+           (Tr0.t-x T) (Tr0.t-at T) (Tr0.t-a T) (Tr0.t-arg T) seg (Tr0.t-run T))
+    where
+      import Data.Nat.Properties
+      κ = ktr1 ds′ b γ
+      wX = wsz X ; wA = wsz A
+      M = (wX + wA) ⊔ wsz B ; Mc = suc wA ⊔ wsz B ; a′ = M ∸ (wX + wA)
+      MV₁ = mvPS hdr a′ wX
+      MV₃ = mvPS (Mc ∸ wA) (a′ + wX) wA
+      KE = lea-slot 0 ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf (idx p)))
+           ∷ restore-input (suc M) ∷ mvSP (M ∸ wsz B) (Mc ∸ wsz B) (wsz B) ++ instr-ctrl (c-ret (suc (suc M))) ∷ []
+      CELL = MV₁ ++ restore-input (suc M) ∷ MV₃ ++ restore-input M ∷ instr-free-heap (hdr + wX) ∷ []
+      P0 = instr-ctrl (c-entry (e-thunk (tl (idx p))) (suc (suc M))) ∷ store-at-slot (suc M) ∷ mov-to-output ∷ store-at-slot M ∷ []
+      Q = proj₁ (in-trans (image-at p) (in-r (lowBlock (idx p) (kbody1 ds′ b γ) (blocks-in p)) (tramp (idx p) (kbody1 ds′ b γ))))
+      seg : Seg image (fpc fs) CELL
+      seg = Seg-++ˡ image (fpc fs) CELL KE
+              (subst (λ z → Seg image (fpc fs) z) (tail-split MV₁ MV₃ _ _ _ KE)
+                (subst (λ z → Seg image z (trAt (idx p) κ 0)) (sym (Tr0.t-pc T)) (in-seg (image-tr κ p 0))))
+      N = Once.LinCore.Moves.ln {FS} wX + (1 + (Once.LinCore.Moves.ln {FS} wA + (1 + 1)))
+      cell-len : length CELL ≡ N
+      cell-len = trans (length-++ MV₁) (cong₂ _+_ (len-mvPS hdr a′ wX)
+                   (cong suc (trans (length-++ MV₃) (cong (_+ 2) (len-mvPS (Mc ∸ wA) (a′ + wX) wA)))))
+      pos₁ : trPos κ p 1 ≡ N + trPos κ p 0
+      pos₁ = trans (pre-len Q P0 CELL) (trans (cong (trPos κ p 0 +_) cell-len) (Data.Nat.Properties.+-comm (trPos κ p 0) N))
+      fin : Σ FlatState (λ fs′ → FlatSteps image N fs fs′
+              × CfgW (LocState.heapMem (floc fs′)) (slot fs′) (frame 0 M) ([]ᵉ ∥ mpair x a ∷ˢ []ˢ)
+              × Ran N 0 (AllocState.next-heap-ref (falloc fs)) M fs fs′) → _
+      fin (fs′ , run , C′ , Rn) =
+        N , fs′ , run ,
+        record { f-pc = trans (r-pc Rn) (trans (cong (N +_) (Tr0.t-pc T)) (sym pos₁))
+               ; f-run = trans (k-halt (r-keep Rn)) (Tr0.t-run T) ; f-cfg = C′ } ,
+        Rn
