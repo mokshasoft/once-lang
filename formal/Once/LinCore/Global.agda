@@ -20,6 +20,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥)
+open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
@@ -43,7 +44,7 @@ open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_
 open import Once.LinCore.Image fmt ans bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt ans bw
-open import Once.LinCore.Layout fmt ans bw
+open import Once.LinCore.Layout fmt ans bw using (Frame; frameOf; budget; wsz; ws)
 open import Once.LinCore.Lower fmt ans bw
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; next)
@@ -344,3 +345,59 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           N , fs′ , run , H′ , nx′ ,
           ctx-keep K (ret-succ st l s
             (ret-top (k-other K) (λ x le → top-at K tp x (subst (_≤ x) eφ le)) old frR ok))
+
+  -- the return stack over a run that kept what `Keep` says, the old heap and the frame's top
+  ret-step : ∀ {T U′ R fin} {r : Ret U′ T} {fs fs′}
+           → Keep fs fs′ → Old (AllocState.next-heap-ref (falloc fs)) fs fs′
+           → (∀ x → budget (rootφ R) ≤ x → slot fs′ x ≡ slot fs x)
+           → FreshR r (AllocState.next-heap-ref (falloc fs))
+           → RetOK R fin r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+           → RetOK R fin r (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) fs′
+  ret-step K old tp fr ok = ctx-keep K (ret-top (k-other K) (top-at K tp) old fr ok)
+
+  ----------------------------------------------------------------------
+  -- 6. ★ THE STEP THEOREM, for the steps that stay in their root.
+  ----------------------------------------------------------------------
+
+  module Whole (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
+                    → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
+                      ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (FlatMachine.fpc fs) }) where
+    module AS = AtRoot ld rstart main j₀ L₀ˢ start-root refl
+    module AK {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = AtRoot ld (rblock p) (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p) refl
+    open Related
+
+    Onward : ∀ {T sh U′} → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
+    Onward c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′
+
+    private
+      fresh-at : ∀ {T sh U′} {m : Cfg sh} {r : Ret U′ T} {n h fs} → InvI m r n h → AllocState.next-heap-ref (falloc fs) ≡ n
+               → FreshR r (AllocState.next-heap-ref (falloc fs))
+      fresh-at {r = r} inv nx = subst (FreshR r) (sym nx) (fresh-ret inv)
+
+    -- at a point, by the point
+    gstep-at : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
+               (P : Pnt c) (st : StepI c r m n t c′ r′ m′ n′) (l : Local st)
+             → InvI m r n h → HereP P m fs → AllocState.next-heap-ref (falloc fs) ≡ n
+             → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+             → Onward c′ r′ m′ n′ fs
+    gstep-at (p-start (at s)) st l inv H nx ok = case AS.glocal st l s inv H nx ok of λ where
+      (N , fs′ , run , H′ , nx′ , ok′) → N , fs′ , run , record { g-pt = p-start (at (AS.LS.succ st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ }
+    gstep-at (p-block p (at s)) st l inv H nx ok = case AK.glocal p st l s inv H nx ok of λ where
+      (N , fs′ , run , H′ , nx′ , ok′) → N , fs′ , run , record { g-pt = p-block p (at (AK.LS.succ p st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ }
+    gstep-at {r = r} {fs = fs} (p-start (disp s)) StepI.i-case₁ l inv H nx ok = case SL.disp-exit image-label s H of λ where
+      (N , fs′ , run , H′ , K , nx′ , old , tp) →
+        N , fs′ , run , record { g-pt = p-start (at (next s)) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok }
+    gstep-at {r = r} {fs = fs} (p-start (disp s)) StepI.i-case₂ l inv H nx ok = case SL.disp-again image-label s H of λ where
+      (N , fs′ , run , H′ , K , nx′ , old , tp) →
+        N , fs′ , run , record { g-pt = p-start (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok }
+    gstep-at {r = r} {fs = fs} (p-block p (disp s)) StepI.i-case₁ l inv H nx ok = case KL.disp-exit p image-label s H of λ where
+      (N , fs′ , run , H′ , K , nx′ , old , tp) →
+        N , fs′ , run , record { g-pt = p-block p (at (next s)) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok }
+    gstep-at {r = r} {fs = fs} (p-block p (disp s)) StepI.i-case₂ l inv H nx ok = case KL.disp-again p image-label s H of λ where
+      (N , fs′ , run , H′ , K , nx′ , old , tp) →
+        N , fs′ , run , record { g-pt = p-block p (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok }
+
+    -- ★ every step that stays in its root keeps the relation
+    gstep-local : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
+                  (st : StepI c r m n t c′ r′ m′ n′) → Local st → InvI m r n h → Related c r m n fs → Onward c′ r′ m′ n′ fs
+    gstep-local st l inv G = gstep-at (g-pt G) st l inv (g-here G) (g-next G) (g-ret G)
