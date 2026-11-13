@@ -102,7 +102,8 @@ CoveredI (call _) = ⊤
 -- a dispatch through a one-shot cell's code word, and its trampoline's cell part (D421)
 CoveredI icall    = ⊤
 CoveredI open1    = ⊤
--- an observation's trampoline's cell part (its dispatch owed: D423)
+-- an observation's dispatch (at the empty table, D423) and its trampoline's cell part
+CoveredI (iobs _) = ⊤
 CoveredI nopen    = ⊤
 {-# CATCHALL #-}
 CoveredI i = LocalI i
@@ -162,6 +163,9 @@ module _ {ℓ : Level} {T : Sh} where
       nop : ∀ {Es F S S′ U} {k : Codeᴵ (Es ∣ (Coalg F S ⊗t S) ∷ S′) U} {r : Ret U T} {es : Slots Es} {i}
               {p : MV (Coalg F S ⊗t S)} {os : Stk S′} {n}
           → P (i-nopen {k = k} {r = r} {es = es} {i = i} {p = p} {os = os} {n = n})
+      iob : ∀ {Γ} {ds : Defs Γ} {Es F S S′ U} {k : Codeᴵ (Es ∣ LF∙ F (Nu F) ∷ S′) U} {r : Ret U T} {es : Slots Es} {i}
+              {p : MV (Coalg F S ⊗t S)} {os : Stk S′} {n}
+          → P (i-iobs {ds = ds} {k = k} {r = r} {es = es} {i = i} {p = p} {os = os} {n = n})
 
   covered-elim : (C : CoveredCases) → ∀ {sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
                  (st : StepI c r m n t c′ r′ m′ n′) → CoveredC c → CoveredCases.P C st
@@ -194,7 +198,7 @@ module _ {ℓ : Level} {T : Sh} where
   covered-elim C (i-opend _)      ()
   covered-elim C i-icall          _ = CoveredCases.ic C
   covered-elim C (i-icallω _)     ()
-  covered-elim C i-iobs           ()
+  covered-elim C i-iobs           _ = CoveredCases.iob C
   covered-elim C (i-ccopy _)      ()
   covered-elim C (i-ncopy _)      ()
   covered-elim C i-cfree          ()

@@ -69,7 +69,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Relate {FS} ds f ldConst ld-nl wordOf
   open LocalR {FS} ds f ldConst ld-nl wordOf using (module Whole)
   open CallR {FS} ds f ldConst ld-nl wordOf using (module GCall)
-  open DispR {FS} ds f ldConst ld-nl wordOf using (gicall; gopen1; gnopen)
+  open DispR {FS} ds f ldConst ld-nl wordOf using (gicall; gopen1; gnopen; giobs)
   open Ctl {FS} ds f ldConst ld-nl using (main; L₀ˢ; L₀ᵇ; start-root; blockFin; Pnt; p-start; p-block; p-tramp; p-halt; ptFin)
   open Program ds f using (U)
   open ProgramRun ds f using (ncty)
@@ -126,9 +126,10 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   ----------------------------------------------------------------------
   -- 8. ★★ THE STEP THEOREM: every covered image step is matched by flat
-  -- steps that keep the relation. Covered: the one-shot dispatch (`icall`)
-  -- and its trampoline (`open1`, the inner call, the way out; D421). Owed:
-  -- the other dispatches and cell parts (`ktrω ktro ktrc ktrf`, D418), `lop`.
+  -- steps that keep the relation. Covered: the one-shot and the observation
+  -- dispatches (`icall`, `iobs`) and their trampolines (`open1`, `nopen`, the
+  -- inner call, the way out; D421, D423). Owed: the many-use, copy and free
+  -- dispatches and cell parts (`ktrω ktrc ktrf`, D418), `lop`.
   ----------------------------------------------------------------------
 
   module Theorem (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
@@ -156,6 +157,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       ; ic  = λ inv G → gicall (g-pt G) inv (g-here G) (g-next G) (g-ret G)
       ; op1 = λ inv G → gopen1 (g-pt G) inv (g-here G) (g-next G) (g-ret G)
       ; nop = λ inv G → gnopen (g-pt G) inv (g-here G) (g-next G) (g-ret G)
+      ; iob = λ inv G → giobs (g-pt G) inv (g-here G) (g-next G) (g-ret G)
       }
 
     -- ★ by the step's kind (the one split on a step is StepKinds')
