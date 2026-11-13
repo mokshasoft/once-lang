@@ -43,6 +43,7 @@ toNat : Char → ℕ
 toNat = primCharToNat
 
 open import Once.Parser.Token
+open import Once.Spec.Surface.Operator using (Dottable; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 import Once.Spec.Surface.Lexing as SL
 
 ------------------------------------------------------------------------
@@ -288,6 +289,9 @@ nlIndent []      = false
 isEqHead : List Char → Bool
 isEqHead (c ∷ _) = does (c Ch.≟ '=')
 isEqHead []      = false
+isDotHead : List Char → Bool
+isDotHead (c ∷ _) = does (c Ch.≟ '.')
+isDotHead []      = false
 isDashHead : List Char → Bool
 isDashHead (c ∷ _) = does (c Ch.≟ '-')
 isDashHead []      = false
@@ -300,7 +304,7 @@ caretClass []      = c-gen
 
 -- | Drop the first char (uniform tail). Lets the multi-char helpers recurse on
 -- `drop1 cs` instead of pattern-matching `cs ≡ '=' ∷ rest` — so the helpers
--- REDUCE under a known classifier (e.g. `tok-op2 cs rec _ _ true`) even when the
+-- REDUCE under a known classifier (e.g. `tok-cmp cs off rec _ _ true`) even when the
 -- tail is a variable. Behaviour-preserving (a known classifier ⇒ the head is the
 -- consumed char, so `drop1 cs ≡ rest`); the old `cs`-pattern catch-alls were
 -- already flagged unreachable.
@@ -352,7 +356,7 @@ headK c =
   else hkGen
 
 -- | Tokenize worker. The head is dispatched via `headK` + `tok-head`; the
--- multi-char heads delegate to `tok-nl`/`tok-op2`/`tok-minus`/`tok-lbrace`/
+-- multi-char heads delegate to `tok-nl`/`tok-cmp`/`tok-eqop`/`tok-dot`/`tok-minus`/`tok-lbrace`/
 -- `tok-caret`; the string/general clauses to `tok-str`/`tok-gen`.
 tok-str : (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
           Maybe (Σ[ s ∈ List Char ] Σ[ rest ∈ List Char ] length rest < length cs) →
@@ -367,12 +371,18 @@ tok-num : (c : Char) (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (leng
           Maybe (Σ[ f ∈ List Char ] Σ[ r ∈ List Char ] length r < length rest) →
           List Token
 tok-nl  : (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Bool → List Token
-tok-op2 : (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
-          Token → Token → Bool → List Token
 tok-lbrace : (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Bool → List Token
 tok-minus  : (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Dash3 → List Token
 tok-caret  : (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Caret4 → List Token
 tok-head   : (c : Char) (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → HeadK → List Token
+-- An operator with an IEEE form, read up to `rest`: `TOpD` when `.` follows
+-- (consumed), else `TOp` (plan 0.150; `Spec.Surface.Lexing.lex-opd`).
+tok-dot    : (cs rest : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → length rest ≤ length cs
+           → Dottable → Bool → List Token
+-- `<`, `>`: the one-char operator `d1`, or with `=` the two-char `d2`.
+tok-cmp    : (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Dottable → Dottable → Bool → List Token
+-- `=`, `!`: with `=` the operator `d2`, else the token `t1`.
+tok-eqop   : (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Dottable → Token → Bool → List Token
 -- | The offset of the next token, from the offset of this one. `cs` is the
 -- tail after the head character, so the head itself accounts for the `suc`.
 adv : (cs r : List Char) (off : ℕ) → ℕ
@@ -396,10 +406,10 @@ tok-head c cs off rec hkNL     = tok-nl cs off rec (nlIndent cs)
 tok-head c cs off rec hkCaret  = tok-caret cs off rec (caretClass cs)
 tok-head c cs off rec hkDash   = tok-minus cs off rec (dashClass cs)
 tok-head c cs off rec hkLBrace = tok-lbrace cs off rec (isDashHead cs)
-tok-head c cs off rec hkLt     = tok-op2 cs off rec TLe TLt (isEqHead cs)
-tok-head c cs off rec hkGt     = tok-op2 cs off rec TGe TGt (isEqHead cs)
-tok-head c cs off rec hkEq     = tok-op2 cs off rec TEqEq TEquals (isEqHead cs)
-tok-head c cs off rec hkBang   = tok-op2 cs off rec TNeq TBang (isEqHead cs)
+tok-head c cs off rec hkLt     = tok-cmp cs off rec o<= o< (isEqHead cs)
+tok-head c cs off rec hkGt     = tok-cmp cs off rec o>= o> (isEqHead cs)
+tok-head c cs off rec hkEq     = tok-eqop cs off rec o== TEquals (isEqHead cs)
+tok-head c cs off rec hkBang   = tok-eqop cs off rec o!= TBang (isEqHead cs)
 tok-head c cs off rec hkLParen = TLParen    ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
 tok-head c cs off rec hkRParen = TRParen    ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
 tok-head c cs off rec hkRBrace = TRBrace    ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
@@ -409,10 +419,10 @@ tok-head c cs off rec hkComma  = TComma     ∷ tokenize-WF cs (adv cs cs off) (
 tok-head c cs off rec hkSemi   = TSemicolon ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
 tok-head c cs off rec hkAt     = TAt        ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
 tok-head c cs off rec hkPipe   = TPipe      ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
-tok-head c cs off rec hkPlus   = TPlus      ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
-tok-head c cs off rec hkStar   = TStar      ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
-tok-head c cs off rec hkSlash  = TSlash     ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
-tok-head c cs off rec hkPct    = TPercent   ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkPlus   = tok-dot cs cs off rec ≤-refl o+ (isDotHead cs)
+tok-head c cs off rec hkStar   = tok-dot cs cs off rec ≤-refl o* (isDotHead cs)
+tok-head c cs off rec hkSlash  = tok-dot cs cs off rec ≤-refl o/ (isDotHead cs)
+tok-head c cs off rec hkPct    = TOp o%     ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
 tok-head c cs off rec hkAmp    = TAmpersand ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
 tok-head c cs off rec hkDot    = TDot       ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
 tok-head c cs off rec hkStr    = tok-str cs off rec (collectStringB cs)
@@ -444,18 +454,25 @@ tok-num c cs off rec digits rest bnd nothing =
 tok-nl cs off rec true  = tokenize-WF cs (adv cs cs off) (rec (n<1+n _))
 tok-nl cs off rec false = TNewline ∷ tokenize-WF cs (adv cs cs off) (rec (n<1+n _))
 
--- 2-char `…=` operators: `t2` if next is `=` (recurse past it via drop1), else `t1`.
-tok-op2 cs off rec t2 t1 true  = t2 ∷ tokenize-WF (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs)))
-tok-op2 cs off rec t2 t1 false = t1 ∷ tokenize-WF cs (adv cs cs off) (rec (n<1+n _))
+
+tok-dot cs rest off rec bnd d true  =
+  TOpD d ∷ tokenize-WF (drop1 rest) (adv cs (drop1 rest) off) (rec (s≤s (≤-trans (drop1-≤ rest) bnd)))
+tok-dot cs rest off rec bnd d false = TOp ‹ d › ∷ tokenize-WF rest (adv cs rest off) (rec (s≤s bnd))
+
+tok-cmp cs off rec d2 d1 true  = tok-dot cs (drop1 cs) off rec (drop1-≤ cs) d2 (isDotHead (drop1 cs))
+tok-cmp cs off rec d2 d1 false = tok-dot cs cs off rec ≤-refl d1 (isDotHead cs)
+
+tok-eqop cs off rec d2 t1 true  = tok-dot cs (drop1 cs) off rec (drop1-≤ cs) d2 (isDotHead (drop1 cs))
+tok-eqop cs off rec d2 t1 false = t1 ∷ tokenize-WF cs (adv cs cs off) (rec (n<1+n _))
 
 -- `{`: block comment `{-` (skip via skipBlockB ∘ drop1) else `TLBrace`.
 tok-lbrace cs off rec true  = tokenize-WF (proj₁ (skipBlockB 1 (drop1 cs))) (adv cs (proj₁ (skipBlockB 1 (drop1 cs))) off) (rec (s≤s (≤-trans (proj₂ (skipBlockB 1 (drop1 cs))) (drop1-≤ cs))))
 tok-lbrace cs off rec false = TLBrace ∷ tokenize-WF cs (adv cs cs off) (rec (n<1+n _))
 
--- `-`: line comment `--` (skipLineB ∘ drop1), arrow `->` (drop1), else `TMinus`.
+-- `-`: line comment `--` (skipLineB ∘ drop1), arrow `->` (drop1), else the operator.
 tok-minus cs off rec d-comment = tokenize-WF (proj₁ (skipLineB (drop1 cs))) (adv cs (proj₁ (skipLineB (drop1 cs))) off) (rec (s≤s (≤-trans (proj₂ (skipLineB (drop1 cs))) (drop1-≤ cs))))
 tok-minus cs off rec d-arrow   = TArrow ∷ tokenize-WF (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs)))
-tok-minus cs off rec d-minus   = TMinus ∷ tokenize-WF cs (adv cs cs off) (rec (n<1+n _))
+tok-minus cs off rec d-minus   = tok-dot cs cs off rec ≤-refl o- (isDotHead cs)
 
 -- `^`: grade caret `^1`/`^0`/`^w` (drop1), else fall to the general head.
 tok-caret cs off rec c-1 = TCaret1 ∷ tokenize-WF (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs)))
