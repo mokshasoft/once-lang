@@ -191,7 +191,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   ... | (v , ev) = v , trans (cong sm (sym (+-suc k o))) ev
 
   -- the words a move leaves at its destination
-  open import Once.LinCore.Moves {FS} using (Seg; slot; mvSS-run; MovedS; m-moved; m-rest; m-heap; m-halt; m-pc) renaming (ln to nsteps)
+  open import Once.LinCore.Moves {FS} using (Seg; slot; mvSS-run; MovedS; m-moved; m-rest; m-heap; m-halt; m-pc; Keep; keep-refl; keep-trans; keepS) renaming (ln to nsteps)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
   open import Once.CCC.Machine.SMCore using (module LocState; module AllocState)
@@ -1252,7 +1252,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
            → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ a ∷ˢ b ∷ˢ os)
            → wsz A + ws (A ∷ B ∷ S) ≤ OP φ
            → Σ FlatState λ fs₃ → FlatSteps prog (nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))) fs fs₃
-               × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os)
+               × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os) × Keep fs fs₃
   swap-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h C fitT with c-stk C
   ... | ((wa , pa , sa) , (wb , pb , sb) , rest)
     with mvSS-run prog fs t (t ∸ wsz A) (wsz A) (Seg-++ˡ prog (fpc fs) X₁ _ s) h
@@ -1328,6 +1328,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
                         (stkW-frame os fitS (λ x lo _ → kept₃ x (inj₂ lo)) rest)
            ; c-efit = c-efit C
            ; c-sfit = subst (_≤ OP φ) (swap-words (wsz A) (wsz B) (ws S)) (c-sfit C) }
+    , keep-trans (keepS M₁) (keep-trans (keepS M₂) (keepS M₃))
     where
       import Data.Nat.Properties
       ≤-reflexive′ = Data.Nat.Properties.≤-reflexive

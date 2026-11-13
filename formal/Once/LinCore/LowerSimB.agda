@@ -37,7 +37,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf
   open CfgW
-  open import Once.LinCore.Moves {FS} using (Seg; slot) renaming (ln to nsteps)
+  open import Once.LinCore.Moves {FS} using (Seg; slot; Keep) renaming (ln to nsteps)
   open import Once.LinCore.MoveCode using (mvSS)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; floc; fpc)
@@ -54,7 +54,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ mpair a b ∷ˢ os)
             → wsz A + ws ((A ⊗t B) ∷ S) ≤ OP φ
             → Σ FlatState λ fs₃ → FlatSteps prog (nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))) fs fs₃
-                × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os)
+                × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os) × Keep fs fs₃
   lswap-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h C fitT
     = finish (swap-sim prog fs φ {Es} {A} {B} {S} {es} {os} {a} {b} s h C′ fitT′)
     where
@@ -72,15 +72,15 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       fitT′ = subst (λ z → wsz A + z ≤ OP φ) assoc fitT
       t = budget φ ∸ ws (A ∷ B ∷ S)
       n = nsteps (wsz A) + (nsteps (wsz B) + nsteps (wsz A))
-      finish : Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os))
-             → Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os))
-      finish (fs₃ , st , C₃) =
+      finish : Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ b ∷ˢ a ∷ˢ os) × Keep fs fs₃)
+             → Σ FlatState (λ fs₃ → FlatSteps prog n fs fs₃ × CfgW (heapMem (floc fs₃)) (slot fs₃) φ (es ∥ mpair b a ∷ˢ os) × Keep fs fs₃)
+      finish (fs₃ , st , C₃ , K) =
         fs₃ , st ,
         record { c-env = c-env C₃
                ; c-stk = pair-W {heapMem (floc fs₃)} {slot fs₃} {φ} {B} {A} {S} {b} {a} {os}
                            (≤-trans (c-sfit C₃) (m≤n+m (OP φ) (EP φ))) (c-stk C₃)
                ; c-efit = c-efit C₃
-               ; c-sfit = subst (_≤ OP φ) (sym (+-assoc (wsz B) (wsz A) (ws S))) (c-sfit C₃) }
+               ; c-sfit = subst (_≤ OP φ) (sym (+-assoc (wsz B) (wsz A) (ws S))) (c-sfit C₃) } , K
 
   ----------------------------------------------------------------------
   -- ★ A CELL'S HEADER (`Lower.header`): a fresh block, its contents-word
