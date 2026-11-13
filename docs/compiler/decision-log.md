@@ -22917,3 +22917,28 @@ differ syntactically (`compᴵ ds (obsT F S)` carries `ds` in its `prim ds …`)
 * The ν's value carrying its table (`mnu` with a `DS`): changes the core's values and every proof over them.
 * A cross-table point (the image in one key's block, the flat pc in another's of the same code): a second
   point kind, a path translation between two syntactically different codes — larger and less clear.
+
+## D424 — THE WORD LAYER KNOWS EVERY CELL'S BLOCK: A HEAP LEDGER INVARIANT (2026-11-13)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Applies**: D385/D386 (an
+embedded value records that its address is a live cell of its block; block sizes stay with the
+allocator), D416 (a cell is one heap block). **Status**: proposed; nothing implemented yet.
+
+### The problem
+The dispatches through a cell's copy and free words (`ccopy`, `ncopy`, `cfree`, `nfree`: `addr-at 2`) and
+the many-use trampoline (`contentsAddr` = `addr-at hdr`) form an address inside the cell. The flat machine
+faults unless it lies in the pointer's block (`in-block?` against `AllocState.block-size`). The word
+layer's relation (`VW`, `CfgW`) knows a cell's WORDS (`At`), not its block, so these steps cannot be
+proved.
+
+### Decision (proposed)
+* **A block invariant over the abstract heap ledger**: every id the run has allocated keeps the block it
+  was allocated with — `block-size (falloc fs) (serial i)` is `i`'s size. A flat `instr-free-heap` does not
+  change block sizes and an allocation sizes only the fresh reference, so the invariant changes only at
+  an allocation step (its cell's id is `(size , next)`), where the allocator sets exactly that.
+* It travels beside the relation (a hypothesis and a conclusion of the step theorem), not inside `VW`:
+  every simulation keeps `VW` over the heap's words only.
+
+### Alternatives
+* Block sizes inside `VW` (as D386's `cell-flat`): every `VW`, `EnvW`, `StkW` and every simulation over
+  them gains the block map — the same facts, everywhere.
