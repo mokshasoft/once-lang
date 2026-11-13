@@ -62,6 +62,7 @@ open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (conB; baseA)
 open import Once.Denotation.Sub using (⟦_⟧<:)
 open import Once.Arith.SigOp.Builders
+open import Once.Spec.Theory using (unary; binary; compare) renaming (int to nint; float to nfloat)
 open import Once.Spec.Name using (bare)
 
 open Once.Surface.Syntax.Expr
@@ -277,54 +278,16 @@ sigOpSem A name (con-base ib) fmt σ = sigOpˢ fmt σ (value-info {Unit} {A} nam
 -- Arith / comparison / div-mod: all elaborate to `SigOp <op>-info` (Pure), so
 -- denote them through the SAME contract (`sigOpˢ`) — `⟦ op a b ⟧ˢ` is then DEFINITIONALLY the
 -- IR side `⟦ <op>IR ∘ ⟨a,b⟩ ⟧ᴰ`, making M3's elaborate-correctness trivial here.
-⟦ add {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ add-info (va , vb)
-⟦ sub {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ sub-info (va , vb)
-⟦ mul {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ mul-info (va , vb)
--- PLAN 0.75 F4: the float family, structurally identical to the integer one.
-⟦ fadd {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ fadd-info (va , vb)
-⟦ fsub {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ fsub-info (va , vb)
-⟦ fmul {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ fmul-info (va , vb)
-⟦ fdiv {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ fdiv-info (va , vb)
-⟦ i2f a ⟧ˢ fmt σ       dγ = ⟦ a ⟧ˢ fmt σ dγ >>=∞ λ va → sigOpˢ fmt σ i2f-info va
-⟦ div {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ div-info (va , vb)
-⟦ mod' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ mod-info (va , vb)
-⟦ neg e ⟧ˢ fmt σ        dγ = ⟦ e ⟧ˢ fmt σ dγ >>=∞ λ v → sigOpˢ fmt σ neg-info v
-⟦ lt {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ lt-info (va , vb)
-⟦ le {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ le-info (va , vb)
-⟦ gt {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ gt-info (va , vb)
-⟦ ge {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ ge-info (va , vb)
-⟦ eq {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ eq-info (va , vb)
-⟦ ne {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b ⟧ˢ fmt σ dγ =
-  ⟦ a ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ) >>=∞ λ va →
-  ⟦ b ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ) >>=∞ λ vb → sigOpˢ fmt σ ne-info (va , vb)
+-- A numeric operation (plan 0.150): its operand (a pair for a binary
+-- symbol), then its SigOp's contract — DEFINITIONALLY the IR side
+-- `⟦ numIR h o ∘ elaborate e ⟧ᴰ`. One clause per number type and shape, as
+-- `numIR`'s, so the value types reduce.
+⟦ num {A = nint}   {k = unary}   h o e ⟧ˢ fmt σ dγ = ⟦ e ⟧ˢ fmt σ dγ >>=∞ λ v → sigOpˢ fmt σ (numInfo h o) v
+⟦ num {A = nint}   {k = binary}  h o e ⟧ˢ fmt σ dγ = ⟦ e ⟧ˢ fmt σ dγ >>=∞ λ v → sigOpˢ fmt σ (numInfo h o) v
+⟦ num {A = nint}   {k = compare} h o e ⟧ˢ fmt σ dγ = ⟦ e ⟧ˢ fmt σ dγ >>=∞ λ v → sigOpˢ fmt σ (numInfo h o) v
+⟦ num {A = nfloat} {k = unary}   h o e ⟧ˢ fmt σ dγ = ⟦ e ⟧ˢ fmt σ dγ >>=∞ λ v → sigOpˢ fmt σ (numInfo h o) v
+⟦ num {A = nfloat} {k = binary}  h o e ⟧ˢ fmt σ dγ = ⟦ e ⟧ˢ fmt σ dγ >>=∞ λ v → sigOpˢ fmt σ (numInfo h o) v
+⟦ num {A = nfloat} {k = compare} h o e ⟧ˢ fmt σ dγ = ⟦ e ⟧ˢ fmt σ dγ >>=∞ λ v → sigOpˢ fmt σ (numInfo h o) v
 -- effApp: a SUSPENDED effect (`Unit ⇒[eff] B`) — the Eff design (D018). The
 -- effectful application is deferred into the Unit-thunk; its trace fires when the
 -- thunk is applied (at the top-level main run), threaded by `T`. No fork: the old

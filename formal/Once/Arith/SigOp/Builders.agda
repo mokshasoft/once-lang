@@ -22,12 +22,14 @@ open import Once.Type.Core using (isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.CmpOp using (c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
-open import Once.Arith.Prim using (p-cmp; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-fneg; p-fcmp)
-open import Data.String using (String)
+open import Once.Arith.Prim using (ArithPrim; p-cmp; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-fneg; p-fcmp)
+open import Data.String using (String; _++_)
 open import Once.Spec.Theory
-  using (Has; Sym; compare; float-neg; float-rounded; float-order; float-equality;
-         ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ)
-  renaming (float to nfloat)
+  using (NumTy; int; float; Has; Sym; unary; binary; compare; symDom; symCod;
+         int-neg; int-ring; int-division; int-order; int-equality;
+         float-neg; float-rounded; float-order; float-equality;
+         ‵neg; ‵+; ‵-; ‵*; ‵/; ‵%; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=;
+         ‵+ᵈ; ‵-ᵈ; ‵*ᵈ; ‵/ᵈ; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -149,28 +151,95 @@ fdiv-info = mk-info' (bare "arith.div.float") (primV p-fdiv) base-F×F b-Float
 i2f-info : SigOpInfo Int Once.Spec.Type.Float
 i2f-info = mk-info' (bare "arith.i2f") (primV p-i2f) b-Int b-Float
 
-fneg-info : SigOpInfo Once.Spec.Type.Float Once.Spec.Type.Float
-fneg-info = mk-info' (bare "arith.neg.float") (primV p-fneg) b-Float b-Float
+------------------------------------------------------------------------
+-- A NUMERIC SYMBOL'S SigOp (plan 0.150 N10): the one place a symbol at a
+-- number type becomes the target's primitive (`arith.add.int` and
+-- `arith.add.float` are different instructions). Its meaning is the
+-- primitive's (`primV`), so every numeric SigOp is internal by definition.
+------------------------------------------------------------------------
 
--- The comparisons at `Float` (plan 0.150): `totalOrder` and identity, and
--- IEEE's quiet comparisons (`.ieee`), one name each.
-fcmpName : ∀ {U} → Has nfloat U → Sym U compare → String
-fcmpName float-neg      ()
-fcmpName float-order    ‵<   = "arith.lt.float"
-fcmpName float-order    ‵<=  = "arith.le.float"
-fcmpName float-order    ‵>   = "arith.gt.float"
-fcmpName float-order    ‵>=  = "arith.ge.float"
-fcmpName float-equality ‵==  = "arith.eq.float"
-fcmpName float-equality ‵!=  = "arith.ne.float"
-fcmpName float-rounded  ‵<ᵈ  = "arith.lt.float.ieee"
-fcmpName float-rounded  ‵<=ᵈ = "arith.le.float.ieee"
-fcmpName float-rounded  ‵>ᵈ  = "arith.gt.float.ieee"
-fcmpName float-rounded  ‵>=ᵈ = "arith.ge.float.ieee"
-fcmpName float-rounded  ‵==ᵈ = "arith.eq.float.ieee"
-fcmpName float-rounded  ‵!=ᵈ = "arith.ne.float.ieee"
+numPrim : ∀ {A U k} → Has A U → Sym U k → ArithPrim (symDom {0} A k) (symCod {0} A k)
+numPrim int-neg        ‵neg = p-neg
+numPrim int-ring       ‵+   = p-add
+numPrim int-ring       ‵-   = p-sub
+numPrim int-ring       ‵*   = p-mul
+numPrim int-division   ‵/   = p-div
+numPrim int-division   ‵%   = p-mod
+numPrim int-order      ‵<   = p-cmp c-lt
+numPrim int-order      ‵<=  = p-cmp c-le
+numPrim int-order      ‵>   = p-cmp c-gt
+numPrim int-order      ‵>=  = p-cmp c-ge
+numPrim int-equality   ‵==  = p-cmp c-eq
+numPrim int-equality   ‵!=  = p-cmp c-ne
+numPrim float-neg      ‵neg = p-fneg
+numPrim float-rounded  ‵+ᵈ  = p-fadd
+numPrim float-rounded  ‵-ᵈ  = p-fsub
+numPrim float-rounded  ‵*ᵈ  = p-fmul
+numPrim float-rounded  ‵/ᵈ  = p-fdiv
+numPrim float-rounded  ‵==ᵈ = p-fcmp float-rounded ‵==ᵈ
+numPrim float-rounded  ‵!=ᵈ = p-fcmp float-rounded ‵!=ᵈ
+numPrim float-rounded  ‵<ᵈ  = p-fcmp float-rounded ‵<ᵈ
+numPrim float-rounded  ‵<=ᵈ = p-fcmp float-rounded ‵<=ᵈ
+numPrim float-rounded  ‵>ᵈ  = p-fcmp float-rounded ‵>ᵈ
+numPrim float-rounded  ‵>=ᵈ = p-fcmp float-rounded ‵>=ᵈ
+numPrim float-order    ‵<   = p-fcmp float-order ‵<
+numPrim float-order    ‵<=  = p-fcmp float-order ‵<=
+numPrim float-order    ‵>   = p-fcmp float-order ‵>
+numPrim float-order    ‵>=  = p-fcmp float-order ‵>=
+numPrim float-equality ‵==  = p-fcmp float-equality ‵==
+numPrim float-equality ‵!=  = p-fcmp float-equality ‵!=
 
-fcmp-info : ∀ {U} → Has nfloat U → Sym U compare → SigOpInfo (Once.Spec.Type.Float * Once.Spec.Type.Float) (Unit + Unit)
-fcmp-info h o = mk-info' (bare (fcmpName h o)) (primV (p-fcmp h o)) base-F×F base-U+U
+-- | The SigOp's name.
+symText : ∀ {U k} → Sym U k → String
+symText ‵neg = "neg"
+symText ‵+   = "add"
+symText ‵-   = "sub"
+symText ‵*   = "mul"
+symText ‵/   = "div"
+symText ‵%   = "mod"
+symText ‵<   = "lt"
+symText ‵<=  = "le"
+symText ‵>   = "gt"
+symText ‵>=  = "ge"
+symText ‵==  = "eq"
+symText ‵!=  = "ne"
+symText ‵+ᵈ  = "add"
+symText ‵-ᵈ  = "sub"
+symText ‵*ᵈ  = "mul"
+symText ‵/ᵈ  = "div"
+symText ‵==ᵈ = "eq.ieee"
+symText ‵!=ᵈ = "ne.ieee"
+symText ‵<ᵈ  = "lt.ieee"
+symText ‵<=ᵈ = "le.ieee"
+symText ‵>ᵈ  = "gt.ieee"
+symText ‵>=ᵈ = "ge.ieee"
+
+numTyText : NumTy → String
+numTyText int   = "int"
+numTyText float = "float"
+
+numName : ∀ {A U k} → Has A U → Sym U k → String
+numName {A} h o = "arith." ++ symText o ++ "." ++ numTyText A
+
+-- | A symbol's types at a number type are base types.
+symBaseDom : ∀ A k → Base ∅ₖ (symDom {0} A k)
+symBaseDom int   unary   = b-Int
+symBaseDom int   binary  = base-I×I
+symBaseDom int   compare = base-I×I
+symBaseDom float unary   = b-Float
+symBaseDom float binary  = base-F×F
+symBaseDom float compare = base-F×F
+
+symBaseCod : ∀ A k → Base ∅ₖ (symCod {0} A k)
+symBaseCod int   unary   = b-Int
+symBaseCod int   binary  = b-Int
+symBaseCod int   compare = base-U+U
+symBaseCod float unary   = b-Float
+symBaseCod float binary  = b-Float
+symBaseCod float compare = base-U+U
+
+numInfo : ∀ {A U k} → Has A U → Sym U k → SigOpInfo (symDom {0} A k) (symCod {0} A k)
+numInfo {A} {k = k} h o = mk-info' (bare (numName h o)) (primV (numPrim h o)) (symBaseDom A k) (symBaseCod A k)
 
 -- Comparisons
 lt-info : SigOpInfo (Int * Int) (Unit + Unit)

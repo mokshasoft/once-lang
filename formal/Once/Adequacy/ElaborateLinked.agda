@@ -46,6 +46,7 @@ open import Once.Spec.Context using (Ctx; Usage; []; _*ᵘ_; _⊑ᵘ_; lookup; z
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Surface.Context
 open import Once.Surface.Syntax
+open import Once.Spec.Theory using (unary; binary; compare) renaming (int to nint; float to nfloat)
 open import Once.Denotation.SurfaceRefs using (Refs)
 open import Once.Surface.CoerceIR using (runCoe; runCoe-dec; voidFree?; VoidFree; coeIR; erase-eq)
 open import Once.Surface.Elaborate
@@ -149,23 +150,7 @@ Refs-map hs hc hp (absurd e)          r = Refs-map hs hc hp e r
 Refs-map hs hc hp (let' e₁ e₂)        (a , b) = Refs-map hs hc hp e₁ a , Refs-map hs hc hp e₂ b
 Refs-map hs hc hp (int _)             r = tt
 Refs-map hs hc hp (float _)           r = tt
-Refs-map hs hc hp (add x y)           (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
-Refs-map hs hc hp (sub x y)           (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
-Refs-map hs hc hp (mul x y)           (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
-Refs-map hs hc hp (fadd x y)          (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
-Refs-map hs hc hp (fsub x y)          (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
-Refs-map hs hc hp (fmul x y)          (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
-Refs-map hs hc hp (fdiv x y)          (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
-Refs-map hs hc hp (i2f x)             r = Refs-map hs hc hp x r
-Refs-map hs hc hp (div x y)           (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
-Refs-map hs hc hp (mod' x y)          (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
-Refs-map hs hc hp (neg x)             r = Refs-map hs hc hp x r
-Refs-map hs hc hp (lt x y)            (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
-Refs-map hs hc hp (le x y)            (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
-Refs-map hs hc hp (gt x y)            (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
-Refs-map hs hc hp (ge x y)            (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
-Refs-map hs hc hp (eq x y)            (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
-Refs-map hs hc hp (ne x y)            (a , b) = Refs-map hs hc hp x a , Refs-map hs hc hp y b
+Refs-map hs hc hp (num _ _ x)         r = Refs-map hs hc hp x r
 Refs-map hs hc hp (coerce _ e)        r = Refs-map hs hc hp e r
 Refs-map hs hc hp (sigOp _ _)         r = hs r
 Refs-map hs hc hp (closure x)         r = hc r
@@ -368,23 +353,12 @@ module _ {σ : ISig} (tbl : List IRFun) where
       , (rE {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₂ (Many *ᵘ Ψ₁)) , (elaborate-linked′ m e1 r1 , rE {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))))))
   elaborate-linked′ m (int n) r   = tt , tt
   elaborate-linked′ m (float d) r = tt , tt
-  elaborate-linked′ m {Γ = Γ} (add {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m {Γ = Γ} (sub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m {Γ = Γ} (mul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m {Γ = Γ} (fadd {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m {Γ = Γ} (fsub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m {Γ = Γ} (fmul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m {Γ = Γ} (fdiv {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m (i2f e) r = tt , elaborate-linked′ m e r
-  elaborate-linked′ m {Γ = Γ} (div {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m {Γ = Γ} (mod' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m (neg e) r = tt , elaborate-linked′ m e r
-  elaborate-linked′ m {Γ = Γ} (lt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m {Γ = Γ} (le {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m {Γ = Γ} (gt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m {Γ = Γ} (ge {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m {Γ = Γ} (eq {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
-  elaborate-linked′ m {Γ = Γ} (ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = tt , bin m {Γ = Γ} Ψ₁ Ψ₂ a b ra rb
+  elaborate-linked′ m (num {A = nint} {k = unary} h o e) r = tt , elaborate-linked′ m e r
+  elaborate-linked′ m (num {A = nint} {k = binary} h o e) r = tt , elaborate-linked′ m e r
+  elaborate-linked′ m (num {A = nint} {k = compare} h o e) r = tt , elaborate-linked′ m e r
+  elaborate-linked′ m (num {A = nfloat} {k = unary} h o e) r = tt , elaborate-linked′ m e r
+  elaborate-linked′ m (num {A = nfloat} {k = binary} h o e) r = tt , elaborate-linked′ m e r
+  elaborate-linked′ m (num {A = nfloat} {k = compare} h o e) r = tt , elaborate-linked′ m e r
   elaborate-linked′ m {Γ = Γ} (sigOp name conc) r = sigOp-linked {Γ = Γ} m name conc r
   elaborate-linked′ m (closure name) r = r , tt
   elaborate-linked′ m (poly name _) r = r , tt
