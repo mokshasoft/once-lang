@@ -446,7 +446,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                      × CallOut fs fs′ cfc (Tp C.φ S ∸ M) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl
                      × (∀ x → budget C.φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
         with-res ((wb , pb , sb) , _) =
-          fin (leave image fs C.φ φ′ cfc (Tp C.φ S ∸ M) M (fbudget φ′) (C.pos (next s)) rest sv sl
+          fin (leave image fs C.φ φ′ cfc (budget φ′) (Tp C.φ S ∸ M) M (fbudget φ′) (C.pos (next s)) rest sv sl
                  {es = es} {os = os} {b = b} wb hret hsv ne ep pb sb ev st refl
                  (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) fitM (proj₁ (C.shape-fits (next s))) fitB seg
                  (K.Here.h-run {p = callee s} H))
