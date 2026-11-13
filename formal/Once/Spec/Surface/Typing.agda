@@ -49,6 +49,7 @@ open import Once.Spec.Theory
          Shape; unary; binary; compare; Sym; ‵neg; ‵+; ‵-; ‵*; ‵/; ‵%; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=;
          ‵+ᵈ; ‵-ᵈ; ‵*ᵈ; ‵/ᵈ; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; symCod; Has; float-rounded)
 open import Once.Spec.Surface.Syntax
+open import Once.Spec.Surface.Operator using (BinOp; plain; dotted; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 open import Once.Spec.Core.Syntax
   using (Tm; var; lam; app; let′; unit; pair; inl; inr; case; lit; lit-int; lit-float; prim; Prim;
          num; p-i2f; coerce; sigop; ref; _!!_; module Schema)
@@ -91,27 +92,27 @@ record BinSym : Set where
 open BinSym
 
 binSym : BinOp → BinSym
-binSym OpAdd  = Ring     ∶ binary  ∶ ‵+
-binSym OpSub  = Ring     ∶ binary  ∶ ‵-
-binSym OpMul  = Ring     ∶ binary  ∶ ‵*
-binSym OpDiv  = Division ∶ binary  ∶ ‵/
-binSym OpMod  = Division ∶ binary  ∶ ‵%
-binSym OpLt   = Order    ∶ compare ∶ ‵<
-binSym OpLe   = Order    ∶ compare ∶ ‵<=
-binSym OpGt   = Order    ∶ compare ∶ ‵>
-binSym OpGe   = Order    ∶ compare ∶ ‵>=
-binSym OpEq   = Equality ∶ compare ∶ ‵==
-binSym OpNe   = Equality ∶ compare ∶ ‵!=
-binSym OpAddD = Rounded  ∶ binary  ∶ ‵+ᵈ
-binSym OpSubD = Rounded  ∶ binary  ∶ ‵-ᵈ
-binSym OpMulD = Rounded  ∶ binary  ∶ ‵*ᵈ
-binSym OpDivD = Rounded  ∶ binary  ∶ ‵/ᵈ
-binSym OpEqD  = Rounded  ∶ compare ∶ ‵==ᵈ
-binSym OpNeD  = Rounded  ∶ compare ∶ ‵!=ᵈ
-binSym OpLtD  = Rounded  ∶ compare ∶ ‵<ᵈ
-binSym OpLeD  = Rounded  ∶ compare ∶ ‵<=ᵈ
-binSym OpGtD  = Rounded  ∶ compare ∶ ‵>ᵈ
-binSym OpGeD  = Rounded  ∶ compare ∶ ‵>=ᵈ
+binSym (plain ‹ o+ ›)  = Ring     ∶ binary  ∶ ‵+
+binSym (plain ‹ o- ›)  = Ring     ∶ binary  ∶ ‵-
+binSym (plain ‹ o* ›)  = Ring     ∶ binary  ∶ ‵*
+binSym (plain ‹ o/ ›)  = Division ∶ binary  ∶ ‵/
+binSym (plain o%)      = Division ∶ binary  ∶ ‵%
+binSym (plain ‹ o< ›)  = Order    ∶ compare ∶ ‵<
+binSym (plain ‹ o<= ›) = Order    ∶ compare ∶ ‵<=
+binSym (plain ‹ o> ›)  = Order    ∶ compare ∶ ‵>
+binSym (plain ‹ o>= ›) = Order    ∶ compare ∶ ‵>=
+binSym (plain ‹ o== ›) = Equality ∶ compare ∶ ‵==
+binSym (plain ‹ o!= ›) = Equality ∶ compare ∶ ‵!=
+binSym (dotted o+)     = Rounded  ∶ binary  ∶ ‵+ᵈ
+binSym (dotted o-)     = Rounded  ∶ binary  ∶ ‵-ᵈ
+binSym (dotted o*)     = Rounded  ∶ binary  ∶ ‵*ᵈ
+binSym (dotted o/)     = Rounded  ∶ binary  ∶ ‵/ᵈ
+binSym (dotted o<)     = Rounded  ∶ compare ∶ ‵<ᵈ
+binSym (dotted o<=)    = Rounded  ∶ compare ∶ ‵<=ᵈ
+binSym (dotted o>)     = Rounded  ∶ compare ∶ ‵>ᵈ
+binSym (dotted o>=)    = Rounded  ∶ compare ∶ ‵>=ᵈ
+binSym (dotted o==)    = Rounded  ∶ compare ∶ ‵==ᵈ
+binSym (dotted o!=)    = Rounded  ∶ compare ∶ ‵!=ᵈ
 
 -- A float literal's value as written: its sign on the digits.
 signedDecimal : Sign → ℕ → ℕ → ℕ → Decimal

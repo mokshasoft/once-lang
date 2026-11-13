@@ -40,13 +40,13 @@ open import Once.Spec.Grade using (Quantity; Zero; One; Many; Finite; pureᶠ; a
 open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Surface.Lexing
   using (Token; TWord; TInt; TFloat; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow;
-         TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TPlus; TMinus;
-         TStar; TSlash; TPercent; TAmpersand; TLt; TLe; TGt; TGe; TEqEq; TNeq; TNewline; TEOF; Lexes;
-         TPlusD; TMinusD; TStarD; TSlashD; TLtD; TLeD; TGtD; TGeD; TEqEqD; TNeqD)
+         TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand;
+         TOp; TOpD; TNewline; TEOF; Lexes; Glyph)
+open import Once.Spec.Surface.Operator using (‹_›; o+; o-; o*; Level; comparison; additive; multiplicative; level;
+                                              BinOp; plain; dotted)
 open import Once.Spec.Surface.Syntax
   using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar;
-         PK; PId; _P⊕_; _P⊗_; BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe;
-         OpAddD; OpSubD; OpMulD; OpDivD; OpEqD; OpNeD; OpLtD; OpLeD; OpGtD; OpGeD;
+         PK; PId; _P⊕_; _P⊗_;
          Expr; RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg;
          Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkImport; Module)
 
@@ -117,16 +117,16 @@ module Types {R RF : Set} (alg : TypeAlg R RF) where
   data ParsesProd where
     prod : ∀ {ts ts₁ r A T} → ParsesAtom ts A ts₁ → ParsesProdTail A ts₁ T r → ParsesProd ts T r
   data ParsesProdTail where
-    prod-done : ∀ {l ts} → ¬ Starts ts TStar → ParsesProdTail l ts l ts
+    prod-done : ∀ {l ts} → ¬ Starts ts (TOp ‹ o* ›) → ParsesProdTail l ts l ts
     prod-star : ∀ {l ts ts₂ r B T} → ParsesAtom ts B ts₂ → ParsesProdTail (aProd l B) ts₂ T r
-              → ParsesProdTail l (TStar ∷ ts) T r
+              → ParsesProdTail l (TOp ‹ o* › ∷ ts) T r
 
   data ParsesSum where
     sum : ∀ {ts ts₁ r A T} → ParsesProd ts A ts₁ → ParsesSumTail A ts₁ T r → ParsesSum ts T r
   data ParsesSumTail where
-    sum-done : ∀ {l ts} → ¬ Starts ts TPlus → ParsesSumTail l ts l ts
+    sum-done : ∀ {l ts} → ¬ Starts ts (TOp ‹ o+ ›) → ParsesSumTail l ts l ts
     sum-plus : ∀ {l ts ts₂ r B T} → ParsesProd ts B ts₂ → ParsesSumTail (aSum l B) ts₂ T r
-             → ParsesSumTail l (TPlus ∷ ts) T r
+             → ParsesSumTail l (TOp ‹ o+ › ∷ ts) T r
 
   data ParsesType where
     type : ∀ {ts ts₁ r A T} → ParsesSum ts A ts₁ → ParsesArrowTail A ts₁ T r → ParsesType ts T r
@@ -144,15 +144,15 @@ module Types {R RF : Set} (alg : TypeAlg R RF) where
   data ParsesFunProd where
     fprod : ∀ {ts ts₁ r A F} → ParsesFunAtom ts A ts₁ → ParsesFunProdTail A ts₁ F r → ParsesFunProd ts F r
   data ParsesFunProdTail where
-    fprod-done : ∀ {l ts} → ¬ Starts ts TStar → ParsesFunProdTail l ts l ts
+    fprod-done : ∀ {l ts} → ¬ Starts ts (TOp ‹ o* ›) → ParsesFunProdTail l ts l ts
     fprod-star : ∀ {l ts ts₂ r B F} → ParsesFunAtom ts B ts₂ → ParsesFunProdTail (fProd l B) ts₂ F r
-               → ParsesFunProdTail l (TStar ∷ ts) F r
+               → ParsesFunProdTail l (TOp ‹ o* › ∷ ts) F r
   data ParsesFunSum where
     fsum : ∀ {ts ts₁ r A F} → ParsesFunProd ts A ts₁ → ParsesFunSumTail A ts₁ F r → ParsesFunSum ts F r
   data ParsesFunSumTail where
-    fsum-done : ∀ {l ts} → ¬ Starts ts TPlus → ParsesFunSumTail l ts l ts
+    fsum-done : ∀ {l ts} → ¬ Starts ts (TOp ‹ o+ ›) → ParsesFunSumTail l ts l ts
     fsum-plus : ∀ {l ts ts₂ r B F} → ParsesFunProd ts B ts₂ → ParsesFunSumTail (fSum l B) ts₂ F r
-              → ParsesFunSumTail l (TPlus ∷ ts) F r
+              → ParsesFunSumTail l (TOp ‹ o+ › ∷ ts) F r
 
 -- Nothing else is an atom.
 data NoExtra {R : Set} : List Token → R → List Token → Set where
@@ -226,63 +226,28 @@ data NegNumeral : List Token → Expr → List Token → Set where
 data QualSuffix : List Token → Set where
   qual-suffix : ∀ {a ts} → QualSuffix (TAt ∷ TWord a ∷ ts)
 
--- The operator characters a parenthesized operator is made of.
+-- The characters a parenthesized operator name is made of: an operator whose
+-- glyph is one character, or `.`, `|`, `&`, `@`.
 data OpChar : Token → Char → Set where
-  oc-dot   : OpChar TDot '.'
-  oc-plus  : OpChar TPlus '+'
-  oc-minus : OpChar TMinus '-'
-  oc-star  : OpChar TStar '*'
-  oc-slash : OpChar TSlash '/'
-  oc-pct   : OpChar TPercent '%'
-  oc-lt    : OpChar TLt '<'
-  oc-gt    : OpChar TGt '>'
-  oc-pipe  : OpChar TPipe '|'
-  oc-amp   : OpChar TAmpersand '&'
-  oc-at    : OpChar TAt '@'
-
--- The dotted operator tokens, two characters each: `(+.)` names the same
--- operator it named before `+.` was one token.
-data OpChar2 : Token → Char → Char → Set where
-  oc-plusd  : OpChar2 TPlusD '+' '.'
-  oc-minusd : OpChar2 TMinusD '-' '.'
-  oc-stard  : OpChar2 TStarD '*' '.'
-  oc-slashd : OpChar2 TSlashD '/' '.'
-  oc-ltd    : OpChar2 TLtD '<' '.'
-  oc-gtd    : OpChar2 TGtD '>' '.'
+  oc-op  : ∀ {o c} → Glyph (c ∷ []) o [] → OpChar (TOp o) c
+  oc-dot : OpChar TDot '.'
+  oc-pipe : OpChar TPipe '|'
+  oc-amp : OpChar TAmpersand '&'
+  oc-at  : OpChar TAt '@'
 
 -- An operator name up to its closing parenthesis (`cs`: read so far, reversed).
+-- An IEEE form is its operator's character and `.`: `(+.)` names what it
+-- named before `+.` was one token.
 data ParsesOpChars : List Token → List Char → String → List Token → Set where
   op-close : ∀ {c cs r} → ParsesOpChars (TRParen ∷ r) (c ∷ cs) (fromList (reverse (c ∷ cs))) r
   op-char  : ∀ {t ch cs s r ts} → OpChar t ch → ParsesOpChars ts (ch ∷ cs) s r → ParsesOpChars (t ∷ ts) cs s r
-  op-char2 : ∀ {t c₁ c₂ cs s r ts} → OpChar2 t c₁ c₂ → ParsesOpChars ts (c₂ ∷ c₁ ∷ cs) s r
-           → ParsesOpChars (t ∷ ts) cs s r
+  op-dotted : ∀ {d c cs s r ts} → Glyph (c ∷ []) ‹ d › [] → ParsesOpChars ts ('.' ∷ c ∷ cs) s r
+            → ParsesOpChars (TOpD d ∷ ts) cs s r
 
-data CompareToken : Token → BinOp → Set where
-  ct-lt : CompareToken TLt OpLt
-  ct-le : CompareToken TLe OpLe
-  ct-gt : CompareToken TGt OpGt
-  ct-ge : CompareToken TGe OpGe
-  ct-eq : CompareToken TEqEq OpEq
-  ct-ne : CompareToken TNeq OpNe
-  ct-ltd : CompareToken TLtD OpLtD
-  ct-led : CompareToken TLeD OpLeD
-  ct-gtd : CompareToken TGtD OpGtD
-  ct-ged : CompareToken TGeD OpGeD
-  ct-eqd : CompareToken TEqEqD OpEqD
-  ct-ned : CompareToken TNeqD OpNeD
-
-data AddToken : Token → BinOp → Set where
-  at-plus  : AddToken TPlus OpAdd
-  at-minus : AddToken TMinus OpSub
-  at-plusd  : AddToken TPlusD OpAddD
-  at-minusd : AddToken TMinusD OpSubD
-
-data MulToken : Token → BinOp → Set where
-  mt-star  : MulToken TStar OpMul
-  mt-slash : MulToken TSlash OpDiv
-  mt-pct   : MulToken TPercent OpMod
-  mt-stard  : MulToken TStarD OpMulD
-  mt-slashd : MulToken TSlashD OpDivD
+-- An operator token at the level `l`, plain or in its IEEE form.
+data OpToken (l : Level) : Token → BinOp → Set where
+  ot-plain  : ∀ {o} → level o ≡ l → OpToken l (TOp o) (plain o)
+  ot-dotted : ∀ {d} → level ‹ d › ≡ l → OpToken l (TOpD d) (dotted d)
 
 data ParsesExpr     : List Token → Expr → List Token → Set
 data ParsesCompTail : Expr → List Token → Expr → List Token → Set
@@ -309,30 +274,30 @@ data ParsesCompTail where
 
 -- At most one comparison.
 data ParsesCmp where
-  cmp-none : ∀ {ts e r} → ParsesAdd ts e r → (∀ {t op} → Starts r t → ¬ CompareToken t op) → ParsesCmp ts e r
-  cmp      : ∀ {ts t op ts₁ r l e} → CompareToken t op → ParsesAdd ts l (t ∷ ts₁) → ParsesAdd ts₁ e r
+  cmp-none : ∀ {ts e r} → ParsesAdd ts e r → (∀ {t op} → Starts r t → ¬ OpToken comparison t op) → ParsesCmp ts e r
+  cmp      : ∀ {ts t op ts₁ r l e} → OpToken comparison t op → ParsesAdd ts l (t ∷ ts₁) → ParsesAdd ts₁ e r
            → ParsesCmp ts (RBinOp op l e) r
 
 data ParsesAdd where
   add : ∀ {ts ts₁ r e₁ e} → ParsesMul ts e₁ ts₁ → ParsesAddTail e₁ ts₁ e r → ParsesAdd ts e r
 data ParsesAddTail where
-  add-done : ∀ {l ts} → (∀ {t op} → Starts ts t → ¬ AddToken t op) → ParsesAddTail l ts l ts
-  add-op   : ∀ {l t op ts ts₂ r e₂ e} → AddToken t op → ParsesMul ts e₂ ts₂ → ParsesAddTail (RBinOp op l e₂) ts₂ e r
+  add-done : ∀ {l ts} → (∀ {t op} → Starts ts t → ¬ OpToken additive t op) → ParsesAddTail l ts l ts
+  add-op   : ∀ {l t op ts ts₂ r e₂ e} → OpToken additive t op → ParsesMul ts e₂ ts₂ → ParsesAddTail (RBinOp op l e₂) ts₂ e r
            → ParsesAddTail l (t ∷ ts) e r
 
 data ParsesMul where
   mul : ∀ {ts ts₁ r e₁ e} → ParsesUnary ts e₁ ts₁ → ParsesMulTail e₁ ts₁ e r → ParsesMul ts e r
 data ParsesMulTail where
-  mul-done : ∀ {l ts} → (∀ {t op} → Starts ts t → ¬ MulToken t op) → ParsesMulTail l ts l ts
-  mul-op   : ∀ {l t op ts ts₂ r e₂ e} → MulToken t op → ParsesUnary ts e₂ ts₂ → ParsesMulTail (RBinOp op l e₂) ts₂ e r
+  mul-done : ∀ {l ts} → (∀ {t op} → Starts ts t → ¬ OpToken multiplicative t op) → ParsesMulTail l ts l ts
+  mul-op   : ∀ {l t op ts ts₂ r e₂ e} → OpToken multiplicative t op → ParsesUnary ts e₂ ts₂ → ParsesMulTail (RBinOp op l e₂) ts₂ e r
            → ParsesMulTail l (t ∷ ts) e r
 
 -- `-` before a numeral is the numeral's sign: `-5` and `-1.5` are literals
 -- (plan 0.150 N4), so `RNeg` never wraps a numeral. A binary `-` is taken by
 -- the add-tail first (`x - 5`), and `f -5` is `f - 5` (`ArgStart` has no `-`).
 data ParsesUnary where
-  neg     : ∀ {ts r e} → ¬ NumeralStart ts → ParsesUnary ts e r → ParsesUnary (TMinus ∷ ts) (RNeg e) r
-  neg-lit : ∀ {ts ts₁ r a e} → NegNumeral ts a ts₁ → ParsesAppTail a ts₁ e r → ParsesUnary (TMinus ∷ ts) e r
+  neg     : ∀ {ts r e} → ¬ NumeralStart ts → ParsesUnary ts e r → ParsesUnary (TOp ‹ o- › ∷ ts) (RNeg e) r
+  neg-lit : ∀ {ts ts₁ r a e} → NegNumeral ts a ts₁ → ParsesAppTail a ts₁ e r → ParsesUnary (TOp ‹ o- › ∷ ts) e r
   unary   : ∀ {ts r e} → ParsesApp ts e r → ParsesUnary ts e r
 
 data ParsesApp where
