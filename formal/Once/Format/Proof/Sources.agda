@@ -35,7 +35,7 @@ open import Relation.Nullary using (does)
 
 open import Once.Postulates using (toList∘fromList)
 open import Once.Spec.Surface.Lexing using (LineRest; lr-end; lr-nl; lr-char)
-open import Once.Parser.Token using (TLe; TLt; TGe; TGt; TEqEq; TEquals; TNeq; TBang)
+open import Once.Parser.Token using (TLe; TLt; TGe; TGt; TEqEq; TEquals; TNeq; TOpD; TOp; TBang)
 open import Once.Parser.Lexer using (headK; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang;
   hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt; hkPipe; hkPlus; hkStar; hkSlash; hkPct;
   hkAmp; hkDot; hkStr; hkGen; d-comment; d-arrow; d-minus; c-1; c-0; c-w; c-gen; nlIndent; isEqHead; isDashHead;

@@ -33,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Parser.Token using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace;
   TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot;
-  TPlus; TMinus; TStar; TSlash; TPercent; TAmpersand; TLt; TLe; TGt; TGe; TEqEq; TNeq; TBang; TNewline; TEOF)
+  TPlus; TMinus; TStar; TSlash; TPercent; TAmpersand; TLt; TLe; TGt; TGe; TEqEq; TNeq; TOpD; TOp; TBang; TNewline; TEOF)
 open import Once.Parser.Lexer using (HeadK; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang;
   hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt; hkPipe; hkPlus; hkStar; hkSlash;
   hkPct; hkAmp; hkDot; hkStr; hkGen; headK; Dash3; d-comment; d-arrow; d-minus; Caret4; c-1; c-0; c-w; c-gen;

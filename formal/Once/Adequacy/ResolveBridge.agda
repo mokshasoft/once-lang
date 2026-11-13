@@ -268,7 +268,7 @@ resolves-complete um am bound (RBinOp op a b) =
 resolves-complete um am bound (RNeg e) = re-unop (resolves-complete um am bound e)
 resolves-complete um am bound RUnit           = re-unit
 resolves-complete um am bound (RInt n)        = re-int
-resolves-complete um am bound (RFloat i f l) = re-float
+resolves-complete um am bound (RFloat sg i f l) = re-float
 
 ------------------------------------------------------------------------
 -- THE BRIDGE, at a declaration. Only a function body carries references.
