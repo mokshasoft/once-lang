@@ -22748,3 +22748,33 @@ the whole-run relation one case.
 ### Consequences
 * `ImageRun`, `Keys`/`KeysRun`, `HeldI` and `ImageSim` are updated for the trampoline keys (symbolic).
 * New module `ImagePt` (points, the lock-step), then the word layer's relation and step theorem.
+
+## D418 — THE WORD LAYER'S RELATION: POINTS CARRY THEIR LOWERING'S MEMBERSHIP, FRAME FACTS COME FROM THE RUN, TRAMPOLINE POINTS PER KEY (2026-11-13)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Applies**: D417 (refines
+its "one relation"), D416. Proof structure only: the flat code is unchanged, no run-time cost.
+
+### Decision
+* **A point carries the membership its lowering was made with** (`PointAt.Pnt`): a block point its
+  `p : (σ , κ) ∈ allK U` (the caller's `call` evidence, so the call's target `nameOf (idx p)` is that
+  block's entry), a trampoline point its `p : under κ ∈ allK U` (the cell's code word, `CodeOf`). The flat
+  code at a point is the ROOT's lowering at that path (`ptCode`), its way out `ptFin`.
+* **Block and start points relate by the uniform `CfgW`; a trampoline point by a relation per key and
+  depth.** The image's trampoline frame holds the operand (`mpair cell a`, `mnu i p`) on its own stack,
+  while the flat run keeps it in the caller's argument area until the cell part copies it in; `kbodyω`
+  and `kfree` save one slot, not two.
+* **What a run leaves alone** (the frame, the saved frames, the return pcs, every other frame's slots)
+  **is carried by the `LowerSim*` lemmas' results** (a `Keep` record, from the `Moved*` records they
+  already build), not proved per instruction.
+
+### Why
+`ImagePt.Placed` has no memberships, and `KeysRun`'s `CIn` is local evidence, not the root's (a key may be
+listed twice), so the code at a point must be the root's. D417's single relation assumed the image's
+trampoline frame holds what the flat one does; it does not, for the operand, until the cell part runs.
+A store through a pointer (`mvSP`, `store-at`) may write another frame (`call-out` writes the caller's
+area), so "other frames unchanged" is a fact about the run, which the move records already state.
+
+### Consequences
+* `PointAt` (done). Next: `Keep` in the `LowerSim*` results; the return-stack relation (`∷ⁱ`: the body's
+  `c-jmp Ld` resolves to its dispatch point, `image-label`; `frm`: a saved flat frame, its return pc the
+  continuation's point, the root's save slot the caller's area); the trampoline relation; the step theorem.
