@@ -185,26 +185,6 @@ module _ (R : Ren) where
     lv U₁.here          = U₂.here
     lv (U₁.there ne v)  = U₂.there ne (lv v)
 
-    ia : ∀ {op p} → U₁.IntArith op p → U₂.IntArith op p
-    ia U₁.ia-add = U₂.ia-add
-    ia U₁.ia-sub = U₂.ia-sub
-    ia U₁.ia-mul = U₂.ia-mul
-    ia U₁.ia-div = U₂.ia-div
-    ia U₁.ia-mod = U₂.ia-mod
-
-    fa : ∀ {op p} → U₁.FloatArith op p → U₂.FloatArith op p
-    fa U₁.fa-add = U₂.fa-add
-    fa U₁.fa-sub = U₂.fa-sub
-    fa U₁.fa-mul = U₂.fa-mul
-    fa U₁.fa-div = U₂.fa-div
-
-    cm : ∀ {op p} → U₁.Compare op p → U₂.Compare op p
-    cm U₁.cmp-lt = U₂.cmp-lt
-    cm U₁.cmp-le = U₂.cmp-le
-    cm U₁.cmp-gt = U₂.cmp-gt
-    cm U₁.cmp-ge = U₂.cmp-ge
-    cm U₁.cmp-eq = U₂.cmp-eq
-    cm U₁.cmp-ne = U₂.cmp-ne
 
     sh : ∀ {f} → Relation.Nullary.¬ U₁.SpecialHead f → Relation.Nullary.¬ U₂.SpecialHead f
     sh n (U₂.sh-gen g)  = n (U₁.sh-gen g)
@@ -218,9 +198,10 @@ module _ (R : Ren) where
     dom : ∀ {n} {L : U₁.Locals m n} {e A π B t} → U₁._⊢_⇐_⇒[_]↦_↝_ Δ L e A π B t → U₂._⊢_⇐_⇒[_]↦_↝_ Δ (lc L) e A π B (rn t)
 
     syn (U₁.s-int i)                 = U₂.s-int i
-    syn (U₁.s-float i f l)           = U₂.s-float i f l
+    syn (U₁.s-float sg i f l nz)     = U₂.s-float sg i f l nz
     syn U₁.s-unit                    = U₂.s-unit
     syn U₁.s-unit-g                  = U₂.s-unit-g
+    syn U₁.s-toFloat                 = U₂.s-toFloat
     syn (U₁.s-var v)                 = U₂.s-var (lv v)
     syn (U₁.s-sigop g M)             = U₂.s-sigop g M
     syn {L = L} (U₁.s-def {c} d e τ z) =
@@ -228,15 +209,10 @@ module _ (R : Ren) where
             (U₂.s-def d e _ (ground d z))
     syn (U₁.s-annot D)               = U₂.s-annot (chk D)
     syn (U₁.s-pair D E)              = U₂.s-pair (syn D) (syn E)
-    syn (U₁.s-neg D)                 = U₂.s-neg (syn D)
-    syn (U₁.s-neg-float i f l)       = U₂.s-neg-float i f l
+    syn (U₁.s-neg h D)               = U₂.s-neg h (syn D)
     syn (U₁.s-let q D E)             = U₂.s-let q (syn D) (syn E)
     syn (U₁.s-case ql qr D E F j)    = U₂.s-case ql qr (syn D) (syn E) (syn F) j
-    syn (U₁.s-arith a D E)           = U₂.s-arith (ia a) (syn D) (syn E)
-    syn (U₁.s-arith-float a D E)     = U₂.s-arith-float (fa a) (syn D) (syn E)
-    syn (U₁.s-arith-float-il a D E)  = U₂.s-arith-float-il (fa a) (syn D) (syn E)
-    syn (U₁.s-arith-float-ir a D E)  = U₂.s-arith-float-ir (fa a) (syn D) (syn E)
-    syn (U₁.s-compare c D E)         = U₂.s-compare (cm c) (syn D) (syn E)
+    syn (U₁.s-binop h D E)           = U₂.s-binop h (syn D) (syn E)
     syn (U₁.s-id-app D)              = U₂.s-id-app (syn D)
     syn (U₁.s-fst-app D)             = U₂.s-fst-app (syn D)
     syn (U₁.s-snd-app D)             = U₂.s-snd-app (syn D)
