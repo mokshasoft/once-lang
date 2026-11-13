@@ -48,7 +48,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open Sim {FS} U wordOf
   open SimB {FS} U wordOf
   open import Once.LinCore.Moves {FS} using (Seg; slot; Seg-++ˡ; Seg-++ʳ; mvSP-run; MovedW; w-moved; w-rest; w-in; w-pc; w-alloc; mov-out-step; store-step; store-same; store-other
-                                           ; Ran; ran-trans; ranW; ran-regs; ran-store; fresh-block; ran-hi; pred<)
+                                           ; Ran; ran-trans; ranW; ran-regs; ran-store; fresh-block; ran-hi; pred<; inb-write)
     renaming (ln to nsteps; w-halt to wm-halt)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc; fetch)
@@ -106,6 +106,13 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                       (trans (cong (((k + hdr) + 0) Data.Nat.<ᵇ_) (size-with-same (hdr + wc) r (AllocState.block-size (falloc fs))))
                         (<ᵇ-true (subst (_< hdr + wc) (sym (trans (Data.Nat.Properties.+-identityʳ (k + hdr)) (+-comm k hdr)))
                                     (Data.Nat.Properties.+-monoʳ-< hdr k<))))
+          -- the fresh block below the counter, its words inside it (D424)
+          lt₁ : r < AllocState.next-heap-ref (falloc fs₁)
+          lt₁ = subst (r <_) (sym (cong AllocState.next-heap-ref (h-alloc H))) (Data.Nat.Properties.n<1+n r)
+          bnd₁ : ∀ k → k < wc → (k + hdr) < AllocState.block-size (falloc fs₁) r
+          bnd₁ k k< = subst (k + hdr <_)
+                        (sym (trans (cong (λ bs → AllocState.block-size bs r) (h-alloc H)) (size-with-same (hdr + wc) r (AllocState.block-size (falloc fs)))))
+                        (subst (_< hdr + wc) (+-comm hdr k) (Data.Nat.Properties.+-monoʳ-< hdr k<))
           go₂ : Σ FlatState (λ fs₂ → FlatSteps prog (nsteps wc) fs₁ fs₂ × MovedW fs₁ fs₂ P src hdr wc)
               → Σ FlatState λ fs′ → FlatSteps prog (10 + (nsteps wc + 2)) fs fs′ × Built fs fs′ bot sz w lb lc lf
           go₂ (fs₂ , st₂ , M) =
@@ -113,7 +120,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             FlatSteps-++ st₁ (FlatSteps-++ st₂ (step-at fs₃ (h₂ , f₃) (mov-out-step fs₂) (step-at fs₄ (h₂ , f₄) (store-step fs₃ (bot ∸ 1)) done))) ,
             record { b-cell = cell ; b-top = top ; b-slots = slots ; b-heap = heap ; b-next = next ; b-halt = trans (wm-halt M) (h-halt H)
                    ; b-ran = subst (λ z → Ran (10 + (nsteps z + 2)) 1 (AllocState.next-heap-ref (falloc fs)) bot fs fs₄) (sym lw)
-                               (ran-trans (ranH H) (ran-trans (ranW M (λ f x ne k k< ()) (λ x k k< ()) (λ hl lt k k< → fresh-block (AllocState.next-heap-ref (falloc fs)) hl (k + hdr) lt)) (ran-trans (ran-regs _) (ran-store fs₃ (bot ∸ 1) _ (pred< one≤))))) }
+                               (ran-trans (ranH H) (ran-trans (ranW M (λ f x ne k k< ()) (λ x k k< ()) (λ hl lt k k< → fresh-block (AllocState.next-heap-ref (falloc fs)) hl (k + hdr) lt) (inb-write r M lt₁ bnd₁)) (ran-trans (ran-regs _) (ran-store fs₃ (bot ∸ 1) _ (pred< one≤))))) }
             where
               fs₃ = record fs₂ { floc = record (floc fs₂) { regs = writeReg (LocState.regs (floc fs₂)) Output (readReg (LocState.regs (floc fs₂)) Input1) }
                                ; fpc = suc (fpc fs₂) }

@@ -19,6 +19,7 @@ open import Once.LinCore.Flat using (Base)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (StoredValue)
 open import Data.Bool using (false)
+import Data.Empty
 
 module Once.LinCore.LowerSimB
   (fmt : TargetNum) (ans : FFIAnswers)
@@ -37,7 +38,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf
   open CfgW
-  open import Once.LinCore.Moves {FS} using (Seg; slot; Keep; k-frame; k-slots; k-saved; k-ret; k-other; k-halt; Ran) renaming (ln to nsteps)
+  open import Once.LinCore.Moves {FS} using (Seg; slot; Keep; k-frame; k-slots; k-saved; k-ret; k-other; k-halt; Ran; InBlk) renaming (ln to nsteps)
   open import Once.LinCore.MoveCode using (mvSS)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
@@ -132,6 +133,8 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               × (heapMem (floc fs′) (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 3) ≡ just (SV-Code lf))
       h-other : ∀ (hl : HeapLocation) → ¬ HeapLocation.heap-ref hl ≡ mkHeapRef (AllocState.next-heap-ref (falloc fs))
               → heapMem (floc fs′) hl ≡ heapMem (floc fs) hl
+      -- D424: the words written are inside the fresh block
+      h-inb   : InBlk fs → InBlk fs′
   open Header public
 
   header-run : ∀ prog (fs : FlatState) w lb lc lf → Seg prog (fpc fs) (headerTr w lb lc lf) → fhalted (floc fs) ≡ false
@@ -147,7 +150,8 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
     record { h-pc = refl ; h-in = refl ; h-alloc = refl ; h-ret = refl ; h-clo = refl ; h-link = refl ; h-halt = refl
            ; h-stack = refl
            ; h-words = w0 , w1 , w2 , w3
-           ; h-other = other }
+           ; h-other = other
+           ; h-inb = inb }
     where
       import Data.Nat.Properties
       r = AllocState.next-heap-ref (falloc fs)
@@ -192,6 +196,44 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
         where
           ne′ : ∀ k → ¬ AtDynamic {FS} (p k) ≡ AtDynamic hl
           ne′ k refl = ne refl
+      -- the fresh block's other words: as before (so none, below the counter)
+      rest : ∀ k → 4 ≤ k → heapMem (floc fs₁₀) (p k) ≡ heapMem (floc fs) (p k)
+      rest k le =
+        trans (writeLoc-preserves-other (floc fs₉) (AtDynamic (p 3)) (AtDynamic (p k)) (SV-Code lf) (ne-off 3 (s≤s (s≤s (s≤s (s≤s z≤n))))))
+          (trans (writeLoc-preserves-other (floc fs₇) (AtDynamic (p 2)) (AtDynamic (p k)) (SV-Code lc) (ne-off 2 (s≤s (s≤s (s≤s z≤n)))))
+            (trans (writeLoc-preserves-other (floc fs₅) (AtDynamic (p 1)) (AtDynamic (p k)) (SV-Code lb) (ne-off 1 (s≤s (s≤s z≤n))))
+              (writeLoc-preserves-other (floc fs₃) (AtDynamic (p 0)) (AtDynamic (p k)) (SV-Ptr P) (ne-off 0 (s≤s z≤n)))))
+        where
+          ne-off : ∀ j → j < 4 → ¬ AtDynamic {FS} (p j) ≡ AtDynamic (p k)
+          ne-off j j< refl = Data.Nat.Properties.<-irrefl refl (Data.Nat.Properties.<-≤-trans j< le)
+      inb : InBlk fs → InBlk fs₁₀
+      inb I hl {v} e = by-ref (HeapRef.ref-id (HeapLocation.heap-ref hl) Data.Nat.≟ r)
+        where
+          rf = HeapRef.ref-id (HeapLocation.heap-ref hl)
+          off = HeapLocation.heap-offset hl
+          by-off : rf ≡ r → Relation.Nullary.Dec (off < 4)
+                 → rf < suc r × ExecFinal.in-block? {FS} (size-with (hdr + w) r (AllocState.block-size (falloc fs))) (AtDynamic hl) ≡ Data.Bool.true
+          by-off refl (Relation.Nullary.yes o<) =
+            Data.Nat.Properties.n<1+n r ,
+            trans (cong (off Data.Nat.<ᵇ_) (size-with-same (hdr + w) r (AllocState.block-size (falloc fs))))
+                  (<ᵇ-true (Data.Nat.Properties.<-≤-trans o< (Data.Nat.Properties.m≤m+n 4 w)))
+          by-off refl (Relation.Nullary.no o≮) =
+            Data.Empty.⊥-elim (Data.Nat.Properties.<-irrefl refl
+              (Data.Product.proj₁ (I (p off) (trans (sym (rest off (Data.Nat.Properties.≮⇒≥ o≮))) e))))
+          by-ref : Relation.Nullary.Dec (rf ≡ r)
+                 → rf < suc r × ExecFinal.in-block? {FS} (size-with (hdr + w) r (AllocState.block-size (falloc fs))) (AtDynamic hl) ≡ Data.Bool.true
+          by-ref (Relation.Nullary.yes er) = by-off er (off Data.Nat.<? 4)
+          by-ref (Relation.Nullary.no ne) = after (I hl (trans (sym (other hl (λ eq → ne (cong HeapRef.ref-id eq)))) e))
+            where
+              size-with-old′ : ¬ rf ≡ r → size-with (hdr + w) r (AllocState.block-size (falloc fs)) rf ≡ AllocState.block-size (falloc fs) rf
+              size-with-old′ n′ = aux (rf Data.Nat.≟ r)
+                where
+                  aux : (d : Relation.Nullary.Dec (rf ≡ r)) → Once.CCC.Machine.SMCore.size-with-aux (hdr + w) {rf} {r} (AllocState.block-size (falloc fs)) d ≡ AllocState.block-size (falloc fs) rf
+                  aux (Relation.Nullary.yes q) = Data.Empty.⊥-elim (n′ q)
+                  aux (Relation.Nullary.no _)  = refl
+              after : rf < r × ExecFinal.in-block? {FS} (AllocState.block-size (falloc fs)) (AtDynamic hl) ≡ Data.Bool.true
+                    → rf < suc r × ExecFinal.in-block? {FS} (size-with (hdr + w) r (AllocState.block-size (falloc fs))) (AtDynamic hl) ≡ Data.Bool.true
+              after (lt , ib′) = Data.Nat.Properties.m<n⇒m<1+n lt , trans (cong (off Data.Nat.<ᵇ_) (size-with-old′ ne)) ib′
 
   -- a header leaves the frames alone (D418)
   keepH : ∀ {fs fs′ w lb lc lf} → Header fs fs′ w lb lc lf → Keep fs fs′
@@ -203,5 +245,6 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   ranH {fs′ = fs′} H = record { r-keep = keepH H ; r-pc = h-pc H ; r-next = cong AllocState.next-heap-ref (h-alloc H)
                   ; r-old = λ hl lt → h-other H hl (λ e → Data.Nat.Properties.<-irrefl (cong Once.Memory.HeapAddress.HeapRef.ref-id e) lt)
                   ; r-top = λ x _ → trans (cong (λ g → LocState.stackMem (floc fs′) g x) (cong AllocState.current-frame (h-alloc H)))
-                                         (cong (λ m → m _ x) (h-stack H)) }
+                                         (cong (λ m → m _ x) (h-stack H))
+                  ; r-inb = h-inb H }
     where import Data.Nat.Properties

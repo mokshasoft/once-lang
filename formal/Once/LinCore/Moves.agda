@@ -15,19 +15,19 @@
 -- what a store leaves in each slot.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≟_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≟_; _<ᵇ_; _≤?_; _<?_)
 open import Data.Nat.Properties using (+-identityʳ; +-suc)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true; T)
 open import Data.Product using (Σ; _×_; _,_)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥-elim)
-open import Relation.Nullary using (yes; no; ¬_)
+open import Relation.Nullary using (yes; no; ¬_; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.Memory.HeapAddress using (heap-loc)
+open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef; HeapLocation; HeapRef)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
@@ -686,6 +686,86 @@ Old lo fs fs′ = ∀ (hl : Once.Memory.HeapAddress.HeapLocation)
               → Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) Data.Nat.< lo
               → heapMem (floc fs′) hl ≡ heapMem (floc fs) hl
 
+-- ★ D424: every written heap word lies in its block, below the counter
+-- (so an address inside a cell the relation knows the words of is in it)
+InBlk : FlatState → Set
+InBlk fs = ∀ (hl : HeapLocation) {v} → heapMem (floc fs) hl ≡ just v
+         → HeapRef.ref-id (HeapLocation.heap-ref hl) Data.Nat.< AllocState.next-heap-ref (falloc fs)
+           × in-block? (AllocState.block-size (falloc fs)) (AtDynamic hl) ≡ true
+
+-- the same heap and allocator
+inb-same : ∀ {fs fs′ : FlatState} → heapMem (floc fs′) ≡ heapMem (floc fs) → falloc fs′ ≡ falloc fs → InBlk fs → InBlk fs′
+inb-same {fs} {fs′} eh ea I hl e =
+  subst (λ al → HeapRef.ref-id (HeapLocation.heap-ref hl) Data.Nat.< AllocState.next-heap-ref al
+              × in-block? (AllocState.block-size al) (AtDynamic hl) ≡ true)
+        (sym ea) (I hl (trans (cong (λ h → h hl) (sym eh)) e))
+
+private
+  sw-old : ∀ n st (bs : ℕ → ℕ) r → ¬ r ≡ st → size-with n st bs r ≡ bs r
+  sw-old n st bs r ne = aux (r ≟ st)
+    where
+      aux : (d : Dec (r ≡ st)) → size-with-aux n {r} {st} bs d ≡ bs r
+      aux (yes p) = ⊥-elim (ne p)
+      aux (no _)  = refl
+
+  T-true : ∀ {b} → T b → b ≡ true
+  T-true {true} _ = refl
+
+  refOf offOf : ValueLocation FS → ℕ
+  refOf (AtDynamic hl) = HeapRef.ref-id (HeapLocation.heap-ref hl)
+  refOf (AtStack _ _)  = 0
+  offOf (AtDynamic hl) = HeapLocation.heap-offset hl
+  offOf (AtStack _ _)  = 0
+
+-- an allocation: the fresh block past every written word
+inb-alloc : ∀ (fs : FlatState) n → InBlk fs → InBlk (flat-step-straight (instr-alloc-heap n) fs)
+inb-alloc fs n I hl e = after (I hl e)
+  where
+    import Data.Nat.Properties
+    r = HeapRef.ref-id (HeapLocation.heap-ref hl)
+    nx = AllocState.next-heap-ref (falloc fs)
+    after : r Data.Nat.< nx × in-block? (AllocState.block-size (falloc fs)) (AtDynamic hl) ≡ true
+          → r Data.Nat.< suc nx × (HeapLocation.heap-offset hl <ᵇ size-with n nx (AllocState.block-size (falloc fs)) r) ≡ true
+    after (lt , ib) =
+      Data.Nat.Properties.m<n⇒m<1+n lt ,
+      trans (cong (HeapLocation.heap-offset hl <ᵇ_) (sw-old n nx (AllocState.block-size (falloc fs)) r (λ eq → Data.Nat.Properties.<-irrefl eq lt))) ib
+
+-- ★ words written into a block below the counter, each inside it
+inb-write : ∀ {fs fs′ : FlatState} {a o n} (r : ℕ) → MovedW fs fs′ (AtDynamic (heap-loc (mkHeapRef r) 0)) a o n
+          → r Data.Nat.< AllocState.next-heap-ref (falloc fs)
+          → (∀ k → k Data.Nat.< n → (k + o) Data.Nat.< AllocState.block-size (falloc fs) r)
+          → InBlk fs → InBlk fs′
+inb-write {fs} {fs′} {a} {o} {n} r M lt bnd I hl e =
+  subst (λ al → HeapRef.ref-id (HeapLocation.heap-ref hl) Data.Nat.< AllocState.next-heap-ref al
+              × in-block? (AllocState.block-size al) (AtDynamic hl) ≡ true)
+        (sym (w-alloc M)) (by-ref (HeapRef.ref-id (HeapLocation.heap-ref hl) ≟ r))
+  where
+    import Data.Nat.Properties
+    off = HeapLocation.heap-offset hl
+    Goal = HeapRef.ref-id (HeapLocation.heap-ref hl) Data.Nat.< AllocState.next-heap-ref (falloc fs)
+         × in-block? (AllocState.block-size (falloc fs)) (AtDynamic hl) ≡ true
+    -- a word not written: as before
+    old : (∀ k → k Data.Nat.< n → ¬ AtDynamic hl ≡ offsetLoc (AtDynamic (heap-loc (mkHeapRef r) 0)) (k + o)) → Goal
+    old nw = I hl (trans (sym (w-rest M (AtDynamic hl) nw)) e)
+    -- a written word: in the block, by the bound
+    written : HeapRef.ref-id (HeapLocation.heap-ref hl) ≡ r → o Data.Nat.≤ off → off Data.Nat.< o + n → Goal
+    written refl le lt′ =
+      lt , T-true (Data.Nat.Properties.<⇒<ᵇ (subst (Data.Nat._< AllocState.block-size (falloc fs) r) (Data.Nat.Properties.m∸n+n≡m le)
+                                               (bnd (off Data.Nat.∸ o) (subst (off Data.Nat.∸ o Data.Nat.<_) (Data.Nat.Properties.m+n∸m≡n o n) (Data.Nat.Properties.∸-monoˡ-< lt′ le′)))))
+      where
+        le′ : o Data.Nat.≤ off
+        le′ = le
+    by-off : HeapRef.ref-id (HeapLocation.heap-ref hl) ≡ r → Dec (o Data.Nat.≤ off) → Dec (off Data.Nat.< o + n) → Goal
+    by-off er (yes le) (yes lt′) = written er le lt′
+    by-off er (no nle) _ = old (λ k k< eq → nle (subst (o Data.Nat.≤_) (sym (trans (cong offOf eq) (+-identityʳ (k + o))))
+                                                     (Data.Nat.Properties.m≤n+m o k)))
+    by-off er (yes le) (no nlt) = old (λ k k< eq → nlt (subst (Data.Nat._< o + n) (sym (trans (cong offOf eq) (+-identityʳ (k + o))))
+                                                            (subst (Data.Nat._< o + n) (Data.Nat.Properties.+-comm o k)
+                                                              (Data.Nat.Properties.+-monoʳ-< o k<))))
+    by-ref : Dec (HeapRef.ref-id (HeapLocation.heap-ref hl) ≡ r) → Goal
+    by-ref (yes er) = by-off er (o ≤? off) (off <? o + n)
+    by-ref (no ne)  = old (λ k k< eq → ne (cong refOf eq))
+
 -- `n` steps, `a` of them allocations: the heap counter `a` past where it
 -- was; every block below `lo` (a lemma's: the counter where it began) as it
 -- was; every slot of the frame from `hi` up (a lemma's: the frame's budget,
@@ -697,6 +777,7 @@ record Ran (n a lo hi : ℕ) (fs fs′ : FlatState) : Set where
     r-next : AllocState.next-heap-ref (falloc fs′) ≡ a + AllocState.next-heap-ref (falloc fs)
     r-old  : Old lo fs fs′
     r-top  : ∀ x → hi Data.Nat.≤ x → slot fs′ x ≡ slot fs x
+    r-inb  : InBlk fs → InBlk fs′
 open Ran public
 
 private
@@ -719,7 +800,7 @@ private
     where import Data.Nat.Properties
 
 ran-refl : ∀ {lo hi fs} → Ran 0 0 lo hi fs fs
-ran-refl = record { r-keep = keep-refl ; r-pc = refl ; r-next = refl ; r-old = λ _ _ → refl ; r-top = λ _ _ → refl }
+ran-refl = record { r-keep = keep-refl ; r-pc = refl ; r-next = refl ; r-old = λ _ _ → refl ; r-top = λ _ _ → refl ; r-inb = λ I → I }
 
 ran-trans : ∀ {n₁ n₂ a₁ a₂ lo hi fs₁ fs₂ fs₃} → Ran n₁ a₁ lo hi fs₁ fs₂ → Ran n₂ a₂ lo hi fs₂ fs₃ → Ran (n₁ + n₂) (a₁ + a₂) lo hi fs₁ fs₃
 ran-trans {n₁} {n₂} {a₁} {a₂} R₁ R₂ = record
@@ -727,19 +808,23 @@ ran-trans {n₁} {n₂} {a₁} {a₂} R₁ R₂ = record
   ; r-pc   = add-trans n₁ n₂ (r-pc R₁) (r-pc R₂)
   ; r-next = add-trans a₁ a₂ (r-next R₁) (r-next R₂)
   ; r-old  = λ hl lt → trans (r-old R₂ hl lt) (r-old R₁ hl lt)
-  ; r-top  = λ x le → trans (r-top R₂ x le) (r-top R₁ x le) }
+  ; r-top  = λ x le → trans (r-top R₂ x le) (r-top R₁ x le)
+  ; r-inb  = λ I → r-inb R₂ (r-inb R₁ I) }
 
 ranS : ∀ {lo hi fs fs′ a b n} → MovedS fs fs′ a b n → b + n Data.Nat.≤ hi → Ran (ln n) 0 lo hi fs fs′
-ranS M bnd = record { r-keep = keepS M ; r-pc = m-pc M ; r-next = cong AllocState.next-heap-ref (m-alloc M)
-                    ; r-old = λ hl _ → cong (λ h → h hl) (m-heap M) ; r-top = λ x le → m-rest M x (λ k k< → not-in bnd le k<) }
+ranS {fs = fs} {fs′} M bnd = record { r-keep = keepS M ; r-pc = m-pc M ; r-next = cong AllocState.next-heap-ref (m-alloc M)
+                    ; r-old = λ hl _ → cong (λ h → h hl) (m-heap M) ; r-top = λ x le → m-rest M x (λ k k< → not-in bnd le k<)
+                    ; r-inb = inb-same {fs} {fs′} (m-heap M) (m-alloc M) }
 
 ranP : ∀ {lo hi fs fs′ loc o b n} → MovedP fs fs′ loc o b n → b + n Data.Nat.≤ hi → Ran (ln n) 0 lo hi fs fs′
-ranP M bnd = record { r-keep = keepP M ; r-pc = p-pc M ; r-next = cong AllocState.next-heap-ref (p-alloc M)
-                    ; r-old = λ hl _ → cong (λ h → h hl) (p-heap M) ; r-top = λ x le → p-rest M x (λ k k< → not-in bnd le k<) }
+ranP {fs = fs} {fs′} M bnd = record { r-keep = keepP M ; r-pc = p-pc M ; r-next = cong AllocState.next-heap-ref (p-alloc M)
+                    ; r-old = λ hl _ → cong (λ h → h hl) (p-heap M) ; r-top = λ x le → p-rest M x (λ k k< → not-in bnd le k<)
+                    ; r-inb = inb-same {fs} {fs′} (p-heap M) (p-alloc M) }
 
 ranD : ∀ {lo hi fs fs′ a b n} → MovedD fs fs′ a b n → b + n Data.Nat.≤ hi → Ran (ln n) 0 lo hi fs fs′
-ranD M bnd = record { r-keep = keepD M ; r-pc = d-pc M ; r-next = cong AllocState.next-heap-ref (d-alloc M)
-                    ; r-old = λ hl _ → cong (λ h → h hl) (d-heap M) ; r-top = λ x le → d-rest M x (λ k k< → not-in′ bnd le k<) }
+ranD {fs = fs} {fs′} M bnd = record { r-keep = keepD M ; r-pc = d-pc M ; r-next = cong AllocState.next-heap-ref (d-alloc M)
+                    ; r-old = λ hl _ → cong (λ h → h hl) (d-heap M) ; r-top = λ x le → d-rest M x (λ k k< → not-in′ bnd le k<)
+                    ; r-inb = inb-same {fs} {fs′} (d-heap M) (d-alloc M) }
 
 -- a move into a block at or past `lo` (no slot of the frame written)
 ranW : ∀ {lo hi fs fs′ loc a o n} → MovedW fs fs′ loc a o n
@@ -747,12 +832,14 @@ ranW : ∀ {lo hi fs fs′ loc a o n} → MovedW fs fs′ loc a o n
      → (∀ x → ∀ k → k Data.Nat.< n → ¬ AtStack (current-frame (falloc fs)) x ≡ offsetLoc loc (k + o))
      → (∀ hl → Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) Data.Nat.< lo
            → ∀ k → k Data.Nat.< n → ¬ AtDynamic hl ≡ offsetLoc loc (k + o))
+     → (InBlk fs → InBlk fs′)
      → Ran (ln n) 0 lo hi fs fs′
-ranW {fs = fs} {fs′} M h hc d = record
+ranW {fs = fs} {fs′} M h hc d ib = record
   { r-keep = keepW M h ; r-pc = w-pc M ; r-next = cong AllocState.next-heap-ref (w-alloc M)
   ; r-old = λ hl lt → w-rest M (AtDynamic hl) (d hl lt)
   ; r-top = λ x _ → trans (cong (λ g → stackMem (floc fs′) g x) (cong current-frame (w-alloc M)))
-                          (w-rest M (AtStack (current-frame (falloc fs)) x) (hc x)) }
+                          (w-rest M (AtStack (current-frame (falloc fs)) x) (hc x))
+  ; r-inb = ib }
 
 -- a block's words are not below its own reference
 fresh-block : ∀ r hl o → Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) Data.Nat.< r
@@ -761,29 +848,31 @@ fresh-block r hl o lt refl = Data.Nat.Properties.<-irrefl refl lt
   where import Data.Nat.Properties
 
 ranF : ∀ {lo hi fs fs′ b n} → Filled fs fs′ b n → b + n Data.Nat.≤ hi → Ran n 0 lo hi fs fs′
-ranF F bnd = record { r-keep = keepF F ; r-pc = f-pc F ; r-next = cong AllocState.next-heap-ref (f-alloc F)
-                    ; r-old = λ hl _ → cong (λ h → h hl) (f-heap F) ; r-top = λ x le → f-rest F x (λ k k< → not-in bnd le k<) }
+ranF {fs = fs} {fs′} F bnd = record { r-keep = keepF F ; r-pc = f-pc F ; r-next = cong AllocState.next-heap-ref (f-alloc F)
+                    ; r-old = λ hl _ → cong (λ h → h hl) (f-heap F) ; r-top = λ x le → f-rest F x (λ k k< → not-in bnd le k<)
+                    ; r-inb = inb-same {fs} {fs′} (f-heap F) (f-alloc F) }
 
 ran-regs : ∀ {lo hi fs} rs → Ran 1 0 lo hi fs (record fs { floc = record (floc fs) { regs = rs } ; fpc = suc (fpc fs) })
-ran-regs rs = record { r-keep = keep-regs rs _ ; r-pc = refl ; r-next = refl ; r-old = λ _ _ → refl ; r-top = λ _ _ → refl }
+ran-regs rs = record { r-keep = keep-regs rs _ ; r-pc = refl ; r-next = refl ; r-old = λ _ _ → refl ; r-top = λ _ _ → refl ; r-inb = λ I → I }
 
 ran-store : ∀ {lo hi} fs b v → b Data.Nat.< hi
           → Ran 1 0 lo hi fs (record fs { floc = writeLoc (floc fs) (AtStack (current-frame (falloc fs)) b) v ; fpc = suc (fpc fs) })
 ran-store fs b v b< = record
   { r-keep = keep-store fs b v ; r-pc = refl ; r-next = refl ; r-old = λ _ _ → refl
   ; r-top = λ x le → store-other (floc fs) (current-frame (falloc fs)) b v x
-                       (λ e → Data.Nat.Properties.<-irrefl e (Data.Nat.Properties.<-≤-trans b< le)) }
+                       (λ e → Data.Nat.Properties.<-irrefl e (Data.Nat.Properties.<-≤-trans b< le))
+  ; r-inb = λ I → I }
   where import Data.Nat.Properties
 
 ran-pc : ∀ {lo hi fs} → Ran 1 0 lo hi fs (record fs { fpc = suc (fpc fs) })
-ran-pc = record { r-keep = keep-pc _ ; r-pc = refl ; r-next = refl ; r-old = λ _ _ → refl ; r-top = λ _ _ → refl }
+ran-pc = record { r-keep = keep-pc _ ; r-pc = refl ; r-next = refl ; r-old = λ _ _ → refl ; r-top = λ _ _ → refl ; r-inb = λ I → I }
 
 ran-heap : ∀ {lo hi} fs n → Ran 1 1 lo hi fs (flat-step-straight (instr-alloc-heap n) fs)
-ran-heap fs n = record { r-keep = keep-heap fs n ; r-pc = refl ; r-next = refl ; r-old = λ _ _ → refl ; r-top = λ _ _ → refl }
+ran-heap fs n = record { r-keep = keep-heap fs n ; r-pc = refl ; r-next = refl ; r-old = λ _ _ → refl ; r-top = λ _ _ → refl ; r-inb = inb-alloc fs n }
 
 -- a bound further up
 ran-hi : ∀ {n a lo hi hi′ fs fs′} → hi Data.Nat.≤ hi′ → Ran n a lo hi fs fs′ → Ran n a lo hi′ fs fs′
-ran-hi le R = record { r-keep = r-keep R ; r-pc = r-pc R ; r-next = r-next R ; r-old = r-old R
+ran-hi le R = record { r-keep = r-keep R ; r-pc = r-pc R ; r-next = r-next R ; r-old = r-old R ; r-inb = r-inb R
                      ; r-top = λ x le′ → r-top R x (Data.Nat.Properties.≤-trans le le′) }
   where import Data.Nat.Properties
 
