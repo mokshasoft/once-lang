@@ -118,6 +118,12 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           (≤-trans (≤-reflexive (Data.Nat.Properties.m+[n∸m]≡n le)) B≤x))
       where import Data.Nat.Properties
 
+    -- the argument's words end at the region's top
+    bnd-arg : ∀ (φ′ : Frame) A → ws (A ∷ []) ≤ OP φ′ → (budget φ′ ∸ ws (A ∷ [])) + wsz A ≤ budget φ′
+    bnd-arg φ′ A fit = ≤-trans (Data.Nat.Properties.+-monoʳ-≤ (budget φ′ ∸ ws (A ∷ [])) (m≤m+n (wsz A) 0))
+                         (≤-reflexive (Data.Nat.Properties.m∸n+n≡m (≤-trans fit (m≤n+m (OP φ′) (EP φ′)))))
+      where import Data.Nat.Properties
+
     lt0 : ∀ {k n} → k < n → k < n + 0
     lt0 {k} {n} k< = subst (k <_) (sym (Data.Nat.Properties.+-identityʳ n)) k<
       where import Data.Nat.Properties
@@ -131,14 +137,14 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           → ws (A ∷ []) ≤ OP φ′
           → Σ FlatState λ fs′ → FlatSteps prog (Once.LinCore.Moves.ln {FS} (wsz A)) fs fs′
               × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ′ ([]ᵉ ∥ a ∷ˢ []ˢ)
-              × Ran (Once.LinCore.Moves.ln {FS} (wsz A)) 0 (AllocState.next-heap-ref (falloc fs)) fs fs′
+              × Ran (Once.LinCore.Moves.ln {FS} (wsz A)) 0 (AllocState.next-heap-ref (falloc fs)) (budget φ′) fs fs′
               × (∀ x → budget φ′ ≤ x → slot fs′ x ≡ slot fs x)
   enter-n prog fs φ′ cf area o {A} {a} wa ne inp pa sa seg h fit
     with arg-in prog fs φ′ cf area o wa ne inp pa sa seg h
   ... | (fs′ , st , pa′ , sa′ , M) =
     fs′ , st ,
     record { c-env = tt ; c-stk = ((wa , pa′ , sa′) , tt) ; c-efit = z≤n ; c-sfit = fit } ,
-    ranP M ,
+    ranP M (bnd-arg φ′ A fit) ,
     (λ x B≤x → p-rest M x (λ k k< → under-top (budget φ′) (ws (A ∷ [])) k x (≤-trans fit (m≤n+m (OP φ′) (EP φ′))) (lt0 k<) B≤x))
 
   enter-j : ∀ prog (fs : FlatState) (φ′ : Frame) (cf : FrameSemantics.Frame FS) (area o v sv : ℕ) {E A} {e : MV E} {a : MV A}
@@ -153,7 +159,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           → ws (E ∷ []) ≤ EP φ′ → ws (A ∷ []) ≤ OP φ′
           → Σ FlatState λ fs′ → FlatSteps prog (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) fs fs′
               × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ′ (vw e []ᵉ ∥ a ∷ˢ []ˢ)
-              × Ran (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) 0 (AllocState.next-heap-ref (falloc fs)) fs fs′
+              × Ran (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) 0 (AllocState.next-heap-ref (falloc fs)) (budget φ′) fs fs′
               × (∀ x → budget φ′ ≤ x → slot fs′ x ≡ slot fs x)
   enter-j prog fs φ′ cf area o v sv {E} {A} {e} {a} we wa ne inp ev sv≥ pa sa pe se seg h fitE fitA
     with arg-in prog fs φ′ cf area o wa ne inp pa sa (Seg-++ˡ prog (fpc fs) (mvPS o dst (wsz A)) _ seg) h
@@ -193,7 +199,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                ; c-stk = ((wa , subst (λ r → VW r a wa) (sym (p-heap M₃)) pa₁
                          , slots-frame {slot fs₁} {slot fs₃} wa (λ k k< → p-rest M₃ (k + dst) (λ k′ k′< e′ → past-env k k′ k′< e′)) sa₁) , tt)
                ; c-efit = fitE ; c-sfit = fitA } ,
-        ran-trans (ranP M₁) (ran-trans (ran-regs _) (ranP M₃)) ,
+        ran-trans (ranP M₁ (bnd-arg φ′ A fitA)) (ran-trans (ran-regs _) (ranP M₃ (≤-trans (≤-trans (≤-reflexive (sym (Data.Nat.Properties.+-identityʳ (wsz E)))) fitE) (m≤m+n (EP φ′) (OP φ′))))) ,
         (λ x B≤x → trans (p-rest M₃ x (λ k′ k′< e′ → Data.Nat.Properties.<-irrefl (sym e′) (<-≤-trans (lt-env k′ k′<) (≤-trans dst≤B B≤x))))
                          (top₁ x B≤x))
         where

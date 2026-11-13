@@ -107,7 +107,7 @@ module Loops {FS : FrameSemantics} (U : Univ)
     1 , record fs { fpc = suc (fpc fs) } ,
     step-at _ (h-run H , proj₁ (seg-at s H)) (flat-label prog fs (jl j (lm (lowAt s)))) FlatStepsAPI.[] ,
     record { h-pc = trans (cong suc (h-pc H)) (sym pos-body) ; h-run = h-run H ; h-cfg = h-cfg H } ,
-    keep-pc _ , refl , (λ _ _ → refl)
+    keep-pc _ , refl , (λ _ _ → refl) , (λ _ _ → refl)
     where
       pR = proj₁ R ; pS = proj₁ (ins (sub-low L₀ s))
       pos-body : pos (body s) ≡ suc (pos s)
@@ -183,10 +183,10 @@ module Loops {FS : FrameSemantics} (U : Univ)
       pos-exit = trans (cong length (sym lists))
                    (trans (length-++ (dP ++ Y)) (trans (cong (λ z → q + suc z) (len-mvSSd (suc t) (bot ∸ wsz B) (wsz B))) (past q _)))
       fin : _ → Moved (next s) fs 0 (es ∥ v ∷ˢ os)
-      fin (fs′ , st , C′ , pc , K , nx , hp) =
+      fin (fs′ , st , C′ , pc , K , nx , hp , tp) =
         _ , fs′ , step-at fs₁ (q-run H , proj₁ sD) (flat-label prog fs Ld) st ,
         record { h-pc = trans pc (sym pos-exit) ; h-run = trans (k-halt K) (q-run H) ; h-cfg = C′ } ,
-        keep-trans (keep-pc _) K , nx , (λ hl _ → cong (λ h → h hl) hp)
+        keep-trans (keep-pc _) K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
 
   disp-again : ∀ {E Es A B S V} {b : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V}
                  → Labelled → ∀ (s : Sub root (loop b ⨾ k)) {es : Slots (E ∷ Es)} {os : Stk S} {a : MV A} {fs}
@@ -216,13 +216,13 @@ module Loops {FS : FrameSemantics} (U : Univ)
                    (sym (trans (length-++ dP {instr-ctrl (c-label Ld) ∷ lea-slot t ∷ mov-to-input ∷ instr-ctrl (c-branch-tag-zero Li) ∷ MA})
                           (cong (λ z → posD s + suc (suc (suc (suc z)))) (len-mvSSd (suc t) (bot ∸ wsz A) (wsz A))))))
       fin : _ → Moved s fs 0 (es ∥ a ∷ˢ os)
-      fin (fs₂ , st , C′ , pc , K , nx , hp) =
+      fin (fs₂ , st , C′ , pc , K , nx , hp , tp) =
         _ , record fs₂ { fpc = pos s } ,
         step-at fs₁ (q-run H , proj₁ sD) (flat-label prog fs Ld)
           (FlatSteps-++ st (step-at {i = instr-ctrl (c-jmp Lh)} _ (h₂ , proj₁ (subst (λ z → Seg prog z (instr-ctrl (c-jmp Lh) ∷ instr-ctrl (c-label Li) ∷ MB ++ kcode)) (sym (trans pc at-jmp)) (in-seg jmpIn)))
                               (trans (flat-jmp prog fs₂ Lh) (cong (λ x → do-jump x fs₂) (lab (here-in s)))) FlatStepsAPI.[])) ,
         record { h-pc = refl ; h-run = h₂ ; h-cfg = C′ } ,
-        keep-trans (keep-pc _) (keep-trans K (keep-pc _)) , nx , (λ hl _ → cong (λ h → h hl) hp)
+        keep-trans (keep-pc _) (keep-trans K (keep-pc _)) , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
         where
           h₂ : LocState.halted (floc fs₂) ≡ false
           h₂ = trans (k-halt K) (q-run H)
