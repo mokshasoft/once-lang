@@ -2,78 +2,24 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Float.DecimalLaws — the rounding's range, and its results pinned by `refl`.
+-- Once.Float.DecimalLaws — a literal's rounding, pinned by `refl`.
+--
+-- A literal means `roundDec F d`, a level-2 value (plan 0.150 N6 (a)); the
+-- machine loads its encoding, `Once.Float.Word.round F d`. That the encoding
+-- fits the register is `Once.Float.EncodingLaws.round-fits`.
 ------------------------------------------------------------------------
 
 module Once.Float.DecimalLaws where
 
-open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; NonZero)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Nat.DivMod using (_/_; _%_)
-open import Data.Nat.Properties
-  using (m^n≢0; m*n≢0; m^n>0; *-monoˡ-<; ∸-monoʳ-<; ^-distribˡ-+-*)
-open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
-import Once.Spec.Float.Dyadic
-import Data.Integer as ℤ
-open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
+open import Data.Nat using (ℕ)
+open import Data.Integer using (+_; -[1+_])
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Spec.Float.Dyadic
-  using (FloatFormat; bitLen; binary32; binary64; bias; signBit; modPow)
-open import Once.Float.DyadicLaws using (signBit<; combine-bound; modPow<)
-open Once.Spec.Float.Dyadic.FloatFormat using (exp-bits; sig-bits)
-open import Once.Spec.Float.Decimal
-open Decimal
-
-------------------------------------------------------------------------
--- RANGE
---
--- All three patterns are packed identically — a sign bit above an
--- `(exp-bits + sig-bits)`-wide magnitude — so `combine-bound` discharges each
--- the same way. The only arithmetic worth naming is that the infinity
--- magnitude `(2^e − 1)·2^s` is `2^(e+s) − 2^s`: strictly INSIDE the field
--- rather than at its boundary, which is what makes ±∞ a representable pattern
--- and not an overflow of its own.
-------------------------------------------------------------------------
-
-private
-  magInf : ∀ F → ((2 ^ exp-bits F) ∸ 1) * (2 ^ sig-bits F)
-                   ℕ.< 2 ^ (exp-bits F + sig-bits F)
-  magInf F =
-    subst (λ z → ((2 ^ exp-bits F) ∸ 1) * (2 ^ sig-bits F) ℕ.< z)
-          (sym (^-distribˡ-+-* 2 (exp-bits F) (sig-bits F)))
-          (*-monoˡ-< (2 ^ sig-bits F) {{m^n≢0 2 (sig-bits F)}}
-                     (∸-monoʳ-< (ℕ.s≤s ℕ.z≤n) (m^n>0 2 (exp-bits F))))
-
-  magFin : ∀ F m se → modPow se (exp-bits F) * (2 ^ sig-bits F) + fracField F m
-                        ℕ.< 2 ^ (exp-bits F + sig-bits F)
-  magFin F m se = combine-bound (exp-bits F) (sig-bits F)
-                                (modPow< se (exp-bits F))
-                                (modPow< _ (sig-bits F))
-
-packHi-fits : ∀ F sb m se b → sb ℕ.< 2
-            → packHi F sb m se b ℕ.< 2 ^ (1 + (exp-bits F + sig-bits F))
-packHi-fits F sb m se true  sb< = combine-bound 1 (exp-bits F + sig-bits F) sb< (magInf F)
-packHi-fits F sb m se false sb< = combine-bound 1 (exp-bits F + sig-bits F) sb< (magFin F m se)
-
-packSE-fits : ∀ F sb m E → sb ℕ.< 2
-            → packSE F sb m E ℕ.< 2 ^ (1 + (exp-bits F + sig-bits F))
-packSE-fits F sb m -[1+ _ ]  sb< = combine-bound 1 (exp-bits F + sig-bits F) sb< (m^n>0 2 (exp-bits F + sig-bits F))
-packSE-fits F sb m (+ zero)  sb< = combine-bound 1 (exp-bits F + sig-bits F) sb< (m^n>0 2 (exp-bits F + sig-bits F))
-packSE-fits F sb m (+ suc e) sb< = packHi-fits F sb m (suc e) (maxFiniteExp F ℕ.<ᵇ suc e) sb<
-
-packAt-fits : ∀ F sb m E → sb ℕ.< 2
-            → packAt F sb m E ℕ.< 2 ^ (1 + (exp-bits F + sig-bits F))
-packAt-fits F sb zero    E sb< = combine-bound 1 (exp-bits F + sig-bits F) sb< (m^n>0 2 (exp-bits F + sig-bits F))
-packAt-fits F sb (suc m) E sb< = packSE-fits F sb (suc m) (storedExp F (suc m) E) sb<
-
--- | …a THEOREM, where D109's `primFloatToWord` needed a parameter.
-round-fits : ∀ F d → round F d ℕ.< 2 ^ (1 + (exp-bits F + sig-bits F))
-round-fits F d =
-  packAt-fits F (signBit (sig d))
-              (proj₁ (roundSig F ∣ sig d ∣ (exp10 d)))
-              (proj₂ (roundSig F ∣ sig d ∣ (exp10 d)))
-              (signBit< (sig d))
+open import Once.Spec.Float.Dyadic using (binary32; binary64)
+open import Once.Spec.Float.Value using (negV)
+open import Once.Spec.Float.Decimal using (decimalOf; negate; _/10^_; roundDec)
+open import Once.Spec.Float.Encoding using (encode)
+open import Once.Float.Word using (round)
 
 ------------------------------------------------------------------------
 -- PINNED PATTERNS
@@ -168,12 +114,9 @@ _ : round binary32 (negate (decimalOf 100000000000000000000000000000000000000000
       ≡ 0xff800000
 _ = refl
 
--- UNDERFLOW → ZERO, and this is a STATED LIMITATION, not a claim of IEEE
--- conformance. glibc stores `1e-40` at binary32 as the SUBNORMAL `0x000116c2`;
--- Once has no subnormals and stores `0`. Bounded (the value was already tiny)
--- where the overflow wrap was not, which is why the two are not treated alike.
--- Recorded here so it is read rather than discovered.
-_ : round binary32 ((+ 1) /10^ 40) ≡ 0
+-- UNDERFLOW → a SUBNORMAL, as glibc stores `1e-40` at binary32 (plan 0.150
+-- R1, superseding D118's flush to zero, which this pin used to record).
+_ : round binary32 ((+ 1) /10^ 40) ≡ 0x000116c2
 _ = refl
 
 -- The same literal is NORMAL at binary64, so it is exact there.
@@ -233,18 +176,19 @@ _ = refl
 _ : round binary32 (negate (decimalOf 0 1 1)) ≡ 0xbdcccccd
 _ = refl
 
--- NEGATIVE ZERO IS A STATED LIMITATION, alongside the subnormals of D118.
--- `negate` is `ℤ.-` on the significand and `ℤ.- (+ 0) ≡ + 0`, so `signBit`
--- reads `0` and `-0.0` compiles to POSITIVE zero. IEEE keeps the two apart
--- (glibc stores `0x8000000000000000`); Once does not.
---
--- It is bounded in the same way the missing subnormals are: the value is zero
--- either way, and only `1/x`, `copysign` and the sign of a zero result can
--- tell the difference — none of which Once has, since it has no float
--- ARITHMETIC at all (F4). If F4 lands, this pin is the one that has to change
--- first, and that is why it is written down rather than left to be found.
+-- A DECIMAL HAS NO NEGATIVE ZERO: `negate` is `ℤ.-` on the significand and
+-- `ℤ.- (+ 0) ≡ + 0`, so `negate 0.0` rounds to `+0`. That is why the literal
+-- `-0.0` is rejected (`Spec.Surface.Syntax.NegativeZero`, plan 0.150 R6) rather
+-- than read as `+0.0`; `-0.0` the value is the negation `-(0.0)`, `negV`, and
+-- encodes as glibc's `0x8000000000000000`.
 _ : round binary64 (negate (decimalOf 0 0 1)) ≡ 0
 _ = refl
 
 _ : round binary32 (negate (decimalOf 0 0 1)) ≡ 0
+_ = refl
+
+_ : encode binary64 (negV (roundDec binary64 (decimalOf 0 0 1))) ≡ 0x8000000000000000
+_ = refl
+
+_ : encode binary32 (negV (roundDec binary32 (decimalOf 0 0 1))) ≡ 0x80000000
 _ = refl

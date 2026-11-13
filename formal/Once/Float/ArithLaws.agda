@@ -2,29 +2,33 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Float.ArithLaws — the float operations' results pinned against the hardware, and their commutativity.
+-- Once.Float.ArithLaws — the float operations' results pinned against the
+-- hardware, their commutativity, and the level-2 values (plan 0.150 N6 (a)):
+-- signed zeros, one NaN, subnormals, the two orders.
 ------------------------------------------------------------------------
 
 module Once.Float.ArithLaws where
 
 
 open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
-open import Data.Nat.DivMod using (_/_; _%_)
-open import Data.Nat.Properties using (m^n≢0; ≡ᵇ⇒≡)
-open import Data.Integer using (ℤ; +_; ∣_∣)
+open import Data.Nat.Properties using (<ᵇ⇒<; <-asym; +-comm; *-comm)
+open import Data.Integer using (ℤ; +_)
 import Data.Integer as ℤ
 import Data.Integer.Properties as ℤ
-open import Data.Bool using (Bool; true; false; if_then_else_; T)
-open import Data.Unit using (tt)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Bool using (Bool; true; false; T)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; cong₂; subst)
 
-open import Once.Spec.Float.Dyadic
-  using (FloatFormat; bias; bitLen; signBit; modPow; binary32; binary64)
-open Once.Spec.Float.Dyadic.FloatFormat using (exp-bits; sig-bits)
-open import Once.Spec.Float.Decimal using (divRHE; packAt; infinity; signedZero)
+open import Once.Spec.Float.Dyadic using (FloatFormat; binary32; binary64)
+open import Once.Spec.Float.Value
+open import Once.Spec.Float.Decimal using (roundDec; decimalOf; _/10^_)
+open import Once.Spec.Float.Encoding using (encode; decode)
 open import Once.Spec.Float.Arith
-open Bin
+  using (Operand; inf; fin; exact; onNumbers; addE; mulE; addAt; cancel; infAdd; infMul; addV; mulV; divV; i2fV;
+         ltT; ltQ; eqQ; eqV)
+import Once.Spec.Float.Arith as FA
+open import Once.Float.Word using (fadd; fsub; fmul; fdiv; fneg; i2f)
 
 ------------------------------------------------------------------------
 -- PINNED, and against the RIGHT authority
@@ -76,13 +80,12 @@ _ = refl
 _ : fmul binary64 0x40091eb851eb851f 0x4000000000000000 ≡ 0x40191eb851eb851f
 _ = refl
 
--- Cancellation to zero. The sign is `+0` — Once collapses the two zeros
--- (`Once.Spec.Float.Dyadic`'s carrier note, D124), and IEEE agrees here anyway.
+-- Cancellation to zero: `x + (−x)` is `+0` under roundTiesToEven (§6.3).
 _ : fadd binary64 0x3ff0000000000000 0xbff0000000000000 ≡ 0
 _ = refl
 
--- OVERFLOW from arithmetic reaches ±∞ through the SAME `packAt` a literal
--- does, which is what D118 buys: one story, not two.
+-- OVERFLOW from arithmetic reaches ±∞ through the SAME rounding a literal
+-- does (`Spec.Float.Value.roundQ`): one story, not two.
 _ : fmul binary64 0x7e37e43c8800759c 0x7e37e43c8800759c ≡ 0x7ff0000000000000
 _ = refl
 
@@ -90,8 +93,9 @@ _ = refl
 _ : fadd binary64 0x7ff0000000000000 0x3ff0000000000000 ≡ 0x7ff0000000000000
 _ = refl
 
--- ∞ + (−∞) and 0 × ∞ are INVALID, and Once answers with THE canonical NaN on
--- every target (D055). These two pins are therefore the RISC-V patterns and
+-- ∞ + (−∞) and 0 × ∞ are INVALID, and the answer is THE NaN, whose one
+-- encoding is `encode fv-nan` on every target (D055, D113 restated by plan
+-- 0.150 N6 (a)). These two pins are therefore the RISC-V patterns and
 -- deliberately NOT x86's — x86 answers `0xfff8000000000000` in hardware and
 -- the backend must canonicalise. That divergence is the whole point of the
 -- decision, so the pin records the DECIDED value, not the measured one.
@@ -205,7 +209,7 @@ _ : fmul binary32 0x7e967699 0x41200000 ≡ 0x7f800000
 _ = refl
 
 ------------------------------------------------------------------------
--- `Int` → `Float`, pinned (D125)
+-- `Int` → `Float` (`toFloat`, D408), pinned
 --
 -- Measured on BOTH targets, which is what licenses the decision: unlike
 -- division-by-zero (D055) and unlike NaN, the hardware AGREES here, so there
@@ -226,7 +230,7 @@ _ = refl
 
 -- The exactness threshold, from both sides. `2^53` converts exactly; `2^53+1`
 -- has no binary64 representation and rounds to `2^53` — the same value, which
--- is precisely the precision loss D125 decided to allow and to bound.
+-- is precisely the precision loss `toFloat` states (D408).
 _ : i2f binary64 (+ 9007199254740992) ≡ 0x4340000000000000
 _ = refl
 
@@ -241,7 +245,7 @@ _ = refl
 _ : i2f binary32 (+ 16777217) ≡ 0x4b800000
 _ = refl
 
--- A mixed expression end to end: `1 + 1.5` is `i2f 1` added to the literal.
+-- `toFloat 1 +. 1.5` end to end: the conversion, then the literal added.
 _ : fadd binary64 (i2f binary64 (+ 1)) 0x3ff8000000000000 ≡ 0x4004000000000000
 _ = refl
 
@@ -254,84 +258,201 @@ _ = refl
 -- `⊕-comm`; this is the float twin.
 --
 -- IT IS TRUE HERE AND WOULD NOT BE ON THE HARDWARE. x86 PROPAGATES an operand's
--- NaN payload, so `nan₁ + nan₂` and `nan₂ + nan₁` differ on the metal. Once
--- canonicalises (D055's rule, applied to NaN), and the canonical NaN has no
--- payload to propagate — so commutativity holds exactly. The decision to
--- canonicalise bought this proof.
+-- NaN payload, so `nan₁ + nan₂` and `nan₂ + nan₁` differ on the metal. Once's
+-- `Float` has one NaN (level 2) with one encoding, so there is no payload to
+-- propagate — and commutativity holds exactly: the exact sum and product
+-- commute, and rounding and encoding are functions of them.
 ------------------------------------------------------------------------
 
 private
-  -- `x ≡ᵇ y` is symmetric, which is the only fact the ±∞ cases need.
-  ≡ᵇ-sym : ∀ m n → (m ℕ.≡ᵇ n) ≡ (n ℕ.≡ᵇ m)
-  ≡ᵇ-sym zero    zero    = refl
-  ≡ᵇ-sym zero    (suc _) = refl
-  ≡ᵇ-sym (suc _) zero    = refl
-  ≡ᵇ-sym (suc m) (suc n) = ≡ᵇ-sym m n
+  sameS-comm : ∀ s t → sameS s t ≡ sameS t s
+  sameS-comm pos pos = refl
+  sameS-comm pos neg = refl
+  sameS-comm neg pos = refl
+  sameS-comm neg neg = refl
 
--- Exact addition on the scaffolding commutes: the alignment exponent is a
--- `⊓` (commutative) and the significands are added in `ℤ`.
--- The implicits of `+-comm` are spelled out: after the `⊓` is turned around
--- both sides share the alignment exponent, but the two SUMMANDS are large
--- terms Agda will not guess.
-+B-comm : ∀ x y → x +B y ≡ y +B x
-+B-comm (a ·2^ p) (b ·2^ q) rewrite ℤ.⊓-comm p q =
-  cong (_·2^ (q ℤ.⊓ p))
-       (ℤ.+-comm (a ℤ.* (+ (2 ^ ∣ p ℤ.- (q ℤ.⊓ p) ∣)))
-                 (b ℤ.* (+ (2 ^ ∣ q ℤ.- (q ℤ.⊓ p) ∣))))
+  xorS-comm : ∀ s t → xorS s t ≡ xorS t s
+  xorS-comm pos pos = refl
+  xorS-comm pos neg = refl
+  xorS-comm neg pos = refl
+  xorS-comm neg neg = refl
 
-*B-comm : ∀ x y → x *B y ≡ y *B x
-*B-comm (a ·2^ p) (b ·2^ q) = cong₂ _·2^_ (ℤ.*-comm a b) (ℤ.+-comm p q)
+  infAdd-comm : ∀ s t → infAdd s t (sameS s t) ≡ infAdd t s (sameS t s)
+  infAdd-comm pos pos = refl
+  infAdd-comm pos neg = refl
+  infAdd-comm neg pos = refl
+  infAdd-comm neg neg = refl
 
--- The ±∞ pair is the only case with a decision in it. `≡ᵇ-sym` turns the
--- scrutinee around; the aux takes the decision as an ARGUMENT (the
--- `cfm-build-gated` convention) so the `if` reduces on both sides at once.
-addV-inf-aux : ∀ F s t (b : Bool) → (t ℕ.≡ᵇ s) ≡ b
-             → (if b then infinity F s else nan F)
-             ≡ (if b then infinity F t else nan F)
-addV-inf-aux F s t true  eq = cong (infinity F) (sym (≡ᵇ⇒≡ t s (subst T (sym eq) tt)))
-addV-inf-aux F s t false _  = refl
+  -- Opposite signs: the larger magnitude wins, from either side. (Both
+  -- `a < b` and `b < a` is impossible; the decisions are arguments, so each
+  -- side reduces on them.)
+  cancel-comm : ∀ s a t b m (x y : Bool) → (a ℕ.<ᵇ b) ≡ x → (b ℕ.<ᵇ a) ≡ y
+              → cancel s a t b m x y ≡ cancel t b s a m y x
+  cancel-comm s a t b m true  true  ex ey =
+    ⊥-elim (<-asym (<ᵇ⇒< a b (subst T (sym ex) _)) (<ᵇ⇒< b a (subst T (sym ey) _)))
+  cancel-comm s a t b m true  false ex ey = refl
+  cancel-comm s a t b m false true  ex ey = refl
+  cancel-comm s a t b m false false ex ey = refl
+
+  addAt-comm : ∀ s a t b m → addAt s a t b m (sameS s t) ≡ addAt t b s a m (sameS t s)
+  addAt-comm pos a pos b m = cong (λ n → FA.ratio pos n m 0) (+-comm a b)
+  addAt-comm neg a neg b m = cong (λ n → FA.ratio neg n m 0) (+-comm a b)
+  addAt-comm pos a neg b m = cancel-comm pos a neg b m (a ℕ.<ᵇ b) (b ℕ.<ᵇ a) refl refl
+  addAt-comm neg a pos b m = cancel-comm neg a pos b m (a ℕ.<ᵇ b) (b ℕ.<ᵇ a) refl refl
+
+-- | The exact sum and product commute.
+addE-comm : ∀ a b → addE a b ≡ addE b a
+addE-comm (inf s)     (inf t)     = infAdd-comm s t
+addE-comm (inf s)     (fin _ _ _) = refl
+addE-comm (fin _ _ _) (inf t)     = refl
+addE-comm (fin s a e) (fin t b f) rewrite ℤ.⊓-comm e f =
+  addAt-comm s (FA.alignTo a e (f ℤ.⊓ e)) t (FA.alignTo b f (f ℤ.⊓ e)) (f ℤ.⊓ e)
+
+mulE-comm : ∀ a b → mulE a b ≡ mulE b a
+mulE-comm (inf s)     (inf t)     = cong FA.∞ (xorS-comm s t)
+mulE-comm (inf s)     (fin t b _) = cong (λ u → infMul u b) (xorS-comm s t)
+mulE-comm (fin s a _) (inf t)     = cong (λ u → infMul u a) (xorS-comm s t)
+mulE-comm (fin s a e) (fin t b f) =
+  cong₂ (λ u n → FA.ratio u n (e ℤ.+ f) 0) (xorS-comm s t) (*-comm a b)
+  ▸ cong (λ z → FA.ratio (xorS t s) (b * a) z 0) (ℤ.+-comm e f)
+  where
+    _▸_ : ∀ {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
+    refl ▸ q = q
+
+-- | NaN on either side is the answer `r` on both.
+onNumbers-comm : ∀ {R : Set} (r : R) (f : Operand → Operand → R) → (∀ a b → f a b ≡ f b a)
+               → ∀ x y → onNumbers r f x y ≡ onNumbers r f y x
+onNumbers-comm r f c x y = go (exact x) (exact y)
+  where
+    go : ∀ mx my → FA.both r f mx my ≡ FA.both r f my mx
+    go (just a) (just b) = c a b
+    go (just _) nothing  = refl
+    go nothing  (just _) = refl
+    go nothing  nothing  = refl
 
 addV-comm : ∀ F x y → addV F x y ≡ addV F y x
-addV-comm F fv-nan     fv-nan     = refl
-addV-comm F fv-nan     (fv-inf _) = refl
-addV-comm F fv-nan     (fv-fin _) = refl
-addV-comm F (fv-inf _) fv-nan     = refl
-addV-comm F (fv-fin _) fv-nan     = refl
-addV-comm F (fv-inf s) (fv-fin _) = refl
-addV-comm F (fv-fin _) (fv-inf t) = refl
-addV-comm F (fv-fin x) (fv-fin y) = cong (roundB F) (+B-comm x y)
-addV-comm F (fv-inf s) (fv-inf t) rewrite ≡ᵇ-sym s t =
-  addV-inf-aux F s t (t ℕ.≡ᵇ s) refl
-
-xorS-comm : ∀ m n → xorS m n ≡ xorS n m
-xorS-comm m n rewrite ≡ᵇ-sym m n = refl
-
--- The `0 × ∞` decision, taken as an argument for the same reason.
-mulV-inf-fin-aux : ∀ F s w (b : Bool)
-                 → (if b then nan F else infinity F (xorS s w))
-                 ≡ (if b then nan F else infinity F (xorS w s))
-mulV-inf-fin-aux F s w true  = refl
-mulV-inf-fin-aux F s w false = cong (infinity F) (xorS-comm s w)
+addV-comm F x y = cong (FA.round F) (onNumbers-comm FA.invalid addE addE-comm x y)
 
 mulV-comm : ∀ F x y → mulV F x y ≡ mulV F y x
-mulV-comm F fv-nan     fv-nan     = refl
-mulV-comm F fv-nan     (fv-inf _) = refl
-mulV-comm F fv-nan     (fv-fin _) = refl
-mulV-comm F (fv-inf _) fv-nan     = refl
-mulV-comm F (fv-fin _) fv-nan     = refl
-mulV-comm F (fv-fin x) (fv-fin y) = cong (roundB F) (*B-comm x y)
-mulV-comm F (fv-inf s) (fv-inf t) = cong (infinity F) (xorS-comm s t)
-mulV-comm F (fv-inf s) (fv-fin y) = mulV-inf-fin-aux F s (signB y) (isZeroB y)
-mulV-comm F (fv-fin x) (fv-inf t) = sym (mulV-inf-fin-aux F t (signB x) (isZeroB x))
+mulV-comm F x y = cong (FA.round F) (onNumbers-comm FA.invalid mulE mulE-comm x y)
 
 fadd-comm : ∀ F a b → fadd F a b ≡ fadd F b a
-fadd-comm F a b = addV-comm F (decode F a) (decode F b)
+fadd-comm F a b = cong (encode F) (addV-comm F (decode F a) (decode F b))
 
 fmul-comm : ∀ F a b → fmul F a b ≡ fmul F b a
-fmul-comm F a b = mulV-comm F (decode F a) (decode F b)
+fmul-comm F a b = cong (encode F) (mulV-comm F (decode F a) (decode F b))
 
 -- Pinned against the hardware, because a commutativity proof that held of the
 -- wrong function would be no comfort.
 _ : fadd binary64 0x3fb999999999999a 0x3fc999999999999a
   ≡ fadd binary64 0x3fc999999999999a 0x3fb999999999999a
+_ = refl
+------------------------------------------------------------------------
+-- LEVEL 2: the values (plan 0.150 N6 (a))
+--
+-- `Float`'s meaning is IEEE 754 level 2: signed zeros, ±∞, subnormals, and
+-- ONE NaN (no sign, no payload); the word is its encoding. These pins are the
+-- results the earlier `Bin` carrier got wrong (no `-0`, flushed subnormals)
+-- and the orders 0.147 and 0.150 N7 define. Results are at the value level
+-- and read through `encode` where the hardware's pattern is the authority.
+------------------------------------------------------------------------
+
+private
+  D64 = binary64
+
+  lit : ℕ → ℕ → ℕ → FloatVal
+  lit i f l = roundDec D64 (decimalOf i f l)
+
+  lit′ : ℕ → ℕ → FloatVal
+  lit′ i f = negV (lit i f 1)
+
+  w : FloatVal → ℕ
+  w = encode D64
+
+-- The literals `0.1`, `0.2` and their sum (as `fadd`'s first pin, by values).
+_ : w (lit 0 1 1) ≡ 0x3fb999999999999a
+_ = refl
+
+_ : w (lit 0 2 1) ≡ 0x3fc999999999999a
+_ = refl
+
+_ : w (addV D64 (lit 0 1 1) (lit 0 2 1)) ≡ 0x3fd3333333333334
+_ = refl
+
+_ : w (divV D64 (lit 1 0 1) (lit 3 0 1)) ≡ 0x3fd5555555555555
+_ = refl
+
+_ : w (divV D64 (lit 2 0 1) (lit 3 0 1)) ≡ 0x3fe5555555555555
+_ = refl
+
+-- Signed zeros, as IEEE §6.3 and the hardware give them: `-1.0 *. 0.0` is
+-- `-0.0`, `1.0 /. -0.0` is `-∞`, `-0.0 +. -0.0` is `-0.0`, `x -. x` is `+0.0`.
+_ : w (mulV D64 (negV (lit 1 0 1)) (lit 0 0 1)) ≡ 0x8000000000000000
+_ = refl
+
+_ : w (divV D64 (lit 1 0 1) (negV (lit 0 0 1))) ≡ 0xfff0000000000000
+_ = refl
+
+_ : w (addV D64 (negV (lit 0 0 1)) (negV (lit 0 0 1))) ≡ 0x8000000000000000
+_ = refl
+
+_ : w (addV D64 (lit 1 5 1) (negV (lit 1 5 1))) ≡ 0
+_ = refl
+
+-- `0 / 0` is the one NaN; any NaN pattern reads as it.
+_ : w (divV D64 (lit 0 0 1) (lit 0 0 1)) ≡ 0x7ff8000000000000
+_ = refl
+
+_ : decode D64 0xfff8000000000456 ≡ fv-nan
+_ = refl
+
+-- Subnormals are values (R1): `1e-40` at binary32 is glibc's `0x000116c2`,
+-- and the smallest binary64 subnormal is the pattern `1`.
+_ : encode binary32 (roundDec binary32 (decimalOf 0 1 40)) ≡ 0x000116c2
+_ = refl
+
+_ : encode D64 (roundDec D64 (decimalOf 0 49406564584124654 340)) ≡ 1
+_ = refl
+
+-- Overflow to `+∞`, at the value level.
+_ : w (mulV D64 (roundDec D64 ((+ (10 ^ 308)) /10^ 0)) (lit 10 0 0)) ≡ 0x7ff0000000000000
+_ = refl
+
+-- A value reads back from its encoding, and `toFloat 3` is `3.0`.
+_ : decode D64 (w (lit 1 5 1)) ≡ lit 1 5 1
+_ = refl
+
+_ : w (i2fV D64 (+ 3)) ≡ 0x4008000000000000
+_ = refl
+
+-- A literal is its value, however many digits it is written with.
+_ : lit 0 5 1 ≡ lit 0 50 2
+_ = refl
+
+-- The two orders (0.147, R3): totalOrder puts `-0` below `+0` and the NaN
+-- above `+∞`, and NaN is itself by identity; the IEEE comparisons have
+-- `-0 ==. +0` and `NaN ==. NaN` false.
+_ : ltT (fv-zero neg) (fv-zero pos) ≡ true
+_ = refl
+
+_ : eqQ (fv-zero neg) (fv-zero pos) ≡ true
+_ = refl
+
+_ : eqQ fv-nan fv-nan ≡ false
+_ = refl
+
+_ : eqV fv-nan fv-nan ≡ true
+_ = refl
+
+_ : ltT (fv-inf pos) fv-nan ≡ true
+_ = refl
+
+-- Negative values order by magnitude reversed, in both orders.
+_ : ltT (lit′ 2 5) (lit′ 1 5) ≡ true
+_ = refl
+
+_ : ltQ (lit′ 2 5) (lit′ 1 5) ≡ true
+_ = refl
+
+_ : ltT (lit 1 5 1) (lit 2 5 1) ≡ true
 _ = refl
