@@ -34,8 +34,9 @@ open import Once.Spec.Word using (module Width)
 open import Once.Word using (module WidthLaws)
 open import Once.Arith.CmpOp using (CmpOp; cmp-bit)
 open import Once.Spec.Float.Dyadic using (FloatFormat)
-open import Once.Spec.Float.Decimal using (Decimal; round)
-import Once.Spec.Float.Arith as FA
+open import Once.Spec.Float.Decimal using (Decimal)
+open import Once.Float.Word using (round)
+import Once.Float.Word as FA
 
 ------------------------------------------------------------------------
 -- Abstract instruction set

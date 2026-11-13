@@ -23,8 +23,8 @@ open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
 open import Once.Arith.Type using (NInt; NFloat)
 open import Once.Spec.Float.Dyadic using (FloatFormat)
-open import Once.Spec.Float.Decimal using (round)
-import Once.Spec.Float.Arith as FA
+open import Once.Float.Word using (round)
+import Once.Float.Word as FA
 
 -- PLAN 0.75 F4: the FORMAT joins the width. Both are target facts and both
 -- arrive from the architecture — `bits` narrows an `Int` leaf, `F` rounds a

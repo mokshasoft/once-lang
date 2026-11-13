@@ -49,6 +49,12 @@ open import Data.Integer using (ℤ)
 -- SigOpInfo builders (plan 0.2.4.1 Phase A): each arithmetic IR morphism
 -- carries its SigOpInfo (`Once.Arith.SigOp.Builders`); literals are `const`.
 open import Once.Arith.SigOp.Builders
+open import Once.Spec.Theory
+  using (Has; Sym; compare; symDom; symCod; int-neg; int-ring; int-division; int-order; int-equality;
+         float-neg; float-rounded; float-order; float-equality;
+         ‵neg; ‵+; ‵-; ‵*; ‵/; ‵%; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=;
+         ‵+ᵈ; ‵-ᵈ; ‵*ᵈ; ‵/ᵈ; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ)
+  renaming (float to nfloat)
 open import Once.Spec.Name using (bare)
 open import Once.Type.Concrete using (con-base; con-fun; IsConcrete)
 open import Once.Spec.Type using (WFFun; b-Unit; ∅ₖ)
@@ -146,6 +152,47 @@ eqIR = SigOp eq-info
 
 neIR : IR (Int * Int) (Unit + Unit)
 neIR = SigOp ne-info
+
+-- Negation and the comparisons at `Float` (plan 0.150).
+fnegIR : IR Float Float
+fnegIR = SigOp fneg-info
+
+fcmpIR : ∀ {U} → Has nfloat U → Sym U compare → IR (Float * Float) (Unit + Unit)
+fcmpIR h o = SigOp (fcmp-info h o)
+
+-- | THE LOWERING (plan 0.150 N10): a symbol at a number type, to the
+-- target's primitive. The one place the per-model presentation is the truth:
+-- `arith.add.int` and `arith.add.float` are different instructions.
+numIR : ∀ {m A U k} → Has A U → Sym U k → IR ⌊ symDom {m} A k ⌋ ⌊ symCod {m} A k ⌋
+numIR int-neg        ‵neg = negIR
+numIR int-ring       ‵+   = addIR
+numIR int-ring       ‵-   = subIR
+numIR int-ring       ‵*   = mulIR
+numIR int-division   ‵/   = divIR
+numIR int-division   ‵%   = modIR
+numIR int-order      ‵<   = ltIR
+numIR int-order      ‵<=  = leIR
+numIR int-order      ‵>   = gtIR
+numIR int-order      ‵>=  = geIR
+numIR int-equality   ‵==  = eqIR
+numIR int-equality   ‵!=  = neIR
+numIR float-neg      ‵neg = fnegIR
+numIR float-rounded  ‵+ᵈ  = faddIR
+numIR float-rounded  ‵-ᵈ  = fsubIR
+numIR float-rounded  ‵*ᵈ  = fmulIR
+numIR float-rounded  ‵/ᵈ  = fdivIR
+numIR float-rounded  ‵==ᵈ = fcmpIR float-rounded ‵==ᵈ
+numIR float-rounded  ‵!=ᵈ = fcmpIR float-rounded ‵!=ᵈ
+numIR float-rounded  ‵<ᵈ  = fcmpIR float-rounded ‵<ᵈ
+numIR float-rounded  ‵<=ᵈ = fcmpIR float-rounded ‵<=ᵈ
+numIR float-rounded  ‵>ᵈ  = fcmpIR float-rounded ‵>ᵈ
+numIR float-rounded  ‵>=ᵈ = fcmpIR float-rounded ‵>=ᵈ
+numIR float-order    ‵<   = fcmpIR float-order ‵<
+numIR float-order    ‵<=  = fcmpIR float-order ‵<=
+numIR float-order    ‵>   = fcmpIR float-order ‵>
+numIR float-order    ‵>=  = fcmpIR float-order ‵>=
+numIR float-equality ‵==  = fcmpIR float-equality ‵==
+numIR float-equality ‵!=  = fcmpIR float-equality ‵!=
 
 -- | `⟦_⟧ᶜ` (context → environment product type) moved to `Once.Surface.Syntax`
 -- (Plan 0.47): it is pure `Ctx → Type`, so it belongs with `Ctx`, and the
@@ -512,28 +559,9 @@ elaborate m (int n) = intLit n
 -- Float literal: same shape; the witness is erased at this boundary.
 elaborate m (float d) = floatLit d
 
--- Arithmetic operations: pair operands, then apply primitive
-elaborate {Γ = Γ} m (add {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = addIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (sub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = subIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (mul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = mulIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (fadd {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = faddIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (fsub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fsubIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (fmul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fmulIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (fdiv {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fdivIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+-- A numeric operation: its operands, then its primitive.
+elaborate m (num h o e) = numIR h o ∘ elaborate m e
 elaborate m (i2f e) = i2fIR ∘ elaborate m e
-elaborate {Γ = Γ} m (div {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = divIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (mod' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = modIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-
--- Unary negation
-elaborate m (neg e) = negIR ∘ elaborate m e
-
--- Comparison operations
-elaborate {Γ = Γ} m (lt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = ltIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (le {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = leIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (gt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = gtIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (ge {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = geIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (eq {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = eqIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = neIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
 
 -- Effect lifting: arr f lifts pure function to effectful morphism
 -- IR arr : (A ⇒ B) → Eff A B

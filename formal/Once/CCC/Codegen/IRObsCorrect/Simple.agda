@@ -28,7 +28,8 @@ open import Once.CCC.Machine.SMCore using (writeReg; Output; readReg; Input1; mo
 open LocState using (regs; halted)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
-open import Once.Spec.Float.Decimal using (Decimal; round)
+open import Once.Spec.Float.Decimal using (Decimal)
+open import Once.Float.Word using (round)
 open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type; ⟦_,_⟧-baseI; wf-K; wf-Id; wf-Sum; wf-Prod;
                              base-Int; base-Float; base-Unit; base-Void; base-Prod; base-Sum; Unit)
 open import Once.CCC.Machine.MuRep using (mu-rep; mu-box; Unboxed; box-fit; fit-not-unit)

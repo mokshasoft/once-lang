@@ -22,7 +22,12 @@ open import Once.Type.Core using (isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.SigOp.Info using (SigOpInfo; SigOpSem; mk-info'; primV; emitsV; haltsV; ffiV; callsV)
 open import Once.Arith.CmpOp using (c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
-open import Once.Arith.Prim using (p-cmp; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f)
+open import Once.Arith.Prim using (p-cmp; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-fneg; p-fcmp)
+open import Data.String using (String)
+open import Once.Spec.Theory
+  using (Has; Sym; compare; float-neg; float-rounded; float-order; float-equality;
+         ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ)
+  renaming (float to nfloat)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -36,7 +41,7 @@ open TargetNum using (int-bits)
 
 -- | This target's modular arithmetic. The ONLY place the width is read.
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
-import Once.Spec.Float.Arith as FA
+
 import Once.IR.Semantics.Value Carrier Carrier as M
 -- (Core ℤ `as I` removed: semI deleted — `semM` (ℕ/Word) is the meaning.)
 
@@ -143,6 +148,29 @@ fdiv-info = mk-info' (bare "arith.div.float") (primV p-fdiv) base-F×F b-Float
 
 i2f-info : SigOpInfo Int Once.Spec.Type.Float
 i2f-info = mk-info' (bare "arith.i2f") (primV p-i2f) b-Int b-Float
+
+fneg-info : SigOpInfo Once.Spec.Type.Float Once.Spec.Type.Float
+fneg-info = mk-info' (bare "arith.neg.float") (primV p-fneg) b-Float b-Float
+
+-- The comparisons at `Float` (plan 0.150): `totalOrder` and identity, and
+-- IEEE's quiet comparisons (`.ieee`), one name each.
+fcmpName : ∀ {U} → Has nfloat U → Sym U compare → String
+fcmpName float-neg      ()
+fcmpName float-order    ‵<   = "arith.lt.float"
+fcmpName float-order    ‵<=  = "arith.le.float"
+fcmpName float-order    ‵>   = "arith.gt.float"
+fcmpName float-order    ‵>=  = "arith.ge.float"
+fcmpName float-equality ‵==  = "arith.eq.float"
+fcmpName float-equality ‵!=  = "arith.ne.float"
+fcmpName float-rounded  ‵<ᵈ  = "arith.lt.float.ieee"
+fcmpName float-rounded  ‵<=ᵈ = "arith.le.float.ieee"
+fcmpName float-rounded  ‵>ᵈ  = "arith.gt.float.ieee"
+fcmpName float-rounded  ‵>=ᵈ = "arith.ge.float.ieee"
+fcmpName float-rounded  ‵==ᵈ = "arith.eq.float.ieee"
+fcmpName float-rounded  ‵!=ᵈ = "arith.ne.float.ieee"
+
+fcmp-info : ∀ {U} → Has nfloat U → Sym U compare → SigOpInfo (Once.Spec.Type.Float * Once.Spec.Type.Float) (Unit + Unit)
+fcmp-info h o = mk-info' (bare (fcmpName h o)) (primV (p-fcmp h o)) base-F×F base-U+U
 
 -- Comparisons
 lt-info : SigOpInfo (Int * Int) (Unit + Unit)

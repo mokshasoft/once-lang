@@ -40,7 +40,8 @@ open import Once.Spec.Name using (CanonicalName)
 
 -- `fmt-eq`'s type names a format, so this import must precede the header.
 open import Once.Spec.Float.Dyadic using (binary64)
-open import Once.Spec.Float.Decimal using (Decimal; round)
+open import Once.Spec.Float.Decimal using (Decimal)
+open import Once.Float.Word using (round)
 open import Data.Integer using (ℤ)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64

@@ -27,7 +27,7 @@ module Once.Arith.Backend.X86-32.Emit where
 open import Data.Integer.Show using () renaming (show to showℤ)
 open import Data.Nat using (ℕ; _*_; _∸_)
 open import Data.Nat.Show using () renaming (show to showℕ)
-open import Once.Spec.Float.Decimal using (round)
+open import Once.Float.Word using (round)
 open import Once.Spec.Float.Dyadic using (binary32)
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_; _,_)

@@ -62,9 +62,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 -- the arch-generic `Arith.Backend.RunTraceCore`. This DERIVES `run-trace` from
 -- `X64.run`'s step semantics, replacing the old opaque observable postulate.
 open import Once.Arith.Backend.XInstr.Syntax as XI
-import Once.Spec.Float.Arith as FA
+import Once.Float.Word as FA
 open import Once.Arith.CmpOp using (cmp-bit)
-open import Once.Spec.Float.Decimal using (round)
+open import Once.Float.Word using (round)
 open import Once.Spec.Float.Dyadic using (binary64)
 open import Once.Target.X86-64.PhysReg using (Reg; rsp; rdi)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)

@@ -26,7 +26,10 @@ open import Once.Spec.Word using (Carrier)
 import Once.Spec.Word as OnceWord
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
-import Once.Spec.Float.Arith as FA
+import Once.Float.Word as FA
+open import Once.Spec.Float.Encoding using (decode)
+open import Once.Spec.Theory using (Has; Sym; compare; ⟦_⟧ₛ; module Models)
+open import Once.Spec.Theory using () renaming (float to nfloat)
 import Once.IR.Semantics.Value Carrier Carrier as M
 
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
@@ -88,6 +91,15 @@ fdiv-semM tn (a , b) = FA.fdiv (float-format tn) a b
 i2f-semM : TargetNum → M.⟦ Int {0} ⟧ → M.⟦ Float {0} ⟧
 i2f-semM tn w = FA.i2f (float-format tn) (W.toℤ tn w)
 
+-- | Negation: the sign-bit flip (`Float.Word.fneg`), `negV` on values.
+fneg-semM : TargetNum → M.⟦ Float {0} ⟧ → M.⟦ Float {0} ⟧
+fneg-semM tn w = FA.fneg (float-format tn) w
+
+-- | A comparison at `Float` (plan 0.150): the Spec's symbol, in the row's
+-- structure, on the values the words encode.
+fcmp-semM : ∀ {U} → Has nfloat U → Sym U compare → TargetNum → M.⟦ Float {0} * Float ⟧ → M.⟦ Unit {0} + Unit ⟧ᵍ
+fcmp-semM h o tn (a , b) = truth (⟦ o ⟧ₛ (Models.structure tn h) (decode (float-format tn) a , decode (float-format tn) b))
+
 -- | Division and remainder (D055): TOTAL over `Word`, RISC-V's defined results
 -- (`x / 0`, `MIN / -1`), no trap — `Word.Width._/ˢ_`/`_%ˢ_`. These were
 -- postulated placeholders "pending a division-by-zero policy"; D055 is that
@@ -124,6 +136,9 @@ data ArithPrim : Type → Type → Set where
   p-neg                         : ArithPrim Int Int
   p-fadd p-fsub p-fmul p-fdiv   : ArithPrim (Float * Float) Float
   p-i2f                         : ArithPrim Int Float
+  p-fneg                        : ArithPrim Float Float
+  -- plan 0.150: the comparisons at `Float`, by the Spec's symbol and row
+  p-fcmp                        : ∀ {U} → Has nfloat U → Sym U compare → ArithPrim (Float * Float) (Unit + Unit)
   -- plan 0.108: the comparisons, into `Bool = Unit + Unit`
   p-cmp                         : CmpOp → ArithPrim (Int * Int) (Unit + Unit)
 
@@ -140,3 +155,5 @@ primSem p-fmul = fmul-semM
 primSem p-fdiv = fdiv-semM
 primSem p-i2f  = i2f-semM
 primSem (p-cmp op) = cmp-semM op
+primSem p-fneg = fneg-semM
+primSem (p-fcmp h o) = fcmp-semM h o

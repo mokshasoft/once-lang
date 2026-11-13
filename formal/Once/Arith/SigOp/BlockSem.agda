@@ -27,8 +27,8 @@ open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 
-open import Once.Spec.Float.Decimal using (round)
-import Once.Spec.Float.Arith as FA
+open import Once.Float.Word using (round)
+import Once.Float.Word as FA
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 import Once.IR.Semantics.Value OnceWord.Carrier OnceWord.Carrier as M
 

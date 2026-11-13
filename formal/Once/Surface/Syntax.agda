@@ -28,6 +28,7 @@ open import Data.Fin using (Fin)
 open import Data.Bool using (true)
 open import Data.Integer using (ℤ)
 open import Once.Spec.Float.Decimal using (Decimal)
+open import Once.Spec.Theory using (Has; Sym; symDom; symCod)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.String using (String)
 open import Once.Spec.Name using (CanonicalName)
@@ -147,41 +148,19 @@ data Expr {m} : ∀ {n} → Ctx m n → Usage n → Ty m → Set where
   -- silently truncate, because it delivers a significand the format holds.
   float : ∀ {n} {Γ : Ctx m n} (d : Decimal) → Expr Γ zeroUsage Float
 
-  -- Arithmetic (Int → Int → Int)
-  add   : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
-  sub   : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
-  mul   : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
-  -- PLAN 0.75 F4: the same three at the second numeric type. SEPARATE
-  -- constructors rather than a `NumType`-indexed one: `add` and `fadd` lower
-  -- to different SigOps and different instructions, and the type is what
-  -- decides which — so making the distinction structural is what stops a
-  -- float ever reaching the integer `⊕`. There is no mixed form, because
-  -- there is no implicit widening.
-  fadd  : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
-  fsub  : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
-  fmul  : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
-  -- Division joins them (`Once.Spec.Float.Arith.fdiv`, correctly rounded via the
-  -- sticky bit). TOTAL, so unlike integer `div` it carries no guard.
-  fdiv  : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
-  -- PLAN 0.75 F4 / D125: the widening itself, as a NODE rather than a silent
-  -- retyping. `1 + 1.5` elaborates to `fadd (i2f 1) 1.5`, so the conversion is
-  -- visible in the surface term, has its own SigOp, and lowers to a real
-  -- instruction. A coercion that left no trace would be the "silent" half of
-  -- "silent precision loss"; this one is written down.
+  -- A numeric operation (plan 0.150 N10): a symbol of a theory, at a number
+  -- type that models it (`Spec.Theory`), applied to its operands (a pair for
+  -- a binary symbol). As in the Spec's Core (`prim (num h o)`): the term names
+  -- the symbol and the model, and `Has` is what keeps `+` off `Float`. The
+  -- lowering to the target's instructions is one function
+  -- (`Surface.Elaborate.numIR`).
+  num   : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A U k} → Has A U → Sym U k
+        → Expr Γ Ψ (symDom A k) → Expr Γ Ψ (symCod A k)
+  -- D125: the widening itself, as a NODE rather than a silent retyping.
+  -- `1 +. 1.5` elaborates to `num float-rounded ‵+ᵈ (pair (i2f 1) 1.5)`, so the
+  -- conversion is visible in the surface term, has its own SigOp, and lowers
+  -- to a real instruction.
   i2f   : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} → Expr Γ Ψ Int → Expr Γ Ψ Float
-  div   : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
-  mod'  : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
-
-  -- Unary negation
-  neg   : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} → Expr Γ Ψ Int → Expr Γ Ψ Int
-
-  -- Comparison (Int → Int → Bool, where Bool = Unit + Unit)
-  lt    : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
-  le    : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
-  gt    : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
-  ge    : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
-  eq    : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
-  ne    : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
 
   -- Surface grade coercion (pure→eff subsumption; `t-subsume`'s witness).
   -- Plan 0.52 M2: STAYS (the grade lives at the surface, OCP-0007), but now

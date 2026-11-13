@@ -33,7 +33,7 @@ open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; shape-as-type)
 open import Once.Arith.Machine.WordSem using (module Sem)
 open import Once.Arith.Type using (NInt; NFloat)
-import Once.Spec.Float.Arith as FA
+import Once.Float.Word as FA
 open import Once.Arith.CmpOp using (cmp-bit)
 
 import Once.Spec.Word as OnceWord

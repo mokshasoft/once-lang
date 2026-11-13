@@ -38,9 +38,9 @@ open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
 
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch)
-import Once.Spec.Float.Arith as FA
+import Once.Float.Word as FA
 open import Once.Arith.CmpOp using (cmp-bit)
-open import Once.Spec.Float.Decimal using (round)
+open import Once.Float.Word using (round)
 open import Once.Spec.Float.Dyadic using (binary64)
 open XI using (XR0; XR1)
 open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd; ⌊_⌋ᴾ; flat-off; flat-addr; InputShape; Path)

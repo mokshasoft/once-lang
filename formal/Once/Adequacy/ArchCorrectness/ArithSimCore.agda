@@ -76,9 +76,9 @@ import Once.Word as OnceWordL
 
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
-import Once.Spec.Float.Arith as FA
+import Once.Float.Word as FA
 open import Once.Arith.CmpOp using (cmp-bit)
-open import Once.Spec.Float.Decimal using (round)
+open import Once.Float.Word using (round)
 
 ------------------------------------------------------------------------
 -- PLAN 0.74 J5 — parameterised by the TARGET.

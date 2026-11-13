@@ -60,9 +60,10 @@ open Width bits using (toℤ; fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; 
 open import Once.Word using (module WidthLaws)
 open WidthLaws bits using (shlᵂ; sdiv2ᵏ)
 open Exec bits F using (step; run-abstract)
-import Once.Spec.Float.Arith as FA
+import Once.Float.Word as FA
 import Once.Float.ArithLaws as FAL
-open import Once.Spec.Float.Decimal using (Decimal; round)
+open import Once.Spec.Float.Decimal using (Decimal)
+open import Once.Float.Word using (round)
 
 ------------------------------------------------------------------------
 -- Abstract register ↔ concrete XReg index
