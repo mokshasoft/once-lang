@@ -9,7 +9,7 @@
 -- (`AdmissibleM`), the Spec on the written module's (`Admissible`).
 -- Resolution renames references only, an import adds signatures only, and a
 -- written expression's Spec image has the same literals (a minus on a
--- numeral is one literal on both sides): the two lists are equal
+-- numeral is one literal, `-5`, on both sides): the two lists are equal
 -- (`lits-eq`), so the checks agree (`admissible-of`).
 ------------------------------------------------------------------------
 
@@ -26,10 +26,9 @@ open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; R
 open import Once.Surface.OpNames
 open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatArithmeticOp)
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Source as SP
-open import Once.Denotation.Admissible using (rawIntLits; negLits; declIntLits; moduleIntLits; AdmissibleM)
+open import Once.Denotation.Admissible using (rawIntLits; declIntLits; moduleIntLits; AdmissibleM)
 open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkModule)
 import Once.Parser.Relation.Resolution as LR
 import Once.Spec.Surface.Program
@@ -40,15 +39,15 @@ open import Once.Target.Arch using (Arch; arch-numerics)
 ------------------------------------------------------------------------
 
 private
-  var-lits : ∀ {bound um x e} → LR.ResolvesVar bound um x e → rawIntLits e ≡ [] × negLits e ≡ []
-  var-lits (LR.rv-binder _)          = refl , refl
-  var-lits (LR.rv-gen _ _)           = refl , refl
-  var-lits (LR.rv-import _ _ _ _)    = refl , refl
-  var-lits (LR.rv-own _ _ _)         = refl , refl
+  var-lits : ∀ {bound um x e} → LR.ResolvesVar bound um x e → rawIntLits e ≡ []
+  var-lits (LR.rv-binder _)          = refl
+  var-lits (LR.rv-gen _ _)           = refl
+  var-lits (LR.rv-import _ _ _ _)    = refl
+  var-lits (LR.rv-own _ _ _)         = refl
 
 mutual
   res-lits : ∀ {um am bound e e′} → LR.ResolvesExpr um am bound e e′ → rawIntLits e′ ≡ rawIntLits e
-  res-lits (LR.re-var rv) = Data.Product.proj₁ (var-lits rv)
+  res-lits (LR.re-var rv) = var-lits rv
   res-lits LR.re-this = refl
   res-lits (LR.re-qual _ _ _) = refl
   res-lits (LR.re-qual-path _ _) = refl
@@ -60,28 +59,10 @@ mutual
   res-lits (LR.re-destruct s l r) = cong₂ _++_ (res-lits s) (cong₂ _++_ (res-lits l) (res-lits r))
   res-lits (LR.re-annot e) = res-lits e
   res-lits (LR.re-binop a b) = cong₂ _++_ (res-lits a) (res-lits b)
-  res-lits (LR.re-unop e) = res-neg e
+  res-lits (LR.re-unop e) = res-lits e
   res-lits LR.re-unit = refl
   res-lits LR.re-int = refl
   res-lits LR.re-float = refl
-
-  res-neg : ∀ {um am bound e e′} → LR.ResolvesExpr um am bound e e′ → negLits e′ ≡ negLits e
-  res-neg (LR.re-var rv) = Data.Product.proj₂ (var-lits rv)
-  res-neg LR.re-this = refl
-  res-neg (LR.re-qual _ _ _) = refl
-  res-neg (LR.re-qual-path _ _) = refl
-  res-neg LR.re-res = refl
-  res-neg (LR.re-app f a) = cong₂ _++_ (res-lits f) (res-lits a)
-  res-neg (LR.re-lam b) = res-lits b
-  res-neg (LR.re-let e b) = cong₂ _++_ (res-lits e) (res-lits b)
-  res-neg (LR.re-pair a b) = cong₂ _++_ (res-lits a) (res-lits b)
-  res-neg (LR.re-destruct s l r) = cong₂ _++_ (res-lits s) (cong₂ _++_ (res-lits l) (res-lits r))
-  res-neg (LR.re-annot e) = res-lits e
-  res-neg (LR.re-binop a b) = cong₂ _++_ (res-lits a) (res-lits b)
-  res-neg (LR.re-unop e) = res-neg e
-  res-neg LR.re-unit = refl
-  res-neg LR.re-int = refl
-  res-neg LR.re-float = refl
 
 private
   go : List Decl → List ℤ
@@ -116,23 +97,7 @@ mutual
   emb-lits (RFloat _ _ _ _) = refl
   emb-lits (RAnnot e _) = emb-lits e
   emb-lits (RBinOp _ a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
-  emb-lits (RNeg e) = emb-neg e
-
-  emb-neg : ∀ e → SP.negLits e ≡ negLits e
-  emb-neg (RVar _) = refl
-  emb-neg (RQualified _ _) = refl
-  emb-neg (RResolved _) = refl
-  emb-neg (RApp f a) = cong₂ _++_ (emb-lits f) (emb-lits a)
-  emb-neg (RLam _ b) = emb-lits b
-  emb-neg (RLet _ e b) = cong₂ _++_ (emb-lits e) (emb-lits b)
-  emb-neg (RPair a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
-  emb-neg (RDestruct s _ l _ r) = cong₂ _++_ (emb-lits s) (cong₂ _++_ (emb-lits l) (emb-lits r))
-  emb-neg RUnit = refl
-  emb-neg (RInt _) = refl
-  emb-neg (RFloat _ _ _ _) = refl
-  emb-neg (RAnnot e _) = emb-lits e
-  emb-neg (RBinOp _ a b) = cong₂ _++_ (emb-lits a) (emb-lits b)
-  emb-neg (RNeg e) = emb-neg e
+  emb-lits (RNeg e) = emb-lits e
 
 decls-emb : ∀ ds → SP.declLits ds ≡ go ds
 decls-emb [] = refl

@@ -64,27 +64,12 @@ open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DF
 -- never looked at — the exact shape of hole D114 found in the observable.
 ------------------------------------------------------------------------
 
--- A MINUS ON A NUMERAL IS ONE LITERAL, not negation applied to another one.
---
--- D115 already decided this: "-129 on 8-bit is as much an error as 2001",
--- which says in the same breath that -128 is NOT an error. So `-2^(w-1)`, the
--- least Int every two's-complement target has, must be writable — and it is
--- writable only if the sign is part of the numeral.
---
--- The parser cannot say this: `Once/Parser/Expr.agda` produces
--- `RNeg (RInt n)`, because at the level of GRAMMAR `-` really is a
--- prefix operator. What a negative numeral MEANS is a fact about the language,
--- not about its grammar, so it is stated here, in the spec, and the front end
--- is what has to bridge to it.
---
--- The rule is deliberately narrow: minus applied DIRECTLY to a numeral. Minus
--- applied to anything else — `- x`, `- (a + b)`, `- (- 5)` — is arithmetic,
--- and arithmetic wraps rather than being checked (D054). That is why
--- `negLits` delegates every other operand straight back to `rawIntLits`: the
--- delegation is not a catch-all that could swallow a literal, since
--- `rawIntLits` is itself exhaustive.
+-- A MINUS ON A NUMERAL IS ONE LITERAL, not negation applied to another one
+-- (D115: `-2^(w-1)`, the least Int, must be writable). Since plan 0.150 N4 the
+-- grammar says so itself: `-5` is the literal `RInt -5`, and `RNeg e` is
+-- negation, whose operand's literals are counted as written (`- (5)` checks
+-- `5`; `Spec.Source.intLits`).
 rawIntLits : Expr → List ℤ
-negLits    : Expr → List ℤ   -- the operand of a unary minus
 
 rawIntLits (RInt n)             = n ∷ []
 rawIntLits (RApp f x)           = rawIntLits f ++ rawIntLits x
@@ -94,7 +79,7 @@ rawIntLits (RPair a b)          = rawIntLits a ++ rawIntLits b
 rawIntLits (RDestruct s _ l _ r) = rawIntLits s ++ rawIntLits l ++ rawIntLits r
 rawIntLits (RAnnot e _)         = rawIntLits e
 rawIntLits (RBinOp _ a b)       = rawIntLits a ++ rawIntLits b
-rawIntLits (RNeg e)   = negLits e
+rawIntLits (RNeg e)             = rawIntLits e
 -- leaves that carry no `Int` literal
 rawIntLits (RVar _)             = []
 rawIntLits (RQualified _ _)     = []
@@ -104,9 +89,6 @@ rawIntLits RUnit                = []
 -- target cannot hold it exactly (D116).
 rawIntLits (RFloat _ _ _ _)       = []
 
-negLits (RInt n) = (- n) ∷ []
-{-# CATCHALL #-}
-negLits e        = rawIntLits e
 
 declIntLits : Decl → List ℤ
 declIntLits (DFunDef _ body) = rawIntLits body
