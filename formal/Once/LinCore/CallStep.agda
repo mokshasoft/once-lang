@@ -102,13 +102,13 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open ImgE {FS} ds f ldConst ld-nl using (image-at; image-fn)
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf using (len-mvPS; ≤∸; slots-frame; topW)
-  open SimF {FS} U wordOf using (enter-n; enter-j)
+  open SimF {FS} U wordOf using (enter-n; enter-j; leave)
   open Fetch {FS} using (in-seg)
   open Frames {FS}
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc; fret)
   open FlatStepsAPI {FS} using (FlatSteps; FlatSteps-++)
   open import Once.LinCore.LowerSimE {FS}
-    using (CallIn; call-in; call-in-v; callee-frame; callee-≢; ci-frame; ci-saved; ci-ret; ci-pc; ci-in; ci-s₁; ci-s₂; ci-other; ci-heap; ci-next; ci-halt)
+    using (CallIn; call-in; call-in-v; callee-frame; callee-≢; ci-frame; ci-saved; ci-ret; ci-pc; ci-in; ci-s₁; ci-s₂; ci-other; ci-heap; ci-next; ci-halt; CallOut; co-pc; co-halt)
   open import Once.LinCore.Moves {FS}
     using (Seg; Seg-++ˡ; slot; Ran; r-keep; r-pc; r-next; r-old; k-halt; k-ret; k-saved; k-frame; k-other)
 
@@ -404,3 +404,57 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                                 (sym (ci-frame CI)) (ci-s₁ CI))
                          ; cd-next   = trans (r-next Rn) (ci-next CI)
                          ; cd-old    = λ hl lt → trans (r-old Rn hl (subst (_ <_) (sym (ci-next CI)) lt)) (cong (λ h → h hl) (ci-heap CI)) }
+
+    -- ★ THE RETURN: at the callee's `end` (its way out, `blockFin`), back to
+    -- the caller after the call, the result on its stack
+    module KA {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = At U ncty ldConst (frameOf (blockᴵ κ)) (idx p)
+
+    return : ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} (s : Sub root (call κ ⨾ k))
+            (e : Sub (blockᴵ κ) (end {sh = t ⊳ [] ∣ B ∷ []}))
+            {e′ : Slots (t ⊳ [])} {b : MV B} {es : Slots (t ⊳ Es)} {os : Stk S} {fs}
+            (cfc : FrameSemantics.Frame FS) (rest : List ℕ) (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ)
+        → KA.lfin {p = callee s} (K.lowAt (callee s) e) ≡ blockFin κ
+        → K.Here (callee s) e (e′ ∥ b ∷ˢ []ˢ) fs
+        → fret fs ≡ C.pos (next s) ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+        → ¬ cfc ≡ AllocState.current-frame (falloc fs)
+        → slot fs (sv₁ (frameOf (blockᴵ κ))) ≡ just (SV-Ptr (AtStack cfc (Tp C.φ S ∸ (wsz A ⊔ wsz B))))
+        → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
+        → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) C.φ os
+        → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × C.Here (next s) (es ∥ b ∷ˢ os) fs′
+            × CallOut fs fs′ cfc (Tp C.φ S ∸ (wsz A ⊔ wsz B)) (budget (frameOf (blockᴵ κ)) ∸ ws (B ∷ []))
+                      ((wsz A ⊔ wsz B) ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl
+    return {t} {A} {B} {Es} {S} {κ = κ} s e {e′} {b} {es} {os} {fs} cfc rest sv sl lf H hret hsv ne ep ev st =
+      with-res (Rel.CfgW.c-stk (K.Here.h-cfg {p = callee s} H))
+      where
+        import Data.Nat.Properties
+        p = callee s
+        φ′ = frameOf (blockᴵ κ)
+        M = wsz A ⊔ wsz B
+        fitA : ws (A ∷ S) ≤ OP C.φ
+        fitA = proj₂ (C.shape-fits s)
+        fitB : ws (B ∷ S) ≤ OP C.φ
+        fitB = proj₂ (C.shape-fits (next s))
+        fitM : M + ws S ≤ OP C.φ
+        fitM = Data.Nat.Properties.≤-trans (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.+-distribʳ-⊔ (ws S) (wsz A) (wsz B)))
+                 (Data.Nat.Properties.⊔-lub fitA fitB)
+        seg : Seg image (fpc fs) (restore-input (budget φ′) ∷ mvSP (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B)
+                                   ++ instr-ctrl (c-ret (fbudget φ′)) ∷ [])
+        seg = subst (Seg image (fpc fs)) lf (K.seg-at p e H)
+        with-res : StkW (LocState.heapMem (floc fs)) (slot fs) φ′ (b ∷ˢ []ˢ)
+                 → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × C.Here (next s) (es ∥ b ∷ˢ os) fs′
+                     × CallOut fs fs′ cfc (Tp C.φ S ∸ M) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl
+        with-res ((wb , pb , sb) , _) =
+          fin (leave image fs C.φ φ′ cfc (Tp C.φ S ∸ M) M (fbudget φ′) (C.pos (next s)) rest sv sl
+                 {es = es} {os = os} {b = b} wb hret hsv ne ep pb sb ev st refl
+                 (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) fitM (proj₁ (C.shape-fits (next s))) fitB seg
+                 (K.Here.h-run {p = callee s} H))
+          where
+            fin : Σ FlatState (λ fs′ → FlatSteps image (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′
+                    × CfgW (LocState.heapMem (floc fs′)) (slot fs′) C.φ (es ∥ b ∷ˢ os)
+                    × CallOut fs fs′ cfc (Tp C.φ S ∸ M) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl)
+                → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × C.Here (next s) (es ∥ b ∷ˢ os) fs′
+                    × CallOut fs fs′ cfc (Tp C.φ S ∸ M) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (C.pos (next s)) rest sv sl
+            fin (fs′ , st′ , C′ , CO) =
+              _ , fs′ , st′ ,
+              record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (K.Here.h-run {p = callee s} H) ; h-cfg = C′ } ,
+              CO
