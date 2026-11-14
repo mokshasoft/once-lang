@@ -33,6 +33,8 @@ open import Data.Empty using (⊥)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
+import Once.Spec.Type as ST
+import Once.SigOp.Info
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Target.Symbol using (showNat)
 open import Once.CCC.Label using (LabelId; mkLabelId; e-fn; e-thunk)
@@ -52,6 +54,10 @@ open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt ans bw
 open import Once.LinCore.Keys fmt ans bw
 open import Once.LinCore.Layout fmt ans bw
+
+-- a SigOp's base type as a flat type (`flat`, under a name no machine module shares)
+flatB : ∀ {A} → ST.Base ST.∅ₖ A → FTy Once.LinCore.Flat.Base
+flatB = flat
 
 ------------------------------------------------------------------------
 -- 1. MOVES, word by word through `Output`.
@@ -131,6 +137,18 @@ module Lowering (U : Univ)
   {-# CATCHALL #-}
   answer _          bot = []
 
+  -- ★ D428: a SigOp's argument as the machine decodes it (D398): a scalar is its
+  -- register (loaded from its slot), any other base value its address (read in
+  -- place, D381)
+  argIn : ∀ {A} → ST.Base ST.∅ₖ A → ℕ → ℕ → AbstractInstr
+  argIn (ST.b-var {i = ()} _) bot w
+  argIn ST.b-Unit    bot w = lea-slot (bot ∸ w)
+  argIn ST.b-Void    bot w = lea-slot (bot ∸ w)
+  argIn ST.b-Int     bot w = load-from-slot (bot ∸ 1)
+  argIn ST.b-Float   bot w = load-from-slot (bot ∸ 1)
+  argIn (ST.b-* _ _) bot w = lea-slot (bot ∸ w)
+  argIn (ST.b-+ _ _) bot w = lea-slot (bot ∸ w)
+
   -- a `prim`: a generator that touches at most one cell
   lowP : ∀ {Γ} (ds : Defs Γ) {A B} (g : LTm Γ A B) → Frame → (S : List LTy) → PrimIn ds g → AbstractTrace
   lowP ds ρl φ S p                = []
@@ -165,7 +183,7 @@ module Lowering (U : Univ)
   -- answer is a register)
   lowP ds (lop s) φ S p =
     let bot = Tp φ S
-    in lea-slot (bot ∸ wsz ⌜ sdom s ⌝) ∷ mov-to-input ∷ instr-sigop (info s) ∷ answer (wsz ⌜ scod s ⌝) bot
+    in argIn (Once.SigOp.Info.SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ mov-to-input ∷ instr-sigop (info s) ∷ answer (wsz ⌜ scod s ⌝) bot
   lowP ds (llam {X = X} b γ) φ S (kb , x) =
     let bot = Tp φ S ; wX = wsz X
     in header wX (idx kb) (idx (inC x)) (idx (inF x)) ++ mvSP (bot ∸ wX) hdr wX

@@ -23054,3 +23054,32 @@ discharged where the log is the run's history.
   point's lowering carries: `here-prim`).
 * The whole run: `RunWord.from-start` lands at `ev-log (floc start-fs) ++ evsOf t` (`start-fs`'s log
   is `[]`).
+
+## D428 — AN OP'S LOWERING FOLLOWS THE MACHINE'S SIGOP ABI: A SCALAR ARGUMENT IN ITS REGISTER, A COMPARE BY ITS BLOCK (2026-11-14)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.5). **Applies**: D398 (a scalar sigop
+argument is its register), D389 (a scalar has no memory residence), D381 (a base value is its words in
+place), master's compare lowering (`IRToTrace.cmp-trace`, `Compare.cmp-of`).
+
+### The problem
+Found while stating what discharges `AgreesAll` (D426): the machine's sigop decodes its argument from
+`Input1` by `decode-at` — a scalar (`Int`, `Float`) is the register's literal, a compound base is a pointer
+read by `readTyped`. The new lowering of `lop` (`Lower.lowP`) always passes the argument's slot ADDRESS
+(`lea-slot ∷ mov-to-input`). At a scalar argument the machine then decodes nothing: an emitting or
+answering op logs no event, a pure one faults — the image's op and the machine's disagree, and no world
+makes them agree. Second, a pure op whose codomain does not fit a register (the compares, `Unit + Unit`)
+has its Output given by the postulate `structured-pure-sigop-output`: the word the lowering stores is
+unknowable. Master lowers a compare to its Int-returning block (`cmp-block-info`) and `out-nz`.
+
+### Decision (proposed)
+* **The argument by its base**: a scalar argument is loaded into `Input1` (`load-from-slot (bot ∸ 1) ∷
+  mov-to-input`), any other is its address (`lea-slot (bot ∸ wsz A) ∷ mov-to-input`), two instructions
+  either way. `decode-at` then reads the scalar from the register and a compound value in place
+  (`readTyped`, D381's layout, the same as the image's words: `wsz`/`tsize`).
+* **A compare** (`cmp-of (sem (info s)) ≡ just o`) is lowered as master's: its block's sigop (an `Int`),
+  then `out-nz` (the tag) stored in the result's one word (in place: a `Unit + Unit` is its tag).
+* `OpVal`/`OpHalt` (D426) are restated at the state the new code leaves (`at-arg` by the base).
+
+### Alternatives
+* Change the machine (decode a scalar through a pointer): reverses D398, and the arch layer's arith
+  blocks read a scalar input as the register (D396).
