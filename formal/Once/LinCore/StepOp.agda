@@ -15,7 +15,7 @@
 {-# OPTIONS --guardedness #-}
 
 open import Data.Nat using (ℕ)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; map)
 open import Data.Unit using (⊤)
 open import Data.Sum using (_⊎_)
 open import Data.Product using (_×_; Σ)
@@ -35,17 +35,28 @@ module Once.LinCore.StepOp
   where
 
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (MV)
+open import Once.LinCore.Events fmt ans bw using (MV; Trace; Io; io-call; io-halt; ios)
+open import Once.IR.Semantics.Event using (SigOpEvent)
+open import Once.IR.Semantics.Trace using (callEvent; haltEvent)
 open import Once.LinCore.Machine fmt ans bw using (Sh)
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; StepI; i-prim; i-opend)
 open import Once.LinCore.Keys fmt ans bw using (Univ)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
 
+-- ★ D427: what a trace shows the machine's log: its calls and halts, each the
+-- sigop event of the op, its argument (the answer is the world's)
+ioEvent : Io → SigOpEvent
+ioEvent (io-call o a _) = callEvent o a
+ioEvent (io-halt o a)   = haltEvent o a
+
+evsOf : Trace → List SigOpEvent
+evsOf t = map ioEvent (ios t)
+
 module Agree {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Rel {FS} U wordOf using (W; VW; SlotsAt)
   open FlatMachine {FS} using (FlatState; floc; falloc)
-  open AbstractExec {FS} using (exec-sigop-output; exec-sigop-halts)
+  open AbstractExec {FS} using (exec-sigop-output; exec-sigop-halts; sigop-events)
   open import Once.LinCore.Moves {FS} using (slot)
 
   -- the sigop's state: Input1 and Output the argument's address (`lea-slot d`, `mov-to-input`)
@@ -54,21 +65,22 @@ module Agree {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
     where p = SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) d)
 
   -- an op's answer: the machine does not halt, the answer's words are none or its Output word
-  OpVal : (s : Sig) → MV ⌜ sdom s ⌝ → MV ⌜ scod s ⌝ → FlatState → Set
-  OpVal s x y fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
+  OpVal : (s : Sig) → MV ⌜ sdom s ⌝ → MV ⌜ scod s ⌝ → List SigOpEvent → FlatState → Set
+  OpVal s x y E fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
                  → (exec-sigop-halts (info s) (at-arg fs d) ≡ false)
+                   × (sigop-events (info s) (at-arg fs d) ≡ E)
                    × Σ (List W) λ wy → VW (LocState.heapMem (floc fs)) y wy
                        × ((wy ≡ []) ⊎ (wy ≡ exec-sigop-output (info s) (at-arg fs d) ∷ []))
 
   -- a halting op: the machine halts
-  OpHalt : (s : Sig) → MV ⌜ sdom s ⌝ → FlatState → Set
-  OpHalt s x fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
-                → exec-sigop-halts (info s) (at-arg fs d) ≡ true
+  OpHalt : (s : Sig) → MV ⌜ sdom s ⌝ → List SigOpEvent → FlatState → Set
+  OpHalt s x E fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
+                → (exec-sigop-halts (info s) (at-arg fs d) ≡ true) × (sigop-events (info s) (at-arg fs d) ≡ E)
 
   module _ {T : Sh} where
     Agrees : ∀ {sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
            → StepI c r m n t c′ r′ m′ n′ → FlatState → Set
-    Agrees (i-prim {g = lop s} {v = x} {w = y} _) fs = OpVal s x y fs
-    Agrees (i-opend {s = s} {x = x} _) fs = OpHalt s x fs
+    Agrees (i-prim {g = lop s} {v = x} {w = y} {t = t} _) fs = OpVal s x y (evsOf t) fs
+    Agrees (i-opend {s = s} {x = x} {t = t} _) fs = OpHalt s x (evsOf t) fs
     {-# CATCHALL #-}
     Agrees _ fs = ⊤

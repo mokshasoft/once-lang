@@ -131,7 +131,7 @@ module CallW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Related
 
   Arrives : ∀ {T sh U′} → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
-  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′
+  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′ × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
   private
     nat-r0 : ∀ {a b : ℕ} → a + b ≡ 0 → b ≡ 0
@@ -162,7 +162,7 @@ module CallW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                            (ret-deep (AllocState.current-frame (falloc fs′)) (under-cur CD)
                               (λ f′ y ne → dh-others CD f′ y (λ e → ne (trans (sym e) (sym (dh-frame CD))))) (dh-old CD)
                               (subst (FreshR r) (sym nx) (fresh-ret inv)) ok)
-               ; g-blk = dh-inb CD I }
+               ; g-blk = dh-inb CD I } , dh-log CD
     where
       cur = AllocState.current-frame (falloc fs)
       bb = fbudget (frameOf (blockᴵ (kbodyω ds′ b γ)))

@@ -110,7 +110,7 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Img {FS} ds f ldConst ld-nl using (image-label)
   open Frames {FS} using (Called)
   open Called
-  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next)
+  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next; co-log)
   open import Once.LinCore.LowerSimH fmt ans bw using (module SimH)
   open SimH {FS} U wordOf using (open1-sim)
   open import Once.LinCore.LowAt fmt ans bw using (in-trans; in-r)
@@ -190,7 +190,7 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                              (trampc-keep tail (λ f y ne → co-rest CO (AtStack f y) (λ k k< e″ → ne (frame-eq e″)))
                                 (keep CO (wsz X) Data.Nat.Properties.≤-refl)
                                 (λ hl _ → co-rest CO (AtDynamic hl) (λ k k< ())) fr)
-                 ; g-blk = co-inb CO I }
+                 ; g-blk = co-inb CO I } , co-log CO
       where
         keep : ∀ {fs′ src pc rest sv sl′} → CallOut fs fs′ cfc 0 src (wsz X ∸ wsz X) (wsz X) pc rest sv sl′
              → ∀ y → wsz X ≤ y → LocState.stackMem (floc fs′) cfc y ≡ LocState.stackMem (floc fs) cfc y
@@ -297,7 +297,7 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              record { g-pt = p-start (at (next s))
                     ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (TrC4.c4-run T) ; h-cfg = proj₁ CK }
                     ; g-next = trans (co-next CO) nx
-                    ; g-ret = back CO (proj₂ CK) fr rest ; g-blk = co-inb CO I }
+                    ; g-ret = back CO (proj₂ CK) fr rest ; g-blk = co-inb CO I } , co-log CO
       where
         pe = ptr-eq (trans (sym (TrC4.c4-s₁ T)) area)
         ea = proj₁ pe
@@ -311,7 +311,7 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              record { g-pt = p-block p′ (at (next s))
                     ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (TrC4.c4-run T) ; h-cfg = proj₁ CK }
                     ; g-next = trans (co-next CO) nx
-                    ; g-ret = back CO (proj₂ CK) fr rest ; g-blk = co-inb CO I }
+                    ; g-ret = back CO (proj₂ CK) fr rest ; g-blk = co-inb CO I } , co-log CO
       where
         pe = ptr-eq (trans (sym (TrC4.c4-s₁ T)) area)
         ea = proj₁ pe

@@ -107,7 +107,7 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Img {FS} ds f ldConst ld-nl using (image-label)
   open Frames {FS} using (Called)
   open Called
-  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next)
+  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next; co-log)
   open import Once.LinCore.LowerSimH fmt ans bw using (module SimH)
   open SimH {FS} U wordOf using (open1-sim)
   open import Once.LinCore.LowAt fmt ans bw using (in-trans; in-r)
@@ -160,14 +160,14 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           (N , fs′ , run , C′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-start (at (next s))
                                    ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (HereF.f-run H) ; h-cfg = C′ }
-                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I }
+                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I } , co-log CO
       gret-out p (d-block {κ′ = κ′} p′ s) cfc sl sv′ rets′ H eRets eSv abv area fit ev sk fr rest nx I =
         case tr-end p (frameOf (blockᴵ κ′)) cfc (K.pos p′ (next s)) rets′ sv′ sl H eRets eSv (λ e → ≺-≢ abv (sym e)) area ev sk
                fit (proj₁ (K.shape-fits p′ (next s))) (proj₂ (K.shape-fits p′ (next s))) of λ where
           (N , fs′ , run , C′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-block p′ (at (next s))
                                    ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (HereF.f-run H) ; h-cfg = C′ }
-                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I }
+                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I } , co-log CO
 
       gret-outo : ∀ {T Γ′} {ds′ : Defs Γ′} {F S′} {Es D S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ LF∙ F (Nu F) ∷ S)}
                     {k : Codeᴵ (Es ∣ LF∙ F (Nu F) ∷ S) V} {es : Slots Es} {os : Stk S} {r : Ret V T} {w : MV (LF∙ F (Nu F))} {n fs}
@@ -192,14 +192,14 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           (N , fs′ , run , C′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-start (at (next s))
                                    ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (HereF.f-run H) ; h-cfg = C′ }
-                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I }
+                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I } , co-log CO
       gret-outo p (d-block {κ′ = κ′} p′ s) cfc sl sv′ rets′ H eRets eSv abv area fit ev sk fr rest nx I =
         case to-end p (frameOf (blockᴵ κ′)) cfc (K.pos p′ (next s)) rets′ sv′ sl H eRets eSv (λ e → ≺-≢ abv (sym e)) area ev sk
                fit (proj₁ (K.shape-fits p′ (next s))) (proj₂ (K.shape-fits p′ (next s))) of λ where
           (N , fs′ , run , C′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-block p′ (at (next s))
                                    ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (HereF.f-run H) ; h-cfg = C′ }
-                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I }
+                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I } , co-log CO
 
     module _ where
       gret-outf : ∀ {T X C} {Es D S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ One ∷ S)} {k : Codeᴵ (Es ∣ One ∷ S) V}
@@ -223,7 +223,7 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                    ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (HereF.f-run H)
                                                      ; h-cfg = one-cfg w CO ev sk (proj₁ (S.shape-fits (next s))) (proj₂ (S.shape-fits (next s))) }
                                    ; g-next = trans (co-next CO) nx
-                                   ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I }
+                                   ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I } , co-log CO
       gret-outf {X = X} {C} {w = w} p (d-block {κ′ = κ′} p′ s) cfc sl sv′ rets′ H eRets eSv abv ev sk fr rest nx I =
         case tf-end {X} {C} p cfc (K.pos p′ (next s)) rets′ sv′ sl (HereF.f-pc H) (HereF.f-run H) eRets eSv of λ where
           (fs′ , run , CO) →
@@ -231,7 +231,7 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                    ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (HereF.f-run H)
                                                      ; h-cfg = one-cfg w CO ev sk (proj₁ (K.shape-fits p′ (next s))) (proj₂ (K.shape-fits p′ (next s))) }
                                    ; g-next = trans (co-next CO) nx
-                                   ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I }
+                                   ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I } , co-log CO
 
     module _ where
       rc-tramp : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b}
@@ -240,7 +240,7 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         case tr-back′ p e cfc (sitePos (s-tramp p₂)) rets′ sv′ sl eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″)) (area0 fs area (Data.Nat.Properties.n∸n≡0 (Tp (siteφ (s-tramp p₂)) []))) of λ where
           (N , fs′ , run , H′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-tramp p₂ (at (next (next whole))) ; g-here = (tp2 p₂ , H′)
-                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I }
+                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I } , co-log CO
       rc-tramp p₂ (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv abv area ev sk fr rest nx I
       rc-tramp p₂ (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv abv area ev sk fr rest nx I
 
@@ -249,7 +249,7 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         case tr-back′ p e cfc (sitePos (s-trampo p₂)) rets′ sv′ sl eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″)) (area0 fs area (Data.Nat.Properties.n∸n≡0 (Tp (siteφ (s-trampo p₂)) []))) of λ where
           (N , fs′ , run , H′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-tramp p₂ (at (next (next whole))) ; g-here = (to2 p₂ , H′)
-                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I }
+                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I } , co-log CO
       rc-trampo p₂ (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv abv area ev sk fr rest nx I
       rc-trampo p₂ (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv abv area ev sk fr rest nx I
 
@@ -262,7 +262,7 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                    ; g-here = (tf2 {X = X} {C} p₂
                                               , subst (λ M → HereF (frame 0 M) (sitePos (s-trampf {X = X} {C} p₂)) ([]ᵉ ∥ b ∷ˢ []ˢ) fs′)
                                                       (Data.Nat.Properties.⊔-identityʳ (wsz X)) H′)
-                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO (λ x le → tk x (subst (_≤ x) (sym (Data.Nat.Properties.⊔-identityʳ (wsz X))) le)) fr rest ; g-blk = co-inb CO I }
+                                   ; g-next = trans (co-next CO) nx ; g-ret = back CO (λ x le → tk x (subst (_≤ x) (sym (Data.Nat.Properties.⊔-identityʳ (wsz X))) le)) fr rest ; g-blk = co-inb CO I } , co-log CO
       rc-trampf p₂ (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv abv area ev sk fr rest nx I
       rc-trampf p₂ (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv abv area ev sk fr rest nx I
 

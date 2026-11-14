@@ -22,6 +22,7 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
+open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.LinCore.Flat using (Base)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open import Once.CCC.Machine.SMCore
@@ -130,8 +131,8 @@ module OpG {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.NoCell fmt ans bw using (sub-nc; comp-nc; block-nc; allK-nt)
   open Related
 
-  Arrives : ∀ {T sh U′} → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
-  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′
+  Arrives : ∀ {T sh U′} → List SigOpEvent → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
+  Arrives E c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′ × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E
 
   private
     nat-r0 : ∀ {a b : ℕ} → a + b ≡ 0 → b ≡ 0
@@ -140,19 +141,19 @@ module OpG {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   open Agree {FS} U wordOf using (OpVal; OpHalt)
   open import Once.LinCore.Moves {FS} using (k-inb)
-  open OpSim {FS} U ncty ldConst wordOf using (or-frame; or-ret; or-saved; or-other; or-top; or-old; or-next; or-inb)
+  open OpSim {FS} U ncty ldConst wordOf using (or-frame; or-ret; or-saved; or-other; or-top; or-old; or-next; or-inb; or-log)
   module OS = OpR {FS} U ncty ldConst wordOf image main j₀ L₀ˢ start-root
   module OK {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = OpR {FS} U ncty ldConst wordOf image (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p)
 
   -- ★ AN ANSWERED OP (i-prim at `lop`): to the next path, its answer on the stack
   gop : ∀ {T Γ} {ds′ : Defs Γ} {Es} {s : Sig} {S V} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) V} {r : Ret V T} {es : Slots Es}
-          {x : MV ⌜ sdom s ⌝} {y : MV ⌜ scod s ⌝} {os : Stk S} {n n′ h t fs}
+          {x : MV ⌜ sdom s ⌝} {y : MV ⌜ scod s ⌝} {os : Stk S} {n n′ h t E fs}
           (P : Pnt (prim ds′ (lop s) ⨾ k)) → Run ds′ (lop s) mone x n (gives y n′) t
       → InvI (es ∥ x ∷ˢ os) r n h → HereP P (es ∥ x ∷ˢ os) fs
       → AllocState.next-heap-ref (falloc fs) ≡ n
       → RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
-      → InBlk fs → OpVal s x y fs
-      → Arrives k r (es ∥ y ∷ˢ os) n′ fs
+      → InBlk fs → OpVal s x y E fs
+      → Arrives E k r (es ∥ y ∷ˢ os) n′ fs
   gop {r = r} {fs = fs} (p-start (at sb)) run inv H nx ok I ag = case OS.st-op sb H ag of λ where
     (N , fs′ , st , H′ , OR) →
       N , fs′ , st , record { g-pt = p-start (at (next sb)) ; g-here = H′ ; g-next = trans (or-next OR) (trans nx (sym (op-n run)))
@@ -160,7 +161,7 @@ module OpG {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                         (ret-top (or-other OR)
                                            (λ y le → trans (cong (λ g → LocState.stackMem (floc fs′) g y) (sym (or-frame OR))) (or-top OR y le))
                                            (or-old OR) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok)
-                            ; g-blk = or-inb OR I }
+                            ; g-blk = or-inb OR I } , or-log OR
   gop {r = r} {fs = fs} (p-block p (at sb)) run inv H nx ok I ag = case OK.st-op p sb H ag of λ where
     (N , fs′ , st , H′ , OR) →
       N , fs′ , st , record { g-pt = p-block p (at (next sb)) ; g-here = H′ ; g-next = trans (or-next OR) (trans nx (sym (op-n run)))
@@ -168,14 +169,14 @@ module OpG {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                         (ret-top (or-other OR)
                                            (λ y le → trans (cong (λ g → LocState.stackMem (floc fs′) g y) (sym (or-frame OR))) (or-top OR y le))
                                            (or-old OR) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok)
-                            ; g-blk = or-inb OR I }
+                            ; g-blk = or-inb OR I } , or-log OR
   gop (p-tramp p pt) run inv (() , H) nx ok I ag
 
   -- ★ A HALTING OP (i-opend): to a halted machine
   gopend : ∀ {Γ} {ds′ : Defs Γ} {Es} {s : Sig} {S V} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) V} {es : Slots Es}
-             {x : MV ⌜ sdom s ⌝} {os : Stk S} {fs}
-             (P : Pnt (prim ds′ (lop s) ⨾ k)) → HereP P (es ∥ x ∷ˢ os) fs → OpHalt s x fs
-         → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × LocState.halted (floc fs′) ≡ true
+             {x : MV ⌜ sdom s ⌝} {os : Stk S} {E fs}
+             (P : Pnt (prim ds′ (lop s) ⨾ k)) → HereP P (es ∥ x ∷ˢ os) fs → OpHalt s x E fs
+         → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × LocState.halted (floc fs′) ≡ true × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E
   gopend (p-start (at sb)) H ag = OS.st-opend sb H ag
   gopend (p-block p (at sb)) H ag = OK.st-opend p sb H ag
   gopend (p-tramp p pt) (() , H) ag

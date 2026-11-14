@@ -108,7 +108,7 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Img {FS} ds f ldConst ld-nl using (image-label)
   open Frames {FS} using (Called)
   open Called
-  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next)
+  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next; co-log)
   open import Once.LinCore.LowerSimH fmt ans bw using (module SimH)
   open SimH {FS} U wordOf using (open1-sim)
   open import Once.LinCore.LowAt fmt ans bw using (in-trans; in-r)
@@ -229,7 +229,7 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       case tw-back p e cfc af area rets′ sv′ sl eF H eRets eSv ne-af cne (trans ap area₂) area₂ of λ where
         (N , fs′ , run , T2 , CO) →
           N , fs′ , run , record { g-pt = p-tramp p (at (next (next whole))) ; g-here = (tw2 p , T2) ; g-next = trans (co-next CO) nx
-                                 ; g-ret = ret′ CO ; g-blk = co-inb CO I }
+                                 ; g-ret = ret′ CO ; g-blk = co-inb CO I } , co-log CO
       where
         open Data.Nat.Properties using (≤-trans; m≤n+m; m∸n≤m; m≤n⊔m)
         φ = dsiteφ d
@@ -340,7 +340,7 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                                                (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) fit ev sk
                                                                (proj₁ (S.shape-fits (next s))) (proj₂ (S.shape-fits (next s))) }
                                  ; g-next = trans (co-next CO) nx
-                                 ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I }
+                                 ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I } , co-log CO
     gret-tω {A = A} {B} {S = S} {fs = fs} (p-tramp _ _) _ (d-block p′ s) cfc sl sv′ rets′ refl (tw3 p , T) eRets eSv area fit ev sk fr rest nx I =
       case tw-end p cfc (K.pos p′ (next s)) rets′ sv′ sl (TrW2.w2-pc T) (TrW2.w2-run T) eRets eSv of λ where
         (fs′ , run , CO) →
@@ -351,4 +351,4 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                                                (Data.Nat.Properties.m≤n⊔m (wsz A) (wsz B)) fit ev sk
                                                                (proj₁ (K.shape-fits p′ (next s))) (proj₂ (K.shape-fits p′ (next s))) }
                                  ; g-next = trans (co-next CO) nx
-                                 ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I }
+                                 ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I } , co-log CO

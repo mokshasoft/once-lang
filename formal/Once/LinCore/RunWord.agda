@@ -18,7 +18,10 @@ open import Data.Unit using (⊤; tt)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function using (case_of_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Data.List using (List; []; _++_; map)
+open import Data.List.Properties using (++-assoc; ++-identityʳ; map-++)
+open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
@@ -33,7 +36,7 @@ module Once.LinCore.RunWord
   where
 
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (MV; mone)
+open import Once.LinCore.Events fmt ans bw using (MV; mone; Trace; ios; ios-++)
 open import Once.LinCore.Machine fmt ans bw using (Sh; Cfg; vw; []ᵉ; _∷ˢ_; []ˢ; _∥_)
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; StepI)
@@ -46,8 +49,21 @@ open import Once.LinCore.PointAt fmt ans bw using (module Ctl)
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 open import Once.LinCore.WordStep fmt ans bw using (module StepR)
 open import Once.LinCore.StepCov fmt ans bw using (step-covered)
-open import Once.LinCore.StepOp fmt ans bw using (module Agree)
+open import Once.LinCore.StepOp fmt ans bw using (module Agree; evsOf; ioEvent)
 open import Once.LinCore.Start fmt ans bw using (module StartR)
+
+-- the events a trace shows the log: a homomorphism of free monoids
+evsOf-++ : ∀ t₁ t₂ → evsOf (t₁ ++ t₂) ≡ evsOf t₁ ++ evsOf t₂
+evsOf-++ t₁ t₂ = trans (cong (map ioEvent) (ios-++ t₁ t₂)) (map-++ ioEvent (ios t₁) (ios t₂))
+
+-- the log over two runs, one after the other
+log-join : ∀ {a b c : List SigOpEvent} t₁ t₂ → b ≡ a ++ evsOf t₁ → c ≡ b ++ evsOf t₂ → c ≡ a ++ evsOf (t₁ ++ t₂)
+log-join {a} t₁ t₂ e₁ e₂ =
+  trans e₂ (trans (cong (_++ evsOf t₂) e₁) (trans (++-assoc a (evsOf t₁) (evsOf t₂)) (cong (a ++_) (sym (evsOf-++ t₁ t₂)))))
+
+-- the log over a run whose rest shows nothing
+log-halt : ∀ {a b : List SigOpEvent} t₁ {t₂ : Trace} → b ≡ a ++ evsOf t₁ → t₂ ≡ [] → b ≡ a ++ evsOf (t₁ ++ t₂)
+log-halt {a} t₁ e refl = trans e (cong (λ z → a ++ evsOf z) (sym (++-identityʳ t₁)))
 
 module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
@@ -70,8 +86,8 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   -- a run from a halted image has no step
   rest-halt : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
-            → StepsI c r m n t c′ r′ m′ n′ → c ≡ halted → c′ ≡ halted
-  rest-halt done e = e
+            → StepsI c r m n t c′ r′ m′ n′ → c ≡ halted → (c′ ≡ halted) × (t ≡ [])
+  rest-halt done e = e , refl
   rest-halt (() ⟫ _) refl
 
   module _ (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
@@ -82,14 +98,15 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     -- ★ a whole run, from a related state
     whole : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
           → (run : StepsI c r m n t c′ r′ m′ n′) → InvI m r n h → AgreesAll run → Related c r m n fs
-          → Lands c′ r′ m′ n′ fs
-    whole done inv ag G = 0 , _ , FlatStepsAPI.[] , inj₁ G
-    whole (st ⟫ rest) inv (a₁ , ag) G = go (word-step st (step-covered st) inv G (a₁ _ G))
+          → Lands (evsOf t) c′ r′ m′ n′ fs
+    whole {fs = fs} done inv ag G = 0 , _ , FlatStepsAPI.[] , inj₁ G , sym (++-identityʳ (LocState.ev-log (floc fs)))
+    whole (_⟫_ {t₁ = t₁} {t₂ = t₂} st rest) inv (a₁ , ag) G = go (word-step st (step-covered st) inv G (a₁ _ G))
       where
         go : _ → _
-        go (N₁ , fs₁ , st₁ , inj₁ G₁) = case whole rest (proj₂ (inv-stepI st inv)) ag G₁ of λ where
-          (N₂ , fs₂ , st₂ , L) → N₁ + N₂ , fs₂ , FlatSteps-++ st₁ st₂ , L
-        go (N₁ , fs₁ , st₁ , inj₂ (e , hlt)) = N₁ , fs₁ , st₁ , inj₂ (rest-halt rest e , hlt)
+        go (N₁ , fs₁ , st₁ , inj₁ G₁ , lg₁) = case whole rest (proj₂ (inv-stepI st inv)) ag G₁ of λ where
+          (N₂ , fs₂ , st₂ , L , lg₂) → N₁ + N₂ , fs₂ , FlatSteps-++ st₁ st₂ , L , log-join t₁ t₂ lg₁ lg₂
+        go (N₁ , fs₁ , st₁ , inj₂ (e , hlt) , lg₁) =
+          N₁ , fs₁ , st₁ , inj₂ (proj₁ (rest-halt rest e) , hlt) , log-halt t₁ lg₁ (proj₂ (rest-halt rest e))
 
     -- ★ the image's run from main's first point, from the flat machine's first state
     module _ (entry-frame : FrameSemantics.Frame FS) (entry-regs : Registers FS) where
@@ -97,7 +114,7 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
       from-start : ∀ {sh U′} {t} {c′ : Codeᴵ sh U′} {r′} {m′ n′}
                  → (run : StepsI main []ʳ start 0 t c′ r′ m′ n′) → AgreesAll run
-                 → Lands c′ r′ m′ n′ start-fs
-      from-start run ag = case start-related of λ where
-        (fs₁ , st₁ , G₁) → case whole run start-invI ag G₁ of λ where
-          (N , fs′ , st , L) → 1 + N , fs′ , FlatSteps-++ st₁ st , L
+                 → Lands (evsOf t) c′ r′ m′ n′ start-fs
+      from-start {t = t} run ag = case start-related of λ where
+        (fs₁ , st₁ , G₁ , lg₀) → case whole run start-invI ag G₁ of λ where
+          (N , fs′ , st , L , lg) → 1 + N , fs′ , FlatSteps-++ st₁ st , L , trans lg (cong (_++ evsOf t) lg₀)

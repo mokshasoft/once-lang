@@ -100,7 +100,7 @@ module DispW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
-  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other)
+  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other; k-log)
   open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
   open Img {FS} ds f ldConst ld-nl using (image-label)
   open Frames {FS} using (Called)
@@ -133,7 +133,7 @@ module DispW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Related
 
   Arrives : ∀ {T sh U′} → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
-  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′
+  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′ × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
   private
     nat-r0 : ∀ {a b : ℕ} → a + b ≡ 0 → b ≡ 0
@@ -214,7 +214,7 @@ module DispW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                    ; g-ret = mk-trampω m d CL (trans (cw-ret CL) (cong (_∷ fret fs) pe)) fit C
                                (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
                                (subst (FreshR r) (sym nx) (fresh-ret inv)) ok
-                   ; g-blk = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (cw-heap CL)) (cw-next CL) (cw-size CL) I }
+                   ; g-blk = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (cw-heap CL)) (cw-next CL) (cw-size CL) I } , cw-log CL
       with-top : Σ (List W) (λ w → VW (LocState.heapMem (floc fs)) (see es) w × SlotsAt (slot fs) (ws Es) w)
                → Σ (List W) (λ w → VW (LocState.heapMem (floc fs)) a w × SlotsAt (slot fs) (budget φ ∸ ws (A ∷ S)) w)
                → Arrives (blockᴵ (ktrω ds′ b γ)) (frm {t = just (Fn _ _ A B)} {Es = Es} k es os r) (vw (mfn i (cω ds′ b γ) x) []ᵉ ∥ a ∷ˢ []ˢ) n fs
@@ -265,7 +265,7 @@ module DispW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       (fs′ , run , T1 , Rn) →
         1 , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (tw1 p , T1) ; g-next = trans (r-next Rn) nx
                                ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok
-                               ; g-blk = r-inb Rn I }
+                               ; g-blk = r-inb Rn I } , k-log (r-keep Rn)
 
   -- ★ A MANY-USE TRAMPOLINE'S CELL PART (i-openω): at its depth 0; at a root's path it is absurd (D422)
   gopenω : ∀ {T Es g X A B S V} {k : Codeᴵ (X ∷ Fn many g A B ∷ Es ∣ S) V} {r : Ret V T}

@@ -132,7 +132,7 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Related
 
   Arrives : ∀ {T sh U′} → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
-  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′
+  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′ × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
   private
     nat-r0 : ∀ {a b : ℕ} → a + b ≡ 0 → b ≡ 0
@@ -275,7 +275,7 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                    ; g-next = trans (cong AllocState.next-heap-ref (S3W.s3-alloc W3)) nx
                    ; g-ret = open-ret W3 (subst (FreshR r) (sym nx) (fresh-ret inv)) ok
                    ; g-blk = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (S3W.s3-heap W3)) (cong AllocState.next-heap-ref (S3W.s3-alloc W3))
-                                    (cong AllocState.block-size (S3W.s3-alloc W3)) I }
+                                    (cong AllocState.block-size (S3W.s3-alloc W3)) I } , S3W.s3-log W3
 
   gcopen : ∀ {T Es kd g X A B S V} {k : Codeᴵ (X ∷ Fn kd g A B ∷ Es ∣ S) V} {r : Ret V T}
              {lam : Lam kd g X A B} {i x} {es : Slots (Fn kd g A B ∷ Es)} {os : Stk S} {n h fs}
@@ -311,7 +311,7 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                    ; g-next = trans (cong AllocState.next-heap-ref (S3W.s3-alloc W3)) nx
                    ; g-ret = open-ret W3 (subst (FreshR r) (sym nx) (fresh-ret inv)) ok
                    ; g-blk = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (S3W.s3-heap W3)) (cong AllocState.next-heap-ref (S3W.s3-alloc W3))
-                                    (cong AllocState.block-size (S3W.s3-alloc W3)) I }
+                                    (cong AllocState.block-size (S3W.s3-alloc W3)) I } , S3W.s3-log W3
 
   gcopenν : ∀ {T Es F S′ S V} {k : Codeᴵ ((Coalg F S′ ⊗t S′) ∷ Nu F ∷ Es ∣ S) V} {r : Ret V T}
               {i} {q : MV (Coalg F S′ ⊗t S′)} {es : Slots (Nu F ∷ Es)} {os : Stk S} {n h fs}

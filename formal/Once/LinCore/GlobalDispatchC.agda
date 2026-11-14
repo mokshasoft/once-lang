@@ -131,7 +131,7 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Related
 
   Arrives : ∀ {T sh U′} → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
-  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′
+  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′ × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
   private
     nat-r0 : ∀ {a b : ℕ} → a + b ≡ 0 → b ≡ 0
@@ -207,7 +207,7 @@ module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                ; g-ret = mk-trampc m d CI (trans (cy-ret CI) (cong (_∷ fret fs) pe)) C′
                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
                            (subst (FreshR r) (sym nx) (fresh-ret inv)) ok
-               ; g-blk = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (cy-heap CI)) (cy-next CI) (cy-size CI) I }
+               ; g-blk = inb-pt {fs} {fs′} (λ hl → cong (λ h′ → h′ hl) (cy-heap CI)) (cy-next CI) (cy-size CI) I } , cy-log CI
 
   -- the dispatch's code at a root's path, its address after
   private
