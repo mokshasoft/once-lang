@@ -54,12 +54,14 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Target.Arch using (Arch; arch-float-format)
 open import Once.Spec.Float.Dyadic using (FloatFormat; binary32; binary64)
-open import Once.Spec.Float.Decimal
-  using (decimalOf; round; roundSig; storedExp; maxFiniteExp)
+open import Once.Spec.Float.Decimal using (decimalOf; roundDec)
+open import Once.Spec.Float.Value using (FloatVal; fv-zero; fv-num; fv-inf; fv-nan; odd; quantum)
+open import Once.Spec.Float.Dyadic using (bitLen)
+open import Once.Float.Word using (round)
 open import Once.Parser.Token using (Token; TFloat)
 open import Once.Parser.Lexer using (tokenize)
 open import Data.String using (toList)
-open import Once.Compile using (silentRoundDefs)
+open import Once.Compile using (silentRoundDefs; floatIdentityEqDefs)
 open import Once.Parser.Module.Core using (Resolved)
 open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 
@@ -102,14 +104,18 @@ data Warning : Set where
   -- Too large for the format: stored as ±∞ (plan 0.74 K2).
   FloatOverflow : (int frac flen : ℕ) (at : ℕ) → Warning
 
-  -- Too small: stored as zero. Once models no subnormals, so this fires where
-  -- IEEE would still have had digits — a STATED limitation, and the reason it
-  -- is a distinct constructor rather than a `FloatRounded` with a large error.
+  -- Too small: below half the least subnormal, so stored as zero — every
+  -- digit lost, which is why it is its own constructor rather than a
+  -- `FloatRounded` with a 100% error.
   FloatUnderflow : (int frac flen : ℕ) (at : ℕ) → Warning
   -- plan 0.119 D5 (GOAL.md): a loop in definition `fn` runs a round that
   -- performs no event (`Once.Surface.LoopWarn`) — correct, and silent forever
   -- if it never ends.
   SilentRound : (fn : String) → Warning
+  -- plan 0.150 step 5: definition `fn` applies `==` or `!=` at `Float`
+  -- directly. That is identity (`NaN == NaN`, `-0.0 != 0.0`); IEEE equality
+  -- is the dotted `==.` / `!=.`. Not raised through a generic definition.
+  FloatIdentityEq : (fn : String) → Warning
 
 ------------------------------------------------------------------------
 -- Classifying one literal
@@ -123,32 +129,31 @@ posPart -[1+ _ ]   = 0
 negPart (+ _)      = 0
 negPart -[1+ n ]   = suc n
 
--- | The error of storing `sig/10^e` as `m · 2^E`, and the same in ulps.
+-- | The error of storing `sig/10^l` as `M · 2^e`, absolute and in ulps of the
+-- format at the stored value (`2^u`, `u` its quantum).
 --
---   stored − literal  =  (m·2^p·10^e − sig·2^q) / (10^e·2^q)      p,q as above
---   one ulp           =  2^E = 2^p/2^q
---   ulps              =  (m·2^p·10^e − sig·2^q) / (10^e·2^p)
+--   stored − literal  =  (M·2^p·10^l − sig·2^q) / (10^l·2^q)      p,q the parts of e
+--   ulps              =  that / 2^u
 --
 -- Same numerator both times — only the denominator differs — which is what
 -- makes "absolute or ulps" a presentation choice rather than two computations.
-errorOf : (sig : ℕ) (e : ℕ) (m : ℕ) (E : ℤ) → ExactQ × ExactQ
-errorOf sig e m E =
-  (n /Q (10 ^ e * 2 ^ q)) , (n /Q (10 ^ e * 2 ^ p))
+perUlp : ExactQ → ℤ → ExactQ
+perUlp (n /Q d) (+ a)    = n /Q (d * 2 ^ a)
+perUlp (n /Q d) -[1+ b ] = (n ℤ.* (+ (2 ^ suc b))) /Q d
+
+errorOf : (sig l M : ℕ) (e u : ℤ) → ExactQ × ExactQ
+errorOf sig l M e u = absE , perUlp absE u
   where
-    p = posPart E
-    q = negPart E
-    n : ℤ
-    n = (+ (m * 2 ^ p * 10 ^ e)) ℤ.- (+ (sig * 2 ^ q))
+    p = posPart e
+    q = negPart e
+    absE : ExactQ
+    absE = ((+ (M * 2 ^ p * 10 ^ l)) ℤ.- (+ (sig * 2 ^ q))) /Q (10 ^ l * 2 ^ q)
 
 -- | The warning this literal deserves at this format, if any.
 --
 -- `nothing` means STORED EXACTLY — the common case, and it must stay silent or
 -- the channel is noise. An exactly-representable literal has a zero error
 -- numerator, and that is the test.
---
--- Top-level auxes rather than a `where` chain, matching this codebase's
--- convention: each takes its scrutinee as an argument, so a caller that has
--- already decided can reduce through it.
 warn-exact : ℕ → ℕ → ℕ → ℕ → FloatFormat → ExactQ → ExactQ → Maybe Warning
 warn-exact i f l at F ((+ zero) /Q _) u = nothing            -- exact: say nothing
 {-# CATCHALL #-}
@@ -159,23 +164,19 @@ warn-under : ℕ → ℕ → ℕ → ℕ → ℕ → Maybe Warning
 warn-under i f l at zero    = nothing                        -- 0.0 IS exactly 0.0
 warn-under i f l at (suc _) = just (FloatUnderflow i f l at)
 
-warn-hi : ℕ → ℕ → ℕ → ℕ → FloatFormat → ℕ → ℕ → ℤ → Bool → Maybe Warning
-warn-hi i f l at F sig m E true  = just (FloatOverflow i f l at)
-warn-hi i f l at F sig m E false =
-  warn-exact i f l at F (proj₁ (errorOf sig l m E)) (proj₂ (errorOf sig l m E))
-
-warn-at : ℕ → ℕ → ℕ → ℕ → FloatFormat → ℕ → ℕ → ℤ → ℤ → Maybe Warning
-warn-at i f l at F sig m E -[1+ _ ]  = warn-under i f l at sig     -- underflowed
-warn-at i f l at F sig m E (+ zero)  = warn-under i f l at sig
-warn-at i f l at F sig m E (+ suc e) =
-  warn-hi i f l at F sig m E (maxFiniteExp F ℕ.<ᵇ suc e)
+-- | By the value the literal rounds to (plan 0.150: a level-2 value).
+warn-val : FloatFormat → ℕ → ℕ → ℕ → ℕ → FloatVal → Maybe Warning
+warn-val F i f l at (fv-inf _)     = just (FloatOverflow i f l at)
+warn-val F i f l at fv-nan         = nothing                 -- no literal is a NaN
+warn-val F i f l at (fv-zero _)    = warn-under i f l at (i * 10 ^ l + f)
+warn-val F i f l at (fv-num _ m e) =
+  warn-exact i f l at F (proj₁ er) (proj₂ er)
+  where
+    er = errorOf (i * 10 ^ l + f) l (odd m) e
+                 (quantum F (e ℤ.+ (+ (bitLen (odd m) ∸ 1))))
 
 floatWarning : FloatFormat → ℕ → ℕ → ℕ → ℕ → Maybe Warning
-floatWarning F i f l at =
-  warn-at i f l at F sig
-          (proj₁ (roundSig F sig l)) (proj₂ (roundSig F sig l))
-          (storedExp F (proj₁ (roundSig F sig l)) (proj₂ (roundSig F sig l)))
-  where sig = i * 10 ^ l + f
+floatWarning F i f l at = warn-val F i f l at (roundDec F (decimalOf i f l))
 
 ------------------------------------------------------------------------
 -- The literals of a source
@@ -219,20 +220,19 @@ roundingWarnings arch ts = go (tokenFloatLits ts)
 ------------------------------------------------------------------------
 
 private
-  -- 3.1 at binary64: stored slightly HIGH, by 1/11258999068426240 ≈ +8.9e-17.
   -- 3.1 at binary64: stored slightly HIGH. `2 / (10·2^51)` is
-  -- `1/11258999068426240` ≈ +8.9e-17, and `2/10` is +0.2 ulp — both exactly
-  -- the figures in this plan's own table, computed here without any floating
-  -- point at all.
+  -- `1/11258999068426240` ≈ +8.9e-17, and `2·2^51 / (10·2^51)` is +0.2 ulp —
+  -- both exactly the figures in this plan's own table (checked with Python's
+  -- `fractions`), computed here without any floating point at all.
   _ : floatWarning binary64 3 1 1 0
         ≡ just (FloatRounded 3 1 1 0 (round binary64 (decimalOf 3 1 1))
                              ((+ 2) /Q (10 ^ 1 * 2 ^ 51))
-                             ((+ 2) /Q (10 ^ 1 * 2 ^ 0)))
+                             (((+ 2) ℤ.* (+ (2 ^ 51))) /Q (10 ^ 1 * 2 ^ 51)))
   _ = refl
 
-  -- …and at binary32 it is stored LOW, and the SIGN says so. `−4/(10·2^22)`
-  -- is `−1/10485760` ≈ −9.5e-08, and `−4/10` is −0.4 ulp — again the table's
-  -- own figures.
+  -- …and at binary32 it is stored LOW, and the SIGN says so. `−2/(10·2^21)`
+  -- is `−1/10485760` ≈ −9.5e-08, and `−2·2^22/(10·2^21)` is −0.4 ulp — again
+  -- the table's own figures.
   --
   -- THIS PAIR IS THE ARGUMENT FOR REPORTING BOTH. The ulp figure is 0.2 and
   -- 0.4 — same order — while the absolute error differs by nine orders of
@@ -241,8 +241,8 @@ private
   -- and the catastrophic one identically.
   _ : floatWarning binary32 3 1 1 0
         ≡ just (FloatRounded 3 1 1 0 (round binary32 (decimalOf 3 1 1))
-                             (-[1+ 3 ] /Q (10 ^ 1 * 2 ^ 22))
-                             (-[1+ 3 ] /Q (10 ^ 1 * 2 ^ 0)))
+                             (-[1+ 1 ] /Q (10 ^ 1 * 2 ^ 21))
+                             ((-[1+ 1 ] ℤ.* (+ (2 ^ 22))) /Q (10 ^ 1 * 2 ^ 21)))
   _ = refl
 
   -- An exactly-representable literal is SILENT at both formats. If this ever
@@ -267,6 +267,16 @@ private
   _ : floatWarning binary64 16777217 0 1 0 ≡ nothing
   _ = refl
 
+  -- Past the largest binary32 (≈ 3.4e38): ∞, and said so.
+  _ : floatWarning binary32 400000000000000000000000000000000000000 0 1 0
+        ≡ just (FloatOverflow 400000000000000000000000000000000000000 0 1 0)
+  _ = refl
+
+  -- Below half the least binary32 subnormal (≈ 1.4e-45): zero, and said so;
+  -- 1e-46 has 46 fraction digits.
+  _ : floatWarning binary32 0 1 46 0 ≡ just (FloatUnderflow 0 1 46 0)
+  _ = refl
+
   -- THE POSITION SURVIVES THE WALK. `3.14` at offset 42 is reported AT 42 —
   -- the whole point of the lexer/parser threading.
   _ : tokenFloatLits (TFloat 3 14 2 42 ∷ []) ≡ (3 , 14 , 2 , 42) ∷ []
@@ -274,8 +284,8 @@ private
 
   _ : floatWarning binary32 3 1 1 42
         ≡ just (FloatRounded 3 1 1 42 (round binary32 (decimalOf 3 1 1))
-                             (-[1+ 3 ] /Q (10 ^ 1 * 2 ^ 22))
-                             (-[1+ 3 ] /Q (10 ^ 1 * 2 ^ 0)))
+                             (-[1+ 1 ] /Q (10 ^ 1 * 2 ^ 21))
+                             ((-[1+ 1 ] ℤ.* (+ (2 ^ 22))) /Q (10 ^ 1 * 2 ^ 21)))
   _ = refl
 
 ------------------------------------------------------------------------
@@ -323,11 +333,14 @@ renderWarning (FloatOverflow i f l at) =
 renderWarning (FloatUnderflow i f l at) =
   "warning: float literal " <> showLit i f l <> " at offset " <> showNat at
     <> " is too small for this target's format; stored as zero"
-    <> " (Once models no subnormals)"
 
 renderWarning (SilentRound fn) =
   "warning: a loop in `" <> fn <> "` runs a round that performs no event;"
     <> " if the loop never ends, the program goes silent"
+
+renderWarning (FloatIdentityEq fn) =
+  "warning: `" <> fn <> "` compares Floats with `==` or `!=`, which is identity"
+    <> " (NaN == NaN, -0.0 != 0.0); for IEEE equality use `==.` or `!=.`"
 
 -- | plan 0.119 D5: the loops whose round performs no event, one warning per
 -- definition (`Once.Compile.silentRoundDefs`).
@@ -338,11 +351,21 @@ loopWarnings m = go (silentRoundDefs m)
     go []       = []
     go (f ∷ fs) = SilentRound f ∷ go fs
 
+-- | plan 0.150 step 5: one warning per definition that applies `==` / `!=`
+-- at `Float` directly (`Once.Compile.floatIdentityEqDefs`).
+eqWarnings : Resolved → List Warning
+eqWarnings m = go (floatIdentityEqDefs m)
+  where
+    go : List String → List Warning
+    go []       = []
+    go (f ∷ fs) = FloatIdentityEq f ∷ go fs
+
 -- | The compiler's entry point: every rounding warning this module has for
 -- this target, rendered. `Once.Compile` re-exports it and the CLI prints it,
 -- which is what keeps this module ON the apex path rather than beside it.
 warningsFor : Arch → String → Resolved → List String
-warningsFor arch src m = go (roundingWarnings arch (tokenize (toList src)) ++ loopWarnings m)
+warningsFor arch src m =
+  go (roundingWarnings arch (tokenize (toList src)) ++ loopWarnings m ++ eqWarnings m)
   where
     go : List Warning → List String
     go []       = []

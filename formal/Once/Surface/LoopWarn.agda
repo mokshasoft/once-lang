@@ -24,6 +24,7 @@ open import Data.Nat using (ℕ; _+_)
 open import Once.Spec.Grade using (mk-kind; pure)
 open import Once.Spec.Type using (Type; _⇒[_]_)
 open import Once.Surface.Syntax using (Expr)
+open import Once.Spec.Theory using (float-equality; ‵==; ‵!=)
 open Once.Surface.Syntax.Expr
 
 -- a pure arrow
@@ -38,29 +39,57 @@ roundIsPure (coerce {A = S} _ _) = pureArrow S
 {-# CATCHALL #-}
 roundIsPure _ = false
 
+-- | A count over a term: each node's own contribution (`here`), summed over
+-- the whole term. The warnings are counts of this shape, so they share the walk.
+Here : Set
+Here = ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {T : Ty m} → Expr Γ Ψ T → ℕ
+
+exprCount : Here → ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {T : Ty m} → Expr Γ Ψ T → ℕ
+exprCount h e = h e + below e
+  where
+    below : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {T : Ty m} → Expr Γ Ψ T → ℕ
+    below (lam _ _ b)      = exprCount h b
+    below (app f x)        = exprCount h f + exprCount h x
+    below (effApp f x)     = exprCount h f + exprCount h x
+    below (pair a b)       = exprCount h a + exprCount h b
+    below (fst' e)         = exprCount h e
+    below (snd' e)         = exprCount h e
+    below (inl' e)         = exprCount h e
+    below (inr' e)         = exprCount h e
+    below (case' s f g)    = exprCount h s + (exprCount h f + exprCount h g)
+    below (absurd e)       = exprCount h e
+    below (let' a b)       = exprCount h a + exprCount h b
+    below (num _ _ e)      = exprCount h e
+    below (coerce _ e)     = exprCount h e
+    below (closed e)       = exprCount h e
+    below (morph-app _ e)  = exprCount h e
+    below (comp' f g)      = exprCount h f + exprCount h g
+    below (copair' f g)    = exprCount h f + exprCount h g
+    below (fork' f g)      = exprCount h f + exprCount h g
+    below (curry' f)       = exprCount h f
+    below (cata _ a)       = exprCount h a
+    below (ana _ c)        = exprCount h c
+    below (loop r)         = exprCount h r
+    {-# CATCHALL #-}
+    below _                = 0
+
 -- how many loops in a term have a pure round
-silentLoops : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {T : Ty m} → Expr Γ Ψ T → ℕ
-silentLoops (lam _ _ b)      = silentLoops b
-silentLoops (app f x)        = silentLoops f + silentLoops x
-silentLoops (effApp f x)     = silentLoops f + silentLoops x
-silentLoops (pair a b)       = silentLoops a + silentLoops b
-silentLoops (fst' e)         = silentLoops e
-silentLoops (snd' e)         = silentLoops e
-silentLoops (inl' e)         = silentLoops e
-silentLoops (inr' e)         = silentLoops e
-silentLoops (case' s f g)    = silentLoops s + (silentLoops f + silentLoops g)
-silentLoops (absurd e)       = silentLoops e
-silentLoops (let' a b)       = silentLoops a + silentLoops b
-silentLoops (num _ _ e)      = silentLoops e
-silentLoops (coerce _ e)     = silentLoops e
-silentLoops (closed e)       = silentLoops e
-silentLoops (morph-app _ e)  = silentLoops e
-silentLoops (comp' f g)      = silentLoops f + silentLoops g
-silentLoops (copair' f g)    = silentLoops f + silentLoops g
-silentLoops (fork' f g)      = silentLoops f + silentLoops g
-silentLoops (curry' f)       = silentLoops f
-silentLoops (cata _ a)       = silentLoops a
-silentLoops (ana _ c)        = silentLoops c
-silentLoops (loop r)         = (if roundIsPure r then 1 else 0) + silentLoops r
-{-# CATCHALL #-}
-silentLoops _                = 0
+silentLoops : Here
+silentLoops = exprCount here
+  where
+    here : Here
+    here (loop r) = if roundIsPure r then 1 else 0
+    {-# CATCHALL #-}
+    here _        = 0
+
+-- | Plan 0.150 step 5: how many `==` / `!=` a term applies directly at
+-- `Float` — identity, where IEEE equality is `==.` / `!=.`. A use through a
+-- generic definition is that definition's (`poly`), so it is not counted.
+floatIdentityEqs : Here
+floatIdentityEqs = exprCount here
+  where
+    here : Here
+    here (num float-equality ‵== _) = 1
+    here (num float-equality ‵!= _) = 1
+    {-# CATCHALL #-}
+    here _                          = 0

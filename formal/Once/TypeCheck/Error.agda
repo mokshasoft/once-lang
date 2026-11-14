@@ -61,6 +61,27 @@ numTyText : NumTy → String
 numTyText int   = "Int"
 numTyText float = "Float"
 
+-- | Plan 0.150 step 5: an operator undefined at a type names the one that is
+-- (`Float`'s arithmetic rounds, so it is the dotted family; `Int`'s is exact).
+undefinedHint : String → NumTy → String
+undefinedHint "+"  float = ", whose addition rounds: use `+.`"
+undefinedHint "-"  float = ", whose subtraction rounds: use `-.`"
+undefinedHint "*"  float = ", whose multiplication rounds: use `*.`"
+undefinedHint "/"  float = ", whose division rounds: use `/.`"
+undefinedHint "%"  float = ", which has no remainder"
+undefinedHint "+." int   = ", whose addition is exact: use `+`"
+undefinedHint "-." int   = ", whose subtraction is exact: use `-`"
+undefinedHint "*." int   = ", whose multiplication is exact: use `*`"
+undefinedHint "/." int   = ", whose division is on integers: use `/`"
+undefinedHint "==." int  = ": use `==`"
+undefinedHint "!=." int  = ": use `!=`"
+undefinedHint "<." int   = ": use `<`"
+undefinedHint "<=." int  = ": use `<=`"
+undefinedHint ">." int   = ": use `>`"
+undefinedHint ">=." int  = ": use `>=`"
+{-# CATCHALL #-}
+undefinedHint _    _     = ""
+
 ------------------------------------------------------------------------
 -- Structured error categories
 ------------------------------------------------------------------------
@@ -213,7 +234,7 @@ renderError ComposeMiddleUndetermined =
     ++ "output (given its input) nor the first argument's input is known; "
     ++ "annotate one of them"
 renderError (OperatorUndefined op A) =
-  "`" ++ op ++ "` is not defined at " ++ numTyText A
+  "`" ++ op ++ "` is not defined at " ++ numTyText A ++ undefinedHint op A
 renderError (MixedOperands op) =
   "`" ++ op ++ "` needs operands of one type: convert the Int with toFloat"
 renderError NegativeZeroLiteral =

@@ -134,7 +134,7 @@ import Data.Nat
 
 -- Surface → IR elaboration
 open import Once.Surface.Elaborate using (elaborateFull)
-open import Once.Surface.LoopWarn using (silentLoops)
+open import Once.Surface.LoopWarn using (Here; silentLoops; floatIdentityEqs)
 open import Once.Principal using (below)
 open import Once.Spec.Sub using (_<:_; sub-arr; sub-unit; sub-void)
 open import Once.Type.SubDecide using (_<:?_)
@@ -525,41 +525,50 @@ compileResolvedModule m doOpt mod =
 -- (`Once.Surface.LoopWarn`). A PURE QUERY, as the rounding warnings are
 -- (`Once.Warnings`): `compileEntries`'s walk, each body checked again and its
 -- elaborated term read. It never changes what is compiled.
-lw-entries : CScope → List Entry → List String
-lw-fun     : CScope → FunInfo → List Entry → Bool → List String
-lw-prim    : CScope → FunInfo → List Entry → Maybe Type → List String
-lw-mono    : CScope → FunInfo → List Entry → String ⊎ Type → List String
-lw-body    : (ctx : NamedCtx 0) (body : Expr) (ty : Type) → TE.CheckElabResult (NamedCtx.debruijn ctx) ty → Bool
-lw-bodyI   : (ctx : NamedCtx 0) (body : Expr) → TE.InferElabResult (NamedCtx.debruijn ctx) → Bool
-lw-bodyM   : Maybe Type → (ctx : NamedCtx 0) (body : Expr) (ty : Type) → Bool
-lw-name    : FunInfo → Bool → List String
+lw-entries : Here → CScope → List Entry → List String
+lw-fun     : Here → CScope → FunInfo → List Entry → Bool → List String
+lw-prim    : Here → CScope → FunInfo → List Entry → Maybe Type → List String
+lw-mono    : Here → CScope → FunInfo → List Entry → String ⊎ Type → List String
+lw-body    : Here → (ctx : NamedCtx 0) (body : Expr) (ty : Type) → TE.CheckElabResult (NamedCtx.debruijn ctx) ty → Bool
+lw-bodyI   : Here → (ctx : NamedCtx 0) (body : Expr) → TE.InferElabResult (NamedCtx.debruijn ctx) → Bool
+lw-bodyM   : Here → Maybe Type → (ctx : NamedCtx 0) (body : Expr) (ty : Type) → Bool
+lw-name    : Here → FunInfo → Bool → List String
 
-lw-entries sc []                = []
-lw-entries sc (e-fun fi ∷ es)   = lw-fun sc fi es (funIsPrimitive fi)
-lw-entries sc (e-poly pfi ∷ es) = lw-entries (addEntry sc pfi) es
-lw-fun sc fi es true  = lw-prim sc fi es (funType fi)
-lw-fun sc fi es false = lw-mono sc fi es (resolveFunType (ctop sc) (cpolys sc) (funType fi) (funBody fi))
-lw-prim sc fi es nothing   = []
-lw-prim sc fi es (just ty) = lw-entries (extendSig sc (funName fi) ty) es
-lw-mono sc fi es (inj₁ _)  = []
-lw-mono sc fi es (inj₂ ty) =
-  lw-name fi (lw-bodyM (funType fi) (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (funBody fi) ty)
-  DL.++ lw-entries (extendScope sc (funName fi) ty) es
-lw-body ctx body ty (TE.failure _)       = false
-lw-body ctx body ty (TE.success _ eE _ _) = 0 <ᵇ silentLoops eE
-lw-bodyI ctx body (TE.failure _)         = false
-lw-bodyI ctx body (TE.success _ _ eE _ _) = 0 <ᵇ silentLoops eE
-lw-bodyM (just _) ctx body ty = lw-body ctx body ty (TE.checkElab ctx body ty)
-lw-bodyM nothing  ctx body ty = lw-bodyI ctx body (TE.inferElab ctx body)
-lw-name fi true  = funName fi ∷ []
-lw-name fi false = []
+lw-entries cnt sc []                = []
+lw-entries cnt sc (e-fun fi ∷ es)   = lw-fun cnt sc fi es (funIsPrimitive fi)
+lw-entries cnt sc (e-poly pfi ∷ es) = lw-entries cnt (addEntry sc pfi) es
+lw-fun cnt sc fi es true  = lw-prim cnt sc fi es (funType fi)
+lw-fun cnt sc fi es false = lw-mono cnt sc fi es (resolveFunType (ctop sc) (cpolys sc) (funType fi) (funBody fi))
+lw-prim cnt sc fi es nothing   = []
+lw-prim cnt sc fi es (just ty) = lw-entries cnt (extendSig sc (funName fi) ty) es
+lw-mono cnt sc fi es (inj₁ _)  = []
+lw-mono cnt sc fi es (inj₂ ty) =
+  lw-name cnt fi (lw-bodyM cnt (funType fi) (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (funBody fi) ty)
+  DL.++ lw-entries cnt (extendScope sc (funName fi) ty) es
+lw-body cnt ctx body ty (TE.failure _)       = false
+lw-body cnt ctx body ty (TE.success _ eE _ _) = 0 <ᵇ cnt eE
+lw-bodyI cnt ctx body (TE.failure _)         = false
+lw-bodyI cnt ctx body (TE.success _ _ eE _ _) = 0 <ᵇ cnt eE
+lw-bodyM cnt (just _) ctx body ty = lw-body cnt ctx body ty (TE.checkElab ctx body ty)
+lw-bodyM cnt nothing  ctx body ty = lw-bodyI cnt ctx body (TE.inferElab ctx body)
+lw-name cnt fi true  = funName fi ∷ []
+lw-name cnt fi false = []
 
-silentRoundDefs-aux : String ⊎ List Entry → List String
-silentRoundDefs-aux (inj₁ _)  = []
-silentRoundDefs-aux (inj₂ es) = lw-entries emptyCScope es
+defsWith-aux : Here → String ⊎ List Entry → List String
+defsWith-aux cnt (inj₁ _)  = []
+defsWith-aux cnt (inj₂ es) = lw-entries cnt emptyCScope es
+
+-- | The definitions whose elaborated body counts something (`Here`).
+defsWith : Here → Resolved → List String
+defsWith cnt mod = defsWith-aux cnt (extractFunctions mod)
 
 silentRoundDefs : Resolved → List String
-silentRoundDefs mod = silentRoundDefs-aux (extractFunctions mod)
+silentRoundDefs = defsWith silentLoops
+
+-- | Plan 0.150 step 5: the definitions that apply `==` / `!=` at `Float`
+-- directly (identity, where IEEE equality is `==.`).
+floatIdentityEqDefs : Resolved → List String
+floatIdentityEqDefs = defsWith floatIdentityEqs
 
 -- Plan 0.50 — the symbols THIS codegen actually emits as `.globl` labels, defined
 -- on the SAME `CompiledFun` list `compileFileFromModule` emits (`compileResolvedModule`):
