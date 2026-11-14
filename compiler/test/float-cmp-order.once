@@ -31,14 +31,23 @@ nan _ = 0.0 /. 0.0
 nz : Unit -> Float
 nz _ = -(0.0)
 
+-- Four comparisons per definition: an unoptimized riscv64 frame must stay
+-- within its 12-bit offsets (a known backend limit), and twelve in one
+-- definition do not.
+
+part1 : Unit -> Int
+part1 _ =
+  bit (nz () < 0.0)
+    + 2 * bit (nan () == nan ())
+    + 4 * bit (nz () == 0.0)
+    + 8 * bit (nan () ==. nan ())
+
+part2 : Unit -> Int
+part2 _ =
+  16 * bit (nz () ==. 0.0)
+    + 32 * bit (1.0 < nan ())
+    + 64 * bit (1.0 <. nan ())
+    + 128 * bit (nz () <. 0.0)
+
 main : Act Unit Void
-main =
-  exit@S
-    (bit (nz () < 0.0)
-      + 2 * bit (nan () == nan ())
-      + 4 * bit (nz () == 0.0)
-      + 8 * bit (nan () ==. nan ())
-      + 16 * bit (nz () ==. 0.0)
-      + 32 * bit (1.0 < nan ())
-      + 64 * bit (1.0 <. nan ())
-      + 128 * bit (nz () <. 0.0))
+main = exit@S (part1 () + part2 ())
