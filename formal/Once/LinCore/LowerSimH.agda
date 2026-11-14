@@ -50,7 +50,7 @@ import Once.LinCore.Moves
 module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf using (slots-def; slots-join; slots-frame; len-mvPS)
-  open SimF {FS} U wordOf using (slots-movedP)
+  open SimF {FS} U wordOf using (slots-movedP; cell-slots-at; at-def-o)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++)
   open import Once.LinCore.Moves {FS}
@@ -61,30 +61,6 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
     frame-eq : ∀ {f g x y} → AtStack {FS} f x ≡ AtStack g y → f ≡ g
     frame-eq refl = refl
 
-  -- words of a cell, from an offset, at the destination
-  cell-slots-at : ∀ {fs fs′ : FlatState} {i o b} (w : List W)
-                → MovedP fs fs′ (AtDynamic (cellLoc i 0)) o b (length w)
-                → At (LocState.heapMem (floc fs)) i o w → SlotsAt (slot fs′) b w
-  cell-slots-at {fs} {fs′} {i} {o} {b} w P a = go w 0 a (λ k k< → p-moved P k k<)
-    where
-      import Data.Nat.Properties
-      at′ : ∀ k → MemOps.readLoc {FS} (floc fs) (offsetLoc (AtDynamic (cellLoc i 0)) (k + o)) ≡ LocState.heapMem (floc fs) (cellLoc i (k + o))
-      at′ k = cong (λ z → LocState.heapMem (floc fs) (heap-loc (mkHeapRef (serial i)) z)) (Data.Nat.Properties.+-identityʳ (k + o))
-      go : ∀ (v : List W) j → At (LocState.heapMem (floc fs)) i (j + o) v
-         → (∀ k → k < j + length v → slot fs′ (k + b) ≡ MemOps.readLoc {FS} (floc fs) (offsetLoc (AtDynamic (cellLoc i 0)) (k + o)))
-         → SlotsAt (slot fs′) (j + b) v
-      go []      j a h = tt
-      go (x ∷ v) j (e , a) h =
-        trans (h j (subst (j <_) (sym (+-suc j (length v))) (s≤s (m≤m+n j (length v))))) (trans (at′ j) e) ,
-        go v (suc j) a (λ k k< → h k (subst (k <_) (sym (+-suc j (length v))) k<))
-
-  -- a cell's words are defined from an offset
-  at-def-o : ∀ {rd i o} (w : List W) → At rd i o w → ∀ k → k < length w → Σ W λ x → rd (cellLoc i (k + o)) ≡ just x
-  at-def-o (x ∷ w) (e , a) zero    _        = x , e
-  at-def-o {rd} {i} {o} (x ∷ w) (e , a) (suc k) (s≤s k<) = shift (at-def-o {rd} {i} {suc o} w a k k<)
-    where
-      shift : Σ W (λ y → rd (cellLoc i (k + suc o)) ≡ just y) → Σ W λ y → rd (cellLoc i (suc k + o)) ≡ just y
-      shift (y , ey) = y , trans (cong (λ z → rd (cellLoc i z)) (sym (+-suc k o))) ey
 
   private
     import Data.Nat.Properties
