@@ -570,18 +570,30 @@ private
 start : Cfg (One ∷ [] ∣ One ∷ [])
 start = vw mone []ᵉ ∥ mone ∷ˢ []ˢ
 
+-- the world sees the same of a trace and of its erasure
+ios-erase : ∀ t → ios (erase t) ≡ ios t
+ios-erase []             = refl
+ios-erase (alloc _ ∷ t)  = ios-erase t
+ios-erase (free _ ∷ t)   = ios-erase t
+ios-erase (peek _ ∷ t)   = ios-erase t
+ios-erase (io s x y ∷ t) = cong (io-call s x y ∷_) (ios-erase t)
+ios-erase (stp s x ∷ t)  = cong (io-halt s x ∷_) (ios-erase t)
+ios-erase (tmp _ ∷ t)    = ios-erase t
+
 -- ★ a finished run of a closed program: the image on its compiled code is
--- legal on the cell heap, leaves it empty, and closes every frame it opened
+-- legal on the cell heap, leaves it empty, closes every frame it opened, and
+-- shows the world what the run does (D429)
 image-noleak : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {n′ t}
              → (run : Run ds f mone mone 0 (gives mone n′) t) → Plain run
              → Σ Trace λ mt → StepsI (compᴵ ds f end) ([]ʳ {T = One ∷ [] ∣ One ∷ []}) start 0 mt end []ʳ start n′
-               × OK mt (λ _ → 0) × (∀ i → play mt (λ _ → 0) i ≡ 0) × TBal mt
+               × OK mt (λ _ → 0) × (∀ i → play mt (λ _ → 0) i ≡ 0) × TBal mt × ios mt ≡ ios t
 image-noleak {t = t} run fr with simI run fr (vw mone []ᵉ) refl []ˢ end []ʳ | noleak (plain run)
 ... | out ts mt st w b | (ok , clean) =
   ( mt , st
   , OK-weave w (λ _ → 0) ok
   , (λ i → trans (cong (λ h → h i) (play-weave w (λ _ → 0))) (clean i))
-  , weave-post (gives mone 0) w (NoT-Bal (erase t) (erase-clean t)) b )
+  , weave-post (gives mone 0) w (NoT-Bal (erase t) (erase-clean t)) b
+  , trans (ios-weave w) (ios-erase t) )
 
 -- ★ ANY stopped run of a closed program from nothing (a server cut after its
 -- last round, a halt): the image runs at least as far, and what it did up to

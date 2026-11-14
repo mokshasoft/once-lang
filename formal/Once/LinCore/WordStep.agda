@@ -162,12 +162,15 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     open GRet using (gret)
     open Related
     -- where a step lands: related, or (the image halted) a halted machine
-    HaltC : ∀ {sh U′} → Codeᴵ sh U′ → FlatState → Set
-    HaltC c fs = (c ≡ halted) × (LocState.halted (floc fs) ≡ Data.Bool.true)
+    -- (D429: and a running state on the way, after which the halting op left `left` as it was)
+    HaltC : ∀ {sh U′} → Codeᴵ sh U′ → FlatState → FlatState → Set
+    HaltC c fs fs′ = (c ≡ halted) × (LocState.halted (floc fs′) ≡ Data.Bool.true)
+                     × Σ FlatState λ fs₀ → Σ ℕ λ M → FlatSteps image M fs fs₀ × LocState.halted (floc fs₀) ≡ Data.Bool.false
+                         × LocState.left (floc fs′) ≡ LocState.left (floc fs₀)
 
     -- (D427: the machine's log grown by the events the step shows the world)
     Lands : ∀ {T sh U′} → List SigOpEvent → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
-    Lands E c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × (Related c r m n fs′ ⊎ HaltC c fs′)
+    Lands E c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × (Related c r m n fs′ ⊎ HaltC c fs fs′)
                            × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E
 
     -- a step that shows nothing keeps the log
@@ -183,9 +186,11 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     private
       halt-out : ∀ {T sh U′} {r : Ret U′ T} {m : Cfg sh} {n fs E}
            → Σ ℕ (λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × LocState.halted (floc fs′) ≡ Data.Bool.true
-                          × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E)
+                          × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E
+                          × LocState.left (floc fs′) ≡ LocState.left (floc fs) × LocState.halted (floc fs) ≡ Data.Bool.false)
            → Lands E (halted {sh = sh}) r m n fs
-      halt-out (N , fs′ , st , hlt , lg) = N , fs′ , st , inj₂ (refl , hlt) , lg
+      halt-out {fs = fs} (N , fs′ , st , hlt , lg , lft , run) =
+        N , fs′ , st , inj₂ (refl , hlt , fs , 0 , FlatStepsAPI.[] , run , lft) , lg
 
       -- an op: the log grown by its events
       op-out : ∀ {T sh U′} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n fs E}

@@ -97,6 +97,12 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                    ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = Data.Nat.suc (fpc fs) }) where
     open Theorem ld using (word-step; Lands; HaltC)
 
+    -- a landing seen from earlier: the halting op's running state, after more steps
+    shift : ∀ {T sh U′} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n fs fs₁ fs′ M}
+          → FlatSteps image M fs fs₁ → (Related c r m n fs′ ⊎ HaltC c fs₁ fs′) → (Related c r m n fs′ ⊎ HaltC c fs fs′)
+    shift p (inj₁ G) = inj₁ G
+    shift p (inj₂ (e , h , fs₀ , M , q , r₀ , l)) = inj₂ (e , h , fs₀ , _ , FlatSteps-++ p q , r₀ , l)
+
     -- ★ a whole run, from a related state
     whole : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs L}
           → (run : StepsI c r m n t c′ r′ m′ n′) → InvI m r n h → AgreesAll L run → Related c r m n fs
@@ -107,9 +113,9 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       where
         go : _ → _
         go (N₁ , fs₁ , st₁ , inj₁ G₁ , lg₁) = case whole rest (proj₂ (inv-stepI st inv)) ag G₁ (trans lg₁ (cong (_++ evsOf t₁) lL)) of λ where
-          (N₂ , fs₂ , st₂ , L , lg₂) → N₁ + N₂ , fs₂ , FlatSteps-++ st₁ st₂ , L , log-join t₁ t₂ lg₁ lg₂
-        go (N₁ , fs₁ , st₁ , inj₂ (e , hlt) , lg₁) =
-          N₁ , fs₁ , st₁ , inj₂ (proj₁ (rest-halt rest e) , hlt) , log-halt t₁ lg₁ (proj₂ (rest-halt rest e))
+          (N₂ , fs₂ , st₂ , L , lg₂) → N₁ + N₂ , fs₂ , FlatSteps-++ st₁ st₂ , shift st₁ L , log-join t₁ t₂ lg₁ lg₂
+        go (N₁ , fs₁ , st₁ , inj₂ (e , hlt , pre) , lg₁) =
+          N₁ , fs₁ , st₁ , inj₂ (proj₁ (rest-halt rest e) , hlt , pre) , log-halt t₁ lg₁ (proj₂ (rest-halt rest e))
 
     -- ★ the image's run from main's first point, from the flat machine's first state
     module _ (entry-frame : FrameSemantics.Frame FS) (entry-regs : Registers FS) where
@@ -120,4 +126,4 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                  → Lands (evsOf t) c′ r′ m′ n′ start-fs
       from-start {t = t} run ag = case start-related of λ where
         (fs₁ , st₁ , G₁ , lg₀) → case whole run start-invI ag G₁ lg₀ of λ where
-          (N , fs′ , st , L , lg) → 1 + N , fs′ , FlatSteps-++ st₁ st , L , trans lg (cong (_++ evsOf t) lg₀)
+          (N , fs′ , st , L , lg) → 1 + N , fs′ , FlatSteps-++ st₁ st , shift st₁ L , trans lg (cong (_++ evsOf t) lg₀)
