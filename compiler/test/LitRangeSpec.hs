@@ -98,6 +98,9 @@ literals =
   , ("(-2147483648)",       -2147483648)            -- exactly -2^31: fits 32
   , ("(-2147483649)",       -2147483649)            -- one past:      does not
   , ("(-5)",                          -5)           -- a negative arg, all 3 arches
+    -- Plan 0.150 (D410): the least 64-bit Int is ONE literal, so it fits.
+  , ("(-9223372036854775808)", -9223372036854775808)  -- exactly -2^63: fits 64
+  , ("(-9223372036854775809)", -9223372036854775809)  -- one past:      does not
   ]
 
 -- | `emit <lit>` sequenced before `exit 7`. The literal is hoisted into a
@@ -125,6 +128,7 @@ litRangeTests = testGroup "Int literal range (D115)"
       [ testGroup lit [ testCase (archName a) (checkLit a lit z) | a <- backendArches ]
       | (lit, z) <- literals ]
   , wrapTest
+  , negTest
   ]
 
 -- | One literal on one arch. Which assertion runs is DERIVED, not listed.
@@ -220,6 +224,43 @@ checkWrap arch = do
       , ""
       , "main : Act Unit Void"
       , "main = compose exit@S (compose (\\_ -> 7) emitSum)"
+      ]
+
+-- | NEGATION AT `Int` (plan 0.150, D409): `-x` of a value, and `-minInt` is
+-- `minInt` — negation wraps like the rest of the arithmetic, which is why
+-- order reversal is not one of `Neg`'s laws. The least Int is each target's
+-- own, written as the one literal it is (D410).
+negTest :: TestTree
+negTest = testGroup "-x at Int, and -minInt = minInt"
+  [ testCase (archName a) (checkNeg a) | a <- backendArches ]
+
+checkNeg :: BackendArch -> IO ()
+checkNeg arch = do
+  r <- buildAndRunTraceOn arch ("litneg_" ++ archName arch) src
+  case r of
+    Left err -> assertFailure err
+    Right (out, code) -> case decodeTrace arch out of
+      Left err -> assertFailure (tag ++ " " ++ err)
+      Right ws -> do
+        assertEqual (tag ++ " two emit invocations") 2 (length ws)
+        assertEqual (tag ++ " -(5)") (-5) (signedAt arch (head ws))
+        assertEqual (tag ++ " -minInt") least (signedAt arch (ws !! 1))
+        assertEqual (tag ++ " exit code") 7 code
+  where
+    tag   = "[" ++ archName arch ++ "]"
+    least = negate (2 ^ (archIntBits arch - 1))
+    src   = T.unlines
+      [ "import I.Linux.Syscalls as S"
+      , "import I.Test.Emit as E"
+      , ""
+      , "negI : Int -> Int"
+      , "negI x = -x"
+      , ""
+      , "emitTwo : Act Unit Unit"
+      , T.pack ("emitTwo = compose (emit@E) (compose (\\_ -> negI (" ++ show least ++ ")) (compose (emit@E) (\\_ -> negI 5)))")
+      , ""
+      , "main : Act Unit Void"
+      , "main = compose exit@S (compose (\\_ -> 7) emitTwo)"
       ]
 
 -- | A filesystem-safe per-case build directory name.

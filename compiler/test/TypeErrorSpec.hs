@@ -203,6 +203,14 @@ builtinShapeErrorTests = testGroup "Builtin shape errors"
       [ "f : Int -> Int"
       , "f x = id x x"
       ]
+    -- Plan 0.150 (D410): an argument does not start with `-`, so `f -5` is
+    -- the subtraction `f - 5`, and a function is not a number.
+  , rejects "f -5 with f a function is a subtraction" "Type mismatch: expected Int but got"
+      [ "g : Int -> Int"
+      , "g x = x"
+      , "h : Int"
+      , "h = g -5"
+      ]
   ]
 
 ------------------------------------------------------------------------
