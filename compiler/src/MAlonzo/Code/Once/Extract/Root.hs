@@ -38,7 +38,7 @@ d_Runs_6 = ()
 data T_Runs_6
   = C_constructor_60 (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
                       MAlonzo.Code.Data.Sum.Base.T__'8846'__30)
-                     (MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_122 ->
+                     (MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_116 ->
                       [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14])
                      (MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
                       [MAlonzo.Code.Agda.Builtin.String.T_String_6])
@@ -47,7 +47,7 @@ data T_Runs_6
                      (MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
                       Maybe MAlonzo.Code.Once.IR.T_IR_16)
                      ([MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-                      MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_122 ->
+                      MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_116 ->
                       MAlonzo.Code.Data.Sum.Base.T__'8846'__30)
                      (MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
                       MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -82,7 +82,7 @@ d_parse'45'source_34 v0
 -- Once.Extract.Root.Runs.module-imports
 d_module'45'imports_36 ::
   T_Runs_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_122 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_116 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 d_module'45'imports_36 v0
   = case coe v0 of
@@ -123,7 +123,7 @@ d_main'45'ir_42 v0
 d_resolve'45'imports_44 ::
   T_Runs_6 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_122 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_116 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_resolve'45'imports_44 v0
   = case coe v0 of
@@ -214,10 +214,10 @@ d_runs_62
       (coe MAlonzo.Code.Once.Extract.Names.d_module'45'imports_20)
       (coe MAlonzo.Code.Once.Extract.Names.d_import'45'path_24)
       (coe MAlonzo.Code.Once.Extract.Names.d_import'45'alias_28)
-      (coe MAlonzo.Code.Once.Compile.d_moduleToIR_1260)
-      (coe MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveImports_904)
-      (coe MAlonzo.Code.Once.Warnings.d_warningsFor_378)
-      (coe MAlonzo.Code.Once.Compile.d_assemblyFromModule_1584)
+      (coe MAlonzo.Code.Once.Compile.d_moduleToIR_1304)
+      (coe MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveImports_906)
+      (coe MAlonzo.Code.Once.Warnings.d_warningsFor_380)
+      (coe MAlonzo.Code.Once.Compile.d_assemblyFromModule_1628)
       (coe MAlonzo.Code.Once.Inspect.d_signatures_40)
       (coe MAlonzo.Code.Once.Inspect.d_check_48)
       (coe MAlonzo.Code.Once.Inspect.d_dumpIR_68)

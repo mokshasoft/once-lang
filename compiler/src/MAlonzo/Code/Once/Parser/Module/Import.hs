@@ -255,9 +255,9 @@ d_pia'45'head_162 v0 v1 v2
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe
-                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_DImport_120
+                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_DImport_114
                    (coe
-                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkImport_108 (coe v0)
+                      MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkImport_102 (coe v0)
                       (coe v2)))
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
@@ -299,9 +299,9 @@ du_pia'45'as_174 v0 v1 v2 v3 v4
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                           (coe
-                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_DImport_120
+                             MAlonzo.Code.Once.Spec.Surface.Syntax.C_DImport_114
                              (coe
-                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkImport_108 (coe v0)
+                                MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkImport_102 (coe v0)
                                 (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)))
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
@@ -336,9 +336,9 @@ du_pia'45'w_184 v0 v1 v2 v3
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_DImport_120
+                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_DImport_114
                                  (coe
-                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkImport_108 (coe v0)
+                                    MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkImport_102 (coe v0)
                                     (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v5))))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v7)

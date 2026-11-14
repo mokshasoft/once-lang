@@ -25,7 +25,6 @@ import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.List.Relation.Unary.All
 import qualified MAlonzo.Code.Data.List.Relation.Unary.All.Properties
-import qualified MAlonzo.Code.Once.Arith.CmpOp
 import qualified MAlonzo.Code.Once.Arith.SigOp.Compare
 import qualified MAlonzo.Code.Once.Denotation.Program
 import qualified MAlonzo.Code.Once.IR
@@ -40,12 +39,12 @@ d_sigop'45'syms_12 ::
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
-  Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
+  Maybe MAlonzo.Code.Once.Arith.SigOp.Compare.T_CmpAt_8 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 d_sigop'45'syms_12 ~v0 ~v1 v2 v3 = du_sigop'45'syms_12 v2 v3
 du_sigop'45'syms_12 ::
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 ->
-  Maybe MAlonzo.Code.Once.Arith.CmpOp.T_CmpOp_6 ->
+  Maybe MAlonzo.Code.Once.Arith.SigOp.Compare.T_CmpAt_8 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
 du_sigop'45'syms_12 v0 v1
   = case coe v1 of
@@ -57,7 +56,7 @@ du_sigop'45'syms_12 v0 v1
                 (coe
                    MAlonzo.Code.Once.SigOp.Info.d_name_116
                    (coe
-                      MAlonzo.Code.Once.Arith.SigOp.Compare.d_cmp'45'block'45'info_24
+                      MAlonzo.Code.Once.Arith.SigOp.Compare.du_cmp'45'block'45'info_48
                       (coe v2))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -177,7 +176,7 @@ d_leaf'45'syms_42 v0 v1 v2
         -> coe
              du_sigop'45'syms_12 (coe v5)
              (coe
-                MAlonzo.Code.Once.Arith.SigOp.Compare.du_cmp'45'of_12
+                MAlonzo.Code.Once.Arith.SigOp.Compare.du_cmp'45'of_18
                 (coe MAlonzo.Code.Once.SigOp.Info.d_sem_118 (coe v5)))
       MAlonzo.Code.Once.IR.C_Call_146 v5
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16

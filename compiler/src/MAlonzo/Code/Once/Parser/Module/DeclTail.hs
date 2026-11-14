@@ -159,7 +159,7 @@ d_gta'45'type_58 v0 v1 v2 v3
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeAlias_118 (coe v0)
+                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeAlias_112 (coe v0)
                                  (coe MAlonzo.Code.Data.List.Base.du_reverse_444 v2)
                                  (coe MAlonzo.Code.Once.Type.Poly.d_polyOf_148 (coe v5)))
                               (coe
@@ -363,7 +363,7 @@ du_psig'45'poly_264 v0 v1 v2 v3
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_DSignature_116 (coe v0)
+                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_DSignature_110 (coe v0)
                                  (coe v5))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v7)

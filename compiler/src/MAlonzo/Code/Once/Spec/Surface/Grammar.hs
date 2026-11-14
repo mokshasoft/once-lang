@@ -24,6 +24,7 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Once.Spec.Grade
 import qualified MAlonzo.Code.Once.Spec.Surface.Lexing
+import qualified MAlonzo.Code.Once.Spec.Surface.Operator
 import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 import qualified MAlonzo.Code.Once.Spec.Type
 
@@ -472,201 +473,204 @@ d_ArgStart_1030 a0 = ()
 data T_ArgStart_1030
   = C_as'45'paren_1034 | C_as'45'lambda_1038 | C_as'45'int_1044 |
     C_as'45'float_1054 | C_as'45'word_1060
+-- Once.Spec.Surface.Grammar.NumeralStart
+d_NumeralStart_1062 a0 = ()
+data T_NumeralStart_1062 = C_ns'45'int_1068 | C_ns'45'float_1078
+-- Once.Spec.Surface.Grammar.NegNumeral
+d_NegNumeral_1080 a0 a1 a2 = ()
+data T_NegNumeral_1080 = C_nn'45'int_1086 | C_nn'45'float_1096
 -- Once.Spec.Surface.Grammar.QualSuffix
-d_QualSuffix_1062 a0 = ()
-data T_QualSuffix_1062 = C_qual'45'suffix_1068
+d_QualSuffix_1098 a0 = ()
+data T_QualSuffix_1098 = C_qual'45'suffix_1104
 -- Once.Spec.Surface.Grammar.OpChar
-d_OpChar_1070 a0 a1 = ()
-data T_OpChar_1070
-  = C_oc'45'dot_1072 | C_oc'45'plus_1074 | C_oc'45'minus_1076 |
-    C_oc'45'star_1078 | C_oc'45'slash_1080 | C_oc'45'pct_1082 |
-    C_oc'45'lt_1084 | C_oc'45'gt_1086 | C_oc'45'pipe_1088 |
-    C_oc'45'amp_1090 | C_oc'45'at_1092
+d_OpChar_1106 a0 a1 = ()
+data T_OpChar_1106
+  = C_oc'45'op_1112 MAlonzo.Code.Once.Spec.Surface.Lexing.T_Glyph_304 |
+    C_oc'45'dot_1114 | C_oc'45'pipe_1116 | C_oc'45'amp_1118 |
+    C_oc'45'at_1120
 -- Once.Spec.Surface.Grammar.ParsesOpChars
-d_ParsesOpChars_1094 a0 a1 a2 a3 = ()
-data T_ParsesOpChars_1094
-  = C_op'45'close_1102 |
-    C_op'45'char_1116 MAlonzo.Code.Agda.Builtin.Char.T_Char_6
-                      T_OpChar_1070 T_ParsesOpChars_1094
--- Once.Spec.Surface.Grammar.CompareToken
-d_CompareToken_1118 a0 a1 = ()
-data T_CompareToken_1118
-  = C_ct'45'lt_1120 | C_ct'45'le_1122 | C_ct'45'gt_1124 |
-    C_ct'45'ge_1126 | C_ct'45'eq_1128 | C_ct'45'ne_1130
--- Once.Spec.Surface.Grammar.AddToken
-d_AddToken_1132 a0 a1 = ()
-data T_AddToken_1132 = C_at'45'plus_1134 | C_at'45'minus_1136
--- Once.Spec.Surface.Grammar.MulToken
-d_MulToken_1138 a0 a1 = ()
-data T_MulToken_1138
-  = C_mt'45'star_1140 | C_mt'45'slash_1142 | C_mt'45'pct_1144
+d_ParsesOpChars_1122 a0 a1 a2 a3 = ()
+data T_ParsesOpChars_1122
+  = C_op'45'close_1130 |
+    C_op'45'char_1144 MAlonzo.Code.Agda.Builtin.Char.T_Char_6
+                      T_OpChar_1106 T_ParsesOpChars_1122 |
+    C_op'45'dotted_1158 MAlonzo.Code.Agda.Builtin.Char.T_Char_6
+                        MAlonzo.Code.Once.Spec.Surface.Lexing.T_Glyph_304
+                        T_ParsesOpChars_1122
+-- Once.Spec.Surface.Grammar.OpToken
+d_OpToken_1162 a0 a1 a2 = ()
+data T_OpToken_1162 = C_ot'45'plain_1168 | C_ot'45'dotted_1172
 -- Once.Spec.Surface.Grammar.ParsesExpr
-d_ParsesExpr_1146 a0 a1 a2 = ()
-data T_ParsesExpr_1146
-  = C_expr_1182 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 T_ParsesCmp_1150
-                T_ParsesCompTail_1148
+d_ParsesExpr_1174 a0 a1 a2 = ()
+data T_ParsesExpr_1174
+  = C_expr_1210 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
+                MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_ParsesCmp_1178
+                T_ParsesCompTail_1176
 -- Once.Spec.Surface.Grammar.ParsesCompTail
-d_ParsesCompTail_1148 a0 a1 a2 a3 = ()
-data T_ParsesCompTail_1148
-  = C_comp'45'done_1188 |
-    C_comp'45'dot_1202 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                       MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 T_ParsesCmp_1150
-                       T_ParsesCompTail_1148
+d_ParsesCompTail_1176 a0 a1 a2 a3 = ()
+data T_ParsesCompTail_1176
+  = C_comp'45'done_1216 |
+    C_comp'45'dot_1230 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
+                       MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_ParsesCmp_1178
+                       T_ParsesCompTail_1176
 -- Once.Spec.Surface.Grammar.ParsesCmp
-d_ParsesCmp_1150 a0 a1 a2 = ()
-data T_ParsesCmp_1150
-  = C_cmp'45'none_1214 T_ParsesAdd_1152 |
-    C_cmp_1230 MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8
-               [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-               T_CompareToken_1118 T_ParsesAdd_1152 T_ParsesAdd_1152
+d_ParsesCmp_1178 a0 a1 a2 = ()
+data T_ParsesCmp_1178
+  = C_cmp'45'none_1242 T_ParsesAdd_1180 |
+    C_cmp_1258 MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8
+               [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8] T_OpToken_1162
+               T_ParsesAdd_1180 T_ParsesAdd_1180
 -- Once.Spec.Surface.Grammar.ParsesAdd
-d_ParsesAdd_1152 a0 a1 a2 = ()
-data T_ParsesAdd_1152
-  = C_add_1242 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-               MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 T_ParsesMul_1156
-               T_ParsesAddTail_1154
+d_ParsesAdd_1180 a0 a1 a2 = ()
+data T_ParsesAdd_1180
+  = C_add_1270 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
+               MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_ParsesMul_1184
+               T_ParsesAddTail_1182
 -- Once.Spec.Surface.Grammar.ParsesAddTail
-d_ParsesAddTail_1154 a0 a1 a2 a3 = ()
-data T_ParsesAddTail_1154
-  = C_add'45'done_1252 |
-    C_add'45'op_1270 MAlonzo.Code.Once.Spec.Surface.Syntax.T_BinOp_44
+d_ParsesAddTail_1182 a0 a1 a2 a3 = ()
+data T_ParsesAddTail_1182
+  = C_add'45'done_1280 |
+    C_add'45'op_1298 MAlonzo.Code.Once.Spec.Surface.Operator.T_BinOp_36
                      [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                     MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 T_AddToken_1132
-                     T_ParsesMul_1156 T_ParsesAddTail_1154
+                     MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_OpToken_1162
+                     T_ParsesMul_1184 T_ParsesAddTail_1182
 -- Once.Spec.Surface.Grammar.ParsesMul
-d_ParsesMul_1156 a0 a1 a2 = ()
-data T_ParsesMul_1156
-  = C_mul_1282 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-               MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 T_ParsesUnary_1160
-               T_ParsesMulTail_1158
+d_ParsesMul_1184 a0 a1 a2 = ()
+data T_ParsesMul_1184
+  = C_mul_1310 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
+               MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_ParsesUnary_1188
+               T_ParsesMulTail_1186
 -- Once.Spec.Surface.Grammar.ParsesMulTail
-d_ParsesMulTail_1158 a0 a1 a2 a3 = ()
-data T_ParsesMulTail_1158
-  = C_mul'45'done_1292 |
-    C_mul'45'op_1310 MAlonzo.Code.Once.Spec.Surface.Syntax.T_BinOp_44
+d_ParsesMulTail_1186 a0 a1 a2 a3 = ()
+data T_ParsesMulTail_1186
+  = C_mul'45'done_1320 |
+    C_mul'45'op_1338 MAlonzo.Code.Once.Spec.Surface.Operator.T_BinOp_36
                      [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                     MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 T_MulToken_1138
-                     T_ParsesUnary_1160 T_ParsesMulTail_1158
+                     MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_OpToken_1162
+                     T_ParsesUnary_1188 T_ParsesMulTail_1186
 -- Once.Spec.Surface.Grammar.ParsesUnary
-d_ParsesUnary_1160 a0 a1 a2 = ()
-data T_ParsesUnary_1160
-  = C_neg_1318 T_ParsesUnary_1160 | C_unary_1326 T_ParsesApp_1162
+d_ParsesUnary_1188 a0 a1 a2 = ()
+data T_ParsesUnary_1188
+  = C_neg_1346 T_ParsesUnary_1188 |
+    C_neg'45'lit_1358 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
+                      MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_NegNumeral_1080
+                      T_ParsesAppTail_1192 |
+    C_unary_1366 T_ParsesApp_1190
 -- Once.Spec.Surface.Grammar.ParsesApp
-d_ParsesApp_1162 a0 a1 a2 = ()
-data T_ParsesApp_1162
-  = C_app_1338 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-               MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68
-               T_ParsesAtomExpr_1166 T_ParsesAppTail_1164
+d_ParsesApp_1190 a0 a1 a2 = ()
+data T_ParsesApp_1190
+  = C_app_1378 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
+               MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44
+               T_ParsesAtomExpr_1194 T_ParsesAppTail_1192
 -- Once.Spec.Surface.Grammar.ParsesAppTail
-d_ParsesAppTail_1164 a0 a1 a2 a3 = ()
-data T_ParsesAppTail_1164
-  = C_app'45'done_1344 |
-    C_app'45'arg_1358 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                      MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 T_ArgStart_1030
-                      T_ParsesAtomExpr_1166 T_ParsesAppTail_1164
+d_ParsesAppTail_1192 a0 a1 a2 a3 = ()
+data T_ParsesAppTail_1192
+  = C_app'45'done_1384 |
+    C_app'45'arg_1398 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
+                      MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_ArgStart_1030
+                      T_ParsesAtomExpr_1194 T_ParsesAppTail_1192
 -- Once.Spec.Surface.Grammar.ParsesAtomExpr
-d_ParsesAtomExpr_1166 a0 a1 a2 = ()
-data T_ParsesAtomExpr_1166
-  = C_atom'45'unit_1362 | C_atom'45'int_1368 | C_atom'45'float_1378 |
-    C_atom'45'var_1384 | C_atom'45'qual_1392 |
-    C_atom'45'paren_1404 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                         MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 T_ParsesExpr_1146
-                         T_ParsesParenCont_1170 |
-    C_atom'45'op_1412 T_ParsesOpChars_1094 |
-    C_atom'45'lambda_1420 T_ParsesLamParams_1168 |
-    C_atom'45'let_1434 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                       T_ParsesExpr_1146 T_ParsesExpr_1146 |
-    C_atom'45'destruct_1454 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                            [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8] T_ParsesExpr_1146
-                            T_ParsesExpr_1146 T_ParsesExpr_1146
+d_ParsesAtomExpr_1194 a0 a1 a2 = ()
+data T_ParsesAtomExpr_1194
+  = C_atom'45'unit_1402 | C_atom'45'int_1408 | C_atom'45'float_1418 |
+    C_atom'45'var_1424 | C_atom'45'qual_1432 |
+    C_atom'45'paren_1444 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
+                         MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_ParsesExpr_1174
+                         T_ParsesParenCont_1198 |
+    C_atom'45'op_1452 T_ParsesOpChars_1122 |
+    C_atom'45'lambda_1460 T_ParsesLamParams_1196 |
+    C_atom'45'let_1474 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
+                       T_ParsesExpr_1174 T_ParsesExpr_1174 |
+    C_atom'45'destruct_1494 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
+                            [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8] T_ParsesExpr_1174
+                            T_ParsesExpr_1174 T_ParsesExpr_1174
 -- Once.Spec.Surface.Grammar.ParsesLamParams
-d_ParsesLamParams_1168 a0 a1 a2 = ()
-data T_ParsesLamParams_1168
-  = C_lam'45'body_1462 T_ParsesExpr_1146 |
-    C_lam'45'arg_1472 T_ParsesLamParams_1168
+d_ParsesLamParams_1196 a0 a1 a2 = ()
+data T_ParsesLamParams_1196
+  = C_lam'45'body_1502 T_ParsesExpr_1174 |
+    C_lam'45'arg_1512 T_ParsesLamParams_1196
 -- Once.Spec.Surface.Grammar.ParsesParenCont
-d_ParsesParenCont_1170 a0 a1 a2 a3 = ()
-data T_ParsesParenCont_1170
-  = C_paren'45'close_1478 | C_paren'45'pair_1488 T_ParsesExpr_1146 |
-    C_paren'45'annot_1498 T_ParsesType_160
+d_ParsesParenCont_1198 a0 a1 a2 a3 = ()
+data T_ParsesParenCont_1198
+  = C_paren'45'close_1518 | C_paren'45'pair_1528 T_ParsesExpr_1174 |
+    C_paren'45'annot_1538 T_ParsesType_160
 -- Once.Spec.Surface.Grammar.wrapLams
-d_wrapLams_1500 ::
+d_wrapLams_1540 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68
-d_wrapLams_1500 v0 v1
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44
+d_wrapLams_1540 v0 v1
   = case coe v0 of
       [] -> coe v1
       (:) v2 v3
         -> coe
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_78 (coe v2)
-             (coe d_wrapLams_1500 (coe v3) (coe v1))
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_54 (coe v2)
+             (coe d_wrapLams_1540 (coe v3) (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Surface.Grammar.ParsesParams
-d_ParsesParams_1510 a0 a1 a2 = ()
-data T_ParsesParams_1510
-  = C_params'45'eq_1516 T_Starts_8 |
-    C_params'45'cons_1526 T_StartsWord_16 T_ParsesParams_1510 |
-    C_params'45'stop_1532 | C_params'45'none_1536
+d_ParsesParams_1550 a0 a1 a2 = ()
+data T_ParsesParams_1550
+  = C_params'45'eq_1556 T_Starts_8 |
+    C_params'45'cons_1566 T_StartsWord_16 T_ParsesParams_1550 |
+    C_params'45'stop_1572 | C_params'45'none_1576
 -- Once.Spec.Surface.Grammar.ParsesFunDef
-d_ParsesFunDef_1540 a0 a1 a2 a3 = ()
-data T_ParsesFunDef_1540
-  = C_fundef_1554 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_ParsesFunDef_1580 a0 a1 a2 a3 = ()
+data T_ParsesFunDef_1580
+  = C_fundef_1594 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
                   [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 T_ParsesParams_1510
-                  T_ParsesExpr_1146
+                  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 T_ParsesParams_1550
+                  T_ParsesExpr_1174
 -- Once.Spec.Surface.Grammar.ParsesModulePath
-d_ParsesModulePath_1556 a0 a1 a2 = ()
-data T_ParsesModulePath_1556
-  = C_path'45'cons_1566 T_ParsesModulePath_1556 |
-    C_path'45'dotstop_1572 | C_path'45'end_1578
+d_ParsesModulePath_1596 a0 a1 a2 = ()
+data T_ParsesModulePath_1596
+  = C_path'45'cons_1606 T_ParsesModulePath_1596 |
+    C_path'45'dotstop_1612 | C_path'45'end_1618
 -- Once.Spec.Surface.Grammar.ParsesImport
-d_ParsesImport_1580 a0 a1 a2 = ()
-data T_ParsesImport_1580
-  = C_import'45'as_1590 T_ParsesModulePath_1556 |
-    C_import'45'plain_1598 T_ParsesModulePath_1556
+d_ParsesImport_1620 a0 a1 a2 = ()
+data T_ParsesImport_1620
+  = C_import'45'as_1630 T_ParsesModulePath_1596 |
+    C_import'45'plain_1638 T_ParsesModulePath_1596
 -- Once.Spec.Surface.Grammar.ParsesTypeAlias
-d_ParsesTypeAlias_1602 a0 a1 a2 a3 a4 = ()
-data T_ParsesTypeAlias_1602
-  = C_alias'45'eq_1614 T_ParsesType_160 |
-    C_alias'45'param_1626 T_ParsesTypeAlias_1602
+d_ParsesTypeAlias_1642 a0 a1 a2 a3 a4 = ()
+data T_ParsesTypeAlias_1642
+  = C_alias'45'eq_1654 T_ParsesType_160 |
+    C_alias'45'param_1666 T_ParsesTypeAlias_1642
 -- Once.Spec.Surface.Grammar.ParsesOpAfter
-d_ParsesOpAfter_1630 a0 a1 a2 a3 = ()
-data T_ParsesOpAfter_1630
-  = C_op'45'sig_1640 T_ParsesType_160 |
-    C_op'45'def_1648 T_ParsesFunDef_1540
+d_ParsesOpAfter_1670 a0 a1 a2 a3 = ()
+data T_ParsesOpAfter_1670
+  = C_op'45'sig_1680 T_ParsesType_160 |
+    C_op'45'def_1688 T_ParsesFunDef_1580
 -- Once.Spec.Surface.Grammar.NotKeyword
-d_NotKeyword_1650 a0 = ()
-data T_NotKeyword_1650 = C_not'45'keyword_1654
+d_NotKeyword_1690 a0 = ()
+data T_NotKeyword_1690 = C_not'45'keyword_1694
 -- Once.Spec.Surface.Grammar.ParsesDecl
-d_ParsesDecl_1656 a0 a1 a2 = ()
-data T_ParsesDecl_1656
-  = C_decl'45'import_1664 T_ParsesImport_1580 |
-    C_decl'45'alias_1674 T_ParsesTypeAlias_1602 |
-    C_decl'45'signature_1684 T_ParsesType_160 |
-    C_decl'45'typesig_1694 T_NotKeyword_1650 T_ParsesType_160 |
-    C_decl'45'fundef_1704 T_NotKeyword_1650 T_ParsesFunDef_1540 |
-    C_decl'45'op_1716 MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_ParsesDecl_1696 a0 a1 a2 = ()
+data T_ParsesDecl_1696
+  = C_decl'45'import_1704 T_ParsesImport_1620 |
+    C_decl'45'alias_1714 T_ParsesTypeAlias_1642 |
+    C_decl'45'signature_1724 T_ParsesType_160 |
+    C_decl'45'typesig_1734 T_NotKeyword_1690 T_ParsesType_160 |
+    C_decl'45'fundef_1744 T_NotKeyword_1690 T_ParsesFunDef_1580 |
+    C_decl'45'op_1756 MAlonzo.Code.Agda.Builtin.String.T_String_6
                       [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                      T_ParsesOpChars_1094 T_ParsesOpAfter_1630
+                      T_ParsesOpChars_1122 T_ParsesOpAfter_1670
 -- Once.Spec.Surface.Grammar.SkipNewlines
-d_SkipNewlines_1718 a0 a1 = ()
-data T_SkipNewlines_1718
-  = C_skip'45'nl_1724 T_SkipNewlines_1718 | C_skip'45'done_1728
+d_SkipNewlines_1758 a0 a1 = ()
+data T_SkipNewlines_1758
+  = C_skip'45'nl_1764 T_SkipNewlines_1758 | C_skip'45'done_1768
 -- Once.Spec.Surface.Grammar.ParsesDecls
-d_ParsesDecls_1730 a0 a1 a2 = ()
-data T_ParsesDecls_1730
-  = C_decls'45'stop_1740 T_SkipNewlines_1718 |
-    C_decls'45'cons_1754 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
+d_ParsesDecls_1770 a0 a1 a2 = ()
+data T_ParsesDecls_1770
+  = C_decls'45'stop_1780 T_SkipNewlines_1758 |
+    C_decls'45'cons_1794 [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
                          [MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8]
-                         T_SkipNewlines_1718 T_ParsesDecl_1656 T_ParsesDecls_1730
+                         T_SkipNewlines_1758 T_ParsesDecl_1696 T_ParsesDecls_1770
 -- Once.Spec.Surface.Grammar.Trailing
-d_Trailing_1756 a0 = ()
-data T_Trailing_1756
-  = C_trail'45'nl_1760 T_Trailing_1756 | C_trail'45'eof_1762
+d_Trailing_1796 a0 = ()
+data T_Trailing_1796
+  = C_trail'45'nl_1800 T_Trailing_1796 | C_trail'45'eof_1802
 -- Once.Spec.Surface.Grammar.Parses
-d_Parses_1764 ::
+d_Parses_1804 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_122 -> ()
-d_Parses_1764 = erased
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_116 -> ()
+d_Parses_1804 = erased

@@ -244,7 +244,7 @@ data T_SigOpSem_74
                 MAlonzo.Code.Once.Arith.Type.T_NumType_6
                 MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 |
     C_ffiV_88 | C_callsV_90 | C_emitsV_92 | C_haltsV_94 |
-    C_primV_96 MAlonzo.Code.Once.Arith.Prim.T_ArithPrim_208
+    C_primV_96 MAlonzo.Code.Once.Arith.Prim.T_ArithPrim_228
 -- Once.SigOp.Info.SigOpInfo
 d_SigOpInfo_102 a0 a1 = ()
 data T_SigOpInfo_102
@@ -300,10 +300,10 @@ d_semM'45'of_130 v0 v1 v2 v3 v4
                   (coe
                      MAlonzo.Code.Once.IR.Semantics.Value.du_erase'7501'_112
                      (coe
-                        MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_54
+                        MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_56
                         (coe v6))
                      (coe
-                        MAlonzo.Code.Once.Arith.SigOp.BlockSem.d_block'45'semP_282 v5 v6 v7
+                        MAlonzo.Code.Once.Arith.SigOp.BlockSem.d_block'45'semP_292 v5 v6 v7
                         v10 v11)))
       C_ffiV_88
         -> coe
@@ -338,7 +338,7 @@ d_semM'45'of_130 v0 v1 v2 v3 v4
                   MAlonzo.Code.Once.Res.C_returns_12
                   (coe
                      MAlonzo.Code.Once.IR.Semantics.Value.du_erase'7501'_112 (coe v1)
-                     (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_238 v5 v6 v7)))
+                     (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_264 v5 v6 v7)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.SigOp.Info.effect-of
 d_effect'45'of_196 ::
@@ -455,7 +455,7 @@ du_semP'45'of_304 v0 v1
         -> coe
              seq (coe v1)
              (coe
-                MAlonzo.Code.Once.Arith.SigOp.BlockSem.d_block'45'semP_282 (coe v2)
+                MAlonzo.Code.Once.Arith.SigOp.BlockSem.d_block'45'semP_292 (coe v2)
                 (coe v3) (coe v4))
       C_ffiV_88 -> coe (\ v2 v3 -> MAlonzo.RTE.mazUnreachableError)
       C_callsV_90 -> coe (\ v2 v3 -> MAlonzo.RTE.mazUnreachableError)
@@ -464,7 +464,7 @@ du_semP'45'of_304 v0 v1
       C_primV_96 v2
         -> coe
              seq (coe v1)
-             (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_238 (coe v2))
+             (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_264 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.SigOp.Info._≟SigOpInfo-name_
 d__'8799'SigOpInfo'45'name__318 ::
@@ -473,5 +473,5 @@ d__'8799'SigOpInfo'45'name__318 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
 d__'8799'SigOpInfo'45'name__318 v0 v1
   = coe
-      MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__76
+      MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__78
       (coe d_name_116 (coe v0)) (coe d_name_116 (coe v1))

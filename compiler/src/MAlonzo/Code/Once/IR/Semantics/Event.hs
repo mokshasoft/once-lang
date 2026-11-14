@@ -23,6 +23,8 @@ import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.IR.Semantics.Polynomial
 import qualified MAlonzo.Code.Once.IR.Semantics.Value
 import qualified MAlonzo.Code.Once.Res
+import qualified MAlonzo.Code.Once.Spec.Float.Dyadic
+import qualified MAlonzo.Code.Once.Spec.Float.Encoding
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Polynomial
 import qualified MAlonzo.Code.Once.Spec.Signature
@@ -335,47 +337,56 @@ du_baseOf_112 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.IR.Semantics.Event.valOf
 d_valOf_130 ::
+  MAlonzo.Code.Once.Spec.Float.Dyadic.T_FloatFormat_30 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
   MAlonzo.Code.Once.Spec.Type.T_Base_84 -> AgdaAny -> AgdaAny
-d_valOf_130 v0 ~v1 = du_valOf_130 v0
+d_valOf_130 v0 v1 ~v2 = du_valOf_130 v0 v1
 du_valOf_130 ::
+  MAlonzo.Code.Once.Spec.Float.Dyadic.T_FloatFormat_30 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> AgdaAny -> AgdaAny
-du_valOf_130 v0
-  = case coe v0 of
-      MAlonzo.Code.Once.Spec.Type.C_var_16 v1
-        -> coe (\ v2 -> MAlonzo.RTE.mazUnreachableError)
-      MAlonzo.Code.Once.Spec.Type.C_Unit_18 -> coe (\ v1 -> v1)
-      MAlonzo.Code.Once.Spec.Type.C_Void_20 -> coe (\ v1 -> v1)
-      MAlonzo.Code.Once.Spec.Type.C__'42'__22 v1 v2
+du_valOf_130 v0 v1
+  = case coe v1 of
+      MAlonzo.Code.Once.Spec.Type.C_var_16 v2
+        -> coe (\ v3 -> MAlonzo.RTE.mazUnreachableError)
+      MAlonzo.Code.Once.Spec.Type.C_Unit_18 -> coe (\ v2 -> v2)
+      MAlonzo.Code.Once.Spec.Type.C_Void_20 -> coe (\ v2 -> v2)
+      MAlonzo.Code.Once.Spec.Type.C__'42'__22 v2 v3
         -> coe
-             (\ v3 ->
-                case coe v3 of
-                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
+             (\ v4 ->
+                case coe v4 of
+                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v5 v6
                     -> coe
                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                         (coe du_valOf_130 v1 v4) (coe du_valOf_130 v2 v5)
+                         (coe du_valOf_130 v0 v2 v5) (coe du_valOf_130 v0 v3 v6)
                   _ -> MAlonzo.RTE.mazUnreachableError)
-      MAlonzo.Code.Once.Spec.Type.C__'43'__24 v1 v2
+      MAlonzo.Code.Once.Spec.Type.C__'43'__24 v2 v3
         -> coe
-             (\ v3 ->
-                case coe v3 of
-                  MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v4
+             (\ v4 ->
+                case coe v4 of
+                  MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v5
                     -> coe
-                         MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 (coe du_valOf_130 v1 v4)
-                  MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v4
+                         MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
+                         (coe du_valOf_130 v0 v2 v5)
+                  MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v5
                     -> coe
-                         MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 (coe du_valOf_130 v2 v4)
+                         MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
+                         (coe du_valOf_130 v0 v3 v5)
                   _ -> MAlonzo.RTE.mazUnreachableError)
-      MAlonzo.Code.Once.Spec.Type.C_Int_32 -> coe (\ v1 -> v1)
-      MAlonzo.Code.Once.Spec.Type.C_Float_34 -> coe (\ v1 -> v1)
+      MAlonzo.Code.Once.Spec.Type.C_Int_32 -> coe (\ v2 -> v2)
+      MAlonzo.Code.Once.Spec.Type.C_Float_34
+        -> coe
+             (\ v2 ->
+                MAlonzo.Code.Once.Spec.Float.Encoding.d_decode_142
+                  (coe v0) (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.IR.Semantics.Event.toEvent
-d_toEvent_166 ::
+d_toEvent_186 ::
+  MAlonzo.Code.Once.Spec.Float.Dyadic.T_FloatFormat_30 ->
   T_SigOpEvent_58 -> MAlonzo.Code.Once.Spec.Signature.T_Event_246
-d_toEvent_166 v0
-  = case coe v0 of
-      C_mk'45'event_76 v1 v2 v4
+d_toEvent_186 v0 v1
+  = case coe v1 of
+      C_mk'45'event_76 v2 v3 v5
         -> coe
-             MAlonzo.Code.Once.Spec.Signature.C_event_260 (coe v1)
-             (coe du_baseOf_112 (coe v2)) (coe du_valOf_130 v2 v4)
+             MAlonzo.Code.Once.Spec.Signature.C_event_260 (coe v2)
+             (coe du_baseOf_112 (coe v3)) (coe du_valOf_130 v0 v3 v5)
       _ -> MAlonzo.RTE.mazUnreachableError

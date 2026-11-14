@@ -44,7 +44,7 @@ d_statsOf_4 v0 v1
                     (coe
                        MAlonzo.Code.Once.Parser.d_sigsAdjacent_500
                        (coe
-                          MAlonzo.Code.Once.Spec.Surface.Syntax.d_decls_126
+                          MAlonzo.Code.Once.Spec.Surface.Syntax.d_decls_120
                           (coe MAlonzo.Code.Once.Parser.Module.Core.d_rmodule_14 (coe v1)))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
                     (coe
@@ -52,7 +52,7 @@ d_statsOf_4 v0 v1
                        (coe
                           MAlonzo.Code.Once.Parser.d_sigsFirst_572
                           (coe
-                             MAlonzo.Code.Once.Spec.Surface.Syntax.d_decls_126
+                             MAlonzo.Code.Once.Spec.Surface.Syntax.d_decls_120
                              (coe MAlonzo.Code.Once.Parser.Module.Core.d_rmodule_14 (coe v1)))
                           (coe MAlonzo.Code.Once.Parser.Module.Core.d_imported_16 (coe v1)))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)))) in
@@ -60,7 +60,7 @@ d_statsOf_4 v0 v1
       (case coe v2 of
          MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v3 -> coe v2
          MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v3
-           -> let v4 = MAlonzo.Code.Once.Compile.d_findMain_1250 (coe v3) in
+           -> let v4 = MAlonzo.Code.Once.Compile.d_findMain_1294 (coe v3) in
               coe
                 (case coe v4 of
                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
@@ -70,10 +70,10 @@ d_statsOf_4 v0 v1
                              MAlonzo.Code.Once.Measure.Image.d_show'45'stats_106
                              (coe
                                 MAlonzo.Code.Once.Measure.Image.d_image'45'stats_104
-                                (MAlonzo.Code.Once.Compile.d_image'45'of_1390
+                                (MAlonzo.Code.Once.Compile.d_image'45'of_1434
                                    (coe
                                       MAlonzo.Code.Once.Denotation.Program.C_irProgram_662
-                                      (coe MAlonzo.Code.Once.Compile.d_tableOf_1284 (coe v3))
+                                      (coe MAlonzo.Code.Once.Compile.d_tableOf_1328 (coe v3))
                                       (coe v5)))))
                    MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                      -> coe
@@ -82,7 +82,7 @@ d_statsOf_4 v0 v1
                              MAlonzo.Code.Once.Measure.Image.d_show'45'stats_106
                              (coe
                                 MAlonzo.Code.Once.Measure.Image.d_image'45'stats_104
-                                (MAlonzo.Code.Once.Compile.d_lib'45'image_1434
-                                   (coe MAlonzo.Code.Once.Compile.d_tableOf_1284 (coe v3)))))
+                                (MAlonzo.Code.Once.Compile.d_lib'45'image_1478
+                                   (coe MAlonzo.Code.Once.Compile.d_tableOf_1328 (coe v3)))))
                    _ -> MAlonzo.RTE.mazUnreachableError)
          _ -> MAlonzo.RTE.mazUnreachableError)

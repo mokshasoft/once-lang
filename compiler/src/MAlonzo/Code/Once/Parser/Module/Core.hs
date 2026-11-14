@@ -33,11 +33,11 @@ import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 -- Once.Parser.Module.Core.Resolved
 d_Resolved_8 = ()
 data T_Resolved_8
-  = C_resolved_18 MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_122
+  = C_resolved_18 MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_116
                   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 -- Once.Parser.Module.Core.Resolved.rmodule
 d_rmodule_14 ::
-  T_Resolved_8 -> MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_122
+  T_Resolved_8 -> MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_116
 d_rmodule_14 v0
   = case coe v0 of
       C_resolved_18 v1 v2 -> coe v1
@@ -109,7 +109,7 @@ d_parseExprB'45'adapt_70 v0 v1
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v5)
                                  (coe
-                                    MAlonzo.Code.Once.Parser.ExprRelation.du_ParsesExpr'45'shrinks_1152
+                                    MAlonzo.Code.Once.Parser.ExprRelation.du_ParsesExpr'45'shrinks_1272
                                     (coe v0) (coe v6))))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -122,7 +122,7 @@ d_parseExprB_80 ::
 d_parseExprB_80 v0
   = coe
       d_parseExprB'45'adapt_70 (coe v0)
-      (coe MAlonzo.Code.Once.Parser.Expr.du_parseExprWF_468 (coe v0))
+      (coe MAlonzo.Code.Once.Parser.Expr.du_parseExprWF_630 (coe v0))
 -- Once.Parser.Module.Core.anyWordB
 d_anyWordB_86 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->

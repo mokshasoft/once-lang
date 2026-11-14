@@ -57,13 +57,15 @@ data T_XInstr_24
     C_Xfsub'45'rr_60 T_XReg_10 T_XReg_10 |
     C_Xfmul'45'rr_62 T_XReg_10 T_XReg_10 |
     C_Xfdiv'45'rrr_64 T_XReg_10 T_XReg_10 T_XReg_10 |
-    C_Xfsubr'45'rr_66 T_XReg_10 T_XReg_10 | C_Xfneg'45'r_68 T_XReg_10 |
-    C_Xi2f'45'r_70 T_XReg_10 T_XReg_10 |
-    C_Xmov'45'fimm_72 T_XReg_10
+    C_Xfcmp'45'rrr_66 MAlonzo.Code.Once.Arith.CmpOp.T_FCmpOp_72
+                      T_XReg_10 T_XReg_10 T_XReg_10 |
+    C_Xfsubr'45'rr_68 T_XReg_10 T_XReg_10 | C_Xfneg'45'r_70 T_XReg_10 |
+    C_Xi2f'45'r_72 T_XReg_10 T_XReg_10 |
+    C_Xmov'45'fimm_74 T_XReg_10
                       MAlonzo.Code.Once.Spec.Float.Decimal.T_Decimal_8 |
-    C_Xmov'45'farg_74 T_XReg_10
+    C_Xmov'45'farg_76 T_XReg_10
                       [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] Integer |
-    C_Xmov'45'out_76 T_XReg_10
+    C_Xmov'45'out_78 T_XReg_10
 -- Once.Arith.Backend.XInstr.Syntax.XProgram
-d_XProgram_78 :: ()
-d_XProgram_78 = erased
+d_XProgram_80 :: ()
+d_XProgram_80 = erased

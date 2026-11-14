@@ -104,9 +104,9 @@ d_pfb'45'body_40 v0 v1 v2 v3
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_DFunDef_114 (coe v0)
+                                 MAlonzo.Code.Once.Spec.Surface.Syntax.C_DFunDef_108 (coe v0)
                                  (coe
-                                    MAlonzo.Code.Once.Spec.Surface.Grammar.d_wrapLams_1500 (coe v1)
+                                    MAlonzo.Code.Once.Spec.Surface.Grammar.d_wrapLams_1540 (coe v1)
                                     (coe v5)))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v7)

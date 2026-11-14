@@ -71,7 +71,7 @@ du_block'45'scratch_22 v0 v1
         -> coe
              MAlonzo.Code.Once.Arith.Machine.Compile.du_required'45'scratch_14
              (coe
-                MAlonzo.Code.Once.Arith.Machine.Compile.du_normalize_310 (coe v1))
+                MAlonzo.Code.Once.Arith.Machine.Compile.du_normalize_322 (coe v1))
       MAlonzo.Code.Once.Arith.Type.C_NFloat_10
         -> coe
              MAlonzo.Code.Once.Arith.Machine.Compile.du_required'45'scratch_14

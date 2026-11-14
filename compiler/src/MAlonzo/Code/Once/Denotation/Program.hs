@@ -98,7 +98,7 @@ d_tableCalls_32 v0 v1 v2 v3 v4 v5 v6
              d_tableEnv'45'at_42 (coe v0) (coe v1) (coe v7) (coe v8) (coe v3)
              (coe v4) (coe v5)
              (coe
-                MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__76
+                MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__78
                 (coe d_fname_16 (coe v7)) (coe v3))
              (coe
                 MAlonzo.Code.Once.IRTy.d__'8799'IRTy__200 (coe d_fdom_18 (coe v7))

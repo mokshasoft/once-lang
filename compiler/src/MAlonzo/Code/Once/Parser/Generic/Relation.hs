@@ -26,6 +26,7 @@ import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Spec.Grade
+import qualified MAlonzo.Code.Once.Spec.Surface.Operator
 
 -- Once.Parser.Generic.Relation.isStar
 d_isStar_8 :: [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> Bool
@@ -35,8 +36,14 @@ d_isStar_8 v0
       (case coe v0 of
          (:) v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Parser.Token.C_TStar_52
-                  -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+                MAlonzo.Code.Once.Parser.Token.C_TOp_48 v4
+                  -> case coe v4 of
+                       MAlonzo.Code.Once.Spec.Surface.Operator.C_'8249'_'8250'_32 v5
+                         -> case coe v5 of
+                              MAlonzo.Code.Once.Spec.Surface.Operator.C_o'42'_14
+                                -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+                              _ -> coe v1
+                       _ -> coe v1
                 _ -> coe v1
          _ -> coe v1)
 -- Once.Parser.Generic.Relation.isPlus
@@ -47,8 +54,14 @@ d_isPlus_10 v0
       (case coe v0 of
          (:) v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Parser.Token.C_TPlus_48
-                  -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+                MAlonzo.Code.Once.Parser.Token.C_TOp_48 v4
+                  -> case coe v4 of
+                       MAlonzo.Code.Once.Spec.Surface.Operator.C_'8249'_'8250'_32 v5
+                         -> case coe v5 of
+                              MAlonzo.Code.Once.Spec.Surface.Operator.C_o'43'_10
+                                -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+                              _ -> coe v1
+                       _ -> coe v1
                 _ -> coe v1
          _ -> coe v1)
 -- Once.Parser.Generic.Relation.ArrowDir
@@ -388,16 +401,22 @@ du_isStar'45''60'_252 ::
 du_isStar'45''60'_252 v0
   = case coe v0 of
       (:) v1 v2
-        -> coe
-             seq (coe v1)
-             (coe
-                MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                   (coe
-                      MAlonzo.Code.Data.List.Base.du_foldr_216
-                      (let v3 = \ v3 -> addInt (coe (1 :: Integer)) (coe v3) in
-                       coe (coe (\ v4 -> v3)))
-                      (coe (0 :: Integer)) (coe v2))))
+        -> case coe v1 of
+             MAlonzo.Code.Once.Parser.Token.C_TOp_48 v3
+               -> case coe v3 of
+                    MAlonzo.Code.Once.Spec.Surface.Operator.C_'8249'_'8250'_32 v4
+                      -> coe
+                           seq (coe v4)
+                           (coe
+                              MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                              (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                 (coe
+                                    MAlonzo.Code.Data.List.Base.du_foldr_216
+                                    (let v5 = \ v5 -> addInt (coe (1 :: Integer)) (coe v5) in
+                                     coe (coe (\ v6 -> v5)))
+                                    (coe (0 :: Integer)) (coe v2))))
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Generic.Relation.isPlus-<
 d_isPlus'45''60'_260 ::
@@ -411,16 +430,22 @@ du_isPlus'45''60'_260 ::
 du_isPlus'45''60'_260 v0
   = case coe v0 of
       (:) v1 v2
-        -> coe
-             seq (coe v1)
-             (coe
-                MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
-                (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
-                   (coe
-                      MAlonzo.Code.Data.List.Base.du_foldr_216
-                      (let v3 = \ v3 -> addInt (coe (1 :: Integer)) (coe v3) in
-                       coe (coe (\ v4 -> v3)))
-                      (coe (0 :: Integer)) (coe v2))))
+        -> case coe v1 of
+             MAlonzo.Code.Once.Parser.Token.C_TOp_48 v3
+               -> case coe v3 of
+                    MAlonzo.Code.Once.Spec.Surface.Operator.C_'8249'_'8250'_32 v4
+                      -> coe
+                           seq (coe v4)
+                           (coe
+                              MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+                              (MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
+                                 (coe
+                                    MAlonzo.Code.Data.List.Base.du_foldr_216
+                                    (let v5 = \ v5 -> addInt (coe (1 :: Integer)) (coe v5) in
+                                     coe (coe (\ v6 -> v5)))
+                                    (coe (0 :: Integer)) (coe v2))))
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Generic.Relation.arrowDir-A-<
 d_arrowDir'45'A'45''60'_268 ::

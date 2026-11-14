@@ -176,7 +176,7 @@ d_lookupPolyPrefix'45'decreases_142 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -224,14 +224,14 @@ d_aux_184 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -252,7 +252,7 @@ d_lookupPolyPrefix'8658'lookupPoly_208 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -263,14 +263,14 @@ d_aux_250 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -280,7 +280,7 @@ d_lookupPoly'8658'lookupPolyPrefix_274 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_lookupPoly'8658'lookupPolyPrefix_274 v0 v1 ~v2 ~v3 ~v4
@@ -326,13 +326,13 @@ d_aux_316 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Spec.Surface.Syntax.T_PolyType_10 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_aux_316 ~v0 ~v1 ~v2 ~v3 ~v4 v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
@@ -578,13 +578,13 @@ du_go_494 v0 v1 v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Classify.classifyAppHead-nothing⇒view-other
 d_classifyAppHead'45'nothing'8658'view'45'other_550 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_classifyAppHead'45'nothing'8658'view'45'other_550 = erased
 -- Once.TypeCheck.Classify.view-other⇒classifyAppHead-nothing
 d_view'45'other'8658'classifyAppHead'45'nothing_630 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_view'45'other'8658'classifyAppHead'45'nothing_630 = erased
@@ -593,19 +593,19 @@ d_GenView_640 a0 = ()
 data T_GenView_640
   = C_gv'45'id_642 | C_gv'45'fst_644 | C_gv'45'snd_646 |
     C_gv'45'terminal_648 | C_gv'45'initial_650 | C_gv'45'inl_652 |
-    C_gv'45'inr_654 | C_gv'45'unit_656 |
-    C_gv'45'other_660 MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
+    C_gv'45'inr_654 | C_gv'45'unit_656 | C_gv'45'toFloat_658 |
+    C_gv'45'other_662 MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 -- Once.TypeCheck.Classify.notGen-ns
-d_notGen'45'ns_666 ::
+d_notGen'45'ns_668 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-d_notGen'45'ns_666 ~v0 ~v1 ~v2 = du_notGen'45'ns_666
-du_notGen'45'ns_666 ::
+d_notGen'45'ns_668 ~v0 ~v1 ~v2 = du_notGen'45'ns_668
+du_notGen'45'ns_668 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-du_notGen'45'ns_666
+du_notGen'45'ns_668
   = coe
       MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
       (coe
@@ -623,9 +623,11 @@ du_notGen'45'ns_666
                         (coe
                            MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
                            (coe
-                              MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))
+                              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
+                              (coe
+                                 MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))))))
 -- Once.TypeCheck.Classify._.f
-d_f_680 ::
+d_f_682 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -633,21 +635,21 @@ d_f_680 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_f_680 = erased
+d_f_682 = erased
 -- Once.TypeCheck.Classify.notGen-shape
-d_notGen'45'shape_686 ::
+d_notGen'45'shape_688 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-d_notGen'45'shape_686 ~v0 v1 = du_notGen'45'shape_686 v1
-du_notGen'45'shape_686 ::
+d_notGen'45'shape_688 ~v0 v1 = du_notGen'45'shape_688 v1
+du_notGen'45'shape_688 ::
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-du_notGen'45'shape_686 v0
+du_notGen'45'shape_688 v0
   = coe
       MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
       (coe v0 ("id" :: Data.Text.Text))
@@ -673,18 +675,21 @@ du_notGen'45'shape_686 v0
                            MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
                            (coe v0 ("unit" :: Data.Text.Text))
                            (coe
-                              MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))
+                              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                              (coe v0 ("toFloat" :: Data.Text.Text))
+                              (coe
+                                 MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))))))
 -- Once.TypeCheck.Classify.classifyGen
-d_classifyGen_692 ::
+d_classifyGen_694 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 -> T_GenView_640
-d_classifyGen_692 v0
+d_classifyGen_694 v0
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Name.C_canonical_12 v1
         -> case coe v1 of
-             [] -> coe C_gv'45'other_660 (coe du_notGen'45'shape_686 erased)
+             [] -> coe C_gv'45'other_662 (coe du_notGen'45'shape_688 erased)
              (:) v2 v3
                -> case coe v3 of
-                    [] -> coe C_gv'45'other_660 (coe du_notGen'45'shape_686 erased)
+                    [] -> coe C_gv'45'other_662 (coe du_notGen'45'shape_688 erased)
                     (:) v4 v5
                       -> case coe v5 of
                            []
@@ -930,34 +935,69 @@ d_classifyGen_692 v0
                                                                                                                                                                                                                    seq
                                                                                                                                                                                                                    (coe
                                                                                                                                                                                                                       v32)
-                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                      C_gv'45'other_660
-                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                         MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                                                                                                                                                                                                         erased
-                                                                                                                                                                                                                         (coe
-                                                                                                                                                                                                                            MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                                                                                                                                                                                                            erased
-                                                                                                                                                                                                                            (coe
-                                                                                                                                                                                                                               MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                                                                                                                                                                                                               erased
-                                                                                                                                                                                                                               (coe
-                                                                                                                                                                                                                                  MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                                                                                                                                                                                                                  erased
-                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                     MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                                                                                                                                                                                                                     erased
-                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                        MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                                                                                                                                                                                                                        erased
-                                                                                                                                                                                                                                        (coe
-                                                                                                                                                                                                                                           MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                                                                                                                                                                                                                           erased
-                                                                                                                                                                                                                                           (coe
-                                                                                                                                                                                                                                              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                                                                                                                                                                                                                              erased
-                                                                                                                                                                                                                                              (coe
-                                                                                                                                                                                                                                                 MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))))
+                                                                                                                                                                                                                   (let v33
+                                                                                                                                                                                                                          = coe
+                                                                                                                                                                                                                              MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
+                                                                                                                                                                                                                              erased
+                                                                                                                                                                                                                              (coe
+                                                                                                                                                                                                                                 (\ v33 ->
+                                                                                                                                                                                                                                    v33))
+                                                                                                                                                                                                                              (coe
+                                                                                                                                                                                                                                 MAlonzo.Code.Data.String.Properties.d__'8799'__54
+                                                                                                                                                                                                                                 (coe
+                                                                                                                                                                                                                                    v4)
+                                                                                                                                                                                                                                 (coe
+                                                                                                                                                                                                                                    ("toFloat"
+                                                                                                                                                                                                                                     ::
+                                                                                                                                                                                                                                     Data.Text.Text))) in
+                                                                                                                                                                                                                    coe
+                                                                                                                                                                                                                      (case coe
+                                                                                                                                                                                                                              v33 of
+                                                                                                                                                                                                                         MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                                                                                           -> if coe
+                                                                                                                                                                                                                                   v34
+                                                                                                                                                                                                                                then coe
+                                                                                                                                                                                                                                       seq
+                                                                                                                                                                                                                                       (coe
+                                                                                                                                                                                                                                          v35)
+                                                                                                                                                                                                                                       (coe
+                                                                                                                                                                                                                                          C_gv'45'toFloat_658)
+                                                                                                                                                                                                                                else coe
+                                                                                                                                                                                                                                       seq
+                                                                                                                                                                                                                                       (coe
+                                                                                                                                                                                                                                          v35)
+                                                                                                                                                                                                                                       (coe
+                                                                                                                                                                                                                                          C_gv'45'other_662
+                                                                                                                                                                                                                                          (coe
+                                                                                                                                                                                                                                             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                                                                                                                                                                                                                             erased
+                                                                                                                                                                                                                                             (coe
+                                                                                                                                                                                                                                                MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                                                                                                                                                                                                                                erased
+                                                                                                                                                                                                                                                (coe
+                                                                                                                                                                                                                                                   MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                                                                                                                                                                                                                                   erased
+                                                                                                                                                                                                                                                   (coe
+                                                                                                                                                                                                                                                      MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                                                                                                                                                                                                                                      erased
+                                                                                                                                                                                                                                                      (coe
+                                                                                                                                                                                                                                                         MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                                                                                                                                                                                                                                         erased
+                                                                                                                                                                                                                                                         (coe
+                                                                                                                                                                                                                                                            MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                                                                                                                                                                                                                                            erased
+                                                                                                                                                                                                                                                            (coe
+                                                                                                                                                                                                                                                               MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                                                                                                                                                                                                                                               erased
+                                                                                                                                                                                                                                                               (coe
+                                                                                                                                                                                                                                                                  MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                                                                                                                                                                                                                                                  erased
+                                                                                                                                                                                                                                                                  (coe
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                                                                                                                                                                                                                                                     erased
+                                                                                                                                                                                                                                                                     (coe
+                                                                                                                                                                                                                                                                        MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))))))))
+                                                                                                                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                                                                                                  _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError))
@@ -968,23 +1008,23 @@ d_classifyGen_692 v0
                                                          _ -> MAlonzo.RTE.mazUnreachableError))
                                             else coe
                                                    seq (coe v8)
-                                                   (coe C_gv'45'other_660 (coe du_notGen'45'ns_666))
+                                                   (coe C_gv'45'other_662 (coe du_notGen'45'ns_668))
                                      _ -> MAlonzo.RTE.mazUnreachableError)
                            (:) v6 v7
-                             -> coe C_gv'45'other_660 (coe du_notGen'45'shape_686 erased)
+                             -> coe C_gv'45'other_662 (coe du_notGen'45'shape_688 erased)
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Classify.ViewBundle
-d_ViewBundle_952 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 -> ()
-d_ViewBundle_952 = erased
+d_ViewBundle_1002 ::
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 -> ()
+d_ViewBundle_1002 = erased
 -- Once.TypeCheck.Classify.viewBundle
-d_viewBundle_960 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+d_viewBundle_1010 ::
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_viewBundle_960 v0
+d_viewBundle_1010 v0
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
