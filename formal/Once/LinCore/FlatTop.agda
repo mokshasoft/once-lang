@@ -44,7 +44,8 @@ open import Once.Denotation.Approx using (approx; endAp)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 import Once.IR
 import Once.IRTy
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls)
+import Once.LinCore.BridgeProof
 import Once.Denotation.DenotTrace as DT
 
 module Once.LinCore.FlatTop (Mach : FrameSemantics) (bw : Base → ℕ) where
@@ -71,6 +72,11 @@ open import Once.LinCore.RunWord fmt ans bw using (module RunW)
 open import Once.LinCore.Start fmt ans bw using (module StartR)
 open import Once.LinCore.End fmt ans bw using (module EndR; Final; f-end; f-halt)
 import Once.LinCore.FromIR
+import Once.LinCore.Pass
+module BP = Once.LinCore.BridgeProof fmt ans
+open import Once.LinCore.Casts fmt ans using (casts)
+open import Once.LinCore.Table fmt ans using (env-ok)
+open import Once.LinCore.RunBisim fmt ans using (run-≈)
 module FromIR = Once.LinCore.FromIR fmt ans
 
 -- ★ the world the machine's interpretation is: its state the log so far, its answer the
@@ -211,18 +217,23 @@ module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
     open FlatEventTrace {Mach} using (flat-events; flat-ctrls)
     open FlatMachine {Mach} using (FlatState)
 
+    -- the translation means what master's program means, at every budget (B1.3's bridge, its
+    -- casts and the table's `EnvOK`; bisimilar computations show the same: `RunBisim`)
+    o-bridge : ∀ k → TP.obs k ≡ obsᴰ k
+    o-bridge k = run-≈ ι k (BP.bridge (Once.LinCore.Pass.⟦_⟧P fmt ans (FromIR.TrProg.prog tp)) (tableCalls fmt ans tbl)
+                                     (casts (Once.LinCore.Pass.⟦_⟧P fmt ans (FromIR.TrProg.prog tp)) (tableCalls fmt ans tbl))
+                                     (env-ok tbl etp) (FromIR.trI-Tr (FromIR.TrProg.rs tp) ir ef) tt) []
+
     record OwedIR : Set where
       field
         o-top    : TP.Owed ld
-        -- the translation means what master's program means, at every budget
-        o-bridge : ∀ k → TP.obs k ≡ obsᴰ k
 
     -- ★★ THE FLAT THEOREM AT MASTER'S MEANING (master's `flat-ends` and `flat-cut`)
     flat-ir : OwedIR → ∀ k → Σ ℕ λ N → (flat-events N TP.image TP.start-fs ≡ (proj₁ (obsᴰ k) , endAp (proj₂ (obsᴰ k))))
                                      × (endAp (proj₂ (obsᴰ k)) ≡ nothing → k ≤ flat-ctrls N TP.image TP.start-fs)
     flat-ir O k = case TP.flat-top ld (OwedIR.o-top O) k of λ where
-      (N , e , c) → N , trans e (cong (λ r → (proj₁ r , endAp (proj₂ r))) (OwedIR.o-bridge O k))
-                      , λ z → c (trans (cong (λ r → endAp (proj₂ r)) (OwedIR.o-bridge O k)) z)
+      (N , e , c) → N , trans e (cong (λ r → (proj₁ r , endAp (proj₂ r))) (o-bridge k))
+                      , λ z → c (trans (cong (λ r → endAp (proj₂ r)) (o-bridge k)) z)
 
     flat-sound : OwedIR → FlatStepsAPI.Sound {Mach} TP.image TP.start-fs
     flat-sound O = TP.Owed.o-sound (OwedIR.o-top O)
