@@ -23014,3 +23014,27 @@ claim the machine gives every answer: false for answering ops. And `i-opend` lan
   for answering ops, so the theorem would hold vacuously for every program with a call.
 * Fix the image's world to the machine's interpretation inside `Run`: changes D408's run (every world),
   which `sound`/`exchange` use.
+
+## D427 — THE WORD LAYER TRACKS THE MACHINE'S LOG: EVERY STEP BUT AN OP'S KEEPS IT, AN OP APPENDS ITS EVENTS (2026-11-14)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.5). **Applies**: D426 (the op step relative to
+the machine's world), D424 (the pattern: a flat invariant threaded through the step records).
+
+### The problem
+B1.5's theorem is about events (the role of `FlatFromObs.flat-ends`): the flat machine's log against the
+run's observable trace. The word layer's relation does not mention the log. And an answering op's flat
+answer reads the log (`call-sigop-ans`: `answer (fs-interp FS) (ev-log s) …`), so `AgreesAll` can only be
+discharged where the log is the run's history.
+
+### Decision (proposed)
+* **Every step record keeps the log** beside its `halted` flag (`Keep.k-log`, and the call, dispatch,
+  cell and move records): the flat instructions other than `instr-sigop` never write it.
+* **`Related` is indexed by the log** (`g-log : ev-log (floc fs) ≡ L`). The step theorem lands at
+  `L ++ evs`, `evs` the step's observable events: `[]` for every step but an op's; an op's, the sigop's
+  events, which `Agrees` equates with the op's trace (its `io`/`stp` events as `SigOpEvent`s).
+* The whole run then gives `ev-log (floc fs′) ≡ obs t` from the empty log, `obs` the run's trace's
+  observable part (memory events erased).
+
+### Alternatives
+* A generic lemma over `FlatSteps` (no sigop executed ⇒ the log stands): needs every step's executed
+  instructions, which the step records do not keep; as much threading, less local.
