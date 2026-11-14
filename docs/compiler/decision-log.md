@@ -23132,3 +23132,34 @@ halts; it reads a sentinel answer), and master's run halts with the `unlinkedOp`
 was not the machine's. Now `i-opend` takes only a HALTED path, and such runs are not the lowering's
 (`Machine.Plain (r-opend {w = exhausted})` is `⊥`, beside the in-place fold): a linked program's runs never
 meet an unanswered call (`Spends.UnCut`, owed at the top from linkedness). `spends-plain` takes it.
+
+## D431 — LINKEDNESS AT THE CORE: A PROGRAM'S OPS ARE IN ITS UNIVERSE (2026-11-14)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.5, found top-down discharging
+`FlatTop.o-uncut` and `OpMachine.OwedOp.oo-unlinked`).
+**Applies**: D244/D245 (a linked program: `Denotation.Program.LinkedProgram`, master's apex premise
+`LinkedImage`), D429 (the world's run; an unanswered call is a cut), B1.4b (`Keys`: a program's finite
+universe, `KeysRun.inside`).
+
+### The problem
+Two owed links are linkedness: the world's run never meets a call the interpretation leaves unanswered
+(`o-uncut`), and an FFI value op the interpretation does not declare (which halts with the unlinked
+event, where the machine goes on) is never run (`oo-unlinked`). Master has its premise on the IR
+(`Linked Σ tbl ir`: every SigOp leaf `Declared-at`); the core is reached by structural translations
+(`FromIR.trI`, `Pass.tr`), and the machine runs the image, whose code is the lowering of the universe's
+blocks. What is needed is that every op a run (or the image) executes is one of the program's.
+
+### Decision (proposed)
+* The universe collects the program's ops as it collects keys (`Keys.Got` gets `p!`, `Univ` gets `ops`),
+  and an op instruction is inside when its op is among them (`PrimIn ds (lop s) = s ∈ ops U`). Then
+  `KeysRun.inside` gives, at every image step from the start, that the op is the program's, at no
+  new invariant.
+* The machine's per-op facts take that membership, with the declaredness of the universe's ops
+  (`Declared-at (sig ι)`, owed from master's `LinkedProgram` through the two translations).
+* The world's run records why it was cut at an op (an unanswered call, `Total`), and the run's ops are
+  the universe's; a declared op's call is answered by `Wι`, so the run is `UnCut`.
+
+### Alternatives
+* Thread an ops predicate through `Total.exec` (as its `Good` values): duplicates the universe's
+  closure bookkeeping.
+* Restrict the core's `Sig` to declared ops by construction: makes the core depend on the interpretation.
