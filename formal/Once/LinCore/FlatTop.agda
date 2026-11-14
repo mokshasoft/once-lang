@@ -75,7 +75,7 @@ open import Once.LinCore.Keys fmt ans bw using (module Program; ops)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Denotation.Program using (Declared-at)
 open import Once.SigOp.Info using (module SigOpInfo)
-open import Once.LinCore.Spends fmt ans bw using (module Budget; UnCut)
+open import Once.LinCore.Spends fmt ans bw using (module Budget; UnCut; CutsIn)
 open import Once.LinCore.Total fmt ans bw using (CutOp)
 module BudgetSound = Once.LinCore.BudgetSound fmt ans bw
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
@@ -101,7 +101,7 @@ module FromIR = Once.LinCore.FromIR fmt ans
 Wι : World
 Wι = BudgetSound.W.Wι ι
 
-open Budget (λ {s} {x} {t} p → CutOp Wι {s} {x} {t} p) using (spends-plain)
+open Budget (λ {s} {x} {t} p → CutOp Wι {s} {x} {t} p) using (spends-plain; spends-uncut)
 
 -- how a run's outcome is observed to end
 endO : ∀ {B} → Outcome B → Maybe (End Data.Unit.⊤)
@@ -150,8 +150,8 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     -- ★ WHAT IS OWED: the links from the meaning to the flat run not yet proved
     record Owed : Set where
       field
-        -- the world's run meets no call the interpretation leaves unanswered (the program is linked)
-        o-uncut : ∀ k → UnCut (Ran.run (R k))
+        -- the world's run cuts only at the program's ops (D431: the run stays inside the universe)
+        o-cutsin : ∀ k → CutsIn (λ s → s ∈ ops (Program.U ds f₀)) (Ran.run (R k))
         -- ★ AN OP AT THE MACHINE (D426): its contract path, answered by the world from the history, is
         -- what the machine's sigop computes at a state whose log is that history: proved per contract
         -- class (OpMachine.Dispatch) but for a structured answer (an undeclared FFI op's stop
@@ -166,6 +166,11 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
                             × k ≤ flat-ctrls N image start-fs
         -- the machine's run from the start never faults (master's `start-sound`)
         o-sound : Sound image start-fs
+
+    -- ★ LINKED (D431): the world's run meets no call the interpretation leaves unanswered — it cuts only at
+    -- the program's ops, each declared, whose calls the world answers (`OpMachine.Linked.no-cut`)
+    o-uncut : Owed → ∀ k → UnCut (Ran.run (R k))
+    o-uncut O k = spends-uncut (λ {s} {x} {t} {p} → OM.Linked.no-cut (Owed.o-declared O) {s} {x} {t} {p}) (Ran.run (R k)) (Ran.spends (R k)) (Owed.o-cutsin O k)
 
     -- ★ THE MACHINE: a running state the start reaches has not left (only `c-leave` leaves, and it
     -- halts: master's `chain-left`)
@@ -198,7 +203,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
       where
         eq : obs k ≡ (evsOf (Ran.trace (R k)) , BudgetSound.W.outAp ι (Ran.out (R k)) (Ran.left (R k)))
         eq = trans (sym (BudgetSound.W.run-≈ ι k (pass-okᶠ (pass-okP P) funit funit f tt) []))
-                   (proj₁ (BudgetSound.S.soundₖ ι (Ran.run (R k)) (Ran.spends (R k)) (Owed.o-uncut O k) (Ran.world (R k))))
+                   (proj₁ (BudgetSound.S.soundₖ ι (Ran.run (R k)) (Ran.spends (R k)) (o-uncut O k) (Ran.world (R k))))
 
     -- ★★ THE FLAT THEOREM, relative to what is owed: at some fuel the flat run shows the meaning's
     -- events and end at the budget, and, where the budget cut it, a control step per unit
@@ -208,7 +213,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
                 × (endAp (proj₂ (obs k)) ≡ nothing → k ≤ flat-ctrls N image start-fs)
 
     flat-top : Owed → ∀ k → Σ ℕ (Shows k)
-    flat-top O k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (Owed.o-uncut O K)) (λ {mt} st e → AR.agrees-all st (AR.wtr-ios (Ran.trace (R K)) mt (sym e) (Ran.world (R K)))) eE eO
+    flat-top O k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (o-uncut O K)) (λ {mt} st e → AR.agrees-all st (AR.wtr-ios (Ran.trace (R K)) mt (sym e) (Ran.world (R K)))) eE eO
       where
         module AR = AgreeRun.AR {Mach} ds f₀ ldConst ld-nl wordOf ι
                       (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op (Owed.o-ops O) (Owed.o-declared O) {s} {x} {y₀} {tp} {L} {L′})

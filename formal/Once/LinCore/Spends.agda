@@ -82,6 +82,55 @@ mutual
   {-# CATCHALL #-}
   UnCutM _                                  = ⊤
 
+-- ★ a run whose cut ops are all P's (D431: the program's)
+module _ (P : Sig → Set) where
+  mutual
+    CutsIn : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n o t} → Run ds f e v n o t → Set
+    CutsIn (r-∘ rg (go-on rf))             = CutsIn rg × CutsIn rf
+    CutsIn (r-∘ rg stopped)                = CutsIn rg
+    CutsIn (r-⊗ rf (go-on (fm-gives rg)))  = CutsIn rf × CutsIn rg
+    CutsIn (r-⊗ rf (go-on (fm-stop rg)))   = CutsIn rf × CutsIn rg
+    CutsIn (r-⊗ rf stopped)                = CutsIn rf
+    CutsIn (r-case₁ r)                     = CutsIn r
+    CutsIn (r-case₂ r)                     = CutsIn r
+    CutsIn (r-app q r)                     = CutsIn r
+    CutsIn (r-cata rm (go-on ra))          = CutsInM rm × CutsIn ra
+    CutsIn (r-cata rm stopped)             = CutsInM rm
+    CutsIn (r-cata-reuse rm th)            = ⊤
+    CutsIn (r-lend (fm-gives r))           = CutsIn r
+    CutsIn (r-lend (fm-stop r))            = CutsIn r
+    CutsIn (r-lift r)                      = CutsIn r
+    CutsIn (r-fst r)                       = CutsIn r
+    CutsIn (r-snd r)                       = CutsIn r
+    CutsIn (r-caseE₁ r)                    = CutsIn r
+    CutsIn (r-caseE₂ r)                    = CutsIn r
+    CutsIn (r-out r)                       = CutsIn r
+    CutsIn (r-bapp q r)                    = CutsIn r
+    CutsIn (r-ev r)                        = CutsIn r
+    CutsIn (r-bev r)                       = CutsIn r
+    CutsIn (r-nout r)                      = CutsIn r
+    CutsIn (r-iter r (go-on done))         = CutsIn r
+    CutsIn (r-iter r (go-on (again rn)))   = CutsIn r × CutsIn rn
+    CutsIn (r-iter r stopped)              = CutsIn r
+    CutsIn (r-opend {s = s} {w = exhausted} p) = P s
+    CutsIn (r-cut r q)                     = CutsIn r
+    CutsIn (r-tmp r w p)                   = CutsIn r
+    {-# CATCHALL #-}
+    CutsIn _                               = ⊤
+
+    CutsInM : ∀ {Γ} {ds : Defs Γ} {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t}
+           → RunMap ds F alg e G x n o t → Set
+    CutsInM (m-id r)                           = CutsIn r
+    CutsInM (m-inl (fm-gives r))               = CutsInM r
+    CutsInM (m-inl (fm-stop r))                = CutsInM r
+    CutsInM (m-inr (fm-gives r))               = CutsInM r
+    CutsInM (m-inr (fm-stop r))                = CutsInM r
+    CutsInM (m-pair r (go-on (fm-gives r′)))   = CutsInM r × CutsInM r′
+    CutsInM (m-pair r (go-on (fm-stop r′)))    = CutsInM r × CutsInM r′
+    CutsInM (m-pair r stopped)                 = CutsInM r
+    {-# CATCHALL #-}
+    CutsInM _                                  = ⊤
+
 -- ★ the budget, given why an op's path may be cut (`Cut`: the evaluator's world gave no answer, D431)
 module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s (toF (sdom s) (er x))) t (inj₂ exhausted) → Set) where
   mutual
@@ -215,3 +264,78 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
     spends-plainM m-one s u = tt
     spends-plainM m-b s u = tt
     spends-plainM m-μ s u = tt
+
+  -- ★ a run cut only at P's ops, where no P op can be cut, met no cut (D431)
+  module _ {P : Sig → Set} (no-cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} {p : OpPath (opF s (toF (sdom s) (er x))) t (inj₂ exhausted)} → Cut {s = s} {x = x} p → P s → ⊥) where
+    mutual
+        spends-uncut : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n o t} (r : Run ds f e v n o t) {k l} → Spends r k l → CutsIn P r → UnCut r
+        spends-uncut (r-∘ rg (go-on rf)) (m , s₁ , s₂) (u₁ , u₂) = spends-uncut rg s₁ u₁ , spends-uncut rf s₂ u₂
+        spends-uncut (r-∘ rg stopped) s u = spends-uncut rg s u
+        spends-uncut (r-⊗ rf (go-on (fm-gives rg))) (m , s₁ , s₂) (u₁ , u₂) = spends-uncut rf s₁ u₁ , spends-uncut rg s₂ u₂
+        spends-uncut (r-⊗ rf (go-on (fm-stop rg))) (m , s₁ , s₂) (u₁ , u₂) = spends-uncut rf s₁ u₁ , spends-uncut rg s₂ u₂
+        spends-uncut (r-⊗ rf stopped) s u = spends-uncut rf s u
+        spends-uncut (r-case₁ r) s u = spends-uncut r s u
+        spends-uncut (r-case₂ r) s u = spends-uncut r s u
+        spends-uncut (r-app q r) s u = spends-uncut r s u
+        spends-uncut (r-cata rm (go-on ra)) (m , s₁ , s₂) (u₁ , u₂) = spends-uncutM rm s₁ u₁ , spends-uncut ra s₂ u₂
+        spends-uncut (r-cata rm stopped) s u = spends-uncutM rm s u
+        spends-uncut (r-cata-reuse rm th) () u
+        spends-uncut (r-lend (fm-gives r)) s u = spends-uncut r s u
+        spends-uncut (r-lend (fm-stop r)) s u = spends-uncut r s u
+        spends-uncut (r-lift r) s u = spends-uncut r s u
+        spends-uncut (r-fst r) s u = spends-uncut r s u
+        spends-uncut (r-snd r) s u = spends-uncut r s u
+        spends-uncut (r-caseE₁ r) s u = spends-uncut r s u
+        spends-uncut (r-caseE₂ r) s u = spends-uncut r s u
+        spends-uncut (r-out r) s u = spends-uncut r s u
+        spends-uncut (r-bapp q r) s u = spends-uncut r s u
+        spends-uncut (r-ev r) s u = spends-uncut r s u
+        spends-uncut (r-bev r) s u = spends-uncut r s u
+        spends-uncut (r-nout r) s u = spends-uncut r s u
+        spends-uncut (r-iter r (go-on done)) s u = spends-uncut r s u
+        spends-uncut (r-iter r (go-on (again rn))) (suc m , s₁ , s₂) (u₁ , u₂) = spends-uncut r s₁ u₁ , spends-uncut rn s₂ u₂
+        spends-uncut (r-iter r (go-on (again r-exh))) (zero , s₁ , _) (u₁ , _) = spends-uncut r s₁ u₁ , tt
+        spends-uncut (r-iter r (go-on (again (r-iter _ _)))) (zero , s₁ , ()) u
+        spends-uncut (r-iter r (go-on (again (r-cut _ _)))) (zero , s₁ , ()) u
+        spends-uncut (r-iter r (go-on (again (r-tmp _ _ _)))) (zero , s₁ , ()) u
+        spends-uncut (r-iter r stopped) s u = spends-uncut r s u
+        spends-uncut r-exh () u
+        spends-uncut (r-cut r q) () u
+        spends-uncut (r-tmp r w p) s u = spends-uncut r s u
+        spends-uncut r-id s u = tt
+        spends-uncut r-ρ s u = tt
+        spends-uncut r-ρ⁻ s u = tt
+        spends-uncut r-λ s u = tt
+        spends-uncut r-λ⁻ s u = tt
+        spends-uncut r-α s u = tt
+        spends-uncut r-α⁻ s u = tt
+        spends-uncut r-swap s u = tt
+        spends-uncut r-dup s u = tt
+        spends-uncut r-drop s u = tt
+        spends-uncut r-inl s u = tt
+        spends-uncut r-inr s u = tt
+        spends-uncut r-In s u = tt
+        spends-uncut r-Outμ s u = tt
+        spends-uncut r-clo s u = tt
+        spends-uncut r-copy s u = tt
+        spends-uncut r-lam s u = tt
+        spends-uncut r-lamω s u = tt
+        spends-uncut r-unf s u = tt
+        spends-uncut r-const s u = tt
+        spends-uncut (r-op p) s u = tt
+        spends-uncut (r-opend {w = halted} p) s u = tt
+        spends-uncut (r-opend {s = s} {x = x} {w = exhausted} p) (c , _) m = no-cut {s = s} {x = x} {p = p} c m
+    
+        spends-uncutM : ∀ {Γ} {ds : Defs Γ} {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t}
+                        (rm : RunMap ds F alg e G x n o t) {k l} → SpendsM rm k l → CutsInM P rm → UnCutM rm
+        spends-uncutM (m-id r) s u = spends-uncut r s u
+        spends-uncutM (m-inl (fm-gives r)) s u = spends-uncutM r s u
+        spends-uncutM (m-inl (fm-stop r)) s u = spends-uncutM r s u
+        spends-uncutM (m-inr (fm-gives r)) s u = spends-uncutM r s u
+        spends-uncutM (m-inr (fm-stop r)) s u = spends-uncutM r s u
+        spends-uncutM (m-pair r (go-on (fm-gives r′))) (m , s₁ , s₂) (u₁ , u₂) = spends-uncutM r s₁ u₁ , spends-uncutM r′ s₂ u₂
+        spends-uncutM (m-pair r (go-on (fm-stop r′))) (m , s₁ , s₂) (u₁ , u₂) = spends-uncutM r s₁ u₁ , spends-uncutM r′ s₂ u₂
+        spends-uncutM (m-pair r stopped) s u = spends-uncutM r s u
+        spends-uncutM m-one s u = tt
+        spends-uncutM m-b s u = tt
+        spends-uncutM m-μ s u = tt

@@ -23,6 +23,8 @@ import Once.IR.Semantics.Boundary
 import Once.Type
 import Once.Contract
 open import Data.Maybe using (Maybe; just; nothing)
+import Data.Maybe
+import Once.Type.Core
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -49,7 +51,7 @@ open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw using (MV; er; mone; mbase; mpair; mvF; OpPath; p-ret; p-call; p-halt; Trace)
 import Once.LinCore.Events
 open import Once.LinCore.Keys fmt ans bw using (Univ)
-open import Once.LinCore.Total fmt ans bw using (WTr)
+open import Once.LinCore.Total fmt ans bw using (WTr; CutOp; CutAt; c-here; c-call)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree; evsOf)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
 open import Once.LinCore.Lower fmt ans bw using (flatB)
@@ -365,3 +367,34 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
             → ∀ fs → LocState.ev-log (floc fs) ≡ L
             → OpHalt s x (evsOf tp) fs
     o-opend {sig (mk-info' n c bA bB)} m = halt-at n c bA bB (decl m)
+
+  -- ★ LINKED (D431): the world answers a declared op's call, so the run never cuts at a program's op
+  module Linked (decl : ∀ {s} → s ∈ ops U → Declared-at Σι (info s) (SigOpInfo.sem (info s))) where
+    private
+      answered-at : ∀ {h o a} {X : Set} {f : _ → X} (u : Dec (TM.CallOp.ccod o ≡ ST.Unit)) (dk : Dec (TM.callKey o ∈ TM.calls ι))
+                  → TM.callKey o ∈ TM.calls ι → Data.Maybe.map f (TM.callAnswer-at ι h o a u dk) ≡ nothing → ⊥
+      answered-at (yes _) dk m ()
+      answered-at (no _) (yes _) m ()
+      answered-at (no _) (no ¬m) m _ = ¬m m
+
+      res-cut : ∀ {X Z : Set} (r : Res X) {k : X → Z} {t} {p : OpPath (fmapT k (TM.resT r)) t (inj₂ Once.LinCore.Events.exhausted)}
+              → CutAt Wι (fmapT k (TM.resT r)) p → ⊥
+      res-cut (returns w) ()
+      res-cut stopped ()
+
+      cut-at : ∀ {A B} n (c : SigOpSem A B) bA bB → Declared-at Σι (mk-info' n c bA bB) c
+             → ∀ {x : MV ⌜ flatB bA ⌝} {t} {p : OpPath (opF (sig (mk-info' n c bA bB)) (toF (flatB bA) (er x))) t (inj₂ Once.LinCore.Events.exhausted)}
+             → CutAt Wι _ p → ⊥
+      cut-at n (blockV e refl refl) bA bB d ()
+      cut-at n (primV p) bA bB d ()
+      cut-at {A} {B} n ffiV bA bB d cu = res-cut (mapRes (Once.IR.Semantics.Boundary.atTarget fmt B) (ans n A B _)) cu
+      cut-at {A} {B} n callsV bA bB d (c-here σ e) =
+        answered-at {h = σ} {o = TM.callOp n A bA B} (Once.Type.Core.isUnit? B) (TM.callKey (TM.callOp n A bA B) Once.Contract.∈K? TM.calls ι) d e
+      cut-at n callsV bA bB d (c-call ())
+      cut-at n (emitsV refl) bA bB d (c-here σ ())
+      cut-at n (emitsV refl) bA bB d (c-call ())
+      cut-at n (haltsV refl) bA bB d ()
+
+    no-cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} {p : OpPath (opF s (toF (sdom s) (er x))) t (inj₂ Once.LinCore.Events.exhausted)}
+           → CutOp Wι {s} {x} {t} p → s ∈ ops U → ⊥
+    no-cut {sig (mk-info' n c bA bB)} {x = x} {p = p} cu m = cut-at n c bA bB (decl m) {x = x} {p = p} cu
