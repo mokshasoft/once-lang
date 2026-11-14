@@ -305,6 +305,12 @@ arithCases =
   , ("-(0.0)",                 (-0.0,                   -0.0))
   , ("-(1.5 +. 1.0)",          (-(1.5 + 1.0),           -(1.5 + 1.0)))
   , ("2.0 -. -(0.5)",          (2.0 - (-0.5),           2.0 - (-0.5)))
+    -- The signed-zero results (plan 0.150 step 1, IEEE 754 §6.3), each a
+    -- value the level-2 Spec gives by construction and the hardware must match.
+  , ("-1.0 *. 0.0",            (-1.0 * 0.0,             -1.0 * 0.0))
+  , ("1.0 /. -(0.0)",          (1.0 / (-0.0),           1.0 / (-0.0)))
+  , ("-(0.0) +. -(0.0)",       ((-0.0) + (-0.0),        (-0.0) + (-0.0)))
+  , ("1.5 -. 1.5",             (1.5 - 1.5,              1.5 - 1.5))
   ]
 
 -- | D125's conversion, on the metal: the `Int` operand is converted by a
