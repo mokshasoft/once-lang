@@ -19,6 +19,7 @@ open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (tt)
+import Data.Unit
 open import Data.Product using (Σ; _×_; _,_; proj₁)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Bool using (true)
@@ -115,17 +116,24 @@ module EndR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     open Theorem ld using (Lands)
     open StartR {FS} ds f ldConst ld-nl wordOf entry-frame entry-regs using (start-fs)
 
+    -- how the run's end left the machine: by the start's way out, it has left
+    EndLeft : ∀ {sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} → Final c′ r′ → FlatState → Set
+    EndLeft f-end  fs′ = LocState.left (floc fs′) ≡ true
+    EndLeft f-halt fs′ = Σ FlatState λ fs₀ → Σ ℕ λ M → FlatSteps image M start-fs fs₀ × LocState.halted (floc fs₀) ≡ Data.Bool.false
+                           × LocState.left (floc fs′) ≡ LocState.left (floc fs₀)
+
+
     ends : ∀ {sh U′ t} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′}
-         → (run : StepsI main []ʳ start 0 t c′ r′ m′ n′) → AgreesAll [] run → Final c′ r′
+         → (run : StepsI main []ʳ start 0 t c′ r′ m′ n′) → AgreesAll [] run → (fin : Final c′ r′)
          → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N start-fs fs′
-             × LocState.halted (floc fs′) ≡ true × LocState.ev-log (floc fs′) ≡ evsOf t
+             × LocState.halted (floc fs′) ≡ true × LocState.ev-log (floc fs′) ≡ evsOf t × EndLeft fin fs′
     ends {t = t} {c′ = c′} {r′} {m′} {n′} run ag fin = fin-case fin (from-start ld entry-frame entry-regs run ag)
       where
-        fin-case : Final c′ r′ → Lands (evsOf t) c′ r′ m′ n′ start-fs
+        fin-case : (fn : Final c′ r′) → Lands (evsOf t) c′ r′ m′ n′ start-fs
                  → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N start-fs fs′
-                     × LocState.halted (floc fs′) ≡ true × LocState.ev-log (floc fs′) ≡ evsOf t
+                     × LocState.halted (floc fs′) ≡ true × LocState.ev-log (floc fs′) ≡ evsOf t × EndLeft fn fs′
         fin-case f-end (N , fs₁ , st₁ , inj₁ G , lg) = case g-end G of λ where
-          (fs′ , st₂ , hlt , _ , lg₂) → N + 1 , fs′ , FlatSteps-++ st₁ st₂ , hlt , trans lg₂ lg
-        fin-case f-end (_ , _ , _ , inj₂ (() , _) , _)
+          (fs′ , st₂ , hlt , lft , lg₂) → N + 1 , fs′ , FlatSteps-++ st₁ st₂ , hlt , trans lg₂ lg , lft
+        fin-case f-end (_ , _ , _ , inj₂ (() , _ , _) , _)
         fin-case f-halt (_ , _ , _ , inj₁ G , _) = ⊥-elim (no-halted G)
-        fin-case f-halt (N , fs₁ , st₁ , inj₂ (_ , hlt) , lg) = N , fs₁ , st₁ , hlt , lg
+        fin-case f-halt (N , fs₁ , st₁ , inj₂ (_ , hlt , pre) , lg) = N , fs₁ , st₁ , hlt , lg , pre

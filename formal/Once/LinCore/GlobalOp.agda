@@ -177,6 +177,7 @@ module OpG {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              {x : MV ⌜ sdom s ⌝} {os : Stk S} {E fs}
              (P : Pnt (prim ds′ (lop s) ⨾ k)) → HereP P (es ∥ x ∷ˢ os) fs → OpHalt s x E fs
          → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × LocState.halted (floc fs′) ≡ true × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E
+             × LocState.left (floc fs′) ≡ LocState.left (floc fs) × LocState.halted (floc fs) ≡ false
   gopend (p-start (at sb)) H ag = OS.st-opend sb H ag
   gopend (p-block p (at sb)) H ag = OK.st-opend p sb H ag
   gopend (p-tramp p pt) (() , H) ag
