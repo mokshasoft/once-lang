@@ -127,6 +127,11 @@ module NoLabels {FS : FrameSemantics} where
     answer-nl (suc zero)    bot = refl ∷ []
     answer-nl (suc (suc w)) bot = []
 
+    -- D428: an op's code, by the sigop it runs
+    lowOp-nl : ∀ s m bot → NoLab (lowOp s m bot)
+    lowOp-nl s nothing  bot = argIn-nl (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ refl ∷ refl ∷ answer-nl (wsz ⌜ scod s ⌝) bot
+    lowOp-nl s (just o) bot = argIn-nl (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
+
     -- a cell's build: its header, its contents, its address
     cell-nl : ∀ w jb jc jf a o d → NoLab (header w jb jc jf ++ mvSP a o w ++ mov-to-output ∷ store-at-slot d ∷ [])
     cell-nl w jb jc jf a o d = nl (header w jb jc jf) (header-nl w jb jc jf) (nl (mvSP a o w) (mvSP-nl a o w) (refl ∷ refl ∷ []))
@@ -177,7 +182,7 @@ module NoLabels {FS : FrameSemantics} where
       cell-nl (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inC (ncty n))) (idx (inF (ncty n))) (Tp φ S ∸ wsz (cty (F , S₀))) hdr (Tp φ S ∸ 1)
     lowP-nl ds lout φ S p         = []
     lowP-nl ds (lconst v) φ S p   = ld-nl v ∷ refl ∷ []
-    lowP-nl ds (lop s) φ S p      = argIn-nl (SigOpInfo.baseA (info s)) (Tp φ S) (wsz ⌜ sdom s ⌝) ∷ refl ∷ refl ∷ answer-nl (wsz ⌜ scod s ⌝) (Tp φ S)
+    lowP-nl ds (lop s) φ S p      = lowOp-nl s (cmpOf s) (Tp φ S)
     lowP-nl ds (liter _ _) φ S p  = []
 
     -- every instruction but the loop
