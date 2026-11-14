@@ -1,0 +1,45 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.150: the remaining Float comparisons (float-cmp-order.once has the
+-- other eight), one weighted bit each.
+--
+--   nan != nan            = 0 (·1)     -(0.0) != 0.0  = 1 (·2)
+--   nan <= nan            = 1 (·4)     nan > 1.0      = 1 (·8)
+--   -(0.0) >= 0.0         = 0 (·16)    nan !=. nan    = 1 (·32)
+--   1.0 <=. 1.0           = 1 (·64)    nan >=. nan    = 0 (·128)
+--
+-- An exit code has eight bits, so the twelfth comparison, `2.0 >. 1.0` (= 1),
+-- enters as `bit … - 1`: it adds 0 when right and -1 when wrong.
+--
+-- Expected: exit 110
+
+import I.Linux.Syscalls as S
+
+no : Unit -> Int
+no _ = 0
+
+yes : Unit -> Int
+yes _ = 1
+
+bit : Unit + Unit -> Int
+bit = case no yes
+
+nan : Unit -> Float
+nan _ = 0.0 /. 0.0
+
+nz : Unit -> Float
+nz _ = -(0.0)
+
+main : Act Unit Void
+main =
+  exit@S
+    (bit (nan () != nan ())
+      + 2 * bit (nz () != 0.0)
+      + 4 * bit (nan () <= nan ())
+      + 8 * bit (nan () > 1.0)
+      + 16 * bit (nz () >= 0.0)
+      + 32 * bit (nan () !=. nan ())
+      + 64 * bit (1.0 <=. 1.0)
+      + 128 * bit (nan () >=. nan ())
+      + (bit (2.0 >. 1.0) - 1))

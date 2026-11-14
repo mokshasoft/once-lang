@@ -84,11 +84,10 @@ encodeArith Binary32 (_, f) = fromIntegral (castFloatToWord32 f)
 -- exercises round-to-nearest-even on a negative significand, not just the
 -- sign bit.
 --
--- `-0.0` is deliberately ABSENT and is a stated limitation: `Decimal.negate`
--- is `ℤ.-` on the significand and `ℤ.- (+ 0) = + 0`, so Once compiles `-0.0`
--- to POSITIVE zero. IEEE distinguishes them; Once does not, in the same way
--- and for the same reason it has no subnormals (D118). Pinned in
--- `Once.Float.Decimal` so it is read rather than discovered.
+-- `-0.0` is ABSENT because it is not a literal (plan 0.150): a decimal has no
+-- signed zero, so the checker rejects `-0.0` and names `-(0.0)`, which is the
+-- negation of `0.0` — a sign flip, so the negative zero. That one is an
+-- arithmetic case below.
 literals :: [(String, Double)]
 literals =
   [ ("0.5", 0.5), ("0.125", 0.125), ("2.75", 2.75)
@@ -148,11 +147,20 @@ floatEmitTests = testGroup "Float format in the effect trace"
        [ testCase (archName a) (checkProgram a ("arg-" ++ slug e) (argProgram e) vs) | a <- backendArches ]
    | (e, vs) <- argumentCases ]
    ++
+   -- Plan 0.150: `-1e-400` (written out: Once has no exponent syntax) is
+   -- below every format's least subnormal, so it rounds to zero — and the
+   -- literal is negative, so to the NEGATIVE zero. Named, not slugged: the
+   -- literal is longer than a file name may be.
+   [ testGroup "tiny negative literal is -0.0"
+       [ testCase (archName a) (checkProgram a "floatemit_neg_tiny" (program tinyNeg) (-0.0, -0.0))
+       | a <- backendArches ] ]
+   ++
    -- D055: the DECIDED NaN, not the hardware's. x86 answers
    -- `0xfff8000000000000` for `0.0 / 0.0` in silicon.
    [ testGroup ("canonical NaN: " ++ e)
        [ testCase (archName a) (checkCanonNaN a e) | a <- backendArches ]
-   | e <- [ "0.0 / 0.0", "0.0 * (1.0 / 0.0)" ] ])
+   -- Plan 0.150: negating a NaN is still THE NaN (no sign on it).
+   | e <- [ "0.0 /. 0.0", "0.0 *. (1.0 /. 0.0)", "-(0.0 /. 0.0)" ] ])
 
 -- | Read an ARITHMETIC result back out of the trace. Same assertions as
 -- `checkOne`, against an expectation computed at the arch's OWN precision —
@@ -175,6 +183,10 @@ checkProgram arch name prog vs = do
                     (encodeArith (archFloatFormat arch) vs) (head ws)
         assertEqual ("[" ++ tag ++ "] exit code") 7 code
   where tag = archName arch
+
+-- | `-1e-400`, in the decimal Once writes.
+tinyNeg :: String
+tinyNeg = "-0." ++ replicate 399 '0' ++ "1"
 
 -- | D055's NaN canonicalisation, on the metal.
 --
@@ -264,40 +276,47 @@ arithProgram expr = T.unlines
 -- stay in step by construction.
 arithCases :: [(String, (Double, Float))]
 arithCases =
-  [ ("1.5 + 2.25 * 2.0 - 0.5", (1.5 + 2.25 * 2.0 - 0.5, 1.5 + 2.25 * 2.0 - 0.5))
+  [ ("1.5 +. 2.25 *. 2.0 -. 0.5", (1.5 + 2.25 * 2.0 - 0.5, 1.5 + 2.25 * 2.0 - 0.5))
     -- THE case: inexact at both formats, and the two formats disagree — so
     -- this fails if a target ever computes at the wrong width.
-  , ("0.1 + 0.2",              (0.1 + 0.2,              0.1 + 0.2))
-  , ("3.14 * 2.0",             (3.14 * 2.0,             3.14 * 2.0))
+  , ("0.1 +. 0.2",             (0.1 + 0.2,              0.1 + 0.2))
+  , ("3.14 *. 2.0",            (3.14 * 2.0,             3.14 * 2.0))
     -- The expression F4 exists for: `1.5 - 2.1` was a type error until it.
-  , ("1.5 - 2.1",              (1.5 - 2.1,              1.5 - 2.1))
+  , ("1.5 -. 2.1",             (1.5 - 2.1,              1.5 - 2.1))
     -- Negation of a computed value, and a negative literal inside arithmetic.
-  , ("0.0 - (2.5 * 1.5)",      (0.0 - (2.5 * 1.5),      0.0 - (2.5 * 1.5)))
+  , ("0.0 -. (2.5 *. 1.5)",    (0.0 - (2.5 * 1.5),      0.0 - (2.5 * 1.5)))
     -- DIVISION. `1.0 / 3.0` is non-terminating in binary, so the quotient is
     -- inexact by construction and every discarded bit has to be accounted for
     -- — this is the case the sticky bit exists for, run on the metal.
-  , ("1.0 / 3.0",              (1.0 / 3.0,              1.0 / 3.0))
+  , ("1.0 /. 3.0",             (1.0 / 3.0,              1.0 / 3.0))
     -- ⭐ The discriminator. `0.1 / 0.3` answers ONE ULP ABOVE `1.0 / 3.0`
     -- despite both being `0.333…`, because the operands are themselves rounded
     -- and the true quotient falls the other side of the boundary. A divider
     -- that truncated, or that rounded without the remainder, passes the line
     -- above and fails this one.
-  , ("0.1 / 0.3",              (0.1 / 0.3,              0.1 / 0.3))
+  , ("0.1 /. 0.3",             (0.1 / 0.3,              0.1 / 0.3))
     -- Exact quotient: the remainder is zero, so the sticky fold must be a
     -- no-op. And a division mixed with the other three operations.
-  , ("6.0 / 3.0",              (6.0 / 3.0,              6.0 / 3.0))
-  , ("1.5 + 7.0 / 11.0",       (1.5 + 7.0 / 11.0,       1.5 + 7.0 / 11.0))
+  , ("6.0 /. 3.0",             (6.0 / 3.0,              6.0 / 3.0))
+  , ("1.5 +. 7.0 /. 11.0",     (1.5 + 7.0 / 11.0,       1.5 + 7.0 / 11.0))
+    -- Plan 0.150: NEGATION at Float is the sign flip, so it reaches the
+    -- signed zero `-(0.0)` writes (the literal `-0.0` is rejected), and it
+    -- negates a computed value.
+  , ("-(0.0)",                 (-0.0,                   -0.0))
+  , ("-(1.5 +. 1.0)",          (-(1.5 + 1.0),           -(1.5 + 1.0)))
+  , ("2.0 -. -(0.5)",          (2.0 - (-0.5),           2.0 - (-0.5)))
   ]
 
--- | D125's widening, on the metal: the `Int` operand is converted by a
--- correctly-rounded `arith.i2f` and the expression is a `Float`.
+-- | D125's conversion, on the metal: the `Int` operand is converted by a
+-- correctly-rounded `arith.i2f` and the expression is a `Float`. D408: the
+-- conversion is WRITTEN (`toFloat`); nothing widens implicitly.
 wideningCases :: [(String, (Double, Float))]
 wideningCases =
-  [ ("1 + 1.5",   (1 + 1.5,   1 + 1.5))
+  [ ("toFloat 1 +. 1.5",   (1 + 1.5,   1 + 1.5))
     -- Widening on the LEFT of a division, so the `i2f` and the quotient meet.
-  , ("1 / 4.0",   (1 / 4.0,   1 / 4.0))
-  , ("2.5 * 3",   (2.5 * 3,   2.5 * 3))
-  , ("7 - 0.25",  (7 - 0.25,  7 - 0.25))
+  , ("toFloat 1 /. 4.0",   (1 / 4.0,   1 / 4.0))
+  , ("2.5 *. toFloat 3",   (2.5 * 3,   2.5 * 3))
+  , ("toFloat 7 -. 0.25",  (7 - 0.25,  7 - 0.25))
   ]
 
 -- | Float arithmetic over a function's ARGUMENTS (plan 0.129 B5). Until B5 a
@@ -313,13 +332,16 @@ argProgram expr = T.unlines
   , "import I.Test.Emit as E"
   , ""
   , "addF : Float * Float -> Float"
-  , "addF p = fst p + snd p"
+  , "addF p = fst p +. snd p"
   , ""
   , "addI : Int * Int -> Int"
   , "addI p = fst p + snd p"
   , ""
   , "twice : Float -> Float"
-  , "twice x = x * 2.0 + x / 4.0"
+  , "twice x = x *. 2.0 +. x /. 4.0"
+  , ""
+  , "negF : Float -> Float"
+  , "negF x = -x"
   , ""
   , "emitExpr : Act Unit Unit"
   , T.pack ("emitExpr = emitF@E (" ++ expr ++ ")")
@@ -333,6 +355,10 @@ argumentCases =
   [ ("addF (1.5, 2.25)",       (1.5 + 2.25,                 1.5 + 2.25))
   , ("twice 0.1",              (0.1 * 2.0 + 0.1 / 4.0,      0.1 * 2.0 + 0.1 / 4.0))
   , ("addF (twice 0.3, 0.2)",  (0.3 * 2.0 + 0.3 / 4.0 + 0.2, 0.3 * 2.0 + 0.3 / 4.0 + 0.2))
+    -- Plan 0.150: `-x` at `x = 0.0` is `-0.0` (a sign flip, not `0 - x`),
+    -- and negation is an involution.
+  , ("negF 0.0",               (-0.0,                       -0.0))
+  , ("negF (negF 2.5)",        (2.5,                        2.5))
   ]
 
 paren :: String -> String

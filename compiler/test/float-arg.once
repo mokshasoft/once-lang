@@ -14,13 +14,13 @@ import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 addF : Float * Float -> Float
-addF p = fst p + snd p
+addF p = fst p +. snd p
 
 addI : Int * Int -> Int
 addI p = fst p + snd p
 
 twice : Float -> Float
-twice x = x + x
+twice x = x +. x
 
 emitArg : Act Unit Unit
 emitArg = emitF@E (addF (twice 1.5, 0.25))

@@ -1,0 +1,44 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.150: the Float comparisons, end to end — the undotted ones are
+-- IEEE's totalOrder (`<`: `-0.0 < 0.0`, the one NaN above everything) and
+-- identity (`==`: `NaN == NaN`, `-0.0 != 0.0`); the dotted ones are IEEE's
+-- quiet comparisons (false on a NaN, `-0.0 ==. 0.0`). Each bit has its own
+-- weight, so any wrong answer changes the exit code.
+--
+--   -(0.0) < 0.0          = 1 (·1)     nan == nan     = 1 (·2)
+--   -(0.0) == 0.0         = 0 (·4)     nan ==. nan    = 0 (·8)
+--   -(0.0) ==. 0.0        = 1 (·16)    1.0 < nan      = 1 (·32)
+--   1.0 <. nan            = 0 (·64)    -(0.0) <. 0.0  = 0 (·128)
+--
+-- Expected: exit 51
+
+import I.Linux.Syscalls as S
+
+no : Unit -> Int
+no _ = 0
+
+yes : Unit -> Int
+yes _ = 1
+
+bit : Unit + Unit -> Int
+bit = case no yes
+
+nan : Unit -> Float
+nan _ = 0.0 /. 0.0
+
+nz : Unit -> Float
+nz _ = -(0.0)
+
+main : Act Unit Void
+main =
+  exit@S
+    (bit (nz () < 0.0)
+      + 2 * bit (nan () == nan ())
+      + 4 * bit (nz () == 0.0)
+      + 8 * bit (nan () ==. nan ())
+      + 16 * bit (nz () ==. 0.0)
+      + 32 * bit (1.0 < nan ())
+      + 64 * bit (1.0 <. nan ())
+      + 128 * bit (nz () <. 0.0))

@@ -44,7 +44,7 @@ import Test.Tasty.HUnit (testCase, assertBool)
 import Data.List (isInfixOf)
 import qualified Data.Text as T
 
-import TypeErrorSpec (accepts, typeCheckStderr)
+import TypeErrorSpec (accepts, rejects, typeCheckStderr)
 
 -- | A one-line program binding a float literal at type `Float`.
 lit :: String -> [T.Text]
@@ -82,7 +82,8 @@ rounded v = testGroup (v ++ " rounds, and compiles (D116)")
 
 floatTests :: TestTree
 floatTests = testGroup "Float literals"
-  [ exactOneDigit
+  [ diagnostics
+  , exactOneDigit
   , exactTwoDigit
   , roundedOneDigit
   , roundedTwoDigit
@@ -150,8 +151,12 @@ roundedTwoDigit = testGroup "rounded, two fraction digits"
 
 negatedLiterals :: TestTree
 negatedLiterals = testGroup "negated"
-  ([ accepts ("-" ++ v ++ " is exact")   (negLit v) | v <- ["0.5","1.5","2.75","3.0","0.0"] ] ++
-   [ accepts ("-" ++ v ++ " rounds")     (negLit v) | v <- ["0.1","3.14","0.3","1.9"] ])
+  ([ accepts ("-" ++ v ++ " is exact")   (negLit v) | v <- ["0.5","1.5","2.75","3.0"] ] ++
+   [ accepts ("-" ++ v ++ " rounds")     (negLit v) | v <- ["0.1","3.14","0.3","1.9"] ] ++
+   -- Plan 0.150: a decimal has no signed zero, so `-0.0` is not a literal;
+   -- the rejection names the negation `-(0.0)`, which is accepted.
+   [ rejects "-0.0 is rejected, naming -(0.0)" "-(0.0)" (negLit "0.0")
+   , accepts "-(0.0) is the negation of 0.0" (lit "-(0.0)") ])
 
 ------------------------------------------------------------------------
 -- The named cases the flip is about
@@ -175,4 +180,40 @@ edgeCases = testGroup "named cases"
     -- for both rather than neither.
   , accepts "16777217.0 is exact at binary64 and rounds at binary32"
       (lit "16777217.0")
+  ]
+
+------------------------------------------------------------------------
+-- DIAGNOSTICS (plan 0.150 step 5)
+------------------------------------------------------------------------
+
+-- | A one-definition program at `Float`.
+expr :: String -> [T.Text]
+expr e = [ "x : Float", T.pack ("x = " ++ e) ]
+
+-- | …and one at `Bool`, for a comparison.
+cmp :: String -> [T.Text]
+cmp e = [ "x : Unit + Unit", T.pack ("x = " ++ e) ]
+
+diagnostics :: TestTree
+diagnostics = testGroup "diagnostics"
+  [ -- Float's arithmetic rounds, so it is the dotted family; the rejection
+    -- of the undotted one names it.
+    rejects "+ at Float names +." "`+.`" (expr "1.5 + 2.5")
+  , rejects "- at Float names -." "`-.`" (expr "1.5 - 2.5")
+  , rejects "* at Float names *." "`*.`" (expr "1.5 * 2.5")
+  , rejects "/ at Float names /." "`/.`" (expr "1.5 / 2.5")
+  , rejects "% is not defined at Float" "Float" (expr "1.5 % 2.5")
+  , accepts "+. at Float" (expr "1.5 +. 2.5")
+    -- D408: no implicit conversion; the rejection names `toFloat`.
+  , rejects "Int +. Float names toFloat" "toFloat" (expr "1 +. 2.5")
+  , accepts "toFloat converts" (expr "toFloat 1 +. 2.5")
+    -- `==` at Float is identity: accepted, with a warning naming `==.`.
+  , testCase "== at Float warns, naming ==." $ do
+      err <- typeCheckStderr (T.unlines (cmp "1.5 == 2.5"))
+      assertBool ("expected an identity-equality warning, got: " ++ err)
+                 ("warning:" `isInfixOf` err && "`==.`" `isInfixOf` err)
+  , testCase "==. at Float does not warn" $ do
+      err <- typeCheckStderr (T.unlines (cmp "1.5 ==. 2.5"))
+      assertBool ("expected silence, got: " ++ err)
+                 (not ("warning:" `isInfixOf` err))
   ]
