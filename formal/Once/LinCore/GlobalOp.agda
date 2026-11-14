@@ -59,7 +59,7 @@ open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module T
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 open import Once.LinCore.GlobalTramp fmt ans bw using (module TrampR)
 open import Once.LinCore.GlobalTrampO fmt ans bw using (module TrampO)
-open import Once.LinCore.OpStep fmt ans bw using (module OpR; op-n)
+open import Once.LinCore.OpStep fmt ans bw using (module OpR; module OpSim; op-n)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree)
 open import Once.LinCore.GlobalTrView fmt ans bw using (module TrV)
 
@@ -140,6 +140,7 @@ module OpG {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   open Agree {FS} U wordOf using (OpVal; OpHalt)
   open import Once.LinCore.Moves {FS} using (k-inb)
+  open OpSim {FS} U ncty ldConst wordOf using (or-frame; or-ret; or-saved; or-other; or-top; or-old; or-next; or-inb)
   module OS = OpR {FS} U ncty ldConst wordOf image main j₀ L₀ˢ start-root
   module OK {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = OpR {FS} U ncty ldConst wordOf image (blockᴵ κ) (idx p) (L₀ᵇ κ p) (blockR p)
 
@@ -153,13 +154,21 @@ module OpG {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       → InBlk fs → OpVal s x y fs
       → Arrives k r (es ∥ y ∷ˢ os) n′ fs
   gop {r = r} {fs = fs} (p-start (at sb)) run inv H nx ok I ag = case OS.st-op sb H ag of λ where
-    (N , fs′ , st , H′ , K , nx′ , old , tp) →
-      N , fs′ , st , record { g-pt = p-start (at (next sb)) ; g-here = H′ ; g-next = trans nx′ (trans nx (sym (op-n run)))
-                            ; g-ret = ret-step K old tp (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = k-inb K I }
+    (N , fs′ , st , H′ , OR) →
+      N , fs′ , st , record { g-pt = p-start (at (next sb)) ; g-here = H′ ; g-next = trans (or-next OR) (trans nx (sym (op-n run)))
+                            ; g-ret = ctx-to (sym (or-frame OR)) (sym (or-ret OR)) (sym (or-saved OR))
+                                        (ret-top (or-other OR)
+                                           (λ y le → trans (cong (λ g → LocState.stackMem (floc fs′) g y) (sym (or-frame OR))) (or-top OR y le))
+                                           (or-old OR) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok)
+                            ; g-blk = or-inb OR I }
   gop {r = r} {fs = fs} (p-block p (at sb)) run inv H nx ok I ag = case OK.st-op p sb H ag of λ where
-    (N , fs′ , st , H′ , K , nx′ , old , tp) →
-      N , fs′ , st , record { g-pt = p-block p (at (next sb)) ; g-here = H′ ; g-next = trans nx′ (trans nx (sym (op-n run)))
-                            ; g-ret = ret-step K old tp (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = k-inb K I }
+    (N , fs′ , st , H′ , OR) →
+      N , fs′ , st , record { g-pt = p-block p (at (next sb)) ; g-here = H′ ; g-next = trans (or-next OR) (trans nx (sym (op-n run)))
+                            ; g-ret = ctx-to (sym (or-frame OR)) (sym (or-ret OR)) (sym (or-saved OR))
+                                        (ret-top (or-other OR)
+                                           (λ y le → trans (cong (λ g → LocState.stackMem (floc fs′) g y) (sym (or-frame OR))) (or-top OR y le))
+                                           (or-old OR) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok)
+                            ; g-blk = or-inb OR I }
   gop (p-tramp p pt) run inv (() , H) nx ok I ag
 
   -- ★ A HALTING OP (i-opend): to a halted machine

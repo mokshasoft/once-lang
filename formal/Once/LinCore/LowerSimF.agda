@@ -54,7 +54,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc; fret)
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++)
   open import Once.LinCore.Moves {FS}
-    using (Seg; Seg-++ˡ; Seg-++ʳ; slot; mvPS-run; MovedP; p-moved; p-rest; p-heap; p-halt; p-pc; p-alloc; p-ret; p-clo; p-link; p-in; p-frame; restore-step; Ran; ranP; ran-trans; ran-regs)
+    using (Seg; Seg-++ˡ; Seg-++ʳ; slot; mvPS-run; MovedP; p-moved; p-rest; p-heap; p-halt; p-log; p-pc; p-alloc; p-ret; p-clo; p-link; p-in; p-frame; restore-step; Ran; ranP; ran-trans; ran-regs)
 
   private
     frame-eq : ∀ {f g x y} → AtStack {FS} f x ≡ AtStack g y → f ≡ g
@@ -349,7 +349,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                → MovedP fs fs′ (AtDynamic (cellLoc i 0)) o₀ b n
   moved-rebase {fs} {i = i} {o₀} M = record
     { p-pc = p-pc M ; p-alloc = p-alloc M ; p-ret = p-ret M ; p-clo = p-clo M ; p-link = p-link M ; p-heap = p-heap M
-    ; p-halt = p-halt M ; p-in = p-in M
+    ; p-halt = p-halt M ; p-log = p-log M ; p-in = p-in M
     ; p-moved = λ k k< → trans (p-moved M k k<)
                   (cong (λ z → LocState.heapMem (floc fs) (heap-loc (mkHeapRef (serial i)) z))
                         (trans (cong (_+ o₀) (Data.Nat.Properties.+-identityʳ k)) (sym (Data.Nat.Properties.+-identityʳ (k + o₀)))))
