@@ -148,7 +148,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         o-uncut : ∀ k → UnCut (Ran.run (R k))
         -- ★ AN OP AT THE MACHINE (D426): its contract path, answered by the world from the history, is
         -- what the machine's sigop computes at a state whose log is that history: proved per contract
-        -- class (OpMachine.Dispatch) but for a structured answer, a compare's block, and an
+        -- class (OpMachine.Dispatch) but for a structured answer and an
         -- undeclared FFI op's stop
         o-ops   : OM.OwedOp
         -- the world's run cut at the budget: the flat run, at some fuel, shows its events, is cut, and has
