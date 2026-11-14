@@ -2,13 +2,13 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Float.EncodingLaws.Nat — the natural-number facts behind the
+-- Once.Metatheory.Float.Nat — the natural-number facts behind the
 -- encoding laws: `bitLen` brackets its argument between powers of two,
 -- shifts add to it, an odd significand times a power of two determines both,
 -- and round half to even moves a quotient up by at most one.
 ------------------------------------------------------------------------
 
-module Once.Float.EncodingLaws.Nat where
+module Once.Metatheory.Float.Nat where
 
 open import Data.Nat as ℕ
   using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _<_; _≤_; _≥_; s≤s; z≤n; s≤s⁻¹; NonZero)

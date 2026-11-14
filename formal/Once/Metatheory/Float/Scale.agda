@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Float.EncodingLaws.Scale — the significand `roundQ` computes is at
+-- Once.Metatheory.Float.Scale — the significand `roundQ` computes is at
 -- most `2^p`.
 --
 -- `Lt N D z` says `N / D < 2^z` for an integer `z`, stated for every way of
@@ -12,7 +12,7 @@
 -- `2^p`, and rounding it half to even gives at most `2^p`.
 ------------------------------------------------------------------------
 
-module Once.Float.EncodingLaws.Scale where
+module Once.Metatheory.Float.Scale where
 
 open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _^_; _<_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties as ℕP
@@ -28,7 +28,7 @@ open import Relation.Binary.PropositionalEquality
 open import Once.Spec.Float.Dyadic using (FloatFormat; bitLen)
 open Once.Spec.Float.Dyadic.FloatFormat using (sig-bits)
 open import Once.Spec.Float.Value using (atLeast; lgAt; lg; scaleRHE; quantum; qmin)
-open import Once.Float.EncodingLaws.Nat using (bitLen-upper; bitLen-lower; divRHE-≤)
+open import Once.Metatheory.Float.Nat using (bitLen-upper; bitLen-lower; divRHE-≤)
 
 -- | `N / D < 2^z`.
 Lt : ℕ → ℕ → ℤ → Set

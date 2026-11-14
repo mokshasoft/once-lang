@@ -2,13 +2,13 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Float.EncodingLaws.Canon — what `canon` computes: a positive `M` at
+-- Once.Metatheory.Float.Canon — what `canon` computes: a positive `M` at
 -- exponent `e`, given fuel at least `M`, becomes `fv-num s m (e + k)` with
 -- `odd m · 2^k ≡ M`; and since that factorisation is unique, `canon` of
 -- `odd m · 2^k` returns exactly `m` and `e + k`.
 ------------------------------------------------------------------------
 
-module Once.Float.EncodingLaws.Canon where
+module Once.Metatheory.Float.Canon where
 
 open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _^_; _<_; _≤_; s≤s; z≤n; s≤s⁻¹)
 open import Data.Nat.Properties
@@ -24,7 +24,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Float.Value using (Sign; FloatVal; fv-num; odd; canon; canonAt)
-open import Once.Float.EncodingLaws.Nat using (pow-suc; odd-pow-inj)
+open import Once.Metatheory.Float.Nat using (pow-suc; odd-pow-inj)
 
 -- | The result of `canon` on a positive significand.
 CanonOf : Sign → ℕ → ℤ → FloatVal → Set

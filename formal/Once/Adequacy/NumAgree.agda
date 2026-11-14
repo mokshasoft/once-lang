@@ -50,7 +50,8 @@ open import Once.Spec.Theory
          ‵+ᵈ; ‵-ᵈ; ‵*ᵈ; ‵/ᵈ; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ)
 open import Once.Arith.Prim using (primSem; p-i2f)
 open import Once.Arith.SigOp.Builders using (numPrim)
-open import Once.Float.EncodingLaws using (decode-encode; round-inRange; decode-fneg)
+open import Once.Float.EncodingLaws using (decode-encode; decode-fneg)
+open import Once.Metatheory.Float.Range using (round-inRange)
 open import Once.Spec.Word using (Carrier)
 import Once.IR.Semantics.Value Carrier Carrier as M
 
