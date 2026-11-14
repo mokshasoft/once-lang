@@ -19,6 +19,7 @@ open import Level using (Level)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤; tt)
 open import Data.List using ([]; _∷_)
+open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
@@ -97,7 +98,13 @@ straight-local (ecase _ _) l = l
 ------------------------------------------------------------------------
 
 CoveredI : ∀ {sh sh′} → Insᴵ sh sh′ → Set
+-- a primitive: an op (D426: relative to the machine's world), or a local one
+data PrimCov {Γ} : ∀ {A B} → LTm Γ A B → Set where
+  pc-op  : ∀ {s : Sig} → PrimCov (lop s)
+  pc-loc : ∀ {A B} {g : LTm Γ A B} → NotOp g → PrimCov g
+
 CoveredI (loop _) = ⊤
+CoveredI (prim _ g) = PrimCov g
 CoveredI (call _) = ⊤
 -- a dispatch through a one-shot cell's code word, and its trampoline's cell part (D421)
 CoveredI icall    = ⊤
@@ -222,6 +229,14 @@ module _ {ℓ : Level} {T : Sh} where
               {i} {p : MV (Coalg F S ⊗t S)} {es : Slots (Nu F ∷ Es)} {p′ : MV (Coalg F S ⊗t S)} {os : Stk S′} {n}
               (eq : see es ≡ mnu i p)
           → P (i-recloseν {k = k} {r = r} {i = i} {p = p} {es = es} {p′ = p′} {os = os} {n = n} eq)
+      op  : ∀ {Γ} {ds : Defs Γ} {Es} {s : Sig} {S U} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) U} {r : Ret U T} {es : Slots Es}
+              {x : MV ⌜ sdom s ⌝} {w : MV ⌜ scod s ⌝} {os : Stk S} {n n′ t}
+              (run : Run ds (lop s) mone x n (gives w n′) t)
+          → P (i-prim {ds = ds} {g = lop s} {k = k} {r = r} {es = es} {v = x} {w = w} {os = os} {n = n} {n′ = n′} run)
+      ope : ∀ {Γ} {ds : Defs Γ} {Es} {s : Sig} {S U} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) U} {r : Ret U T} {es : Slots Es}
+              {x : MV ⌜ sdom s ⌝} {os : Stk S} {n t w}
+              (p : OpPath (opF s (toF (sdom s) (er x))) t (inj₂ w))
+          → P (i-opend {ds = ds} {s = s} {k = k} {r = r} {es = es} {x = x} {os = os} {n = n} p)
 
   covered-elim : (C : CoveredCases) → ∀ {sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
                  (st : StepI c r m n t c′ r′ m′ n′) → CoveredC c → CoveredCases.P C st
@@ -235,7 +250,8 @@ module _ {ℓ : Level} {T : Sh} where
   covered-elim C st@i-pair        v = CoveredCases.loc C st v
   covered-elim C st@i-swap        v = CoveredCases.loc C st v
   covered-elim C st@i-unit        v = CoveredCases.loc C st v
-  covered-elim C st@(i-prim _)    v = CoveredCases.loc C st v
+  covered-elim C st@(i-prim _)    (pc-loc v) = CoveredCases.loc C st v
+  covered-elim C (i-prim run)     pc-op      = CoveredCases.op C run
   covered-elim C st@i-untag       v = CoveredCases.loc C st v
   covered-elim C st@i-untag₁      v = CoveredCases.loc C st v
   covered-elim C st@i-tag₁        v = CoveredCases.loc C st v
@@ -251,7 +267,8 @@ module _ {ℓ : Level} {T : Sh} where
   covered-elim C st@(i-eapp _)    v = CoveredCases.loc C st v
   covered-elim C st@i-epop        v = CoveredCases.loc C st v
   covered-elim C st@(i-eword _)   v = CoveredCases.loc C st v
-  covered-elim C (i-opend _)      ()
+  covered-elim C (i-opend p)      pc-op      = CoveredCases.ope C p
+  covered-elim C (i-opend _)      (pc-loc ())
   covered-elim C i-icall          _ = CoveredCases.ic C
   covered-elim C (i-icallω {es = es} eq) _ = CoveredCases.icω C {es = es} eq
   covered-elim C i-iobs           _ = CoveredCases.iob C
