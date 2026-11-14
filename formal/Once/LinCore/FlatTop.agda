@@ -32,6 +32,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Function using (case_of_)
 open import Once.LinCore.Flat using (Base)
+open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi; module FrameSemantics)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -66,6 +67,7 @@ open import Once.LinCore.Total fmt ans bw using (World; exec; Ran; module Ran)
 open import Once.LinCore.Pass fmt ans using (Prog; IR; ⟦_⟧P; ev; trP; tr; pass-okᶠ; pass-okP)
 import Once.LinCore.BudgetSound
 import Once.LinCore.AgreeRun
+import Once.LinCore.OpMachine
 module AgreeRun = Once.LinCore.AgreeRun fmt ans bw
 open import Once.LinCore.Total fmt ans bw using (WTr)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree)
@@ -105,6 +107,8 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
            (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {Mach} (ldConst v) ≡ nothing)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
+           (w-int   : ∀ (n : ⟦ int ⟧b)   → wordOf {int} n ≡ SV-Lit fits-int n)
+           (w-float : ∀ (n : ⟦ float ⟧b) → wordOf {float} n ≡ SV-Lit fits-float n)
            (entry-frame : FrameSemantics.Frame Mach) (entry-regs : Registers Mach) where
   open FlatMachine {Mach} using (FlatState; floc; fpc)
   open FlatStepsAPI {Mach} using (FlatSteps)
@@ -116,6 +120,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
   open Ctl {Mach} ds f₀ ldConst ld-nl using (main)
   start-fs = StartR.start-fs {Mach} ds f₀ ldConst ld-nl wordOf entry-frame entry-regs
   open RunW {Mach} ds f₀ ldConst ld-nl wordOf using (AgreesAll)
+  module OM = Once.LinCore.OpMachine.OM Mach bw (Program.U ds f₀) wordOf w-int w-float
 
   -- the meaning, and what it shows at a budget from the empty log
   obs : ℕ → TM.Run (Once.Denotation.Approx.Ap Data.Unit.⊤)
@@ -142,15 +147,10 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         -- the world's run meets no call the interpretation leaves unanswered (the program is linked)
         o-uncut : ∀ k → UnCut (Ran.run (R k))
         -- ★ AN OP AT THE MACHINE (D426): its contract path, answered by the world from the history, is
-        -- what the machine's sigop computes at a state whose log is that history
-        o-op    : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {y₀ tp L L′}
-                → OpPath (opF s (toF (sdom s) (er x))) tp (inj₁ y₀) → WTr Wι L tp L′
-                → ∀ fs → LocState.ev-log (floc fs) ≡ L
-                → Agree.OpVal {Mach} (Program.U ds f₀) wordOf s x (mvF (scod s) y₀) (evsOf tp) fs
-        o-opend : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {tp L L′}
-                → OpPath (opF s (toF (sdom s) (er x))) tp (inj₂ Once.LinCore.Events.halted) → WTr Wι L tp L′
-                → ∀ fs → LocState.ev-log (floc fs) ≡ L
-                → Agree.OpHalt {Mach} (Program.U ds f₀) wordOf s x (evsOf tp) fs
+        -- what the machine's sigop computes at a state whose log is that history: proved per contract
+        -- class (OpMachine.Dispatch) but for a structured answer, a compare's block, and an
+        -- undeclared FFI op's stop
+        o-ops   : OM.OwedOp
         -- the world's run cut at the budget: the flat run, at some fuel, shows its events, is cut, and has
         -- taken a control step per unit of the budget (master's `flat-cut`)
         o-cut   : ∀ k → Ran.out (R k) ≡ stop Once.LinCore.Events.exhausted
@@ -203,8 +203,8 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     flat-top O k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (Owed.o-uncut O K)) (λ {mt} st e → AR.agrees-all st (AR.wtr-ios (Ran.trace (R K)) mt (sym e) (Ran.world (R K)))) eE eO
       where
         module AR = AgreeRun.AR {Mach} ds f₀ ldConst ld-nl wordOf ι
-                      (λ {s} {x} {y₀} {tp} {L} {L′} → Owed.o-op O {s} {x} {y₀} {tp} {L} {L′})
-                      (λ {s} {x} {tp} {L} {L′} → Owed.o-opend O {s} {x} {tp} {L} {L′})
+                      (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op (Owed.o-ops O) {s} {x} {y₀} {tp} {L} {L′})
+                      (λ {s} {x} {tp} {L} {L′} → OM.Dispatch.o-opend (Owed.o-ops O) {s} {x} {tp} {L} {L′})
         K  = k
         eE = proj₁ (run-shows O k)
         eO = proj₂ (run-shows O k)
@@ -243,8 +243,10 @@ module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
              (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
              (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {Mach} (ldConst v) ≡ nothing)
              (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
+             (w-int   : ∀ (n : ⟦ int ⟧b)   → wordOf {int} n ≡ SV-Lit fits-int n)
+             (w-float : ∀ (n : ⟦ float ⟧b) → wordOf {float} n ≡ SV-Lit fits-float n)
              (entry-frame : FrameSemantics.Frame Mach) (entry-regs : Registers Mach) where
-  module TP = Top (FromIR.TrProg.prog tp) f ldConst ld-nl wordOf entry-frame entry-regs
+  module TP = Top (FromIR.TrProg.prog tp) f ldConst ld-nl wordOf w-int w-float entry-frame entry-regs
 
   -- master's meaning, and what it shows at a budget from the empty log
   obsᴰ : ℕ → TM.Run (Once.Denotation.Approx.Ap Data.Unit.⊤)
