@@ -60,7 +60,9 @@ open import Once.LinCore.Events fmt ans bw using (MV; mone; Run; Trace; ios; Out
 import Once.LinCore.Events
 open import Once.LinCore.Machine fmt ans bw using (Plain; _∣_)
 open import Once.LinCore.Total fmt ans bw using (World; exec; Ran; module Ran)
-open import Once.LinCore.Pass fmt ans using (Prog; IR; ⟦_⟧P; ev; trP; tr)
+open import Once.LinCore.Pass fmt ans using (Prog; IR; ⟦_⟧P; ev; trP; tr; pass-okᶠ; pass-okP)
+import Once.LinCore.BudgetSound
+module BudgetSound = Once.LinCore.BudgetSound fmt ans bw
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ)
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; start; image-noleak)
@@ -82,8 +84,7 @@ module FromIR = Once.LinCore.FromIR fmt ans
 -- ★ the world the machine's interpretation is: its state the log so far, its answer the
 -- interpretation's given that history (D429)
 Wι : World
-Wι = record { WSt = List SigOpEvent
-            ; answer = λ h o a → Data.Maybe.map (λ b → b , (h ++ TM.callEvent o a ∷ [])) (TM.callAnswer ι h o a) }
+Wι = BudgetSound.W.Wι ι
 
 -- how a run's outcome is observed to end
 endO : ∀ {B} → Outcome B → Maybe (End Data.Unit.⊤)
@@ -129,9 +130,8 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     -- ★ WHAT IS OWED: the links from the meaning to the flat run not yet proved
     record Owed : Set where
       field
-        -- the world's run at a fuel shows the meaning's observation at the budget
-        o-run   : ∀ k → Σ ℕ λ K → (evsOf (Ran.trace (R K)) ≡ proj₁ (obs k))
-                                  × (endO (Ran.out (R K)) ≡ endAp (proj₂ (obs k)))
+        -- the world's run meets no call the interpretation leaves unanswered (the program is linked)
+        o-uncut : ∀ k → BudgetSound.UnCut (Ran.run (R k))
         -- the runs the world allows are the lowering's (every fold plain)
         o-plain : ∀ K → Plain (Ran.run (R K))
         -- the machine agrees with an image run that shows the world's run
@@ -146,14 +146,31 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
                   → LocState.left (floc fs₀) ≡ Data.Bool.false
         -- the world's run cut at the budget: the flat run, at some fuel, shows its events, is cut, and has
         -- taken a control step per unit of the budget (master's `flat-cut`)
-        o-cut   : ∀ k → Ran.out (R (proj₁ (o-run k))) ≡ stop Once.LinCore.Events.exhausted
-                → Σ ℕ λ N → flat-events N image start-fs ≡ (evsOf (Ran.trace (R (proj₁ (o-run k)))) , nothing)
+        o-cut   : ∀ k → Ran.out (R k) ≡ stop Once.LinCore.Events.exhausted
+                → Σ ℕ λ N → flat-events N image start-fs ≡ (evsOf (Ran.trace (R k)) , nothing)
                             × k ≤ flat-ctrls N image start-fs
         -- the machine's run from the start never faults (master's `start-sound`)
         o-sound : Sound image start-fs
         -- the machine: flat steps from the start to a halted machine are its events and its end
         o-flat  : ∀ {N fs′} → FlatSteps image N start-fs fs′ → LocState.halted (floc fs′) ≡ Data.Bool.true
                 → flat-events (suc N) image start-fs ≡ (LocState.ev-log (floc fs′) , just (end-of-left (LocState.left (floc fs′))))
+
+    -- how an outcome's observation ends
+    private
+      end-out : ∀ {B} (o : Outcome B) l → endO o ≡ endAp (BudgetSound.W.outAp ι o l)
+      end-out (gives _ _)                          l = refl
+      end-out (stop Once.LinCore.Events.halted)    l = refl
+      end-out (stop Once.LinCore.Events.exhausted) l = refl
+
+    -- ★ THE WORLD'S RUN SHOWS THE MEANING at its budget (D429, D430): the budgeted soundness on the
+    -- evaluator's own run (`BudgetSound.soundₖ`: its spends and the world's answers), the core's meaning
+    -- the pass's (`Pass.pass-okᶠ`, bisimilar computations run alike)
+    run-shows : Owed → ∀ k → (evsOf (Ran.trace (R k)) ≡ proj₁ (obs k)) × (endO (Ran.out (R k)) ≡ endAp (proj₂ (obs k)))
+    run-shows O k = sym (cong proj₁ eq) , trans (end-out (Ran.out (R k)) (Ran.left (R k))) (sym (cong (λ r → endAp (proj₂ r)) eq))
+      where
+        eq : obs k ≡ (evsOf (Ran.trace (R k)) , BudgetSound.W.outAp ι (Ran.out (R k)) (Ran.left (R k)))
+        eq = trans (sym (BudgetSound.W.run-≈ ι k (pass-okᶠ (pass-okP P) funit funit f tt) []))
+                   (proj₁ (BudgetSound.S.soundₖ ι (Ran.run (R k)) (Ran.spends (R k)) (Owed.o-uncut O k) (Ran.world (R k))))
 
     -- ★★ THE FLAT THEOREM, relative to what is owed: at some fuel the flat run shows the meaning's
     -- events and end at the budget, and, where the budget cut it, a control step per unit
@@ -165,9 +182,9 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     flat-top : Owed → ∀ k → Σ ℕ (Shows k)
     flat-top O k = by (Ran.run (R K)) refl (Owed.o-plain O K) (λ st e → Owed.o-agree O K st e) eE eO
       where
-        K  = proj₁ (Owed.o-run O k)
-        eE = proj₁ (proj₂ (Owed.o-run O k))
-        eO = proj₂ (proj₂ (Owed.o-run O k))
+        K  = k
+        eE = proj₁ (run-shows O k)
+        eO = proj₂ (run-shows O k)
         by : ∀ {o t} (run : Run ds f₀ mone mone 0 o t) → Ran.out (R K) ≡ o → Plain run
            → (∀ {mt sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′}
                 (st : StepsI main []ʳ start 0 mt c′ r′ m′ n′) → ios mt ≡ ios t → AgreesAll [] st)
