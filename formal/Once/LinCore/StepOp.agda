@@ -24,6 +24,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
+import Once.Spec.Type as ST
+open import Once.SigOp.Info using (module SigOpInfo)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (AtStack)
@@ -53,29 +55,47 @@ ioEvent (io-halt o a)   = haltEvent o a
 evsOf : Trace → List SigOpEvent
 evsOf t = map ioEvent (ios t)
 
+-- the head word, or a default
+hdOr : ∀ {X : Set} → List X → X → X
+hdOr (w ∷ _) _ = w
+hdOr []      p = p
+
 module Agree {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Rel {FS} U wordOf using (W; VW; SlotsAt)
   open FlatMachine {FS} using (FlatState; floc; falloc)
   open AbstractExec {FS} using (exec-sigop-output; exec-sigop-halts; sigop-events)
   open import Once.LinCore.Moves {FS} using (slot)
 
-  -- the sigop's state: Input1 and Output the argument's address (`lea-slot d`, `mov-to-input`)
-  at-arg : FlatState → ℕ → LocState FS
-  at-arg fs d = record (floc fs) { regs = writeReg (writeReg (LocState.regs (floc fs)) Output p) Input1 p }
-    where p = SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) d)
+  -- the sigop's state: Input1 and Output the argument's word (`argIn`, `mov-to-input`)
+  at-arg : FlatState → StoredValue FS → LocState FS
+  at-arg fs v = record (floc fs) { regs = writeReg (writeReg (LocState.regs (floc fs)) Output v) Input1 v }
+
+  -- ★ D428: the argument's word, by its base (D398): a scalar its one word, any other its address
+  argV : ∀ {A} → ST.Base ST.∅ₖ A → FlatState → ℕ → List W → StoredValue FS
+  argV (ST.b-var {i = ()} _) fs d wx
+  argV ST.b-Unit    fs d wx = SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) d)
+  argV ST.b-Void    fs d wx = SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) d)
+  argV ST.b-Int     fs d wx = hdOr wx (SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) d))
+  argV ST.b-Float   fs d wx = hdOr wx (SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) d))
+  argV (ST.b-* _ _) fs d wx = SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) d)
+  argV (ST.b-+ _ _) fs d wx = SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) d)
+
+  -- the sigop's state at an argument at slot `d` of words `wx`
+  arg : Sig → FlatState → ℕ → List W → LocState FS
+  arg s fs d wx = at-arg fs (argV (SigOpInfo.baseA (info s)) fs d wx)
 
   -- an op's answer: the machine does not halt, the answer's words are none or its Output word
   OpVal : (s : Sig) → MV ⌜ sdom s ⌝ → MV ⌜ scod s ⌝ → List SigOpEvent → FlatState → Set
   OpVal s x y E fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
-                 → (exec-sigop-halts (info s) (at-arg fs d) ≡ false)
-                   × (sigop-events (info s) (at-arg fs d) ≡ E)
+                 → (exec-sigop-halts (info s) (arg s fs d wx) ≡ false)
+                   × (sigop-events (info s) (arg s fs d wx) ≡ E)
                    × Σ (List W) λ wy → VW (LocState.heapMem (floc fs)) y wy
-                       × ((wy ≡ []) ⊎ (wy ≡ exec-sigop-output (info s) (at-arg fs d) ∷ []))
+                       × ((wy ≡ []) ⊎ (wy ≡ exec-sigop-output (info s) (arg s fs d wx) ∷ []))
 
   -- a halting op: the machine halts
   OpHalt : (s : Sig) → MV ⌜ sdom s ⌝ → List SigOpEvent → FlatState → Set
   OpHalt s x E fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
-                → (exec-sigop-halts (info s) (at-arg fs d) ≡ true) × (sigop-events (info s) (at-arg fs d) ≡ E)
+                → (exec-sigop-halts (info s) (arg s fs d wx) ≡ true) × (sigop-events (info s) (arg s fs d wx) ≡ E)
 
   module _ {T : Sh} where
     Agrees : ∀ {sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}

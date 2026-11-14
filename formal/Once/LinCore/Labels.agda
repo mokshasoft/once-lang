@@ -27,6 +27,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
+import Once.Spec.Type as ST
+open import Once.SigOp.Info using (module SigOpInfo)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
 
@@ -110,6 +112,16 @@ module NoLabels {FS : FrameSemantics} where
     header-nl : ∀ w jb jc jf → NoLab (header w jb jc jf)
     header-nl w jb jc jf = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
 
+    -- D428: the argument's instruction, by its base
+    argIn-nl : ∀ {A} (b : ST.Base ST.∅ₖ A) bot w → mark (argIn b bot w) ≡ nothing
+    argIn-nl (ST.b-var {i = ()} _) bot w
+    argIn-nl ST.b-Unit    bot w = refl
+    argIn-nl ST.b-Void    bot w = refl
+    argIn-nl ST.b-Int     bot w = refl
+    argIn-nl ST.b-Float   bot w = refl
+    argIn-nl (ST.b-* _ _) bot w = refl
+    argIn-nl (ST.b-+ _ _) bot w = refl
+
     answer-nl : ∀ w bot → NoLab (answer w bot)
     answer-nl zero          bot = []
     answer-nl (suc zero)    bot = refl ∷ []
@@ -165,7 +177,7 @@ module NoLabels {FS : FrameSemantics} where
       cell-nl (wsz (cty (F , S₀))) (idx (inO o n)) (idx (inC (ncty n))) (idx (inF (ncty n))) (Tp φ S ∸ wsz (cty (F , S₀))) hdr (Tp φ S ∸ 1)
     lowP-nl ds lout φ S p         = []
     lowP-nl ds (lconst v) φ S p   = ld-nl v ∷ refl ∷ []
-    lowP-nl ds (lop s) φ S p      = refl ∷ refl ∷ refl ∷ answer-nl (wsz ⌜ scod s ⌝) (Tp φ S)
+    lowP-nl ds (lop s) φ S p      = argIn-nl (SigOpInfo.baseA (info s)) (Tp φ S) (wsz ⌜ sdom s ⌝) ∷ refl ∷ refl ∷ answer-nl (wsz ⌜ scod s ⌝) (Tp φ S)
     lowP-nl ds (liter _ _) φ S p  = []
 
     -- every instruction but the loop
