@@ -188,7 +188,9 @@ module W (ι : Interp) where
 module S (ι : Interp) where
   open W ι
   open import Once.Denotation.Approx using (thenAp; thenIter; run-approx-bind; run-approx-iter)
-  open import Once.LinCore.Spends fmt ans bw using (Spends; SpendsM; Again)
+  open import Once.LinCore.Spends fmt ans bw using (module Budget)
+  open import Once.LinCore.Total fmt ans bw using (CutOp)
+  open Budget (λ {s} {x} {t} p → CutOp Wι {s} {x} {t} p) using (Spends; SpendsM; Again)
   open import Once.LinCore.Grade fmt ans using (blk-coh; obs-coh)
 
   private
