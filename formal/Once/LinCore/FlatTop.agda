@@ -28,6 +28,7 @@ import Data.Maybe
 import Data.Bool
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (tt)
+open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Function using (case_of_)
 open import Once.LinCore.Flat using (Base)
@@ -58,12 +59,17 @@ private
   ι   = FrameSemantics.fs-interp Mach
 
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (MV; mone; Run; Trace; ios; Outcome; gives; stop)
+open import Once.LinCore.Events fmt ans bw using (MV; mone; Run; Trace; ios; Outcome; gives; stop; OpPath; er; mvF)
 import Once.LinCore.Events
 open import Once.LinCore.Machine fmt ans bw using (Plain; _∣_)
 open import Once.LinCore.Total fmt ans bw using (World; exec; Ran; module Ran)
 open import Once.LinCore.Pass fmt ans using (Prog; IR; ⟦_⟧P; ev; trP; tr; pass-okᶠ; pass-okP)
 import Once.LinCore.BudgetSound
+import Once.LinCore.AgreeRun
+module AgreeRun = Once.LinCore.AgreeRun fmt ans bw
+open import Once.LinCore.Total fmt ans bw using (WTr)
+open import Once.LinCore.StepOp fmt ans bw using (module Agree)
+open import Once.LinCore.Keys fmt ans bw using (module Program)
 open import Once.LinCore.Spends fmt ans bw using (spends-plain; UnCut)
 module BudgetSound = Once.LinCore.BudgetSound fmt ans bw
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
@@ -135,9 +141,16 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
       field
         -- the world's run meets no call the interpretation leaves unanswered (the program is linked)
         o-uncut : ∀ k → UnCut (Ran.run (R k))
-        -- the machine agrees with an image run that shows the world's run
-        o-agree : ∀ K {mt sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′}
-                  (st : StepsI main []ʳ start 0 mt c′ r′ m′ n′) → ios mt ≡ ios (Ran.trace (R K)) → AgreesAll [] st
+        -- ★ AN OP AT THE MACHINE (D426): its contract path, answered by the world from the history, is
+        -- what the machine's sigop computes at a state whose log is that history
+        o-op    : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {y₀ tp L L′}
+                → OpPath (opF s (toF (sdom s) (er x))) tp (inj₁ y₀) → WTr Wι L tp L′
+                → ∀ fs → LocState.ev-log (floc fs) ≡ L
+                → Agree.OpVal {Mach} (Program.U ds f₀) wordOf s x (mvF (scod s) y₀) (evsOf tp) fs
+        o-opend : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {tp L L′}
+                → OpPath (opF s (toF (sdom s) (er x))) tp (inj₂ Once.LinCore.Events.halted) → WTr Wι L tp L′
+                → ∀ fs → LocState.ev-log (floc fs) ≡ L
+                → Agree.OpHalt {Mach} (Program.U ds f₀) wordOf s x (evsOf tp) fs
         -- the world's run cut at the budget: the flat run, at some fuel, shows its events, is cut, and has
         -- taken a control step per unit of the budget (master's `flat-cut`)
         o-cut   : ∀ k → Ran.out (R k) ≡ stop Once.LinCore.Events.exhausted
@@ -187,8 +200,11 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
                 × (endAp (proj₂ (obs k)) ≡ nothing → k ≤ flat-ctrls N image start-fs)
 
     flat-top : Owed → ∀ k → Σ ℕ (Shows k)
-    flat-top O k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (Owed.o-uncut O K)) (λ st e → Owed.o-agree O K st e) eE eO
+    flat-top O k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (Owed.o-uncut O K)) (λ {mt} st e → AR.agrees-all st (AR.wtr-ios (Ran.trace (R K)) mt (sym e) (Ran.world (R K)))) eE eO
       where
+        module AR = AgreeRun.AR {Mach} ds f₀ ldConst ld-nl wordOf ι
+                      (λ {s} {x} {y₀} {tp} {L} {L′} → Owed.o-op O {s} {x} {y₀} {tp} {L} {L′})
+                      (λ {s} {x} {tp} {L} {L′} → Owed.o-opend O {s} {x} {tp} {L} {L′})
         K  = k
         eE = proj₁ (run-shows O k)
         eO = proj₂ (run-shows O k)
