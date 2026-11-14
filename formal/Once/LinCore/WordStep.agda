@@ -160,9 +160,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     open Related
     -- where a step lands: related, or (the image halted) a halted machine
     HaltC : ∀ {sh U′} → Codeᴵ sh U′ → FlatState → Set
-    HaltC halted fs = LocState.halted (floc fs) ≡ Data.Bool.true
-    {-# CATCHALL #-}
-    HaltC _      fs = Data.Empty.⊥
+    HaltC c fs = (c ≡ halted) × (LocState.halted (floc fs) ≡ Data.Bool.true)
 
     Lands : ∀ {T sh U′} → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
     Lands c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × (Related c r m n fs′ ⊎ HaltC c fs′)
@@ -180,7 +178,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       halt-out : ∀ {T sh U′} {r : Ret U′ T} {m : Cfg sh} {n fs}
            → Σ ℕ (λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × LocState.halted (floc fs′) ≡ Data.Bool.true)
            → Lands (halted {sh = sh}) r m n fs
-      halt-out (N , fs′ , st , hlt) = N , fs′ , st , inj₂ hlt
+      halt-out (N , fs′ , st , hlt) = N , fs′ , st , inj₂ (refl , hlt)
 
     word-cases : ∀ {T} → CoveredCases {Level.zero} {T}
     word-cases = record
