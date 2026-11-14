@@ -61,6 +61,7 @@ open import Once.LinCore.GlobalTramp fmt ans bw using (module TrampR)
 open import Once.LinCore.GlobalTrampO fmt ans bw using (module TrampO)
 open import Once.LinCore.GlobalTrampF fmt ans bw using (module TrampF)
 open import Once.LinCore.GlobalCallW fmt ans bw using (module CallW)
+open import Once.LinCore.GlobalCallC fmt ans bw using (module CallC)
 
 module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
@@ -71,6 +72,7 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open TrampO {FS} ds f ldConst ld-nl wordOf
   open TrampF {FS} ds f ldConst ld-nl wordOf using (tf-call; tF-pos₂)
   open CallW {FS} ds f ldConst ld-nl wordOf using (gcallω)
+  open CallC {FS} ds f ldConst ld-nl wordOf using (gcallc)
   open Ctl {FS} ds f ldConst ld-nl using (main; L₀ˢ; L₀ᵇ; start-root; blockFin; Pnt; p-start; p-block; p-tramp; p-halt; ptFin; trFin)
   open Program ds f using (U)
   open ProgramRun ds f using (ncty)
@@ -246,6 +248,8 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                            (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
     -- a many-use body's trampoline's inner call (D425)
     gcall (p-tramp p _) inv (tw1 _ , H) nx ok I = gcallω p inv H nx ok I
+    -- a copy's trampoline's inner call (D417)
+    gcall (p-tramp p _) inv (tc1 {X = X} {C} _ , H) nx ok I = gcallc {X = X} {C} p inv H nx ok I
     gcall {r = r} {fs = fs} (p-tramp p _) inv (tf1 {X = X} {C} _ , H) nx ok I = case tf-call {X} {C} p H of λ where
       (N , fs′ , run , H′ , CD) →
         N , fs′ , run , record { g-pt = p-block p (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
