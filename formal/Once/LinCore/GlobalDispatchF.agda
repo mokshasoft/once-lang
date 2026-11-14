@@ -100,7 +100,7 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
-  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other)
+  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other; k-log)
   open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
   open Img {FS} ds f ldConst ld-nl using (image-label)
   open Frames {FS} using (Called)
@@ -131,7 +131,7 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Related
 
   Arrives : ∀ {T sh U′} → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
-  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′
+  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′ × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
   private
     nat-r0 : ∀ {a b : ℕ} → a + b ≡ 0 → b ≡ 0
@@ -206,7 +206,7 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                     ; g-ret = mk-trampf m d FI (trans (fr-ret FI) (cong (_∷ fret fs) pe)) C
                                                 (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
                                                 (subst (FreshR r) (sym nx) (fresh-ret inv)) ok
-                                    ; g-blk = fblk FI I }
+                                    ; g-blk = fblk FI I } , fr-log FI
 
   -- ★ a ν's free (`nfree`) at a dispatch site
   gfree-n : ∀ {T Es F S S′ V} {c : Codeᴵ (Es ∣ One ∷ S′) V} {r : Ret V T} {es : Slots Es} {i}
@@ -235,7 +235,7 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                     ; g-ret = mk-trampf m d FI (trans (fr-ret FI) (cong (_∷ fret fs) pe)) C
                                                 (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
                                                 (subst (FreshR r) (sym nx) (fresh-ret inv)) ok
-                                    ; g-blk = fblk FI I }
+                                    ; g-blk = fblk FI I } , fr-log FI
 
   private
     seven : ∀ q → q + 7 ≡ suc (suc (suc (suc (suc (suc (suc q))))))
@@ -294,7 +294,7 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     case tf-open {X} {C} p T0 of λ where
       (N , fs′ , run , H′ , Rn) →
         N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (tf1 {X = X} {C} p , H′) ; g-next = trans (r-next Rn) nx
-                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I }
+                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I } , k-log (r-keep Rn)
 
   gfopenν-t : ∀ {T Es F S S′ V} {k : Codeᴵ (Es ∣ (Coalg F S ⊗t S) ∷ S′) V} {r : Ret V T} {i}
                 {x : MV (Coalg F S ⊗t S)} {n h fs} {σ} {κ : Key σ} {p : under κ ∈ allK U}
@@ -309,7 +309,7 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     case tf-open {Coalg F S ⊗t S} {C} p T0 of λ where
       (N , fs′ , run , H′ , Rn) →
         N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (tf1 {X = Coalg F S ⊗t S} {C} p , H′) ; g-next = trans (r-next Rn) nx
-                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I }
+                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I } , k-log (r-keep Rn)
 
   -- ★ A FREE'S TRAMPOLINE'S CELL PART (i-fopen, i-fopenν): at its depth 0; at a
   -- root's path it is absurd (D422)

@@ -161,7 +161,7 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     open Related
 
     ArrivesAt : ∀ {T sh U′} → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
-    ArrivesAt c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′
+    ArrivesAt c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′ × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
     -- a call's cases, each by itself
     private
@@ -176,7 +176,7 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           N , fs′ , run , record { g-pt = p-block (FrS.callee s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
                                  ; g-ret = mk-call (FrS.callee s) (s-start s) refl CD (S.Here.h-cfg H)
                                              (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
+                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I } , cd-log CD
 
       gcall-sv : ∀ {T E A B Es S V} {κ : Key (bsig (just E) A B)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} {r : Ret V T}
                    {es : Slots (E ∷ Es)} {a : MV A} {os : Stk S} {n h fs} (s : Sub main (call κ ⨾ k))
@@ -189,7 +189,7 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           N , fs′ , run , record { g-pt = p-block (FrS.callee s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
                                  ; g-ret = mk-call (FrS.callee s) (s-start s) refl CD (S.Here.h-cfg H)
                                              (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
+                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I } , cd-log CD
 
       gcall-bn : ∀ {T A B Es S V} {κ : Key (bsig nothing A B)} {k : Codeᴵ (Es ∣ B ∷ S) V} {r : Ret V T}
                    {es : Slots Es} {a : MV A} {os : Stk S} {n h fs} {σ′} {κ′ : Key σ′} (p′ : (σ′ , κ′) ∈ allK U) (s : Sub (blockᴵ κ′) (call κ ⨾ k))
@@ -202,7 +202,7 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           N , fs′ , run , record { g-pt = p-block (FrK.callee p′ s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
                                  ; g-ret = mk-call (FrK.callee p′ s) (s-block p′ s) refl CD (K.Here.h-cfg {p = p′} H)
                                              (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
+                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I } , cd-log CD
 
       gcall-bv : ∀ {T E A B Es S V} {κ : Key (bsig (just E) A B)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} {r : Ret V T}
                    {es : Slots (E ∷ Es)} {a : MV A} {os : Stk S} {n h fs} {σ′} {κ′ : Key σ′} (p′ : (σ′ , κ′) ∈ allK U) (s : Sub (blockᴵ κ′) (call κ ⨾ k))
@@ -215,7 +215,7 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           N , fs′ , run , record { g-pt = p-block (FrK.callee p′ s) (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
                                  ; g-ret = mk-call (FrK.callee p′ s) (s-block p′ s) refl CD (K.Here.h-cfg {p = p′} H)
                                              (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
+                                             (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I } , cd-log CD
 
     -- ★ a call: from either kind of root, into either kind of block
     gcall : ∀ {T t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} {r : Ret V T}
@@ -236,7 +236,7 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                                       (sym (Data.Nat.Properties.n∸n≡0 (t1M X A B))) CD)
                                            (HereF.f-cfg H)
                                            (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I } , cd-log CD
     gcall {r = r} {fs = fs} (p-tramp p _) inv (to1 {F = F} {S} _ , H) nx ok I = case to-call p H of λ where
       (N , fs′ , run , H′ , CD) →
         N , fs′ , run , record { g-pt = p-block p (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
@@ -245,7 +245,7 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                                       (sym (Data.Nat.Properties.n∸n≡0 (tOM F S))) CD)
                                            (HereF.f-cfg H)
                                            (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I } , cd-log CD
     -- a many-use body's trampoline's inner call (D425)
     gcall (p-tramp p _) inv (tw1 _ , H) nx ok I = gcallω p inv H nx ok I
     -- a copy's trampoline's inner call (D417)
@@ -258,4 +258,4 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                                       (sym (trans (cong (wsz X ∸_) (Data.Nat.Properties.⊔-identityʳ (wsz X))) (Data.Nat.Properties.n∸n≡0 (wsz X)))) CD)
                                            (HereF.f-cfg H)
                                            (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I } , cd-log CD

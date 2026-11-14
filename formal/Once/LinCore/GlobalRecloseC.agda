@@ -133,7 +133,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Related
 
   Arrives : ∀ {T sh U′} → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
-  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′
+  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′ × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
   private
     nat-r0 : ∀ {a b : ℕ} → a + b ≡ 0 → b ≡ 0
@@ -145,7 +145,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open OpenC {FS} ds f ldConst ld-nl wordOf using (FnP; fn-inv; NuP; nu-inv; hd-eq; tail-c; trampc-keep)
   open Rel {FS} U wordOf using (W; At; CodeOf; vw-frame)
   open import Once.LinCore.LowerSimR fmt ans bw using (module SimR)
-  open SimR {FS} U wordOf using (ReCl; rc-alloc; rc-ret; rc-halt; rc-s₃; rc-slot; rc-other; rc-cell; rc-fr; inb-fresh; ref-of)
+  open SimR {FS} U wordOf using (ReCl; rc-alloc; rc-ret; rc-halt; rc-s₃; rc-slot; rc-other; rc-cell; rc-fr; rc-log; inb-fresh; ref-of)
   open import Data.Sum using (inj₁; inj₂)
 
   private
@@ -213,7 +213,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                          (rc-slot RC w (s₃≢w w)))
                                   (old-of (rc-fr RC)) (fresh-ret inv))
                    ; g-blk = inb-fresh {fs} {fs′} (AllocState.next-heap-ref (falloc fs)) (hdr + length (TrC2.c2-wx T2)) refl (cong AllocState.next-heap-ref (rc-alloc RC))
-                               (cong AllocState.block-size (rc-alloc RC)) (rc-fr RC) I }
+                               (cong AllocState.block-size (rc-alloc RC)) (rc-fr RC) I } , rc-log RC
         where
           at₀ = FnP.fp-at P
           e₁ = proj₁ (proj₂ at₀)
@@ -266,7 +266,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                          (rc-slot RC w (s₃≢w w)))
                                   (old-of (rc-fr RC)) (fresh-ret inv))
                    ; g-blk = inb-fresh {fs} {fs′} (AllocState.next-heap-ref (falloc fs)) (hdr + length (TrC2.c2-wx T2)) refl (cong AllocState.next-heap-ref (rc-alloc RC))
-                               (cong AllocState.block-size (rc-alloc RC)) (rc-fr RC) I }
+                               (cong AllocState.block-size (rc-alloc RC)) (rc-fr RC) I } , rc-log RC
         where
           at₀ = NuP.np-at P
           e₁ = proj₁ (proj₂ at₀)

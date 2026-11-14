@@ -23038,3 +23038,19 @@ discharged where the log is the run's history.
 ### Alternatives
 * A generic lemma over `FlatSteps` (no sigop executed ⇒ the log stands): needs every step's executed
   instructions, which the step records do not keep; as much threading, less local.
+
+### Refinement (2026-11-14, steps 3–4 as built)
+* **Not an index on `Related`: a log equation on the arrival.** Every `Arrives`/`Onward`/`ArrivesAt` of
+  the `Global*` steps carries `ev-log (floc fs′) ≡ ev-log (floc fs)` (from the records' `*-log` fields);
+  `WordStep.Lands E` carries `ev-log (floc fs′) ≡ ev-log (floc fs) ++ E`. The relation's type stays as
+  it was, and a run composes the equations (`RunWord.log-join`).
+* **The observable part is `ios`** (the trace's `io`/`stp` events, `Events.ios`), shown to the log by
+  `StepOp.ioEvent` (`io-call o a _ ↦ Trace.callEvent o a`, `io-halt o a ↦ Trace.haltEvent o a`):
+  `evsOf t = map ioEvent (ios t)`. A step lands at `evsOf t`.
+* **An op's events are part of the world's agreement** (D426): `OpVal s x y E` and `OpHalt s x E` add
+  `sigop-events (info s) (at-arg fs d) ≡ E`, and `Agrees` takes `E = evsOf t` of the op's trace.
+* **Every other covered step shows nothing**: its trace is a cell's or a temporary's events (`refl`),
+  or, for a local `prim`, the run of an atomic primitive (`StepIos.prim-ios`, by `PrimIn`, which the
+  point's lowering carries: `here-prim`).
+* The whole run: `RunWord.from-start` lands at `ev-log (floc start-fs) ++ evsOf t` (`start-fs`'s log
+  is `[]`).

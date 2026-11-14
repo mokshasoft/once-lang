@@ -93,7 +93,7 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
-  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other; k-inb)
+  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other; k-inb; k-log)
   open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
   open Img {FS} ds f ldConst ld-nl using (image-label)
 
@@ -145,7 +145,7 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     open Related
 
     Onward : ∀ {T sh U′} → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
-    Onward c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′
+    Onward c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′ × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
     private
       fresh-at : ∀ {T sh U′} {m : Cfg sh} {r : Ret U′ T} {n h fs} → InvI m r n h → AllocState.next-heap-ref (falloc fs) ≡ n
@@ -160,7 +160,7 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → InBlk fs
               → Onward c′ r′ m′ n′ fs
     gat-start s st l inv H nx ok I = case AS.glocal st l s inv H nx ok I of λ where
-      (N , fs′ , run , H′ , nx′ , ok′ , I′) → N , fs′ , run , record { g-pt = p-start (at (AS.LS.succ st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ ; g-blk = I′ }
+      (N , fs′ , run , H′ , nx′ , ok′ , I′ , lg) → N , fs′ , run , record { g-pt = p-start (at (AS.LS.succ st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ ; g-blk = I′ } , lg
 
     gat-block : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
                   {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) (s : Sub (blockᴵ κ) c) (st : StepI c r m n t c′ r′ m′ n′) (l : Local st)
@@ -169,7 +169,7 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → InBlk fs
               → Onward c′ r′ m′ n′ fs
     gat-block p s st l inv H nx ok I = case AK.glocal p st l s inv H nx ok I of λ where
-      (N , fs′ , run , H′ , nx′ , ok′ , I′) → N , fs′ , run , record { g-pt = p-block p (at (AK.LS.succ p st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ ; g-blk = I′ }
+      (N , fs′ , run , H′ , nx′ , ok′ , I′ , lg) → N , fs′ , run , record { g-pt = p-block p (at (AK.LS.succ p st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ ; g-blk = I′ } , lg
 
     -- ★ the one step that stays at a trampoline's point: a many-use body's
     -- `epop` (D425), no flat step (its code is the way out's: one address)
@@ -200,14 +200,14 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       epop-inv (λ m₀ c′ r′ m′ n′ → HereTr (tw2 p) m₀ fs → AllocState.next-heap-ref (falloc fs) ≡ n → Onward c′ r′ m′ n′ fs)
         (λ { {os = v ∷ˢ os′} H′ nx′ →
                0 , fs , FlatStepsAPI.[] ,
-               record { g-pt = p-tramp p (at (next (next (next whole)))) ; g-here = tw3 p , H′ ; g-next = nx′ ; g-ret = ok ; g-blk = I } })
+               record { g-pt = p-tramp p (at (next (next (next whole)))) ; g-here = tw3 p , H′ ; g-next = nx′ ; g-ret = ok ; g-blk = I } , refl })
         st H nx
     -- a copy's `epop` (its contents' view dropped)
     gtr-local {r = r} {n = n} {fs = fs} (tc2 p) st _ H nx ok I =
       epop-inv (λ m₀ c′ r′ m′ n′ → HereTr (tc2 p) m₀ fs → AllocState.next-heap-ref (falloc fs) ≡ n → Onward c′ r′ m′ n′ fs)
         (λ { {es = vw cv es′} {os = v ∷ˢ os′} H′ nx′ →
                0 , fs , FlatStepsAPI.[] ,
-               record { g-pt = p-tramp p (at (next (next (next whole)))) ; g-here = tc3 p , H′ ; g-next = nx′ ; g-ret = ok ; g-blk = I } })
+               record { g-pt = p-tramp p (at (next (next (next whole)))) ; g-here = tc3 p , H′ ; g-next = nx′ ; g-ret = ok ; g-blk = I } , refl })
         st H nx
 
     -- ★ a straight step (local, not a `case`): only at a path; no case
@@ -241,10 +241,10 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gcase₁ (p-block p (at s)) inv H nx ok I = gat-block p s StepI.i-case₁ tt inv H nx ok I
     gcase₁ {r = r} {fs = fs} (p-start (disp s)) inv H nx ok I = case SL.disp-exit image-label s H of λ where
       (N , fs′ , run , H′ , K , nx′ , old , tp) →
-        N , fs′ , run , record { g-pt = p-start (at (next s)) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok ; g-blk = k-inb K I }
+        N , fs′ , run , record { g-pt = p-start (at (next s)) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok ; g-blk = k-inb K I } , k-log K
     gcase₁ {r = r} {fs = fs} (p-block p (disp s)) inv H nx ok I = case KL.disp-exit p image-label s H of λ where
       (N , fs′ , run , H′ , K , nx′ , old , tp) →
-        N , fs′ , run , record { g-pt = p-block p (at (next s)) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok ; g-blk = k-inb K I }
+        N , fs′ , run , record { g-pt = p-block p (at (next s)) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok ; g-blk = k-inb K I } , k-log K
     gcase₁ (p-tramp p pt) inv (tp , H) nx ok I = ⊥-elim (tr-notcase tp)
 
     -- ★ a `case`'s right: a local step at a path, or a loop's dispatch again
@@ -258,10 +258,10 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gcase₂ (p-block p (at s)) inv H nx ok I = gat-block p s StepI.i-case₂ tt inv H nx ok I
     gcase₂ {r = r} {fs = fs} (p-start (disp s)) inv H nx ok I = case SL.disp-again image-label s H of λ where
       (N , fs′ , run , H′ , K , nx′ , old , tp) →
-        N , fs′ , run , record { g-pt = p-start (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok ; g-blk = k-inb K I }
+        N , fs′ , run , record { g-pt = p-start (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok ; g-blk = k-inb K I } , k-log K
     gcase₂ {r = r} {fs = fs} (p-block p (disp s)) inv H nx ok I = case KL.disp-again p image-label s H of λ where
       (N , fs′ , run , H′ , K , nx′ , old , tp) →
-        N , fs′ , run , record { g-pt = p-block p (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok ; g-blk = k-inb K I }
+        N , fs′ , run , record { g-pt = p-block p (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok ; g-blk = k-inb K I } , k-log K
     gcase₂ (p-tramp p pt) inv (tp , H) nx ok I = ⊥-elim (tr-notcase tp)
 
     -- ★ the loop's turn: the body, its dispatch pushed
@@ -274,11 +274,11 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gloop {r = r} {fs = fs} (p-start (at s)) inv H nx ok I = case SL.loop-enter s H of λ where
       (N , fs′ , run , H′ , K , nx′ , old , tp) →
         N , fs′ , run , record { g-pt = p-start (at (body s)) ; g-here = H′ ; g-next = trans nx′ nx
-                               ; g-ret = ok-loop (p-start (disp s)) (refl , refl) (ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok) ; g-blk = k-inb K I }
+                               ; g-ret = ok-loop (p-start (disp s)) (refl , refl) (ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok) ; g-blk = k-inb K I } , k-log K
     gloop {r = r} {fs = fs} (p-block p (at s)) inv H nx ok I = case KL.loop-enter p s H of λ where
       (N , fs′ , run , H′ , K , nx′ , old , tp) →
         N , fs′ , run , record { g-pt = p-block p (at (body s)) ; g-here = H′ ; g-next = trans nx′ nx
-                               ; g-ret = ok-loop (p-block p (disp s)) (refl , refl) (ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok) ; g-blk = k-inb K I }
+                               ; g-ret = ok-loop (p-block p (disp s)) (refl , refl) (ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok) ; g-blk = k-inb K I } , k-log K
     gloop (p-tramp _ _) inv () nx ok I
 
     -- ★ a body's end: the jump to its loop's dispatch
@@ -291,12 +291,12 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       case SL.end-jump e image-label efin (SL.dispIn s′) H of λ where
         (fs′ , run , Hq , K , nx′ , old , tp) →
           1 , fs′ , run , record { g-pt = p-start (disp s′) ; g-here = Hq ; g-next = trans nx′ nx
-                                 ; g-ret = ret-step K old tp (fresh-at {r = k ∷ⁱ r} {fs = fs} inv nx) rest ; g-blk = k-inb K I }
+                                 ; g-ret = ret-step K old tp (fresh-at {r = k ∷ⁱ r} {fs = fs} inv nx) rest ; g-blk = k-inb K I } , k-log K
     greti {k = k} {r = r} {fs = fs} (p-block p (at e)) inv H nx (ok-loop (p-block p′ (disp s′)) (refl , efin) rest) I =
       case KL.end-jump p e image-label efin (KL.dispIn p s′) H of λ where
         (fs′ , run , Hq , K , nx′ , old , tp) →
           1 , fs′ , run , record { g-pt = p-block p (disp s′) ; g-here = Hq ; g-next = trans nx′ nx
-                                 ; g-ret = ret-step K old tp (fresh-at {r = k ∷ⁱ r} {fs = fs} inv nx) rest ; g-blk = k-inb K I }
+                                 ; g-ret = ret-step K old tp (fresh-at {r = k ∷ⁱ r} {fs = fs} inv nx) rest ; g-blk = k-inb K I } , k-log K
     greti (p-start (at e)) inv H nx (ok-loop (p-block _ (disp _)) (() , _) rest) I
     greti (p-start (at e)) inv H nx (ok-loop (p-start (at _)) () rest) I
     greti (p-start (at e)) inv H nx (ok-loop (p-block _ (at _)) () rest) I

@@ -110,11 +110,13 @@ module StartR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   -- ★ one step (`c-start`) to main's first point, related
   start-related : Σ FlatState λ fs₁ → FlatSteps image 1 start-fs fs₁ × Related main []ʳ (vw mone []ᵉ ∥ mone ∷ˢ []ˢ) 0 fs₁
+                × LocState.ev-log (floc fs₁) ≡ LocState.ev-log (floc start-fs)
   start-related =
     fs₁ , FlatStepsAPI.step-at {FS} fs₁ (refl , refl) refl FlatStepsAPI.[] ,
     record { g-pt = p-start (at whole)
            ; g-here = record { h-pc = sym (trans (S′.pos-def whole) refl) ; h-run = refl
                              ; h-cfg = record { c-env = (([] , Rel.vone , tt) , tt) ; c-stk = (([] , Rel.vone , tt) , tt) ; c-efit = Data.Nat.z≤n ; c-sfit = Data.Nat.z≤n } }
-           ; g-next = refl ; g-ret = ok-top refl refl ; g-blk = λ hl () }
+           ; g-next = refl ; g-ret = ok-top refl refl ; g-blk = λ hl () } ,
+    refl
     where
       fs₁ = FlatMachine.flat-exec-instr {FS} (instr-ctrl (c-start (fbudget (frameOf main)))) image start-fs

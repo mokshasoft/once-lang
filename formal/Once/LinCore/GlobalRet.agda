@@ -113,7 +113,7 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Img {FS} ds f ldConst ld-nl using (image-label)
   open Frames {FS} using (Called)
   open Called
-  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next)
+  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next; co-log)
   open import Once.LinCore.LowerSimH fmt ans bw using (module SimH)
   open SimH {FS} U wordOf using (open1-sim)
   open import Once.LinCore.LowAt fmt ans bw using (in-trans; in-r)
@@ -166,7 +166,7 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         case FrS.return s e cfc rets′ sv′ sl p eC eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″)) area ev sk of λ where
           (N , fs′ , run , H′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-start (at (next s)) ; g-here = H′ ; g-next = trans (co-next CO) nx
-                                   ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I }
+                                   ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I } , co-log CO
 
       gret-sb : ∀ {T t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} {r : Ret V T}
                   {es : Slots (t ⊳ Es)} {os : Stk S} {e′ : Slots (t ⊳ [])} {b : MV B} {n fs}
@@ -191,7 +191,7 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         case FrK.return p′ s e cfc rets′ sv′ sl p eC eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″)) area ev sk of λ where
           (N , fs′ , run , H′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-block p′ (at (next s)) ; g-here = H′ ; g-next = trans (co-next CO) nx
-                                   ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I }
+                                   ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I } , co-log CO
 
     private
       rc-start : ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} (s : Sub main (call κ ⨾ k)) → GretC (s-start s)

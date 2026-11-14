@@ -817,7 +817,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
-  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other; k-inb)
+  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other; k-inb; k-log)
   open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
   open Img {FS} ds f ldConst ld-nl using (image-label)
 
@@ -860,7 +860,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                × AllocState.next-heap-ref (falloc fs′) ≡ n′
                × RetOK R (RA.lfin (L.lowAt (LS.succ st l s))) r′ (AllocState.current-frame (falloc fs′)) (fret fs′)
                        (AllocState.saved-frames (falloc fs′)) fs′
-               × InBlk fs′
+               × InBlk fs′ × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
     glocal {r = r} {fs = fs} st l s inv H nx ok I = fin (LS.local-step ld image-label st l s H nx fr)
       where
         fr : ∀ i → AllocState.next-heap-ref (falloc fs) ≤ serial i → _
@@ -872,7 +872,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           N , fs′ , run , H′ , nx′ ,
           ctx-keep K (LS.Succ.carry (LS.succ′ st l s) (λ fin r₀ → RetOK R fin r₀ _ _ _ fs′)
             (ret-top (k-other K) (λ x le → top-at K tp x (subst (_≤ x) eφ le)) old frR ok)) ,
-          k-inb K I
+          k-inb K I , k-log K
 
   -- the return stack over a run that kept what `Keep` says, the old heap and the frame's top
   ret-step : ∀ {T U′ R fin} {r : Ret U′ T} {fs fs′}

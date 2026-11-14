@@ -98,7 +98,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
-  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other)
+  open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other; k-log)
   open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
   open Img {FS} ds f ldConst ld-nl using (image-label)
   open Frames {FS} using (Called)
@@ -128,7 +128,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Related
 
   Arrives : ∀ {T sh U′} → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
-  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′
+  Arrives c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × Related c r m n fs′ × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
   private
     nat-r0 : ∀ {a b : ℕ} → a + b ≡ 0 → b ≡ 0
@@ -179,7 +179,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (tp0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m tm-1 (d-start s) (called-re pos-eq refl CD) fitM (S.Here.h-cfg H)
                                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I } , cd-log CD
     where
       import Data.Nat.Properties
       φ = frameOf main
@@ -210,7 +210,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (tp0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m tm-1 (d-block p′ s) (called-re pos-eq refl CD) fitM (K.Here.h-cfg {p = p′} H)
                                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I } , cd-log CD
     where
       import Data.Nat.Properties
       φ = frameOf (blockᴵ κ′)
@@ -253,7 +253,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     case tr-open1 p T0 of λ where
       (N , fs′ , run , H′ , Rn) →
         N , fs′ , run , record { g-pt = p-tramp {κ = ktr1 ds′ b γ} p (at (next whole)) ; g-here = (tp1 p , H′) ; g-next = trans (r-next Rn) nx
-                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I }
+                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I } , k-log (r-keep Rn)
 
   gnopen-t : ∀ {T Es F S S′ V} {k : Codeᴵ (Es ∣ (Coalg F S ⊗t S) ∷ S′) V} {r : Ret V T} {i}
                {x : MV (Coalg F S ⊗t S)} {n h fs} {σ} {κ : Key σ} {p : under κ ∈ allK U}
@@ -267,7 +267,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     case to-open p T0 of λ where
       (N , fs′ , run , H′ , Rn) →
         N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (to1 p , H′) ; g-next = trans (r-next Rn) nx
-                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I }
+                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I } , k-log (r-keep Rn)
 
   -- ★ A ONE-SHOT TRAMPOLINE'S CELL PART (i-open1): at its depth 0; at a root's
   -- path it is absurd (D422: a root's code has no cell part)
@@ -311,7 +311,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (to0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m tm-o (d-start s) (called-re pos-eq refl CD) fitM (S.Here.h-cfg H)
                                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I } , cd-log CD
     where
       import Data.Nat.Properties
       φ = frameOf main
@@ -342,7 +342,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         N , fs′ , run , record { g-pt = p-tramp m (at whole) ; g-here = (to0 m , T0) ; g-next = trans (cd-next CD) nx
                                ; g-ret = mk-tramp m tm-o (d-block p′ s) (called-re pos-eq refl CD) fitM (K.Here.h-cfg {p = p′} H)
                                            (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
-                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I } , cd-log CD
     where
       import Data.Nat.Properties
       φ = frameOf (blockᴵ κ′)
