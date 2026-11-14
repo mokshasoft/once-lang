@@ -510,6 +510,8 @@ mutual
   Plain (r-iter r stopped)              = Plain r
   Plain (r-cut r q)                     = Plain r
   Plain (r-tmp r w p)                   = Plain r
+  -- (D429) a call the world left unanswered: not the lowering's run (a linked program's)
+  Plain (r-opend {w = exhausted} p)     = ⊥
   -- every other rule has no sub-run, or none that holds a fold
   {-# CATCHALL #-}
   Plain _                               = ⊤

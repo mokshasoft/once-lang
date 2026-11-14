@@ -23124,3 +23124,11 @@ after the other, no fuel cuts the core's run where `approx k` cuts the meaning: 
 ### Alternatives
 * Weaken the apex's per-budget fact (some fuel shows a prefix): changes master's trust-relevant top
   statement (`BudgetApex`), for a property the core can simply match.
+
+### D429 refinement (2026-11-14): the image's halt is a halt
+The core's op may end where the world gave no answer (`OpPath.p-cut`: a run `exhausted`), which the image
+modelled as a halt (`i-opend` to `halted`). The flat machine does not halt there (an answering sigop never
+halts; it reads a sentinel answer), and master's run halts with the `unlinkedOp` event: the image's halt
+was not the machine's. Now `i-opend` takes only a HALTED path, and such runs are not the lowering's
+(`Machine.Plain (r-opend {w = exhausted})` is `⊥`, beside the in-place fold): a linked program's runs never
+meet an unanswered call (`Spends.UnCut`, owed at the top from linkedness). `spends-plain` takes it.

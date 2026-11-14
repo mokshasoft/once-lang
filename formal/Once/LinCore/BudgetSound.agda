@@ -47,6 +47,7 @@ open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
 open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; block≈; ≈ret; ≈step; ≈call; ≈halt)
 open import Once.LinCore.Total fmt ans bw using (World; WTr)
+open import Once.LinCore.Spends fmt ans bw using (UnCut; UnCutM)
 open import Once.LinCore.StepOp fmt ans bw using (evsOf; ioEvent)
 
 module W (ι : Interp) where
@@ -179,54 +180,6 @@ module W (ι : Interp) where
       at : _ → _ → _
       at (ca , refl) e₁ = trans (cong (TM.run-call ι h o a k) ca) (cong (consE (callEvent o a)) e₁)
   op-halt-run p-halt w = refl
-
--- ★ a run that met no call the world left unanswered (an op's path cut): what a linked program's runs are
-mutual
-  UnCut : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n o t} → Run ds f e v n o t → Set
-  UnCut (r-∘ rg (go-on rf))             = UnCut rg × UnCut rf
-  UnCut (r-∘ rg stopped)                = UnCut rg
-  UnCut (r-⊗ rf (go-on (fm-gives rg)))  = UnCut rf × UnCut rg
-  UnCut (r-⊗ rf (go-on (fm-stop rg)))   = UnCut rf × UnCut rg
-  UnCut (r-⊗ rf stopped)                = UnCut rf
-  UnCut (r-case₁ r)                     = UnCut r
-  UnCut (r-case₂ r)                     = UnCut r
-  UnCut (r-app q r)                     = UnCut r
-  UnCut (r-cata rm (go-on ra))          = UnCutM rm × UnCut ra
-  UnCut (r-cata rm stopped)             = UnCutM rm
-  UnCut (r-cata-reuse rm th)            = ⊥
-  UnCut (r-lend (fm-gives r))           = UnCut r
-  UnCut (r-lend (fm-stop r))            = UnCut r
-  UnCut (r-lift r)                      = UnCut r
-  UnCut (r-fst r)                       = UnCut r
-  UnCut (r-snd r)                       = UnCut r
-  UnCut (r-caseE₁ r)                    = UnCut r
-  UnCut (r-caseE₂ r)                    = UnCut r
-  UnCut (r-out r)                       = UnCut r
-  UnCut (r-bapp q r)                    = UnCut r
-  UnCut (r-ev r)                        = UnCut r
-  UnCut (r-bev r)                       = UnCut r
-  UnCut (r-nout r)                      = UnCut r
-  UnCut (r-iter r (go-on done))         = UnCut r
-  UnCut (r-iter r (go-on (again rn)))   = UnCut r × UnCut rn
-  UnCut (r-iter r stopped)              = UnCut r
-  UnCut (r-opend {w = exhausted} p)     = ⊥
-  UnCut (r-cut r q)                     = UnCut r
-  UnCut (r-tmp r w p)                   = UnCut r
-  {-# CATCHALL #-}
-  UnCut _                               = ⊤
-
-  UnCutM : ∀ {Γ} {ds : Defs Γ} {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t}
-         → RunMap ds F alg e G x n o t → Set
-  UnCutM (m-id r)                           = UnCut r
-  UnCutM (m-inl (fm-gives r))               = UnCutM r
-  UnCutM (m-inl (fm-stop r))                = UnCutM r
-  UnCutM (m-inr (fm-gives r))               = UnCutM r
-  UnCutM (m-inr (fm-stop r))                = UnCutM r
-  UnCutM (m-pair r (go-on (fm-gives r′)))   = UnCutM r × UnCutM r′
-  UnCutM (m-pair r (go-on (fm-stop r′)))    = UnCutM r × UnCutM r′
-  UnCutM (m-pair r stopped)                 = UnCutM r
-  {-# CATCHALL #-}
-  UnCutM _                                  = ⊤
 
 ------------------------------------------------------------------------
 -- ★★ THE BUDGETED SOUNDNESS

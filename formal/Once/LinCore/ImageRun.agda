@@ -68,10 +68,10 @@ data StepI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg
            → StepI (unit ⨾ k) r (es ∥ os) n [] k r (es ∥ mone ∷ˢ os) n
   i-prim   : ∀ {Γ} {ds : Defs Γ} {Es A B S U} {g : LTm Γ A B} {k : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es v w os n n′ t}
            → Run ds g mone v n (gives w n′) t → StepI (prim ds g ⨾ k) r (es ∥ v ∷ˢ os) n t k r (es ∥ w ∷ˢ os) n′
-  -- an op whose block ends: the image stops there
+  -- an op whose block HALTS: the image stops there (D429: a call left unanswered is not a halt)
   i-opend  : ∀ {Γ} {ds : Defs Γ} {Es} {s : Sig} {S U} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) U} {r : Ret U T} {es}
-               {x : MV ⌜ sdom s ⌝} {os n t w}
-           → OpPath (opF s (toF (sdom s) (er x))) t (inj₂ w)
+               {x : MV ⌜ sdom s ⌝} {os n t}
+           → OpPath (opF s (toF (sdom s) (er x))) t (inj₂ halted)
            → StepI (prim ds (lop s) ⨾ k) r (es ∥ x ∷ˢ os) n t halted r (es ∥ os) n
   i-untag  : ∀ {Es l X A S U} {k : Codeᴵ (Es ∣ (X ⊗t A) ∷ S) U} {r : Ret U T} {es} {x : MV X} {a : MV A} {os n}
            → StepI (untag {l = l} ⨾ k) r (es ∥ mpair (mct x) a ∷ˢ os) n [] k r (es ∥ mpair x a ∷ˢ os) n
