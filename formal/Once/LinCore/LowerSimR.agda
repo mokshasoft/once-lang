@@ -66,7 +66,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open ExecFinal {FS} using (in-block?)
   open import Once.LinCore.Moves {FS}
     using (Seg; slot; restore-step; loadat-step; storeat-step; InBlk; alloc-step; store-step; mov-out-step; store-same; store-other; store-frame
-          ; mvSP-run; MovedW; w-moved; w-rest; w-pc; w-alloc; w-in; w-ret) renaming (ln to nsteps; w-halt to wm-halt)
+          ; mvSP-run; MovedW; w-moved; w-rest; w-pc; w-alloc; w-in; w-ret) renaming (ln to nsteps; w-halt to wm-halt; w-log to wm-log)
   open Sim {FS} U wordOf using (slots-def; slots-at)
 
   ref-of : HeapLocation → ℕ
@@ -151,6 +151,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       wc-alloc : falloc a′ ≡ falloc a
       wc-ret   : fret a′ ≡ fret a
       wc-halt  : fhalted (floc a′) ≡ fhalted (floc a)
+      wc-log   : LocState.ev-log (floc a′) ≡ LocState.ev-log (floc a)
       wc-stack : stackMem (floc a′) ≡ stackMem (floc a)
       wc-in    : readReg (LocState.regs (floc a′)) Input1 ≡ SV-Ptr (AtDynamic (heap-loc (mkHeapRef r) 0))
       wc-new   : heapMem (floc a′) (heap-loc (mkHeapRef r) (k + 0)) ≡ just v
@@ -170,7 +171,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
     step-at a₁ (h , g₁) (restore-step a s₂ e₂) (step-at a₂ (h , g₂) (loadat-step a₁ k refl ev)
     (step-at a₃ (h , g₃) (restore-step a₂ s₃ e₃) (step-at a₄ (h , g₄) (storeat-step a₃ k refl ib) done))) ,
     record { wc-pc = refl ; wc-alloc = refl ; wc-ret = refl
-           ; wc-halt = cong fhalted (wl-heap (floc a₃) _ v) ; wc-stack = cong stackMem (wl-heap (floc a₃) _ v)
+           ; wc-halt = cong fhalted (wl-heap (floc a₃) _ v) ; wc-log = cong LocState.ev-log (wl-heap (floc a₃) _ v) ; wc-stack = cong stackMem (wl-heap (floc a₃) _ v)
            ; wc-in = cong (λ s′ → readReg (LocState.regs s′) Input1) (wl-heap (floc a₃) _ v)
            ; wc-new = readLoc-writeLoc-same (floc a₃) (AtDynamic (heap-loc (mkHeapRef r) (k + 0))) v
            ; wc-fr = λ k< → fr-store (floc a₃) r (k + 0) v k<
@@ -193,6 +194,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                                                   ; block-size = size-with (hdr + length wx) (AllocState.next-heap-ref (falloc fs)) (AllocState.block-size (falloc fs)) }
       rc-ret   : fret fs′ ≡ fret fs
       rc-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
+      rc-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
       rc-s₃    : slot fs′ s₃ ≡ just (cellPtr (sz , AllocState.next-heap-ref (falloc fs)))
       rc-slot  : ∀ x → ¬ s₃ ≡ x → slot fs′ x ≡ slot fs x
       rc-other : ∀ f x → ¬ AllocState.current-frame (falloc fs) ≡ f → stackMem (floc fs′) f x ≡ stackMem (floc fs) f x
@@ -324,6 +326,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                            ; rc-alloc = trans (w-alloc M) al-c
                            ; rc-ret = trans (w-ret M) (trans (wc-ret W₃) (trans (wc-ret W₂) (wc-ret W₁)))
                            ; rc-halt = trans (wm-halt M) (trans (cong fhalted wl₁₆) (trans (wc-halt W₃) (trans (wc-halt W₂) (wc-halt W₁))))
+                           ; rc-log = trans (wm-log M) (trans (cong LocState.ev-log wl₁₆) (trans (wc-log W₃) (trans (wc-log W₂) (wc-log W₁))))
                            ; rc-s₃ = trans (stM′ s₃) s₃₂
                            ; rc-slot = λ x ne → trans (stM′ x) (store-other (floc fs₁) cf s₃ _ x ne)
                            ; rc-other = λ f x ne → trans (stF f x) (store-frame (floc fs₁) cf s₃ _ f x ne)

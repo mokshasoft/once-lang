@@ -65,6 +65,7 @@ record ClosIn (fs fs′ : FlatState) (cell : StoredValue FS) (y b s₁ s₂ q : 
     cl-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
     cl-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
     cl-halt  : LocState.halted (floc fs′) ≡ LocState.halted (floc fs)
+    cl-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
 -- ★ the dispatch, into a trampoline that saves the area and the cell
 closure-in : ∀ prog (fs : FlatState) (x y : ℕ) (hl : HeapLocation) (ℓ : LabelId) (e : EntryId) (q b s₁ s₂ : ℕ) → ¬ s₁ ≡ s₂
@@ -85,7 +86,7 @@ closure-in prog fs x y hl ℓ e q b s₁ s₂ s≢ sx code (g₁ , g₂ , g₃ ,
          ; cl-s₂ = trans (store-other (floc fs₇) cf′ s₁ cell s₂ s≢) (store-same (floc fs₅) cf′ s₂ area)
          ; cl-other = λ f′ x′ ne → trans (store-frame (floc fs₇) cf′ s₁ cell f′ x′ ne)
                                      (trans (store-frame (floc fs₅) cf′ s₂ area f′ x′ ne) (clear-other (LocState.stackMem (floc fs)) cf′ b f′ x′ ne))
-         ; cl-heap = refl ; cl-next = refl ; cl-size = refl ; cl-halt = refl }
+         ; cl-heap = refl ; cl-next = refl ; cl-size = refl ; cl-halt = refl ; cl-log = refl }
   where
     cf = current-frame (falloc fs)
     cf′ = callee-frame cf b
@@ -121,6 +122,7 @@ record ClosInω (fs fs′ : FlatState) (cell : StoredValue FS) (y b s q : ℕ) :
     cw-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
     cw-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
     cw-halt  : LocState.halted (floc fs′) ≡ LocState.halted (floc fs)
+    cw-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
 closure-inω : ∀ prog (fs : FlatState) (x y : ℕ) (hl : HeapLocation) (ℓ : LabelId) (e : EntryId) (q b s : ℕ)
             → slot fs x ≡ just (SV-Ptr (AtDynamic hl)) → LocState.heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ)
@@ -137,7 +139,7 @@ closure-inω prog fs x y hl ℓ e q b s sx code (g₁ , g₂ , g₃ , g₄ , _) 
   record { cw-frame = refl ; cw-saved = refl ; cw-ret = refl ; cw-pc = refl ; cw-in = refl
          ; cw-s = store-same (floc fs₅) cf′ s area
          ; cw-other = λ f′ x′ ne → trans (store-frame (floc fs₅) cf′ s area f′ x′ ne) (clear-other (LocState.stackMem (floc fs)) cf′ b f′ x′ ne)
-         ; cw-heap = refl ; cw-next = refl ; cw-size = refl ; cw-halt = refl }
+         ; cw-heap = refl ; cw-next = refl ; cw-size = refl ; cw-halt = refl ; cw-log = refl }
   where
     cf = current-frame (falloc fs)
     cf′ = callee-frame cf b
@@ -171,6 +173,7 @@ record FreeIn (fs fs′ : FlatState) (cell : StoredValue FS) (b s q : ℕ) : Set
     fr-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
     fr-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
     fr-halt  : LocState.halted (floc fs′) ≡ LocState.halted (floc fs)
+    fr-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
 free-in : ∀ prog (fs : FlatState) (c : ℕ) (hl : HeapLocation) (ℓ : LabelId) (e : EntryId) (q b s : ℕ)
         → slot fs c ≡ just (SV-Ptr (AtDynamic hl))
@@ -192,7 +195,7 @@ free-in prog fs c hl ℓ e q b s sx ib code (g₁ , g₂ , g₃ , g₄ , g₅ , 
   record { fr-frame = refl ; fr-saved = refl ; fr-ret = refl ; fr-pc = refl ; fr-in = refl
          ; fr-s = store-same (floc fs₈) cf′ s cell
          ; fr-other = λ f′ x′ ne → trans (store-frame (floc fs₈) cf′ s cell f′ x′ ne) (clear-other (LocState.stackMem (floc fs)) cf′ b f′ x′ ne)
-         ; fr-heap = refl ; fr-next = refl ; fr-size = refl ; fr-halt = refl }
+         ; fr-heap = refl ; fr-next = refl ; fr-size = refl ; fr-halt = refl ; fr-log = refl }
   where
     cf = current-frame (falloc fs)
     cf′ = callee-frame cf b
@@ -230,6 +233,7 @@ record CopyIn (fs fs′ : FlatState) (cell : StoredValue FS) (d b s₁ s₂ q : 
     cy-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
     cy-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
     cy-halt  : LocState.halted (floc fs′) ≡ LocState.halted (floc fs)
+    cy-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
 copy-in : ∀ prog (fs : FlatState) (c d : ℕ) (hl : HeapLocation) (ℓ : LabelId) (e : EntryId) (q b s₁ s₂ : ℕ) → ¬ s₁ ≡ s₂
         → slot fs c ≡ just (SV-Ptr (AtDynamic hl))
@@ -255,7 +259,7 @@ copy-in prog fs c d hl ℓ e q b s₁ s₂ s≢ sx ib code (g₁ , g₂ , g₃ ,
          ; cy-s₂ = trans (store-other (floc fs₁₁) cf′ s₁ dst s₂ s≢) (store-same (floc fs₉) cf′ s₂ cell)
          ; cy-other = λ f′ x′ ne → trans (store-frame (floc fs₁₁) cf′ s₁ dst f′ x′ ne)
                                      (trans (store-frame (floc fs₉) cf′ s₂ cell f′ x′ ne) (clear-other (LocState.stackMem (floc fs)) cf′ b f′ x′ ne))
-         ; cy-heap = refl ; cy-next = refl ; cy-size = refl ; cy-halt = refl }
+         ; cy-heap = refl ; cy-next = refl ; cy-size = refl ; cy-halt = refl ; cy-log = refl }
   where
     cf = current-frame (falloc fs)
     cf′ = callee-frame cf b

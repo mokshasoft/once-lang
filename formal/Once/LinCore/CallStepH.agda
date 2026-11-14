@@ -78,6 +78,7 @@ module FramesH {FS : FrameSemantics} where
       dh-next   : AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
       dh-old    : Old (AllocState.next-heap-ref (falloc fs)) fs fs′
       dh-inb    : InBlk fs → InBlk fs′
+      dh-log    : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
 ------------------------------------------------------------------------
 -- 2. ★ THE CALL.
@@ -102,9 +103,9 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
   open Sim {FS} U wordOf using (slots-frame)
   open import Once.LinCore.LowerSimE {FS}
-    using (CallInH; call-in-h; call-in-c; callee-frame; callee-below; callee-≢; ch-frame; ch-saved; ch-ret; ch-pc; ch-in; ch-s₁; ch-s₂; ch-other; ch-heap; ch-next; ch-size; ch-halt)
+    using (CallInH; call-in-h; call-in-c; callee-frame; callee-below; callee-≢; ch-frame; ch-saved; ch-ret; ch-pc; ch-in; ch-s₁; ch-s₂; ch-other; ch-heap; ch-next; ch-size; ch-halt; ch-log)
   open import Once.LinCore.Moves {FS}
-    using (Seg; slot; Ran; r-keep; r-pc; r-next; r-old; k-halt; k-ret; k-saved; k-frame; k-other; r-inb; inb-pt)
+    using (Seg; slot; Ran; r-keep; r-pc; r-next; r-old; k-halt; k-log; k-ret; k-saved; k-frame; k-other; r-inb; inb-pt)
 
   private
     sv-ne : ∀ n → ¬ n ≡ suc n
@@ -177,7 +178,8 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                (subst (λ g → LocState.stackMem (floc fs₁) g (sv₁ φ′) ≡ just ap) (sym (ch-frame CH)) (ch-s₁ CH))
                ; dh-next   = trans (r-next Rn) (ch-next CH)
                ; dh-old    = λ hl lt′ → trans (r-old Rn hl (subst (_ <_) (sym (ch-next CH)) lt′)) (cong (λ h′ → h′ hl) (ch-heap CH))
-               ; dh-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h′ → h′ hl) (ch-heap CH)) (ch-next CH) (ch-size CH) I) }
+               ; dh-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h′ → h′ hl) (ch-heap CH)) (ch-next CH) (ch-size CH) I)
+               ; dh-log    = trans (k-log (r-keep Rn)) (ch-log CH) }
 
   -- ★ from a many-use trampoline's frame (below the area's, `cf`): its save slot 0
   -- the area's pointer, the contents' address in `Output` (D425)
