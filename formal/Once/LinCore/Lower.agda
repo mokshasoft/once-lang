@@ -42,7 +42,9 @@ open import Once.CCC.Machine.SMCore
   using ( AbstractInstr; AbstractTrace; instr-ctrl; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret
         ; c-call-fn; c-start; c-leave; load-from-slot; store-at-slot; lea-slot; restore-input; mov-to-input
         ; mov-to-output; load-at; store-at; addr-at; instr-alloc-heap; instr-free-heap; instr-load-tag-lit
-        ; instr-load-code-addr; instr-save-closure-reg; instr-call-closure; instr-sigop )
+        ; instr-load-code-addr; instr-save-closure-reg; instr-call-closure; instr-sigop; instr-reg-op; out-nz )
+open import Once.Arith.CmpOp using (CmpOp)
+open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
 
 module Once.LinCore.Lower
   (fmt : TargetNum) (ans : FFIAnswers)
@@ -54,6 +56,14 @@ open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_)
 open import Once.LinCore.Image fmt ans bw
 open import Once.LinCore.Keys fmt ans bw
 open import Once.LinCore.Layout fmt ans bw
+
+-- ★ D428: the sigop an op's code runs: its own, or a compare's block
+cmpOf : Sig → Maybe CmpOp
+cmpOf s = cmp-of (Once.SigOp.Info.SigOpInfo.sem (info s))
+
+opSig : Sig → Maybe CmpOp → Sig
+opSig s nothing  = s
+opSig s (just o) = sig (cmp-block-info o)
 
 -- a SigOp's base type as a flat type (`flat`, under a name no machine module shares)
 flatB : ∀ {A} → ST.Base ST.∅ₖ A → FTy Once.LinCore.Flat.Base
@@ -149,6 +159,17 @@ module Lowering (U : Univ)
   argIn (ST.b-* _ _) bot w = lea-slot (bot ∸ w)
   argIn (ST.b-+ _ _) bot w = lea-slot (bot ∸ w)
 
+  -- ★ D428: an op's code: its argument, then the sigop the machine runs — the op's own, or a
+  -- compare's block (master's `cmp-trace`: a structured pure codomain has no machine Output) —
+  -- then its answer stored: one word or none, or a compare's truth as its tag (`out-nz`)
+  tailOp : Sig → Maybe CmpOp → ℕ → AbstractTrace
+  tailOp s nothing  bot = answer (wsz ⌜ scod s ⌝) bot
+  tailOp s (just o) bot = instr-reg-op out-nz ∷ store-at-slot (bot ∸ 1) ∷ []
+
+  lowOp : Sig → Maybe CmpOp → ℕ → AbstractTrace
+  lowOp s m bot = argIn (Once.SigOp.Info.SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ mov-to-input
+                  ∷ instr-sigop (info (opSig s m)) ∷ tailOp s m bot
+
   -- a `prim`: a generator that touches at most one cell
   lowP : ∀ {Γ} (ds : Defs Γ) {A B} (g : LTm Γ A B) → Frame → (S : List LTy) → PrimIn ds g → AbstractTrace
   lowP ds ρl φ S p                = []
@@ -181,9 +202,7 @@ module Lowering (U : Univ)
   -- a SigOp: its argument's address in `Input1`, its answer in `Output`
   -- (one word, or none; a wider answer is not a SigOp's — the flat machine's
   -- answer is a register)
-  lowP ds (lop s) φ S p =
-    let bot = Tp φ S
-    in argIn (Once.SigOp.Info.SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ mov-to-input ∷ instr-sigop (info s) ∷ answer (wsz ⌜ scod s ⌝) bot
+  lowP ds (lop s) φ S p = lowOp s (cmpOf s) (Tp φ S)
   lowP ds (llam {X = X} b γ) φ S (kb , x) =
     let bot = Tp φ S ; wX = wsz X
     in header wX (idx kb) (idx (inC x)) (idx (inF x)) ++ mvSP (bot ∸ wX) hdr wX

@@ -24,6 +24,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Once.Arith.CmpOp using (CmpOp)
+open import Once.Type using (fits-int)
+open import Once.Arith.SigOp.Compare using (cmp-block-info)
 import Once.Spec.Type as ST
 open import Once.SigOp.Info using (module SigOpInfo)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -44,6 +48,7 @@ open import Once.LinCore.Machine fmt ans bw using (Sh)
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; StepI; i-prim; i-opend)
 open import Once.LinCore.Keys fmt ans bw using (Univ)
+open import Once.LinCore.Lower fmt ans bw using (cmpOf; opSig)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
 
 -- ★ D427: what a trace shows the machine's log: its calls and halts, each the
@@ -84,18 +89,28 @@ module Agree {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   arg : Sig → FlatState → ℕ → List W → LocState FS
   arg s fs d wx = at-arg fs (argV (SigOpInfo.baseA (info s)) fs d wx)
 
-  -- an op's answer: the machine does not halt, the answer's words are none or its Output word
-  OpVal : (s : Sig) → MV ⌜ sdom s ⌝ → MV ⌜ scod s ⌝ → List SigOpEvent → FlatState → Set
-  OpVal s x y E fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
+  -- an op's answer, by the sigop its code runs (D428): the machine does not halt; the answer's
+  -- words are none or its Output word, or (a compare) its Output's truth as a tag
+  OpValM : (s : Sig) → Maybe CmpOp → MV ⌜ sdom s ⌝ → MV ⌜ scod s ⌝ → List SigOpEvent → FlatState → Set
+  OpValM s nothing x y E fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
                  → (exec-sigop-halts (info s) (arg s fs d wx) ≡ false)
                    × (sigop-events (info s) (arg s fs d wx) ≡ E)
                    × Σ (List W) λ wy → VW (LocState.heapMem (floc fs)) y wy
                        × ((wy ≡ []) ⊎ (wy ≡ exec-sigop-output (info s) (arg s fs d wx) ∷ []))
+  OpValM s (just o) x y E fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
+                 → (exec-sigop-halts (cmp-block-info o) (arg s fs d wx) ≡ false)
+                   × (sigop-events (cmp-block-info o) (arg s fs d wx) ≡ E)
+                   × Σ _ λ k → (exec-sigop-output (cmp-block-info o) (arg s fs d wx) ≡ SV-Lit fits-int k)
+                       × VW (LocState.heapMem (floc fs)) y (sv-nz (SV-Lit {FS} fits-int k) ∷ [])
+
+  OpVal : (s : Sig) → MV ⌜ sdom s ⌝ → MV ⌜ scod s ⌝ → List SigOpEvent → FlatState → Set
+  OpVal s = OpValM s (cmpOf s)
 
   -- a halting op: the machine halts
   OpHalt : (s : Sig) → MV ⌜ sdom s ⌝ → List SigOpEvent → FlatState → Set
   OpHalt s x E fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
-                → (exec-sigop-halts (info s) (arg s fs d wx) ≡ true) × (sigop-events (info s) (arg s fs d wx) ≡ E)
+                → (exec-sigop-halts (info (opSig s (cmpOf s))) (arg s fs d wx) ≡ true)
+                  × (sigop-events (info (opSig s (cmpOf s))) (arg s fs d wx) ≡ E)
 
   module _ {T : Sh} where
     Agrees : ∀ {sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
