@@ -52,7 +52,7 @@ module Once.LinCore.Total
 
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Spends fmt ans bw using (Spends; SpendsM; Again)
+open import Once.LinCore.Spends fmt ans bw using (module Budget)
 
 ------------------------------------------------------------------------
 -- 0. THE SAME VALUE, up to its cells' names: what a copy is of its original.
@@ -139,6 +139,33 @@ module _ (W : World) where
   Cause (gives _ _) = ⊤
   Cause (stop y)    = Because y
 
+  -- ★ why an op's path was cut: at a call the world did not answer (D431)
+  data CutAt {X : Set} : (b : T X) → ∀ {t} → OpPath b t (inj₂ exhausted) → Set where
+    c-here : ∀ {o a k} σ → answer σ o a ≡ nothing → CutAt (call o a k) p-cut
+    c-call : ∀ {o a k y t} {p : OpPath (k y) t (inj₂ exhausted)} → CutAt (k y) p → CutAt (call o a k) (p-call p)
+
+  cut-spent : ∀ {X} {b : T X} {t} {p : OpPath b t (inj₂ exhausted)} → CutAt b p → Spent
+  cut-spent (c-here σ e) = unanswered σ _ _ e
+  cut-spent (c-call c)   = cut-spent c
+
+  -- an op's: the budget's `Cut`
+  CutOp : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s (toF (sdom s) (er x))) t (inj₂ exhausted) → Set
+  CutOp {s} {x} p = CutAt (opF s (toF (sdom s) (er x))) p
+
+  open Budget (λ {s} {x} {t} p → CutOp {s} {x} {t} p) using (Spends; SpendsM; Again)
+
+  -- what an op's run ended by
+  OpCause : ∀ {X} {b : T X} {t} {r : X ⊎ Why} → OpPath b t r → Set
+  OpCause {b = b} {r = inj₂ exhausted} p = CutAt b p
+  OpCause {r = inj₂ halted} p = ⊤
+  OpCause {r = inj₁ _} p = ⊤
+
+  call-cause : ∀ {X} {o a} {k : Val.⟦ CallOp.ccod o ⟧ → T X} {y t} {r : X ⊎ Why} (p : OpPath (k y) t r)
+             → OpCause p → OpCause (p-call {o = o} {a = a} {k = k} p)
+  call-cause {r = inj₁ _} p c = tt
+  call-cause {r = inj₂ halted} p c = tt
+  call-cause {r = inj₂ exhausted} p c = c-call c
+
   -- ★ the world answered the trace's calls, from `σ` to `σ′` (D429): each call as the world's answer
   -- at its state; every other event leaves the world as it is
   WTr : WSt → Trace → WSt → Set
@@ -197,7 +224,7 @@ module _ (W : World) where
       oend   : X ⊎ Why
       opath  : OpPath b otrace oend
       oafter : WSt
-      ocause : Ends oend
+      ocause : OpCause opath
       oworld : WTr σ₀ otrace oafter
 
   runOp   : ∀ {X} (b : T X) → (σ : WSt) → OpRan b σ
@@ -207,8 +234,8 @@ module _ (W : World) where
   runOp (call o a k) σ = runCall o a k σ (answer σ o a) refl
   runOp (halt o a)   σ = opran _ (inj₂ halted) p-halt σ tt refl
   runCall o a k σ (just (y , σ₁)) eq = case runOp (k y) σ₁ of λ where
-    (opran t r p σ₂ c w) → opran (io o a y ∷ t) r (p-call p) σ₂ c (σ₁ , eq , w)
-  runCall o a k σ nothing eq = opran [] (inj₂ exhausted) p-cut σ (unanswered σ o a eq) refl
+    (opran t r p σ₂ c w) → opran (io o a y ∷ t) r (p-call p) σ₂ (call-cause p c) (σ₁ , eq , w)
+  runCall o a k σ nothing eq = opran [] (inj₂ exhausted) p-cut σ (c-here σ eq) refl
 
   record RanM {Γ} (ds : Defs Γ) {E A} (F : LF) (alg : Tm Γ E (LF∙ F A) A) (e : MV E)
               (G : LF) (x : MV (LF∙ G (μt F))) (n : ℕ) (k : ℕ) (σ₀ : WSt) : Set where
@@ -597,7 +624,8 @@ module _ (W : World) where
       go k (lconst v) e mone n σ ge gv = (ran _ _ r-const σ tt k ≤-refl refl refl , tt)
       go k (lop s) e x n σ ge gx = case runOp (opF s (toF (sdom s) (er x))) σ of λ where
         (opran t (inj₁ y) p σ₁ c ow) → (ran _ _ (r-op p) σ₁ tt k ≤-refl refl ow , goodF (scod s) y)
-        (opran t (inj₂ w) p σ₁ c ow) → (ran _ _ (r-opend p) σ₁ c k ≤-refl refl ow , tt)
+        (opran t (inj₂ halted) p σ₁ c ow) → (ran _ _ (r-opend p) σ₁ tt k ≤-refl refl ow , tt)
+        (opran t (inj₂ exhausted) p σ₁ c ow) → (ran _ _ (r-opend p) σ₁ (cut-spent c) k ≤-refl (c , refl) ow , tt)
       go k (liter f φ) e a n σ ge ga = loop k (<-wellFounded k) f φ e a n σ ge ga
 
       -- ★ the loop (D430): a round on the budget; a continuing round spends a unit of it, and

@@ -75,7 +75,8 @@ open import Once.LinCore.Keys fmt ans bw using (module Program; ops)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Denotation.Program using (Declared-at)
 open import Once.SigOp.Info using (module SigOpInfo)
-open import Once.LinCore.Spends fmt ans bw using (spends-plain; UnCut)
+open import Once.LinCore.Spends fmt ans bw using (module Budget; UnCut)
+open import Once.LinCore.Total fmt ans bw using (CutOp)
 module BudgetSound = Once.LinCore.BudgetSound fmt ans bw
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ)
@@ -99,6 +100,8 @@ module FromIR = Once.LinCore.FromIR fmt ans
 -- interpretation's given that history (D429)
 Wι : World
 Wι = BudgetSound.W.Wι ι
+
+open Budget (λ {s} {x} {t} p → CutOp Wι {s} {x} {t} p) using (spends-plain)
 
 -- how a run's outcome is observed to end
 endO : ∀ {B} → Outcome B → Maybe (End Data.Unit.⊤)
