@@ -55,6 +55,7 @@ open import Once.LinCore.Words fmt ans bw using (module Rel)
 open import Once.LinCore.Lower fmt ans bw using (flatB)
 import Once.LinCore.BudgetSound
 import Once.LinCore.ArgDecode
+import Once.Semantics.Machine
 
 module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
           (w-int   : ∀ (n : ⟦ int ⟧b)   → wordOf {int} n ≡ SV-Lit fits-int n)
@@ -124,3 +125,102 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
                 → OpVal (sig (mk-info' n callsV bA ST.b-Unit)) x (mvF funit y₀) (evsOf tp) fs
   op-calls-unit {n = n} {bA = bA} (p-call p-ret) w fs lg d wx px sx =
     refl , cong (events-at-arg (mk-info' n callsV bA ST.b-Unit)) (arg-dec bA fs d _ px sx) , [] , vone , inj₁ refl
+
+  -- ★ a pure op reads its argument as the sigop decodes it: a scalar from the register, any
+  -- other base value in place
+  open Once.LinCore.ArgDecode.Dec fmt ans bw {Mach} U wordOf w-int w-float using (read-in)
+  open AbstractExec {Mach} using (pure-sigop-out-aux; pure-sigop-out-val)
+  arg-in : ∀ {A B} (si : SigOpInfo A B) (fit : Once.Type.FitsInReg B) (fs : FlatState) d (wx : List W)
+             {x : MV ⌜ flatB (SigOpInfo.baseA si) ⌝}
+         → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
+         → pure-sigop-out-aux si (at-arg fs (argV (SigOpInfo.baseA si) fs d wx)) (just fit)
+             (sv-as-loc (argV (SigOpInfo.baseA si) fs d wx))
+           ≡ pure-sigop-out-val si fit (just (toV (SigOpInfo.baseA si) (toF (flatB (SigOpInfo.baseA si)) (er x))))
+  arg-in (mk-info' n c (ST.b-var {i = ()} _) bB) fit fs d wx px sx
+  arg-in (mk-info' n c ST.b-Unit bB) fit fs d wx vone sx = refl
+  arg-in (mk-info' n c ST.b-Void bB) fit fs d wx () sx
+  arg-in si@(mk-info' n c ST.b-Int bB) fit fs d (w ∷ []) (vbase {x = v}) sx =
+    cong (λ z → pure-sigop-out-aux si (at-arg fs z) (just fit) (sv-as-loc z)) (w-int v)
+  arg-in si@(mk-info' n c ST.b-Float bB) fit fs d (w ∷ []) (vbase {x = v}) sx =
+    cong (λ z → pure-sigop-out-aux si (at-arg fs z) (just fit) (sv-as-loc z)) (w-float v)
+  arg-in si@(mk-info' n c (ST.b-* a b) bB) fit fs d wx px sx =
+    cong (pure-sigop-out-val si fit) (read-in (ST.b-* a b) (at-arg fs _) (AllocState.current-frame (FlatMachine.falloc fs)) d px sx)
+  arg-in si@(mk-info' n c (ST.b-+ a b) bB) fit fs d wx px sx =
+    cong (pure-sigop-out-val si fit) (read-in (ST.b-+ a b) (at-arg fs _) (AllocState.current-frame (FlatMachine.falloc fs)) d px sx)
+
+  -- ★ a pure op (not a compare) whose value fits a register or is none
+  open import Once.SigOp.Info using (effect-of; semM-of; Pure)
+  open import Once.Arith.SigOp.Compare using (cmp-of)
+  open import Once.Res using (returns)
+  import Once.Denotation.DenotTrace as DT
+  open AbstractExec {Mach} using (exec-sigop-halts-of; sigop-events-of; exec-sigop-output-of; unread?)
+  open Agree {Mach} U wordOf using (OpValM)
+
+  private
+    ret-path : ∀ {X : Set} {v : X} {tp y₀} → OpPath (TM.ret v) tp (inj₁ y₀) → (tp ≡ []) × (y₀ ≡ v)
+    ret-path p-ret = refl , refl
+
+  -- the value both readers give, at the argument
+  PureAgree : ∀ {A B} (n : _) (c : SigOpSem A B) (bA : ST.Base ST.∅ₖ A) (bB : ST.Base ST.∅ₖ B) → _ → Set
+  PureAgree {B = B} n c bA bB a =
+    Σ (Once.Semantics.Machine.⟦ B ⟧) λ w →
+      (semM-of ans n c fmt a ≡ returns w) × (DT.sigOpSemT fmt ans (mk-info' n c bA bB) c a ≡ TM.ret w)
+
+  op-pure-int : ∀ {A} {n} {c : SigOpSem A ST.Int} {bA : ST.Base ST.∅ₖ A} {x : MV ⌜ flatB bA ⌝} {y₀ tp L L′}
+              → effect-of c ≡ Pure → cmp-of c ≡ nothing → PureAgree n c bA ST.b-Int (toV bA (toF (flatB bA) (er x)))
+              → OpPath (opF (sig (mk-info' n c bA ST.b-Int)) (toF (flatB bA) (er x))) tp (inj₁ y₀)
+              → WTr Wι L tp L′ → ∀ fs → LocState.ev-log (floc fs) ≡ L
+              → OpVal (sig (mk-info' n c bA ST.b-Int)) x (mvF (fw int) y₀) (evsOf tp) fs
+  op-pure-int {n = n} {c = c} {bA = bA} {x = x} {y₀ = y₀} {tp = tp} ep nc (w , sm , tr) p wt fs lg =
+    subst (λ m → OpValM (sig si) m x (mvF (fw int) y₀) (evsOf tp) fs) (sym nc) body
+    where
+      si = mk-info' n c bA ST.b-Int
+      rp = ret-path (subst (λ T → OpPath (fmapT (fromV ST.b-Int) T) tp (inj₁ y₀)) tr p)
+      body : OpValM (sig si) nothing x (mvF (fw int) y₀) (evsOf tp) fs
+      body d wx px sx =
+        trans (cong (λ e → exec-sigop-halts-of e si st) ep) (cong unread? (arg-dec bA fs d _ px sx)) ,
+        trans (cong (λ e → sigop-events-of e si st) ep) (cong evsOf (sym (proj₁ rp))) ,
+        _ , vbase ,
+        inj₂ (cong (_∷ []) (trans (cong wordOf (proj₂ rp)) (trans (w-int w)
+          (sym (trans (cong (λ e → exec-sigop-output-of e si st) ep)
+                 (trans (arg-in si fits-int fs d wx px sx)
+                        (cong (AbstractExec.res-sv {Mach} fits-int) sm)))))))
+        where st = arg (sig si) fs d wx
+
+  op-pure-float : ∀ {A} {n} {c : SigOpSem A ST.Float} {bA : ST.Base ST.∅ₖ A} {x : MV ⌜ flatB bA ⌝} {y₀ tp L L′}
+                → effect-of c ≡ Pure → cmp-of c ≡ nothing → PureAgree n c bA ST.b-Float (toV bA (toF (flatB bA) (er x)))
+                → OpPath (opF (sig (mk-info' n c bA ST.b-Float)) (toF (flatB bA) (er x))) tp (inj₁ y₀)
+                → WTr Wι L tp L′ → ∀ fs → LocState.ev-log (floc fs) ≡ L
+                → OpVal (sig (mk-info' n c bA ST.b-Float)) x (mvF (fw float) y₀) (evsOf tp) fs
+  op-pure-float {n = n} {c = c} {bA = bA} {x = x} {y₀ = y₀} {tp = tp} ep nc (w , sm , tr) p wt fs lg =
+    subst (λ m → OpValM (sig si) m x (mvF (fw float) y₀) (evsOf tp) fs) (sym nc) body
+    where
+      si = mk-info' n c bA ST.b-Float
+      rp = ret-path (subst (λ T → OpPath (fmapT (fromV ST.b-Float) T) tp (inj₁ y₀)) tr p)
+      body : OpValM (sig si) nothing x (mvF (fw float) y₀) (evsOf tp) fs
+      body d wx px sx =
+        trans (cong (λ e → exec-sigop-halts-of e si st) ep) (cong unread? (arg-dec bA fs d _ px sx)) ,
+        trans (cong (λ e → sigop-events-of e si st) ep) (cong evsOf (sym (proj₁ rp))) ,
+        _ , vbase ,
+        inj₂ (cong (_∷ []) (trans (cong wordOf (proj₂ rp)) (trans (w-float w)
+          (sym (trans (cong (λ e → exec-sigop-output-of e si st) ep)
+                 (trans (arg-in si fits-float fs d wx px sx)
+                        (cong (AbstractExec.res-sv {Mach} fits-float) sm)))))))
+        where st = arg (sig si) fs d wx
+
+  op-pure-unit : ∀ {A} {n} {c : SigOpSem A ST.Unit} {bA : ST.Base ST.∅ₖ A} {x : MV ⌜ flatB bA ⌝} {y₀ tp L L′}
+               → effect-of c ≡ Pure → cmp-of c ≡ nothing → PureAgree n c bA ST.b-Unit (toV bA (toF (flatB bA) (er x)))
+               → OpPath (opF (sig (mk-info' n c bA ST.b-Unit)) (toF (flatB bA) (er x))) tp (inj₁ y₀)
+               → WTr Wι L tp L′ → ∀ fs → LocState.ev-log (floc fs) ≡ L
+               → OpVal (sig (mk-info' n c bA ST.b-Unit)) x (mvF funit y₀) (evsOf tp) fs
+  op-pure-unit {n = n} {c = c} {bA = bA} {x = x} {y₀ = y₀} {tp = tp} ep nc (w , sm , tr) p wt fs lg =
+    subst (λ m → OpValM (sig si) m x (mvF funit y₀) (evsOf tp) fs) (sym nc) body
+    where
+      si = mk-info' n c bA ST.b-Unit
+      rp = ret-path (subst (λ T → OpPath (fmapT (fromV ST.b-Unit) T) tp (inj₁ y₀)) tr p)
+      body : OpValM (sig si) nothing x (mvF funit y₀) (evsOf tp) fs
+      body d wx px sx =
+        trans (cong (λ e → exec-sigop-halts-of e si st) ep) (cong unread? (arg-dec bA fs d _ px sx)) ,
+        trans (cong (λ e → sigop-events-of e si st) ep) (cong evsOf (sym (proj₁ rp))) ,
+        [] , vone , inj₁ refl
+        where st = arg (sig si) fs d wx
