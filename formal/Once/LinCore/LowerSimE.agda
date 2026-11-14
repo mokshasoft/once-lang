@@ -251,3 +251,24 @@ call-out prog fs cfc a s₁ src o n b pc rest sv sl hret hsv ne ep def (g₁ , s
                   (proj₁′ (Seg-++ʳ prog (suc (fpc fs)) (mvSP src o n) _ s))
           where proj₁′ : ∀ {A : Set} {B : Set} → A × B → A
                 proj₁′ (x , _) = x
+
+-- ★ a bare return (a free's trampoline, D417: its result One, no words to move)
+ret-out : ∀ prog (fs : FlatState) (cfc : Frame) (b pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ)
+        → fret fs ≡ pc ∷ rest → saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+        → Seg prog (fpc fs) (instr-ctrl (c-ret b) ∷ [])
+        → fhalted (floc fs) ≡ false
+        → Σ FlatState λ fs′ → FlatSteps prog 1 fs fs′ × CallOut fs fs′ cfc 0 0 0 0 pc rest sv sl
+ret-out prog fs cfc b pc rest sv sl hret hsv (g , _) h =
+  fs₁ ,
+  step-at fs₁ (h , g) (ret-step prog fs b hret) done ,
+  record { co-frame = cong (λ L → current-frame (leave-frame-aux L (falloc fs))) hsv
+         ; co-slots = cong (λ L → frame-slots (leave-frame-aux L (falloc fs))) hsv
+         ; co-saved = cong (λ L → saved-frames (leave-frame-aux L (falloc fs))) hsv
+         ; co-ret = refl ; co-pc = refl
+         ; co-moved = λ k ()
+         ; co-rest = λ l _ → refl
+         ; co-next = cong (λ L → next-heap-ref (leave-frame-aux L (falloc fs))) hsv
+         ; co-size = cong (λ L → block-size (leave-frame-aux L (falloc fs))) hsv
+         ; co-halt = refl }
+  where
+    fs₁ = record fs { falloc = leave-frame (falloc fs) ; fpc = pc ; fret = rest }
