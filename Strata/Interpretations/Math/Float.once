@@ -10,9 +10,6 @@
 -- Basic Arithmetic
 ------------------------------------------------------------------------
 
--- | Negation
-signature fneg : Float -> Float
-
 -- | Absolute value
 signature fabs : Float -> Float
 
@@ -37,28 +34,6 @@ signature flog : Float -> Float
 
 -- | Exponential (e^x)
 signature fexp : Float -> Float
-
-------------------------------------------------------------------------
--- Comparisons (return 0 for false, 1 for true)
-------------------------------------------------------------------------
-
--- | Less than
-signature flt : Float * Float -> Int
-
--- | Less than or equal
-signature fle : Float * Float -> Int
-
--- | Greater than
-signature fgt : Float * Float -> Int
-
--- | Greater than or equal
-signature fge : Float * Float -> Int
-
--- | Equal (exact comparison)
-signature feq : Float * Float -> Int
-
--- | Not equal
-signature fne : Float * Float -> Int
 
 ------------------------------------------------------------------------
 -- Conversions
