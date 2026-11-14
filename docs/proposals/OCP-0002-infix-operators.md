@@ -48,8 +48,23 @@ This improves readability significantly for arithmetic-heavy code.
 | `>=` | Greater or equal | 4 | Non-associative |
 | `==` | Equal | 4 | Non-associative |
 | `!=` | Not equal | 4 | Non-associative |
+| `*.` `/.` | `Float` multiplication, division (IEEE, rounded) | 7 | Left |
+| `+.` `-.` | `Float` addition, subtraction (IEEE, rounded) | 6 | Left |
+| `<.` `<=.` `>.` `>=.` `==.` `!=.` | `Float` IEEE comparison (false on NaN) | 4 | Non-associative |
 
-Unary `-` (negation) has higher precedence than all binary operators.
+Unary `-` (negation) has higher precedence than all binary operators, and means
+the same at `Int` and `Float` (D409). `-` immediately before a numeral is a
+negative literal, by the grammar (D410); `-0.0` is rejected, `-(0.0)` is
+negative zero.
+
+**Which operators exist at which type** (plan 0.150, D409, D412): an operator
+types at a number type when the type's row of the theory table has it. At
+`Int`: `-x`, `+ - * / %`, `< <= > >= == !=`. At `Float`: `-x`, the dotted
+arithmetic and comparisons above, `<` … `>=` as IEEE `totalOrder`, and `== !=`
+as identity (a direct use warns, naming `==.`). Undotted `+ - * /` at `Float`
+are rejected, naming the dotted one. There is no implicit conversion between
+`Int` and `Float`: write `toFloat` (D408). The "Type Promotion" section below
+is historical.
 
 ### Examples
 

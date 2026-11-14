@@ -423,19 +423,30 @@ entry updates the rule it changes here, in the same commit.
 
 - **`Int` is the target's signed modular machine word**; wraparound is
   meaning, not error. "Representation follows the promise." (D054, D301)
-- **`Float` is the target's float representation**; arithmetic means the
-  target's IEEE operation. (D113 ← D112 ← D109, D301)
+- **`Float` is IEEE 754 level 2**: signed zeros, ±∞, one NaN; each operation
+  is exact then rounded once at the target's format, and a machine word means
+  its `decode` (every NaN pattern is the one NaN; where bits are observed, the
+  canonical one). (D411 ← D113 ← D112 ← D109, D301)
+- **The operators are one closed table of theories**: a symbol types at a
+  number type when the type's row has the symbol's theory (`Int`: Neg, Ring,
+  Division, Order, Equality; `Float`: Neg, Rounded, Order, Equality). Unary `-`
+  is its own theory, `Neg` (`-(-x) = x`, `-(x * y) = (-x) * y`), at both
+  types. (D409)
+- **`Float` arithmetic is dotted** (`+. -. *. /.`, it rounds); undotted
+  `+ - * /` at `Float` are rejected naming the dotted one. Comparison: `<` is
+  `totalOrder`, `==` identity (a direct use at `Float` warns, naming `==.`),
+  `==. !=. <. <=. >. >=.` IEEE's. (D412)
 - **The meaning is parametric in the target's numbers**, so a program's
   meaning, and its correctness, are per target. (D301, D119)
 - **Division is total**: `a/0 = -1`, `a%0 = a`, `INT_MIN/-1 = INT_MIN`;
-  no program traps. Float `/` is correctly rounded and total; Float `%` is
-  refused. (D055, D128)
+  no program traps. Float `/.` is correctly rounded and total; Float has no
+  `%`. (D055, D128, D412)
 - **Literals**: an `Int` literal outside the target's range is a type error;
   a Float literal always compiles, rounding once (round-to-nearest-even) from
-  an exact decimal payload, with a warning when inexact; overflow gives ±∞,
-  underflow zero (no subnormals); `-n` and `-3.14` are single literals.
-  (D115, D116, D117, D118, D120, D124)
-- **`Bool = Unit + Unit`, true = `inr`**; comparisons are signed word
+  an exact decimal payload, with a warning when inexact; overflow gives ±∞;
+  `-n` and `-3.14` are single literals, by the grammar; `-0.0` is rejected
+  (negative zero is `-(0.0)`). (D410 ← D124, D115, D116, D117, D118, D120)
+- **`Bool = Unit + Unit`, true = `inr`**; `Int` comparisons are signed word
   comparisons at the target width. (D263)
 - **No strings or buffers** until the machines model their content. (D258 ←
   D010, D011)

@@ -22087,3 +22087,105 @@ with the dotted operations derived from it.
   `intToFloat` signature goes (the conversion is the generator).
 * A remains open as a later extension: it only adds programs, so no program written under B changes meaning.
   Whether its hidden cost is acceptable is that plan's question, not a formality.
+
+## D409 — THE NUMBER TYPES' OPERATORS ARE ONE CLOSED TABLE OF THEORIES; UNARY `-` IS ITS OWN THEORY, `Neg` (2026-11-12)
+
+**Refines** plan 0.147 §3.5.3 (a symbol carries its theory's laws) for the built-in types. **Decided** by the user
+2026-11-12/13 (plan 0.150 N1, N2, N3, N10).
+
+### Context
+The Spec typed the numeric operators by seven hand-written rules, one per (operator, type) pair: `s-neg`,
+`s-neg-float` (a literal only, D124), `s-arith`, `s-arith-float` and its `-il`/`-ir` widening (D125), `s-compare`
+(`Int * Int` only). Nothing tied them together, and they drifted: `-x` and `<` existed at `Int` only.
+
+### Decision
+* **A closed table** (`Spec.Theory`): a theory is a record of operations (`NegOps`, `RingOps`, `DivisionOps`,
+  `OrderOps`, `EqualityOps`, `RoundedOps`), a symbol (`Sym U k`) is interpreted in any structure for its theory
+  (`⟦_⟧ₛ`, derived symbols by their definitions), and `Has A U` lists which theories each number type models:
+  `Int` — `Neg`, `Ring`, `Division`, `Order`, `Equality`; `Float` — `Neg`, `Rounded`, `Order`, `Equality`. A
+  model (`Models.structure`) gives each row's operations at a target; a row missing an operation does not
+  compile.
+* **One typing rule per form**: `s-neg` and `s-binop` type an operator at `A` when `A`'s row has the symbol's
+  theory, and mean `num h o`, the symbol interpreted in the row's model. No rule is per type.
+* **`Neg` is its own theory** (N3 (b)), included in `Ring` and in `Rounded` by restriction. Its laws hold
+  exactly at both types: the involution `-(-x) = x` and `-(x * y) = (-x) * y`. A theory containing it adds its
+  own (`Ring`: `x + (-x) = 0`, `x - y = x + (-y)`; `Rounded`: negation is exact, it commutes with rounding, and
+  `x -. y = x +. (-y)`). Laws that fail are not in it: order reversal (`-minInt = minInt`), and at `Float`
+  `-(x + y) = (-x) + (-y)` (the sign of a zero sum). `-` takes no dot: negation does not round, so its laws hold
+  with the plain symbol.
+* **The implementation keeps the table** (N10): its typed surface has one `num h o`, elaboration maps it to the
+  Spec's `num h o`, and one function lowers it to the backend's per-instruction primitives (`Arith.Prim`).
+
+### Spec
+Plan 0.150 drafts B and E (`Spec.Theory`, `Spec.Surface.Typing`'s `s-neg`/`s-binop`, Core `num`).
+
+### Consequences
+* Plan 0.147 step 6 (structure declarations) expresses this table for `Int` and `Float` without changing what
+  an operator means.
+
+## D410 — A NEGATED NUMERAL IS A LITERAL, BY THE GRAMMAR, AT BOTH TYPES; `-0.0` IS REJECTED (2026-11-12)
+
+**Supersedes** D124 (float negation is a literal fold, and the fold is its only lowering). **Decided** by the user
+2026-11-12 (plan 0.150 N4, N5).
+
+### Context
+`-5` was `prim p-neg (lit 5)` in the Spec, read back as the literal `-5` only by the fit check (`negLits`), while
+`-3.14` was folded by its own rule into a literal whose `Decimal` significand is a `ℤ`. `ℤ` has no `-0`, so `-0.0`
+meant `+0.0`, where IEEE has a negative zero.
+
+### Decision
+* **In the grammar**: `-` immediately before a numeral, in unary position, parses to a signed literal (`RInt
+  (-n)`, a negative `RFloat`), so `RNeg` never wraps a literal and the typing has one rule per form. `negLits` and
+  `s-neg-float` are gone; the fit check counts literals as written (`-9223372036854775808` fits).
+* `x - 5` is subtraction. `f -5` is `f - 5` (an argument does not start with `-`; write `f (-5)`), a type error
+  when `f` is a function.
+* **`-0.0` is rejected** (and `-0.00`): a negative float literal whose value is exactly zero is a type error that
+  names `-(0.0)`. Negative zero is a value, reached by negation: `-(0.0)` (a parenthesised operand is not a
+  literal) and `-x` at `x = 0.0`. A literal that is not zero but rounds to zero (`-1e-400`) is `-0.0`, as IEEE
+  says, since its significand is negative.
+
+### Consequences
+* `NegativeZeroLiteral` names the rule; FloatSpec checks both halves.
+
+## D411 — `Float` IS IEEE 754 LEVEL 2: SIGNED ZEROS, ±∞, ONE NaN; A WORD IS ITS ENCODING (2026-11-12)
+
+**Restates** D113 (and D055's canonical NaN). **Decided** by the user 2026-11-12 (plan 0.150 N6 (a)).
+
+### Context
+The Spec mixed IEEE 754's levels (§3.2): `FloatVal` was almost level 2 (one signless NaN) but had no `-0`, while
+`Float`'s values were words and its unused `fneg` flipped a NaN's sign bit, which would have made a second,
+observable NaN.
+
+### Decision
+* **`Float`'s meaning is a level-2 value** (`FloatVal`): signed zeros, ±∞, one NaN, each operation defined on
+  values, exact then rounded once. Negation is one structural rule (flip the sign of whatever has one; NaN has
+  none). Signed-zero results (`-1.0 *. 0.0`, `1.0 /. -0.0`) follow IEEE by construction.
+* **A word is the encoding** at the target's format: the machine keeps words, and a word means `decode` of it
+  (`RelGV Float x y = x ≡ decode F y`). Every NaN pattern decodes to the one NaN.
+* **One NaN is a fact of the value set**, and the canonical NaN is its encoding (`encode fv-nan`). Where bits are
+  observable the world reads a word at the format (`canonB`): identity `==` and `totalOrder` canonicalise a NaN
+  before comparing, and `emitF` writes the canonical pattern. Negation is the sign-bit flip on the word; a NaN
+  it flips is the same value.
+
+### Spec
+Plan 0.150 draft A; `FloatFormat` has `sig-pos`/`exp-pos` (approved 2026-11-13).
+
+## D412 — `Float`'S OPERATORS: DOTTED IEEE ARITHMETIC AND COMPARISON, `<` IS totalOrder, `==` IS IDENTITY (2026-11-12)
+
+**Restates** D125 for the dotted operators (with D408), D128. **Decided** by the user 2026-11-12 (plan 0.150 N7,
+N8; plan 0.147 §3.6).
+
+### Decision
+* **Arithmetic rounds, so it is dotted**: `+. -. *. /.` are IEEE's operations; `+ - * /` at `Float` are rejected,
+  and the error names the dotted operator ("`+` is not defined at Float, whose addition rounds: use `+.`"). `%` has
+  no `Float` meaning (D128). A dotted operator at `Int` is rejected naming the undotted one. No transition period.
+* **IEEE comparison is dotted**: `==. !=. <. <=. >. >=.`, false on a NaN (`NaN ==. NaN` is false), `-0.0 ==. 0.0`
+  true.
+* **`<` is `totalOrder`** (`-0.0 < 0.0`, the one NaN above everything), and `<= > >=` from it as at `Int`.
+* **`==` is identity** (`χ_Δ`: `NaN == NaN`, `-0.0 != 0.0`), and writing `==` or `!=` at `Float` directly warns,
+  naming `==.`. A use through a generic definition does not warn.
+* An `Int` meets them only through `toFloat` (D408).
+
+### Consequences
+* The corpus is written with the dotted operators; the comparisons are compiled as a block computing a 0/1 word
+  (`afcmp`), like the `Int` ones.
