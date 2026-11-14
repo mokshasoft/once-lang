@@ -107,11 +107,16 @@ record PausedI {T sh U} (c : Codeᴵ sh U) (r : Ret U T) (m : Cfg sh) (n : ℕ) 
     clean : NoT t₀
     leg   : TLeg (tmps ts)
 
+-- ★ D429: a run that HALTED pauses the image at `halted`, having made exactly the run's events
+HaltIf : ∀ {T sh U} {c : Codeᴵ sh U} {r : Ret U T} {m n t} → Why → PausedI c r m n t → Set
+HaltIf         exhausted p = Data.Unit.⊤
+HaltIf {t = t} halted    p = (PausedI.c′ p ≡ halted) × (PausedI.t₀ p ≡ erase t)
+
 -- by the run's outcome
 SimRI : ∀ {T sh U Es B S U′} → Outcome B → Codeᴵ sh U → Ret U T → Cfg sh → ℕ → Trace
       → Codeᴵ (Es ∣ B ∷ S) U′ → Ret U′ T → Slots Es → Stk S → Set
 SimRI (gives w n′) c r m n t k r′ es os = OutI c r m n t k r′ (es ∥ w ∷ˢ os) n′
-SimRI (stop y)     c r m n t k r′ es os = PausedI c r m n t
+SimRI (stop y)     c r m n t k r′ es os = Σ (PausedI c r m n t) (HaltIf y)
 
 -- a simulation of a code is one of an equal code
 sim-code : ∀ {T sh U Es B S U′} {o : Outcome B} {c c′ : Codeᴵ sh U} {r : Ret U T} {m : Cfg sh} {n : ℕ} {t : Trace}
@@ -157,11 +162,17 @@ preP : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ 
      → StepI c r m n [] c′ r′ m′ n′ → PausedI c′ r′ m′ n′ t → PausedI c r m n t
 preP x (paused c′ r′ m′ n′ ts mt t₀ st w p cl l) = paused c′ r′ m′ n′ ts mt t₀ (x ⟫ st) w p cl l
 
+-- (a halt's pause carried along)
+preH : ∀ {T sh U sh′ U′} (y : Why) {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t}
+     → StepI c r m n [] c′ r′ m′ n′ → Σ (PausedI c′ r′ m′ n′ t) (HaltIf y) → Σ (PausedI c r m n t) (HaltIf y)
+preH halted    x (p , h) = preP x p , h
+preH exhausted x (p , h) = preP x p , tt
+
 preR : ∀ {T sh U sh′ U′ Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
          {m m′ n t} {k : Codeᴵ (Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
      → StepI c r m n [] c′ r′ m′ n → SimRI o c′ r′ m′ n t k ρ es os → SimRI o c r m n t k ρ es os
 preR (gives _ _) x s = pre x s
-preR (stop _)    x s = preP x s
+preR (stop y)    x s = preH y x s
 
 -- a silent step after
 after : ∀ {T sh U sh′ U′ sh″ U″} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
@@ -192,11 +203,16 @@ thenP {t₁ = t₁} {t₂} (out ts₁ m₁ st₁ w₁ b₁) (paused c″ r″ m�
          (++⁺ (erase-clean t₁) cl)
          (subst TLeg (sym (map-++ tmp ts₁ ts₂)) (IsSubmonoid.∙-∈ legal {tmps ts₁} {tmps ts₂} (fst b₁) l))
 
+thenH : ∀ {T sh U sh′ U′} (y : Why) {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t₁ t₂}
+      → OutI c r m n t₁ c′ r′ m′ n′ → Σ (PausedI c′ r′ m′ n′ t₂) (HaltIf y) → Σ (PausedI c r m n (t₁ ++ t₂)) (HaltIf y)
+thenH halted {t₁ = t₁} {t₂} a (p , (hc , ht)) = thenP a p , (hc , trans (cong (erase t₁ ++_) ht) (sym (erase-++ t₁ t₂)))
+thenH exhausted a (p , h) = thenP a p , tt
+
 thenR : ∀ {T sh U sh′ U′ Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T}
           {m m′ n n′ t₁ t₂} {k : Codeᴵ (Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
       → OutI c r m n t₁ c′ r′ m′ n′ → SimRI o c′ r′ m′ n′ t₂ k ρ es os → SimRI o c r m n (t₁ ++ t₂) k ρ es os
 thenR (gives _ _) a s = then a s
-thenR (stop _)    a s = thenP a s
+thenR (stop y)    a s = thenH y a s
 
 -- ★ A CALL: the block run to its end in a frame of its own (D415: the
 -- caller's top view and the argument), the caller's configuration saved
@@ -231,6 +247,13 @@ calledP′ : ∀ {T t Es A B S U} {c₀ : Codeᴵ (t ⊳ Es ∣ A ∷ S) U} {blk
 calledP′ x (paused c′ r′ m′ n′ ts mt t₀ st w p cl l) =
   paused c′ r′ m′ n′ (tnew fsz ∷ ts) (tmp (tnew fsz) ∷ mt) t₀ (x ⟫ st) (w-tmp w) p cl (opened fsz ts l)
 
+calledH : ∀ {T t Es A B S U} (y : Why) {c₀ : Codeᴵ (t ⊳ Es ∣ A ∷ S) U} {blk : Codeᴵ (t ⊳ [] ∣ A ∷ []) (t ⊳ [] ∣ B ∷ [])}
+            {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots (t ⊳ Es)} {a os n tr}
+        → Enters t c₀ blk k r es a os n
+        → Σ (PausedI blk (frm {t = t} k es os r) (topv t es ∥ a ∷ˢ []ˢ) n tr) (HaltIf y) → Σ (PausedI c₀ r (es ∥ a ∷ˢ os) n tr) (HaltIf y)
+calledH halted    x (p , h) = calledP′ x p , h
+calledH exhausted x (p , h) = calledP′ x p , tt
+
 called : ∀ {T σ Es S U sh′ U′} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) U} {r : Ret U T}
            {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {es : Slots (top σ ⊳ Es)} {a os} {e₁ b₁} {m′ n n₁ n′ t}
        → OutI (blockᴵ κ) (frm {t = top σ} k es os r) (topv (top σ) es ∥ a ∷ˢ []ˢ) n t end (frm {t = top σ} k es os r) (e₁ ∥ b₁ ∷ˢ []ˢ) n₁
@@ -247,6 +270,11 @@ calledP = calledP′ i-call
 P-[] : ∀ {T sh U} {c : Codeᴵ sh U} {r : Ret U T} {m n t} → PausedI c r m n t → PausedI c r m n (t ++ [])
 P-[] {t = t} (paused c′ r′ m′ n′ ts mt t₀ st w p cl l) =
   paused c′ r′ m′ n′ ts mt t₀ st w (subst (_≼ t₀) (sym (trans (erase-++ t []) (++-identityʳ (erase t)))) p) cl l
+
+P-[]H : ∀ {T sh U} (y : Why) {c : Codeᴵ sh U} {r : Ret U T} {m n t}
+      → Σ (PausedI c r m n t) (HaltIf y) → Σ (PausedI c r m n (t ++ [])) (HaltIf y)
+P-[]H halted {t = t} (p , (hc , ht)) = P-[] p , (hc , trans ht (sym (trans (erase-++ t []) (++-identityʳ (erase t)))))
+P-[]H exhausted (p , h) = P-[] p , tt
 
 O-[] : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t}
      → OutI c r m n t c′ r′ m′ n′ → OutI c r m n (t ++ []) c′ r′ m′ n′
@@ -341,7 +369,7 @@ calledR′ : ∀ {T t A Es B S U} (o : Outcome B) {c₀ : Codeᴵ (t ⊳ Es ∣ 
          → SimRI o blk (frm {t = t} k es os ρ) (topv t es ∥ a ∷ˢ []ˢ) n tr end (frm {t = t} k es os ρ) (topv t es) []ˢ
          → SimRI o c₀ ρ (es ∥ a ∷ˢ os) n tr k ρ es os
 calledR′ (gives _ _) x s = called′ x s doneO
-calledR′ (stop _)    x s = calledP′ x s
+calledR′ (stop y)    x s = calledH y x s
 
 calledR : ∀ {T A Es B S U} (o : Outcome B) {κ : Key (bsig nothing A B)} {k : Codeᴵ (Es ∣ B ∷ S) U} {ρ : Ret U T}
             {a n t} {es : Slots Es} {os : Stk S}
@@ -363,22 +391,24 @@ around : ∀ {T E′ Es B S S₀ U V} (o : Outcome B) {c₀ : Codeᴵ (Es ∣ S�
        → SimRI o c₁ r₀ (vw e′ es ∥ v) n t (epop ⨾ k) ρ (vw e′ es) os
        → SimRI o c₀ r₀ (es ∥ v) n t k ρ es os
 around (gives _ _) x s = pre x (after s i-epop)
-around (stop _)    x s = preP x s
+around (stop y)    x s = preH y x s
 
 -- a run cut short: what the image did for the whole run covers the prefix
 cutR : ∀ {T sh U Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {m n t t′}
          {k : Codeᴵ (Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
      → t′ ≼ t → SimRI o c r m n t k ρ es os → PausedI c r m n t′
 cutR (gives _ _) {t = t} q (out ts mt st w b) = paused _ _ _ _ ts mt (erase t) st w (erase-≼ q) (erase-clean t) (fst b)
-cutR (stop _) q (paused c′ r′ m′ n′ ts mt t₀ st w p cl l) = paused c′ r′ m′ n′ ts mt t₀ st w (≼-trans (erase-≼ q) p) cl l
+cutR (stop _) q (paused c′ r′ m′ n′ ts mt t₀ st w p cl l , _) = paused c′ r′ m′ n′ ts mt t₀ st w (≼-trans (erase-≼ q) p) cl l
 
 -- the run's own temporaries: erased, the same events
 tmpR : ∀ {T sh U Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : Ret U T} {m n t t″ ts₀}
          {k : Codeᴵ (Es ∣ B ∷ S) V} {ρ : Ret V T} {es os}
      → Weave tmp t ts₀ t″ → SimRI o c r m n t k ρ es os → SimRI o c r m n t″ k ρ es os
 tmpR (gives _ _) w (out ts mt st wv b) = out ts mt st (subst (λ z → Weave tmp z ts mt) (sym (erase-weave w)) wv) b
-tmpR (stop _)    w (paused c′ r′ m′ n′ ts mt t₀ st wv p cl l) =
-  paused c′ r′ m′ n′ ts mt t₀ st wv (subst (_≼ t₀) (sym (erase-weave w)) p) cl l
+tmpR (stop halted) w (paused c′ r′ m′ n′ ts mt t₀ st wv p cl l , (hc , ht)) =
+  paused c′ r′ m′ n′ ts mt t₀ st wv (subst (_≼ t₀) (sym (erase-weave w)) p) cl l , (hc , trans ht (sym (erase-weave w)))
+tmpR (stop exhausted) w (paused c′ r′ m′ n′ ts mt t₀ st wv p cl l , _) =
+  paused c′ r′ m′ n′ ts mt t₀ st wv (subst (_≼ t₀) (sym (erase-weave w)) p) cl l , tt
 
 -- a label's key is its body's block
 look-key1 : ∀ {Γ Δ l g X A B} {ds : Defs Γ} {p : Γ ∋[ l ] sg once g X A B} {ds′ : Defs Δ} {b : LTm Δ (X ⊗t A) B} {γ : Gd g b}
@@ -406,15 +436,15 @@ mutual
   simMI m-b p es eq os k ρ = doneO
   simMI m-μ p es eq os k ρ = doneO
   simMI (m-inl (fm-gives r)) p es eq os k ρ = pre i-case₁ (after (simMI r p es eq os _ ρ) (i-prim r-inl))
-  simMI (m-inl (fm-stop r))  p es eq os k ρ = preP i-case₁ (simMI r p es eq os _ ρ)
+  simMI (m-inl (fm-stop r))  p es eq os k ρ = preH _ i-case₁ (simMI r p es eq os _ ρ)
   simMI (m-inr (fm-gives r)) p es eq os k ρ = pre i-case₂ (after (simMI r p es eq os _ ρ) (i-prim r-inr))
-  simMI (m-inr (fm-stop r))  p es eq os k ρ = preP i-case₂ (simMI r p es eq os _ ρ)
+  simMI (m-inr (fm-stop r))  p es eq os k ρ = preH _ i-case₂ (simMI r p es eq os _ ρ)
   simMI (m-pair {x′ = x′} r (go-on {u = y} (fm-gives r′))) (p , p′) es eq os k ρ =
     pre i-unpair (then (simMI r p es eq (x′ ∷ˢ os) _ ρ)
                        (pre i-swap (after (after (simMI r′ p′ es eq (y ∷ˢ os) _ ρ) i-swap) i-pair)))
   simMI (m-pair {x′ = x′} r (go-on {u = y} (fm-stop r′))) (p , p′) es eq os k ρ =
-    preP i-unpair (thenP (simMI r p es eq (x′ ∷ˢ os) _ ρ) (preP i-swap (simMI r′ p′ es eq (y ∷ˢ os) _ ρ)))
-  simMI (m-pair {x′ = x′} r stopped) p es eq os k ρ = P-[] (preP i-unpair (simMI r p es eq (x′ ∷ˢ os) _ ρ))
+    preH _ i-unpair (thenH _ (simMI r p es eq (x′ ∷ˢ os) _ ρ) (preH _ i-swap (simMI r′ p′ es eq (y ∷ˢ os) _ ρ)))
+  simMI (m-pair {x′ = x′} r stopped) p es eq os k ρ = P-[]H _ (preH _ i-unpair (simMI r p es eq (x′ ∷ˢ os) _ ρ))
 
   simI : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v o n t}
        → (r : Run ds f e v n o t) → Plain r
@@ -422,13 +452,13 @@ mutual
        → SimRI o (compᴵ ds f k) ρ (es ∥ v ∷ˢ os) n t k ρ es os
   simI r-id fr es eq os k ρ = doneO
   simI (r-∘ rg (go-on {o = o} rf)) (pg , pf) es eq os k ρ = thenR o (simI rg pg es eq os _ ρ) (simI rf pf es eq os k ρ)
-  simI (r-∘ rg stopped) pg es eq os k ρ = P-[] (simI rg pg es eq os _ ρ)
+  simI (r-∘ rg stopped) pg es eq os k ρ = P-[]H _ (simI rg pg es eq os _ ρ)
   simI (r-⊗ {c = c} rf (go-on {u = a′} (fm-gives rg))) (pf , pg) es eq os k ρ =
     pre i-unpair (then (simI rf pf es eq (c ∷ˢ os) _ ρ)
                        (pre i-swap (after (after (simI rg pg es eq (a′ ∷ˢ os) _ ρ) i-swap) i-pair)))
   simI (r-⊗ {c = c} rf (go-on {u = a′} (fm-stop rg))) (pf , pg) es eq os k ρ =
-    preP i-unpair (thenP (simI rf pf es eq (c ∷ˢ os) _ ρ) (preP i-swap (simI rg pg es eq (a′ ∷ˢ os) _ ρ)))
-  simI (r-⊗ {c = c} rf stopped) pf es eq os k ρ = P-[] (preP i-unpair (simI rf pf es eq (c ∷ˢ os) _ ρ))
+    preH _ i-unpair (thenH _ (simI rf pf es eq (c ∷ˢ os) _ ρ) (preH _ i-swap (simI rg pg es eq (a′ ∷ˢ os) _ ρ)))
+  simI (r-⊗ {c = c} rf stopped) pf es eq os k ρ = P-[]H _ (preH _ i-unpair (simI rf pf es eq (c ∷ˢ os) _ ρ))
   simI r-ρ     fr es eq os k ρ = leaf (i-prim r-ρ) []
   simI r-ρ⁻    fr es eq os k ρ = leaf (i-prim r-ρ⁻) []
   simI r-λ     fr es eq os k ρ = leaf (i-prim r-λ) []
@@ -460,11 +490,11 @@ mutual
                         (thenR o (simMI rm pm (vw (see es) []ᵉ) eq []ˢ _ (frm {t = just _} k es os ρ))
                                  (simI ra pa (vw (see es) []ᵉ) eq []ˢ end (frm {t = just _} k es os ρ))))
   simI (r-cata {e = e} rm stopped) pm es eq os k ρ =
-    calledP (thenP (leaf (i-prim r-Outμ) (k-free ∷ [])) (P-[] (simMI rm pm (vw (see es) []ᵉ) eq []ˢ _ (frm {t = just _} k es os ρ))))
+    calledH _ i-call (thenH _ (leaf (i-prim r-Outμ) (k-free ∷ [])) (P-[]H _ (simMI rm pm (vw (see es) []ᵉ) eq []ˢ _ (frm {t = just _} k es os ρ))))
   simI (r-cata-reuse rm th) () es eq os k ρ
   simI (r-lend {x = x} (fm-gives r)) fr es refl os k ρ =
     pre i-elend (after (simI r fr (ln (see es) x es) refl os _ ρ) i-eunlend)
-  simI (r-lend {x = x} (fm-stop r))  fr es refl os k ρ = preP i-elend (simI r fr (ln (see es) x es) refl os _ ρ)
+  simI (r-lend {x = x} (fm-stop r))  fr es refl os k ρ = preH _ i-elend (simI r fr (ln (see es) x es) refl os _ ρ)
   simI (r-lift {o = o} r) fr es eq os k ρ = around o i-elift (simI r fr (vw mone es) refl os _ ρ)
   simI (r-fst {e₁ = e₁} {o = o} r) fr es eq os k ρ = around o (i-efst eq) (simI r fr (vw e₁ es) refl os _ ρ)
   simI (r-snd {e₂ = e₂} {o = o} r) fr es eq os k ρ = around o (i-esnd eq) (simI r fr (vw e₂ es) refl os _ ρ)
@@ -475,7 +505,7 @@ mutual
       outR : (o : Outcome B) → ∀ {c₁ t} → SimRI o c₁ ρ (vw v es ∥ a ∷ˢ os) n t (epop ⨾ k) ρ (vw v es) os
            → SimRI o (eout ⨾ c₁) ρ (es ∥ a ∷ˢ os) n (peek i ∷ t) k ρ es os
       outR (gives _ _) r′ = then (leaf (i-eout eq) (k-peek ∷ [])) (after r′ i-epop)
-      outR (stop _)    r′ = thenP (leaf (i-eout eq) (k-peek ∷ [])) r′
+      outR (stop _)    r′ = thenH _ (leaf (i-eout eq) (k-peek ∷ [])) r′
   -- ★ a lent copy: the copy block on the view
   simI (r-copy {n = n}) fr es refl os k ρ = copyS (see es) refl os n
   simI (r-bapp {x = x} {o = o} q r) fr es eq os k ρ rewrite look-keyω q =
@@ -501,19 +531,23 @@ mutual
       bevR : (o : Outcome B) → ∀ {t} → SimRI o (call (kbodyω ds′ b γ) ⨾ epop ⨾ end) R′ (vw x E′ ∥ a ∷ˢ []ˢ) n t (epop ⨾ end) R′ (vw x E′) []ˢ
            → SimRI o (openω ⨾ call (kbodyω ds′ b γ) ⨾ epop ⨾ end) R′ (E′ ∥ a ∷ˢ []ˢ) n (peek i ∷ t) end R′ E′ []ˢ
       bevR (gives _ _) r′ = then (leaf (i-openω eq) (k-peek ∷ [])) (after r′ i-epop)
-      bevR (stop _)    r′ = thenP (leaf (i-openω eq) (k-peek ∷ [])) r′
+      bevR (stop y)    r′ = thenH y (leaf (i-openω eq) (k-peek ∷ [])) r′
   simI r-const fr es eq os k ρ = leaf (i-prim r-const) []
   simI (r-op p) fr es eq os k ρ = leaf (i-prim (r-op p)) (op-NoT p)
-  simI (r-opend p) fr es eq os k ρ =
+  simI (r-opend {w = halted} p) fr es eq os k ρ =
     paused halted ρ _ _ [] _ _ (oneI (i-opend p)) (w-self _) (subst (_≼ _) (sym (erase-NoT _ (op-NoT p))) (≼-refl _)) (op-NoT p) tt
+    , (refl , sym (erase-NoT _ (op-NoT p)))
+  simI (r-opend {w = exhausted} p) fr es eq os k ρ =
+    paused halted ρ _ _ [] _ _ (oneI (i-opend p)) (w-self _) (subst (_≼ _) (sym (erase-NoT _ (op-NoT p))) (≼-refl _)) (op-NoT p) tt
+    , tt
   -- ★ the loop: its round with the branch pushed (no frame), then the branch
   simI (r-iter r (go-on done)) fr es eq os k ρ =
     O-[] (pre i-loop (after (after (simI r fr es eq os end _) i-reti) i-case₁))
   simI (r-iter r (go-on (again {o = o} rn))) (p , pn) es eq os k ρ =
     preR o i-loop (thenR o (simI r p es eq os end _) (preR o i-reti (preR o i-case₂ (simI rn pn es eq os k ρ))))
-  simI (r-iter r stopped) fr es eq os k ρ = P-[] (preP i-loop (simI r fr es eq os end _))
-  simI r-exh fr es eq os k ρ = paused _ ρ _ _ [] [] [] done w-[] []≼ [] tt
-  simI (r-cut {o = o} r q) fr es eq os k ρ = cutR o q (simI r fr es eq os k ρ)
+  simI (r-iter r stopped) fr es eq os k ρ = P-[]H _ (preH _ i-loop (simI r fr es eq os end _))
+  simI r-exh fr es eq os k ρ = (paused _ ρ _ _ [] [] [] done w-[] []≼ [] tt , tt)
+  simI (r-cut {o = o} r q) fr es eq os k ρ = (cutR o q (simI r fr es eq os k ρ) , tt)
   simI (r-tmp {o = o} r w p) fr es eq os k ρ = tmpR o w (simI r fr es eq os k ρ)
 
   -- ★ a TABLE-FREE term's run, on its code at the empty table (D423): as
@@ -523,18 +557,18 @@ mutual
         → ∀ {Es S T U} (es : Slots (E ∷ Es)) → see es ≡ e → (os : Stk S) (k : Codeᴵ (E ∷ Es ∣ B ∷ S) U) (ρ : Ret U T)
         → SimRI o (compᴵ ε (rt w) k) ρ (es ∥ v ∷ˢ os) n t k ρ es os
   simTF (r-tmp {o = o} r wv tp) w fr es eq os k ρ = tmpR o wv (simTF r w fr es eq os k ρ)
-  simTF r-exh w fr es eq os k ρ = paused _ ρ _ _ [] [] [] done w-[] []≼ [] tt
-  simTF (r-cut {o = o} r q) w fr es eq os k ρ = cutR o q (simTF r w fr es eq os k ρ)
+  simTF r-exh w fr es eq os k ρ = (paused _ ρ _ _ [] [] [] done w-[] []≼ [] tt , tt)
+  simTF (r-cut {o = o} r q) w fr es eq os k ρ = (cutR o q (simTF r w fr es eq os k ρ) , tt)
   simTF r-id tf-id fr es eq os k ρ = doneO
   simTF (r-∘ rg (go-on {o = o} rf)) (tf-∘ wf wg) (pg , pf) es eq os k ρ =
     thenR o (simTF rg wg pg es eq os _ ρ) (simTF rf wf pf es eq os k ρ)
-  simTF (r-∘ rg stopped) (tf-∘ wf wg) pg es eq os k ρ = P-[] (simTF rg wg pg es eq os _ ρ)
+  simTF (r-∘ rg stopped) (tf-∘ wf wg) pg es eq os k ρ = P-[]H _ (simTF rg wg pg es eq os _ ρ)
   simTF (r-⊗ {c = c} rf (go-on {u = a′} (fm-gives rg))) (tf-⊗ wf wg) (pf , pg) es eq os k ρ =
     pre i-unpair (then (simTF rf wf pf es eq (c ∷ˢ os) _ ρ)
                        (pre i-swap (after (after (simTF rg wg pg es eq (a′ ∷ˢ os) _ ρ) i-swap) i-pair)))
   simTF (r-⊗ {c = c} rf (go-on {u = a′} (fm-stop rg))) (tf-⊗ wf wg) (pf , pg) es eq os k ρ =
-    preP i-unpair (thenP (simTF rf wf pf es eq (c ∷ˢ os) _ ρ) (preP i-swap (simTF rg wg pg es eq (a′ ∷ˢ os) _ ρ)))
-  simTF (r-⊗ {c = c} rf stopped) (tf-⊗ wf wg) pf es eq os k ρ = P-[] (preP i-unpair (simTF rf wf pf es eq (c ∷ˢ os) _ ρ))
+    preH _ i-unpair (thenH _ (simTF rf wf pf es eq (c ∷ˢ os) _ ρ) (preH _ i-swap (simTF rg wg pg es eq (a′ ∷ˢ os) _ ρ)))
+  simTF (r-⊗ {c = c} rf stopped) (tf-⊗ wf wg) pf es eq os k ρ = P-[]H _ (preH _ i-unpair (simTF rf wf pf es eq (c ∷ˢ os) _ ρ))
   simTF r-λ tf-lul fr es eq os k ρ = leaf (i-prim r-λ) []
   simTF r-λ⁻ tf-lul⁻ fr es eq os k ρ = leaf (i-prim r-λ⁻) []
   simTF (r-drop {v = v} {n}) tf-drop fr es eq os k ρ = freeS v os n
@@ -544,7 +578,7 @@ mutual
   simTF (r-case₂ {o = o} r) (tf-case wf wg) p es eq os k ρ = preR o i-case₂ (simTF r wg p es eq os k ρ)
   simTF (r-lend {x = x} (fm-gives r)) (tf-lend wb) fr es refl os k ρ =
     pre i-elend (after (simTF r wb fr (ln (see es) x es) refl os _ ρ) i-eunlend)
-  simTF (r-lend {x = x} (fm-stop r)) (tf-lend wb) fr es refl os k ρ = preP i-elend (simTF r wb fr (ln (see es) x es) refl os _ ρ)
+  simTF (r-lend {x = x} (fm-stop r)) (tf-lend wb) fr es refl os k ρ = preH _ i-elend (simTF r wb fr (ln (see es) x es) refl os _ ρ)
   simTF (r-snd {e₂ = e₂} {o = o} r) (tf-bsnd wf) fr es eq os k ρ = around o (i-esnd eq) (simTF r wf fr (vw e₂ es) refl os _ ρ)
   simTF (r-copy {n = n}) tf-bcopy fr es refl os k ρ = copyS (see es) refl os n
   simTF r-unf tf-unf fr es eq os k ρ = leaf (i-prim r-unf) (k-alloc ∷ [])
@@ -556,7 +590,7 @@ mutual
       bevR : (o : Outcome B) → ∀ {t} → SimRI o (call (kbodyω ds′ b γ) ⨾ epop ⨾ end) R′ (vw x E′ ∥ a ∷ˢ []ˢ) n t (epop ⨾ end) R′ (vw x E′) []ˢ
            → SimRI o (openω ⨾ call (kbodyω ds′ b γ) ⨾ epop ⨾ end) R′ (E′ ∥ a ∷ˢ []ˢ) n (peek i ∷ t) end R′ E′ []ˢ
       bevR (gives _ _) r′ = then (leaf (i-openω eq) (k-peek ∷ [])) (after r′ i-epop)
-      bevR (stop _)    r′ = thenP (leaf (i-openω eq) (k-peek ∷ [])) r′
+      bevR (stop y)    r′ = thenH y (leaf (i-openω eq) (k-peek ∷ [])) r′
 
 ------------------------------------------------------------------------
 -- 7. ★ ON THE IMAGE (A16's §7).
@@ -595,6 +629,19 @@ image-noleak {t = t} run fr with simI run fr (vw mone []ᵉ) refl []ˢ end []ʳ 
   , weave-post (gives mone 0) w (NoT-Bal (erase t) (erase-clean t)) b
   , trans (ios-weave w) (ios-erase t) )
 
+-- ★ A HALTING run of a closed program (D429): the image reaches `halted`, showing the world what the
+-- run does
+image-halts : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {t}
+            → (run : Run ds f mone mone 0 (stop halted) t) → Plain run
+            → Σ Trace λ mt → Σ Sh λ sh → Σ Sh λ U → Σ (Ret U (One ∷ [] ∣ One ∷ [])) λ r′ → Σ (Cfg sh) λ m′ → Σ ℕ λ n′
+                → StepsI (compᴵ ds f end) []ʳ start 0 mt (halted {sh} {U}) r′ m′ n′ × ios mt ≡ ios t
+image-halts {ds = ds} {f = f} {t = t} run fr = at (simI run fr (vw mone []ᵉ) refl []ˢ end []ʳ)
+  where
+    at : Σ (PausedI (compᴵ ds f end) []ʳ start 0 t) (HaltIf halted) → _
+    at (paused {sh′} {U′} c′ r′ m′ n′ ts mt t₀ st w p cl l , (hc , ht)) =
+      mt , sh′ , U′ , r′ , m′ , n′ , subst (λ c → StepsI (compᴵ ds f end) []ʳ start 0 mt c r′ m′ n′) hc st
+         , trans (ios-weave w) (trans (cong ios ht) (ios-erase t))
+
 -- ★ ANY stopped run of a closed program from nothing (a server cut after its
 -- last round, a halt): the image runs at least as far, and what it did up to
 -- the run's last event is legal on the cell heap, with legal frames
@@ -605,7 +652,7 @@ image-legal : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {y t}
                × Σ Trace λ mt → mt′ ≼ mt × Σ Sh λ sh → Σ Sh λ U → Σ (Codeᴵ sh U) λ c′ → Σ (Ret U (One ∷ [] ∣ One ∷ [])) λ r′
                  → Σ (Cfg sh) λ m′ → Σ ℕ λ n′ → StepsI (compᴵ ds f end) []ʳ start 0 mt c′ r′ m′ n′
 image-legal {t = t} run fr with simI run fr (vw mone []ᵉ) refl []ˢ end []ʳ
-... | paused {sh′} {U′} c′ r′ m′ n′ ts mt t₀ st w p cl l with weave-pre w p
+... | (paused {sh′} {U′} c′ r′ m′ n′ ts mt t₀ st w p cl l , _) with weave-pre w p
 ...   | (ts′ , mt′ , w′ , q) =
   ( mt′ , ts′ , w′
   , OK-weave w′ (λ _ → 0) (fst (exchange (plain run) pre₀ lent₀))
