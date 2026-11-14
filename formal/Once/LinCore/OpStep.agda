@@ -18,7 +18,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Data.Bool using (false)
+open import Data.Bool using (false; true)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 open import Once.Spec.Numerics using (TargetNum)
@@ -35,7 +35,7 @@ module Once.LinCore.OpStep
 
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw using (MV)
-open import Once.LinCore.Machine fmt ans bw using (Stk; _∷ˢ_; Slots; _∥_)
+open import Once.LinCore.Machine fmt ans bw using (Stk; _∷ˢ_; Slots; _∥_; _∣_)
 open import Once.LinCore.Keys fmt ans bw using (Univ; nus; tys; cty)
 open import Once.LinCore.Layout fmt ans bw
 open import Once.LinCore.Words fmt ans bw
@@ -142,3 +142,71 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           go (suc (suc n)) eC _ (hf , .[] , pw , inj₁ refl) = ⊥-elim (Data.Nat.Properties.0≢1+n (trans (vw-len pw) eC))
           go (suc (suc n)) eC _ (hf , .(out ∷ []) , pw , inj₂ refl) =
             ⊥-elim (Data.Nat.Properties.0≢1+n (Data.Nat.Properties.suc-injective (trans (vw-len pw) eC)))
+
+  -- ★ a halting op: the argument's address, the sigop, the machine halted
+  lop-halt : ∀ prog (fs : FlatState) (φ : Frame) (s : Sig) {Es S} {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝}
+           → Agree.OpHalt {FS} U wordOf s x fs
+           → Seg prog (fpc fs) (lea-slot ((budget φ ∸ ws S) ∸ wsz ⌜ sdom s ⌝) ∷ mov-to-input ∷ instr-sigop (info s) ∷ [])
+           → fhalted (floc fs) ≡ false
+           → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ x ∷ˢ os)
+           → Σ FlatState λ fs′ → FlatSteps prog 3 fs fs′ × fhalted (floc fs′) ≡ true
+  lop-halt prog fs φ s {Es} {S} {es} {os} {x} ag (g₁ , g₂ , g₃ , _) h C = with-arg (c-stk C)
+    where
+      cf = AllocState.current-frame (falloc fs)
+      d₀ = (budget φ ∸ ws S) ∸ wsz ⌜ sdom s ⌝
+      p = SV-Ptr (AtStack cf d₀)
+      fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output p } ; fpc = suc (fpc fs) }
+      fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Input1 p } ; fpc = suc (fpc fs₁) }
+      fs₃ = FlatMachine.flat-exec-instr {FS} (instr-sigop (info s)) prog fs₂
+      with-arg : StkW (heapMem (floc fs)) (slot fs) φ (x ∷ˢ os) → _
+      with-arg ((wx , px , sx) , _) =
+        fs₃ ,
+        step-at fs₁ (h , g₁) (lea-step fs d₀) (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) refl done)) ,
+        ag d₀ wx px (subst (λ z → SlotsAt (slot fs) z wx) (sym (new-top (budget φ) (wsz ⌜ sdom s ⌝) (ws S))) sx)
+
+------------------------------------------------------------------------
+-- ★ AT A ROOT'S PATH.
+------------------------------------------------------------------------
+
+open import Once.LinCore.Image fmt ans bw using (Codeᴵ; _⨾_; prim)
+open import Once.LinCore.ImagePt fmt ans bw using (Sub; next)
+open import Once.LinCore.LowAt fmt ans bw using (Inside; module At)
+open import Once.LinCore.StepLocal fmt ans bw using (module Loc)
+open import Once.LinCore.Events fmt ans bw using (Run; r-op; r-tmp; Outcome; gives)
+
+-- an op's run keeps the counter
+op-n : ∀ {Γ} {ds : Defs Γ} {E} {s : Sig} {e : MV E} {x : MV ⌜ sdom s ⌝} {y n n′ t} → Run ds (lop s) e x n (gives y n′) t → n′ ≡ n
+op-n (r-op _) = refl
+op-n (r-tmp r _ _) = op-n r
+
+module OpR {FS : FrameSemantics} (U : Univ)
+           (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
+           (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
+           (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS)
+           (prog : AbstractTrace)
+           {sh₀ U₀} (root : Codeᴵ sh₀ U₀) (j : ℕ)
+           (L₀ : At.Low U ncty ldConst (frameOf root) j root)
+           (R : Inside prog (At.code U ncty ldConst (frameOf root) j L₀)) where
+  open Loc {FS} U ncty ldConst wordOf prog root j L₀ R
+  open OpSim {FS} U ncty ldConst wordOf
+  open Agree {FS} U wordOf using (OpVal; OpHalt)
+  open import Once.CCC.Machine.Flat using (module FlatMachine)
+  open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
+  open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+  open FlatStepsAPI {FS} using (FlatSteps)
+  open import Once.LinCore.Moves {FS} using (Seg-++ˡ)
+
+  st-op : ∀ {Γ} {ds : Defs Γ} {Es S V} {s : Sig} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) V} (sb : Sub root (prim ds (lop s) ⨾ k))
+            {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝} {y : MV ⌜ scod s ⌝} {fs}
+        → Here sb (es ∥ x ∷ˢ os) fs → OpVal s x y fs → Moved (next sb) fs 0 (es ∥ y ∷ˢ os)
+  st-op {s = s} sb {fs = fs} H ag = straight sb H _ 0 refl (λ sg h C → lop-sim prog fs φ s ag sg h C (proj₂ (shape-fits (next sb))))
+
+  st-opend : ∀ {Γ} {ds : Defs Γ} {Es S V} {s : Sig} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) V} (sb : Sub root (prim ds (lop s) ⨾ k))
+               {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝} {fs}
+           → Here sb (es ∥ x ∷ˢ os) fs → OpHalt s x fs
+           → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps prog N fs fs′ × LocState.halted (floc fs′) ≡ true
+  st-opend {s = s} sb {fs = fs} H ag =
+    case-out (lop-halt prog fs φ s ag (Seg-++ˡ prog (fpc fs) _ _ (seg-at sb H)) (Here.h-run H) (Here.h-cfg H))
+    where
+      case-out : _ → _
+      case-out (fs′ , st , hlt) = 3 , fs′ , st , hlt
