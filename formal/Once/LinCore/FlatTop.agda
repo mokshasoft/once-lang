@@ -20,7 +20,8 @@
 
 {-# OPTIONS --guardedness #-}
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; suc; _≤_)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.Maybe using (Maybe; just; nothing)
 import Data.Maybe
@@ -106,6 +107,12 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
                  → FlatMachine.flat-exec-instr {Mach} (ldConst v) image fs
                    ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (fpc fs) }) where
     open EndR {Mach} ds f₀ ldConst ld-nl wordOf using (ends)
+    open FlatEventTrace {Mach} using (flat-ctrls)
+    open FlatStepsAPI {Mach} using (Sound)
+
+    private
+      just≢nothing : ∀ {A : Set} {a : A} → just a ≡ nothing → ⊥
+      just≢nothing ()
 
     -- ★ WHAT IS OWED: the links from the meaning to the flat run not yet proved
     record Owed : Set where
@@ -125,36 +132,48 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         -- the machine: a running state the start reaches has not left (only `c-leave` leaves, and it halts)
         o-running : ∀ {M fs₀} → FlatSteps image M start-fs fs₀ → LocState.halted (floc fs₀) ≡ Data.Bool.false
                   → LocState.left (floc fs₀) ≡ Data.Bool.false
-        -- a cut run: the flat run, at some fuel, shows its events and is cut
-        o-cut   : ∀ (K : ℕ) {t} (run : Run ds f₀ mone mone 0 (stop Once.LinCore.Events.exhausted) t) → Plain run
-                → Σ ℕ λ N → flat-events N image start-fs ≡ (evsOf t , nothing)
+        -- the world's run cut at the budget: the flat run, at some fuel, shows its events, is cut, and has
+        -- taken a control step per unit of the budget (master's `flat-cut`)
+        o-cut   : ∀ k → Ran.out (R (proj₁ (o-run k))) ≡ stop Once.LinCore.Events.exhausted
+                → Σ ℕ λ N → flat-events N image start-fs ≡ (evsOf (Ran.trace (R (proj₁ (o-run k)))) , nothing)
+                            × k ≤ flat-ctrls N image start-fs
+        -- the machine's run from the start never faults (master's `start-sound`)
+        o-sound : Sound image start-fs
         -- the machine: flat steps from the start to a halted machine are its events and its end
         o-flat  : ∀ {N fs′} → FlatSteps image N start-fs fs′ → LocState.halted (floc fs′) ≡ Data.Bool.true
                 → flat-events (suc N) image start-fs ≡ (LocState.ev-log (floc fs′) , just (end-of-left (LocState.left (floc fs′))))
 
-    -- ★★ THE FLAT THEOREM, relative to what is owed
-    flat-top : Owed → ∀ k → Σ ℕ λ N → flat-events N image start-fs ≡ (proj₁ (obs k) , endAp (proj₂ (obs k)))
-    flat-top O k = by (Ran.run (R K)) (Owed.o-plain O K) (λ st e → Owed.o-agree O K st e) eE eO
+    -- ★★ THE FLAT THEOREM, relative to what is owed: at some fuel the flat run shows the meaning's
+    -- events and end at the budget, and, where the budget cut it, a control step per unit
+    -- (master's `flat-ends` and `flat-cut`, at one fuel)
+    Shows : ℕ → ℕ → Set
+    Shows k N = (flat-events N image start-fs ≡ (proj₁ (obs k) , endAp (proj₂ (obs k))))
+                × (endAp (proj₂ (obs k)) ≡ nothing → k ≤ flat-ctrls N image start-fs)
+
+    flat-top : Owed → ∀ k → Σ ℕ (Shows k)
+    flat-top O k = by (Ran.run (R K)) refl (Owed.o-plain O K) (λ st e → Owed.o-agree O K st e) eE eO
       where
         K  = proj₁ (Owed.o-run O k)
         eE = proj₁ (proj₂ (Owed.o-run O k))
         eO = proj₂ (proj₂ (Owed.o-run O k))
-        by : ∀ {o t} (run : Run ds f₀ mone mone 0 o t) → Plain run
+        by : ∀ {o t} (run : Run ds f₀ mone mone 0 o t) → Ran.out (R K) ≡ o → Plain run
            → (∀ {mt sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′}
                 (st : StepsI main []ʳ start 0 mt c′ r′ m′ n′) → ios mt ≡ ios t → AgreesAll [] st)
            → evsOf t ≡ proj₁ (obs k) → endO o ≡ endAp (proj₂ (obs k))
-           → Σ ℕ λ N → flat-events N image start-fs ≡ (proj₁ (obs k) , endAp (proj₂ (obs k)))
-        by {gives mone n′} {t} run pl ag ee eo = case image-noleak run pl of λ where
+           → Σ ℕ (Shows k)
+        by {gives mone n′} {t} run _ pl ag ee eo = case image-noleak run pl of λ where
           (mt , st , _ , _ , _ , eio) → case ends ld entry-frame entry-regs st (ag st eio) f-end of λ where
             (N , fs′ , fst , hlt , lg , lft) →
               suc N , trans (Owed.o-flat O fst hlt)
                             (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
-                                       (trans (cong (λ b → just (end-of-left b)) lft) eo))
-        by {stop Once.LinCore.Events.halted} {t} run pl ag ee eo = case Owed.o-halt O run pl of λ where
+                                       (trans (cong (λ b → just (end-of-left b)) lft) eo)) ,
+              λ e → ⊥-elim (just≢nothing (trans eo e))
+        by {stop Once.LinCore.Events.halted} {t} run _ pl ag ee eo = case Owed.o-halt O run pl of λ where
           (mt , sh , U′ , r′ , m′ , n′ , st , eio) → case ends ld entry-frame entry-regs st (ag st eio) f-halt of λ where
             (N , fs′ , fst , hlt , lg , (fs₀ , M , st₀ , r₀ , l₀)) →
               suc N , trans (Owed.o-flat O fst hlt)
                             (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
-                                       (trans (cong (λ b → just (end-of-left b)) (trans l₀ (Owed.o-running O st₀ r₀))) eo))
-        by {stop Once.LinCore.Events.exhausted} {t} run pl ag ee eo = case Owed.o-cut O K run pl of λ where
-          (N , e) → N , trans e (cong₂ _,_ ee eo)
+                                       (trans (cong (λ b → just (end-of-left b)) (trans l₀ (Owed.o-running O st₀ r₀))) eo)) ,
+              λ e → ⊥-elim (just≢nothing (trans eo e))
+        by {stop Once.LinCore.Events.exhausted} {t} run eq pl ag ee eo = case Owed.o-cut O k eq of λ where
+          (N , e , c) → N , trans e (cong₂ _,_ eE (trans (sym (cong endO eq)) eO)) , λ _ → c
