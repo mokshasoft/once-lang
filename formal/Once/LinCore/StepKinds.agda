@@ -105,6 +105,10 @@ CoveredI open1    = ⊤
 -- an observation's dispatch (at the empty table, D423) and its trampoline's cell part
 CoveredI (iobs _) = ⊤
 CoveredI nopen    = ⊤
+-- a free's dispatch (a closure's, a ν's) and its trampoline's cell part (D417)
+CoveredI cfree    = ⊤
+CoveredI nfree    = ⊤
+CoveredI fopen    = ⊤
 {-# CATCHALL #-}
 CoveredI i = LocalI i
 
@@ -166,6 +170,18 @@ module _ {ℓ : Level} {T : Sh} where
       iob : ∀ {Γ} {ds : Defs Γ} {Es F S S′ U} {k : Codeᴵ (Es ∣ LF∙ F (Nu F) ∷ S′) U} {r : Ret U T} {es : Slots Es} {i}
               {p : MV (Coalg F S ⊗t S)} {os : Stk S′} {n}
           → P (i-iobs {ds = ds} {k = k} {r = r} {es = es} {i = i} {p = p} {os = os} {n = n})
+      cf  : ∀ {Es kd g X A B S U} {c : Codeᴵ (Es ∣ One ∷ S) U} {r : Ret U T} {es : Slots Es} {i} {lam : Lam kd g X A B}
+              {x : MV X} {os : Stk S} {n}
+          → P (i-cfree {c = c} {r = r} {es = es} {i = i} {lam = lam} {x = x} {os = os} {n = n})
+      nf  : ∀ {Es F S S′ U} {c : Codeᴵ (Es ∣ One ∷ S′) U} {r : Ret U T} {es : Slots Es} {i}
+              {p : MV (Coalg F S ⊗t S)} {os : Stk S′} {n}
+          → P (i-nfree {c = c} {r = r} {es = es} {i = i} {p = p} {os = os} {n = n})
+      fo  : ∀ {Es kd g X A B S U} {k : Codeᴵ (Es ∣ X ∷ S) U} {r : Ret U T} {es : Slots Es} {i} {lam : Lam kd g X A B}
+              {x : MV X} {os : Stk S} {n}
+          → P (i-fopen {k = k} {r = r} {es = es} {i = i} {lam = lam} {x = x} {os = os} {n = n})
+      foν : ∀ {Es F S S′ U} {k : Codeᴵ (Es ∣ (Coalg F S ⊗t S) ∷ S′) U} {r : Ret U T} {es : Slots Es} {i}
+              {p : MV (Coalg F S ⊗t S)} {os : Stk S′} {n}
+          → P (i-fopenν {k = k} {r = r} {es = es} {i = i} {p = p} {os = os} {n = n})
 
   covered-elim : (C : CoveredCases) → ∀ {sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
                  (st : StepI c r m n t c′ r′ m′ n′) → CoveredC c → CoveredCases.P C st
@@ -201,8 +217,8 @@ module _ {ℓ : Level} {T : Sh} where
   covered-elim C i-iobs           _ = CoveredCases.iob C
   covered-elim C (i-ccopy _)      ()
   covered-elim C (i-ncopy _)      ()
-  covered-elim C i-cfree          ()
-  covered-elim C i-nfree          ()
+  covered-elim C i-cfree          _ = CoveredCases.cf C
+  covered-elim C i-nfree          _ = CoveredCases.nf C
   covered-elim C i-open1          _ = CoveredCases.op1 C
   covered-elim C (i-openω _)      ()
   covered-elim C i-nopen          _ = CoveredCases.nop C
@@ -210,8 +226,8 @@ module _ {ℓ : Level} {T : Sh} where
   covered-elim C (i-copenν _)     ()
   covered-elim C (i-reclose _)    ()
   covered-elim C (i-recloseν _)   ()
-  covered-elim C i-fopen          ()
-  covered-elim C i-fopenν         ()
+  covered-elim C i-fopen          _ = CoveredCases.fo C
+  covered-elim C i-fopenν         _ = CoveredCases.foν C
 
   -- a local step, by its constructor
   record LocalCases : Set (Level.suc ℓ) where

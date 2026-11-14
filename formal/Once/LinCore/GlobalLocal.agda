@@ -118,6 +118,9 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tr-nolocal (to0 _) ()
   tr-nolocal (to1 _) ()
   tr-nolocal (to2 _) ()
+  tr-nolocal (tf0 _) ()
+  tr-nolocal (tf1 _) ()
+  tr-nolocal (tf2 _) ()
 
   module Whole (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
                     → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs

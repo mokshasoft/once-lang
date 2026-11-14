@@ -59,6 +59,7 @@ open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module T
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 open import Once.LinCore.GlobalTramp fmt ans bw using (module TrampR)
 open import Once.LinCore.GlobalTrampO fmt ans bw using (module TrampO)
+open import Once.LinCore.GlobalTrampF fmt ans bw using (module TrampF)
 
 module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
@@ -67,6 +68,7 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Relate {FS} ds f ldConst ld-nl wordOf
   open TrampR {FS} ds f ldConst ld-nl wordOf
   open TrampO {FS} ds f ldConst ld-nl wordOf
+  open TrampF {FS} ds f ldConst ld-nl wordOf using (tf-call; tF-pos₂)
   open Ctl {FS} ds f ldConst ld-nl using (main; L₀ˢ; L₀ᵇ; start-root; blockFin; Pnt; p-start; p-block; p-tramp; p-halt; ptFin; trFin)
   open Program ds f using (U)
   open ProgramRun ds f using (ncty)
@@ -237,6 +239,15 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                ; g-ret = mk-call p (s-trampo p) refl
                                            (called-re (trans (cong (λ z → suc (suc (suc z))) (HereF.f-pc H)) (sym (tO-pos₂ p)))
                                                       (sym (Data.Nat.Properties.n∸n≡0 (tOM F S))) CD)
+                                           (HereF.f-cfg H)
+                                           (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
+                                           (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
+    gcall {r = r} {fs = fs} (p-tramp p _) inv (tf1 {X = X} {C} _ , H) nx ok I = case tf-call {X} {C} p H of λ where
+      (N , fs′ , run , H′ , CD) →
+        N , fs′ , run , record { g-pt = p-block p (at whole) ; g-here = H′ ; g-next = trans (cd-next CD) nx
+                               ; g-ret = mk-call p (s-trampf {X = X} {C} p) refl
+                                           (called-re (trans (cong (λ z → suc (suc (suc z))) (HereF.f-pc H)) (sym (tF-pos₂ {X} {C} p)))
+                                                      (sym (trans (cong (wsz X ∸_) (Data.Nat.Properties.⊔-identityʳ (wsz X))) (Data.Nat.Properties.n∸n≡0 (wsz X)))) CD)
                                            (HereF.f-cfg H)
                                            (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
                                            (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = cd-inb CD I }
