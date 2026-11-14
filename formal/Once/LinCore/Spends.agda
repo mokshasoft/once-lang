@@ -85,3 +85,80 @@ mutual
   SpendsM (m-pair r stopped)                 k l = SpendsM r k l
   {-# CATCHALL #-}
   SpendsM _                                  k l = l ≡ k
+
+-- ★ a run that spends as the budget says is the lowering's: every fold plain (`Machine.Plain`)
+open import Data.Unit using (tt)
+open import Data.Product using (_,_; proj₁; proj₂)
+open import Once.LinCore.Machine fmt ans bw using (Plain; PlainM)
+
+mutual
+  spends-plain : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n o t} (r : Run ds f e v n o t) {k l} → Spends r k l → Plain r
+  spends-plain (r-∘ rg (go-on rf)) (m , s₁ , s₂) = spends-plain rg s₁ , spends-plain rf s₂
+  spends-plain (r-∘ rg stopped) s = spends-plain rg s
+  spends-plain (r-⊗ rf (go-on (fm-gives rg))) (m , s₁ , s₂) = spends-plain rf s₁ , spends-plain rg s₂
+  spends-plain (r-⊗ rf (go-on (fm-stop rg))) (m , s₁ , s₂) = spends-plain rf s₁ , spends-plain rg s₂
+  spends-plain (r-⊗ rf stopped) s = spends-plain rf s
+  spends-plain (r-case₁ r) s = spends-plain r s
+  spends-plain (r-case₂ r) s = spends-plain r s
+  spends-plain (r-app q r) s = spends-plain r s
+  spends-plain (r-cata rm (go-on ra)) (m , s₁ , s₂) = spends-plainM rm s₁ , spends-plain ra s₂
+  spends-plain (r-cata rm stopped) s = spends-plainM rm s
+  spends-plain (r-cata-reuse rm th) ()
+  spends-plain (r-lend (fm-gives r)) s = spends-plain r s
+  spends-plain (r-lend (fm-stop r)) s = spends-plain r s
+  spends-plain (r-lift r) s = spends-plain r s
+  spends-plain (r-fst r) s = spends-plain r s
+  spends-plain (r-snd r) s = spends-plain r s
+  spends-plain (r-caseE₁ r) s = spends-plain r s
+  spends-plain (r-caseE₂ r) s = spends-plain r s
+  spends-plain (r-out r) s = spends-plain r s
+  spends-plain (r-bapp q r) s = spends-plain r s
+  spends-plain (r-ev r) s = spends-plain r s
+  spends-plain (r-bev r) s = spends-plain r s
+  spends-plain (r-nout r) s = spends-plain r s
+  spends-plain (r-iter r (go-on done)) s = spends-plain r s
+  spends-plain (r-iter r (go-on (again rn))) (suc m , s₁ , s₂) = spends-plain r s₁ , spends-plain rn s₂
+  spends-plain (r-iter r (go-on (again r-exh))) (zero , s₁ , _) = spends-plain r s₁ , tt
+  spends-plain (r-iter r (go-on (again (r-iter _ _)))) (zero , s₁ , ())
+  spends-plain (r-iter r (go-on (again (r-cut _ _)))) (zero , s₁ , ())
+  spends-plain (r-iter r (go-on (again (r-tmp _ _ _)))) (zero , s₁ , ())
+  spends-plain (r-iter r stopped) s = spends-plain r s
+  spends-plain r-exh ()
+  spends-plain (r-cut r q) ()
+  spends-plain (r-tmp r w p) s = spends-plain r s
+  spends-plain r-id s = tt
+  spends-plain r-ρ s = tt
+  spends-plain r-ρ⁻ s = tt
+  spends-plain r-λ s = tt
+  spends-plain r-λ⁻ s = tt
+  spends-plain r-α s = tt
+  spends-plain r-α⁻ s = tt
+  spends-plain r-swap s = tt
+  spends-plain r-dup s = tt
+  spends-plain r-drop s = tt
+  spends-plain r-inl s = tt
+  spends-plain r-inr s = tt
+  spends-plain r-In s = tt
+  spends-plain r-Outμ s = tt
+  spends-plain r-clo s = tt
+  spends-plain r-copy s = tt
+  spends-plain r-lam s = tt
+  spends-plain r-lamω s = tt
+  spends-plain r-unf s = tt
+  spends-plain r-const s = tt
+  spends-plain (r-op p) s = tt
+  spends-plain (r-opend p) s = tt
+
+  spends-plainM : ∀ {Γ} {ds : Defs Γ} {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t}
+                  (rm : RunMap ds F alg e G x n o t) {k l} → SpendsM rm k l → PlainM rm
+  spends-plainM (m-id r) s = spends-plain r s
+  spends-plainM (m-inl (fm-gives r)) s = spends-plainM r s
+  spends-plainM (m-inl (fm-stop r)) s = spends-plainM r s
+  spends-plainM (m-inr (fm-gives r)) s = spends-plainM r s
+  spends-plainM (m-inr (fm-stop r)) s = spends-plainM r s
+  spends-plainM (m-pair r (go-on (fm-gives r′))) (m , s₁ , s₂) = spends-plainM r s₁ , spends-plainM r′ s₂
+  spends-plainM (m-pair r (go-on (fm-stop r′))) (m , s₁ , s₂) = spends-plainM r s₁ , spends-plainM r′ s₂
+  spends-plainM (m-pair r stopped) s = spends-plainM r s
+  spends-plainM m-one s = tt
+  spends-plainM m-b s = tt
+  spends-plainM m-μ s = tt
