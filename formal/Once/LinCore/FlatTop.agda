@@ -112,7 +112,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
   obs k = TM.run ι [] (approx k (ev ⟦ P ⟧P f tt))
 
   -- the compiled program's run in the world, at a budget (D430)
-  R : (K : ℕ) → Ran Wι ds f₀ mone mone 0 K
+  R : (K : ℕ) → Ran Wι ds f₀ mone mone 0 K []
   R K = exec Wι ds K f₀ mone mone 0 []
 
   module _ (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
