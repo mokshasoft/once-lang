@@ -68,6 +68,18 @@ stepsI-++ done st₂ = st₂
 stepsI-++ {c = c} {r} {c″ = c″} {r″} {m = m} {m″ = m″} {n = n} {n″ = n″} {t₂ = t₂} (_⟫_ {t₁ = u₁} {t₂ = u₂} x st₁) st₂ =
   subst (λ z → StepsI c r m n z c″ r″ m″ n″) (sym (++-assoc u₁ u₂ t₂)) (x ⟫ stepsI-++ st₁ st₂)
 
+-- ★ how many times a stretch entered a loop (a round started: master's budget counts rounds, D430)
+isLoop : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t}
+       → StepI c r m n t c′ r′ m′ n′ → ℕ
+isLoop i-loop = 1
+{-# CATCHALL #-}
+isLoop _      = 0
+
+loops : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t}
+      → StepsI c r m n t c′ r′ m′ n′ → ℕ
+loops done       = 0
+loops (x ⟫ rest) = isLoop x + loops rest
+
 oneI : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t}
      → StepI c r m n t c′ r′ m′ n′ → StepsI c r m n t c′ r′ m′ n′
 oneI {c = c} {r} {c′} {r′} {m} {m′} {n} {n′} {t} x = subst (λ z → StepsI c r m n z c′ r′ m′ n′) (++-identityʳ t) (x ⟫ done)

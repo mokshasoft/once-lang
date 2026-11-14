@@ -29,7 +29,7 @@ import Data.Bool
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (tt)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Function using (case_of_)
 open import Once.LinCore.Flat using (Base)
 open import Once.Type using (fits-int; fits-float)
@@ -40,7 +40,7 @@ open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.IR.Semantics.Event using (SigOpEvent)
 import Once.IR.Semantics.Trace as TM
 open import Once.IR.Semantics.Out using (end-of-left; _▹_)
-open import Data.Nat.Properties using (+-comm)
+open import Data.Nat.Properties using (+-comm; +-identityʳ; ≤-trans; m≤m+n)
 open import Data.List.Properties using (++-identityʳ)
 open import Once.Spec.Trace using (End; returned)
 import Once.Spec.Trace
@@ -64,7 +64,7 @@ private
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw using (MV; mone; Run; Trace; ios; Outcome; gives; stop; OpPath; er; mvF)
 import Once.LinCore.Events
-open import Once.LinCore.Machine fmt ans bw using (Plain; _∣_)
+open import Once.LinCore.Machine fmt ans bw using (Plain; _∣_; Sh; Cfg)
 open import Once.LinCore.Total fmt ans bw using (World; exec; Ran; module Ran)
 open import Once.LinCore.Pass fmt ans using (Prog; IR; ⟦_⟧P; ev; trP; tr; pass-okᶠ; pass-okP)
 import Once.LinCore.BudgetSound
@@ -83,7 +83,7 @@ open import Once.LinCore.Total fmt ans bw using (CutOp)
 module BudgetSound = Once.LinCore.BudgetSound fmt ans bw
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ)
-open import Once.LinCore.ImageSim fmt ans bw using (StepsI; start; image-noleak; image-halts)
+open import Once.LinCore.ImageSim fmt ans bw using (StepsI; start; image-noleak; image-halts; loops)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open import Once.LinCore.Lower fmt ans bw using (module Program′)
 open import Once.LinCore.PointAt fmt ans bw using (module Ctl)
@@ -147,7 +147,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
               -- ★ LINKED (D431): the program's ops are declared by the interpretation the machine runs against
               (decl : ∀ {s} → s ∈ ops (Program.U ds f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))) where
     open EndR {Mach} ds f₀ ldConst ld-nl wordOf using (ends)
-    open FlatEventTrace {Mach} using (flat-ctrls; flat-events-steps; flat-events-step; chain-events; chain-log; chain-left)
+    open FlatEventTrace {Mach} using (flat-ctrls; flat-events-steps; flat-events-step; chain-events; chain-log; chain-left; chain-ctrls; flat-ctrls-steps)
     open FlatStepsAPI {Mach} using (Sound)
 
     private
@@ -162,11 +162,17 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         -- class (OpMachine.Dispatch) but for a structured answer (an undeclared FFI op's stop
         -- is excluded by linkedness, `decl`)
         o-ops   : OM.OwedOp
-        -- the world's run cut at the budget: the flat run, at some fuel, shows its events, is cut, and has
-        -- taken a control step per unit of the budget (master's `flat-cut`)
-        o-cut   : ∀ k → Ran.out (R k) ≡ stop Once.LinCore.Events.exhausted
-                → Σ ℕ λ N → flat-events N image start-fs ≡ (evsOf (Ran.trace (R k)) , nothing)
-                            × k ≤ flat-ctrls N image start-fs
+        -- ★ THE BUDGET'S CUT ON THE IMAGE: the world's run cut at the budget pauses the image, having made
+        -- exactly the run's events and entered a loop at least once a unit of the budget
+        o-pause : ∀ k → Ran.out (R k) ≡ stop Once.LinCore.Events.exhausted
+                → Σ Trace λ mt → Σ Sh λ sh → Σ Sh λ U′ → Σ (Codeᴵ sh U′) λ c′ → Σ (Ret U′ (One ∷ [] ∣ One ∷ [])) λ r′
+                  → Σ (Cfg sh) λ m′ → Σ ℕ λ n′ → Σ (StepsI main []ʳ start 0 mt c′ r′ m′ n′) λ st
+                  → (ios mt ≡ ios (Ran.trace (R k))) × (k ≤ loops st)
+        -- ★ …which the machine follows from its first state, a control step at every loop entry (the loop's
+        -- label: master's `flat-cut` counts control steps)
+        o-count : ∀ {sh U′} {t} {c′ : Codeᴵ sh U′} {r′ m′ n′} (st : StepsI main []ʳ start 0 t c′ r′ m′ n′) → AgreesAll [] st
+                → Σ ℕ λ N → Σ FlatState λ fs′ → Σ (FlatSteps image N start-fs fs′) λ fl
+                  → (LocState.ev-log (floc fs′) ≡ evsOf t) × (loops st ≤ chain-ctrls fl)
         -- the machine's run from the start never faults (master's `start-sound`)
         o-sound : Sound image start-fs
 
@@ -220,6 +226,18 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     Shows k N = (flat-events N image start-fs ≡ (proj₁ (obs k) , endAp (proj₂ (obs k))))
                 × (endAp (proj₂ (obs k)) ≡ nothing → k ≤ flat-ctrls N image start-fs)
 
+    -- the flat run at a chain's length: its events, cut; its control steps
+    private
+      cut-events : ∀ {N fs′} (fl : FlatSteps image N start-fs fs′) → flat-events N image start-fs ≡ (LocState.ev-log (floc fs′) , nothing)
+      cut-events {N} {fs′} fl =
+        trans (cong (λ z → flat-events z image start-fs) (sym (+-identityʳ N)))
+          (trans (flat-events-steps fl 0) (cong (λ z → (z , nothing)) (trans (++-identityʳ (chain-events fl)) (sym (chain-log fl)))))
+
+      cut-ctrls : ∀ {N fs′} (fl : FlatSteps image N start-fs fs′) → chain-ctrls fl ≤ flat-ctrls N image start-fs
+      cut-ctrls {N} {fs′} fl =
+        subst (chain-ctrls fl ≤_) (trans (sym (flat-ctrls-steps fl 0)) (cong (λ z → flat-ctrls z image start-fs) (+-identityʳ N)))
+              (m≤m+n (chain-ctrls fl) 0)
+
     flat-top : Owed → ∀ k → Σ ℕ (Shows k)
     flat-top O k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (o-uncut O K)) (λ {mt} st e → AR.agrees-all st (AR.wtr-ios (Ran.trace (R K)) mt (sym e) (Ran.world (R K)))) eE eO
       where
@@ -248,8 +266,12 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
                             (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
                                        (trans (cong (λ b → just (end-of-left b)) (trans l₀ (o-running st₀ r₀))) eo)) ,
               λ e → ⊥-elim (just≢nothing (trans eo e))
-        by {stop Once.LinCore.Events.exhausted} {t} run eq pl ag ee eo = case Owed.o-cut O k eq of λ where
-          (N , e , c) → N , trans e (cong₂ _,_ eE (trans (sym (cong endO eq)) eO)) , λ _ → c
+        by {stop Once.LinCore.Events.exhausted} {t} run eq pl ag ee eo = case Owed.o-pause O k eq of λ where
+          (mt , sh , U′ , c′ , r′ , m′ , n′ , st , eio , cnt) →
+            case Owed.o-count O st (AR.agrees-all st (AR.wtr-ios (Ran.trace (R K)) mt (sym eio) (Ran.world (R K)))) of λ where
+              (N , fs′ , fl , lg , cc) →
+                N , trans (cut-events fl) (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) eE)) (trans (sym (cong endO eq)) eO)) ,
+                λ _ → ≤-trans cnt (≤-trans cc (cut-ctrls fl))
 
 ------------------------------------------------------------------------
 -- ★ ONE LINK UP: master's IR program and its meaning (`evalᴰ` at the table's
