@@ -22955,9 +22955,9 @@ proved.
 
 ## D425 — A MANY-USE TRAMPOLINE'S BODY WRITES INTO ITS DISPATCHER'S AREA: THE AREA'S FRAME APART FROM THE RETURN'S (2026-11-14)
 
-**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3, D418). **Applies**: D417
-(trampolines), D421 (frame-0 trampolines copy through their frame). **Status**: proposed; nothing
-implemented yet.
+**Accepted** (2026-11-14, by the user: keep the generated code, runtime performance first; plan 0.146
+B1.4b, D417 step 3, D418). **Applies**: D417 (trampolines), D421 (frame-0 trampolines copy through their
+frame). **Status**: accepted; implemented (the step theorem covers `icallω` and the `ktrω` trampoline).
 
 ### The problem
 A many-use body's trampoline (`ktrω`) keeps the cell (`peek`), passes the cell's contents as the body's

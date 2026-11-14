@@ -109,6 +109,9 @@ CoveredI nopen    = ⊤
 CoveredI cfree    = ⊤
 CoveredI nfree    = ⊤
 CoveredI fopen    = ⊤
+-- a many-use dispatch and its trampoline's cell part (D425)
+CoveredI icallω   = ⊤
+CoveredI openω    = ⊤
 {-# CATCHALL #-}
 CoveredI i = LocalI i
 
@@ -182,6 +185,14 @@ module _ {ℓ : Level} {T : Sh} where
       foν : ∀ {Es F S S′ U} {k : Codeᴵ (Es ∣ (Coalg F S ⊗t S) ∷ S′) U} {r : Ret U T} {es : Slots Es} {i}
               {p : MV (Coalg F S ⊗t S)} {os : Stk S′} {n}
           → P (i-fopenν {k = k} {r = r} {es = es} {i = i} {p = p} {os = os} {n = n})
+      icω : ∀ {Es g X A B S U} {k : Codeᴵ (Fn many g A B ∷ Es ∣ B ∷ S) U} {r : Ret U T}
+              {lam : Lam many g X A B} {i x} {es : Slots (Fn many g A B ∷ Es)} {a : MV A} {os : Stk S} {n}
+              (eq : see es ≡ mfn i lam x)
+          → P (i-icallω {k = k} {r = r} {lam = lam} {i = i} {x = x} {es = es} {a = a} {os = os} {n = n} eq)
+      opω : ∀ {Es g X A B S U} {k : Codeᴵ (X ∷ Fn many g A B ∷ Es ∣ S) U} {r : Ret U T}
+              {lam : Lam many g X A B} {i x} {es : Slots (Fn many g A B ∷ Es)} {os : Stk S} {n}
+              (eq : see es ≡ mfn i lam x)
+          → P (i-openω {k = k} {r = r} {lam = lam} {i = i} {x = x} {es = es} {os = os} {n = n} eq)
 
   covered-elim : (C : CoveredCases) → ∀ {sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}
                  (st : StepI c r m n t c′ r′ m′ n′) → CoveredC c → CoveredCases.P C st
@@ -213,14 +224,14 @@ module _ {ℓ : Level} {T : Sh} where
   covered-elim C st@(i-eword _)   v = CoveredCases.loc C st v
   covered-elim C (i-opend _)      ()
   covered-elim C i-icall          _ = CoveredCases.ic C
-  covered-elim C (i-icallω _)     ()
+  covered-elim C (i-icallω {es = es} eq) _ = CoveredCases.icω C {es = es} eq
   covered-elim C i-iobs           _ = CoveredCases.iob C
   covered-elim C (i-ccopy _)      ()
   covered-elim C (i-ncopy _)      ()
   covered-elim C i-cfree          _ = CoveredCases.cf C
   covered-elim C i-nfree          _ = CoveredCases.nf C
   covered-elim C i-open1          _ = CoveredCases.op1 C
-  covered-elim C (i-openω _)      ()
+  covered-elim C (i-openω {es = es} eq)  _ = CoveredCases.opω C {es = es} eq
   covered-elim C i-nopen          _ = CoveredCases.nop C
   covered-elim C (i-copen _)      ()
   covered-elim C (i-copenν _)     ()
@@ -333,3 +344,4 @@ module _ {ℓ : Level} {T : Sh} where
   local-elim C (i-recloseν _) ()
   local-elim C i-fopen        ()
   local-elim C i-fopenν       ()
+

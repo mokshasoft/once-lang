@@ -105,7 +105,7 @@ module RetB {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Img {FS} ds f ldConst ld-nl using (image-label)
   open Frames {FS} using (Called)
   open Called
-  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next)
+  open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; CallOutA; co-frame; co-ret; co-saved; co-rest; co-next)
   open import Once.LinCore.LowerSimH fmt ans bw using (module SimH)
   open SimH {FS} U wordOf using (open1-sim)
   open import Once.LinCore.LowAt fmt ans bw using (in-trans; in-r)
@@ -142,7 +142,7 @@ module RetB {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            → RetOK R fin r cfc rets′ sv′ fs
            → RetOK R fin r (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) fs′
       -- a return writes only frames: the heap's words and blocks stand (D424)
-      co-inb : ∀ {fs fs′ cfc a src o nb pc rets′ sv′ sl} → CallOut fs fs′ cfc a src o nb pc rets′ sv′ sl → InBlk fs → InBlk fs′
+      co-inb : ∀ {fs fs′ cfc af a src o nb pc rets′ sv′ sl} → CallOutA fs fs′ cfc af a src o nb pc rets′ sv′ sl → InBlk fs → InBlk fs′
       co-inb {fs} {fs′} CO = inb-pt {fs} {fs′} (λ hl → co-rest CO (AtDynamic hl) (λ k k< ())) (co-next CO) (co-size CO)
 
       back {cfc = cfc} CO tk fr ok =

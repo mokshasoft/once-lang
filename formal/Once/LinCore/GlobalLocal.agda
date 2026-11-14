@@ -14,7 +14,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Unit using (tt)
+open import Data.Unit using (⊤; tt)
 open import Data.Bool using (false)
 open import Function using (case_of_)
 open import Relation.Nullary using (¬_)
@@ -87,6 +87,7 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.ImageRun fmt ans bw using (StepI)
   open import Once.LinCore.LocalStep fmt ans bw using (module Steps)
   open import Once.LinCore.StepKinds fmt ans bw using (Local; LocalC; StraightC; straight-local; CoveredC; covered-elim)
+  open import Once.LinCore.StepEpop fmt ans bw using (epop-inv)
   open import Once.LinCore.HeldI fmt ans bw using (InvI)
   open import Once.LinCore.LabelsI fmt ans bw using (module Img)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
@@ -109,18 +110,27 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   loop-not-tramp (p-tramp _ _) ()
   loop-not-tramp p-halt ()
 
-  -- no step that stays in its root runs at a trampoline's point (by its code)
-  tr-nolocal : ∀ {σ sh U′} {κ : Key σ} {c : Codeᴵ sh U′} {p : under κ ∈ allK U} {pt : Pt (blockᴵ κ) c}
-             → TrPt p pt → LocalC c → ⊥
-  tr-nolocal (tp0 _) ()
-  tr-nolocal (tp1 _) ()
-  tr-nolocal (tp2 _) ()
-  tr-nolocal (to0 _) ()
-  tr-nolocal (to1 _) ()
-  tr-nolocal (to2 _) ()
-  tr-nolocal (tf0 _) ()
-  tr-nolocal (tf1 _) ()
-  tr-nolocal (tf2 _) ()
+  -- no trampoline's point is at a `case` (by its code)
+  NotCase : ∀ {sh U′} → Codeᴵ sh U′ → Set
+  NotCase (case _ _) = ⊥
+  {-# CATCHALL #-}
+  NotCase _          = ⊤
+
+  tr-notcase : ∀ {σ sh U′} {κ : Key σ} {c : Codeᴵ sh U′} {p : under κ ∈ allK U} {pt : Pt (blockᴵ κ) c}
+             → TrPt p pt → NotCase c
+  tr-notcase (tp0 _) = tt
+  tr-notcase (tp1 _) = tt
+  tr-notcase (tp2 _) = tt
+  tr-notcase (to0 _) = tt
+  tr-notcase (to1 _) = tt
+  tr-notcase (to2 _) = tt
+  tr-notcase (tf0 _) = tt
+  tr-notcase (tf1 _) = tt
+  tr-notcase (tf2 _) = tt
+  tr-notcase (tw0 _) = tt
+  tr-notcase (tw1 _) = tt
+  tr-notcase (tw2 _) = tt
+  tr-notcase (tw3 _) = tt
 
   module Whole (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
                     → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
@@ -156,6 +166,34 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gat-block p s st l inv H nx ok I = case AK.glocal p st l s inv H nx ok I of λ where
       (N , fs′ , run , H′ , nx′ , ok′ , I′) → N , fs′ , run , record { g-pt = p-block p (at (AK.LS.succ p st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ ; g-blk = I′ }
 
+    -- ★ the one step that stays at a trampoline's point: a many-use body's
+    -- `epop` (D425), no flat step (its code is the way out's: one address)
+    gtr-local : ∀ {T σ sh U′ sh′ U″} {κ : Key σ} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T}
+                  {m′ n′ fs} {p : under κ ∈ allK U} {pt : Pt (blockᴵ κ) c}
+                (tp : TrPt p pt) (st : StepI c r m n t c′ r′ m′ n′) → LocalC c
+              → HereTr tp m fs → AllocState.next-heap-ref (falloc fs) ≡ n
+              → RetOK (rtramp p) (ptFin (p-tramp p pt)) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+              → InBlk fs
+              → Onward c′ r′ m′ n′ fs
+    gtr-local (tp0 _) st () H nx ok I
+    gtr-local (tp1 _) st () H nx ok I
+    gtr-local (tp2 _) st () H nx ok I
+    gtr-local (to0 _) st () H nx ok I
+    gtr-local (to1 _) st () H nx ok I
+    gtr-local (to2 _) st () H nx ok I
+    gtr-local (tf0 _) st () H nx ok I
+    gtr-local (tf1 _) st () H nx ok I
+    gtr-local (tf2 _) st () H nx ok I
+    gtr-local (tw0 _) st () H nx ok I
+    gtr-local (tw1 _) st () H nx ok I
+    gtr-local (tw3 _) st () H nx ok I
+    gtr-local {r = r} {n = n} {fs = fs} (tw2 p) st _ H nx ok I =
+      epop-inv (λ m₀ c′ r′ m′ n′ → HereTr (tw2 p) m₀ fs → AllocState.next-heap-ref (falloc fs) ≡ n → Onward c′ r′ m′ n′ fs)
+        (λ { {os = v ∷ˢ os′} H′ nx′ →
+               0 , fs , FlatStepsAPI.[] ,
+               record { g-pt = p-tramp p (at (next (next (next whole)))) ; g-here = tw3 p , H′ ; g-next = nx′ ; g-ret = ok ; g-blk = I } })
+        st H nx
+
     -- ★ a straight step (local, not a `case`): only at a path; no case
     -- split on the step (StepKinds)
     gstep-at : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
@@ -168,7 +206,7 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gstep-at {c = c} (p-block p (at s)) st l inv H nx ok I = gat-block p s st (straight-local c l) inv H nx ok I
     gstep-at (p-start (disp s)) st () inv H nx ok I
     gstep-at (p-block p (disp s)) st () inv H nx ok I
-    gstep-at {c = c} (p-tramp p pt) st l inv (tp , H) nx ok I = ⊥-elim (tr-nolocal tp (straight-local c l))
+    gstep-at {c = c} (p-tramp p pt) st l inv (tp , H) nx ok I = gtr-local tp st (straight-local c l) H nx ok I
     -- explicit: else coverage splits the step at `halted` (a costly split)
     gstep-at p-halt st () inv H nx ok I
 
@@ -191,7 +229,7 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gcase₁ {r = r} {fs = fs} (p-block p (disp s)) inv H nx ok I = case KL.disp-exit p image-label s H of λ where
       (N , fs′ , run , H′ , K , nx′ , old , tp) →
         N , fs′ , run , record { g-pt = p-block p (at (next s)) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok ; g-blk = k-inb K I }
-    gcase₁ (p-tramp p pt) inv (tp , H) nx ok I = ⊥-elim (tr-nolocal tp tt)
+    gcase₁ (p-tramp p pt) inv (tp , H) nx ok I = ⊥-elim (tr-notcase tp)
 
     -- ★ a `case`'s right: a local step at a path, or a loop's dispatch again
     gcase₂ : ∀ {T Es A B S U′} {c₁ : Codeᴵ (Es ∣ A ∷ S) U′} {c₂ : Codeᴵ (Es ∣ B ∷ S) U′} {r : Ret U′ T}
@@ -208,7 +246,7 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gcase₂ {r = r} {fs = fs} (p-block p (disp s)) inv H nx ok I = case KL.disp-again p image-label s H of λ where
       (N , fs′ , run , H′ , K , nx′ , old , tp) →
         N , fs′ , run , record { g-pt = p-block p (at s) ; g-here = H′ ; g-next = trans nx′ nx ; g-ret = ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok ; g-blk = k-inb K I }
-    gcase₂ (p-tramp p pt) inv (tp , H) nx ok I = ⊥-elim (tr-nolocal tp tt)
+    gcase₂ (p-tramp p pt) inv (tp , H) nx ok I = ⊥-elim (tr-notcase tp)
 
     -- ★ the loop's turn: the body, its dispatch pushed
     gloop : ∀ {T E Es A B S V} {b : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V}
