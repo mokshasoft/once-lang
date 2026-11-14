@@ -42,6 +42,10 @@ open import Once.Spec.Trace using (End; returned)
 import Once.Spec.Trace
 open import Once.Denotation.Approx using (approx; endAp)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+import Once.IR
+import Once.IRTy
+open import Once.Denotation.Program using (IRFun; tableEnv)
+import Once.Denotation.DenotTrace as DT
 
 module Once.LinCore.FlatTop (Mach : FrameSemantics) (bw : Base → ℕ) where
 
@@ -66,6 +70,8 @@ open import Once.LinCore.StepOp fmt ans bw using (evsOf; ioEvent)
 open import Once.LinCore.RunWord fmt ans bw using (module RunW)
 open import Once.LinCore.Start fmt ans bw using (module StartR)
 open import Once.LinCore.End fmt ans bw using (module EndR; Final; f-end; f-halt)
+import Once.LinCore.FromIR
+module FromIR = Once.LinCore.FromIR fmt ans
 
 -- ★ the world the machine's interpretation is: its state the log so far, its answer the
 -- interpretation's given that history (D429)
@@ -90,9 +96,9 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
 
   ds = trP P
   f₀ = tr f
-  open Program′ ds f₀ ldConst using (image)
+  image = Program′.image ds f₀ ldConst
   open Ctl {Mach} ds f₀ ldConst ld-nl using (main)
-  open StartR {Mach} ds f₀ ldConst ld-nl wordOf entry-frame entry-regs using (start-fs)
+  start-fs = StartR.start-fs {Mach} ds f₀ ldConst ld-nl wordOf entry-frame entry-regs
   open RunW {Mach} ds f₀ ldConst ld-nl wordOf using (AgreesAll)
 
   -- the meaning, and what it shows at a budget from the empty log
@@ -177,3 +183,46 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
               λ e → ⊥-elim (just≢nothing (trans eo e))
         by {stop Once.LinCore.Events.exhausted} {t} run eq pl ag ee eo = case Owed.o-cut O k eq of λ where
           (N , e , c) → N , trans e (cong₂ _,_ eE (trans (sym (cong endO eq)) eO)) , λ _ → c
+
+------------------------------------------------------------------------
+-- ★ ONE LINK UP: master's IR program and its meaning (`evalᴰ` at the table's
+-- environment, as the apex states it). The program translates (`FromIR`);
+-- the pass's meaning and master's show the same at every budget (owed:
+-- `BridgeProof.bridge`, its casts and the table's `EnvOK`).
+------------------------------------------------------------------------
+
+module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
+             (tp : FromIR.TrProg) (etp : FromIR.trTable tbl ≡ just tp)
+             (f : IR (FromIR.TrProg.Γ tp) One One) (ef : FromIR.trI (FromIR.TrProg.rs tp) ir ≡ just f)
+             (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
+             (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {Mach} (ldConst v) ≡ nothing)
+             (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
+             (entry-frame : FrameSemantics.Frame Mach) (entry-regs : Registers Mach) where
+  module TP = Top (FromIR.TrProg.prog tp) f ldConst ld-nl wordOf entry-frame entry-regs
+
+  -- master's meaning, and what it shows at a budget from the empty log
+  obsᴰ : ℕ → TM.Run (Once.Denotation.Approx.Ap Data.Unit.⊤)
+  obsᴰ k = TM.run ι [] (approx k (DT.evalᴰ fmt (tableEnv fmt ans tbl) ir tt))
+
+  module _ (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatMachine.FlatState {Mach})
+                 → FlatMachine.flat-exec-instr {Mach} (ldConst v) TP.image fs
+                   ≡ record fs { floc = record (FlatMachine.floc fs) { regs = writeReg (LocState.regs (FlatMachine.floc fs)) Output (wordOf v) }
+                               ; fpc = suc (FlatMachine.fpc fs) }) where
+    open FlatEventTrace {Mach} using (flat-events; flat-ctrls)
+    open FlatMachine {Mach} using (FlatState)
+
+    record OwedIR : Set where
+      field
+        o-top    : TP.Owed ld
+        -- the translation means what master's program means, at every budget
+        o-bridge : ∀ k → TP.obs k ≡ obsᴰ k
+
+    -- ★★ THE FLAT THEOREM AT MASTER'S MEANING (master's `flat-ends` and `flat-cut`)
+    flat-ir : OwedIR → ∀ k → Σ ℕ λ N → (flat-events N TP.image TP.start-fs ≡ (proj₁ (obsᴰ k) , endAp (proj₂ (obsᴰ k))))
+                                     × (endAp (proj₂ (obsᴰ k)) ≡ nothing → k ≤ flat-ctrls N TP.image TP.start-fs)
+    flat-ir O k = case TP.flat-top ld (OwedIR.o-top O) k of λ where
+      (N , e , c) → N , trans e (cong (λ r → (proj₁ r , endAp (proj₂ r))) (OwedIR.o-bridge O k))
+                      , λ z → c (trans (cong (λ r → endAp (proj₂ r)) (OwedIR.o-bridge O k)) z)
+
+    flat-sound : OwedIR → FlatStepsAPI.Sound {Mach} TP.image TP.start-fs
+    flat-sound O = TP.Owed.o-sound (OwedIR.o-top O)
