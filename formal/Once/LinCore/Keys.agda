@@ -190,6 +190,7 @@ data Got : Set where
   t!  : LTy → Got
   n!  : NS → Got
   o!  : DS → Got
+  p!  : Sig → Got
   _⊹_ : Got → Got → Got
 
 ks : Got → List AKey
@@ -216,6 +217,12 @@ os (G ⊹ H) = os G ++ os H
 {-# CATCHALL #-}
 os _       = []
 
+ps : Got → List Sig
+ps (p! s)  = s ∷ []
+ps (G ⊹ H) = ps G ++ ps H
+{-# CATCHALL #-}
+ps _       = []
+
 -- a term's: what its code calls by name, the types it copies or frees, the
 -- ν's it builds, the tables it observes at; a closure's body with it
 tmGot : ∀ {Γ} → Defs Γ → ∀ {E A B} → Tm Γ E A B → Got
@@ -239,6 +246,7 @@ tmGot ds (llam {X = X} b γ)  = k! (_ , kbody1 ds b γ) ⊹ t! X ⊹ tmGot ds b
 tmGot ds (llamω {X = X} b γ) = k! (_ , kbodyω ds b γ) ⊹ t! X ⊹ tmGot ds b
 tmGot ds (lunf {F = F} {S})  = n! (F , S) ⊹ o! (_ , ε)
 tmGot ds (lout {F = F})      = o! (_ , ε)
+tmGot ds (lop s)             = p! s
 {-# CATCHALL #-}
 tmGot ds _                   = ∅
 
@@ -275,10 +283,11 @@ record Univ : Set where
     tys  : List LTy
     nus  : List NS
     obs  : List DS
+    ops  : List Sig
 open Univ public
 
 close : Got → Univ
-close g = univ′ (ks g) (cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) (ns g) ((_ , ε) ∷ os g)
+close g = univ′ (ks g) (cmap subs (ts g) ++ cmap (λ n → subs (cty n)) (ns g)) (ns g) ((_ , ε) ∷ os g) (ps g)
 
 allK : Univ → List AKey
 allK U = keys U ++ map kc (tys U) ++ map kf (tys U) ++ obsK (obs U) (nus U)
@@ -311,26 +320,28 @@ module In (U : Univ) where
       gt : ts G ⊆ tys U
       gn : ns G ⊆ nus U
       go : os G ⊆ obs U
+      gp : ps G ⊆ ops U
   open _⊑U public
 
   ⊹ˡ : ∀ {G H} → (G ⊹ H) ⊑U → G ⊑U
-  ⊹ˡ (sub a b c d) = sub (λ m → a (∈-++⁺ˡ m)) (λ m → b (∈-++⁺ˡ m)) (λ m → c (∈-++⁺ˡ m)) (λ m → d (∈-++⁺ˡ m))
+  ⊹ˡ (sub a b c d p) = sub (λ m → a (∈-++⁺ˡ m)) (λ m → b (∈-++⁺ˡ m)) (λ m → c (∈-++⁺ˡ m)) (λ m → d (∈-++⁺ˡ m)) (λ m → p (∈-++⁺ˡ m))
 
   ⊹ʳ : ∀ {G H} → (G ⊹ H) ⊑U → H ⊑U
-  ⊹ʳ {G} (sub a b c d) =
+  ⊹ʳ {G} (sub a b c d p) =
     sub (λ m → a (∈-++⁺ʳ (ks G) m)) (λ m → b (∈-++⁺ʳ (ts G) m)) (λ m → c (∈-++⁺ʳ (ns G) m)) (λ m → d (∈-++⁺ʳ (os G) m))
+        (λ m → p (∈-++⁺ʳ (ps G) m))
 
   ⊹-join : ∀ {G H} → G ⊑U → H ⊑U → (G ⊹ H) ⊑U
-  ⊹-join {G} (sub a b c d) (sub a′ b′ c′ d′) =
+  ⊹-join {G} (sub a b c d p) (sub a′ b′ c′ d′ p′) =
     sub (λ m → [ a , a′ ] (∈-++⁻ (ks G) m)) (λ m → [ b , b′ ] (∈-++⁻ (ts G) m))
-        (λ m → [ c , c′ ] (∈-++⁻ (ns G) m)) (λ m → [ d , d′ ] (∈-++⁻ (os G) m))
+        (λ m → [ c , c′ ] (∈-++⁻ (ns G) m)) (λ m → [ d , d′ ] (∈-++⁻ (os G) m)) (λ m → [ p , p′ ] (∈-++⁻ (ps G) m))
     where
       [_,_] : ∀ {X Y Z : Set} → (X → Z) → (Y → Z) → X ⊎ Y → Z
       [ f , g ] (inj₁ x) = f x
       [ f , g ] (inj₂ y) = g y
 
   ∅⊑ : ∅ ⊑U
-  ∅⊑ = sub (λ ()) (λ ()) (λ ()) (λ ())
+  ∅⊑ = sub (λ ()) (λ ()) (λ ()) (λ ()) (λ ())
 
   ----------------------------------------------------------------------
   -- 4. CODE INSIDE THE UNIVERSE: every call, every closure or ν a `prim`
@@ -355,7 +366,7 @@ module In (U : Univ) where
   PrimIn ds lOutμ     = ⊤
   PrimIn ds (lclo F p) = ⊤
   PrimIn ds (lconst v) = ⊤
-  PrimIn ds (lop s)   = ⊤
+  PrimIn ds (lop s)   = s ∈ ops U
   {-# CATCHALL #-}
   PrimIn ds _         = ⊥
 
@@ -408,7 +419,7 @@ module In (U : Univ) where
   comp-in ds lOutμ g ck          = tt , ck
   comp-in ds (lclo F p) g ck     = tt , ck
   comp-in ds (lconst v) g ck     = tt , ck
-  comp-in ds (lop s) g ck        = tt , ck
+  comp-in ds (lop s) g ck        = gp g (here refl) , ck
   comp-in ds lzero g ck          = tt , ck
   comp-in ds (llam b γ) g ck     = (inK (gk g (here refl)) , gt g (∈-++⁺ʳ [] (here refl))) , ck
   comp-in ds (llamω b γ) g ck    = (inK (gk g (here refl)) , gt g (∈-++⁺ʳ [] (here refl))) , ck
@@ -459,7 +470,7 @@ module In (U : Univ) where
 
   -- an observation names a copy and a free of the coalgebra, and the ν's it builds
   strL-got : ∀ {Γ} (d : Defs Γ) F G S → Coalg F S ∈ tys U → tmGot d (strL F G S) ⊑U
-  strL-got d F Idf      S c = ⊹-join (⊹-join (sub (λ ()) (one c) (λ ()) (λ ())) ∅⊑) ∅⊑
+  strL-got d F Idf      S c = ⊹-join (⊹-join (sub (λ ()) (one c) (λ ()) (λ ()) (λ ())) ∅⊑) ∅⊑
   strL-got d F Kone     S c = ∅⊑
   strL-got d F Kzero    S c = ∅⊑
   strL-got d F (Kb b)   S c = ∅⊑
@@ -468,7 +479,7 @@ module In (U : Univ) where
   strL-got d F (G ⊗f H) S c = ⊹-join (strL-got d F G S c) (strL-got d F H S c)
 
   mapNu-got : ∀ {Γ} (d : Defs Γ) F G S → (F , S) ∈ nus U → (_ , ε) ∈ obs U → tmGot d (mapNu F G S) ⊑U
-  mapNu-got d F Idf      S n o = sub (λ ()) (λ ()) (one n) (one o)
+  mapNu-got d F Idf      S n o = sub (λ ()) (λ ()) (one n) (one o) (λ ())
   mapNu-got d F Kone     S n o = ∅⊑
   mapNu-got d F Kzero    S n o = ∅⊑
   mapNu-got d F (Kb b)   S n o = ∅⊑
@@ -480,7 +491,7 @@ module In (U : Univ) where
   obs-in d F S n c o =
     tt , comp-in d (obsT F S)
            (⊹-join (mapNu-got d F F S n o)
-             (⊹-join ∅⊑ (⊹-join (⊹-join (sub (λ ()) (one c) (λ ()) (λ ())) ∅⊑)
+             (⊹-join ∅⊑ (⊹-join (⊹-join (sub (λ ()) (one c) (λ ()) (λ ()) (λ ())) ∅⊑)
                                  (⊹-join (strL-got d F F S c) ∅⊑))))
            (tt , tt)
 
@@ -584,7 +595,7 @@ module Program {Γ} (ds : Defs Γ) (f : LTm Γ One One) where
   open In U public
 
   g₀⊑ : g₀ ⊑U
-  g₀⊑ = sub (λ m → m) (λ {T} m → ∈-++⁺ˡ (∈-cmap⁺ (ts g₀) m (here refl))) (λ m → m) there
+  g₀⊑ = sub (λ m → m) (λ {T} m → ∈-++⁺ˡ (∈-cmap⁺ (ts g₀) m (here refl))) (λ m → m) there (λ m → m)
 
   -- the types are closed under a copy's or a free's parts
   ts-closed : ∀ {T} → T ∈ tys U → comps T ⊆ tys U
