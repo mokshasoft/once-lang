@@ -21,7 +21,9 @@ open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; subst₂; sym)
+open import Once.IRTy using (μ-type; ν-type)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
@@ -118,3 +120,79 @@ module _ (D : Sig → Set) where
   univ-ps : ∀ {Γ} (Q : P.Prog Γ) (f : P.IR Γ One One) → ProgOK Q → OpsOK f
           → ∀ {s} → s ∈ ops (univ (P.trP Q) (P.tr f)) → D s
   univ-ps Q f oq of m = either (ps (defsGot (P.trP Q))) m (defs-ps Q oq) (tr-ps (P.trP Q) f of)
+
+------------------------------------------------------------------------
+-- 2. ★ FROM MASTER'S IR: a linked term's ops are declared, and so are a
+-- linked table's
+------------------------------------------------------------------------
+
+open import Data.Maybe using (Maybe; just; nothing; _>>=_)
+open import Once.Contract using (ISig)
+open import Once.Denotation.Program using (Declared; Leaves; TeleLinked; IRFun; module IRFun)
+import Once.IR as M
+import Once.LinCore.FromIR
+module FromIR = Once.LinCore.FromIR fmt ans
+
+module FromLinked (Σι : ISig) where
+  Dc : Sig → Set
+  Dc s = Declared Σι (info s)
+
+  private
+    ok-subst : ∀ {Γ} {I : Set} (F G : I → LTy) {i j} (e : i ≡ j) {g : P.IR Γ (F i) (G i)}
+             → OpsOK Dc g → OpsOK Dc (subst (λ k → P.IR Γ (F k) (G k)) e g)
+    ok-subst F G refl o = o
+
+    ok-subst₂ : ∀ {Γ} {A A′ B B′} (p : A ≡ A′) (q : B ≡ B′) {g : P.IR Γ A B}
+              → OpsOK Dc g → OpsOK Dc (subst₂ (P.IR Γ) p q g)
+    ok-subst₂ refl refl o = o
+
+  -- ★ a translated term's ops are its IR's (the unlinked op owes nothing)
+  tr-ok : ∀ {Γ} {rs : FromIR.Resolver Γ} {A B} {ir : M.IR A B} {c} → FromIR.Tr rs ir c
+        → ∀ {I : Set} {C} {i : I} → Leaves C i (Declared Σι) ir → OpsOK Dc c
+  tr-ok FromIR.t-id l = tt
+  tr-ok (FromIR.t-∘ tg tf) (lg , lf) = tr-ok tg lg , tr-ok tf lf
+  tr-ok (FromIR.t-pair tf tg) (lf , lg) = tr-ok tf lf , tr-ok tg lg
+  tr-ok FromIR.t-fst l = tt
+  tr-ok FromIR.t-snd l = tt
+  tr-ok FromIR.t-inl l = tt
+  tr-ok FromIR.t-inr l = tt
+  tr-ok (FromIR.t-case tf tg) (lf , lg) = tr-ok tf lf , tr-ok tg lg
+  tr-ok FromIR.t-term l = tt
+  tr-ok FromIR.t-init l = tt
+  tr-ok (FromIR.t-curry tf) l = tr-ok tf l
+  tr-ok FromIR.t-apply l = tt
+  tr-ok {Γ} (FromIR.t-In {F} wf) l = ok-subst {Γ} (λ X → X) (λ _ → FromIR.⟪_⟫ (μ-type F)) (sym (FromIR.⟪⟫-TI wf (μ-type F))) {g = P.In (FromIR.lf F)} tt
+  tr-ok {Γ} (FromIR.t-out {F} wf) l = ok-subst {Γ} (λ _ → FromIR.⟪_⟫ (μ-type F)) (λ X → X) (sym (FromIR.⟪⟫-TI wf (μ-type F))) {g = P.out-μ (FromIR.lf F)} tt
+  tr-ok {Γ} (FromIR.t-cata {F} wf {E} {A} {a′ = a′} ta) l = ok-subst {Γ} (λ X → FromIR.⟪_⟫ E ⊗t X) (λ _ → FromIR.⟪_⟫ A) (FromIR.⟪⟫-TI wf A) {g = a′} (tr-ok ta l)
+  tr-ok {Γ} (FromIR.t-Out {F} wf) l = ok-subst {Γ} (λ _ → FromIR.⟪_⟫ (ν-type F)) (λ X → X) (sym (FromIR.⟪⟫-TI wf (ν-type F))) {g = P.Out (FromIR.lf F)} tt
+  tr-ok {Γ} (FromIR.t-inν {F} wf) l = ok-subst {Γ} (λ X → X) (λ _ → FromIR.⟪_⟫ (ν-type F)) (sym (FromIR.⟪⟫-TI wf (ν-type F))) {g = P.in-ν (FromIR.lf F)} tt
+  tr-ok {Γ} (FromIR.t-ana {F} wf {E} {A} {c′ = c′} tc φ) l = ok-subst {Γ} (λ _ → FromIR.⟪_⟫ E ⊗t FromIR.⟪_⟫ A) (λ X → X) (FromIR.⟪⟫-TI wf A) {g = c′} (tr-ok tc l)
+  tr-ok (FromIR.t-iter tb φ) l = tr-ok tb l
+  tr-ok FromIR.t-int l = tt
+  tr-ok FromIR.t-float l = tt
+  tr-ok {Γ} (FromIR.t-op si) l = ok-subst₂ {Γ} (sym (FromIR.⟪⌊⌋⟫-flat (SigOpInfo.baseA si))) (sym (FromIR.⟪⌊⌋⟫-flat (SigOpInfo.conB si))) {g = P.SigOp (sig si)} l
+  tr-ok (FromIR.t-hit e) l = tt
+  tr-ok (FromIR.t-miss e) l = tt , tt , tt
+
+  private
+    bind-just : ∀ {X Y : Set} {m : Maybe X} {k : X → Maybe Y} {y} → (m >>= k) ≡ just y
+              → Σ X (λ x → m ≡ just x × k x ≡ just y)
+    bind-just {m = just x} e = x , refl , e
+
+    entry-ok : ∀ {Γ} (Q : P.Prog Γ) rs (e : IRFun) b (mφ : Maybe (P.BlkIR Γ b)) → ProgOK Dc Q → OpsOK Dc b
+             → ProgOK Dc (FromIR.TrProg.prog (FromIR.entry-at Q rs e b mφ))
+    entry-ok Q rs e b (just φ) oq ob = oq ▹ ob
+    entry-ok Q rs e b nothing  oq ob = oq ▹ ob
+
+    just-inj : ∀ {X : Set} {x y : X} → just x ≡ just y → x ≡ y
+    just-inj refl = refl
+
+  -- ★ a linked table's ops are declared
+  table-ok : ∀ es {tp} → FromIR.trTable es ≡ just tp → TeleLinked Σι es → ProgOK Dc (FromIR.TrProg.prog tp)
+  table-ok [] refl _ = ε
+  table-ok (e ∷ es) {tp} eq (le , lt) =
+    let (t , et , e₁) = bind-just {m = FromIR.trTable es} eq
+        (b , eb , e₂) = bind-just {m = FromIR.trI (FromIR.TrProg.rs t) (IRFun.fbody e)} e₁
+    in subst (λ z → ProgOK Dc (FromIR.TrProg.prog z)) (just-inj e₂)
+         (entry-ok (FromIR.TrProg.prog t) (FromIR.TrProg.rs t) e b (FromIR.blk? b) (table-ok es et lt)
+                   (tr-ok (FromIR.trI-Tr (FromIR.TrProg.rs t) (IRFun.fbody e) eb) le))

@@ -48,7 +48,8 @@ open import Once.Denotation.Approx using (approx; endAp)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 import Once.IR
 import Once.IRTy
-open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls)
+open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; LinkedProgram; irProgram)
+import Once.LinCore.LinkedCore
 import Once.LinCore.BridgeProof
 import Once.Denotation.DenotTrace as DT
 
@@ -95,6 +96,7 @@ open import Once.LinCore.Casts fmt ans using (casts)
 open import Once.LinCore.Table fmt ans using (env-ok)
 open import Once.LinCore.RunBisim fmt ans using (run-≈)
 module FromIR = Once.LinCore.FromIR fmt ans
+module LinkedCore = Once.LinCore.LinkedCore fmt ans bw
 
 -- ★ the world the machine's interpretation is: its state the log so far, its answer the
 -- interpretation's given that history (D429)
@@ -138,7 +140,9 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
 
   module _ (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
                  → FlatMachine.flat-exec-instr {Mach} (ldConst v) image fs
-                   ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (fpc fs) }) where
+                   ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (fpc fs) })
+              -- ★ LINKED (D431): the program's ops are declared by the interpretation the machine runs against
+              (decl : ∀ {s} → s ∈ ops (Program.U ds f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))) where
     open EndR {Mach} ds f₀ ldConst ld-nl wordOf using (ends)
     open FlatEventTrace {Mach} using (flat-ctrls; flat-events-steps; flat-events-step; chain-events; chain-log; chain-left)
     open FlatStepsAPI {Mach} using (Sound)
@@ -155,10 +159,8 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         -- ★ AN OP AT THE MACHINE (D426): its contract path, answered by the world from the history, is
         -- what the machine's sigop computes at a state whose log is that history: proved per contract
         -- class (OpMachine.Dispatch) but for a structured answer (an undeclared FFI op's stop
-        -- is excluded by linkedness, `o-declared`)
+        -- is excluded by linkedness, `decl`)
         o-ops   : OM.OwedOp
-        -- ★ LINKED (D431): the program's ops are declared by the interpretation the machine runs against
-        o-declared : ∀ {s} → s ∈ ops (Program.U ds f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))
         -- the world's run cut at the budget: the flat run, at some fuel, shows its events, is cut, and has
         -- taken a control step per unit of the budget (master's `flat-cut`)
         o-cut   : ∀ k → Ran.out (R k) ≡ stop Once.LinCore.Events.exhausted
@@ -170,7 +172,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     -- ★ LINKED (D431): the world's run meets no call the interpretation leaves unanswered — it cuts only at
     -- the program's ops, each declared, whose calls the world answers (`OpMachine.Linked.no-cut`)
     o-uncut : Owed → ∀ k → UnCut (Ran.run (R k))
-    o-uncut O k = spends-uncut (λ {s} {x} {t} {p} → OM.Linked.no-cut (Owed.o-declared O) {s} {x} {t} {p}) (Ran.run (R k)) (Ran.spends (R k)) (Owed.o-cutsin O k)
+    o-uncut O k = spends-uncut (λ {s} {x} {t} {p} → OM.Linked.no-cut decl {s} {x} {t} {p}) (Ran.run (R k)) (Ran.spends (R k)) (Owed.o-cutsin O k)
 
     -- ★ THE MACHINE: a running state the start reaches has not left (only `c-leave` leaves, and it
     -- halts: master's `chain-left`)
@@ -216,8 +218,8 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     flat-top O k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (o-uncut O K)) (λ {mt} st e → AR.agrees-all st (AR.wtr-ios (Ran.trace (R K)) mt (sym e) (Ran.world (R K)))) eE eO
       where
         module AR = AgreeRun.AR {Mach} ds f₀ ldConst ld-nl wordOf ι
-                      (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op (Owed.o-ops O) (Owed.o-declared O) {s} {x} {y₀} {tp} {L} {L′})
-                      (λ {s} {x} {tp} {L} {L′} → OM.Dispatch.o-opend (Owed.o-ops O) (Owed.o-declared O) {s} {x} {tp} {L} {L′})
+                      (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op (Owed.o-ops O) decl {s} {x} {y₀} {tp} {L} {L′})
+                      (λ {s} {x} {tp} {L} {L′} → OM.Dispatch.o-opend (Owed.o-ops O) decl {s} {x} {tp} {L} {L′})
         K  = k
         eE = proj₁ (run-shows O k)
         eO = proj₂ (run-shows O k)
@@ -258,8 +260,16 @@ module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
              (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
              (w-int   : ∀ (n : ⟦ int ⟧b)   → wordOf {int} n ≡ SV-Lit fits-int n)
              (w-float : ∀ (n : ⟦ float ⟧b) → wordOf {float} n ≡ SV-Lit fits-float n)
-             (entry-frame : FrameSemantics.Frame Mach) (entry-regs : Registers Mach) where
+             (entry-frame : FrameSemantics.Frame Mach) (entry-regs : Registers Mach)
+             -- ★ master's premise: the program is linked (every call names an entry, every FFI op declared)
+             (linked : LinkedProgram (TM.Interp.sig ι) (irProgram tbl ir)) where
   module TP = Top (FromIR.TrProg.prog tp) f ldConst ld-nl wordOf w-int w-float entry-frame entry-regs
+
+  -- ★ LINKED AT THE CORE (D431): the core program's ops are its IR's, each declared
+  decl : ∀ {s} → s ∈ ops (Program.U TP.ds TP.f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))
+  decl = LinkedCore.univ-ps (LinkedCore.FromLinked.Dc (TM.Interp.sig ι)) (FromIR.TrProg.prog tp) f
+           (LinkedCore.FromLinked.table-ok (TM.Interp.sig ι) tbl etp (proj₁ (proj₂ (proj₂ linked))))
+           (LinkedCore.FromLinked.tr-ok (TM.Interp.sig ι) (FromIR.trI-Tr (FromIR.TrProg.rs tp) ir ef) (proj₁ linked))
 
   -- master's meaning, and what it shows at a budget from the empty log
   obsᴰ : ℕ → TM.Run (Once.Denotation.Approx.Ap Data.Unit.⊤)
@@ -281,12 +291,12 @@ module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
 
     record OwedIR : Set where
       field
-        o-top    : TP.Owed ld
+        o-top    : TP.Owed ld decl
 
     -- ★★ THE FLAT THEOREM AT MASTER'S MEANING (master's `flat-ends` and `flat-cut`)
     flat-ir : OwedIR → ∀ k → Σ ℕ λ N → (flat-events N TP.image TP.start-fs ≡ (proj₁ (obsᴰ k) , endAp (proj₂ (obsᴰ k))))
                                      × (endAp (proj₂ (obsᴰ k)) ≡ nothing → k ≤ flat-ctrls N TP.image TP.start-fs)
-    flat-ir O k = case TP.flat-top ld (OwedIR.o-top O) k of λ where
+    flat-ir O k = case TP.flat-top ld decl (OwedIR.o-top O) k of λ where
       (N , e , c) → N , trans e (cong (λ r → (proj₁ r , endAp (proj₂ r))) (o-bridge k))
                       , λ z → c (trans (cong (λ r → endAp (proj₂ r)) (o-bridge k)) z)
 
