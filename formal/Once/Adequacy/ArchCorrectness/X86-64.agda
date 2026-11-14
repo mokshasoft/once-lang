@@ -52,7 +52,8 @@ open import Data.String using (String)
 open import Data.List using ([]; take; map)
 open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_)
 open import Once.Adequacy.MachineTrace using (listTr; module Machine)
-open import Once.Adequacy.BudgetApex using (budget-apex-⊑; BudgetFact⊑; budget-fact-of)
+import Once.Target.Arch
+open import Once.Adequacy.BudgetApex (Once.Target.Arch.arch-numerics Once.Target.Arch.x86-64) using (budget-apex-⊑; BudgetFact⊑; budget-fact-of)
 open import Once.Denotation.Program using (runIR)
 open import Once.IR.Semantics.Trace using (pureHalf)
 import Once.IR.Semantics.Trace as LT
