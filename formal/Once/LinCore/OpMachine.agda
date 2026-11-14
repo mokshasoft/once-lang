@@ -46,7 +46,7 @@ private
   ι   = FrameSemantics.fs-interp Mach
 
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (MV; er; mone; mbase; mvF; OpPath; p-ret; p-call; p-halt; Trace)
+open import Once.LinCore.Events fmt ans bw using (MV; er; mone; mbase; mpair; mvF; OpPath; p-ret; p-call; p-halt; Trace)
 import Once.LinCore.Events
 open import Once.LinCore.Keys fmt ans bw using (Univ)
 open import Once.LinCore.Total fmt ans bw using (WTr)
@@ -61,7 +61,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
           (w-int   : ∀ (n : ⟦ int ⟧b)   → wordOf {int} n ≡ SV-Lit fits-int n)
           (w-float : ∀ (n : ⟦ float ⟧b) → wordOf {float} n ≡ SV-Lit fits-float n) where
   open Agree {Mach} U wordOf using (OpVal; OpHalt; arg; at-arg; argV)
-  open Rel {Mach} U wordOf using (W; VW; vone; vbase; SlotsAt)
+  open Rel {Mach} U wordOf using (W; VW; vone; vbase; vinl; vinr; SlotsAt)
   open Once.LinCore.BudgetSound.W fmt ans bw ι using (Wι; answered)
   open Once.LinCore.ArgDecode.Dec fmt ans bw {Mach} U wordOf w-int w-float using (arg-dec)
   open AbstractExec {Mach} using (exec-sigop-halts; sigop-events; exec-sigop-output; decode-at; events-at-arg)
@@ -227,8 +227,8 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
 
   -- ★ the per-op facts, by the op's contract. What stays owed, narrowed: an answer of a
   -- structured type (a product, or a sum that is not a compare's) has no machine
-  -- semantics yet (master owes it too: `structured-pure-sigop-output`); a compare's block
-  -- against the primitive; and an undeclared FFI op's stop (linkedness).
+  -- semantics yet (master owes it too: `structured-pure-sigop-output`); and an undeclared FFI
+  -- op's stop (linkedness).
   open import Once.Res using (Res; stopped; mapRes)
   open import Once.SigOp.Info using (blockV; primV; ffiV)
   open import Once.Arith.Prim using (ArithPrim; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp)
@@ -246,13 +246,32 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
     → WTr Wι L tp L′ → ∀ fs → LocState.ev-log (floc fs) ≡ L
     → OpHalt (sig (mk-info' n c bA bB)) x (evsOf tp) fs
 
+  -- ★ a compare (D428): its code runs the compare's block, whose 0/1 word, read as a tag, is the
+  -- primitive's truth (true = inr, D263)
+  open import Once.Arith.SigOp.Compare using (cmp-block-info)
+  open import Once.Arith.CmpOp using (cmp-word)
+  open import Once.Spec.Numerics using (module TargetNum)
+  open import Data.Bool using (Bool; true; false; if_then_else_)
+
+  private
+    tag : ∀ {rd} (b : Bool)
+        → VW rd (mvF (flatB (ST.b-+ ST.b-Unit ST.b-Unit)) (fromV (ST.b-+ ST.b-Unit ST.b-Unit) (Once.Semantics.Machine.eraseᵍ {0} (Once.Arith.Prim.bool b))))
+             (sv-nz (SV-Lit {Mach} fits-int (if b then 1 else 0)) ∷ [])
+    tag false = vinl vone refl
+    tag true  = vinr vone refl
+
+  op-cmp : ∀ n o → OpValAt n (primV (p-cmp o)) (ST.b-* ST.b-Int ST.b-Int) (ST.b-+ ST.b-Unit ST.b-Unit)
+  op-cmp n o {x = mpair (mbase i) (mbase j)} p-ret w fs lg d wx px sx =
+    cong unread? (arg-dec (ST.b-* ST.b-Int ST.b-Int) fs d (argV (ST.b-* ST.b-Int ST.b-Int) fs d wx) px sx) , refl , _ ,
+    arg-in (cmp-block-info o) fits-int fs d wx px sx ,
+    tag (cmp-word (TargetNum.int-bits fmt) o i j)
+
   record OwedOp : Set where
     field
       oo-prod : ∀ {A B C} n (c : SigOpSem A (B ST.* C)) bA (b₁ : ST.Base ST.∅ₖ B) (b₂ : ST.Base ST.∅ₖ C)
               → OpValAt n c bA (ST.b-* b₁ b₂)
       oo-sum  : ∀ {A B C} n (c : SigOpSem A (B ST.+ C)) bA (b₁ : ST.Base ST.∅ₖ B) (b₂ : ST.Base ST.∅ₖ C)
               → cmp-of c ≡ nothing → OpValAt n c bA (ST.b-+ b₁ b₂)
-      oo-cmp  : ∀ n o bA bB → OpValAt n (primV (p-cmp o)) bA bB
       oo-unlinked : ∀ {A B} n bA (bB : ST.Base ST.∅ₖ B) {a}
                   → ans n A B a ≡ stopped
                   → ∀ {x : MV ⌜ flatB bA ⌝} → toV bA (toF (flatB bA) (er x)) ≡ a
@@ -304,7 +323,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
 
     val-at : ∀ {A B} n (c : SigOpSem A B) bA bB → OpValAt n c bA bB
     val-at n (blockV e refl refl) bA bB = pure-at n (blockV e refl refl) bA bB refl refl (λ _ → _ , refl , refl)
-    val-at n (primV (p-cmp o)) bA bB = OwedOp.oo-cmp O n o bA bB
+    val-at n (primV (p-cmp o)) (ST.b-* ST.b-Int ST.b-Int) (ST.b-+ ST.b-Unit ST.b-Unit) = op-cmp n o
     val-at n (primV p-add) bA bB = prim-at n p-add bA bB refl
     val-at n (primV p-sub) bA bB = prim-at n p-sub bA bB refl
     val-at n (primV p-mul) bA bB = prim-at n p-mul bA bB refl
