@@ -22982,3 +22982,33 @@ writes the result into `cfc` and returns into `cfc`; `Called.cd-area` is in the 
 * Copy the argument and result through the trampoline's frame (as D421's frame-0 trampolines): one
   record shape, but two extra moves per many-use call — a cost in the generated code for the proof's
   convenience.
+
+## D426 — THE STEP THEOREM'S SIGOP CASE IS RELATIVE TO THE MACHINE'S WORLD; A HALT LANDS IN A HALTED MACHINE (2026-11-14)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, the last case: `lop`). **Applies**:
+D408 (a world answers any way it likes, or not at all), D414 (an op follows its contract's block,
+`OpPath`; the image stops at a halting op, `i-opend`), D420 (the word layer's global relation).
+
+### The problem
+The image's op step (`i-prim` at `lop s`, its `Run` an `r-op`) takes the world's answer `y` to each call
+as given: any `y`. The flat machine's `instr-sigop` answers by its effect class: a pure op by `semM` on
+the argument it reads, an answering op from its interpretation (`call-sigop-output`, `fs-interp`), an
+emit with the unit sentinel, a halting op by halting. A forward step lemma for EVERY image step would
+claim the machine gives every answer: false for answering ops. And `i-opend` lands the image in
+`halted`, where the relation (`Related`) has no point (`HereP p-halt = ⊥`).
+
+### Decision (proposed)
+* **The op case is relative to the machine's world.** The step theorem's motive gains a premise
+  `Agrees st fs`, by the step: at an op step, the answer of its `OpPath` is the machine's at `fs` (and
+  its trace the machine's events); every other step: `⊤`. `Agrees` is defined by one split on the step,
+  in a small module (as `StepEpop`). The whole-run theorem (B1.5) supplies it by running the image in
+  the world the machine's interpretation is (pure ops: `semM` at the target's numerics, the standing
+  `fmt-agree` premise; answering ops: `fs-interp`).
+* **A halt lands in a halted machine.** The step theorem's target is `Related` or, for the image's
+  `halted`, a flat state whose `halted` flag is set (`Lands`); the op's halting class sets it.
+
+### Alternatives
+* A theorem parameter that the machine answers as any path says (as `ld` for constants): unsatisfiable
+  for answering ops, so the theorem would hold vacuously for every program with a call.
+* Fix the image's world to the machine's interpretation inside `Run`: changes D408's run (every world),
+  which `sound`/`exchange` use.
