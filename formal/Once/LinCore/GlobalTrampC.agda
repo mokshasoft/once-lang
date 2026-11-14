@@ -245,6 +245,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       s3-heap  : LocState.heapMem (floc fs′) ≡ LocState.heapMem (floc fs)
       s3-alloc : falloc fs′ ≡ falloc fs
       s3-ret   : fret fs′ ≡ fret fs
+      s3-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
   -- ★ its cell part (`copen`): the contents' address into save slot `suc (suc w)`
   tc-open : ∀ {X C} (p : under (ktrc X C) ∈ allK U) {i} {cv : MV C} {x : MV X} {wx : List (StoredValue FS)} {fs}
@@ -267,7 +268,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            ; c1-s₃ = store-same (floc fs₂) cur (suc (suc w)) _ } ,
     record { s3-other = λ f x′ ne → store-frame (floc fs₂) cur (suc (suc w)) _ f x′ (λ e → ne (sym e))
            ; s3-slot = λ x′ ne → store-other (floc fs₂) cur (suc (suc w)) _ x′ ne
-           ; s3-heap = refl ; s3-alloc = refl ; s3-ret = refl }
+           ; s3-heap = refl ; s3-alloc = refl ; s3-ret = refl ; s3-log = refl }
     where
       open FlatStepsAPI {FS} using (step-at)
       w = wsz X

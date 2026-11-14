@@ -85,6 +85,7 @@ module Frames {FS : FrameSemantics} where
       cd-next   : AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
       cd-old    : Old (AllocState.next-heap-ref (falloc fs)) fs fs′
       cd-inb    : InBlk fs → InBlk fs′
+      cd-log    : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
 
 ------------------------------------------------------------------------
 -- 2. ★ THE CALL, from any root of the image to a block.
@@ -109,9 +110,9 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc; fret)
   open FlatStepsAPI {FS} using (FlatSteps; FlatSteps-++)
   open import Once.LinCore.LowerSimE {FS}
-    using (CallIn; call-in; call-in-v; callee-frame; callee-≢; ci-frame; ci-saved; ci-ret; ci-pc; ci-in; ci-s₁; ci-s₂; ci-other; ci-heap; ci-next; ci-size; ci-halt; CallOut; co-pc; co-halt)
+    using (CallIn; call-in; call-in-v; callee-frame; callee-≢; ci-frame; ci-saved; ci-ret; ci-pc; ci-in; ci-s₁; ci-s₂; ci-other; ci-heap; ci-next; ci-size; ci-halt; ci-log; CallOut; co-pc; co-halt)
   open import Once.LinCore.Moves {FS}
-    using (Seg; Seg-++ˡ; slot; Ran; r-keep; r-pc; r-next; r-old; k-halt; k-ret; k-saved; k-frame; k-other; r-inb; inb-pt)
+    using (Seg; Seg-++ˡ; slot; Ran; r-keep; r-pc; r-next; r-old; k-halt; k-log; k-ret; k-saved; k-frame; k-other; r-inb; inb-pt)
 
   -- a block's code, inside the image
   blockR : ∀ {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) → Inside image (At.code U ncty ldConst (frameOf (blockᴵ κ)) (idx p) (L₀ᵇ κ p))
@@ -294,7 +295,8 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                               (sym (ci-frame CI)) (ci-s₁ CI))
                        ; cd-next   = trans (r-next Rn) (ci-next CI)
                        ; cd-old    = λ hl lt → trans (r-old Rn hl (subst (_ <_) (sym (ci-next CI)) lt)) (cong (λ h′ → h′ hl) (ci-heap CI))
-                       ; cd-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h′ → h′ hl) (ci-heap CI)) (ci-next CI) (ci-size CI) I) }
+                       ; cd-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h′ → h′ hl) (ci-heap CI)) (ci-next CI) (ci-size CI) I)
+                       ; cd-log    = trans (k-log (r-keep Rn)) (ci-log CI) }
 
   -- ★ THE CALL of a block that reads no view
   module From {sh₀ U₀} (root : Codeᴵ sh₀ U₀) (j : ℕ)
@@ -378,7 +380,8 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                                 (sym (ci-frame CI)) (ci-s₁ CI))
                          ; cd-next   = trans (r-next Rn) (ci-next CI)
                          ; cd-old    = λ hl lt → trans (r-old Rn hl (subst (_ <_) (sym (ci-next CI)) lt)) (cong (λ h → h hl) (ci-heap CI))
-                         ; cd-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h → h hl) (ci-heap CI)) (ci-next CI) (ci-size CI) I) }
+                         ; cd-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h → h hl) (ci-heap CI)) (ci-next CI) (ci-size CI) I)
+                       ; cd-log    = trans (k-log (r-keep Rn)) (ci-log CI) }
 
     -- ★ THE CALL of a block that reads the caller's top view
     IntoV : ∀ {E A B Es S V} {κ : Key (bsig (just E) A B)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V} → Sub root (call κ ⨾ k)
@@ -468,7 +471,8 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                                 (sym (ci-frame CI)) (ci-s₁ CI))
                          ; cd-next   = trans (r-next Rn) (ci-next CI)
                          ; cd-old    = λ hl lt → trans (r-old Rn hl (subst (_ <_) (sym (ci-next CI)) lt)) (cong (λ h → h hl) (ci-heap CI))
-                         ; cd-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h → h hl) (ci-heap CI)) (ci-next CI) (ci-size CI) I) }
+                         ; cd-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h → h hl) (ci-heap CI)) (ci-next CI) (ci-size CI) I)
+                       ; cd-log    = trans (k-log (r-keep Rn)) (ci-log CI) }
 
     -- ★ THE RETURN: at the callee's `end` (its way out, `blockFin`), back to
     -- the caller after the call, the result on its stack
