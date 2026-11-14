@@ -227,8 +227,8 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
 
   -- ★ the per-op facts, by the op's contract. What stays owed, narrowed: an answer of a
   -- structured type (a product, or a sum that is not a compare's) has no machine
-  -- semantics yet (master owes it too: `structured-pure-sigop-output`); and an undeclared FFI
-  -- op's stop (linkedness).
+  -- semantics yet (master owes it too: `structured-pure-sigop-output`). An undeclared FFI
+  -- op stops where the machine goes on: excluded by linkedness (D431, `Dispatch.decl`).
   open import Once.Res using (Res; stopped; mapRes)
   open import Once.SigOp.Info using (blockV; primV; ffiV)
   open import Once.Arith.Prim using (ArithPrim; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp)
@@ -272,13 +272,6 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
               → OpValAt n c bA (ST.b-* b₁ b₂)
       oo-sum  : ∀ {A B C} n (c : SigOpSem A (B ST.+ C)) bA (b₁ : ST.Base ST.∅ₖ B) (b₂ : ST.Base ST.∅ₖ C)
               → cmp-of c ≡ nothing → OpValAt n c bA (ST.b-+ b₁ b₂)
-      oo-unlinked : ∀ {A B} n bA (bB : ST.Base ST.∅ₖ B) {a}
-                  → ans n A B a ≡ stopped
-                  → ∀ {x : MV ⌜ flatB bA ⌝} → toV bA (toF (flatB bA) (er x)) ≡ a
-                  → ∀ {tp L L′}
-                  → OpPath (opF (sig (mk-info' n ffiV bA bB)) (toF (flatB bA) (er x))) tp (inj₂ Once.LinCore.Events.halted)
-                  → WTr Wι L tp L′ → ∀ fs → LocState.ev-log (floc fs) ≡ L
-                  → OpHalt (sig (mk-info' n ffiV bA bB)) x (evsOf tp) fs
 
   private
     res-ret : ∀ {X Z : Set} (r : Res X) {k : X → Z} {tp y₀} → OpPath (fmapT k (TM.resT r)) tp (inj₁ y₀)
@@ -295,7 +288,17 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
     map-stopped (returns w) ()
     map-stopped stopped e = refl
 
-  module Dispatch (O : OwedOp) where
+  -- an undeclared FFI value op stops; a declared one answers
+  open import Once.Denotation.Program using (Declared-at)
+  open import Once.LinCore.Keys fmt ans bw using (ops)
+  open import Data.Empty using (⊥-elim)
+  private
+    Σι = TM.Interp.sig ι
+    declared-ret : ∀ {k} (dk : Dec (k ∈ TM.pures ι)) {a} → k ∈ TM.pures ι → TM.pureHalf-at ι k dk a ≡ stopped → ⊥
+    declared-ret (yes _) m ()
+    declared-ret (no ¬m) m _ = ¬m m
+
+  module Dispatch (O : OwedOp) (decl : ∀ {s} → s ∈ ops U → Declared-at Σι (info s) (SigOpInfo.sem (info s))) where
     private
       pure-at : ∀ {A B} n (c : SigOpSem A B) bA (bB : ST.Base ST.∅ₖ B) → effect-of c ≡ Pure → cmp-of c ≡ nothing
               → (∀ {x : MV ⌜ flatB bA ⌝} {y₀ tp} → OpPath (opF (sig (mk-info' n c bA bB)) (toF (flatB bA) (er x))) tp (inj₁ y₀)
@@ -342,14 +345,13 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
     val-at n (emitsV refl) bA ST.b-Unit = op-emits
     val-at n (haltsV refl) bA bB ()
 
-    halt-at : ∀ {A B} n (c : SigOpSem A B) bA bB → OpHaltAt n c bA bB
-    halt-at n (blockV e refl refl) bA bB ()
-    halt-at n (primV p) bA bB ()
-    halt-at {A} {B} n ffiV bA bB p =
-      OwedOp.oo-unlinked O n bA bB (map-stopped (ans n A B _) (res-halt _ p)) refl p
-    halt-at n callsV bA bB (p-call ())
-    halt-at n (emitsV refl) bA bB (p-call ())
-    halt-at n (haltsV refl) bA ST.b-Void = op-halts
+    halt-at : ∀ {A B} n (c : SigOpSem A B) bA bB → Declared-at Σι (mk-info' n c bA bB) c → OpHaltAt n c bA bB
+    halt-at n (blockV e refl refl) bA bB dc ()
+    halt-at n (primV p) bA bB dc ()
+    halt-at {A} {B} n ffiV bA bB dc p = ⊥-elim (declared-ret _ dc (map-stopped (ans n A B _) (res-halt _ p)))
+    halt-at n callsV bA bB dc (p-call ())
+    halt-at n (emitsV refl) bA bB dc (p-call ())
+    halt-at n (haltsV refl) bA ST.b-Void dc = op-halts
 
     -- ★ FlatTop's per-op facts
     o-op : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {y₀ tp L L′}
@@ -358,8 +360,8 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
          → OpVal s x (mvF (scod s) y₀) (evsOf tp) fs
     o-op {sig (mk-info' n c bA bB)} = val-at n c bA bB
 
-    o-opend : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {tp L L′}
+    o-opend : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {tp L L′} → s ∈ ops U
             → OpPath (opF s (toF (sdom s) (er x))) tp (inj₂ Once.LinCore.Events.halted) → WTr Wι L tp L′
             → ∀ fs → LocState.ev-log (floc fs) ≡ L
             → OpHalt s x (evsOf tp) fs
-    o-opend {sig (mk-info' n c bA bB)} = halt-at n c bA bB
+    o-opend {sig (mk-info' n c bA bB)} m = halt-at n c bA bB (decl m)

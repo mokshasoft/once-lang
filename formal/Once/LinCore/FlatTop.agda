@@ -71,7 +71,10 @@ import Once.LinCore.OpMachine
 module AgreeRun = Once.LinCore.AgreeRun fmt ans bw
 open import Once.LinCore.Total fmt ans bw using (WTr)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree)
-open import Once.LinCore.Keys fmt ans bw using (module Program)
+open import Once.LinCore.Keys fmt ans bw using (module Program; ops)
+open import Data.List.Membership.Propositional using (_∈_)
+open import Once.Denotation.Program using (Declared-at)
+open import Once.SigOp.Info using (module SigOpInfo)
 open import Once.LinCore.Spends fmt ans bw using (spends-plain; UnCut)
 module BudgetSound = Once.LinCore.BudgetSound fmt ans bw
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
@@ -148,9 +151,11 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         o-uncut : ∀ k → UnCut (Ran.run (R k))
         -- ★ AN OP AT THE MACHINE (D426): its contract path, answered by the world from the history, is
         -- what the machine's sigop computes at a state whose log is that history: proved per contract
-        -- class (OpMachine.Dispatch) but for a structured answer and an
-        -- undeclared FFI op's stop
+        -- class (OpMachine.Dispatch) but for a structured answer (an undeclared FFI op's stop
+        -- is excluded by linkedness, `o-declared`)
         o-ops   : OM.OwedOp
+        -- ★ LINKED (D431): the program's ops are declared by the interpretation the machine runs against
+        o-declared : ∀ {s} → s ∈ ops (Program.U ds f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))
         -- the world's run cut at the budget: the flat run, at some fuel, shows its events, is cut, and has
         -- taken a control step per unit of the budget (master's `flat-cut`)
         o-cut   : ∀ k → Ran.out (R k) ≡ stop Once.LinCore.Events.exhausted
@@ -203,8 +208,8 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     flat-top O k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (Owed.o-uncut O K)) (λ {mt} st e → AR.agrees-all st (AR.wtr-ios (Ran.trace (R K)) mt (sym e) (Ran.world (R K)))) eE eO
       where
         module AR = AgreeRun.AR {Mach} ds f₀ ldConst ld-nl wordOf ι
-                      (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op (Owed.o-ops O) {s} {x} {y₀} {tp} {L} {L′})
-                      (λ {s} {x} {tp} {L} {L′} → OM.Dispatch.o-opend (Owed.o-ops O) {s} {x} {tp} {L} {L′})
+                      (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op (Owed.o-ops O) (Owed.o-declared O) {s} {x} {y₀} {tp} {L} {L′})
+                      (λ {s} {x} {tp} {L} {L′} → OM.Dispatch.o-opend (Owed.o-ops O) (Owed.o-declared O) {s} {x} {tp} {L} {L′})
         K  = k
         eE = proj₁ (run-shows O k)
         eO = proj₂ (run-shows O k)
