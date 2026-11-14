@@ -23083,3 +23083,20 @@ unknowable. Master lowers a compare to its Int-returning block (`cmp-block-info`
 ### Alternatives
 * Change the machine (decode a scalar through a pointer): reverses D398, and the arch layer's arith
   blocks read a scalar input as the register (D396).
+
+## D429 — B1.5 TOP-DOWN: THE WORLD'S RUN, AND THE FLAT THEOREM STATED AT THE APEX'S SHAPE FIRST (2026-11-14)
+
+**Decided** with the user ("lets go with your proposal, but … connecting this at the top-level first … so we
+don't build proof islands"). **Applies**: D426 (relative to the machine's world), D427 (the log), the
+memory rule "top-down, no islands".
+
+### Decision
+* **The world's run**: the image run the flat theorem speaks of is the linear core's run in the world the
+  machine's interpretation is — `Total.exec` in `World` with state the log so far and answer
+  `Trace.callAnswer ι h` (its calls appended to the log). Each op's contract path is then
+  `Trace.run ι h (opF s a)`, which the machine's sigop computes from the same log (`AgreesAll`).
+* **Top first**: before more lemmas, a module states B1.5's theorem in the shape the apex consumes
+  (master's `FlatFromObs.flat-ends`/`flat-cut`/`start-sound`, for the new image), composed from what is
+  proved (`FromIR`, `BridgeProof.bridge`, `Whole.whole-sound`, `ImageSim.image-noleak`, `End.ends`), with
+  each missing link a named field of an explicit hypothesis record (no postulate). The fields are the work
+  list; each is discharged in place, so every lemma is reachable from the statement.

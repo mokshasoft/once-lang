@@ -78,11 +78,13 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open FlatStepsAPI {FS} using (FlatSteps; FlatSteps-++)
   open StepR {FS} ds f ldConst ld-nl wordOf using (module Theorem)
 
-  -- the machine's world agrees at every step of a run, from any related state
+  -- the machine's world agrees at every step of a run, from a related state whose log is the
+  -- run's events so far (D429: an answer depends on the history)
   AgreesAll : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
-            → StepsI c r m n t c′ r′ m′ n′ → Set
-  AgreesAll done = ⊤
-  AgreesAll (_⟫_ {c = c} {r = r} {m = m} {n = n} st rest) = (∀ fs → Related c r m n fs → Agrees st fs) × AgreesAll rest
+            → List SigOpEvent → StepsI c r m n t c′ r′ m′ n′ → Set
+  AgreesAll L done = ⊤
+  AgreesAll L (_⟫_ {c = c} {r = r} {m = m} {n = n} {t₁ = t₁} st rest) =
+    (∀ fs → Related c r m n fs → LocState.ev-log (floc fs) ≡ L → Agrees st fs) × AgreesAll (L ++ evsOf t₁) rest
 
   -- a run from a halted image has no step
   rest-halt : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
@@ -96,14 +98,15 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     open Theorem ld using (word-step; Lands; HaltC)
 
     -- ★ a whole run, from a related state
-    whole : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
-          → (run : StepsI c r m n t c′ r′ m′ n′) → InvI m r n h → AgreesAll run → Related c r m n fs
+    whole : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs L}
+          → (run : StepsI c r m n t c′ r′ m′ n′) → InvI m r n h → AgreesAll L run → Related c r m n fs
+          → LocState.ev-log (floc fs) ≡ L
           → Lands (evsOf t) c′ r′ m′ n′ fs
-    whole {fs = fs} done inv ag G = 0 , _ , FlatStepsAPI.[] , inj₁ G , sym (++-identityʳ (LocState.ev-log (floc fs)))
-    whole (_⟫_ {t₁ = t₁} {t₂ = t₂} st rest) inv (a₁ , ag) G = go (word-step st (step-covered st) inv G (a₁ _ G))
+    whole {fs = fs} done inv ag G _ = 0 , _ , FlatStepsAPI.[] , inj₁ G , sym (++-identityʳ (LocState.ev-log (floc fs)))
+    whole (_⟫_ {t₁ = t₁} {t₂ = t₂} st rest) inv (a₁ , ag) G lL = go (word-step st (step-covered st) inv G (a₁ _ G lL))
       where
         go : _ → _
-        go (N₁ , fs₁ , st₁ , inj₁ G₁ , lg₁) = case whole rest (proj₂ (inv-stepI st inv)) ag G₁ of λ where
+        go (N₁ , fs₁ , st₁ , inj₁ G₁ , lg₁) = case whole rest (proj₂ (inv-stepI st inv)) ag G₁ (trans lg₁ (cong (_++ evsOf t₁) lL)) of λ where
           (N₂ , fs₂ , st₂ , L , lg₂) → N₁ + N₂ , fs₂ , FlatSteps-++ st₁ st₂ , L , log-join t₁ t₂ lg₁ lg₂
         go (N₁ , fs₁ , st₁ , inj₂ (e , hlt) , lg₁) =
           N₁ , fs₁ , st₁ , inj₂ (proj₁ (rest-halt rest e) , hlt) , log-halt t₁ lg₁ (proj₂ (rest-halt rest e))
@@ -113,8 +116,8 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       open StartR {FS} ds f ldConst ld-nl wordOf entry-frame entry-regs using (start-fs; start-related)
 
       from-start : ∀ {sh U′} {t} {c′ : Codeᴵ sh U′} {r′} {m′ n′}
-                 → (run : StepsI main []ʳ start 0 t c′ r′ m′ n′) → AgreesAll run
+                 → (run : StepsI main []ʳ start 0 t c′ r′ m′ n′) → AgreesAll [] run
                  → Lands (evsOf t) c′ r′ m′ n′ start-fs
       from-start {t = t} run ag = case start-related of λ where
-        (fs₁ , st₁ , G₁ , lg₀) → case whole run start-invI ag G₁ of λ where
+        (fs₁ , st₁ , G₁ , lg₀) → case whole run start-invI ag G₁ lg₀ of λ where
           (N , fs′ , st , L , lg) → 1 + N , fs′ , FlatSteps-++ st₁ st , L , trans lg (cong (_++ evsOf t) lg₀)
