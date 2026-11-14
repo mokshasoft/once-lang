@@ -102,7 +102,7 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
   open Sim {FS} U wordOf using (slots-frame)
   open import Once.LinCore.LowerSimE {FS}
-    using (CallInH; call-in-h; callee-frame; callee-below; ch-frame; ch-saved; ch-ret; ch-pc; ch-in; ch-s₁; ch-s₂; ch-other; ch-heap; ch-next; ch-size; ch-halt)
+    using (CallInH; call-in-h; call-in-c; callee-frame; callee-below; callee-≢; ch-frame; ch-saved; ch-ret; ch-pc; ch-in; ch-s₁; ch-s₂; ch-other; ch-heap; ch-next; ch-size; ch-halt)
   open import Once.LinCore.Moves {FS}
     using (Seg; slot; Ran; r-keep; r-pc; r-next; r-old; k-halt; k-ret; k-saved; k-frame; k-other; r-inb; inb-pt)
 
@@ -116,8 +116,71 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     ≺-≢ : ∀ {f g} → f ≺ g → f ≡ g → ⊥
     ≺-≢ lt refl = ≺-irrefl lt
 
-  -- ★ from the trampoline's frame (below the area's, `cf`): its save slot 0
-  -- the area's pointer, the contents' address (offset `o₀` in cell `i`) in `Output`
+  -- ★ the callee's entry after a call prefix (`call-in-h`, `call-in-c`): the area's pointer saved
+  -- (in frame `cf`, not the callee's), the view's pointer (offset `o₀` in cell `i`)
+  call-core-g : ∀ {X A B} {κ : Key (bsig (just X) A B)} (p : (bsig (just X) A B , κ) ∈ allK U)
+                  (cf : FrameSemantics.Frame FS) (area o₀ : ℕ) (i : Id) {x : MV X} {a : MV A} {fs fs₁} (wx wa : List W) (n r : ℕ)
+              → FlatSteps image n fs fs₁
+              → CallInH fs fs₁ (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (sv₂ (frameOf (blockᴵ κ))) (CalleeV.q p) r
+                        (SV-Ptr (AtStack cf area)) (SV-Ptr (AtDynamic (cellLoc i o₀)))
+              → LocState.halted (floc fs) ≡ false
+              → ¬ callee-frame (AllocState.current-frame (falloc fs)) (fbudget (frameOf (blockᴵ κ))) ≡ cf
+              → VW (LocState.heapMem (floc fs)) x wx → At (LocState.heapMem (floc fs)) i o₀ wx
+              → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (LocState.stackMem (floc fs) cf) (((wsz A ⊔ wsz B) ∸ wsz A) + area) wa
+              → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
+                  × K.Here p whole (vw x []ᵉ ∥ a ∷ˢ []ˢ) fs′
+                  × CalledH fs fs′ r (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (SV-Ptr (AtStack cf area))
+  call-core-g {X} {A} {B} {κ} p cf area o₀ i {x} {a} {fs} {fs₁} wx wa n r st₁ CH h callee≢ px ax pa sa =
+    fin₂ (enter-jh image fs₁ φ′ cf area (M ∸ wsz A) (sv₂ φ′) {X} {A} {x} {a} i o₀ wx wa ne₁ (ch-in CH) sv₂-at
+            (Data.Nat.Properties.n≤1+n (budget φ′)) pa₁ sa₁ px₁ ax₁ seg₂ h₁
+            (proj₁ (K.shape-fits p whole)) (proj₂ (K.shape-fits p whole)))
+    where
+      import Data.Nat.Properties
+      open CalleeV p
+      b = fbudget φ′
+      ap = SV-Ptr (AtStack cf area)
+      vp = SV-Ptr (AtDynamic (cellLoc i o₀))
+      ne₁ : ¬ AllocState.current-frame (falloc fs₁) ≡ cf
+      ne₁ e′ = callee≢ (trans (sym (ch-frame CH)) e′)
+      h₁ : LocState.halted (floc fs₁) ≡ false
+      h₁ = trans (ch-halt CH) h
+      sv₂-at : slot fs₁ (sv₂ φ′) ≡ just vp
+      sv₂-at = subst (λ g → LocState.stackMem (floc fs₁) g (sv₂ φ′) ≡ just vp) (sym (ch-frame CH)) (ch-s₂ CH)
+      pa₁ : VW (LocState.heapMem (floc fs₁)) a wa
+      pa₁ = subst (λ r′ → VW r′ a wa) (sym (ch-heap CH)) pa
+      px₁ : VW (LocState.heapMem (floc fs₁)) x wx
+      px₁ = subst (λ r′ → VW r′ x wx) (sym (ch-heap CH)) px
+      ax₁ : At (LocState.heapMem (floc fs₁)) i o₀ wx
+      ax₁ = subst (λ r′ → At r′ i o₀ wx) (sym (ch-heap CH)) ax
+      sa₁ : SlotsAt (LocState.stackMem (floc fs₁) cf) ((M ∸ wsz A) + area) wa
+      sa₁ = slots-frame {LocState.stackMem (floc fs) cf} {LocState.stackMem (floc fs₁) cf} wa
+              (λ k _ → ch-other CH cf (k + ((M ∸ wsz A) + area)) callee≢) sa
+      seg₂ : Seg image (fpc fs₁) (argMv ++ viewMv)
+      seg₂ = subst (λ z → Seg image z (argMv ++ viewMv)) (sym (ch-pc CH)) pro-seg
+      nE = Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz X))
+      fin₂ : Σ FlatState (λ fs₂ → FlatSteps image nE fs₁ fs₂
+               × CfgW (LocState.heapMem (floc fs₂)) (slot fs₂) φ′ (vw x []ᵉ ∥ a ∷ˢ []ˢ)
+               × Ran nE 0 (AllocState.next-heap-ref (falloc fs₁)) (budget φ′) fs₁ fs₂
+               × (∀ y → budget φ′ ≤ y → slot fs₂ y ≡ slot fs₁ y))
+           → _
+      fin₂ (fs₂ , st₂ , C₂ , Rn , top) =
+        _ , fs₂ , FlatSteps-++ st₁ st₂ ,
+        record { h-pc  = trans (r-pc Rn) (trans (cong (nE +_) (ch-pc CH)) (trans (shuffle-v _ _ q) (sym start-pos)))
+               ; h-run = trans (k-halt (r-keep Rn)) h₁
+               ; h-cfg = C₂ } ,
+        record { dh-ret    = trans (k-ret (r-keep Rn)) (ch-ret CH)
+               ; dh-saved  = trans (k-saved (r-keep Rn)) (ch-saved CH)
+               ; dh-frame  = trans (k-frame (r-keep Rn)) (ch-frame CH)
+               ; dh-others = λ f′ y ne → trans (k-other (r-keep Rn) f′ y (λ e′ → ne (trans (sym (ch-frame CH)) (sym e′))))
+                                               (ch-other CH f′ y ne)
+               ; dh-area   = trans (top (sv₁ φ′) ≤-refl)
+                               (subst (λ g → LocState.stackMem (floc fs₁) g (sv₁ φ′) ≡ just ap) (sym (ch-frame CH)) (ch-s₁ CH))
+               ; dh-next   = trans (r-next Rn) (ch-next CH)
+               ; dh-old    = λ hl lt′ → trans (r-old Rn hl (subst (_ <_) (sym (ch-next CH)) lt′)) (cong (λ h′ → h′ hl) (ch-heap CH))
+               ; dh-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h′ → h′ hl) (ch-heap CH)) (ch-next CH) (ch-size CH) I) }
+
+  -- ★ from a many-use trampoline's frame (below the area's, `cf`): its save slot 0
+  -- the area's pointer, the contents' address in `Output` (D425)
   call-core-h : ∀ {X A B} {κ : Key (bsig (just X) A B)} (p : (bsig (just X) A B , κ) ∈ allK U)
                   (cf : FrameSemantics.Frame FS) (area o₀ : ℕ) (i : Id) {x : MV X} {a : MV A} {fs} (wx wa : List W)
               → Seg image (fpc fs) (restore-input 0 ∷ instr-ctrl (c-call-fn (nameOf (idx p))) ∷ [])
@@ -131,58 +194,37 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                   × K.Here p whole (vw x []ᵉ ∥ a ∷ˢ []ˢ) fs′
                   × CalledH fs fs′ (suc (suc (fpc fs))) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (SV-Ptr (AtStack cf area))
   call-core-h {X} {A} {B} {κ} p cf area o₀ i {x} {a} {fs} wx wa seg h s0 lt out px ax pa sa =
-    fin (call-in-h image fs 0 ap vp (nameOf (idx p)) (e-fn (nameOf (idx p))) q b (sv₁ φ′) (sv₂ φ′)
-           (sv-ne (budget φ′)) s0 out seg (image-fn p) entry-seg h)
+    fin (call-in-h image fs 0 (SV-Ptr (AtStack cf area)) (SV-Ptr (AtDynamic (cellLoc i o₀))) (nameOf (idx p)) (e-fn (nameOf (idx p)))
+           (CalleeV.q p) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (sv₂ (frameOf (blockᴵ κ)))
+           (sv-ne (budget (frameOf (blockᴵ κ)))) s0 out seg (image-fn p) (CalleeV.entry-seg p) h)
     where
-      open CalleeV p
-      b = fbudget φ′
       cur = AllocState.current-frame (falloc fs)
-      ap = SV-Ptr (AtStack cf area)
-      vp = SV-Ptr (AtDynamic (cellLoc i o₀))
-      callee≢ : ¬ callee-frame cur b ≡ cf
-      callee≢ e = ≺-≢ (≺-trans (callee-below cur b) lt) e
-      fin : Σ FlatState (λ fs₁ → FlatSteps image 6 fs fs₁ × CallInH fs fs₁ b (sv₁ φ′) (sv₂ φ′) q ap vp) → _
+      fin : Σ FlatState (λ fs₁ → FlatSteps image 6 fs fs₁ × CallInH fs fs₁ (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ)))
+                (sv₂ (frameOf (blockᴵ κ))) (CalleeV.q p) (suc (suc (fpc fs))) (SV-Ptr (AtStack cf area)) (SV-Ptr (AtDynamic (cellLoc i o₀)))) → _
       fin (fs₁ , st₁ , CH) =
-        fin₂ (enter-jh image fs₁ φ′ cf area (M ∸ wsz A) (sv₂ φ′) {X} {A} {x} {a} i o₀ wx wa ne₁ (ch-in CH) sv₂-at
-                (Data.Nat.Properties.n≤1+n (budget φ′)) pa₁ sa₁ px₁ ax₁ seg₂ h₁
-                (proj₁ (K.shape-fits p whole)) (proj₂ (K.shape-fits p whole)))
-        where
-          import Data.Nat.Properties
-          ne₁ : ¬ AllocState.current-frame (falloc fs₁) ≡ cf
-          ne₁ e′ = callee≢ (trans (sym (ch-frame CH)) e′)
-          h₁ : LocState.halted (floc fs₁) ≡ false
-          h₁ = trans (ch-halt CH) h
-          sv₂-at : slot fs₁ (sv₂ φ′) ≡ just vp
-          sv₂-at = subst (λ g → LocState.stackMem (floc fs₁) g (sv₂ φ′) ≡ just vp) (sym (ch-frame CH)) (ch-s₂ CH)
-          pa₁ : VW (LocState.heapMem (floc fs₁)) a wa
-          pa₁ = subst (λ r → VW r a wa) (sym (ch-heap CH)) pa
-          px₁ : VW (LocState.heapMem (floc fs₁)) x wx
-          px₁ = subst (λ r → VW r x wx) (sym (ch-heap CH)) px
-          ax₁ : At (LocState.heapMem (floc fs₁)) i o₀ wx
-          ax₁ = subst (λ r → At r i o₀ wx) (sym (ch-heap CH)) ax
-          sa₁ : SlotsAt (LocState.stackMem (floc fs₁) cf) ((M ∸ wsz A) + area) wa
-          sa₁ = slots-frame {LocState.stackMem (floc fs) cf} {LocState.stackMem (floc fs₁) cf} wa
-                  (λ k _ → ch-other CH cf (k + ((M ∸ wsz A) + area)) callee≢) sa
-          seg₂ : Seg image (fpc fs₁) (argMv ++ viewMv)
-          seg₂ = subst (λ z → Seg image z (argMv ++ viewMv)) (sym (ch-pc CH)) pro-seg
-          nE = Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz X))
-          fin₂ : Σ FlatState (λ fs₂ → FlatSteps image nE fs₁ fs₂
-                   × CfgW (LocState.heapMem (floc fs₂)) (slot fs₂) φ′ (vw x []ᵉ ∥ a ∷ˢ []ˢ)
-                   × Ran nE 0 (AllocState.next-heap-ref (falloc fs₁)) (budget φ′) fs₁ fs₂
-                   × (∀ y → budget φ′ ≤ y → slot fs₂ y ≡ slot fs₁ y))
-               → _
-          fin₂ (fs₂ , st₂ , C₂ , Rn , top) =
-            _ , fs₂ , FlatSteps-++ st₁ st₂ ,
-            record { h-pc  = trans (r-pc Rn) (trans (cong (nE +_) (ch-pc CH)) (trans (shuffle-v _ _ q) (sym start-pos)))
-                   ; h-run = trans (k-halt (r-keep Rn)) h₁
-                   ; h-cfg = C₂ } ,
-            record { dh-ret    = trans (k-ret (r-keep Rn)) (ch-ret CH)
-                   ; dh-saved  = trans (k-saved (r-keep Rn)) (ch-saved CH)
-                   ; dh-frame  = trans (k-frame (r-keep Rn)) (ch-frame CH)
-                   ; dh-others = λ f′ y ne → trans (k-other (r-keep Rn) f′ y (λ e′ → ne (trans (sym (ch-frame CH)) (sym e′))))
-                                                   (ch-other CH f′ y ne)
-                   ; dh-area   = trans (top (sv₁ φ′) ≤-refl)
-                                   (subst (λ g → LocState.stackMem (floc fs₁) g (sv₁ φ′) ≡ just ap) (sym (ch-frame CH)) (ch-s₁ CH))
-                   ; dh-next   = trans (r-next Rn) (ch-next CH)
-                   ; dh-old    = λ hl lt′ → trans (r-old Rn hl (subst (_ <_) (sym (ch-next CH)) lt′)) (cong (λ h′ → h′ hl) (ch-heap CH))
-                   ; dh-inb    = λ I → r-inb Rn (inb-pt {fs} {fs₁} (λ hl → cong (λ h′ → h′ hl) (ch-heap CH)) (ch-next CH) (ch-size CH) I) }
+        call-core-g p cf area o₀ i wx wa 6 (suc (suc (fpc fs))) st₁ CH h
+          (λ e → ≺-≢ (≺-trans (callee-below cur (fbudget (frameOf (blockᴵ κ)))) lt) e) px ax pa sa
+
+  -- ★ from a copy trampoline's frame: its own bottom the area (`lea-slot 0`), the view's pointer
+  -- in a save slot `s` (the contents' address)
+  call-core-c : ∀ {X A B} {κ : Key (bsig (just X) A B)} (p : (bsig (just X) A B , κ) ∈ allK U)
+                  (s o₀ : ℕ) (i : Id) {x : MV X} {a : MV A} {fs} (wx wa : List W)
+              → Seg image (fpc fs) (lea-slot 0 ∷ mov-to-input ∷ load-from-slot s ∷ instr-ctrl (c-call-fn (nameOf (idx p))) ∷ [])
+              → LocState.halted (floc fs) ≡ false
+              → slot fs s ≡ just (SV-Ptr (AtDynamic (cellLoc i o₀)))
+              → VW (LocState.heapMem (floc fs)) x wx → At (LocState.heapMem (floc fs)) i o₀ wx
+              → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (slot fs) (((wsz A ⊔ wsz B) ∸ wsz A) + 0) wa
+              → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
+                  × K.Here p whole (vw x []ᵉ ∥ a ∷ˢ []ˢ) fs′
+                  × CalledH fs fs′ (suc (suc (suc (suc (fpc fs))))) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ)))
+                            (SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) 0))
+  call-core-c {X} {A} {B} {κ} p s o₀ i {x} {a} {fs} wx wa seg h sv px ax pa sa =
+    fin (call-in-c image fs s (SV-Ptr (AtDynamic (cellLoc i o₀))) (nameOf (idx p)) (e-fn (nameOf (idx p)))
+           (CalleeV.q p) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (sv₂ (frameOf (blockᴵ κ)))
+           (sv-ne (budget (frameOf (blockᴵ κ)))) sv seg (image-fn p) (CalleeV.entry-seg p) h)
+    where
+      cur = AllocState.current-frame (falloc fs)
+      fin : Σ FlatState (λ fs₁ → FlatSteps image 8 fs fs₁ × CallInH fs fs₁ (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ)))
+                (sv₂ (frameOf (blockᴵ κ))) (CalleeV.q p) (suc (suc (suc (suc (fpc fs))))) (SV-Ptr (AtStack cur 0)) (SV-Ptr (AtDynamic (cellLoc i o₀)))) → _
+      fin (fs₁ , st₁ , CH) =
+        call-core-g p cur 0 o₀ i wx wa 8 (suc (suc (suc (suc (fpc fs))))) st₁ CH h (callee-≢ cur (fbudget (frameOf (blockᴵ κ)))) px ax pa sa

@@ -31,7 +31,7 @@ module Once.LinCore.LowerSimG {FS : FrameSemantics} where
 
 open FlatMachine {FS}
 open FlatStepsAPI {FS} using (FlatSteps; step-at)
-open import Once.LinCore.Moves {FS} using (Seg; slot; lea-step; mov-out-step; store-step; store-same; store-other; store-frame; restore-step; addr-step)
+open import Once.LinCore.Moves {FS} using (Seg; slot; lea-step; mov-out-step; store-step; store-same; store-other; store-frame; restore-step; addr-step; load-step; mov-in-step)
 open import Once.LinCore.LowerSimE {FS} using (callee-frame; clear-other)
 open AllocState using (current-frame; saved-frames; frame-slots; next-heap-ref; block-size)
 open ExecFinal {FS} using (in-block?)
@@ -207,3 +207,70 @@ free-in prog fs c hl ℓ e q b s sx ib code (g₁ , g₂ , g₃ , g₄ , g₅ , 
     fs₇ = record fs₆ { falloc = enter-call (falloc fs₆) ; fret = suc (fpc fs₆) ∷ fret fs₆ ; flink = just (suc (fpc fs₆)) ; fpc = q }
     fs₈ = do-thunk b fs₇
     fs₉ = record fs₈ { floc = MemOps.writeLoc {FS} (floc fs₈) (AtStack cf′ s) cell ; fpc = suc (fpc fs₈) }
+
+------------------------------------------------------------------------
+-- ★ A COPY'S DISPATCH (D417, `ccopy`/`ncopy`): the cell's word-1 address
+-- the closure (so `do-call` reads word 2, the copy trampoline's code), the
+-- caller's destination slot in `Input1`, the cell in `Output`; the
+-- trampoline's entry with its saves: the cell, then the destination.
+------------------------------------------------------------------------
+
+record CopyIn (fs fs′ : FlatState) (cell : StoredValue FS) (d b s₁ s₂ q : ℕ) : Set where
+  field
+    cy-frame : current-frame (falloc fs′) ≡ callee-frame (current-frame (falloc fs)) b
+    cy-saved : saved-frames (falloc fs′) ≡ (current-frame (falloc fs) , frame-slots (falloc fs)) ∷ saved-frames (falloc fs)
+    cy-ret   : fret fs′ ≡ suc (suc (suc (suc (suc (suc (suc (suc (fpc fs)))))))) ∷ fret fs
+    cy-pc    : fpc fs′ ≡ suc (suc (suc (suc q)))
+    cy-s₁    : LocState.stackMem (floc fs′) (callee-frame (current-frame (falloc fs)) b) s₁
+               ≡ just (SV-Ptr (AtStack (current-frame (falloc fs)) d))
+    cy-s₂    : LocState.stackMem (floc fs′) (callee-frame (current-frame (falloc fs)) b) s₂ ≡ just cell
+    cy-other : ∀ f′ x → ¬ callee-frame (current-frame (falloc fs)) b ≡ f′
+             → LocState.stackMem (floc fs′) f′ x ≡ LocState.stackMem (floc fs) f′ x
+    cy-heap  : LocState.heapMem (floc fs′) ≡ LocState.heapMem (floc fs)
+    cy-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
+    cy-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
+    cy-halt  : LocState.halted (floc fs′) ≡ LocState.halted (floc fs)
+
+copy-in : ∀ prog (fs : FlatState) (c d : ℕ) (hl : HeapLocation) (ℓ : LabelId) (e : EntryId) (q b s₁ s₂ : ℕ) → ¬ s₁ ≡ s₂
+        → slot fs c ≡ just (SV-Ptr (AtDynamic hl))
+        → in-block? (block-size (falloc fs)) (offsetLoc (AtDynamic hl) 1) ≡ true
+        → LocState.heapMem (floc fs) (sucHL (offsetHL hl 1)) ≡ just (SV-Code ℓ)
+        → Seg prog (fpc fs) (restore-input c ∷ addr-at 1 ∷ mov-to-input ∷ instr-save-closure-reg
+                             ∷ lea-slot d ∷ mov-to-input ∷ load-from-slot c ∷ instr-call-closure ∷ [])
+        → find-thunk prog ℓ ≡ just q
+        → Seg prog q (instr-ctrl (c-entry e b) ∷ store-at-slot s₂ ∷ mov-to-output ∷ store-at-slot s₁ ∷ [])
+        → LocState.halted (floc fs) ≡ false
+        → Σ FlatState λ fs′ → FlatSteps prog 12 fs fs′ × CopyIn fs fs′ (SV-Ptr (AtDynamic hl)) d b s₁ s₂ q
+copy-in prog fs c d hl ℓ e q b s₁ s₂ s≢ sx ib code (g₁ , g₂ , g₃ , g₄ , g₅ , g₆ , g₇ , g₈ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h =
+  fs₁₂ ,
+  step-at fs₁ (h , g₁) (restore-step fs c sx) (step-at fs₂ (h , g₂) (addr-step fs₁ 1 refl ib)
+  (step-at fs₃ (h , g₃) (mov-in-step fs₂) (step-at fs₄ (h , g₄) refl
+  (step-at fs₅ (h , g₅) (lea-step fs₄ d) (step-at fs₆ (h , g₆) (mov-in-step fs₅)
+  (step-at fs₇ (h , g₇) (load-step fs₆ c sx)
+  (step-at fs₈ (h , g₈) (closure-step prog fs₇ (offsetHL hl 1) ℓ refl code ff)
+  (step-at fs₉ (h , h₁) refl (step-at fs₁₀ (h , h₂) (store-step fs₉ s₂)
+  (step-at fs₁₁ (h , h₃) (mov-out-step fs₁₀) (step-at fs₁₂ (h , h₄) (store-step fs₁₁ s₁) FlatStepsAPI.[]))))))))))) ,
+  record { cy-frame = refl ; cy-saved = refl ; cy-ret = refl ; cy-pc = refl
+         ; cy-s₁ = store-same (floc fs₁₁) cf′ s₁ dst
+         ; cy-s₂ = trans (store-other (floc fs₁₁) cf′ s₁ dst s₂ s≢) (store-same (floc fs₉) cf′ s₂ cell)
+         ; cy-other = λ f′ x′ ne → trans (store-frame (floc fs₁₁) cf′ s₁ dst f′ x′ ne)
+                                     (trans (store-frame (floc fs₉) cf′ s₂ cell f′ x′ ne) (clear-other (LocState.stackMem (floc fs)) cf′ b f′ x′ ne))
+         ; cy-heap = refl ; cy-next = refl ; cy-size = refl ; cy-halt = refl }
+  where
+    cf = current-frame (falloc fs)
+    cf′ = callee-frame cf b
+    cell = SV-Ptr (AtDynamic hl)
+    w1 = SV-Ptr (AtDynamic (offsetHL hl 1))
+    dst = SV-Ptr (AtStack cf d)
+    fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 cell } ; fpc = suc (fpc fs) }
+    fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Output w1 } ; fpc = suc (fpc fs₁) }
+    fs₃ = record fs₂ { floc = record (floc fs₂) { regs = writeReg (LocState.regs (floc fs₂)) Input1 w1 } ; fpc = suc (fpc fs₂) }
+    fs₄ = record fs₃ { fclosure = w1 ; fpc = suc (fpc fs₃) }
+    fs₅ = record fs₄ { floc = record (floc fs₄) { regs = writeReg (LocState.regs (floc fs₄)) Output dst } ; fpc = suc (fpc fs₄) }
+    fs₆ = record fs₅ { floc = record (floc fs₅) { regs = writeReg (LocState.regs (floc fs₅)) Input1 dst } ; fpc = suc (fpc fs₅) }
+    fs₇ = record fs₆ { floc = record (floc fs₆) { regs = writeReg (LocState.regs (floc fs₆)) Output cell } ; fpc = suc (fpc fs₆) }
+    fs₈ = record fs₇ { falloc = enter-call (falloc fs₇) ; fret = suc (fpc fs₇) ∷ fret fs₇ ; flink = just (suc (fpc fs₇)) ; fpc = q }
+    fs₉ = do-thunk b fs₈
+    fs₁₀ = record fs₉ { floc = MemOps.writeLoc {FS} (floc fs₉) (AtStack cf′ s₂) cell ; fpc = suc (fpc fs₉) }
+    fs₁₁ = record fs₁₀ { floc = record (floc fs₁₀) { regs = writeReg (LocState.regs (floc fs₁₀)) Output dst } ; fpc = suc (fpc fs₁₀) }
+    fs₁₂ = record fs₁₁ { floc = MemOps.writeLoc {FS} (floc fs₁₁) (AtStack cf′ s₁) dst ; fpc = suc (fpc fs₁₁) }
