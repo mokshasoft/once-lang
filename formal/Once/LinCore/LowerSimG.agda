@@ -101,6 +101,56 @@ closure-in prog fs x y hl ℓ e q b s₁ s₂ s≢ sx code (g₁ , g₂ , g₃ ,
     fs₈ = record fs₇ { floc = MemOps.writeLoc {FS} (floc fs₇) (AtStack cf′ s₁) cell ; fpc = suc (fpc fs₇) }
 
 ------------------------------------------------------------------------
+-- ★ A MANY-USE DISPATCH (D417, D425, `icallω`): as `closure-in`, into a
+-- trampoline that saves only the caller's area (its one save slot); the
+-- cell stays in `Input1`.
+------------------------------------------------------------------------
+
+record ClosInω (fs fs′ : FlatState) (cell : StoredValue FS) (y b s q : ℕ) : Set where
+  field
+    cw-frame : current-frame (falloc fs′) ≡ callee-frame (current-frame (falloc fs)) b
+    cw-saved : saved-frames (falloc fs′) ≡ (current-frame (falloc fs) , frame-slots (falloc fs)) ∷ saved-frames (falloc fs)
+    cw-ret   : fret fs′ ≡ suc (suc (suc (suc (fpc fs)))) ∷ fret fs
+    cw-pc    : fpc fs′ ≡ suc (suc q)
+    cw-in    : readReg (LocState.regs (floc fs′)) Input1 ≡ cell
+    cw-s     : LocState.stackMem (floc fs′) (callee-frame (current-frame (falloc fs)) b) s
+               ≡ just (SV-Ptr (AtStack (current-frame (falloc fs)) y))
+    cw-other : ∀ f′ x → ¬ callee-frame (current-frame (falloc fs)) b ≡ f′
+             → LocState.stackMem (floc fs′) f′ x ≡ LocState.stackMem (floc fs) f′ x
+    cw-heap  : LocState.heapMem (floc fs′) ≡ LocState.heapMem (floc fs)
+    cw-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
+    cw-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
+    cw-halt  : LocState.halted (floc fs′) ≡ LocState.halted (floc fs)
+
+closure-inω : ∀ prog (fs : FlatState) (x y : ℕ) (hl : HeapLocation) (ℓ : LabelId) (e : EntryId) (q b s : ℕ)
+            → slot fs x ≡ just (SV-Ptr (AtDynamic hl)) → LocState.heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ)
+            → Seg prog (fpc fs) (restore-input x ∷ lea-slot y ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [])
+            → find-thunk prog ℓ ≡ just q
+            → Seg prog q (instr-ctrl (c-entry e b) ∷ store-at-slot s ∷ [])
+            → LocState.halted (floc fs) ≡ false
+            → Σ FlatState λ fs′ → FlatSteps prog 6 fs fs′ × ClosInω fs fs′ (SV-Ptr (AtDynamic hl)) y b s q
+closure-inω prog fs x y hl ℓ e q b s sx code (g₁ , g₂ , g₃ , g₄ , _) ff (h₁ , h₂ , _) h =
+  fs₆ ,
+  step-at fs₁ (h , g₁) (restore-step fs x sx) (step-at fs₂ (h , g₂) (lea-step fs₁ y) (step-at fs₃ (h , g₃) refl
+  (step-at fs₄ (h , g₄) (closure-step prog fs₃ hl ℓ refl code ff)
+  (step-at fs₅ (h , h₁) refl (step-at fs₆ (h , h₂) (store-step fs₅ s) FlatStepsAPI.[]))))) ,
+  record { cw-frame = refl ; cw-saved = refl ; cw-ret = refl ; cw-pc = refl ; cw-in = refl
+         ; cw-s = store-same (floc fs₅) cf′ s area
+         ; cw-other = λ f′ x′ ne → trans (store-frame (floc fs₅) cf′ s area f′ x′ ne) (clear-other (LocState.stackMem (floc fs)) cf′ b f′ x′ ne)
+         ; cw-heap = refl ; cw-next = refl ; cw-size = refl ; cw-halt = refl }
+  where
+    cf = current-frame (falloc fs)
+    cf′ = callee-frame cf b
+    cell = SV-Ptr (AtDynamic hl)
+    area = SV-Ptr (AtStack cf y)
+    fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 cell } ; fpc = suc (fpc fs) }
+    fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Output area } ; fpc = suc (fpc fs₁) }
+    fs₃ = record fs₂ { fclosure = cell ; fpc = suc (fpc fs₂) }
+    fs₄ = record fs₃ { falloc = enter-call (falloc fs₃) ; fret = suc (fpc fs₃) ∷ fret fs₃ ; flink = just (suc (fpc fs₃)) ; fpc = q }
+    fs₅ = do-thunk b fs₄
+    fs₆ = record fs₅ { floc = MemOps.writeLoc {FS} (floc fs₅) (AtStack cf′ s) area ; fpc = suc (fpc fs₅) }
+
+------------------------------------------------------------------------
 -- ★ A FREE'S DISPATCH (D417, `cfree`/`nfree`): the cell's word-2 address
 -- the closure (so `do-call` reads word 3, the free trampoline's code), the
 -- cell in `Output`; the trampoline's entry with one save slot, the cell.

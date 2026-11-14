@@ -59,6 +59,7 @@ open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module T
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 open import Once.LinCore.GlobalTramp fmt ans bw using (module TrampR)
 open import Once.LinCore.GlobalTrampO fmt ans bw using (module TrampO)
+open import Once.LinCore.GlobalTrView fmt ans bw using (module TrV)
 
 module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
@@ -67,6 +68,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Relate {FS} ds f ldConst ld-nl wordOf
   open TrampR {FS} ds f ldConst ld-nl wordOf
   open TrampO {FS} ds f ldConst ld-nl wordOf
+  open TrV {FS} ds f ldConst ld-nl wordOf using (Is-tp0; it-tp0; Is-to0; it-to0; open1-v; nopen-v)
   open Ctl {FS} ds f ldConst ld-nl using (main; L₀ˢ; L₀ᵇ; start-root; blockFin; Pnt; p-start; p-block; p-tramp; p-halt; ptFin; trFin)
   open Program ds f using (U)
   open ProgramRun ds f using (ncty)
@@ -237,6 +239,36 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   gicall {lam = c1 ds′ b γ} (p-block p′ (at s)) inv H nx ok I = gicall-block p′ s inv H nx ok I
   gicall (p-tramp p pt) inv (() , H) nx ok I
 
+  -- the cell parts at a trampoline's depth 0 (its point by `GlobalTrView`'s view: no split on
+  -- the point here)
+  gopen1-t : ∀ {T Es g X A B S V} {k : Codeᴵ (Es ∣ (X ⊗t A) ∷ S) V} {r : Ret V T} {i}
+               {lam : Lam once g X A B} {x : MV X} {a : MV A} {n h fs} {σ} {κ : Key σ} {p : under κ ∈ allK U}
+               {pt : Pt (blockᴵ κ) (open1 {g = g} {X = X} {B = B} ⨾ k)} {tp : TrPt p pt}
+           → Is-tp0 tp → ∀ {es : Slots Es} {os : Stk S} → InvI (es ∥ mpair (mfn i lam x) a ∷ˢ os) r n h → HereTr tp (es ∥ mpair (mfn i lam x) a ∷ˢ os) fs
+           → AllocState.next-heap-ref (falloc fs) ≡ n
+           → RetOK (rtramp p) (trFin (idx p) κ) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+           → InBlk fs
+           → Arrives k r (es ∥ mpair x a ∷ˢ os) n fs
+  gopen1-t {r = r} (it-tp0 {ds′ = ds′} {b} {γ} p) {es = []ᵉ} {os = []ˢ} inv T0 nx ok I =
+    case tr-open1 p T0 of λ where
+      (N , fs′ , run , H′ , Rn) →
+        N , fs′ , run , record { g-pt = p-tramp {κ = ktr1 ds′ b γ} p (at (next whole)) ; g-here = (tp1 p , H′) ; g-next = trans (r-next Rn) nx
+                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I }
+
+  gnopen-t : ∀ {T Es F S S′ V} {k : Codeᴵ (Es ∣ (Coalg F S ⊗t S) ∷ S′) V} {r : Ret V T} {i}
+               {x : MV (Coalg F S ⊗t S)} {n h fs} {σ} {κ : Key σ} {p : under κ ∈ allK U}
+               {pt : Pt (blockᴵ κ) (nopen {F = F} {S = S} ⨾ k)} {tp : TrPt p pt}
+           → Is-to0 tp → ∀ {es : Slots Es} {os : Stk S′} → InvI (es ∥ mnu i x ∷ˢ os) r n h → HereTr tp (es ∥ mnu i x ∷ˢ os) fs
+           → AllocState.next-heap-ref (falloc fs) ≡ n
+           → RetOK (rtramp p) (trFin (idx p) κ) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+           → InBlk fs
+           → Arrives k r (es ∥ x ∷ˢ os) n fs
+  gnopen-t {r = r} (it-to0 p) {es = []ᵉ} {os = []ˢ} inv T0 nx ok I =
+    case to-open p T0 of λ where
+      (N , fs′ , run , H′ , Rn) →
+        N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (to1 p , H′) ; g-next = trans (r-next Rn) nx
+                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I }
+
   -- ★ A ONE-SHOT TRAMPOLINE'S CELL PART (i-open1): at its depth 0; at a root's
   -- path it is absurd (D422: a root's code has no cell part)
   gopen1 : ∀ {T Es g X A B S V} {k : Codeᴵ (Es ∣ (X ⊗t A) ∷ S) V} {r : Ret V T} {es : Slots Es} {i}
@@ -248,11 +280,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → Arrives k r (es ∥ mpair x a ∷ˢ os) n fs
   gopen1 (p-start (at s)) inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
   gopen1 (p-block p (at s)) inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
-  gopen1 {r = r} {es = []ᵉ} {os = []ˢ} (p-tramp p _) inv (tp0 _ , T0) nx ok I =
-    case tr-open1 p T0 of λ where
-      (N , fs′ , run , H′ , Rn) →
-        N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (tp1 p , H′) ; g-next = trans (r-next Rn) nx
-                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I }
+  gopen1 (p-tramp p pt) inv (tp , T0) nx ok I = gopen1-t (open1-v tp) inv T0 nx ok I
 
   -- ★ AN OBSERVATION'S TRAMPOLINE'S CELL PART (i-nopen): at its depth 0; at a
   -- root's path it is absurd (D422)
@@ -265,11 +293,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → Arrives k r (es ∥ x ∷ˢ os) n fs
   gnopen (p-start (at s)) inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (comp-nc ds f tt)))
   gnopen (p-block p (at s)) inv H nx ok I = ⊥-elim (proj₁ (sub-nc s (block-nc _ (allK-nt ds f p))))
-  gnopen {r = r} {es = []ᵉ} {os = []ˢ} (p-tramp p _) inv (to0 _ , T0) nx ok I =
-    case to-open p T0 of λ where
-      (N , fs′ , run , H′ , Rn) →
-        N , fs′ , run , record { g-pt = p-tramp p (at (next whole)) ; g-here = (to1 p , H′) ; g-next = trans (r-next Rn) nx
-                               ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I }
+  gnopen (p-tramp p pt) inv (tp , T0) nx ok I = gnopen-t (nopen-v tp) inv T0 nx ok I
 
   -- ★ an observation's dispatch from the start's code: into the trampoline
   -- of the ν's observation block (`ktro ε`, D423), at its depth 0 (TrO0)

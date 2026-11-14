@@ -189,19 +189,24 @@ open import Data.List using (length; _++_)
 open import Data.Nat.Properties using (+-comm)
 open FlatStepsAPI {FS} using (FlatSteps-++)
 
-record CallOut (fs fs′ : FlatState) (cfc : Frame) (a src o n pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ) : Set where
+-- the return frame `cfc`, the area's frame `af` (D425: a many-use body's
+-- area is its trampoline's dispatcher's, two frames up; else `af = cfc`)
+record CallOutA (fs fs′ : FlatState) (cfc af : Frame) (a src o n pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ) : Set where
   field
     co-frame : current-frame (falloc fs′) ≡ cfc
     co-slots : frame-slots (falloc fs′) ≡ sl
     co-saved : saved-frames (falloc fs′) ≡ sv
     co-ret   : fret fs′ ≡ rest
     co-pc    : fpc fs′ ≡ pc
-    co-moved : ∀ k → k < n → stackMem (floc fs′) cfc ((k + o) + a) ≡ slot fs (k + src)
-    co-rest  : ∀ (l : ValueLocation FS) → (∀ k → k < n → ¬ l ≡ AtStack cfc ((k + o) + a)) → readLoc (floc fs′) l ≡ readLoc (floc fs) l
+    co-moved : ∀ k → k < n → stackMem (floc fs′) af ((k + o) + a) ≡ slot fs (k + src)
+    co-rest  : ∀ (l : ValueLocation FS) → (∀ k → k < n → ¬ l ≡ AtStack af ((k + o) + a)) → readLoc (floc fs′) l ≡ readLoc (floc fs) l
     co-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
     co-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
     co-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
-open CallOut public
+open CallOutA public
+
+CallOut : (fs fs′ : FlatState) (cfc : Frame) (a src o n pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ) → Set
+CallOut fs fs′ cfc = CallOutA fs fs′ cfc cfc
 
 open import Once.LinCore.Moves {FS} using (readLoc-regs; w-ret)
 open import Data.Nat using (_<_)
@@ -210,23 +215,23 @@ len-mvSP : ∀ x y m → length (mvSP x y m) ≡ nsteps m
 len-mvSP x y zero    = refl
 len-mvSP x y (suc m) = cong (λ z → suc (suc z)) (len-mvSP (suc x) (suc y) m)
 
-call-out : ∀ prog (fs : FlatState) (cfc : Frame) (a s₁ src o n b pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ)
-         → fret fs ≡ pc ∷ rest → saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
-         → ¬ cfc ≡ current-frame (falloc fs)
-         → slot fs s₁ ≡ just (SV-Ptr (AtStack cfc a))
-         → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (k + src) ≡ just v)
-         → Seg prog (fpc fs) (restore-input s₁ ∷ mvSP src o n ++ instr-ctrl (c-ret b) ∷ [])
-         → fhalted (floc fs) ≡ false
-         → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOut fs fs′ cfc a src o n pc rest sv sl
-call-out prog fs cfc a s₁ src o n b pc rest sv sl hret hsv ne ep def (g₁ , s) h =
-  fin (mvSP-run prog fs₁ (AtStack cfc a) src o n (Seg-++ˡ prog (suc (fpc fs)) (mvSP src o n) _ s) h refl def (λ k _ → refl)
+call-outA : ∀ prog (fs : FlatState) (cfc af : Frame) (a s₁ src o n b pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ)
+          → fret fs ≡ pc ∷ rest → saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+          → ¬ af ≡ current-frame (falloc fs)
+          → slot fs s₁ ≡ just (SV-Ptr (AtStack af a))
+          → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (k + src) ≡ just v)
+          → Seg prog (fpc fs) (restore-input s₁ ∷ mvSP src o n ++ instr-ctrl (c-ret b) ∷ [])
+          → fhalted (floc fs) ≡ false
+          → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOutA fs fs′ cfc af a src o n pc rest sv sl
+call-outA prog fs cfc af a s₁ src o n b pc rest sv sl hret hsv ne ep def (g₁ , s) h =
+  fin (mvSP-run prog fs₁ (AtStack af a) src o n (Seg-++ˡ prog (suc (fpc fs)) (mvSP src o n) _ s) h refl def (λ k _ → refl)
          (λ k k′ _ _ e → ne (frame-of-eq e)))
   where
-    fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 (SV-Ptr (AtStack cfc a)) } ; fpc = suc (fpc fs) }
-    frame-of-eq : ∀ {x y f} → AtStack {FS} cfc x ≡ AtStack f y → cfc ≡ f
+    fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 (SV-Ptr (AtStack af a)) } ; fpc = suc (fpc fs) }
+    frame-of-eq : ∀ {x y f} → AtStack {FS} af x ≡ AtStack f y → af ≡ f
     frame-of-eq refl = refl
-    fin : Σ FlatState (λ fs₂ → FlatSteps prog (nsteps n) fs₁ fs₂ × MovedW fs₁ fs₂ (AtStack cfc a) src o n)
-        → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOut fs fs′ cfc a src o n pc rest sv sl
+    fin : Σ FlatState (λ fs₂ → FlatSteps prog (nsteps n) fs₁ fs₂ × MovedW fs₁ fs₂ (AtStack af a) src o n)
+        → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOutA fs fs′ cfc af a src o n pc rest sv sl
     fin (fs₂ , st₂ , W) =
       fs₃ ,
       step-at fs₁ (h , g₁) (restore-step fs s₁ ep) (FlatSteps-++ st₂ (step-at fs₃ (trans (wm-halt W) h , fret′) (ret-step prog fs₂ b eqR) done)) ,
@@ -252,6 +257,16 @@ call-out prog fs cfc a s₁ src o n b pc rest sv sl hret hsv ne ep def (g₁ , s
           where proj₁′ : ∀ {A : Set} {B : Set} → A × B → A
                 proj₁′ (x , _) = x
 
+call-out : ∀ prog (fs : FlatState) (cfc : Frame) (a s₁ src o n b pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ)
+         → fret fs ≡ pc ∷ rest → saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+         → ¬ cfc ≡ current-frame (falloc fs)
+         → slot fs s₁ ≡ just (SV-Ptr (AtStack cfc a))
+         → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (k + src) ≡ just v)
+         → Seg prog (fpc fs) (restore-input s₁ ∷ mvSP src o n ++ instr-ctrl (c-ret b) ∷ [])
+         → fhalted (floc fs) ≡ false
+         → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOut fs fs′ cfc a src o n pc rest sv sl
+call-out prog fs cfc = call-outA prog fs cfc cfc
+
 -- ★ a bare return (a free's trampoline, D417: its result One, no words to move)
 ret-out : ∀ prog (fs : FlatState) (cfc : Frame) (b pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ)
         → fret fs ≡ pc ∷ rest → saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
@@ -272,3 +287,54 @@ ret-out prog fs cfc b pc rest sv sl hret hsv (g , _) h =
          ; co-halt = refl }
   where
     fs₁ = record fs { falloc = leave-frame (falloc fs) ; fpc = pc ; fret = rest }
+
+------------------------------------------------------------------------
+-- ★ A TRAMPOLINE'S INNER CALL WITH ITS AREA AND VIEW BY POINTER (D425: a
+-- many-use body's): the area's pointer from a save slot into `Input1`, the
+-- view's pointer already in `Output`; the callee's entry saves both.
+------------------------------------------------------------------------
+
+record CallInH (fs fs′ : FlatState) (b s₁ s₂ q : ℕ) (ap vp : StoredValue FS) : Set where
+  field
+    ch-frame : current-frame (falloc fs′) ≡ callee-frame (current-frame (falloc fs)) b
+    ch-saved : saved-frames (falloc fs′) ≡ (current-frame (falloc fs) , frame-slots (falloc fs)) ∷ saved-frames (falloc fs)
+    ch-ret   : fret fs′ ≡ suc (suc (fpc fs)) ∷ fret fs
+    ch-pc    : fpc fs′ ≡ suc (suc (suc (suc q)))
+    ch-in    : readReg (LocState.regs (floc fs′)) Input1 ≡ ap
+    ch-s₁    : stackMem (floc fs′) (callee-frame (current-frame (falloc fs)) b) s₁ ≡ just ap
+    ch-s₂    : stackMem (floc fs′) (callee-frame (current-frame (falloc fs)) b) s₂ ≡ just vp
+    ch-other : ∀ f′ x → ¬ callee-frame (current-frame (falloc fs)) b ≡ f′ → stackMem (floc fs′) f′ x ≡ stackMem (floc fs) f′ x
+    ch-heap  : heapMem (floc fs′) ≡ heapMem (floc fs)
+    ch-next  : next-heap-ref (falloc fs′) ≡ next-heap-ref (falloc fs)
+    ch-size  : block-size (falloc fs′) ≡ block-size (falloc fs)
+    ch-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
+open CallInH public
+
+call-in-h : ∀ prog (fs : FlatState) (s : ℕ) (ap vp : StoredValue FS) (f : CanonicalName) (e : EntryId) (q b s₁ s₂ : ℕ) → ¬ s₁ ≡ s₂
+          → slot fs s ≡ just ap → readReg (LocState.regs (floc fs)) Output ≡ vp
+          → Seg prog (fpc fs) (restore-input s ∷ instr-ctrl (c-call-fn f) ∷ [])
+          → find-fn prog f ≡ just q
+          → Seg prog q (instr-ctrl (c-entry e b) ∷ store-at-slot s₂ ∷ mov-to-output ∷ store-at-slot s₁ ∷ [])
+          → fhalted (floc fs) ≡ false
+          → Σ FlatState λ fs′ → FlatSteps prog 6 fs fs′ × CallInH fs fs′ b s₁ s₂ q ap vp
+call-in-h prog fs s ap vp f e q b s₁ s₂ s≢ sa ov (g₁ , g₂ , _) ff (h₁ , h₂ , h₃ , h₄ , _) h =
+  fs₇ ,
+  step-at fs₂ (h , g₁) (restore-step fs s sa) (step-at fs₃ (h , g₂) (call-step prog fs₂ f ff)
+  (step-at fs₄ (h , h₁) (entry-step prog fs₃ e b) (step-at fs₅ (h , h₂) (store-step fs₄ s₂)
+  (step-at fs₆ (h , h₃) (mov-out-step fs₅) (step-at fs₇ (h , h₄) (store-step fs₆ s₁) done))))) ,
+  record { ch-frame = refl ; ch-saved = refl ; ch-ret = refl ; ch-pc = refl ; ch-in = refl
+         ; ch-s₁ = store-same (floc fs₆) cf′ s₁ ap
+         ; ch-s₂ = trans (store-other (floc fs₆) cf′ s₁ ap s₂ s≢)
+                     (trans (store-same (floc fs₄) cf′ s₂ (readReg (LocState.regs (floc fs₄)) Output)) (cong just ov))
+         ; ch-other = λ f′ x ne → trans (store-frame (floc fs₆) cf′ s₁ ap f′ x ne)
+                                    (trans (store-frame (floc fs₄) cf′ s₂ _ f′ x ne) (clear-other (stackMem (floc fs)) cf′ b f′ x ne))
+         ; ch-heap = refl ; ch-next = refl ; ch-size = refl ; ch-halt = refl }
+  where
+    cf = current-frame (falloc fs)
+    cf′ = callee-frame cf b
+    fs₂ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 ap } ; fpc = suc (fpc fs) }
+    fs₃ = record fs₂ { falloc = enter-call (falloc fs₂) ; fret = suc (fpc fs₂) ∷ fret fs₂ ; flink = just (suc (fpc fs₂)) ; fpc = q }
+    fs₄ = do-thunk b fs₃
+    fs₅ = record fs₄ { floc = MemOps.writeLoc {FS} (floc fs₄) (AtStack cf′ s₂) (readReg (LocState.regs (floc fs₄)) Output) ; fpc = suc (fpc fs₄) }
+    fs₆ = record fs₅ { floc = record (floc fs₅) { regs = writeReg (LocState.regs (floc fs₅)) Output ap } ; fpc = suc (fpc fs₅) }
+    fs₇ = record fs₆ { floc = MemOps.writeLoc {FS} (floc fs₆) (AtStack cf′ s₁) ap ; fpc = suc (fpc fs₆) }

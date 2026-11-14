@@ -63,6 +63,7 @@ open import Once.LinCore.GlobalCall fmt ans bw using (module CallR)
 open import Once.LinCore.GlobalRet fmt ans bw using (module RetR)
 open import Once.LinCore.GlobalDispatch fmt ans bw using (module DispR)
 open import Once.LinCore.GlobalDispatchF fmt ans bw using (module DispF)
+open import Once.LinCore.GlobalDispatchW fmt ans bw using (module DispW)
 
 module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
@@ -74,6 +75,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open RetR {FS} ds f ldConst ld-nl wordOf using (module GRet)
   open DispR {FS} ds f ldConst ld-nl wordOf using (gicall; gopen1; gnopen; giobs)
   open DispF {FS} ds f ldConst ld-nl wordOf using (gcfree; gnfree; gfopen; gfopenν)
+  open DispW {FS} ds f ldConst ld-nl wordOf using (gicallω; gopenω)
   open Ctl {FS} ds f ldConst ld-nl using (main; L₀ˢ; L₀ᵇ; start-root; blockFin; Pnt; p-start; p-block; p-tramp; p-halt; ptFin)
   open Program ds f using (U)
   open ProgramRun ds f using (ncty)
@@ -131,9 +133,9 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   ----------------------------------------------------------------------
   -- 8. ★★ THE STEP THEOREM: every covered image step is matched by flat
   -- steps that keep the relation. Covered: the one-shot and the observation
-  -- dispatches (`icall`, `iobs`) and their trampolines (`open1`, `nopen`, the
-  -- inner call, the way out; D421, D423). Owed: the many-use, copy and free
-  -- dispatches and cell parts (`ktrω ktrc ktrf`, D418), `lop`.
+  -- dispatches (`icall`, `iobs`, `icallω`, `cfree`, `nfree`) and their trampolines
+  -- (`open1`, `nopen`, `openω`, `fopen`, the inner call, the way out; D421, D423,
+  -- D417, D425). Owed: the copy dispatches and cell part (`ktrc`, D418), `lop`.
   ----------------------------------------------------------------------
 
   module Theorem (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
@@ -167,6 +169,8 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       ; nf  = λ inv G → gnfree (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)
       ; fo  = λ inv G → gfopen (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)
       ; foν = λ inv G → gfopenν (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)
+      ; icω = λ eq inv G → gicallω (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G)
+      ; opω = λ eq inv G → gopenω (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G)
       }
 
     -- ★ by the step's kind (the one split on a step is StepKinds')
