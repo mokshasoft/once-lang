@@ -39,7 +39,9 @@ emit:
 .size emit, .-emit
 
 # `emitF : Eff Float Unit` — writes the argument's whole 8-byte machine word,
-# little-endian. That word is `binary64` on this target.
+# little-endian. That word is `binary64` on this target. The world reads it at
+# its format (`canonB`), so a NaN is written as THE NaN, `0x7ff8000000000000`
+# (riscv's arithmetic makes it already; a sign flip or the host need not).
 .align 4
 .global emitF
 .type emitF, @function
@@ -48,7 +50,14 @@ emitF:
     sd      a1, 0(sp)
     sd      a2, 8(sp)
     sd      a7, 16(sp)
-    sd      t0, 24(sp)          # the machine word, little-endian in memory
+    slli    a0, t0, 1
+    srli    a0, a0, 1           # the magnitude bits
+    li      a2, 0x7ff0000000000000
+    bgtu    a0, a2, 1f          # above +inf's pattern: a NaN
+    mv      a0, t0
+    j       2f
+1:  li      a0, 0x7ff8000000000000   # THE NaN's encoding
+2:  sd      a0, 24(sp)          # the word, little-endian in memory
     li      a0, 1               # fd = stdout
     addi    a1, sp, 24          # buf
     li      a2, 8               # count (the whole word)
