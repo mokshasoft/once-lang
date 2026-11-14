@@ -13,12 +13,14 @@
 
 {-# OPTIONS --guardedness #-}
 
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≤_)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤)
 open import Data.Product using (Σ; _×_)
 open import Data.Sum using (inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong)
+open import Data.Nat using (s≤s)
+open import Data.Nat.Properties using (≤-trans; ≤-refl; ≤-reflexive; +-monoʳ-≤; +-assoc; +-suc; n≤1+n; +-identityʳ; m≤m+n)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
@@ -81,6 +83,52 @@ mutual
   UnCutM (m-pair r stopped)                 = UnCutM r
   {-# CATCHALL #-}
   UnCutM _                                  = ⊤
+
+-- ★ a run's loop entries (each round started), as the image takes them (`ImageSim.loops`, D430)
+mutual
+  rounds : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n o t} → Run ds f e v n o t → ℕ
+  rounds (r-∘ rg (go-on rf))             = rounds rg + rounds rf
+  rounds (r-∘ rg stopped)                = rounds rg
+  rounds (r-⊗ rf (go-on (fm-gives rg)))  = rounds rf + rounds rg
+  rounds (r-⊗ rf (go-on (fm-stop rg)))   = rounds rf + rounds rg
+  rounds (r-⊗ rf stopped)                = rounds rf
+  rounds (r-case₁ r)                     = rounds r
+  rounds (r-case₂ r)                     = rounds r
+  rounds (r-app q r)                     = rounds r
+  rounds (r-cata rm (go-on ra))          = roundsM rm + rounds ra
+  rounds (r-cata rm stopped)             = roundsM rm
+  rounds (r-lend (fm-gives r))           = rounds r
+  rounds (r-lend (fm-stop r))            = rounds r
+  rounds (r-lift r)                      = rounds r
+  rounds (r-fst r)                       = rounds r
+  rounds (r-snd r)                       = rounds r
+  rounds (r-caseE₁ r)                    = rounds r
+  rounds (r-caseE₂ r)                    = rounds r
+  rounds (r-out r)                       = rounds r
+  rounds (r-bapp q r)                    = rounds r
+  rounds (r-ev r)                        = rounds r
+  rounds (r-bev r)                       = rounds r
+  rounds (r-nout r)                      = rounds r
+  rounds (r-iter r (go-on done))         = suc (rounds r)
+  rounds (r-iter r (go-on (again rn)))   = suc (rounds r + rounds rn)
+  rounds (r-iter r stopped)              = suc (rounds r)
+  rounds (r-cut r q)                     = rounds r
+  rounds (r-tmp r w p)                   = rounds r
+  {-# CATCHALL #-}
+  rounds _                               = 0
+
+  roundsM : ∀ {Γ} {ds : Defs Γ} {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t}
+          → RunMap ds F alg e G x n o t → ℕ
+  roundsM (m-id r)                           = rounds r
+  roundsM (m-inl (fm-gives r))               = roundsM r
+  roundsM (m-inl (fm-stop r))                = roundsM r
+  roundsM (m-inr (fm-gives r))               = roundsM r
+  roundsM (m-inr (fm-stop r))                = roundsM r
+  roundsM (m-pair r (go-on (fm-gives r′)))   = roundsM r + roundsM r′
+  roundsM (m-pair r (go-on (fm-stop r′)))    = roundsM r + roundsM r′
+  roundsM (m-pair r stopped)                 = roundsM r
+  {-# CATCHALL #-}
+  roundsM _                                  = 0
 
 -- ★ a run whose cut ops are all P's (D431: the program's)
 module _ (P : Sig → Set) where
@@ -339,3 +387,93 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
         spends-uncutM m-one s u = tt
         spends-uncutM m-b s u = tt
         spends-uncutM m-μ s u = tt
+
+  -- ★ what a run spends is at most the rounds it starts (the first round of a loop is free; every
+  -- other spends a unit): `k ≤ rounds r + l`
+  private
+    seq : ∀ {k m l a b} → k ≤ a + m → m ≤ b + l → k ≤ (a + b) + l
+    seq {a = a} {b} h₁ h₂ = ≤-trans h₁ (≤-trans (+-monoʳ-≤ a h₂) (≤-reflexive (sym (+-assoc a b _))))
+
+    same : ∀ {k l} → l ≡ k → k ≤ 0 + l
+    same refl = ≤-refl
+
+    up1 : ∀ {k l a} → k ≤ a + l → k ≤ suc a + l
+    up1 h = ≤-trans h (n≤1+n _)
+
+  mutual
+    spent-rounds : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n o t} (r : Run ds f e v n o t) {k l}
+                 → Spends r k l → k ≤ rounds r + l
+    spent-rounds (r-∘ rg (go-on rf)) (m , s₁ , s₂) = seq (spent-rounds rg s₁) (spent-rounds rf s₂)
+    spent-rounds (r-∘ rg stopped) s = spent-rounds rg s
+    spent-rounds (r-⊗ rf (go-on (fm-gives rg))) (m , s₁ , s₂) = seq (spent-rounds rf s₁) (spent-rounds rg s₂)
+    spent-rounds (r-⊗ rf (go-on (fm-stop rg))) (m , s₁ , s₂) = seq (spent-rounds rf s₁) (spent-rounds rg s₂)
+    spent-rounds (r-⊗ rf stopped) s = spent-rounds rf s
+    spent-rounds (r-case₁ r) s = spent-rounds r s
+    spent-rounds (r-case₂ r) s = spent-rounds r s
+    spent-rounds (r-app q r) s = spent-rounds r s
+    spent-rounds (r-cata rm (go-on ra)) (m , s₁ , s₂) = seq (spent-roundsM rm s₁) (spent-rounds ra s₂)
+    spent-rounds (r-cata rm stopped) s = spent-roundsM rm s
+    spent-rounds (r-cata-reuse rm th) ()
+    spent-rounds (r-lend (fm-gives r)) s = spent-rounds r s
+    spent-rounds (r-lend (fm-stop r)) s = spent-rounds r s
+    spent-rounds (r-lift r) s = spent-rounds r s
+    spent-rounds (r-fst r) s = spent-rounds r s
+    spent-rounds (r-snd r) s = spent-rounds r s
+    spent-rounds (r-caseE₁ r) s = spent-rounds r s
+    spent-rounds (r-caseE₂ r) s = spent-rounds r s
+    spent-rounds (r-out r) s = spent-rounds r s
+    spent-rounds (r-bapp q r) s = spent-rounds r s
+    spent-rounds (r-ev r) s = spent-rounds r s
+    spent-rounds (r-bev r) s = spent-rounds r s
+    spent-rounds (r-nout r) s = spent-rounds r s
+    spent-rounds (r-iter r (go-on done)) s = up1 {a = rounds r} (spent-rounds r s)
+    spent-rounds (r-iter r (go-on (again rn))) (suc m , s₁ , s₂) =
+      ≤-trans (spent-rounds r s₁)
+        (≤-trans (≤-reflexive (+-suc (rounds r) m))
+          (s≤s (≤-trans (+-monoʳ-≤ (rounds r) (spent-rounds rn s₂)) (≤-reflexive (sym (+-assoc (rounds r) (rounds rn) _))))))
+    spent-rounds (r-iter r (go-on (again r-exh))) {l = l} (zero , s₁ , _) =
+      ≤-trans (spent-rounds r s₁) (≤-trans (n≤1+n _) (m≤m+n (suc (rounds r + 0)) l))
+    spent-rounds (r-iter r (go-on (again (r-iter _ _)))) (zero , s₁ , ())
+    spent-rounds (r-iter r (go-on (again (r-cut _ _)))) (zero , s₁ , ())
+    spent-rounds (r-iter r (go-on (again (r-tmp _ _ _)))) (zero , s₁ , ())
+    spent-rounds (r-iter r stopped) s = up1 {a = rounds r} (spent-rounds r s)
+    spent-rounds r-exh ()
+    spent-rounds (r-cut r q) ()
+    spent-rounds (r-tmp r w p) s = spent-rounds r s
+    spent-rounds r-id s = same s
+    spent-rounds r-ρ s = same s
+    spent-rounds r-ρ⁻ s = same s
+    spent-rounds r-λ s = same s
+    spent-rounds r-λ⁻ s = same s
+    spent-rounds r-α s = same s
+    spent-rounds r-α⁻ s = same s
+    spent-rounds r-swap s = same s
+    spent-rounds r-dup s = same s
+    spent-rounds r-drop s = same s
+    spent-rounds r-inl s = same s
+    spent-rounds r-inr s = same s
+    spent-rounds r-In s = same s
+    spent-rounds r-Outμ s = same s
+    spent-rounds r-clo s = same s
+    spent-rounds r-copy s = same s
+    spent-rounds r-lam s = same s
+    spent-rounds r-lamω s = same s
+    spent-rounds r-unf s = same s
+    spent-rounds r-const s = same s
+    spent-rounds (r-op p) s = same s
+    spent-rounds (r-opend {w = halted} p) s = same s
+    spent-rounds (r-opend {w = exhausted} p) (_ , s) = same s
+
+    spent-roundsM : ∀ {Γ} {ds : Defs Γ} {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t}
+                    (rm : RunMap ds F alg e G x n o t) {k l} → SpendsM rm k l → k ≤ roundsM rm + l
+    spent-roundsM (m-id r) s = spent-rounds r s
+    spent-roundsM (m-inl (fm-gives r)) s = spent-roundsM r s
+    spent-roundsM (m-inl (fm-stop r)) s = spent-roundsM r s
+    spent-roundsM (m-inr (fm-gives r)) s = spent-roundsM r s
+    spent-roundsM (m-inr (fm-stop r)) s = spent-roundsM r s
+    spent-roundsM (m-pair r (go-on (fm-gives r′))) (m , s₁ , s₂) = seq (spent-roundsM r s₁) (spent-roundsM r′ s₂)
+    spent-roundsM (m-pair r (go-on (fm-stop r′))) (m , s₁ , s₂) = seq (spent-roundsM r s₁) (spent-roundsM r′ s₂)
+    spent-roundsM (m-pair r stopped) s = spent-roundsM r s
+    spent-roundsM m-one s = same s
+    spent-roundsM m-b s = same s
+    spent-roundsM m-μ s = same s
