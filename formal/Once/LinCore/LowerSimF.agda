@@ -13,7 +13,7 @@
 
 {-# OPTIONS --guardedness #-}
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≤_; _<_; z≤n)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≤_; _<_; z≤n; s≤s)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-trans; <-≤-trans; ≤-reflexive; m≤m+n; m≤n+m)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Maybe using (Maybe; just)
@@ -29,6 +29,7 @@ open import Once.LinCore.Flat using (Base)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
+open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 
@@ -38,7 +39,7 @@ module Once.LinCore.LowerSimF
   where
 
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (MV)
+open import Once.LinCore.Events fmt ans bw using (MV; serial; Id)
 open import Once.LinCore.Machine fmt ans bw using (Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; _∥_)
 open import Once.LinCore.Keys fmt ans bw using (Univ)
 open import Once.LinCore.Layout fmt ans bw
@@ -53,7 +54,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc; fret)
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++)
   open import Once.LinCore.Moves {FS}
-    using (Seg; Seg-++ˡ; Seg-++ʳ; slot; mvPS-run; MovedP; p-moved; p-rest; p-heap; p-halt; p-pc; restore-step; Ran; ranP; ran-trans; ran-regs)
+    using (Seg; Seg-++ˡ; Seg-++ʳ; slot; mvPS-run; MovedP; p-moved; p-rest; p-heap; p-halt; p-pc; p-alloc; p-ret; p-clo; p-link; p-in; p-frame; restore-step; Ran; ranP; ran-trans; ran-regs)
 
   private
     frame-eq : ∀ {f g x y} → AtStack {FS} f x ≡ AtStack g y → f ≡ g
@@ -312,3 +313,122 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               off-area k k< e (inj₁ x<) = Data.Nat.Properties.<-irrefl e
                                          (<-≤-trans x< (≤-trans area≥ (m≤n+m _ (k + (M ∸ wsz B)))))
               off-area k k< e (inj₂ ge) = Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans (moved< k k<) ge)
+
+  ----------------------------------------------------------------------
+  -- ★ A CELL'S WORDS, read into the frame (moved from LowerSimH; shared by
+  -- the trampolines' cell parts and a heap-sourced view's entry, D425).
+  ----------------------------------------------------------------------
+
+  -- words of a cell, from an offset, at the destination
+  cell-slots-at : ∀ {fs fs′ : FlatState} {i o b} (w : List W)
+                → MovedP fs fs′ (AtDynamic (cellLoc i 0)) o b (length w)
+                → At (LocState.heapMem (floc fs)) i o w → SlotsAt (slot fs′) b w
+  cell-slots-at {fs} {fs′} {i} {o} {b} w P a = go w 0 a (λ k k< → p-moved P k k<)
+    where
+      import Data.Nat.Properties
+      at′ : ∀ k → MemOps.readLoc {FS} (floc fs) (offsetLoc (AtDynamic (cellLoc i 0)) (k + o)) ≡ LocState.heapMem (floc fs) (cellLoc i (k + o))
+      at′ k = cong (λ z → LocState.heapMem (floc fs) (heap-loc (mkHeapRef (serial i)) z)) (Data.Nat.Properties.+-identityʳ (k + o))
+      go : ∀ (v : List W) j → At (LocState.heapMem (floc fs)) i (j + o) v
+         → (∀ k → k < j + length v → slot fs′ (k + b) ≡ MemOps.readLoc {FS} (floc fs) (offsetLoc (AtDynamic (cellLoc i 0)) (k + o)))
+         → SlotsAt (slot fs′) (j + b) v
+      go []      j a h = tt
+      go (x ∷ v) j (e , a) h =
+        trans (h j (subst (j <_) (sym (+-suc j (length v))) (s≤s (m≤m+n j (length v))))) (trans (at′ j) e) ,
+        go v (suc j) a (λ k k< → h k (subst (k <_) (sym (+-suc j (length v))) k<))
+
+  -- a cell's words are defined from an offset
+  at-def-o : ∀ {rd i o} (w : List W) → At rd i o w → ∀ k → k < length w → Σ W λ x → rd (cellLoc i (k + o)) ≡ just x
+  at-def-o (x ∷ w) (e , a) zero    _        = x , e
+  at-def-o {rd} {i} {o} (x ∷ w) (e , a) (suc k) (s≤s k<) = shift (at-def-o {rd} {i} {suc o} w a k k<)
+    where
+      shift : Σ W (λ y → rd (cellLoc i (k + suc o)) ≡ just y) → Σ W λ y → rd (cellLoc i (suc k + o)) ≡ just y
+      shift (y , ey) = y , trans (cong (λ z → rd (cellLoc i z)) (sym (+-suc k o))) ey
+
+  -- a run through a pointer into a cell, as a run from the cell's start
+  moved-rebase : ∀ {fs fs′ : FlatState} {i o₀ b n} → MovedP fs fs′ (AtDynamic (cellLoc i o₀)) 0 b n
+               → MovedP fs fs′ (AtDynamic (cellLoc i 0)) o₀ b n
+  moved-rebase {fs} {i = i} {o₀} M = record
+    { p-pc = p-pc M ; p-alloc = p-alloc M ; p-ret = p-ret M ; p-clo = p-clo M ; p-link = p-link M ; p-heap = p-heap M
+    ; p-halt = p-halt M ; p-in = p-in M
+    ; p-moved = λ k k< → trans (p-moved M k k<)
+                  (cong (λ z → LocState.heapMem (floc fs) (heap-loc (mkHeapRef (serial i)) z))
+                        (trans (cong (_+ o₀) (Data.Nat.Properties.+-identityʳ k)) (sym (Data.Nat.Properties.+-identityʳ (k + o₀)))))
+    ; p-rest = p-rest M ; p-frame = p-frame M }
+    where import Data.Nat.Properties
+
+  -- ★ A BLOCK'S ENTRY WITH A HEAP-SOURCED VIEW (D425): the argument from the
+  -- caller's area, the environment's words from a cell's contents (through
+  -- the pointer in the second save slot; a cell's contents start at word 4, `Lower.hdr`)
+  enter-jh : ∀ prog (fs : FlatState) (φ′ : Frame) (cf : FrameSemantics.Frame FS) (area o sv : ℕ) {E A} {e : MV E} {a : MV A}
+               (i : Id) (we wa : List W)
+           → ¬ AllocState.current-frame (falloc fs) ≡ cf
+           → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack cf area)
+           → slot fs sv ≡ just (SV-Ptr (AtDynamic (cellLoc i 4))) → budget φ′ ≤ sv
+           → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (LocState.stackMem (floc fs) cf) (o + area) wa
+           → VW (LocState.heapMem (floc fs)) e we → At (LocState.heapMem (floc fs)) i 4 we
+           → Seg prog (fpc fs) (mvPS o (budget φ′ ∸ ws (A ∷ [])) (wsz A) ++ restore-input sv ∷ mvPS 0 0 (wsz E))
+           → LocState.halted (floc fs) ≡ false
+           → ws (E ∷ []) ≤ EP φ′ → ws (A ∷ []) ≤ OP φ′
+           → Σ FlatState λ fs′ → FlatSteps prog (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) fs fs′
+               × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ′ (vw e []ᵉ ∥ a ∷ˢ []ˢ)
+               × Ran (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) 0 (AllocState.next-heap-ref (falloc fs)) (budget φ′) fs fs′
+               × (∀ x → budget φ′ ≤ x → slot fs′ x ≡ slot fs x)
+  enter-jh prog fs φ′ cf area o sv {E} {A} {e} {a} i we wa ne inp ev sv≥ pa sa pe ae seg h fitE fitA =
+    after₁ (arg-in prog fs φ′ cf area o wa ne inp pa sa (Seg-++ˡ prog (fpc fs) (mvPS o dst (wsz A)) _ seg) h)
+    where
+      import Data.Nat.Properties
+      dst = budget φ′ ∸ ws (A ∷ [])
+      B≤ : ws (A ∷ []) ≤ budget φ′
+      B≤ = ≤-trans fitA (m≤n+m (OP φ′) (EP φ′))
+      wE≤dst : wsz E ≤ dst
+      wE≤dst = ≤-trans (≤-trans (≤-reflexive (sym (Data.Nat.Properties.+-identityʳ (wsz E)))) fitE) (env-below φ′ (ws (A ∷ [])) fitA)
+      dst≤B : dst ≤ budget φ′
+      dst≤B = Data.Nat.Properties.m∸n≤m (budget φ′) (ws (A ∷ []))
+      lt-env : ∀ k′ → k′ < wsz E → k′ + 0 < dst
+      lt-env k′ k′< = <-≤-trans (subst (_< wsz E) (sym (Data.Nat.Properties.+-identityʳ k′)) k′<) wE≤dst
+      past-env : ∀ k k′ → k′ < wsz E → ¬ k + dst ≡ k′ + 0
+      past-env k k′ k′< e′ = Data.Nat.Properties.<-irrefl (sym e′) (<-≤-trans (lt-env k′ k′<) (m≤n+m dst k))
+      after₁ : Σ FlatState (λ fs₁ → FlatSteps prog (Once.LinCore.Moves.ln {FS} (wsz A)) fs fs₁
+                 × VW (LocState.heapMem (floc fs₁)) a wa × SlotsAt (slot fs₁) dst wa
+                 × MovedP fs fs₁ (AtStack cf area) o dst (wsz A)) → _
+      after₁ (fs₁ , st₁ , pa₁ , sa₁ , M₁) =
+        fin (mvPS-run prog fs₂ (AtDynamic (cellLoc i 4)) 0 0 (wsz E) seg₃ h₁ refl def₃ (λ k k′ _ _ ()))
+        where
+          top₁ : ∀ x → budget φ′ ≤ x → slot fs₁ x ≡ slot fs x
+          top₁ x B≤x = p-rest M₁ x (λ k k< → under-top (budget φ′) (ws (A ∷ [])) k x B≤ (lt0 k<) B≤x)
+          h₁ : LocState.halted (floc fs₁) ≡ false
+          h₁ = trans (p-halt M₁) h
+          fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Input1 (SV-Ptr (AtDynamic (cellLoc i 4))) }
+                           ; fpc = suc (fpc fs₁) }
+          rest₁ : Seg prog (fpc fs₁) (restore-input sv ∷ mvPS 0 0 (wsz E))
+          rest₁ = subst (λ z → Seg prog z (restore-input sv ∷ mvPS 0 0 (wsz E)))
+                    (trans (cong (fpc fs +_) (len-mvPS o dst (wsz A))) (trans (Data.Nat.Properties.+-comm (fpc fs) _) (sym (p-pc M₁))))
+                    (Seg-++ʳ prog (fpc fs) (mvPS o dst (wsz A)) _ seg)
+          seg₃ : Seg prog (fpc fs₂) (mvPS 0 0 (wsz E))
+          seg₃ = proj₂ rest₁
+          ae₂ : At (LocState.heapMem (floc fs₂)) i 4 we
+          ae₂ = subst (λ r → At r i 4 we) (sym (p-heap M₁)) ae
+          def₃ : ∀ k → k < wsz E → Σ W λ x → MemOps.readLoc {FS} (floc fs₂) (offsetLoc (AtDynamic (cellLoc i 4)) (k + 0)) ≡ just x
+          def₃ k k< = rd (at-def-o we ae₂ k (subst (k <_) (sym (vw-len pe)) k<))
+            where
+              rd : Σ W (λ v → LocState.heapMem (floc fs₂) (cellLoc i (k + 4)) ≡ just v)
+                 → Σ W λ v → MemOps.readLoc {FS} (floc fs₂) (offsetLoc (AtDynamic (cellLoc i 4)) (k + 0)) ≡ just v
+              rd (v , e′) = v , trans (cong (λ z → LocState.heapMem (floc fs₂) (heap-loc (mkHeapRef (serial i)) (z + 4)))
+                                            (Data.Nat.Properties.+-identityʳ k)) e′
+          fin : Σ FlatState (λ fs₃ → FlatSteps prog (Once.LinCore.Moves.ln {FS} (wsz E)) fs₂ fs₃
+                  × MovedP fs₂ fs₃ (AtDynamic (cellLoc i 4)) 0 0 (wsz E)) → _
+          fin (fs₃ , st₃ , M₃) =
+            fs₃ ,
+            FlatSteps-++ st₁ (step-at fs₂ (h₁ , proj₁ rest₁) (restore-step fs₁ sv (trans (top₁ sv sv≥) ev)) st₃) ,
+            record { c-env = ((we , subst (λ r → VW r e we) (sym hp) pe
+                             , cell-slots-at {fs₂} {fs₃} {i} {4} {0} we (moved-rebase {fs₂} {fs₃} {i} {4} (subst (MovedP fs₂ fs₃ (AtDynamic (cellLoc i 4)) 0 0) (sym (vw-len pe)) M₃)) ae₂) , tt)
+                   ; c-stk = ((wa , subst (λ r → VW r a wa) (sym (p-heap M₃)) pa₁
+                             , slots-frame {slot fs₁} {slot fs₃} wa (λ k k< → p-rest M₃ (k + dst) (λ k′ k′< e′ → past-env k k′ k′< e′)) sa₁) , tt)
+                   ; c-efit = fitE ; c-sfit = fitA } ,
+            ran-trans (ranP M₁ (bnd-arg φ′ A fitA))
+              (ran-trans (ran-regs _) (ranP M₃ (≤-trans (≤-trans (≤-reflexive (sym (Data.Nat.Properties.+-identityʳ (wsz E)))) fitE) (m≤m+n (EP φ′) (OP φ′))))) ,
+            (λ x B≤x → trans (p-rest M₃ x (λ k′ k′< e′ → Data.Nat.Properties.<-irrefl (sym e′) (<-≤-trans (lt-env k′ k′<) (≤-trans dst≤B B≤x))))
+                             (top₁ x B≤x))
+            where
+              hp : LocState.heapMem (floc fs₃) ≡ LocState.heapMem (floc fs)
+              hp = trans (p-heap M₃) (p-heap M₁)
