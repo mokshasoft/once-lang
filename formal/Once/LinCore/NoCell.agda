@@ -10,7 +10,8 @@
 -- lowering of that block. The roots the word layer lowers — the start's
 -- code and the blocks of the universe's keys — are compiled terms, a fold's
 -- traversal, a copy or a free: none has a cell part, and every path into
--- them keeps that (`sub-nc`). So a cell part at a root's path is absurd.
+-- them keeps that (`sub-nc`). So a cell part at a root's path is absurd. Nor
+-- has one the image's `halted` (B1.5): it is where a run ends, never code.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --guardedness #-}
@@ -64,7 +65,7 @@ NoCellC (i ⨾ k)       = NoCellI i × NoCellC k
 NoCellC (case c₁ c₂)  = NoCellC c₁ × NoCellC c₂
 NoCellC (ecase c₁ c₂) = NoCellC c₁ × NoCellC c₂
 NoCellC end           = ⊤
-NoCellC halted        = ⊤
+NoCellC halted        = ⊥
 
 -- ★ a path into a code without a cell part reaches one without
 sub-nc : ∀ {sh U sh′ U′} {root : Codeᴵ sh U} {c : Codeᴵ sh′ U′} → Sub root c → NoCellC root → NoCellC c
