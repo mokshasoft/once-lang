@@ -36,6 +36,7 @@ import Once.Metatheory.Recursion as Recursion
 import Once.Metatheory.Laws as Laws
 import Once.Metatheory.Parametricity as Parametricity
 import Once.Metatheory.LawsApply as LawsApply
+import Once.Metatheory.Numbers as Numbers
 
 metatheory : Metatheory
 metatheory = record
@@ -53,4 +54,5 @@ metatheory = record
   ; equations  = λ Σ u fmt S → Laws.equations Σ u fmt S
   ; parametricity = λ Σ u fmt S → Parametricity.parametricity Σ u fmt S
   ; laws-apply = λ fmt → LawsApply.lawsApply fmt
+  ; numbers    = Numbers.numbers
   }
