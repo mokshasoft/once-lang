@@ -23100,3 +23100,27 @@ memory rule "top-down, no islands".
   proved (`FromIR`, `BridgeProof.bridge`, `Whole.whole-sound`, `ImageSim.image-noleak`, `End.ends`), with
   each missing link a named field of an explicit hypothesis record (no postulate). The fields are the work
   list; each is discharged in place, so every lemma is reachable from the statement.
+
+## D430 — THE CORE'S EVALUATOR SPENDS ONE GLOBAL ROUND BUDGET, AS MASTER'S `approx` (2026-11-14)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.5, found top-down stating `FlatTop.o-run`).
+**Applies**: plan 0.119 D5 (master's budget: `approx k` counts a loop's continuing rounds along the whole
+run), D374 (a run is cut a round at a time), A14 (`Total.exec`).
+
+### The problem
+The flat theorem must show, at every budget `k`, exactly what master's meaning shows at `approx k` (the
+apex's `flat-ends`). The meaning's steps are exactly loop rounds (`iter∞`: a step per continuing round;
+folds, closures, ops, embedded calls take none), counted globally. `Total.exec`'s fuel is per loop: each
+`liter` starts from the whole `k`, and charges before its first round. For a program with two loops one
+after the other, no fuel cuts the core's run where `approx k` cuts the meaning: `o-run` is false.
+
+### Decision (proposed)
+* `Total.exec` threads ONE budget through the run: a loop's continuing round (`minr`) spends a unit, a
+  continuing round with none left ends the run `exhausted` (as `approxBlock zero (ret (inj₂ _)) = ret cut`);
+  the first round is free. Termination by the term, then the remaining budget (well-founded).
+* A budgeted soundness lemma replaces the cut-anywhere path (`RB`) for the flat theorem: at budget `k` in
+  the world `Wι` (D429), the run's events and end are `Trace.run ι [] (approx k meaning)`'s.
+
+### Alternatives
+* Weaken the apex's per-budget fact (some fuel shows a prefix): changes master's trust-relevant top
+  statement (`BudgetApex`), for a property the core can simply match.
