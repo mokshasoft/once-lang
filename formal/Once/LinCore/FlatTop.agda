@@ -50,6 +50,7 @@ import Once.IR
 import Once.IRTy
 open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; LinkedProgram; irProgram)
 import Once.LinCore.LinkedCore
+import Once.LinCore.RunOps
 import Once.LinCore.BridgeProof
 import Once.Denotation.DenotTrace as DT
 
@@ -72,7 +73,8 @@ import Once.LinCore.OpMachine
 module AgreeRun = Once.LinCore.AgreeRun fmt ans bw
 open import Once.LinCore.Total fmt ans bw using (WTr)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree)
-open import Once.LinCore.Keys fmt ans bw using (module Program; ops)
+open import Once.LinCore.Keys fmt ans bw using (module Program; ops; ps; defsGot)
+open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Denotation.Program using (Declared-at)
 open import Once.SigOp.Info using (module SigOpInfo)
@@ -97,6 +99,7 @@ open import Once.LinCore.Table fmt ans using (env-ok)
 open import Once.LinCore.RunBisim fmt ans using (run-≈)
 module FromIR = Once.LinCore.FromIR fmt ans
 module LinkedCore = Once.LinCore.LinkedCore fmt ans bw
+module RunOps = Once.LinCore.RunOps fmt ans bw
 
 -- ★ the world the machine's interpretation is: its state the log so far, its answer the
 -- interpretation's given that history (D429)
@@ -154,8 +157,6 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     -- ★ WHAT IS OWED: the links from the meaning to the flat run not yet proved
     record Owed : Set where
       field
-        -- the world's run cuts only at the program's ops (D431: the run stays inside the universe)
-        o-cutsin : ∀ k → CutsIn (λ s → s ∈ ops (Program.U ds f₀)) (Ran.run (R k))
         -- ★ AN OP AT THE MACHINE (D426): its contract path, answered by the world from the history, is
         -- what the machine's sigop computes at a state whose log is that history: proved per contract
         -- class (OpMachine.Dispatch) but for a structured answer (an undeclared FFI op's stop
@@ -169,10 +170,15 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         -- the machine's run from the start never faults (master's `start-sound`)
         o-sound : Sound image start-fs
 
+    -- the world's run cuts only at the program's ops: it stays inside the universe (`RunOps.run-ok`)
+    o-cutsin : ∀ k → CutsIn (λ s → s ∈ ops (Program.U ds f₀)) (Ran.run (R k))
+    o-cutsin k = proj₁ (RunOps.run-ok (λ s → s ∈ ops (Program.U ds f₀)) (Ran.run (R k))
+                         ((λ m → ∈-++⁺ʳ (ps (defsGot ds)) m) , (λ m → ∈-++⁺ˡ m)) tt tt)
+
     -- ★ LINKED (D431): the world's run meets no call the interpretation leaves unanswered — it cuts only at
     -- the program's ops, each declared, whose calls the world answers (`OpMachine.Linked.no-cut`)
     o-uncut : Owed → ∀ k → UnCut (Ran.run (R k))
-    o-uncut O k = spends-uncut (λ {s} {x} {t} {p} → OM.Linked.no-cut decl {s} {x} {t} {p}) (Ran.run (R k)) (Ran.spends (R k)) (Owed.o-cutsin O k)
+    o-uncut O k = spends-uncut (λ {s} {x} {t} {p} → OM.Linked.no-cut decl {s} {x} {t} {p}) (Ran.run (R k)) (Ran.spends (R k)) (o-cutsin k)
 
     -- ★ THE MACHINE: a running state the start reaches has not left (only `c-leave` leaves, and it
     -- halts: master's `chain-left`)
