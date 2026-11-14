@@ -22952,3 +22952,33 @@ proved.
 ### Alternatives
 * Block sizes inside `VW` (as D386's `cell-flat`): every `VW`, `EnvW`, `StkW` and every simulation over
   them gains the block map — the same facts, everywhere.
+
+## D425 — A MANY-USE TRAMPOLINE'S BODY WRITES INTO ITS DISPATCHER'S AREA: THE AREA'S FRAME APART FROM THE RETURN'S (2026-11-14)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3, D418). **Applies**: D417
+(trampolines), D421 (frame-0 trampolines copy through their frame). **Status**: proposed; nothing
+implemented yet.
+
+### The problem
+A many-use body's trampoline (`ktrω`) keeps the cell (`peek`), passes the cell's contents as the body's
+environment view BY POINTER (`contentsAddr`), and hands the DISPATCHER's operand area straight through
+(`c-entry 1 ∷ store-at-slot 0` saves it; `restore-input 0` gives it to the body). So the body reads its
+argument from, and writes its result into, a frame two levels up, and returns into the trampoline, whose
+way out is a bare `c-ret 1`. The word layer's call records assume one frame for both roles: `call-out`
+writes the result into `cfc` and returns into `cfc`; `Called.cd-area` is in the caller's frame;
+`RetOK.ok-call` holds the area in the frame returned to.
+
+### Decision (proposed)
+* Keep the code (no copy through the trampoline's frame: a many-use body runs at every use, and the
+  pass-through is the cheap path).
+* Generalize the proof records over the AREA'S FRAME apart from the RETURN'S: `call-out` takes the area's
+  frame `af` beside the return frame `cfc` (the existing uses: `af = cfc`); `Called` takes the area's
+  frame; `RetOK` gains `ok-callω` (a trampoline's inner call: the area in the dispatcher's frame, the
+  dispatcher's own level `ok-trampω` above, no area there — the result already in place).
+* A heap-sourced view at a block's entry (`enter-jh`: the environment's words from the cell's contents,
+  through the pointer), shared with the copy trampoline (`ktrc`'s inner call reads the contents the same way).
+
+### Alternatives
+* Copy the argument and result through the trampoline's frame (as D421's frame-0 trampolines): one
+  record shape, but two extra moves per many-use call — a cost in the generated code for the proof's
+  convenience.
