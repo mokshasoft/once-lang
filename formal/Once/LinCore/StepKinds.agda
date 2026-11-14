@@ -234,8 +234,8 @@ module _ {ℓ : Level} {T : Sh} where
               (run : Run ds (lop s) mone x n (gives w n′) t)
           → P (i-prim {ds = ds} {g = lop s} {k = k} {r = r} {es = es} {v = x} {w = w} {os = os} {n = n} {n′ = n′} run)
       ope : ∀ {Γ} {ds : Defs Γ} {Es} {s : Sig} {S U} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) U} {r : Ret U T} {es : Slots Es}
-              {x : MV ⌜ sdom s ⌝} {os : Stk S} {n t w}
-              (p : OpPath (opF s (toF (sdom s) (er x))) t (inj₂ w))
+              {x : MV ⌜ sdom s ⌝} {os : Stk S} {n t}
+              (p : OpPath (opF s (toF (sdom s) (er x))) t (inj₂ Why.halted))
           → P (i-opend {ds = ds} {s = s} {k = k} {r = r} {es = es} {x = x} {os = os} {n = n} p)
 
   covered-elim : (C : CoveredCases) → ∀ {sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {m n t} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m′ n′}

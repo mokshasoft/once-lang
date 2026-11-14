@@ -537,9 +537,7 @@ mutual
   simI (r-opend {w = halted} p) fr es eq os k ρ =
     paused halted ρ _ _ [] _ _ (oneI (i-opend p)) (w-self _) (subst (_≼ _) (sym (erase-NoT _ (op-NoT p))) (≼-refl _)) (op-NoT p) tt
     , (refl , sym (erase-NoT _ (op-NoT p)))
-  simI (r-opend {w = exhausted} p) fr es eq os k ρ =
-    paused halted ρ _ _ [] _ _ (oneI (i-opend p)) (w-self _) (subst (_≼ _) (sym (erase-NoT _ (op-NoT p))) (≼-refl _)) (op-NoT p) tt
-    , tt
+  simI (r-opend {w = exhausted} p) () es eq os k ρ
   -- ★ the loop: its round with the branch pushed (no frame), then the branch
   simI (r-iter r (go-on done)) fr es eq os k ρ =
     O-[] (pre i-loop (after (after (simI r fr es eq os end _) i-reti) i-case₁))

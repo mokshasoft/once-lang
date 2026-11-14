@@ -64,7 +64,7 @@ open import Once.LinCore.Machine fmt ans bw using (Plain; _∣_)
 open import Once.LinCore.Total fmt ans bw using (World; exec; Ran; module Ran)
 open import Once.LinCore.Pass fmt ans using (Prog; IR; ⟦_⟧P; ev; trP; tr; pass-okᶠ; pass-okP)
 import Once.LinCore.BudgetSound
-open import Once.LinCore.Spends fmt ans bw using (spends-plain)
+open import Once.LinCore.Spends fmt ans bw using (spends-plain; UnCut)
 module BudgetSound = Once.LinCore.BudgetSound fmt ans bw
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ)
@@ -134,7 +134,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     record Owed : Set where
       field
         -- the world's run meets no call the interpretation leaves unanswered (the program is linked)
-        o-uncut : ∀ k → BudgetSound.UnCut (Ran.run (R k))
+        o-uncut : ∀ k → UnCut (Ran.run (R k))
         -- the machine agrees with an image run that shows the world's run
         o-agree : ∀ K {mt sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′}
                   (st : StepsI main []ʳ start 0 mt c′ r′ m′ n′) → ios mt ≡ ios (Ran.trace (R K)) → AgreesAll [] st
@@ -187,7 +187,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
                 × (endAp (proj₂ (obs k)) ≡ nothing → k ≤ flat-ctrls N image start-fs)
 
     flat-top : Owed → ∀ k → Σ ℕ (Shows k)
-    flat-top O k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K))) (λ st e → Owed.o-agree O K st e) eE eO
+    flat-top O k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (Owed.o-uncut O K)) (λ st e → Owed.o-agree O K st e) eE eO
       where
         K  = k
         eE = proj₁ (run-shows O k)
