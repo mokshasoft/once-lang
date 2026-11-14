@@ -23003,7 +23003,9 @@ claim the machine gives every answer: false for answering ops. And `i-opend` lan
   its trace the machine's events); every other step: `⊤`. `Agrees` is defined by one split on the step,
   in a small module (as `StepEpop`). The whole-run theorem (B1.5) supplies it by running the image in
   the world the machine's interpretation is (pure ops: `semM` at the target's numerics, the standing
-  `fmt-agree` premise; answering ops: `fs-interp`).
+  `fmt-agree` premise; answering ops: `fs-interp`). The agreement also says the answer's words are none
+  or the machine's one Output word: a SigOp whose answer type is wider than a register (`conB` allows
+  pairs and sums) is outside the theorem, as the lowering already assumes (`Lower.answer`).
 * **A halt lands in a halted machine.** The step theorem's target is `Related` or, for the image's
   `halted`, a flat state whose `halted` flag is set (`Lands`); the op's halting class sets it.
 
