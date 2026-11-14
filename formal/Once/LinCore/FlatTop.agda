@@ -68,7 +68,7 @@ open import Once.LinCore.Spends fmt ans bw using (spends-plain)
 module BudgetSound = Once.LinCore.BudgetSound fmt ans bw
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ)
-open import Once.LinCore.ImageSim fmt ans bw using (StepsI; start; image-noleak)
+open import Once.LinCore.ImageSim fmt ans bw using (StepsI; start; image-noleak; image-halts)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open import Once.LinCore.Lower fmt ans bw using (module Program′)
 open import Once.LinCore.PointAt fmt ans bw using (module Ctl)
@@ -138,10 +138,6 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         -- the machine agrees with an image run that shows the world's run
         o-agree : ∀ K {mt sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′}
                   (st : StepsI main []ʳ start 0 mt c′ r′ m′ n′) → ios mt ≡ ios (Ran.trace (R K)) → AgreesAll [] st
-        -- a halting run: the image reaches `halted`, showing what the run shows
-        o-halt  : ∀ {t} (run : Run ds f₀ mone mone 0 (stop Once.LinCore.Events.halted) t) → Plain run
-                → Σ Trace λ mt → Σ _ λ sh → Σ _ λ U′ → Σ (Ret U′ (One ∷ [] ∣ One ∷ [])) λ r′ → Σ _ λ m′ → Σ ℕ λ n′
-                    → StepsI main []ʳ start 0 mt (halted {sh} {U′}) r′ m′ n′ × ios mt ≡ ios t
         -- the world's run cut at the budget: the flat run, at some fuel, shows its events, is cut, and has
         -- taken a control step per unit of the budget (master's `flat-cut`)
         o-cut   : ∀ k → Ran.out (R k) ≡ stop Once.LinCore.Events.exhausted
@@ -208,7 +204,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
                             (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
                                        (trans (cong (λ b → just (end-of-left b)) lft) eo)) ,
               λ e → ⊥-elim (just≢nothing (trans eo e))
-        by {stop Once.LinCore.Events.halted} {t} run _ pl ag ee eo = case Owed.o-halt O run pl of λ where
+        by {stop Once.LinCore.Events.halted} {t} run _ pl ag ee eo = case image-halts run pl of λ where
           (mt , sh , U′ , r′ , m′ , n′ , st , eio) → case ends ld entry-frame entry-regs st (ag st eio) f-halt of λ where
             (N , fs′ , fst , hlt , lg , (fs₀ , M , st₀ , r₀ , l₀)) →
               suc N , trans (o-flat fst hlt)
