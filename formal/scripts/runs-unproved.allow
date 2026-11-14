@@ -17,9 +17,11 @@ Once.Measure.                         D352  `once stats` is a measurement
 # Reports: a pure query of the source and the module, cannot change what is
 # compiled. A theorem that a reported literal does round is possible later.
 Once.Warnings.                        D123  warnings are a report (D116)
-Once.Surface.LoopWarn.                D123  the silent-round loop warning
+Once.Surface.LoopWarn.                D123  the loop warning and the `==` at Float warning (D412): counts
 Once.Compile.silentRoundDefs          D123  the loop warning's walk
 Once.Compile.lw-                      D123  the loop warning's walk
+Once.Compile.defsWith                 D123  the warnings' definition walk (lw- with its count)
+Once.Compile.floatIdentityEqDefs      D123  the `==` at Float warning's walk (D412)
 Once.Target.Arch.arch-float-format    D123  read by the rounding warning
 
 # Printers of `once parse`: show the parser's output; no tool's theorem reads them.
