@@ -39,7 +39,7 @@ module Once.LinCore.GlobalLocal
 
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
+open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
 open import Once.LinCore.Image fmt ans bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.Keys fmt ans bw
@@ -131,6 +131,11 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tr-notcase (tw1 _) = tt
   tr-notcase (tw2 _) = tt
   tr-notcase (tw3 _) = tt
+  tr-notcase (tc0 _) = tt
+  tr-notcase (tc1 _) = tt
+  tr-notcase (tc2 _) = tt
+  tr-notcase (tc3 _) = tt
+  tr-notcase (tc4 _) = tt
 
   module Whole (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
                     → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
@@ -187,11 +192,22 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gtr-local (tw0 _) st () H nx ok I
     gtr-local (tw1 _) st () H nx ok I
     gtr-local (tw3 _) st () H nx ok I
+    gtr-local (tc0 _) st () H nx ok I
+    gtr-local (tc1 _) st () H nx ok I
+    gtr-local (tc3 _) st () H nx ok I
+    gtr-local (tc4 _) st () H nx ok I
     gtr-local {r = r} {n = n} {fs = fs} (tw2 p) st _ H nx ok I =
       epop-inv (λ m₀ c′ r′ m′ n′ → HereTr (tw2 p) m₀ fs → AllocState.next-heap-ref (falloc fs) ≡ n → Onward c′ r′ m′ n′ fs)
         (λ { {os = v ∷ˢ os′} H′ nx′ →
                0 , fs , FlatStepsAPI.[] ,
                record { g-pt = p-tramp p (at (next (next (next whole)))) ; g-here = tw3 p , H′ ; g-next = nx′ ; g-ret = ok ; g-blk = I } })
+        st H nx
+    -- a copy's `epop` (its contents' view dropped)
+    gtr-local {r = r} {n = n} {fs = fs} (tc2 p) st _ H nx ok I =
+      epop-inv (λ m₀ c′ r′ m′ n′ → HereTr (tc2 p) m₀ fs → AllocState.next-heap-ref (falloc fs) ≡ n → Onward c′ r′ m′ n′ fs)
+        (λ { {es = vw cv es′} {os = v ∷ˢ os′} H′ nx′ →
+               0 , fs , FlatStepsAPI.[] ,
+               record { g-pt = p-tramp p (at (next (next (next whole)))) ; g-here = tc3 p , H′ ; g-next = nx′ ; g-ret = ok ; g-blk = I } })
         st H nx
 
     -- ★ a straight step (local, not a `case`): only at a path; no case

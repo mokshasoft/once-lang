@@ -64,6 +64,7 @@ open import Once.LinCore.GlobalCall fmt ans bw using (module CallR)
 open import Once.LinCore.GlobalRetB fmt ans bw using (module RetB)
 open import Once.LinCore.GlobalRetT fmt ans bw using (module RetT)
 open import Once.LinCore.GlobalRetW fmt ans bw using (module RetW)
+open import Once.LinCore.GlobalRetC fmt ans bw using (module RetC)
 
 module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
@@ -77,6 +78,7 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open RetB {FS} ds f ldConst ld-nl wordOf using (module GRetB)
   open RetT {FS} ds f ldConst ld-nl wordOf using (module GRetT)
   open RetW {FS} ds f ldConst ld-nl wordOf using (module GRetW)
+  open RetC {FS} ds f ldConst ld-nl wordOf using (module GRetC)
   open Ctl {FS} ds f ldConst ld-nl using (main; L₀ˢ; L₀ᵇ; start-root; blockFin; Pnt; p-start; p-block; p-tramp; p-halt; ptFin; trFin)
   open Program ds f using (U)
   open ProgramRun ds f using (ncty)
@@ -138,6 +140,7 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     open GRetB
     open GRetT
     open GRetW using (gret-tω; gret-cω)
+    open GRetC using (gret-tc; gret-cc)
 
     -- a block's return to the start's code, to a block's (by `From.return`)
     private
@@ -237,4 +240,12 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
          (ok-callω p cfc sl sv′ rets′ eR eF eRets eSv abv ap rest) I =
       gret-cω P p cfc sl sv′ rets′ eR eF H eRets eSv abv ap
+        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
+    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
+         (ok-trampc p d cfc sl sv′ rets′ eR eF eRets eSv abv area ev sk rest) I =
+      gret-tc P p d cfc sl sv′ rets′ eR H eRets eSv abv area ev sk
+        (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
+    gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
+         (ok-callc p cfc sl sv′ rets′ ci eR eF eRets eSv abv ap s₂ pcv rest) I =
+      gret-cc P p cfc sl sv′ rets′ ci eR eF H eRets eSv abv ap s₂ pcv
         (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I

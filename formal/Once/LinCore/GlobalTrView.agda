@@ -41,7 +41,7 @@ module TrV {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
            (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
-  open Relate {FS} ds f ldConst ld-nl wordOf using (TrPt; tp0; to0; tf0; tw0)
+  open Relate {FS} ds f ldConst ld-nl wordOf using (TrPt; tp0; to0; tf0; tw0; tc0; tc3)
   open Program ds f using (U)
 
   data Is-tp0 : ∀ {σ sh V} {κ : Key σ} {c : Codeᴵ sh V} {p : under κ ∈ allK U} {pt : Pt (blockᴵ κ) c} → TrPt p pt → Set where
@@ -71,3 +71,17 @@ module TrV {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   openω-v : ∀ {σ} {κ : Key σ} {Es g X A B S V} {k : Codeᴵ (X ∷ Fn many g A B ∷ Es ∣ S) V} {p : under κ ∈ allK U}
               {pt : Pt (blockᴵ κ) (openω {Es = Es} {g = g} {X = X} {A = A} {B = B} {S = S} ⨾ k)} (tp : TrPt p pt) → Is-tw0 tp
   openω-v (tw0 p) = it-tw0 p
+
+  data Is-tc0 : ∀ {σ sh V} {κ : Key σ} {c : Codeᴵ sh V} {p : under κ ∈ allK U} {pt : Pt (blockᴵ κ) c} → TrPt p pt → Set where
+    it-tc0 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → Is-tc0 (tc0 {X = X} {C} p)
+
+  data Is-tc3 : ∀ {σ sh V} {κ : Key σ} {c : Codeᴵ sh V} {p : under κ ∈ allK U} {pt : Pt (blockᴵ κ) c} → TrPt p pt → Set where
+    it-tc3 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → Is-tc3 (tc3 {X = X} {C} p)
+
+  copen-v : ∀ {σ} {κ : Key σ} {X C Es S V} {k : Codeᴵ (X ∷ C ∷ Es ∣ S) V} {p : under κ ∈ allK U}
+              {pt : Pt (blockᴵ κ) (copen {X = X} {C = C} {Es = Es} {S = S} ⨾ k)} (tp : TrPt p pt) → Is-tc0 tp
+  copen-v (tc0 p) = it-tc0 p
+
+  reclose-v : ∀ {σ} {κ : Key σ} {X C Es S V} {k : Codeᴵ (C ∷ Es ∣ C ∷ S) V} {p : under κ ∈ allK U}
+                {pt : Pt (blockᴵ κ) (reclose {X = X} {C = C} {Es = Es} {S = S} ⨾ k)} (tp : TrPt p pt) → Is-tc3 tp
+  reclose-v (tc3 p) = it-tc3 p

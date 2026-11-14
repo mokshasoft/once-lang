@@ -104,7 +104,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- ★ A TRAMPOLINE (D421): its frame, the address at a depth
   open TrImg {FS} ds f ldConst ld-nl using (image-tr)
   open Tr U ncty ldConst using (trAt)
-  open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; SlotsAt; cellPtr; cellLoc)
+  open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; SlotsAt; cellPtr; cellLoc; vw-frame)
   open FlatMachine {FS} using (fpc)
   open import Once.LinCore.Moves {FS} using (slot; InBlk)
 
@@ -113,6 +113,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   trM (ktr1 {X = X} {A = A} {B = B} ds′ b γ) = (wsz X + wsz A) ⊔ wsz B
   trM (ktro ds′ F S) = wsz (cty (F , S)) ⊔ wsz (LF∙ F (Nu F))
   trM (ktrf X C) = wsz X
+  trM (ktrc X C) = wsz X
   {-# CATCHALL #-}
   trM _ = 0
   trMc (ktr1 {A = A} {B = B} ds′ b γ) = suc (wsz A) ⊔ wsz B
@@ -236,6 +237,67 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       w2-s0   : slot fs 0 ≡ just (SV-Ptr (AtStack w2-af w2-area))
       w2-res  : SlotsAt (LocState.stackMem (floc fs) w2-af) ((M ∸ wsz B) + w2-area) w2-wb
 
+  -- ★ a copy's trampoline (D417): its frame's first `w` slots the copy, its
+  -- save slots `w` the caller's destination, `suc w` the viewed cell,
+  -- `suc (suc w)` the contents' address (then the new cell)
+  -- before its cell part (`copen`): the cell's value `cv` its word in slot `suc w`
+  record TrC0 {C} (w q : ℕ) (cv : MV C) (fs : FlatState) : Set where
+    field
+      c0-pc  : fpc fs ≡ q
+      c0-run : LocState.halted (floc fs) ≡ false
+      c0-i   : Id
+      c0-af  : FrameSemantics.Frame FS
+      c0-d   : ℕ
+      c0-lt  : AllocState.current-frame (falloc fs) ≺ c0-af
+      c0-s₁  : slot fs w ≡ just (SV-Ptr (AtStack c0-af c0-d))
+      c0-s₂  : slot fs (suc w) ≡ just (cellPtr c0-i)
+      c0-cv  : VW (LocState.heapMem (floc fs)) cv (cellPtr c0-i ∷ [])
+
+  -- before the inner call: the contents' address in slot `suc (suc w)`, the contents viewed
+  record TrC1 {X C} (w q : ℕ) (cv : MV C) (x : MV X) (fs : FlatState) : Set where
+    field
+      c1-pc  : fpc fs ≡ q
+      c1-run : LocState.halted (floc fs) ≡ false
+      c1-i   : Id
+      c1-af  : FrameSemantics.Frame FS
+      c1-d   : ℕ
+      c1-lt  : AllocState.current-frame (falloc fs) ≺ c1-af
+      c1-s₁  : slot fs w ≡ just (SV-Ptr (AtStack c1-af c1-d))
+      c1-s₂  : slot fs (suc w) ≡ just (cellPtr c1-i)
+      c1-cv  : VW (LocState.heapMem (floc fs)) cv (cellPtr c1-i ∷ [])
+      c1-wx  : List (StoredValue FS)
+      c1-x   : VW (LocState.heapMem (floc fs)) x c1-wx
+      c1-at  : Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) c1-i hdr c1-wx
+      c1-s₃  : slot fs (suc (suc w)) ≡ just (SV-Ptr (AtDynamic (cellLoc c1-i (cOff (wsz X)))))
+
+  -- after it (and after `epop`, one address): the copy's words in the frame's first slots
+  record TrC2 {X C} (w q : ℕ) (cv : MV C) (x′ : MV X) (fs : FlatState) : Set where
+    field
+      c2-pc  : fpc fs ≡ q
+      c2-run : LocState.halted (floc fs) ≡ false
+      c2-i   : Id
+      c2-af  : FrameSemantics.Frame FS
+      c2-d   : ℕ
+      c2-lt  : AllocState.current-frame (falloc fs) ≺ c2-af
+      c2-s₁  : slot fs w ≡ just (SV-Ptr (AtStack c2-af c2-d))
+      c2-s₂  : slot fs (suc w) ≡ just (cellPtr c2-i)
+      c2-cv  : VW (LocState.heapMem (floc fs)) cv (cellPtr c2-i ∷ [])
+      c2-wx  : List (StoredValue FS)
+      c2-x   : VW (LocState.heapMem (floc fs)) x′ c2-wx
+      c2-res : SlotsAt (slot fs) 0 c2-wx
+
+  -- after `reclose`: the new cell's word in slot `suc (suc w)`
+  record TrC4 {C} (w q : ℕ) (nv : MV C) (fs : FlatState) : Set where
+    field
+      c4-pc  : fpc fs ≡ q
+      c4-run : LocState.halted (floc fs) ≡ false
+      c4-af  : FrameSemantics.Frame FS
+      c4-d   : ℕ
+      c4-s₁  : slot fs w ≡ just (SV-Ptr (AtStack c4-af c4-d))
+      c4-w   : StoredValue FS
+      c4-nv  : VW (LocState.heapMem (floc fs)) nv (c4-w ∷ [])
+      c4-s₃  : slot fs (suc (suc w)) ≡ just c4-w
+
   -- the trampoline points related so far: a one-shot body's three, an observation's three, a free's three
   data TrPt : ∀ {σ sh V} {κ : Key σ} {c : Codeᴵ sh V} → under κ ∈ allK U → Pt (blockᴵ κ) c → Set where
     tp0 : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b} (p : under (ktr1 ds′ b γ) ∈ allK U)
@@ -258,6 +320,11 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         → TrPt {κ = ktrω ds′ b γ} p (at (next (next whole)))
     tw3 : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b} (p : under (ktrω ds′ b γ) ∈ allK U)
         → TrPt {κ = ktrω ds′ b γ} p (at (next (next (next whole))))
+    tc0 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → TrPt {κ = ktrc X C} p (at whole)
+    tc1 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → TrPt {κ = ktrc X C} p (at (next whole))
+    tc2 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → TrPt {κ = ktrc X C} p (at (next (next whole)))
+    tc3 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → TrPt {κ = ktrc X C} p (at (next (next (next whole))))
+    tc4 : ∀ {X C} (p : under (ktrc X C) ∈ allK U) → TrPt {κ = ktrc X C} p (at (next (next (next (next whole)))))
 
   HereTr : ∀ {σ sh V} {κ : Key σ} {c : Codeᴵ sh V} {p : under κ ∈ allK U} {pt : Pt (blockᴵ κ) c} → TrPt p pt → Cfg sh → FlatState → Set
   HereTr (tp0 {X = X} {A} {B} {ds′} {b} {γ} p) (es ∥ (mpair (mfn i lam x) a ∷ˢ os)) fs =
@@ -278,10 +345,20 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   HereTr (tw1 {A = A} {B} {ds′} {b} {γ} p) (vw x (vw (mfn i lam _) _) ∥ a ∷ˢ _) fs = TrW1 (wsz A ⊔ wsz B) (trPos (ktrω ds′ b γ) p 1) i x a fs
   HereTr (tw2 {A = A} {B} {ds′} {b} {γ} p) (_ ∥ v ∷ˢ _) fs = TrW2 (wsz A ⊔ wsz B) (trPos (ktrω ds′ b γ) p 2) v fs
   HereTr (tw3 {A = A} {B} {ds′} {b} {γ} p) (_ ∥ v ∷ˢ _) fs = TrW2 (wsz A ⊔ wsz B) (trPos (ktrω ds′ b γ) p 3) v fs
+  -- a copy's: the viewed cell (and its contents viewed), the copy, the new cell
+  HereTr (tc0 {X = X} {C} p) (vw cv _ ∥ _) fs = TrC0 (wsz X) (trPos (ktrc X C) p 0) cv fs
+  HereTr (tc1 {X = X} {C} p) (vw x (vw cv _) ∥ _) fs = TrC1 (wsz X) (trPos (ktrc X C) p 1) cv x fs
+  HereTr (tc2 {X = X} {C} p) (vw _ (vw cv _) ∥ x′ ∷ˢ _) fs = TrC2 (wsz X) (trPos (ktrc X C) p 2) cv x′ fs
+  HereTr (tc3 {X = X} {C} p) (vw cv _ ∥ x′ ∷ˢ _) fs = TrC2 (wsz X) (trPos (ktrc X C) p 3) cv x′ fs
+  HereTr (tc4 {X = X} {C} p) (vw cv _ ∥ nv ∷ˢ _) fs = TrC4 (wsz X) (trPos (ktrc X C) p 4) nv fs
   {-# CATCHALL #-}
   HereTr (tf0 p) m fs = ⊥
   {-# CATCHALL #-}
   HereTr (tw1 p) m fs = ⊥
+  {-# CATCHALL #-}
+  HereTr (tc1 p) m fs = ⊥
+  {-# CATCHALL #-}
+  HereTr (tc2 p) m fs = ⊥
 
   -- ★ at a point, in its root's frame (a trampoline's point, and the stop: owed)
   HereP : ∀ {sh V} {c : Codeᴵ sh V} → Pnt c → Cfg sh → FlatState → Set
@@ -489,6 +566,32 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              → RetOK (rtramp {κ = ktrω ds′ b γ} p) (trFin (idx p) (ktrω ds′ b γ)) r₁ cfc rets′ sv′ fs
              → RetOK R fin (frm {t = just X} {Es = Fn many g A B ∷ []} {S = []} (epop ⨾ end) es₁ []ˢ r₁) cur rets sv fs
 
+    -- ★ in a copy's trampoline (D417): the dispatch's caller saved above, its
+    -- destination (the top operand's slot) in the trampoline frame's save slot `w`
+    ok-trampc : ∀ {X C} {Es S V} {i : Insᴵ (C ∷ Es ∣ One ∷ S) (C ∷ Es ∣ C ∷ S)} {k : Codeᴵ (C ∷ Es ∣ C ∷ S) V}
+                  {es : Slots (C ∷ Es)} {os : Stk S} {r : Ret V T} {R fin cur rets sv fs}
+                  (p : under (ktrc X C) ∈ allK U) (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
+                  (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
+              → R ≡ rtramp {κ = ktrc X C} p → fin ≡ trFin (idx p) (ktrc X C)
+              → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → cur ≺ cfc
+              → LocState.stackMem (floc fs) cur (wsz X) ≡ just (SV-Ptr (AtStack cfc (Tp (dsiteφ d) S ∸ 1)))
+              → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
+              → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) (dsiteφ d) os
+              → RetOK (dsiteRoot d) (dsiteFin d) r cfc rets′ sv′ fs
+              → RetOK R fin (frm {t = just C} {Es = Es} k es os r) cur rets sv fs
+    -- ★ in the copy's block called by its trampoline: the trampoline saved above; the area its
+    -- frame's bottom; its viewed cell (save slot `suc w`) kept
+    ok-callc : ∀ {X C} {x : MV X} {cv : MV C} {r₁ : Ret (C ∷ [] ∣ C ∷ []) T} {R fin cur rets sv fs}
+                 (p : under (ktrc X C) ∈ allK U) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
+                 (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ) (ci : Id)
+             → R ≡ rblock p → fin ≡ blockFin (proj₂ (under (ktrc X C)))
+             → rets ≡ trPos (ktrc X C) p 2 ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → cur ≺ cfc
+             → LocState.stackMem (floc fs) cur (sv₁ (frameOf (blockᴵ (proj₂ (under (ktrc X C)))))) ≡ just (SV-Ptr (AtStack cfc 0))
+             → LocState.stackMem (floc fs) cfc (suc (wsz X)) ≡ just (cellPtr ci)
+             → VW (LocState.heapMem (floc fs)) cv (cellPtr ci ∷ [])
+             → RetOK (rtramp {κ = ktrc X C} p) (trFin (idx p) (ktrc X C)) r₁ cfc rets′ sv′ fs
+             → RetOK R fin (frm {t = just X} {Es = C ∷ []} {B = X} {S = []} (epop ⨾ reclose ⨾ end) (vw x (vw cv []ᵉ)) []ˢ r₁) cur rets sv fs
+
   ----------------------------------------------------------------------
   -- 3. ★ THE RELATION.
   ----------------------------------------------------------------------
@@ -545,6 +648,17 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   stk-stand {os = os} fr old = stkW-heap os (λ i k c → old (cellLoc i k) (held-below (λ le _ → zero-one (fr i le) c)))
 
 
+  -- a value whose cells are all below the counter stands while only newer cells change
+  vw-stand : ∀ {A} {v : MV A} {w rd rd′ n}
+           → (∀ i → n ≤ serial i → cnt v i ≡ 0)
+           → (∀ hl → Once.Memory.HeapAddress.HeapRef.ref-id (Once.Memory.HeapAddress.HeapLocation.heap-ref hl) Data.Nat.< n → rd′ hl ≡ rd hl)
+           → VW rd v w → VW rd′ v w
+  vw-stand fr old p = vw-frame p (λ i k c → old (cellLoc i k) (held-below (λ le _ → zero-one (fr i le) c)))
+
+  -- the second view's count, from the environment's
+  cnt-snd : ∀ {X C} (x : MV X) (cv : MV C) i → cntE (vw x (vw cv []ᵉ)) i ≡ 0 → cnt cv i ≡ 0
+  cnt-snd x cv i e = Data.Nat.Properties.m+n≡0⇒n≡0 (cnt x i) (trans (cong (cnt x i +_) (sym (Data.Nat.Properties.+-identityʳ (cnt cv i)))) e)
+
   stk-all : ∀ {rd sm sm′ φ S} (os : Stk S) → (∀ x → sm′ x ≡ sm x) → StkW rd sm φ os → StkW rd sm′ φ os
   stk-all []ˢ       h _                   = Data.Unit.tt
     where import Data.Unit
@@ -589,6 +703,23 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
       (ret-deep cur₀ (≺-trans lt abv) oth old fr rest)
+    where
+      ne : ¬ cfc ≡ cur₀
+      ne e = ≺-≢ (≺-trans lt abv) (sym e)
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-trampc {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv abv area ev sk rest) =
+    ok-trampc p d cfc sl sv′ rets′ eR eF eRets eSv abv
+      (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) area)
+      (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
+      (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
+      (ret-deep cur₀ (≺-trans lt abv) oth old fr rest)
+    where
+      ne : ¬ cfc ≡ cur₀
+      ne e = ≺-≢ (≺-trans lt abv) (sym e)
+  ret-deep {cur = cur} cur₀ lt oth old fr′ (ok-callc {x = x} {cv} p cfc sl sv′ rets′ ci eR eF eRets eSv abv ap s₂ pc rest) =
+    ok-callc p cfc sl sv′ rets′ ci eR eF eRets eSv abv
+      (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) ap) (trans (oth cfc _ ne) s₂)
+      (vw-stand {v = cv} (λ i le → cnt-snd x cv i (proj₁ (proj₁ fr′ i le))) old pc)
+      (ret-deep cur₀ (≺-trans lt abv) oth old (proj₂ fr′) rest)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
@@ -644,6 +775,25 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
       (ret-deep cur abv oth old fr rest)
     where
+      ne : ¬ cfc ≡ cur
+      ne e = ≺-≢ abv (sym e)
+  ret-top {cur = cur} oth top old (fes , fr) (ok-trampc {X = X} {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv abv area ev sk rest) =
+    ok-trampc p d cfc sl sv′ rets′ refl eF eRets eSv abv
+      (trans (top (wsz X) Data.Nat.Properties.≤-refl) area)
+      (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
+      (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
+      (ret-deep cur abv oth old fr rest)
+    where
+      import Data.Nat.Properties
+      ne : ¬ cfc ≡ cur
+      ne e = ≺-≢ abv (sym e)
+  ret-top {cur = cur} oth top old fr′ (ok-callc {x = x} {cv} p cfc sl sv′ rets′ ci refl eF eRets eSv abv ap s₂ pc rest) =
+    ok-callc p cfc sl sv′ rets′ ci refl eF eRets eSv abv
+      (trans (top _ Data.Nat.Properties.≤-refl) ap) (trans (oth cfc _ ne) s₂)
+      (vw-stand {v = cv} (λ i le → cnt-snd x cv i (proj₁ (proj₁ fr′ i le))) old pc)
+      (ret-deep cur abv oth old (proj₂ fr′) rest)
+    where
+      import Data.Nat.Properties
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
   ret-top {cur = cur} oth top old (fes , fr) (ok-callω p cfc sl sv′ rets′ refl eF eRets eSv abv ap rest) =
