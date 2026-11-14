@@ -28,6 +28,7 @@ open import Agda.Builtin.Sigma using (_,_)
 import Agda.Builtin.Sigma as Σ
 open import Data.Product using (_×_)
 open import Data.Unit using (⊤; tt)
+open import Function using (case_of_)
 open import Data.Nat using (ℕ; zero; suc; z≤n; s≤s; _+_; _≤_)
 open import Data.Nat.Properties using (n∸n≡0)
 open import Data.List using (List; []; _∷_; _++_)
@@ -204,8 +205,8 @@ heap₀ : Heap
 heap₀ = play (trace-of-run build-run) (λ _ → 0)
 
 pre-list : Pre heap₀ 2 (one-list 5) (λ _ → 0)
-pre-list with exchange build-run pre₀ lent₀
-... | (ok , eq) = post build-run pre₀ ok eq
+pre-list = case exchange build-run pre₀ lent₀ of λ where
+  (ok , eq) → post build-run pre₀ ok eq
 
 -- [x] again, in fresh blocks: the nil (3 , 2) and the cons (3 , 3)
 new-list : ℕ → MV IntList
@@ -600,11 +601,11 @@ world : World
 world = record { WSt = ⊤ ; answer = world-answer }
 
 -- the counter server, two rounds of fuel: the hand-built run of §10
-emit-found : Ran.trace (exec world ε 2 (liter emit-round emit-blk) mone (mi 0) 0 tt) ≡ trace-of-run ran-out
+emit-found : Ran.trace (exec world ε 1 (liter emit-round emit-blk) mone (mi 0) 0 tt) ≡ trace-of-run ran-out
 emit-found = refl
 
 -- the list server, two rounds: §2's round, then the same on the new list
-list-found : Ran.trace (exec world ε 2 (liter list-round list-blk) mone (one-list 5) 2 tt)
+list-found : Ran.trace (exec world ε 1 (liter list-round list-blk) mone (one-list 5) 2 tt)
            ≡ free (3 , 1) ∷ free (3 , 0) ∷ alloc (3 , 2) ∷ alloc (3 , 3)
            ∷ free (3 , 3) ∷ free (3 , 2) ∷ alloc (3 , 4) ∷ alloc (3 , 5) ∷ []
 list-found = refl
@@ -619,7 +620,7 @@ nats-found : Ran.out (exec world defsν 0 nats-two mone (mi 5) 0 tt)
 nats-found = refl
 
 -- ★ A14 step 2: the list server, cut after two rounds — because its fuel ran out
-list-cause : Ran.cause (exec world ε 2 (liter list-round list-blk) mone (one-list 5) 2 tt) ≡ out-of-fuel
+list-cause : Ran.cause (exec world ε 1 (liter list-round list-blk) mone (one-list 5) 2 tt) ≡ out-of-fuel
 list-cause = refl
 
 ------------------------------------------------------------------------
@@ -633,14 +634,14 @@ counter-ir : IR ε One One
 counter-ir = Iter (inr ∘ snd ∘ ⟨ SigOp emit ∘ snd , SigOp succ ∘ snd ⟩)
                   (i-∘ i-inr (i-∘ i-snd (i-pair (i-∘ i-op i-snd) (i-∘ i-op i-snd)))) ∘ ⟨ terminal , const 0 ⟩
 
-counter-ios : ios (Ran.trace (exec world ε 2 (tr counter-ir) mone mone 0 tt))
+counter-ios : ios (Ran.trace (exec world ε 1 (tr counter-ir) mone mone 0 tt))
             ≡ io-call emitO 0 tt ∷ io-call succO 0 1 ∷ io-call emitO 1 tt ∷ io-call succO 1 2 ∷ []
 counter-ios = refl
 
 counter-sound : RB (block (ev ε counter-ir tt))
                    (io-call emitO 0 tt ∷ io-call succO 0 1 ∷ io-call emitO 1 tt ∷ io-call succO 1 2 ∷ [])
                    (ended exhausted)
-counter-sound = whole-sound world 2 ε counter-ir tt
+counter-sound = whole-sound world 1 ε counter-ir tt
 
 ------------------------------------------------------------------------
 -- 15. ★ A16: THE MACHINE. §8½'s composition, lowered and run: each call is
@@ -669,7 +670,7 @@ reuse = refl
 --     machine runs at least as far, and what it did up to the cut is legal.
 ------------------------------------------------------------------------
 
-counter-machine : Σ.fst (machine-legal (Ran.run (exec world ε 2 (tr counter-ir) mone mone 0 tt)) _)
+counter-machine : Σ.fst (machine-legal (Ran.run (exec world ε 1 (tr counter-ir) mone mone 0 tt)) _)
                 ≡ io emitO 0 tt ∷ io succO 0 1 ∷ io emitO 1 tt ∷ io succO 1 2 ∷ []
 counter-machine = refl
 
@@ -720,14 +721,14 @@ two-sizes = refl
 list-prog : LTm ε One One
 list-prog = lzero ∘l (liter list-round list-blk ∘l (build ∘l lconst 5))
 
-list-on-machine = machine-legal (Ran.run (exec world ε 2 list-prog mone mone 0 tt)) _
+list-on-machine = machine-legal (Ran.run (exec world ε 1 list-prog mone mone 0 tt)) _
 
 -- ★ where the machine stands, the events it made to get there, and the
 -- theorem of them: legal, and the live cells exactly those it holds
 stands : Σ.Σ Sh λ sh → Σ.Σ (Cfg sh) λ m → Σ.Σ Trace λ mt
          → OK mt (λ _ → 0) × (∀ i → play mt (λ _ → 0) i ≡ Owned m i)
-stands with list-on-machine
-... | (_ , _ , _ , _ , _ , mt , _ , sh , _ , m , _ , st) = (sh , m , mt , held-always st)
+stands = case list-on-machine of λ where
+  (_ , _ , _ , _ , _ , mt , _ , sh , _ , m , _ , st) → (sh , m , mt , held-always st)
 
 -- what it holds there, by evaluation: the last round's nil and cons
 list-held : (Owned (Σ.fst (Σ.snd stands)) (3 , 0) ≡ 0) × (Owned (Σ.fst (Σ.snd stands)) (3 , 3) ≡ 0)
@@ -766,7 +767,7 @@ two-list = lIn ∘l linr ∘l (lconst 7 ⊗l (build ∘l lconst 5)) ∘l ρl⁻
 fn-prog : LTm ε One One
 fn-prog = drop ∘l lev ∘l (lid ⊗l lconst 0) ∘l ρl⁻ ∘l lcata ListF (lcase fn-nil fn-cons) ∘l two-list
 
-fn-run : Ran world ε fn-prog mone mone 0
+fn-run : Ran world ε fn-prog mone mone 0 0
 fn-run = exec world ε 0 fn-prog mone mone 0 tt
 
 -- its events: the list built (three 3-word nodes) and freed by the fold, a
@@ -817,7 +818,7 @@ nu-prog : LTm ε One One
 nu-prog = drop ∘l lul ∘l (lop emit ⊗l lid) ∘l lul ∘l (lop emit ⊗l lout) ∘l lout
         ∘l lunf ∘l ((pick ∘l linl) ⊗l lconst 3) ∘l ρl⁻
 
-nu-run : Ran world ε nu-prog mone mone 0
+nu-run : Ran world ε nu-prog mone mone 0 0
 nu-run = exec world ε 0 nu-prog mone mone 0 tt
 
 -- what the world saw: each observation runs the coalgebra once
@@ -866,7 +867,7 @@ ho-ir = apply ∘ ⟨ emitter ∘ fst ∘ Outν NatsF ∘ snd ∘ Outν NatsF �
                     ∘ ⟨ const 1 , nats-ir ∘ ⟨ terminal , const 3 ⟩ ⟩
                 , terminal ⟩
 
-ho-run : Ran world ε (tr ho-ir) mone mone 0
+ho-run : Ran world ε (tr ho-ir) mone mone 0 0
 ho-run = exec world ε 0 (tr ho-ir) mone mone 0 tt
 
 -- the first observation gives the layer as it was built (no call); the
@@ -902,7 +903,7 @@ calls-P = (ε ▹ SigOp succ ∣ i-op) ▹ (SigOp emit ∘ Call here) ∣ i-∘ 
 calls-main : IR Defs₂ One One
 calls-main = Call here ∘ Call (there here) ∘ const 9
 
-calls-run : Ran world (trP calls-P) (tr calls-main) mone mone 0
+calls-run : Ran world (trP calls-P) (tr calls-main) mone mone 0 0
 calls-run = exec world (trP calls-P) 0 (tr calls-main) mone mone 0 tt
 
 calls-ios : ios (Ran.trace calls-run) ≡ io-call succO 9 10 ∷ io-call succO 10 11 ∷ io-call emitO 11 tt ∷ []

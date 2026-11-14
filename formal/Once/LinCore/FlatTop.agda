@@ -59,7 +59,7 @@ open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw using (MV; mone; Run; Trace; ios; Outcome; gives; stop)
 import Once.LinCore.Events
 open import Once.LinCore.Machine fmt ans bw using (Plain; _∣_)
-open import Once.LinCore.Total fmt ans bw using (World; exec; module Ran)
+open import Once.LinCore.Total fmt ans bw using (World; exec; Ran; module Ran)
 open import Once.LinCore.Pass fmt ans using (Prog; IR; ⟦_⟧P; ev; trP; tr)
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ)
@@ -111,8 +111,8 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
   obs : ℕ → TM.Run (Once.Denotation.Approx.Ap Data.Unit.⊤)
   obs k = TM.run ι [] (approx k (ev ⟦ P ⟧P f tt))
 
-  -- the compiled program's run in the world, at a fuel
-  R : ℕ → _
+  -- the compiled program's run in the world, at a budget (D430)
+  R : (K : ℕ) → Ran Wι ds f₀ mone mone 0 K
   R K = exec Wι ds K f₀ mone mone 0 []
 
   module _ (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)

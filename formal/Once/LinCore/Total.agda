@@ -31,7 +31,11 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _≤_; _<_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n)
+open import Data.Nat.Induction using (<-wellFounded)
+open import Induction.WellFounded using (Acc; acc)
+open import Function using (case_of_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.Spec.Numerics using (TargetNum)
@@ -133,9 +137,9 @@ module _ (W : World) where
   Cause (gives _ _) = ⊤
   Cause (stop y)    = Because y
 
-  -- a run, found: its outcome, its events, the derivation, the world after
-  -- it, and the cause if it ran out
-  record Ran {Γ} (ds : Defs Γ) {E A B} (f : Tm Γ E A B) (e : MV E) (v : MV A) (n : ℕ) : Set where
+  -- a run, found at a budget of loop rounds: its outcome, its events, the derivation, the world
+  -- after it, the cause if it ran out, and the budget left (D430: one budget, spent along the run)
+  record Ran {Γ} (ds : Defs Γ) {E A B} (f : Tm Γ E A B) (e : MV E) (v : MV A) (n : ℕ) (k : ℕ) : Set where
     constructor ran
     field
       out   : Outcome B
@@ -143,6 +147,8 @@ module _ (W : World) where
       run   : Run ds f e v n out trace
       after : WSt
       cause : Cause out
+      left  : ℕ
+      spent : left ≤ k
 
   -- ★ B1.2: an op's contract block, run in the world: each call answered, or
   -- the run cut where the world gave no answer
@@ -170,7 +176,7 @@ module _ (W : World) where
   runCall o a k σ nothing eq = opran [] (inj₂ exhausted) p-cut σ (unanswered σ o a eq)
 
   record RanM {Γ} (ds : Defs Γ) {E A} (F : LF) (alg : Tm Γ E (LF∙ F A) A) (e : MV E)
-              (G : LF) (x : MV (LF∙ G (μt F))) (n : ℕ) : Set where
+              (G : LF) (x : MV (LF∙ G (μt F))) (n : ℕ) (k : ℕ) : Set where
     constructor ranM
     field
       out   : Outcome (LF∙ G A)
@@ -178,6 +184,8 @@ module _ (W : World) where
       run   : RunMap ds F alg e G x n out trace
       after : WSt
       cause : Cause out
+      left  : ℕ
+      spent : left ≤ k
 
   ----------------------------------------------------------------------
   -- 1. ★ TAIT: GOOD VALUES, by recursion on the type. A closure is good when
@@ -192,7 +200,7 @@ module _ (W : World) where
     record GoodNu (F : LF) (v : MV (Nu F)) : Set where
       coinductive
       field obs : ∀ v′ → v′ ~ v → ∀ {Γ} (ds : Defs Γ) {E} (e : MV E) (k : ℕ) n (σ : WSt)
-                → Σ (Ran ds (lout {F = F}) e v′ n) (λ r → GoodLO F (Ran.out r))
+                → Σ (Ran ds (lout {F = F}) e v′ n k) (λ r → GoodLO F (Ran.out r))
 
     GoodLayer : ∀ F G → MV (LF∙ G (Nu F)) → Set
     GoodLayer F Idf      v            = GoodNu F v
@@ -224,10 +232,10 @@ module _ (W : World) where
     Good (Ct l X)    (mct x)      = Good X x
     Good (Fn once g A B) (mfn i (c1 ds b γ) x) =
       ∀ x′ → x′ ~ x → ∀ (k : ℕ) a n (σ : WSt) → Good A a
-      → Σ (Ran ds b mone (mpair x′ a) n) (λ r → GoodO B (Ran.out r))
+      → Σ (Ran ds b mone (mpair x′ a) n k) (λ r → GoodO B (Ran.out r))
     Good (Fn many g A B) (mfn i (cω ds b γ) x) =
       ∀ x′ → x′ ~ x → ∀ (k : ℕ) a n (σ : WSt) → Good A a
-      → Σ (Ran ds b x′ a n) (λ r → GoodO B (Ran.out r))
+      → Σ (Ran ds b x′ a n k) (λ r → GoodO B (Ran.out r))
     Good (μt F)      _            = ⊤
     Good (Bt b)      _            = ⊤
 
@@ -236,12 +244,12 @@ module _ (W : World) where
     GoodO B (stop _)    = ⊤
 
   -- a run found, with a good outcome
-  Ran⁺ : ∀ {Γ} (ds : Defs Γ) {E A B} (f : Tm Γ E A B) (e : MV E) (v : MV A) (n : ℕ) → Set
-  Ran⁺ ds {B = B} f e v n = Σ (Ran ds f e v n) (λ r → GoodO B (Ran.out r))
+  Ran⁺ : ∀ {Γ} (ds : Defs Γ) {E A B} (f : Tm Γ E A B) (e : MV E) (v : MV A) (n : ℕ) (k : ℕ) → Set
+  Ran⁺ ds {B = B} f e v n k = Σ (Ran ds f e v n k) (λ r → GoodO B (Ran.out r))
 
   RanM⁺ : ∀ {Γ} (ds : Defs Γ) {E A} (F : LF) (alg : Tm Γ E (LF∙ F A) A) (e : MV E)
-          (G : LF) (x : MV (LF∙ G (μt F))) (n : ℕ) → Set
-  RanM⁺ ds {A = A} F alg e G x n = Σ (RanM ds F alg e G x n) (λ r → GoodO (LF∙ G A) (RanM.out r))
+          (G : LF) (x : MV (LF∙ G (μt F))) (n : ℕ) (k : ℕ) → Set
+  RanM⁺ ds {A = A} F alg e G x n k = Σ (RanM ds F alg e G x n k) (λ r → GoodO (LF∙ G A) (RanM.out r))
 
   -- goodness depends on the value, not on its cells' names
   good-~ : ∀ {A} {v v′ : MV A} → v′ ~ v → Good A v → Good A v′
@@ -369,20 +377,20 @@ module _ (W : World) where
 
     -- one observation: the coalgebra (good) on the seed, then the layer
     observe : ∀ {F S} (p : MV (Coalg F S ⊗t S)) → Good (Coalg F S ⊗t S) p → ∀ i {Γ} (ds : Defs Γ) {E} (e : MV E)
-              (k : ℕ) n (σ : WSt) → Σ (Ran ds (lout {F = F}) e (mnu i p) n) (λ r → GoodLO F (Ran.out r))
-    observe {F} {S} (mpair (mfn j (cω ds′ b γ) x) s) (gc , gs) i ds e k n σ with gc x (~-refl x) k s n σ gs
-    ... | (ran (stop y) t rb σ₁ cz , _) =
-      ( ran (stop y) _ (r-nout (r-∘ (r-∘ (r-∘ (r-∘ (r-lend (fm-stop (r-snd (r-bev rb)))) stopped) stopped) stopped) stopped))
-            σ₁ cz
-      , tt )
-    ... | (ran (gives w n₁) t rb σ₁ _ , gw) with strRun ds F (mfn j (cω ds′ b γ) x) gc w gw n₁
-    ...   | gaveP {w = w₂} {n′ = n₂} r₂ g₂ =
-      ( ran _ _ (r-nout (r-∘ (r-∘ (r-∘ (r-∘ (r-lend (fm-gives (r-snd (r-bev rb)))) (go-on (r-lend (fm-gives r₂))))
-                                         (go-on (r-⊗ r-drop (go-on (fm-gives r-id)))))
-                                  (go-on r-λ))
-                           (go-on (snd (mapRun ds {F} {S} F w₂ n₂)))))
-            σ₁ tt
-      , layerGood F w₂ g₂ n₂ )
+              (k : ℕ) n (σ : WSt) → Σ (Ran ds (lout {F = F}) e (mnu i p) n k) (λ r → GoodLO F (Ran.out r))
+    observe {F} {S} (mpair (mfn j (cω ds′ b γ) x) s) (gc , gs) i ds e k n σ = case gc x (~-refl x) k s n σ gs of λ where
+      (ran (stop y) t rb σ₁ cz l sp , _) →
+        ( ran (stop y) _ (r-nout (r-∘ (r-∘ (r-∘ (r-∘ (r-lend (fm-stop (r-snd (r-bev rb)))) stopped) stopped) stopped) stopped))
+              σ₁ cz l sp
+        , tt )
+      (ran (gives w n₁) t rb σ₁ _ l sp , gw) → case strRun ds F (mfn j (cω ds′ b γ) x) gc w gw n₁ of λ where
+        (gaveP {w = w₂} {n′ = n₂} r₂ g₂) →
+          ( ran _ _ (r-nout (r-∘ (r-∘ (r-∘ (r-∘ (r-lend (fm-gives (r-snd (r-bev rb)))) (go-on (r-lend (fm-gives r₂))))
+                                             (go-on (r-⊗ r-drop (go-on (fm-gives r-id)))))
+                                      (go-on r-λ))
+                               (go-on (snd (mapRun ds {F} {S} F w₂ n₂)))))
+                σ₁ tt l sp
+          , layerGood F w₂ g₂ n₂ )
 
     -- the layer's νs good again (the corecursive calls, in head position)
     layerGood : ∀ {F S} G (w : MV (LF∙ G (Coalg F S ⊗t S))) → Good (LF∙ G (Coalg F S ⊗t S)) w → ∀ n
@@ -403,8 +411,8 @@ module _ (W : World) where
   ----------------------------------------------------------------------
 
   Runner : ∀ {Δ σ} → Defs Δ → Body Δ σ → Set
-  Runner ds (b1 {X = X} {A} b _) = ∀ (k : ℕ) x a n → WSt → Good X x → Good A a → Ran⁺ ds b mone (mpair x a) n
-  Runner ds (bω {X = X} {A} b _) = ∀ (k : ℕ) x a n → WSt → Good X x → Good A a → Ran⁺ ds b x a n
+  Runner ds (b1 {X = X} {A} b _) = ∀ (k : ℕ) x a n → WSt → Good X x → Good A a → Ran⁺ ds b mone (mpair x a) n k
+  Runner ds (bω {X = X} {A} b _) = ∀ (k : ℕ) x a n → WSt → Good X x → Good A a → Ran⁺ ds b x a n k
 
   -- the runners of a table, in order (as `Env`)
   data REnv : ∀ {Γ} → Defs Γ → Set where
@@ -439,121 +447,130 @@ module _ (W : World) where
   module Eval {Γ} (ds : Defs Γ) (ρ : REnv ds) where
     mutual
       go : ∀ {E A B} (k : ℕ) (f : Tm Γ E A B) (e : MV E) (v : MV A) (n : ℕ) → WSt
-         → Good E e → Good A v → Ran⁺ ds f e v n
-      go k lid e v n σ ge gv = (ran _ _ r-id σ tt , gv)
-      go k (f ∘l g) e v n σ ge gv with go k g e v n σ ge gv
-      ... | (ran (gives u n₁) t₁ rg σ₁ _ , gu) with go k f e u n₁ σ₁ ge gu
-      ...   | (ran o t₂ rf σ₂ c , gw) = (ran o (t₁ ++ t₂) (r-∘ rg (go-on rf)) σ₂ c , gw)
-      go k (f ∘l g) e v n σ ge gv | (ran (stop y) t rg σ₁ c , _) = (ran (stop y) (t ++ []) (r-∘ rg stopped) σ₁ c , tt)
-      go k (f ⊗l g) e (mpair a c) n σ ge (ga , gc) with go k f e a n σ ge ga
-      ... | (ran (stop y) t rf σ₁ w , _) = (ran (stop y) (t ++ []) (r-⊗ rf stopped) σ₁ w , tt)
-      ... | (ran (gives a′ n₁) t₁ rf σ₁ _ , ga′) with go k g e c n₁ σ₁ ge gc
-      ...   | (ran (gives c′ n₂) t₂ rg σ₂ _ , gc′) = (ran _ (t₁ ++ t₂) (r-⊗ rf (go-on (fm-gives rg))) σ₂ tt , (ga′ , gc′))
-      ...   | (ran (stop y) t₂ rg σ₂ w , _) = (ran (stop y) (t₁ ++ t₂) (r-⊗ rf (go-on (fm-stop rg))) σ₂ w , tt)
-      go k ρl e (mpair a mone) n σ ge (ga , _) = (ran _ _ r-ρ σ tt , ga)
-      go k ρl⁻ e a n σ ge ga = (ran _ _ r-ρ⁻ σ tt , (ga , tt))
-      go k lul e (mpair mone a) n σ ge (_ , ga) = (ran _ _ r-λ σ tt , ga)
-      go k lul⁻ e a n σ ge ga = (ran _ _ r-λ⁻ σ tt , (tt , ga))
-      go k lassoc e (mpair (mpair a b) c) n σ ge ((ga , gb) , gc) = (ran _ _ r-α σ tt , (ga , (gb , gc)))
-      go k lassoc⁻ e (mpair a (mpair b c)) n σ ge (ga , (gb , gc)) = (ran _ _ r-α⁻ σ tt , ((ga , gb) , gc))
-      go k lswap e (mpair a b) n σ ge (ga , gb) = (ran _ _ r-swap σ tt , (gb , ga))
-      go k dup e v n σ ge gv = (ran _ _ r-dup σ tt , (gv , good-~ (copy-~ v n) gv))
-      go k drop e v n σ ge gv = (ran _ _ r-drop σ tt , tt)
-      go k linl e a n σ ge ga = (ran _ _ r-inl σ tt , ga)
-      go k linr e b n σ ge gb = (ran _ _ r-inr σ tt , gb)
-      go k (lcase f g) e (minl a) n σ ge ga with go k f e a n σ ge ga
-      ... | (ran o t r σ₁ c , gw) = (ran o t (r-case₁ r) σ₁ c , gw)
-      go k (lcase f g) e (minr b) n σ ge gb with go k g e b n σ ge gb
-      ... | (ran o t r σ₁ c , gw) = (ran o t (r-case₂ r) σ₁ c , gw)
+         → Good E e → Good A v → Ran⁺ ds f e v n k
+      go k lid e v n σ ge gv = (ran _ _ r-id σ tt k ≤-refl , gv)
+      go k (f ∘l g) e v n σ ge gv = case go k g e v n σ ge gv of λ where
+        (ran (gives u n₁) t₁ rg σ₁ _ l₁ s₁ , gu) → case go l₁ f e u n₁ σ₁ ge gu of λ where
+          (ran o t₂ rf σ₂ c l₂ s₂ , gw) → (ran o (t₁ ++ t₂) (r-∘ rg (go-on rf)) σ₂ c l₂ (≤-trans s₂ s₁) , gw)
+        (ran (stop y) t rg σ₁ c l₁ s₁ , _) → (ran (stop y) (t ++ []) (r-∘ rg stopped) σ₁ c l₁ s₁ , tt)
+      go k (f ⊗l g) e (mpair a c) n σ ge (ga , gc) = case go k f e a n σ ge ga of λ where
+        (ran (stop y) t rf σ₁ w l₁ s₁ , _) → (ran (stop y) (t ++ []) (r-⊗ rf stopped) σ₁ w l₁ s₁ , tt)
+        (ran (gives a′ n₁) t₁ rf σ₁ _ l₁ s₁ , ga′) → case go l₁ g e c n₁ σ₁ ge gc of λ where
+          (ran (gives c′ n₂) t₂ rg σ₂ _ l₂ s₂ , gc′) →
+            (ran _ (t₁ ++ t₂) (r-⊗ rf (go-on (fm-gives rg))) σ₂ tt l₂ (≤-trans s₂ s₁) , (ga′ , gc′))
+          (ran (stop y) t₂ rg σ₂ w l₂ s₂ , _) →
+            (ran (stop y) (t₁ ++ t₂) (r-⊗ rf (go-on (fm-stop rg))) σ₂ w l₂ (≤-trans s₂ s₁) , tt)
+      go k ρl e (mpair a mone) n σ ge (ga , _) = (ran _ _ r-ρ σ tt k ≤-refl , ga)
+      go k ρl⁻ e a n σ ge ga = (ran _ _ r-ρ⁻ σ tt k ≤-refl , (ga , tt))
+      go k lul e (mpair mone a) n σ ge (_ , ga) = (ran _ _ r-λ σ tt k ≤-refl , ga)
+      go k lul⁻ e a n σ ge ga = (ran _ _ r-λ⁻ σ tt k ≤-refl , (tt , ga))
+      go k lassoc e (mpair (mpair a b) c) n σ ge ((ga , gb) , gc) = (ran _ _ r-α σ tt k ≤-refl , (ga , (gb , gc)))
+      go k lassoc⁻ e (mpair a (mpair b c)) n σ ge (ga , (gb , gc)) = (ran _ _ r-α⁻ σ tt k ≤-refl , ((ga , gb) , gc))
+      go k lswap e (mpair a b) n σ ge (ga , gb) = (ran _ _ r-swap σ tt k ≤-refl , (gb , ga))
+      go k dup e v n σ ge gv = (ran _ _ r-dup σ tt k ≤-refl , (gv , good-~ (copy-~ v n) gv))
+      go k drop e v n σ ge gv = (ran _ _ r-drop σ tt k ≤-refl , tt)
+      go k linl e a n σ ge ga = (ran _ _ r-inl σ tt k ≤-refl , ga)
+      go k linr e b n σ ge gb = (ran _ _ r-inr σ tt k ≤-refl , gb)
+      go k (lcase f g) e (minl a) n σ ge ga = case go k f e a n σ ge ga of λ where
+        (ran o t r σ₁ c l s , gw) → (ran o t (r-case₁ r) σ₁ c l s , gw)
+      go k (lcase f g) e (minr b) n σ ge gb = case go k g e b n σ ge gb of λ where
+        (ran o t r σ₁ c l s , gw) → (ran o t (r-case₂ r) σ₁ c l s , gw)
       go k lzero e () n σ ge gv
-      go k lIn e v n σ ge gv = (ran _ _ r-In σ tt , tt)
-      go k (lOutμ {F}) e (mmu i v) n σ ge gv = (ran _ _ r-Outμ σ tt , goodμ F v)
+      go k lIn e v n σ ge gv = (ran _ _ r-In σ tt k ≤-refl , tt)
+      go k (lOutμ {F}) e (mmu i v) n σ ge gv = (ran _ _ r-Outμ σ tt k ≤-refl , goodμ F v)
       go k (lcata F alg) e x n σ ge gx = cata k F alg e x n σ ge
-      go k (lclo F p) e x n σ ge gx = (ran _ _ r-clo σ tt , good-tag F x gx)
-      go k (lapp p) e (mpair (mct x) a) n σ ge (gx , ga) with find ρ p
-      ... | found {b = b1 b _} q r with r k x a n σ gx ga
-      ...   | (ran o t rb σ₁ c , gw) = (ran o t (r-app q rb) σ₁ c , gw)
-      go k (lend b) e (mpair x a) n σ ge (gx , ga) with go k b (mpair e x) a n σ (ge , gx) ga
-      ... | (ran (gives w n′) t r σ₁ _ , gw) = (ran _ t (r-lend (fm-gives r)) σ₁ tt , (gx , gw))
-      ... | (ran (stop y) t r σ₁ c , _) = (ran (stop y) t (r-lend (fm-stop r)) σ₁ c , tt)
-      go k (blift f) e a n σ ge ga with go k f mone a n σ tt ga
-      ... | (ran o t r σ₁ c , gw) = (ran o t (r-lift r) σ₁ c , gw)
-      go k (bfst f) (mpair e₁ e₂) a n σ (ge₁ , _) ga with go k f e₁ a n σ ge₁ ga
-      ... | (ran o t r σ₁ c , gw) = (ran o t (r-fst r) σ₁ c , gw)
-      go k (bsnd f) (mpair e₁ e₂) a n σ (_ , ge₂) ga with go k f e₂ a n σ ge₂ ga
-      ... | (ran o t r σ₁ c , gw) = (ran o t (r-snd r) σ₁ c , gw)
-      go k (bcaseE f g) (minl e) a n σ ge ga with go k f e a n σ ge ga
-      ... | (ran o t r σ₁ c , gw) = (ran o t (r-caseE₁ r) σ₁ c , gw)
-      go k (bcaseE f g) (minr e) a n σ ge ga with go k g e a n σ ge ga
-      ... | (ran o t r σ₁ c , gw) = (ran o t (r-caseE₂ r) σ₁ c , gw)
-      go k (bout {F} f) (mmu i v) a n σ ge ga with go k f v a n σ (goodμ F v) ga
-      ... | (ran o t r σ₁ c , gw) = (ran o (peek i ∷ t) (r-out r) σ₁ c , gw)
-      go k bcopy e mone n σ ge gv = (ran _ _ r-copy σ tt , good-~ (copy-~ e n) ge)
-      go k (bapp p) (mct x) a n σ gx ga with find ρ p
-      ... | found {b = bω b _} q r with r k x a n σ gx ga
-      ...   | (ran o t rb σ₁ c , gw) = (ran o t (r-bapp q rb) σ₁ c , gw)
+      go k (lclo F p) e x n σ ge gx = (ran _ _ r-clo σ tt k ≤-refl , good-tag F x gx)
+      go k (lapp p) e (mpair (mct x) a) n σ ge (gx , ga) = case find ρ p of λ where
+        (found {b = b1 b _} q r) → case r k x a n σ gx ga of λ where
+          (ran o t rb σ₁ c l s , gw) → (ran o t (r-app q rb) σ₁ c l s , gw)
+      go k (lend b) e (mpair x a) n σ ge (gx , ga) = case go k b (mpair e x) a n σ (ge , gx) ga of λ where
+        (ran (gives w n′) t r σ₁ _ l s , gw) → (ran _ t (r-lend (fm-gives r)) σ₁ tt l s , (gx , gw))
+        (ran (stop y) t r σ₁ c l s , _) → (ran (stop y) t (r-lend (fm-stop r)) σ₁ c l s , tt)
+      go k (blift f) e a n σ ge ga = case go k f mone a n σ tt ga of λ where
+        (ran o t r σ₁ c l s , gw) → (ran o t (r-lift r) σ₁ c l s , gw)
+      go k (bfst f) (mpair e₁ e₂) a n σ (ge₁ , _) ga = case go k f e₁ a n σ ge₁ ga of λ where
+        (ran o t r σ₁ c l s , gw) → (ran o t (r-fst r) σ₁ c l s , gw)
+      go k (bsnd f) (mpair e₁ e₂) a n σ (_ , ge₂) ga = case go k f e₂ a n σ ge₂ ga of λ where
+        (ran o t r σ₁ c l s , gw) → (ran o t (r-snd r) σ₁ c l s , gw)
+      go k (bcaseE f g) (minl e) a n σ ge ga = case go k f e a n σ ge ga of λ where
+        (ran o t r σ₁ c l s , gw) → (ran o t (r-caseE₁ r) σ₁ c l s , gw)
+      go k (bcaseE f g) (minr e) a n σ ge ga = case go k g e a n σ ge ga of λ where
+        (ran o t r σ₁ c l s , gw) → (ran o t (r-caseE₂ r) σ₁ c l s , gw)
+      go k (bout {F} f) (mmu i v) a n σ ge ga = case go k f v a n σ (goodμ F v) ga of λ where
+        (ran o t r σ₁ c l s , gw) → (ran o (peek i ∷ t) (r-out r) σ₁ c l s , gw)
+      go k bcopy e mone n σ ge gv = (ran _ _ r-copy σ tt k ≤-refl , good-~ (copy-~ e n) ge)
+      go k (bapp p) (mct x) a n σ gx ga = case find ρ p of λ where
+        (found {b = bω b _} q r) → case r k x a n σ gx ga of λ where
+          (ran o t rb σ₁ c l s , gw) → (ran o t (r-bapp q rb) σ₁ c l s , gw)
       -- ★ D409 part 3: a closure is good: its body, run on a good environment
       -- and argument, has a good run (by this evaluator, on a subterm)
       go k (llam b γ) e x n σ ge gx =
-        (ran _ _ r-lam σ tt , λ x′ p k′ a n′ σ′ ga → go k′ b mone (mpair x′ a) n′ σ′ tt (good-~ p gx , ga))
+        (ran _ _ r-lam σ tt k ≤-refl , λ x′ p k′ a n′ σ′ ga → go k′ b mone (mpair x′ a) n′ σ′ tt (good-~ p gx , ga))
       go k (llamω b γ) e x n σ ge gx =
-        (ran _ _ r-lamω σ tt , λ x′ p k′ a n′ σ′ ga → go k′ b x′ a n′ σ′ (good-~ p gx) ga)
+        (ran _ _ r-lamω σ tt k ≤-refl , λ x′ p k′ a n′ σ′ ga → go k′ b x′ a n′ σ′ (good-~ p gx) ga)
       -- applying one runs it, by its goodness: no recursive call
-      go k lev e (mpair (mfn i (c1 ds′ b γ) x) a) n σ ge (gf , ga) with gf x (~-refl x) k a n σ ga
-      ... | (ran o t rb σ₁ c , gw) = (ran o (free i ∷ t) (r-ev rb) σ₁ c , gw)
-      go k bev (mfn i (cω ds′ b γ) x) a n σ gf ga with gf x (~-refl x) k a n σ ga
-      ... | (ran o t rb σ₁ c , gw) = (ran o (peek i ∷ t) (r-bev rb) σ₁ c , gw)
+      go k lev e (mpair (mfn i (c1 ds′ b γ) x) a) n σ ge (gf , ga) = case gf x (~-refl x) k a n σ ga of λ where
+        (ran o t rb σ₁ c l s , gw) → (ran o (free i ∷ t) (r-ev rb) σ₁ c l s , gw)
+      go k bev (mfn i (cω ds′ b γ) x) a n σ gf ga = case gf x (~-refl x) k a n σ ga of λ where
+        (ran o t rb σ₁ c l s , gw) → (ran o (peek i ∷ t) (r-bev rb) σ₁ c l s , gw)
       -- ★ a ν: built, it is good (by `goodν`); observed, it runs by its
       -- goodness: no recursive call
-      go k lunf e p n σ ge gp = (ran _ _ r-unf σ tt , goodν p gp _)
-      go k (lout {F}) e v n σ ge gv with obs gv v (~-refl v) ds e k n σ
-      ... | (r , g) = (r , glo F (Ran.out r) g)
-      go k (lconst v) e mone n σ ge gv = (ran _ _ r-const σ tt , tt)
-      go k (lop s) e x n σ ge gx with runOp (opF s (toF (sdom s) (er x))) σ
-      ... | opran t (inj₁ y) p σ₁ c = (ran _ _ (r-op p) σ₁ tt , goodF (scod s) y)
-      ... | opran t (inj₂ w) p σ₁ c = (ran _ _ (r-opend p) σ₁ c , tt)
-      go k (liter f φ) e a n σ ge ga = loop k f φ e a n σ ge ga
+      go k lunf e p n σ ge gp = (ran _ _ r-unf σ tt k ≤-refl , goodν p gp _)
+      go k (lout {F}) e v n σ ge gv = case obs gv v (~-refl v) ds e k n σ of λ where
+        (r , g) → (r , glo F (Ran.out r) g)
+      go k (lconst v) e mone n σ ge gv = (ran _ _ r-const σ tt k ≤-refl , tt)
+      go k (lop s) e x n σ ge gx = case runOp (opF s (toF (sdom s) (er x))) σ of λ where
+        (opran t (inj₁ y) p σ₁ c) → (ran _ _ (r-op p) σ₁ tt k ≤-refl , goodF (scod s) y)
+        (opran t (inj₂ w) p σ₁ c) → (ran _ _ (r-opend p) σ₁ c k ≤-refl , tt)
+      go k (liter f φ) e a n σ ge ga = loop k (<-wellFounded k) f φ e a n σ ge ga
 
-      -- ★ the loop: a round, then (if it continues) the loop on one less fuel.
-      -- The measure is the term, then the fuel: every call of `go` is on a
-      -- smaller term (a closure's body, run at any fuel, included), and the
-      -- loop keeps its round and spends a round of fuel.
-      loop : ∀ {E A B} (k : ℕ) (f : Tm Γ E A (B ⊕t A)) (φ : Blk f) (e : MV E) (a : MV A) (n : ℕ) → WSt
-           → Good E e → Good A a → Ran⁺ ds (liter f φ) e a n
-      loop zero f φ e a n σ ge ga = (ran _ _ r-exh σ out-of-fuel , tt)
-      loop (suc k) f φ e a n σ ge ga with go (suc k) f e a n σ ge ga
-      ... | (ran (gives (minl b) n′) t r σ₁ _ , gb) = (ran _ (t ++ []) (r-iter r (go-on done)) σ₁ tt , gb)
-      ... | (ran (stop y) t r σ₁ c , _) = (ran (stop y) (t ++ []) (r-iter r stopped) σ₁ c , tt)
-      ... | (ran (gives (minr a′) n₁) t₁ r σ₁ _ , ga′) with loop k f φ e a′ n₁ σ₁ ge ga′
-      ...   | (ran o t₂ rn σ₂ c , gw) = (ran o (t₁ ++ t₂) (r-iter r (go-on (again rn))) σ₂ c , gw)
+      -- ★ the loop (D430): a round on the budget; a continuing round spends a unit of it, and
+      -- with none left the run ends `exhausted` (as master's `approx`: a step per continuing
+      -- round, counted along the whole run). The measure: the term, then the budget.
+      loop : ∀ {E A B} (k : ℕ) → Acc _<_ k → (f : Tm Γ E A (B ⊕t A)) (φ : Blk f) (e : MV E) (a : MV A) (n : ℕ) → WSt
+           → Good E e → Good A a → Ran⁺ ds (liter f φ) e a n k
+      loop k ac f φ e a n σ ge ga = round k ac f φ e n ge (go k f e a n σ ge ga)
+
+      round : ∀ {E A B} (k : ℕ) → Acc _<_ k → (f : Tm Γ E A (B ⊕t A)) (φ : Blk f) (e : MV E) {a : MV A} (n : ℕ)
+            → Good E e → Ran⁺ ds f e a n k → Ran⁺ ds (liter f φ) e a n k
+      round k ac f φ e n ge (ran (gives (minl b) n′) t r σ₁ _ l s , gb) = (ran _ (t ++ []) (r-iter r (go-on done)) σ₁ tt l s , gb)
+      round k ac f φ e n ge (ran (stop y) t r σ₁ c l s , _) = (ran (stop y) (t ++ []) (r-iter r stopped) σ₁ c l s , tt)
+      round k ac f φ e n ge (ran (gives (minr a′) n₁) t₁ r σ₁ _ zero s , _) =
+        (ran (stop exhausted) (t₁ ++ []) (r-iter r (go-on (again r-exh))) σ₁ out-of-fuel zero s , tt)
+      round k (acc rs) f φ e n ge (ran (gives (minr a′) n₁) t₁ r σ₁ _ (suc l) s , ga′) =
+        case loop l (rs s) f φ e a′ n₁ σ₁ ge ga′ of λ where
+          (ran o t₂ rn σ₂ c l₂ s₂ , gw) →
+            (ran o (t₁ ++ t₂) (r-iter r (go-on (again rn))) σ₂ c l₂ (≤-trans s₂ (≤-trans (n≤1+n l) s)) , gw)
 
       -- the fold: free the node, fold its positions, run the algebra
       cata : ∀ {E A} (k : ℕ) F (alg : Tm Γ E (LF∙ F A) A) (e : MV E) (x : MV (μt F)) (n : ℕ) → WSt
-           → Good E e → Ran⁺ ds (lcata F alg) e x n
-      cata k F alg e (mmu i v) n σ ge with fold k F alg e F v n σ ge
-      ... | (ranM (stop y) t rm σ₁ c , _) = (ran (stop y) (free i ∷ (t ++ [])) (r-cata rm stopped) σ₁ c , tt)
-      ... | (ranM (gives u n₁) t₁ rm σ₁ _ , gu) with go k alg e u n₁ σ₁ ge gu
-      ...   | (ran o t₂ ra σ₂ c , gw) = (ran o (free i ∷ (t₁ ++ t₂)) (r-cata rm (go-on ra)) σ₂ c , gw)
+           → Good E e → Ran⁺ ds (lcata F alg) e x n k
+      cata k F alg e (mmu i v) n σ ge = case fold k F alg e F v n σ ge of λ where
+        (ranM (stop y) t rm σ₁ c l s , _) → (ran (stop y) (free i ∷ (t ++ [])) (r-cata rm stopped) σ₁ c l s , tt)
+        (ranM (gives u n₁) t₁ rm σ₁ _ l₁ s₁ , gu) → case go l₁ alg e u n₁ σ₁ ge gu of λ where
+          (ran o t₂ ra σ₂ c l₂ s₂ , gw) → (ran o (free i ∷ (t₁ ++ t₂)) (r-cata rm (go-on ra)) σ₂ c l₂ (≤-trans s₂ s₁) , gw)
 
       fold : ∀ {E A} (k : ℕ) F (alg : Tm Γ E (LF∙ F A) A) (e : MV E) G (x : MV (LF∙ G (μt F))) (n : ℕ) → WSt
-           → Good E e → RanM⁺ ds F alg e G x n
-      fold k F alg e Idf x n σ ge with cata k F alg e x n σ ge
-      ... | (ran o t r σ₁ c , gw) = (ranM o t (m-id r) σ₁ c , gw)
-      fold k F alg e Kone x n σ ge = (ranM _ _ m-one σ tt , tt)
+           → Good E e → RanM⁺ ds F alg e G x n k
+      fold k F alg e Idf x n σ ge = case cata k F alg e x n σ ge of λ where
+        (ran o t r σ₁ c l s , gw) → (ranM o t (m-id r) σ₁ c l s , gw)
+      fold k F alg e Kone x n σ ge = (ranM _ _ m-one σ tt k ≤-refl , tt)
       fold k F alg e Kzero () n σ ge
-      fold k F alg e (Kb b) x n σ ge = (ranM _ _ m-b σ tt , tt)
-      fold k F alg e (Kμ G) x n σ ge = (ranM _ _ m-μ σ tt , tt)
-      fold k F alg e (G ⊕f H) (minl x) n σ ge with fold k F alg e G x n σ ge
-      ... | (ranM (gives y n′) t r σ₁ _ , gy) = (ranM _ t (m-inl (fm-gives r)) σ₁ tt , gy)
-      ... | (ranM (stop w) t r σ₁ c , _) = (ranM (stop w) t (m-inl (fm-stop r)) σ₁ c , tt)
-      fold k F alg e (G ⊕f H) (minr x) n σ ge with fold k F alg e H x n σ ge
-      ... | (ranM (gives y n′) t r σ₁ _ , gy) = (ranM _ t (m-inr (fm-gives r)) σ₁ tt , gy)
-      ... | (ranM (stop w) t r σ₁ c , _) = (ranM (stop w) t (m-inr (fm-stop r)) σ₁ c , tt)
-      fold k F alg e (G ⊗f H) (mpair x x′) n σ ge with fold k F alg e G x n σ ge
-      ... | (ranM (stop w) t r σ₁ c , _) = (ranM (stop w) (t ++ []) (m-pair r stopped) σ₁ c , tt)
-      ... | (ranM (gives y n₁) t₁ r σ₁ _ , gy) with fold k F alg e H x′ n₁ σ₁ ge
-      ...   | (ranM (gives y′ n₂) t₂ r′ σ₂ _ , gy′) = (ranM _ (t₁ ++ t₂) (m-pair r (go-on (fm-gives r′))) σ₂ tt , (gy , gy′))
-      ...   | (ranM (stop w) t₂ r′ σ₂ c , _) = (ranM (stop w) (t₁ ++ t₂) (m-pair r (go-on (fm-stop r′))) σ₂ c , tt)
+      fold k F alg e (Kb b) x n σ ge = (ranM _ _ m-b σ tt k ≤-refl , tt)
+      fold k F alg e (Kμ G) x n σ ge = (ranM _ _ m-μ σ tt k ≤-refl , tt)
+      fold k F alg e (G ⊕f H) (minl x) n σ ge = case fold k F alg e G x n σ ge of λ where
+        (ranM (gives y n′) t r σ₁ _ l s , gy) → (ranM _ t (m-inl (fm-gives r)) σ₁ tt l s , gy)
+        (ranM (stop w) t r σ₁ c l s , _) → (ranM (stop w) t (m-inl (fm-stop r)) σ₁ c l s , tt)
+      fold k F alg e (G ⊕f H) (minr x) n σ ge = case fold k F alg e H x n σ ge of λ where
+        (ranM (gives y n′) t r σ₁ _ l s , gy) → (ranM _ t (m-inr (fm-gives r)) σ₁ tt l s , gy)
+        (ranM (stop w) t r σ₁ c l s , _) → (ranM (stop w) t (m-inr (fm-stop r)) σ₁ c l s , tt)
+      fold k F alg e (G ⊗f H) (mpair x x′) n σ ge = case fold k F alg e G x n σ ge of λ where
+        (ranM (stop w) t r σ₁ c l s , _) → (ranM (stop w) (t ++ []) (m-pair r stopped) σ₁ c l s , tt)
+        (ranM (gives y n₁) t₁ r σ₁ _ l₁ s₁ , gy) → case fold l₁ F alg e H x′ n₁ σ₁ ge of λ where
+          (ranM (gives y′ n₂) t₂ r′ σ₂ _ l₂ s₂ , gy′) →
+            (ranM _ (t₁ ++ t₂) (m-pair r (go-on (fm-gives r′))) σ₂ tt l₂ (≤-trans s₂ s₁) , (gy , gy′))
+          (ranM (stop w) t₂ r′ σ₂ c l₂ s₂ , _) →
+            (ranM (stop w) (t₁ ++ t₂) (m-pair r (go-on (fm-stop r′))) σ₂ c l₂ (≤-trans s₂ s₁) , tt)
 
   -- the runners of a table, built in order: each body runs over its prefix
   runners : ∀ {Γ} (ds : Defs Γ) → REnv ds
@@ -579,7 +596,7 @@ module _ (W : World) where
 
   -- ★ A14: EVERY TERM HAS A RUN, from every lent value, input, counter and
   -- world state, with any number of loop rounds
-  exec : ∀ {Γ} (ds : Defs Γ) {E A B} (k : ℕ) (f : Tm Γ E A B) (e : MV E) (v : MV A) (n : ℕ) → WSt → Ran ds f e v n
+  exec : ∀ {Γ} (ds : Defs Γ) {E A B} (k : ℕ) (f : Tm Γ E A B) (e : MV E) (v : MV A) (n : ℕ) → WSt → Ran ds f e v n k
   exec ds k f e v n σ = fst (Eval.go ds (runners ds) k f e v n σ (allGood e) (allGood v))
 
   -- ★ a world that always answers: a run it allows ends `exhausted` only
