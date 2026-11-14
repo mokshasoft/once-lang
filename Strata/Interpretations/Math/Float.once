@@ -39,9 +39,6 @@ signature fexp : Float -> Float
 -- Conversions
 ------------------------------------------------------------------------
 
--- | Convert integer to float
-signature intToFloat : Int -> Float
-
 -- | Convert float to integer (truncates toward zero)
 signature floatToInt : Float -> Int
 
