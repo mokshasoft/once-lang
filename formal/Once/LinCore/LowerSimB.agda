@@ -125,6 +125,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       h-clo   : fclosure fs′ ≡ fclosure fs
       h-link  : flink fs′ ≡ flink fs
       h-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
+      h-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
       h-stack : LocState.stackMem (floc fs′) ≡ LocState.stackMem (floc fs)
       h-words : (heapMem (floc fs′) (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 0)
                   ≡ just (SV-Ptr (AtDynamic (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 0))))
@@ -147,7 +148,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
     (step-at fs₅ (h , f₅) (code-step fs₄ lb) (step-at fs₆ (h , f₆) (storeat-step fs₅ 1 refl (ib 1 (s≤s (s≤s z≤n))))
     (step-at fs₇ (h , f₇) (code-step fs₆ lc) (step-at fs₈ (h , f₈) (storeat-step fs₇ 2 refl (ib 2 (s≤s (s≤s (s≤s z≤n)))))
     (step-at fs₉ (h , f₉) (code-step fs₈ lf) (step-at fs₁₀ (h , f₁₀) (storeat-step fs₉ 3 refl (ib 3 (s≤s (s≤s (s≤s (s≤s z≤n)))))) done))))))))) ,
-    record { h-pc = refl ; h-in = refl ; h-alloc = refl ; h-ret = refl ; h-clo = refl ; h-link = refl ; h-halt = refl
+    record { h-pc = refl ; h-in = refl ; h-alloc = refl ; h-ret = refl ; h-clo = refl ; h-link = refl ; h-halt = refl ; h-log = refl
            ; h-stack = refl
            ; h-words = w0 , w1 , w2 , w3
            ; h-other = other
@@ -239,7 +240,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   keepH : ∀ {fs fs′ w lb lc lf} → Header fs fs′ w lb lc lf → Keep fs fs′
   keepH H = record { k-frame = cong AllocState.current-frame (h-alloc H) ; k-slots = cong AllocState.frame-slots (h-alloc H)
                    ; k-saved = cong AllocState.saved-frames (h-alloc H) ; k-ret = h-ret H
-                   ; k-other = λ f x _ → cong (λ m → m f x) (h-stack H) ; k-halt = h-halt H ; k-inb = h-inb H }
+                   ; k-other = λ f x _ → cong (λ m → m f x) (h-stack H) ; k-halt = h-halt H ; k-log = h-log H ; k-inb = h-inb H }
 
   ranH : ∀ {hi fs fs′ w lb lc lf} → Header fs fs′ w lb lc lf → Ran 10 1 (AllocState.next-heap-ref (falloc fs)) hi fs fs′
   ranH {fs′ = fs′} H = record { r-keep = keepH H ; r-pc = h-pc H ; r-next = cong AllocState.next-heap-ref (h-alloc H)

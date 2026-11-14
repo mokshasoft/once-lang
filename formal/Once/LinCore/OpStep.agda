@@ -20,6 +20,8 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.Bool using (false; true)
 open import Data.Empty using (⊥-elim)
+open import Relation.Nullary using (¬_)
+open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
@@ -54,13 +56,34 @@ module OpSim {FS : FrameSemantics} (U : Univ)
   open CfgW
   open Agree {FS} U wordOf using (OpVal; at-arg)
   open import Once.LinCore.Moves {FS} using (Seg; slot; lea-step; mov-in-step; store-step; store-same; store-other
-                                           ; Ran; ran-trans; ran-regs; ran-store; keep-alloc)
+                                           ; store-frame; InBlk; Old)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
   open LocState using (heapMem) renaming (halted to fhalted)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps; step-at) renaming ([] to done)
   open AbstractExec {FS} using (exec-sigop-output; exec-sigop-halts)
+
+  -- what an op's flat run leaves: as `Ran`, but the log grows by the sigop's events
+  record OpRan (n lo hi : ℕ) (fs fs′ : FlatState) (evs : List SigOpEvent) : Set where
+    field
+      or-frame : AllocState.current-frame (falloc fs′) ≡ AllocState.current-frame (falloc fs)
+      or-slots : AllocState.frame-slots (falloc fs′) ≡ AllocState.frame-slots (falloc fs)
+      or-saved : AllocState.saved-frames (falloc fs′) ≡ AllocState.saved-frames (falloc fs)
+      or-ret   : FlatMachine.fret fs′ ≡ FlatMachine.fret fs
+      or-other : ∀ f x → ¬ f ≡ AllocState.current-frame (falloc fs) → LocState.stackMem (floc fs′) f x ≡ LocState.stackMem (floc fs) f x
+      or-halt  : fhalted (floc fs′) ≡ fhalted (floc fs)
+      or-inb   : InBlk fs → InBlk fs′
+      or-log   : LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ evs
+      or-pc    : fpc fs′ ≡ n + fpc fs
+      or-next  : AllocState.next-heap-ref (falloc fs′) ≡ AllocState.next-heap-ref (falloc fs)
+      or-old   : Old lo fs fs′
+      or-top   : ∀ x → hi ≤ x → slot fs′ x ≡ slot fs x
+  open OpRan public
+
+  -- the sigop's events, at the argument's address
+  op-evs : FlatState → Frame → List LTy → Sig → List SigOpEvent
+  op-evs fs φ S s = AbstractExec.sigop-events {FS} (info s) (at-arg fs ((budget φ ∸ ws S) ∸ wsz ⌜ sdom s ⌝))
 
   private
     new-top : ∀ B a s → (B ∸ s) ∸ a ≡ B ∸ (a + s)
@@ -75,7 +98,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           → ws (⌜ scod s ⌝ ∷ S) ≤ OP φ
           → Σ FlatState λ fs′ → FlatSteps prog (3 + length (answer (wsz ⌜ scod s ⌝) (budget φ ∸ ws S))) fs fs′
               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ y ∷ˢ os)
-              × Ran (3 + length (answer (wsz ⌜ scod s ⌝) (budget φ ∸ ws S))) 0 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
+              × OpRan (3 + length (answer (wsz ⌜ scod s ⌝) (budget φ ∸ ws S))) (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′ (op-evs fs φ S s)
   lop-sim prog fs φ s {Es} {S} {es} {os} {x} {y} ag seg h C fit = with-arg (c-stk C)
     where
       cf = AllocState.current-frame (falloc fs)
@@ -90,19 +113,17 @@ module OpSim {FS : FrameSemantics} (U : Univ)
       with-arg ((wx , px , sx) , st) =
         go (wsz ⌜ scod s ⌝) refl seg (ag d₀ wx px (subst (λ z → SlotsAt (slot fs) z wx) (sym (new-top (budget φ) (wsz ⌜ sdom s ⌝) (ws S))) sx))
         where
-          ran₃ : exec-sigop-halts (info s) (at-arg fs d₀) ≡ false → Ran 3 0 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃
-          ran₃ hf = ran-trans (ran-regs {fs = fs} (writeReg (LocState.regs (floc fs)) Output p))
-                      (ran-trans (ran-regs {fs = fs₁} (writeReg (LocState.regs (floc fs₁)) Input1 p))
-                      (record { r-keep = keep-alloc refl refl (λ _ _ _ → refl) (trans hf (sym h)) (λ I → I)
-                              ; r-pc = refl ; r-next = refl ; r-old = λ _ _ → refl ; r-top = λ _ _ → refl }))
-            where open import Once.LinCore.Moves {FS} using (r-keep; r-pc; r-next; r-old; r-top)
+          ran₃ : exec-sigop-halts (info s) (at-arg fs d₀) ≡ false → OpRan 3 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs₃ (op-evs fs φ S s)
+          ran₃ hf = record { or-frame = refl ; or-slots = refl ; or-saved = refl ; or-ret = refl ; or-other = λ _ _ _ → refl
+                           ; or-halt = trans hf (sym h) ; or-inb = λ I → I ; or-log = refl ; or-pc = refl ; or-next = refl
+                           ; or-old = λ _ _ → refl ; or-top = λ _ _ → refl }
           go : ∀ n → wsz ⌜ scod s ⌝ ≡ n
              → Seg prog (fpc fs) (lea-slot d₀ ∷ mov-to-input ∷ instr-sigop (info s) ∷ answer n bot)
              → (exec-sigop-halts (info s) (at-arg fs d₀) ≡ false)
                × Σ (List W) (λ wy → VW (heapMem (floc fs)) y wy × ((wy ≡ []) Data.Sum.⊎ (wy ≡ out ∷ [])))
              → Σ FlatState λ fs′ → FlatSteps prog (3 + length (answer n bot)) fs fs′
                  × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ y ∷ˢ os)
-                 × Ran (3 + length (answer n bot)) 0 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
+                 × OpRan (3 + length (answer n bot)) (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′ (op-evs fs φ S s)
           go zero eC (g₁ , g₂ , g₃ , _) (hf , .[] , pw , inj₁ refl) =
             fs₃ ,
             step-at fs₁ (h , g₁) (lea-step fs d₀) (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) refl done)) ,
@@ -121,7 +142,12 @@ module OpSim {FS : FrameSemantics} (U : Univ)
                             , stkW-frame os fitS (λ z lo _ → store-other (floc fs₃) cf dst out z
                                                    (λ e → Data.Nat.Properties.<-irrefl e (<-≤-trans b1<b lo))) st
                    ; c-efit = c-efit C ; c-sfit = fit } ,
-            ran-trans (ran₃ hf) (ran-store fs₃ dst _ (<-≤-trans b1<b (Data.Nat.Properties.m∸n≤m (budget φ) (ws S))))
+            record { or-frame = refl ; or-slots = refl ; or-saved = refl ; or-ret = refl
+                   ; or-other = λ f z ne → store-frame (floc fs₃) cf dst out f z (λ e → ne (sym e))
+                   ; or-halt = trans hf (sym h) ; or-inb = λ I → I ; or-log = refl ; or-pc = refl ; or-next = refl
+                   ; or-old = λ _ _ → refl
+                   ; or-top = λ z le → store-other (floc fs₃) cf dst out z
+                                         (λ e → Data.Nat.Properties.<-irrefl e (<-≤-trans b1<b (≤-trans (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) le))) }
             where
               dst = bot ∸ 1
               h₃ : fhalted (floc fs₃) ≡ false
@@ -198,8 +224,19 @@ module OpR {FS : FrameSemantics} (U : Univ)
 
   st-op : ∀ {Γ} {ds : Defs Γ} {Es S V} {s : Sig} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) V} (sb : Sub root (prim ds (lop s) ⨾ k))
             {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝} {y : MV ⌜ scod s ⌝} {fs}
-        → Here sb (es ∥ x ∷ˢ os) fs → OpVal s x y fs → Moved (next sb) fs 0 (es ∥ y ∷ˢ os)
-  st-op {s = s} sb {fs = fs} H ag = straight sb H _ 0 refl (λ sg h C → lop-sim prog fs φ s ag sg h C (proj₂ (shape-fits (next sb))))
+        → Here sb (es ∥ x ∷ˢ os) fs → OpVal s x y fs
+        → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps prog N fs fs′ × Here (next sb) (es ∥ y ∷ˢ os) fs′
+            × OpRan N (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′ (op-evs fs φ S s)
+  st-op {S = S} {s = s} sb {fs = fs} H ag = fin (lop-sim prog fs φ s ag (Seg-++ˡ prog (fpc fs) (insC sb) _ (seg-at sb H)) (Here.h-run H) (Here.h-cfg H)
+                                                  (proj₂ (shape-fits (next sb))))
+    where
+      fin : _ → _
+      fin (fs′ , st , C′ , OR) =
+        _ , fs′ , st ,
+        record { h-pc = trans (or-pc OR) (trans (cong (length (insC sb) +_) (Here.h-pc H))
+                          (trans (Data.Nat.Properties.+-comm (length (insC sb)) (pos sb)) (sym (pos-next sb))))
+               ; h-run = trans (or-halt OR) (Here.h-run H) ; h-cfg = C′ } ,
+        OR
 
   st-opend : ∀ {Γ} {ds : Defs Γ} {Es S V} {s : Sig} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) V} (sb : Sub root (prim ds (lop s) ⨾ k))
                {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝} {fs}
