@@ -767,7 +767,7 @@ two-list = lIn ∘l linr ∘l (lconst 7 ⊗l (build ∘l lconst 5)) ∘l ρl⁻
 fn-prog : LTm ε One One
 fn-prog = drop ∘l lev ∘l (lid ⊗l lconst 0) ∘l ρl⁻ ∘l lcata ListF (lcase fn-nil fn-cons) ∘l two-list
 
-fn-run : Ran world ε fn-prog mone mone 0 0
+fn-run : Ran world ε fn-prog mone mone 0 0 tt
 fn-run = exec world ε 0 fn-prog mone mone 0 tt
 
 -- its events: the list built (three 3-word nodes) and freed by the fold, a
@@ -818,7 +818,7 @@ nu-prog : LTm ε One One
 nu-prog = drop ∘l lul ∘l (lop emit ⊗l lid) ∘l lul ∘l (lop emit ⊗l lout) ∘l lout
         ∘l lunf ∘l ((pick ∘l linl) ⊗l lconst 3) ∘l ρl⁻
 
-nu-run : Ran world ε nu-prog mone mone 0 0
+nu-run : Ran world ε nu-prog mone mone 0 0 tt
 nu-run = exec world ε 0 nu-prog mone mone 0 tt
 
 -- what the world saw: each observation runs the coalgebra once
@@ -867,7 +867,7 @@ ho-ir = apply ∘ ⟨ emitter ∘ fst ∘ Outν NatsF ∘ snd ∘ Outν NatsF �
                     ∘ ⟨ const 1 , nats-ir ∘ ⟨ terminal , const 3 ⟩ ⟩
                 , terminal ⟩
 
-ho-run : Ran world ε (tr ho-ir) mone mone 0 0
+ho-run : Ran world ε (tr ho-ir) mone mone 0 0 tt
 ho-run = exec world ε 0 (tr ho-ir) mone mone 0 tt
 
 -- the first observation gives the layer as it was built (no call); the
@@ -903,7 +903,7 @@ calls-P = (ε ▹ SigOp succ ∣ i-op) ▹ (SigOp emit ∘ Call here) ∣ i-∘ 
 calls-main : IR Defs₂ One One
 calls-main = Call here ∘ Call (there here) ∘ const 9
 
-calls-run : Ran world (trP calls-P) (tr calls-main) mone mone 0 0
+calls-run : Ran world (trP calls-P) (tr calls-main) mone mone 0 0 tt
 calls-run = exec world (trP calls-P) 0 (tr calls-main) mone mone 0 tt
 
 calls-ios : ios (Ran.trace calls-run) ≡ io-call succO 9 10 ∷ io-call succO 10 11 ∷ io-call emitO 11 tt ∷ []
