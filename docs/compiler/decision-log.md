@@ -23595,3 +23595,15 @@ blocks. What is needed is that every op a run (or the image) executes is one of 
 * Thread an ops predicate through `Total.exec` (as its `Good` values): duplicates the universe's
   closure bookkeeping.
 * Restrict the core's `Sig` to declared ops by construction: makes the core depend on the interpretation.
+
+### D430 refinement (2026-11-15): the budget is read in loop entries and control steps
+Found discharging `FlatTop.o-cut`/`o-sound` (master's `flat-cut`, `start-sound`). A cut run must show the
+machine has taken a control step per unit of the budget. The image simulation now counts loop entries
+(`ImageSim.OutI`/`PausedI` at least `j`, `simI` at the run's `Spends.rounds`, a round started at each
+`i-loop`); a run spends at most its rounds (`spent-rounds`) and a cut one all of its budget (`cut-zero`);
+the flat machine takes a control step at each loop entry (its label: `GlobalLocal.gloop-ctrl`, carried by
+`WordStep.word-stepC` and `RunWord.wholeC`). A cut pauses the image with exactly the run's events
+(`HaltIf exhausted`): a cut anywhere (`r-cut`, the cut-anywhere path) is no longer the lowering's run
+(`Machine.Plain (r-cut) = ⊥`), as `Spends` already said. The machine never faults (`o-sound`): a halted
+state the start reaches is the world's run's end at a budget past it (determinism), whose halting step
+keeps the machine's ending (an op's halt is not a fault: `StepOp.OpHalt`).
