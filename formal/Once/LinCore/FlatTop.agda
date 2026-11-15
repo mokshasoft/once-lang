@@ -20,7 +20,7 @@
 
 {-# OPTIONS --guardedness #-}
 
-open import Data.Nat using (ℕ; suc; _≤_; _+_)
+open import Data.Nat using (ℕ; zero; suc; _≤_; _+_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -28,7 +28,9 @@ import Data.Maybe
 import Data.Bool
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (tt)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+import Data.Maybe.Properties
+import Data.Nat.Properties
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Function using (case_of_)
 open import Once.LinCore.Flat using (Base)
@@ -148,7 +150,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
               (decl : ∀ {s} → s ∈ ops (Program.U ds f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))) where
     open EndR {Mach} ds f₀ ldConst ld-nl wordOf using (ends)
     open RunW {Mach} ds f₀ ldConst ld-nl wordOf using (from-startC)
-    open FlatEventTrace {Mach} using (flat-ctrls; flat-events-steps; flat-events-step; chain-events; chain-log; chain-left; chain-ctrls; flat-ctrls-steps)
+    open FlatEventTrace {Mach} using (flat-ctrls; flat-events-steps; flat-events-step; chain-events; chain-log; chain-left; chain-ctrls; flat-ctrls-steps; chain-ctrls-≤)
     open FlatStepsAPI {Mach} using (Sound)
 
     private
@@ -163,8 +165,6 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         -- class (OpMachine.Dispatch) but for a structured answer (an undeclared FFI op's stop
         -- is excluded by linkedness, `decl`)
         o-ops   : OM.OwedOp
-        -- the machine's run from the start never faults (master's `start-sound`)
-        o-sound : Sound image start-fs
 
     -- the world's run cuts only at the program's ops: it stays inside the universe (`RunOps.run-ok`)
     o-cutsin : ∀ k → CutsIn (λ s → s ∈ ops (Program.U ds f₀)) (Ran.run (R k))
@@ -267,6 +267,94 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
                 N , trans (cut-events fl) (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee)) eo) ,
                 λ _ → ≤-trans (kr tt) (≤-trans rl (≤-trans cc (cut-ctrls fl)))
 
+    -- ★★ THE MACHINE NEVER FAULTS (master's `start-sound`): a running state the start reaches has not
+    -- (`chain-left`); a halted one is where the world's run at a budget past it ends, unfaulted — were that
+    -- run cut, the machine would have taken more control steps than it had steps to that state
+    module ARo (O : Owed) = AgreeRun.AR {Mach} ds f₀ ldConst ld-nl wordOf ι
+                      (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op (Owed.o-ops O) decl {s} {x} {y₀} {tp} {L} {L′})
+                      (λ {s} {x} {tp} {L} {L′} → OM.Dispatch.o-opend (Owed.o-ops O) decl {s} {x} {tp} {L} {L′})
+
+    private
+      true≢false : Data.Bool.true ≡ Data.Bool.false → ⊥
+      true≢false ()
+
+      -- the machine is deterministic: the shorter chain is the longer's start
+      mutual
+        meet : ∀ {n N a b c} → FlatSteps image n a b → FlatSteps image N a c → n ≤ N
+             → Σ ℕ λ k → FlatSteps image k b c × N ≡ n + k
+        meet FlatStepsAPI.[] W le = _ , W , refl
+        meet (FlatStepsAPI._∷_ (h , f) p) (FlatStepsAPI._∷_ (h′ , f′) w) (Data.Nat.s≤s le) =
+          meet-at (Data.Maybe.Properties.just-injective (trans (sym f) f′)) p w le
+
+        meet-at : ∀ {n N a b c i i′} → i ≡ i′
+                → FlatSteps image n (FlatMachine.flat-exec-instr {Mach} i image a) b
+                → FlatSteps image N (FlatMachine.flat-exec-instr {Mach} i′ image a) c → n ≤ N
+                → Σ ℕ λ k → FlatSteps image k b c × suc N ≡ suc n + k
+        meet-at refl p w le = let (k , q , e) = meet p w le in k , q , cong suc e
+
+      stuck-at : ∀ {k b c} → FlatSteps image k b c → LocState.halted (floc b) ≡ Data.Bool.true → b ≡ c
+      stuck-at FlatStepsAPI.[] h = refl
+      stuck-at (FlatStepsAPI._∷_ (h′ , _) _) h = ⊥-elim (true≢false (trans (sym h) h′))
+
+      same-end : ∀ {n N b c} → FlatSteps image n start-fs b → FlatSteps image N start-fs c
+               → LocState.halted (floc b) ≡ Data.Bool.true → LocState.halted (floc c) ≡ Data.Bool.true → b ≡ c
+      same-end {n} {N} P W h h′ = by (Data.Nat.Properties.≤-total n N)
+        where
+          by : _ → _
+          by (inj₁ le) = let (k , Q , _) = meet P W le in stuck-at Q h
+          by (inj₂ le) = let (k , Q , _) = meet W P le in sym (stuck-at Q h′)
+
+      cut-past : ∀ {n N b c} → FlatSteps image n start-fs b → FlatSteps image N start-fs c
+               → LocState.halted (floc b) ≡ Data.Bool.true → suc n ≤ N → ⊥
+      cut-past {n} P W h le = at (meet P W (Data.Nat.Properties.≤-trans (Data.Nat.Properties.n≤1+n n) le))
+        where
+          at : _ → ⊥
+          at (zero , FlatStepsAPI.[] , e) =
+            Data.Nat.Properties.1+n≰n (subst (suc n ≤_) (trans e (+-identityʳ n)) le)
+          at (suc _ , FlatStepsAPI._∷_ (h′ , _) _ , _) = true≢false (trans (sym h) h′)
+
+      unfaulted : ∀ {M fs₀ fs′} → FlatSteps image M start-fs fs₀ → LocState.halted (floc fs₀) ≡ Data.Bool.false
+                → LocState.faulted (floc fs′) ≡ LocState.faulted (floc fs₀) → LocState.faulted (floc fs′) ≡ Data.Bool.false
+      unfaulted st₀ r₀ e = trans e (cong proj₂ (chain-left st₀ r₀))
+
+      -- what the world's run at a budget leaves the machine: halted unfaulted, or cut a control step a unit
+      Witness : ℕ → Set
+      Witness K = (Σ ℕ λ N → Σ FlatState λ fs → FlatSteps image N start-fs fs
+                     × LocState.halted (floc fs) ≡ Data.Bool.true × LocState.faulted (floc fs) ≡ Data.Bool.false)
+                ⊎ (Σ ℕ λ N → Σ FlatState λ fs → Σ (FlatSteps image N start-fs fs) λ W → K ≤ chain-ctrls W)
+
+      witness : Owed → ∀ K → Witness K
+      witness O K = wb (Ran.run (R K)) (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (o-uncut O K))
+                      (λ {mt} st e → ARo.agrees-all O st (ARo.wtr-ios O (Ran.trace (R K)) mt (sym e) (Ran.world (R K))))
+                      (λ ex → subst (K ≤_) (trans (cong (rounds (Ran.run (R K)) +_) (cut-zero (Ran.run (R K)) (Ran.spends (R K)) (o-uncut O K) ex)) (+-identityʳ _))
+                                    (spent-rounds (Ran.run (R K)) (Ran.spends (R K))))
+        where
+          wb : ∀ {o t} (run : Run ds f₀ mone mone 0 o t) → Plain run
+             → (∀ {mt sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′}
+                  (st : StepsI main []ʳ start 0 mt c′ r′ m′ n′) → ios mt ≡ ios t → AgreesAll [] st)
+             → (Exh o → K ≤ rounds run) → Witness K
+          wb {gives mone n′} run pl ag kr = case image-noleak run pl of λ where
+            (mt , st , _ , _ , _ , eio) → case ends ld entry-frame entry-regs st (ag st eio) f-end of λ where
+              (N , fs′ , fst , hlt , lg , (fs₀ , M , st₀ , r₀ , e)) → inj₁ (N , fs′ , fst , hlt , unfaulted {fs′ = fs′} st₀ r₀ (cong proj₂ e))
+          wb {stop Once.LinCore.Events.halted} run pl ag kr = case image-halts run pl of λ where
+            (mt , sh , U′ , r′ , m′ , n′ , st , eio) → case ends ld entry-frame entry-regs st (ag st eio) f-halt of λ where
+              (N , fs′ , fst , hlt , lg , (fs₀ , M , st₀ , r₀ , l₀)) → inj₁ (N , fs′ , fst , hlt , unfaulted {fs′ = fs′} st₀ r₀ (cong proj₂ l₀))
+          wb {stop Once.LinCore.Events.exhausted} run pl ag kr = case image-cut run pl of λ where
+            (mt , sh , U′ , c′ , r′ , m′ , n′ , st , eio , rl) →
+              case from-startC ld entry-frame entry-regs st (ag st eio) of λ where
+                (N , fs′ , fl , lg , cc) → inj₂ (N , fs′ , fl , ≤-trans (kr tt) (≤-trans rl cc))
+
+    o-sound : Owed → Sound image start-fs
+    o-sound O {n} {fs′} P = by-halt (LocState.halted (floc fs′)) refl
+      where
+        on : LocState.halted (floc fs′) ≡ Data.Bool.true → Witness (suc n) → LocState.faulted (floc fs′) ≡ Data.Bool.false
+        on h (inj₁ (N , fsₑ , W , he , fe)) = subst (λ z → LocState.faulted (floc z) ≡ Data.Bool.false) (sym (same-end P W h he)) fe
+        on h (inj₂ (N , fsₑ , W , c)) = ⊥-elim (cut-past P W h (≤-trans c (chain-ctrls-≤ W)))
+
+        by-halt : ∀ b → LocState.halted (floc fs′) ≡ b → LocState.faulted (floc fs′) ≡ Data.Bool.false
+        by-halt Data.Bool.false h = cong proj₂ (chain-left P h)
+        by-halt Data.Bool.true  h = on h (witness O (suc n))
+
 ------------------------------------------------------------------------
 -- ★ ONE LINK UP: master's IR program and its meaning (`evalᴰ` at the table's
 -- environment, as the apex states it). The program translates (`FromIR`);
@@ -323,4 +411,4 @@ module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
                       , λ z → c (trans (cong (λ r → endAp (proj₂ r)) (o-bridge k)) z)
 
     flat-sound : OwedIR → FlatStepsAPI.Sound {Mach} TP.image TP.start-fs
-    flat-sound O = TP.Owed.o-sound (OwedIR.o-top O)
+    flat-sound O = TP.o-sound ld decl (OwedIR.o-top O)
