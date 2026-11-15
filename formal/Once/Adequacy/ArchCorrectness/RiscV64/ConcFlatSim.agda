@@ -399,7 +399,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fm
   ; block-step-store-at-slot; block-step-worklist-push
   ; block-step-store-indirect; block-step-store-indirect-stack
   ; block-step-store-indirect-suc; block-step-store-indirect-suc-stack
-  ; block-step-load-at; block-step-store-at; block-step-addr-at; addr-at-no-wrap
+  ; block-step-load-at; block-step-store-at; block-step-addr-at; addr-at-no-wrap; block-step-load-at-stack; block-step-store-at-stack
   ; block-step-c-jmp
   ; block-step-c-branch-tag-zero; block-step-c-branch-tag-nz
   ; block-step-c-thunk; block-step-c-start; block-step-out-nz; block-step-c-ret
@@ -564,6 +564,8 @@ riscv64-block-steps = record
   ; bs-addr-at                  = riscv64-addr-at
   ; bs-store-indirect-suc-stack = block-step-store-indirect-suc-stack
   ; bs-c-jmp                    = block-step-c-jmp
+  ; bs-load-at-stack            = block-step-load-at-stack
+  ; bs-store-at-stack           = block-step-store-at-stack
   ; bs-c-branch-tag-zero        = block-step-c-branch-tag-zero
   ; bs-c-branch-tag-nz          = block-step-c-branch-tag-nz
   ; bs-out-nz                   = block-step-out-nz

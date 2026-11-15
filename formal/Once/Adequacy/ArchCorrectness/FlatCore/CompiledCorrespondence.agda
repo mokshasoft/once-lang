@@ -522,6 +522,24 @@ record BlockSteps : Set₁ where
       → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
       → CRL.RunLow prog fs
       → BlockStep hv prog fs s (addr-at k)
+    -- D435: a load and a store through a STACK pointer — a slot inside a live
+    -- frame's window, the gate's outcome (the instruction is the heap's; an
+    -- offset ADDRESS is a heap block's only)
+    bs-load-at-stack :
+      ∀ {hv : HeapView} prog fs s k f j w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (load-at k)
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+      → ExecFinal.frame-gate {FS} (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+      → LocState.stackMem (floc fs) f (k + j) ≡ just w
+      → BlockStep hv prog fs s (load-at k)
+    bs-store-at-stack :
+      ∀ {hv : HeapView} prog fs s k f j → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (store-at k)
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+      → ExecFinal.frame-gate {FS} (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+      → BlockStep hv prog fs s (store-at k)
     ------------------------------------------------------------------
     -- GROUP 3b, the band's other half — CONTROL, `out-nz`, and the two frame
     -- markers.

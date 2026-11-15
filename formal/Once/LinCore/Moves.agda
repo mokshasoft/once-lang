@@ -204,7 +204,7 @@ mvSS-run prog fs a b (suc n) (f₁ , f₂ , s) h d nc with d 0 (s≤s z≤n)
 -- holds the pointer and keeps it.
 ------------------------------------------------------------------------
 
-open ExecFinal {FS} using (exec-load-at-resolved; exec-load-with-value; frame-gate)
+open ExecFinal {FS} using (exec-load-at-resolved; exec-load-with-value; frame-gate; heap-gate)
 open import Once.LinCore.MoveCode using (mvPS)
 
 -- a load at an offset from `Input1`'s pointer
@@ -646,13 +646,13 @@ open ExecFinal {FS} using (exec-addr-at-resolved; exec-addr-in-block)
 
 -- an address at an offset from `Input1`'s pointer, inside its block
 addr-step : ∀ (fs : FlatState) o {loc} → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
-          → frame-gate (falloc fs) o (just loc) ≡ just loc
+          → heap-gate (just loc) ≡ just loc
           → in-block? (block-size (falloc fs)) (offsetLoc loc o) ≡ true
           → flat-step-straight (addr-at o) fs
             ≡ record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output (SV-Ptr (offsetLoc loc o)) }
                         ; fpc = suc (fpc fs) }
 addr-step fs o {loc} e₁ g e₂ =
-  trans (cong (λ r → record fs { floc = exec-addr-at-resolved (block-size (falloc fs)) o (frame-gate (falloc fs) o (sv-as-loc r)) (floc fs) ; fpc = suc (fpc fs) }) e₁)
+  trans (cong (λ r → record fs { floc = exec-addr-at-resolved (block-size (falloc fs)) o (heap-gate (sv-as-loc r)) (floc fs) ; fpc = suc (fpc fs) }) e₁)
     (trans (cong (λ m → record fs { floc = exec-addr-at-resolved (block-size (falloc fs)) o m (floc fs) ; fpc = suc (fpc fs) }) g)
         (cong (λ q → record fs { floc = exec-addr-in-block q (offsetLoc loc o) (floc fs) ; fpc = suc (fpc fs) }) e₂))
 

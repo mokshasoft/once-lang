@@ -359,7 +359,7 @@ sp-addr-in-block cf ls false loc okp wf = sp-fault cf ls wf
 
 sp-addr-at : ∀ (cf : Frame) (al : AllocState {FS}) (bs : ℕ → ℕ) (ls : LocState FS) (k : ℕ) (v : StoredValue FS)
            → StackPtrOK v → SPInv ls
-           → SPInv (exec-addr-at-resolved bs k (frame-gate al k (sv-as-loc v)) ls)
+           → SPInv (exec-addr-at-resolved bs k (heap-gate (sv-as-loc v)) ls)
 sp-addr-at cf al bs ls k (SV-Ptr (AtStack _ _)) () wf
 sp-addr-at cf al bs ls k (SV-Ptr (AtDynamic hl)) _ wf =
   sp-addr-in-block cf ls (in-block? bs (AtDynamic (offsetHL hl k))) (AtDynamic (offsetHL hl k)) tt wf

@@ -468,7 +468,7 @@ pb-abstract (store-at n)     ls alloc ff am wfS wf =
   pb-store-at-resolved _ _ ls n (frame-gate alloc n (sv-as-loc (readReg (regs ls) Input1)))
                        (readReg (regs ls) Output) (pb-regs wf Output) wf
 pb-abstract (addr-at n)     ls alloc ff am wfS wf =
-  pb-addr-at-resolved _ ls n (frame-gate alloc n (sv-as-loc (readReg (regs ls) Input1))) wf
+  pb-addr-at-resolved _ ls n (heap-gate (sv-as-loc (readReg (regs ls) Input1))) wf
 pb-abstract (instr-room n)     ls alloc ff am wfS wf = wf
 pb-abstract (instr-push-frame cap)  ls alloc () am wfS wf
 pb-abstract instr-pop-frame         ls alloc () am wfS wf

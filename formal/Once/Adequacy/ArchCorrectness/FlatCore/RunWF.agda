@@ -71,7 +71,7 @@ open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module 
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open MemOps {FS} using (readLoc)
-open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved; exec-load-at-resolved; exec-store-at-resolved; frame-gate; gate-or; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
+open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved; exec-load-at-resolved; exec-store-at-resolved; frame-gate; heap-gate; gate-or; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
 open import Once.Memory.HeapAddress using (offsetHL)
 open import Data.Bool using (T)
 open import Data.Nat.Properties using (<ᵇ⇒<)
@@ -1737,7 +1737,7 @@ addr-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → h
                    → fetch prog (fpc fs) ≡ just (addr-at k)
                    → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
 addr-at-target-ptr prog fs k r h ftq =
-  in1-ptr fs (λ ml → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (frame-gate (falloc fs) k ml) (floc fs))) refl
+  in1-ptr fs (λ ml → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (heap-gate ml) (floc fs))) refl
           (step-ok prog fs (addr-at k) r h ftq)
 
 addr-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
@@ -1747,7 +1747,7 @@ addr-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → R
 addr-at-in-block prog fs k hl r h ftq i-eq = ib _ refl
   where
     ok : LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (just (AtDynamic hl)) (floc fs)) ≡ false
-    ok = at (λ v → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (frame-gate (falloc fs) k (sv-as-loc v)) (floc fs))) i-eq
+    ok = at (λ v → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (heap-gate (sv-as-loc v)) (floc fs))) i-eq
             (step-ok prog fs (addr-at k) r h ftq)
     ib : ∀ b → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ b
        → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true

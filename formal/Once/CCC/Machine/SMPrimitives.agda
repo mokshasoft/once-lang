@@ -980,7 +980,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-heapMem (load-at k) s alloc nhw-load-at =
     load-at-heap k (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s
   exec-abstract-preserves-heapMem (addr-at k) s alloc nhw-addr-at =
-    addr-at-heap (block-size alloc) k (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s
+    addr-at-heap (block-size alloc) k (ExecFinal.heap-gate (sv-as-loc (readReg (regs s) Input1))) s
   exec-abstract-preserves-heapMem (instr-ctrl _) s alloc nhw-instr-ctrl = refl
   exec-abstract-preserves-heapMem mov-to-input s alloc nhw-mov-to-input = refl
   exec-abstract-preserves-heapMem load-indirect s alloc nhw-load-indirect
@@ -1051,7 +1051,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-stack-slot (load-at k) s alloc f slot _ _ =
     cong (λ st → st f slot) (load-at-stack k (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s)
   exec-abstract-preserves-stack-slot (addr-at k) s alloc f slot _ _ =
-    cong (λ st → st f slot) (addr-at-stack (block-size alloc) k (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s)
+    cong (λ st → st f slot) (addr-at-stack (block-size alloc) k (ExecFinal.heap-gate (sv-as-loc (readReg (regs s) Input1))) s)
   exec-abstract-preserves-stack-slot (instr-ctrl _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot mov-to-input s alloc f slot _ _ = refl
   -- Plan 0.13.2: load-indirect/-suc case-split on sv-as-loc; both
@@ -2329,7 +2329,7 @@ module TracePrimitives {FS : FrameSemantics} where
   -- D385: and the addressed cell is one of its block's
   InstrWF s alloc (addr-at k)              =
     ∃-syntax (λ (loc : ValueLocation FS) →
-      (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1)) ≡ just loc) ×
+      (ExecFinal.heap-gate (sv-as-loc (readReg (regs s) Input1)) ≡ just loc) ×
       (in-block? (block-size alloc) (offsetLoc loc k) ≡ true))
   -- D270: a SigOp MAY halt (its `EffectShape`), a case runs a sub-trace and
   -- a loop can run out of fuel — so for these three the witness IS the
@@ -2403,7 +2403,7 @@ module TracePrimitives {FS : FrameSemantics} where
     with in-block? (block-size alloc) (offsetLoc loc k) | ib
   ... | .true | refl = trans (writeLoc-halted s (offsetLoc loc k) (readReg (regs s) Output)) h-eq
   exec-abstract-preserves-halted-WF (addr-at k)             s alloc h-eq (loc , rdi-eq , ib)
-    with ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1)) | rdi-eq
+    with ExecFinal.heap-gate (sv-as-loc (readReg (regs s) Input1)) | rdi-eq
   ... | .(just loc) | refl
     with in-block? (block-size alloc) (offsetLoc loc k) | ib
   ... | .true | refl = h-eq

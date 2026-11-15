@@ -1137,6 +1137,87 @@ block-step-store-at {hv} prog fs s k hl cc h ft i-eq live ib guard =
     pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (store-at k) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (store-at k) ft))
 
+-- D435: a load and a store through a STACK pointer — the same instruction,
+-- the slot of a live frame's window (the gate's outcome) in place of a cell
+block-step-load-at-stack : ∀ {hv : HeapView} prog fs s k f q w → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (load-at k)
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f q)
+  → ExecFinal.frame-gate {FS} (falloc fs) k (just (AtStack f q)) ≡ just (AtStack f q)
+  → LocState.stackMem (floc fs) f (k + q) ≡ just w
+  → BlockStep hv prog fs s (load-at k)
+block-step-load-at-stack {hv} prog fs s k f q w cc h ft i-eq g h-eq =
+  post , exec-eq , record { dataCorr = C.sim-load-at-stack k f q w fs s _ dc i-eq g h-eq (C.sets-role-riscv64 s role-out _ _)
+                          ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-rv : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (ld a0 t0 (slot-to-disp k))
+    fetch-rv = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) (load-at k) ft)
+    rd : R.readMem (R.State.memory s) (R.effectiveAddr (R.State.regs s) t0 (slot-to-disp k))
+       ≡ just (C.enc-sv hv w)
+    rd = C.stack-read k f q w dc i-eq g h-eq
+    post : R.State
+    post = record s { regs = R.writeReg (R.State.regs s) a0 (C.enc-sv hv w) ; pc = R.State.pc s + 1 }
+    snh : R.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-ld {compile-trace prog} {s} {a0} {t0} {slot-to-disp k} {C.enc-sv hv w} fetch-rv rd
+    exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (load-at k) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (load-at k) ft))
+
+block-step-store-at-stack : ∀ {hv : HeapView} prog fs s k f q → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (store-at k)
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f q)
+  → ExecFinal.frame-gate {FS} (falloc fs) k (just (AtStack f q)) ≡ just (AtStack f q)
+  → BlockStep hv prog fs s (store-at k)
+block-step-store-at-stack {hv} prog fs s k f q cc h ft i-eq g =
+  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
+                          ; ret-eq = subst (λ m → C.RetAddrs (blk-off prog) m
+                                                    (riscv64-link-claim s) (flink fs)
+                                                    (C.frames-of (falloc fs)) (fret fs))
+                                           (cong₂ (R.writeMem (R.State.memory s)) (sym addr-eq) refl)
+                                           (C.ret-write-in-window (blk-off prog) (R.State.memory s)
+                                              (riscv64-link-claim s) (riscv64-link-claim s)
+                                              (flink fs) (LocState.stackMem (floc fs)) _ (C.lo hv) (C.frames-of (falloc fs)) (fret fs) f (k + q)
+                                              (C.gate-win (falloc fs) k f q g)
+                                              -- the head row is a REGISTER claim: a memory write cannot touch it
+                                              (λ c w ne p → p)
+                                              (C.stack-eq dc) (ret-eq cc))
+                          ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-rv : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (sd a0 t0 (slot-to-disp k))
+    fetch-rv = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) (store-at k) ft)
+    addr-eq : R.effectiveAddr (R.State.regs s) t0 (slot-to-disp k) ≡ frame-base FS f + slot-to-disp (k + q)
+    addr-eq = C.stack-addr k f q dc i-eq
+    post : R.State
+    post = record s { memory = R.writeMem (R.State.memory s)
+                                 (R.effectiveAddr (R.State.regs s) t0 (slot-to-disp k))
+                                 (R.readReg (R.State.regs s) a0)
+                    ; pc = R.State.pc s + 1 }
+    snh : R.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-sd {compile-trace prog} {s} {a0} {t0} {slot-to-disp k} fetch-rv
+    exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    post-eq : post ≡ R.mkstate (R.State.regs s)
+                        (R.writeMem (R.State.memory s) (R.effectiveAddr (R.State.regs s) t0 (slot-to-disp k))
+                           (C.enc-sv hv (readReg (regs (floc fs)) Output)))
+                        (R.State.pc s + 1) (R.State.halted s)
+    post-eq = cong (λ m → R.mkstate (R.State.regs s) m (R.State.pc s + 1) (R.State.halted s))
+                   (cong (R.writeMem (R.State.memory s) (R.effectiveAddr (R.State.regs s) t0 (slot-to-disp k))) (C.out-eq dc))
+    dataPost : C.FlatCorr hv (flat-exec-instr (store-at k) prog fs) post
+    dataPost = subst (C.FlatCorr hv (flat-exec-instr (store-at k) prog fs)) (sym post-eq)
+                     (C.sim-store-at-stack k f q fs s _ dc i-eq g (C.sets-mem-riscv64 s _ _ _))
+    pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (store-at k) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (store-at k) ft))
+
 ------------------------------------------------------------------------
 -- THE FRAME MOVERS (0.65 G2) — the three that touch no stack pointer.
 ------------------------------------------------------------------------

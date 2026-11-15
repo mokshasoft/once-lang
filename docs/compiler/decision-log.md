@@ -23736,6 +23736,9 @@ different cell on the hardware than in the machine. The machine does not check s
   anywhere", retires), only the gate's outcome at each access. Nothing is emitted for the check.
 * D434's "the heap never points at the stack" is a property of the lowering (stack addresses come only from
   `lea-slot` and reach only registers and frame slots); the arch correspondence does not depend on it.
+* `addr-at k` forms an address at an offset of a HEAP block only (D385); through a stack pointer it faults:
+  `lea-slot` is the one producer of stack addresses (D434). (Found doing it, 2026-11-15: an offset address
+  into a frame is never emitted, and on riscv64 it would need a no-wrap bound of its own.)
 
 ### Alternatives
 * A run fact in `Emitted` ("every access through a stack pointer is in a live window", proved for every

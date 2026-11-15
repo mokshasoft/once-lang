@@ -881,6 +881,13 @@ module ExecFinal {FS : FrameSemantics} where
   frame-gate al k (just (AtDynamic hl)) = just (AtDynamic hl)
   frame-gate al k nothing               = nothing
 
+  -- D435: an offset ADDRESS is formed inside a heap block only; a stack
+  -- address comes from `lea-slot` alone (D434)
+  heap-gate : Maybe (ValueLocation FS) → Maybe (ValueLocation FS)
+  heap-gate (just (AtDynamic hl)) = just (AtDynamic hl)
+  heap-gate (just (AtStack _ _))  = nothing
+  heap-gate nothing               = nothing
+
   -- the gate passes the location as it is, or faults
   stack-gate-or : ∀ (b : Bool) (loc : ValueLocation FS) → (stack-gate b loc ≡ just loc) ⊎ (stack-gate b loc ≡ nothing)
   stack-gate-or true  loc = inj₁ refl
@@ -2175,7 +2182,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- load-at / store-at / addr-at: the offset forms (plan 0.123 B.4 R1).
   exec-abstract (load-at k) s alloc  = exec-load-at-resolved k Output (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s , alloc
   exec-abstract (store-at k) s alloc = exec-store-at-resolved (block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s , alloc
-  exec-abstract (addr-at k) s alloc  = exec-addr-at-resolved (block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s , alloc
+  exec-abstract (addr-at k) s alloc  = exec-addr-at-resolved (block-size alloc) k (heap-gate (sv-as-loc (readReg (regs s) Input1))) s , alloc
 
   -- instr-reclaim-to: a NO-OP on alloc too (D150), for the same reason as
   -- `instr-alloc-stack`, and with an even blunter piece of evidence: ALL THREE

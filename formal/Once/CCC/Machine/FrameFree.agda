@@ -405,8 +405,7 @@ module _ {FS : FrameSemantics} where
     Relation.Binary.PropositionalEquality.cong (λ g → ExecFinal.exec-load-at-resolved {FS} x Output g s) (gate-nsi alloc k x (sv-as-loc (readReg (LocState.regs s) Input1)))
   exec-abstract-state-nsi (store-at x)        s alloc k _ =
     Relation.Binary.PropositionalEquality.cong (λ g → ExecFinal.exec-store-at-resolved {FS} (AllocState.block-size alloc) x g (readReg (LocState.regs s) Output) s) (gate-nsi alloc k x (sv-as-loc (readReg (LocState.regs s) Input1)))
-  exec-abstract-state-nsi (addr-at x)         s alloc k _ =
-    Relation.Binary.PropositionalEquality.cong (λ g → ExecFinal.exec-addr-at-resolved {FS} (AllocState.block-size alloc) x g s) (gate-nsi alloc k x (sv-as-loc (readReg (LocState.regs s) Input1)))
+  exec-abstract-state-nsi (addr-at x)         s alloc k _ = refl
   exec-abstract-state-nsi (instr-reclaim-to _)     s alloc k _ = refl
   exec-abstract-state-nsi (instr-push-frame _)     s alloc k ()
   exec-abstract-state-nsi instr-pop-frame          s alloc k ()

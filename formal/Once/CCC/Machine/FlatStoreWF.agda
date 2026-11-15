@@ -133,6 +133,11 @@ gate-below n al k (just (AtStack f j))  b = stack-gate-below n (in-window (live-
 gate-below n al k (just (AtDynamic hl)) b = b
 gate-below n al k nothing               b = b
 
+heap-gate-below : ∀ (n : ℕ) (ml : Maybe (ValueLocation FS)) → mloc-below n ml → mloc-below n (heap-gate ml)
+heap-gate-below n (just (AtDynamic hl)) b = b
+heap-gate-below n (just (AtStack f j))  b = tt
+heap-gate-below n nothing               b = b
+
 
 -- Same block ⇒ same ref-id, so offsets stay below.
 sucLoc-below : ∀ (n : ℕ) (loc : ValueLocation FS) → loc-below n loc → loc-below n (sucLoc loc)
@@ -621,8 +626,8 @@ mutual
     wf-store-at-resolved (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs ls) Input1))) (readReg (regs ls) Output) wf
       (gate-below (next-heap-ref alloc) alloc k (sv-as-loc (readReg (regs ls) Input1)) (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1))) (wf-regs wf Output) , ≤-refl
   wf-abstract (addr-at k) ls alloc wf =
-    wf-addr-at-resolved (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs ls) Input1))) wf
-      (gate-below (next-heap-ref alloc) alloc k (sv-as-loc (readReg (regs ls) Input1)) (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1))) , ≤-refl
+    wf-addr-at-resolved (AllocState.block-size alloc) k (heap-gate (sv-as-loc (readReg (regs ls) Input1))) wf
+      (heap-gate-below (next-heap-ref alloc) (sv-as-loc (readReg (regs ls) Input1)) (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1))) , ≤-refl
   wf-abstract (instr-reclaim-to n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-push-frame cap) ls alloc wf = wf , ≤-refl
   wf-abstract instr-pop-frame ls alloc wf = wf , ≤-refl

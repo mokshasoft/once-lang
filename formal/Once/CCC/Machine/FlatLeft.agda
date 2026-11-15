@@ -151,7 +151,7 @@ module LeftPres {FS : FrameSemantics} where
   abs-left (instr-room n) s alloc = refl
   abs-left (load-at k) s alloc = load-at-left k Output (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s
   abs-left (store-at k) s alloc = store-at-left (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s
-  abs-left (addr-at k) s alloc = addr-at-left (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s
+  abs-left (addr-at k) s alloc = addr-at-left (AllocState.block-size alloc) k (heap-gate (sv-as-loc (readReg (regs s) Input1))) s
   abs-left (instr-ctrl c) s alloc = refl
 
   exec-abstract-left : ∀ (i : AbstractInstr) → LeftFree i → ∀ s alloc → lft (proj₁ (exec-abstract i s alloc)) ≡ lft s
@@ -381,7 +381,7 @@ module FaultPres {FS : FrameSemantics} where
   abs-fault (instr-room n) s alloc _ = refl
   abs-fault (load-at k) s alloc h = load-at-fault k Output (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s h
   abs-fault (store-at k) s alloc h = store-at-fault (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s h
-  abs-fault (addr-at k) s alloc h = addr-at-fault (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s h
+  abs-fault (addr-at k) s alloc h = addr-at-fault (AllocState.block-size alloc) k (heap-gate (sv-as-loc (readReg (regs s) Input1))) s h
   abs-fault (instr-reg-op op) s alloc _ = refl
   abs-fault (instr-ctrl c) s alloc _ = refl
 

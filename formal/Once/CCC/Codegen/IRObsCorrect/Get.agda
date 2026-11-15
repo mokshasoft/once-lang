@@ -97,6 +97,10 @@ module GetC {FS : FrameSemantics} where
             → ExecFinal.frame-gate {FS} alloc k (just loc) ≡ just loc
   live-gate alloc k (AtDynamic hl) _ = refl
 
+  -- …and the heap gate of an offset address (D435: a heap block only)
+  live-heap-gate : ∀ {a : AllocState {FS}} (loc : ValueLocation FS) → Live a loc → ExecFinal.heap-gate {FS} (just loc) ≡ just loc
+  live-heap-gate (AtDynamic hl) _ = refl
+
   load-at-step : ∀ (prog : AbstractTrace) (fs : FlatState) k (loc : ValueLocation FS) (w : StoredValue FS)
                → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
                → ExecFinal.frame-gate {FS} (falloc fs) k (just loc) ≡ just loc
@@ -110,12 +114,12 @@ module GetC {FS : FrameSemantics} where
 
   addr-at-step : ∀ (prog : AbstractTrace) (fs : FlatState) k (loc : ValueLocation FS)
                → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
-               → ExecFinal.frame-gate {FS} (falloc fs) k (just loc) ≡ just loc
+               → ExecFinal.heap-gate {FS} (just loc) ≡ just loc
                → InBlk (falloc fs) (offsetLoc loc k)
                → flat-exec-instr (addr-at k) prog fs ≡ setOut fs (SV-Ptr (offsetLoc loc k))
   addr-at-step prog fs k loc i1 g ib =
     cong (λ s′ → record fs { floc = s′ ; fpc = suc (fpc fs) })
-      (trans (cong (λ x → ExecFinal.exec-addr-at-resolved {FS} (AllocState.block-size (falloc fs)) k (ExecFinal.frame-gate {FS} (falloc fs) k (sv-as-loc x)) (floc fs)) i1)
+      (trans (cong (λ x → ExecFinal.exec-addr-at-resolved {FS} (AllocState.block-size (falloc fs)) k (ExecFinal.heap-gate {FS} (sv-as-loc x)) (floc fs)) i1)
         (trans (cong (λ m → ExecFinal.exec-addr-at-resolved {FS} (AllocState.block-size (falloc fs)) k m (floc fs)) g)
              (cong (λ b → ExecFinal.exec-addr-in-block {FS} b (offsetLoc loc k) (floc fs)) ib)))
 
@@ -252,7 +256,7 @@ module GetC {FS : FrameSemantics} where
         by-size (suc n) z =
           mk fs (SV-Ptr (offsetLoc loc k)) mC nh
              (fetch-of {prog = prog} {pc = fpc fs} (get-flat+ k n (flat-kind fl) z) at)
-             (addr-at-step prog fs k loc i1 (live-gate (falloc fs) k loc lv) (proj₂ (hr pos))) refl
+             (addr-at-step prog fs k loc i1 (live-heap-gate loc lv) (proj₂ (hr pos))) refl
              (at-loc _ (val-out fs _ v) (proj₁ (hr pos)) (writeReg-same (regs (floc fs)) Output _)
                        (val-out fs _ v) (proj₁ (hr pos)))
           where pos = subst (0 <_) (sym z) (s≤s z≤n)
