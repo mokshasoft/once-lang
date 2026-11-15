@@ -204,8 +204,8 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     -- events and end at the budget, and, where the budget cut it, a control step per unit
     -- (master's `flat-ends` and `flat-cut`, at one fuel)
     Shows : ℕ → ℕ → Set
-    Shows k N = (flat-events N image start-fs ≡ (proj₁ (obs k) , endAp (proj₂ (obs k))))
-                × (endAp (proj₂ (obs k)) ≡ nothing → k ≤ flat-ctrls N image start-fs)
+    Shows k N = (flat-events (suc N) image start-fs ≡ (proj₁ (obs k) , endAp (proj₂ (obs k))))
+                × (endAp (proj₂ (obs k)) ≡ nothing → k ≤ flat-ctrls (suc N) image start-fs)
 
     -- the flat run at a chain's length: its events, cut; its control steps
     private
@@ -238,14 +238,14 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         by {gives mone n′} {t} run _ pl ag ee eo _ = case image-noleak run pl of λ where
           (mt , st , _ , _ , _ , eio) → case ends ld entry-frame entry-regs st (ag st eio) f-end of λ where
             (N , fs′ , fst , hlt , lg , lft) →
-              suc N , trans (o-flat fst hlt)
+              N , trans (o-flat fst hlt)
                             (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
                                        (trans (cong (λ b → just (end-of-left b)) (cong proj₁ (proj₂ (proj₂ (proj₂ (proj₂ lft)))))) eo)) ,
               λ e → ⊥-elim (just≢nothing (trans eo e))
         by {stop Once.LinCore.Events.halted} {t} run _ pl ag ee eo _ = case image-halts run pl of λ where
           (mt , sh , U′ , r′ , m′ , n′ , st , eio) → case ends ld entry-frame entry-regs st (ag st eio) f-halt of λ where
             (N , fs′ , fst , hlt , lg , (fs₀ , M , st₀ , r₀ , l₀)) →
-              suc N , trans (o-flat fst hlt)
+              N , trans (o-flat fst hlt)
                             (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
                                        (trans (cong (λ b → just (end-of-left b)) (trans (cong proj₁ l₀) (o-running st₀ r₀))) eo)) ,
               λ e → ⊥-elim (just≢nothing (trans eo e))
@@ -333,7 +333,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
           wb {stop Once.LinCore.Events.exhausted} run pl ag kr = case image-cut run pl of λ where
             (mt , sh , U′ , c′ , r′ , m′ , n′ , st , eio , rl) →
               case from-startC ld entry-frame entry-regs st (ag st eio) of λ where
-                (N , fs′ , fl , lg , cc) → inj₂ (N , fs′ , fl , ≤-trans (kr tt) (≤-trans rl cc))
+                (N , fs′ , fl , lg , cc) → inj₂ (suc N , fs′ , fl , ≤-trans (kr tt) (≤-trans rl cc))
 
     o-sound : Sound image start-fs
     o-sound {n} {fs′} P = by-halt (LocState.halted (floc fs′)) refl
@@ -391,8 +391,8 @@ module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
                                      (env-ok tbl etp) (FromIR.trI-Tr (FromIR.TrProg.rs tp) ir ef) tt) []
 
     -- ★★ THE FLAT THEOREM AT MASTER'S MEANING (master's `flat-ends` and `flat-cut`)
-    flat-ir : ∀ k → Σ ℕ λ N → (flat-events N TP.image TP.start-fs ≡ (proj₁ (obsᴰ k) , endAp (proj₂ (obsᴰ k))))
-                                     × (endAp (proj₂ (obsᴰ k)) ≡ nothing → k ≤ flat-ctrls N TP.image TP.start-fs)
+    flat-ir : ∀ k → Σ ℕ λ N → (flat-events (suc N) TP.image TP.start-fs ≡ (proj₁ (obsᴰ k) , endAp (proj₂ (obsᴰ k))))
+                                     × (endAp (proj₂ (obsᴰ k)) ≡ nothing → k ≤ flat-ctrls (suc N) TP.image TP.start-fs)
     flat-ir k = case TP.flat-top ld decl k of λ where
       (N , e , c) → N , trans e (cong (λ r → (proj₁ r , endAp (proj₂ r))) (o-bridge k))
                       , λ z → c (trans (cong (λ r → endAp (proj₂ r)) (o-bridge k)) z)

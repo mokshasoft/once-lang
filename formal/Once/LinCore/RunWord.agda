@@ -12,7 +12,7 @@
 
 {-# OPTIONS --guardedness #-}
 
-open import Data.Nat using (ℕ; _+_; _≤_; z≤n)
+open import Data.Nat using (ℕ; suc; _+_; _≤_; z≤n)
 open import Data.Nat.Properties using (+-mono-≤; +-identityʳ; ≤-trans; m≤n+m)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open import Data.Maybe using (nothing)
@@ -157,10 +157,10 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       -- ★ …followed with a control step for every loop entry
       from-startC : ∀ {sh U′} {t} {c′ : Codeᴵ sh U′} {r′} {m′ n′}
                   → (run : StepsI main []ʳ start 1 t c′ r′ m′ n′) → AgreesAll [] run
-                  → Σ ℕ λ N → Σ FlatState λ fs′ → Σ (FlatSteps image N start-fs fs′) λ fl
+                  → Σ ℕ λ N → Σ FlatState λ fs′ → Σ (FlatSteps image (suc N) start-fs fs′) λ fl
                     → (LocState.ev-log (floc fs′) ≡ evsOf t) × (loops run ≤ chain-ctrls fl)
       from-startC {t = t} run ag = case start-related of λ where
         (fs₁ , st₁ , G₁ , lg₀) → case wholeC run start-invI ag G₁ lg₀ of λ where
           ((N , fs′ , st , L , lg) , c) →
-            1 + N , fs′ , FlatSteps-++ st₁ st , trans lg (cong (_++ evsOf t) lg₀) ,
+            N , fs′ , FlatSteps-++ st₁ st , trans lg (cong (_++ evsOf t) lg₀) ,
             subst (_ ≤_) (sym (chain-ctrls-++ st₁ st)) (≤-trans c (m≤n+m (chain-ctrls st) (chain-ctrls st₁)))
