@@ -28,6 +28,7 @@ open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open import Once.CCC.Machine.SMCore
+open import Data.Bool using (true)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -54,7 +55,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc; fret)
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++)
   open import Once.LinCore.Moves {FS}
-    using (Seg; Seg-++ˡ; Seg-++ʳ; slot; mvPS-run; MovedP; p-moved; p-rest; p-heap; p-halt; p-log; p-pc; p-alloc; p-ret; p-clo; p-link; p-in; p-frame; restore-step; Ran; ranP; ran-trans; ran-regs)
+    using (Seg; Seg-++ˡ; Seg-++ʳ; slot; mvPS-run; MovedP; p-moved; p-rest; p-heap; p-halt; p-log; p-pc; p-alloc; p-ret; p-clo; p-link; p-in; p-frame; restore-step; Ran; ranP; ran-trans; ran-regs; gate-stack)
 
   private
     frame-eq : ∀ {f g x y} → AtStack {FS} f x ≡ AtStack g y → f ≡ g
@@ -91,14 +92,16 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
          → ¬ AllocState.current-frame (falloc fs) ≡ cf
          → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack cf area)
          → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (LocState.stackMem (floc fs) cf) (o + area) wa
+         → (∀ k → k < wsz A → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) cf ((k + o) + area) ≡ true)
          → Seg prog (fpc fs) (mvPS o (budget φ′ ∸ ws (A ∷ [])) (wsz A))
          → LocState.halted (floc fs) ≡ false
          → Σ FlatState λ fs′ → FlatSteps prog (Once.LinCore.Moves.ln {FS} (wsz A)) fs fs′
              × VW (LocState.heapMem (floc fs′)) a wa × SlotsAt (slot fs′) (budget φ′ ∸ ws (A ∷ [])) wa
              × MovedP fs fs′ (AtStack cf area) o (budget φ′ ∸ ws (A ∷ [])) (wsz A)
-  arg-in prog fs φ′ cf area o {A} {a} wa ne inp pa sa seg h
+  arg-in prog fs φ′ cf area o {A} {a} wa ne inp pa sa win seg h
     with mvPS-run prog fs (AtStack cf area) o (budget φ′ ∸ ws (A ∷ [])) (wsz A) seg h inp
            (λ k k< → def-at {fs} {cf} {area} {o} wa sa k (subst (k <_) (sym (vw-len pa)) k<))
+           (λ k k< → gate-stack (falloc fs) (k + o) cf area (win k k<))
            (λ k k′ _ _ e → ne (frame-eq e))
   ... | (fs′ , st , M) =
     fs′ , st , subst (λ r → VW r a wa) (sym (p-heap M)) pa ,
@@ -133,6 +136,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           → ¬ AllocState.current-frame (falloc fs) ≡ cf
           → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack cf area)
           → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (LocState.stackMem (floc fs) cf) (o + area) wa
+          → (∀ k → k < wsz A → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) cf ((k + o) + area) ≡ true)
           → Seg prog (fpc fs) (mvPS o (budget φ′ ∸ ws (A ∷ [])) (wsz A))
           → LocState.halted (floc fs) ≡ false
           → ws (A ∷ []) ≤ OP φ′
@@ -140,8 +144,8 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ′ ([]ᵉ ∥ a ∷ˢ []ˢ)
               × Ran (Once.LinCore.Moves.ln {FS} (wsz A)) 0 (AllocState.next-heap-ref (falloc fs)) (budget φ′) fs fs′
               × (∀ x → budget φ′ ≤ x → slot fs′ x ≡ slot fs x)
-  enter-n prog fs φ′ cf area o {A} {a} wa ne inp pa sa seg h fit
-    with arg-in prog fs φ′ cf area o wa ne inp pa sa seg h
+  enter-n prog fs φ′ cf area o {A} {a} wa ne inp pa sa win seg h fit
+    with arg-in prog fs φ′ cf area o wa ne inp pa sa win seg h
   ... | (fs′ , st , pa′ , sa′ , M) =
     fs′ , st ,
     record { c-env = tt ; c-stk = ((wa , pa′ , sa′) , tt) ; c-efit = z≤n ; c-sfit = fit } ,
@@ -155,6 +159,8 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           → slot fs sv ≡ just (SV-Ptr (AtStack cf v)) → budget φ′ ≤ sv
           → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (LocState.stackMem (floc fs) cf) (o + area) wa
           → VW (LocState.heapMem (floc fs)) e we → SlotsAt (LocState.stackMem (floc fs) cf) v we
+          → (∀ k → k < wsz A → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) cf ((k + o) + area) ≡ true)
+          → (∀ k → k < wsz E → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) cf ((k + 0) + v) ≡ true)
           → Seg prog (fpc fs) (mvPS o (budget φ′ ∸ ws (A ∷ [])) (wsz A) ++ restore-input sv ∷ mvPS 0 0 (wsz E))
           → LocState.halted (floc fs) ≡ false
           → ws (E ∷ []) ≤ EP φ′ → ws (A ∷ []) ≤ OP φ′
@@ -162,10 +168,12 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ′ (vw e []ᵉ ∥ a ∷ˢ []ˢ)
               × Ran (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) 0 (AllocState.next-heap-ref (falloc fs)) (budget φ′) fs fs′
               × (∀ x → budget φ′ ≤ x → slot fs′ x ≡ slot fs x)
-  enter-j prog fs φ′ cf area o v sv {E} {A} {e} {a} we wa ne inp ev sv≥ pa sa pe se seg h fitE fitA
-    with arg-in prog fs φ′ cf area o wa ne inp pa sa (Seg-++ˡ prog (fpc fs) (mvPS o dst (wsz A)) _ seg) h
+  enter-j prog fs φ′ cf area o v sv {E} {A} {e} {a} we wa ne inp ev sv≥ pa sa pe se win winv seg h fitE fitA
+    with arg-in prog fs φ′ cf area o wa ne inp pa sa win (Seg-++ˡ prog (fpc fs) (mvPS o dst (wsz A)) _ seg) h
     where dst = budget φ′ ∸ ws (A ∷ [])
-  ... | (fs₁ , st₁ , pa₁ , sa₁ , M₁) = fin (mvPS-run prog fs₂ (AtStack cf v) 0 0 (wsz E) seg₃ h₁ refl def₃ (λ k k′ _ _ e′ → ne₁ (frame-eq e′)))
+  ... | (fs₁ , st₁ , pa₁ , sa₁ , M₁) = fin (mvPS-run prog fs₂ (AtStack cf v) 0 0 (wsz E) seg₃ h₁ refl def₃
+             (λ k k< → gate-stack (falloc fs₂) (k + 0) cf v (subst (λ al → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} al) cf ((k + 0) + v) ≡ true) (sym (Once.LinCore.Moves.p-alloc M₁)) (winv k k<)))
+             (λ k k′ _ _ e′ → ne₁ (frame-eq e′)))
     where
       import Data.Nat.Properties
       dst = budget φ′ ∸ ws (A ∷ [])
@@ -246,6 +254,17 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       M≤ : M ≤ Bg ∸ s
       M≤ = ≤∸ M s Bg fit
 
+  -- D435: a word of an answer moved into the area at the caller's operand top
+  -- lies below the caller's frame budget
+  area-bnd : ∀ Bg s M wB k → k < wB → wB ≤ M → M + s ≤ Bg → (k + (M ∸ wB)) + ((Bg ∸ s) ∸ M) < Bg
+  area-bnd Bg s M wB k k< le fit =
+    Data.Nat.Properties.<-≤-trans
+      (Data.Nat.Properties.+-monoˡ-< ((Bg ∸ s) ∸ M)
+        (subst (k + (M ∸ wB) <_) (Data.Nat.Properties.m+[n∸m]≡n le) (Data.Nat.Properties.+-monoˡ-< (M ∸ wB) k<)))
+      (Data.Nat.Properties.≤-trans (Data.Nat.Properties.≤-reflexive (Data.Nat.Properties.m+[n∸m]≡n (≤∸ M s Bg fit)))
+        (Data.Nat.Properties.m∸n≤m Bg s))
+    where import Data.Nat.Properties
+
   private
     slot-eq : ∀ {f g x y} → AtStack {FS} f x ≡ AtStack g y → x ≡ y
     slot-eq refl = refl
@@ -253,6 +272,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   leave : ∀ prog (fs : FlatState) (φ φ′ : Frame) (cfc : FrameSemantics.Frame FS) (s₀ area M bb pc : ℕ) (rest : List ℕ)
             (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ) {Es B S} {es : Slots Es} {os : Stk S} {b : MV B} (wb : List W)
         → fret fs ≡ pc ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+        → budget φ ≤ sl
         → ¬ cfc ≡ AllocState.current-frame (falloc fs)
         → slot fs s₀ ≡ just (SV-Ptr (AtStack cfc area))
         → VW (LocState.heapMem (floc fs)) b wb → SlotsAt (slot fs) (budget φ′ ∸ ws (B ∷ [])) wb
@@ -265,9 +285,14 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os)
             × CallOut fs fs′ cfc area (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) pc rest sv sl
             × (∀ x → budget φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
-  leave prog fs φ φ′ cfc s₀ area M bb pc rest sv sl {Es} {B} {S} {es} {os} {b} wb hret hsv ne ep pb sb ev st refl le fitM fitE fitB seg h
+  leave prog fs φ φ′ cfc s₀ area M bb pc rest sv sl {Es} {B} {S} {es} {os} {b} wb hret hsv esl ne ep pb sb ev st refl le fitM fitE fitB seg h
     = fin (call-out prog fs cfc area s₀ (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) bb pc rest sv sl hret hsv ne ep
-             (λ k k< → slots-def wb sb k (subst (k <_) (sym (vw-len pb)) k<)) seg h)
+             (λ k k< → slots-def wb sb k (subst (k <_) (sym (vw-len pb)) k<))
+             (λ k k< → Data.Nat.Properties.<-≤-trans
+                           (area-bnd (budget φ) (ws S) M (wsz B) k k< le
+                              (Data.Nat.Properties.≤-trans fitM (Data.Nat.Properties.m≤n+m (OP φ) (EP φ))))
+                           esl)
+             seg h)
     where
       fin : Σ FlatState (λ fs′ → FlatSteps prog (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′
               × CallOut fs fs′ cfc area (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) pc rest sv sl)
@@ -367,6 +392,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
            → slot fs sv ≡ just (SV-Ptr (AtDynamic (cellLoc i o₀))) → budget φ′ ≤ sv
            → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (LocState.stackMem (floc fs) cf) (o + area) wa
            → VW (LocState.heapMem (floc fs)) e we → At (LocState.heapMem (floc fs)) i o₀ we
+           → (∀ k → k < wsz A → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) cf ((k + o) + area) ≡ true)
            → Seg prog (fpc fs) (mvPS o (budget φ′ ∸ ws (A ∷ [])) (wsz A) ++ restore-input sv ∷ mvPS 0 0 (wsz E))
            → LocState.halted (floc fs) ≡ false
            → ws (E ∷ []) ≤ EP φ′ → ws (A ∷ []) ≤ OP φ′
@@ -374,8 +400,8 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ′ (vw e []ᵉ ∥ a ∷ˢ []ˢ)
                × Ran (Once.LinCore.Moves.ln {FS} (wsz A) + suc (Once.LinCore.Moves.ln {FS} (wsz E))) 0 (AllocState.next-heap-ref (falloc fs)) (budget φ′) fs fs′
                × (∀ x → budget φ′ ≤ x → slot fs′ x ≡ slot fs x)
-  enter-jh prog fs φ′ cf area o sv {E} {A} {e} {a} i o₀ we wa ne inp ev sv≥ pa sa pe ae seg h fitE fitA =
-    after₁ (arg-in prog fs φ′ cf area o wa ne inp pa sa (Seg-++ˡ prog (fpc fs) (mvPS o dst (wsz A)) _ seg) h)
+  enter-jh prog fs φ′ cf area o sv {E} {A} {e} {a} i o₀ we wa ne inp ev sv≥ pa sa pe ae win seg h fitE fitA =
+    after₁ (arg-in prog fs φ′ cf area o wa ne inp pa sa win (Seg-++ˡ prog (fpc fs) (mvPS o dst (wsz A)) _ seg) h)
     where
       import Data.Nat.Properties
       dst = budget φ′ ∸ ws (A ∷ [])
@@ -393,7 +419,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                  × VW (LocState.heapMem (floc fs₁)) a wa × SlotsAt (slot fs₁) dst wa
                  × MovedP fs fs₁ (AtStack cf area) o dst (wsz A)) → _
       after₁ (fs₁ , st₁ , pa₁ , sa₁ , M₁) =
-        fin (mvPS-run prog fs₂ (AtDynamic (cellLoc i o₀)) 0 0 (wsz E) seg₃ h₁ refl def₃ (λ k k′ _ _ ()))
+        fin (mvPS-run prog fs₂ (AtDynamic (cellLoc i o₀)) 0 0 (wsz E) seg₃ h₁ refl def₃ (λ k _ → refl) (λ k k′ _ _ ()))
         where
           top₁ : ∀ x → budget φ′ ≤ x → slot fs₁ x ≡ slot fs x
           top₁ x B≤x = p-rest M₁ x (λ k k< → under-top (budget φ′) (ws (A ∷ [])) k x B≤ (lt0 k<) B≤x)

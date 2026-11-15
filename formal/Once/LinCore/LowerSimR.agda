@@ -168,8 +168,8 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             → Σ FlatState λ a′ → FlatSteps prog 4 a a′ × WC a a′ r k v
   word-copy prog a s₂ s₃ k ro r v (g₁ , g₂ , g₃ , g₄ , _) h e₂ ev e₃ ib =
     a₄ ,
-    step-at a₁ (h , g₁) (restore-step a s₂ e₂) (step-at a₂ (h , g₂) (loadat-step a₁ k refl ev)
-    (step-at a₃ (h , g₃) (restore-step a₂ s₃ e₃) (step-at a₄ (h , g₄) (storeat-step a₃ k refl ib) done))) ,
+    step-at a₁ (h , g₁) (restore-step a s₂ e₂) (step-at a₂ (h , g₂) (loadat-step a₁ k refl refl ev)
+    (step-at a₃ (h , g₃) (restore-step a₂ s₃ e₃) (step-at a₄ (h , g₄) (storeat-step a₃ k refl refl ib) done))) ,
     record { wc-pc = refl ; wc-alloc = refl ; wc-ret = refl
            ; wc-halt = cong fhalted (wl-heap (floc a₃) _ v) ; wc-log = cong LocState.ev-log (wl-heap (floc a₃) _ v) ; wc-stack = cong stackMem (wl-heap (floc a₃) _ v)
            ; wc-in = cong (λ s′ → readReg (LocState.regs s′) Input1) (wl-heap (floc a₃) _ v)
@@ -272,7 +272,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                             (sw-in n r bs 3 (s≤s (s≤s (s≤s (s≤s z≤n)))))))
             where
               copy₃ : Σ FlatState (λ c → FlatSteps prog 4 b c × WC b c r 3 w₃) → _
-              copy₃ (c , st₃ , W₃) = fin (mvSP-run prog fs₁₆ (AtDynamic P) 0 hdr w segM h₁₆ in₁₆ def ib (λ k k′ _ _ ()))
+              copy₃ (c , st₃ , W₃) = fin (mvSP-run prog fs₁₆ (AtDynamic P) 0 hdr w segM h₁₆ in₁₆ def (λ k _ → refl) ib (λ k k′ _ _ ()))
                 where
                   pc-c : fpc c ≡ suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc (fpc fs))))))))))))))
                   pc-c = trans (wc-pc W₃) (cong (λ z → suc (suc (suc (suc z)))) (trans (wc-pc W₂) (cong (λ z → suc (suc (suc (suc z)))) (wc-pc W₁))))
@@ -321,7 +321,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                         (step-at fs₁₅ (h-c , subst (λ z → fetch prog z ≡ just mov-to-output) (sym pc-c) m₁)
                            (mov-out-step c)
                         (step-at fs₁₆ (h-c , subst (λ z → fetch prog (suc z) ≡ just (store-at 0)) (sym pc-c) m₂)
-                           (storeat-step fs₁₅ 0 in-c ib0) stM)))))) ,
+                           (storeat-step fs₁₅ 0 in-c refl ib0) stM)))))) ,
                     record { rc-pc = trans (w-pc M) (cong (λ z → nsteps w + suc (suc z)) pc-c)
                            ; rc-alloc = trans (w-alloc M) al-c
                            ; rc-ret = trans (w-ret M) (trans (wc-ret W₃) (trans (wc-ret W₂) (wc-ret W₁)))

@@ -117,7 +117,7 @@ module StartR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     fs₁ , FlatStepsAPI.step-at {FS} fs₁ (refl , refl) refl FlatStepsAPI.[] ,
     record { g-pt = p-start (at whole)
            ; g-here = record { h-pc = sym (trans (S′.pos-def whole) refl) ; h-run = refl
-                             ; h-cfg = record { c-env = (([] , Rel.vone , tt) , tt) ; c-stk = (([] , Rel.vone , tt) , tt) ; c-efit = Data.Nat.z≤n ; c-sfit = Data.Nat.z≤n } }
+                             ; h-cfg = record { c-env = (([] , Rel.vone , tt) , tt) ; c-stk = (([] , Rel.vone , tt) , tt) ; c-efit = Data.Nat.z≤n ; c-sfit = Data.Nat.z≤n } ; h-slots = refl }
            ; g-next = refl ; g-ret = ok-top refl refl ; g-blk = λ hl () } ,
     refl
     where

@@ -138,7 +138,7 @@ module Loc {FS : FrameSemantics} (U : Univ)
   open CfgW
   open Fetch {FS} using (in-seg)
   open SimD {FS} U wordOf using (case₁-sim; case₂-sim; ecase₁-sim; ecase₂-sim)
-  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; k-halt; Ran; r-keep; r-pc; r-next; r-old; r-top; Old; ran-refl; ranS; MovedS)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; k-halt; k-slots; Ran; r-keep; r-pc; r-next; r-old; r-top; Old; ran-refl; ranS; MovedS)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc; find-label)
   open LocState using (heapMem)
   open FlatStepsAPI {FS} using (FlatSteps; [])
@@ -167,7 +167,13 @@ module Loc {FS : FrameSemantics} (U : Univ)
       h-pc  : fpc fs ≡ pos s
       h-run : LocState.halted (floc fs) ≡ false
       h-cfg : CfgW (heapMem (floc fs)) (slot fs) φ m
+      -- the frame's reservation is its budget (D435's window; `Emitted.em-ret-budget`)
+      h-slots : AllocState.frame-slots (falloc fs) ≡ fbudget φ
   open Here
+
+  -- D435: every slot below the budget is inside the frame's window
+  slots< : ∀ {fs : FlatState} → AllocState.frame-slots (falloc fs) ≡ fbudget φ → Data.Nat._<_ (budget φ) (AllocState.frame-slots (falloc fs))
+  slots< e = subst (Data.Nat._<_ (budget φ)) (sym e) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (budget φ)))
 
   seg-at : ∀ {sh U′} {c : Codeᴵ sh U′} (s : Sub root c) {m fs} → Here s m fs → Seg prog (fpc fs) (code (lowAt s))
   seg-at s H = subst (λ z → Seg prog z _) (sym (trans (h-pc H) (pos-def s))) (in-seg (here-in s))
@@ -223,7 +229,7 @@ module Loc {FS : FrameSemantics} (U : Univ)
         record { h-pc  = trans (r-pc Rn) (trans (cong (N +_) (h-pc H)) (trans (+-comm N (pos s))
                            (trans (cong (pos s +_) eN) (sym (pos-next s)))))
                ; h-run = trans (k-halt (r-keep Rn)) (h-run H)
-               ; h-cfg = C′ }
+               ; h-cfg = C′ ; h-slots = trans (k-slots (r-keep Rn)) (h-slots H) }
         , r-keep Rn , r-next Rn , r-old Rn , r-top Rn
 
   -- an instruction with no code: the same state, the next configuration
@@ -418,7 +424,7 @@ module Loc {FS : FrameSemantics} (U : Univ)
   st-case₂ : ∀ {Es A B S V} {c₁ : Codeᴵ (Es ∣ A ∷ S) V} {c₂ : Codeᴵ (Es ∣ B ∷ S) V} (s : Sub root (case c₁ c₂))
                {es : Slots Es} {b : MV B} {os : Stk S} {fs}
            → Here s (es ∥ minr {A = A} b ∷ˢ os) fs → Moved (right s) fs 0 (es ∥ b ∷ˢ os)
-  st-case₂ {Es} {A} {B} {S} s {fs = fs} H = fin (case₂-sim prog fs φ L₁ seg (h-run H) (h-cfg H))
+  st-case₂ {Es} {A} {B} {S} s {fs = fs} H = fin (case₂-sim prog fs φ L₁ seg (h-run H) (h-cfg H) (slots< {fs} (h-slots H)))
     where
       L₁ = jl j (lm (lowAt s))
       t = Tp φ ((A ⊕t B) ∷ S)
@@ -432,14 +438,14 @@ module Loc {FS : FrameSemantics} (U : Univ)
                                   (trans (cong (λ z → z + suc (suc (suc (length MB)))) (sym (pos-def s)))
                                   (trans (cong (λ z → pos s + suc (suc (suc z))) (len-mvSSd (suc t) (Tp φ S ∸ wsz B) (wsz B)))
                                     (three (pos s) _)))))))
-               ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
+               ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ ; h-slots = trans (k-slots K) (h-slots H) } ,
         K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
 
   st-case₁ : ∀ {Es A B S V} {c₁ : Codeᴵ (Es ∣ A ∷ S) V} {c₂ : Codeᴵ (Es ∣ B ∷ S) V} → Labelled → ∀ (s : Sub root (case c₁ c₂))
                {es : Slots Es} {a : MV A} {os : Stk S} {fs}
            → Here s (es ∥ minl {B = B} a ∷ˢ os) fs → Moved (left s) fs 0 (es ∥ a ∷ˢ os)
   st-case₁ {Es} {A} {B} {S} {c₁ = c₁} {c₂} lab s {fs = fs} H =
-    fin (case₁-sim prog fs φ L₁ q seg (lab labIn) (Seg-++ˡ prog q (instr-ctrl (c-label L₁) ∷ MA) _ (in-seg labIn)) (h-run H) (h-cfg H))
+    fin (case₁-sim prog fs φ L₁ q seg (lab labIn) (Seg-++ˡ prog q (instr-ctrl (c-label L₁) ∷ MA) _ (in-seg labIn)) (h-run H) (h-cfg H) (slots< {fs} (h-slots H)))
     where
       m = lm (lowAt s) ; fin′ = lfin (lowAt s)
       L₁ = jl j m
@@ -457,13 +463,13 @@ module Loc {FS : FrameSemantics} (U : Univ)
         _ , fs′ , st ,
         record { h-pc  = trans pc (sym (trans (pos-def (left s)) (trans (jump-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB (proj₁ l₂) (instr-ctrl (c-label L₁) ∷ MA))
                                          (trans (cong (λ z → q + suc z) (len-mvSSd (suc t) (Tp φ S ∸ wsz A) (wsz A))) (past q _)))))
-               ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
+               ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ ; h-slots = trans (k-slots K) (h-slots H) } ,
         K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
 
   st-ecase₂ : ∀ {E₁ E₂ Es S V} {c₁ : Codeᴵ (E₁ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) V} {c₂ : Codeᴵ (E₂ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) V}
                 (s : Sub root (ecase c₁ c₂)) {es : Slots ((E₁ ⊕t E₂) ∷ Es)} {os : Stk S} {e₂ : MV E₂} {fs}
             → see es ≡ minr e₂ → Here s (es ∥ os) fs → Moved (eright s) fs 0 (vw e₂ es ∥ os)
-  st-ecase₂ {E₁} {E₂} {Es} s {fs = fs} eq H = fin (ecase₂-sim prog fs φ L₁ eq seg (h-run H) (h-cfg H) (proj₁ (shape-fits (eright s))))
+  st-ecase₂ {E₁} {E₂} {Es} s {fs = fs} eq H = fin (ecase₂-sim prog fs φ L₁ eq seg (h-run H) (h-cfg H) (proj₁ (shape-fits (eright s))) (slots< {fs} (h-slots H)))
     where
       L₁ = jl j (lm (lowAt s))
       e = ws Es ; nb = e + wsz (E₁ ⊕t E₂)
@@ -477,7 +483,7 @@ module Loc {FS : FrameSemantics} (U : Univ)
                                   (trans (cong (λ z → z + suc (suc (suc (length MB)))) (sym (pos-def s)))
                                   (trans (cong (λ z → pos s + suc (suc (suc z))) (len-mvSS (suc e) nb (wsz E₂)))
                                     (three (pos s) _)))))))
-               ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
+               ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ ; h-slots = trans (k-slots K) (h-slots H) } ,
         K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
 
   st-ecase₁ : ∀ {E₁ E₂ Es S V} {c₁ : Codeᴵ (E₁ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) V} {c₂ : Codeᴵ (E₂ ∷ (E₁ ⊕t E₂) ∷ Es ∣ S) V}
@@ -485,7 +491,7 @@ module Loc {FS : FrameSemantics} (U : Univ)
               → see es ≡ minl e₁ → Here s (es ∥ os) fs → Moved (eleft s) fs 0 (vw e₁ es ∥ os)
   st-ecase₁ {E₁} {E₂} {Es} {c₁ = c₁} {c₂} lab s {fs = fs} eq H =
     fin (ecase₁-sim prog fs φ L₁ q eq seg (lab labIn) (Seg-++ˡ prog q (instr-ctrl (c-label L₁) ∷ MA) _ (in-seg labIn))
-           (h-run H) (h-cfg H) (proj₁ (shape-fits (eleft s))))
+           (h-run H) (h-cfg H) (proj₁ (shape-fits (eleft s))) (slots< {fs} (h-slots H)))
     where
       m = lm (lowAt s) ; fin′ = lfin (lowAt s)
       L₁ = jl j m
@@ -503,5 +509,5 @@ module Loc {FS : FrameSemantics} (U : Univ)
         _ , fs′ , st ,
         record { h-pc  = trans pc (sym (trans (pos-def (eleft s)) (trans (jump-pos (proj₁ R) (proj₁ (ins (sub-low L₀ s))) _ _ _ MB (proj₁ l₂) (instr-ctrl (c-label L₁) ∷ MA))
                                          (trans (cong (λ z → q + suc z) (len-mvSS (suc e) nb (wsz E₁))) (past q _)))))
-               ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ } ,
+               ; h-run = trans (k-halt K) (h-run H) ; h-cfg = C′ ; h-slots = trans (k-slots K) (h-slots H) } ,
         K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp

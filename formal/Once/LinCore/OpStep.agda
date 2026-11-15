@@ -459,7 +459,7 @@ module OpR {FS : FrameSemantics} (U : Univ)
         _ , fs′ , st ,
         record { h-pc = trans (or-pc OR) (trans (cong (length (insC sb) +_) (Here.h-pc H))
                           (trans (Data.Nat.Properties.+-comm (length (insC sb)) (pos sb)) (sym (pos-next sb))))
-               ; h-run = trans (or-halt OR) (Here.h-run H) ; h-cfg = C′ } ,
+               ; h-run = trans (or-halt OR) (Here.h-run H) ; h-cfg = C′ ; h-slots = trans (or-slots OR) (Here.h-slots H) } ,
         OR
 
   st-opend : ∀ {Γ} {ds : Defs Γ} {Es S V} {s : Sig} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) V} (sb : Sub root (prim ds (lop s) ⨾ k))

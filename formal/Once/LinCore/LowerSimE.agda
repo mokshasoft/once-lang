@@ -12,6 +12,7 @@
 
 {-# OPTIONS --guardedness #-}
 
+open import Data.Bool using (true)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just)
@@ -49,7 +50,7 @@ ret-step prog fs b e = cong (λ r → do-ret r fs) e
 
 open import Once.CCC.FrameSemantics using (module FrameSemantics)
 open FrameSemantics FS using (Frame; shift-frame; _≺_; ≺-irrefl; shift-≺; shift-below; _≟F_)
-open import Once.CCC.Machine.SMCore using (StackMem; module MemOps; module AllocState)
+open import Once.CCC.Machine.SMCore using (StackMem; module MemOps; module AllocState; AllocState)
 open MemOps {FS} using (clear-frame)
 open import Data.Nat using (_<_; s≤s; z≤n)
 open import Relation.Nullary using (¬_; yes; no)
@@ -96,6 +97,7 @@ record CallIn (fs fs′ : FlatState) (a b s₁ s₂ q r : ℕ) (w₂ : StoredVal
   field
     ci-frame : current-frame (falloc fs′) ≡ callee-frame (current-frame (falloc fs)) b
     ci-saved : saved-frames (falloc fs′) ≡ (current-frame (falloc fs) , frame-slots (falloc fs)) ∷ saved-frames (falloc fs)
+    ci-slots : frame-slots (falloc fs′) ≡ b
     ci-ret   : fret fs′ ≡ r ∷ fret fs
     ci-pc    : fpc fs′ ≡ suc (suc (suc (suc q)))
     ci-in    : readReg (LocState.regs (floc fs′)) Input1 ≡ SV-Ptr (AtStack (current-frame (falloc fs)) a)
@@ -121,7 +123,7 @@ call-in prog fs a f e q b s₁ s₂ s≢ (g₁ , g₂ , g₃ , _) ff (h₁ , h�
   step-at fs₁ (h , g₁) (lea-step fs a) (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) (call-step prog fs₂ f ff)
   (step-at fs₄ (h , h₁) (entry-step prog fs₃ e b) (step-at fs₅ (h , h₂) (store-step fs₄ s₂)
   (step-at fs₆ (h , h₃) (mov-out-step fs₅) (step-at fs₇ (h , h₄) (store-step fs₆ s₁) done)))))) ,
-  record { ci-frame = refl ; ci-saved = refl ; ci-ret = refl ; ci-pc = refl ; ci-in = refl
+  record { ci-frame = refl ; ci-saved = refl ; ci-slots = refl ; ci-ret = refl ; ci-pc = refl ; ci-in = refl
          ; ci-s₁ = store-same (floc fs₆) cf′ s₁ ptr
          ; ci-s₂ = trans (store-other (floc fs₆) cf′ s₁ ptr s₂ s≢) (store-same (floc fs₄) cf′ s₂ ptr)
          ; ci-other = λ f′ x ne → trans (store-frame (floc fs₆) cf′ s₁ ptr f′ x ne)
@@ -154,7 +156,7 @@ call-in-v prog fs a v f e q b s₁ s₂ s≢ (g₁ , g₂ , g₀ , g₃ , _) ff 
   (step-at fs₃ (h , g₃) (call-step prog fs₂′ f ff)
   (step-at fs₄ (h , h₁) (entry-step prog fs₃ e b) (step-at fs₅ (h , h₂) (store-step fs₄ s₂)
   (step-at fs₆ (h , h₃) (mov-out-step fs₅) (step-at fs₈ (h , h₄) (store-step fs₆ s₁) done))))))) ,
-  record { ci-frame = refl ; ci-saved = refl ; ci-ret = refl ; ci-pc = refl ; ci-in = refl
+  record { ci-frame = refl ; ci-saved = refl ; ci-slots = refl ; ci-ret = refl ; ci-pc = refl ; ci-in = refl
          ; ci-s₁ = store-same (floc fs₆) cf′ s₁ ptr
          ; ci-s₂ = trans (store-other (floc fs₆) cf′ s₁ ptr s₂ s≢) (store-same (floc fs₄) cf′ s₂ vptr)
          ; ci-other = λ f′ x ne → trans (store-frame (floc fs₆) cf′ s₁ ptr f′ x ne)
@@ -181,8 +183,9 @@ call-in-v prog fs a v f e q b s₁ s₂ s≢ (g₁ , g₂ , g₀ , g₃ , _) ff 
 
 open import Once.CCC.Machine.SMCore using (restore-input; offsetLoc; StoredValue; load-from-slot)
 open import Once.LinCore.MoveCode using (mvSP)
-open import Once.LinCore.Moves {FS} using (slot; restore-step; mvSP-run; MovedW; w-moved; w-rest; w-pc; w-alloc; w-in; Seg-++ˡ; Seg-++ʳ)
+open import Once.LinCore.Moves {FS} using (slot; restore-step; mvSP-run; MovedW; w-moved; w-rest; w-pc; w-alloc; w-in; Seg-++ˡ; Seg-++ʳ; win-here; win-there; gate-stack)
   renaming (ln to nsteps; w-halt to wm-halt; w-log to wm-log)
+open import Once.CCC.Machine.SMCore using (module ExecFinal)
 open MemOps {FS} using (readLoc)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Relation.Binary.PropositionalEquality using (subst)
@@ -222,11 +225,13 @@ call-outA : ∀ prog (fs : FlatState) (cfc af : Frame) (a s₁ src o n b pc : �
           → ¬ af ≡ current-frame (falloc fs)
           → slot fs s₁ ≡ just (SV-Ptr (AtStack af a))
           → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (k + src) ≡ just v)
+          → (∀ k → k < n → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) af ((k + o) + a) ≡ true)
           → Seg prog (fpc fs) (restore-input s₁ ∷ mvSP src o n ++ instr-ctrl (c-ret b) ∷ [])
           → fhalted (floc fs) ≡ false
           → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOutA fs fs′ cfc af a src o n pc rest sv sl
-call-outA prog fs cfc af a s₁ src o n b pc rest sv sl hret hsv ne ep def (g₁ , s) h =
-  fin (mvSP-run prog fs₁ (AtStack af a) src o n (Seg-++ˡ prog (suc (fpc fs)) (mvSP src o n) _ s) h refl def (λ k _ → refl)
+call-outA prog fs cfc af a s₁ src o n b pc rest sv sl hret hsv ne ep def win (g₁ , s) h =
+  fin (mvSP-run prog fs₁ (AtStack af a) src o n (Seg-++ˡ prog (suc (fpc fs)) (mvSP src o n) _ s) h refl def
+         (λ k k< → gate-stack (falloc fs) (k + o) af a (win k k<)) (λ k _ → refl)
          (λ k k′ _ _ e → ne (frame-of-eq e)))
   where
     fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 (SV-Ptr (AtStack af a)) } ; fpc = suc (fpc fs) }
@@ -259,15 +264,33 @@ call-outA prog fs cfc af a s₁ src o n b pc rest sv sl hret hsv ne ep def (g₁
           where proj₁′ : ∀ {A : Set} {B : Set} → A × B → A
                 proj₁′ (x , _) = x
 
+-- D435: a slot below the caller's reservation is inside a live window
+caller-win : ∀ (al : AllocState {FS}) (cfc : Frame) sl sv j → saved-frames al ≡ (cfc , sl) ∷ sv → j < sl
+           → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} al) cfc j ≡ true
+caller-win al cfc sl sv j hsv lt =
+  win-there (current-frame al) cfc (frame-slots al) (saved-frames al) j
+    (subst (λ L → ExecFinal.in-window {FS} L cfc j ≡ true) (sym hsv) (win-here cfc sl sv j lt))
+
+-- …and below the reservation of the frame saved under it (D425: a many-use
+-- body's area is its trampoline's dispatcher's, two frames up)
+anc-win : ∀ (al : AllocState {FS}) (g af : Frame) sl₁ sl₂ sv j → saved-frames al ≡ (g , sl₁) ∷ (af , sl₂) ∷ sv → j < sl₂
+        → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} al) af j ≡ true
+anc-win al g af sl₁ sl₂ sv j hsv lt =
+  win-there (current-frame al) af (frame-slots al) (saved-frames al) j
+    (subst (λ L → ExecFinal.in-window {FS} L af j ≡ true) (sym hsv)
+      (win-there g af sl₁ ((af , sl₂) ∷ sv) j (win-here af sl₂ sv j lt)))
+
 call-out : ∀ prog (fs : FlatState) (cfc : Frame) (a s₁ src o n b pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ)
          → fret fs ≡ pc ∷ rest → saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
          → ¬ cfc ≡ current-frame (falloc fs)
          → slot fs s₁ ≡ just (SV-Ptr (AtStack cfc a))
          → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (k + src) ≡ just v)
+         → (∀ k → k < n → (k + o) + a < sl)
          → Seg prog (fpc fs) (restore-input s₁ ∷ mvSP src o n ++ instr-ctrl (c-ret b) ∷ [])
          → fhalted (floc fs) ≡ false
          → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOut fs fs′ cfc a src o n pc rest sv sl
-call-out prog fs cfc = call-outA prog fs cfc cfc
+call-out prog fs cfc a s₁ src o n b pc rest sv sl hret hsv ne ep def bnd =
+  call-outA prog fs cfc cfc a s₁ src o n b pc rest sv sl hret hsv ne ep def (λ k k< → caller-win (falloc fs) cfc sl sv ((k + o) + a) hsv (bnd k k<))
 
 -- ★ a bare return (a free's trampoline, D417: its result One, no words to move)
 ret-out : ∀ prog (fs : FlatState) (cfc : Frame) (b pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ)
@@ -300,6 +323,7 @@ record CallInH (fs fs′ : FlatState) (b s₁ s₂ q r : ℕ) (ap vp : StoredVal
   field
     ch-frame : current-frame (falloc fs′) ≡ callee-frame (current-frame (falloc fs)) b
     ch-saved : saved-frames (falloc fs′) ≡ (current-frame (falloc fs) , frame-slots (falloc fs)) ∷ saved-frames (falloc fs)
+    ch-slots : frame-slots (falloc fs′) ≡ b
     ch-ret   : fret fs′ ≡ r ∷ fret fs
     ch-pc    : fpc fs′ ≡ suc (suc (suc (suc q)))
     ch-in    : readReg (LocState.regs (floc fs′)) Input1 ≡ ap
@@ -325,7 +349,7 @@ call-in-h prog fs s ap vp f e q b s₁ s₂ s≢ sa ov (g₁ , g₂ , _) ff (h�
   step-at fs₂ (h , g₁) (restore-step fs s sa) (step-at fs₃ (h , g₂) (call-step prog fs₂ f ff)
   (step-at fs₄ (h , h₁) (entry-step prog fs₃ e b) (step-at fs₅ (h , h₂) (store-step fs₄ s₂)
   (step-at fs₆ (h , h₃) (mov-out-step fs₅) (step-at fs₇ (h , h₄) (store-step fs₆ s₁) done))))) ,
-  record { ch-frame = refl ; ch-saved = refl ; ch-ret = refl ; ch-pc = refl ; ch-in = refl
+  record { ch-frame = refl ; ch-saved = refl ; ch-slots = refl ; ch-ret = refl ; ch-pc = refl ; ch-in = refl
          ; ch-s₁ = store-same (floc fs₆) cf′ s₁ ap
          ; ch-s₂ = trans (store-other (floc fs₆) cf′ s₁ ap s₂ s≢)
                      (trans (store-same (floc fs₄) cf′ s₂ (readReg (LocState.regs (floc fs₄)) Output)) (cong just ov))
@@ -358,7 +382,7 @@ call-in-c prog fs s vp f e q b s₁ s₂ s≢ sv (g₁ , g₂ , g₃ , g₄ , _)
   (step-at fs₄ (h , g₄) (call-step prog fs₃ f ff)
   (step-at fs₅ (h , h₁) (entry-step prog fs₄ e b) (step-at fs₆ (h , h₂) (store-step fs₅ s₂)
   (step-at fs₇ (h , h₃) (mov-out-step fs₆) (step-at fs₈ (h , h₄) (store-step fs₇ s₁) done))))))) ,
-  record { ch-frame = refl ; ch-saved = refl ; ch-ret = refl ; ch-pc = refl ; ch-in = refl
+  record { ch-frame = refl ; ch-saved = refl ; ch-slots = refl ; ch-ret = refl ; ch-pc = refl ; ch-in = refl
          ; ch-s₁ = store-same (floc fs₇) cf′ s₁ ap
          ; ch-s₂ = trans (store-other (floc fs₇) cf′ s₁ ap s₂ s≢) (store-same (floc fs₅) cf′ s₂ vp)
          ; ch-other = λ f′ x ne → trans (store-frame (floc fs₇) cf′ s₁ ap f′ x ne)

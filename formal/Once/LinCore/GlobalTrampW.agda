@@ -11,6 +11,7 @@
 {-# OPTIONS --guardedness #-}
 
 
+open import Data.Bool using (true)
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -80,7 +81,7 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Tr U ncty ldConst using (trAt)
   open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; vnu; SlotsAt; cellPtr)
   open FlatMachine {FS} using (fpc)
-  open import Once.LinCore.Moves {FS} using (slot; InBlk)
+  open import Once.LinCore.Moves {FS} using (slot; InBlk; win-push; win-here)
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
   open Sim {FS} U wordOf using (envW-heap; stkW-heap; envW-frame; slots-frame; cntE; cntS)
   open Rel {FS} U wordOf using (cellLoc; vw-len)
@@ -125,7 +126,7 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open CallsH {FS} ds f ldConst ld-nl wordOf using (call-core-h)
   open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
   open SimF {FS} U wordOf using (leave; area-gen)
-  open import Once.LinCore.LowerSimE {FS} using (co-pc; co-halt; ret-out)
+  open import Once.LinCore.LowerSimE {FS} using (co-pc; co-halt; co-slots; ret-out)
   open import Once.LinCore.LowerSimG {FS} using (ClosInω; closure-inω)
   open ClosInω
   open ImgE {FS} ds f ldConst ld-nl using (image-tramp)
@@ -181,7 +182,7 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                           ; fpc = suc (fpc fs) }
     ca-step zero fs i [] _ e _ _ =
       trans (mov-out-step fs) (cong (λ v → record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output v } ; fpc = suc (fpc fs) }) e)
-    ca-step (suc n) fs i (w ∷ wx) _ e (aw , _) I = addr-step fs hdr e (proj₂ (I (cellLoc i hdr) aw))
+    ca-step (suc n) fs i (w ∷ wx) _ e (aw , _) I = addr-step fs hdr e refl (proj₂ (I (cellLoc i hdr) aw))
 
     at-cOff : ∀ (n : ℕ) {rd i} (wx : List (StoredValue FS)) → length wx ≡ n → Rel.At {FS} U wordOf rd i hdr wx → Rel.At {FS} U wordOf rd i (cOff n) wx
     at-cOff zero    []      _ _ = tt
@@ -196,10 +197,10 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     fs′ ,
     step-at fs′ (TrW0.w0-run T , proj₁ (tW-seg0 p (TrW0.w0-pc T))) (ca-step (wsz X) fs i (TrW0.w0-wx T) (vw-len (TrW0.w0-x T)) (TrW0.w0-in T) (TrW0.w0-at T) I)
       FlatStepsAPI.[] ,
-    record { w1-pc = trans (cong suc (TrW0.w0-pc T)) (sym (tW-pos₁ p)) ; w1-run = TrW0.w0-run T
+    record { w1-pc = trans (cong suc (TrW0.w0-pc T)) (sym (tW-pos₁ p)) ; w1-run = TrW0.w0-run T ; w1-slots = TrW0.w0-slots T
            ; w1-wx = TrW0.w0-wx T ; w1-wa = TrW0.w0-wa T ; w1-af = TrW0.w0-af T ; w1-area = TrW0.w0-area T
            ; w1-x = TrW0.w0-x T ; w1-at = TrW0.w0-at T ; w1-a = TrW0.w0-a T ; w1-out = refl
-           ; w1-s0 = TrW0.w0-s0 T ; w1-ne = TrW0.w0-ne T ; w1-lt = TrW0.w0-lt T ; w1-arg = TrW0.w0-arg T } ,
+           ; w1-s0 = TrW0.w0-s0 T ; w1-ne = TrW0.w0-ne T ; w1-lt = TrW0.w0-lt T ; w1-arg = TrW0.w0-arg T ; w1-win = TrW0.w0-win T } ,
     ran-regs _
     where
       open FlatStepsAPI {FS} using (step-at)
@@ -216,7 +217,7 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tw-call {X = X} p {i} T =
     call-core-h p (TrW1.w1-af T) (TrW1.w1-area T) (cOff (wsz X)) i (TrW1.w1-wx T) (TrW1.w1-wa T)
       (tW-seg1 p (TrW1.w1-pc T)) (TrW1.w1-run T) (TrW1.w1-s0 T) (TrW1.w1-lt T) (TrW1.w1-out T) (TrW1.w1-x T)
-      (at-cOff (wsz X) (TrW1.w1-wx T) (vw-len (TrW1.w1-x T)) (TrW1.w1-at T)) (TrW1.w1-a T) (TrW1.w1-arg T)
+      (at-cOff (wsz X) (TrW1.w1-wx T) (vw-len (TrW1.w1-x T)) (TrW1.w1-at T)) (TrW1.w1-a T) (TrW1.w1-arg T) (TrW1.w1-win T)
 
   -- ★ its way out: a bare return (the result already in the dispatcher's area)
   tw-end : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b} (p : under (ktrω ds′ b γ) ∈ allK U) {fs}
@@ -238,10 +239,11 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i 0 (cellPtr i ∷ w₁ ∷ w₂ ∷ wf ∷ wx)
           → Rel.CodeOf {FS} U wordOf (_ , kbodyω ds′ b γ) w₁
           → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (slot fs) ((M ∸ wsz A) + y) wa
+          → (∀ k → k Data.Nat.< wsz A → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) (AllocState.current-frame (falloc fs)) ((k + (M ∸ wsz A)) + y) ≡ true)
           → Σ (under (ktrω ds′ b γ) ∈ allK U) λ p → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
               × TrW0 M (trPos (ktrω ds′ b γ) p 0) i x a fs′
               × Σ ℕ λ q → ClosInω fs fs′ (cellPtr i) y 1 0 q
-  tw-disp {ds′ = ds′} {b} {γ} c y M {i} {x} {a} {wx} {wa} {fs = fs} seg h sx px words (m , refl) pa sa =
+  tw-disp {ds′ = ds′} {b} {γ} c y M {i} {x} {a} {wx} {wa} {fs = fs} seg h sx px words (m , refl) pa sa win =
     m , fin (closure-inω image fs c y (cellLoc i 0) (tl (idx m)) (e-thunk (tl (idx m))) q 1 0 sx (proj₁ (proj₂ words)) seg
                (image-tramp m refl) segq h)
     where
@@ -259,7 +261,7 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       fin (fs′ , run , CL) =
         6 , fs′ , run ,
         record { w0-pc = trans (cw-pc CL) (sym (trans (length-++ Q) (trans (cong (_+ 2) qQ) (Data.Nat.Properties.+-comm q 2))))
-               ; w0-run = trans (cw-halt CL) h
+               ; w0-run = trans (cw-halt CL) h ; w0-slots = cw-slots CL
                ; w0-wx = wx ; w0-wa = wa ; w0-af = cf ; w0-area = y
                ; w0-x = subst (λ r → VW r x wx) (sym (cw-heap CL)) px
                ; w0-at = subst (λ r → Rel.At {FS} U wordOf r i hdr wx) (sym (cw-heap CL)) (proj₂ (proj₂ (proj₂ (proj₂ words))))
@@ -269,7 +271,8 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                ; w0-ne = λ e → callee-≢ cf 1 (sym (trans e (cw-frame CL)))
                ; w0-lt = subst (_≺ cf) (sym (cw-frame CL)) (callee-below cf 1)
                ; w0-arg = Sim.slots-frame {FS} U wordOf {LocState.stackMem (floc fs) cf} {LocState.stackMem (floc fs′) cf} wa
-                            (λ k _ → cw-other CL cf _ (callee-≢ cf 1)) sa } ,
+                            (λ k _ → cw-other CL cf _ (callee-≢ cf 1)) sa
+               ; w0-win = λ k k< → win-push (falloc fs) (falloc fs′) cf _ (cw-saved CL) (win k k<) } ,
         q , CL
 
   -- ★ the body's way out (D425): its result's words into the dispatcher's area (two frames up),
@@ -289,11 +292,13 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → ¬ af ≡ AllocState.current-frame (falloc fs) → ¬ cfc ≡ af
           → slot fs (sv₁ (frameOf (blockᴵ (kbodyω ds′ b γ)))) ≡ just (SV-Ptr (AtStack af area))
           → LocState.stackMem (floc fs) cfc 0 ≡ just (SV-Ptr (AtStack af area))
+          → sl ≡ 1
+          → (∀ k → k Data.Nat.< wsz B → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) af ((k + ((wsz A ⊔ wsz B) ∸ wsz B)) + area) ≡ true)
           → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
               × TrW2 (wsz A ⊔ wsz B) (trPos (ktrω ds′ b γ) p 2) w fs′
               × CallOutA fs fs′ cfc af area (budget (frameOf (blockᴵ (kbodyω ds′ b γ))) ∸ ws (B ∷ []))
                          ((wsz A ⊔ wsz B) ∸ wsz B) (wsz B) (trPos (ktrω ds′ b γ) p 2) rest sv sl
-  tw-back {A = A} {B} {ds′} {b} {γ} p e {e′} {w} {fs} cfc af area rest sv sl lf H hret hsv ne cne ep s0 =
+  tw-back {A = A} {B} {ds′} {b} {γ} p e {e′} {w} {fs} cfc af area rest sv sl lf H hret hsv ne cne ep s0 esl win =
     with-res (Rel.CfgW.c-stk (K.Here.h-cfg {p = p} H))
     where
       φ′ = frameOf (blockᴵ (kbodyω ds′ b γ))
@@ -307,14 +312,14 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       with-res ((wb , pb , sb) , _) =
         fin (call-outA image fs cfc af area (budget φ′) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (fbudget φ′)
                (trPos (ktrω ds′ b γ) p 2) rest sv sl hret hsv ne ep
-               (λ k k< → slots-def wb sb k (subst (k Data.Nat.<_) (sym (vw-len pb)) k<)) seg (K.Here.h-run {p = p} H))
+               (λ k k< → slots-def wb sb k (subst (k Data.Nat.<_) (sym (vw-len pb)) k<)) win seg (K.Here.h-run {p = p} H))
         where
           fin : Σ FlatState (λ fs′ → FlatSteps image (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′
                   × CallOutA fs fs′ cfc af area (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (trPos (ktrω ds′ b γ) p 2) rest sv sl)
               → _
           fin (fs′ , run , CO) =
             _ , fs′ , run ,
-            record { w2-pc = co-pc CO ; w2-run = trans (co-halt CO) (K.Here.h-run {p = p} H)
+            record { w2-pc = co-pc CO ; w2-run = trans (co-halt CO) (K.Here.h-run {p = p} H) ; w2-slots = trans (co-slots CO) esl
                    ; w2-wb = wb ; w2-af = af ; w2-area = area
                    ; w2-b = vw-frame pb (λ i k _ → co-rest CO (AtDynamic (cellLoc i k)) (λ k′ k′< ()))
                    ; w2-s0 = subst (λ g′ → LocState.stackMem (floc fs′) g′ 0 ≡ just (SV-Ptr (AtStack af area))) (sym (co-frame CO))

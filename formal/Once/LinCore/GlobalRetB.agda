@@ -161,6 +161,7 @@ module RetB {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         → rootOf P ≡ rblock p → ptFin P ≡ blockFin κ → siteCallee st ≡ p
         → HereP P (e′ ∥ b ∷ˢ []ˢ) fs
         → fret fs ≡ sitePos st ∷ rets′ → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv′
+        → sl ≡ siteB st
         → AllocState.current-frame (falloc fs) ≺ cfc
         → LocState.stackMem (floc fs) (AllocState.current-frame (falloc fs)) (sv₁ (frameOf (blockᴵ κ)))
           ≡ just (SV-Ptr (AtStack cfc (Tp (siteφ st) S ∸ (wsz A ⊔ wsz B))))

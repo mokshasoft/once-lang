@@ -15,6 +15,7 @@
 
 {-# OPTIONS --guardedness #-}
 
+open import Data.Bool using (true)
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_; _<_)
 open import Data.Nat.Properties using (≤-refl)
 open import Data.Nat.Tactic.RingSolver using (solve-∀)
@@ -63,7 +64,7 @@ import Once.LinCore.Moves
 module FramesH {FS : FrameSemantics} where
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc; fret)
   open import Once.LinCore.LowerSimE {FS} using (callee-frame)
-  open import Once.LinCore.Moves {FS} using (slot; Old; InBlk)
+  open import Once.LinCore.Moves {FS} using (slot; Old; InBlk; win-push)
 
   -- the return pc `r`, the callee's budget `b`, its first save slot `sv`, the area's pointer `ap`
   record CalledH (fs fs′ : FlatState) (r b sv : ℕ) (ap : StoredValue FS) : Set where
@@ -103,9 +104,9 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
   open Sim {FS} U wordOf using (slots-frame)
   open import Once.LinCore.LowerSimE {FS}
-    using (CallInH; call-in-h; call-in-c; callee-frame; callee-below; callee-≢; ch-frame; ch-saved; ch-ret; ch-pc; ch-in; ch-s₁; ch-s₂; ch-other; ch-heap; ch-next; ch-size; ch-halt; ch-log)
+    using (CallInH; call-in-h; call-in-c; callee-frame; callee-below; callee-≢; ch-frame; ch-saved; ch-slots; ch-ret; ch-pc; ch-in; ch-s₁; ch-s₂; ch-other; ch-heap; ch-next; ch-size; ch-halt; ch-log)
   open import Once.LinCore.Moves {FS}
-    using (Seg; slot; Ran; r-keep; r-pc; r-next; r-old; k-halt; k-log; k-ret; k-saved; k-frame; k-other; r-inb; inb-pt)
+    using (Seg; slot; Ran; r-keep; r-pc; r-next; r-old; k-halt; k-slots; k-log; k-ret; k-saved; k-frame; k-other; r-inb; inb-pt; win-push)
 
   private
     sv-ne : ∀ n → ¬ n ≡ suc n
@@ -128,12 +129,14 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → ¬ callee-frame (AllocState.current-frame (falloc fs)) (fbudget (frameOf (blockᴵ κ))) ≡ cf
               → VW (LocState.heapMem (floc fs)) x wx → At (LocState.heapMem (floc fs)) i o₀ wx
               → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (LocState.stackMem (floc fs) cf) (((wsz A ⊔ wsz B) ∸ wsz A) + area) wa
+              → (∀ k → k Data.Nat.< wsz A → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) cf ((k + ((wsz A ⊔ wsz B) ∸ wsz A)) + area) ≡ true)
               → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
                   × K.Here p whole (vw x []ᵉ ∥ a ∷ˢ []ˢ) fs′
                   × CalledH fs fs′ r (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (SV-Ptr (AtStack cf area))
-  call-core-g {X} {A} {B} {κ} p cf area o₀ i {x} {a} {fs} {fs₁} wx wa n r st₁ CH h callee≢ px ax pa sa =
+  call-core-g {X} {A} {B} {κ} p cf area o₀ i {x} {a} {fs} {fs₁} wx wa n r st₁ CH h callee≢ px ax pa sa win =
     fin₂ (enter-jh image fs₁ φ′ cf area (M ∸ wsz A) (sv₂ φ′) {X} {A} {x} {a} i o₀ wx wa ne₁ (ch-in CH) sv₂-at
-            (Data.Nat.Properties.n≤1+n (budget φ′)) pa₁ sa₁ px₁ ax₁ seg₂ h₁
+            (Data.Nat.Properties.n≤1+n (budget φ′)) pa₁ sa₁ px₁ ax₁
+            (λ k k< → win-push (falloc fs) (falloc fs₁) cf _ (ch-saved CH) (win k k<)) seg₂ h₁
             (proj₁ (K.shape-fits p whole)) (proj₂ (K.shape-fits p whole)))
     where
       import Data.Nat.Properties
@@ -168,7 +171,8 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         _ , fs₂ , FlatSteps-++ st₁ st₂ ,
         record { h-pc  = trans (r-pc Rn) (trans (cong (nE +_) (ch-pc CH)) (trans (shuffle-v _ _ q) (sym start-pos)))
                ; h-run = trans (k-halt (r-keep Rn)) h₁
-               ; h-cfg = C₂ } ,
+               ; h-cfg = C₂
+               ; h-slots = trans (k-slots (r-keep Rn)) (ch-slots CH) } ,
         record { dh-ret    = trans (k-ret (r-keep Rn)) (ch-ret CH)
                ; dh-saved  = trans (k-saved (r-keep Rn)) (ch-saved CH)
                ; dh-frame  = trans (k-frame (r-keep Rn)) (ch-frame CH)
@@ -192,10 +196,11 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → readReg (LocState.regs (floc fs)) Output ≡ SV-Ptr (AtDynamic (cellLoc i o₀))
               → VW (LocState.heapMem (floc fs)) x wx → At (LocState.heapMem (floc fs)) i o₀ wx
               → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (LocState.stackMem (floc fs) cf) (((wsz A ⊔ wsz B) ∸ wsz A) + area) wa
+              → (∀ k → k Data.Nat.< wsz A → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) cf ((k + ((wsz A ⊔ wsz B) ∸ wsz A)) + area) ≡ true)
               → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
                   × K.Here p whole (vw x []ᵉ ∥ a ∷ˢ []ˢ) fs′
                   × CalledH fs fs′ (suc (suc (fpc fs))) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (SV-Ptr (AtStack cf area))
-  call-core-h {X} {A} {B} {κ} p cf area o₀ i {x} {a} {fs} wx wa seg h s0 lt out px ax pa sa =
+  call-core-h {X} {A} {B} {κ} p cf area o₀ i {x} {a} {fs} wx wa seg h s0 lt out px ax pa sa win =
     fin (call-in-h image fs 0 (SV-Ptr (AtStack cf area)) (SV-Ptr (AtDynamic (cellLoc i o₀))) (nameOf (idx p)) (e-fn (nameOf (idx p)))
            (CalleeV.q p) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (sv₂ (frameOf (blockᴵ κ)))
            (sv-ne (budget (frameOf (blockᴵ κ)))) s0 out seg (image-fn p) (CalleeV.entry-seg p) h)
@@ -205,7 +210,7 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                 (sv₂ (frameOf (blockᴵ κ))) (CalleeV.q p) (suc (suc (fpc fs))) (SV-Ptr (AtStack cf area)) (SV-Ptr (AtDynamic (cellLoc i o₀)))) → _
       fin (fs₁ , st₁ , CH) =
         call-core-g p cf area o₀ i wx wa 6 (suc (suc (fpc fs))) st₁ CH h
-          (λ e → ≺-≢ (≺-trans (callee-below cur (fbudget (frameOf (blockᴵ κ)))) lt) e) px ax pa sa
+          (λ e → ≺-≢ (≺-trans (callee-below cur (fbudget (frameOf (blockᴵ κ)))) lt) e) px ax pa sa win
 
   -- ★ from a copy trampoline's frame: its own bottom the area (`lea-slot 0`), the view's pointer
   -- in a save slot `s` (the contents' address)
@@ -216,11 +221,12 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → slot fs s ≡ just (SV-Ptr (AtDynamic (cellLoc i o₀)))
               → VW (LocState.heapMem (floc fs)) x wx → At (LocState.heapMem (floc fs)) i o₀ wx
               → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (slot fs) (((wsz A ⊔ wsz B) ∸ wsz A) + 0) wa
+              → (∀ k → k Data.Nat.< wsz A → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) (AllocState.current-frame (falloc fs)) ((k + ((wsz A ⊔ wsz B) ∸ wsz A)) + 0) ≡ true)
               → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
                   × K.Here p whole (vw x []ᵉ ∥ a ∷ˢ []ˢ) fs′
                   × CalledH fs fs′ (suc (suc (suc (suc (fpc fs))))) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ)))
                             (SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) 0))
-  call-core-c {X} {A} {B} {κ} p s o₀ i {x} {a} {fs} wx wa seg h sv px ax pa sa =
+  call-core-c {X} {A} {B} {κ} p s o₀ i {x} {a} {fs} wx wa seg h sv px ax pa sa win =
     fin (call-in-c image fs s (SV-Ptr (AtDynamic (cellLoc i o₀))) (nameOf (idx p)) (e-fn (nameOf (idx p)))
            (CalleeV.q p) (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ))) (sv₂ (frameOf (blockᴵ κ)))
            (sv-ne (budget (frameOf (blockᴵ κ)))) sv seg (image-fn p) (CalleeV.entry-seg p) h)
@@ -229,4 +235,4 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       fin : Σ FlatState (λ fs₁ → FlatSteps image 8 fs fs₁ × CallInH fs fs₁ (fbudget (frameOf (blockᴵ κ))) (sv₁ (frameOf (blockᴵ κ)))
                 (sv₂ (frameOf (blockᴵ κ))) (CalleeV.q p) (suc (suc (suc (suc (fpc fs))))) (SV-Ptr (AtStack cur 0)) (SV-Ptr (AtDynamic (cellLoc i o₀)))) → _
       fin (fs₁ , st₁ , CH) =
-        call-core-g p cur 0 o₀ i wx wa 8 (suc (suc (suc (suc (fpc fs))))) st₁ CH h (callee-≢ cur (fbudget (frameOf (blockᴵ κ)))) px ax pa sa
+        call-core-g p cur 0 o₀ i wx wa 8 (suc (suc (suc (suc (fpc fs))))) st₁ CH h (callee-≢ cur (fbudget (frameOf (blockᴵ κ)))) px ax pa sa win

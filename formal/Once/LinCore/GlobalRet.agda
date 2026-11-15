@@ -152,6 +152,7 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → ptFin (p-block p (at e)) ≡ blockFin κ
               → K.Here p e (e′ ∥ b ∷ˢ []ˢ) fs
               → fret fs ≡ FrS.C.pos (next s) ∷ rets′ → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv′
+              → sl ≡ fbudget (frameOf main)
               → AllocState.current-frame (falloc fs) ≺ cfc
               → LocState.stackMem (floc fs) (AllocState.current-frame (falloc fs)) (sv₁ (frameOf (blockᴵ κ)))
                 ≡ just (SV-Ptr (AtStack cfc (Tp (frameOf main) S ∸ (wsz A ⊔ wsz B))))
@@ -162,8 +163,8 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → AllocState.next-heap-ref (falloc fs) ≡ n
               → InBlk fs
               → ArrivesAt k r (es ∥ b ∷ˢ os) n fs
-      gret-ss s e p eC cfc sl sv′ rets′ eF H eRets eSv abv area ev sk fr rest nx I =
-        case FrS.return s e cfc rets′ sv′ sl p eC eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″)) area ev sk of λ where
+      gret-ss s e p eC cfc sl sv′ rets′ eF H eRets eSv eSl abv area ev sk fr rest nx I =
+        case FrS.return s e cfc rets′ sv′ sl p eC eF H eRets eSv eSl (λ e″ → ≺-≢ abv (sym e″)) area ev sk of λ where
           (N , fs′ , run , H′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-start (at (next s)) ; g-here = H′ ; g-next = trans (co-next CO) nx
                                    ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I } , co-log CO
@@ -177,6 +178,7 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → ptFin (p-block p (at e)) ≡ blockFin κ
               → K.Here p e (e′ ∥ b ∷ˢ []ˢ) fs
               → fret fs ≡ FrK.C.pos p′ (next s) ∷ rets′ → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv′
+              → sl ≡ fbudget (frameOf (blockᴵ κ′))
               → AllocState.current-frame (falloc fs) ≺ cfc
               → LocState.stackMem (floc fs) (AllocState.current-frame (falloc fs)) (sv₁ (frameOf (blockᴵ κ)))
                 ≡ just (SV-Ptr (AtStack cfc (Tp (frameOf (blockᴵ κ′)) S ∸ (wsz A ⊔ wsz B))))
@@ -187,25 +189,25 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → AllocState.next-heap-ref (falloc fs) ≡ n
               → InBlk fs
               → ArrivesAt k r (es ∥ b ∷ˢ os) n fs
-      gret-sb p′ s e p eC cfc sl sv′ rets′ eF H eRets eSv abv area ev sk fr rest nx I =
-        case FrK.return p′ s e cfc rets′ sv′ sl p eC eF H eRets eSv (λ e″ → ≺-≢ abv (sym e″)) area ev sk of λ where
+      gret-sb p′ s e p eC cfc sl sv′ rets′ eF H eRets eSv eSl abv area ev sk fr rest nx I =
+        case FrK.return p′ s e cfc rets′ sv′ sl p eC eF H eRets eSv eSl (λ e″ → ≺-≢ abv (sym e″)) area ev sk of λ where
           (N , fs′ , run , H′ , CO , tk) →
             N , fs′ , run , record { g-pt = p-block p′ (at (next s)) ; g-here = H′ ; g-next = trans (co-next CO) nx
                                    ; g-ret = back CO tk fr rest ; g-blk = co-inb CO I } , co-log CO
 
     private
       rc-start : ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} (s : Sub main (call κ ⨾ k)) → GretC (s-start s)
-      rc-start s (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv abv area ev sk fr rest nx I =
-        gret-ss s e p eC cfc sl sv′ rets′ eF H eRets eSv abv area ev sk fr rest nx I
-      rc-start s (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv abv area ev sk fr rest nx I
-      rc-start s (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv abv area ev sk fr rest nx I
+      rc-start s (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv eSl abv area ev sk fr rest nx I =
+        gret-ss s e p eC cfc sl sv′ rets′ eF H eRets eSv eSl abv area ev sk fr rest nx I
+      rc-start s (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I
+      rc-start s (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I
 
       rc-block : ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V} {σ′} {κ′ : Key σ′}
                 (p′ : (σ′ , κ′) ∈ allK U) (s : Sub (blockᴵ κ′) (call κ ⨾ k)) → GretC (s-block p′ s)
-      rc-block p′ s (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv abv area ev sk fr rest nx I =
-        gret-sb p′ s e p eC cfc sl sv′ rets′ eF H eRets eSv abv area ev sk fr rest nx I
-      rc-block p′ s (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv abv area ev sk fr rest nx I
-      rc-block p′ s (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv abv area ev sk fr rest nx I
+      rc-block p′ s (p-block p (at e)) _ cfc sl sv′ rets′ refl eF eC H eRets eSv eSl abv area ev sk fr rest nx I =
+        gret-sb p′ s e p eC cfc sl sv′ rets′ eF H eRets eSv eSl abv area ev sk fr rest nx I
+      rc-block p′ s (p-start (at e)) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I
+      rc-block p′ s (p-tramp _ _) _ cfc sl sv′ rets′ () eF eC H eRets eSv eSl abv area ev sk fr rest nx I
 
     private
       gret-cases : SiteCases
@@ -221,31 +223,31 @@ module RetR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → ArrivesAt k r (es ∥ b ∷ˢ os) n fs
     -- by the return stack's top first (one split of `RetOK`), then the point
     gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
-         (ok-call p st cfc sl sv′ rets′ eR eF eC eRets eSv abv area ev sk rest) I =
-      site-elim gret-cases st P p cfc sl sv′ rets′ eR eF eC H eRets eSv abv area ev sk
+         (ok-call p st cfc sl sv′ rets′ eR eF eC eRets eSv eSl abv area ev sk rest) I =
+      site-elim gret-cases st P p cfc sl sv′ rets′ eR eF eC H eRets eSv eSl abv area ev sk
         (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
     gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
-         (ok-tramp p o d cfc sl sv′ rets′ eR eF eRets eSv abv area fit ev sk rest) I =
-      gret-t P d p cfc sl sv′ rets′ eR eF H o eRets eSv abv area fit ev sk
+         (ok-tramp p o d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area fit ev sk rest) I =
+      gret-t P d p cfc sl sv′ rets′ eR eF H o eRets eSv eSl abv area fit ev sk
         (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
 
     gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
-         (ok-trampf p d cfc sl sv′ rets′ eR eF eRets eSv abv ev sk rest) I =
-      gret-tf P d p cfc sl sv′ rets′ eR eF H eRets eSv abv ev sk
+         (ok-trampf p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv ev sk rest) I =
+      gret-tf P d p cfc sl sv′ rets′ eR eF H eRets eSv eSl abv ev sk
         (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
     gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
-         (ok-trampω p d cfc sl sv′ rets′ eR eF eRets eSv abv area fit efit ev sk rest) I =
-      gret-tω P p d cfc sl sv′ rets′ eR H eRets eSv area fit ev sk
+         (ok-trampω p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area fit efit ev sk rest) I =
+      gret-tω P p d cfc sl sv′ rets′ eR H eRets eSv eSl area fit ev sk
         (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
     gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
-         (ok-callω p cfc sl sv′ rets′ eR eF eRets eSv abv ap rest) I =
-      gret-cω P p cfc sl sv′ rets′ eR eF H eRets eSv abv ap
+         (ok-callω p cfc sl sv′ rets′ eR eF eRets eSv eSl abv ap rest) I =
+      gret-cω P p cfc sl sv′ rets′ eR eF H eRets eSv eSl abv ap
         (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
     gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
-         (ok-trampc p d cfc sl sv′ rets′ eR eF eRets eSv abv area ev sk rest) I =
-      gret-tc P p d cfc sl sv′ rets′ eR H eRets eSv abv area ev sk
+         (ok-trampc p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area ev sk rest) I =
+      gret-tc P p d cfc sl sv′ rets′ eR H eRets eSv eSl abv area ev sk
         (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I
     gret {t = t} {Es = Es} {k = k} {r = r} {es = es} {os = os} {fs = fs} P inv H nx
-         (ok-callc p cfc sl sv′ rets′ ci eR eF eRets eSv abv ap s₂ pcv rest) I =
-      gret-cc P p cfc sl sv′ rets′ ci eR eF H eRets eSv abv ap s₂ pcv
+         (ok-callc p cfc sl sv′ rets′ ci eR eF eRets eSv eSl abv ap s₂ pcv rest) I =
+      gret-cc P p cfc sl sv′ rets′ ci eR eF H eRets eSv eSl abv ap s₂ pcv
         (proj₂ (subst (FreshR (frm {t = t} {Es = Es} k es os r)) (sym nx) (fresh-ret inv))) rest nx I

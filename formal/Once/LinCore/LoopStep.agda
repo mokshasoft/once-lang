@@ -74,7 +74,7 @@ module Loops {FS : FrameSemantics} (U : Univ)
   open Fetch {FS} using (in-seg)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc; find-label; do-jump)
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++; flat-label; flat-jmp)
-  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; k-halt; keep-pc; keep-trans; Old)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; slot; Keep; k-halt; k-slots; keep-pc; keep-trans; Old)
 
   ----------------------------------------------------------------------
   -- 1. AT AN ADDRESS: the flat pc, running, the configuration in the frame.
@@ -85,6 +85,7 @@ module Loops {FS : FrameSemantics} (U : Univ)
       q-pc  : fpc fs ≡ q
       q-run : LocState.halted (floc fs) ≡ false
       q-cfg : CfgW (LocState.heapMem (floc fs)) (slot fs) φ m
+      q-slots : AllocState.frame-slots (falloc fs) ≡ fbudget φ
   open HereQ
 
   -- a loop's dispatch, inside the program
@@ -106,7 +107,7 @@ module Loops {FS : FrameSemantics} (U : Univ)
   loop-enter s {fs = fs} H =
     1 , record fs { fpc = suc (fpc fs) } ,
     step-at _ (h-run H , proj₁ (seg-at s H)) (flat-label prog fs (jl j (lm (lowAt s)))) FlatStepsAPI.[] ,
-    record { h-pc = trans (cong suc (h-pc H)) (sym pos-body) ; h-run = h-run H ; h-cfg = h-cfg H } ,
+    record { h-pc = trans (cong suc (h-pc H)) (sym pos-body) ; h-run = h-run H ; h-cfg = h-cfg H ; h-slots = h-slots H } ,
     keep-pc _ , refl , (λ _ _ → refl) , (λ _ _ → refl)
     where
       pR = proj₁ R ; pS = proj₁ (ins (sub-low L₀ s))
@@ -128,7 +129,7 @@ module Loops {FS : FrameSemantics} (U : Univ)
     record fs { fpc = length (proj₁ ins′) } ,
     step-at _ (h-run H , proj₁ (subst (Seg prog (fpc fs)) e (seg-at s H)))
       (trans (flat-jmp prog fs L) (cong (λ x → do-jump x fs) (lab ins′))) FlatStepsAPI.[] ,
-    record { q-pc = refl ; q-run = h-run H ; q-cfg = h-cfg H } ,
+    record { q-pc = refl ; q-run = h-run H ; q-cfg = h-cfg H ; q-slots = h-slots H } ,
     keep-pc _ , refl , (λ _ _ → refl) , (λ _ _ → refl)
 
   ----------------------------------------------------------------------
@@ -153,7 +154,7 @@ module Loops {FS : FrameSemantics} (U : Univ)
             → HereQ (posD s) (es ∥ minl {B = A} v ∷ˢ os) fs → Moved (next s) fs 0 (es ∥ v ∷ˢ os)
   disp-exit {E} {Es} {A} {B} {S} {b = b} {k} lab s {es} {os} {v} {fs} H =
     fin (case₁-sim prog fs₁ φ {E ∷ Es} {B} {A} {S} {es} {os} {v} Li q seg (lab labLi)
-           (Seg-++ˡ prog q (instr-ctrl (c-label Li) ∷ MB) kcode (in-seg labLi)) (q-run H) (q-cfg H))
+           (Seg-++ˡ prog q (instr-ctrl (c-label Li) ∷ MB) kcode (in-seg labLi)) (q-run H) (q-cfg H) (slots< {fs₁} (q-slots H)))
     where
       L = lowAt s
       m = lm L ; fin′ = lfin L ; eb = proj₁ (lcin L) ; ek = proj₂ (lcin L)
@@ -186,14 +187,14 @@ module Loops {FS : FrameSemantics} (U : Univ)
       fin : _ → Moved (next s) fs 0 (es ∥ v ∷ˢ os)
       fin (fs′ , st , C′ , pc , K , nx , hp , tp) =
         _ , fs′ , step-at fs₁ (q-run H , proj₁ sD) (flat-label prog fs Ld) st ,
-        record { h-pc = trans pc (sym pos-exit) ; h-run = trans (k-halt K) (q-run H) ; h-cfg = C′ } ,
+        record { h-pc = trans pc (sym pos-exit) ; h-run = trans (k-halt K) (q-run H) ; h-cfg = C′ ; h-slots = trans (k-slots K) (q-slots H) } ,
         keep-trans (keep-pc _) K , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
 
   disp-again : ∀ {E Es A B S V} {b : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V}
                  → Labelled → ∀ (s : Sub root (loop b ⨾ k)) {es : Slots (E ∷ Es)} {os : Stk S} {a : MV A} {fs}
              → HereQ (posD s) (es ∥ minr {A = B} a ∷ˢ os) fs → Moved s fs 0 (es ∥ a ∷ˢ os)
   disp-again {E} {Es} {A} {B} {S} {b = b} {k} lab s {es} {os} {a} {fs} H =
-    fin (case₂-sim prog fs₁ φ {E ∷ Es} {B} {A} {S} {es} {os} {a} Li seg (q-run H) (q-cfg H))
+    fin (case₂-sim prog fs₁ φ {E ∷ Es} {B} {A} {S} {es} {os} {a} Li seg (q-run H) (q-cfg H) (slots< {fs₁} (q-slots H)))
     where
       L = lowAt s
       m = lm L ; fin′ = lfin L ; eb = proj₁ (lcin L) ; ek = proj₂ (lcin L)
@@ -223,7 +224,7 @@ module Loops {FS : FrameSemantics} (U : Univ)
           (FlatSteps-++ st (step-at {i = instr-ctrl (c-jmp Lh)} _ (h₂ , proj₁ (subst (λ z → Seg prog z (instr-ctrl (c-jmp Lh) ∷ instr-ctrl (c-label Li) ∷ MB ++ kcode)) (sym (trans pc at-jmp)) (in-seg jmpIn)))
                               (trans (flat-jmp prog fs₂ Lh) (trans (cong (λ x → do-jump x fs₂) (lab (here-in s)))
                                                                    (cong (λ z → record fs₂ { fpc = z }) (sym (pos-def s))))) FlatStepsAPI.[])) ,
-        record { h-pc = refl ; h-run = h₂ ; h-cfg = C′ } ,
+        record { h-pc = refl ; h-run = h₂ ; h-cfg = C′ ; h-slots = trans (k-slots K) (q-slots H) } ,
         keep-trans (keep-pc _) (keep-trans K (keep-pc _)) , nx , (λ hl _ → cong (λ h → h hl) hp) , tp
         where
           h₂ : LocState.halted (floc fs₂) ≡ false

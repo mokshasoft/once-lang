@@ -198,7 +198,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           (fs′ , st , RC , pc4) →
             _ , fs′ , st ,
             record { g-pt = p-tramp p (at (next (next (next (next whole)))))
-                   ; g-here = (tc4 p , record { c4-pc = pc4 ; c4-run = trans (rc-halt RC) (TrC2.c2-run T2)
+                   ; g-here = (tc4 p , record { c4-pc = pc4 ; c4-run = trans (rc-halt RC) (TrC2.c2-run T2) ; c4-slots = trans (cong AllocState.frame-slots (rc-alloc RC)) (TrC2.c2-slots T2)
                                               ; c4-af = TrC2.c2-af T2 ; c4-d = TrC2.c2-d T2
                                               ; c4-s₁ = trans (rc-slot RC w (s₃≢w w)) (TrC2.c2-s₁ T2)
                                               ; c4-w = cellPtr (szc X , AllocState.next-heap-ref (falloc fs))
@@ -251,7 +251,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           (fs′ , st , RC , pc4) →
             _ , fs′ , st ,
             record { g-pt = p-tramp p (at (next (next (next (next whole)))))
-                   ; g-here = (tc4 p , record { c4-pc = pc4 ; c4-run = trans (rc-halt RC) (TrC2.c2-run T2)
+                   ; g-here = (tc4 p , record { c4-pc = pc4 ; c4-run = trans (rc-halt RC) (TrC2.c2-run T2) ; c4-slots = trans (cong AllocState.frame-slots (rc-alloc RC)) (TrC2.c2-slots T2)
                                               ; c4-af = TrC2.c2-af T2 ; c4-d = TrC2.c2-d T2
                                               ; c4-s₁ = trans (rc-slot RC w (s₃≢w w)) (TrC2.c2-s₁ T2)
                                               ; c4-w = cellPtr (szν F S′ , AllocState.next-heap-ref (falloc fs))

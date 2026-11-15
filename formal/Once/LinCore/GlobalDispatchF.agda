@@ -150,11 +150,12 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → (∀ j → AllocState.next-heap-ref (falloc fs) ≤ serial j → cntE es j ≡ 0 × cntS (v ∷ˢ os) j ≡ 0)
             → FreshR r (AllocState.next-heap-ref (falloc fs))
             → RetOK (dsiteRoot d) (dsiteFin d) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
+            → AllocState.frame-slots (falloc fs) ≡ fbudget (dsiteφ d)
             → RetOK (rtramp {κ = ktrf X C} p) (trFin (idx p) (ktrf X C)) (frm {t = nothing} {Es = Es} k es os r)
                     (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) fs′
-  mk-trampf {es = es} {os = os} {fs = fs} {fs′} {b = b} p d FI eR C fr frR ok =
+  mk-trampf {es = es} {os = os} {fs = fs} {fs′} {b = b} p d FI eR C fr frR ok esl =
     ok-trampf p d cfc (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) (fret fs)
-      refl refl eR (fr-saved FI) under-cfc
+      refl refl eR (fr-saved FI) esl under-cfc
       (env-stand (λ j le → proj₁ (fr j le)) old (envW-frame es (λ y _ → kept y) (CfgW.c-env C)))
       (stk-stand (λ j le → nat-r0 (proj₂ (fr j le))) old (stk-all os kept (proj₂ (CfgW.c-stk C))))
       (ret-deep (AllocState.current-frame (falloc fs′)) under-cfc
@@ -187,13 +188,14 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → Seg image (fpc fs) (restore-input (Tp (dsiteφ d) S ∸ 1) ∷ addr-at 2 ∷ mov-to-input ∷ instr-save-closure-reg
                                 ∷ restore-input (Tp (dsiteφ d) S ∸ 1) ∷ mov-to-output ∷ instr-call-closure ∷ [])
           → LocState.halted (floc fs) ≡ false
+          → AllocState.frame-slots (falloc fs) ≡ fbudget (dsiteφ d)
           → CfgW (LocState.heapMem (floc fs)) (slot fs) (dsiteφ d) (es ∥ mfn i lam x ∷ˢ os)
           → suc (suc (suc (suc (suc (suc (suc (fpc fs))))))) ≡ dsitePos d
           → AllocState.next-heap-ref (falloc fs) ≡ n
           → RetOK (dsiteRoot d) (dsiteFin d) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
           → InBlk fs
           → Arrives (blockᴵ (ktrf X (Fn kd g A B))) (frm {t = nothing} {Es = Es} c es os r) ([]ᵉ ∥ mfn i lam x ∷ˢ []ˢ) n fs
-  gfree-c {kd = kd} {g = g} {X = X} {A = A} {B = B} {S = S} {r = r} {i = i} {lam = lam} {x = x} {os = os} {fs = fs} d inv seg run C pe nx ok I =
+  gfree-c {kd = kd} {g = g} {X = X} {A = A} {B = B} {S = S} {r = r} {i = i} {lam = lam} {x = x} {os = os} {fs = fs} d inv seg run fsl C pe nx ok I =
     with-top (CfgW.c-stk C)
     where
       with-top : StkW (LocState.heapMem (floc fs)) (slot fs) (dsiteφ d) (mfn i lam x ∷ˢ os) → _
@@ -205,7 +207,7 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                     ; g-next = trans (fr-next FI) nx
                                     ; g-ret = mk-trampf m d FI (trans (fr-ret FI) (cong (_∷ fret fs) pe)) C
                                                 (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
-                                                (subst (FreshR r) (sym nx) (fresh-ret inv)) ok
+                                                (subst (FreshR r) (sym nx) (fresh-ret inv)) ok fsl
                                     ; g-blk = fblk FI I } , fr-log FI
 
   -- ★ a ν's free (`nfree`) at a dispatch site
@@ -216,13 +218,14 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → Seg image (fpc fs) (restore-input (Tp (dsiteφ d) S′ ∸ 1) ∷ addr-at 2 ∷ mov-to-input ∷ instr-save-closure-reg
                                 ∷ restore-input (Tp (dsiteφ d) S′ ∸ 1) ∷ mov-to-output ∷ instr-call-closure ∷ [])
           → LocState.halted (floc fs) ≡ false
+          → AllocState.frame-slots (falloc fs) ≡ fbudget (dsiteφ d)
           → CfgW (LocState.heapMem (floc fs)) (slot fs) (dsiteφ d) (es ∥ mnu i p ∷ˢ os)
           → suc (suc (suc (suc (suc (suc (suc (fpc fs))))))) ≡ dsitePos d
           → AllocState.next-heap-ref (falloc fs) ≡ n
           → RetOK (dsiteRoot d) (dsiteFin d) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs
           → InBlk fs
           → Arrives (blockᴵ (ktrf (Coalg F S ⊗t S) (Nu F))) (frm {t = nothing} {Es = Es} c es os r) ([]ᵉ ∥ mnu i p ∷ˢ []ˢ) n fs
-  gfree-n {F = F} {S = S} {S′ = S′} {r = r} {i = i} {p = p} {os = os} {fs = fs} d inv seg run C pe nx ok I =
+  gfree-n {F = F} {S = S} {S′ = S′} {r = r} {i = i} {p = p} {os = os} {fs = fs} d inv seg run fsl C pe nx ok I =
     with-top (CfgW.c-stk C)
     where
       with-top : StkW (LocState.heapMem (floc fs)) (slot fs) (dsiteφ d) (mnu i p ∷ˢ os) → _
@@ -234,7 +237,7 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                     ; g-next = trans (fr-next FI) nx
                                     ; g-ret = mk-trampf m d FI (trans (fr-ret FI) (cong (_∷ fret fs) pe)) C
                                                 (λ j le → fresh-cfg inv j (subst (_≤ serial j) nx le))
-                                                (subst (FreshR r) (sym nx) (fresh-ret inv)) ok
+                                                (subst (FreshR r) (sym nx) (fresh-ret inv)) ok fsl
                                     ; g-blk = fblk FI I } , fr-log FI
 
   private
@@ -251,11 +254,11 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → InBlk fs
          → Arrives (blockᴵ (ktrf X (Fn kd g A B))) (frm {t = nothing} {Es = Es} c es os r) ([]ᵉ ∥ mfn i lam x ∷ˢ []ˢ) n fs
   gcfree {fs = fs} (p-start (at s)) inv H nx ok I =
-    gfree-c (d-start s) inv (Seg-++ˡ image (fpc fs) _ _ (S.seg-at s H)) (S.Here.h-run H) (S.Here.h-cfg H)
+    gfree-c (d-start s) inv (Seg-++ˡ image (fpc fs) _ _ (S.seg-at s H)) (S.Here.h-run H) (S.Here.h-slots H) (S.Here.h-cfg H)
       (trans (cong (λ z → suc (suc (suc (suc (suc (suc (suc z))))))) (S.Here.h-pc H)) (trans (sym (seven (S.pos s))) (sym (S.pos-next s))))
       nx ok I
   gcfree {fs = fs} (p-block p′ (at s)) inv H nx ok I =
-    gfree-c (d-block p′ s) inv (Seg-++ˡ image (fpc fs) _ _ (K.seg-at p′ s H)) (K.Here.h-run {p = p′} H) (K.Here.h-cfg {p = p′} H)
+    gfree-c (d-block p′ s) inv (Seg-++ˡ image (fpc fs) _ _ (K.seg-at p′ s H)) (K.Here.h-run {p = p′} H) (K.Here.h-slots {p = p′} H) (K.Here.h-cfg {p = p′} H)
       (trans (cong (λ z → suc (suc (suc (suc (suc (suc (suc z))))))) (K.Here.h-pc {p = p′} H))
              (trans (sym (seven (K.pos p′ s))) (sym (FrK.C.pos-next p′ s))))
       nx ok I
@@ -269,11 +272,11 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → InBlk fs
          → Arrives (blockᴵ (ktrf (Coalg F S ⊗t S) (Nu F))) (frm {t = nothing} {Es = Es} c es os r) ([]ᵉ ∥ mnu i p ∷ˢ []ˢ) n fs
   gnfree {fs = fs} (p-start (at s)) inv H nx ok I =
-    gfree-n (d-start s) inv (Seg-++ˡ image (fpc fs) _ _ (S.seg-at s H)) (S.Here.h-run H) (S.Here.h-cfg H)
+    gfree-n (d-start s) inv (Seg-++ˡ image (fpc fs) _ _ (S.seg-at s H)) (S.Here.h-run H) (S.Here.h-slots H) (S.Here.h-cfg H)
       (trans (cong (λ z → suc (suc (suc (suc (suc (suc (suc z))))))) (S.Here.h-pc H)) (trans (sym (seven (S.pos s))) (sym (S.pos-next s))))
       nx ok I
   gnfree {fs = fs} (p-block p′ (at s)) inv H nx ok I =
-    gfree-n (d-block p′ s) inv (Seg-++ˡ image (fpc fs) _ _ (K.seg-at p′ s H)) (K.Here.h-run {p = p′} H) (K.Here.h-cfg {p = p′} H)
+    gfree-n (d-block p′ s) inv (Seg-++ˡ image (fpc fs) _ _ (K.seg-at p′ s H)) (K.Here.h-run {p = p′} H) (K.Here.h-slots {p = p′} H) (K.Here.h-cfg {p = p′} H)
       (trans (cong (λ z → suc (suc (suc (suc (suc (suc (suc z))))))) (K.Here.h-pc {p = p′} H))
              (trans (sym (seven (K.pos p′ s))) (sym (FrK.C.pos-next p′ s))))
       nx ok I

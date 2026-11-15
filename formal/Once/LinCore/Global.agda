@@ -15,6 +15,7 @@
 
 {-# OPTIONS --guardedness #-}
 
+open import Data.Bool using (true)
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -121,6 +122,16 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   {-# CATCHALL #-}
   trMc _ = 0
 
+  -- a trampoline's reservation, as its entry sets it (`Lower.tramp`)
+  trB : ∀ {σ} → Key σ → ℕ
+  trB (ktr1 {X = X} {A = A} {B = B} ds′ b γ) = suc (suc ((wsz X + wsz A) ⊔ wsz B))
+  trB (ktro ds′ F S) = suc (suc (wsz (cty (F , S)) ⊔ wsz (LF∙ F (Nu F))))
+  trB (ktrf X C) = suc (wsz X)
+  trB (ktrc X C) = suc (suc (suc (wsz X)))
+  trB (ktrω ds′ b γ) = 1
+  {-# CATCHALL #-}
+  trB _ = 0
+
   trφ : ∀ {σ} → Key σ → Frame
   trφ κ = frame 0 (trM κ)
 
@@ -128,11 +139,13 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   trPos κ p d = length (proj₁ (image-tr κ p d))
 
   -- at an address, in a frame
-  record HereF {sh} (φ : Frame) (q : ℕ) (m : Cfg sh) (fs : FlatState) : Set where
+  record HereF {sh} (φ : Frame) (b q : ℕ) (m : Cfg sh) (fs : FlatState) : Set where
     field
       f-pc  : fpc fs ≡ q
       f-run : LocState.halted (floc fs) ≡ false
       f-cfg : CfgW (LocState.heapMem (floc fs)) (slot fs) φ m
+      -- the trampoline's reservation (D435's window)
+      f-slots : AllocState.frame-slots (falloc fs) ≡ b
 
   -- ★ a one-shot trampoline before its cell part: the cell in `Input1` and
   -- the first save slot, its words in the heap; the caller's area in the
@@ -141,6 +154,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     field
       t-pc   : fpc fs ≡ q
       t-run  : LocState.halted (floc fs) ≡ false
+      t-slots : AllocState.frame-slots (falloc fs) ≡ suc (suc M)
       t-wx   : List (StoredValue FS)
       t-wa   : List (StoredValue FS)
       t-cfc  : FrameSemantics.Frame FS
@@ -153,6 +167,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       t-sM   : slot fs (suc M) ≡ just (SV-Ptr (AtStack t-cfc t-area))
       t-ne   : ¬ t-cfc ≡ AllocState.current-frame (falloc fs)
       t-arg  : SlotsAt (LocState.stackMem (floc fs) t-cfc) ((Mc ∸ wsz A) + t-area) t-wa
+      -- D435: the argument's words, read through the area pointer, in a live window
+      t-win  : ∀ k → k Data.Nat.< wsz A → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) t-cfc ((k + (Mc ∸ wsz A)) + t-area) ≡ true
 
   -- ★ an observation's trampoline before its cell part (D421): as `Tr0`, no
   -- argument (the ν's coalgebra and seed are all in the cell)
@@ -160,6 +176,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     field
       o-pc   : fpc fs ≡ q
       o-run  : LocState.halted (floc fs) ≡ false
+      o-slots : AllocState.frame-slots (falloc fs) ≡ suc (suc M)
       o-wx   : List (StoredValue FS)
       o-cfc  : FrameSemantics.Frame FS
       o-area : ℕ
@@ -176,6 +193,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     field
       f0-pc  : fpc fs ≡ q
       f0-run : LocState.halted (floc fs) ≡ false
+      f0-slots : AllocState.frame-slots (falloc fs) ≡ suc M
       f0-wx  : List (StoredValue FS)
       f0-x   : VW (LocState.heapMem (floc fs)) x f0-wx
       f0-at  : Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i hdr f0-wx
@@ -189,6 +207,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     field
       w0-pc   : fpc fs ≡ q
       w0-run  : LocState.halted (floc fs) ≡ false
+      w0-slots : AllocState.frame-slots (falloc fs) ≡ 1
       w0-wx   : List (StoredValue FS)
       w0-wa   : List (StoredValue FS)
       w0-af   : FrameSemantics.Frame FS
@@ -201,6 +220,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       w0-ne   : ¬ w0-af ≡ AllocState.current-frame (falloc fs)
       w0-lt   : AllocState.current-frame (falloc fs) ≺ w0-af
       w0-arg  : SlotsAt (LocState.stackMem (floc fs) w0-af) ((M ∸ wsz A) + w0-area) w0-wa
+      w0-win  : ∀ k → k Data.Nat.< wsz A → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) w0-af ((k + (M ∸ wsz A)) + w0-area) ≡ true
 
   -- the contents' offset in a cell: past its header, or (no words) the cell's own address (`contentsAddr`)
   cOff : ℕ → ℕ
@@ -212,6 +232,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     field
       w1-pc   : fpc fs ≡ q
       w1-run  : LocState.halted (floc fs) ≡ false
+      w1-slots : AllocState.frame-slots (falloc fs) ≡ 1
       w1-wx   : List (StoredValue FS)
       w1-wa   : List (StoredValue FS)
       w1-af   : FrameSemantics.Frame FS
@@ -224,12 +245,14 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       w1-ne   : ¬ w1-af ≡ AllocState.current-frame (falloc fs)
       w1-lt   : AllocState.current-frame (falloc fs) ≺ w1-af
       w1-arg  : SlotsAt (LocState.stackMem (floc fs) w1-af) ((M ∸ wsz A) + w1-area) w1-wa
+      w1-win  : ∀ k → k Data.Nat.< wsz A → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) w1-af ((k + (M ∸ wsz A)) + w1-area) ≡ true
 
   -- after the inner call: the result's words in the area
   record TrW2 {B} (M q : ℕ) (v : MV B) (fs : FlatState) : Set where
     field
       w2-pc   : fpc fs ≡ q
       w2-run  : LocState.halted (floc fs) ≡ false
+      w2-slots : AllocState.frame-slots (falloc fs) ≡ 1
       w2-wb   : List (StoredValue FS)
       w2-af   : FrameSemantics.Frame FS
       w2-area : ℕ
@@ -245,6 +268,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     field
       c0-pc  : fpc fs ≡ q
       c0-run : LocState.halted (floc fs) ≡ false
+      c0-slots : AllocState.frame-slots (falloc fs) ≡ suc (suc (suc w))
       c0-i   : Id
       c0-af  : FrameSemantics.Frame FS
       c0-d   : ℕ
@@ -258,6 +282,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     field
       c1-pc  : fpc fs ≡ q
       c1-run : LocState.halted (floc fs) ≡ false
+      c1-slots : AllocState.frame-slots (falloc fs) ≡ suc (suc (suc w))
       c1-i   : Id
       c1-af  : FrameSemantics.Frame FS
       c1-d   : ℕ
@@ -275,6 +300,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     field
       c2-pc  : fpc fs ≡ q
       c2-run : LocState.halted (floc fs) ≡ false
+      c2-slots : AllocState.frame-slots (falloc fs) ≡ suc (suc (suc w))
       c2-i   : Id
       c2-af  : FrameSemantics.Frame FS
       c2-d   : ℕ
@@ -291,6 +317,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     field
       c4-pc  : fpc fs ≡ q
       c4-run : LocState.halted (floc fs) ≡ false
+      c4-slots : AllocState.frame-slots (falloc fs) ≡ suc (suc (suc w))
       c4-af  : FrameSemantics.Frame FS
       c4-d   : ℕ
       c4-s₁  : slot fs w ≡ just (SV-Ptr (AtStack c4-af c4-d))
@@ -329,16 +356,16 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   HereTr : ∀ {σ sh V} {κ : Key σ} {c : Codeᴵ sh V} {p : under κ ∈ allK U} {pt : Pt (blockᴵ κ) c} → TrPt p pt → Cfg sh → FlatState → Set
   HereTr (tp0 {X = X} {A} {B} {ds′} {b} {γ} p) (es ∥ (mpair (mfn i lam x) a ∷ˢ os)) fs =
     Tr0 ((wsz X + wsz A) ⊔ wsz B) (suc (wsz A) ⊔ wsz B) (trPos (ktr1 ds′ b γ) p 0) i x a fs
-  HereTr (tp1 {ds′ = ds′} {b} {γ} p) m fs = HereF (trφ (ktr1 ds′ b γ)) (trPos (ktr1 ds′ b γ) p 1) m fs
-  HereTr (tp2 {ds′ = ds′} {b} {γ} p) m fs = HereF (trφ (ktr1 ds′ b γ)) (trPos (ktr1 ds′ b γ) p 2) m fs
+  HereTr (tp1 {ds′ = ds′} {b} {γ} p) m fs = HereF (trφ (ktr1 ds′ b γ)) (trB (ktr1 ds′ b γ)) (trPos (ktr1 ds′ b γ) p 1) m fs
+  HereTr (tp2 {ds′ = ds′} {b} {γ} p) m fs = HereF (trφ (ktr1 ds′ b γ)) (trB (ktr1 ds′ b γ)) (trPos (ktr1 ds′ b γ) p 2) m fs
   HereTr (to0 {ds′ = ds′} {F} {S} p) (es ∥ (mnu i x ∷ˢ os)) fs = TrO0 (trM (ktro ds′ F S)) (trPos (ktro ds′ F S) p 0) i x fs
-  HereTr (to1 {ds′ = ds′} {F} {S} p) m fs = HereF (trφ (ktro ds′ F S)) (trPos (ktro ds′ F S) p 1) m fs
-  HereTr (to2 {ds′ = ds′} {F} {S} p) m fs = HereF (trφ (ktro ds′ F S)) (trPos (ktro ds′ F S) p 2) m fs
+  HereTr (to1 {ds′ = ds′} {F} {S} p) m fs = HereF (trφ (ktro ds′ F S)) (trB (ktro ds′ F S)) (trPos (ktro ds′ F S) p 1) m fs
+  HereTr (to2 {ds′ = ds′} {F} {S} p) m fs = HereF (trφ (ktro ds′ F S)) (trB (ktro ds′ F S)) (trPos (ktro ds′ F S) p 2) m fs
   -- a free's cell: a closure's (`cfree`) or a ν's (`nfree`)
   HereTr (tf0 {X = X} {C} p) (es ∥ (mfn i lam x ∷ˢ os)) fs = TrF0 (wsz X) (trPos (ktrf X C) p 0) i x fs
   HereTr (tf0 {X = X} {C} p) (es ∥ (mnu i x ∷ˢ os)) fs = TrF0 (wsz X) (trPos (ktrf X C) p 0) i x fs
-  HereTr (tf1 {X = X} {C} p) m fs = HereF (trφ (ktrf X C)) (trPos (ktrf X C) p 1) m fs
-  HereTr (tf2 {X = X} {C} p) m fs = HereF (trφ (ktrf X C)) (trPos (ktrf X C) p 2) m fs
+  HereTr (tf1 {X = X} {C} p) m fs = HereF (trφ (ktrf X C)) (trB (ktrf X C)) (trPos (ktrf X C) p 1) m fs
+  HereTr (tf2 {X = X} {C} p) m fs = HereF (trφ (ktrf X C)) (trB (ktrf X C)) (trPos (ktrf X C) p 2) m fs
   -- a many-use body's: its cell the top view, the argument in the area; then the contents viewed;
   -- the result in the area (before and after `epop`: one address)
   HereTr (tw0 {A = A} {B} {ds′} {b} {γ} p) (vw (mfn i lam x) _ ∥ a ∷ˢ _) fs = TrW0 (wsz A ⊔ wsz B) (trPos (ktrω ds′ b γ) p 0) i x a fs
@@ -420,6 +447,14 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     siteφ (s-tramp {ds′ = ds′} {b} {γ} p) = trφ (ktr1 ds′ b γ)
     siteφ (s-trampo {ds′ = ds′} {F} {S′} p) = trφ (ktro ds′ F S′)
     siteφ (s-trampf {X = X} {C} p) = trφ (ktrf X C)
+
+    -- the caller's reservation: its frame's budget, a trampoline's its own
+    siteB : Site κ k → ℕ
+    siteB (s-start _)                 = fbudget (frameOf main)
+    siteB (s-block {κ′ = κ′} p′ _)    = fbudget (frameOf (blockᴵ κ′))
+    siteB (s-tramp {ds′ = ds′} {b} {γ} p) = trB (ktr1 ds′ b γ)
+    siteB (s-trampo {ds′ = ds′} {F} {S′} p) = trB (ktro ds′ F S′)
+    siteB (s-trampf {X = X} {C} p) = trB (ktrf X C)
 
     sitePos : Site κ k → ℕ
     sitePos (s-start s)    = FrS.C.pos (next s)
@@ -503,7 +538,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                 (p : (bsig t A B , κ) ∈ allK U) (st : Site κ k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
                 (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
             → R ≡ rblock p → fin ≡ blockFin κ → siteCallee st ≡ p
-            → rets ≡ sitePos st ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → cur ≺ cfc
+            → rets ≡ sitePos st ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → sl ≡ siteB st → cur ≺ cfc
             → LocState.stackMem (floc fs) cur (sv₁ (frameOf (blockᴵ κ)))
               ≡ just (SV-Ptr (AtStack cfc (Tp (siteφ st) S ∸ (wsz A ⊔ wsz B))))
             → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
@@ -517,7 +552,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                  (p : under κ ∈ allK U) (o : TrM κ) (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
                  (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
              → R ≡ rtramp {κ = κ} p → fin ≡ trFin (idx p) κ
-             → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → cur ≺ cfc
+             → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → sl ≡ fbudget (dsiteφ d) → cur ≺ cfc
              → LocState.stackMem (floc fs) cur (suc (trM κ))
                ≡ just (SV-Ptr (AtStack cfc (Tp (dsiteφ d) S ∸ trMc κ)))
              → trMc κ + ws S ≤ OP (dsiteφ d)
@@ -532,7 +567,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                   (p : under (ktrf X C) ∈ allK U) (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
                   (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
               → R ≡ rtramp {κ = ktrf X C} p → fin ≡ trFin (idx p) (ktrf X C)
-              → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → cur ≺ cfc
+              → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → sl ≡ fbudget (dsiteφ d) → cur ≺ cfc
               → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
               → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) (dsiteφ d) os
               → RetOK (dsiteRoot d) (dsiteFin d) r cfc rets′ sv′ fs
@@ -545,7 +580,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                   (p : under (ktrω ds′ b γ) ∈ allK U) (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
                   (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
               → R ≡ rtramp {κ = ktrω ds′ b γ} p → fin ≡ trFin (idx p) (ktrω ds′ b γ)
-              → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → cur ≺ cfc
+              → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → sl ≡ fbudget (dsiteφ d) → cur ≺ cfc
               → LocState.stackMem (floc fs) cur 0 ≡ just (SV-Ptr (AtStack cfc (Tp (dsiteφ d) S ∸ (wsz A ⊔ wsz B))))
               → (wsz A ⊔ wsz B) + ws S ≤ OP (dsiteφ d)
               → ws (Fn many g A B ∷ Es) ≤ EP (dsiteφ d)
@@ -560,7 +595,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                  (p : under (ktrω ds′ b γ) ∈ allK U) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
                  (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
              → R ≡ rblock p → fin ≡ blockFin (proj₂ (under (ktrω ds′ b γ)))
-             → rets ≡ trPos (ktrω ds′ b γ) p 2 ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → cur ≺ cfc
+             → rets ≡ trPos (ktrω ds′ b γ) p 2 ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → sl ≡ trB (ktrω ds′ b γ) → cur ≺ cfc
              → LocState.stackMem (floc fs) cur (sv₁ (frameOf (blockᴵ (proj₂ (under (ktrω ds′ b γ))))))
                ≡ LocState.stackMem (floc fs) cfc 0
              → RetOK (rtramp {κ = ktrω ds′ b γ} p) (trFin (idx p) (ktrω ds′ b γ)) r₁ cfc rets′ sv′ fs
@@ -573,7 +608,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                   (p : under (ktrc X C) ∈ allK U) (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
                   (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
               → R ≡ rtramp {κ = ktrc X C} p → fin ≡ trFin (idx p) (ktrc X C)
-              → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → cur ≺ cfc
+              → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → sl ≡ fbudget (dsiteφ d) → cur ≺ cfc
               → LocState.stackMem (floc fs) cur (wsz X) ≡ just (SV-Ptr (AtStack cfc (Tp (dsiteφ d) S ∸ 1)))
               → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
               → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) (dsiteφ d) os
@@ -585,7 +620,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                  (p : under (ktrc X C) ∈ allK U) (cfc : FrameSemantics.Frame FS) (sl : ℕ)
                  (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ) (ci : Id)
              → R ≡ rblock p → fin ≡ blockFin (proj₂ (under (ktrc X C)))
-             → rets ≡ trPos (ktrc X C) p 2 ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → cur ≺ cfc
+             → rets ≡ trPos (ktrc X C) p 2 ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → sl ≡ trB (ktrc X C) → cur ≺ cfc
              → LocState.stackMem (floc fs) cur (sv₁ (frameOf (blockᴵ (proj₂ (under (ktrc X C)))))) ≡ just (SV-Ptr (AtStack cfc 0))
              → LocState.stackMem (floc fs) cfc (suc (wsz X)) ≡ just (cellPtr ci)
              → VW (LocState.heapMem (floc fs)) cv (cellPtr ci ∷ [])
@@ -671,8 +706,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            → RetOK R fin r cur rets sv fs → RetOK R fin r cur rets sv fs′
   ret-deep cur₀ lt oth old fr (ok-top e₁ e₂) = ok-top e₁ e₂
   ret-deep cur₀ lt oth old fr (ok-loop K lk rest) = ok-loop K lk (ret-deep cur₀ lt oth old fr rest)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-call {es = es} {os = os} p st cfc sl sv′ rets′ eR eF eC eRets eSv abv area ev sk rest) =
-    ok-call p st cfc sl sv′ rets′ eR eF eC eRets eSv abv
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-call {es = es} {os = os} p st cfc sl sv′ rets′ eR eF eC eRets eSv eSl abv area ev sk rest) =
+    ok-call p st cfc sl sv′ rets′ eR eF eC eRets eSv eSl abv
       (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) area)
       (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
@@ -680,8 +715,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-tramp {es = es} {os = os} p o d cfc sl sv′ rets′ eR eF eRets eSv abv area fit ev sk rest) =
-    ok-tramp p o d cfc sl sv′ rets′ eR eF eRets eSv abv
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-tramp {es = es} {os = os} p o d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area fit ev sk rest) =
+    ok-tramp p o d cfc sl sv′ rets′ eR eF eRets eSv eSl abv
       (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) area) fit
       (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
@@ -689,16 +724,16 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-trampf {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv abv ev sk rest) =
-    ok-trampf p d cfc sl sv′ rets′ eR eF eRets eSv abv
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-trampf {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv ev sk rest) =
+    ok-trampf p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv
       (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
       (ret-deep cur₀ (≺-trans lt abv) oth old fr rest)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-trampω {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv abv area fit efit ev sk rest) =
-    ok-trampω p d cfc sl sv′ rets′ eR eF eRets eSv abv
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-trampω {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area fit efit ev sk rest) =
+    ok-trampω p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv
       (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) area) fit efit
       (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
@@ -706,8 +741,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-trampc {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv abv area ev sk rest) =
-    ok-trampc p d cfc sl sv′ rets′ eR eF eRets eSv abv
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-trampc {es = es} {os = os} p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv area ev sk rest) =
+    ok-trampc p d cfc sl sv′ rets′ eR eF eRets eSv eSl abv
       (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) area)
       (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
@@ -715,16 +750,16 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old fr′ (ok-callc {x = x} {cv} p cfc sl sv′ rets′ ci eR eF eRets eSv abv ap s₂ pc rest) =
-    ok-callc p cfc sl sv′ rets′ ci eR eF eRets eSv abv
+  ret-deep {cur = cur} cur₀ lt oth old fr′ (ok-callc {x = x} {cv} p cfc sl sv′ rets′ ci eR eF eRets eSv eSl abv ap s₂ pc rest) =
+    ok-callc p cfc sl sv′ rets′ ci eR eF eRets eSv eSl abv
       (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) ap) (trans (oth cfc _ ne) s₂)
       (vw-stand {v = cv} (λ i le → cnt-snd x cv i (proj₁ (proj₁ fr′ i le))) old pc)
       (ret-deep cur₀ (≺-trans lt abv) oth old (proj₂ fr′) rest)
     where
       ne : ¬ cfc ≡ cur₀
       ne e = ≺-≢ (≺-trans lt abv) (sym e)
-  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-callω p cfc sl sv′ rets′ eR eF eRets eSv abv ap rest) =
-    ok-callω p cfc sl sv′ rets′ eR eF eRets eSv abv
+  ret-deep {cur = cur} cur₀ lt oth old (fes , fr) (ok-callω p cfc sl sv′ rets′ eR eF eRets eSv eSl abv ap rest) =
+    ok-callω p cfc sl sv′ rets′ eR eF eRets eSv eSl abv
       (trans (oth cur _ (λ e → ≺-≢ lt (sym e))) (trans ap (sym (oth cfc 0 ne))))
       (ret-deep cur₀ (≺-trans lt abv) oth old fr rest)
     where
@@ -740,8 +775,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → RetOK R fin r cur rets sv fs → RetOK R fin r cur rets sv fs′
   ret-top oth top old fr (ok-top e₁ e₂) = ok-top e₁ e₂
   ret-top oth top old fr (ok-loop K lk rest) = ok-loop K lk (ret-top oth top old fr rest)
-  ret-top {cur = cur} oth top old (fes , fr) (ok-call {es = es} {os = os} p st cfc sl sv′ rets′ refl eF eC eRets eSv abv area ev sk rest) =
-    ok-call p st cfc sl sv′ rets′ refl eF eC eRets eSv abv
+  ret-top {cur = cur} oth top old (fes , fr) (ok-call {es = es} {os = os} p st cfc sl sv′ rets′ refl eF eC eRets eSv eSl abv area ev sk rest) =
+    ok-call p st cfc sl sv′ rets′ refl eF eC eRets eSv eSl abv
       (trans (top _ Data.Nat.Properties.≤-refl) area)
       (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
@@ -750,8 +785,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       import Data.Nat.Properties
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old (fes , fr) (ok-tramp {es = es} {os = os} p o d cfc sl sv′ rets′ refl eF eRets eSv abv area fit ev sk rest) =
-    ok-tramp p o d cfc sl sv′ rets′ refl eF eRets eSv abv
+  ret-top {cur = cur} oth top old (fes , fr) (ok-tramp {es = es} {os = os} p o d cfc sl sv′ rets′ refl eF eRets eSv eSl abv area fit ev sk rest) =
+    ok-tramp p o d cfc sl sv′ rets′ refl eF eRets eSv eSl abv
       (trans (top _ (Data.Nat.Properties.n≤1+n _)) area) fit
       (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
@@ -760,16 +795,16 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       import Data.Nat.Properties
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old (fes , fr) (ok-trampf {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv abv ev sk rest) =
-    ok-trampf p d cfc sl sv′ rets′ refl eF eRets eSv abv
+  ret-top {cur = cur} oth top old (fes , fr) (ok-trampf {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv ev sk rest) =
+    ok-trampf p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv
       (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
       (ret-deep cur abv oth old fr rest)
     where
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old (fes , fr) (ok-trampω {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv abv area fit efit ev sk rest) =
-    ok-trampω p d cfc sl sv′ rets′ refl eF eRets eSv abv
+  ret-top {cur = cur} oth top old (fes , fr) (ok-trampω {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv area fit efit ev sk rest) =
+    ok-trampω p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv
       (trans (top 0 Data.Nat.z≤n) area) fit efit
       (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
@@ -777,8 +812,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     where
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old (fes , fr) (ok-trampc {X = X} {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv abv area ev sk rest) =
-    ok-trampc p d cfc sl sv′ rets′ refl eF eRets eSv abv
+  ret-top {cur = cur} oth top old (fes , fr) (ok-trampc {X = X} {es = es} {os = os} p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv area ev sk rest) =
+    ok-trampc p d cfc sl sv′ rets′ refl eF eRets eSv eSl abv
       (trans (top (wsz X) Data.Nat.Properties.≤-refl) area)
       (env-stand (λ i le → proj₁ (fes i le)) old (envW-frame es (λ x _ → oth cfc x ne) ev))
       (stk-stand (λ i le → proj₂ (fes i le)) old (stk-all os (λ x → oth cfc x ne) sk))
@@ -787,8 +822,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       import Data.Nat.Properties
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old fr′ (ok-callc {x = x} {cv} p cfc sl sv′ rets′ ci refl eF eRets eSv abv ap s₂ pc rest) =
-    ok-callc p cfc sl sv′ rets′ ci refl eF eRets eSv abv
+  ret-top {cur = cur} oth top old fr′ (ok-callc {x = x} {cv} p cfc sl sv′ rets′ ci refl eF eRets eSv eSl abv ap s₂ pc rest) =
+    ok-callc p cfc sl sv′ rets′ ci refl eF eRets eSv eSl abv
       (trans (top _ Data.Nat.Properties.≤-refl) ap) (trans (oth cfc _ ne) s₂)
       (vw-stand {v = cv} (λ i le → cnt-snd x cv i (proj₁ (proj₁ fr′ i le))) old pc)
       (ret-deep cur abv oth old (proj₂ fr′) rest)
@@ -796,8 +831,8 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       import Data.Nat.Properties
       ne : ¬ cfc ≡ cur
       ne e = ≺-≢ abv (sym e)
-  ret-top {cur = cur} oth top old (fes , fr) (ok-callω p cfc sl sv′ rets′ refl eF eRets eSv abv ap rest) =
-    ok-callω p cfc sl sv′ rets′ refl eF eRets eSv abv
+  ret-top {cur = cur} oth top old (fes , fr) (ok-callω p cfc sl sv′ rets′ refl eF eRets eSv eSl abv ap rest) =
+    ok-callω p cfc sl sv′ rets′ refl eF eRets eSv eSl abv
       (trans (top _ Data.Nat.Properties.≤-refl) (trans ap (sym (oth cfc 0 ne))))
       (ret-deep cur abv oth old fr rest)
     where

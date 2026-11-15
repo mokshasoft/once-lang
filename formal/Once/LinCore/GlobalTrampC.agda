@@ -215,7 +215,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       fin (fs′ , run , CI) =
         12 , fs′ , run ,
         record { c0-pc = trans (cy-pc CI) (sym (trans (length-++ Q) (trans (cong (_+ 4) qQ) (Data.Nat.Properties.+-comm q 4))))
-               ; c0-run = trans (cy-halt CI) h
+               ; c0-run = trans (cy-halt CI) h ; c0-slots = cy-slots CI
                ; c0-i = i ; c0-af = cf ; c0-d = d
                ; c0-lt = subst (_≺ cf) (sym (cy-frame CI)) (callee-below cf (suc (suc (suc (wsz X)))))
                ; c0-s₁ = subst (λ g′ → LocState.stackMem (floc fs′) g′ (wsz X) ≡ just (SV-Ptr (AtStack cf d))) (sym (cy-frame CI)) (cy-s₁ CI)
@@ -231,7 +231,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                           ; fpc = suc (fpc fs) }
     ca-step zero fs i [] _ e _ _ =
       trans (mov-out-step fs) (cong (λ v → record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output v } ; fpc = suc (fpc fs) }) e)
-    ca-step (suc n) fs i (w ∷ wx) _ e (aw , _) I = addr-step fs hdr e (proj₂ (I (cellLoc i hdr) aw))
+    ca-step (suc n) fs i (w ∷ wx) _ e (aw , _) I = addr-step fs hdr e refl (proj₂ (I (cellLoc i hdr) aw))
 
     at-cOff : ∀ (n : ℕ) {rd i} (wx : List (StoredValue FS)) → length wx ≡ n → Rel.At {FS} U wordOf rd i hdr wx → Rel.At {FS} U wordOf rd i (cOff n) wx
     at-cOff zero    []      _ _ = tt
@@ -260,7 +260,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       (step-at fs₂ (h , g₂) (ca-step w fs₁ i wx (vw-len px) refl ax I)
         (step-at fs₃ (h , g₃) (store-step fs₂ (suc (suc w))) FlatStepsAPI.[])) ,
     record { c1-pc = trans (cong (λ z → suc (suc (suc z))) (TrC0.c0-pc T)) (sym (tC-pos₁ {X} {C} p))
-           ; c1-run = h ; c1-i = i ; c1-af = TrC0.c0-af T ; c1-d = TrC0.c0-d T ; c1-lt = TrC0.c0-lt T
+           ; c1-run = h ; c1-slots = TrC0.c0-slots T ; c1-i = i ; c1-af = TrC0.c0-af T ; c1-d = TrC0.c0-d T ; c1-lt = TrC0.c0-lt T
            ; c1-s₁ = trans (store-other (floc fs₂) cur (suc (suc w)) _ w (λ e → Data.Nat.Properties.<-irrefl (sym e) (Data.Nat.Properties.m≤n⇒m≤1+n (Data.Nat.Properties.n<1+n w))))
                        (TrC0.c0-s₁ T)
            ; c1-s₂ = trans (store-other (floc fs₂) cur (suc (suc w)) _ (suc w) (λ e → Data.Nat.Properties.<-irrefl (sym e) (Data.Nat.Properties.n<1+n (suc w)))) s₂
@@ -293,7 +293,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tc-call {X} {C} p {cv} {x} {fs} T =
     call-core-c p (suc (suc (wsz X))) (cOff (wsz X)) (TrC1.c1-i T) (TrC1.c1-wx T) []
       (Seg-++ˡ image (fpc fs) (tCP2 {X} {C} p) _ (tC-seg {X} {C} p 1 (TrC1.c1-pc T))) (TrC1.c1-run T) (TrC1.c1-s₃ T) (TrC1.c1-x T)
-      (at-cOff (wsz X) (TrC1.c1-wx T) (vw-len (TrC1.c1-x T)) (TrC1.c1-at T)) Rel.vone tt
+      (at-cOff (wsz X) (TrC1.c1-wx T) (vw-len (TrC1.c1-x T)) (TrC1.c1-at T)) Rel.vone tt (λ k ())
 
   open import Once.LinCore.LowerSimE {FS} using (call-out; co-moved)
   open SimF {FS} U wordOf using (slots-copied)
@@ -311,10 +311,11 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → fret fs ≡ trPos (ktrc X C) p 2 ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
           → ¬ cfc ≡ AllocState.current-frame (falloc fs)
           → slot fs (sv₁ (frameOf (blockᴵ (kcopy X)))) ≡ just (SV-Ptr (AtStack cfc 0))
+          → sl ≡ suc (suc (suc (wsz X)))
           → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
               × Σ (List (StoredValue FS)) (λ wv → VW (LocState.heapMem (floc fs′)) v wv × SlotsAt (LocState.stackMem (floc fs′) cfc) 0 wv)
               × CallOut fs fs′ cfc 0 (budget (frameOf (blockᴵ (kcopy X))) ∸ ws (X ∷ [])) (wsz X ∸ wsz X) (wsz X) (trPos (ktrc X C) p 2) rest sv sl
-  tc-back {X} {C} p e {e′} {v} {fs} cfc rest sv sl lf H hret hsv ne ep =
+  tc-back {X} {C} p e {e′} {v} {fs} cfc rest sv sl lf H hret hsv ne ep esl =
     with-res (Rel.CfgW.c-stk (K.Here.h-cfg {p = p} H))
     where
       φ′ = frameOf (blockᴵ (kcopy X))
@@ -325,7 +326,12 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       with-res ((wb , pb , sb) , _) =
         fin (call-out image fs cfc 0 (budget φ′) (budget φ′ ∸ ws (X ∷ [])) (wsz X ∸ wsz X) (wsz X) (fbudget φ′)
                (trPos (ktrc X C) p 2) rest sv sl hret hsv ne ep
-               (λ k k< → slots-def wb sb k (subst (k Data.Nat.<_) (sym (vw-len pb)) k<)) seg (K.Here.h-run {p = p} H))
+               (λ k k< → slots-def wb sb k (subst (k Data.Nat.<_) (sym (vw-len pb)) k<))
+               (λ k k< → subst (λ z → (k + (wsz X ∸ wsz X)) + 0 Data.Nat.< z) (sym esl)
+                           (subst (Data.Nat._< suc (suc (suc (wsz X))))
+                             (sym (trans (Data.Nat.Properties.+-identityʳ _) (trans (cong (k +_) (Data.Nat.Properties.n∸n≡0 (wsz X))) (Data.Nat.Properties.+-identityʳ k))))
+                             (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.m<n⇒m<1+n k<)))))
+               seg (K.Here.h-run {p = p} H))
         where
           fin : Σ FlatState (λ fs′ → FlatSteps image (suc (Once.LinCore.Moves.ln {FS} (wsz X) + 1)) fs fs′
                   × CallOut fs fs′ cfc 0 (budget φ′ ∸ ws (X ∷ [])) (wsz X ∸ wsz X) (wsz X) (trPos (ktrc X C) p 2) rest sv sl)
@@ -376,8 +382,9 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → (T : TrC4 (wsz X) (trPos (ktrc X C) p 4) nv fs)
          → fret fs ≡ pc ∷ rest → AllocState.saved-frames (falloc fs) ≡ (TrC4.c4-af T , sl) ∷ sv
          → ¬ TrC4.c4-af T ≡ AllocState.current-frame (falloc fs)
+         → TrC4.c4-d T Data.Nat.< sl
          → Σ FlatState λ fs′ → FlatSteps image _ fs fs′
              × CallOut fs fs′ (TrC4.c4-af T) (TrC4.c4-d T) (suc (suc (wsz X))) 0 1 pc rest sv sl
-  tc-end {X} {C} p {fs = fs} pc rest sv sl T hret hsv ne =
+  tc-end {X} {C} p {fs = fs} pc rest sv sl T hret hsv ne dlt =
     call-out image fs (TrC4.c4-af T) (TrC4.c4-d T) (wsz X) (suc (suc (wsz X))) 0 1 (suc (suc (suc (wsz X)))) pc rest sv sl hret hsv ne
-      (TrC4.c4-s₁ T) (λ { zero _ → _ , TrC4.c4-s₃ T ; (suc k) (Data.Nat.s≤s ()) }) (tC-seg {X} {C} p 4 (TrC4.c4-pc T)) (TrC4.c4-run T)
+      (TrC4.c4-s₁ T) (λ { zero _ → _ , TrC4.c4-s₃ T ; (suc k) (Data.Nat.s≤s ()) }) (λ { zero _ → dlt ; (suc k) (Data.Nat.s≤s ()) }) (tC-seg {X} {C} p 4 (TrC4.c4-pc T)) (TrC4.c4-run T)

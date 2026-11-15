@@ -157,7 +157,7 @@ module CallC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                ; g-ret = ok-callc p cur (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) (fret fs) (TrC1.c1-i T1)
                            refl refl
                            (trans (dh-ret CD) (cong (_∷ fret fs) (trans (cong (λ z → suc (suc (suc (suc z)))) (TrC1.c1-pc T1)) (sym (tC-pos₂ {X} {C} p)))))
-                           (dh-saved CD) (under-cur CD) (dh-area CD)
+                           (dh-saved CD) (TrC1.c1-slots T1) (under-cur CD) (dh-area CD)
                            (trans (dh-others CD cur (suc (wsz X)) (callee-≢ cur bb)) (TrC1.c1-s₂ T1))
                            (vw-stand {v = cv} (λ j le → cnt-snd x cv j (proj₁ (fresh-cfg inv j (subst (_≤ serial j) nx le)))) (dh-old CD) (TrC1.c1-cv T1))
                            (ret-deep (AllocState.current-frame (falloc fs′)) (under-cur CD)

@@ -975,7 +975,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
                 × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ v ∷ˢ os) × Ran (suc (nsteps (wsz (LF∙ F (μt F))) + 1)) 0 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
   lOutμ-sim prog fs φ {Es} {F} {S} {es} {os} {i} {v} (f₀ , s) h C fit with c-stk C
   ... | ((_ , vmu {wv = wv} pv ca , (ep , _)) , rest)
-    with mvPS-run prog fs₁ (AtDynamic (cellLoc i 0)) 0 dst wL (Seg-++ˡ prog (suc (fpc fs)) (mvPS 0 dst wL) _ s) h refl def
+    with mvPS-run prog fs₁ (AtDynamic (cellLoc i 0)) 0 dst wL (Seg-++ˡ prog (suc (fpc fs)) (mvPS 0 dst wL) _ s) h refl def (λ k _ → refl)
            (λ k k′ _ _ ())
     where
       wL = wsz (LF∙ F (μt F))
@@ -1112,7 +1112,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
               × AllocState.next-heap-ref (falloc fs′) ≡ suc n × Ran (suc (suc (nsteps (wsz (LF∙ F (μt F))) + 2))) 1 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′
   lIn-sim prog fs φ {Es} {F} {S} {es} {os} {v} refl fresh (f₀ , f₁ , s) h C fit with c-stk C
   ... | ((wv , pv , sv) , rest)
-    with mvSP-run prog fs₂ loc src 0 wL (Seg-++ˡ prog (suc (suc (fpc fs))) (mvSP src 0 wL) _ s) h refl def ib (λ k k′ _ _ ())
+    with mvSP-run prog fs₂ loc src 0 wL (Seg-++ˡ prog (suc (suc (fpc fs))) (mvSP src 0 wL) _ s) h refl def (λ k _ → refl) ib (λ k k′ _ _ ())
     where
       wL = wsz (LF∙ F (μt F))
       bot = budget φ ∸ ws S
@@ -1229,7 +1229,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   eout-sim prog fs φ {F} {Es} {S} {es} {os} {i} {v} eq (f₀ , s) h C fit with topW es (c-env C)
   ... | (w , pw , sw) with subst (λ z → VW (heapMem (floc fs)) z w) eq pw | sw
   ...   | vmu {wv = wv} pv ca | (ep , _)
-    with mvPS-run prog fs₁ (AtDynamic (cellLoc i 0)) 0 (suc (ws Es)) wL s h refl def (λ k k′ _ _ ())
+    with mvPS-run prog fs₁ (AtDynamic (cellLoc i 0)) 0 (suc (ws Es)) wL s h refl def (λ k _ → refl) (λ k k′ _ _ ())
     where
       wL = wsz (LF∙ F (μt F))
       fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Input1 (cellPtr i) } ; fpc = suc (fpc fs) }

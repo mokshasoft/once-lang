@@ -157,7 +157,7 @@ module CallW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                ; g-ret = ok-callω p cur (AllocState.frame-slots (falloc fs)) (AllocState.saved-frames (falloc fs)) (fret fs)
                            refl refl
                            (trans (dh-ret CD) (cong (_∷ fret fs) (trans (cong (λ z → suc (suc z)) (TrW1.w1-pc T1)) (sym (tW-pos₂ p)))))
-                           (dh-saved CD) (under-cur CD)
+                           (dh-saved CD) (TrW1.w1-slots T1) (under-cur CD)
                            (trans (dh-area CD) (sym (trans (dh-others CD cur 0 (callee-≢ cur bb)) (TrW1.w1-s0 T1))))
                            (ret-deep (AllocState.current-frame (falloc fs′)) (under-cur CD)
                               (λ f′ y ne → dh-others CD f′ y (λ e → ne (trans (sym e) (sym (dh-frame CD))))) (dh-old CD)

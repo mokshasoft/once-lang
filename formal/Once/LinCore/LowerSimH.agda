@@ -12,6 +12,7 @@
 
 {-# OPTIONS --guardedness #-}
 
+open import Data.Bool using (true)
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_; _<_; z≤n; s≤s)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-trans; <-≤-trans; ≤-reflexive; m≤m+n; m≤n+m)
 open import Data.List using (List; []; _∷_; _++_; length)
@@ -55,7 +56,7 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   open FlatStepsAPI {FS} using (FlatSteps; step-at; FlatSteps-++)
   open import Once.LinCore.Moves {FS}
     using (Seg; Seg-++ˡ; Seg-++ʳ; slot; mvPS-run; MovedP; p-moved; p-rest; p-heap; p-halt; p-pc; p-alloc; p-frame
-          ; restore-step; free-step; Ran; ranP; ran-trans; ran-regs; ran-pc)
+          ; restore-step; free-step; Ran; ranP; ran-trans; ran-regs; ran-pc; gate-stack)
 
   private
     frame-eq : ∀ {f g x y} → AtStack {FS} f x ≡ AtStack g y → f ≡ g
@@ -80,6 +81,7 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             → slot fs M ≡ just (cellPtr i) → slot fs (suc M) ≡ just (SV-Ptr (AtStack cfc area))
             → VW (LocState.heapMem (floc fs)) x wx → At (LocState.heapMem (floc fs)) i o wx
             → VW (LocState.heapMem (floc fs)) a wa → SlotsAt (LocState.stackMem (floc fs) cfc) ((Mc ∸ wsz A) + area) wa
+            → (∀ k → k < wsz A → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) cfc ((k + (Mc ∸ wsz A)) + area) ≡ true)
             → Seg prog (fpc fs) (mvPS o (M ∸ (wsz X + wsz A)) (wsz X)
                                  ++ restore-input (suc M) ∷ mvPS (Mc ∸ wsz A) ((M ∸ (wsz X + wsz A)) + wsz X) (wsz A)
                                  ++ restore-input M ∷ instr-free-heap fr ∷ [])
@@ -89,8 +91,8 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                 × CfgW (LocState.heapMem (floc fs′)) (slot fs′) (frame 0 M) ([]ᵉ ∥ mpair x a ∷ˢ []ˢ)
                 × Ran (Once.LinCore.Moves.ln {FS} (wsz X) + (1 + (Once.LinCore.Moves.ln {FS} (wsz A) + (1 + 1)))) 0
                       (AllocState.next-heap-ref (falloc fs)) M fs fs′
-  open1-sim prog fs cfc area M Mc o fr {X} {A} {x} {a} i wx wa le ne inp eM eM′ px ax pa sa seg h =
-    after₁ (mvPS-run prog fs (AtDynamic (cellLoc i 0)) o a′ (wsz X) seg₁ h inp def₁ (λ k k′ _ _ ()))
+  open1-sim prog fs cfc area M Mc o fr {X} {A} {x} {a} i wx wa le ne inp eM eM′ px ax pa sa win seg h =
+    after₁ (mvPS-run prog fs (AtDynamic (cellLoc i 0)) o a′ (wsz X) seg₁ h inp def₁ (λ k _ → refl) (λ k k′ _ _ ()))
     where
       wX = wsz X ; wA = wsz A
       a′ = M ∸ (wX + wA)
@@ -112,6 +114,9 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           rd (v , e) = v , trans (cong (λ z → LocState.heapMem (floc fs) (heap-loc (mkHeapRef (serial i)) z)) (Data.Nat.Properties.+-identityʳ (k + o))) e
       after₁ : Σ FlatState (λ fs₁ → FlatSteps prog (Once.LinCore.Moves.ln {FS} wX) fs fs₁ × MovedP fs fs₁ (AtDynamic (cellLoc i 0)) o a′ wX) → _
       after₁ (fs₁ , st₁ , M₁) = after₃ (mvPS-run prog fs₂ (AtStack cfc area) (Mc ∸ wA) (a′ + wX) wA seg₃ h₁ refl def₃
+                                          (λ k k< → gate-stack (falloc fs₂) (k + (Mc ∸ wA)) cfc area
+                                                      (subst (λ al → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} al) cfc ((k + (Mc ∸ wA)) + area) ≡ true)
+                                                             (sym (p-alloc M₁)) (win k k<)))
                                           (λ k k′ _ _ e → ne₂ (frame-eq e)))
         where
           h₁ : LocState.halted (floc fs₁) ≡ false
@@ -188,7 +193,7 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                 × CfgW (LocState.heapMem (floc fs′)) (slot fs′) (frame 0 M) ([]ᵉ ∥ x ∷ˢ []ˢ)
                 × Ran (Once.LinCore.Moves.ln {FS} (wsz X) + (1 + 1)) 0 (AllocState.next-heap-ref (falloc fs)) M fs fs′
   open0-sim prog fs M o fr {X} {x} i wx le inp eM px ax seg h =
-    after₁ (mvPS-run prog fs (AtDynamic (cellLoc i 0)) o a′ (wsz X) seg₁ h inp def₁ (λ k k′ _ _ ()))
+    after₁ (mvPS-run prog fs (AtDynamic (cellLoc i 0)) o a′ (wsz X) seg₁ h inp def₁ (λ k _ → refl) (λ k k′ _ _ ()))
     where
       wX = wsz X
       a′ = M ∸ wX
@@ -243,7 +248,7 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                 × CfgW (LocState.heapMem (floc fs′)) (slot fs′) (frame 0 M) ([]ᵉ ∥ x ∷ˢ []ˢ)
                 × Ran (1 + (Once.LinCore.Moves.ln {FS} (wsz X) + 1)) 0 (AllocState.next-heap-ref (falloc fs)) M fs fs′
   fopen-sim prog fs M o fr {X} {x} i wx le eM px ax seg h =
-    after₁ (mvPS-run prog fs₁ (AtDynamic (cellLoc i 0)) o a′ (wsz X) seg₁ h refl def₁ (λ k k′ _ _ ()))
+    after₁ (mvPS-run prog fs₁ (AtDynamic (cellLoc i 0)) o a′ (wsz X) seg₁ h refl def₁ (λ k _ → refl) (λ k k′ _ _ ()))
     where
       wX = wsz X
       a′ = M ∸ wX

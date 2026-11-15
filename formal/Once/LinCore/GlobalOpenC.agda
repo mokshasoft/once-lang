@@ -197,7 +197,7 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     tc-info : ∀ {Es S V} {i : Insᴵ (C ∷ Es ∣ One ∷ S) (C ∷ Es ∣ C ∷ S)} {k : Codeᴵ (C ∷ Es ∣ C ∷ S) V}
                 {es : Slots (C ∷ Es)} {os : Stk S} {r : Ret V T} {cur rets sv fs}
                 (d : DSite i k) (cfc : FrameSemantics.Frame FS) (sl : ℕ) (sv′ : List (FrameSemantics.Frame FS × ℕ)) (rets′ : List ℕ)
-            → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → cur ≺ cfc
+            → rets ≡ dsitePos d ∷ rets′ → sv ≡ (cfc , sl) ∷ sv′ → sl ≡ fbudget (dsiteφ d) → cur ≺ cfc
             → LocState.stackMem (floc fs) cur (wsz X) ≡ just (SV-Ptr (AtStack cfc (Tp (dsiteφ d) S ∸ 1)))
             → EnvW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) es
             → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) (dsiteφ d) os
@@ -208,13 +208,13 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → RetOK (rtramp {κ = ktrc X C} p) fin r₁ cur rets sv fs → TailC {X = X} {C} p r₁ cur rets sv fs
   tail-c (ok-top () _)
   tail-c (ok-loop K lk _) = ⊥-elim (loop-no K lk)
-  tail-c (ok-call _ _ _ _ _ _ () _ _ _ _ _ _ _ _ _)
-  tail-c (ok-tramp _ o _ _ _ _ _ refl _ _ _ _ _ _ _ _ _) = ⊥-elim (no-trm o)
-  tail-c (ok-trampf _ _ _ _ _ _ () _ _ _ _ _ _ _)
-  tail-c (ok-trampω _ _ _ _ _ _ () _ _ _ _ _ _ _ _ _ _)
-  tail-c (ok-callω _ _ _ _ _ () _ _ _ _ _ _)
-  tail-c (ok-callc _ _ _ _ _ _ () _ _ _ _ _ _ _ _)
-  tail-c (ok-trampc _ d cfc sl sv′ rets′ refl _ eRets eSv abv area ev sk rest) = tc-info d cfc sl sv′ rets′ eRets eSv abv area ev sk rest
+  tail-c (ok-call _ _ _ _ _ _ () _ _ _ _ _ _ _ _ _ _)
+  tail-c (ok-tramp _ o _ _ _ _ _ refl _ _ _ _ _ _ _ _ _ _) = ⊥-elim (no-trm o)
+  tail-c (ok-trampf _ _ _ _ _ _ () _ _ _ _ _ _ _ _)
+  tail-c (ok-trampω _ _ _ _ _ _ () _ _ _ _ _ _ _ _ _ _ _)
+  tail-c (ok-callω _ _ _ _ _ () _ _ _ _ _ _ _)
+  tail-c (ok-callc _ _ _ _ _ _ () _ _ _ _ _ _ _ _ _)
+  tail-c (ok-trampc _ d cfc sl sv′ rets′ refl _ eRets eSv eSl abv area ev sk rest) = tc-info d cfc sl sv′ rets′ eRets eSv eSl abv area ev sk rest
 
   -- ★ the trampoline's level kept over a run that changed its frame's other slots and newer cells only
   trampc-keep : ∀ {T X C} {p : under (ktrc X C) ∈ allK U} {U′} {r₁ : Ret U′ T} {cur rets sv fs fs′}
@@ -223,8 +223,8 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → LocState.stackMem (floc fs′) cur (wsz X) ≡ LocState.stackMem (floc fs) cur (wsz X)
               → Old (AllocState.next-heap-ref (falloc fs)) fs fs′ → FreshR r₁ (AllocState.next-heap-ref (falloc fs))
               → RetOK (rtramp {κ = ktrc X C} p) (trFin (idx p) (ktrc X C)) r₁ cur rets sv fs′
-  trampc-keep {p = p} (tc-info {es = es} {os = os} d cfc sl sv′ rets′ eRets eSv abv area ev sk rest) oth s1 old fr =
-    ok-trampc p d cfc sl sv′ rets′ refl refl eRets eSv abv (trans s1 area)
+  trampc-keep {p = p} (tc-info {es = es} {os = os} d cfc sl sv′ rets′ eRets eSv eSl abv area ev sk rest) oth s1 old fr =
+    ok-trampc p d cfc sl sv′ rets′ refl refl eRets eSv eSl abv (trans s1 area)
       (env-stand (λ j le → proj₁ (proj₁ fr j le)) old (envW-frame es (λ y _ → oth cfc y ne) ev))
       (stk-stand (λ j le → proj₂ (proj₁ fr j le)) old (stk-all os (λ y → oth cfc y ne) sk))
       (ret-deep _ abv oth old (proj₂ fr) rest)

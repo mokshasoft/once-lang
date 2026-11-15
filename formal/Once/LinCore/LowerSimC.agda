@@ -85,7 +85,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       rest₁ = Seg-++ʳ prog (fpc fs) (headerTr wc lb lc lf) _ s
       go : Σ FlatState (λ fs₁ → FlatSteps prog 10 fs fs₁ × Header fs fs₁ wc lb lc lf)
          → Σ FlatState λ fs′ → FlatSteps prog (10 + (nsteps wc + 2)) fs fs′ × Built fs fs′ bot sz w lb lc lf
-      go (fs₁ , st₁ , H) = go₂ (mvSP-run prog fs₁ P src hdr wc seg₂ h₁ (h-in H) def ib (λ k k′ _ _ ()))
+      go (fs₁ , st₁ , H) = go₂ (mvSP-run prog fs₁ P src hdr wc seg₂ h₁ (h-in H) def (λ k _ → refl) ib (λ k k′ _ _ ()))
         where
           import Data.Nat.Properties
           h₁ : fhalted (floc fs₁) ≡ false

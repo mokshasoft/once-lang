@@ -119,7 +119,7 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Sim {FS} U wordOf using (len-mvPS)
   open import Once.LinCore.PointAt fmt ans bw using (module Fetch)
   open Fetch {FS} using (in-seg)
-  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; Ran; r-pc; r-keep; k-halt; inb-pt)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ; Ran; r-pc; r-keep; k-halt; k-slots; inb-pt)
   open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
   open SimF {FS} U wordOf using (leave; area-gen)
   open import Once.LinCore.LowerSimE {FS} using (co-pc; co-halt; ret-out)
@@ -196,7 +196,7 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tf-open : ∀ {X C} (p : under (ktrf X C) ∈ allK U) {i} {x : MV X} {fs}
           → TrF0 (wsz X) (trPos (ktrf X C) p 0) i x fs
           → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
-              × HereF (frame 0 (wsz X)) (trPos (ktrf X C) p 1) ([]ᵉ ∥ x ∷ˢ []ˢ) fs′
+              × HereF (frame 0 (wsz X)) (suc (wsz X)) (trPos (ktrf X C) p 1) ([]ᵉ ∥ x ∷ˢ []ˢ) fs′
               × Ran N 0 (AllocState.next-heap-ref (falloc fs)) (wsz X) fs fs′
   tf-open {X} {C} p {i} {x} {fs} T =
     case fopen-sim image fs (wsz X) hdr (hdr + wsz X) i (TrF0.f0-wx T) Data.Nat.Properties.≤-refl (TrF0.f0-M T)
@@ -207,18 +207,19 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       (fs′ , run , C′ , Rn) →
         tFN X , fs′ , run ,
         record { f-pc = trans (r-pc Rn) (trans (cong (tFN X +_) (TrF0.f0-pc T)) (sym (tF-pos₁ {X} {C} p)))
-               ; f-run = trans (k-halt (r-keep Rn)) (TrF0.f0-run T) ; f-cfg = C′ } ,
+               ; f-run = trans (k-halt (r-keep Rn)) (TrF0.f0-run T) ; f-cfg = C′ ; f-slots = trans (k-slots (r-keep Rn)) (TrF0.f0-slots T) } ,
         Rn
 
   -- ★ its inner call: the contents' free, the area at the frame's bottom
   tf-call : ∀ {X C} (p : under (ktrf X C) ∈ allK U) {es : Slots []} {v : MV X} {os : Stk []} {fs}
-          → HereF (frame 0 (wsz X)) (trPos (ktrf X C) p 1) (es ∥ v ∷ˢ os) fs
+          → HereF (frame 0 (wsz X)) (suc (wsz X)) (trPos (ktrf X C) p 1) (es ∥ v ∷ˢ os) fs
           → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
               × K.Here p whole ([]ᵉ ∥ v ∷ˢ []ˢ) fs′
               × Called fs fs′ (suc (suc (suc (fpc fs)))) (fbudget (frameOf (blockᴵ (kfree X))))
                        (sv₁ (frameOf (blockᴵ (kfree X)))) 0
   tf-call {X} {C} p H =
     call-core p (frame 0 (wsz X)) 0 (tF-seg1 {X} {C} p (HereF.f-pc H)) (HereF.f-run H) (HereF.f-cfg H) (tF-area X)
+      (subst (Data.Nat._≤_ (wsz X)) (sym (HereF.f-slots H)) (Data.Nat.Properties.n≤1+n (wsz X)))
 
   -- ★ its way out: a bare return (the result One, no words)
   tf-end : ∀ {X C} (p : under (ktrf X C) ∈ allK U) {fs} (cfc : FrameSemantics.Frame FS) (pc : ℕ) (rest : List ℕ)
@@ -261,7 +262,7 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       fin (fs′ , run , FI) =
         9 , fs′ , run ,
         record { f0-pc = trans (fr-pc FI) (sym (trans (length-++ Q) (trans (cong (_+ 2) qQ) (Data.Nat.Properties.+-comm q 2))))
-               ; f0-run = trans (fr-halt FI) h
+               ; f0-run = trans (fr-halt FI) h ; f0-slots = fr-slots FI
                ; f0-wx = wx
                ; f0-x = subst (λ r → VW r x wx) (sym (fr-heap FI)) px
                ; f0-at = subst (λ r → Rel.At {FS} U wordOf r i hdr wx) (sym (fr-heap FI)) (proj₂ (proj₂ (proj₂ (proj₂ words))))
