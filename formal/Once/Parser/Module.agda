@@ -23,7 +23,7 @@ open import Data.Maybe using (nothing; just; Maybe)
 open import Data.Product using (_,_; Σ-syntax; _×_; proj₁; proj₂)
 open import Data.String using (String; _≟_)
 open import Once.Parser.Core using (Parser; skipNewlines)
-open import Once.Parser.Token using (TAmpersand; TArrow; TAt; TBang; TCaret0; TCaret1; TCaretW; TColon; TComma; TDot; TEOF; TEqEq; TEquals; TFloat; TGe; TGt; TInt; TLBrace; TLParen; TLambda; TLe; TLt; TMinus; TNeq; TNewline; TPercent; TPipe; TPlus; TRBrace; TRParen; TSemicolon; TSlash; TStar; TString; TWord; Token)
+open import Once.Parser.Token using (TAmpersand; TArrow; TAt; TBang; TCaret0; TCaret1; TCaretW; TColon; TComma; TDot; TEOF; TEqEq; TEquals; TFloat; TGe; TGt; TInt; TLBrace; TLParen; TLambda; TLe; TLt; TMinus; TNeq; TOpD; TOp; TNewline; TPercent; TPipe; TPlus; TRBrace; TRParen; TSemicolon; TSlash; TStar; TString; TWord; Token)
 open import Once.Spec.Surface.Syntax using (PolyType)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (no; yes)
@@ -140,6 +140,7 @@ skipNewlines-≤ (TGt ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TGe ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TEqEq ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TNeq ∷ rest) refl = ≤-refl
+skipNewlines-≤ (TOpD _ ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TBang ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TCaret1 ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TCaret0 ∷ rest) refl = ≤-refl

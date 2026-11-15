@@ -38,7 +38,7 @@ open SigOpInfo using (name; sem; baseA; conB)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Type using (Base; ∅ₖ)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of; cmp-block)
 
 open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair)
 -- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
@@ -48,7 +48,7 @@ open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; s
 -- instead of a float tree silently taking the integer path.
 open import Once.Arith.Type using (NInt; NFloat)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp;
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; afcmp;
          numtype-as-type;
          ArithBlock; mk-block; shape-as-type)
 open import Once.Arith.Machine.Recognise using (recognise-body; recognise-body-float)
@@ -99,6 +99,7 @@ has-op (adiv _ _)  = true
 has-op (amod _ _)  = true
 has-op (aneg _)    = true
 has-op (acmp _ _ _) = true
+has-op (afcmp _ _ _) = true
 
 ------------------------------------------------------------------------
 -- Block-as-IR construction
@@ -163,7 +164,7 @@ try-lift {_} {_} _ = nothing
 -- With-free (explicit-aux form): the lift decision is a bound argument, so a
 -- proof follows the pass by casing on it, and the walk is TOP-LEVEL. The
 -- recursion is structural through the walk, so no pragma is needed.
-sigop-blocks : Maybe CmpOp → List ArithBlock
+sigop-blocks : ∀ {A} → Maybe (CmpAt A) → List ArithBlock
 sigop-blocks (just o) = cmp-block o ∷ []
 sigop-blocks nothing  = []
 

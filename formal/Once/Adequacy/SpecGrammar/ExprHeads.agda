@@ -25,8 +25,8 @@ open Token
 open import Once.Spec.Surface.Grammar
   using (Starts; starts; Reserved; r-in; r-of; r-let; r-destruct; r-Left; r-Right;
          ArgStart; as-paren; as-lambda; as-int; as-float; as-word; QualSuffix; qual-suffix;
-         CompareToken; ct-lt; ct-le; ct-gt; ct-ge; ct-eq; ct-ne; AddToken; at-plus; at-minus;
-         MulToken; mt-star; mt-slash; mt-pct)
+         OpToken; ot-plain; ot-dotted)
+open import Once.Spec.Surface.Operator using (comparison; additive; multiplicative; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 import Once.Parser.Token as P
 open import Once.Parser.ExprRelation
   using (isReserved; NotDot; NotCmp; NotAdd; NotMul; NotAtomStart; AppArgOk; NotTWord; NotQualPrefix)
@@ -34,6 +34,7 @@ open NotAtomStart
 open AppArgOk
 open NotTWord
 open NotQualPrefix
+open import Once.Adequacy.SpecTokNames
 open import Once.Adequacy.SpecLexing using (forget)
 
 private
@@ -138,6 +139,7 @@ notDot→TDot (P.TGt ∷ _) _ ()
 notDot→TDot (P.TGe ∷ _) _ ()
 notDot→TDot (P.TEqEq ∷ _) _ ()
 notDot→TDot (P.TNeq ∷ _) _ ()
+notDot→TDot (P.TOpD _ ∷ _) _ ()
 notDot→TDot (P.TBang ∷ _) _ ()
 notDot→TDot (P.TNewline ∷ _) _ ()
 notDot→TDot (P.TEOF ∷ _) _ ()
@@ -176,11 +178,12 @@ notDot← (P.TGt ∷ _) _ = tt
 notDot← (P.TGe ∷ _) _ = tt
 notDot← (P.TEqEq ∷ _) _ = tt
 notDot← (P.TNeq ∷ _) _ = tt
+notDot← (P.TOpD _ ∷ _) _ = tt
 notDot← (P.TBang ∷ _) _ = tt
 notDot← (P.TNewline ∷ _) _ = tt
 notDot← (P.TEOF ∷ _) _ = tt
 
-notCmp→ : ∀ toks → NotCmp toks → ∀ {t op} → Starts (F toks) t → ¬ CompareToken t op
+notCmp→ : ∀ toks → NotCmp toks → ∀ {t op} → Starts (F toks) t → ¬ OpToken comparison t op
 notCmp→ [] _ ()
 notCmp→ ((P.TWord _) ∷ _) _ starts ()
 notCmp→ ((P.TInt _ _) ∷ _) _ starts ()
@@ -202,23 +205,33 @@ notCmp→ (P.TSemicolon ∷ _) _ starts ()
 notCmp→ (P.TAt ∷ _) _ starts ()
 notCmp→ (P.TPipe ∷ _) _ starts ()
 notCmp→ (P.TDot ∷ _) _ starts ()
-notCmp→ (P.TPlus ∷ _) _ starts ()
-notCmp→ (P.TMinus ∷ _) _ starts ()
-notCmp→ (P.TStar ∷ _) _ starts ()
-notCmp→ (P.TSlash ∷ _) _ starts ()
-notCmp→ (P.TPercent ∷ _) _ starts ()
 notCmp→ (P.TAmpersand ∷ _) _ starts ()
-notCmp→ (P.TLt ∷ _) ()
-notCmp→ (P.TLe ∷ _) ()
-notCmp→ (P.TGt ∷ _) ()
-notCmp→ (P.TGe ∷ _) ()
-notCmp→ (P.TEqEq ∷ _) ()
-notCmp→ (P.TNeq ∷ _) ()
 notCmp→ (P.TBang ∷ _) _ starts ()
 notCmp→ (P.TNewline ∷ _) _ starts ()
 notCmp→ (P.TEOF ∷ _) _ starts ()
+notCmp→ (P.TPlus ∷ _) _ starts (ot-plain ())
+notCmp→ (P.TMinus ∷ _) _ starts (ot-plain ())
+notCmp→ (P.TStar ∷ _) _ starts (ot-plain ())
+notCmp→ (P.TSlash ∷ _) _ starts (ot-plain ())
+notCmp→ (P.TPercent ∷ _) _ starts (ot-plain ())
+notCmp→ (P.TLt ∷ _) () _ _
+notCmp→ (P.TLe ∷ _) () _ _
+notCmp→ (P.TGt ∷ _) () _ _
+notCmp→ (P.TGe ∷ _) () _ _
+notCmp→ (P.TEqEq ∷ _) () _ _
+notCmp→ (P.TNeq ∷ _) () _ _
+notCmp→ (P.TOpD o+ ∷ _) _ starts (ot-dotted ())
+notCmp→ (P.TOpD o-  ∷ _) _ starts (ot-dotted ())
+notCmp→ (P.TOpD o* ∷ _) _ starts (ot-dotted ())
+notCmp→ (P.TOpD o/ ∷ _) _ starts (ot-dotted ())
+notCmp→ (P.TOpD o< ∷ _) () _ _
+notCmp→ (P.TOpD o<= ∷ _) () _ _
+notCmp→ (P.TOpD o> ∷ _) () _ _
+notCmp→ (P.TOpD o>= ∷ _) () _ _
+notCmp→ (P.TOpD o== ∷ _) () _ _
+notCmp→ (P.TOpD o!= ∷ _) () _ _
 
-notCmp← : ∀ toks → (∀ {t op} → Starts (F toks) t → ¬ CompareToken t op) → NotCmp toks
+notCmp← : ∀ toks → (∀ {t op} → Starts (F toks) t → ¬ OpToken comparison t op) → NotCmp toks
 notCmp← [] _ = tt
 notCmp← ((P.TWord _) ∷ _) _ = tt
 notCmp← ((P.TInt _ _) ∷ _) _ = tt
@@ -240,23 +253,33 @@ notCmp← (P.TSemicolon ∷ _) _ = tt
 notCmp← (P.TAt ∷ _) _ = tt
 notCmp← (P.TPipe ∷ _) _ = tt
 notCmp← (P.TDot ∷ _) _ = tt
+notCmp← (P.TAmpersand ∷ _) _ = tt
+notCmp← (P.TBang ∷ _) _ = tt
+notCmp← (P.TNewline ∷ _) _ = tt
+notCmp← (P.TEOF ∷ _) _ = tt
 notCmp← (P.TPlus ∷ _) _ = tt
 notCmp← (P.TMinus ∷ _) _ = tt
 notCmp← (P.TStar ∷ _) _ = tt
 notCmp← (P.TSlash ∷ _) _ = tt
 notCmp← (P.TPercent ∷ _) _ = tt
-notCmp← (P.TAmpersand ∷ _) _ = tt
-notCmp← (P.TLt ∷ _) n = n starts ct-lt
-notCmp← (P.TLe ∷ _) n = n starts ct-le
-notCmp← (P.TGt ∷ _) n = n starts ct-gt
-notCmp← (P.TGe ∷ _) n = n starts ct-ge
-notCmp← (P.TEqEq ∷ _) n = n starts ct-eq
-notCmp← (P.TNeq ∷ _) n = n starts ct-ne
-notCmp← (P.TBang ∷ _) _ = tt
-notCmp← (P.TNewline ∷ _) _ = tt
-notCmp← (P.TEOF ∷ _) _ = tt
+notCmp← (P.TLt ∷ _) n = n starts (ot-plain refl)
+notCmp← (P.TLe ∷ _) n = n starts (ot-plain refl)
+notCmp← (P.TGt ∷ _) n = n starts (ot-plain refl)
+notCmp← (P.TGe ∷ _) n = n starts (ot-plain refl)
+notCmp← (P.TEqEq ∷ _) n = n starts (ot-plain refl)
+notCmp← (P.TNeq ∷ _) n = n starts (ot-plain refl)
+notCmp← (P.TOpD o+ ∷ _) _ = tt
+notCmp← (P.TOpD o-  ∷ _) _ = tt
+notCmp← (P.TOpD o* ∷ _) _ = tt
+notCmp← (P.TOpD o/ ∷ _) _ = tt
+notCmp← (P.TOpD o< ∷ _) n = n starts (ot-dotted refl)
+notCmp← (P.TOpD o<= ∷ _) n = n starts (ot-dotted refl)
+notCmp← (P.TOpD o> ∷ _) n = n starts (ot-dotted refl)
+notCmp← (P.TOpD o>= ∷ _) n = n starts (ot-dotted refl)
+notCmp← (P.TOpD o== ∷ _) n = n starts (ot-dotted refl)
+notCmp← (P.TOpD o!= ∷ _) n = n starts (ot-dotted refl)
 
-notAdd→ : ∀ toks → NotAdd toks → ∀ {t op} → Starts (F toks) t → ¬ AddToken t op
+notAdd→ : ∀ toks → NotAdd toks → ∀ {t op} → Starts (F toks) t → ¬ OpToken additive t op
 notAdd→ [] _ ()
 notAdd→ ((P.TWord _) ∷ _) _ starts ()
 notAdd→ ((P.TInt _ _) ∷ _) _ starts ()
@@ -278,23 +301,33 @@ notAdd→ (P.TSemicolon ∷ _) _ starts ()
 notAdd→ (P.TAt ∷ _) _ starts ()
 notAdd→ (P.TPipe ∷ _) _ starts ()
 notAdd→ (P.TDot ∷ _) _ starts ()
-notAdd→ (P.TPlus ∷ _) ()
-notAdd→ (P.TMinus ∷ _) ()
-notAdd→ (P.TStar ∷ _) _ starts ()
-notAdd→ (P.TSlash ∷ _) _ starts ()
-notAdd→ (P.TPercent ∷ _) _ starts ()
 notAdd→ (P.TAmpersand ∷ _) _ starts ()
-notAdd→ (P.TLt ∷ _) _ starts ()
-notAdd→ (P.TLe ∷ _) _ starts ()
-notAdd→ (P.TGt ∷ _) _ starts ()
-notAdd→ (P.TGe ∷ _) _ starts ()
-notAdd→ (P.TEqEq ∷ _) _ starts ()
-notAdd→ (P.TNeq ∷ _) _ starts ()
 notAdd→ (P.TBang ∷ _) _ starts ()
 notAdd→ (P.TNewline ∷ _) _ starts ()
 notAdd→ (P.TEOF ∷ _) _ starts ()
+notAdd→ (P.TPlus ∷ _) () _ _
+notAdd→ (P.TMinus ∷ _) () _ _
+notAdd→ (P.TStar ∷ _) _ starts (ot-plain ())
+notAdd→ (P.TSlash ∷ _) _ starts (ot-plain ())
+notAdd→ (P.TPercent ∷ _) _ starts (ot-plain ())
+notAdd→ (P.TLt ∷ _) _ starts (ot-plain ())
+notAdd→ (P.TLe ∷ _) _ starts (ot-plain ())
+notAdd→ (P.TGt ∷ _) _ starts (ot-plain ())
+notAdd→ (P.TGe ∷ _) _ starts (ot-plain ())
+notAdd→ (P.TEqEq ∷ _) _ starts (ot-plain ())
+notAdd→ (P.TNeq ∷ _) _ starts (ot-plain ())
+notAdd→ (P.TOpD o+ ∷ _) () _ _
+notAdd→ (P.TOpD o-  ∷ _) () _ _
+notAdd→ (P.TOpD o* ∷ _) _ starts (ot-dotted ())
+notAdd→ (P.TOpD o/ ∷ _) _ starts (ot-dotted ())
+notAdd→ (P.TOpD o< ∷ _) _ starts (ot-dotted ())
+notAdd→ (P.TOpD o<= ∷ _) _ starts (ot-dotted ())
+notAdd→ (P.TOpD o> ∷ _) _ starts (ot-dotted ())
+notAdd→ (P.TOpD o>= ∷ _) _ starts (ot-dotted ())
+notAdd→ (P.TOpD o== ∷ _) _ starts (ot-dotted ())
+notAdd→ (P.TOpD o!= ∷ _) _ starts (ot-dotted ())
 
-notAdd← : ∀ toks → (∀ {t op} → Starts (F toks) t → ¬ AddToken t op) → NotAdd toks
+notAdd← : ∀ toks → (∀ {t op} → Starts (F toks) t → ¬ OpToken additive t op) → NotAdd toks
 notAdd← [] _ = tt
 notAdd← ((P.TWord _) ∷ _) _ = tt
 notAdd← ((P.TInt _ _) ∷ _) _ = tt
@@ -316,23 +349,33 @@ notAdd← (P.TSemicolon ∷ _) _ = tt
 notAdd← (P.TAt ∷ _) _ = tt
 notAdd← (P.TPipe ∷ _) _ = tt
 notAdd← (P.TDot ∷ _) _ = tt
-notAdd← (P.TPlus ∷ _) n = n starts at-plus
-notAdd← (P.TMinus ∷ _) n = n starts at-minus
+notAdd← (P.TAmpersand ∷ _) _ = tt
+notAdd← (P.TBang ∷ _) _ = tt
+notAdd← (P.TNewline ∷ _) _ = tt
+notAdd← (P.TEOF ∷ _) _ = tt
+notAdd← (P.TPlus ∷ _) n = n starts (ot-plain refl)
+notAdd← (P.TMinus ∷ _) n = n starts (ot-plain refl)
 notAdd← (P.TStar ∷ _) _ = tt
 notAdd← (P.TSlash ∷ _) _ = tt
 notAdd← (P.TPercent ∷ _) _ = tt
-notAdd← (P.TAmpersand ∷ _) _ = tt
 notAdd← (P.TLt ∷ _) _ = tt
 notAdd← (P.TLe ∷ _) _ = tt
 notAdd← (P.TGt ∷ _) _ = tt
 notAdd← (P.TGe ∷ _) _ = tt
 notAdd← (P.TEqEq ∷ _) _ = tt
 notAdd← (P.TNeq ∷ _) _ = tt
-notAdd← (P.TBang ∷ _) _ = tt
-notAdd← (P.TNewline ∷ _) _ = tt
-notAdd← (P.TEOF ∷ _) _ = tt
+notAdd← (P.TOpD o+ ∷ _) n = n starts (ot-dotted refl)
+notAdd← (P.TOpD o-  ∷ _) n = n starts (ot-dotted refl)
+notAdd← (P.TOpD o* ∷ _) _ = tt
+notAdd← (P.TOpD o/ ∷ _) _ = tt
+notAdd← (P.TOpD o< ∷ _) _ = tt
+notAdd← (P.TOpD o<= ∷ _) _ = tt
+notAdd← (P.TOpD o> ∷ _) _ = tt
+notAdd← (P.TOpD o>= ∷ _) _ = tt
+notAdd← (P.TOpD o== ∷ _) _ = tt
+notAdd← (P.TOpD o!= ∷ _) _ = tt
 
-notMul→ : ∀ toks → NotMul toks → ∀ {t op} → Starts (F toks) t → ¬ MulToken t op
+notMul→ : ∀ toks → NotMul toks → ∀ {t op} → Starts (F toks) t → ¬ OpToken multiplicative t op
 notMul→ [] _ ()
 notMul→ ((P.TWord _) ∷ _) _ starts ()
 notMul→ ((P.TInt _ _) ∷ _) _ starts ()
@@ -354,23 +397,33 @@ notMul→ (P.TSemicolon ∷ _) _ starts ()
 notMul→ (P.TAt ∷ _) _ starts ()
 notMul→ (P.TPipe ∷ _) _ starts ()
 notMul→ (P.TDot ∷ _) _ starts ()
-notMul→ (P.TPlus ∷ _) _ starts ()
-notMul→ (P.TMinus ∷ _) _ starts ()
-notMul→ (P.TStar ∷ _) ()
-notMul→ (P.TSlash ∷ _) ()
-notMul→ (P.TPercent ∷ _) ()
 notMul→ (P.TAmpersand ∷ _) _ starts ()
-notMul→ (P.TLt ∷ _) _ starts ()
-notMul→ (P.TLe ∷ _) _ starts ()
-notMul→ (P.TGt ∷ _) _ starts ()
-notMul→ (P.TGe ∷ _) _ starts ()
-notMul→ (P.TEqEq ∷ _) _ starts ()
-notMul→ (P.TNeq ∷ _) _ starts ()
 notMul→ (P.TBang ∷ _) _ starts ()
 notMul→ (P.TNewline ∷ _) _ starts ()
 notMul→ (P.TEOF ∷ _) _ starts ()
+notMul→ (P.TPlus ∷ _) _ starts (ot-plain ())
+notMul→ (P.TMinus ∷ _) _ starts (ot-plain ())
+notMul→ (P.TStar ∷ _) () _ _
+notMul→ (P.TSlash ∷ _) () _ _
+notMul→ (P.TPercent ∷ _) () _ _
+notMul→ (P.TLt ∷ _) _ starts (ot-plain ())
+notMul→ (P.TLe ∷ _) _ starts (ot-plain ())
+notMul→ (P.TGt ∷ _) _ starts (ot-plain ())
+notMul→ (P.TGe ∷ _) _ starts (ot-plain ())
+notMul→ (P.TEqEq ∷ _) _ starts (ot-plain ())
+notMul→ (P.TNeq ∷ _) _ starts (ot-plain ())
+notMul→ (P.TOpD o+ ∷ _) _ starts (ot-dotted ())
+notMul→ (P.TOpD o-  ∷ _) _ starts (ot-dotted ())
+notMul→ (P.TOpD o* ∷ _) () _ _
+notMul→ (P.TOpD o/ ∷ _) () _ _
+notMul→ (P.TOpD o< ∷ _) _ starts (ot-dotted ())
+notMul→ (P.TOpD o<= ∷ _) _ starts (ot-dotted ())
+notMul→ (P.TOpD o> ∷ _) _ starts (ot-dotted ())
+notMul→ (P.TOpD o>= ∷ _) _ starts (ot-dotted ())
+notMul→ (P.TOpD o== ∷ _) _ starts (ot-dotted ())
+notMul→ (P.TOpD o!= ∷ _) _ starts (ot-dotted ())
 
-notMul← : ∀ toks → (∀ {t op} → Starts (F toks) t → ¬ MulToken t op) → NotMul toks
+notMul← : ∀ toks → (∀ {t op} → Starts (F toks) t → ¬ OpToken multiplicative t op) → NotMul toks
 notMul← [] _ = tt
 notMul← ((P.TWord _) ∷ _) _ = tt
 notMul← ((P.TInt _ _) ∷ _) _ = tt
@@ -392,21 +445,31 @@ notMul← (P.TSemicolon ∷ _) _ = tt
 notMul← (P.TAt ∷ _) _ = tt
 notMul← (P.TPipe ∷ _) _ = tt
 notMul← (P.TDot ∷ _) _ = tt
+notMul← (P.TAmpersand ∷ _) _ = tt
+notMul← (P.TBang ∷ _) _ = tt
+notMul← (P.TNewline ∷ _) _ = tt
+notMul← (P.TEOF ∷ _) _ = tt
 notMul← (P.TPlus ∷ _) _ = tt
 notMul← (P.TMinus ∷ _) _ = tt
-notMul← (P.TStar ∷ _) n = n starts mt-star
-notMul← (P.TSlash ∷ _) n = n starts mt-slash
-notMul← (P.TPercent ∷ _) n = n starts mt-pct
-notMul← (P.TAmpersand ∷ _) _ = tt
+notMul← (P.TStar ∷ _) n = n starts (ot-plain refl)
+notMul← (P.TSlash ∷ _) n = n starts (ot-plain refl)
+notMul← (P.TPercent ∷ _) n = n starts (ot-plain refl)
 notMul← (P.TLt ∷ _) _ = tt
 notMul← (P.TLe ∷ _) _ = tt
 notMul← (P.TGt ∷ _) _ = tt
 notMul← (P.TGe ∷ _) _ = tt
 notMul← (P.TEqEq ∷ _) _ = tt
 notMul← (P.TNeq ∷ _) _ = tt
-notMul← (P.TBang ∷ _) _ = tt
-notMul← (P.TNewline ∷ _) _ = tt
-notMul← (P.TEOF ∷ _) _ = tt
+notMul← (P.TOpD o+ ∷ _) _ = tt
+notMul← (P.TOpD o-  ∷ _) _ = tt
+notMul← (P.TOpD o* ∷ _) n = n starts (ot-dotted refl)
+notMul← (P.TOpD o/ ∷ _) n = n starts (ot-dotted refl)
+notMul← (P.TOpD o< ∷ _) _ = tt
+notMul← (P.TOpD o<= ∷ _) _ = tt
+notMul← (P.TOpD o> ∷ _) _ = tt
+notMul← (P.TOpD o>= ∷ _) _ = tt
+notMul← (P.TOpD o== ∷ _) _ = tt
+notMul← (P.TOpD o!= ∷ _) _ = tt
 
 notAtom→ : ∀ {toks} → NotAtomStart toks → ¬ ArgStart (F toks)
 notAtom→ nas-[] ()
@@ -437,6 +500,7 @@ notAtom→ nas-TGt ()
 notAtom→ nas-TGe ()
 notAtom→ nas-TEqEq ()
 notAtom→ nas-TNeq ()
+notAtom→ nas-TOpD ()
 notAtom→ nas-TBang ()
 notAtom→ nas-TNewline ()
 notAtom→ nas-TEOF ()
@@ -475,6 +539,7 @@ notAtom← (P.TGt ∷ _) _ _ = nas-TGt
 notAtom← (P.TGe ∷ _) _ _ = nas-TGe
 notAtom← (P.TEqEq ∷ _) _ _ = nas-TEqEq
 notAtom← (P.TNeq ∷ _) _ _ = nas-TNeq
+notAtom← (P.TOpD _ ∷ _) _ _ = nas-TOpD
 notAtom← (P.TBang ∷ _) _ _ = nas-TBang
 notAtom← (P.TNewline ∷ _) _ _ = nas-TNewline
 notAtom← (P.TEOF ∷ _) _ _ = nas-TEOF
@@ -513,6 +578,7 @@ argOk← (P.TGt ∷ _) ()
 argOk← (P.TGe ∷ _) ()
 argOk← (P.TEqEq ∷ _) ()
 argOk← (P.TNeq ∷ _) ()
+argOk← (P.TOpD _ ∷ _) ()
 argOk← (P.TBang ∷ _) ()
 argOk← (P.TNewline ∷ _) ()
 argOk← (P.TEOF ∷ _) ()
@@ -550,6 +616,7 @@ notQual→ nqp-TGt ()
 notQual→ nqp-TGe ()
 notQual→ nqp-TEqEq ()
 notQual→ nqp-TNeq ()
+notQual→ nqp-TOpD ()
 notQual→ nqp-TBang ()
 notQual→ nqp-TNewline ()
 notQual→ nqp-TEOF ()
@@ -585,6 +652,7 @@ notQual→ (nqp-TAt-cons ntw-TGt) ()
 notQual→ (nqp-TAt-cons ntw-TGe) ()
 notQual→ (nqp-TAt-cons ntw-TEqEq) ()
 notQual→ (nqp-TAt-cons ntw-TNeq) ()
+notQual→ (nqp-TAt-cons ntw-TOpD) ()
 notQual→ (nqp-TAt-cons ntw-TBang) ()
 notQual→ (nqp-TAt-cons ntw-TNewline) ()
 notQual→ (nqp-TAt-cons ntw-TEOF) ()
@@ -624,6 +692,7 @@ notQual← (P.TAt ∷ P.TGt ∷ _) _ = nqp-TAt-cons ntw-TGt
 notQual← (P.TAt ∷ P.TGe ∷ _) _ = nqp-TAt-cons ntw-TGe
 notQual← (P.TAt ∷ P.TEqEq ∷ _) _ = nqp-TAt-cons ntw-TEqEq
 notQual← (P.TAt ∷ P.TNeq ∷ _) _ = nqp-TAt-cons ntw-TNeq
+notQual← (P.TAt ∷ P.TOpD _ ∷ _) _ = nqp-TAt-cons ntw-TOpD
 notQual← (P.TAt ∷ P.TBang ∷ _) _ = nqp-TAt-cons ntw-TBang
 notQual← (P.TAt ∷ P.TNewline ∷ _) _ = nqp-TAt-cons ntw-TNewline
 notQual← (P.TAt ∷ P.TEOF ∷ _) _ = nqp-TAt-cons ntw-TEOF
@@ -658,6 +727,7 @@ notQual← (P.TGt ∷ _) _ = nqp-TGt
 notQual← (P.TGe ∷ _) _ = nqp-TGe
 notQual← (P.TEqEq ∷ _) _ = nqp-TEqEq
 notQual← (P.TNeq ∷ _) _ = nqp-TNeq
+notQual← (P.TOpD _ ∷ _) _ = nqp-TOpD
 notQual← (P.TBang ∷ _) _ = nqp-TBang
 notQual← (P.TNewline ∷ _) _ = nqp-TNewline
 notQual← (P.TEOF ∷ _) _ = nqp-TEOF

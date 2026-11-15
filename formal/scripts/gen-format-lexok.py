@@ -3,11 +3,14 @@
 import os
 PROOF=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','Once','Format','Proof')
 SYM1={'lex-lparen':'s-lparen','lex-rparen':'s-rparen','lex-rbrace':'s-rbrace','lex-colon':'s-colon','lex-lambda':'s-lambda',
-'lex-comma':'s-comma','lex-semi':'s-semicolon','lex-at':'s-at','lex-pipe':'s-pipe','lex-plus':'s-plus','lex-star':'s-star',
-'lex-slash':'s-slash','lex-pct':'s-percent','lex-amp':'s-ampersand','lex-dot':'s-dot','lex-arrow':'s-arrow',
-'lex-caret1':'s-caret1','lex-caret0':'s-caret0','lex-caretw':'s-caretw','lex-le':'s-le','lex-ge':'s-ge','lex-eqeq':'s-eqeq','lex-neq':'s-neq'}
-SYM2={'lex-minus':'s-minus','lex-lbrace':'s-lbrace','lex-lt':'s-lt','lex-gt':'s-gt','lex-equal':'s-equals','lex-bang':'s-bang'}  # one premise before l
-SYM3={'lex-minus':2}
+'lex-comma':'s-comma','lex-semi':'s-semicolon','lex-at':'s-at','lex-pipe':'s-pipe',
+'lex-amp':'s-ampersand','lex-dot':'s-dot','lex-arrow':'s-arrow',
+'lex-caret1':'s-caret1','lex-caret0':'s-caret0','lex-caretw':'s-caretw'}
+SYM2={'lex-lbrace':'s-lbrace','lex-equal':'s-equals','lex-bang':'s-bang'}  # one premise before l
+# An operator's glyph, and the symbol of its token and of its IEEE form's.
+GLYPH=[('g+','s-plus','s-plusd'),('(g- _ _)','s-minus','s-minusd'),('g*','s-star','s-stard'),('g/','s-slash','s-slashd'),
+ ('g%','s-percent',None),('(g< _)','s-lt','s-ltd'),('g<=','s-le','s-led'),('(g> _)','s-gt','s-gtd'),('g>=','s-ge','s-ged'),
+ ('g==','s-eqeq','s-eqeqd'),('g!=','s-neq','s-neqd')]
 o=[]; w=o.append
 w(r'''-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
@@ -45,7 +48,9 @@ open import Once.Postulates using (toList∘fromList; isDigit-value)
 open import Once.Spec.Surface.Lexing
 open import Once.Format.Proof.Lexing using (Printable; p-word; p-int; p-float; p-sym; s-lparen; s-rparen; s-lbrace;
   s-rbrace; s-colon; s-equals; s-arrow; s-caret1; s-caret0; s-caretw; s-lambda; s-comma; s-semicolon; s-at; s-pipe;
-  s-dot; s-plus; s-minus; s-star; s-slash; s-percent; s-ampersand; s-lt; s-le; s-gt; s-ge; s-eqeq; s-neq; s-bang)
+  s-dot; s-plus; s-minus; s-star; s-slash; s-percent; s-ampersand; s-lt; s-le; s-gt; s-ge; s-eqeq; s-neq; s-bang;
+  s-plusd; s-minusd; s-stard; s-slashd; s-ltd; s-led; s-gtd; s-ged; s-eqeqd; s-neqd; Sym)
+open import Once.Spec.Surface.Operator using (‹_›)
 
 -- What else the lexer writes.
 data Other : Token → Set where
@@ -91,6 +96,14 @@ private
   ... | l , eq , f< rewrite eq = p-float f<
 
 -- | Every token of a lexed text is printable, or a line end, the end, a string.
+''')
+w('''  opSym : ∀ {cs o r} → Glyph cs o r → Sym (TOp o)''')
+for g,a,_ in GLYPH: w(f'  opSym {g} = {a}')
+w('''
+  opdSym : ∀ {cs d r} → Glyph cs ‹ d › r → Sym (TOpD d)''')
+for g,_,b in GLYPH:
+    if b: w(f'  opdSym {g} = {b}')
+w('''
 lexed-ok : ∀ {cs ts} → LexesChars cs ts → All LexOK ts''')
 cases=[]
 cases.append("lexed-ok lex-eof = inj₂ o-eof ∷ []")
@@ -100,10 +113,10 @@ cases.append("lexed-ok (lex-nl _ _ l) = inj₂ o-nl ∷ lexed-ok l")
 for n,s in SYM1.items():
     cases.append(f"lexed-ok ({n} l) = inj₁ (p-sym {s}) ∷ lexed-ok l")
 cases.append("lexed-ok (lex-comment _ l) = lexed-ok l")
-cases.append("lexed-ok (lex-minus _ _ l) = inj₁ (p-sym s-minus) ∷ lexed-ok l")
+cases.append("lexed-ok (lex-op g _ l) = inj₁ (p-sym (opSym g)) ∷ lexed-ok l")
+cases.append("lexed-ok (lex-opd g l) = inj₁ (p-sym (opdSym g)) ∷ lexed-ok l")
 cases.append("lexed-ok (lex-block _ l) = lexed-ok l")
 for n,s in SYM2.items():
-    if n=='lex-minus': continue
     cases.append(f"lexed-ok ({n} _ l) = inj₁ (p-sym {s}) ∷ lexed-ok l")
 cases.append("lexed-ok (lex-string _ l) = inj₂ o-str ∷ lexed-ok l")
 cases.append("lexed-ok (lex-int _ _ _ l) = inj₁ p-int ∷ lexed-ok l")

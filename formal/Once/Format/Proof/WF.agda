@@ -7,7 +7,7 @@
 --
 -- What the grammar reads from lexed tokens (`LexOK`) is what the printer's
 -- proofs ask for: names that are words or operators, words that are
--- identifiers, non-negative integers, floats whose fraction fits its digits,
+-- identifiers, floats whose fraction fits its digits,
 -- type variables in signatures only, ground annotations whose effectful
 -- arrows are as read. By induction on the derivations, each reading the
 -- tokens it consumes and handing on the rest.
@@ -32,8 +32,9 @@ open import Relation.Nullary using (¬_)
 open import Once.Postulates using (toList∘fromList)
 open import Once.Spec.Grade using (Many; pureᶠ; actᶠ; fin; eff; mk-kind)
 open import Once.Spec.Type using (Type; Fun)
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TAt; TNewline; TEOF)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TAt; TNewline; TEOF; TDot; TOp)
 open import Once.Spec.Surface.Syntax
+open import Once.Spec.Float.Value using (pos; neg)
 open import Once.Spec.Surface.Grammar
 open import Once.Format.Print using (isOperator)
 open import Once.Format.Proof.Lexing using (Printable; p-word; p-int; p-float; p-sym)
@@ -52,12 +53,7 @@ private
   word (inj₁ p) = p
   word (inj₂ ())
 
-  int : ∀ {z} → LexOK (TInt z) → PE (RInt z)
-  int (inj₁ (p-int {n})) = n , refl
-  int (inj₁ (p-sym ()))
-  int (inj₂ ())
-
-  float : ∀ {i f l} → LexOK (TFloat i f l) → PE (RFloat i f l)
+  float : ∀ {s i f l} → LexOK (TFloat i f l) → PE (RFloat s i f l)
   float (inj₁ (p-float {l = l} f<)) = l , refl , f<
   float (inj₁ (p-sym ()))
   float (inj₂ ())
@@ -101,6 +97,7 @@ private
   ... | d , ds , eq =
     (d , ds , trans (toList∘fromList (reverse (c ∷ cs))) eq , subst (All OC) eq (allRev [] os)) , tl a
   opName (op-char {t} oc p) os a = opName p ((t , oc) ∷ os) (tl a)
+  opName (op-dotted g p) os a = opName p ((TDot , oc-dot) ∷ (TOp _ , oc-op g) ∷ os) (tl a)
 
   opGood : ∀ {ts s r} → ParsesOpChars ts [] s r → AL ts → Good (RVar s) × AL r
   opGood {s = s} p a with opName p [] a
@@ -290,8 +287,10 @@ mutual
   ... | g₂ , a′ = mulT t (bin g g₂) a′
 
   unary′ : ∀ {ts e r} → ParsesUnary ts e r → AL ts → Good e × AL r
-  unary′ (neg p) a with unary′ p (tl a)
+  unary′ (neg _ p) a with unary′ p (tl a)
   ... | good w q , a′ = good w q , a′
+  unary′ (neg-lit nn-int t) (_ ∷ _ ∷ a) = appT t (good tt tt) a
+  unary′ (neg-lit nn-float t) (_ ∷ l ∷ a) = appT t (good tt (float {neg} l)) a
   unary′ (unary p) a = app′ p a
 
   app′ : ∀ {ts e r} → ParsesApp ts e r → AL ts → Good e × AL r
@@ -305,8 +304,8 @@ mutual
 
   atom′ : ∀ {ts e r} → ParsesAtomExpr ts e r → AL ts → Good e × AL r
   atom′ atom-unit a = good tt tt , tl (tl a)
-  atom′ atom-int (l ∷ a) = good tt (int l) , a
-  atom′ atom-float (l ∷ a) = good tt (float l) , a
+  atom′ atom-int (l ∷ a) = good tt tt , a
+  atom′ atom-float (l ∷ a) = good tt (float {pos} l) , a
   atom′ (atom-var ¬r _) (l ∷ a) = wordName ¬r l , a
   atom′ (atom-qual ¬r) (l ∷ _ ∷ l′ ∷ a) = good ¬r (word l , word l′) , a
   atom′ (atom-paren p c) a with expr′ p (tl a)

@@ -50,7 +50,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Codegen.IRToTrace o
   using (sigop-code; ir-to-trace; ir-to-trace-lab; ir-to-unit; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer; CataStrategy; strat-const; strat-box; strat-branching; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; with-copy; two-cell; out-trace; visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂; -- D099 / C1: the called-algebra blocks.
@@ -362,7 +362,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ----------------------------------------------------------------------
   -- Plan 0.108: a SigOp is one call, or a comparison's straight-line
   -- lowering; the decider settles either once the choice is known.
-  sigop-stable : ∀ {A B} (si : SigOpInfo A B) (m : Maybe CmpOp) (n l : ℕ)
+  sigop-stable : ∀ {A B} (si : SigOpInfo A B) (m : Maybe (CmpAt A)) (n l : ℕ)
                → AllSlotStable (sigop-code si n m)
   sigop-stable si nothing  n l = all-stable?-sound _ refl
   sigop-stable si (just c) n l = all-stable?-sound _ refl

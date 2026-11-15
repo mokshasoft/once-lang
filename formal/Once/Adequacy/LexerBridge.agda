@@ -23,7 +23,7 @@
 module Once.Adequacy.LexerBridge where
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; _<_; suc; s≤s)
+open import Data.Nat using (ℕ; _<_; _≤_; suc; s≤s)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤n⇒m≤1+n; n<1+n; <⇒≤)
 open import Data.List using (List; []; _∷_; length)
@@ -36,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Parser.Token
 open import Once.Parser.Lexer
-  using (adv; tokenize-WF; tok-str; tok-gen; tok-nl; tok-op2; tok-lbrace; tok-minus; tok-caret; tokenizeString; isIdentStart; collectStringB; collectDigitsB; collectFracB; collectIdentB; skipLineB; skipBlockB; drop1; drop1-≤; nlIndent; isEqHead; isDashHead; dashClass; caretClass; Dash3; d-comment; d-arrow; d-minus; Caret4; c-1; c-0; c-w; c-gen; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang; hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt; hkPipe; hkPlus; hkStar; hkSlash; hkPct; hkAmp; hkDot; hkStr; hkGen; headK)
+  using (adv; tokenize-WF; tok-str; tok-gen; tok-nl; tok-dot; tok-cmp; tok-eqop; tok-lbrace; tok-minus; tok-caret; tokenizeString; isIdentStart; collectStringB; collectDigitsB; collectFracB; collectIdentB; skipLineB; skipBlockB; drop1; drop1-≤; nlIndent; isEqHead; isDotHead; isDashHead; dashClass; caretClass; Dash3; d-comment; d-arrow; d-minus; Caret4; c-1; c-0; c-w; c-gen; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang; hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt; hkPipe; hkPlus; hkStar; hkSlash; hkPct; hkAmp; hkDot; hkStr; hkGen; headK)
 
 ------------------------------------------------------------------------
 -- The relation lives in `Once.Parser.Relation.Lexing` (Plan 0.84): it is part of what
@@ -45,15 +45,16 @@ open import Once.Parser.Lexer
 -- `tokenizeString` meets it, and is not re-exported into the spec.
 ------------------------------------------------------------------------
 
+open import Once.Spec.Surface.Operator using (‹_›; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 open import Once.Parser.Relation.Lexing using (LexesChars; Lexes;
   lex-eof; lex-ws; lex-nl-ind; lex-nl;
   lex-caret1; lex-caret0; lex-caretw; lex-caret-err;
-  lex-lcomment-ind; lex-arrow-ind; lex-minus;
+  lex-lcomment-ind; lex-arrow-ind;
   lex-bcomment-ind; lex-lbrace;
-  lex-le-ind; lex-lt; lex-ge-ind; lex-gt; lex-eqeq-ind; lex-equals;
-  lex-neq-ind; lex-bang;
+  lex-equals; lex-bang; lex-op; lex-op-dot;
+  OpHead; oh-plus; oh-star; oh-slash; oh-minus; oh-lt; oh-le; oh-gt; oh-ge; oh-eqeq; oh-neq;
   lex-lparen; lex-rparen; lex-rbrace; lex-colon; lex-lambda; lex-comma;
-  lex-semi; lex-at; lex-pipe; lex-plus; lex-star; lex-slash; lex-pct;
+  lex-semi; lex-at; lex-pipe; lex-pct;
   lex-amp; lex-dot;
   lex-string; lex-string-err;
   lex-digit; lex-float; lex-ident; lex-char-err)
@@ -71,14 +72,17 @@ sound-dash : ∀ {c} (cs : List Char) (off : ℕ) (rec : ∀ {y} → y < suc (le
   headK c ≡ hkDash → (k : Dash3) → dashClass cs ≡ k → LexesChars off (c ∷ cs) (tok-minus cs off rec k)
 sound-lbrace : ∀ {c} (cs : List Char) (off : ℕ) (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) →
   headK c ≡ hkLBrace → (b : Bool) → isDashHead cs ≡ b → LexesChars off (c ∷ cs) (tok-lbrace cs off rec b)
+sound-dot : ∀ {c d} (cs rest : List Char) (off : ℕ) (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y)
+  (bnd : length rest ≤ length cs) → OpHead c cs rest d → (b : Bool) → isDotHead rest ≡ b
+  → LexesChars off (c ∷ cs) (tok-dot cs rest off rec bnd d b)
 sound-lt : ∀ {c} (cs : List Char) (off : ℕ) (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) →
-  headK c ≡ hkLt → (b : Bool) → isEqHead cs ≡ b → LexesChars off (c ∷ cs) (tok-op2 cs off rec TLe TLt b)
+  headK c ≡ hkLt → (b : Bool) → isEqHead cs ≡ b → LexesChars off (c ∷ cs) (tok-cmp cs off rec o<= o< b)
 sound-gt : ∀ {c} (cs : List Char) (off : ℕ) (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) →
-  headK c ≡ hkGt → (b : Bool) → isEqHead cs ≡ b → LexesChars off (c ∷ cs) (tok-op2 cs off rec TGe TGt b)
+  headK c ≡ hkGt → (b : Bool) → isEqHead cs ≡ b → LexesChars off (c ∷ cs) (tok-cmp cs off rec o>= o> b)
 sound-eq : ∀ {c} (cs : List Char) (off : ℕ) (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) →
-  headK c ≡ hkEq → (b : Bool) → isEqHead cs ≡ b → LexesChars off (c ∷ cs) (tok-op2 cs off rec TEqEq TEquals b)
+  headK c ≡ hkEq → (b : Bool) → isEqHead cs ≡ b → LexesChars off (c ∷ cs) (tok-eqop cs off rec o== TEquals b)
 sound-bang : ∀ {c} (cs : List Char) (off : ℕ) (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) →
-  headK c ≡ hkBang → (b : Bool) → isEqHead cs ≡ b → LexesChars off (c ∷ cs) (tok-op2 cs off rec TNeq TBang b)
+  headK c ≡ hkBang → (b : Bool) → isEqHead cs ≡ b → LexesChars off (c ∷ cs) (tok-eqop cs off rec o!= TBang b)
 sound-str : ∀ {c} (cs : List Char) (off : ℕ) (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) → headK c ≡ hkStr →
   (r : Maybe (Σ[ s ∈ List Char ] Σ[ rest ∈ List Char ] length rest < length cs)) →
   collectStringB cs ≡ r → LexesChars off (c ∷ cs) (tok-str cs off rec r)
@@ -112,9 +116,9 @@ lexes-tok (c ∷ cs) off (acc rec) with headK c in eq
 ... | hkSemi   = lex-semi eq (lexes-tok cs (adv cs cs off) (rec (s≤s ≤-refl)))
 ... | hkAt     = lex-at eq (lexes-tok cs (adv cs cs off) (rec (s≤s ≤-refl)))
 ... | hkPipe   = lex-pipe eq (lexes-tok cs (adv cs cs off) (rec (s≤s ≤-refl)))
-... | hkPlus   = lex-plus eq (lexes-tok cs (adv cs cs off) (rec (s≤s ≤-refl)))
-... | hkStar   = lex-star eq (lexes-tok cs (adv cs cs off) (rec (s≤s ≤-refl)))
-... | hkSlash  = lex-slash eq (lexes-tok cs (adv cs cs off) (rec (s≤s ≤-refl)))
+... | hkPlus   = sound-dot cs cs off rec ≤-refl (oh-plus eq) (isDotHead cs) refl
+... | hkStar   = sound-dot cs cs off rec ≤-refl (oh-star eq) (isDotHead cs) refl
+... | hkSlash  = sound-dot cs cs off rec ≤-refl (oh-slash eq) (isDotHead cs) refl
 ... | hkPct    = lex-pct eq (lexes-tok cs (adv cs cs off) (rec (s≤s ≤-refl)))
 ... | hkAmp    = lex-amp eq (lexes-tok cs (adv cs cs off) (rec (s≤s ≤-refl)))
 ... | hkDot    = lex-dot eq (lexes-tok cs (adv cs cs off) (rec (s≤s ≤-refl)))
@@ -131,18 +135,21 @@ sound-caret cs off rec eqh c-gen eq = lex-caret-err eqh eq
 
 sound-dash cs off rec eqh d-comment eq = lex-lcomment-ind eqh eq (lexes-tok (proj₁ (skipLineB (drop1 cs))) (adv cs (proj₁ (skipLineB (drop1 cs))) off) (rec (s≤s (≤-trans (proj₂ (skipLineB (drop1 cs))) (drop1-≤ cs)))))
 sound-dash cs off rec eqh d-arrow   eq = lex-arrow-ind eqh eq (lexes-tok (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs))))
-sound-dash cs off rec eqh d-minus   eq = lex-minus eqh eq (lexes-tok cs (adv cs cs off) (rec (n<1+n _)))
+sound-dash cs off rec eqh d-minus   eq = sound-dot cs cs off rec ≤-refl (oh-minus eqh eq) (isDotHead cs) refl
+
+sound-dot cs rest off rec bnd oh true  eq = lex-op-dot oh eq (lexes-tok (drop1 rest) (adv cs (drop1 rest) off) (rec (s≤s (≤-trans (drop1-≤ rest) bnd))))
+sound-dot cs rest off rec bnd oh false eq = lex-op oh eq (lexes-tok rest (adv cs rest off) (rec (s≤s bnd)))
 
 sound-lbrace cs off rec eqh true  eq = lex-bcomment-ind eqh eq (lexes-tok (proj₁ (skipBlockB 1 (drop1 cs))) (adv cs (proj₁ (skipBlockB 1 (drop1 cs))) off) (rec (s≤s (≤-trans (proj₂ (skipBlockB 1 (drop1 cs))) (drop1-≤ cs)))))
 sound-lbrace cs off rec eqh false eq = lex-lbrace eqh eq (lexes-tok cs (adv cs cs off) (rec (n<1+n _)))
 
-sound-lt cs off rec eqh true  eq = lex-le-ind eqh eq (lexes-tok (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs))))
-sound-lt cs off rec eqh false eq = lex-lt eqh eq (lexes-tok cs (adv cs cs off) (rec (n<1+n _)))
-sound-gt cs off rec eqh true  eq = lex-ge-ind eqh eq (lexes-tok (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs))))
-sound-gt cs off rec eqh false eq = lex-gt eqh eq (lexes-tok cs (adv cs cs off) (rec (n<1+n _)))
-sound-eq cs off rec eqh true  eq = lex-eqeq-ind eqh eq (lexes-tok (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs))))
+sound-lt cs off rec eqh true  eq = sound-dot cs (drop1 cs) off rec (drop1-≤ cs) (oh-le eqh eq) (isDotHead (drop1 cs)) refl
+sound-lt cs off rec eqh false eq = sound-dot cs cs off rec ≤-refl (oh-lt eqh eq) (isDotHead cs) refl
+sound-gt cs off rec eqh true  eq = sound-dot cs (drop1 cs) off rec (drop1-≤ cs) (oh-ge eqh eq) (isDotHead (drop1 cs)) refl
+sound-gt cs off rec eqh false eq = sound-dot cs cs off rec ≤-refl (oh-gt eqh eq) (isDotHead cs) refl
+sound-eq cs off rec eqh true  eq = sound-dot cs (drop1 cs) off rec (drop1-≤ cs) (oh-eqeq eqh eq) (isDotHead (drop1 cs)) refl
 sound-eq cs off rec eqh false eq = lex-equals eqh eq (lexes-tok cs (adv cs cs off) (rec (n<1+n _)))
-sound-bang cs off rec eqh true  eq = lex-neq-ind eqh eq (lexes-tok (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs))))
+sound-bang cs off rec eqh true  eq = sound-dot cs (drop1 cs) off rec (drop1-≤ cs) (oh-neq eqh eq) (isDotHead (drop1 cs)) refl
 sound-bang cs off rec eqh false eq = lex-bang eqh eq (lexes-tok cs (adv cs cs off) (rec (n<1+n _)))
 
 sound-str cs off rec eqh (just (s , rest , bnd)) eq =
@@ -193,16 +200,9 @@ private
   tok-step rec (lex-caret-err eqh eq) IH rewrite eqh | eq = refl
   tok-step rec (lex-lcomment-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = IH (s≤s (≤-trans (proj₂ (skipLineB (drop1 cs))) (drop1-≤ cs))) d
   tok-step rec (lex-arrow-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TArrow ∷_) (IH (s≤s (drop1-≤ cs)) d)
-  tok-step rec (lex-minus eqh eq d) IH rewrite eqh | eq = cong (TMinus ∷_) (IH (n<1+n _) d)
   tok-step rec (lex-bcomment-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = IH (s≤s (≤-trans (proj₂ (skipBlockB 1 (drop1 cs))) (drop1-≤ cs))) d
   tok-step rec (lex-lbrace eqh eq d) IH rewrite eqh | eq = cong (TLBrace ∷_) (IH (n<1+n _) d)
-  tok-step rec (lex-le-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TLe ∷_) (IH (s≤s (drop1-≤ cs)) d)
-  tok-step rec (lex-lt eqh eq d) IH rewrite eqh | eq = cong (TLt ∷_) (IH (n<1+n _) d)
-  tok-step rec (lex-ge-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TGe ∷_) (IH (s≤s (drop1-≤ cs)) d)
-  tok-step rec (lex-gt eqh eq d) IH rewrite eqh | eq = cong (TGt ∷_) (IH (n<1+n _) d)
-  tok-step rec (lex-eqeq-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TEqEq ∷_) (IH (s≤s (drop1-≤ cs)) d)
   tok-step rec (lex-equals eqh eq d) IH rewrite eqh | eq = cong (TEquals ∷_) (IH (n<1+n _) d)
-  tok-step rec (lex-neq-ind {cs = cs} eqh eq d) IH rewrite eqh | eq = cong (TNeq ∷_) (IH (s≤s (drop1-≤ cs)) d)
   tok-step rec (lex-bang eqh eq d) IH rewrite eqh | eq = cong (TBang ∷_) (IH (n<1+n _) d)
   tok-step rec (lex-lparen eqh d) IH rewrite eqh = cong (TLParen ∷_) (IH (s≤s ≤-refl) d)
   tok-step rec (lex-rparen eqh d) IH rewrite eqh = cong (TRParen ∷_) (IH (s≤s ≤-refl) d)
@@ -213,9 +213,26 @@ private
   tok-step rec (lex-semi eqh d) IH rewrite eqh = cong (TSemicolon ∷_) (IH (s≤s ≤-refl) d)
   tok-step rec (lex-at eqh d) IH rewrite eqh = cong (TAt ∷_) (IH (s≤s ≤-refl) d)
   tok-step rec (lex-pipe eqh d) IH rewrite eqh = cong (TPipe ∷_) (IH (s≤s ≤-refl) d)
-  tok-step rec (lex-plus eqh d) IH rewrite eqh = cong (TPlus ∷_) (IH (s≤s ≤-refl) d)
-  tok-step rec (lex-star eqh d) IH rewrite eqh = cong (TStar ∷_) (IH (s≤s ≤-refl) d)
-  tok-step rec (lex-slash eqh d) IH rewrite eqh = cong (TSlash ∷_) (IH (s≤s ≤-refl) d)
+  tok-step rec (lex-op {cs = cs} (oh-plus eqh) eqd d) IH rewrite eqh | eqd = cong (TOp ‹ o+ › ∷_) (IH (s≤s (≤-refl)) d)
+  tok-step rec (lex-op-dot {cs = cs} (oh-plus eqh) eqd d) IH rewrite eqh | eqd = cong (TOpD o+ ∷_) (IH (s≤s (≤-trans (drop1-≤ cs) (≤-refl))) d)
+  tok-step rec (lex-op {cs = cs} (oh-star eqh) eqd d) IH rewrite eqh | eqd = cong (TOp ‹ o* › ∷_) (IH (s≤s (≤-refl)) d)
+  tok-step rec (lex-op-dot {cs = cs} (oh-star eqh) eqd d) IH rewrite eqh | eqd = cong (TOpD o* ∷_) (IH (s≤s (≤-trans (drop1-≤ cs) (≤-refl))) d)
+  tok-step rec (lex-op {cs = cs} (oh-slash eqh) eqd d) IH rewrite eqh | eqd = cong (TOp ‹ o/ › ∷_) (IH (s≤s (≤-refl)) d)
+  tok-step rec (lex-op-dot {cs = cs} (oh-slash eqh) eqd d) IH rewrite eqh | eqd = cong (TOpD o/ ∷_) (IH (s≤s (≤-trans (drop1-≤ cs) (≤-refl))) d)
+  tok-step rec (lex-op {cs = cs} (oh-minus eqh eq) eqd d) IH rewrite eqh | eq | eqd = cong (TOp ‹ o- › ∷_) (IH (s≤s (≤-refl)) d)
+  tok-step rec (lex-op-dot {cs = cs} (oh-minus eqh eq) eqd d) IH rewrite eqh | eq | eqd = cong (TOpD o- ∷_) (IH (s≤s (≤-trans (drop1-≤ cs) (≤-refl))) d)
+  tok-step rec (lex-op {cs = cs} (oh-lt eqh eq) eqd d) IH rewrite eqh | eq | eqd = cong (TOp ‹ o< › ∷_) (IH (s≤s (≤-refl)) d)
+  tok-step rec (lex-op-dot {cs = cs} (oh-lt eqh eq) eqd d) IH rewrite eqh | eq | eqd = cong (TOpD o< ∷_) (IH (s≤s (≤-trans (drop1-≤ cs) (≤-refl))) d)
+  tok-step rec (lex-op {cs = cs} (oh-gt eqh eq) eqd d) IH rewrite eqh | eq | eqd = cong (TOp ‹ o> › ∷_) (IH (s≤s (≤-refl)) d)
+  tok-step rec (lex-op-dot {cs = cs} (oh-gt eqh eq) eqd d) IH rewrite eqh | eq | eqd = cong (TOpD o> ∷_) (IH (s≤s (≤-trans (drop1-≤ cs) (≤-refl))) d)
+  tok-step rec (lex-op {cs = cs} (oh-le eqh eq) eqd d) IH rewrite eqh | eq | eqd = cong (TOp ‹ o<= › ∷_) (IH (s≤s (drop1-≤ cs)) d)
+  tok-step rec (lex-op-dot {cs = cs} (oh-le eqh eq) eqd d) IH rewrite eqh | eq | eqd = cong (TOpD o<= ∷_) (IH (s≤s (≤-trans (drop1-≤ (drop1 cs)) (drop1-≤ cs))) d)
+  tok-step rec (lex-op {cs = cs} (oh-ge eqh eq) eqd d) IH rewrite eqh | eq | eqd = cong (TOp ‹ o>= › ∷_) (IH (s≤s (drop1-≤ cs)) d)
+  tok-step rec (lex-op-dot {cs = cs} (oh-ge eqh eq) eqd d) IH rewrite eqh | eq | eqd = cong (TOpD o>= ∷_) (IH (s≤s (≤-trans (drop1-≤ (drop1 cs)) (drop1-≤ cs))) d)
+  tok-step rec (lex-op {cs = cs} (oh-eqeq eqh eq) eqd d) IH rewrite eqh | eq | eqd = cong (TOp ‹ o== › ∷_) (IH (s≤s (drop1-≤ cs)) d)
+  tok-step rec (lex-op-dot {cs = cs} (oh-eqeq eqh eq) eqd d) IH rewrite eqh | eq | eqd = cong (TOpD o== ∷_) (IH (s≤s (≤-trans (drop1-≤ (drop1 cs)) (drop1-≤ cs))) d)
+  tok-step rec (lex-op {cs = cs} (oh-neq eqh eq) eqd d) IH rewrite eqh | eq | eqd = cong (TOp ‹ o!= › ∷_) (IH (s≤s (drop1-≤ cs)) d)
+  tok-step rec (lex-op-dot {cs = cs} (oh-neq eqh eq) eqd d) IH rewrite eqh | eq | eqd = cong (TOpD o!= ∷_) (IH (s≤s (≤-trans (drop1-≤ (drop1 cs)) (drop1-≤ cs))) d)
   tok-step rec (lex-pct eqh d) IH rewrite eqh = cong (TPercent ∷_) (IH (s≤s ≤-refl) d)
   tok-step rec (lex-amp eqh d) IH rewrite eqh = cong (TAmpersand ∷_) (IH (s≤s ≤-refl) d)
   tok-step rec (lex-dot eqh d) IH rewrite eqh = cong (TDot ∷_) (IH (s≤s ≤-refl) d)

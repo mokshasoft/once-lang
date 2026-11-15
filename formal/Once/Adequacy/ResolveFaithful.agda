@@ -67,6 +67,7 @@ open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.IR.Semantics.StreamInf using (anaFᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ; coerce-functor-D)
 open import Once.Arith.SigOp.Builders
+open import Once.Spec.Theory using (unary; binary; compare) renaming (int to nint; float to nfloat)
 open import Once.IR.Semantics.Iterative using (T∞; _>>=∞_; return∞; fmap∞; iter∞)
 open import Once.Semantics.Machine using (sem-cata)
 import Once.Denotation.SourceDenote as SD
@@ -329,9 +330,18 @@ resolveExpr-faithful polys imps userFns fresh (Srf.inl' e) dγ =
 resolveExpr-faithful polys imps userFns fresh (Srf.inr' e) dγ =
   cong (_>>=∞ (λ v → return∞ (inj₂ v)))
     (resolveExpr-faithful polys imps userFns fresh e dγ)
-resolveExpr-faithful polys imps userFns fresh (Srf.neg e) dγ =
-  cong (_>>=∞ (λ v → SD.sigOpˢ fmt σ₀ neg-info v))
-    (resolveExpr-faithful polys imps userFns fresh e dγ)
+resolveExpr-faithful polys imps userFns fresh (Srf.num {A = nint} {k = unary} h o e) dγ =
+  cong (_>>=∞ (λ v → SD.sigOpˢ fmt σ₀ (numInfo h o) v)) (resolveExpr-faithful polys imps userFns fresh e dγ)
+resolveExpr-faithful polys imps userFns fresh (Srf.num {A = nint} {k = binary} h o e) dγ =
+  cong (_>>=∞ (λ v → SD.sigOpˢ fmt σ₀ (numInfo h o) v)) (resolveExpr-faithful polys imps userFns fresh e dγ)
+resolveExpr-faithful polys imps userFns fresh (Srf.num {A = nint} {k = compare} h o e) dγ =
+  cong (_>>=∞ (λ v → SD.sigOpˢ fmt σ₀ (numInfo h o) v)) (resolveExpr-faithful polys imps userFns fresh e dγ)
+resolveExpr-faithful polys imps userFns fresh (Srf.num {A = nfloat} {k = unary} h o e) dγ =
+  cong (_>>=∞ (λ v → SD.sigOpˢ fmt σ₀ (numInfo h o) v)) (resolveExpr-faithful polys imps userFns fresh e dγ)
+resolveExpr-faithful polys imps userFns fresh (Srf.num {A = nfloat} {k = binary} h o e) dγ =
+  cong (_>>=∞ (λ v → SD.sigOpˢ fmt σ₀ (numInfo h o) v)) (resolveExpr-faithful polys imps userFns fresh e dγ)
+resolveExpr-faithful polys imps userFns fresh (Srf.num {A = nfloat} {k = compare} h o e) dγ =
+  cong (_>>=∞ (λ v → SD.sigOpˢ fmt σ₀ (numInfo h o) v)) (resolveExpr-faithful polys imps userFns fresh e dγ)
 resolveExpr-faithful polys imps userFns fresh (Srf.absurd e) dγ =
   cong (_>>=∞ (λ v → ⊥-elim v))
     (resolveExpr-faithful polys imps userFns fresh e dγ)
@@ -401,70 +411,7 @@ resolveExpr-faithful polys imps userFns fresh (Srf.pair {Γ = Γ} {Ψ₁ = Ψ₁
   binop-faithful {C = A T.* B} polys imps userFns fresh a b (λ va vb → return∞ (va , vb)) dγ
     (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
     (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-resolveExpr-faithful polys imps userFns fresh (Srf.add {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = Int} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ add-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-resolveExpr-faithful polys imps userFns fresh (Srf.sub {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = Int} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ sub-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-resolveExpr-faithful polys imps userFns fresh (Srf.mul {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = Int} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ mul-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
 -- PLAN 0.75 F4: the float family, structurally identical to the integer one.
-resolveExpr-faithful polys imps userFns fresh (Srf.fadd {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = Float} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ fadd-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-resolveExpr-faithful polys imps userFns fresh (Srf.fsub {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = Float} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ fsub-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-resolveExpr-faithful polys imps userFns fresh (Srf.fmul {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = Float} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ fmul-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-resolveExpr-faithful polys imps userFns fresh (Srf.fdiv {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = Float} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ fdiv-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-resolveExpr-faithful polys imps userFns fresh (Srf.i2f a) dγ =
-  cong (_>>=∞ (λ va → SD.sigOpˢ fmt σ₀ i2f-info va))
-    (resolveExpr-faithful polys imps userFns fresh a dγ)
-resolveExpr-faithful polys imps userFns fresh (Srf.div {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = Int} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ div-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-resolveExpr-faithful polys imps userFns fresh (Srf.mod' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = Int} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ mod-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-resolveExpr-faithful polys imps userFns fresh (Srf.lt {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = (Unit + Unit)} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ lt-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-resolveExpr-faithful polys imps userFns fresh (Srf.le {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = (Unit + Unit)} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ le-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-resolveExpr-faithful polys imps userFns fresh (Srf.gt {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = (Unit + Unit)} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ gt-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-resolveExpr-faithful polys imps userFns fresh (Srf.ge {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = (Unit + Unit)} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ ge-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-resolveExpr-faithful polys imps userFns fresh (Srf.eq {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = (Unit + Unit)} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ eq-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
-resolveExpr-faithful polys imps userFns fresh (Srf.ne {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) dγ =
-  binop-faithful {C = (Unit + Unit)} polys imps userFns fresh a b (λ va vb → SD.sigOpˢ fmt σ₀ ne-info (va , vb)) dγ
-    (resolveExpr-faithful polys imps userFns fresh a (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ))
-    (resolveExpr-faithful polys imps userFns fresh b (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ))
 -- Binders. `lam` splits on the arrow's quantity AND the binder's body usage,
 -- matching its denotation. Over the ERASED environment the body's environment
 -- is literally the `bindᴰ`/`bindᴰ0` the goal carries, so every IH lands with no

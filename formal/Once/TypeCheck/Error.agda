@@ -36,6 +36,51 @@ open import Once.Spec.Grade using (Quantity)
 open import Once.Spec.Type using (Ty; Type)
 open import Once.Type using (showQuantity; showType; showPolyType)
 open import Once.Spec.Surface.Syntax using (PolyType)
+open import Once.Spec.Theory using (NumTy; int; float)
+open import Once.Spec.Surface.Operator using (BinOp; Op; Dottable; plain; dotted; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
+
+-- | An operator as written.
+dottableText : Dottable → String
+dottableText o+  = "+"
+dottableText o-  = "-"
+dottableText o*  = "*"
+dottableText o/  = "/"
+dottableText o<  = "<"
+dottableText o<= = "<="
+dottableText o>  = ">"
+dottableText o>= = ">="
+dottableText o== = "=="
+dottableText o!= = "!="
+
+opText : BinOp → String
+opText (plain ‹ d ›) = dottableText d
+opText (plain o%)    = "%"
+opText (dotted d)    = dottableText d ++ "."
+
+numTyText : NumTy → String
+numTyText int   = "Int"
+numTyText float = "Float"
+
+-- | Plan 0.150 step 5: an operator undefined at a type names the one that is
+-- (`Float`'s arithmetic rounds, so it is the dotted family; `Int`'s is exact).
+undefinedHint : String → NumTy → String
+undefinedHint "+"  float = ", whose addition rounds: use `+.`"
+undefinedHint "-"  float = ", whose subtraction rounds: use `-.`"
+undefinedHint "*"  float = ", whose multiplication rounds: use `*.`"
+undefinedHint "/"  float = ", whose division rounds: use `/.`"
+undefinedHint "%"  float = ", which has no remainder"
+undefinedHint "+." int   = ", whose addition is exact: use `+`"
+undefinedHint "-." int   = ", whose subtraction is exact: use `-`"
+undefinedHint "*." int   = ", whose multiplication is exact: use `*`"
+undefinedHint "/." int   = ", whose division is on integers: use `/`"
+undefinedHint "==." int  = ": use `==`"
+undefinedHint "!=." int  = ": use `!=`"
+undefinedHint "<." int   = ": use `<`"
+undefinedHint "<=." int  = ": use `<=`"
+undefinedHint ">." int   = ": use `>`"
+undefinedHint ">=." int  = ": use `>=`"
+{-# CATCHALL #-}
+undefinedHint _    _     = ""
 
 ------------------------------------------------------------------------
 -- Structured error categories
@@ -112,6 +157,12 @@ data TypeError : Set where
   -- it. The fix is an annotation.
   ComposeMiddleUndetermined : TypeError
 
+  -- Plan 0.150: a numeric operator at a number type whose row lacks the
+  -- operator's theory (`+` at `Float`), and an operator on an `Int` and a
+  -- `Float` (D408: no implicit conversion).
+  OperatorUndefined : (op : String) (at : NumTy) → TypeError
+  MixedOperands     : (op : String) → TypeError
+
   -- Binary operator sub-errors: wraps a sub-error from either side.
   BinOpLeftError  : TypeError → TypeError
   BinOpRightError : TypeError → TypeError
@@ -180,6 +231,10 @@ renderError ComposeMiddleUndetermined =
   "compose: cannot determine the middle type — neither the second argument's "
     ++ "output (given its input) nor the first argument's input is known; "
     ++ "annotate one of them"
+renderError (OperatorUndefined op A) =
+  "`" ++ op ++ "` is not defined at " ++ numTyText A ++ undefinedHint op A
+renderError (MixedOperands op) =
+  "`" ++ op ++ "` needs operands of one type: convert the Int with toFloat"
 renderError (BinOpLeftError sub) =
   "binop left: " ++ renderError sub
 renderError (BinOpRightError sub) =

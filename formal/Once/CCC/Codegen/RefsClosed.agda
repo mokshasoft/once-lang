@@ -44,7 +44,7 @@ open import Once.CCC.Label using (LabelId; once; labelSym; thunkSym; ℓ)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.IR using (IR)
 import Once.IR as IRm
 open IRm.IR
@@ -471,7 +471,7 @@ module _ (G : String → Set) where
   Unit : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → AbstractTrace
   Unit X = trace-of X ++ blocks-layout (bodies-of X)
 
-  sigop-closes : ∀ {A B D} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp)
+  sigop-closes : ∀ {A B D} (si : SigOpInfo A B) (n : ℕ) (m : Maybe (CmpAt A))
                → All G (sigop-syms si m) → Closes D (sigop-code si n m)
   sigop-closes si n nothing  (g ∷ []) = inj₂ g ∷ []
   sigop-closes si n (just c) (g ∷ []) = inj₂ g ∷ []

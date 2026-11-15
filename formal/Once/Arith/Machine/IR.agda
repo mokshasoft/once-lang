@@ -19,7 +19,7 @@ module Once.Arith.Machine.IR where
 
 open import Data.Integer using (ℤ; +_; ∣_∣; sign; _◃_)
 import Data.Integer as ℤ
-open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
+open import Once.Arith.CmpOp using (CmpOp; FCmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
 open import Data.Bool using (Bool; not; _∧_; if_then_else_)
 open import Data.Nat using (ℕ; zero; suc)
 import Data.Nat as ℕ
@@ -80,6 +80,9 @@ data MArithIR (sh : InputShape) : NumType → Set where
   -- plan 0.108: a COMPARISON, as a 0/1 word — the tag of the `Bool` the
   -- comparison SigOp means (true = inr = 1, D263). Int operands only.
   acmp       : CmpOp → MArithIR sh NInt → MArithIR sh NInt → MArithIR sh NInt
+  -- plan 0.150: a comparison at `Float`, by the Spec's symbol (`FCmpOp`), as
+  -- the same 0/1 word.
+  afcmp      : FCmpOp → MArithIR sh NFloat → MArithIR sh NFloat → MArithIR sh NInt
 
 ------------------------------------------------------------------------
 -- Denotational semantics
@@ -153,3 +156,4 @@ leaf-count (amod a b)   = leaf-count a ℕ.+ leaf-count b
 leaf-count (aneg a)     = leaf-count a
 leaf-count (ai2f a)     = leaf-count a
 leaf-count (acmp _ a b) = leaf-count a ℕ.+ leaf-count b
+leaf-count (afcmp _ a b) = leaf-count a ℕ.+ leaf-count b

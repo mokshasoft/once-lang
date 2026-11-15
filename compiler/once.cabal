@@ -55,6 +55,15 @@ library
       MAlonzo.RTE
   other-modules:
       MAlonzo.Code.Once.ResolvedRefs
+      MAlonzo.Code.Once.Adequacy.SpecTokNames
+      MAlonzo.Code.Once.Float.Word
+      MAlonzo.Code.Once.Spec.Float.Encoding
+      MAlonzo.Code.Once.Spec.Float.Value
+      MAlonzo.Code.Once.Spec.Surface.Operator
+      MAlonzo.Code.Once.Spec.Theory
+      MAlonzo.Code.Once.Surface.Numeric
+      MAlonzo.Code.Once.Surface.OpNames
+      MAlonzo.Code.Once.TypeCheck.NumTable
       MAlonzo.Code.Once.Allocator.AbstractInstance
       MAlonzo.Code.Once.Allocator.Interface
       MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit
@@ -106,7 +115,6 @@ library
       MAlonzo.Code.Once.Inspect
       MAlonzo.Code.Once.Principal
       MAlonzo.Code.Once.Spec.ABI
-      MAlonzo.Code.Once.Spec.Boundary
       MAlonzo.Code.Once.Spec.Context
       MAlonzo.Code.Once.Spec.Domain
       MAlonzo.Code.Once.Spec.Effect

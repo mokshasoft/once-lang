@@ -101,7 +101,7 @@ compile arch doOpt src = toSource src >>= VC.compile arch doOpt
 -- well-formed; for any other the run is the silent one.)
 exec : Arch → (Σ : Signature) → Obs.Interp Σ → List Byte → Tr ⊤
 exec arch Σ J bytes with wellFormed? Σ
-... | yes wf = VC.exec (toInterp Σ wf J) arch bytes
+... | yes wf = VC.exec (toInterp (arch-numerics arch) Σ wf J) arch bytes
 ... | no  _  = silentTr
 
 _≈_ : Tr ⊤ → Tr ⊤ → Set
@@ -150,7 +150,7 @@ module _ (br : Bridges) where
     -- A program's signature is well-formed, so `exec` runs the translation.
     exec-wf : ∀ arch (tp′ : Typed) J bytes
             → Σ[ wf ∈ WellFormed (signature tp′) ]
-                exec arch (signature tp′) J bytes ≡ VC.exec (toInterp (signature tp′) wf J) arch bytes
+                exec arch (signature tp′) J bytes ≡ VC.exec (toInterp (arch-numerics arch) (signature tp′) wf J) arch bytes
     exec-wf arch tp′ J bytes with wellFormed? (signature tp′)
     ... | yes wf = wf , refl
     ... | no ¬wf = ⊥-elim′ (¬wf (CoreProgram.Library.wf (CoreProgram.Program.library (program tp′))))

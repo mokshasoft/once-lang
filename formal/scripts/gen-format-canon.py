@@ -44,6 +44,8 @@ open import Once.Spec.Grade using (Quantity; Zero; One; Many; pureᶠ; actᶠ)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Name using (canonical)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TNewline; TEOF)
+open import Once.Spec.Float.Value using (pos; neg)
+import Data.Integer as ℤ
 open import Once.Parser using (parseStrict)
 open import Once.Format using (formatSource; formatParsed)
 open import Once.Format.Doc using (Doc; empty; indent; render)

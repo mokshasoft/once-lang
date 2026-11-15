@@ -36,13 +36,13 @@ import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.Contract
+import qualified MAlonzo.Code.Once.Float.Word
 import qualified MAlonzo.Code.Once.IR.Semantics.Boundary
 import qualified MAlonzo.Code.Once.IR.Semantics.Event
 import qualified MAlonzo.Code.Once.IR.Semantics.Trace
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.SigOp.Info
-import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Type
 import qualified MAlonzo.Code.Once.Spec.Word
@@ -3448,7 +3448,7 @@ du_lit'45'value_3096 v0 v1 v2
              (coe v2)
       MAlonzo.Code.Once.Type.C_fits'45'float_28
         -> coe
-             MAlonzo.Code.Once.Spec.Float.Decimal.d_round_176
+             MAlonzo.Code.Once.Float.Word.d_round_58
              (coe
                 MAlonzo.Code.Once.CCC.FrameSemantics.d_float'45'format_132
                 (coe v0))

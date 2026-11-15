@@ -87,40 +87,8 @@ resolveExprWF polys _ imps userFns _ (Surface.int z) = Surface.int z
 -- A float literal has no names to resolve, exactly like the other literals;
 -- the witness passes through untouched.
 resolveExprWF polys _ imps userFns _ (Surface.float d) = Surface.float d
-resolveExprWF polys pAcc imps userFns fresh (Surface.add a b) =
-  Surface.add (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.sub a b) =
-  Surface.sub (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.mul a b) =
-  Surface.mul (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
--- PLAN 0.75 F4: the float family, structurally identical to the integer one.
-resolveExprWF polys pAcc imps userFns fresh (Surface.fadd a b) =
-  Surface.fadd (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.fsub a b) =
-  Surface.fsub (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.fmul a b) =
-  Surface.fmul (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.fdiv a b) =
-  Surface.fdiv (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.i2f a) =
-  Surface.i2f (resolveExprWF polys pAcc imps userFns fresh a)
-resolveExprWF polys pAcc imps userFns fresh (Surface.div a b) =
-  Surface.div (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.mod' a b) =
-  Surface.mod' (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.neg e) = Surface.neg (resolveExprWF polys pAcc imps userFns fresh e)
-resolveExprWF polys pAcc imps userFns fresh (Surface.lt a b) =
-  Surface.lt (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.le a b) =
-  Surface.le (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.gt a b) =
-  Surface.gt (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.ge a b) =
-  Surface.ge (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.eq a b) =
-  Surface.eq (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.ne a b) =
-  Surface.ne (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
+resolveExprWF polys pAcc imps userFns fresh (Surface.num h o e) =
+  Surface.num h o (resolveExprWF polys pAcc imps userFns fresh e)
 resolveExprWF polys pAcc imps userFns fresh (Surface.coerce p e) = Surface.coerce p (resolveExprWF polys pAcc imps userFns fresh e)
 -- Plan 0.19: discriminate sigOp by whether the name is a user-defined
 -- top-level fn (in `userFns`) or an external primitive (in `imps`).

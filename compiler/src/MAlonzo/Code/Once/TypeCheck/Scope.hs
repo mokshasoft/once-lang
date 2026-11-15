@@ -415,15 +415,15 @@ data T_AppHeadView_304
     C_ahv'45'other_346
 -- Once.TypeCheck.Scope.classifyAppHeadView
 d_classifyAppHeadView_350 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   T_AppHeadView_304
 d_classifyAppHeadView_350 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_70 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 v1
         -> coe C_ahv'45'other_346
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RQualified_72 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RQualified_48 v1 v2
         -> coe C_ahv'45'other_346
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RResolved_74 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RResolved_50 v1
         -> case coe v1 of
              MAlonzo.Code.Once.Spec.Name.C_canonical_12 v2
                -> case coe v2 of
@@ -860,13 +860,13 @@ d_classifyAppHeadView_350 v0
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_76 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_52 v1 v2
         -> case coe v1 of
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_70 v3
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RVar_46 v3
                -> coe C_ahv'45'other_346
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RQualified_72 v3 v4
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RQualified_48 v3 v4
                -> coe C_ahv'45'other_346
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RResolved_74 v3
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RResolved_50 v3
                -> case coe v3 of
                     MAlonzo.Code.Once.Spec.Name.C_canonical_12 v4
                       -> case coe v4 of
@@ -990,53 +990,53 @@ d_classifyAppHeadView_350 v0
                                   _ -> MAlonzo.RTE.mazUnreachableError
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_76 v3 v4
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RApp_52 v3 v4
                -> coe C_ahv'45'other_346
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_78 v3 v4
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_54 v3 v4
                -> coe C_ahv'45'other_346
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLet_80 v3 v4 v5
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLet_56 v3 v4 v5
                -> coe C_ahv'45'other_346
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RPair_82 v3 v4
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RPair_58 v3 v4
                -> coe C_ahv'45'other_346
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RDestruct_84 v3 v4 v5 v6 v7
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RDestruct_60 v3 v4 v5 v6 v7
                -> coe C_ahv'45'other_346
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RUnit_86
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RUnit_62
                -> coe C_ahv'45'other_346
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_88 v3
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_64 v3
                -> coe C_ahv'45'other_346
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_90 v3 v4 v5
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_66 v3 v4 v5 v6
                -> coe C_ahv'45'other_346
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_92 v3 v4
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_68 v3 v4
                -> coe C_ahv'45'other_346
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_94 v3 v4 v5
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_70 v3 v4 v5
                -> coe C_ahv'45'other_346
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RNeg_96 v3
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RNeg_72 v3
                -> coe C_ahv'45'other_346
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_78 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_54 v1 v2
         -> coe C_ahv'45'other_346
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLet_80 v1 v2 v3
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLet_56 v1 v2 v3
         -> coe C_ahv'45'other_346
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RPair_82 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RPair_58 v1 v2
         -> coe C_ahv'45'other_346
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RDestruct_84 v1 v2 v3 v4 v5
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RDestruct_60 v1 v2 v3 v4 v5
         -> coe C_ahv'45'other_346
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RUnit_86
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RUnit_62
         -> coe C_ahv'45'other_346
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_88 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RInt_64 v1
         -> coe C_ahv'45'other_346
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_90 v1 v2 v3
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RFloat_66 v1 v2 v3 v4
         -> coe C_ahv'45'other_346
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_92 v1 v2
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RAnnot_68 v1 v2
         -> coe C_ahv'45'other_346
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_94 v1 v2 v3
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RBinOp_70 v1 v2 v3
         -> coe C_ahv'45'other_346
-      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RNeg_96 v1
+      MAlonzo.Code.Once.Spec.Surface.Syntax.C_RNeg_72 v1
         -> coe C_ahv'45'other_346
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Scope.viewToPba
 d_viewToPba_578 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   T_AppHeadView_304 -> Maybe T_PolyBuiltinApp_270
 d_viewToPba_578 ~v0 v1 = du_viewToPba_578 v1
 du_viewToPba_578 :: T_AppHeadView_304 -> Maybe T_PolyBuiltinApp_270
@@ -1100,7 +1100,7 @@ du_viewToPba_578 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Scope.classifyAppHead
 d_classifyAppHead_580 ::
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   Maybe T_PolyBuiltinApp_270
 d_classifyAppHead_580 v0
   = coe du_viewToPba_578 (coe d_classifyAppHeadView_350 (coe v0))

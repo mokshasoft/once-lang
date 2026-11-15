@@ -98,7 +98,10 @@ d_genWords_28
                                                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                       (coe ("Out" :: Data.Text.Text))
                                                       (coe
-                                                         MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))))))))))))))
+                                                         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                                                         (coe ("toFloat" :: Data.Text.Text))
+                                                         (coe
+                                                            MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))))))))))))))))
 -- Once.Spec.Name.GenWord
 d_GenWord_30 :: MAlonzo.Code.Agda.Builtin.String.T_String_6 -> ()
 d_GenWord_30 = erased
@@ -129,7 +132,10 @@ d_genNames_36
                         (coe
                            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                            (coe ("unit" :: Data.Text.Text))
-                           (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))))))
+                           (coe
+                              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                              (coe ("toFloat" :: Data.Text.Text))
+                              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))))))
 -- Once.Spec.Name.NotGenerator
 d_NotGenerator_38 :: T_CanonicalName_6 -> ()
 d_NotGenerator_38 = erased

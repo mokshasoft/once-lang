@@ -126,6 +126,7 @@ annotType = TypesSuffix.type′ none-⊒
 opchars : ∀ {ts cs x r} → ParsesOpChars ts cs x r → ts ⊒ r
 opchars op-close       = s ⊒-refl
 opchars (op-char _ p)  = s (opchars p)
+opchars (op-dotted _ p) = s (opchars p)
 
 expr′   : ∀ {ts e r} → ParsesExpr ts e r → ts ⊒ r
 compT   : ∀ {l ts e r} → ParsesCompTail l ts e r → ts ⊒ r
@@ -156,7 +157,9 @@ mul′ (mul p q) = unary′ p ⨾ mulT q
 mulT (mul-done _)     = ⊒-refl
 mulT (mul-op _ p q)   = s (unary′ p ⨾ mulT q)
 
-unary′ (neg p)   = s (unary′ p)
+unary′ (neg _ p) = s (unary′ p)
+unary′ (neg-lit nn-int q)   = s (s (appT q))
+unary′ (neg-lit nn-float q) = s (s (appT q))
 unary′ (unary p) = app′ p
 
 app′ (app p q) = atomE p ⨾ appT q

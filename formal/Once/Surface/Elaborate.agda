@@ -49,6 +49,8 @@ open import Data.Integer using (ℤ)
 -- SigOpInfo builders (plan 0.2.4.1 Phase A): each arithmetic IR morphism
 -- carries its SigOpInfo (`Once.Arith.SigOp.Builders`); literals are `const`.
 open import Once.Arith.SigOp.Builders
+open import Once.Spec.Theory using (Has; Sym; unary; binary; compare; symDom; symCod)
+  renaming (int to nint; float to nfloat)
 open import Once.Spec.Name using (bare)
 open import Once.Type.Concrete using (con-base; con-fun; IsConcrete)
 open import Once.Spec.Type using (WFFun; b-Unit; ∅ₖ)
@@ -146,6 +148,17 @@ eqIR = SigOp eq-info
 
 neIR : IR (Int * Int) (Unit + Unit)
 neIR = SigOp ne-info
+
+-- | THE LOWERING (plan 0.150 N10): a symbol at a number type is its SigOp
+-- (`Arith.SigOp.Builders.numInfo`, where the per-instruction choice is made).
+-- One clause per number type and shape, so the IR types reduce.
+numIR : ∀ {m A U k} → Has A U → Sym U k → IR ⌊ symDom {m} A k ⌋ ⌊ symCod {m} A k ⌋
+numIR {A = nint}   {k = unary}   h o = SigOp (numInfo h o)
+numIR {A = nint}   {k = binary}  h o = SigOp (numInfo h o)
+numIR {A = nint}   {k = compare} h o = SigOp (numInfo h o)
+numIR {A = nfloat} {k = unary}   h o = SigOp (numInfo h o)
+numIR {A = nfloat} {k = binary}  h o = SigOp (numInfo h o)
+numIR {A = nfloat} {k = compare} h o = SigOp (numInfo h o)
 
 -- | `⟦_⟧ᶜ` (context → environment product type) moved to `Once.Surface.Syntax`
 -- (Plan 0.47): it is pure `Ctx → Type`, so it belongs with `Ctx`, and the
@@ -512,28 +525,8 @@ elaborate m (int n) = intLit n
 -- Float literal: same shape; the witness is erased at this boundary.
 elaborate m (float d) = floatLit d
 
--- Arithmetic operations: pair operands, then apply primitive
-elaborate {Γ = Γ} m (add {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = addIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (sub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = subIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (mul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = mulIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (fadd {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = faddIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (fsub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fsubIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (fmul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fmulIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (fdiv {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fdivIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate m (i2f e) = i2fIR ∘ elaborate m e
-elaborate {Γ = Γ} m (div {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = divIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (mod' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = modIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-
--- Unary negation
-elaborate m (neg e) = negIR ∘ elaborate m e
-
--- Comparison operations
-elaborate {Γ = Γ} m (lt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = ltIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (le {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = leIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (gt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = gtIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (ge {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = geIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (eq {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = eqIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
-elaborate {Γ = Γ} m (ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = neIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+-- A numeric operation: its operands, then its primitive.
+elaborate m (num h o e) = numIR h o ∘ elaborate m e
 
 -- Effect lifting: arr f lifts pure function to effectful morphism
 -- IR arr : (A ⇒ B) → Eff A B

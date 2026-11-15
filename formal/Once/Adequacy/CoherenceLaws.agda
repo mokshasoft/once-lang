@@ -52,7 +52,7 @@ open import Once.Spec.Sub using (sub-*)
 open import Once.Context using (⟦_⟧ᶜ; _↾_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 open import Once.Spec.Context using (Ctx; Usage; _*ᵘ_; zeroUsage)
 open import Once.Spec.Context using (_∷_; _▸_)
-open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; loop; lift-morphism)
+open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; num; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; loop; lift-morphism)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-rel)
@@ -63,9 +63,8 @@ open import Once.IR.Semantics.FunctorMeaning using (translateF)
 open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; ⟦_⟧ᴰ)
-open import Once.Arith.SigOp.Builders using (add-info; sub-info; mul-info; div-info; mod-info;
-  fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info; neg-info;
-  lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
+open import Once.Arith.SigOp.Builders using (numInfo)
+open import Once.Spec.Theory using (Has; Sym; symDom; unary; binary; compare) renaming (int to nint; float to nfloat)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.IR as IR
@@ -118,57 +117,17 @@ module _ {m n} {Γ : Ctx m n} where
     RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → relS-ret (ra , rb)
 
   -- The binary primitives: one clause shape, one bind congruence each.
-  add-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → add a b ≈ˢ add a′ b′
-  add-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ add-info (ra , rb)
-  sub-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → sub a b ≈ˢ sub a′ b′
-  sub-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ sub-info (ra , rb)
-  mul-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → mul a b ≈ˢ mul a′ b′
-  mul-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ mul-info (ra , rb)
-  div-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → div a b ≈ˢ div a′ b′
-  div-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ div-info (ra , rb)
-  mod-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → mod' a b ≈ˢ mod' a′ b′
-  mod-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ mod-info (ra , rb)
-  fadd-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ˢ a′ → b ≈ˢ b′ → fadd a b ≈ˢ fadd a′ b′
-  fadd-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ fadd-info (ra , rb)
-  fsub-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ˢ a′ → b ≈ˢ b′ → fsub a b ≈ˢ fsub a′ b′
-  fsub-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ fsub-info (ra , rb)
-  fmul-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ˢ a′ → b ≈ˢ b′ → fmul a b ≈ˢ fmul a′ b′
-  fmul-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ fmul-info (ra , rb)
-  fdiv-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ˢ a′ → b ≈ˢ b′ → fdiv a b ≈ˢ fdiv a′ b′
-  fdiv-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → sigOp-rel rσ fdiv-info (ra , rb)
-  lt-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → lt a b ≈ˢ lt a′ b′
-  lt-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → RelD-bool {x = x} {y = y}) (sigOp-rel rσ lt-info (ra , rb))
-  le-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → le a b ≈ˢ le a′ b′
-  le-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → RelD-bool {x = x} {y = y}) (sigOp-rel rσ le-info (ra , rb))
-  gt-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → gt a b ≈ˢ gt a′ b′
-  gt-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → RelD-bool {x = x} {y = y}) (sigOp-rel rσ gt-info (ra , rb))
-  ge-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → ge a b ≈ˢ ge a′ b′
-  ge-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → RelD-bool {x = x} {y = y}) (sigOp-rel rσ ge-info (ra , rb))
-  eq-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → eq a b ≈ˢ eq a′ b′
-  eq-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → RelD-bool {x = x} {y = y}) (sigOp-rel rσ eq-info (ra , rb))
-  ne-congˢ : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ˢ a′ → b ≈ˢ b′ → ne a b ≈ˢ ne a′ b′
-  ne-congˢ ea eb σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (eb σ rσ (restrict-rel {Γ = Γ} _ r)) λ rb → RelS-mono (λ {x} {y} → RelD-bool {x = x} {y = y}) (sigOp-rel rσ ne-info (ra , rb))
-
-  neg-congˢ : ∀ {Ψ} {a a′ : Expr Γ Ψ Int} → a ≈ˢ a′ → neg a ≈ˢ neg a′
-  neg-congˢ ea σ rσ r = RelS-bind (ea σ rσ r) (sigOp-rel rσ neg-info)
-
-  i2f-congˢ : ∀ {Ψ} {a a′ : Expr Γ Ψ Int} → a ≈ˢ a′ → i2f a ≈ˢ i2f a′
-  i2f-congˢ ea σ rσ r = RelS-bind (ea σ rσ r) (sigOp-rel rσ i2f-info)
+  -- A number theory's symbol, at related operands (a pair, for a binary one).
+  num-congˢ : ∀ {Ψ A U k} (h : Has A U) (o : Sym U k) {a a′ : Expr Γ Ψ (symDom A k)}
+            → a ≈ˢ a′ → num h o a ≈ˢ num h o a′
+  num-congˢ {A = nint}   {k = unary}   h o ea σ rσ r = RelS-bind (ea σ rσ r) (sigOp-rel rσ (numInfo h o))
+  num-congˢ {A = nint}   {k = binary}  h o ea σ rσ r = RelS-bind (ea σ rσ r) (sigOp-rel rσ (numInfo h o))
+  num-congˢ {A = nint}   {k = compare} h o ea σ rσ r =
+    RelS-bind (ea σ rσ r) λ rv → RelS-mono (λ {x} {y} → RelD-bool {x = x} {y = y}) (sigOp-rel rσ (numInfo h o) rv)
+  num-congˢ {A = nfloat} {k = unary}   h o ea σ rσ r = RelS-bind (ea σ rσ r) (sigOp-rel rσ (numInfo h o))
+  num-congˢ {A = nfloat} {k = binary}  h o ea σ rσ r = RelS-bind (ea σ rσ r) (sigOp-rel rσ (numInfo h o))
+  num-congˢ {A = nfloat} {k = compare} h o ea σ rσ r =
+    RelS-bind (ea σ rσ r) λ rv → RelS-mono (λ {x} {y} → RelD-bool {x = x} {y = y}) (sigOp-rel rσ (numInfo h o) rv)
 
   coerce-congˢ : ∀ {A B : Ty m} {Ψ} (p : A <: B) {a a′ : Expr Γ Ψ A} → a ≈ˢ a′ → coerce p a ≈ˢ coerce p a′
   coerce-congˢ p ea σ rσ r = RelS-fmap (ea σ rσ r) (<:-rel p)

@@ -23,7 +23,8 @@ open import Data.Empty using (⊥-elim)
 
 import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
-open import Once.Spec.Surface.Lexing using (Token; TWord; TLParen; TRParen; TArrow; TCaret0; TCaret1; TCaretW; TStar; TPlus)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TLParen; TRParen; TArrow; TCaret0; TCaret1; TCaretW)
+open import Once.Adequacy.SpecTokNames
 open import Once.Spec.Surface.Grammar using (TypeAlg; module Types; Starts; starts; GradeToken; g0; g1; gw)
 import Once.Parser.Token as P
 open import Once.Parser.Generic.Relation using (TyAlg; module Gen; adG; adA; adD; ArrowDir; arrowDir; drop1; drop2)

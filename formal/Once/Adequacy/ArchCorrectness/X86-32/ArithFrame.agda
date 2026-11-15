@@ -77,6 +77,7 @@ private
   writes-in (XI.Xdiv-rrr d _ _) = ar-in d ∷ inj₂ (inj₂ refl) ∷ []
   writes-in (XI.Xrem-rrr d _ _) = ar-in d ∷ inj₂ (inj₂ refl) ∷ []
   writes-in (XI.Xcmp-rrr _ d _ _) = ar-in d ∷ inj₂ (inj₂ refl) ∷ []
+  writes-in (XI.Xfcmp-rrr _ d _ _) = ar-in d ∷ inj₂ (inj₂ refl) ∷ []
   writes-in (XI.Xdiv-safe-rrr d _ _) = ar-in d ∷ inj₂ (inj₂ refl) ∷ []
   writes-in (XI.Xrem-safe-rrr d _ _) = ar-in d ∷ inj₂ (inj₂ refl) ∷ []
   writes-in (XI.Xshl-rri d _ _) = ar-in d ∷ []
@@ -162,6 +163,7 @@ spill? (XI.Xneg-r _) = sv-other (λ _ _ → refl)
 spill? (XI.Xdiv-rrr _ _ _) = sv-other (λ _ _ → refl)
 spill? (XI.Xrem-rrr _ _ _) = sv-other (λ _ _ → refl)
 spill? (XI.Xcmp-rrr _ _ _ _) = sv-other (λ _ _ → refl)
+spill? (XI.Xfcmp-rrr _ _ _ _) = sv-other (λ _ _ → refl)
 spill? (XI.Xdiv-safe-rrr _ _ _) = sv-other (λ _ _ → refl)
 spill? (XI.Xrem-safe-rrr _ _ _) = sv-other (λ _ _ → refl)
 spill? (XI.Xshl-rri _ _ _) = sv-other (λ _ _ → refl)

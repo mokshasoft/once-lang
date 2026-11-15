@@ -23,8 +23,7 @@ open import Relation.Nullary using (¬_)
 open import Once.Spec.Surface.Lexing using (Token)
 open Token
 open import Once.Spec.Surface.Grammar
-  using (Starts; starts; StartsWord; starts-word; OpChar; oc-dot; oc-plus; oc-minus; oc-star; oc-slash; oc-pct;
-         oc-lt; oc-gt; oc-pipe; oc-amp; oc-at; Trailing; trail-nl; trail-eof; SkipNewlines; skip-nl; skip-done)
+  using (Starts; starts; StartsWord; starts-word; OpChar; oc-dot; oc-op; oc-pipe; oc-amp; oc-at; Trailing; trail-nl; trail-eof; SkipNewlines; skip-nl; skip-done)
 import Once.Parser.Token as P
 open import Once.Parser.Core using (skipNewlines)
 open import Once.Parser.Module.Core using (wordHead)
@@ -32,9 +31,12 @@ open import Once.Parser.Module.Import using (dotHead)
 open import Once.Parser.Module.DeclTail using (colonHead; taEqHead)
 open import Once.Parser.Module.FunDef.Body using (eqHead)
 open import Once.Parser.Module.FunDef.Params using (SepK; skEq; skWord; skStop; sepClass)
-open import Once.Parser.Module.OpName using (OpTok; otClose; otChar; otNone; opTokClass)
+open import Once.Parser.Module.OpName using (OpTok; otClose; otChar; otDotted; otNone; opTokClass)
 open import Once.Parser using (allTrailing)
 open import Once.Parser.Module using (parseDeclB)
+open import Once.Adequacy.SpecTokNames
+open import Once.Spec.Surface.Lexing using (Glyph; g+; g-; g*; g/; g%; g<; g>)
+open import Once.Spec.Surface.Operator using (‹_›; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 open import Once.Adequacy.SpecLexing using (forget)
 
 private
@@ -80,6 +82,7 @@ word-view (P.TGt ∷ _) = wv-not (λ ())
 word-view (P.TGe ∷ _) = wv-not (λ ())
 word-view (P.TEqEq ∷ _) = wv-not (λ ())
 word-view (P.TNeq ∷ _) = wv-not (λ ())
+word-view (P.TOpD _ ∷ _) = wv-not (λ ())
 word-view (P.TBang ∷ _) = wv-not (λ ())
 word-view (P.TNewline ∷ _) = wv-not (λ ())
 word-view (P.TEOF ∷ _) = wv-not (λ ())
@@ -122,6 +125,7 @@ dot-view (P.TGt ∷ _) = dot-no (λ ())
 dot-view (P.TGe ∷ _) = dot-no (λ ())
 dot-view (P.TEqEq ∷ _) = dot-no (λ ())
 dot-view (P.TNeq ∷ _) = dot-no (λ ())
+dot-view (P.TOpD _ ∷ _) = dot-no (λ ())
 dot-view (P.TBang ∷ _) = dot-no (λ ())
 dot-view (P.TNewline ∷ _) = dot-no (λ ())
 dot-view (P.TEOF ∷ _) = dot-no (λ ())
@@ -164,6 +168,7 @@ colon-view (P.TGt ∷ _) = colon-no (λ ())
 colon-view (P.TGe ∷ _) = colon-no (λ ())
 colon-view (P.TEqEq ∷ _) = colon-no (λ ())
 colon-view (P.TNeq ∷ _) = colon-no (λ ())
+colon-view (P.TOpD _ ∷ _) = colon-no (λ ())
 colon-view (P.TBang ∷ _) = colon-no (λ ())
 colon-view (P.TNewline ∷ _) = colon-no (λ ())
 colon-view (P.TEOF ∷ _) = colon-no (λ ())
@@ -206,6 +211,7 @@ eq-view (P.TGt ∷ _) = eq-no (λ ())
 eq-view (P.TGe ∷ _) = eq-no (λ ())
 eq-view (P.TEqEq ∷ _) = eq-no (λ ())
 eq-view (P.TNeq ∷ _) = eq-no (λ ())
+eq-view (P.TOpD _ ∷ _) = eq-no (λ ())
 eq-view (P.TBang ∷ _) = eq-no (λ ())
 eq-view (P.TNewline ∷ _) = eq-no (λ ())
 eq-view (P.TEOF ∷ _) = eq-no (λ ())
@@ -248,6 +254,7 @@ taEq-view (P.TGt ∷ _) = taEq-no (λ ())
 taEq-view (P.TGe ∷ _) = taEq-no (λ ())
 taEq-view (P.TEqEq ∷ _) = taEq-no (λ ())
 taEq-view (P.TNeq ∷ _) = taEq-no (λ ())
+taEq-view (P.TOpD _ ∷ _) = taEq-no (λ ())
 taEq-view (P.TBang ∷ _) = taEq-no (λ ())
 taEq-view (P.TNewline ∷ _) = taEq-no (λ ())
 taEq-view (P.TEOF ∷ _) = taEq-no (λ ())
@@ -291,6 +298,7 @@ sep-view (P.TGt ∷ _) = sv-stop (λ ()) (λ ())
 sep-view (P.TGe ∷ _) = sv-stop (λ ()) (λ ())
 sep-view (P.TEqEq ∷ _) = sv-stop (λ ()) (λ ())
 sep-view (P.TNeq ∷ _) = sv-stop (λ ()) (λ ())
+sep-view (P.TOpD _ ∷ _) = sv-stop (λ ()) (λ ())
 sep-view (P.TBang ∷ _) = sv-stop (λ ()) (λ ())
 sep-view (P.TNewline ∷ _) = sv-stop (λ ()) (λ ())
 sep-view (P.TEOF ∷ _) = sv-stop (λ ()) (λ ())
@@ -299,6 +307,8 @@ data OpTokView : P.Token → OpTok → Set where
   otv-close : OpTokView P.TRParen otClose
   otv-char  : ∀ {t ch} → OpChar (forget t) ch → OpTokView t (otChar ch)
   otv-none  : ∀ {t} → (forget t ≡ TRParen → Data.Empty.⊥) → (∀ {ch} → ¬ OpChar (forget t) ch) → OpTokView t otNone
+  -- plan 0.150: an IEEE form, its operator's one character and `.`
+  otv-dotted : ∀ {d c} → Glyph (c ∷ []) ‹ d › [] → OpTokView (P.TOpD d) (otDotted c)
 
 optok-view : ∀ t → OpTokView t (opTokClass t)
 optok-view (P.TWord _) = otv-none (λ ()) (λ ())
@@ -321,18 +331,28 @@ optok-view P.TSemicolon = otv-none (λ ()) (λ ())
 optok-view P.TAt = otv-char oc-at
 optok-view P.TPipe = otv-char oc-pipe
 optok-view P.TDot = otv-char oc-dot
-optok-view P.TPlus = otv-char oc-plus
-optok-view P.TMinus = otv-char oc-minus
-optok-view P.TStar = otv-char oc-star
-optok-view P.TSlash = otv-char oc-slash
-optok-view P.TPercent = otv-char oc-pct
+optok-view P.TPlus = otv-char (oc-op g+)
+optok-view P.TMinus = otv-char (oc-op (g- (λ ()) (λ ())))
+optok-view P.TStar = otv-char (oc-op g*)
+optok-view P.TSlash = otv-char (oc-op g/)
+optok-view P.TPercent = otv-char (oc-op g%)
 optok-view P.TAmpersand = otv-char oc-amp
-optok-view P.TLt = otv-char oc-lt
-optok-view P.TLe = otv-none (λ ()) (λ ())
-optok-view P.TGt = otv-char oc-gt
-optok-view P.TGe = otv-none (λ ()) (λ ())
-optok-view P.TEqEq = otv-none (λ ()) (λ ())
-optok-view P.TNeq = otv-none (λ ()) (λ ())
+optok-view P.TLt = otv-char (oc-op (g< (λ ())))
+optok-view P.TLe = otv-none (λ ()) (λ { (oc-op ()) })
+optok-view P.TGt = otv-char (oc-op (g> (λ ())))
+optok-view P.TGe = otv-none (λ ()) (λ { (oc-op ()) })
+optok-view P.TEqEq = otv-none (λ ()) (λ { (oc-op ()) })
+optok-view P.TNeq = otv-none (λ ()) (λ { (oc-op ()) })
+optok-view (P.TOpD o+) = otv-dotted g+
+optok-view (P.TOpD o-) = otv-dotted (g- (λ ()) (λ ()))
+optok-view (P.TOpD o*) = otv-dotted g*
+optok-view (P.TOpD o/) = otv-dotted g/
+optok-view (P.TOpD o<) = otv-dotted (g< (λ ()))
+optok-view (P.TOpD o>) = otv-dotted (g> (λ ()))
+optok-view (P.TOpD o<=) = otv-none (λ ()) (λ ())
+optok-view (P.TOpD o>=) = otv-none (λ ()) (λ ())
+optok-view (P.TOpD o==) = otv-none (λ ()) (λ ())
+optok-view (P.TOpD o!=) = otv-none (λ ()) (λ ())
 optok-view P.TBang = otv-none (λ ()) (λ ())
 optok-view P.TNewline = otv-none (λ ()) (λ ())
 optok-view P.TEOF = otv-none (λ ()) (λ ())
@@ -371,6 +391,7 @@ trail→ (P.TGt ∷ _) ()
 trail→ (P.TGe ∷ _) ()
 trail→ (P.TEqEq ∷ _) ()
 trail→ (P.TNeq ∷ _) ()
+trail→ (P.TOpD _ ∷ _) ()
 trail→ (P.TBang ∷ _) ()
 trail→ (P.TNewline ∷ t) e = trail-nl (trail→ t e)
 trail→ (P.TEOF ∷ []) _ = trail-eof
@@ -410,6 +431,7 @@ trail← (P.TGt ∷ _) ()
 trail← (P.TGe ∷ _) ()
 trail← (P.TEqEq ∷ _) ()
 trail← (P.TNeq ∷ _) ()
+trail← (P.TOpD _ ∷ _) ()
 trail← (P.TBang ∷ _) ()
 trail← (P.TNewline ∷ t) (trail-nl d) = trail← t d
 trail← (P.TEOF ∷ []) trail-eof = refl
@@ -491,6 +513,7 @@ skip-view (P.TGt ∷ _) = sk-stop (λ ()) refl
 skip-view (P.TGe ∷ _) = sk-stop (λ ()) refl
 skip-view (P.TEqEq ∷ _) = sk-stop (λ ()) refl
 skip-view (P.TNeq ∷ _) = sk-stop (λ ()) refl
+skip-view (P.TOpD _ ∷ _) = sk-stop (λ ()) refl
 skip-view (P.TBang ∷ _) = sk-stop (λ ()) refl
 skip-view (P.TNewline ∷ _) = sk-nl
 skip-view (P.TEOF ∷ _) = sk-stop (λ ()) refl

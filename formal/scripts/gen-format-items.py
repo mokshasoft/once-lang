@@ -4,7 +4,7 @@ import os
 PROOF=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','Once','Format','Proof')
 # (ctor, headK, extra premise or None, rest-expr, items-prefix, lt-proof)
 R=[]
-def add(*a): R.append(a)
+def add(n,hk,ex,*a): R.append((n,hk,([] if ex is None else ex if isinstance(ex,list) else [ex]))+a)
 add('i-ws','hkWS',None,'cs','','(s≤s ≤-refl)')
 add('i-nl-ind','hkNL','nlIndent cs ≡ true','cs','econt','(n<1+n _)')
 add('i-nl','hkNL','nlIndent cs ≡ false','cs','etok TNewline','(n<1+n _)')
@@ -13,13 +13,22 @@ add('i-caret0','hkCaret','caretClass cs ≡ c-0','drop1 cs','etok TCaret0','(s�
 add('i-caretw','hkCaret','caretClass cs ≡ c-w','drop1 cs','etok TCaretW','(s≤s (drop1-≤ cs))')
 add('i-lcomment','hkDash','dashClass cs ≡ d-comment','proj₁ (skipLineB (drop1 cs))',"ecomment (fromList ('-' ∷ consumed cs (proj₁ (skipLineB (drop1 cs)))))",'(s≤s (≤-trans (proj₂ (skipLineB (drop1 cs))) (drop1-≤ cs)))')
 add('i-arrow','hkDash','dashClass cs ≡ d-arrow','drop1 cs','etok TArrow','(s≤s (drop1-≤ cs))')
-add('i-minus','hkDash','dashClass cs ≡ d-minus','cs','etok TMinus','(n<1+n _)')
 add('i-bcomment','hkLBrace','isDashHead cs ≡ true','proj₁ (skipBlockB 1 (drop1 cs))',"ecomment (fromList ('{' ∷ consumed cs (proj₁ (skipBlockB 1 (drop1 cs)))))",'(s≤s (≤-trans (proj₂ (skipBlockB 1 (drop1 cs))) (drop1-≤ cs)))')
 add('i-lbrace','hkLBrace','isDashHead cs ≡ false','cs','etok TLBrace','(n<1+n _)')
+# An operator with an IEEE form: its glyph read up to `rest` (`r`: the bound),
+# then `TOpD` when `.` follows (consumed), else `TOp` (`Format.Lex.it-dot`).
+def dot(n,hk,ex,rest,r,t):
+    add(n,hk,ex+[f'isDotHead ({rest}) ≡ false'],rest,'etok '+t,f'(s≤s {r})')
+    add(n+'d',hk,ex+[f'isDotHead ({rest}) ≡ true'],f'drop1 ({rest})','etok '+t+'D',f'(s≤s (≤-trans (drop1-≤ ({rest})) {r}))')
+dot('i-minus','hkDash',['dashClass cs ≡ d-minus'],'cs','≤-refl','TMinus')
 for hk,t2,t1,n2,n1 in [('hkLt','TLe','TLt','i-le','i-lt'),('hkGt','TGe','TGt','i-ge','i-gt'),('hkEq','TEqEq','TEquals','i-eqeq','i-equals'),('hkBang','TNeq','TBang','i-neq','i-bang')]:
-    add(n2,hk,'isEqHead cs ≡ true','drop1 cs','etok '+t2,'(s≤s (drop1-≤ cs))')
-    add(n1,hk,'isEqHead cs ≡ false','cs','etok '+t1,'(n<1+n _)')
-for hk,t in [('hkLParen','TLParen'),('hkRParen','TRParen'),('hkRBrace','TRBrace'),('hkColon','TColon'),('hkLambda','TLambda'),('hkComma','TComma'),('hkSemi','TSemicolon'),('hkAt','TAt'),('hkPipe','TPipe'),('hkPlus','TPlus'),('hkStar','TStar'),('hkSlash','TSlash'),('hkPct','TPercent'),('hkAmp','TAmpersand'),('hkDot','TDot')]:
+    dot(n2,hk,['isEqHead cs ≡ true'],'drop1 cs','(drop1-≤ cs)',t2)
+    if t1 in ('TLt','TGt'): dot(n1,hk,['isEqHead cs ≡ false'],'cs','≤-refl',t1)
+    else: add(n1,hk,'isEqHead cs ≡ false','cs','etok '+t1,'(n<1+n _)')
+for hk,t in [('hkPlus','TPlus'),('hkStar','TStar'),('hkSlash','TSlash')]:
+    dot('i-'+t[1:].lower(),hk,[],'cs','≤-refl',t)
+add('i-percent','hkPct',None,'cs','etok (TOp o%)','(s≤s ≤-refl)')
+for hk,t in [('hkLParen','TLParen'),('hkRParen','TRParen'),('hkRBrace','TRBrace'),('hkColon','TColon'),('hkLambda','TLambda'),('hkComma','TComma'),('hkSemi','TSemicolon'),('hkAt','TAt'),('hkPipe','TPipe'),('hkAmp','TAmpersand'),('hkDot','TDot')]:
     add('i-'+t[1:].lower(),hk,None,'cs','etok '+t,'(s≤s ≤-refl)')
 o=[]; w=o.append
 w(r'''-- SPDX-License-Identifier: AGPL-3.0-or-later
@@ -55,10 +64,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 import Once.Parser.Token as P
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace;
-  TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TPlus; TMinus;
-  TStar; TSlash; TPercent; TAmpersand; TLt; TLe; TGt; TGe; TEqEq; TNeq; TBang; TNewline; TEOF)
+  TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand; TBang;
+  TNewline; TEOF; TOp)
+open import Once.Spec.Surface.Operator using (o%)
+open import Once.Adequacy.SpecTokNames
 open import Once.Parser.Lexer using (collectStringB; collectDigitsB; collectFracB; collectIdentB; skipLineB; skipBlockB;
-  drop1; drop1-≤; nlIndent; isEqHead; isDashHead; dashClass; caretClass; d-comment; d-arrow; d-minus; c-1; c-0; c-w;
+  drop1; drop1-≤; nlIndent; isEqHead; isDotHead; isDashHead; dashClass; caretClass; d-comment; d-arrow; d-minus; c-1; c-0; c-w;
   c-gen; headK; isIdentStart; digitsToNat; hkWS; hkNL; hkCaret; hkDash; hkLBrace; hkLt; hkGt; hkEq; hkBang; hkLParen;
   hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt; hkPipe; hkPlus; hkStar; hkSlash; hkPct; hkAmp; hkDot;
   hkStr; hkGen)
@@ -79,7 +90,7 @@ erase cont        = econt
 data ItemsChars : List Char → List EItem → Set where
   i-eof : ItemsChars [] (etok TEOF ∷ [])''')
 for (n,hk,ex,rest,pre,lt) in R:
-    prem=f'headK c ≡ {hk} → ' + (ex+' → ' if ex else '')
+    prem=f'headK c ≡ {hk} → ' + ''.join(e+' → ' for e in ex)
     out=f'({pre} ∷ is)' if pre else 'is'
     w(f'  {n} : ∀ {{c cs is}} → {prem}ItemsChars ({rest}) is → ItemsChars (c ∷ cs) {out}')
 w(r'''  i-string : ∀ {c cs is} → headK c ≡ hkStr → (s rest : List Char) (bnd : length rest < length cs) →
@@ -105,8 +116,9 @@ private
        → map erase (items-WF cs off (acc rec)) ≡ is
   step rec i-eof IH = refl''')
 for (n,hk,ex,rest,pre,lt) in R:
-    rw='rewrite eqh' + (' | eq' if ex else '')
-    pat=f'({n} {{cs = cs}} eqh {"eq " if ex else ""}d)'
+    eqs=[f'eq{i}' for i in range(len(ex))]
+    rw='rewrite eqh' + ''.join(' | '+e for e in eqs)
+    pat=f'({n} {{cs = cs}} eqh {"".join(e+" " for e in eqs)}d)'
     body=f'IH {lt} d' if not pre else f'cong (_ ∷_) (IH {lt} d)'
     w(f'  step rec {pat} IH {rw} = {body}')
 w(r'''  step rec (i-string eqh s rest bnd eq d) IH rewrite eqh | eq = cong (_ ∷_) (IH (m≤n⇒m≤1+n bnd) d)

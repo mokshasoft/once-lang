@@ -10,21 +10,6 @@
 -- Basic Arithmetic
 ------------------------------------------------------------------------
 
--- | Addition
-signature fadd : Float * Float -> Float
-
--- | Subtraction
-signature fsub : Float * Float -> Float
-
--- | Multiplication
-signature fmul : Float * Float -> Float
-
--- | Division
-signature fdiv : Float * Float -> Float
-
--- | Negation
-signature fneg : Float -> Float
-
 -- | Absolute value
 signature fabs : Float -> Float
 
@@ -51,33 +36,8 @@ signature flog : Float -> Float
 signature fexp : Float -> Float
 
 ------------------------------------------------------------------------
--- Comparisons (return 0 for false, 1 for true)
-------------------------------------------------------------------------
-
--- | Less than
-signature flt : Float * Float -> Int
-
--- | Less than or equal
-signature fle : Float * Float -> Int
-
--- | Greater than
-signature fgt : Float * Float -> Int
-
--- | Greater than or equal
-signature fge : Float * Float -> Int
-
--- | Equal (exact comparison)
-signature feq : Float * Float -> Int
-
--- | Not equal
-signature fne : Float * Float -> Int
-
-------------------------------------------------------------------------
 -- Conversions
 ------------------------------------------------------------------------
-
--- | Convert integer to float
-signature intToFloat : Int -> Float
 
 -- | Convert float to integer (truncates toward zero)
 signature floatToInt : Float -> Int

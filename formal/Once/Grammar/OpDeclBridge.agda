@@ -22,7 +22,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Parser.Token
 open import Once.Parser.Module.OpName
-  using (OpTok; otClose; otChar; otNone; opTokClass; parseOpCharsB; pocGo)
+  using (OpTok; otClose; otChar; otDotted; otNone; opTokClass; parseOpCharsB; pocGo)
 open import Once.Parser.Module.DeclTail using (colonHead; colDrop1)
 open import Once.Parser.Module.FunDef.Def using (parseFunDefB)
 open import Once.Parser.Module.FunDef.OpDecl using (tryOpDeclB; tryOpDeclAfterB)
@@ -30,7 +30,7 @@ open import Once.Parser.PolyType using (parsePolyTypeB)
 open import Once.Grammar.PolyTypeBridge using (parsePolyTypeB-sound; parsePolyTypeB-complete)
 open import Once.Grammar.FunDefBridge using (sound-fundef; complete-fundef)
 open import Once.Parser.Relation.OpDecl
-  using (ParsesOpChars; poc-close; poc-char; ParsesOpAfter; poa-sig; poa-fun;
+  using (ParsesOpChars; poc-close; poc-char; poc-dotted; ParsesOpAfter; poa-sig; poa-fun;
          ParsesOpDecl; pod-mk)
 
 ------------------------------------------------------------------------
@@ -57,12 +57,18 @@ sound-pocGo tok rest cs       (otChar ch) eq h with parseOpCharsB rest (ch ∷ c
 ... | just (s , rest' , bnd) with refl ← h = poc-char eq (sound-opChars rest (ch ∷ cs) pp)
 ... | nothing with () ← h
 {-# CATCHALL #-}
+sound-pocGo tok rest cs       (otDotted ch) eq h with parseOpCharsB rest ('.' ∷ ch ∷ cs) in pp
+... | just (s , rest' , bnd) with refl ← h = poc-dotted eq (sound-opChars rest ('.' ∷ ch ∷ cs) pp)
+... | nothing with () ← h
+{-# CATCHALL #-}
 sound-pocGo tok rest cs       otNone      eq h with () ← h
 
 complete-opChars : ∀ {toks cs s rest} → ParsesOpChars toks cs s rest →
   Σ[ bnd ∈ (length rest < length toks) ] parseOpCharsB toks cs ≡ just (s , rest , bnd)
 complete-opChars (poc-close eq) rewrite eq = _ , refl
 complete-opChars (poc-char eq dsub) rewrite eq with complete-opChars dsub
+... | (bnd , sub) rewrite sub = _ , refl
+complete-opChars (poc-dotted eq dsub) rewrite eq with complete-opChars dsub
 ... | (bnd , sub) rewrite sub = _ , refl
 
 ------------------------------------------------------------------------

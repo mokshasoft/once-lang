@@ -48,8 +48,11 @@ open Deriv σ rσ
 import Once.Core.DerivedTyping Σ S as DT
 open import Once.Core.DerivedSubst Σ S σ rσ
 import Once.Spec.Surface.Typing Σ S nm as SU
-open SU using (Locals; ia-add; ia-sub; ia-mul; ia-div; ia-mod; fa-add; fa-sub; fa-mul; fa-div;
-               cmp-lt; cmp-le; cmp-gt; cmp-ge; cmp-eq; cmp-ne)
+open SU using (Locals)
+open import Once.Spec.Theory using (‵neg; NumTy; int; float; Has; ⌜_⌝ⁿ)
+open import Once.Spec.Surface.Operator using (binSym; BinSym)
+open BinSym using (theory; symbol; shape)
+open import Once.TypeCheck.NumTable using (binDom)
 import Once.TypeCheck.Use Σ S nm Ok OkS Δ as U
 import Once.TypeCheck.Use Σ S nm Ok OkS Δ′ as U′
 import Once.TypeCheck.UseCore Σ S nm Ok OkS Δ as C
@@ -178,6 +181,33 @@ private
          → s ≡ s′ → l ≡ l′ → r₁ ≡ r₂ → ds ≅ ds′ → dl ≅ dl′ → dr₁ ≅ dr₂ → DT.⊢case⊔ ds dl dr₁ ≅ DT.⊢case⊔ ds′ dl′ dr₂
   ≅case⊔ refl refl refl H.refl H.refl H.refl = H.refl
 
+  -- A primitive over equal arguments.
+  ≅prim : ∀ {n} {Γ : Ctx k n} {Ψ π t} (p : Prim) {d₁ d₂ : Δ′ ⊩ Γ ⊢[ Ψ ] t ∷ primDom p ! π}
+        → d₁ ≅ d₂ → ⊢prim p d₁ ≅ ⊢prim p d₂
+  ≅prim p H.refl = H.refl
+
+  -- A binary operator (its domain transport along `binDom`, erased).
+  ≅bin : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ t₁ t₂} op (A : NumTy) (h : Has A (theory (binSym op)))
+           {d₁ : Δ ⊩ Γ ⊢[ Ψ₁ ] t₁ ∷ ⌜ A ⌝ⁿ ! pure} {d₂ : Δ ⊩ Γ ⊢[ Ψ₂ ] t₂ ∷ ⌜ A ⌝ⁿ ! pure}
+           {d₁′ : Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ₁ ] t₁ ⟪ σ ⟫ₜ ∷ ⌜ A ⌝ⁿ ! pure} {d₂′ : Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ₂ ] t₂ ⟪ σ ⟫ₜ ∷ ⌜ A ⌝ⁿ ! pure}
+       → d₁′ ≅ ty d₁ → d₂′ ≅ ty d₂
+       → ⊢prim (num h (symbol (binSym op))) (subst (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ Ψ₁ +ᵘ Ψ₂ ] pair (t₁ ⟪ σ ⟫ₜ) (t₂ ⟪ σ ⟫ₜ) ∷ X ! pure) (sym (binDom op A)) (⊢pair d₁′ d₂′))
+         ≅ ty (⊢prim (num h (symbol (binSym op))) (subst (λ X → Δ ⊩ Γ ⊢[ Ψ₁ +ᵘ Ψ₂ ] pair t₁ t₂ ∷ X ! pure) (sym (binDom op A)) (⊢pair d₁ d₂)))
+  ≅bin op A@int h {d₁} {d₂} {d₁′} {d₂′} e₁ e₂ =
+    H.trans (≅prim (num h (symbol (binSym op)))
+              (H.trans (subst-≅ (λ X → Δ′ ⊩ _ ⊢[ _ ] _ ∷ X ! pure) (sym (binDom op A)) (⊢pair d₁′ d₂′))
+                (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) pair ⊢pair refl refl e₁ refl refl e₂)
+                  (H.sym (H.trans (rtᵗ-≅ (TS.primDom-⟨⟩ σ (num h (symbol (binSym op)))) _)
+                                  (tyS-≅ (sym (binDom op A)) (⊢pair d₁ d₂)))))))
+            (H.sym (rtᵗ-≅ (sym (TS.primCod-⟨⟩ σ (num h (symbol (binSym op))))) _))
+  ≅bin op A@float h {d₁} {d₂} {d₁′} {d₂′} e₁ e₂ =
+    H.trans (≅prim (num h (symbol (binSym op)))
+              (H.trans (subst-≅ (λ X → Δ′ ⊩ _ ⊢[ _ ] _ ∷ X ! pure) (sym (binDom op A)) (⊢pair d₁′ d₂′))
+                (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) pair ⊢pair refl refl e₁ refl refl e₂)
+                  (H.sym (H.trans (rtᵗ-≅ (TS.primDom-⟨⟩ σ (num h (symbol (binSym op)))) _)
+                                  (tyS-≅ (sym (binDom op A)) (⊢pair d₁ d₂)))))))
+            (H.sym (rtᵗ-≅ (sym (TS.primCod-⟨⟩ σ (num h (symbol (binSym op))))) _))
+
 ------------------------------------------------------------------------
 -- THE INDUCTION
 ------------------------------------------------------------------------
@@ -194,7 +224,6 @@ mutual
   cm⇒ sh U.u-float     = H.refl
   cm⇒ sh U.u-unit      = H.refl
   cm⇒ sh U.u-unit-g    = H.refl
-  cm⇒ sh U.u-neg-float = H.refl
   cm⇒ {Γ = Γ} sh (U.u-var {i = i} {v = v}) =
     H.trans (subst-≅ (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ _ ] _ ∷ X ! pure) (U′.lookup-shape (sh⟨⟩ sh) _) (⊢var i))
             (H.sym (H.trans (tyS-≅ (U.lookup-shape sh v) (⊢var i)) (rtᵗ-≅ (TS.lookup-⟨⟩ σ Γ i) (⊢var i))))
@@ -209,59 +238,21 @@ mutual
     H.trans (typ≡⇒ (sh⟨⟩ sh) (sym (↑-⟨⟩ T)) refl (W′.w-annot (≡W⇐ (↑-⟨⟩ T) refl (subW⇐ u))))
             (H.trans (typ≡⇐ (sh⟨⟩ sh) (↑-⟨⟩ T) refl (subW⇐ u)) (cm⇐ sh u))
   cm⇒ sh (U.u-pair ua ub) = ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) pair ⊢pair refl refl (cm⇒ sh ua) refl refl (cm⇒ sh ub)
-  cm⇒ sh (U.u-neg u) = ≅1 (λ Ψ → Ψ) (prim p-neg) (⊢prim p-neg) refl refl (cm⇒ sh u)
+  cm⇒ sh U.u-toFloat  = H.refl
+  cm⇒ sh (U.u-neg {A = int} {h = h} u)   = ≅1 (λ Ψ → Ψ) (prim (num h ‵neg)) (⊢prim (num h ‵neg)) refl refl (cm⇒ sh u)
+  cm⇒ sh (U.u-neg {A = float} {h = h} u) = ≅1 (λ Ψ → Ψ) (prim (num h ‵neg)) (⊢prim (num h ‵neg)) refl refl (cm⇒ sh u)
+  cm⇒ sh (U.u-binop {op = op} {A = int} {h = h} u₁ u₂) =
+    H.trans (typ≡⇒ (sh⟨⟩ sh) (sym (TS.symCod-⟨⟩ σ int (shape (binSym op)))) refl (W′.w-binop h (subW⇒ u₁) (subW⇒ u₂)))
+            (≅bin op int h (cm⇒ sh u₁) (cm⇒ sh u₂))
+  cm⇒ sh (U.u-binop {op = op} {A = float} {h = h} u₁ u₂) =
+    H.trans (typ≡⇒ (sh⟨⟩ sh) (sym (TS.symCod-⟨⟩ σ float (shape (binSym op)))) refl (W′.w-binop h (subW⇒ u₁) (subW⇒ u₂)))
+            (≅bin op float h (cm⇒ sh u₁) (cm⇒ sh u₂))
   cm⇒ sh (U.u-let {q = q} u₁ u₂) =
     H.trans (≅letp q refl refl (cm⇒ sh u₁) (cm⇒ (U.sh-▸ sh) u₂)) (H.sym (ty-letp q _ _))
   cm⇒ sh (U.u-case {j = j} us ul ur) =
     H.trans (≅case⊔ refl refl refl (cm⇒ sh us) (≅coerce refl (cm⇒ (U.sh-▸ sh) ul)) (≅coerce refl (cm⇒ (U.sh-▸ sh) ur)))
             (H.sym (ty-case⊔ (C.typS⇒ sh us) (⊢coerce (<:ᶜ⇒<: (left j)) (C.typS⇒ (U.sh-▸ sh) ul))
                                              (⊢coerce (<:ᶜ⇒<: (right j)) (C.typS⇒ (U.sh-▸ sh) ur))))
-  cm⇒ sh (U.u-arith {o = ia-add} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-add (pair t u)) (λ x y → ⊢prim p-add (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-arith {o = ia-sub} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-sub (pair t u)) (λ x y → ⊢prim p-sub (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-arith {o = ia-mul} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-mul (pair t u)) (λ x y → ⊢prim p-mul (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-arith {o = ia-div} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-div (pair t u)) (λ x y → ⊢prim p-div (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-arith {o = ia-mod} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-mod (pair t u)) (λ x y → ⊢prim p-mod (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-arith-float {o = fa-add} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fadd (pair t u)) (λ x y → ⊢prim p-fadd (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-arith-float {o = fa-sub} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fsub (pair t u)) (λ x y → ⊢prim p-fsub (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-arith-float {o = fa-mul} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fmul (pair t u)) (λ x y → ⊢prim p-fmul (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-arith-float {o = fa-div} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fdiv (pair t u)) (λ x y → ⊢prim p-fdiv (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-compare {o = cmp-lt} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-lt (pair t u)) (λ x y → ⊢prim p-lt (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-compare {o = cmp-le} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-le (pair t u)) (λ x y → ⊢prim p-le (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-compare {o = cmp-gt} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-gt (pair t u)) (λ x y → ⊢prim p-gt (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-compare {o = cmp-ge} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-ge (pair t u)) (λ x y → ⊢prim p-ge (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-compare {o = cmp-eq} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-eq (pair t u)) (λ x y → ⊢prim p-eq (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-compare {o = cmp-ne} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-ne (pair t u)) (λ x y → ⊢prim p-ne (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-arith-float-il {o = fa-add} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fadd (pair t u)) (λ x y → ⊢prim p-fadd (⊢pair x y)) refl refl (≅1 (λ Ψ → Ψ) (prim p-i2f) (⊢prim p-i2f) refl refl (cm⇒ sh u₁)) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-arith-float-il {o = fa-sub} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fsub (pair t u)) (λ x y → ⊢prim p-fsub (⊢pair x y)) refl refl (≅1 (λ Ψ → Ψ) (prim p-i2f) (⊢prim p-i2f) refl refl (cm⇒ sh u₁)) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-arith-float-il {o = fa-mul} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fmul (pair t u)) (λ x y → ⊢prim p-fmul (⊢pair x y)) refl refl (≅1 (λ Ψ → Ψ) (prim p-i2f) (⊢prim p-i2f) refl refl (cm⇒ sh u₁)) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-arith-float-il {o = fa-div} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fdiv (pair t u)) (λ x y → ⊢prim p-fdiv (⊢pair x y)) refl refl (≅1 (λ Ψ → Ψ) (prim p-i2f) (⊢prim p-i2f) refl refl (cm⇒ sh u₁)) refl refl (cm⇒ sh u₂)
-  cm⇒ sh (U.u-arith-float-ir {o = fa-add} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fadd (pair t u)) (λ x y → ⊢prim p-fadd (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (≅1 (λ Ψ → Ψ) (prim p-i2f) (⊢prim p-i2f) refl refl (cm⇒ sh u₂))
-  cm⇒ sh (U.u-arith-float-ir {o = fa-sub} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fsub (pair t u)) (λ x y → ⊢prim p-fsub (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (≅1 (λ Ψ → Ψ) (prim p-i2f) (⊢prim p-i2f) refl refl (cm⇒ sh u₂))
-  cm⇒ sh (U.u-arith-float-ir {o = fa-mul} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fmul (pair t u)) (λ x y → ⊢prim p-fmul (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (≅1 (λ Ψ → Ψ) (prim p-i2f) (⊢prim p-i2f) refl refl (cm⇒ sh u₂))
-  cm⇒ sh (U.u-arith-float-ir {o = fa-div} u₁ u₂) =
-    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (λ t u → prim p-fdiv (pair t u)) (λ x y → ⊢prim p-fdiv (⊢pair x y)) refl refl (cm⇒ sh u₁) refl refl (≅1 (λ Ψ → Ψ) (prim p-i2f) (⊢prim p-i2f) refl refl (cm⇒ sh u₂))
   cm⇒ sh (U.u-id-app u)       = ≅appAB refl refl refl refl H.refl (cm⇒ sh u)
   cm⇒ sh (U.u-fst-app u)      = ≅appAB refl refl refl refl H.refl (cm⇒ sh u)
   cm⇒ sh (U.u-snd-app u)      = ≅appAB refl refl refl refl H.refl (cm⇒ sh u)

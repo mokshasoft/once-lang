@@ -21,7 +21,8 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
-open import Once.Spec.Surface.Lexing using (Token)
+open import Once.Spec.Surface.Lexing using (Token; TOpD)
+open import Once.Adequacy.SpecTokNames
 open Token
 import Once.Parser.Token as P
 open import Once.Adequacy.SpecLexing using (forget)
@@ -70,6 +71,7 @@ data TokView : P.Token → Token → Set where
   tv-ge : TokView P.TGe TGe
   tv-eqeq : TokView P.TEqEq TEqEq
   tv-neq : TokView P.TNeq TNeq
+  tv-opd : ∀ {d} → TokView (P.TOpD d) (TOpD d)
   tv-bang : TokView P.TBang TBang
   tv-newline : TokView P.TNewline TNewline
   tv-eof : TokView P.TEOF TEOF
@@ -107,6 +109,7 @@ tok-view P.TGt = tv-gt
 tok-view P.TGe = tv-ge
 tok-view P.TEqEq = tv-eqeq
 tok-view P.TNeq = tv-neq
+tok-view (P.TOpD d) = tv-opd
 tok-view P.TBang = tv-bang
 tok-view P.TNewline = tv-newline
 tok-view P.TEOF = tv-eof
@@ -155,6 +158,7 @@ back TGt = P.TGt
 back TGe = P.TGe
 back TEqEq = P.TEqEq
 back TNeq = P.TNeq
+back (TOpD d) = P.TOpD d
 back TBang = P.TBang
 back TNewline = P.TNewline
 back TEOF = P.TEOF
@@ -192,6 +196,7 @@ back-view tv-gt _ = refl
 back-view tv-ge _ = refl
 back-view tv-eqeq _ = refl
 back-view tv-neq _ = refl
+back-view tv-opd _ = refl
 back-view tv-bang _ = refl
 back-view tv-newline _ = refl
 back-view tv-eof _ = refl

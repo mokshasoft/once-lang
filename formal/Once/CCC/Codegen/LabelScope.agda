@@ -62,7 +62,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Codegen.IRToTrace o using
   (sigop-code; ir-to-trace'; ir-to-unit; ir-to-trace; ir-to-trace-lab; ir-next-label; CataStrategy; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; lsize; push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-br-I₁; cata-br-I₂; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; with-copy; two-cell; out-trace; fsize; resuspend-layer; cata-call-from; inj-trace; env-entry; env-prologue)
 open import Once.CCC.Codegen.FlatLayout
@@ -409,7 +409,7 @@ cata-ls E A G (strat-branching F) lo bb n1 l1 at le atls = cata-branching-ls E A
 -- sub-IR's window through `label-mono`.
 ------------------------------------------------------------------------
 -- Plan 0.108: a comparison's lowering is straight-line too — no labels.
-sigop-labels : ∀ {A B} (si : SigOpInfo A B) (n l : ℕ) (m : Maybe CmpOp)
+sigop-labels : ∀ {A B} (si : SigOpInfo A B) (n l : ℕ) (m : Maybe (CmpAt A))
              → LabelsIn l l (sigop-code si n m)
 sigop-labels si n l nothing  = li-none refl ∷ []
 sigop-labels si n l (just _) = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
@@ -1136,7 +1136,7 @@ cata-agree E A G st lo bb n1 l1 at natl saB lsB =
 -- is a called body, D099 / C1) and `case` through `Pieces2` (two different
 -- embedded traces, descending windows).
 ------------------------------------------------------------------------
-sigop-seg : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → SegAgree (sigop-code si n m)
+sigop-seg : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe (CmpAt A)) → SegAgree (sigop-code si n m)
 sigop-seg si n nothing  = segagree-nolab _ (refl ∷ [])
 sigop-seg si n (just _) = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
 -- D366: `In`'s three shapes and `out-μ`'s define no label.

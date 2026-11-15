@@ -74,6 +74,7 @@ bare-NotGenerator x =
   ∷ (λ eq → gen≢bare "inl" x (sym eq))
   ∷ (λ eq → gen≢bare "inr" x (sym eq))
   ∷ (λ eq → gen≢bare "unit" x (sym eq))
+  ∷ (λ eq → gen≢bare "toFloat" x (sym eq))
   ∷ []
 
 -- Decidable equality — the trace's `ev-name` comparison needs it.

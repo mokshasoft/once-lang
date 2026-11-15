@@ -37,16 +37,18 @@ open import Once.Postulates using (toList-++)
 open import Once.Target.Symbol using (showNat; once-symbol-own; mangle-component)
 open import Once.Target.SymbolInjective
   using (toList-showNat; charsInBase-all-digits; zencL; zencL-inj; mangL; toList-mangle; HeadNotDigit; digit-prefix-unique)
-open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
+open import Once.Arith.CmpOp using (CmpOp; FCmpOp; fcmp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
+open import Once.Spec.Theory using (float-rounded; float-order; float-equality; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.Shape
   using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd
         ; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
-open import Once.Spec.Float.Decimal using (Decimal; _/10^_)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; afcmp)
+open import Once.Spec.Float.Decimal using (Decimal; ⟨_⟩_/10^_)
+open import Once.Spec.Float.Value using (Sign; pos; neg)
 open import Once.Arith.SigOp.Block
-  using (show-shape; show-path; show-zlit; show-dlit; show-arith-ir; block-digest; block-name)
+  using (show-shape; show-path; show-zlit; show-slit; show-dlit; show-arith-ir; block-digest; block-name)
 
 ------------------------------------------------------------------------
 -- The renderings, as characters.
@@ -71,8 +73,12 @@ zlit-cs : ℤ → List Char
 zlit-cs (+ n)      = nat-cs n
 zlit-cs (-[1+ n ]) = 'n' ∷ nat-cs (suc n)
 
+slit-cs : Sign → ℕ → List Char
+slit-cs pos n = nat-cs n
+slit-cs neg n = 'n' ∷ nat-cs n
+
 dlit-cs : Decimal → List Char
-dlit-cs (s /10^ e) = zlit-cs s ++ nat-cs e
+dlit-cs (⟨ s ⟩ m /10^ e) = slit-cs s m ++ nat-cs e
 
 cmp-c : CmpOp → Char
 cmp-c c-lt = '0'
@@ -81,6 +87,20 @@ cmp-c c-gt = '2'
 cmp-c c-ge = '3'
 cmp-c c-eq = '4'
 cmp-c c-ne = '5'
+
+fcmp-c : FCmpOp → Char
+fcmp-c (fcmp _ ‵==ᵈ) = 'a'
+fcmp-c (fcmp _ ‵!=ᵈ) = 'b'
+fcmp-c (fcmp _ ‵<ᵈ) = 'c'
+fcmp-c (fcmp _ ‵<=ᵈ) = 'd'
+fcmp-c (fcmp _ ‵>ᵈ) = 'e'
+fcmp-c (fcmp _ ‵>=ᵈ) = 'f'
+fcmp-c (fcmp _ ‵<) = 'g'
+fcmp-c (fcmp _ ‵<=) = 'h'
+fcmp-c (fcmp _ ‵>) = 'i'
+fcmp-c (fcmp _ ‵>=) = 'j'
+fcmp-c (fcmp _ ‵==) = 'k'
+fcmp-c (fcmp _ ‵!=) = 'l'
 
 tree-cs : ∀ {sh n} → MArithIR sh n → List Char
 tree-cs (alit z)                 = 'L' ∷ zlit-cs z
@@ -95,6 +115,7 @@ tree-cs (amod a b)               = 'R' ∷ (tree-cs a ++ tree-cs b)
 tree-cs (aneg a)                 = 'G' ∷ tree-cs a
 tree-cs (ai2f a)                 = 'C' ∷ tree-cs a
 tree-cs (acmp o a b)             = 'K' ∷ cmp-c o ∷ (tree-cs a ++ tree-cs b)
+tree-cs (afcmp o a b)            = 'Q' ∷ fcmp-c o ∷ (tree-cs a ++ tree-cs b)
 
 ------------------------------------------------------------------------
 -- …are the strings' characters.
@@ -126,8 +147,12 @@ zlit-br : ∀ z → toList (show-zlit z) ≡ zlit-cs z
 zlit-br (+ n)      = nat-br n
 zlit-br (-[1+ n ]) = br1 "n" (showNat (suc n) ++ˢ "_") (nat-br (suc n))
 
+slit-br : ∀ s n → toList (show-slit s n) ≡ slit-cs s n
+slit-br pos n = nat-br n
+slit-br neg n = br1 "n" (showNat n ++ˢ "_") (nat-br n)
+
 dlit-br : ∀ d → toList (show-dlit d) ≡ dlit-cs d
-dlit-br (s /10^ e) = trans (toList-++ (show-zlit s) _) (cong₂ _++_ (zlit-br s) (nat-br e))
+dlit-br (⟨ s ⟩ m /10^ e) = trans (toList-++ (show-slit s m) _) (cong₂ _++_ (slit-br s m) (nat-br e))
 
 tree-br : ∀ {sh n} (e : MArithIR sh n) → toList (show-arith-ir e) ≡ tree-cs e
 tree-br (alit z)                = br1 "L" (show-zlit z) (zlit-br z)
@@ -147,6 +172,18 @@ tree-br (acmp c-gt a b)         = br2 "K" "2" (show-arith-ir a ++ˢ show-arith-i
 tree-br (acmp c-ge a b)         = br2 "K" "3" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
 tree-br (acmp c-eq a b)         = br2 "K" "4" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
 tree-br (acmp c-ne a b)         = br2 "K" "5" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-rounded ‵==ᵈ) a b) = br2 "Q" "a" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-rounded ‵!=ᵈ) a b) = br2 "Q" "b" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-rounded ‵<ᵈ) a b) = br2 "Q" "c" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-rounded ‵<=ᵈ) a b) = br2 "Q" "d" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-rounded ‵>ᵈ) a b) = br2 "Q" "e" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-rounded ‵>=ᵈ) a b) = br2 "Q" "f" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-order ‵<) a b) = br2 "Q" "g" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-order ‵<=) a b) = br2 "Q" "h" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-order ‵>) a b) = br2 "Q" "i" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-order ‵>=) a b) = br2 "Q" "j" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-equality ‵==) a b) = br2 "Q" "k" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
+tree-br (afcmp (fcmp float-equality ‵!=) a b) = br2 "Q" "l" (show-arith-ir a ++ˢ show-arith-ir b) refl (trans (toList-++ (show-arith-ir a) _) (cong₂ _++_ (tree-br a) (tree-br b)))
 
 ------------------------------------------------------------------------
 -- Prefix-freeness: a rendering, then anything, determines both.
@@ -202,11 +239,18 @@ zlit-inj (-[1+ n ]) (-[1+ m ]) r r′ eq =
   where suc-inj : ∀ {a b : ℕ} → suc a ≡ suc b → a ≡ b
         suc-inj refl = refl
 
+slit-inj : ∀ (s s′ : Sign) (n m : ℕ) (r r′ : List Char) → slit-cs s n ++ r ≡ slit-cs s′ m ++ r′
+         → (s ≡ s′ × n ≡ m) × r ≡ r′
+slit-inj pos pos n m r r′ eq = let (e , t) = nat-inj n m r r′ eq in (refl , e) , t
+slit-inj pos neg n m r r′ eq = ⊥-elim (nat≢n n r _ eq)
+slit-inj neg pos n m r r′ eq = ⊥-elim (nat≢n m r′ _ (sym eq))
+slit-inj neg neg n m r r′ eq = let (e , t) = nat-inj n m r r′ (∷-injectiveʳ eq) in (refl , e) , t
+
 dlit-inj : ∀ (d d′ : Decimal) (r r′ : List Char) → dlit-cs d ++ r ≡ dlit-cs d′ ++ r′ → d ≡ d′ × r ≡ r′
-dlit-inj (s /10^ e) (s′ /10^ e′) r r′ eq
-  with zlit-inj s s′ (nat-cs e ++ r) (nat-cs e′ ++ r′)
-         (trans (sym (++-assoc (zlit-cs s) (nat-cs e) r)) (trans eq (++-assoc (zlit-cs s′) (nat-cs e′) r′)))
-... | refl , t with nat-inj e e′ r r′ t
+dlit-inj (⟨ s ⟩ m /10^ e) (⟨ s′ ⟩ m′ /10^ e′) r r′ eq
+  with slit-inj s s′ m m′ (nat-cs e ++ r) (nat-cs e′ ++ r′)
+         (trans (sym (++-assoc (slit-cs s m) (nat-cs e) r)) (trans eq (++-assoc (slit-cs s′ m′) (nat-cs e′) r′)))
+... | (refl , refl) , t with nat-inj e e′ r r′ t
 ...   | refl , t′ = refl , t′
 
 path-inj : ∀ (p p′ : InputPath) (r r′ : List Char) → path-cs p ++ r ≡ path-cs p′ ++ r′ → p ≡ p′ × r ≡ r′
@@ -254,6 +298,20 @@ private
   cmp-inj c-eq c-eq _ = refl
   cmp-inj c-ne c-ne _ = refl
 
+  fcmp-inj : ∀ (o o′ : FCmpOp) → fcmp-c o ≡ fcmp-c o′ → o ≡ o′
+  fcmp-inj (fcmp float-rounded ‵==ᵈ) (fcmp float-rounded ‵==ᵈ) _ = refl
+  fcmp-inj (fcmp float-rounded ‵!=ᵈ) (fcmp float-rounded ‵!=ᵈ) _ = refl
+  fcmp-inj (fcmp float-rounded ‵<ᵈ) (fcmp float-rounded ‵<ᵈ) _ = refl
+  fcmp-inj (fcmp float-rounded ‵<=ᵈ) (fcmp float-rounded ‵<=ᵈ) _ = refl
+  fcmp-inj (fcmp float-rounded ‵>ᵈ) (fcmp float-rounded ‵>ᵈ) _ = refl
+  fcmp-inj (fcmp float-rounded ‵>=ᵈ) (fcmp float-rounded ‵>=ᵈ) _ = refl
+  fcmp-inj (fcmp float-order ‵<) (fcmp float-order ‵<) _ = refl
+  fcmp-inj (fcmp float-order ‵<=) (fcmp float-order ‵<=) _ = refl
+  fcmp-inj (fcmp float-order ‵>) (fcmp float-order ‵>) _ = refl
+  fcmp-inj (fcmp float-order ‵>=) (fcmp float-order ‵>=) _ = refl
+  fcmp-inj (fcmp float-equality ‵==) (fcmp float-equality ‵==) _ = refl
+  fcmp-inj (fcmp float-equality ‵!=) (fcmp float-equality ‵!=) _ = refl
+
 tree-inj : ∀ {sh n n′} (e : MArithIR sh n) (e′ : MArithIR sh n′) (r r′ : List Char)
          → tree-cs e ++ r ≡ tree-cs e′ ++ r′ → _≡_ {A = Σ NumType (MArithIR sh)} (n , e) (n′ , e′) × r ≡ r′
 tree-inj (alit z) (alit z′) r r′ eq with zlit-inj z z′ r r′ (∷-injectiveʳ eq)
@@ -298,6 +356,12 @@ tree-inj (acmp o a b) (acmp o′ a′ b′) r r′ eq
   with tree-inj a a′ _ _ (as2 (tree-cs a) (tree-cs b) (tree-cs a′) (tree-cs b′) r r′ (∷-injectiveʳ (∷-injectiveʳ eq)))
 ...   | refl , t with tree-inj b b′ r r′ t
 ...     | refl , t′ = refl , t′
+tree-inj (afcmp o a b) (afcmp o′ a′ b′) r r′ eq
+  with fcmp-inj o o′ (∷-injectiveˡ (∷-injectiveʳ eq))
+... | refl
+  with tree-inj a a′ _ _ (as2 (tree-cs a) (tree-cs b) (tree-cs a′) (tree-cs b′) r r′ (∷-injectiveʳ (∷-injectiveʳ eq)))
+...   | refl , t with tree-inj b b′ r r′ t
+...     | refl , t′ = refl , t′
 
 -- (an input on the right: its letter waits on its kind)
 tree-inj (alit _) (ainput {NInt} _) _ _ ()
@@ -320,6 +384,8 @@ tree-inj (ai2f _) (ainput {NInt} _) _ _ ()
 tree-inj (ai2f _) (ainput {NFloat} _) _ _ ()
 tree-inj (acmp _ _ _) (ainput {NInt} _) _ _ ()
 tree-inj (acmp _ _ _) (ainput {NFloat} _) _ _ ()
+tree-inj (afcmp _ _ _) (ainput {NInt} _) _ _ ()
+tree-inj (afcmp _ _ _) (ainput {NFloat} _) _ _ ()
 
 ------------------------------------------------------------------------
 -- THE THEOREM.

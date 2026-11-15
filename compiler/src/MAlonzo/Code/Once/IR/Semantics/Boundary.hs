@@ -20,10 +20,10 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Data.Sum.Base
+import qualified MAlonzo.Code.Once.Float.Word
 import qualified MAlonzo.Code.Once.IR.Semantics.Polynomial
 import qualified MAlonzo.Code.Once.IR.Semantics.Value
 import qualified MAlonzo.Code.Once.Res
-import qualified MAlonzo.Code.Once.Spec.Boundary
 import qualified MAlonzo.Code.Once.Spec.Numerics
 import qualified MAlonzo.Code.Once.Spec.Polynomial
 import qualified MAlonzo.Code.Once.Spec.Type
@@ -261,5 +261,7 @@ du_atTarget_62 v0 v1 v2
              (coe v2)
       MAlonzo.Code.Once.Spec.Type.C_Float_34
         -> coe
-             MAlonzo.Code.Once.Spec.Boundary.d_patternAt_6 (coe v0) (coe v2)
+             MAlonzo.Code.Once.Float.Word.d_fit_66
+             (coe MAlonzo.Code.Once.Spec.Numerics.d_float'45'format_16 (coe v0))
+             (coe v2)
       _ -> coe v2

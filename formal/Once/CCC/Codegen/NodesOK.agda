@@ -29,7 +29,7 @@ open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (name; sem)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of; cmp-block-info)
 open import Once.IR using (IR)
 import Once.IR as IRm
 open IRm.IR
@@ -38,7 +38,7 @@ open import Once.Contract using (ISig)
 open import Once.Denotation.Program using (IRFun; Linked; LinkedAt; Leaves)
 
 -- The symbol a SigOp's lowering calls: itself, or (a comparison) its block.
-sigop-syms : ∀ {A B} → SigOpInfo A B → Maybe CmpOp → List String
+sigop-syms : ∀ {A B} → SigOpInfo A B → Maybe (CmpAt A) → List String
 sigop-syms si nothing  = once-symbol-path (name si) ∷ []
 sigop-syms si (just c) = once-symbol-path (name (cmp-block-info c)) ∷ []
 

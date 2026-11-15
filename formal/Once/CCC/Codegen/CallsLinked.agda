@@ -41,7 +41,7 @@ open import Once.SigOp.Info using (module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Denotation.Program using (Leaves)
 open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Codegen.FlatLayout
   using (Kind; word; flat; kind; put; put-k; get; get-k; fill; put-All; put-k-All; get-All; get-k-All; fill-All; lkind; lsz)
 open import Once.CCC.Codegen.IRToTrace o using
@@ -189,7 +189,7 @@ cata-dispatch-cl E A G strat-box           bb n1 l1 at ih = cata-box-cl E G bb n
 cata-dispatch-cl E A G (strat-branching F) bb n1 l1 at ih = cata-branching-cl E A F bb n1 l1 at ih
 
 
-sigop-calls : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe CmpOp) → Calls Q si m → CLTrace (sigop-code si n m)
+sigop-calls : ∀ {A B} (si : SigOpInfo A B) (n : ℕ) (m : Maybe (CmpAt A)) → Calls Q si m → CLTrace (sigop-code si n m)
 sigop-calls si n nothing  q = q ∷ []
 sigop-calls si n (just _) q = q ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 

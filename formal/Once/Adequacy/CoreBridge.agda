@@ -111,7 +111,7 @@ module _ (fmt : TargetNum) where
   private
     -- the compiled program's trace, in a world
     trIRAt : Interp → List IRFun → IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋ → Tr ⊤
-    trIRAt ι′ tbl ir = trT∞ ι′ [] (evalᴰ fmt (tableEnv fmt (pureHalf ι′) tbl) ir tt)
+    trIRAt ι′ tbl ir = trT∞ fmt ι′ [] (evalᴰ fmt (tableEnv fmt (pureHalf ι′) tbl) ir tt)
 
     -- the walk's agreement at the entry the bundle finds
     agree-at : ∀ {Σ wf J uniq tbl P} {m : Maybe (IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋)} {ir} → m ≡ just ir
@@ -123,10 +123,10 @@ module _ (fmt : TargetNum) where
                  → (b : FB.FunBundle C.emptyCScope es) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} → FB.bundle-find b ≡ just ir
                  → (Σ : Signature) (u : SigView-ef m ef mt Σ)
                    (wf : WellFormed Σ) (J : Obs.Interp Σ) (uniq : Unique (map (λ d → showCanonical (Decl.name d)) Σ))
-                 → trIRAt (toInterp Σ wf J) (tableOf-go (FB.bundle→compiled b) []) ir
+                 → trIRAt (toInterp fmt Σ wf J) (tableOf-go (FB.bundle→compiled b) []) ir
                    ≈ᵗ⟨ _≡_ ⟩ coreTr Σ (typedProgram-ef m ef mt hvm Σ u) J
     core-ef-tr m .(inj₂ _) mt (_ , mi) refl dist b {ir} fe Σ u wf J uniq =
-      SO.observe-R Σ (toInterp Σ wf J) (Obs.Interp.world J) (SSg.agree Σ wf J uniq fmt (SP.noVars Σ))
+      SO.observe-R Σ fmt (toInterp fmt Σ wf J) (Obs.Interp.world J) (SSg.agree Σ wf J uniq fmt (SP.noVars Σ))
         (agree-at {Σ} {wf} {J} {uniq} fe
           (TWm.walk mt b mi (SP.Tele.[]) TR.[] TR.[] TR.[] (MP.names₀ Σ) [] inv₀ u (dist , TP.none-in-empty _)))
       where
@@ -142,14 +142,14 @@ module _ (fmt : TargetNum) where
       (Σ : Signature) (u : SigView (m , mt , hvm) Σ)
       (wf : WellFormed Σ) (J : Obs.Interp Σ) (uniq : Unique (map (λ d → showCanonical (Decl.name d)) Σ))
       (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR m ≡ just ir)
-    → ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ fmt (toInterp Σ wf J)
+    → ⟦ just (irProgram (moduleTable m) ir) ⟧IRᵗ fmt (toInterp fmt Σ wf J)
       ≈ᵗ⟨ _≡_ ⟩ coreTr Σ (typedProgram (m , mt , hvm) Σ u) J
   program-core-tr m mt hvm Σ u wf J uniq ir mi with FB.program-node m ir mi
   ... | es , ef , b , ceq =
-    subst (λ t → trT∞ ι [] t ≈ᵗ⟨ _≡_ ⟩ coreTr Σ (typedProgram (m , mt , hvm) Σ u) J)
+    subst (λ t → trT∞ fmt ι [] t ≈ᵗ⟨ _≡_ ⟩ coreTr Σ (typedProgram (m , mt , hvm) Σ u) J)
           (sym (cong (λ tbl → evalᴰ fmt (tableEnv fmt (pureHalf ι) tbl) ir tt) (cong tableOfResult ceq)))
           (core-ef-tr m (Parser.extractFunctions m) mt hvm ef (TP.entries-distinct m ef) b fe Σ u wf J uniq)
     where
-      ι = toInterp Σ wf J
+      ι = toInterp fmt Σ wf J
       fe : FB.bundle-find b ≡ just ir
       fe = trans (sym (FB.find-agree b)) (trans (sym (cong moduleToIR-aux ceq)) mi)

@@ -17,7 +17,6 @@ import Once.Spec.Word as OnceWord
 import Once.Spec.Type as SpT
 open import Once.Spec.Type using (∅ₖ; KCtx)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Base)
-open import Once.Spec.Float.Decimal using (decimalOf; round; negate)
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open TargetNum using (int-bits; float-format)
 open import Data.Fin using (Fin; zero; suc)
@@ -60,7 +59,9 @@ open import Once.TypeCheck.Scope using (NamedCtx; PolyCtx; Imports; lookupImport
 open import Once.Denotation.DefEnv using (DefEnvOf; defAt; ImpEnvOf; impAt)
 open import Once.Type.Instance using (KindedInstance)
 open import Once.Type.Rigid using (ground-kinded)
-open import Once.Spec.Surface.Syntax using (OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax using ()
+open import Once.Surface.OpNames
+open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.SigOp.Info using (semP; int-prim)
 open import Once.Spec.Sub using (sub-arr)
 open import Once.Spec.Sub using (_⊔_≔_)
@@ -70,10 +71,7 @@ open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open SigOpInfo using (conB)
 open import Once.Arith.SigOp.Builders
-  using (value-info; arrow-info;
-         add-info; sub-info; mul-info; div-info; mod-info; neg-info;
-         fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
-         lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
+  using (value-info; arrow-info)
 
 ------------------------------------------------------------------------
 -- P1 scaffolds (discharged in P2). NAMED and narrow — each is exactly one

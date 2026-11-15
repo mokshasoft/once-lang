@@ -207,7 +207,7 @@ data T_Fails_52 = C_fails_64
 d_PrincipalAt_70 ::
   Integer ->
   MAlonzo.Code.Once.TypeCheck.Scope.T_NamedCtx_112 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_68 ->
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Expr_44 ->
   MAlonzo.Code.Once.Spec.Type.T_Ty_8 -> ()
 d_PrincipalAt_70 = erased
 -- Once.Principal.grade-at-or-below

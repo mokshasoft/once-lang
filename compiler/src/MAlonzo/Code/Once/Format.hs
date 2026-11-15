@@ -35,9 +35,9 @@ d_formatParsed_4 v0 v1
         -> coe
              MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
              (coe
-                MAlonzo.Code.Once.Format.Print.d_format_1238 (coe v2)
+                MAlonzo.Code.Once.Format.Print.d_format_1298 (coe v2)
                 (coe
-                   MAlonzo.Code.Once.Format.Lex.d_lexItems_518
+                   MAlonzo.Code.Once.Format.Lex.d_lexItems_580
                    (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Format.formatSource

@@ -74,7 +74,7 @@ open import Once.TypeCheck.Elaborate using (success; failure; checkElab; CheckEl
 open import Once.TypeCheck.Link using (resolveExpr; resolveExprWF; resolvePolyCase; applySplice)
 import Once.Adequacy.ResolveFaithful as RF
 import Once.Adequacy.MeaningBridge as MB
-open import Once.Adequacy.GradedRelation Σ σ₀ using (RelGM)
+open import Once.Adequacy.GradedRelation Σ σ₀ fmt using (RelGM)
 open import Once.Spec.Grade using (pure)
 open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip)
 

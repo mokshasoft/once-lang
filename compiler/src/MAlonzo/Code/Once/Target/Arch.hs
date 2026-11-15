@@ -68,7 +68,7 @@ d_arch'45'numerics_62 v0
         -> coe
              MAlonzo.Code.Once.Spec.Numerics.C_mkTargetNum_20
              (coe (64 :: Integer))
-             (coe MAlonzo.Code.Once.Spec.Float.Dyadic.d_binary64_44)
+             (coe MAlonzo.Code.Once.Spec.Float.Dyadic.d_binary64_52)
              (coe
                 MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
                 (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26))
@@ -76,7 +76,7 @@ d_arch'45'numerics_62 v0
         -> coe
              MAlonzo.Code.Once.Spec.Numerics.C_mkTargetNum_20
              (coe (32 :: Integer))
-             (coe MAlonzo.Code.Once.Spec.Float.Dyadic.d_binary32_42)
+             (coe MAlonzo.Code.Once.Spec.Float.Dyadic.d_binary32_50)
              (coe
                 MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
                 (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26))
@@ -84,7 +84,7 @@ d_arch'45'numerics_62 v0
         -> coe
              MAlonzo.Code.Once.Spec.Numerics.C_mkTargetNum_20
              (coe (64 :: Integer))
-             (coe MAlonzo.Code.Once.Spec.Float.Dyadic.d_binary64_44)
+             (coe MAlonzo.Code.Once.Spec.Float.Dyadic.d_binary64_52)
              (coe
                 MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
                 (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26))

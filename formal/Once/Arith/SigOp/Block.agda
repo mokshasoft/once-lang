@@ -23,7 +23,9 @@
 
 module Once.Arith.SigOp.Block where
 
-open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
+open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne; FCmpOp; fcmp)
+open import Once.Spec.Theory
+  using (float-rounded; float-order; float-equality; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=)
 open import Once.Spec.Type using (Base; b-*; b-Float; b-Int; b-Unit; ∅ₖ)
 open import Data.Integer using (ℤ; +_; -[1+_]) renaming ()
 import Data.Integer as ℤ
@@ -41,10 +43,12 @@ open import Once.Spec.Name using (bare)
 
 open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; numtype-as-type; shape-as-type)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; afcmp; numtype-as-type; shape-as-type)
 
 open import Once.Spec.Float.Decimal using (Decimal)
-open Once.Spec.Float.Decimal.Decimal using (exp10; sig)
+open Once.Spec.Float.Decimal.Decimal using (sign; exp10; sig)
+open import Once.Spec.Float.Value using (Sign; pos; neg)
+open import Data.Nat using (ℕ)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 
 ------------------------------------------------------------------------
@@ -69,13 +73,19 @@ show-zlit : ℤ → String
 show-zlit (+_ n)         = showℕ n ++ "_"
 show-zlit (-[1+_] n)     = "n" ++ showℕ (suc n) ++ "_"
 
--- | …and a `Decimal` payload, as its two fields (plan 0.75 F4). Rendered
+-- | A signed magnitude, the same characters as `show-zlit` for every non-zero
+-- value: `n` → `n_`, `−n` → `n<n>_`, so `−0` is `n0_` and `+0` is `0_`.
+show-slit : Sign → ℕ → String
+show-slit pos n = showℕ n ++ "_"
+show-slit neg n = "n" ++ showℕ n ++ "_"
+
+-- | …and a `Decimal` payload, as its fields (plan 0.75 F4). Rendered
 -- UNNORMALISED, because the payload is: `0.5` and `0.50` are distinct records
 -- (D116) and therefore distinct blocks. They round to the same word, so the
 -- two bodies are identical — a missed sharing opportunity, never a wrong
 -- answer, and `Once.Spec.Float.Decimal` pins the pair agreeing.
 show-dlit : Decimal → String
-show-dlit d = show-zlit (sig d) ++ showℕ (exp10 d) ++ "_"
+show-dlit d = show-slit (sign d) (sig d) ++ showℕ (exp10 d) ++ "_"
 
 -- | Render an MArithIR tree as a stable, alphanumeric-only digest.
 -- Plan 0.20 Phase G: the digest is used as the suffix of an assembly
@@ -117,6 +127,21 @@ show-arith-ir (acmp o a b) = "K" ++ show-cmp o ++ show-arith-ir a ++ show-arith-
         show-cmp c-ge = "3"
         show-cmp c-eq = "4"
         show-cmp c-ne = "5"
+-- plan 0.150: a FLOAT comparison — one letter per row and symbol of the table.
+show-arith-ir (afcmp o a b) = "Q" ++ show-fcmp o ++ show-arith-ir a ++ show-arith-ir b
+  where show-fcmp : FCmpOp → String
+        show-fcmp (fcmp float-rounded  ‵==ᵈ) = "a"
+        show-fcmp (fcmp float-rounded  ‵!=ᵈ) = "b"
+        show-fcmp (fcmp float-rounded  ‵<ᵈ)  = "c"
+        show-fcmp (fcmp float-rounded  ‵<=ᵈ) = "d"
+        show-fcmp (fcmp float-rounded  ‵>ᵈ)  = "e"
+        show-fcmp (fcmp float-rounded  ‵>=ᵈ) = "f"
+        show-fcmp (fcmp float-order    ‵<)   = "g"
+        show-fcmp (fcmp float-order    ‵<=)  = "h"
+        show-fcmp (fcmp float-order    ‵>)   = "i"
+        show-fcmp (fcmp float-order    ‵>=)  = "j"
+        show-fcmp (fcmp float-equality ‵==)  = "k"
+        show-fcmp (fcmp float-equality ‵!=)  = "l"
 
 -- | D395: the block's INPUT SHAPE, prefix-free (Polish notation, lower case so
 -- it never reads as a tree letter). Since D391 a leaf's load is at its flat

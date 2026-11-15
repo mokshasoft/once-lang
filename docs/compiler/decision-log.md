@@ -8181,7 +8181,8 @@ type already has its shape, and diff them.
 
 ## D113: `Float` Follows D054 — the Hardware's Promise, Not an Exact Value
 
-**Date**: 2026-08-19 · **Status**: Decided · **Corrects D112** (same day) ·
+**Date**: 2026-08-19 · **Status**: Decided · **Corrects D112** (same day); **restated by D411** (2026-11-12:
+`Float` is IEEE 754 level 2, a word is its encoding) ·
 **Extends D054 to the second numeric type**
 
 ### What D112 got right and wrong
@@ -8607,7 +8608,8 @@ unfalsifiable-from-inside lesson), D115 (`ℤ` payload, same principle), D116
 
 ## D118: Float Overflow Is ±∞; Underflow Is ZERO, and Once Models No Subnormals
 
-**Date**: 2026-08-24 · **Status**: Implemented (plan 0.74 K2) ·
+**Date**: 2026-08-24 · **Status**: Implemented (plan 0.74 K2); **the flush to zero is superseded by D411**
+(2026-11-12: the value set has subnormals, for literals and arithmetic); overflow to ±∞ still stands ·
 **Settles what D116 explicitly left open**
 
 ### The decision
@@ -8894,7 +8896,8 @@ the figures and the position: what used to abort the compile now reports.
 
 ## D124: `-3.14` Is One Literal, and the Fold Is the ONLY Lowering It Has
 
-**Date**: 2026-08-25 · **Status**: Implemented (plan 0.73 F3)
+**Date**: 2026-08-25 · **Status**: Implemented (plan 0.73 F3); **superseded by D410** (2026-11-12: a negated
+numeral is a literal by the grammar, at both types; `-0.0` is rejected)
 
 ### The decision
 
@@ -8994,7 +8997,8 @@ elaborator folded without a rule in `_⊢ᵢ_∶_⨾_`, that `()` would not type
 
 ## D125: `Int` Widens to `Float` Implicitly; `Float` Does Not Narrow to `Int`
 
-**Date**: 2026-08-27 · **Status**: Decided (plan 0.75 F4) ·
+**Date**: 2026-08-27 · **Status**: Decided (plan 0.75 F4); **the widening is superseded by D408** (2026-11-13:
+no implicit widening, `toFloat` is explicit); `Float` not narrowing still stands ·
 **Amends OCP-0002's "domain separation"** · **Extends D116's argument**
 
 ### The decision
@@ -9408,7 +9412,8 @@ was taken deliberately as its own decision — see D131.
 
 ## D128: Float `/` Is Correctly Rounded and TOTAL; Float `%` Has No Lowering
 
-**Date**: 2026-08-29 · **Status**: Decided (plan 0.73 follow-on) ·
+**Date**: 2026-08-29 · **Status**: Decided (plan 0.73 follow-on); **restated by D412** (2026-11-12: Float's
+division is `/.`, and `%` has no `Float` row) ·
 **Follows**: D113 (Float follows D054), D055 (total division, one semantics)
 
 ### The decision
@@ -22042,3 +22047,171 @@ in substance (failure soundness is `tt`; `compose-f-complete` takes the carried 
 * The D368 tests pin the new texts and carry no "Pinned" note. PuritySpec's coalgebra test is back to its
   unannotated form, and an annotated-second-arm case is added.
 * `UnboundVariable` is now only an unbound name: no generator reports it.
+
+## D408 — NO IMPLICIT WIDENING: AN `Int` MEETS `Float` ARITHMETIC ONLY THROUGH `toFloat` (2026-11-13)
+
+**Supersedes** D125's widening (its other half stands: `Float` never narrows to `Int` implicitly). **Decided**
+by the user 2026-11-13 (plan 0.150).
+
+### Context
+D125 let `1 + 1.5` compile by converting the `Int` operand to `Float` first. The intent was that an `Int` is a
+legal operand of `Float` arithmetic. Plan 0.150 makes the dotted operators IEEE's operations on level-2 values,
+each "exact, then rounded once" (IEEE 754 §4.3, `Spec.Float.Arith`): `x +. y = round (embed x + embed y)`. Read
+that way, an `Int` IS an exact number, and the faithful meaning of `n +. x` is `round (n + x)`, one rounding.
+D125's rule means `round (round n + x)`, two roundings, and the two differ once `n` is not exactly a `Float`:
+`|n| > 2^53` on x86_64 and riscv64 (binary64), `|n| > 2^24` on x86_32 (binary32). Worse, its comparisons lie:
+`9007199254740993 ==. 9007199254740992.0` is true (x86_32: `16777217 ==. 16777216.0`), because `n` is rounded
+onto the other operand before they are compared.
+
+### Options
+* **A. Exact mixed operands**: `n +. x = round (n + x)`. The right meaning, but no target has the instruction.
+  x86_32 can widen both operands to binary64 and narrow once (innocuous double rounding: 53 ≥ 2·24 + 2). The 64-bit
+  targets need a range guard and a software slow path above 2^53, a data-dependent performance cliff and
+  value-dependent timing hidden inside an innocent `n +. x`, or a branch-free exact sequence costing every mixed
+  operation 10–20 instructions.
+* **B. No implicit widening**: the programmer writes `toFloat n +. x`.
+* **C. Keep D125**: double rounding, and comparisons that are wrong above 2^p.
+
+### Decision
+* **B.** The dotted operators take two `Float`s. An `Int` operand is converted by `toFloat : Int -> Float`, IEEE's
+  `convertFromInt`, correctly rounded (one instruction on every target). The rounding is written where it happens,
+  and the cost of a mixed expression is visible in its source.
+* An undotted operator on an `Int` and a `Float`, and a dotted operator with an `Int` operand, are rejected; the
+  error names `toFloat`.
+* D125's literal warning (D123's channel: an `Int` literal above `2^(sig-bits+1)` does not convert exactly) applies
+  to `toFloat` of a literal.
+
+### Spec
+The Spec commit `76253dd09`: the typing has no rule for operands of different number types; `toFloat` is a generator whose rule
+means `prim p-i2f`. The `Rounded` theory is restated as the retraction of the exact numbers (`embed`, `round`),
+with the dotted operations derived from it.
+
+### Consequences
+* The corpus's mixed float tests are rewritten with `toFloat`. `Strata/Interpretations/Math/Float.once`'s
+  `intToFloat` signature goes (the conversion is the generator).
+* A remains open as a later extension: it only adds programs, so no program written under B changes meaning.
+  Whether its hidden cost is acceptable is that plan's question, not a formality.
+
+## D409 — THE NUMBER TYPES' OPERATORS ARE ONE CLOSED TABLE OF THEORIES; UNARY `-` IS ITS OWN THEORY, `Neg` (2026-11-12)
+
+**Refines** plan 0.147 §3.5.3 (a symbol carries its theory's laws) for the built-in types. **Decided** by the user
+2026-11-12/13 (plan 0.150 N1, N2, N3, N10).
+
+### Context
+The Spec typed the numeric operators by seven hand-written rules, one per (operator, type) pair: `s-neg`,
+`s-neg-float` (a literal only, D124), `s-arith`, `s-arith-float` and its `-il`/`-ir` widening (D125), `s-compare`
+(`Int * Int` only). Nothing tied them together, and they drifted: `-x` and `<` existed at `Int` only.
+
+### Decision
+* **A closed table** (`Spec.Theory`): a theory is a record of operations (`NegOps`, `RingOps`, `DivisionOps`,
+  `OrderOps`, `EqualityOps`, `RoundedOps`), a symbol (`Sym U k`) is interpreted in any structure for its theory
+  (`⟦_⟧ₛ`, derived symbols by their definitions), and `Has A U` lists which theories each number type models:
+  `Int` — `Neg`, `Ring`, `Division`, `Order`, `Equality`; `Float` — `Neg`, `Rounded`, `Order`, `Equality`. A
+  model (`Models.structure`) gives each row's operations at a target; a row missing an operation does not
+  compile.
+* **One typing rule per form**: `s-neg` and `s-binop` type an operator at `A` when `A`'s row has the symbol's
+  theory, and mean `num h o`, the symbol interpreted in the row's model. No rule is per type.
+* **`Neg` is its own theory** (N3 (b)), included in `Ring` and in `Rounded` by restriction. Its laws hold
+  exactly at both types: the involution `-(-x) = x` and `-(x * y) = (-x) * y`. A theory containing it adds its
+  own (`Ring`: `x + (-x) = 0`, `x - y = x + (-y)`; `Rounded`: negation is exact, it commutes with rounding, and
+  `x -. y = x +. (-y)`). Laws that fail are not in it: order reversal (`-minInt = minInt`), and at `Float`
+  `-(x + y) = (-x) + (-y)` (the sign of a zero sum). `-` takes no dot: negation does not round, so its laws hold
+  with the plain symbol.
+* **`Division` is a signature without laws** for now: its meaning is D055's definition (total, `a / 0 = −1`).
+  The law that characterises it, `a = (a / b)·b + a % b` with the remainder smaller than the divisor and of the
+  dividend's sign, is stated with the Ring's `+` and `*` and the Order, so it belongs to a theory that contains
+  Ring and Order. That is plan 0.147's structure declarations (step 6), where theories include others in
+  general; here only `Neg` is included.
+* **The implementation keeps the table** (N10): its typed surface has one `num h o`, elaboration maps it to the
+  Spec's `num h o`, and one function lowers it to the backend's per-instruction primitives (`Arith.Prim`).
+
+### Spec
+The Spec commit `76253dd09` (`Spec.Theory`, `Spec.Surface.Typing`'s `s-neg`/`s-binop`, Core `num`).
+
+### Consequences
+* Plan 0.147 step 6 (structure declarations) expresses this table for `Int` and `Float` without changing what
+  an operator means.
+
+## D410 — A NEGATED NUMERAL IS A LITERAL, BY THE GRAMMAR, AT BOTH TYPES; `-0.0` IS NEGATIVE ZERO (2026-11-12)
+
+**Supersedes** D124 (float negation is a literal fold, and the fold is its only lowering). **Decided** by the user
+2026-11-12 (plan 0.150 N4); `-0.0` decided 2026-11-15 (the merge review, replacing N5's rejection).
+
+### Context
+`-5` was `prim p-neg (lit 5)` in the Spec, read back as the literal `-5` only by the fit check (`negLits`), while
+`-3.14` was folded by its own rule into a literal whose `Decimal` significand is a `ℤ`. `ℤ` has no `-0`, so `-0.0`
+meant `+0.0`, where IEEE has a negative zero.
+
+### Decision
+* **In the grammar**: `-` immediately before a numeral, in unary position, parses to a signed literal (`RInt
+  (-n)`, a negative `RFloat`), so `RNeg` never wraps a literal and the typing has one rule per form. `negLits` and
+  `s-neg-float` are gone; the fit check counts literals as written (`-9223372036854775808` fits).
+* `x - 5` is subtraction. `f -5` is `f - 5` (an argument does not start with `-`; write `f (-5)`), a type error
+  when `f` is a function.
+* **A decimal is a sign, a magnitude and an exponent** (`Spec.Float.Decimal`), and a float literal's value is the
+  magnitude rounded with its sign (`roundQ`). So `-0.0` is negative zero, the same value as `-(0.0)` and as
+  `-x` at `x = 0.0`, and a literal that is not zero but rounds to zero (`-1e-400`) is `-0.0` too, as IEEE says.
+  One rule, no exception: rounding is odd (`round (−r) = −round r`, the `Rounded` laws), so applying the sign
+  after rounding the magnitude is the same as rounding the signed number, zero included.
+* Not taken: rejecting `-0.0` (plan 0.150 N5). Its reason was the representation: a significand in `ℤ` has no
+  `−0`. With the sign beside the digits that reason is gone, and the rejection was an exception in the literal's
+  meaning (`-0.0` rejected while `-0.000…01` meant `-0.0`).
+* Tokens carry no whitespace, so `- 5` in unary position is the same literal as `-5`, and `- 0.0` the same as
+  `-0.0` (LitRangeSpec, FloatSpec).
+
+### Consequences
+* FloatSpec accepts `-0.0`, `- 0.0` and `-(0.0)`; FloatEmitSpec checks that `-0.0` emits negative zero's bits
+  on the three arches.
+* Emitted code (`tests/codegen-measure.sh same` against master, the three arches): `neg-int-value-lift` is the one
+  program that builds on both sides and differs. Its `-5` is now a literal, not `p-neg` of `5`, and its `.text`
+  shrinks (riscv64: 5736 → 5720 bytes). The other 101 are byte-identical; the float programs use the dotted
+  operators and build on the branch only.
+
+## D411 — `Float` IS IEEE 754 LEVEL 2: SIGNED ZEROS, ±∞, ONE NaN; A WORD IS ITS ENCODING (2026-11-12)
+
+**Restates** D113 (and D055's canonical NaN). **Decided** by the user 2026-11-12 (plan 0.150 N6 (a)).
+
+### Context
+The Spec mixed IEEE 754's levels (§3.2): `FloatVal` was almost level 2 (one signless NaN) but had no `-0`, while
+`Float`'s values were words and its unused `fneg` flipped a NaN's sign bit, which would have made a second,
+observable NaN.
+
+### Decision
+* **`Float`'s meaning is a level-2 value** (`FloatVal`): signed zeros, ±∞, one NaN, each operation defined on
+  values, exact then rounded once. Negation is one structural rule (flip the sign of whatever has one; NaN has
+  none). Signed-zero results (`-1.0 *. 0.0`, `1.0 /. -0.0`) follow IEEE by construction.
+* **Subnormals are values** (gradual underflow, IEEE 754 §7.5), for literals and for arithmetic: D118's flush to
+  zero is superseded (`1e-40` at binary32 is `0x000116c2`). A result below the least subnormal rounds to a zero
+  of its sign. FloatEmitSpec pins both formats.
+* **A word is the encoding** at the target's format: the machine keeps words, and a word means `decode` of it
+  (`RelGV Float x y = x ≡ decode F y`). Every NaN pattern decodes to the one NaN.
+* **One NaN is a fact of the value set**, and the canonical NaN is its encoding (`encode fv-nan`). Where bits are
+  observable the world reads a word at the format (`canonB`), and `emitF` writes the canonical pattern.
+  Negation is the sign-bit flip on the word; a NaN it flips is the same value.
+
+### Spec
+The Spec commit `76253dd09` (`Spec.Float.Value`, `Encoding`, `Arith`); `FloatFormat` has `sig-pos`/`exp-pos`.
+
+## D412 — `Float`'S OPERATORS: DOTTED IEEE ARITHMETIC AND COMPARISON, `<` IS totalOrder, `==` IS IDENTITY (2026-11-12)
+
+**Restates** D128; an `Int` meets the dotted operators through `toFloat` (D408). **Decided** by the user
+2026-11-12 (plan 0.150 N7, N8; plan 0.147 §3.6).
+
+### Decision
+* **Arithmetic rounds, so it is dotted**: `+. -. *. /.` are IEEE's operations; `+ - * /` at `Float` are rejected,
+  and the error names the dotted operator ("`+` is not defined at Float, whose addition rounds: use `+.`"). `%` has
+  no `Float` meaning (D128). A dotted operator at `Int` is rejected naming the undotted one. No transition period.
+* **IEEE comparison is dotted**: `==. !=. <. <=. >. >=.`, false on a NaN (`NaN ==. NaN` is false), `-0.0 ==. 0.0`
+  true.
+* **`<` is `totalOrder`** (`-0.0 < 0.0`, the one NaN above everything), and `<= > >=` from it as at `Int`.
+* **`==` is identity** (`χ_Δ`: `NaN == NaN`, `-0.0 != 0.0`), and writing `==` or `!=` at `Float` directly warns,
+  naming `==.`. A use through a generic definition does not warn.
+* An `Int` meets them only through `toFloat` (D408).
+
+### Consequences
+* The corpus is written with the dotted operators; the comparisons are compiled as a block computing a 0/1 word
+  (`afcmp`), like the `Int` ones. On the machine's words, identity `==` and `totalOrder` canonicalise a NaN
+  before comparing (D411: every NaN pattern is the one NaN).
+* The `==` warning's walk, `Once.Compile.floatIdentityEqDefs`, raises `runs-unproved.allow` by one line
+  (MERGE.md §6): it carries no theorem, since a warning is a report (D123). It reuses the loop warning's walk,
+  whose `silentRoundDefs-aux` is renamed `defsWith` (its allow line renamed with it).

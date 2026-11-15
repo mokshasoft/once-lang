@@ -43,7 +43,8 @@ open import Once.Format.Proof.Counts using (Ind; ind-pdecl; anchors)
 open import Once.Format.Proof.GAnchors using (Good; cD; Seg; NoNl; anchors-++; Nls; DeclSegs; decl-seg; decls-segs)
 open import Once.Format.Proof.Lexing using (Printable; p-word; p-int; p-float; p-sym; Sym; s-lparen; s-rparen;
   s-lbrace; s-rbrace; s-colon; s-equals; s-arrow; s-caret1; s-caret0; s-caretw; s-lambda; s-comma; s-semicolon; s-at;
-  s-pipe; s-dot; s-plus; s-minus; s-star; s-slash; s-percent; s-ampersand; s-lt; s-le; s-gt; s-ge; s-eqeq; s-neq; s-bang)
+  s-pipe; s-dot; s-plus; s-minus; s-star; s-slash; s-percent; s-ampersand; s-lt; s-le; s-gt; s-ge; s-eqeq; s-neq; s-bang;
+  s-plusd; s-minusd; s-stard; s-slashd; s-ltd; s-led; s-gtd; s-ged; s-eqeqd; s-neqd)
 open import Once.Format.Proof.LexOK using (LexOK; Other; o-nl; o-eof; o-str)
 open import Once.Format.Proof.ExprBase using (word-notOperator)
 
@@ -88,6 +89,16 @@ good-pr (p-sym s-ge)       = tt
 good-pr (p-sym s-eqeq)     = tt
 good-pr (p-sym s-neq)      = tt
 good-pr (p-sym s-bang)     = tt
+good-pr (p-sym s-plusd) = tt
+good-pr (p-sym s-minusd) = tt
+good-pr (p-sym s-stard) = tt
+good-pr (p-sym s-slashd) = tt
+good-pr (p-sym s-ltd) = tt
+good-pr (p-sym s-led) = tt
+good-pr (p-sym s-gtd) = tt
+good-pr (p-sym s-ged) = tt
+good-pr (p-sym s-eqeqd) = tt
+good-pr (p-sym s-neqd) = tt
 
 good-ok : ∀ {t} → LexOK t → Good t
 good-ok (inj₁ p)     = good-pr p

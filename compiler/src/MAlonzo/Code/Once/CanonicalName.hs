@@ -127,7 +127,13 @@ du_genWord'63''45'no_32 v0
                                                                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                     (coe ("Out" :: Data.Text.Text))
                                                                     (coe
-                                                                       MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))))))))))))))))) in
+                                                                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                                                                       (coe
+                                                                          ("toFloat"
+                                                                           ::
+                                                                           Data.Text.Text))
+                                                                       (coe
+                                                                          MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))))))))))))))))) in
     coe
       (case coe v1 of
          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v2 v3
@@ -163,13 +169,15 @@ du_bare'45'NotGenerator_56
                         (coe
                            MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
                            (coe
-                              MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))
+                              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
+                              (coe
+                                 MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))))))
 -- Once.CanonicalName._≟ᶜ_
-d__'8799''7580'__76 ::
+d__'8799''7580'__78 ::
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d__'8799''7580'__76 v0 v1
+d__'8799''7580'__78 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Name.C_canonical_12 v2
         -> case coe v1 of

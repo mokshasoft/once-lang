@@ -37,9 +37,8 @@ open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P�
 open import Once.Type.Poly
 open import Once.Type
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.Spec.Surface.Syntax as Raw using (BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+open import Once.Spec.Surface.Syntax as Raw using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.TypeCheck.Raw using (isComparisonOp; isArithmeticOp; isFloatArithmeticOp)
 open import Once.TypeCheck.Raw as Raw
 open import Once.Spec.Name using (CanonicalName; canonical; gen; NotGenerator)
 open import Once.Spec.Name using (generatorNS)
@@ -272,6 +271,7 @@ data GenView : CanonicalName → Set where
   gv-inl      : GenView (gen "inl")
   gv-inr      : GenView (gen "inr")
   gv-unit     : GenView (gen "unit")
+  gv-toFloat  : GenView (gen "toFloat")
   -- D134/D136: `gv-other` CARRIES the property it decides. Without this the
   -- constructor is uninformative (`∀ {cn}`), so the elaborator's own dispatch
   -- could not discharge `t-var-resolved`'s side condition — the analogue of
@@ -280,16 +280,16 @@ data GenView : CanonicalName → Set where
 
 -- A two-component name whose namespace is NOT `Generators` is no generator:
 -- one `refl`-match recovers the namespace, so a single polymorphic refutation
--- fills all eight slots.
+-- fills all nine slots.
 notGen-ns : ∀ {ns g} → ¬ (ns ≡ generatorNS) → NotGenerator (canonical (ns ∷ g ∷ []))
-notGen-ns {ns} {g} ¬ns = f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ []ᴬ
+notGen-ns {ns} {g} ¬ns = f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ []ᴬ
   where
     f : ∀ {h} → canonical (ns ∷ g ∷ []) ≢ gen h
     f refl = ¬ns refl
 
 -- Any other component count is disjoint from `gen _` by LENGTH.
 notGen-shape : ∀ {ps} → (∀ {h : String} → canonical ps ≢ gen h) → NotGenerator (canonical ps)
-notGen-shape f = f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ []ᴬ
+notGen-shape f = f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ []ᴬ
 
 classifyGen : (cn : CanonicalName) → GenView cn
 classifyGen (canonical (ns ∷ g ∷ [])) with ns ≟ₛ generatorNS
@@ -310,7 +310,9 @@ classifyGen (canonical (ns ∷ g ∷ [])) with ns ≟ₛ generatorNS
 ...               | yes refl = gv-inr
 ...               | no  ¬ir with g ≟ₛ "unit"
 ...                 | yes refl = gv-unit
-...                 | no  ¬un = gv-other
+...                 | no  ¬un with g ≟ₛ "toFloat"
+...                   | yes refl = gv-toFloat
+...                   | no  ¬tf = gv-other
                                  ( (λ e → ¬id (gen-inj e))
                                  ∷ᴬ (λ e → ¬fs (gen-inj e))
                                  ∷ᴬ (λ e → ¬sn (gen-inj e))
@@ -319,6 +321,7 @@ classifyGen (canonical (ns ∷ g ∷ [])) with ns ≟ₛ generatorNS
                                  ∷ᴬ (λ e → ¬il (gen-inj e))
                                  ∷ᴬ (λ e → ¬ir (gen-inj e))
                                  ∷ᴬ (λ e → ¬un (gen-inj e))
+                                 ∷ᴬ (λ e → ¬tf (gen-inj e))
                                  ∷ᴬ []ᴬ )
 classifyGen (canonical [])              = gv-other (notGen-shape λ ())
 classifyGen (canonical (_ ∷ []))        = gv-other (notGen-shape λ ())

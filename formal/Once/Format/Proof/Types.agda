@@ -24,8 +24,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 open import Relation.Nullary using (¬_)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Finite; pureᶠ; actᶠ)
-open import Once.Spec.Surface.Lexing using (Token; TWord; TLParen; TRParen; TArrow; TCaret0; TCaret1; TCaretW;
-  TPlus; TStar)
+open import Once.Spec.Surface.Lexing using (Token; TWord; TLParen; TRParen; TArrow; TCaret0; TCaret1; TCaretW)
+open import Once.Adequacy.SpecTokNames
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_;
   PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_)
 open import Once.Spec.Surface.Grammar using (Starts; starts; GradeToken; g0; g1; gw; TypeAlg; module Types)

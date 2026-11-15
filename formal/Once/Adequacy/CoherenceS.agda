@@ -63,8 +63,12 @@ open import Once.Type.Honest using (HonestFFI)
 open import Once.Core.Decl using (declS; ⌜declS⌝)
 open import Once.Functor.Translate using (IsConcrete-irrelevant; WFFun-irrelevant)
 open import Once.Type.Grade using (≤q-Many)
-open import Once.Surface.Syntax using (Expr; var; sigOp; coerce; app; effApp; comp'; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv;
-                                       lt; le; gt; ge; eq; ne)
+open import Once.Surface.Syntax using (Expr; var; sigOp; coerce; app; effApp; comp'; num)
+open import Once.Surface.Numeric using (numBin)
+open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; ‵neg)
+open import Once.Spec.Surface.Operator using (binSym; BinSym)
+open BinSym using (theory; symbol)
+open import Once.TypeCheck.NumTable using (has-unique; binDom)
 import Once.IR as IR
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU hiding (_⊢_⇒_↝_; _⊢_⇐_↝_; _⊢_⇐_⇒[_]↦_↝_)
@@ -73,7 +77,7 @@ open import Once.Denotation.RealizeS Σ S nm Ok OkS inline Δ
 open import Once.Adequacy.CoherenceLaws fmt
 open import Once.Adequacy.CoherenceLawsWrap fmt
 open import Once.Adequacy.CoherenceHet fmt
-  using (_≅_; ≅i; ≅-refl; ≅-sym; ≅-of; pair-h; neg-h; let-h; app-h; effApp-h; comp-h; copair-h; fork-h; curry-h; coerce-h;
+  using (_≅_; ≅i; ≅-refl; ≅-sym; ≅-of; pair-h; num-h; let-h; app-h; effApp-h; comp-h; copair-h; fork-h; curry-h; coerce-h;
          lam-h; lamd-h; cata-h; ana-h; loop-h; catad-h; spine-h; gf-h; pairc-h; twice-h; lamc-h; cg-h; cf-h; casec-h;
          casej-h; copairj-h; forkc-h; catac-h; di-h)
 open _≅_ using (≅-ty)
@@ -141,17 +145,20 @@ private
   dgen : ∀ {d w} → Ok d → w ∈ genNames → nm d ≡ gen w → ⊥
   dgen ok m e = notGen m (subst NotGenerator e (gen-ok ok))
 
-  -- …so a generator other than `unit` does not synthesize…
-  nsGen : ∀ {n} {L : Locals m n} {w A t Ψ} {d : L ⊢ R.RResolved (gen w) ⇒ A ↝ t} → w ∈ genNames → w ≢ "unit" → Use⇒ d Ψ → ⊥
-  nsGen m nu u-unit-g = nu refl
-  nsGen m nu (u-sigop {ng = ng} _ _) = notGen m ng
-  nsGen m nu (u-def {e = e} {ok = ok}) = dgen ok m e
+  -- …so a generator other than `unit` and `toFloat` does not synthesize…
+  nsGen : ∀ {n} {L : Locals m n} {w A t Ψ} {d : L ⊢ R.RResolved (gen w) ⇒ A ↝ t} → w ∈ genNames → w ≢ "unit"
+        → w ≢ "toFloat" → Use⇒ d Ψ → ⊥
+  nsGen m nu nt u-unit-g = nu refl
+  nsGen m nu nt u-toFloat = nt refl
+  nsGen m nu nt (u-sigop {ng = ng} _ _) = notGen m ng
+  nsGen m nu nt (u-def {e = e} {ok = ok}) = dgen ok m e
 
   -- …and neither does a polymorphic definition: it is no declaration in
   -- scope, and not the monomorphic one its name finds.
   nsPoly : ∀ {n} {L : Locals m n} {c A t Ψ} {d : L ⊢ R.RResolved c ⇒ A ↝ t} {d₀ : Fin s} → Ok d₀ → nm d₀ ≡ c
          → 0 < arity (S !! d₀) → Use⇒ d Ψ → ⊥
   nsPoly ok e a0< u-unit-g = dgen ok unit∈ e
+  nsPoly ok e a0< u-toFloat = dgen ok toFloat∈ e
   nsPoly ok e a0< (u-sigop {T = T} {ok = oks} _ _) = sig-ok ok (subst (λ c → OkS c T) (sym e) oks)
   nsPoly ok e a0< (u-def {e = e′} {a = a0} {ok = ok′}) =
     0<0 (subst (λ x → arity (S !! x) ≡ 0) (sym (inj-ok ok ok′ (trans e (sym e′)))) a0) a0<
@@ -220,6 +227,26 @@ module _ {n} {Γ : Ctx m n} where
                → X ≡ Z → x ≅ y → coerce u (coerce t x) ≅ y
   twice-refl-h {x = x} t u refl (≅i refl refl h) =
     ≅i refl refl (≈-trans (coerce-trans t u x) (≈-trans (coerce-uniq _ (<:-refl _) x) (≈-trans (coerce-refl x) h)))
+
+  -- A numeric symbol: the operands' coherence fixes the number type, and a
+  -- number type has a theory in one way (`has-unique`).
+  neg-at : ∀ {A A′ : NumTy} (h : Has A Neg) (h′ : Has A′ Neg) {Ψ Ψ′ : Usage n}
+             {a : Expr Γ Ψ ⌜ A ⌝ⁿ} {a′ : Expr Γ Ψ′ ⌜ A′ ⌝ⁿ}
+         → a ≅ a′ → num h ‵neg a ≅ num h′ ‵neg a′
+  neg-at h h′ e with ⌜⌝ⁿ-inj (≅-ty e)
+  ... | refl rewrite has-unique h h′ = num-h h′ ‵neg e
+
+  subst-≅ : ∀ {Ψ Ψ′ : Usage n} {X Y : Ty m} (p : X ≡ Y) {x : Expr Γ Ψ X} {x′ : Expr Γ Ψ′ X}
+          → x ≅ x′ → subst (Expr Γ Ψ) p x ≅ subst (Expr Γ Ψ′) p x′
+  subst-≅ refl e = e
+
+  binop-at : ∀ op {A A′ : NumTy} (h : Has A (theory (binSym op))) (h′ : Has A′ (theory (binSym op)))
+               {Ψ₁ Ψ₁′ Ψ₂ Ψ₂′ : Usage n} {a : Expr Γ Ψ₁ ⌜ A ⌝ⁿ} {a′ : Expr Γ Ψ₁′ ⌜ A′ ⌝ⁿ}
+               {b : Expr Γ Ψ₂ ⌜ A ⌝ⁿ} {b′ : Expr Γ Ψ₂′ ⌜ A′ ⌝ⁿ}
+           → a ≅ a′ → b ≅ b′ → numBin op A h a b ≅ numBin op A′ h′ a′ b′
+  binop-at op {A} h h′ ea eb with ⌜⌝ⁿ-inj (≅-ty ea)
+  ... | refl rewrite has-unique h h′ =
+    num-h h′ (symbol (binSym op)) (subst-≅ (sym (binDom op A)) (pair-h ea eb))
 
   bin-h : ∀ {X Y Z : Ty m} (f : ∀ {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ X → Expr Γ Ψ₂ Y → Expr Γ (Ψ₁ +ᵘ Ψ₂) Z)
           (fc : ∀ {Ψ₁ Ψ₂ : Usage n} {a a′ : Expr Γ Ψ₁ X} {b b′ : Expr Γ Ψ₂ Y} → a ≈ a′ → b ≈ b′ → f a b ≈ f a′ b′)
@@ -392,6 +419,11 @@ mutual
   coh⇒ sh u-unit   u-unit   = ≅-refl
   coh⇒ sh u-unit-g u-unit-g = ≅-refl
   coh⇒ sh u-unit-g (u-sigop {ng = ng} _ _) = ⊥-elim (notGen unit∈ ng)
+  coh⇒ sh u-toFloat u-toFloat = ≅-refl
+  coh⇒ sh u-toFloat (u-sigop {ng = ng} _ _) = ⊥-elim (notGen toFloat∈ ng)
+  coh⇒ sh u-toFloat (u-def {e = e} {ok = ok}) = ⊥-elim (dgen ok toFloat∈ e)
+  coh⇒ sh (u-sigop {ng = ng} _ _) u-toFloat = ⊥-elim (notGen toFloat∈ ng)
+  coh⇒ sh (u-def {e = e} {ok = ok}) u-toFloat = ⊥-elim (dgen ok toFloat∈ e)
   coh⇒ sh u-unit-g (u-def {e = e} {ok = ok}) = ⊥-elim (dgen ok unit∈ e)
   coh⇒ sh (u-var {v = v}) (u-var {v = v′}) = var-h (∋-at v v′) (lookup-shape sh v) (lookup-shape sh v′)
   coh⇒ sh (u-sigop {ok = ok} k h) (u-sigop {ok = ok′} k′ h′) = sigop-h (oks-fun ok ok′) k k′ h h′
@@ -403,136 +435,12 @@ mutual
   coh⇒ sh (u-def {e = e} {ok = ok}) (u-sigop {T = T} {ok = oks} _ _) = ⊥-elim (sig-ok ok (subst (λ c → OkS c T) (sym e) oks))
   coh⇒ sh (u-annot u) (u-annot u′) = coh⇐ sh u u′ refl
   coh⇒ sh (u-pair ua ub) (u-pair ua′ ub′) = pair-h (coh⇒ sh ua ua′) (coh⇒ sh ub ub′)
-  coh⇒ sh (u-neg u) (u-neg u′) = neg-h (coh⇒ sh u u′)
-  coh⇒ sh (u-neg ()) u-neg-float
-  coh⇒ sh u-neg-float (u-neg ())
-  coh⇒ sh u-neg-float u-neg-float = ≅-refl
+  coh⇒ sh (u-neg {h = h} u) (u-neg {h = h′} u′) = neg-at h h′ (coh⇒ sh u u′)
   coh⇒ sh (u-let u₁ u₂) (u-let u₁′ u₂′) = let-at sh (≅-ty (coh⇒ sh u₁ u₁′)) u₁ u₁′ u₂ u₂′
   coh⇒ sh (u-case {j = j} us ul ur) (u-case {j = j′} us′ ul′ ur′) =
     let E = +-inj (≅-ty (coh⇒ sh us us′)) in case-at sh {j = j} {j′ = j′} (proj₁ E) (proj₂ E) us ul ur us′ ul′ ur′
-  coh⇒ sh (u-arith {o = ia-add} a b) (u-arith {o = ia-add} a′ b′) = bin-h add add-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith {o = ia-sub} a b) (u-arith {o = ia-sub} a′ b′) = bin-h sub sub-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith {o = ia-mul} a b) (u-arith {o = ia-mul} a′ b′) = bin-h mul mul-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith {o = ia-div} a b) (u-arith {o = ia-div} a′ b′) = bin-h div div-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith {o = ia-mod} a b) (u-arith {o = ia-mod} a′ b′) = bin-h mod' mod-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith-float {o = fa-add} a b) (u-arith-float {o = fa-add} a′ b′) = bin-h fadd fadd-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith-float {o = fa-sub} a b) (u-arith-float {o = fa-sub} a′ b′) = bin-h fsub fsub-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith-float {o = fa-mul} a b) (u-arith-float {o = fa-mul} a′ b′) = bin-h fmul fmul-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith-float {o = fa-div} a b) (u-arith-float {o = fa-div} a′ b′) = bin-h fdiv fdiv-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith-float-il {o = fa-add} a b) (u-arith-float-il {o = fa-add} a′ b′) =
-    bin-h (λ x y → fadd (i2f x) y) (λ h k → fadd-cong (i2f-cong h) k) (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith-float-il {o = fa-sub} a b) (u-arith-float-il {o = fa-sub} a′ b′) =
-    bin-h (λ x y → fsub (i2f x) y) (λ h k → fsub-cong (i2f-cong h) k) (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith-float-il {o = fa-mul} a b) (u-arith-float-il {o = fa-mul} a′ b′) =
-    bin-h (λ x y → fmul (i2f x) y) (λ h k → fmul-cong (i2f-cong h) k) (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith-float-il {o = fa-div} a b) (u-arith-float-il {o = fa-div} a′ b′) =
-    bin-h (λ x y → fdiv (i2f x) y) (λ h k → fdiv-cong (i2f-cong h) k) (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith-float-ir {o = fa-add} a b) (u-arith-float-ir {o = fa-add} a′ b′) =
-    bin-h (λ x y → fadd x (i2f y)) (λ h k → fadd-cong h (i2f-cong k)) (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith-float-ir {o = fa-sub} a b) (u-arith-float-ir {o = fa-sub} a′ b′) =
-    bin-h (λ x y → fsub x (i2f y)) (λ h k → fsub-cong h (i2f-cong k)) (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith-float-ir {o = fa-mul} a b) (u-arith-float-ir {o = fa-mul} a′ b′) =
-    bin-h (λ x y → fmul x (i2f y)) (λ h k → fmul-cong h (i2f-cong k)) (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith-float-ir {o = fa-div} a b) (u-arith-float-ir {o = fa-div} a′ b′) =
-    bin-h (λ x y → fdiv x (i2f y)) (λ h k → fdiv-cong h (i2f-cong k)) (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-compare {o = cmp-lt} a b) (u-compare {o = cmp-lt} a′ b′) = bin-h lt lt-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-compare {o = cmp-le} a b) (u-compare {o = cmp-le} a′ b′) = bin-h le le-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-compare {o = cmp-gt} a b) (u-compare {o = cmp-gt} a′ b′) = bin-h gt gt-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-compare {o = cmp-ge} a b) (u-compare {o = cmp-ge} a′ b′) = bin-h ge ge-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-compare {o = cmp-eq} a b) (u-compare {o = cmp-eq} a′ b′) = bin-h eq eq-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-compare {o = cmp-ne} a b) (u-compare {o = cmp-ne} a′ b′) = bin-h ne ne-cong (coh⇒ sh a a′) (coh⇒ sh b b′)
-  coh⇒ sh (u-arith {o = ia-add} a b) (u-arith-float {o = fa-add} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith {o = ia-sub} a b) (u-arith-float {o = fa-sub} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith {o = ia-mul} a b) (u-arith-float {o = fa-mul} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith {o = ia-div} a b) (u-arith-float {o = fa-div} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith {o = ia-mod} _ _) (u-arith-float {o = ()} _ _)
-  coh⇒ sh (u-arith {o = ia-add} a b) (u-arith-float-il {o = fa-add} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh b b′)))
-  coh⇒ sh (u-arith {o = ia-sub} a b) (u-arith-float-il {o = fa-sub} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh b b′)))
-  coh⇒ sh (u-arith {o = ia-mul} a b) (u-arith-float-il {o = fa-mul} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh b b′)))
-  coh⇒ sh (u-arith {o = ia-div} a b) (u-arith-float-il {o = fa-div} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh b b′)))
-  coh⇒ sh (u-arith {o = ia-mod} _ _) (u-arith-float-il {o = ()} _ _)
-  coh⇒ sh (u-arith {o = ia-add} a b) (u-arith-float-ir {o = fa-add} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith {o = ia-sub} a b) (u-arith-float-ir {o = fa-sub} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith {o = ia-mul} a b) (u-arith-float-ir {o = fa-mul} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith {o = ia-div} a b) (u-arith-float-ir {o = fa-div} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith {o = ia-mod} _ _) (u-arith-float-ir {o = ()} _ _)
-  coh⇒ sh (u-arith {o = ia-add} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith {o = ia-sub} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith {o = ia-mul} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith {o = ia-div} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith {o = ia-mod} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith-float {o = fa-add} a b) (u-arith {o = ia-add} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float {o = fa-sub} a b) (u-arith {o = ia-sub} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float {o = fa-mul} a b) (u-arith {o = ia-mul} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float {o = fa-div} a b) (u-arith {o = ia-div} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float {o = fa-add} a b) (u-arith-float-il {o = fa-add} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float {o = fa-sub} a b) (u-arith-float-il {o = fa-sub} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float {o = fa-mul} a b) (u-arith-float-il {o = fa-mul} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float {o = fa-div} a b) (u-arith-float-il {o = fa-div} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float {o = fa-add} a b) (u-arith-float-ir {o = fa-add} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh b b′))))
-  coh⇒ sh (u-arith-float {o = fa-sub} a b) (u-arith-float-ir {o = fa-sub} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh b b′))))
-  coh⇒ sh (u-arith-float {o = fa-mul} a b) (u-arith-float-ir {o = fa-mul} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh b b′))))
-  coh⇒ sh (u-arith-float {o = fa-div} a b) (u-arith-float-ir {o = fa-div} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh b b′))))
-  coh⇒ sh (u-arith-float {o = fa-add} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith-float {o = fa-sub} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith-float {o = fa-mul} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith-float {o = fa-div} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith-float-il {o = fa-add} a b) (u-arith {o = ia-add} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh b b′))))
-  coh⇒ sh (u-arith-float-il {o = fa-sub} a b) (u-arith {o = ia-sub} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh b b′))))
-  coh⇒ sh (u-arith-float-il {o = fa-mul} a b) (u-arith {o = ia-mul} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh b b′))))
-  coh⇒ sh (u-arith-float-il {o = fa-div} a b) (u-arith {o = ia-div} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh b b′))))
-  coh⇒ sh (u-arith-float-il {o = fa-add} a b) (u-arith-float {o = fa-add} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith-float-il {o = fa-sub} a b) (u-arith-float {o = fa-sub} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith-float-il {o = fa-mul} a b) (u-arith-float {o = fa-mul} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith-float-il {o = fa-div} a b) (u-arith-float {o = fa-div} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith-float-il {o = fa-add} a b) (u-arith-float-ir {o = fa-add} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith-float-il {o = fa-sub} a b) (u-arith-float-ir {o = fa-sub} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith-float-il {o = fa-mul} a b) (u-arith-float-ir {o = fa-mul} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith-float-il {o = fa-div} a b) (u-arith-float-ir {o = fa-div} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh a a′)))
-  coh⇒ sh (u-arith-float-il {o = fa-add} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith-float-il {o = fa-sub} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith-float-il {o = fa-mul} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith-float-il {o = fa-div} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith-float-ir {o = fa-add} a b) (u-arith {o = ia-add} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float-ir {o = fa-sub} a b) (u-arith {o = ia-sub} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float-ir {o = fa-mul} a b) (u-arith {o = ia-mul} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float-ir {o = fa-div} a b) (u-arith {o = ia-div} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float-ir {o = fa-add} a b) (u-arith-float {o = fa-add} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh b b′)))
-  coh⇒ sh (u-arith-float-ir {o = fa-sub} a b) (u-arith-float {o = fa-sub} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh b b′)))
-  coh⇒ sh (u-arith-float-ir {o = fa-mul} a b) (u-arith-float {o = fa-mul} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh b b′)))
-  coh⇒ sh (u-arith-float-ir {o = fa-div} a b) (u-arith-float {o = fa-div} a′ b′) = ⊥-elim (Int≢Float (≅-ty (coh⇒ sh b b′)))
-  coh⇒ sh (u-arith-float-ir {o = fa-add} a b) (u-arith-float-il {o = fa-add} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float-ir {o = fa-sub} a b) (u-arith-float-il {o = fa-sub} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float-ir {o = fa-mul} a b) (u-arith-float-il {o = fa-mul} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float-ir {o = fa-div} a b) (u-arith-float-il {o = fa-div} a′ b′) = ⊥-elim (Int≢Float (sym (≅-ty (coh⇒ sh a a′))))
-  coh⇒ sh (u-arith-float-ir {o = fa-add} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith-float-ir {o = fa-sub} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith-float-ir {o = fa-mul} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-arith-float-ir {o = fa-div} _ _) (u-compare {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-lt} _ _) (u-arith {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-le} _ _) (u-arith {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-gt} _ _) (u-arith {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-ge} _ _) (u-arith {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-eq} _ _) (u-arith {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-ne} _ _) (u-arith {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-lt} _ _) (u-arith-float {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-le} _ _) (u-arith-float {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-gt} _ _) (u-arith-float {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-ge} _ _) (u-arith-float {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-eq} _ _) (u-arith-float {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-ne} _ _) (u-arith-float {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-lt} _ _) (u-arith-float-il {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-le} _ _) (u-arith-float-il {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-gt} _ _) (u-arith-float-il {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-ge} _ _) (u-arith-float-il {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-eq} _ _) (u-arith-float-il {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-ne} _ _) (u-arith-float-il {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-lt} _ _) (u-arith-float-ir {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-le} _ _) (u-arith-float-ir {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-gt} _ _) (u-arith-float-ir {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-ge} _ _) (u-arith-float-ir {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-eq} _ _) (u-arith-float-ir {o = ()} _ _)
-  coh⇒ sh (u-compare {o = cmp-ne} _ _) (u-arith-float-ir {o = ()} _ _)
+  coh⇒ sh (u-binop {op = op} {h = h} u₁ u₂) (u-binop {h = h′} u₁′ u₂′) =
+    binop-at op h h′ (coh⇒ sh u₁ u₁′) (coh⇒ sh u₂ u₂′)
   coh⇒ sh (u-id-app u)       (u-id-app u′)       = idapp-h sh {u = u} {u′ = u′} (coh⇒ sh u u′)
   coh⇒ sh (u-fst-app u)      (u-fst-app u′)      = fstapp-h sh {u = u} {u′ = u′} (coh⇒ sh u u′)
   coh⇒ sh (u-snd-app u)      (u-snd-app u′)      = sndapp-h sh {u = u} {u′ = u′} (coh⇒ sh u u′)
@@ -709,13 +617,13 @@ mutual
   coh⇒⇐ sh u (u-inl-app _)     = ⊥-elim (ns-inl (der⇒ u))
   coh⇒⇐ sh u (u-inr-app _)     = ⊥-elim (ns-inr (der⇒ u))
   coh⇒⇐ sh u (u-initial-app _) = ⊥-elim (ns-initial (der⇒ u))
-  coh⇒⇐ sh u u-id = ⊥-elim (nsGen id∈ (λ ()) u)
-  coh⇒⇐ sh u u-fst = ⊥-elim (nsGen fst∈ (λ ()) u)
-  coh⇒⇐ sh u u-snd = ⊥-elim (nsGen snd∈ (λ ()) u)
-  coh⇒⇐ sh u u-terminal = ⊥-elim (nsGen terminal∈ (λ ()) u)
-  coh⇒⇐ sh u u-initial = ⊥-elim (nsGen initial∈ (λ ()) u)
-  coh⇒⇐ sh u u-inl = ⊥-elim (nsGen inl∈ (λ ()) u)
-  coh⇒⇐ sh u u-inr = ⊥-elim (nsGen inr∈ (λ ()) u)
+  coh⇒⇐ sh u u-id = ⊥-elim (nsGen id∈ (λ ()) (λ ()) u)
+  coh⇒⇐ sh u u-fst = ⊥-elim (nsGen fst∈ (λ ()) (λ ()) u)
+  coh⇒⇐ sh u u-snd = ⊥-elim (nsGen snd∈ (λ ()) (λ ()) u)
+  coh⇒⇐ sh u u-terminal = ⊥-elim (nsGen terminal∈ (λ ()) (λ ()) u)
+  coh⇒⇐ sh u u-initial = ⊥-elim (nsGen initial∈ (λ ()) (λ ()) u)
+  coh⇒⇐ sh u u-inl = ⊥-elim (nsGen inl∈ (λ ()) (λ ()) u)
+  coh⇒⇐ sh u u-inr = ⊥-elim (nsGen inr∈ (λ ()) (λ ()) u)
 
   -- Two domain-given derivations of one expression, at one domain, mean the same.
   coh↦ : ∀ {n} {L : Locals m n} {Γ} (sh : Shape L Γ) {e A A′ π π′ B B′ t t′ Ψ Ψ′}
@@ -747,16 +655,16 @@ mutual
   coh↦ sh (u-pair _ _) (u-infer w) _ _ = ⊥-elim (noSyn-pair (der⇒ w))
   coh↦ sh (u-infer w) (u-cata _) _ _ = ⊥-elim (noSyn-cata (der⇒ w))
   coh↦ sh (u-cata _) (u-infer w) _ _ = ⊥-elim (noSyn-cata (der⇒ w))
-  coh↦ sh (u-infer w) u-id _ _ = ⊥-elim (nsGen id∈ (λ ()) w)
-  coh↦ sh u-id (u-infer w) _ _ = ⊥-elim (nsGen id∈ (λ ()) w)
-  coh↦ sh (u-infer w) u-fst _ _ = ⊥-elim (nsGen fst∈ (λ ()) w)
-  coh↦ sh u-fst (u-infer w) _ _ = ⊥-elim (nsGen fst∈ (λ ()) w)
-  coh↦ sh (u-infer w) u-snd _ _ = ⊥-elim (nsGen snd∈ (λ ()) w)
-  coh↦ sh u-snd (u-infer w) _ _ = ⊥-elim (nsGen snd∈ (λ ()) w)
-  coh↦ sh (u-infer w) u-terminal _ _ = ⊥-elim (nsGen terminal∈ (λ ()) w)
-  coh↦ sh u-terminal (u-infer w) _ _ = ⊥-elim (nsGen terminal∈ (λ ()) w)
-  coh↦ sh (u-infer w) u-initial _ _ = ⊥-elim (nsGen initial∈ (λ ()) w)
-  coh↦ sh u-initial (u-infer w) _ _ = ⊥-elim (nsGen initial∈ (λ ()) w)
+  coh↦ sh (u-infer w) u-id _ _ = ⊥-elim (nsGen id∈ (λ ()) (λ ()) w)
+  coh↦ sh u-id (u-infer w) _ _ = ⊥-elim (nsGen id∈ (λ ()) (λ ()) w)
+  coh↦ sh (u-infer w) u-fst _ _ = ⊥-elim (nsGen fst∈ (λ ()) (λ ()) w)
+  coh↦ sh u-fst (u-infer w) _ _ = ⊥-elim (nsGen fst∈ (λ ()) (λ ()) w)
+  coh↦ sh (u-infer w) u-snd _ _ = ⊥-elim (nsGen snd∈ (λ ()) (λ ()) w)
+  coh↦ sh u-snd (u-infer w) _ _ = ⊥-elim (nsGen snd∈ (λ ()) (λ ()) w)
+  coh↦ sh (u-infer w) u-terminal _ _ = ⊥-elim (nsGen terminal∈ (λ ()) (λ ()) w)
+  coh↦ sh u-terminal (u-infer w) _ _ = ⊥-elim (nsGen terminal∈ (λ ()) (λ ()) w)
+  coh↦ sh (u-infer w) u-initial _ _ = ⊥-elim (nsGen initial∈ (λ ()) (λ ()) w)
+  coh↦ sh u-initial (u-infer w) _ _ = ⊥-elim (nsGen initial∈ (λ ()) (λ ()) w)
   coh↦ sh (u-infer ()) (u-lam _) _ _
   coh↦ sh (u-lam _) (u-infer ()) _ _
   coh↦ sh u-id (u-poly {e = e} {ok = ok}) _ _ = ⊥-elim (dgen ok id∈ e)
@@ -805,11 +713,11 @@ mutual
   coh↦⇐ sh (u-case _ _) (u-sub u′) _ _ = ⊥-elim (noSyn-case (der⇒ u′))
   coh↦⇐ sh (u-pair _ _) (u-sub u′) _ _ = ⊥-elim (noSyn-pair (der⇒ u′))
   coh↦⇐ sh (u-cata _) (u-sub u′) _ _ = ⊥-elim (noSyn-cata (der⇒ u′))
-  coh↦⇐ sh u-id (u-sub u′) _ _ = ⊥-elim (nsGen id∈ (λ ()) u′)
-  coh↦⇐ sh u-fst (u-sub u′) _ _ = ⊥-elim (nsGen fst∈ (λ ()) u′)
-  coh↦⇐ sh u-snd (u-sub u′) _ _ = ⊥-elim (nsGen snd∈ (λ ()) u′)
-  coh↦⇐ sh u-terminal (u-sub u′) _ _ = ⊥-elim (nsGen terminal∈ (λ ()) u′)
-  coh↦⇐ sh u-initial (u-sub u′) _ _ = ⊥-elim (nsGen initial∈ (λ ()) u′)
+  coh↦⇐ sh u-id (u-sub u′) _ _ = ⊥-elim (nsGen id∈ (λ ()) (λ ()) u′)
+  coh↦⇐ sh u-fst (u-sub u′) _ _ = ⊥-elim (nsGen fst∈ (λ ()) (λ ()) u′)
+  coh↦⇐ sh u-snd (u-sub u′) _ _ = ⊥-elim (nsGen snd∈ (λ ()) (λ ()) u′)
+  coh↦⇐ sh u-terminal (u-sub u′) _ _ = ⊥-elim (nsGen terminal∈ (λ ()) (λ ()) u′)
+  coh↦⇐ sh u-initial (u-sub u′) _ _ = ⊥-elim (nsGen initial∈ (λ ()) (λ ()) u′)
   coh↦⇐ sh (u-poly {e = e} {ok = ok}) u-id _ _ = ⊥-elim (dgen ok id∈ e)
   coh↦⇐ sh (u-poly {e = e} {ok = ok}) u-fst _ _ = ⊥-elim (dgen ok fst∈ e)
   coh↦⇐ sh (u-poly {e = e} {ok = ok}) u-snd _ _ = ⊥-elim (dgen ok snd∈ e)
@@ -835,11 +743,11 @@ mutual
   coh↦⇒ sh (u-case _ _) u′ = ⊥-elim (noSyn-case (der⇒ u′))
   coh↦⇒ sh (u-pair _ _) u′ = ⊥-elim (noSyn-pair (der⇒ u′))
   coh↦⇒ sh (u-cata _) u′ = ⊥-elim (noSyn-cata (der⇒ u′))
-  coh↦⇒ sh u-id u′ = ⊥-elim (nsGen id∈ (λ ()) u′)
-  coh↦⇒ sh u-fst u′ = ⊥-elim (nsGen fst∈ (λ ()) u′)
-  coh↦⇒ sh u-snd u′ = ⊥-elim (nsGen snd∈ (λ ()) u′)
-  coh↦⇒ sh u-terminal u′ = ⊥-elim (nsGen terminal∈ (λ ()) u′)
-  coh↦⇒ sh u-initial u′ = ⊥-elim (nsGen initial∈ (λ ()) u′)
+  coh↦⇒ sh u-id u′ = ⊥-elim (nsGen id∈ (λ ()) (λ ()) u′)
+  coh↦⇒ sh u-fst u′ = ⊥-elim (nsGen fst∈ (λ ()) (λ ()) u′)
+  coh↦⇒ sh u-snd u′ = ⊥-elim (nsGen snd∈ (λ ()) (λ ()) u′)
+  coh↦⇒ sh u-terminal u′ = ⊥-elim (nsGen terminal∈ (λ ()) (λ ()) u′)
+  coh↦⇒ sh u-initial u′ = ⊥-elim (nsGen initial∈ (λ ()) (λ ()) u′)
 
   -- `s-app` against `s-app-spine`.
   spine : ∀ {n} {L : Locals m n} {Γ} (sh : Shape L Γ) {f x A B X T q tf tx tf′ tx′ Ψ₁ Ψ₂ Ψ₁′ Ψ₂′}

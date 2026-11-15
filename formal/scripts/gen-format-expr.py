@@ -6,7 +6,7 @@ PROOF=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','Once','Forma
 
 # ---- ExprBase ----
 CTORS=[('RVar','x'),('RQualified','x a'),('RResolved','n'),('RApp','f a'),('RLam','x e'),('RLet','x v b'),
- ('RPair','a b'),('RDestruct','s x el y er'),('RUnit',''),('RInt','z'),('RFloat','i f l'),('RAnnot','e T'),
+ ('RPair','a b'),('RDestruct','s x el y er'),('RUnit',''),('RInt','z'),('RFloat','sg i f l'),('RAnnot','e T'),
  ('RBinOp','op a b'),('RNeg','e')]
 def pat(c,args,prefix=''):
     if not args: return c
@@ -49,14 +49,17 @@ open import Relation.Nullary using (¬_; does; yes; no)
 open import Relation.Nullary.Decidable using (toWitness)
 
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TComma; TColon; TSemicolon;
-  TRBrace; TDot; TAt; TNewline; isIdentStart; TLambda; TPlus; TMinus; TStar; TSlash; TPercent; TLt; TGt; TPipe;
-  TAmpersand)
+  TRBrace; TDot; TAt; TNewline; isIdentStart; TLambda; TPipe; TAmpersand; TOp; TOpD; Glyph; g+; g-; g*; g/; g%; g<; g>)
+open import Once.Adequacy.SpecTokNames
+open import Once.Spec.Surface.Operator using (‹_›; Dottable; o+; o-; o*; o/; o<; o>; comparison; additive;
+  multiplicative)
 open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct;
   RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Grammar using (Starts; starts; ArgStart; as-paren; as-lambda; as-int; as-float; as-word;
-  QualSuffix; qual-suffix; Reserved; r-in; r-of; r-let; r-destruct; r-Left; r-Right; MulToken; AddToken;
-  CompareToken; OpChar; oc-dot; oc-plus; oc-minus; oc-star; oc-slash; oc-pct; oc-lt; oc-gt; oc-pipe; oc-amp; oc-at)
-open import Once.Format.Print using (isCompose; headOf; opToken; isOpChar; allOp; isOperator)
+  QualSuffix; qual-suffix; Reserved; r-in; r-of; r-let; r-destruct; r-Left; r-Right; OpToken; ot-plain; ot-dotted;
+  OpChar; oc-op; oc-dot;
+  oc-pipe; oc-amp; oc-at)
+open import Once.Format.Print using (isCompose; headOf; opToken; dotToken; isOpChar; allOp; isOperator)
 open import Once.Format.Proof.TypeAlgs using (GroundOK)
 
 ------------------------------------------------------------------------
@@ -83,7 +86,7 @@ WF (RPair a b)             = WF a × WF b
 WF (RDestruct s x el y er) = WF s × WF el × WF er
 WF RUnit                   = ⊤
 WF (RInt _)                = ⊤
-WF (RFloat _ _ _)          = ⊤
+WF (RFloat _ _ _ _)        = ⊤
 WF (RAnnot e T)            = WF e × GroundOK T
 WF (RBinOp op a b)         = WF a × WF b
 WF (RNeg e)                = WF e
@@ -98,9 +101,9 @@ AppDone r  = ¬ ArgStart r
 CompDone r = ¬ Starts r TDot
 
 MulDone AddDone CmpDone : List Token → Set
-MulDone r = ∀ {t op} → Starts r t → ¬ MulToken t op
-AddDone r = ∀ {t op} → Starts r t → ¬ AddToken t op
-CmpDone r = ∀ {t op} → Starts r t → ¬ CompareToken t op
+MulDone r = ∀ {t op} → Starts r t → ¬ OpToken multiplicative t op
+AddDone r = ∀ {t op} → Starts r t → ¬ OpToken additive t op
+CmpDone r = ∀ {t op} → Starts r t → ¬ OpToken comparison t op
 
 -- | Nothing of an expression follows.
 record Stops (r : List Token) : Set where
@@ -112,6 +115,11 @@ record Stops (r : List Token) : Set where
     add  : AddDone r
     cmp  : CmpDone r
     comp : CompDone r
+
+-- | An operator of one level is none of another.
+otherLevel : ∀ {l l′ t op op′} → OpToken l′ t op′ → l ≢ l′ → ¬ OpToken l t op
+otherLevel (ot-plain e′)  ne (ot-plain e)  = ne (trans (sym e) e′)
+otherLevel (ot-dotted e′) ne (ot-dotted e) = ne (trans (sym e) e′)
 
 -- `)`, `,`, `:`, `;`, `}`, a line end, `in`, `of` stop an expression.
 stops-rparen : ∀ {r} → Stops (TRParen ∷ r)
@@ -159,10 +167,10 @@ for c,args in CTORS:
         w(f'compose-true {pat(c,args)} ()')
 # operator chars
 w('''
-private
-  ≟-true : ∀ {c d} → does (c Ch.≟ d) ≡ true → c ≡ d
-  ≟-true {c} {d} eq = ChP.toℕ-injective c d (ℕP.≡ᵇ⇒≡ (Ch.toℕ c) (Ch.toℕ d) (subst T (sym eq) tt))
+≟-true : ∀ {c d} → does (c Ch.≟ d) ≡ true → c ≡ d
+≟-true {c} {d} eq = ChP.toℕ-injective c d (ℕP.≡ᵇ⇒≡ (Ch.toℕ c) (Ch.toℕ d) (subst T (sym eq) tt))
 
+private
   start-not : ∀ {c d} → does (c Ch.≟ d) ≡ true → isIdentStart c ≡ true → isIdentStart d ≡ false → ⊥
   start-not {c} {d} eq st sd with ≟-true {c} {d} eq
   ... | refl with () ← trans (sym st) sd
@@ -184,7 +192,7 @@ w(f"ident-not-op c st | {' | '.join(['false']*len(OPCH))} = refl")
 w('''
 private
   op-isOp : ∀ {t d} → OpChar t d → isOpChar d ≡ true''')
-for oc in ['oc-dot','oc-plus','oc-minus','oc-star','oc-slash','oc-pct','oc-lt','oc-gt','oc-pipe','oc-amp','oc-at']:
+for oc in ['oc-dot','(oc-op g+)','(oc-op (g- _ _))','(oc-op g*)','(oc-op g/)','(oc-op g%)','(oc-op (g< _))','(oc-op (g> _))','oc-pipe','oc-amp','oc-at']:
     w(f'  op-isOp {oc} = refl')
 w('''
   allOp-true : ∀ c cs → All (λ d → ∃[ t ] OpChar t d) (c ∷ cs) → allOp (c ∷ cs) ≡ true
@@ -209,19 +217,57 @@ word-notOperator x c cs eq st = trans (cong allOp eq) (allOp-start c cs (isOpCha
 
 -- | An operator character's token.
 op-token : ∀ {t d} → OpChar t d → opToken d ≡ just t''')
-for oc in ['oc-dot','oc-plus','oc-minus','oc-star','oc-slash','oc-pct','oc-lt','oc-gt','oc-pipe','oc-amp','oc-at']:
+for oc in ['oc-dot','(oc-op g+)','(oc-op (g- _ _))','(oc-op g*)','(oc-op g/)','(oc-op g%)','(oc-op (g< _))','(oc-op (g> _))','oc-pipe','oc-amp','oc-at']:
     w(f'op-token {oc} = refl')
+w('''
+-- | A glyph with an IEEE form and `.`: that form's token (`Print.dotToken`).
+dot-token : ∀ c d {x} → dotToken c d ≡ just x → ∃[ dd ] (x ≡ TOpD dd × d ≡ '.' × Glyph (c ∷ []) ‹ dd › [])
+dot-token c d e with does (d Ch.≟ '.') in ed
+dot-token c d () | false
+dot-token c d e | true with ≟-true {d} {'.'} ed
+... | refl = go e
+  where
+    go : ∀ {x} → (if does (c Ch.≟ '+') then just TPlusD else if does (c Ch.≟ '-') then just TMinusD else
+                  if does (c Ch.≟ '*') then just TStarD else if does (c Ch.≟ '/') then just TSlashD else
+                  if does (c Ch.≟ '<') then just TLtD else if does (c Ch.≟ '>') then just TGtD else nothing) ≡ just x
+       → ∃[ dd ] (x ≡ TOpD dd × '.' ≡ '.' × Glyph (c ∷ []) ‹ dd › [])
+    go e with does (c Ch.≟ '+') in e₀
+    go refl | true with ≟-true {c} {'+'} e₀
+    ... | refl = o+ , refl , refl , g+
+    go e | false with does (c Ch.≟ '-') in e₁
+    go refl | false | true with ≟-true {c} {'-'} e₁
+    ... | refl = o- , refl , refl , g- (λ ()) (λ ())
+    go e | false | false with does (c Ch.≟ '*') in e₂
+    go refl | false | false | true with ≟-true {c} {'*'} e₂
+    ... | refl = o* , refl , refl , g*
+    go e | false | false | false with does (c Ch.≟ '/') in e₃
+    go refl | false | false | false | true with ≟-true {c} {'/'} e₃
+    ... | refl = o/ , refl , refl , g/
+    go e | false | false | false | false with does (c Ch.≟ '<') in e₄
+    go refl | false | false | false | false | true with ≟-true {c} {'<'} e₄
+    ... | refl = o< , refl , refl , g< (λ ())
+    go e | false | false | false | false | false with does (c Ch.≟ '>') in e₅
+    go refl | false | false | false | false | false | true with ≟-true {c} {'>'} e₅
+    ... | refl = o> , refl , refl , g> (λ ())
+    go () | false | false | false | false | false | false''')
 open(os.path.join(PROOF,'ExprBase.agda'),'w').write('\n'.join(o)+'\n')
 
 # ---- Expr ----
 CTORS=[('RVar','x'),('RQualified','x q'),('RResolved','n'),('RApp','f a'),('RLam','x e'),('RLet','x v b'),
- ('RPair','a b'),('RDestruct','s x el y er'),('RUnit',''),('RInt','z'),('RFloat','i fr l'),('RAnnot','e T'),
+ ('RPair','a b'),('RDestruct','s x el y er'),('RUnit',''),('RIntP','n'),('RIntN','n'),('RFloatP','i fr l'),('RFloatN','i fr l'),('RAnnot','e T'),
  ('RBinOp','op a b'),('RNeg','e')]
-OPS={'OpAdd':2,'OpSub':2,'OpMul':3,'OpDiv':3,'OpMod':3,'OpLt':1,'OpLe':1,'OpGt':1,'OpGe':1,'OpEq':1,'OpNe':1}
-MT={'OpMul':'mt-star','OpDiv':'mt-slash','OpMod':'mt-pct'}
-AT={'OpAdd':'at-plus','OpSub':'at-minus'}
-CT={'OpLt':'ct-lt','OpLe':'ct-le','OpGt':'ct-gt','OpGe':'ct-ge','OpEq':'ct-eq','OpNe':'ct-ne'}
+# the binary operators: plain (by `Surface.OpNames`) and IEEE forms, with their levels
+OPS={'OpAdd':2,'OpSub':2,'OpMul':3,'OpDiv':3,'OpMod':3,'OpLt':1,'OpLe':1,'OpGt':1,'OpGe':1,'OpEq':1,'OpNe':1,
+ '(Op.dotted o+)':2,'(Op.dotted o-)':2,'(Op.dotted o*)':3,'(Op.dotted o/)':3,'(Op.dotted o<)':1,'(Op.dotted o<=)':1,
+ '(Op.dotted o>)':1,'(Op.dotted o>=)':1,'(Op.dotted o==)':1,'(Op.dotted o!=)':1}
+def ev(op): return '(ot-dotted refl)' if op.startswith('(') else '(ot-plain refl)'
+MT=AT=CT={op:ev(op) for op in OPS}
+def X(op): return '(λ { starts → otherLevel '+ev(op)+' (λ ()) })'
 def P(c,args,pre=''):
+    if c=='RIntP': return f'(RInt (ℤ.+ {pre}n))'
+    if c=='RIntN': return f'(RInt ℤ.-[1+ {pre}n ])'
+    if c=='RFloatP': return f'(RFloat pos {pre}i {pre}fr {pre}l)'
+    if c=='RFloatN': return f'(RFloat neg {pre}i {pre}fr {pre}l)'
     if not args: return c
     return '('+c+' '+' '.join(pre+a for a in args.split())+')'
 o=[]; w=o.append
@@ -254,20 +300,27 @@ open import Relation.Nullary using (does)
 open import Data.List using (List; []; _∷_; reverse; reverseAcc)
 open import Data.List.Properties using (reverse-involutive)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.Maybe using (just; nothing)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.String using (String; toList; fromList)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Nullary using (¬_)
 open import Agda.Builtin.String.Properties using (primStringToListInjective)
 
 open import Once.Postulates using (toList∘fromList)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen; TRParen; TComma; TColon; TSemicolon;
-  TLBrace; TRBrace; TDot; TAt; TLambda; TArrow; TEquals; TMinus; TPlus; TStar; TSlash; TPercent; TLt; TLe; TGt; TGe;
-  TEqEq; TNeq)
+  TLBrace; TRBrace; TDot; TAt; TLambda; TArrow; TEquals; TOpD)
+open import Once.Adequacy.SpecTokNames
 open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct;
-  RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
+  RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Surface.OpNames
+import Once.Spec.Surface.Operator as Op
+open import Once.Spec.Surface.Operator using (o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
+open import Once.Spec.Float.Value using (pos; neg)
+import Data.Integer as ℤ
 open import Once.Spec.Surface.Grammar
 open import Once.Format.Doc using (toks)
 open import Once.Format.Print
@@ -307,12 +360,22 @@ private
   fromList∘toList : ∀ s → fromList (toList s) ≡ s
   fromList∘toList s = primStringToListInjective _ _ (toList∘fromList (toList s))
 
-  -- An operator's characters, up to `)`.
+  -- An operator's characters, up to `)`: a glyph and `.` as its IEEE form.
   opchars : ∀ c cs acc tv k r → All (λ d → ∃[ t ] OpChar t d) (c ∷ cs)
           → ParsesOpChars (toks (proj₁ (opToks (c ∷ cs) tv k)) (TRParen ∷ r)) acc
                           (fromList (reverse (reverseAcc acc (c ∷ cs)))) r
+  opcharsPair : ∀ c d ds acc tv k r → (∃[ t ] OpChar t c) → All (λ d → ∃[ t ] OpChar t d) (d ∷ ds)
+              → ∀ m → dotToken c d ≡ m
+              → ParsesOpChars (toks (proj₁ (opPair c d (d ∷ ds) ds m tv k)) (TRParen ∷ r)) acc
+                              (fromList (reverse (reverseAcc acc (c ∷ d ∷ ds)))) r
   opchars c []       acc tv k r ((t , o) ∷ []) rewrite op-token o = op-char o op-close
-  opchars c (d ∷ ds) acc tv k r ((t , o) ∷ os) rewrite op-token o =
+  opchars c (d ∷ ds) acc tv k r (o₁ ∷ os) = opcharsPair c d ds acc tv k r o₁ os (dotToken c d) refl
+
+  opcharsPair c d ds acc tv k r o₁ os (just x) e with dot-token c d e
+  opcharsPair c .'.' [] acc tv k r o₁ os (just .(TOpD dd)) e | dd , refl , refl , g = op-dotted g op-close
+  opcharsPair c .'.' (e′ ∷ es) acc tv k r o₁ (_ ∷ os) (just .(TOpD dd)) e | dd , refl , refl , g =
+    op-dotted g (opchars e′ es ('.' ∷ c ∷ acc) tv _ r os)
+  opcharsPair c d ds acc tv k r (t , o) os nothing e rewrite op-token o =
     subst (λ ts → ParsesOpChars (t ∷ ts) acc _ r)
       (sym (if-space (does (c Ch.≟ '-') ∧ (does (d Ch.≟ '-') ∨ does (d Ch.≟ '>'))) (toks (proj₁ (opToks (d ∷ ds) tv k)) (TRParen ∷ r))))
       (op-char o (opchars d ds (c ∷ acc) tv _ r os))
@@ -339,6 +402,68 @@ private
 ''')
 open(os.path.join(PROOF,'Expr.agda'),'w').write('\n'.join(o)+'\n')
 o=[]; w=o.append
+NONUM_HEAD = r'''
+private
+  -- A prefix-level reading in parentheses, as an atom.
+  unary→atom : ∀ {ts e r} → ParsesUnary ts e (TRParen ∷ r) → ParsesAtomExpr (TLParen ∷ ts) e r
+  unary→atom u = atom-paren (expr (cmp-none (add (mul u (mul-done (λ { starts () }))) (add-done (λ { starts () })))
+                   (λ { starts () })) (comp-done (λ ()))) paren-close
+
+  -- A negative literal, at the prefix level.
+  negIntU : ∀ n tv k r → AppDone r → ParsesUnary (E 4 (RInt ℤ.-[1+ n ]) tv k r) (RInt ℤ.-[1+ n ]) r
+  negIntU n tv k r ad =
+    subst (λ ts → ParsesUnary (TMinus ∷ ts) (RInt ℤ.-[1+ n ]) r) (sym (anchor-toks (TInt (ℤ.+ suc n)) tv k r))
+      (neg-lit nn-int (app-done ad))
+
+  negFloatU : ∀ i fr l tv k r → AppDone r → ParsesUnary (E 4 (RFloat neg i fr l) tv k r) (RFloat neg i fr l) r
+  negFloatU i fr l tv k r ad =
+    subst (λ ts → ParsesUnary (TMinus ∷ ts) (RFloat neg i fr l) r) (sym (anchor-toks (TFloat i fr l) tv k r))
+      (neg-lit nn-float (app-done ad))
+
+  nameNoNum : ∀ x tv k r → NameOK x → ¬ NumeralStart (toks (proj₁ (name x tv k)) r)
+  nameNoNum x tv k r (inj₁ op) rewrite op-isOperator x op = λ ()
+  nameNoNum x tv k r (inj₂ (¬res , c , cs , eq , st)) rewrite word-notOperator x c cs eq st =
+    subst (λ ts → ¬ NumeralStart ts) (sym (word-toks x tv k r)) (λ ())
+
+  -- Printed at level 6, at the head of an application, or at level 4, `e`
+  -- starts with a numeral only when `startsNum e` (so a `-` before it is a
+  -- prefix `-`, not a negative literal's).
+  noNum6 : ∀ e tv k r → WF e → startsNum e ≡ false → ¬ NumeralStart (E 6 e tv k r)
+  noNumApp6 : ∀ f a b tv k r → isCompose (headOf f) ≡ b → ¬ NumeralStart (toks (proj₁ (pcomp 6 b f a tv k)) r)
+  noNumSpine : ∀ f tv k r → WF f → startsNum f ≡ false → ¬ NumeralStart (toks (proj₁ (pspine f tv k)) r)
+  noNumSpine′ : ∀ f a b tv k r → isCompose (headOf f) ≡ b → WF f → (not b ∧ startsNum f) ≡ false
+              → ¬ NumeralStart (toks (proj₁ (pspine′ b f a tv k)) r)
+  noNum4 : ∀ e tv k r → WF e → startsNum e ≡ false → ¬ NumeralStart (E 4 e tv k r)
+  noNumApp4 : ∀ f a b tv k r → isCompose (headOf f) ≡ b → WF f → (not b ∧ startsNum f) ≡ false
+            → ¬ NumeralStart (toks (proj₁ (pcomp 4 b f a tv k)) r)
+
+  noNumApp6 f a true tv k r eq with compose-true f eq
+  ... | g , refl = λ ()
+  noNumApp6 f a false tv k r eq = λ ()
+
+  noNumSpine′ f a true tv k r eq wf h with compose-true f eq
+  ... | g , refl = λ ()
+  noNumSpine′ f a false tv k r eq wf h = noNumSpine f tv k _ wf h
+
+  noNumApp4 f a true tv k r eq wf h with compose-true f eq
+  ... | g , refl = λ ()
+  noNumApp4 f a false tv k r eq wf h = noNumSpine f tv k _ wf h
+'''
+def nonum(level):
+    out = []
+    for c, args in CTORS:
+        pt = P(c, args)
+        if c == 'RVar': out.append(f'  noNum{level} {pt} tv k r w h = nameNoNum x tv k r w')
+        elif c == 'RQualified': out.append(f'  noNum{level} {pt} tv k r w h = subst (λ ts → ¬ NumeralStart ts) (sym (word-toks x tv k _)) (λ ())')
+        elif c == 'RResolved': out.append(f'  noNum{level} {pt} tv k r () h')
+        elif c == 'RApp':
+            if level == 6: out.append(f'  noNum6 (RApp f a) tv k r w h = noNumApp6 f a (isCompose (headOf f)) tv k r refl')
+            else: out.append(f'  noNum4 (RApp f a) tv k r (wf , wa) h = noNumApp4 f a (isCompose (headOf f)) tv k r refl wf h')
+        elif c in ('RIntP', 'RFloatP'): out.append(f'  noNum{level} {pt} tv k r w ()')
+        elif c == 'RBinOp':
+            for op in OPS: out.append(f'  noNum{level} (RBinOp {op} a b) tv k r w h = λ ()')
+        else: out.append(f'  noNum{level} {pt} tv k r w h = λ ()')
+    return out
 LIFT_KINDS=['RVar','RQualified','RUnit','RInt','RFloat','RPair','RAnnot','RLam','RLet','RDestruct']
 def lv(op): return OPS[op]
 # ---------- argSt ----------
@@ -360,11 +485,20 @@ argSt (RLet x v b) tv k r w = as-paren
 argSt (RPair a b) tv k r w = as-paren
 argSt (RDestruct s x el y er) tv k r w = as-paren
 argSt RUnit tv k r w = as-paren
-argSt (RInt z) tv k r w = subst ArgStart (sym (anchor-toks (TInt z) tv k r)) as-int
-argSt (RFloat i fr l) tv k r w = subst ArgStart (sym (anchor-toks (TFloat i fr l) tv k r)) as-float
+argSt (RInt (ℤ.+ n)) tv k r w = subst ArgStart (sym (anchor-toks (TInt (ℤ.+ n)) tv k r)) as-int
+argSt (RInt ℤ.-[1+ n ]) tv k r w = as-paren
+argSt (RFloat pos i fr l) tv k r w = subst ArgStart (sym (anchor-toks (TFloat i fr l) tv k r)) as-float
+argSt (RFloat neg i fr l) tv k r w = as-paren
 argSt (RAnnot e T) tv k r w = as-paren''')
 for op in OPS: w(f'argSt (RBinOp {op} a b) tv k r w = as-paren')
 w('argSt (RNeg e) tv k r w = as-paren')
+w(NONUM_HEAD)
+w('  noNumSpine (RApp f a) tv k r (wf , wa) h = noNumSpine′ f a (isCompose (headOf f)) tv k r refl wf h')
+for c,args in CTORS:
+    if c=='RApp': continue
+    if c=='RResolved': w(f'  noNumSpine {P(c,args)} tv k r () h'); continue
+    w(f'  noNumSpine {P(c,args)} tv k r w h = noNum6 {P(c,args)} tv k r w h')
+for l in nonum(6)+nonum(4): w(l)
 # ---------- mutual ----------
 w('''
 mutual
@@ -383,9 +517,12 @@ mutual
   atomL (RPair a b) tv k r (wa , wb) nq =
     atom-paren (wholeL a tv k _ wa stops-comma) (paren-pair (wholeL b tv _ (TRParen ∷ r) wb stops-rparen))
   atomL RUnit tv k r w nq = atom-unit
-  atomL (RInt z) tv k r w nq = subst (λ ts → ParsesAtomExpr ts (RInt z) r) (sym (anchor-toks (TInt z) tv k r)) atom-int
-  atomL (RFloat i fr l) tv k r w nq =
-    subst (λ ts → ParsesAtomExpr ts (RFloat i fr l) r) (sym (anchor-toks (TFloat i fr l) tv k r)) atom-float
+  atomL (RInt (ℤ.+ n)) tv k r w nq =
+    subst (λ ts → ParsesAtomExpr ts (RInt (ℤ.+ n)) r) (sym (anchor-toks (TInt (ℤ.+ n)) tv k r)) atom-int
+  atomL (RInt ℤ.-[1+ n ]) tv k r w nq = unary→atom (negIntU n tv k (TRParen ∷ r) (λ ()))
+  atomL (RFloat pos i fr l) tv k r w nq =
+    subst (λ ts → ParsesAtomExpr ts (RFloat pos i fr l) r) (sym (anchor-toks (TFloat i fr l) tv k r)) atom-float
+  atomL (RFloat neg i fr l) tv k r w nq = unary→atom (negFloatU i fr l tv k (TRParen ∷ r) (λ ()))
   atomL (RAnnot e T) tv k r (we , wT) nq =
     atom-paren (wholeL e tv k _ we stops-colon)
       (paren-annot (subst (λ A → Annot.ParsesType (toks (proj₁ (pty 0 true (toPoly T) tv (proj₂ (pex 0 true e tv k)))) (TRParen ∷ r)) A (TRParen ∷ r))
@@ -397,17 +534,13 @@ S = "(λ { starts () })"
 for op in OPS:
     L=lv(op)
     if L==1:
-        inner=f'expr (cmp {CT[op]} (leftCmp a tv k _ wa (λ ()) (λ ()) {S} {S}) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) {S} (add-done {S}))) (comp-done (λ ()))'
+        inner=f'expr (cmp {CT[op]} (leftCmp a tv k _ wa (λ ()) (λ ()) {X(op)} {X(op)}) (addL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) {S} (add-done {S}))) (comp-done (λ ()))'
     elif L==2:
-        inner=f'expr (cmp-none (leftAdd a tv k _ wa (λ ()) (λ ()) {S} (add-op {AT[op]} (mulL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (mul-done {S})) (add-done {S}))) {S}) (comp-done (λ ()))'
+        inner=f'expr (cmp-none (leftAdd a tv k _ wa (λ ()) (λ ()) {X(op)} (add-op {AT[op]} (mulL b tv _ (TRParen ∷ r) wb (λ ()) (λ ()) (mul-done {S})) (add-done {S}))) {S}) (comp-done (λ ()))'
     else:
         inner=f'expr (cmp-none (add (leftMul a tv k _ wa (λ ()) (λ ()) (mul-op {MT[op]} (unaryL b tv _ (TRParen ∷ r) wb (λ ()) (λ ())) (mul-done {S}))) (add-done {S})) {S}) (comp-done (λ ()))'
     w(f'  atomL (RBinOp {op} a b) tv k r (wa , wb) nq =\n    atom-paren ({inner}) paren-close')
-w('''  atomL (RNeg e) tv k r w nq =
-    atom-paren (expr (cmp-none (add (mul
-      (subst (λ ts → ParsesUnary (TMinus ∷ ts) (RNeg e) (TRParen ∷ r)) (sym (if-space (startsNeg e) (E 4 e tv k (TRParen ∷ r))))
-        (neg (unaryL e tv k (TRParen ∷ r) w (λ ()) (λ ()))))
-      (mul-done (λ { starts () }))) (add-done (λ { starts () }))) (λ { starts () })) (comp-done (λ ()))) paren-close
+w('''  atomL (RNeg e) tv k r w nq = unary→atom (negL e (startsNum e) tv k (TRParen ∷ r) refl w (λ ()) (λ ()))
 
   -- An application at the atom level: parenthesized.
   atomApp : ∀ f a b tv k r → isCompose (headOf f) ≡ b → WF f → WF a → NoQual r
@@ -489,17 +622,28 @@ w('''
 
   -- | A prefix `-` (level 4).
   unaryL : ∀ e tv k r → WF e → NoQual r → AppDone r → ParsesUnary (E 4 e tv k r) e r
-  unaryL (RNeg e) tv k r w nq ad =
-    subst (λ ts → ParsesUnary (TMinus ∷ ts) (RNeg e) r) (sym (if-space (startsNeg e) (E 4 e tv k r)))
-      (neg (unaryL e tv k r w nq ad))
+  unaryL (RNeg e) tv k r w nq ad = negL e (startsNum e) tv k r refl w nq ad
+  unaryL (RInt ℤ.-[1+ n ]) tv k r w nq ad = negIntU n tv k r ad
+  unaryL (RFloat neg i fr l) tv k r w nq ad = negFloatU i fr l tv k r ad
   unaryL (RApp f a) tv k r (wf , wa) nq ad = unaryApp f a (isCompose (headOf f)) tv k r refl wf wa nq ad
   unaryL (RResolved n) tv k r () nq ad''')
 for c,args in CTORS:
-    if c in ('RApp','RResolved','RBinOp','RNeg'): continue
+    if c in ('RApp','RResolved','RBinOp','RNeg','RIntN','RFloatN'): continue
     w(f'  unaryL {P(c,args)} tv k r w nq ad = unary (appL {P(c,args)} tv k r w nq (app-done ad))')
 for op in OPS:
     w(f'  unaryL (RBinOp {op} a b) tv k r w nq ad = unary (appL (RBinOp {op} a b) tv k r w nq (app-done ad))')
 w('''
+  -- `-e`: a prefix `-`, with `e` parenthesized when it would start a negative literal.
+  negL : ∀ e b tv k r → startsNum e ≡ b → WF e → NoQual r → AppDone r
+       → ParsesUnary (toks (proj₁ ((t TMinus ⊕ᵈ pure′ (if startsNeg e then Once.Format.Doc.sp else Once.Format.Doc.empty)
+                                     ⊕ᵈ paren b (pex 4 false e)) tv k)) r) (RNeg e) r
+  negL e false tv k r sn w nq ad =
+    subst (λ ts → ParsesUnary (TMinus ∷ ts) (RNeg e) r) (sym (if-space (startsNeg e) (E 4 e tv k r)))
+      (neg (noNum4 e tv k r w sn) (unaryL e tv k r w nq ad))
+  negL e true tv k r sn w nq ad =
+    subst (λ ts → ParsesUnary (TMinus ∷ ts) (RNeg e) r) (sym (if-space (startsNeg e) (TLParen ∷ E 4 e tv k (TRParen ∷ r))))
+      (neg (λ ()) (unary (app (unary→atom (unaryL e tv k (TRParen ∷ r) w (λ ()) (λ ()))) (app-done ad))))
+
   unaryApp : ∀ f a b tv k r → isCompose (headOf f) ≡ b → WF f → WF a → NoQual r → AppDone r
            → ParsesUnary (toks (proj₁ (pcomp 4 b f a tv k)) r) (RApp f a) r
   unaryApp f a true tv k r eq wf wa nq ad with compose-true f eq
@@ -545,7 +689,7 @@ for c,args in CTORS:
     w(f'  addL {P(c,args)} tv k r w nq ad md tl = add (mulL {P(c,args)} tv k r w nq ad (mul-done md)) tl')
 for op in OPS:
     if lv(op)==2:
-        w(f'  addL (RBinOp {op} a b) tv k r (wa , wb) nq ad md tl =\n    leftAdd a tv k _ wa (λ ()) (λ ()) (λ {{ starts () }}) (add-op {AT[op]} (mulL b tv _ r wb nq ad (mul-done md)) tl)')
+        w(f'  addL (RBinOp {op} a b) tv k r (wa , wb) nq ad md tl =\n    leftAdd a tv k _ wa (λ ()) (λ ()) {X(op)} (add-op {AT[op]} (mulL b tv _ r wb nq ad (mul-done md)) tl)')
     else:
         w(f'  addL (RBinOp {op} a b) tv k r w nq ad md tl = add (mulL (RBinOp {op} a b) tv k r w nq ad (mul-done md)) tl')
 w('''
@@ -559,7 +703,7 @@ w('''
           → ParsesAdd (toks (proj₁ (pleft 2 a tv k)) r) e′ r′''')
 for op in OPS:
     if lv(op)==2:
-        w(f'  leftAdd (RBinOp {op} x y) tv k r (wx , wy) nq ad md tl =\n    leftAdd x tv k _ wx (λ ()) (λ ()) (λ {{ starts () }}) (add-op {AT[op]} (mulL y tv _ r wy nq ad (mul-done md)) tl)')
+        w(f'  leftAdd (RBinOp {op} x y) tv k r (wx , wy) nq ad md tl =\n    leftAdd x tv k _ wx (λ ()) (λ ()) {X(op)} (add-op {AT[op]} (mulL y tv _ r wy nq ad (mul-done md)) tl)')
     else:
         w(f'  leftAdd (RBinOp {op} x y) tv k r w nq ad md tl = addL (RBinOp {op} x y) tv k r w nq ad md tl')
 for c,args in CTORS:
@@ -575,7 +719,7 @@ for c,args in CTORS:
     w(f'  cmpL {P(c,args)} tv k r w nq ad md dd cd = cmp-none (addL {P(c,args)} tv k r w nq ad md (add-done dd)) cd')
 for op in OPS:
     if lv(op)==1:
-        w(f'  cmpL (RBinOp {op} a b) tv k r (wa , wb) nq ad md dd cd =\n    cmp {CT[op]} (leftCmp a tv k _ wa (λ ()) (λ ()) (λ {{ starts () }}) (λ {{ starts () }})) (addL b tv _ r wb nq ad md (add-done dd))')
+        w(f'  cmpL (RBinOp {op} a b) tv k r (wa , wb) nq ad md dd cd =\n    cmp {CT[op]} (leftCmp a tv k _ wa (λ ()) (λ ()) {X(op)} {X(op)}) (addL b tv _ r wb nq ad md (add-done dd))')
     else:
         w(f'  cmpL (RBinOp {op} a b) tv k r w nq ad md dd cd = cmp-none (addL (RBinOp {op} a b) tv k r w nq ad md (add-done dd)) cd')
 w('''

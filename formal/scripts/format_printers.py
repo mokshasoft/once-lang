@@ -4,20 +4,24 @@
 # to `ind-body`, for a module that defines `Ind`, `ind-pure`, `_⊕ⁱ_`,
 # `ind-gn`, `ind-g`, `ind-n`, `ind-paren`, `ind-if`, `ind-word`, `ind-anchor`.
 CTORS=[('RVar','x'),('RQualified','x q'),('RResolved','n'),('RApp','f a'),('RLam','x e'),('RLet','x v b'),
- ('RPair','a b'),('RDestruct','s x el y er'),('RUnit',''),('RInt','z'),('RFloat','i fr l'),('RAnnot','e T'),
+ ('RPair','a b'),('RDestruct','s x el y er'),('RUnit',''),('RInt','z'),('RFloat','sg i fr l'),('RAnnot','e T'),
  ('RBinOp','op a b'),('RNeg','e')]
 def P(c,args,pre=''):
     if not args: return c
     return '('+c+' '+' '.join(pre+a for a in args.split())+')'
 o=[]; w=o.append
 w(r'''  ind-opToks : ∀ cs → Ind (opToks cs)
+  ind-opPair : ∀ c d ds cs m → Ind (opPair c d ds cs m)
   ind-opToks []           = ind-pure
   ind-opToks (c ∷ [])     = opTok1′ (opToken c)
     where
       opTok1′ : ∀ m → Ind (opTok1 m)
       opTok1′ (just x) = ind-pure
       opTok1′ nothing  = ind-pure
-  ind-opToks (c ∷ d ∷ cs) = opTok1′ (opToken c) ⊕ⁱ ind-pure ⊕ⁱ ind-opToks (d ∷ cs)
+  ind-opToks (c ∷ ds@(d ∷ cs)) = ind-opPair c d ds cs (dotToken c d)
+
+  ind-opPair c d ds cs (just x) = ind-pure ⊕ⁱ ind-opToks cs
+  ind-opPair c d ds cs nothing  = opTok1′ (opToken c) ⊕ⁱ ind-pure ⊕ⁱ ind-opToks ds
     where
       opTok1′ : ∀ m → Ind (opTok1 m)
       opTok1′ (just x) = ind-pure
@@ -79,11 +83,13 @@ w(r'''  ind-opToks : ∀ cs → Ind (opToks cs)
             ⊕ⁱ ind-ex 0 true el ⊕ⁱ ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-word "Right" ⊕ⁱ ind-pure ⊕ⁱ ind-word y
             ⊕ⁱ ind-infix _ ⊕ⁱ ind-ex 0 true er ⊕ⁱ ind-pure ⊕ⁱ ind-pure)))
     ind-ex l wh RUnit = ind-pure ⊕ⁱ ind-pure
-    ind-ex l wh (RInt z) = ind-anchor (TInt z)
-    ind-ex l wh (RFloat i f n) = ind-anchor (TFloat i f n)
+    ind-ex l wh (RInt (ℤ.+ n)) = ind-anchor (TInt (ℤ.+ n))
+    ind-ex l wh (RInt ℤ.-[1+ n ]) = ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-anchor (TInt (ℤ.+ suc n)))
+    ind-ex l wh (RFloat pos i f n) = ind-anchor (TFloat i f n)
+    ind-ex l wh (RFloat neg i f n) = ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-anchor (TFloat i f n))
     ind-ex l wh (RAnnot e T) = ind-pure ⊕ⁱ ind-ex 0 true e ⊕ⁱ ind-infix _ ⊕ⁱ ind-ty 0 true (toPoly T) ⊕ⁱ ind-pure
     ind-ex l wh (RBinOp op a b) = ind-gn (ind-paren (opLevel op <ᵇ l) (ind-bin (opLevel op) op a b))
-    ind-ex l wh (RNeg e) = ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-ex 4 false e)
+    ind-ex l wh (RNeg e) = ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-paren (startsNum e) (ind-ex 4 false e))
 
     ind-dotted : ∀ xs → Ind (dotted xs)
     ind-dotted [] = ind-pure

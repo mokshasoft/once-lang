@@ -24,6 +24,7 @@ import qualified MAlonzo.Code.Once.Arith.Machine.IR
 import qualified MAlonzo.Code.Once.Arith.Prim
 import qualified MAlonzo.Code.Once.Arith.SigOp.BlockSem
 import qualified MAlonzo.Code.Once.Denotation.ValueDomain
+import qualified MAlonzo.Code.Once.Float.Word
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IR.Semantics.Boundary
 import qualified MAlonzo.Code.Once.IR.Semantics.Iterative
@@ -34,7 +35,6 @@ import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.IRTy.WF
 import qualified MAlonzo.Code.Once.Res
 import qualified MAlonzo.Code.Once.SigOp.Info
-import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Numerics
 import qualified MAlonzo.Code.Once.Spec.Type
@@ -93,10 +93,10 @@ d_sigOpSemT_32 v0 v1 v2 v3 v4 v5 v6
              (coe
                 MAlonzo.Code.Once.IR.Semantics.Value.du_erase'7501'_112
                 (coe
-                   MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_54
+                   MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_56
                    (coe v8))
                 (coe
-                   MAlonzo.Code.Once.Arith.SigOp.BlockSem.d_block'45'semP_282 v7 v8 v9
+                   MAlonzo.Code.Once.Arith.SigOp.BlockSem.d_block'45'semP_292 v7 v8 v9
                    v0 v6))
       MAlonzo.Code.Once.SigOp.Info.C_ffiV_88
         -> coe
@@ -150,7 +150,7 @@ d_sigOpSemT_32 v0 v1 v2 v3 v4 v5 v6
              MAlonzo.Code.Once.IR.Semantics.Trace.C_ret_116
              (coe
                 MAlonzo.Code.Once.IR.Semantics.Value.du_erase'7501'_112 (coe v3)
-                (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_238 v7 v0 v6))
+                (coe MAlonzo.Code.Once.Arith.Prim.du_primSem_264 v7 v0 v6))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.DenotTrace.sigOpT
 d_sigOpT_108 ::
@@ -420,7 +420,7 @@ d_eval'7472'_122 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Once.IR.Semantics.Iterative.du_return'8734'_72
                     (coe
-                       MAlonzo.Code.Once.Spec.Float.Decimal.d_round_176
+                       MAlonzo.Code.Once.Float.Word.d_round_58
                        (coe MAlonzo.Code.Once.Spec.Numerics.d_float'45'format_16 (coe v0))
                        (coe v8))
              _ -> MAlonzo.RTE.mazUnreachableError

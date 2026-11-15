@@ -169,7 +169,7 @@ d_showCompiledFun_52 v0
                ("\n  = " :: Data.Text.Text)
                (coe
                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                  (MAlonzo.Code.Once.IR.Show.d_showIR_14
+                  (MAlonzo.Code.Once.IR.Show.d_showIR_20
                      (coe
                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
                         (coe MAlonzo.Code.Once.Spec.Type.C_Unit_18))

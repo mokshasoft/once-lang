@@ -46,12 +46,15 @@ import Once.Type.Poly as T
 import Once.Type as T
 open import Once.Spec.Surface.Syntax as Raw using (RLam; RQualified)
 open import Once.Spec.Surface.Syntax using (Expr)
+open import Once.Spec.Surface.Operator using (BinOp)
+open import Once.TypeCheck.NumTable using (numView; not-num)
+open import Once.Spec.Theory using () renaming (int to nint)
 open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Join using (UB; join?-apart)
 open import Once.Spec.Sub using (sub-int; sub-unit)
 open import Once.Type.SubDecide using (_<:?_)
 open import Once.TypeCheck.Elaborate
-  using (inferElab; checkElab; InferElabResult; success; failure; inferElabV-RNeg-aux; inferElabV-neg-aux; inferFstOn; inferSndOn; inferElabV-RDestruct-aux; NegOperandView; nov-int; nov-float; nov-other; negOperandView; inferElabV-RVar-poly-lookup-aux; inferElabV-RVar-poly-ground-aux)
+  using (inferElab; checkElab; InferElabResult; success; failure; inferElabV-RNeg-aux; inferFstOn; inferSndOn; inferElabV-RDestruct-aux; notNumeric; asInt; isInt; numErr; inferElabV-RVar-poly-lookup-aux; inferElabV-RVar-poly-ground-aux)
 open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupLocal)
 open import Once.TypeCheck.Classify using (lookupPoly)
 import Once.TypeCheck.Scope as Classify
@@ -117,16 +120,41 @@ private
           → err ≡ e₀
   rejects {Γ' = Γ'} rule (success _ _ _ _ _) refl fact eq = fail-inj {Γ = Γ'} (trans (sym fact) eq)
 
-  -- `-e`: a literal operand folds (the outer equation is `success ≡ failure`);
-  -- any other operand goes through `inferElabV-RNeg-aux` at its result.
-  neg-rejects : ∀ {m} {ctx : NamedCtx m} (e : Expr) (v : NegOperandView e) {T : Ty m} {Ψ' eE' d' f'} {e₀ err : TypeError}
+  -- `-e` goes through `inferElabV-RNeg-aux` at its operand's result.
+  neg-rejects : ∀ {m} {ctx : NamedCtx m} (e : Expr) {T : Ty m} {Ψ' eE' d' f'} {e₀ err : TypeError}
               → (inferElab ctx e) ≡ success T Ψ' eE' d' f'
               → ((inferElabV-RNeg-aux ctx e (success T Ψ' eE' d' f')) ≡ failure e₀)
-              → (inferElabV-neg-aux ctx e v) ≡ failure err
+              → (inferElab ctx (Raw.RNeg e)) ≡ failure err
               → err ≡ e₀
-  neg-rejects .(Raw.RInt n) (nov-int n) _ _ ()
-  neg-rejects .(Raw.RFloat i f l) (nov-float i f l) _ _ ()
-  neg-rejects {ctx = ctx} e (nov-other .e) eqI fact eqO = rejects (inferElabV-RNeg-aux ctx e) (inferElab ctx e) eqI fact eqO
+  neg-rejects {ctx = ctx} e eqI fact eqO = rejects (inferElabV-RNeg-aux ctx e) (inferElab ctx e) eqI fact eqO
+
+  -- A result that is no number, read by the number-type view.
+  nn-view : ∀ {m n} {Δ : SCx.Ctx m n} (T : Ty m) {Ψ eE d f e}
+          → notNumeric {Δ = Δ} (success T Ψ eE d f) ≡ just e → (numView T ≡ not-num) × (e ≡ numErr nint T)
+  nn-view T.Int   ()
+  nn-view T.Float ()
+  nn-view T.Unit         refl = refl , refl
+  nn-view T.Void         refl = refl , refl
+  nn-view (T.var _)      refl = refl , refl
+  nn-view (_ T.* _)      refl = refl , refl
+  nn-view (_ T.+ _)      refl = refl , refl
+  nn-view (_ T.⇒[ _ ] _) refl = refl , refl
+  nn-view (T.μ _)        refl = refl , refl
+  nn-view (T.ν _ _)      refl = refl , refl
+
+  -- `asInt` names `Int` only.
+  asInt-Int : ∀ {m n} {Δ : SCx.Ctx m n} (T : Ty m) {Ψ eE d f Ψ₁ e₁E d₁ f₁}
+            → asInt {Δ = Δ} (success T Ψ eE d f) ≡ isInt Ψ₁ e₁E d₁ f₁ → T ≡ Int
+  asInt-Int T.Int refl = refl
+  asInt-Int T.Float ()
+  asInt-Int T.Unit ()
+  asInt-Int T.Void ()
+  asInt-Int (T.var _) ()
+  asInt-Int (_ T.* _) ()
+  asInt-Int (_ T.+ _) ()
+  asInt-Int (_ T.⇒[ _ ] _) ()
+  asInt-Int (T.μ _) ()
+  asInt-Int (T.ν _ _) ()
 
 inl-check-Int : ∀ {m} (ctx : NamedCtx m) (arg : Expr) {err : TypeError}
                → checkElab ctx (Raw.RApp (Raw.RResolved (gen "inl")) arg) Int ≡ failure err
@@ -166,7 +194,7 @@ neg-non-Int-Unit : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr)
                    → inferElab ctx e ≡ success Unit Ψ' eE' d' f'
                    → inferElab ctx (Raw.RNeg e) ≡ failure err
                    → err ≡ TypeMismatch {0} Int Unit
-neg-non-Int-Unit ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
+neg-non-Int-Unit ctx e eqInner eqOuter = neg-rejects e eqInner refl eqOuter
 
 case-scrut-Unit : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.Expr)
                     (xL : String) (eL : Raw.Expr)
@@ -323,260 +351,44 @@ lam-usage-violation-is-UsageViolation ctx x body A q B q' eqInner eqLeq eqOuter
 --
 -- `binop-right-err-wraps` below needs no such repair: it requires the LEFT to
 -- be `Int`, and an `Int` left with a `Float` right IS still an error.
-binop-left-err-wraps : ∀ {m} (ctx : NamedCtx m) (op : Raw.BinOp) (e₁ e₂ : Raw.Expr)
+binop-left-err-wraps : ∀ {m} (ctx : NamedCtx m) (op : BinOp) (e₁ e₂ : Raw.Expr)
     {sub-err outer-err}
   → Once.TypeCheck.Elaborate.notNumeric (inferElab ctx e₁) ≡ just sub-err
   → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ failure outer-err
   → outer-err ≡ Once.TypeCheck.Error.BinOpLeftError sub-err
 binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
   with inferElab ctx e₁
-... | failure _                        with eqNN
+... | failure _ with eqNN
 ...   | refl with eqOuter
 ...     | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
-    | success Unit _ _ _ _  with eqNN
-...   | refl with inferElab ctx e₂ | eqOuter
-...     | failure _  | refl = refl
-...     | success Void _ _ _ _  | refl = refl
-...     | success Unit _ _ _ _  | refl = refl
-...     | success Int _ _ _ _  | refl = refl
-...     | success T.Float _ _ _ _  | refl = refl
-...     | success (T.var _) _ _ _ _  | refl = refl
-...     | success (_ T.* _) _ _ _ _  | refl = refl
-...     | success (_ T.+ _) _ _ _ _  | refl = refl
-...     | success (_ T.⇒[ _ ] _) _ _ _ _  | refl = refl
-...     | success (T.μ _) _ _ _ _  | refl = refl
-...     | success (T.ν _ _) _ _ _ _  | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
-    | success (T.var _) _ _ _ _  with eqNN
-...   | refl with inferElab ctx e₂ | eqOuter
-...     | failure _  | refl = refl
-...     | success Void _ _ _ _  | refl = refl
-...     | success Unit _ _ _ _  | refl = refl
-...     | success Int _ _ _ _  | refl = refl
-...     | success T.Float _ _ _ _  | refl = refl
-...     | success (T.var _) _ _ _ _  | refl = refl
-...     | success (_ T.* _) _ _ _ _  | refl = refl
-...     | success (_ T.+ _) _ _ _ _  | refl = refl
-...     | success (_ T.⇒[ _ ] _) _ _ _ _  | refl = refl
-...     | success (T.μ _) _ _ _ _  | refl = refl
-...     | success (T.ν _ _) _ _ _ _  | refl = refl
-
-binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
-    | success (_ T.* _) _ _ _ _  with eqNN
-...   | refl with inferElab ctx e₂ | eqOuter
-...     | failure _  | refl = refl
-...     | success Void _ _ _ _  | refl = refl
-...     | success Unit _ _ _ _  | refl = refl
-...     | success Int _ _ _ _  | refl = refl
-...     | success T.Float _ _ _ _  | refl = refl
-...     | success (T.var _) _ _ _ _  | refl = refl
-...     | success (_ T.* _) _ _ _ _  | refl = refl
-...     | success (_ T.+ _) _ _ _ _  | refl = refl
-...     | success (_ T.⇒[ _ ] _) _ _ _ _  | refl = refl
-...     | success (T.μ _) _ _ _ _  | refl = refl
-...     | success (T.ν _ _) _ _ _ _  | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
-    | success (_ T.+ _) _ _ _ _  with eqNN
-...   | refl with inferElab ctx e₂ | eqOuter
-...     | failure _  | refl = refl
-...     | success Void _ _ _ _  | refl = refl
-...     | success Unit _ _ _ _  | refl = refl
-...     | success Int _ _ _ _  | refl = refl
-...     | success T.Float _ _ _ _  | refl = refl
-...     | success (T.var _) _ _ _ _  | refl = refl
-...     | success (_ T.* _) _ _ _ _  | refl = refl
-...     | success (_ T.+ _) _ _ _ _  | refl = refl
-...     | success (_ T.⇒[ _ ] _) _ _ _ _  | refl = refl
-...     | success (T.μ _) _ _ _ _  | refl = refl
-...     | success (T.ν _ _) _ _ _ _  | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
-    | success (_ T.⇒[ _ ] _) _ _ _ _  with eqNN
-...   | refl with inferElab ctx e₂ | eqOuter
-...     | failure _  | refl = refl
-...     | success Void _ _ _ _  | refl = refl
-...     | success Unit _ _ _ _  | refl = refl
-...     | success Int _ _ _ _  | refl = refl
-...     | success T.Float _ _ _ _  | refl = refl
-...     | success (T.var _) _ _ _ _  | refl = refl
-...     | success (_ T.* _) _ _ _ _  | refl = refl
-...     | success (_ T.+ _) _ _ _ _  | refl = refl
-...     | success (_ T.⇒[ _ ] _) _ _ _ _  | refl = refl
-...     | success (T.μ _) _ _ _ _  | refl = refl
-...     | success (T.ν _ _) _ _ _ _  | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
-    | success (T.μ _) _ _ _ _  with eqNN
-...   | refl with inferElab ctx e₂ | eqOuter
-...     | failure _  | refl = refl
-...     | success Void _ _ _ _  | refl = refl
-...     | success Unit _ _ _ _  | refl = refl
-...     | success Int _ _ _ _  | refl = refl
-...     | success T.Float _ _ _ _  | refl = refl
-...     | success (T.var _) _ _ _ _  | refl = refl
-...     | success (_ T.* _) _ _ _ _  | refl = refl
-...     | success (_ T.+ _) _ _ _ _  | refl = refl
-...     | success (_ T.⇒[ _ ] _) _ _ _ _  | refl = refl
-...     | success (T.μ _) _ _ _ _  | refl = refl
-...     | success (T.ν _ _) _ _ _ _  | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
-    | success (T.ν _ _) _ _ _ _  with eqNN
-...   | refl with inferElab ctx e₂ | eqOuter
-...     | failure _  | refl = refl
-...     | success Void _ _ _ _  | refl = refl
-...     | success Unit _ _ _ _  | refl = refl
-...     | success Int _ _ _ _  | refl = refl
-...     | success T.Float _ _ _ _  | refl = refl
-...     | success (T.var _) _ _ _ _  | refl = refl
-...     | success (_ T.* _) _ _ _ _  | refl = refl
-...     | success (_ T.+ _) _ _ _ _  | refl = refl
-...     | success (_ T.⇒[ _ ] _) _ _ _ _  | refl = refl
-...     | success (T.μ _) _ _ _ _  | refl = refl
-...     | success (T.ν _ _) _ _ _ _  | refl = refl
--- NUMERIC left types are absurd here: `notNumeric` answers `nothing` for each.
-binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
-    | success Int _ _ _ _              with eqNN
-...   | ()
-binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
-    | success T.Float _ _ _ _          with eqNN
-...   | ()
--- D251: a `Void` left operand is not numeric, and the dispatch rejects it
--- whatever the right one is.
-binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
-    | success Void _ _ _ _             with eqNN
-...   | refl with eqOuter
+binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter | success T _ _ _ _ with nn-view T eqNN
+... | vw , refl with numView T | vw
+...   | not-num | refl with eqOuter
 ...     | refl = refl
 
-binop-right-err-wraps : ∀ {m} (ctx : NamedCtx m) (op : Raw.BinOp) (e₁ e₂ : Raw.Expr)
+-- An `Int` on the left and no number on the right (plan 0.150: a `Float`
+-- on the right is `MixedOperands`, D408).
+binop-right-err-wraps : ∀ {m} (ctx : NamedCtx m) (op : BinOp) (e₁ e₂ : Raw.Expr)
     {Ψ₁ e₁E d₁ f₁ sub-err outer-err}
   → Once.TypeCheck.Elaborate.asInt (inferElab ctx e₁)
       ≡ Once.TypeCheck.Elaborate.isInt Ψ₁ e₁E d₁ f₁
-  → Once.TypeCheck.Elaborate.asInt (inferElab ctx e₂)
-      ≡ Once.TypeCheck.Elaborate.notInt sub-err
+  → Once.TypeCheck.Elaborate.notNumeric (inferElab ctx e₂) ≡ just sub-err
   → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ failure outer-err
   → outer-err ≡ Once.TypeCheck.Error.BinOpRightError sub-err
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+binop-right-err-wraps ctx op e₁ e₂ eqI eqNN eqOuter
   with inferElab ctx e₁
-... | failure _                        with eqAsInt₁
+... | failure _ with eqI
 ...   | ()
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Unit _ _ _ _             with eqAsInt₁
-...   | ()
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Void _ _ _ _             with eqAsInt₁
-...   | ()
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success T.Float _ _ _ _          with eqAsInt₁
-...   | ()
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success (T.var _) _ _ _ _         with eqAsInt₁
-...   | ()
-
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success (_ T.* _) _ _ _ _        with eqAsInt₁
-...   | ()
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success (_ T.+ _) _ _ _ _        with eqAsInt₁
-...   | ()
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success (_ T.⇒[ _ ] _) _ _ _ _   with eqAsInt₁
-...   | ()
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success (T.μ _) _ _ _ _     with eqAsInt₁
-...   | ()
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success (T.ν _ _) _ _ _ _     with eqAsInt₁
-...   | ()
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  with inferElab ctx e₂
-... | failure _  with eqAsInt₂
-...   | refl with eqOuter
+binop-right-err-wraps ctx op e₁ e₂ eqI eqNN eqOuter | success T _ _ _ _ with asInt-Int T eqI
+... | refl with inferElab ctx e₂
+...   | failure _ with eqNN
+...     | refl with eqOuter
+...       | refl = refl
+binop-right-err-wraps ctx op e₁ e₂ eqI eqNN eqOuter | success T _ _ _ _ | refl | success T₂ _ _ _ _ with nn-view T₂ eqNN
+... | vw , refl with numView T₂ | vw
+...   | not-num | refl with eqOuter
 ...     | refl = refl
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success Unit _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success Void _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success Int _ _ _ _  with eqAsInt₂
-... | ()
--- PLAN 0.75 F4 / D125: `Int` left with `Float` right now SPLITS ON THE
--- OPERATOR. For `+`, `−` and `×` the `Int` side widens and the binop SUCCEEDS,
--- so the failure premise is absurd; for the other eight there is no float
--- form, the error is still `BinOpRightError (TypeMismatch {0} Int Float)`, and the
--- claim holds unchanged. One clause could not cover both, which is the
--- statement noticing that the language grew.
-binop-right-err-wraps ctx Raw.OpAdd e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success T.Float _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | ()
-binop-right-err-wraps ctx Raw.OpSub e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success T.Float _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | ()
-binop-right-err-wraps ctx Raw.OpMul e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success T.Float _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | ()
-binop-right-err-wraps ctx Raw.OpDiv e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success T.Float _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | ()
-binop-right-err-wraps ctx Raw.OpMod e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success T.Float _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
-binop-right-err-wraps ctx Raw.OpLt e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success T.Float _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
-binop-right-err-wraps ctx Raw.OpLe e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success T.Float _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
-binop-right-err-wraps ctx Raw.OpGt e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success T.Float _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
-binop-right-err-wraps ctx Raw.OpGe e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success T.Float _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
-binop-right-err-wraps ctx Raw.OpEq e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success T.Float _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
-binop-right-err-wraps ctx Raw.OpNe e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success T.Float _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success (T.var _) _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
 
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success (_ T.* _) _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success (_ T.+ _) _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success (_ T.⇒[ _ ] _) _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success (T.μ _) _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
-    | success Int _ _ _ _  | success (T.ν _ _) _ _ _ _  with eqAsInt₂
-... | refl with eqOuter
-...   | refl = refl
 fst-non-pair-Float : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success T.Float Ψ' eE' d' f'
@@ -595,22 +407,6 @@ fst-non-pair-Fun : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr) {A B : Ty m} {q :
                   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                   → err ≡ FstNeedsPair
 fst-non-pair-Fun ctx arg eqInner eqOuter = rejects (inferFstOn ctx arg) (inferElab ctx arg) eqInner refl eqOuter
-neg-non-Int-Float : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr)
-                     {Ψ' eE' d' f' err}
-                   → inferElab ctx e ≡ success T.Float Ψ' eE' d' f'
-                   → inferElab ctx (Raw.RNeg e) ≡ failure err
-                   → err ≡ TypeMismatch Int T.Float
--- PLAN 0.73 F3 CHANGES WHICH PREMISE DOES THE WORK HERE, and this is the one
--- lemma where it matters. The claim is unchanged and still TRUE, but for a
--- `RFloat` operand it is now true VACUOUSLY: `-3.14` no longer fails, so the
--- premise `inferElab ctx (RNeg e) ≡ failure err` is what cannot
--- hold. Before F3 the same case was discharged by the operand's own inference.
---
--- Read the other direction, that is the statement earning its keep: had the
--- fold been wired without a matching rule in `_⊢ᵢ_∶_⨾_`, this `()` would not
--- typecheck, because `- 3.14` would still be a failure whose error is now
--- something else. The lemma is a live check on the pair, not a formality.
-neg-non-Int-Float ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
 
 
 neg-non-Int-Product : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {A B : Ty m}
@@ -618,14 +414,14 @@ neg-non-Int-Product : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {A B : Ty m}
                      → inferElab ctx e ≡ success (A T.* B) Ψ' eE' d' f'
                      → inferElab ctx (Raw.RNeg e) ≡ failure err
                      → err ≡ TypeMismatch Int (A T.* B)
-neg-non-Int-Product ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
+neg-non-Int-Product ctx e eqInner eqOuter = neg-rejects e eqInner refl eqOuter
 
 neg-non-Int-Sum : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {A B : Ty m}
                    {Ψ' eE' d' f' err}
                  → inferElab ctx e ≡ success (A T.+ B) Ψ' eE' d' f'
                  → inferElab ctx (Raw.RNeg e) ≡ failure err
                  → err ≡ TypeMismatch Int (A T.+ B)
-neg-non-Int-Sum ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
+neg-non-Int-Sum ctx e eqInner eqOuter = neg-rejects e eqInner refl eqOuter
 snd-non-pair-Float : ∀ {m} (ctx : NamedCtx m) (arg : Raw.Expr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success T.Float Ψ' eE' d' f'
@@ -712,28 +508,28 @@ neg-non-Int-Eff : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {A B : Ty m}
                   → inferElab ctx e ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
                   → inferElab ctx (Raw.RNeg e) ≡ failure err
                   → err ≡ TypeMismatch Int (A T.⇒[ T.mk-kind T.Many T.eff ] B)
-neg-non-Int-Eff ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
+neg-non-Int-Eff ctx e eqInner eqOuter = neg-rejects e eqInner refl eqOuter
 
 neg-non-Int-μ : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {F : Fun m}
                  {Ψ' eE' d' f' err}
                → inferElab ctx e ≡ success (T.μ F) Ψ' eE' d' f'
                → inferElab ctx (Raw.RNeg e) ≡ failure err
                → err ≡ TypeMismatch Int (T.μ F)
-neg-non-Int-μ ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
+neg-non-Int-μ ctx e eqInner eqOuter = neg-rejects e eqInner refl eqOuter
 
 neg-non-Int-ν : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {F : Fun m} {π}
                  {Ψ' eE' d' f' err}
                → inferElab ctx e ≡ success (T.ν F π) Ψ' eE' d' f'
                → inferElab ctx (Raw.RNeg e) ≡ failure err
                → err ≡ TypeMismatch Int (T.ν F π)
-neg-non-Int-ν ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
+neg-non-Int-ν ctx e eqInner eqOuter = neg-rejects e eqInner refl eqOuter
 
 neg-non-Int-Fun : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {A B : Ty m} {q : _}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx e ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
                   → inferElab ctx (Raw.RNeg e) ≡ failure err
                   → err ≡ TypeMismatch Int (A T.⇒[ T.mk-kind q T.pure ] B)
-neg-non-Int-Fun ctx e eqInner eqOuter = neg-rejects e (negOperandView e) eqInner refl eqOuter
+neg-non-Int-Fun ctx e eqInner eqOuter = neg-rejects e eqInner refl eqOuter
 case-scrut-Eff : ∀ {m} (ctx : NamedCtx m) (scrut : Raw.Expr)
                     (xL : String) (eL : Raw.Expr)
                     (xR : String) (eR : Raw.Expr)

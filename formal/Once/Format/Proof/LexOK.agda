@@ -34,7 +34,9 @@ open import Once.Postulates using (toList∘fromList; isDigit-value)
 open import Once.Spec.Surface.Lexing
 open import Once.Format.Proof.Lexing using (Printable; p-word; p-int; p-float; p-sym; s-lparen; s-rparen; s-lbrace;
   s-rbrace; s-colon; s-equals; s-arrow; s-caret1; s-caret0; s-caretw; s-lambda; s-comma; s-semicolon; s-at; s-pipe;
-  s-dot; s-plus; s-minus; s-star; s-slash; s-percent; s-ampersand; s-lt; s-le; s-gt; s-ge; s-eqeq; s-neq; s-bang)
+  s-dot; s-plus; s-minus; s-star; s-slash; s-percent; s-ampersand; s-lt; s-le; s-gt; s-ge; s-eqeq; s-neq; s-bang;
+  s-plusd; s-minusd; s-stard; s-slashd; s-ltd; s-led; s-gtd; s-ged; s-eqeqd; s-neqd; Sym)
+open import Once.Spec.Surface.Operator using (‹_›)
 
 -- What else the lexer writes.
 data Other : Token → Set where
@@ -80,6 +82,32 @@ private
   ... | l , eq , f< rewrite eq = p-float f<
 
 -- | Every token of a lexed text is printable, or a line end, the end, a string.
+
+  opSym : ∀ {cs o r} → Glyph cs o r → Sym (TOp o)
+  opSym g+ = s-plus
+  opSym (g- _ _) = s-minus
+  opSym g* = s-star
+  opSym g/ = s-slash
+  opSym g% = s-percent
+  opSym (g< _) = s-lt
+  opSym g<= = s-le
+  opSym (g> _) = s-gt
+  opSym g>= = s-ge
+  opSym g== = s-eqeq
+  opSym g!= = s-neq
+
+  opdSym : ∀ {cs d r} → Glyph cs ‹ d › r → Sym (TOpD d)
+  opdSym g+ = s-plusd
+  opdSym (g- _ _) = s-minusd
+  opdSym g* = s-stard
+  opdSym g/ = s-slashd
+  opdSym (g< _) = s-ltd
+  opdSym g<= = s-led
+  opdSym (g> _) = s-gtd
+  opdSym g>= = s-ged
+  opdSym g== = s-eqeqd
+  opdSym g!= = s-neqd
+
 lexed-ok : ∀ {cs ts} → LexesChars cs ts → All LexOK ts
 lexed-ok lex-eof = inj₂ o-eof ∷ []
 lexed-ok (lex-space l) = lexed-ok l
@@ -96,26 +124,17 @@ lexed-ok (lex-comma l) = inj₁ (p-sym s-comma) ∷ lexed-ok l
 lexed-ok (lex-semi l) = inj₁ (p-sym s-semicolon) ∷ lexed-ok l
 lexed-ok (lex-at l) = inj₁ (p-sym s-at) ∷ lexed-ok l
 lexed-ok (lex-pipe l) = inj₁ (p-sym s-pipe) ∷ lexed-ok l
-lexed-ok (lex-plus l) = inj₁ (p-sym s-plus) ∷ lexed-ok l
-lexed-ok (lex-star l) = inj₁ (p-sym s-star) ∷ lexed-ok l
-lexed-ok (lex-slash l) = inj₁ (p-sym s-slash) ∷ lexed-ok l
-lexed-ok (lex-pct l) = inj₁ (p-sym s-percent) ∷ lexed-ok l
 lexed-ok (lex-amp l) = inj₁ (p-sym s-ampersand) ∷ lexed-ok l
 lexed-ok (lex-dot l) = inj₁ (p-sym s-dot) ∷ lexed-ok l
 lexed-ok (lex-arrow l) = inj₁ (p-sym s-arrow) ∷ lexed-ok l
 lexed-ok (lex-caret1 l) = inj₁ (p-sym s-caret1) ∷ lexed-ok l
 lexed-ok (lex-caret0 l) = inj₁ (p-sym s-caret0) ∷ lexed-ok l
 lexed-ok (lex-caretw l) = inj₁ (p-sym s-caretw) ∷ lexed-ok l
-lexed-ok (lex-le l) = inj₁ (p-sym s-le) ∷ lexed-ok l
-lexed-ok (lex-ge l) = inj₁ (p-sym s-ge) ∷ lexed-ok l
-lexed-ok (lex-eqeq l) = inj₁ (p-sym s-eqeq) ∷ lexed-ok l
-lexed-ok (lex-neq l) = inj₁ (p-sym s-neq) ∷ lexed-ok l
 lexed-ok (lex-comment _ l) = lexed-ok l
-lexed-ok (lex-minus _ _ l) = inj₁ (p-sym s-minus) ∷ lexed-ok l
+lexed-ok (lex-op g _ l) = inj₁ (p-sym (opSym g)) ∷ lexed-ok l
+lexed-ok (lex-opd g l) = inj₁ (p-sym (opdSym g)) ∷ lexed-ok l
 lexed-ok (lex-block _ l) = lexed-ok l
 lexed-ok (lex-lbrace _ l) = inj₁ (p-sym s-lbrace) ∷ lexed-ok l
-lexed-ok (lex-lt _ l) = inj₁ (p-sym s-lt) ∷ lexed-ok l
-lexed-ok (lex-gt _ l) = inj₁ (p-sym s-gt) ∷ lexed-ok l
 lexed-ok (lex-equal _ l) = inj₁ (p-sym s-equals) ∷ lexed-ok l
 lexed-ok (lex-bang _ l) = inj₁ (p-sym s-bang) ∷ lexed-ok l
 lexed-ok (lex-string _ l) = inj₂ o-str ∷ lexed-ok l

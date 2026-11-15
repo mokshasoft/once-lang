@@ -34,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; cong; trans; sym
 
 open import Once.Arith.Machine.AbsInstr
   using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
-         div-rrr; rem-rrr; cmp-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri;
+         div-rrr; rem-rrr; cmp-rrr; fcmp-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri;
          neg-rr; spill; reload; move-to-out)
 -- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
 -- that restriction is STATED rather than assumed. Its instruction set
@@ -43,7 +43,7 @@ open import Once.Arith.Machine.AbsInstr
 -- instead of a float tree silently taking the integer path.
 open import Once.Arith.Type using (NInt; NFloat)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; afcmp)
 open import Once.Arith.Machine.Shape using (⌊_⌋ᴾ; flat-off)
 
 ------------------------------------------------------------------------
@@ -70,6 +70,7 @@ required-scratch (adiv a b)   = required-scratch a ⊔ suc (required-scratch b)
 required-scratch (amod a b)   = required-scratch a ⊔ suc (required-scratch b)
 required-scratch (aneg a)     = required-scratch a
 required-scratch (acmp _ a b) = required-scratch a ⊔ suc (required-scratch b)
+required-scratch (afcmp _ a b) = required-scratch a ⊔ suc (required-scratch b)
 
 ------------------------------------------------------------------------
 -- Division-guard elision (Part B): safe-literal divisor detection
@@ -100,6 +101,7 @@ safe-divisor? (adiv _ _) = false
 safe-divisor? (amod _ _) = false
 safe-divisor? (aneg _)   = false
 safe-divisor? (acmp _ _ _) = false
+safe-divisor? (afcmp _ _ _) = false
 
 -- | Final div/rem instruction for divisor `b`: the guard-ELIDED `-safe`
 -- variant when `b` is a safe literal, else the guarded form. Both denote
@@ -162,6 +164,7 @@ pow2? (adiv _ _) = nothing
 pow2? (amod _ _) = nothing
 pow2? (aneg _)   = nothing
 pow2? (acmp _ _ _) = nothing
+pow2? (afcmp _ _ _) = nothing
 
 -- Correctness: a detected exponent `j` really identifies `k = + 2^j`.
 pow2-try-correct : ∀ f j n j′ → pow2-try f j n ≡ just j′ → n ≡ 2 ^ j′
@@ -272,6 +275,10 @@ compile-go d (acmp o a b) =
   compile-go d a ++ (spill 0 d ∷ []) ++
   compile-go (suc d) b ++
   (reload d 1 ∷ cmp-rrr o 0 1 0 ∷ [])
+compile-go d (afcmp o a b) =
+  compile-go d a ++ (spill 0 d ∷ []) ++
+  compile-go (suc d) b ++
+  (reload d 1 ∷ fcmp-rrr o 0 1 0 ∷ [])
 
 -- | Top-level compile: walk the tree, then move reg 0 to the output.
 compile-abs : ∀ {sh n} → MArithIR sh n → List AbstractInstr
@@ -312,3 +319,4 @@ normalize (aneg a)   = aneg (normalize a)
 normalize (adiv a b) = fold-div (normalize a) (normalize b)
 normalize (amod a b) = fold-mod (normalize a) (normalize b)
 normalize (acmp o a b) = acmp o (normalize a) (normalize b)
+normalize (afcmp o a b) = afcmp o a b     -- (Float operands: nothing to fold)

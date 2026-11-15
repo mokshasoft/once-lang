@@ -50,56 +50,87 @@ d_negate_24 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Float.Dyadic.FloatFormat
 d_FloatFormat_30 = ()
-data T_FloatFormat_30 = C_mkFormat_40 Integer Integer
+data T_FloatFormat_30
+  = C_mkFormat_48 Integer Integer
+                  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+                  MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 -- Once.Spec.Float.Dyadic.FloatFormat.sig-bits
-d_sig'45'bits_36 :: T_FloatFormat_30 -> Integer
-d_sig'45'bits_36 v0
+d_sig'45'bits_40 :: T_FloatFormat_30 -> Integer
+d_sig'45'bits_40 v0
   = case coe v0 of
-      C_mkFormat_40 v1 v2 -> coe v1
+      C_mkFormat_48 v1 v2 v3 v4 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Float.Dyadic.FloatFormat.exp-bits
-d_exp'45'bits_38 :: T_FloatFormat_30 -> Integer
-d_exp'45'bits_38 v0
+d_exp'45'bits_42 :: T_FloatFormat_30 -> Integer
+d_exp'45'bits_42 v0
   = case coe v0 of
-      C_mkFormat_40 v1 v2 -> coe v2
+      C_mkFormat_48 v1 v2 v3 v4 -> coe v2
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Spec.Float.Dyadic.FloatFormat.sig-pos
+d_sig'45'pos_44 ::
+  T_FloatFormat_30 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_sig'45'pos_44 v0
+  = case coe v0 of
+      C_mkFormat_48 v1 v2 v3 v4 -> coe v3
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Spec.Float.Dyadic.FloatFormat.exp-pos
+d_exp'45'pos_46 ::
+  T_FloatFormat_30 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_exp'45'pos_46 v0
+  = case coe v0 of
+      C_mkFormat_48 v1 v2 v3 v4 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Float.Dyadic.binary32
-d_binary32_42 :: T_FloatFormat_30
-d_binary32_42
-  = coe C_mkFormat_40 (coe (23 :: Integer)) (coe (8 :: Integer))
+d_binary32_50 :: T_FloatFormat_30
+d_binary32_50
+  = coe
+      C_mkFormat_48 (coe (23 :: Integer)) (coe (8 :: Integer))
+      (coe
+         MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+         (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26))
+      (coe
+         MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+         (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26))
 -- Once.Spec.Float.Dyadic.binary64
-d_binary64_44 :: T_FloatFormat_30
-d_binary64_44
-  = coe C_mkFormat_40 (coe (52 :: Integer)) (coe (11 :: Integer))
+d_binary64_52 :: T_FloatFormat_30
+d_binary64_52
+  = coe
+      C_mkFormat_48 (coe (52 :: Integer)) (coe (11 :: Integer))
+      (coe
+         MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+         (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26))
+      (coe
+         MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
+         (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26))
 -- Once.Spec.Float.Dyadic.width
-d_width_46 :: T_FloatFormat_30 -> Integer
-d_width_46 v0
+d_width_54 :: T_FloatFormat_30 -> Integer
+d_width_54 v0
   = coe
       addInt
-      (coe addInt (coe (1 :: Integer)) (coe d_exp'45'bits_38 (coe v0)))
-      (coe d_sig'45'bits_36 (coe v0))
+      (coe addInt (coe (1 :: Integer)) (coe d_exp'45'bits_42 (coe v0)))
+      (coe d_sig'45'bits_40 (coe v0))
 -- Once.Spec.Float.Dyadic.bias
-d_bias_50 :: T_FloatFormat_30 -> Integer
-d_bias_50 v0
+d_bias_58 :: T_FloatFormat_30 -> Integer
+d_bias_58 v0
   = coe
       MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22
       (MAlonzo.Code.Data.Nat.Base.d__'94'__276
          (coe (2 :: Integer))
          (coe
             MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22
-            (d_exp'45'bits_38 (coe v0)) (1 :: Integer)))
+            (d_exp'45'bits_42 (coe v0)) (1 :: Integer)))
       (1 :: Integer)
 -- Once.Spec.Float.Dyadic.modPow
-d_modPow_54 :: Integer -> Integer -> Integer
-d_modPow_54 v0 v1
+d_modPow_62 :: Integer -> Integer -> Integer
+d_modPow_62 v0 v1
   = coe
       MAlonzo.Code.Data.Nat.Base.du__'37'__330 (coe v0)
       (coe
          MAlonzo.Code.Data.Nat.Base.d__'94'__276 (coe (2 :: Integer))
          (coe v1))
 -- Once.Spec.Float.Dyadic.bitLen-go
-d_bitLen'45'go_60 :: Integer -> Integer -> Integer
-d_bitLen'45'go_60 v0 v1
+d_bitLen'45'go_68 :: Integer -> Integer -> Integer
+d_bitLen'45'go_68 v0 v1
   = case coe v0 of
       0 -> coe (0 :: Integer)
       _ -> let v2 = subInt (coe v0) (coe (1 :: Integer)) in
@@ -109,40 +140,40 @@ d_bitLen'45'go_60 v0 v1
                 _ -> coe
                        addInt (coe (1 :: Integer))
                        (coe
-                          d_bitLen'45'go_60 (coe v2)
+                          d_bitLen'45'go_68 (coe v2)
                           (coe
                              MAlonzo.Code.Data.Nat.Base.du__'47'__318 (coe v1)
                              (coe (2 :: Integer)))))
 -- Once.Spec.Float.Dyadic.bitLen
-d_bitLen_66 :: Integer -> Integer
-d_bitLen_66 v0 = coe d_bitLen'45'go_60 (coe v0) (coe v0)
+d_bitLen_74 :: Integer -> Integer
+d_bitLen_74 v0 = coe d_bitLen'45'go_68 (coe v0) (coe v0)
 -- Once.Spec.Float.Dyadic.signBit
-d_signBit_70 :: Integer -> Integer
-d_signBit_70 v0
+d_signBit_78 :: Integer -> Integer
+d_signBit_78 v0
   = case coe v0 of
       _ | coe geqInt (coe v0) (coe (0 :: Integer)) -> coe (0 :: Integer)
       _ -> coe (1 :: Integer)
 -- Once.Spec.Float.Dyadic.expFieldN
-d_expFieldN_72 :: T_FloatFormat_30 -> Integer -> Integer -> Integer
-d_expFieldN_72 v0 v1 v2
+d_expFieldN_80 :: T_FloatFormat_30 -> Integer -> Integer -> Integer
+d_expFieldN_80 v0 v1 v2
   = coe
-      d_modPow_54
+      d_modPow_62
       (coe
          MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22
          (addInt
-            (coe d_bias_50 (coe v0))
+            (coe d_bias_58 (coe v0))
             (coe
-               MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22 (d_bitLen_66 (coe v1))
+               MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22 (d_bitLen_74 (coe v1))
                (1 :: Integer)))
          v2)
-      (coe d_exp'45'bits_38 (coe v0))
+      (coe d_exp'45'bits_42 (coe v0))
 -- Once.Spec.Float.Dyadic.sigFieldN
-d_sigFieldN_80 :: T_FloatFormat_30 -> Integer -> Integer -> Integer
-d_sigFieldN_80 v0 v1 ~v2 = du_sigFieldN_80 v0 v1
-du_sigFieldN_80 :: T_FloatFormat_30 -> Integer -> Integer
-du_sigFieldN_80 v0 v1
+d_sigFieldN_88 :: T_FloatFormat_30 -> Integer -> Integer -> Integer
+d_sigFieldN_88 v0 v1 ~v2 = du_sigFieldN_88 v0 v1
+du_sigFieldN_88 :: T_FloatFormat_30 -> Integer -> Integer
+du_sigFieldN_88 v0 v1
   = coe
-      d_modPow_54
+      d_modPow_62
       (coe
          mulInt
          (coe
@@ -150,44 +181,44 @@ du_sigFieldN_80 v0 v1
             (MAlonzo.Code.Data.Nat.Base.d__'94'__276
                (coe (2 :: Integer))
                (coe
-                  MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22 (d_bitLen_66 (coe v1))
+                  MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22 (d_bitLen_74 (coe v1))
                   (1 :: Integer))))
          (coe
             MAlonzo.Code.Data.Nat.Base.d__'94'__276 (coe (2 :: Integer))
             (coe
                MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22
-               (d_sig'45'bits_36 (coe v0))
+               (d_sig'45'bits_40 (coe v0))
                (coe
-                  MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22 (d_bitLen_66 (coe v1))
+                  MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22 (d_bitLen_74 (coe v1))
                   (1 :: Integer)))))
-      (coe d_sig'45'bits_36 (coe v0))
+      (coe d_sig'45'bits_40 (coe v0))
 -- Once.Spec.Float.Dyadic.encodeMag
-d_encodeMag_86 :: T_FloatFormat_30 -> Integer -> Integer -> Integer
-d_encodeMag_86 v0 v1 v2
+d_encodeMag_94 :: T_FloatFormat_30 -> Integer -> Integer -> Integer
+d_encodeMag_94 v0 v1 v2
   = case coe v1 of
       0 -> coe (0 :: Integer)
       _ -> coe
-             addInt (coe du_sigFieldN_80 (coe v0) (coe v1))
+             addInt (coe du_sigFieldN_88 (coe v0) (coe v1))
              (coe
-                mulInt (coe d_expFieldN_72 (coe v0) (coe v1) (coe v2))
+                mulInt (coe d_expFieldN_80 (coe v0) (coe v1) (coe v2))
                 (coe
                    MAlonzo.Code.Data.Nat.Base.d__'94'__276 (coe (2 :: Integer))
-                   (coe d_sig'45'bits_36 (coe v0))))
+                   (coe d_sig'45'bits_40 (coe v0))))
 -- Once.Spec.Float.Dyadic.encode
-d_encode_96 :: T_FloatFormat_30 -> T_Dyadic_8 -> Integer
-d_encode_96 v0 v1
+d_encode_104 :: T_FloatFormat_30 -> T_Dyadic_8 -> Integer
+d_encode_104 v0 v1
   = coe
       addInt
       (coe
-         d_encodeMag_86 (coe v0)
+         d_encodeMag_94 (coe v0)
          (coe
             MAlonzo.Code.Data.Integer.Base.d_'8739'_'8739'_18
             (coe d_sig_14 (coe v1)))
          (coe d_shift_16 (coe v1)))
       (coe
-         mulInt (coe d_signBit_70 (coe d_sig_14 (coe v1)))
+         mulInt (coe d_signBit_78 (coe d_sig_14 (coe v1)))
          (coe
             MAlonzo.Code.Data.Nat.Base.d__'94'__276 (coe (2 :: Integer))
             (coe
-               addInt (coe d_exp'45'bits_38 (coe v0))
-               (coe d_sig'45'bits_36 (coe v0)))))
+               addInt (coe d_exp'45'bits_42 (coe v0))
+               (coe d_sig'45'bits_40 (coe v0)))))

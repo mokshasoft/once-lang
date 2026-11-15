@@ -22,7 +22,7 @@ import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
-import qualified MAlonzo.Code.Once.Spec.Float.Decimal
+import qualified MAlonzo.Code.Once.Float.Word
 import qualified MAlonzo.Code.Once.Spec.Float.Dyadic
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Type
@@ -198,8 +198,8 @@ du_compile'45'const_76 v0 v1
                 (coe
                    MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_28
                    (coe
-                      MAlonzo.Code.Once.Spec.Float.Decimal.d_round_176
-                      (coe MAlonzo.Code.Once.Spec.Float.Dyadic.d_binary64_44) (coe v1))))
+                      MAlonzo.Code.Once.Float.Word.d_round_58
+                      (coe MAlonzo.Code.Once.Spec.Float.Dyadic.d_binary64_52) (coe v1))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const-size

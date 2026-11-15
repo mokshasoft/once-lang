@@ -23,10 +23,14 @@ open import Once.IRTy using (fits-int; fits-float)
 open import Once.Name using (showCanonical)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Spec.Float.Decimal using (Decimal)
+open import Once.Spec.Float.Value using (Sign; pos; neg)
 
 private
   showDecimal : Decimal → String
-  showDecimal d = ℤS.show (Decimal.sig d) ++ "e-" ++ showℕ (Decimal.exp10 d)
+  showDecimal d = sgn (Decimal.sign d) ++ showℕ (Decimal.sig d) ++ "e-" ++ showℕ (Decimal.exp10 d)
+    where sgn : Sign → String
+          sgn pos = ""
+          sgn neg = "-"
 
 -- | A term, compositions in parentheses unless at the top.
 showIR  : ∀ {A B} → IR A B → String

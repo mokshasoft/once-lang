@@ -52,7 +52,7 @@ open import Once.Functor.Translate using (IsConcrete-irrelevant; WFFun-irrelevan
 import Once.Context as Surface
 open import Once.Spec.Context using (Ctx; Usage)
 open import Once.Spec.Context using (_∷_; _▸_)
-open import Once.Surface.Syntax using (Expr; pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce; poly)
+open import Once.Surface.Syntax using (Expr; pair; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce; poly)
 import Once.IR as IR
 
 private
@@ -110,9 +110,6 @@ module _ {m} {Γ : Ctx m n} where
   pair-h : {a : Expr Γ Ψ₁ A} {a′ : Expr Γ Ψ₁′ A′} {b : Expr Γ Ψ₂ B} {b′ : Expr Γ Ψ₂′ B′}
          → a ≅ a′ → b ≅ b′ → pair a b ≅ pair a′ b′
   pair-h (≅i refl refl) (≅i refl refl) = ≅i refl refl
-
-  neg-h : {a : Expr Γ Ψ Int} {a′ : Expr Γ Ψ′ Int} → a ≅ a′ → neg a ≅ neg a′
-  neg-h (≅i refl refl) = ≅i refl refl
 
   let-h : {e₁ : Expr Γ Ψ₁ A} {e₁′ : Expr Γ Ψ₁′ A} {e₂ : Expr (Γ ▸ A) (q ∷ Ψ₂) B} {e₂′ : Expr (Γ ▸ A) (q′ ∷ Ψ₂′) B′}
         → e₁ ≅ e₁′ → e₂ ≅ e₂′ → let' e₁ e₂ ≅ let' e₁′ e₂′

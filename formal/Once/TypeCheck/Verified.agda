@@ -31,7 +31,10 @@
 -- Reference: plans/0.3-frontend-verification-gaps.md.
 ------------------------------------------------------------------------
 
-import Once.TypeCheck.Raw as Raw
+open import Once.Spec.Surface.Operator using (binSym; BinSym)
+open BinSym using (theory; shape)
+open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; symCod)
+open import Once.TypeCheck.NumTable using (Binary)
 
 import Once.Spec.Context as SCx
 open import Once.Type.Core using (wk₀)
@@ -92,7 +95,8 @@ open import Data.Product using (proj₁)
 open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.TypeCheck.Error using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UsageViolation; BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Surface.Syntax as Raw using (RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RNeg; RBinOp; RLam; RApp; BinOp)
+open import Once.Spec.Surface.Syntax as Raw using (RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RNeg; RBinOp; RLam; RApp)
+open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.Spec.Name using (gen; GenWord)
 import Once.Grammar.Convert       as Conv
 open import Once.Grammar using (GType)
@@ -329,8 +333,7 @@ record VerifiedTypeChecker {m} : Set₁ where
         {Ψ₁ e₁E d₁ f₁ sub-err outer-err}
       → Once.TypeCheck.Elaborate.asInt (tcInfer ctx e₁)
           ≡ Once.TypeCheck.Elaborate.isInt Ψ₁ e₁E d₁ f₁
-      → Once.TypeCheck.Elaborate.asInt (tcInfer ctx e₂)
-          ≡ Once.TypeCheck.Elaborate.notInt sub-err
+      → Once.TypeCheck.Elaborate.notNumeric (tcInfer ctx e₂) ≡ just sub-err
       → tcInfer ctx (RBinOp op e₁ e₂) ≡ failure outer-err
       → outer-err ≡ BinOpRightError sub-err
 
@@ -349,11 +352,6 @@ record VerifiedTypeChecker {m} : Set₁ where
       → tcInfer ctx arg ≡ success Once.Spec.Type.Float Ψ' eE' d' f'
       → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
       → err ≡ SndNeedsPair
-
-    tc-err-neg-non-Int-Float : ∀ (ctx : NamedCtx m) (e : Syn.Expr) {Ψ' eE' d' f' err}
-      → tcInfer ctx e ≡ success Once.Spec.Type.Float Ψ' eE' d' f'
-      → tcInfer ctx (RNeg e) ≡ failure err
-      → err ≡ TypeMismatch {0} Once.Spec.Type.Int Once.Spec.Type.Float
 
     tc-err-case-scrut-Float : ∀ (ctx : NamedCtx m) (scrut : Syn.Expr) (xL : String) (eL : Syn.Expr)
         (xR : String) (eR : Syn.Expr) {Ψ' eE' d' f' err}
@@ -392,14 +390,14 @@ record VerifiedTypeChecker {m} : Set₁ where
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RPair a b) ≡ success (A Once.Spec.Type.* B) (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
 
-    -- RNeg: sub at Int → outer success at Int.
-    tcInfer-complete-RNeg : ∀ (ctx : NamedCtx m) (e : Syn.Expr)
+    -- RNeg: sub at a number type with `Neg` → outer success there.
+    tcInfer-complete-RNeg : ∀ (ctx : NamedCtx m) (e : Syn.Expr) (a : NumTy) (h : Has a Neg)
         {Ψ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {eE' : SExpr (Classify.NamedCtx.debruijn ctx) Ψ Once.Spec.Type.Int}
+        {eE' : SExpr (Classify.NamedCtx.debruijn ctx) Ψ ⌜ a ⌝ⁿ}
         {d' f' : _}
-      → tcInfer ctx e ≡ success Once.Spec.Type.Int Ψ eE' d' f'
+      → tcInfer ctx e ≡ success ⌜ a ⌝ⁿ Ψ eE' d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RNeg e) ≡ success Once.Spec.Type.Int Ψ eE d f
+          tcInfer ctx (RNeg e) ≡ success ⌜ a ⌝ⁿ Ψ eE d f
 
     -- RAnnot: check-mode sub success → infer-mode success.
     tcInfer-complete-RAnnot : ∀ (ctx : NamedCtx m) (e : Syn.Expr) (T : Type)
@@ -471,29 +469,18 @@ record VerifiedTypeChecker {m} : Set₁ where
           tcInfer ctx (RVar x) ≡ success A Ψ eE d f
 
 
-    -- RBinOp (arithmetic / comparison families)
-    tcInfer-complete-RBinOp-arith : ∀ (ctx : NamedCtx m) (op : BinOp) (arithEq : Raw.isArithmeticOp op ≡ Data.Bool.true)
+    -- RBinOp: both operands at a number type with the operator's theory
+    -- (plan 0.150: the table).
+    tcInfer-complete-RBinOp : ∀ (ctx : NamedCtx m) (op : BinOp) (a : NumTy) (h : Has a (theory (binSym op)))
         (e₁ e₂ : Syn.Expr)
         {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Once.Spec.Type.Int}
-        {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Once.Spec.Type.Int}
+        {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ ⌜ a ⌝ⁿ}
+        {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ ⌜ a ⌝ⁿ}
         {d₁ d₂ f₁ f₂ : _}
-      → tcInfer ctx e₁ ≡ success Once.Spec.Type.Int Ψ₁ e₁E d₁ f₁
-      → tcInfer ctx e₂ ≡ success Once.Spec.Type.Int Ψ₂ e₂E d₂ f₂
+      → tcInfer ctx e₁ ≡ success ⌜ a ⌝ⁿ Ψ₁ e₁E d₁ f₁
+      → tcInfer ctx e₂ ≡ success ⌜ a ⌝ⁿ Ψ₂ e₂E d₂ f₂
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RBinOp op e₁ e₂) ≡ success Once.Spec.Type.Int (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
-
-    tcInfer-complete-RBinOp-cmp : ∀ (ctx : NamedCtx m) (op : BinOp) (cmpEq : Raw.isComparisonOp op ≡ Data.Bool.true)
-        (e₁ e₂ : Syn.Expr)
-        {Ψ₁ Ψ₂ : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {e₁E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₁ Once.Spec.Type.Int}
-        {e₂E : SExpr (Classify.NamedCtx.debruijn ctx) Ψ₂ Once.Spec.Type.Int}
-        {d₁ d₂ f₁ f₂ : _}
-      → tcInfer ctx e₁ ≡ success Once.Spec.Type.Int Ψ₁ e₁E d₁ f₁
-      → tcInfer ctx e₂ ≡ success Once.Spec.Type.Int Ψ₂ e₂E d₂ f₂
-      → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RBinOp op e₁ e₂)
-            ≡ success (Once.Spec.Type.Unit Once.Spec.Type.+ Once.Spec.Type.Unit) (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
+          tcInfer ctx (RBinOp op e₁ e₂) ≡ success (symCod a (shape (binSym op))) (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
 
     -- RDestruct (case/sum elim)
     tcInfer-complete-RDestruct : ∀ (ctx : NamedCtx m) (scrut : Syn.Expr) (xL : String) (eL : Syn.Expr)
@@ -559,14 +546,7 @@ record VerifiedTypeChecker {m} : Set₁ where
       × (∀ {p} → Once.TypeCheck.Elaborate.decideLeq q' q ≡ just p
              → (q' Once.Type.Grade.≤qᵇ q) ≡ Data.Bool.true)
 
-    id-binop-classification-exhaustive : ∀ (op : BinOp)
-      → (Raw.isArithmeticOp op ≡ Data.Bool.true)
-      ⊎ (Raw.isComparisonOp op ≡ Data.Bool.true)
-
-    id-binop-classification-exclusive : ∀ (op : BinOp)
-      → Raw.isArithmeticOp op ≡ Data.Bool.true
-      → Raw.isComparisonOp op ≡ Data.Bool.true
-      → Data.Empty.⊥
+    id-binop-binary : ∀ (op : BinOp) → Binary (shape (binSym op))
 
     id-≤q-refl : ∀ (q : _) → (q Once.Type.Grade.≤qᵇ q) ≡ Data.Bool.true
 
@@ -695,7 +675,6 @@ verifiedTypeChecker = record
   ; tc-err-binop-right-wraps      = EP.binop-right-err-wraps
   ; tc-err-fst-non-pair-Float     = EP.fst-non-pair-Float
   ; tc-err-snd-non-pair-Float     = EP.snd-non-pair-Float
-  ; tc-err-neg-non-Int-Float      = EP.neg-non-Int-Float
   ; tc-err-case-scrut-Float       = EP.case-scrut-Float
   ; tc-err-case-branch-mismatch   = EP.case-branch-mismatch-is-CaseBranchMismatch
   ; tc-err-check-RInt-type-mismatch  = EP.check-RInt-type-mismatch
@@ -712,14 +691,12 @@ verifiedTypeChecker = record
   ; tcInfer-complete-RApp-snd     = λ ctx → CmpR.infer-complete-RApp-snd
   ; tcInfer-complete-RApp-terminal = λ ctx → CmpR.infer-complete-RApp-terminal
   ; tcInfer-complete-RVar-local   = λ ctx → CmpR.infer-complete-RVar-local {ctx = ctx}
-  ; tcInfer-complete-RBinOp-arith = λ ctx → CmpR.infer-complete-RBinOp-arith
-  ; tcInfer-complete-RBinOp-cmp   = λ ctx → CmpR.infer-complete-RBinOp-cmp
+  ; tcInfer-complete-RBinOp      = λ ctx → CmpR.infer-complete-RBinOp
   ; tcInfer-complete-RDestruct    = λ ctx → CmpR.infer-complete-RDestruct
   ; tcInfer-complete-RApp-generic = λ ctx → CmpR.infer-complete-RApp-generic
   ; tcCheck-complete-RLam         = CmpR.check-complete-RLam
   ; id-decideLeq-iff              = λ q' q → Id.decideLeq-correct-true q' q , Id.decideLeq-correct-just q' q
-  ; id-binop-classification-exhaustive = Id.binop-classification-exhaustive
-  ; id-binop-classification-exclusive  = Id.binop-classification-exclusive
+  ; id-binop-binary = Id.binop-binary
   ; id-≤q-refl                    = Id.≤q-refl
   ; id-≤q-trans                   = Id.≤q-trans
   ; id-Zero-≤q-all                = Id.Zero-≤q-all

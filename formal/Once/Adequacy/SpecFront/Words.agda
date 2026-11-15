@@ -41,6 +41,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.Postulates using (toList∘fromList)
 open import Once.Spec.Signature using (Signature; Decl; _∶_)
 open import Once.Spec.Surface.Lexing
+import Once.Spec.Surface.Lexing as L
 open import Once.Spec.Surface.Syntax using (DSignature; DImport; DTypeSig; DFunDef; DTypeAlias; mkImport; Module)
 import Once.Spec.Surface.Syntax as SX
 open import Once.Spec.Surface.Grammar as G
@@ -154,16 +155,11 @@ lex-words (lex-caret0 l)             = tt ∷ lex-words l
 lex-words (lex-caretw l)             = tt ∷ lex-words l
 lex-words (lex-comment _ l)          = lex-words l
 lex-words (lex-arrow l)              = tt ∷ lex-words l
-lex-words (lex-minus _ _ l)          = tt ∷ lex-words l
+lex-words (lex-op _ _ l)             = tt ∷ lex-words l
+lex-words (lex-opd _ l)              = tt ∷ lex-words l
 lex-words (lex-block _ l)            = lex-words l
 lex-words (lex-lbrace _ l)           = tt ∷ lex-words l
-lex-words (lex-le l)                 = tt ∷ lex-words l
-lex-words (lex-lt _ l)               = tt ∷ lex-words l
-lex-words (lex-ge l)                 = tt ∷ lex-words l
-lex-words (lex-gt _ l)               = tt ∷ lex-words l
-lex-words (lex-eqeq l)               = tt ∷ lex-words l
 lex-words (lex-equal _ l)            = tt ∷ lex-words l
-lex-words (lex-neq l)                = tt ∷ lex-words l
 lex-words (lex-bang _ l)             = tt ∷ lex-words l
 lex-words (lex-lparen l)             = tt ∷ lex-words l
 lex-words (lex-rparen l)             = tt ∷ lex-words l
@@ -174,10 +170,6 @@ lex-words (lex-comma l)              = tt ∷ lex-words l
 lex-words (lex-semi l)               = tt ∷ lex-words l
 lex-words (lex-at l)                 = tt ∷ lex-words l
 lex-words (lex-pipe l)               = tt ∷ lex-words l
-lex-words (lex-plus l)               = tt ∷ lex-words l
-lex-words (lex-star l)               = tt ∷ lex-words l
-lex-words (lex-slash l)              = tt ∷ lex-words l
-lex-words (lex-pct l)                = tt ∷ lex-words l
 lex-words (lex-amp l)                = tt ∷ lex-words l
 lex-words (lex-dot l)                = tt ∷ lex-words l
 lex-words (lex-string _ l)           = tt ∷ lex-words l
@@ -223,18 +215,21 @@ private
   fundef-words n (G.fundef _ _) = n
 
   -- an operator's characters
+  glyph-op : ∀ {c o} → L.Glyph (c ∷ []) o [] → T (Once.Parser.Lexer.isOpNameChar c)
+  glyph-op L.g+      = tt
+  glyph-op (L.g- _ _) = tt
+  glyph-op L.g*      = tt
+  glyph-op L.g/      = tt
+  glyph-op L.g%      = tt
+  glyph-op (L.g< _)  = tt
+  glyph-op (L.g> _)  = tt
+
   oc-op : ∀ {t ch} → G.OpChar t ch → T (Once.Parser.Lexer.isOpNameChar ch)
-  oc-op G.oc-dot   = tt
-  oc-op G.oc-plus  = tt
-  oc-op G.oc-minus = tt
-  oc-op G.oc-star  = tt
-  oc-op G.oc-slash = tt
-  oc-op G.oc-pct   = tt
-  oc-op G.oc-lt    = tt
-  oc-op G.oc-gt    = tt
-  oc-op G.oc-pipe  = tt
-  oc-op G.oc-amp   = tt
-  oc-op G.oc-at    = tt
+  oc-op (G.oc-op g) = glyph-op g
+  oc-op G.oc-dot    = tt
+  oc-op G.oc-pipe   = tt
+  oc-op G.oc-amp    = tt
+  oc-op G.oc-at     = tt
 
   ops-ʳ++ : ∀ xs {acc} → T (allOpNameChars xs) → T (allOpNameChars acc) → T (allOpNameChars (xs ʳ++ acc))
   ops-ʳ++ []       _ a = a
@@ -251,6 +246,7 @@ private
       ops-ne []       t = t
       ops-ne (y ∷ ys) t = ops-ne ys t
   op-name (G.op-char oc p) o = op-name p (∧-intro (oc-op oc) o)
+  op-name (G.op-dotted g p) o = op-name p (∧-intro tt (∧-intro (glyph-op g) o))
 
   decl-words′ : ∀ {ts d r} → ParsesDecl ts d r → All TokW ts → DeclW d
   decl-words′ (decl-import p)            (_ ∷ ws)    = import-words ws p

@@ -55,7 +55,8 @@ open import Once.Functor.Translate using (IsConcrete-irrelevant; WFFun-irrelevan
 import Once.Context as Surface
 open import Once.Spec.Context using (Ctx; Usage)
 open import Once.Spec.Context using (_∷_; _▸_)
-open import Once.Surface.Syntax using (Expr; pair; neg; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce; poly)
+open import Once.Spec.Theory using (Has; Sym; symDom)
+open import Once.Surface.Syntax using (Expr; pair; num; let'; case'; app; effApp; comp'; copair'; fork'; curry'; cata; ana; loop; lam; coerce; poly)
 import Once.IR as IR
 import Once.Denotation.SourceDenote as SD
 open SD using (⟦_⟧ˢ)
@@ -126,8 +127,9 @@ module _ {m} {Γ : Ctx m n} where
          → a ≅ a′ → b ≅ b′ → pair a b ≅ pair a′ b′
   pair-h (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (pair-cong h k)
 
-  neg-h : {a : Expr Γ Ψ Int} {a′ : Expr Γ Ψ′ Int} → a ≅ a′ → neg a ≅ neg a′
-  neg-h (≅i refl refl h) = ≅i refl refl (neg-cong h)
+  num-h : ∀ {A₀ U k} (h : Has A₀ U) (o : Sym U k) {a : Expr Γ Ψ (symDom A₀ k)} {a′ : Expr Γ Ψ′ (symDom A₀ k)}
+        → a ≅ a′ → num h o a ≅ num h o a′
+  num-h h o (≅i refl refl e) = ≅i refl refl (num-cong h o e)
 
   let-h : {e₁ : Expr Γ Ψ₁ A} {e₁′ : Expr Γ Ψ₁′ A} {e₂ : Expr (Γ ▸ A) (q ∷ Ψ₂) B} {e₂′ : Expr (Γ ▸ A) (q′ ∷ Ψ₂′) B′}
         → e₁ ≅ e₁′ → e₂ ≅ e₂′ → let' e₁ e₂ ≅ let' e₁′ e₂′

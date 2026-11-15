@@ -44,7 +44,7 @@ d_skipNewlines_10 v0
                         (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v0)) in
            coe
              (case coe v1 of
-                MAlonzo.Code.Once.Parser.Token.C_TNewline_74
+                MAlonzo.Code.Once.Parser.Token.C_TNewline_56
                   -> let v4 = d_skipNewlines_10 (coe v2) in
                      coe
                        (case coe v4 of

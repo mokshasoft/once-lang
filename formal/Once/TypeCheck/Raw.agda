@@ -4,9 +4,9 @@
 ------------------------------------------------------------------------
 -- Once.TypeCheck.Raw — the elaborator's decisions on written terms.
 --
--- The terms are the Spec's (`Once.Spec.Surface.Syntax`). This module classes
--- the binary operators and defines and decides `ClosedLiftShape`, the side
--- condition of the closed-expression lift.
+-- The terms are the Spec's (`Once.Spec.Surface.Syntax`). This module defines
+-- and decides `ClosedLiftShape`, the side condition of the closed-expression
+-- lift. (The operators are decided by `TypeCheck.NumTable`, plan 0.150.)
 ------------------------------------------------------------------------
 
 module Once.TypeCheck.Raw where
@@ -15,53 +15,8 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Data.Bool using (Bool; true; false)
 open import Once.Spec.Surface.Syntax
-  using (Expr; BinOp; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat;
-         RAnnot; RBinOp; RNeg; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
-
-------------------------------------------------------------------------
--- The operators' classes
-------------------------------------------------------------------------
-
-isComparisonOp : BinOp → Bool
-isComparisonOp OpLt  = true
-isComparisonOp OpLe  = true
-isComparisonOp OpGt  = true
-isComparisonOp OpGe  = true
-isComparisonOp OpEq  = true
-isComparisonOp OpNe  = true
-isComparisonOp OpAdd = false
-isComparisonOp OpSub = false
-isComparisonOp OpMul = false
-isComparisonOp OpDiv = false
-isComparisonOp OpMod = false
-
--- The operators defined on `Float`. `%` is not: `fmod` is a different
--- function from the integer remainder, and is not given a meaning.
-isFloatArithmeticOp : BinOp → Bool
-isFloatArithmeticOp OpAdd = true
-isFloatArithmeticOp OpSub = true
-isFloatArithmeticOp OpMul = true
-isFloatArithmeticOp OpDiv = true
-isFloatArithmeticOp OpMod = false
-isFloatArithmeticOp OpLt  = false
-isFloatArithmeticOp OpLe  = false
-isFloatArithmeticOp OpGt  = false
-isFloatArithmeticOp OpGe  = false
-isFloatArithmeticOp OpEq  = false
-isFloatArithmeticOp OpNe  = false
-
-isArithmeticOp : BinOp → Bool
-isArithmeticOp OpAdd = true
-isArithmeticOp OpSub = true
-isArithmeticOp OpMul = true
-isArithmeticOp OpDiv = true
-isArithmeticOp OpMod = true
-isArithmeticOp OpLt  = false
-isArithmeticOp OpLe  = false
-isArithmeticOp OpGt  = false
-isArithmeticOp OpGe  = false
-isArithmeticOp OpEq  = false
-isArithmeticOp OpNe  = false
+  using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat;
+         RAnnot; RBinOp; RNeg)
 
 ------------------------------------------------------------------------
 -- The forms without a checking rule of their own
@@ -98,7 +53,7 @@ closedLiftShape? (RApp _ _)            = nothing
 closedLiftShape? (RLam _ _)            = nothing
 closedLiftShape? (RPair _ _)           = nothing
 closedLiftShape? (RInt _)              = nothing
-closedLiftShape? (RFloat _ _ _)      = nothing
+closedLiftShape? (RFloat _ _ _ _)    = nothing
 closedLiftShape? (RNeg _)        = nothing
 
 -- | …and agrees with the witness, which is what makes the elaborator's

@@ -242,7 +242,7 @@ rewrite-program-linked p (lm , les , tl , nd) =
 -- D320: …and as a TRACE — the run's calls, then how it ended (`returned` or
 -- `halted`, `TraceTr.runTr`). A module with no `main` shows nothing, ever.
 ⟦_⟧IRᵗ : Maybe IRProgram → TargetNum → Interp → Tr ⊤
-⟦ just p ⟧IRᵗ fmt ι = trT∞ ι [] (runIR fmt (pureHalf ι) p)
+⟦ just p ⟧IRᵗ fmt ι = trT∞ fmt ι [] (runIR fmt (pureHalf ι) p)
 ⟦ nothing ⟧IRᵗ _ _ = silentTr
 
 -- D165, RESTATED AT THE MEANING (plan 0.103 6a″): the arith lifting preserves

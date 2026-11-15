@@ -41,10 +41,12 @@ open import Once.Spec.Grade using (Quantity; Zero; One; Many; pureᶠ; actᶠ)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Name using (canonical)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat)
+open import Once.Spec.Float.Value using (pos; neg)
+import Data.Integer as ℤ
 open import Once.Format.Doc using (Doc; empty; tk; sp; cmt; para; line; newline; blank; eol; _<>_; nest; group;
   indent; toks)
 open import Once.Format.Print
-open import Once.Format.Proof.Skeleton using (anchorTok; plain; symM; opToken-sym; opTok-plain)
+open import Once.Format.Proof.Skeleton using (anchorTok; plain; symM; opToken-sym; dotToken-sym; opTok-plain)
 open import Once.Format.Proof.Tokens using (anchor-toks)
 open import Once.Format.Proof.Words using (DocC; Mn; commentRun-DW; eolText-DW)
 
@@ -197,8 +199,13 @@ body=body.replace("""  ind-infix : ∀ x → Ind (infixOp x)
   ind-infix x {p} = ind-pure ⊕ⁱ ind-plain p ⊕ⁱ ind-pure""")
 body=body.replace("ind-left lv a ⊕ⁱ ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-ex (suc lv) false b",
                   "ind-left lv a ⊕ⁱ ind-pure ⊕ⁱ ind-plain (opTok-plain op) ⊕ⁱ ind-pure ⊕ⁱ ind-ex (suc lv) false b")
-body=body.replace("opTok1′ (opToken c) {opToken-sym c} ⊕ⁱ ind-pure ⊕ⁱ ind-opToks (d ∷ cs)","opTok1′ (opToken c) {opToken-sym c} ⊕ⁱ ind-ifsp _ ⊕ⁱ ind-opToks (d ∷ cs)")
-body=body.replace("ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-ex 4 false e)","ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-ifsp (startsNeg e) ⊕ⁱ ind-ex 4 false e)")
+body=body.replace("opTok1′ (opToken c) {opToken-sym c} ⊕ⁱ ind-pure ⊕ⁱ ind-opToks ds","opTok1′ (opToken c) {opToken-sym c} ⊕ⁱ ind-ifsp _ ⊕ⁱ ind-opToks ds")
+body=body.replace("ind-opPair : ∀ c d ds cs m → Ind (opPair c d ds cs m)","ind-opPair : ∀ c d ds cs m {p : T (symM m)} → Ind (opPair c d ds cs m)")
+body=body.replace("ind-opPair c d ds cs (just x) = ind-pure ⊕ⁱ ind-opToks cs","ind-opPair c d ds cs (just x) {p} = ind-plain p ⊕ⁱ ind-opToks cs")
+body=body.replace("ind-opPair c d ds cs nothing  = ","ind-opPair c d ds cs nothing  {_} = ")
+body=body.replace("ind-opPair c d ds cs (dotToken c d)","ind-opPair c d ds cs (dotToken c d) {dotToken-sym c d}")
+body=body.replace("ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-paren (startsNum e) (ind-ex 4 false e))","ind-paren (4 <ᵇ l) (ind-pure ⊕ⁱ ind-ifsp (startsNeg e) ⊕ⁱ ind-paren (startsNum e) (ind-ex 4 false e))")
+assert "ind-ifsp _ ⊕ⁱ ind-opToks" in body and "ind-ifsp (startsNeg e)" in body and "{dotToken-sym c d}" in body
 # the body is written for a `module Same … where` block: un-indent it
 body='\n'.join(l[2:] if l.startswith('  ') else l for l in body.split('\n'))
 TAIL=r'''

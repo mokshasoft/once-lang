@@ -16,7 +16,9 @@
 -- (`TraceTr.approx-run`). The budget is read one higher to absorb the step.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.BudgetApex where
+open import Once.Spec.Numerics using (TargetNum)
+
+module Once.Adequacy.BudgetApex (tn : TargetNum) where
 
 open import Data.List using ([]; _++_; map)
 open import Data.List.Properties using (map-++)
@@ -33,10 +35,13 @@ open import Once.IR.Semantics.Iterative using (T∞)
 open T∞ using (force)
 open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_; exhausted)
 open import Once.Denotation.Approx using (approx)
-open import Once.Denotation.TraceTr using (δ∞; trT∞; obsAp; approx-run)
+open import Once.Denotation.TraceTr tn using (δ∞; trT∞; obsAp; approx-run)
 open import Once.Adequacy.MachineTrace using (Step; module Machine)
 open import Once.Adequacy.FuelTrace using (Obs; module Fuel; module Agree)
-open import Once.IR.Semantics.Event using (toEvent)
+import Once.IR.Semantics.Event as Ev
+
+private
+  toEvent = Ev.toEvent (TargetNum.float-format tn)
 open import Once.IR.Semantics.Out using (Out)
 import Once.IR.Semantics.Out as Out
 

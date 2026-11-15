@@ -25,6 +25,7 @@ import Once.Parser.Token as P
 open import Once.Spec.Grade using (Zero; One; Many)
 open import Once.Parser.Generic.Relation using (isStar; isPlus; arrowDir; adG; adA; adR; adD; ArrowDir)
 open import Once.Parser.TypeRelation using (NotStar; NotStarPlus; NotArrowOrGrade)
+open import Once.Adequacy.SpecTokNames
 open import Once.Adequacy.SpecLexing using (forget)
 
 private
@@ -65,6 +66,7 @@ star-false→ (P.TGt ∷ _) _ ()
 star-false→ (P.TGe ∷ _) _ ()
 star-false→ (P.TEqEq ∷ _) _ ()
 star-false→ (P.TNeq ∷ _) _ ()
+star-false→ (P.TOpD _ ∷ _) _ ()
 star-false→ (P.TBang ∷ _) _ ()
 star-false→ (P.TNewline ∷ _) _ ()
 star-false→ (P.TEOF ∷ _) _ ()
@@ -103,6 +105,7 @@ star-false← (P.TGt ∷ _) _ = refl
 star-false← (P.TGe ∷ _) _ = refl
 star-false← (P.TEqEq ∷ _) _ = refl
 star-false← (P.TNeq ∷ _) _ = refl
+star-false← (P.TOpD _ ∷ _) _ = refl
 star-false← (P.TBang ∷ _) _ = refl
 star-false← (P.TNewline ∷ _) _ = refl
 star-false← (P.TEOF ∷ _) _ = refl
@@ -141,6 +144,7 @@ star-true (P.TGt ∷ _) ()
 star-true (P.TGe ∷ _) ()
 star-true (P.TEqEq ∷ _) ()
 star-true (P.TNeq ∷ _) ()
+star-true (P.TOpD _ ∷ _) ()
 star-true (P.TBang ∷ _) ()
 star-true (P.TNewline ∷ _) ()
 star-true (P.TEOF ∷ _) ()
@@ -179,6 +183,7 @@ plus-false→ (P.TGt ∷ _) _ ()
 plus-false→ (P.TGe ∷ _) _ ()
 plus-false→ (P.TEqEq ∷ _) _ ()
 plus-false→ (P.TNeq ∷ _) _ ()
+plus-false→ (P.TOpD _ ∷ _) _ ()
 plus-false→ (P.TBang ∷ _) _ ()
 plus-false→ (P.TNewline ∷ _) _ ()
 plus-false→ (P.TEOF ∷ _) _ ()
@@ -217,6 +222,7 @@ plus-false← (P.TGt ∷ _) _ = refl
 plus-false← (P.TGe ∷ _) _ = refl
 plus-false← (P.TEqEq ∷ _) _ = refl
 plus-false← (P.TNeq ∷ _) _ = refl
+plus-false← (P.TOpD _ ∷ _) _ = refl
 plus-false← (P.TBang ∷ _) _ = refl
 plus-false← (P.TNewline ∷ _) _ = refl
 plus-false← (P.TEOF ∷ _) _ = refl
@@ -255,6 +261,7 @@ plus-true (P.TGt ∷ _) ()
 plus-true (P.TGe ∷ _) ()
 plus-true (P.TEqEq ∷ _) ()
 plus-true (P.TNeq ∷ _) ()
+plus-true (P.TOpD _ ∷ _) ()
 plus-true (P.TBang ∷ _) ()
 plus-true (P.TNewline ∷ _) ()
 plus-true (P.TEOF ∷ _) ()
@@ -294,6 +301,7 @@ notStar→TStar (P.TGt ∷ _) _ ()
 notStar→TStar (P.TGe ∷ _) _ ()
 notStar→TStar (P.TEqEq ∷ _) _ ()
 notStar→TStar (P.TNeq ∷ _) _ ()
+notStar→TStar (P.TOpD _ ∷ _) _ ()
 notStar→TStar (P.TBang ∷ _) _ ()
 notStar→TStar (P.TNewline ∷ _) _ ()
 notStar→TStar (P.TEOF ∷ _) _ ()
@@ -332,6 +340,7 @@ notStar← (P.TGt ∷ _) _ = tt
 notStar← (P.TGe ∷ _) _ = tt
 notStar← (P.TEqEq ∷ _) _ = tt
 notStar← (P.TNeq ∷ _) _ = tt
+notStar← (P.TOpD _ ∷ _) _ = tt
 notStar← (P.TBang ∷ _) _ = tt
 notStar← (P.TNewline ∷ _) _ = tt
 notStar← (P.TEOF ∷ _) _ = tt
@@ -371,6 +380,7 @@ notPlus→TPlus (P.TGt ∷ _) _ ()
 notPlus→TPlus (P.TGe ∷ _) _ ()
 notPlus→TPlus (P.TEqEq ∷ _) _ ()
 notPlus→TPlus (P.TNeq ∷ _) _ ()
+notPlus→TPlus (P.TOpD _ ∷ _) _ ()
 notPlus→TPlus (P.TBang ∷ _) _ ()
 notPlus→TPlus (P.TNewline ∷ _) _ ()
 notPlus→TPlus (P.TEOF ∷ _) _ ()
@@ -409,6 +419,7 @@ notPlus← (P.TGt ∷ _) _ = tt
 notPlus← (P.TGe ∷ _) _ = tt
 notPlus← (P.TEqEq ∷ _) _ = tt
 notPlus← (P.TNeq ∷ _) _ = tt
+notPlus← (P.TOpD _ ∷ _) _ = tt
 notPlus← (P.TBang ∷ _) _ = tt
 notPlus← (P.TNewline ∷ _) _ = tt
 notPlus← (P.TEOF ∷ _) _ = tt
@@ -448,6 +459,7 @@ notArrow→TArrow (P.TGt ∷ _) _ ()
 notArrow→TArrow (P.TGe ∷ _) _ ()
 notArrow→TArrow (P.TEqEq ∷ _) _ ()
 notArrow→TArrow (P.TNeq ∷ _) _ ()
+notArrow→TArrow (P.TOpD _ ∷ _) _ ()
 notArrow→TArrow (P.TBang ∷ _) _ ()
 notArrow→TArrow (P.TNewline ∷ _) _ ()
 notArrow→TArrow (P.TEOF ∷ _) _ ()
@@ -486,6 +498,7 @@ notArrow→TCaret0 (P.TGt ∷ _) _ ()
 notArrow→TCaret0 (P.TGe ∷ _) _ ()
 notArrow→TCaret0 (P.TEqEq ∷ _) _ ()
 notArrow→TCaret0 (P.TNeq ∷ _) _ ()
+notArrow→TCaret0 (P.TOpD _ ∷ _) _ ()
 notArrow→TCaret0 (P.TBang ∷ _) _ ()
 notArrow→TCaret0 (P.TNewline ∷ _) _ ()
 notArrow→TCaret0 (P.TEOF ∷ _) _ ()
@@ -524,6 +537,7 @@ notArrow→TCaret1 (P.TGt ∷ _) _ ()
 notArrow→TCaret1 (P.TGe ∷ _) _ ()
 notArrow→TCaret1 (P.TEqEq ∷ _) _ ()
 notArrow→TCaret1 (P.TNeq ∷ _) _ ()
+notArrow→TCaret1 (P.TOpD _ ∷ _) _ ()
 notArrow→TCaret1 (P.TBang ∷ _) _ ()
 notArrow→TCaret1 (P.TNewline ∷ _) _ ()
 notArrow→TCaret1 (P.TEOF ∷ _) _ ()
@@ -562,6 +576,7 @@ notArrow→TCaretW (P.TGt ∷ _) _ ()
 notArrow→TCaretW (P.TGe ∷ _) _ ()
 notArrow→TCaretW (P.TEqEq ∷ _) _ ()
 notArrow→TCaretW (P.TNeq ∷ _) _ ()
+notArrow→TCaretW (P.TOpD _ ∷ _) _ ()
 notArrow→TCaretW (P.TBang ∷ _) _ ()
 notArrow→TCaretW (P.TNewline ∷ _) _ ()
 notArrow→TCaretW (P.TEOF ∷ _) _ ()
@@ -600,6 +615,7 @@ notArrow← (P.TGt ∷ _) _ _ _ _ = tt
 notArrow← (P.TGe ∷ _) _ _ _ _ = tt
 notArrow← (P.TEqEq ∷ _) _ _ _ _ = tt
 notArrow← (P.TNeq ∷ _) _ _ _ _ = tt
+notArrow← (P.TOpD _ ∷ _) _ _ _ _ = tt
 notArrow← (P.TBang ∷ _) _ _ _ _ = tt
 notArrow← (P.TNewline ∷ _) _ _ _ _ = tt
 notArrow← (P.TEOF ∷ _) _ _ _ _ = tt
@@ -665,6 +681,7 @@ arrow-view (P.TCaret1 ∷ P.TGt ∷ t) = av-r ic1
 arrow-view (P.TCaret1 ∷ P.TGe ∷ t) = av-r ic1
 arrow-view (P.TCaret1 ∷ P.TEqEq ∷ t) = av-r ic1
 arrow-view (P.TCaret1 ∷ P.TNeq ∷ t) = av-r ic1
+arrow-view (P.TCaret1 ∷ P.TOpD _ ∷ t) = av-r ic1
 arrow-view (P.TCaret1 ∷ P.TBang ∷ t) = av-r ic1
 arrow-view (P.TCaret1 ∷ P.TNewline ∷ t) = av-r ic1
 arrow-view (P.TCaret1 ∷ P.TEOF ∷ t) = av-r ic1
@@ -701,6 +718,7 @@ arrow-view (P.TCaret0 ∷ P.TGt ∷ t) = av-r ic0
 arrow-view (P.TCaret0 ∷ P.TGe ∷ t) = av-r ic0
 arrow-view (P.TCaret0 ∷ P.TEqEq ∷ t) = av-r ic0
 arrow-view (P.TCaret0 ∷ P.TNeq ∷ t) = av-r ic0
+arrow-view (P.TCaret0 ∷ P.TOpD _ ∷ t) = av-r ic0
 arrow-view (P.TCaret0 ∷ P.TBang ∷ t) = av-r ic0
 arrow-view (P.TCaret0 ∷ P.TNewline ∷ t) = av-r ic0
 arrow-view (P.TCaret0 ∷ P.TEOF ∷ t) = av-r ic0
@@ -737,6 +755,7 @@ arrow-view (P.TCaretW ∷ P.TGt ∷ t) = av-r icw
 arrow-view (P.TCaretW ∷ P.TGe ∷ t) = av-r icw
 arrow-view (P.TCaretW ∷ P.TEqEq ∷ t) = av-r icw
 arrow-view (P.TCaretW ∷ P.TNeq ∷ t) = av-r icw
+arrow-view (P.TCaretW ∷ P.TOpD _ ∷ t) = av-r icw
 arrow-view (P.TCaretW ∷ P.TBang ∷ t) = av-r icw
 arrow-view (P.TCaretW ∷ P.TNewline ∷ t) = av-r icw
 arrow-view (P.TCaretW ∷ P.TEOF ∷ t) = av-r icw
@@ -758,6 +777,7 @@ arrow-view (P.TGt ∷ t) = av-d (λ ()) (λ ()) (λ ()) (λ ())
 arrow-view (P.TGe ∷ t) = av-d (λ ()) (λ ()) (λ ()) (λ ())
 arrow-view (P.TEqEq ∷ t) = av-d (λ ()) (λ ()) (λ ()) (λ ())
 arrow-view (P.TNeq ∷ t) = av-d (λ ()) (λ ()) (λ ()) (λ ())
+arrow-view (P.TOpD _ ∷ t) = av-d (λ ()) (λ ()) (λ ()) (λ ())
 arrow-view (P.TBang ∷ t) = av-d (λ ()) (λ ()) (λ ()) (λ ())
 arrow-view (P.TNewline ∷ t) = av-d (λ ()) (λ ()) (λ ()) (λ ())
 arrow-view (P.TEOF ∷ t) = av-d (λ ()) (λ ()) (λ ()) (λ ())

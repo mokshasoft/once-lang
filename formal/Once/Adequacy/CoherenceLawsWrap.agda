@@ -40,7 +40,8 @@ open import Once.Laws.Sub using (<:-trans)
 open import Once.Type.Sub using (<:-refl; ⊑π-refl)
 open import Once.Spec.Sub using (sub-*)
 open import Once.Spec.Context using (_∷_; _▸_)
-open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; neg; i2f; add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; lt; le; gt; ge; eq; ne; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; loop; lift-morphism)
+open import Once.Spec.Theory using (Has; Sym; symDom)
+open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; num; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; loop; lift-morphism)
 import Once.Type
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
@@ -60,72 +61,8 @@ module _ {m n} {Γ : Ctx m n} where
   pair-cong {Ψ₁} {Ψ₂} {A} {B} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (pair-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
 
 module _ {m n} {Γ : Ctx m n} where
-  add-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → add a b ≈ add a′ b′
-  add-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (add-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  sub-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → sub a b ≈ sub a′ b′
-  sub-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (sub-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  mul-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → mul a b ≈ mul a′ b′
-  mul-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (mul-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  div-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → div a b ≈ div a′ b′
-  div-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (div-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  mod-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → mod' a b ≈ mod' a′ b′
-  mod-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (mod-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  fadd-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ a′ → b ≈ b′ → fadd a b ≈ fadd a′ b′
-  fadd-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (fadd-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  fsub-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ a′ → b ≈ b′ → fsub a b ≈ fsub a′ b′
-  fsub-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (fsub-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  fmul-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ a′ → b ≈ b′ → fmul a b ≈ fmul a′ b′
-  fmul-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (fmul-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  fdiv-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Float} {b b′ : Expr Γ Ψ₂ Float} → a ≈ a′ → b ≈ b′ → fdiv a b ≈ fdiv a′ b′
-  fdiv-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (fdiv-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  lt-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → lt a b ≈ lt a′ b′
-  lt-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (lt-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  le-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → le a b ≈ le a′ b′
-  le-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (le-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  gt-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → gt a b ≈ gt a′ b′
-  gt-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (gt-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  ge-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → ge a b ≈ ge a′ b′
-  ge-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (ge-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  eq-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → eq a b ≈ eq a′ b′
-  eq-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (eq-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  ne-cong : ∀ {Ψ₁ Ψ₂} {a a′ : Expr Γ Ψ₁ Int} {b b′ : Expr Γ Ψ₂ Int} → a ≈ a′ → b ≈ b′ → ne a b ≈ ne a′ b′
-  ne-cong {Ψ₁} {Ψ₂} {a} {a′} {b} {b′} (≈-intro h1) (≈-intro h2) = ≈-intro (ne-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {a = a} {a′ = a′} {b = b} {b′ = b′} h1 h2)
-
-module _ {m n} {Γ : Ctx m n} where
-  neg-cong : ∀ {Ψ} {a a′ : Expr Γ Ψ Int} → a ≈ a′ → neg a ≈ neg a′
-  neg-cong {Ψ} {a} {a′} (≈-intro h1) = ≈-intro (neg-congˢ {Γ = Γ} {Ψ = Ψ} {a = a} {a′ = a′} h1)
-
-module _ {m n} {Γ : Ctx m n} where
-  i2f-cong : ∀ {Ψ} {a a′ : Expr Γ Ψ Int} → a ≈ a′ → i2f a ≈ i2f a′
-  i2f-cong {Ψ} {a} {a′} (≈-intro h1) = ≈-intro (i2f-congˢ {Γ = Γ} {Ψ = Ψ} {a = a} {a′ = a′} h1)
+  num-cong : ∀ {Ψ A U k} (h : Has A U) (o : Sym U k) {a a′ : Expr Γ Ψ (symDom A k)} → a ≈ a′ → num h o a ≈ num h o a′
+  num-cong {Ψ} h o {a} {a′} (≈-intro h1) = ≈-intro (num-congˢ {Γ = Γ} {Ψ = Ψ} h o {a = a} {a′ = a′} h1)
 
 module _ {m n} {Γ : Ctx m n} where
   coerce-cong : ∀ {A B : Ty m} {Ψ} (p : A <: B) {a a′ : Expr Γ Ψ A} → a ≈ a′ → coerce p a ≈ coerce p a′

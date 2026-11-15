@@ -21,8 +21,9 @@
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
+open import Once.Spec.Numerics using (TargetNum)
 
-module Once.Adequacy.SpecRun (Σ : Signature) where
+module Once.Adequacy.SpecRun (Σ : Signature) (fmt : TargetNum) where
 
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -51,17 +52,18 @@ data CallR : Op Σ → LTr.CallOp → Set where
      → CallR (op m) (LTr.callOp cn SI.⌞ argAt q a ⌟ bA SI.⌞ b ⌟)
 
 argR : ∀ {o o′} → CallR o o′ → ⟦ arg o ⟧ᵇ → V.⟦ LTr.CallOp.cdom o′ ⟧ → Set
-argR (cr {a = a} {q} m _) y x = SI.toB (argAt q a) x ≡ y
+argR (cr {a = a} {q} m _) y x = SI.toB fmt (argAt q a) x ≡ y
 
 ansR : ∀ {o o′} → CallR o o′ → ⟦ Op.ans o ⟧ᵇ → V.⟦ LTr.CallOp.ccod o′ ⟧ → Set
-ansR (cr {b = b} m _) y x = x ≡ SI.fromB b y
+-- (the machine's answer, its floats read at the format, is the world's, written)
+ansR (cr {b = b} m _) y x = SI.canonB fmt b x ≡ SI.fromB fmt b y
 
 -- A call of a declaration answering `void` against a halt.
 data HaltR : Op Σ → LTr.HaltOp → Set where
   hr : ∀ {cn a q bA} (m : (cn ∶ operation a q void) ∈ Σ) → HaltR (op m) (LTr.haltOp cn SI.⌞ argAt q a ⌟ bA)
 
 hargR : ∀ {o o′} → HaltR o o′ → ⟦ arg o ⟧ᵇ → V.⟦ LTr.HaltOp.hdom o′ ⟧ → Set
-hargR (hr {a = a} {q} m) y x = SI.toB (argAt q a) x ≡ y
+hargR (hr {a = a} {q} m) y x = SI.toB fmt (argAt q a) x ≡ y
 
 ------------------------------------------------------------------------
 -- Blocks and runs

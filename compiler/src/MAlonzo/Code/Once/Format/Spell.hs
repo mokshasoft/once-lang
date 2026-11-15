@@ -25,6 +25,7 @@ import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Once.Spec.Surface.Lexing
+import qualified MAlonzo.Code.Once.Spec.Surface.Operator
 
 -- Once.Format.Spell.digit
 d_digit_6 :: Integer -> MAlonzo.Code.Agda.Builtin.Char.T_Char_6
@@ -130,11 +131,38 @@ d_showFloat_34 v0 v1 v2
          (coe
             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe '.')
             (coe d_fixed_20 (coe v2) (coe v1))))
+-- Once.Format.Spell.dglyph
+d_dglyph_42 ::
+  MAlonzo.Code.Once.Spec.Surface.Operator.T_Dottable_8 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_dglyph_42 v0
+  = case coe v0 of
+      MAlonzo.Code.Once.Spec.Surface.Operator.C_o'43'_10
+        -> coe ("+" :: Data.Text.Text)
+      MAlonzo.Code.Once.Spec.Surface.Operator.C_o'45'_12
+        -> coe ("-" :: Data.Text.Text)
+      MAlonzo.Code.Once.Spec.Surface.Operator.C_o'42'_14
+        -> coe ("*" :: Data.Text.Text)
+      MAlonzo.Code.Once.Spec.Surface.Operator.C_o'47'_16
+        -> coe ("/" :: Data.Text.Text)
+      MAlonzo.Code.Once.Spec.Surface.Operator.C_o'60'_18
+        -> coe ("<" :: Data.Text.Text)
+      MAlonzo.Code.Once.Spec.Surface.Operator.C_o'60''61'_20
+        -> coe ("<=" :: Data.Text.Text)
+      MAlonzo.Code.Once.Spec.Surface.Operator.C_o'62'_22
+        -> coe (">" :: Data.Text.Text)
+      MAlonzo.Code.Once.Spec.Surface.Operator.C_o'62''61'_24
+        -> coe (">=" :: Data.Text.Text)
+      MAlonzo.Code.Once.Spec.Surface.Operator.C_o'61''61'_26
+        -> coe ("==" :: Data.Text.Text)
+      MAlonzo.Code.Once.Spec.Surface.Operator.C_o'33''61'_28
+        -> coe ("!=" :: Data.Text.Text)
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Format.Spell.spell
-d_spell_42 ::
+d_spell_44 ::
   MAlonzo.Code.Once.Spec.Surface.Lexing.T_Token_8 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_spell_42 v0
+d_spell_44 v0
   = case coe v0 of
       MAlonzo.Code.Once.Spec.Surface.Lexing.C_TWord_10 v1 -> coe v1
       MAlonzo.Code.Once.Spec.Surface.Lexing.C_TInt_12 v1
@@ -180,34 +208,23 @@ d_spell_42 v0
         -> coe ("|" :: Data.Text.Text)
       MAlonzo.Code.Once.Spec.Surface.Lexing.C_TDot_48
         -> coe ("." :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TPlus_50
-        -> coe ("+" :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TMinus_52
-        -> coe ("-" :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TStar_54
-        -> coe ("*" :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TSlash_56
-        -> coe ("/" :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TPercent_58
-        -> coe ("%" :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TAmpersand_60
+      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TAmpersand_50
         -> coe ("&" :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TLt_62
-        -> coe ("<" :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TLe_64
-        -> coe ("<=" :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TGt_66
-        -> coe (">" :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TGe_68
-        -> coe (">=" :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TEqEq_70
-        -> coe ("==" :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TNeq_72
-        -> coe ("!=" :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TBang_74
+      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TBang_52
         -> coe ("!" :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TNewline_76
+      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TOp_54 v1
+        -> case coe v1 of
+             MAlonzo.Code.Once.Spec.Surface.Operator.C_'8249'_'8250'_32 v2
+               -> coe d_dglyph_42 (coe v2)
+             MAlonzo.Code.Once.Spec.Surface.Operator.C_o'37'_34
+               -> coe ("%" :: Data.Text.Text)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TOpD_56 v1
+        -> coe
+             MAlonzo.Code.Data.String.Base.d__'43''43'__20
+             (d_dglyph_42 (coe v1)) ("." :: Data.Text.Text)
+      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TNewline_58
         -> coe ("\n" :: Data.Text.Text)
-      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TEOF_78
+      MAlonzo.Code.Once.Spec.Surface.Lexing.C_TEOF_60
         -> coe ("" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
