@@ -29,7 +29,7 @@ import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 emitLit : Act Unit Unit
-emitLit = emitF@E (1.5 + 2.25 * 2.0 - 0.5)
+emitLit = emitF@E (1.5 +. 2.25 *. 2.0 -. 0.5)
 
 main : Act Unit Void
 main = exit@S . ((\_ -> 23) . emitLit)
