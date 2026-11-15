@@ -48,7 +48,18 @@ open import Data.Bool using (false)
 open import Data.Maybe using (just; nothing)
 open import Data.Empty using (⊥)
 open import Data.Product using (Σ; _×_; _,_)
-open import Data.List using ([])
+open import Data.List using ([]; _∷_)
+open import Data.List.Relation.Unary.All using (All)
+open import Data.Sum using (_⊎_)
+open import Data.Nat using (suc; _<_)
+open import Once.CCC.Machine.FrameFree using (ImageI)
+open import Once.CCC.Codegen.AllocMin o using (AllocMinI)
+open import Once.CCC.Codegen.SlotSeg using (seg-at; mkSeg; SegState; module SegState)
+open import Once.CCC.Codegen.LabelSeg using (mention-at)
+open import Once.CCC.Machine.InstrSlot using (slot-of)
+open import Once.CCC.Machine.Locations using (Slot; AtDynamic)
+open import Once.Memory.HeapAddress using (HeapLocation)
+open import Once.CCC.Label using (LabelId; EntryId)
 open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.CCC.Machine.SMCore
@@ -140,8 +151,44 @@ data Reachable (prog : AbstractTrace) (B : ℕ) : FlatState → Set where
 -- D244/D245: the program is a PROGRAM IMAGE — `main`'s unit, then every entry
 -- of its function table (`ProgramImage`). A program whose table is empty is
 -- `main`'s unit alone, the shape this module assumed before.
-Emitted : AbstractTrace → Set
-Emitted prog = Σ (List IRFun) (λ tbl → Σ (IR Unit Unit) (λ ir → prog ≡ program-image o (irProgram tbl ir)))
+-- plan 0.146 B1.6: the program's facts the arch layer reads, as ONE bundle, in
+-- place of "it is the old lowering's image" (`prog ≡ program-image …`), so that
+-- any image meeting them — the old one (`RunWF.old-emitted`), the new core's —
+-- runs on the arch layer. Each field is what a site lemma of `RunWF` read off
+-- the old image; the last three are about the program's RUN (reachable states).
+record Emitted (prog : AbstractTrace) : Set where
+  field
+    -- the start: pc 0 and nowhere else, at the program's stack budget
+    em-budget : ℕ
+    em-zero   : fetch prog 0 ≡ just (instr-ctrl (c-start em-budget))
+    em-start  : ∀ k b → fetch prog k ≡ just (instr-ctrl (c-start b)) → k ≡ 0
+    -- every instruction the arch layer covers, a heap block of two words at least
+    em-image  : All ImageI prog
+    em-alloc  : All AllocMinI prog
+    -- a slot an instruction addresses is below the segment in force
+    em-slots  : ∀ k (i : AbstractInstr) (slot : Slot) → fetch prog k ≡ just i → slot-of i ≡ just slot
+              → slot < SegState.cur (seg-at prog k (mkSeg 0 []))
+    -- a call names an entry; a code address names a body; an entry is guarded
+    em-calls  : ∀ k f → fetch prog k ≡ just (instr-ctrl (c-call-fn f)) → Σ ℕ (λ j → find-fn prog f ≡ just j)
+    em-code   : ∀ p (ℓ : LabelId) → fetch prog p ≡ just (instr-load-code-addr ℓ) → Σ ℕ (λ j → find-thunk prog ℓ ≡ just j)
+    em-guard  : ∀ p (ℓ : EntryId) (bb : ℕ) → fetch prog p ≡ just (instr-ctrl (c-entry ℓ bb))
+              → Σ ℕ (λ q → (p ≡ suc q)
+                    × ((Σ LabelId (λ m → fetch prog q ≡ just (instr-ctrl (c-jmp m))))
+                       ⊎ (Σ ℕ (λ b → fetch prog q ≡ just (instr-ctrl (c-ret b))))))
+    -- a jump stays in its segment
+    em-jump   : ∀ p q (m : LabelId) (st : SegState) → mention-at prog p ≡ just m → find-label prog m ≡ just q
+              → seg-at prog q st ≡ seg-at prog p st
+    -- the run: a closure call's register, a return owed, its budget the reservation in force
+    em-call-site : ∀ fs → Reachable prog 0 fs → fetch prog (fpc fs) ≡ just instr-call-closure
+                 → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
+                     (fclosure fs ≡ SV-Ptr (AtDynamic hl))
+                     × (heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
+                     × (find-thunk prog ℓ ≡ just j))))
+    em-ret-owes  : ∀ fs (b : ℕ) → Reachable prog 0 fs → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+                 → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
+    em-ret-budget : ∀ fs (b : ℕ) → Reachable prog 0 fs → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+                  → b ≡ frame-slots (falloc fs)
+open Emitted public
 
 -- (`CallI`, the two calls, lives beside the instruction set: `SMCore`.)
 
@@ -166,15 +213,8 @@ LinkedImage tbl ir = LinkedProgram (sig (fs-interp FS)) (irProgram tbl ir)
 record RunAt (prog : AbstractTrace) (fs : FlatState) : Set where
   constructor mkRunAt
   field
-    run-tbl   : List IRFun
-    run-ir    : IR Unit Unit
-    run-emit  : prog ≡ program-image o (irProgram run-tbl run-ir)
-    -- (`run-heap`/`run-fns` are GONE: every IR is heap-moded now,
-    -- `ShapeTable.heap-moded`, so the premise carried nothing.)
-    -- D245: …and LINKED: every call in `main` and in every entry names an entry
-    -- of the table at its objects (the compiler's output is; the backend's
-    -- correctness is stated for linked IR).
-    run-linked : LinkedImage run-tbl run-ir
+    -- the program's facts (plan 0.146 B1.6: a bundle, in place of the old image's equation)
+    run-em    : Emitted prog
     -- plan 0.107: the run starts OUTSIDE every frame — `c-start` (pc 0) reserves
     -- the outermost one as an ordinary, proved step.
     run-reach : Reachable prog 0 fs
@@ -190,4 +230,4 @@ run-sound : ∀ {prog fs} → RunAt prog fs → Sound prog fs
 run-sound r = reach-sound (run-reach r)
 
 run-emitted : ∀ {prog fs} → RunAt prog fs → Emitted prog
-run-emitted r = run-tbl r , run-ir r , run-emit r
+run-emitted r = run-em r

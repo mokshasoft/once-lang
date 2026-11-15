@@ -177,6 +177,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   using (events-agree-start; events-agree-boot; AgreeAt; CompiledCorr; EntryLike; reach-start)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o rv64-frame-semantics slot-size refl using (mkRunAt)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o rv64-frame-semantics slot-size refl using (RunLow; low-start)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o rv64-frame-semantics slot-size refl using (old-emitted)
 
 open FlatMachine {rv64-frame-semantics} using (mkFlat)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
@@ -311,7 +312,7 @@ conc-tr p ir lk img =
     δc = RTr.Run.δ val-riscv64 (answer-at (arch-numerics riscv64) ι call-at-riscv64) ev-riscv64 (block-env (C.blocks-riscv64 p)) (compile-trace P′)
     run₀ : RunLow P′ FFOr.start-flat
     run₀ = low-start (FFOr.image ir) FFOr.start-flat
-             (mkRunAt tbl ir refl lk (reach-start FFOr.start-flat (entry-like 0) refl
+             (mkRunAt (old-emitted tbl ir lk) (reach-start FFOr.start-flat (entry-like 0) refl
                                          (FFOr.start-sound ir-obs-correct ir lk)))
              refl
     fact : BudgetFact⊑ δc ([] , RS.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir))

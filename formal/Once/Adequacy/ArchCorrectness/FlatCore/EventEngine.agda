@@ -110,7 +110,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
 -- image's own run (`RunContext.RunAt`, which `RunWF` speaks of). Exported under
 -- the engine's name for it, `RunAt`: "the run of the program the machine runs".
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
-  hiding (RunAt; module RunAt; mkRunAt; run-tbl; run-ir; run-emit; run-linked; run-reach; run-sound; run-emitted)
+  hiding (RunAt; module RunAt; mkRunAt; run-em; run-reach; run-sound; run-emitted)
   public
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
   using (module RunLow; mkRunLow; low-step-past; low-start; low-sound)

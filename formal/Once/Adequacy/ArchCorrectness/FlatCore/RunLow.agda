@@ -94,7 +94,7 @@ low-step .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow src fs�
 ... | at-image refl fi with RoomSim.step-lift {FS} src fs₀ i
 ...   | p′ , e , pr′ =
   mkRunLow src (flat-exec-instr i src fs₀) p′ refl
-    (mkRunAt (run-tbl r) (run-ir r) (run-emit r) (run-linked r) (reach-step i fs₀ (run-reach r) fi h))
+    (mkRunAt (run-em r) (reach-step i fs₀ (run-reach r) fi h))
     e pr′
 
 -- …and NEVER FAULTS (D367 carried across the pass, `sound-room`).
@@ -501,7 +501,7 @@ low-step-past .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow sr
 ... | at-image refl fi with RoomSim.step-lift {FS} src fs₀ i
 ...   | p′ , e , pr′ =
   mkRunLow src (flat-exec-instr i src fs₀) p′ refl
-    (mkRunAt (run-tbl r) (run-ir r) (run-emit r) (run-linked r) (reach-step i fs₀ (run-reach r) fi h))
+    (mkRunAt (run-em r) (reach-step i fs₀ (run-reach r) fi h))
     e pr′
   , RW.run-step-pc-pos src fs₀ i r fi
 
@@ -516,9 +516,7 @@ code-addr-has-body .(room-checks src) .(L.lift src fs₀ p) ℓ (mkRunLow src fs
 ... | at-image _ fi with base
   where
     base : Σ ℕ (λ j → find-thunk src ℓ ≡ just j)
-    base = subst (λ pr → Σ ℕ (λ j → find-thunk pr ℓ ≡ just j)) (sym (run-emit r))
-             (RW.emitted-code-addr-has-body (run-tbl r) (run-ir r) (fpc fs₀) ℓ
-               (subst (λ pr → fetch pr (fpc fs₀) ≡ just (instr-load-code-addr ℓ)) (run-emit r) fi))
+    base = em-code (run-em r) (fpc fs₀) ℓ fi
 ...   | j , e = φ src j , trans (find-entry-room src (e-thunk ℓ)) (cong (mmap (φ src)) e)
 
 -- a step that is not a check moves the base run on — past its pc 0, whatever
@@ -533,7 +531,7 @@ low-step-image .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow s
 ... | at-image refl fi with RoomSim.step-lift {FS} src fs₀ i
 ...   | p′ , e , pr′ =
   mkRunLow src (flat-exec-instr i src fs₀) p′ refl
-    (mkRunAt (run-tbl r) (run-ir r) (run-emit r) (run-linked r) (reach-step i fs₀ (run-reach r) fi h))
+    (mkRunAt (run-em r) (reach-step i fs₀ (run-reach r) fi h))
     e pr′
   , RW.run-step-pc-pos src fs₀ i r fi
 
@@ -574,5 +572,4 @@ check-need .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r
     open CheckK {FS} using (check-k)
     open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free)
     noroom : NoRoom src
-    noroom = image-noroom src (subst (All ImageI) (sym (RunAt.run-emit r))
-                                     (image-frame-free (RunAt.run-tbl r) (RunAt.run-ir r)))
+    noroom = image-noroom src (em-image (RunAt.run-em r))
