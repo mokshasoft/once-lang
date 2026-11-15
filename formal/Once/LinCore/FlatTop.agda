@@ -249,14 +249,14 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
             (N , fs′ , fst , hlt , lg , lft) →
               suc N , trans (o-flat fst hlt)
                             (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
-                                       (trans (cong (λ b → just (end-of-left b)) lft) eo)) ,
+                                       (trans (cong (λ b → just (end-of-left b)) (cong proj₁ (proj₂ (proj₂ (proj₂ (proj₂ lft)))))) eo)) ,
               λ e → ⊥-elim (just≢nothing (trans eo e))
         by {stop Once.LinCore.Events.halted} {t} run _ pl ag ee eo _ = case image-halts run pl of λ where
           (mt , sh , U′ , r′ , m′ , n′ , st , eio) → case ends ld entry-frame entry-regs st (ag st eio) f-halt of λ where
             (N , fs′ , fst , hlt , lg , (fs₀ , M , st₀ , r₀ , l₀)) →
               suc N , trans (o-flat fst hlt)
                             (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
-                                       (trans (cong (λ b → just (end-of-left b)) (trans l₀ (o-running st₀ r₀))) eo)) ,
+                                       (trans (cong (λ b → just (end-of-left b)) (trans (cong proj₁ l₀) (o-running st₀ r₀))) eo)) ,
               λ e → ⊥-elim (just≢nothing (trans eo e))
         -- ★ the budget's cut (D430): the image pauses with exactly the run's events, a loop entry for each
         -- round the run started, at least one per unit of the budget (`image-cut`, `spent-rounds`)

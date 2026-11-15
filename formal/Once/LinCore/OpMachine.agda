@@ -84,7 +84,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
            → WTr Wι L tp L′ → ∀ fs → LocState.ev-log (floc fs) ≡ L
            → OpHalt (sig (mk-info' n (haltsV refl) bA ST.b-Void)) x (evsOf tp) fs
   op-halts {bA = bA} p-halt w fs lg d wx px sx =
-    refl , cong (events-at-arg (mk-info' _ (haltsV refl) bA ST.b-Void)) (arg-dec bA fs d _ px sx)
+    refl , cong (events-at-arg (mk-info' _ (haltsV refl) bA ST.b-Void)) (arg-dec bA fs d _ px sx) , refl
 
   -- ★ an answering op whose answer is a register word: the interpretation's answer at the history
   private

@@ -68,7 +68,7 @@ hdOr []      p = p
 module Agree {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Rel {FS} U wordOf using (W; VW; SlotsAt)
   open FlatMachine {FS} using (FlatState; floc; falloc)
-  open AbstractExec {FS} using (exec-sigop-output; exec-sigop-halts; sigop-events)
+  open AbstractExec {FS} using (exec-sigop-output; exec-sigop-halts; sigop-events; exec-sigop-faults)
   open import Once.LinCore.Moves {FS} using (slot)
 
   -- the sigop's state: Input1 and Output the argument's word (`argIn`, `mov-to-input`)
@@ -111,6 +111,8 @@ module Agree {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   OpHalt s x E fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
                 → (exec-sigop-halts (info (opSig s (cmpOf s))) (arg s fs d wx) ≡ true)
                   × (sigop-events (info (opSig s (cmpOf s))) (arg s fs d wx) ≡ E)
+                  -- (a halt, not a fault)
+                  × (exec-sigop-faults (info (opSig s (cmpOf s))) (arg s fs d wx) ≡ false)
 
   module _ {T : Sh} where
     Agrees : ∀ {sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}

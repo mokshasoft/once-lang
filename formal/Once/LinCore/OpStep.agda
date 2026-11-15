@@ -18,7 +18,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Data.Bool using (false; true)
+open import Data.Bool using (false; true; _∨_)
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (¬_)
 open import Once.IR.Semantics.Event using (SigOpEvent)
@@ -293,7 +293,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
            → fhalted (floc fs) ≡ false
            → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ x ∷ˢ os)
            → Σ FlatState λ fs′ → FlatSteps prog 3 fs fs′ × fhalted (floc fs′) ≡ true
-               × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E × LocState.left (floc fs′) ≡ LocState.left (floc fs)
+               × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E × ending (floc fs′) ≡ ending (floc fs)
   lop-halt prog fs φ s {Es} {S} {es} {os} {x} {E} ag (g₁ , g₂ , g₃ , _) h C = with-arg (c-stk C)
     where
       cf = AllocState.current-frame (falloc fs)
@@ -311,7 +311,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Input1 v₀ } ; fpc = suc (fpc fs₁) }
           fs₃ = FlatMachine.flat-exec-instr {FS} (instr-sigop (info (opSig s (cmpOf s)))) prog fs₂
           fin : _ → _
-          fin (ht , ee) = ht , cong (LocState.ev-log (floc fs) ++_) ee , refl
+          fin (ht , ee , nf) = ht , cong (LocState.ev-log (floc fs) ++_) ee , cong (λ b → LocState.left (floc fs) , (b ∨ LocState.faulted (floc fs))) nf
 
 ------------------------------------------------------------------------
 -- ★ AT A ROOT'S PATH.
@@ -365,7 +365,7 @@ module OpR {FS : FrameSemantics} (U : Univ)
                {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝} {E fs}
            → Here sb (es ∥ x ∷ˢ os) fs → OpHalt s x E fs
            → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps prog N fs fs′ × LocState.halted (floc fs′) ≡ true
-               × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E × LocState.left (floc fs′) ≡ LocState.left (floc fs)
+               × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E × ending (floc fs′) ≡ ending (floc fs)
                × LocState.halted (floc fs) ≡ Data.Bool.false
   st-opend {s = s} sb {fs = fs} H ag =
     case-out (lop-halt prog fs φ s ag (Seg-++ˡ prog (fpc fs) _ _ (seg-at sb H)) (Here.h-run H) (Here.h-cfg H))

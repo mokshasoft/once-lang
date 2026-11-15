@@ -73,15 +73,15 @@ module EndR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   -- the machine halted and left, its log kept
   Left : FlatState → FlatState → Set
-  Left fs fs′ = LocState.halted (floc fs′) ≡ true × LocState.left (floc fs′) ≡ true
-                × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs)
+  Left fs fs′ = LocState.halted (floc fs′) ≡ true × ending (floc fs′) ≡ (true , LocState.faulted (floc fs))
+                × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) × LocState.halted (floc fs) ≡ Data.Bool.false
 
   private
     leave : ∀ {fs} → Seg image (fpc fs) (instr-ctrl c-leave ∷ []) → LocState.halted (floc fs) ≡ Data.Bool.false
           → Σ FlatState λ fs′ → FlatSteps image 1 fs fs′ × Left fs fs′
     leave {fs} (g , _) h =
       record fs { floc = record (floc fs) { halted = true ; left = true } } ,
-      FlatStepsAPI.step-at {FS} _ (h , g) refl FlatStepsAPI.[] , refl , refl , refl
+      FlatStepsAPI.step-at {FS} _ (h , g) refl FlatStepsAPI.[] , refl , refl , refl , h
 
   -- ★ main's `end`, nothing to return to: the start's way out
   g-end : ∀ {T} {m : Cfg T} {n fs} → Related (end {sh = T}) ([]ʳ {T = T}) m n fs
@@ -118,9 +118,11 @@ module EndR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
     -- how the run's end left the machine: by the start's way out, it has left
     EndLeft : ∀ {sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} → Final c′ r′ → FlatState → Set
-    EndLeft f-end  fs′ = LocState.left (floc fs′) ≡ true
+    -- (from a running state the start reaches: as it was, but for having left by the start's way out)
+    EndLeft f-end  fs′ = Σ FlatState λ fs₀ → Σ ℕ λ M → FlatSteps image M start-fs fs₀ × LocState.halted (floc fs₀) ≡ Data.Bool.false
+                           × ending (floc fs′) ≡ (true , LocState.faulted (floc fs₀))
     EndLeft f-halt fs′ = Σ FlatState λ fs₀ → Σ ℕ λ M → FlatSteps image M start-fs fs₀ × LocState.halted (floc fs₀) ≡ Data.Bool.false
-                           × LocState.left (floc fs′) ≡ LocState.left (floc fs₀)
+                           × ending (floc fs′) ≡ ending (floc fs₀)
 
 
     ends : ∀ {sh U′ t} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′}
@@ -133,7 +135,7 @@ module EndR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                  → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N start-fs fs′
                      × LocState.halted (floc fs′) ≡ true × LocState.ev-log (floc fs′) ≡ evsOf t × EndLeft fn fs′
         fin-case f-end (N , fs₁ , st₁ , inj₁ G , lg) = case g-end G of λ where
-          (fs′ , st₂ , hlt , lft , lg₂) → N + 1 , fs′ , FlatSteps-++ st₁ st₂ , hlt , trans lg₂ lg , lft
+          (fs′ , st₂ , hlt , lft , lg₂ , run₁) → N + 1 , fs′ , FlatSteps-++ st₁ st₂ , hlt , trans lg₂ lg , (fs₁ , N , st₁ , run₁ , lft)
         fin-case f-end (_ , _ , _ , inj₂ (() , _ , _) , _)
         fin-case f-halt (_ , _ , _ , inj₁ G , _) = ⊥-elim (no-halted G)
         fin-case f-halt (N , fs₁ , st₁ , inj₂ (_ , hlt , pre) , lg) = N , fs₁ , st₁ , hlt , lg , pre

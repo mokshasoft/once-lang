@@ -170,7 +170,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     HaltC : ∀ {sh U′} → Codeᴵ sh U′ → FlatState → FlatState → Set
     HaltC c fs fs′ = (c ≡ halted) × (LocState.halted (floc fs′) ≡ Data.Bool.true)
                      × Σ FlatState λ fs₀ → Σ ℕ λ M → FlatSteps image M fs fs₀ × LocState.halted (floc fs₀) ≡ Data.Bool.false
-                         × LocState.left (floc fs′) ≡ LocState.left (floc fs₀)
+                         × ending (floc fs′) ≡ ending (floc fs₀)
 
     -- (D427: the machine's log grown by the events the step shows the world)
     Lands : ∀ {T sh U′} → List SigOpEvent → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
@@ -192,7 +192,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       halt-out : ∀ {T sh U′} {r : Ret U′ T} {m : Cfg sh} {n fs E}
            → Σ ℕ (λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × LocState.halted (floc fs′) ≡ Data.Bool.true
                           × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E
-                          × LocState.left (floc fs′) ≡ LocState.left (floc fs) × LocState.halted (floc fs) ≡ Data.Bool.false)
+                          × ending (floc fs′) ≡ ending (floc fs) × LocState.halted (floc fs) ≡ Data.Bool.false)
            → Lands E (halted {sh = sh}) r m n fs
       halt-out {fs = fs} (N , fs′ , st , hlt , lg , lft , run) =
         N , fs′ , st , inj₂ (refl , hlt , fs , 0 , FlatStepsAPI.[] , run , lft) , lg
