@@ -508,7 +508,8 @@ mutual
   Plain (r-iter r (go-on done))         = Plain r
   Plain (r-iter r (go-on (again rn)))   = Plain r × Plain rn
   Plain (r-iter r stopped)              = Plain r
-  Plain (r-cut r q)                     = Plain r
+  -- D430: a cut is the budget's, at a loop (`r-exh`); a cut anywhere (`r-cut`) is not the lowering's
+  Plain (r-cut r q)                     = ⊥
   Plain (r-tmp r w p)                   = Plain r
   -- (D429) a call the world left unanswered: not the lowering's run (a linked program's)
   Plain (r-opend {w = exhausted} p)     = ⊥
@@ -632,7 +633,7 @@ sim (r-iter r (go-on (again {o = o} rn))) (p , pn) es eq os k =
   preR o s-loop (thenR o (sim r p es eq os _) (preR o s-case₂ (sim rn pn es eq os k)))
 sim (r-iter r stopped) fr es eq os k = P-[] (preP s-loop (sim r fr es eq os _))
 sim r-exh fr es eq os k = paused _ _ _ [] [] [] done w-[] []≼ [] tt
-sim (r-cut {o = o} r q) fr es eq os k = cutR o q (sim r fr es eq os k)
+sim (r-cut r q) () es eq os k
 sim (r-tmp {o = o} r w p) fr es eq os k = tmpR o w (sim r fr es eq os k)
 
 simM (m-id r) p es eq os k = sim r p es eq os k

@@ -20,7 +20,7 @@
 
 {-# OPTIONS --guardedness #-}
 
-open import Data.Nat using (ℕ; suc; _≤_)
+open import Data.Nat using (ℕ; suc; _≤_; _+_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -78,12 +78,12 @@ open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; �
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Denotation.Program using (Declared-at)
 open import Once.SigOp.Info using (module SigOpInfo)
-open import Once.LinCore.Spends fmt ans bw using (module Budget; UnCut; CutsIn)
+open import Once.LinCore.Spends fmt ans bw using (module Budget; UnCut; CutsIn; rounds)
 open import Once.LinCore.Total fmt ans bw using (CutOp)
 module BudgetSound = Once.LinCore.BudgetSound fmt ans bw
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ)
-open import Once.LinCore.ImageSim fmt ans bw using (StepsI; start; image-noleak; image-halts; loops)
+open import Once.LinCore.ImageSim fmt ans bw using (StepsI; start; image-noleak; image-halts; image-cut; loops)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open import Once.LinCore.Lower fmt ans bw using (module Program′)
 open import Once.LinCore.PointAt fmt ans bw using (module Ctl)
@@ -106,7 +106,7 @@ module RunOps = Once.LinCore.RunOps fmt ans bw
 Wι : World
 Wι = BudgetSound.W.Wι ι
 
-open Budget (λ {s} {x} {t} p → CutOp Wι {s} {x} {t} p) using (spends-plain; spends-uncut)
+open Budget (λ {s} {x} {t} p → CutOp Wι {s} {x} {t} p) using (spends-plain; spends-uncut; spent-rounds; cut-zero; Exh)
 
 -- how a run's outcome is observed to end
 endO : ∀ {B} → Outcome B → Maybe (End Data.Unit.⊤)
@@ -162,12 +162,6 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         -- class (OpMachine.Dispatch) but for a structured answer (an undeclared FFI op's stop
         -- is excluded by linkedness, `decl`)
         o-ops   : OM.OwedOp
-        -- ★ THE BUDGET'S CUT ON THE IMAGE: the world's run cut at the budget pauses the image, having made
-        -- exactly the run's events and entered a loop at least once a unit of the budget
-        o-pause : ∀ k → Ran.out (R k) ≡ stop Once.LinCore.Events.exhausted
-                → Σ Trace λ mt → Σ Sh λ sh → Σ Sh λ U′ → Σ (Codeᴵ sh U′) λ c′ → Σ (Ret U′ (One ∷ [] ∣ One ∷ [])) λ r′
-                  → Σ (Cfg sh) λ m′ → Σ ℕ λ n′ → Σ (StepsI main []ʳ start 0 mt c′ r′ m′ n′) λ st
-                  → (ios mt ≡ ios (Ran.trace (R k))) × (k ≤ loops st)
         -- ★ …which the machine follows from its first state, a control step at every loop entry (the loop's
         -- label: master's `flat-cut` counts control steps)
         o-count : ∀ {sh U′} {t} {c′ : Codeᴵ sh U′} {r′ m′ n′} (st : StepsI main []ʳ start 0 t c′ r′ m′ n′) → AgreesAll [] st
@@ -240,6 +234,8 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
 
     flat-top : Owed → ∀ k → Σ ℕ (Shows k)
     flat-top O k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (o-uncut O K)) (λ {mt} st e → AR.agrees-all st (AR.wtr-ios (Ran.trace (R K)) mt (sym e) (Ran.world (R K)))) eE eO
+                      (λ ex → subst (K ≤_) (trans (cong (rounds (Ran.run (R K)) +_) (cut-zero (Ran.run (R K)) (Ran.spends (R K)) (o-uncut O K) ex)) (+-identityʳ _))
+                                    (spent-rounds (Ran.run (R K)) (Ran.spends (R K))))
       where
         module AR = AgreeRun.AR {Mach} ds f₀ ldConst ld-nl wordOf ι
                       (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op (Owed.o-ops O) decl {s} {x} {y₀} {tp} {L} {L′})
@@ -250,28 +246,30 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         by : ∀ {o t} (run : Run ds f₀ mone mone 0 o t) → Ran.out (R K) ≡ o → Plain run
            → (∀ {mt sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′}
                 (st : StepsI main []ʳ start 0 mt c′ r′ m′ n′) → ios mt ≡ ios t → AgreesAll [] st)
-           → evsOf t ≡ proj₁ (obs k) → endO o ≡ endAp (proj₂ (obs k))
+           → evsOf t ≡ proj₁ (obs k) → endO o ≡ endAp (proj₂ (obs k)) → (Exh o → k ≤ rounds run)
            → Σ ℕ (Shows k)
-        by {gives mone n′} {t} run _ pl ag ee eo = case image-noleak run pl of λ where
+        by {gives mone n′} {t} run _ pl ag ee eo _ = case image-noleak run pl of λ where
           (mt , st , _ , _ , _ , eio) → case ends ld entry-frame entry-regs st (ag st eio) f-end of λ where
             (N , fs′ , fst , hlt , lg , lft) →
               suc N , trans (o-flat fst hlt)
                             (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
                                        (trans (cong (λ b → just (end-of-left b)) lft) eo)) ,
               λ e → ⊥-elim (just≢nothing (trans eo e))
-        by {stop Once.LinCore.Events.halted} {t} run _ pl ag ee eo = case image-halts run pl of λ where
+        by {stop Once.LinCore.Events.halted} {t} run _ pl ag ee eo _ = case image-halts run pl of λ where
           (mt , sh , U′ , r′ , m′ , n′ , st , eio) → case ends ld entry-frame entry-regs st (ag st eio) f-halt of λ where
             (N , fs′ , fst , hlt , lg , (fs₀ , M , st₀ , r₀ , l₀)) →
               suc N , trans (o-flat fst hlt)
                             (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
                                        (trans (cong (λ b → just (end-of-left b)) (trans l₀ (o-running st₀ r₀))) eo)) ,
               λ e → ⊥-elim (just≢nothing (trans eo e))
-        by {stop Once.LinCore.Events.exhausted} {t} run eq pl ag ee eo = case Owed.o-pause O k eq of λ where
-          (mt , sh , U′ , c′ , r′ , m′ , n′ , st , eio , cnt) →
-            case Owed.o-count O st (AR.agrees-all st (AR.wtr-ios (Ran.trace (R K)) mt (sym eio) (Ran.world (R K)))) of λ where
+        -- ★ the budget's cut (D430): the image pauses with exactly the run's events, a loop entry for each
+        -- round the run started, at least one per unit of the budget (`image-cut`, `spent-rounds`)
+        by {stop Once.LinCore.Events.exhausted} {t} run eq pl ag ee eo kr = case image-cut run pl of λ where
+          (mt , sh , U′ , c′ , r′ , m′ , n′ , st , eio , rl) →
+            case Owed.o-count O st (ag st eio) of λ where
               (N , fs′ , fl , lg , cc) →
-                N , trans (cut-events fl) (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) eE)) (trans (sym (cong endO eq)) eO)) ,
-                λ _ → ≤-trans cnt (≤-trans cc (cut-ctrls fl))
+                N , trans (cut-events fl) (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee)) eo) ,
+                λ _ → ≤-trans (kr tt) (≤-trans rl (≤-trans cc (cut-ctrls fl)))
 
 ------------------------------------------------------------------------
 -- ★ ONE LINK UP: master's IR program and its meaning (`evalᴰ` at the table's

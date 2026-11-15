@@ -477,3 +477,86 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
     spent-roundsM m-one s = same s
     spent-roundsM m-b s = same s
     spent-roundsM m-μ s = same s
+
+  -- ★ a run the budget cut (meeting no unanswered call) has spent it all
+  ExhW : Why → Set
+  ExhW exhausted = ⊤
+  ExhW halted    = ⊥
+
+  Exh : ∀ {B} → Outcome B → Set
+  Exh (gives _ _) = ⊥
+  Exh (stop w)    = ExhW w
+
+  mutual
+    cut-zero : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n o t} (r : Run ds f e v n o t) {k l}
+             → Spends r k l → UnCut r → Exh o → l ≡ 0
+    cut-zero (r-∘ rg (go-on rf)) (m , s₁ , s₂) (u₁ , u₂) e = cut-zero rf s₂ u₂ e
+    cut-zero (r-∘ rg stopped) s u e = cut-zero rg s u e
+    cut-zero (r-⊗ rf (go-on (fm-gives rg))) s u ()
+    cut-zero (r-⊗ rf (go-on (fm-stop rg))) (m , s₁ , s₂) (u₁ , u₂) e = cut-zero rg s₂ u₂ e
+    cut-zero (r-⊗ rf stopped) s u e = cut-zero rf s u e
+    cut-zero (r-case₁ r) s u e = cut-zero r s u e
+    cut-zero (r-case₂ r) s u e = cut-zero r s u e
+    cut-zero (r-app q r) s u e = cut-zero r s u e
+    cut-zero (r-cata rm (go-on ra)) (m , s₁ , s₂) (u₁ , u₂) e = cut-zero ra s₂ u₂ e
+    cut-zero (r-cata rm stopped) s u e = cut-zeroM rm s u e
+    cut-zero (r-cata-reuse rm th) () u e
+    cut-zero (r-lend (fm-gives r)) s u ()
+    cut-zero (r-lend (fm-stop r)) s u e = cut-zero r s u e
+    cut-zero (r-lift r) s u e = cut-zero r s u e
+    cut-zero (r-fst r) s u e = cut-zero r s u e
+    cut-zero (r-snd r) s u e = cut-zero r s u e
+    cut-zero (r-caseE₁ r) s u e = cut-zero r s u e
+    cut-zero (r-caseE₂ r) s u e = cut-zero r s u e
+    cut-zero (r-out r) s u e = cut-zero r s u e
+    cut-zero (r-bapp q r) s u e = cut-zero r s u e
+    cut-zero (r-ev r) s u e = cut-zero r s u e
+    cut-zero (r-bev r) s u e = cut-zero r s u e
+    cut-zero (r-nout r) s u e = cut-zero r s u e
+    cut-zero (r-iter r (go-on done)) s u ()
+    cut-zero (r-iter r (go-on (again rn))) (suc m , s₁ , s₂) (u₁ , u₂) e = cut-zero rn s₂ u₂ e
+    cut-zero (r-iter r (go-on (again r-exh))) (zero , s₁ , s₂) u e = s₂
+    cut-zero (r-iter r (go-on (again (r-iter _ _)))) (zero , s₁ , ()) u e
+    cut-zero (r-iter r (go-on (again (r-cut _ _)))) (zero , s₁ , ()) u e
+    cut-zero (r-iter r (go-on (again (r-tmp _ _ _)))) (zero , s₁ , ()) u e
+    cut-zero (r-iter r stopped) s u e = cut-zero r s u e
+    cut-zero r-exh () u e
+    cut-zero (r-cut r q) () u e
+    cut-zero (r-tmp r w p) s u e = cut-zero r s u e
+    cut-zero r-id s u ()
+    cut-zero r-ρ s u ()
+    cut-zero r-ρ⁻ s u ()
+    cut-zero r-λ s u ()
+    cut-zero r-λ⁻ s u ()
+    cut-zero r-α s u ()
+    cut-zero r-α⁻ s u ()
+    cut-zero r-swap s u ()
+    cut-zero r-dup s u ()
+    cut-zero r-drop s u ()
+    cut-zero r-inl s u ()
+    cut-zero r-inr s u ()
+    cut-zero r-In s u ()
+    cut-zero r-Outμ s u ()
+    cut-zero r-clo s u ()
+    cut-zero r-copy s u ()
+    cut-zero r-lam s u ()
+    cut-zero r-lamω s u ()
+    cut-zero r-unf s u ()
+    cut-zero r-const s u ()
+    cut-zero (r-op p) s u ()
+    cut-zero (r-opend {w = halted} p) s u ()
+    cut-zero (r-opend {w = exhausted} p) s () e
+
+    cut-zeroM : ∀ {Γ} {ds : Defs Γ} {E A F} {alg : Tm Γ E (LF∙ F A) A} {e : MV E} {G x n o t}
+                (rm : RunMap ds F alg e G x n o t) {k l} → SpendsM rm k l → UnCutM rm → Exh o → l ≡ 0
+    cut-zeroM (m-id r) s u e = cut-zero r s u e
+    cut-zeroM (m-inl (fm-gives r)) s u ()
+    cut-zeroM (m-inl (fm-stop r)) s u e = cut-zeroM r s u e
+    cut-zeroM (m-inr (fm-gives r)) s u ()
+    cut-zeroM (m-inr (fm-stop r)) s u e = cut-zeroM r s u e
+    cut-zeroM (m-pair r (go-on (fm-gives r′))) s u ()
+    cut-zeroM (m-pair r (go-on (fm-stop r′))) (m , s₁ , s₂) (u₁ , u₂) e = cut-zeroM r′ s₂ u₂ e
+    cut-zeroM (m-pair r stopped) s u e = cut-zeroM r s u e
+    cut-zeroM m-one s u ()
+    cut-zeroM m-b s u ()
+    cut-zeroM m-μ s u ()

@@ -169,7 +169,7 @@ module _ {Γ Δ} {ds : Defs Γ} {ds′ : Defs Δ} where
            → Plain r → Plain (run-tf {ds′ = ds′} r w)
   plain-tf (r-tmp r wv tp) w p                              = plain-tf r w p
   plain-tf r-exh w p                                        = tt
-  plain-tf (r-cut r le) w p                                 = plain-tf r w p
+  plain-tf (r-cut r le) w ()
   plain-tf r-id tf-id p                                     = tt
   plain-tf (r-∘ rg (go-on rf)) (tf-∘ wf wg) (pg , pf)       = plain-tf rg wg pg , plain-tf rf wf pf
   plain-tf (r-∘ rg stopped) (tf-∘ wf wg) pg                 = plain-tf rg wg pg
