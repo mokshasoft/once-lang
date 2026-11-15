@@ -23607,3 +23607,45 @@ the flat machine takes a control step at each loop entry (its label: `GlobalLoca
 (`Machine.Plain (r-cut) = ⊥`), as `Spends` already said. The machine never faults (`o-sound`): a halted
 state the start reaches is the world's run's end at a budget past it (determinism), whose halting step
 keeps the machine's ending (an op's halt is not a fault: `StepOp.OpHalt`).
+
+## D432 — A SIGOP'S ANSWER IS ITS ABI WORDS AT THE RESULT'S SLOTS, AS EVERY OTHER VALUE'S (2026-11-15)
+
+**Decided** (the user, 2026-11-15; plan 0.146 B1.5, found top-down: the last owed link of the flat
+theorem, `OpMachine.OwedOp`, an FFI value op or answering call whose answer is a product or a non-compare
+sum). **Applies**: D379/D380 (values in frames are their `Spec.ABI` words), D381 (`readTyped`: a base value
+read in place), D382 (`Spec.ABI.answer`: an answer in the return registers or the caller's buffer), D398/D428
+(an op's argument: a scalar its register, any other its address), D061 (master's
+`structured-pure-sigop-output` postulate, the same gap).
+
+### The problem
+The machine's `instr-sigop` writes one register word (`Output`). A structured answer (a product, a sum) has
+no meaning there: master postulates it (`SMCore.structured-pure-sigop-output`,
+`IRObsCorrect.SigOp.obs-correct-sigop-rest`), and the new image owed it. Every other generator of the new
+image writes its result's ABI words in place in the frame (`linl`: the tag, then the payload); a SigOp is as
+much part of the IRs as they are, so it should not be handled differently for the base types.
+
+### Decision
+* **One `instr-sigop`, whose semantics is the ABI.** A scalar answer (`Int`, `Float`) is its `Output`
+  word, as today; `Unit` is no words. Any other base answer (a product, a sum) is written by the sigop, in
+  place (`writeTyped`, the mirror of `readTyped`: a product's words after each other, a sum's tag then its
+  payload, the padding left as it is), at the address `Output` holds when the sigop runs — the hidden
+  buffer of `Spec.ABI`'s `argument`/`answer`. The answer side mirrors the argument side (D428): scalar or
+  address.
+* **The lowering**: an op with a structured answer takes the result's address (`lea-slot` at the result's
+  slots) into `Output` after `mov-to-input`, before the sigop; nothing is stored after it. The answer may
+  overlap the argument's words: the sigop reads its argument before it writes, and at the arch boundary
+  the argument is passed by value (D382), so the buffer never aliases what the callee reads.
+* **Order**: change `instr-sigop` in SMCore; check master's apex and see what breaks (the generic
+  "a sigop writes no memory" lemmas and each arch's `ConcFlatSim`, which the old image satisfies with a
+  premise: its sigops answer in a register); repair; then the LinCore lowering and `OwedOp`. Master's
+  postulate goes, not moves. Registers versus buffer per procedure-call standard stays at the arch boundary
+  (plan 0.138's `ev-<arch>`/`ret-call`).
+* **(Co)inductive answers stay out** (the user: at least for now): a SigOp's codomain is a base type
+  (`SigOpInfo.conB`), which has no μ, ν or arrow.
+
+### Alternatives
+* Restrict SigOp answers to register words in the Spec/checker: contradicts `Spec.ABI` (D382 defines
+  structured answers).
+* A second instruction (`instr-sigop-to`) beside `instr-sigop`: two instructions for one construct; the
+  user rejected it.
+* Model the write only in LinCore's step relation, as an assumption: still owed.
