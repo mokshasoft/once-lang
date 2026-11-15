@@ -23713,3 +23713,32 @@ memory and point at older frames.
 * No saved pointer (the callee reaches the caller's area frame-relatively): a store and a load fewer per
   call, but a new addressing form and layout on three arches; possible later as an optimization under this
   invariant.
+
+## D435 — AN ACCESS THROUGH A STACK POINTER IS CHECKED AGAINST A LIVE FRAME'S WINDOW (2026-11-15)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.6 item 2, D434's machine side). **Applies**:
+D385 (an offset store writes a cell of its block, or faults), D434, D367 (a reached state never faults).
+
+### The problem
+D434 lets frames hold stack pointers at older frames. The arch correspondence relates a frame's slots to
+memory only inside its window (`Window`: slots below its reservation), and frames lie next to each other, so
+a load or store through a stack pointer past its frame's window, or into a popped frame, would be a
+different cell on the hardware than in the machine. The machine does not check stack locations
+(`in-block? (AtStack …) = true`, "no register holds one" — no longer true).
+
+### Decision (proposed)
+* `load-at k`, `store-at k`, `addr-at k` resolve a stack location `AtStack f j` only when `f` is a LIVE frame
+  (the current one or a saved one, `live-frames`) and `k + j` is inside its window; else they fault (the
+  resolution is `nothing`, the existing fault). A heap location passes the gate unchanged, so D385 and every
+  heap proof stand as they are.
+* The image's no-fault theorem (FlatTop) is then the proof that it keeps D434's "a stack pointer points at
+  live data"; the arch layer needs no stack-pointer invariant (master's `FlatStackPtr`, "no stack pointer
+  anywhere", retires), only the gate's outcome at each access. Nothing is emitted for the check.
+* D434's "the heap never points at the stack" is a property of the lowering (stack addresses come only from
+  `lea-slot` and reach only registers and frame slots); the arch correspondence does not depend on it.
+
+### Alternatives
+* A run fact in `Emitted` ("every access through a stack pointer is in a live window", proved for every
+  reachable state): the same arithmetic, but proved away from the simulation step that knows the frames.
+* A preserved invariant (master's `FlatStackPtr` generalized): must survive every call and return, and a
+  dead register still pointing into a popped frame breaks it although it is never used.
