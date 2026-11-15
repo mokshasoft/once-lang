@@ -263,12 +263,20 @@ It exits 1 on a new assumption or a new gap. Read:
 
 ## 7. Merge
 
-- Squashed, as three commits per branch, fast-forwarded onto master (`git merge --ff-only`; master's
-  repository rules reject merge commits):
+- Squashed, fast-forwarded onto master (`git merge --ff-only`; master's repository rules reject merge
+  commits), as these commits per branch, in this order:
   1. the branch's plans in their final state: what they set out to do and their closing status, with
      what was not done said as such;
-  2. the work, squashed into one commit (code, proofs, extraction, decision log, docs, other plans);
-  3. the deletion of the plans the branch closes (history is the record).
+  2. if the branch changes the Spec: the Spec and its metatheory (`formal/Once/Spec.agda`,
+     `formal/Once/Spec/`, `formal/Once/Metatheory.agda`, `formal/Once/Metatheory/`,
+     `formal/scripts/spec.sha256`), so the change of meaning is reviewed on its own;
+  3. if the branch changes the Spec: the tests that exercise the Spec change (the test files of §1's
+     test diff, with the programs they run), so the change is read through what a programmer sees;
+  4. the work, squashed into one commit (code, proofs, extraction, decision log, docs, other plans);
+  5. the deletion of the plans the branch closes (history is the record).
+
+  Commits 2 and 3 need not check or pass without the work. The final tree is the branch's (the branch
+  deletes the plans it closes too): `git diff <branch> HEAD` is empty.
 - The unsquashed branch stays on origin: the hashes a plan or the decision log cites from it resolve
   there. New citations name the squashed commit.
 - `HANDOFF.md` is untracked working notes. It never enters a branch.
