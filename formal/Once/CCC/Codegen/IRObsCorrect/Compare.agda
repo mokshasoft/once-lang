@@ -242,7 +242,7 @@ module CompareC {FS : FrameSemantics} where
       mem-fs2 loc =
         trans (mem-untouched (instr-reg-op out-nz) (floc fs1) (falloc fs1) loc
                  InstrNoHeapWrite.nhw-instr-reg-op refl)
-              (mem-untouched (instr-sigop si′) s alloc loc nhw-instr-sigop refl)
+              (mem-untouched (instr-sigop si′) s alloc loc (nhw-instr-sigop refl) refl)
 
       -- ── THE TAG. The block leaves the 0/1 word; `out-nz` makes it a tag.
       out1 : readReg (regs (floc fs1)) Output ≡ SV-Lit fits-intˢ t

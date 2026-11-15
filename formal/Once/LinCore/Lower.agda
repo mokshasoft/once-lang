@@ -22,6 +22,7 @@
 
 {-# OPTIONS --guardedness #-}
 
+open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_)
 open import Data.List using (List; []; _∷_; _++_; concat; length)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -64,6 +65,13 @@ cmpOf s = cmp-of (Once.SigOp.Info.SigOpInfo.sem (info s))
 opSig : Sig → Maybe CmpOp → Sig
 opSig s nothing  = s
 opSig s (just o) = sig (cmp-block-info o)
+
+-- ★ D432: an answer in memory: a product's, a sum's (the machine's `in-memory?`)
+inMem : ∀ {B} → ST.Base ST.∅ₖ B → Bool
+inMem (ST.b-* _ _) = true
+inMem (ST.b-+ _ _) = true
+{-# CATCHALL #-}
+inMem _            = false
 
 -- a SigOp's base type as a flat type (`flat`, under a name no machine module shares)
 flatB : ∀ {A} → ST.Base ST.∅ₖ A → FTy Once.LinCore.Flat.Base
@@ -141,11 +149,20 @@ module Lowering (U : Univ)
     ∷ instr-load-code-addr (tl jb) ∷ store-at 1 ∷ instr-load-code-addr (tl jc) ∷ store-at 2
     ∷ instr-load-code-addr (tl jf) ∷ store-at 3 ∷ []
 
-  -- a SigOp's answer stored: one word, or none
-  answer : ℕ → ℕ → AbstractTrace
-  answer (suc zero) bot = store-at-slot (bot ∸ 1) ∷ []
+  -- ★ D432: a SigOp's answer, by its base, as its argument (D428): a scalar is
+  -- the sigop's `Output` word, stored; any other is written by the sigop in
+  -- place, at the address put in `Output` before it (`ansDst`); Unit has no words
+  answer : ∀ {B} → ST.Base ST.∅ₖ B → ℕ → AbstractTrace
+  answer ST.b-Int   bot = store-at-slot (bot ∸ 1) ∷ []
+  answer ST.b-Float bot = store-at-slot (bot ∸ 1) ∷ []
   {-# CATCHALL #-}
   answer _          bot = []
+
+  ansDst : ∀ {B} → ST.Base ST.∅ₖ B → ℕ → ℕ → AbstractTrace
+  ansDst (ST.b-* _ _) bot w = lea-slot (bot ∸ w) ∷ []
+  ansDst (ST.b-+ _ _) bot w = lea-slot (bot ∸ w) ∷ []
+  {-# CATCHALL #-}
+  ansDst _            bot w = []
 
   -- ★ D428: a SigOp's argument as the machine decodes it (D398): a scalar is its
   -- register (loaded from its slot), any other base value its address (read in
@@ -159,16 +176,15 @@ module Lowering (U : Univ)
   argIn (ST.b-* _ _) bot w = lea-slot (bot ∸ w)
   argIn (ST.b-+ _ _) bot w = lea-slot (bot ∸ w)
 
-  -- ★ D428: an op's code: its argument, then the sigop the machine runs — the op's own, or a
-  -- compare's block (master's `cmp-trace`: a structured pure codomain has no machine Output) —
-  -- then its answer stored: one word or none, or a compare's truth as its tag (`out-nz`)
-  tailOp : Sig → Maybe CmpOp → ℕ → AbstractTrace
-  tailOp s nothing  bot = answer (wsz ⌜ scod s ⌝) bot
-  tailOp s (just o) bot = instr-reg-op out-nz ∷ store-at-slot (bot ∸ 1) ∷ []
-
+  -- ★ D428/D432: an op's code: its argument, a structured answer's address, then the sigop the
+  -- machine runs — the op's own, or a compare's block (master's `cmp-trace`) — then a scalar
+  -- answer stored, or a compare's truth as its tag (`out-nz`)
   lowOp : Sig → Maybe CmpOp → ℕ → AbstractTrace
-  lowOp s m bot = argIn (Once.SigOp.Info.SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ mov-to-input
-                  ∷ instr-sigop (info (opSig s m)) ∷ tailOp s m bot
+  lowOp s nothing  bot = argIn (Once.SigOp.Info.SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ mov-to-input
+                         ∷ ansDst (Once.SigOp.Info.SigOpInfo.conB (info s)) bot (wsz ⌜ scod s ⌝)
+                         ++ instr-sigop (info s) ∷ answer (Once.SigOp.Info.SigOpInfo.conB (info s)) bot
+  lowOp s (just o) bot = argIn (Once.SigOp.Info.SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ mov-to-input
+                         ∷ instr-sigop (info (opSig s (just o))) ∷ instr-reg-op out-nz ∷ store-at-slot (bot ∸ 1) ∷ []
 
   -- a `prim`: a generator that touches at most one cell
   lowP : ∀ {Γ} (ds : Defs Γ) {A B} (g : LTm Γ A B) → Frame → (S : List LTy) → PrimIn ds g → AbstractTrace

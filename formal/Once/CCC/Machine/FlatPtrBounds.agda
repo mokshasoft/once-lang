@@ -361,10 +361,8 @@ pb-reg-op bs ls out-nz             wf =
 -- `structured-pure-sigop-output` itself (D061), and the same shape as
 -- `FlatStoreWF.structured-pure-sigop-below` / `FlatStackPtr`'s `-no-stack`.
 ------------------------------------------------------------------------
-postulate
-  structured-pure-sigop-inbounds :
-    ∀ (bs : ℕ → ℕ) {A B} (si : SigOpInfo A B) (ls : LocState FS)
-    → PtrB bs (structured-pure-sigop-output si ls)
+-- (D432: a structured answer is in memory; `Output` keeps its address, which
+-- the invariant covers, so the companion axiom is gone.)
 
 -- plan 0.98: `res-sv` dispatches on the `Res`, so a Pure SigOp's output is
 -- not a literal on the nose any more and `PtrB bs …` cannot reduce. Split the
@@ -374,9 +372,9 @@ res-sv-pb : ∀ (bs : ℕ → ℕ) {B} (fitB : FitsInReg B) (r : Res ⟦ B ⟧)
 res-sv-pb bs fitB (returns v) = tt
 res-sv-pb bs fitB stopped     = tt
 
-sigop-output-pb : ∀ (bs : ℕ → ℕ) {A B} (si : SigOpInfo A B) (ls : LocState FS)
+sigop-output-pb : ∀ (bs : ℕ → ℕ) {A B} (si : SigOpInfo A B) (ls : LocState FS) → PBInv bs ls
                 → PtrB bs (exec-sigop-output si ls)
-sigop-output-pb bs {A} {B} si ls = go (effect si)
+sigop-output-pb bs {A} {B} si ls wf = go (effect si)
   where
     pov : ∀ (fitB : FitsInReg B) (ma : Maybe ⟦ A ⟧)
         → PtrB bs (pure-sigop-out-val si fitB ma)
@@ -386,7 +384,7 @@ sigop-output-pb bs {A} {B} si ls = go (effect si)
         → PtrB bs (pure-sigop-out-aux si ls mf ml)
     aux (just fitB) (just in-loc) = pov fitB (readTyped A in-loc ls)
     aux (just fitB) nothing       = pov fitB (readReg-typed A (readReg (regs ls) Input1))
-    aux nothing     _             = structured-pure-sigop-inbounds bs si ls
+    aux nothing     _             = pb-regs wf Output
     go : ∀ (e : EffectShape B) → PtrB bs (exec-sigop-output-of e si ls)
     go Pure      = aux (fits-in-reg? B) (sv-as-loc (readReg (regs ls) Input1))
     go (Emits _) = tt
@@ -401,7 +399,24 @@ sigop-output-pb bs {A} {B} si ls = go (effect si)
                         at (just _) = tt
                         at nothing  = tt
                 ans (no _)  = tt
-        cv nothing  = tt
+        cv nothing  = pb-regs wf Output
+
+-- D432: a structured answer's words, written in place, are no pointers
+pb-plain : ∀ (bs : ℕ → ℕ) {w} → PlainWord w → PtrB bs w
+pb-plain bs pw-lit = tt
+pb-plain bs pw-tag = tt
+
+pb-sigop-store : ∀ (bs : ℕ → ℕ) {A B} (si : SigOpInfo A B) (ls : LocState FS) → PBInv bs ls → PBInv bs (sigop-store si ls)
+pb-sigop-store bs si ls wf = sigop-store-keeps (PBInv bs) (λ s loc w pw p → pb-write-mem bs s loc w (pb-plain bs pw) p) si ls wf
+
+-- the SigOp step: the stored state's memory, the old state's registers
+pb-write-reg-halt-on : ∀ (bs : ℕ → ℕ) (ls : LocState FS) (x : AbstractReg)
+                         (v : StoredValue FS) (b fl : Bool) (es : List SigOpEvent)
+                     → PtrB bs v → PBInv bs ls → ∀ {ls₀} → PBInv bs ls₀
+                     → PBInv bs (record ls { regs = writeReg (regs ls) x v ; stackMem = stackMem ls₀ ; heapMem = heapMem ls₀ ; halted = b ; faulted = fl ; ev-log = es })
+pb-write-reg-halt-on bs ls x v b fl es ok wf wf₀ =
+  let w = pb-write-reg bs ls x v ok wf in
+  record { pb-regs = pb-regs w ; pb-heap = pb-heap wf₀ ; pb-stack = pb-stack wf₀ }
 
 ------------------------------------------------------------------------
 -- THE PER-INSTRUCTION PRESERVATION over the structured semantics. The one
@@ -469,8 +484,8 @@ pb-abstract (worklist-pop slot)   ls alloc ff am wfS wf =
                (pb-read-loc _ ls wf (AtStack (current-frame alloc) slot)) wf
 pb-abstract (worklist-check slot) ls alloc ff am wfS wf = wf
 pb-abstract (instr-sigop si) ls alloc ff am wfS wf =
-  pb-write-reg-halt _ ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls)
-                    (sigop-output-pb _ si ls) wf
+  pb-write-reg-halt-on _ ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls)
+                    (sigop-output-pb _ si ls wf) wf (pb-sigop-store _ si ls wf)
 pb-abstract (instr-load-const p v)   ls alloc ff am wfS wf =
   pb-write-reg _ ls Output (SV-Lit p (lit-value p v)) tt wf
 pb-abstract (instr-load-code-addr n) ls alloc ff am wfS wf =

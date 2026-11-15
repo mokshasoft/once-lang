@@ -1486,6 +1486,27 @@ treeToRunnableWithInit wl t = worklist-init wl ∷ treeToRunnable wl t
 -- This is the specification that x86 refinement must preserve.
 ------------------------------------------------------------------------
 
+-- D432 (top level: no machine in it)
+-- the answers that are in memory: a product's, a sum's (a static fact of the
+-- codomain, so a sigop at any other writes no memory)
+in-memory? : Type → Bool
+in-memory? (A * B)    = true
+in-memory? (A Ty.+ B) = true
+{-# CATCHALL #-}
+in-memory? _          = false
+
+in-memory-nofit : ∀ (B : Type) → in-memory? B ≡ true → fits-in-reg? B ≡ nothing
+in-memory-nofit (A * B)    _ = refl
+in-memory-nofit (A Ty.+ B) _ = refl
+in-memory-nofit Int        ()
+in-memory-nofit Float      ()
+in-memory-nofit Unit       ()
+in-memory-nofit Ty.Void    ()
+in-memory-nofit (Ty.var _) ()
+in-memory-nofit (_ Ty.⇒[ _ ] _) ()
+in-memory-nofit (Ty.μ _)   ()
+in-memory-nofit (Ty.ν _ _) ()
+
 module AbstractExec {FS : FrameSemantics} where
   open FrameSemantics FS
   open MemOps {FS}
@@ -1690,6 +1711,65 @@ module AbstractExec {FS : FrameSemantics} where
   {-# CATCHALL #-}
   readTyped _       loc s = nothing
 
+  -- D432: THE FLAT WRITER, `readTyped`'s mirror. A base value written in place,
+  -- its words from the address up: a product's second component after the
+  -- first's words, a sum's tag then its payload, then its padding to the larger
+  -- alternative (`Spec.ABI`: any words; zero words here, so every word of the
+  -- value is written, as the image's own sums are).
+  zero-word : StoredValue FS
+  zero-word = SV-Lit fits-int 0
+
+  writeZeros : ℕ → ValueLocation FS → LocState FS → LocState FS
+  writeZeros zero    loc s = s
+  writeZeros (suc n) loc s = writeZeros n (sucLoc loc) (writeLoc s loc zero-word)
+
+  writeTyped : (A : Type) → ⟦ A ⟧ → ValueLocation FS → LocState FS → LocState FS
+  writeTyped Unit       _        loc s = s
+  writeTyped Int        v        loc s = writeLoc s loc (SV-Lit fits-int v)
+  writeTyped Float      v        loc s = writeLoc s loc (SV-Lit fits-float v)
+  writeTyped (A * B)    (a , b)  loc s = writeTyped B b (offsetLoc loc (tsize A)) (writeTyped A a loc s)
+  writeTyped (A Ty.+ B) (inj₁ a) loc s =
+    writeZeros ((tsize A ℕ.⊔ tsize B) ℕ.∸ tsize A) (offsetLoc loc (suc (tsize A)))
+      (writeTyped A a (sucLoc loc) (writeLoc s loc (SV-Tag 0)))
+  writeTyped (A Ty.+ B) (inj₂ b) loc s =
+    writeZeros ((tsize A ℕ.⊔ tsize B) ℕ.∸ tsize B) (offsetLoc loc (suc (tsize B)))
+      (writeTyped B b (sucLoc loc) (writeLoc s loc (SV-Tag 1)))
+  {-# CATCHALL #-}
+  writeTyped _          _        loc s = s
+
+  -- the words `writeTyped` writes: literals and tags, never a pointer
+  data PlainWord : StoredValue FS → Set where
+    pw-lit : ∀ {A} {p : FitsInReg A} {v} → PlainWord (SV-Lit p v)
+    pw-tag : ∀ {n} → PlainWord (SV-Tag n)
+
+  -- what writing a plain word keeps, writing zero words keeps…
+  zeros-keeps : (P : LocState FS → Set)
+              → (∀ s loc w → PlainWord w → P s → P (writeLoc s loc w))
+              → ∀ n loc s → P s → P (writeZeros n loc s)
+  zeros-keeps P k zero    loc s p = p
+  zeros-keeps P k (suc n) loc s p = zeros-keeps P k n (sucLoc loc) _ (k s loc _ pw-lit p)
+
+  -- …and writing a value in place
+  writeTyped-keeps : (P : LocState FS → Set)
+                   → (∀ s loc w → PlainWord w → P s → P (writeLoc s loc w))
+                   → ∀ (A : Type) v loc s → P s → P (writeTyped A v loc s)
+  writeTyped-keeps P k Unit       v        loc s p = p
+  writeTyped-keeps P k Int        v        loc s p = k s loc _ pw-lit p
+  writeTyped-keeps P k Float      v        loc s p = k s loc _ pw-lit p
+  writeTyped-keeps P k (A * B)    (a , b)  loc s p =
+    writeTyped-keeps P k B b (offsetLoc loc (tsize A)) _ (writeTyped-keeps P k A a loc s p)
+  writeTyped-keeps P k (A Ty.+ B) (inj₁ a) loc s p =
+    zeros-keeps P k ((tsize A ℕ.⊔ tsize B) ℕ.∸ tsize A) (offsetLoc loc (suc (tsize A)))
+      (writeTyped A a (sucLoc loc) (writeLoc s loc (SV-Tag 0))) (writeTyped-keeps P k A a (sucLoc loc) _ (k s loc _ pw-tag p))
+  writeTyped-keeps P k (A Ty.+ B) (inj₂ b) loc s p =
+    zeros-keeps P k ((tsize A ℕ.⊔ tsize B) ℕ.∸ tsize B) (offsetLoc loc (suc (tsize B)))
+      (writeTyped B b (sucLoc loc) (writeLoc s loc (SV-Tag 1))) (writeTyped-keeps P k B b (sucLoc loc) _ (k s loc _ pw-tag p))
+  writeTyped-keeps P k (Ty.var _) v        loc s p = p
+  writeTyped-keeps P k Ty.Void    v        loc s p = p
+  writeTyped-keeps P k (_ Ty.⇒[ _ ] _) v   loc s p = p
+  writeTyped-keeps P k (Ty.μ _)   v        loc s p = p
+  writeTyped-keeps P k (Ty.ν _ _) v        loc s p = p
+
   -- Plan 0.26 — `pure-sigop-output` discharged via `FitsInReg`.
   --
   -- For codomains satisfying `FitsInReg` (i.e. `Int`, `Float`), the
@@ -1698,14 +1778,14 @@ module AbstractExec {FS : FrameSemantics} where
   -- at this layer — we return `unit-storedvalue` as a canonical
   -- sentinel. The per-arch concrete machine's actual primitive value
   -- is established by the Simulation lemma. For non-FitsInReg
-  -- codomains a narrower per-name postulate fires.
-  postulate
-    -- Narrower per-name discharge target: only for `Pure` SigOps whose
-    -- codomain is not `FitsInReg`-classified (Sum/Pair/μ/ν/→/Unit/Str/
-    -- Buffer/…). Layer-0 hit: `arith.{lt,…,ne}.int` (Unit + Unit) and
-    -- `str.lit.<s>` (Str) — neither fires at runtime in Layer 0.
-    structured-pure-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS →
-                                   StoredValue FS
+  -- codomains the answer is in memory (D432, below).
+  -- D432: a SigOp whose codomain is not a register value (a product, a sum,
+  -- Unit) answers IN PLACE: it writes the answer's words at the address
+  -- `Output` holds (`sigop-store`, the caller's buffer of `Spec.ABI.answer`),
+  -- and `Output` keeps that address (was a postulate, D061).
+  structured-pure-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS →
+                                 StoredValue FS
+  structured-pure-sigop-output si s = readReg (regs s) Output
 
   -- THE ARGUMENT, READ FROM MEMORY (plan 0.105 §g). A scalar argument sits in
   -- `Input1` itself; a compound one is a pointer, read back through `readTyped`
@@ -1765,7 +1845,8 @@ module AbstractExec {FS : FrameSemantics} where
 
   call-sigop-val : ∀ {A B} → SigOpInfo A B → LocState FS → Maybe (FitsInReg B) → StoredValue FS
   call-sigop-val si s (just fitB) = call-sigop-ans si s fitB (call-sigop-dec si)
-  call-sigop-val si s nothing = unit-storedvalue
+  -- D432: a structured answer is in memory; `Output` keeps the buffer's address
+  call-sigop-val si s nothing = readReg (regs s) Output
 
   call-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS → StoredValue FS
   call-sigop-output {B = B} si s = call-sigop-val si s (fits-in-reg? B)
@@ -1876,6 +1957,65 @@ module AbstractExec {FS : FrameSemantics} where
   -- | Dispatch-derived halt-flag (wrapper).
   exec-sigop-halts : ∀ {A B} → SigOpInfo A B → LocState FS → Bool
   exec-sigop-halts si s = exec-sigop-halts-of (effect si) si s
+
+  -- | D432: A STRUCTURED ANSWER IS WRITTEN IN PLACE. The answer's value: a
+  -- pure SigOp's semantics or the interpretation's answer, at the argument
+  -- decoded from `Input1` (as the events); none when it halts, emits, or the
+  -- argument does not decode. Aux-style, so a consumer's `rewrite` reduces it.
+  res-just : ∀ {X : Set} → Res X → Maybe X
+  res-just (returns v) = just v
+  res-just stopped     = nothing
+
+  call-ans-at : ∀ {A B} (si : SigOpInfo A B) → LocState FS
+              → Dec (callKey (callOp (name si) A (baseA si) B) ∈ calls (fs-interp FS))
+              → Maybe ⟦ A ⟧ → Maybe ⟦ B ⟧
+  call-ans-at {A} {B} si s (yes p) (just a) =
+    just (atTarget (fs-numerics FS) B (answer (fs-interp FS) (ev-log s) (callOp (name si) A (baseA si) B) p a))
+  call-ans-at si s (yes p) nothing = nothing
+  call-ans-at si s (no _)  _       = nothing
+
+  pure-ans-at : ∀ {A B} → SigOpInfo A B → Maybe ⟦ A ⟧ → Maybe ⟦ B ⟧
+  pure-ans-at si (just a) = res-just (semM (fs-ffi FS) si (fs-numerics FS) a)
+  pure-ans-at si nothing  = nothing
+
+  sigop-answer-of : ∀ {A B} → EffectShape B → SigOpInfo A B → LocState FS → Maybe ⟦ B ⟧
+  sigop-answer-of Pure      si s = pure-ans-at si (decode-at (baseA si) (readReg (regs s) Input1) s)
+  sigop-answer-of Answers   si s = call-ans-at si s (call-sigop-dec si) (decode-at (baseA si) (readReg (regs s) Input1) s)
+  sigop-answer-of (Emits _) _  _ = nothing
+  sigop-answer-of (Halts _) _  _ = nothing
+
+  sigop-answer : ∀ {A B} → SigOpInfo A B → LocState FS → Maybe ⟦ B ⟧
+  sigop-answer si s = sigop-answer-of (effect si) si s
+
+  -- the store: none for an answer not in memory (`Output` holds it, or it has
+  -- no words); otherwise its words at the address in `Output`, when there is both
+  sigop-store-at : ∀ {B} → Bool → Maybe (ValueLocation FS) → Maybe ⟦ B ⟧
+                 → LocState FS → LocState FS
+  sigop-store-at         false _          _        s = s
+  sigop-store-at {B = B} true  (just loc) (just v) s = writeTyped B v loc s
+  sigop-store-at         true  (just loc) nothing  s = s
+  sigop-store-at         true  nothing    _        s = s
+
+  sigop-store : ∀ {A B} → SigOpInfo A B → LocState FS → LocState FS
+  sigop-store {B = B} si s =
+    sigop-store-at (in-memory? B) (sv-as-loc (readReg (regs s) Output)) (sigop-answer si s) s
+
+  sigop-store-keeps : (P : LocState FS → Set)
+                    → (∀ s loc w → PlainWord w → P s → P (writeLoc s loc w))
+                    → ∀ {A B} (si : SigOpInfo A B) s → P s → P (sigop-store si s)
+  sigop-store-keeps P k {B = B} si s p = go (in-memory? B) (sv-as-loc (readReg (regs s) Output)) (sigop-answer si s)
+    where go : ∀ (mf : Bool) ml (ma : Maybe ⟦ B ⟧) → P (sigop-store-at {B = B} mf ml ma s)
+          go false _          _        = p
+          go true  (just loc) (just v) = writeTyped-keeps P k B v loc s p
+          go true  (just loc) nothing  = p
+          go true  nothing    _        = p
+
+  -- a sigop whose answer is not in memory writes none
+  sigop-store-id : ∀ {A B} (si : SigOpInfo A B) s → in-memory? B ≡ false → sigop-store si s ≡ s
+  sigop-store-id {B = B} si s e = go (in-memory? B) e
+    where go : ∀ b → b ≡ false → sigop-store-at {B = B} b (sv-as-loc (readReg (regs s) Output)) (sigop-answer si s) s ≡ s
+          go false _ = refl
+          go true  ()
 
   -- Plan 0.13.2: `encode-const` and `encode-code-addr` deleted —
   -- their roles are now real `StoredValue` constructors.
@@ -2075,11 +2215,15 @@ module AbstractExec {FS : FrameSemantics} where
   -- s alloc = s , alloc` is the Plan-0.11 task-A move that surfaces
   -- the silent wildcard-payload leak as named, audit-visible
   -- postulates.
+  -- D432: a structured answer's words are stored (`sigop-store`: the memory
+  -- only; every other field is the state's own).
   exec-abstract (instr-sigop si) s alloc =
-    record s { regs    = writeReg (regs s) Output (exec-sigop-output si s)
-             ; halted  = exec-sigop-halts si s
-             ; faulted = exec-sigop-faults si s ∨ faulted s
-             ; ev-log  = ev-log s ++ sigop-events si s }
+    record s { regs     = writeReg (regs s) Output (exec-sigop-output si s)
+             ; stackMem = stackMem (sigop-store si s)
+             ; heapMem  = heapMem (sigop-store si s)
+             ; halted   = exec-sigop-halts si s
+             ; faulted  = exec-sigop-faults si s ∨ faulted s
+             ; ev-log   = ev-log s ++ sigop-events si s }
     , alloc
 
   -- Plan 0.13.2: load a primitive constant into Output as `SV-Lit`.

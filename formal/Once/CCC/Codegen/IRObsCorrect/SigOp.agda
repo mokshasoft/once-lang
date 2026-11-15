@@ -179,6 +179,11 @@ module SigOpC {FS : FrameSemantics} where
   -- single instruction; what differs is what it logs, whether it halts and
   -- where its result is — so those are the builder's arguments.
   ------------------------------------------------------------------------
+  -- D432: a register answer is not in memory
+  fits-mem : ∀ {B} → FitsInReg B → SMCore.in-memory? B ≡ false
+  fits-mem fits-intˢ   = refl
+  fits-mem fits-floatˢ = refl
+
   module Step {A B} (si : SigOpInfo A B)
               (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
               (span : SpanAt prog base (emitted n l (SigOp si)))
@@ -203,14 +208,14 @@ module SigOpC {FS : FrameSemantics} where
     fs₁ : FlatState
     fs₁ = flat-exec-instr (instr-sigop si) prog (entry-flat base s alloc cl rs)
 
-    build : ∀ k → (ev-eq : sigop-events si s ≡ eventsAt s E)
+    build : ∀ k → SMCore.in-memory? B ≡ false → (ev-eq : sigop-events si s ≡ eventsAt s E)
           → exec-sigop-faults si s ≡ false
           → (stopsAt s E ≡ false → exec-sigop-halts si s ≡ false)
           → (stopsAt s E ≡ true  → exec-sigop-halts si s ≡ true)
           → (∀ {v} → resultAt s E ≡ returns v
                → ResultPlace {prog = prog} ⌊ B ⌋ Stack (falloc fs₁) (falloc fs₁) v (floc fs₁))
           → MachineRefinesObsF prog base n l (SigOp si) x s alloc cl rs k
-    build k ev-eq nf live stops place = record
+    build k nm ev-eq nf live stops place = record
       { traces-agree = trans (++-identityʳ _) ev-eq′
       ; value-realized =
           realized 1 fs₁ Stack (falloc fs₁) ((nh , span′ 0 _ refl) ∷ [])
@@ -223,8 +228,8 @@ module SigOpC {FS : FrameSemantics} where
                    -- D204: `exec-abstract (instr-sigop si)` writes the Output
                    -- register, the halt flag and the log — memory is untouched
                    -- whatever the SigOp means.
-                   (λ _ fr j _ → mem-untouched (instr-sigop si) s alloc (AtStack fr j) nhw-instr-sigop refl)
-                   (λ _ hl _ → mem-untouched (instr-sigop si) s alloc (AtDynamic hl) nhw-instr-sigop refl)
+                   (λ _ fr j _ → mem-untouched (instr-sigop si) s alloc (AtStack fr j) (nhw-instr-sigop nm) refl)
+                   (λ _ hl _ → mem-untouched (instr-sigop si) s alloc (AtDynamic hl) (nhw-instr-sigop nm) refl)
                    (λ _ → refl) (λ _ _ _ bf → bf) (λ _ → refl) (λ _ _ _ ib → ib)
       }
       where
@@ -314,7 +319,7 @@ module SigOpC {FS : FrameSemantics} where
   pure-obs : ∀ {A B} (si : SigOpInfo A B) (c : SigOpSem A B) → sem si ≡ c → effect-of c ≡ Pure
            → Declared-at σᶠ si c → cmp-of (sem si) ≡ nothing → FitsInReg B → Readable A → IRObsCorrectF (SigOp si)
   pure-obs {A} {B} si c e eff d nc fit rA n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp k rs =
-    S.build k ev-eq (trans (faults-at si c e s) (trans (cong (λ z → exec-sigop-faults-of z si s) eff) (cong unread? (arg-agree (baseA si) x s inp))))
+    S.build k (fits-mem fit) ev-eq (trans (faults-at si c e s) (trans (cong (λ z → exec-sigop-faults-of z si s) eff) (cong unread? (arg-agree (baseA si) x s inp))))
                   (λ _ → trans (halts-at si c e s) (trans (cong (λ z → exec-sigop-halts-of z si s) eff) (cong unread? (arg-agree (baseA si) x s inp))))
                   (λ st → case trans (sym stops-f) st of λ ())
                   place
@@ -346,7 +351,7 @@ module SigOpC {FS : FrameSemantics} where
 
   emits-obs : ∀ {A} (si : SigOpInfo A SpecTy.Unit) → sem si ≡ emitsV refl → IRObsCorrectF (SigOp si)
   emits-obs {A} si e n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp k rs =
-    S.build k ev-eq (faults-at si (emitsV refl) e s) (λ _ → halts-at si (emitsV refl) e s)
+    S.build k refl ev-eq (faults-at si (emitsV refl) e s) (λ _ → halts-at si (emitsV refl) e s)
                   (λ st → case trans (sym (cong (stopsAt s) E≡)) st of λ ())
                   (λ _ → unit-result)
     where
@@ -358,7 +363,7 @@ module SigOpC {FS : FrameSemantics} where
 
   halts-obs : ∀ {A} (si : SigOpInfo A SpecTy.Void) → sem si ≡ haltsV refl → IRObsCorrectF (SigOp si)
   halts-obs {A} si e n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp k rs =
-    S.build k ev-eq (faults-at si (haltsV refl) e s) (λ lv → case trans (sym (cong (stopsAt s) E≡)) lv of λ ())
+    S.build k refl ev-eq (faults-at si (haltsV refl) e s) (λ lv → case trans (sym (cong (stopsAt s) E≡)) lv of λ ())
                   (λ _ → halts-at si (haltsV refl) e s)
                   (λ p → case trans (sym (cong (resultAt s) E≡)) p of λ ())
     where
@@ -379,7 +384,7 @@ module SigOpC {FS : FrameSemantics} where
   -- plan 0.105: at its DECLARATION — the shared membership decision is `yes`.
   calls-obs : ∀ {A B} (si : SigOpInfo A B) → sem si ≡ callsV → Declared-at σᶠ si callsV → FitsInReg B → IRObsCorrectF (SigOp si)
   calls-obs {A} {B} si e d fit n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp k rs =
-    S.build k ev-eq (faults-at si callsV e s) (λ _ → halts-at si callsV e s)
+    S.build k (fits-mem fit) ev-eq (faults-at si callsV e s) (λ _ → halts-at si callsV e s)
                   (λ st → case trans (sym (cong is-stopped res-call)) (trans (sym (cong (stopsAt s) E≡)) st) of λ ())
                   place
     where
@@ -439,7 +444,7 @@ module SigOpC {FS : FrameSemantics} where
                 → effect-of c ≡ Pure → Declared-at σᶠ si c → cmp-of (sem si) ≡ nothing
                 → IRObsCorrectF (SigOp si)
   pure-unit-obs {A} si c e eff d nc n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp k rs =
-    S.build k ev-eq (trans (faults-at si c e s) (trans (cong (λ z → exec-sigop-faults-of z si s) eff) (cong unread? (arg-agree (baseA si) x s inp))))
+    S.build k refl ev-eq (trans (faults-at si c e s) (trans (cong (λ z → exec-sigop-faults-of z si s) eff) (cong unread? (arg-agree (baseA si) x s inp))))
                   (λ _ → trans (halts-at si c e s) (trans (cong (λ z → exec-sigop-halts-of z si s) eff) (cong unread? (arg-agree (baseA si) x s inp))))
                   (λ st → case trans (sym (cong (stopsAt s) E≡)) st of λ ())
                   (λ _ → unit-result)
@@ -463,7 +468,7 @@ module SigOpC {FS : FrameSemantics} where
   -- `yes u` clause), so the denotation logs the call and returns `tt`.
   calls-unit-obs : ∀ {A} (si : SigOpInfo A SpecTy.Unit) → sem si ≡ callsV → IRObsCorrectF (SigOp si)
   calls-unit-obs {A} si e n l prog base _ _ span _ _ mIn x s alloc cl _ nh inp k rs =
-    S.build k ev-eq (faults-at si callsV e s) (λ _ → halts-at si callsV e s)
+    S.build k refl ev-eq (faults-at si callsV e s) (λ _ → halts-at si callsV e s)
                   (λ st → case trans (sym (cong (stopsAt s) E≡)) st of λ ())
                   (λ _ → unit-result)
     where

@@ -44,6 +44,7 @@ open import Once.Arith.SigOp.Compare using (CmpAt; int-c; flt-c; cmp-of; cmp-blo
 open import Once.Arith.SigOp.Block using (block-info; block-name)
 open import Once.Arith.Machine.IR using (ArithBlock; mk-block; module ArithBlock; shape-as-type; numtype-as-type; MArithIR)
 open import Once.Arith.Type using (NInt; NFloat)
+import Once.CCC.Machine.SMCore as SMCore
 open ArithBlock using (block-body)
 open import Once.Arith.Machine.Rewrite using (rewrite-ir; walk-both; prefix-at; try-lift; bare-at; bare-sigop; shape-of; has-op; block-as-ir; sigop-blocks)
 open import Once.Arith.Machine.Recognise using (recognise-body; recognise-body-float)
@@ -89,6 +90,11 @@ private
 data BlockOf {X Y} (si : SigOpInfo X Y) : ArithBlock → Set where
   is-block : ∀ {sh n} (e : MArithIR sh n) (eA : X ≡ shape-as-type sh) (eB : Y ≡ numtype-as-type n)
            → sem si ≡ blockV e eA eB → BlockOf si (mk-block sh n e)
+
+-- D432: a block's answer is a register word, never in memory
+block-not-in-memory : ∀ {X Y} {si : SigOpInfo X Y} {b} → BlockOf si b → SMCore.in-memory? Y ≡ false
+block-not-in-memory (is-block {n = NInt}   e eA refl _) = refl
+block-not-in-memory (is-block {n = NFloat} e eA refl _) = refl
 
 Named : List ArithBlock → ∀ {X Y} → SigOpInfo X Y → Set
 Named bs si = Internal (sem si) → Σ ArithBlock (λ b → b ∈ bs × name si ≡ bare (block-name (block-body b)) × BlockOf si b)

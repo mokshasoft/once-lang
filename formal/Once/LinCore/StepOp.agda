@@ -19,7 +19,7 @@ open import Data.List using (List; []; _∷_; map)
 open import Data.Unit using (⊤)
 open import Data.Sum using (_⊎_)
 open import Data.Product using (_×_; Σ)
-open import Data.Bool using (false; true)
+open import Data.Bool using (Bool; false; true)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
@@ -48,7 +48,7 @@ open import Once.LinCore.Machine fmt ans bw using (Sh)
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; StepI; i-prim; i-opend)
 open import Once.LinCore.Keys fmt ans bw using (Univ)
-open import Once.LinCore.Lower fmt ans bw using (cmpOf; opSig)
+open import Once.LinCore.Lower fmt ans bw using (cmpOf; opSig; inMem)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
 
 -- ★ D427: what a trace shows the machine's log: its calls and halts, each the
@@ -91,12 +91,28 @@ module Agree {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
 
   -- an op's answer, by the sigop its code runs (D428): the machine does not halt; the answer's
   -- words are none or its Output word, or (a compare) its Output's truth as a tag
-  OpValM : (s : Sig) → Maybe CmpOp → MV ⌜ sdom s ⌝ → MV ⌜ scod s ⌝ → List SigOpEvent → FlatState → Set
-  OpValM s nothing x y E fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
+  -- ★ D432: the sigop's state for an answer in memory: `Output` its destination's address
+  argD : Sig → FlatState → ℕ → ℕ → List W → LocState FS
+  argD s fs d dst wx = record (arg s fs d wx)
+    { regs = writeReg (LocState.regs (arg s fs d wx)) Output (SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) dst)) }
+
+  -- an answer not in memory: none, or the sigop's `Output` word; one in memory: its words
+  -- where the sigop writes them, at any destination `dst` of the frame (`sigop-store`)
+  OpValN : Bool → (s : Sig) → MV ⌜ sdom s ⌝ → MV ⌜ scod s ⌝ → List SigOpEvent → FlatState → Set
+  OpValN false s x y E fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
                  → (exec-sigop-halts (info s) (arg s fs d wx) ≡ false)
                    × (sigop-events (info s) (arg s fs d wx) ≡ E)
                    × Σ (List W) λ wy → VW (LocState.heapMem (floc fs)) y wy
                        × ((wy ≡ []) ⊎ (wy ≡ exec-sigop-output (info s) (arg s fs d wx) ∷ []))
+  OpValN true s x y E fs = ∀ d dst (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
+                 → (exec-sigop-halts (info s) (argD s fs d dst wx) ≡ false)
+                   × (sigop-events (info s) (argD s fs d dst wx) ≡ E)
+                   × Σ (List W) λ wy → VW (LocState.heapMem (floc fs)) y wy
+                       × SlotsAt (LocState.stackMem (AbstractExec.sigop-store {FS} (info s) (argD s fs d dst wx))
+                                   (AllocState.current-frame (falloc fs))) dst wy
+
+  OpValM : (s : Sig) → Maybe CmpOp → MV ⌜ sdom s ⌝ → MV ⌜ scod s ⌝ → List SigOpEvent → FlatState → Set
+  OpValM s nothing x y E fs = OpValN (inMem (SigOpInfo.conB (info s))) s x y E fs
   OpValM s (just o) x y E fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
                  → (exec-sigop-halts (cmp-block-info o) (arg s fs d wx) ≡ false)
                    × (sigop-events (cmp-block-info o) (arg s fs d wx) ≡ E)
@@ -108,7 +124,7 @@ module Agree {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
 
   -- a halting op: the machine halts
   OpHalt : (s : Sig) → MV ⌜ sdom s ⌝ → List SigOpEvent → FlatState → Set
-  OpHalt s x E fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
+  OpHalt s x E fs = (inMem (SigOpInfo.conB (info s)) ≡ false) × ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
                 → (exec-sigop-halts (info (opSig s (cmpOf s))) (arg s fs d wx) ≡ true)
                   × (sigop-events (info (opSig s (cmpOf s))) (arg s fs d wx) ≡ E)
                   -- (a halt, not a fault)

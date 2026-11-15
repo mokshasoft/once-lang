@@ -415,10 +415,8 @@ sp-reg-op cf ls out-nz             wf =
 -- trusted base as `structured-pure-sigop-output` itself (D061), and the same
 -- shape as `FlatStoreWF.structured-pure-sigop-below`.
 ------------------------------------------------------------------------
-postulate
-  structured-pure-sigop-no-stack :
-    ∀ {A B} (si : SigOpInfo A B) (ls : LocState FS)
-    → StackPtrOK (structured-pure-sigop-output si ls)
+-- (D432: a structured answer is in memory; `Output` keeps its address, which
+-- the invariant covers, so the companion axiom is gone.)
 
 -- plan 0.98: a Pure SigOp's output is `res-sv fitB (semM …)`, and `res-sv`
 -- dispatches on the `Res` — so the output is no longer a literal on the nose
@@ -429,9 +427,9 @@ res-sv-stack-ok : ∀ {B} (fitB : FitsInReg B) (r : Res ⟦ B ⟧)
 res-sv-stack-ok fitB (returns v) = tt
 res-sv-stack-ok fitB stopped     = tt
 
-sigop-output-ok : ∀ {A B} (si : SigOpInfo A B) (ls : LocState FS)
+sigop-output-ok : ∀ {A B} (si : SigOpInfo A B) (ls : LocState FS) → SPInv ls
                 → StackPtrOK (exec-sigop-output si ls)
-sigop-output-ok {A} {B} si ls = go (effect si)
+sigop-output-ok {A} {B} si ls wf = go (effect si)
   where
     pov : ∀ (fitB : FitsInReg B) (ma : Maybe ⟦ A ⟧)
         → StackPtrOK (pure-sigop-out-val si fitB ma)
@@ -441,7 +439,7 @@ sigop-output-ok {A} {B} si ls = go (effect si)
         → StackPtrOK (pure-sigop-out-aux si ls mf ml)
     aux (just fitB) (just in-loc) = pov fitB (readTyped A in-loc ls)
     aux (just fitB) nothing       = pov fitB (readReg-typed A (readReg (regs ls) Input1))
-    aux nothing     _             = structured-pure-sigop-no-stack si ls
+    aux nothing     _             = sp-regs wf Output
     go : ∀ (e : EffectShape B) → StackPtrOK (exec-sigop-output-of e si ls)
     go Pure      = aux (fits-in-reg? B) (sv-as-loc (readReg (regs ls) Input1))
     go (Emits _) = tt
@@ -456,7 +454,24 @@ sigop-output-ok {A} {B} si ls = go (effect si)
                         at (just _) = tt
                         at nothing  = tt
                 ans (no _)  = tt
-        cv nothing  = tt
+        cv nothing  = sp-regs wf Output
+
+-- D432: a structured answer's words, written in place, are no pointers
+sp-plain : ∀ {w} → PlainWord w → StackPtrOK w
+sp-plain pw-lit = tt
+sp-plain pw-tag = tt
+
+sp-sigop-store : ∀ (cf : Frame) {A B} (si : SigOpInfo A B) (ls : LocState FS) → SPInv ls → SPInv (sigop-store si ls)
+sp-sigop-store cf si ls wf = sigop-store-keeps SPInv (λ s loc w pw p → sp-write-mem cf s loc w (sp-plain pw) p) si ls wf
+
+-- the SigOp step: the stored state's memory, the old state's registers
+sp-write-reg-halt-on : ∀ (cf : Frame) (ls : LocState FS) (x : AbstractReg)
+                         (v : StoredValue FS) (b fl : Bool) (es : List SigOpEvent)
+                     → StackPtrOK v → SPInv ls → ∀ {ls₀} → SPInv ls₀
+                     → SPInv (record ls { regs = writeReg (regs ls) x v ; stackMem = stackMem ls₀ ; heapMem = heapMem ls₀ ; halted = b ; faulted = fl ; ev-log = es })
+sp-write-reg-halt-on cf ls x v b fl es ok wf wf₀ =
+  let w = sp-write-reg cf ls x v ok wf in
+  record { sp-regs = sp-regs w ; sp-heap = sp-heap wf₀ ; sp-stack = sp-stack wf₀ }
 
 ------------------------------------------------------------------------
 -- THE PER-INSTRUCTION PRESERVATION over the structured semantics. No mutual
@@ -523,8 +538,8 @@ sp-abstract (worklist-pop slot)   ls alloc ff wf =
                (sp-read-loc (current-frame alloc) ls wf (AtStack (current-frame alloc) slot)) wf
 sp-abstract (worklist-check slot) ls alloc ff wf = wf
 sp-abstract (instr-sigop si) ls alloc ff wf =
-  sp-write-reg-halt (current-frame alloc) ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls)
-                    (sigop-output-ok si ls) wf
+  sp-write-reg-halt-on (current-frame alloc) ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls)
+                    (sigop-output-ok si ls wf) wf (sp-sigop-store (current-frame alloc) si ls wf)
 sp-abstract (instr-load-const p v)   ls alloc ff wf =
   sp-write-reg (current-frame alloc) ls Output (SV-Lit p (lit-value p v)) tt wf
 sp-abstract (instr-load-code-addr n) ls alloc ff wf =

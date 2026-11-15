@@ -163,7 +163,7 @@ import Once.Compile as Cmp
 import Once.Adequacy.BlockTable as BT
 import Once.Arith.Backend.X86-64.Emit as AE
 open import Once.Adequacy.CPU.X86-64 using (block-env-hit; block-env-sound)
-open import Once.Adequacy.RewriteOwned using (BlockOf; is-block)
+open import Once.Adequacy.RewriteOwned using (BlockOf; is-block; block-not-in-memory)
 import Once.Adequacy.ArchCorrectness.X86-64.ArithFrame as AF
 import Once.Adequacy.ArchCorrectness.X86-64.ArithBlockValue o FS word-eq fmt-eq as ABV
 open import Once.Arith.Backend.XInstr.SpillBound using (SpillsWF; block-spills)
@@ -742,7 +742,7 @@ arith-sigop-run : ∀ {hv : HeapView} (env : RTx.ArithEnv val-x86-64 (answer-at 
 arith-sigop-run {hv} env prog fs s si r t int cc ftq room h pl hit
   with arith-sigop-block env prog fs si t int ftq pl hit
 ... | b , bo , refl =
-  sigop-arith-step prog fs s (uncurry (dispatch-arith val-x86-64) (AE.block-payload b) s) si r int cc ftq h room
+  sigop-arith-step prog fs s (uncurry (dispatch-arith val-x86-64) (AE.block-payload b) s) si r int (block-not-in-memory bo) cc ftq h room
     (arith-dispatch-run {hv} prog fs s si r int cc ftq room h b bo) refl
     (trans (cong suc (pc-off cc))
            (sym (trans (blk-off-suc prog (fpc fs) (instr-sigop si) ftq) (+-comm (blk-off prog (fpc fs)) 1))))

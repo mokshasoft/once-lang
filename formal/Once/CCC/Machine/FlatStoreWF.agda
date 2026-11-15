@@ -30,6 +30,7 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Bool using () renaming (_∨_ to _∨_)
 open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Unit using (⊤; tt)
@@ -38,7 +39,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 open import Once.CCC.Label using (LabelId)
 open import Once.Spec.Type using (Type; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float)
-open import Once.SigOp.Words using (Words; LitWord; ResWord; IM; atTarget-word; semM-of-word)
+open import Once.SigOp.Words using (Words; LitWord; ResWord; IM; atTarget-word; semM-of-word; Leaves; ResLeaves; atTarget-leaves; semM-of-leaves)
 open import Once.SigOp.Info using (module SigOpInfo)
 open import Once.Word using (module WidthLaws)
 open import Data.Nat.Properties using (m^n>0)
@@ -350,10 +351,8 @@ wf-slot-load = wf-load-value
 -- non-register-fittable case, which gets the companion axiom below — the same
 -- trusted base as `structured-pure-sigop-output` itself (D061).
 ------------------------------------------------------------------------
-postulate
-  structured-pure-sigop-below :
-    ∀ (n : ℕ) {A B} (si : SigOpInfo A B) (ls : LocState FS)
-    → sv-below n (structured-pure-sigop-output si ls)
+-- (D432: a structured answer is in memory; `Output` keeps its address, so
+-- the companion axiom is gone.)
 
 -- plan 0.98: a Pure SigOp's output is `res-sv fitB (semM …)`, and `res-sv`
 -- dispatches on the `Res`. D397: a returned value is a word when the SigOp's
@@ -439,7 +438,7 @@ sigop-output-below n {A} {B} si ls wf = go (effect si)
     aux (just fitB) (just in-loc) = pure-out-val-below n si fitB (readTyped A in-loc ls) (readTyped-words wf A in-loc)
     aux (just fitB) nothing       = pure-out-val-below n si fitB (readReg-typed A (readReg (regs ls) Input1))
                                       (readReg-words A (readReg (regs ls) Input1) (wf-regs wf Input1))
-    aux nothing     _             = structured-pure-sigop-below n si ls
+    aux nothing     _             = wf-regs wf Output
     go : ∀ (e : EffectShape B) → sv-below n (exec-sigop-output-of e si ls)
     go Pure      = aux (fits-in-reg? B) (sv-as-loc (readReg (regs ls) Input1))
     go (Emits _) = unit-below n
@@ -455,7 +454,84 @@ sigop-output-below n {A} {B} si ls wf = go (effect si)
                         at (just _) = atTarget-word (fs-numerics FS) f _
                         at nothing  = unit-below n
                 ans (no _)  = unit-below n
-        call-below nothing  = unit-below n
+        call-below nothing  = wf-regs wf Output
+
+------------------------------------------------------------------------
+-- D432: A STRUCTURED ANSWER WRITTEN IN PLACE keeps the store well formed:
+-- its words are its leaves (an `Int` a word, a tag none), at a location below.
+------------------------------------------------------------------------
+wf-zeros : ∀ {n ls} (k : ℕ) (loc : ValueLocation FS) → loc-below n loc
+         → StoreWF n ls → StoreWF n (writeZeros k loc ls)
+wf-zeros {n} zero    loc b wf = wf
+wf-zeros {n} (suc k) loc b wf = wf-zeros k (sucLoc loc) (sucLoc-below n loc b) (wf-write-loc loc zero-word wf b 0<IMfs)
+
+wf-writeTyped : ∀ {n ls} (A : Type) (v : ⟦ A ⟧) (loc : ValueLocation FS)
+              → StoreWF n ls → loc-below n loc → Leaves IMfs A v
+              → StoreWF n (writeTyped A v loc ls)
+wf-writeTyped Unit         v        loc wf b l = wf
+wf-writeTyped Int          v        loc wf b l = wf-write-loc loc (SV-Lit fits-int v) wf b l
+wf-writeTyped Float        v        loc wf b l = wf-write-loc loc (SV-Lit fits-float v) wf b tt
+wf-writeTyped {n} (A * B)  (x , y)  loc wf b (lx , ly) =
+  wf-writeTyped B y (offsetLoc loc (tsize A)) (wf-writeTyped A x loc wf b lx) (offsetLoc-below n loc (tsize A) b) ly
+wf-writeTyped {n} (A + B)  (inj₁ x) loc wf b l =
+  wf-zeros ((tsize A Data.Nat.⊔ tsize B) Data.Nat.∸ tsize A) (offsetLoc loc (suc (tsize A))) (offsetLoc-below n loc (suc (tsize A)) b)
+    (wf-writeTyped A x (sucLoc loc) (wf-write-loc loc (SV-Tag 0) wf b tt) (sucLoc-below n loc b) l)
+wf-writeTyped {n} (A + B)  (inj₂ y) loc wf b l =
+  wf-zeros ((tsize A Data.Nat.⊔ tsize B) Data.Nat.∸ tsize B) (offsetLoc loc (suc (tsize B))) (offsetLoc-below n loc (suc (tsize B)) b)
+    (wf-writeTyped B y (sucLoc loc) (wf-write-loc loc (SV-Tag 1) wf b tt) (sucLoc-below n loc b) l)
+wf-writeTyped (var _)      v        loc wf b l = wf
+wf-writeTyped Void         v        loc wf b l = wf
+wf-writeTyped (_ ⇒[ _ ] _) v        loc wf b l = wf
+wf-writeTyped (μ _)        v        loc wf b l = wf
+wf-writeTyped (ν _ _)      v        loc wf b l = wf
+
+-- an answer the machine may hold: its leaves words
+MLeaves : (B : Type) → Maybe ⟦ B ⟧ → Set
+MLeaves B (just v) = Leaves IMfs B v
+MLeaves B nothing  = ⊤
+
+private
+  res-just-leaves : ∀ {B : Type} (r : Res ⟦ B ⟧) → ResLeaves IMfs B r → MLeaves B (res-just r)
+  res-just-leaves (returns v) l = l
+  res-just-leaves stopped     _ = tt
+
+  answer-leaves : ∀ {A B} (si : SigOpInfo A B) (ls : LocState FS) → fits-in-reg? B ≡ nothing
+                → ∀ (e : EffectShape B) → MLeaves B (sigop-answer-of e si ls)
+  answer-leaves {A} {B} si ls nf Pure = pure (decode-at (SigOpInfo.baseA si) (readReg (regs ls) Input1) ls)
+    where pure : ∀ ma → MLeaves B (pure-ans-at si ma)
+          pure (just a) = res-just-leaves (semM (fs-ffi FS) si (fs-numerics FS) a)
+                            (semM-of-leaves (fs-numerics FS) (fs-ffi FS) (SigOpInfo.name si) (SigOpInfo.sem si) a nf)
+          pure nothing  = tt
+  answer-leaves {A} {B} si ls nf Answers = ans (call-sigop-dec si) (decode-at (SigOpInfo.baseA si) (readReg (regs ls) Input1) ls)
+    where ans : ∀ d ma → MLeaves B (call-ans-at si ls d ma)
+          ans (yes p) (just a) = atTarget-leaves (fs-numerics FS) B _
+          ans (yes p) nothing  = tt
+          ans (no _)  _        = tt
+  answer-leaves si ls nf (Emits _) = tt
+  answer-leaves si ls nf (Halts _) = tt
+
+  store-at-wf : ∀ {n ls} {B : Type} (mf : Bool) → in-memory? B ≡ mf
+              → ∀ (ml : Maybe (ValueLocation FS)) → mloc-below n ml
+              → ∀ (ma : Maybe ⟦ B ⟧) → (fits-in-reg? B ≡ nothing → MLeaves B ma)
+              → StoreWF n ls → StoreWF n (sigop-store-at mf ml ma ls)
+  store-at-wf         false _  _          _ _        _ wf = wf
+  store-at-wf {B = B} true  eq (just loc) b (just v) l wf = wf-writeTyped B v loc wf b (l (in-memory-nofit B eq))
+  store-at-wf         true  _  (just loc) _ nothing  _ wf = wf
+  store-at-wf         true  _  nothing    _ _        _ wf = wf
+
+wf-sigop-store : ∀ {n ls} {A B} (si : SigOpInfo A B) → StoreWF n ls → StoreWF n (sigop-store si ls)
+wf-sigop-store {n} {ls} {B = B} si wf =
+  store-at-wf (in-memory? B) refl (sv-as-loc (readReg (regs ls) Output))
+    (sv-as-loc-below n (readReg (regs ls) Output) (wf-regs wf Output))
+    (sigop-answer si ls) (λ nf → answer-leaves si ls nf (effect si)) wf
+
+-- the SigOp step: the stored state's memory, the old state's registers
+wf-write-reg-halt-on : ∀ {n ls ls₀} (x : AbstractReg) (v : StoredValue FS) (b fl : Bool) (es : List SigOpEvent)
+                     → StoreWF n ls → StoreWF n ls₀ → sv-below (n) v
+                     → StoreWF n (record ls { regs = writeReg (regs ls) x v ; stackMem = stackMem ls₀ ; heapMem = heapMem ls₀ ; halted = b ; faulted = fl ; ev-log = es })
+wf-write-reg-halt-on {n} {ls} x v b fl es wf wf₀ bv = record
+  { wf-regs  = λ y → rw-below (n) (regs ls) x y v bv (wf-regs wf y)
+  ; wf-heap  = wf-heap wf₀ ; wf-stack = wf-stack wf₀ ; wf-fresh = wf-fresh wf₀ }
 
 ------------------------------------------------------------------------
 -- Slot loads (they thread `alloc` through, so they need their own shape).
@@ -550,8 +626,8 @@ mutual
       (readLoc-below (AtStack (current-frame alloc) slot) wf)
   wf-abstract (worklist-check slot) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-sigop si) ls alloc wf =
-    wf-write-reg-halt Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls) wf
-      (sigop-output-below (next-heap-ref alloc) si ls wf) , ≤-refl
+    wf-write-reg-halt-on Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls) wf
+      (wf-sigop-store si wf) (sigop-output-below (next-heap-ref alloc) si ls wf) , ≤-refl
   -- D113: `exec-abstract` MATERIALISES the literal (`lit-value`), so the cell
   -- holds the target's representation, not the payload. Mirrors the machine.
   wf-abstract (instr-load-const p v) ls alloc wf =

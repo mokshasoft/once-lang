@@ -122,14 +122,31 @@ module NoLabels {FS : FrameSemantics} where
     argIn-nl (ST.b-* _ _) bot w = refl
     argIn-nl (ST.b-+ _ _) bot w = refl
 
-    answer-nl : ∀ w bot → NoLab (answer w bot)
-    answer-nl zero          bot = []
-    answer-nl (suc zero)    bot = refl ∷ []
-    answer-nl (suc (suc w)) bot = []
+    -- D432: the answer's store and destination, by its base
+    answer-nl : ∀ {B} (b : ST.Base ST.∅ₖ B) bot → NoLab (answer b bot)
+    answer-nl (ST.b-var {i = ()} _) bot
+    answer-nl ST.b-Unit    bot = []
+    answer-nl ST.b-Void    bot = []
+    answer-nl ST.b-Int     bot = refl ∷ []
+    answer-nl ST.b-Float   bot = refl ∷ []
+    answer-nl (ST.b-* _ _) bot = []
+    answer-nl (ST.b-+ _ _) bot = []
+
+    ansDst-nl : ∀ {B} (b : ST.Base ST.∅ₖ B) bot w → NoLab (ansDst b bot w)
+    ansDst-nl (ST.b-var {i = ()} _) bot w
+    ansDst-nl ST.b-Unit    bot w = []
+    ansDst-nl ST.b-Void    bot w = []
+    ansDst-nl ST.b-Int     bot w = []
+    ansDst-nl ST.b-Float   bot w = []
+    ansDst-nl (ST.b-* _ _) bot w = refl ∷ []
+    ansDst-nl (ST.b-+ _ _) bot w = refl ∷ []
 
     -- D428: an op's code, by the sigop it runs
     lowOp-nl : ∀ s m bot → NoLab (lowOp s m bot)
-    lowOp-nl s nothing  bot = argIn-nl (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ refl ∷ refl ∷ answer-nl (wsz ⌜ scod s ⌝) bot
+    lowOp-nl s nothing  bot =
+      argIn-nl (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ refl
+      ∷ nl (ansDst (SigOpInfo.conB (info s)) bot (wsz ⌜ scod s ⌝)) (ansDst-nl (SigOpInfo.conB (info s)) bot (wsz ⌜ scod s ⌝))
+           (refl ∷ answer-nl (SigOpInfo.conB (info s)) bot)
     lowOp-nl s (just o) bot = argIn-nl (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
 
     -- a cell's build: its header, its contents, its address

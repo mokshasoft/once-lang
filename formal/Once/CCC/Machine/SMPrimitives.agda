@@ -456,7 +456,8 @@ data InstrNoHeapWrite : AbstractInstr → Set where
   nhw-worklist-pop       : ∀ {slot} → InstrNoHeapWrite (worklist-pop slot)
   nhw-worklist-check     : ∀ {slot} → InstrNoHeapWrite (worklist-check slot)
   -- Plan 0.10 Phase B
-  nhw-instr-sigop        : ∀ {A B} {si : SigOpInfo A B} → InstrNoHeapWrite (instr-sigop si)
+  -- D432: a sigop whose answer is not in memory (`in-memory?`)
+  nhw-instr-sigop        : ∀ {A B} {si : SigOpInfo A B} → in-memory? B ≡ false → InstrNoHeapWrite (instr-sigop si)
   -- Plan 0.11: const literal load only writes Output register
   nhw-instr-load-const   : ∀ {A} {p : FitsInReg A} {v} →
                            InstrNoHeapWrite (instr-load-const p v)
@@ -995,7 +996,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-heapMem (worklist-check slot) s alloc nhw-worklist-check = refl
-  exec-abstract-preserves-heapMem (instr-sigop _)       s alloc nhw-instr-sigop    = refl
+  exec-abstract-preserves-heapMem (instr-sigop si)      s alloc (nhw-instr-sigop e) = cong heapMem (sigop-store-id si s e)
   exec-abstract-preserves-heapMem (instr-load-const _ _) s alloc nhw-instr-load-const = refl
   exec-abstract-preserves-heapMem (instr-load-tag-lit _) s alloc nhw-instr-load-tag-lit = refl
   exec-abstract-preserves-heapMem (instr-load-code-addr _) s alloc nhw-instr-load-code-addr = refl
@@ -1078,7 +1079,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-stack-slot (worklist-check _) s alloc f slot _ _ = refl
-  exec-abstract-preserves-stack-slot (instr-sigop _)    s alloc f slot _ _ = refl
+  exec-abstract-preserves-stack-slot (instr-sigop si)   s alloc f slot (nhw-instr-sigop e) _ = cong (λ x → stackMem x f slot) (sigop-store-id si s e)
   exec-abstract-preserves-stack-slot (instr-load-const _ _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-load-tag-lit _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-load-code-addr _) s alloc f slot _ _ = refl
@@ -1386,7 +1387,7 @@ TraceNoHeapWrites (worklist-init _ ∷ t)           = TraceNoHeapWrites t
 TraceNoHeapWrites (worklist-push _ ∷ t)           = TraceNoHeapWrites t
 TraceNoHeapWrites (worklist-pop _ ∷ t)            = TraceNoHeapWrites t
 TraceNoHeapWrites (worklist-check _ ∷ t)          = TraceNoHeapWrites t
-TraceNoHeapWrites (instr-sigop _ ∷ t)             = TraceNoHeapWrites t
+TraceNoHeapWrites (instr-sigop {B = B} _ ∷ t)     = (in-memory? B ≡ false) × TraceNoHeapWrites t
 TraceNoHeapWrites (instr-load-const _ _ ∷ t)      = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-load-tag-lit _ ∷ t)      = TraceNoHeapWrites t
 TraceNoHeapWrites (instr-load-code-addr _ ∷ t)    = TraceNoHeapWrites t
@@ -1444,7 +1445,7 @@ trace-no-heap-writes-append (worklist-init _ ∷ t1) t2 tn1 tn2 = trace-no-heap-
 trace-no-heap-writes-append (worklist-push _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (worklist-pop _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (worklist-check _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
-trace-no-heap-writes-append (instr-sigop _ ∷ t1)    t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-sigop _ ∷ t1)    t2 (e , tn1) tn2 = e , trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-load-const _ _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-load-tag-lit _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-load-code-addr _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
@@ -1659,7 +1660,7 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-head (worklist-push _) _ _ = nhw-worklist-push
     tnhw-head (worklist-pop _) _ _ = nhw-worklist-pop
     tnhw-head (worklist-check _) _ _ = nhw-worklist-check
-    tnhw-head (instr-sigop _)    _ _ = nhw-instr-sigop
+    tnhw-head (instr-sigop _)    _ (e , _) = nhw-instr-sigop e
     tnhw-head (instr-load-const _ _) _ _ = nhw-instr-load-const
     tnhw-head (instr-load-tag-lit _) _ _ = nhw-instr-load-tag-lit
     tnhw-head (instr-load-code-addr _) _ _ = nhw-instr-load-code-addr
@@ -1694,7 +1695,7 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-tail (worklist-push _) rest tnhw = tnhw
     tnhw-tail (worklist-pop _) rest tnhw = tnhw
     tnhw-tail (worklist-check _) rest tnhw = tnhw
-    tnhw-tail (instr-sigop _)    rest tnhw = tnhw
+    tnhw-tail (instr-sigop _)    rest (_ , tnhw) = tnhw
     tnhw-tail (instr-load-const _ _) rest tnhw = tnhw
     tnhw-tail (instr-load-tag-lit _) rest tnhw = tnhw
     tnhw-tail (instr-load-code-addr _) rest tnhw = tnhw
@@ -1800,7 +1801,7 @@ module TracePrimitives {FS : FrameSemantics} where
     exec-trace-preserves-slot-below (worklist-check k ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite (worklist-check k) rest s alloc n slot twa tnhw slot<n nhw-worklist-check refl
     exec-trace-preserves-slot-below (instr-sigop nm ∷ rest)   s alloc n slot twa tnhw slot<n =
-      exec-trace-preserves-slot-below-nonwrite (instr-sigop nm) rest s alloc n slot twa tnhw slot<n nhw-instr-sigop    refl
+      exec-trace-preserves-slot-below-nonwrite (instr-sigop nm) rest s alloc n slot twa tnhw slot<n (nhw-instr-sigop (proj₁ tnhw)) refl
     exec-trace-preserves-slot-below (instr-load-const p v ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite (instr-load-const p v) rest s alloc n slot twa tnhw slot<n nhw-instr-load-const refl
     exec-trace-preserves-slot-below (instr-load-tag-lit k ∷ rest) s alloc n slot twa tnhw slot<n =
@@ -1938,7 +1939,7 @@ module TracePrimitives {FS : FrameSemantics} where
     exec-trace-preserves-slot-above (worklist-check k ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite (worklist-check k) rest s alloc m slot twb tnhw m≤slot nhw-worklist-check refl
     exec-trace-preserves-slot-above (instr-sigop nm ∷ rest)   s alloc m slot twb tnhw m≤slot =
-      exec-trace-preserves-slot-above-nonwrite (instr-sigop nm) rest s alloc m slot twb tnhw m≤slot nhw-instr-sigop    refl
+      exec-trace-preserves-slot-above-nonwrite (instr-sigop nm) rest s alloc m slot twb tnhw m≤slot (nhw-instr-sigop (proj₁ tnhw)) refl
     exec-trace-preserves-slot-above (instr-load-const p v ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite (instr-load-const p v) rest s alloc m slot twb tnhw m≤slot nhw-instr-load-const refl
     exec-trace-preserves-slot-above (instr-load-tag-lit k ∷ rest) s alloc m slot twb tnhw m≤slot =
@@ -2065,7 +2066,7 @@ module TracePrimitives {FS : FrameSemantics} where
     exec-trace-preserves-ancestor (worklist-check k ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite (worklist-check k) rest s alloc f slot cf≺f tnhw nhw-worklist-check refl
     exec-trace-preserves-ancestor (instr-sigop nm ∷ rest)   s alloc f slot cf≺f tnhw =
-      exec-trace-preserves-ancestor-nonwrite (instr-sigop nm) rest s alloc f slot cf≺f tnhw nhw-instr-sigop    refl
+      exec-trace-preserves-ancestor-nonwrite (instr-sigop nm) rest s alloc f slot cf≺f tnhw (nhw-instr-sigop (proj₁ tnhw)) refl
     exec-trace-preserves-ancestor (instr-load-const p v ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite (instr-load-const p v) rest s alloc f slot cf≺f tnhw nhw-instr-load-const refl
     exec-trace-preserves-ancestor (instr-load-tag-lit k ∷ rest) s alloc f slot cf≺f tnhw =

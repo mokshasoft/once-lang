@@ -16,7 +16,7 @@ import Data.Nat.Properties
 open import Data.Nat.Properties using (+-comm; ≤-trans; m≤n+m; <-≤-trans)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.Bool using (false; true; _∨_)
 open import Data.Empty using (⊥-elim)
@@ -31,7 +31,7 @@ open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-block-info)
 open import Once.Type using (fits-int)
 import Once.Spec.Type as ST
-open import Once.SigOp.Info using (module SigOpInfo)
+open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo; mk-info')
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (AtStack)
@@ -48,7 +48,9 @@ open import Once.LinCore.Keys fmt ans bw using (Univ; nus; tys; cty)
 open import Once.LinCore.Layout fmt ans bw
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
-open import Once.LinCore.Lower fmt ans bw using (module Lowering; flatB; cmpOf; opSig)
+open import Once.LinCore.Lower fmt ans bw using (module Lowering; flatB; cmpOf; opSig; inMem)
+open import Once.LinCore.AnsWrite fmt ans bw using (module Keep)
+open import Once.LinCore.ArgDecode fmt ans bw using (tsize-wsz)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree; hdOr)
 
@@ -56,11 +58,11 @@ module OpSim {FS : FrameSemantics} (U : Univ)
              (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
              (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
              (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
-  open Lowering U ncty ldConst using (answer; argIn; lowOp)
+  open Lowering U ncty ldConst using (answer; ansDst; argIn; lowOp)
   open Rel {FS} U wordOf
   open Sim {FS} U wordOf
   open CfgW
-  open Agree {FS} U wordOf using (OpVal; OpValM; at-arg; argV)
+  open Agree {FS} U wordOf using (OpVal; OpValM; OpValN; at-arg; argV; argD)
   open import Once.LinCore.Moves {FS} using (Seg; slot; lea-step; load-step; mov-in-step; store-step; store-same; store-other
                                            ; store-frame; InBlk; Old)
   open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -86,6 +88,12 @@ module OpSim {FS : FrameSemantics} (U : Univ)
       or-old   : Old lo fs fs′
       or-top   : ∀ x → hi ≤ x → slot fs′ x ≡ slot fs x
   open OpRan public
+
+  -- the register answer's store, by its word count (one word, or none)
+  answerN : ℕ → ℕ → AbstractTrace
+  answerN (suc zero) bot = store-at-slot (bot ∸ 1) ∷ []
+  {-# CATCHALL #-}
+  answerN _          bot = []
 
   private
     new-top : ∀ B a s → (B ∸ s) ∸ a ≡ B ∸ (a + s)
@@ -118,16 +126,17 @@ module OpSim {FS : FrameSemantics} (U : Univ)
   arg-step (ST.b-+ _ _) prog fs bot px sx = refl
 
   lop-sim₀ : ∀ prog (fs : FlatState) (φ : Frame) (s : Sig) {Es S} {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝} {y : MV ⌜ scod s ⌝} {E}
-          → OpValM s nothing x y E fs
+          → in-memory? (Sig.sB s) ≡ false
+          → OpValN false s x y E fs
           → Seg prog (fpc fs) (argIn (SigOpInfo.baseA (info s)) (budget φ ∸ ws S) (wsz ⌜ sdom s ⌝) ∷ mov-to-input ∷ instr-sigop (info s)
-                               ∷ answer (wsz ⌜ scod s ⌝) (budget φ ∸ ws S))
+                               ∷ answerN (wsz ⌜ scod s ⌝) (budget φ ∸ ws S))
           → fhalted (floc fs) ≡ false
           → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ x ∷ˢ os)
           → ws (⌜ scod s ⌝ ∷ S) ≤ OP φ
-          → Σ FlatState λ fs′ → FlatSteps prog (3 + length (answer (wsz ⌜ scod s ⌝) (budget φ ∸ ws S))) fs fs′
+          → Σ FlatState λ fs′ → FlatSteps prog (3 + length (answerN (wsz ⌜ scod s ⌝) (budget φ ∸ ws S))) fs fs′
               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ y ∷ˢ os)
-              × OpRan (3 + length (answer (wsz ⌜ scod s ⌝) (budget φ ∸ ws S))) (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′ E
-  lop-sim₀ prog fs φ s {Es} {S} {es} {os} {x} {y} {E} ag seg h C fit = with-arg (c-stk C)
+              × OpRan (3 + length (answerN (wsz ⌜ scod s ⌝) (budget φ ∸ ws S))) (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′ E
+  lop-sim₀ prog fs φ s {Es} {S} {es} {os} {x} {y} {E} nm ag seg h C fit = with-arg (c-stk C)
     where
       cf = AllocState.current-frame (falloc fs)
       bot = budget φ ∸ ws S
@@ -139,7 +148,18 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           v₀ = argV (SigOpInfo.baseA (info s)) fs d₀ wx
           fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output v₀ } ; fpc = suc (fpc fs) }
           fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Input1 v₀ } ; fpc = suc (fpc fs₁) }
-          fs₃ = FlatMachine.flat-exec-instr {FS} (instr-sigop (info s)) prog fs₂
+          -- the sigop's step at a memory `m` (its own store, which is none: `nm`)
+          G : LocState FS → FlatState
+          G m = record fs₂ { floc = record (floc fs₂)
+                               { regs     = writeReg (LocState.regs (floc fs₂)) Output (exec-sigop-output (info s) (floc fs₂))
+                               ; stackMem = LocState.stackMem m ; heapMem = LocState.heapMem m
+                               ; halted   = exec-sigop-halts (info s) (floc fs₂)
+                               ; faulted  = AbstractExec.exec-sigop-faults {FS} (info s) (floc fs₂) ∨ LocState.faulted (floc fs₂)
+                               ; ev-log   = LocState.ev-log (floc fs₂) ++ AbstractExec.sigop-events {FS} (info s) (floc fs₂) }
+                           ; fpc = suc (fpc fs₂) }
+          fs₃ = G (floc fs₂)
+          eq₃ : FlatMachine.flat-exec-instr {FS} (instr-sigop (info s)) prog fs₂ ≡ fs₃
+          eq₃ = cong G (AbstractExec.sigop-store-id {FS} (info s) (floc fs₂) nm)
           out = exec-sigop-output (info s) (at-arg fs v₀)
           a-step = arg-step (SigOpInfo.baseA (info s)) prog fs bot px sx₀
           ran₃ : exec-sigop-halts (info s) (at-arg fs v₀) ≡ false → AbstractExec.sigop-events {FS} (info s) (at-arg fs v₀) ≡ E
@@ -148,23 +168,23 @@ module OpSim {FS : FrameSemantics} (U : Univ)
                            ; or-halt = trans hf (sym h) ; or-inb = λ I → I ; or-log = cong (LocState.ev-log (floc fs) ++_) ee ; or-pc = refl ; or-next = refl
                            ; or-old = λ _ _ → refl ; or-top = λ _ _ → refl }
           go : ∀ n → wsz ⌜ scod s ⌝ ≡ n
-             → Seg prog (fpc fs) (argIn (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ mov-to-input ∷ instr-sigop (info s) ∷ answer n bot)
+             → Seg prog (fpc fs) (argIn (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ mov-to-input ∷ instr-sigop (info s) ∷ answerN n bot)
              → (exec-sigop-halts (info s) (at-arg fs v₀) ≡ false)
                × (AbstractExec.sigop-events {FS} (info s) (at-arg fs v₀) ≡ E)
                × Σ (List W) (λ wy → VW (heapMem (floc fs)) y wy × ((wy ≡ []) Data.Sum.⊎ (wy ≡ out ∷ [])))
-             → Σ FlatState λ fs′ → FlatSteps prog (3 + length (answer n bot)) fs fs′
+             → Σ FlatState λ fs′ → FlatSteps prog (3 + length (answerN n bot)) fs fs′
                  × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ y ∷ˢ os)
-                 × OpRan (3 + length (answer n bot)) (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′ E
+                 × OpRan (3 + length (answerN n bot)) (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′ E
           go zero eC (g₁ , g₂ , g₃ , _) (hf , ee , .[] , pw , inj₁ refl) =
             fs₃ ,
-            step-at fs₁ (h , g₁) a-step (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) refl done)) ,
+            step-at fs₁ (h , g₁) a-step (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) eq₃ done)) ,
             record { c-env = c-env C ; c-stk = (([] , pw , tt) , st) ; c-efit = c-efit C ; c-sfit = fit } ,
             ran₃ hf ee
           go zero eC _ (hf , ee , .(out ∷ []) , pw , inj₂ refl) = ⊥-elim (Data.Nat.Properties.1+n≢0 (trans (vw-len pw) eC))
           go (suc zero) eC _ (hf , ee , .[] , pw , inj₁ refl) = ⊥-elim (Data.Nat.Properties.0≢1+n (trans (vw-len pw) eC))
           go (suc zero) eC (g₁ , g₂ , g₃ , g₄ , _) (hf , ee , .(out ∷ []) , pw , inj₂ refl) =
             fs₄ ,
-            step-at fs₁ (h , g₁) a-step (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) refl
+            step-at fs₁ (h , g₁) a-step (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₃ (h , g₃) eq₃
               (step-at fs₄ (h₃ , g₄) (store-step fs₃ dst) done))) ,
             record { c-env  = envW-frame es (λ z z< → store-other (floc fs₃) cf dst out z
                                              (λ e → Data.Nat.Properties.<-irrefl (sym e) (<-≤-trans z< env≤))) (c-env C)
@@ -272,6 +292,80 @@ module OpSim {FS : FrameSemantics} (U : Univ)
               pos : budget φ ∸ ws (⌜ scod s ⌝ ∷ S) ≡ dst
               pos = trans (cong (λ z → budget φ ∸ (z + ws S)) eC) (sym (new-top (budget φ) 1 (ws S)))
 
+  -- ★ D432: an op whose answer is in memory (a product, a sum): the argument, the answer's
+  -- address into `Output` (the result's slots), the sigop, which writes the answer there
+  open Keep {FS} using (st-heap; st-frame; st-out)
+  open import Once.LinCore.Moves {FS} using (inb-same)
+  lop-mem : ∀ prog (fs : FlatState) (φ : Frame) {A B} (si : SigOpInfo A B) {Es S} {es : Slots Es} {os : Stk S}
+              {x : MV ⌜ sdom (sig si) ⌝} {y : MV ⌜ scod (sig si) ⌝} {E}
+          → (im : in-memory? B ≡ true)
+          → OpValN true (sig si) x y E fs
+          → Seg prog (fpc fs) (argIn (SigOpInfo.baseA si) (budget φ ∸ ws S) (wsz ⌜ sdom (sig si) ⌝) ∷ mov-to-input
+                               ∷ lea-slot ((budget φ ∸ ws S) ∸ wsz ⌜ scod (sig si) ⌝) ∷ instr-sigop si ∷ [])
+          → fhalted (floc fs) ≡ false
+          → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ x ∷ˢ os)
+          → ws (⌜ scod (sig si) ⌝ ∷ S) ≤ OP φ
+          → Σ FlatState λ fs′ → FlatSteps prog 4 fs fs′
+              × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ y ∷ˢ os)
+              × OpRan 4 (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′ E
+  lop-mem prog fs φ {A} {B} si {Es} {S} {es} {os} {x} {y} {E} im ag (g₁ , g₂ , g₃ , g₄ , _) h C fit = with-arg (c-stk C)
+    where
+      s = sig si
+      cf = AllocState.current-frame (falloc fs)
+      bot = budget φ ∸ ws S
+      wB = wsz ⌜ scod s ⌝
+      d₀ = bot ∸ wsz ⌜ sdom s ⌝
+      dst = bot ∸ wB
+      tB : AbstractExec.tsize {FS} B ≡ wB
+      tB = tsize-wsz {FS} (SigOpInfo.conB si)
+      fitB : wB + ws S ≤ budget φ
+      fitB = ≤-trans fit (m≤n+m (OP φ) (EP φ))
+      wB≤ : wB ≤ bot
+      wB≤ = ≤∸ wB (ws S) (budget φ) fitB
+      dst+ : dst + AbstractExec.tsize {FS} B ≡ bot
+      dst+ = trans (cong (dst +_) tB) (Data.Nat.Properties.m∸n+n≡m wB≤)
+      env≤ : ws Es ≤ dst
+      env≤ = ≤-trans (c-efit C) (subst (EP φ ≤_) (sym (new-top (budget φ) wB (ws S))) (env-below φ (wB + ws S) fit))
+      fitS : ws S ≤ budget φ
+      fitS = ≤-trans (m≤n+m (ws S) wB) fitB
+      pos : budget φ ∸ ws (⌜ scod s ⌝ ∷ S) ≡ dst
+      pos = sym (new-top (budget φ) wB (ws S))
+      with-arg : StkW (heapMem (floc fs)) (slot fs) φ (x ∷ˢ os) → _
+      with-arg ((wx , px , sx) , st) = fin (ag d₀ dst wx px sx₀)
+        where
+          sx₀ = subst (λ z → SlotsAt (slot fs) z wx) (sym (new-top (budget φ) (wsz ⌜ sdom s ⌝) (ws S))) sx
+          v₀ = argV (SigOpInfo.baseA si) fs d₀ wx
+          fs₁ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output v₀ } ; fpc = suc (fpc fs) }
+          fs₂ = record fs₁ { floc = record (floc fs₁) { regs = writeReg (LocState.regs (floc fs₁)) Input1 v₀ } ; fpc = suc (fpc fs₁) }
+          fs₂′ = record fs₂ { floc = record (floc fs₂) { regs = writeReg (LocState.regs (floc fs₂)) Output (SV-Ptr (AtStack cf dst)) }
+                            ; fpc = suc (fpc fs₂) }
+          fs₃ = FlatMachine.flat-exec-instr {FS} (instr-sigop si) prog fs₂′
+          st₀ = argD s fs d₀ dst wx
+          ma = AbstractExec.sigop-answer {FS} si st₀
+          a-step = arg-step (SigOpInfo.baseA si) prog fs bot px sx₀
+          eqh : heapMem (floc fs₃) ≡ heapMem (floc fs)
+          eqh = st-heap (SigOpInfo.conB si) (in-memory? B) im ma cf dst st₀
+          -- the frame outside the answer's words is as it was
+          keep : ∀ z → (z < dst ⊎ dst + AbstractExec.tsize {FS} B ≤ z) → slot fs₃ z ≡ slot fs z
+          keep z o = st-out (SigOpInfo.conB si) (in-memory? B) im ma cf dst st₀ z o
+          fin : _ → _
+          fin (hf , ee , wy , pw , sy) =
+            fs₃ ,
+            step-at fs₁ (h , g₁) a-step (step-at fs₂ (h , g₂) (mov-in-step fs₁) (step-at fs₂′ (h , g₃) (lea-step fs₂ dst)
+              (step-at fs₃ (h , g₄) refl done))) ,
+            subst (λ hp → CfgW hp (slot fs₃) φ (es ∥ y ∷ˢ os)) (sym eqh)
+              (record { c-env  = envW-frame es (λ z z< → keep z (inj₁ (<-≤-trans z< env≤))) (c-env C)
+                      ; c-stk  = ( wy , pw , subst (λ z → SlotsAt (slot fs₃) z wy) (sym pos) sy )
+                               , stkW-frame os fitS (λ z lo _ → keep z (inj₂ (subst (_≤ z) (sym dst+) lo))) st
+                      ; c-efit = c-efit C ; c-sfit = fit }) ,
+            record { or-frame = refl ; or-slots = refl ; or-saved = refl ; or-ret = refl
+                   ; or-other = λ f z ne → st-frame (SigOpInfo.conB si) (in-memory? B) im ma cf dst st₀ f z (λ e → ne (sym e))
+                   ; or-halt = trans hf (sym h) ; or-inb = inb-same {fs} {fs₃} eqh refl
+                   ; or-log = cong (LocState.ev-log (floc fs) ++_) ee ; or-pc = refl ; or-next = refl
+                   ; or-old = λ hl _ → cong (λ m → m hl) eqh
+                   ; or-top = λ z le → keep z (inj₂ (subst (_≤ z) (sym dst+)
+                                         (≤-trans (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) le))) }
+
   -- ★ an op, by the sigop its code runs (D428)
   lop-sim : ∀ prog (fs : FlatState) (φ : Frame) (s : Sig) {Es S} {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝} {y : MV ⌜ scod s ⌝} {E}
             (m : Maybe CmpOp)
@@ -283,8 +377,14 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           → Σ FlatState λ fs′ → FlatSteps prog (length (lowOp s m (budget φ ∸ ws S))) fs fs′
               × CfgW (heapMem (floc fs′)) (slot fs′) φ (es ∥ y ∷ˢ os)
               × OpRan (length (lowOp s m (budget φ ∸ ws S))) (AllocState.next-heap-ref (falloc fs)) (budget φ) fs fs′ E
-  lop-sim prog fs φ s nothing  ag seg h C fit = lop-sim₀ prog fs φ s ag seg h C fit
   lop-sim prog fs φ s (just o) ag seg h C fit = lop-cmp prog fs φ s o ag seg h C fit
+  lop-sim prog fs φ (sig (mk-info' n c bA (ST.b-var {i = ()} _))) nothing ag seg h C fit
+  lop-sim prog fs φ s@(sig (mk-info' n c bA ST.b-Unit))  nothing ag seg h C fit = lop-sim₀ prog fs φ s refl ag seg h C fit
+  lop-sim prog fs φ s@(sig (mk-info' n c bA ST.b-Void))  nothing ag seg h C fit = lop-sim₀ prog fs φ s refl ag seg h C fit
+  lop-sim prog fs φ s@(sig (mk-info' n c bA ST.b-Int))   nothing ag seg h C fit = lop-sim₀ prog fs φ s refl ag seg h C fit
+  lop-sim prog fs φ s@(sig (mk-info' n c bA ST.b-Float)) nothing ag seg h C fit = lop-sim₀ prog fs φ s refl ag seg h C fit
+  lop-sim prog fs φ (sig si@(mk-info' n c bA (ST.b-* _ _))) nothing ag seg h C fit = lop-mem prog fs φ si refl ag seg h C fit
+  lop-sim prog fs φ (sig si@(mk-info' n c bA (ST.b-+ _ _))) nothing ag seg h C fit = lop-mem prog fs φ si refl ag seg h C fit
 
   -- ★ a halting op: the argument's address, the sigop, the machine halted
   lop-halt : ∀ prog (fs : FlatState) (φ : Frame) (s : Sig) {Es S} {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝} {E}
@@ -294,7 +394,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
            → CfgW (heapMem (floc fs)) (slot fs) φ (es ∥ x ∷ˢ os)
            → Σ FlatState λ fs′ → FlatSteps prog 3 fs fs′ × fhalted (floc fs′) ≡ true
                × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E × ending (floc fs′) ≡ ending (floc fs)
-  lop-halt prog fs φ s {Es} {S} {es} {os} {x} {E} ag (g₁ , g₂ , g₃ , _) h C = with-arg (c-stk C)
+  lop-halt prog fs φ s {Es} {S} {es} {os} {x} {E} (_ , ag) (g₁ , g₂ , g₃ , _) h C = with-arg (c-stk C)
     where
       cf = AllocState.current-frame (falloc fs)
       d₀ = (budget φ ∸ ws S) ∸ wsz ⌜ sdom s ⌝
@@ -343,7 +443,8 @@ module OpR {FS : FrameSemantics} (U : Univ)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
-  open import Once.LinCore.Moves {FS} using (Seg-++ˡ)
+  open import Once.LinCore.Moves {FS} using (Seg; Seg-++ˡ)
+  open Lowering U ncty ldConst using (answer; ansDst; argIn; lowOp)
 
   st-op : ∀ {Γ} {ds : Defs Γ} {Es S V} {s : Sig} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) V} (sb : Sub root (prim ds (lop s) ⨾ k))
             {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝} {y : MV ⌜ scod s ⌝} {E fs}
@@ -367,8 +468,27 @@ module OpR {FS : FrameSemantics} (U : Univ)
            → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps prog N fs fs′ × LocState.halted (floc fs′) ≡ true
                × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E × ending (floc fs′) ≡ ending (floc fs)
                × LocState.halted (floc fs) ≡ Data.Bool.false
-  st-opend {s = s} sb {fs = fs} H ag =
-    case-out (lop-halt prog fs φ s ag (Seg-++ˡ prog (fpc fs) _ _ (seg-at sb H)) (Here.h-run H) (Here.h-cfg H))
+  st-opend {S = S} {s = s} sb {fs = fs} H ag =
+    case-out (lop-halt prog fs φ s ag (halt-seg s (cmpOf s) (proj₁ ag) (Seg-++ˡ prog (fpc fs) (insC sb) _ (seg-at sb H))) (Here.h-run H) (Here.h-cfg H))
     where
+      bot = budget φ ∸ ws S
+      -- D432: a halting op's answer is not in memory, so its code has no destination
+      dst-none : ∀ {B} (b : ST.Base ST.∅ₖ B) w → inMem b ≡ false → ansDst b bot w ≡ []
+      dst-none (ST.b-var {i = ()} _) w e
+      dst-none ST.b-Unit    w e = refl
+      dst-none ST.b-Void    w e = refl
+      dst-none ST.b-Int     w e = refl
+      dst-none ST.b-Float   w e = refl
+      dst-none (ST.b-* _ _) w ()
+      dst-none (ST.b-+ _ _) w ()
+      halt-seg : ∀ s m → inMem (SigOpInfo.conB (info s)) ≡ false → Seg prog (fpc fs) (lowOp s m bot)
+               → Seg prog (fpc fs) (argIn (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ mov-to-input ∷ instr-sigop (info (opSig s m)) ∷ [])
+      halt-seg s nothing  k sq =
+        Seg-++ˡ prog (fpc fs) (argIn (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ mov-to-input ∷ instr-sigop (info s) ∷ [])
+          (answer (SigOpInfo.conB (info s)) bot)
+          (subst (λ l → Seg prog (fpc fs) (argIn (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ mov-to-input
+                                            ∷ l ++ instr-sigop (info s) ∷ answer (SigOpInfo.conB (info s)) bot))
+                 (dst-none (SigOpInfo.conB (info s)) (wsz ⌜ scod s ⌝) k) sq)
+      halt-seg s (just o) k sq = Seg-++ˡ prog (fpc fs) _ _ sq
       case-out : _ → _
       case-out (fs′ , st , hlt , lg , lft) = 3 , fs′ , st , hlt , lg , lft , Here.h-run H
