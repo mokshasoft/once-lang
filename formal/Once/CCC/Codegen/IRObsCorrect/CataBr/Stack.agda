@@ -99,7 +99,8 @@ module CataStackC {FS : FrameSemantics} where
 
   -- a μ node's word is a pointer, never the sentinel's tag
   word-nz-μ : ∀ {prog a F v w s} → WordAt prog a (μ-type F) v w s → tag-test (just w) ≡ just false
-  word-nz-μ (FlatPut.src-node nd lv val) = refl
+  word-nz-μ (FlatPut.src-node {cl = AtDynamic _} nd lv val) = refl
+  word-nz-μ (FlatPut.src-node {cl = AtStack _ _} nd () val)
   word-nz-μ (FlatPut.src-scalar ())
   word-nz-μ (FlatPut.src-flat () _ _)
 

@@ -131,7 +131,9 @@ module FlatMachine {FS : FrameSemantics} where
   tag-test : Maybe (StoredValue FS) → Maybe Bool
   tag-test (just (SV-Tag zero))    = just true
   tag-test (just (SV-Tag (suc _))) = just false
-  tag-test (just (SV-Ptr _))       = just false
+  tag-test (just (SV-Ptr (AtDynamic _))) = just false
+  -- D435: a stack pointer has no tag
+  tag-test (just (SV-Ptr (AtStack _ _)))  = nothing
   tag-test (just (SV-Lit _ _))     = nothing
   tag-test (just (SV-Code _))      = nothing
   tag-test nothing                 = nothing

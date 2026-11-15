@@ -154,9 +154,6 @@ open MemOps {FS} using (readLoc; writeLoc-halted)
 open import Once.CCC.Machine.FlatStoreWF FS using
   (FlatWF; flat-wf-step; cl-step; sv-below; module StoreWF)
 open StoreWF using (wf-regs; wf-heap; wf-stack; wf-fresh)
-open import Once.CCC.Machine.FlatStackPtr FS using
-  (stack-ptr-live; stack-ptr-suc-live; StackPtrOK; StackPtrOK?; module SPInv)
-open SPInv using (sp-heap; sp-stack)
 open import Once.CCC.Machine.FlatPtrBounds FS using (PtrB; PtrB?; module PBInv)
 open PBInv using (pb-heap; pb-stack)
 open import Once.CCC.Label using (thunk)
@@ -172,9 +169,9 @@ open FrameSemantics FS using (Frame)
 -- D377: the site facts the engine uses are the LOWERED run's (`RunLow`), each
 -- `RunWF`'s at the image state the lift is of.
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
-  hiding (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok; load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds)
+  hiding (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-ptr-bounds; emitted-call-fn-resolves; call-site-shape; step-ok; load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
-  using (load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds; slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
+  using (load-at-target-ptr; heap-load-at-written; load-at-gate; store-at-gate; stack-load-at-written; addr-at-not-stack; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds; slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-ptr-bounds; emitted-call-fn-resolves; call-site-shape; step-ok; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
   renaming (RunLow to RunAt)
 open SegWF using (seg-stack)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
@@ -635,7 +632,6 @@ module Dispatch (sup : Supply) where
       wits = branch-tag-scrutinee-wf prog fs m (inv-run wf) h ftq
       dc = dataCorr cc
       pbwf = run-ptr-bounds prog fs (inv-run wf)
-      spwf = run-stack-ptr prog fs (inv-run wf)
       go-fl : ∀ loc k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
             → readLoc (floc fs) loc ≡ just (SV-Tag k)
             → memory s (rreg s in1-reg + 0) ≡ just k
@@ -714,14 +710,13 @@ module Dispatch (sup : Supply) where
       -- per cell, once the concrete read is in hand
       on-cell : ∀ loc (v : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
               → readLoc (floc fs) loc ≡ just v → TagCell v
-              → PtrB (block-size (falloc fs)) v → StackPtrOK v
+              → PtrB (block-size (falloc fs)) v
               → memory s (rreg s in1-reg + 0) ≡ just (CFC.enc-sv hv v)
               → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                   (event-of (instr-ctrl (c-branch-tag-zero m)) fs
                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
-      on-cell loc .(SV-Tag k) i-eq g r-eq (tc-tag k) _ _ rd = go-fl loc k i-eq g r-eq rd (flat-find-label prog m) refl
-      on-cell loc .(SV-Ptr (AtDynamic hl′)) i-eq g r-eq (tc-ptr hl′) pb _ rd = go-ptr loc hl′ i-eq g r-eq pb rd
-      on-cell loc .(SV-Ptr (AtStack f k)) i-eq g r-eq (tc-stk f k) _ () rd
+      on-cell loc .(SV-Tag k) i-eq g r-eq (tc-tag k) _ rd = go-fl loc k i-eq g r-eq rd (flat-find-label prog m) refl
+      on-cell loc .(SV-Ptr (AtDynamic hl′)) i-eq g r-eq (tc-ptr hl′) pb rd = go-ptr loc hl′ i-eq g r-eq pb rd
       -- THE RESIDENCE DISPATCH: derive the concrete read per residence.
       go-loc : ∀ (loc : ValueLocation FS) (v : StoredValue FS)
              → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
@@ -733,8 +728,7 @@ module Dispatch (sup : Supply) where
       -- relates it, and the address is the pointer's encoding.
       go-loc (AtDynamic hl) v i-eq r-eq tc g =
         on-cell (AtDynamic hl) v i-eq g r-eq tc
-          (subst (PtrB? (block-size (falloc fs))) r-eq (pb-heap pbwf hl))
-          (subst StackPtrOK? r-eq (sp-heap spwf hl)) rd-heap
+          (subst (PtrB? (block-size (falloc fs))) r-eq (pb-heap pbwf hl)) rd-heap
         where
           addr-val : rreg s in1-reg + 0 ≡ CFC.haddr hv hl
           addr-val = trans (+-identityʳ (rreg s in1-reg))
@@ -742,28 +736,12 @@ module Dispatch (sup : Supply) where
           rd-heap : memory s (rreg s in1-reg + 0) ≡ just (CFC.enc-sv hv v)
           rd-heap = trans (cong (memory s) addr-val)
                           (CFC.heap-eq dc hl r-eq)
-      -- STACK (the probe's route): the pointer denotes `slot-addr f k'`; the
-      -- live-pair theorem pins it to the current frame's live window, where
-      -- `sp-eq` + `stack-eq` relate exactly that cell.
+      -- STACK: the tag cell is a slot of a live window (the gate's outcome),
+      -- read there (D435)
       go-loc (AtStack f k') v i-eq r-eq tc g =
         on-cell (AtStack f k') v i-eq g r-eq tc
           (subst (PtrB? (block-size (falloc fs))) r-eq (pb-stack pbwf f k'))
-          (subst StackPtrOK? r-eq (sp-stack spwf f k')) rd-stack
-        where
-          spc = stack-ptr-current prog fs f k' (inv-run wf) i-eq
-          st-cf : stackMem (floc fs) (current-frame (falloc fs)) k' ≡ just v
-          st-cf = trans (cong (λ fr → stackMem (floc fs) fr k') (sym (proj₁ spc))) r-eq
-          rdi-val : rreg s in1-reg + 0
-                  ≡ rreg s sp-reg + k' * slot-size
-          rdi-val = trans (+-identityʳ (rreg s in1-reg))
-                    (trans (CFC.in1-eq dc)
-                    (trans (cong (CFC.enc-sv hv) i-eq)
-                    (trans (cong (λ fr → slot-addr FS fr k') (proj₁ spc))
-                    (trans (slot-addr-linear FS (current-frame (falloc fs)) k')
-                           (cong₂ (λ b w' → b + k' * w') (sym (CFC.sp-eq dc)) word-eq)))))
-          rd-stack : memory s (rreg s in1-reg + 0) ≡ just (CFC.enc-sv hv v)
-          rd-stack = trans (cong (memory s) rdi-val)
-                           (CFC.stack-eq-cur dc k' (proj₂ spc) _ st-cf)
+          (CFC.stack-read 0 f k' v dc i-eq g r-eq)
 
   -- plan 0.108: `out-nz` — its block-step, at the word the shape discipline
   -- guarantees is in Output (`out-nz-output-word`).
@@ -795,58 +773,8 @@ module Dispatch (sup : Supply) where
                      → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                            (event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) (ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs)) M)
   load-indirect-step {hv} n IH ev env prog fs s cc bg wf h ftq =
-    go-loc (proj₁ wits) (proj₁ (proj₂ wits)) (proj₂ (proj₂ wits))
-    where wits = load-indirect-target-wf prog fs (inv-run wf) h ftq
-          go-mem : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-                 → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))
-                 → ∀ (mw : Maybe (StoredValue FS)) → heapMem (floc fs) hl ≡ mw
-                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                       (event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) (ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs)) M)
-          go-mem hl i-eq ib (just w) h-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s load-indirect
-              (bs-load-indirect bss prog fs s hl w cc h ftq i-eq
-                 (CFC.dom-written (dataCorr cc) hl h-eq) h-eq)
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ false
-                  hpost rewrite i-eq | h-eq = h
-          go-mem hl i-eq ib nothing h-eq =
-            -- UNREACHABLE (plan 0.123 A.4 step 4, D367): reading an unwritten
-            -- heap cell FAULTS, and the program's run never faults
-            -- (`heap-load-written`).
-            ⊥-elim (heap-load-written prog fs hl (inv-run wf) h ftq i-eq h-eq)
-          go-stack : ∀ f k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                   → (f ≡ current-frame (falloc fs)) × (k < frame-slots (falloc fs))
-                   → ∀ (mw : Maybe (StoredValue FS))
-                   → stackMem (floc fs) (current-frame (falloc fs)) k ≡ mw
-                   → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                         (event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) (ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs)) M)
-          go-stack f k i-eq (f-eq , k<ss) (just w) st-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s load-indirect
-              (bs-load-indirect-stack bss prog fs s f k w cc h ftq i-eq f-eq k<ss st-eq)
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ false
-                  hpost rewrite i-eq | f-eq | st-eq = h
-          -- UNREACHABLE (Plan 0.54 rung D): under heap mode `StackPtrWF` says there
-          -- is NO stack pointer, so `Input1` holding one is refuted outright —
-          -- the same `⊥` that `stack-ptr-current` already returns for `k<ss`.
-          -- This used to route through `load-indirect-stack-empty-stuck`, which
-          -- needed the old bidirectional `Window` to claim the concrete cell was
-          -- unmapped too. That claim is gone; the branch was impossible anyway.
-          go-stack f k i-eq (f-eq , k<ss) nothing st-eq =
-            ⊥-elim (stack-ptr-live fs Input1 f k (run-stack-ptr prog fs (inv-run wf)) i-eq)
-          go-loc : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
-                 → (∀ hl → loc ≡ AtDynamic hl
-                    → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl)))
-                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                       (event-of load-indirect fs ▹ flat-events n prog (flat-exec-instr load-indirect prog fs)) (ctrl-of load-indirect + flat-ctrls n prog (flat-exec-instr load-indirect prog fs)) M)
-          go-loc (AtDynamic hl) i-eq ib = go-mem hl i-eq (ib hl refl) (heapMem (floc fs) hl) refl
-          -- Plan 0.61: a load THROUGH A STACK POINTER is an ordinary step —
-          -- the pointer denotes `slot-addr f k`, and for the CURRENT frame's live
-          -- slots (`stack-ptr-current`, a THEOREM) `sp-eq` + `stack-eq` relate
-          -- exactly that cell.
-          go-loc (AtStack f k)  i-eq ib =
-            go-stack f k i-eq (stack-ptr-current prog fs f k (inv-run wf) i-eq)
-                     (stackMem (floc fs) (current-frame (falloc fs)) k) refl
+    -- retired (plan 0.123): no emitted image holds it
+    ⊥-elim (frame-op-absurd prog fs load-indirect (inv-run wf) ftq (λ _ ()))
 
   -- MEMORY load-indirect-suc: as load-indirect but the SECOND cell (sucHL hl).
   load-indirect-suc-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
@@ -855,49 +783,8 @@ module Dispatch (sup : Supply) where
                          → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                                (event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) (ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs)) M)
   load-indirect-suc-step {hv} n IH ev env prog fs s cc bg wf h ftq =
-    go-loc (proj₁ wits) (proj₁ (proj₂ wits)) (proj₂ (proj₂ wits))
-    where wits = load-indirect-suc-target-wf prog fs (inv-run wf) h ftq
-          go-mem : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-                 → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))
-                 → ∀ (mw : Maybe (StoredValue FS)) → heapMem (floc fs) (sucHL hl) ≡ mw
-                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                       (event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) (ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs)) M)
-          go-mem hl i-eq ib (just w) h-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s load-indirect-suc
-              (bs-load-indirect-suc bss prog fs s hl w cc h ftq i-eq
-                 (CFC.dom-written (dataCorr cc) (sucHL hl) h-eq) h-eq)
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ false
-                  hpost rewrite i-eq | h-eq = h
-          go-mem hl i-eq ib nothing h-eq =
-            -- UNREACHABLE, as for `load-indirect` (`heap-load-suc-written`).
-            ⊥-elim (heap-load-suc-written prog fs hl (inv-run wf) h ftq i-eq h-eq)
-          -- SECOND cell of a stack pair: `[rdi+8]` is slot `suc k` of the same frame.
-          go-stack : ∀ f k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                   → (f ≡ current-frame (falloc fs)) × (suc k < frame-slots (falloc fs))
-                   → ∀ (mw : Maybe (StoredValue FS))
-                   → stackMem (floc fs) (current-frame (falloc fs)) (suc k) ≡ mw
-                   → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                         (event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) (ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs)) M)
-          go-stack f k i-eq (f-eq , sk<ss) (just w) st-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s load-indirect-suc
-              (bs-load-indirect-suc-stack bss prog fs s f k w cc h ftq i-eq f-eq sk<ss st-eq)
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ false
-                  hpost rewrite i-eq | f-eq | st-eq = h
-          -- UNREACHABLE, same as the `load-indirect` case above: heap mode admits
-          -- no stack pointer at all, so `Input1` holding one is `⊥`.
-          go-stack f k i-eq (f-eq , sk<ss) nothing st-eq =
-            ⊥-elim (stack-ptr-suc-live fs Input1 f k (run-stack-ptr prog fs (inv-run wf)) i-eq)
-          go-loc : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
-                 → (∀ hl → loc ≡ AtDynamic hl
-                    → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl))))
-                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                       (event-of load-indirect-suc fs ▹ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)) (ctrl-of load-indirect-suc + flat-ctrls n prog (flat-exec-instr load-indirect-suc prog fs)) M)
-          go-loc (AtDynamic hl) i-eq ib = go-mem hl i-eq (ib hl refl) (heapMem (floc fs) (sucHL hl)) refl
-          go-loc (AtStack f k)  i-eq ib =
-            go-stack f k i-eq (stack-ptr-current-suc prog fs f k (inv-run wf) i-eq)
-                     (stackMem (floc fs) (current-frame (falloc fs)) (suc k)) refl
+    -- retired (plan 0.123): no emitted image holds it
+    ⊥-elim (frame-op-absurd prog fs load-indirect-suc (inv-run wf) ftq (λ _ ()))
 
   -- STACK load-from-slot: J-bridge on the slot's abstract value. `just w` ⇒ the PROVEN
   -- block-step-load-from-slot (the stack read pinned by stack-eq) ⇒ ccc-step-bs; the
@@ -981,35 +868,9 @@ module Dispatch (sup : Supply) where
                       → fetch prog (fpc fs) ≡ just store-indirect
                       → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                             (event-of store-indirect fs ▹ flat-events n prog (flat-exec-instr store-indirect prog fs)) (ctrl-of store-indirect + flat-ctrls n prog (flat-exec-instr store-indirect prog fs)) M)
-  store-indirect-step {hv} n IH ev env prog fs s cc bg wf h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
-    where go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
-                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                       (event-of store-indirect fs ▹ flat-events n prog (flat-exec-instr store-indirect prog fs)) (ctrl-of store-indirect + flat-ctrls n prog (flat-exec-instr store-indirect prog fs)) M)
-          go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s store-indirect
-              (bs-store-indirect bss prog fs s hl cc h ftq i-eq
-                 (CFC.dom-sized (dataCorr cc) hl (store-indirect-inbounds prog fs hl (inv-run wf) ftq i-eq)) (store-guard fs hl))
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
-                  hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)) h
-          -- STORE through a stack pointer: `writeLoc … (AtStack f k)` is the plain
-          -- stack write (no cross-region guard needed — that is the heap branch),
-          -- and the x86 writes at `rsp + 8·k`.
-          go-ptr (SV-Ptr (AtStack f k))  i-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s store-indirect
-              (bs-store-indirect-stack bss prog fs s f k cc h ftq i-eq
-                 (proj₁ (stack-ptr-current prog fs f k (inv-run wf) i-eq))
-                 (proj₂ (stack-ptr-current prog fs f k (inv-run wf) i-eq))
-                 (slot-heap-disj {hv} fs s (dataCorr cc) k))
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
-                  hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtStack f k) (readReg (regs (floc fs)) Output)) h
-          go-ptr (SV-Tag _)   i-eq =
-            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
-          go-ptr (SV-Lit _ _) i-eq =
-            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
-          go-ptr (SV-Code _)  i-eq =
-            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
+  store-indirect-step {hv} n IH ev env prog fs s cc bg wf h ftq =
+    -- retired (plan 0.123): no emitted image holds it
+    ⊥-elim (frame-op-absurd prog fs store-indirect (inv-run wf) ftq (λ _ ()))
 
   -- MEMORY store-indirect-suc: as store-indirect but the SECOND cell (sucHL hl).
   store-indirect-suc-step : ∀ {hv : HeapView} n → EventsIH n → ∀ (ev : RT.EvExtractor) (env : RT.ArithEnv)
@@ -1017,34 +878,9 @@ module Dispatch (sup : Supply) where
                           → fetch prog (fpc fs) ≡ just store-indirect-suc
                           → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                                 (event-of store-indirect-suc fs ▹ flat-events n prog (flat-exec-instr store-indirect-suc prog fs)) (ctrl-of store-indirect-suc + flat-ctrls n prog (flat-exec-instr store-indirect-suc prog fs)) M)
-  store-indirect-suc-step {hv} n IH ev env prog fs s cc bg wf h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
-    where go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
-                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
-                       (event-of store-indirect-suc fs ▹ flat-events n prog (flat-exec-instr store-indirect-suc prog fs)) (ctrl-of store-indirect-suc + flat-ctrls n prog (flat-exec-instr store-indirect-suc prog fs)) M)
-          go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s store-indirect-suc
-              (bs-store-indirect-suc bss prog fs s hl cc h ftq i-eq
-                 (CFC.dom-sized (dataCorr cc) (sucHL hl) (store-indirect-suc-inbounds prog fs hl (inv-run wf) ftq i-eq)) (store-guard fs (sucHL hl)))
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
-                  hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)) h
-          -- STORE-SUC through a stack pointer: the pair's SECOND slot, `suc k`,
-          -- reserved by the same prologue (`stack-ptr-current`) — an ordinary step.
-          go-ptr (SV-Ptr (AtStack f k))  i-eq =
-            ccc-step-bs {hv} n IH ev env prog fs s store-indirect-suc
-              (bs-store-indirect-suc-stack bss prog fs s f k cc h ftq i-eq
-                 (proj₁ (stack-ptr-current prog fs f k (inv-run wf) i-eq))
-                 (proj₂ (stack-ptr-current-suc prog fs f k (inv-run wf) i-eq))
-                 (slot-heap-disj {hv} fs s (dataCorr cc) (suc k)))
-              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
-                  hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtStack f (suc k)) (readReg (regs (floc fs)) Output)) h
-          go-ptr (SV-Tag _)   i-eq =
-            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
-          go-ptr (SV-Lit _ _) i-eq =
-            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
-          go-ptr (SV-Code _)  i-eq =
-            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) h ftq i-eq (λ { _ () }))
+  store-indirect-suc-step {hv} n IH ev env prog fs s cc bg wf h ftq =
+    -- retired (plan 0.123): no emitted image holds it
+    ⊥-elim (frame-op-absurd prog fs store-indirect-suc (inv-run wf) ftq (λ _ ()))
 
   -- plan 0.123 B.4 α: MEMORY load-at k. The site hands a pointer (anything else
   -- faults); a stack one is refuted (`StackPtrWF`); a heap one reads a WRITTEN
@@ -1070,12 +906,26 @@ module Dispatch (sup : Supply) where
                   hpost rewrite i-eq | h-eq = h
           go-mem hl i-eq nothing h-eq =
             ⊥-elim (heap-load-at-written prog fs k hl (inv-run wf) h ftq i-eq h-eq)
+          go-stk : ∀ f j → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+                 → ExecFinal.frame-gate {FS} (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+                 → ∀ (mw : Maybe (StoredValue FS)) → LocState.stackMem (floc fs) f (k + j) ≡ mw
+                 → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
+                       (event-of (load-at k) fs ▹ flat-events n prog (flat-exec-instr (load-at k) prog fs)) (ctrl-of (load-at k) + flat-ctrls n prog (flat-exec-instr (load-at k) prog fs)) M)
           go-loc : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
                  → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                        (event-of (load-at k) fs ▹ flat-events n prog (flat-exec-instr (load-at k) prog fs)) (ctrl-of (load-at k) + flat-ctrls n prog (flat-exec-instr (load-at k) prog fs)) M)
           go-loc (AtDynamic hl) i-eq = go-mem hl i-eq (heapMem (floc fs) (offsetHL hl k)) refl
-          go-loc (AtStack f j)  i-eq =
-            ⊥-elim (stack-ptr-live fs Input1 f j (run-stack-ptr prog fs (inv-run wf)) i-eq)
+          -- D435: a STACK pointer — the slot of a live window, written
+          go-loc (AtStack f j)  i-eq = go-stk f j i-eq (load-at-gate prog fs k (AtStack f j) (inv-run wf) h ftq i-eq)
+                                               (LocState.stackMem (floc fs) f (k + j)) refl
+          go-stk f j i-eq g (just w) h-eq =
+            ccc-step-bs {hv} n IH ev env prog fs s (load-at k)
+              (bs-load-at-stack bss prog fs s k f j w cc h ftq i-eq g h-eq)
+              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
+            where hpost : halted (floc (flat-exec-instr (load-at k) prog fs)) ≡ false
+                  hpost rewrite i-eq | ExecFinal.stack-gate-true {FS} _ (AtStack f j) g | h-eq = h
+          go-stk f j i-eq g nothing h-eq =
+            ⊥-elim (stack-load-at-written prog fs k f j (inv-run wf) h ftq i-eq g h-eq)
 
   -- plan 0.123 B.4 α: addr-at k. The address is a cell of its block (D385), so
   -- a mapped one (`dom-sized`); the arch writes it to the Output role.
@@ -1099,8 +949,9 @@ module Dispatch (sup : Supply) where
             where ib = addr-at-in-block prog fs k hl (inv-run wf) h ftq i-eq
                   hpost : halted (floc (flat-exec-instr (addr-at k) prog fs)) ≡ false
                   hpost rewrite i-eq | ib = h
+          -- D435: an offset ADDRESS is a heap block's only
           go-loc (AtStack f j)  i-eq =
-            ⊥-elim (stack-ptr-live fs Input1 f j (run-stack-ptr prog fs (inv-run wf)) i-eq)
+            ⊥-elim (addr-at-not-stack prog fs k f j (inv-run wf) h ftq i-eq)
 
   -- plan 0.123 B.4 α: MEMORY store-at k. A heap pointer's offset cell is OF ITS
   -- BLOCK (D385: anything else faults), so mapped (`dom-sized`).
@@ -1124,8 +975,15 @@ module Dispatch (sup : Supply) where
             where ib = store-at-in-block prog fs k hl (inv-run wf) h ftq i-eq
                   hpost : halted (floc (flat-exec-instr (store-at k) prog fs)) ≡ false
                   hpost rewrite i-eq | ib = trans (writeLoc-halted (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)) h
+          -- D435: a STACK pointer — the slot of a live window
           go-loc (AtStack f j)  i-eq =
-            ⊥-elim (stack-ptr-live fs Input1 f j (run-stack-ptr prog fs (inv-run wf)) i-eq)
+            ccc-step-bs {hv} n IH ev env prog fs s (store-at k)
+              (bs-store-at-stack bss prog fs s k f j cc h ftq i-eq g)
+              (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt hpost
+            where g = store-at-gate prog fs k (AtStack f j) (inv-run wf) h ftq i-eq
+                  hpost : halted (floc (flat-exec-instr (store-at k) prog fs)) ≡ false
+                  hpost rewrite i-eq | ExecFinal.stack-gate-true {FS} _ (AtStack f j) g
+                    = trans (writeLoc-halted (floc fs) (AtStack f (k + j)) (readReg (regs (floc fs)) Output)) h
 
   -- EXTERNAL SIGOP engine: run-events-external EMITS `ev lbl s` then continues past the
   -- call (sigop-run-external, PROVEN); the external contract pins `ev ≡ event-of` and the

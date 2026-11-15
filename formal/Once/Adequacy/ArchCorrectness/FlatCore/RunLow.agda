@@ -298,6 +298,33 @@ store-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunLow prog fs →
 store-at-target-ptr prog fs k =
   lift-site (store-at k) (λ _ ()) _ (λ src fs₀ → RW.store-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
 
+-- D435's site facts, lifted
+load-at-gate : ∀ prog (fs : FlatState) (k : ℕ) (loc : ValueLocation FS) → RunLow prog fs → LocState.halted (floc fs) ≡ false
+             → fetch prog (fpc fs) ≡ just (load-at k) → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc
+             → ExecFinal.frame-gate {FS} (falloc fs) k (just loc) ≡ just loc
+load-at-gate prog fs k loc =
+  lift-site (load-at k) (λ _ ()) _ (λ src fs₀ r h f → RW.load-at-gate-wf src fs₀ k loc r h f) (λ _ _ _ c → c) prog fs
+
+store-at-gate : ∀ prog (fs : FlatState) (k : ℕ) (loc : ValueLocation FS) → RunLow prog fs → LocState.halted (floc fs) ≡ false
+              → fetch prog (fpc fs) ≡ just (store-at k) → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc
+              → ExecFinal.frame-gate {FS} (falloc fs) k (just loc) ≡ just loc
+store-at-gate prog fs k loc =
+  lift-site (store-at k) (λ _ ()) _ (λ src fs₀ r h f → RW.store-at-gate-wf src fs₀ k loc r h f) (λ _ _ _ c → c) prog fs
+
+stack-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (f : Frame) (j : ℕ) → RunLow prog fs
+                      → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (load-at k)
+                      → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+                      → ExecFinal.frame-gate {FS} (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+                      → LocState.stackMem (floc fs) f (k Data.Nat.+ j) ≡ nothing → ⊥
+stack-load-at-written prog fs k f j =
+  lift-site (load-at k) (λ _ ()) _ (λ src fs₀ r h ft → RW.stack-load-at-written-wf src fs₀ k f j r h ft) (λ _ _ _ c → c) prog fs
+
+addr-at-not-stack : ∀ prog (fs : FlatState) (k : ℕ) (f : Frame) (j : ℕ) → RunLow prog fs
+                  → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (addr-at k)
+                  → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j) → ⊥
+addr-at-not-stack prog fs k f j =
+  lift-site (addr-at k) (λ _ ()) _ (λ src fs₀ r h ft → RW.addr-at-not-stack-wf src fs₀ k f j r h ft) (λ _ _ _ c → c) prog fs
+
 addr-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunLow prog fs → LocState.halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just (addr-at k)
                    → Σ (ValueLocation FS) (λ loc → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)

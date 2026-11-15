@@ -1731,6 +1731,53 @@ store-at-in-block prog fs k hl r h ftq i-eq = ib _ refl
       (at (λ b → LocState.faulted (exec-store-in-block b (AtDynamic (offsetHL hl k))
                                      (readReg (regs (floc fs)) Output) (floc fs))) e ok))
 
+-- D435: AT A NON-FAULTING OFFSET LOAD OR STORE, THE GATE PASSED ITS LOCATION
+-- (a stack location is a slot of a live window); a stack slot read is written;
+-- an `addr-at` never sees a stack pointer (a heap block's address only).
+load-at-gate-wf : ∀ prog (fs : FlatState) (k : ℕ) (loc : ValueLocation FS) → RunAt prog fs → halted (floc fs) ≡ false
+             → fetch prog (fpc fs) ≡ just (load-at k) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+             → frame-gate (falloc fs) k (just loc) ≡ just loc
+load-at-gate-wf prog fs k loc r h ftq i-eq = go (gate-or (falloc fs) k loc)
+  where
+    ok = at (λ v → LocState.faulted (exec-load-at-resolved k Output (frame-gate (falloc fs) k (sv-as-loc v)) (floc fs))) i-eq
+            (step-ok prog fs (load-at k) r h ftq)
+    go : (frame-gate (falloc fs) k (just loc) ≡ just loc) ⊎ (frame-gate (falloc fs) k (just loc) ≡ nothing)
+       → frame-gate (falloc fs) k (just loc) ≡ just loc
+    go (inj₁ g) = g
+    go (inj₂ g) = ⊥-elim (true≢false (at (λ m → LocState.faulted (exec-load-at-resolved k Output m (floc fs))) g ok))
+
+store-at-gate-wf : ∀ prog (fs : FlatState) (k : ℕ) (loc : ValueLocation FS) → RunAt prog fs → halted (floc fs) ≡ false
+              → fetch prog (fpc fs) ≡ just (store-at k) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+              → frame-gate (falloc fs) k (just loc) ≡ just loc
+store-at-gate-wf prog fs k loc r h ftq i-eq = go (gate-or (falloc fs) k loc)
+  where
+    ok = at (λ v → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (frame-gate (falloc fs) k (sv-as-loc v))
+                                       (readReg (regs (floc fs)) Output) (floc fs))) i-eq
+            (step-ok prog fs (store-at k) r h ftq)
+    go : (frame-gate (falloc fs) k (just loc) ≡ just loc) ⊎ (frame-gate (falloc fs) k (just loc) ≡ nothing)
+       → frame-gate (falloc fs) k (just loc) ≡ just loc
+    go (inj₁ g) = g
+    go (inj₂ g) = ⊥-elim (true≢false (at (λ m → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k m
+                                                                    (readReg (regs (floc fs)) Output) (floc fs))) g ok))
+
+stack-load-at-written-wf : ∀ prog (fs : FlatState) (k : ℕ) (f : Frame) (j : ℕ) → RunAt prog fs
+                      → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (load-at k)
+                      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+                      → frame-gate (falloc fs) k (just (AtStack f j)) ≡ just (AtStack f j)
+                      → stackMem (floc fs) f (k Data.Nat.+ j) ≡ nothing → ⊥
+stack-load-at-written-wf prog fs k f j r h ftq i-eq g empty =
+  true≢false (at (λ mv → LocState.faulted (exec-load-with-value Output mv (floc fs))) empty
+               (at (λ m → LocState.faulted (exec-load-at-resolved k Output m (floc fs))) g
+                 (at (λ v → LocState.faulted (exec-load-at-resolved k Output (frame-gate (falloc fs) k (sv-as-loc v)) (floc fs))) i-eq
+                     (step-ok prog fs (load-at k) r h ftq))))
+
+addr-at-not-stack-wf : ∀ prog (fs : FlatState) (k : ℕ) (f : Frame) (j : ℕ) → RunAt prog fs
+                  → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (addr-at k)
+                  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j) → ⊥
+addr-at-not-stack-wf prog fs k f j r h ftq i-eq =
+  true≢false (at (λ v → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (heap-gate (sv-as-loc v)) (floc fs))) i-eq
+                 (step-ok prog fs (addr-at k) r h ftq))
+
 -- plan 0.123 B.4 α (D385): an address at an offset is a cell of its block, or
 -- the step faults — so at an emitted `addr-at` it is.
 addr-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
@@ -1823,7 +1870,6 @@ store-suc-nonptr-absurd prog fs r h ftq i-eq nptr =
 data TagCell : StoredValue FS → Set where
   tc-tag : ∀ (k : ℕ) → TagCell (SV-Tag k)
   tc-ptr : ∀ (hl : HeapLocation) → TagCell (SV-Ptr (AtDynamic hl))
-  tc-stk : ∀ (f : Frame) (k : Slot) → TagCell (SV-Ptr (AtStack f k))
 
 branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : LabelId) → RunAt prog fs
                         → halted (floc fs) ≡ false
@@ -1848,7 +1894,9 @@ branch-tag-scrutinee-wf prog fs m r h ftq = go-in1 (readReg (regs (floc fs)) Inp
                 × (readLoc (floc fs) loc ≡ just v) × TagCell v × (frame-gate (falloc fs) 0 (just loc) ≡ just loc)))
     go-cell loc ie g (just (SV-Tag k))              re = loc , SV-Tag k , ie , re , tc-tag k , g
     go-cell loc ie g (just (SV-Ptr (AtDynamic hl))) re = loc , _ , ie , re , tc-ptr hl , g
-    go-cell loc ie g (just (SV-Ptr (AtStack f k)))  re = loc , _ , ie , re , tc-stk f k , g
+    -- D435: a stack pointer has no tag (`tag-test` faults)
+    go-cell loc ie g (just (SV-Ptr (AtStack f k)))  re =
+      ⊥-elim (true≢false (at flt re (at (λ z → flt (flat-read-at (floc fs) z)) g (at rd ie ok))))
     go-cell loc ie g (just (SV-Lit _ _))            re =
       ⊥-elim (true≢false (at flt re (at (λ z → flt (flat-read-at (floc fs) z)) g (at rd ie ok))))
     go-cell loc ie g (just (SV-Code _))             re =
