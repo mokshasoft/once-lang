@@ -87,7 +87,6 @@ open import Data.List.Relation.Unary.All using () renaming (All to AllL; [] to a
 open import Once.CCC.Machine.InstrSlot
 open import Once.CCC.Machine.FlatStackSlot FS
 open SameFrames using (sf-slots; sf-saved; sf-ret)
-open import Once.CCC.Machine.FlatStackPtr FS
 open import Once.CCC.Machine.FlatPtrBounds FS
 open import Once.CCC.Codegen.AllocMin o
 open import Once.CCC.Codegen.LabelSeg
@@ -1188,86 +1187,6 @@ thunk-entry-ret prog fs ℓ bb r ftq = proj₂ (proj₂ (seg-entry (run-seg-wf p
 -- is gone with it.)
 ------------------------------------------------------------------------
 
--- ONE FRAME-FREE STEP PRESERVES THE INVARIANT — a THEOREM for EVERY
--- constructor. Plan 0.63 step 2b SIMPLIFIED this: `lea-slot` joined
--- `FrameFreeI`'s ⊥ set (a heap-moded trace emits none), so its route is now
--- absurd like the fossils' and the whole pair-bound plumbing it used to need
--- — `emitted-lea-slot-pair`, `SlotBudget.SlotBelow`'s second field, and the
--- `run-stack-slot` transport — is gone with it.
-stack-ptr-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog fs
-               → fetch prog (fpc fs) ≡ just i → ImageI i
-               → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
-stack-ptr-step (lea-slot slot) prog fs r ftq () wf
-stack-ptr-step (instr-alloc-stack n)   prog fs r ftq () wf
-stack-ptr-step (instr-dealloc-stack n) prog fs r ftq () wf
-stack-ptr-step (instr-free-heap n)     prog fs r ftq () wf
-stack-ptr-step (load-at n)     prog fs r ftq ff wf = flat-stack-ptr (load-at n) prog fs ff wf
-stack-ptr-step (store-at n)     prog fs r ftq ff wf = flat-stack-ptr (store-at n) prog fs ff wf
-stack-ptr-step (addr-at n)     prog fs r ftq ff wf = flat-stack-ptr (addr-at n) prog fs ff wf
-stack-ptr-step (instr-room n)     prog fs r ftq ff wf = flat-stack-ptr (instr-room n) prog fs ff wf
-stack-ptr-step (instr-push-frame cap)  prog fs r ftq () wf
-stack-ptr-step instr-pop-frame         prog fs r ftq () wf
-stack-ptr-step mov-to-output prog fs r ftq ff wf =
-  flat-stack-ptr mov-to-output prog fs ff wf
-stack-ptr-step mov-to-input prog fs r ftq ff wf =
-  flat-stack-ptr mov-to-input prog fs ff wf
-stack-ptr-step load-indirect prog fs r ftq ff wf =
-  flat-stack-ptr load-indirect prog fs ff wf
-stack-ptr-step load-indirect-suc prog fs r ftq ff wf =
-  flat-stack-ptr load-indirect-suc prog fs ff wf
-stack-ptr-step (load-from-slot k) prog fs r ftq ff wf =
-  flat-stack-ptr (load-from-slot k) prog fs ff wf
-stack-ptr-step (store-at-slot k) prog fs r ftq ff wf =
-  flat-stack-ptr (store-at-slot k) prog fs ff wf
-stack-ptr-step store-indirect prog fs r ftq ff wf =
-  flat-stack-ptr store-indirect prog fs ff wf
-stack-ptr-step store-indirect-suc prog fs r ftq ff wf =
-  flat-stack-ptr store-indirect-suc prog fs ff wf
-stack-ptr-step (restore-input k) prog fs r ftq ff wf =
-  flat-stack-ptr (restore-input k) prog fs ff wf
-stack-ptr-step (instr-reclaim-to k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-reclaim-to k) prog fs ff wf
-stack-ptr-step instr-call-closure prog fs r ftq ff wf =
-  flat-stack-ptr instr-call-closure prog fs ff wf
-stack-ptr-step (worklist-init k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-init k) prog fs ff wf
-stack-ptr-step (worklist-push k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-push k) prog fs ff wf
-stack-ptr-step (worklist-pop k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-pop k) prog fs ff wf
-stack-ptr-step (worklist-check k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-check k) prog fs ff wf
-stack-ptr-step (instr-sigop si) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-sigop si) prog fs ff wf
-stack-ptr-step (instr-load-const p v) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-load-const p v) prog fs ff wf
-stack-ptr-step (instr-load-code-addr k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-load-code-addr k) prog fs ff wf
-stack-ptr-step instr-save-closure-reg prog fs r ftq ff wf =
-  flat-stack-ptr instr-save-closure-reg prog fs ff wf
-stack-ptr-step (instr-load-tag-lit k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-load-tag-lit k) prog fs ff wf
-stack-ptr-step (instr-alloc-heap k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-alloc-heap k) prog fs ff wf
-stack-ptr-step (instr-reg-op op) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-reg-op op) prog fs ff wf
-stack-ptr-step (instr-ctrl c) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-ctrl c) prog fs ff wf
-
--- A start state satisfies the invariant vacuously: both memories are empty and
--- no register holds a pointer.
-entry-stack-ptr : ∀ (fs : FlatState) → EntryLike fs → StackPtrWF fs
-entry-stack-ptr fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _) = record
-  { sp-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
-  ; sp-heap  = λ hl → subst StackPtrOK? (sym (hemp hl)) tt
-  ; sp-stack = λ f k → subst StackPtrOK? (sym (semp f k)) tt }
-  where go : ∀ (r : AbstractReg) (v : StoredValue FS) → readReg (regs (floc fs)) r ≡ v
-           → StackPtrOK (readReg (regs (floc fs)) r)
-        go r (SV-Ptr loc)  eq = ⊥-elim (noptr r loc eq)
-        go r (SV-Tag t)    eq rewrite eq = tt
-        go r (SV-Lit p v)  eq rewrite eq = tt
-        go r (SV-Code c)   eq rewrite eq = tt
-
 -- …and the pointer-bounds and store-WF invariants likewise (D074: the entry
 -- registers are all tags, both memories empty).
 entry-ptr-bounds : ∀ (fs : FlatState) → EntryLike fs → PtrBoundsWF fs
@@ -1365,38 +1284,6 @@ run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run
         fgo (just j) fe =
           ent≢start (at-zero j _ (proj₂ (find-entry-sound prog (e-fn f) j fe))
                      (trans (sym (cong (λ x → fpc (do-call-at x fs)) fe)) z))
-
--- Every stack pointer in a reachable state addresses a live pair of the current
--- frame. Induction on `Reachable`, exactly like `run-stack-slot`: the entry
--- state holds no stack pointer at all (its registers hold the heap filler and
--- both memories are empty), and each step preserves the invariant because the
--- program is emitted — frame-free, and its `lea-slot`s address reserved pairs.
-run-stack-ptr : ∀ prog (fs : FlatState) (r : RunAt prog fs) → StackPtrWF fs
-run-stack-ptr prog fs (mkRunAt em reach) = go fs reach
-  where go : ∀ (fs' : FlatState) → Reachable prog 0 fs' → StackPtrWF fs'
-        go fs' (reach-start .fs' el _ _) = entry-stack-ptr fs' el
-        go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
-          stack-ptr-step i prog fs'' (mkRunAt em r') ftq
-            (frame-op-absurd prog fs'' i em ftq)
-            (go fs'' r')
-
--- The two forms the block-steps ask for. Since Plan 0.63's `StackPtrWF`
--- became "there is no stack pointer", holding one in `Input1` is refuted
--- outright — these keep their signatures so nothing downstream changes, but
--- both components are now `⊥-elim`.
-stack-ptr-current : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunAt prog fs
-                  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                  → (f ≡ current-frame (falloc fs)) × (k < frame-slots (falloc fs))
-stack-ptr-current prog fs f k r eq =
-  stack-ptr-frame fs Input1 f k (run-stack-ptr prog fs r) eq
-  , ⊥-elim (stack-ptr-live fs Input1 f k (run-stack-ptr prog fs r) eq)
-
-stack-ptr-current-suc : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunAt prog fs
-                      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                      → (f ≡ current-frame (falloc fs)) × (suc k < frame-slots (falloc fs))
-stack-ptr-current-suc prog fs f k r eq =
-  stack-ptr-frame fs Input1 f k (run-stack-ptr prog fs r) eq
-  , ⊥-elim (stack-ptr-suc-live fs Input1 f k (run-stack-ptr prog fs r) eq)
 
 slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunAt prog fs
                    → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot

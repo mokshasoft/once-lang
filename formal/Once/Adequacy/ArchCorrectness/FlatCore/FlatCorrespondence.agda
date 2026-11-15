@@ -2660,6 +2660,7 @@ open ExecFinal {FS} using (in-window; live-frames; stack-gate-true)
 open FrameSemantics FS using (_≟F_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 import Data.Bool
+import Data.Bool.Properties
 import Data.Nat
 import Data.Nat.Properties
 
@@ -2922,3 +2923,56 @@ ret-write-past xoff {am} mem LK LK' nothing stk v fl g b ((g′ , b′) ∷ fr) 
     cell<a : frame-base g + slots b < frame-base f + slot-to-disp j
     cell<a = <-≤-trans (subst (frame-base g + slots b <_) gp (m<m+n (frame-base g + slots b) slot-size>0))
                (≤-trans (head-floor (frame-base g + slots b) g′ b′ fr f j w rest) (m≤m+n (frame-base f) (slot-to-disp j)))
+
+------------------------------------------------------------------------
+-- D435 (d): A SIGOP'S COMPOUND ARGUMENT AT A STACK ADDRESS. Its step's check
+-- (`sigop-gate`) passed at the value's last word; a window is a prefix of its
+-- frame, so every word of the value is in it, and reads its encoding at or
+-- above the stack pointer (every live frame is).
+------------------------------------------------------------------------
+open ExecFinal {FS} using (range-ok; stack-gate)
+
+private
+  tb : ∀ b → Data.Bool.T b → b ≡ true
+  tb true _ = refl
+
+window-down : ∀ (fr : List (Frame × ℕ)) (f : Frame) (i i′ : Slot) → i′ ≤ i
+            → in-window fr f i ≡ true → in-window fr f i′ ≡ true
+window-down-at : ∀ (g : Frame) (b : ℕ) (fr : List (Frame × ℕ)) (f : Frame) (i i′ : Slot) → i′ ≤ i
+               → (d : Dec (g ≡ f)) → win-pick d (i Data.Nat.<ᵇ b) (in-window fr f i) ≡ true
+               → win-pick d (i′ Data.Nat.<ᵇ b) (in-window fr f i′) ≡ true
+window-down-here : ∀ (b : ℕ) (fr : List (Frame × ℕ)) (f : Frame) (i i′ : Slot) → i′ ≤ i
+                 → ((i Data.Nat.<ᵇ b) ≡ true) ⊎ (in-window fr f i ≡ true)
+                 → ((i′ Data.Nat.<ᵇ b) Data.Bool.∨ in-window fr f i′) ≡ true
+window-down [] f i i′ le ()
+window-down ((g , b) ∷ fr) f i i′ le w = window-down-at g b fr f i i′ le (g ≟F f) w
+window-down-at g b fr f i i′ le (yes _) w = window-down-here b fr f i i′ le (∨-true (i Data.Nat.<ᵇ b) _ w)
+window-down-at g b fr f i i′ le (no _)  w = window-down fr f i i′ le w
+window-down-here b fr f i i′ le (inj₁ lt) =
+  cong (Data.Bool._∨ in-window fr f i′) (tb _ (Data.Nat.Properties.<⇒<ᵇ (≤-<-trans le (ltᵇ⇒< i b lt))))
+window-down-here b fr f i i′ le (inj₂ w) =
+  trans (cong ((i′ Data.Nat.<ᵇ b) Data.Bool.∨_) (window-down fr f i i′ le w)) (Data.Bool.Properties.∨-zeroʳ _)
+
+-- the words of a range the check passed are in the window
+range-win : ∀ (fr : List (Frame × ℕ)) (n : ℕ) (f : Frame) (j k : Slot) → k < n
+          → range-ok fr n (SV-Ptr (AtStack f j)) ≡ true → in-window fr f (k + j) ≡ true
+range-win fr zero    f j k ()        w
+range-win fr (suc n) f j k (s≤s le) w = window-down fr f (n + j) (k + j) (Data.Nat.Properties.+-monoˡ-≤ j le) w
+
+-- …so each reads its slot's encoding, at or above the stack pointer
+stack-arg-read : ∀ {hv : HeapView} {fs : FlatState} {s : State} (k : ℕ) (f : Frame) (j : Slot) (w : StoredValue FS)
+               → FlatCorr hv fs s
+               → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f j)
+               → in-window (frames-of (falloc fs)) f (k + j) ≡ true
+               → stackMem (floc fs) f (k + j) ≡ just w
+               → (readMem (memory s) (rreg s in1-reg + slot-to-disp k) ≡ just (enc-sv hv w))
+                 × (rreg s sp-reg ≤ rreg s in1-reg + slot-to-disp k)
+stack-arg-read {hv} {fs} {s} k f j w corr i-eq win h-eq =
+  stack-read k f j w corr i-eq (cong (λ b → stack-gate b (AtStack f j)) win) h-eq ,
+  subst (rreg s sp-reg ≤_) (sym (stack-addr k f j corr i-eq))
+    (≤-trans (window-floor (rreg s sp-reg) (frames-of (falloc fs)) f (k + j) win sw-sp)
+             (m≤m+n (frame-base f) (slot-to-disp (k + j))))
+  where
+    sw-sp : StackWindows (amap hv) (memory s) (stackMem (floc fs)) (rreg s sp-reg) (frames-of (falloc fs))
+    sw-sp = windows-reanchor (lo hv) (rreg s sp-reg) (current-frame (falloc fs)) (frame-slots (falloc fs))
+              (saved-frames (falloc fs)) (≤-reflexive (sp-eq corr)) (stack-eq corr)

@@ -335,7 +335,9 @@ module _ (N : ℕ) where
 -- block's frame (`call-frame`, D394): the return address at `sp − 8`, the
 -- stack pointer `8n` below it. Each typed leaf of the input is either the input
 -- register (a scalar, D396/D398) or the word at `rdi + 8k` (D391) below that
--- frame; then the Core's `R-input` and `WF` hold at the entry state.
+-- frame — or, D435 (d), at or above the stack pointer (the caller's stack, a
+-- live frame's window, with the block's frame below it); then the Core's
+-- `R-input` and `WF` hold at the entry state.
 ------------------------------------------------------------------------
 open import Once.Arith.Backend.X86-64.Dispatch using (call-frame; dispatch-arith)
 open import Once.Arith.Machine.Shape using (⟦_⟧S; IntsBelow)
@@ -347,7 +349,16 @@ open import Data.Nat.Properties using (m∸n≤m; <-≤-trans; ≤-refl)
 EntryLeaf : ℕ → State → InputPath → ℕ → ℕ → Set
 EntryLeaf n s []      k w = readReg (regs s) rdi ≡ w
 EntryLeaf n s (x ∷ q) k w = (readMem (memory s) (readReg (regs s) rdi + 8 * k) ≡ just w)
-                          × (readReg (regs s) rdi + 8 * k < (readReg (regs s) rsp ∸ 8) ∸ 8 * n)
+                          × ((readReg (regs s) rdi + 8 * k < (readReg (regs s) rsp ∸ 8) ∸ 8 * n)
+                             ⊎ ((readReg (regs s) rsp ≤ readReg (regs s) rdi + 8 * k) × (8 + 8 * n ≤ readReg (regs s) rsp)))
+
+import Data.Sum
+open import Data.Nat using (suc; s≤s)
+open import Data.Nat.Properties using (m∸n+n≡m; m+n≤o⇒m≤o∸n; +-comm; ≤-trans)
+
+-- a word strictly below a nonzero bound
+sub-lt : ∀ m j → suc j ≤ m → m ∸ suc j < m
+sub-lt (suc m) j (s≤s le) = s≤s (m∸n≤m m j)
 
 entry-at : ∀ n s {sh} (env : ⟦ sh ⟧S)
          → (∀ {m} (p : Path sh m) → EntryLeaf n s ⌊ p ⌋ᴾ (flat-off p) (Sim.leafWord (8 * n) p env))
@@ -356,17 +367,23 @@ entry-at : ∀ n s {sh} (env : ⟦ sh ⟧S)
 entry-at n s {sh} env leaf = ri , wf
   where
     ra = readReg (regs s) rsp ∸ 8
+    rsp′ = readReg (regs s) rsp
+    -- below the frame, or above the return address
+    ne : ∀ a → (a < ra ∸ 8 * n) ⊎ ((rsp′ ≤ a) × (8 + 8 * n ≤ rsp′)) → ¬ (a ≡ ra)
+    ne a (Data.Sum.inj₁ lt)        eq = <-irrefl eq (<-≤-trans lt (m∸n≤m ra (8 * n)))
+    ne a (Data.Sum.inj₂ (le , rm)) eq = <-irrefl (sym eq) (<-≤-trans (sub-lt rsp′ 7 (≤-trans (m≤m+n 8 (8 * n)) rm)) le)
     ri-at : ∀ q k w → EntryLeaf n s q k w → path-load (call-frame val-x86-64 n s) q k ≡ w
     ri-at []      k w e        = e
-    ri-at (x ∷ q) k w (m , lt) =
-      cong def (trans (readMem-writeMem-other (memory s) ra _ _ ne) m)
-      where
-        ne : ¬ (readReg (regs s) rdi + 8 * k ≡ ra)
-        ne eq = <-irrefl eq (<-≤-trans lt (m∸n≤m ra (8 * n)))
+    ri-at (x ∷ q) k w (m , o) =
+      cong def (trans (readMem-writeMem-other (memory s) ra _ _ (ne _ o)) m)
     out-at : ∀ q k w → EntryLeaf n s q k w → Out (8 * n) (call-frame val-x86-64 n s) q k
     out-at []      k w _        = tt
-    out-at (x ∷ q) k w (_ , lt) = Data.Sum.inj₁ lt
-      where import Data.Sum
+    out-at (x ∷ q) k w (_ , Data.Sum.inj₁ lt)        = Data.Sum.inj₁ lt
+    out-at (x ∷ q) k w (_ , Data.Sum.inj₂ (le , rm)) =
+      Data.Sum.inj₂ (subst (_≤ readReg (regs s) rdi + 8 * k) (sym (m∸n+n≡m fr))
+                       (≤-trans (m∸n≤m rsp′ 8) le))
+      where fr : 8 * n ≤ ra
+            fr = m+n≤o⇒m≤o∸n (8 * n) (subst (_≤ rsp′) (+-comm 8 (8 * n)) rm)
     ri : Sim.R-input (8 * n) (init env) (call-frame val-x86-64 n s)
     ri p = ri-at ⌊ p ⌋ᴾ (flat-off p) _ (leaf p)
     wf : WF (8 * n) sh (call-frame val-x86-64 n s)

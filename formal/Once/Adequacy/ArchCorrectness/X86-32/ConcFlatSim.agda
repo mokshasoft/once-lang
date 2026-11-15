@@ -161,8 +161,6 @@ open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂; uncurry)
 open import Once.Adequacy.ArchCorrectness.X86-32.FlatComposition FS
   using (blk-off; blk-len; blk-off-suc; fetch-block-head; find-label-none-corr; fetch-block-2nd; is-label?; skip-law; label-hit; label-miss; headView)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace; compile-abstract)
-open import Once.CCC.Machine.FlatStackPtr FS using
-  ()
 open import Once.CCC.Machine.FlatPtrBounds FS using
   ()
 

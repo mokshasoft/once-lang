@@ -23741,6 +23741,14 @@ different cell on the hardware than in the machine. The machine does not check s
   into a frame is never emitted, and on riscv64 it would need a no-wrap bound of its own.)
 * A branch on a tag reads a tag or a heap pointer (a node, nonzero); a STACK pointer has no tag, so the
   test faults on one (`tag-test`): its address is no data, and the frame model gives no base a lower bound.
+* A SigOp reaches words through pointer registers too: a compound argument through `Input1` (`decode-at`,
+  D428) and an in-memory answer's buffer through `Output` (`sigop-store`, D432). Its step checks the whole
+  range before anything else is trusted (`sigop-gate`): when the address is a stack one, the value's LAST
+  word must be inside a live window (`range-ok`; a window is a prefix of its frame, so every word below is
+  too). A scalar argument is its register (D398) and is not checked. A failed check faults and halts the
+  step, as a failed `load-at` does. (2026-11-15; the new image proves it from the frame's reservation:
+  the argument and the answer lie below the operand stack's top, a compare's pair below the budget plus
+  the frame's two save slots.)
 
 ### Alternatives
 * A run fact in `Emitted` ("every access through a stack pointer is in a live window", proved for every

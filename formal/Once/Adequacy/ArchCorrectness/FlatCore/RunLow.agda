@@ -129,7 +129,6 @@ open import Data.Product using (∃)
 open import Data.Nat using (_<_)
 open import Once.Type using (fits-int)
 open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF)
-open import Once.CCC.Machine.FlatStackPtr FS using (StackPtrWF)
 open import Once.CCC.Machine.FlatPtrBounds FS using (PtrBoundsWF)
 open import Once.CCC.Machine.FrameFree using (ImageI)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
@@ -469,9 +468,6 @@ slot-read-in-frame .(room-checks src) .(L.lift src fs₀ p) slot i (mkRunLow src
 ... | at-image _ fi = RW.slot-read-in-frame src fs₀ slot i r fi so
 
 -- the state invariants: the lift keeps what they speak of
-run-stack-ptr : ∀ prog (fs : FlatState) → RunLow prog fs → StackPtrWF fs
-run-stack-ptr .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) = RW.run-stack-ptr src fs₀ r
-
 -- the store invariant (no forward pointer; every stored Int a word, D397)
 run-flat-wf : ∀ prog (fs : FlatState) → RunLow prog fs → FlatWF fs
 run-flat-wf .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) =
@@ -480,18 +476,6 @@ run-flat-wf .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl 
 
 run-ptr-bounds : ∀ prog (fs : FlatState) → RunLow prog fs → PtrBoundsWF fs
 run-ptr-bounds .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) = RW.run-ptr-bounds src fs₀ r
-
-stack-ptr-current : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunLow prog fs
-                  → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                  → (f ≡ current-frame (falloc fs)) × (k < frame-slots (falloc fs))
-stack-ptr-current .(room-checks src) .(L.lift src fs₀ p) f k (mkRunLow src fs₀ p refl r refl pc) =
-  RW.stack-ptr-current src fs₀ f k r
-
-stack-ptr-current-suc : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunLow prog fs
-                      → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                      → (f ≡ current-frame (falloc fs)) × (suc k < frame-slots (falloc fs))
-stack-ptr-current-suc .(room-checks src) .(L.lift src fs₀ p) f k (mkRunLow src fs₀ p refl r refl pc) =
-  RW.stack-ptr-current-suc src fs₀ f k r
 
 -- a direct call resolves (the entry scan commutes with the map)
 emitted-call-fn-resolves : ∀ prog (fs : FlatState) (f : CN) → RunLow prog fs

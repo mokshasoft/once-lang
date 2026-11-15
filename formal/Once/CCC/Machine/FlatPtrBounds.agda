@@ -73,14 +73,33 @@ open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 -- the shared bricks: the register read-after-write enumeration and the
 -- `writeLoc` fold-back
-open import Once.CCC.Machine.FlatStackPtr FS using (readReg-write; writeLoc-dyn)
 open import Once.CCC.Machine.FlatStoreWF FS
   using (StoreWF; sv-below; svm-below; module StoreWF)
 open StoreWF using (wf-heap; wf-stack; wf-regs)
 
+-- Reading back a register after a write: either you get the written value, or
+-- the write missed you. Enumerated, because `writeReg` dispatches on the
+-- register, so each entry holds DEFINITIONALLY.
+readReg-write : ∀ (rf : Registers FS) (x r : AbstractReg) (v : StoredValue FS)
+              → (readReg (writeReg rf x v) r ≡ v) ⊎ (readReg (writeReg rf x v) r ≡ readReg rf r)
+readReg-write rf Input1  Input1  v = inj₁ refl
+readReg-write rf Input1  Output  v = inj₂ refl
+readReg-write rf Output  Input1  v = inj₂ refl
+readReg-write rf Output  Output  v = inj₁ refl
+
+-- `writeLoc`'s `AtDynamic` clauses are ENUMERATED on the value (the store
+-- guard); fold them back into the one heap write they all are now.
+writeLoc-dyn : ∀ (ls : LocState FS) (hl : HeapLocation) (v : StoredValue FS)
+             → writeLoc ls (AtDynamic hl) v ≡ writeLocToHeap ls hl v
+writeLoc-dyn ls hl (SV-Ptr (AtStack f k))   = refl
+writeLoc-dyn ls hl (SV-Ptr (AtDynamic hl')) = refl
+writeLoc-dyn ls hl (SV-Tag t)               = refl
+writeLoc-dyn ls hl (SV-Lit p x)             = refl
+writeLoc-dyn ls hl (SV-Code c)              = refl
+
 ------------------------------------------------------------------------
 -- The per-value predicate, over the block-size map alone (it reads NOTHING
--- from the LocState — unlike `StackPtrOK` there is no anchor to transport).
+-- from the LocState: there is no anchor to transport).
 -- Trivial on every non-heap-pointer shape (enumerated, so a new
 -- StoredValue constructor must be classified here).
 ------------------------------------------------------------------------
