@@ -71,11 +71,20 @@ stepsI-++ {c = c} {r} {c″ = c″} {r″} {m = m} {m″ = m″} {n = n} {n″ =
   subst (λ z → StepsI c r m n z c″ r″ m″ n″) (sym (++-assoc u₁ u₂ t₂)) (x ⟫ stepsI-++ st₁ st₂)
 
 -- ★ how many times a stretch entered a loop (a round started: master's budget counts rounds, D430)
+-- (read off the code: only a loop's code enters one, by `i-loop`)
+loopI : ∀ {sh sh′} → Insᴵ sh sh′ → ℕ
+loopI (loop _) = 1
+{-# CATCHALL #-}
+loopI _        = 0
+
+loopC : ∀ {sh U} → Codeᴵ sh U → ℕ
+loopC (i ⨾ _) = loopI i
+{-# CATCHALL #-}
+loopC _       = 0
+
 isLoop : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t}
        → StepI c r m n t c′ r′ m′ n′ → ℕ
-isLoop i-loop = 1
-{-# CATCHALL #-}
-isLoop _      = 0
+isLoop {c = c} _ = loopC c
 
 loops : ∀ {T sh U sh′ U′} {c : Codeᴵ sh U} {r : Ret U T} {c′ : Codeᴵ sh′ U′} {r′ : Ret U′ T} {m m′ n n′ t}
       → StepsI c r m n t c′ r′ m′ n′ → ℕ

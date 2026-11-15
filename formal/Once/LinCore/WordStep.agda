@@ -28,6 +28,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+import Data.Nat
 import Once.Memory.HeapAddress
 import Once.LinCore.Moves
 import Data.Nat.Properties
@@ -113,12 +114,15 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open FrameSemantics FS using (≺-trans; ≺-irrefl)
   open import Once.LinCore.ImageRun fmt ans bw using (StepI)
   open import Once.LinCore.LocalStep fmt ans bw using (module Steps)
-  open import Once.LinCore.StepKinds fmt ans bw using (Local; LocalC; StraightC; straight-local; CoveredC; Motive; CoveredCases; covered-elim)
+  open import Once.LinCore.StepKinds fmt ans bw using (Local; LocalC; LocalI; StraightC; straight-local; CoveredC; Motive; CoveredCases; covered-elim)
   open import Once.LinCore.HeldI fmt ans bw using (InvI)
   open import Once.LinCore.LabelsI fmt ans bw using (module Img)
   open import Once.LinCore.LowAt fmt ans bw using (Inside)
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps)
+  open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+  open FlatEventTrace {FS} using (chain-ctrls)
+  open import Once.LinCore.ImageSim fmt ans bw using (isLoop; loopI; loopC)
   open import Once.LinCore.Moves {FS} using (Keep; k-frame; k-ret; k-saved; k-other)
   open Cells {FS} U wordOf using (fresh-cfg; fresh-ret)
   open Img {FS} ds f ldConst ld-nl using (image-label)
@@ -157,7 +161,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   module Theorem (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
                        → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
                          ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (FlatMachine.fpc fs) }) where
-    open Whole ld using (gstep-local; gcase₁; gcase₂; gloop; greti)
+    open Whole ld using (gstep-local; gcase₁; gcase₂; gloop; gloop-ctrl; greti)
     open GCall using (gcall; ArrivesAt)
     open GRet using (gret)
     open Related
@@ -180,7 +184,8 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     -- what a step owes: from a related state, in the machine's world (D426), where it lands
     Owes : ∀ {T} → Motive {Level.zero} {T}
     Owes {c = c} {r = r} {m = m} {n = n} {t = t} {c′ = c′} {r′ = r′} {m′ = m′} {n′ = n′} st =
-      ∀ {h fs} → InvI m r n h → Related c r m n fs → Agrees st fs → Lands (evsOf t) c′ r′ m′ n′ fs
+      ∀ {h fs} → InvI m r n h → Related c r m n fs → Agrees st fs
+      → Σ (Lands (evsOf t) c′ r′ m′ n′ fs) λ L → isLoop st ≤ chain-ctrls (proj₁ (proj₂ (proj₂ L)))
 
     -- the cases, by the step's kind
     private
@@ -199,37 +204,95 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            → Lands E c r m n fs
       op-out (N , fs′ , st , G , lg) = N , fs′ , st , inj₁ G , lg
 
+      -- a straight step enters no loop
+      local-0 : ∀ {sh sh′} (i : Insᴵ sh sh′) → LocalI i → loopI i ≡ 0
+      local-0 unpair l = refl
+      local-0 pair l = refl
+      local-0 swap l = refl
+      local-0 unit l = refl
+      local-0 untag l = refl
+      local-0 untag₁ l = refl
+      local-0 tag₁ l = refl
+      local-0 elend l = refl
+      local-0 eunlend l = refl
+      local-0 elift l = refl
+      local-0 efst l = refl
+      local-0 esnd l = refl
+      local-0 eout l = refl
+      local-0 eoutq l = refl
+      local-0 eapp l = refl
+      local-0 epop l = refl
+      local-0 eword l = refl
+      local-0 (prim ds g) l = refl
+      local-0 (call _) ()
+      local-0 icall ()
+      local-0 icallω ()
+      local-0 (iobs _) ()
+      local-0 ccopy ()
+      local-0 ncopy ()
+      local-0 cfree ()
+      local-0 nfree ()
+      local-0 open1 ()
+      local-0 openω ()
+      local-0 nopen ()
+      local-0 copen ()
+      local-0 reclose ()
+      local-0 fopen ()
+      local-0 (loop _) ()
+      local-0 stuck ()
+
+      straight-0 : ∀ {sh U} (c : Codeᴵ sh U) → StraightC c → loopC c ≡ 0
+      straight-0 (i ⨾ k) l = local-0 i l
+      straight-0 (ecase _ _) l = refl
+      straight-0 (case _ _) ()
+      straight-0 end ()
+      straight-0 halted ()
+
+      zs : ∀ {T sh U′} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n fs E} {j} → j ≡ 0
+         → (L : Lands E c r m n fs) → Σ (Lands E c r m n fs) λ L′ → j ≤ chain-ctrls (proj₁ (proj₂ (proj₂ L′)))
+      zs refl L = L , Data.Nat.z≤n
+
+      -- a step that enters no loop: no control step owed
+      z0 : ∀ {T sh U′} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n fs E}
+         → (L : Lands E c r m n fs) → Σ (Lands E c r m n fs) λ L′ → 0 ≤ chain-ctrls (proj₁ (proj₂ (proj₂ L′)))
+      z0 L = L , Data.Nat.z≤n
+
     word-cases : ∀ {T} → CoveredCases {Level.zero} {T}
     word-cases = record
       { P   = Owes
-      ; loc = λ st l inv G _ → lift (cong (Data.List.map ioEvent) (straight-ios st l G)) (gstep-local st l inv G)
-      ; cs₁ = λ inv G _ → lift refl (gcase₁ (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; cs₂ = λ inv G _ → lift refl (gcase₂ (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; lp  = λ inv G _ → lift refl (gloop (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; rti = λ inv G _ → lift refl (greti (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; cl  = λ inv G _ → lift refl (gcall (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; rt  = λ inv G _ → lift refl (gret (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; ic  = λ inv G _ → lift refl (gicall (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; op1 = λ inv G _ → lift refl (gopen1 (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; nop = λ inv G _ → lift refl (gnopen (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; iob = λ inv G _ → lift refl (giobs (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; cf  = λ inv G _ → lift refl (gcfree (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; nf  = λ inv G _ → lift refl (gnfree (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; fo  = λ inv G _ → lift refl (gfopen (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; foν = λ inv G _ → lift refl (gfopenν (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; icω = λ eq inv G _ → lift refl (gicallω (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; opω = λ eq inv G _ → lift refl (gopenω (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; cc  = λ eq inv G _ → lift refl (gccopy (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; nc  = λ eq inv G _ → lift refl (gncopy (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; co  = λ eq inv G _ → lift refl (gcopen (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; coν = λ eq inv G _ → lift refl (gcopenν (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; rc  = λ eq inv G _ → lift refl (greclose (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; rcν = λ eq inv G _ → lift refl (grecloseν (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G))
-      ; op  = λ run inv G ag → op-out (gop (g-pt G) run inv (g-here G) (g-next G) (g-ret G) (g-blk G) ag)
-      ; ope = λ p inv G ag → halt-out (gopend (g-pt G) (g-here G) ag)
+      ; loc = λ {c = c} st l inv G _ → zs (straight-0 c l) (lift (cong (Data.List.map ioEvent) (straight-ios st l G)) (gstep-local st l inv G))
+      ; cs₁ = λ inv G _ → z0 (lift refl (gcase₁ (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; cs₂ = λ inv G _ → z0 (lift refl (gcase₂ (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; lp  = λ inv G _ → (lift refl (gloop (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)) , gloop-ctrl (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G))
+      ; rti = λ inv G _ → z0 (lift refl (greti (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; cl  = λ inv G _ → z0 (lift refl (gcall (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; rt  = λ inv G _ → z0 (lift refl (gret (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; ic  = λ inv G _ → z0 (lift refl (gicall (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; op1 = λ inv G _ → z0 (lift refl (gopen1 (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; nop = λ inv G _ → z0 (lift refl (gnopen (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; iob = λ inv G _ → z0 (lift refl (giobs (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; cf  = λ inv G _ → z0 (lift refl (gcfree (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; nf  = λ inv G _ → z0 (lift refl (gnfree (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; fo  = λ inv G _ → z0 (lift refl (gfopen (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; foν = λ inv G _ → z0 (lift refl (gfopenν (g-pt G) inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; icω = λ eq inv G _ → z0 (lift refl (gicallω (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; opω = λ eq inv G _ → z0 (lift refl (gopenω (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; cc  = λ eq inv G _ → z0 (lift refl (gccopy (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; nc  = λ eq inv G _ → z0 (lift refl (gncopy (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; co  = λ eq inv G _ → z0 (lift refl (gcopen (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; coν = λ eq inv G _ → z0 (lift refl (gcopenν (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; rc  = λ eq inv G _ → z0 (lift refl (greclose (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; rcν = λ eq inv G _ → z0 (lift refl (grecloseν (g-pt G) eq inv (g-here G) (g-next G) (g-ret G) (g-blk G)))
+      ; op  = λ run inv G ag → z0 (op-out (gop (g-pt G) run inv (g-here G) (g-next G) (g-ret G) (g-blk G) ag))
+      ; ope = λ p inv G ag → z0 (halt-out (gopend (g-pt G) (g-here G) ag))
       }
 
-    -- ★ by the step's kind (the one split on a step is StepKinds')
+    -- ★ by the step's kind (the one split on a step is StepKinds'), with a control step per loop entry
+    word-stepC : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
+           (st : StepI c r m n t c′ r′ m′ n′) → CoveredC c → InvI m r n h → Related c r m n fs → Agrees st fs
+           → Σ (Lands (evsOf t) c′ r′ m′ n′ fs) λ L → isLoop st ≤ chain-ctrls (proj₁ (proj₂ (proj₂ L)))
+    word-stepC st cv inv G ag = covered-elim word-cases st cv inv G ag
+
     word-step : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs}
            (st : StepI c r m n t c′ r′ m′ n′) → CoveredC c → InvI m r n h → Related c r m n fs → Agrees st fs → Lands (evsOf t) c′ r′ m′ n′ fs
-    word-step st cv inv G ag = covered-elim word-cases st cv inv G ag
+    word-step st cv inv G ag = proj₁ (word-stepC st cv inv G ag)

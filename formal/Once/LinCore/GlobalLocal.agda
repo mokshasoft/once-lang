@@ -27,6 +27,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+import Data.Nat
 import Once.Memory.HeapAddress
 import Once.LinCore.Moves
 import Data.Nat.Properties
@@ -280,6 +282,17 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         N , fs′ , run , record { g-pt = p-block p (at (body s)) ; g-here = H′ ; g-next = trans nx′ nx
                                ; g-ret = ok-loop (p-block p (disp s)) (refl , refl) (ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok) ; g-blk = k-inb K I } , k-log K
     gloop (p-tramp _ _) inv () nx ok I
+
+    -- ★ a loop's entry takes a control step (its label: master's budget is read in control steps, D430)
+    gloop-ctrl : ∀ {T E Es A B S V} {b : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V}
+                   {r : Ret V T} {m n h fs} (P : Pnt (loop b ⨾ k))
+               → (inv : InvI m r n h) (H : HereP P m fs) (nx : AllocState.next-heap-ref (falloc fs) ≡ n)
+               → (ok : RetOK (rootOf P) (ptFin P) r (AllocState.current-frame (falloc fs)) (fret fs) (AllocState.saved-frames (falloc fs)) fs)
+               → (I : InBlk fs)
+               → 1 ≤ FlatEventTrace.chain-ctrls {FS} (proj₁ (proj₂ (proj₂ (gloop P inv H nx ok I))))
+    gloop-ctrl (p-start (at s)) inv H nx ok I = Data.Nat.s≤s Data.Nat.z≤n
+    gloop-ctrl (p-block p (at s)) inv H nx ok I = Data.Nat.s≤s Data.Nat.z≤n
+    gloop-ctrl (p-tramp _ _) inv () nx ok I
 
     -- ★ a body's end: the jump to its loop's dispatch
     greti : ∀ {T sh U′} {k : Codeᴵ sh U′} {r : Ret U′ T} {m n h fs} (P : Pnt (end {sh}))

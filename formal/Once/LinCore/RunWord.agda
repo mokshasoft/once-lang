@@ -12,13 +12,15 @@
 
 {-# OPTIONS --guardedness #-}
 
-open import Data.Nat using (ℕ; _+_)
+open import Data.Nat using (ℕ; _+_; _≤_; z≤n)
+open import Data.Nat.Properties using (+-mono-≤; +-identityʳ; ≤-trans; m≤n+m)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open import Data.Maybe using (nothing)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function using (case_of_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Data.List using (List; []; _++_; map)
 open import Data.List.Properties using (++-assoc; ++-identityʳ; map-++)
 open import Once.IR.Semantics.Event using (SigOpEvent)
@@ -40,7 +42,7 @@ open import Once.LinCore.Events fmt ans bw using (MV; mone; Trace; ios; ios-++)
 open import Once.LinCore.Machine fmt ans bw using (Sh; Cfg; vw; []ᵉ; _∷ˢ_; []ˢ; _∥_)
 open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; StepI)
-open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; _⟫_; start)
+open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; _⟫_; start; loops; isLoop)
 open import Once.LinCore.HeldI fmt ans bw using (InvI; inv-stepI; start-invI)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open import Once.LinCore.Keys fmt ans bw
@@ -76,6 +78,7 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Agree {FS} U wordOf using (Agrees)
   open FlatMachine {FS} using (FlatState; floc; falloc; fpc)
   open FlatStepsAPI {FS} using (FlatSteps; FlatSteps-++)
+  open FlatEventTrace {FS} using (chain-ctrls; chain-ctrls-++)
   open StepR {FS} ds f ldConst ld-nl wordOf using (module Theorem)
 
   -- the machine's world agrees at every step of a run, from a related state whose log is the
@@ -92,10 +95,16 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   rest-halt done e = e , refl
   rest-halt (() ⟫ _) refl
 
+  -- …and enters no loop
+  halt-loops : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
+             → (rest : StepsI c r m n t c′ r′ m′ n′) → c ≡ halted → loops rest ≡ 0
+  halt-loops done e = refl
+  halt-loops (() ⟫ _) refl
+
   module _ (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
                  → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
                    ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = Data.Nat.suc (fpc fs) }) where
-    open Theorem ld using (word-step; Lands; HaltC)
+    open Theorem ld using (word-step; word-stepC; Lands; HaltC)
 
     -- a landing seen from earlier: the halting op's running state, after more steps
     shift : ∀ {T sh U′} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n fs fs₁ fs′ M}
@@ -117,6 +126,23 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         go (N₁ , fs₁ , st₁ , inj₂ (e , hlt , pre) , lg₁) =
           N₁ , fs₁ , st₁ , inj₂ (proj₁ (rest-halt rest e) , hlt , pre) , log-halt t₁ lg₁ (proj₂ (rest-halt rest e))
 
+    -- ★ …with a control step for every loop entry (D430: master's budget is read in control steps)
+    wholeC : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs L}
+           → (run : StepsI c r m n t c′ r′ m′ n′) → InvI m r n h → AgreesAll L run → Related c r m n fs
+           → LocState.ev-log (floc fs) ≡ L
+           → Σ (Lands (evsOf t) c′ r′ m′ n′ fs) λ La → loops run ≤ chain-ctrls (proj₁ (proj₂ (proj₂ La)))
+    wholeC {fs = fs} done inv ag G _ = (0 , _ , FlatStepsAPI.[] , inj₁ G , sym (++-identityʳ (LocState.ev-log (floc fs)))) , z≤n
+    wholeC (_⟫_ {t₁ = t₁} {t₂ = t₂} st rest) inv (a₁ , ag) G lL = go (word-stepC st (step-covered st) inv G (a₁ _ G lL))
+      where
+        go : _ → _
+        go ((N₁ , fs₁ , st₁ , inj₁ G₁ , lg₁) , c₁) = case wholeC rest (proj₂ (inv-stepI st inv)) ag G₁ (trans lg₁ (cong (_++ evsOf t₁) lL)) of λ where
+          ((N₂ , fs₂ , st₂ , L , lg₂) , c₂) →
+            (N₁ + N₂ , fs₂ , FlatSteps-++ st₁ st₂ , shift st₁ L , log-join t₁ t₂ lg₁ lg₂) ,
+            subst (_ ≤_) (sym (chain-ctrls-++ st₁ st₂)) (+-mono-≤ c₁ c₂)
+        go ((N₁ , fs₁ , st₁ , inj₂ (e , hlt , pre) , lg₁) , c₁) =
+          (N₁ , fs₁ , st₁ , inj₂ (proj₁ (rest-halt rest e) , hlt , pre) , log-halt t₁ lg₁ (proj₂ (rest-halt rest e))) ,
+          subst (_≤ _) (sym (trans (cong (isLoop st +_) (halt-loops rest e)) (+-identityʳ (isLoop st)))) c₁
+
     -- ★ the image's run from main's first point, from the flat machine's first state
     module _ (entry-frame : FrameSemantics.Frame FS) (entry-regs : Registers FS) where
       open StartR {FS} ds f ldConst ld-nl wordOf entry-frame entry-regs using (start-fs; start-related)
@@ -127,3 +153,14 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       from-start {t = t} run ag = case start-related of λ where
         (fs₁ , st₁ , G₁ , lg₀) → case whole run start-invI ag G₁ lg₀ of λ where
           (N , fs′ , st , L , lg) → 1 + N , fs′ , FlatSteps-++ st₁ st , shift st₁ L , trans lg (cong (_++ evsOf t) lg₀)
+
+      -- ★ …followed with a control step for every loop entry
+      from-startC : ∀ {sh U′} {t} {c′ : Codeᴵ sh U′} {r′} {m′ n′}
+                  → (run : StepsI main []ʳ start 0 t c′ r′ m′ n′) → AgreesAll [] run
+                  → Σ ℕ λ N → Σ FlatState λ fs′ → Σ (FlatSteps image N start-fs fs′) λ fl
+                    → (LocState.ev-log (floc fs′) ≡ evsOf t) × (loops run ≤ chain-ctrls fl)
+      from-startC {t = t} run ag = case start-related of λ where
+        (fs₁ , st₁ , G₁ , lg₀) → case wholeC run start-invI ag G₁ lg₀ of λ where
+          ((N , fs′ , st , L , lg) , c) →
+            1 + N , fs′ , FlatSteps-++ st₁ st , trans lg (cong (_++ evsOf t) lg₀) ,
+            subst (_ ≤_) (sym (chain-ctrls-++ st₁ st)) (≤-trans c (m≤n+m (chain-ctrls st) (chain-ctrls st₁)))

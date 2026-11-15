@@ -147,6 +147,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
               -- ★ LINKED (D431): the program's ops are declared by the interpretation the machine runs against
               (decl : ∀ {s} → s ∈ ops (Program.U ds f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))) where
     open EndR {Mach} ds f₀ ldConst ld-nl wordOf using (ends)
+    open RunW {Mach} ds f₀ ldConst ld-nl wordOf using (from-startC)
     open FlatEventTrace {Mach} using (flat-ctrls; flat-events-steps; flat-events-step; chain-events; chain-log; chain-left; chain-ctrls; flat-ctrls-steps)
     open FlatStepsAPI {Mach} using (Sound)
 
@@ -162,11 +163,6 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         -- class (OpMachine.Dispatch) but for a structured answer (an undeclared FFI op's stop
         -- is excluded by linkedness, `decl`)
         o-ops   : OM.OwedOp
-        -- ★ …which the machine follows from its first state, a control step at every loop entry (the loop's
-        -- label: master's `flat-cut` counts control steps)
-        o-count : ∀ {sh U′} {t} {c′ : Codeᴵ sh U′} {r′ m′ n′} (st : StepsI main []ʳ start 0 t c′ r′ m′ n′) → AgreesAll [] st
-                → Σ ℕ λ N → Σ FlatState λ fs′ → Σ (FlatSteps image N start-fs fs′) λ fl
-                  → (LocState.ev-log (floc fs′) ≡ evsOf t) × (loops st ≤ chain-ctrls fl)
         -- the machine's run from the start never faults (master's `start-sound`)
         o-sound : Sound image start-fs
 
@@ -266,7 +262,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         -- round the run started, at least one per unit of the budget (`image-cut`, `spent-rounds`)
         by {stop Once.LinCore.Events.exhausted} {t} run eq pl ag ee eo kr = case image-cut run pl of λ where
           (mt , sh , U′ , c′ , r′ , m′ , n′ , st , eio , rl) →
-            case Owed.o-count O st (ag st eio) of λ where
+            case from-startC ld entry-frame entry-regs st (ag st eio) of λ where
               (N , fs′ , fl , lg , cc) →
                 N , trans (cut-events fl) (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee)) eo) ,
                 λ _ → ≤-trans (kr tt) (≤-trans rl (≤-trans cc (cut-ctrls fl)))
