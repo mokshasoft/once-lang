@@ -56,7 +56,7 @@ import Level
 
 module Steps {FS : FrameSemantics} (U : Univ)
              (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
-             (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
+             (ldConst : ∀ {b} → Lit b → AbstractInstr)
              (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS)
              (prog : AbstractTrace)
              {sh₀ U₀} (root : Codeᴵ sh₀ U₀) (j : ℕ)
@@ -72,9 +72,9 @@ module Steps {FS : FrameSemantics} (U : Univ)
 
   -- a constant's loader puts its word in `Output` (the image's `ldConst`'s contract)
   LdOk : Set
-  LdOk = ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
+  LdOk = ∀ {b} (v : Lit b) (fs : FlatState)
        → FlatMachine.flat-exec-instr {FS} (ldConst v) prog fs
-         ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (fpc fs) }
+         ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = suc (fpc fs) }
 
   -- what a local step gives: the flat steps, `Here` at the next path, the
   -- frames kept, the heap counter the image's

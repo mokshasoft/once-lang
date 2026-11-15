@@ -77,7 +77,7 @@ in-mid xs ys zs = xs , [] , trans (++-assoc xs ys zs) (cong (xs ++_) (sym (++-id
 
 module At (U : Univ)
           (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
-          (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
+          (ldConst : ∀ {b} → Lit b → AbstractInstr)
           (φ : Frame) (j : ℕ) where
   open In U
   open Lowering U ncty ldConst

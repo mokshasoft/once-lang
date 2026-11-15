@@ -61,8 +61,8 @@ open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module T
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 
 module StartR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
-           (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-           (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
+           (ldConst : ∀ {b} → Lit b → AbstractInstr)
+           (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS)
            (entry-frame : FrameSemantics.Frame FS) (entry-regs : Registers FS) where
   open Relate {FS} ds f ldConst ld-nl wordOf

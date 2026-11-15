@@ -75,8 +75,8 @@ open import Once.LinCore.StepIos fmt ans bw using (module IosG)
 open import Once.IR.Semantics.Event using (SigOpEvent)
 
 module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
-           (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-           (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
+           (ldConst : ∀ {b} → Lit b → AbstractInstr)
+           (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Relate {FS} ds f ldConst ld-nl wordOf
   open LocalR {FS} ds f ldConst ld-nl wordOf using (module Whole)
@@ -158,9 +158,9 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- halted machine (`Lands`).
   ----------------------------------------------------------------------
 
-  module Theorem (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
+  module Theorem (ld : ∀ {b} (v : Lit b) (fs : FlatState)
                        → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
-                         ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (FlatMachine.fpc fs) }) where
+                         ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = suc (FlatMachine.fpc fs) }) where
     open Whole ld using (gstep-local; gcase₁; gcase₂; gloop; gloop-ctrl; greti)
     open GCall using (gcall; ArrivesAt)
     open GRet using (gret)

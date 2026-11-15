@@ -83,8 +83,8 @@ module _ (U : Univ) where
 
 -- ★ at a related point
 module IosG {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
-            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-            (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
+            (ldConst : ∀ {b} → Lit b → AbstractInstr)
+            (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
             (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Relate {FS} ds f ldConst ld-nl wordOf using (Related; HereP; module Related)
   open Ctl {FS} ds f ldConst ld-nl using (Pnt; p-start; p-block; p-tramp; L₀ˢ; L₀ᵇ; module S; module B)

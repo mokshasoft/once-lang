@@ -29,6 +29,7 @@ import Agda.Builtin.Sigma as Σ
 open import Data.Product using (_×_)
 open import Data.Unit using (⊤; tt)
 open import Function using (case_of_)
+import Data.Integer
 open import Data.Nat using (ℕ; zero; suc; z≤n; s≤s; _+_; _≤_)
 open import Data.Nat.Properties using (n∸n≡0)
 open import Data.List using (List; []; _∷_; _++_)
@@ -632,7 +633,7 @@ list-cause = refl
 
 counter-ir : IR ε One One
 counter-ir = Iter (inr ∘ snd ∘ ⟨ SigOp emit ∘ snd , SigOp succ ∘ snd ⟩)
-                  (i-∘ i-inr (i-∘ i-snd (i-pair (i-∘ i-op i-snd) (i-∘ i-op i-snd)))) ∘ ⟨ terminal , const 0 ⟩
+                  (i-∘ i-inr (i-∘ i-snd (i-pair (i-∘ i-op i-snd) (i-∘ i-op i-snd)))) ∘ ⟨ terminal , const (Data.Integer.+ 0) ⟩
 
 counter-ios : ios (Ran.trace (exec world ε 1 (tr counter-ir) mone mone 0 tt))
             ≡ io-call emitO 0 tt ∷ io-call succO 0 1 ∷ io-call emitO 1 tt ∷ io-call succO 1 2 ∷ []
@@ -719,7 +720,7 @@ two-sizes = refl
 ------------------------------------------------------------------------
 
 list-prog : LTm ε One One
-list-prog = lzero ∘l (liter list-round list-blk ∘l (build ∘l lconst 5))
+list-prog = lzero ∘l (liter list-round list-blk ∘l (build ∘l lconst (Data.Integer.+ 5)))
 
 list-on-machine = machine-legal (Ran.run (exec world ε 1 list-prog mone mone 0 tt)) _
 
@@ -761,11 +762,11 @@ fn-cons = llam cons-body (k-∘ k-ev (k-∘ (k-⊗ k-id k-op) (k-∘ k-lul (k-�
 
 -- the list [7, 5]
 two-list : LTm ε One IntList
-two-list = lIn ∘l linr ∘l (lconst 7 ⊗l (build ∘l lconst 5)) ∘l ρl⁻
+two-list = lIn ∘l linr ∘l (lconst (Data.Integer.+ 7) ⊗l (build ∘l lconst (Data.Integer.+ 5))) ∘l ρl⁻
 
 -- fold it into a function, apply that to 0
 fn-prog : LTm ε One One
-fn-prog = drop ∘l lev ∘l (lid ⊗l lconst 0) ∘l ρl⁻ ∘l lcata ListF (lcase fn-nil fn-cons) ∘l two-list
+fn-prog = drop ∘l lev ∘l (lid ⊗l lconst (Data.Integer.+ 0)) ∘l ρl⁻ ∘l lcata ListF (lcase fn-nil fn-cons) ∘l two-list
 
 fn-run : Ran world ε fn-prog mone mone 0 0 tt
 fn-run = exec world ε 0 fn-prog mone mone 0 tt
@@ -816,7 +817,7 @@ pick = lcase count-up stand-still
 
 nu-prog : LTm ε One One
 nu-prog = drop ∘l lul ∘l (lop emit ⊗l lid) ∘l lul ∘l (lop emit ⊗l lout) ∘l lout
-        ∘l lunf ∘l ((pick ∘l linl) ⊗l lconst 3) ∘l ρl⁻
+        ∘l lunf ∘l ((pick ∘l linl) ⊗l lconst (Data.Integer.+ 3)) ∘l ρl⁻
 
 nu-run : Ran world ε nu-prog mone mone 0 0 tt
 nu-run = exec world ε 0 nu-prog mone mone 0 tt
@@ -864,7 +865,7 @@ nats-ir = Ana NatsF ⟨ snd , SigOp succ ∘ snd ⟩ (i-pair i-snd (i-∘ i-op i
 
 ho-ir : IR ε One One
 ho-ir = apply ∘ ⟨ emitter ∘ fst ∘ Outν NatsF ∘ snd ∘ Outν NatsF ∘ in-ν NatsF
-                    ∘ ⟨ const 1 , nats-ir ∘ ⟨ terminal , const 3 ⟩ ⟩
+                    ∘ ⟨ const (Data.Integer.+ 1) , nats-ir ∘ ⟨ terminal , const (Data.Integer.+ 3) ⟩ ⟩
                 , terminal ⟩
 
 ho-run : Ran world ε (tr ho-ir) mone mone 0 0 tt
@@ -901,7 +902,7 @@ calls-P : Prog Defs₂
 calls-P = (ε ▹ SigOp succ ∣ i-op) ▹ (SigOp emit ∘ Call here) ∣ i-∘ i-op i-call
 
 calls-main : IR Defs₂ One One
-calls-main = Call here ∘ Call (there here) ∘ const 9
+calls-main = Call here ∘ Call (there here) ∘ const (Data.Integer.+ 9)
 
 calls-run : Ran world (trP calls-P) (tr calls-main) mone mone 0 0 tt
 calls-run = exec world (trP calls-P) 0 (tr calls-main) mone mone 0 tt

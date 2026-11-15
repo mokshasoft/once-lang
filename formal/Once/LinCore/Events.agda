@@ -458,7 +458,7 @@ data Run {Γ} ds where
           → Run ds (lunf {F = F} {S}) e p n (gives (mnu (szν F S , n) p) (suc n)) (alloc (szν F S , n) ∷ [])
   r-nout  : ∀ {E F S} {e : MV E} {i} {p : MV (Coalg F S ⊗t S)} {o n t}
           → Run ds (obsT F S) mone p n o t → Run ds (lout {F = F}) e (mnu i p) n o (free i ∷ t)
-  r-const : ∀ {E b} {v : ⟦ b ⟧b} {e : MV E} {n} → Run ds (lconst v) e mone n (gives (mbase v) n) []
+  r-const : ∀ {E b} {v : Lit b} {e : MV E} {n} → Run ds (lconst v) e mone n (gives (mbase (lit v)) n) []
   -- ★ A11, B1.2: a SigOp follows its contract's block (`opF`): its calls are
   -- events, each answered as the world chooses; it gives a flat value (no
   -- cell), or a halting op ends the run

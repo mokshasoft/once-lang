@@ -61,8 +61,8 @@ data Final {T : Sh} : ∀ {sh U′} → Codeᴵ sh U′ → Ret U′ T → Set w
   f-halt : ∀ {sh U′} {r : Ret U′ T} → Final (halted {sh} {U′}) r
 
 module EndR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
-            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-            (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
+            (ldConst : ∀ {b} → Lit b → AbstractInstr)
+            (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
             (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Relate {FS} ds f ldConst ld-nl wordOf using (Related; HereP; RetOK; ok-top; rootOf; module Related; module S)
   open Ctl {FS} ds f ldConst ld-nl using (main; Pnt; p-start; p-block; p-tramp; p-halt; ptFin)
@@ -107,9 +107,9 @@ module EndR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   -- ★★ THE WHOLE RUN: from the flat machine's first state to a halted machine whose log is the run's
   -- observable events, relative to the machine's world at each op (D426)
-  module _ (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
+  module _ (ld : ∀ {b} (v : Lit b) (fs : FlatState)
                  → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
-                   ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = Data.Nat.suc (fpc fs) })
+                   ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = Data.Nat.suc (fpc fs) })
            (entry-frame : FrameSemantics.Frame FS) (entry-regs : Registers FS) where
     open RunW {FS} ds f ldConst ld-nl wordOf using (AgreesAll; from-start)
     open StepR {FS} ds f ldConst ld-nl wordOf using (module Theorem)

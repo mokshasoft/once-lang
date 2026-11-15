@@ -62,8 +62,8 @@ open import Once.LinCore.GlobalTrampO fmt ans bw using (module TrampO)
 open import Once.LinCore.GlobalTrampC fmt ans bw using (module TrampC)
 
 module DispC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
-           (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-           (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
+           (ldConst : ∀ {b} → Lit b → AbstractInstr)
+           (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Relate {FS} ds f ldConst ld-nl wordOf
   open TrampR {FS} ds f ldConst ld-nl wordOf

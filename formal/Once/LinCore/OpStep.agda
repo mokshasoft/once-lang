@@ -56,7 +56,7 @@ open import Once.LinCore.StepOp fmt ans bw using (module Agree; hdOr)
 
 module OpSim {FS : FrameSemantics} (U : Univ)
              (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
-             (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
+             (ldConst : ∀ {b} → Lit b → AbstractInstr)
              (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Lowering U ncty ldConst using (answer; ansDst; argIn; lowOp)
   open Rel {FS} U wordOf
@@ -430,7 +430,7 @@ op-n (r-tmp r _ _) = op-n r
 
 module OpR {FS : FrameSemantics} (U : Univ)
            (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
-           (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
+           (ldConst : ∀ {b} → Lit b → AbstractInstr)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS)
            (prog : AbstractTrace)
            {sh₀ U₀} (root : Codeᴵ sh₀ U₀) (j : ℕ)

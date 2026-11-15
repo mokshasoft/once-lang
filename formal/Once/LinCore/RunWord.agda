@@ -68,8 +68,8 @@ log-halt : ∀ {a b : List SigOpEvent} t₁ {t₂ : Trace} → b ≡ a ++ evsOf 
 log-halt {a} t₁ e refl = trans e (cong (λ z → a ++ evsOf z) (sym (++-identityʳ t₁)))
 
 module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
-            (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-            (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
+            (ldConst : ∀ {b} → Lit b → AbstractInstr)
+            (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
             (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Relate {FS} ds f ldConst ld-nl wordOf using (Related)
   open Ctl {FS} ds f ldConst ld-nl using (main)
@@ -101,9 +101,9 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   halt-loops done e = refl
   halt-loops (() ⟫ _) refl
 
-  module _ (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
+  module _ (ld : ∀ {b} (v : Lit b) (fs : FlatState)
                  → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
-                   ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = Data.Nat.suc (fpc fs) }) where
+                   ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = Data.Nat.suc (fpc fs) }) where
     open Theorem ld using (word-step; word-stepC; Lands; HaltC)
 
     -- a landing seen from earlier: the halting op's running state, after more steps

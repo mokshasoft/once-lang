@@ -73,8 +73,8 @@ module Fetch {FS : FrameSemantics} where
 ------------------------------------------------------------------------
 
 module Ctl {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
-           (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-           (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {FS} (ldConst v) ≡ nothing) where
+           (ldConst : ∀ {b} → Lit b → AbstractInstr)
+           (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing) where
   open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
   open Program ds f using (U; blocks-in; start-in)
   open ProgramRun ds f using (ncty)

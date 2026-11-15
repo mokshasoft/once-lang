@@ -117,8 +117,8 @@ endO (stop Once.LinCore.Events.halted)         = just Once.Spec.Trace.halted
 endO (stop Once.LinCore.Events.exhausted)      = nothing
 
 module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
-           (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-           (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {Mach} (ldConst v) ≡ nothing)
+           (ldConst : ∀ {b} → Lit b → AbstractInstr)
+           (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {Mach} (ldConst v) ≡ nothing)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
            (w-int   : ∀ (n : ⟦ int ⟧b)   → wordOf {int} n ≡ SV-Lit fits-int n)
            (w-float : ∀ (n : ⟦ float ⟧b) → wordOf {float} n ≡ SV-Lit fits-float n)
@@ -143,9 +143,9 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
   R : (K : ℕ) → Ran Wι ds f₀ mone mone 1 K []
   R K = exec Wι ds K f₀ mone mone 1 []
 
-  module _ (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
+  module _ (ld : ∀ {b} (v : Lit b) (fs : FlatState)
                  → FlatMachine.flat-exec-instr {Mach} (ldConst v) image fs
-                   ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (fpc fs) })
+                   ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = suc (fpc fs) })
               -- ★ LINKED (D431): the program's ops are declared by the interpretation the machine runs against
               (decl : ∀ {s} → s ∈ ops (Program.U ds f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))) where
     open EndR {Mach} ds f₀ ldConst ld-nl wordOf using (ends)
@@ -356,8 +356,8 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
 module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
              (tp : FromIR.TrProg) (etp : FromIR.trTable tbl ≡ just tp)
              (f : IR (FromIR.TrProg.Γ tp) One One) (ef : FromIR.trI (FromIR.TrProg.rs tp) ir ≡ just f)
-             (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-             (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {Mach} (ldConst v) ≡ nothing)
+             (ldConst : ∀ {b} → Lit b → AbstractInstr)
+             (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {Mach} (ldConst v) ≡ nothing)
              (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
              (w-int   : ∀ (n : ⟦ int ⟧b)   → wordOf {int} n ≡ SV-Lit fits-int n)
              (w-float : ∀ (n : ⟦ float ⟧b) → wordOf {float} n ≡ SV-Lit fits-float n)
@@ -376,9 +376,9 @@ module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
   obsᴰ : ℕ → TM.Run (Once.Denotation.Approx.Ap Data.Unit.⊤)
   obsᴰ k = TM.run ι [] (approx k (DT.evalᴰ fmt (tableEnv fmt ans tbl) ir tt))
 
-  module _ (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatMachine.FlatState {Mach})
+  module _ (ld : ∀ {b} (v : Lit b) (fs : FlatMachine.FlatState {Mach})
                  → FlatMachine.flat-exec-instr {Mach} (ldConst v) TP.image fs
-                   ≡ record fs { floc = record (FlatMachine.floc fs) { regs = writeReg (LocState.regs (FlatMachine.floc fs)) Output (wordOf v) }
+                   ≡ record fs { floc = record (FlatMachine.floc fs) { regs = writeReg (LocState.regs (FlatMachine.floc fs)) Output (wordOf (lit v)) }
                                ; fpc = suc (FlatMachine.fpc fs) }) where
     open FlatEventTrace {Mach} using (flat-events; flat-ctrls)
     open FlatMachine {Mach} using (FlatState)

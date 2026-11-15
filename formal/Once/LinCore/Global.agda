@@ -62,8 +62,8 @@ open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
 open import Once.LinCore.TrampAt fmt ans bw using (under; module TrImg; module Tr)
 
 module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
-           (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-           (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
+           (ldConst : ∀ {b} → Lit b → AbstractInstr)
+           (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Ctl {FS} ds f ldConst ld-nl using (main; L₀ˢ; L₀ᵇ; start-root; blockFin; Pnt; p-start; p-block; p-tramp; p-halt; ptFin; trFin)
   open Program ds f using (U)
@@ -838,9 +838,9 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                          ≡ LocState.stackMem (floc fs) (AllocState.current-frame (falloc fs)) x
   top-at {fs′ = fs′} K tp x le = trans (cong (λ g → LocState.stackMem (floc fs′) g x) (sym (k-frame K))) (tp x le)
 
-  module AtRoot (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
+  module AtRoot (ld : ∀ {b} (v : Lit b) (fs : FlatState)
                      → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
-                       ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (FlatMachine.fpc fs) })
+                       ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = suc (FlatMachine.fpc fs) })
                 (R : RootId) {sh₀ U₀} (root : Codeᴵ sh₀ U₀) (j : ℕ)
                 (L₀ : At.Low U ncty ldConst (frameOf root) j root)
                 (Rin : Inside image (At.code U ncty ldConst (frameOf root) j L₀))

@@ -85,8 +85,8 @@ module FramesH {FS : FrameSemantics} where
 ------------------------------------------------------------------------
 
 module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
-              (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-              (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
+              (ldConst : ∀ {b} → Lit b → AbstractInstr)
+              (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
               (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Program ds f using (U)
   open ProgramRun ds f using (ncty)

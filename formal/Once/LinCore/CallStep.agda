@@ -92,8 +92,8 @@ module Frames {FS : FrameSemantics} where
 ------------------------------------------------------------------------
 
 module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
-             (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-             (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
+             (ldConst : ∀ {b} → Lit b → AbstractInstr)
+             (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
              (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Ctl {FS} ds f ldConst ld-nl using (L₀ᵇ; block-root; blockFin)
   open Program ds f using (U; blocks-in)

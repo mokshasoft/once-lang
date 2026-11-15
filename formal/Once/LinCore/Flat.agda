@@ -20,6 +20,8 @@ open import Data.Unit using (⊤)
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 open import Once.Spec.Word using (Carrier)
+open import Data.Integer using (ℤ)
+open import Once.Spec.Float.Decimal using (Decimal)
 
 infixr 40 _f+_
 infixr 50 _f*_
@@ -44,3 +46,8 @@ data Base : Set where
 ⟦_⟧b : Base → Set
 ⟦ int ⟧b   = Carrier
 ⟦ float ⟧b = Carrier
+
+-- ★ D433: a literal's PAYLOAD, source syntax (D113, master's `LitPayload`): it becomes bits only at a format
+Lit : Base → Set
+Lit int   = ℤ
+Lit float = Decimal

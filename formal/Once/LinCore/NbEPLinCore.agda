@@ -63,6 +63,9 @@ open import Agda.Builtin.Equality using (_≡_; refl)
 import Once.LinCore.Flat
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Word using (Carrier)
+import Once.Spec.Word
+import Once.Spec.Float.Decimal
+import Once.Spec.Numerics
 open import Once.Spec.Type using (Type; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; ∅ₖ)
 import Once.Spec.Type as ST
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
@@ -72,7 +75,12 @@ open import Once.Denotation.DenotTrace using (sigOpT)
 
 module Once.LinCore.NbEPLinCore (fmt : TargetNum) (ans : FFIAnswers) where
 
-open Once.LinCore.Flat public using (FTy; funit; fvoid; fw; _f*_; _f+_; ⟦_⟧F; Base; int; float; ⟦_⟧b)
+open Once.LinCore.Flat public using (FTy; funit; fvoid; fw; _f*_; _f+_; ⟦_⟧F; Base; int; float; ⟦_⟧b; Lit)
+
+-- ★ D433: a literal materialized at the target's format (D113: FromIR's function, now the meaning's)
+lit : ∀ {b} → Lit b → ⟦ b ⟧b
+lit {int}   z = Once.Spec.Word.Width.fromℤ (Once.Spec.Numerics.TargetNum.int-bits fmt) z
+lit {float} d = Once.Spec.Float.Decimal.round (Once.Spec.Numerics.TargetNum.float-format fmt) d
 
 open import Once.IR.Semantics.Trace using (T; ret; call; halt; CallOp; HaltOp) public
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBlock; fmap∞; iterRun; iterBlock; iter∞) public
@@ -479,7 +487,7 @@ data Tm Γ where
   lunf    : ∀ {F S E} → Tm Γ E (Fn many act S (LF∙ F S) ⊗t S) (Nu F)
   lout    : ∀ {F E} → Tm Γ E (Nu F) (LF∙ F (Nu F))
   -- ★ A15: a constant of a base type (the IR's `const`): a word, no event
-  lconst  : ∀ {b E} → ⟦ b ⟧b → Tm Γ E One (Bt b)
+  lconst  : ∀ {b E} → Lit b → Tm Γ E One (Bt b)
   -- ★ A11, B1.2: the SigOps, anywhere a term can be. `lop s` runs the op's
   -- contract block (`opB`): no event (pure), an event and the world's answer
   -- (emits, answers), or the run ends (halts: the Spec's halt by the op's
@@ -532,7 +540,7 @@ data Blk {Γ} where
   k-bev    : ∀ {A B} → Blk (bev {g = act} {A} {B})
   k-unf    : ∀ {F S E} → Blk (lunf {F = F} {S} {E})
   k-nout   : ∀ {F E} → Blk (lout {F = F} {E})
-  k-const  : ∀ {b E} {v : ⟦ b ⟧b} → Blk (lconst {E = E} v)
+  k-const  : ∀ {b E} {v : Lit b} → Blk (lconst {E = E} v)
   k-op     : ∀ {s E} → Blk (lop s {E})
 
 -- a term with nothing lent
@@ -680,7 +688,7 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     -- ★ the Spec's unfold and observation
     Lᶜ (lunf {F} {S}) e         cs             = return∞ (anaN F (cohc F S (fst cs)) (snd cs))
     Lᶜ (lout {F})     e         v              = emb (fmapT (coh⁻¹ F (Nu F)) (outν v))
-    Lᶜ (lconst v)     e         _              = return∞ v
+    Lᶜ (lconst v)     e         _              = return∞ (lit v)
     Lᶜ (lop s)        e         x              = emb (opB s x)
     Lᶜ (liter f _)    e         a              = iter∞ (Lᶜ f e) a
 
@@ -742,7 +750,7 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᴮ k-bev         f         a             = f a
     Lᴮ (k-unf {F} {S}) e       cs            = ret (anaN F (cohc F S (fst cs)) (snd cs))
     Lᴮ (k-nout {F})  e         v             = fmapT (coh⁻¹ F (Nu F)) (outν v)
-    Lᴮ (k-const {v = v}) e     _             = ret v
+    Lᴮ (k-const {v = v}) e     _             = ret (lit v)
     Lᴮ (k-op {s})    e         x             = opB s x
 
     cataB : ∀ F {X : Set} → (FS F X → T X) → Mu F → T X

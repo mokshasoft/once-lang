@@ -221,8 +221,9 @@ module _ {Γ : Cx} (rs : Resolver Γ) where
     let c″ = subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′
     in blk? c″ >>= λ φ → just (P.Ana (lf F) c″ φ)
   trI (M.Iter b)          = trI b >>= λ b′ → blk? b′ >>= λ φ → just (P.Iter b′ φ)
-  trI (M.const fits-int v)   = just (P.const {b = int} (OnceWord.Width.fromℤ (int-bits fmt) v))
-  trI (M.const fits-float v) = just (P.const {b = float} (round (float-format fmt) v))
+  -- D433: the payload, materialized by the core's meaning (`lit`), as master's by its machine
+  trI (M.const fits-int v)   = just (P.const {b = int} v)
+  trI (M.const fits-float v) = just (P.const {b = float} v)
   trI (M.SigOp {A} {B} si)   =
     just (subst₂ (P.IR Γ) (sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si))) (sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si)))
                  (P.SigOp (sig si)))
@@ -305,8 +306,8 @@ module _ {Γ : Cx} (rs : Resolver Γ) where
     t-ana   : ∀ {F} (wf : WellFormedFI F) {E A} {c : M.IR (E * A) (⟦ F ⟧TI A)} {c′} → Tr c c′ → ∀ φ →
               Tr (M.Ana wf c) (P.Ana (lf F) (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′) φ)
     t-iter  : ∀ {E A B} {b : M.IR (E * A) (B + A)} {b′} → Tr b b′ → ∀ φ → Tr (M.Iter b) (P.Iter b′ φ)
-    t-int   : ∀ {v} → Tr (M.const fits-int v) (P.const {b = int} (OnceWord.Width.fromℤ (int-bits fmt) v))
-    t-float : ∀ {v} → Tr (M.const fits-float v) (P.const {b = float} (round (float-format fmt) v))
+    t-int   : ∀ {v} → Tr (M.const fits-int v) (P.const {b = int} v)
+    t-float : ∀ {v} → Tr (M.const fits-float v) (P.const {b = float} v)
     t-op    : ∀ {A B} (si : SigOpInfo A B) →
               Tr (M.SigOp si) (subst₂ (P.IR Γ) (sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si))) (sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si)))
                                       (P.SigOp (sig si)))

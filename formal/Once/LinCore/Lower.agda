@@ -127,7 +127,7 @@ contentsAddr (suc _) = addr-at hdr
 
 module Lowering (U : Univ)
                 (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
-                (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr) where
+                (ldConst : ∀ {b} → Lit b → AbstractInstr) where
   open In U
 
   -- the frame's save slots, above both regions
@@ -427,7 +427,7 @@ module Lowering (U : Univ)
   blocksOf ((σ , κ) ∷ ks) ev j = lowBlock j κ (ev (here refl)) ++ tramp j κ ++ blocksOf ks (λ p → ev (there p)) (suc j)
     where open import Relation.Binary.PropositionalEquality using (refl)
 
-module Program′ {Γ} (ds : Defs Γ) (f : LTm Γ One One) (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr) where
+module Program′ {Γ} (ds : Defs Γ) (f : LTm Γ One One) (ldConst : ∀ {b} → Lit b → AbstractInstr) where
   open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
   open Program ds f using (U; blocks-in; start-in)
   open ProgramRun ds f using (ncty)

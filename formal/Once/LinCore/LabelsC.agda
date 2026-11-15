@@ -149,8 +149,8 @@ module LabsC {FS : FrameSemantics} where
 
   module C (U : Univ)
            (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
-           (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-           (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → mark (ldConst v) ≡ nothing) where
+           (ldConst : ∀ {b} → Lit b → AbstractInstr)
+           (ld-nl : ∀ {b} (v : Lit b) → mark (ldConst v) ≡ nothing) where
     open In U
     open Lowering U ncty ldConst
     open Free U ncty ldConst ld-nl

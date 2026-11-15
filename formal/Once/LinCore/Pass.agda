@@ -97,7 +97,7 @@ module _ (Γ : Cx) where
     in-ν     : ∀ F → IR (LF∙ F (Nu F)) (Nu F)
     -- the loop (D317): the round reads a fixed environment and the state
     Iter     : ∀ {E A B} (body : IR (E ⊗t A) (B ⊕t A)) → BlkIR body → IR (E ⊗t A) B
-    const    : ∀ {b} → ⟦ b ⟧b → IR One (Bt b)
+    const    : ∀ {b} → Lit b → IR One (Bt b)
     SigOp    : (s : Sig) → IR ⌜ sdom s ⌝ ⌜ scod s ⌝
     -- ★ D245: a direct call of an earlier definition of the program (the D064
     -- direct-call ABI, `call once_f`)
@@ -123,7 +123,7 @@ module _ (Γ : Cx) where
     i-ana   : ∀ {F E A} {c : IR (E ⊗t A) (LF∙ F A)} {φ : BlkIR c} → BlkIR (Ana F c φ)
     i-Out   : ∀ {F} → BlkIR (Out F)
     i-inν   : ∀ {F} → BlkIR (in-ν F)
-    i-const : ∀ {b} {v : ⟦ b ⟧b} → BlkIR (const v)
+    i-const : ∀ {b} {v : Lit b} → BlkIR (const v)
     i-op    : ∀ {s} → BlkIR (SigOp s)
     -- a call of a definition of grade `act` is a block
     i-call  : ∀ {l A B} {p : Γ ∋[ l ] sg once act One A B} → BlkIR (Call p)
@@ -165,7 +165,7 @@ module _ {Γ : Cx} (δ : Env Γ) where
     ev (Out F)          v        = emb (fmapT (coh⁻¹ F (Nu F)) (outν v))
     ev (in-ν F)         x        = return∞ (inν (coh F (Nu F) x))
     ev (Iter body _)    (e , a)  = iter∞ (λ a′ → ev body (e , a′)) a
-    ev (const v)        _        = return∞ v
+    ev (const v)        _        = return∞ (lit v)
     ev (SigOp s)        x        = emb (opB s x)
     ev (Call {g = g} p) a        = up g (lookup δ p tt a)
 
@@ -189,7 +189,7 @@ module _ {Γ : Cx} (δ : Env Γ) where
     evB (i-ana {F} {A = A} {φ = φ}) (e , a) = ret (anaN F (λ a′ → fmapT (coh F A) (evB φ (e , a′))) a)
     evB (i-Out {F})     v        = fmapT (coh⁻¹ F (Nu F)) (outν v)
     evB (i-inν {F})     x        = ret (inν (coh F (Nu F) x))
-    evB (i-const {v = v}) _      = ret v
+    evB (i-const {v = v}) _      = ret (lit v)
     evB (i-op {s})      x        = opB s x
     evB (i-call {p = p}) a       = lookup δ p tt a
 

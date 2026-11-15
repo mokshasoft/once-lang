@@ -23660,3 +23660,27 @@ much part of the IRs as they are, so it should not be handled differently for th
   word (`SlotsAt`), so the in-place writer writes them too. (Unattended, for the user's review.)
 * The flat theorem (`FlatTop.IRTop`) owes nothing now; master's `obs-correct-sigop-rest` (the old
   lowering's structured case) goes with the old lowering in B1.7.
+
+## D433 — THE CORE'S CONSTANTS ARE LITERAL PAYLOADS, MATERIALIZED BY THEIR MEANING AND BY THE MACHINE (2026-11-15)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.6, found stating the new image's arch apex:
+the image's constant load `ldConst` has to be a machine instruction). **Applies**: D113 (a literal reaches
+the target UN-ENCODED: its payload is source syntax — `ℤ`, a `Decimal` — and becomes bits only at a
+format; `SMCore.lit-value` is that one place), D054/D115 (the target's width).
+
+### The problem
+FromIR materialized a literal (`fromℤ (int-bits fmt)`, `round (float-format fmt)`) and the core's
+`lconst` held the bits. The machine's only literal load, `instr-load-const`, takes a payload and
+materializes it itself; a word the core holds (a rounded `Float`, an infinity) need not have a payload
+that gives it back. So the new image could not load a core constant.
+
+### Decision (proposed)
+* `Flat.Lit` is a literal's payload (master's `LitPayload`: `ℤ`, `Decimal`); the core's `lconst` and
+  Pass's `const` carry it, and their meaning materializes it (`lit`, at the target's format — the
+  function FromIR applied), so every semantics is as before.
+* FromIR passes the payload through; `ldConst` takes the payload — on a machine, `instr-load-const`,
+  whose `lit-value` agrees with `lit` at the machine's format.
+
+### Alternatives
+* Encode the core's bits back to a payload: impossible for a rounded `Float` with no decimal preimage.
+* A machine instruction loading a raw word: a second literal path, against D113's one place.

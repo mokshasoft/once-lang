@@ -144,8 +144,8 @@ open import Once.LinCore.RunWord fmt ans bw using (module RunW)
 open import Function using (case_of_)
 
 module AR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
-          (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
-          (ld-nl : ∀ {b} (v : ⟦ b ⟧b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
+          (ldConst : ∀ {b} → Lit b → AbstractInstr)
+          (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
           (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) (ι : Interp)
           (o-op : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {y₀ tp L L′}
                 → OpPath (opF s (toF (sdom s) (er x))) tp (inj₁ y₀) → WTr (BudgetSound.W.Wι ι) L tp L′

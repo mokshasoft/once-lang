@@ -112,7 +112,7 @@ module PrimW {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
 
 module Prims {FS : FrameSemantics} (U : Univ)
              (ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U)
-             (ldConst : ∀ {b} → ⟦ b ⟧b → AbstractInstr)
+             (ldConst : ∀ {b} → Lit b → AbstractInstr)
              (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS)
              (prog : AbstractTrace)
              {sh₀ U₀} (root : Codeᴵ sh₀ U₀) (j : ℕ)
@@ -264,14 +264,14 @@ module Prims {FS : FrameSemantics} (U : Univ)
       (sym (cong (λ z → suc (suc z)) (trans (length-++ (mvSP (bot ∸ wL) 0 wL)) (cong (_+ 2) (len-mvSP (bot ∸ wL) 0 wL)))))
       (λ sg h C → drop-next (lIn-sim prog fs φ refl fr sg h C (proj₂ (shape-fits (next s)))))
 
-  st-const : ∀ {Γ} {ds : Defs Γ} {Es b S V} {v : ⟦ b ⟧b} {k : Codeᴵ (Es ∣ Bt b ∷ S) V}
+  st-const : ∀ {Γ} {ds : Defs Γ} {Es b S V} {v : Lit b} {k : Codeᴵ (Es ∣ Bt b ∷ S) V}
                (s : Sub root (prim ds (lconst v) ⨾ k))
                {es : Slots Es} {os : Stk S} {fs}
            → FlatMachine.flat-exec-instr {FS} (ldConst v) prog fs
-             ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf v) } ; fpc = suc (fpc fs) }
-           → Here s (es ∥ mone ∷ˢ os) fs → Moved (next s) fs 0 (es ∥ mbase v ∷ˢ os)
+             ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = suc (fpc fs) }
+           → Here s (es ∥ mone ∷ˢ os) fs → Moved (next s) fs 0 (es ∥ mbase (lit v) ∷ˢ os)
   st-const {v = v} s {fs = fs} eld H =
-    straight s H _ 0 refl (λ sg h C → lconst-sim prog fs φ v (ldConst v) eld sg h C (proj₂ (shape-fits (next s))))
+    straight s H _ 0 refl (λ sg h C → lconst-sim prog fs φ (lit v) (ldConst v) eld sg h C (proj₂ (shape-fits (next s))))
 
   private
     len-cell : ∀ w jb jc jf bot → length (header w jb jc jf ++ mvSP (bot ∸ w) hdr w ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ [])
