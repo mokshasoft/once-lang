@@ -108,3 +108,20 @@ module Dec {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   arg-dec ST.b-Float fs d v (vbase {x = n}) sx = cong (λ w → decode-at ST.b-Float w (at-arg fs v)) (w-float n)
   arg-dec (ST.b-* a b) fs d v p sx = read-in (ST.b-* a b) (at-arg fs v) (AllocState.current-frame (falloc fs)) d p sx
   arg-dec (ST.b-+ a b) fs d v p sx = read-in (ST.b-+ a b) (at-arg fs v) (AllocState.current-frame (falloc fs)) d p sx
+
+  -- ★ D432: the same at the sigop's state for an answer in memory (`Output` its destination)
+  arg-decD : ∀ {A} (b : ST.Base ST.∅ₖ A) (fs : FlatState) d (v p : StoredValue FS) {h} {x : MV ⌜ flatB b ⌝} {wx : List W}
+           → VW h x wx → SlotsAt (LocState.stackMem (floc fs) (AllocState.current-frame (falloc fs))) d wx
+           → decode-at b (argV b fs d wx) (record (at-arg fs v) { regs = writeReg (LocState.regs (at-arg fs v)) Output p })
+             ≡ just (toV b (toF (flatB b) (er x)))
+  arg-decD (ST.b-var {i = ()} _) fs d v p px sx
+  arg-decD ST.b-Unit fs d v p vone sx = refl
+  arg-decD ST.b-Void fs d v p () sx
+  arg-decD ST.b-Int fs d v p (vbase {x = n}) sx =
+    cong (λ w → decode-at ST.b-Int w (record (at-arg fs v) { regs = writeReg (LocState.regs (at-arg fs v)) Output p })) (w-int n)
+  arg-decD ST.b-Float fs d v p (vbase {x = n}) sx =
+    cong (λ w → decode-at ST.b-Float w (record (at-arg fs v) { regs = writeReg (LocState.regs (at-arg fs v)) Output p })) (w-float n)
+  arg-decD (ST.b-* a b) fs d v p px sx =
+    read-in (ST.b-* a b) (record (at-arg fs v) { regs = writeReg (LocState.regs (at-arg fs v)) Output p }) (AllocState.current-frame (falloc fs)) d px sx
+  arg-decD (ST.b-+ a b) fs d v p px sx =
+    read-in (ST.b-+ a b) (record (at-arg fs v) { regs = writeReg (LocState.regs (at-arg fs v)) Output p }) (AllocState.current-frame (falloc fs)) d px sx

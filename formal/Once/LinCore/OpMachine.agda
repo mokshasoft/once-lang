@@ -7,11 +7,11 @@
 -- answered by the interpretation's world from a history, is what the
 -- machine's sigop computes at a state whose log is that history
 -- (`StepOp.OpVal`/`OpHalt`): the same events (the call at the decoded
--- argument, `ArgDecode`), the same halting, and the answer's word the
--- Output. By the contract class (`SigOp.Info.SigOpSem`), as master's
--- `IRObsCorrect.SigOp`: an emitting, halting or answering op here; a pure
--- one, a compare, and a codomain that fits no register are what the module
--- is given (`OpsOwed`).
+-- argument, `ArgDecode`), the same halting, and the same answer: a scalar
+-- the Output's word, a product or a sum its words written in place at the
+-- result's slots (D432, `AnsWrite`), Unit none. By the contract class
+-- (`SigOp.Info.SigOpSem`), as master's `IRObsCorrect.SigOp`: every class,
+-- for every base answer (`Dispatch`).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --guardedness #-}
@@ -28,7 +28,10 @@ import Once.Type.Core
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
+open import Once.CCC.Machine.Locations using (AtStack)
+open import Data.Bool using (true)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Once.Type.Core using (isUnit?)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.LinCore.Flat using (Base)
@@ -54,7 +57,8 @@ open import Once.LinCore.Keys fmt ans bw using (Univ)
 open import Once.LinCore.Total fmt ans bw using (WTr; CutOp; CutAt; c-here; c-call)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree; evsOf)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
-open import Once.LinCore.Lower fmt ans bw using (flatB)
+open import Once.LinCore.Lower fmt ans bw using (flatB; inMem)
+import Once.LinCore.AnsWrite
 import Once.LinCore.BudgetSound
 import Once.LinCore.ArgDecode
 import Once.Semantics.Machine
@@ -231,6 +235,73 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
   -- structured type (a product, or a sum that is not a compare's) has no machine
   -- semantics yet (master owes it too: `structured-pure-sigop-output`). An undeclared FFI
   -- op stops where the machine goes on: excluded by linkedness (D431, `Dispatch.decl`).
+  -- ★ D432: AN ANSWER IN MEMORY (a product, a sum), as every other value's: the sigop writes
+  -- its words at the destination `Output` holds (`sigop-store`), the image's (`AnsWrite`)
+  open Agree {Mach} U wordOf using (OpValN; argD)
+  open Once.LinCore.ArgDecode.Dec fmt ans bw {Mach} U wordOf w-int w-float using (arg-decD)
+  open Once.LinCore.AnsWrite.Wr fmt ans bw {Mach} U wordOf w-int w-float using (st-words)
+  open AbstractExec {Mach} using (sigop-answer; sigop-answer-of; pure-ans-at; res-just; call-ans-at; call-sigop-dec)
+
+  op-mem-pure : ∀ {A B} {n} {c : SigOpSem A B} {bA : ST.Base ST.∅ₖ A} (bB : ST.Base ST.∅ₖ B) {x : MV ⌜ flatB bA ⌝} {y₀ tp L L′}
+              → inMem bB ≡ true → in-memory? B ≡ true
+              → effect-of c ≡ Pure → cmp-of c ≡ nothing → PureAgree n c bA bB (toV bA (toF (flatB bA) (er x)))
+              → OpPath (opF (sig (mk-info' n c bA bB)) (toF (flatB bA) (er x))) tp (inj₁ y₀)
+              → WTr Wι L tp L′ → ∀ fs → LocState.ev-log (floc fs) ≡ L
+              → OpVal (sig (mk-info' n c bA bB)) x (mvF (flatB bB) y₀) (evsOf tp) fs
+  op-mem-pure {B = B} {n = n} {c = c} {bA = bA} bB {x = x} {y₀ = y₀} {tp = tp} ik im ep nc (w , sm , tr) p wt fs lg =
+    subst (λ m → OpValM (sig si) m x (mvF (flatB bB) y₀) (evsOf tp) fs) (sym nc)
+      (subst (λ k → OpValN k (sig si) x (mvF (flatB bB) y₀) (evsOf tp) fs) (sym ik) body)
+    where
+      si = mk-info' n c bA bB
+      rp = ret-path (subst (λ T → OpPath (fmapT (fromV bB) T) tp (inj₁ y₀)) tr p)
+      body : OpValN true (sig si) x (mvF (flatB bB) y₀) (evsOf tp) fs
+      body d dst wx px sx =
+        trans (cong (λ e → exec-sigop-halts-of e si st) ep) (cong unread? dec) ,
+        trans (cong (λ e → sigop-events-of e si st) ep) (cong evsOf (sym (proj₁ rp))) ,
+        wd (st-words bB (in-memory? B) im (sigop-answer si st) w ans≡ cf dst st {h = LocState.heapMem (floc fs)})
+        where
+          cf = AllocState.current-frame (FlatMachine.falloc fs)
+          st = argD (sig si) fs d dst wx
+          dec = arg-decD bA fs d (argV bA fs d wx) (SV-Ptr (AtStack cf dst)) px sx
+          ans≡ : sigop-answer si st ≡ just w
+          ans≡ = trans (cong (λ e → sigop-answer-of e si st) ep)
+                   (trans (cong (pure-ans-at si) dec) (cong res-just sm))
+          wd : _ → _
+          wd (wy , pw , sy) = wy , subst (λ z → VW (LocState.heapMem (floc fs)) (mvF (flatB bB) z) wy) (sym (proj₂ rp)) pw , sy
+
+  private
+    ans-mem : ∀ {A B} (si : SigOpInfo A B) (st : LocState Mach) {a b L} (u : Dec (B ≡ ST.Unit)) (nu : B ≡ ST.Unit → ⊥)
+            → LocState.ev-log st ≡ L
+            → (D : Dec (TM.callKey (TM.callOp (SigOpInfo.name si) A (SigOpInfo.baseA si) B) ∈ TM.calls ι))
+            → TM.callAnswer-at ι L (TM.callOp (SigOpInfo.name si) A (SigOpInfo.baseA si) B) a u D ≡ just b
+            → call-ans-at si st D (just a) ≡ just (Once.IR.Semantics.Boundary.atTarget fmt B b)
+    ans-mem si st (yes eq) nu lg D e = ⊥-elim (nu eq)
+    ans-mem si st (no _) nu refl (yes p) refl = refl
+    ans-mem si st (no _) nu lg (no _) ()
+
+  op-mem-calls : ∀ {A B} {n} {bA : ST.Base ST.∅ₖ A} (bB : ST.Base ST.∅ₖ B) {x : MV ⌜ flatB bA ⌝} {y₀ tp L L′}
+               → inMem bB ≡ true → in-memory? B ≡ true → (B ≡ ST.Unit → ⊥)
+               → OpPath (opF (sig (mk-info' n callsV bA bB)) (toF (flatB bA) (er x))) tp (inj₁ y₀)
+               → WTr Wι L tp L′ → ∀ fs → LocState.ev-log (floc fs) ≡ L
+               → OpVal (sig (mk-info' n callsV bA bB)) x (mvF (flatB bB) y₀) (evsOf tp) fs
+  op-mem-calls {A} {B} {n = n} {bA = bA} bB {x = x} {y₀ = y₀} {tp = tp} {L = L} ik im nu (p-call p-ret) (h₁ , e , w) fs lg =
+    subst (λ k → OpValN k (sig si) x (mvF (flatB bB) y₀) (evsOf tp) fs) (sym ik) body
+    where
+      si = mk-info' n callsV bA bB
+      body : OpValN true (sig si) x (mvF (flatB bB) y₀) (evsOf tp) fs
+      body d dst wx px sx =
+        refl , cong (events-at-arg si) dec ,
+        wd (st-words bB (in-memory? B) im (sigop-answer si st) _ ans≡ cf dst st {h = LocState.heapMem (floc fs)})
+        where
+          cf = AllocState.current-frame (FlatMachine.falloc fs)
+          st = argD (sig si) fs d dst wx
+          dec = arg-decD bA fs d (argV bA fs d wx) (SV-Ptr (AtStack cf dst)) px sx
+          ans≡ = trans (cong (call-ans-at si st (call-sigop-dec si)) dec)
+                   (ans-mem si st (isUnit? B) nu lg (TM.callKey (TM.callOp n A bA B) Once.Contract.∈K? TM.calls ι)
+                     (proj₁ (answered {h = L} {o = TM.callOp n A bA B} {a = toV bA (toF (flatB bA) (er x))} e)))
+          wd : _ → _
+          wd (wy , pw , sy) = wy , pw , sy
+
   open import Once.Res using (Res; stopped; mapRes)
   open import Once.SigOp.Info using (blockV; primV; ffiV)
   open import Once.Arith.Prim using (ArithPrim; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp)
@@ -268,13 +339,6 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
     arg-in (cmp-block-info o) fits-int fs d wx px sx ,
     tag (cmp-word (TargetNum.int-bits fmt) o i j)
 
-  record OwedOp : Set where
-    field
-      oo-prod : ∀ {A B C} n (c : SigOpSem A (B ST.* C)) bA (b₁ : ST.Base ST.∅ₖ B) (b₂ : ST.Base ST.∅ₖ C)
-              → OpValAt n c bA (ST.b-* b₁ b₂)
-      oo-sum  : ∀ {A B C} n (c : SigOpSem A (B ST.+ C)) bA (b₁ : ST.Base ST.∅ₖ B) (b₂ : ST.Base ST.∅ₖ C)
-              → cmp-of c ≡ nothing → OpValAt n c bA (ST.b-+ b₁ b₂)
-
   private
     res-ret : ∀ {X Z : Set} (r : Res X) {k : X → Z} {tp y₀} → OpPath (fmapT k (TM.resT r)) tp (inj₁ y₀)
             → Σ X λ w → r ≡ returns w
@@ -300,7 +364,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
     declared-ret (yes _) m ()
     declared-ret (no ¬m) m _ = ¬m m
 
-  module Dispatch (O : OwedOp) (decl : ∀ {s} → s ∈ ops U → Declared-at Σι (info s) (SigOpInfo.sem (info s))) where
+  module Dispatch (decl : ∀ {s} → s ∈ ops U → Declared-at Σι (info s) (SigOpInfo.sem (info s))) where
     private
       pure-at : ∀ {A B} n (c : SigOpSem A B) bA (bB : ST.Base ST.∅ₖ B) → effect-of c ≡ Pure → cmp-of c ≡ nothing
               → (∀ {x : MV ⌜ flatB bA ⌝} {y₀ tp} → OpPath (opF (sig (mk-info' n c bA bB)) (toF (flatB bA) (er x))) tp (inj₁ y₀)
@@ -311,8 +375,8 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
       pure-at n c bA ST.b-Void ep nc pa {y₀ = ()} p
       pure-at n c bA ST.b-Int ep nc pa {x} p = op-pure-int {n = n} {c = c} {bA = bA} {x = x} ep nc (pa {x} p) p
       pure-at n c bA ST.b-Float ep nc pa {x} p = op-pure-float {n = n} {c = c} {bA = bA} {x = x} ep nc (pa {x} p) p
-      pure-at n c bA (ST.b-* b₁ b₂) ep nc pa = OwedOp.oo-prod O n c bA b₁ b₂
-      pure-at n c bA (ST.b-+ b₁ b₂) ep nc pa = OwedOp.oo-sum O n c bA b₁ b₂ nc
+      pure-at n c bA bB@(ST.b-* b₁ b₂) ep nc pa {x} p = op-mem-pure {n = n} {c = c} {bA = bA} bB {x = x} refl refl ep nc (pa {x} p) p
+      pure-at n c bA bB@(ST.b-+ b₁ b₂) ep nc pa {x} p = op-mem-pure {n = n} {c = c} {bA = bA} bB {x = x} refl refl ep nc (pa {x} p) p
 
       prim-at : ∀ {A B} n (p : ArithPrim A B) bA bB → cmp-of (primV p) ≡ nothing → OpValAt n (primV p) bA bB
       prim-at n p bA bB nc = pure-at n (primV p) bA bB refl nc (λ _ → _ , refl , refl)
@@ -323,8 +387,8 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
       calls-at n bA ST.b-Void {y₀ = ()} p
       calls-at n bA ST.b-Int = op-calls-int
       calls-at n bA ST.b-Float = op-calls-float
-      calls-at n bA (ST.b-* b₁ b₂) = OwedOp.oo-prod O n callsV bA b₁ b₂
-      calls-at n bA (ST.b-+ b₁ b₂) = OwedOp.oo-sum O n callsV bA b₁ b₂ refl
+      calls-at n bA bB@(ST.b-* b₁ b₂) {x} p = op-mem-calls {n = n} {bA = bA} bB {x = x} refl refl (λ ()) p
+      calls-at n bA bB@(ST.b-+ b₁ b₂) {x} p = op-mem-calls {n = n} {bA = bA} bB {x = x} refl refl (λ ()) p
 
     val-at : ∀ {A B} n (c : SigOpSem A B) bA bB → OpValAt n c bA bB
     val-at n (blockV e refl refl) bA bB = pure-at n (blockV e refl refl) bA bB refl refl (λ _ → _ , refl , refl)

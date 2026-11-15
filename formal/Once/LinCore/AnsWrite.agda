@@ -287,3 +287,10 @@ module Wr {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → 
       e = trans (cong (_+ suc k) lb) (NP.+-suc (tsize B₁) k)
       keepZ : ∀ j → suc k ≤ j → j < length wb + suc k → stackMem s₃ f j ≡ stackMem s₂ f j
       keepZ j lo hi = zeros-out (M ∸ tsize B₁) f (suc (tsize B₁) + k) s₂ j (inj₁ (subst (j <_) e hi))
+
+  -- ★ the sigop's store, an answer `w` in memory: its words, where it wrote them
+  st-words : ∀ {A} (b : ST.Base ST.∅ₖ A) (mb : Bool) → mb ≡ true
+           → ∀ (ma : Maybe (Once.Semantics.Machine.⟦ A ⟧)) w → ma ≡ just w → ∀ (f : Frame) k (s : LocState FS) {h}
+           → Σ (List W) λ ws → VW h (mvF (flatB b) (fromV b w)) ws
+               × SlotsAt (stackMem (AbstractExec.sigop-store-at {FS} {B = A} mb (just (AtStack f k)) ma s) f) k ws
+  st-words b .true refl .(just w) w refl f k s = wt-words b w f k s

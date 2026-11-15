@@ -8,9 +8,9 @@
 -- Top-down: the statement first, composed from what is proved — the world's
 -- run of the compiled program (`Total.exec` in the world the machine's
 -- interpretation is, its state the log), the image on it (`ImageSim`), the
--- flat machine on the image (`End.ends`) — with every link still owed a
--- named field of `Owed`. The fields are the work list: each is discharged in
--- place, so every lemma below is reachable from this statement.
+-- flat machine on the image (`End.ends`). Every link was first owed as a named
+-- field and discharged in place, so every lemma below is reachable from this
+-- statement; none is owed now (D432 discharged the last, structured answers).
 --
 -- For a budget `k`: some fuel at which the flat run's events and its end are
 -- the meaning's at that budget (master's `eventsAt`/`endAp` of `⟪ m ⟫ k`, from
@@ -157,15 +157,6 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
       just≢nothing : ∀ {A : Set} {a : A} → just a ≡ nothing → ⊥
       just≢nothing ()
 
-    -- ★ WHAT IS OWED: the links from the meaning to the flat run not yet proved
-    record Owed : Set where
-      field
-        -- ★ AN OP AT THE MACHINE (D426): its contract path, answered by the world from the history, is
-        -- what the machine's sigop computes at a state whose log is that history: proved per contract
-        -- class (OpMachine.Dispatch) but for a structured answer (an undeclared FFI op's stop
-        -- is excluded by linkedness, `decl`)
-        o-ops   : OM.OwedOp
-
     -- the world's run cuts only at the program's ops: it stays inside the universe (`RunOps.run-ok`)
     o-cutsin : ∀ k → CutsIn (λ s → s ∈ ops (Program.U ds f₀)) (Ran.run (R k))
     o-cutsin k = proj₁ (RunOps.run-ok (λ s → s ∈ ops (Program.U ds f₀)) (Ran.run (R k))
@@ -173,8 +164,8 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
 
     -- ★ LINKED (D431): the world's run meets no call the interpretation leaves unanswered — it cuts only at
     -- the program's ops, each declared, whose calls the world answers (`OpMachine.Linked.no-cut`)
-    o-uncut : Owed → ∀ k → UnCut (Ran.run (R k))
-    o-uncut O k = spends-uncut (λ {s} {x} {t} {p} → OM.Linked.no-cut decl {s} {x} {t} {p}) (Ran.run (R k)) (Ran.spends (R k)) (o-cutsin k)
+    o-uncut : ∀ k → UnCut (Ran.run (R k))
+    o-uncut k = spends-uncut (λ {s} {x} {t} {p} → OM.Linked.no-cut decl {s} {x} {t} {p}) (Ran.run (R k)) (Ran.spends (R k)) (o-cutsin k)
 
     -- ★ THE MACHINE: a running state the start reaches has not left (only `c-leave` leaves, and it
     -- halts: master's `chain-left`)
@@ -202,12 +193,12 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     -- ★ THE WORLD'S RUN SHOWS THE MEANING at its budget (D429, D430): the budgeted soundness on the
     -- evaluator's own run (`BudgetSound.soundₖ`: its spends and the world's answers), the core's meaning
     -- the pass's (`Pass.pass-okᶠ`, bisimilar computations run alike)
-    run-shows : Owed → ∀ k → (evsOf (Ran.trace (R k)) ≡ proj₁ (obs k)) × (endO (Ran.out (R k)) ≡ endAp (proj₂ (obs k)))
-    run-shows O k = sym (cong proj₁ eq) , trans (end-out (Ran.out (R k)) (Ran.left (R k))) (sym (cong (λ r → endAp (proj₂ r)) eq))
+    run-shows : ∀ k → (evsOf (Ran.trace (R k)) ≡ proj₁ (obs k)) × (endO (Ran.out (R k)) ≡ endAp (proj₂ (obs k)))
+    run-shows k = sym (cong proj₁ eq) , trans (end-out (Ran.out (R k)) (Ran.left (R k))) (sym (cong (λ r → endAp (proj₂ r)) eq))
       where
         eq : obs k ≡ (evsOf (Ran.trace (R k)) , BudgetSound.W.outAp ι (Ran.out (R k)) (Ran.left (R k)))
         eq = trans (sym (BudgetSound.W.run-≈ ι k (pass-okᶠ (pass-okP P) funit funit f tt) []))
-                   (proj₁ (BudgetSound.S.soundₖ ι (Ran.run (R k)) (Ran.spends (R k)) (o-uncut O k) (Ran.world (R k))))
+                   (proj₁ (BudgetSound.S.soundₖ ι (Ran.run (R k)) (Ran.spends (R k)) (o-uncut k) (Ran.world (R k))))
 
     -- ★★ THE FLAT THEOREM, relative to what is owed: at some fuel the flat run shows the meaning's
     -- events and end at the budget, and, where the budget cut it, a control step per unit
@@ -228,17 +219,17 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         subst (chain-ctrls fl ≤_) (trans (sym (flat-ctrls-steps fl 0)) (cong (λ z → flat-ctrls z image start-fs) (+-identityʳ N)))
               (m≤m+n (chain-ctrls fl) 0)
 
-    flat-top : Owed → ∀ k → Σ ℕ (Shows k)
-    flat-top O k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (o-uncut O K)) (λ {mt} st e → AR.agrees-all st (AR.wtr-ios (Ran.trace (R K)) mt (sym e) (Ran.world (R K)))) eE eO
-                      (λ ex → subst (K ≤_) (trans (cong (rounds (Ran.run (R K)) +_) (cut-zero (Ran.run (R K)) (Ran.spends (R K)) (o-uncut O K) ex)) (+-identityʳ _))
+    flat-top : ∀ k → Σ ℕ (Shows k)
+    flat-top k = by (Ran.run (R K)) refl (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (o-uncut K)) (λ {mt} st e → AR.agrees-all st (AR.wtr-ios (Ran.trace (R K)) mt (sym e) (Ran.world (R K)))) eE eO
+                      (λ ex → subst (K ≤_) (trans (cong (rounds (Ran.run (R K)) +_) (cut-zero (Ran.run (R K)) (Ran.spends (R K)) (o-uncut K) ex)) (+-identityʳ _))
                                     (spent-rounds (Ran.run (R K)) (Ran.spends (R K))))
       where
         module AR = AgreeRun.AR {Mach} ds f₀ ldConst ld-nl wordOf ι
-                      (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op (Owed.o-ops O) decl {s} {x} {y₀} {tp} {L} {L′})
-                      (λ {s} {x} {tp} {L} {L′} → OM.Dispatch.o-opend (Owed.o-ops O) decl {s} {x} {tp} {L} {L′})
+                      (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op decl {s} {x} {y₀} {tp} {L} {L′})
+                      (λ {s} {x} {tp} {L} {L′} → OM.Dispatch.o-opend decl {s} {x} {tp} {L} {L′})
         K  = k
-        eE = proj₁ (run-shows O k)
-        eO = proj₂ (run-shows O k)
+        eE = proj₁ (run-shows k)
+        eO = proj₂ (run-shows k)
         by : ∀ {o t} (run : Run ds f₀ mone mone 0 o t) → Ran.out (R K) ≡ o → Plain run
            → (∀ {mt sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′}
                 (st : StepsI main []ʳ start 0 mt c′ r′ m′ n′) → ios mt ≡ ios t → AgreesAll [] st)
@@ -270,9 +261,9 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     -- ★★ THE MACHINE NEVER FAULTS (master's `start-sound`): a running state the start reaches has not
     -- (`chain-left`); a halted one is where the world's run at a budget past it ends, unfaulted — were that
     -- run cut, the machine would have taken more control steps than it had steps to that state
-    module ARo (O : Owed) = AgreeRun.AR {Mach} ds f₀ ldConst ld-nl wordOf ι
-                      (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op (Owed.o-ops O) decl {s} {x} {y₀} {tp} {L} {L′})
-                      (λ {s} {x} {tp} {L} {L′} → OM.Dispatch.o-opend (Owed.o-ops O) decl {s} {x} {tp} {L} {L′})
+    module ARo = AgreeRun.AR {Mach} ds f₀ ldConst ld-nl wordOf ι
+                      (λ {s} {x} {y₀} {tp} {L} {L′} → OM.Dispatch.o-op decl {s} {x} {y₀} {tp} {L} {L′})
+                      (λ {s} {x} {tp} {L} {L′} → OM.Dispatch.o-opend decl {s} {x} {tp} {L} {L′})
 
     private
       true≢false : Data.Bool.true ≡ Data.Bool.false → ⊥
@@ -323,10 +314,10 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
                      × LocState.halted (floc fs) ≡ Data.Bool.true × LocState.faulted (floc fs) ≡ Data.Bool.false)
                 ⊎ (Σ ℕ λ N → Σ FlatState λ fs → Σ (FlatSteps image N start-fs fs) λ W → K ≤ chain-ctrls W)
 
-      witness : Owed → ∀ K → Witness K
-      witness O K = wb (Ran.run (R K)) (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (o-uncut O K))
-                      (λ {mt} st e → ARo.agrees-all O st (ARo.wtr-ios O (Ran.trace (R K)) mt (sym e) (Ran.world (R K))))
-                      (λ ex → subst (K ≤_) (trans (cong (rounds (Ran.run (R K)) +_) (cut-zero (Ran.run (R K)) (Ran.spends (R K)) (o-uncut O K) ex)) (+-identityʳ _))
+      witness : ∀ K → Witness K
+      witness K = wb (Ran.run (R K)) (spends-plain (Ran.run (R K)) (Ran.spends (R K)) (o-uncut K))
+                      (λ {mt} st e → ARo.agrees-all st (ARo.wtr-ios (Ran.trace (R K)) mt (sym e) (Ran.world (R K))))
+                      (λ ex → subst (K ≤_) (trans (cong (rounds (Ran.run (R K)) +_) (cut-zero (Ran.run (R K)) (Ran.spends (R K)) (o-uncut K) ex)) (+-identityʳ _))
                                     (spent-rounds (Ran.run (R K)) (Ran.spends (R K))))
         where
           wb : ∀ {o t} (run : Run ds f₀ mone mone 0 o t) → Plain run
@@ -344,8 +335,8 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
               case from-startC ld entry-frame entry-regs st (ag st eio) of λ where
                 (N , fs′ , fl , lg , cc) → inj₂ (N , fs′ , fl , ≤-trans (kr tt) (≤-trans rl cc))
 
-    o-sound : Owed → Sound image start-fs
-    o-sound O {n} {fs′} P = by-halt (LocState.halted (floc fs′)) refl
+    o-sound : Sound image start-fs
+    o-sound {n} {fs′} P = by-halt (LocState.halted (floc fs′)) refl
       where
         on : LocState.halted (floc fs′) ≡ Data.Bool.true → Witness (suc n) → LocState.faulted (floc fs′) ≡ Data.Bool.false
         on h (inj₁ (N , fsₑ , W , he , fe)) = subst (λ z → LocState.faulted (floc z) ≡ Data.Bool.false) (sym (same-end P W h he)) fe
@@ -353,7 +344,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
 
         by-halt : ∀ b → LocState.halted (floc fs′) ≡ b → LocState.faulted (floc fs′) ≡ Data.Bool.false
         by-halt Data.Bool.false h = cong proj₂ (chain-left P h)
-        by-halt Data.Bool.true  h = on h (witness O (suc n))
+        by-halt Data.Bool.true  h = on h (witness (suc n))
 
 ------------------------------------------------------------------------
 -- ★ ONE LINK UP: master's IR program and its meaning (`evalᴰ` at the table's
@@ -399,16 +390,12 @@ module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
                                      (casts (Once.LinCore.Pass.⟦_⟧P fmt ans (FromIR.TrProg.prog tp)) (tableCalls fmt ans tbl))
                                      (env-ok tbl etp) (FromIR.trI-Tr (FromIR.TrProg.rs tp) ir ef) tt) []
 
-    record OwedIR : Set where
-      field
-        o-top    : TP.Owed ld decl
-
     -- ★★ THE FLAT THEOREM AT MASTER'S MEANING (master's `flat-ends` and `flat-cut`)
-    flat-ir : OwedIR → ∀ k → Σ ℕ λ N → (flat-events N TP.image TP.start-fs ≡ (proj₁ (obsᴰ k) , endAp (proj₂ (obsᴰ k))))
+    flat-ir : ∀ k → Σ ℕ λ N → (flat-events N TP.image TP.start-fs ≡ (proj₁ (obsᴰ k) , endAp (proj₂ (obsᴰ k))))
                                      × (endAp (proj₂ (obsᴰ k)) ≡ nothing → k ≤ flat-ctrls N TP.image TP.start-fs)
-    flat-ir O k = case TP.flat-top ld decl (OwedIR.o-top O) k of λ where
+    flat-ir k = case TP.flat-top ld decl k of λ where
       (N , e , c) → N , trans e (cong (λ r → (proj₁ r , endAp (proj₂ r))) (o-bridge k))
                       , λ z → c (trans (cong (λ r → endAp (proj₂ r)) (o-bridge k)) z)
 
-    flat-sound : OwedIR → FlatStepsAPI.Sound {Mach} TP.image TP.start-fs
-    flat-sound O = TP.o-sound ld decl (OwedIR.o-top O)
+    flat-sound : FlatStepsAPI.Sound {Mach} TP.image TP.start-fs
+    flat-sound = TP.o-sound ld decl

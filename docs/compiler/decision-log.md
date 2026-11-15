@@ -23649,3 +23649,14 @@ much part of the IRs as they are, so it should not be handled differently for th
 * A second instruction (`instr-sigop-to`) beside `instr-sigop`: two instructions for one construct; the
   user rejected it.
 * Model the write only in LinCore's step relation, as an assumption: still owed.
+
+### Done (2026-11-15), and two details found doing it
+* **The gate is the codomain's type** (`SMCore.in-memory?`: a product or a sum). Master's "a sigop
+  writes no memory" facts (`nhw-instr-sigop`, `TraceNoHeapWrites`) need a static fact, so they take
+  `in-memory? B ≡ false`; every sigop the old image runs satisfies it (register, `Unit`, `Void` answers;
+  an arith block: `RewriteOwned.block-not-in-memory`). `Unit` stays out of memory (no words).
+* **A sum's padding is written, as zero words** (`writeZeros`). `Spec.ABI` leaves padding unspecified
+  (any words); the image's own sums write theirs (`linl`'s stores), and a value's every slot must hold a
+  word (`SlotsAt`), so the in-place writer writes them too. (Unattended, for the user's review.)
+* The flat theorem (`FlatTop.IRTop`) owes nothing now; master's `obs-correct-sigop-rest` (the old
+  lowering's structured case) goes with the old lowering in B1.7.
