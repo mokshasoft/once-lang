@@ -556,6 +556,7 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
       → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
       → readLoc (floc fs) loc ≡ just (SV-Tag k)
       → memory s (rreg s in1-reg + 0) ≡ just k
       → FlatMachine.find-label {FS} prog n ≡ just j
@@ -565,6 +566,7 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
       → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
       → FlatMachine.tag-test {FS} (readLoc (floc fs) loc) ≡ just false
       → memory s (rreg s in1-reg + 0) ≡ just (suc m)
       → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))

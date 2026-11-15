@@ -357,15 +357,15 @@ sp-addr-in-block : ∀ (cf : Frame) (ls : LocState FS) (ok : Bool) (loc : ValueL
 sp-addr-in-block cf ls true  loc okp wf = sp-write-reg cf ls Output (SV-Ptr loc) okp wf
 sp-addr-in-block cf ls false loc okp wf = sp-fault cf ls wf
 
-sp-addr-at : ∀ (cf : Frame) (bs : ℕ → ℕ) (ls : LocState FS) (k : ℕ) (v : StoredValue FS)
+sp-addr-at : ∀ (cf : Frame) (al : AllocState {FS}) (bs : ℕ → ℕ) (ls : LocState FS) (k : ℕ) (v : StoredValue FS)
            → StackPtrOK v → SPInv ls
-           → SPInv (exec-addr-at-resolved bs k (sv-as-loc v) ls)
-sp-addr-at cf bs ls k (SV-Ptr (AtStack _ _)) () wf
-sp-addr-at cf bs ls k (SV-Ptr (AtDynamic hl)) _ wf =
+           → SPInv (exec-addr-at-resolved bs k (frame-gate al k (sv-as-loc v)) ls)
+sp-addr-at cf al bs ls k (SV-Ptr (AtStack _ _)) () wf
+sp-addr-at cf al bs ls k (SV-Ptr (AtDynamic hl)) _ wf =
   sp-addr-in-block cf ls (in-block? bs (AtDynamic (offsetHL hl k))) (AtDynamic (offsetHL hl k)) tt wf
-sp-addr-at cf bs ls k (SV-Tag _)   _ wf = sp-fault cf ls wf
-sp-addr-at cf bs ls k (SV-Lit _ _) _ wf = sp-fault cf ls wf
-sp-addr-at cf bs ls k (SV-Code _)  _ wf = sp-fault cf ls wf
+sp-addr-at cf al bs ls k (SV-Tag _)   _ wf = sp-fault cf ls wf
+sp-addr-at cf al bs ls k (SV-Lit _ _) _ wf = sp-fault cf ls wf
+sp-addr-at cf al bs ls k (SV-Code _)  _ wf = sp-fault cf ls wf
 
 sp-store-at-resolved : ∀ (cf : Frame) (bs : ℕ → ℕ) (ls : LocState FS) (k : ℕ)
                          (ml : Maybe (ValueLocation FS)) (v : StoredValue FS)
@@ -517,12 +517,12 @@ sp-abstract (instr-alloc-stack n)   ls alloc () wf
 sp-abstract (instr-dealloc-stack n) ls alloc () wf
 sp-abstract (instr-free-heap n)     ls alloc () wf
 sp-abstract (load-at n)     ls alloc ff wf =
-  sp-load-at-resolved (current-frame alloc) ls n Output (sv-as-loc (readReg (regs ls) Input1)) wf
+  sp-load-at-resolved (current-frame alloc) ls n Output (frame-gate alloc n (sv-as-loc (readReg (regs ls) Input1))) wf
 sp-abstract (store-at n)     ls alloc ff wf =
-  sp-store-at-resolved (current-frame alloc) _ ls n (sv-as-loc (readReg (regs ls) Input1))
+  sp-store-at-resolved (current-frame alloc) _ ls n (frame-gate alloc n (sv-as-loc (readReg (regs ls) Input1)))
                        (readReg (regs ls) Output) (sp-regs wf Output) wf
 sp-abstract (addr-at n)     ls alloc ff wf =
-  sp-addr-at (current-frame alloc) _ ls n (readReg (regs ls) Input1) (sp-regs wf Input1) wf
+  sp-addr-at (current-frame alloc) alloc _ ls n (readReg (regs ls) Input1) (sp-regs wf Input1) wf
 sp-abstract (instr-room n)     ls alloc ff wf = wf
 sp-abstract (instr-push-frame cap)  ls alloc () wf
 sp-abstract instr-pop-frame         ls alloc () wf
@@ -651,7 +651,7 @@ flat-stack-ptr (instr-ctrl (c-ret b))                 prog fs ff wf =
 flat-stack-ptr (instr-ctrl (c-jmp m))                 prog fs ff wf =
   sp-jump (find-label prog m) fs wf
 flat-stack-ptr (instr-ctrl (c-branch-tag-zero m))     prog fs ff wf =
-  sp-test (tag-test (flat-read-tag (floc fs))) m prog fs wf
+  sp-test (tag-test (flat-read-tag (falloc fs) (floc fs))) m prog fs wf
 flat-stack-ptr (instr-alloc-stack n)   prog fs () wf
 flat-stack-ptr (instr-dealloc-stack n) prog fs () wf
 flat-stack-ptr (instr-free-heap n)     prog fs () wf

@@ -746,8 +746,8 @@ module CataRebuildC {FS : FrameSemantics} where
                  (wd : InWord (Y₁ I.+ Y₂) (inj₂ y) σ) where
         pt = sum-ptr wd
 
-        cond : tag-test (flat-read-tag (floc σ)) ≡ just false
-        cond = tag-inr (PtrTo.val pt) (PtrTo.eq pt)
+        cond : tag-test (flat-read-tag (falloc σ) (floc σ)) ≡ just false
+        cond = tag-inr (PtrTo.val pt) (PtrTo.eq pt) (falloc σ) refl
 
         q0 = record σ { fpc = suc base }
         w0 : Walk prog n (KR s) σ (suc base) (λ _ → ⊤)
@@ -789,8 +789,8 @@ module CataRebuildC {FS : FrameSemantics} where
                  (wd : InWord (Y₁ I.+ Y₂) (inj₁ x) σ) where
         pt = sum-ptr wd
 
-        cond : tag-test (flat-read-tag (floc σ)) ≡ just true
-        cond = tag-inl (PtrTo.val pt) (PtrTo.eq pt)
+        cond : tag-test (flat-read-tag (falloc σ) (floc σ)) ≡ just true
+        cond = tag-inl (PtrTo.val pt) (PtrTo.eq pt) (falloc σ) refl
 
         i1 = record σ { fpc = J₁ }
         w0 : Walk prog n (KR s) σ J₁ (λ _ → ⊤)

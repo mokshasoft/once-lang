@@ -171,9 +171,9 @@ module CataStackC {FS : FrameSemantics} where
   -- …read through `Input1` pointing at the top block, as the branch does
   stack-tag : ∀ {V} {E : ElemP V} → ENz E → ∀ {a s k sn xs} (st : StackAt E a s k sn xs)
             → readReg (regs s) Input1 ≡ SV-Ptr (AtDynamic (StackAt.top st))
-            → tag-test (flat-read-tag s) ≡ just (null xs)
-  stack-tag nz {s = s} st e =
-    trans (cong (λ z → tag-test (flat-read-at s (sv-as-loc z))) e) (chain-tag nz (StackAt.sent st) (StackAt.chain st))
+            → ∀ (al : AllocState {FS}) → tag-test (flat-read-tag al s) ≡ just (null xs)
+  stack-tag nz {s = s} st e al =
+    trans (cong (λ z → tag-test (flat-read-at s (SMCore.ExecFinal.frame-gate {FS} al 0 (sv-as-loc z)))) e) (chain-tag nz (StackAt.sent st) (StackAt.chain st))
 
 
   private
@@ -284,7 +284,7 @@ module CataStackC {FS : FrameSemantics} where
     ld7 : exec-abstract (load-from-slot top) v6 A₁ ≡ (v7 , A₁)
     ld7 = cong (λ mv → exec-load-from-slot-with-value mv v6 A₁) topSlot6
     st8 : exec-abstract (store-at 1) v7 A₁ ≡ (v8 , A₁)
-    st8 = trans (cong (λ ml → (SMCore.ExecFinal.exec-store-at-resolved {FS} (block-size A₁) 1 ml ptp v7 , A₁)) (cong sv-as-loc in1-6))
+    st8 = trans (cong (λ ml → (SMCore.ExecFinal.exec-store-at-resolved {FS} (block-size A₁) 1 ml ptp v7 , A₁)) (cong (λ x → SMCore.ExecFinal.frame-gate {FS} A₁ 1 (sv-as-loc x)) in1-6))
                 (cong (λ bb → (SMCore.ExecFinal.exec-store-in-block {FS} bb (AtDynamic (sucHL B)) ptp v7 , A₁)) ib1)
     ld9 : exec-abstract (load-from-slot tb) v8 A₁ ≡ (v9 , A₁)
     ld9 = cong (λ mv → exec-load-from-slot-with-value mv v8 A₁) tbSlot8
@@ -463,7 +463,7 @@ module CataStackC {FS : FrameSemantics} where
       r1 : readLoc y2 (offsetLoc (AtDynamic tp) 1) ≡ just pnb
       r1 = trans (cong (λ z → readLoc y2 (AtDynamic z)) (off1 tp)) c1
       ld3 : exec-abstract (load-at 1) y2 a₀ ≡ (y3 , a₀)
-      ld3 = trans (cong (λ v → (SMCore.ExecFinal.exec-load-at-resolved {FS} 1 Output (sv-as-loc v) y2 , a₀)) in1-2)
+      ld3 = trans (cong (λ v → (SMCore.ExecFinal.exec-load-at-resolved {FS} 1 Output (SMCore.ExecFinal.frame-gate {FS} a₀ 1 (sv-as-loc v)) y2 , a₀)) in1-2)
                   (cong (λ m → (SMCore.ExecFinal.exec-load-with-value {FS} Output m y2 , a₀)) r1)
 
       in1-4 : readReg (regs y4) Input1 ≡ ptp
@@ -473,7 +473,7 @@ module CataStackC {FS : FrameSemantics} where
       r0 = trans (cong (λ z → readLoc y4 (AtDynamic z)) (off0 tp))
                  (trans (writeLoc-preserves-other y3 (AtStack f₀ top) (AtDynamic tp) pnb (λ ())) c0)
       ld5 : exec-abstract (load-at 0) y4 a₀ ≡ (y5 , a₀)
-      ld5 = trans (cong (λ v → (SMCore.ExecFinal.exec-load-at-resolved {FS} 0 Output (sv-as-loc v) y4 , a₀)) in1-4)
+      ld5 = trans (cong (λ v → (SMCore.ExecFinal.exec-load-at-resolved {FS} 0 Output (SMCore.ExecFinal.frame-gate {FS} a₀ 0 (sv-as-loc v)) y4 , a₀)) in1-4)
                   (cong (λ m → (SMCore.ExecFinal.exec-load-with-value {FS} Output m y4 , a₀)) r0)
 
       whole : exec-trace (pop2 top) s₀ a₀ ≡ (y5 , a₀)

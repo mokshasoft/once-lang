@@ -36,6 +36,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module Resusp
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.SumShape o tbl using (module ResuspSumShapeC)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.SumArm o tbl using (module ResuspSumArmC)
 open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl using (module ShapeC)
+open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.List.Properties using (++-identityʳ)
 open import Data.Nat using (z≤n; s≤s; _⊔_)
@@ -123,7 +124,7 @@ module ResuspSumLC {FS : FrameSemantics} where
         σ₃ = record σ₂ { fpc = suc AT.P }
 
         eqBr : flat-exec-instr (instr-ctrl (c-branch-tag-zero (ℓ o l))) prog σ₁ ≡ σ₂
-        eqBr = trans (flat-tag-branch-yes prog σ₁ (ℓ o l) (tag-inl v₁ refl)) (cong (λ mj → do-jump mj σ₁) AT.inl-target)
+        eqBr = trans (flat-tag-branch-yes prog σ₁ (ℓ o l) (tag-inl v₁ refl (falloc σ₁) (GetC.live-gate {FS} (falloc σ₁) 0 sloc lsl))) (cong (λ mj → do-jump mj σ₁) AT.inl-target)
 
         br : FlatSteps prog 1 σ₁ σ₂
         br = flat-step1 nh fBr eqBr

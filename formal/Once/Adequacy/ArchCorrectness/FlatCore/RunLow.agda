@@ -244,7 +244,7 @@ branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : LabelId) → RunLow pro
                         → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
                         → Σ (ValueLocation FS) (λ loc → Σ (StoredValue FS) (λ v →
                             (readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc)
-                            × (readLoc (floc fs) loc ≡ just v) × RW.TagCell v))
+                            × (readLoc (floc fs) loc ≡ just v) × RW.TagCell v × (ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc)))
 branch-tag-scrutinee-wf prog fs m =
   lift-site (instr-ctrl (c-branch-tag-zero m)) (λ _ ()) _ (λ src fs₀ → RW.branch-tag-scrutinee-wf src fs₀ m)
     (λ _ _ _ c → c) prog fs

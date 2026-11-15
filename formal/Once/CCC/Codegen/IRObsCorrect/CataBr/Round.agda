@@ -204,8 +204,8 @@ module CataRoundC {FS : FrameSemantics} where
       se3 = stack-keep node-tr kp3 cf3 (sl3 (suc n)) se
 
       -- the branch reads the top block's cell 0
-      cond : tag-test (flat-read-tag (floc h3)) ≡ just (DL.null xs)
-      cond = stack-tag node-nz st3 in3
+      cond : tag-test (flat-read-tag (falloc h3) (floc h3)) ≡ just (DL.null xs)
+      cond = stack-tag node-nz st3 in3 (falloc h3)
 
       walk : Walk prog n K σ (3 + fpc σ) (λ _ → ⊤)
       walk =
@@ -298,7 +298,7 @@ module CataRoundC {FS : FrameSemantics} where
         seg-set q v = record { mem = λ loc _ → out-mem q v loc ; cf = refl ; sf = refl ; ns = refl ; href = ≤-refl }
 
         -- the branch falls through: the top element is a node, not the tag
-        cond-no : tag-test (flat-read-tag (floc h3)) ≡ just false
+        cond-no : tag-test (flat-read-tag (falloc h3) (floc h3)) ≡ just false
         cond-no = cond
 
         c0-3 : readLoc (floc h3) (AtDynamic tp) ≡ just w
@@ -385,9 +385,9 @@ module CataRoundC {FS : FrameSemantics} where
           s-at {prog} {h1} {8} {p6} h2 (nh , span′ 1 _ refl) refl refl tt (
           s-at {prog} {h2} {7} {p6} h3 (nh2 , span′ 2 _ refl) refl refl tt (
           s-at {prog} {h3} {6} {p6} h4 (nh3 , span′ 3 _ refl) (flat-tag-branch-not prog h3 (ℓ o (suc l1)) cond-no) refl tt (
-          s-at {prog} {h4} {5} {p6} p1 (nh3 , span′ 4 _ refl) (load-at-step prog h4 1 (AtDynamic tp) pnb in3 r1) refl tt (
+          s-at {prog} {h4} {5} {p6} p1 (nh3 , span′ 4 _ refl) (load-at-step prog h4 1 (AtDynamic tp) pnb in3 refl r1) refl tt (
           s-at {prog} {p1} {4} {p6} p2 (nh3 , span′ 5 _ refl) refl refl tt (
-          s-at {prog} {p2} {3} {p6} p3 (nh-p2 , span′ 6 _ refl) (load-at-step prog p2 0 (AtDynamic tp) w in-p2 r0) refl tt (
+          s-at {prog} {p2} {3} {p6} p3 (nh-p2 , span′ 6 _ refl) (load-at-step prog p2 0 (AtDynamic tp) w in-p2 refl r0) refl tt (
           s-at {prog} {p3} {2} {p6} p4 (nh-p2 , span′ 7 _ refl) refl refl tt (
           s-at {prog} {p4} {1} {p6} p5 (nh-p4 , span′ 8 _ refl) refl refl tt (
           s-at {prog} {p5} {0} {p6} p6 (nh-p5 , span′ 9 _ refl) refl refl tt s-nil)))))))))

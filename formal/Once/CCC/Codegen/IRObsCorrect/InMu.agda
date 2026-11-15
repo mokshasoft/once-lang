@@ -334,7 +334,7 @@ module InMuC {FS : FrameSemantics} where
       eq6 rewrite rdi-fs5 | ib5 = refl
 
       wf-store : InstrWF (floc fs5) (falloc fs5) (store-at 0)
-      wf-store = box , rdi-fs5 , ib5
+      wf-store = box , cong (SMCore.ExecFinal.frame-gate {FS} (falloc fs5) 0) rdi-fs5 , ib5
 
       out-fs5 : readReg (regs (floc fs5)) Output ≡ pv
       out-fs5 = load-slot-result n (floc fs4) (falloc fs4) pv (proj₂ wf-load)

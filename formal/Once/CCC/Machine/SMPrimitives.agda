@@ -571,7 +571,7 @@ instr-effect load-indirect           = eff-heap-indirect
 instr-effect load-indirect-suc       = eff-heap-indirect
 instr-effect store-indirect          = eff-heap-indirect
 instr-effect store-indirect-suc      = eff-heap-indirect
-instr-effect (load-at _)             = eff-heap-indirect
+instr-effect (load-at _)             = eff-heap-checked    -- D435: checked against the live frames
 instr-effect (store-at _)            = eff-heap-checked
 instr-effect (addr-at _)             = eff-heap-checked    -- D385: checked against the block sizes
 instr-effect (instr-alloc-stack _)   = eff-stack-frontier
@@ -935,6 +935,39 @@ module InstrPrimitives {FS : FrameSemantics} where
 
 
   -- (E) HEAP PRESERVATION
+  -- an offset load or address, at any resolved location (D435: behind the frame gate)
+  load-val-heap : ∀ (mv : Maybe (StoredValue FS)) (s : LocState FS) → heapMem (ExecFinal.exec-load-with-value Output mv s) ≡ heapMem s
+  load-val-heap (just _) s = refl
+  load-val-heap nothing  s = refl
+
+  load-at-heap : ∀ (k : ℕ) (ml : Maybe (ValueLocation FS)) (s : LocState FS) → heapMem (ExecFinal.exec-load-at-resolved k Output ml s) ≡ heapMem s
+  load-at-heap k (just loc) s = load-val-heap (readLoc s (offsetLoc loc k)) s
+  load-at-heap k nothing    s = refl
+
+  addr-blk-heap : ∀ (b : Data.Bool.Bool) (loc : ValueLocation FS) (s : LocState FS) → heapMem (ExecFinal.exec-addr-in-block b loc s) ≡ heapMem s
+  addr-blk-heap true  loc s = refl
+  addr-blk-heap false loc s = refl
+
+  addr-at-heap : ∀ (bs : ℕ → ℕ) (k : ℕ) (ml : Maybe (ValueLocation FS)) (s : LocState FS) → heapMem (ExecFinal.exec-addr-at-resolved bs k ml s) ≡ heapMem s
+  addr-at-heap bs k (just loc) s = addr-blk-heap (ExecFinal.in-block? bs (offsetLoc loc k)) (offsetLoc loc k) s
+  addr-at-heap bs k nothing    s = refl
+
+  load-val-stack : ∀ (mv : Maybe (StoredValue FS)) (s : LocState FS) → stackMem (ExecFinal.exec-load-with-value Output mv s) ≡ stackMem s
+  load-val-stack (just _) s = refl
+  load-val-stack nothing  s = refl
+
+  load-at-stack : ∀ (k : ℕ) (ml : Maybe (ValueLocation FS)) (s : LocState FS) → stackMem (ExecFinal.exec-load-at-resolved k Output ml s) ≡ stackMem s
+  load-at-stack k (just loc) s = load-val-stack (readLoc s (offsetLoc loc k)) s
+  load-at-stack k nothing    s = refl
+
+  addr-blk-stack : ∀ (b : Data.Bool.Bool) (loc : ValueLocation FS) (s : LocState FS) → stackMem (ExecFinal.exec-addr-in-block b loc s) ≡ stackMem s
+  addr-blk-stack true  loc s = refl
+  addr-blk-stack false loc s = refl
+
+  addr-at-stack : ∀ (bs : ℕ → ℕ) (k : ℕ) (ml : Maybe (ValueLocation FS)) (s : LocState FS) → stackMem (ExecFinal.exec-addr-at-resolved bs k ml s) ≡ stackMem s
+  addr-at-stack bs k (just loc) s = addr-blk-stack (ExecFinal.in-block? bs (offsetLoc loc k)) (offsetLoc loc k) s
+  addr-at-stack bs k nothing    s = refl
+
   -- Instructions that don't write to heap preserve heapMem
   exec-abstract-preserves-heapMem : ∀ (i : AbstractInstr) (s : LocState FS)
     (alloc : AllocState {FS}) →
@@ -944,18 +977,10 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-heapMem (instr-reg-op _) s alloc nhw-instr-reg-op = refl
   exec-abstract-preserves-heapMem (instr-free-heap _) s alloc nhw-instr-free-heap = refl
   exec-abstract-preserves-heapMem (instr-room _) s alloc nhw-instr-room = refl
-  exec-abstract-preserves-heapMem (load-at k) s alloc nhw-load-at
-    with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc with readLoc s (offsetLoc loc k)
-  ...   | just _  = refl
-  ...   | nothing = refl
-  exec-abstract-preserves-heapMem (load-at k) s alloc nhw-load-at | nothing = refl
-  exec-abstract-preserves-heapMem (addr-at k) s alloc nhw-addr-at
-    with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc with in-block? (block-size alloc) (offsetLoc loc k)
-  ...   | true  = refl
-  ...   | false = refl
-  exec-abstract-preserves-heapMem (addr-at k) s alloc nhw-addr-at | nothing = refl
+  exec-abstract-preserves-heapMem (load-at k) s alloc nhw-load-at =
+    load-at-heap k (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s
+  exec-abstract-preserves-heapMem (addr-at k) s alloc nhw-addr-at =
+    addr-at-heap (block-size alloc) k (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s
   exec-abstract-preserves-heapMem (instr-ctrl _) s alloc nhw-instr-ctrl = refl
   exec-abstract-preserves-heapMem mov-to-input s alloc nhw-mov-to-input = refl
   exec-abstract-preserves-heapMem load-indirect s alloc nhw-load-indirect
@@ -1023,18 +1048,10 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-stack-slot (instr-reg-op _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-free-heap _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-room _) s alloc f slot _ _ = refl
-  exec-abstract-preserves-stack-slot (load-at k) s alloc f slot _ _
-    with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc with readLoc s (offsetLoc loc k)
-  ...   | just _  = refl
-  ...   | nothing = refl
-  exec-abstract-preserves-stack-slot (load-at k) s alloc f slot _ _ | nothing = refl
-  exec-abstract-preserves-stack-slot (addr-at k) s alloc f slot _ _
-    with sv-as-loc (readReg (regs s) Input1)
-  ... | just loc with in-block? (block-size alloc) (offsetLoc loc k)
-  ...   | true  = refl
-  ...   | false = refl
-  exec-abstract-preserves-stack-slot (addr-at k) s alloc f slot _ _ | nothing = refl
+  exec-abstract-preserves-stack-slot (load-at k) s alloc f slot _ _ =
+    cong (λ st → st f slot) (load-at-stack k (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s)
+  exec-abstract-preserves-stack-slot (addr-at k) s alloc f slot _ _ =
+    cong (λ st → st f slot) (addr-at-stack (block-size alloc) k (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s)
   exec-abstract-preserves-stack-slot (instr-ctrl _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot mov-to-input s alloc f slot _ _ = refl
   -- Plan 0.13.2: load-indirect/-suc case-split on sv-as-loc; both
@@ -1129,7 +1146,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-same-frame (instr-reg-op _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (instr-free-heap _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (instr-room _) s alloc₁ alloc₂ _ _ = refl
-  exec-abstract-same-frame (load-at _) s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (load-at _) s alloc₁ alloc₂ () _
   exec-abstract-same-frame (store-at _) s alloc₁ alloc₂ () _
   exec-abstract-same-frame (addr-at _) s alloc₁ alloc₂ () _
   exec-abstract-same-frame (instr-ctrl _) s alloc₁ alloc₂ _ _ = refl
@@ -2300,19 +2317,19 @@ module TracePrimitives {FS : FrameSemantics} where
     ∃-syntax (λ (v : StoredValue FS) →
       readLoc s (AtStack (current-frame alloc) slot) ≡ just v)
   -- Plan 0.123 B.4 R1: the offset forms, as their `-indirect` models.
-  InstrWF s _     (load-at k)              =
+  InstrWF s alloc (load-at k)              =
     ∃-syntax (λ (loc : ValueLocation FS) →
-      (sv-as-loc (readReg (regs s) Input1) ≡ just loc) ×
+      (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1)) ≡ just loc) ×
       ∃-syntax (λ (v : StoredValue FS) → readLoc s (offsetLoc loc k) ≡ just v))
   -- D385: and the written cell is one of its block's
   InstrWF s alloc (store-at k)             =
     ∃-syntax (λ (loc : ValueLocation FS) →
-      (sv-as-loc (readReg (regs s) Input1) ≡ just loc) ×
+      (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1)) ≡ just loc) ×
       (in-block? (block-size alloc) (offsetLoc loc k) ≡ true))
   -- D385: and the addressed cell is one of its block's
   InstrWF s alloc (addr-at k)              =
     ∃-syntax (λ (loc : ValueLocation FS) →
-      (sv-as-loc (readReg (regs s) Input1) ≡ just loc) ×
+      (ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1)) ≡ just loc) ×
       (in-block? (block-size alloc) (offsetLoc loc k) ≡ true))
   -- D270: a SigOp MAY halt (its `EffectShape`), a case runs a sub-trace and
   -- a loop can run out of fuel — so for these three the witness IS the
@@ -2376,17 +2393,17 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-halted-WF (instr-free-heap _)     s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF (instr-room _)     s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF (load-at k)             s alloc h-eq (loc , rdi-eq , v , read-eq)
-    with sv-as-loc (readReg (regs s) Input1) | rdi-eq
+    with ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1)) | rdi-eq
   ... | .(just loc) | refl
     with readLoc s (offsetLoc loc k) | read-eq
   ... | .(just v) | refl = h-eq
   exec-abstract-preserves-halted-WF (store-at k)            s alloc h-eq (loc , rdi-eq , ib)
-    with sv-as-loc (readReg (regs s) Input1) | rdi-eq
+    with ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1)) | rdi-eq
   ... | .(just loc) | refl
     with in-block? (block-size alloc) (offsetLoc loc k) | ib
   ... | .true | refl = trans (writeLoc-halted s (offsetLoc loc k) (readReg (regs s) Output)) h-eq
   exec-abstract-preserves-halted-WF (addr-at k)             s alloc h-eq (loc , rdi-eq , ib)
-    with sv-as-loc (readReg (regs s) Input1) | rdi-eq
+    with ExecFinal.frame-gate alloc k (sv-as-loc (readReg (regs s) Input1)) | rdi-eq
   ... | .(just loc) | refl
     with in-block? (block-size alloc) (offsetLoc loc k) | ib
   ... | .true | refl = h-eq
@@ -2512,7 +2529,7 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-state-frame-eq (instr-reg-op _)        s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-free-heap _)     s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-room _)     s _ _ _ _ = refl
-  exec-abstract-state-frame-eq (load-at _)             s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (load-at _)             s _ _ () _
   exec-abstract-state-frame-eq (store-at _)            s _ _ () _
   exec-abstract-state-frame-eq (addr-at _)             s _ _ () _
   exec-abstract-state-frame-eq (instr-ctrl _)        s _ _ _ _ = refl

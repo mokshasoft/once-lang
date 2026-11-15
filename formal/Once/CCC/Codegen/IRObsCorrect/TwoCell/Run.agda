@@ -155,7 +155,7 @@ module TwoCellRunC {FS : FrameSemantics} where
     i1₈ = cong (λ q → readReg q Input1) (writeLoc-regs t₆ obj-loc cell0v)
 
     st1 : exec-abstract (store-at 1) t₈ A₁ ≡ (t₉ , A₁)
-    st1 = trans (cong (λ v → (ExecFinal.exec-store-at-resolved {FS} (block-size A₁) 1 (sv-as-loc v) code t₈ , A₁)) i1₈)
+    st1 = trans (cong (λ v → (ExecFinal.exec-store-at-resolved {FS} (block-size A₁) 1 (ExecFinal.frame-gate {FS} A₁ 1 (sv-as-loc v)) code t₈ , A₁)) i1₈)
                 (cong (λ b → (ExecFinal.exec-store-in-block {FS} b (sucLoc obj-loc) code t₈ , A₁)) ib1)
 
     whole : exec-trace (two-cell-trace n l) s alloc ≡ (t₁₀ , A₁)

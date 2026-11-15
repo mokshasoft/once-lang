@@ -20,6 +20,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; instr-save-closure-reg; load-indirect; load-at; mov-to-input; readReg; Input1; SV-Ptr; writeReg-same; Output; sucLoc; SV-Code; instr-call-closure; sv-as-loc; module LocState)
 open LocState using (regs; halted)
 open import Once.IRTy using (WellFormedFI; ν-type; ⟦_⟧TI)
@@ -76,24 +77,24 @@ module OutC {FS : FrameSemantics} where
      closure-reg ν-loc rdi = rdi
 
      -- plan 0.123 B.4 α: row 2 is `load-at 0` — the seed word, at the ν's own address
-     step2 : ∀ (ν-loc : ValueLocation FS) (sv : StoredValue FS)
-           → readReg (regs s) Input1 ≡ SV-Ptr ν-loc
-           → SMCore.MemOps.readLoc s ν-loc ≡ just sv
+     step2 : ∀ (ν-hl : HeapLocation) (sv : StoredValue FS)
+           → readReg (regs s) Input1 ≡ SV-Ptr (AtDynamic ν-hl)
+           → SMCore.MemOps.readLoc s (AtDynamic ν-hl) ≡ just sv
            → b2 ≡ GetC.setOut {FS} b1 sv
-     step2 ν-loc sv rdi cell =
-       GetC.load-at-step {FS} prog b1 0 ν-loc sv rdi
-         (subst (λ z → SMCore.MemOps.readLoc s z ≡ just sv) (sym (GetC.offset-zero {FS} ν-loc)) cell)
+     step2 ν-hl sv rdi cell =
+       GetC.load-at-step {FS} prog b1 0 (AtDynamic ν-hl) sv rdi refl
+         (subst (λ z → SMCore.MemOps.readLoc s z ≡ just sv) (sym (GetC.offset-zero {FS} (AtDynamic ν-hl))) cell)
 
      -- …and `Input1` ends up holding the SEED CELL's contents, whatever their
      -- representation — which makes the callee's `InputAt` a read-off of the ν's
      -- own `CellAt` rather than a rebuild.
-     input1-b3 : ∀ (ν-loc : ValueLocation FS) (sv : StoredValue FS)
-              → readReg (regs s) Input1 ≡ SV-Ptr ν-loc
-              → SMCore.MemOps.readLoc s ν-loc ≡ just sv
+     input1-b3 : ∀ (ν-hl : HeapLocation) (sv : StoredValue FS)
+              → readReg (regs s) Input1 ≡ SV-Ptr (AtDynamic ν-hl)
+              → SMCore.MemOps.readLoc s (AtDynamic ν-hl) ≡ just sv
               → readReg (regs (floc b3)) Input1 ≡ sv
-     input1-b3 ν-loc sv rdi cell =
+     input1-b3 ν-hl sv rdi cell =
       trans (writeReg-same (regs (floc b2)) Input1 (readReg (regs (floc b2)) Output))
-            (trans (cong (λ fs → readReg (regs (floc fs)) Output) (step2 ν-loc sv rdi cell))
+            (trans (cong (λ fs → readReg (regs (floc fs)) Output) (step2 ν-hl sv rdi cell))
                    (writeReg-same (regs (floc b1)) Output sv))
 
 
@@ -186,7 +187,7 @@ module OutC {FS : FrameSemantics} where
               nh1 : halted (floc OSP.b1) ≡ false
               nh1 = nh
               nh2 : halted (floc OSP.b2) ≡ false
-              nh2 = trans (cong (λ fs → halted (floc fs)) (OSP.step2 ν-loc seed-sv rdi c0)) nh1
+              nh2 = trans (cong (λ fs → halted (floc fs)) (OSP.step2 ν-hl seed-sv rdi c0)) nh1
               nh3 : halted (floc OSP.b3) ≡ false
               nh3 = exec-abstract-preserves-halted-WF mov-to-input
                       (floc OSP.b2) (falloc OSP.b2) nh2 tt
@@ -206,7 +207,7 @@ module OutC {FS : FrameSemantics} where
                        (λ _ _ ib → ib)
                        (λ l _ → trans (cong (λ st → SMCore.MemOps.readLoc (floc st) l) call-eq) (OSP.mem-pres l))
                        (subst (λ st → readReg (regs st) Input1 ≡ seed-sv)
-                              (sym (cong floc call-eq)) (OSP.input1-b3 ν-loc seed-sv rdi c0)))
+                              (sym (cong floc call-eq)) (OSP.input1-b3 ν-hl seed-sv rdi c0)))
 
               run4 : FlatSteps prog 4 (entry-flat base s alloc cl rs)
                        (flat-exec-instr instr-call-closure prog OSP.b3)

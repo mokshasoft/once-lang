@@ -1977,11 +1977,12 @@ block-step-out-nz {hv} prog fs s w cc h ft o-eq rng =
 block-step-c-branch-tag-zero : ∀ {hv : HeapView} prog fs s n loc k j → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+  → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
   → readLoc (floc fs) loc ≡ just (SV-Tag k)
   → X.readMem (memory s) (xreadReg (xregs s) ecx + 0) ≡ just k
   → find-label prog n ≡ just j
   → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
-block-step-c-branch-tag-zero {hv} prog fs s n loc zero j cc h ft i-eq r-eq rd fl-eq = result
+block-step-c-branch-tag-zero {hv} prog fs s n loc zero j cc h ft i-eq g r-eq rd fl-eq = result
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
@@ -2007,15 +2008,15 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc zero j cc h ft i-eq r-eq rd fl
     exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-je
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-cmp} halt-s step-cmp halt-s)
                     (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
-    cond-eq : tag-test (flat-read-tag (floc fs)) ≡ just true
-    cond-eq = cong tag-test (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) r-eq)
+    cond-eq : tag-test (flat-read-tag (falloc fs) (floc fs)) ≡ just true
+    cond-eq = cong tag-test (trans (cong (λ z → flat-read-at (floc fs) (ExecFinal.frame-gate {FS} (falloc fs) 0 (sv-as-loc z))) i-eq) (trans (cong (flat-read-at (floc fs)) g) r-eq))
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
     result rewrite cond-eq | fl-eq = post-je , exec-eq , record
       { dataCorr = record { in1-eq = C.in1-eq dc ; out-eq = C.out-eq dc
                           ; clos-eq = C.clos-eq dc ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc ; heap-eq = C.heap-eq dc
                       ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
       ; pc-off = refl ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
-block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j cc h ft i-eq r-eq rd fl-eq = result
+block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j cc h ft i-eq g r-eq rd fl-eq = result
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
@@ -2039,8 +2040,8 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j cc h ft i-eq r-eq rd
     exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-je
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-cmp} halt-s step-cmp halt-s)
                     (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
-    cond-eq : tag-test (flat-read-tag (floc fs)) ≡ just false
-    cond-eq = cong tag-test (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) r-eq)
+    cond-eq : tag-test (flat-read-tag (falloc fs) (floc fs)) ≡ just false
+    cond-eq = cong tag-test (trans (cong (λ z → flat-read-at (floc fs) (ExecFinal.frame-gate {FS} (falloc fs) 0 (sv-as-loc z))) i-eq) (trans (cong (flat-read-at (floc fs)) g) r-eq))
     pco' : X.State.pc post-je ≡ blk-off prog (suc (fpc fs))
     pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
@@ -2058,10 +2059,11 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j cc h ft i-eq r-eq rd
 block-step-c-branch-tag-nz : ∀ {hv : HeapView} prog fs s n loc m → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+  → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
   → tag-test (readLoc (floc fs) loc) ≡ just false
   → X.readMem (memory s) (xreadReg (xregs s) ecx + 0) ≡ just (suc m)
   → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
-block-step-c-branch-tag-nz {hv} prog fs s n loc m cc h ft i-eq r-eq rd = result
+block-step-c-branch-tag-nz {hv} prog fs s n loc m cc h ft i-eq g r-eq rd = result
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
@@ -2085,8 +2087,8 @@ block-step-c-branch-tag-nz {hv} prog fs s n loc m cc h ft i-eq r-eq rd = result
     exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-je
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-cmp} halt-s step-cmp halt-s)
                     (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
-    cond-eq : tag-test (flat-read-tag (floc fs)) ≡ just false
-    cond-eq = trans (cong (λ z → tag-test (flat-read-at (floc fs) (sv-as-loc z))) i-eq) r-eq
+    cond-eq : tag-test (flat-read-tag (falloc fs) (floc fs)) ≡ just false
+    cond-eq = trans (cong (λ z → tag-test (flat-read-at (floc fs) (ExecFinal.frame-gate {FS} (falloc fs) 0 (sv-as-loc z)))) i-eq) (trans (cong (λ z → tag-test (flat-read-at (floc fs) z)) g) r-eq)
     pco' : X.State.pc post-je ≡ blk-off prog (suc (fpc fs))
     pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))

@@ -141,8 +141,9 @@ module FlatMachine {FS : FrameSemantics} where
   flat-read-at s (just loc) = readLoc s loc
   flat-read-at s nothing    = nothing
 
-  flat-read-tag : LocState FS → Maybe (StoredValue FS)
-  flat-read-tag s = flat-read-at s (sv-as-loc (readReg (regs s) Input1))
+  -- D435: through the frame gate, as every access through a pointer register
+  flat-read-tag : AllocState {FS} → LocState FS → Maybe (StoredValue FS)
+  flat-read-tag al s = flat-read-at s (ExecFinal.frame-gate {FS} al 0 (sv-as-loc (readReg (regs s) Input1)))
 
   -- find-label: scan the trace for `instr-ctrl (c-label target)`.
   -- Uses the library `_≡ᵇ_` (= the target `Semantics.find-label`'s
@@ -1008,7 +1009,7 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr (instr-ctrl (c-ret b))                 _    fs = do-ret (fret fs) fs
   flat-exec-instr (instr-ctrl (c-jmp n))                 prog fs = do-jump (find-label prog n) fs
   flat-exec-instr (instr-ctrl (c-branch-tag-zero n))     prog fs =
-    do-branch-test (tag-test (flat-read-tag (floc fs))) n prog fs
+    do-branch-test (tag-test (flat-read-tag (falloc fs) (floc fs))) n prog fs
   flat-exec-instr (instr-reg-op out-nz)                  _    fs =
     do-nz (readReg (regs (floc fs)) Output) fs
   -- the CALL transfers control (D092) and the closure register is flat state
@@ -1303,9 +1304,9 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-instr d (instr-ctrl (c-ret _))                 t₁ t₂ fs fs' _  _  sh = shifted-ret d fs fs' sh
   shifted-instr d (instr-ctrl (c-jmp t))                 t₁ t₂ fs fs' fl _  sh =
     shifted-jump d (find-label (t₁ ++ t₂) t) (find-label t₂ t) fs fs' sh (fl t)
-  shifted-instr d (instr-ctrl (c-branch-tag-zero t))     t₁ t₂ fs fs' fl _ sh@(lo , _) =
+  shifted-instr d (instr-ctrl (c-branch-tag-zero t))     t₁ t₂ fs fs' fl _ sh@(lo , la , _) =
     shifted-test d t (t₁ ++ t₂) t₂ _ _ fs fs' sh
-      (cong (λ L → tag-test (flat-read-tag L)) lo) (fl t)
+      (cong₂ (λ A L → tag-test (flat-read-tag A L)) la lo) (fl t)
   shifted-instr d (instr-alloc-stack k)                  t₁ t₂ fs fs' _  _  sh = shifted-frame d (instr-alloc-stack k) (enter-frame k) fs fs' sh
   shifted-instr d (instr-dealloc-stack k)                t₁ t₂ fs fs' _  _  sh = shifted-frame d (instr-dealloc-stack k) leave-frame fs fs' sh
   shifted-instr d (instr-push-frame k)                   t₁ t₂ fs fs' _  _  sh = shifted-frame d (instr-push-frame k) (enter-frame (suc k)) fs fs' sh
@@ -1448,7 +1449,7 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prefix (instr-ctrl (c-jmp m))                 t₁ t₂ fs fl _  =
     cong (λ mj → do-jump mj fs) (fl m)
   flat-exec-instr-prefix (instr-ctrl (c-branch-tag-zero m))     t₁ t₂ fs fl _  =
-    test-prefix (tag-test (flat-read-tag (floc fs))) m t₁ t₂ fs (fl m)
+    test-prefix (tag-test (flat-read-tag (falloc fs) (floc fs))) m t₁ t₂ fs (fl m)
   flat-exec-instr-prefix instr-call-closure                     t₁ t₂ fs _  fe =
     do-call-prefix t₁ t₂ fs (λ tg → fe (e-thunk tg))
 
@@ -1532,7 +1533,7 @@ module FlatMachine {FS : FrameSemantics} where
   flinkView (instr-ctrl (c-ret b))                 = fv-pres (λ _ fs → flink-do-ret (fret fs) fs)
   flinkView (instr-ctrl (c-jmp n))                 = fv-pres (λ prog fs → flink-do-jump (find-label prog n) fs)
   flinkView (instr-ctrl (c-branch-tag-zero n))     =
-    fv-pres (λ prog fs → flink-do-branch-test (tag-test (flat-read-tag (floc fs))) n prog fs)
+    fv-pres (λ prog fs → flink-do-branch-test (tag-test (flat-read-tag (falloc fs) (floc fs))) n prog fs)
   flinkView instr-call-closure                     = fv-call refl
   flinkView mov-to-output                          = fv-pres (λ _ _ → refl)
   flinkView mov-to-input                           = fv-pres (λ _ _ → refl)

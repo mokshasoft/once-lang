@@ -36,6 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (true; false)
 open import Data.Nat using (ℕ)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 
 -- Shallow: no instruction carries a nested trace (plan 0.135).
 FrameFreeI : AbstractInstr → Set
@@ -372,6 +373,13 @@ module _ {FS : FrameSemantics} where
   restore-input-alloc-full (just _) s alloc k = refl
   restore-input-alloc-full nothing  s alloc k = refl
 
+  -- D435: the frame gate reads the live frames, not `next-slot`
+  gate-nsi : ∀ (al : AllocState {FS}) (k n : ℕ) (ml : Maybe (ValueLocation FS))
+           → ExecFinal.frame-gate {FS} al n ml ≡ ExecFinal.frame-gate {FS} (record al { next-slot = k }) n ml
+  gate-nsi al k n (just (AtStack f j))  = refl
+  gate-nsi al k n (just (AtDynamic hl)) = refl
+  gate-nsi al k n nothing               = refl
+
   exec-abstract-state-nsi :
     ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) (k : ℕ)
     → FrameFreeI i
@@ -393,9 +401,12 @@ module _ {FS : FrameSemantics} where
   exec-abstract-state-nsi (instr-dealloc-stack _)  s alloc k ()
   exec-abstract-state-nsi (instr-free-heap _)      s alloc k ()
   exec-abstract-state-nsi (instr-room _)      s alloc k _ = refl
-  exec-abstract-state-nsi (load-at _)         s alloc k _ = refl
-  exec-abstract-state-nsi (store-at _)        s alloc k _ = refl
-  exec-abstract-state-nsi (addr-at _)         s alloc k _ = refl
+  exec-abstract-state-nsi (load-at x)         s alloc k _ =
+    Relation.Binary.PropositionalEquality.cong (λ g → ExecFinal.exec-load-at-resolved {FS} x Output g s) (gate-nsi alloc k x (sv-as-loc (readReg (LocState.regs s) Input1)))
+  exec-abstract-state-nsi (store-at x)        s alloc k _ =
+    Relation.Binary.PropositionalEquality.cong (λ g → ExecFinal.exec-store-at-resolved {FS} (AllocState.block-size alloc) x g (readReg (LocState.regs s) Output) s) (gate-nsi alloc k x (sv-as-loc (readReg (LocState.regs s) Input1)))
+  exec-abstract-state-nsi (addr-at x)         s alloc k _ =
+    Relation.Binary.PropositionalEquality.cong (λ g → ExecFinal.exec-addr-at-resolved {FS} (AllocState.block-size alloc) x g s) (gate-nsi alloc k x (sv-as-loc (readReg (LocState.regs s) Input1)))
   exec-abstract-state-nsi (instr-reclaim-to _)     s alloc k _ = refl
   exec-abstract-state-nsi (instr-push-frame _)     s alloc k ()
   exec-abstract-state-nsi instr-pop-frame          s alloc k ()

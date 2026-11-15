@@ -149,9 +149,9 @@ module LeftPres {FS : FrameSemantics} where
   abs-left (instr-reg-op op) s alloc = refl
   abs-left (instr-free-heap n) s alloc = refl
   abs-left (instr-room n) s alloc = refl
-  abs-left (load-at k) s alloc = load-at-left k Output (sv-as-loc (readReg (regs s) Input1)) s
-  abs-left (store-at k) s alloc = store-at-left (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s
-  abs-left (addr-at k) s alloc = addr-at-left (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s
+  abs-left (load-at k) s alloc = load-at-left k Output (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s
+  abs-left (store-at k) s alloc = store-at-left (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s
+  abs-left (addr-at k) s alloc = addr-at-left (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s
   abs-left (instr-ctrl c) s alloc = refl
 
   exec-abstract-left : ∀ (i : AbstractInstr) → LeftFree i → ∀ s alloc → lft (proj₁ (exec-abstract i s alloc)) ≡ lft s
@@ -215,7 +215,7 @@ module LeftPres {FS : FrameSemantics} where
   flat-exec-instr-left (instr-ctrl (c-ret b))                 _ prog fs = do-ret-left (fret fs) fs
   flat-exec-instr-left (instr-ctrl (c-jmp n))                 _ prog fs = do-jump-left (find-label prog n) fs
   flat-exec-instr-left (instr-ctrl (c-branch-tag-zero n))     _ prog fs =
-    do-test-left (tag-test (flat-read-tag (floc fs))) n prog fs
+    do-test-left (tag-test (flat-read-tag (falloc fs) (floc fs))) n prog fs
   flat-exec-instr-left instr-call-closure                     _ prog fs = do-call-sv-left prog (fclosure fs) fs
   flat-exec-instr-left instr-save-closure-reg                 _ prog fs = refl
   flat-exec-instr-left (instr-alloc-stack n)   lf prog fs = exec-abstract-left (instr-alloc-stack n) lf (floc fs) (falloc fs)
@@ -379,9 +379,9 @@ module FaultPres {FS : FrameSemantics} where
   abs-fault (instr-alloc-heap n) s alloc _ = refl
   abs-fault (instr-free-heap n) s alloc _ = refl
   abs-fault (instr-room n) s alloc _ = refl
-  abs-fault (load-at k) s alloc h = load-at-fault k Output (sv-as-loc (readReg (regs s) Input1)) s h
-  abs-fault (store-at k) s alloc h = store-at-fault (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s h
-  abs-fault (addr-at k) s alloc h = addr-at-fault (AllocState.block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s h
+  abs-fault (load-at k) s alloc h = load-at-fault k Output (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s h
+  abs-fault (store-at k) s alloc h = store-at-fault (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s h
+  abs-fault (addr-at k) s alloc h = addr-at-fault (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s h
   abs-fault (instr-reg-op op) s alloc _ = refl
   abs-fault (instr-ctrl c) s alloc _ = refl
 
@@ -443,7 +443,7 @@ module FaultPres {FS : FrameSemantics} where
   flat-exec-instr-fault (instr-ctrl (c-ret b))             prog fs _ = do-ret-fault (fret fs) fs
   flat-exec-instr-fault (instr-ctrl (c-jmp n))             prog fs _ = do-jump-fault (find-label prog n) fs
   flat-exec-instr-fault (instr-ctrl (c-branch-tag-zero n)) prog fs h =
-    do-test-fault (tag-test (flat-read-tag (floc fs))) n prog fs h
+    do-test-fault (tag-test (flat-read-tag (falloc fs) (floc fs))) n prog fs h
   flat-exec-instr-fault instr-call-closure                 prog fs _ = do-call-sv-fault prog (fclosure fs) fs
   flat-exec-instr-fault instr-save-closure-reg             prog fs _ = refl
   flat-exec-instr-fault (instr-alloc-stack n)   prog fs h = abs-fault (instr-alloc-stack n) (floc fs) (falloc fs) h

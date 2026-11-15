@@ -188,7 +188,7 @@ module RunC {FS : FrameSemantics} where
         nh-r2 : halted (floc r2) ≡ false
         nh-r2 = nh
 
-        run-r : tag-test (flat-read-tag (floc fs0)) ≡ just false → FlatSteps prog 3 fs0 r3
+        run-r : tag-test (flat-read-tag (falloc fs0) (floc fs0)) ≡ just false → FlatSteps prog 3 fs0 r3
         run-r cond =
           FlatSteps-++ (flat-step1 nh at-branch (flat-tag-branch-not prog fs0 (ℓ o l) cond))
                        (FlatSteps-++ (GetOut.step gr) ((nh-r2 , at-movin-r) ∷ []))
@@ -208,7 +208,7 @@ module RunC {FS : FrameSemantics} where
         inp : InputAt {prog = prog} (GetOut.mode gr) alloc b (floc r3)
         inp = place→input (GetOut.place gr) mv-eq mem-mv
 
-        ev-run-r : ∀ (cond : tag-test (flat-read-tag (floc fs0)) ≡ just false)
+        ev-run-r : ∀ (cond : tag-test (flat-read-tag (falloc fs0) (floc fs0)) ≡ just false)
                  → chain-events (run-r cond) ≡ []
         ev-run-r cond =
           trans (chain-events-++
@@ -233,7 +233,7 @@ module RunC {FS : FrameSemantics} where
            → FlatSteps prog 1 fs0 i1
         br e = flat-step1 nh at-branch e
 
-        jump : tag-test (flat-read-tag (floc fs0)) ≡ just true
+        jump : tag-test (flat-read-tag (falloc fs0) (floc fs0)) ≡ just true
              → flat-exec-instr (instr-ctrl (c-branch-tag-zero (ℓ o l))) prog fs0 ≡ i1
         jump cond = trans (flat-tag-branch-yes prog fs0 (ℓ o l) cond)
                           (cong (λ mj → do-jump mj fs0) (inl-target prog base la))
@@ -242,7 +242,7 @@ module RunC {FS : FrameSemantics} where
         tail = FlatSteps-++ (flat-step1 nh at-inl-label refl)
                             (FlatSteps-++ (GetOut.step gl) ((nh-i3 , at-movin-l) ∷ []))
 
-        run-i : tag-test (flat-read-tag (floc fs0)) ≡ just true → FlatSteps prog 4 fs0 i4
+        run-i : tag-test (flat-read-tag (falloc fs0) (floc fs0)) ≡ just true → FlatSteps prog 4 fs0 i4
         run-i cond = FlatSteps-++ (br (jump cond)) tail
 
         mv-eq : readReg (regs (floc i4)) Input1 ≡ readReg (regs (floc i3)) Output
@@ -260,7 +260,7 @@ module RunC {FS : FrameSemantics} where
         inp : InputAt {prog = prog} (GetOut.mode gl) alloc a (floc i4)
         inp = place→input (GetOut.place gl) mv-eq mem-mv
 
-        ev-run-i : ∀ (cond : tag-test (flat-read-tag (floc fs0)) ≡ just true)
+        ev-run-i : ∀ (cond : tag-test (flat-read-tag (falloc fs0) (floc fs0)) ≡ just true)
                  → chain-events (run-i cond) ≡ []
         ev-run-i cond =
           trans (chain-events-++ (br (jump cond)) tail)

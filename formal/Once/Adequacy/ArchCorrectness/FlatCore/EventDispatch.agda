@@ -626,7 +626,8 @@ module Dispatch (sup : Supply) where
                           ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
   tag-branch-step {hv} n IH ev env prog fs s m cc bg wf h ftq =
     go-loc (proj₁ wits) (proj₁ (proj₂ wits)) (proj₁ (proj₂ (proj₂ wits)))
-           (proj₁ (proj₂ (proj₂ (proj₂ wits)))) (proj₂ (proj₂ (proj₂ (proj₂ wits))))
+           (proj₁ (proj₂ (proj₂ (proj₂ wits)))) (proj₁ (proj₂ (proj₂ (proj₂ (proj₂ wits)))))
+           (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ wits)))))
     where
       -- The scrutinee discipline (D367) hands a POINTER (either residence) to a
       -- written cell holding a TAG or a POINTER; the concrete read is derived
@@ -635,53 +636,53 @@ module Dispatch (sup : Supply) where
       dc = dataCorr cc
       pbwf = run-ptr-bounds prog fs (inv-run wf)
       spwf = run-stack-ptr prog fs (inv-run wf)
-      go-fl : ∀ loc k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      go-fl : ∀ loc k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
             → readLoc (floc fs) loc ≡ just (SV-Tag k)
             → memory s (rreg s in1-reg + 0) ≡ just k
             → ∀ (mj : Maybe ℕ) → flat-find-label prog m ≡ mj
             → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                   (event-of (instr-ctrl (c-branch-tag-zero m)) fs
                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
-      go-fl loc zero i-eq r-eq rd (just j) fl-eq =
+      go-fl loc zero i-eq g r-eq rd (just j) fl-eq =
         ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
-          (bs-c-branch-tag-zero bss prog fs s m loc zero j cc h ftq i-eq r-eq rd fl-eq)
+          (bs-c-branch-tag-zero bss prog fs s m loc zero j cc h ftq i-eq g r-eq rd fl-eq)
           (λ cc′ → bg-label (inv-run wf) fl-eq pc′ (dataCorr cc′)) wf ftq h refl tt tt hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
-              hpost rewrite i-eq | r-eq | fl-eq = h
+              hpost rewrite i-eq | g | r-eq | fl-eq = h
               pc′ : fpc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ j
-              pc′ rewrite i-eq | r-eq | fl-eq = refl
-      go-fl loc (suc k') i-eq r-eq rd (just j) fl-eq =
+              pc′ rewrite i-eq | g | r-eq | fl-eq = refl
+      go-fl loc (suc k') i-eq g r-eq rd (just j) fl-eq =
         ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
-          (bs-c-branch-tag-zero bss prog fs s m loc (suc k') j cc h ftq i-eq r-eq rd fl-eq)
+          (bs-c-branch-tag-zero bss prog fs s m loc (suc k') j cc h ftq i-eq g r-eq rd fl-eq)
           (λ _ → bg-plain bg ftq refl refl pc′ (cong (FrameSemantics.frame-base FS) fb′)) wf ftq h refl tt tt hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
-              hpost rewrite i-eq | r-eq = h
+              hpost rewrite i-eq | g | r-eq = h
               pc′ : fpc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ suc (fpc fs)
-              pc′ rewrite i-eq | r-eq = refl
+              pc′ rewrite i-eq | g | r-eq = refl
               fb′ : current-frame (falloc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
                   ≡ current-frame (falloc fs)
-              fb′ rewrite i-eq | r-eq = refl
+              fb′ rewrite i-eq | g | r-eq = refl
       -- MISSING LABEL, NOT TAKEN: never consults the label — the ordinary
       -- fall-through via the label-free `block-step-c-branch-tag-nz`.
-      go-fl loc (suc k') i-eq r-eq rd nothing fl-eq =
+      go-fl loc (suc k') i-eq g r-eq rd nothing fl-eq =
         ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
-          (bs-c-branch-tag-nz bss prog fs s m loc k' cc h ftq i-eq (cong (FlatMachine.tag-test {FS}) r-eq) rd)
+          (bs-c-branch-tag-nz bss prog fs s m loc k' cc h ftq i-eq g (cong (FlatMachine.tag-test {FS}) r-eq) rd)
           (λ _ → bg-plain bg ftq refl refl pc′ (cong (FrameSemantics.frame-base FS) fb′)) wf ftq h refl tt tt hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
-              hpost rewrite i-eq | r-eq = h
+              hpost rewrite i-eq | g | r-eq = h
               pc′ : fpc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ suc (fpc fs)
-              pc′ rewrite i-eq | r-eq = refl
+              pc′ rewrite i-eq | g | r-eq = refl
               fb′ : current-frame (falloc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
                   ≡ current-frame (falloc fs)
-              fb′ rewrite i-eq | r-eq = refl
+              fb′ rewrite i-eq | g | r-eq = refl
       -- MISSING LABEL, TAKEN: both machines halt — the concrete `je` to an
       -- absent label sets `halted` (`find-label-none-corr`), and
       -- `do-jump nothing` halts the flat machine. Both traces [].
-      go-fl loc zero i-eq r-eq rd nothing fl-eq =
+      go-fl loc zero i-eq g r-eq rd nothing fl-eq =
         agree-eq (stuck-result ev env (LocState.ev-log (floc fs)) n prog fs s (instr-ctrl (c-branch-tag-zero m)) hpost (left-post (instr-ctrl (c-branch-tag-zero m)) prog fs tt wf) refl
           (st-c-branch-tag-zero sts ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq))
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ true
-              hpost rewrite i-eq | r-eq | fl-eq = refl
+              hpost rewrite i-eq | g | r-eq | fl-eq = refl
       -- D367: A POINTER CELL — a cata stack's top element. Never the sentinel:
       -- the address it encodes to is mapped (`PtrBoundsWF` puts the pointee in
       -- bounds, `dom-sized` maps it), and no mapped address is 0
@@ -689,49 +690,49 @@ module Dispatch (sup : Supply) where
       -- (A STACK pointer in a cell does not exist under heap mode: `StackPtrWF`.)
       pos-suc : ∀ {x : ℕ} → 0 < x → Σ ℕ (λ y → x ≡ suc y)
       pos-suc {suc y} _ = y , refl
-      go-ptr : ∀ loc hl′ → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      go-ptr : ∀ loc hl′ → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
              → readLoc (floc fs) loc ≡ just (SV-Ptr (AtDynamic hl′))
              → PtrB (block-size (falloc fs)) (SV-Ptr (AtDynamic hl′))
              → memory s (rreg s in1-reg + 0) ≡ just (CFC.haddr hv hl′)
              → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                   (event-of (instr-ctrl (c-branch-tag-zero m)) fs
                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
-      go-ptr loc hl′ i-eq r-eq pb rd =
+      go-ptr loc hl′ i-eq g r-eq pb rd =
         ccc-step-bs {hv} n IH ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
-          (bs-c-branch-tag-nz bss prog fs s m loc (proj₁ pz) cc h ftq i-eq (cong (FlatMachine.tag-test {FS}) r-eq)
+          (bs-c-branch-tag-nz bss prog fs s m loc (proj₁ pz) cc h ftq i-eq g (cong (FlatMachine.tag-test {FS}) r-eq)
              (trans rd (cong just (proj₂ pz))))
           (λ _ → bg-plain bg ftq refl refl pc′ (cong (FrameSemantics.frame-base FS) fb′)) wf ftq h refl tt tt hpost
         where pz = pos-suc {CFC.haddr hv hl′}
                      (CFC.dom-pos hv (CFC.dom-sized dc hl′ pb))
               hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
-              hpost rewrite i-eq | r-eq = h
+              hpost rewrite i-eq | g | r-eq = h
               pc′ : fpc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) ≡ suc (fpc fs)
-              pc′ rewrite i-eq | r-eq = refl
+              pc′ rewrite i-eq | g | r-eq = refl
               fb′ : current-frame (falloc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
                   ≡ current-frame (falloc fs)
-              fb′ rewrite i-eq | r-eq = refl
+              fb′ rewrite i-eq | g | r-eq = refl
       -- per cell, once the concrete read is in hand
-      on-cell : ∀ loc (v : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      on-cell : ∀ loc (v : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
               → readLoc (floc fs) loc ≡ just v → TagCell v
               → PtrB (block-size (falloc fs)) v → StackPtrOK v
               → memory s (rreg s in1-reg + 0) ≡ just (CFC.enc-sv hv v)
               → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                   (event-of (instr-ctrl (c-branch-tag-zero m)) fs
                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
-      on-cell loc .(SV-Tag k) i-eq r-eq (tc-tag k) _ _ rd = go-fl loc k i-eq r-eq rd (flat-find-label prog m) refl
-      on-cell loc .(SV-Ptr (AtDynamic hl′)) i-eq r-eq (tc-ptr hl′) pb _ rd = go-ptr loc hl′ i-eq r-eq pb rd
-      on-cell loc .(SV-Ptr (AtStack f k)) i-eq r-eq (tc-stk f k) _ () rd
+      on-cell loc .(SV-Tag k) i-eq g r-eq (tc-tag k) _ _ rd = go-fl loc k i-eq g r-eq rd (flat-find-label prog m) refl
+      on-cell loc .(SV-Ptr (AtDynamic hl′)) i-eq g r-eq (tc-ptr hl′) pb _ rd = go-ptr loc hl′ i-eq g r-eq pb rd
+      on-cell loc .(SV-Ptr (AtStack f k)) i-eq g r-eq (tc-stk f k) _ () rd
       -- THE RESIDENCE DISPATCH: derive the concrete read per residence.
       go-loc : ∀ (loc : ValueLocation FS) (v : StoredValue FS)
              → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
-             → readLoc (floc fs) loc ≡ just v → TagCell v
+             → readLoc (floc fs) loc ≡ just v → TagCell v → ExecFinal.frame-gate {FS} (falloc fs) 0 (just loc) ≡ just loc
              → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                   (event-of (instr-ctrl (c-branch-tag-zero m)) fs
                     ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) (ctrl-of (instr-ctrl (c-branch-tag-zero m)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) M)
       -- HEAP: the cell is written ⇒ mapped (`dom-written`), `heap-eq`
       -- relates it, and the address is the pointer's encoding.
-      go-loc (AtDynamic hl) v i-eq r-eq tc =
-        on-cell (AtDynamic hl) v i-eq r-eq tc
+      go-loc (AtDynamic hl) v i-eq r-eq tc g =
+        on-cell (AtDynamic hl) v i-eq g r-eq tc
           (subst (PtrB? (block-size (falloc fs))) r-eq (pb-heap pbwf hl))
           (subst StackPtrOK? r-eq (sp-heap spwf hl)) rd-heap
         where
@@ -744,8 +745,8 @@ module Dispatch (sup : Supply) where
       -- STACK (the probe's route): the pointer denotes `slot-addr f k'`; the
       -- live-pair theorem pins it to the current frame's live window, where
       -- `sp-eq` + `stack-eq` relate exactly that cell.
-      go-loc (AtStack f k') v i-eq r-eq tc =
-        on-cell (AtStack f k') v i-eq r-eq tc
+      go-loc (AtStack f k') v i-eq r-eq tc g =
+        on-cell (AtStack f k') v i-eq g r-eq tc
           (subst (PtrB? (block-size (falloc fs))) r-eq (pb-stack pbwf f k'))
           (subst StackPtrOK? r-eq (sp-stack spwf f k')) rd-stack
         where

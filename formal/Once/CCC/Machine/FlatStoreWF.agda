@@ -123,6 +123,16 @@ sv-as-loc-below n (SV-Tag _)              _ = tt
 sv-as-loc-below n (SV-Lit _ _)            _ = tt
 sv-as-loc-below n (SV-Code _)             _ = tt
 
+-- D435: the frame gate passes a location or faults
+stack-gate-below : ∀ (n : ℕ) (ok : Bool) (loc : ValueLocation FS) → loc-below n loc → mloc-below n (stack-gate ok loc)
+stack-gate-below n true  loc b = b
+stack-gate-below n false loc b = tt
+
+gate-below : ∀ (n : ℕ) (al : AllocState {FS}) (k : ℕ) (ml : Maybe (ValueLocation FS)) → mloc-below n ml → mloc-below n (frame-gate al k ml)
+gate-below n al k (just (AtStack f j))  b = stack-gate-below n (in-window (live-frames al) f (k Data.Nat.+ j)) (AtStack f j) b
+gate-below n al k (just (AtDynamic hl)) b = b
+gate-below n al k nothing               b = b
+
 
 -- Same block ⇒ same ref-id, so offsets stay below.
 sucLoc-below : ∀ (n : ℕ) (loc : ValueLocation FS) → loc-below n loc → loc-below n (sucLoc loc)
@@ -605,14 +615,14 @@ mutual
   wf-abstract (instr-free-heap n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-room n) ls alloc wf = wf , ≤-refl
   wf-abstract (load-at k) ls alloc wf =
-    wf-load-at-resolved k Output (sv-as-loc (readReg (regs ls) Input1)) wf
-      (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1)) , ≤-refl
+    wf-load-at-resolved k Output (frame-gate alloc k (sv-as-loc (readReg (regs ls) Input1))) wf
+      (gate-below (next-heap-ref alloc) alloc k (sv-as-loc (readReg (regs ls) Input1)) (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1))) , ≤-refl
   wf-abstract (store-at k) ls alloc wf =
-    wf-store-at-resolved (AllocState.block-size alloc) k (sv-as-loc (readReg (regs ls) Input1)) (readReg (regs ls) Output) wf
-      (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1)) (wf-regs wf Output) , ≤-refl
+    wf-store-at-resolved (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs ls) Input1))) (readReg (regs ls) Output) wf
+      (gate-below (next-heap-ref alloc) alloc k (sv-as-loc (readReg (regs ls) Input1)) (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1))) (wf-regs wf Output) , ≤-refl
   wf-abstract (addr-at k) ls alloc wf =
-    wf-addr-at-resolved (AllocState.block-size alloc) k (sv-as-loc (readReg (regs ls) Input1)) wf
-      (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1)) , ≤-refl
+    wf-addr-at-resolved (AllocState.block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs ls) Input1))) wf
+      (gate-below (next-heap-ref alloc) alloc k (sv-as-loc (readReg (regs ls) Input1)) (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1))) , ≤-refl
   wf-abstract (instr-reclaim-to n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-push-frame cap) ls alloc wf = wf , ≤-refl
   wf-abstract instr-pop-frame ls alloc wf = wf , ≤-refl
@@ -811,7 +821,7 @@ cl-step (instr-ctrl (c-call-fn f))             prog fs wf b = cl-call-at (find-f
 cl-step (instr-ctrl (c-ret bb))                prog fs wf b = cl-ret (fret fs) fs b
 cl-step (instr-ctrl (c-jmp m))                 prog fs wf b = cl-jump (find-label prog m) fs b
 cl-step (instr-ctrl (c-branch-tag-zero m))     prog fs wf b =
-  cl-test (tag-test (flat-read-tag (floc fs))) m prog fs b
+  cl-test (tag-test (flat-read-tag (falloc fs) (floc fs))) m prog fs b
 cl-step instr-call-closure                     prog fs wf b = cl-call prog fs b
 -- the ONE writer: the register takes `Input1`, whose bound is `wf-regs`
 cl-step instr-save-closure-reg                 prog fs wf b = wf-regs wf Input1
@@ -866,7 +876,7 @@ flat-wf-step (instr-ctrl (c-call-fn f))             prog fs wf = wf-call-at (fin
 flat-wf-step (instr-ctrl (c-ret b))                 prog fs wf = wf-ret (fret fs) fs wf
 flat-wf-step (instr-ctrl (c-jmp m))                 prog fs wf = wf-jump (find-label prog m) fs wf
 flat-wf-step (instr-ctrl (c-branch-tag-zero m))     prog fs wf =
-  wf-test (tag-test (flat-read-tag (floc fs))) m prog fs wf
+  wf-test (tag-test (flat-read-tag (falloc fs) (floc fs))) m prog fs wf
 -- The straight-line cases are ENUMERATED (a catch-all would not reduce
 -- `flat-exec-instr`'s own catch-all in the case tree); each is `wf-abstract`.
 flat-wf-step mov-to-output            prog fs wf = proj₁ (wf-abstract mov-to-output (floc fs) (falloc fs) wf)

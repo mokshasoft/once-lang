@@ -145,7 +145,7 @@ open MemOps {FS} using (writeLoc; writeLocToHeap; writeLocToStack; writeHeapMem
                        ; readLoc; writeLoc-read-same-stack; writeLoc-preserves-other)
 open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value
                           ; exec-store-via-resolved; exec-store-suc-via-resolved
-                          ; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
+                          ; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block; frame-gate)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open FrameSemantics FS using (shift-frame)
@@ -1373,9 +1373,9 @@ sim-load-at {hv} k hl w fs s s' corr i-eq h-eq st =
     cleanFlat : FlatState
     cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
                           ; falloc = falloc fs ; fpc = suc (fpc fs) }
-    floc-eq : exec-load-at-resolved k Output (sv-as-loc (readReg (regs (floc fs)) Input1)) (floc fs)
+    floc-eq : exec-load-at-resolved k Output (frame-gate (falloc fs) k (sv-as-loc (readReg (regs (floc fs)) Input1))) (floc fs)
               ≡ record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
-    floc-eq = trans (cong (λ m → exec-load-at-resolved k Output m (floc fs)) (cong sv-as-loc i-eq))
+    floc-eq = trans (cong (λ m → exec-load-at-resolved k Output m (floc fs)) (cong (λ x → frame-gate (falloc fs) k (sv-as-loc x)) i-eq))
                     (cong (λ mv → exec-load-with-value Output mv (floc fs)) h-eq)
     reduces : flat-exec-instr (load-at k) [] fs ≡ cleanFlat
     reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
@@ -1397,9 +1397,9 @@ sim-addr-at {hv} k hl fs s s' corr i-eq ib st =
     cleanFlat : FlatState
     cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output p }
                           ; falloc = falloc fs ; fpc = suc (fpc fs) }
-    floc-eq : exec-addr-at-resolved (block-size (falloc fs)) k (sv-as-loc (readReg (regs (floc fs)) Input1)) (floc fs)
+    floc-eq : exec-addr-at-resolved (block-size (falloc fs)) k (frame-gate (falloc fs) k (sv-as-loc (readReg (regs (floc fs)) Input1))) (floc fs)
               ≡ record (floc fs) { regs = writeReg (regs (floc fs)) Output p }
-    floc-eq = trans (cong (λ m → exec-addr-at-resolved (block-size (falloc fs)) k m (floc fs)) (cong sv-as-loc i-eq))
+    floc-eq = trans (cong (λ m → exec-addr-at-resolved (block-size (falloc fs)) k m (floc fs)) (cong (λ x → frame-gate (falloc fs) k (sv-as-loc x)) i-eq))
                     (cong (λ b → exec-addr-in-block b (AtDynamic (offsetHL hl k)) (floc fs)) ib)
     reduces : flat-exec-instr (addr-at k) [] fs ≡ cleanFlat
     reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
@@ -1423,9 +1423,9 @@ sim-store-at {hv} k hl fs s s' corr i-eq live guard-ib guard sm =
     bs = block-size (falloc fs)
     cleanFlat : FlatState
     cleanFlat = record fs { floc = writeLocToHeap (floc fs) (offsetHL hl k) v ; falloc = falloc fs ; fpc = suc (fpc fs) }
-    floc-eq : exec-store-at-resolved bs k (sv-as-loc (readReg (regs (floc fs)) Input1)) v (floc fs)
+    floc-eq : exec-store-at-resolved bs k (frame-gate (falloc fs) k (sv-as-loc (readReg (regs (floc fs)) Input1))) v (floc fs)
               ≡ writeLocToHeap (floc fs) (offsetHL hl k) v
-    floc-eq = trans (cong (λ m → exec-store-at-resolved bs k m v (floc fs)) (cong sv-as-loc i-eq))
+    floc-eq = trans (cong (λ m → exec-store-at-resolved bs k m v (floc fs)) (cong (λ x → frame-gate (falloc fs) k (sv-as-loc x)) i-eq))
                     (trans (cong (λ b → exec-store-in-block b (AtDynamic (offsetHL hl k)) v (floc fs)) guard-ib) guard)
     reduces : flat-exec-instr (store-at k) [] fs ≡ cleanFlat
     reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq

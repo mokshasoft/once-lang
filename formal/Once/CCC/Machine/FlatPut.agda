@@ -76,6 +76,11 @@ src-tr keep (src-flat fl lv v) =
   src-flat fl lv (validityWF-heap-transport (Live _) (λ _ b → b) keep (λ _ b → b) (λ _ _ ib → ib) _ _ lv v)
 src-tr keep src-unit = src-unit
 
+-- D435: a live location (a heap cell) passes the frame gate
+live-gate-c : ∀ {a : AllocState {FS}} (alloc : AllocState {FS}) (k : ℕ) (l : ValueLocation FS) → Live a l
+            → ExecFinal.frame-gate {FS} alloc k (just l) ≡ just l
+live-gate-c alloc k (AtDynamic hl) _ = refl
+
 -- the destination's word `j`, from `off`, of the block `rd`
 dst : HeapRef → ℕ → ℕ → ValueLocation FS
 dst rd off j = AtDynamic (offsetHL (heap-loc rd 0) (off + j))
@@ -235,7 +240,7 @@ module _ (C : IRTy) {c : ⟦ C ⟧} (stash blk off : ℕ) (s : LocState FS) (all
                           (RL.reloc-v C sl off agree fl fits v))
         ; cell-at  = cell-at′
         ; input1   = copy-input1 stash blk off 0 (size C) s alloc sl dh ne h rs rb
-                       (λ j j< → words C fl v j j<) (λ j j< → din′ j j<)
+                       (λ j j< → words C fl v j j<) (λ j j< → din′ j j<) (λ j _ → live-gate-c alloc (0 + j) sl lv)
         }
     where
       dh = heap-loc rd 0
@@ -249,7 +254,7 @@ module _ (C : IRTy) {c : ⟦ C ⟧} (stash blk off : ℕ) (s : LocState FS) (all
             heap-disj (heap-loc r o) dh (λ e → fresh o (subst (λ z → Live a₀ (AtDynamic (heap-loc z o))) e lv′))
       co = copy-run stash blk off 0 (size C) s alloc sl dh ne h rs rb
              (λ j j< → words C fl v j j<)
-             (λ j j< → din′ j j<)
+             (λ j j< → din′ j j<) (λ j _ → live-gate-c alloc (0 + j) sl lv)
       s′ = proj₁ (exec-trace (copy-from stash blk off 0 (size C)) s alloc)
       keep : ∀ l → Live a₀ l → readLoc s′ l ≡ readLoc s l
       keep l b = proj₂ (proj₂ (proj₂ co)) l (λ j _ → not-dst l b j)

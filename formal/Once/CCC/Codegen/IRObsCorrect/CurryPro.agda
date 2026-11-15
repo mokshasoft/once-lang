@@ -160,8 +160,9 @@ module CurryProC {FS : FrameSemantics} where
     ... | heap-loc r o′ , refl = c0
 
     ld3 : exec-abstract (load-at 0) u2 alloc ≡ (u3 , alloc)
-    ld3 = trans (cong (λ v → (SMCore.ExecFinal.exec-load-at-resolved {FS} 0 Output (sv-as-loc v) u2 , alloc)) in1-u2)
-                (cong (λ m → (SMCore.ExecFinal.exec-load-with-value {FS} Output m u2 , alloc)) rd-u2)
+    ld3 = trans (cong (λ v → (SMCore.ExecFinal.exec-load-at-resolved {FS} 0 Output (SMCore.ExecFinal.frame-gate {FS} alloc 0 (sv-as-loc v)) u2 , alloc)) in1-u2)
+                (trans (cong (λ m → (SMCore.ExecFinal.exec-load-at-resolved {FS} 0 Output m u2 , alloc)) (GetC.live-gate {FS} alloc 0 pl lpl))
+                  (cong (λ m → (SMCore.ExecFinal.exec-load-with-value {FS} Output m u2 , alloc)) rd-u2))
 
     slot0-u4 : readLoc u4 (AtStack cf 0) ≡ just (SV-Ptr pl)
     slot0-u4 = trans (writeLoc-preserves-other u3 (AtStack cf 1) (AtStack cf 0) w0 (λ ()))

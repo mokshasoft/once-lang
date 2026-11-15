@@ -786,6 +786,11 @@ data Instr (FS : FrameSemantics) : Set where
 -- Execution
 ------------------------------------------------------------------------
 
+-- D435: a live frame named `f` counts when it reserves the slot
+win-pick : ∀ {A : Set} → Dec A → Bool → Bool → Bool
+win-pick (yes _) here later = here ∨ later
+win-pick (no _)  here later = later
+
 module ExecFinal {FS : FrameSemantics} where
   open MemOps {FS}
 
@@ -856,6 +861,40 @@ module ExecFinal {FS : FrameSemantics} where
   exec-addr-at-resolved : (ℕ → ℕ) → ℕ → Maybe (ValueLocation FS) → LocState FS → LocState FS
   exec-addr-at-resolved bs k (just loc) s = exec-addr-in-block (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) s
   exec-addr-at-resolved bs k nothing    s = record s { halted = true ; faulted = true }
+
+  -- D435: an offset access through a STACK pointer reaches a slot of a LIVE
+  -- frame (the current one or a saved one), inside its window; anything else
+  -- faults (the resolution is `nothing`). A heap location passes unchanged.
+  live-frames : AllocState {FS} → List (FrameSemantics.Frame FS × ℕ)
+  live-frames al = (current-frame al , frame-slots al) ∷ saved-frames al
+
+  in-window : List (FrameSemantics.Frame FS × ℕ) → FrameSemantics.Frame FS → ℕ → Bool
+  in-window []             f j = false
+  in-window ((g , b) ∷ fr) f j = win-pick (FrameSemantics._≟F_ FS g f) (j <ᵇ b) (in-window fr f j)
+
+  stack-gate : Bool → ValueLocation FS → Maybe (ValueLocation FS)
+  stack-gate true  loc = just loc
+  stack-gate false _   = nothing
+
+  frame-gate : AllocState {FS} → ℕ → Maybe (ValueLocation FS) → Maybe (ValueLocation FS)
+  frame-gate al k (just (AtStack f j))  = stack-gate (in-window (live-frames al) f (k + j)) (AtStack f j)
+  frame-gate al k (just (AtDynamic hl)) = just (AtDynamic hl)
+  frame-gate al k nothing               = nothing
+
+  -- the gate passes the location as it is, or faults
+  stack-gate-or : ∀ (b : Bool) (loc : ValueLocation FS) → (stack-gate b loc ≡ just loc) ⊎ (stack-gate b loc ≡ nothing)
+  stack-gate-or true  loc = inj₁ refl
+  stack-gate-or false loc = inj₂ refl
+
+  -- a passed stack location had its window check succeed
+  stack-gate-true : ∀ (b : Bool) (loc : ValueLocation FS) → stack-gate b loc ≡ just loc → b ≡ true
+  stack-gate-true true  loc _ = refl
+  stack-gate-true false loc ()
+
+  gate-or : ∀ (al : AllocState {FS}) (k : ℕ) (loc : ValueLocation FS)
+          → (frame-gate al k (just loc) ≡ just loc) ⊎ (frame-gate al k (just loc) ≡ nothing)
+  gate-or al k (AtStack f j)  = stack-gate-or (in-window (live-frames al) f (k + j)) (AtStack f j)
+  gate-or al k (AtDynamic hl) = inj₁ refl
 
   exec : Instr FS → LocState FS → LocState FS
 
@@ -2134,9 +2173,9 @@ module AbstractExec {FS : FrameSemantics} where
   exec-abstract (instr-room k) s alloc = s , alloc
 
   -- load-at / store-at / addr-at: the offset forms (plan 0.123 B.4 R1).
-  exec-abstract (load-at k) s alloc  = exec-load-at-resolved k Output (sv-as-loc (readReg (regs s) Input1)) s , alloc
-  exec-abstract (store-at k) s alloc = exec-store-at-resolved (block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) (readReg (regs s) Output) s , alloc
-  exec-abstract (addr-at k) s alloc  = exec-addr-at-resolved (block-size alloc) k (sv-as-loc (readReg (regs s) Input1)) s , alloc
+  exec-abstract (load-at k) s alloc  = exec-load-at-resolved k Output (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s , alloc
+  exec-abstract (store-at k) s alloc = exec-store-at-resolved (block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) (readReg (regs s) Output) s , alloc
+  exec-abstract (addr-at k) s alloc  = exec-addr-at-resolved (block-size alloc) k (frame-gate alloc k (sv-as-loc (readReg (regs s) Input1))) s , alloc
 
   -- instr-reclaim-to: a NO-OP on alloc too (D150), for the same reason as
   -- `instr-alloc-stack`, and with an even blunter piece of evidence: ALL THREE

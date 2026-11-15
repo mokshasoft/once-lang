@@ -44,7 +44,7 @@ open import Once.CCC.Label using (module LabelId; ℓ; LabelId)
 open LabelId using (idx)
 open import Once.CCC.Codegen.FlatLayout using (get-i; get-one; get-i-P)
 open import Once.CCC.Machine.SMCore using (offsetLoc)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AllocState; AbstractTrace; load-indirect-suc; mov-to-input; LocState; SV-Tag; readReg; Input1; SV-Ptr; sv-as-loc; StoredValue; sucLoc; Output; writeReg-same; module LocState)
+open import Once.CCC.Machine.SMCore using (module ExecFinal; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AllocState; AbstractTrace; load-indirect-suc; mov-to-input; LocState; SV-Tag; readReg; Input1; SV-Ptr; sv-as-loc; StoredValue; sucLoc; Output; writeReg-same; module LocState)
 open LocState using (regs)
 open import Data.Nat.Properties using (1+n≰n)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
@@ -363,25 +363,27 @@ module ShapeC {FS : FrameSemantics} where
               {loc : ValueLocation FS} {s : LocState FS}
           → ValidAtWF {prog = prog} m alloc {A IRT.+ B} (inj₁ a) loc s
           → readReg (regs s) Input1 ≡ SV-Ptr loc
-          → tag-test (flat-read-tag s) ≡ just true
-  tag-inl {m = m} {loc = loc} {s = s} (valid-inl-wf _ _ tg _ _ _ _ _) rd
-    rewrite rd = cong tag-test (sumTag-read m 0 s loc tg)
-  tag-inl {m = m} {loc = loc} {s = s} (valid-inl-reg-wf _ tg _ _ _ _) rd
-    rewrite rd = cong tag-test (sumTag-read m 0 s loc tg)
-  tag-inl {m = m} {loc = loc} {s = s} (valid-inl-flat-wf _ _ tg _ _ _ _) rd
-    rewrite rd = cong tag-test (sumTag-read m 0 s loc tg)
+          → ∀ (al : AllocState {FS}) → ExecFinal.frame-gate {FS} al 0 (just loc) ≡ just loc
+          → tag-test (flat-read-tag al s) ≡ just true
+  tag-inl {m = m} {loc = loc} {s = s} (valid-inl-wf _ _ tg _ _ _ _ _) rd al g
+    rewrite rd | g = cong tag-test (sumTag-read m 0 s loc tg)
+  tag-inl {m = m} {loc = loc} {s = s} (valid-inl-reg-wf _ tg _ _ _ _) rd al g
+    rewrite rd | g = cong tag-test (sumTag-read m 0 s loc tg)
+  tag-inl {m = m} {loc = loc} {s = s} (valid-inl-flat-wf _ _ tg _ _ _ _) rd al g
+    rewrite rd | g = cong tag-test (sumTag-read m 0 s loc tg)
 
   tag-inr : ∀ {prog : AbstractTrace} {A B} {b : ⟦ B ⟧} {m : AllocMode} {alloc : AllocState {FS}}
               {loc : ValueLocation FS} {s : LocState FS}
           → ValidAtWF {prog = prog} m alloc {A IRT.+ B} (inj₂ b) loc s
           → readReg (regs s) Input1 ≡ SV-Ptr loc
-          → tag-test (flat-read-tag s) ≡ just false
-  tag-inr {m = m} {loc = loc} {s = s} (valid-inr-wf _ _ tg _ _ _ _ _) rd
-    rewrite rd = cong tag-test (sumTag-read m 1 s loc tg)
-  tag-inr {m = m} {loc = loc} {s = s} (valid-inr-reg-wf _ tg _ _ _ _) rd
-    rewrite rd = cong tag-test (sumTag-read m 1 s loc tg)
-  tag-inr {m = m} {loc = loc} {s = s} (valid-inr-flat-wf _ _ tg _ _ _ _) rd
-    rewrite rd = cong tag-test (sumTag-read m 1 s loc tg)
+          → ∀ (al : AllocState {FS}) → ExecFinal.frame-gate {FS} al 0 (just loc) ≡ just loc
+          → tag-test (flat-read-tag al s) ≡ just false
+  tag-inr {m = m} {loc = loc} {s = s} (valid-inr-wf _ _ tg _ _ _ _ _) rd al g
+    rewrite rd | g = cong tag-test (sumTag-read m 1 s loc tg)
+  tag-inr {m = m} {loc = loc} {s = s} (valid-inr-reg-wf _ tg _ _ _ _) rd al g
+    rewrite rd | g = cong tag-test (sumTag-read m 1 s loc tg)
+  tag-inr {m = m} {loc = loc} {s = s} (valid-inr-flat-wf _ _ tg _ _ _ _) rd al g
+    rewrite rd | g = cong tag-test (sumTag-read m 1 s loc tg)
 
   ----------------------------------------------------------------------
   -- THE PAYLOAD, at word 1 of the sum, as a component's cell (what

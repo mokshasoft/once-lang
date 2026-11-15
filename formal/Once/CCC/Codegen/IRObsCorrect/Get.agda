@@ -92,23 +92,32 @@ module GetC {FS : FrameSemantics} where
   out-mem : ∀ (fs : FlatState) (w : StoredValue FS) l → readLoc (floc (setOut fs w)) l ≡ readLoc (floc fs) l
   out-mem fs w l = readLoc-stack-heap-eq (floc (setOut fs w)) (floc fs) l refl refl
 
+  -- D435: a live location (a heap cell) passes the frame gate
+  live-gate : ∀ {a : AllocState {FS}} (alloc : AllocState {FS}) (k : ℕ) (loc : ValueLocation FS) → Live a loc
+            → ExecFinal.frame-gate {FS} alloc k (just loc) ≡ just loc
+  live-gate alloc k (AtDynamic hl) _ = refl
+
   load-at-step : ∀ (prog : AbstractTrace) (fs : FlatState) k (loc : ValueLocation FS) (w : StoredValue FS)
                → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+               → ExecFinal.frame-gate {FS} (falloc fs) k (just loc) ≡ just loc
                → readLoc (floc fs) (offsetLoc loc k) ≡ just w
                → flat-exec-instr (load-at k) prog fs ≡ setOut fs w
-  load-at-step prog fs k loc w i1 r =
+  load-at-step prog fs k loc w i1 g r =
     cong (λ s′ → record fs { floc = s′ ; fpc = suc (fpc fs) })
-      (trans (cong (λ x → ExecFinal.exec-load-at-resolved {FS} k Output (sv-as-loc x) (floc fs)) i1)
-             (cong (λ m → ExecFinal.exec-load-with-value {FS} Output m (floc fs)) r))
+      (trans (cong (λ x → ExecFinal.exec-load-at-resolved {FS} k Output (ExecFinal.frame-gate {FS} (falloc fs) k (sv-as-loc x)) (floc fs)) i1)
+        (trans (cong (λ m → ExecFinal.exec-load-at-resolved {FS} k Output m (floc fs)) g)
+             (cong (λ m → ExecFinal.exec-load-with-value {FS} Output m (floc fs)) r)))
 
   addr-at-step : ∀ (prog : AbstractTrace) (fs : FlatState) k (loc : ValueLocation FS)
                → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+               → ExecFinal.frame-gate {FS} (falloc fs) k (just loc) ≡ just loc
                → InBlk (falloc fs) (offsetLoc loc k)
                → flat-exec-instr (addr-at k) prog fs ≡ setOut fs (SV-Ptr (offsetLoc loc k))
-  addr-at-step prog fs k loc i1 ib =
+  addr-at-step prog fs k loc i1 g ib =
     cong (λ s′ → record fs { floc = s′ ; fpc = suc (fpc fs) })
-      (trans (cong (λ x → ExecFinal.exec-addr-at-resolved {FS} (AllocState.block-size (falloc fs)) k (sv-as-loc x) (floc fs)) i1)
-             (cong (λ b → ExecFinal.exec-addr-in-block {FS} b (offsetLoc loc k) (floc fs)) ib))
+      (trans (cong (λ x → ExecFinal.exec-addr-at-resolved {FS} (AllocState.block-size (falloc fs)) k (ExecFinal.frame-gate {FS} (falloc fs) k (sv-as-loc x)) (floc fs)) i1)
+        (trans (cong (λ m → ExecFinal.exec-addr-at-resolved {FS} (AllocState.block-size (falloc fs)) k m (floc fs)) g)
+             (cong (λ b → ExecFinal.exec-addr-in-block {FS} b (offsetLoc loc k) (floc fs)) ib)))
 
   mov-out-step : ∀ (prog : AbstractTrace) (fs : FlatState) (loc : ValueLocation FS)
                → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
@@ -228,12 +237,12 @@ module GetC {FS : FrameSemantics} where
     -- a node: its pointer word
     get-run C k fs loc nh at i1 lv (cell-ptr {comp-loc = cl} {mC = mC} nd r clv v) =
       mk fs (SV-Ptr cl) mC nh (fetch-of {prog = prog} {pc = fpc fs} (get-word k (node-kind nd)) at)
-         (load-at-step prog fs k loc _ i1 r) refl
+         (load-at-step prog fs k loc _ i1 (live-gate (falloc fs) k loc lv) r) refl
          (at-loc cl (val-out fs _ v) clv (writeReg-same (regs (floc fs)) Output _) (val-out fs _ v) clv)
     -- a scalar: its word
     get-run C k fs loc nh at i1 lv (cell-inline (rep-prim fit) r) =
       mk fs _ Heap nh (fetch-of {prog = prog} {pc = fpc fs} (get-word k (scalar-kind fit)) at)
-         (load-at-step prog fs k loc _ i1 r) refl
+         (load-at-step prog fs k loc _ i1 (live-gate (falloc fs) k loc lv) r) refl
          (at-reg fit (writeReg-same (regs (floc fs)) Output _))
     -- a flat component: its address (words), or the container's (none)
     get-run C k fs loc nh at i1 lv (cell-flat {mC = mC} fl hr v) = by-size (size C) refl
@@ -243,7 +252,7 @@ module GetC {FS : FrameSemantics} where
         by-size (suc n) z =
           mk fs (SV-Ptr (offsetLoc loc k)) mC nh
              (fetch-of {prog = prog} {pc = fpc fs} (get-flat+ k n (flat-kind fl) z) at)
-             (addr-at-step prog fs k loc i1 (proj₂ (hr pos))) refl
+             (addr-at-step prog fs k loc i1 (live-gate (falloc fs) k loc lv) (proj₂ (hr pos))) refl
              (at-loc _ (val-out fs _ v) (proj₁ (hr pos)) (writeReg-same (regs (floc fs)) Output _)
                        (val-out fs _ v) (proj₁ (hr pos)))
           where pos = subst (0 <_) (sym z) (s≤s z≤n)

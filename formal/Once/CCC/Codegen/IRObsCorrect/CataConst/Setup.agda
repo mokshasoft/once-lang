@@ -176,8 +176,9 @@ module CataSetupC {FS : FrameSemantics} where
     ... | hl , refl = cμ
 
     ld2 : exec-abstract (load-at (size E)) v1 a ≡ (v2 , a)
-    ld2 = trans (cong (λ x → (SMCore.ExecFinal.exec-load-at-resolved {FS} (size E) Output (sv-as-loc x) v1 , a)) in1-v1)
-                (cong (λ m → (SMCore.ExecFinal.exec-load-with-value {FS} Output m v1 , a)) rμ-v1)
+    ld2 = trans (cong (λ x → (SMCore.ExecFinal.exec-load-at-resolved {FS} (size E) Output (SMCore.ExecFinal.frame-gate {FS} a (size E) (sv-as-loc x)) v1 , a)) in1-v1)
+                (trans (cong (λ m → (SMCore.ExecFinal.exec-load-at-resolved {FS} (size E) Output m v1 , a)) (GetC.live-gate {FS} a (size E) pl lpl))
+                  (cong (λ m → (SMCore.ExecFinal.exec-load-with-value {FS} Output m v1 , a)) rμ-v1))
 
     ib₀ : InBlk A₁ H
     ib₀ = FlatAlloc.alloc-in {FS} 2 a 0 (s≤s z≤n)
@@ -191,7 +192,7 @@ module CataSetupC {FS : FrameSemantics} where
     in1-v9 = cong (λ r → readReg r Input1) (writeLoc-regs v7 H tag)
 
     st1 : exec-abstract (store-at 1) v9 A₁ ≡ (v10 , A₁)
-    st1 = trans (cong (λ ml → (SMCore.ExecFinal.exec-store-at-resolved {FS} (block-size A₁) 1 ml code v9 , A₁)) (cong sv-as-loc in1-v9))
+    st1 = trans (cong (λ ml → (SMCore.ExecFinal.exec-store-at-resolved {FS} (block-size A₁) 1 ml code v9 , A₁)) (cong (λ x → SMCore.ExecFinal.frame-gate {FS} A₁ 1 (sv-as-loc x)) in1-v9))
                 (cong (λ bb → (SMCore.ExecFinal.exec-store-in-block {FS} bb H1 code v9 , A₁)) ib₁)
 
     kslot-v10 : readLoc v10 (AtStack cf₀ k) ≡ just μ-sv

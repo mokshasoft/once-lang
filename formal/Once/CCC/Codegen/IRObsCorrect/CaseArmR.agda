@@ -74,7 +74,7 @@ module ArmRC {FS : FrameSemantics} where
   -- the two jump targets, and the residence lemmas.
   open ShapeC {FS}
   open RunC {FS}
-  open GetC {FS} using (GetOut; module GetOut; get-run)
+  open GetC {FS} using (GetOut; module GetOut; get-run; live-gate)
   ----------------------------------------------------------------------
   module ArmR {A B C : IRTy} (f : IR A C) (g : IR B C)
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
@@ -114,8 +114,8 @@ module ArmRC {FS : FrameSemantics} where
       inpB : InputAt mB alloc Bv (floc PR.r3)
       inpB = PR.inp
 
-      cond : tag-test (flat-read-tag s) ≡ just false
-      cond = tag-inr vd rd
+      cond : tag-test (flat-read-tag alloc s) ≡ just false
+      cond = tag-inr vd rd alloc (live-gate alloc 0 loc lv)
 
       handG : PR.r3 ≡ entry-flat (3 + base) (floc PR.r3) (falloc PR.r3) (fclosure PR.r3) rs
       handG = handover-eq (3 + base) PR.r3 rs refl refl refl

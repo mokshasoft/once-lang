@@ -162,7 +162,7 @@ module CataFoldExitC {FS : FrameSemantics} where
 
         -- the read, as a one-step walk: only `Output` moves
         eq4 : flat-exec-instr (load-at 0) prog x3 ≡ x4
-        eq4 = load-at-step prog x3 0 (AtDynamic tp) w in3 r0′
+        eq4 = load-at-step prog x3 0 (AtDynamic tp) w in3 refl r0′
         st4 : FlatSteps prog 1 x3 x4
         st4 = step-at x4 (nh3 , fetch-li) eq4 []
         sil4 : chain-events st4 ≡ []

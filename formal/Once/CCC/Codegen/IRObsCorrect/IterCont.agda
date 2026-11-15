@@ -64,7 +64,7 @@ module IterContC {FS : FrameSemantics} where
   open Mach {FS}
   open FlatStepsAPI {FS} using (flat-step1; flat-tag-branch-not; flat-jmp)
   open ShapeC {FS} using (tag-inr; payload-r)
-  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem)
+  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; live-gate)
   open IterShapeC {FS}
   open IterRunC {FS}
   open IterInvC {FS}
@@ -134,8 +134,8 @@ module IterContC {FS : FrameSemantics} where
     nh1 : halted (floc c1) ≡ false
     nh1 = exec-abstract-preserves-halted-WF mov-to-input (floc S0) (falloc S0) nh0 tt
 
-    cond : tag-test (flat-read-tag (floc c1)) ≡ just false
-    cond = tag-inr v1 rd1
+    cond : tag-test (flat-read-tag (falloc c1) (floc c1)) ≡ just false
+    cond = tag-inr v1 rd1 (falloc c1) (live-gate (falloc c1) 0 loc bef)
 
     pc-shift : ∀ (r b k : ℕ) → k + ((r + 0) + b) ≡ (r + k) + b
     pc-shift = solve 3 (λ r b k → k :+ ((r :+ con 0) :+ b) := (r :+ k) :+ b) refl

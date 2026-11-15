@@ -210,5 +210,5 @@ module CataConstC {FS : FrameSemantics} where
                 Glue.result wf alg ih h-box st′ n l prog base ss cr span bl la x s alloc cl ns0 nh k rs
                             pl rdi lv cE μhl rdμ lμ
                             (prim-sv fit (μ-layer-val wf (proj₂ x))) (FlatPut.src-scalar fit)
-                            (λ σ′ in0 mem → box-head prog σ′ (AtDynamic μhl) _ in0
+                            (λ σ′ in0 mem → box-head prog σ′ (AtDynamic μhl) _ in0 refl
                                               (trans (cong (readLoc (floc σ′)) (GetC′.offset-zero (AtDynamic μhl))) (trans mem r)))

@@ -130,18 +130,20 @@ module CataStepsC {FS : FrameSemantics} where
 
   -- the read (plan 0.123 α2: `load-at 0`): `Input1` points at a cell holding the layer's word
   box-out : ∀ (s : LocState FS) (a : AllocState {FS}) (q : ValueLocation FS) (μ-sv : StoredValue FS)
-          → readReg (regs s) Input1 ≡ SV-Ptr q → readLoc s (offsetLoc q 0) ≡ just μ-sv
+          → readReg (regs s) Input1 ≡ SV-Ptr q → Once.CCC.Machine.SMCore.ExecFinal.frame-gate {FS} a 0 (just q) ≡ just q
+          → readLoc s (offsetLoc q 0) ≡ just μ-sv
           → readReg (regs (X (load-at 0) s a)) Output ≡ μ-sv
-  box-out s a q μ-sv in0 rd rewrite in0 | rd = writeReg-same (regs s) Output μ-sv
+  box-out s a q μ-sv in0 g rd rewrite in0 | g | rd = writeReg-same (regs s) Output μ-sv
 
   box-head : ∀ (prog : AbstractTrace) (σ : FlatState) (q : ValueLocation FS) (μ-sv : StoredValue FS)
-           → readReg (regs (floc σ)) Input1 ≡ SV-Ptr q → readLoc (floc σ) (offsetLoc q 0) ≡ just μ-sv
+           → readReg (regs (floc σ)) Input1 ≡ SV-Ptr q → Once.CCC.Machine.SMCore.ExecFinal.frame-gate {FS} (falloc σ) 0 (just q) ≡ just q
+           → readLoc (floc σ) (offsetLoc q 0) ≡ just μ-sv
            → HeadOK prog σ h-box μ-sv
-  box-head prog σ q μ-sv in0 rd = record
+  box-head prog σ q μ-sv in0 g rd = record
     { step = refl ; ev = refl ; lf = tt
     ; nh1  = λ nh → exec-abstract-preserves-halted-WF (load-at 0) (floc σ) (falloc σ) nh
-                      (q , cong sv-as-loc in0 , μ-sv , rd)
-    ; out1 = box-out (floc σ) (falloc σ) q μ-sv in0 rd
+                      (q , trans (cong (λ v → Once.CCC.Machine.SMCore.ExecFinal.frame-gate {FS} (falloc σ) 0 (sv-as-loc v)) in0) g , μ-sv , rd)
+    ; out1 = box-out (floc σ) (falloc σ) q μ-sv in0 g rd
     ; nhw = nhw-load-at ; nws = refl ; ff = tt ; eh = tt }
 
   -- two silent runs, one after the other (give the implicits: `SRun` is a

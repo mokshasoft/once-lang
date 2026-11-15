@@ -144,7 +144,7 @@ module CataNextSlot {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   flat-keeps-next-slot prog fs (instr-ctrl (c-branch-tag-zero n)) _
-    with tag-test (flat-read-tag (floc fs))
+    with tag-test (flat-read-tag (falloc fs) (floc fs))
   ... | nothing    = refl
   ... | just false = refl
   ... | just true with find-label prog n

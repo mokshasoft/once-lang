@@ -73,7 +73,7 @@ module ArmLC {FS : FrameSemantics} where
   -- the two jump targets, and the residence lemmas.
   open ShapeC {FS}
   open RunC {FS}
-  open GetC {FS} using (GetOut; module GetOut; get-run)
+  open GetC {FS} using (GetOut; module GetOut; get-run; live-gate)
   ----------------------------------------------------------------------
   module ArmL {A B C : IRTy} (f : IR A C) (g : IR B C)
     (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
@@ -108,8 +108,8 @@ module ArmLC {FS : FrameSemantics} where
       inpA : InputAt mA alloc Av (floc PL.i4)
       inpA = PL.inp
 
-      cond : tag-test (flat-read-tag s) ≡ just true
-      cond = tag-inl vd rd
+      cond : tag-test (flat-read-tag alloc s) ≡ just true
+      cond = tag-inl vd rd alloc (live-gate alloc 0 loc lv)
 
       -- `fpc i4` is `3 + (inl-at + base)`; `ft` is emitted at `fbase base`.
       pc-i4 : fpc PL.i4 ≡ fbase base

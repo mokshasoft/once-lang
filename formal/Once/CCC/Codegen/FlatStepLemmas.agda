@@ -145,14 +145,14 @@ module FlatStepsAPI {FS : FrameSemantics} where
 
   -- tag-branch NOT taken (tag ≠ 0, the inr/cons path): fall through.
   flat-tag-branch-not : ∀ (prog : AbstractTrace) (fs : FlatState) (n : LabelId)
-    → tag-test (flat-read-tag (floc fs)) ≡ just false
+    → tag-test (flat-read-tag (falloc fs) (floc fs)) ≡ just false
     → flat-exec-instr (instr-ctrl (c-branch-tag-zero n)) prog fs
         ≡ record fs { fpc = suc (fpc fs) }
   flat-tag-branch-not prog fs n cond rewrite cond = refl
 
   -- tag-branch taken (tag = 0, the inl/base path): pc ← find-label target.
   flat-tag-branch-yes : ∀ (prog : AbstractTrace) (fs : FlatState) (n : LabelId)
-    → tag-test (flat-read-tag (floc fs)) ≡ just true
+    → tag-test (flat-read-tag (falloc fs) (floc fs)) ≡ just true
     → flat-exec-instr (instr-ctrl (c-branch-tag-zero n)) prog fs
         ≡ do-jump (find-label prog n) fs
   flat-tag-branch-yes prog fs n cond rewrite cond = refl

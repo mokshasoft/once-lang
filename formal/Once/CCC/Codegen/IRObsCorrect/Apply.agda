@@ -93,11 +93,12 @@ module ApplyC {FS : FrameSemantics} where
 
   -- a load at an offset of the block `Input1` points to
   ld : ∀ k (s : LocState FS) (a : AllocState {FS}) (l : ValueLocation FS) (w : StoredValue FS)
-     → readReg (regs s) Input1 ≡ SV-Ptr l → readLoc s (offsetLoc l k) ≡ just w
+     → readReg (regs s) Input1 ≡ SV-Ptr l → ExecFinal.frame-gate {FS} a k (just l) ≡ just l → readLoc s (offsetLoc l k) ≡ just w
      → exec-abstract (load-at k) s a ≡ (record s { regs = writeReg (regs s) Output w } , a)
-  ld k s a l w i1 r =
-    trans (cong (λ x → (ExecFinal.exec-load-at-resolved {FS} k Output (SMCore.sv-as-loc x) s , a)) i1)
-          (cong (λ m → (ExecFinal.exec-load-with-value {FS} Output m s , a)) r)
+  ld k s a l w i1 g r =
+    trans (cong (λ x → (ExecFinal.exec-load-at-resolved {FS} k Output (ExecFinal.frame-gate {FS} a k (SMCore.sv-as-loc x)) s , a)) i1)
+      (trans (cong (λ m → (ExecFinal.exec-load-at-resolved {FS} k Output m s , a)) g)
+          (cong (λ m → (ExecFinal.exec-load-with-value {FS} Output m s , a)) r))
 
   private
     slot-of : ValueLocation FS → ℕ
@@ -201,7 +202,7 @@ module ApplyC {FS : FrameSemantics} where
               seg1 = trans (exec-trace-cons (store-at-slot n) _ u alloc nh)
                     (trans (exec-trace-cons (load-at 0) (mov-to-input ∷ []) u₁ alloc nh)
                     (trans (cong (λ r → exec-trace (mov-to-input ∷ []) (proj₁ r) (proj₂ r))
-                                 (ld 0 u₁ alloc pair-loc (SV-Ptr fst-loc) rdi fst-cell))
+                                 (ld 0 u₁ alloc pair-loc (SV-Ptr fst-loc) rdi refl fst-cell))
                            (exec-trace-cons mov-to-input [] u₂ alloc nh)))
 
               at1 : SR.At prog (fpc g1) T1
@@ -310,7 +311,7 @@ module ApplyC {FS : FrameSemantics} where
               seg2 : exec-trace S2 u₃ alloc ≡ (v₉ , A₁)
               seg2 =
                 trans (exec-trace-cons (load-at 0) R6 u₃ alloc nh)
-               (trans (cong (λ r → exec-trace R6 (proj₁ r) (proj₂ r)) (ld 0 u₃ alloc fst-loc ev refl (env-cell-of ea)))
+               (trans (cong (λ r → exec-trace R6 (proj₁ r) (proj₂ r)) (ld 0 u₃ alloc fst-loc ev refl refl (env-cell-of ea)))
                (trans (exec-trace-cons (store-at-slot (suc n)) R5 v₁ alloc nh)
                (trans (exec-trace-cons (instr-alloc-heap N) R4 v₂ alloc nh)
                (trans (exec-trace-cons (store-at-slot (suc (suc n))) R3 v₃ A₁ nh)

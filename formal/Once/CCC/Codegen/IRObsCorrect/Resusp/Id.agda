@@ -265,7 +265,7 @@ module ResuspIdC {FS : FrameSemantics} where
       st₀ = cong (λ bb → (SMCore.ExecFinal.exec-store-in-block {FS} bb V blk u₄ , A₂)) ib₀
 
       st₁ : exec-abstract (store-at 1) u₆ A₂ ≡ (u₇ , A₂)
-      st₁ = trans (cong (λ ml → (SMCore.ExecFinal.exec-store-at-resolved {FS} (block-size A₂) 1 ml code u₆ , A₂)) (cong sv-as-loc in1₆))
+      st₁ = trans (cong (λ ml → (SMCore.ExecFinal.exec-store-at-resolved {FS} (block-size A₂) 1 ml code u₆ , A₂)) (cong (λ x → SMCore.ExecFinal.frame-gate {FS} A₂ 1 (sv-as-loc x)) in1₆))
                   (cong (λ bb → (SMCore.ExecFinal.exec-store-in-block {FS} bb V1 code u₆ , A₂)) ib₁)
 
       ld₇ : exec-abstract (load-from-slot p) u₇ A₂ ≡ (sfin , A₂)

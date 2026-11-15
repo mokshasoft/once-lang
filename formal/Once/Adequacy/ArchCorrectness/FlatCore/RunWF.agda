@@ -71,7 +71,7 @@ open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module 
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open MemOps {FS} using (readLoc)
-open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
+open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved; exec-load-at-resolved; exec-store-at-resolved; frame-gate; gate-or; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
 open import Once.Memory.HeapAddress using (offsetHL)
 open import Data.Bool using (T)
 open import Data.Nat.Properties using (<ᵇ⇒<)
@@ -726,7 +726,7 @@ pcView (instr-ctrl (c-jmp m))                 _ = pv-jump tt m refl go
 pcView (instr-ctrl (c-branch-tag-zero m))     _ = pv-jump tt m refl go
   where
     go : ∀ prog fs → JumpPost (instr-ctrl (c-branch-tag-zero m)) m prog fs
-    go prog fs = mk (dt-aux (tag-test (flat-read-tag (floc fs))) m prog fs)
+    go prog fs = mk (dt-aux (tag-test (flat-read-tag (falloc fs) (floc fs))) m prog fs)
       where mk : _ → JumpPost (instr-ctrl (c-branch-tag-zero m)) m prog fs
             mk (inj₁ e)                     = jp-suc e tt
             mk (inj₂ (inj₁ e))              = jp-halt e
@@ -1675,7 +1675,7 @@ load-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → h
                    → fetch prog (fpc fs) ≡ just (load-at k)
                    → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
 load-at-target-ptr prog fs k r h ftq =
-  in1-ptr fs (λ ml → LocState.faulted (exec-load-at-resolved k Output ml (floc fs))) refl
+  in1-ptr fs (λ ml → LocState.faulted (exec-load-at-resolved k Output (frame-gate (falloc fs) k ml) (floc fs))) refl
           (step-ok prog fs (load-at k) r h ftq)
 
 -- D392: A PURE SIGOP'S ARGUMENT DECODED, at a non-faulting step — the site fact
@@ -1702,14 +1702,14 @@ heap-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) �
                      → heapMem (floc fs) (offsetHL hl k) ≡ nothing → ⊥
 heap-load-at-written prog fs k hl r h ftq i-eq empty =
   true≢false (at (λ mv → LocState.faulted (exec-load-with-value Output mv (floc fs))) empty
-                 (at (λ v → LocState.faulted (exec-load-at-resolved k Output (sv-as-loc v) (floc fs))) i-eq
+                 (at (λ v → LocState.faulted (exec-load-at-resolved k Output (frame-gate (falloc fs) k (sv-as-loc v)) (floc fs))) i-eq
                      (step-ok prog fs (load-at k) r h ftq)))
 
 store-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
                     → fetch prog (fpc fs) ≡ just (store-at k)
                     → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
 store-at-target-ptr prog fs k r h ftq =
-  in1-ptr fs (λ ml → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k ml
+  in1-ptr fs (λ ml → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (frame-gate (falloc fs) k ml)
                                          (readReg (regs (floc fs)) Output) (floc fs))) refl
           (step-ok prog fs (store-at k) r h ftq)
 
@@ -1721,7 +1721,7 @@ store-at-in-block prog fs k hl r h ftq i-eq = ib _ refl
   where
     ok : LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (just (AtDynamic hl))
                              (readReg (regs (floc fs)) Output) (floc fs)) ≡ false
-    ok = at (λ v → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (sv-as-loc v)
+    ok = at (λ v → LocState.faulted (exec-store-at-resolved (block-size (falloc fs)) k (frame-gate (falloc fs) k (sv-as-loc v))
                                        (readReg (regs (floc fs)) Output) (floc fs))) i-eq
             (step-ok prog fs (store-at k) r h ftq)
     ib : ∀ b → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ b
@@ -1737,7 +1737,7 @@ addr-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunAt prog fs → h
                    → fetch prog (fpc fs) ≡ just (addr-at k)
                    → Σ (ValueLocation FS) (λ loc → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
 addr-at-target-ptr prog fs k r h ftq =
-  in1-ptr fs (λ ml → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k ml (floc fs))) refl
+  in1-ptr fs (λ ml → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (frame-gate (falloc fs) k ml) (floc fs))) refl
           (step-ok prog fs (addr-at k) r h ftq)
 
 addr-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
@@ -1747,7 +1747,7 @@ addr-at-in-block : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → R
 addr-at-in-block prog fs k hl r h ftq i-eq = ib _ refl
   where
     ok : LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (just (AtDynamic hl)) (floc fs)) ≡ false
-    ok = at (λ v → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (sv-as-loc v) (floc fs))) i-eq
+    ok = at (λ v → LocState.faulted (exec-addr-at-resolved (block-size (falloc fs)) k (frame-gate (falloc fs) k (sv-as-loc v)) (floc fs))) i-eq
             (step-ok prog fs (addr-at k) r h ftq)
     ib : ∀ b → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ b
        → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
@@ -1830,35 +1830,46 @@ branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : LabelId) → RunAt prog
                         → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
                         → Σ (ValueLocation FS) (λ loc → Σ (StoredValue FS) (λ v →
                             (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-                            × (readLoc (floc fs) loc ≡ just v) × TagCell v))
+                            × (readLoc (floc fs) loc ≡ just v) × TagCell v × (frame-gate (falloc fs) 0 (just loc) ≡ just loc)))
 branch-tag-scrutinee-wf prog fs m r h ftq = go-in1 (readReg (regs (floc fs)) Input1) refl
   where
     ok = step-ok prog fs (instr-ctrl (c-branch-tag-zero m)) r h ftq
     -- the fault flag of the branch, as a function of what it reads
     flt : Maybe (StoredValue FS) → Bool
     flt mv = LocState.faulted (floc (do-branch-test (tag-test mv) m prog fs))
+    -- through the frame gate (D435): it passes the location, or the branch faults
+    rd : StoredValue FS → Bool
+    rd v = flt (flat-read-at (floc fs) (frame-gate (falloc fs) 0 (sv-as-loc v)))
     go-cell : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+            → frame-gate (falloc fs) 0 (just loc) ≡ just loc
             → ∀ (mv : Maybe (StoredValue FS)) → readLoc (floc fs) loc ≡ mv
             → Σ (ValueLocation FS) (λ loc → Σ (StoredValue FS) (λ v →
                 (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-                × (readLoc (floc fs) loc ≡ just v) × TagCell v))
-    go-cell loc ie (just (SV-Tag k))              re = loc , SV-Tag k , ie , re , tc-tag k
-    go-cell loc ie (just (SV-Ptr (AtDynamic hl))) re = loc , _ , ie , re , tc-ptr hl
-    go-cell loc ie (just (SV-Ptr (AtStack f k)))  re = loc , _ , ie , re , tc-stk f k
-    go-cell loc ie (just (SV-Lit _ _))            re =
-      ⊥-elim (true≢false (at flt re (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok)))
-    go-cell loc ie (just (SV-Code _))             re =
-      ⊥-elim (true≢false (at flt re (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok)))
-    go-cell loc ie nothing                        re =
-      ⊥-elim (true≢false (at flt re (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok)))
+                × (readLoc (floc fs) loc ≡ just v) × TagCell v × (frame-gate (falloc fs) 0 (just loc) ≡ just loc)))
+    go-cell loc ie g (just (SV-Tag k))              re = loc , SV-Tag k , ie , re , tc-tag k , g
+    go-cell loc ie g (just (SV-Ptr (AtDynamic hl))) re = loc , _ , ie , re , tc-ptr hl , g
+    go-cell loc ie g (just (SV-Ptr (AtStack f k)))  re = loc , _ , ie , re , tc-stk f k , g
+    go-cell loc ie g (just (SV-Lit _ _))            re =
+      ⊥-elim (true≢false (at flt re (at (λ z → flt (flat-read-at (floc fs) z)) g (at rd ie ok))))
+    go-cell loc ie g (just (SV-Code _))             re =
+      ⊥-elim (true≢false (at flt re (at (λ z → flt (flat-read-at (floc fs) z)) g (at rd ie ok))))
+    go-cell loc ie g nothing                        re =
+      ⊥-elim (true≢false (at flt re (at (λ z → flt (flat-read-at (floc fs) z)) g (at rd ie ok))))
+    go-gate : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+            → (frame-gate (falloc fs) 0 (just loc) ≡ just loc) ⊎ (frame-gate (falloc fs) 0 (just loc) ≡ nothing)
+            → Σ (ValueLocation FS) (λ loc → Σ (StoredValue FS) (λ v →
+                (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+                × (readLoc (floc fs) loc ≡ just v) × TagCell v × (frame-gate (falloc fs) 0 (just loc) ≡ just loc)))
+    go-gate loc ie (inj₁ g) = go-cell loc ie g (readLoc (floc fs) loc) refl
+    go-gate loc ie (inj₂ g) = ⊥-elim (true≢false (at (λ z → flt (flat-read-at (floc fs) z)) g (at rd ie ok)))
     go-in1 : ∀ (v : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ v
            → Σ (ValueLocation FS) (λ loc → Σ (StoredValue FS) (λ v →
                (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-               × (readLoc (floc fs) loc ≡ just v) × TagCell v))
-    go-in1 (SV-Ptr loc) ie = go-cell loc ie (readLoc (floc fs) loc) refl
-    go-in1 (SV-Tag _)   ie = ⊥-elim (true≢false (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok))
-    go-in1 (SV-Lit _ _) ie = ⊥-elim (true≢false (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok))
-    go-in1 (SV-Code _)  ie = ⊥-elim (true≢false (at (λ v → flt (flat-read-at (floc fs) (sv-as-loc v))) ie ok))
+               × (readLoc (floc fs) loc ≡ just v) × TagCell v × (frame-gate (falloc fs) 0 (just loc) ≡ just loc)))
+    go-in1 (SV-Ptr loc) ie = go-gate loc ie (gate-or (falloc fs) 0 loc)
+    go-in1 (SV-Tag _)   ie = ⊥-elim (true≢false (at rd ie ok))
+    go-in1 (SV-Lit _ _) ie = ⊥-elim (true≢false (at rd ie ok))
+    go-in1 (SV-Code _)  ie = ⊥-elim (true≢false (at rd ie ok))
 
 ------------------------------------------------------------------------
 

@@ -49,7 +49,7 @@ module IterExitC {FS : FrameSemantics} where
   open Mach {FS}
   open FlatStepsAPI {FS} using (flat-step1; flat-tag-branch-yes)
   open ShapeC {FS} using (tag-inl; payload-l)
-  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem)
+  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; live-gate)
   open IterShapeC {FS}
   open IterRunC {FS}
 
@@ -98,8 +98,8 @@ module IterExitC {FS : FrameSemantics} where
       nh1 : halted (floc s1) ≡ false
       nh1 = exec-abstract-preserves-halted-WF mov-to-input (floc S0) (falloc S0) nh0 tt
 
-      cond : tag-test (flat-read-tag (floc s1)) ≡ just true
-      cond = tag-inl v1 rd1
+      cond : tag-test (flat-read-tag (falloc s1) (floc s1)) ≡ just true
+      cond = tag-inl v1 rd1 (falloc s1) (live-gate (falloc s1) 0 loc bef)
 
       -- the result, read at word 1 of the sum (`Get.get-run`)
       g : GetOut {prog = prog} B b s3

@@ -119,8 +119,8 @@ module CataFoldPopC {FS : FrameSemantics} where
       sv3 : StackAt VE (falloc h3) (floc h3) (n + 2) sn vs
       sv3 = stack-keep val-tr kp3 cf3 (sl3 (n + 2)) sv
 
-      cond : tag-test (flat-read-tag (floc h3)) ≡ just (DL.null ns)
-      cond = stack-tag node-nz se3 in3
+      cond : tag-test (flat-read-tag (falloc h3) (floc h3)) ≡ just (DL.null ns)
+      cond = stack-tag node-nz se3 in3 (falloc h3)
 
       walk : Walk prog n (KH n) σ (3 + fpc σ) (λ _ → ⊤)
       walk =
@@ -250,9 +250,9 @@ module CataFoldPopC {FS : FrameSemantics} where
           s-at {prog} {h1} {6} {p4} h2 (nh , span 1 _ refl) refl refl tt (
           s-at {prog} {h2} {5} {p4} h3 (nh2 , span 2 _ refl) refl refl tt (
           s-at {prog} {h3} {4} {p4} h4 (nh3 , span 3 _ refl) (flat-tag-branch-not prog h3 (ℓ o (l1 + 3)) cond) refl tt (
-          s-at {prog} {h4} {3} {p4} p1 (nh3 , span 4 _ refl) (load-at-step prog h4 1 (AtDynamic tp) pnb in3 r1) refl tt (
+          s-at {prog} {h4} {3} {p4} p1 (nh3 , span 4 _ refl) (load-at-step prog h4 1 (AtDynamic tp) pnb in3 refl r1) refl tt (
           s-at {prog} {p1} {2} {p4} p2 (nh3 , span 5 _ refl) refl refl tt (
-          s-at {prog} {p2} {1} {p4} p3 (nh-p2 , span 6 _ refl) (load-at-step prog p2 0 (AtDynamic tp) w in-p2 r0) refl tt (
+          s-at {prog} {p2} {1} {p4} p3 (nh-p2 , span 6 _ refl) (load-at-step prog p2 0 (AtDynamic tp) w in-p2 refl r0) refl tt (
           s-at {prog} {p3} {0} {p4} p4 (nh-p2 , span 7 _ refl) refl refl tt s-nil)))))))
 
         abstract

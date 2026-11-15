@@ -50,6 +50,11 @@ open import Data.List using (_++_)
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
 open import Once.CCC.Machine.SMCore using (restore-input; load-from-slot; store-at)
 
+-- D435: a live location (a heap cell) passes the frame gate
+live-gate-c : ∀ {a : AllocState {FS}} (alloc : AllocState {FS}) (k : ℕ) (l : ValueLocation FS) → Live a l
+            → ExecFinal.frame-gate {FS} alloc k (just l) ≡ just l
+live-gate-c alloc k (AtDynamic hl) _ = refl
+
 module PutLay {F : IRFunctor} (R : VTy (ν-type F))
   -- an `R` stays one while what was live stays live, unchanged, its blocks kept
   (R-tr : ∀ {a a′ : AllocState {FS}} {s s′ : LocState FS}
@@ -218,7 +223,7 @@ module PutLay {F : IRFunctor} (R : VTy (ν-type F))
           ; cell     = cell-at′ s′ (λ _ _ → refl) keep
           ; cell-at  = cell-at′
           ; input1   = copy-input1 stash blk off 0 (size T) s alloc sl dh ne h rs rb
-                         (λ j j< → LayWords.lay-words R wG fl v j j<) (λ j j< → din′ j j<)
+                         (λ j j< → LayWords.lay-words R wG fl v j j<) (λ j j< → din′ j j<) (λ j _ → live-gate-c alloc (0 + j) sl lv)
           }
       where
         dh = heap-loc rd 0
@@ -231,7 +236,7 @@ module PutLay {F : IRFunctor} (R : VTy (ν-type F))
               heap-disj (heap-loc r o) dh (λ e → fresh o (subst (λ z → Live a₀ (AtDynamic (heap-loc z o))) e lv′))
         co = copy-run stash blk off 0 (size T) s alloc sl dh ne h rs rb
                (λ j j< → LayWords.lay-words R wG fl v j j<)
-               (λ j j< → din′ j j<)
+               (λ j j< → din′ j j<) (λ j _ → live-gate-c alloc (0 + j) sl lv)
         s′ = proj₁ (exec-trace (copy-from stash blk off 0 (size T)) s alloc)
         keep : ∀ l → Live a₀ l → readLoc s′ l ≡ readLoc s l
         keep l b = proj₂ (proj₂ (proj₂ co)) l (λ j _ → not-dst l b j)

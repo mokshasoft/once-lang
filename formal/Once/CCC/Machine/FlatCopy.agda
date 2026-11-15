@@ -45,6 +45,7 @@ open MemoryOps {FS} using (readLoc-writeLoc-same)
 open AllocState using (current-frame)
 open LocState using (halted; regs)
 open ExecFinal {FS} using (in-block?)
+open import Data.Maybe using (just)
 open AllocState using (block-size)
 open import Once.CCC.Codegen.FlatLayout using (copy-from)
 
@@ -71,10 +72,12 @@ copy-one : ∀ (src blk off i k : ℕ) (s : LocState FS) (alloc : AllocState {FS
          → readLoc s (offsetLoc sl i) ≡ just w
          → readLoc s (AtStack (current-frame alloc) blk) ≡ just (SV-Ptr (AtDynamic dh))
          → InBlock alloc dh (off + i)
+         → ExecFinal.frame-gate {FS} alloc i (just sl) ≡ just sl
          → exec-trace (copy-from src blk off i (suc k)) s alloc
            ≡ exec-trace (copy-from src blk off (suc i) k) (one-word s sl dh w off i) alloc
-copy-one src blk off i k s alloc sl@(AtStack _ _) dh w h rs rw rb ib rewrite h | rs | h | rw | rb | ib = refl
-copy-one src blk off i k s alloc sl@(AtDynamic _) dh w h rs rw rb ib rewrite h | rs | h | rw | rb | ib = refl
+copy-one src blk off i k s alloc sl@(AtStack f j) dh w h rs rw rb ib gs
+  rewrite h | rs | h | ExecFinal.stack-gate-true {FS} _ (AtStack f j) gs | rw | rb | ib = refl
+copy-one src blk off i k s alloc sl@(AtDynamic _) dh w h rs rw rb ib gs rewrite h | rs | h | rw | rb | ib = refl
 
 ------------------------------------------------------------------------
 -- ONE HEAP WRITE (its value abstract): it keeps the run going, leaves the
@@ -142,10 +145,11 @@ copy-run : ∀ (src blk off i k : ℕ) (s : LocState FS) (alloc : AllocState {FS
          → readLoc s (AtStack (current-frame alloc) blk) ≡ just (SV-Ptr (AtDynamic dh))
          → (∀ j → j < k → Σ (StoredValue FS) (λ w → readLoc s (offsetLoc sl (i + j)) ≡ just w))
          → (∀ j → j < k → InBlock alloc dh (off + (i + j)))
+         → (∀ j → j < k → ExecFinal.frame-gate {FS} alloc (i + j) (just sl) ≡ just sl)
          → CopyOut off i k sl dh s alloc (exec-trace (copy-from src blk off i k) s alloc)
-copy-run src blk off i zero s alloc sl dh ne h rs rb wr ibs =
+copy-run src blk off i zero s alloc sl dh ne h rs rb wr ibs gts =
   refl , h , (λ j ()) , (λ loc _ → refl)
-copy-run src blk off i (suc k) s alloc sl dh ne h rs rb wr ibs =
+copy-run src blk off i (suc k) s alloc sl dh ne h rs rb wr ibs gts =
   subst (CopyOut off i (suc k) sl dh s alloc) (sym eq) out
   where
     w  = proj₁ (wr 0 (s≤s z≤n))
@@ -158,6 +162,7 @@ copy-run src blk off i (suc k) s alloc sl dh ne h rs rb wr ibs =
        ≡ exec-trace (copy-from src blk off (suc i) k) s₁ alloc
     eq = copy-one src blk off i k s alloc sl dh w h rs rw rb
            (subst (λ x → InBlock alloc dh (off + x)) (+-identityʳ i) (ibs 0 (s≤s z≤n)))
+           (subst (λ x → ExecFinal.frame-gate {FS} alloc x (just sl) ≡ just sl) (+-identityʳ i) (gts 0 (s≤s z≤n)))
     -- what the one write leaves
     s₁-other : ∀ loc → loc ≢ AtDynamic (offsetHL dh (off + i)) → readLoc s₁ loc ≡ readLoc s loc
     s₁-other loc ne′ = trans (writeLoc-preserves-other s₀ _ loc w (λ e → ne′ (sym e))) (regs-mem s _ loc)
@@ -170,6 +175,7 @@ copy-run src blk off i (suc k) s alloc sl dh ne h rs rb wr ibs =
                             (subst (λ x → readLoc s (offsetLoc sl x) ≡ just (proj₁ (wr (suc j) (s≤s j<k))))
                                    (+-suc i j) (proj₂ (wr (suc j) (s≤s j<k)))))
            (λ j j<k → subst (λ x → InBlock alloc dh (off + x)) (+-suc i j) (ibs (suc j) (s≤s j<k)))
+           (λ j j<k → subst (λ x → ExecFinal.frame-gate {FS} alloc x (just sl) ≡ just sl) (+-suc i j) (gts (suc j) (s≤s j<k)))
     r = exec-trace (copy-from src blk off (suc i) k) s₁ alloc
     out : CopyOut off i (suc k) sl dh s alloc r
     out = proj₁ ih , proj₁ (proj₂ ih) , copied , other
@@ -206,10 +212,11 @@ copy-input1 : ∀ (src blk off i k : ℕ) (s : LocState FS) (alloc : AllocState 
             → readLoc s (AtStack (current-frame alloc) blk) ≡ just (SV-Ptr (AtDynamic dh))
             → (∀ j → j < k → Σ (StoredValue FS) (λ w → readLoc s (offsetLoc sl (i + j)) ≡ just w))
             → (∀ j → j < k → InBlock alloc dh (off + (i + j)))
+            → (∀ j → j < k → ExecFinal.frame-gate {FS} alloc (i + j) (just sl) ≡ just sl)
             → readReg (regs s) Input1 ≡ SV-Ptr (AtDynamic dh)
             → readReg (regs (proj₁ (exec-trace (copy-from src blk off i k) s alloc))) Input1 ≡ SV-Ptr (AtDynamic dh)
-copy-input1 src blk off i zero s alloc sl dh ne h rs rb wr ibs i1 = i1
-copy-input1 src blk off i (suc k) s alloc sl dh ne h rs rb wr ibs i1 =
+copy-input1 src blk off i zero s alloc sl dh ne h rs rb wr ibs gts i1 = i1
+copy-input1 src blk off i (suc k) s alloc sl dh ne h rs rb wr ibs gts i1 =
   subst (λ r → readReg (regs (proj₁ r)) Input1 ≡ SV-Ptr (AtDynamic dh)) (sym eq)
     (copy-input1 src blk off (suc i) k s₁ alloc sl dh ne
        (trans (wl-halted s₀ (offsetHL dh (off + i)) w) h)
@@ -220,6 +227,7 @@ copy-input1 src blk off i (suc k) s alloc sl dh ne h rs rb wr ibs i1 =
                         (subst (λ x → readLoc s (offsetLoc sl x) ≡ just (proj₁ (wr (suc j) (s≤s j<k))))
                                (+-suc i j) (proj₂ (wr (suc j) (s≤s j<k)))))
        (λ j j<k → subst (λ x → InBlock alloc dh (off + x)) (+-suc i j) (ibs (suc j) (s≤s j<k)))
+       (λ j j<k → subst (λ x → ExecFinal.frame-gate {FS} alloc x (just sl) ≡ just sl) (+-suc i j) (gts (suc j) (s≤s j<k)))
        (trans (cong (λ q → readReg q Input1) (writeLoc-regs s₀ (AtDynamic (offsetHL dh (off + i))) w)) refl))
   where
     w  = proj₁ (wr 0 (s≤s z≤n))
@@ -232,5 +240,6 @@ copy-input1 src blk off i (suc k) s alloc sl dh ne h rs rb wr ibs i1 =
        ≡ exec-trace (copy-from src blk off (suc i) k) s₁ alloc
     eq = copy-one src blk off i k s alloc sl dh w h rs rw rb
            (subst (λ x → InBlock alloc dh (off + x)) (+-identityʳ i) (ibs 0 (s≤s z≤n)))
+           (subst (λ x → ExecFinal.frame-gate {FS} alloc x (just sl) ≡ just sl) (+-identityʳ i) (gts 0 (s≤s z≤n)))
     s₁-other : ∀ loc → loc ≢ AtDynamic (offsetHL dh (off + i)) → readLoc s₁ loc ≡ readLoc s loc
     s₁-other loc ne′ = trans (writeLoc-preserves-other s₀ _ loc w (λ e → ne′ (sym e))) (regs-mem s _ loc)

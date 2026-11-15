@@ -216,7 +216,7 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   step-lift fs (instr-ctrl (c-ret _))           = ret-to fs (fret fs)
   step-lift fs (instr-ctrl (c-jmp n)) with jump-to fs (find-label t n)
   ... | p , e , r = p , trans (cong (λ z → do-jump z (lift fs (φ t (fpc fs)))) (find-label-room t n)) e , r
-  step-lift fs (instr-ctrl (c-branch-tag-zero n)) = branch-at fs n (tag-test (flat-read-tag (floc fs)))
+  step-lift fs (instr-ctrl (c-branch-tag-zero n)) = branch-at fs n (tag-test (flat-read-tag (falloc fs) (floc fs)))
   step-lift fs (instr-ctrl (c-call-fn f)) with call-to fs (find-entry t (e-fn f))
   ... | p , e , r = p , trans (cong (λ z → do-call-at z (lift fs (φ t (fpc fs)))) (find-entry-room t (e-fn f))) e , r
 

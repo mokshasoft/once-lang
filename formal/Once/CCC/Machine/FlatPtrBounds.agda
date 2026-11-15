@@ -463,12 +463,12 @@ pb-abstract (instr-alloc-stack n)   ls alloc () am wfS wf
 pb-abstract (instr-dealloc-stack n) ls alloc () am wfS wf
 pb-abstract (instr-free-heap n)     ls alloc () am wfS wf
 pb-abstract (load-at n)     ls alloc ff am wfS wf =
-  pb-load-at-resolved _ ls n Output (sv-as-loc (readReg (regs ls) Input1)) wf
+  pb-load-at-resolved _ ls n Output (frame-gate alloc n (sv-as-loc (readReg (regs ls) Input1))) wf
 pb-abstract (store-at n)     ls alloc ff am wfS wf =
-  pb-store-at-resolved _ _ ls n (sv-as-loc (readReg (regs ls) Input1))
+  pb-store-at-resolved _ _ ls n (frame-gate alloc n (sv-as-loc (readReg (regs ls) Input1)))
                        (readReg (regs ls) Output) (pb-regs wf Output) wf
 pb-abstract (addr-at n)     ls alloc ff am wfS wf =
-  pb-addr-at-resolved _ ls n (sv-as-loc (readReg (regs ls) Input1)) wf
+  pb-addr-at-resolved _ ls n (frame-gate alloc n (sv-as-loc (readReg (regs ls) Input1))) wf
 pb-abstract (instr-room n)     ls alloc ff am wfS wf = wf
 pb-abstract (instr-push-frame cap)  ls alloc () am wfS wf
 pb-abstract instr-pop-frame         ls alloc () am wfS wf
@@ -612,7 +612,7 @@ flat-ptr-bounds (instr-ctrl (c-ret b))                 prog fs ff am wfS wf =
 flat-ptr-bounds (instr-ctrl (c-jmp m))                 prog fs ff am wfS wf =
   pb-jump (find-label prog m) fs wf
 flat-ptr-bounds (instr-ctrl (c-branch-tag-zero m))     prog fs ff am wfS wf =
-  pb-test (tag-test (flat-read-tag (floc fs))) m prog fs wf
+  pb-test (tag-test (flat-read-tag (falloc fs) (floc fs))) m prog fs wf
 flat-ptr-bounds (instr-alloc-stack n)   prog fs () am wfS wf
 flat-ptr-bounds (instr-dealloc-stack n) prog fs () am wfS wf
 flat-ptr-bounds (instr-free-heap n)     prog fs () am wfS wf
