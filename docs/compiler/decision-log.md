@@ -23684,3 +23684,32 @@ that gives it back. So the new image could not load a core constant.
 ### Alternatives
 * Encode the core's bits back to a payload: impossible for a rounded `Float` with no decimal preimage.
 * A machine instruction loading a raw word: a second literal path, against D113's one place.
+
+## D434 — STACK POINTERS LIVE ON THE STACK, POINTING AT LIVE FRAMES; THE HEAP NEVER POINTS AT THE STACK (2026-11-15)
+
+**Decided** (the user, 2026-11-15; plan 0.146 B1.6 item 2, found top-down: `Owed.o-em`'s `em-image`, the
+arch layer's stack-pointer invariant at the new image). **Applies**: D380 (stack pointers live on all three
+arches), D407 (frames are the core's temporaries), D428/D432 (an argument or structured answer by address).
+
+### The problem
+Master's `FlatStackPtr` holds that every stack pointer addresses the CURRENT frame; it is true only because
+the old trace opens no frame. The new image opens one per call, and every block's prologue saves the
+caller's argument-area address in its own slot (`Lower.lowBlock`: `mov-to-output ∷ store-at-slot (sv₁ φ)`,
+the trampolines likewise), writing the answer back through it at the end. So stack pointers are stored in
+memory and point at older frames.
+
+### Decision
+* **The heap never points at the stack.** No word of a heap cell is a stack address. (The stack may point
+  at the heap, as today.)
+* **A stack pointer points at live data.** One held in a slot of frame `i`, or in a register while frame `i`
+  is current, addresses a live slot of frame `j ≤ i` (the frame itself or an ancestor): nothing is popped
+  while a pointer at it remains. The arch correspondence gives ancestor frames their addresses and admits
+  loads and stores through such pointers.
+* What foreign code does with an address a SigOp is passed stays outside the proof, as for any C ABI call.
+
+### Alternatives
+* Stack pointers anywhere, heap cells too (D380's full reading): a cell outlives or predeceases any frame,
+  so it needs a liveness argument this image never uses.
+* No saved pointer (the callee reaches the caller's area frame-relatively): a store and a load fewer per
+  call, but a new addressing form and layout on three arches; possible later as an optimization under this
+  invariant.
