@@ -22,6 +22,9 @@ open import Data.List using ([])
 open import Data.Product using (_,_)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+import Data.Nat.Properties as ℕP
+open import Once.Spec.Theory using (int; float)
+open import Once.Spec.Float.Value using (fv-zero; pos)
 
 open import Once.Spec.Grade using (Purity; pure; eff; pureᶠ; Zero; One; Many; mk-kind; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type
@@ -289,5 +292,9 @@ lawsApply = record
   ; fold-eq   = pure , SK ⊤ , ⊤ , (λ _ → tt) , _ , inS tt , Recursion.fold-in recursion pure (SK ⊤) (λ _ → tt)
   ; fusion    = pure , SK ⊤ , ⊤ , ⊤ , (λ _ → tt) , (λ _ → tt) , (λ x → x) , inS tt , λ _ → ≈-refl _
   ; unfold-eq = pureᶠ , SK ⊤ , ⊤ , (λ _ → tt) , ana pureᶠ (SK ⊤) (λ _ → tt) , tt , λ _ → refl
+
+  -- Numbers: `0` at `Int` (the modulus is positive), `+0` at `Float` (a zero
+  -- fits every format)
+  ; numbers₀ = λ { int → 0 , ℕP.m^n>0 2 (TargetNum.int-bits fmt) ; float → fv-zero pos , refl }
   }
   where open SM using (Freyd; Recursion)

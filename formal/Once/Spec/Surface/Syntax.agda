@@ -18,11 +18,14 @@ module Once.Spec.Surface.Syntax where
 open import Data.List using (List)
 open import Data.Maybe using (Maybe)
 open import Data.Integer using (ℤ)
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; _+_; _*_; _^_)
 open import Data.String using (String)
 open import Once.Spec.Grade using (Quantity; Finite)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Type using (Type)
+open import Once.Spec.Float.Value using (Sign; pos; neg)
+open import Once.Spec.Float.Decimal using (Decimal; ⟨_⟩_/10^_)
+open import Once.Spec.Surface.Operator using (BinOp)
 
 ------------------------------------------------------------------------
 -- Types as written
@@ -54,10 +57,6 @@ infixr 50 _P*_
 -- Expressions
 ------------------------------------------------------------------------
 
-data BinOp : Set where
-  OpAdd OpSub OpMul OpDiv OpMod : BinOp
-  OpLt OpLe OpGt OpGe OpEq OpNe : BinOp
-
 data Expr : Set where
   RVar       : String → Expr                       -- x
   RQualified : String → String → Expr              -- name@alias
@@ -68,11 +67,16 @@ data Expr : Set where
   RPair      : Expr → Expr → Expr                  -- (e₁, e₂)
   RDestruct  : Expr → String → Expr → String → Expr → Expr   -- destruct e | x -> e₁ | y -> e₂
   RUnit      : Expr                                -- ()
-  RInt       : ℤ → Expr
-  RFloat     : ℕ → ℕ → ℕ → Expr                    -- integer part, fraction digits, their number
+  RInt       : ℤ → Expr                            -- 5, -5 (a signed literal, plan 0.150 N4)
+  RFloat     : Sign → ℕ → ℕ → ℕ → Expr             -- sign, integer part, fraction digits, their number
   RAnnot     : Expr → Type → Expr                  -- (e : T)
   RBinOp     : BinOp → Expr → Expr → Expr
   RNeg       : Expr → Expr                         -- -e
+
+-- A float literal's value as written: its sign beside the digits (`-0.0` is
+-- the negative zero).
+signedDecimal : Sign → ℕ → ℕ → ℕ → Decimal
+signedDecimal s i f l = ⟨ s ⟩ (i * 10 ^ l + f) /10^ l
 
 ------------------------------------------------------------------------
 -- Modules

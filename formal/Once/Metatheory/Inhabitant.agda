@@ -12,12 +12,13 @@ module Once.Metatheory.Inhabitant where
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Once.Spec.Signature using (BTy; unit; void; int; float; _*_; _+_; ⟦_⟧ᵇ; NotEmpty)
+open import Once.Spec.Float.Value using (fv-zero; pos)
 
 inhabitant : ∀ b → NotEmpty b → ⟦ b ⟧ᵇ
 inhabitant unit    _       = _
 inhabitant void    ()
 inhabitant int     _       = 0
-inhabitant float   _       = 0
+inhabitant float   _       = fv-zero pos
 inhabitant (a * b) (p , q) = inhabitant a p , inhabitant b q
 inhabitant (a + b) (inj₁ p) = inj₁ (inhabitant a p)
 inhabitant (a + b) (inj₂ q) = inj₂ (inhabitant b q)

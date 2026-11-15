@@ -46,6 +46,12 @@
 --   * laws apply  — every law, and every claim with premises, has an
 --                   instance: a closed program meeting all its premises,
 --                   with two different sides (no law is vacuous).
+--   * numbers     — each row of the table of theories (`Spec.Theory`) has its
+--                   theories' laws, over the operations its primitives mean:
+--                   `Int` a commutative ring with `Neg`, a total order, `χ_Δ`;
+--                   `Float` rounded arithmetic (a retract of the exact numbers,
+--                   with exact `Neg`), IEEE's
+--                   totalOrder, `χ_Δ` (plan 0.150).
 ------------------------------------------------------------------------
 
 module Once.Spec.Metatheory where
@@ -87,6 +93,8 @@ import Once.Spec.Core.Meaning as Meaning
 import Once.Spec.Core.Program as CoreProgram
 import Once.Spec.Surface.Typing as SurfaceTyping
 open import Once.Spec.Examples
+open import Data.Integer using (ℤ)
+open import Once.Spec.Theory using (NumTy; Has; module Models; module Laws)
 
 ------------------------------------------------------------------------
 -- Types
@@ -788,6 +796,7 @@ module _ (fmt : TargetNum) where
   open Domain Σ₀ using (⟦_⟧ᵛ; traverseM)
   open Equivalence Σ₀ using (Same; RelSub; _≃_)
   open Effect Σ₀
+  open Models fmt using (Val; Valid)
 
   private
     Sides₀ : Tm noDefs 0 0 → Tm noDefs 0 0 → Ty 0 → Purity → Set
@@ -956,6 +965,26 @@ module _ (fmt : TargetNum) where
       unfold-eq    : ∃[ f ] ∃[ G ] ∃[ X ] Σ[ c ∈ (X → Mᶠ f (⟦ G ⟧SF X)) ] Σ[ g ∈ (X → νM f G) ]
                        X × (∀ x → EqLayer f (LayerEq G _≈ν_) (νM.outν (g x)) (fmap (fin f) (sfmap G g) (c x)))
 
+      -- Numbers: each number type has a value meeting the premise of every law
+      -- of its rows (`Numbers`, below).
+      numbers₀     : ∀ (A : NumTy) → Σ[ x ∈ Val A ] Valid A x
+
+------------------------------------------------------------------------
+-- Numbers: every row of the table has its theory's laws
+------------------------------------------------------------------------
+
+module _ (fmt : TargetNum) where
+  open TargetNum fmt using (float-format)
+  open Models fmt using (Val; Valid; structure)
+
+  record Numbers : Set where
+    field
+      -- each type's structure for each theory it has (`Spec.Theory`) obeys
+      -- the theory's laws, on the values the target's numbers take
+      -- (`Float`'s negation is exact and its rounding symmetric: the
+      -- `Rounded` laws, N3 (b).)
+      lawful    : ∀ {A U} (h : Has A U) → Laws.Laws (Valid A) U (structure h)
+
 ------------------------------------------------------------------------
 -- All of it
 ------------------------------------------------------------------------
@@ -976,3 +1005,4 @@ record Metatheory : Set₁ where
     recursion  : ∀ (Σ : Signature) → Recursion Σ
     laws-apply : ∀ (fmt : TargetNum) → LawsApply fmt
     totality   : Totality
+    numbers    : ∀ (fmt : TargetNum) → Numbers fmt

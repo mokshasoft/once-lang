@@ -15,8 +15,10 @@
 -- In WORDS of the target (`Spec.Numerics.int-bits`; 8 bytes on x86-64 and
 -- riscv64, 4 on x86-32), in order of increasing address:
 --
---   Int, Float   one word: the value (`Spec.Domain`: both denote a word, the
---                Float one its encoding in the target's format, D113);
+--   Int          one word: the value (`Spec.Domain`: an `Int` denotes a word);
+--   Float        one word: the value's encoding in the target's format
+--                (`Spec.Float.Encoding`; a `Float` denotes a level-2 value,
+--                plan 0.150 N6, so its one NaN is the canonical pattern);
 --   Unit         no words (a C struct omits it; an argument of type Unit is
 --                not passed);
 --   A * B        A's words, then B's (a flat C struct);
@@ -49,6 +51,8 @@ open import Once.Spec.Type
   using (Type; Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; ∅ₖ)
 open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
+open import Once.Spec.Float.Dyadic using (FloatFormat)
+open import Once.Spec.Float.Encoding using (encode)
 
 -- THE SIZE, in words: a base type's size is static.
 words : ∀ {A : Type} → Base ∅ₖ A → ℕ
@@ -60,21 +64,21 @@ words b-Float   = 1
 words (b-* a b) = words a + words b
 words (b-+ a b) = suc (words a ⊔ words b)
 
--- THE LAYOUT: `Layout b v ws` — the value `v` of the base type `b` occupies the
--- words `ws`, from its address up.
-data Layout : ∀ {A : Type} (b : Base ∅ₖ A) → ⟦ A ⟧ᵛ → List Carrier → Set where
-  l-unit  : Layout b-Unit tt []
-  l-int   : ∀ {v} → Layout b-Int v (v ∷ [])
-  l-float : ∀ {v} → Layout b-Float v (v ∷ [])
+-- THE LAYOUT: `Layout F b v ws` — the value `v` of the base type `b` occupies
+-- the words `ws`, from its address up, at the target's float format `F`.
+data Layout (F : FloatFormat) : ∀ {A : Type} (b : Base ∅ₖ A) → ⟦ A ⟧ᵛ → List Carrier → Set where
+  l-unit  : Layout F b-Unit tt []
+  l-int   : ∀ {v} → Layout F b-Int v (v ∷ [])
+  l-float : ∀ {v} → Layout F b-Float v (encode F v ∷ [])
   l-pair  : ∀ {A B} {a : Base ∅ₖ A} {b : Base ∅ₖ B} {x y ws vs}
-          → Layout a x ws → Layout b y vs → Layout (b-* a b) (x , y) (ws ++ vs)
+          → Layout F a x ws → Layout F b y vs → Layout F (b-* a b) (x , y) (ws ++ vs)
   -- a sum: the tag, the payload, then padding (any words) to the larger side
   l-inl   : ∀ {A B} {a : Base ∅ₖ A} {b : Base ∅ₖ B} {x ws pad}
-          → Layout a x ws → length (ws ++ pad) ≡ words a ⊔ words b
-          → Layout (b-+ a b) (inj₁ x) (0 ∷ ws ++ pad)
+          → Layout F a x ws → length (ws ++ pad) ≡ words a ⊔ words b
+          → Layout F (b-+ a b) (inj₁ x) (0 ∷ ws ++ pad)
   l-inr   : ∀ {A B} {a : Base ∅ₖ A} {b : Base ∅ₖ B} {y vs pad}
-          → Layout b y vs → length (vs ++ pad) ≡ words a ⊔ words b
-          → Layout (b-+ a b) (inj₂ y) (1 ∷ vs ++ pad)
+          → Layout F b y vs → length (vs ++ pad) ≡ words a ⊔ words b
+          → Layout F (b-+ a b) (inj₂ y) (1 ∷ vs ++ pad)
 
 ------------------------------------------------------------------------
 -- PASSING (D382): how an argument and an answer of a base type cross a call —

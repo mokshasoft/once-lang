@@ -21,7 +21,7 @@
 module Once.Spec.Float.Dyadic where
 
 import Data.Nat
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _<_; s≤s; z≤n)
 open import Data.Nat.DivMod using (_/_; _%_)
 import Data.Integer as ℤ
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
@@ -73,6 +73,10 @@ negate (m /2^ e) = (ℤ.- m) /2^ e
 -- A target's float format, as the two numbers that determine it. Single and
 -- double are VALUES here, not separate functions — which is the whole point:
 -- adding a target adds a value, not a code path.
+--
+-- A format has a fraction bit and an exponent bit (IEEE 754 §3.3): with no
+-- fraction bit there is no NaN, and with no exponent bit the all-ones
+-- exponent that marks ±∞ and NaN is the zeros' exponent.
 ------------------------------------------------------------------------
 
 record FloatFormat : Set where
@@ -80,14 +84,16 @@ record FloatFormat : Set where
   field
     sig-bits : ℕ      -- significand field width (23 single, 52 double)
     exp-bits : ℕ      -- exponent field width     (8 single, 11 double)
+    sig-pos  : 0 < sig-bits
+    exp-pos  : 0 < exp-bits
 
 open FloatFormat
 
 binary32 : FloatFormat
-binary32 = mkFormat 23 8
+binary32 = mkFormat 23 8 (s≤s z≤n) (s≤s z≤n)
 
 binary64 : FloatFormat
-binary64 = mkFormat 52 11
+binary64 = mkFormat 52 11 (s≤s z≤n) (s≤s z≤n)
 
 -- | Total width in bits: sign + exponent + significand.
 width : FloatFormat → ℕ

@@ -39,6 +39,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Once.Spec.Grade using (ArrowKind; mk-kind; Quantity; Zero; One; Many; pure; act)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Word using (Carrier)
+open import Once.Spec.Float.Value using (FloatVal)
 import Once.Spec.Type as T
 
 ------------------------------------------------------------------------
@@ -61,13 +62,14 @@ infixr 50 _*_
 ⌜ a * b ⌝   = ⌜ a ⌝ T.* ⌜ b ⌝
 ⌜ a + b ⌝   = ⌜ a ⌝ T.+ ⌜ b ⌝
 
--- Its values. An `Int` or a `Float` is a natural number: a word of the
--- target's width (`Spec.Word`), a bit pattern of its float format.
+-- Its values. An `Int` is a natural number, a word of the target's width
+-- (`Spec.Word`); a `Float` is a level-2 IEEE value (`Spec.Float.Value`), whose
+-- bits are its encoding (`Spec.ABI`).
 ⟦_⟧ᵇ : BTy → Set
 ⟦ unit ⟧ᵇ  = ⊤
 ⟦ void ⟧ᵇ  = ⊥
 ⟦ int ⟧ᵇ   = Carrier
-⟦ float ⟧ᵇ = Carrier
+⟦ float ⟧ᵇ = FloatVal
 ⟦ a * b ⟧ᵇ = ⟦ a ⟧ᵇ × ⟦ b ⟧ᵇ
 ⟦ a + b ⟧ᵇ = ⟦ a ⟧ᵇ ⊎ ⟦ b ⟧ᵇ
 

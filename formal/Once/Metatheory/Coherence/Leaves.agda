@@ -34,6 +34,7 @@ open import Once.Spec.Signature
   using (_∶_; constant; value; operation; DeclType; ⌜_⌝; ⌜_⌝ᵈ; op)
 open import Once.Spec.Context using (Ctx; _▸_; Usage; _∷_; _⊑ᵘ_; _+ᵘ_; _*ᵘ_)
 open import Once.Spec.Core.Syntax
+open import Once.Spec.Theory using (int; float; unary; binary; compare; symDom; symCod)
 open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
@@ -73,43 +74,30 @@ module _ {m : ℕ} (σ : TySub m 0) where
   sigopRefl c (operation a One  b) mem μ₀ = lamOne {π = act}  λ sa → callT′ σ mem (readAt fmt b) (argEq σ a sa)
   sigopRefl c (operation a Many b) mem μ₀ = lamMany {π = act} λ sa → callT′ σ mem (readAt fmt b) (argEq σ a sa)
 
+  -- A symbol's types at a number type are base types.
+  symBaseDom : ∀ A sh → Base ∅ₖ (symDom {m} A sh ⟨ σ ⟩)
+  symBaseDom int   unary   = b-Int
+  symBaseDom int   binary  = b-* b-Int b-Int
+  symBaseDom int   compare = b-* b-Int b-Int
+  symBaseDom float unary   = b-Float
+  symBaseDom float binary  = b-* b-Float b-Float
+  symBaseDom float compare = b-* b-Float b-Float
+
+  symBaseCod : ∀ A sh → Base ∅ₖ (symCod {m} A sh ⟨ σ ⟩)
+  symBaseCod int   unary   = b-Int
+  symBaseCod int   binary  = b-Int
+  symBaseCod int   compare = b-+ b-Unit b-Unit
+  symBaseCod float unary   = b-Float
+  symBaseCod float binary  = b-Float
+  symBaseCod float compare = b-+ b-Unit b-Unit
+
   baseDom : ∀ p → Base ∅ₖ (primDom {m} p ⟨ σ ⟩)
-  baseDom p-add  = b-* b-Int b-Int
-  baseDom p-sub  = b-* b-Int b-Int
-  baseDom p-mul  = b-* b-Int b-Int
-  baseDom p-div  = b-* b-Int b-Int
-  baseDom p-mod  = b-* b-Int b-Int
-  baseDom p-neg  = b-Int
-  baseDom p-lt   = b-* b-Int b-Int
-  baseDom p-le   = b-* b-Int b-Int
-  baseDom p-gt   = b-* b-Int b-Int
-  baseDom p-ge   = b-* b-Int b-Int
-  baseDom p-eq   = b-* b-Int b-Int
-  baseDom p-ne   = b-* b-Int b-Int
-  baseDom p-fadd = b-* b-Float b-Float
-  baseDom p-fsub = b-* b-Float b-Float
-  baseDom p-fmul = b-* b-Float b-Float
-  baseDom p-fdiv = b-* b-Float b-Float
-  baseDom p-i2f  = b-Int
+  baseDom (num {A} {k = sh} _ _) = symBaseDom A sh
+  baseDom p-i2f                  = b-Int
 
   baseCod : ∀ p → Base ∅ₖ (primCod {m} p ⟨ σ ⟩)
-  baseCod p-add  = b-Int
-  baseCod p-sub  = b-Int
-  baseCod p-mul  = b-Int
-  baseCod p-div  = b-Int
-  baseCod p-mod  = b-Int
-  baseCod p-neg  = b-Int
-  baseCod p-lt   = b-+ b-Unit b-Unit
-  baseCod p-le   = b-+ b-Unit b-Unit
-  baseCod p-gt   = b-+ b-Unit b-Unit
-  baseCod p-ge   = b-+ b-Unit b-Unit
-  baseCod p-eq   = b-+ b-Unit b-Unit
-  baseCod p-ne   = b-+ b-Unit b-Unit
-  baseCod p-fadd = b-Float
-  baseCod p-fsub = b-Float
-  baseCod p-fmul = b-Float
-  baseCod p-fdiv = b-Float
-  baseCod p-i2f  = b-Float
+  baseCod (num {A} {k = sh} _ _) = symBaseCod A sh
+  baseCod p-i2f                  = b-Float
 
   primSame : ∀ p {x x′} → Same (primDom p ⟨ σ ⟩) x x′ → Same (primCod p ⟨ σ ⟩) (primᵛ σ p x) (primᵛ σ p x′)
   primSame p {x} s = subst (λ z → Same _ (primᵛ σ p x) (primᵛ σ p z)) (sameBase (baseDom p) s) (reflBase (baseCod p) _)

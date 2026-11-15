@@ -28,6 +28,7 @@ open import Once.Spec.Signature using (BTy; unit; void; int; float; ⌜_⌝; ⌜
 import Once.Spec.Signature as BT
 open import Once.Spec.Context using (Ctx; ∅; _▸_; lookup; _⟨_⟩ᶜ)
 open import Once.Spec.Core.Syntax
+open import Once.Spec.Theory using (int; float; unary; binary; compare; symDom; symCod)
 open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Metatheory.Types using (<:-refl)
@@ -69,43 +70,30 @@ module _ {m k : ℕ} (σ : TySub m k) where
   ⌜⌝ᵈ-⟨⟩ (value a q b)     = cong₂ (λ x y → x ⇒[ mk-kind q pure ] y) (⌜⌝-⟨⟩ a) (⌜⌝-⟨⟩ b)
   ⌜⌝ᵈ-⟨⟩ (operation a q b) = cong₂ (λ x y → x ⇒[ mk-kind q act ] y) (⌜⌝-⟨⟩ a) (⌜⌝-⟨⟩ b)
 
+  -- A symbol's type at a number type has no variables.
+  symDom-⟨⟩ : ∀ A sh → symDom {m} A sh ⟨ σ ⟩ ≡ symDom {k} A sh
+  symDom-⟨⟩ int   unary   = refl
+  symDom-⟨⟩ int   binary  = refl
+  symDom-⟨⟩ int   compare = refl
+  symDom-⟨⟩ float unary   = refl
+  symDom-⟨⟩ float binary  = refl
+  symDom-⟨⟩ float compare = refl
+
+  symCod-⟨⟩ : ∀ A sh → symCod {m} A sh ⟨ σ ⟩ ≡ symCod {k} A sh
+  symCod-⟨⟩ int   unary   = refl
+  symCod-⟨⟩ int   binary  = refl
+  symCod-⟨⟩ int   compare = refl
+  symCod-⟨⟩ float unary   = refl
+  symCod-⟨⟩ float binary  = refl
+  symCod-⟨⟩ float compare = refl
+
   primDom-⟨⟩ : ∀ p → primDom {m} p ⟨ σ ⟩ ≡ primDom {k} p
-  primDom-⟨⟩ p-add  = refl
-  primDom-⟨⟩ p-sub  = refl
-  primDom-⟨⟩ p-mul  = refl
-  primDom-⟨⟩ p-div  = refl
-  primDom-⟨⟩ p-mod  = refl
-  primDom-⟨⟩ p-neg  = refl
-  primDom-⟨⟩ p-lt   = refl
-  primDom-⟨⟩ p-le   = refl
-  primDom-⟨⟩ p-gt   = refl
-  primDom-⟨⟩ p-ge   = refl
-  primDom-⟨⟩ p-eq   = refl
-  primDom-⟨⟩ p-ne   = refl
-  primDom-⟨⟩ p-fadd = refl
-  primDom-⟨⟩ p-fsub = refl
-  primDom-⟨⟩ p-fmul = refl
-  primDom-⟨⟩ p-fdiv = refl
-  primDom-⟨⟩ p-i2f  = refl
+  primDom-⟨⟩ (num {A} {k = sh} _ _) = symDom-⟨⟩ A sh
+  primDom-⟨⟩ p-i2f                  = refl
 
   primCod-⟨⟩ : ∀ p → primCod {m} p ⟨ σ ⟩ ≡ primCod {k} p
-  primCod-⟨⟩ p-add  = refl
-  primCod-⟨⟩ p-sub  = refl
-  primCod-⟨⟩ p-mul  = refl
-  primCod-⟨⟩ p-div  = refl
-  primCod-⟨⟩ p-mod  = refl
-  primCod-⟨⟩ p-neg  = refl
-  primCod-⟨⟩ p-lt   = refl
-  primCod-⟨⟩ p-le   = refl
-  primCod-⟨⟩ p-gt   = refl
-  primCod-⟨⟩ p-ge   = refl
-  primCod-⟨⟩ p-eq   = refl
-  primCod-⟨⟩ p-ne   = refl
-  primCod-⟨⟩ p-fadd = refl
-  primCod-⟨⟩ p-fsub = refl
-  primCod-⟨⟩ p-fmul = refl
-  primCod-⟨⟩ p-fdiv = refl
-  primCod-⟨⟩ p-i2f  = refl
+  primCod-⟨⟩ (num {A} {k = sh} _ _) = symCod-⟨⟩ A sh
+  primCod-⟨⟩ p-i2f                  = refl
 
   module _ {Δ : KCtx m} {Δ′ : KCtx k} (rσ : Respects Δ Δ′ σ) where
 

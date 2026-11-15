@@ -41,6 +41,7 @@ open import Once.Spec.Surface.Syntax
 open import Once.Spec.Surface.Typing Σ S nm
 
 open import Once.Metatheory.OneName using (decl-unique)
+open import Once.Spec.Theory using (NumTy; int; float; ⌜_⌝ⁿ)
 open import Once.Metatheory.Types using (join-unique)
 open import Once.Spec.Sub using (_⊔_≔_)
 
@@ -53,19 +54,21 @@ module _ where
   notGen : ∀ {w} → w ∈ genNames → ¬ NotGenerator (gen w)
   notGen m n = All.lookup n m refl
 
-  -- The eight generators that are names, and where they are listed.
+  -- The nine generators that are names, and where they are listed.
   id∈       : "id" ∈ genNames
   fst∈      : "fst" ∈ genNames
   snd∈      : "snd" ∈ genNames
   terminal∈ : "terminal" ∈ genNames
   initial∈  : "initial" ∈ genNames
   unit∈     : "unit" ∈ genNames
+  toFloat∈  : "toFloat" ∈ genNames
   id∈       = here refl
   fst∈      = there (here refl)
   snd∈      = there (there (here refl))
   terminal∈ = there (there (there (here refl)))
   initial∈  = there (there (there (there (here refl))))
   unit∈     = there (there (there (there (there (there (there (here refl)))))))
+  toFloat∈  = there (there (there (there (there (there (there (there (here refl))))))))
 
   -- The special heads.
   sid       : "id" ∈ specialGenerators
@@ -95,6 +98,13 @@ module _ where
 ------------------------------------------------------------------------
 
 module _ where
+  -- A number type is named by one type.
+  ⌜⌝ⁿ-inj : ∀ {m} {a b : NumTy} → _≡_ {A = Ty m} ⌜ a ⌝ⁿ ⌜ b ⌝ⁿ → a ≡ b
+  ⌜⌝ⁿ-inj {a = int}   {int}   _ = refl
+  ⌜⌝ⁿ-inj {a = int}   {float} ()
+  ⌜⌝ⁿ-inj {a = float} {int}   ()
+  ⌜⌝ⁿ-inj {a = float} {float} _ = refl
+
   *-inj : ∀ {m} {A A′ B B′ : Ty m} → (A * B) ≡ (A′ * B′) → (A ≡ A′) × (B ≡ B′)
   *-inj refl = refl , refl
   +-inj : ∀ {m} {A A′ B B′ : Ty m} → (A + B) ≡ (A′ + B′) → (A ≡ A′) × (B ≡ B′)
@@ -199,19 +209,6 @@ module Modes {m} (Δ : KCtx m) where
 
     noLam : ∀ {n} {L : Locals m n} {x b T t} → ¬ Syn L (RLam x b) T t
     noLam ()
-
-    ia≢cmp : ∀ {op p p′} → IntArith op p → Compare op p′ → ⊥
-    ia≢cmp ia-add ()
-    ia≢cmp ia-sub ()
-    ia≢cmp ia-mul ()
-    ia≢cmp ia-div ()
-    ia≢cmp ia-mod ()
-
-    fa≢cmp : ∀ {op p p′} → FloatArith op p → Compare op p′ → ⊥
-    fa≢cmp fa-add ()
-    fa≢cmp fa-sub ()
-    fa≢cmp fa-mul ()
-    fa≢cmp fa-div ()
 
     -- A polymorphic definition at a domain: its codomain's variables all occur
     -- in its domain, so the domain fixes the instance there.

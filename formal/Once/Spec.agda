@@ -29,9 +29,12 @@ import Once.Spec.Sub             -- subtyping
 import Once.Spec.Name            -- canonical names
 import Once.Spec.Word            -- `Int`: the target's machine word
 import Once.Spec.Float.Dyadic    -- `Float`: the target's format …
+import Once.Spec.Float.Value     -- … IEEE level-2 values, rounded to it …
 import Once.Spec.Float.Decimal   -- … its literals, rounded once …
-import Once.Spec.Float.Arith     -- … and its arithmetic
+import Once.Spec.Float.Arith     -- … its arithmetic and comparisons …
+import Once.Spec.Float.Encoding  -- … and its bits
 import Once.Spec.Numerics        -- the target's numbers
+import Once.Spec.Theory          -- the theories the number types model
 import Once.Spec.Bool            -- truth values
 
 -- Effects, and what is observed.
@@ -54,6 +57,7 @@ import Once.Spec.Core.Program    -- a program, and what it does
 
 -- What a programmer writes.
 import Once.Spec.Surface.Syntax      -- the syntax tree
+import Once.Spec.Surface.Operator    -- the infix operators
 import Once.Spec.Surface.Lexing      -- text to tokens
 import Once.Spec.Surface.Grammar     -- tokens to a module
 import Once.Spec.Surface.Resolution  -- what each name denotes
