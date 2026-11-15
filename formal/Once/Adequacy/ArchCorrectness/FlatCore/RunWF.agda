@@ -59,7 +59,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.RunWF
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Bool using (Bool; true; false; _∨_)
+open import Data.Bool using (Bool; true; false; _∨_; not)
 open import Data.Nat using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst; subst₂)
 
@@ -75,7 +75,7 @@ open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-lo
 open import Once.Memory.HeapAddress using (offsetHL)
 open import Data.Bool using (T)
 open import Data.Nat.Properties using (<ᵇ⇒<)
-open AbstractExec {FS} using (exec-load-from-slot-with-value; exec-restore-input-with-value; unread?; exec-sigop-faults-of; decode-at)
+open AbstractExec {FS} using (exec-load-from-slot-with-value; exec-restore-input-with-value; unread?; exec-sigop-faults-of; decode-at; sigop-gate; exec-sigop-faults)
 open FrameSemantics FS using (Frame)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
@@ -1695,6 +1695,23 @@ sigop-decodes : ∀ prog (fs : FlatState) {A B} (si : SigOpInfo A B) → RunAt p
 sigop-decodes prog fs si r h ftq pe =
   read-of _ (subst (λ e → exec-sigop-faults-of e si (floc fs) ≡ false) pe
               (∨-false-l _ _ (step-ok prog fs (instr-sigop si) r h ftq)))
+
+-- D435 (d): A SIGOP'S WINDOW CHECK PASSED, at a non-faulting step — its
+-- argument's and its answer's words, when on the stack, are in a live window.
+private
+  ∨-false-r : ∀ a b → (a ∨ b) ≡ false → b ≡ false
+  ∨-false-r false b e = e
+  ∨-false-r true  b ()
+
+  not-false : ∀ g → not g ≡ false → g ≡ true
+  not-false true  _ = refl
+  not-false false ()
+
+sigop-gated : ∀ prog (fs : FlatState) {A B} (si : SigOpInfo A B) → RunAt prog fs → halted (floc fs) ≡ false
+            → fetch prog (fpc fs) ≡ just (instr-sigop si)
+            → sigop-gate (falloc fs) si (floc fs) ≡ true
+sigop-gated prog fs si r h ftq =
+  not-false _ (∨-false-l _ _ (∨-false-r (exec-sigop-faults si (floc fs)) _ (step-ok prog fs (instr-sigop si) r h ftq)))
 
 heap-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunAt prog fs
                      → halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (load-at k)

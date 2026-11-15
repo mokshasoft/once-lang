@@ -63,9 +63,10 @@ open import Data.List using (List; []; _∷_)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
 open import Once.SigOp.Info using (SigOpInfo)
+import Data.Bool.Properties
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; fret; falloc; fclosure; flink; floc; flat-exec-instr; fetch)
-open AbstractExec {FS} using (exec-sigop-output; exec-sigop-halts; decode-at)
+open AbstractExec {FS} using (exec-sigop-output; exec-sigop-halts; decode-at; sigop-gate)
 open AllocState using (current-frame; frame-slots; saved-frames)
 open LocState using (regs; halted; heapMem; stackMem)
 open FrameSemantics FS using (Frame; frame-base)
@@ -132,8 +133,8 @@ private
         { regs     = writeReg (regs (floc fs)) Output (exec-sigop-output si (floc fs))
         ; stackMem = stackMem x
         ; heapMem  = heapMem x
-        ; halted   = exec-sigop-halts si (floc fs)
-        ; faulted  = AbstractExec.exec-sigop-faults {FS} si (floc fs) Data.Bool.∨ LocState.faulted (floc fs)
+        ; halted   = exec-sigop-halts si (floc fs) Data.Bool.∨ Data.Bool.not (sigop-gate (falloc fs) si (floc fs))
+        ; faulted  = AbstractExec.exec-sigop-faults {FS} si (floc fs) Data.Bool.∨ (Data.Bool.not (sigop-gate (falloc fs) si (floc fs)) Data.Bool.∨ LocState.faulted (floc fs))
         ; ev-log   = LocState.ev-log (floc fs) Data.List.++ AbstractExec.sigop-events {FS} si (floc fs) }
     ; falloc = falloc fs
     ; fpc    = suc (fpc fs) }
@@ -145,7 +146,7 @@ sigop-arith-corr₀ : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState
                  → flink fs ≡ nothing
                  → ArithRun s s′ W v
                  → v ≡ enc-sv hv (exec-sigop-output si (floc fs))
-                 → exec-sigop-halts si (floc fs) ≡ halted (floc fs)
+                 → (exec-sigop-halts si (floc fs) Data.Bool.∨ Data.Bool.not (sigop-gate (falloc fs) si (floc fs))) ≡ halted (floc fs)
                  → xpc s′ ≡ blk-off prog (suc (fpc fs))
                  → CompiledCorr hv prog (sigop-at fs si (floc fs)) s′
 sigop-arith-corr₀ {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = record
@@ -204,7 +205,7 @@ sigop-arith-corr : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (
                  → flink fs ≡ nothing
                  → ArithRun s s′ W v
                  → v ≡ enc-sv hv (exec-sigop-output si (floc fs))
-                 → exec-sigop-halts si (floc fs) ≡ halted (floc fs)
+                 → (exec-sigop-halts si (floc fs) Data.Bool.∨ Data.Bool.not (sigop-gate (falloc fs) si (floc fs))) ≡ halted (floc fs)
                  → xpc s′ ≡ blk-off prog (suc (fpc fs))
                  → CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) s′
 sigop-arith-corr {hv} prog fs s s′ si nm cc room lk ar val hl pc′ =
@@ -235,9 +236,11 @@ sigop-arith-step prog fs s s′ si r int nm cc ftq h room ar val pc′ =
   sigop-arith-corr prog fs s s′ si nm cc room
     (CRL.run-link-nothing prog fs r ftq (λ _ ()) (λ ℓ bb fe → clash (trans (sym ftq) fe)))
     ar val
+    (trans (cong (λ g → exec-sigop-halts si (floc fs) Data.Bool.∨ Data.Bool.not g) (CRL.sigop-gated prog fs si r h ftq))
+    (trans (Data.Bool.Properties.∨-identityʳ _)
     (trans (sigop-halts-pure si (floc fs) (internal-pure int)
               (CRL.sigop-decodes prog fs si r h ftq (internal-pure int)))
-           (sym h))
+           (sym h))))
     pc′
   where
     clash : ∀ {ℓ bb} → just (instr-sigop si) ≡ just (instr-ctrl (c-entry ℓ bb)) → ⊥

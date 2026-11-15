@@ -40,7 +40,7 @@ open import Once.CCC.Label using (LabelId)
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≟_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-trans; n≤1+n; <⇒≢; <ᵇ⇒<)
-open import Data.Bool using (Bool; true; false; T)
+open import Data.Bool using (Bool; true; false; T; not)
 open import Data.Bool using () renaming (_∨_ to _∨_)
 open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -484,7 +484,7 @@ pb-abstract (worklist-pop slot)   ls alloc ff am wfS wf =
                (pb-read-loc _ ls wf (AtStack (current-frame alloc) slot)) wf
 pb-abstract (worklist-check slot) ls alloc ff am wfS wf = wf
 pb-abstract (instr-sigop si) ls alloc ff am wfS wf =
-  pb-write-reg-halt-on _ ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls)
+  pb-write-reg-halt-on _ ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls ∨ not (sigop-gate alloc si ls)) (exec-sigop-faults si ls ∨ (not (sigop-gate alloc si ls) ∨ LocState.faulted ls)) (ev-log ls ++ sigop-events si ls)
                     (sigop-output-pb _ si ls wf) wf (pb-sigop-store _ si ls wf)
 pb-abstract (instr-load-const p v)   ls alloc ff am wfS wf =
   pb-write-reg _ ls Output (SV-Lit p (lit-value p v)) tt wf

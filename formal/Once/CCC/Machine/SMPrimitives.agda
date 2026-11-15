@@ -580,7 +580,7 @@ instr-effect (instr-reclaim-to _)    = eff-stack-frontier
 instr-effect (instr-push-frame _)    = eff-frame-op
 instr-effect instr-pop-frame         = eff-frame-op
 instr-effect instr-call-closure      = eff-control
-instr-effect (instr-sigop _)         = eff-control
+instr-effect (instr-sigop _)         = eff-heap-checked   -- D435 (d): its pointer words checked against the live frames
 instr-effect (instr-load-const _ _)  = eff-reg-only
 instr-effect (instr-load-tag-lit _)  = eff-reg-only
 instr-effect (instr-load-code-addr _) = eff-reg-only
@@ -1212,7 +1212,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | just _ | nothing | ()
   ... | nothing | just _ | ()
   exec-abstract-same-frame (worklist-check slot) s alloc₁ alloc₂ _ _ = refl
-  exec-abstract-same-frame (instr-sigop _)       s alloc₁ alloc₂ _ _ = refl
+  exec-abstract-same-frame (instr-sigop _)       s alloc₁ alloc₂ () _
   exec-abstract-same-frame (instr-load-const _ _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (instr-load-tag-lit _) s alloc₁ alloc₂ _ _ = refl
   exec-abstract-same-frame (instr-load-code-addr _) s alloc₁ alloc₂ _ _ = refl
@@ -2586,7 +2586,7 @@ module TracePrimitives {FS : FrameSemantics} where
   ... | nothing = refl
   exec-abstract-state-frame-eq (worklist-check _)      s _ _ _ _ = refl
   exec-abstract-state-frame-eq instr-save-closure-reg  s _ _ _ _ = refl
-  exec-abstract-state-frame-eq (instr-sigop _)         s _ _ _ _ = refl
+  exec-abstract-state-frame-eq (instr-sigop _)         s _ _ () _
   exec-abstract-state-frame-eq (instr-load-const _ _)  s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-load-tag-lit _)  s _ _ _ _ = refl
   exec-abstract-state-frame-eq (instr-load-code-addr _) s _ _ _ _ = refl

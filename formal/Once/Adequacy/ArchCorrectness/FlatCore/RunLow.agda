@@ -121,7 +121,7 @@ open HeapLocation using (heap-offset; heap-ref)
 open import Once.SigOp.Info using (SigOpInfo; effect; Pure)
 open SigOpInfo using (baseA)
 open import Data.Product using (∃)
-open AbstractExec {FS} using (decode-at)
+open AbstractExec {FS} using (decode-at; sigop-gate)
 open HeapRef using (ref-id)
 open import Once.CCC.Label using (LabelId; EntryId)
 open import Once.Spec.Name using () renaming (CanonicalName to CN)
@@ -282,6 +282,15 @@ sigop-decodes prog fs si r h f pe =
   lift-site (instr-sigop si) (λ _ ())
     (λ g → ∃ (λ a → decode-at (baseA si) (readReg (LocState.regs (floc g)) Input1) (floc g) ≡ just a))
     (λ src fs₀ r′ h′ f′ → RW.sigop-decodes src fs₀ si r′ h′ f′ pe) (λ _ _ _ c → c) prog fs r h f
+
+-- D435 (d): a non-faulting SigOp passed its window check
+sigop-gated : ∀ prog (fs : FlatState) {A B} (si : SigOpInfo A B) → RunLow prog fs → LocState.halted (floc fs) ≡ false
+            → fetch prog (fpc fs) ≡ just (instr-sigop si)
+            → sigop-gate (falloc fs) si (floc fs) ≡ true
+sigop-gated prog fs si r h f =
+  lift-site (instr-sigop si) (λ _ ())
+    (λ g → sigop-gate (falloc g) si (floc g) ≡ true)
+    (λ src fs₀ r′ h′ f′ → RW.sigop-gated src fs₀ si r′ h′ f′) (λ _ _ _ c → c) prog fs r h f
 
 heap-load-at-written : ∀ prog (fs : FlatState) (k : ℕ) (hl : HeapLocation) → RunLow prog fs
                      → LocState.halted (floc fs) ≡ false → fetch prog (fpc fs) ≡ just (load-at k)

@@ -26,7 +26,7 @@ module Once.CCC.Machine.FlatStoreWF (FS : FrameSemantics) where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≟_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; <-irrefl; n≤1+n)
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; not)
 open import Data.Bool using () renaming (_∨_ to _∨_)
 open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -641,7 +641,7 @@ mutual
       (readLoc-below (AtStack (current-frame alloc) slot) wf)
   wf-abstract (worklist-check slot) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-sigop si) ls alloc wf =
-    wf-write-reg-halt-on Output (exec-sigop-output si ls) (exec-sigop-halts si ls) (exec-sigop-faults si ls ∨ LocState.faulted ls) (ev-log ls ++ sigop-events si ls) wf
+    wf-write-reg-halt-on Output (exec-sigop-output si ls) (exec-sigop-halts si ls ∨ not (sigop-gate alloc si ls)) (exec-sigop-faults si ls ∨ (not (sigop-gate alloc si ls) ∨ LocState.faulted ls)) (ev-log ls ++ sigop-events si ls) wf
       (wf-sigop-store si wf) (sigop-output-below (next-heap-ref alloc) si ls wf) , ≤-refl
   -- D113: `exec-abstract` MATERIALISES the literal (`lit-value`), so the cell
   -- holds the target's representation, not the payload. Mirrors the machine.

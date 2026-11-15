@@ -28,7 +28,7 @@ open import Once.Spec.Type using (Base; b-Float; b-Int; b-Unit; b-*; b-+; ∅ₖ
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _>_; _≥_; _<ᵇ_)
 open import Data.Nat.Properties using (_≟_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
+open import Data.Bool using (Bool; true; false; if_then_else_; _∨_; _∧_; not)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -902,6 +902,20 @@ module ExecFinal {FS : FrameSemantics} where
           → (frame-gate al k (just loc) ≡ just loc) ⊎ (frame-gate al k (just loc) ≡ nothing)
   gate-or al k (AtStack f j)  = stack-gate-or (in-window (live-frames al) f (k + j)) (AtStack f j)
   gate-or al k (AtDynamic hl) = inj₁ refl
+
+  -- D435 (d): a value of `n` words passed BY ADDRESS (a SigOp's argument, its
+  -- answer's buffer) is inside a live frame's window when the address is a
+  -- stack one: its last word is (a window is a prefix of its frame, so every
+  -- word below is too). A heap address, a word that is no address, and a value
+  -- of no words pass.
+  -- (`fr` the live frames, `live-frames al`)
+  range-ok : List (FrameSemantics.Frame FS × ℕ) → ℕ → StoredValue FS → Bool
+  range-ok fr zero    _                          = true
+  range-ok fr (suc n) (SV-Ptr (AtStack f j))     = in-window fr f (n + j)
+  range-ok fr (suc n) (SV-Ptr (AtDynamic _))     = true
+  range-ok fr (suc n) (SV-Lit _ _)               = true
+  range-ok fr (suc n) (SV-Tag _)                 = true
+  range-ok fr (suc n) (SV-Code _)                = true
 
   exec : Instr FS → LocState FS → LocState FS
 
@@ -2042,6 +2056,25 @@ module AbstractExec {FS : FrameSemantics} where
   sigop-store-at         true  (just loc) nothing  s = s
   sigop-store-at         true  nothing    _        s = s
 
+  -- D435 (d): the words a SigOp reaches through a pointer register — its
+  -- argument (D428: a compound one by address, `decode-at`) and its answer's
+  -- buffer (D432, `sigop-store`) — are inside a live frame's window when they
+  -- are on the stack (`range-ok`); else the step faults, as `load-at` does.
+  -- (the argument's words reached through `Input1`: a compound's, `decode-at`'s
+  -- pointer cases; a scalar is its register, D398)
+  arg-words : ∀ {A} → Base ∅ₖ A → ℕ
+  arg-words {A} (b-* _ _) = tsize A
+  arg-words {A} (b-+ _ _) = tsize A
+  {-# CATCHALL #-}
+  arg-words _             = 0
+
+  ans-words : Type → ℕ
+  ans-words B = if in-memory? B then tsize B else 0
+
+  sigop-gate : ∀ {A B} → AllocState {FS} → SigOpInfo A B → LocState FS → Bool
+  sigop-gate {A} {B} al si s =
+    range-ok (live-frames al) (arg-words (baseA si)) (readReg (regs s) Input1) ∧ range-ok (live-frames al) (ans-words B) (readReg (regs s) Output)
+
   sigop-store : ∀ {A B} → SigOpInfo A B → LocState FS → LocState FS
   sigop-store {B = B} si s =
     sigop-store-at (in-memory? B) (sv-as-loc (readReg (regs s) Output)) (sigop-answer si s) s
@@ -2267,8 +2300,8 @@ module AbstractExec {FS : FrameSemantics} where
     record s { regs     = writeReg (regs s) Output (exec-sigop-output si s)
              ; stackMem = stackMem (sigop-store si s)
              ; heapMem  = heapMem (sigop-store si s)
-             ; halted   = exec-sigop-halts si s
-             ; faulted  = exec-sigop-faults si s ∨ faulted s
+             ; halted   = exec-sigop-halts si s ∨ not (sigop-gate alloc si s)
+             ; faulted  = exec-sigop-faults si s ∨ (not (sigop-gate alloc si s) ∨ faulted s)
              ; ev-log   = ev-log s ++ sigop-events si s }
     , alloc
 
