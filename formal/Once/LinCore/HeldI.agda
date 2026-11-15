@@ -339,7 +339,7 @@ inv-stepsI {r′ = r′} {m′ = m′} {n′ = n′} {h = h} (_⟫_ {t₁ = t₁
 ... | (ok₁ , inv₁) with inv-stepsI st inv₁
 ...   | (ok₂ , inv₂) = (OK-++ t₁ t₂ h ok₁ ok₂ , subst (InvI m′ r′ n′) (sym (play-++ t₁ t₂ h)) inv₂)
 
-start-invI : ∀ {T} → InvI start ([]ʳ {T = T}) 0 (λ _ → 0)
+start-invI : ∀ {T n} → InvI start ([]ʳ {T = T}) n (λ _ → 0)
 start-invI = record { i-le1 = λ _ → z≤n ; i-above = λ _ _ → refl ; i-exact = λ _ → refl
                     ; i-sees = ((λ i ()) , tt) ; i-seesR = tt }
 

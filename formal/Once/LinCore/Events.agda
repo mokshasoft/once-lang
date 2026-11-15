@@ -1766,7 +1766,7 @@ exchange-map (m-pair {x = x} {x′} {t₁ = t₁} {t₂} r (go-on {u = y} (fm-st
 
 -- ★ NoLeak, for a run that returns: a whole program, from the empty heap,
 -- frees every cell it allocated, exactly once, and frees nothing else.
-noleak : ∀ {f : LTm Γ One One} {n′ t} → Run ds f mone mone 0 (gives mone n′) t
+noleak : ∀ {f : LTm Γ One One} {n n′ t} → Run ds f mone mone n (gives mone n′) t
        → OK t (λ _ → 0) × (∀ i → play t (λ _ → 0) i ≡ 0)
 noleak run with exchange run {λ _ → 0} {λ _ → 0}
                   record { le1 = λ _ → z≤n ; above = λ _ _ → refl ; sub = λ _ → z≤n } lent₀

@@ -126,7 +126,7 @@ module EndR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
 
     ends : ∀ {sh U′ t} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′}
-         → (run : StepsI main []ʳ start 0 t c′ r′ m′ n′) → AgreesAll [] run → (fin : Final c′ r′)
+         → (run : StepsI main []ʳ start 1 t c′ r′ m′ n′) → AgreesAll [] run → (fin : Final c′ r′)
          → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N start-fs fs′
              × LocState.halted (floc fs′) ≡ true × LocState.ev-log (floc fs′) ≡ evsOf t × EndLeft fin fs′
     ends {t = t} {c′ = c′} {r′} {m′} {n′} run ag fin = fin-case fin (from-start ld entry-frame entry-regs run ag)

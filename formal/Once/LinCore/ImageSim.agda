@@ -681,7 +681,7 @@ mutual
 ------------------------------------------------------------------------
 
 private
-  pre₀ : Pre (λ _ → 0) 0 mone (λ _ → 0)
+  pre₀ : ∀ {n} → Pre (λ _ → 0) n mone (λ _ → 0)
   pre₀ = record { le1 = λ _ → z≤n ; above = λ _ _ → refl ; sub = λ _ → z≤n }
 
 -- a closed program starts with nothing lent and nothing given
@@ -702,8 +702,8 @@ ios-erase (tmp _ ∷ t)    = ios-erase t
 -- legal on the cell heap, leaves it empty, closes every frame it opened, and
 -- shows the world what the run does (D429)
 image-noleak : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {n′ t}
-             → (run : Run ds f mone mone 0 (gives mone n′) t) → Plain run
-             → Σ Trace λ mt → StepsI (compᴵ ds f end) ([]ʳ {T = One ∷ [] ∣ One ∷ []}) start 0 mt end []ʳ start n′
+             → (run : Run ds f mone mone 1 (gives mone n′) t) → Plain run
+             → Σ Trace λ mt → StepsI (compᴵ ds f end) ([]ʳ {T = One ∷ [] ∣ One ∷ []}) start 1 mt end []ʳ start n′
                × OK mt (λ _ → 0) × (∀ i → play mt (λ _ → 0) i ≡ 0) × TBal mt × ios mt ≡ ios t
 image-noleak {t = t} run fr with simI run fr (vw mone []ᵉ) refl []ˢ end []ʳ | noleak (plain run)
 ... | out ts mt st w b _ | (ok , clean) =
@@ -716,25 +716,25 @@ image-noleak {t = t} run fr with simI run fr (vw mone []ᵉ) refl []ˢ end []ʳ 
 -- ★ A HALTING run of a closed program (D429): the image reaches `halted`, showing the world what the
 -- run does
 image-halts : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {t}
-            → (run : Run ds f mone mone 0 (stop halted) t) → Plain run
+            → (run : Run ds f mone mone 1 (stop halted) t) → Plain run
             → Σ Trace λ mt → Σ Sh λ sh → Σ Sh λ U → Σ (Ret U (One ∷ [] ∣ One ∷ [])) λ r′ → Σ (Cfg sh) λ m′ → Σ ℕ λ n′
-                → StepsI (compᴵ ds f end) []ʳ start 0 mt (halted {sh} {U}) r′ m′ n′ × ios mt ≡ ios t
+                → StepsI (compᴵ ds f end) []ʳ start 1 mt (halted {sh} {U}) r′ m′ n′ × ios mt ≡ ios t
 image-halts {ds = ds} {f = f} {t = t} run fr = at (simI run fr (vw mone []ᵉ) refl []ˢ end []ʳ)
   where
-    at : Σ (PausedI (compᴵ ds f end) []ʳ start 0 t (rounds run)) (HaltIf halted) → _
+    at : Σ (PausedI (compᴵ ds f end) []ʳ start 1 t (rounds run)) (HaltIf halted) → _
     at (paused {sh′} {U′} c′ r′ m′ n′ ts mt t₀ st w p cl l _ , (hc , ht)) =
-      mt , sh′ , U′ , r′ , m′ , n′ , subst (λ c → StepsI (compᴵ ds f end) []ʳ start 0 mt c r′ m′ n′) hc st
+      mt , sh′ , U′ , r′ , m′ , n′ , subst (λ c → StepsI (compᴵ ds f end) []ʳ start 1 mt c r′ m′ n′) hc st
          , trans (ios-weave w) (trans (cong ios ht) (ios-erase t))
 
 -- ★ ANY stopped run of a closed program from nothing (a server cut after its
 -- last round, a halt): the image runs at least as far, and what it did up to
 -- the run's last event is legal on the cell heap, with legal frames
 image-legal : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {y t}
-            → (run : Run ds f mone mone 0 (stop y) t) → Plain run
+            → (run : Run ds f mone mone 1 (stop y) t) → Plain run
             → Σ Trace λ mt′ → Σ (List TEv) λ ts′ → Weave tmp (erase t) ts′ mt′
                × OK mt′ (λ _ → 0) × TLeg mt′
                × Σ Trace λ mt → mt′ ≼ mt × Σ Sh λ sh → Σ Sh λ U → Σ (Codeᴵ sh U) λ c′ → Σ (Ret U (One ∷ [] ∣ One ∷ [])) λ r′
-                 → Σ (Cfg sh) λ m′ → Σ ℕ λ n′ → StepsI (compᴵ ds f end) []ʳ start 0 mt c′ r′ m′ n′
+                 → Σ (Cfg sh) λ m′ → Σ ℕ λ n′ → StepsI (compᴵ ds f end) []ʳ start 1 mt c′ r′ m′ n′
 image-legal {t = t} run fr with simI run fr (vw mone []ᵉ) refl []ˢ end []ʳ
 ... | (paused {sh′} {U′} c′ r′ m′ n′ ts mt t₀ st w p cl l _ , _) with weave-pre w p
 ...   | (ts′ , mt′ , w′ , q) =
@@ -746,12 +746,12 @@ image-legal {t = t} run fr with simI run fr (vw mone []ᵉ) refl []ˢ end []ʳ
 -- ★ A RUN THE BUDGET CUT (D430): the image pauses, having shown the world exactly what the run did, and
 -- having entered a loop once for every round the run started
 image-cut : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {t}
-          → (run : Run ds f mone mone 0 (stop exhausted) t) → Plain run
+          → (run : Run ds f mone mone 1 (stop exhausted) t) → Plain run
           → Σ Trace λ mt → Σ Sh λ sh → Σ Sh λ U → Σ (Codeᴵ sh U) λ c′ → Σ (Ret U (One ∷ [] ∣ One ∷ [])) λ r′
-              → Σ (Cfg sh) λ m′ → Σ ℕ λ n′ → Σ (StepsI (compᴵ ds f end) []ʳ start 0 mt c′ r′ m′ n′) λ st
+              → Σ (Cfg sh) λ m′ → Σ ℕ λ n′ → Σ (StepsI (compᴵ ds f end) []ʳ start 1 mt c′ r′ m′ n′) λ st
               → (ios mt ≡ ios t) × (rounds run ≤ loops st)
 image-cut {ds = ds} {f = f} {t = t} run fr = at (simI run fr (vw mone []ᵉ) refl []ˢ end []ʳ)
   where
-    at : Σ (PausedI (compᴵ ds f end) []ʳ start 0 t (rounds run)) (HaltIf exhausted) → _
+    at : Σ (PausedI (compᴵ ds f end) []ʳ start 1 t (rounds run)) (HaltIf exhausted) → _
     at (paused {sh′} {U′} c′ r′ m′ n′ ts mt t₀ st w p cl l lp , ht) =
       mt , sh′ , U′ , c′ , r′ , m′ , n′ , st , trans (ios-weave w) (trans (cong ios ht) (ios-erase t)) , lp

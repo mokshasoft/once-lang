@@ -148,7 +148,7 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       open StartR {FS} ds f ldConst ld-nl wordOf entry-frame entry-regs using (start-fs; start-related)
 
       from-start : ∀ {sh U′} {t} {c′ : Codeᴵ sh U′} {r′} {m′ n′}
-                 → (run : StepsI main []ʳ start 0 t c′ r′ m′ n′) → AgreesAll [] run
+                 → (run : StepsI main []ʳ start 1 t c′ r′ m′ n′) → AgreesAll [] run
                  → Lands (evsOf t) c′ r′ m′ n′ start-fs
       from-start {t = t} run ag = case start-related of λ where
         (fs₁ , st₁ , G₁ , lg₀) → case whole run start-invI ag G₁ lg₀ of λ where
@@ -156,7 +156,7 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
       -- ★ …followed with a control step for every loop entry
       from-startC : ∀ {sh U′} {t} {c′ : Codeᴵ sh U′} {r′} {m′ n′}
-                  → (run : StepsI main []ʳ start 0 t c′ r′ m′ n′) → AgreesAll [] run
+                  → (run : StepsI main []ʳ start 1 t c′ r′ m′ n′) → AgreesAll [] run
                   → Σ ℕ λ N → Σ FlatState λ fs′ → Σ (FlatSteps image N start-fs fs′) λ fl
                     → (LocState.ev-log (floc fs′) ≡ evsOf t) × (loops run ≤ chain-ctrls fl)
       from-startC {t = t} run ag = case start-related of λ where

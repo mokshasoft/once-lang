@@ -103,13 +103,15 @@ module StartR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Related
   module S′ = Loc {FS} U ncty ldConst wordOf image main j₀ L₀ˢ start-root using (pos-def)
 
-  -- the run starts outside every frame, with nothing in its heap or log
+  -- the run starts outside every frame, with nothing in its heap or log — master's start
+  -- (`FlatFromObs.start-flat`: the heap counter past the one ref master reserves), the
+  -- state the arch layer's entry facts are about (plan 0.146 B1.6)
   start-fs : FlatState
   start-fs = FlatMachine.mkFlat {FS} (mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false [] false false)
-                                (mkAllocState entry-frame [] 0 0 0 (λ _ → 0)) 0
+                                (mkAllocState entry-frame [] 0 0 1 (λ _ → 0)) 0
 
   -- ★ one step (`c-start`) to main's first point, related
-  start-related : Σ FlatState λ fs₁ → FlatSteps image 1 start-fs fs₁ × Related main []ʳ (vw mone []ᵉ ∥ mone ∷ˢ []ˢ) 0 fs₁
+  start-related : Σ FlatState λ fs₁ → FlatSteps image 1 start-fs fs₁ × Related main []ʳ (vw mone []ᵉ ∥ mone ∷ˢ []ˢ) 1 fs₁
                 × LocState.ev-log (floc fs₁) ≡ LocState.ev-log (floc start-fs)
   start-related =
     fs₁ , FlatStepsAPI.step-at {FS} fs₁ (refl , refl) refl FlatStepsAPI.[] ,

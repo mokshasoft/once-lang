@@ -140,8 +140,8 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
   obs k = TM.run ι [] (approx k (ev ⟦ P ⟧P f tt))
 
   -- the compiled program's run in the world, at a budget (D430)
-  R : (K : ℕ) → Ran Wι ds f₀ mone mone 0 K []
-  R K = exec Wι ds K f₀ mone mone 0 []
+  R : (K : ℕ) → Ran Wι ds f₀ mone mone 1 K []
+  R K = exec Wι ds K f₀ mone mone 1 []
 
   module _ (ld : ∀ {b} (v : ⟦ b ⟧b) (fs : FlatState)
                  → FlatMachine.flat-exec-instr {Mach} (ldConst v) image fs
@@ -230,9 +230,9 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
         K  = k
         eE = proj₁ (run-shows k)
         eO = proj₂ (run-shows k)
-        by : ∀ {o t} (run : Run ds f₀ mone mone 0 o t) → Ran.out (R K) ≡ o → Plain run
+        by : ∀ {o t} (run : Run ds f₀ mone mone 1 o t) → Ran.out (R K) ≡ o → Plain run
            → (∀ {mt sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′}
-                (st : StepsI main []ʳ start 0 mt c′ r′ m′ n′) → ios mt ≡ ios t → AgreesAll [] st)
+                (st : StepsI main []ʳ start 1 mt c′ r′ m′ n′) → ios mt ≡ ios t → AgreesAll [] st)
            → evsOf t ≡ proj₁ (obs k) → endO o ≡ endAp (proj₂ (obs k)) → (Exh o → k ≤ rounds run)
            → Σ ℕ (Shows k)
         by {gives mone n′} {t} run _ pl ag ee eo _ = case image-noleak run pl of λ where
@@ -320,9 +320,9 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
                       (λ ex → subst (K ≤_) (trans (cong (rounds (Ran.run (R K)) +_) (cut-zero (Ran.run (R K)) (Ran.spends (R K)) (o-uncut K) ex)) (+-identityʳ _))
                                     (spent-rounds (Ran.run (R K)) (Ran.spends (R K))))
         where
-          wb : ∀ {o t} (run : Run ds f₀ mone mone 0 o t) → Plain run
+          wb : ∀ {o t} (run : Run ds f₀ mone mone 1 o t) → Plain run
              → (∀ {mt sh U′} {c′ : Codeᴵ sh U′} {r′ : Ret U′ (One ∷ [] ∣ One ∷ [])} {m′ n′}
-                  (st : StepsI main []ʳ start 0 mt c′ r′ m′ n′) → ios mt ≡ ios t → AgreesAll [] st)
+                  (st : StepsI main []ʳ start 1 mt c′ r′ m′ n′) → ios mt ≡ ios t → AgreesAll [] st)
              → (Exh o → K ≤ rounds run) → Witness K
           wb {gives mone n′} run pl ag kr = case image-noleak run pl of λ where
             (mt , st , _ , _ , _ , eio) → case ends ld entry-frame entry-regs st (ag st eio) f-end of λ where
