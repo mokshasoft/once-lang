@@ -136,7 +136,7 @@ d_round_58 v0 v1
   = coe
       MAlonzo.Code.Once.Spec.Float.Encoding.d_encode_88 (coe v0)
       (coe
-         MAlonzo.Code.Once.Spec.Float.Decimal.d_roundDec_44 (coe v0)
+         MAlonzo.Code.Once.Spec.Float.Decimal.d_roundDec_28 (coe v0)
          (coe v1))
 -- Once.Float.Word.nan
 d_nan_64 ::

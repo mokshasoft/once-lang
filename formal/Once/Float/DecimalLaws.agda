@@ -16,7 +16,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Float.Dyadic using (binary32; binary64)
 open import Once.Spec.Float.Value using (negV; pos; neg)
-open import Once.Spec.Float.Decimal using (decimalOf; negate; ⟨_⟩_/10^_; roundDec)
+open import Once.Spec.Float.Decimal using (⟨_⟩_/10^_; roundDec)
+open import Once.Spec.Surface.Syntax using (signedDecimal)
 open import Once.Spec.Float.Encoding using (encode)
 open import Once.Float.Word using (round)
 
@@ -83,13 +84,13 @@ _ : round binary64 (⟨ pos ⟩ 0 /10^ 0) ≡ 0
 _ = refl
 
 -- The lexer's triple, end to end: `3.14` is `RFloat 3 14 2`.
-_ : round binary64 (decimalOf 3 14 2) ≡ 0x40091eb851eb851f
+_ : round binary64 (signedDecimal pos 3 14 2) ≡ 0x40091eb851eb851f
 _ = refl
 
 -- `16777217.0` — `RFloat 16777217 0 1`. Compiles at BOTH formats now (D116);
 -- exactly at binary64, rounded at binary32. Before K3 it was rejected on every
 -- target, which is the interim D116 was written to end.
-_ : round binary32 (decimalOf 16777217 0 1) ≡ 0x4b800000
+_ : round binary32 (signedDecimal pos 16777217 0 1) ≡ 0x4b800000
 _ = refl
 
 ------------------------------------------------------------------------
@@ -100,16 +101,16 @@ _ = refl
 -- binary32 encoded as `0x03800000` — a small FINITE number. Silent, unbounded,
 -- and nothing in the tree could see it: both the meaning and the machine call
 -- this same function, so they agreed on the wrong answer.
-_ : round binary32 (decimalOf 100000000000000000000000000000000000000000 0 1)
+_ : round binary32 (signedDecimal pos 100000000000000000000000000000000000000000 0 1)
       ≡ 0x7f800000
 _ = refl
 
-_ : round binary64 (decimalOf 100000000000000000000000000000000000000000 0 1)
+_ : round binary64 (signedDecimal pos 100000000000000000000000000000000000000000 0 1)
       ≡ 0x48725dfa371a19e7     -- still FINITE at binary64: the range is a
 _ = refl                       -- TARGET fact, and this is the point of D113
 
 -- …and it keeps the sign.
-_ : round binary32 (negate (decimalOf 100000000000000000000000000000000000000000 0 1))
+_ : round binary32 (signedDecimal neg 100000000000000000000000000000000000000000 0 1)
       ≡ 0xff800000
 _ = refl
 
@@ -125,11 +126,10 @@ _ = refl
 ------------------------------------------------------------------------
 -- F3: THE NEGATED LITERAL, pinned (plan 0.73 F3)
 --
--- `-3.14` is ONE literal whose payload is `negate (decimalOf 3 14 2)` — the
--- elaborator folds the minus (`Once.TypeCheck.Elaborate`'s
--- `inferElabV-neg-aux … (nov-float …)`) and the core meaning of the
--- elaborated literal reads the same payload. THAT IS EXACTLY WHY THESE PINS
--- EXIST: the two sides name the same `negate` and the same `round`, so the
+-- `-3.14` is ONE literal whose payload is `signedDecimal neg 3 14 2` (the
+-- typing rule `s-float`), and the core meaning of the elaborated literal reads
+-- the same payload. THAT IS EXACTLY WHY THESE PINS EXIST: the two sides name
+-- the same `signedDecimal` and the same `round`, so the
 -- correspondence between them is `refl`-shaped and cannot falsify either
 -- (D117). The patterns below were computed by glibc/GHC, not by this file.
 --
@@ -139,53 +139,53 @@ _ = refl
 ------------------------------------------------------------------------
 
 -- `-0.5` and `-2.75`: exact at both formats, so only the sign bit moves.
-_ : round binary64 (negate (decimalOf 0 5 1)) ≡ 0xbfe0000000000000
+_ : round binary64 (signedDecimal neg 0 5 1) ≡ 0xbfe0000000000000
 _ = refl
 
-_ : round binary32 (negate (decimalOf 0 5 1)) ≡ 0xbf000000
+_ : round binary32 (signedDecimal neg 0 5 1) ≡ 0xbf000000
 _ = refl
 
-_ : round binary64 (negate (decimalOf 2 75 2)) ≡ 0xc006000000000000
+_ : round binary64 (signedDecimal neg 2 75 2) ≡ 0xc006000000000000
 _ = refl
 
-_ : round binary32 (negate (decimalOf 2 75 2)) ≡ 0xc0300000
+_ : round binary32 (signedDecimal neg 2 75 2) ≡ 0xc0300000
 _ = refl
 
 -- `-3.14` is NOT exact at either format, so this is the one that exercises
 -- round-to-nearest-even on a negative significand rather than the sign bit
 -- alone. Compare the positive twin pinned above at `0x40091eb851eb851f`:
 -- identical below the sign, which is the claim.
-_ : round binary64 (negate (decimalOf 3 14 2)) ≡ 0xc0091eb851eb851f
+_ : round binary64 (signedDecimal neg 3 14 2) ≡ 0xc0091eb851eb851f
 _ = refl
 
-_ : round binary32 (negate (decimalOf 3 14 2)) ≡ 0xc048f5c3
+_ : round binary32 (signedDecimal neg 3 14 2) ≡ 0xc048f5c3
 _ = refl
 
 -- `-16777217.0` at binary32 — a TIE, resolved by round-half-to-even. The tie
 -- must break the same way on both signs; had `roundHalfEven` been reached with
 -- the sign folded into the significand instead of beside it, this is where it
 -- would show.
-_ : round binary32 (negate (decimalOf 16777217 0 1)) ≡ 0xcb800000
+_ : round binary32 (signedDecimal neg 16777217 0 1) ≡ 0xcb800000
 _ = refl
 
 -- `-0.1`, negative and inexact at both formats, one ulp apart in the two.
-_ : round binary64 (negate (decimalOf 0 1 1)) ≡ 0xbfb999999999999a
+_ : round binary64 (signedDecimal neg 0 1 1) ≡ 0xbfb999999999999a
 _ = refl
 
-_ : round binary32 (negate (decimalOf 0 1 1)) ≡ 0xbdcccccd
+_ : round binary32 (signedDecimal neg 0 1 1) ≡ 0xbdcccccd
 _ = refl
 
 -- A DECIMAL HAS A NEGATIVE ZERO: the sign rides beside the magnitude, so
--- `negate 0.0` (the literal `-0.0`) rounds to `−0`, glibc's
+-- the literal `-0.0` rounds to `−0`, glibc's
 -- `0x8000000000000000`, and so does the negation of `0.0`, `negV`.
-_ : round binary64 (negate (decimalOf 0 0 1)) ≡ 0x8000000000000000
+_ : round binary64 (signedDecimal neg 0 0 1) ≡ 0x8000000000000000
 _ = refl
 
-_ : round binary32 (negate (decimalOf 0 0 1)) ≡ 0x80000000
+_ : round binary32 (signedDecimal neg 0 0 1) ≡ 0x80000000
 _ = refl
 
-_ : encode binary64 (negV (roundDec binary64 (decimalOf 0 0 1))) ≡ 0x8000000000000000
+_ : encode binary64 (negV (roundDec binary64 (signedDecimal pos 0 0 1))) ≡ 0x8000000000000000
 _ = refl
 
-_ : encode binary32 (negV (roundDec binary32 (decimalOf 0 0 1))) ≡ 0x80000000
+_ : encode binary32 (negV (roundDec binary32 (signedDecimal pos 0 0 1))) ≡ 0x80000000
 _ = refl

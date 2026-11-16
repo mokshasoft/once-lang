@@ -22,7 +22,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong;
 
 open import Once.Spec.Float.Dyadic using (FloatFormat; binary32; binary64)
 open import Once.Spec.Float.Value
-open import Once.Spec.Float.Decimal using (roundDec; decimalOf; ⟨_⟩_/10^_)
+open import Once.Spec.Float.Decimal using (roundDec; ⟨_⟩_/10^_)
+open import Once.Spec.Surface.Syntax using (signedDecimal)
 open import Once.Spec.Float.Encoding using (encode; decode)
 open import Once.Spec.Float.Arith
   using (Operand; inf; fin; exact; onNumbers; addE; mulE; addAt; cancel; infAdd; infMul; addV; mulV; divV; i2fV;
@@ -361,7 +362,7 @@ private
   D64 = binary64
 
   lit : ℕ → ℕ → ℕ → FloatVal
-  lit i f l = roundDec D64 (decimalOf i f l)
+  lit i f l = roundDec D64 (signedDecimal pos i f l)
 
   lit′ : ℕ → ℕ → FloatVal
   lit′ i f = negV (lit i f 1)
@@ -408,10 +409,10 @@ _ = refl
 
 -- Subnormals are values (R1): `1e-40` at binary32 is glibc's `0x000116c2`,
 -- and the smallest binary64 subnormal is the pattern `1`.
-_ : encode binary32 (roundDec binary32 (decimalOf 0 1 40)) ≡ 0x000116c2
+_ : encode binary32 (roundDec binary32 (signedDecimal pos 0 1 40)) ≡ 0x000116c2
 _ = refl
 
-_ : encode D64 (roundDec D64 (decimalOf 0 49406564584124654 340)) ≡ 1
+_ : encode D64 (roundDec D64 (signedDecimal pos 0 49406564584124654 340)) ≡ 1
 _ = refl
 
 -- Overflow to `+∞`, at the value level.
