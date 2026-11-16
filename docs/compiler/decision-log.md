@@ -23866,3 +23866,48 @@ function entry follows `main`'s `c-leave` whenever `main` has no linked block.
   to show they run from a live state; the dead `c-leave` keeps the invariant as it is.
 * A `c-ret`/`c-jmp` as the dead terminator: a `c-ret` is what `em-ret-owes`/`em-ret-budget` quantify over,
   and a halted state does not owe a return.
+
+## D438 — THE ARCH LAYER READS THE RUN'S FACTS, NOT MASTER'S POSITIONAL SCAN (2026-11-16)
+
+**Decided** (the user, 2026-11-16: option (b) of the B1.6 fork). **Applies**: D092/D094 (the frame and
+return stacks move together; a return lands one past a call), D434/D435 (check at the access, not by a
+positional invariant), D437 (the guard before an entry), plan 0.146 B1.6 (`RunContext.Emitted`).
+
+### The problem
+`Emitted.em-slots` (a slot an instruction addresses is below the segment in force) and `em-jump` (a jump
+stays in its segment) were stated over master's scan of the code, `seg-at`: an entry pushes a
+reservation, a `c-ret` pops one, walking the code in order. That fits master's layout of one entry and one
+return per unit. The new image copies a block's epilogue, `c-ret` included, into every branch of a case,
+so the scan pops back to the caller's segment while a later branch is still inside the block: both fields
+are false of it as stated.
+
+### Options
+* (a) Single-exit blocks: each branch jumps to one shared epilogue, so the scan holds unchanged. One
+  extra unconditional `jmp` per branch exit taken, smaller code; about 30 LinCore block-exit simulations
+  change, for no reason but the proof device.
+* (b) The facts the scan exists for, as the run's facts. No change to the emitted code.
+
+### Decision
+(b). Both are principled (neither keeps at run time what is known at compile time); (b) changes the
+proof, not the program, and follows D434/D435.
+* **`em-slots` is a run fact**: at a reached state, a slot the fetched instruction addresses is below the
+  current frame's reservation (`slot < frame-slots`). `em-jump` is gone.
+* **The shared invariant reads no scan** (`RunWF.FrameWF`): the frame and return stacks are paired and
+  every return address is one past a call (`RetMatch`), and an entry is reached with an empty
+  reservation, a live link and a pending return (`fw-entry`). Its induction reads two facts of the code:
+  what each instruction is (`ImageI`) and the guard before each entry (`GuardAt`, D437).
+* **Master's scan stays master's proof** (`FlatCore.OldSeg`): the reservation in force at each pc
+  (`SegCur`) and a saved frame's at its return pc (`RetSeg`), from the scan's static facts (`ScanFacts`:
+  the slots below the segment, label scoping); `scan-slots` proves `em-slots` for master's image, and
+  `old-emitted` lives there.
+* **The new image** proves `em-slots` from its simulation (FlatTop: a reached state is related, and the
+  lowered code's slots are below its frame's reservation), the route already planned for `em-call-site`,
+  `em-ret-owes`, `em-ret-budget`.
+
+### Alternatives
+* A machine gate on slot accesses (`slot < frame-slots`, else fault), as D435's for pointer accesses, with
+  FlatTop's no-fault proof as the new image's discharge. Deferred to after B1.7: every simulation of the
+  old lowering (`IRObsCorrect/**`, about a hundred modules over slot instructions) would have to carry the
+  frame bound to its no-fault proof, and that code is deleted in B1.7. With the old lowering gone the gate
+  is the smaller step (the run fact's one provider is the new image's simulation either way).
+* (a), above.

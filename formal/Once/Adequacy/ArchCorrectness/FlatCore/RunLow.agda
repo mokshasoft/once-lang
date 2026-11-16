@@ -437,16 +437,16 @@ run-link-nothing .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p 
 ret-saved : ∀ prog (fs : FlatState) → RunLow prog fs → ∀ rpc rest → fret fs ≡ rpc ∷ rest
           → Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ)) (λ frs → saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs)))
 ret-saved .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) rpc rest req
-  = go (fret fs₀) refl (RW.SegWF.seg-stack (RW.run-seg-wf src fs₀ r)) req
+  = go (fret fs₀) refl (RW.FrameWF.fw-stack (RW.run-frame-wf-at src fs₀ r)) req
   where
-    go : ∀ (rs : List ℕ) → fret fs₀ ≡ rs → RW.RetMatch src 0 (saved-frames (falloc fs₀)) (fret fs₀)
+    go : ∀ (rs : List ℕ) → fret fs₀ ≡ rs → RW.RetMatch src (saved-frames (falloc fs₀)) (fret fs₀)
        → map (L.ret-map src) rs ≡ rpc ∷ rest
        → Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ)) (λ frs → saved-frames (falloc fs₀) ≡ (f₀ , b₀) ∷ frs)))
-    go (x ∷ xs) e rm _ = cons (saved-frames (falloc fs₀)) refl (subst (RW.RetMatch src 0 (saved-frames (falloc fs₀))) e rm)
+    go (x ∷ xs) e rm _ = cons (saved-frames (falloc fs₀)) refl (subst (RW.RetMatch src (saved-frames (falloc fs₀))) e rm)
       where
-        cons : ∀ (frs′ : List (Frame × ℕ)) → saved-frames (falloc fs₀) ≡ frs′ → RW.RetMatch src 0 frs′ (x ∷ xs)
+        cons : ∀ (frs′ : List (Frame × ℕ)) → saved-frames (falloc fs₀) ≡ frs′ → RW.RetMatch src frs′ (x ∷ xs)
              → Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ)) (λ frs → saved-frames (falloc fs₀) ≡ (f₀ , b₀) ∷ frs)))
-        cons .((_ , _) ∷ _) e′ (RW.rm-∷ _ _ _) = _ , _ , _ , e′
+        cons .((_ , _) ∷ _) e′ (RW.rm-∷ _ _) = _ , _ , _ , e′
 
 -- the emitter's fences: what an image instruction may be (a check is one)
 frame-op-absurd : ∀ prog (fs : FlatState) (i : AbstractInstr) → RunLow prog fs
@@ -561,13 +561,13 @@ low-step-image .(room-checks src) .(RoomSim.lift {FS} src fs₀ p) i (mkRunLow s
 ret-lands-check : ∀ prog (fs : FlatState) → RunLow prog fs → ∀ rpc rest → fret fs ≡ rpc ∷ rest
                 → Σ ℕ (λ k → fetch prog rpc ≡ just (instr-room k))
 ret-lands-check .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) rpc rest req
-  = go (fret fs₀) (saved-frames (falloc fs₀)) (RW.SegWF.seg-stack (RW.run-seg-wf src fs₀ r)) req
+  = go (fret fs₀) (saved-frames (falloc fs₀)) (RW.FrameWF.fw-stack (RW.run-frame-wf-at src fs₀ r)) req
   where
     open import Once.CCC.Codegen.RoomChecksFacts using (module NeedFacts)
     open NeedFacts {FS} using (boundary-next; call-boundary)
-    go : ∀ (rs : List ℕ) (frs : List (Frame × ℕ)) → RW.RetMatch src 0 frs rs → map (L.ret-map src) rs ≡ rpc ∷ rest
+    go : ∀ (rs : List ℕ) (frs : List (Frame × ℕ)) → RW.RetMatch src frs rs → map (L.ret-map src) rs ≡ rpc ∷ rest
        → Σ ℕ (λ k → fetch (room-checks src) rpc ≡ just (instr-room k))
-    go .(_ ∷ _) .(_ ∷ _) (RW.rm-∷ _ (q , refl , c , fq , ci) _) e =
+    go .(_ ∷ _) .(_ ∷ _) (RW.rm-∷ (q , refl , c , fq , ci) _) e =
       subst (λ z → Σ ℕ (λ k → fetch (room-checks src) z ≡ just (instr-room k))) (cong head′ e)
         (boundary-next src (φ src q) (trans (fetch-room src q) fq) (call-boundary c ci))
       where head′ : List ℕ → ℕ

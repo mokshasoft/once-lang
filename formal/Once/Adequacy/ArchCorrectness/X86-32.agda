@@ -210,7 +210,7 @@ open import Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim o
   (RB.LitFits.room-fits x86-32-lit-fits)
   using (events-agree-start; events-agree-boot; AgreeAt; CompiledCorr; HeapView; EntryLike; reach-start; RunAt; mkRunAt)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o x86-32-frame-semantics slot-size refl using (RunLow; low-start)
-open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o x86-32-frame-semantics slot-size refl using (old-emitted)
+open import Once.Adequacy.ArchCorrectness.FlatCore.OldSeg o x86-32-frame-semantics slot-size refl using (old-emitted)
 open import Once.CCC.Machine.FlatStoreWF x86-32-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.SMCore using (AbstractReg; AbstractTrace; Input1; Output; readReg; SV-Ptr; SV-Lit; module LocState)
 open LocState using (regs)

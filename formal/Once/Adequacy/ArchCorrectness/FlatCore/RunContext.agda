@@ -54,8 +54,6 @@ open import Data.Sum using (_⊎_)
 open import Data.Nat using (suc; _<_)
 open import Once.CCC.Machine.FrameFree using (ImageI)
 open import Once.CCC.Codegen.AllocMin o using (AllocMinI)
-open import Once.CCC.Codegen.SlotSeg using (seg-at; mkSeg; SegState; module SegState)
-open import Once.CCC.Codegen.LabelSeg using (mention-at)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Machine.Locations using (Slot; AtDynamic)
 open import Once.Memory.HeapAddress using (HeapLocation)
@@ -156,6 +154,15 @@ data Reachable (prog : AbstractTrace) (B : ℕ) : FlatState → Set where
 -- any image meeting them — the old one (`RunWF.old-emitted`), the new core's —
 -- runs on the arch layer. Each field is what a site lemma of `RunWF` read off
 -- the old image; the last three are about the program's RUN (reachable states).
+-- an entry is guarded: what precedes it does not fall through (a jump, a
+-- return, or the program's leave, which halts where it stands: D437)
+GuardAt : AbstractTrace → Set
+GuardAt prog = ∀ p (ℓ : EntryId) (bb : ℕ) → fetch prog p ≡ just (instr-ctrl (c-entry ℓ bb))
+             → Σ ℕ (λ q → (p ≡ suc q)
+                   × ((Σ LabelId (λ m → fetch prog q ≡ just (instr-ctrl (c-jmp m))))
+                      ⊎ (Σ ℕ (λ b → fetch prog q ≡ just (instr-ctrl (c-ret b))))
+                      ⊎ (fetch prog q ≡ just (instr-ctrl c-leave))))
+
 record Emitted (prog : AbstractTrace) : Set where
   field
     -- the start: pc 0 and nowhere else, at the program's stack budget
@@ -165,22 +172,18 @@ record Emitted (prog : AbstractTrace) : Set where
     -- every instruction the arch layer covers, a heap block of two words at least
     em-image  : All ImageI prog
     em-alloc  : All AllocMinI prog
-    -- a slot an instruction addresses is below the segment in force
-    em-slots  : ∀ k (i : AbstractInstr) (slot : Slot) → fetch prog k ≡ just i → slot-of i ≡ just slot
-              → slot < SegState.cur (seg-at prog k (mkSeg 0 []))
     -- a call names an entry; a code address names a body; an entry is guarded:
     -- what precedes it does not fall through (a jump, a return, or the
     -- program's leave, which halts where it stands: D437)
     em-calls  : ∀ k f → fetch prog k ≡ just (instr-ctrl (c-call-fn f)) → Σ ℕ (λ j → find-fn prog f ≡ just j)
     em-code   : ∀ p (ℓ : LabelId) → fetch prog p ≡ just (instr-load-code-addr ℓ) → Σ ℕ (λ j → find-thunk prog ℓ ≡ just j)
-    em-guard  : ∀ p (ℓ : EntryId) (bb : ℕ) → fetch prog p ≡ just (instr-ctrl (c-entry ℓ bb))
-              → Σ ℕ (λ q → (p ≡ suc q)
-                    × ((Σ LabelId (λ m → fetch prog q ≡ just (instr-ctrl (c-jmp m))))
-                       ⊎ (Σ ℕ (λ b → fetch prog q ≡ just (instr-ctrl (c-ret b))))
-                       ⊎ (fetch prog q ≡ just (instr-ctrl c-leave))))
-    -- a jump stays in its segment
-    em-jump   : ∀ p q (m : LabelId) (st : SegState) → mention-at prog p ≡ just m → find-label prog m ≡ just q
-              → seg-at prog q st ≡ seg-at prog p st
+    em-guard  : GuardAt prog
+    -- D438: a slot an instruction of the run addresses is inside the current
+    -- frame (the run's fact; master's image proves it by its positional scan,
+    -- `OldSeg`, the new image from its simulation)
+    em-slots  : ∀ fs (i : AbstractInstr) (slot : Slot) → Reachable prog 0 fs
+              → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
+              → slot < frame-slots (falloc fs)
     -- the run: a closure call's register, a return owed, its budget the reservation in force
     em-call-site : ∀ fs → Reachable prog 0 fs → fetch prog (fpc fs) ≡ just instr-call-closure
                  → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →

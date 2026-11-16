@@ -120,10 +120,10 @@ module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
   -- (the image's shape, then the run's facts), and the arith blocks
   record Owed : Set where
     field
-      o-slots  : ∀ k (i : AbstractInstr) (slot : Slot) → fetch image k ≡ just i → slot-of i ≡ just slot
-               → slot < SegState.cur (seg-at image k (mkSeg 0 []))
-      o-jump   : ∀ p q (m : LabelId) (st : SegState) → mention-at image p ≡ just m → find-label image m ≡ just q
-               → seg-at image q st ≡ seg-at image p st
+      -- D438: a slot the run addresses is inside the current frame
+      o-slots  : ∀ fs (i : AbstractInstr) (slot : Slot) → Reachable image 0 fs
+               → fetch image (fpc fs) ≡ just i → slot-of i ≡ just slot
+               → slot < AllocState.frame-slots (falloc fs)
       o-call-site : ∀ fs → Reachable image 0 fs → fetch image (fpc fs) ≡ just instr-call-closure
                   → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
                       (fclosure fs ≡ SV-Ptr (AtDynamic hl))
@@ -143,7 +143,7 @@ module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
     ; em-image = IA.em-image ; em-alloc = IA.em-alloc
     ; em-calls = IAF.em-calls ; em-code = IAF.em-code
     ; em-slots = Owed.o-slots O
-    ; em-guard = IG.em-guard ; em-jump = Owed.o-jump O
+    ; em-guard = IG.em-guard
     ; em-call-site = Owed.o-call-site O ; em-ret-owes = Owed.o-ret-owes O ; em-ret-budget = Owed.o-ret-budget O }
 
   δc = RTx.Run.δ val-x86-64 (answer-at (arch-numerics x86-64) ι call-at-x86-64) ev-x86-64 env (compile-trace P′)

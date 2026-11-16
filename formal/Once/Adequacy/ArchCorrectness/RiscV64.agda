@@ -177,7 +177,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   using (events-agree-start; events-agree-boot; AgreeAt; CompiledCorr; EntryLike; reach-start)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o rv64-frame-semantics slot-size refl using (mkRunAt)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o rv64-frame-semantics slot-size refl using (RunLow; low-start)
-open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o rv64-frame-semantics slot-size refl using (old-emitted)
+open import Once.Adequacy.ArchCorrectness.FlatCore.OldSeg o rv64-frame-semantics slot-size refl using (old-emitted)
 
 open FlatMachine {rv64-frame-semantics} using (mkFlat)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)

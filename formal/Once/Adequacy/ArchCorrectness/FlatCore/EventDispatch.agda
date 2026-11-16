@@ -173,7 +173,6 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
   using (load-at-target-ptr; heap-load-at-written; load-at-gate; store-at-gate; stack-load-at-written; addr-at-not-stack; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds; slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-ptr-bounds; emitted-call-fn-resolves; call-site-shape; step-ok; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
   renaming (RunLow to RunAt)
-open SegWF using (seg-stack)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of; ctrl-≤1)
 
@@ -431,11 +430,11 @@ module Dispatch (sup : Supply) where
     where
       -- `RetMatch` pairs the two stacks, so a cons `fret` forces a cons frame
       -- stack — J-style, because the pairing is data.
-      saved-cons : ∀ {frs' rs'} → RetMatch prog 0 frs' rs'
+      saved-cons : ∀ {frs' rs'} → RetMatch prog frs' rs'
                  → ∀ rpc rest → rs' ≡ rpc ∷ rest
                  → Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ)) (λ frs → frs' ≡ (f₀ , b₀) ∷ frs)))
       saved-cons rm-[] rpc rest ()
-      saved-cons (rm-∷ {f} {b'} {rpc'} {frs} {rs} _ _ _) rpc rest e = f , b' , frs , refl
+      saved-cons (rm-∷ {f} {b'} {rpc'} {frs} {rs} _ _) rpc rest e = f , b' , frs , refl
       go : Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
          → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                (event-of (instr-ctrl (c-ret b)) fs
