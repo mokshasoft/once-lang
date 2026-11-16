@@ -142,7 +142,7 @@ roundedTwoDigit = testGroup "rounded, two fraction digits"
 -- `-3.14` was a TYPE ERROR — not a rejection on representability grounds like
 -- the group above, but a plain `TypeMismatch Int Float`: `t-neg`'s premise is
 -- at `Int` and `RFloat` infers only at `Float`, so no derivation existed. It
--- is now ONE literal whose payload is `negate (decimalOf i f l)`.
+-- is now ONE literal whose payload is `signedDecimal neg i f l`.
 --
 -- Both halves are here on purpose: an EXACT negative exercises only the sign
 -- bit, while a ROUNDED one puts round-to-nearest-even on a negative

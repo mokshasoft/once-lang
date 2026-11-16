@@ -76,8 +76,8 @@ encodeArith Binary32 (_, f) = fromIntegral (castFloatToWord32 f)
 -- exact, so the rest are the cases that could not be written before.
 --
 -- THE NEGATIVE ONES ARE THE REAL CHECK ON `round` (plan 0.73 F3, D117).
--- `-3.14` elaborates to ONE literal whose payload is `negate (decimalOf 3 14
--- 2)`, and both the compiler and its spec then call the SAME `round` — so the
+-- `-3.14` elaborates to ONE literal whose payload is `signedDecimal neg 3 14
+-- 2`, and both the compiler and its spec then call the SAME `round` — so the
 -- correspondence proof is `refl`-shaped and cannot falsify it. Here the
 -- expectation comes from GHC's IEEE conversion instead, which is a genuinely
 -- independent implementation. `-3.14` is not exact at either format, so this
