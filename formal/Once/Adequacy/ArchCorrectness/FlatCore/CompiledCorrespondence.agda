@@ -293,6 +293,13 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-reclaim-to n)
       → BlockStep hv prog fs s (instr-reclaim-to n)
+    -- a free: no code on any arch, and a no-op in the machine (the bump
+    -- allocator does not reuse the block; D411's reuse is plan 0.146 B1.6)
+    bs-free-heap :
+      ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-free-heap n)
+      → BlockStep hv prog fs s (instr-free-heap n)
     bs-worklist-init :
       ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false

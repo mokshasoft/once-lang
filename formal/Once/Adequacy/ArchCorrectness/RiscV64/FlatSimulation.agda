@@ -1290,6 +1290,24 @@ block-step-reclaim-to {hv} prog fs s n cc h ft = s , refl , record
   ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where dc = dataCorr cc
 
+-- free: EMITS NOTHING (the bump allocator does not reuse the block), and the
+-- flat step is the identity mod fpc: every field carried across unchanged.
+block-step-free-heap : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-free-heap n)
+  → BlockStep hv prog fs s (instr-free-heap n)
+block-step-free-heap {hv} prog fs s n cc h ft = s , refl , record
+  { dataCorr = record { in1-eq = C.in1-eq dc ; out-eq = C.out-eq dc
+                      ; clos-eq = C.clos-eq dc
+                      ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc
+                      ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc
+                      ; heap-eq = C.heap-eq dc
+                      ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
+  ; pc-off = trans (pc-off cc)
+             (sym (trans (blk-off-suc prog (fpc fs) (instr-free-heap n) ft) (+-identityʳ _)))
+  ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  where dc = dataCorr cc
+
 ------------------------------------------------------------------------
 -- THE WORKLIST OPS (0.65 G2). `init`/`check` EMIT NOTHING on both arches (the
 -- simplified model: the proofs use Star-based reasoning, not loop mechanics);

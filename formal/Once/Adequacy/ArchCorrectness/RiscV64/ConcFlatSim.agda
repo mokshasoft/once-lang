@@ -390,7 +390,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fmt-eq using
   (block-step-lea-slot; BlockStep; BlockSteps; room-step-riscv64
   ; block-step-mov-to-output; block-step-mov-to-input
-  ; block-step-c-label; block-step-reclaim-to
+  ; block-step-c-label; block-step-reclaim-to; block-step-free-heap
   ; block-step-worklist-init; block-step-worklist-check
   ; block-step-save-closure-reg; block-step-load-tag-lit
   ; block-step-load-indirect; block-step-load-indirect-stack
@@ -540,6 +540,7 @@ riscv64-block-steps = record
   ; bs-mov-to-input         = block-step-mov-to-input
   ; bs-c-label              = block-step-c-label
   ; bs-reclaim-to           = block-step-reclaim-to
+  ; bs-free-heap            = block-step-free-heap
   ; bs-worklist-init        = block-step-worklist-init
   ; bs-worklist-check       = block-step-worklist-check
   -- the ONE shape that differs: riscv64 computes a slot address with `addi`,

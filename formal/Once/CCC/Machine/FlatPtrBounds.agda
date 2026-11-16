@@ -480,7 +480,7 @@ pb-abstract (restore-input slot) ls alloc ff am wfS wf =
 -- the frame ops are unemittable — `⊥` in `FrameFreeI`
 pb-abstract (instr-alloc-stack n)   ls alloc () am wfS wf
 pb-abstract (instr-dealloc-stack n) ls alloc () am wfS wf
-pb-abstract (instr-free-heap n)     ls alloc () am wfS wf
+pb-abstract (instr-free-heap n)     ls alloc ff am wfS wf = wf
 pb-abstract (load-at n)     ls alloc ff am wfS wf =
   pb-load-at-resolved _ ls n Output (frame-gate alloc n (sv-as-loc (readReg (regs ls) Input1))) wf
 pb-abstract (store-at n)     ls alloc ff am wfS wf =
@@ -634,7 +634,7 @@ flat-ptr-bounds (instr-ctrl (c-branch-tag-zero m))     prog fs ff am wfS wf =
   pb-test (tag-test (flat-read-tag (falloc fs) (floc fs))) m prog fs wf
 flat-ptr-bounds (instr-alloc-stack n)   prog fs () am wfS wf
 flat-ptr-bounds (instr-dealloc-stack n) prog fs () am wfS wf
-flat-ptr-bounds (instr-free-heap n)     prog fs () am wfS wf
+flat-ptr-bounds (instr-free-heap n)     prog fs ff am wfS wf = pb-abstract (instr-free-heap n) (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (load-at n)     prog fs ff am wfS wf =
   pb-abstract (load-at n) (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (store-at n)     prog fs ff am wfS wf =

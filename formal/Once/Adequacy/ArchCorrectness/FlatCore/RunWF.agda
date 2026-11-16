@@ -735,14 +735,14 @@ pcView (instr-ctrl (c-call-fn f))             _ = pv-call-fn f refl
 pcView (instr-ctrl (c-ret bb))                _ = pv-ret bb refl
 pcView (instr-alloc-stack _)                  ()
 pcView (instr-dealloc-stack _)                ()
-pcView (instr-free-heap _)                    ()
+pcView (instr-free-heap _)                    _ = pv-suc tt tt (λ _ _ → refl)
 pcView (load-at _)                            _ = pv-suc tt tt (λ _ _ → refl)
 pcView (store-at _)                           _ = pv-suc tt tt (λ _ _ → refl)
 pcView (addr-at _)                            _ = pv-suc tt tt (λ _ _ → refl)
 pcView (instr-room _)                    ()
 pcView (instr-push-frame _)                   ()
 pcView instr-pop-frame                        ()
-pcView (lea-slot _)                           ()
+pcView (lea-slot _)                           _ = pv-suc tt tt (λ _ _ → refl)
 pcView mov-to-output                          _ = pv-suc tt tt (λ _ _ → refl)
 pcView mov-to-input                           _ = pv-suc tt tt (λ _ _ → refl)
 pcView load-indirect                          ()
@@ -1343,7 +1343,7 @@ ptr-bounds-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog f
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
 ptr-bounds-step (instr-alloc-stack n)   prog fs r ftq () wfS wf
 ptr-bounds-step (instr-dealloc-stack n) prog fs r ftq () wfS wf
-ptr-bounds-step (instr-free-heap n)     prog fs r ftq () wfS wf
+ptr-bounds-step (instr-free-heap n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (instr-free-heap n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (load-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (load-at n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (store-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (store-at n) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (addr-at n)     prog fs r ftq ff wfS wf = flat-ptr-bounds (addr-at n) prog fs ff (λ { _ () }) wfS wf

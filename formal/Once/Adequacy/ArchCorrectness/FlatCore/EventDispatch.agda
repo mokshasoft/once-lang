@@ -1180,8 +1180,8 @@ module Dispatch (sup : Supply) where
         (λ _ → bg-alloc bg ftq refl refl (straight-frame (instr-alloc-heap k) fs)) wf ftq h refl tt tt h
     events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc bg wf h ftq =
       ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (inv-run wf) ftq (λ _ ()))
-    events-running-fetch {hv} n ev env prog fs s (instr-free-heap k) cc bg wf h ftq =
-      ⊥-elim (frame-op-absurd prog fs (instr-free-heap k) (inv-run wf) ftq (λ _ ()))
+    -- a free (plan 0.146: the new image emits one): no code, a no-op step
+    events-running-fetch {hv} n ev env prog fs s (instr-free-heap k) cc bg wf h ftq = ccc-step-bs n (events-agree n) ev env prog fs s (instr-free-heap k) (bs-free-heap bss prog fs s k cc h ftq) (λ _ → bg-str _ bg ftq refl refl) wf ftq h refl tt tt h
     events-running-fetch {hv} n ev env prog fs s (load-at k) cc bg wf h ftq =
       load-at-step n (events-agree n) ev env prog fs s k cc bg wf h ftq
     events-running-fetch {hv} n ev env prog fs s (store-at k) cc bg wf h ftq =

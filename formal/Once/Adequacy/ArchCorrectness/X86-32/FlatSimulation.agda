@@ -486,6 +486,20 @@ block-step-reclaim-to {hv} prog fs s n cc h ft = s , refl , record
              ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where dc = dataCorr cc
 
+-- instr-free-heap: no code (the bump allocator does not reuse the block), and
+-- the flat step is the identity mod fpc: every field carried across unchanged.
+block-step-free-heap : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-free-heap n) → BlockStep hv prog fs s (instr-free-heap n)
+block-step-free-heap {hv} prog fs s n cc h ft = s , refl , record
+  { dataCorr = record { in1-eq = C.in1-eq dc ; out-eq = C.out-eq dc
+                      ; clos-eq = C.clos-eq dc ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc
+                      ; heap-eq = C.heap-eq dc
+                      ; lo-le = C.lo-le dc ; stack-eq = C.stack-eq dc }
+  ; pc-off = trans (pc-off cc)
+             (sym (trans (blk-off-suc prog (fpc fs) (instr-free-heap n) ft) (+-identityʳ _)))
+             ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  where dc = dataCorr cc
+
 -- c-jmp: unconditional jump. find-label-corr maps the flat label index to
 -- the x86 block-offset, so the x86 `jmp` lands at the same place. Data
 -- unchanged (jmp touches only the pc). Hypothesis: the target exists.
@@ -2681,6 +2695,7 @@ x86-32-block-steps = record
   ; bs-mov-to-input         = block-step-mov-to-input
   ; bs-c-label              = block-step-c-label
   ; bs-reclaim-to           = block-step-reclaim-to
+  ; bs-free-heap            = block-step-free-heap
   ; bs-worklist-init        = block-step-worklist-init
   ; bs-worklist-check       = block-step-worklist-check
   -- the `RunAt` is DROPPED: x86-32 computes a slot address with `lea`, which
