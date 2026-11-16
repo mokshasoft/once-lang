@@ -33,11 +33,11 @@
 
 module Once.Spec.Float.Decimal where
 
-open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
+open import Data.Nat as ℕ using (ℕ; _∸_; _^_)
 open import Data.Integer using (+_)
 
 open import Once.Spec.Float.Dyadic using (FloatFormat)
-open import Once.Spec.Float.Value using (FloatVal; Sign; pos; neg; flip; roundQ)
+open import Once.Spec.Float.Value using (FloatVal; Sign; pos; roundQ)
 
 ------------------------------------------------------------------------
 -- The payload
@@ -62,21 +62,6 @@ open Decimal
 -- | The whole number `n`.
 fromℕ : ℕ → Decimal
 fromℕ n = ⟨ pos ⟩ n /10^ 0
-
--- | Negation flips the sign: a negative literal (plan 0.150 N4) is `negate` of
--- its digits, `-0.0` included.
-negate : Decimal → Decimal
-negate (⟨ s ⟩ m /10^ e) = ⟨ flip s ⟩ m /10^ e
-
--- | The lexer's triple, as a decimal: `RFloat i f l` _ is `i.f` with `l`
--- fraction digits, so its value is `i + f/10^l` and its exact significand is
--- `i·10^l + f`.
---
--- TOTAL, and that is K3's whole content. This used to be `accept? i f l`,
--- returning a `Maybe (Σ Dyadic (Accepted …))` — partial, because `3.14` has no
--- dyadic to return. Every literal has a decimal.
-decimalOf : ℕ → ℕ → ℕ → Decimal
-decimalOf i f l = ⟨ pos ⟩ (i * 10 ^ l + f) /10^ l
 
 ------------------------------------------------------------------------
 -- The literal's value at a format

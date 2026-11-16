@@ -42,7 +42,6 @@ open import Once.Spec.Type
          WFFun; Respects; _⟨_⟩; _⟨_⟩F; Occurs)
 open import Once.Spec.Sub using (_<:_; _⊔_≔_)
 open import Once.Spec.Signature using (_∶_; ⌜_⌝; ⌜_⌝ᵈ)
-open import Once.Spec.Float.Decimal using (Decimal; decimalOf; negate)
 open import Once.Spec.Float.Value using (Sign; pos; neg)
 open import Once.Spec.Theory
   using (NumTy; int; float; ⌜_⌝ⁿ; Theory; Neg; Ring; Division; Order; Equality; Rounded;
