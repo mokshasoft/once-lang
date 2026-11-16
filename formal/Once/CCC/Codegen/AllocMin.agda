@@ -4,16 +4,19 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.AllocMin   (Plan 0.54 rung D, item 5)
 --
--- EVERY EMITTED ALLOCATION HAS AT LEAST TWO WORDS: each `instr-alloc-heap n` in
--- an emitted trace has `n ≥ 2`. plan 0.123 B.4 α: a flat block is sized by its
--- type, `2 ⊔ size …` (the pair, the sum, the call pair, the cata's argument
--- pair and layers, the re-suspended layers), and the fixed two-word nodes (the
--- closure and ν records, the stacks, the box) are literally `2`.
+-- EVERY EMITTED ALLOCATION HAS AT LEAST ONE WORD: each `instr-alloc-heap n` in
+-- an emitted trace has `n ≥ 1` (plan 0.146 B1.6: the floor was 2; the
+-- pointer-bounds invariant needs only the block's first cell, and the new
+-- image's cells are sized by their contents). This image meets it with room to
+-- spare: a flat block is sized by its type, `2 ⊔ size …` (the pair, the sum,
+-- the call pair, the cata's argument pair and layers, the re-suspended
+-- layers), and the fixed two-word nodes (the closure and ν records, the
+-- stacks, the box) are literally `2`.
 --
 -- This is the emitter half of the pointer-bounds invariant
 -- (`Once.CCC.Machine.FlatPtrBounds`): the fresh pointer an alloc hands out is
--- the start of a block of at least one cell (two is more than it needs; the
--- floor of 2 is kept so a 0-word value still has a block to be addressed in).
+-- the start of a block of at least one cell, so a 0-word value still has a
+-- block to be addressed in.
 --
 -- Since item 6 (case compiles to FLAT control) there is no nesting anywhere:
 -- every alloc site of every branch is in the main trace, so this `All` covers
@@ -32,7 +35,7 @@ open import Once.Spec.Name using (CanonicalName)
 module Once.CCC.Codegen.AllocMin (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _+_; _≤_; s≤s; z≤n; _*_; _⊔_; _∸_)
-open import Data.Nat.Properties using (m≤m⊔n)
+open import Data.Nat.Properties using (m≤m⊔n; ≤-trans)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
@@ -63,19 +66,19 @@ open import Once.CCC.Codegen.IRToTrace o using
 open import Once.CCC.Codegen.FrameFreeTrace o using (trace-of; cata-trace-of)
 
 AllocMinI : AbstractInstr → Set
-AllocMinI (instr-alloc-heap n) = 2 ≤ n
+AllocMinI (instr-alloc-heap n) = 1 ≤ n
 {-# CATCHALL #-}
 AllocMinI _                    = ⊤
 
 AllocMinTrace : AbstractTrace → Set
 AllocMinTrace = All AllocMinI
 
-am2 : 2 ≤ 2
-am2 = s≤s (s≤s z≤n)
+am2 : 1 ≤ 2
+am2 = s≤s z≤n
 
 -- plan 0.123 B.4 α: a flat block, `2 ⊔ size …`
-am⊔ : ∀ n → 2 ≤ 2 ⊔ n
-am⊔ n = m≤m⊔n 2 n
+am⊔ : ∀ n → 1 ≤ 2 ⊔ n
+am⊔ n = ≤-trans (s≤s z≤n) (m≤m⊔n 2 n)
 
 ------------------------------------------------------------------------
 -- plan 0.123 B.4 α: the layout code allocates nothing.

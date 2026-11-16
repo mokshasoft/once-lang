@@ -208,12 +208,14 @@ module Lowering (U : Univ)
     let bot = Tp φ S ; M = wsz A ⊔ wsz B
     in mvSS (bot ∸ wsz B) (bot ∸ M) (wsz B) ++ instr-load-tag-lit 1 ∷ store-at-slot (bot ∸ suc M)
        ∷ stores (bot ∸ (M ∸ wsz B)) (M ∸ wsz B)
+  -- (a node's cell has one word at least, `1 ⊔`: a block a pointer can address,
+  -- `AllocMinI`; a layer of no words — `μ (K One)` — keeps it unused)
   lowP ds (lIn {F = F}) φ S p =
     let bot = Tp φ S ; wL = wsz (LF∙ F (μt F))
-    in instr-alloc-heap wL ∷ mov-to-input ∷ mvSP (bot ∸ wL) 0 wL ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ []
+    in instr-alloc-heap (1 ⊔ wL) ∷ mov-to-input ∷ mvSP (bot ∸ wL) 0 wL ++ mov-to-output ∷ store-at-slot (bot ∸ 1) ∷ []
   lowP ds (lOutμ {F = F}) φ S p =
     let bot = Tp φ S ; wL = wsz (LF∙ F (μt F))
-    in restore-input (bot ∸ 1) ∷ mvPS 0 (bot ∸ wL) wL ++ instr-free-heap wL ∷ []
+    in restore-input (bot ∸ 1) ∷ mvPS 0 (bot ∸ wL) wL ++ instr-free-heap (1 ⊔ wL) ∷ []
   lowP ds (lconst v) φ S p = ldConst v ∷ store-at-slot (Tp φ S ∸ 1) ∷ []
   -- a SigOp: its argument's address in `Input1`, its answer in `Output`
   -- (one word, or none; a wider answer is not a SigOp's — the flat machine's

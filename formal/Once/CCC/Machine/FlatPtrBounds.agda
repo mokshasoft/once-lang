@@ -26,9 +26,9 @@
 -- hypothesis; ConcFlatSim carries both invariants through one `Reachable`
 -- induction.
 --
--- The per-instruction premise `2 ≤ n` at an alloc site is the EMITTER's
+-- The per-instruction premise `1 ≤ n` at an alloc site is the EMITTER's
 -- discipline (`Once.CCC.Codegen.AllocMin` — every emitted `instr-alloc-heap`
--- is literally `instr-alloc-heap 2`). (`lea-indexed`, the one instruction
+-- has a block of one word at least). (`lea-indexed`, the one instruction
 -- that could fabricate an interior pointer, was retired by plan 0.135.)
 ------------------------------------------------------------------------
 
@@ -440,13 +440,13 @@ pb-write-reg-halt-on bs ls x v b fl es ok wf wf₀ =
 ------------------------------------------------------------------------
 -- THE PER-INSTRUCTION PRESERVATION over the structured semantics. The one
 -- clause with content is `instr-alloc-heap`: the fresh pointer is the pair
--- start of an `n ≥ 2` block (the emitter premise), and every OLD value keeps
+-- start of an `n ≥ 1` block (the emitter premise), and every OLD value keeps
 -- its bound because its ref lies below the frontier (the `StoreWF` premise) —
 -- `size-with` only writes the frontier's ref.
 ------------------------------------------------------------------------
 pb-abstract : ∀ (i : AbstractInstr) (ls : LocState FS) (alloc : AllocState {FS})
             → EmittableI i
-            → (∀ n → i ≡ instr-alloc-heap n → 2 ≤ n)
+            → (∀ n → i ≡ instr-alloc-heap n → 1 ≤ n)
             → StoreWF (next-heap-ref alloc) ls
             → PBInv (block-size alloc) ls
             → PBInv (block-size (proj₂ (exec-abstract i ls alloc)))
@@ -512,7 +512,7 @@ pb-abstract (instr-load-code-addr n) ls alloc ff am wfS wf =
 pb-abstract instr-save-closure-reg   ls alloc ff am wfS wf = wf
 pb-abstract (instr-load-tag-lit n)   ls alloc ff am wfS wf =
   pb-write-reg _ ls Output (SV-Tag n) tt wf
--- THE PRODUCER: fresh block start, `n ≥ 2` cells (the emitter premise);
+-- THE PRODUCER: fresh block start, `n ≥ 1` cells (the emitter premise);
 -- everything old keeps its size (`StoreWF` freshness + `size-with-old`).
 pb-abstract (instr-alloc-heap n) ls alloc ff am wfS wf = record
   { pb-regs  = λ r → go r (readReg-write (regs ls) Output r fresh)
@@ -524,7 +524,7 @@ pb-abstract (instr-alloc-heap n) ls alloc ff am wfS wf = record
     fresh : StoredValue FS
     fresh = SV-Ptr (AtDynamic (heap-loc (mkHeapRef st) 0))
     fresh-ok : PtrB (size-with n st bs) fresh
-    fresh-ok = subst (0 <_) (sym (size-with-new n st bs)) (≤-trans (s≤s z≤n) (am n refl))
+    fresh-ok = subst (0 <_) (sym (size-with-new n st bs)) (am n refl)
     go : ∀ (r : AbstractReg)
        → (readReg (writeReg (regs ls) Output fresh) r ≡ fresh)
        ⊎ (readReg (writeReg (regs ls) Output fresh) r ≡ readReg (regs ls) r)
@@ -614,7 +614,7 @@ pb-call-at nothing  fs wf = pb-halt _ (floc fs) true wf
 
 flat-ptr-bounds : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
                 → ImageI i
-                → (∀ n → i ≡ instr-alloc-heap n → 2 ≤ n)
+                → (∀ n → i ≡ instr-alloc-heap n → 1 ≤ n)
                 → StoreWF (next-heap-ref (falloc fs)) (floc fs)
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
 flat-ptr-bounds (instr-ctrl (c-label m))               prog fs ff am wfS wf = wf

@@ -61,7 +61,22 @@ open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
   (RB.LitFits.tag-fits x86-64-lit-fits) (RB.LitFits.lit-fits x86-64-lit-fits) (RB.float-fits o ι)
   using (events-agree-boot; AgreeAt; reach-start; mkRunAt; x86-64-arith-table)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o x86-64-frame-semantics slot-size refl using (RunLow; low-start)
-open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o x86-64-frame-semantics slot-size refl using (Emitted)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o x86-64-frame-semantics slot-size refl using (Emitted; Reachable)
+open import Once.CCC.FrameSemantics using (fs-numerics; fs-ffi)
+open import Once.CCC.Machine.SMCore
+  using (AbstractInstr; instr-ctrl; c-call-fn; c-entry; c-jmp; c-ret; instr-load-code-addr; instr-call-closure
+        ; SV-Ptr; SV-Code; module LocState; module AllocState)
+open import Once.CCC.Machine.Flat using (module FlatMachine)
+open FlatMachine {x86-64-frame-semantics} using (fetch; find-fn; find-thunk; find-label; fpc; floc; fclosure; fret; falloc)
+open import Once.CCC.Machine.Locations using (Slot; AtDynamic)
+open import Once.CCC.Machine.InstrSlot using (slot-of)
+open import Once.CCC.Codegen.SlotSeg using (seg-at; mkSeg; SegState; module SegState)
+open import Once.CCC.Codegen.LabelSeg using (mention-at)
+open import Once.CCC.Label using (LabelId; EntryId)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
+open import Data.Nat using (_<_)
+open import Data.Sum using (_⊎_)
+open import Data.List using (_∷_)
 
 -- a base value is one word (`Spec.ABI`)
 bw : Base → ℕ
@@ -71,6 +86,12 @@ bw float = 1
 import Once.LinCore.MachineLit
 module ML = Once.LinCore.MachineLit x86-64-frame-semantics bw
 import Once.LinCore.FlatTop
+import Once.LinCore.ImageAll
+
+-- a constant's loader is an `instr-load-const`
+ld-is : Once.LinCore.ImageAll.LoadConst (fs-numerics x86-64-frame-semantics) (fs-ffi x86-64-frame-semantics) bw ML.ldConst
+ld-is {int}   v = _ , _ , v , refl
+ld-is {float} v = _ , _ , v , refl
 
 module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
   (tp : _) (etp : _) (f : _) (ef : _)
@@ -86,14 +107,44 @@ module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
 
   env = block-env (C.blocks-x86-64 p)
 
-  -- ★ WHAT THE NEW IMAGE OWES THE ARCH LAYER
+  -- the image's pointwise facts and its start (`ImageAll`)
+  module IA = Once.LinCore.ImageAll.Img (fs-numerics x86-64-frame-semantics) (fs-ffi x86-64-frame-semantics) bw o
+                IT.TP.ds IT.TP.f₀ ML.ldConst ld-is
+  module IAF = IA.Fetch {x86-64-frame-semantics}
+
+  -- ★ WHAT THE NEW IMAGE OWES THE ARCH LAYER: `RunContext.Emitted`'s fields not yet proved
+  -- (the image's shape, then the run's facts), and the arith blocks
   record Owed : Set where
     field
-      -- the image facts the arch layer reads (`RunContext.Emitted`, B1.6: live stack pointers, frees,
-      -- the structured sigop at the boundary extend what it covers)
-      o-em    : Emitted image
+      o-slots  : ∀ k (i : AbstractInstr) (slot : Slot) → fetch image k ≡ just i → slot-of i ≡ just slot
+               → slot < SegState.cur (seg-at image k (mkSeg 0 []))
+      o-guard  : ∀ p (ℓ : EntryId) (bb : ℕ) → fetch image p ≡ just (instr-ctrl (c-entry ℓ bb))
+               → Σ ℕ (λ q → (p ≡ suc q)
+                     × ((Σ LabelId (λ m → fetch image q ≡ just (instr-ctrl (c-jmp m))))
+                        ⊎ (Σ ℕ (λ b → fetch image q ≡ just (instr-ctrl (c-ret b))))))
+      o-jump   : ∀ p q (m : LabelId) (st : SegState) → mention-at image p ≡ just m → find-label image m ≡ just q
+               → seg-at image q st ≡ seg-at image p st
+      o-call-site : ∀ fs → Reachable image 0 fs → fetch image (fpc fs) ≡ just instr-call-closure
+                  → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
+                      (fclosure fs ≡ SV-Ptr (AtDynamic hl))
+                      × (LocState.heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
+                      × (find-thunk image ℓ ≡ just j))))
+      o-ret-owes  : ∀ fs (b : ℕ) → Reachable image 0 fs → fetch image (fpc fs) ≡ just (instr-ctrl (c-ret b))
+                  → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
+      o-ret-budget : ∀ fs (b : ℕ) → Reachable image 0 fs → fetch image (fpc fs) ≡ just (instr-ctrl (c-ret b))
+                   → b ≡ AllocState.frame-slots (falloc fs)
       -- the arith blocks the image's sigops run (B1.7: the compiled image is the new one)
       o-table : x86-64-arith-table P′ env
+
+  -- ★ the image facts the arch layer reads: the proved ones and the owed ones
+  emitted : Owed → Emitted image
+  emitted O = record
+    { em-budget = IA.em-budget ; em-zero = IAF.em-zero ; em-start = IAF.em-start
+    ; em-image = IA.em-image ; em-alloc = IA.em-alloc
+    ; em-calls = IAF.em-calls ; em-code = IAF.em-code
+    ; em-slots = Owed.o-slots O
+    ; em-guard = Owed.o-guard O ; em-jump = Owed.o-jump O
+    ; em-call-site = Owed.o-call-site O ; em-ret-owes = Owed.o-ret-owes O ; em-ret-budget = Owed.o-ret-budget O }
 
   δc = RTx.Run.δ val-x86-64 (answer-at (arch-numerics x86-64) ι call-at-x86-64) ev-x86-64 env (compile-trace P′)
 
@@ -109,7 +160,7 @@ module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
     where
       run₀ : RunLow P′ FFOx.start-flat
       run₀ = low-start image FFOx.start-flat
-               (mkRunAt (Owed.o-em O) (reach-start FFOx.start-flat (entry-like 0) refl (IT.flat-sound (λ {b} v → ML.ld {b} v IT.TP.image))))
+               (mkRunAt (emitted O) (reach-start FFOx.start-flat (entry-like 0) refl (IT.flat-sound (λ {b} v → ML.ld {b} v IT.TP.image))))
                refl
       fact : BudgetFact⊑ δc ([] , X.initState) ι (runIR (arch-numerics x86-64) (pureHalf ι) (irProgram tbl ir))
       fact k = case IT.flat-ir (λ {b} v → ML.ld {b} v IT.TP.image) k of λ where
