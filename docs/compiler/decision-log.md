@@ -23755,3 +23755,80 @@ different cell on the hardware than in the machine. The machine does not check s
   reachable state): the same arithmetic, but proved away from the simulation step that knows the frames.
 * A preserved invariant (master's `FlatStackPtr` generalized): must survive every call and return, and a
   dead register still pointing into a popped frame breaks it although it is never used.
+
+## D436 — μ/ν NODES STAY CELLS; LAYERS ARE BUILT AND READ IN PLACE; FRAME-LOCAL NODES GO TO FRAMES (2026-11-16)
+
+**Decided** (the user, 2026-11-16, in a discussion of D434's cost). **Applies**: D403 (cells and frames:
+μ/ν nodes and closures are cells), D434 (the heap never points at the stack), plan 0.146 §3 ("Local
+temporaries are allowed", "Stack or cell"), A9 (stack regions), `loop-exchange` (a server's memory is its
+state, round after round).
+
+### The question
+Placement is by type: words, pairs, sums in frames; μ nodes (`lIn`), νs (`kobs`) and closures (`header`)
+in cells. Every value moves by copying words, so a cell is filled from the frame and emptied into it:
+`lIn` builds the layer in the frame and moves it into the fresh cell (`mvSP`), `lOutμ` moves it back
+(`mvPS`) and frees the cell. Copies at the cell boundary are a cost. Could an inductive value live on the
+stack instead, with the heap kept for an operation's internal temporaries only — a fold's result on the
+stack, its intermediates on the heap — and the same for coinductive values?
+
+### Findings
+* What crosses the boundary is one LAYER per node (`wsz (F (μF))` words: the head and one pointer per
+  recursive position), never the structure; a shape-preserving round with in-place reuse
+  (`r-cata-reuse`) has no move and no event at all. The waste is the extra move: a layer is built in the
+  frame and then moved into its cell, and taken apart by moving it out, although its fields could be
+  written into, and read from, the cell directly.
+* A μ value of unknown size cannot have a static frame slot. On a dynamic stack (the callee's result
+  pushed above its frame, or on a SECOND stack as Ada's secondary stack, Tofte–Talpin's region stack)
+  a value's space is reclaimed only in LIFO order, so it works exactly when values die in the reverse of
+  their allocation order.
+  - What works (the user, 2026-11-16): a value consumed WHOLE. A list's outermost node is on top, so a
+    fold pops the input as it unrolls it (the pending heads on its work stack, a temporary) and has
+    consumed it before the first output node is built: one stack suffices, and a server whose state is
+    a list rebuilt by a fold each round (`loop-forever-list.once`) stays in place. A branching functor
+    builds the left result while the right input is live, so the output goes to a SECOND stack and the
+    next fold reads it from there (toggling); two stacks growing toward each other share one region
+    (D411 part 2).
+  - What does not: (1) KEEPING a sub-value. In `b, nil, c₂, a, c₁` (the list `[a, b]`, top at the
+    right), a fold that keeps `a` (filter, reverse, partition over a list of structures) must move it
+    out of the way before `c₂` can be popped: a deep copy, or everything below pinned. A cell moves it by
+    one pointer word, and rearranging ownership is a linear program's everyday operation. (2) CROSSING
+    lifetimes chosen by the program (a queue as two lists; a branch-dependent order): every stack must
+    stay LIFO, a colouring of the values over the stacks, with no fixed number of stacks sufficing.
+    (3) An effectful algebra (D131) runs in the PROGRAM's order: no order is canonical, and Once's is
+    reading order, as `pair`'s (D221), so the programmer picks it by how they write the term and the
+    compiler may not reorder it. Producer and consumer follow the same reading order, so an effectful
+    producer allocates the left result first (deeper) and an effectful consumer visits it first: one
+    inversion against LIFO, every time (D221's own finding for the old fold's value stack). The
+    consumer cannot pop as it goes; more stacks do not help (the inversion recurs at every depth); it
+    can only read in place and free each subtree after its sibling, holding up to the whole input. A
+    pure algebra's order is the compiler's, so it visits the top first and pops. (4) A μ value stored in a cell (a closure's
+    environment, a ν's seed) must be copied to the heap whole (D434).
+* Coinductive values are the same, with an easier special case. The server loop (`c-loop`/`iter`) uses no
+  cell already: its state is rewritten in place in the loop's frame. A first-class ν has a STATIC
+  footprint (its seed and coalgebra); it is a cell only because it may outlive its frame.
+
+### Decision
+* **μ/ν nodes and closures stay cells** (D403 stands; no dynamic or secondary stack for values).
+* **Layers in place** (plan 0.146, B1.8): `lIn` allocates the cell and writes the layer's fields into
+  it directly (destination passing); `lOutμ` / an observation reads fields from the cell where it can,
+  rather than moving the whole layer into the frame first. The values' meaning and the events are
+  unchanged (one alloc, one free per node), only the moves go.
+* **Frame-local nodes in frames** (A9, after the integration): a μ node or a ν whose whole lifetime is
+  inside one frame (built and consumed there, not returned, not stored in a cell) gets frame slots,
+  decided statically from the term. It needs no change to D434. A secondary-stack extension (a callee's
+  result kept on a second stack until the caller's scope ends) is the case of A9 across one call: it
+  applies only where the lifetimes nest, and it needs no stored word beyond a saved stack mark.
+
+### Alternatives
+* μ values on a dynamic or secondary stack (or two, toggled), temporaries on the heap, as the GENERAL
+  rule: rejected above — a kept sub-value is a deep copy, crossing lifetimes need an unbounded number of
+  stacks. As an optimization it is open: a candidate beside A9, not decided. Its practical scope (the
+  user, 2026-11-16: the common cases, not all): μ values consumed whole — `map`, folds to a scalar,
+  `filter`/`reverse`/`append` over flat elements, a server's list state rebuilt each round — on ONE
+  stack (a list fold unrolls its input before it builds output; a size-preserving `map` rewrites in
+  place), pure tree rebuilds and a zip of two on TWO; chosen statically from the types and the term.
+  Cells stay for the rest: kept sub-values (a list of structures filtered, partitioned or sorted),
+  values stored in a closure or a ν's seed, anything needing more than two stacks. A ν consumed
+  depth-first needs one stack (observation allocates in the consumer's order, effects included).
+* Keep the moves: the simplest image, but every node costs two layer moves that GOAL.md's "memory is
+  managed by the compiler from the program's structure" does not require.
