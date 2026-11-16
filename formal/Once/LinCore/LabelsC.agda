@@ -237,7 +237,7 @@ module LabsC {FS : FrameSemantics} where
 
       lowC-ok : ∀ φ j m fin → NoLab fin → ∀ {sh T} (c : Codeᴵ sh T) (ev : CIn c) → Good j m (lowC φ j m fin c ev)
       lowC-ok φ j m fin nf end ev    = plainOk refl nf
-      lowC-ok φ j m fin nf halted ev = plainOk refl []
+      lowC-ok φ j m fin nf halted ev = plainOk refl (refl ∷ [])
       lowC-ok φ j m fin nf (i ⨾ c) (ei , ec) =
         seqG (lowI-ok φ j m i ei) (lowC-ok φ j (proj₂ (lowI φ j m i ei)) fin nf c ec)
       lowC-ok φ j m fin nf (case {Es} {A} {B} {S} c₁ c₂) (e₁ , e₂) =

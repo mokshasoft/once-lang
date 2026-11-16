@@ -23832,3 +23832,37 @@ stack, its intermediates on the heap — and the same for coinductive values?
   depth-first needs one stack (observation allocates in the consumer's order, effects included).
 * Keep the moves: the simplest image, but every node costs two layer moves that GOAL.md's "memory is
   managed by the compiler from the program's structure" does not require.
+
+## D437 — NOTHING FALLS INTO AN ENTRY: THE GUARD ADMITS `c-leave`; HALTED CODE ENDS IN `c-leave` (2026-11-16)
+
+**Proposed** (unattended, for the user's review; plan 0.146 B1.6, `Emitted.em-guard` for the new image).
+**Applies**: D094/D245 (the emitter's guard: what precedes an entry does not fall through), D320 (`c-leave`,
+the Host's leave, halts where it stands), D417 (the image's blocks and trampolines).
+
+### The problem
+`em-guard` says the instruction before an entry is a `c-jmp` or a `c-ret`; `RunWF.run-seg-wf` uses it to
+show that no step that moves the pc on lands on an entry. In the new image it is false in two places:
+* block 0's entry follows the main code's end, `c-leave`;
+* a code whose branch ends by halting (`Codeᴵ.halted`, after a Halts op) lowered to nothing, so the next
+  entry followed the halting op, and a halting op is a straight step (pc + 1, `halted`): the halted
+  state's pc IS the entry, a reachable state the invariant must cover.
+Master's own guard (`RunWF.emitted-thunk-guarded`, a postulate) is false in the first way: its first
+function entry follows `main`'s `c-leave` whenever `main` has no linked block.
+
+### Decision (proposed)
+* **The guard admits `c-leave`** (`Emitted.em-guard`, `RunWF.Guard`, the postulate's statement, now
+  weaker). `c-leave` halts in place (its step keeps the pc), so it does not fall through: every caller of
+  `no-fallthrough` already holds a step that moves the pc on (`adv`), which `c-leave`'s does not.
+* **Halted code ends in `c-leave`** (`Lower.lowC … halted = c-leave ∷ []`): never reached (the run has
+  halted), one dead instruction, and nothing falls past a halt — as master's units end in a terminator
+  by `link` ("it ended by falling off, which is only correct while nothing follows it").
+* Proved for the new image in `LinCore.ImageGuard` (stdlib `Linked`: "if the next is an entry, this is a
+  guard"; the lowered code holds no entry, `LabelsC`'s `Ok.ne`; a code ends in its `fin` or `c-leave`).
+
+### Alternatives
+* Halting ops halt in place (no pc + 1), as `c-leave` does: no dead instruction, but the step of every
+  sigop changes in the machine and every proof over it.
+* `SegWF` exempts halted states from "not at an entry": a weaker invariant whose consumers would each have
+  to show they run from a live state; the dead `c-leave` keeps the invariant as it is.
+* A `c-ret`/`c-jmp` as the dead terminator: a `c-ret` is what `em-ret-owes`/`em-ret-budget` quantify over,
+  and a halted state does not owe a return.

@@ -168,13 +168,16 @@ record Emitted (prog : AbstractTrace) : Set where
     -- a slot an instruction addresses is below the segment in force
     em-slots  : ∀ k (i : AbstractInstr) (slot : Slot) → fetch prog k ≡ just i → slot-of i ≡ just slot
               → slot < SegState.cur (seg-at prog k (mkSeg 0 []))
-    -- a call names an entry; a code address names a body; an entry is guarded
+    -- a call names an entry; a code address names a body; an entry is guarded:
+    -- what precedes it does not fall through (a jump, a return, or the
+    -- program's leave, which halts where it stands: D437)
     em-calls  : ∀ k f → fetch prog k ≡ just (instr-ctrl (c-call-fn f)) → Σ ℕ (λ j → find-fn prog f ≡ just j)
     em-code   : ∀ p (ℓ : LabelId) → fetch prog p ≡ just (instr-load-code-addr ℓ) → Σ ℕ (λ j → find-thunk prog ℓ ≡ just j)
     em-guard  : ∀ p (ℓ : EntryId) (bb : ℕ) → fetch prog p ≡ just (instr-ctrl (c-entry ℓ bb))
               → Σ ℕ (λ q → (p ≡ suc q)
                     × ((Σ LabelId (λ m → fetch prog q ≡ just (instr-ctrl (c-jmp m))))
-                       ⊎ (Σ ℕ (λ b → fetch prog q ≡ just (instr-ctrl (c-ret b))))))
+                       ⊎ (Σ ℕ (λ b → fetch prog q ≡ just (instr-ctrl (c-ret b))))
+                       ⊎ (fetch prog q ≡ just (instr-ctrl c-leave))))
     -- a jump stays in its segment
     em-jump   : ∀ p q (m : LabelId) (st : SegState) → mention-at prog p ≡ just m → find-label prog m ≡ just q
               → seg-at prog q st ≡ seg-at prog p st

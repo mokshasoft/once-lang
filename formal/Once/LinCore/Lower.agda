@@ -324,7 +324,9 @@ module Lowering (U : Univ)
        , proj₂ body
 
   lowC φ j m fin end ev = fin , m
-  lowC φ j m fin halted ev = [] , m
+  -- (D437: halted code ends where the program leaves — a halting op has
+  -- stopped the run, so it is never reached, but nothing falls past it)
+  lowC φ j m fin halted ev = instr-ctrl c-leave ∷ [] , m
   lowC φ j m fin (i ⨾ c) (ei , ec) =
     let li = lowI φ j m i ei ; lc = lowC φ j (proj₂ li) fin c ec
     in proj₁ li ++ proj₁ lc , proj₂ lc

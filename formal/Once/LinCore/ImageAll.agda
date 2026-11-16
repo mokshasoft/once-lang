@@ -291,7 +291,7 @@ module Ok (nm : CanonicalName) (U : Univ)
 
       lowC-ok : ∀ φ j m fin → All OK fin → ∀ {sh T} (c : Codeᴵ sh T) (ev : CIn c) → All OK (proj₁ (lowC φ j m fin c ev))
       lowC-ok φ j m fin fok end ev    = fok
-      lowC-ok φ j m fin fok halted ev = []
+      lowC-ok φ j m fin fok halted ev = ✓ ∷ []
       lowC-ok φ j m fin fok (i ⨾ c) (ei , ec) =
         ++⁺ (lowI-ok φ j m i ei) (lowC-ok φ j (proj₂ (lowI φ j m i ei)) fin fok c ec)
       lowC-ok φ j m fin fok (case {Es} {A} {B} {S} c₁ c₂) (e₁ , e₂) =

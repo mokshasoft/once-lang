@@ -263,14 +263,17 @@ postulate
   -- precedes an entry is a `c-jmp` (an inlined body's guard) or a `c-ret` (a
   -- unit's terminator, or the block before it: a function entry follows the
   -- previous unit, and a linked block the one before it). Either way it is an
-  -- instruction that does not fall through.
+  -- instruction that does not fall through. D437: …or `main`'s `c-leave`
+  -- (which halts where it stands), what the first function entry follows when
+  -- `main` has no linked block (the two-way form was false there).
   emitted-thunk-guarded : ∀ (tbl : List IRFun) (ir : IR Unit Unit) (p : ℕ) (ℓ : EntryId) (bb : ℕ)
                         → fetch (program-image o (irProgram tbl ir)) p ≡ just (instr-ctrl (c-entry ℓ bb))
                         → Σ ℕ (λ q → (p ≡ suc q)
                               × ((Σ LabelId (λ m → fetch (program-image o (irProgram tbl ir)) q
                                                     ≡ just (instr-ctrl (c-jmp m))))
                                  ⊎ (Σ ℕ (λ b → fetch (program-image o (irProgram tbl ir)) q
-                                                 ≡ just (instr-ctrl (c-ret b))))))
+                                                 ≡ just (instr-ctrl (c-ret b))))
+                                 ⊎ (fetch (program-image o (irProgram tbl ir)) q ≡ just (instr-ctrl c-leave))))
 
   -- …and its sibling (D096): an emitted code address names a body that EXISTS.
   -- `ir-to-trace'`'s `curry` clause emits `instr-load-code-addr (ℓ o this)` and
@@ -787,10 +790,16 @@ run-seg-wf prog fs (mkRunAt emt reach) = go fs reach
     suc-inj refl = refl
     just-injI : ∀ {a b : AbstractInstr} → just a ≡ just b → a ≡ b
     just-injI refl = refl
-    -- the emitter's guard, at THIS program (D245: a `c-jmp` or a `c-ret`)
+    -- the emitter's guard, at THIS program (D245: a `c-jmp` or a `c-ret`;
+    -- D437: or a `c-leave`, which halts where it stands)
     Guard : ℕ → Set
     Guard q = (Σ LabelId (λ m → fetch prog q ≡ just (instr-ctrl (c-jmp m))))
               ⊎ (Σ ℕ (λ b → fetch prog q ≡ just (instr-ctrl (c-ret b))))
+              ⊎ (fetch prog q ≡ just (instr-ctrl c-leave))
+    -- a step that moves the pc on is not a `c-leave`
+    n≢sn : ∀ (n : ℕ) → n ≡ suc n → ⊥
+    n≢sn zero    ()
+    n≢sn (suc n) e = n≢sn n (suc-inj e)
     guard : ∀ (p : ℕ) (ℓ : EntryId) (bb : ℕ)
           → fetch prog p ≡ just (instr-ctrl (c-entry ℓ bb))
           → Σ ℕ (λ q → (p ≡ suc q) × Guard q)
@@ -838,20 +847,30 @@ run-seg-wf prog fs (mkRunAt emt reach) = go fs reach
         -- puts a `c-jmp` immediately before one, and the instruction actually
         -- fetched here is not a `c-jmp` — whoever calls this says so.
         -- D245: …or a `c-ret` — so the instruction here must be neither.
+        -- D437: …or a `c-leave`, which a step that falls through is not.
         no-fallthrough : ∀ (p : ℕ) (ℓ : EntryId) (bb : ℕ) (i' : AbstractInstr)
                        → (∀ m → i' ≡ instr-ctrl (c-jmp m) → ⊥) → (∀ b → i' ≡ instr-ctrl (c-ret b) → ⊥)
+                       → (i' ≡ instr-ctrl c-leave → ⊥)
                        → fetch prog p ≡ just i'
                        → fetch prog (suc p) ≡ just (instr-ctrl (c-entry ℓ bb)) → ⊥
-        no-fallthrough p ℓ bb i' nj nr ftq' H = clash (guard (suc p) ℓ bb H)
+        no-fallthrough p ℓ bb i' nj nr nl ftq' H = clash (guard (suc p) ℓ bb H)
           where clash : Σ ℕ (λ q → (suc p ≡ suc q) × Guard q) → ⊥
                 clash (q , sq , inj₁ (m , fq)) =
                   nj m (just-injI (trans (sym ftq')
                                     (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-jmp m)))
                                            (sym (suc-inj sq)) fq)))
-                clash (q , sq , inj₂ (b , fq)) =
+                clash (q , sq , inj₂ (inj₁ (b , fq))) =
                   nr b (just-injI (trans (sym ftq')
                                     (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-ret b)))
                                            (sym (suc-inj sq)) fq)))
+                clash (q , sq , inj₂ (inj₂ fq)) =
+                  nl (just-injI (trans (sym ftq')
+                                  (subst (λ z → fetch prog z ≡ just (instr-ctrl c-leave))
+                                         (sym (suc-inj sq)) fq)))
+        -- a step that moves the pc on is not a `c-leave` (which halts in place)
+        adv-not-leave : ∀ {i' : AbstractInstr} → fpc (flat-exec-instr i' prog fs'') ≡ suc (fpc fs'')
+                      → i' ≡ instr-ctrl c-leave → ⊥
+        adv-not-leave a refl = n≢sn (fpc fs'') a
         -- a frame-free instruction is not a `c-ret` (which moves the frame)
         ff-not-ret : FrameFreeI i → ∀ b → i ≡ instr-ctrl (c-ret b) → ⊥
         ff-not-ret ff b e = subst FrameFreeI e ff
@@ -866,7 +885,7 @@ run-seg-wf prog fs (mkRunAt emt reach) = go fs reach
                     (sym (sf-saved same)) (sym (sf-ret same)) (seg-stack ih))
             -- a FALL-THROUGH cannot land on a body entry: the emitter put a
             -- `c-jmp` there, and this instruction is not one.
-            (λ ℓ bb H → ⊥-elim (no-fallthrough (fpc fs'') ℓ bb i (nj-eq nj) (ff-not-ret ff) ftq
+            (λ ℓ bb H → ⊥-elim (no-fallthrough (fpc fs'') ℓ bb i (nj-eq nj) (ff-not-ret ff) (adv-not-leave (adv prog fs'')) ftq
                           (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb)))
                                  (adv prog fs'') H)))
           where
@@ -909,7 +928,7 @@ run-seg-wf prog fs (mkRunAt emt reach) = go fs reach
                 → fetch prog (fpc (flat-exec-instr i prog fs''))
                     ≡ just (instr-ctrl (c-entry ℓ bb)) → ⊥
             ego (jp-suc adv nj) ℓ bb H =
-              no-fallthrough (fpc fs'') ℓ bb i (nj-eq nj) (ff-not-ret ff) ftq
+              no-fallthrough (fpc fs'') ℓ bb i (nj-eq nj) (ff-not-ret ff) (adv-not-leave adv) ftq
                 (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb))) adv H)
             -- the pc did not move, so the instruction there is `i` itself —
             -- and a `c-thunk` mentions no `once` label
@@ -941,7 +960,7 @@ run-seg-wf prog fs (mkRunAt emt reach) = go fs reach
                   -- the marker FALLS THROUGH, so the same guard applies: the
                   -- position after a body entry is not another body entry.
                   (λ ℓ' bb' H → ⊥-elim (no-fallthrough (fpc fs'') ℓ' bb' i
-                                  (entry-not-jmp ieq) (entry-not-ret ieq) ftq
+                                  (entry-not-jmp ieq) (entry-not-ret ieq) (adv-not-leave (pc-eq ieq)) ftq
                                   (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ' bb')))
                                          (pc-eq ieq) H)))
           where
@@ -969,7 +988,7 @@ run-seg-wf prog fs (mkRunAt emt reach) = go fs reach
                   -- the marker FALLS THROUGH, so the same guard applies: the
                   -- position after a body entry is not another body entry.
                   (λ ℓ' bb' H → ⊥-elim (no-fallthrough (fpc fs'') ℓ' bb' i
-                                  (start-not-jmp ieq) (start-not-ret ieq) ftq
+                                  (start-not-jmp ieq) (start-not-ret ieq) (adv-not-leave (pc-eq′ ieq)) ftq
                                   (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ' bb')))
                                          (pc-eq′ ieq) H)))
           where
@@ -1046,6 +1065,7 @@ run-seg-wf prog fs (mkRunAt emt reach) = go fs reach
                             (no-fallthrough (proj₁ prov) ℓ bb (proj₁ (proj₂ (proj₂ prov)))
                               (call-not-jmp (proj₁ (proj₂ (proj₂ prov))) (proj₂ (proj₂ (proj₂ (proj₂ prov)))))
                               (call-not-ret (proj₁ (proj₂ (proj₂ prov))) (proj₂ (proj₂ (proj₂ (proj₂ prov)))))
+                              (λ e → subst CallI e (proj₂ (proj₂ (proj₂ (proj₂ prov)))))
                               (proj₁ (proj₂ (proj₂ (proj₂ prov))))
                               (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb)))
                                      (trans (do-ret-pc-∷ fs'' rpc rs req) (proj₁ (proj₂ prov)))
