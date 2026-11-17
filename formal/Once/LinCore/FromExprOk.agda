@@ -62,7 +62,8 @@ open import Once.LinCore.Grade fmt ans using (blk-coh)
 open import Once.IRTy using (IRTy; _⇛[_]_)
 import Once.IRTy as I
 open import Once.LinCore.Bridge fmt ans using (W)
-open import Once.LinCore.Bisim fmt ans using (_≈_; block≈; Bl-refl; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop)
+open import Once.LinCore.Bisim fmt ans using (_≈_; block≈; Bl; Bl-refl; ≈step; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 ------------------------------------------------------------------------
 -- 1. THE MONAD: a bind of a return is its continuation, by `block`'s
@@ -71,6 +72,18 @@ open import Once.LinCore.Bisim fmt ans using (_≈_; block≈; Bl-refl; ≈-refl
 
 ret-bind : ∀ {X Y} {x : X} {k : X → T∞ Y} → (return∞ x >>=∞ k) ≈ k x
 block≈ (ret-bind {x = x} {k = k}) = Bl-refl (block (k x))
+
+-- the monad's associativity, block by block
+mutual
+  bind-assoc : ∀ {X Y Z} (m : T∞ X) (k : X → T∞ Y) (h : Y → T∞ Z) → ((m >>=∞ k) >>=∞ h) ≈ (m >>=∞ λ x → k x >>=∞ h)
+  block≈ (bind-assoc m k h) = assocB (block m) k h
+
+  assocB : ∀ {X Y Z} (b : T (X ⊎ T∞ X)) (k : X → T∞ Y) (h : Y → T∞ Z)
+         → Bl (bindBlock (bindBlock b k) h) (bindBlock b (λ x → k x >>=∞ h))
+  assocB (ret (inj₁ x)) k h = Bl-refl (bindBlock (block (k x)) h)
+  assocB (ret (inj₂ m)) k h = ≈step (bind-assoc m k h)
+  assocB (call s a c)   k h = ≈call (λ y → assocB (c y) k h)
+  assocB (halt s a)     k h = ≈halt
 
 -- a computation that returns at once, bound
 bind-pure : ∀ {X Y} {m : T∞ X} {x : X} {k : X → T∞ Y} → m ≈ return∞ x → (m >>=∞ k) ≈ k x
@@ -349,6 +362,18 @@ module RelApp {L : Cx} (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) where
   rel-≈ʳ : ∀ {A B} {t : LTm L ⟪ A ⟫ ⟪ B ⟫} {t′ t″ : M.IR A B} → Rel t t′ → (∀ x′ → evalᴰ fmt ρ t′ x′ ≈ evalᴰ fmt ρ t″ x′) → Rel t t″
   rel-≈ʳ r e = mkRel λ {x} {x′} w → ≈R-≈ (rel r w) (e x′)
 
+  -- the pairing an application and a combinator share: the context split, the
+  -- right share relabelled
+  rel-pairW : ∀ {m n} (Γ : Ctx m n) (Ψ₁ Ψ₂ Φ : Usage n) (p : Ψ₂ ⊑ᵘ Φ) {A B : IRTy}
+                {f : LTm L (Co Γ Ψ₁) ⟪ B ⟫} {f′ : M.IR ⌊ ⟦ Γ ↾ Ψ₁ ⟧ᶜ ⌋ B}
+                {x : LTm L (Co Γ Ψ₂) ⟪ A ⟫} {x′ : M.IR ⌊ ⟦ Γ ↾ Ψ₂ ⟧ᶜ ⌋ A}
+            → Rel f f′ → Rel x x′
+            → Rel ((f ⊗l (x ∘l weak {Γ = Γ} p)) ∘l split Γ Ψ₁ Φ)
+                  M.⟨ f′ M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-+ˡ Ψ₁ Φ) , x′ M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-trans p (⊑ᵘ-+ʳ Ψ₁ Φ)) ⟩
+  rel-pairW Γ Ψ₁ Ψ₂ Φ p {A} {x′ = x′} rf rx =
+    rel-≈ʳ (rel-pair am Γ Ψ₁ Φ rf (rel-∘ rx (rel-weak am {Γ = Γ} p)))
+           (λ v → >>=-cong ≈-refl (λ _ → >>=-cong (restrict-assoc ρ am {Γ = Γ} {B = A} x′ p (⊑ᵘ-+ʳ Ψ₁ Φ) v) (λ _ → ≈-refl)))
+
   -- ★ AN APPLICATION: the context split between the function and the argument,
   -- the argument's share relabelled (`q *ᵘ Ψ₂` to `Ψ₂`), against `elaborate`'s
   -- `apply ∘ ⟨ f ∘ restrict , x ∘ restrict ⟩`
@@ -475,6 +500,27 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) 
       (rel-∘ (rel-apω {π = G.pure})
         (mkRel λ w → ≈-≈R ret-bind (>>=-congR (rel g w) (λ r → ≈-≈R ret-bind (≈R-≈ (ret≈R (r , tt)) (≈-sym ret-bind))))))
 
+  -- applying owned is applying
+  apω-≈ : ∀ {g A B} (f : ⟦ Fn many g A B ⟧) (a : ⟦ A ⟧) → Lᶜ δ (apω {L} {One} {g = g} {A} {B}) tt (f , a) ≈ up g (f a)
+  apω-≈ {g} {A} {B} f a = pair-drop (f ,_) (Lᶜ δ (Once.LinCore.PassTr.dropl fmt {Γ = L} {E = One} {A = Fn many g A B} {B = B}) tt) (λ _ → refl)
+
+  -- ★ the composite's body: `g` then `f`, linearly, against `compIR`'s
+  compB : ∀ {π} {A B C : IRTy}
+        → Rel (apω {g = grade π} {⟪ B ⟫} {⟪ C ⟫} ∘l (lid ⊗l apω {g = grade π} {⟪ A ⟫} {⟪ B ⟫}) ∘l lassoc)
+              (M.apply {B} {C} {π} M.∘ M.⟨ M.fst M.∘ M.fst , M.apply {A} {B} {π} M.∘ M.⟨ M.snd M.∘ M.fst , M.snd ⟩ ⟩)
+  compB {π} {A} {B} {C} = mkRel λ { {(f , g) , a} {(f′ , g′) , a′} ((wf , wg) , wa) →
+    ≈-≈R (≈-trans (>>=-cong (≈-trans ret-bind ret-bind) (λ _ → ≈-refl))
+                  (≈-trans (bind-assoc _ _ _) (>>=-cong (apω-≈ {grade π} {⟪ A ⟫} {⟪ B ⟫} g a) (λ y → ≈-trans ret-bind (apω-≈ {grade π} {⟪ B ⟫} {⟪ C ⟫} f y)))))
+      (≈R-≈ (>>=-congR (wg wa) (λ wb → wf wb))
+            (≈-sym (≈-trans (>>=-cong (≈-trans (bind-pure ret-bind) (>>=-cong (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (λ _ → ≈-refl))) (λ _ → ≈-refl))
+                            (≈-trans (bind-assoc _ _ _) (>>=-cong ≈-refl (λ _ → ret-bind)))))) }
+
+  ok-comp : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
+              (f : Expr Γ Ψ₁ (B ⇒[ G.mk-kind G.Many π ] C)) (g : Expr Γ Ψ₂ (A ⇒[ G.mk-kind G.Many π ] B))
+            → Goal f → Goal g → Goal (comp' f g)
+  ok-comp {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} f g rf rg =
+    rel-∘ (rel-cloG π _ compB) (rel-pairW Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) rf rg)
+
   record Owed : Set where
     field
       o-effApp  : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} {q π g}
@@ -490,9 +536,6 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) 
       o-poly    : ∀ {m n} {Γ : Ctx m n} (name : String) (T : Ty m) → Goal (poly {Γ = Γ} name T)
       o-lift    : ∀ {m n} {Γ : Ctx m n} {A B : Ty m} {π} (mp : Map A B) → Goal (lift-morphism {Γ = Γ} {π = π} mp)
       o-mapp    : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (mp : Map A B) (x : Expr Γ Ψ A) → Goal x → Goal (morph-app mp x)
-      o-comp    : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
-                    (f : Expr Γ Ψ₁ (B ⇒[ G.mk-kind G.Many π ] C)) (g : Expr Γ Ψ₂ (A ⇒[ G.mk-kind G.Many π ] B))
-                  → Goal f → Goal g → Goal (comp' f g)
       o-copair  : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
                     (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many π ] C)) (g : Expr Γ Ψ₂ (B ⇒[ G.mk-kind G.Many π ] C))
                   → Goal f → Goal g → Goal (copair' f g)
@@ -549,7 +592,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) 
     Lq-ok (closed e) = rel-∘ (Lq-ok e) rel-drop
     Lq-ok {Γ = Γ} (lift-morphism mp) = o-lift {Γ = Γ} mp
     Lq-ok (morph-app mp x) = o-mapp mp x (Lq-ok x)
-    Lq-ok (comp' f g) = o-comp f g (Lq-ok f) (Lq-ok g)
+    Lq-ok (comp' f g) = ok-comp f g (Lq-ok f) (Lq-ok g)
     Lq-ok (copair' f g) = o-copair f g (Lq-ok f) (Lq-ok g)
     Lq-ok (fork' f g) = o-fork f g (Lq-ok f) (Lq-ok g)
     Lq-ok (curry' f) = o-curry f (Lq-ok f)
