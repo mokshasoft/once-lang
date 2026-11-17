@@ -25,6 +25,7 @@ open import Once.IR.Semantics.Trace using (FFIAnswers)
 module Once.LinCore.FromExprOk (fmt : TargetNum) (ans : FFIAnswers) where
 
 open import Agda.Builtin.Equality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (cong; subst)
 open import Agda.Builtin.Sigma using (_,_; fst; snd)
 open import Data.Product using (_×_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
@@ -33,7 +34,7 @@ import Once.Spec.Grade as G
 open import Once.Spec.Type using (Ty)
 import Once.Spec.Context as SC
 open import Once.Spec.Context using (Ctx; Usage; []; _∷_; _+ᵘ_; _⊑ᵘ_; _⊑∷_)
-open import Once.Context using (⟦_⟧ᶜ; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+open import Once.Context using (⟦_⟧ᶜ; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.IRTy using (⌊_⌋)
 import Once.IR as M
 open import Once.Surface.Elaborate using (restrictEnv)
@@ -253,17 +254,20 @@ split-W (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.Many ∷ Ψ₂) (w , wa) = (proj₁ 
 
 module Rel {L : Cx} (δ : Env L) (ρ : CallEnv) where
 
-  Rel : ∀ {A B : IRTy} → LTm L ⟪ A ⟫ ⟪ B ⟫ → M.IR A B → Set
-  Rel {A} {B} t t′ = ∀ {x x′} → W A x x′ → Lᶜ δ t tt x ≈[ W B ] evalᴰ fmt ρ t′ x′
+  -- (a record, so that the two terms stay visible to unification)
+  record Rel {A B : IRTy} (t : LTm L ⟪ A ⟫ ⟪ B ⟫) (t′ : M.IR A B) : Set where
+    constructor mkRel
+    field rel : ∀ {x x′} → W A x x′ → Lᶜ δ t tt x ≈[ W B ] evalᴰ fmt ρ t′ x′
+  open Rel public
 
   rel-∘ : ∀ {A B C} {f : LTm L ⟪ B ⟫ ⟪ C ⟫} {f′ : M.IR B C} {g : LTm L ⟪ A ⟫ ⟪ B ⟫} {g′ : M.IR A B}
         → Rel f f′ → Rel g g′ → Rel (f ∘l g) (f′ M.∘ g′)
-  rel-∘ rf rg w = >>=-congR (rg w) rf
+  rel-∘ rf rg = mkRel λ w → >>=-congR (rel rg w) (rel rf)
 
   -- pure on both sides, with related values
   rel-pure : ∀ {A B} {t : LTm L ⟪ A ⟫ ⟪ B ⟫} {t′ : M.IR A B} {v v′}
            → Pure δ t v → PureI ρ t′ v′ → (∀ {x x′} → W A x x′ → W B (v x) (v′ x′)) → Rel t t′
-  rel-pure p q r {x} {x′} w = ≈-≈R (p tt x) (≈R-≈ (ret≈R (r w)) (≈-sym (q x′)))
+  rel-pure p q r = mkRel λ {x} {x′} w → ≈-≈R (p tt x) (≈R-≈ (ret≈R (r w)) (≈-sym (q x′)))
 
   rel-weak : ∀ (am : M.AllocMode) {m n} {Γ : Ctx m n} {Ψ Ψ′ : Usage n} (p : Ψ ⊑ᵘ Ψ′)
            → Rel (weak {Γ = Γ} p) (restrictEnv {Γ = Γ} am p)
@@ -271,8 +275,8 @@ module Rel {L : Cx} (δ : Env L) (ρ : CallEnv) where
 
   -- ★ the application: a closure applied owned, against `apply`
   rel-apω : ∀ {π A B} → Rel (apω {g = grade π} {⟪ A ⟫} {⟪ B ⟫}) (M.apply {A} {B} {π})
-  rel-apω {π} {A} {B} {x = f , a} {x′ = f′ , a′} (wf , wa) =
-    ≈-≈R (pair-drop (f ,_) (Lᶜ δ (Once.LinCore.PassTr.dropl fmt {Γ = L} {E = One} {A = Fn many (grade π) ⟪ A ⟫ ⟪ B ⟫} {B = ⟪ B ⟫}) tt) (λ _ → refl)) (wf wa)
+  rel-apω {π} {A} {B} = mkRel λ { {f , a} {f′ , a′} (wf , wa) →
+    ≈-≈R (pair-drop (f ,_) (Lᶜ δ (Once.LinCore.PassTr.dropl fmt {Γ = L} {E = One} {A = Fn many (grade π) ⟪ A ⟫ ⟪ B ⟫} {B = ⟪ B ⟫}) tt) (λ _ → refl)) (wf wa) }
 
   -- ★ THE SPLIT against the IR's copy into two restrictions
   rel-pair : ∀ (am : M.AllocMode) {m n} (Γ : Ctx m n) (Ψ₁ Ψ₂ : Usage n) {A B : IRTy}
@@ -281,9 +285,67 @@ module Rel {L : Cx} (δ : Env L) (ρ : CallEnv) where
            → Rel a a′ → Rel b b′
            → Rel ((a ⊗l b) ∘l split Γ Ψ₁ Ψ₂)
                  M.⟨ a′ M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-+ˡ Ψ₁ Ψ₂) , b′ M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-+ʳ Ψ₁ Ψ₂) ⟩
-  rel-pair am Γ Ψ₁ Ψ₂ ra rb {x} {x′} w =
+  rel-pair am Γ Ψ₁ Ψ₂ ra rb = mkRel λ {x} {x′} w → let sw = split-W Γ Ψ₁ Ψ₂ w in
     ≈-≈R (bind-pure (split-pure δ Γ Ψ₁ Ψ₂ tt x))
-      (≈R-≈ (>>=-congR (ra (proj₁ sw)) (λ r → >>=-congR (rb (proj₂ sw)) (λ r′ → ret≈R (r , r′))))
+      (≈R-≈ (>>=-congR (rel ra (proj₁ sw)) (λ r → >>=-congR (rel rb (proj₂ sw)) (λ r′ → ret≈R (r , r′))))
             (≈-sym (>>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) x′))
                              (λ _ → >>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) x′)) (λ _ → ≈-refl)))))
-    where sw = split-W Γ Ψ₁ Ψ₂ w
+
+------------------------------------------------------------------------
+-- 7. A RESTRICTION THROUGH ANOTHER, and the application.
+------------------------------------------------------------------------
+
+rv-trans : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ Ψ₃ : Usage n} (p : Ψ₁ ⊑ᵘ Ψ₂) (q : Ψ₂ ⊑ᵘ Ψ₃) (x : ⟦ ⌊ ⟦ Γ ↾ Ψ₃ ⟧ᶜ ⌋ ⟧ᴰᴵ)
+         → rv {Γ = Γ} (⊑ᵘ-trans p q) x ≡ rv {Γ = Γ} p (rv {Γ = Γ} q x)
+rv-trans {Γ = SC.∅}       []         []         x = refl
+rv-trans {Γ = Γ SC.▸ A} (z≤z ⊑∷ p) (z≤z ⊑∷ q) x = rv-trans {Γ = Γ} p q x
+rv-trans {Γ = Γ SC.▸ A} (z≤z ⊑∷ p) (z≤o ⊑∷ q) x = rv-trans {Γ = Γ} p q (proj₁ x)
+rv-trans {Γ = Γ SC.▸ A} (z≤z ⊑∷ p) (z≤m ⊑∷ q) x = rv-trans {Γ = Γ} p q (proj₁ x)
+rv-trans {Γ = Γ SC.▸ A} (z≤o ⊑∷ p) (o≤o ⊑∷ q) x = rv-trans {Γ = Γ} p q (proj₁ x)
+rv-trans {Γ = Γ SC.▸ A} (z≤o ⊑∷ p) (o≤m ⊑∷ q) x = rv-trans {Γ = Γ} p q (proj₁ x)
+rv-trans {Γ = Γ SC.▸ A} (z≤m ⊑∷ p) (m≤m ⊑∷ q) x = rv-trans {Γ = Γ} p q (proj₁ x)
+rv-trans {Γ = Γ SC.▸ A} (o≤o ⊑∷ p) (o≤o ⊑∷ q) x = cong (_, proj₂ x) (rv-trans {Γ = Γ} p q (proj₁ x))
+rv-trans {Γ = Γ SC.▸ A} (o≤o ⊑∷ p) (o≤m ⊑∷ q) x = cong (_, proj₂ x) (rv-trans {Γ = Γ} p q (proj₁ x))
+rv-trans {Γ = Γ SC.▸ A} (o≤m ⊑∷ p) (m≤m ⊑∷ q) x = cong (_, proj₂ x) (rv-trans {Γ = Γ} p q (proj₁ x))
+rv-trans {Γ = Γ SC.▸ A} (m≤m ⊑∷ p) (m≤m ⊑∷ q) x = cong (_, proj₂ x) (rv-trans {Γ = Γ} p q (proj₁ x))
+
+module _ (ρ : CallEnv) (am : M.AllocMode) where
+
+  -- the IR restricted through a composite, as through its two parts
+  restrict-trans : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ Ψ₃ : Usage n} (p : Ψ₁ ⊑ᵘ Ψ₂) (q : Ψ₂ ⊑ᵘ Ψ₃) x
+                 → evalᴰ fmt ρ (restrictEnv {Γ = Γ} am (⊑ᵘ-trans p q)) x ≈ evalᴰ fmt ρ (restrictEnv {Γ = Γ} am p M.∘ restrictEnv {Γ = Γ} am q) x
+  restrict-trans {Γ = Γ} p q x =
+    ≈-trans (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-trans p q) x)
+      (≈-trans (subst (λ v → return∞ (rv {Γ = Γ} (⊑ᵘ-trans p q) x) ≈ return∞ v) (rv-trans {Γ = Γ} p q x) ≈-refl)
+        (≈-sym (≈-trans (bind-pure (restrict-pure ρ am {Γ = Γ} q x)) (restrict-pure ρ am {Γ = Γ} p (rv {Γ = Γ} q x)))))
+
+  -- a term after two restrictions, as after their composite
+  restrict-assoc : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ Ψ₃ : Usage n} {B} (t : M.IR ⌊ ⟦ Γ ↾ Ψ₁ ⟧ᶜ ⌋ B) (p : Ψ₁ ⊑ᵘ Ψ₂) (q : Ψ₂ ⊑ᵘ Ψ₃) x
+                 → evalᴰ fmt ρ ((t M.∘ restrictEnv {Γ = Γ} am p) M.∘ restrictEnv {Γ = Γ} am q) x
+                   ≈ evalᴰ fmt ρ (t M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-trans p q)) x
+  restrict-assoc {Γ = Γ} t p q x =
+    ≈-trans (bind-pure (restrict-pure ρ am {Γ = Γ} q x))
+      (≈-trans (bind-pure (restrict-pure ρ am {Γ = Γ} p (rv {Γ = Γ} q x)))
+        (≈-sym (≈-trans (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-trans p q) x))
+                        (subst (λ v → evalᴰ fmt ρ t v ≈ evalᴰ fmt ρ t (rv {Γ = Γ} p (rv {Γ = Γ} q x))) (Relation.Binary.PropositionalEquality.sym (rv-trans {Γ = Γ} p q x)) ≈-refl))))
+
+module RelApp {L : Cx} (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) where
+  open Rel δ ρ
+
+  -- a rewrite on the IR's side
+  rel-≈ʳ : ∀ {A B} {t : LTm L ⟪ A ⟫ ⟪ B ⟫} {t′ t″ : M.IR A B} → Rel t t′ → (∀ x′ → evalᴰ fmt ρ t′ x′ ≈ evalᴰ fmt ρ t″ x′) → Rel t t″
+  rel-≈ʳ r e = mkRel λ {x} {x′} w → ≈R-≈ (rel r w) (e x′)
+
+  -- ★ AN APPLICATION: the context split between the function and the argument,
+  -- the argument's share relabelled (`q *ᵘ Ψ₂` to `Ψ₂`), against `elaborate`'s
+  -- `apply ∘ ⟨ f ∘ restrict , x ∘ restrict ⟩`
+  rel-app : ∀ {m n} (Γ : Ctx m n) (Ψ₁ Ψ₂ Φ : Usage n) (p : Ψ₂ ⊑ᵘ Φ) {π} {A B : IRTy}
+              {f : LTm L (Co Γ Ψ₁) ⟪ A ⇛[ π ] B ⟫} {f′ : M.IR ⌊ ⟦ Γ ↾ Ψ₁ ⟧ᶜ ⌋ (A ⇛[ π ] B)}
+              {x : LTm L (Co Γ Ψ₂) ⟪ A ⟫} {x′ : M.IR ⌊ ⟦ Γ ↾ Ψ₂ ⟧ᶜ ⌋ A}
+          → Rel f f′ → Rel x x′
+          → Rel (apω ∘l (f ⊗l (x ∘l weak {Γ = Γ} p)) ∘l split Γ Ψ₁ Φ)
+                (M.apply M.∘ M.⟨ f′ M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-+ˡ Ψ₁ Φ) , x′ M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-trans p (⊑ᵘ-+ʳ Ψ₁ Φ)) ⟩)
+  rel-app Γ Ψ₁ Ψ₂ Φ p {π} {A} {B} {x′ = x′} rf rx =
+    rel-∘ (rel-apω {π = π})
+      (rel-≈ʳ (rel-pair am Γ Ψ₁ Φ rf (rel-∘ rx (rel-weak am {Γ = Γ} p)))
+              (λ v → >>=-cong ≈-refl (λ _ → >>=-cong (restrict-assoc ρ am {Γ = Γ} {B = A} x′ p (⊑ᵘ-+ʳ Ψ₁ Φ) v) (λ _ → ≈-refl))))
