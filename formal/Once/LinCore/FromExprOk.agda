@@ -29,21 +29,23 @@ open import Relation.Binary.PropositionalEquality using (cong; subst)
 open import Agda.Builtin.Sigma using (_,_; fst; snd)
 open import Data.Product using (_×_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
+import Data.Sum.Relation.Binary.Pointwise
 
 import Once.Spec.Grade as G
 open import Once.Spec.Type using (Ty)
 import Once.Spec.Context as SC
-open import Once.Spec.Context using (Ctx; Usage; []; _∷_; _+ᵘ_; _⊑ᵘ_; _⊑∷_)
+open import Once.Spec.Context using (Ctx; Usage; []; _∷_; _+ᵘ_; _⊑ᵘ_; _⊑∷_; singleUse)
 open import Once.Context using (⟦_⟧ᶜ; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.IRTy using (⌊_⌋)
 import Once.IR as M
-open import Once.Surface.Elaborate using (restrictEnv)
+open import Once.Surface.Elaborate using (restrictEnv; projUsed; bindEnv)
+import Data.Fin
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 
 open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω)
+open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL)
 open import Once.LinCore.FromIR fmt using (⟪_⟫; grade)
 import Once.LinCore.PassTr
 open import Once.IRTy using (IRTy; _⇛[_]_)
@@ -349,3 +351,50 @@ module RelApp {L : Cx} (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) where
     rel-∘ (rel-apω {π = π})
       (rel-≈ʳ (rel-pair am Γ Ψ₁ Φ rf (rel-∘ rx (rel-weak am {Γ = Γ} p)))
               (λ v → >>=-cong ≈-refl (λ _ → >>=-cong (restrict-assoc ρ am {Γ = Γ} {B = A} x′ p (⊑ᵘ-+ʳ Ψ₁ Φ) v) (λ _ → ≈-refl))))
+
+------------------------------------------------------------------------
+-- 8. THE SMALL GENERATORS, the variables, the binders.
+------------------------------------------------------------------------
+
+module RelGen {L : Cx} (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) where
+  open Rel δ ρ
+
+  private
+    fst-pure : ∀ {E X Y} → Pure δ (ρl ∘l (lid {A = X} {E} ⊗l drop {A = Y})) fst
+    fst-pure e (x , a) = bind-pure (≈-trans ret-bind ret-bind)
+
+    snd-pure : ∀ {E X Y} → Pure δ (Once.LinCore.PassTr.dropl fmt {L} {E} {X} {Y}) snd
+    snd-pure e (x , a) = bind-pure (≈-trans ret-bind ret-bind)
+
+  rel-fst : ∀ {A B} → Rel (ρl ∘l (lid ⊗l drop)) (M.fst {A} {B})
+  rel-fst {A} {B} = rel-pure (fst-pure {E = One} {X = ⟪ A ⟫} {Y = ⟪ B ⟫}) (q-fst ρ {A} {B}) proj₁
+
+  rel-snd : ∀ {A B} → Rel (Once.LinCore.PassTr.dropl fmt) (M.snd {A} {B})
+  rel-snd {A} {B} = rel-pure (snd-pure {E = One} {X = ⟪ A ⟫} {Y = ⟪ B ⟫}) (q-snd ρ {A} {B}) proj₂
+
+  rel-inl : ∀ {A B} → Rel (linl {B = ⟪ B ⟫}) (M.inl {A} {B})
+  rel-inl = mkRel λ w → ret≈R (Data.Sum.Relation.Binary.Pointwise.inj₁ w)
+
+  rel-inr : ∀ {A B} → Rel (linr {A = ⟪ A ⟫}) (M.inr {A} {B})
+  rel-inr = mkRel λ w → ret≈R (Data.Sum.Relation.Binary.Pointwise.inj₂ w)
+
+  rel-zero : ∀ {B} → Rel (lzero {A = ⟪ B ⟫}) (M.initial {B})
+  rel-zero = mkRel λ { {()} }
+
+  rel-drop : ∀ {A} → Rel (drop {A = ⟪ A ⟫}) (M.terminal {A})
+  rel-drop = mkRel λ w → ret≈R tt
+
+  rel-id : ∀ {A} → Rel (lid {A = ⟪ A ⟫}) (M.id {A})
+  rel-id = mkRel ret≈R
+
+  -- a variable: its slot, against `projUsed`
+  rel-var : ∀ {m n} {Γ : Ctx m n} (i : Data.Fin.Fin n) → Rel (var-at {Γ = Γ} i) (projUsed {Γ = Γ} i)
+  rel-var {Γ = Γ SC.▸ A} Data.Fin.zero    = rel-snd
+  rel-var {Γ = Γ SC.▸ A} (Data.Fin.suc i) = rel-var {Γ = Γ} i
+
+  -- a binder, against `bindEnv`
+  rel-bind : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (q : G.Quantity)
+           → Rel (bindL {Γ = Γ} {Ψ} {A} q) (bindEnv {Γ = Γ} {Ψ} {A} am q)
+  rel-bind G.Zero = rel-fst
+  rel-bind G.One  = rel-id
+  rel-bind G.Many = rel-id
