@@ -172,7 +172,7 @@ module Ops (Σι : ISig) where
   ok-bind G.Many = tt
 
   open import Once.LinCore.FromExpr fmt
-    using (Rs; Lq; castΦ; opL; numL; sigL; mapT; callM; refL; coeL; coeR; clo; wrap; wrap₀; layerEq)
+    using (ty; Rs; Lq; castΦ; opL; numL; sigL; mapT; callM; refL; coeL; coeR; clo; wrap; wrap₀; layerEq)
   open import Once.Surface.Elaborate using (elaborate; numIR; sigOpIR)
   open import Once.TypeCheck.Table using (mapIR)
   open import Once.Surface.Map
@@ -187,7 +187,16 @@ module Ops (Σι : ISig) where
   open import Once.Arith.SigOp.Builders using (numInfo; value-info; arrow-info)
   open import Once.Spec.Name using (CanonicalName)
   open import Data.Maybe using (Maybe; just; nothing)
-  open import Data.Product using (Σ)
+  open import Data.Product using (Σ; proj₁)
+  open import Relation.Binary.PropositionalEquality using (sym; cong)
+  open import Relation.Nullary using (Dec; yes; no)
+  open import Once.Surface.CoerceIR using (VoidFree; erase-eq)
+  open import Once.Arith.SigOp.Builders using (i2f-info)
+  open import Once.Adequacy.ElaborateLinked using (DeclIn; sigOpIR-linked)
+  open import Once.Denotation.Program using (Linked)
+  open import Once.IRTy using (⌊_⌋)
+  import Once.IRTy as I
+  open import Once.LinCore.FromIR fmt using (⟪_⟫; grade)
 
   ok-opL : ∀ {L E A B} (si : SigOpInfo A B) → Declared Σι si → OK Dc (opL {L} {E} si)
   ok-opL {L} {E} si d = ok-cast {L} {E} (Relation.Binary.PropositionalEquality.sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si)))
@@ -215,3 +224,81 @@ module Ops (Σι : ISig) where
     ok-numL {L} {E} {A = Th.float} {k = Th.unary} h o d = ok-opL {L} {E} (numInfo h o) d
     ok-numL {L} {E} {A = Th.float} {k = Th.binary} h o d = ok-opL {L} {E} (numInfo h o) d
     ok-numL {L} {E} {A = Th.float} {k = Th.compare} h o d = ok-opL {L} {E} (numInfo h o) d
+
+  -- a closure runs its body's ops
+  -- (stated at `OK (copyIn b)`'s normal form, so `b` is never inferred
+  -- through `OK`, which is not injective)
+  ok-copyIn : ∀ {P : Set} → P → P × ((⊤ × ⊤) × ⊤)
+  ok-copyIn ob = ob , _
+
+  -- a structure map runs none but `toFloat`'s
+  ok-mapT : ∀ {L m} {A B : Ty m} (mp : Map A B) → Linked [] [] (mapIR mp) → OK Dc (mapT {L} mp)
+  ok-mapT mp-id                         l = tt
+  ok-mapT mp-fst                        l = _
+  ok-mapT mp-snd                        l = _
+  ok-mapT mp-terminal                   l = tt
+  ok-mapT mp-inl                        l = tt
+  ok-mapT mp-inr                        l = tt
+  ok-mapT mp-initial                    l = tt
+  ok-mapT (mp-apply A B (G.fin G.pureᶠ)) l = _
+  ok-mapT (mp-apply A B (G.fin G.actᶠ))  l = ok-copyIn (_ , tt)
+  ok-mapT (mp-apply A B G.eff)          l = ok-copyIn (_ , tt)
+  ok-mapT {L} (mp-In F w)               l = ok-cast {L} (sym (layerEq F w (ST.μ F))) refl {t = lIn} tt
+  ok-mapT {L} (mp-Out F G.pureᶠ w)      l = ok-cast {L} refl (sym (layerEq F w (ST.ν F G.pureᶠ))) {t = lout} tt
+  ok-mapT {L} (mp-Out F G.actᶠ w)       l = ok-copyIn (ok-cast {L} refl (sym (layerEq F w (ST.ν F G.actᶠ))) {t = lout} tt , tt)
+  ok-mapT {L} mp-toFloat                l = ok-opL {L} {One} i2f-info tt
+
+  -- a conversion runs none
+  ok-coeL : ∀ {L m} {A B : Ty m} (p : A <: B) → OK Dc (coeL {L} p)
+  ok-coeL sub-void   = tt
+  ok-coeL sub-unit   = tt
+  ok-coeL sub-int    = tt
+  ok-coeL sub-float  = tt
+  ok-coeL (sub-arr {q = G.Zero} a b r) = ok-copyIn (ok-coeL b , _)
+  ok-coeL (sub-arr {q = G.One}  a b r) = ok-copyIn (ok-coeL b , (_ , (tt , ok-coeL a)))
+  ok-coeL (sub-arr {q = G.Many} a b r) = ok-copyIn (ok-coeL b , (_ , (tt , ok-coeL a)))
+  ok-coeL (sub-* a b) = ok-coeL a , ok-coeL b
+  ok-coeL (sub-+ a b) = (tt , ok-coeL a) , (tt , ok-coeL b)
+  ok-coeL sub-μ      = tt
+  ok-coeL (sub-ν _)  = tt
+  ok-coeL sub-var    = tt
+
+  ok-coeR : ∀ {L m Z} {A B : Ty m} (p : A <: B) (d : Dec (VoidFree p)) {t : LTm L Z (ty A)} → OK Dc t → OK Dc (coeR p d t)
+  ok-coeR p (yes vf) o = ok-cast refl (cong ⟪_⟫ (erase-eq p vf)) o
+  ok-coeR p (no _)   o = ok-coeL p , o
+
+  -- a reference runs none (a miss halts by the unlinked op, which owes nothing)
+  ok-refL : ∀ {L} (rs : Rs L) {m} (T : Ty m) (f : CanonicalName) → OK Dc (refL rs T f)
+  ok-refL rs (A ⇒[ G.mk-kind G.Zero π ] B) f = ok-copyIn (ok-callM (rs f I.Unit ⌊ B ⌋ (grade π)) , _)
+  ok-refL rs (A ⇒[ G.mk-kind G.One π ] B) f  = ok-copyIn (ok-callM (rs f ⌊ A ⌋ ⌊ B ⌋ (grade π)) , _)
+  ok-refL rs (A ⇒[ G.mk-kind G.Many π ] B) f = ok-copyIn (ok-callM (rs f ⌊ A ⌋ ⌊ B ⌋ (grade π)) , _)
+  ok-refL rs T@ST.Unit      f = ok-callM (rs f I.Unit ⌊ T ⌋ act) , tt
+  ok-refL rs T@ST.Void      f = ok-callM (rs f I.Unit ⌊ T ⌋ act) , tt
+  ok-refL rs T@(_ ST.* _)   f = ok-callM (rs f I.Unit ⌊ T ⌋ act) , tt
+  ok-refL rs T@(_ ST.+ _)   f = ok-callM (rs f I.Unit ⌊ T ⌋ act) , tt
+  ok-refL rs T@(ST.μ _)     f = ok-callM (rs f I.Unit ⌊ T ⌋ act) , tt
+  ok-refL rs T@(ST.ν _ _)   f = ok-callM (rs f I.Unit ⌊ T ⌋ act) , tt
+  ok-refL rs T@ST.Int       f = ok-callM (rs f I.Unit ⌊ T ⌋ act) , tt
+  ok-refL rs T@ST.Float     f = ok-callM (rs f I.Unit ⌊ T ⌋ act) , tt
+  ok-refL rs T@(ST.var _)   f = ok-callM (rs f I.Unit ⌊ T ⌋ act) , tt
+
+  -- ★ a declared FFI reference: its op is the one `elaborate` links
+  -- (`ElaborateLinked.sigOpIR-linked`)
+  ok-sigL : ∀ {L} (A : ST.Type) (name : CanonicalName) (c : IsConcrete A) → DeclIn Σι name A → OK Dc (sigL {L} A name c)
+  ok-sigL (Dom ⇒[ G.mk-kind G.Zero (G.fin G.pureᶠ) ] Cod) name c@(con-fun bDom cCod) d =
+    ok-copyIn (ok-opL (value-info name ST.b-Unit cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
+  ok-sigL (Dom ⇒[ G.mk-kind G.Zero G.eff ] Cod) name c@(con-fun bDom cCod) d =
+    ok-copyIn (ok-opL (arrow-info (G.mk-kind G.Zero G.eff) name ST.b-Unit cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
+  ok-sigL (Dom ⇒[ G.mk-kind G.Zero (G.fin G.actᶠ) ] Cod) name c@(con-fun bDom cCod) d =
+    ok-copyIn (ok-opL (arrow-info (G.mk-kind G.Zero G.act) name ST.b-Unit cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
+  ok-sigL (Dom ⇒[ G.mk-kind G.One π ] Cod) name c@(con-fun bDom cCod) d =
+    ok-copyIn (ok-opL (arrow-info (G.mk-kind G.One π) name bDom cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
+  ok-sigL (Dom ⇒[ G.mk-kind G.Many π ] Cod) name c@(con-fun bDom cCod) d =
+    ok-copyIn (ok-opL (arrow-info (G.mk-kind G.Many π) name bDom cCod) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , _)
+  ok-sigL _ name (con-base (ST.b-var {i = ()} _)) d
+  ok-sigL {L} _ name c@(con-base ib@ST.b-Unit) d = ok-opL {L} {One} (value-info name ST.b-Unit ib) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , tt
+  ok-sigL {L} _ name c@(con-base ib@ST.b-Void) d = ok-opL {L} {One} (value-info name ST.b-Unit ib) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , tt
+  ok-sigL {L} _ name c@(con-base ib@ST.b-Int) d = ok-opL {L} {One} (value-info name ST.b-Unit ib) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , tt
+  ok-sigL {L} _ name c@(con-base ib@ST.b-Float) d = ok-opL {L} {One} (value-info name ST.b-Unit ib) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , tt
+  ok-sigL {L} _ name c@(con-base ib@(ST.b-* a b)) d = ok-opL {L} {One} (value-info name ST.b-Unit ib) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , tt
+  ok-sigL {L} _ name c@(con-base ib@(ST.b-+ a b)) d = ok-opL {L} {One} (value-info name ST.b-Unit ib) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , tt
