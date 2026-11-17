@@ -69,7 +69,8 @@ open import Relation.Binary.PropositionalEquality using (subst₂)
 open import Once.CompileSrc using (Src; src; srcIR; module Src)
 open Src using (expr; am)
 open import Once.Denotation.SurfaceRefs using (Refs)
-open import Once.Adequacy.ElaborateLinked using (Refs-map)
+open import Once.Adequacy.ElaborateLinked using (Refs-map; DeclIn)
+open import Once.Contract using (ISig)
 open import Once.Denotation.DenotTrace using (callEnv)
 open import Once.Denotation.Program using (IRFun; irFun; tableCalls; tableEnv-at)
 open import Once.IR.Semantics.Trace using (unlinkedT)
@@ -532,6 +533,11 @@ GradedBodies : List CompiledSrc → Set
 GradedBodies []       = Data.Unit.⊤
 GradedBodies (c ∷ cs) = GradedBodies cs × (Src.opt (csSrc c) ≡ Data.Bool.false)
                       × Refs (λ _ _ → Data.Unit.⊤) (GradedRef (rs (exprTable cs))) (GradedRef (rs (exprTable cs))) (expr (csSrc c))
+
+-- …and their FFI references declared in the signatures (master's linking premise, D257)
+SrcsDecl : ISig → List CompiledSrc → Set
+SrcsDecl σ []       = Data.Unit.⊤
+SrcsDecl σ (c ∷ cs) = Refs (DeclIn σ) (λ _ _ → Data.Unit.⊤) (λ _ _ → Data.Unit.⊤) (expr (csSrc c)) × SrcsDecl σ cs
 
 bodies-ok : ∀ (srcs : List CompiledSrc) → GradedBodies srcs → BodiesOK srcs
 bodies-ok []       _                  = Data.Unit.tt

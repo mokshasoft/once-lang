@@ -446,7 +446,7 @@ module ExprTop (tl : List Once.CompileSrc.CompiledSrc) (gb : Once.LinCore.ExprTa
                                ; fpc = suc (FlatMachine.fpc fs) })
            -- ★ master's premise at the sources: every definition's FFI references are declared
            -- (`ElaborateLinked`'s `Refs (DeclIn σ)`)
-           (srcs : Once.LinCore.ExprOps.Table.SrcsOK fmt bw (TM.Interp.sig ι) ans tl) where
+           (srcs : Once.LinCore.ExprTable.SrcsDecl fmt ans (TM.Interp.sig ι) tl) where
     open FlatEventTrace {Mach} using (flat-events; flat-ctrls)
 
     -- ★ LINKED AT THE CORE (D445): the bridge's program's ops are declared (`ExprOps`)

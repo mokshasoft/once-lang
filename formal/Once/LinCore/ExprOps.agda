@@ -422,14 +422,6 @@ module Table (Σι : ISig) (ans : FFIAnswers) where
   import Once.IRTy as I
   open import Relation.Binary.PropositionalEquality using (cong)
 
-  -- the FFI references of a definition's source are declared
-  SrcOK : CompiledSrc → Set
-  SrcOK c = Refs (DeclIn Σι) (λ _ _ → ⊤) (λ _ _ → ⊤) (Src.expr (CompiledSrc.csSrc c))
-
-  SrcsOK : List CompiledSrc → Set
-  SrcsOK []       = ⊤
-  SrcsOK (c ∷ cs) = SrcOK c × SrcsOK cs
-
   ok-eraseL : ∀ {L E m n} (Γ : Ctx m n) (Ψ : Usage n) → OK Dc (ET.eraseL {L} {E} Γ Ψ)
   ok-eraseL SC.∅          []           = tt
   ok-eraseL (Γ SC.▸ A) (G.Zero ∷ Ψ) = ok-eraseL Γ Ψ , _
@@ -455,7 +447,7 @@ module Table (Σι : ISig) (ans : FFIAnswers) where
     ok-cast (cong ⟪_⟫ (cong ⌊_⌋ δ₀)) refl {t = Lq rs e ∘l ET.eraseL Γ Ψ} (ok-Lq rs e r , ok-eraseL Γ Ψ)
 
   -- ★ the table
-  ok-table : ∀ cs → SrcsOK cs → DefsOK Dc (ET.ETProg.defs (ET.exprTable cs))
+  ok-table : ∀ cs → ET.SrcsDecl Σι cs → DefsOK Dc (ET.ETProg.defs (ET.exprTable cs))
   ok-table []       tt        = ε
   ok-table (c ∷ cs) (r , rs′) =
     ok-table cs rs′ ▸₁ (ok-dc (CompiledSrc.csType c) _ (ok-val (ET.ETProg.rs (ET.exprTable cs)) (CompiledSrc.csSrc c) r) , tt)
@@ -467,7 +459,7 @@ module Table (Σι : ISig) (ans : FFIAnswers) where
   ok-main rs sub-void                      = tt , ok-callM (rs (bare "main") I.Unit I.Void act)
 
   -- ★★ the bridge's program's ops are declared
-  decl-ok : ∀ cs → SrcsOK cs → ∀ {T : Type} (pm : T <: EffUU)
+  decl-ok : ∀ cs → ET.SrcsDecl Σι cs → ∀ {T : Type} (pm : T <: EffUU)
           → ∀ {s} → s ∈ ops (univ (ET.ETProg.defs (ET.exprTable cs)) (ET.mainCore (ET.ETProg.rs (ET.exprTable cs)) pm)) → Dc s
   decl-ok cs ok pm = univ-ok Dc (ET.ETProg.defs (ET.exprTable cs)) (ET.mainCore (ET.ETProg.rs (ET.exprTable cs)) pm)
                              (ok-table cs ok) (ok-main (ET.ETProg.rs (ET.exprTable cs)) pm)
