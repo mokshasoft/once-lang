@@ -197,6 +197,15 @@ module Ops (Σι : ISig) where
   open import Once.IRTy using (⌊_⌋)
   import Once.IRTy as I
   open import Once.LinCore.FromIR fmt using (⟪_⟫; grade)
+  open import Once.LinCore.FromExpr fmt using (Co)
+  import Once.Surface.Syntax as S
+  open import Once.Denotation.SurfaceRefs using (Refs)
+  open import Once.Surface.CoerceIR using (voidFree?)
+  open import Once.Surface.Properties using (erase-arg-usage)
+  open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-+ʳ)
+  open import Once.Spec.Context using (_*ᵘ_; zeroUsage)
+  open import Once.Spec.Name using (bare)
+  open import Once.IRTy using (⌊wk₀⌋)
 
   ok-opL : ∀ {L E A B} (si : SigOpInfo A B) → Declared Σι si → OK Dc (opL {L} {E} si)
   ok-opL {L} {E} si d = ok-cast {L} {E} (Relation.Binary.PropositionalEquality.sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si)))
@@ -302,3 +311,84 @@ module Ops (Σι : ISig) where
   ok-sigL {L} _ name c@(con-base ib@ST.b-Float) d = ok-opL {L} {One} (value-info name ST.b-Unit ib) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , tt
   ok-sigL {L} _ name c@(con-base ib@(ST.b-* a b)) d = ok-opL {L} {One} (value-info name ST.b-Unit ib) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , tt
   ok-sigL {L} _ name c@(con-base ib@(ST.b-+ a b)) d = ok-opL {L} {One} (value-info name ST.b-Unit ib) (proj₁ (sigOpIR-linked {tbl = []} {X = I.Unit} name c d)) , tt
+
+  -- a numeric symbol is a primitive, which owes nothing (`Builders`: every
+  -- numeric SigOp is internal)
+  ok-numL′ : ∀ {L E m A U k} (h : Has A U) (o : Sym U k) → OK Dc (numL {L} {E} {m} h o)
+  ok-numL′ {L} {E} {A = Th.int}   {k = Th.unary}   h o = ok-opL {L} {E} (numInfo h o) _
+  ok-numL′ {L} {E} {A = Th.int}   {k = Th.binary}  h o = ok-opL {L} {E} (numInfo h o) _
+  ok-numL′ {L} {E} {A = Th.int}   {k = Th.compare} h o = ok-opL {L} {E} (numInfo h o) _
+  ok-numL′ {L} {E} {A = Th.float} {k = Th.unary}   h o = ok-opL {L} {E} (numInfo h o) _
+  ok-numL′ {L} {E} {A = Th.float} {k = Th.binary}  h o = ok-opL {L} {E} (numInfo h o) _
+  ok-numL′ {L} {E} {A = Th.float} {k = Th.compare} h o = ok-opL {L} {E} (numInfo h o) _
+
+  -- ★ the bridge of an expression whose FFI references are declared runs
+  -- only declared ops (calls owe nothing here: their bodies are the table's)
+  module _ {L : Cx} (rs : Rs L) where
+    ok-castΦ : ∀ {m n} {Γ : Ctx m n} {Φ Φ′ : Usage n} {B} (e : Φ ≡ Φ′) {t : LTm L (Co Γ Φ) B} → OK Dc t → OK Dc (castΦ rs {Γ = Γ} e t)
+    ok-castΦ refl o = o
+
+    DRefs : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → S.Expr Γ Ψ A → Set
+    DRefs = Refs (DeclIn Σι) (λ _ _ → ⊤) (λ _ _ → ⊤)
+
+    ok-Lq : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : S.Expr Γ Ψ A) → DRefs e → OK Dc (Lq rs e)
+    ok-Lq {Γ = Γ} (S.var i) r = ok-var {Γ = Γ} i
+    ok-Lq (S.lam {q' = G.Zero} G.Zero _ e) r = ok-copyIn (ok-Lq e r , _)
+    ok-Lq (S.lam {q' = G.Zero} G.One  _ e) r = ok-copyIn (ok-Lq e r , _)
+    ok-Lq (S.lam {q' = G.Zero} G.Many _ e) r = ok-copyIn (ok-Lq e r , _)
+    ok-Lq (S.lam {q' = G.One}  G.One  _ e) r = ok-copyIn (ok-Lq e r)
+    ok-Lq (S.lam {q' = G.One}  G.Many _ e) r = ok-copyIn (ok-Lq e r)
+    ok-Lq (S.lam {q' = G.Many} G.Many _ e) r = ok-copyIn (ok-Lq e r)
+    ok-Lq {Γ = Γ} (S.app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} f x) (rf , rx) =
+      ok-castΦ {Γ = Γ} (sym (erase-arg-usage Ψ₁ Ψ₂)) (_ , ((ok-Lq f rf , tt) , tt))
+    ok-Lq {Γ = Γ} (S.app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) (rf , rx) =
+      _ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*One Ψ₂))) , ok-split Γ Ψ₁ (G.One *ᵘ Ψ₂))
+    ok-Lq {Γ = Γ} (S.app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) (rf , rx) =
+      _ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))
+    ok-Lq {Γ = Γ} (S.effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} f x) (rf , rx) =
+      ok-castΦ {Γ = Γ} (sym (erase-arg-usage Ψ₁ Ψ₂)) (ok-copyIn ((_ , ((ok-Lq f rf , tt) , tt)) , tt))
+    ok-Lq {Γ = Γ} (S.effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) (rf , rx) =
+      ok-copyIn ((_ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*One Ψ₂))) , ok-split Γ Ψ₁ (G.One *ᵘ Ψ₂))) , tt)
+    ok-Lq {Γ = Γ} (S.effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) (rf , rx) =
+      ok-copyIn ((_ , ((ok-Lq f rf , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))) , tt)
+    ok-Lq {Γ = Γ} (S.pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = (ok-Lq a ra , ok-Lq b rb) , ok-split Γ Ψ₁ Ψ₂
+    ok-Lq (S.fst' p) r = _ , ok-Lq p r
+    ok-Lq (S.snd' p) r = _ , ok-Lq p r
+    ok-Lq (S.inl' a) r = tt , ok-Lq a r
+    ok-Lq (S.inr' b) r = tt , ok-Lq b r
+    ok-Lq {Γ = Γ} (S.case' {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = qℓ} {qr = qr} {A = A} {B = B} s l r′) (rs′ , rl , rr) =
+      ((ok-Lq l rl , (ok-bind {Γ = Γ} {A = A} qℓ , (ok-weak {Γ = Γ} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) , tt))) ,
+       (ok-Lq r′ rr , (ok-bind {Γ = Γ} {A = B} qr , (ok-weak {Γ = Γ} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) , tt)))) ,
+      (_ , ((tt , ok-Lq s rs′) , (tt , ok-split Γ Ψs (Ψₗ ⊔ᵘ Ψᵣ))))
+    ok-Lq S.unit r = tt
+    ok-Lq (S.absurd v) r = tt , ok-Lq v r
+    ok-Lq {Γ = Γ} (S.let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Zero} e1 e2) (r1 , r2) =
+      ok-castΦ {Γ = Γ} (sym (erase-arg-usage Ψ₂ Ψ₁)) (ok-Lq e2 r2)
+    ok-Lq {Γ = Γ} (S.let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} {A = A} e1 e2) (r1 , r2) =
+      ok-Lq e2 r2 , (tt , ((tt , (ok-Lq e1 r1 , ok-weak {Γ = Γ} (⊑ᵘ-*One Ψ₁))) , ok-split Γ Ψ₂ (G.One *ᵘ Ψ₁)))
+    ok-Lq {Γ = Γ} (S.let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} {A = A} e1 e2) (r1 , r2) =
+      ok-Lq e2 r2 , (tt , ((tt , (ok-Lq e1 r1 , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₁))) , ok-split Γ Ψ₂ (G.Many *ᵘ Ψ₁)))
+    ok-Lq (S.int n) r = tt , tt
+    ok-Lq (S.float d) r = tt , tt
+    ok-Lq (S.num h o e) r = ok-numL′ h o , ok-Lq e r
+    ok-Lq (S.coerce p f) r = ok-coeR p (voidFree? p) (ok-Lq f r)
+    ok-Lq (S.sigOp {A = A} name c) r = ok-cast refl (cong ⟪_⟫ (sym (⌊wk₀⌋ A))) {t = sigL A name c ∘l drop} (ok-sigL A name c r , tt)
+    ok-Lq {A = A} (S.closure name) r = ok-refL rs A (bare name) , tt
+    ok-Lq {A = A} (S.poly name _) r = ok-refL rs A (bare name) , tt
+    ok-Lq (S.closed e) r = ok-Lq e r , tt
+    ok-Lq (S.lift-morphism mp) r = ok-copyIn (ok-mapT mp r , _)
+    ok-Lq {Γ = Γ} (S.morph-app {Ψ = Ψ} mp x) (rm , rx) =
+      ok-mapT mp rm , (ok-Lq x rx , ok-weak {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (G.Many *ᵘ Ψ))))
+    ok-Lq {Γ = Γ} (S.comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) (rf , rg) =
+      ok-copyIn (_ , ((tt , _) , tt)) , ((ok-Lq f rf , (ok-Lq g rg , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))) , ok-split Γ Ψ₁ (G.Many *ᵘ Ψ₂))
+    ok-Lq {Γ = Γ} (S.copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) (rf , rg) =
+      ok-copyIn (((_ , (_ , tt)) , (_ , (_ , tt))) , _) , ((ok-Lq f rf , ok-Lq g rg) , ok-split Γ Ψ₁ Ψ₂)
+    ok-Lq {Γ = Γ} (S.fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) (rf , rg) =
+      ok-copyIn ((_ , _) , (_ , (tt , tt))) , ((ok-Lq f rf , ok-Lq g rg) , ok-split Γ Ψ₁ Ψ₂)
+    ok-Lq (S.curry' f) r = ok-copyIn (ok-copyIn (_ , tt)) , ok-Lq f r
+    ok-Lq {Γ = Γ} (S.cata {Ψ = Ψ} {F = F} {A = A} wfF alg) r =
+      ok-copyIn (_ , ok-cast (layerEq F wfF A) refl {t = bev} tt) , (ok-Lq alg r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
+    ok-Lq {Γ = Γ} (S.ana {Ψ = Ψ} {F = F} {A = A} wfF coalg) r =
+      ok-copyIn (tt , (ok-cast refl (cong (Fn many act (ty A)) (layerEq F wfF A)) {t = lid} tt , tt)) , (ok-Lq coalg r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
+    ok-Lq {Γ = Γ} (S.loop {Ψ = Ψ} round) r =
+      ok-copyIn _ , (ok-Lq round r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
