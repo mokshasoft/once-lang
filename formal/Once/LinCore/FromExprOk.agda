@@ -74,6 +74,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ)
 open import Once.IR.Ref using (refIR)
 open import Once.Spec.Name using (bare)
+open import Once.Denotation.SurfaceRefs using (Refs)
 open import Once.LinCore.FromIR fmt using (⟪⌊⌋⟫-flat)
 open import Once.LinCore.Pass fmt ans using (ev; evB)
 import Once.LinCore.Casts
@@ -483,7 +484,10 @@ module RelClo {L : Cx} (δ : Env L) (ρ : CallEnv) where
 
 ------------------------------------------------------------------------
 -- 10. ★★ THE BRIDGE'S MEANING, by induction on the expression, every clause
--- proved; the one hypothesis is the program's table (`CallsOK`).
+-- proved; its premise is the expression's references, related (`RefOK`, by
+-- `SurfaceRefs.Refs`): a reference at another grade than its definition's could
+-- not be a block, so the program's linking, grades included, is its obligation
+-- (`Calls.rel-ref` gives it from a table where it holds, `CallsOK`).
 ------------------------------------------------------------------------
 
 module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) (am : M.AllocMode) where
@@ -1051,50 +1055,55 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   ok-ana {Γ = Γ} {Ψ} {F} {A = A} {π₀} {φ} wf c rc =
     rel-∘ (rel-cloG π₀ _ (UF.rel-unfold F wf A φ)) (rel-∘ rc (rel-weak am {Γ = Γ} (⊑ᵘ-*Many Ψ)))
 
-  module _ (ck : CallsOK) where
-    open Calls ck
+  -- ★ a reference, related: the program's obligation (a reference names its
+  -- definition at its declared type, grade and all; `Calls.rel-ref` derives it
+  -- from the table where it holds)
+  RefOK : ∀ {m} → String → Ty m → Set
+  RefOK x A = Rel (refL rs A (bare x)) (refIR A (bare x))
 
-    Lq-ok : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) → Goal e
-    Lq-ok {Γ = Γ} (var i) = rel-var {Γ = Γ} i
-    Lq-ok (lam {q' = G.Zero} {π = π} G.Zero _ e) = rel-cloG π _ (rel-∘ (Lq-ok e) rel-fst)
-    Lq-ok (lam {q' = G.Zero} {π = π} G.One  _ e) = rel-cloG π _ (rel-∘ (Lq-ok e) rel-fst)
-    Lq-ok (lam {q' = G.Zero} {π = π} G.Many _ e) = rel-cloG π _ (rel-∘ (Lq-ok e) rel-fst)
-    Lq-ok (lam {q' = G.One}  {π = π} G.One  _ e) = rel-cloG π _ (Lq-ok e)
-    Lq-ok (lam {q' = G.One}  {π = π} G.Many _ e) = rel-cloG π _ (Lq-ok e)
-    Lq-ok (lam {q' = G.Many} {π = π} G.Many _ e) = rel-cloG π _ (Lq-ok e)
-    Lq-ok (app {q = G.Zero} f x) = ok-app0 f x (Lq-ok f)
-    Lq-ok {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) =
-      rel-app Γ Ψ₁ Ψ₂ (G.One *ᵘ Ψ₂) (⊑ᵘ-*One Ψ₂) (Lq-ok f) (Lq-ok x)
-    Lq-ok {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) =
-      rel-app Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) (Lq-ok f) (Lq-ok x)
-    Lq-ok (effApp f x) = ok-effApp f x (Lq-ok f) (Lq-ok x)
-    Lq-ok {Γ = Γ} (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) = rel-pair am Γ Ψ₁ Ψ₂ (Lq-ok a) (Lq-ok b)
-    Lq-ok (fst' p) = rel-∘ rel-fst (Lq-ok p)
-    Lq-ok (snd' p) = rel-∘ rel-snd (Lq-ok p)
-    Lq-ok (inl' a) = rel-∘ rel-inl (Lq-ok a)
-    Lq-ok (inr' b) = rel-∘ rel-inr (Lq-ok b)
-    Lq-ok (case' s l r) = ok-case s l r (Lq-ok s) (Lq-ok l) (Lq-ok r)
-    Lq-ok unit = rel-drop
-    Lq-ok (absurd v) = rel-∘ rel-zero (Lq-ok v)
-    Lq-ok (let' {q = G.Zero} e1 e2) = ok-let0 e1 e2 (Lq-ok e2)
-    Lq-ok {Γ = Γ} (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} {A = A} e1 e2) =
-      rel-∘ (Lq-ok e2) (rel-∘ (rel-bind {Γ = Γ} {A = A} G.One) (rel-let Γ Ψ₂ Ψ₁ (G.One *ᵘ Ψ₁) (⊑ᵘ-*One Ψ₁) (Lq-ok e1)))
-    Lq-ok {Γ = Γ} (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} {A = A} e1 e2) =
-      rel-∘ (Lq-ok e2) (rel-∘ (rel-bind {Γ = Γ} {A = A} G.Many) (rel-let Γ Ψ₂ Ψ₁ (G.Many *ᵘ Ψ₁) (⊑ᵘ-*Many Ψ₁) (Lq-ok e1)))
-    Lq-ok (int n) = rel-∘ (mkRel λ _ → ret≈R refl) rel-drop
-    Lq-ok (float d) = rel-∘ (mkRel λ _ → ret≈R refl) rel-drop
-    Lq-ok (num h o e) = ok-num h o e (Lq-ok e)
-    Lq-ok (coerce p f) = ok-coerce p f (Lq-ok f)
-    Lq-ok {Γ = Γ} (sigOp name c) = ok-sigOp {Γ = Γ} name c
-    Lq-ok {Γ = Γ} (closure name) = ok-closure {Γ = Γ} name
-    Lq-ok {Γ = Γ} (poly name T) = ok-poly {Γ = Γ} name T
-    Lq-ok (closed e) = rel-∘ (Lq-ok e) rel-drop
-    Lq-ok {Γ = Γ} (lift-morphism mp) = ok-lift {Γ = Γ} mp
-    Lq-ok (morph-app mp x) = ok-mapp mp x (Lq-ok x)
-    Lq-ok (comp' f g) = ok-comp f g (Lq-ok f) (Lq-ok g)
-    Lq-ok (copair' f g) = ok-copair f g (Lq-ok f) (Lq-ok g)
-    Lq-ok (fork' f g) = ok-fork f g (Lq-ok f) (Lq-ok g)
-    Lq-ok (curry' f) = ok-curry f (Lq-ok f)
-    Lq-ok (cata wf alg) = ok-cata wf alg (Lq-ok alg)
-    Lq-ok (ana wf c) = ok-ana wf c (Lq-ok c)
-    Lq-ok (loop r) = ok-loop r (Lq-ok r)
+  -- ★★ THE BRIDGE'S MEANING: for every expression whose references are related
+  Lq-ok : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A)
+        → Refs (λ _ _ → ⊤) RefOK RefOK e → Goal e
+  Lq-ok {Γ = Γ} (var i) r = rel-var {Γ = Γ} i
+  Lq-ok (lam {q' = G.Zero} {π = π} G.Zero _ e) r = rel-cloG π _ (rel-∘ (Lq-ok e r) rel-fst)
+  Lq-ok (lam {q' = G.Zero} {π = π} G.One  _ e) r = rel-cloG π _ (rel-∘ (Lq-ok e r) rel-fst)
+  Lq-ok (lam {q' = G.Zero} {π = π} G.Many _ e) r = rel-cloG π _ (rel-∘ (Lq-ok e r) rel-fst)
+  Lq-ok (lam {q' = G.One}  {π = π} G.One  _ e) r = rel-cloG π _ (Lq-ok e r)
+  Lq-ok (lam {q' = G.One}  {π = π} G.Many _ e) r = rel-cloG π _ (Lq-ok e r)
+  Lq-ok (lam {q' = G.Many} {π = π} G.Many _ e) r = rel-cloG π _ (Lq-ok e r)
+  Lq-ok (app {q = G.Zero} f x) (rf , rx) = ok-app0 f x (Lq-ok f rf)
+  Lq-ok {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) (rf , rx) =
+    rel-app Γ Ψ₁ Ψ₂ (G.One *ᵘ Ψ₂) (⊑ᵘ-*One Ψ₂) (Lq-ok f rf) (Lq-ok x rx)
+  Lq-ok {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) (rf , rx) =
+    rel-app Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) (Lq-ok f rf) (Lq-ok x rx)
+  Lq-ok (effApp f x) (rf , rx) = ok-effApp f x (Lq-ok f rf) (Lq-ok x rx)
+  Lq-ok {Γ = Γ} (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) = rel-pair am Γ Ψ₁ Ψ₂ (Lq-ok a ra) (Lq-ok b rb)
+  Lq-ok (fst' p) r = rel-∘ rel-fst (Lq-ok p r)
+  Lq-ok (snd' p) r = rel-∘ rel-snd (Lq-ok p r)
+  Lq-ok (inl' a) r = rel-∘ rel-inl (Lq-ok a r)
+  Lq-ok (inr' b) r = rel-∘ rel-inr (Lq-ok b r)
+  Lq-ok (case' s l r) (rs′ , rl , rr) = ok-case s l r (Lq-ok s rs′) (Lq-ok l rl) (Lq-ok r rr)
+  Lq-ok unit r = rel-drop
+  Lq-ok (absurd v) r = rel-∘ rel-zero (Lq-ok v r)
+  Lq-ok (let' {q = G.Zero} e1 e2) (r1 , r2) = ok-let0 e1 e2 (Lq-ok e2 r2)
+  Lq-ok {Γ = Γ} (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} {A = A} e1 e2) (r1 , r2) =
+    rel-∘ (Lq-ok e2 r2) (rel-∘ (rel-bind {Γ = Γ} {A = A} G.One) (rel-let Γ Ψ₂ Ψ₁ (G.One *ᵘ Ψ₁) (⊑ᵘ-*One Ψ₁) (Lq-ok e1 r1)))
+  Lq-ok {Γ = Γ} (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} {A = A} e1 e2) (r1 , r2) =
+    rel-∘ (Lq-ok e2 r2) (rel-∘ (rel-bind {Γ = Γ} {A = A} G.Many) (rel-let Γ Ψ₂ Ψ₁ (G.Many *ᵘ Ψ₁) (⊑ᵘ-*Many Ψ₁) (Lq-ok e1 r1)))
+  Lq-ok (int n) r = rel-∘ (mkRel λ _ → ret≈R refl) rel-drop
+  Lq-ok (float d) r = rel-∘ (mkRel λ _ → ret≈R refl) rel-drop
+  Lq-ok (num h o e) r = ok-num h o e (Lq-ok e r)
+  Lq-ok (coerce p f) r = ok-coerce p f (Lq-ok f r)
+  Lq-ok {Γ = Γ} (sigOp name c) r = ok-sigOp {Γ = Γ} name c
+  Lq-ok (closure name) r = rel-∘ r rel-drop
+  Lq-ok (poly name T) r = rel-∘ r rel-drop
+  Lq-ok (closed e) r = rel-∘ (Lq-ok e r) rel-drop
+  Lq-ok {Γ = Γ} (lift-morphism mp) r = ok-lift {Γ = Γ} mp
+  Lq-ok (morph-app mp x) (_ , r) = ok-mapp mp x (Lq-ok x r)
+  Lq-ok (comp' f g) (rf , rg) = ok-comp f g (Lq-ok f rf) (Lq-ok g rg)
+  Lq-ok (copair' f g) (rf , rg) = ok-copair f g (Lq-ok f rf) (Lq-ok g rg)
+  Lq-ok (fork' f g) (rf , rg) = ok-fork f g (Lq-ok f rf) (Lq-ok g rg)
+  Lq-ok (curry' f) r = ok-curry f (Lq-ok f r)
+  Lq-ok (cata wf alg) r = ok-cata wf alg (Lq-ok alg r)
+  Lq-ok (ana wf c) r = ok-ana wf c (Lq-ok c r)
+  Lq-ok (loop round) r = ok-loop round (Lq-ok round r)
