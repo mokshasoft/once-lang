@@ -521,6 +521,37 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) 
   ok-comp {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} f g rf rg =
     rel-∘ (rel-cloG π _ compB) (rel-pairW Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) rf rg)
 
+  -- ★ the fork's body: the argument copied, each closure applied to one copy
+  forkB : ∀ {π} {A B C : IRTy}
+        → Rel ((apω {g = grade π} {⟪ A ⟫} {⟪ B ⟫} ⊗l apω {g = grade π} {⟪ A ⟫} {⟪ C ⟫}) ∘l mixL ∘l (lid ⊗l dup))
+              M.⟨ M.apply {A} {B} {π} M.∘ M.⟨ M.fst M.∘ M.fst , M.snd ⟩ , M.apply {A} {C} {π} M.∘ M.⟨ M.snd M.∘ M.fst , M.snd ⟩ ⟩
+  forkB {π} {A} {B} {C} = mkRel λ { {(f , g) , a} {(f′ , g′) , a′} ((wf , wg) , wa) →
+    ≈-≈R (≈-trans (bind-pure (≈-trans (bind-pure (≈-trans ret-bind ret-bind))
+                                      (mix-pure δ {E = One} {X = Fn many (grade π) ⟪ A ⟫ ⟪ B ⟫} {Y = Fn many (grade π) ⟪ A ⟫ ⟪ C ⟫} {Z = ⟪ A ⟫} {U = ⟪ A ⟫} tt _)))
+                  (>>=-cong (apω-≈ {grade π} {⟪ A ⟫} {⟪ B ⟫} f a) (λ b → >>=-cong (apω-≈ {grade π} {⟪ A ⟫} {⟪ C ⟫} g a) (λ _ → ≈-refl))))
+      (≈R-≈ (>>=-congR (wf wa) (λ r → >>=-congR (wg wa) (λ r′ → ret≈R (r , r′))))
+            (≈-sym (>>=-cong (bind-pure (≈-trans (bind-pure ret-bind) ret-bind))
+                             (λ _ → >>=-cong (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (λ _ → ≈-refl))))) }
+
+  ok-fork : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
+              (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ G.mk-kind G.Many π ] C))
+            → Goal f → Goal g → Goal (fork' f g)
+  ok-fork {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} f g rf rg = rel-∘ (rel-cloG π _ forkB) (rel-pair am Γ Ψ₁ Ψ₂ rf rg)
+
+  -- ★ the curried: a closure that builds a closure, whose body applies the
+  -- first to the pair
+  curryB : ∀ {π} {A B C : IRTy}
+         → Rel (apω {g = grade π} {⟪ A ⟫ ⊗t ⟪ B ⟫} {⟪ C ⟫} ∘l lassoc)
+               (M.apply {A I.* B} {C} {π} M.∘ M.⟨ M.fst M.∘ M.fst , M.⟨ M.snd M.∘ M.fst , M.snd ⟩ ⟩)
+  curryB {π} {A} {B} {C} = mkRel λ { {(f , a) , b} {(f′ , a′) , b′} ((wf , wa) , wb) →
+    ≈-≈R (≈-trans ret-bind (apω-≈ {grade π} {⟪ A ⟫ ⊗t ⟪ B ⟫} {⟪ C ⟫} f (a , b)))
+      (≈R-≈ (wf (wa , wb))
+            (≈-sym (bind-pure (≈-trans (bind-pure ret-bind) (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)))))) }
+
+  ok-curry : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B C : Ty m} {π₀ π}
+               (f : Expr Γ Ψ ((A Once.Spec.Type.* B) ⇒[ G.mk-kind G.Many π ] C)) → Goal f → Goal (curry' {π₀ = π₀} f)
+  ok-curry {π₀ = π₀} {π} f rf = rel-∘ (rel-cloG π₀ _ (rel-cloG π _ curryB)) rf
+
   record Owed : Set where
     field
       o-effApp  : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} {q π g}
@@ -539,11 +570,6 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) 
       o-copair  : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
                     (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many π ] C)) (g : Expr Γ Ψ₂ (B ⇒[ G.mk-kind G.Many π ] C))
                   → Goal f → Goal g → Goal (copair' f g)
-      o-fork    : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
-                    (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ G.mk-kind G.Many π ] C))
-                  → Goal f → Goal g → Goal (fork' f g)
-      o-curry   : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B C : Ty m} {π₀ π}
-                    (f : Expr Γ Ψ ((A Once.Spec.Type.* B) ⇒[ G.mk-kind G.Many π ] C)) → Goal f → Goal (curry' {π₀ = π₀} f)
       o-cata    : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π}
                     (wf : WFFun Δₖ F) (alg : Expr Γ Ψ (ST.⟦ F ⟧F A ⇒[ G.mk-kind G.Many π ] A)) → Goal alg → Goal (cata wf alg)
       o-ana     : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π₀} {φ : G.Finite}
@@ -594,8 +620,8 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) 
     Lq-ok (morph-app mp x) = o-mapp mp x (Lq-ok x)
     Lq-ok (comp' f g) = ok-comp f g (Lq-ok f) (Lq-ok g)
     Lq-ok (copair' f g) = o-copair f g (Lq-ok f) (Lq-ok g)
-    Lq-ok (fork' f g) = o-fork f g (Lq-ok f) (Lq-ok g)
-    Lq-ok (curry' f) = o-curry f (Lq-ok f)
+    Lq-ok (fork' f g) = ok-fork f g (Lq-ok f) (Lq-ok g)
+    Lq-ok (curry' f) = ok-curry f (Lq-ok f)
     Lq-ok (cata wf alg) = o-cata wf alg (Lq-ok alg)
     Lq-ok (ana wf c) = o-ana wf c (Lq-ok c)
     Lq-ok (loop r) = o-loop r (Lq-ok r)
