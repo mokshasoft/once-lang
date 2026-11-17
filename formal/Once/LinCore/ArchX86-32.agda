@@ -107,11 +107,11 @@ module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
 
   -- the image's pointwise facts and its start (`ImageAll`)
   module IA = Once.LinCore.ImageAll.Img (fs-numerics x86-32-frame-semantics) (fs-ffi x86-32-frame-semantics) bw o
-                IT.TP.ds IT.TP.f₀ ML.ldConst ld-is
+                IT.ds IT.f₀ ML.ldConst ld-is
   module IAF = IA.Fetch {x86-32-frame-semantics}
   -- nothing falls into an entry (`ImageGuard`, D451)
   module IG = Once.LinCore.ImageGuard.G.Img (fs-numerics x86-32-frame-semantics) (fs-ffi x86-32-frame-semantics) bw
-                {x86-32-frame-semantics} IT.TP.ds IT.TP.f₀ ML.ldConst ML.ld-nl
+                {x86-32-frame-semantics} IT.ds IT.f₀ ML.ldConst ML.ld-nl
 
   -- ★ WHAT THE NEW IMAGE OWES THE ARCH LAYER (as on x86-64): the run facts (D453:
   -- the machine gates, B1.7b) and the arith blocks (B1.7: the compiled image is the new one)

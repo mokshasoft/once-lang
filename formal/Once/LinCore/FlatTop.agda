@@ -120,7 +120,7 @@ endO (gives _ _)                               = just (returned tt)
 endO (stop Once.LinCore.Events.halted)         = just Once.Spec.Trace.halted
 endO (stop Once.LinCore.Events.exhausted)      = nothing
 
-module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
+module Top {Γ} (ds : Defs Γ) (f₀ : LTm Γ One One)
            (ldConst : ∀ {b} → Lit b → AbstractInstr)
            (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {Mach} (ldConst v) ≡ nothing)
            (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
@@ -131,8 +131,6 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
   open FlatStepsAPI {Mach} using (FlatSteps)
   open FlatEventTrace {Mach} using (flat-events)
 
-  ds = trP P
-  f₀ = tr f
   image = Program′.image ds f₀ ldConst
   open Ctl {Mach} ds f₀ ldConst ld-nl using (main)
   start-fs = StartR.start-fs {Mach} ds f₀ ldConst ld-nl wordOf entry-frame entry-regs
@@ -141,7 +139,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
 
   -- the meaning, and what it shows at a budget from the empty log
   obs : ℕ → TM.Run (Once.Denotation.Approx.Ap Data.Unit.⊤)
-  obs k = TM.run ι [] (approx k (ev ⟦ P ⟧P f tt))
+  obs k = TM.run ι [] (approx k (Sem.Lᶜ ⟦ ds ⟧D f₀ tt tt))
 
   -- the compiled program's run in the world, at a budget (D444)
   R : (K : ℕ) → Ran Wι ds f₀ mone mone 1 K []
@@ -201,8 +199,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     run-shows k = sym (cong proj₁ eq) , trans (end-out (Ran.out (R k)) (Ran.left (R k))) (sym (cong (λ r → endAp (proj₂ r)) eq))
       where
         eq : obs k ≡ (evsOf (Ran.trace (R k)) , BudgetSound.W.outAp ι (Ran.out (R k)) (Ran.left (R k)))
-        eq = trans (sym (BudgetSound.W.run-≈ ι k (pass-okᶠ (pass-okP P) funit funit f tt) []))
-                   (proj₁ (BudgetSound.S.soundₖ ι (Ran.run (R k)) (Ran.spends (R k)) (o-uncut k) (Ran.world (R k))))
+        eq = proj₁ (BudgetSound.S.soundₖ ι (Ran.run (R k)) (Ran.spends (R k)) (o-uncut k) (Ran.world (R k)))
 
     -- ★★ THE FLAT THEOREM, relative to what is owed: at some fuel the flat run shows the meaning's
     -- events and end at the budget, and, where the budget cut it, a control step per unit
@@ -368,10 +365,12 @@ module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
              (entry-frame : FrameSemantics.Frame Mach) (entry-regs : Registers Mach)
              -- ★ master's premise: the program is linked (every call names an entry, every FFI op declared)
              (linked : LinkedProgram (TM.Interp.sig ι) (irProgram tbl ir)) where
-  module TP = Top (FromIR.TrProg.prog tp) f ldConst ld-nl wordOf w-int w-float entry-frame entry-regs
+  ds = trP (FromIR.TrProg.prog tp)
+  f₀ = tr f
+  module TP = Top ds f₀ ldConst ld-nl wordOf w-int w-float entry-frame entry-regs
 
   -- ★ LINKED AT THE CORE (D445): the core program's ops are its IR's, each declared
-  decl : ∀ {s} → s ∈ ops (Program.U TP.ds TP.f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))
+  decl : ∀ {s} → s ∈ ops (Program.U ds f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))
   decl = LinkedCore.univ-ps (LinkedCore.FromLinked.Dc (TM.Interp.sig ι)) (FromIR.TrProg.prog tp) f
            (LinkedCore.FromLinked.table-ok (TM.Interp.sig ι) tbl etp (proj₁ (proj₂ (proj₂ linked))))
            (LinkedCore.FromLinked.tr-ok (TM.Interp.sig ι) (FromIR.trI-Tr (FromIR.TrProg.rs tp) ir ef) (proj₁ linked))
@@ -390,9 +389,9 @@ module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
     -- the translation means what master's program means, at every budget (B1.3's bridge, its
     -- casts and the table's `EnvOK`; bisimilar computations show the same: `RunBisim`)
     o-bridge : ∀ k → TP.obs k ≡ obsᴰ k
-    o-bridge k = run-≈ ι k (BP.bridge (Once.LinCore.Pass.⟦_⟧P fmt ans (FromIR.TrProg.prog tp)) (tableCalls fmt ans tbl)
+    o-bridge k = trans (BudgetSound.W.run-≈ ι k (pass-okᶠ (pass-okP (FromIR.TrProg.prog tp)) funit funit f tt) []) (run-≈ ι k (BP.bridge (Once.LinCore.Pass.⟦_⟧P fmt ans (FromIR.TrProg.prog tp)) (tableCalls fmt ans tbl)
                                      (casts (Once.LinCore.Pass.⟦_⟧P fmt ans (FromIR.TrProg.prog tp)) (tableCalls fmt ans tbl))
-                                     (env-ok tbl etp) (FromIR.trI-Tr (FromIR.TrProg.rs tp) ir ef) tt) []
+                                     (env-ok tbl etp) (FromIR.trI-Tr (FromIR.TrProg.rs tp) ir ef) tt) [])
 
     -- ★★ THE FLAT THEOREM AT MASTER'S MEANING (master's `flat-ends` and `flat-cut`)
     flat-ir : ∀ k → Σ ℕ λ N → (flat-events (suc N) TP.image TP.start-fs ≡ (proj₁ (obsᴰ k) , endAp (proj₂ (obsᴰ k))))
