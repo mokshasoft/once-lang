@@ -22,6 +22,8 @@ open import Agda.Builtin.Equality using (_≡_; refl)
 open import Agda.Builtin.Sigma using (_,_; fst; snd)
 open import Data.Product using (proj₁; proj₂)
 open import Data.Unit using (tt)
+open import Data.Product using (Σ)
+open import Once.Compile using (directCallIR)
 
 import Once.Spec.Grade as G
 open import Once.Spec.Type using (Ty; Type; _⇒[_]_)
@@ -189,3 +191,58 @@ module _ {L : Cx} where
   dcGd T@ST.Int       β = k-∘ β k-lul
   dcGd T@ST.Float     β = k-∘ β k-lul
   dcGd T@(ST.var ())  β
+
+-- `directCallIR`, by the same cases, at the call types above
+dcIR : (T : Type) → M.IR ⌊ ST.Unit {0} ⌋ ⌊ T ⌋ → M.IR ⌊ dcDom T ⌋ ⌊ dcCod T ⌋
+dcIR (A ⇒[ G.mk-kind G.Zero π ] B) ir = M.apply M.∘ M.⟨ ir M.∘ M.terminal , M.id ⟩
+dcIR (A ⇒[ G.mk-kind G.One π ] B)  ir = M.apply M.∘ M.⟨ ir M.∘ M.terminal , M.id ⟩
+dcIR (A ⇒[ G.mk-kind G.Many π ] B) ir = M.apply M.∘ M.⟨ ir M.∘ M.terminal , M.id ⟩
+dcIR ST.Unit ir = ir
+dcIR ST.Void ir = ir
+dcIR (X ST.* Y) ir = ir
+dcIR (X ST.+ Y) ir = ir
+dcIR (ST.μ F) ir = ir
+dcIR (ST.ν F f) ir = ir
+dcIR ST.Int ir = ir
+dcIR ST.Float ir = ir
+dcIR (ST.var ()) ir
+
+-- ★ master's direct call is this one
+dc-eq : (T : Type) (ir : M.IR ⌊ ST.Unit {0} ⌋ ⌊ T ⌋) → directCallIR T ir ≡ (dcDom T , dcCod T , dcIR T ir)
+dc-eq (A ⇒[ G.mk-kind G.Zero π ] B) ir = refl
+dc-eq (A ⇒[ G.mk-kind G.One π ] B)  ir = refl
+dc-eq (A ⇒[ G.mk-kind G.Many π ] B) ir = refl
+dc-eq ST.Unit ir = refl
+dc-eq ST.Void ir = refl
+dc-eq (X ST.* Y) ir = refl
+dc-eq (X ST.+ Y) ir = refl
+dc-eq (ST.μ F) ir = refl
+dc-eq (ST.ν F f) ir = refl
+dc-eq ST.Int ir = refl
+dc-eq ST.Float ir = refl
+dc-eq (ST.var ()) ir
+
+module DefRel {L : Cx} (δ : Env L) (ρ : CallEnv) where
+  open Rel δ ρ
+
+  -- the closure built on `tt`, beside the argument (`⟨ ir ∘ terminal , id ⟩`)
+  rel-beside : ∀ {X A : Once.IRTy.IRTy} {v : LTm L One ⟪ X ⟫} {v′ : M.IR Once.IRTy.Unit X}
+             → Rel v v′ → Rel ((v ⊗l lid {A = ⟪ A ⟫}) ∘l lul⁻) M.⟨ v′ M.∘ M.terminal , M.id ⟩
+  rel-beside rv = mkRel λ {a} {a′} wa →
+    ≈-≈R ret-bind (≈R-≈ (>>=-congR (rel rv tt) (λ r → ≈-≈R ret-bind (ret≈R (r , wa))))
+                        (≈-sym (≈-trans (>>=-cong ret-bind (λ _ → ≈-refl)) (>>=-cong ≈-refl (λ _ → ret-bind)))))
+
+  -- ★ a definition's body against master's direct call
+  rel-dc : ∀ (T : Type) {v : LTm L One (ty T)} {v′ : M.IR ⌊ ST.Unit {0} ⌋ ⌊ T ⌋} → Rel v v′ → Rel (dc T v) (dcIR T v′)
+  rel-dc (A ⇒[ G.mk-kind G.Zero π ] B) rv = rel-∘ (rel-apω {π = π}) (rel-beside rv)
+  rel-dc (A ⇒[ G.mk-kind G.One π ] B)  rv = rel-∘ (rel-apω {π = π}) (rel-beside rv)
+  rel-dc (A ⇒[ G.mk-kind G.Many π ] B) rv = rel-∘ (rel-apω {π = π}) (rel-beside rv)
+  rel-dc ST.Unit rv = rv
+  rel-dc ST.Void rv = rv
+  rel-dc (X ST.* Y) rv = rv
+  rel-dc (X ST.+ Y) rv = rv
+  rel-dc (ST.μ F) rv = rv
+  rel-dc (ST.ν F f) rv = rv
+  rel-dc ST.Int rv = rv
+  rel-dc ST.Float rv = rv
+  rel-dc (ST.var ()) rv
