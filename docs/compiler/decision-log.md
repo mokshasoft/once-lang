@@ -23949,3 +23949,28 @@ return `RetOK`, the closure's cell are in hand there); `o-sound` then yields the
 
 ### Alternatives
 (a) and (b) above. (c) before B1.7: the gates' obligations on about a hundred modules about to be deleted.
+
+## D440 — WHAT IS COMPILED SEES NO INTERPRETATION: THE CORE'S SYNTAX AND LOWERING TAKE `fmt` ONLY (2026-11-17)
+
+**Decided** (the user, 2026-11-17). **Applies**: GOAL.md "three times" (items 2 and 3: no particular
+Interpretation is in sight when Once is built or a program compiled), plan 0.146 B1.7 step 2.
+
+### The problem
+The new image (`Lower.Program′.image` of `FromIR`'s translation) is defined in modules parameterized by
+`(fmt : TargetNum) (ans : FFIAnswers)`, `ans` being `pureHalf ι`: the interpretation's answers. Only the
+core's semantics reads `ans` (a sigop's meaning, `NbEPLinCore`), but Agda abstracts every definition over
+its module's parameters, so the image `compile` would emit (at some fixed `ans₀`) and the image the apex
+reasons about (at `fs-ffi Mach`) are different terms, not definitionally equal for a variable program.
+Master's image already sees no interpretation (`program-image : CanonicalName → IRProgram → AbstractTrace`).
+
+### Options
+* (a) Split: the syntax, the translation and the lowering take `fmt` only (the arch's numerics are known
+  at compile time); the semantics and the proofs keep `ans`. `compile`'s image is the apex's by `refl`.
+* (b) `compile` fixes `ans₀`; a lemma proves the image the same at any two `ans` (an induction through the
+  translation, the pass and the lowering, undoing a parameter that should not be there).
+* (c) As (a), by `module _ (ans : FFIAnswers)` sections inside each mixed file.
+
+### Decision
+(a). Each module takes the parameters it uses; a module that mixes syntax and proof is split into its
+syntax module (`fmt`) and its proof module (`fmt ans`). No re-export (`public`): importers name the
+module that defines what they use.
