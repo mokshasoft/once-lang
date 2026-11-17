@@ -34,6 +34,7 @@ open import Once.Surface.CoerceIR using (runCoe)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Surface.Properties using (erase-arg-usage)
+open import Once.TypeCheck.Table using (mapIR)
 -- coerceIRArrow eliminated: curry/apply are now quantity-polymorphic
 
 open import Data.Fin using (Fin)
@@ -594,7 +595,7 @@ elaborate m (closed e) = elaborate m e ∘ terminal
 -- `curry (morph ∘ snd) : IR ⟦Γ⟧ᶜ (A ⇒ B)`. When the typechecker
 -- knows it is immediately applied, it emits `morph-app` instead,
 -- bypassing this curry/apply round-trip and the closure ABI.
-elaborate m (lift-morphism morph) = curry (morph ∘ snd)
+elaborate m (lift-morphism morph) = curry (mapIR morph ∘ snd)
 
 -- Plan 0.2.4.5 D2: morphism-realm application.
 -- `morph-app morph x` lowers as the pure CCC compose `morph ∘ elaborate x` —
@@ -603,7 +604,7 @@ elaborate m (lift-morphism morph) = curry (morph ∘ snd)
 -- principled lowering for "categorical-style" code (id chains,
 -- compose chains, primitives). See `plans/0.2.4.5-morphism-realm-split.md`.
 elaborate {Γ = Γ} m (morph-app {Ψ = Ψ} morph x) =
-  morph ∘ elaborate m x
+  mapIR morph ∘ elaborate m x
         ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψ)))
 
 -- D131: the catamorphism, with the algebra OBTAINED ONCE.

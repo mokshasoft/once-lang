@@ -55,6 +55,7 @@ import Once.Spec.Surface.Generators as G
 import Once.Spec.Surface.Typing as SUT
 open import Once.Generators using (fromCodomain?; fromDomain?)
 open import Once.TypeCheck.Table using (mapAt?; mapFrom?; mapTo?; MuV; muV; mu-at; mu-other; SumV; sumV; sum-at; sum-other)
+open import Once.Surface.Map using (Map)
 import Once.TypeCheck.FormSound as FS
 open import Once.Name using (showCanonical; WordName; wordNameB)
 import Once.Spec.Surface.Syntax as Syn
@@ -688,13 +689,13 @@ inferGen-sound ctx g (gk-comb₁ _) = tt
 inferGen-sound ctx g (gk-comb₂ _) = tt
 
 givenMap-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (A : Ty m) (π : Once.Spec.Grade.Purity)
-               → (mb : Maybe (Σ-syntax (Ty m) (λ B → IR ⌊ A ⌋ ⌊ B ⌋))) → mapFrom? (NamedCtx.kinds ctx) g A ≡ mb
+               → (mb : Maybe (Σ-syntax (Ty m) (λ B → Map A B))) → mapFrom? (NamedCtx.kinds ctx) g A ≡ mb
                → givenSoundOf ctx (Raw.RGen g) A π (givenMap ctx g A π mb)
 givenMap-sound ctx g A π (just (B , mI)) e = wd-map e
 givenMap-sound ctx g A π nothing         e = tt
 
 checkMapAt-go-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (A : Ty m) (π : Once.Spec.Grade.Purity) (B : Ty m)
-                    → (mb : Maybe (IR ⌊ A ⌋ ⌊ B ⌋)) → mapAt? (NamedCtx.kinds ctx) g A B ≡ mb
+                    → (mb : Maybe (Map A B)) → mapAt? (NamedCtx.kinds ctx) g A B ≡ mb
                     → checkSoundOf ctx (Raw.RGen g) (A ⇒ω⟨ π ⟩ B) (checkMapAt-go ctx g A π B mb)
 checkMapAt-go-sound ctx g A π B (just mI) e = wt-map-check e
 checkMapAt-go-sound ctx g A π B nothing   e = tt
@@ -706,7 +707,7 @@ checkMapAt-sound ctx g arrow-other      = tt
 
 inferMapSpine-go-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (x : Syn.Expr) {X : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
                        → (xE : SExpr (NamedCtx.debruijn ctx) Ψ X) (d fr : ℕ) → WI ctx x X Ψ xE
-                       → (mb : Maybe (Σ-syntax (Ty m) (λ B → IR ⌊ X ⌋ ⌊ B ⌋))) → mapFrom? (NamedCtx.kinds ctx) g X ≡ mb
+                       → (mb : Maybe (Σ-syntax (Ty m) (λ B → Map X B))) → mapFrom? (NamedCtx.kinds ctx) g X ≡ mb
                        → soundOf ctx (Raw.RApp (Raw.RGen g) x) (inferMapSpine-go ctx g xE d fr mb)
 inferMapSpine-go-sound ctx g x xE d fr w (just (B , mI)) e = wt-map-spine e w
 inferMapSpine-go-sound ctx g x xE d fr w nothing e = tt
@@ -815,7 +816,7 @@ mutual
   checkMapApp-sound : ∀ {m} (ctx : NamedCtx m) (f : Syn.Expr) (g : G.Gen) (x : Syn.Expr) (T : Ty m) (d : Dec (G.FromCodomain (G.kind g))) → f ≡ Raw.RGen g
                     → checkSoundOf ctx (Raw.RApp f x) T (checkMapApp ctx f g x T d)
   checkMapApp-go-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (x : Syn.Expr) (T : Ty m)
-                       → (mb : Maybe (Σ-syntax (Ty m) (λ A → IR ⌊ A ⌋ ⌊ T ⌋))) → mapTo? (NamedCtx.kinds ctx) g T ≡ mb
+                       → (mb : Maybe (Σ-syntax (Ty m) (λ A → Map A T))) → mapTo? (NamedCtx.kinds ctx) g T ≡ mb
                        → checkSoundOf ctx (Raw.RApp (Raw.RGen g) x) T (checkMapApp-go ctx g x T mb)
   checkComb₁-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (arg : Syn.Expr) (T : Ty m)
                    → checkSoundOf ctx (Raw.RApp (Raw.RGen g) arg) T (checkComb₁ ctx g arg T)

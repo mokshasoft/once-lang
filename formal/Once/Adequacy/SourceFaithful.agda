@@ -64,6 +64,7 @@ open import Once.Spec.Context using (Ctx; Usage; []; _*ᵘ_; _+ᵘ_; _⊑ᵘ_; l
 import Once.Spec.Context as SCx
 open import Once.Spec.Context using (_∷_; _⊑∷_; _▸_)
 open import Once.Surface.Syntax using (Expr)
+open import Once.TypeCheck.Table using (mapIR)
 open import Once.Context using () renaming (_,_ to _,ᶜ_)
 import Once.Context as SrfS
 open import Once.Surface.Properties using (erase-arg-usage)
@@ -576,10 +577,10 @@ mutual
        (RelS-bind (ih∘ (⊑ᵘ-+ˡ Ψ₁ Ψ₂) a r) λ ra → RelS-bind (ih∘ (⊑ᵘ-+ʳ Ψ₁ Ψ₂) b r) λ rb → relS-ret (ra , rb))
   -- IR embedding: a pre-built morphism means its own evaluation, related to
   -- itself by the evaluator's fundamental lemma.
-  faithful (lift-morphism {Γ = Γ} {A = A} {B = B} {π = π} morph) {dγ} r = lift-morph {Γ = Γ} {Ψ = zeroUsage} {A} {B} {π} morph dγ
+  faithful (lift-morphism {Γ = Γ} {A = A} {B = B} {π = π} morph) {dγ} r = lift-morph {Γ = Γ} {Ψ = zeroUsage} {A} {B} {π} (mapIR morph) dγ
   faithful (morph-app {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} morph e) {dγ} r =
-    ≡ˡ (cong-app (liftFn-∘ {_} {A} {B} {⟦ Γ ↾ (zeroUsage +ᵘ (Many *ᵘ Ψ)) ⟧ᶜ} morph (elaborate IR.Heap e ∘ restrictEnv {Γ = Γ} IR.Heap leM)) dγ)
-       (RelS-bind (ih∘ leM e r) (liftFn-rel fmt ρ-self {A} {B} morph))
+    ≡ˡ (cong-app (liftFn-∘ {_} {A} {B} {⟦ Γ ↾ (zeroUsage +ᵘ (Many *ᵘ Ψ)) ⟧ᶜ} (mapIR morph) (elaborate IR.Heap e ∘ restrictEnv {Γ = Γ} IR.Heap leM)) dγ)
+       (RelS-bind (ih∘ leM e r) (liftFn-rel fmt ρ-self {A} {B} (mapIR morph)))
     where
       -- `leM`, not `le`: `le` is an `Expr` constructor in scope via `open Expr`.
       leM = ⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψ))

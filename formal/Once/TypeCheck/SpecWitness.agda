@@ -55,7 +55,7 @@ open import Once.Denotation.SurfaceRefs using (InScope)
 open import Once.Denotation.Program using (Linked)
 import Once.Spec.Surface.Generators as G
 import Once.Spec.Core.Derived as Der
-open import Once.TypeCheck.Table using (mapAt?; mapFrom?; mapTo?; morphIR)
+open import Once.TypeCheck.Table using (mapAt?; mapFrom?; mapTo?; morphIR; mapIR)
 import Once.TypeCheck.TableSound as TS
 import Once.Metatheory.Surface.Basics
 
@@ -239,7 +239,8 @@ open import Once.Spec.Surface.Operator using (BinOp; binSym; BinSym)
 open BinSym using (theory; shape; symbol)
 open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; symCod; ‵neg)
 open import Once.TypeCheck.NumTable using (binDom)
-open import Once.Surface.Numeric using (numBin; toFloatIR)
+open import Once.Surface.Numeric using (numBin)
+open import Once.Surface.Map using (mp-toFloat)
 open import Data.Unit using (⊤; tt)
 
 -- The compiler's weakening is the Spec's `↑`.
@@ -420,20 +421,20 @@ private
   linked-≡ : ∀ {X Y : IRTy} {a b : IR X Y} → a ≡ b → Linked [] [] a → Linked [] [] b
   linked-≡ refl l = l
 
-map-linked-at : ∀ {m} {Δ : ST.KCtx m} {g A B mI} → mapAt? Δ g A B ≡ just mI → Linked [] [] mI
+map-linked-at : ∀ {m} {Δ : ST.KCtx m} {g A B mI} → mapAt? Δ g A B ≡ just mI → Linked [] [] (mapIR mI)
 map-linked-at {m} {Δ} {g} {A} {B} {mI} e =
   let ok = TS.mapAt?-sound {Δ = Δ} {S = SC.[]} {n = 0} g A LG.pure B {mI = mI} e
-  in linked-≡ (TS.AtOK.ir ok) (morph-linked (proj₂ (proj₂ (TS.AtOK.row ok))))
+  in linked-≡ (cong mapIR (TS.AtOK.ir ok)) (morph-linked (proj₂ (proj₂ (TS.AtOK.row ok))))
 
-map-linked-from : ∀ {m} {Δ : ST.KCtx m} {g A B mI} → mapFrom? Δ g A ≡ just (B , mI) → Linked [] [] mI
+map-linked-from : ∀ {m} {Δ : ST.KCtx m} {g A B mI} → mapFrom? Δ g A ≡ just (B , mI) → Linked [] [] (mapIR mI)
 map-linked-from {m} {Δ} {g} {A} {B} {mI} e =
   let ok = TS.mapFrom?-sound {Δ = Δ} {S = SC.[]} {n = 0} g A LG.pure {B = B} {mI = mI} e
-  in linked-≡ (TS.FromOK.ir ok) (morph-linked (proj₂ (proj₂ (TS.FromOK.row ok))))
+  in linked-≡ (cong mapIR (TS.FromOK.ir ok)) (morph-linked (proj₂ (proj₂ (TS.FromOK.row ok))))
 
-map-linked-to : ∀ {m} {Δ : ST.KCtx m} {g A B mI} → mapTo? Δ g B ≡ just (A , mI) → Linked [] [] mI
+map-linked-to : ∀ {m} {Δ : ST.KCtx m} {g A B mI} → mapTo? Δ g B ≡ just (A , mI) → Linked [] [] (mapIR mI)
 map-linked-to {m} {Δ} {g} {A} {B} {mI} e =
   let ok = TS.mapTo?-sound {Δ = Δ} {S = SC.[]} {n = 0} g B {A = A} {mI = mI} e
-  in linked-≡ (TS.ToOK.ir ok) (morph-linked (proj₂ (proj₂ (TS.ToOK.row ok))))
+  in linked-≡ (cong mapIR (TS.ToOK.ir ok)) (morph-linked (proj₂ (proj₂ (TS.ToOK.row ok))))
 
 -- An application's references: its head's and its argument's.
 refs-appT : ∀ {m} {ctx : NamedCtx m} {Ψ₁ Ψ₂ A B q} (π : LG.Purity) {f : SExpr (debruijn ctx) Ψ₁ (A ST.⇒[ LG.mk-kind q π ] B)} {x : SExpr (debruijn ctx) Ψ₂ A}
@@ -455,7 +456,7 @@ module _ {m} {ctx : NamedCtx m} where
 
   -- The constants of the table (`s-const`): `toFloat` (D408) and `unit`.
   wt-toFloat : WI ctx (SX.RGen G.toFloat) (ST.Int ST.⇒[ LG.mk-kind LG.Many LG.pure ] ST.Float) SCx.zeroUsage
-                  (SS.lift-morphism toFloatIR)
+                  (SS.lift-morphism mp-toFloat)
   wt-toFloat = tt , λ P → let open WMP P using (w-const) in _ , w-const G.k-toFloat , refl
 
   wt-unit : WI ctx SX.RUnit ST.Unit SCx.zeroUsage SS.unit

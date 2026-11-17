@@ -19,8 +19,7 @@ open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P�
 open import Once.Type.Poly
 open import Once.Type
 open import Once.Spec.Sub using (_<:_)
-open import Once.IR using (IR)
-open import Once.IRTy using (⌊_⌋)
+open import Once.Surface.Map using (Map)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Spec.Type using (WFFun; ∅ₖ)
 
@@ -231,7 +230,7 @@ data Expr {m} : ∀ {n} → Ctx m n → Usage n → Ty m → Set where
   -- threaded purity π. Pure sites infer π = pure (byte-identical to the old
   -- `A ⇒ B`); the effectful fused morphisms (cata algebras) use π = eff.
   lift-morphism : ∀ {n} {Γ : Ctx m n} {A B} {π : Purity}
-                → IR ⌊ A ⌋ ⌊ B ⌋ → Expr Γ zeroUsage (A ⇒[ mk-kind Many π ] B)
+                → Map A B → Expr Γ zeroUsage (A ⇒[ mk-kind Many π ] B)
 
   -- Plan 0.2.4.5 D2: morphism-realm application.
   --
@@ -252,7 +251,7 @@ data Expr {m} : ∀ {n} → Ctx m n → Usage n → Ty m → Set where
   -- (the default arrow grade). Keeping the shape identical to `app`'s
   -- emission lets us swap call sites without touching judgment rules.
   morph-app : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A B}
-            → IR ⌊ A ⌋ ⌊ B ⌋ → Expr Γ Ψ A → Expr Γ (zeroUsage +ᵘ (Many *ᵘ Ψ)) B
+            → Map A B → Expr Γ Ψ A → Expr Γ (zeroUsage +ᵘ (Many *ᵘ Ψ)) B
 
   ----------------------------------------------------------------
   -- D127: THE CATEGORICAL COMBINATORS AS TERM FORMERS.

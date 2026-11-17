@@ -69,7 +69,8 @@ open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; Rounded; Sym; s
 open import Once.TypeCheck.NumTable
   using (NumView; is-num; not-num; numView; _≟ⁿ_; has?; binDom;
          pairDom; binary?)
-open import Once.Surface.Numeric using (numBin; toFloatIR)
+open import Once.Surface.Numeric using (numBin)
+open import Once.Surface.Map using (Map; mp-toFloat)
 open import Once.Spec.Surface.Operator using (binSym; BinSym)
 open BinSym using (theory; shape; symbol)
 open import Once.Spec.Surface.Syntax using (signedDecimal)
@@ -983,7 +984,7 @@ mapSchema _          = PTVar "a" ⇒ω PTVar "a"
 -- of the table synthesizes.
 inferConst : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) → G.IsConstant (G.kind g) → InferElabResult (NamedCtx.debruijn ctx)
 inferConst ctx G.unit    _ = success Unit _ Surface.unit 0 0
-inferConst ctx G.toFloat _ = success (Int ⇒ω⟨ Once.Spec.Grade.pure ⟩ Float) _ (Surface.lift-morphism toFloatIR) 0 0
+inferConst ctx G.toFloat _ = success (Int ⇒ω⟨ Once.Spec.Grade.pure ⟩ Float) _ (Surface.lift-morphism mp-toFloat) 0 0
 inferConst ctx G.id ()
 inferConst ctx G.compose ()
 inferConst ctx G.fst ()
@@ -1009,14 +1010,14 @@ inferGen ctx g (gk-comb₂ _) = failure (genErr g)
 
 -- `d-map`: a structure map out of a given domain, at its least codomain.
 givenMap : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (A : Ty m) (π : Once.Spec.Grade.Purity)
-         → Maybe (Σ[ B ∈ Ty m ] IR ⌊ A ⌋ ⌊ B ⌋) → GivenElabResult (NamedCtx.debruijn ctx) A π
+         → Maybe (Σ[ B ∈ Ty m ] Map A B) → GivenElabResult (NamedCtx.debruijn ctx) A π
 givenMap ctx g A π (just (B , mI)) = success B Surface.zeroUsage (Surface.lift-morphism mI) 0 0
 givenMap ctx g A π nothing         = failure (NoInstance (G.word g) (mapDomSchema g) A)
 
 -- `c-map`: a structure map at a given arrow.
 checkMapAt : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) {T : Ty m} → ArrowTarget T → CheckElabResult (NamedCtx.debruijn ctx) T
 checkMapAt-go : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (A : Ty m) (π : Once.Spec.Grade.Purity) (B : Ty m)
-              → Maybe (IR ⌊ A ⌋ ⌊ B ⌋) → CheckElabResult (NamedCtx.debruijn ctx) (A ⇒ω⟨ π ⟩ B)
+              → Maybe (Map A B) → CheckElabResult (NamedCtx.debruijn ctx) (A ⇒ω⟨ π ⟩ B)
 checkMapAt-go ctx g A π B (just mI) = success Surface.zeroUsage (Surface.lift-morphism mI) 0 0
 checkMapAt-go ctx g A π B nothing   = failure (NoInstance (G.word g) (mapSchema g) (A ⇒ω⟨ π ⟩ B))
 checkMapAt ctx g (arrow-at A π B) = checkMapAt-go ctx g A π B (mapAt? (NamedCtx.kinds ctx) g A B)
@@ -1026,7 +1027,7 @@ checkMapAt ctx g {T} arrow-other  = failure (NoInstance (G.word g) (mapSchema g)
 -- the map's domain, and the map is applied (`s-app-spine` over `d-map`).
 inferMapSpine : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) → InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
 inferMapSpine-go : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) {X : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
-                 → SExpr (NamedCtx.debruijn ctx) Ψ X → (d fr : ℕ) → Maybe (Σ[ B ∈ Ty m ] IR ⌊ X ⌋ ⌊ B ⌋)
+                 → SExpr (NamedCtx.debruijn ctx) Ψ X → (d fr : ℕ) → Maybe (Σ[ B ∈ Ty m ] Map X B)
                  → InferElabResult (NamedCtx.debruijn ctx)
 inferMapSpine-go ctx g xE d fr (just (B , mI)) = success B _ (Surface.morph-app mI xE) (suc d) fr
 inferMapSpine-go ctx g xE d fr nothing         = failure (spineErr g)
@@ -1216,7 +1217,7 @@ mutual
   checkMapApp : ∀ {m} (ctx : NamedCtx m) (f : Syn.Expr) (g : G.Gen) (x : Syn.Expr) (T : Ty m) → Dec (G.FromCodomain (G.kind g))
               → CheckElabResult (NamedCtx.debruijn ctx) T
   checkMapApp-go : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (x : Syn.Expr) (T : Ty m)
-                 → Maybe (Σ[ A ∈ Ty m ] IR ⌊ A ⌋ ⌊ T ⌋) → CheckElabResult (NamedCtx.debruijn ctx) T
+                 → Maybe (Σ[ A ∈ Ty m ] Map A T) → CheckElabResult (NamedCtx.debruijn ctx) T
   -- The mediators.
   checkComb₁ : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (arg : Syn.Expr) (T : Ty m) → CheckElabResult (NamedCtx.debruijn ctx) T
   checkComb₂ : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (f h : Syn.Expr) (T : Ty m) → CheckElabResult (NamedCtx.debruijn ctx) T

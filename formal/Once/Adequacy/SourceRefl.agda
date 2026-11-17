@@ -40,6 +40,7 @@ open import Once.Denotation.ValueDomain using (coerce-functor-D)
 open import Once.Context using (⟦_⟧ᶜ; _↾_)
 open import Once.Spec.Context using (Ctx; Usage)
 open import Once.Surface.Syntax using (Expr)
+open import Once.TypeCheck.Table using (mapIR)
 open import Once.Type.Sub
 open import Once.Spec.Sub using (sub-*; sub-+)
 open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
@@ -224,9 +225,9 @@ module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
   SD-rel (num {A = nfloat} {k = compare} h o e) r =
     RelS-bind (SD-rel e r) λ rv → RelS-mono (λ {x} {y} → bool-rel {x = x} {y = y}) (sigOp-rel (numInfo h o) rv)
   SD-rel (coerce p e) r = RelS-fmap (SD-rel e r) (<:-rel p)
-  SD-rel (lift-morphism {A = A} {B = B} ir) r = relS-ret (liftFn-rel fmt (proj₁ rσ) {A} {B} ir)
+  SD-rel (lift-morphism {A = A} {B = B} ir) r = relS-ret (liftFn-rel fmt (proj₁ rσ) {A} {B} (mapIR ir))
   SD-rel (morph-app {Γ = Γ} {A = A} {B = B} ir e) r =
-    RelS-bind (SD-rel e (restrict-rel {Γ = Γ} _ r)) (liftFn-rel fmt (proj₁ rσ) {A} {B} ir)
+    RelS-bind (SD-rel e (restrict-rel {Γ = Γ} _ r)) (liftFn-rel fmt (proj₁ rσ) {A} {B} (mapIR ir))
   SD-rel (cata {Γ = Γ} {F = F} {A = A} {π = π} wf alg) r =
     RelS-bind (SD-rel alg (restrict-rel {Γ = Γ} _ r)) λ ralg → relS-ret (cata-clo-rel {A = A} {F = F} {π = π} wf ralg)
   SD-rel (ana {Γ = Γ} {F = F} {A = A} {π₀ = π₀} {φ = φ} wf coalg) r =

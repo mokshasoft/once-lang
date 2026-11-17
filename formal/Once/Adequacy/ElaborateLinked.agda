@@ -46,6 +46,7 @@ open import Once.Spec.Context using (Ctx; Usage; []; _*ᵘ_; _⊑ᵘ_; lookup; z
 open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
 open import Once.Surface.Context
 open import Once.Surface.Syntax
+open import Once.TypeCheck.Table using (mapIR)
 open import Once.Spec.Theory using (unary; binary; compare) renaming (int to nint; float to nfloat)
 open import Once.Denotation.SurfaceRefs using (Refs)
 open import Once.Surface.CoerceIR using (runCoe; runCoe-dec; voidFree?; VoidFree; coeIR; erase-eq)
@@ -369,9 +370,9 @@ module _ {σ : ISig} (tbl : List IRFun) where
   elaborate-linked′ m (closure name) r = r , tt
   elaborate-linked′ m (poly name _) r = r , tt
   elaborate-linked′ m (closed e) r = elaborate-linked′ m e r , tt
-  elaborate-linked′ m (lift-morphism morph) r = cf morph (linked-σ morph r) , tt
+  elaborate-linked′ m (lift-morphism morph) r = cf (mapIR morph) (linked-σ (mapIR morph) r) , tt
   elaborate-linked′ m {Γ = Γ} (morph-app {Ψ = Ψ} morph x) (rm , rx) =
-    cf morph (linked-σ morph rm) , (elaborate-linked′ m x rx , rE {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψ))))
+    cf (mapIR morph) (linked-σ (mapIR morph) rm) , (elaborate-linked′ m x rx , rE {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψ))))
   elaborate-linked′ m {Γ = Γ} (cata {Ψ = Ψ} {F = F} {A = A} wfF alg) r =
     Linked-subst (λ o → (⌊ ⟦ F ⟧F A ⌋ Once.IRTy.⇛[ _ ] ⌊ A ⌋) Once.IRTy.* o) (λ _ → ⌊ A ⌋)
                  (Once.IRTy.⌊⟧T-commute F A) (IR.apply IR.∘ IR.⟨ IR.fst , IR.snd ⟩) (tt , (tt , tt))

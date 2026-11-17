@@ -166,7 +166,7 @@ open import Once.Spec.Surface.Operator using (binSym; BinSym)
 open BinSym using (symbol)
 open import Once.TypeCheck.NumTable using (binDom)
 open import Once.Arith.SigOp.Builders using (numInfo; i2f-info)
-open import Once.Surface.Numeric using (toFloatIR)
+open import Once.Surface.Map using (mp-toFloat; mp-apply; mp-In; mp-Out)
 open import Once.Adequacy.NumAgree using (num-agree; i2f-agree)
 open import Once.Float.EncodingLaws using (decode-encode)
 open import Once.Metatheory.Float.Range using (roundDec-inRange)
@@ -256,13 +256,12 @@ subst-R refl r = r
 -- | `toFloat`: the Spec's conversion against the implementation's `SigOp`.
 toFloat-R : ∀ {Δ′ : KCtx 0} {n} {Γ : Ctx 0 n} {δ γ dγ₂}
           → RelGM pure (Int ⇒[ mk-kind Many pure ] Float) (⟦ ⊢toFloatᶜ Σ S {m = 0} {Δ = Δ′} {Γ = Γ} ⟧ₛ δ γ)
-                    ((SD.⟦ lift-morphism {Γ = Γ} {A = Int} {B = Float} {π = pure} toFloatIR ⟧ˢ fmt σ) dγ₂)
+                    ((SD.⟦ lift-morphism {Γ = Γ} {A = Int} {B = Float} {π = pure} mp-toFloat ⟧ˢ fmt σ) dγ₂)
 toFloat-R {Δ′} {Γ = Γ} {δ} {γ} =
   return∞-R (subst (RelGV (Int ⇒[ mk-kind Many pure ] Float) (⟦ ⊢toFloatᶜ Σ S {m = 0} {Δ = Δ′} {Γ = Γ} ⟧ₛ δ γ)) (sym (liftFn-SigOp i2f-info))
                         ((λ r → emb-retᴿ (i2f-agree fmt r)) , (λ ra → sigOp-rel σ-self i2f-info ra)))
 
 import Once.Spec.Surface.Generators as Gn
-open import Once.TypeCheck.Table using (applyIR; inIR; outTIR)
 open import Once.Spec.Core.Derived using (𝕋)
 
 module _ {δ : DefSem} where
@@ -271,11 +270,11 @@ module _ {δ : DefSem} where
   -- argument's result is the applied bridge's, at the arrow's grade; the IR
   -- side is self-related as any lifted function.
   private
-    bare-applyEff : ∀ {n} {Γ : Ctx 0 n} {γ dγ₂} (A B : Type) (ρ π : Purity)
+    bare-applyEff : ∀ {n} {Γ : Ctx 0 n} {γ} (A B : Type) (ρ π : Purity)
                   → RelGM pure (((A ⇒[ mk-kind Many ρ ] B) * A) ⇒[ mk-kind Many π ] (Unit ⇒[ mk-kind Many ρ ] B))
                             (⟦ ⊢applyEffᶜ {Δ = Δ} {Γ = Γ} {π = ρ} {A = A} {B = B} (pure-⊑ π) ⟧ₛ δ γ)
-                            ((SD.⟦ lift-morphism {Γ = Γ} {A = (A ⇒[ mk-kind Many ρ ] B) * A} {B = Unit ⇒[ mk-kind Many ρ ] B} {π = π}
-                                     (IR.curry (IR.apply IR.∘ IR.fst)) ⟧ˢ fmt σ) dγ₂)
+                            (SD.liftD fmt (calls σ) {(A ⇒[ mk-kind Many ρ ] B) * A} {Unit ⇒[ mk-kind Many ρ ] B}
+                                     (IR.curry (IR.apply IR.∘ IR.fst)))
     bare-applyEff {γ = γ} A B ρ π =
       ≡ˡ {A = ((A ⇒[ mk-kind Many ρ ] B) * A) ⇒[ mk-kind Many π ] (Unit ⇒[ mk-kind Many ρ ] B)} (sym (⟦⟧-substΨ (z+qz {Δ = Δ} Many) _ δ γ))
          (return∞-R ((λ {p} {p′} rv → RelGM-ret (pure-⊑ π) {Unit ⇒[ mk-kind Many ρ ] B}
@@ -294,25 +293,25 @@ module _ {δ : DefSem} where
     bare-apply : ∀ {n} {Γ : Ctx 0 n} {γ dγ₂} (A B : Type) (ρ π : Purity)
                → RelGM pure (((A ⇒[ mk-kind Many ρ ] B) * A) ⇒[ mk-kind Many π ] 𝕋 ρ B)
                          (⟦ ⊢applyᵀ {Δ = Δ} {Γ = Γ} {A = A} {B = B} ρ (pure-⊑ π) ⟧ₛ δ γ)
-                         ((SD.⟦ lift-morphism {Γ = Γ} {A = (A ⇒[ mk-kind Many ρ ] B) * A} {B = 𝕋 ρ B} {π = π} (applyIR A B ρ) ⟧ˢ fmt σ) dγ₂)
+                         ((SD.⟦ lift-morphism {Γ = Γ} {A = (A ⇒[ mk-kind Many ρ ] B) * A} {B = 𝕋 ρ B} {π = π} (mp-apply A B ρ) ⟧ˢ fmt σ) dγ₂)
     bare-apply {γ = γ} A B pure π =
       ≡ˡ {A = ((A ⇒[ mk-kind Many pure ] B) * A) ⇒[ mk-kind Many π ] B} (sym (⟦⟧-substΨ (z+qz {Δ = Δ} Many) _ δ γ))
          (return∞-R ((λ {p} {p′} rv → RelGM-ret (pure-⊑ π) {B}
                                          (≡ʳ (cong-app (liftFn-apply {0} {A} {B} {pure}) p′) (proj₁ (proj₁ rv) (proj₂ rv))))
                     , (λ ra → liftFn-rel fmt (proj₁ σ-self) {(A ⇒[ mk-kind Many pure ] B) * A} {B} IR.apply ra)))
-    bare-apply {Γ = Γ} {γ = γ} {dγ₂ = dγ₂} A B act π = bare-applyEff {Γ = Γ} {γ = γ} {dγ₂ = dγ₂} A B act π
-    bare-apply {Γ = Γ} {γ = γ} {dγ₂ = dγ₂} A B eff π = bare-applyEff {Γ = Γ} {γ = γ} {dγ₂ = dγ₂} A B eff π
+    bare-apply {Γ = Γ} {γ = γ} {dγ₂ = dγ₂} A B act π = bare-applyEff {Γ = Γ} {γ = γ} A B act π
+    bare-apply {Γ = Γ} {γ = γ} {dγ₂ = dγ₂} A B eff π = bare-applyEff {Γ = Γ} {γ = γ} A B eff π
 
     bare-In : ∀ {n} {Γ : Ctx 0 n} {γ dγ₂} {F : Once.Spec.Type.Fun 0} (wfF : WFFun Δ F) (π : Purity)
             → RelGM pure (⟦ F ⟧F (μ F) ⇒[ mk-kind Many π ] μ F) (⟦ ⊢inᶜ {Δ = Δ} {Γ = Γ} (pure-⊑ π) wfF ⟧ₛ δ γ)
-                      ((SD.⟦ lift-morphism {Γ = Γ} {A = ⟦ F ⟧F (μ F)} {B = μ F} {π = π} (inIR F wfF) ⟧ˢ fmt σ) dγ₂)
+                      ((SD.⟦ lift-morphism {Γ = Γ} {A = ⟦ F ⟧F (μ F)} {B = μ F} {π = π} (mp-In F wfF) ⟧ˢ fmt σ) dγ₂)
     bare-In {F = F} wfF π =
       return∞-R ((λ rv → RelGM-ret (pure-⊑ π) {μ F} (in-app-bridge {wfF = wfF} rv))
                , (λ ra → liftFn-rel fmt (proj₁ σ-self) {⟦ F ⟧F (μ F)} {μ F} (In-ir wfF) ra))
 
     bare-Out : ∀ {n} {Γ : Ctx 0 n} {γ dγ₂} {F : Once.Spec.Type.Fun 0} (wfF : WFFun Δ F) (f : Finite) (π : Purity)
              → RelGM pure (ν F f ⇒[ mk-kind Many π ] 𝕋 (fin f) (⟦ F ⟧F (ν F f))) (⟦ ⊢outᵀ {Δ = Δ} {Γ = Γ} {F = F} f (pure-⊑ π) wfF ⟧ₛ δ γ)
-                       ((SD.⟦ lift-morphism {Γ = Γ} {A = ν F f} {B = 𝕋 (fin f) (⟦ F ⟧F (ν F f))} {π = π} (outTIR F f wfF) ⟧ˢ fmt σ) dγ₂)
+                       ((SD.⟦ lift-morphism {Γ = Γ} {A = ν F f} {B = 𝕋 (fin f) (⟦ F ⟧F (ν F f))} {π = π} (mp-Out F f wfF) ⟧ˢ fmt σ) dγ₂)
     bare-Out {F = F} wfF pureᶠ π =
       return∞-R ((λ rv → RelGM-ret (pure-⊑ π) {⟦ F ⟧F (ν F pureᶠ)} (out-app-bridge {π = pureᶠ} {wfF = wfF} rv))
                , (λ ra → liftFn-rel fmt (proj₁ σ-self) {ν F pureᶠ} {⟦ F ⟧F (ν F pureᶠ)} (Out-ir wfF) ra))

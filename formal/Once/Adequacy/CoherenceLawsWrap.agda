@@ -42,6 +42,7 @@ open import Once.Spec.Sub using (sub-*)
 open import Once.Spec.Context using (_∷_; _▸_)
 open import Once.Spec.Theory using (Has; Sym; symDom)
 open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; num; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; loop; lift-morphism)
+open import Once.Surface.Map using (Map; mp-initial)
 import Once.Type
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
@@ -69,7 +70,7 @@ module _ {m n} {Γ : Ctx m n} where
   coerce-cong {A = A} {B = B} {Ψ = Ψ} p {a} {a′} (≈-intro h1) = ≈-intro (coerce-congˢ {Γ = Γ} {A = A} {B = B} {Ψ = Ψ} p {a} {a′} h1)
 
 module _ {m n} {Γ : Ctx m n} where
-  morph-app-cong : ∀ {Ψ A B} (ir : IR ⌊ A ⌋ ⌊ B ⌋) {a a′ : Expr Γ Ψ A} → a ≈ a′ → morph-app {A = A} {B = B} ir a ≈ morph-app {A = A} {B = B} ir a′
+  morph-app-cong : ∀ {Ψ A B} (ir : Map A B) {a a′ : Expr Γ Ψ A} → a ≈ a′ → morph-app {A = A} {B = B} ir a ≈ morph-app {A = A} {B = B} ir a′
   morph-app-cong {Ψ} {A} {B} ir {a} {a′} (≈-intro h1) = ≈-intro (morph-app-congˢ {Γ = Γ} {Ψ = Ψ} {A = A} {B = B} ir {a} {a′} h1)
 
 module _ {m n} {Γ : Ctx m n} where
@@ -159,7 +160,7 @@ module _ {m n} {Γ : Ctx m n} where
   fork-coerce {A = A} {B = B} {B′ = B′} {C = C} {C′ = C′} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} pb pc r f g = ≈-intro (fork-coerceˢ {Γ = Γ} {A = A} {B = B} {B′ = B′} {C = C} {C′ = C′} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {π = π} pb pc r f g)
 
 module _ {m n} {Γ : Ctx m n} where
-  initial-coerce : ∀ {A π} (r : π ⊑π π) → coerce (sub-arr sub-void sub-void r) (lift-morphism {Γ = Γ} {A = Void} {B = Void} {π = π} IR.initial) ≈ lift-morphism {Γ = Γ} {A = Void} {B = A} {π = π} IR.initial
+  initial-coerce : ∀ {A π} (r : π ⊑π π) → coerce (sub-arr sub-void sub-void r) (lift-morphism {Γ = Γ} {A = Void} {B = Void} {π = π} mp-initial) ≈ lift-morphism {Γ = Γ} {A = Void} {B = A} {π = π} mp-initial
   initial-coerce {A} {π} r = ≈-intro (initial-coerceˢ {Γ = Γ} {A = A} {π = π} r)
 
 module _ {m n} {Γ : Ctx m n} where

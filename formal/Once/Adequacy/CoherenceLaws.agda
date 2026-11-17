@@ -53,6 +53,8 @@ open import Once.Context using (⟦_⟧ᶜ; _↾_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-
 open import Once.Spec.Context using (Ctx; Usage; _*ᵘ_; zeroUsage)
 open import Once.Spec.Context using (_∷_; _▸_)
 open import Once.Surface.Syntax using (Expr; lam; app; effApp; pair; let'; case'; num; coerce; morph-app; comp'; copair'; fork'; curry'; cata; ana; loop; lift-morphism)
+open import Once.Surface.Map using (Map; mp-initial)
+open import Once.TypeCheck.Table using (mapIR)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; seqF∞)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-rel)
@@ -132,9 +134,9 @@ module _ {m n} {Γ : Ctx m n} where
   coerce-congˢ : ∀ {A B : Ty m} {Ψ} (p : A <: B) {a a′ : Expr Γ Ψ A} → a ≈ˢ a′ → coerce p a ≈ˢ coerce p a′
   coerce-congˢ p ea σ rσ r = RelS-fmap (ea σ rσ r) (<:-rel p)
 
-  morph-app-congˢ : ∀ {Ψ A B} (ir : IR ⌊ A ⌋ ⌊ B ⌋) {a a′ : Expr Γ Ψ A} → a ≈ˢ a′ → morph-app {A = A} {B = B} ir a ≈ˢ morph-app {A = A} {B = B} ir a′
+  morph-app-congˢ : ∀ {Ψ A B} (ir : Map A B) {a a′ : Expr Γ Ψ A} → a ≈ˢ a′ → morph-app {A = A} {B = B} ir a ≈ˢ morph-app {A = A} {B = B} ir a′
   morph-app-congˢ {Ψ} {A} {B} ir ea σ rσ r =
-    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) (liftFn-rel fmt (proj₁ rσ) {A} {B} ir)
+    RelS-bind (ea σ rσ (restrict-rel {Γ = Γ} _ r)) (liftFn-rel fmt (proj₁ rσ) {A} {B} (mapIR ir))
 
   app-congˢ : ∀ {Ψ₁ Ψ₂ A B q} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind q Once.Spec.Grade.pure ] B)} {x x′ : Expr Γ Ψ₂ A}
            → f ≈ˢ f′ → x ≈ˢ x′ → app f x ≈ˢ app f′ x′
@@ -314,8 +316,8 @@ module _ {m n} {Γ : Ctx m n} where
 
   -- `initial` at any codomain: a function out of `Void` is unique.
   initial-coerceˢ : ∀ {A π} (r : π ⊑π π)
-                 → coerce (sub-arr sub-void sub-void r) (lift-morphism {Γ = Γ} {A = Void} {B = Void} {π = π} IR.initial)
-                   ≈ˢ lift-morphism {Γ = Γ} {A = Void} {B = A} {π = π} IR.initial
+                 → coerce (sub-arr sub-void sub-void r) (lift-morphism {Γ = Γ} {A = Void} {B = Void} {π = π} mp-initial)
+                   ≈ˢ lift-morphism {Γ = Γ} {A = Void} {B = A} {π = π} mp-initial
   initial-coerceˢ r σ rσ re = retargetˡ refl (relS-ret λ { {()} })
 
 ------------------------------------------------------------------------

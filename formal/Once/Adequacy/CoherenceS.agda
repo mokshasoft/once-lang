@@ -56,7 +56,8 @@ open import Once.Spec.Context using (lookup; singleUse; zeroUsage; _∷_)
 import Once.Spec.Surface.Syntax as R
 import Once.Spec.Surface.Generators as Gn
 open Gn using (is-map; is-combinator)
-open import Once.TypeCheck.Table using (morphIR)
+open import Once.TypeCheck.Table using (morphMap)
+import Once.Surface.Map
 open import Once.Type.Join using (<:ᶜ-antisym)
 open import Once.Surface.Syntax using (lift-morphism; morph-app; appT; cata)
 open import Once.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
@@ -138,7 +139,7 @@ private
 
   -- One structure map at one type is one morphism.
   morph-unique : ∀ {n′} {g k k′ A π B} {t t′ : Once.Spec.Core.Syntax.Tm S m n′}
-                 (mo : Gn.Morphism Δ g k A π B t) (mo′ : Gn.Morphism Δ g k′ A π B t′) → morphIR mo ≡ morphIR mo′
+                 (mo : Gn.Morphism Δ g k A π B t) (mo′ : Gn.Morphism Δ g k′ A π B t′) → morphMap mo ≡ morphMap mo′
   morph-unique Gn.m-id       Gn.m-id       = refl
   morph-unique Gn.m-fst      Gn.m-fst      = refl
   morph-unique Gn.m-snd      Gn.m-snd      = refl
@@ -147,8 +148,8 @@ private
   morph-unique Gn.m-inr      Gn.m-inr      = refl
   morph-unique Gn.m-initial  Gn.m-initial  = refl
   morph-unique Gn.m-apply    Gn.m-apply    = refl
-  morph-unique (Gn.m-In {F = F} w) (Gn.m-In w′) = cong (Once.TypeCheck.Table.inIR F) (WFFun-irrelevant w w′)
-  morph-unique (Gn.m-Out {F = F} {f = f} w) (Gn.m-Out w′) = cong (Once.TypeCheck.Table.outTIR F f) (WFFun-irrelevant w w′)
+  morph-unique (Gn.m-In {F = F} w) (Gn.m-In w′) = cong (Once.Surface.Map.mp-In F) (WFFun-irrelevant w w′)
+  morph-unique (Gn.m-Out {F = F} {f = f} w) (Gn.m-Out w′) = cong (Once.Surface.Map.mp-Out F f) (WFFun-irrelevant w w′)
 
   final-cod : ∀ {n′} {A π₀ X G G′ ρ ρ′} {k k′ : Once.Spec.Core.Syntax.Tm S m n′ → Once.Spec.Core.Syntax.Tm S m n′}
             → Gn.Final Δ A π₀ X G ρ k → Gn.Final Δ A π₀ X G′ ρ′ k′ → (A ⇒[ mk-kind Many ρ ] G A) ≡ (A ⇒[ mk-kind Many ρ′ ] G′ A)
@@ -261,16 +262,16 @@ module _ {n} {Γ : Ctx m n} where
   -- One structure map, lifted.
   map-h : ∀ {n′} {g k k′ A π B B′} {t t′ : Once.Spec.Core.Syntax.Tm S m n′}
           (mo : Gn.Morphism Δ g k A π B t) (mo′ : Gn.Morphism Δ g k′ A π B′ t′) → B ≡ B′
-        → lift-morphism {Γ = Γ} {A = A} {B = B} {π = π} (morphIR mo) ≅ lift-morphism {Γ = Γ} {A = A} {B = B′} {π = π} (morphIR mo′)
+        → lift-morphism {Γ = Γ} {A = A} {B = B} {π = π} (morphMap mo) ≅ lift-morphism {Γ = Γ} {A = A} {B = B′} {π = π} (morphMap mo′)
   map-h {A = A} {π = π} {B = B} mo mo′ refl = ≅-of (≡→≈ (cong (lift-morphism {Γ = Γ} {A = A} {B = B} {π = π}) (morph-unique mo mo′)))
 
   -- One structure map, applied.
   morph-app-h : ∀ {n′} {g k k′ A A′ B B′ Ψ Ψ′} {t t′ : Once.Spec.Core.Syntax.Tm S m n′}
                 (mo : Gn.Morphism Δ g k A pure B t) (mo′ : Gn.Morphism Δ g k′ A′ pure B′ t′)
                 {x : Expr Γ Ψ A} {x′ : Expr Γ Ψ′ A′} → B ≡ B′ → x ≅ x′
-              → morph-app {A = A} {B = B} (morphIR mo) x ≅ morph-app {A = A′} {B = B′} (morphIR mo′) x′
+              → morph-app {A = A} {B = B} (morphMap mo) x ≅ morph-app {A = A′} {B = B′} (morphMap mo′) x′
   morph-app-h {A = A} {B = B} mo mo′ {x′ = x′} refl (≅i refl refl h) =
-    ≅i refl refl (≈-trans (morph-app-cong (morphIR mo) h)
+    ≅i refl refl (≈-trans (morph-app-cong (morphMap mo) h)
                           (≡→≈ (cong (λ ir → morph-app {A = A} {B = B} ir x′) (morph-unique mo mo′))))
 
   -- The fold of a synthesized algebra, converted to the functor's.

@@ -54,6 +54,7 @@ open TargetNum using (int-bits; float-format)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.IR.Ref using (refIR)
+open import Once.TypeCheck.Table using (mapIR)
 open import Once.Type.Concrete using (con-base; con-fun)
 open import Once.Spec.Type using (WFFun; b-Unit; ∅ₖ)
 open import Once.Semantics.Machine
@@ -307,14 +308,14 @@ sigOpSem A name (con-base ib) fmt σ = sigOpˢ fmt σ (value-info {Unit} {A} nam
 -- are leaves embedding a fixed morphism, not the elaboration of a user subterm.
 -- Plan 0.52 M2: `ir : IR ⌊A⌋ ⌊B⌋`, so `evalᴰ ir : ⟦⌊A⌋⟧ᴰᴵ → T∞ ⟦⌊B⌋⟧ᴰᴵ`;
 -- `cohᴰ` transports it to the surface `⟦A⟧ᴰ → T∞ ⟦B⟧ᴰ` (grade-blind erasure).
-⟦ lift-morphism {A = A} {B = B} ir ⟧ˢ fmt σ dγ = liftD fmt (calls σ) {A} {B} ir
+⟦ lift-morphism {A = A} {B = B} ir ⟧ˢ fmt σ dγ = liftD fmt (calls σ) {A} {B} (mapIR ir)
 -- D226: a conversion along `p` maps the RESULT by `⟦ p ⟧<:`; the trace is
 -- untouched. At the grade instance (the former `arr'`) this is the identity
 -- up to `<:-refl-id`.
 ⟦ coerce p e ⟧ˢ fmt σ   dγ = fmap∞ ⟦ p ⟧<: (⟦ e ⟧ˢ fmt σ dγ)
 ⟦ morph-app {Γ = Γ} {Ψ = Ψₑ} {A = A} {B = B} ir e ⟧ˢ fmt σ dγ =
   ⟦ e ⟧ˢ fmt σ (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψₑ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψₑ))) dγ)
-  >>=∞ λ v → subst T∞ (cohᴰ B) (evalᴰ fmt (calls σ) ir (subst (λ z → z) (sym (cohᴰ A)) v))
+  >>=∞ λ v → subst T∞ (cohᴰ B) (evalᴰ fmt (calls σ) (mapIR ir) (subst (λ z → z) (sym (cohᴰ A)) v))
 -- Cata: the structural fold. D131 — the algebra is OBTAINED ONCE, here, and
 -- the fold sees a PURE closure (`return∞ valg`) at every layer. It used to
 -- pass `⟦ alg ⟧ˢ fmt σ tt` — a computation — straight into `cata-ev-algˢ`, which

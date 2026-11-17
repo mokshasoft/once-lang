@@ -63,6 +63,7 @@ open import Once.Spec.Context using (Usage)
 import Once.Spec.Context as Srf
 import Once.Spec.Context as SCx
 open import Once.Surface.Syntax as Srf using (Expr)
+open import Once.TypeCheck.Table using (mapIR)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.IR.Semantics.StreamInf using (anaFᴵ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ; coerce-functor-D)
@@ -370,7 +371,7 @@ resolveExpr-faithful polys imps userFns fresh
     (Srf.morph-app {Γ = Γ} {Ψ = Ψₑ} {A = A} {B = B} ir a) dγ =
   unop-faithful {C = B} polys imps userFns fresh a
     (Srf.⊑ᵘ-trans (Srf.⊑ᵘ-*Many Ψₑ) (Srf.⊑ᵘ-+ʳ Srf.zeroUsage (Many Srf.*ᵘ Ψₑ)))
-    (λ v → subst T∞ (cohᴰ B) (evalᴰ fmt ρ ir (subst (λ z → z) (sym (cohᴰ A)) v)))
+    (λ v → subst T∞ (cohᴰ B) (evalᴰ fmt ρ (mapIR ir) (subst (λ z → z) (sym (cohᴰ A)) v)))
     dγ (resolveExpr-faithful polys imps userFns fresh a
           (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-trans (Srf.⊑ᵘ-*Many Ψₑ)
                         (Srf.⊑ᵘ-+ʳ Srf.zeroUsage (Many Srf.*ᵘ Ψₑ))) dγ))

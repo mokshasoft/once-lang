@@ -33,7 +33,7 @@ open import Once.Spec.Grade using (Many; Purity; mk-kind; pureᶠ; actᶠ; act; 
 open import Once.Spec.Type using (Ty; _⇒[_]_; _⟨_⟩; μ; ν; Unit)
 open import Once.Spec.Core.Derived using (𝕋)
 open import Once.Spec.Surface.Generators using (Constant; Final; k-unit; k-toFloat; final-ν; final-T∞)
-open import Once.TypeCheck.Table using (morphIR)
+open import Once.TypeCheck.Table using (morphMap)
 open import Once.Spec.Sub using (sub-arr; _⊔_≔_)
 open _⊔_≔_ using (left; right)
 open import Once.Spec.Core.Syntax using (module Schema; _!!_)
@@ -52,7 +52,8 @@ import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals)
 open import Once.Spec.Surface.Syntax using (signedDecimal)
 open import Once.Spec.Theory using (‵neg)
-open import Once.Surface.Numeric using (numBin; toFloatIR)
+open import Once.Surface.Numeric using (numBin)
+open import Once.Surface.Map using (mp-toFloat)
 open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
 open import Once.Core.Decl using (⌜declS⌝)
 
@@ -65,7 +66,7 @@ ref d T false = closure (showCanonical (nm d))
 constE : ∀ {n} {Γ : Once.Spec.Context.Ctx m n} {g k T} {t : Once.Spec.Core.Syntax.Tm S m n}
        → Constant Δ g k T t → Expr Γ Once.Spec.Context.zeroUsage T
 constE k-unit    = unit
-constE k-toFloat = lift-morphism toFloatIR
+constE k-toFloat = lift-morphism mp-toFloat
 
 -- The unfold into a final coalgebra of the table.
 anaE : ∀ {n} {Γ : Once.Spec.Context.Ctx m n} {Ψ A π₀ X G ρ k}
@@ -100,8 +101,8 @@ realize⇒ sh (u-binop {op = op} {A = A} {h = h} u₁ u₂) = numBin op A h (rea
 realize⇒ sh (u-app {π = π} uf ux)   = appT π (realize⇒ sh uf) (realize⇐ sh ux)
 realize⇒ sh (u-app-spine ux uf)     = spineE sh (realize⇒ sh ux) uf
 
-realize⇐ sh (u-map {mo = mo})       = lift-morphism (morphIR mo)
-realize⇐ sh (u-map-app {mo = mo} u) = morph-app (morphIR mo) (realize⇐ sh u)
+realize⇐ sh (u-map {mo = mo})       = lift-morphism (morphMap mo)
+realize⇐ sh (u-map-app {mo = mo} u) = morph-app (morphMap mo) (realize⇐ sh u)
 realize⇐ sh (u-compose-g ug uf)     = comp' (realize⇐ sh uf) (realize↦ sh ug)
 realize⇐ sh (u-compose-f {p = p} uf ug) = comp' (coerce p (realize⇒ sh uf)) (realize⇐ sh ug)
 realize⇐ sh (u-case uf ug)          = copair' (realize⇐ sh uf) (realize⇐ sh ug)
@@ -119,14 +120,14 @@ realize↦ sh (u-poly {d = d} {π′ = π′} {A = A} {B = B} {o = o}) =
   coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) o) (ref d (A ⇒[ mk-kind Many π′ ] B) (inline d))
 realize↦ sh (u-lam {q′ = q′} u)     = lam Many (≤q-Many q′) (realize⇒ (sh-▸ sh) u)
 realize↦ sh (u-compose ug uf)       = comp' (realize↦ sh uf) (realize↦ sh ug)
-realize↦ sh (u-map {mo = mo})       = lift-morphism (morphIR mo)
+realize↦ sh (u-map {mo = mo})       = lift-morphism (morphMap mo)
 realize↦ sh (u-case {j = j} uf ug)  =
   copair' (coerce (sub-arr (<:-refl _) (<:ᶜ⇒<: (left j)) (⊑π-refl _)) (realize↦ sh uf))
           (coerce (sub-arr (<:-refl _) (<:ᶜ⇒<: (right j)) (⊑π-refl _)) (realize↦ sh ug))
 realize↦ sh (u-pair uf ug)          = fork' (realize↦ sh uf) (realize↦ sh ug)
 realize↦ sh (u-cata {A = A} {w = w} {p = p} {o = o} u) = cata w (coerce (sub-arr p (<:-refl A) o) (realize⇒ sh u))
 
-spineE sh x (u-map {mo = mo})      = morph-app (morphIR mo) x
+spineE sh x (u-map {mo = mo})      = morph-app (morphMap mo) x
 spineE sh x u@(u-infer _)          = app (realize↦ sh u) x
 spineE sh x u@u-poly               = app (realize↦ sh u) x
 spineE sh x u@(u-lam _)            = app (realize↦ sh u) x
