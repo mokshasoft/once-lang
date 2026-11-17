@@ -55,6 +55,11 @@ import Once.LinCore.LinkedCore
 import Once.LinCore.RunOps
 import Once.LinCore.BridgeProof
 import Once.Denotation.DenotTrace as DT
+import Once.CompileSrc
+import Once.Compile
+import Once.Spec.Type
+import Once.Spec.Sub
+import Once.LinCore.ExprTable
 
 module Once.LinCore.FlatTop (Mach : FrameSemantics) (bw : Base → ℕ) where
 
@@ -394,6 +399,55 @@ module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
                                      (env-ok tbl etp) (FromIR.trI-Tr (FromIR.TrProg.rs tp) ir ef) tt) [])
 
     -- ★★ THE FLAT THEOREM AT MASTER'S MEANING (master's `flat-ends` and `flat-cut`)
+    flat-ir : ∀ k → Σ ℕ λ N → (flat-events (suc N) TP.image TP.start-fs ≡ (proj₁ (obsᴰ k) , endAp (proj₂ (obsᴰ k))))
+                                     × (endAp (proj₂ (obsᴰ k)) ≡ nothing → k ≤ flat-ctrls (suc N) TP.image TP.start-fs)
+    flat-ir k = case TP.flat-top ld decl k of λ where
+      (N , e , c) → N , trans e (cong (λ r → (proj₁ r , endAp (proj₂ r))) (o-bridge k))
+                      , λ z → c (trans (cong (λ r → endAp (proj₂ r)) (o-bridge k)) z)
+
+    flat-sound : FlatStepsAPI.Sound {Mach} TP.image TP.start-fs
+    flat-sound = TP.o-sound ld decl
+
+------------------------------------------------------------------------
+-- ★ THE BRIDGE'S PROGRAM (D455–D457): the table from the definitions'
+-- sources (`ExprTable`, in `Compile.tableOf`'s order) and the core's `main`
+-- (`Compile.mainEntry`'s, at main's grade), against master's meaning.
+------------------------------------------------------------------------
+
+module ExprTop (tl : List Once.CompileSrc.CompiledSrc) (gb : Once.LinCore.ExprTable.GradedBodies fmt ans tl)
+               {ty : Once.Spec.Type.Type} (pm : ty Once.Spec.Sub.<: Once.Compile.EffUU)
+               (gm : Once.LinCore.ExprTable.MainGraded fmt ans (Once.LinCore.ExprTable.ETProg.rs (Once.LinCore.ExprTable.exprTable fmt ans tl)) pm)
+               (ldConst : ∀ {b} → Lit b → AbstractInstr)
+               (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {Mach} (ldConst v) ≡ nothing)
+               (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
+               (w-int   : ∀ (n : ⟦ int ⟧b)   → wordOf {int} n ≡ SV-Lit fits-int n)
+               (w-float : ∀ (n : ⟦ float ⟧b) → wordOf {float} n ≡ SV-Lit fits-float n)
+               (entry-frame : FrameSemantics.Frame Mach) (entry-regs : Registers Mach) where
+  module ET = Once.LinCore.ExprTable fmt ans
+  t = ET.exprTable tl
+  ds = ET.ETProg.defs t
+  f₀ = ET.mainCore (ET.ETProg.rs t) pm
+  tbl = ET.tblOf tl
+  module TP = Top ds f₀ ldConst ld-nl wordOf w-int w-float entry-frame entry-regs
+
+  -- master's meaning, and what it shows at a budget from the empty log
+  obsᴰ : ℕ → TM.Run (Once.Denotation.Approx.Ap Data.Unit.⊤)
+  obsᴰ k = TM.run ι [] (approx k (DT.evalᴰ fmt (tableEnv fmt ans tbl) (Once.Compile.mainEntry pm) tt))
+
+  -- ★ the bridge's program means what master's means, at every budget (`ExprTable.table-ok`, the
+  -- bodies' references graded, main's call)
+  o-bridge : ∀ k → TP.obs k ≡ obsᴰ k
+  o-bridge k = run-≈ ι k (ET.rel-main-at tl gb pm gm) []
+
+  module _ (ld : ∀ {b} (v : Lit b) (fs : FlatMachine.FlatState {Mach})
+                 → FlatMachine.flat-exec-instr {Mach} (ldConst v) TP.image fs
+                   ≡ record fs { floc = record (FlatMachine.floc fs) { regs = writeReg (LocState.regs (FlatMachine.floc fs)) Output (wordOf (lit v)) }
+                               ; fpc = suc (FlatMachine.fpc fs) })
+           -- (owed: the core program's ops are declared, as `IRTop.decl` gives for the pass's)
+           (decl : ∀ {s} → s ∈ ops (Program.U ds f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))) where
+    open FlatEventTrace {Mach} using (flat-events; flat-ctrls)
+
+    -- ★★ THE FLAT THEOREM AT MASTER'S MEANING, for the bridge's program
     flat-ir : ∀ k → Σ ℕ λ N → (flat-events (suc N) TP.image TP.start-fs ≡ (proj₁ (obsᴰ k) , endAp (proj₂ (obsᴰ k))))
                                      × (endAp (proj₂ (obsᴰ k)) ≡ nothing → k ≤ flat-ctrls (suc N) TP.image TP.start-fs)
     flat-ir k = case TP.flat-top ld decl k of λ where

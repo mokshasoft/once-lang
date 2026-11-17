@@ -25,7 +25,10 @@ open import Data.Unit using (tt)
 import Data.Unit
 import Data.Bool
 open import Data.Product using (Σ)
-open import Once.Compile using (directCallIR; irFunOf; tableOf-go; tableOf; CompiledFun)
+open import Once.Compile using (directCallIR; irFunOf; tableOf-go; tableOf; CompiledFun; EffUU; mainEntry)
+open import Once.Spec.Sub using (_<:_; sub-arr; sub-unit; sub-void)
+open import Once.Denotation.Program using (tableEnv)
+import Once.Denotation.DenotTrace as DT
 open import Once.CompileSrc using (toCF)
 
 import Once.Spec.Grade as G
@@ -48,12 +51,13 @@ open import Relation.Binary.PropositionalEquality using (cong; subst)
 open import Once.LinCore.FromIR fmt using (⟪_⟫)
 open import Once.LinCore.Bridge fmt ans using (W)
 open import Once.LinCore.Bisim fmt ans using (_≈_; _≈[_]_; ≈-refl; ≈-trans; ≈-sym; ret≈R; ≈-≈R; ≈R-≈; >>=-congR; >>=-cong; blockR; ≈haltR)
-open import Once.LinCore.FromExprOk fmt ans using (Pure; PureI; bind-pure; ret-bind; module Rel; module Main; module RelClo; module RelGen)
+open import Once.LinCore.FromExprOk fmt ans using (Pure; PureI; bind-pure; ret-bind; module RelM; module Main; module RelClo; module RelGen)
 open import Once.LinCore.FromExpr fmt using (Rs; Lq; Lq-blk; callM; refL)
 open import Once.IR.Ref using (refIR)
 open import Once.Spec.Name using (bare)
 open import Data.String using (String)
-open import Once.CompileSrc using (CompiledSrc; csName; csType; csSrc)
+open import Once.CompileSrc using (CompiledSrc; module CompiledSrc)
+open CompiledSrc using (csName; csType; csSrc)
 open import Once.IRTy using (_≟IRTy_)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -62,7 +66,8 @@ open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (subst₂)
-open import Once.CompileSrc using (Src; src; srcIR; expr; am)
+open import Once.CompileSrc using (Src; src; srcIR; module Src)
+open Src using (expr; am)
 open import Once.Denotation.SurfaceRefs using (Refs)
 open import Once.Adequacy.ElaborateLinked using (Refs-map)
 open import Once.Denotation.DenotTrace using (callEnv)
@@ -132,7 +137,7 @@ module _ (ρ : CallEnv) (am : M.AllocMode) where
     ≈-trans (bind-pure (≈-trans ret-bind (eraseCtx-pure Γ Ψ (proj₁ x)))) ret-bind
 
 module Erase {L : Cx} (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) where
-  open Rel δ ρ
+  open RelM δ ρ
 
   -- ★ the erasure against `eraseCtx`
   rel-erase : ∀ {m n} (Γ : Ctx m n) (Ψ : Usage n) → Rel (eraseL Γ Ψ) (eraseCtx {Γ = Γ} am Ψ)
@@ -251,13 +256,13 @@ dc-eq ST.Float ir = refl
 dc-eq (ST.var ()) ir
 
 module DefRel {L : Cx} (δ : Env L) (ρ : CallEnv) where
-  open Rel δ ρ
+  open RelM δ ρ
 
   -- the closure built on `tt`, beside the argument (`⟨ ir ∘ terminal , id ⟩`)
   rel-beside : ∀ {X A : Once.IRTy.IRTy} {v : LTm L One ⟪ X ⟫} {v′ : M.IR Once.IRTy.Unit X}
              → Rel v v′ → Rel ((v ⊗l lid {A = ⟪ A ⟫}) ∘l lul⁻) M.⟨ v′ M.∘ M.terminal , M.id ⟩
   rel-beside rv = mkRel λ {a} {a′} wa →
-    ≈-≈R ret-bind (≈R-≈ (>>=-congR (rel rv tt) (λ r → ≈-≈R ret-bind (ret≈R (r , wa))))
+    ≈-≈R ret-bind (≈R-≈ (>>=-congR (relOf rv tt) (λ r → ≈-≈R ret-bind (ret≈R (r , wa))))
                         (≈-sym (≈-trans (>>=-cong ret-bind (λ _ → ≈-refl)) (>>=-cong ≈-refl (λ _ → ret-bind)))))
 
   -- ★ a definition's body against master's direct call
@@ -286,15 +291,15 @@ module ValRel {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : I
 
   -- an input moved along an equal type, on both sides
   rel-dom′ : ∀ {ρ} {X Y B : IRTy} (e : X ≡ Y) {t : LTm L ⟪ X ⟫ ⟪ B ⟫} {t′ : M.IR X B}
-           → Rel.Rel δ ρ t t′ → Rel.Rel δ ρ (cast (cong ⟪_⟫ e) refl t) (subst (λ o → M.IR o B) e t′)
+           → RelM.Rel δ ρ t t′ → RelM.Rel δ ρ (cast (cong ⟪_⟫ e) refl t) (subst (λ o → M.IR o B) e t′)
   rel-dom′ refl r = r
 
   -- ★ a source's value against its IR (unoptimized: `compile`'s path)
   rel-val : ∀ {T} (s : Src T) → Src.opt s ≡ Data.Bool.false
           → Refs (λ _ _ → Data.Unit.⊤) (Main.RefOK rs δ cs (am s)) (Main.RefOK rs δ cs (am s)) (expr s)
-          → Rel.Rel δ (callEnv cs ans) (val rs s) (srcIR s)
+          → RelM.Rel δ (callEnv cs ans) (val rs s) (srcIR s)
   rel-val (src {Γ = Γ} {Ψ = Ψ} δ₀ m Data.Bool.false e) refl refs =
-    rel-dom′ (cong ⌊_⌋ δ₀) (Rel.rel-∘ δ (callEnv cs ans) (Main.Lq-ok rs δ cs m e refs) (Erase.rel-erase δ (callEnv cs ans) m Γ Ψ))
+    rel-dom′ (cong ⌊_⌋ δ₀) (RelM.rel-∘ δ (callEnv cs ans) (Main.Lq-ok rs δ cs m e refs) (Erase.rel-erase δ (callEnv cs ans) m Γ Ψ))
 
 ------------------------------------------------------------------------
 -- 4. THE TABLE: the definitions, oldest first (the list's last), each body
@@ -343,7 +348,7 @@ record ETProg : Set where
     {L}  : Cx
     defs : Defs L
     rs   : Rs L
-open ETProg public
+open ETProg
 
 -- ★ the table, as `FromIR.trTable` builds its own: the earliest definition the list's last
 exprTable : List CompiledSrc → ETProg
@@ -409,7 +414,7 @@ module Entry (cs : List CompiledSrc) (ok : TableOK (exprTable cs) (tblOf cs)) (c
         → up (dcGr Tc) (lookup δ′ here tt a) ≈[ W ⌊ dcCod Tc ⌋ ] Once.Denotation.DenotTrace.evalᴰ fmt (callEnv (tableCalls fmt ans (tblOf cs)) ans) (dcIR Tc (srcIR (csSrc c))) a′
   body≈ {a} w =
     ≈-≈R (≈-trans (up-Lg δ (dcGr Tc) (dc Tc (val (rs t) (csSrc c)) ∘l lul) (dcGd Tc (k-val (rs t) (csSrc c))) tt a) ret-bind)
-         (Rel.rel (DefRel.rel-dc δ (callEnv (tableCalls fmt ans (tblOf cs)) ans) Tc (ValRel.rel-val (rs t) δ (tableCalls fmt ans (tblOf cs)) (csSrc c) opt≡ refs)) w)
+         (RelM.relOf δ (callEnv (tableCalls fmt ans (tblOf cs)) ans) (DefRel.rel-dc δ (callEnv (tableCalls fmt ans (tblOf cs)) ans) Tc (ValRel.rel-val (rs t) δ (tableCalls fmt ans (tblOf cs)) (csSrc c) opt≡ refs)) w)
 
   hit-yes : ∀ {f A B g l} {p′ : (L t ▸ sgOf c) ∋[ l ] sg once g One ⟪ A ⟫ ⟪ B ⟫} (n : csName c ≡ f) (p : ⌊ dcDom Tc ⌋ ≡ A) (q : ⌊ dcCod Tc ⌋ ≡ B) (r : dcGr Tc ≡ g)
           → extendR-at (rs t) c f A B g (yes n) (yes p) (yes q) (yes r) ≡ just (l , p′) → ∀ {a a′} → W A a a′
@@ -476,7 +481,7 @@ GradedRef rs x T@(ST.var _) = Graded rs (bare x) Once.IRTy.Unit ⌊ T ⌋ act
 module RefRel (t : ETProg) (tbl : List IRFun) (ok : TableOK t tbl) (am₀ : M.AllocMode) where
   open TableOK ok
   δ = ⟦ defs t ⟧D
-  open Rel δ (callEnv (tableCalls fmt ans tbl) ans)
+  open RelM δ (callEnv (tableCalls fmt ans tbl) ans)
 
   private
     clash : ∀ {f A B g g′} {h : Σ ℕ λ l → L t ∋[ l ] sg once g′ One ⟪ A ⟫ ⟪ B ⟫} → g′ ≡ g
@@ -560,3 +565,32 @@ tableOf-go-src (c ∷ cs) sofar =
 -- ★ master's table of a module's compiled definitions is its sources'
 tableOf-src : ∀ (cs : List CompiledSrc) → tableOf (Data.List.map toCF cs) ≡ tblOf (srcOrder cs [])
 tableOf-src cs = tableOf-go-src cs []
+
+------------------------------------------------------------------------
+-- 9. ★ MAIN: `Compile.mainEntry`, its call at main's grade.
+------------------------------------------------------------------------
+
+mainCore : ∀ {L} → Rs L → ∀ {ty : Type} → ty <: EffUU → LTm L One One
+mainCore rs (sub-arr {π = π} a sub-unit g) = callM (rs (bare "main") Once.IRTy.Unit Once.IRTy.Unit (grade π))
+mainCore rs (sub-arr {π = π} a sub-void g) = lzero ∘l callM (rs (bare "main") Once.IRTy.Unit Once.IRTy.Void (grade π))
+mainCore rs sub-void                      = lzero ∘l callM (rs (bare "main") Once.IRTy.Unit Once.IRTy.Void act)
+
+-- main's key graded (the program's obligation, as each reference's)
+MainGraded : ∀ {L} → Rs L → ∀ {ty : Type} → ty <: EffUU → Set
+MainGraded rs (sub-arr {π = π} a sub-unit g) = Graded rs (bare "main") Once.IRTy.Unit Once.IRTy.Unit (grade π)
+MainGraded rs (sub-arr {π = π} a sub-void g) = Graded rs (bare "main") Once.IRTy.Unit Once.IRTy.Void (grade π)
+MainGraded rs sub-void                      = Graded rs (bare "main") Once.IRTy.Unit Once.IRTy.Void act
+
+-- ★★ the bridge's program against master's, from `main`
+rel-main-at : ∀ (tl : List CompiledSrc) (gb : GradedBodies tl) {ty : Type} (pm : ty <: EffUU)
+            → MainGraded (rs (exprTable tl)) pm
+            → Lᶜ ⟦ defs (exprTable tl) ⟧D (mainCore (rs (exprTable tl)) pm) tt tt
+                ≈[ W Once.IRTy.Unit ] DT.evalᴰ fmt (tableEnv fmt ans (tblOf tl)) (mainEntry pm) tt
+rel-main-at tl gb (sub-arr {π = π} a sub-unit g) gm =
+  RelM.relOf _ _ (RefRel.rel-call′ (exprTable tl) (tblOf tl) (table-ok tl (bodies-ok tl gb)) M.Heap (bare "main") Once.IRTy.Unit Once.IRTy.Unit (grade π) gm) tt
+rel-main-at tl gb (sub-arr {π = π} a sub-void g) gm =
+  RelM.relOf _ _ (RelM.rel-∘ _ _ (RelGen.rel-zero _ _ M.Heap)
+            (RefRel.rel-call′ (exprTable tl) (tblOf tl) (table-ok tl (bodies-ok tl gb)) M.Heap (bare "main") Once.IRTy.Unit Once.IRTy.Void (grade π) gm)) tt
+rel-main-at tl gb sub-void gm =
+  RelM.relOf _ _ (RelM.rel-∘ _ _ (RelGen.rel-zero _ _ M.Heap)
+            (RefRel.rel-call′ (exprTable tl) (tblOf tl) (table-ok tl (bodies-ok tl gb)) M.Heap (bare "main") Once.IRTy.Unit Once.IRTy.Void act gm)) tt

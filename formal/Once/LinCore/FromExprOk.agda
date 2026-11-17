@@ -305,17 +305,21 @@ split-W (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.Many ∷ Ψ₂) (w , wa) = (proj₁ 
 -- computations on related inputs.
 ------------------------------------------------------------------------
 
-module Rel {L : Cx} (δ : Env L) (ρ : CallEnv) where
+module RelM {L : Cx} (δ : Env L) (ρ : CallEnv) where
 
   -- (a record, so that the two terms stay visible to unification)
   record Rel {A B : IRTy} (t : LTm L ⟪ A ⟫ ⟪ B ⟫) (t′ : M.IR A B) : Set where
     constructor mkRel
     field rel : ∀ {x x′} → W A x x′ → Lᶜ δ t tt x ≈[ W B ] evalᴰ fmt ρ t′ x′
-  open Rel public
+  open Rel using (rel)
+
+  -- the relation's content, as a plain function (for importers: no re-export)
+  relOf : ∀ {A B : IRTy} {t : LTm L ⟪ A ⟫ ⟪ B ⟫} {t′ : M.IR A B} → Rel t t′ → ∀ {x x′} → W A x x′ → Lᶜ δ t tt x ≈[ W B ] evalᴰ fmt ρ t′ x′
+  relOf r = rel r
 
   rel-∘ : ∀ {A B C} {f : LTm L ⟪ B ⟫ ⟪ C ⟫} {f′ : M.IR B C} {g : LTm L ⟪ A ⟫ ⟪ B ⟫} {g′ : M.IR A B}
         → Rel f f′ → Rel g g′ → Rel (f ∘l g) (f′ M.∘ g′)
-  rel-∘ rf rg = mkRel λ w → >>=-congR (rel rg w) (rel rf)
+  rel-∘ rf rg = mkRel λ w → >>=-congR (relOf rg w) (relOf rf)
 
   -- pure on both sides, with related values
   rel-pure : ∀ {A B} {t : LTm L ⟪ A ⟫ ⟪ B ⟫} {t′ : M.IR A B} {v v′}
@@ -340,7 +344,7 @@ module Rel {L : Cx} (δ : Env L) (ρ : CallEnv) where
                  M.⟨ a′ M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-+ˡ Ψ₁ Ψ₂) , b′ M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-+ʳ Ψ₁ Ψ₂) ⟩
   rel-pair am Γ Ψ₁ Ψ₂ ra rb = mkRel λ {x} {x′} w → let sw = split-W Γ Ψ₁ Ψ₂ w in
     ≈-≈R (bind-pure (split-pure δ Γ Ψ₁ Ψ₂ tt x))
-      (≈R-≈ (>>=-congR (rel ra (proj₁ sw)) (λ r → >>=-congR (rel rb (proj₂ sw)) (λ r′ → ret≈R (r , r′))))
+      (≈R-≈ (>>=-congR (relOf ra (proj₁ sw)) (λ r → >>=-congR (relOf rb (proj₂ sw)) (λ r′ → ret≈R (r , r′))))
             (≈-sym (>>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) x′))
                              (λ _ → >>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) x′)) (λ _ → ≈-refl)))))
 
@@ -383,11 +387,11 @@ module _ (ρ : CallEnv) (am : M.AllocMode) where
                         (subst (λ v → evalᴰ fmt ρ t v ≈ evalᴰ fmt ρ t (rv {Γ = Γ} p (rv {Γ = Γ} q x))) (Relation.Binary.PropositionalEquality.sym (rv-trans {Γ = Γ} p q x)) ≈-refl))))
 
 module RelApp {L : Cx} (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) where
-  open Rel δ ρ
+  open RelM δ ρ
 
   -- a rewrite on the IR's side
   rel-≈ʳ : ∀ {A B} {t : LTm L ⟪ A ⟫ ⟪ B ⟫} {t′ t″ : M.IR A B} → Rel t t′ → (∀ x′ → evalᴰ fmt ρ t′ x′ ≈ evalᴰ fmt ρ t″ x′) → Rel t t″
-  rel-≈ʳ r e = mkRel λ {x} {x′} w → ≈R-≈ (rel r w) (e x′)
+  rel-≈ʳ r e = mkRel λ {x} {x′} w → ≈R-≈ (relOf r w) (e x′)
 
   -- the pairing an application and a combinator share: the context split, the
   -- right share relabelled
@@ -420,7 +424,7 @@ module RelApp {L : Cx} (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) where
 ------------------------------------------------------------------------
 
 module RelGen {L : Cx} (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) where
-  open Rel δ ρ
+  open RelM δ ρ
 
   private
     fst-pure : ∀ {E X Y} → Pure δ (ρl ∘l (lid {A = X} {E} ⊗l drop {A = Y})) fst
@@ -467,7 +471,7 @@ module RelGen {L : Cx} (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) where
 ------------------------------------------------------------------------
 
 module RelClo {L : Cx} (δ : Env L) (ρ : CallEnv) where
-  open Rel δ ρ
+  open RelM δ ρ
 
   -- the body, on a copy of the environment it reads lent
   copyIn-≈ : ∀ {X A B} (b : LTm L (X ⊗t A) B) e a → Lᶜ δ (copyIn b) e a ≈ Lᶜ δ b tt (e , a)
@@ -478,9 +482,9 @@ module RelClo {L : Cx} (δ : Env L) (ρ : CallEnv) where
                (γ : Gd (grade π) (copyIn b))
            → Rel b b′ → Rel (llamω (copyIn b) γ) (M.curry {π = π} b′)
   rel-cloG (G.fin φ) {b = b} γ rb = mkRel λ {x} {x′} w →
-    ret≈R (λ {a} {a′} wa → ≈-≈R (≈-trans (≈-sym (blk-coh δ γ x a)) (copyIn-≈ b x a)) (rel rb (w , wa)))
+    ret≈R (λ {a} {a′} wa → ≈-≈R (≈-trans (≈-sym (blk-coh δ γ x a)) (copyIn-≈ b x a)) (relOf rb (w , wa)))
   rel-cloG G.eff {b = b} γ rb = mkRel λ {x} {x′} w →
-    ret≈R (λ {a} {a′} wa → ≈-≈R (copyIn-≈ b x a) (rel rb (w , wa)))
+    ret≈R (λ {a} {a′} wa → ≈-≈R (copyIn-≈ b x a) (relOf rb (w , wa)))
 
 ------------------------------------------------------------------------
 -- 10. ★★ THE BRIDGE'S MEANING, by induction on the expression, every clause
@@ -494,7 +498,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   ρ : CallEnv
   ρ = callEnv cs ans
 
-  open Rel δ ρ
+  open RelM δ ρ
   open RelApp δ ρ am
   open RelGen δ ρ am
   open RelClo δ ρ
@@ -530,7 +534,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
            → Rel f f′ → Rel (apω {g = grade π} ∘l (f ⊗l lid) ∘l ρl⁻) (M.apply {I.Unit} {B} {π} M.∘ M.⟨ f′ , M.terminal ⟩)
   rel-app0 {π} g =
     rel-∘ (rel-apω {π = π})
-      (mkRel λ w → ≈-≈R ret-bind (>>=-congR (rel g w) (λ r → ≈-≈R ret-bind (≈R-≈ (ret≈R (r , tt)) (≈-sym ret-bind)))))
+      (mkRel λ w → ≈-≈R ret-bind (>>=-congR (relOf g w) (λ r → ≈-≈R ret-bind (≈R-≈ (ret≈R (r , tt)) (≈-sym ret-bind)))))
 
   -- dropping the unit argument
   rel-ρ : ∀ {X : IRTy} → Rel (ρl {A = ⟪ X ⟫}) (M.fst {X} {I.Unit})
@@ -645,10 +649,10 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
            → Rel bc b″ → Rel (llamω (copyIn (bc ∘l Once.LinCore.PassTr.dropl fmt)) γ ∘l drop {A = ⟪ X ⟫}) (M.curry {X} {A} {B} {π} (b″ M.∘ M.snd))
   rel-cloD (G.fin φ) {bc = bc} γ rb = mkRel λ {x} {x′} w → ≈-≈R ret-bind (ret≈R (λ {a} {a′} wa →
     ≈-≈R (≈-trans (≈-sym (blk-coh δ γ tt a)) (≈-trans (copyIn-≈ (bc ∘l Once.LinCore.PassTr.dropl fmt {E = One} {A = One}) tt a) (bind-pure (bind-pure (≈-trans ret-bind ret-bind)))))
-         (≈R-≈ (rel rb wa) (≈-sym ret-bind))))
+         (≈R-≈ (relOf rb wa) (≈-sym ret-bind))))
   rel-cloD G.eff {bc = bc} γ rb = mkRel λ {x} {x′} w → ≈-≈R ret-bind (ret≈R (λ {a} {a′} wa →
     ≈-≈R (≈-trans (copyIn-≈ (bc ∘l Once.LinCore.PassTr.dropl fmt {E = One} {A = One}) tt a) (bind-pure (bind-pure (≈-trans ret-bind ret-bind))))
-         (≈R-≈ (rel rb wa) (≈-sym ret-bind))))
+         (≈R-≈ (relOf rb wa) (≈-sym ret-bind))))
 
   -- ★ a SigOp named in the source, against `sigOpIR`, case for case
   rel-sig : ∀ {X : IRTy} (A : Type) (name : CanonicalName) (c : IsConcrete A)
@@ -826,7 +830,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   -- a case against `case`
   rel-lcase : ∀ {A B C : IRTy} {f : LTm L ⟪ A ⟫ ⟪ C ⟫} {f′ : M.IR A C} {g : LTm L ⟪ B ⟫ ⟪ C ⟫} {g′ : M.IR B C}
             → Rel f f′ → Rel g g′ → Rel (lcase f g) (M.case f′ g′)
-  rel-lcase rf rg = mkRel λ { (Data.Sum.Relation.Binary.Pointwise.inj₁ w) → rel rf w ; (Data.Sum.Relation.Binary.Pointwise.inj₂ w) → rel rg w }
+  rel-lcase rf rg = mkRel λ { (Data.Sum.Relation.Binary.Pointwise.inj₁ w) → relOf rf w ; (Data.Sum.Relation.Binary.Pointwise.inj₂ w) → relOf rg w }
 
   -- the scrutinee's share split off, the arms' share beside its value
   rel-swapPair : ∀ {m n} (Γ : Ctx m n) (Ψs Φ : Usage n) {S : IRTy} {s : LTm L (Co Γ Ψs) ⟪ S ⟫} {s′ : M.IR ⌊ ⟦ Γ ↾ Ψs ⟧ᶜ ⌋ S}
@@ -835,7 +839,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
                      M.⟨ restrictEnv {Γ = Γ} am (⊑ᵘ-+ʳ Ψs Φ) , s′ M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-+ˡ Ψs Φ) ⟩
   rel-swapPair Γ Ψs Φ rs′ = mkRel λ {x} {x′} w → let sw = split-W Γ Ψs Φ w in
     ≈-≈R (≈-trans (bind-pure (bind-pure (split-pure δ Γ Ψs Φ tt x))) ret-bind)
-      (≈R-≈ (>>=-congR (rel rs′ (proj₁ sw)) (λ r → ret≈R (proj₂ sw , r)))
+      (≈R-≈ (>>=-congR (relOf rs′ (proj₁ sw)) (λ r → ret≈R (proj₂ sw , r)))
             (≈-sym (≈-trans (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ʳ Ψs Φ) x′))
                             (>>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ˡ Ψs Φ) x′)) (λ _ → ≈-refl)))))
 
@@ -911,7 +915,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   rel-arg : ∀ {F X X′ : IRTy} {f : LTm L ⟪ X′ ⟫ ⟪ X ⟫} {f′ : M.IR X′ X}
           → Rel f f′ → Rel (lid {A = ⟪ F ⟫} ⊗l f) M.⟨ M.fst {F} {X′} , f′ M.∘ M.snd ⟩
   rel-arg rf = mkRel λ { {Fv , x} {Fv′ , x′} (wF , wx) →
-    ≈-≈R ret-bind (≈R-≈ (>>=-congR (rel rf wx) (λ r → ret≈R (wF , r)))
+    ≈-≈R ret-bind (≈R-≈ (>>=-congR (relOf rf wx) (λ r → ret≈R (wF , r)))
                         (≈-sym (≈-trans ret-bind (>>=-cong ret-bind (λ _ → ≈-refl))))) }
 
   rel-coeL : ∀ {m} {A B : Ty m} (p : A <: B) → Rel (coeL {L} p) (coeIR p)
@@ -923,7 +927,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   rel-coeL (sub-arr {q = G.One}  {π = π} {π′ = π′} a b r) = rel-cloG π′ _ (rel-∘ (rel-coeL b) (rel-∘ (rel-apω {π = π}) (rel-arg (rel-coeL a))))
   rel-coeL (sub-arr {q = G.Many} {π = π} {π′ = π′} a b r) = rel-cloG π′ _ (rel-∘ (rel-coeL b) (rel-∘ (rel-apω {π = π}) (rel-arg (rel-coeL a))))
   rel-coeL (sub-* a b) = mkRel λ { {x , y} {x′ , y′} (wx , wy) →
-    ≈R-≈ (>>=-congR (rel (rel-coeL a) wx) (λ r → >>=-congR (rel (rel-coeL b) wy) (λ r′ → ret≈R (r , r′))))
+    ≈R-≈ (>>=-congR (relOf (rel-coeL a) wx) (λ r → >>=-congR (relOf (rel-coeL b) wy) (λ r′ → ret≈R (r , r′))))
          (≈-sym (>>=-cong ret-bind (λ _ → >>=-cong ret-bind (λ _ → ≈-refl)))) }
   rel-coeL (sub-+ a b) = rel-lcase (rel-∘ rel-inl (rel-coeL a)) (rel-∘ rel-inr (rel-coeL b))
   rel-coeL sub-μ      = rel-id

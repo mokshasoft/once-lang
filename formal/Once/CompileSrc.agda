@@ -82,7 +82,7 @@ record Src (ty : Type) : Set where
     am   : AllocMode
     opt  : Bool
     expr : SS.Expr Γ Ψ ty
-open Src public
+open Src
 
 -- its IR, as `compileFunBody` builds it
 srcIR : ∀ {ty} → Src ty → IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋
@@ -232,7 +232,7 @@ record CompiledSrc : Set where
     csName : CanonicalName
     csType : Type
     csSrc  : Src csType
-open CompiledSrc public
+open CompiledSrc
 
 toCF : CompiledSrc → CompiledFun
 toCF c = mkCompiledFun (csName c) (csType c) (srcIR (csSrc c))
