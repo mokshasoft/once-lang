@@ -112,3 +112,60 @@ module _ (D : Sig → Set) where
   -- ★ a program's universe's ops
   univ-ok : ∀ {Γ} (ds : Defs Γ) {E A B} (f : Tm Γ E A B) → DefsOK ds → OK f → ∀ {s} → s ∈ ops (univ ds f) → D s
   univ-ok ds f od of m = either (ps (defsGot ds)) m (defs-ok ds od) (ok-ps ds f of)
+
+------------------------------------------------------------------------
+-- 2. ★ THE BRIDGE'S OPS are its IR's SigOp leaves (and the halting
+-- `unlinked`, which owes nothing): a linked expression's bridge is OK.
+------------------------------------------------------------------------
+
+open import Relation.Binary.PropositionalEquality using (subst; subst₂)
+open import Once.Contract using (ISig)
+open import Once.Denotation.Program using (Declared; Leaves)
+open import Once.SigOp.Info using (SigOpInfo)
+import Once.IR as M
+open import Once.IRTy using (IRTy)
+import Once.Spec.Context as SC
+open import Once.Spec.Context using (Ctx; Usage; []; _∷_; _⊑ᵘ_; _⊑∷_)
+open import Once.Context using (z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+import Once.Spec.Grade as G
+import Data.Fin
+open import Once.LinCore.FromExpr fmt
+  using (weak; split; carryL; mixL; var-at; bindL; apω; dist; cast)
+open import Once.LinCore.PassTr fmt using (copyIn)
+
+module Ops (Σι : ISig) where
+  Dc : Sig → Set
+  Dc s = Declared Σι (info s)
+
+  ok-cast : ∀ {L E A A′ B B′} (p : A ≡ A′) (q : B ≡ B′) {t : Tm L E A B} → OK Dc t → OK Dc (cast p q t)
+  ok-cast refl refl o = o
+
+  ok-weak : ∀ {L E m n} {Γ : Ctx m n} {Ψ Ψ′ : Usage n} (p : Ψ ⊑ᵘ Ψ′) → OK Dc (weak {L} {E} {Γ = Γ} p)
+  ok-weak {Γ = SC.∅}       []         = tt
+  ok-weak {Γ = Γ SC.▸ A} (z≤z ⊑∷ p) = ok-weak {Γ = Γ} p
+  ok-weak {Γ = Γ SC.▸ A} (z≤o ⊑∷ p) = tt , (ok-weak {Γ = Γ} p , tt)
+  ok-weak {Γ = Γ SC.▸ A} (z≤m ⊑∷ p) = tt , (ok-weak {Γ = Γ} p , tt)
+  ok-weak {Γ = Γ SC.▸ A} (o≤o ⊑∷ p) = ok-weak {Γ = Γ} p , tt
+  ok-weak {Γ = Γ SC.▸ A} (o≤m ⊑∷ p) = ok-weak {Γ = Γ} p , tt
+  ok-weak {Γ = Γ SC.▸ A} (m≤m ⊑∷ p) = ok-weak {Γ = Γ} p , tt
+
+  ok-split : ∀ {L E m n} (Γ : Ctx m n) (Ψ₁ Ψ₂ : Usage n) → OK Dc (split {L} {E} Γ Ψ₁ Ψ₂)
+  ok-split SC.∅          []          []          = tt
+  ok-split (Γ SC.▸ A) (G.Zero ∷ Ψ₁) (G.Zero ∷ Ψ₂) = ok-split Γ Ψ₁ Ψ₂
+  ok-split (Γ SC.▸ A) (G.Zero ∷ Ψ₁) (G.One  ∷ Ψ₂) = tt , (ok-split Γ Ψ₁ Ψ₂ , tt)
+  ok-split (Γ SC.▸ A) (G.Zero ∷ Ψ₁) (G.Many ∷ Ψ₂) = tt , (ok-split Γ Ψ₁ Ψ₂ , tt)
+  ok-split (Γ SC.▸ A) (G.One  ∷ Ψ₁) (G.Zero ∷ Ψ₂) = _ , (ok-split Γ Ψ₁ Ψ₂ , tt)
+  ok-split (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.Zero ∷ Ψ₂) = _ , (ok-split Γ Ψ₁ Ψ₂ , tt)
+  ok-split (Γ SC.▸ A) (G.One  ∷ Ψ₁) (G.One  ∷ Ψ₂) = _ , (ok-split Γ Ψ₁ Ψ₂ , tt)
+  ok-split (Γ SC.▸ A) (G.One  ∷ Ψ₁) (G.Many ∷ Ψ₂) = _ , (ok-split Γ Ψ₁ Ψ₂ , tt)
+  ok-split (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.One  ∷ Ψ₂) = _ , (ok-split Γ Ψ₁ Ψ₂ , tt)
+  ok-split (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.Many ∷ Ψ₂) = _ , (ok-split Γ Ψ₁ Ψ₂ , tt)
+
+  ok-var : ∀ {L E m n} {Γ : Ctx m n} (i : Data.Fin.Fin n) → OK Dc (var-at {L} {E} {Γ = Γ} i)
+  ok-var {Γ = Γ SC.▸ A} Data.Fin.zero    = _
+  ok-var {Γ = Γ SC.▸ A} (Data.Fin.suc i) = ok-var {Γ = Γ} i
+
+  ok-bind : ∀ {L E m n} {Γ : Ctx m n} {Ψ : Usage n} {A} (q : G.Quantity) → OK Dc (bindL {L} {E} {Γ = Γ} {Ψ} {A} q)
+  ok-bind G.Zero = _
+  ok-bind G.One  = tt
+  ok-bind G.Many = tt
