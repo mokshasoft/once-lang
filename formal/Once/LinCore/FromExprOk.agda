@@ -47,7 +47,9 @@ open import Once.IRTy using (⌊wk₀⌋)
 open import Once.Type.Concrete using (con-base; con-fun)
 open import Once.Surface.Syntax
 open import Once.Surface.Map using (Map)
-open import Once.Spec.Sub using (_<:_)
+open import Once.Spec.Sub using (_<:_; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-*; sub-+; sub-μ; sub-ν)
+open import Once.Surface.CoerceIR using (coeIR; runCoe-dec; voidFree?; erase-eq; VoidFree)
+open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Theory using (Has; Sym; symDom)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Spec.Name using (CanonicalName)
@@ -58,7 +60,7 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 
 open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo; callM; refL; mapT; layerEq; dist)
+open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo; callM; refL; mapT; layerEq; dist; coeL; coeR)
 open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
 open import Once.Surface.Map using (mp-id; mp-fst; mp-snd; mp-terminal; mp-inl; mp-inr; mp-initial; mp-apply; mp-In; mp-Out; mp-toFloat)
 open import Once.TypeCheck.Table using (mapIR)
@@ -899,9 +901,40 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
               (r : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many G.act ] (B + A))) → Goal r → Goal (loop r)
   ok-loop {Γ = Γ} {Ψ} r rr = rel-∘ (rel-cloG G.eff tt loopB) (rel-∘ rr (rel-weak am {Γ = Γ} (⊑ᵘ-*Many Ψ)))
 
+  -- ★ A CONVERSION, along the subtyping derivation (`coeIR`)
+  -- (the argument converted, the closure beside it)
+  rel-arg : ∀ {F X X′ : IRTy} {f : LTm L ⟪ X′ ⟫ ⟪ X ⟫} {f′ : M.IR X′ X}
+          → Rel f f′ → Rel (lid {A = ⟪ F ⟫} ⊗l f) M.⟨ M.fst {F} {X′} , f′ M.∘ M.snd ⟩
+  rel-arg rf = mkRel λ { {Fv , x} {Fv′ , x′} (wF , wx) →
+    ≈-≈R ret-bind (≈R-≈ (>>=-congR (rel rf wx) (λ r → ret≈R (wF , r)))
+                        (≈-sym (≈-trans ret-bind (>>=-cong ret-bind (λ _ → ≈-refl))))) }
+
+  rel-coeL : ∀ {m} {A B : Ty m} (p : A <: B) → Rel (coeL {L} p) (coeIR p)
+  rel-coeL sub-void   = rel-zero
+  rel-coeL sub-unit   = rel-id
+  rel-coeL sub-int    = rel-id
+  rel-coeL sub-float  = rel-id
+  rel-coeL (sub-arr {q = G.Zero} {π = π} {π′ = π′} a b r) = rel-cloG π′ _ (rel-∘ (rel-coeL b) (rel-apω {π = π}))
+  rel-coeL (sub-arr {q = G.One}  {π = π} {π′ = π′} a b r) = rel-cloG π′ _ (rel-∘ (rel-coeL b) (rel-∘ (rel-apω {π = π}) (rel-arg (rel-coeL a))))
+  rel-coeL (sub-arr {q = G.Many} {π = π} {π′ = π′} a b r) = rel-cloG π′ _ (rel-∘ (rel-coeL b) (rel-∘ (rel-apω {π = π}) (rel-arg (rel-coeL a))))
+  rel-coeL (sub-* a b) = mkRel λ { {x , y} {x′ , y′} (wx , wy) →
+    ≈R-≈ (>>=-congR (rel (rel-coeL a) wx) (λ r → >>=-congR (rel (rel-coeL b) wy) (λ r′ → ret≈R (r , r′))))
+         (≈-sym (>>=-cong ret-bind (λ _ → >>=-cong ret-bind (λ _ → ≈-refl)))) }
+  rel-coeL (sub-+ a b) = rel-lcase (rel-∘ rel-inl (rel-coeL a)) (rel-∘ rel-inr (rel-coeL b))
+  rel-coeL sub-μ      = rel-id
+  rel-coeL (sub-ν _)  = rel-id
+  rel-coeL sub-var    = rel-id
+
+  rel-coeR : ∀ {m} {Z : IRTy} {A B : Ty m} (p : A <: B) (d : Dec (VoidFree p)) {t : LTm L ⟪ Z ⟫ (ty A)} {t′ : M.IR Z ⌊ A ⌋}
+           → Rel t t′ → Rel (coeR p d t) (runCoe-dec p d t′)
+  rel-coeR p (yes vf) r = rel-cod (erase-eq p vf) r
+  rel-coeR p (no _)   r = rel-∘ (rel-coeL p) r
+
+  ok-coerce : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (p : A <: B) (f : Expr Γ Ψ A) → Goal f → Goal (coerce p f)
+  ok-coerce p f rf = rel-coeR p (voidFree? p) rf
+
   record Owed : Set where
     field
-      o-coerce  : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (p : A <: B) (f : Expr Γ Ψ A) → Goal f → Goal (coerce p f)
       o-cata    : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π}
                     (wf : WFFun Δₖ F) (alg : Expr Γ Ψ (ST.⟦ F ⟧F A ⇒[ G.mk-kind G.Many π ] A)) → Goal alg → Goal (cata wf alg)
       o-ana     : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π₀} {φ : G.Finite}
@@ -942,7 +975,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
     Lq-ok (int n) = rel-∘ (mkRel λ _ → ret≈R refl) rel-drop
     Lq-ok (float d) = rel-∘ (mkRel λ _ → ret≈R refl) rel-drop
     Lq-ok (num h o e) = ok-num h o e (Lq-ok e)
-    Lq-ok (coerce p f) = o-coerce p f (Lq-ok f)
+    Lq-ok (coerce p f) = ok-coerce p f (Lq-ok f)
     Lq-ok {Γ = Γ} (sigOp name c) = ok-sigOp {Γ = Γ} name c
     Lq-ok {Γ = Γ} (closure name) = ok-closure {Γ = Γ} name
     Lq-ok {Γ = Γ} (poly name T) = ok-poly {Γ = Γ} name T
