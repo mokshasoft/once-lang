@@ -24005,3 +24005,42 @@ proceed; the translation's source is switched last.
 
 ### Alternatives
 (b), (c) above.
+
+## D456 — THE BRIDGE'S SOURCE IS THE ELABORATOR'S GRADED `Expr`; ITS STRUCTURE MAPS ARE TABLE ENTRIES (2026-11-17)
+
+**Made unattended** (keep-going mode, for the user's review). **Applies**: D455, plan 0.146 B1.7 step 2.
+
+### The problem
+D455 compiles the linear core from the Spec's graded derivation. At compile time the compiler holds no
+Spec derivation as a value: the checker returns `Surface.Expr Γ Ψ A` (graded by usage `Ψ`), and the Spec's
+derivation of it is a proof (`TypeCheck.SpecWitness.WI`), whose realization (`Denotation.RealizeS`) is that
+`Expr` (plan 0.122 §5.6). `Expr` is the POC's source: its "architecture bug" is `elaborate : Expr Γ Ψ A →
+IR`. Two things in `Expr` are not yet graded data: the structure maps (`lift-morphism`, `morph-app`) carry
+IR built by the table (`TypeCheck.Table.mapAt?`), and terms carry no purity.
+
+### Decisions
+* **The source is the resolved `Expr`** (after linking, `TypeCheck.Link`: polymorphic definitions are
+  spliced as `closed` terms, so the bridge sees `closed`, `closure` (a call of a compiled definition),
+  `sigOp` and locals). `FromExpr.Lq : Expr Γ Ψ A → LinCore` replaces `elaborateFull` on the new path:
+  usage indexes the target's context object, context addition is the tensor's split, a `dup` only where
+  both halves use a slot (`Many`).
+* **A structure map is its table entry, not IR.** `lift-morphism`/`morph-app` carry a structure map
+  datum (`id`, `terminal`, `fst`, `snd`, `initial`, `inl`, `inr`, `In`, `Out`, `apply`, `toFloat`, at
+  their types and grades); its IR is a function of it (`elaborate` unchanged in meaning), and the bridge
+  translates it per entry. Rejected: translating the IR payload (FromIR's partial `trI`: the IR does not
+  say it came from the table).
+* **Grades by construction.** `Expr`'s `app` applies only pure arrows, and `effApp`, `loop`, `ana`, `lam`
+  build closures, so every `Lq e` is a finite block (`Blk`), proved by induction: a lambda's body at
+  `act` has its `Gd`, a coalgebra and a round are blocks. Nothing is checked, so nothing fails.
+* **Quantities and grades** (D423 part 3's "still to align"): the Spec's `Zero`/`One` arrow is `once`
+  (owned environment, `lev`), `Many` is `many` (lent environment, `bev`: a fold's algebra, a coalgebra, a
+  round, applied at every layer); `pure`/`act` are `act`, `eff` is `eff`. A `many` closure's body reads its
+  environment lent and copies what it keeps (`bcopy`), as D131.
+* **The correctness interface is the IR's meaning.** The bridge is proved against `elaborateFull`'s IR
+  meaning, so the front end's chain (source to IR) and the apex's statement (`conc-trᴺ` against
+  `⟦ irProgram tbl ir ⟧IR`) stay; FromIR's correctness (`BridgeProof`) is replaced by the bridge's.
+  The new path does not run the IR optimizer (D455: its passes move to the linear core as needed).
+
+### Alternatives
+The checker computing the Spec's core derivation as data (the witness is a proof today; a second checker
+output). Purity as an index of `Expr` (not needed: `Expr`'s discipline already makes every term a block).
