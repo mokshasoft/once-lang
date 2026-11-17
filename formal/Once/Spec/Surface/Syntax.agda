@@ -8,9 +8,9 @@
 -- A module is a list of declarations: imports, type aliases, signatures of
 -- the operations it is compiled against, type signatures and definitions.
 -- An expression names variables by string; a reference to something global
--- is RESOLVED (`Spec.Surface.Resolution`) to the canonical name it denotes.
--- A type in a signature may mention named type variables (`PTVar`); an
--- annotation is a ground type.
+-- is RESOLVED (`Spec.Surface.Resolution`) to the canonical name it denotes,
+-- or to the generator it names. A type in a signature may mention named type
+-- variables (`PTVar`); an annotation is a ground type.
 ------------------------------------------------------------------------
 
 module Once.Spec.Surface.Syntax where
@@ -26,6 +26,7 @@ open import Once.Spec.Type using (Type)
 open import Once.Spec.Float.Value using (Sign; pos; neg)
 open import Once.Spec.Float.Decimal using (Decimal; ⟨_⟩_/10^_)
 open import Once.Spec.Surface.Operator using (BinOp)
+open import Once.Spec.Surface.Generators using (Gen)
 
 ------------------------------------------------------------------------
 -- Types as written
@@ -61,6 +62,7 @@ data Expr : Set where
   RVar       : String → Expr                       -- x
   RQualified : String → String → Expr              -- name@alias
   RResolved  : CanonicalName → Expr                -- a resolved global reference
+  RGen       : Gen → Expr                          -- a resolved generator
   RApp       : Expr → Expr → Expr                  -- f a
   RLam       : String → Expr → Expr                -- \x -> e
   RLet       : String → Expr → Expr → Expr         -- let x = e₁ in e₂

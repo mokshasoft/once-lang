@@ -71,7 +71,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
   rollTy (⊢sub-use _ d) = rollTy d
   rollTy (⊢sub-eff _ d) = rollTy d
 
-  inTy : ∀ {n} {Γ : Ctx m n} {Ψ Z π F} → Δ ⊩ Γ ⊢[ Ψ ] inᶜ {S = S} F ∷ Z ! π → Z ≡ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] μ F
+  inTy : ∀ {n} {Γ : Ctx m n} {Ψ Z π F} → Δ ⊩ Γ ⊢[ Ψ ] inᶜ {S = S} F pure ∷ Z ! π → Z ≡ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] μ F
   inTy d with lamInv d
   ... | W , _ , _ , eqT , dt with rollTy dt
   ...   | refl = eqT
@@ -116,7 +116,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
   -- μ F is the initial algebra: `cata alg ∘ in` is `alg ∘ layer (cata alg)`.
   cata-βᶜ : ∀ {n} {Γ : Ctx m n} {Ψ F A π₀ alg}
           → Pure Σ fmt S Δ Γ alg (⟦ F ⟧F A ⇒[ mk-kind Many pure ] A)
-          → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure (cataᶜ F pure alg) (inᶜ F) ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π₀)
+          → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure (cataᶜ F pure alg) (inᶜ F pure) ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π₀)
             (d′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure alg (layerᶜ F (μ F) A (cataᶜ F pure alg))
                                ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π₀)
           → _≅_ Σ fmt S d d′
@@ -140,7 +140,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
       inv : V L → V (μ F)
       inv l = inS (toL σ F (μ F) l)
 
-      GO : Shape L pure TT (cataᶜ F pure alg) (inᶜ F) → AV.Arms d (cataᶜ F pure alg) (inᶜ F)
+      GO : Shape L pure TT (cataᶜ F pure alg) (inᶜ F pure) → AV.Arms d (cataᶜ F pure alg) (inᶜ F pure)
          → Shape L pure TT alg (layerᶜ F (μ F) A (cataᶜ F pure alg)) → AV.Arms d′ alg (layerᶜ F (μ F) A (cataᶜ F pure alg))
          → _~_ {TT} (⟪ d ⟫ γ) (⟪ d′ ⟫ γ)
       GO (shape eT tyF tyG lf lg zp) (AV.arms dc di Pc Pi) (shape eT′ tyF′ tyG′ lf′ lg′ zp′) (AV.arms {Ψg = Ψl} {πg = πl} da dl Pa Pl)

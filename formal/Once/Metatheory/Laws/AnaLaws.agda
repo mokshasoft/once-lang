@@ -67,7 +67,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
   anaWF d with lamInv d
   ... | W , _ , _ , refl , dt = proj₁ (unfoldInv dt)
 
-  outTy : ∀ {n} {Γ : Ctx m n} {Ψ Z π F} → Δ ⊩ Γ ⊢[ Ψ ] outᶜ {S = S} F ∷ Z ! π
+  outTy : ∀ {n} {Γ : Ctx m n} {Ψ Z π F} → Δ ⊩ Γ ⊢[ Ψ ] outᶜ {S = S} F pure ∷ Z ! π
         → Z ≡ ν F pureᶠ ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ)
   outTy d with lamInv d
   ... | W , _ , _ , eqT , dt with outInv dt
@@ -90,7 +90,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
   -- ν F is the final coalgebra: `out ∘ ana c` is `layer (ana c) ∘ c`.
   ana-βᶜ : ∀ {n} {Γ : Ctx m n} {Ψ F A π₀ c}
          → Pure Σ fmt S Δ Γ c (A ⇒[ mk-kind Many pure ] ⟦ F ⟧F A)
-         → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (outᶜ F) (anaᶜ F A pure c)
+         → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (outᶜ F pure) (anaᶜ F A pure c)
                               ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π₀)
            (d′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (layerᶜ F A (ν F pureᶠ) (anaᶜ F A pure c)) c
                                ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π₀)
@@ -117,7 +117,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
       eTT : (FA ⇒[ mk-kind Many pure ] FN) ≡ (layerT F ⟨ at₀ A ⟩ ⇒[ mk-kind Many pure ] layerT F ⟨ at₀ N ⟩)
       eTT = cong₂ (λ P Q → P ⇒[ mk-kind Many pure ] Q) (sym (layerTy F A)) (sym (layerTy F N))
 
-      GO : Shape A pure TT (outᶜ F) (anaᶜ F A pure c) → AV.Arms d (outᶜ F) (anaᶜ F A pure c)
+      GO : Shape A pure TT (outᶜ F pure) (anaᶜ F A pure c) → AV.Arms d (outᶜ F pure) (anaᶜ F A pure c)
          → Shape A pure TT (layerᶜ F A N (anaᶜ F A pure c)) c → AV.Arms d′ (layerᶜ F A N (anaᶜ F A pure c)) c
          → _~_ {TT} (⟪ d ⟫ γ) (⟪ d′ ⟫ γ)
       GO (shape eT tyF tyG lf lg zp) (AV.arms dO dn Po Pn) (shape eT′ tyF′ tyG′ lf′ lg′ zp′) (AV.arms {Ψe = Ψl} {πe = πl} dl dc Pl Pc)
@@ -208,7 +208,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
   -- … and the only one: a coalgebra map to `out` is the unfold, layer by layer.
   ana-uniqueᶜ : ∀ {n} {Γ : Ctx m n} {Ψ F A π₀ π′ c h}
               → Pure Σ fmt S Δ Γ c (A ⇒[ mk-kind Many pure ] ⟦ F ⟧F A) → Pure Σ fmt S Δ Γ h (A ⇒[ mk-kind Many pure ] ν F pureᶠ)
-              → (e : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (outᶜ F) h ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π′)
+              → (e : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (outᶜ F pure) h ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π′)
                 (e′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (layerᶜ F A (ν F pureᶠ) h) c
                                     ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π′)
               → _≅_ Σ fmt S e e′
@@ -249,7 +249,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
       outResp : ∀ {v v′} → Same (N ⟨ σ ⟩) v v′ → Same (FN ⟨ σ ⟩) (NV.outᵛ F v) (NV.outᵛ F v′)
       outResp s = Fn.fromL-same wf N (LayerEq-mono GS (Fn.sameν→ wf) (LayerEq-∀ GS (λ n → returnRel⁻ (fromObserved (Fn.sameν← wf s (suc n))))))
 
-      GO : Shape A pure TT (outᶜ F) h → AV.Arms e (outᶜ F) h
+      GO : Shape A pure TT (outᶜ F pure) h → AV.Arms e (outᶜ F pure) h
          → Shape A pure TT (layerᶜ F A N h) c → AV.Arms e′ (layerᶜ F A N h) c
          → _~_ {NT} (⟪ d ⟫ γ) (⟪ d′ ⟫ γ)
       GO (shape eT tyF tyG lf lg zp) (AV.arms dO dh Po Ph) (shape eT′ tyF′ tyG′ lf′ lg′ zp′) (AV.arms {Ψe = Ψl} {πe = πl} dl dc Pl Pc)

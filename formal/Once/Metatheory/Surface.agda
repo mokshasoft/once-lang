@@ -6,11 +6,11 @@
 -- Once.Metatheory.Surface — the surface judgment's modes agree
 -- (`Spec.Metatheory.Surface`).
 --
--- Under distinct names (`Distinct`, D249) every expression form has one
--- synthesis rule, or several whose premises fix the same type; the
+-- Under distinct names (`Distinct`, D249) each expression form has one rule
+-- per mode (`one-rule`), read from the form; synthesis is unique; the
 -- domain-given mode is exact; and where an expression both synthesizes and
 -- checks against a domain, the two agree. One induction on the first
--- derivation, the three statements mutually.
+-- derivation, the uniqueness statements mutually.
 ------------------------------------------------------------------------
 
 open import Data.Fin using (Fin)
@@ -34,7 +34,11 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Grade using (Purity; pure; act; Finite; pureᶠ; actᶠ; fin; Many; mk-kind; ArrowKind; _⊑π_; ⊑-pure; EffGrade; eg-act; eg-eff)
-open import Once.Spec.Name using (gen; NotGenerator; genNames)
+open import Once.Spec.Surface.Generators
+  using (Gen; kind; IsConstant; IsMap; IsCombinator; FromDomain; FromCodomain; Constant; Morphism; Final;
+         is-constant; is-map; is-combinator)
+open import Once.Spec.Core.Derived using (𝕋)
+open import Once.Metatheory.Types using (<:-antisym; <:ᶜ⇒<:)
 open import Once.Spec.Type
   using (Ty; KCtx; TySub; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; _⟨_⟩; _⟨_⟩F; Occurs; OccursF;
          o-var; o-*ˡ; o-*ʳ; o-+ˡ; o-+ʳ; o-⇒ˡ; o-⇒ʳ; o-μ; o-ν; o-K; o-⊕ˡ; o-⊕ʳ; o-⊗ˡ; o-⊗ʳ;
@@ -61,9 +65,6 @@ open import Once.Spec.Sub using (_⊔_≔_)
 ------------------------------------------------------------------------
 
 module _ where
-  def-gen : ∀ d {w} → w ∈ genNames → nm d ≢ gen w
-  def-gen d m e = notGen m (subst NotGenerator e (def-not-gen d))
-
   def-sig : ∀ d {c t} → nm d ≡ c → ¬ ((c ∶ t) ∈ Σ)
   def-sig d refl = def-not-sig d
 
@@ -75,22 +76,16 @@ module _ where
 module Modes {m} (Δ : KCtx m) where
   Syn : ∀ {n} → Locals m n → Expr → Ty m → _ → Set
   Syn = _⊢_⇒_↝_ Δ
+  Chk : ∀ {n} → Locals m n → Expr → Ty m → _ → Set
+  Chk = _⊢_⇐_↝_ Δ
   Dom : ∀ {n} → Locals m n → Expr → Ty m → Purity → Ty m → _ → Set
   Dom = _⊢_⇐_⇒[_]↦_↝_ Δ
 
   open B.Modes Δ hiding (Syn; Dom)
 
   module _ where
-    noSyn-gen : ∀ {n} {L : Locals m n} {w T t} → w ∈ genNames → w ≢ "unit" → w ≢ "toFloat" → ¬ Syn L (RResolved (gen w)) T t
-    noSyn-gen m₁ nu nt s-unit-g         = nu refl
-    noSyn-gen m₁ nu nt s-toFloat        = nt refl
-    noSyn-gen m₁ nu nt (s-sigop ng _)   = notGen m₁ ng
-    noSyn-gen m₁ nu nt (s-def d e _ _)  = def-gen d m₁ e
-
     noSyn-poly : ∀ {n} {L : Locals m n} {c T t} (d : Fin s) → nm d ≡ c → 0 < arity (S !! d) → ¬ Syn L (RResolved c) T t
-    noSyn-poly d e lt s-unit-g          = def-gen d unit∈ e
-    noSyn-poly d e lt s-toFloat         = def-gen d toFloat∈ e
-    noSyn-poly d e lt (s-sigop _ mem)   = def-sig d e mem
+    noSyn-poly d e lt (s-sigop mem)      = def-sig d e mem
     noSyn-poly d e lt (s-def d′ e′ _ a0) = 0<0 (subst (λ x → arity (S !! x) ≡ 0) (sym (def-inj (trans e (sym e′)))) a0) lt
 
   synth-unique : ∀ {n} {L : Locals m n} {e A A′ t t′} → Syn L e A t → Syn L e A′ t′ → A ≡ A′
@@ -114,22 +109,13 @@ module Modes {m} (Δ : KCtx m) where
   -- Synthesis.
   synth-unique (s-int i)     (s-int .i)      = refl
   synth-unique (s-float _ _ _ _) (s-float _ _ _ _) = refl
-  synth-unique s-toFloat     s-toFloat       = refl
-  synth-unique s-toFloat     (s-sigop ng _)  = ⊥-elim (notGen toFloat∈ ng)
-  synth-unique s-toFloat     (s-def d e _ _) = ⊥-elim (def-gen d toFloat∈ e)
-  synth-unique (s-sigop ng _) s-toFloat      = ⊥-elim (notGen toFloat∈ ng)
-  synth-unique (s-def d e _ _) s-toFloat     = ⊥-elim (def-gen d toFloat∈ e)
   synth-unique s-unit        s-unit          = refl
-  synth-unique s-unit-g      s-unit-g        = refl
-  synth-unique s-unit-g      (s-sigop ng _)  = ⊥-elim (notGen unit∈ ng)
-  synth-unique s-unit-g      (s-def d e _ _) = ⊥-elim (def-gen d unit∈ e)
+  synth-unique (s-const c)   (s-const c′)    = const-unique c c′
   synth-unique (s-var p)     (s-var q)       = ∋-unique p q
-  synth-unique (s-sigop _ m₁) (s-sigop _ m₂) = cong ⌜_⌝ᵈ (decl-unique one-name m₁ m₂)
-  synth-unique (s-sigop ng _) s-unit-g       = ⊥-elim (notGen unit∈ ng)
-  synth-unique (s-sigop _ mem) (s-def d e _ _) = ⊥-elim (def-sig d e mem)
+  synth-unique (s-sigop m₁)  (s-sigop m₂)    = cong ⌜_⌝ᵈ (decl-unique one-name m₁ m₂)
+  synth-unique (s-sigop mem) (s-def d e _ _) = ⊥-elim (def-sig d e mem)
   synth-unique (s-def d e τ a0) (s-def d′ e′ τ′ _) = mono (def-inj (trans e (sym e′))) τ τ′ a0
-  synth-unique (s-def d e _ _) s-unit-g        = ⊥-elim (def-gen d unit∈ e)
-  synth-unique (s-def d e _ _) (s-sigop _ mem) = ⊥-elim (def-sig d e mem)
+  synth-unique (s-def d e _ _) (s-sigop mem) = ⊥-elim (def-sig d e mem)
   synth-unique (s-annot _)   (s-annot _)     = refl
   synth-unique (s-pair a b)  (s-pair a′ b′)  = cong₂ _*_ (synth-unique a a′) (synth-unique b b′)
   synth-unique (s-neg _ a)   (s-neg _ a′)    = synth-unique a a′
@@ -139,163 +125,173 @@ module Modes {m} (Δ : KCtx m) where
   synth-unique (s-case ql qr ds dl dr j) (s-case ql′ qr′ ds′ dl′ dr′ j′) =
     joinUnder (under (proj₁ (+-inj (synth-unique ds ds′))) dl dl′)
               (under (proj₂ (+-inj (synth-unique ds ds′))) dr dr′) j j′
-  -- arithmetic: the operand types decide the rule
-  -- the generators applied
-  synth-unique (s-id-app d)       (s-id-app d′)       = synth-unique d d′
-  synth-unique (s-fst-app d)      (s-fst-app d′)      = proj₁ (*-inj (synth-unique d d′))
-  synth-unique (s-snd-app d)      (s-snd-app d′)      = proj₂ (*-inj (synth-unique d d′))
-  synth-unique (s-terminal-app d) (s-terminal-app d′) = refl
-  synth-unique (s-apply-app d)    (s-apply-app d′)    = proj₂ (proj₂ (⇒-inj (proj₁ (*-inj (synth-unique d d′)))))
-  synth-unique (s-apply-app d)    (s-apply-eff-app g d′) =
-    ⊥-elim (effPure g (sym (kind-π (proj₁ (proj₂ (⇒-inj (proj₁ (*-inj (synth-unique d d′)))))))))
-  synth-unique (s-apply-eff-app g d) (s-apply-app d′) =
-    ⊥-elim (effPure g (kind-π (proj₁ (proj₂ (⇒-inj (proj₁ (*-inj (synth-unique d d′))))))))
-  synth-unique (s-apply-eff-app g d) (s-apply-eff-app g′ d′) =
-    let e = ⇒-inj (proj₁ (*-inj (synth-unique d d′)))
-    in cong₂ (λ π B → Unit ⇒[ mk-kind Many π ] B) (kind-π (proj₁ (proj₂ e))) (proj₂ (proj₂ e))
-  synth-unique (s-Out-app _ d)     (s-Out-app _ d′)     = cong (λ F → ⟦ F ⟧F (ν F pureᶠ)) (proj₁ (ν-inj (synth-unique d d′)))
-  synth-unique (s-Out-app _ d)     (s-Out-act-app _ d′) = ⊥-elim (pa (proj₂ (ν-inj (synth-unique d d′))))
-    where pa : pureᶠ ≡ actᶠ → ⊥
-          pa ()
-  synth-unique (s-Out-act-app _ d) (s-Out-app _ d′)     = ⊥-elim (ap (proj₂ (ν-inj (synth-unique d d′))))
-    where ap : actᶠ ≡ pureᶠ → ⊥
-          ap ()
-  synth-unique (s-Out-act-app _ d) (s-Out-act-app _ d′) =
-    cong (λ F → Unit ⇒[ mk-kind Many act ] ⟦ F ⟧F (ν F actᶠ)) (proj₁ (ν-inj (synth-unique d d′)))
-  -- an ordinary application: the function's type decides
-  synth-unique (s-app _ df _) (s-app _ df′ _) = proj₂ (proj₂ (⇒-inj (synth-unique df df′)))
-  synth-unique (s-app _ df _) (s-effApp _ g df′ _) =
-    ⊥-elim (effPure g (sym (kind-π (proj₁ (proj₂ (⇒-inj (synth-unique df df′)))))))
-  synth-unique (s-app _ df _) (s-app-spine _ _ dg) =
-    let (A′ , π′ , e , _) = agree dg df in proj₂ (proj₂ (⇒-inj e))
-  synth-unique (s-effApp _ g df _) (s-app _ df′ _) =
-    ⊥-elim (effPure g (kind-π (proj₁ (proj₂ (⇒-inj (synth-unique df df′))))))
-  synth-unique (s-effApp _ g df _) (s-effApp _ g′ df′ _) =
-    let e = ⇒-inj (synth-unique df df′)
-    in cong₂ (λ π B → Unit ⇒[ mk-kind Many π ] B) (kind-π (proj₁ (proj₂ e))) (proj₂ (proj₂ e))
-  synth-unique (s-effApp _ g df _) (s-app-spine _ _ dg) =
-    let (A′ , π′ , e , p) = agree dg df
-    in ⊥-elim (effPure g (trans (kind-π (proj₁ (proj₂ (⇒-inj e)))) (⊑pure p)))
-  synth-unique (s-app-spine _ _ dg) (s-app _ df _) =
-    let (A′ , π′ , e , _) = agree dg df in sym (proj₂ (proj₂ (⇒-inj e)))
-  synth-unique (s-app-spine _ _ dg) (s-effApp _ g df _) =
-    let (A′ , π′ , e , p) = agree dg df
-    in ⊥-elim (effPure g (trans (kind-π (proj₁ (proj₂ (⇒-inj e)))) (⊑pure p)))
+  -- an application: the head's type decides, its grade picks `𝕋`
+  synth-unique (s-app _ _ df _) (s-app _ _ df′ _) =
+    let e = ⇒-inj (synth-unique df df′) in cong₂ 𝕋 (kind-π (proj₁ (proj₂ e))) (proj₂ (proj₂ e))
+  synth-unique (s-app _ ch _ _) (s-app-spine ch′ _ _) = ⊥-elim (ch ch′)
+  synth-unique (s-app-spine ch _ _) (s-app _ ch′ _ _) = ⊥-elim (ch′ ch)
   synth-unique (s-app-spine _ dx dg) (s-app-spine _ dx′ dg′) = domUnder (synth-unique dx dx′) dg dg′
-  -- a special head never takes the ordinary rules
-  synth-unique (s-id-app _)       (s-app h _ _)        = ⊥-elim (h (sh-gen sid))
-  synth-unique (s-id-app _)       (s-effApp h _ _ _)   = ⊥-elim (h (sh-gen sid))
-  synth-unique (s-id-app _)       (s-app-spine h _ _)  = ⊥-elim (h (sh-gen sid))
-  synth-unique (s-fst-app _)      (s-app h _ _)        = ⊥-elim (h (sh-gen sfst))
-  synth-unique (s-fst-app _)      (s-effApp h _ _ _)   = ⊥-elim (h (sh-gen sfst))
-  synth-unique (s-fst-app _)      (s-app-spine h _ _)  = ⊥-elim (h (sh-gen sfst))
-  synth-unique (s-snd-app _)      (s-app h _ _)        = ⊥-elim (h (sh-gen ssnd))
-  synth-unique (s-snd-app _)      (s-effApp h _ _ _)   = ⊥-elim (h (sh-gen ssnd))
-  synth-unique (s-snd-app _)      (s-app-spine h _ _)  = ⊥-elim (h (sh-gen ssnd))
-  synth-unique (s-terminal-app _) (s-app h _ _)        = ⊥-elim (h (sh-gen sterminal))
-  synth-unique (s-terminal-app _) (s-effApp h _ _ _)   = ⊥-elim (h (sh-gen sterminal))
-  synth-unique (s-terminal-app _) (s-app-spine h _ _)  = ⊥-elim (h (sh-gen sterminal))
-  synth-unique (s-apply-app _)    (s-app h _ _)        = ⊥-elim (h (sh-gen sapply))
-  synth-unique (s-apply-app _)    (s-effApp h _ _ _)   = ⊥-elim (h (sh-gen sapply))
-  synth-unique (s-apply-app _)    (s-app-spine h _ _)  = ⊥-elim (h (sh-gen sapply))
-  synth-unique (s-apply-eff-app _ _) (s-app h _ _)       = ⊥-elim (h (sh-gen sapply))
-  synth-unique (s-apply-eff-app _ _) (s-effApp h _ _ _)  = ⊥-elim (h (sh-gen sapply))
-  synth-unique (s-apply-eff-app _ _) (s-app-spine h _ _) = ⊥-elim (h (sh-gen sapply))
-  synth-unique (s-Out-app _ _)    (s-app h _ _)        = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-Out-app _ _)    (s-effApp h _ _ _)   = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-Out-app _ _)    (s-app-spine h _ _)  = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-Out-act-app _ _) (s-app h _ _)       = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-Out-act-app _ _) (s-effApp h _ _ _)  = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-Out-act-app _ _) (s-app-spine h _ _) = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-app h _ _)        (s-id-app _)          = ⊥-elim (h (sh-gen sid))
-  synth-unique (s-app h _ _)        (s-fst-app _)         = ⊥-elim (h (sh-gen sfst))
-  synth-unique (s-app h _ _)        (s-snd-app _)         = ⊥-elim (h (sh-gen ssnd))
-  synth-unique (s-app h _ _)        (s-terminal-app _)    = ⊥-elim (h (sh-gen sterminal))
-  synth-unique (s-app h _ _)        (s-apply-app _)       = ⊥-elim (h (sh-gen sapply))
-  synth-unique (s-app h _ _)        (s-apply-eff-app _ _) = ⊥-elim (h (sh-gen sapply))
-  synth-unique (s-app h _ _)        (s-Out-app _ _)       = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-app h _ _)        (s-Out-act-app _ _) = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-effApp h _ _ _)   (s-id-app _)          = ⊥-elim (h (sh-gen sid))
-  synth-unique (s-effApp h _ _ _)   (s-fst-app _)         = ⊥-elim (h (sh-gen sfst))
-  synth-unique (s-effApp h _ _ _)   (s-snd-app _)         = ⊥-elim (h (sh-gen ssnd))
-  synth-unique (s-effApp h _ _ _)   (s-terminal-app _)    = ⊥-elim (h (sh-gen sterminal))
-  synth-unique (s-effApp h _ _ _)   (s-apply-app _)       = ⊥-elim (h (sh-gen sapply))
-  synth-unique (s-effApp h _ _ _)   (s-apply-eff-app _ _) = ⊥-elim (h (sh-gen sapply))
-  synth-unique (s-effApp h _ _ _)   (s-Out-app _ _)       = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-effApp h _ _ _)   (s-Out-act-app _ _) = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-app-spine h _ _)  (s-id-app _)          = ⊥-elim (h (sh-gen sid))
-  synth-unique (s-app-spine h _ _)  (s-fst-app _)         = ⊥-elim (h (sh-gen sfst))
-  synth-unique (s-app-spine h _ _)  (s-snd-app _)         = ⊥-elim (h (sh-gen ssnd))
-  synth-unique (s-app-spine h _ _)  (s-terminal-app _)    = ⊥-elim (h (sh-gen sterminal))
-  synth-unique (s-app-spine h _ _)  (s-apply-app _)       = ⊥-elim (h (sh-gen sapply))
-  synth-unique (s-app-spine h _ _)  (s-apply-eff-app _ _) = ⊥-elim (h (sh-gen sapply))
-  synth-unique (s-app-spine h _ _)  (s-Out-app _ _)       = ⊥-elim (h (sh-gen sOut))
-  synth-unique (s-app-spine h _ _)  (s-Out-act-app _ _) = ⊥-elim (h (sh-gen sOut))
 
   -- The domain-given mode.
   domain-exact (d-infer dg _ _) (d-infer dg′ _ _) = proj₂ (proj₂ (⇒-inj (synth-unique dg dg′)))
-  domain-exact (d-infer dg _ _) (d-poly d e lt _ _ _ _ _ _ _) = ⊥-elim (noSyn-poly d e lt dg)
-  domain-exact (d-infer dg _ _) (d-lam _)        = ⊥-elim (noLam dg)
-  domain-exact (d-infer dg _ _) (d-compose _ _)    = ⊥-elim (noSyn-compose dg)
-  domain-exact (d-infer dg _ _) d-id           = ⊥-elim (noSyn-gen id∈ (λ ()) (λ ()) dg)
-  domain-exact (d-infer dg _ _) d-fst          = ⊥-elim (noSyn-gen fst∈ (λ ()) (λ ()) dg)
-  domain-exact (d-infer dg _ _) d-snd          = ⊥-elim (noSyn-gen snd∈ (λ ()) (λ ()) dg)
-  domain-exact (d-infer dg _ _) d-terminal     = ⊥-elim (noSyn-gen terminal∈ (λ ()) (λ ()) dg)
-  domain-exact (d-infer dg _ _) d-initial      = ⊥-elim (noSyn-gen initial∈ (λ ()) (λ ()) dg)
-  domain-exact (d-infer dg _ _) (d-case _ _ _)       = ⊥-elim (noSyn-case dg)
-  domain-exact (d-infer dg _ _) (d-pair _ _)       = ⊥-elim (noSyn-pair dg)
-  domain-exact (d-infer dg _ _) (d-cata _ _)     = ⊥-elim (noSyn-cata dg)
-  domain-exact (d-poly d e lt _ _ _ _ _ _ _) (d-infer dg _ _) = ⊥-elim (noSyn-poly d e lt dg)
+  domain-exact (d-infer dg _ _) d′@(d-poly _ _ _ _ _ _ _ _ _ _) = proj₂ (proj₂ (⇒-inj (proj₁ (proj₂ (proj₂ (agree d′ dg))))))
+  domain-exact (d-infer dg _ _) d′@(d-lam _) = proj₂ (proj₂ (⇒-inj (proj₁ (proj₂ (proj₂ (agree d′ dg))))))
+  domain-exact (d-infer dg _ _) d′@(d-map _ _ _) = proj₂ (proj₂ (⇒-inj (proj₁ (proj₂ (proj₂ (agree d′ dg))))))
+  domain-exact (d-infer dg _ _) d′@(d-compose _ _) = proj₂ (proj₂ (⇒-inj (proj₁ (proj₂ (proj₂ (agree d′ dg))))))
+  domain-exact (d-infer dg _ _) d′@(d-case _ _ _) = proj₂ (proj₂ (⇒-inj (proj₁ (proj₂ (proj₂ (agree d′ dg))))))
+  domain-exact (d-infer dg _ _) d′@(d-pair _ _) = proj₂ (proj₂ (⇒-inj (proj₁ (proj₂ (proj₂ (agree d′ dg))))))
+  domain-exact (d-infer dg _ _) d′@(d-cata _ _ _ _) = proj₂ (proj₂ (⇒-inj (proj₁ (proj₂ (proj₂ (agree d′ dg))))))
+  domain-exact d@(d-poly _ _ _ _ _ _ _ _ _ _) (d-infer dg′ _ _) = sym (proj₂ (proj₂ (⇒-inj (proj₁ (proj₂ (proj₂ (agree d dg′)))))))
+  domain-exact d@(d-lam _) (d-infer dg′ _ _) = sym (proj₂ (proj₂ (⇒-inj (proj₁ (proj₂ (proj₂ (agree d dg′)))))))
+  domain-exact d@(d-map _ _ _) (d-infer dg′ _ _) = sym (proj₂ (proj₂ (⇒-inj (proj₁ (proj₂ (proj₂ (agree d dg′)))))))
+  domain-exact d@(d-compose _ _) (d-infer dg′ _ _) = sym (proj₂ (proj₂ (⇒-inj (proj₁ (proj₂ (proj₂ (agree d dg′)))))))
+  domain-exact d@(d-case _ _ _) (d-infer dg′ _ _) = sym (proj₂ (proj₂ (⇒-inj (proj₁ (proj₂ (proj₂ (agree d dg′)))))))
+  domain-exact d@(d-pair _ _) (d-infer dg′ _ _) = sym (proj₂ (proj₂ (⇒-inj (proj₁ (proj₂ (proj₂ (agree d dg′)))))))
+  domain-exact d@(d-cata _ _ _ _) (d-infer dg′ _ _) = sym (proj₂ (proj₂ (⇒-inj (proj₁ (proj₂ (proj₂ (agree d dg′)))))))
   domain-exact (d-poly d e _ ty occ τ _ sdA scB _) (d-poly d′ e′ _ ty′ _ τ′ _ sdA′ scB′ _) =
     poly-exact (def-inj (trans e (sym e′))) ty ty′ occ τ τ′ sdA sdA′ scB scB′
-  domain-exact (d-poly d e _ _ _ _ _ _ _ _) d-id       = ⊥-elim (def-gen d id∈ e)
-  domain-exact (d-poly d e _ _ _ _ _ _ _ _) d-fst      = ⊥-elim (def-gen d fst∈ e)
-  domain-exact (d-poly d e _ _ _ _ _ _ _ _) d-snd      = ⊥-elim (def-gen d snd∈ e)
-  domain-exact (d-poly d e _ _ _ _ _ _ _ _) d-terminal = ⊥-elim (def-gen d terminal∈ e)
-  domain-exact (d-poly d e _ _ _ _ _ _ _ _) d-initial  = ⊥-elim (def-gen d initial∈ e)
-  domain-exact d-id       (d-poly d e _ _ _ _ _ _ _ _) = ⊥-elim (def-gen d id∈ e)
-  domain-exact d-fst      (d-poly d e _ _ _ _ _ _ _ _) = ⊥-elim (def-gen d fst∈ e)
-  domain-exact d-snd      (d-poly d e _ _ _ _ _ _ _ _) = ⊥-elim (def-gen d snd∈ e)
-  domain-exact d-terminal (d-poly d e _ _ _ _ _ _ _ _) = ⊥-elim (def-gen d terminal∈ e)
-  domain-exact d-initial  (d-poly d e _ _ _ _ _ _ _ _) = ⊥-elim (def-gen d initial∈ e)
   domain-exact (d-lam b)    (d-lam b′)       = synth-unique b b′
-  domain-exact (d-lam _)    (d-infer dg _ _)   = ⊥-elim (noLam dg)
+  domain-exact (d-map _ mo least) (d-map _ mo′ least′) = <:-antisym (<:ᶜ⇒<: (least mo′)) (<:ᶜ⇒<: (least′ mo))
   domain-exact (d-compose dg df) (d-compose dg′ df′) = domUnder (domain-exact dg dg′) df df′
-  domain-exact (d-compose _ _) (d-infer dg _ _)  = ⊥-elim (noSyn-compose dg)
-  domain-exact d-id       d-id           = refl
-  domain-exact d-id       (d-infer dg _ _)   = ⊥-elim (noSyn-gen id∈ (λ ()) (λ ()) dg)
-  domain-exact d-fst      d-fst          = refl
-  domain-exact d-fst      (d-infer dg _ _)   = ⊥-elim (noSyn-gen fst∈ (λ ()) (λ ()) dg)
-  domain-exact d-snd      d-snd          = refl
-  domain-exact d-snd      (d-infer dg _ _)   = ⊥-elim (noSyn-gen snd∈ (λ ()) (λ ()) dg)
-  domain-exact d-terminal d-terminal     = refl
-  domain-exact d-terminal (d-infer dg _ _)   = ⊥-elim (noSyn-gen terminal∈ (λ ()) (λ ()) dg)
-  domain-exact d-initial  d-initial      = refl
-  domain-exact d-initial  (d-infer dg _ _)   = ⊥-elim (noSyn-gen initial∈ (λ ()) (λ ()) dg)
   domain-exact (d-case df dg j) (d-case df′ dg′ j′) = joinUnder (domain-exact df df′) (domain-exact dg dg′) j j′
-  domain-exact (d-case _ _ _)   (d-infer dg _ _)   = ⊥-elim (noSyn-case dg)
   domain-exact (d-pair df dg) (d-pair df′ dg′)   = cong₂ _*_ (domain-exact df df′) (domain-exact dg dg′)
-  domain-exact (d-pair _ _)   (d-infer dg _ _)   = ⊥-elim (noSyn-pair dg)
-  domain-exact (d-cata _ da) (d-cata _ da′)  = proj₂ (proj₂ (⇒-inj (synth-unique da da′)))
-  domain-exact (d-cata _ _) (d-infer dg _ _)   = ⊥-elim (noSyn-cata dg)
+  domain-exact (d-cata _ da _ _) (d-cata _ da′ _ _) = proj₂ (proj₂ (⇒-inj (synth-unique da da′)))
 
-  -- Both modes at once.
+  -- Both modes at once: only `d-infer` synthesizes.
   agree (d-infer dg _ p) s = _ , _ , synth-unique s dg , p
   agree (d-poly d e lt _ _ _ _ _ _ _) s = ⊥-elim (noSyn-poly d e lt s)
   agree (d-lam _) ()
-  agree (d-compose _ _) s = ⊥-elim (noSyn-compose s)
-  agree d-id        s = ⊥-elim (noSyn-gen id∈ (λ ()) (λ ()) s)
-  agree d-fst       s = ⊥-elim (noSyn-gen fst∈ (λ ()) (λ ()) s)
-  agree d-snd       s = ⊥-elim (noSyn-gen snd∈ (λ ()) (λ ()) s)
-  agree d-terminal  s = ⊥-elim (noSyn-gen terminal∈ (λ ()) (λ ()) s)
-  agree d-initial   s = ⊥-elim (noSyn-gen initial∈ (λ ()) (λ ()) s)
-  agree (d-case _ _ _)    s = ⊥-elim (noSyn-case s)
-  agree (d-pair _ _)    s = ⊥-elim (noSyn-pair s)
-  agree (d-cata _ _)  s = ⊥-elim (noSyn-cata s)
+  agree (d-map fd _ _)  s = ⊥-elim (noSyn-map (fd-map fd) s)
+  agree (d-compose _ _) s = ⊥-elim (noSyn-comb₂ is-combinator s)
+  agree (d-case _ _ _)  s = ⊥-elim (noSyn-comb₂ is-combinator s)
+  agree (d-pair _ _)    s = ⊥-elim (noSyn-comb₂ is-combinator s)
+  agree (d-cata _ _ _ _) s = ⊥-elim (noSyn-comb₁ is-combinator s)
+
+  -- One rule per form and mode, whatever the types.
+  one-rule⇒ : ∀ {n} {L : Locals m n} {e A A′ t t′} (d : Syn L e A t) (d′ : Syn L e A′ t′) → ruleOf⇒ d ≡ ruleOf⇒ d′
+  one-rule⇒ (s-int _)            (s-int _)            = refl
+  one-rule⇒ (s-float _ _ _ _)    (s-float _ _ _ _)    = refl
+  one-rule⇒ s-unit               s-unit               = refl
+  one-rule⇒ (s-const _)          (s-const _)          = refl
+  one-rule⇒ (s-var _)            (s-var _)            = refl
+  one-rule⇒ (s-sigop _)          (s-sigop _)          = refl
+  one-rule⇒ (s-sigop mem)        (s-def d e _ _)      = ⊥-elim (def-sig d e mem)
+  one-rule⇒ (s-def _ _ _ _)      (s-def _ _ _ _)      = refl
+  one-rule⇒ (s-def d e _ _)      (s-sigop mem)        = ⊥-elim (def-sig d e mem)
+  one-rule⇒ (s-annot _)          (s-annot _)          = refl
+  one-rule⇒ (s-pair _ _)         (s-pair _ _)         = refl
+  one-rule⇒ (s-neg _ _)          (s-neg _ _)          = refl
+  one-rule⇒ (s-let _ _ _)        (s-let _ _ _)        = refl
+  one-rule⇒ (s-case _ _ _ _ _ _) (s-case _ _ _ _ _ _) = refl
+  one-rule⇒ (s-binop _ _ _)      (s-binop _ _ _)      = refl
+  one-rule⇒ (s-app _ _ _ _)      (s-app _ _ _ _)      = refl
+  one-rule⇒ (s-app _ ch _ _)     (s-app-spine ch′ _ _) = ⊥-elim (ch ch′)
+  one-rule⇒ (s-app-spine ch _ _) (s-app _ ch′ _ _)    = ⊥-elim (ch′ ch)
+  one-rule⇒ (s-app-spine _ _ _)  (s-app-spine _ _ _)  = refl
+
+  -- `c-sub` is never the rule of a form with a rule of its own.
+  private
+    sub-vs : ∀ {n} {L : Locals m n} {e A t} (d : Chk L e A t) {B t′} → ¬ OwnCheck e → Syn L e B t′
+           → ruleOf⇐ d ≡ Rule.c-sub
+    sub-vs (c-map {k = k} _)         _   s = ⊥-elim (noSyn-map k s)
+    sub-vs (c-map-app fc _ _)        noc _ = ⊥-elim (noc (oc-map fc))
+    sub-vs (c-compose-g _ _ _)       _   s = ⊥-elim (noSyn-comb₂ is-combinator s)
+    sub-vs (c-compose-f _ _ _ _)     _   s = ⊥-elim (noSyn-comb₂ is-combinator s)
+    sub-vs (c-case _ _)              _   s = ⊥-elim (noSyn-comb₂ is-combinator s)
+    sub-vs (c-pair _ _)              _   s = ⊥-elim (noSyn-comb₂ is-combinator s)
+    sub-vs (c-curry _)               _   s = ⊥-elim (noSyn-comb₁ is-combinator s)
+    sub-vs (c-cata _ _)              _   s = ⊥-elim (noSyn-comb₁ is-combinator s)
+    sub-vs (c-ana _ _)               _   s = ⊥-elim (noSyn-comb₁ is-combinator s)
+    sub-vs (c-sub _ _ _)             _   _ = refl
+    sub-vs (c-lam _)                 _   ()
+    sub-vs (c-pair-lit _ _)          noc _ = ⊥-elim (noc oc-pair)
+    sub-vs (c-poly d e lt _ _)       _   s = ⊥-elim (noSyn-poly d e lt s)
+
+  one-rule⇐ : ∀ {n} {L : Locals m n} {e A A′ t t′} (d : Chk L e A t) (d′ : Chk L e A′ t′) → ruleOf⇐ d ≡ ruleOf⇐ d′
+  one-rule⇐ (c-sub _ _ _) (c-sub _ _ _) = refl
+  one-rule⇐ d@(c-map _) (c-sub noc s _) = sub-vs d noc s
+  one-rule⇐ d@(c-map-app _ _ _) (c-sub noc s _) = sub-vs d noc s
+  one-rule⇐ d@(c-compose-g _ _ _) (c-sub noc s _) = sub-vs d noc s
+  one-rule⇐ d@(c-compose-f _ _ _ _) (c-sub noc s _) = sub-vs d noc s
+  one-rule⇐ d@(c-case _ _) (c-sub noc s _) = sub-vs d noc s
+  one-rule⇐ d@(c-pair _ _) (c-sub noc s _) = sub-vs d noc s
+  one-rule⇐ d@(c-curry _) (c-sub noc s _) = sub-vs d noc s
+  one-rule⇐ d@(c-cata _ _) (c-sub noc s _) = sub-vs d noc s
+  one-rule⇐ d@(c-ana _ _) (c-sub noc s _) = sub-vs d noc s
+  one-rule⇐ d@(c-lam _) (c-sub noc s _) = sub-vs d noc s
+  one-rule⇐ d@(c-pair-lit _ _) (c-sub noc s _) = sub-vs d noc s
+  one-rule⇐ d@(c-poly _ _ _ _ _) (c-sub noc s _) = sub-vs d noc s
+  one-rule⇐ (c-sub noc s _) d′@(c-map _) = sym (sub-vs d′ noc s)
+  one-rule⇐ (c-sub noc s _) d′@(c-map-app _ _ _) = sym (sub-vs d′ noc s)
+  one-rule⇐ (c-sub noc s _) d′@(c-compose-g _ _ _) = sym (sub-vs d′ noc s)
+  one-rule⇐ (c-sub noc s _) d′@(c-compose-f _ _ _ _) = sym (sub-vs d′ noc s)
+  one-rule⇐ (c-sub noc s _) d′@(c-case _ _) = sym (sub-vs d′ noc s)
+  one-rule⇐ (c-sub noc s _) d′@(c-pair _ _) = sym (sub-vs d′ noc s)
+  one-rule⇐ (c-sub noc s _) d′@(c-curry _) = sym (sub-vs d′ noc s)
+  one-rule⇐ (c-sub noc s _) d′@(c-cata _ _) = sym (sub-vs d′ noc s)
+  one-rule⇐ (c-sub noc s _) d′@(c-ana _ _) = sym (sub-vs d′ noc s)
+  one-rule⇐ (c-sub noc s _) d′@(c-lam _) = sym (sub-vs d′ noc s)
+  one-rule⇐ (c-sub noc s _) d′@(c-pair-lit _ _) = sym (sub-vs d′ noc s)
+  one-rule⇐ (c-sub noc s _) d′@(c-poly _ _ _ _ _) = sym (sub-vs d′ noc s)
+  one-rule⇐ (c-map _)              (c-map _)              = refl
+  one-rule⇐ (c-map-app _ _ _)      (c-map-app _ _ _)      = refl
+  one-rule⇐ (c-compose-g _ _ _)    (c-compose-g _ _ _)    = refl
+  one-rule⇐ (c-compose-g df _ _)   (c-compose-f ndf _ _ _) = ⊥-elim (ndf df)
+  one-rule⇐ (c-compose-f ndf _ _ _) (c-compose-g df _ _)  = ⊥-elim (ndf df)
+  one-rule⇐ (c-compose-f _ _ _ _)  (c-compose-f _ _ _ _)  = refl
+  one-rule⇐ (c-case _ _)           (c-case _ _)           = refl
+  one-rule⇐ (c-pair _ _)           (c-pair _ _)           = refl
+  one-rule⇐ (c-curry _)            (c-curry _)            = refl
+  one-rule⇐ (c-cata _ _)           (c-cata _ _)           = refl
+  one-rule⇐ (c-ana _ _)            (c-ana _ _)            = refl
+  one-rule⇐ (c-lam _)              (c-lam _)              = refl
+  one-rule⇐ (c-pair-lit _ _)       (c-pair-lit _ _)       = refl
+  one-rule⇐ (c-poly _ _ _ _ _)     (c-poly _ _ _ _ _)     = refl
+
+  -- `d-infer` is never the rule of a form with a domain-given rule of its own.
+  private
+    infer-vs : ∀ {n} {L : Locals m n} {e A π B t} (d : Dom L e A π B t) {T t′} → Syn L e T t′
+             → ruleOf↦ d ≡ Rule.d-infer
+    infer-vs (d-infer _ _ _)               _ = refl
+    infer-vs (d-poly d e lt _ _ _ _ _ _ _) s = ⊥-elim (noSyn-poly d e lt s)
+    infer-vs (d-lam _)                     ()
+    infer-vs (d-map fd _ _)                s = ⊥-elim (noSyn-map (fd-map fd) s)
+    infer-vs (d-compose _ _)               s = ⊥-elim (noSyn-comb₂ is-combinator s)
+    infer-vs (d-case _ _ _)                s = ⊥-elim (noSyn-comb₂ is-combinator s)
+    infer-vs (d-pair _ _)                  s = ⊥-elim (noSyn-comb₂ is-combinator s)
+    infer-vs (d-cata _ _ _ _)              s = ⊥-elim (noSyn-comb₁ is-combinator s)
+
+  one-rule↦ : ∀ {n} {L : Locals m n} {e A A′ B B′ π π′ t t′} (d : Dom L e A π B t) (d′ : Dom L e A′ π′ B′ t′)
+            → ruleOf↦ d ≡ ruleOf↦ d′
+  one-rule↦ (d-infer _ _ _) (d-infer _ _ _) = refl
+  one-rule↦ d@(d-poly _ _ _ _ _ _ _ _ _ _) (d-infer s _ _) = infer-vs d s
+  one-rule↦ d@(d-lam _) (d-infer s _ _) = infer-vs d s
+  one-rule↦ d@(d-map _ _ _) (d-infer s _ _) = infer-vs d s
+  one-rule↦ d@(d-compose _ _) (d-infer s _ _) = infer-vs d s
+  one-rule↦ d@(d-case _ _ _) (d-infer s _ _) = infer-vs d s
+  one-rule↦ d@(d-pair _ _) (d-infer s _ _) = infer-vs d s
+  one-rule↦ d@(d-cata _ _ _ _) (d-infer s _ _) = infer-vs d s
+  one-rule↦ (d-infer s _ _) d′@(d-poly _ _ _ _ _ _ _ _ _ _) = sym (infer-vs d′ s)
+  one-rule↦ (d-infer s _ _) d′@(d-lam _) = sym (infer-vs d′ s)
+  one-rule↦ (d-infer s _ _) d′@(d-map _ _ _) = sym (infer-vs d′ s)
+  one-rule↦ (d-infer s _ _) d′@(d-compose _ _) = sym (infer-vs d′ s)
+  one-rule↦ (d-infer s _ _) d′@(d-case _ _ _) = sym (infer-vs d′ s)
+  one-rule↦ (d-infer s _ _) d′@(d-pair _ _) = sym (infer-vs d′ s)
+  one-rule↦ (d-infer s _ _) d′@(d-cata _ _ _ _) = sym (infer-vs d′ s)
+  one-rule↦ (d-poly _ _ _ _ _ _ _ _ _ _) (d-poly _ _ _ _ _ _ _ _ _ _) = refl
+  one-rule↦ (d-lam _)        (d-lam _)        = refl
+  one-rule↦ (d-map _ _ _)    (d-map _ _ _)    = refl
+  one-rule↦ (d-compose _ _)  (d-compose _ _)  = refl
+  one-rule↦ (d-case _ _ _)   (d-case _ _ _)   = refl
+  one-rule↦ (d-pair _ _)     (d-pair _ _)     = refl
+  one-rule↦ (d-cata _ _ _ _) (d-cata _ _ _ _) = refl
 
 surface : Surface Σ S nm
 surface = record
   { synth-unique        = λ {m} {Δ} → Modes.synth-unique Δ
   ; domain-exact        = λ {m} {Δ} → Modes.domain-exact Δ
   ; domain-agrees-synth = λ {m} {Δ} → Modes.agree Δ
+  ; one-rule⇒           = λ {m} {Δ} → Modes.one-rule⇒ Δ
+  ; one-rule⇐           = λ {m} {Δ} → Modes.one-rule⇐ Δ
+  ; one-rule↦           = λ {m} {Δ} → Modes.one-rule↦ Δ
   }

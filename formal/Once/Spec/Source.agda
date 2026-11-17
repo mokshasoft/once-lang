@@ -91,6 +91,7 @@ intLits (RNeg e)              = intLits e
 intLits (RVar _)              = []
 intLits (RQualified _ _)      = []
 intLits (RResolved _)         = []
+intLits (RGen _)              = []
 intLits (RApp f x)            = intLits f ++ intLits x
 intLits (RLam _ b)            = intLits b
 intLits (RLet _ e b)          = intLits e ++ intLits b

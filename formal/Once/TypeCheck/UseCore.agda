@@ -45,6 +45,8 @@ open import Once.Type.Grade using (≤q-Many; ≤qᵇ→≤q)
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals)
 open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
+open import Once.Spec.Surface.Generators using (Constant; k-unit; k-toFloat; Morphism; m-id; m-fst; m-snd; m-terminal; m-inl; m-inr; m-initial; m-apply; m-In; m-Out; Final; final-ν; final-T∞)
+open import Once.Spec.Context using (_*ᵘ_)
 
 -- An entry with no type variables respects any kinds.
 no-kinds : ∀ (d : Fin s) (τ : TySub (arity (S !! d)) m) → arity (S !! d) ≡ 0 → Respects (kinds (S !! d)) Δ τ
@@ -73,11 +75,33 @@ typS⇐ : ∀ {n} {L : Locals m n} {Γ} {e A t Ψ} {d : L ⊢ e ⇐ A ↝ t} →
 typS↦ : ∀ {n} {L : Locals m n} {Γ} {e A π B t Ψ} {d : L ⊢ e ⇐ A ⇒[ π ]↦ B ↝ t} → Shape L Γ → Use↦ d Ψ
       → Δ ⊩ Γ ⊢[ Ψ ] t ∷ A ⇒[ mk-kind Many π ] B ! pure
 
+-- The table's rows: a constant, a structure map at its instance, a final
+-- coalgebra's former.
+⊢const : ∀ {n} {Γ : Ctx m n} {g k T t} → Constant Δ g k T t → Δ ⊩ Γ ⊢[ zeroUsage ] t ∷ T ! pure
+⊢const k-unit    = ⊢unit
+⊢const k-toFloat = ⊢toFloatᶜ
+
+⊢morph : ∀ {n} {Γ : Ctx m n} {g k A π B t} → Morphism Δ g k A π B t → Δ ⊩ Γ ⊢[ zeroUsage ] t ∷ A ⇒[ mk-kind Many π ] B ! pure
+⊢morph (m-id {π = π})            = ⊢idᶜ (pure-⊑ π)
+⊢morph (m-fst {π = π})           = ⊢fstᶜ (pure-⊑ π)
+⊢morph (m-snd {π = π})           = ⊢sndᶜ (pure-⊑ π)
+⊢morph (m-terminal {π = π})      = ⊢terminalᶜ (pure-⊑ π)
+⊢morph (m-inl {π = π})           = ⊢inlᶜ (pure-⊑ π)
+⊢morph (m-inr {π = π})           = ⊢inrᶜ (pure-⊑ π)
+⊢morph (m-initial {π = π})       = ⊢initialᶜ (pure-⊑ π)
+⊢morph (m-apply {ρ = ρ} {π = π}) = ⊢applyᵀ ρ (pure-⊑ π)
+⊢morph (m-In {π = π} w)          = ⊢inᶜ (pure-⊑ π) w
+⊢morph (m-Out {f = f} {π = π} w) = ⊢outᵀ f (pure-⊑ π) w
+
+⊢final : ∀ {n} {Γ : Ctx m n} {A π₀ X G ρ k Ψ c} → Final Δ A π₀ X G ρ k
+       → Δ ⊩ Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many ρ ] G A ! pure → Δ ⊩ Γ ⊢[ Many *ᵘ Ψ ] k c ∷ A ⇒[ mk-kind Many π₀ ] X ! pure
+⊢final (final-ν {π₀ = π₀} le w) dc = ⊢anaᶜ (pure-⊑ π₀) w dc
+⊢final final-T∞                    dc = ⊢anaEffᶜ dc
+
 typS⇒ sh u-int                       = ⊢lit-int
 typS⇒ sh u-float                     = ⊢lit-float
 typS⇒ sh u-unit                      = ⊢unit
-typS⇒ sh u-unit-g                    = ⊢unit
-typS⇒ sh u-toFloat                   = ⊢toFloatᶜ
+typS⇒ sh (u-const {c = c})           = ⊢const c
 typS⇒ sh (u-var {v = v})             = subst (λ X → Δ ⊩ _ ⊢[ _ ] _ ∷ X ! pure) (lookup-shape sh v) (⊢var _)
 typS⇒ sh (u-sigop {mem = mem} k h)   = ⊢sigop mem
 typS⇒ sh (u-def {d = d} {τ = τ} {a = a}) = ⊢ref d τ (no-kinds d τ a)
@@ -89,41 +113,21 @@ typS⇒ sh (u-let {q = q} u₁ u₂)       = ⊢let-pure q (typS⇒ sh u₁) (ty
 typS⇒ sh (u-case {j = j} us ul ur)   =
   ⊢case⊔ (typS⇒ sh us) (⊢coerce (<:ᶜ⇒<: (left j)) (typS⇒ (sh-▸ sh) ul)) (⊢coerce (<:ᶜ⇒<: (right j)) (typS⇒ (sh-▸ sh) ur))
 typS⇒ sh (u-binop {op = op} {A = A} {h = h} u₁ u₂) = bin op A h (typS⇒ sh u₁) (typS⇒ sh u₂)
-typS⇒ sh (u-id-app u)                = ⊢app (⊢idᶜ ⊑-pure) (typS⇒ sh u)
-typS⇒ sh (u-fst-app u)               = ⊢app (⊢fstᶜ ⊑-pure) (typS⇒ sh u)
-typS⇒ sh (u-snd-app u)               = ⊢app (⊢sndᶜ ⊑-pure) (typS⇒ sh u)
-typS⇒ sh (u-terminal-app u)          = ⊢app (⊢terminalᶜ ⊑-pure) (typS⇒ sh u)
-typS⇒ sh (u-apply-app u)             = ⊢app ⊢applyᶜ (typS⇒ sh u)
-typS⇒ sh (u-apply-eff-app u)         = ⊢app ⊢applyEffᶜ (typS⇒ sh u)
-typS⇒ sh (u-Out-app {w = w} u)       = ⊢app (⊢outᶜ w) (typS⇒ sh u)
-typS⇒ sh (u-Out-act-app {w = w} u)   = ⊢app (⊢outActᶜ w) (typS⇒ sh u)
-typS⇒ sh (u-app {q = q} uf ux)       = ⊢app-pure q (typS⇒ sh uf) (typS⇐ sh ux)
-typS⇒ sh (u-effApp uf ux)            = ⊢effAppᶜ (typS⇒ sh uf) (typS⇐ sh ux)
+typS⇒ sh (u-app {π = π} uf ux)       = ⊢appᵀ π (typS⇒ sh uf) (typS⇐ sh ux)
 typS⇒ sh (u-app-spine ux uf)         = ⊢app (typS↦ sh uf) (typS⇒ sh ux)
 
-typS⇐ sh (u-id {π = π})              = ⊢idᶜ (pure-⊑ π)
-typS⇐ sh (u-fst {π = π})             = ⊢fstᶜ (pure-⊑ π)
-typS⇐ sh (u-snd {π = π})             = ⊢sndᶜ (pure-⊑ π)
-typS⇐ sh (u-terminal {π = π})        = ⊢terminalᶜ (pure-⊑ π)
-typS⇐ sh (u-initial {π = π})         = ⊢initialᶜ (pure-⊑ π)
-typS⇐ sh (u-inl {π = π})             = ⊢inlᶜ (pure-⊑ π)
-typS⇐ sh (u-inr {π = π})             = ⊢inrᶜ (pure-⊑ π)
+typS⇐ sh (u-map {mo = mo})           = ⊢morph mo
+typS⇐ sh (u-map-app {mo = mo} u)     = ⊢app (⊢morph mo) (typS⇐ sh u)
 typS⇐ sh (u-compose-g ug uf)         = ⊢composeᶜ (·p-diag _) (typS⇐ sh uf) (typS↦ sh ug)
 typS⇐ sh (u-compose-f {p = p} uf ug) = ⊢composeᶜ (·p-diag _) (⊢coerce p (typS⇒ sh uf)) (typS⇐ sh ug)
 typS⇐ sh (u-case uf ug)              = ⊢caseᶜ (typS⇐ sh uf) (typS⇐ sh ug)
 typS⇐ sh (u-pair uf ug)              = ⊢pairᶜ (·p-diag _) (typS⇐ sh uf) (typS⇐ sh ug)
 typS⇐ sh (u-curry {π₀ = π₀} u)       = ⊢curryᶜ (pure-⊑ π₀) (typS⇐ sh u)
 typS⇐ sh (u-cata {w = w} u)          = ⊢cataᶜ w (typS⇐ sh u)
-typS⇐ sh (u-ana {π₀ = π₀} {w = w} u) = ⊢anaᶜ (pure-⊑ π₀) w (typS⇐ sh u)
-typS⇐ sh (u-loop u)                  = ⊢loopᶜ (typS⇐ sh u)
+typS⇐ sh (u-ana {fi = fi} u)         = ⊢final fi (typS⇐ sh u)
 typS⇐ sh (u-sub {p = p} u)           = ⊢coerce p (typS⇒ sh u)
 typS⇐ sh (u-lam {q = q} {π = π} {q′ = q′} ≤p u) = ⊢lam (≤qᵇ→≤q q′ q ≤p) (⊢sub-eff (pure-⊑ π) (typS⇐ (sh-▸ sh) u))
 typS⇐ sh (u-pair-lit ua ub)          = ⊢pair (typS⇐ sh ua) (typS⇐ sh ub)
-typS⇐ sh (u-In-app {w = w} u)        = ⊢app (⊢inᶜ w) (typS⇐ sh u)
-typS⇐ sh (u-apply-app u)             = ⊢app ⊢applyᶜ (typS⇒ sh u)
-typS⇐ sh (u-inl-app u)               = ⊢app (⊢inlᶜ ⊑-pure) (typS⇐ sh u)
-typS⇐ sh (u-inr-app u)               = ⊢app (⊢inrᶜ ⊑-pure) (typS⇐ sh u)
-typS⇐ sh (u-initial-app u)           = ⊢app (⊢initialᶜ ⊑-pure) (typS⇐ sh u)
 typS⇐ sh (u-poly {d = d} {τ = τ} {r = r}) = ⊢ref d τ r
 
 typS↦ sh (u-infer {B = B} {p = p} {o = o} u) = ⊢coerce (sub-arr p (<:-refl B) o) (typS⇒ sh u)
@@ -131,17 +135,13 @@ typS↦ {Γ = Γ} sh (u-poly {d = d} {A = A} {B = B} {ty = ty} {τ = τ} {r = r}
   ⊢coerce (sub-arr {q = Many} (<:-refl A) (<:-refl B) o)
           (subst (λ X → Δ ⊩ Γ ⊢[ zeroUsage ] ref d τ ∷ X ! pure) (poly-inst d τ ty ea eb) (⊢ref d τ r))
 typS↦ sh (u-lam {π = π} {q′ = q′} u) = ⊢lam (≤qᵇ→≤q q′ Many (≤q-Many q′)) (⊢sub-eff (pure-⊑ π) (typS⇒ (sh-▸ sh) u))
+typS↦ sh (u-map {mo = mo})           = ⊢morph mo
 typS↦ sh (u-compose ug uf)           = ⊢composeᶜ (·p-diag _) (typS↦ sh uf) (typS↦ sh ug)
-typS↦ sh (u-id {π = π})              = ⊢idᶜ (pure-⊑ π)
-typS↦ sh (u-fst {π = π})             = ⊢fstᶜ (pure-⊑ π)
-typS↦ sh (u-snd {π = π})             = ⊢sndᶜ (pure-⊑ π)
-typS↦ sh (u-terminal {π = π})        = ⊢terminalᶜ (pure-⊑ π)
-typS↦ sh (u-initial {π = π})         = ⊢initialᶜ (pure-⊑ π)
 typS↦ sh (u-case {j = j} uf ug)      =
   ⊢caseᶜ (⊢coerce (sub-arr (<:-refl _) (<:ᶜ⇒<: (left j)) (⊑π-refl _)) (typS↦ sh uf))
          (⊢coerce (sub-arr (<:-refl _) (<:ᶜ⇒<: (right j)) (⊑π-refl _)) (typS↦ sh ug))
 typS↦ sh (u-pair uf ug)              = ⊢pairᶜ (·p-diag _) (typS↦ sh uf) (typS↦ sh ug)
-typS↦ sh (u-cata {w = w} u)          = ⊢cataᶜ w (typS⇒ sh u)
+typS↦ sh (u-cata {A = A} {w = w} {p = p} {o = o} u) = ⊢cataᶜ w (⊢coerce (sub-arr p (<:-refl A) o) (typS⇒ sh u))
 
 -- At the locals' own context.
 typ⇒ : ∀ {n} {L : Locals m n} {e A t Ψ} {d : L ⊢ e ⇒ A ↝ t} → Use⇒ d Ψ → Δ ⊩ ctxOf L ⊢[ Ψ ] t ∷ A ! pure

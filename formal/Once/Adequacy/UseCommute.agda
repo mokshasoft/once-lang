@@ -41,7 +41,8 @@ open import Once.Spec.Core.Typing Σ S
 open import Once.Postulates using (extensionality)
 open import Once.Functor.Translate using (Base-irrelevant)
 open import Once.Laws.Sub using (<:-unique)
-open import Once.Type.Sub using (·p-diag)
+open import Once.Type.Sub using (·p-diag; <:-refl)
+open import Once.Spec.Sub using (sub-arr)
 import Once.Metatheory.TermModel.TySubst Σ S as TS
 open import Once.Core.TySubstRen Σ S using (module Deriv)
 open Deriv σ rσ
@@ -59,6 +60,9 @@ import Once.TypeCheck.UseCore Σ S nm Ok OkS Δ as C
 import Once.TypeCheck.UseCore Σ S nm Ok OkS Δ′ as C′
 open import Once.TypeCheck.WitnessSubst Σ S nm Ok OkS Δ Δ′ σ rσ
   using (_⟨_⟩ˡ; subW⇒; subW⇐; subW↦; ≡W⇒; ≡W⇐; ≡W↦; ∘τ; ⌜⌝ᵈ-⟨⟩; ↑-⟨⟩; ⊔-⟨⟩; compose-⟪⟫; pair-⟪⟫; case-⟪⟫; ana-⟪⟫; effApp-⟪⟫)
+import Once.Adequacy.SpecFront.TyRen Σ S nm as TR
+import Once.Spec.Surface.Generators as Gn
+open import Once.Type.Sub using (pure-⊑)
 import Once.TypeCheck.Witness Σ S nm Ok OkS Δ′ as W′
 open import Once.Core.Decl using (declS)
 open import Once.Type.Sub using (pure-⊑; <:-refl; ⊑π-refl; <:ᶜ⇒<:)
@@ -135,6 +139,12 @@ private
           → t₁ ≡ t₂ → d₁ ≅ d₂ → ⊢coerce p₁ d₁ ≅ ⊢coerce p₂ d₂
   ≅coerce {p₁ = p₁} {p₂ = p₂} refl H.refl rewrite <:-unique p₁ p₂ = H.refl
 
+  -- (…into equal targets)
+  ≅coerce′ : ∀ {n} {Γ : Ctx k n} {A B B′ : Ty k} {Ψ π t₁ t₂} {p₁ : A <: B} {p₂ : A <: B′}
+               {d₁ : Δ′ ⊩ Γ ⊢[ Ψ ] t₁ ∷ A ! π} {d₂ : Δ′ ⊩ Γ ⊢[ Ψ ] t₂ ∷ A ! π}
+           → B ≡ B′ → t₁ ≡ t₂ → d₁ ≅ d₂ → ⊢coerce p₁ d₁ ≅ ⊢coerce p₂ d₂
+  ≅coerce′ refl e h = ≅coerce e h
+
   ty-letp : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ π A B e b} (q : Quantity)
               (d₁ : Δ ⊩ Γ ⊢[ Ψ₁ ] e ∷ A ! pure) (d₂ : Δ ⊩ (Γ ▸ A) ⊢[ q ∷ Ψ₂ ] b ∷ B ! π)
           → ty (DT.⊢let-pure q d₁ d₂) ≅ DT.⊢let-pure {Δ = Δ′} q (ty d₁) (ty d₂)
@@ -209,6 +219,38 @@ private
             (H.sym (rtᵗ-≅ (sym (TS.primCod-⟨⟩ σ (num h (symbol (binSym op))))) _))
 
 ------------------------------------------------------------------------
+-- The table's rows
+------------------------------------------------------------------------
+
+private
+  morph-mo≡ : ∀ {n} {Γ : Ctx k n} {g c A A′ π B B′} {t t′ : Tm S k n} (eA : A ≡ A′) (eB : B ≡ B′) (et : t ≡ t′)
+              (mo : Gn.Morphism {S = S} Δ′ {n = n} g c A π B t)
+            → C′.⊢morph {Γ = Γ} (TR.mo≡ σ rσ eA eB et mo) ≅ C′.⊢morph {Γ = Γ} mo
+  morph-mo≡ refl refl refl mo = H.refl
+
+  morph-≅ : ∀ {n} {Γ : Ctx m n} {g c A π B t} (mo : Gn.Morphism {S = S} Δ {n = n} g c A π B t)
+          → C′.⊢morph {Γ = Γ ⟨ σ ⟩ᶜ} (TR.morph-ren σ rσ mo) ≅ ty (C.⊢morph {Γ = Γ} mo)
+  morph-≅ (Gn.m-id {T = T} {π = π}) = H.sym (dc-id {A = T} (pure-⊑ π))
+  morph-≅ (Gn.m-fst {A = A} {B = B} {π = π}) = H.sym (dc-fst {A = A} {B = B} (pure-⊑ π))
+  morph-≅ (Gn.m-snd {A = A} {B = B} {π = π}) = H.sym (dc-snd {A = A} {B = B} (pure-⊑ π))
+  morph-≅ (Gn.m-terminal {A = A} {π = π}) = H.sym (dc-terminal {A = A} (pure-⊑ π))
+  morph-≅ (Gn.m-inl {A = A} {B = B} {π = π}) = H.sym (dc-inl {A = A} {B = B} (pure-⊑ π))
+  morph-≅ (Gn.m-inr {A = A} {B = B} {π = π}) = H.sym (dc-inr {A = A} {B = B} (pure-⊑ π))
+  morph-≅ (Gn.m-initial {A = A} {π = π}) = H.sym (dc-initial {A = A} (pure-⊑ π))
+  morph-≅ (Gn.m-apply {A = A} {B = B} {ρ = pure} {π = π}) = H.sym (dc-apply {A = A} {B = B} (pure-⊑ π))
+  morph-≅ (Gn.m-apply {A = A} {B = B} {ρ = act} {π = π}) = H.sym (dc-applyEff {π = act} {A = A} {B = B} (pure-⊑ π))
+  morph-≅ (Gn.m-apply {A = A} {B = B} {ρ = Once.Spec.Grade.eff} {π = π}) = H.sym (dc-applyEff {π = Once.Spec.Grade.eff} {A = A} {B = B} (pure-⊑ π))
+  morph-≅ (Gn.m-In {F = F} {π = π} w) =
+    H.trans (morph-mo≡ (sym (TS.⟦⟧F-⟨⟩ σ F (μ F))) refl (sym (TR.⟪in⟫ σ F π)) (Gn.m-In (TS.wf-⟨⟩ σ rσ w)))
+            (H.sym (dc-in (pure-⊑ π) w))
+  morph-≅ (Gn.m-Out {F = F} {f = pureᶠ} {π = π} w) =
+    H.trans (morph-mo≡ refl (sym (TS.⟦⟧F-⟨⟩ σ F _)) refl (Gn.m-Out (TS.wf-⟨⟩ σ rσ w)))
+            (H.sym (dc-out (pure-⊑ π) w))
+  morph-≅ (Gn.m-Out {F = F} {f = actᶠ} {π = π} w) =
+    H.trans (morph-mo≡ refl (cong (λ X → _ ⇒[ _ ] X) (sym (TS.⟦⟧F-⟨⟩ σ F _))) refl (Gn.m-Out (TS.wf-⟨⟩ σ rσ w)))
+            (H.sym (dc-outAct (pure-⊑ π) w))
+
+------------------------------------------------------------------------
 -- THE INDUCTION
 ------------------------------------------------------------------------
 
@@ -223,12 +265,13 @@ mutual
   cm⇒ sh U.u-int       = H.refl
   cm⇒ sh U.u-float     = H.refl
   cm⇒ sh U.u-unit      = H.refl
-  cm⇒ sh U.u-unit-g    = H.refl
+  cm⇒ sh (U.u-const {c = Gn.k-unit})    = H.refl
+  cm⇒ sh (U.u-const {c = Gn.k-toFloat}) = H.refl
   cm⇒ {Γ = Γ} sh (U.u-var {i = i} {v = v}) =
     H.trans (subst-≅ (λ X → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ _ ] _ ∷ X ! pure) (U′.lookup-shape (sh⟨⟩ sh) _) (⊢var i))
             (H.sym (H.trans (tyS-≅ (U.lookup-shape sh v) (⊢var i)) (rtᵗ-≅ (TS.lookup-⟨⟩ σ Γ i) (⊢var i))))
-  cm⇒ sh {d = SU.s-sigop ng mem} (U.u-sigop {T = T} {ok = ok} c h) =
-    H.trans (typ≡⇒ (sh⟨⟩ sh) (sym (⌜⌝ᵈ-⟨⟩ (declS T))) refl (W′.w-sigop {ok = ok} ng mem c h))
+  cm⇒ sh {d = SU.s-sigop mem} (U.u-sigop {T = T} {ok = ok} c h) =
+    H.trans (typ≡⇒ (sh⟨⟩ sh) (sym (⌜⌝ᵈ-⟨⟩ (declS T))) refl (W′.w-sigop {ok = ok} mem c h))
             (H.sym (rtᵗ-≅ (sym (TS.⌜⌝ᵈ-⟨⟩ σ (declS T))) (⊢sigop mem)))
   cm⇒ sh {d = SU.s-def d e τ a} (U.u-def {ok = ok}) =
     H.trans (typ≡⇒ (sh⟨⟩ sh) (sym (⟨⟩-∘ (type (S !! d)) τ σ)) refl (W′.w-def d {ok} e (∘τ τ) a))
@@ -238,7 +281,6 @@ mutual
     H.trans (typ≡⇒ (sh⟨⟩ sh) (sym (↑-⟨⟩ T)) refl (W′.w-annot (≡W⇐ (↑-⟨⟩ T) refl (subW⇐ u))))
             (H.trans (typ≡⇐ (sh⟨⟩ sh) (↑-⟨⟩ T) refl (subW⇐ u)) (cm⇐ sh u))
   cm⇒ sh (U.u-pair ua ub) = ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) pair ⊢pair refl refl (cm⇒ sh ua) refl refl (cm⇒ sh ub)
-  cm⇒ sh U.u-toFloat  = H.refl
   cm⇒ sh (U.u-neg {A = int} {h = h} u)   = ≅1 (λ Ψ → Ψ) (prim (num h ‵neg)) (⊢prim (num h ‵neg)) refl refl (cm⇒ sh u)
   cm⇒ sh (U.u-neg {A = float} {h = h} u) = ≅1 (λ Ψ → Ψ) (prim (num h ‵neg)) (⊢prim (num h ‵neg)) refl refl (cm⇒ sh u)
   cm⇒ sh (U.u-binop {op = op} {A = int} {h = h} u₁ u₂) =
@@ -253,41 +295,30 @@ mutual
     H.trans (≅case⊔ refl refl refl (cm⇒ sh us) (≅coerce refl (cm⇒ (U.sh-▸ sh) ul)) (≅coerce refl (cm⇒ (U.sh-▸ sh) ur)))
             (H.sym (ty-case⊔ (C.typS⇒ sh us) (⊢coerce (<:ᶜ⇒<: (left j)) (C.typS⇒ (U.sh-▸ sh) ul))
                                              (⊢coerce (<:ᶜ⇒<: (right j)) (C.typS⇒ (U.sh-▸ sh) ur))))
-  cm⇒ sh (U.u-id-app u)       = ≅appAB refl refl refl refl H.refl (cm⇒ sh u)
-  cm⇒ sh (U.u-fst-app u)      = ≅appAB refl refl refl refl H.refl (cm⇒ sh u)
-  cm⇒ sh (U.u-snd-app u)      = ≅appAB refl refl refl refl H.refl (cm⇒ sh u)
-  cm⇒ sh (U.u-terminal-app u) = ≅appAB refl refl refl refl H.refl (cm⇒ sh u)
-  cm⇒ sh (U.u-apply-app u)    = ≅appAB refl refl refl refl (H.sym dc-apply) (cm⇒ sh u)
-  cm⇒ sh (U.u-apply-eff-app u) = ≅appAB refl refl refl refl (H.sym dc-applyEff) (cm⇒ sh u)
-  cm⇒ sh (U.u-Out-app {F = F} {w = w} u) =
-    H.trans (typ≡⇒ (sh⟨⟩ sh) (sym (TS.⟦⟧F-⟨⟩ σ F (ν F pureᶠ))) refl (W′.w-Out-app (TS.wf-⟨⟩ σ rσ w) (subW⇒ u))) (≅appAB refl (sym (TS.⟦⟧F-⟨⟩ σ F (ν F pureᶠ))) refl refl (H.sym (dc-out w)) (cm⇒ sh u))
-  cm⇒ sh (U.u-Out-act-app {F = F} {w = w} u) =
-    H.trans (typ≡⇒ (sh⟨⟩ sh) (cong (λ X → Unit ⇒[ mk-kind Many act ] X) (sym (TS.⟦⟧F-⟨⟩ σ F (ν F actᶠ)))) refl
-                   (W′.w-Out-act-app (TS.wf-⟨⟩ σ rσ w) (subW⇒ u)))
-            (≅appAB refl (cong (λ X → Unit ⇒[ mk-kind Many act ] X) (sym (TS.⟦⟧F-⟨⟩ σ F (ν F actᶠ)))) refl refl (H.sym (dc-outAct w)) (cm⇒ sh u))
-  cm⇒ sh (U.u-app {q = q} uf ux) = H.trans (≅appp q refl refl (cm⇒ sh uf) (cm⇐ sh ux)) (H.sym (ty-appp q (C.typS⇒ sh uf) (C.typS⇐ sh ux)))
-  cm⇒ sh (U.u-effApp {π = π} {tf = tf} {tx = tx} {ns = ns} {g = g} uf ux) =
-    H.trans (typ≡⇒ (sh⟨⟩ sh) refl (sym (effApp-⟪⟫ π tf tx)) (W′.w-effApp ns g (subW⇒ uf) (subW⇐ ux)))
-            (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Many *ᵘ Ψ₂) (effAppᶜ _) DT.⊢effAppᶜ refl refl (cm⇒ sh uf) refl refl (cm⇐ sh ux))
+  cm⇒ sh (U.u-app {q = q} {π = pure} uf ux) =
+    H.trans (≅appp q refl refl (cm⇒ sh uf) (cm⇐ sh ux)) (H.sym (ty-appp q (C.typS⇒ sh uf) (C.typS⇐ sh ux)))
+  cm⇒ sh (U.u-app {B = B} {q = q} {π = act} {tf = tf} {tx = tx} {pc = pc} {ch = ch} uf ux) =
+    H.trans (typ≡⇒ (sh⟨⟩ sh) (sym (TR.𝕋-⟨⟩ σ act B)) (sym (TR.⟪appᵀ⟫ σ act tf tx)) (W′.w-app pc ch (subW⇒ uf) (subW⇐ ux)))
+            (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ q *ᵘ Ψ₂) (effAppᶜ act) DT.⊢effAppᶜ refl refl (cm⇒ sh uf) refl refl (cm⇐ sh ux))
+                     (H.sym (dc-effApp (C.typS⇒ sh uf) (C.typS⇐ sh ux))))
+  cm⇒ sh (U.u-app {B = B} {q = q} {π = Once.Spec.Grade.eff} {tf = tf} {tx = tx} {pc = pc} {ch = ch} uf ux) =
+    H.trans (typ≡⇒ (sh⟨⟩ sh) (sym (TR.𝕋-⟨⟩ σ Once.Spec.Grade.eff B)) (sym (TR.⟪appᵀ⟫ σ Once.Spec.Grade.eff tf tx)) (W′.w-app pc ch (subW⇒ uf) (subW⇐ ux)))
+            (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ q *ᵘ Ψ₂) (effAppᶜ Once.Spec.Grade.eff) DT.⊢effAppᶜ refl refl (cm⇒ sh uf) refl refl (cm⇐ sh ux))
                      (H.sym (dc-effApp (C.typS⇒ sh uf) (C.typS⇐ sh ux))))
   cm⇒ sh (U.u-app-spine ux uf) = ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Many *ᵘ Ψ₂) app ⊢app refl refl (cm↦ sh uf) refl refl (cm⇒ sh ux)
 
   cm⇐ : ∀ {n} {L : Locals m n} {Γ} (sh : U.Shape L Γ) {e A t Ψ} {d : U._⊢_⇐_↝_ L e A t} (u : U.Use⇐ d Ψ)
       → C′.typS⇐ (sh⟨⟩ sh) (proj₂ (subW⇐ u)) ≅ ty (C.typS⇐ sh u)
-  cm⇐ sh U.u-id       = H.refl
-  cm⇐ sh U.u-fst      = H.refl
-  cm⇐ sh U.u-snd      = H.refl
-  cm⇐ sh U.u-terminal = H.refl
-  cm⇐ sh U.u-initial  = H.refl
-  cm⇐ sh U.u-inl      = H.refl
-  cm⇐ sh U.u-inr      = H.refl
-  cm⇐ sh (U.u-compose-g {A = A} {π = π} {tf = tf} {tg = tg} ug uf) =
-    H.trans (typ≡⇐ (sh⟨⟩ sh) refl (sym (compose-⟪⟫ A π tf tg)) (W′.w-compose-g (subW↦ ug) (subW⇐ uf)))
+  cm⇐ sh (U.u-map {mo = mo}) = morph-≅ mo
+  cm⇐ sh (U.u-map-app {mo = mo} u) =
+    ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Many *ᵘ Ψ₂) app ⊢app refl refl (morph-≅ mo) refl refl (cm⇐ sh u)
+  cm⇐ sh (U.u-compose-g {A = A} {π = π} {tf = tf} {tg = tg} {df′ = df′} ug uf) =
+    H.trans (typ≡⇐ (sh⟨⟩ sh) refl (sym (compose-⟪⟫ A π tf tg)) (W′.w-compose-g df′ (subW↦ ug) (subW⇐ uf)))
             (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Many *ᵘ Ψ₂) (composeᶜ _ _) (DT.⊢composeᶜ (·p-diag _)) refl refl (cm⇐ sh uf) refl refl (cm↦ sh ug))
                      (H.sym (dc-compose (·p-diag _) (C.typS⇐ sh uf) (C.typS↦ sh ug))))
-  cm⇐ sh (U.u-compose-f {A = A} {B = B} {C = C} {C′ = C′} {π = π} {π′ = π′} {tf = tf} {tg = tg} {p = p} uf ug) =
+  cm⇐ sh (U.u-compose-f {A = A} {B = B} {C = C} {C′ = C′} {π = π} {π′ = π′} {tf = tf} {tg = tg} {ndf = ndf} {p = p} uf ug) =
     H.trans (typ≡⇐ (sh⟨⟩ sh) refl (sym (compose-⟪⟫ A π (coerce (B ⇒[ mk-kind Many π′ ] C′) (B ⇒[ mk-kind Many π ] C) tf) tg))
-                   (W′.w-compose-f (subW⇒ uf) (TS.<:-⟨⟩ σ p) (subW⇐ ug)))
+                   (W′.w-compose-f ndf (subW⇒ uf) (TS.<:-⟨⟩ σ p) (subW⇐ ug)))
             (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Many *ᵘ Ψ₂) (composeᶜ _ _) (DT.⊢composeᶜ (·p-diag _)) refl refl
                          (≅coerce refl (cm⇒ sh uf)) refl refl (cm⇐ sh ug))
                      (H.sym (dc-compose (·p-diag _) (⊢coerce p (C.typS⇒ sh uf)) (C.typS⇐ sh ug))))
@@ -304,23 +335,15 @@ mutual
   cm⇐ sh (U.u-cata {F = F} {A = A} {π = π} {w = w} u) =
     H.sym (dc-cata w (C.typS⇐ sh u) refl
                    (H.trans (typ≡⇐ (sh⟨⟩ sh) (cong (λ X → X ⇒[ mk-kind Many π ] (A ⟨ σ ⟩)) (TS.⟦⟧F-⟨⟩ σ F A)) refl (subW⇐ u)) (cm⇐ sh u)))
-  cm⇐ sh (U.u-ana {F = F} {A = A} {π₀ = π₀} {f = f} {t = t} {g = g} {w = w} u) =
-    H.trans (typ≡⇐ (sh⟨⟩ sh) refl (sym (ana-⟪⟫ F A π₀ t)) (W′.w-ana g (TS.wf-⟨⟩ σ rσ w) (≡W⇐ E refl (subW⇐ u))))
+  cm⇐ sh (U.u-ana {A = A} {π₀ = π₀} {t = t} {fi = Gn.final-ν {F = F} {f = f} le w} u) =
+    H.trans (typ≡⇐ (sh⟨⟩ sh) refl (sym (ana-⟪⟫ F A π₀ t)) (W′.w-ana (Gn.final-ν le (TS.wf-⟨⟩ σ rσ w)) (≡W⇐ E refl (subW⇐ u))))
             (H.sym (dc-ana (pure-⊑ π₀) w (C.typS⇐ sh u) refl (H.trans (typ≡⇐ (sh⟨⟩ sh) E refl (subW⇐ u)) (cm⇐ sh u))))
     where E = cong (λ X → (A ⟨ σ ⟩) ⇒[ mk-kind Many (fin f) ] X) (TS.⟦⟧F-⟨⟩ σ F A)
-  cm⇐ sh (U.u-loop u) = H.trans (≅1 (Many *ᵘ_) (loopᶜ _) DT.⊢loopᶜ refl refl (cm⇐ sh u)) (H.sym (dc-loop (C.typS⇐ sh u)))
+  cm⇐ sh (U.u-ana {fi = Gn.final-T∞} u) =
+    H.trans (≅1 (Many *ᵘ_) (anaEffᶜ _) DT.⊢anaEffᶜ refl refl (cm⇐ sh u)) (H.sym (dc-anaEff (C.typS⇐ sh u)))
   cm⇐ sh (U.u-sub u) = ≅1 (λ Ψ → Ψ) (coerce _ _) (⊢coerce _) refl refl (cm⇒ sh u)
   cm⇐ sh (U.u-lam ≤p u) = c-lam refl (c-sub-eff refl (cm⇐ (U.sh-▸ sh) u))
   cm⇐ sh (U.u-pair-lit ua ub) = ≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) pair ⊢pair refl refl (cm⇐ sh ua) refl refl (cm⇐ sh ub)
-  cm⇐ sh (U.u-In-app {F = F} {t = t} {w = w} u) =
-    H.trans (typ≡⇐ (sh⟨⟩ sh) refl (cong (λ X → app (lam X Many pure (roll (F ⟨ σ ⟩F) (var zero))) (t ⟪ σ ⟫ₜ)) (sym (TS.⟦⟧F-⟨⟩ σ F (μ F))))
-                   (W′.w-In-app (TS.wf-⟨⟩ σ rσ w) (≡W⇐ (TS.⟦⟧F-⟨⟩ σ F (μ F)) refl (subW⇐ u))))
-            (≅appAB (sym (TS.⟦⟧F-⟨⟩ σ F (μ F))) refl (cong (λ X → lam X Many pure (roll (F ⟨ σ ⟩F) (var zero))) (sym (TS.⟦⟧F-⟨⟩ σ F (μ F)))) refl
-                    (H.sym (dc-in w)) (H.trans (typ≡⇐ (sh⟨⟩ sh) (TS.⟦⟧F-⟨⟩ σ F (μ F)) refl (subW⇐ u)) (cm⇐ sh u)))
-  cm⇐ sh (U.u-apply-app u)   = ≅appAB refl refl refl refl (H.sym dc-apply) (cm⇒ sh u)
-  cm⇐ sh (U.u-inl-app u)     = ≅appAB refl refl refl refl H.refl (cm⇐ sh u)
-  cm⇐ sh (U.u-inr-app u)     = ≅appAB refl refl refl refl H.refl (cm⇐ sh u)
-  cm⇐ sh (U.u-initial-app u) = ≅appAB refl refl refl refl H.refl (cm⇐ sh u)
   cm⇐ sh {d = SU.c-poly d e a τ r} (U.u-poly {ok = ok}) =
     H.trans (typ≡⇐ (sh⟨⟩ sh) (sym (⟨⟩-∘ (type (S !! d)) τ σ)) refl (W′.w-poly d {ok} e a (∘τ τ) (respects-∘ r rσ)))
             (H.sym (rtᵗ-≅ (sym (⟨⟩-∘ (type (S !! d)) τ σ)) (⊢ref d (∘τ τ) (respects-∘ r rσ))))
@@ -339,11 +362,7 @@ mutual
     H.trans (typ≡↦ (sh⟨⟩ sh) refl (sym (compose-⟪⟫ A π tf tg)) (W′.w-compose↦ (subW↦ ug) (subW↦ uf)))
             (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Many *ᵘ Ψ₂) (composeᶜ _ _) (DT.⊢composeᶜ (·p-diag _)) refl refl (cm↦ sh uf) refl refl (cm↦ sh ug))
                      (H.sym (dc-compose (·p-diag _) (C.typS↦ sh uf) (C.typS↦ sh ug))))
-  cm↦ sh U.u-id       = H.refl
-  cm↦ sh U.u-fst      = H.refl
-  cm↦ sh U.u-snd      = H.refl
-  cm↦ sh U.u-terminal = H.refl
-  cm↦ sh U.u-initial  = H.refl
+  cm↦ sh (U.u-map {mo = mo}) = morph-≅ mo
   cm↦ sh (U.u-case {A = A} {B = B} {Cf = Cf} {Cg = Cg} {C = C} {π = π} {tf = tf} {tg = tg} {j = j} uf ug) =
     H.trans (typ≡↦ (sh⟨⟩ sh) refl (sym (case-⟪⟫ A B π (coerce (A ⇒[ mk-kind Many π ] Cf) (A ⇒[ mk-kind Many π ] C) tf)
                                                      (coerce (B ⇒[ mk-kind Many π ] Cg) (B ⇒[ mk-kind Many π ] C) tg)))
@@ -355,6 +374,14 @@ mutual
     H.trans (typ≡↦ (sh⟨⟩ sh) refl (sym (pair-⟪⟫ A π tf tg)) (W′.w-pair↦ (subW↦ uf) (subW↦ ug)))
             (H.trans (≅2 (λ Ψ₁ Ψ₂ → Ψ₁ +ᵘ Ψ₂) (pairᶜ _ _) (DT.⊢pairᶜ (·p-diag _)) refl refl (cm↦ sh uf) refl refl (cm↦ sh ug))
                      (H.sym (dc-pair (·p-diag _) (C.typS↦ sh uf) (C.typS↦ sh ug))))
-  cm↦ sh (U.u-cata {F = F} {A = A} {π = π} {w = w} u) =
-    H.sym (dc-cata w (C.typS⇒ sh u) refl
-                   (H.trans (typ≡⇒ (sh⟨⟩ sh) (cong (λ X → X ⇒[ mk-kind Many π ] (A ⟨ σ ⟩)) (TS.⟦⟧F-⟨⟩ σ F A)) refl (subW⇒ u)) (cm⇒ sh u)))
+  cm↦ sh (U.u-cata {F = F} {A₁ = A₁} {A = A} {π′ = π′} {π = π} {t = t} {w = w} {p = p} {o = o} u) =
+    H.trans (typ≡↦ (sh⟨⟩ sh) refl et (W′.w-cata↦ (TS.wf-⟨⟩ σ rσ w) (subW⇒ u) p′ o))
+            (H.sym (dc-cata w (⊢coerce (sub-arr p (<:-refl A) o) (C.typS⇒ sh u))
+                            {X = ⊢coerce (sub-arr p′ (<:-refl (A ⟨ σ ⟩)) o) (C′.typS⇒ (sh⟨⟩ sh) (proj₂ (subW⇒ u)))}
+                            ea (≅coerce′ (cong (λ Z → Z ⇒[ mk-kind Many π ] (A ⟨ σ ⟩)) (sym (TS.⟦⟧F-⟨⟩ σ F A))) refl (cm⇒ sh u))))
+    where
+      p′ = subst (λ X → X <: A₁ ⟨ σ ⟩) (TS.⟦⟧F-⟨⟩ σ F A) (TS.<:-⟨⟩ σ p)
+      et = cong (λ X → cataᶜ (F ⟨ σ ⟩F) π (coerce (A₁ ⟨ σ ⟩ ⇒[ mk-kind Many π′ ] A ⟨ σ ⟩) (X ⇒[ mk-kind Many π ] A ⟨ σ ⟩) (t ⟪ σ ⟫ₜ)))
+                (sym (TS.⟦⟧F-⟨⟩ σ F A))
+      ea = cong (λ X → coerce (A₁ ⟨ σ ⟩ ⇒[ mk-kind Many π′ ] A ⟨ σ ⟩) (X ⇒[ mk-kind Many π ] A ⟨ σ ⟩) (t ⟪ σ ⟫ₜ))
+                (sym (TS.⟦⟧F-⟨⟩ σ F A))

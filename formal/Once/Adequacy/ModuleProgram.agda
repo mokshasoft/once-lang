@@ -32,14 +32,21 @@ import Once.Spec.Context
 open import Once.Spec.Context using ([])
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.String using () renaming (_≟_ to _≟str_; _==_ to _==str_)
+open import Data.String using (String) renaming (_≟_ to _≟str_; _==_ to _==str_)
 import Data.String.Properties as StrProp
 open import Data.Unit using (⊤; tt)
 open import Data.List.Relation.Unary.Any using () renaming (here to here′; there to there′)
 import Once.Module
 import Once.Spec.Core.Program
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
+open import Data.Empty using (⊥-elim)
+import Data.List
+open import Data.List.Relation.Unary.All using (All) renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
+import Data.List.Relation.Unary.All
+open import Data.List.Relation.Unary.AllPairs using (AllPairs) renaming (_∷_ to _∷ᴾ_)
+open import Once.Name using (showCanonical)
+open import Once.Contract using (ISig)
 
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Type using (Type)
@@ -109,8 +116,9 @@ module _ {s} {S : Defs s} (inline : Fin s → Bool) where
   ...   | refl = i
   h-inline-of {p ∷ ps} (t-def d e ts) (i , is) {x} lp | no _ = h-inline-of ts is lp
 
--- The scope's names, at a table.
-record Names {s} (S : Defs s) {imps ps} (is : ImpSig S imps) (ts : TeleSig S ps) : Set where
+-- The scope's names, at a table and the scope's signature `sg`: every entry
+-- has its own name, and none is named as a declaration of `sg` (D249).
+record Names {s} (S : Defs s) (sg : ISig) {imps ps} (is : ImpSig S imps) (ts : TeleSig S ps) : Set where
   field
     nm          : Fin s → CanonicalName
     inline      : Fin s → Bool
@@ -118,6 +126,8 @@ record Names {s} (S : Defs s) {imps ps} (is : ImpSig S imps) (ts : TeleSig S ps)
     imp-call    : ImpCalled inline is
     tele-named  : SN.TeleNamed Σ S nm ts
     tele-inline : TeleInlined inline ts
+    nm-inj      : ∀ {d d′} → nm d ≡ nm d′ → d ≡ d′
+    nm-sig      : ∀ d → lookupImport sg (showCanonical (nm d)) ≡ nothing
 open Names
 
 -- (the next entry's flag)
@@ -146,17 +156,48 @@ private
   tele-inline-wk []             _        = tt
   tele-inline-wk (t-def d e ts) (i , is) = i , tele-inline-wk ts is
 
+private
+  -- a new name keeps the names apart
+  inj-∷ : ∀ {s} {nm : Fin s → CanonicalName} {x} → (∀ d → showCanonical (nm d) ≢ x) → (∀ {d d′} → nm d ≡ nm d′ → d ≡ d′)
+        → ∀ {d d′} → _∷ⁿ_ Σ (canonical (x ∷ [])) nm d ≡ _∷ⁿ_ Σ (canonical (x ∷ [])) nm d′ → d ≡ d′
+  inj-∷ new inj {zero}  {zero}   _ = refl
+  inj-∷ new inj {zero}  {suc d′} e = ⊥-elim (new d′ (sym (cong showCanonical e)))
+  inj-∷ new inj {suc d} {zero}   e = ⊥-elim (new d (cong showCanonical e))
+  inj-∷ new inj {suc d} {suc d′} e = cong suc (inj e)
+
+  sig-∷ : ∀ {s} {nm : Fin s → CanonicalName} {x sg} → lookupImport sg x ≡ nothing → (∀ d → lookupImport sg (showCanonical (nm d)) ≡ nothing)
+        → ∀ d → lookupImport sg (showCanonical (_∷ⁿ_ Σ (canonical (x ∷ [])) nm d)) ≡ nothing
+  sig-∷ ns old zero    = ns
+  sig-∷ ns old (suc d) = old d
+
+-- a declaration of another name is not found by this one
+lookup-skip : ∀ {n x : String} {ty} {rest : ISig} → n ≢ x → lookupImport ((n , ty) ∷ rest) x ≡ lookupImport rest x
+lookup-skip {n} {x} ne with n ≟str x
+... | yes e = ⊥-elim (ne e)
+... | no _  = refl
+
 -- No names, at the empty table.
-names₀ : Names SC.[] [] []
-names₀ = record { nm = λ () ; inline = λ () ; imp-named = tt ; imp-call = tt ; tele-named = tt ; tele-inline = tt }
+names₀ : ∀ {sg} → Names SC.[] sg [] []
+names₀ = record { nm = λ () ; inline = λ () ; imp-named = tt ; imp-call = tt ; tele-named = tt ; tele-inline = tt
+                ; nm-inj = λ { {()} } ; nm-sig = λ () }
+
+-- An FFI declaration: the signature grows, by a name no entry has.
+names-sig : ∀ {s} {S : Defs s} {sg imps ps} {is : ImpSig S imps} {ts : TeleSig S ps} (y : String) (ty : Type)
+          → (N : Names S sg is ts) → (∀ d → showCanonical (nm N d) ≢ y) → Names S ((y , ty) ∷ sg) is ts
+names-sig y ty N new = record
+  { nm = nm N ; inline = inline N ; imp-named = imp-named N ; imp-call = imp-call N
+  ; tele-named = tele-named N ; tele-inline = tele-inline N ; nm-inj = nm-inj N
+  ; nm-sig = λ d → trans (lookup-skip (λ e → new d (sym e))) (nm-sig N d) }
 
 -- A monomorphic definition: named, called; `main` (D324) joins the table only.
-names-mono : ∀ {s} {S : Defs s} {imps ps} {is : ImpSig S imps} {ts : TeleSig S ps} (b : Bool) (x : _) (ty : Type)
-           → Names S is ts → Names (S ▷ monoSchema ty) (impDefs b {x} {ty} is) (wkT ts)
-names-mono {is = is} {ts} b x ty N = record
+names-mono : ∀ {s} {S : Defs s} {sg imps ps} {is : ImpSig S imps} {ts : TeleSig S ps} (b : Bool) (x : _) (ty : Type)
+           → (N : Names S sg is ts) → (∀ d → showCanonical (nm N d) ≢ x) → lookupImport sg x ≡ nothing
+           → Names (S ▷ monoSchema ty) sg (impDefs b {x} {ty} is) (wkT ts)
+names-mono {sg = sg} {is = is} {ts} b x ty N new ns = record
   { nm = _∷ⁿ_ Σ (canonical (x ∷ [])) (nm N) ; inline = false ∷ᵇ inline N
   ; imp-named = named b ; imp-call = called b
-  ; tele-named = tele-named-wk ts (tele-named N) ; tele-inline = tele-inline-wk ts (tele-inline N) }
+  ; tele-named = tele-named-wk ts (tele-named N) ; tele-inline = tele-inline-wk ts (tele-inline N)
+  ; nm-inj = inj-∷ new (nm-inj N) ; nm-sig = sig-∷ {nm = nm N} {x = x} {sg = sg} ns (nm-sig N) }
   where
     named : ∀ b → SN.ImpNamed Σ _ (_∷ⁿ_ Σ (canonical (x ∷ [])) (nm N)) (impDefs b {x} {ty} is)
     named true  = imp-named-wk is (imp-named N)
@@ -166,12 +207,85 @@ names-mono {is = is} {ts} b x ty N = record
     called false = refl , imp-call-wk is (imp-call N)
 
 -- A telescope definition: named, inlined.
-names-poly : ∀ {s} {S : Defs s} {imps ps} {is : ImpSig S imps} {ts : TeleSig S ps} (pfi : Parser.PolyFunInfo)
-           → Names S is ts → Names (S ▷ schemaOf (pfunType pfi)) (wkI is) (t-def {p = pfi} zero refl (wkT ts))
-names-poly {is = is} {ts} pfi N = record
+names-poly : ∀ {s} {S : Defs s} {sg imps ps} {is : ImpSig S imps} {ts : TeleSig S ps} (pfi : Parser.PolyFunInfo)
+           → (N : Names S sg is ts) → (∀ d → showCanonical (nm N d) ≢ pfunName pfi) → lookupImport sg (pfunName pfi) ≡ nothing
+           → Names (S ▷ schemaOf (pfunType pfi)) sg (wkI is) (t-def {p = pfi} zero refl (wkT ts))
+names-poly {sg = sg} {is = is} {ts} pfi N new ns = record
   { nm = _∷ⁿ_ Σ (canonical (pfunName pfi ∷ [])) (nm N) ; inline = true ∷ᵇ inline N
   ; imp-named = imp-named-wk is (imp-named N) ; imp-call = imp-call-wk is (imp-call N)
-  ; tele-named = refl , tele-named-wk ts (tele-named N) ; tele-inline = refl , tele-inline-wk ts (tele-inline N) }
+  ; tele-named = refl , tele-named-wk ts (tele-named N) ; tele-inline = refl , tele-inline-wk ts (tele-inline N)
+  ; nm-inj = inj-∷ new (nm-inj N) ; nm-sig = sig-∷ {nm = nm N} {x = pfunName pfi} {sg = sg} ns (nm-sig N) }
+
+------------------------------------------------------------------------
+-- The entries to come: their names apart, new to the table and to the
+-- signature. A walk keeps it from the module's distinct names (`fresh₀`); each
+-- step gives the next scope's names and keeps it.
+------------------------------------------------------------------------
+
+record Fresh {s} {S : Defs s} {sg imps ps} {is : ImpSig S imps} {ts : TeleSig S ps} (N : Names S sg is ts) (es : List Parser.Entry) : Set where
+  field
+    distinct : AllPairs _≢_ (Data.List.map Parser.entryNameOf es)
+    new      : All (λ x → ∀ d → showCanonical (nm N d) ≢ x) (Data.List.map Parser.entryNameOf es)
+    nosig    : All (λ x → lookupImport sg x ≡ nothing) (Data.List.map Parser.entryNameOf es)
+open Fresh
+
+-- (from a signature none of the entries is named in)
+fresh₀ᵃᵗ : ∀ {sg es} → AllPairs _≢_ (Data.List.map Parser.entryNameOf es)
+        → All (λ x → lookupImport sg x ≡ nothing) (Data.List.map Parser.entryNameOf es) → Fresh (names₀ {sg}) es
+fresh₀ᵃᵗ {sg} {es} ap ns = record { distinct = ap ; new = go-new (Data.List.map Parser.entryNameOf es) ; nosig = ns }
+  where
+    go-new : ∀ xs → All (λ x → ∀ (d : Fin 0) → showCanonical (nm (names₀ {sg}) d) ≢ x) xs
+    go-new []       = []ᴬ
+    go-new (_ ∷ xs) = (λ ()) ∷ᴬ go-new xs
+
+fresh₀ : ∀ {es} → AllPairs _≢_ (Data.List.map Parser.entryNameOf es) → Fresh (names₀ {[]}) es
+fresh₀ {es} ap = fresh₀ᵃᵗ ap (go-sig (Data.List.map Parser.entryNameOf es))
+  where
+    go-sig : ∀ xs → All (λ x → lookupImport [] x ≡ nothing) xs
+    go-sig []       = []ᴬ
+    go-sig (_ ∷ xs) = refl ∷ᴬ go-sig xs
+
+module _ {s} {S : Defs s} {sg imps ps} {is : ImpSig S imps} {ts : TeleSig S ps} {N : Names S sg is ts} where
+  private
+    tail-ap : ∀ {x : String} {xs} → AllPairs _≢_ (x ∷ xs) → AllPairs _≢_ xs
+    tail-ap (_ ∷ᴾ t) = t
+    head-ap : ∀ {x : String} {xs} → AllPairs _≢_ (x ∷ xs) → All (x ≢_) xs
+    head-ap (h ∷ᴾ _) = h
+    head : ∀ {P : String → Set} {x xs} → All P (x ∷ xs) → P x
+    head (h ∷ᴬ _) = h
+    tail : ∀ {P : String → Set} {x xs} → All P (x ∷ xs) → All P xs
+    tail (_ ∷ᴬ t) = t
+
+  -- an FFI declaration
+  names-ffi : ∀ (fi : Parser.FunInfo) (ty : Type) {es} → Fresh N (Parser.e-fun fi ∷ es) → Names S ((funName fi , ty) ∷ sg) is ts
+  names-ffi fi ty F = names-sig (funName fi) ty N (head (new F))
+
+  fresh-ffi : ∀ (fi : Parser.FunInfo) (ty : Type) {es} (F : Fresh N (Parser.e-fun fi ∷ es)) → Fresh (names-ffi fi ty F) es
+  fresh-ffi fi ty F = record
+    { distinct = tail-ap (distinct F) ; new = tail (new F)
+    ; nosig = Data.List.Relation.Unary.All.zipWith (λ (ne , ns) → trans (lookup-skip ne) ns) (head-ap (distinct F) , tail (nosig F)) }
+
+  -- a monomorphic definition
+  names-monoF : ∀ (b : Bool) (fi : Parser.FunInfo) (ty : Type) {es} → Fresh N (Parser.e-fun fi ∷ es)
+              → Names (S ▷ monoSchema ty) sg (impDefs b {funName fi} {ty} is) (wkT ts)
+  names-monoF b fi ty F = names-mono b (funName fi) ty N (head (new F)) (head (nosig F))
+
+  fresh-mono : ∀ (b : Bool) (fi : Parser.FunInfo) (ty : Type) {es} (F : Fresh N (Parser.e-fun fi ∷ es)) → Fresh (names-monoF b fi ty F) es
+  fresh-mono b fi ty F = record
+    { distinct = tail-ap (distinct F)
+    ; new = Data.List.Relation.Unary.All.zipWith (λ (ne , nw) → λ { zero → ne ; (suc d) → nw d }) (head-ap (distinct F) , tail (new F))
+    ; nosig = tail (nosig F) }
+
+  -- a telescope definition
+  names-polyF : ∀ (pfi : Parser.PolyFunInfo) {es} → Fresh N (Parser.e-poly pfi ∷ es)
+              → Names (S ▷ schemaOf (pfunType pfi)) sg (wkI is) (t-def {p = pfi} zero refl (wkT ts))
+  names-polyF pfi F = names-poly pfi N (head (new F)) (head (nosig F))
+
+  fresh-poly : ∀ (pfi : Parser.PolyFunInfo) {es} (F : Fresh N (Parser.e-poly pfi ∷ es)) → Fresh (names-polyF pfi F) es
+  fresh-poly pfi F = record
+    { distinct = tail-ap (distinct F)
+    ; new = Data.List.Relation.Unary.All.zipWith (λ (ne , nw) → λ { zero → ne ; (suc d) → nw d }) (head-ap (distinct F) , tail (new F))
+    ; nosig = tail (nosig F) }
 
 ------------------------------------------------------------------------
 -- The Pack of a scope
@@ -185,7 +299,7 @@ private
   arrow-at {sc} .(schemaOf sc) refl = schema-arrow sc
 
 packOfAt : ∀ {m} (Δ : ST.KCtx m) {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-         → Names S is ts → Pack (ctxOfAt Δ sc)
+         → Names S (Scope.sig sc) is ts → Pack (ctxOfAt Δ sc)
 packOfAt Δ {S = S} ss is ts N = record
   { Sg = Σ ; S = S ; nm = nm N ; inline = inline N ; V = viewOf {S = S} ss is ts
   ; h-imp = λ lk → proj₁ (SN.h-imp-of Σ S (nm N) is (imp-named N) lk)
@@ -195,12 +309,13 @@ packOfAt Δ {S = S} ss is ts N = record
   ; h-ground = λ {x} {sc} lp g → trans (cong SC.Schema.arity (proj₂ (telFind {S = S} ts lp))) (ground-arity sc g)
   ; h-open = λ {x} {sc} lp ng → subst (0 <_) (sym (cong SC.Schema.arity (proj₂ (telFind {S = S} ts lp)))) (open-arity sc ng)
   ; h-arrow = λ {x} {sc} lp → arrow-at {sc} _ (proj₂ (telFind {S = S} ts lp))
+  ; nm-inj = nm-inj N ; nm-sig = nm-sig N
   ; L = SUT.∅
   ; lr = Sc.Locals.lo-∅ }
 
 -- (a monomorphic definition's scope has no type variables)
 packOf : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-       → Names S is ts → Pack (ctxOf sc)
+       → Names S (Scope.sig sc) is ts → Pack (ctxOf sc)
 packOf = packOfAt ST.∅ₖ
 
 ------------------------------------------------------------------------
@@ -210,7 +325,7 @@ packOf = packOfAt ST.∅ₖ
 -- A monomorphic definition's body: the term its witness names, at the scope's
 -- Pack, typed in the core by the witness's usage.
 monoBody : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-         → (N : Names S is ts) → ∀ ft {e ty Ψ} → MonoWit ft (ctxOf sc) e ty Ψ
+         → (N : Names S (Scope.sig sc) is ts) → ∀ ft {e ty Ψ} → MonoWit ft (ctxOf sc) e ty Ψ
          → Σ[ t ∈ SC.Tm S 0 0 ] Once.Spec.Core.Typing._⊩_⊢[_]_∷_!_ Σ S ST.∅ₖ Once.Spec.Context.∅ [] t ty LG.pure
 monoBody ss is ts N (just _) (_ , _ , _ , w , _) =
   let (t , u , _) = proj₂ w (packOf ss is ts N) in t , u0 (UC.typ⇐ Σ _ (nm N) _ _ ST.∅ₖ (proj₂ u))
@@ -219,12 +334,12 @@ monoBody ss is ts N nothing (_ , _ , _ , w , _) =
 
 -- …and the Spec's derivation of the body, naming that term.
 monoCheck : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-          → (N : Names S is ts) → ∀ {A e ty Ψ} (W : MonoWit (just A) (ctxOf sc) e ty Ψ)
+          → (N : Names S (Scope.sig sc) is ts) → ∀ {A e ty Ψ} (W : MonoWit (just A) (ctxOf sc) e ty Ψ)
           → SUT._⊢_⇐_↝_ Σ S (nm N) ST.∅ₖ SUT.∅ e ty (proj₁ (monoBody ss is ts N (just A) W))
 monoCheck ss is ts N (_ , _ , _ , w , _) = proj₁ (proj₁ (proj₂ (proj₂ w (packOf ss is ts N))))
 
 monoSynth : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-          → (N : Names S is ts) → ∀ {e ty Ψ} (W : MonoWit nothing (ctxOf sc) e ty Ψ)
+          → (N : Names S (Scope.sig sc) is ts) → ∀ {e ty Ψ} (W : MonoWit nothing (ctxOf sc) e ty Ψ)
           → SUT._⊢_⇒_↝_ Σ S (nm N) ST.∅ₖ SUT.∅ e ty (proj₁ (monoBody ss is ts N nothing W))
 monoSynth ss is ts N (_ , _ , _ , w , _) = proj₁ (proj₁ (proj₂ (proj₂ w (packOf ss is ts N))))
 
@@ -236,7 +351,7 @@ PolyWit sc pfi Ψ = CheckRun (ctxOfAt (kindsOf (pfunType pfi)) sc) (pfunBody pfi
 -- Its body: the term its witness names, at the scope's Pack over the
 -- parameters, typed in the core by the witness's usage.
 polyBody : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-         → (N : Names S is ts) → ∀ {pfi Ψ} → PolyWit sc pfi Ψ
+         → (N : Names S (Scope.sig sc) is ts) → ∀ {pfi Ψ} → PolyWit sc pfi Ψ
          → Σ[ t ∈ SC.Tm S (SC.Schema.arity (schemaOf (pfunType pfi))) 0 ]
              Once.Spec.Core.Typing._⊩_⊢[_]_∷_!_ Σ S (kindsOf (pfunType pfi)) Once.Spec.Context.∅ [] t (rigidOf (pfunType pfi)) LG.pure
 polyBody ss is ts N {pfi} (_ , _ , _ , w , _) =
@@ -245,19 +360,19 @@ polyBody ss is ts N {pfi} (_ , _ , _ , w , _) =
 
 -- …and the Spec's derivation of the body, naming that term.
 polyCheck : ∀ {s} {S : Defs s} {sc : Scope} (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-          → (N : Names S is ts) → ∀ {pfi Ψ} (W : PolyWit sc pfi Ψ)
+          → (N : Names S (Scope.sig sc) is ts) → ∀ {pfi Ψ} (W : PolyWit sc pfi Ψ)
           → SUT._⊢_⇐_↝_ Σ S (nm N) (kindsOf (pfunType pfi)) SUT.∅ (pfunBody pfi) (rigidOf (pfunType pfi)) (proj₁ (polyBody ss is ts N {pfi} {Ψ} W))
 polyCheck ss is ts N {pfi} (_ , _ , _ , w , _) = proj₁ (proj₁ (proj₂ (proj₂ w (packOfAt (kindsOf (pfunType pfi)) ss is ts N))))
 
 -- A telescope definition: an entry at its schema, its body the witness's term.
 polyDef : ∀ {s} {S : Defs s} {sc pfi Ψ} → Tele S → (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-        → Names S is ts → PolyWit sc pfi Ψ → Tele (S ▷ schemaOf (pfunType pfi))
+        → Names S (Scope.sig sc) is ts → PolyWit sc pfi Ψ → Tele (S ▷ schemaOf (pfunType pfi))
 polyDef {pfi = pfi} {Ψ = Ψ} tl ss is ts N W =
   let (t , d) = polyBody ss is ts N {pfi} {Ψ} W in def tl (schemaOf (pfunType pfi)) t d
 
 -- A monomorphic definition: an arity-0 entry, its body the witness's term.
 monoDef : ∀ {s} {S : Defs s} {sc fi ty Ψ} → Tele S → (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-        → Names S is ts → MonoWit (funType fi) (ctxOf sc) (funBody fi) ty Ψ → Tele (S ▷ monoSchema ty)
+        → Names S (Scope.sig sc) is ts → MonoWit (funType fi) (ctxOf sc) (funBody fi) ty Ψ → Tele (S ▷ monoSchema ty)
 monoDef {fi = fi} {ty = ty} tl ss is ts N W =
   let (t , d) = monoBody ss is ts N (funType fi) W in def tl (monoSchema ty) t d
 
@@ -267,63 +382,68 @@ monoDef {fi = fi} {ty = ty} tl ss is ts N W =
 
 mutual
   toProgram : ∀ {s} {S : Defs s} {sc es} → Tele S → SigSig (Scope.sig sc) → (is : ImpSig S (Scope.imps sc)) → (ts : TeleSig S (Scope.tele sc))
-            → Names S is ts → (mt : ModTele sc es) → MainIn mt → SigIn mt → Program
-  toProgram tl ss is ts N [] () u
-  toProgram tl ss is ts N (ffi _ _ c h rest) mi u = toProgram tl (s-ffi c h (u (here′ refl)) ss) is ts N rest mi (λ m → u (there′ m))
-  toProgram {S = S} {sc = sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr W rest) mi u =
+            → (N : Names S (Scope.sig sc) is ts) → Fresh N es → (mt : ModTele sc es) → MainIn mt → SigIn mt → Program
+  toProgram tl ss is ts N F [] () u
+  toProgram tl ss is ts N F (ffi {fi = fi} {ty = ty} _ _ c h rest) mi u =
+    toProgram tl (s-ffi c h (u (here′ refl)) ss) is ts (names-ffi fi ty F) (fresh-ffi fi ty F) rest mi (λ m → u (there′ m))
+  toProgram {S = S} {sc = sc} tl ss is ts N F (poly {pfi = pfi} {Ψ = Ψ} pr W rest) mi u =
     toProgram (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W)
-              ss (wkI is) (t-def zero refl (wkT ts)) (names-poly pfi N) rest mi u
-  toProgram {S = S} {sc = sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) mi u =
-    monoPick {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest mi u
+              ss (wkI is) (t-def zero refl (wkT ts)) (names-polyF pfi F) (fresh-poly pfi F) rest mi u
+  toProgram {S = S} {sc = sc} tl ss is ts N F (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) mi u =
+    monoPick {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N F W rest mi u
 
   monoPick : ∀ {s} {S : Defs s} {sc fi ty es Ψ} → Tele S → (ss : SigSig (Scope.sig sc)) → (is : ImpSig S (Scope.imps sc)) → (ts : TeleSig S (Scope.tele sc))
-           → Names S is ts → (W : MonoWit (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
+           → (N : Names S (Scope.sig sc) is ts) → Fresh N (Parser.e-fun fi ∷ es) → (W : MonoWit (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
            → (rest : ModTele (addImp sc (funName fi) ty) es) → ((funName fi ≡ "main") × (ty <: EffUU)) ⊎ MainIn rest
            → SigIn rest → Program
-  monoPick {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest (inj₁ (_ , e)) u =
-    monoHere {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest e u
-  monoPick {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest (inj₂ mi′) u =
-    monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest mi′ (funName fi ≟str "main") (ty <:? EffUU) u
+  monoPick {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N F W rest (inj₁ (_ , e)) u =
+    monoHere {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N F W rest e u
+  monoPick {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N F W rest (inj₂ mi′) u =
+    monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N F W rest mi′ (funName fi ≟str "main") (ty <:? EffUU) u
 
   monoDispatch : ∀ {s} {S : Defs s} {sc fi ty es Ψ} → Tele S → (ss : SigSig (Scope.sig sc)) → (is : ImpSig S (Scope.imps sc)) → (ts : TeleSig S (Scope.tele sc))
-               → Names S is ts → (W : MonoWit (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
+               → (N : Names S (Scope.sig sc) is ts) → Fresh N (Parser.e-fun fi ∷ es) → (W : MonoWit (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
                → (rest : ModTele (addImp sc (funName fi) ty) es) → MainIn rest
                → Dec (funName fi ≡ "main") → Dec (ty <: EffUU) → SigIn rest → Program
-  monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest mi′ (yes _) (yes e) u =
-    monoHere {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest e u
-  monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest mi′ (yes _) (no _) u =
-    monoNext {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest mi′ u
-  monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest mi′ (no _) _ u =
-    monoNext {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest mi′ u
+  monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N F W rest mi′ (yes _) (yes e) u =
+    monoHere {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N F W rest e u
+  monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N F W rest mi′ (yes _) (no _) u =
+    monoNext {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N F W rest mi′ u
+  monoDispatch {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N F W rest mi′ (no _) _ u =
+    monoNext {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N F W rest mi′ u
 
   monoNext : ∀ {s} {S : Defs s} {sc fi ty es Ψ} → Tele S → (ss : SigSig (Scope.sig sc)) → (is : ImpSig S (Scope.imps sc)) → (ts : TeleSig S (Scope.tele sc))
-           → Names S is ts → (W : MonoWit (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
+           → (N : Names S (Scope.sig sc) is ts) → Fresh N (Parser.e-fun fi ∷ es) → (W : MonoWit (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
            → (rest : ModTele (addImp sc (funName fi) ty) es) → MainIn rest → SigIn rest → Program
-  monoNext {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest mi′ u =
+  monoNext {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N F W rest mi′ u =
     toProgram (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W)
-              ss (impDefs (funName fi ==str "main") is) (wkT ts) (names-mono (funName fi ==str "main") (funName fi) ty N) rest mi′ u
+              ss (impDefs (funName fi ==str "main") is) (wkT ts) (names-monoF (funName fi ==str "main") fi ty F)
+              (fresh-mono (funName fi ==str "main") fi ty F) rest mi′ u
 
   -- `main`: an entry like any other (D253); the program refers to it.
   monoHere : ∀ {s} {S : Defs s} {sc fi ty es Ψ} → Tele S → (ss : SigSig (Scope.sig sc)) → (is : ImpSig S (Scope.imps sc)) → (ts : TeleSig S (Scope.tele sc))
-           → Names S is ts → (W : MonoWit (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
+           → (N : Names S (Scope.sig sc) is ts) → Fresh N (Parser.e-fun fi ∷ es) → (W : MonoWit (funType fi) (ctxOf sc) (funBody fi) ty Ψ)
            → (rest : ModTele (addImp sc (funName fi) ty) es) → ty <: EffUU → SigIn rest → Program
-  monoHere {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W rest e u =
+  monoHere {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N F W rest e u =
     toProgramFrom (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W)
-                  ss (impDefs (funName fi ==str "main") is) (wkT ts) (names-mono (funName fi ==str "main") (funName fi) ty N)
-                  zero (mainEntry e) rest u
+                  ss (impDefs (funName fi ==str "main") is) (wkT ts) (names-monoF (funName fi ==str "main") fi ty F)
+                  (fresh-mono (funName fi ==str "main") fi ty F) zero (mainEntry e) rest u
 
   -- The entries after `main`: the telescope goes on, `main`'s entry is weakened.
   toProgramFrom : ∀ {s} {S : Defs s} {sc es} → Tele S → SigSig (Scope.sig sc) → (is : ImpSig S (Scope.imps sc)) → (ts : TeleSig S (Scope.tele sc))
-                → Names S is ts → (d : Fin s) → Entry (S !! d) → (mt : ModTele sc es) → SigIn mt → Program
-  toProgramFrom tl ss is ts N d e [] u = programAt tl d e
-  toProgramFrom tl ss is ts N d e (ffi _ _ c h rest) u = toProgramFrom tl (s-ffi c h (u (here′ refl)) ss) is ts N d e rest (λ m → u (there′ m))
-  toProgramFrom {S = S} {sc = sc} tl ss is ts N d e (poly {pfi = pfi} {Ψ = Ψ} pr W rest) u =
+                → (N : Names S (Scope.sig sc) is ts) → Fresh N es → (d : Fin s) → Entry (S !! d) → (mt : ModTele sc es) → SigIn mt → Program
+  toProgramFrom tl ss is ts N F d e [] u = programAt tl d e
+  toProgramFrom tl ss is ts N F d e (ffi {fi = fi} {ty = ty} _ _ c h rest) u =
+    toProgramFrom tl (s-ffi c h (u (here′ refl)) ss) is ts (names-ffi fi ty F) (fresh-ffi fi ty F) d e rest (λ m → u (there′ m))
+  toProgramFrom {S = S} {sc = sc} tl ss is ts N F d e (poly {pfi = pfi} {Ψ = Ψ} pr W rest) u =
     toProgramFrom (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W)
-                  ss (wkI is) (t-def zero refl (wkT ts)) (names-poly pfi N) (suc d) e rest u
-  toProgramFrom {S = S} {sc = sc} tl ss is ts N d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) u =
+                  ss (wkI is) (t-def zero refl (wkT ts)) (names-polyF pfi F) (fresh-poly pfi F) (suc d) e rest u
+  toProgramFrom {S = S} {sc = sc} tl ss is ts N F d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) u =
     toProgramFrom (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W)
-                  ss (impDefs (funName fi ==str "main") is) (wkT ts) (names-mono (funName fi ==str "main") (funName fi) ty N) (suc d) e rest u
+                  ss (impDefs (funName fi ==str "main") is) (wkT ts) (names-monoF (funName fi ==str "main") fi ty F)
+                  (fresh-mono (funName fi ==str "main") fi ty F) (suc d) e rest u
 
 -- A typed module's core program, over the signatures it is compiled against.
-toProgram₀ : ∀ {es} (mt : ModTele Once.Module.emptyScope es) → MainIn mt → SigIn mt → Program
-toProgram₀ mt mi u = toProgram {S = SC.[]} Once.Spec.Core.Program.Tele.[] [] [] [] names₀ mt mi u
+-- (its entries' names are apart: the module's names are, D241)
+toProgram₀ : ∀ {es} → AllPairs _≢_ (Data.List.map Parser.entryNameOf es) → (mt : ModTele Once.Module.emptyScope es) → MainIn mt → SigIn mt → Program
+toProgram₀ ap mt mi u = toProgram {S = SC.[]} Once.Spec.Core.Program.Tele.[] [] [] [] names₀ (fresh₀ ap) mt mi u

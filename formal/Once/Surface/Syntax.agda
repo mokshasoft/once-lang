@@ -32,6 +32,7 @@ open import Once.Spec.Theory using (Has; Sym; symDom; symCod)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.String using (String)
 open import Once.Spec.Name using (CanonicalName)
+import Once.Spec.Core.Derived
 
 -- | Typing context (de Bruijn indexed with quantities)
 --
@@ -91,8 +92,9 @@ data Expr {m} : ∀ {n} → Ctx m n → Usage n → Ty m → Set where
   -- — see `Once.Surface.Elaborate` for the structural translation and
   -- `Once.Surface.Correct` for the correctness proof.
   -- D313: at either effectful grade a program writes (`act`, `eff`).
-  effApp : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B} {π} {g : EffGrade π}
-         → Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B) → Expr Γ Ψ₂ A → Expr Γ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) (Unit ⇒[ mk-kind Many π ] B)
+  -- The argument is used as often as the arrow's quantity says, as in `app`.
+  effApp : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B} {q : Quantity} {π} {g : EffGrade π}
+         → Expr Γ Ψ₁ (A ⇒[ mk-kind q π ] B) → Expr Γ Ψ₂ A → Expr Γ (Ψ₁ +ᵘ (q *ᵘ Ψ₂)) (Unit ⇒[ mk-kind Many π ] B)
 
   -- Pair introduction — both components consumed.
   pair  : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B}
@@ -337,3 +339,11 @@ data Expr {m} : ∀ {n} → Ctx m n → Usage n → Ty m → Set where
 -- `svar i`; the impl side (elaborate / realize) rebuilds `var i` here.
 svar→expr : ∀ {m} {n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → SVar Γ Ψ A → Expr Γ Ψ A
 svar→expr (svar i) = var i
+-- An application at the grade of its arrow (`Spec.Core.Derived.appᵀ`): a pure
+-- arrow is applied, an effectful one suspended (`effApp`).
+appT : ∀ {m} {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B q} (π : Purity)
+     → Expr Γ Ψ₁ (A ⇒[ mk-kind q π ] B) → Expr Γ Ψ₂ A
+     → Expr Γ (Ψ₁ +ᵘ (q *ᵘ Ψ₂)) (Once.Spec.Core.Derived.𝕋 π B)
+appT pure f x = app f x
+appT act  f x = effApp {g = eg-act} f x
+appT eff  f x = effApp {g = eg-eff} f x

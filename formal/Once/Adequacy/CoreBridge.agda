@@ -86,13 +86,22 @@ SigView-ef m (inj₂ es) mt Σ = TR.SigIn Σ mt
 SigView : Typed → Signature → Set
 SigView (m , mt , hvm) = SigView-ef m (Parser.extractFunctions m) mt
 
-typedProgram-ef : ∀ (m : P.Resolved) ef (mt : ModuleTyped-ef m ef) → HasValidMain-ef m ef mt
+-- The module's entries have distinct names (the front end's guard, D241).
+Dist-ef : String ⊎ List Parser.Entry → Set
+Dist-ef (inj₁ _)  = ⊤
+Dist-ef (inj₂ es) = AllPairs _≢_ (map TP.entryName es)
+
+dist-ef : ∀ (m : P.Resolved) {ef} → Parser.extractFunctions m ≡ ef → Dist-ef ef
+dist-ef m {inj₁ _}  _  = tt
+dist-ef m {inj₂ es} eq = TP.entries-distinct m eq
+
+typedProgram-ef : ∀ (m : P.Resolved) ef (mt : ModuleTyped-ef m ef) → HasValidMain-ef m ef mt → Dist-ef ef
                 → (Σ : Signature) → SigView-ef m ef mt Σ → TL.Program Σ
 typedProgram-ef m (inj₁ _)  () _
-typedProgram-ef m (inj₂ es) mt (_ , mi) Σ u = MP.toProgram₀ Σ mt mi u
+typedProgram-ef m (inj₂ es) mt (_ , mi) dist Σ u = MP.toProgram₀ Σ dist mt mi u
 
 typedProgram : (tp : Typed) (Σ : Signature) → SigView tp Σ → TL.Program Σ
-typedProgram (m , mt , hvm) = typedProgram-ef m (Parser.extractFunctions m) mt hvm
+typedProgram (m , mt , hvm) = typedProgram-ef m (Parser.extractFunctions m) mt hvm (dist-ef m refl)
 
 module _ (fmt : TargetNum) where
 
@@ -119,16 +128,16 @@ module _ (fmt : TargetNum) where
     agree-at refl a = a
 
     core-ef-tr : ∀ (m : P.Resolved) (ef : String ⊎ List Parser.Entry) (mt : ModuleTyped-ef m ef) (hvm : HasValidMain-ef m ef mt)
-                   {es} → ef ≡ inj₂ es → AllPairs _≢_ (map TP.entryName es)
+                   {es} → ef ≡ inj₂ es → (dist : Dist-ef ef)
                  → (b : FB.FunBundle C.emptyCScope es) {ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋} → FB.bundle-find b ≡ just ir
                  → (Σ : Signature) (u : SigView-ef m ef mt Σ)
                    (wf : WellFormed Σ) (J : Obs.Interp Σ) (uniq : Unique (map (λ d → showCanonical (Decl.name d)) Σ))
                  → trIRAt (toInterp fmt Σ wf J) (tableOf-go (FB.bundle→compiled b) []) ir
-                   ≈ᵗ⟨ _≡_ ⟩ coreTr Σ (typedProgram-ef m ef mt hvm Σ u) J
+                   ≈ᵗ⟨ _≡_ ⟩ coreTr Σ (typedProgram-ef m ef mt hvm dist Σ u) J
     core-ef-tr m .(inj₂ _) mt (_ , mi) refl dist b {ir} fe Σ u wf J uniq =
       SO.observe-R Σ fmt (toInterp fmt Σ wf J) (Obs.Interp.world J) (SSg.agree Σ wf J uniq fmt (SP.noVars Σ))
         (agree-at {Σ} {wf} {J} {uniq} fe
-          (TWm.walk mt b mi (SP.Tele.[]) TR.[] TR.[] TR.[] (MP.names₀ Σ) [] inv₀ u (dist , TP.none-in-empty _)))
+          (TWm.walk mt b mi (SP.Tele.[]) TR.[] TR.[] TR.[] (MP.names₀ Σ) (MP.fresh₀ Σ dist) [] inv₀ u (dist , TP.none-in-empty _)))
       where
         module TWm = TW fmt Σ wf J uniq
         inv₀ : TWI.Inv fmt Σ wf J uniq C.emptyCScope (SP.Tele.[]) TR.[] TR.[] TR.[] []
@@ -148,7 +157,7 @@ module _ (fmt : TargetNum) where
   ... | es , ef , b , ceq =
     subst (λ t → trT∞ fmt ι [] t ≈ᵗ⟨ _≡_ ⟩ coreTr Σ (typedProgram (m , mt , hvm) Σ u) J)
           (sym (cong (λ tbl → evalᴰ fmt (tableEnv fmt (pureHalf ι) tbl) ir tt) (cong tableOfResult ceq)))
-          (core-ef-tr m (Parser.extractFunctions m) mt hvm ef (TP.entries-distinct m ef) b fe Σ u wf J uniq)
+          (core-ef-tr m (Parser.extractFunctions m) mt hvm ef (dist-ef m refl) b fe Σ u wf J uniq)
     where
       ι = toInterp fmt Σ wf J
       fe : FB.bundle-find b ≡ just ir

@@ -144,9 +144,13 @@ module _ {m n} {Γ : Ctx m n} where
   app-congˢ {q = Many} ef ex σ rσ r =
     RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (ex σ rσ (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
 
-  effApp-congˢ : ∀ {Ψ₁ Ψ₂ A B π} {g : Once.Spec.Grade.EffGrade π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {x x′ : Expr Γ Ψ₂ A}
+  effApp-congˢ : ∀ {Ψ₁ Ψ₂ A B q π} {g : Once.Spec.Grade.EffGrade π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind q π ] B)} {x x′ : Expr Γ Ψ₂ A}
               → f ≈ˢ f′ → x ≈ˢ x′ → effApp {g = g} f x ≈ˢ effApp {g = g} f′ x′
-  effApp-congˢ ef ex σ rσ r =
+  effApp-congˢ {q = Zero} ef ex σ rσ r =
+    relS-ret λ _ → RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → rf
+  effApp-congˢ {q = One} ef ex σ rσ r =
+    relS-ret λ _ → RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (ex σ rσ (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
+  effApp-congˢ {q = Many} ef ex σ rσ r =
     relS-ret λ _ → RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (ex σ rσ (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
 
   comp-congˢ : ∀ {Ψ₁ Ψ₂ A B C π} {f f′ : Expr Γ Ψ₁ (B ⇒[ mk-kind Many π ] C)} {g g′ : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] B)}

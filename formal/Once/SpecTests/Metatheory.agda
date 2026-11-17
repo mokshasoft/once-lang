@@ -102,7 +102,7 @@ module Fold where
     ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ Ψ′ F A π₀ π′ alg h}
     → Pure Σ₀ fmt S₀ Δ Γ alg (⟦ F ⟧F A ⇒[ mk-kind Many pure ] A)
     → Pure Σ₀ fmt S₀ Δ Γ h (μ F ⇒[ mk-kind Many pure ] A)
-    → (e : Δ ⊩ Γ ⊢[ Ψ′ ] composeᶜ (⟦ F ⟧F (μ F)) pure h (inᶜ F) ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π′)
+    → (e : Δ ⊩ Γ ⊢[ Ψ′ ] composeᶜ (⟦ F ⟧F (μ F)) pure h (inᶜ F pure) ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π′)
       (e′ : Δ ⊩ Γ ⊢[ Ψ′ ] composeᶜ (⟦ F ⟧F (μ F)) pure alg (layerᶜ F (μ F) A h)
                            ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π′)
     → _≅_ Σ₀ fmt S₀ e e′
@@ -140,7 +140,7 @@ module Fold where
     ⊢∘ df dg = ⊢let {q = One} df (⊢let {q = Many} dg
                  (⊢lam ω≤ω (⊢app (⊢var (suc (suc zero))) (⊢app (⊢var (suc zero)) (⊢var zero)))))
 
-    ⊢in : ∀ {n} {Γ : Ctx 0 n} → ∅ₖ ⊩ Γ ⊢[ zeroUsage ] inᶜ U ∷ Unit ⇒[ mk-kind Many pure ] μ U ! pure
+    ⊢in : ∀ {n} {Γ : Ctx 0 n} → ∅ₖ ⊩ Γ ⊢[ zeroUsage ] inᶜ U pure ∷ Unit ⇒[ mk-kind Many pure ] μ U ! pure
     ⊢in = ⊢lam 1≤ω (⊢roll (wf-K b-Unit) (⊢var zero))
 
     ⊢layer : ∀ {Γ : Ctx 0 2} → ∅ₖ ⊩ Γ ⊢[ zeroUsage ] layerᶜ U (μ U) Bool h ∷ Unit ⇒[ mk-kind Many pure ] Unit ! pure

@@ -17,8 +17,8 @@
 --   T∞ X = νY. T (X + Y) = νM act (K X ⊕ Id)
 --
 -- the coinductive resumption monad over `T`. So programs and effects have one
--- shape: finite folds inside the rounds of a loop, finite blocks inside
--- `T∞`; and THE LOOP is the stream unfold at `K B ⊕ Id`: any round
+-- shape: finite folds inside the rounds of an iteration, finite blocks inside
+-- `T∞`; and `ana` into `Eff` is the stream unfold at `K B ⊕ Id`: any round
 -- `A → T (B + A)` that ends with a `B` or continues with the next state. A
 -- block may perform no event: a silent round is an empty block.
 --
@@ -188,11 +188,11 @@ bindBlock (roll (node (call o a k))) f = roll (node (call o a (λ b → bindBloc
 embed : ∀ {X} → T X → T∞ X
 outν (embed m) = mapT inj₁ m
 
--- THE LOOP: the anamorphism at `K B ⊕ Id`. Each round runs the block `c a`; where
--- it ends with a `B` the loop returns it, where it ends with the next state
--- the loop continues from it.
-loop : ∀ {A B : Set} → (A → T (B ⊎ A)) → A → T∞ B
-loop {B = B} c = ana actᶠ (SK B S⊕ SId) c
+-- ITERATION: the anamorphism at `K B ⊕ Id` (`ana` into `Eff`). Each round runs
+-- the block `c a`; where it ends with a `B` the iteration returns it, where it
+-- ends with the next state it continues from it.
+iterate : ∀ {A B : Set} → (A → T (B ⊎ A)) → A → T∞ B
+iterate {B = B} c = ana actᶠ (SK B S⊕ SId) c
 
 ------------------------------------------------------------------------
 -- The grades

@@ -29,8 +29,13 @@ open import Data.Nat using (suc)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst₂)
 
-open import Once.Spec.Grade using (Purity; mk-kind; Many)
-open import Once.Spec.Type using (Ty; KCtx; TySub; Respects; _⟨_⟩; Occurs; _⇒[_]_)
+open import Once.Spec.Grade using (Purity; mk-kind; Many; pure; act; eff; pureᶠ; actᶠ)
+open import Once.Spec.Type using (Ty; Fun; KCtx; TySub; Respects; _⟨_⟩; _⟨_⟩F; Occurs; OccursF; _⇒[_]_; var; _*_; _+_; μ; ν; K; _⊕_; _⊗_;
+  o-var; o-*ˡ; o-*ʳ; o-+ˡ; o-+ʳ; o-⇒ˡ; o-⇒ʳ; o-μ; o-ν; o-K; o-⊕ˡ; o-⊕ʳ; o-⊗ˡ; o-⊗ʳ)
+open import Data.Nat using (s≤s; z≤n)
+import Data.Fin
+import Once.Spec.Surface.Generators as Gn
+open import Once.Adequacy.SpecFront.TyRen Σ S₁ nm using (⟨⟩-id)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived
 open import Once.Adequacy.SpecFront.SchemaRen using (SchRen)
@@ -127,6 +132,49 @@ rn-effApp π f x = cong₂ (λ a b → lam _ _ _ (app a b)) (rn-wk f) (rn-wk x)
 Ren : Set
 Ren = ∀ d → SchRen (S₁ !! d) (S₂ !! d) (ρ d)
 
+------------------------------------------------------------------------
+-- Occurrences under a renaming of the variables
+------------------------------------------------------------------------
+
+module _ {a b} (r : Fin a → Fin b) where
+  private
+    vr : TySub a b
+    vr j = var (r j)
+  mutual
+    occ-fwd : ∀ {j} (A : Ty a) → Occurs j A → Occurs (r j) (A ⟨ vr ⟩)
+    occ-fwd (var _)      o-var    = o-var
+    occ-fwd (A * B)      (o-*ˡ o) = o-*ˡ (occ-fwd A o)
+    occ-fwd (A * B)      (o-*ʳ o) = o-*ʳ (occ-fwd B o)
+    occ-fwd (A + B)      (o-+ˡ o) = o-+ˡ (occ-fwd A o)
+    occ-fwd (A + B)      (o-+ʳ o) = o-+ʳ (occ-fwd B o)
+    occ-fwd (A ⇒[ k ] B) (o-⇒ˡ o) = o-⇒ˡ (occ-fwd A o)
+    occ-fwd (A ⇒[ k ] B) (o-⇒ʳ o) = o-⇒ʳ (occ-fwd B o)
+    occ-fwd (μ F)        (o-μ o)  = o-μ (occF-fwd F o)
+    occ-fwd (ν F f)      (o-ν o)  = o-ν (occF-fwd F o)
+    occF-fwd : ∀ {j} (F : Fun a) → OccursF j F → OccursF (r j) (F ⟨ vr ⟩F)
+    occF-fwd (K A)   (o-K o)  = o-K (occ-fwd A o)
+    occF-fwd (F ⊕ G) (o-⊕ˡ o) = o-⊕ˡ (occF-fwd F o)
+    occF-fwd (F ⊕ G) (o-⊕ʳ o) = o-⊕ʳ (occF-fwd G o)
+    occF-fwd (F ⊗ G) (o-⊗ˡ o) = o-⊗ˡ (occF-fwd F o)
+    occF-fwd (F ⊗ G) (o-⊗ʳ o) = o-⊗ʳ (occF-fwd G o)
+  mutual
+    occ-back : ∀ {i} (A : Ty a) → Occurs i (A ⟨ vr ⟩) → Σ[ j ∈ Fin a ] (r j ≡ i) × Occurs j A
+    occ-back (var j)      o-var    = j , refl , o-var
+    occ-back (A * B)      (o-*ˡ o) = let (j , e , o′) = occ-back A o in j , e , o-*ˡ o′
+    occ-back (A * B)      (o-*ʳ o) = let (j , e , o′) = occ-back B o in j , e , o-*ʳ o′
+    occ-back (A + B)      (o-+ˡ o) = let (j , e , o′) = occ-back A o in j , e , o-+ˡ o′
+    occ-back (A + B)      (o-+ʳ o) = let (j , e , o′) = occ-back B o in j , e , o-+ʳ o′
+    occ-back (A ⇒[ k ] B) (o-⇒ˡ o) = let (j , e , o′) = occ-back A o in j , e , o-⇒ˡ o′
+    occ-back (A ⇒[ k ] B) (o-⇒ʳ o) = let (j , e , o′) = occ-back B o in j , e , o-⇒ʳ o′
+    occ-back (μ F)        (o-μ o)  = let (j , e , o′) = occF-back F o in j , e , o-μ o′
+    occ-back (ν F f)      (o-ν o)  = let (j , e , o′) = occF-back F o in j , e , o-ν o′
+    occF-back : ∀ {i} (F : Fun a) → OccursF i (F ⟨ vr ⟩F) → Σ[ j ∈ Fin a ] (r j ≡ i) × OccursF j F
+    occF-back (K A)   (o-K o)  = let (j , e , o′) = occ-back A o in j , e , o-K o′
+    occF-back (F ⊕ G) (o-⊕ˡ o) = let (j , e , o′) = occF-back F o in j , e , o-⊕ˡ o′
+    occF-back (F ⊕ G) (o-⊕ʳ o) = let (j , e , o′) = occF-back G o in j , e , o-⊕ʳ o′
+    occF-back (F ⊗ G) (o-⊗ˡ o) = let (j , e , o′) = occF-back F o in j , e , o-⊗ˡ o′
+    occF-back (F ⊗ G) (o-⊗ʳ o) = let (j , e , o′) = occF-back G o in j , e , o-⊗ʳ o′
+
 module _ (R : Ren) where
   private
     ty : ∀ d {m} (τ : TySub (arity (S₁ !! d)) m) → type (S₂ !! d) ⟨ (λ i → τ (ρ d i)) ⟩ ≡ type (S₁ !! d) ⟨ τ ⟩
@@ -186,11 +234,144 @@ module _ (R : Ren) where
     lv (U₁.there ne v)  = U₂.there ne (lv v)
 
 
-    sh : ∀ {f} → Relation.Nullary.¬ U₁.SpecialHead f → Relation.Nullary.¬ U₂.SpecialHead f
-    sh n (U₂.sh-gen g)  = n (U₁.sh-gen g)
-    sh n U₂.sh-pair     = n U₁.sh-pair
-    sh n U₂.sh-compose  = n U₁.sh-compose
-    sh n U₂.sh-case     = n U₁.sh-case
+    -- an entry with variables in one table has them in the other
+    pos : ∀ {k} → Fin k → 0 < k
+    pos zero    = s≤s z≤n
+    pos (suc _) = s≤s z≤n
+    lt-back : ∀ d → 0 < arity (S₂ !! d) → 0 < arity (S₁ !! d)
+    lt-back d p = pos (ρ d (Data.Fin.fromℕ< p))
+
+    vρ : ∀ d → TySub (arity (S₂ !! d)) (arity (S₁ !! d))
+    vρ d j = var (ρ d j)
+
+    -- `S₂`'s arrow read back in `S₁`: its variables are `ρ`'s images
+    arrow⁻ : ∀ d {sd₂ sc₂ π′} → type (S₂ !! d) ≡ sd₂ ⇒[ mk-kind Many π′ ] sc₂ → (∀ j → Occurs j sc₂ → Occurs j sd₂)
+           → Σ[ sd ∈ Ty (arity (S₁ !! d)) ] Σ[ sc ∈ Ty (arity (S₁ !! d)) ]
+               (type (S₁ !! d) ≡ sd ⇒[ mk-kind Many π′ ] sc) × (∀ i → Occurs i sc → Occurs i sd)
+    arrow⁻ d {sd₂} {sc₂} e occ =
+      sd₂ ⟨ vρ d ⟩ , sc₂ ⟨ vρ d ⟩ ,
+      trans (sym (⟨⟩-id (type (S₁ !! d)))) (trans (sym (ty d var)) (cong (_⟨ vρ d ⟩) e)) ,
+      λ i o → let (j , ej , oj) = occ-back (ρ d) sc₂ o in subst (λ k → Occurs k (sd₂ ⟨ vρ d ⟩)) ej (occ-fwd (ρ d) sd₂ (occ j oj))
+
+    -- the forms' classes, in either table (they name a table only through
+    -- whether an entry has variables, and its arrow)
+    pn12 : ∀ {c} → U₁.PolyName c → U₂.PolyName c
+    pn12 (U₁.poly d e lt) = U₂.poly d e (open′ d lt)
+    pn21 : ∀ {c} → U₂.PolyName c → U₁.PolyName c
+    pn21 (U₂.poly d e lt) = U₁.poly d e (lt-back d lt)
+    pfd12 : ∀ {c} → U₁.PolyFromDomain c → U₂.PolyFromDomain c
+    pfd12 (U₁.poly-dom d e lt eq occ) =
+      let (sd₂ , sc₂ , eq₂ , occ₂ , _ , _) = SchRen.arrow (R d) eq occ in U₂.poly-dom d e (open′ d lt) eq₂ occ₂
+    pfd21 : ∀ {c} → U₂.PolyFromDomain c → U₁.PolyFromDomain c
+    pfd21 (U₂.poly-dom d e lt eq occ) =
+      let (sd , sc , eq₁ , occ₁) = arrow⁻ d eq occ in U₁.poly-dom d e (lt-back d lt) eq₁ occ₁
+    pc21 : ∀ {f} → U₂.PartialCombinator f → U₁.PartialCombinator f
+    pc21 (U₂.pc-bare ic) = U₁.pc-bare ic
+    pc21 (U₂.pc-one ic)  = U₁.pc-one ic
+    ch12 : ∀ {f} → U₁.CheckHead f → U₂.CheckHead f
+    ch12 U₁.ch-lam         = U₂.ch-lam
+    ch12 (U₁.ch-poly pn)   = U₂.ch-poly (pn12 pn)
+    ch12 (U₁.ch-map im)    = U₂.ch-map im
+    ch12 (U₁.ch-comb₁ ic)  = U₂.ch-comb₁ ic
+    ch12 (U₁.ch-comb₂ ic)  = U₂.ch-comb₂ ic
+    ch21 : ∀ {f} → U₂.CheckHead f → U₁.CheckHead f
+    ch21 U₂.ch-lam         = U₁.ch-lam
+    ch21 (U₂.ch-poly pn)   = U₁.ch-poly (pn21 pn)
+    ch21 (U₂.ch-map im)    = U₁.ch-map im
+    ch21 (U₂.ch-comb₁ ic)  = U₁.ch-comb₁ ic
+    ch21 (U₂.ch-comb₂ ic)  = U₁.ch-comb₂ ic
+    oc21 : ∀ {e} → U₂.OwnCheck e → U₁.OwnCheck e
+    oc21 U₂.oc-pair      = U₁.oc-pair
+    oc21 (U₂.oc-map fc)  = U₁.oc-map fc
+    sf12 : ∀ {e} → U₁.SynthForm e → U₂.SynthForm e
+    sf12 U₁.sf-int          = U₂.sf-int
+    sf12 U₁.sf-float        = U₂.sf-float
+    sf12 U₁.sf-unit         = U₂.sf-unit
+    sf12 U₁.sf-var          = U₂.sf-var
+    sf12 (U₁.sf-name n)     = U₂.sf-name (λ pn → n (pn21 pn))
+    sf12 (U₁.sf-const k)    = U₂.sf-const k
+    sf12 U₁.sf-annot        = U₂.sf-annot
+    sf12 (U₁.sf-pair a b)   = U₂.sf-pair (sf12 a) (sf12 b)
+    sf12 U₁.sf-neg          = U₂.sf-neg
+    sf12 U₁.sf-binop        = U₂.sf-binop
+    sf12 U₁.sf-let          = U₂.sf-let
+    sf12 U₁.sf-destruct     = U₂.sf-destruct
+    sf12 (U₁.sf-app pc oc)  = U₂.sf-app (λ p → pc (pc21 p)) (λ o → oc (oc21 o))
+    sf21 : ∀ {e} → U₂.SynthForm e → U₁.SynthForm e
+    sf21 U₂.sf-int          = U₁.sf-int
+    sf21 U₂.sf-float        = U₁.sf-float
+    sf21 U₂.sf-unit         = U₁.sf-unit
+    sf21 U₂.sf-var          = U₁.sf-var
+    sf21 (U₂.sf-name n)     = U₁.sf-name (λ pn → n (pn12 pn))
+    sf21 (U₂.sf-const k)    = U₁.sf-const k
+    sf21 U₂.sf-annot        = U₁.sf-annot
+    sf21 (U₂.sf-pair a b)   = U₁.sf-pair (sf21 a) (sf21 b)
+    sf21 U₂.sf-neg          = U₁.sf-neg
+    sf21 U₂.sf-binop        = U₁.sf-binop
+    sf21 U₂.sf-let          = U₁.sf-let
+    sf21 U₂.sf-destruct     = U₁.sf-destruct
+    sf21 (U₂.sf-app pc oc)  = U₁.sf-app (λ p → pc (pc12 p)) (λ o → oc (oc12 o))
+      where
+        pc12 : ∀ {f} → U₁.PartialCombinator f → U₂.PartialCombinator f
+        pc12 (U₁.pc-bare ic) = U₂.pc-bare ic
+        pc12 (U₁.pc-one ic)  = U₂.pc-one ic
+        oc12 : ∀ {e} → U₁.OwnCheck e → U₂.OwnCheck e
+        oc12 U₁.oc-pair      = U₂.oc-pair
+        oc12 (U₁.oc-map fc)  = U₂.oc-map fc
+    df12 : ∀ {e} → U₁.DomainForm e → U₂.DomainForm e
+    df12 (U₁.df-synth sf)     = U₂.df-synth (sf12 sf)
+    df12 (U₁.df-lam sb)       = U₂.df-lam (sf12 sb)
+    df12 (U₁.df-poly p)       = U₂.df-poly (pfd12 p)
+    df12 (U₁.df-map fd)       = U₂.df-map fd
+    df12 (U₁.df-compose f g)  = U₂.df-compose (df12 f) (df12 g)
+    df12 (U₁.df-case f g)     = U₂.df-case (df12 f) (df12 g)
+    df12 (U₁.df-pair f g)     = U₂.df-pair (df12 f) (df12 g)
+    df12 (U₁.df-cata sa)      = U₂.df-cata (sf12 sa)
+    df21 : ∀ {e} → U₂.DomainForm e → U₁.DomainForm e
+    df21 (U₂.df-synth sf)     = U₁.df-synth (sf21 sf)
+    df21 (U₂.df-lam sb)       = U₁.df-lam (sf21 sb)
+    df21 (U₂.df-poly p)       = U₁.df-poly (pfd21 p)
+    df21 (U₂.df-map fd)       = U₁.df-map fd
+    df21 (U₂.df-compose f g)  = U₁.df-compose (df21 f) (df21 g)
+    df21 (U₂.df-case f g)     = U₁.df-case (df21 f) (df21 g)
+    df21 (U₂.df-pair f g)     = U₁.df-pair (df21 f) (df21 g)
+    df21 (U₂.df-cata sa)      = U₁.df-cata (sf21 sa)
+
+    -- the table's rows name closed terms, the same in either table
+    const-rn : ∀ {m} {Δ : KCtx m} {n g k T t} → Gn.Constant {S = S₁} Δ {n = n} g k T t → Gn.Constant {S = S₂} Δ {n = n} g k T (rn t)
+    const-rn Gn.k-unit    = Gn.k-unit
+    const-rn Gn.k-toFloat = Gn.k-toFloat
+    morph-rn : ∀ {m} {Δ : KCtx m} {n g k A π B t} → Gn.Morphism {S = S₁} Δ {n = n} g k A π B t → Gn.Morphism {S = S₂} Δ {n = n} g k A π B (rn t)
+    morph-rn Gn.m-id       = Gn.m-id
+    morph-rn Gn.m-fst      = Gn.m-fst
+    morph-rn Gn.m-snd      = Gn.m-snd
+    morph-rn Gn.m-terminal = Gn.m-terminal
+    morph-rn Gn.m-inl      = Gn.m-inl
+    morph-rn Gn.m-inr      = Gn.m-inr
+    morph-rn Gn.m-initial  = Gn.m-initial
+    morph-rn (Gn.m-apply {ρ = pure}) = Gn.m-apply
+    morph-rn (Gn.m-apply {ρ = act})  = Gn.m-apply
+    morph-rn (Gn.m-apply {ρ = eff})  = Gn.m-apply
+    morph-rn (Gn.m-In w)   = Gn.m-In w
+    morph-rn (Gn.m-Out {f = pureᶠ} w) = Gn.m-Out w
+    morph-rn (Gn.m-Out {f = actᶠ} w)  = Gn.m-Out w
+    morph-back : ∀ {m} {Δ : KCtx m} {n g k A π B t} → Gn.Morphism {S = S₂} Δ {n = n} g k A π B t
+               → Σ[ t′ ∈ Tm S₁ m n ] Gn.Morphism {S = S₁} Δ {n = n} g k A π B t′
+    morph-back Gn.m-id       = _ , Gn.m-id
+    morph-back Gn.m-fst      = _ , Gn.m-fst
+    morph-back Gn.m-snd      = _ , Gn.m-snd
+    morph-back Gn.m-terminal = _ , Gn.m-terminal
+    morph-back Gn.m-inl      = _ , Gn.m-inl
+    morph-back Gn.m-inr      = _ , Gn.m-inr
+    morph-back Gn.m-initial  = _ , Gn.m-initial
+    morph-back Gn.m-apply    = _ , Gn.m-apply
+    morph-back (Gn.m-In w)   = _ , Gn.m-In w
+    morph-back (Gn.m-Out w)  = _ , Gn.m-Out w
+
+  rn-appᵀ : ∀ {m n} π (f x : Tm S₁ m n) → rn (appᵀ π f x) ≡ appᵀ π (rn f) (rn x)
+  rn-appᵀ pure f x = refl
+  rn-appᵀ act  f x = rn-effApp act f x
+  rn-appᵀ eff  f x = rn-effApp eff f x
 
   module _ {m : ℕ} {Δ : KCtx m} where
     syn : ∀ {n} {L : U₁.Locals m n} {e A t} → U₁._⊢_⇒_↝_ Δ L e A t → U₂._⊢_⇒_↝_ Δ (lc L) e A (rn t)
@@ -198,12 +379,11 @@ module _ (R : Ren) where
     dom : ∀ {n} {L : U₁.Locals m n} {e A π B t} → U₁._⊢_⇐_⇒[_]↦_↝_ Δ L e A π B t → U₂._⊢_⇐_⇒[_]↦_↝_ Δ (lc L) e A π B (rn t)
 
     syn (U₁.s-int i)                 = U₂.s-int i
-    syn (U₁.s-float sg i f l)     = U₂.s-float sg i f l
+    syn (U₁.s-float sg i f l)        = U₂.s-float sg i f l
     syn U₁.s-unit                    = U₂.s-unit
-    syn U₁.s-unit-g                  = U₂.s-unit-g
-    syn U₁.s-toFloat                 = U₂.s-toFloat
+    syn (U₁.s-const c)               = U₂.s-const (const-rn c)
     syn (U₁.s-var v)                 = U₂.s-var (lv v)
-    syn (U₁.s-sigop g M)             = U₂.s-sigop g M
+    syn (U₁.s-sigop M)               = U₂.s-sigop M
     syn {L = L} (U₁.s-def {c} d e τ z) =
       subst (λ A → U₂._⊢_⇒_↝_ Δ (lc L) (Once.Spec.Surface.Syntax.RResolved c) A (ref d (λ i → τ (ρ d i)))) (ty d τ)
             (U₂.s-def d e _ (ground d z))
@@ -213,47 +393,29 @@ module _ (R : Ren) where
     syn (U₁.s-let q D E)             = U₂.s-let q (syn D) (syn E)
     syn (U₁.s-case ql qr D E F j)    = U₂.s-case ql qr (syn D) (syn E) (syn F) j
     syn (U₁.s-binop h D E)           = U₂.s-binop h (syn D) (syn E)
-    syn (U₁.s-id-app D)              = U₂.s-id-app (syn D)
-    syn (U₁.s-fst-app D)             = U₂.s-fst-app (syn D)
-    syn (U₁.s-snd-app D)             = U₂.s-snd-app (syn D)
-    syn (U₁.s-terminal-app D)        = U₂.s-terminal-app (syn D)
-    syn (U₁.s-apply-app D)           = U₂.s-apply-app (syn D)
-    syn (U₁.s-apply-eff-app g D)     = U₂.s-apply-eff-app g (syn D)
-    syn (U₁.s-Out-app w D)           = U₂.s-Out-app w (syn D)
-    syn (U₁.s-Out-act-app w D)       = U₂.s-Out-act-app w (syn D)
-    syn (U₁.s-app h D E)             = U₂.s-app (sh h) (syn D) (chk E)
-    syn {L = L} (U₁.s-effApp {f} {x} {A} {B} {π} {tf} {tx} h g D E) =
-      subst (U₂._⊢_⇒_↝_ Δ (lc L) (Once.Spec.Surface.Syntax.RApp f x) _) (sym (rn-effApp π tf tx)) (U₂.s-effApp (sh h) g (syn D) (chk E))
-    syn (U₁.s-app-spine h D E)       = U₂.s-app-spine (sh h) (syn D) (dom E)
+    syn {L = L} (U₁.s-app {f} {x} {A} {B} {q} {π} {tf} {tx} pc ch D E) =
+      subst (U₂._⊢_⇒_↝_ Δ (lc L) (Once.Spec.Surface.Syntax.RApp f x) _) (sym (rn-appᵀ π tf tx))
+            (U₂.s-app (λ p → pc (pc21 p)) (λ c → ch (ch21 c)) (syn D) (chk E))
+    syn (U₁.s-app-spine ch D E)      = U₂.s-app-spine (ch12 ch) (syn D) (dom E)
 
-    chk U₁.c-id                      = U₂.c-id
-    chk U₁.c-fst                     = U₂.c-fst
-    chk U₁.c-snd                     = U₂.c-snd
-    chk U₁.c-terminal                = U₂.c-terminal
-    chk U₁.c-initial                 = U₂.c-initial
-    chk U₁.c-inl                     = U₂.c-inl
-    chk U₁.c-inr                     = U₂.c-inr
-    chk {L = L} (U₁.c-compose-g {f} {g} {A} {B} {C} {π} {tf} {tg} D E) =
-      subst (U₂._⊢_⇐_↝_ Δ (lc L) _ _) (sym (rn-compose A π tf tg)) (U₂.c-compose-g (dom D) (chk E))
-    chk {L = L} (U₁.c-compose-f {f} {g} {A} {B} {C} {C′} {π} {π′} {tf} {tg} D s E) =
-      subst (U₂._⊢_⇐_↝_ Δ (lc L) _ _) (sym (rn-compose A π (coerce _ _ tf) tg)) (U₂.c-compose-f (syn D) s (chk E))
+    chk (U₁.c-map mo)                = U₂.c-map (morph-rn mo)
+    chk (U₁.c-map-app fc mo D)       = U₂.c-map-app fc (morph-rn mo) (chk D)
+    chk {L = L} (U₁.c-compose-g {f} {g} {A} {B} {C} {π} {tf} {tg} dfg D E) =
+      subst (U₂._⊢_⇐_↝_ Δ (lc L) _ _) (sym (rn-compose A π tf tg)) (U₂.c-compose-g (df12 dfg) (dom D) (chk E))
+    chk {L = L} (U₁.c-compose-f {f} {g} {A} {B} {C} {C′} {π} {π′} {tf} {tg} ndf D s E) =
+      subst (U₂._⊢_⇐_↝_ Δ (lc L) _ _) (sym (rn-compose A π (coerce _ _ tf) tg)) (U₂.c-compose-f (λ d → ndf (df21 d)) (syn D) s (chk E))
     chk {L = L} (U₁.c-case {f} {g} {A} {B} {C} {π} {tf} {tg} D E) =
       subst (U₂._⊢_⇐_↝_ Δ (lc L) _ _) (sym (rn-case A B π tf tg)) (U₂.c-case (chk D) (chk E))
     chk {L = L} (U₁.c-pair {f} {g} {A} {B} {C} {π} {tf} {tg} D E) =
       subst (U₂._⊢_⇐_↝_ Δ (lc L) _ _) (sym (rn-pair A π tf tg)) (U₂.c-pair (chk D) (chk E))
     chk (U₁.c-curry D)               = U₂.c-curry (chk D)
     chk (U₁.c-cata w D)              = U₂.c-cata w (chk D)
-    chk {L = L} (U₁.c-ana {c} {F} {A} {π₀} {f} {t} le w D) =
-      subst (U₂._⊢_⇐_↝_ Δ (lc L) _ _) (sym (rn-ana F A π₀ t)) (U₂.c-ana le w (chk D))
-    chk (U₁.c-loop D)                = U₂.c-loop (chk D)
-    chk (U₁.c-sub D s)               = U₂.c-sub (syn D) s
+    chk {L = L} (U₁.c-ana {c} {A} {π₀} {t = t} (Gn.final-ν {F = F} le w) D) =
+      subst (U₂._⊢_⇐_↝_ Δ (lc L) _ _) (sym (rn-ana F A π₀ t)) (U₂.c-ana (Gn.final-ν le w) (chk D))
+    chk (U₁.c-ana Gn.final-T∞ D)     = U₂.c-ana Gn.final-T∞ (chk D)
+    chk (U₁.c-sub noc D s)           = U₂.c-sub (λ o → noc (oc21 o)) (syn D) s
     chk (U₁.c-lam D)                 = U₂.c-lam (chk D)
     chk (U₁.c-pair-lit D E)          = U₂.c-pair-lit (chk D) (chk E)
-    chk (U₁.c-In-app w D)            = U₂.c-In-app w (chk D)
-    chk (U₁.c-apply-app D)           = U₂.c-apply-app (syn D)
-    chk (U₁.c-inl-app D)             = U₂.c-inl-app (chk D)
-    chk (U₁.c-inr-app D)             = U₂.c-inr-app (chk D)
-    chk (U₁.c-initial-app D)         = U₂.c-initial-app (chk D)
     chk {L = L} (U₁.c-poly {c} d e p τ r) =
       subst (λ A → U₂._⊢_⇐_↝_ Δ (lc L) (Once.Spec.Surface.Syntax.RResolved c) A (ref d (λ i → τ (ρ d i)))) (ty d τ)
             (U₂.c-poly d e (open′ d p) _ (resp d τ r))
@@ -263,15 +425,11 @@ module _ (R : Ren) where
       let (sd₂ , sc₂ , eq₂ , occ₂ , esd , esc) = SchRen.arrow (R d) eq occ
       in U₂.d-poly d e (open′ d p) eq₂ occ₂ _ (resp d τ r) (trans (esd τ) ea) (trans (esc τ) eb) g
     dom (U₁.d-lam D)                 = U₂.d-lam (syn D)
+    dom (U₁.d-map fd mo least)       = U₂.d-map fd (morph-rn mo) (λ mo′ → least (proj₂ (morph-back mo′)))
     dom {L = L} (U₁.d-compose {f} {g} {A} {M} {B} {π} {tf} {tg} D E) =
       subst (U₂._⊢_⇐_⇒[_]↦_↝_ Δ (lc L) _ _ _ _) (sym (rn-compose A π tf tg)) (U₂.d-compose (dom D) (dom E))
-    dom U₁.d-id                      = U₂.d-id
-    dom U₁.d-fst                     = U₂.d-fst
-    dom U₁.d-snd                     = U₂.d-snd
-    dom U₁.d-terminal                = U₂.d-terminal
-    dom U₁.d-initial                 = U₂.d-initial
     dom {L = L} (U₁.d-case {f} {g} {A} {B} {Cf} {Cg} {C} {π} {tf} {tg} D E j) =
       subst (U₂._⊢_⇐_⇒[_]↦_↝_ Δ (lc L) _ _ _ _) (sym (rn-case A B π (coerce _ _ tf) (coerce _ _ tg))) (U₂.d-case (dom D) (dom E) j)
     dom {L = L} (U₁.d-pair {f} {g} {A} {B} {C} {π} {tf} {tg} D E) =
       subst (U₂._⊢_⇐_⇒[_]↦_↝_ Δ (lc L) _ _ _ _) (sym (rn-pair A π tf tg)) (U₂.d-pair (dom D) (dom E))
-    dom (U₁.d-cata w D)              = U₂.d-cata w (syn D)
+    dom (U₁.d-cata w D p o)          = U₂.d-cata w (syn D) p o

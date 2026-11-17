@@ -18,7 +18,7 @@
 --
 -- The work is entirely in the decider bridges below — property to boolean
 -- and back. That is the shape D134 asks for, and it is why the relation had to
--- be written independently: if it named `_∈?_`/`isBuiltinName`/`lookupUnaliased`
+-- be written independently: if it named `_∈?_`/`fromWord`/`lookupUnaliased`
 -- directly, these lemmas would be `refl` and would prove nothing.
 ------------------------------------------------------------------------
 
@@ -42,14 +42,14 @@ open import Relation.Nullary.Decidable using (dec-true; dec-false)
 open import Data.List.Membership.DecPropositional _≟_ using (_∈?_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Name using (GenWord)
-open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Spec.Surface.Generators using (GenWord)
+open import Once.Generators using (fromWord; fromWord-just; fromWord-nothing; GenWord→fromWord; ¬GenWord→fromWord)
+open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 open import Once.Parser.Module.Resolve
-  using (canonExpr; canonVar; canonDecl; isBuiltinName; expandPath;
-         lookupUnaliased; lookupImportAlias;
-         isBuiltinName-sound; isBuiltinName-false; ¬GenWord-isBuiltinName)
+  using (canonExpr; canonVar; canonDecl; expandPath;
+         lookupUnaliased; lookupImportAlias)
 open import Once.Parser.Relation.Resolution
 open import Once.Spec.Surface.Program using (NotImport; ni-sig; ni-tsig; ni-def; ni-alias)
 open import Once.Spec.Surface.Resolution using (FirstAt; fa-here; fa-there; Absent; Expands; ex-nil; ex-I; ex-other)
@@ -156,42 +156,35 @@ expandPath-sound (c ∷ rest) with c ≟ "I"
 ... | yes refl = ex-I
 ... | no ¬e    = ex-other ¬e
 
--- The remaining direction of the reserved-word bridge (`Resolve` already has
--- the other three).
-GenWord-isBuiltinName : ∀ (x : String) → GenWord x → isBuiltinName x ≡ true
-GenWord-isBuiltinName x gw with isBuiltinName x in eb
-... | true  = refl
-... | false = ⊥-elim (isBuiltinName-false x eb gw)
-
 ------------------------------------------------------------------------
 -- THE BRIDGE, at a bare reference. Four arms, one per rule.
 ------------------------------------------------------------------------
 
 resolvesVar-sound : ∀ (bound : List String) (um : UnaliasedMap) (x : String) (e : Expr)
                   → ResolvesVar bound um x e
-                  → canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) x ≡ e
+                  → canonVar (does (x ∈? bound)) (fromWord x) (lookupUnaliased um x) x ≡ e
 resolvesVar-sound bound um x _ (rv-binder i)
   rewrite dec-true (x ∈? bound) i = refl
-resolvesVar-sound bound um x _ (rv-gen ∉ gw)
-  rewrite dec-false (x ∈? bound) ∉ | GenWord-isBuiltinName x gw = refl
+resolvesVar-sound bound um x _ (rv-gen g ∉ w)
+  rewrite dec-false (x ∈? bound) ∉ | GenWord→fromWord w = refl
 resolvesVar-sound bound um x _ (rv-import ∉ ¬gw fa ex)
-  rewrite dec-false (x ∈? bound) ∉ | ¬GenWord-isBuiltinName x ¬gw
+  rewrite dec-false (x ∈? bound) ∉ | ¬GenWord→fromWord ¬gw
         | lookupUn-complete um x _ fa | expandPath-complete _ _ ex = refl
 resolvesVar-sound bound um x _ (rv-own ∉ ¬gw ab)
-  rewrite dec-false (x ∈? bound) ∉ | ¬GenWord-isBuiltinName x ¬gw
+  rewrite dec-false (x ∈? bound) ∉ | ¬GenWord→fromWord ¬gw
         | lookupUn-absent um x ab = refl
 
 resolvesVar-complete : ∀ (bound : List String) (um : UnaliasedMap) (x : String)
                      → ResolvesVar bound um x
-                         (canonVar (does (x ∈? bound)) (isBuiltinName x) (lookupUnaliased um x) x)
+                         (canonVar (does (x ∈? bound)) (fromWord x) (lookupUnaliased um x) x)
 resolvesVar-complete bound um x with does (x ∈? bound) in eb
 ... | true  = rv-binder (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound))))
-... | false with isBuiltinName x in eg
-...   | true  = rv-gen (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-sound x eg)
-...   | false with lookupUnaliased um x in eu
-...     | just p  = rv-import (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-false x eg)
+... | false with fromWord x in eg
+...   | just g  = rv-gen g (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (fromWord-just eg)
+...   | nothing with lookupUnaliased um x in eu
+...     | just p  = rv-import (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (fromWord-nothing eg)
                               (lookupUn-sound um x p eu) (expandPath-sound p)
-...     | nothing = rv-own (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (isBuiltinName-false x eg)
+...     | nothing = rv-own (invert (subst (Reflects (x ∈ bound)) eb (proof (x ∈? bound)))) (fromWord-nothing eg)
                            (lookupUn-nothing um x eu)
 
 ------------------------------------------------------------------------
@@ -213,6 +206,7 @@ resolves-sound um am bound _ _ (re-qual-path {alias = a} a≢ ab) with a ≟ "th
 ... | yes e = ⊥-elim (a≢ e)
 ... | no  _ rewrite lookupAl-absent am a ab = refl
 resolves-sound um am bound _ _ re-res = refl
+resolves-sound um am bound _ _ re-gen = refl
 resolves-sound um am bound _ _ (re-app rf ra) =
   cong₂ RApp (resolves-sound um am bound _ _ rf) (resolves-sound um am bound _ _ ra)
 resolves-sound um am bound _ _ (re-lam {x = x} rb) =
@@ -251,6 +245,7 @@ resolves-complete um am bound (RQualified n a) with a ≟ "this"
 ...   | just p  = re-qual a≢ (lookupAl-sound am a p ea) (expandPath-sound p)
 ...   | nothing = re-qual-path a≢ (lookupAl-nothing am a ea)
 resolves-complete um am bound (RResolved cn) = re-res
+resolves-complete um am bound (RGen g) = re-gen
 resolves-complete um am bound (RApp f a) =
   re-app (resolves-complete um am bound f) (resolves-complete um am bound a)
 resolves-complete um am bound (RLam x b) = re-lam (resolves-complete um am (x ∷ bound) b)

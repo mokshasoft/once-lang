@@ -34,12 +34,13 @@ open import Data.List.Relation.Unary.All using (All)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (_×_; _,_; proj₁)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≢_)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (¬_)
 
-open import Once.Spec.Name using (canonical; gen; GenWord)
+open import Once.Spec.Name using (canonical)
+open import Once.Spec.Surface.Generators using (Gen; word; GenWord)
 open import Once.ResolvedRefs using (GoodRefs)
-open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Parser.Module.Core using (Resolved; resolved)
 open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
@@ -88,9 +89,9 @@ data ResolvesVar (bound : List String) (um : UnaliasedMap) : String → Expr →
   -- A RESERVED WORD is the generator. It does not matter what else is in
   -- scope: the namespace is compiler-owned, and a definition whose name a
   -- generator has taken is reached as `name@this`.
-  rv-gen : ∀ {x}
-         → ¬ (x ∈ bound) → GenWord x
-         → ResolvesVar bound um x (RResolved (gen x))
+  rv-gen : ∀ {x} (g : Gen)
+         → ¬ (x ∈ bound) → word g ≡ x
+         → ResolvesVar bound um x (RGen g)
 
   -- Neither: an unaliased import that exports it, at that module's full path.
   rv-import : ∀ {x path path'}
@@ -140,6 +141,7 @@ data ResolvesExpr (um : UnaliasedMap) (am : AliasMap)
   -- Already resolved: the identity. This is what makes `name@this` and every
   -- compiler-generated reference a fixed point.
   re-res : ∀ {bound cn} → ResolvesExpr um am bound (RResolved cn) (RResolved cn)
+  re-gen : ∀ {bound g} → ResolvesExpr um am bound (RGen g) (RGen g)
 
   re-app : ∀ {bound f f' a a'}
          → ResolvesExpr um am bound f f' → ResolvesExpr um am bound a a'

@@ -22215,3 +22215,134 @@ The Spec commit `76253dd09` (`Spec.Float.Value`, `Encoding`, `Arith`); `FloatFor
 * The `==` warning's walk, `Once.Compile.floatIdentityEqDefs`, raises `runs-unproved.allow` by one line
   (MERGE.md §6): it carries no theorem, since a warning is a report (D123). It reuses the loop warning's walk,
   whose `silentRoundDefs-aux` is renamed `defsWith` (its allow line renamed with it).
+
+---
+
+## D413 — ONE RULE PER FORM AND MODE: THE GENERATORS ARE A TABLE, THE COMBINATORS THEIR UNIVERSAL PROPERTIES (2026-11-16)
+
+**Amends** D316's amendment ("generic rules where the per-generator ones only repeat them": now done, and
+stated). **Relates** D230 (the spine mode), D226 (one conversion), D321/D322 (least codomains, joins), D407
+(a rejection names its rule). **Decided** by the user 2026-11-15/16 (plan 0.151 E1–E5, the Spec patch
+approved as one chunk 2026-11-16); the program changes below confirmed 2026-11-17, with no restriction.
+
+### Context
+The surface typing had 61 rules, most of them one pattern repeated per generator and per mode, and several
+forms matched more than one rule (`c-sub` against `c-pair-lit` and `c-apply-app`, the two `compose` routes,
+`s-app` against `s-app-spine`). A rejected program could not name the one rule it broke (plan 0.149 needs
+that).
+
+### Decision
+* **The generators are a table** (`Spec.Surface.Generators`): `Gen` (18), each with its `kind` — a constant,
+  a structure map with the side of its arrow that fixes its instance (domain, codomain, or both: `id`,
+  `initial`), or a combinator with its number of arms. `Constant` and `Morphism` give the instances and
+  their core terms; every structure map exists at every grade (a map of the base category is a map at each
+  grade). `Final` lists the two final coalgebras `ana` maps into.
+* **36 rules (synthesis 15, checking 13, domain-given 8)**: the structure maps by `c-map`, `c-map-app` (fixed
+  by the codomain, applied) and `d-map` (fixed by the domain, at its least codomain); the constants by
+  `s-const`; application by `s-app` at `𝕋 π` (running an arrow of grade `π`) and `s-app-spine`; each
+  combinator by its universal property, one rule per mode. Classes on the form (`PartialCombinator`,
+  `CheckHead`, `OwnCheck`, `SynthForm`, `DomainForm`) say which rule applies, so no side fact decides it.
+* **The Spec claims it**: `Metatheory.Surface`'s `one-rule⇒/⇐/↦` — two derivations of one expression in one
+  mode end with the same rule, whatever the given types (`ruleOf⇒/⇐/↦`).
+* **No equivalence proof with the old judgment** (plan 0.151 step 4 dropped, the user 2026-11-17): the
+  old rules are gone, and the exit tests and the tests below are the check that the texts and their
+  meanings are kept. Where the core term changed, `CoherenceS` proves the meaning is the derivation's,
+  whichever rule built it.
+
+### What programs see
+* **Newly accepted** (each was writable before with a λ or an annotation; the rules now agree with their
+  neighbours):
+  - bare `apply`, `In`, `Out` as morphisms, at every grade (`c-map`): `f = apply`, `wrap = In`, and
+    `useE apply` where `useE` takes an `Eff` arrow (a signature still states the least type, D321, so the
+    higher grades show where the map is checked against one);
+  - `apply` and `Out` from a given domain at their least codomain (`d-map`): `(\y -> y * 2) . apply`,
+    `fst . Out`;
+  - `initial e` synthesizes `Void`, its least codomain (`s-app-spine`): `let y = initial v in y`, at
+    `Void -> Void` or in a `case` branch (the join with `Void` is the other branch's type);
+  - a checked `id e` checks `e` (`c-map-app`, `id` fixed by either side): `pick (id (inl 5))` with
+    `pick : (Int + Unit) -> Int`;
+  - applying an effectful arrow of any argument quantity (`s-app`; pure application already took any). No
+    source type writes such an arrow today (`Eff`/`Act` are `Many`), so no text witnesses it.
+* **New core term, same meaning**: a checked `apply e` goes by `c-sub` (`coerce B B (app …)`, was
+  `c-apply-app`); a checked `id e` is `app (idᶜ B pure) t`, the conversion inside `t` (was
+  `coerce A B (app (idᶜ A pure) t)`). A conversion compiles to no code unless it converts out of `Void`
+  (`Surface.CoerceIR`), so the generated code of every text accepted before is unchanged.
+
+### Emitted code (MERGE.md §1, measured 2026-11-17 against c092736cf)
+`tests/codegen-measure.sh same`: every corpus program that builds on both sides gives a byte-identical
+binary, on each arch (x86_64, x86_32, riscv64: 107 same; the 3 `s0151` programs build on the branch only).
+The changed core terms differ only by conversions that compile to no code.
+
+### Rejections
+Unchanged: a structure map at a type it has no instance at is D407's `NoInstance`, naming the table row's
+schema (`mapSchema`, checked; `mapDomSchema`, from a domain; `In`/`Out` name their functor `F`).
+
+### Tests
+`compiler/test/GeneratorSpec.hs`, group "plan 0.151: one rule per form" (one case per row above);
+`s0151-bare-maps.once` (exit 18) and `s0151-id-initial.once` (exit 7) run them.
+
+---
+
+## D414 — `compose`'S MIDDLE OBJECT COMES FROM `g`'S FORM; A DOMAIN-GIVEN `cata` IS AT ITS LEAST CODOMAIN (2026-11-15)
+
+**Refines** D230 and D407 (`compose`'s two routes). **Relates** D321, D322 (`case`'s join). **Decided** by the
+user 2026-11-15 (plan 0.151 §7.5, option II), its reason recorded 2026-11-16 (§7.6).
+
+### Decision
+* **One rule per form of `g`** in `compose f g : A → C`: when `g` has a domain-given form (`DomainForm`), the
+  middle object is the codomain `g` gives from `A` (`c-compose-g`); otherwise it is `f`'s synthesized domain
+  (`c-compose-f`). Both routes no longer apply to one text. This is D321/D322's answer for `case` applied to
+  `compose`: the middle object is bounded below by `g`'s least codomain and above by `f`'s domain, and the
+  least is canonical. Inferring it from both sides (constraint solving under subtyping) is rejected: type
+  inference stays local, and a rejection stays one rule's premise.
+* **`d-cata`**: the algebra synthesizes `A₁ ⇒[π′] A` with `⟦ F ⟧ A <: A₁` and `π′ ⊑ π`; the fold's codomain is
+  `A`, the algebra coerced (was: exactly `⟦ F ⟧ A ⇒[π] A`). The checked `cata` already allowed this through
+  subsumption; the domain-given rule now agrees.
+
+### What programs see
+* **Rejected**: `h . case f1 g1` whose branches have no join (`Unit -> (Int + Void) -> Int` and
+  `Unit -> (Int + Int) -> Int`: a join keeps domains), with `h : ((Int + Void) -> Int) -> Int`. It fails
+  where `(case f1 g1) x` fails ("Type mismatch: expected ((Int + Void) ω→ Int) but got ((Int + Int) ω→
+  Int)"); before, the `f` route bypassed `case`'s rule. An annotation on `g` recovers it.
+* **Newly accepted**: a domain-given `cata` whose algebra has a lower grade (a pure algebra in an `Act`/`Eff`
+  fold) or a larger domain.
+* **New core term, same meaning**: every domain-given `cata` coerces its algebra; for the algebras accepted
+  before the conversion is the identity and compiles to no code.
+
+### Tests
+`GeneratorSpec.hs` "plan 0.151: one rule per form": the rejected text and its annotated form, both `cata`
+cases; `s0151-cata-pure-alg.once` (exit 16).
+
+---
+
+## D415 — A GENERATOR IS SYNTAX, NOT A NAME (2026-11-15)
+
+**Amends** D050's canonical names (generators leave `CanonicalName`). **Decided** by the user 2026-11-15
+(plan 0.151 idea A).
+
+### Decision
+Resolution turns a generator's word into `RGen g` (`Spec.Surface.Syntax`); a resolved name is a signature
+operation or a definition. `gen`, `genWords`, `genNames`, `NotGenerator`, `generatorNS` and
+`Distinct.def-not-gen` are gone, and `s-sigop` loses its premise: no side fact separates a generator from a
+name, the syntax does.
+
+### What programs see
+* **Rejected**: `x@Generators` — a generator is in no module's namespace ("Unbound or unspecialized
+  variable: Generators.id"). No test used it.
+
+### Tests
+`GeneratorSpec.hs` "plan 0.151: one rule per form": `id@Generators` rejected.
+
+---
+
+## D416 — NO "LOOP": A SERVER ITERATES; `iterate`, `iterate-unroll`, `silentServer` (2026-11-15)
+
+**Relates** D317, D318. **Decided** by the user 2026-11-15 (plan 0.151 §7.4).
+
+### Decision
+The Spec names the anamorphism into `Eff` by what it is: `Effect.loop` → `iterate`, `loop-unroll` →
+`iterate-unroll`, `silentLoop` → `silentServer`, `loopᶜ` → `anaEffᶜ`; "the loop" in Spec comments becomes
+iteration, or `ana` into `Eff`. Outside the Spec the word changes where code is touched.
+
+### What programs see
+Nothing: names in the Spec only.

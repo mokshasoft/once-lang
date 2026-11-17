@@ -50,6 +50,10 @@ import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals; ∅; _▹_∶_; _∋_⦂_at_; here; there; ↑)
 import Once.TypeCheck.Use Σ S nm Ok OkS Δ as U
 import Once.TypeCheck.Witness Σ S nm Ok OkS Δ′ as W′
+import Once.Adequacy.SpecFront.TyRen Σ S nm as TR
+import Once.Spec.Surface.Generators as G
+import Once.Spec.Sub
+import Relation.Binary.PropositionalEquality
 open W′ using (W⇒; W⇐; W↦)
 
 ------------------------------------------------------------------------
@@ -151,12 +155,11 @@ subW↦ : ∀ {n} {L : Locals m n} {e A π B t Ψ} {d : U._⊢_⇐_⇒[_]↦_↝
 
 subW⇒ (U.u-int {i})               = W′.w-int i
 subW⇒ (U.u-float {sg} {i} {f} {l}) = W′.w-float sg i f l
-subW⇒ U.u-toFloat                 = W′.w-toFloat
 subW⇒ U.u-unit                    = W′.w-unit
-subW⇒ U.u-unit-g                  = W′.w-unit-g
+subW⇒ {d = SU.s-const c} U.u-const = W′.w-const (TR.const-ren σ rσ c)
 subW⇒ (U.u-var {v = v})           = W′.w-var (∋-⟨⟩ v)
-subW⇒ {d = SU.s-sigop ng mem} (U.u-sigop {T = T} {ok = ok} c h) =
-  ≡W⇒ (sym (⌜⌝ᵈ-⟨⟩ (declS T))) refl (W′.w-sigop {ok = ok} ng mem c h)
+subW⇒ {d = SU.s-sigop mem} (U.u-sigop {T = T} {ok = ok} c h) =
+  ≡W⇒ (sym (⌜⌝ᵈ-⟨⟩ (declS T))) refl (W′.w-sigop {ok = ok} mem c h)
 subW⇒ {d = SU.s-def d e τ a} (U.u-def {ok = ok}) =
   ≡W⇒ (sym (⟨⟩-∘ (type (S !! d)) τ σ)) refl (W′.w-def d {ok} e (∘τ τ) a)
 subW⇒ {d = SU.s-annot {T = T} _} (U.u-annot u) =
@@ -170,32 +173,16 @@ subW⇒ (U.u-binop {op = op} {A = int} {h = h} u₁ u₂) =
   ≡W⇒ (sym (symCod-⟨⟩ σ int (shape (binSym op)))) refl (W′.w-binop h (subW⇒ u₁) (subW⇒ u₂))
 subW⇒ (U.u-binop {op = op} {A = float} {h = h} u₁ u₂) =
   ≡W⇒ (sym (symCod-⟨⟩ σ float (shape (binSym op)))) refl (W′.w-binop h (subW⇒ u₁) (subW⇒ u₂))
-subW⇒ (U.u-id-app u)              = W′.w-id-app (subW⇒ u)
-subW⇒ (U.u-fst-app u)             = W′.w-fst-app (subW⇒ u)
-subW⇒ (U.u-snd-app u)             = W′.w-snd-app (subW⇒ u)
-subW⇒ (U.u-terminal-app u)        = W′.w-terminal-app (subW⇒ u)
-subW⇒ (U.u-apply-app u)           = W′.w-apply-app (subW⇒ u)
-subW⇒ (U.u-apply-eff-app {g = g} u) = W′.w-apply-eff-app g (subW⇒ u)
-subW⇒ (U.u-Out-app {F = F} {w = w} u) =
-  ≡W⇒ (sym (⟦⟧F-⟨⟩ σ F (ν F pureᶠ))) refl (W′.w-Out-app (wf-⟨⟩ σ rσ w) (subW⇒ u))
-subW⇒ (U.u-Out-act-app {F = F} {w = w} u) =
-  ≡W⇒ (cong (λ X → Unit ⇒[ mk-kind Many act ] X) (sym (⟦⟧F-⟨⟩ σ F (ν F actᶠ)))) refl (W′.w-Out-act-app (wf-⟨⟩ σ rσ w) (subW⇒ u))
-subW⇒ (U.u-app {ns = ns} uf ux)   = W′.w-app ns (subW⇒ uf) (subW⇐ ux)
-subW⇒ (U.u-effApp {π = π} {tf = tf} {tx = tx} {ns = ns} {g = g} uf ux) =
-  ≡W⇒ refl (sym (effApp-⟪⟫ π tf tx)) (W′.w-effApp ns g (subW⇒ uf) (subW⇐ ux))
-subW⇒ (U.u-app-spine {ns = ns} ux uf)      = W′.w-app-spine ns (subW⇒ ux) (subW↦ uf)
+subW⇒ (U.u-app {B = B} {π = π} {tf = tf} {tx = tx} {pc = pc} {ch = ch} uf ux) =
+  ≡W⇒ (sym (TR.𝕋-⟨⟩ σ π B)) (sym (TR.⟪appᵀ⟫ σ π tf tx)) (W′.w-app pc ch (subW⇒ uf) (subW⇐ ux))
+subW⇒ (U.u-app-spine {ch = ch} ux uf) = W′.w-app-spine ch (subW⇒ ux) (subW↦ uf)
 
-subW⇐ U.u-id                      = W′.w-id
-subW⇐ U.u-fst                     = W′.w-fst
-subW⇐ U.u-snd                     = W′.w-snd
-subW⇐ U.u-terminal                = W′.w-terminal
-subW⇐ U.u-initial                 = W′.w-initial
-subW⇐ U.u-inl                     = W′.w-inl
-subW⇐ U.u-inr                     = W′.w-inr
-subW⇐ (U.u-compose-g {A = A} {π = π} {tf = tf} {tg = tg} ug uf) =
-  ≡W⇐ refl (sym (compose-⟪⟫ A π tf tg)) (W′.w-compose-g (subW↦ ug) (subW⇐ uf))
-subW⇐ (U.u-compose-f {A = A} {B = B} {C = C} {C′ = C′} {π = π} {π′ = π′} {tf = tf} {tg = tg} {p = p} uf ug) =
-  ≡W⇐ refl (sym (compose-⟪⟫ A π (coerce (B ⇒[ mk-kind Many π′ ] C′) (B ⇒[ mk-kind Many π ] C) tf) tg)) (W′.w-compose-f (subW⇒ uf) (<:-⟨⟩ σ p) (subW⇐ ug))
+subW⇐ (U.u-map {mo = mo})         = W′.w-map (TR.morph-ren σ rσ mo)
+subW⇐ (U.u-map-app {fc = fc} {mo = mo} u) = W′.w-map-app fc (TR.morph-ren σ rσ mo) (subW⇐ u)
+subW⇐ (U.u-compose-g {A = A} {π = π} {tf = tf} {tg = tg} {df′ = df′} ug uf) =
+  ≡W⇐ refl (sym (compose-⟪⟫ A π tf tg)) (W′.w-compose-g df′ (subW↦ ug) (subW⇐ uf))
+subW⇐ (U.u-compose-f {A = A} {B = B} {C = C} {C′ = C′} {π = π} {π′ = π′} {tf = tf} {tg = tg} {ndf = ndf} {p = p} uf ug) =
+  ≡W⇐ refl (sym (compose-⟪⟫ A π (coerce (B ⇒[ mk-kind Many π′ ] C′) (B ⇒[ mk-kind Many π ] C) tf) tg)) (W′.w-compose-f ndf (subW⇒ uf) (<:-⟨⟩ σ p) (subW⇐ ug))
 subW⇐ (U.u-case {A = A} {B = B} {π = π} {tf = tf} {tg = tg} uf ug) =
   ≡W⇐ refl (sym (case-⟪⟫ A B π tf tg)) (W′.w-case′ (subW⇐ uf) (subW⇐ ug))
 subW⇐ (U.u-pair {A = A} {π = π} {tf = tf} {tg = tg} uf ug) =
@@ -203,19 +190,13 @@ subW⇐ (U.u-pair {A = A} {π = π} {tf = tf} {tg = tg} uf ug) =
 subW⇐ (U.u-curry u)               = W′.w-curry (subW⇐ u)
 subW⇐ (U.u-cata {F = F} {A = A} {π = π} {w = w} u) =
   W′.w-cata (wf-⟨⟩ σ rσ w) (≡W⇐ (cong (λ X → X ⇒[ mk-kind Many π ] (A ⟨ σ ⟩)) (⟦⟧F-⟨⟩ σ F A)) refl (subW⇐ u))
-subW⇐ (U.u-ana {F = F} {A = A} {π₀ = π₀} {f = f} {t = t} {g = g} {w = w} u) =
-  ≡W⇐ refl (sym (ana-⟪⟫ F A π₀ t)) $ W′.w-ana g (wf-⟨⟩ σ rσ w) (≡W⇐ (cong (λ X → (A ⟨ σ ⟩) ⇒[ mk-kind Many (Once.Spec.Grade.fin f) ] X) (⟦⟧F-⟨⟩ σ F A)) refl (subW⇐ u))
-subW⇐ (U.u-loop u)                = W′.w-loop (subW⇐ u)
-subW⇐ (U.u-sub {p = p} u)         = W′.w-sub (subW⇒ u) (<:-⟨⟩ σ p)
+subW⇐ (U.u-ana {A = A} {π₀ = π₀} {t = t} {fi = G.final-ν {F = F} {f = f} le w} u) =
+  ≡W⇐ refl (sym (ana-⟪⟫ F A π₀ t)) $ W′.w-ana (G.final-ν le (wf-⟨⟩ σ rσ w))
+    (≡W⇐ (cong (λ X → (A ⟨ σ ⟩) ⇒[ mk-kind Many (Once.Spec.Grade.fin f) ] X) (⟦⟧F-⟨⟩ σ F A)) refl (subW⇐ u))
+subW⇐ (U.u-ana {fi = G.final-T∞} u) = W′.w-ana G.final-T∞ (subW⇐ u)
+subW⇐ (U.u-sub {noc = noc} {p = p} u) = W′.w-sub noc (subW⇒ u) (<:-⟨⟩ σ p)
 subW⇐ (U.u-lam ≤p u)              = W′.w-lam ≤p (subW⇐ u)
 subW⇐ (U.u-pair-lit ua ub)        = W′.w-pair-lit (subW⇐ ua) (subW⇐ ub)
-subW⇐ (U.u-In-app {F = F} {t = t} {w = w} u) =
-  ≡W⇐ refl (cong (λ X → app (lam X Many pure (roll (F ⟨ σ ⟩F) (var zero))) (t ⟪ σ ⟫ₜ)) (sym (⟦⟧F-⟨⟩ σ F (μ F))))
-      (W′.w-In-app (wf-⟨⟩ σ rσ w) (≡W⇐ (⟦⟧F-⟨⟩ σ F (μ F)) refl (subW⇐ u)))
-subW⇐ (U.u-apply-app u)           = W′.w-apply-app′ (subW⇒ u)
-subW⇐ (U.u-inl-app u)             = W′.w-inl-app (subW⇐ u)
-subW⇐ (U.u-inr-app u)             = W′.w-inr-app (subW⇐ u)
-subW⇐ (U.u-initial-app u)         = W′.w-initial-app (subW⇐ u)
 subW⇐ {d = SU.c-poly d e a τ r} (U.u-poly {ok = ok}) =
   ≡W⇐ (sym (⟨⟩-∘ (type (S !! d)) τ σ)) refl (W′.w-poly d {ok} e a (∘τ τ) (respects-∘ r rσ))
 
@@ -224,16 +205,14 @@ subW↦ {d = SU.d-poly d e a {sd = sd} {sc = sc} ty oc τ r ea eb o} (U.u-poly {
   W′.w-poly↦ d {ok} e a ty oc (∘τ τ) (respects-∘ r rσ)
              (trans (sym (⟨⟩-∘ sd τ σ)) (cong (_⟨ σ ⟩) ea)) (trans (sym (⟨⟩-∘ sc τ σ)) (cong (_⟨ σ ⟩) eb)) o
 subW↦ (U.u-lam u)                 = W′.w-lam↦ (subW⇒ u)
+subW↦ (U.u-map {fd = fd} {mo = mo} {least = least}) = W′.w-map↦ fd (TR.morph-ren σ rσ mo) (TR.least-⟨⟩ σ rσ fd mo least)
 subW↦ (U.u-compose {A = A} {π = π} {tf = tf} {tg = tg} ug uf) =
   ≡W↦ refl (sym (compose-⟪⟫ A π tf tg)) (W′.w-compose↦ (subW↦ ug) (subW↦ uf))
-subW↦ U.u-id                      = W′.w-id↦
-subW↦ U.u-fst                     = W′.w-fst↦
-subW↦ U.u-snd                     = W′.w-snd↦
-subW↦ U.u-terminal                = W′.w-terminal↦
-subW↦ U.u-initial                 = W′.w-initial↦
 subW↦ (U.u-case {A = A} {B = B} {Cf = Cf} {Cg = Cg} {C = C} {π = π} {tf = tf} {tg = tg} {j = j} uf ug) =
   ≡W↦ refl (sym (case-⟪⟫ A B π (coerce (A ⇒[ mk-kind Many π ] Cf) (A ⇒[ mk-kind Many π ] C) tf) (coerce (B ⇒[ mk-kind Many π ] Cg) (B ⇒[ mk-kind Many π ] C) tg))) (W′.w-case↦ (subW↦ uf) (subW↦ ug) (⊔-⟨⟩ j))
 subW↦ (U.u-pair {A = A} {π = π} {tf = tf} {tg = tg} uf ug) =
   ≡W↦ refl (sym (pair-⟪⟫ A π tf tg)) (W′.w-pair↦ (subW↦ uf) (subW↦ ug))
-subW↦ (U.u-cata {F = F} {A = A} {π = π} {w = w} u) =
-  W′.w-cata↦ (wf-⟨⟩ σ rσ w) (≡W⇒ (cong (λ X → X ⇒[ mk-kind Many π ] (A ⟨ σ ⟩)) (⟦⟧F-⟨⟩ σ F A)) refl (subW⇒ u))
+subW↦ (U.u-cata {F = F} {A₁ = A₁} {A = A} {π′ = π′} {π = π} {t = t} {w = w} {p = p} {o = o} u) =
+  ≡W↦ refl (cong (λ X → Once.Spec.Core.Derived.cataᶜ (F ⟨ σ ⟩F) π (coerce (A₁ ⟨ σ ⟩ ⇒[ mk-kind Many π′ ] A ⟨ σ ⟩) (X ⇒[ mk-kind Many π ] A ⟨ σ ⟩) (t ⟪ σ ⟫ₜ)))
+                 (sym (⟦⟧F-⟨⟩ σ F A)))
+      (W′.w-cata↦ (wf-⟨⟩ σ rσ w) (subW⇒ u) (Relation.Binary.PropositionalEquality.subst (λ X → X Once.Spec.Sub.<: A₁ ⟨ σ ⟩) (⟦⟧F-⟨⟩ σ F A) (<:-⟨⟩ σ p)) o)

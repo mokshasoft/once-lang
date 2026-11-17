@@ -19,7 +19,7 @@
 --   Unit, ×, +, Void    unit, pair, fst, snd, inl, inr, case, absurd
 --   μ F                 roll, fold                (initial algebra, its fold)
 --   ν F f               unfold, out               (final coalgebra, its unfold)
---   Eff                 iter                      (the loop: a server)
+--   Eff                 iter                      (iteration: a server)
 --   subtyping           coerce
 --   numbers             lit, prim
 --   the signature Σ     sigop                     (a declared constant or operation)

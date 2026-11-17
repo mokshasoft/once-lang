@@ -31,7 +31,7 @@ open import Relation.Nullary using (¬_)
 
 open import Once.Spec.Surface.Lexing using (Token; TWord; TLParen; TRParen; TColon; TEquals; TDot; TNewline; TEOF)
 open import Once.Spec.Surface.Syntax using (Expr; RLam; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport;
-  mkImport; Module; mkModule; RVar; RQualified; RResolved; RApp; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot;
+  mkImport; Module; mkModule; RVar; RQualified; RResolved; RGen; RApp; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot;
   RBinOp; RNeg)
 open import Once.Spec.Surface.Grammar
 open import Once.Format.Doc using (Doc; toks; empty; tk; _<>_)
@@ -72,6 +72,7 @@ private
   lams-wf (RVar x) w = w
   lams-wf (RQualified x q) w = w
   lams-wf (RResolved n) w = w
+  lams-wf (RGen n) w = w
   lams-wf (RApp f a) w = w
   lams-wf (RLet x v b) w = w
   lams-wf (RPair a b) w = w
@@ -88,6 +89,7 @@ private
   lams-wrap (RVar x) = refl
   lams-wrap (RQualified x q) = refl
   lams-wrap (RResolved n) = refl
+  lams-wrap (RGen n) = refl
   lams-wrap (RApp f a) = refl
   lams-wrap (RLet x v b) = refl
   lams-wrap (RPair a b) = refl

@@ -18,11 +18,23 @@ module Once.Spec.Core.Derived where
 
 open import Data.Nat using (ℕ; suc)
 open import Data.Fin using (zero; suc)
-open import Once.Spec.Grade using (Purity; pure; act; eff; fin; pureᶠ; actᶠ; mk-kind; One; Many)
+open import Once.Spec.Grade using (Purity; Finite; pure; act; eff; fin; pureᶠ; actᶠ; mk-kind; One; Many)
 open import Once.Spec.Type
   using (Ty; var; Fun; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; ⟦_⟧F; μ; ν;
          _⟨_⟩; _⟨_⟩F; at₀; shiftᵗ)
 open import Once.Spec.Core.Syntax
+
+------------------------------------------------------------------------
+-- The grade-indexed family: what running an arrow at grade `π` gives
+------------------------------------------------------------------------
+
+-- `𝕋 π B`: a pure arrow gives its result, an effectful one the suspension
+-- that runs it (the family of monads of the grades, with the identity at
+-- `pure`). Application, `apply` and `Out` are each one rule at `𝕋`.
+𝕋 : ∀ {m} → Purity → Ty m → Ty m
+𝕋 pure B = B
+𝕋 act  B = Unit ⇒[ mk-kind Many act ] B
+𝕋 eff  B = Unit ⇒[ mk-kind Many eff ] B
 
 module _ {s} {S : Defs s} {m : ℕ} where
 
@@ -52,12 +64,12 @@ module _ {s} {S : Defs s} {m : ℕ} where
   inlᶜ A B π = lam A Many π (inl B v0)
   inrᶜ A B π = lam B Many π (inr A v0)
 
-  applyᶜ : ∀ {n} → Ty m → Ty m → Tm S m n
-  applyᶜ A B = lam ((A ⇒[ mk-kind Many pure ] B) * A) Many pure (app (fst v0) (snd v0))
+  applyᶜ : ∀ {n} → Ty m → Ty m → Purity → Tm S m n
+  applyᶜ A B π = lam ((A ⇒[ mk-kind Many pure ] B) * A) Many π (app (fst v0) (snd v0))
 
-  inᶜ outᶜ : ∀ {n} → Fun m → Tm S m n
-  inᶜ  F = lam (⟦ F ⟧F (μ F)) Many pure (roll F v0)
-  outᶜ F = lam (ν F pureᶠ) Many pure (out v0)
+  inᶜ outᶜ : ∀ {n} → Fun m → Purity → Tm S m n
+  inᶜ  F π = lam (⟦ F ⟧F (μ F)) Many π (roll F v0)
+  outᶜ F π = lam (ν F pureᶠ) Many π (out v0)
 
   -- `compose f g` = f ∘ g: `f` evaluated first, `g` applied first.
   composeᶜ : ∀ {n} → Ty m → Purity → Tm S m n → Tm S m n → Tm S m n
@@ -81,9 +93,10 @@ module _ {s} {S : Defs s} {m : ℕ} where
   cataᶜ : ∀ {n} → Fun m → Purity → Tm S m n → Tm S m n
   cataᶜ F π alg = let′ Many alg (lam (μ F) Many π (fold F v1 v0))
 
-  -- `ana round` into `Eff`: the loop; the round is evaluated once.
-  loopᶜ : ∀ {n} → Ty m → Tm S m n → Tm S m n
-  loopᶜ A c = let′ Many c (lam A Many eff (iter v1 v0))
+  -- `ana round` into `Eff`: the unfold into the final coalgebra `T∞ B` of
+  -- `T (B + −)`, by iteration; the round is evaluated once.
+  anaEffᶜ : ∀ {n} → Ty m → Tm S m n → Tm S m n
+  anaEffᶜ A c = let′ Many c (lam A Many eff (iter v1 v0))
 
   -- `ana coalg` into `ν F`: the stream stores the coalgebra.
   anaᶜ : ∀ {n} → Fun m → Ty m → Purity → Tm S m n → Tm S m n
@@ -144,9 +157,28 @@ module _ {s} {S : Defs s} {m : ℕ} where
   effAppᶜ : ∀ {n} → Purity → Tm S m n → Tm S m n → Tm S m n
   effAppᶜ π f x = lam Unit Many π (app (wk f) (wk x))
 
-  applyEffᶜ : ∀ {n} → Purity → Ty m → Ty m → Tm S m n
-  applyEffᶜ π A B = lam ((A ⇒[ mk-kind Many π ] B) * A) Many pure (lam Unit Many π (app (fst v1) (snd v1)))
+  applyEffᶜ : ∀ {n} → Purity → Ty m → Ty m → Purity → Tm S m n
+  applyEffᶜ π A B ρ = lam ((A ⇒[ mk-kind Many π ] B) * A) Many ρ (lam Unit Many π (app (fst v1) (snd v1)))
 
   -- Forcing a stream whose layers are blocks builds a suspension.
-  outActᶜ : ∀ {n} → Fun m → Tm S m n
-  outActᶜ F = lam (ν F actᶠ) Many pure (lam Unit Many act (out v1))
+  outActᶜ : ∀ {n} → Fun m → Purity → Tm S m n
+  outActᶜ F π = lam (ν F actᶠ) Many π (lam Unit Many act (out v1))
+
+  -- The terms at `𝕋` (below).
+
+  -- Applying an arrow of grade `π`.
+  appᵀ : ∀ {n} → Purity → Tm S m n → Tm S m n → Tm S m n
+  appᵀ pure f x = app f x
+  appᵀ act  f x = effAppᶜ act f x
+  appᵀ eff  f x = effAppᶜ eff f x
+
+  -- `apply` at an arrow of grade `π`, as an arrow of grade `ρ`.
+  applyᵀ : ∀ {n} → Purity → Ty m → Ty m → Purity → Tm S m n
+  applyᵀ pure A B ρ = applyᶜ A B ρ
+  applyᵀ act  A B ρ = applyEffᶜ act A B ρ
+  applyᵀ eff  A B ρ = applyEffᶜ eff A B ρ
+
+  -- `Out` on a stream whose layers have grade `f`, as an arrow of grade `ρ`.
+  outᵀ : ∀ {n} → Finite → Fun m → Purity → Tm S m n
+  outᵀ pureᶠ F ρ = outᶜ F ρ
+  outᵀ actᶠ  F ρ = outActᶜ F ρ

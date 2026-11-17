@@ -48,7 +48,7 @@ open import Once.Spec.Type using (Type)
 open import Once.Type.Core using (isUnit?)
 import Once.Type.Core as SpecTy
 import Once.Spec.Type as SpecTy
-open import Once.Spec.Name using (CanonicalName; gen)
+open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Name using (showCanonical)
 open import Relation.Nullary using (Dec; yes; no)
 import Data.List.Membership.DecPropositional as DecMem
@@ -154,7 +154,7 @@ pure ι = pureI (impl ι)
 -- The RESERVED operation an unlinked call halts on: a call the world does not
 -- provide, or an internal call the table does not define (D244).
 unlinkedOp : HaltOp
-unlinkedOp = haltOp (gen "unlinked") SpecTy.Unit b-Unit
+unlinkedOp = haltOp (canonical ("Generators" ∷ "unlinked" ∷ [])) SpecTy.Unit b-Unit
 
 -- Halting on it.
 unlinkedT : ∀ {X} → T X

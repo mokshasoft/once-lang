@@ -43,7 +43,8 @@ open import Once.Module using (Scope; ModTele; []; ffi; mono; poly; MainsEffUU)
 open import Once.Type.Schema using (schemaOf)
 open Parser.PolyFunInfo using (pfunType)
 open import Once.Core.Translate Σ using (SigSig; ImpSig; TeleSig; t-def; wkI; wkT; impDefs; mainEntry; monoSchema)
-open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef)
+open import Once.Adequacy.ModuleProgram Σ using (Names; names-monoF; names-polyF; fresh-mono; fresh-poly; monoDef; polyDef)
+import Once.Adequacy.ModuleProgram Σ as MP
 open import Once.Adequacy.SpecFront.WalkState Σ ps using (_∷ⁿ_)
 open import Once.Adequacy.SpecFront.End Σ ps using (EntryKind; End; endOf; no-ffi; all-tail)
 import Data.String
@@ -90,32 +91,32 @@ private
 
 -- Every name at the end is a walked entry's, or was already one.
 named-end : ∀ {s} {S : SC.Defs s} {sc es} (tl : SP.Tele S) (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-            (N : Names S is ts) (mt : ModTele sc es) (ks : All EntryKind es) {L}
-          → NamedIn (Names.nm N) L → ∀ d → Σ[ x ∈ String ] (End.nm (endOf tl ss is ts N mt ks) d ≡ canonical (x ∷ [])) × (x ∈ L ⊎ x ∈ names es)
-named-end tl ss is ts N [] ks n d = let (x , e , m) = n d in x , e , inj₁ m
-named-end tl ss is ts N (ffi ep _ _ _ _) ks n d = ⊥-elim (no-ffi ep ks)
-named-end {S = S} {sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr W rest) ks {L} n d =
+            (N : Names S (Scope.sig sc) is ts) (F : MP.Fresh N es) (mt : ModTele sc es) (ks : All EntryKind es) {L}
+          → NamedIn (Names.nm N) L → ∀ d → Σ[ x ∈ String ] (End.nm (endOf tl ss is ts N F mt ks) d ≡ canonical (x ∷ [])) × (x ∈ L ⊎ x ∈ names es)
+named-end tl ss is ts N F [] ks n d = let (x , e , m) = n d in x , e , inj₁ m
+named-end tl ss is ts N F (ffi ep _ _ _ _) ks n d = ⊥-elim (no-ffi ep ks)
+named-end {S = S} {sc} tl ss is ts N F (poly {pfi = pfi} {Ψ = Ψ} pr W rest) ks {L} n d =
   let (x , e , m) = named-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts))
-                              (names-poly pfi N) rest (all-tail ks) (step-named {L = L} n) d
+                              (names-polyF pfi F) (fresh-poly pfi F) rest (all-tail ks) (step-named {L = L} n) d
   in x , e , back m
-named-end {S = S} {sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) ks {L} n d =
+named-end {S = S} {sc} tl ss is ts N F (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) ks {L} n d =
   let (x , e , m) = named-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
-                              (names-mono (funName fi Data.String.== "main") (funName fi) ty N) rest (all-tail ks) (step-named {L = L} n) d
+                              (names-monoF (funName fi Data.String.== "main") fi ty F) (fresh-mono (funName fi Data.String.== "main") fi ty F) rest (all-tail ks) (step-named {L = L} n) d
   in x , e , back m
 
 -- No two names at the end coincide.
 distinct-end : ∀ {s} {S : SC.Defs s} {sc es} (tl : SP.Tele S) (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-               (N : Names S is ts) (mt : ModTele sc es) (ks : All EntryKind es)
+               (N : Names S (Scope.sig sc) is ts) (F : MP.Fresh N es) (mt : ModTele sc es) (ks : All EntryKind es)
              → Injective _≡_ _≡_ (Names.nm N) → AllPairs _≢_ (names es) → All (Fresh (Names.nm N)) (names es)
-             → Injective _≡_ _≡_ (End.nm (endOf tl ss is ts N mt ks))
-distinct-end tl ss is ts N [] ks i u f = i
-distinct-end tl ss is ts N (ffi ep _ _ _ _) ks i u f = ⊥-elim (no-ffi ep ks)
-distinct-end {S = S} {sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr W rest) ks i (h ∷ u) (f ∷ fs) =
+             → Injective _≡_ _≡_ (End.nm (endOf tl ss is ts N F mt ks))
+distinct-end tl ss is ts N F [] ks i u f = i
+distinct-end tl ss is ts N F (ffi ep _ _ _ _) ks i u f = ⊥-elim (no-ffi ep ks)
+distinct-end {S = S} {sc} tl ss is ts N F (poly {pfi = pfi} {Ψ = Ψ} pr W rest) ks i (h ∷ u) (f ∷ fs) =
   distinct-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts))
-               (names-poly pfi N) rest (all-tail ks) (step-inj i f) u (step-fresh h fs)
-distinct-end {S = S} {sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) ks i (h ∷ u) (f ∷ fs) =
+               (names-polyF pfi F) (fresh-poly pfi F) rest (all-tail ks) (step-inj i f) u (step-fresh h fs)
+distinct-end {S = S} {sc} tl ss is ts N F (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) ks i (h ∷ u) (f ∷ fs) =
   distinct-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
-               (names-mono (funName fi Data.String.== "main") (funName fi) ty N) rest (all-tail ks) (step-inj i f) u (step-fresh h fs)
+               (names-monoF (funName fi Data.String.== "main") fi ty F) (fresh-mono (funName fi Data.String.== "main") fi ty F) rest (all-tail ks) (step-inj i f) u (step-fresh h fs)
 
 -- Every definition named `main` is an entry (the Spec's `ModuleDenotes.mains`).
 MainsAt : ∀ {s} → SC.Defs s → (Fin s → CanonicalName) → Set
@@ -124,22 +125,22 @@ MainsAt S nm = ∀ d → nm d ≡ canonical ("main" ∷ []) → SP.Entry (S SC.!
 -- …at the end, when it holds at the start and every walked definition named
 -- `main` is usable as one (`MainsEffUU`: a schema never is `main`).
 mains-end : ∀ {s} {S : SC.Defs s} {sc es} (tl : SP.Tele S) (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
-            (N : Names S is ts) (mt : ModTele sc es) (ks : All EntryKind es)
+            (N : Names S (Scope.sig sc) is ts) (F : MP.Fresh N es) (mt : ModTele sc es) (ks : All EntryKind es)
           → MainsAt S (Names.nm N) → MainsEffUU mt
-          → MainsAt (End.S (endOf tl ss is ts N mt ks)) (End.nm (endOf tl ss is ts N mt ks))
-mains-end tl ss is ts N [] ks h _ = h
-mains-end tl ss is ts N (ffi ep _ _ _ _) ks h _ = ⊥-elim (no-ffi ep ks)
-mains-end {S = S} {sc} tl ss is ts N (poly {pfi = pfi} {Ψ = Ψ} pr W rest) ks h (n , ms) =
+          → MainsAt (End.S (endOf tl ss is ts N F mt ks)) (End.nm (endOf tl ss is ts N F mt ks))
+mains-end tl ss is ts N F [] ks h _ = h
+mains-end tl ss is ts N F (ffi ep _ _ _ _) ks h _ = ⊥-elim (no-ffi ep ks)
+mains-end {S = S} {sc} tl ss is ts N F (poly {pfi = pfi} {Ψ = Ψ} pr W rest) ks h (n , ms) =
   mains-end (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts))
-            (names-poly pfi N) rest (all-tail ks) step ms
+            (names-polyF pfi F) (fresh-poly pfi F) rest (all-tail ks) step ms
   where
-    step : MainsAt (S SC.▷ schemaOf (pfunType pfi)) (Names.nm (names-poly pfi N))
+    step : MainsAt (S SC.▷ schemaOf (pfunType pfi)) (Names.nm (names-polyF pfi F))
     step zero    e = ⊥-elim (n (one-inj e))
     step (suc d) e = h d e
-mains-end {S = S} {sc} tl ss is ts N (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) ks h (m , ms) =
+mains-end {S = S} {sc} tl ss is ts N F (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) ks h (m , ms) =
   mains-end (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Data.String.== "main") is) (wkT ts)
-            (names-mono (funName fi Data.String.== "main") (funName fi) ty N) rest (all-tail ks) step ms
+            (names-monoF (funName fi Data.String.== "main") fi ty F) (fresh-mono (funName fi Data.String.== "main") fi ty F) rest (all-tail ks) step ms
   where
-    step : MainsAt (S SC.▷ monoSchema ty) (Names.nm (names-mono (funName fi Data.String.== "main") (funName fi) ty N))
+    step : MainsAt (S SC.▷ monoSchema ty) (Names.nm (names-monoF (funName fi Data.String.== "main") fi ty F))
     step zero    e = mainEntry (m (one-inj e))
     step (suc d) e = h d e

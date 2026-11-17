@@ -16,7 +16,7 @@
 -- (`unfold-unique`: every stream is a final coalgebra).
 --
 -- The loop is the unfold at `K B ⊕ Id`, and it is observed as its unrolling
--- (`loop-unroll`): the two traces differ by one silent step at the end of the
+-- (`iterate-unroll`): the two traces differ by one silent step at the end of the
 -- first round, after which they are the same trace.
 ------------------------------------------------------------------------
 
@@ -206,7 +206,7 @@ module Unroll {A B : Set} (c : A → T (B ⊎ A)) (w : World) where
     G : SFunctor
     G = SK B S⊕ SId
     k : B ⊎ A → T∞ B
-    k = [ return∞ , loop c ]′
+    k = [ return∞ , iterate c ]′
     S : Set
     S = End B ⊎ (Event × Tr B)
 
@@ -250,8 +250,8 @@ module Unroll {A B : Set} (c : A → T (B ⊎ A)) (w : World) where
   lift (o′ , a , r) = o′ , a , stepU r
   lift′ (o , a , r) = o , a , stepU r
 
-  loop-unroll : ∀ (a : A) → trace w [] (loop c a) ≈ᵗ⟨ _≡_ ⟩ trace w [] (embed (c a) >>=∞ k)
-  same (loop-unroll a) = (λ o a₁ → lift (match [] (c a) o a₁)) , (λ o a₁ → lift′ (match′ [] (c a) o a₁))
+  iterate-unroll : ∀ (a : A) → trace w [] (iterate c a) ≈ᵗ⟨ _≡_ ⟩ trace w [] (embed (c a) >>=∞ k)
+  same (iterate-unroll a) = (λ o a₁ → lift (match [] (c a) o a₁)) , (λ o a₁ → lift′ (match′ [] (c a) o a₁))
 
 recursion : Recursion Σ
 recursion = record
@@ -260,5 +260,5 @@ recursion = record
   ; fold-fusion   = λ π G alg alg′ g hyp → Fold.Fusion.fusion π G alg alg′ g hyp
   ; unfold-out    = λ f G c x → UnfoldEq.unfold-out G f c x
   ; unfold-unique = λ f G c g hyp x → Final.unfold-unique G f c g hyp x
-  ; loop-unroll   = λ c a w → Unroll.loop-unroll c w a
+  ; iterate-unroll = λ c a w → Unroll.iterate-unroll c w a
   }

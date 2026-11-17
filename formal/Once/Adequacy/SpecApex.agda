@@ -224,14 +224,14 @@ private
 
   -- `sound`'s conclusion, over the extractor's result (so the compiler's readings reduce)
   Goal-ef : Arch → Source → (m : PM.Resolved) (ef : String ⊎ List Parser.Entry)
-          → (mt : LM.ModuleTyped-ef m ef) → LM.HasValidMain-ef m ef mt → Set
-  Goal-ef arch src m ef mt hvm =
+          → (mt : LM.ModuleTyped-ef m ef) → LM.HasValidMain-ef m ef mt → CB.Dist-ef ef → Set
+  Goal-ef arch src m ef mt hvm dist =
     Σ[ tp′ ∈ Typed ]
       (src ⊢ tp′) × Admissible (arch-numerics arch) tp′
       × Σ[ u ∈ CB.SigView-ef m ef mt (signature tp′) ] (toISig (signature tp′) ≡ LM.moduleSig-ef ef)
           × Unique (map rname (signature tp′))
           × (∀ (J : Obs.Interp (signature tp′))
-             → CB.coreTr (arch-numerics arch) (signature tp′) (CB.typedProgram-ef m ef mt hvm (signature tp′) u) J
+             → CB.coreTr (arch-numerics arch) (signature tp′) (CB.typedProgram-ef m ef mt hvm dist (signature tp′) u) J
                ≈ behaviour (arch-numerics arch) tp′ J)
 
   sound-ef : ∀ arch (src : Source) {mm dsU dsR}
@@ -239,10 +239,10 @@ private
            → LPa.ParsesText (SP.Source.text src) (SS.mkModule dsU)
            → LR.ResolvesDecls mm (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
            → AdmissibleM arch (SS.mkModule dsR)
-           → (ef : String ⊎ List Parser.Entry) → Parser.extractFunctions (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) ≡ ef
+           → (ef : String ⊎ List Parser.Entry) → (eq : Parser.extractFunctions (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) ≡ ef)
            → (mt : LM.ModuleTyped-ef (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) ef)
              (hvm : LM.HasValidMain-ef (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) ef mt)
-           → Goal-ef arch src (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) ef mt hvm
+           → Goal-ef arch src (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) ef mt hvm (CB.dist-ef (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) eq)
   sound-ef arch src {mm} {dsU} {dsR} pm pt rds adm (inj₂ es) eq mt (ms , mi) =
     tp′ , (mm , pt′ , pms , Dn.Denoted.denotes D) , Lits.admissible-of arch rds adm ,
     Mn.view D , trans (sym (Dn.Denoted.sig-eq D)) (teleSig≡entrySig mt) , Dn.Denoted.uniq D , Mn.same-trace D
@@ -251,7 +251,7 @@ private
       module Mn = Once.Adequacy.SpecFront.Meaning (arch-numerics arch)
       pms = Modules.modules-of (SP.Source.modules src) pm
       pt′ = GD.parses→ {SP.Source.text src} pt
-      D = Dn.denote (Words.mods-words pms) (Words.decls-words {SP.Source.text src} pt′) rds eq mt ms mi
+      D = Dn.denote (Words.mods-words pms) (Words.decls-words {SP.Source.text src} pt′) rds eq (CB.dist-ef (PM.resolved (SS.mkModule dsR) (importedOf mm dsU)) eq) mt ms mi
       tp′ : Typed
       tp′ = record { module′ = SS.mkModule dsU ; signature = Dn.Denoted.Σₛ D ; program = Mn.progS D }
 

@@ -44,7 +44,7 @@ d_statsOf_4 v0 v1
                     (coe
                        MAlonzo.Code.Once.Parser.d_sigsAdjacent_500
                        (coe
-                          MAlonzo.Code.Once.Spec.Surface.Syntax.d_decls_112
+                          MAlonzo.Code.Once.Spec.Surface.Syntax.d_decls_114
                           (coe MAlonzo.Code.Once.Parser.Module.Core.d_rmodule_14 (coe v1)))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
                     (coe
@@ -52,7 +52,7 @@ d_statsOf_4 v0 v1
                        (coe
                           MAlonzo.Code.Once.Parser.d_sigsFirst_572
                           (coe
-                             MAlonzo.Code.Once.Spec.Surface.Syntax.d_decls_112
+                             MAlonzo.Code.Once.Spec.Surface.Syntax.d_decls_114
                              (coe MAlonzo.Code.Once.Parser.Module.Core.d_rmodule_14 (coe v1)))
                           (coe MAlonzo.Code.Once.Parser.Module.Core.d_imported_16 (coe v1)))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)))) in

@@ -28,7 +28,6 @@ open import Data.Maybe using (just; nothing)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Name using (showCanonical; WordName)
-open import Once.Spec.Name using (NotGenerator)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 import Once.Type.Concrete as LW
 open import Once.Type.Core using (wk₀)
@@ -38,7 +37,7 @@ open import Once.TypeCheck.Scope using (Imports; lookupImport)
 module Once.Adequacy.SpecFront.Def
   (Σ : Signature) (ps : List String) (sg : Imports)
   -- a declaration of Σ is the signature table's, at its type
-  (h-sig : ∀ {m} {c t} → NotGenerator c → (c ∶ t) ∈ Σ
+  (h-sig : ∀ {m} {c t} → (c ∶ t) ∈ Σ
          → Σ[ T ∈ ST.Type ] (lookupImport sg (showCanonical c) ≡ just T) × LW.IsConcrete T × (wk₀ {m} T ≡ ⌜ t ⌝ᵈ))
   -- a polymorphic definition's name is no FFI declaration's (R11, D330)
   (h-psig : ∀ {x} → x ∈ ps → lookupImport sg x ≡ nothing)
@@ -81,7 +80,7 @@ import Once.Adequacy.SpecFront.Scope as Sc
 import Once.Adequacy.SpecFront.Annotate as Annotate
 
 module _ {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (ts : TeleSig S tele)
-         (N : Names S is ts) (w : WInv S (scope sg imps tele) is ts (Names.nm N)) {m} (κ : ST.KCtx m) where
+         (N : Names S sg is ts) (w : WInv S (scope sg imps tele) is ts (Names.nm N)) {m} (κ : ST.KCtx m) where
 
   private
     nm = Names.nm N
@@ -106,11 +105,11 @@ module _ {s} {S : SC.Defs s} {imps tele} (ss : SigSig sg) (is : ImpSig S imps) (
           in TV.iv-imp nsig lk (WInv.inj w e (λ mn → nmain (trans (sym e) mn)))
 
     -- a declaration of Σ is an honest, concrete FFI declaration of the scope's signature
-    ok-sig : ∀ {c t} → NotGenerator c → (c ∶ t) ∈ Σ
+    ok-sig : ∀ {c t} → (c ∶ t) ∈ Σ
            → Σ[ T ∈ ST.Type ] ((c ∶ Once.Core.Decl.declS T) ∈ Σ) × (⌜ t ⌝ᵈ ≡ ⌜ Once.Core.Decl.declS T ⌝ᵈ)
                × OkSOf P c T × LW.IsConcrete T × Once.Type.Honest.HonestFFI T
-    ok-sig ng mem =
-      let (T , lk , k , r) = h-sig {m} ng mem
+    ok-sig mem =
+      let (T , lk , k , r) = h-sig {m} mem
           dc = TV.View.declares (Pack.V P) lk
           h  = TV.Declared.honest dc
       in T , TV.Declared.member dc (h-word mem) refl , trans (sym r) (sym (⌜declS⌝ k h)) , (lk , h-word mem) , k , h

@@ -395,7 +395,7 @@ private
 
 linv-poly : ∀ {Σ : Signature} {s} {S : Defs s} {csc pre} {pfi : Parser.PolyFunInfo} {Ψ : Usage 0}
             (ss : TR.SigSig Σ (C.CScope.csig csc)) (is : TR.ImpSig Σ S (C.CScope.cimps csc))
-            (ts : TR.TeleSig Σ S (C.telePolys (C.CScope.ctele csc))) (N : MP.Names Σ S is ts)
+            (ts : TR.TeleSig Σ S (C.telePolys (C.CScope.ctele csc))) (N : MP.Names Σ S (C.CScope.csig csc) is ts)
           → MP.PolyWit Σ (AS.scopeOf csc) pfi Ψ
           → All (pfunName pfi ≢_) (scopeNames csc)
           → LInv σ csc pre → LInv σ (C.addEntry csc pfi) pre
@@ -463,25 +463,26 @@ linv-poly {σ = σ} {Σ} {S = S} {csc} {pre} {pfi} {Once.Spec.Context.[]} ss is 
 -- signature declaring the module's FFI declarations (`SigIn`).
 link-walk : ∀ {Σ : Signature} {csc es} (mt : ModTele (AS.scopeOf csc) es) (b : FB.FunBundle csc es)
               {s} {S : Defs s} (ss : TR.SigSig Σ (C.CScope.csig csc)) (is : TR.ImpSig Σ S (C.CScope.cimps csc))
-              (ts : TR.TeleSig Σ S (C.telePolys (C.CScope.ctele csc))) (N : MP.Names Σ S is ts) (pre : List IRFun)
+              (ts : TR.TeleSig Σ S (C.telePolys (C.CScope.ctele csc))) (N : MP.Names Σ S (C.CScope.csig csc) is ts) (F : MP.Fresh Σ N es) (pre : List IRFun)
           → LInv σ csc pre → Fresh csc es
           → (∀ {d} → d ∈ teleSig mt → d ∈ σ) → TR.SigIn Σ mt
           → All (λ e → Linked σ (tableOf-go (FB.bundle→compiled b) pre) (fbody e)) (tableOf-go (FB.bundle→compiled b) pre)
             × TeleLinked σ (tableOf-go (FB.bundle→compiled b) pre)
-link-walk [] FB.bnil ss is ts N pre inv fr u uΣ = LInv.ent-ok inv , LInv.ent-tele inv
-link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (ffi {ty = ty} ep et c h rest) (FB.bffi {ty = ty′} ep′ et′ ec eh rest-b) ss is ts N pre inv fr u uΣ
+link-walk [] FB.bnil ss is ts N F pre inv fr u uΣ = LInv.ent-ok inv , LInv.ent-tele inv
+link-walk {csc = csc} {es = Parser.e-fun fi ∷ es} (ffi {ty = ty} ep et c h rest) (FB.bffi {ty = ty′} ep′ et′ ec eh rest-b) ss is ts N F pre inv fr u uΣ
   with just-injective (trans (sym et) et′)
-... | refl = link-walk rest rest-b (TR.s-ffi c h (uΣ (here refl)) ss) is ts N pre (linv-sig (funName fi) ty (u (here refl)) inv)
+... | refl = link-walk rest rest-b (TR.s-ffi c h (uΣ (here refl)) ss) is ts (MP.names-ffi _ fi ty F) (MP.fresh-ffi _ fi ty F) pre (linv-sig (funName fi) ty (u (here refl)) inv)
                (fresh-sig {csc = csc} {fi = fi} {ty = ty} {es = es} fr) (λ m → u (there m)) (λ m → uΣ (there m))
-link-walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h rest) (FB.bcons () rf fc ce cf rest-b) ss is ts N pre inv fr u uΣ
-link-walk {Σ = Σ} {csc = csc} {es = Parser.e-poly pfi ∷ es} (poly pr W rest) (FB.bpoly fc ce rest-b) ss is ts N pre inv fr u uΣ =
-  link-walk rest rest-b ss (TR.wkI Σ is) (TR.t-def zero refl (TR.wkT Σ ts)) (MP.names-poly Σ pfi N) pre
+link-walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h rest) (FB.bcons () rf fc ce cf rest-b) ss is ts N F pre inv fr u uΣ
+link-walk {Σ = Σ} {csc = csc} {es = Parser.e-poly pfi ∷ es} (poly pr W rest) (FB.bpoly fc ce rest-b) ss is ts N F pre inv fr u uΣ =
+  link-walk rest rest-b ss (TR.wkI Σ is) (TR.t-def zero refl (TR.wkT Σ ts)) (MP.names-polyF Σ pfi F) (MP.fresh-poly Σ pfi F) pre
             (linv-poly ss is ts N W (fresh-head {csc = csc} {e = Parser.e-poly pfi} {es = es} fr) inv)
             (fresh-poly {csc = csc} {pfi = pfi} {es = es} fr) u uΣ
 link-walk {Σ = Σ} {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er pr _ rest)
-          (FB.bcons {ty = ty′} {Ψ = Once.Spec.Context.[]} {irFun = irFun} refl rf fc ce cf rest-b) ss is ts N pre inv fr u uΣ
+          (FB.bcons {ty = ty′} {Ψ = Once.Spec.Context.[]} {irFun = irFun} refl rf fc ce cf rest-b) ss is ts N F pre inv fr u uΣ
   with inj₂-injective (trans (sym er) rf)
-... | refl = link-walk rest rest-b ss (TR.impDefs Σ (funName fi Str.== "main") is) (TR.wkT Σ ts) (MP.names-mono Σ (funName fi Str.== "main") (funName fi) ty N) _
+... | refl = link-walk rest rest-b ss (TR.impDefs Σ (funName fi Str.== "main") is) (TR.wkT Σ ts) (MP.names-monoF Σ (funName fi Str.== "main") fi ty F)
+               (MP.fresh-mono Σ (funName fi Str.== "main") fi ty F) _
                (linv-entry (funName fi) ty irFun
                   (dc-linked pre ty irFun (body-linkedM inv (Parser.FunInfo.funType fi) (funName fi) ty cf ce))
                   inv)
@@ -556,5 +557,6 @@ moduleToProgram-linked m ir mi nd with FB.program-node m ir mi
     -- the signatures the walk's typing reads are the module's
     u : ∀ {d} → d ∈ teleSig mt₀ → d ∈ moduleSig m
     u {d} k = subst (d ∈_) (trans (teleSig≡entrySig mt₀) (sym (cong moduleSig-ef ef))) k
-    walk = link-walk mt₀ b {S = Once.Spec.Core.Syntax.[]} TR.[] TR.[] TR.[] (MP.names₀ (sigOf (teleSig mt₀))) [] linv₀
+    walk = link-walk mt₀ b {S = Once.Spec.Core.Syntax.[]} TR.[] TR.[] TR.[] (MP.names₀ (sigOf (teleSig mt₀)))
+                     (MP.fresh₀ (sigOf (teleSig mt₀)) (entries-distinct m ef)) [] linv₀
                      (entries-distinct m ef , none-in-empty _) u (sig-in mt₀)

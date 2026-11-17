@@ -44,30 +44,35 @@ module _ (Σ : Signature) where
   private
     module TL = Once.Spec.Core.Program Σ
   open import Once.Core.Translate Σ using (SigSig; s-ffi; ImpSig; TeleSig; SigIn)
-  open import Once.Adequacy.ModuleProgram Σ using (Names; toProgram)
+  open import Once.Adequacy.ModuleProgram Σ using (Names; Fresh; names-ffi; fresh-ffi; toProgram)
 
   record Past {s} (S : Defs s) (sc : Scope) (fs es : List Parser.Entry)
-              (tl : TL.Tele S) (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc)) (N : Names S is ts)
+              (tl : TL.Tele S) (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+              (N : Names S (Scope.sig sc) is ts) (F : Fresh N (fs ++ es))
               (mt : ModTele sc (fs ++ es)) (u : SigIn mt) : Set where
     constructor past
     field
       mt′   : ModTele (scope (entrySig fs ʳ++ Scope.sig sc) (Scope.imps sc) (Scope.tele sc)) es
       ss′   : SigSig (entrySig fs ʳ++ Scope.sig sc)
+      N′    : Names S (entrySig fs ʳ++ Scope.sig sc) is ts
+      F′    : Fresh N′ es
       u′    : SigIn mt′
       facts : All FFIFacts fs
       mains : MainsEffUU mt → MainsEffUU mt′
       -- …and, for a program, its `main` and the core program, the same
-      same  : (mi : MainIn mt) → Σ[ mi′ ∈ MainIn mt′ ] toProgram tl ss is ts N mt mi u ≡ toProgram tl ss′ is ts N mt′ mi′ u′
+      same  : (mi : MainIn mt) → Σ[ mi′ ∈ MainIn mt′ ] toProgram tl ss is ts N F mt mi u ≡ toProgram tl ss′ is ts N′ F′ mt′ mi′ u′
 
   prefix : ∀ {s} {S : Defs s} {sc} (fs : List Parser.Entry) {es} → All FFIEntry fs
-         → (tl : TL.Tele S) (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc)) (N : Names S is ts)
-         → (mt : ModTele sc (fs ++ es)) (u : SigIn mt) → Past S sc fs es tl ss is ts N mt u
-  prefix [] [] tl ss is ts N mt u = past mt ss u [] (λ m → m) (λ mi → mi , refl)
-  prefix (Parser.e-fun (Parser.mkFunInfo x ft b p) ∷ fs) (fe ∷ fa) tl ss is ts N (ffi {ty = ty} refl refl c h rest) u =
-    let past mt′ ss′ u′ facts mains same = prefix fs fa tl (s-ffi c h (u (here refl)) ss) is ts N rest (λ m → u (there m))
-    in past mt′ ss′ u′ ((refl , ty , refl , c , h) ∷ facts) mains same
-  prefix (Parser.e-fun (Parser.mkFunInfo x ft b p) ∷ fs) (fe ∷ fa) tl ss is ts N (mono ep _ _ _ _) u = ⊥-elim (t≢f (trans (sym fe) ep))
-  prefix (Parser.e-poly _ ∷ fs) (() ∷ fa) tl ss is ts N mt u
+         → (tl : TL.Tele S) (ss : SigSig (Scope.sig sc)) (is : ImpSig S (Scope.imps sc)) (ts : TeleSig S (Scope.tele sc))
+         → (N : Names S (Scope.sig sc) is ts) (F : Fresh N (fs ++ es))
+         → (mt : ModTele sc (fs ++ es)) (u : SigIn mt) → Past S sc fs es tl ss is ts N F mt u
+  prefix [] [] tl ss is ts N F mt u = past mt ss N F u [] (λ m → m) (λ mi → mi , refl)
+  prefix (Parser.e-fun fi@(Parser.mkFunInfo x ft b p) ∷ fs) (fe ∷ fa) tl ss is ts N F (ffi {ty = ty} refl refl c h rest) u =
+    let past mt′ ss′ N′ F′ u′ facts mains same =
+          prefix fs fa tl (s-ffi c h (u (here refl)) ss) is ts (names-ffi fi ty F) (fresh-ffi fi ty F) rest (λ m → u (there m))
+    in past mt′ ss′ N′ F′ u′ ((refl , ty , refl , c , h) ∷ facts) mains same
+  prefix (Parser.e-fun (Parser.mkFunInfo x ft b p) ∷ fs) (fe ∷ fa) tl ss is ts N F (mono ep _ _ _ _) u = ⊥-elim (t≢f (trans (sym fe) ep))
+  prefix (Parser.e-poly _ ∷ fs) (() ∷ fa) tl ss is ts N F mt u
 
   -- (the FFI entries' facts alone)
 

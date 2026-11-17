@@ -221,51 +221,82 @@ module _ {m : ℕ} {Δ : KCtx m} where
     ⊢lam (≤qᵇ→≤q _ _ refl) (subst (λ U → Δ ⊩ (Γ ▸ A) ⊢[ One ∷ U ] _ ∷ _ ! π₀) (+ᵘ-identityʳ (Many *ᵘ Ψ))
                      (⊢sub-eff u₀ (⊢unfold wf (wk-⊢′ A dc) (⊢var zero))))
 
-  loop-use : ∀ {n} (Ψ : Usage n) → _ ≡ Many *ᵘ Ψ
-  loop-use Ψ =
+  anaEff-use : ∀ {n} (Ψ : Usage n) → _ ≡ Many *ᵘ Ψ
+  anaEff-use Ψ =
     (trans (cong (_+ᵘ (Many *ᵘ Ψ)) (trans (cong (_+ᵘ zeroUsage) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)))
                    (+ᵘ-identityˡ (Many *ᵘ Ψ)))
 
-  ⊢loopᶜ : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {c}
+  ⊢anaEffᶜ : ∀ {n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} {c}
          → Δ ⊩ Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many act ] (B + A) ! pure
-         → Δ ⊩ Γ ⊢[ Many *ᵘ Ψ ] loopᶜ A c ∷ A ⇒[ mk-kind Many eff ] B ! pure
-  ⊢loopᶜ {Γ = Γ} {Ψ} dc =
+         → Δ ⊩ Γ ⊢[ Many *ᵘ Ψ ] anaEffᶜ A c ∷ A ⇒[ mk-kind Many eff ] B ! pure
+  ⊢anaEffᶜ {Γ = Γ} {Ψ} dc =
     subst (λ U → Δ ⊩ Γ ⊢[ U ] _ ∷ _ ! pure)
-          (loop-use Ψ)
+          (anaEff-use Ψ)
           (⊢let dc (⊢lam (≤qᵇ→≤q _ _ refl) (⊢iter (⊢var (suc zero)) (⊢var zero))))
 
   ------------------------------------------------------------------------
   -- The remaining closed combinators and the suspensions.
   ------------------------------------------------------------------------
 
-  ⊢applyᶜ : ∀ {n} {Γ : Ctx m n} {A B : Ty m}
-          → Δ ⊩ Γ ⊢[ zeroUsage ] applyᶜ A B ∷ ((A ⇒[ mk-kind Many pure ] B) * A) ⇒[ mk-kind Many pure ] B ! pure
-  ⊢applyᶜ {Γ = Γ} = subst (λ U → Δ ⊩ Γ ⊢[ U ] applyᶜ _ _ ∷ _ ! pure) (z+qz Many)
-    (⊢lam (≤qᵇ→≤q _ _ refl) (⊢app (⊢fst (⊢var zero)) (⊢snd (⊢var zero))))
+  -- At every grade `π` of the map itself (a map of the base category is a
+  -- map at each grade): the body is computed purely and embedded at `π`.
+  ⊢applyᶜ : ∀ {n} {Γ : Ctx m n} {A B : Ty m} {π : Purity} → pure ⊑π π
+          → Δ ⊩ Γ ⊢[ zeroUsage ] applyᶜ A B π ∷ ((A ⇒[ mk-kind Many pure ] B) * A) ⇒[ mk-kind Many π ] B ! pure
+  ⊢applyᶜ {Γ = Γ} u = subst (λ U → Δ ⊩ Γ ⊢[ U ] applyᶜ _ _ _ ∷ _ ! pure) (z+qz Many)
+    (⊢lam (≤qᵇ→≤q _ _ refl) (⊢sub-eff u (⊢app (⊢fst (⊢var zero)) (⊢snd (⊢var zero)))))
 
-  ⊢inᶜ : ∀ {n} {Γ : Ctx m n} {F : Fun m}
-       → WFFun Δ F → Δ ⊩ Γ ⊢[ zeroUsage ] inᶜ F ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] μ F ! pure
-  ⊢inᶜ wf = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢roll wf (⊢var zero))
+  ⊢inᶜ : ∀ {n} {Γ : Ctx m n} {F : Fun m} {π : Purity} → pure ⊑π π
+       → WFFun Δ F → Δ ⊩ Γ ⊢[ zeroUsage ] inᶜ F π ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many π ] μ F ! pure
+  ⊢inᶜ u wf = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢sub-eff u (⊢roll wf (⊢var zero)))
 
-  ⊢outᶜ : ∀ {n} {Γ : Ctx m n} {F : Fun m}
-        → WFFun Δ F → Δ ⊩ Γ ⊢[ zeroUsage ] outᶜ F ∷ ν F pureᶠ ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! pure
-  ⊢outᶜ wf = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢out wf (⊢var zero))
+  ⊢outᶜ : ∀ {n} {Γ : Ctx m n} {F : Fun m} {π : Purity} → pure ⊑π π
+        → WFFun Δ F → Δ ⊩ Γ ⊢[ zeroUsage ] outᶜ F π ∷ ν F pureᶠ ⇒[ mk-kind Many π ] ⟦ F ⟧F (ν F pureᶠ) ! pure
+  ⊢outᶜ u wf = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢sub-eff u (⊢out wf (⊢var zero)))
 
-  ⊢applyEffᶜ : ∀ {n} {Γ : Ctx m n} {π : Purity} {A B : Ty m}
-             → Δ ⊩ Γ ⊢[ zeroUsage ] applyEffᶜ π A B
-                 ∷ ((A ⇒[ mk-kind Many π ] B) * A) ⇒[ mk-kind Many pure ] (Unit ⇒[ mk-kind Many π ] B) ! pure
-  ⊢applyEffᶜ {Γ = Γ} = subst (λ U → Δ ⊩ Γ ⊢[ U ] applyEffᶜ _ _ _ ∷ _ ! pure) (z+qz Many)
-    (⊢lam (≤qᵇ→≤q _ _ refl) (⊢lam (≤qᵇ→≤q _ _ refl) (⊢app (⊢fst (⊢var (suc zero))) (⊢snd (⊢var (suc zero))))))
+  ⊢applyEffᶜ : ∀ {n} {Γ : Ctx m n} {π : Purity} {A B : Ty m} {ρ : Purity} → pure ⊑π ρ
+             → Δ ⊩ Γ ⊢[ zeroUsage ] applyEffᶜ π A B ρ
+                 ∷ ((A ⇒[ mk-kind Many π ] B) * A) ⇒[ mk-kind Many ρ ] (Unit ⇒[ mk-kind Many π ] B) ! pure
+  ⊢applyEffᶜ {Γ = Γ} u = subst (λ U → Δ ⊩ Γ ⊢[ U ] applyEffᶜ _ _ _ _ ∷ _ ! pure) (z+qz Many)
+    (⊢lam (≤qᵇ→≤q _ _ refl) (⊢sub-eff u (⊢lam (≤qᵇ→≤q _ _ refl) (⊢app (⊢fst (⊢var (suc zero))) (⊢snd (⊢var (suc zero)))))))
 
-  ⊢outActᶜ : ∀ {n} {Γ : Ctx m n} {F : Fun m}
+  ⊢outActᶜ : ∀ {n} {Γ : Ctx m n} {F : Fun m} {π : Purity} → pure ⊑π π
            → WFFun Δ F
-           → Δ ⊩ Γ ⊢[ zeroUsage ] outActᶜ F
-               ∷ ν F actᶠ ⇒[ mk-kind Many pure ] (Unit ⇒[ mk-kind Many act ] ⟦ F ⟧F (ν F actᶠ)) ! pure
-  ⊢outActᶜ wf = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢lam (≤qᵇ→≤q _ _ refl) (⊢out wf (⊢var (suc zero))))
+           → Δ ⊩ Γ ⊢[ zeroUsage ] outActᶜ F π
+               ∷ ν F actᶠ ⇒[ mk-kind Many π ] (Unit ⇒[ mk-kind Many act ] ⟦ F ⟧F (ν F actᶠ)) ! pure
+  ⊢outActᶜ u wf = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢sub-eff u (⊢lam (≤qᵇ→≤q _ _ refl) (⊢out wf (⊢var (suc zero)))))
 
-  ⊢effAppᶜ : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {π : Purity} {A B : Ty m} {f x}
-           → Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] B ! pure
+  -- The suspended application, at the arrow's quantity (an erased argument
+  -- is not used, like `app`'s).
+  ⊢effAppᶜ : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {π : Purity} {A B : Ty m} {f x}
+           → Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! pure
            → Δ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! pure
-           → Δ ⊩ Γ ⊢[ Ψ₁ +ᵘ Many *ᵘ Ψ₂ ] effAppᶜ π f x ∷ Unit ⇒[ mk-kind Many π ] B ! pure
-  ⊢effAppᶜ df dx = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢app (wk-⊢′ Unit df) (wk-⊢′ Unit dx))
+           → Δ ⊩ Γ ⊢[ Ψ₁ +ᵘ q *ᵘ Ψ₂ ] effAppᶜ π f x ∷ Unit ⇒[ mk-kind Many π ] B ! pure
+  ⊢effAppᶜ {q = Zero} df dx = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢app {π₂ = pure} (wk-⊢′ Unit df) (wk-⊢′ Unit dx))
+  ⊢effAppᶜ {q = One}  df dx = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢app (wk-⊢′ Unit df) (wk-⊢′ Unit dx))
+  ⊢effAppᶜ {q = Many} df dx = ⊢lam (≤qᵇ→≤q _ _ refl) (⊢app (wk-⊢′ Unit df) (wk-⊢′ Unit dx))
 
+
+  ------------------------------------------------------------------------
+  -- Running an arrow of grade `ρ`: `𝕋 ρ` of its codomain (plan 0.151).
+  ------------------------------------------------------------------------
+
+  -- An application.
+  ⊢appᵀ : ∀ {n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} (π : Purity) {A B : Ty m} {f x}
+        → Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! pure → Δ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! pure
+        → Δ ⊩ Γ ⊢[ Ψ₁ +ᵘ q *ᵘ Ψ₂ ] appᵀ π f x ∷ 𝕋 π B ! pure
+  ⊢appᵀ {q = q} pure df dx = ⊢app-pure q df dx
+  ⊢appᵀ act df dx = ⊢effAppᶜ df dx
+  ⊢appᵀ eff df dx = ⊢effAppᶜ df dx
+
+  -- `apply`, at every grade of the map itself.
+  ⊢applyᵀ : ∀ {n} {Γ : Ctx m n} {A B : Ty m} (ρ : Purity) {π : Purity} → pure ⊑π π
+          → Δ ⊩ Γ ⊢[ zeroUsage ] applyᵀ ρ A B π ∷ ((A ⇒[ mk-kind Many ρ ] B) * A) ⇒[ mk-kind Many π ] 𝕋 ρ B ! pure
+  ⊢applyᵀ pure u = ⊢applyᶜ u
+  ⊢applyᵀ act  u = ⊢applyEffᶜ u
+  ⊢applyᵀ eff  u = ⊢applyEffᶜ u
+
+  -- `Out`, at every grade of the map itself.
+  ⊢outᵀ : ∀ {n} {Γ : Ctx m n} {F : Fun m} (f : Finite) {π : Purity} → pure ⊑π π → WFFun Δ F
+        → Δ ⊩ Γ ⊢[ zeroUsage ] outᵀ f F π ∷ ν F f ⇒[ mk-kind Many π ] 𝕋 (fin f) (⟦ F ⟧F (ν F f)) ! pure
+  ⊢outᵀ pureᶠ u wf = ⊢outᶜ u wf
+  ⊢outᵀ actᶠ  u wf = ⊢outActᶜ u wf

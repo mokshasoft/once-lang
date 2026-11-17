@@ -125,7 +125,7 @@ module _ {A A′ B B′ : Set} {RA : A → A′ → Set} {RB : B → B′ → Se
          {c : A → SE.T (B ⊎ A)} {c′ : A′ → SE.T (B′ ⊎ A′)}
          (h : ∀ {a a′} → RA a a′ → TR (SumR RB RA) (c a) (c′ a′)) where
 
-  loop-R  : ∀ {a a′} → RA a a′ → T∞R RB (SE.loop c a) (SE.loop c′ a′)
+  loop-R  : ∀ {a a′} → RA a a′ → T∞R RB (SE.iterate c a) (SE.iterate c′ a′)
   loopB-R : ∀ {t t′} → TR (SumR RB RA) t t′
           → TR (SumR RB (T∞R RB)) (SE.treeA (SPoly.SK B SPoly.S⊕ SPoly.SId) c t) (SE.treeA (SPoly.SK B′ SPoly.S⊕ SPoly.SId) c′ t′)
   force∞ (loop-R r) = loopB-R (h r)

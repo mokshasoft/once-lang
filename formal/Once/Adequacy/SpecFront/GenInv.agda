@@ -91,14 +91,14 @@ module _ {n : ℕ} {Γ : Ctx m n} {Φ : Usage n} {X : Ty m} {π₀ : Purity} whe
     let (B₀ , e , _ , _ , dv) = inv-inr (ILam.body (inv-lam d))
     in trans (lam-ty d) (cong (λ B → _ ⇒⟨ _ ⟩ B) (trans e (cong (_ +_) (proj₁ (inv-var dv)))))
 
-  applyᶜ-ty : ∀ {A B} → Δ ⊩ Γ ⊢[ Φ ] applyᶜ A B ∷ X ! π₀ → X ≡ ((A ⇒⟨ pure ⟩ B) * A) ⇒⟨ pure ⟩ B
+  applyᶜ-ty : ∀ {A B π} → Δ ⊩ Γ ⊢[ Φ ] applyᶜ A B π ∷ X ! π₀ → X ≡ ((A ⇒⟨ pure ⟩ B) * A) ⇒⟨ π ⟩ B
   applyᶜ-ty d =
     let r  = inv-app (ILam.body (inv-lam d))
         (Y , _ , _ , dv , _) = inv-fst (IApp.df r)
         (_ , _ , _ , cod) = arr-inj (proj₁ (prod-inj (proj₁ (inv-var dv))))
     in trans (lam-ty d) (cong (λ B → _ ⇒⟨ _ ⟩ B) cod)
 
-  applyEffᶜ-ty : ∀ {π A B} → Δ ⊩ Γ ⊢[ Φ ] applyEffᶜ π A B ∷ X ! π₀ → X ≡ ((A ⇒⟨ π ⟩ B) * A) ⇒⟨ pure ⟩ (Unit ⇒⟨ π ⟩ B)
+  applyEffᶜ-ty : ∀ {π A B ρ} → Δ ⊩ Γ ⊢[ Φ ] applyEffᶜ π A B ρ ∷ X ! π₀ → X ≡ ((A ⇒⟨ π ⟩ B) * A) ⇒⟨ ρ ⟩ (Unit ⇒⟨ π ⟩ B)
   applyEffᶜ-ty d =
     let inner = ILam.body (inv-lam d)
         r  = inv-app (ILam.body (inv-lam inner))
@@ -106,16 +106,16 @@ module _ {n : ℕ} {Γ : Ctx m n} {Φ : Usage n} {X : Ty m} {π₀ : Purity} whe
         (_ , _ , _ , cod) = arr-inj (proj₁ (prod-inj (proj₁ (inv-var dv))))
     in trans (lam-ty d) (cong (λ B → _ ⇒⟨ _ ⟩ B) (trans (lam-ty inner) (cong (λ C → Unit ⇒⟨ _ ⟩ C) cod)))
 
-  inᶜ-ty : ∀ {F} → Δ ⊩ Γ ⊢[ Φ ] inᶜ F ∷ X ! π₀ → X ≡ (⟦ F ⟧F (μ F)) ⇒⟨ pure ⟩ μ F
+  inᶜ-ty : ∀ {F π} → Δ ⊩ Γ ⊢[ Φ ] inᶜ F π ∷ X ! π₀ → X ≡ (⟦ F ⟧F (μ F)) ⇒⟨ π ⟩ μ F
   inᶜ-ty d = trans (lam-ty d) (cong (λ B → _ ⇒⟨ _ ⟩ B) (inv-roll (ILam.body (inv-lam d))))
 
-  outᶜ-ty : ∀ {F} → Δ ⊩ Γ ⊢[ Φ ] outᶜ F ∷ X ! π₀ → X ≡ (ν F pureᶠ) ⇒⟨ pure ⟩ ⟦ F ⟧F (ν F pureᶠ)
+  outᶜ-ty : ∀ {F π} → Δ ⊩ Γ ⊢[ Φ ] outᶜ F π ∷ X ! π₀ → X ≡ (ν F pureᶠ) ⇒⟨ π ⟩ ⟦ F ⟧F (ν F pureᶠ)
   outᶜ-ty d =
     let (F₁ , f₁ , e , _ , _ , dv) = inv-out (ILam.body (inv-lam d))
         (eF , ef) = ν-inj (proj₁ (inv-var dv))
     in trans (lam-ty d) (cong (λ B → _ ⇒⟨ _ ⟩ B) (trans e (cong₂ (λ G g → ⟦ G ⟧F (ν G g)) eF ef)))
 
-  outActᶜ-ty : ∀ {F} → Δ ⊩ Γ ⊢[ Φ ] outActᶜ F ∷ X ! π₀ → X ≡ (ν F actᶠ) ⇒⟨ pure ⟩ (Unit ⇒⟨ act ⟩ ⟦ F ⟧F (ν F actᶠ))
+  outActᶜ-ty : ∀ {F π} → Δ ⊩ Γ ⊢[ Φ ] outActᶜ F π ∷ X ! π₀ → X ≡ (ν F actᶠ) ⇒⟨ π ⟩ (Unit ⇒⟨ act ⟩ ⟦ F ⟧F (ν F actᶠ))
   outActᶜ-ty d =
     let inner = ILam.body (inv-lam d)
         (F₁ , f₁ , e , _ , _ , dv) = inv-out (ILam.body (inv-lam inner))
@@ -269,7 +269,7 @@ module _ {n : ℕ} {Γ : Ctx m n} {Φ : Usage n} {X : Ty m} {π₀ : Purity} whe
         (π₁ , _ , _ , dv) = inv-fold (ILam.body l)
     in r , _ , π₁ , sym (proj₁ (inv-var dv)) , ILam.ty l
 
-  loop-inv : ∀ {A c} → Δ ⊩ Γ ⊢[ Φ ] loopᶜ A c ∷ X ! π₀
+  loop-inv : ∀ {A c} → Δ ⊩ Γ ⊢[ Φ ] anaEffᶜ A c ∷ X ! π₀
            → Σ[ r ∈ One′ c Many ] Σ[ A₁ ∈ Ty m ] Σ[ B ∈ Ty m ]
                (One′.F r ≡ A₁ ⇒[ mk-kind Many act ] (B + A₁)) × (X ≡ A ⇒⟨ eff ⟩ B)
   loop-inv d =

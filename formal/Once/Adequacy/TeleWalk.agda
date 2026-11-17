@@ -91,7 +91,8 @@ open import Once.IR.Semantics.Iterative using (_>>=∞_)
 open import Once.IR.Semantics.Iterative using (T∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Core.Translate Σ using (impDefs; SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigIn; monoSchema)
-open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef; toProgram; toProgramFrom; monoHere)
+open import Once.Adequacy.ModuleProgram Σ using (Names; monoDef; polyDef; toProgram; toProgramFrom; monoHere; names-ffi; names-monoF; names-polyF)
+  renaming (Fresh to NFresh; fresh-ffi to nfresh-ffi; fresh-mono to nfresh-mono; fresh-poly to nfresh-poly)
 import Once.Adequacy.ModuleProgram Σ as MP
 import Once.Core.Translate Σ as TR
 open import Once.Compile using (irFunOf; tableOf-go)
@@ -221,34 +222,36 @@ private
 
 -- The entries after `main` extend the telescope; the program still names `main`.
 from-sem : ∀ {s} {S : Defs s} {sc es} (tl : Tele S) (ss : SigSig (Once.Module.Scope.sig sc)) (is : ImpSig S (Once.Module.Scope.imps sc))
-             (ts : TeleSig S (Once.Module.Scope.tele sc)) (N : Names S is ts)
+             (ts : TeleSig S (Once.Module.Scope.tele sc)) (N : Names S (Once.Module.Scope.sig sc) is ts) (F : NFresh N es)
              (d : Data.Fin.Fin s) (e : Entry (S !! d)) (rest : ModTele sc es) (u : SigIn rest)
-         → runCore fmt (toProgramFrom tl ss is ts N d e rest u) mo ≡ runCore fmt (program tl d e) mo
-from-sem tl ss is ts N d e [] u = refl
-from-sem tl ss is ts N d e (ffi _ _ c h rest) u = from-sem tl (s-ffi c h (u (here refl)) ss) is ts N d e rest (λ m → u (there m))
-from-sem {S = S} {sc} tl ss is ts N d e (poly {pfi = pfi} {Ψ = Ψ} pr W rest) u =
-  from-sem (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts)) (names-poly pfi N) (suc d) e rest u
-from-sem {S = S} {sc} tl ss is ts N d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) u =
+         → runCore fmt (toProgramFrom tl ss is ts N F d e rest u) mo ≡ runCore fmt (program tl d e) mo
+from-sem tl ss is ts N F d e [] u = refl
+from-sem tl ss is ts N F d e (ffi {fi = fi} {ty = ty} _ _ c h rest) u =
+  from-sem tl (s-ffi c h (u (here refl)) ss) is ts (names-ffi fi ty F) (nfresh-ffi fi ty F) d e rest (λ m → u (there m))
+from-sem {S = S} {sc} tl ss is ts N F d e (poly {pfi = pfi} {Ψ = Ψ} pr W rest) u =
+  from-sem (polyDef {S = S} {sc = sc} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts)) (names-polyF pfi F) (nfresh-poly pfi F) (suc d) e rest u
+from-sem {S = S} {sc} tl ss is ts N F d e (mono {fi = fi} {ty = ty} {Ψ = Ψ} ep er pr W rest) u =
   from-sem (monoDef {S = S} {sc = sc} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (funName fi Str.== "main") is) (wkT ts)
-           (names-mono (funName fi Str.== "main") (funName fi) ty N) (suc d) e rest u
+           (names-monoF (funName fi Str.== "main") fi ty F) (nfresh-mono (funName fi Str.== "main") fi ty F) (suc d) e rest u
 
 -- `main` (D315): its run at its own type, converted, against the compiled
 -- entry the bundle finds — whichever proofs of the conversion each side holds.
 here-main : ∀ {s} {S : Defs s} {csc tl ss is ts pre} {ft bd ty} (p : ty <: EffUU)
-              (N : Names S is ts) (W : MonoWit ft (ctxOf (AS.scopeOf csc)) bd ty SCx.[]) {irFun : IR ⌊ (Once.Spec.Type.Unit {0}) ⌋ ⌊ ty ⌋}
+              (N : Names S (C.CScope.csig csc) is ts) {es} (F : NFresh N (Parser.e-fun (Parser.mkFunInfo "main" ft bd false) ∷ es))
+              (W : MonoWit ft (ctxOf (AS.scopeOf csc)) bd ty SCx.[]) {irFun : IR ⌊ (Once.Spec.Type.Unit {0}) ⌋ ⌊ ty ⌋}
               (cf : C.compileFunM ft IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
                       "main" ty bd ≡ Data.Sum.inj₂ irFun)
-              {es} (rest : ModTele (AS.scopeOf (C.extendScope csc "main" ty)) es)
+              (rest : ModTele (AS.scopeOf (C.extendScope csc "main" ty)) es)
               (rest-b : FB.FunBundle (C.extendScope csc "main" ty) es)
           → Inv {S = S} csc tl ss is ts pre → (u : SigIn rest) → All ("main" ≢_) (map entryName es)
           → (nd : Dec (bare "main" ≡ bare "main")) (td : Dec (ty <: EffUU))
           → AgreeM (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare "main") ty irFun) ∷ pre))
                    (C.findMain-here (C.mkCompiledFun (bare "main") ty irFun) nd td (FB.bundle-find rest-b))
                    (monoHere {S = S} {sc = AS.scopeOf csc} {fi = Parser.mkFunInfo "main" ft bd false} {ty = ty}
-                             {Ψ = SCx.[]} tl ss is ts N W rest p u)
-here-main p N W cf rest rest-b inv u hs (no ¬e) td = ⊥-elim (¬e refl)
-here-main p N W cf rest rest-b inv u hs (yes _) (no ¬p) = ⊥-elim (¬p p)
-here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} {ft} {bd} {ty} p N W {irFun} cf {es} rest rest-b inv u hs (yes _) (yes q) =
+                             {Ψ = SCx.[]} tl ss is ts N F W rest p u)
+here-main p N F W cf rest rest-b inv u hs (no ¬e) td = ⊥-elim (¬e refl)
+here-main p N F W cf rest rest-b inv u hs (yes _) (no ¬p) = ⊥-elim (¬p p)
+here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} {ft} {bd} {ty} p N {es} F W {irFun} cf rest rest-b inv u hs (yes _) (yes q) =
   -- Plan 0.105 / D320: the entry's compile chain relates the core entry to the
   -- compiled call (`relM`); the compiled program's tree IS that call,
   -- converted, and the core program's run IS that entry, converted.
@@ -266,10 +269,12 @@ here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} {ft} {bd} {ty} p N W {irFun} c
     -- the core program's run: its entry, read back at its only instance (the
     -- elaboration's meaning), converted
     core-eq : runCore fmt (monoHere {S = S} {sc = AS.scopeOf csc} {fi = Parser.mkFunInfo "main" ft bd false} {ty = ty}
-                                    {Ψ = SCx.[]} tl ss is ts N W rest p u) mo
+                                    {Ψ = SCx.[]} tl ss is ts N F W rest p u) mo
             ≡ SDm.conv σ₀ p (CMB.⟦_⟧ₛ fmt Σ S σ₀ Dc δ tt) tt
     core-eq =
-      trans (from-sem tl′ ss (impDefs ("main" Str.== "main") {x = "main"} {T = ty} is) (wkT ts) (names-mono ("main" Str.== "main") "main" ty N) zero (TR.mainEntry p) rest u)
+      trans (from-sem tl′ ss (impDefs ("main" Str.== "main") {x = "main"} {T = ty} is) (wkT ts)
+                      (names-monoF ("main" Str.== "main") (Parser.mkFunInfo "main" ft bd false) ty F)
+                      (nfresh-mono ("main" Str.== "main") (Parser.mkFunInfo "main" ft bd false) ty F) zero (TR.mainEntry p) rest u)
             (cong (λ v → SDm.conv σ₀ p v tt) entry-v)
       where
         -- the entry at no variable: the instance's meaning is the body's
@@ -280,24 +285,24 @@ here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} {ft} {bd} {ty} p N W {irFun} c
 mutual
   walk : ∀ {csc es} (mt : ModTele (AS.scopeOf csc) es) (b : FB.FunBundle csc es) (mi : MainIn mt)
            {s} {S : Defs s} (tl : Tele S) (ss : SigSig (C.CScope.csig csc)) (is : ImpSig S (C.CScope.cimps csc)) (ts : TeleSig S (C.telePolys (C.CScope.ctele csc)))
-           (N : Names S is ts) (pre : List IRFun) → Inv csc tl ss is ts pre → (u : SigIn mt) → Fresh csc es
-       → AgreeM (tableOf-go (FB.bundle→compiled b) pre) (FB.bundle-find b) (toProgram tl ss is ts N mt mi u)
-  walk [] FB.bnil () tl ss is ts N pre inv u fr
+           (N : Names S (C.CScope.csig csc) is ts) (F : NFresh N es) (pre : List IRFun) → Inv csc tl ss is ts pre → (u : SigIn mt) → Fresh csc es
+       → AgreeM (tableOf-go (FB.bundle→compiled b) pre) (FB.bundle-find b) (toProgram tl ss is ts N F mt mi u)
+  walk [] FB.bnil () tl ss is ts N F pre inv u fr
   -- D274: an FFI declaration extends Σ; the table is unchanged.
-  walk {csc} {Parser.e-fun fi ∷ es} (ffi {fi = fi} {ty = ty} ep et c h rest) (FB.bffi {ty = ty′} ep′ et′ ec eh rest-b) mi tl ss is ts N pre inv u fr
+  walk {csc} {Parser.e-fun fi ∷ es} (ffi {fi = fi} {ty = ty} ep et c h rest) (FB.bffi {ty = ty′} ep′ et′ ec eh rest-b) mi tl ss is ts N F pre inv u fr
     with just-injective (trans (sym et) et′)
-  ... | refl = walk rest rest-b mi tl (s-ffi c h (u (here refl)) ss) is ts N pre
+  ... | refl = walk rest rest-b mi tl (s-ffi c h (u (here refl)) ss) is ts (names-ffi fi ty F) (nfresh-ffi fi ty F) pre
                  (inv-sig {x = funName fi} {ty = ty} {k = c} {h = h} {m = u (here refl)} inv)
                  (λ m → u (there m)) (fresh-sig {csc = csc} {fi = fi} {ty = ty} {es = es} fr)
-  walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h rest) (FB.bcons () rf fc ce cf rest-b) mi tl ss is ts N pre inv u fr
-  walk {csc} {Parser.e-poly pfi ∷ es} (poly {pfi = pfi} {Ψ = SCx.[]} pr W rest) (FB.bpoly fc ce rest-b) mi tl ss is ts N pre inv u fr =
-    walk rest rest-b mi _ ss (wkI is) (t-def zero refl (wkT ts)) (names-poly pfi N) pre
+  walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et c h rest) (FB.bcons () rf fc ce cf rest-b) mi tl ss is ts N F pre inv u fr
+  walk {csc} {Parser.e-poly pfi ∷ es} (poly {pfi = pfi} {Ψ = SCx.[]} pr W rest) (FB.bpoly fc ce rest-b) mi tl ss is ts N F pre inv u fr =
+    walk rest rest-b mi _ ss (wkI is) (t-def zero refl (wkT ts)) (names-polyF pfi F) (nfresh-poly pfi F) pre
          (inv-poly N W inv (fresh-head {csc = csc} {e = Parser.e-poly pfi} {es = es} fr)) u
          (fresh-poly {csc = csc} {pfi = pfi} {es = es} fr)
   walk (mono {fi = Parser.mkFunInfo x ft bd prim} {ty = ty} {Ψ = SCx.[]} refl er pr W rest)
-       (FB.bcons {ty = ty′} {Ψ = SCx.[]} {irFun = irFun} refl rf fc ce cf rest-b) mi tl ss is ts N pre inv u fr
+       (FB.bcons {ty = ty′} {Ψ = SCx.[]} {irFun = irFun} refl rf fc ce cf rest-b) mi tl ss is ts N F pre inv u fr
     with inj₂-injective (trans (sym er) rf)
-  ... | refl = walk-mono er pr W rest cf rest-b mi tl ss is ts N pre inv u fr
+  ... | refl = walk-mono er pr W rest cf rest-b mi tl ss is ts N F pre inv u fr
                  (bare x ≟ᶜ bare "main") (ty <:? EffUU)
 
   walk-mono : ∀ {csc es x ft bd ty} (er : C.resolveFunType (C.ctop csc) (C.cpolys csc) ft bd ≡ inj₂ ty)
@@ -309,15 +314,16 @@ mutual
                 (rest-b : FB.FunBundle (C.extendScope csc x ty) es)
                 (mi : ((x ≡ "main") × (ty <: EffUU)) ⊎ MainIn rest)
                 {s} {S : Defs s} (tl : Tele S) (ss : SigSig (C.CScope.csig csc)) (is : ImpSig S (C.CScope.cimps csc)) (ts : TeleSig S (C.telePolys (C.CScope.ctele csc)))
-                (N : Names S is ts) (pre : List IRFun) → Inv csc tl ss is ts pre → (u : SigIn rest) → Fresh csc (Parser.e-fun (Parser.mkFunInfo x ft bd false) ∷ es)
+                (N : Names S (C.CScope.csig csc) is ts) (F : NFresh N (Parser.e-fun (Parser.mkFunInfo x ft bd false) ∷ es))
+                (pre : List IRFun) → Inv csc tl ss is ts pre → (u : SigIn rest) → Fresh csc (Parser.e-fun (Parser.mkFunInfo x ft bd false) ∷ es)
                 → (nd′ : Dec (bare x ≡ bare "main")) (td : Dec (ty <: EffUU))
             → AgreeM (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare x) ty irFun) ∷ pre))
                      (C.findMain-here (C.mkCompiledFun (bare x) ty irFun) nd′ td (FB.bundle-find rest-b))
-                     (toProgram tl ss is ts N (mono {fi = Parser.mkFunInfo x ft bd false} {Ψ = SCx.[]} refl er pr W rest) mi u)
-  walk-mono {csc} {es} {ft = ft} {bd} er pr W rest cf rest-b (inj₁ (refl , p)) {S = S} tl ss is ts N pre inv u ((hd ∷ _) , _) nd′ td =
-    here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} {ft} {bd} p N W cf {es} rest rest-b inv u hd nd′ td
-  walk-mono {x = x} {ty = ty} er pr W rest cf rest-b (inj₂ mi′) tl ss is ts N pre inv u fr nd′ td =
-    walk-mono-d W rest cf rest-b mi′ tl ss is ts N pre inv u fr (x Str.≟ "main") (ty <:? EffUU) nd′ td
+                     (toProgram tl ss is ts N F (mono {fi = Parser.mkFunInfo x ft bd false} {Ψ = SCx.[]} refl er pr W rest) mi u)
+  walk-mono {csc} {es} {ft = ft} {bd} er pr W rest cf rest-b (inj₁ (refl , p)) {S = S} tl ss is ts N F pre inv u ((hd ∷ _) , _) nd′ td =
+    here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} {ft} {bd} p N {es} F W cf rest rest-b inv u hd nd′ td
+  walk-mono {x = x} {ty = ty} er pr W rest cf rest-b (inj₂ mi′) tl ss is ts N F pre inv u fr nd′ td =
+    walk-mono-d W rest cf rest-b mi′ tl ss is ts N F pre inv u fr (x Str.≟ "main") (ty <:? EffUU) nd′ td
 
   walk-mono-d : ∀ {csc es x ft bd ty}
                 (W : MonoWit ft (ctxOf (AS.scopeOf csc)) bd ty SCx.[])
@@ -327,25 +333,27 @@ mutual
                 (rest-b : FB.FunBundle (C.extendScope csc x ty) es)
                 (mi′ : MainIn rest)
                 {s} {S : Defs s} (tl : Tele S) (ss : SigSig (C.CScope.csig csc)) (is : ImpSig S (C.CScope.cimps csc)) (ts : TeleSig S (C.telePolys (C.CScope.ctele csc)))
-                (N : Names S is ts) (pre : List IRFun) → Inv csc tl ss is ts pre → (u : SigIn rest) → Fresh csc (Parser.e-fun (Parser.mkFunInfo x ft bd false) ∷ es)
+                (N : Names S (C.CScope.csig csc) is ts) (F : NFresh N (Parser.e-fun (Parser.mkFunInfo x ft bd false) ∷ es))
+                (pre : List IRFun) → Inv csc tl ss is ts pre → (u : SigIn rest) → Fresh csc (Parser.e-fun (Parser.mkFunInfo x ft bd false) ∷ es)
                 → (nd : Dec (x ≡ "main")) (tc : Dec (ty <: EffUU)) (nd′ : Dec (bare x ≡ bare "main")) (td : Dec (ty <: EffUU))
               → AgreeM (tableOf-go (FB.bundle→compiled rest-b) (irFunOf (C.mkCompiledFun (bare x) ty irFun) ∷ pre))
                        (C.findMain-here (C.mkCompiledFun (bare x) ty irFun) nd′ td (FB.bundle-find rest-b))
                        (MP.monoDispatch {S = S} {sc = AS.scopeOf csc} {fi = Parser.mkFunInfo x ft bd false}
-                                        {ty = ty} {Ψ = SCx.[]} tl ss is ts N W rest mi′ nd tc u)
+                                        {ty = ty} {Ψ = SCx.[]} tl ss is ts N F W rest mi′ nd tc u)
   -- `main`, found by the dispatch
-  walk-mono-d {csc} {es} {ft = ft} {bd} W rest cf rest-b mi′ {S = S} tl ss is ts N pre inv u ((hd ∷ _) , _) (yes refl) (yes p) nd′ td =
-    here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} {ft} {bd} p N W cf {es} rest rest-b inv u hd nd′ td
+  walk-mono-d {csc} {es} {ft = ft} {bd} W rest cf rest-b mi′ {S = S} tl ss is ts N F pre inv u ((hd ∷ _) , _) (yes refl) (yes p) nd′ td =
+    here-main {S = S} {csc} {tl} {ss} {is} {ts} {pre} {ft} {bd} p N {es} F W cf rest rest-b inv u hd nd′ td
   -- a second `main` would have the first one's name
-  walk-mono-d W rest cf rest-b mi′ tl ss is ts N pre inv u ((hd ∷ _) , _) (yes refl) (no _) nd′ td =
+  walk-mono-d W rest cf rest-b mi′ tl ss is ts N F pre inv u ((hd ∷ _) , _) (yes refl) (no _) nd′ td =
     ⊥-elim (not-in hd (mainIn-name rest mi′))
   -- not `main`: the entry joins the table and the telescope
   {-# CATCHALL #-}
-  walk-mono-d W rest cf rest-b mi′ tl ss is ts N pre inv u fr (no ¬q) tc (yes e) td =
+  walk-mono-d W rest cf rest-b mi′ tl ss is ts N F pre inv u fr (no ¬q) tc (yes e) td =
     ⊥-elim (¬q (MIF.bare-injective e))
   {-# CATCHALL #-}
-  walk-mono-d {csc} {es} {x} {ft} {bd} {ty} W rest {irFun} cf rest-b mi′ tl ss is ts N pre inv u fr (no ¬q) tc (no _) td =
-    walk rest rest-b mi′ _ ss (impDefs (x Str.== "main") is) (wkT ts) (names-mono (x Str.== "main") x ty N)
+  walk-mono-d {csc} {es} {x} {ft} {bd} {ty} W rest {irFun} cf rest-b mi′ tl ss is ts N F pre inv u fr (no ¬q) tc (no _) td =
+    walk rest rest-b mi′ _ ss (impDefs (x Str.== "main") is) (wkT ts) (names-monoF (x Str.== "main") (Parser.mkFunInfo x ft bd false) ty F)
+         (nfresh-mono (x Str.== "main") (Parser.mkFunInfo x ft bd false) ty F)
          (irFunOf (C.mkCompiledFun (bare x) ty irFun) ∷ pre)
          (inv-mono {fi = Parser.mkFunInfo x ft bd false} {ty = ty} N W {irFun = irFun} cf inv
                    (fresh-head {csc = csc} {e = Parser.e-fun (Parser.mkFunInfo x ft bd false)} {es = es} fr)) u

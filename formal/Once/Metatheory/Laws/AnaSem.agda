@@ -115,7 +115,7 @@ module AnaV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (�
                   (bindRel {g = λ g₀ → return∞ a′ >>=∞ λ w → return∞ (anaᵛ F A g₀ w)} (MV.Reads.rd Rc′ dc rc) (λ {g₀} {g₀′} sg₀ →
                     bindRel {g = λ w → return∞ (anaᵛ F A g₀′ w)} (MV.Reads.rd Ra dv rt) (λ sw → returnRel (anaRelP wf sg₀ sw)))))
 
-    outSem : ∀ {F Ψa π₀} (d : Δ ⊩ Γ ⊢[ Ψa ] outᶜ {S = S} F ∷ ν F pureᶠ ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π₀) {γa}
+    outSem : ∀ {F Ψa π₀} (d : Δ ⊩ Γ ⊢[ Ψa ] outᶜ {S = S} F pure ∷ ν F pureᶠ ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π₀) {γa}
            → W.Res γa
            → Related (Same ((ν F pureᶠ ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ)) ⟨ σ ⟩)) (toT∞ π₀ (⟦ d ⟧ δ σ r γa)) (return∞ (outᵛ F))
     outSem {F} d ra with FunV.viewLam δ sd σ r γ sγ d ra

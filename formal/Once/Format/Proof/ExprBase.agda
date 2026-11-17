@@ -36,7 +36,7 @@ open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TLParen;
 open import Once.Adequacy.SpecTokNames
 open import Once.Spec.Surface.Operator using (‹_›; Dottable; o+; o-; o*; o/; o<; o>; comparison; additive;
   multiplicative)
-open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct;
+open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct;
   RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Grammar using (Starts; starts; ArgStart; as-paren; as-lambda; as-int; as-float; as-word;
   QualSuffix; qual-suffix; Reserved; r-in; r-of; r-let; r-destruct; r-Left; r-Right; OpToken; ot-plain; ot-dotted;
@@ -62,6 +62,7 @@ WF : Expr → Set
 WF (RVar x)                = NameOK x
 WF (RQualified x a)        = ¬ Reserved x
 WF (RResolved _)           = ⊥
+WF (RGen _)                = ⊥
 WF (RApp f a)              = WF f × WF a
 WF (RLam x e)              = WF e
 WF (RLet x v b)            = WF v × WF b

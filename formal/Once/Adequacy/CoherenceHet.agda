@@ -45,7 +45,7 @@ open import Once.Spec.Sub using (sub-*)
 open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
 open import Once.Type.Join using (join-unique)
 import Once.Spec.Surface.Syntax as Raw
-open import Once.Spec.Name using (NotGenerator)
+
 open import Once.Name using (showCanonical; WordName)
 open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
 import Data.String
@@ -147,7 +147,7 @@ module _ {m} {Γ : Ctx m n} where
         → f ≅ f′ → x ≅ x′ → app f x ≅ app f′ x′
   app-h (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (app-cong h k)
 
-  effApp-h : ∀ {π} {g : T.EffGrade π} {f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {f′ : Expr Γ Ψ₁′ (A′ ⇒[ mk-kind Many π ] B′)}
+  effApp-h : ∀ {π} {g : T.EffGrade π} {f : Expr Γ Ψ₁ (A ⇒[ mk-kind q π ] B)} {f′ : Expr Γ Ψ₁′ (A′ ⇒[ mk-kind q′ π ] B′)}
              {x : Expr Γ Ψ₂ A} {x′ : Expr Γ Ψ₂′ A′}
            → f ≅ f′ → x ≅ x′ → effApp {g = g} f x ≅ effApp {g = g} f′ x′
   effApp-h (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (effApp-cong h k)

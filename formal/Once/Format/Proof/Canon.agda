@@ -30,6 +30,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; pureᶠ; actᶠ)
+import Once.Spec.Surface.Generators
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Name using (canonical)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TNewline; TEOF)
@@ -163,6 +164,7 @@ module Same (tv : Trivia) (q : Quiet tv) where
     ind-ex l wh (RVar x) = ind-name x
     ind-ex l wh (RQualified x q) = ind-word x ⊕ⁱ ind-pure ⊕ⁱ ind-word q
     ind-ex l wh (RResolved (canonical xs)) = ind-dotted xs
+    ind-ex l wh (RGen g) = ind-word (Once.Spec.Surface.Generators.word g)
     ind-ex l wh (RApp f a) = ind-comp l (isCompose (headOf f)) f a
     ind-ex l wh (RLam x e) = ind-paren (not wh) (ind-g (ind-pure ⊕ⁱ ind-word x ⊕ⁱ ind-lam e))
     ind-ex l wh (RLet x v b) = ind-paren (not wh) (ind-g (ind-let x v b))
@@ -191,6 +193,7 @@ module Same (tv : Trivia) (q : Quiet tv) where
     ind-comp l true (RVar ux) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RVar ux) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
     ind-comp l true (RQualified ux uq) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RQualified ux uq) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
     ind-comp l true (RResolved un) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RResolved un) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
+    ind-comp l true (RGen un) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RGen un) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
     ind-comp l true (RApp c g) h = ind-compose l g h
     ind-comp l true (RLam ux ue) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RLam ux ue) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
     ind-comp l true (RLet ux uv ub) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RLet ux uv ub) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
@@ -212,6 +215,7 @@ module Same (tv : Trivia) (q : Quiet tv) where
     ind-chain (RVar x) = ind-ex 1 false (RVar x)
     ind-chain (RQualified x q) = ind-ex 1 false (RQualified x q)
     ind-chain (RResolved n) = ind-ex 1 false (RResolved n)
+    ind-chain (RGen n) = ind-ex 1 false (RGen n)
     ind-chain (RLam x e) = ind-ex 1 false (RLam x e)
     ind-chain (RLet x v b) = ind-ex 1 false (RLet x v b)
     ind-chain (RPair a b) = ind-ex 1 false (RPair a b)
@@ -227,6 +231,7 @@ module Same (tv : Trivia) (q : Quiet tv) where
     ind-chain′ true (RVar ux) h = ind-comp 0 false (RVar ux) h
     ind-chain′ true (RQualified ux uq) h = ind-comp 0 false (RQualified ux uq) h
     ind-chain′ true (RResolved un) h = ind-comp 0 false (RResolved un) h
+    ind-chain′ true (RGen un) h = ind-comp 0 false (RGen un) h
     ind-chain′ true (RApp c g) h = ind-chain g ⊕ⁱ (ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-pure) ⊕ⁱ ind-ex 1 false h
     ind-chain′ true (RLam ux ue) h = ind-comp 0 false (RLam ux ue) h
     ind-chain′ true (RLet ux uv ub) h = ind-comp 0 false (RLet ux uv ub) h
@@ -248,6 +253,7 @@ module Same (tv : Trivia) (q : Quiet tv) where
     ind-left lv (RVar x) = ind-ex (leftLevel lv) false (RVar x)
     ind-left lv (RQualified x q) = ind-ex (leftLevel lv) false (RQualified x q)
     ind-left lv (RResolved n) = ind-ex (leftLevel lv) false (RResolved n)
+    ind-left lv (RGen n) = ind-ex (leftLevel lv) false (RGen n)
     ind-left lv (RApp f a) = ind-ex (leftLevel lv) false (RApp f a)
     ind-left lv (RLam x e) = ind-ex (leftLevel lv) false (RLam x e)
     ind-left lv (RLet x v b) = ind-ex (leftLevel lv) false (RLet x v b)
@@ -264,6 +270,7 @@ module Same (tv : Trivia) (q : Quiet tv) where
     ind-spine (RVar x) = ind-ex 6 false (RVar x)
     ind-spine (RQualified x q) = ind-ex 6 false (RQualified x q)
     ind-spine (RResolved n) = ind-ex 6 false (RResolved n)
+    ind-spine (RGen n) = ind-ex 6 false (RGen n)
     ind-spine (RLam x e) = ind-ex 6 false (RLam x e)
     ind-spine (RLet x v b) = ind-ex 6 false (RLet x v b)
     ind-spine (RPair a b) = ind-ex 6 false (RPair a b)
@@ -279,6 +286,7 @@ module Same (tv : Trivia) (q : Quiet tv) where
     ind-spine′ true (RVar ux) a = ind-spine (RVar ux) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
     ind-spine′ true (RQualified ux uq) a = ind-spine (RQualified ux uq) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
     ind-spine′ true (RResolved un) a = ind-spine (RResolved un) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
+    ind-spine′ true (RGen un) a = ind-spine (RGen un) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
     ind-spine′ true (RApp c g) h = ind-compose 6 g h
     ind-spine′ true (RLam ux ue) a = ind-spine (RLam ux ue) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
     ind-spine′ true (RLet ux uv ub) a = ind-spine (RLet ux uv ub) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
@@ -297,6 +305,7 @@ module Same (tv : Trivia) (q : Quiet tv) where
     ind-lam (RVar x) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RVar x))
     ind-lam (RQualified x q) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RQualified x q))
     ind-lam (RResolved n) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RResolved n))
+    ind-lam (RGen n) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RGen n))
     ind-lam (RApp f a) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RApp f a))
     ind-lam (RLet x v b) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RLet x v b))
     ind-lam (RPair a b) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RPair a b))
@@ -316,6 +325,7 @@ module Same (tv : Trivia) (q : Quiet tv) where
     ind-let x v (RVar bx) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RVar bx)
     ind-let x v (RQualified bx bq) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RQualified bx bq)
     ind-let x v (RResolved bn) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RResolved bn)
+    ind-let x v (RGen bn) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RGen bn)
     ind-let x v (RApp bf ba) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RApp bf ba)
     ind-let x v (RLam bx be) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RLam bx be)
     ind-let x v (RPair ba bb) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RPair ba bb)
@@ -658,6 +668,7 @@ module Bare where
     nn-ex l wh (RVar x) = nn-name x
     nn-ex l wh (RQualified x q) = nn-word x ⊕ⁿ nn-pure ⊕ⁿ nn-word q
     nn-ex l wh (RResolved (canonical xs)) = nn-dotted xs
+    nn-ex l wh (RGen g) = nn-word (Once.Spec.Surface.Generators.word g)
     nn-ex l wh (RApp f a) = nn-comp l (isCompose (headOf f)) f a
     nn-ex l wh (RLam x e) = nn-paren (not wh) (nn-g (nn-pure ⊕ⁿ nn-word x ⊕ⁿ nn-lam e))
     nn-ex l wh (RLet x v b) = nn-paren (not wh) (nn-g (nn-let x v b))
@@ -686,6 +697,7 @@ module Bare where
     nn-comp l true (RVar ux) a = nn-gn (nn-paren (5 <ᵇ l) (nn-spine (RVar ux) ⊕ⁿ nn-pure ⊕ⁿ nn-ex 6 false a))
     nn-comp l true (RQualified ux uq) a = nn-gn (nn-paren (5 <ᵇ l) (nn-spine (RQualified ux uq) ⊕ⁿ nn-pure ⊕ⁿ nn-ex 6 false a))
     nn-comp l true (RResolved un) a = nn-gn (nn-paren (5 <ᵇ l) (nn-spine (RResolved un) ⊕ⁿ nn-pure ⊕ⁿ nn-ex 6 false a))
+    nn-comp l true (RGen un) a = nn-gn (nn-paren (5 <ᵇ l) (nn-spine (RGen un) ⊕ⁿ nn-pure ⊕ⁿ nn-ex 6 false a))
     nn-comp l true (RApp c g) h = nn-compose l g h
     nn-comp l true (RLam ux ue) a = nn-gn (nn-paren (5 <ᵇ l) (nn-spine (RLam ux ue) ⊕ⁿ nn-pure ⊕ⁿ nn-ex 6 false a))
     nn-comp l true (RLet ux uv ub) a = nn-gn (nn-paren (5 <ᵇ l) (nn-spine (RLet ux uv ub) ⊕ⁿ nn-pure ⊕ⁿ nn-ex 6 false a))
@@ -707,6 +719,7 @@ module Bare where
     nn-chain (RVar x) = nn-ex 1 false (RVar x)
     nn-chain (RQualified x q) = nn-ex 1 false (RQualified x q)
     nn-chain (RResolved n) = nn-ex 1 false (RResolved n)
+    nn-chain (RGen n) = nn-ex 1 false (RGen n)
     nn-chain (RLam x e) = nn-ex 1 false (RLam x e)
     nn-chain (RLet x v b) = nn-ex 1 false (RLet x v b)
     nn-chain (RPair a b) = nn-ex 1 false (RPair a b)
@@ -722,6 +735,7 @@ module Bare where
     nn-chain′ true (RVar ux) h = nn-comp 0 false (RVar ux) h
     nn-chain′ true (RQualified ux uq) h = nn-comp 0 false (RQualified ux uq) h
     nn-chain′ true (RResolved un) h = nn-comp 0 false (RResolved un) h
+    nn-chain′ true (RGen un) h = nn-comp 0 false (RGen un) h
     nn-chain′ true (RApp c g) h = nn-chain g ⊕ⁿ (nn-pure ⊕ⁿ nn-pure ⊕ⁿ nn-pure) ⊕ⁿ nn-ex 1 false h
     nn-chain′ true (RLam ux ue) h = nn-comp 0 false (RLam ux ue) h
     nn-chain′ true (RLet ux uv ub) h = nn-comp 0 false (RLet ux uv ub) h
@@ -743,6 +757,7 @@ module Bare where
     nn-left lv (RVar x) = nn-ex (leftLevel lv) false (RVar x)
     nn-left lv (RQualified x q) = nn-ex (leftLevel lv) false (RQualified x q)
     nn-left lv (RResolved n) = nn-ex (leftLevel lv) false (RResolved n)
+    nn-left lv (RGen n) = nn-ex (leftLevel lv) false (RGen n)
     nn-left lv (RApp f a) = nn-ex (leftLevel lv) false (RApp f a)
     nn-left lv (RLam x e) = nn-ex (leftLevel lv) false (RLam x e)
     nn-left lv (RLet x v b) = nn-ex (leftLevel lv) false (RLet x v b)
@@ -759,6 +774,7 @@ module Bare where
     nn-spine (RVar x) = nn-ex 6 false (RVar x)
     nn-spine (RQualified x q) = nn-ex 6 false (RQualified x q)
     nn-spine (RResolved n) = nn-ex 6 false (RResolved n)
+    nn-spine (RGen n) = nn-ex 6 false (RGen n)
     nn-spine (RLam x e) = nn-ex 6 false (RLam x e)
     nn-spine (RLet x v b) = nn-ex 6 false (RLet x v b)
     nn-spine (RPair a b) = nn-ex 6 false (RPair a b)
@@ -774,6 +790,7 @@ module Bare where
     nn-spine′ true (RVar ux) a = nn-spine (RVar ux) ⊕ⁿ nn-pure ⊕ⁿ nn-ex 6 false a
     nn-spine′ true (RQualified ux uq) a = nn-spine (RQualified ux uq) ⊕ⁿ nn-pure ⊕ⁿ nn-ex 6 false a
     nn-spine′ true (RResolved un) a = nn-spine (RResolved un) ⊕ⁿ nn-pure ⊕ⁿ nn-ex 6 false a
+    nn-spine′ true (RGen un) a = nn-spine (RGen un) ⊕ⁿ nn-pure ⊕ⁿ nn-ex 6 false a
     nn-spine′ true (RApp c g) h = nn-compose 6 g h
     nn-spine′ true (RLam ux ue) a = nn-spine (RLam ux ue) ⊕ⁿ nn-pure ⊕ⁿ nn-ex 6 false a
     nn-spine′ true (RLet ux uv ub) a = nn-spine (RLet ux uv ub) ⊕ⁿ nn-pure ⊕ⁿ nn-ex 6 false a
@@ -792,6 +809,7 @@ module Bare where
     nn-lam (RVar x) = nn-pure ⊕ⁿ nn-pure ⊕ⁿ nn-n (nn-pure ⊕ⁿ nn-ex 0 true (RVar x))
     nn-lam (RQualified x q) = nn-pure ⊕ⁿ nn-pure ⊕ⁿ nn-n (nn-pure ⊕ⁿ nn-ex 0 true (RQualified x q))
     nn-lam (RResolved n) = nn-pure ⊕ⁿ nn-pure ⊕ⁿ nn-n (nn-pure ⊕ⁿ nn-ex 0 true (RResolved n))
+    nn-lam (RGen n) = nn-pure ⊕ⁿ nn-pure ⊕ⁿ nn-n (nn-pure ⊕ⁿ nn-ex 0 true (RGen n))
     nn-lam (RApp f a) = nn-pure ⊕ⁿ nn-pure ⊕ⁿ nn-n (nn-pure ⊕ⁿ nn-ex 0 true (RApp f a))
     nn-lam (RLet x v b) = nn-pure ⊕ⁿ nn-pure ⊕ⁿ nn-n (nn-pure ⊕ⁿ nn-ex 0 true (RLet x v b))
     nn-lam (RPair a b) = nn-pure ⊕ⁿ nn-pure ⊕ⁿ nn-n (nn-pure ⊕ⁿ nn-ex 0 true (RPair a b))
@@ -811,6 +829,7 @@ module Bare where
     nn-let x v (RVar bx) = nn-lhead x v ⊕ⁿ nn-pure ⊕ⁿ nn-word "in" ⊕ⁿ nn-pure ⊕ⁿ nn-ex 0 true (RVar bx)
     nn-let x v (RQualified bx bq) = nn-lhead x v ⊕ⁿ nn-pure ⊕ⁿ nn-word "in" ⊕ⁿ nn-pure ⊕ⁿ nn-ex 0 true (RQualified bx bq)
     nn-let x v (RResolved bn) = nn-lhead x v ⊕ⁿ nn-pure ⊕ⁿ nn-word "in" ⊕ⁿ nn-pure ⊕ⁿ nn-ex 0 true (RResolved bn)
+    nn-let x v (RGen bn) = nn-lhead x v ⊕ⁿ nn-pure ⊕ⁿ nn-word "in" ⊕ⁿ nn-pure ⊕ⁿ nn-ex 0 true (RGen bn)
     nn-let x v (RApp bf ba) = nn-lhead x v ⊕ⁿ nn-pure ⊕ⁿ nn-word "in" ⊕ⁿ nn-pure ⊕ⁿ nn-ex 0 true (RApp bf ba)
     nn-let x v (RLam bx be) = nn-lhead x v ⊕ⁿ nn-pure ⊕ⁿ nn-word "in" ⊕ⁿ nn-pure ⊕ⁿ nn-ex 0 true (RLam bx be)
     nn-let x v (RPair ba bb) = nn-lhead x v ⊕ⁿ nn-pure ⊕ⁿ nn-word "in" ⊕ⁿ nn-pure ⊕ⁿ nn-ex 0 true (RPair ba bb)

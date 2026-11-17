@@ -16,8 +16,8 @@
 --     prefix holds only the definitions declared before it;
 --   * its signature Σ, the declared external operations (`sig`, ground).
 --
--- `classifyAppHead` recognises the applied generators that have typing rules
--- of their own; the general application rule applies to every other head.
+-- `headView` and `genKindView` read an application's head and a generator's
+-- kind, which decide the rule an application takes.
 ------------------------------------------------------------------------
 
 module Once.TypeCheck.Scope where
@@ -38,7 +38,8 @@ open import Relation.Nullary.Decidable using (map′)
 open import Once.Spec.Grade using (Quantity; Many)
 open import Once.Spec.Type using (Ty; Type; KCtx)
 open import Once.Spec.Surface.Syntax using (PolyType)
-open import Once.Spec.Name using (canonical; gen; generatorNS)
+open import Once.Spec.Name using (canonical)
+import Once.Spec.Surface.Generators as G
 open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as Raw
 open import Once.Context using (SVar; svar)
@@ -141,137 +142,53 @@ lookupLocal : ∀ {m} (ctx : NamedCtx m) → String
 lookupLocal ctx x = lookupLocal-go x (NamedCtx.named ctx) (NamedCtx.debruijn ctx)
 
 ------------------------------------------------------------------------
--- Generator heads
+-- Application heads and generator kinds (plan 0.151)
 ------------------------------------------------------------------------
 
--- String equality whose `yes` proof is erased, so a classified head reduces
--- as soon as the strings are equal.
-infix 4 _≟ₛ_
-_≟ₛ_ : DecidableEquality String
-x ≟ₛ y = map′ primEraseEquality (λ p → p) (x ≟ y)
+-- The head of an application, by form: a generator, a generator given one
+-- argument or two, a λ, or anything else. With the generator's kind
+-- (`GenKindView`) it decides the rule an application takes
+-- (`Spec.Surface.Typing`: `CheckHead`, `PartialCombinator`, `OwnCheck`).
+-- Not indexed by the expression, so reading it leaves the expression as it
+-- is (`head-is` recovers the form).
+data Head : Set where
+  hv-gen   : G.Gen → Head
+  hv-gen₁  : G.Gen → Expr → Head
+  hv-gen₂  : G.Gen → Expr → Expr → Head
+  hv-lam   : Head
+  hv-other : Head
 
--- The applied generators with typing rules of their own.
-data PolyBuiltinApp : Set where
-  pba-id pba-fst pba-snd pba-terminal : PolyBuiltinApp  -- infer-mode successes
-  pba-inl pba-inr pba-initial : PolyBuiltinApp          -- infer-mode rejections
-  pba-pair-applied : PolyBuiltinApp                     -- `RApp (RVar "pair") _` head, check mode
-  pba-compose-applied : PolyBuiltinApp                  -- `RApp (RVar "compose") _` head, check mode
-  pba-case-applied : PolyBuiltinApp                     -- `RApp (RVar "case") _` head, check mode (copair)
-  pba-curry : PolyBuiltinApp                            -- 1-arg `curry f`, check mode
-  pba-apply : PolyBuiltinApp                            -- 1-arg `apply p`, infer / check mode
-  pba-In : PolyBuiltinApp                               -- 1-arg `In arg`, check mode (μ intro)
-  pba-cata : PolyBuiltinApp                             -- 1-arg `cata alg`, check mode (fold)
-  pba-ana  : PolyBuiltinApp                             -- 1-arg `ana coalg`, check mode (unfold)
-  pba-Out  : PolyBuiltinApp                             -- 1-arg `Out v`, INFER mode (force)
+headView : Expr → Head
+headView (Raw.RGen g)                           = hv-gen g
+headView (Raw.RApp (Raw.RGen g) a)              = hv-gen₁ g a
+headView (Raw.RApp (Raw.RApp (Raw.RGen g) a) b) = hv-gen₂ g a b
+headView (Raw.RLam x b)                         = hv-lam
+{-# CATCHALL #-}
+headView _                                      = hv-other
 
-data AppHeadView : Expr → Set where
-  ahv-id       : AppHeadView (Raw.RResolved (gen "id"))
-  ahv-fst      : AppHeadView (Raw.RResolved (gen "fst"))
-  ahv-snd      : AppHeadView (Raw.RResolved (gen "snd"))
-  ahv-terminal : AppHeadView (Raw.RResolved (gen "terminal"))
-  ahv-inl      : AppHeadView (Raw.RResolved (gen "inl"))
-  ahv-inr      : AppHeadView (Raw.RResolved (gen "inr"))
-  ahv-initial  : AppHeadView (Raw.RResolved (gen "initial"))
-  ahv-curry    : AppHeadView (Raw.RResolved (gen "curry"))
-  ahv-apply    : AppHeadView (Raw.RResolved (gen "apply"))
-  ahv-In       : AppHeadView (Raw.RResolved (gen "In"))
-  ahv-cata     : AppHeadView (Raw.RResolved (gen "cata"))
-  ahv-ana      : AppHeadView (Raw.RResolved (gen "ana"))
-  ahv-Out      : AppHeadView (Raw.RResolved (gen "Out"))
-  ahv-pair-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RResolved (gen "pair")) f')
-  ahv-compose-applied : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RResolved (gen "compose")) f')
-  ahv-case-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RResolved (gen "case")) f')
-  ahv-other    : ∀ {f} → AppHeadView f
+-- A generator's kind, as the classes the rules read.
+data GenKindView (g : G.Gen) : Set where
+  gk-map   : G.IsMap (G.kind g) → GenKindView g
+  gk-const : G.IsConstant (G.kind g) → GenKindView g
+  gk-comb₁ : G.IsCombinator 1 (G.kind g) → GenKindView g
+  gk-comb₂ : G.IsCombinator 2 (G.kind g) → GenKindView g
 
-classifyAppHeadView : (f : Expr) → AppHeadView f
-classifyAppHeadView (Raw.RResolved (canonical (ns ∷ g ∷ []))) with ns ≟ₛ generatorNS
-... | no _ = ahv-other
-... | yes refl with g ≟ₛ "id"
-...   | yes refl = ahv-id
-...   | no  _ with g ≟ₛ "fst"
-...     | yes refl = ahv-fst
-...     | no  _ with g ≟ₛ "snd"
-...       | yes refl = ahv-snd
-...       | no  _ with g ≟ₛ "terminal"
-...         | yes refl = ahv-terminal
-...         | no  _ with g ≟ₛ "inl"
-...           | yes refl = ahv-inl
-...           | no  _ with g ≟ₛ "inr"
-...             | yes refl = ahv-inr
-...             | no  _ with g ≟ₛ "initial"
-...               | yes refl = ahv-initial
-...               | no  _ with g ≟ₛ "curry"
-...                 | yes refl = ahv-curry
-...                 | no  _ with g ≟ₛ "apply"
-...                   | yes refl = ahv-apply
-...                   | no  _ with g ≟ₛ "In"
-...                     | yes refl = ahv-In
-...                     | no  _ with g ≟ₛ "cata"
-...                       | yes refl = ahv-cata
-...                       | no  _ with g ≟ₛ "ana"
-...                         | yes refl = ahv-ana
-...                         | no  _ with g ≟ₛ "Out"
-...                           | yes refl = ahv-Out
-...                           | no  _ = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical (ns ∷ g ∷ []))) _) with ns ≟ₛ generatorNS
-... | no _ = ahv-other
-... | yes refl with g ≟ₛ "pair"
-...   | yes refl = ahv-pair-applied
-...   | no  _ with g ≟ₛ "compose"
-...     | yes refl = ahv-compose-applied
-...     | no  _ with g ≟ₛ "case"
-...       | yes refl = ahv-case-applied
-...       | no  _ = ahv-other
-classifyAppHeadView (Raw.RResolved (canonical []))            = ahv-other
-classifyAppHeadView (Raw.RResolved (canonical (_ ∷ [])))      = ahv-other
-classifyAppHeadView (Raw.RResolved (canonical (_ ∷ _ ∷ _ ∷ _))) = ahv-other
-classifyAppHeadView (Raw.RVar _)                        = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical [])) _)       = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical (_ ∷ []))) _) = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical (_ ∷ _ ∷ _ ∷ _))) _) = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RVar _) _)           = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RApp _ _) _)         = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RQualified _ _) _)   = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RLam _ _) _)         = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RLet _ _ _) _)       = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RPair _ _) _)        = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RDestruct _ _ _ _ _) _) = ahv-other
-classifyAppHeadView (Raw.RApp Raw.RUnit _)              = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RInt _) _)           = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RFloat _ _ _ _) _)     = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RAnnot _ _) _)       = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RBinOp _ _ _) _)     = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RNeg _) _)     = ahv-other
-classifyAppHeadView (Raw.RQualified _ _)      = ahv-other
-classifyAppHeadView (Raw.RLam _ _)            = ahv-other
-classifyAppHeadView (Raw.RLet _ _ _)          = ahv-other
-classifyAppHeadView (Raw.RPair _ _)           = ahv-other
-classifyAppHeadView (Raw.RDestruct _ _ _ _ _) = ahv-other
-classifyAppHeadView Raw.RUnit                 = ahv-other
-classifyAppHeadView (Raw.RInt _)              = ahv-other
-classifyAppHeadView (Raw.RFloat _ _ _ _)        = ahv-other
-classifyAppHeadView (Raw.RAnnot _ _)          = ahv-other
-classifyAppHeadView (Raw.RBinOp _ _ _)        = ahv-other
-classifyAppHeadView (Raw.RNeg _)        = ahv-other
-
-viewToPba : ∀ {f} → AppHeadView f → Maybe PolyBuiltinApp
-viewToPba ahv-id              = just pba-id
-viewToPba ahv-fst             = just pba-fst
-viewToPba ahv-snd             = just pba-snd
-viewToPba ahv-terminal        = just pba-terminal
-viewToPba ahv-inl             = just pba-inl
-viewToPba ahv-inr             = just pba-inr
-viewToPba ahv-initial         = just pba-initial
-viewToPba ahv-curry           = just pba-curry
-viewToPba ahv-apply           = just pba-apply
-viewToPba ahv-In              = just pba-In
-viewToPba ahv-cata            = just pba-cata
-viewToPba ahv-ana             = just pba-ana
-viewToPba ahv-Out             = just pba-Out
-viewToPba ahv-pair-applied    = just pba-pair-applied
-viewToPba ahv-compose-applied = just pba-compose-applied
-viewToPba ahv-case-applied    = just pba-case-applied
-viewToPba ahv-other           = nothing
-
-classifyAppHead : Expr → Maybe PolyBuiltinApp
-classifyAppHead f = viewToPba (classifyAppHeadView f)
+genKindView : (g : G.Gen) → GenKindView g
+genKindView G.id       = gk-map G.is-map
+genKindView G.compose  = gk-comb₂ G.is-combinator
+genKindView G.fst      = gk-map G.is-map
+genKindView G.snd      = gk-map G.is-map
+genKindView G.terminal = gk-map G.is-map
+genKindView G.pair     = gk-comb₂ G.is-combinator
+genKindView G.inl      = gk-map G.is-map
+genKindView G.inr      = gk-map G.is-map
+genKindView G.initial  = gk-map G.is-map
+genKindView G.case     = gk-comb₂ G.is-combinator
+genKindView G.apply    = gk-map G.is-map
+genKindView G.curry    = gk-comb₁ G.is-combinator
+genKindView G.In       = gk-map G.is-map
+genKindView G.cata     = gk-comb₁ G.is-combinator
+genKindView G.Out      = gk-map G.is-map
+genKindView G.ana      = gk-comb₁ G.is-combinator
+genKindView G.unit     = gk-const G.is-constant
+genKindView G.toFloat  = gk-const G.is-constant

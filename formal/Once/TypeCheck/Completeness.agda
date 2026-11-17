@@ -3,49 +3,82 @@
 
 ------------------------------------------------------------------------
 -- Once.TypeCheck.Completeness — the checker is complete for the Spec's
--- surface typing (plan 0.122 §5.6, stage f).
+-- surface typing (plan 0.122 §5.6, plan 0.151).
 --
 -- An expression the Spec types, with its usage (`TypeCheck.Use`), at a scope's
 -- Pack, is accepted by the checker at the same type and usage. By induction on
--- the usage annotation, each case the checker's per-rule lemma
--- (`Completeness.Rules`) at its premises' results; a reference is found by the
--- lookups its annotation records (`View.InView`, the signature's), the
--- domain-given and spine routes as the checker takes them
--- (`Completeness.Routes`), and two routes of one composition agree in their
--- usage (`UseAgree`).
+-- the usage annotation: each rule is the checker's clause for its form, the
+-- generators' rows found by the table's deciders (`TableSound`), a name by
+-- the lookups its annotation records (`View.InView`, the signature's), and
+-- the routes the checker takes by the form (`FormSound`): a head that
+-- synthesizes is applied (`s-app`), one that never does is given the
+-- argument's type (`s-app-spine`), and `compose` takes `g`'s domain-given
+-- route exactly when `g` has a domain-given form.
 ------------------------------------------------------------------------
 
 module Once.TypeCheck.Completeness where
 
-open import Data.Bool using (true)
+open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using ([]; _∷_)
-open import Data.Maybe using (just; nothing)
-open import Data.Nat using (ℕ)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Nat using (ℕ; _<_)
 open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String; _≟_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
-open import Once.TypeCheck.ElaborateSound using (checkElabV; inferElabV; checkElab-sound; inferElab-sound; givenSoundOf; elabGiven-sound; checkElab-wf-sound)
-open import Relation.Nullary using (yes; no; ¬_)
-open import Once.Spec.Name using (canonical; own)
+open import Data.Sum using (inj₁; inj₂)
+open import Data.Unit using (tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
+open import Relation.Nullary using (yes; no; ¬_; Dec)
+open import Once.Spec.Name using (CanonicalName; canonical; own)
 import Once.Spec.Grade as LG
 import Once.Spec.Type as ST
 import Once.Spec.Context as SCx
 import Once.Spec.Surface.Syntax as Raw
 import Once.Spec.Surface.Typing as SUT
-open import Once.TypeCheck.Scope using (NamedCtx; Binding; lookupLocal; lookupLocal-go; lookupLocal-at; lookupLocal-next)
+import Once.Spec.Surface.Generators as G
+open import Once.Spec.Sub using (_<:_; sub-*)
+open import Once.Spec.Core.Syntax using (Tm; Schema; schema; _!!_)
+open Schema using (arity; kinds; type)
+open import Once.TypeCheck.Scope using (NamedCtx; Binding; lookupLocal; lookupLocal-go; lookupImport; lookupPolyPrefix;
+                                        GenKindView; gk-map; gk-const; gk-comb₁; gk-comb₂; genKindView)
 open Binding using (name)
 open NamedCtx
+import Once.TypeCheck.Scope as Classify
 open import Once.Context using (svar)
 import Once.TypeCheck.Scoped as Sc
-open import Once.TypeCheck.SpecWitness using (Pack; OkOf; OkSOf; pack▸)
+open import Once.TypeCheck.SpecWitness using (Pack; OkOf; OkSOf; pack▸; shape-lo; module At; WC; WI)
 open Pack
 import Once.TypeCheck.Use as UMod
-open import Once.TypeCheck.Elaborate using (inferElab; checkElab; success)
-open import Once.TypeCheck.Completeness.Rules
+open import Once.TypeCheck.Elaborate
+import Once.TypeCheck.Elaborate as E
+open import Once.TypeCheck.ElaborateSound using (checkElabV; inferElabV; checkElab-sound; inferElab-sound)
+open import Once.TypeCheck.Completeness.Refs
+open import Once.TypeCheck.TableSound using (mapFrom?-complete; mapTo?-complete; mapAt?-complete)
+import Once.TypeCheck.FormSound as FS
+import Once.Metatheory.Surface.Basics
+open import Once.Generators using (fromCodomain?; fromDomain?)
+open import Once.Type.SubDecide using (_<:?_; _⊑π?_)
+open import Once.Spec.Sub using (_<:ᶜ_)
+open import Once.Spec.Core.Derived using (𝕋)
+open import Once.Type.Grade using (≤q-Many)
+open import Once.Type.Join using (join?-complete)
+open import Once.TypeCheck.DeciderComplete using (wfFun?-complete-at; isGround-complete-at; ¬Ground-isGround-inj₂)
+open import Once.Core.Decl using (⌜declS⌝)
+import Once.TypeCheck.View as TView
+open import Once.Type.Closed using (sub0; sub0≡)
+open import Once.Type.Core using (wk₀)
+open import Once.Type.Instance using (KindedInstance)
+open import Once.Type.Schema using (schemaOf; kinded-instance)
+import Once.Type.Poly as TP
+import Once.Type
+open import Once.Type.Rigid using (ground-kinded)
+open import Once.Adequacy.SpecFront.SchemaOf using (ground-arity; open-arity; ki-of)
+open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly)
+import Once.TypeCheck.Error as Error
+import Once.Adequacy.SpecFront.Inst as In
+import Once.Name
 
-------------------------------------------------------------------------
 -- A Spec local is the name the checker finds (the converse of
 -- `Scoped.Locals.found`).
 ------------------------------------------------------------------------
@@ -107,7 +140,6 @@ open import Once.TypeCheck.DeciderComplete using (isGround-complete-at; ¬Ground
 open import Once.TypeCheck.Elaborate using (isGround-inj₂→¬Ground)
 open import Once.Type.Rigid using (ground-kinded)
 open import Once.Adequacy.SpecFront.SchemaOf using (ground-arity; open-arity; ki-of)
-open import Once.TypeCheck.ElaborateProofs using (checkElab-fallback-RVar-poly; checkElab-fallback-RVar-poly-infer)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.Nat using (_<_)
@@ -170,90 +202,12 @@ at-nameC ctx refl r = r
 
 -- the Spec's operator classes are the checker's
 open import Once.Spec.Surface.Operator using (BinOp)
-open import Once.Spec.Surface.Operator using (binSym; BinSym)
-open BinSym using (shape)
-open import Once.Spec.Theory using (⌜_⌝ⁿ; symCod)
-
--- An ordinary application's head is not one the checker takes apart.
-open import Once.TypeCheck.Scope using (AppHeadView; classifyAppHead; classifyAppHeadView; viewToPba)
-import Once.TypeCheck.Scope as LTS
-open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Membership.Propositional.Properties using (∈-lookup)
-import Data.List
-open import Data.List.Relation.Unary.Any using (here; there)
-
-module _ {Σ} {s : ℕ} {S} {nm : Fin s → _} where
-  private
-    module SUX = SUT Σ S nm
-    gen∈ : (k : Fin (Data.List.length SUX.specialGenerators)) → Data.List.lookup SUX.specialGenerators k ∈ SUX.specialGenerators
-    gen∈ k = ∈-lookup {xs = SUX.specialGenerators} k
-
-  special⁻ : ∀ {f} (v : AppHeadView f) → ¬ SUX.SpecialHead f → viewToPba v ≡ nothing
-  special⁻ LTS.ahv-id       ns = ⊥-elim (ns (SUX.sh-gen (gen∈ (Data.Fin.# 0))))
-  special⁻ LTS.ahv-fst      ns = ⊥-elim (ns (SUX.sh-gen (gen∈ (Data.Fin.# 1))))
-  special⁻ LTS.ahv-snd      ns = ⊥-elim (ns (SUX.sh-gen (gen∈ (Data.Fin.# 2))))
-  special⁻ LTS.ahv-terminal ns = ⊥-elim (ns (SUX.sh-gen (gen∈ (Data.Fin.# 3))))
-  special⁻ LTS.ahv-inl      ns = ⊥-elim (ns (SUX.sh-gen (gen∈ (Data.Fin.# 4))))
-  special⁻ LTS.ahv-inr      ns = ⊥-elim (ns (SUX.sh-gen (gen∈ (Data.Fin.# 5))))
-  special⁻ LTS.ahv-initial  ns = ⊥-elim (ns (SUX.sh-gen (gen∈ (Data.Fin.# 6))))
-  special⁻ LTS.ahv-curry    ns = ⊥-elim (ns (SUX.sh-gen (gen∈ (Data.Fin.# 7))))
-  special⁻ LTS.ahv-apply    ns = ⊥-elim (ns (SUX.sh-gen (gen∈ (Data.Fin.# 8))))
-  special⁻ LTS.ahv-In       ns = ⊥-elim (ns (SUX.sh-gen (gen∈ (Data.Fin.# 9))))
-  special⁻ LTS.ahv-cata     ns = ⊥-elim (ns (SUX.sh-gen (gen∈ (Data.Fin.# 10))))
-  special⁻ LTS.ahv-ana      ns = ⊥-elim (ns (SUX.sh-gen (gen∈ (Data.Fin.# 11))))
-  special⁻ LTS.ahv-Out      ns = ⊥-elim (ns (SUX.sh-gen (gen∈ (Data.Fin.# 12))))
-  special⁻ LTS.ahv-pair-applied    ns = ⊥-elim (ns SUX.sh-pair)
-  special⁻ LTS.ahv-compose-applied ns = ⊥-elim (ns SUX.sh-compose)
-  special⁻ LTS.ahv-case-applied    ns = ⊥-elim (ns SUX.sh-case)
-  special⁻ LTS.ahv-other ns = refl
-
-  ordinary : ∀ {f} → ¬ SUX.SpecialHead f → classifyAppHead f ≡ nothing
-  ordinary {f = f} ns = special⁻ (classifyAppHeadView f) ns
-
-------------------------------------------------------------------------
--- The induction
-------------------------------------------------------------------------
-
-open import Once.TypeCheck.SpecWitness using (shape-lo; ok-gen; ok-sig; ok-inj; oks-fun)
-import Once.TypeCheck.View as TView
-open import Once.Core.Decl using (⌜declS⌝)
-open import Once.TypeCheck.Completeness.Routes
-  using (pair-lit-reduce; given-infer-complete; given-cata-complete; compose-f-complete; infer-complete-RApp-spine;
-         poly-head-fails; checkElab-fallback-RVar; completeness-gap-inl-app-check-eq; completeness-gap-inr-app-check-eq;
-         completeness-gap-initial-app-check-eq)
-
-open import Once.TypeCheck.Elaborate
-  using (inferElab; checkElab; elabGiven; given-infer; elabGivenLeaf; elabGivenApp; checkCompose-g; checkLoop; failure; InferElabResult; GivenElabResult; checkCaseGo)
-import Once.TypeCheck.Elaborate as E
-open import Once.TypeCheck.SpecWitness using (WC; WI; wt-case-copair-check)
-open import Once.TypeCheck.ElaborateProofs
-  using (checkElab-fallback-RInt; checkElab-fallback-RFloat; checkElab-fallback-RUnit; checkElab-fallback-RVar-unit; checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst; checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal; checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl; checkElab-fallback-RVar-inr; checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply; checkElab-fallback-RApp-apply-effclosure; checkElab-fallback-RApp-apply-actclosure; checkElab-fallback-RResolved; checkElab-fallback-RAnnot; checkElab-fallback-RLet; checkElab-fallback-RDestruct; checkElab-fallback-RNeg; checkElab-fallback-RNeg-sub; checkElab-fallback-RBinOp; checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst; checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out; checkElab-fallback-RApp-generic; checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success; checkAnaGoV-J; checkAnaGo-just-success; checkLoopV-J; withUnit-elim)
-open import Once.TypeCheck.DeciderComplete using (wfFun?-complete-at)
-open import Once.Type.Join using (join?-complete)
-open import Once.Type.Sub using (pure-⊑; <:-refl)
-open import Once.Spec.Sub using (sub-*)
-open import Once.Spec.Grade using (⊑-pure; ⊑-pe; ⊑-pa)
-open import Once.Spec.Sub using (_<:_; sub-int; sub-float; sub-unit; sub-*)
-import Once.TypeCheck.Error as Error
-import Once.TypeCheck.Scope as Classify
-open import Once.CanonicalName using (bare-NotGenerator)
-open import Once.Spec.Name using (gen; NotGenerator)
-open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
-import Once.Surface.Syntax
-import Once.TypeCheck.UseAgree as UAg
-open import Once.TypeCheck.ShapeHet using (module _≅_)
-open _≅_ using (≅-us)
-import Once.Adequacy.SpecFront.Inst as In
-open import Once.TypeCheck.Completeness.Routes using (module DPoly)
-import Once.Type.Grade
-import Data.Nat.Induction
 
 -- an answer at an equal usage
 at-usage : ∀ {m n} {Γ : SCx.Ctx m n} {A : ST.Ty m} {r : E.CheckElabResult Γ A} {Ψ Ψ′}
          → Ψ ≡ Ψ′ → (∃[ eE ] ∃[ d ] ∃[ f ] r ≡ success Ψ eE d f) → ∃[ eE ] ∃[ d ] ∃[ f ] r ≡ success Ψ′ eE d f
 at-usage refl x = x
 
--- the given mode, at a name
 at-nameG : ∀ {m} (ctx : NamedCtx m) {c c′} {A B : ST.Ty m} {π Ψ}
          → c ≡ c′ → (∃[ eE ] ∃[ d ] ∃[ f ] (elabGiven ctx (Raw.RResolved c′) A π) ≡ success B Ψ eE d f)
          → ∃[ eE ] ∃[ d ] ∃[ f ] (elabGiven ctx (Raw.RResolved c) A π) ≡ success B Ψ eE d f
@@ -298,97 +252,447 @@ given-poly-at {ctx = ctx} P x sc {b} {p} ns ni lp pos {A = A} {π = π} ty oc τ
     ar = arrow-of {Δ = kinds ctx} sc (TView.View.entryIs (V P) lp) ty oc
     ki = subst (KindedInstance (kinds ctx) sc) (arr-inst {sch = S P !! TView.View.entry (V P) lp} τ ty ea eb) (poly-inst {Δ = kinds ctx} sc (TView.View.entryIs (V P) lp) τ r)
 
--- The domain-given mode takes a synthesizing term apart only through its synthesis.
-private
-  res-route : ∀ {m} (ctx : NamedCtx m) (cn : _) (A : ST.Ty m) (π : LG.Purity)
-                (r : InferElabResult (Once.TypeCheck.Scope.NamedCtx.debruijn ctx)) {B : ST.Ty m} {Ψ eE d f}
-            → r ≡ success B Ψ eE d f
-            → E.given-res ctx cn A π r ≡ given-infer ctx (Raw.RResolved cn) A π r
-  res-route ctx cn A π (success _ _ _ _ _ ) _ = refl
-  res-route ctx cn A π (failure _ ) ()
-
-  leaf-route : ∀ {m} (ctx : NamedCtx m) (cn : _) (A : ST.Ty m) (π : LG.Purity)
-                 (r : InferElabResult (Once.TypeCheck.Scope.NamedCtx.debruijn ctx))
-             → NotGenerator cn → (vw : AppHeadView (Raw.RResolved cn))
-             → ∀ {B : ST.Ty m} {Ψ eE d f} → r ≡ success B Ψ eE d f
-             → elabGivenLeaf ctx cn A π vw r ≡ given-infer ctx (Raw.RResolved cn) A π r
-  leaf-route ctx ._ A π r (¬id ∷ᴬ _) LTS.ahv-id _ = ⊥-elim (¬id refl)
-  leaf-route ctx ._ A π r (_ ∷ᴬ ¬fst ∷ᴬ _) LTS.ahv-fst _ = ⊥-elim (¬fst refl)
-  leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ ¬snd ∷ᴬ _) LTS.ahv-snd _ = ⊥-elim (¬snd refl)
-  leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ ¬t ∷ᴬ _) LTS.ahv-terminal _ = ⊥-elim (¬t refl)
-  leaf-route ctx ._ A π r (_ ∷ᴬ _ ∷ᴬ _ ∷ᴬ _ ∷ᴬ ¬i ∷ᴬ _) LTS.ahv-initial _ = ⊥-elim (¬i refl)
-  {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ LTS.ahv-inl ok = res-route ctx _ A π r ok
-  {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ LTS.ahv-inr ok = res-route ctx _ A π r ok
-  {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ LTS.ahv-curry ok = res-route ctx _ A π r ok
-  {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ LTS.ahv-apply ok = res-route ctx _ A π r ok
-  {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ LTS.ahv-In ok = res-route ctx _ A π r ok
-  {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ LTS.ahv-cata ok = res-route ctx _ A π r ok
-  {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ LTS.ahv-ana ok = res-route ctx _ A π r ok
-  {-# CATCHALL #-}
-  leaf-route ctx ._ A π r _ LTS.ahv-Out ok = res-route ctx _ A π r ok
-  {-# CATCHALL #-}
-  leaf-route ctx cn A π r _ LTS.ahv-other ok = res-route ctx cn A π r ok
-
-  app-other-route : ∀ {m} (ctx : NamedCtx m) (f x : Raw.Expr) (A : ST.Ty m) (π : LG.Purity)
-                      (r : InferElabResult (Once.TypeCheck.Scope.NamedCtx.debruijn ctx))
-                  → classifyAppHeadView f ≡ LTS.ahv-other
-                  → elabGivenApp ctx f x A π (classifyAppHeadView f) r ≡ given-infer ctx (Raw.RApp f x) A π r
-  app-other-route ctx f x A π r eq rewrite eq = refl
-
-  caseGo-success : ∀ {m} {A B C : ST.Ty m} {ctx f g} {π : LG.Purity}
-    {Ψf Ψg : SCx.Usage (size ctx)} {Ef : _} {Eg : _} {df ff dg fg : ℕ}
-    → checkElab ctx f (A ST.⇒[ LG.mk-kind LG.Many π ] C) ≡ (success Ψf Ef df ff )
-    → checkElab ctx g (B ST.⇒[ LG.mk-kind LG.Many π ] C) ≡ (success Ψg Eg dg fg )
-    → Σ-syntax ℕ λ d → Σ-syntax ℕ λ fr →
-        checkCaseGo ctx f g A B C π ≡ (success (Ψf SCx.+ᵘ Ψg) (Once.Surface.Syntax.copair' Ef Eg) d fr)
-  caseGo-success eqf eqg rewrite eqf | eqg = _ , _ , refl
-
--- A synthesizing term, given a domain: through its synthesis.
-given-infer-routeS : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) {e T t Ψ} {d : Syn P e T t} → U⇒ P d Ψ → ∀ (A : ST.Ty m) (π : LG.Purity)
-                   → ∃[ eE ] ∃[ dd ] ∃[ f ] (inferElab ctx e) ≡ success T Ψ eE dd f
-                   → elabGiven ctx e A π ≡ given-infer ctx e A π (inferElab ctx e)
-given-infer-routeS P u-int A π _ = refl
-given-infer-routeS P u-float A π _ = refl
-given-infer-routeS P u-unit A π _ = refl
-given-infer-routeS P u-unit-g A π _ = refl
-given-infer-routeS P u-toFloat A π _ = refl
-given-infer-routeS P u-var A π _ = refl
-given-infer-routeS {ctx = ctx} P (u-sigop {c = c} {ng = ng} _ _) A π (_ , _ , _ , ok) =
-  leaf-route ctx c A π (inferElab ctx (Raw.RResolved c)) ng (classifyAppHeadView (Raw.RResolved c)) ok
-given-infer-routeS {ctx = ctx} P (u-def {c = c} {d = d} {e = e} {ok = ok′}) A π (_ , _ , _ , ok) =
-  leaf-route ctx c A π (inferElab ctx (Raw.RResolved c)) (subst NotGenerator e (ok-gen P ok′)) (classifyAppHeadView (Raw.RResolved c)) ok
-given-infer-routeS P (u-annot _) A π _ = refl
-given-infer-routeS P (u-pair _ _) A π _ = refl
-given-infer-routeS P (u-neg _) A π _ = refl
-given-infer-routeS P (u-let _ _) A π _ = refl
-given-infer-routeS P (u-case _ _ _) A π _ = refl
-given-infer-routeS P (u-binop _ _) A π _ = refl
-given-infer-routeS P (u-id-app _) A π _ = refl
-given-infer-routeS P (u-fst-app _) A π _ = refl
-given-infer-routeS P (u-snd-app _) A π _ = refl
-given-infer-routeS P (u-terminal-app _) A π _ = refl
-given-infer-routeS P (u-apply-app _) A π _ = refl
-given-infer-routeS P (u-apply-eff-app _) A π _ = refl
-given-infer-routeS P (u-Out-app _) A π _ = refl
-given-infer-routeS P (u-Out-act-app _) A π _ = refl
-given-infer-routeS {ctx = ctx} P (u-app {f = f} {x = x} {ns = ns} _ _) A π _ =
-  app-other-route ctx f x A π (inferElab ctx (Raw.RApp f x)) (Once.TypeCheck.Classify.classifyAppHead-nothing⇒view-other (ordinary ns))
-given-infer-routeS {ctx = ctx} P (u-effApp {f = f} {x = x} {ns = ns} _ _) A π _ =
-  app-other-route ctx f x A π (inferElab ctx (Raw.RApp f x)) (Once.TypeCheck.Classify.classifyAppHead-nothing⇒view-other (ordinary ns))
-given-infer-routeS {ctx = ctx} P (u-app-spine {f = f} {x = x} {ns = ns} _ _) A π _ =
-  app-other-route ctx f x A π (inferElab ctx (Raw.RApp f x)) (Once.TypeCheck.Classify.classifyAppHead-nothing⇒view-other (ordinary ns))
+------------------------------------------------------------------------
+-- The routes the checker takes, by the form
+------------------------------------------------------------------------
 
 private
-  -- what the checker reads off a Pack
-  Ok : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) → Fin (s P) → Set
-  Ok P = OkOf P
+  const-map : ∀ {k} → G.IsConstant k → G.IsMap k → ⊥
+  const-map G.is-constant ()
+  const-comb : ∀ {k n} → G.IsConstant k → G.IsCombinator n k → ⊥
+  const-comb G.is-constant ()
+  map-comb : ∀ {k n} → G.IsMap k → G.IsCombinator n k → ⊥
+  map-comb G.is-map ()
+  comb-12 : ∀ {k} → G.IsCombinator 1 k → G.IsCombinator 2 k → ⊥
+  comb-12 G.is-combinator ()
+
+module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
+  private
+    module SU = SUT (Sg P) (S P) (nm P)
+  open SU using (PartialCombinator; CheckHead; OwnCheck)
+
+  -- `s-app`: a head that synthesizes is applied.
+  app-route : ∀ {f A t} (x : Raw.Expr) → Syn P f A t → ¬ PartialCombinator f → ¬ CheckHead f
+            → (∀ {c} → f ≡ Raw.RResolved c → polyKind ctx c ≡ not-poly)
+            → inferElab ctx (Raw.RApp f x) ≡ appOn ctx x (inferElab ctx f)
+  app-route {f = Raw.RGen g} x s pc ch hr = gen₀ s
+    where
+      gen₀ : ∀ {A t} → Syn P (Raw.RGen g) A t → inferElab ctx (Raw.RApp (Raw.RGen g) x) ≡ appOn ctx x (inferElab ctx (Raw.RGen g))
+      gen₀ (SU.s-const G.k-unit)    = refl
+      gen₀ (SU.s-const G.k-toFloat) = refl
+  app-route {f = Raw.RResolved c} x s pc ch hr with polyKind ctx c | hr refl
+  ... | .not-poly | refl = refl
+  app-route {f = Raw.RApp (Raw.RGen g) a} x s pc ch hr = gen₁ (genKindView g)
+    where
+      gen₁ : (kv : GenKindView g) → inferAppGen₁ ctx (Raw.RApp (Raw.RGen g) a) g x kv ≡ appOn ctx x (inferElab ctx (Raw.RApp (Raw.RGen g) a))
+      gen₁ (gk-map _)    = refl
+      gen₁ (gk-const _)  = refl
+      gen₁ (gk-comb₁ ic) = ⊥-elim (ch (SU.ch-comb₁ ic))
+      gen₁ (gk-comb₂ ic) = ⊥-elim (pc (SU.pc-one ic))
+  app-route {f = Raw.RApp (Raw.RApp (Raw.RGen g) a) b} x s pc ch hr = gen₂ (genKindView g)
+    where
+      gen₂ : (kv : GenKindView g) → inferAppGen₂ ctx (Raw.RApp (Raw.RApp (Raw.RGen g) a) b) g x kv ≡ appOn ctx x (inferElab ctx (Raw.RApp (Raw.RApp (Raw.RGen g) a) b))
+      gen₂ (gk-map _)    = refl
+      gen₂ (gk-const _)  = refl
+      gen₂ (gk-comb₁ _)  = refl
+      gen₂ (gk-comb₂ ic) = ⊥-elim (ch (SU.ch-comb₂ ic))
+  app-route {f = Raw.RApp (Raw.RApp (Raw.RVar _) _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RApp (Raw.RQualified _ _) _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RApp (Raw.RResolved _) _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RApp (Raw.RApp _ _) _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RApp (Raw.RLam _ _) _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RApp (Raw.RLet _ _ _) _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RApp (Raw.RPair _ _) _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RApp (Raw.RDestruct _ _ _ _ _) _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RApp Raw.RUnit _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RApp (Raw.RInt _) _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RApp (Raw.RFloat _ _ _ _) _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RApp (Raw.RAnnot _ _) _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RApp (Raw.RBinOp _ _ _) _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RApp (Raw.RNeg _) _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RVar _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RQualified _ _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RResolved _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RLam _ _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RLet _ _ _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RPair _ _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RDestruct _ _ _ _ _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp Raw.RUnit _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RInt _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RFloat _ _ _ _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RAnnot _ _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RBinOp _ _ _) _} x s pc ch hr = refl
+  app-route {f = Raw.RApp (Raw.RNeg _) _} x s pc ch hr = refl
+  app-route {f = (Raw.RVar _)} x s pc ch hr = refl
+  app-route {f = (Raw.RLet _ _ _)} x s pc ch hr = refl
+  app-route {f = (Raw.RPair _ _)} x s pc ch hr = refl
+  app-route {f = (Raw.RDestruct _ _ _ _ _)} x s pc ch hr = refl
+  app-route {f = Raw.RUnit} x s pc ch hr = refl
+  app-route {f = (Raw.RInt _)} x s pc ch hr = refl
+  app-route {f = (Raw.RFloat _ _ _ _)} x s pc ch hr = refl
+  app-route {f = (Raw.RAnnot _ _)} x s pc ch hr = refl
+  app-route {f = (Raw.RBinOp _ _ _)} x s pc ch hr = refl
+  app-route {f = (Raw.RNeg _)} x s pc ch hr = refl
+
+  -- `s-app-spine`: a head that never synthesizes is given the argument's type.
+  spine-route : ∀ {f} (x : Raw.Expr) → CheckHead f → (∀ {c} → f ≡ Raw.RResolved c → polyKind ctx c ≢ not-poly)
+              → (∀ {g} → f ≢ Raw.RGen g)
+              → inferElab ctx (Raw.RApp f x) ≡ inferSpine ctx f (inferElab ctx x)
+  spine-route x SU.ch-lam hp ng = refl
+  spine-route {f = Raw.RResolved c} x (SU.ch-poly _) hp ng with polyKind ctx c | hp refl
+  ... | not-poly   | ne = ⊥-elim (ne refl)
+  ... | E.poly-dom | _  = refl
+  ... | poly-other | _  = refl
+  spine-route x (SU.ch-map _) hp ng = ⊥-elim (ng refl)
+  spine-route {f = Raw.RApp (Raw.RGen g) a} x (SU.ch-comb₁ ic) hp ng = gen₁ (genKindView g)
+    where
+      gen₁ : (kv : GenKindView g) → inferAppGen₁ ctx (Raw.RApp (Raw.RGen g) a) g x kv ≡ inferSpine ctx (Raw.RApp (Raw.RGen g) a) (inferElab ctx x)
+      gen₁ (gk-comb₁ _)   = refl
+      gen₁ (gk-map im)    = ⊥-elim (map-comb im ic)
+      gen₁ (gk-const k)   = ⊥-elim (const-comb k ic)
+      gen₁ (gk-comb₂ ic₂) = ⊥-elim (comb-12 ic ic₂)
+  spine-route {f = Raw.RApp (Raw.RApp (Raw.RGen g) a) b} x (SU.ch-comb₂ ic) hp ng = gen₂ (genKindView g)
+    where
+      gen₂ : (kv : GenKindView g) → inferAppGen₂ ctx (Raw.RApp (Raw.RApp (Raw.RGen g) a) b) g x kv ≡ inferSpine ctx (Raw.RApp (Raw.RApp (Raw.RGen g) a) b) (inferElab ctx x)
+      gen₂ (gk-comb₂ _)   = refl
+      gen₂ (gk-map im)    = ⊥-elim (map-comb im ic)
+      gen₂ (gk-const k)   = ⊥-elim (const-comb k ic)
+      gen₂ (gk-comb₁ ic₁) = ⊥-elim (comb-12 ic₁ ic)
+
+  -- `d-infer`: a synthesizing term is given its domain through its synthesis.
+  private
+    res-given : ∀ cn A π (r : InferElabResult (debruijn ctx)) {B Ψ eE d f} → r ≡ success B Ψ eE d f
+              → given-res ctx cn A π r ≡ given-infer ctx (Raw.RResolved cn) A π r
+    res-given cn A π (success _ _ _ _ _) _ = refl
+
+  given-route : ∀ {e A′ t} (A : ST.Ty m) (π : LG.Purity) → Syn P e A′ t
+              → ∀ {B Ψ eE d f} → inferElab ctx e ≡ success B Ψ eE d f
+              → elabGiven ctx e A π ≡ given-infer ctx e A π (inferElab ctx e)
+  given-route {e = Raw.RGen g} A π s _ = gen₀ s
+    where
+      gen₀ : ∀ {A′ t} → Syn P (Raw.RGen g) A′ t → elabGiven ctx (Raw.RGen g) A π ≡ given-infer ctx (Raw.RGen g) A π (inferElab ctx (Raw.RGen g))
+      gen₀ (SU.s-const G.k-unit)    = refl
+      gen₀ (SU.s-const G.k-toFloat) = refl
+  given-route {e = Raw.RResolved cn} A π s eq = res-given cn A π (inferElab ctx (Raw.RResolved cn)) eq
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.id) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.compose) _) _} A π (SU.s-app pc _ _ _) _ = ⊥-elim (pc (SU.pc-one G.is-combinator))
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.compose) _) _} A π (SU.s-app-spine (SU.ch-comb₁ ()) _ _) _
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.fst) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.snd) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.terminal) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.pair) _) _} A π (SU.s-app pc _ _ _) _ = ⊥-elim (pc (SU.pc-one G.is-combinator))
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.pair) _) _} A π (SU.s-app-spine (SU.ch-comb₁ ()) _ _) _
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.inl) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.inr) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.initial) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.case) _) _} A π (SU.s-app pc _ _ _) _ = ⊥-elim (pc (SU.pc-one G.is-combinator))
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.case) _) _} A π (SU.s-app-spine (SU.ch-comb₁ ()) _ _) _
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.apply) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.curry) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.In) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.cata) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.Out) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.ana) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.unit) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RGen G.toFloat) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RVar _) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RQualified _ _) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RResolved _) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RApp _ _) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RLam _ _) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RLet _ _ _) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RPair _ _) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RDestruct _ _ _ _ _) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp Raw.RUnit _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RInt _) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RFloat _ _ _ _) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RAnnot _ _) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RBinOp _ _ _) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RApp (Raw.RNeg _) _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.id) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.compose) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.fst) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.snd) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.terminal) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.pair) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.inl) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.inr) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.initial) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.case) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.apply) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.curry) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.In) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.cata) _} A π (SU.s-app pc _ _ _) _ = ⊥-elim (pc (SU.pc-bare G.is-combinator))
+  given-route {e = Raw.RApp (Raw.RGen G.cata) _} A π (SU.s-app-spine (SU.ch-map ()) _ _) _
+  given-route {e = Raw.RApp (Raw.RGen G.Out) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.ana) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.unit) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RGen G.toFloat) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RVar _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RQualified _ _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RResolved _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RLam _ _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RLet _ _ _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RPair _ _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RDestruct _ _ _ _ _) _} A π s _ = refl
+  given-route {e = Raw.RApp Raw.RUnit _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RInt _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RFloat _ _ _ _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RAnnot _ _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RBinOp _ _ _) _} A π s _ = refl
+  given-route {e = Raw.RApp (Raw.RNeg _) _} A π s _ = refl
+  given-route {e = (Raw.RVar _)} A π s _ = refl
+  given-route {e = (Raw.RLet _ _ _)} A π s _ = refl
+  given-route {e = (Raw.RPair _ _)} A π s _ = refl
+  given-route {e = (Raw.RDestruct _ _ _ _ _)} A π s _ = refl
+  given-route {e = Raw.RUnit} A π s _ = refl
+  given-route {e = (Raw.RInt _)} A π s _ = refl
+  given-route {e = (Raw.RFloat _ _ _ _)} A π s _ = refl
+  given-route {e = (Raw.RAnnot _ _)} A π s _ = refl
+  given-route {e = (Raw.RBinOp _ _ _)} A π s _ = refl
+  given-route {e = (Raw.RNeg _)} A π s _ = refl
+
+  -- `c-sub`: a synthesizing term, converted.
+  private
+    res-sub : ∀ cn T (r : InferElabResult (debruijn ctx)) {B Ψ eE d f} → r ≡ success B Ψ eE d f
+            → checkElabV-RResolved-other ctx cn T r ≡ embedOrSubsume ctx (Raw.RResolved cn) T r
+    res-sub cn T (success _ _ _ _ _) _ = refl
+
+  sub-route : ∀ {e A t} (T : ST.Ty m) → Syn P e A t → ¬ OwnCheck e
+            → ∀ {B Ψ eE d f} → inferElab ctx e ≡ success B Ψ eE d f
+            → checkElab ctx e T ≡ embedOrSubsume ctx e T (inferElab ctx e)
+  sub-route {e = Raw.RGen g} T s noc _ = gen₀ s
+    where
+      gen₀ : ∀ {A t} → Syn P (Raw.RGen g) A t → checkElab ctx (Raw.RGen g) T ≡ embedOrSubsume ctx (Raw.RGen g) T (inferElab ctx (Raw.RGen g))
+      gen₀ (SU.s-const G.k-unit)    = refl
+      gen₀ (SU.s-const G.k-toFloat) = refl
+  sub-route {e = Raw.RResolved cn} T s noc eq = res-sub cn T (inferElab ctx (Raw.RResolved cn)) eq
+  sub-route {e = Raw.RPair _ _} T s noc _ = ⊥-elim (noc SU.oc-pair)
+  sub-route {e = Raw.RApp (Raw.RGen g) x} T s noc _ = gen′ s
+    where
+      gen′ : ∀ {A t} → Syn P (Raw.RApp (Raw.RGen g) x) A t → checkElab ctx (Raw.RApp (Raw.RGen g) x) T ≡ embedOrSubsume ctx (Raw.RApp (Raw.RGen g) x) T (inferElab ctx (Raw.RApp (Raw.RGen g) x))
+      gen : G.IsMap (G.kind g) → (kv : GenKindView g) → checkAppGen ctx (Raw.RGen g) g x T kv ≡ checkSubApp ctx (Raw.RGen g) x T
+      gen′ (SU.s-app _ _ (SU.s-const G.k-toFloat) _) = refl
+      gen′ (SU.s-app-spine (SU.ch-map im) _ _) = gen im (genKindView g)
+      gen im (gk-map _) with fromCodomain? (G.kind g)
+      ... | yes fc = ⊥-elim (noc (SU.oc-map fc))
+      ... | no _   = refl
+      gen im (gk-const k)  = ⊥-elim (const-map k im)
+      gen im (gk-comb₁ ic) = ⊥-elim (map-comb im ic)
+      gen im (gk-comb₂ ic) = ⊥-elim (map-comb im ic)
+  sub-route {e = Raw.RApp (Raw.RApp (Raw.RGen g) a) x} T s noc _ = gen₁ (genKindView g)
+    where
+      no2 : ∀ {A t} → Syn P (Raw.RApp (Raw.RApp (Raw.RGen g) a) x) A t → G.IsCombinator 2 (G.kind g) → ⊥
+      no2 (SU.s-app pc _ _ _) ic = pc (SU.pc-one ic)
+      no2 (SU.s-app-spine (SU.ch-comb₁ ic₁) _ _) ic = comb-12 ic₁ ic
+      gen₁ : (kv : GenKindView g) → checkAppGen₁ ctx (Raw.RApp (Raw.RGen g) a) g a x T kv ≡ checkSubApp ctx (Raw.RApp (Raw.RGen g) a) x T
+      gen₁ (gk-map _)    = refl
+      gen₁ (gk-const _)  = refl
+      gen₁ (gk-comb₁ _)  = refl
+      gen₁ (gk-comb₂ ic) = ⊥-elim (no2 s ic)
+  sub-route {e = Raw.RApp (Raw.RApp (Raw.RVar _) _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RApp (Raw.RQualified _ _) _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RApp (Raw.RResolved _) _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RApp (Raw.RApp _ _) _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RApp (Raw.RLam _ _) _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RApp (Raw.RLet _ _ _) _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RApp (Raw.RPair _ _) _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RApp (Raw.RDestruct _ _ _ _ _) _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RApp Raw.RUnit _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RApp (Raw.RInt _) _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RApp (Raw.RFloat _ _ _ _) _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RApp (Raw.RAnnot _ _) _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RApp (Raw.RBinOp _ _ _) _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RApp (Raw.RNeg _) _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RVar _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RQualified _ _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RResolved _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RLam _ _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RLet _ _ _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RPair _ _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RDestruct _ _ _ _ _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp Raw.RUnit _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RInt _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RFloat _ _ _ _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RAnnot _ _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RBinOp _ _ _) _} T s noc _ = refl
+  sub-route {e = Raw.RApp (Raw.RNeg _) _} T s noc _ = refl
+  sub-route {e = (Raw.RVar _)} T s noc _ = refl
+  sub-route {e = (Raw.RLet _ _ _)} T s noc _ = refl
+  sub-route {e = (Raw.RDestruct _ _ _ _ _)} T s noc _ = refl
+  sub-route {e = Raw.RUnit} T s noc _ = refl
+  sub-route {e = (Raw.RInt _)} T s noc _ = refl
+  sub-route {e = (Raw.RFloat _ _ _ _)} T s noc _ = refl
+  sub-route {e = (Raw.RAnnot _ _)} T s noc _ = refl
+  sub-route {e = (Raw.RBinOp _ _ _)} T s noc _ = refl
+  sub-route {e = (Raw.RNeg _)} T s noc _ = refl
+
+  -- A synthesizing name is no polymorphic one.
+  private
+    sig-own : ∀ {T} ls li lp → ls ≡ just T → polyKind-own ls li lp ≡ not-poly
+    sig-own .(just _) _ _ refl = refl
+    imp-own : ∀ {T} ls li lp → ls ≡ nothing → li ≡ just T → polyKind-own ls li lp ≡ not-poly
+    imp-own .nothing .(just _) _ refl refl = refl
+    poly-own : ∀ {sc b p} ls li lp → ls ≡ nothing → li ≡ nothing → lp ≡ just (sc , b , p) → TP.Ground sc
+             → polyKind-own ls li lp ≡ not-poly
+    poly-own {sc = sc} .nothing .nothing .(just _) refl refl refl g with Once.Type.isGround sc | isGround-complete-at sc g
+    ... | .(inj₁ g) | refl = refl
+
+    lt0′ : 0 < 0 → ⊥
+    lt0′ ()
+
+    ground-at : ∀ {x sc b p} (lp : lookupPolyPrefix (polys ctx) x ≡ just (sc , b , p))
+              → arity (S P !! TView.View.entry (V P) lp) ≡ 0 → TP.Ground sc
+    ground-at {sc = sc} lp a with Once.Type.isGround sc in eq
+    ... | inj₁ g  = g
+    ... | inj₂ tt = ⊥-elim (lt0′ (subst (0 <_) a (h-open P lp (isGround-inj₂→¬Ground sc eq))))
+
+    sig-notPoly : ∀ c {T} → lookupImport (sig ctx) (Once.Name.showCanonical c) ≡ just T → polyKind ctx c ≡ not-poly
+    sig-notPoly (canonical []) _ = refl
+    sig-notPoly (own x) lk = sig-own _ _ _ lk
+    sig-notPoly (canonical (_ ∷ _ ∷ _)) _ = refl
+
+  name-notPoly : ∀ {c A t Ψ} {d : Syn P (Raw.RResolved c) A t} → U⇒ P d Ψ → polyKind ctx c ≡ not-poly
+  name-notPoly (UMod.u-sigop {c = c} {ok = ok} _ _) = sig-notPoly c (proj₁ ok)
+  name-notPoly (UMod.u-def {e = e} {ok = TView.iv-imp {x = x} ns lk refl}) =
+    subst (λ c′ → polyKind ctx c′ ≡ not-poly) (trans (sym (h-imp P lk)) e) (imp-own _ _ _ ns lk)
+  name-notPoly (UMod.u-def {e = e} {a = a} {ok = TView.iv-poly {x = x} ns ni lp refl}) =
+    subst (λ c′ → polyKind ctx c′ ≡ not-poly) (trans (sym (h-poly P lp)) e) (poly-own _ _ _ ns ni lp (ground-at lp a))
+
+  ----------------------------------------------------------------------
+  -- The rules' last steps, their premises' results in hand
+  ----------------------------------------------------------------------
+
+  -- `s-app`, at the arrow's grade.
+  app-done : ∀ (x : Raw.Expr) {A B : ST.Ty m} {q} (π : LG.Purity) {Ψ₁ Ψ₂ fE df ff xE dx fx}
+           → (cr : E.CheckElabResult (debruijn ctx) A) → cr ≡ success Ψ₂ xE dx fx
+           → ∃[ eE ] ∃[ d ] ∃[ f ] appAt ctx x A B q π {Ψ₁} fE df ff cr ≡ success (𝕋 π B) (Ψ₁ SCx.+ᵘ (q SCx.*ᵘ Ψ₂)) eE d f
+  app-done x LG.pure _ refl = _ , _ , _ , refl
+  app-done x LG.act  _ refl = _ , _ , _ , refl
+  app-done x LG.eff  _ refl = _ , _ , _ , refl
+
+  -- `s-app` whole: the head synthesized, the argument checked at its domain.
+  app-step : ∀ {f x A B q π tf Ψf fE df ff Ψx xE dx fx} → Syn P f (A ST.⇒[ LG.mk-kind q π ] B) tf
+           → ¬ PartialCombinator f → ¬ CheckHead f → (∀ {c} → f ≡ Raw.RResolved c → polyKind ctx c ≡ not-poly)
+           → inferElab ctx f ≡ success (A ST.⇒[ LG.mk-kind q π ] B) Ψf fE df ff
+           → checkElab ctx x A ≡ success Ψx xE dx fx
+           → ∃[ eE ] ∃[ d ] ∃[ fr ] inferElab ctx (Raw.RApp f x) ≡ success (𝕋 π B) (Ψf SCx.+ᵘ (q SCx.*ᵘ Ψx)) eE d fr
+  app-step {x = x} {A = A} {B = B} {q = q} {π = π} {Ψf = Ψf} {fE = fE} {df = df} {ff = ff} s pc ch hr eqF eqX =
+    let (eE , d , fr , r) = app-done x {B = B} {q = q} π {Ψ₁ = Ψf} {fE = fE} {df = df} {ff = ff} (checkElab ctx x A) eqX
+    in eE , d , fr , trans (app-route x s pc ch hr) (trans (cong (appOn ctx x) eqF) r)
+
+  -- `s-app-spine`, the head given the argument's type.
+  spine-done : ∀ (f x : Raw.Expr) {X T : ST.Ty m} {Ψx Ψf xE dx fx fE df ff}
+             → inferElab ctx x ≡ success X Ψx xE dx fx → elabGiven ctx f X LG.pure ≡ success T Ψf fE df ff
+             → ∃[ eE ] ∃[ d ] ∃[ fr ] inferSpine ctx f (inferElab ctx x) ≡ success T (Ψf SCx.+ᵘ (LG.Many SCx.*ᵘ Ψx)) eE d fr
+  spine-done f x eqX eqG = _ , _ , _ , trans (cong (inferSpine ctx f) eqX) (cong (spineAt ctx _ _) eqG)
+
+  -- …at a structure map: applied as a morphism.
+  map-spine : ∀ {g k X T t Ψx xE dx fx} (x : Raw.Expr) → G.FromDomain (G.kind g)
+            → (mo : G.Morphism {S = S P} (kinds ctx) {n = size ctx} g k X LG.pure T t)
+            → (∀ {k′ B′} {t′ : Tm (S P) m (size ctx)} → G.Morphism {S = S P} (kinds ctx) {n = size ctx} g k′ X LG.pure B′ t′ → T <:ᶜ B′)
+            → inferElab ctx x ≡ success X Ψx xE dx fx
+            → ∃[ eE ] ∃[ d ] ∃[ f ] inferElab ctx (Raw.RApp (Raw.RGen g) x) ≡ success T (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψx)) eE d f
+  map-spine {g = g} {k = im} x fd mo least eqX with genKindView g
+  ... | gk-const k  = ⊥-elim (const-map k im)
+  ... | gk-comb₁ ic = ⊥-elim (map-comb im ic)
+  ... | gk-comb₂ ic = ⊥-elim (map-comb im ic)
+  ... | gk-map _ with fromDomain? (G.kind g)
+  ...   | no ¬fd = ⊥-elim (¬fd fd)
+  ...   | yes _  = _ , _ , _ , trans (cong (inferMapSpine ctx g) eqX) (cong (inferMapSpine-go ctx g _ _ _) (mapFrom?-complete fd mo least))
+
+  -- `c-map`.
+  check-map : ∀ {g k A π B t} (mo : G.Morphism {S = S P} (kinds ctx) {n = size ctx} g k A π B t)
+            → ∃[ eE ] ∃[ d ] ∃[ f ] checkElab ctx (Raw.RGen g) (A ST.⇒[ LG.mk-kind LG.Many π ] B) ≡ success SCx.zeroUsage eE d f
+  check-map {g = g} {k = im} {A = A} {π = π} {B = B} mo with genKindView g
+  ... | gk-map _    = _ , _ , _ , cong (checkMapAt-go ctx g A π B) (mapAt?-complete mo)
+  ... | gk-const k  = ⊥-elim (const-map k im)
+  ... | gk-comb₁ ic = ⊥-elim (map-comb im ic)
+  ... | gk-comb₂ ic = ⊥-elim (map-comb im ic)
+
+  -- `c-map-app`.
+  check-map-app : ∀ {g k A B t Ψ xE dx fx} (x : Raw.Expr) → G.FromCodomain (G.kind g)
+                → (mo : G.Morphism {S = S P} (kinds ctx) {n = size ctx} g k A LG.pure B t)
+                → checkElab ctx x A ≡ success Ψ xE dx fx
+                → ∃[ eE ] ∃[ d ] ∃[ f ] checkElab ctx (Raw.RApp (Raw.RGen g) x) B ≡ success (SCx.zeroUsage SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ)) eE d f
+  check-map-app {g = g} {k = im} {A = A} {B = B} x fc mo eqX with genKindView g
+  ... | gk-const k  = ⊥-elim (const-map k im)
+  ... | gk-comb₁ ic = ⊥-elim (map-comb im ic)
+  ... | gk-comb₂ ic = ⊥-elim (map-comb im ic)
+  ... | gk-map _ with fromCodomain? (G.kind g)
+  ...   | no ¬fc = ⊥-elim (¬fc fc)
+  ...   | yes _ rewrite mapTo?-complete fc mo with checkElab ctx x A | eqX
+  ...     | _ | refl = _ , _ , _ , refl
+
+  -- `d-map`.
+  given-map : ∀ {g k A π B t} (π′ : LG.Purity) → G.FromDomain (G.kind g)
+            → (mo : G.Morphism {S = S P} (kinds ctx) {n = size ctx} g k A π B t)
+            → (∀ {k′ B′} {t′ : Tm (S P) m (size ctx)} → G.Morphism {S = S P} (kinds ctx) {n = size ctx} g k′ A π B′ t′ → B <:ᶜ B′)
+            → π′ ≡ π
+            → ∃[ eE ] ∃[ d ] ∃[ f ] elabGiven ctx (Raw.RGen g) A π′ ≡ success B SCx.zeroUsage eE d f
+  given-map {g = g} {k = im} {A = A} π′ fd mo least refl with genKindView g
+  ... | gk-map _    = _ , _ , _ , cong (givenMap ctx g A π′) (mapFrom?-complete fd mo least)
+  ... | gk-const k  = ⊥-elim (const-map k im)
+  ... | gk-comb₁ ic = ⊥-elim (map-comb im ic)
+  ... | gk-comb₂ ic = ⊥-elim (map-comb im ic)
+
+  -- `c-compose-g`: `g` has a domain-given form, so the checker takes its route.
+  compose-g-done : ∀ (f g : Raw.Expr) {A B C : ST.Ty m} {π} {Ψ₁ Ψ₂ fE df ff gE dg fg}
+                 → SU.DomainForm g
+                 → elabGiven ctx g A π ≡ success B Ψ₂ gE dg fg
+                 → checkElab ctx f (B ST.⇒[ LG.mk-kind LG.Many π ] C) ≡ success Ψ₁ fE df ff
+                 → ∃[ eE ] ∃[ d ] ∃[ fr ] checkElab ctx (Raw.RApp (Raw.RApp (Raw.RGen G.compose) f) g) (A ST.⇒[ LG.mk-kind LG.Many π ] C)
+                                          ≡ success (Ψ₁ SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ₂)) eE d fr
+  compose-g-done f g {A} {B} {C} {π} dfg eqG eqF with domainForm? ctx g in eD
+  ... | false = ⊥-elim (FS.domainForm-false P g eD dfg)
+  ... | true with elabGiven ctx g A π | eqG
+  ...   | _ | refl with checkElab ctx f (B ST.⇒[ LG.mk-kind LG.Many π ] C) | eqF
+  ...     | _ | refl = _ , _ , _ , refl
+
+  -- `c-compose-f`: `g` has none, so the checker reads the middle off `f`.
+  compose-f-done : ∀ (f g : Raw.Expr) {A B C C′ : ST.Ty m} {π π′} {Ψ₁ Ψ₂ fE df ff gE dg fg} {tg}
+                 → ¬ SU.DomainForm g
+                 → (dgd : Chk P g (A ST.⇒[ LG.mk-kind LG.Many π ] B) tg) → U⇐ P dgd Ψ₂
+                 → inferElab ctx f ≡ success (B ST.⇒[ LG.mk-kind LG.Many π′ ] C′) Ψ₁ fE df ff
+                 → (B ST.⇒[ LG.mk-kind LG.Many π′ ] C′) <: (B ST.⇒[ LG.mk-kind LG.Many π ] C)
+                 → checkElab ctx g (A ST.⇒[ LG.mk-kind LG.Many π ] B) ≡ success Ψ₂ gE dg fg
+                 → ∃[ eE ] ∃[ d ] ∃[ fr ] checkElab ctx (Raw.RApp (Raw.RApp (Raw.RGen G.compose) f) g) (A ST.⇒[ LG.mk-kind LG.Many π ] C)
+                                          ≡ success (Ψ₁ SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ₂)) eE d fr
+  compose-f-done f g {A} {B} {C} {C′} {π} {π′} ndf dgd ug eqF p eqG with domainForm? ctx g in eD
+  ... | true = ⊥-elim (ndf (FS.domainForm-true-chk P g eD dgd ug))
+  ... | false with inferElab ctx f | eqF
+  ...   | _ | refl with (B ST.⇒[ LG.mk-kind LG.Many π′ ] C′) <:? (B ST.⇒[ LG.mk-kind LG.Many π ] C)
+  ...     | no ¬p = ⊥-elim (¬p p)
+  ...     | yes _ with checkElab ctx g (A ST.⇒[ LG.mk-kind LG.Many π ] B) | eqG
+  ...       | _ | refl = _ , _ , _ , refl
+
+  -- `c-sub`: the decided conversion.
+  private
+    sub-dec : ∀ (e : Raw.Expr) (T : ST.Ty m) {A : ST.Ty m} {Ψ eE d f} (dc : Dec (A <: T)) → A <: T
+            → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] embedOrSubsume-dec ctx e {Ψ = Ψ} T A eE d f dc ≡ success Ψ eE′ d′ f′
+    sub-dec e T (yes _) _ = _ , _ , _ , refl
+    sub-dec e T (no ¬p) p = ⊥-elim (¬p p)
+
+  sub-done : ∀ {e A t} (T : ST.Ty m) → Syn P e A t → ¬ OwnCheck e → ∀ {Ψ eE d f} → inferElab ctx e ≡ success A Ψ eE d f → A <: T
+           → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] checkElab ctx e T ≡ success Ψ eE′ d′ f′
+  sub-done {e = e} {A = A} T s noc eq p with sub-route T s noc eq
+  ... | er rewrite eq = let (a , b , c , r) = sub-dec e T (A <:? T) p in a , b , c , trans er r
+
+  -- `d-cata`: the algebra synthesized, converted.
+  given-cata-done : ∀ (alg : Raw.Expr) {F : ST.Fun m} {A₁ A : ST.Ty m} {π′ π} {Ψ eE d f}
+                  → (w : ST.WFFun (kinds ctx) F) → ST.⟦ F ⟧F A <: A₁ → π′ LG.⊑π π
+                  → inferElab ctx alg ≡ success (A₁ ST.⇒[ LG.mk-kind LG.Many π′ ] A) Ψ eE d f
+                  → ∃[ eE′ ] ∃[ d′ ] ∃[ f′ ] elabGiven ctx (Raw.RApp (Raw.RGen G.cata) alg) (ST.μ F) π ≡ success A (LG.Many SCx.*ᵘ Ψ) eE′ d′ f′
+  given-cata-done alg {F} {A₁} {A} {π′} {π} w p o eq rewrite wfFun?-complete-at w | eq
+    with ST.⟦ F ⟧F A <:? A₁ | π′ ⊑π? π
+  ... | yes _ | yes _ = _ , _ , _ , refl
+  ... | no ¬p | _     = ⊥-elim (¬p p)
+  ... | yes _ | no ¬o = ⊥-elim (¬o o)
+
+
+------------------------------------------------------------------------
+-- The induction
+------------------------------------------------------------------------
 
 -- A result equation lifts to the result paired with its soundness.
 pairUp : ∀ {A : Set} {B : A → Set} {a a′ : A} (b : B a) (eq : a ≡ a′) → (a , b) ≡ (a′ , subst B eq b)
@@ -397,16 +701,17 @@ pairUp b refl = refl
 mutual
   infer-completeS : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) {e A t Ψ} {d : Syn P e A t}
                   → U⇒ P d Ψ → ∃[ eE ] ∃[ dd ] ∃[ f ] inferElab ctx e ≡ success A Ψ eE dd f
-  infer-completeS {ctx = ctx} P (u-int {i}) = infer-complete-RInt {ctx = ctx} i
+  infer-completeS P u-int = _ , _ , _ , refl
   infer-completeS P u-float = _ , _ , _ , refl
-  infer-completeS P u-toFloat = _ , _ , _ , refl
-  infer-completeS {ctx = ctx} P u-unit = infer-complete-RUnit {ctx = ctx}
-  infer-completeS {ctx = ctx} P u-unit-g = infer-complete-RVar-unit {ctx = ctx}
+  infer-completeS P u-unit = _ , _ , _ , refl
+  infer-completeS P (u-const {c = G.k-unit}) = _ , _ , _ , refl
+  infer-completeS P (u-const {c = G.k-toFloat}) = _ , _ , _ , refl
   infer-completeS {ctx = ctx} P (u-var {x = x} {v = v}) =
     at-type ctx (Raw.RVar x) (UMod.lookup-shape (Sg P) (S P) (nm P) (OkOf P) (OkSOf P) (kinds ctx) (shape-lo (lr P)) v)
             (infer-complete-RVar-local {ctx = ctx} x (finds (lr P) v))
-  infer-completeS {ctx = ctx} P (u-sigop {c = c} {ng = ng} {ok = ok} k h) =
-    at-type ctx (Raw.RResolved c) (sym (⌜declS⌝ k h)) (infer-complete-RResolved {ctx = ctx} ng (proj₂ ok) (proj₁ ok) k)
+  infer-completeS {ctx = ctx} P (u-sigop {c = c} {ok = ok} k h) =
+    at-type ctx (Raw.RResolved c) (sym (⌜declS⌝ k h)) (infer-complete-RResolved {ctx = ctx} (proj₂ ok) (proj₁ ok) k)
+
   infer-completeS {ctx = ctx} P (u-def {c = c} {e = e} {τ = τ} {ok = TView.iv-imp ns lk refl}) =
     at-type ctx (Raw.RResolved c) (sym (mono-ty (TView.ImportAt.mono (TView.View.imported (V P) lk)) τ))
             (at-name ctx (trans (sym e) (h-imp P lk)) (infer-complete-RResolved-own {ctx = ctx} ns lk))
@@ -433,27 +738,32 @@ mutual
   infer-completeS P (u-binop {op = op} {e₁ = e₁} {e₂ = e₂} {A = A} {h = h} u₁ u₂) =
     let (_ , _ , _ , eq₁) = infer-completeS P u₁ ; (_ , _ , _ , eq₂) = infer-completeS P u₂
     in infer-complete-RBinOp op A h e₁ e₂ eq₁ eq₂
-  infer-completeS P (u-id-app {e = e} u) = let (_ , _ , _ , eq) = infer-completeS P u in infer-complete-RApp-id e eq
-  infer-completeS P (u-fst-app {e = e} u) = let (_ , _ , _ , eq) = infer-completeS P u in infer-complete-RApp-fst e eq
-  infer-completeS P (u-snd-app {e = e} u) = let (_ , _ , _ , eq) = infer-completeS P u in infer-complete-RApp-snd e eq
-  infer-completeS P (u-terminal-app {e = e} u) = let (_ , _ , _ , eq) = infer-completeS P u in infer-complete-RApp-terminal e eq
-  infer-completeS P (u-apply-app {e = e} {A = A} u) = let (_ , _ , _ , eq) = infer-completeS P u in infer-complete-RApp-apply e A eq
-  infer-completeS P (u-apply-eff-app {e = e} {A = A} {g = LG.eg-eff} u) =
-    let (_ , _ , _ , eq) = infer-completeS P u in infer-complete-RApp-apply-eff e A eq
-  infer-completeS P (u-apply-eff-app {e = e} {A = A} {g = LG.eg-act} u) =
-    let (_ , _ , _ , eq) = infer-completeS P u in infer-complete-RApp-apply-act e A eq
-  infer-completeS P (u-Out-app {e = e} {w = w} u) = let (_ , _ , _ , eq) = infer-completeS P u in infer-complete-RApp-Out e w eq
-  infer-completeS P (u-Out-act-app {e = e} {w = w} u) = let (_ , _ , _ , eq) = infer-completeS P u in infer-complete-RApp-Out-act e w eq
-  infer-completeS P (u-app {f = f} {x = x} {A = A} {ns = ns} uf ux) =
-    let (_ , _ , _ , eqF) = infer-completeS P uf ; (_ , _ , _ , eqX) = check-completeS P ux
-    in infer-complete-RApp-generic f x A (ordinary ns) eqF eqX
-  infer-completeS P (u-effApp {f = f} {x = x} {A = A} {ns = ns} {g = LG.eg-eff} uf ux) =
-    let (_ , _ , _ , eqF) = infer-completeS P uf ; (_ , _ , _ , eqX) = check-completeS P ux
-    in infer-complete-RApp-eff f x A (ordinary ns) eqF eqX
-  infer-completeS P (u-effApp {f = f} {x = x} {A = A} {ns = ns} {g = LG.eg-act} uf ux) =
-    let (_ , _ , _ , eqF) = infer-completeS P uf ; (_ , _ , _ , eqX) = check-completeS P ux
-    in infer-complete-RApp-act f x A (ordinary ns) eqF eqX
-  infer-completeS P (u-app-spine {f = f} {x = x} {ns = ns} ux uf) = spine-completeS P f x (ordinary ns) ux uf
+  infer-completeS {ctx = ctx} P (u-app {f = f} {x = x} {A = A} {B = B} {q = q} {π = π} {pc = pc} {ch = ch} {df = df} {Ψ₁ = Ψ₁} uf ux) =
+    let (fE , d₁ , f₁ , eqF) = infer-completeS P uf
+        (_ , _ , _ , eqX) = check-completeS P ux
+        (eE , d , fr , r) = app-done P x {B = B} {q = q} π {Ψ₁ = Ψ₁} {fE = fE} {df = d₁} {ff = f₁} (checkElab ctx x A) eqX
+    in eE , d , fr , trans (app-route P x df pc ch (λ { refl → name-notPoly P uf })) (trans (cong (appOn ctx x) eqF) r)
+  infer-completeS P (u-app-spine {ch = ch} ux (u-infer {d = d} w)) = ⊥-elim (At.synth-noCH P d w ch)
+  infer-completeS P (u-app-spine {x = x} ux (u-map {fd = fd} {mo = mo} {least = least})) =
+    map-spine P x fd mo least (proj₂ (proj₂ (proj₂ (infer-completeS P ux))))
+  infer-completeS {ctx = ctx} P (u-app-spine {f = f} {x = x} {ch = ch} ux uf@(u-poly {e = e} {a = pos} {ok = ok})) =
+    let (eE , d , fr , r) = spine-done P f x (proj₂ (proj₂ (proj₂ (infer-completeS P ux)))) (proj₂ (proj₂ (proj₂ (given-completeS P uf))))
+    in eE , d , fr , trans (spine-route P x ch (λ { refl → FS.ok-poly P ok e pos }) (λ ())) r
+  infer-completeS {ctx = ctx} P (u-app-spine {f = f} {x = x} {ch = ch} ux uf@(u-lam _)) = spine-by P f x ch ux uf (λ ()) (λ ())
+  infer-completeS {ctx = ctx} P (u-app-spine {f = f} {x = x} {ch = ch} ux uf@(u-compose _ _)) = spine-by P f x ch ux uf (λ ()) (λ ())
+  infer-completeS {ctx = ctx} P (u-app-spine {f = f} {x = x} {ch = ch} ux uf@(u-case _ _)) = spine-by P f x ch ux uf (λ ()) (λ ())
+  infer-completeS {ctx = ctx} P (u-app-spine {f = f} {x = x} {ch = ch} ux uf@(u-pair _ _)) = spine-by P f x ch ux uf (λ ()) (λ ())
+  infer-completeS {ctx = ctx} P (u-app-spine {f = f} {x = x} {ch = ch} ux uf@(u-cata _)) = spine-by P f x ch ux uf (λ ()) (λ ())
+
+  -- the spine at a head that is neither a name nor a generator
+  spine-by : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) (f x : Raw.Expr) {X T tx tf Ψx Ψf}
+               {dx : Syn P x X tx} {df : Dom P f X LG.pure T tf}
+           → SUT.CheckHead (Sg P) (S P) (nm P) f → U⇒ P dx Ψx → U↦ P df Ψf
+           → (∀ {c} → f ≢ Raw.RResolved c) → (∀ {g} → f ≢ Raw.RGen g)
+           → ∃[ eE ] ∃[ d ] ∃[ fr ] inferElab ctx (Raw.RApp f x) ≡ success T (Ψf SCx.+ᵘ (LG.Many SCx.*ᵘ Ψx)) eE d fr
+  spine-by P f x ch ux uf nr ng =
+    let (eE , d , fr , r) = spine-done P f x (proj₂ (proj₂ (proj₂ (infer-completeS P ux)))) (proj₂ (proj₂ (proj₂ (given-completeS P uf))))
+    in eE , d , fr , trans (spine-route P x ch (λ e → ⊥-elim (nr e)) ng) r
 
   -- the strong view: the checker's whole answer, its result with its soundness
   check-completeVS : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) {e A t Ψ} {d : Chk P e A t}
@@ -468,93 +778,45 @@ mutual
 
   check-completeS : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) {e A t Ψ} {d : Chk P e A t}
                   → U⇐ P d Ψ → ∃[ eE ] ∃[ dd ] ∃[ f ] checkElab ctx e A ≡ success Ψ eE dd f
-  check-completeS P (u-sub {p = p} u) = iFromInferSubS P u p
-  check-completeS {ctx = ctx} P (u-id {T = T} {π = π}) = checkElab-fallback-RVar-id {ctx = ctx} T (pure-⊑ π)
-  check-completeS {ctx = ctx} P (u-fst {A = A} {B = B} {π = π}) = checkElab-fallback-RVar-fst {ctx = ctx} A B (pure-⊑ π)
-  check-completeS {ctx = ctx} P (u-snd {A = A} {B = B} {π = π}) = checkElab-fallback-RVar-snd {ctx = ctx} A B (pure-⊑ π)
-  check-completeS {ctx = ctx} P (u-terminal {A = A} {π = π}) = checkElab-fallback-RVar-terminal {ctx = ctx} A (pure-⊑ π)
-  check-completeS {ctx = ctx} P (u-initial {A = A} {π = π}) = checkElab-fallback-RVar-initial {ctx = ctx} A (pure-⊑ π)
-  check-completeS {ctx = ctx} P (u-inl {A = A} {B = B} {π = π}) = checkElab-fallback-RVar-inl {ctx = ctx} A B (pure-⊑ π)
-  check-completeS {ctx = ctx} P (u-inr {A = A} {B = B} {π = π}) = checkElab-fallback-RVar-inr {ctx = ctx} A B (pure-⊑ π)
-  check-completeS {ctx = ctx} P (u-compose-g {f = f} {g = g} {A = A} {B = B} {C = C} {π = π} ug uf)
-    with elabGiven ctx g A π | given-completeS P ug
-  ... | success _ _ _ _ _  | (_ , _ , _ , refl)
-      with checkElab ctx f (B ST.⇒[ LG.mk-kind LG.Many π ] C) | check-completeS P uf
-  ...   | success _ _ _ _  | (_ , _ , _ , refl) = _ , _ , _ , refl
-  check-completeS {ctx = ctx} P u@(u-compose-f {f = f} {g = g} {A = A} {B = B} {C = C} {C′ = C′} {π = π} {π′ = π′} {p = s} uf ug) =
-    let (_ , _ , _ , eqF) = infer-completeS P uf
-        (_ , _ , _ , eqG) = check-completeS P ug
-    in compose-g-completeS P f g A B C C′ π π′ u (elabGiven ctx g A π) (elabGiven-sound ctx g A π) eqF s eqG
-  check-completeS {ctx = ctx} P (u-case {f = f} {g = g} {π = LG.pure} uf ug) =
-    let (_ , _ , _ , eqf) = check-completeS P uf
-        (_ , _ , _ , eqg) = check-completeS P ug
-        (d , fr , eqGo) = caseGo-success {ctx = ctx} {f = f} {g = g} eqf eqg
-    in _ , _ , _ , eqGo
-  check-completeS {ctx = ctx} P (u-case {f = f} {g = g} {π = LG.eff} uf ug)
-    with check-completeS P uf | check-completeS P ug
-  ... | (_ , _ , _ , eqf) | (_ , _ , _ , eqg)
-        with caseGo-success {ctx = ctx} {f = f} {g = g} eqf eqg
-  ...     | (d , fr , eqGo) = _ , _ , _ , eqGo
-  check-completeS {ctx = ctx} P (u-case {f = f} {g = g} {π = LG.act} uf ug)
-    with check-completeS P uf | check-completeS P ug
-  ... | (_ , _ , _ , eqf) | (_ , _ , _ , eqg)
-        with caseGo-success {ctx = ctx} {f = f} {g = g} eqf eqg
-  ...     | (d , fr , eqGo) = _ , _ , _ , eqGo
-  check-completeS P (u-pair uf ug)
-    with check-completeS P uf | check-completeS P ug
-  ... | (_ , _ , _ , eqf) | (_ , _ , _ , eqg)
-        rewrite eqf | eqg = _ , _ , _ , refl
-  check-completeS P (u-curry {π₀ = π₀} uf)
-    with check-completeS P uf
-  ... | (_ , _ , _ , eqf) rewrite eqf =
-    withUnit-elim _ (pure-⊑ π₀) _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] res ≡ success _ eE d f) (λ _ → _ , _ , _ , refl)
-  check-completeS {ctx = ctx} P (u-cata {alg = alg} {F = F} {A = A} {π = LG.pure} {w = w} ua)
-    with wfFun?-complete-at w
-  ... | eqW
-    with check-completeS P ua
-  ... | (_ , _ , _ , eqA)
-        with checkCataGo-just-success ctx alg F A LG.pure w eqW eqA ⊑-pure
-  ...     | eqGo = _ , _ , _ , (trans (checkCataGoV-pure-J ctx alg F A (just w) eqW) eqGo)
-  check-completeS {ctx = ctx} P (u-cata {alg = alg} {F = F} {A = A} {π = LG.eff} {w = w} ua)
-    with wfFun?-complete-at w
-  ... | eqW
-    with check-completeS P ua
-  ... | (_ , _ , _ , eqA)
-        with checkCataGo-just-success ctx alg F A LG.eff w eqW eqA ⊑-pe
-  ...     | eqGo rewrite trans (checkCataGo-J ctx alg F A LG.eff (just w) eqW) eqGo = _ , _ , _ , refl
-  check-completeS {ctx = ctx} P (u-cata {alg = alg} {F = F} {A = A} {π = LG.act} {w = w} ua)
-    with wfFun?-complete-at w
-  ... | eqW
-    with check-completeS P ua
-  ... | (_ , _ , _ , eqA)
-        with checkCataGo-just-success ctx alg F A LG.act w eqW eqA ⊑-pa
-  ...     | eqGo rewrite trans (checkCataGo-J ctx alg F A LG.act (just w) eqW) eqGo = _ , _ , _ , refl
-  check-completeS {ctx = ctx} P (u-ana {c = coalg} {F = F} {A = A} {π₀ = π₀} {f = φ} {g = ua} {w = w} uc)
-    with wfFun?-complete-at w
-  ... | eqW
-    with check-completeS P uc
-  ... | (_ , _ , _ , eqA)
-        with checkAnaGo-just-success ctx coalg F A π₀ φ ua w eqW eqA (pure-⊑ π₀)
-  ...     | eqGo = _ , _ , _ , (trans (checkAnaGoV-J ctx coalg F A π₀ φ ua (just w) eqW) eqGo)
-  check-completeS {ctx = ctx} P (u-loop {c = round} {A = A} {B = B} ur)
-    with check-completeS P ur
-  ... | (_ , _ , _ , eqR) = _ , _ , _ , (trans (checkLoopV-J ctx round A B) (cong (checkLoop ctx round A B) eqR))
-  check-completeS {ctx = ctx} P (u-lam {x = x} {body = body} {A = A} {B = B} {q = q} {π = π} {q′ = q′} ≤p u) =
-    let (_ , _ , _ , eqB) = check-completeS (pack▸ x A P) u
-    in check-complete-RLam ctx x body A q q′ B ≤p (pure-⊑ π) eqB
-  check-completeS {ctx = ctx} P (u-pair-lit {a = a} {b = b} ua ub)
-    with check-completeS P ua | check-completeS P ub
-  ... | (_ , _ , _ , eqA) | (_ , _ , _ , eqB) = pair-lit-reduce {ctx = ctx} {a = a} {b = b} eqA eqB
-  check-completeS P (u-In-app {e = arg} {F = F} {w = w} u) =
-    let (_ , _ , _ , eqA) = check-completeS P u in checkElab-fallback-RApp-In arg F (wfFun?-complete-at w) eqA
-  check-completeS P (u-apply-app {e = e} {A = A} {B = B} u) =
-    let (_ , _ , _ , eq) = infer-completeS P u in checkElab-fallback-RApp-apply e A B eq (<:-refl B)
-  check-completeS P (u-inl-app {e = arg} {A = A} {B = B} u) =
-    let (_ , _ , _ , eqC) = check-completeS P u in completeness-gap-inl-app-check-eq arg A B eqC
-  check-completeS P (u-inr-app {e = arg} {A = A} {B = B} u) =
-    let (_ , _ , _ , eqC) = check-completeS P u in completeness-gap-inr-app-check-eq arg A B eqC
-  check-completeS P (u-initial-app {e = arg} {T = T} u) =
-    let (_ , _ , _ , eqC) = check-completeS P u in completeness-gap-initial-app-check-eq arg T eqC
+  check-completeS P (u-map {mo = mo}) = check-map P mo
+  check-completeS P (u-map-app {e = x} {fc = fc} {mo = mo} u) = check-map-app P x fc mo (proj₂ (proj₂ (proj₂ (check-completeS P u))))
+  check-completeS P (u-compose-g {f = f} {g = g} {df′ = dfg} ug uf) =
+    compose-g-done P f g dfg (proj₂ (proj₂ (proj₂ (given-completeS P ug)))) (proj₂ (proj₂ (proj₂ (check-completeS P uf))))
+  check-completeS P (u-compose-f {f = f} {g = g} {ndf = ndf} {p = p} {dg = dg} uf ug) =
+    compose-f-done P f g ndf dg ug (proj₂ (proj₂ (proj₂ (infer-completeS P uf)))) p (proj₂ (proj₂ (proj₂ (check-completeS P ug))))
+  check-completeS {ctx = ctx} P (u-case {f = f} {g = g} {A = A} {B = B} {C = C} {π = π} uf ug)
+    with checkElab ctx f (A ST.⇒[ LG.mk-kind LG.Many π ] C) | check-completeS P uf
+  ... | _ | (_ , _ , _ , refl) with checkElab ctx g (B ST.⇒[ LG.mk-kind LG.Many π ] C) | check-completeS P ug
+  ...   | _ | (_ , _ , _ , refl) = _ , _ , _ , refl
+  check-completeS {ctx = ctx} P (u-pair {f = f} {g = g} {A = A} {B = B} {C = C} {π = π} uf ug)
+    with checkElab ctx f (A ST.⇒[ LG.mk-kind LG.Many π ] B) | check-completeS P uf
+  ... | _ | (_ , _ , _ , refl) with checkElab ctx g (A ST.⇒[ LG.mk-kind LG.Many π ] C) | check-completeS P ug
+  ...   | _ | (_ , _ , _ , refl) = _ , _ , _ , refl
+  check-completeS {ctx = ctx} P (u-curry {f = f} {A = A} {B = B} {C = C} {π = π} uf)
+    with checkElab ctx f ((A ST.* B) ST.⇒[ LG.mk-kind LG.Many π ] C) | check-completeS P uf
+  ... | _ | (_ , _ , _ , refl) = _ , _ , _ , refl
+  check-completeS {ctx = ctx} P (u-cata {alg = alg} {F = F} {A = A} {π = π} {w = w} ua)
+    rewrite wfFun?-complete-at w
+    with checkElab ctx alg (ST.⟦ F ⟧F A ST.⇒[ LG.mk-kind LG.Many π ] A) | check-completeS P ua
+  ... | _ | (_ , _ , _ , refl) = _ , _ , _ , refl
+  check-completeS {ctx = ctx} P (u-ana {c = c} {A = A} {fi = G.final-ν {F = F} {f = φ} LG.⊑-pa w} uc)
+    rewrite wfFun?-complete-at w
+    with checkElab ctx c (A ST.⇒[ LG.mk-kind LG.Many (LG.fin φ) ] ST.⟦ F ⟧F A) | check-completeS P uc
+  ... | _ | (_ , _ , _ , refl) = _ , _ , _ , refl
+  check-completeS {ctx = ctx} P (u-ana {c = c} {A = A} {fi = G.final-ν {F = F} {f = φ} LG.⊑-act w} uc)
+    rewrite wfFun?-complete-at w
+    with checkElab ctx c (A ST.⇒[ LG.mk-kind LG.Many (LG.fin φ) ] ST.⟦ F ⟧F A) | check-completeS P uc
+  ... | _ | (_ , _ , _ , refl) = _ , _ , _ , refl
+  check-completeS {ctx = ctx} P (u-ana {c = c} {A = A} {X = B} {fi = G.final-T∞} uc) =
+    let (_ , _ , _ , eq) = check-completeS P uc in _ , _ , _ , cong (checkLoop ctx A B) eq
+  check-completeS P (u-sub {noc = noc} {d = s} {p = p} u) = sub-done P _ s noc (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) p
+  check-completeS {ctx = ctx} P (u-lam {x = x} {body = body} {A = A} {B = B} {q = q} {q′ = q′} ≤p u) =
+    check-complete-RLam ctx x body A q q′ B ≤p (proj₂ (proj₂ (proj₂ (check-completeS (pack▸ x A P) u))))
+  check-completeS {ctx = ctx} P (u-pair-lit {a = a} {b = b} {A = A} {B = B} ua ub)
+    with checkElab ctx a A | check-completeS P ua
+  ... | _ | (_ , _ , _ , refl) with checkElab ctx b B | check-completeS P ub
+  ...   | _ | (_ , _ , _ , refl) = _ , _ , _ , refl
+
   check-completeS P (u-poly {a = pos} {ok = TView.iv-imp ns lk refl}) =
     ⊥-elim (lt0 (subst (0 <_) (mono-arity (TView.ImportAt.mono (TView.View.imported (V P) lk))) pos))
   check-completeS {ctx = ctx} P (u-poly {c = c} {e = e} {a = pos} {τ = τ} {r = r} {ok = TView.iv-poly {x = x} {sc = sc} ns ni lp refl}) =
@@ -563,85 +825,29 @@ mutual
          (¬Ground-isGround-inj₂ sc (λ g → lt0 (subst (0 <_) (trans (cong arity (TView.View.entryIs (V P) lp)) (ground-arity sc g)) pos)))
          (poly-inst {Δ = kinds ctx} sc (TView.View.entryIs (V P) lp) τ r))
 
-  -- compose, the checker's order: `g`'s route first. Where it succeeds on a
-  -- derivation built on `f`'s route, the two compositions agree on their usage
-  -- (`UseAgree`).
-  compose-g-completeS : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) (f g : Raw.Expr) (A B C C′ : ST.Ty m) (π π′ : LG.Purity)
-                          {t Ψ₁ Ψ₂} {dc : Chk P (Raw.RApp (Raw.RApp (Raw.RResolved (gen "compose")) f) g) (A ST.⇒[ LG.mk-kind LG.Many π ] C) t}
-                      → U⇐ P dc (Ψ₁ SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ₂))
-                      → (rG : GivenElabResult (Once.TypeCheck.Scope.NamedCtx.debruijn ctx) A π) → givenSoundOf ctx g A π rG
-                      → ∀ {fE gE} {df ff dg fg : ℕ}
-                      → inferElab ctx f ≡ success (B ST.⇒[ LG.mk-kind LG.Many π′ ] C′) Ψ₁ fE df ff
-                      → (B ST.⇒[ LG.mk-kind LG.Many π′ ] C′) <: (B ST.⇒[ LG.mk-kind LG.Many π ] C)
-                      → checkElab ctx g (A ST.⇒[ LG.mk-kind LG.Many π ] B) ≡ success Ψ₂ gE dg fg
-                      → ∃[ eE ] ∃[ d ] ∃[ fr ] (checkCompose-g ctx f g A C π rG) ≡ success (Ψ₁ SCx.+ᵘ (LG.Many SCx.*ᵘ Ψ₂)) eE d fr
-  compose-g-completeS P f g A B C C′ π π′ u (failure _) _ eqF p eqG = compose-f-complete f g A B C C′ π π′ eqF p eqG
-  compose-g-completeS {ctx = ctx} P f g A B C C′ π π′ u (success B″ Ψg″ gE″ dg″ fg″) wG eqF p eqG
-    with E.checkElab-wf ctx (Data.Nat.Induction.<-wellFounded (Data.List.length (polys ctx))) f (B″ ST.⇒[ LG.mk-kind LG.Many π ] C)
-       | checkElab-wf-sound ctx (Data.Nat.Induction.<-wellFounded (Data.List.length (polys ctx))) f (B″ ST.⇒[ LG.mk-kind LG.Many π ] C)
-  ... | failure _ | _ = compose-f-complete f g A B C C′ π π′ eqF p eqG
-  ... | success Ψf″ fE″ df″ ff″ | wF =
-    at-usage (≅-us (UA.coh⇐ (shape-lo (lr P)) (UMod.u-compose-g (proj₂ (proj₁ (proj₂ (proj₂ wG P))))
-                                                               (proj₂ (proj₁ (proj₂ (proj₂ wF P))))) u refl))
-             (_ , _ , _ , refl)
-    where module UA = UAg (Sg P) (S P) (nm P) (OkOf P) (OkSOf P) (inline P) (ok-gen P) (ok-sig P) (ok-inj P) (λ {c} → oks-fun P {c}) (kinds ctx)
-
-  spine-completeS : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) (f x : Raw.Expr) {X B tx tf Ψf Ψx}
-                      {dx : Syn P x X tx} {df : Dom P f X LG.pure B tf}
-                  → classifyAppHead f ≡ nothing → U⇒ P dx Ψx → U↦ P df Ψf
-                  → ∃[ eE ] ∃[ d ] ∃[ f′ ] inferElab ctx (Raw.RApp f x) ≡ success B (Ψf SCx.+ᵘ (LG.Many SCx.*ᵘ Ψx)) eE d f′
-  spine-completeS {ctx = ctx} P f x eqAH ux uf@(u-lam _) =
-    infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-completeS P ux)))) (proj₂ (proj₂ (proj₂ (given-completeS P uf))))
-  spine-completeS {ctx = ctx} P f x eqAH ux uf@(u-compose _ _) =
-    infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-completeS P ux)))) (proj₂ (proj₂ (proj₂ (given-completeS P uf))))
-  spine-completeS P f x () ux u-id
-  spine-completeS P f x () ux u-fst
-  spine-completeS P f x () ux u-snd
-  spine-completeS P f x () ux u-terminal
-  spine-completeS P f x () ux u-initial
-  spine-completeS {ctx = ctx} P f x eqAH ux uf@(u-case _ _) =
-    infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-completeS P ux)))) (proj₂ (proj₂ (proj₂ (given-completeS P uf))))
-  spine-completeS {ctx = ctx} P f x eqAH ux uf@(u-pair _ _) =
-    infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-completeS P ux)))) (proj₂ (proj₂ (proj₂ (given-completeS P uf))))
-  spine-completeS {ctx = ctx} P f x eqAH ux uf@(u-cata _) =
-    infer-complete-RApp-spine f x eqAH refl (proj₂ (proj₂ (proj₂ (infer-completeS P ux)))) (proj₂ (proj₂ (proj₂ (given-completeS P uf))))
-  spine-completeS {ctx = ctx} P f x eqAH ux uf@(u-poly {e = e} {a = pos} {ok = TView.iv-imp ns lk refl}) =
-    ⊥-elim (lt0 (subst (0 <_) (mono-arity (TView.ImportAt.mono (TView.View.imported (V P) lk))) pos))
-  spine-completeS {ctx = ctx} P f x eqAH ux uf@(u-poly {e = e} {a = pos} {ok = TView.iv-poly {x = y} {sc = sc} ns ni lp refl}) =
-    infer-complete-RApp-spine f x eqAH
-      (head-fails (trans (sym e) (h-poly P lp)) ((poly-head-fails ctx y ns ni lp (open-of sc (TView.View.entryIs (V P) lp) pos))))
-      (proj₂ (proj₂ (proj₂ (infer-completeS P ux)))) (proj₂ (proj₂ (proj₂ (given-completeS P uf))))
-  spine-completeS P f x eqAH ux (u-infer {A′ = A′} {p = a} {o = ⊑-pure} w) =
-    let (_ , _ , _ , eqF) = infer-completeS P w
-        (_ , _ , _ , eqX) = iFromInferSubS P ux a
-    in infer-complete-RApp-generic f x A′ eqAH eqF eqX
-
   -- The domain-given mode is exact.
   given-completeS : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) {e A π B t Ψ} {d : Dom P e A π B t}
                   → U↦ P d Ψ → ∃[ eE ] ∃[ dd ] ∃[ f ] (elabGiven ctx e A π) ≡ success B Ψ eE dd f
-  given-completeS {ctx = ctx} P {e} {A} {π} (u-infer {p = a} {o = g} w)
-    rewrite given-infer-routeS P w A π (infer-completeS P w) =
-      given-infer-complete {ctx = ctx} {e = e} (inferElab ctx e) (proj₂ (proj₂ (proj₂ (infer-completeS P w)))) a g
+  given-completeS {ctx = ctx} P {e} {A} {π} (u-infer {d = d} {p = a} {o = g} w) =
+    let (_ , _ , _ , eq) = infer-completeS P w
+        (eE , dd , ff , r) = given-infer-complete {ctx = ctx} {e = e} (inferElab ctx e) eq a g
+    in eE , dd , ff , trans (given-route P A π d eq) r
+
   given-completeS P (u-poly {a = pos} {ok = TView.iv-imp ns lk refl}) =
     ⊥-elim (lt0 (subst (0 <_) (mono-arity (TView.ImportAt.mono (TView.View.imported (V P) lk))) pos))
   given-completeS {ctx = ctx} P (u-poly {c = c} {e = e} {a = pos} {A = A} {B = B} {π = π} {ty = ty} {oc = oc} {τ = τ} {r = r} {ea = ea} {eb = eb} {o = o}
                                         {ok = TView.iv-poly {x = x} {sc = sc} ns ni lp refl}) =
     at-nameG ctx (trans (sym e) (h-poly P lp)) (given-poly-at P x sc ns ni lp pos ty oc τ r ea eb o)
-  given-completeS {ctx = ctx} P (u-lam {x = x} {body = body} {A = A} {π = π} {q′ = q′} u)
+  given-completeS {ctx = ctx} P (u-lam {x = x} {body = body} {A = A} u)
     with inferElab (Classify.extendNamedCtx ctx x A) body | infer-completeS (pack▸ x A P) u
-  ... | success _ (_ SCx.∷ _) _ _ _  | (_ , _ , _ , refl)
-      with E.decideLeq q′ LG.Many | decideLeq-just q′ LG.Many (Once.Type.Grade.≤q-Many q′)
-  ...   | just _ | _ , refl = withUnit-elim _ (pure-⊑ π) _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
+  ... | success _ (_ SCx.∷ _) _ _ _ | (_ , _ , _ , refl) = _ , _ , _ , refl
+  given-completeS P {π = π} (u-map {fd = fd} {mo = mo} {least = least}) = given-map P π fd mo least refl
+
   given-completeS {ctx = ctx} P (u-compose {f = f} {g = g} {A = A} {M = M} {π = π} ug uf)
     with elabGiven ctx g A π | given-completeS P ug
   ... | success _ _ _ _ _  | (_ , _ , _ , refl)
       with elabGiven ctx f M π | given-completeS P uf
   ...   | success _ _ _ _ _  | (_ , _ , _ , refl) = _ , _ , _ , refl
-  given-completeS P (u-id {π = π}) = withUnit-elim _ (pure-⊑ π) _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
-  given-completeS P (u-fst {π = π}) = withUnit-elim _ (pure-⊑ π) _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
-  given-completeS P (u-snd {π = π}) = withUnit-elim _ (pure-⊑ π) _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
-  given-completeS P (u-terminal {π = π}) = withUnit-elim _ (pure-⊑ π) _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
-  given-completeS P (u-initial {π = π}) = withUnit-elim _ (pure-⊑ π) _ (λ res → ∃[ eE ] ∃[ d ] ∃[ f ] res ≡ success _ _ eE d f) (λ _ → _ , _ , _ , refl)
   given-completeS {ctx = ctx} P (u-case {f = f} {g = g} {A = A} {B = B} {π = π} {j = j} uf ug)
     with elabGiven ctx f A π | given-completeS P uf
   ... | success _ _ _ _ _  | (_ , _ , _ , refl)
@@ -653,56 +859,4 @@ mutual
   ... | success _ _ _ _ _  | (_ , _ , _ , refl)
       with elabGiven ctx g A π | given-completeS P ug
   ...   | success _ _ _ _ _  | (_ , _ , _ , refl) = _ , _ , _ , refl
-  given-completeS {ctx = ctx} P (u-cata {alg = alg} {F = F} {A = A} {π = π} {w = w} u)
-    rewrite wfFun?-complete-at w =
-      given-cata-complete {ctx = ctx} {alg = alg} w (pure-⊑ π) (inferElab ctx alg) (proj₂ (proj₂ (proj₂ (infer-completeS P u))))
-
-  -- Synthesis, then the conversion: the checker's switch.
-  iFromInferSubS : ∀ {m} {ctx : NamedCtx m} (P : Pack ctx) {e A B t Ψ} {d : Syn P e A t}
-                 → U⇒ P d Ψ → A <: B → ∃[ eE ] ∃[ dd ] ∃[ f ] checkElab ctx e B ≡ success Ψ eE dd f
-  iFromInferSubS {ctx = ctx} P (u-int {i}) sub-int = checkElab-fallback-RInt {ctx = ctx} i
-  iFromInferSubS {ctx = ctx} P (u-float {sg} {i} {f} {l}) sub-float = checkElab-fallback-RFloat {ctx = ctx} sg i f l
-  iFromInferSubS {ctx = ctx} P u@u-toFloat sb =
-    checkElab-fallback-RResolved {ctx = ctx} (gen "toFloat") _ (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS {ctx = ctx} P u-unit sub-unit = checkElab-fallback-RUnit {ctx = ctx}
-  iFromInferSubS {ctx = ctx} P u-unit-g sub-unit = checkElab-fallback-RVar-unit {ctx = ctx}
-  iFromInferSubS {ctx = ctx} P u@(u-var {x = x} {A = T}) sb =
-    checkElab-fallback-RVar {ctx = ctx} x T (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS {ctx = ctx} P u@(u-sigop {c = c} _ _) sb =
-    checkElab-fallback-RResolved {ctx = ctx} c _ (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS {ctx = ctx} P u@(u-def {c = c}) sb =
-    checkElab-fallback-RResolved {ctx = ctx} c _ (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS {ctx = ctx} P u@(u-annot {e = e} {T = T} _) sb =
-    checkElab-fallback-RAnnot {ctx = ctx} e T
-      (proj₂ (proj₂ (proj₂ (at-type ctx (Raw.RAnnot e T) (↑≡wk₀ {Sg P} {_} {S P} {nm P} T) (infer-completeS P u)))))
-      (subst (_<: _) (↑≡wk₀ {Sg P} {_} {S P} {nm P} T) sb)
-  iFromInferSubS {ctx = ctx} P (u-pair {a = a} {b = b} ua ub) (sub-* pa pb)
-    with iFromInferSubS P ua pa | iFromInferSubS P ub pb
-  ... | (_ , _ , _ , eqA) | (_ , _ , _ , eqB) = pair-lit-reduce {ctx = ctx} {a = a} {b = b} eqA eqB
-  iFromInferSubS P u@(u-neg {e = e} {A = A} _) sb = checkElab-fallback-RNeg-sub e ⌜ A ⌝ⁿ (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-let {x = x} {e₁ = e₁} {e₂ = e₂} {B = B} _ _) sb =
-    checkElab-fallback-RLet x e₁ e₂ B (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-case {e = sc} {xl = xl} {el = el} {xr = xr} {er = er} {C = C} _ _ _) sb =
-    checkElab-fallback-RDestruct sc xl el xr er C (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-binop {op = op} {e₁ = e₁} {e₂ = e₂} {A = A} _ _) sb =
-    checkElab-fallback-RBinOp op e₁ e₂ (symCod A (shape (binSym op))) (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-id-app {e = e} {T = T} _) sb = checkElab-fallback-RApp-id e T (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-fst-app {e = e} {A = A} _) sb = checkElab-fallback-RApp-fst e A (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-snd-app {e = e} {B = B} _) sb = checkElab-fallback-RApp-snd e B (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-terminal-app {e = e} _) sb = checkElab-fallback-RApp-terminal e ST.Unit (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-Out-app {e = v} {F = F} _) sb =
-    checkElab-fallback-RApp-Out v (ST.⟦ F ⟧F (ST.ν F LG.pureᶠ)) (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-Out-act-app {e = v} {F = F} _) sb =
-    checkElab-fallback-RApp-Out v (ST.Unit ST.⇒[ LG.mk-kind LG.Many LG.act ] ST.⟦ F ⟧F (ST.ν F LG.actᶠ)) (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P (u-apply-app {e = p} {A = A} {B = B} u) sb =
-    checkElab-fallback-RApp-apply p A B (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P (u-apply-eff-app {e = p} {A = A} {B = B} {g = LG.eg-eff} u) sb =
-    checkElab-fallback-RApp-apply-effclosure p A B (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P (u-apply-eff-app {e = p} {A = A} {B = B} {g = LG.eg-act} u) sb =
-    checkElab-fallback-RApp-apply-actclosure p A B (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-app {f = f} {x = x} {B = B} {ns = ns} _ _) sb =
-    checkElab-fallback-RApp-generic f x B (ordinary ns) (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-effApp {f = f} {x = x} {B = B} {π = π} {ns = ns} _ _) sb =
-    checkElab-fallback-RApp-generic f x (ST.Unit ST.⇒[ LG.mk-kind LG.Many π ] B) (ordinary ns) (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
-  iFromInferSubS P u@(u-app-spine {f = f} {x = x} {T = B} {ns = ns} _ _) sb =
-    checkElab-fallback-RApp-generic f x B (ordinary ns) (proj₂ (proj₂ (proj₂ (infer-completeS P u)))) sb
+  given-completeS P (u-cata {alg = alg} {w = w} {p = p} {o = o} u) = given-cata-done P alg w p o (proj₂ (proj₂ (proj₂ (infer-completeS P u))))

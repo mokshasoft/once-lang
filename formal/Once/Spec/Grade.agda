@@ -12,7 +12,7 @@
 --     `pure`: nothing — a value. `act`: finitely many events, then it
 --     returns (or halts). `eff`: blocks of events forever, or until it
 --     returns (D314, D317). The first two are the FINITE grades — what a
---     stream's layer is produced at (a layer never runs a loop). Sequencing
+--     stream's layer is produced at (a layer never iterates). Sequencing
 --     two computations has the grade of the larger: the chain's join `·p`.
 --
 -- One law couples them: an erased position (`0`) is never evaluated, so what

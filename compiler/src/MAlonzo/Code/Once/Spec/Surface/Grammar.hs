@@ -604,7 +604,7 @@ d_wrapLams_1540 v0 v1
       [] -> coe v1
       (:) v2 v3
         -> coe
-             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_54 (coe v2)
+             MAlonzo.Code.Once.Spec.Surface.Syntax.C_RLam_56 (coe v2)
              (coe d_wrapLams_1540 (coe v3) (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Surface.Grammar.ParsesParams
@@ -672,5 +672,5 @@ data T_Trailing_1796
 -- Once.Spec.Surface.Grammar.Parses
 d_Parses_1804 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_108 -> ()
+  MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110 -> ()
 d_Parses_1804 = erased

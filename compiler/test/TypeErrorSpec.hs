@@ -97,6 +97,19 @@ typeMismatchTests = testGroup "Type mismatches"
       -- instance of `id`'s type is `Int` (plan 0.139, `NoInstance`).
       assertRejects "Should reject function for Int type" "id: Int is not an instance of (a ω→ a)" result
 
+  -- D407 over the generator table (plan 0.151): every structure map at a type
+  -- it has no instance at names its type, checked (`c-map`) or given a domain
+  -- it cannot leave (`d-map`).
+  , testCase "a structure map checked at a non-instance names its schema" $ do
+      result <- typeCheckSource (T.unlines [ "x : Int", "x = apply" ])
+      assertRejects "apply at Int" "apply: Int is not an instance of" result
+  , testCase "`inl` checked at a non-sum names its schema" $ do
+      result <- typeCheckSource (T.unlines [ "x : Int -> Int", "x = inl" ])
+      assertRejects "inl at Int -> Int" "inl: (Int \969\8594 Int) is not an instance of" result
+  , testCase "a structure map out of a domain it has no instance at names its domain" $ do
+      result <- typeCheckSource (T.unlines [ "f : Int -> Int", "f = id . fst" ])
+      assertRejects "fst from Int" "fst: Int is not an instance of (a * b)" result
+
   , testCase "wrong argument type to function" $ do
       let source = T.unlines
             -- D368: was `main : Int; main = f "hello"`, which no longer

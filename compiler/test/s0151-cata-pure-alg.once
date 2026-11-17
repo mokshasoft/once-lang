@@ -1,0 +1,37 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.151, `d-cata`: a fold from a given domain takes an algebra whose
+-- grade is LOWER than the fold's, or whose domain is LARGER than `F A`
+-- (arrow subtyping: the algebra is coerced). Before 0.151 the domain-given
+-- `cata` demanded exactly `F A ⇒[π] A`.
+--
+--   `sumAlg` is pure; the fold runs inside `main`'s `Act` composition:
+--   3 + 4 + 5 = 12.
+--   `wide` takes `Unit + Int`; the functor `K Unit + K Void` gives `Unit + Void`,
+--   a subtype: `wide (inl unit) + 1` = 4.
+--   12 + 4 = 16.
+--
+-- Expected: exit code 16.
+
+import I.Linux.Syscalls as S
+
+nil : Mu (K Unit + K Int * Id)
+nil = In (inl unit)
+
+cons : Int -> Mu (K Unit + K Int * Id) -> Mu (K Unit + K Int * Id)
+cons x xs = In (inr (x, xs))
+
+sumAlg : Unit + Int * Int -> Int
+sumAlg = case (\_ -> 0) (\p -> fst p + snd p)
+
+wide : Unit + Int -> Int
+wide = case (\_ -> 3) (\x -> x)
+
+widened : Mu (K Unit + K Void) -> Int
+widened = (\x -> x + 1) . cata wide
+
+main : Act Unit Void
+main =
+  exit@S
+    . ((\t -> t + widened (In (inl unit))) . (cata sumAlg . (\_ -> cons 3 (cons 4 (cons 5 nil)))))

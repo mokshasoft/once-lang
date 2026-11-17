@@ -26,7 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Relation.Nullary using (¬_; Dec; yes; no)
 open import Relation.Nullary.Decidable using (_×-dec_)
 open import Once.Spec.Name using (CanonicalName; canonical)
-open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Syntax using (Expr)
 
 open import Data.Maybe using (just; nothing)
@@ -40,6 +40,7 @@ GoodRefs : Expr → Set
 GoodRefs (RVar _)              = ⊤
 GoodRefs (RQualified _ _)      = ⊤
 GoodRefs (RResolved c)         = GoodName c
+GoodRefs (RGen _)              = ⊤
 GoodRefs (RApp f a)            = GoodRefs f × GoodRefs a
 GoodRefs (RLam _ b)            = GoodRefs b
 GoodRefs (RLet _ e b)          = GoodRefs e × GoodRefs b
@@ -75,6 +76,7 @@ goodRefs? : ∀ e → Dec (GoodRefs e)
 goodRefs? (RVar _)              = yes tt
 goodRefs? (RQualified _ _)      = yes tt
 goodRefs? (RResolved c)         = goodName? c
+goodRefs? (RGen _)              = yes tt
 goodRefs? (RApp f a)            = goodRefs? f ×-dec goodRefs? a
 goodRefs? (RLam _ b)            = goodRefs? b
 goodRefs? (RLet _ e b)          = goodRefs? e ×-dec goodRefs? b

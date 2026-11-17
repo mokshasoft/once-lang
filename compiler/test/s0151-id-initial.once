@@ -1,0 +1,23 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.151: `id` is fixed by either side (`kind id = map both`), so a
+-- checked `id e` checks `e` (`c-map-app`): `id (inl 5)` as `pick`'s argument,
+-- against `Int + Unit`, where `inl 5` only checks. And `initial e` synthesizes `Void`, its least
+-- codomain (`s-app-spine`), so it needs no annotation under a `let`.
+--
+--   pick (id (inl 5)) = 5;  orZero (inl 2) = 2;  5 + 2 = 7
+--
+-- Expected: exit code 7.
+
+import I.Linux.Syscalls as S
+
+pick : Int + Unit -> Int
+pick = case (\x -> x) (\_ -> 0)
+
+-- The `Right` branch's least codomain is `Void`; the join `Int ⊔ Void` is `Int`.
+orZero : Int + Void -> Int
+orZero = case (\x -> x) (\v -> let y = initial v in y)
+
+main : Act Unit Void
+main = exit@S (pick (id (inl 5)) + orZero (inl 2))

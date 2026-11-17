@@ -450,7 +450,14 @@ elaborate {Γ = Γ} m (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} f x) =
 --   curry (…)          : IR Γ (Unit ⇛ B)          -- Plan 0.52 M2: ungraded
 -- Built from the existing IR constructors alone. (`arr` retired: pure and
 -- eff arrows are the same ungraded `⇛` object, so no tag needed.)
-elaborate {Γ = Γ} m (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
+-- Cased on the arrow's quantity, as `app` is: at `Zero` the argument is erased.
+elaborate {Γ = Γ} m (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} f x) =
+  subst (λ Φ → IR ⌊ ⟦ Γ ↾ Φ ⟧ᶜ ⌋ _) (sym (erase-arg-usage Ψ₁ Ψ₂))
+        (curry ((apply ∘ ⟨ elaborate m f , terminal ⟩) ∘ fst))
+elaborate {Γ = Γ} m (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} f x) =
+  curry ((apply ∘ ⟨ elaborate m f ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂))
+                  , elaborate m x ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) ⟩) ∘ fst)
+elaborate {Γ = Γ} m (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} f x) =
   curry ((apply ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ (Many *ᵘ Ψ₂)
                   , elaborate m x ∘ envʳω {Γ = Γ} m Ψ₁ Ψ₂ ⟩) ∘ fst)
 

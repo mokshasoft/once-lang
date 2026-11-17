@@ -59,7 +59,7 @@ du_ppB'45'go_18 v0 v1
                              (coe
                                 MAlonzo.Code.Once.Parser.Generic.Sound.du_sound'45'type_392
                                 (coe MAlonzo.Code.Once.Parser.Generic.PolyInst.d_PolyAlg_118)
-                                (coe v0) (coe v3) (coe v4)))))
+                                (coe v0)))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError

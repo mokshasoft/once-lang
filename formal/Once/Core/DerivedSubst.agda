@@ -80,39 +80,39 @@ module _ {n} {Γ : Ctx m n} where
   dc-initial : ∀ {A π} (u : pure ⊑π π) → ty (DT.⊢initialᶜ {Γ = Γ} {A = A} u) ≅ DT.⊢initialᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} {A = A ⟨ σ ⟩} u
   dc-initial u = H.refl
 
-  dc-apply : ∀ {A B} → ty (DT.⊢applyᶜ {Γ = Γ} {A = A} {B = B}) ≅ DT.⊢applyᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} {A = A ⟨ σ ⟩} {B = B ⟨ σ ⟩}
-  dc-apply {A} {B} =
+  dc-apply : ∀ {A B ρ} (u : pure ⊑π ρ) → ty (DT.⊢applyᶜ {Γ = Γ} {A = A} {B = B} u) ≅ DT.⊢applyᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} {A = A ⟨ σ ⟩} {B = B ⟨ σ ⟩} u
+  dc-apply {A} {B} {ρ} u =
     H.trans (tyU (DT.z+qz {m = m} {Δ = Δ} Many) _)
-            (H.sym (subst-≅ (λ U → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ U ] applyᶜ (A ⟨ σ ⟩) (B ⟨ σ ⟩) ∷ _ ! pure) (DT.z+qz {m = k} {Δ = Δ′} Many) _))
+            (H.sym (subst-≅ (λ U → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ U ] applyᶜ (A ⟨ σ ⟩) (B ⟨ σ ⟩) ρ ∷ _ ! pure) (DT.z+qz {m = k} {Δ = Δ′} Many) _))
 
-  dc-applyEff : ∀ {π A B} → ty (DT.⊢applyEffᶜ {Γ = Γ} {π = π} {A = A} {B = B}) ≅ DT.⊢applyEffᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} {π = π} {A = A ⟨ σ ⟩} {B = B ⟨ σ ⟩}
-  dc-applyEff {π} {A} {B} =
+  dc-applyEff : ∀ {π A B ρ} (u : pure ⊑π ρ) → ty (DT.⊢applyEffᶜ {Γ = Γ} {π = π} {A = A} {B = B} u) ≅ DT.⊢applyEffᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} {π = π} {A = A ⟨ σ ⟩} {B = B ⟨ σ ⟩} u
+  dc-applyEff {π} {A} {B} {ρ} u =
     H.trans (tyU (DT.z+qz {m = m} {Δ = Δ} Many) _)
-            (H.sym (subst-≅ (λ U → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ U ] applyEffᶜ π (A ⟨ σ ⟩) (B ⟨ σ ⟩) ∷ _ ! pure) (DT.z+qz {m = k} {Δ = Δ′} Many) _))
+            (H.sym (subst-≅ (λ U → Δ′ ⊩ Γ ⟨ σ ⟩ᶜ ⊢[ U ] applyEffᶜ π (A ⟨ σ ⟩) (B ⟨ σ ⟩) ρ ∷ _ ! pure) (DT.z+qz {m = k} {Δ = Δ′} Many) _))
 
   -- A functor's layer: the binder's type is the substituted layer.
-  dc-in : ∀ {F} (wf : WFFun Δ F) → ty (DT.⊢inᶜ {Γ = Γ} wf) ≅ DT.⊢inᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} (W wf)
-  dc-in {F} wf = go (TS.⟦⟧F-⟨⟩ σ F (μ F))
+  dc-in : ∀ {F π} (u : pure ⊑π π) (wf : WFFun Δ F) → ty (DT.⊢inᶜ {Γ = Γ} u wf) ≅ DT.⊢inᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} u (W wf)
+  dc-in {F} u wf = go (TS.⟦⟧F-⟨⟩ σ F (μ F))
     where
       go : ∀ {X} (e : X ≡ ⟦ F ⟨ σ ⟩F ⟧F (μ (F ⟨ σ ⟩F)))
-         → ⊢lam {Γ = Γ ⟨ σ ⟩ᶜ} {A = X} _ (⊢roll (W wf) (TS.retypeᵗ σ rσ e (⊢var zero)))
-           ≅ DT.⊢inᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} (W wf)
+         → ⊢lam {Γ = Γ ⟨ σ ⟩ᶜ} {A = X} _ (⊢sub-eff u (⊢roll (W wf) (TS.retypeᵗ σ rσ e (⊢var zero))))
+           ≅ DT.⊢inᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} u (W wf)
       go refl = H.refl
 
-  dc-out : ∀ {F} (wf : WFFun Δ F) → ty (DT.⊢outᶜ {Γ = Γ} wf) ≅ DT.⊢outᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} (W wf)
-  dc-out {F} wf = go (sym (TS.⟦⟧F-⟨⟩ σ F (ν F pureᶠ)))
+  dc-out : ∀ {F π} (u : pure ⊑π π) (wf : WFFun Δ F) → ty (DT.⊢outᶜ {Γ = Γ} u wf) ≅ DT.⊢outᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} u (W wf)
+  dc-out {F} u wf = go (sym (TS.⟦⟧F-⟨⟩ σ F (ν F pureᶠ)))
     where
       go : ∀ {Y} (e : ⟦ F ⟨ σ ⟩F ⟧F (ν (F ⟨ σ ⟩F) pureᶠ) ≡ Y)
-         → ⊢lam {Γ = Γ ⟨ σ ⟩ᶜ} _ (TS.retypeᵗ σ rσ e (⊢out (W wf) (⊢var zero)))
-           ≅ DT.⊢outᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} (W wf)
+         → ⊢lam {Γ = Γ ⟨ σ ⟩ᶜ} _ (⊢sub-eff u (TS.retypeᵗ σ rσ e (⊢out (W wf) (⊢var zero))))
+           ≅ DT.⊢outᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} u (W wf)
       go refl = H.refl
 
-  dc-outAct : ∀ {F} (wf : WFFun Δ F) → ty (DT.⊢outActᶜ {Γ = Γ} wf) ≅ DT.⊢outActᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} (W wf)
-  dc-outAct {F} wf = go (sym (TS.⟦⟧F-⟨⟩ σ F (ν F actᶠ)))
+  dc-outAct : ∀ {F π} (u : pure ⊑π π) (wf : WFFun Δ F) → ty (DT.⊢outActᶜ {Γ = Γ} u wf) ≅ DT.⊢outActᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} u (W wf)
+  dc-outAct {F} u wf = go (sym (TS.⟦⟧F-⟨⟩ σ F (ν F actᶠ)))
     where
       go : ∀ {Y} (e : ⟦ F ⟨ σ ⟩F ⟧F (ν (F ⟨ σ ⟩F) actᶠ) ≡ Y)
-         → ⊢lam {Γ = Γ ⟨ σ ⟩ᶜ} _ (⊢lam _ (TS.retypeᵗ σ rσ e (⊢out (W wf) (⊢var (suc zero)))))
-           ≅ DT.⊢outActᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} (W wf)
+         → ⊢lam {Γ = Γ ⟨ σ ⟩ᶜ} _ (⊢sub-eff u (⊢lam _ (TS.retypeᵗ σ rσ e (⊢out (W wf) (⊢var (suc zero))))))
+           ≅ DT.⊢outActᶜ {Δ = Δ′} {Γ = Γ ⟨ σ ⟩ᶜ} u (W wf)
       go refl = H.refl
 
   -- The combinators with arms: the arms are weakened (`ty-wk`), the rest is
@@ -145,13 +145,17 @@ module _ {n} {Γ : Ctx m n} where
            → ty (DT.⊢curryᶜ u₀ df) ≅ DT.⊢curryᶜ {Δ = Δ′} u₀ (ty df)
   dc-curry {Ψ = Ψ} u₀ df = H.trans (tyU (DT.curry-use {m = m} {Δ = Δ} Ψ) _) (H.sym (substU-≅ (DT.curry-use {m = k} {Δ = Δ′} Ψ) _))
 
-  dc-loop : ∀ {Ψ A B c} (dc : Δ ⊩ Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many act ] (B + A) ! pure)
-          → ty (DT.⊢loopᶜ dc) ≅ DT.⊢loopᶜ {Δ = Δ′} (ty dc)
-  dc-loop {Ψ = Ψ} dc = H.trans (tyU (DT.loop-use {m = m} {Δ = Δ} Ψ) _) (H.sym (substU-≅ (DT.loop-use {m = k} {Δ = Δ′} Ψ) _))
+  dc-anaEff : ∀ {Ψ A B c} (dc : Δ ⊩ Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many act ] (B + A) ! pure)
+          → ty (DT.⊢anaEffᶜ dc) ≅ DT.⊢anaEffᶜ {Δ = Δ′} (ty dc)
+  dc-anaEff {Ψ = Ψ} dc = H.trans (tyU (DT.anaEff-use {m = m} {Δ = Δ} Ψ) _) (H.sym (substU-≅ (DT.anaEff-use {m = k} {Δ = Δ′} Ψ) _))
 
-  dc-effApp : ∀ {Ψ₁ Ψ₂ π A B f x} (df : Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] B ! pure) (dx : Δ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! pure)
+  dc-effApp : ∀ {Ψ₁ Ψ₂ q π A B f x} (df : Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind q π ] B ! pure) (dx : Δ ⊩ Γ ⊢[ Ψ₂ ] x ∷ A ! pure)
             → ty (DT.⊢effAppᶜ df dx) ≅ DT.⊢effAppᶜ {Δ = Δ′} (ty df) (ty dx)
-  dc-effApp {f = f} {x = x} df dx =
+  dc-effApp {q = Zero} {f = f} {x = x} df dx =
+    c-lam (cong₂ app (⟪⟫-wk σ f) (⟪⟫-wk σ x)) (c-app (⟪⟫-wk σ f) (⟪⟫-wk σ x) (ty-wk df) (ty-wk dx))
+  dc-effApp {q = One} {f = f} {x = x} df dx =
+    c-lam (cong₂ app (⟪⟫-wk σ f) (⟪⟫-wk σ x)) (c-app (⟪⟫-wk σ f) (⟪⟫-wk σ x) (ty-wk df) (ty-wk dx))
+  dc-effApp {q = Many} {f = f} {x = x} df dx =
     c-lam (cong₂ app (⟪⟫-wk σ f) (⟪⟫-wk σ x)) (c-app (⟪⟫-wk σ f) (⟪⟫-wk σ x) (ty-wk df) (ty-wk dx))
 
   -- The fold: the algebra is at the substituted layer type; an algebra `X`

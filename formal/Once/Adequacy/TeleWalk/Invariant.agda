@@ -77,7 +77,7 @@ open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
 open import Once.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; ctxOfAt; MonoWit)
 open import Once.Adequacy.ModuleProgram Σ using (Names; monoDef; monoBody; packOf; packOfAt; polyDef; PolyWit)
-open import Once.TypeCheck.SpecWitness using (Pack; OkOf; OkSOf; ok-gen; ok-sig; ok-inj; oks-fun)
+open import Once.TypeCheck.SpecWitness using (Pack; OkOf; OkSOf; ok-sig; ok-inj; oks-fun)
 import Once.Adequacy.ScopeRefs as SR
 import Once.Type.Core
 import Once.Adequacy.MeaningBridgeS
@@ -318,7 +318,7 @@ head-at {S = S} {tl} {sc} {body} {D} τ r r′ =
 -- (`MeaningBridgeS`), at the scope's references (`ScopeRefs`).
 module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.CScope.csig csc)} {is : ImpSig S (C.CScope.cimps csc)}
                 {ts : TeleSig S (C.telePolys (C.CScope.ctele csc))} {pre : List IRFun}
-                (N : Names S is ts) {fi : Parser.FunInfo} {ty : Type}
+                (N : Names S (C.CScope.csig csc) is ts) {fi : Parser.FunInfo} {ty : Type}
                 (W : MonoWit (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty SCx.[])
                 {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋}
                 (cf : C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
@@ -426,7 +426,7 @@ module MonoStep {s} {S : Defs s} {csc : C.CScope} {tl : Tele S} {ss : SigSig (C.
 
 -- D324: `main` joins the telescope and the table, not the definitions' scope.
 inv-mono-at : ∀ (b : Bool) {s} {S : Defs s} {csc tl ss is ts pre} {fi : Parser.FunInfo} {ty : Type}
-             {Ψ : Ctx.Usage 0} (N : Names S is ts) (W : MonoWit (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
+             {Ψ : Ctx.Usage 0} (N : Names S (C.CScope.csig csc) is ts) (W : MonoWit (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
              {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋}
          → C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
              (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun
@@ -437,7 +437,7 @@ inv-mono-at : ∀ (b : Bool) {s} {S : Defs s} {csc tl ss is ts pre} {fi : Parser
                (irFunOf (C.mkCompiledFun (bare (funName fi)) ty irFun) ∷ pre)
 
 inv-mono : ∀ {s} {S : Defs s} {csc tl ss is ts pre} {fi : Parser.FunInfo} {ty : Type}
-             {Ψ : Ctx.Usage 0} (N : Names S is ts) (W : MonoWit (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
+             {Ψ : Ctx.Usage 0} (N : Names S (C.CScope.csig csc) is ts) (W : MonoWit (funType fi) (ctxOf (AS.scopeOf csc)) (funBody fi) ty Ψ)
              {irFun : IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ ty ⌋}
          → C.compileFunM (funType fi) IR.Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
              (funName fi) ty (funBody fi) ≡ Data.Sum.inj₂ irFun
@@ -518,7 +518,7 @@ inv-mono-at false {S = S} {csc} {tl} {ss} {is} {ts} {pre} {fi} {ty} {SCx.[]} N W
 -- (`MeaningBridgeS`), and that realization means what the instance's does
 -- (`CoherenceS`), whose term the checker built.
 inv-poly : ∀ {s} {S : Defs s} {csc tl ss is ts pre} {pfi : Parser.PolyFunInfo} {Ψ : Ctx.Usage 0}
-             (N : Names S is ts)
+             (N : Names S (C.CScope.csig csc) is ts)
              (W : PolyWit (AS.scopeOf csc) pfi Ψ)
          → Inv {S = S} csc tl ss is ts pre → All (pfunName pfi ≢_) (scopeNames csc)
          → Inv (C.addEntry csc pfi)
@@ -577,7 +577,7 @@ inv-poly {S = S} {csc} {tl} {ss} {is} {ts} {pre} {pfi} {SCx.[]} N W inv fr = rec
 
         module MBS = Once.Adequacy.MeaningBridgeS fmt Σ S (Names.nm N) (OkOf P) (OkSOf P) (Names.inline N) σ₀ σo (σW-self tbl (C.cpolys csc) I uf) ∅ₖ
         module COH = Once.Adequacy.CoherenceS fmt Σ S (Names.nm N) (OkOf P) (OkSOf P) (Names.inline N)
-                       (ok-gen P) (ok-sig P) (ok-inj P) (λ {c} → oks-fun P {c}) ∅ₖ
+                       (ok-sig P) (ok-inj P) (λ {c} → oks-fun P {c}) ∅ₖ
         module RS = Once.Denotation.RealizeS Σ S (Names.nm N) (OkOf P) (OkSOf P) (Names.inline N) ∅ₖ
         module UM = Once.TypeCheck.Use Σ S (Names.nm N) (OkOf P) (OkSOf P) ∅ₖ
 

@@ -276,6 +276,21 @@ app-rel₁ {X = X} {A = A} {B = B} {π = π} ef ex dγ hf hx =
                          (liftFn-apply₁ {_} {A} {B} {π}))))
      (RelS-assocˡ hf λ rf → RelS-assocˡ hx λ rx → retargetˡ refl (rf rx))
 
+-- An application at an erased argument: the function applied to `tt`.
+app-rel₀ : ∀ {m} {X : Ty m} {A B : Ty m} {π} (ef : IR ⌊ X ⌋ ⌊ A ⇒[ mk-kind Zero π ] B ⌋) (dγ : ⟦ X ⟧ᴰ)
+             {sf : T∞ ⟦ A ⇒[ mk-kind Zero π ] B ⟧ᴰ}
+         → RelS (RelD (A ⇒[ mk-kind Zero π ] B)) (liftFn fmt ρ {X} {A ⇒[ mk-kind Zero π ] B} ef dγ) sf
+         → RelS (RelD B) (liftFn fmt ρ {X} {B} (apply ∘ ⟨ ef , terminal ⟩) dγ) (sf >>=∞ λ vf → vf tt)
+app-rel₀ {X = X} {A = A} {B = B} {π = π} ef dγ hf =
+  ≡ˡ (trans (cong-app (liftFn-∘ {_} {(A ⇒[ mk-kind Zero π ] B) * Unit} {B} {X} apply ⟨ ef , terminal ⟩) dγ)
+            (trans (cong (_>>=∞ liftFn fmt ρ {(A ⇒[ mk-kind Zero π ] B) * Unit} {B} apply)
+                         (cong-app (liftFn-pair {_} {X} {A ⇒[ mk-kind Zero π ] B} {Unit} ef terminal) dγ))
+                   (cong₂ (λ t h → (liftFn fmt ρ {X} {A ⇒[ mk-kind Zero π ] B} ef dγ >>=∞ λ u →
+                                     t >>=∞ λ w → return∞ (u , w)) >>=∞ h)
+                          (cong-app (liftFn-terminal {_} {X}) dγ)
+                          (liftFn-apply₀ {_} {A} {B} {π}))))
+     (RelS-assocˡ hf (λ rf → retargetˡ refl rf))
+
 -- One operand, then a SigOp.
 unop-rel : ∀ {X : Type} {A C : Type} (si : SigOpInfo A C) (ea : IR ⌊ X ⌋ ⌊ A ⌋) (dγ : ⟦ X ⟧ᴰ) {sa : T∞ ⟦ A ⟧ᴰ}
          → RelS (RelD A) (liftFn fmt ρ {X} {A} ea dγ) sa
@@ -387,7 +402,33 @@ mutual
       leF = ⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)
       leX = ⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))
   -- effApp: a SUSPENDED closure whose body is the application.
-  faithful (effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {π = π} f x) {dγ} r =
+  faithful (effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {q = Zero} {π = π} f x) {dγ} r =
+    ≡ˡ (liftFn-substΦ {Γ = Γ} {Φ = Ψ₁ +ᵘ (Zero *ᵘ Ψ₂)} {Φ' = Ψ₁} {B = Unit ⇒[ mk-kind Many π ] B} (erase-arg-usage Ψ₁ Ψ₂)
+                      (curry (inner ∘ fst)) dγ)
+       (≡ˡ (cong-app (liftFn-curry {_} {Δ₀} {Unit} {B} {π} (inner ∘ fst)) E)
+           (relS-ret λ {u} _ →
+              retargetˡ (force-∘ {_} {Δ₀} {B} {Δ₀ * Unit} {inner} {fst} (now-fst {_} {Δ₀} {Unit} (E , u)))
+                (app-rel₀ {_} {Δ₀} {A} {B} {π} (elaborate IR.Heap f) E
+                          (faithful f (substΦ-rel {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂)) (erase-arg-usage Ψ₁ Ψ₂) r)))))
+    where
+      Δ₀ = ⟦ Γ ↾ Ψ₁ ⟧ᶜ
+      E = subst (λ Φ → ⟦ ⟦ Γ ↾ Φ ⟧ᶜ ⟧ᴰ) (erase-arg-usage Ψ₁ Ψ₂) dγ
+      inner = apply ∘ ⟨ elaborate IR.Heap f , terminal ⟩
+  faithful (effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {q = One} {π = π} f x) {dγ} r =
+    ≡ˡ (cong-app (liftFn-curry {_} {Δ} {Unit} {B} {π} (inner ∘ fst)) dγ)
+       (relS-ret λ {u} _ →
+          retargetˡ (force-∘ {_} {Δ} {B} {Δ * Unit} {inner} {fst} (now-fst {_} {Δ} {Unit} (dγ , u)))
+            (app-rel₁ {_} {Δ} {A} {B} {π}
+                      (elaborate IR.Heap f ∘ restrictEnv {Γ = Γ} IR.Heap leF)
+                      (elaborate IR.Heap x ∘ restrictEnv {Γ = Γ} IR.Heap leX) dγ
+                      (ih∘ leF f r) (ih∘ leX x r)))
+    where
+      Δ = ⟦ Γ ↾ (Ψ₁ +ᵘ (One *ᵘ Ψ₂)) ⟧ᶜ
+      leF = ⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)
+      leX = ⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))
+      inner = apply ∘ ⟨ elaborate IR.Heap f ∘ restrictEnv {Γ = Γ} IR.Heap leF
+                      , elaborate IR.Heap x ∘ restrictEnv {Γ = Γ} IR.Heap leX ⟩
+  faithful (effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {q = Many} {π = π} f x) {dγ} r =
     ≡ˡ (cong-app (liftFn-curry {_} {Δ} {Unit} {B} {π} (inner ∘ fst)) dγ)
        (relS-ret λ {u} _ →
           retargetˡ (force-∘ {_} {Δ} {B} {Δ * Unit} {inner} {fst} (now-fst {_} {Δ} {Unit} (dγ , u)))

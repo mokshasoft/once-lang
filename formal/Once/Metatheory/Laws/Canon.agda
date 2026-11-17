@@ -61,7 +61,7 @@ module _ {m : ℕ} {Δ : KCtx m} {n} {Γ : Ctx m n} where
   inrD : (A B : Ty m) (π : Purity) → Δ ⊩ Γ ⊢[ zeroUsage ] inrᶜ A B π ∷ B ⇒[ mk-kind Many π ] (A + B) ! pure
   inrD A B π = ⊢lam 1≤ω (⊢sub-eff (pure⊑ π) (⊢inr (⊢var zero)))
 
-  applyD : (A B : Ty m) → Δ ⊩ Γ ⊢[ _ ] applyᶜ A B ∷ ((A ⇒[ mk-kind Many pure ] B) * A) ⇒[ mk-kind Many pure ] B ! pure
+  applyD : (A B : Ty m) → Δ ⊩ Γ ⊢[ _ ] applyᶜ A B pure ∷ ((A ⇒[ mk-kind Many pure ] B) * A) ⇒[ mk-kind Many pure ] B ! pure
   applyD A B = ⊢lam ω≤ω (⊢app {q = Many} (⊢fst (⊢var zero)) (⊢snd (⊢var zero)))
 
   composeD : ∀ {Ψf Ψg πf πg A B C π f g}

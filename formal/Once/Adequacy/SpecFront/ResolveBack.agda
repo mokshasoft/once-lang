@@ -29,7 +29,7 @@ open import Data.String using (String)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂)
 
-open import Once.Spec.Name using (CanonicalName; canonical; gen)
+open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
 import Once.Parser.Relation.Resolution as LR
@@ -47,7 +47,7 @@ open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; colle
 open import Once.Adequacy.ResolveBridge using (lookupMod-complete)
 open import Once.Adequacy.SpecGrammar.Written using (Written)
 open import Once.Adequacy.SpecFront.Expr
-  using (RX; x-local; x-res; x-app; x-lam; x-let; x-pair; x-destruct; x-unit; x-int; x-float; x-annot; x-binop; x-neg)
+  using (RX; x-local; x-res; x-gen; x-app; x-lam; x-let; x-pair; x-destruct; x-unit; x-int; x-float; x-annot; x-binop; x-neg)
 open import Once.Adequacy.SpecFront.Resolve using (names-eq; map-path)
 
 ------------------------------------------------------------------------
@@ -74,9 +74,6 @@ private
   good-long []           x n = ⊥-elim (n refl)
   good-long (_ ∷ [])     x n ()
   good-long (_ ∷ _ ∷ _)  x n ()
-
-  good-gen : ∀ x → GoodName (gen x)
-  good-gen x ()
 
   good-path : ∀ a x → GoodName (canonical (a ∷ x ∷ []))
   good-path a x ()
@@ -109,7 +106,7 @@ res-expr← : ∀ {um am bound eU eS} → PathsNE um → PathsNE am
           → Resolves (env um am) bound eU eS → Written eU
           → Σ[ eC ∈ Expr ] ResolvesExpr um am bound eU eC × RX bound eC eS × GoodRefs eC
 res-expr← nu na (r-local m) w = _ , re-var (rv-binder m) , x-local m , tt
-res-expr← nu na (r-name nb (rn-gen gw)) w = _ , re-var (rv-gen nb gw) , x-good (good-gen _) , good-gen _
+res-expr← nu na (r-name nb (rn-gen g gw)) w = _ , re-var (rv-gen g nb gw) , x-gen , tt
 res-expr← nu na (r-name nb (rn-import {x = x} {p} {p′} ngw fa ex)) w =
   let g = good-long p′ x (ex-ne ex (at-ne nu fa))
   in _ , re-var (rv-import nb ngw fa ex) , x-good g , g

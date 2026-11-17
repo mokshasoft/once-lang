@@ -15,7 +15,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Data.Bool using (Bool; true; false)
 open import Once.Spec.Surface.Syntax
-  using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat;
+  using (Expr; RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat;
          RAnnot; RBinOp; RNeg)
 
 ------------------------------------------------------------------------
@@ -31,6 +31,7 @@ data ClosedLiftShape : Expr → Set where
   cls-var    : ∀ {x}         → ClosedLiftShape (RVar x)
   cls-qual   : ∀ {n a}       → ClosedLiftShape (RQualified n a)
   cls-res    : ∀ {cn}        → ClosedLiftShape (RResolved cn)
+  cls-gen    : ∀ {g}         → ClosedLiftShape (RGen g)
   cls-let    : ∀ {x e₁ e₂}   → ClosedLiftShape (RLet x e₁ e₂)
   cls-destr  : ∀ {s x eL y eR} → ClosedLiftShape (RDestruct s x eL y eR)
   cls-unit   :                 ClosedLiftShape RUnit
@@ -44,6 +45,7 @@ closedLiftShape? : ∀ (e : Expr) → Maybe (ClosedLiftShape e)
 closedLiftShape? (RVar _)              = just cls-var
 closedLiftShape? (RQualified _ _)      = just cls-qual
 closedLiftShape? (RResolved _)         = just cls-res
+closedLiftShape? (RGen _)              = just cls-gen
 closedLiftShape? (RLet _ _ _)          = just cls-let
 closedLiftShape? (RDestruct _ _ _ _ _) = just cls-destr
 closedLiftShape? RUnit                 = just cls-unit
@@ -63,6 +65,7 @@ closedLiftShape?-just : ∀ {e : Expr} (c : ClosedLiftShape e)
 closedLiftShape?-just cls-var   = refl
 closedLiftShape?-just cls-qual  = refl
 closedLiftShape?-just cls-res   = refl
+closedLiftShape?-just cls-gen   = refl
 closedLiftShape?-just cls-let   = refl
 closedLiftShape?-just cls-destr = refl
 closedLiftShape?-just cls-unit  = refl

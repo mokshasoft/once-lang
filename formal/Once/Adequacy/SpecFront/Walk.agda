@@ -30,7 +30,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
 open import Once.Name using (showCanonical; WordName)
-open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
+open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 import Once.Type.Concrete as LW
 import Once.Spec.Type as ST
@@ -40,7 +40,7 @@ open import Once.TypeCheck.Scope using (Imports; lookupImport)
 module Once.Adequacy.SpecFront.Walk
   (Σ : Signature) (ps : List String) (sg : Imports)
   -- the program's signature is the scope's FFI table (`Back`'s `h-sig`)…
-  (h-sig : ∀ {m} {c t} → NotGenerator c → (c ∶ t) ∈ Σ
+  (h-sig : ∀ {m} {c t} → (c ∶ t) ∈ Σ
          → Σ[ T ∈ ST.Type ] (lookupImport sg (showCanonical c) ≡ just T) × LW.IsConcrete T × (wk₀ {m} T ≡ ⌜ t ⌝ᵈ))
   -- …and no polymorphic definition's name is a declaration's
   (h-own-sig : ∀ {x t} → x ∈ ps → ¬ ((canonical (x ∷ []) ∶ t) ∈ Σ))
@@ -77,7 +77,8 @@ open import Once.Type.Schema using (schemaOf)
 open import Once.Type.Instance using (kindsOf; rigidOf)
 open import Once.Core.Translate Σ
   using (SigSig; ImpSig; TeleSig; i-def; t-def; wkI; wkT; impDefs; monoSchema; viewOf; telFind; u0)
-open import Once.Adequacy.ModuleProgram Σ using (Names; names-mono; names-poly; monoDef; polyDef; polyBody; polyCheck; monoBody; monoCheck; monoSynth)
+import Once.Adequacy.ModuleProgram Σ as MP
+open import Once.Adequacy.ModuleProgram Σ using (Names; names-monoF; names-polyF; fresh-mono; fresh-poly; monoDef; polyDef; polyBody; polyCheck; monoBody; monoCheck; monoSynth)
 open import Once.Adequacy.SpecFront.Expr using (RX; rx-≡)
 import Once.Adequacy.SpecFront.ScopeNames as SN
 open import Once.Adequacy.SpecFront.WalkState Σ ps
@@ -155,20 +156,20 @@ private
   head-poly (h ∷ _) = h
 
 walk : ∀ {s} {S : SC.Defs s} {imps tele es ds}
-         (tl : SP.Tele S) (ss : SigSig sg) (is : ImpSig S imps) (ts : TeleSig S tele) (N : Names S is ts)
+         (tl : SP.Tele S) (ss : SigSig sg) (is : ImpSig S imps) (ts : TeleSig S tele) (N : Names S sg is ts) (F : MP.Fresh N es)
        → (mt : ModTele (scope sg imps tele) es) → Align ds es → (w : WInv S (scope sg imps tele) is ts (Names.nm N))
        → (o : EntriesOK (scope sg imps tele) es)
-       → let e = endOf tl ss is ts N mt (kinds o)
+       → let e = endOf tl ss is ts N F mt (kinds o)
          in Walk Σ S (Names.nm N) tl ds (End.S e) (End.nm e) (End.tl e)
-walk tl ss is ts N mt (al-skip nd al) w o = w-skip nd (walk tl ss is ts N mt al w o)
-walk tl ss is ts N [] al-nil w o = w-end
+walk tl ss is ts N F mt (al-skip nd al) w o = w-skip nd (walk tl ss is ts N F mt al w o)
+walk tl ss is ts N F [] al-nil w o = w-end
 {-# CATCHALL #-}
-walk tl ss is ts N (ffi ep _ _ _ _) _ w o = ⊥-elim (no-ffi ep (kinds o))
+walk tl ss is ts N F (ffi ep _ _ _ _) _ w o = ⊥-elim (no-ffi ep (kinds o))
 -- a telescope definition
-walk {S = S} {imps} {tele} tl ss is ts N (poly {pfi = pfi@(Parser.mkPolyFunInfo x T e)} {Ψ = Ψ} pr W rest) (al-poly so _ rx al) w o =
+walk {S = S} {imps} {tele} tl ss is ts N F (poly {pfi = pfi@(Parser.mkPolyFunInfo x T e)} {Ψ = Ψ} pr W rest) (al-poly so _ rx al) w o =
   w-sig so b (principal ss is ts N w κ pr rx)
     (walk (polyDef {S = S} {sc = scope sg imps tele} {pfi = pfi} {Ψ = Ψ} tl ss is ts N W) ss (wkI is) (t-def zero refl (wkT ts))
-          (names-poly pfi N) rest al (winv-poly pfi w (head-poly (kinds o)) (all-head (fresh o))) (eok-poly o))
+          (names-polyF pfi F) (fresh-poly pfi F) rest al (winv-poly pfi w (head-poly (kinds o)) (all-head (fresh o))) (eok-poly o))
   where
     κ = kindsOf T
     pb = polyBody {sc = scope sg imps tele} ss is ts N {pfi} {Ψ} W
@@ -181,10 +182,10 @@ walk {S = S} {imps} {tele} tl ss is ts N (poly {pfi = pfi@(Parser.mkPolyFunInfo 
       }
 -- a monomorphic definition with a signature: the Spec's derivation is the
 -- checker's witness, at the scope's Pack
-walk {S = S} {imps} {tele} tl ss is ts N (mono {fi = fi@(Parser.mkFunInfo x (just ty) e false)} {ty = .ty} {Ψ = Ψ} ep refl pr W rest) (al-mono so rx al) w o =
+walk {S = S} {imps} {tele} tl ss is ts N F (mono {fi = fi@(Parser.mkFunInfo x (just ty) e false)} {ty = .ty} {Ψ = Ψ} ep refl pr W rest) (al-mono so rx al) w o =
   w-sig so b (principal ss is ts N w ST.∅ₖ pr rx)
     (walk (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (x Data.String.== "main") is) (wkT ts)
-          (names-mono (x Data.String.== "main") x ty N) rest al
+          (names-monoF (x Data.String.== "main") fi ty F) (fresh-mono (x Data.String.== "main") fi ty F) rest al
           (winv-mono w (proj₂ (all-head (kinds o))) (all-head (nosig o)) (all-head (fresh o))) (eok-mono ty o))
   where
     mb = monoBody {sc = scope sg imps tele} ss is ts N (just ty) W
@@ -196,14 +197,14 @@ walk {S = S} {imps} {tele} tl ss is ts N (mono {fi = fi@(Parser.mkFunInfo x (jus
       ; typed = proj₂ mb
       }
 -- one without: the type its body synthesizes
-walk {S = S} {imps} {tele} tl ss is ts N (mono {fi = fi@(Parser.mkFunInfo x nothing e false)} {ty = ty} {Ψ = Ψ} ep er pr W rest) (al-nosig rx al) w o =
+walk {S = S} {imps} {tele} tl ss is ts N F (mono {fi = fi@(Parser.mkFunInfo x nothing e false)} {ty = ty} {Ψ = Ψ} ep er pr W rest) (al-nosig rx al) w o =
   w-nosig
     (subst (λ e′ → Once.Spec.Surface.Typing._⊢_⇒_↝_ Σ S (Names.nm N) ST.∅ₖ Once.Spec.Surface.Typing.∅ e′ ty (proj₁ mb))
            (rx-≡ rx) (monoSynth {sc = scope sg imps tele} ss is ts N W))
     (proj₂ mb)
     (principal ss is ts N w ST.∅ₖ pr rx)
     (walk (monoDef {S = S} {sc = scope sg imps tele} {fi = fi} {ty = ty} {Ψ = Ψ} tl ss is ts N W) ss (impDefs (x Data.String.== "main") is) (wkT ts)
-          (names-mono (x Data.String.== "main") x ty N) rest al
+          (names-monoF (x Data.String.== "main") fi ty F) (fresh-mono (x Data.String.== "main") fi ty F) rest al
           (winv-mono w (proj₂ (all-head (kinds o))) (all-head (nosig o)) (all-head (fresh o))) (eok-mono ty o))
   where
     mb = monoBody {sc = scope sg imps tele} ss is ts N nothing W

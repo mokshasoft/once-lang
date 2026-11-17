@@ -77,8 +77,8 @@ module _ {m n} {Γ : Ctx m n} where
   app-cong {Ψ₁} {Ψ₂} {A} {B} {q} {f} {f′} {x} {x′} (≈-intro h1) (≈-intro h2) = ≈-intro (app-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {q = q} {f = f} {f′ = f′} {x = x} {x′ = x′} h1 h2)
 
 module _ {m n} {Γ : Ctx m n} where
-  effApp-cong : ∀ {Ψ₁ Ψ₂ A B π} {g : Once.Spec.Grade.EffGrade π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {x x′ : Expr Γ Ψ₂ A} → f ≈ f′ → x ≈ x′ → effApp {g = g} f x ≈ effApp {g = g} f′ x′
-  effApp-cong {Ψ₁} {Ψ₂} {A} {B} {π} {g} {f} {f′} {x} {x′} (≈-intro h1) (≈-intro h2) = ≈-intro (effApp-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {π = π} {g = g} {f = f} {f′ = f′} {x = x} {x′ = x′} h1 h2)
+  effApp-cong : ∀ {Ψ₁ Ψ₂ A B q π} {g : Once.Spec.Grade.EffGrade π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind q π ] B)} {x x′ : Expr Γ Ψ₂ A} → f ≈ f′ → x ≈ x′ → effApp {g = g} f x ≈ effApp {g = g} f′ x′
+  effApp-cong {Ψ₁} {Ψ₂} {A} {B} {q} {π} {g} {f} {f′} {x} {x′} (≈-intro h1) (≈-intro h2) = ≈-intro (effApp-congˢ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {q = q} {π = π} {g = g} {f = f} {f′ = f′} {x = x} {x′ = x′} h1 h2)
 
 module _ {m n} {Γ : Ctx m n} where
   comp-cong : ∀ {Ψ₁ Ψ₂ A B C π} {f f′ : Expr Γ Ψ₁ (B ⇒[ mk-kind Many π ] C)} {g g′ : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] B)} → f ≈ f′ → g ≈ g′ → comp' f g ≈ comp' f′ g′

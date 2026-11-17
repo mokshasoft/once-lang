@@ -60,6 +60,7 @@ import Once.Spec.Surface.Syntax      -- the syntax tree
 import Once.Spec.Surface.Operator    -- the infix operators
 import Once.Spec.Surface.Lexing      -- text to tokens
 import Once.Spec.Surface.Grammar     -- tokens to a module
+import Once.Spec.Surface.Generators  -- the generators, as a table
 import Once.Spec.Surface.Resolution  -- what each name denotes
 import Once.Spec.Surface.Typing      -- which expressions are typed, and their core terms
 import Once.Spec.Surface.Program     -- the program a module denotes

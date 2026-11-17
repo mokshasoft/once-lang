@@ -33,8 +33,8 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_; _,_; ∃-syntax)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; trans)
+open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; subst; sym; trans)
 
 open import Once.Spec.Grade
 open import Once.Type.Grade
@@ -50,9 +50,13 @@ open import Once.Type
 open import Once.IR as IR
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.Spec.Name using (CanonicalName; canonical; own; bare; gen; NotGenerator; GenWord)
+open import Once.Spec.Name using (CanonicalName; canonical; own; bare)
+import Once.Spec.Surface.Generators as G
+import Once.Spec.Surface.Typing as SUT
+open import Once.Generators using (fromCodomain?; fromDomain?)
+open import Once.TypeCheck.Table using (mapAt?; mapFrom?; mapTo?; MuV; muV; mu-at; mu-other; SumV; sumV; sum-at; sum-other)
+import Once.TypeCheck.FormSound as FS
 open import Once.Name using (showCanonical; WordName; wordNameB)
-open import Once.CanonicalName using (genWord?)
 import Once.Spec.Surface.Syntax as Syn
 open import Once.Spec.Surface.Operator using (BinOp; binSym; BinSym)
 open BinSym using (theory)
@@ -103,8 +107,10 @@ open import Once.TypeCheck.DeciderComplete using (isGround-complete-at)
 open import Once.TypeCheck.TargetView
 
 open import Once.TypeCheck.Elaborate
+import Once.TypeCheck.Elaborate as E
 open import Once.TypeCheck.SpecWitness
 open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥; ⊥-elim)
 
 -- What a result owes: a success, the Spec's derivation; a failure, nothing.
 soundOf : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr)
@@ -190,63 +196,29 @@ given-infer-sound ctx e A π (success Int Ψ x₁ depth fresh) x =
 given-infer-sound ctx e A π (success Float Ψ x₁ depth fresh) x =
   tt
 
-given-cata-dec-sound : ∀ {m} (ctx : NamedCtx m) (alg : Syn.Expr) (F : Once.Spec.Type.Fun m) (π : Once.Spec.Grade.Purity) (wfF : Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F) (X A : Ty m) (k : Once.Spec.Grade.ArrowKind) (Ψ : Surface.Usage (NamedCtx.size ctx))
-    → (algE : SExpr (NamedCtx.debruijn ctx) Ψ (X Once.Spec.Type.⇒[ k ] A))
-    → (depth : ℕ)
-    → (fr : ℕ)
-    → WI ctx alg (X Once.Spec.Type.⇒[ k ] A) Ψ algE
-    → (a1 : Dec ((X Once.Spec.Type.⇒[ k ] A)
-                        ≡ (⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A)))
-    → givenSoundOf ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg) (Once.Spec.Type.μ F) π (given-cata-dec ctx alg F π wfF X A k Ψ algE depth fr a1)
-given-cata-dec-sound ctx alg F π wfF X A k Ψ algE d fr w (yes refl) =
-  withUnit-gsound _ π _ tt (λ u → wd-cata {u = u} wfF w)
-given-cata-dec-sound ctx alg F π wfF X A k Ψ algE d fr w (no _) =
-  tt
-
-given-cata-sound : ∀ {m} (ctx : NamedCtx m) (alg : Syn.Expr) (F : Once.Spec.Type.Fun m) (π : Once.Spec.Grade.Purity) (wfF : Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F)
-    → (r6 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx alg r6
-    → givenSoundOf ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg) (Once.Spec.Type.μ F) π (given-cata ctx alg F π wfF r6)
-given-cata-sound ctx alg F π wfF (failure err) _ =
-  tt
-given-cata-sound ctx alg F π wfF (success (X Once.Spec.Type.⇒[ k ] A) Ψ algE d fr) w =
-  given-cata-dec-sound ctx alg F π wfF X A k Ψ algE d fr w ((X Once.Spec.Type.⇒[ k ] A) ≟T (⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A))
-given-cata-sound ctx alg F π wfF (success (var x₁) Ψ x₂ depth fresh) x =
-  tt
-given-cata-sound ctx alg F π wfF (success Unit Ψ x₁ depth fresh) x =
-  tt
-given-cata-sound ctx alg F π wfF (success Void Ψ x₁ depth fresh) x =
-  tt
-given-cata-sound ctx alg F π wfF (success (A * A₁) Ψ x₁ depth fresh) x =
-  tt
-given-cata-sound ctx alg F π wfF (success (A + A₁) Ψ x₁ depth fresh) x =
-  tt
-given-cata-sound ctx alg F π wfF (success (μ x₁) Ψ x₂ depth fresh) x =
-  tt
-given-cata-sound ctx alg F π wfF (success (ν x₁ x₂) Ψ x₃ depth fresh) x =
-  tt
-given-cata-sound ctx alg F π wfF (success Int Ψ x₁ depth fresh) x =
-  tt
-given-cata-sound ctx alg F π wfF (success Float Ψ x₁ depth fresh) x =
-  tt
+-- A form with no checking rule of its own, at every Pack.
+NoOwn : ∀ {m} (ctx : NamedCtx m) → Syn.Expr → Set
+NoOwn ctx e = (P : Pack ctx) → ¬ SUT.OwnCheck (Pack.Sg P) (Pack.S P) (Pack.nm P) e
 
 embedOrSubsume-dec-sound : ∀ {m} (ctx : NamedCtx m) (e : Syn.Expr) {Ψ : Surface.Usage (NamedCtx.size ctx)} (T T' : Ty m)
+    → NoOwn ctx e
     → (eE : SExpr (NamedCtx.debruijn ctx) Ψ T')
     → (depth fresh : ℕ)
     → WI ctx e T' Ψ eE
     → (a1 : Dec (T' <: T))
     → checkSoundOf ctx e T (embedOrSubsume-dec ctx e T T' eE depth fresh a1)
-embedOrSubsume-dec-sound ctx e T T' eE depth fresh w (yes p) =
-  wt-sub w p
-embedOrSubsume-dec-sound ctx e T T' eE depth fresh w (no _) =
+embedOrSubsume-dec-sound ctx e T T' noc eE depth fresh w (yes p) =
+  wt-sub noc w p
+embedOrSubsume-dec-sound ctx e T T' noc eE depth fresh w (no _) =
   tt
 
-embedOrSubsume-sound : ∀ {m} (ctx : NamedCtx m) (e : Syn.Expr) (T : Ty m)
+embedOrSubsume-sound : ∀ {m} (ctx : NamedCtx m) (e : Syn.Expr) (T : Ty m) → NoOwn ctx e
     → (r4 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx e r4
     → checkSoundOf ctx e T (embedOrSubsume ctx e T r4)
-embedOrSubsume-sound ctx e T (failure err) _ =
+embedOrSubsume-sound ctx e T noc (failure err) _ =
   tt
-embedOrSubsume-sound ctx e T (success T' Ψ eE d fr) w =
-  embedOrSubsume-dec-sound ctx e T T' eE d fr w (T' <:? T)
+embedOrSubsume-sound ctx e T noc (success T' Ψ eE d fr) w =
+  embedOrSubsume-dec-sound ctx e T T' noc eE d fr w (T' <:? T)
 
 given-poly-k-sound : ∀ {m} (ctx : NamedCtx m) (x : String) (A B : Ty m) (π π′ : Once.Spec.Grade.Purity) (err : TypeError) {schema sd sc : PolyType} {body : Syn.Expr} {prefix : PolyCtx}
     → (a1 : lookupImport (NamedCtx.sig ctx) x ≡ nothing)
@@ -433,198 +405,6 @@ inferElabV-RVar-poly-aux-sound : ∀ {m} (ctx : NamedCtx m) (x : String)
 inferElabV-RVar-poly-aux-sound ctx x eL eI =
   inferElabV-RVar-poly-lookup-aux-sound ctx x eL eI (lookupPoly (NamedCtx.polys ctx) x) refl
 
-elabGivenLeaf-sound : ∀ {m}
-    → (ctx : NamedCtx m) (cn : CanonicalName) (A : Ty m) (π : Once.Spec.Grade.Purity)
-    → (a1 : AppHeadView (Raw.RResolved cn))
-    → (r6 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved cn) r6
-    → givenSoundOf ctx (Raw.RResolved cn) A π (elabGivenLeaf ctx cn A π a1 r6)
-elabGivenLeaf-sound ctx .(gen "id") A π ahv-id _ _ =
-  withUnit-gsound _ π _ tt (λ u → wd-id {u = u})
-elabGivenLeaf-sound ctx .(gen "fst") (A Once.Spec.Type.* B) π ahv-fst _ _ =
-  withUnit-gsound _ π _ tt (λ u → wd-fst {u = u})
-elabGivenLeaf-sound ctx .(gen "snd") (A Once.Spec.Type.* B) π ahv-snd _ _ =
-  withUnit-gsound _ π _ tt (λ u → wd-snd {u = u})
-elabGivenLeaf-sound ctx .(gen "terminal") A π ahv-terminal _ _ =
-  withUnit-gsound _ π _ tt (λ u → wd-terminal {u = u})
-elabGivenLeaf-sound ctx .(gen "initial") Void π ahv-initial _ _ =
-  withUnit-gsound _ π _ tt (λ u → wd-initial {u = u})
-elabGivenLeaf-sound ctx .(gen "fst") (var x₁) π ahv-fst r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "fst") Unit π ahv-fst r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "fst") Void π ahv-fst r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "fst") (A + A₁) π ahv-fst r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "fst") (A ⇒[ x₁ ] A₁) π ahv-fst r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "fst") (μ x₁) π ahv-fst r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "fst") (ν x₁ x₂) π ahv-fst r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "fst") Int π ahv-fst r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "fst") Float π ahv-fst r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "snd") (var x₁) π ahv-snd r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "snd") Unit π ahv-snd r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "snd") Void π ahv-snd r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "snd") (A + A₁) π ahv-snd r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "snd") (A ⇒[ x₁ ] A₁) π ahv-snd r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "snd") (μ x₁) π ahv-snd r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "snd") (ν x₁ x₂) π ahv-snd r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "snd") Int π ahv-snd r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "snd") Float π ahv-snd r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "inl") A π ahv-inl r6 x =
-  given-res-sound ctx (gen "inl") A π r6 x
-elabGivenLeaf-sound ctx .(gen "inr") A π ahv-inr r6 x =
-  given-res-sound ctx (gen "inr") A π r6 x
-elabGivenLeaf-sound ctx .(gen "initial") (var x₁) π ahv-initial r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "initial") Unit π ahv-initial r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "initial") (A * A₁) π ahv-initial r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "initial") (A + A₁) π ahv-initial r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "initial") (A ⇒[ x₁ ] A₁) π ahv-initial r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "initial") (μ x₁) π ahv-initial r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "initial") (ν x₁ x₂) π ahv-initial r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "initial") Int π ahv-initial r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "initial") Float π ahv-initial r6 x =
-  tt
-elabGivenLeaf-sound ctx .(gen "curry") A π ahv-curry r6 x =
-  given-res-sound ctx (gen "curry") A π r6 x
-elabGivenLeaf-sound ctx .(gen "apply") A π ahv-apply r6 x =
-  given-res-sound ctx (gen "apply") A π r6 x
-elabGivenLeaf-sound ctx .(gen "In") A π ahv-In r6 x =
-  given-res-sound ctx (gen "In") A π r6 x
-elabGivenLeaf-sound ctx .(gen "cata") A π ahv-cata r6 x =
-  given-res-sound ctx (gen "cata") A π r6 x
-elabGivenLeaf-sound ctx .(gen "ana") A π ahv-ana r6 x =
-  given-res-sound ctx (gen "ana") A π r6 x
-elabGivenLeaf-sound ctx .(gen "Out") A π ahv-Out r6 x =
-  given-res-sound ctx (gen "Out") A π r6 x
-elabGivenLeaf-sound ctx cn A π ahv-other r6 x =
-  given-res-sound ctx cn A π r6 x
-
-inferOutGo-sound : ∀ {m}
-    → (ctx : NamedCtx m) (arg : Syn.Expr) (F : Once.Spec.Type.Fun m) (φ : Once.Spec.Grade.Finite) (Ψ : Surface.Usage (NamedCtx.size ctx)) (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Spec.Type.ν F φ)) (d fr : ℕ) (w : WI ctx arg (Once.Spec.Type.ν F φ) Ψ argE)
-    → (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F))
-    → (a1 : wfFun? (NamedCtx.kinds ctx) F ≡ mw)
-    → soundOf ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) (inferOutGo ctx arg F φ Ψ argE d fr mw a1)
-inferOutGo-sound ctx arg F φ Ψ argE d fr w nothing _ =
-  tt
-inferOutGo-sound ctx arg F Once.Spec.Grade.pureᶠ Ψ argE d fr w (just wfF) eqW =
-  wt-Out-app-infer wfF refl w
-inferOutGo-sound ctx arg F Once.Spec.Grade.actᶠ Ψ argE d fr w (just wfF) eqW =
-  wt-Out-eff-app-infer wfF refl w
-
-inferOutAt-sound : ∀ {m}
-    → (ctx : NamedCtx m) (arg : Syn.Expr) {T : Ty m} (Ψ : Surface.Usage (NamedCtx.size ctx)) (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ)
-    → WI ctx arg T Ψ argE
-    → (a1 : NuView T)
-    → soundOf ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) (inferOutAt ctx arg Ψ argE d fr a1)
-inferOutAt-sound ctx arg Ψ argE d fr w (nu-at F π) =
-  inferOutGo-sound ctx arg F π Ψ argE d fr w (wfFun? (NamedCtx.kinds ctx) F) refl
-inferOutAt-sound ctx arg Ψ argE d fr w nu-other =
-  tt
-
-inferOutOn-sound : ∀ {m}
-    → (ctx : NamedCtx m) (arg : Syn.Expr)
-    → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx arg r3
-    → soundOf ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) (inferOutOn ctx arg r3)
-inferOutOn-sound ctx arg (failure err) _ =
-  tt
-inferOutOn-sound ctx arg (success T Ψ argE d fr) w =
-  inferOutAt-sound ctx arg Ψ argE d fr w (nuView T)
-
-inferFstAt-sound : ∀ {m}
-    → (ctx : NamedCtx m) (arg : Syn.Expr) {T : Ty m} (Ψ : Surface.Usage (NamedCtx.size ctx)) (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ)
-    → WI ctx arg T Ψ argE
-    → (a1 : ProdView T)
-    → soundOf ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) (inferFstAt ctx arg Ψ argE d fr a1)
-inferFstAt-sound ctx arg Ψ argE d fr w (prod-at A B) =
-  wt-fst-app w
-inferFstAt-sound ctx arg Ψ argE d fr w prod-other =
-  tt
-
-inferFstOn-sound : ∀ {m}
-    → (ctx : NamedCtx m) (arg : Syn.Expr)
-    → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx arg r3
-    → soundOf ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) (inferFstOn ctx arg r3)
-inferFstOn-sound ctx arg (failure err) _ =
-  tt
-inferFstOn-sound ctx arg (success T Ψ argE d fr) w =
-  inferFstAt-sound ctx arg Ψ argE d fr w (prodView T)
-
-inferSndAt-sound : ∀ {m}
-    → (ctx : NamedCtx m) (arg : Syn.Expr) {T : Ty m} (Ψ : Surface.Usage (NamedCtx.size ctx)) (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ)
-    → WI ctx arg T Ψ argE
-    → (a1 : ProdView T)
-    → soundOf ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) (inferSndAt ctx arg Ψ argE d fr a1)
-inferSndAt-sound ctx arg Ψ argE d fr w (prod-at A B) =
-  wt-snd-app w
-inferSndAt-sound ctx arg Ψ argE d fr w prod-other =
-  tt
-
-inferSndOn-sound : ∀ {m}
-    → (ctx : NamedCtx m) (arg : Syn.Expr)
-    → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx arg r3
-    → soundOf ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) (inferSndOn ctx arg r3)
-inferSndOn-sound ctx arg (failure err) _ =
-  tt
-inferSndOn-sound ctx arg (success T Ψ argE d fr) w =
-  inferSndAt-sound ctx arg Ψ argE d fr w (prodView T)
-
-inferApplyAt-sound : ∀ {m}
-    → (ctx : NamedCtx m) (arg : Syn.Expr) {T : Ty m} (Ψ : Surface.Usage (NamedCtx.size ctx)) (argE : SExpr (NamedCtx.debruijn ctx) Ψ T) (d fr : ℕ)
-    → WI ctx arg T Ψ argE
-    → (a1 : ApplyView T)
-    → soundOf ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg) (inferApplyAt ctx arg Ψ argE d fr a1)
-inferApplyAt-sound ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.pure B A')
-    with A ≟T A'
-...  | yes refl =
-  wt-apply-app-infer w
-...  | no _ =
-  tt
-inferApplyAt-sound ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.eff B A')
-    with A ≟T A'
-...  | yes refl =
-  wt-apply-eff-app-infer {g = Once.Spec.Grade.eg-eff} w
-...  | no _ =
-  tt
-inferApplyAt-sound ctx arg Ψ argE d fr w (apply-at A Once.Spec.Grade.act B A')
-    with A ≟T A'
-...  | yes refl =
-  wt-apply-eff-app-infer {g = Once.Spec.Grade.eg-act} w
-...  | no _ =
-  tt
-inferApplyAt-sound ctx arg Ψ argE d fr w apply-other =
-  tt
-
-inferApplyOn-sound : ∀ {m}
-    → (ctx : NamedCtx m) (arg : Syn.Expr)
-    → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx arg r3
-    → soundOf ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg) (inferApplyOn ctx arg r3)
-inferApplyOn-sound ctx arg (failure err) _ =
-  tt
-inferApplyOn-sound ctx arg (success T Ψ argE d fr) w =
-  inferApplyAt-sound ctx arg Ψ argE d fr w (applyView T)
-
 inferElabV-RPair-aux-sound : ∀ {m}
     → (ctx : NamedCtx m) (a b : Syn.Expr)
     → (r4 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx a r4
@@ -729,7 +509,7 @@ inferElabV-RDestruct-join-sound ctx scrut xL eL xR eR A B scrutE ds wS eLE dL wL
 given-case-join-sound : ∀ {m}
     → (ctx : NamedCtx m) (f g : Syn.Expr) (A B : Ty m) (π : Once.Spec.Grade.Purity) {C : Ty m} {Ψf : Surface.Usage (NamedCtx.size ctx)} (fE : SExpr (NamedCtx.debruijn ctx) Ψf (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)) (df : ℕ) (wF : WD ctx f A π C Ψf fE) {C′ : Ty m} {Ψg : Surface.Usage (NamedCtx.size ctx)} (gE : SExpr (NamedCtx.debruijn ctx) Ψg (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C′)) (dg frg : ℕ) (wG : WD ctx g B π C′ Ψg gE)
     → (a1 : Join? C C′)
-    → givenSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "case")) f) g) (A Once.Spec.Type.+ B) π (given-case-join ctx f g A B π fE df gE dg frg a1)
+    → givenSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RGen G.case) f) g) (A Once.Spec.Type.+ B) π (given-case-join ctx f g A B π fE df gE dg frg a1)
 given-case-join-sound ctx f g A B π {C} fE df wF {C′} gE dg frg wG (apart _) =
   tt
 given-case-join-sound ctx f g A B π fE df wF gE dg frg wG (joined D J) =
@@ -756,7 +536,6 @@ inferElabV-RResolved-word-sound ctx cn k ks true e =
   ks (subst T (sym e) tt)
 
 inferElabV-RResolved-arrow-aux-sound : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName)
-    → (a1 : NotGenerator cn)
     → ∀ {A B : Type} {π : Once.Spec.Grade.Purity}
     → (a2 : lookupImport (NamedCtx.sig ctx) (showCanonical cn)
       ≡ just (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B))
@@ -764,29 +543,28 @@ inferElabV-RResolved-arrow-aux-sound : ∀ {m} (ctx : NamedCtx m) (cn : Canonica
     → (a3 : isBaseType? A ≡ mbA)
     → (mcB : Maybe (Base ∅ₖ B))
     → (a4 : isBaseType? B ≡ mcB)
-    → soundOf ctx (Raw.RResolved cn) (inferElabV-RResolved-arrow-aux ctx cn a1 a2 mbA a3 mcB a4)
-inferElabV-RResolved-arrow-aux-sound ctx cn ng {A} {B} {π} eq (just bA) _ (just cB) _ =
+    → soundOf ctx (Raw.RResolved cn) (inferElabV-RResolved-arrow-aux ctx cn a2 mbA a3 mcB a4)
+inferElabV-RResolved-arrow-aux-sound ctx cn {A} {B} {π} eq (just bA) _ (just cB) _ =
   inferElabV-RResolved-word-sound ctx cn (λ wn →
       success (wk₀ (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B)) _
         (Surface.sigOp cn (con-fun bA cB))
         0 0)
-    (λ wn → wt-var-resolved ng wn eq (con-fun bA cB) refl) (wordNameB cn) refl
-inferElabV-RResolved-arrow-aux-sound ctx cn ng {A} {B} {π} eq nothing _ _ _ =
+    (λ wn → wt-var-resolved wn eq (con-fun bA cB) refl) (wordNameB cn) refl
+inferElabV-RResolved-arrow-aux-sound ctx cn {A} {B} {π} eq nothing _ _ _ =
   tt
-inferElabV-RResolved-arrow-aux-sound ctx cn ng {A} {B} {π} eq (just _) _ nothing _ =
+inferElabV-RResolved-arrow-aux-sound ctx cn {A} {B} {π} eq (just _) _ nothing _ =
   tt
 
 inferElabV-RResolved-value-aux-sound : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName)
-    → (a1 : NotGenerator cn)
     → ∀ (ty : Type)
     → (a2 : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ just ty)
     → (mc : Maybe (IsConcrete ty))
     → (a3 : isConcrete? ty ≡ mc)
-    → soundOf ctx (Raw.RResolved cn) (inferElabV-RResolved-value-aux ctx cn a1 ty a2 mc a3)
-inferElabV-RResolved-value-aux-sound ctx cn ng ty eq (just conc) _ =
+    → soundOf ctx (Raw.RResolved cn) (inferElabV-RResolved-value-aux ctx cn ty a2 mc a3)
+inferElabV-RResolved-value-aux-sound ctx cn ty eq (just conc) _ =
   inferElabV-RResolved-word-sound ctx cn (λ wn → success (wk₀ ty) _ (Surface.sigOp cn conc) 0 0)
-    (λ wn → wt-var-resolved ng wn eq conc refl) (wordNameB cn) refl
-inferElabV-RResolved-value-aux-sound ctx cn ng ty eq nothing _ =
+    (λ wn → wt-var-resolved wn eq conc refl) (wordNameB cn) refl
+inferElabV-RResolved-value-aux-sound ctx cn ty eq nothing _ =
   tt
 
 inferElabV-RResolved-def-sound : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName)
@@ -800,34 +578,33 @@ inferElabV-RResolved-own-aux-sound : ∀ {m} (ctx : NamedCtx m) (x : String)
     → soundOf ctx (Raw.RResolved (own x)) (inferElabV-RResolved-own-aux ctx x a1 lhs a2)
 
 inferElabV-RResolved-aux-sound : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName)
-    → (a1 : NotGenerator cn)
     → (lhs : Maybe Type)
     → (a2 : lookupImport (NamedCtx.sig ctx) (showCanonical cn) ≡ lhs)
-    → soundOf ctx (Raw.RResolved cn) (inferElabV-RResolved-aux ctx cn a1 lhs a2)
-inferElabV-RResolved-aux-sound ctx cn ng (just (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B)) eq =
-  inferElabV-RResolved-arrow-aux-sound ctx cn ng eq (isBaseType? A) refl (isBaseType? B) refl
-inferElabV-RResolved-aux-sound ctx cn ng nothing eq =
+    → soundOf ctx (Raw.RResolved cn) (inferElabV-RResolved-aux ctx cn lhs a2)
+inferElabV-RResolved-aux-sound ctx cn (just (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B)) eq =
+  inferElabV-RResolved-arrow-aux-sound ctx cn eq (isBaseType? A) refl (isBaseType? B) refl
+inferElabV-RResolved-aux-sound ctx cn nothing eq =
   inferElabV-RResolved-def-sound ctx cn eq
-inferElabV-RResolved-aux-sound ctx cn a1 (just Unit) a2 =
-  inferElabV-RResolved-value-aux-sound ctx cn a1 Unit a2 (isConcrete? Unit) refl
-inferElabV-RResolved-aux-sound ctx cn a1 (just Void) a2 =
-  inferElabV-RResolved-value-aux-sound ctx cn a1 Void a2 (isConcrete? Void) refl
-inferElabV-RResolved-aux-sound ctx cn a1 (just (x * x₁)) a2 =
-  inferElabV-RResolved-value-aux-sound ctx cn a1 (x * x₁) a2 (isConcrete? (x * x₁)) refl
-inferElabV-RResolved-aux-sound ctx cn a1 (just (x + x₁)) a2 =
-  inferElabV-RResolved-value-aux-sound ctx cn a1 (x + x₁) a2 (isConcrete? (x + x₁)) refl
-inferElabV-RResolved-aux-sound ctx cn a1 (just (x ⇒[ mk-kind Zero purity ] x₁)) a2 =
-  inferElabV-RResolved-value-aux-sound ctx cn a1 (x ⇒[ mk-kind Zero purity ] x₁) a2 (isConcrete? (x ⇒[ mk-kind Zero purity ] x₁)) refl
-inferElabV-RResolved-aux-sound ctx cn a1 (just (x ⇒[ mk-kind One purity ] x₁)) a2 =
-  inferElabV-RResolved-value-aux-sound ctx cn a1 (x ⇒[ mk-kind One purity ] x₁) a2 (isConcrete? (x ⇒[ mk-kind One purity ] x₁)) refl
-inferElabV-RResolved-aux-sound ctx cn a1 (just (μ x)) a2 =
-  inferElabV-RResolved-value-aux-sound ctx cn a1 (μ x) a2 (isConcrete? (μ x)) refl
-inferElabV-RResolved-aux-sound ctx cn a1 (just (ν x x₁)) a2 =
-  inferElabV-RResolved-value-aux-sound ctx cn a1 (ν x x₁) a2 (isConcrete? (ν x x₁)) refl
-inferElabV-RResolved-aux-sound ctx cn a1 (just Int) a2 =
-  inferElabV-RResolved-value-aux-sound ctx cn a1 Int a2 (isConcrete? Int) refl
-inferElabV-RResolved-aux-sound ctx cn a1 (just Float) a2 =
-  inferElabV-RResolved-value-aux-sound ctx cn a1 Float a2 (isConcrete? Float) refl
+inferElabV-RResolved-aux-sound ctx cn (just Unit) a2 =
+  inferElabV-RResolved-value-aux-sound ctx cn Unit a2 (isConcrete? Unit) refl
+inferElabV-RResolved-aux-sound ctx cn (just Void) a2 =
+  inferElabV-RResolved-value-aux-sound ctx cn Void a2 (isConcrete? Void) refl
+inferElabV-RResolved-aux-sound ctx cn (just (x * x₁)) a2 =
+  inferElabV-RResolved-value-aux-sound ctx cn (x * x₁) a2 (isConcrete? (x * x₁)) refl
+inferElabV-RResolved-aux-sound ctx cn (just (x + x₁)) a2 =
+  inferElabV-RResolved-value-aux-sound ctx cn (x + x₁) a2 (isConcrete? (x + x₁)) refl
+inferElabV-RResolved-aux-sound ctx cn (just (x ⇒[ mk-kind Zero purity ] x₁)) a2 =
+  inferElabV-RResolved-value-aux-sound ctx cn (x ⇒[ mk-kind Zero purity ] x₁) a2 (isConcrete? (x ⇒[ mk-kind Zero purity ] x₁)) refl
+inferElabV-RResolved-aux-sound ctx cn (just (x ⇒[ mk-kind One purity ] x₁)) a2 =
+  inferElabV-RResolved-value-aux-sound ctx cn (x ⇒[ mk-kind One purity ] x₁) a2 (isConcrete? (x ⇒[ mk-kind One purity ] x₁)) refl
+inferElabV-RResolved-aux-sound ctx cn (just (μ x)) a2 =
+  inferElabV-RResolved-value-aux-sound ctx cn (μ x) a2 (isConcrete? (μ x)) refl
+inferElabV-RResolved-aux-sound ctx cn (just (ν x x₁)) a2 =
+  inferElabV-RResolved-value-aux-sound ctx cn (ν x x₁) a2 (isConcrete? (ν x x₁)) refl
+inferElabV-RResolved-aux-sound ctx cn (just Int) a2 =
+  inferElabV-RResolved-value-aux-sound ctx cn Int a2 (isConcrete? Int) refl
+inferElabV-RResolved-aux-sound ctx cn (just Float) a2 =
+  inferElabV-RResolved-value-aux-sound ctx cn Float a2 (isConcrete? Float) refl
 inferElabV-RResolved-def-sound ctx (own x) ns =
   inferElabV-RResolved-own-aux-sound ctx x ns (lookupImport (NamedCtx.imports ctx) x) refl
 inferElabV-RResolved-def-sound ctx (canonical []) a1 =
@@ -848,516 +625,11 @@ inferElabV-RVar-lookup-aux-sound ctx x (just (A , Ψ , eV)) eq-loc =
 inferElabV-RVar-lookup-aux-sound ctx x nothing eq-loc =
   tt
 
-checkElabV-RVar-bbc-id-failure-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m) (err : TypeError)
-    → checkSoundOf ctx (Raw.RResolved (gen "id")) T (checkElabV-RVar-bbc-id-failure-aux ctx T err)
-checkElabV-RVar-bbc-id-failure-aux-sound ctx (X Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] Y) err
-    with X ≟T Y
-...  | yes refl =
-  withUnit-csound _ π _ tt (λ u → wt-id-check {u = u})
-...  | no _ =
-  tt
-checkElabV-RVar-bbc-id-failure-aux-sound ctx Unit err =
-  tt
-checkElabV-RVar-bbc-id-failure-aux-sound ctx Void err =
-  tt
-checkElabV-RVar-bbc-id-failure-aux-sound ctx Int err =
-  tt
-checkElabV-RVar-bbc-id-failure-aux-sound ctx Float err =
-  tt
-checkElabV-RVar-bbc-id-failure-aux-sound ctx (var iᵣ) err =
-  tt
-checkElabV-RVar-bbc-id-failure-aux-sound ctx (_ Once.Spec.Type.* _) err =
-  tt
-checkElabV-RVar-bbc-id-failure-aux-sound ctx (_ Once.Spec.Type.+ _) err =
-  tt
-checkElabV-RVar-bbc-id-failure-aux-sound ctx (_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero _ ] _) err =
-  tt
-checkElabV-RVar-bbc-id-failure-aux-sound ctx (_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One _ ] _) err =
-  tt
-checkElabV-RVar-bbc-id-failure-aux-sound ctx (Once.Spec.Type.μ _) err =
-  tt
-checkElabV-RVar-bbc-id-failure-aux-sound ctx (Once.Spec.Type.ν _ _) err =
-  tt
-
-checkElabV-RVar-bbc-fst-failure-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m) (err : TypeError)
-    → checkSoundOf ctx (Raw.RResolved (gen "fst")) T (checkElabV-RVar-bbc-fst-failure-aux ctx T err)
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx ((A Once.Spec.Type.* B) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A') err
-    with A ≟T A'
-...  | yes refl =
-  withUnit-csound _ π _ tt (λ u → wt-fst-check {u = u})
-...  | no _ =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx Unit err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx Void err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx Int err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx Float err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx (var iᵣ) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx (Unit Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx (Void Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx (Int Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx (Float Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx ((var iᵣ) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx ((_ Once.Spec.Type.+ _) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx ((_ Once.Spec.Type.⇒[ _ ] _) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx ((Once.Spec.Type.μ _) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx ((Once.Spec.Type.ν _ _) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx ((_ Once.Spec.Type.* _) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero _ ] _) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx ((_ Once.Spec.Type.* _) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One _ ] _) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx (_ Once.Spec.Type.* _) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx (_ Once.Spec.Type.+ _) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx (Once.Spec.Type.μ _) err =
-  tt
-checkElabV-RVar-bbc-fst-failure-aux-sound ctx (Once.Spec.Type.ν _ _) err =
-  tt
-
-checkElabV-RVar-bbc-snd-failure-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m) (err : TypeError)
-    → checkSoundOf ctx (Raw.RResolved (gen "snd")) T (checkElabV-RVar-bbc-snd-failure-aux ctx T err)
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx ((A Once.Spec.Type.* B) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B') err
-    with B ≟T B'
-...  | yes refl =
-  withUnit-csound _ π _ tt (λ u → wt-snd-check {u = u})
-...  | no _ =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx Unit err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx Void err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx Int err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx Float err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx (var iᵣ) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx (Unit Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx (Void Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx (Int Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx (Float Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx ((var iᵣ) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx ((_ Once.Spec.Type.+ _) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx ((_ Once.Spec.Type.⇒[ _ ] _) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx ((Once.Spec.Type.μ _) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx ((Once.Spec.Type.ν _ _) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx ((_ Once.Spec.Type.* _) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero _ ] _) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx ((_ Once.Spec.Type.* _) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One _ ] _) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx (_ Once.Spec.Type.* _) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx (_ Once.Spec.Type.+ _) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx (Once.Spec.Type.μ _) err =
-  tt
-checkElabV-RVar-bbc-snd-failure-aux-sound ctx (Once.Spec.Type.ν _ _) err =
-  tt
-
-checkElabV-RVar-bbc-terminal-failure-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m) (err : TypeError)
-    → checkSoundOf ctx (Raw.RResolved (gen "terminal")) T (checkElabV-RVar-bbc-terminal-failure-aux ctx T err)
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] Unit) err =
-  withUnit-csound _ π _ tt (λ u → wt-terminal-morph-check {u = u})
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx Unit err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx Void err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx Int err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx Float err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (var iᵣ) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (_ Once.Spec.Type.* _) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (_ Once.Spec.Type.+ _) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero _ ] Unit) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One _ ] Unit) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (Once.Spec.Type.μ _) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (Once.Spec.Type.ν _ _) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] var x) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] Void) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] T₂ * T₃) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] T₂ + T₃) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] T₂ ⇒[ x ] T₃) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] μ x) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] ν x x₁) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] Int) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] Float) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] var x) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] Void) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] T₂ * T₃) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] T₂ + T₃) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] T₂ ⇒[ x ] T₃) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] μ x) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] ν x x₁) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] Int) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] Float) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] var x) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] Void) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] T₂ * T₃) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] T₂ + T₃) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] T₂ ⇒[ x ] T₃) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] μ x) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] ν x x₁) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] Int) err =
-  tt
-checkElabV-RVar-bbc-terminal-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] Float) err =
-  tt
-
-checkElabV-RVar-bbc-initial-failure-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m) (err : TypeError)
-    → checkSoundOf ctx (Raw.RResolved (gen "initial")) T (checkElabV-RVar-bbc-initial-failure-aux ctx T err)
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx (Void Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A) err =
-  withUnit-csound _ π _ tt (λ u → wt-initial-morph-check {u = u})
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx Unit err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx Void err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx Int err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx Float err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx (var iᵣ) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx (_ Once.Spec.Type.* _) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx (_ Once.Spec.Type.+ _) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx (Unit Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx (Int Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx (Float Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx ((var iᵣ) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx ((_ Once.Spec.Type.* _) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx ((_ Once.Spec.Type.+ _) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx ((_ Once.Spec.Type.⇒[ _ ] _) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx ((Once.Spec.Type.μ _) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx ((Once.Spec.Type.ν _ _) Once.Spec.Type.⇒[ _ ] _) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx (Void Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero _ ] _) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx (Void Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One _ ] _) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx (Once.Spec.Type.μ _) err =
-  tt
-checkElabV-RVar-bbc-initial-failure-aux-sound ctx (Once.Spec.Type.ν _ _) err =
-  tt
-
-checkElabV-RVar-bbc-inl-failure-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m) (err : TypeError)
-    → checkSoundOf ctx (Raw.RResolved (gen "inl")) T (checkElabV-RVar-bbc-inl-failure-aux ctx T err)
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] (A' Once.Spec.Type.+ B)) err
-    with A ≟T A'
-...  | yes refl =
-  withUnit-csound _ π _ tt (λ u → wt-inl-morph-check {u = u})
-...  | no _ =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx Unit err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx Void err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx Int err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx Float err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (var iᵣ) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (_ Once.Spec.Type.* _) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (_ Once.Spec.Type.+ _) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero _ ] (_ Once.Spec.Type.+ _)) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One _ ] (_ Once.Spec.Type.+ _)) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (Once.Spec.Type.μ _) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (Once.Spec.Type.ν _ _) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] var x) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] Unit) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] Void) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] T₂ * T₃) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] T₂ ⇒[ x ] T₃) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] μ x) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] ν x x₁) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] Int) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] Float) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] var x) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] Unit) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] Void) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] T₂ * T₃) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] T₂ ⇒[ x ] T₃) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] μ x) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] ν x x₁) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] Int) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] Float) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] var x) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] Unit) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] Void) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] T₂ * T₃) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] T₂ ⇒[ x ] T₃) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] μ x) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] ν x x₁) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] Int) err =
-  tt
-checkElabV-RVar-bbc-inl-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] Float) err =
-  tt
-
-checkElabV-RVar-bbc-inr-failure-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m) (err : TypeError)
-    → checkSoundOf ctx (Raw.RResolved (gen "inr")) T (checkElabV-RVar-bbc-inr-failure-aux ctx T err)
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] (A Once.Spec.Type.+ B')) err
-    with B ≟T B'
-...  | yes refl =
-  withUnit-csound _ π _ tt (λ u → wt-inr-morph-check {u = u})
-...  | no _ =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx Unit err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx Void err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx Int err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx Float err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (var iᵣ) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (_ Once.Spec.Type.* _) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (_ Once.Spec.Type.+ _) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero _ ] (_ Once.Spec.Type.+ _)) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One _ ] (_ Once.Spec.Type.+ _)) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (Once.Spec.Type.μ _) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (Once.Spec.Type.ν _ _) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] var x) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] Unit) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] Void) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] T₂ * T₃) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] T₂ ⇒[ x ] T₃) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] μ x) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] ν x x₁) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] Int) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Zero purity ] Float) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] var x) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] Unit) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] Void) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] T₂ * T₃) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] T₂ ⇒[ x ] T₃) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] μ x) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] ν x x₁) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] Int) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind One purity ] Float) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] var x) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] Unit) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] Void) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] T₂ * T₃) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] T₂ ⇒[ x ] T₃) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] μ x) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] ν x x₁) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] Int) err =
-  tt
-checkElabV-RVar-bbc-inr-failure-aux-sound ctx (T₁ ⇒[ mk-kind Many purity ] Float) err =
-  tt
-
-checkElabV-RVar-bbc-id-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
-    → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved (gen "id")) r3
-    → checkSoundOf ctx (Raw.RResolved (gen "id")) T (checkElabV-RVar-bbc-id-aux ctx T r3)
-checkElabV-RVar-bbc-id-aux-sound ctx T r@(success _ _ _ _ _) rˢ =
-  embedOrSubsume-sound ctx (Raw.RResolved (gen "id")) T r rˢ
-checkElabV-RVar-bbc-id-aux-sound ctx T (failure err) _ =
-  checkElabV-RVar-bbc-id-failure-aux-sound ctx T _
-
-checkElabV-RVar-bbc-fst-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
-    → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved (gen "fst")) r3
-    → checkSoundOf ctx (Raw.RResolved (gen "fst")) T (checkElabV-RVar-bbc-fst-aux ctx T r3)
-checkElabV-RVar-bbc-fst-aux-sound ctx T r@(success _ _ _ _ _) rˢ =
-  embedOrSubsume-sound ctx (Raw.RResolved (gen "fst")) T r rˢ
-checkElabV-RVar-bbc-fst-aux-sound ctx T (failure err) _ =
-  checkElabV-RVar-bbc-fst-failure-aux-sound ctx T _
-
-checkElabV-RVar-bbc-snd-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
-    → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved (gen "snd")) r3
-    → checkSoundOf ctx (Raw.RResolved (gen "snd")) T (checkElabV-RVar-bbc-snd-aux ctx T r3)
-checkElabV-RVar-bbc-snd-aux-sound ctx T r@(success _ _ _ _ _) rˢ =
-  embedOrSubsume-sound ctx (Raw.RResolved (gen "snd")) T r rˢ
-checkElabV-RVar-bbc-snd-aux-sound ctx T (failure err) _ =
-  checkElabV-RVar-bbc-snd-failure-aux-sound ctx T _
-
-checkElabV-RVar-bbc-terminal-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
-    → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved (gen "terminal")) r3
-    → checkSoundOf ctx (Raw.RResolved (gen "terminal")) T (checkElabV-RVar-bbc-terminal-aux ctx T r3)
-checkElabV-RVar-bbc-terminal-aux-sound ctx T r@(success _ _ _ _ _) rˢ =
-  embedOrSubsume-sound ctx (Raw.RResolved (gen "terminal")) T r rˢ
-checkElabV-RVar-bbc-terminal-aux-sound ctx T (failure err) _ =
-  checkElabV-RVar-bbc-terminal-failure-aux-sound ctx T _
-
-checkElabV-RVar-bbc-initial-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
-    → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved (gen "initial")) r3
-    → checkSoundOf ctx (Raw.RResolved (gen "initial")) T (checkElabV-RVar-bbc-initial-aux ctx T r3)
-checkElabV-RVar-bbc-initial-aux-sound ctx T r@(success _ _ _ _ _) rˢ =
-  embedOrSubsume-sound ctx (Raw.RResolved (gen "initial")) T r rˢ
-checkElabV-RVar-bbc-initial-aux-sound ctx T (failure err) _ =
-  checkElabV-RVar-bbc-initial-failure-aux-sound ctx T _
-
-checkElabV-RVar-bbc-inl-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
-    → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved (gen "inl")) r3
-    → checkSoundOf ctx (Raw.RResolved (gen "inl")) T (checkElabV-RVar-bbc-inl-aux ctx T r3)
-checkElabV-RVar-bbc-inl-aux-sound ctx T r@(success _ _ _ _ _) rˢ =
-  embedOrSubsume-sound ctx (Raw.RResolved (gen "inl")) T r rˢ
-checkElabV-RVar-bbc-inl-aux-sound ctx T (failure err) _ =
-  checkElabV-RVar-bbc-inl-failure-aux-sound ctx T _
-
-checkElabV-RVar-bbc-inr-aux-sound : ∀ {m} (ctx : NamedCtx m) (T : Ty m)
-    → (r3 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved (gen "inr")) r3
-    → checkSoundOf ctx (Raw.RResolved (gen "inr")) T (checkElabV-RVar-bbc-inr-aux ctx T r3)
-checkElabV-RVar-bbc-inr-aux-sound ctx T r@(success _ _ _ _ _) rˢ =
-  embedOrSubsume-sound ctx (Raw.RResolved (gen "inr")) T r rˢ
-checkElabV-RVar-bbc-inr-aux-sound ctx T (failure err) _ =
-  checkElabV-RVar-bbc-inr-failure-aux-sound ctx T _
-
-inferElabV-RResolved-dispatch-sound : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName)
-    → (a1 : GenView cn)
-    → soundOf ctx (Raw.RResolved cn) (inferElabV-RResolved-dispatch ctx cn a1)
-inferElabV-RResolved-dispatch-sound ctx _ gv-unit =
-  wt-unit-var
-inferElabV-RResolved-dispatch-sound ctx _ gv-toFloat =
-  wt-toFloat
-inferElabV-RResolved-dispatch-sound ctx cn gv-id =
-  tt
-inferElabV-RResolved-dispatch-sound ctx cn gv-fst =
-  tt
-inferElabV-RResolved-dispatch-sound ctx cn gv-snd =
-  tt
-inferElabV-RResolved-dispatch-sound ctx cn gv-terminal =
-  tt
-inferElabV-RResolved-dispatch-sound ctx cn gv-initial =
-  tt
-inferElabV-RResolved-dispatch-sound ctx cn gv-inl =
-  tt
-inferElabV-RResolved-dispatch-sound ctx cn gv-inr =
-  tt
-inferElabV-RResolved-dispatch-sound ctx cn (gv-other ng) =
-  inferElabV-RResolved-aux-sound ctx cn ng _ refl
-
 checkElabV-RResolved-other-sound : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName) (T : Ty m)
     → (r4 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved cn) r4
     → checkSoundOf ctx (Raw.RResolved cn) T (checkElabV-RResolved-other ctx cn T r4)
 checkElabV-RResolved-other-sound ctx cn T r@(success _ _ _ _ _) rˢ =
-  embedOrSubsume-sound ctx (Raw.RResolved cn) T r rˢ
+  embedOrSubsume-sound ctx (Raw.RResolved cn) T (λ P ()) r rˢ
 checkElabV-RResolved-other-sound ctx (canonical []) T (failure err) _ =
   tt
 checkElabV-RResolved-other-sound ctx (own x) T (failure err) _ =
@@ -1365,946 +637,734 @@ checkElabV-RResolved-other-sound ctx (own x) T (failure err) _ =
 checkElabV-RResolved-other-sound ctx (canonical (_ ∷ _ ∷ _)) T (failure err) _ =
   tt
 
-checkElabV-RResolved-dispatch-sound : ∀ {m} (ctx : NamedCtx m) (cn : CanonicalName) (T : Ty m)
-    → (a1 : GenView cn)
-    → (r5 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RResolved cn) r5
-    → checkSoundOf ctx (Raw.RResolved cn) T (checkElabV-RResolved-dispatch ctx cn T a1 r5)
-checkElabV-RResolved-dispatch-sound ctx _ T gv-id rInfV rInfVˢ =
-  checkElabV-RVar-bbc-id-aux-sound ctx T rInfV rInfVˢ
-checkElabV-RResolved-dispatch-sound ctx _ T gv-fst rInfV rInfVˢ =
-  checkElabV-RVar-bbc-fst-aux-sound ctx T rInfV rInfVˢ
-checkElabV-RResolved-dispatch-sound ctx _ T gv-snd rInfV rInfVˢ =
-  checkElabV-RVar-bbc-snd-aux-sound ctx T rInfV rInfVˢ
-checkElabV-RResolved-dispatch-sound ctx _ T gv-terminal rInfV rInfVˢ =
-  checkElabV-RVar-bbc-terminal-aux-sound ctx T rInfV rInfVˢ
-checkElabV-RResolved-dispatch-sound ctx _ T gv-initial rInfV rInfVˢ =
-  checkElabV-RVar-bbc-initial-aux-sound ctx T rInfV rInfVˢ
-checkElabV-RResolved-dispatch-sound ctx _ T gv-inl rInfV rInfVˢ =
-  checkElabV-RVar-bbc-inl-aux-sound ctx T rInfV rInfVˢ
-checkElabV-RResolved-dispatch-sound ctx _ T gv-inr rInfV rInfVˢ =
-  checkElabV-RVar-bbc-inr-aux-sound ctx T rInfV rInfVˢ
-checkElabV-RResolved-dispatch-sound ctx cn T gv-unit rInfV rInfVˢ =
-  embedOrSubsume-sound ctx (Raw.RResolved cn) T rInfV rInfVˢ
-checkElabV-RResolved-dispatch-sound ctx cn T gv-toFloat rInfV rInfVˢ =
-  embedOrSubsume-sound ctx (Raw.RResolved cn) T rInfV rInfVˢ
-checkElabV-RResolved-dispatch-sound ctx cn T (gv-other ng) rInfV rInfVˢ =
-  checkElabV-RResolved-other-sound ctx cn T rInfV rInfVˢ
-
 checkElabV-RVar-bbc-other-aux-sound : ∀ {m} (ctx : NamedCtx m) (x : String) (T : Ty m)
     → (r4 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RVar x) r4
     → checkSoundOf ctx (Raw.RVar x) T (checkElabV-RVar-bbc-other-aux ctx x T r4)
 checkElabV-RVar-bbc-other-aux-sound ctx x T r rˢ =
-  embedOrSubsume-sound ctx (Raw.RVar x) T r rˢ
-
-checkElabV-RFloat-aux-sound : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ) (T : Ty m)
-    → checkSoundOf ctx (Raw.RFloat sg i f l) T (checkElabV-RFloat-aux ctx sg i f l T)
-checkElabV-RFloat-aux-sound ctx sg i f l T
-    with Once.Spec.Type.Float <:? T
-...  | yes s =
-  wt-sub (wt-float sg i f l) s
-...  | no _ =
-  tt
+  embedOrSubsume-sound ctx (Raw.RVar x) T (λ P ()) r rˢ
 
 inferElabV-RFloat-aux-sound : ∀ {m} (ctx : NamedCtx m) (sg : Sign) (i f l : ℕ)
     → soundOf ctx (Raw.RFloat sg i f l) (inferElabV-RFloat-aux ctx sg i f l)
 inferElabV-RFloat-aux-sound ctx sg i f l = wt-float sg i f l
 
+------------------------------------------------------------------------
+-- The generators (plan 0.151)
+------------------------------------------------------------------------
+
+private
+  const-map′ : ∀ {k} → G.IsConstant k → G.IsMap k → ⊥
+  const-map′ G.is-constant ()
+  comb-map′ : ∀ {k n} → G.IsCombinator n k → G.IsMap k → ⊥
+  comb-map′ G.is-combinator ()
+  fc-map′ : ∀ {k} → G.FromCodomain k → G.IsMap k
+  fc-map′ G.fc-codomain = G.is-map
+  fc-map′ G.fc-both     = G.is-map
+
+inferConst-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (c : G.IsConstant (G.kind g))
+                 → soundOf ctx (Raw.RGen g) (inferConst ctx g c)
+inferConst-sound ctx G.unit    _ = wt-unit-gen
+inferConst-sound ctx G.toFloat _ = wt-toFloat
+inferConst-sound ctx G.id ()
+inferConst-sound ctx G.compose ()
+inferConst-sound ctx G.fst ()
+inferConst-sound ctx G.snd ()
+inferConst-sound ctx G.terminal ()
+inferConst-sound ctx G.pair ()
+inferConst-sound ctx G.inl ()
+inferConst-sound ctx G.inr ()
+inferConst-sound ctx G.initial ()
+inferConst-sound ctx G.case ()
+inferConst-sound ctx G.apply ()
+inferConst-sound ctx G.curry ()
+inferConst-sound ctx G.In ()
+inferConst-sound ctx G.cata ()
+inferConst-sound ctx G.Out ()
+inferConst-sound ctx G.ana ()
+
+inferGen-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (kv : GenKindView g) → soundOf ctx (Raw.RGen g) (inferGen ctx g kv)
+inferGen-sound ctx g (gk-const c) = inferConst-sound ctx g c
+inferGen-sound ctx g (gk-map _)   = tt
+inferGen-sound ctx g (gk-comb₁ _) = tt
+inferGen-sound ctx g (gk-comb₂ _) = tt
+
+givenMap-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (A : Ty m) (π : Once.Spec.Grade.Purity)
+               → (mb : Maybe (Σ-syntax (Ty m) (λ B → IR ⌊ A ⌋ ⌊ B ⌋))) → mapFrom? (NamedCtx.kinds ctx) g A ≡ mb
+               → givenSoundOf ctx (Raw.RGen g) A π (givenMap ctx g A π mb)
+givenMap-sound ctx g A π (just (B , mI)) e = wd-map e
+givenMap-sound ctx g A π nothing         e = tt
+
+checkMapAt-go-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (A : Ty m) (π : Once.Spec.Grade.Purity) (B : Ty m)
+                    → (mb : Maybe (IR ⌊ A ⌋ ⌊ B ⌋)) → mapAt? (NamedCtx.kinds ctx) g A B ≡ mb
+                    → checkSoundOf ctx (Raw.RGen g) (A ⇒ω⟨ π ⟩ B) (checkMapAt-go ctx g A π B mb)
+checkMapAt-go-sound ctx g A π B (just mI) e = wt-map-check e
+checkMapAt-go-sound ctx g A π B nothing   e = tt
+
+checkMapAt-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) {T : Ty m} (v : ArrowTarget T)
+                 → checkSoundOf ctx (Raw.RGen g) T (checkMapAt ctx g v)
+checkMapAt-sound ctx g (arrow-at A π B) = checkMapAt-go-sound ctx g A π B (mapAt? (NamedCtx.kinds ctx) g A B) refl
+checkMapAt-sound ctx g arrow-other      = tt
+
+inferMapSpine-go-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (x : Syn.Expr) {X : Ty m} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                       → (xE : SExpr (NamedCtx.debruijn ctx) Ψ X) (d fr : ℕ) → WI ctx x X Ψ xE
+                       → (mb : Maybe (Σ-syntax (Ty m) (λ B → IR ⌊ X ⌋ ⌊ B ⌋))) → mapFrom? (NamedCtx.kinds ctx) g X ≡ mb
+                       → soundOf ctx (Raw.RApp (Raw.RGen g) x) (inferMapSpine-go ctx g xE d fr mb)
+inferMapSpine-go-sound ctx g x xE d fr w (just (B , mI)) e = wt-map-spine e w
+inferMapSpine-go-sound ctx g x xE d fr w nothing e = tt
+
+inferMapSpine-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (x : Syn.Expr)
+                    → (r : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx x r
+                    → soundOf ctx (Raw.RApp (Raw.RGen g) x) (inferMapSpine ctx g r)
+inferMapSpine-sound ctx g x (failure err) _ = tt
+inferMapSpine-sound ctx g x (success X Ψ xE d fr) w =
+  inferMapSpine-go-sound ctx g x xE d fr w (mapFrom? (NamedCtx.kinds ctx) g X) refl
+
+givenCata-alg-sound : ∀ {m} (ctx : NamedCtx m) (alg : Syn.Expr) (F : Once.Spec.Type.Fun m) (π : Once.Spec.Grade.Purity)
+                    → (w : Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F) (A₁ A : Ty m) (π′ : Once.Spec.Grade.Purity) {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                    → (algE : SExpr (NamedCtx.debruijn ctx) Ψ (A₁ ⇒ω⟨ π′ ⟩ A)) (d fr : ℕ) → WI ctx alg (A₁ ⇒ω⟨ π′ ⟩ A) Ψ algE
+                    → (dp : Dec (⟦ F ⟧F A <: A₁)) (dq : Dec (π′ ⊑π π))
+                    → givenSoundOf ctx (Raw.RApp (Raw.RGen G.cata) alg) (Once.Spec.Type.μ F) π (givenCata-alg ctx F π w A₁ A π′ algE d fr dp dq)
+givenCata-alg-sound ctx alg F π w A₁ A π′ algE d fr wa (yes p) (yes o) = wd-cata w wa p o
+givenCata-alg-sound ctx alg F π w A₁ A π′ algE d fr wa (no _) _ = tt
+givenCata-alg-sound ctx alg F π w A₁ A π′ algE d fr wa (yes _) (no _) = tt
+
+givenCata-wf-sound : ∀ {m} (ctx : NamedCtx m) (alg : Syn.Expr) (F : Once.Spec.Type.Fun m) (π : Once.Spec.Grade.Purity)
+                   → (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F))
+                   → (r : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx alg r
+                   → givenSoundOf ctx (Raw.RApp (Raw.RGen G.cata) alg) (Once.Spec.Type.μ F) π (givenCata-wf ctx F π mw r)
+givenCata-wf-sound ctx alg F π nothing r _ = tt
+givenCata-wf-sound ctx alg F π (just w) (failure err) _ = tt
+givenCata-wf-sound ctx alg F π (just w) (success (A₁ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] A) Ψ algE d fr) wa =
+  givenCata-alg-sound ctx alg F π w A₁ A π′ algE d fr wa (⟦ F ⟧F A <:? A₁) (π′ ⊑π? π)
+givenCata-wf-sound ctx alg F π (just w) (success (_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero _ ] _) _ _ _ _) _ = tt
+givenCata-wf-sound ctx alg F π (just w) (success (_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One _ ] _) _ _ _ _) _ = tt
+givenCata-wf-sound ctx alg F π (just w) (success (var _) _ _ _ _) _ = tt
+givenCata-wf-sound ctx alg F π (just w) (success Unit _ _ _ _) _ = tt
+givenCata-wf-sound ctx alg F π (just w) (success Void _ _ _ _) _ = tt
+givenCata-wf-sound ctx alg F π (just w) (success (_ * _) _ _ _ _) _ = tt
+givenCata-wf-sound ctx alg F π (just w) (success (_ + _) _ _ _ _) _ = tt
+givenCata-wf-sound ctx alg F π (just w) (success (μ _) _ _ _ _) _ = tt
+givenCata-wf-sound ctx alg F π (just w) (success (ν _ _) _ _ _ _) _ = tt
+givenCata-wf-sound ctx alg F π (just w) (success Int _ _ _ _) _ = tt
+givenCata-wf-sound ctx alg F π (just w) (success Float _ _ _ _) _ = tt
+
+givenCata-sound : ∀ {m} (ctx : NamedCtx m) (alg : Syn.Expr) (A : Ty m) (π : Once.Spec.Grade.Purity)
+                → (r : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx alg r
+                → givenSoundOf ctx (Raw.RApp (Raw.RGen G.cata) alg) A π (givenCata ctx A π r)
+givenCata-sound ctx alg A π r w = go (muV A)
+  where
+    go : (v : MuV A) → givenSoundOf ctx (Raw.RApp (Raw.RGen G.cata) alg) A π (givenCata-mu ctx π v r)
+    go (mu-at F) = givenCata-wf-sound ctx alg F π (wfFun? (NamedCtx.kinds ctx) F) r w
+    go mu-other  = tt
+
+-- The head of an application read as polymorphic, at every Pack, only checks.
+private
+  res-head : ∀ {m} {ctx : NamedCtx m} cn → polyKind ctx cn ≢ not-poly
+           → (P : Pack ctx) → SUT.CheckHead (Pack.Sg P) (Pack.S P) (Pack.nm P) (Raw.RResolved cn)
+  res-head cn ne P = SUT.ch-poly (FS.name-of P cn ne)
+
+  dom≢not : E.poly-dom ≢ not-poly
+  dom≢not ()
+
+  res-not-gen : ∀ {f cn} → f ≡ Raw.RResolved cn → ∀ {g} → f ≢ Raw.RGen g
+  res-not-gen refl ()
+  other≢not : poly-other ≢ not-poly
+  other≢not ()
+
 mutual
+  inferElab-sound : ∀ {m} (ctx : NamedCtx m) (e : Syn.Expr) → soundOf ctx e (inferElab ctx e)
+  checkElab-sound : ∀ {m} (ctx : NamedCtx m) (e : Syn.Expr) (T : Ty m) → checkSoundOf ctx e T (checkElab ctx e T)
+  checkElab-wf-sound : ∀ {m} (ctx : NamedCtx m) (a1 : Acc _<_ (length (NamedCtx.polys ctx))) (e : Syn.Expr) (T : Ty m)
+                     → checkSoundOf ctx e T (checkElab-wf ctx a1 e T)
+  elabGiven-sound : ∀ {m} (ctx : NamedCtx m) (e : Syn.Expr) (A : Ty m) (π : Once.Spec.Grade.Purity)
+                  → givenSoundOf ctx e A π (elabGiven ctx e A π)
 
-  checkPairOn-sound : ∀ {m}
-      → (ctx : NamedCtx m) (f g : Syn.Expr) (T : Ty m)
-      → (a1 : PairTarget T)
-      → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "pair")) f) g) T (checkPairOn ctx f g T a1)
+  inferApp-sound : ∀ {m} (ctx : NamedCtx m) (f x : Syn.Expr) → soundOf ctx (Raw.RApp f x) (inferApp ctx f x)
+  inferAppGen-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (x : Syn.Expr) (kv : GenKindView g)
+                    → soundOf ctx (Raw.RApp (Raw.RGen g) x) (inferAppGen ctx g x kv)
+  inferAppGen₁-sound : ∀ {m} (ctx : NamedCtx m) (f : Syn.Expr) (g : G.Gen) (x : Syn.Expr) (kv : GenKindView g)
+                     → (∀ {g′} → f ≢ Raw.RGen g′)
+                     → (G.IsCombinator 1 (G.kind g) → (P : Pack ctx) → SUT.CheckHead (Pack.Sg P) (Pack.S P) (Pack.nm P) f)
+                     → soundOf ctx (Raw.RApp f x) (inferAppGen₁ ctx f g x kv)
+  inferAppGen₂-sound : ∀ {m} (ctx : NamedCtx m) (f : Syn.Expr) (g : G.Gen) (x : Syn.Expr) (kv : GenKindView g)
+                     → (∀ {g′} → f ≢ Raw.RGen g′)
+                     → (G.IsCombinator 2 (G.kind g) → (P : Pack ctx) → SUT.CheckHead (Pack.Sg P) (Pack.S P) (Pack.nm P) f)
+                     → soundOf ctx (Raw.RApp f x) (inferAppGen₂ ctx f g x kv)
+  appOn-sound : ∀ {m} (ctx : NamedCtx m) (f x : Syn.Expr) (r : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx f r
+              → soundOf ctx (Raw.RApp f x) (appOn ctx x r)
+  appAt-sound : ∀ {m} (ctx : NamedCtx m) (f x : Syn.Expr) (A B : Ty m) (q : Quantity) (π : Once.Spec.Grade.Purity)
+                {Ψ₁ : Surface.Usage (NamedCtx.size ctx)} (fE : SExpr (NamedCtx.debruijn ctx) Ψ₁ (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q π ] B))
+                (d fr : ℕ) → WI ctx f (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q π ] B) Ψ₁ fE
+              → (r : CheckElabResult (NamedCtx.debruijn ctx) A) → checkSoundOf ctx x A r
+              → soundOf ctx (Raw.RApp f x) (appAt ctx x A B q π fE d fr r)
+  appOther-sound : ∀ {m} (ctx : NamedCtx m) (f x : Syn.Expr) → soundOf ctx (Raw.RApp f x) (appOther ctx f x)
+  appRes-sound : ∀ {m} (ctx : NamedCtx m) (f : Syn.Expr) (cn : CanonicalName) (x : Syn.Expr) (k : PolyKind) → polyKind ctx cn ≡ k
+               → f ≡ Raw.RResolved cn → soundOf ctx (Raw.RApp f x) (appRes ctx f x k)
+  inferSpine-sound : ∀ {m} (ctx : NamedCtx m) (f x : Syn.Expr) → (∀ {g} → f ≢ Raw.RGen g)
+                   → ((P : Pack ctx) → SUT.CheckHead (Pack.Sg P) (Pack.S P) (Pack.nm P) f)
+                   → (r : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx x r
+                   → soundOf ctx (Raw.RApp f x) (inferSpine ctx f r)
 
-  checkPairLit-sound : ∀ {m}
-      → (ctx : NamedCtx m)
-      → (a b : Syn.Expr)
-      → (A B : Ty m)
-      → checkSoundOf ctx (Raw.RPair a b) (A Once.Spec.Type.* B) (checkPairLit ctx a b A B)
+  checkApp-sound : ∀ {m} (ctx : NamedCtx m) (f x : Syn.Expr) (T : Ty m)
+                 → checkSoundOf ctx (Raw.RApp f x) T (checkApp ctx f x T)
+  checkAppGen-sound : ∀ {m} (ctx : NamedCtx m) (f : Syn.Expr) (g : G.Gen) (x : Syn.Expr) (T : Ty m) (kv : GenKindView g) → f ≡ Raw.RGen g
+                    → checkSoundOf ctx (Raw.RApp f x) T (checkAppGen ctx f g x T kv)
+  checkAppGen₁-sound : ∀ {m} (ctx : NamedCtx m) (f : Syn.Expr) (g : G.Gen) (a x : Syn.Expr) (T : Ty m) (kv : GenKindView g) → f ≡ Raw.RApp (Raw.RGen g) a
+                     → checkSoundOf ctx (Raw.RApp f x) T (checkAppGen₁ ctx f g a x T kv)
+  checkSubApp-sound : ∀ {m} (ctx : NamedCtx m) (f x : Syn.Expr) (T : Ty m) → NoOwn ctx (Raw.RApp f x)
+                    → checkSoundOf ctx (Raw.RApp f x) T (checkSubApp ctx f x T)
+  checkMapApp-sound : ∀ {m} (ctx : NamedCtx m) (f : Syn.Expr) (g : G.Gen) (x : Syn.Expr) (T : Ty m) (d : Dec (G.FromCodomain (G.kind g))) → f ≡ Raw.RGen g
+                    → checkSoundOf ctx (Raw.RApp f x) T (checkMapApp ctx f g x T d)
+  checkMapApp-go-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (x : Syn.Expr) (T : Ty m)
+                       → (mb : Maybe (Σ-syntax (Ty m) (λ A → IR ⌊ A ⌋ ⌊ T ⌋))) → mapTo? (NamedCtx.kinds ctx) g T ≡ mb
+                       → checkSoundOf ctx (Raw.RApp (Raw.RGen g) x) T (checkMapApp-go ctx g x T mb)
+  checkComb₁-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (arg : Syn.Expr) (T : Ty m)
+                   → checkSoundOf ctx (Raw.RApp (Raw.RGen g) arg) T (checkComb₁ ctx g arg T)
+  checkComb₂-sound : ∀ {m} (ctx : NamedCtx m) (g : G.Gen) (f h : Syn.Expr) (T : Ty m)
+                   → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RGen g) f) h) T (checkComb₂ ctx g f h T)
+  checkPairOn-sound : ∀ {m} (ctx : NamedCtx m) (f g : Syn.Expr) (T : Ty m) (v : PairTarget T)
+                    → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RGen G.pair) f) g) T (checkPairOn ctx f g T v)
+  checkPairLit-sound : ∀ {m} (ctx : NamedCtx m) (a b : Syn.Expr) (A B : Ty m)
+                     → checkSoundOf ctx (Raw.RPair a b) (A Once.Spec.Type.* B) (checkPairLit ctx a b A B)
+  checkCaseOn-sound : ∀ {m} (ctx : NamedCtx m) (f g : Syn.Expr) (T : Ty m) (v : CaseTarget T)
+                    → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RGen G.case) f) g) T (checkCaseOn ctx f g T v)
+  checkComposeOn-sound : ∀ {m} (ctx : NamedCtx m) (f g : Syn.Expr) (T : Ty m) (v : ArrowTarget T)
+                       → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RGen G.compose) f) g) T (checkComposeOn ctx f g T v)
+  checkCompose-route-sound : ∀ {m} (ctx : NamedCtx m) (f g : Syn.Expr) (A C : Ty m) (π : Once.Spec.Grade.Purity) (b : Bool)
+                           → domainForm? ctx g ≡ b
+                           → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RGen G.compose) f) g) (A ⇒ω⟨ π ⟩ C) (checkCompose-route ctx f g A C π b)
+  checkCompose-g-sound : ∀ {m} (ctx : NamedCtx m) (f g : Syn.Expr) (A C : Ty m) (π : Once.Spec.Grade.Purity) → domainForm? ctx g ≡ true
+                       → (r : GivenElabResult (NamedCtx.debruijn ctx) A π) → givenSoundOf ctx g A π r
+                       → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RGen G.compose) f) g) (A ⇒ω⟨ π ⟩ C) (checkCompose-g ctx f A C π r)
+  checkCompose-f-sound : ∀ {m} (ctx : NamedCtx m) (f g : Syn.Expr) (A C : Ty m) (π : Once.Spec.Grade.Purity)
+                       → ((P : Pack ctx) → ¬ SUT.DomainForm (Pack.Sg P) (Pack.S P) (Pack.nm P) g)
+                       → (r : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx f r
+                       → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RGen G.compose) f) g) (A ⇒ω⟨ π ⟩ C) (checkCompose-f ctx g A C π r)
+  checkCompose-f-sub-sound : ∀ {m} (ctx : NamedCtx m) (f g : Syn.Expr) (A B C C′ : Ty m) (π π′ : Once.Spec.Grade.Purity)
+                           → ((P : Pack ctx) → ¬ SUT.DomainForm (Pack.Sg P) (Pack.S P) (Pack.nm P) g)
+                           → {Ψf : Surface.Usage (NamedCtx.size ctx)} (fE : SExpr (NamedCtx.debruijn ctx) Ψf (B ⇒ω⟨ π′ ⟩ C′)) (df : ℕ)
+                           → WI ctx f (B ⇒ω⟨ π′ ⟩ C′) Ψf fE
+                           → (dp : Dec ((B ⇒ω⟨ π′ ⟩ C′) <: (B ⇒ω⟨ π ⟩ C)))
+                           → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RGen G.compose) f) g) (A ⇒ω⟨ π ⟩ C) (checkCompose-f-sub ctx g A B C C′ π π′ fE df dp)
+  checkCurryOn-sound : ∀ {m} (ctx : NamedCtx m) (arg : Syn.Expr) (T : Ty m) (v : CurryTarget T)
+                     → checkSoundOf ctx (Raw.RApp (Raw.RGen G.curry) arg) T (checkCurryOn ctx arg T v)
+  checkCataOn-sound : ∀ {m} (ctx : NamedCtx m) (arg : Syn.Expr) (T : Ty m) (v : CataTarget T)
+                    → checkSoundOf ctx (Raw.RApp (Raw.RGen G.cata) arg) T (checkCataOn ctx arg T v)
+  checkCataGo-sound : ∀ {m} (ctx : NamedCtx m) (alg : Syn.Expr) (F : Once.Spec.Type.Fun m) (A : Ty m) (π : Once.Spec.Grade.Purity)
+                    → (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F))
+                    → checkSoundOf ctx (Raw.RApp (Raw.RGen G.cata) alg) (Once.Spec.Type.μ F ⇒ω⟨ π ⟩ A) (checkCataGo ctx alg F A π mw)
+  checkAnaOn-sound : ∀ {m} (ctx : NamedCtx m) (arg : Syn.Expr) (T : Ty m) (v : AnaTarget T)
+                   → checkSoundOf ctx (Raw.RApp (Raw.RGen G.ana) arg) T (checkAnaOn ctx arg T v)
+  checkAnaGo-sound : ∀ {m} (ctx : NamedCtx m) (coalg : Syn.Expr) (F : Once.Spec.Type.Fun m) (A : Ty m) (π₀ : Once.Spec.Grade.Purity) (φ : Once.Spec.Grade.Finite)
+                   → π₀ ⊑π Once.Spec.Grade.act → (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F))
+                   → checkSoundOf ctx (Raw.RApp (Raw.RGen G.ana) coalg) (A ⇒ω⟨ π₀ ⟩ Once.Spec.Type.ν F φ) (checkAnaGo ctx coalg F A π₀ φ mw)
+  checkLoop-sound : ∀ {m} (ctx : NamedCtx m) (round : Syn.Expr) (A B : Ty m)
+                  → (r : CheckElabResult (NamedCtx.debruijn ctx) (A ⇒ω⟨ Once.Spec.Grade.act ⟩ (B Once.Spec.Type.+ A)))
+                  → checkSoundOf ctx round (A ⇒ω⟨ Once.Spec.Grade.act ⟩ (B Once.Spec.Type.+ A)) r
+                  → checkSoundOf ctx (Raw.RApp (Raw.RGen G.ana) round) (A ⇒ω⟨ Once.Spec.Grade.eff ⟩ B) (checkLoop ctx A B r)
+  givenApp-sound : ∀ {m} (ctx : NamedCtx m) (f g : Syn.Expr) (A : Ty m) (π : Once.Spec.Grade.Purity)
+                 → (r : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RApp f g) r
+                 → givenSoundOf ctx (Raw.RApp f g) A π (givenApp ctx f g A π r)
+  givenCase-sound : ∀ {m} (ctx : NamedCtx m) (f g : Syn.Expr) {A : Ty m} (π : Once.Spec.Grade.Purity) (v : SumV A)
+                  → givenSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RGen G.case) f) g) A π (givenCase ctx f g π v)
+  inferElabV-RLet-aux-sound : ∀ {m} (ctx : NamedCtx m) (x : String) (e₁ e₂ : Syn.Expr)
+                            → (r : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx e₁ r
+                            → soundOf ctx (Raw.RLet x e₁ e₂) (inferElabV-RLet-aux ctx x e₁ e₂ r)
+  inferElabV-RDestruct-aux-sound : ∀ {m} (ctx : NamedCtx m) (scrut : Syn.Expr) (xL : String) (eL : Syn.Expr) (xR : String) (eR : Syn.Expr)
+                                 → (r : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx scrut r
+                                 → soundOf ctx (Raw.RDestruct scrut xL eL xR eR) (inferElabV-RDestruct-aux ctx scrut xL eL xR eR r)
+  inferElabV-RDestruct-auxL-sound : ∀ {m} (ctx : NamedCtx m) (scrut : Syn.Expr) (xL : String) (eL : Syn.Expr) (xR : String) (eR : Syn.Expr)
+                                  → (A B : Ty m) {Ψs : Surface.Usage (NamedCtx.size ctx)}
+                                  → (scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A Once.Spec.Type.+ B)) (ds fs : ℕ) → WI ctx scrut (A Once.Spec.Type.+ B) Ψs scrutE
+                                  → (r : InferElabResult (NamedCtx.debruijn (extendNamedCtx ctx xL A))) → soundOf (extendNamedCtx ctx xL A) eL r
+                                  → soundOf ctx (Raw.RDestruct scrut xL eL xR eR) (inferElabV-RDestruct-auxL ctx scrut xL eL xR eR A B scrutE ds fs r)
+  checkElabV-RPair-aux-sound : ∀ {m} (ctx : NamedCtx m) (a b : Syn.Expr) (T : Ty m) (v : RPairTarget T)
+                             → checkSoundOf ctx (Raw.RPair a b) T (checkElabV-RPair-aux ctx a b T v)
 
-  checkCaseOn-sound : ∀ {m}
-      → (ctx : NamedCtx m) (f g : Syn.Expr) (T : Ty m)
-      → (a1 : CaseTarget T)
-      → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "case")) f) g) T (checkCaseOn ctx f g T a1)
+  ----------------------------------------------------------------------
+  -- Synthesis
+  ----------------------------------------------------------------------
 
-  checkCaseGo-sound : ∀ {m}
-      → (ctx : NamedCtx m) (f g : Syn.Expr) (A B C : Ty m) (π : Once.Spec.Grade.Purity)
-      → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "case")) f) g) ((A Once.Spec.Type.+ B) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C) (checkCaseGo ctx f g A B C π)
-
-  checkComposeOn-sound : ∀ {m}
-      → (ctx : NamedCtx m) (f g : Syn.Expr) (T : Ty m)
-      → (a1 : ArrowTarget T)
-      → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "compose")) f) g) T (checkComposeOn ctx f g T a1)
-
-  elabGiven-sound : ∀ {m}
-      → (ctx : NamedCtx m) (e : Syn.Expr) (A : Ty m) (π : Once.Spec.Grade.Purity)
-      → givenSoundOf ctx e A π (elabGiven ctx e A π)
-
-  elabGivenApp-sound : ∀ {m}
-      → (ctx : NamedCtx m) (f g : Syn.Expr) (A : Ty m) (π : Once.Spec.Grade.Purity)
-      → (a1 : AppHeadView f)
-      → (r7 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx (Raw.RApp f g) r7
-      → givenSoundOf ctx (Raw.RApp f g) A π (elabGivenApp ctx f g A π a1 r7)
-
-  checkCompose-g-sound : ∀ {m}
-      → (ctx : NamedCtx m) (f g : Syn.Expr) (A C : Ty m) (π : Once.Spec.Grade.Purity)
-      → (r7 : GivenElabResult (NamedCtx.debruijn ctx) A π) → givenSoundOf ctx g A π r7
-      → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "compose")) f) g) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C) (checkCompose-g ctx f g A C π r7)
-
-  checkCompose-f-sound : ∀ {m}
-      → (ctx : NamedCtx m) (f g : Syn.Expr) (A C : Ty m) (π : Once.Spec.Grade.Purity)
-      → (me : Maybe TypeError)
-      → checkSoundOf ctx (Raw.RApp (Raw.RApp (Raw.RResolved (gen "compose")) f) g) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C) (checkCompose-f ctx f g A C π me)
-
-  checkCurry-sound : ∀ {m}
-      → (ctx : NamedCtx m)
-      → (arg : Syn.Expr)
-      → (T : Ty m)
-      → checkSoundOf ctx (Raw.RApp (Raw.RResolved (gen "curry")) arg) T (checkCurry ctx arg T)
-
-  checkCurryOn-sound : ∀ {m}
-      → (ctx : NamedCtx m) (arg : Syn.Expr) (T : Ty m)
-      → (a1 : CurryTarget T)
-      → checkSoundOf ctx (Raw.RApp (Raw.RResolved (gen "curry")) arg) T (checkCurryOn ctx arg T a1)
-
-  inferOut-sound : ∀ {m}
-      → (ctx : NamedCtx m)
-      → (arg : Syn.Expr)
-      → soundOf ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) (inferOut ctx arg)
-
-  checkIn-sound : ∀ {m}
-      → (ctx : NamedCtx m)
-      → (arg : Syn.Expr)
-      → (T : Ty m)
-      → checkSoundOf ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) T (checkIn ctx arg T)
-
-  checkInOn-sound : ∀ {m}
-      → (ctx : NamedCtx m) (arg : Syn.Expr) (T : Ty m)
-      → (a1 : InTarget T)
-      → checkSoundOf ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) T (checkInOn ctx arg T a1)
-
-  checkInGo-sound : ∀ {m}
-      → (ctx : NamedCtx m) (arg : Syn.Expr) (F : Once.Spec.Type.Fun m)
-      → (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F))
-      → (a1 : wfFun? (NamedCtx.kinds ctx) F ≡ mw)
-      → checkSoundOf ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) (Once.Spec.Type.μ F) (checkInGo ctx arg F mw a1)
-
-  checkCata-sound : ∀ {m}
-      → (ctx : NamedCtx m)
-      → (arg : Syn.Expr)
-      → (T : Ty m)
-      → checkSoundOf ctx (Raw.RApp (Raw.RResolved (gen "cata")) arg) T (checkCata ctx arg T)
-
-  checkCataOn-sound : ∀ {m}
-      → (ctx : NamedCtx m) (arg : Syn.Expr) (T : Ty m)
-      → (a1 : CataTarget T)
-      → checkSoundOf ctx (Raw.RApp (Raw.RResolved (gen "cata")) arg) T (checkCataOn ctx arg T a1)
-
-  checkCataGo-sound : ∀ {m}
-      → (ctx : NamedCtx m) (alg : Syn.Expr) (F : Once.Spec.Type.Fun m) (A : Ty m) (π : Once.Spec.Grade.Purity)
-      → (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F))
-      → (a1 : wfFun? (NamedCtx.kinds ctx) F ≡ mw)
-      → checkSoundOf ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg) (Once.Spec.Type.μ F Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A) (checkCataGo ctx alg F A π mw a1)
-
-  checkAna-sound : ∀ {m}
-      → (ctx : NamedCtx m)
-      → (arg : Syn.Expr)
-      → (T : Ty m)
-      → checkSoundOf ctx (Raw.RApp (Raw.RResolved (gen "ana")) arg) T (checkAna ctx arg T)
-
-  checkAnaOn-sound : ∀ {m}
-      → (ctx : NamedCtx m) (arg : Syn.Expr) (T : Ty m)
-      → (a1 : AnaTarget T)
-      → checkSoundOf ctx (Raw.RApp (Raw.RResolved (gen "ana")) arg) T (checkAnaOn ctx arg T a1)
-
-  checkAnaGo-sound : ∀ {m}
-      → (ctx : NamedCtx m) (coalg : Syn.Expr) (F : Once.Spec.Type.Fun m) (A : Ty m) (π₀ : Once.Spec.Grade.Purity) (φ : Once.Spec.Grade.Finite)
-      → (a1 : π₀ ⊑π Once.Spec.Grade.act)
-      → (mw : Maybe (Once.Spec.Type.WFFun (NamedCtx.kinds ctx) F))
-      → (a2 : wfFun? (NamedCtx.kinds ctx) F ≡ mw)
-      → checkSoundOf ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π₀ ] Once.Spec.Type.ν F φ) (checkAnaGo ctx coalg F A π₀ φ a1 mw a2)
-
-  checkLoop-sound : ∀ {m}
-      → (ctx : NamedCtx m) (round : Syn.Expr) (A B : Ty m)
-      → (r5 : CheckElabResult (NamedCtx.debruijn ctx) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] (B Once.Spec.Type.+ A))) → checkSoundOf ctx round (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] (B Once.Spec.Type.+ A)) r5
-      → checkSoundOf ctx (Raw.RApp (Raw.RResolved (gen "ana")) round) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) (checkLoop ctx round A B r5)
-
-  inferElab-sound : ∀ {m}
-      → (ctx : NamedCtx m) (e : Syn.Expr)
-      → soundOf ctx e (inferElab ctx e)
-
-  checkElab-sound : ∀ {m}
-      → (ctx : NamedCtx m) (e : Syn.Expr) (T : Ty m)
-      → checkSoundOf ctx e T (checkElab ctx e T)
-
-  checkElab-wf-sound : ∀ {m}
-      → (ctx : NamedCtx m)
-      → (a1 : Acc _<_ (length (NamedCtx.polys ctx)))
-      → (e : Syn.Expr) (T : Ty m)
-      → checkSoundOf ctx e T (checkElab-wf ctx a1 e T)
-
-  inferElabV-RApp-other-sound : ∀ {m}
-      → (ctx : NamedCtx m) (f x : Syn.Expr)
-      → soundOf ctx (Raw.RApp f x) (inferElabV-RApp-other ctx f x)
-
-
-  inferElabV-RLet-aux-sound : ∀ {m}
-      → (ctx : NamedCtx m) (x : String) (e₁ e₂ : Syn.Expr)
-      → (r5 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx e₁ r5
-      → soundOf ctx (Raw.RLet x e₁ e₂) (inferElabV-RLet-aux ctx x e₁ e₂ r5)
-
-  inferElabV-RDestruct-aux-sound : ∀ {m}
-      → (ctx : NamedCtx m) (scrut : Syn.Expr) (xL : String) (eL : Syn.Expr) (xR : String) (eR : Syn.Expr)
-      → (r7 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx scrut r7
-      → soundOf ctx (Raw.RDestruct scrut xL eL xR eR) (inferElabV-RDestruct-aux ctx scrut xL eL xR eR r7)
-
-  inferElabV-RDestruct-auxL-sound : ∀ {m}
-      → (ctx : NamedCtx m) (scrut : Syn.Expr) (xL : String) (eL : Syn.Expr) (xR : String) (eR : Syn.Expr) (A B : Ty m) {Ψs : Surface.Usage (NamedCtx.size ctx)} (scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A Once.Spec.Type.+ B)) (ds fs : ℕ) (wS : WI ctx scrut (A Once.Spec.Type.+ B) Ψs scrutE)
-      → (r12 : InferElabResult (NamedCtx.debruijn (extendNamedCtx ctx xL A))) → soundOf (extendNamedCtx ctx xL A) eL r12
-      → soundOf ctx (Raw.RDestruct scrut xL eL xR eR) (inferElabV-RDestruct-auxL ctx scrut xL eL xR eR A B scrutE ds fs r12)
-
-  inferElabV-RApp-other-aux-sound : ∀ {m} (ctx : NamedCtx m) (f x : Syn.Expr) (lhs : Maybe PolyBuiltinApp)
-      → (a1 : classifyAppHead f ≡ lhs)
-      → soundOf ctx (Raw.RApp f x) (inferElabV-RApp-other-aux ctx f x lhs a1)
-
-  inferElabV-RApp-dispatch-sound : ∀ {m} (ctx : NamedCtx m) (f arg : Syn.Expr) (vw : AppHeadView f)
-      → (a1 : classifyAppHeadView f ≡ vw)
-      → soundOf ctx (Raw.RApp f arg) (inferElabV-RApp-dispatch ctx f arg vw a1)
-
-  checkElabV-RApp-dispatch-sound : ∀ {m} (ctx : NamedCtx m) (f arg : Syn.Expr) (T : Ty m) (vw : AppHeadView f)
-      → (a1 : classifyAppHeadView f ≡ vw)
-      → checkSoundOf ctx (Raw.RApp f arg) T (checkElabV-RApp-dispatch ctx f arg T vw a1)
-
-  inferSpine-sound : ∀ {m} (ctx : NamedCtx m) (f x : Syn.Expr)
-      → (a1 : classifyAppHead f ≡ nothing)
-      → (r5 : InferElabResult (NamedCtx.debruijn ctx)) → soundOf ctx x r5
-      → soundOf ctx (Raw.RApp f x) (inferSpine ctx f x a1 r5)
-
-  checkElabV-RInt-aux-sound : ∀ {m} (ctx : NamedCtx m) (n : ℤ) (T : Ty m)
-      → checkSoundOf ctx (Raw.RInt n) T (checkElabV-RInt-aux ctx n T)
-
-  checkElabV-RPair-aux-sound : ∀ {m} (ctx : NamedCtx m) (a b : Syn.Expr) (T : Ty m)
-      → (a1 : RPairTarget T)
-      → checkSoundOf ctx (Raw.RPair a b) T (checkElabV-RPair-aux ctx a b T a1)
-  checkPairOn-sound ctx f_inner arg _ (pair-at A π B C)
-      with checkElab ctx f_inner (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B) | checkElab-sound ctx f_inner (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B)
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success Ψf fE df frf) | wF
-      with checkElab ctx arg (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C) | checkElab-sound ctx arg (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)
-  ...      | (failure err) | _ =
-    tt
-  ...      | (success Ψg gE dg frg) | wG =
-    wt-pair-morph-check wF wG
-  checkPairOn-sound _ _ _ _ pair-other =
-    tt
-  checkPairLit-sound ctx a b A B
-      with checkElab ctx a A | checkElab-sound ctx a A
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success Ψ₁ aE da fa) | wA
-      with checkElab ctx b B | checkElab-sound ctx b B
-  ...    | (failure err) | _ =
-    tt
-  ...    | (success Ψ₂ bE db fb) | wB =
-    wt-pair-lit-check wA wB
-  checkCaseOn-sound ctx f_inner arg _ (case-at A B π C) =
-    checkCaseGo-sound ctx f_inner arg A B C π
-  checkCaseOn-sound _ _ _ _ case-other =
-    tt
-  checkCaseGo-sound ctx f g A B C π
-      with checkElab ctx f (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C) | checkElab-sound ctx f (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success Ψf fE df frf) | wF
-      with checkElab ctx g (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C) | checkElab-sound ctx g (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)
-  ...      | (failure err) | _ =
-    tt
-  ...      | (success Ψg gE dg frg) | wG =
-    wt-case-copair-check wF wG
-  checkComposeOn-sound ctx f_inner arg _ (arrow-at A π C) =
-    checkCompose-g-sound ctx f_inner arg A C π (elabGiven ctx arg A π) (elabGiven-sound ctx arg A π)
-  checkComposeOn-sound _ _ _ _ arrow-other =
-    tt
-  checkCompose-g-sound ctx f g A C π (success B Ψg gE dg frg) wG
-      with checkElab ctx f (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C) | checkElab-sound ctx f (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)
-  ...  | (success Ψf fE df frf) | wF =
-    wt-compose-check-g wG wF
-  ...  | (failure _) | _ =
-    checkCompose-f-sound ctx f g A C π _
-  checkCompose-g-sound ctx f g A C π (failure _) _ =
-    checkCompose-f-sound ctx f g A C π _
-  checkCompose-f-sound ctx f g A C π me
-      with inferElab ctx f | inferElab-sound ctx f
-  ...  | (success (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] C′) Ψf fE df frf) | wF
-      with (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] C′)
-               <:? (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)
-  ...    | no _ =
-    tt
-  ...    | yes p
-      with checkElab ctx g (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B) | checkElab-sound ctx g (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] B)
-  ...      | (failure err) | _ =
-    tt
-  ...      | (success Ψg gE dg frg) | wG =
-    wt-compose-check-f wF p wG
-  checkCompose-f-sound ctx f g A C π me | success (var x) Ψ x₁ depth fresh | w =
-    tt
-  checkCompose-f-sound ctx f g A C π me | success Unit Ψ x depth fresh | w =
-    tt
-  checkCompose-f-sound ctx f g A C π me | success Void Ψ x depth fresh | w =
-    tt
-  checkCompose-f-sound ctx f g A C π me | success (A₁ * A₂) Ψ x depth fresh | w =
-    tt
-  checkCompose-f-sound ctx f g A C π me | success (A₁ + A₂) Ψ x depth fresh | w =
-    tt
-  checkCompose-f-sound ctx f g A C π me | success (A₁ ⇒[ mk-kind Zero purity ] A₂) Ψ x depth fresh | w =
-    tt
-  checkCompose-f-sound ctx f g A C π me | success (A₁ ⇒[ mk-kind One purity ] A₂) Ψ x depth fresh | w =
-    tt
-  checkCompose-f-sound ctx f g A C π me | success (μ x) Ψ x₁ depth fresh | w =
-    tt
-  checkCompose-f-sound ctx f g A C π me | success (ν x x₁) Ψ x₂ depth fresh | w =
-    tt
-  checkCompose-f-sound ctx f g A C π me | success Int Ψ x depth fresh | w =
-    tt
-  checkCompose-f-sound ctx f g A C π me | success Float Ψ x depth fresh | w =
-    tt
-  checkCompose-f-sound ctx f g A C π me | failure x | w =
-    tt
-  elabGiven-sound ctx (Raw.RLam x body) A π
-      with inferElab (extendNamedCtx ctx x A) body | inferElab-sound (extendNamedCtx ctx x A) body
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success B (q' ∷ᵘ Ψ) bodyE d fr) | wBody
-      with decideLeq q' Once.Spec.Grade.Many
-  ...    | just _ =
-    withUnit-gsound _ π _ tt (λ u → wd-lam {u = u} wBody)
-  ...    | nothing =
-    tt
-  elabGiven-sound ctx (Raw.RResolved cn) A π =
-    elabGivenLeaf-sound ctx cn A π (classifyAppHeadView (Raw.RResolved cn)) (inferElab ctx (Raw.RResolved cn)) (inferElab-sound ctx (Raw.RResolved cn))
-  elabGiven-sound ctx (Raw.RApp f g) A π =
-    elabGivenApp-sound ctx f g A π (classifyAppHeadView f) (inferElab ctx (Raw.RApp f g)) (inferElab-sound ctx (Raw.RApp f g))
-  elabGiven-sound ctx (RVar x) A π =
-    given-infer-sound ctx (RVar x) A π (inferElab ctx (RVar x)) (inferElab-sound ctx (RVar x))
-  elabGiven-sound ctx (RQualified x x₁) A π =
-    given-infer-sound ctx (RQualified x x₁) A π (inferElab ctx (RQualified x x₁)) (inferElab-sound ctx (RQualified x x₁))
-  elabGiven-sound ctx (RLet x e e₁) A π =
-    given-infer-sound ctx (RLet x e e₁) A π (inferElab ctx (RLet x e e₁)) (inferElab-sound ctx (RLet x e e₁))
-  elabGiven-sound ctx (RPair e e₁) A π =
-    given-infer-sound ctx (RPair e e₁) A π (inferElab ctx (RPair e e₁)) (inferElab-sound ctx (RPair e e₁))
-  elabGiven-sound ctx (RDestruct e x e₁ x₁ e₂) A π =
-    given-infer-sound ctx (RDestruct e x e₁ x₁ e₂) A π (inferElab ctx (RDestruct e x e₁ x₁ e₂)) (inferElab-sound ctx (RDestruct e x e₁ x₁ e₂))
-  elabGiven-sound ctx RUnit A π =
-    given-infer-sound ctx RUnit A π (inferElab ctx RUnit) (inferElab-sound ctx RUnit)
-  elabGiven-sound ctx (RInt x) A π =
-    given-infer-sound ctx (RInt x) A π (inferElab ctx (RInt x)) (inferElab-sound ctx (RInt x))
-  elabGiven-sound ctx (RFloat x₀ x x₁ x₂) A π =
-    given-infer-sound ctx (RFloat x₀ x x₁ x₂) A π (inferElab ctx (RFloat x₀ x x₁ x₂)) (inferElab-sound ctx (RFloat x₀ x x₁ x₂))
-  elabGiven-sound ctx (RAnnot e x) A π =
-    given-infer-sound ctx (RAnnot e x) A π (inferElab ctx (RAnnot e x)) (inferElab-sound ctx (RAnnot e x))
-  elabGiven-sound ctx (RBinOp x e e₁) A π =
-    given-infer-sound ctx (RBinOp x e e₁) A π (inferElab ctx (RBinOp x e e₁)) (inferElab-sound ctx (RBinOp x e e₁))
-  elabGiven-sound ctx (RNeg e) A π =
-    given-infer-sound ctx (RNeg e) A π (inferElab ctx (RNeg e)) (inferElab-sound ctx (RNeg e))
-  elabGivenApp-sound ctx .(Raw.RApp (Raw.RResolved (gen "compose")) f) g A π (ahv-compose-applied {f}) _ _
-      with elabGiven ctx g A π | elabGiven-sound ctx g A π
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success M Ψg gE dg frg) | wG
-      with elabGiven ctx f M π | elabGiven-sound ctx f M π
-  ...    | (failure err) | _ =
-    tt
-  ...    | (success B Ψf fE df frf) | wF =
-    wd-compose wG wF
-  elabGivenApp-sound ctx .(Raw.RApp (Raw.RResolved (gen "case")) f) g (A Once.Spec.Type.+ B) π (ahv-case-applied {f}) _ _
-      with elabGiven ctx f A π | elabGiven-sound ctx f A π
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success C Ψf fE df frf) | wF
-      with elabGiven ctx g B π | elabGiven-sound ctx g B π
-  ...    | (failure err) | _ =
-    tt
-  ...    | (success C′ Ψg gE dg frg) | wG =
-    given-case-join-sound ctx f g A B π fE df wF gE dg frg wG (join? C C′)
-  elabGivenApp-sound ctx .(Raw.RApp (Raw.RResolved (gen "pair")) f) g A π (ahv-pair-applied {f}) _ _
-      with elabGiven ctx f A π | elabGiven-sound ctx f A π
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success B Ψf fE df frf) | wF
-      with elabGiven ctx g A π | elabGiven-sound ctx g A π
-  ...    | (failure err) | _ =
-    tt
-  ...    | (success C Ψg gE dg frg) | wG =
-    wd-pair wF wG
-  elabGivenApp-sound ctx .(Raw.RResolved (gen "cata")) alg (Once.Spec.Type.μ F) π ahv-cata _ _
-      with wfFun? (NamedCtx.kinds ctx) F
-  ...  | nothing =
-    tt
-  ...  | just wfF =
-    given-cata-sound ctx alg F π wfF (inferElab ctx alg) (inferElab-sound ctx alg)
-  elabGivenApp-sound ctx (RVar x₁) g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp (RVar x₁) g) A π r7 x
-  elabGivenApp-sound ctx (RQualified x₁ x₂) g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp (RQualified x₁ x₂) g) A π r7 x
-  elabGivenApp-sound ctx (RResolved _) g A π ahv-id r7 x =
-    given-infer-sound ctx (Raw.RApp (RResolved _) g) A π r7 x
-  elabGivenApp-sound ctx (RResolved _) g A π ahv-fst r7 x =
-    given-infer-sound ctx (Raw.RApp (RResolved _) g) A π r7 x
-  elabGivenApp-sound ctx (RResolved _) g A π ahv-snd r7 x =
-    given-infer-sound ctx (Raw.RApp (RResolved _) g) A π r7 x
-  elabGivenApp-sound ctx (RResolved _) g A π ahv-terminal r7 x =
-    given-infer-sound ctx (Raw.RApp (RResolved _) g) A π r7 x
-  elabGivenApp-sound ctx (RResolved _) g A π ahv-inl r7 x =
-    given-infer-sound ctx (Raw.RApp (RResolved _) g) A π r7 x
-  elabGivenApp-sound ctx (RResolved _) g A π ahv-inr r7 x =
-    given-infer-sound ctx (Raw.RApp (RResolved _) g) A π r7 x
-  elabGivenApp-sound ctx (RResolved _) g A π ahv-initial r7 x =
-    given-infer-sound ctx (Raw.RApp (RResolved _) g) A π r7 x
-  elabGivenApp-sound ctx (RResolved _) g A π ahv-curry r7 x =
-    given-infer-sound ctx (Raw.RApp (RResolved _) g) A π r7 x
-  elabGivenApp-sound ctx (RResolved _) g A π ahv-apply r7 x =
-    given-infer-sound ctx (Raw.RApp (RResolved _) g) A π r7 x
-  elabGivenApp-sound ctx (RResolved _) g A π ahv-In r7 x =
-    given-infer-sound ctx (Raw.RApp (RResolved _) g) A π r7 x
-  elabGivenApp-sound ctx (RResolved _) g (var x₁) π ahv-cata r7 x =
-    tt
-  elabGivenApp-sound ctx (RResolved _) g Unit π ahv-cata r7 x =
-    tt
-  elabGivenApp-sound ctx (RResolved _) g Void π ahv-cata r7 x =
-    tt
-  elabGivenApp-sound ctx (RResolved _) g (A * A₁) π ahv-cata r7 x =
-    tt
-  elabGivenApp-sound ctx (RResolved _) g (A + A₁) π ahv-cata r7 x =
-    tt
-  elabGivenApp-sound ctx (RResolved _) g (A ⇒[ x₁ ] A₁) π ahv-cata r7 x =
-    tt
-  elabGivenApp-sound ctx (RResolved _) g (ν x₁ x₂) π ahv-cata r7 x =
-    tt
-  elabGivenApp-sound ctx (RResolved _) g Int π ahv-cata r7 x =
-    tt
-  elabGivenApp-sound ctx (RResolved _) g Float π ahv-cata r7 x =
-    tt
-  elabGivenApp-sound ctx (RResolved _) g A π ahv-ana r7 x =
-    given-infer-sound ctx (Raw.RApp (RResolved _) g) A π r7 x
-  elabGivenApp-sound ctx (RResolved _) g A π ahv-Out r7 x =
-    given-infer-sound ctx (Raw.RApp (RResolved _) g) A π r7 x
-  elabGivenApp-sound ctx (RResolved x₁) g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp (RResolved x₁) g) A π r7 x
-  elabGivenApp-sound ctx (RApp f f₁) g (var x₁) π ahv-case-applied r7 x =
-    tt
-  elabGivenApp-sound ctx (RApp f f₁) g Unit π ahv-case-applied r7 x =
-    tt
-  elabGivenApp-sound ctx (RApp f f₁) g Void π ahv-case-applied r7 x =
-    tt
-  elabGivenApp-sound ctx (RApp f f₁) g (A * A₁) π ahv-case-applied r7 x =
-    tt
-  elabGivenApp-sound ctx (RApp f f₁) g (A ⇒[ x₁ ] A₁) π ahv-case-applied r7 x =
-    tt
-  elabGivenApp-sound ctx (RApp f f₁) g (μ x₁) π ahv-case-applied r7 x =
-    tt
-  elabGivenApp-sound ctx (RApp f f₁) g (ν x₁ x₂) π ahv-case-applied r7 x =
-    tt
-  elabGivenApp-sound ctx (RApp f f₁) g Int π ahv-case-applied r7 x =
-    tt
-  elabGivenApp-sound ctx (RApp f f₁) g Float π ahv-case-applied r7 x =
-    tt
-  elabGivenApp-sound ctx (RApp f f₁) g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp (RApp f f₁) g) A π r7 x
-  elabGivenApp-sound ctx (RLam x₁ f) g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp (RLam x₁ f) g) A π r7 x
-  elabGivenApp-sound ctx (RLet x₁ f f₁) g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp (RLet x₁ f f₁) g) A π r7 x
-  elabGivenApp-sound ctx (RPair f f₁) g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp (RPair f f₁) g) A π r7 x
-  elabGivenApp-sound ctx (RDestruct f x₁ f₁ x₂ f₂) g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp (RDestruct f x₁ f₁ x₂ f₂) g) A π r7 x
-  elabGivenApp-sound ctx RUnit g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp RUnit g) A π r7 x
-  elabGivenApp-sound ctx (RInt x₁) g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp (RInt x₁) g) A π r7 x
-  elabGivenApp-sound ctx (RFloat x₀ x₁ x₂ x₃) g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp (RFloat x₀ x₁ x₂ x₃) g) A π r7 x
-  elabGivenApp-sound ctx (RAnnot f x₁) g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp (RAnnot f x₁) g) A π r7 x
-  elabGivenApp-sound ctx (RBinOp x₁ f f₁) g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp (RBinOp x₁ f f₁) g) A π r7 x
-  elabGivenApp-sound ctx (RNeg f) g A π ahv-other r7 x =
-    given-infer-sound ctx (Raw.RApp (RNeg f) g) A π r7 x
-  checkCurry-sound ctx arg T =
-    checkCurryOn-sound ctx arg T (curryTarget T)
-  checkCurryOn-sound ctx arg _ (curry-at A π₀ B π C)
-      with checkElab ctx arg ((A Once.Spec.Type.* B) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C) | checkElab-sound ctx arg ((A Once.Spec.Type.* B) Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] C)
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success Ψ argE d fr) | w =
-    withUnit-csound _ π₀ _ tt (λ u → wt-curry-check {u = u} w)
-  checkCurryOn-sound _ _ _ curry-other =
-    tt
-  checkIn-sound ctx arg T =
-    checkInOn-sound ctx arg T (inTarget T)
-  checkInOn-sound ctx arg _ (in-at F) =
-    checkInGo-sound ctx arg F (wfFun? (NamedCtx.kinds ctx) F) refl
-  checkInOn-sound _ _ _ in-other =
-    tt
-  inferOut-sound ctx arg =
-    inferOutOn-sound ctx arg (inferElab ctx arg) (inferElab-sound ctx arg)
-  checkInGo-sound ctx arg F nothing _ =
-    tt
-  checkInGo-sound ctx arg F (just wfF) eqW
-      with checkElab ctx arg (⟦ F ⟧F (Once.Spec.Type.μ F)) | checkElab-sound ctx arg (⟦ F ⟧F (Once.Spec.Type.μ F))
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success Ψ argE d fr) | wArg =
-    wt-In-app-check wfF wArg
-  checkCata-sound ctx alg T =
-    checkCataOn-sound ctx alg T (cataTarget T)
-  checkCataOn-sound ctx alg _ (cata-at F π A) =
-    checkCataGo-sound ctx alg F A π (wfFun? (NamedCtx.kinds ctx) F) refl
-  checkCataOn-sound _ _ _ cata-other =
-    tt
-  checkCataGo-sound ctx alg F A π nothing _ =
-    tt
-  checkCataGo-sound ctx alg F A π (just wfF) eqW
-      with checkElab ctx alg (⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A) | checkElab-sound ctx alg (⟦ F ⟧F A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π ] A)
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success Ψ algE d fr) | wArg =
-    withUnit-csound _ π _ tt (λ u → wt-cata-check {u = u} wfF wArg)
-  checkAna-sound ctx coalg T =
-    checkAnaOn-sound ctx coalg T (anaTarget T)
-  checkAnaOn-sound ctx coalg _ (ana-at A π₀ F π ua) =
-    checkAnaGo-sound ctx coalg F A π₀ π ua (wfFun? (NamedCtx.kinds ctx) F) refl
-  checkAnaOn-sound ctx round _ (loop-at A B) =
-    checkLoop-sound ctx round A B (checkElab ctx round (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] (B Once.Spec.Type.+ A))) (checkElab-sound ctx round (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] (B Once.Spec.Type.+ A)))
-  checkAnaOn-sound _ _ _ ana-other =
-    tt
-  checkAnaGo-sound ctx coalg F A π₀ φ ua nothing _ =
-    tt
-  checkAnaGo-sound ctx coalg F A π₀ φ ua (just wfF) eqW
-      with checkElab ctx coalg (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many (Once.Spec.Grade.fin φ) ] ⟦ F ⟧F A) | checkElab-sound ctx coalg (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many (Once.Spec.Grade.fin φ) ] ⟦ F ⟧F A)
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success Ψ coalgE d fr) | wArg =
-    withUnit-csound _ π₀ _ tt (λ u → wt-ana-check {u = u} {ua = ua} wfF wArg)
-  checkLoop-sound ctx round A B (failure err) _ =
-    tt
-  checkLoop-sound ctx round A B (success Ψ roundE d fr) w =
-    wt-loop-check w
-  inferElab-sound ctx (Raw.RInt n) =
-    wt-int n
-  inferElab-sound ctx (Raw.RFloat sg i f l) =
-    inferElabV-RFloat-aux-sound ctx sg i f l
-  inferElab-sound ctx Raw.RUnit =
-    wt-unit
-  inferElab-sound ctx (Raw.RLam _ _) =
-    tt
+  inferElab-sound ctx (Raw.RInt n) = wt-int n
+  inferElab-sound ctx (Raw.RFloat sg i f l) = inferElabV-RFloat-aux-sound ctx sg i f l
+  inferElab-sound ctx Raw.RUnit = wt-unit
+  inferElab-sound ctx (Raw.RLam _ _) = tt
   inferElab-sound ctx (Raw.RAnnot e T) =
     inferElabV-RAnnot-aux-sound ctx e T (checkElab ctx e (wk₀ T)) (checkElab-sound ctx e (wk₀ T))
   inferElab-sound ctx (Raw.RPair a b) =
     inferElabV-RPair-aux-sound ctx a b (inferElab ctx a) (inferElab-sound ctx a) (inferElab ctx b) (inferElab-sound ctx b)
-  inferElab-sound ctx (Raw.RQualified name alias) =
-    tt
-  inferElab-sound ctx (Raw.RResolved cn) =
-    inferElabV-RResolved-dispatch-sound ctx cn (classifyGen cn)
-  inferElab-sound ctx (Raw.RVar x) =
-    inferElabV-RVar-lookup-aux-sound ctx x _ refl
-  inferElab-sound ctx (Raw.RNeg e) =
-    inferElabV-RNeg-aux-sound ctx e (inferElab ctx e) (inferElab-sound ctx e)
-  inferElab-sound ctx (Raw.RLet x e₁ e₂) =
-    inferElabV-RLet-aux-sound ctx x e₁ e₂ (inferElab ctx e₁) (inferElab-sound ctx e₁)
+  inferElab-sound ctx (Raw.RQualified _ _) = tt
+  inferElab-sound ctx (Raw.RResolved cn) = inferElabV-RResolved-aux-sound ctx cn _ refl
+  inferElab-sound ctx (Raw.RGen g) = inferGen-sound ctx g (genKindView g)
+  inferElab-sound ctx (Raw.RVar x) = inferElabV-RVar-lookup-aux-sound ctx x _ refl
+  inferElab-sound ctx (Raw.RNeg e) = inferElabV-RNeg-aux-sound ctx e (inferElab ctx e) (inferElab-sound ctx e)
+  inferElab-sound ctx (Raw.RLet x e₁ e₂) = inferElabV-RLet-aux-sound ctx x e₁ e₂ (inferElab ctx e₁) (inferElab-sound ctx e₁)
   inferElab-sound ctx (Raw.RDestruct scrut xL eL xR eR) =
     inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (inferElab ctx scrut) (inferElab-sound ctx scrut)
-  inferElab-sound ctx (Raw.RApp f arg) =
-    inferElabV-RApp-dispatch-sound ctx f arg _ refl
+  inferElab-sound ctx (Raw.RApp f arg) = inferApp-sound ctx f arg
   inferElab-sound ctx (Raw.RBinOp op e₁ e₂) =
     inferElabV-RBinOp-aux-sound ctx op e₁ e₂ (inferElab ctx e₁) (inferElab-sound ctx e₁) (inferElab ctx e₂) (inferElab-sound ctx e₂)
-  checkElab-wf-sound ctx ac (Raw.RApp f arg) T =
-    checkElabV-RApp-dispatch-sound ctx f arg T _ refl
+
+  inferApp-sound ctx f@(Raw.RGen g) x = inferAppGen-sound ctx g x (genKindView g)
+  inferApp-sound ctx f@(Raw.RApp (Raw.RGen g) a) x = inferAppGen₁-sound ctx f g x (genKindView g) (λ ()) (λ ic P → SUT.ch-comb₁ ic)
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp (Raw.RGen g) a) b) x = inferAppGen₂-sound ctx f g x (genKindView g) (λ ()) (λ ic P → SUT.ch-comb₂ ic)
+  inferApp-sound ctx f@(Raw.RLam y b) x = inferSpine-sound ctx f x (λ ()) (λ P → SUT.ch-lam) (inferElab ctx x) (inferElab-sound ctx x)
+  inferApp-sound ctx f@(Raw.RVar _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RQualified _ _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RResolved _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RLet _ _ _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RPair _ _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RDestruct _ _ _ _ _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@Raw.RUnit x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RInt _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RFloat _ _ _ _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RAnnot _ _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RBinOp _ _ _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RNeg _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RVar _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RQualified _ _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RResolved _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RLam _ _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RLet _ _ _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RPair _ _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RDestruct _ _ _ _ _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp Raw.RUnit _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RInt _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RFloat _ _ _ _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RAnnot _ _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RBinOp _ _ _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RNeg _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp (Raw.RVar _) _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp (Raw.RQualified _ _) _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp (Raw.RResolved _) _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp (Raw.RLam _ _) _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp (Raw.RLet _ _ _) _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp (Raw.RPair _ _) _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp (Raw.RDestruct _ _ _ _ _) _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp Raw.RUnit _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp (Raw.RInt _) _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp (Raw.RFloat _ _ _ _) _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp (Raw.RAnnot _ _) _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp (Raw.RBinOp _ _ _) _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp (Raw.RNeg _) _) _) x = appOther-sound ctx f x
+  inferApp-sound ctx f@(Raw.RApp (Raw.RApp (Raw.RApp _ _) _) _) x = appOther-sound ctx f x
+
+  inferAppGen-sound ctx g x (gk-map _) with fromDomain? (G.kind g)
+  ... | yes _ = inferMapSpine-sound ctx g x (inferElab ctx x) (inferElab-sound ctx x)
+  ... | no _  = tt
+  inferAppGen-sound ctx g x (gk-const _) = appOn-sound ctx (Raw.RGen g) x (inferGen ctx g (genKindView g)) (inferGen-sound ctx g (genKindView g))
+  inferAppGen-sound ctx g x (gk-comb₁ _) = tt
+  inferAppGen-sound ctx g x (gk-comb₂ _) = tt
+
+  inferAppGen₁-sound ctx f g x (gk-comb₁ ic) ng ch =
+    inferSpine-sound ctx f x ng (ch ic) (inferElab ctx x) (inferElab-sound ctx x)
+  inferAppGen₁-sound ctx f g x (gk-comb₂ _) ng ch = tt
+  inferAppGen₁-sound ctx f g x (gk-map _)   ng ch = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  inferAppGen₁-sound ctx f g x (gk-const _) ng ch = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+
+  inferAppGen₂-sound ctx f g x (gk-comb₂ ic) ng ch =
+    inferSpine-sound ctx f x ng (ch ic) (inferElab ctx x) (inferElab-sound ctx x)
+  inferAppGen₂-sound ctx f g x (gk-map _)   ng ch = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  inferAppGen₂-sound ctx f g x (gk-const _) ng ch = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  inferAppGen₂-sound ctx f g x (gk-comb₁ _) ng ch = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+
+  appOn-sound ctx f x (failure err) _ = tt
+  appOn-sound ctx f x (success (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q π ] B) Ψ₁ fE df ff) w =
+    appAt-sound ctx f x A B q π fE df ff w (checkElab ctx x A) (checkElab-sound ctx x A)
+  appOn-sound ctx f x (success Unit _ _ _ _) _ = tt
+  appOn-sound ctx f x (success Void _ _ _ _) _ = tt
+  appOn-sound ctx f x (success Int _ _ _ _) _ = tt
+  appOn-sound ctx f x (success Float _ _ _ _) _ = tt
+  appOn-sound ctx f x (success (var _) _ _ _ _) _ = tt
+  appOn-sound ctx f x (success (_ * _) _ _ _ _) _ = tt
+  appOn-sound ctx f x (success (_ + _) _ _ _ _) _ = tt
+  appOn-sound ctx f x (success (μ _) _ _ _ _) _ = tt
+  appOn-sound ctx f x (success (ν _ _) _ _ _ _) _ = tt
+
+  appAt-sound ctx f x A B q π fE d fr wf (failure err) _ = tt
+  appAt-sound ctx f x A B q Once.Spec.Grade.pure fE d fr wf (success Ψ₂ xE dx fx) wx = wt-app wf wx
+  appAt-sound ctx f x A B q Once.Spec.Grade.act fE d fr wf (success Ψ₂ xE dx fx) wx = wt-app wf wx
+  appAt-sound ctx f x A B q Once.Spec.Grade.eff fE d fr wf (success Ψ₂ xE dx fx) wx = wt-app wf wx
+
+  appOther-sound ctx f@(Raw.RResolved cn) x = appRes-sound ctx f cn x (polyKind ctx cn) refl refl
+  appOther-sound ctx f@(Raw.RVar _) x = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  appOther-sound ctx f@(Raw.RQualified _ _) x = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  appOther-sound ctx f@(Raw.RGen _) x = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  appOther-sound ctx f@(Raw.RApp _ _) x = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  appOther-sound ctx f@(Raw.RLam _ _) x = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  appOther-sound ctx f@(Raw.RLet _ _ _) x = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  appOther-sound ctx f@(Raw.RPair _ _) x = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  appOther-sound ctx f@(Raw.RDestruct _ _ _ _ _) x = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  appOther-sound ctx f@Raw.RUnit x = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  appOther-sound ctx f@(Raw.RInt _) x = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  appOther-sound ctx f@(Raw.RFloat _ _ _ _) x = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  appOther-sound ctx f@(Raw.RAnnot _ _) x = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  appOther-sound ctx f@(Raw.RBinOp _ _ _) x = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  appOther-sound ctx f@(Raw.RNeg _) x = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+
+  appRes-sound ctx f cn x not-poly _ _ = appOn-sound ctx f x (inferElab ctx f) (inferElab-sound ctx f)
+  appRes-sound ctx f cn x E.poly-dom e ef =
+    inferSpine-sound ctx f x (res-not-gen ef) (λ P → subst (SUT.CheckHead (Pack.Sg P) (Pack.S P) (Pack.nm P)) (sym ef) (res-head cn (λ np → dom≢not (trans (sym e) np)) P))
+      (inferElab ctx x) (inferElab-sound ctx x)
+  appRes-sound ctx f cn x poly-other e ef =
+    inferSpine-sound ctx f x (res-not-gen ef) (λ P → subst (SUT.CheckHead (Pack.Sg P) (Pack.S P) (Pack.nm P)) (sym ef) (res-head cn (λ np → other≢not (trans (sym e) np)) P))
+      (inferElab ctx x) (inferElab-sound ctx x)
+
+  inferSpine-sound ctx f x ng ch (failure err) _ = tt
+  inferSpine-sound ctx f x ng ch (success X Ψx xE dx frx) wx = go (elabGiven ctx f X Once.Spec.Grade.pure) (elabGiven-sound ctx f X Once.Spec.Grade.pure)
+    where
+      go : (r : GivenElabResult (NamedCtx.debruijn ctx) X Once.Spec.Grade.pure) → givenSoundOf ctx f X Once.Spec.Grade.pure r
+         → soundOf ctx (Raw.RApp f x) (spineAt ctx xE dx r)
+      go (failure err) _ = tt
+      go (success T Ψf fE df frf) wf = wt-app-spine ng ch wx wf
+
+  ----------------------------------------------------------------------
+  -- Checking
+  ----------------------------------------------------------------------
+
+  checkElab-wf-sound ctx ac (Raw.RApp f arg) T = checkApp-sound ctx f arg T
   checkElab-wf-sound ctx ac (Raw.RLam x body) (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q π ] B)
       with checkElab (extendNamedCtx ctx x A) body B | checkElab-sound (extendNamedCtx ctx x A) body B
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success (q' ∷ᵘ Ψ) bodyE d fr) | wBody
-      with decideLeq q' q
-  ...    | just eq =
-    withUnit-csound _ π _ tt (λ u → wt-lam {u = u} eq wBody)
-  ...    | nothing =
-    tt
-  checkElab-wf-sound ctx ac (Raw.RVar x) T
-      with inferElab ctx (Raw.RVar x) | inferElab-sound ctx (Raw.RVar x)
-  ...  | rInfV@(success _ _ _ _ _) | rInfVˢ =
-    embedOrSubsume-sound ctx (Raw.RVar x) T rInfV rInfVˢ
-  ...  | rInfV@(failure _) | rInfVˢ =
-    checkElabV-RVar-bbc-other-aux-sound ctx x T rInfV rInfVˢ
-  checkElab-wf-sound ctx ac (Raw.RResolved cn) T =
-    checkElabV-RResolved-dispatch-sound ctx cn T (classifyGen cn) (inferElab ctx (Raw.RResolved cn)) (inferElab-sound ctx (Raw.RResolved cn))
-  checkElab-wf-sound ctx ac (Raw.RPair a b) T =
-    checkElabV-RPair-aux-sound ctx a b T (classifyRPairTarget T)
-  checkElab-wf-sound ctx ac (Raw.RInt n) T =
-    checkElabV-RInt-aux-sound ctx n T
-  checkElab-wf-sound ctx ac (Raw.RFloat sg i f l) T =
-    checkElabV-RFloat-aux-sound ctx sg i f l T
-  checkElab-wf-sound ctx ac (Raw.RNeg e) T =
-    embedOrSubsume-sound ctx (Raw.RNeg e) T (inferElabV-RNeg-aux ctx e (inferElab ctx e)) (inferElabV-RNeg-aux-sound ctx e (inferElab ctx e) (inferElab-sound ctx e))
-  checkElab-wf-sound ctx a1 (RQualified x x₁) T₁ =
-    embedOrSubsume-sound ctx (RQualified x x₁) T₁ (inferElab ctx (RQualified x x₁)) (inferElab-sound ctx (RQualified x x₁))
-  checkElab-wf-sound ctx a1 (RLam x e) (var x₁) =
-    tt
-  checkElab-wf-sound ctx a1 (RLam x e) Unit =
-    tt
-  checkElab-wf-sound ctx a1 (RLam x e) Void =
-    tt
-  checkElab-wf-sound ctx a1 (RLam x e) (T₁ * T₂) =
-    tt
-  checkElab-wf-sound ctx a1 (RLam x e) (T₁ + T₂) =
-    tt
-  checkElab-wf-sound ctx a1 (RLam x e) (μ x₁) =
-    tt
-  checkElab-wf-sound ctx a1 (RLam x e) (ν x₁ x₂) =
-    tt
-  checkElab-wf-sound ctx a1 (RLam x e) Int =
-    tt
-  checkElab-wf-sound ctx a1 (RLam x e) Float =
-    tt
-  checkElab-wf-sound ctx a1 (RLet x e e₁) T₁ =
-    embedOrSubsume-sound ctx (RLet x e e₁) T₁ (inferElab ctx (RLet x e e₁)) (inferElab-sound ctx (RLet x e e₁))
-  checkElab-wf-sound ctx a1 (RDestruct e x e₁ x₁ e₂) T₁ =
-    embedOrSubsume-sound ctx (RDestruct e x e₁ x₁ e₂) T₁ (inferElab ctx (RDestruct e x e₁ x₁ e₂)) (inferElab-sound ctx (RDestruct e x e₁ x₁ e₂))
-  checkElab-wf-sound ctx a1 RUnit T₁ =
-    embedOrSubsume-sound ctx RUnit T₁ (inferElab ctx RUnit) (inferElab-sound ctx RUnit)
-  checkElab-wf-sound ctx a1 (RAnnot e x) T₁ =
-    embedOrSubsume-sound ctx (RAnnot e x) T₁ (inferElab ctx (RAnnot e x)) (inferElab-sound ctx (RAnnot e x))
-  checkElab-wf-sound ctx a1 (RBinOp x e e₁) T₁ =
-    embedOrSubsume-sound ctx (RBinOp x e e₁) T₁ (inferElab ctx (RBinOp x e e₁)) (inferElab-sound ctx (RBinOp x e e₁))
-  checkElab-sound ctx e T =
-    checkElab-wf-sound ctx (<-wellFounded (length (NamedCtx.polys ctx))) e T
-  inferElabV-RApp-other-sound ctx f x =
-    inferElabV-RApp-other-aux-sound ctx f x _ refl
-  inferElabV-RLet-aux-sound ctx x e₁ e₂ (failure err) _ =
-    tt
+  ... | failure err | _ = tt
+  ... | success (q' ∷ᵘ Ψ) bodyE d fr | wBody with decideLeq q' q
+  ...   | just eq = wt-lam eq wBody
+  ...   | nothing = tt
+  checkElab-wf-sound ctx ac (Raw.RLam _ _) (var _) = tt
+  checkElab-wf-sound ctx ac (Raw.RLam _ _) Unit = tt
+  checkElab-wf-sound ctx ac (Raw.RLam _ _) Void = tt
+  checkElab-wf-sound ctx ac (Raw.RLam _ _) Int = tt
+  checkElab-wf-sound ctx ac (Raw.RLam _ _) Float = tt
+  checkElab-wf-sound ctx ac (Raw.RLam _ _) (_ * _) = tt
+  checkElab-wf-sound ctx ac (Raw.RLam _ _) (_ + _) = tt
+  checkElab-wf-sound ctx ac (Raw.RLam _ _) (μ _) = tt
+  checkElab-wf-sound ctx ac (Raw.RLam _ _) (ν _ _) = tt
+  checkElab-wf-sound ctx ac (Raw.RVar x) T = embedOrSubsume-sound ctx (Raw.RVar x) T (λ P ()) (inferElab ctx (Raw.RVar x)) (inferElab-sound ctx (Raw.RVar x))
+  checkElab-wf-sound ctx ac (Raw.RResolved cn) T = checkElabV-RResolved-other-sound ctx cn T (inferElab ctx (Raw.RResolved cn)) (inferElab-sound ctx (Raw.RResolved cn))
+  checkElab-wf-sound ctx ac (Raw.RGen g) T with genKindView g
+  ... | gk-map _   = checkMapAt-sound ctx g (arrowTarget T)
+  ... | gk-const _ = embedOrSubsume-sound ctx (Raw.RGen g) T (λ P ()) (inferGen ctx g (genKindView g)) (inferGen-sound ctx g (genKindView g))
+  ... | gk-comb₁ _ = tt
+  ... | gk-comb₂ _ = tt
+  checkElab-wf-sound ctx ac (Raw.RPair a b) T = checkElabV-RPair-aux-sound ctx a b T (classifyRPairTarget T)
+  checkElab-wf-sound ctx ac (Raw.RInt n) T = embedOrSubsume-sound ctx (Raw.RInt n) T (λ P ()) (inferElab ctx (Raw.RInt n)) (inferElab-sound ctx (Raw.RInt n))
+  checkElab-wf-sound ctx ac (Raw.RFloat sg i f l) T = embedOrSubsume-sound ctx (Raw.RFloat sg i f l) T (λ P ()) (inferElab ctx (Raw.RFloat sg i f l)) (inferElab-sound ctx (Raw.RFloat sg i f l))
+  checkElab-wf-sound ctx ac Raw.RUnit T = embedOrSubsume-sound ctx Raw.RUnit T (λ P ()) (inferElab ctx Raw.RUnit) (inferElab-sound ctx Raw.RUnit)
+  checkElab-wf-sound ctx ac (Raw.RQualified a b) T = embedOrSubsume-sound ctx (Raw.RQualified a b) T (λ P ()) (inferElab ctx (Raw.RQualified a b)) (inferElab-sound ctx (Raw.RQualified a b))
+  checkElab-wf-sound ctx ac (Raw.RAnnot e U) T = embedOrSubsume-sound ctx (Raw.RAnnot e U) T (λ P ()) (inferElab ctx (Raw.RAnnot e U)) (inferElab-sound ctx (Raw.RAnnot e U))
+  checkElab-wf-sound ctx ac (Raw.RNeg e) T = embedOrSubsume-sound ctx (Raw.RNeg e) T (λ P ()) (inferElab ctx (Raw.RNeg e)) (inferElab-sound ctx (Raw.RNeg e))
+  checkElab-wf-sound ctx ac (Raw.RBinOp o a b) T = embedOrSubsume-sound ctx (Raw.RBinOp o a b) T (λ P ()) (inferElab ctx (Raw.RBinOp o a b)) (inferElab-sound ctx (Raw.RBinOp o a b))
+  checkElab-wf-sound ctx ac (Raw.RLet x a b) T = embedOrSubsume-sound ctx (Raw.RLet x a b) T (λ P ()) (inferElab ctx (Raw.RLet x a b)) (inferElab-sound ctx (Raw.RLet x a b))
+  checkElab-wf-sound ctx ac (Raw.RDestruct s x a y b) T = embedOrSubsume-sound ctx (Raw.RDestruct s x a y b) T (λ P ()) (inferElab ctx (Raw.RDestruct s x a y b)) (inferElab-sound ctx (Raw.RDestruct s x a y b))
+
+  checkElab-sound ctx e T = checkElab-wf-sound ctx (<-wellFounded (length (NamedCtx.polys ctx))) e T
+
+  checkApp-sound ctx f@(Raw.RGen g) x T = checkAppGen-sound ctx f g x T (genKindView g) refl
+  checkApp-sound ctx f@(Raw.RApp (Raw.RGen g) a) x T = checkAppGen₁-sound ctx f g a x T (genKindView g) refl
+  checkApp-sound ctx f@(Raw.RVar _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RQualified _ _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RResolved _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RLam _ _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RLet _ _ _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RPair _ _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RDestruct _ _ _ _ _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@Raw.RUnit x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RInt _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RFloat _ _ _ _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RAnnot _ _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RBinOp _ _ _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RNeg _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RApp (Raw.RVar _) _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RApp (Raw.RQualified _ _) _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RApp (Raw.RResolved _) _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RApp (Raw.RLam _ _) _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RApp (Raw.RLet _ _ _) _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RApp (Raw.RPair _ _) _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RApp (Raw.RDestruct _ _ _ _ _) _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RApp Raw.RUnit _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RApp (Raw.RInt _) _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RApp (Raw.RFloat _ _ _ _) _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RApp (Raw.RAnnot _ _) _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RApp (Raw.RBinOp _ _ _) _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RApp (Raw.RNeg _) _) x T = checkSubApp-sound ctx f x T (λ P ())
+  checkApp-sound ctx f@(Raw.RApp (Raw.RApp _ _) _) x T = checkSubApp-sound ctx f x T (λ P ())
+
+  checkAppGen-sound ctx f g x T (gk-map im) ef = checkMapApp-sound ctx f g x T (fromCodomain? (G.kind g)) ef
+  checkAppGen-sound ctx f g x T (gk-const ic) refl =
+    checkSubApp-sound ctx f x T (λ P → λ { (SUT.oc-map fc) → const-map′ ic (fc-map′ fc) })
+  checkAppGen-sound ctx f g x T (gk-comb₁ _) refl = checkComb₁-sound ctx g x T
+  checkAppGen-sound ctx f g x T (gk-comb₂ ic) refl =
+    checkSubApp-sound ctx f x T (λ P → λ { (SUT.oc-map fc) → comb-map′ ic (fc-map′ fc) })
+
+  checkAppGen₁-sound ctx f g a x T (gk-comb₂ _) refl = checkComb₂-sound ctx g a x T
+  checkAppGen₁-sound ctx f g a x T (gk-map _)   refl = checkSubApp-sound ctx f x T (λ P ())
+  checkAppGen₁-sound ctx f g a x T (gk-const _) refl = checkSubApp-sound ctx f x T (λ P ())
+  checkAppGen₁-sound ctx f g a x T (gk-comb₁ _) refl = checkSubApp-sound ctx f x T (λ P ())
+
+  checkSubApp-sound ctx f x T noc with inferElab ctx (Raw.RApp f x) | inferElab-sound ctx (Raw.RApp f x)
+  ... | r | rs = embedOrSubsume-sound ctx (Raw.RApp f x) T noc r rs
+
+  checkMapApp-sound ctx f g x T (yes _) refl = checkMapApp-go-sound ctx g x T (mapTo? (NamedCtx.kinds ctx) g T) refl
+  checkMapApp-sound ctx f g x T (no ¬fc) refl = checkSubApp-sound ctx f x T (λ P → λ { (SUT.oc-map fc) → ¬fc fc })
+
+  checkMapApp-go-sound ctx g x T nothing _ = tt
+  checkMapApp-go-sound ctx g x T (just (A , mI)) e with checkElab ctx x A | checkElab-sound ctx x A
+  ... | failure err | _ = tt
+  ... | success Ψ xE d fr | wx = wt-map-app-check e wx
+
+  checkComb₁-sound ctx G.curry arg T = checkCurryOn-sound ctx arg T (curryTarget T)
+  checkComb₁-sound ctx G.cata  arg T = checkCataOn-sound ctx arg T (cataTarget T)
+  checkComb₁-sound ctx G.ana   arg T = checkAnaOn-sound ctx arg T (anaTarget T)
+  checkComb₁-sound ctx G.id arg T = tt
+  checkComb₁-sound ctx G.compose arg T = tt
+  checkComb₁-sound ctx G.fst arg T = tt
+  checkComb₁-sound ctx G.snd arg T = tt
+  checkComb₁-sound ctx G.terminal arg T = tt
+  checkComb₁-sound ctx G.pair arg T = tt
+  checkComb₁-sound ctx G.inl arg T = tt
+  checkComb₁-sound ctx G.inr arg T = tt
+  checkComb₁-sound ctx G.initial arg T = tt
+  checkComb₁-sound ctx G.case arg T = tt
+  checkComb₁-sound ctx G.apply arg T = tt
+  checkComb₁-sound ctx G.In arg T = tt
+  checkComb₁-sound ctx G.Out arg T = tt
+  checkComb₁-sound ctx G.unit arg T = tt
+  checkComb₁-sound ctx G.toFloat arg T = tt
+
+  checkComb₂-sound ctx G.compose f h T = checkComposeOn-sound ctx f h T (arrowTarget T)
+  checkComb₂-sound ctx G.case    f h T = checkCaseOn-sound ctx f h T (caseTarget T)
+  checkComb₂-sound ctx G.pair    f h T = checkPairOn-sound ctx f h T (pairTarget T)
+  checkComb₂-sound ctx G.id f h T = tt
+  checkComb₂-sound ctx G.fst f h T = tt
+  checkComb₂-sound ctx G.snd f h T = tt
+  checkComb₂-sound ctx G.terminal f h T = tt
+  checkComb₂-sound ctx G.inl f h T = tt
+  checkComb₂-sound ctx G.inr f h T = tt
+  checkComb₂-sound ctx G.initial f h T = tt
+  checkComb₂-sound ctx G.apply f h T = tt
+  checkComb₂-sound ctx G.curry f h T = tt
+  checkComb₂-sound ctx G.In f h T = tt
+  checkComb₂-sound ctx G.cata f h T = tt
+  checkComb₂-sound ctx G.Out f h T = tt
+  checkComb₂-sound ctx G.ana f h T = tt
+  checkComb₂-sound ctx G.unit f h T = tt
+  checkComb₂-sound ctx G.toFloat f h T = tt
+
+  checkPairOn-sound ctx f g _ (pair-at A π B C)
+      with checkElab ctx f (A ⇒ω⟨ π ⟩ B) | checkElab-sound ctx f (A ⇒ω⟨ π ⟩ B)
+  ... | failure err | _ = tt
+  ... | success Ψf fE df frf | wf with checkElab ctx g (A ⇒ω⟨ π ⟩ C) | checkElab-sound ctx g (A ⇒ω⟨ π ⟩ C)
+  ...   | failure err | _ = tt
+  ...   | success Ψg gE dg frg | wg = wt-pair-morph-check wf wg
+  checkPairOn-sound _ _ _ _ pair-other = tt
+
+  checkPairLit-sound ctx a b A B with checkElab ctx a A | checkElab-sound ctx a A
+  ... | failure err | _ = tt
+  ... | success Ψ₁ aE da fa | wa with checkElab ctx b B | checkElab-sound ctx b B
+  ...   | failure err | _ = tt
+  ...   | success Ψ₂ bE db fb | wb = wt-pair-lit-check wa wb
+
+  checkCaseOn-sound ctx f g _ (case-at A B π C) with checkElab ctx f (A ⇒ω⟨ π ⟩ C) | checkElab-sound ctx f (A ⇒ω⟨ π ⟩ C)
+  ... | failure err | _ = tt
+  ... | success Ψf fE df frf | wf with checkElab ctx g (B ⇒ω⟨ π ⟩ C) | checkElab-sound ctx g (B ⇒ω⟨ π ⟩ C)
+  ...   | failure err | _ = tt
+  ...   | success Ψg gE dg frg | wg = wt-case-copair-check wf wg
+  checkCaseOn-sound _ _ _ _ case-other = tt
+
+  checkComposeOn-sound ctx f g _ (arrow-at A π C) = checkCompose-route-sound ctx f g A C π (domainForm? ctx g) refl
+  checkComposeOn-sound _ _ _ _ arrow-other = tt
+
+  checkCompose-route-sound ctx f g A C π true e =
+    checkCompose-g-sound ctx f g A C π e (elabGiven ctx g A π) (elabGiven-sound ctx g A π)
+  checkCompose-route-sound ctx f g A C π false e =
+    checkCompose-f-sound ctx f g A C π (λ P → FS.domainForm-false P g e) (inferElab ctx f) (inferElab-sound ctx f)
+
+  checkCompose-g-sound ctx f g A C π dt (failure err) _ = tt
+  checkCompose-g-sound ctx f g A C π dt (success B Ψg gE dg frg) wg
+      with checkElab ctx f (B ⇒ω⟨ π ⟩ C) | checkElab-sound ctx f (B ⇒ω⟨ π ⟩ C)
+  ... | failure err | _ = tt
+  ... | success Ψf fE df frf | wf =
+    wt-compose-check-g (λ P → FS.domainForm-true P g dt (proj₁ (proj₁ (proj₂ (proj₂ wg P)))) (proj₂ (proj₁ (proj₂ (proj₂ wg P))))) wg wf
+
+  checkCompose-f-sound ctx f g A C π ndf (failure err) _ = tt
+  checkCompose-f-sound ctx f g A C π ndf (success (B Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many π′ ] C′) Ψf fE df frf) wf =
+    checkCompose-f-sub-sound ctx f g A B C C′ π π′ ndf fE df wf ((B ⇒ω⟨ π′ ⟩ C′) <:? (B ⇒ω⟨ π ⟩ C))
+  checkCompose-f-sound ctx f g A C π ndf (success (_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero _ ] _) _ _ _ _) _ = tt
+  checkCompose-f-sound ctx f g A C π ndf (success (_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One _ ] _) _ _ _ _) _ = tt
+  checkCompose-f-sound ctx f g A C π ndf (success (var _) _ _ _ _) _ = tt
+  checkCompose-f-sound ctx f g A C π ndf (success Unit _ _ _ _) _ = tt
+  checkCompose-f-sound ctx f g A C π ndf (success Void _ _ _ _) _ = tt
+  checkCompose-f-sound ctx f g A C π ndf (success (_ * _) _ _ _ _) _ = tt
+  checkCompose-f-sound ctx f g A C π ndf (success (_ + _) _ _ _ _) _ = tt
+  checkCompose-f-sound ctx f g A C π ndf (success (μ _) _ _ _ _) _ = tt
+  checkCompose-f-sound ctx f g A C π ndf (success (ν _ _) _ _ _ _) _ = tt
+  checkCompose-f-sound ctx f g A C π ndf (success Int _ _ _ _) _ = tt
+  checkCompose-f-sound ctx f g A C π ndf (success Float _ _ _ _) _ = tt
+
+  checkCompose-f-sub-sound ctx f g A B C C′ π π′ ndf fE df wf (no _) = tt
+  checkCompose-f-sub-sound ctx f g A B C C′ π π′ ndf fE df wf (yes p)
+      with checkElab ctx g (A ⇒ω⟨ π ⟩ B) | checkElab-sound ctx g (A ⇒ω⟨ π ⟩ B)
+  ... | failure err | _ = tt
+  ... | success Ψg gE dg frg | wg = wt-compose-check-f ndf wf p wg
+
+  checkCurryOn-sound ctx arg _ (curry-at A π₀ B π C)
+      with checkElab ctx arg ((A Once.Spec.Type.* B) ⇒ω⟨ π ⟩ C) | checkElab-sound ctx arg ((A Once.Spec.Type.* B) ⇒ω⟨ π ⟩ C)
+  ... | failure err | _ = tt
+  ... | success Ψ argE d fr | w = wt-curry-check w
+  checkCurryOn-sound _ _ _ curry-other = tt
+
+  checkCataOn-sound ctx alg _ (cata-at F π A) = checkCataGo-sound ctx alg F A π (wfFun? (NamedCtx.kinds ctx) F)
+  checkCataOn-sound _ _ _ cata-other = tt
+  checkCataGo-sound ctx alg F A π nothing = tt
+  checkCataGo-sound ctx alg F A π (just wfF) with checkElab ctx alg (⟦ F ⟧F A ⇒ω⟨ π ⟩ A) | checkElab-sound ctx alg (⟦ F ⟧F A ⇒ω⟨ π ⟩ A)
+  ... | failure err | _ = tt
+  ... | success Ψ algE d fr | w = wt-cata-check wfF w
+
+  checkAnaOn-sound ctx coalg _ (ana-at A π₀ F π ua) = checkAnaGo-sound ctx coalg F A π₀ π ua (wfFun? (NamedCtx.kinds ctx) F)
+  checkAnaOn-sound ctx round _ (loop-at A B) =
+    checkLoop-sound ctx round A B (checkElab ctx round (A ⇒ω⟨ Once.Spec.Grade.act ⟩ (B Once.Spec.Type.+ A)))
+      (checkElab-sound ctx round (A ⇒ω⟨ Once.Spec.Grade.act ⟩ (B Once.Spec.Type.+ A)))
+  checkAnaOn-sound _ _ _ ana-other = tt
+  checkAnaGo-sound ctx coalg F A π₀ φ ua nothing = tt
+  checkAnaGo-sound ctx coalg F A π₀ φ ua (just wfF)
+      with checkElab ctx coalg (A ⇒ω⟨ Once.Spec.Grade.fin φ ⟩ ⟦ F ⟧F A) | checkElab-sound ctx coalg (A ⇒ω⟨ Once.Spec.Grade.fin φ ⟩ ⟦ F ⟧F A)
+  ... | failure err | _ = tt
+  ... | success Ψ coalgE d fr | w = wt-ana-check ua wfF w
+  checkLoop-sound ctx round A B (failure err) _ = tt
+  checkLoop-sound ctx round A B (success Ψ roundE d fr) w = wt-loop-check w
+
+  checkElabV-RPair-aux-sound ctx a b _ (rpt-prod A B) = checkPairLit-sound ctx a b A B
+  checkElabV-RPair-aux-sound ctx a b _ (rpt-vlift X A B π) = tt
+  checkElabV-RPair-aux-sound ctx a b _ (rpt-other T) = tt
+
+  ----------------------------------------------------------------------
+  -- The domain-given mode
+  ----------------------------------------------------------------------
+
+  elabGiven-sound ctx (Raw.RLam x body) A π with inferElab (extendNamedCtx ctx x A) body | inferElab-sound (extendNamedCtx ctx x A) body
+  ... | failure err | _ = tt
+  ... | success B (q' ∷ᵘ Ψ) bodyE d fr | wb = wd-lam wb
+  elabGiven-sound ctx (Raw.RResolved cn) A π = given-res-sound ctx cn A π (inferElab ctx (Raw.RResolved cn)) (inferElab-sound ctx (Raw.RResolved cn))
+  elabGiven-sound ctx (Raw.RGen g) A π with genKindView g
+  ... | gk-map _   = givenMap-sound ctx g A π (mapFrom? (NamedCtx.kinds ctx) g A) refl
+  ... | gk-const _ = given-infer-sound ctx (Raw.RGen g) A π (inferGen ctx g (genKindView g)) (inferGen-sound ctx g (genKindView g))
+  ... | gk-comb₁ _ = tt
+  ... | gk-comb₂ _ = tt
+  elabGiven-sound ctx (Raw.RApp f g) A π = givenApp-sound ctx f g A π (inferElab ctx (Raw.RApp f g)) (inferElab-sound ctx (Raw.RApp f g))
+  elabGiven-sound ctx (Raw.RVar x) A π = given-infer-sound ctx (Raw.RVar x) A π (inferElab ctx (Raw.RVar x)) (inferElab-sound ctx (Raw.RVar x))
+  elabGiven-sound ctx (Raw.RQualified a b) A π = given-infer-sound ctx (Raw.RQualified a b) A π (inferElab ctx (Raw.RQualified a b)) (inferElab-sound ctx (Raw.RQualified a b))
+  elabGiven-sound ctx (Raw.RLet x a b) A π = given-infer-sound ctx (Raw.RLet x a b) A π (inferElab ctx (Raw.RLet x a b)) (inferElab-sound ctx (Raw.RLet x a b))
+  elabGiven-sound ctx (Raw.RPair a b) A π = given-infer-sound ctx (Raw.RPair a b) A π (inferElab ctx (Raw.RPair a b)) (inferElab-sound ctx (Raw.RPair a b))
+  elabGiven-sound ctx (Raw.RDestruct s x a y b) A π = given-infer-sound ctx (Raw.RDestruct s x a y b) A π (inferElab ctx (Raw.RDestruct s x a y b)) (inferElab-sound ctx (Raw.RDestruct s x a y b))
+  elabGiven-sound ctx Raw.RUnit A π = given-infer-sound ctx Raw.RUnit A π (inferElab ctx Raw.RUnit) (inferElab-sound ctx Raw.RUnit)
+  elabGiven-sound ctx (Raw.RInt i) A π = given-infer-sound ctx (Raw.RInt i) A π (inferElab ctx (Raw.RInt i)) (inferElab-sound ctx (Raw.RInt i))
+  elabGiven-sound ctx (Raw.RFloat a b c d) A π = given-infer-sound ctx (Raw.RFloat a b c d) A π (inferElab ctx (Raw.RFloat a b c d)) (inferElab-sound ctx (Raw.RFloat a b c d))
+  elabGiven-sound ctx (Raw.RAnnot a T) A π = given-infer-sound ctx (Raw.RAnnot a T) A π (inferElab ctx (Raw.RAnnot a T)) (inferElab-sound ctx (Raw.RAnnot a T))
+  elabGiven-sound ctx (Raw.RBinOp o a b) A π = given-infer-sound ctx (Raw.RBinOp o a b) A π (inferElab ctx (Raw.RBinOp o a b)) (inferElab-sound ctx (Raw.RBinOp o a b))
+  elabGiven-sound ctx (Raw.RNeg a) A π = given-infer-sound ctx (Raw.RNeg a) A π (inferElab ctx (Raw.RNeg a)) (inferElab-sound ctx (Raw.RNeg a))
+
+  givenApp-sound ctx (Raw.RApp (Raw.RGen G.compose) f) g A π _ _
+      with elabGiven ctx g A π | elabGiven-sound ctx g A π
+  ... | failure err | _ = tt
+  ... | success M Ψg gE dg frg | wg with elabGiven ctx f M π | elabGiven-sound ctx f M π
+  ...   | failure err | _ = tt
+  ...   | success B Ψf fE df frf | wf = wd-compose wg wf
+  givenApp-sound ctx (Raw.RApp (Raw.RGen G.case) f) g A π _ _ = givenCase-sound ctx f g π (sumV A)
+  givenApp-sound ctx (Raw.RApp (Raw.RGen G.pair) f) g A π _ _
+      with elabGiven ctx f A π | elabGiven-sound ctx f A π
+  ... | failure err | _ = tt
+  ... | success B Ψf fE df frf | wf with elabGiven ctx g A π | elabGiven-sound ctx g A π
+  ...   | failure err | _ = tt
+  ...   | success C Ψg gE dg frg | wg = wd-pair wf wg
+  givenApp-sound ctx (Raw.RGen G.cata) alg A π _ _ = givenCata-sound ctx alg A π (inferElab ctx alg) (inferElab-sound ctx alg)
+  givenApp-sound ctx f@(Raw.RGen G.id) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.compose) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.fst) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.snd) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.terminal) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.pair) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.inl) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.inr) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.initial) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.case) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.apply) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.curry) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.In) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.Out) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.ana) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.unit) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RGen G.toFloat) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.id) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.fst) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.snd) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.terminal) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.inl) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.inr) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.initial) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.apply) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.curry) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.In) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.cata) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.Out) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.ana) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.unit) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RGen G.toFloat) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RVar _) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RQualified _ _) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RResolved _) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RLam _ _) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RLet _ _ _) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RPair _ _) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RDestruct _ _ _ _ _) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp Raw.RUnit _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RInt _) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RFloat _ _ _ _) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RAnnot _ _) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RBinOp _ _ _) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RNeg _) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RApp (Raw.RApp _ _) _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RVar _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RQualified _ _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RResolved _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RLam _ _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RLet _ _ _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RPair _ _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RDestruct _ _ _ _ _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@Raw.RUnit g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RInt _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RFloat _ _ _ _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RAnnot _ _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RBinOp _ _ _) g A π r w = given-infer-sound ctx _ A π r w
+  givenApp-sound ctx f@(Raw.RNeg _) g A π r w = given-infer-sound ctx _ A π r w
+
+  givenCase-sound ctx f g π (sum-at A B) with elabGiven ctx f A π | elabGiven-sound ctx f A π
+  ... | failure err | _ = tt
+  ... | success C Ψf fE df frf | wf with elabGiven ctx g B π | elabGiven-sound ctx g B π
+  ...   | failure err | _ = tt
+  ...   | success C′ Ψg gE dg frg | wg = given-case-join-sound ctx f g A B π fE df wf gE dg frg wg (join? C C′)
+  givenCase-sound ctx f g π sum-other = tt
+
+  ----------------------------------------------------------------------
+  -- `let` and `destruct`
+  ----------------------------------------------------------------------
+
+  inferElabV-RLet-aux-sound ctx x e₁ e₂ (failure err) _ = tt
   inferElabV-RLet-aux-sound ctx x e₁ e₂ (success A Ψ₁ e₁E d₁ f₁) w₁ =
     inferElabV-RLet-aux2-sound ctx x e₁ e₂ e₁E d₁ f₁ w₁ (inferElab (extendNamedCtx ctx x A) e₂) (inferElab-sound (extendNamedCtx ctx x A) e₂)
-  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (failure err) _ =
-    tt
-  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success Unit   _ _ _ _) _ =
-    tt
-  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success Void   _ _ _ _) _ =
-    tt
-  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success Int    _ _ _ _) _ =
-    tt
-  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success Float  _ _ _ _) _ =
-    tt
-  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success (var iᵣ) _ _ _ _) _ =
-    tt
-  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success (_ Once.Spec.Type.* _) _ _ _ _) _ =
-    tt
-  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success (_ Once.Spec.Type.⇒[ _ ] _) _ _ _ _) _ =
-    tt
-  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success (Once.Spec.Type.μ _) _ _ _ _) _ =
-    tt
-  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success (Once.Spec.Type.ν _ _) _ _ _ _) _ =
-    tt
-  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success (A Once.Spec.Type.+ B) Ψs scrutE ds fs) wS =
-    inferElabV-RDestruct-auxL-sound ctx scrut xL eL xR eR A B scrutE ds fs wS (inferElab (extendNamedCtx ctx xL A) eL) (inferElab-sound (extendNamedCtx ctx xL A) eL)
-  inferElabV-RDestruct-auxL-sound ctx scrut xL eL xR eR A B scrutE ds fs wS (failure err) _ =
-    tt
-  inferElabV-RDestruct-auxL-sound ctx scrut xL eL xR eR A B scrutE ds fs wS (success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL) wL =
-    inferElabV-RDestruct-auxR-sound ctx scrut xL eL xR eR A B scrutE ds fs wS eLE dL fL wL (inferElab (extendNamedCtx ctx xR B) eR) (inferElab-sound (extendNamedCtx ctx xR B) eR)
-  inferElabV-RApp-other-aux-sound ctx f x (just _) _ =
-    tt
-  inferElabV-RApp-other-aux-sound ctx f x nothing eqAH
-      with inferElab ctx f | inferElab-sound ctx f
-  ...  | (failure err) | _ =
-    inferSpine-sound ctx f x eqAH (inferElab ctx x) (inferElab-sound ctx x)
-  ...  | (success Unit       _ _ _ _) | _ =
-    tt
-  ...  | (success Void       _ _ _ _) | _ =
-    tt
-  ...  | (success Int        _ _ _ _) | _ =
-    tt
-  ...  | (success Float      _ _ _ _) | _ =
-    tt
-  ...  | (success (var iᵣ)     _ _ _ _) | _ =
-    tt
-  ...  | (success (A Once.Spec.Type.* B) _ _ _ _) | _ =
-    tt
-  ...  | (success (A Once.Spec.Type.+ B) _ _ _ _) | _ =
-    tt
-  ...  | (success (Once.Spec.Type.μ F) _ _ _ _) | _ =
-    tt
-  ...  | (success (Once.Spec.Type.ν F π) _ _ _ _) | _ =
-    tt
-  ...  | (success (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q Once.Spec.Grade.pure ] B) Ψ₁ fE df ff) | wF
-      with checkElab ctx x A | checkElab-sound ctx x A
-  ...    | (failure err) | _ =
-    tt
-  ...    | (success Ψ₂ xE dx fx) | wX =
-    wt-app eqAH wF wX
-  inferElabV-RApp-other-aux-sound ctx f x nothing eqAH | (success (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.eff ] B) Ψ₁ fE df ff) | wF
-      with checkElab ctx x A | checkElab-sound ctx x A
-  ...    | (failure err) | _ =
-    tt
-  ...    | (success Ψ₂ xE dx fx) | wX =
-    wt-effApp {g = Once.Spec.Grade.eg-eff} eqAH wF wX
-  inferElabV-RApp-other-aux-sound ctx f x nothing eqAH | (success (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] B) Ψ₁ fE df ff) | wF
-      with checkElab ctx x A | checkElab-sound ctx x A
-  ...    | (failure err) | _ =
-    tt
-  ...    | (success Ψ₂ xE dx fx) | wX =
-    wt-effApp {g = Once.Spec.Grade.eg-act} eqAH wF wX
-  inferElabV-RApp-other-aux-sound ctx f x nothing eqAH | (success (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One Once.Spec.Grade.eff ] B) _ _ _ _) | _ =
-    tt
-  inferElabV-RApp-other-aux-sound ctx f x nothing eqAH | (success (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero Once.Spec.Grade.eff ] B) _ _ _ _) | _ =
-    tt
-  inferElabV-RApp-other-aux-sound ctx f x nothing eqAH | (success (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero Once.Spec.Grade.act ] B) _ _ _ _) | _ =
-    tt
-  inferElabV-RApp-other-aux-sound ctx f x nothing eqAH | (success (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One Once.Spec.Grade.act ] B) _ _ _ _) | _ =
-    tt
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-id _
-      with inferElab ctx arg | inferElab-sound ctx arg
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success T Ψ argE d fr) | w =
-    wt-id-app w
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-fst _ =
-    inferFstOn-sound ctx arg (inferElab ctx arg) (inferElab-sound ctx arg)
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-snd _ =
-    inferSndOn-sound ctx arg (inferElab ctx arg) (inferElab-sound ctx arg)
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-terminal _
-      with inferElab ctx arg | inferElab-sound ctx arg
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success T Ψ argE d fr) | w =
-    wt-terminal-app w
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-apply _ =
-    inferApplyOn-sound ctx arg (inferElab ctx arg) (inferElab-sound ctx arg)
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-inl _ =
-    tt
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-inr _ =
-    tt
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-initial _ =
-    tt
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-pair-applied _ =
-    tt
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-compose-applied _ =
-    tt
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-case-applied _ =
-    tt
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-In _ =
-    tt
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-cata _ =
-    tt
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-ana _ =
-    tt
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-Out _ =
-    inferOut-sound ctx arg
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-curry _ =
-    tt
-  inferElabV-RApp-dispatch-sound ctx f arg ahv-other _ =
-    inferElabV-RApp-other-sound ctx f arg
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-id _
-      with inferElab ctx (Raw.RApp f arg) | inferElab-sound ctx (Raw.RApp f arg)
-  ...  | r@(success _ _ _ _ _) | rˢ =
-    embedOrSubsume-sound ctx (Raw.RApp f arg) T r rˢ
-  ...  | (failure err) | _ =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-fst _
-      with inferElab ctx (Raw.RApp f arg) | inferElab-sound ctx (Raw.RApp f arg)
-  ...  | r@(success _ _ _ _ _) | rˢ =
-    embedOrSubsume-sound ctx (Raw.RApp f arg) T r rˢ
-  ...  | (failure err) | _ =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-snd _
-      with inferElab ctx (Raw.RApp f arg) | inferElab-sound ctx (Raw.RApp f arg)
-  ...  | r@(success _ _ _ _ _) | rˢ =
-    embedOrSubsume-sound ctx (Raw.RApp f arg) T r rˢ
-  ...  | (failure err) | _ =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-Out _
-      with inferElab ctx (Raw.RApp f arg) | inferElab-sound ctx (Raw.RApp f arg)
-  ...  | r@(success _ _ _ _ _) | rˢ =
-    embedOrSubsume-sound ctx (Raw.RApp f arg) T r rˢ
-  ...  | (failure err) | _ =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-terminal _
-      with inferElab ctx (Raw.RApp f arg) | inferElab-sound ctx (Raw.RApp f arg)
-  ...  | r@(success _ _ _ _ _) | rˢ =
-    embedOrSubsume-sound ctx (Raw.RApp f arg) T r rˢ
-  ...  | (failure err) | _ =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inl _
-      with T
-  ...  | (A Once.Spec.Type.+ B)
-      with checkElab ctx arg A | checkElab-sound ctx arg A
-  ...    | (failure err) | _ =
-    tt
-  ...    | (success Ψ argE d fr) | w =
-    wt-inl-app-check w
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inl _ | Unit =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inl _ | Void =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inl _ | Int =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inl _ | Float =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inl _ | (var iᵣ) =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inl _ | (_ Once.Spec.Type.* _) =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inl _ | (_ Once.Spec.Type.⇒[ _ ] _) =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inl _ | (μ _) =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inl _ | (ν _ _) =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inr _
-      with T
-  ...  | (A Once.Spec.Type.+ B)
-      with checkElab ctx arg B | checkElab-sound ctx arg B
-  ...    | (failure err) | _ =
-    tt
-  ...    | (success Ψ argE d fr) | w =
-    wt-inr-app-check w
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inr _ | Unit =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inr _ | Void =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inr _ | Int =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inr _ | Float =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inr _ | (var iᵣ) =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inr _ | (_ Once.Spec.Type.* _) =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inr _ | (_ Once.Spec.Type.⇒[ _ ] _) =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inr _ | (μ _) =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-inr _ | (ν _ _) =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-initial _
-      with checkElab ctx arg Once.Spec.Type.Void | checkElab-sound ctx arg Once.Spec.Type.Void
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success Ψ argE d fr) | w =
-    wt-initial-app-check w
-  checkElabV-RApp-dispatch-sound ctx f arg T (ahv-pair-applied {f'}) _ =
-    checkPairOn-sound ctx f' arg T (pairTarget T)
-  checkElabV-RApp-dispatch-sound ctx f arg T (ahv-compose-applied {f'}) _ =
-    checkComposeOn-sound ctx f' arg T (arrowTarget T)
-  checkElabV-RApp-dispatch-sound ctx f arg T (ahv-case-applied {f'}) _ =
-    checkCaseOn-sound ctx f' arg T (caseTarget T)
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-In _ =
-    checkIn-sound ctx arg T
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-cata _ =
-    checkCata-sound ctx arg T
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-ana _ =
-    checkAna-sound ctx arg T
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-curry _ =
-    checkCurry-sound ctx arg T
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-apply _
-      with inferElab ctx (Raw.RApp f arg) | inferElab-sound ctx (Raw.RApp f arg)
-  ...  | r@(success _ _ _ _ _) | rˢ =
-    embedOrSubsume-sound ctx (Raw.RApp f arg) T r rˢ
-  ...  | (failure err) | _ =
-    tt
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-other _
-      with inferElab ctx (Raw.RApp f arg) | inferElab-sound ctx (Raw.RApp f arg)
-  ...  | r@(success _ _ _ _ _) | rˢ =
-    embedOrSubsume-sound ctx (Raw.RApp f arg) T r rˢ
-  checkElabV-RApp-dispatch-sound ctx f arg T ahv-other _ | (failure errInfer) | _ =
-    tt
-  inferSpine-sound ctx f x eqAH (failure err) _ =
-    tt
-  inferSpine-sound ctx f x eqAH (success X Ψx xE dx frx) wX
-      with elabGiven ctx f X Once.Spec.Grade.pure | elabGiven-sound ctx f X Once.Spec.Grade.pure
-  ...  | (failure err) | _ =
-    tt
-  ...  | (success T Ψf fE df frf) | wF =
-    wt-app-spine eqAH wX wF
-  checkElabV-RInt-aux-sound ctx n T =
-    embedOrSubsume-sound ctx (Raw.RInt n) T _ (wt-int n)
-  checkElabV-RPair-aux-sound ctx a b _ (rpt-prod A B) =
-    checkPairLit-sound ctx a b A B
-  checkElabV-RPair-aux-sound ctx a b _ (rpt-vlift X A B π) =
-    tt
-  checkElabV-RPair-aux-sound ctx a b _ (rpt-other T)
-      with inferElab ctx (Raw.RPair a b) | inferElab-sound ctx (Raw.RPair a b)
-  ...  | r | rˢ =
-    embedOrSubsume-sound ctx (Raw.RPair a b) T r rˢ
 
-checkApply-sound : ∀ {m}
-    → (ctx : NamedCtx m)
-    → (arg : Syn.Expr)
-    → (T : Ty m)
-    → checkSoundOf ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg) T (checkApply ctx arg T)
-checkApply-sound ctx arg T
-    with inferElab ctx arg | inferElab-sound ctx arg
-...  | (failure err) | _ =
-  tt
-...  | (success ((A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.pure ] B) Once.Spec.Type.* A') Ψ argE d fr) | w
-    with A ≟T A' | T ≟T B
-...    | yes refl | yes refl =
-  wt-apply-check w
-...    | yes refl | no _ =
-  tt
-...    | no _ | _ =
-  tt
-checkApply-sound ctx arg T | (success Unit _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success Void _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success Int _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success Float _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success (var iᵣ) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success (_ Once.Spec.Type.+ _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success (_ Once.Spec.Type.⇒[ _ ] _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success (Unit Once.Spec.Type.* _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success (Void Once.Spec.Type.* _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success (Int Once.Spec.Type.* _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success (Float Once.Spec.Type.* _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success ((var iᵣ) Once.Spec.Type.* _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success ((_ Once.Spec.Type.* _) Once.Spec.Type.* _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success ((_ Once.Spec.Type.+ _) Once.Spec.Type.* _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success ((_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero Once.Spec.Grade.pure ] _) Once.Spec.Type.* _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success ((_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One Once.Spec.Grade.pure ] _) Once.Spec.Type.* _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success ((_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Zero Once.Spec.Grade.act ] _) Once.Spec.Type.* _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success ((_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.One Once.Spec.Grade.act ] _) Once.Spec.Type.* _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success ((_ Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind Once.Spec.Grade.Many Once.Spec.Grade.act ] _) Once.Spec.Type.* _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success ((Once.Spec.Type.μ _) Once.Spec.Type.* _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success ((Once.Spec.Type.ν _ _) Once.Spec.Type.* _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success (Once.Spec.Type.μ _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T | (success (Once.Spec.Type.ν _ _) _ _ _ _) | _ =
-  tt
-checkApply-sound ctx arg T₁ | success ((A ⇒[ mk-kind Zero eff ] A₁) * A₂) Ψ x depth fresh | w =
-  tt
-checkApply-sound ctx arg T₁ | success ((A ⇒[ mk-kind One eff ] A₁) * A₂) Ψ x depth fresh | w =
-  tt
-checkApply-sound ctx arg T₁ | success ((A ⇒[ mk-kind Many eff ] A₁) * A₂) Ψ x depth fresh | w =
-  tt
+  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (failure err) _ = tt
+  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success Unit _ _ _ _) _ = tt
+  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success Void _ _ _ _) _ = tt
+  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success Int _ _ _ _) _ = tt
+  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success Float _ _ _ _) _ = tt
+  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success (var _) _ _ _ _) _ = tt
+  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success (_ * _) _ _ _ _) _ = tt
+  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success (_ Once.Spec.Type.⇒[ _ ] _) _ _ _ _) _ = tt
+  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success (μ _) _ _ _ _) _ = tt
+  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success (ν _ _) _ _ _ _) _ = tt
+  inferElabV-RDestruct-aux-sound ctx scrut xL eL xR eR (success (A + B) Ψs scrutE ds fs) ws =
+    inferElabV-RDestruct-auxL-sound ctx scrut xL eL xR eR A B scrutE ds fs ws (inferElab (extendNamedCtx ctx xL A) eL) (inferElab-sound (extendNamedCtx ctx xL A) eL)
+  inferElabV-RDestruct-auxL-sound ctx scrut xL eL xR eR A B scrutE ds fs ws (failure err) _ = tt
+  inferElabV-RDestruct-auxL-sound ctx scrut xL eL xR eR A B scrutE ds fs ws (success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL) wl =
+    inferElabV-RDestruct-auxR-sound ctx scrut xL eL xR eR A B scrutE ds fs ws eLE dL fL wl (inferElab (extendNamedCtx ctx xR B) eR) (inferElab-sound (extendNamedCtx ctx xR B) eR)
 
 
 ------------------------------------------------------------------------

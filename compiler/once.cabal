@@ -64,6 +64,7 @@ library
       MAlonzo.Code.Once.Surface.Numeric
       MAlonzo.Code.Once.Surface.OpNames
       MAlonzo.Code.Once.TypeCheck.NumTable
+      MAlonzo.Code.Once.TypeCheck.Table
       MAlonzo.Code.Once.Allocator.AbstractInstance
       MAlonzo.Code.Once.Allocator.Interface
       MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit
@@ -116,6 +117,8 @@ library
       MAlonzo.Code.Once.Principal
       MAlonzo.Code.Once.Spec.ABI
       MAlonzo.Code.Once.Spec.Context
+      MAlonzo.Code.Once.Spec.Core.Derived
+      MAlonzo.Code.Once.Spec.Core.Syntax
       MAlonzo.Code.Once.Spec.Domain
       MAlonzo.Code.Once.Spec.Effect
       MAlonzo.Code.Once.Spec.Grade
@@ -205,6 +208,7 @@ library
       MAlonzo.Code.Once.Spec.Numerics
       MAlonzo.Code.Once.Spec.Polynomial
       MAlonzo.Code.Once.Spec.Surface.Grammar
+      MAlonzo.Code.Once.Spec.Surface.Generators
       MAlonzo.Code.Once.Spec.Surface.Lexing
       MAlonzo.Code.Once.Spec.Word
       MAlonzo.Code.Once.Surface.CoerceIR
@@ -239,6 +243,7 @@ library
       MAlonzo.Code.Once.Word
       MAlonzo.Code.Once.Extract.Root
       MAlonzo.Code.Once.Format
+      MAlonzo.Code.Once.Generators
       MAlonzo.Code.Once.Format.Comment
       MAlonzo.Code.Once.Format.Doc
       MAlonzo.Code.Once.Format.Lex

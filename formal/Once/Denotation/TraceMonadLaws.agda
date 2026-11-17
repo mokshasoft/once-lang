@@ -26,7 +26,7 @@ open import Once.Type.Core using (isUnit?)
 import Once.Type.Core as SpecTy
 import Once.Spec.Type as SpecTy
 import Once.Type as Ty
-open import Once.Spec.Name using (CanonicalName; gen)
+open import Once.Spec.Name using (CanonicalName)
 open import Once.Name using (showCanonical)
 open import Relation.Nullary using (Dec; yes; no)
 import Data.List.Membership.DecPropositional as DecMem

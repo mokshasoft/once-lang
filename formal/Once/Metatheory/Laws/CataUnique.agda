@@ -61,7 +61,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
   -- μ F is the initial algebra: an algebra map is the fold.
   cata-uniqueᶜ : ∀ {n} {Γ : Ctx m n} {Ψ F A π₀ π′ alg h}
                → Pure Σ fmt S Δ Γ alg (⟦ F ⟧F A ⇒[ mk-kind Many pure ] A) → Pure Σ fmt S Δ Γ h (μ F ⇒[ mk-kind Many pure ] A)
-               → (e : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure h (inᶜ F) ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π′)
+               → (e : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure h (inᶜ F pure) ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π′)
                  (e′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure alg (layerᶜ F (μ F) A h)
                                      ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π′)
                → _≅_ Σ fmt S e e′
@@ -97,7 +97,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
       HV : _~_ {MA} (⟪ d ⟫ γ) (return∞ hv)
       HV = pureRet d dph base
 
-      GO : Shape L pure TT h (inᶜ F) → AV.Arms e h (inᶜ F)
+      GO : Shape L pure TT h (inᶜ F pure) → AV.Arms e h (inᶜ F pure)
          → Shape L pure TT alg (layerᶜ F (μ F) A h) → AV.Arms e′ alg (layerᶜ F (μ F) A h)
          → _~_ {MA} (⟪ d ⟫ γ) (⟪ d′ ⟫ γ)
       GO (shape eT tyF tyG lf lg zp) (AV.arms dh di Ph Pi) (shape eT′ tyF′ tyG′ lf′ lg′ zp′) (AV.arms {Ψg = Ψl} {πg = πl} da dl Pa Pl)
