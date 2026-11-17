@@ -48,6 +48,8 @@ open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL)
 open import Once.LinCore.FromIR fmt using (⟪_⟫; grade)
 import Once.LinCore.PassTr
+open import Once.LinCore.PassTr fmt using (copyIn)
+open import Once.LinCore.Grade fmt ans using (blk-coh)
 open import Once.IRTy using (IRTy; _⇛[_]_)
 import Once.IRTy as I
 open import Once.LinCore.Bridge fmt ans using (W)
@@ -398,3 +400,23 @@ module RelGen {L : Cx} (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) where
   rel-bind G.Zero = rel-fst
   rel-bind G.One  = rel-id
   rel-bind G.Many = rel-id
+
+------------------------------------------------------------------------
+-- 9. ★ CLOSURES: a many-use closure over a body, against `curry`.
+------------------------------------------------------------------------
+
+module RelClo {L : Cx} (δ : Env L) (ρ : CallEnv) where
+  open Rel δ ρ
+
+  -- the body, on a copy of the environment it reads lent
+  copyIn-≈ : ∀ {X A B} (b : LTm L (X ⊗t A) B) e a → Lᶜ δ (copyIn b) e a ≈ Lᶜ δ b tt (e , a)
+  copyIn-≈ b e a = bind-pure (≈-trans ret-bind (≈-trans ret-bind ret-bind))
+
+  -- ★ at either grade: a block's meaning is its computation's (`Grade.blk-coh`)
+  rel-cloG : ∀ (π : G.Purity) {X A B : IRTy} {b : LTm L (⟪ X ⟫ ⊗t ⟪ A ⟫) ⟪ B ⟫} {b′ : M.IR (X I.* A) B}
+               (γ : Gd (grade π) (copyIn b))
+           → Rel b b′ → Rel (llamω (copyIn b) γ) (M.curry {π = π} b′)
+  rel-cloG (G.fin φ) {b = b} γ rb = mkRel λ {x} {x′} w →
+    ret≈R (λ {a} {a′} wa → ≈-≈R (≈-trans (≈-sym (blk-coh δ γ x a)) (copyIn-≈ b x a)) (rel rb (w , wa)))
+  rel-cloG G.eff {b = b} γ rb = mkRel λ {x} {x′} w →
+    ret≈R (λ {a} {a′} wa → ≈-≈R (copyIn-≈ b x a) (rel rb (w , wa)))
