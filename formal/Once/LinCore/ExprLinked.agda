@@ -23,12 +23,13 @@ module Once.LinCore.ExprLinked (fmt : TargetNum) (ans : FFIAnswers) where
 open import Data.Bool using (Bool; true; false)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Sum.Properties using (inj₂-injective)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Maybe.Properties using (just-injective)
 open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String; _==_)
 open import Data.Empty using (⊥-elim)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst; cong; cong₂)
 import Data.List.Relation.Unary.All
 open import Relation.Nullary using (Dec; yes; no)
 open import Data.List using (List; []; _∷_; length)
@@ -247,3 +248,93 @@ module Walk (σ : ISig) where
     ; bod-ok = TInv.bod-ok inv
     ; sig-ok = TInv.sig-ok inv
     }
+
+  ----------------------------------------------------------------------
+  -- 3. ★ THE WALK, in lockstep with master's bundle and `srcEntries`
+  ----------------------------------------------------------------------
+
+  -- the checker's term refers only into its scope (its witness says so)
+  inScope : ∀ (ft : Maybe Type) (ctx : NamedCtx 0) (body : Syn.Expr) (ty : Type) {Ψ se d f}
+          → FB.ElabOK ft ctx body ty Ψ se d f → InScope ctx se
+  inScope (just _) ctx body ty ce = proj₁ (subst (checkSoundOf ctx body ty) ce (proj₂ (checkElabV ctx body ty)))
+  inScope nothing  ctx body ty ce = proj₁ (subst (soundOf ctx body) ce (proj₂ (inferElabV ctx body)))
+
+  -- ★ a definition's source, checked in its scope: unoptimized, its references graded
+  body-refs : ∀ {csc pre} → TInv csc pre → (ft : Maybe Type) (x : String) (ty : Type) {body : Syn.Expr} {s : Src ty} → ∀ {se d f}
+            → srcM ft Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ≡ inj₂ s
+            → FB.ElabOK ft (FB.ctxC csc) body ty SC.[] se d f
+            → (Src.opt s ≡ false) × Refs (DeclIn σ) (GradeIn pre) (GradeIn pre) (Src.expr s)
+  body-refs {csc} {pre} inv ft x ty {body} {se = se} cf ce =
+    subst (λ s′ → (Src.opt s′ ≡ false) × Refs (DeclIn σ) (GradeIn pre) (GradeIn pre) (Src.expr s′))
+          (sym (SrcForm.src-form (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) x ty body ft cf ce))
+          (refl , resolve-refs (λ {m} → GradeIn pre {m}) (C.cpolys csc) (C.declImps (C.CScope.ctele csc))
+                    (TInv.tel-ok inv (C.declImps (C.CScope.ctele csc)) (TInv.iself inv))
+                    (<-wellFounded (length (C.cpolys csc))) ((x , ty) ∷ TopCtx.tdefs (C.ctop csc)) 0 se
+                    (Refs-map {Ps = FFIRef (C.CScope.csig csc)} {Ps′ = DeclIn σ} {Pc = ImpRef (C.CScope.cimps csc)}
+                              {Pp = PolyRef (C.cpolys csc) ∅ₖ} {Pc′ = GradeIn pre} {Pp′ = PolyRef (C.cpolys csc) ∅ₖ}
+                              (TInv.sig-ok inv) (imp-refT inv) (λ r → r) se (inScope ft (FB.ctxC csc) body ty ce)))
+
+  cons-inv : ∀ (c : CompiledSrc) (r : String ⊎ List CompiledSrc) {srcs} → consCS c r ≡ inj₂ srcs
+           → Σ (List CompiledSrc) (λ rest → (r ≡ inj₂ rest) × (srcs ≡ c ∷ rest))
+  cons-inv c (inj₁ _)    ()
+  cons-inv c (inj₂ rest) refl = rest , refl , refl
+
+  walk : ∀ {Σ : Signature} {csc es} (mt : ModTele (AS.scopeOf csc) es) (b : FB.FunBundle csc es)
+           {k} {S : Defs k} (ss : TR.SigSig Σ (C.CScope.csig csc)) (is : TR.ImpSig Σ S (C.CScope.cimps csc))
+           (ts : TR.TeleSig Σ S (C.telePolys (C.CScope.ctele csc))) (N : MP.Names Σ S (C.CScope.csig csc) is ts) (F : MP.Fresh Σ N es)
+           (pre : List CompiledSrc)
+       → TInv csc pre → Fresh csc es
+       → (∀ {d} → d ∈ teleSig mt → d ∈ σ) → TR.SigIn Σ mt
+       → ∀ {srcs} → srcEntries Heap false csc es ≡ inj₂ srcs → Bodies (ET.srcOrder srcs pre)
+  walk [] FB.bnil ss is ts N F pre inv fr u uΣ refl = TInv.bod-ok inv
+  walk {csc = csc} {es = Parser.e-fun fi ∷ es} (ffi {ty = ty} ep et cc hh rest) (FB.bffi {ty = ty′} ep′ et′ ec eh rest-b)
+       ss is ts N F pre inv fr u uΣ {srcs} hyp =
+    walk rest (proj₁ packed) (TR.s-ffi cc hh (uΣ (here refl)) ss) is ts (MP.names-ffi _ fi ty F) (MP.fresh-ffi _ fi ty F) pre
+         (tinv-sig (funName fi) ty (u (here refl)) inv) (fresh-sig {csc = csc} {fi = fi} {ty = ty} {es = es} fr)
+         (λ m → u (there m)) (λ m → uΣ (there m)) (proj₂ packed)
+    where
+      h₃ : srcEntries Heap false (C.extendSig csc (funName fi) ty′) es ≡ inj₂ srcs
+      h₃ = trans (cong₂ (se-prim-conc Heap false csc fi es ty′) (sym ec) (sym eh))
+                 (trans (cong (se-prim Heap false csc fi es) (sym et′))
+                        (trans (cong (se-fun Heap false csc fi es) (sym ep′)) hyp))
+      packed : FB.FunBundle (C.extendSig csc (funName fi) ty) es × (srcEntries Heap false (C.extendSig csc (funName fi) ty) es ≡ inj₂ srcs)
+      packed = subst (λ T → FB.FunBundle (C.extendSig csc (funName fi) T) es × (srcEntries Heap false (C.extendSig csc (funName fi) T) es ≡ inj₂ srcs))
+                     (just-injective (trans (sym et′) et)) (rest-b , h₃)
+  walk (ffi {fi = Parser.mkFunInfo x ft bd prim} refl et cc hh rest) (FB.bcons () rf fc ce cf rest-b) ss is ts N F pre inv fr u uΣ hyp
+  walk {Σ = Σ} {csc = csc} {es = Parser.e-poly pfi ∷ es} (poly {Ψ = SC.[]} pr W rest) (FB.bpoly fc ce rest-b) ss is ts N F pre inv fr u uΣ {srcs} hyp =
+    walk rest rest-b ss (TR.wkI Σ is) (TR.t-def zero refl (TR.wkT Σ ts)) (MP.names-polyF Σ pfi F) (MP.fresh-poly Σ pfi F) pre
+         (tinv-poly ss is ts N W (fresh-head {csc = csc} {e = Parser.e-poly pfi} {es = es} fr) inv)
+         (fresh-poly {csc = csc} {pfi = pfi} {es = es} fr) u uΣ (poly-src (pfunName pfi SProp.≟ "main") hyp)
+    where
+      poly-src : ∀ (dm : Dec (pfunName pfi ≡ "main")) → se-poly-main Heap false csc pfi es dm ≡ inj₂ srcs
+               → srcEntries Heap false (C.addEntry csc pfi) es ≡ inj₂ srcs
+      poly-src (yes _) ()
+      poly-src (no _)  h =
+        trans (cong (λ r → se-poly Heap false csc pfi es (C.checkOK r)) (sym ce)) (trans (cong (se-poly-p Heap false csc pfi es) (sym fc)) h)
+  walk {Σ = Σ} {csc = csc} {es = Parser.e-fun fi ∷ es} (mono {ty = ty} refl er pr _ rest)
+       (FB.bcons {ty = ty′} {Ψ = SC.[]} {irFun = irFun} refl rf fc ce cf rest-b) ss is ts N F pre inv fr u uΣ {srcs} hyp =
+    subst (λ l → Bodies (ET.srcOrder l pre)) (sym (proj₂ (proj₂ ci)))
+      (walk rest (proj₁ packed) ss (TR.impDefs Σ (funName fi == "main") is) (TR.wkT Σ ts)
+            (MP.names-monoF Σ (funName fi == "main") fi ty F) (MP.fresh-mono Σ (funName fi == "main") fi ty F) (c ∷ pre)
+            (proj₂ (proj₂ packed)) (fresh-fun {csc = csc} {fi = fi} {ty = ty} {es = es} fr) u uΣ (proj₁ (proj₂ packed)))
+    where
+      sM = srcM (funType fi) Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) (funName fi) ty′ (funBody fi)
+      e′ : mapSrc sM ≡ inj₂ irFun
+      e′ = trans (sym (compileFunM-src (funType fi) Heap false (C.ctop csc) (C.cpolys csc) (C.declImps (C.CScope.ctele csc)) (funName fi) ty′ (funBody fi))) cf
+      s = srcOf sM e′
+      sm : sM ≡ inj₂ s
+      sm = srcOf-eq sM e′
+      c = mkCompiledSrc (bare (funName fi)) ty′ s
+      h₃ : consCS c (srcEntries Heap false (C.extendScope csc (funName fi) ty′) es) ≡ inj₂ srcs
+      h₃ = trans (cong (se-mono-src Heap false csc fi es ty′) (sym sm))
+                 (trans (cong (se-mono-p Heap false csc fi es ty′) (sym fc))
+                        (trans (cong (se-mono Heap false csc fi es) (sym rf)) hyp))
+      ci = cons-inv c (srcEntries Heap false (C.extendScope csc (funName fi) ty′) es) h₃
+      br = body-refs inv (funType fi) (funName fi) ty′ sm ce
+      P : Type → Set
+      P T = FB.FunBundle (C.extendScope csc (funName fi) T) es
+            × (srcEntries Heap false (C.extendScope csc (funName fi) T) es ≡ inj₂ (proj₁ ci))
+            × TInv (C.extendScope csc (funName fi) T) (c ∷ pre)
+      packed : P ty
+      packed = subst P (inj₂-injective (trans (sym rf) er))
+                     (rest-b , proj₁ (proj₂ ci) , tinv-entry (funName fi) ty′ s (proj₁ br) (proj₂ br) inv)
