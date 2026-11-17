@@ -651,14 +651,14 @@ module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A 
   module Unfold {F} (wf : WellFormedFI F) {E A} (c : M.IR (E * A) (⟦ F ⟧TI A)) (c′ : P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) ⟪ ⟦ F ⟧TI A ⟫)
                 (φ : P.BlkIR Γ (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′))
                 (ih : ∀ {x x′} → W (E * A) x x′ → ev δ c′ x ≈[ W (⟦ F ⟧TI A) ] evalᴰ fmt (callEnv cs ans) c x′)
-                (e : ⟦ ⟪ E ⟫ ⟧) (e′ : ⟦ E ⟧ᴰᴵ) (we : W E e e′) where
+                (e : ⟦ ⟪ E ⟫ ⟧) (e′ : ⟦ E ⟧ᴰᴵ) (we : W E e e′)
+                -- ★ the core's coalgebra, per seed: the pass's block's (D456: a bridge's
+                -- coalgebra is its closure's function, the same per seed)
+                (cC : ⟦ ⟪ A ⟫ ⟧ → T (FS (lf F) ⟦ ⟪ A ⟫ ⟧))
+                (cC≡ : ∀ a → cC a ≡ fmapT (coh (lf F) ⟪ A ⟫) (evB δ φ (e , a))) where
 
     c″ : P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) (LF∙ (lf F) ⟪ A ⟫)
     c″ = subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′
-
-    -- the two coalgebras, per seed
-    cC : ⟦ ⟪ A ⟫ ⟧ → T (FS (lf F) ⟦ ⟪ A ⟫ ⟧)
-    cC a = fmapT (coh (lf F) ⟪ A ⟫) (evB δ φ (e , a))
 
     cM : ⟦ ⌈ A ⌉ ⟧ᴰ → T∞ (⟦ SF F ⟧SF ⟦ ⌈ A ⌉ ⟧ᴰ)
     cM a′ = fmap∞ (Val.coerce-μ-in ⌈ F ⌉F ⟦ ⌈ A ⌉ ⟧ᴰ)
@@ -667,14 +667,14 @@ module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A 
 
     -- a seed's coalgebra, against master's
     seed≈ : ∀ {a a′} → W A a a′ → emb (cC a) ≈[ WLS A F ] cM a′
-    seed≈ {a} {a′} w =
+    seed≈ {a} {a′} w = subst (λ t → emb t ≈[ WLS A F ] cM a′) (sym (cC≡ a)) (
       fmapʳ (embfmap≈ (evB δ φ (e , a))
                (≈-≈R (≈-sym (ev-coh δ φ (e , a)))
                      (subst (λ m → m ≈[ _ ] evalᴰ fmt (callEnv cs ans) c (e′ , a′))
                             (sym (ev-subst-cod⁺ δ (⟪⟫-TI wf A) c′ (e , a)))
                             (≈-transport (⟪⟫-TI wf A) (ih (we , w)))))
                (λ {x} {x′} s → subst (λ z → WLS A F (coh (lf F) ⟪ A ⟫ z) _) (subst-sym-subst (⟪⟫-TI wf A) x)
-                                      (Seed-layer wf s)))
+                                      (Seed-layer wf s))))
 
     mutual
       -- ★ the unfold, coinductively
@@ -701,7 +701,8 @@ module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A 
          ∀ {a b} → W (E * A) a b →
          ev δ (P.Ana (lf F) (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′) φ) a
            ≈[ W (ν-type F) ] evalᴰ fmt (callEnv cs ans) (M.Ana wf c) b
-  ana≈ wf c c′ φ ih {e , a} {e′ , a′} (we , wa) = ret≈R (Unfold.ana-W wf c c′ φ ih e e′ we wa)
+  ana≈ {F} wf {E} {A} c c′ φ ih {e , a} {e′ , a′} (we , wa) =
+    ret≈R (Unfold.ana-W wf c c′ φ ih e e′ we (λ a → fmapT (coh (lf F) ⟪ A ⟫) (evB δ φ (e , a))) (λ _ → refl) wa)
 
 ------------------------------------------------------------------------
 -- 8. ★ THE OBLIGATIONS, discharged.

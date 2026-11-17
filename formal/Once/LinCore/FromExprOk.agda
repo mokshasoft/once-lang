@@ -75,7 +75,8 @@ open import Data.Nat using (ℕ)
 open import Once.IR.Ref using (refIR)
 open import Once.Spec.Name using (bare)
 open import Once.LinCore.FromIR fmt using (⟪⌊⌋⟫-flat)
-open import Once.LinCore.Pass fmt ans using (ev)
+open import Once.LinCore.Pass fmt ans using (ev; evB)
+import Once.LinCore.Casts
 open import Once.LinCore.Casts fmt ans using (casts)
 import Once.LinCore.BridgeProof
 open import Relation.Binary.PropositionalEquality using (subst₂; trans)
@@ -481,8 +482,8 @@ module RelClo {L : Cx} (δ : Env L) (ρ : CallEnv) where
     ret≈R (λ {a} {a′} wa → ≈-≈R (copyIn-≈ b x a) (rel rb (w , wa)))
 
 ------------------------------------------------------------------------
--- 10. ★★ THE BRIDGE'S MEANING, by induction on the expression. The clauses
--- not yet proved are named premises (`Owed`), discharged one by one.
+-- 10. ★★ THE BRIDGE'S MEANING, by induction on the expression, every clause
+-- proved; the one hypothesis is the program's table (`CallsOK`).
 ------------------------------------------------------------------------
 
 module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) (am : M.AllocMode) where
@@ -984,14 +985,73 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
               (wf : WFFun Δₖ F) (alg : Expr Γ Ψ (ST.⟦ F ⟧F A ⇒[ G.mk-kind G.Many π ] A)) → Goal alg → Goal (cata wf alg)
   ok-cata {Γ = Γ} {Ψ} {F} {A = A} {π} wf alg ra = rel-∘ (rel-cloG π _ (rel-fold F wf A {π})) (rel-∘ ra (rel-weak am {Γ = Γ} (⊑ᵘ-*Many Ψ)))
 
-  record Owed : Set where
-    field
-      o-ana     : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π₀} {φ : G.Finite}
-                    (wf : WFFun Δₖ F) (c : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many (G.fin φ) ] ST.⟦ F ⟧F A))
-                  → Goal c → Goal (ana {π₀ = π₀} wf c)
+  -- ★ THE UNFOLD. A cast of the identity returns its input, moved
+  cast-id : ∀ {X Y : LTy} (q : X ≡ Y) (v : ⟦ X ⟧) → Lᶜ δ (cast {L} {One} refl q (lid {A = X})) tt v ≡ return∞ (subst ⟦_⟧ q v)
+  cast-id refl v = refl
 
-  module _ (ck : CallsOK) (ow : Owed) where
-    open Owed ow
+  -- a block moved along its result's type, and its meaning
+  blk-sub : ∀ {X Y Y′} (q : Y ≡ Y′) {t : P.IR L X Y} → P.BlkIR L t → P.BlkIR L (subst (λ Z → P.IR L X Z) q t)
+  blk-sub refl φ = φ
+
+  evB-sub : ∀ {X Y Y′} (q : Y ≡ Y′) {t : P.IR L X Y} (φ : P.BlkIR L t) x
+          → evB δ (blk-sub q φ) x ≡ subst (λ Z → T ⟦ Z ⟧) q (evB δ φ x)
+  evB-sub refl φ x = refl
+
+  -- a closure moved along its result's type, applied
+  app-sub : ∀ {S Y Y′ : LTy} (q : Y ≡ Y′) (f : ⟦ Fn many act S Y ⟧) a
+          → subst ⟦_⟧ (cong (Fn many act S) q) f a ≡ subst (λ Z → T ⟦ Z ⟧) q (f a)
+  app-sub refl f a = refl
+
+  T-trans : ∀ {X Y Z : LTy} (p : X ≡ Y) (q : Y ≡ Z) (v : T ⟦ X ⟧)
+          → subst (λ W′ → T ⟦ W′ ⟧) (trans p q) v ≡ subst (λ W′ → T ⟦ W′ ⟧) q (subst (λ W′ → T ⟦ W′ ⟧) p v)
+  T-trans refl refl v = refl
+
+  -- the pass's coalgebra against master's, moved along the Spec's layer
+  unfold-ih : ∀ {X Y : IRTy} {A : IRTy} {φ : G.Finite} (c : X ≡ Y) {x x′} → W ((A I.⇛[ G.fin φ ] X) I.* A) x x′
+            → ev δ (subst (λ Z → P.IR L (Fn many act ⟪ A ⟫ ⟪ X ⟫ ⊗t ⟪ A ⟫) Z) (cong ⟪_⟫ c) (P.apply {g = act})) x
+              ≈[ W Y ] evalᴰ fmt ρ (subst (λ o → M.IR ((A I.⇛[ G.fin φ ] X) I.* A) o) c (M.apply M.∘ M.⟨ M.fst , M.snd ⟩)) x′
+  unfold-ih refl {f , a} {f′ , a′} (wf , wa) = ≈R-≈ (wf wa) (≈-sym (bind-pure (≈-trans ret-bind ret-bind)))
+
+  module UF {m} {Δ : KCtx m} (F : Fun m) (wf : WFFun Δ F) (A : Ty m) (φf : G.Finite) where
+    F′ = I.eraseF F
+    wfI = wf-⌊⌋ wf
+    c₀q = ⌊⟧T-commute F A
+    dq = ⟪⟫-TI wfI ⌊ A ⌋
+    Eᵢ = ⌊ A ⌋ I.⇛[ G.fin φf ] ⌊ ST.⟦ F ⟧F A ⌋
+
+    cIR : M.IR (Eᵢ I.* ⌊ A ⌋) (⟦ F′ ⟧TI ⌊ A ⌋)
+    cIR = subst (λ o → M.IR (Eᵢ I.* ⌊ A ⌋) o) c₀q (M.apply M.∘ M.⟨ M.fst , M.snd ⟩)
+
+    c′ : P.IR L (⟪ Eᵢ ⟫ ⊗t ⟪ ⌊ A ⌋ ⟫) ⟪ ⟦ F′ ⟧TI ⌊ A ⌋ ⟫
+    c′ = subst (λ Z → P.IR L (⟪ Eᵢ ⟫ ⊗t ⟪ ⌊ A ⌋ ⟫) Z) (cong ⟪_⟫ c₀q) (P.apply {g = act})
+
+    φ : P.BlkIR L (subst (λ Z → P.IR L (⟪ Eᵢ ⟫ ⊗t ⟪ ⌊ A ⌋ ⟫) Z) dq c′)
+    φ = blk-sub dq (blk-sub (cong ⟪_⟫ c₀q) P.i-apply)
+
+    -- the core's coalgebra: the closure's function, moved
+    k : ⟦ ⟪ Eᵢ ⟫ ⟧ → ⟦ ty A ⟧ → T (FS (lf F′) ⟦ ty A ⟧)
+    k e = cohc (lf F′) (ty A) (subst ⟦_⟧ (cong (Fn many act (ty A)) (layerEq F wf A)) e)
+
+    k≡ : ∀ e a → k e a ≡ fmapT (coh (lf F′) (ty A)) (evB δ φ (e , a))
+    k≡ e a = cong (fmapT (coh (lf F′) (ty A)))
+      (trans (app-sub (layerEq F wf A) e a)
+        (trans (T-trans (cong ⟪_⟫ c₀q) dq (e a))
+               (sym (trans (evB-sub dq (blk-sub (cong ⟪_⟫ c₀q) P.i-apply) (e , a))
+                           (cong (subst (λ Z → T ⟦ Z ⟧) dq) (evB-sub (cong ⟪_⟫ c₀q) P.i-apply (e , a)))))))
+
+    -- ★ the unfold: the coalgebra and the seed, a ν, against master's `Ana`
+    rel-unfold : Rel (lunf ∘l (cast {L} {One} refl (cong (Fn many act (ty A)) (layerEq F wf A)) lid ⊗l lid)) (M.Ana wfI cIR)
+    rel-unfold = mkRel λ { {e , a} {e′ , a′} (we , wa) →
+      ≈-≈R (bind-pure (≈-trans (bind-pure (subst (λ m′ → m′ ≈ return∞ (subst ⟦_⟧ (cong (Fn many act (ty A)) (layerEq F wf A)) e)) (sym (cast-id (cong (Fn many act (ty A)) (layerEq F wf A)) e)) ≈-refl)) ret-bind))
+           (ret≈R (Once.LinCore.Casts.Unfold.ana-W fmt ans δ cs wfI cIR c′ φ (unfold-ih {φ = φf} c₀q) e e′ we (k e) (k≡ e) wa)) }
+
+  ok-ana : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π₀} {φ : G.Finite}
+             (wf : WFFun Δₖ F) (c : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many (G.fin φ) ] ST.⟦ F ⟧F A))
+           → Goal c → Goal (ana {π₀ = π₀} wf c)
+  ok-ana {Γ = Γ} {Ψ} {F} {A = A} {π₀} {φ} wf c rc =
+    rel-∘ (rel-cloG π₀ _ (UF.rel-unfold F wf A φ)) (rel-∘ rc (rel-weak am {Γ = Γ} (⊑ᵘ-*Many Ψ)))
+
+  module _ (ck : CallsOK) where
     open Calls ck
 
     Lq-ok : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) → Goal e
@@ -1036,5 +1096,5 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
     Lq-ok (fork' f g) = ok-fork f g (Lq-ok f) (Lq-ok g)
     Lq-ok (curry' f) = ok-curry f (Lq-ok f)
     Lq-ok (cata wf alg) = ok-cata wf alg (Lq-ok alg)
-    Lq-ok (ana wf c) = o-ana wf c (Lq-ok c)
+    Lq-ok (ana wf c) = ok-ana wf c (Lq-ok c)
     Lq-ok (loop r) = ok-loop r (Lq-ok r)
