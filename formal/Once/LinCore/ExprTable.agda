@@ -22,6 +22,8 @@ open import Agda.Builtin.Equality using (_≡_; refl)
 open import Agda.Builtin.Sigma using (_,_; fst; snd)
 open import Data.Product using (proj₁; proj₂)
 open import Data.Unit using (tt)
+import Data.Unit
+import Data.Bool
 open import Data.Product using (Σ)
 open import Once.Compile using (directCallIR)
 
@@ -45,7 +47,13 @@ open import Relation.Binary.PropositionalEquality using (cong; subst)
 open import Once.LinCore.FromIR fmt using (⟪_⟫)
 open import Once.LinCore.Bridge fmt ans using (W)
 open import Once.LinCore.Bisim fmt ans using (_≈_; ≈-refl; ≈-trans; ≈-sym; ret≈R; ≈-≈R; ≈R-≈; >>=-congR; >>=-cong)
-open import Once.LinCore.FromExprOk fmt ans using (Pure; PureI; bind-pure; ret-bind; module Rel)
+open import Once.LinCore.FromExprOk fmt ans using (Pure; PureI; bind-pure; ret-bind; module Rel; module Main)
+open import Once.LinCore.FromExpr fmt using (Rs; Lq)
+open import Once.CompileSrc using (Src; src; srcIR; expr; am)
+open import Once.Denotation.SurfaceRefs using (Refs)
+open import Once.Denotation.DenotTrace using (callEnv)
+open import Once.Spec.Name using (CanonicalName)
+open import Once.IRTy using (IRTy)
 
 ------------------------------------------------------------------------
 -- 1. ERASURE: the variables a usage leaves out, dropped (`eraseCtx`).
@@ -246,3 +254,24 @@ module DefRel {L : Cx} (δ : Env L) (ρ : CallEnv) where
   rel-dc ST.Int rv = rv
   rel-dc ST.Float rv = rv
   rel-dc (ST.var ()) rv
+
+------------------------------------------------------------------------
+-- 3. A SOURCE'S VALUE: its bridge after erasure, at the unit context.
+------------------------------------------------------------------------
+
+val : ∀ {L T} → Rs L → Src T → LTm L One (ty T)
+val rs (src {Γ = Γ} {Ψ = Ψ} δ₀ m opt e) = cast (cong ⟪_⟫ (cong ⌊_⌋ δ₀)) refl (Lq rs e ∘l eraseL Γ Ψ)
+
+module ValRel {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) where
+
+  -- an input moved along an equal type, on both sides
+  rel-dom′ : ∀ {ρ} {X Y B : IRTy} (e : X ≡ Y) {t : LTm L ⟪ X ⟫ ⟪ B ⟫} {t′ : M.IR X B}
+           → Rel.Rel δ ρ t t′ → Rel.Rel δ ρ (cast (cong ⟪_⟫ e) refl t) (subst (λ o → M.IR o B) e t′)
+  rel-dom′ refl r = r
+
+  -- ★ a source's value against its IR (unoptimized: `compile`'s path)
+  rel-val : ∀ {T} (s : Src T) → Src.opt s ≡ Data.Bool.false
+          → Refs (λ _ _ → Data.Unit.⊤) (Main.RefOK rs δ cs (am s)) (Main.RefOK rs δ cs (am s)) (expr s)
+          → Rel.Rel δ (callEnv cs ans) (val rs s) (srcIR s)
+  rel-val (src {Γ = Γ} {Ψ = Ψ} δ₀ m Data.Bool.false e) refl refs =
+    rel-dom′ (cong ⌊_⌋ δ₀) (Rel.rel-∘ δ (callEnv cs ans) (Main.Lq-ok rs δ cs m e refs) (Erase.rel-erase δ (callEnv cs ans) m Γ Ψ))
