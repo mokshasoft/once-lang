@@ -392,3 +392,82 @@ module Ops (Σι : ISig) where
       ok-copyIn (tt , (ok-cast refl (cong (Fn many act (ty A)) (layerEq F wfF A)) {t = lid} tt , tt)) , (ok-Lq coalg r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
     ok-Lq {Γ = Γ} (S.loop {Ψ = Ψ} round) r =
       ok-copyIn _ , (ok-Lq round r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
+
+------------------------------------------------------------------------
+-- 3. ★ THE BRIDGE'S PROGRAM (`ExprTable`): its table and its `main` run
+-- only declared ops, so its universe's ops are declared (`FlatTop.ExprTop`'s
+-- `decl`), when every definition's FFI references are.
+------------------------------------------------------------------------
+
+open import Once.IR.Semantics.Trace using (FFIAnswers)
+import Once.LinCore.ExprTable
+open import Once.CompileSrc using (CompiledSrc; module CompiledSrc; Src; src; module Src)
+open import Once.Compile using (EffUU)
+
+module Table (Σι : ISig) (ans : FFIAnswers) where
+  open Ops Σι
+  module ET = Once.LinCore.ExprTable fmt ans
+  open import Once.Spec.Sub using (_<:_; sub-arr; sub-unit; sub-void)
+  open import Once.Spec.Type using (Type; _⇒[_]_)
+  import Once.Spec.Type as ST
+  import Once.Spec.Grade as G
+  open import Once.Spec.Context using (Ctx; Usage; []; _∷_)
+  import Once.Spec.Context as SC
+  open import Once.Spec.Name using (bare)
+  open import Once.Adequacy.ElaborateLinked using (DeclIn)
+  open import Once.Denotation.SurfaceRefs using (Refs)
+  open import Once.LinCore.FromExpr fmt using (ty; Rs; Lq)
+  open import Once.LinCore.FromIR fmt using (⟪_⟫; grade)
+  open import Once.IRTy using (⌊_⌋)
+  import Once.IRTy as I
+  open import Relation.Binary.PropositionalEquality using (cong)
+
+  -- the FFI references of a definition's source are declared
+  SrcOK : CompiledSrc → Set
+  SrcOK c = Refs (DeclIn Σι) (λ _ _ → ⊤) (λ _ _ → ⊤) (Src.expr (CompiledSrc.csSrc c))
+
+  SrcsOK : List CompiledSrc → Set
+  SrcsOK []       = ⊤
+  SrcsOK (c ∷ cs) = SrcOK c × SrcsOK cs
+
+  ok-eraseL : ∀ {L E m n} (Γ : Ctx m n) (Ψ : Usage n) → OK Dc (ET.eraseL {L} {E} Γ Ψ)
+  ok-eraseL SC.∅          []           = tt
+  ok-eraseL (Γ SC.▸ A) (G.Zero ∷ Ψ) = ok-eraseL Γ Ψ , _
+  ok-eraseL (Γ SC.▸ A) (G.One  ∷ Ψ) = ok-eraseL Γ Ψ , tt
+  ok-eraseL (Γ SC.▸ A) (G.Many ∷ Ψ) = ok-eraseL Γ Ψ , tt
+
+  ok-dc : ∀ {L} (T : Type) (v : LTm L One (ty T)) → OK Dc v → OK Dc (ET.dc T v)
+  ok-dc (A ⇒[ G.mk-kind G.Zero π ] B) v o = _ , ((o , tt) , tt)
+  ok-dc (A ⇒[ G.mk-kind G.One π ] B)  v o = _ , ((o , tt) , tt)
+  ok-dc (A ⇒[ G.mk-kind G.Many π ] B) v o = _ , ((o , tt) , tt)
+  ok-dc ST.Unit       v o = o
+  ok-dc ST.Void       v o = o
+  ok-dc (X ST.* Y)    v o = o
+  ok-dc (X ST.+ Y)    v o = o
+  ok-dc (ST.μ F)      v o = o
+  ok-dc (ST.ν F f)    v o = o
+  ok-dc ST.Int        v o = o
+  ok-dc ST.Float      v o = o
+  ok-dc (ST.var ())   v o
+
+  ok-val : ∀ {L T} (rs : Rs L) (s : Src T) → Refs (DeclIn Σι) (λ _ _ → ⊤) (λ _ _ → ⊤) (Src.expr s) → OK Dc (ET.val rs s)
+  ok-val rs (src {Γ = Γ} {Ψ = Ψ} δ₀ m opt e) r =
+    ok-cast (cong ⟪_⟫ (cong ⌊_⌋ δ₀)) refl {t = Lq rs e ∘l ET.eraseL Γ Ψ} (ok-Lq rs e r , ok-eraseL Γ Ψ)
+
+  -- ★ the table
+  ok-table : ∀ cs → SrcsOK cs → DefsOK Dc (ET.ETProg.defs (ET.exprTable cs))
+  ok-table []       tt        = ε
+  ok-table (c ∷ cs) (r , rs′) =
+    ok-table cs rs′ ▸₁ (ok-dc (CompiledSrc.csType c) _ (ok-val (ET.ETProg.rs (ET.exprTable cs)) (CompiledSrc.csSrc c) r) , tt)
+
+  -- main calls (a miss halts)
+  ok-main : ∀ {L} (rs : Rs L) {T : Type} (pm : T <: EffUU) → OK Dc (ET.mainCore rs pm)
+  ok-main rs (sub-arr {π = π} a sub-unit g) = ok-callM (rs (bare "main") I.Unit I.Unit (grade π))
+  ok-main rs (sub-arr {π = π} a sub-void g) = tt , ok-callM (rs (bare "main") I.Unit I.Void (grade π))
+  ok-main rs sub-void                      = tt , ok-callM (rs (bare "main") I.Unit I.Void act)
+
+  -- ★★ the bridge's program's ops are declared
+  decl-ok : ∀ cs → SrcsOK cs → ∀ {T : Type} (pm : T <: EffUU)
+          → ∀ {s} → s ∈ ops (univ (ET.ETProg.defs (ET.exprTable cs)) (ET.mainCore (ET.ETProg.rs (ET.exprTable cs)) pm)) → Dc s
+  decl-ok cs ok pm = univ-ok Dc (ET.ETProg.defs (ET.exprTable cs)) (ET.mainCore (ET.ETProg.rs (ET.exprTable cs)) pm)
+                             (ok-table cs ok) (ok-main (ET.ETProg.rs (ET.exprTable cs)) pm)

@@ -60,6 +60,7 @@ import Once.Compile
 import Once.Spec.Type
 import Once.Spec.Sub
 import Once.LinCore.ExprTable
+import Once.LinCore.ExprOps
 
 module Once.LinCore.FlatTop (Mach : FrameSemantics) (bw : Base → ℕ) where
 
@@ -443,9 +444,14 @@ module ExprTop (tl : List Once.CompileSrc.CompiledSrc) (gb : Once.LinCore.ExprTa
                  → FlatMachine.flat-exec-instr {Mach} (ldConst v) TP.image fs
                    ≡ record fs { floc = record (FlatMachine.floc fs) { regs = writeReg (LocState.regs (FlatMachine.floc fs)) Output (wordOf (lit v)) }
                                ; fpc = suc (FlatMachine.fpc fs) })
-           -- (owed: the core program's ops are declared, as `IRTop.decl` gives for the pass's)
-           (decl : ∀ {s} → s ∈ ops (Program.U ds f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))) where
+           -- ★ master's premise at the sources: every definition's FFI references are declared
+           -- (`ElaborateLinked`'s `Refs (DeclIn σ)`)
+           (srcs : Once.LinCore.ExprOps.Table.SrcsOK fmt bw (TM.Interp.sig ι) ans tl) where
     open FlatEventTrace {Mach} using (flat-events; flat-ctrls)
+
+    -- ★ LINKED AT THE CORE (D445): the bridge's program's ops are declared (`ExprOps`)
+    decl : ∀ {s} → s ∈ ops (Program.U ds f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))
+    decl = Once.LinCore.ExprOps.Table.decl-ok fmt bw (TM.Interp.sig ι) ans tl srcs pm
 
     -- ★★ THE FLAT THEOREM AT MASTER'S MEANING, for the bridge's program
     flat-ir : ∀ k → Σ ℕ λ N → (flat-events (suc N) TP.image TP.start-fs ≡ (proj₁ (obsᴰ k) , endAp (proj₂ (obsᴰ k))))
