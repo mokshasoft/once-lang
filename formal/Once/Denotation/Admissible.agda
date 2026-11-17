@@ -52,7 +52,7 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Target.Arch using (Arch; arch-int-bits)
 import Once.Spec.Word as OnceWord
-open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 
@@ -84,6 +84,7 @@ rawIntLits (RNeg e)             = rawIntLits e
 rawIntLits (RVar _)             = []
 rawIntLits (RQualified _ _)     = []
 rawIntLits (RResolved _)        = []
+rawIntLits (RGen _)             = []
 rawIntLits RUnit                = []
 -- a FLOAT literal is not checked here: it always lowers, rounding if the
 -- target cannot hold it exactly (D116).

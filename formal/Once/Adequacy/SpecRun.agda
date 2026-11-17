@@ -170,7 +170,7 @@ module _ {A A′ B B′ : Set} {RA : A → A′ → Set} {RB : B → B′ → Se
          {c : A → SE.T (B ⊎ A)} {c′ : A′ → LTr.T (B′ ⊎ A′)}
          (h : ∀ {a a′} → RA a a′ → BlockR (SumR RB RA) (c a) (c′ a′)) where
 
-  loop-R  : ∀ {a a′} → RA a a′ → RunR RB (SE.loop c a) (LI.loop c′ a′)
+  loop-R  : ∀ {a a′} → RA a a′ → RunR RB (SE.iterate c a) (LI.loop c′ a′)
   loopB-R : ∀ {t t′} → BlockR (SumR RB RA) t t′
           → BlockR (SumR RB (RunR RB)) (SE.treeA (SPoly.SK B SPoly.S⊕ SPoly.SId) c t) (LI.loopBlock c′ t′)
   forceR (loop-R r) = loopB-R (h r)
@@ -188,7 +188,7 @@ module _ {A A′ B B′ : Set} {RB : B → B′ → Set} {S : (B ⊎ A) → (B�
          (s-lr  : ∀ {b a′} → S (inj₁ b) (inj₂ a′) → ⊥)
          (s-rl  : ∀ {a b′} → S (inj₂ a) (inj₁ b′) → ⊥) where
 
-  loop-iter-R : ∀ {a a′} → S (inj₂ a) (inj₂ a′) → RunR RB (SE.loop c a) (LI.iter∞ f′ a′)
+  loop-iter-R : ∀ {a a′} → S (inj₂ a) (inj₂ a′) → RunR RB (SE.iterate c a) (LI.iter∞ f′ a′)
   loopB-iter  : ∀ t {l′} → BlockR (SumR S (RunR S)) (SE.mapT inj₁ t) l′
               → BlockR (SumR RB (RunR RB)) (SE.treeA (SPoly.SK B SPoly.S⊕ SPoly.SId) c t) (LI.iterBlock f′ l′)
   forceR (loop-iter-R {a} r) = loopB-iter (c a) (forceR (s-inr r))

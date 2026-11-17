@@ -53,7 +53,7 @@ open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; colle
 import Once.Parser.Relation.Resolution as LR
 open import Once.Module using (ModTele; MainIn; MainsEffUU; emptyScope; entrySig)
 open import Once.Core.Translate using ([])
-open import Once.Adequacy.ModuleProgram using (toProgram; names₀; Names)
+open import Once.Adequacy.ModuleProgram using (toProgram; names₀; fresh₀; Names)
 import Data.Empty
 open import Once.Postulates using (extensionality)
 import Once.Spec.Core.Syntax
@@ -124,13 +124,13 @@ module Parts {mm : SR.ModuleMap} {dsU dsR : List S.Decl}
   uniq = uniq-of Σₛ (fs ++ es′) (trans tf (sym te)) guard
   eqT : Once.Module.teleSig mt ≡ toISig Σₛ
   eqT = trans (teleSig≡entrySig mt) (trans te (sym tf))
-  P = prefix Σₛ {S = SC.[]} fs ffiE CoreProgram.[] [] [] [] (names₀ Σₛ) mt (λ m → sig-in Σₛ (key-word kw) (subst (_ ∈_) eqT m))
+  P = prefix Σₛ {S = SC.[]} fs ffiE CoreProgram.[] [] [] [] (names₀ Σₛ) (fresh₀ Σₛ guard) mt (λ m → sig-in Σₛ (key-word kw) (subst (_ ∈_) eqT m))
   sg = entrySig fs ʳ++ []
   ukeys : AllPairs _≢_ (keys (entrySig fs))
   ukeys = subst (λ l → AllPairs _≢_ (keys l)) te (keys-distinct (fs ++ es′) guard)
   guard′ = distinct-rest fs es′ guard
   ps = polyNames es′
-  h-sig = λ {m} {c} {t} (_ : Once.Spec.Name.NotGenerator c) M → h-sig-of Σₛ fs tf ukeys facts {m} {c} {t} M
+  h-sig = λ {m} {c} {t} M → h-sig-of Σₛ fs tf ukeys facts {m} {c} {t} M
   -- a telescope entry is no FFI declaration (the extractor's guard)
   h-psig : ∀ {x} → x ∈ ps → Once.TypeCheck.Scope.lookupImport sg x ≡ nothing
   h-psig x∈ = Data.List.Relation.Unary.All.lookup (nosig-rest fs es′ guard) (poly-names es′ x∈)
@@ -145,8 +145,8 @@ module Parts {mm : SR.ModuleMap} {dsU dsR : List S.Decl}
     { distinct = guard′ ; fresh = fresh-start es′ ; nosig = nosig-rest fs es′ guard
     ; kinds = kinds-of es′ guard′ (defs-of (nonSigs-none dsR) xn) }
   ks = W.EntriesOK.kinds eok
-  e = En.endOf Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) ks
-  w = W.walk CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) align (WS.winv-empty Σₛ ps) eok
+  e = En.endOf Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (Past.N′ P) (Past.F′ P) (Past.mt′ P) ks
+  w = W.walk CoreProgram.[] (Past.ss′ P) [] [] (Past.N′ P) (Past.F′ P) (Past.mt′ P) align (WS.winv-empty Σₛ ps) eok
 
   lib : CoreProgram.Library Σₛ
   lib = record { wf = wf ; defs = En.End.tl e }
@@ -154,10 +154,10 @@ module Parts {mm : SR.ModuleMap} {dsU dsR : List S.Decl}
   fin0 : Fin 0 → Data.Empty.⊥
   fin0 ()
   -- (two namings of no definitions, by P1)
-  fin0-ext : ∀ {g : Fin 0 → CanonicalName} → Names.nm (names₀ Σₛ) ≡ g
+  fin0-ext : ∀ {g : Fin 0 → CanonicalName} → Names.nm (Past.N′ P) ≡ g
   fin0-ext = extensionality (λ ())
   not-def : ∀ dd {t} → ¬ ((En.End.nm e dd ∶ t) ∈ Σₛ)
-  not-def dd M = pick (EN.named-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) ks {L = []} (λ ()) dd) M
+  not-def dd M = pick (EN.named-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (Past.N′ P) (Past.F′ P) (Past.mt′ P) ks {L = []} (λ ()) dd) M
     where
       pick : ∀ {c t} → Σ[ x ∈ String ] (c ≡ canonical (x ∷ [])) × (x ∈ [] ⊎ x ∈ names es′) → ¬ ((c ∶ t) ∈ Σₛ)
       pick (x , ex , inj₁ ()) M′
@@ -175,11 +175,11 @@ module Parts {mm : SR.ModuleMap} {dsU dsR : List S.Decl}
                         (proj₁ (proj₂ rd))
     ; names     = En.End.nm e
     ; walk      = subst (λ n → SPr.Walk Σₛ SC.[] n CoreProgram.[] dsR′ (En.End.S e) (En.End.nm e) (En.End.tl e)) fin0-ext w
-    ; distinct  = EN.distinct-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) ks
+    ; distinct  = EN.distinct-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (Past.N′ P) (Past.F′ P) (Past.mt′ P) ks
                     (λ {x} → Data.Empty.⊥-elim (fin0 x)) guard′ (Data.List.Relation.Unary.All.tabulate (λ _ ()))
     ; sig-distinct = one-name Σₛ uniq
     ; def-not-sig  = λ dd M → not-def dd M
-    ; mains     = EN.mains-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) ks
+    ; mains     = EN.mains-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (Past.N′ P) (Past.F′ P) (Past.mt′ P) ks
                     (λ d → Data.Empty.⊥-elim (fin0 d)) (Past.mains P ms)
     }
 

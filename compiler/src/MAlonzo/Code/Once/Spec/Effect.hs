@@ -388,15 +388,15 @@ du_embed_492 v0
       (coe
          du_mapT_60 (coe MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38)
          (coe v0))
--- Once.Spec.Effect.loop
-d_loop_500 ::
+-- Once.Spec.Effect.iterate
+d_iterate_500 ::
   [MAlonzo.Code.Once.Spec.Signature.T_Decl_114] ->
   () -> () -> (AgdaAny -> T_T_24) -> AgdaAny -> T_νM_78
-d_loop_500 v0 ~v1 ~v2 v3 = du_loop_500 v0 v3
-du_loop_500 ::
+d_iterate_500 v0 ~v1 ~v2 v3 = du_iterate_500 v0 v3
+du_iterate_500 ::
   [MAlonzo.Code.Once.Spec.Signature.T_Decl_114] ->
   (AgdaAny -> T_T_24) -> AgdaAny -> T_νM_78
-du_loop_500 v0 v1
+du_iterate_500 v0 v1
   = coe
       d_ana_96 v0 (coe MAlonzo.Code.Once.Spec.Grade.C_act'7584'_38)
       (coe

@@ -264,7 +264,8 @@ module LibLinked (m : Core.Resolved) where
       subst (λ cs → All (λ e → Linked (moduleSig-ef (inj₂ es)) (C.tableOf cs) (fbody e)) (C.tableOf cs))
             (FB.bundle→compiled≡compiled C.emptyCScope es cfs ceq)
             (proj₁ (link-walk mt b {S = Once.Spec.Core.Syntax.[]} Once.Core.Translate.[] Once.Core.Translate.[] Once.Core.Translate.[]
-                       (Once.Adequacy.ModuleProgram.names₀ (sigOf (teleSig mt))) [] linv₀ (entries-distinct m ef , none-in-empty _) u (sig-in mt)))
+                       (Once.Adequacy.ModuleProgram.names₀ (sigOf (teleSig mt))) (Once.Adequacy.ModuleProgram.fresh₀ (sigOf (teleSig mt)) (entries-distinct m ef))
+                       [] linv₀ (entries-distinct m ef , none-in-empty _) u (sig-in mt)))
       where
         b  = FB.ce-bundle C.emptyCScope es ceq
         mt = AS.ce-sound false C.emptyCScope es ceq

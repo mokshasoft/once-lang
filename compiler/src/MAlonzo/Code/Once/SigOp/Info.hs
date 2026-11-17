@@ -473,5 +473,5 @@ d__'8799'SigOpInfo'45'name__318 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
 d__'8799'SigOpInfo'45'name__318 v0 v1
   = coe
-      MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__78
+      MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__4
       (coe d_name_116 (coe v0)) (coe d_name_116 (coe v1))

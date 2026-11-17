@@ -32,6 +32,7 @@ open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; pureᶠ; actᶠ)
+import Once.Spec.Surface.Generators
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Name using (canonical)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat)
@@ -242,6 +243,7 @@ mutual
   ind-ex l wh (RVar x) = ind-name x
   ind-ex l wh (RQualified x q) = ind-word x ⊕ⁱ ind-pure ⊕ⁱ ind-word q
   ind-ex l wh (RResolved (canonical xs)) = ind-dotted xs
+  ind-ex l wh (RGen g) = ind-word (Once.Spec.Surface.Generators.word g)
   ind-ex l wh (RApp f a) = ind-comp l (isCompose (headOf f)) f a
   ind-ex l wh (RLam x e) = ind-paren (not wh) (ind-g (ind-pure ⊕ⁱ ind-word x ⊕ⁱ ind-lam e))
   ind-ex l wh (RLet x v b) = ind-paren (not wh) (ind-g (ind-let x v b))
@@ -270,6 +272,7 @@ mutual
   ind-comp l true (RVar ux) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RVar ux) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
   ind-comp l true (RQualified ux uq) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RQualified ux uq) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
   ind-comp l true (RResolved un) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RResolved un) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
+  ind-comp l true (RGen un) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RGen un) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
   ind-comp l true (RApp c g) h = ind-compose l g h
   ind-comp l true (RLam ux ue) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RLam ux ue) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
   ind-comp l true (RLet ux uv ub) a = ind-gn (ind-paren (5 <ᵇ l) (ind-spine (RLet ux uv ub) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a))
@@ -291,6 +294,7 @@ mutual
   ind-chain (RVar x) = ind-ex 1 false (RVar x)
   ind-chain (RQualified x q) = ind-ex 1 false (RQualified x q)
   ind-chain (RResolved n) = ind-ex 1 false (RResolved n)
+  ind-chain (RGen n) = ind-ex 1 false (RGen n)
   ind-chain (RLam x e) = ind-ex 1 false (RLam x e)
   ind-chain (RLet x v b) = ind-ex 1 false (RLet x v b)
   ind-chain (RPair a b) = ind-ex 1 false (RPair a b)
@@ -306,6 +310,7 @@ mutual
   ind-chain′ true (RVar ux) h = ind-comp 0 false (RVar ux) h
   ind-chain′ true (RQualified ux uq) h = ind-comp 0 false (RQualified ux uq) h
   ind-chain′ true (RResolved un) h = ind-comp 0 false (RResolved un) h
+  ind-chain′ true (RGen un) h = ind-comp 0 false (RGen un) h
   ind-chain′ true (RApp c g) h = ind-chain g ⊕ⁱ (ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-pure) ⊕ⁱ ind-ex 1 false h
   ind-chain′ true (RLam ux ue) h = ind-comp 0 false (RLam ux ue) h
   ind-chain′ true (RLet ux uv ub) h = ind-comp 0 false (RLet ux uv ub) h
@@ -327,6 +332,7 @@ mutual
   ind-left lv (RVar x) = ind-ex (leftLevel lv) false (RVar x)
   ind-left lv (RQualified x q) = ind-ex (leftLevel lv) false (RQualified x q)
   ind-left lv (RResolved n) = ind-ex (leftLevel lv) false (RResolved n)
+  ind-left lv (RGen n) = ind-ex (leftLevel lv) false (RGen n)
   ind-left lv (RApp f a) = ind-ex (leftLevel lv) false (RApp f a)
   ind-left lv (RLam x e) = ind-ex (leftLevel lv) false (RLam x e)
   ind-left lv (RLet x v b) = ind-ex (leftLevel lv) false (RLet x v b)
@@ -343,6 +349,7 @@ mutual
   ind-spine (RVar x) = ind-ex 6 false (RVar x)
   ind-spine (RQualified x q) = ind-ex 6 false (RQualified x q)
   ind-spine (RResolved n) = ind-ex 6 false (RResolved n)
+  ind-spine (RGen n) = ind-ex 6 false (RGen n)
   ind-spine (RLam x e) = ind-ex 6 false (RLam x e)
   ind-spine (RLet x v b) = ind-ex 6 false (RLet x v b)
   ind-spine (RPair a b) = ind-ex 6 false (RPair a b)
@@ -358,6 +365,7 @@ mutual
   ind-spine′ true (RVar ux) a = ind-spine (RVar ux) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
   ind-spine′ true (RQualified ux uq) a = ind-spine (RQualified ux uq) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
   ind-spine′ true (RResolved un) a = ind-spine (RResolved un) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
+  ind-spine′ true (RGen un) a = ind-spine (RGen un) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
   ind-spine′ true (RApp c g) h = ind-compose 6 g h
   ind-spine′ true (RLam ux ue) a = ind-spine (RLam ux ue) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
   ind-spine′ true (RLet ux uv ub) a = ind-spine (RLet ux uv ub) ⊕ⁱ ind-pure ⊕ⁱ ind-ex 6 false a
@@ -376,6 +384,7 @@ mutual
   ind-lam (RVar x) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RVar x))
   ind-lam (RQualified x q) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RQualified x q))
   ind-lam (RResolved n) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RResolved n))
+  ind-lam (RGen n) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RGen n))
   ind-lam (RApp f a) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RApp f a))
   ind-lam (RLet x v b) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RLet x v b))
   ind-lam (RPair a b) = ind-pure ⊕ⁱ ind-pure ⊕ⁱ ind-n (ind-pure ⊕ⁱ ind-ex 0 true (RPair a b))
@@ -395,6 +404,7 @@ mutual
   ind-let x v (RVar bx) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RVar bx)
   ind-let x v (RQualified bx bq) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RQualified bx bq)
   ind-let x v (RResolved bn) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RResolved bn)
+  ind-let x v (RGen bn) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RGen bn)
   ind-let x v (RApp bf ba) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RApp bf ba)
   ind-let x v (RLam bx be) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RLam bx be)
   ind-let x v (RPair ba bb) = ind-lhead x v ⊕ⁱ ind-pure ⊕ⁱ ind-word "in" ⊕ⁱ ind-pure ⊕ⁱ ind-ex 0 true (RPair ba bb)

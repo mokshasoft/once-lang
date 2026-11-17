@@ -58,7 +58,7 @@ open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; colle
 import Once.Parser.Relation.Resolution as LR
 open import Once.Module using (ModTele; MainIn; MainsEffUU; emptyScope; entrySig)
 open import Once.Core.Translate using ([])
-open import Once.Adequacy.ModuleProgram using (toProgram; names₀; Names)
+open import Once.Adequacy.ModuleProgram using (toProgram; names₀; fresh₀; Names)
 import Data.Empty
 open import Once.Postulates using (extensionality)
 import Once.Spec.Core.Syntax
@@ -89,7 +89,7 @@ open import Once.Adequacy.SpecFront.Words using (DeclW; ModsW; KeysW; signature-
 open import Once.Adequacy.SpecFront.DenoteModule using (module Parts; module Split)
 
 -- What the Spec's module denotes, and that it is the compiler's program.
-record Denoted (mm : SR.ModuleMap) (ds : List S.Decl) {es} (mt : ModTele emptyScope es) (mi : MainIn mt) : Set where
+record Denoted (mm : SR.ModuleMap) (ds : List S.Decl) {es} (dist : AllPairs _≢_ (names es)) (mt : ModTele emptyScope es) (mi : MainIn mt) : Set where
   field
     Σₛ      : Signature
     wf      : WellFormed Σₛ
@@ -102,7 +102,7 @@ record Denoted (mm : SR.ModuleMap) (ds : List S.Decl) {es} (mt : ModTele emptySc
     tele    : CoreProgram.Tele Σₛ sig
     entry   : Fin size
     isMain  : CoreProgram.Entry Σₛ (sig SC.!! entry)
-    built   : toProgram Σₛ {S = SC.[]} CoreProgram.[] [] [] [] (names₀ Σₛ) mt mi
+    built   : toProgram Σₛ {S = SC.[]} CoreProgram.[] [] [] [] (names₀ Σₛ) (fresh₀ Σₛ dist) mt mi
                 (λ m → sig-in Σₛ (key-word keysW) (subst (_ ∈_) sig-eq m))
               ≡ TL.program tele entry isMain
     -- …which the module denotes
@@ -112,23 +112,24 @@ denote : ∀ {mm dsU dsR es}
        → ModsW mm → All DeclW dsU
        → LR.ResolvesDecls mm (collectUnaliased mm dsU) (collectAliases dsU) dsU dsR
        → Parser.extractFunctions (Core.resolved (mkModule dsR) (importedOf mm dsU)) ≡ inj₂ es
-       → (mt : ModTele emptyScope es) → MainsEffUU mt → (mi : MainIn mt) → Denoted mm dsU mt mi
-denote {mm} {dsU} {dsR} {es} wm wd rds ef mt ms mi =
-  go SP.fs SP.es′ SP.ees mt ms mi SP.guard SP.xn SP.ffiE SP.sigk
+       → (dist : AllPairs _≢_ (names es))
+       → (mt : ModTele emptyScope es) → MainsEffUU mt → (mi : MainIn mt) → Denoted mm dsU dist mt mi
+denote {mm} {dsU} {dsR} {es} wm wd rds ef dist mt ms mi =
+  go SP.fs SP.es′ SP.ees mt ms mi dist SP.xn SP.ffiE SP.sigk
   where
     module SP = Split wm wd rds ef
     go : ∀ fs es′ {es} → es ≡ fs ++ es′ → (mt : ModTele emptyScope es) → MainsEffUU mt → (mi : MainIn mt)
-       → AllPairs _≢_ (names es) → XAlign (Parser.nonSigs dsR) es′ → All Once.Adequacy.SpecFront.Extract.FFIEntry fs
+       → (guard : AllPairs _≢_ (names es)) → XAlign (Parser.nonSigs dsR) es′ → All Once.Adequacy.SpecFront.Extract.FFIEntry fs
        → (All Once.Adequacy.SpecFront.Extract.FFIFacts fs → Σ[ Σₛ ∈ Signature ] SPr.SignatureOf mm dsU Σₛ
             × (toISig Σₛ ≡ entrySig fs) × (entrySig es ≡ entrySig fs))
-       → Denoted mm dsU mt mi
+       → Denoted mm dsU guard mt mi
     go fs es′ refl mt ms mi guard xn ffiE sigk = record
       { Σₛ = Σₛ ; wf = wf ; uniq = uniq ; keysW = kw ; sig-eq = eqT
       ; tele = En.End.tl e ; entry = d ; isMain = me ; built = trans (proj₂ (Past.same P mi)) eqP
       ; denotes = record { library = denotesᴹ ms ; entry = proj₂ (proj₂ (proj₂ pe)) } }
       where
         open Parts wm wd rds SP.adj fs es′ mt guard xn ffiE sigk
-        pe = En.prog-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (names₀ Σₛ) (Past.mt′ P) (proj₁ (Past.same P mi)) (Past.u′ P) ks
+        pe = En.prog-end Σₛ ps CoreProgram.[] (Past.ss′ P) [] [] (Past.N′ P) (Past.F′ P) (Past.mt′ P) (proj₁ (Past.same P mi)) (Past.u′ P) ks
         d = proj₁ pe
         me = proj₁ (proj₂ pe)
         eqP = proj₁ (proj₂ (proj₂ pe))

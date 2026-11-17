@@ -19,7 +19,7 @@ open import Data.List.Membership.Propositional using (_∈_)
 open import Data.String using (String)
 
 open import Once.Spec.Name using (CanonicalName; canonical)
-open import Once.Spec.Surface.Syntax using (RVar; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Spec.Surface.Syntax using (RVar; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
 open import Once.Adequacy.SpecGrammar.Conv using (toTy)
@@ -27,6 +27,7 @@ open import Once.Adequacy.SpecGrammar.Conv using (toTy)
 data RX (bound : List String) : Expr → S.Expr → Set where
   x-local    : ∀ {x} → x ∈ bound → RX bound (RVar x) (S.RVar x)
   x-res      : ∀ {c} → c ≢ canonical ("main" ∷ []) → RX bound (RResolved c) (S.RResolved c)
+  x-gen      : ∀ {g} → RX bound (RGen g) (S.RGen g)
   x-app      : ∀ {f a f′ a′} → RX bound f f′ → RX bound a a′ → RX bound (RApp f a) (S.RApp f′ a′)
   x-lam      : ∀ {x b b′} → RX (x ∷ bound) b b′ → RX bound (RLam x b) (S.RLam x b′)
   x-let      : ∀ {x e b e′ b′} → RX bound e e′ → RX (x ∷ bound) b b′ → RX bound (RLet x e b) (S.RLet x e′ b′)
@@ -45,6 +46,7 @@ data RX (bound : List String) : Expr → S.Expr → Set where
 rx-≡ : ∀ {bound e e′} → RX bound e e′ → e ≡ e′
 rx-≡ (x-local _)          = refl
 rx-≡ (x-res _)            = refl
+rx-≡ x-gen                = refl
 rx-≡ (x-app f a)          = cong₂ RApp (rx-≡ f) (rx-≡ a)
 rx-≡ (x-lam b)            = cong (RLam _) (rx-≡ b)
 rx-≡ (x-let e b)          = cong₂ (RLet _) (rx-≡ e) (rx-≡ b)

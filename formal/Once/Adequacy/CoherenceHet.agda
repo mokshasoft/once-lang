@@ -45,7 +45,7 @@ open import Once.Spec.Sub using (sub-*)
 open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
 open import Once.Type.Join using (join-unique)
 import Once.Spec.Surface.Syntax as Raw
-open import Once.Spec.Name using (NotGenerator)
+
 open import Once.Name using (showCanonical; WordName)
 open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupLocal; lookupPolyPrefix; PolyCtx)
 import Data.String
@@ -147,7 +147,7 @@ module _ {m} {Γ : Ctx m n} where
         → f ≅ f′ → x ≅ x′ → app f x ≅ app f′ x′
   app-h (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (app-cong h k)
 
-  effApp-h : ∀ {π} {g : T.EffGrade π} {f : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {f′ : Expr Γ Ψ₁′ (A′ ⇒[ mk-kind Many π ] B′)}
+  effApp-h : ∀ {π} {g : T.EffGrade π} {f : Expr Γ Ψ₁ (A ⇒[ mk-kind q π ] B)} {f′ : Expr Γ Ψ₁′ (A′ ⇒[ mk-kind q′ π ] B′)}
              {x : Expr Γ Ψ₂ A} {x′ : Expr Γ Ψ₂′ A′}
            → f ≅ f′ → x ≅ x′ → effApp {g = g} f x ≅ effApp {g = g} f′ x′
   effApp-h (≅i refl refl h) (≅i refl refl k) = ≅i refl refl (effApp-cong h k)
@@ -347,16 +347,6 @@ module _ {m} {Γ : Ctx m n} where
           → coerce (sub-arr (<:-refl A) (sub-* pb pc) (⊑π-refl π)) (fork' f g) ≅ fork' f′ g′
   forkc-h {f = f} {g = g} pb pc (≅i refl refl h) (≅i refl refl k) =
     ≅i refl refl (≈-trans (≈-sym (fork-coerce pb pc (⊑π-refl _) f g)) (fork-cong h k))
-
-  catac-h : ∀ {Δₖ : KCtx m} {F : Fun m} (w w′ : WFFun Δₖ F) {a : Expr Γ Ψ (⟦ F ⟧F A ⇒[ mk-kind Many π ] A)}
-              {a′ : Expr Γ Ψ′ (⟦ F ⟧F A′ ⇒[ mk-kind Many π ] A′)} (p : A <: A′)
-              (s : (⟦ F ⟧F A ⇒[ mk-kind Many π ] A) <: (⟦ F ⟧F A′ ⇒[ mk-kind Many π ] A′))
-          → coerce s a ≅ a′ → coerce (sub-arr (<:-refl (μ F)) p (⊑π-refl π)) (cata {Γ = Γ} w a) ≅ cata w′ a′
-  catac-h w w′ {a = a} {a′ = a′} p (sub-arr d p₀ g₀) (≅i refl refl h) =
-    ≅i refl refl
-      (≈-trans (coerce-uniq _ (sub-arr (<:-refl _) p₀ (⊑π-refl _)) _)
-       (≈-trans (≈-sym (cata-coerce w d p₀ g₀ a))
-        (≈-trans (cata-cong w h) (≡→≈ (cong (λ v → cata {Γ = Γ} v a′) (WFFun-irrelevant w w′))))))
 
   -- A domain-given term, synthesizing: both sides convert the synthesized arrow.
   di-h : {x : Expr Γ Ψ (A₀ ⇒[ mk-kind Many π₀ ] B)} {y : Expr Γ Ψ′ (A′ ⇒[ mk-kind q π′ ] B′)}

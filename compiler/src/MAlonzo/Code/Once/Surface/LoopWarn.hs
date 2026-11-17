@@ -61,7 +61,7 @@ du_roundIsPure_20 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Surface.Syntax.C_coerce_228 v5 v7 v8
+         MAlonzo.Code.Once.Surface.Syntax.C_coerce_230 v5 v7 v8
            -> coe du_pureArrow_8 (coe v5)
          _ -> coe v1)
 -- Once.Surface.LoopWarn.Here
@@ -154,11 +154,11 @@ du_below_66 v0 v1 v2 v3 v4 v5 v6
                 (coe
                    d_exprCount_46 (coe v0) (coe v1) (coe v2) (coe v3) (coe v11)
                    (coe v12) (coe v16))
-         MAlonzo.Code.Once.Surface.Syntax.C_effApp_72 v10 v11 v12 v15 v16 v17
+         MAlonzo.Code.Once.Surface.Syntax.C_effApp_74 v10 v11 v12 v14 v16 v17 v18
            -> case coe v5 of
-                MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v18 v19 v20
-                  -> case coe v19 of
-                       MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90 v21 v22
+                MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v19 v20 v21
+                  -> case coe v20 of
+                       MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90 v22 v23
                          -> coe
                               addInt
                               (coe
@@ -166,16 +166,16 @@ du_below_66 v0 v1 v2 v3 v4 v5 v6
                                  (coe
                                     MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 (coe v12)
                                     (coe
-                                       MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90
-                                       (coe MAlonzo.Code.Once.Spec.Grade.C_Many_12) (coe v22))
-                                    (coe v20))
-                                 (coe v16))
+                                       MAlonzo.Code.Once.Spec.Grade.C_mk'45'kind_90 (coe v14)
+                                       (coe v23))
+                                    (coe v21))
+                                 (coe v17))
                               (coe
                                  d_exprCount_46 (coe v0) (coe v1) (coe v2) (coe v3) (coe v11)
-                                 (coe v12) (coe v17))
+                                 (coe v12) (coe v18))
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> coe v7
-         MAlonzo.Code.Once.Surface.Syntax.C_pair_86 v10 v11 v14 v15
+         MAlonzo.Code.Once.Surface.Syntax.C_pair_88 v10 v11 v14 v15
            -> case coe v5 of
                 MAlonzo.Code.Once.Spec.Type.C__'42'__22 v16 v17
                   -> coe
@@ -187,31 +187,31 @@ du_below_66 v0 v1 v2 v3 v4 v5 v6
                           d_exprCount_46 (coe v0) (coe v1) (coe v2) (coe v3) (coe v11)
                           (coe v17) (coe v15))
                 _ -> coe v7
-         MAlonzo.Code.Once.Surface.Syntax.C_fst''_98 v12 v13
+         MAlonzo.Code.Once.Surface.Syntax.C_fst''_100 v12 v13
            -> coe
                 d_exprCount_46 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                 (coe MAlonzo.Code.Once.Spec.Type.C__'42'__22 (coe v5) (coe v12))
                 (coe v13)
-         MAlonzo.Code.Once.Surface.Syntax.C_snd''_110 v11 v13
+         MAlonzo.Code.Once.Surface.Syntax.C_snd''_112 v11 v13
            -> coe
                 d_exprCount_46 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                 (coe MAlonzo.Code.Once.Spec.Type.C__'42'__22 (coe v11) (coe v5))
                 (coe v13)
-         MAlonzo.Code.Once.Surface.Syntax.C_inl''_122 v13
+         MAlonzo.Code.Once.Surface.Syntax.C_inl''_124 v13
            -> case coe v5 of
                 MAlonzo.Code.Once.Spec.Type.C__'43'__24 v14 v15
                   -> coe
                        d_exprCount_46 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                        (coe v14) (coe v13)
                 _ -> coe v7
-         MAlonzo.Code.Once.Surface.Syntax.C_inr''_134 v13
+         MAlonzo.Code.Once.Surface.Syntax.C_inr''_136 v13
            -> case coe v5 of
                 MAlonzo.Code.Once.Spec.Type.C__'43'__24 v14 v15
                   -> coe
                        d_exprCount_46 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                        (coe v15) (coe v13)
                 _ -> coe v7
-         MAlonzo.Code.Once.Surface.Syntax.C_case''_156 v10 v11 v12 v13 v14 v15 v16 v18 v19 v20
+         MAlonzo.Code.Once.Surface.Syntax.C_case''_158 v10 v11 v12 v13 v14 v15 v16 v18 v19 v20
            -> coe
                 addInt
                 (coe
@@ -232,11 +232,11 @@ du_below_66 v0 v1 v2 v3 v4 v5 v6
                    d_exprCount_46 (coe v0) (coe v1) (coe v2) (coe v3) (coe v10)
                    (coe MAlonzo.Code.Once.Spec.Type.C__'43'__24 (coe v15) (coe v16))
                    (coe v18))
-         MAlonzo.Code.Once.Surface.Syntax.C_absurd_172 v12
+         MAlonzo.Code.Once.Surface.Syntax.C_absurd_174 v12
            -> coe
                 d_exprCount_46 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                 (coe MAlonzo.Code.Once.Spec.Type.C_Void_20) (coe v12)
-         MAlonzo.Code.Once.Surface.Syntax.C_let''_188 v10 v11 v12 v13 v15 v16
+         MAlonzo.Code.Once.Surface.Syntax.C_let''_190 v10 v11 v12 v13 v15 v16
            -> coe
                 addInt
                 (coe
@@ -248,27 +248,27 @@ du_below_66 v0 v1 v2 v3 v4 v5 v6
                 (coe
                    d_exprCount_46 (coe v0) (coe v1) (coe v2) (coe v3) (coe v10)
                    (coe v13) (coe v15))
-         MAlonzo.Code.Once.Surface.Syntax.C_num_216 v11 v12 v13 v14 v15 v16
+         MAlonzo.Code.Once.Surface.Syntax.C_num_218 v11 v12 v13 v14 v15 v16
            -> coe
                 d_exprCount_46 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                 (coe
                    MAlonzo.Code.Once.Spec.Theory.du_symDom_86 (coe v11) (coe v13))
                 (coe v16)
-         MAlonzo.Code.Once.Surface.Syntax.C_coerce_228 v11 v13 v14
+         MAlonzo.Code.Once.Surface.Syntax.C_coerce_230 v11 v13 v14
            -> coe
                 d_exprCount_46 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
                 (coe v11) (coe v14)
-         MAlonzo.Code.Once.Surface.Syntax.C_closed_262 v11
+         MAlonzo.Code.Once.Surface.Syntax.C_closed_264 v11
            -> coe
                 d_exprCount_46 (coe v0) (coe v1) (coe (0 :: Integer))
                 (coe MAlonzo.Code.Once.Spec.Context.C_'8709'_12)
                 (coe MAlonzo.Code.Once.Spec.Context.C_'91''93'_36) (coe v5)
                 (coe v11)
-         MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_286 v10 v11 v13 v14
+         MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_288 v10 v11 v13 v14
            -> coe
                 d_exprCount_46 (coe v0) (coe v1) (coe v2) (coe v3) (coe v10)
                 (coe v11) (coe v14)
-         MAlonzo.Code.Once.Surface.Syntax.C_comp''_304 v10 v11 v13 v16 v17
+         MAlonzo.Code.Once.Surface.Syntax.C_comp''_306 v10 v11 v13 v16 v17
            -> case coe v5 of
                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v18 v19 v20
                   -> case coe v19 of
@@ -295,7 +295,7 @@ du_below_66 v0 v1 v2 v3 v4 v5 v6
                                  (coe v17))
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> coe v7
-         MAlonzo.Code.Once.Surface.Syntax.C_copair''_322 v10 v11 v16 v17
+         MAlonzo.Code.Once.Surface.Syntax.C_copair''_324 v10 v11 v16 v17
            -> case coe v5 of
                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v18 v19 v20
                   -> case coe v18 of
@@ -329,7 +329,7 @@ du_below_66 v0 v1 v2 v3 v4 v5 v6
                               _ -> MAlonzo.RTE.mazUnreachableError
                        _ -> coe v7
                 _ -> coe v7
-         MAlonzo.Code.Once.Surface.Syntax.C_fork''_340 v10 v11 v16 v17
+         MAlonzo.Code.Once.Surface.Syntax.C_fork''_342 v10 v11 v16 v17
            -> case coe v5 of
                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v18 v19 v20
                   -> case coe v19 of
@@ -363,7 +363,7 @@ du_below_66 v0 v1 v2 v3 v4 v5 v6
                               _ -> coe v7
                        _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> coe v7
-         MAlonzo.Code.Once.Surface.Syntax.C_curry''_358 v16
+         MAlonzo.Code.Once.Surface.Syntax.C_curry''_360 v16
            -> case coe v5 of
                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v17 v18 v19
                   -> case coe v19 of
@@ -385,7 +385,7 @@ du_below_66 v0 v1 v2 v3 v4 v5 v6
                               _ -> MAlonzo.RTE.mazUnreachableError
                        _ -> coe v7
                 _ -> coe v7
-         MAlonzo.Code.Once.Surface.Syntax.C_cata_374 v10 v12 v15 v16
+         MAlonzo.Code.Once.Surface.Syntax.C_cata_376 v10 v12 v15 v16
            -> case coe v5 of
                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v17 v18 v19
                   -> case coe v17 of
@@ -407,7 +407,7 @@ du_below_66 v0 v1 v2 v3 v4 v5 v6
                               _ -> MAlonzo.RTE.mazUnreachableError
                        _ -> coe v7
                 _ -> coe v7
-         MAlonzo.Code.Once.Surface.Syntax.C_ana_392 v10 v12 v16 v17
+         MAlonzo.Code.Once.Surface.Syntax.C_ana_394 v10 v12 v16 v17
            -> case coe v5 of
                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v18 v19 v20
                   -> case coe v20 of
@@ -426,7 +426,7 @@ du_below_66 v0 v1 v2 v3 v4 v5 v6
                               (coe v17)
                        _ -> coe v7
                 _ -> coe v7
-         MAlonzo.Code.Once.Surface.Syntax.C_loop_404 v10 v13
+         MAlonzo.Code.Once.Surface.Syntax.C_loop_406 v10 v13
            -> case coe v5 of
                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v14 v15 v16
                   -> coe
@@ -477,7 +477,7 @@ du_here_136 v0 v1
   = let v2 = 0 :: Integer in
     coe
       (case coe v1 of
-         MAlonzo.Code.Once.Surface.Syntax.C_loop_404 v5 v8
+         MAlonzo.Code.Once.Surface.Syntax.C_loop_406 v5 v8
            -> case coe v0 of
                 MAlonzo.Code.Once.Spec.Type.C__'8658''91'_'93'__26 v9 v10 v11
                   -> coe
@@ -519,7 +519,7 @@ du_here_146 v0
   = let v1 = 0 :: Integer in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Surface.Syntax.C_num_216 v5 v6 v7 v8 v9 v10
+         MAlonzo.Code.Once.Surface.Syntax.C_num_218 v5 v6 v7 v8 v9 v10
            -> case coe v8 of
                 MAlonzo.Code.Once.Spec.Theory.C_float'45'equality_122
                   -> case coe v9 of

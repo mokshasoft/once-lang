@@ -100,7 +100,7 @@ out-semᵛ φ {F} wf v = SE.fmap (fin φ) (SD.fromL σ F (ν F φ)) (outν v)
 
 -- The server loop.
 loop : ∀ {A B : Set} → (A → SE.T (B ⊎ A)) → A → SE.T∞ B
-loop = SE.loop
+loop = SE.iterate
 
 ------------------------------------------------------------------------
 -- The environment: the values of the variables a term uses

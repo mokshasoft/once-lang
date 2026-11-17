@@ -147,7 +147,7 @@ open import Once.Adequacy.SurfaceEnv Σ fmt S σ₀
   using (EnvR; fromSurf; fromR; split-R′; envˡ-R; envʳ-R; bind-R; bind0-R; lookup-R; restrict-R)
 import Once.Denotation.EnvAlgebraV Σ σ₀ as EA
 open import Once.Core.DerivedTyping Σ S
-  using (⊢applyᶜ; ⊢applyEffᶜ; ⊢fstᶜ; ⊢idᶜ; ⊢inᶜ; ⊢initialᶜ; ⊢inlᶜ; ⊢inrᶜ; ⊢outActᶜ; ⊢outᶜ; ⊢sndᶜ; ⊢terminalᶜ; ⊑ᵘ-keep; z+qz)
+  using (⊢applyᶜ; ⊢applyEffᶜ; ⊢applyᵀ; ⊢outᵀ; ⊢fstᶜ; ⊢idᶜ; ⊢inᶜ; ⊢initialᶜ; ⊢inlᶜ; ⊢inrᶜ; ⊢outActᶜ; ⊢outᶜ; ⊢sndᶜ; ⊢terminalᶜ; ⊑ᵘ-keep; z+qz)
 open import Once.Denotation.PureBind using (>>=ᵖ-β; >>=ᵖ-idʳ)
 open import Once.Postulates using (extensionality)
 open import Once.Spec.Core.Typing Σ S using (_⊩_⊢[_]_∷_!_; ⊢coerce; ⊢ref; ⊢var; ⊢prim; ⊢pair)
@@ -261,7 +261,74 @@ toFloat-R {Δ′} {Γ = Γ} {δ} {γ} =
   return∞-R (subst (RelGV (Int ⇒[ mk-kind Many pure ] Float) (⟦ ⊢toFloatᶜ Σ S {m = 0} {Δ = Δ′} {Γ = Γ} ⟧ₛ δ γ)) (sym (liftFn-SigOp i2f-info))
                         ((λ r → emb-retᴿ (i2f-agree fmt r)) , (λ ra → sigOp-rel σ-self i2f-info ra)))
 
+import Once.Spec.Surface.Generators as Gn
+open import Once.TypeCheck.Table using (applyIR; inIR; outTIR)
+open import Once.Spec.Core.Derived using (𝕋)
+
 module _ {δ : DefSem} where
+
+  -- The bare maps with an action of their own (`apply`, `In`, `Out`): each
+  -- argument's result is the applied bridge's, at the arrow's grade; the IR
+  -- side is self-related as any lifted function.
+  private
+    bare-applyEff : ∀ {n} {Γ : Ctx 0 n} {γ dγ₂} (A B : Type) (ρ π : Purity)
+                  → RelGM pure (((A ⇒[ mk-kind Many ρ ] B) * A) ⇒[ mk-kind Many π ] (Unit ⇒[ mk-kind Many ρ ] B))
+                            (⟦ ⊢applyEffᶜ {Δ = Δ} {Γ = Γ} {π = ρ} {A = A} {B = B} (pure-⊑ π) ⟧ₛ δ γ)
+                            ((SD.⟦ lift-morphism {Γ = Γ} {A = (A ⇒[ mk-kind Many ρ ] B) * A} {B = Unit ⇒[ mk-kind Many ρ ] B} {π = π}
+                                     (IR.curry (IR.apply IR.∘ IR.fst)) ⟧ˢ fmt σ) dγ₂)
+    bare-applyEff {γ = γ} A B ρ π =
+      ≡ˡ {A = ((A ⇒[ mk-kind Many ρ ] B) * A) ⇒[ mk-kind Many π ] (Unit ⇒[ mk-kind Many ρ ] B)} (sym (⟦⟧-substΨ (z+qz {Δ = Δ} Many) _ δ γ))
+         (return∞-R ((λ {p} {p′} rv → RelGM-ret (pure-⊑ π) {Unit ⇒[ mk-kind Many ρ ] B}
+             (≡ʳ (cong-app (liftFn-curry {0} {AB * A} {Unit} {B} {ρ} (IR.apply IR.∘ IR.fst)) p′)
+                 (return∞-R ((λ {u} {u′} _ → retargetʳ-R (app-fst p′ u′) (proj₁ (proj₁ rv) (proj₂ rv)))
+                           , (λ {u} {u′} _ → retargetˡ (app-fst p′ u) (retargetʳ (app-fst p′ u′)
+                                               (proj₂ (proj₁ rv) (right-self A (proj₂ rv)))))))))
+                    , (λ ra → liftFn-rel fmt (proj₁ σ-self) {AB * A} {Unit ⇒[ mk-kind Many ρ ] B} (IR.curry (IR.apply IR.∘ IR.fst)) ra)))
+      where
+        AB = A ⇒[ mk-kind Many ρ ] B
+        app-fst : ∀ (q : ⟦ AB * A ⟧ᴰ) (u : ⟦ Unit {0} ⟧ᴰ)
+                → force (liftFn fmt (calls σ) {(AB * A) * Unit} {B} (IR.apply IR.∘ IR.fst) (q , u)) ≡ force (proj₁ q (proj₂ q))
+        app-fst q u = trans (force-∘ {0} {AB * A} {B} {(AB * A) * Unit} {IR.apply} {IR.fst} (now-fst {0} {AB * A} {Unit} (q , u)))
+                            (cong force (cong-app (liftFn-apply {0} {A} {B} {ρ}) q))
+
+    bare-apply : ∀ {n} {Γ : Ctx 0 n} {γ dγ₂} (A B : Type) (ρ π : Purity)
+               → RelGM pure (((A ⇒[ mk-kind Many ρ ] B) * A) ⇒[ mk-kind Many π ] 𝕋 ρ B)
+                         (⟦ ⊢applyᵀ {Δ = Δ} {Γ = Γ} {A = A} {B = B} ρ (pure-⊑ π) ⟧ₛ δ γ)
+                         ((SD.⟦ lift-morphism {Γ = Γ} {A = (A ⇒[ mk-kind Many ρ ] B) * A} {B = 𝕋 ρ B} {π = π} (applyIR A B ρ) ⟧ˢ fmt σ) dγ₂)
+    bare-apply {γ = γ} A B pure π =
+      ≡ˡ {A = ((A ⇒[ mk-kind Many pure ] B) * A) ⇒[ mk-kind Many π ] B} (sym (⟦⟧-substΨ (z+qz {Δ = Δ} Many) _ δ γ))
+         (return∞-R ((λ {p} {p′} rv → RelGM-ret (pure-⊑ π) {B}
+                                         (≡ʳ (cong-app (liftFn-apply {0} {A} {B} {pure}) p′) (proj₁ (proj₁ rv) (proj₂ rv))))
+                    , (λ ra → liftFn-rel fmt (proj₁ σ-self) {(A ⇒[ mk-kind Many pure ] B) * A} {B} IR.apply ra)))
+    bare-apply {Γ = Γ} {γ = γ} {dγ₂ = dγ₂} A B act π = bare-applyEff {Γ = Γ} {γ = γ} {dγ₂ = dγ₂} A B act π
+    bare-apply {Γ = Γ} {γ = γ} {dγ₂ = dγ₂} A B eff π = bare-applyEff {Γ = Γ} {γ = γ} {dγ₂ = dγ₂} A B eff π
+
+    bare-In : ∀ {n} {Γ : Ctx 0 n} {γ dγ₂} {F : Once.Spec.Type.Fun 0} (wfF : WFFun Δ F) (π : Purity)
+            → RelGM pure (⟦ F ⟧F (μ F) ⇒[ mk-kind Many π ] μ F) (⟦ ⊢inᶜ {Δ = Δ} {Γ = Γ} (pure-⊑ π) wfF ⟧ₛ δ γ)
+                      ((SD.⟦ lift-morphism {Γ = Γ} {A = ⟦ F ⟧F (μ F)} {B = μ F} {π = π} (inIR F wfF) ⟧ˢ fmt σ) dγ₂)
+    bare-In {F = F} wfF π =
+      return∞-R ((λ rv → RelGM-ret (pure-⊑ π) {μ F} (in-app-bridge {wfF = wfF} rv))
+               , (λ ra → liftFn-rel fmt (proj₁ σ-self) {⟦ F ⟧F (μ F)} {μ F} (In-ir wfF) ra))
+
+    bare-Out : ∀ {n} {Γ : Ctx 0 n} {γ dγ₂} {F : Once.Spec.Type.Fun 0} (wfF : WFFun Δ F) (f : Finite) (π : Purity)
+             → RelGM pure (ν F f ⇒[ mk-kind Many π ] 𝕋 (fin f) (⟦ F ⟧F (ν F f))) (⟦ ⊢outᵀ {Δ = Δ} {Γ = Γ} {F = F} f (pure-⊑ π) wfF ⟧ₛ δ γ)
+                       ((SD.⟦ lift-morphism {Γ = Γ} {A = ν F f} {B = 𝕋 (fin f) (⟦ F ⟧F (ν F f))} {π = π} (outTIR F f wfF) ⟧ˢ fmt σ) dγ₂)
+    bare-Out {F = F} wfF pureᶠ π =
+      return∞-R ((λ rv → RelGM-ret (pure-⊑ π) {⟦ F ⟧F (ν F pureᶠ)} (out-app-bridge {π = pureᶠ} {wfF = wfF} rv))
+               , (λ ra → liftFn-rel fmt (proj₁ σ-self) {ν F pureᶠ} {⟦ F ⟧F (ν F pureᶠ)} (Out-ir wfF) ra))
+    bare-Out {F = F} wfF actᶠ π =
+      return∞-R ((λ {v} {v′} rv → RelGM-ret (pure-⊑ π) {Unit ⇒[ mk-kind Many act ] ⟦ F ⟧F (ν F actᶠ)}
+                    (≡ʳ (cong-app (liftFn-curry {0} {ν F actᶠ} {Unit} {⟦ F ⟧F (ν F actᶠ)} {act} (Out-ir wfF IR.∘ IR.fst)) v′)
+                        (return∞-R ((λ {u} {u′} _ → retargetʳ-R (out-fst v′ u′) (out-app-bridge {F = F} {π = actᶠ} {wfF = wfF} rv))
+                                  , (λ {u} {u′} _ → retargetˡ (out-fst v′ u) (retargetʳ (out-fst v′ u′)
+                                        (liftFn-rel fmt (proj₁ σ-self) {ν F actᶠ} {⟦ F ⟧F (ν F actᶠ)} (Out-ir wfF) (right-self (ν F actᶠ) rv))))))))
+               , (λ ra → liftFn-rel fmt (proj₁ σ-self) {ν F actᶠ} {Unit ⇒[ mk-kind Many act ] ⟦ F ⟧F (ν F actᶠ)}
+                                    (IR.curry (Out-ir wfF IR.∘ IR.fst)) ra))
+      where
+        out-fst : ∀ (v : ⟦ ν F actᶠ ⟧ᴰ) (u : ⟦ Unit {0} ⟧ᴰ)
+                → force (liftFn fmt (calls σ) {ν F actᶠ * Unit} {⟦ F ⟧F (ν F actᶠ)} (Out-ir wfF IR.∘ IR.fst) (v , u))
+                  ≡ force (liftFn fmt (calls σ) {ν F actᶠ} {⟦ F ⟧F (ν F actᶠ)} (Out-ir wfF) v)
+        out-fst v u = force-∘ {0} {ν F actᶠ} {⟦ F ⟧F (ν F actᶠ)} {ν F actᶠ * Unit} {Out-ir wfF} {IR.fst} (now-fst {0} {ν F actᶠ} {Unit} (v , u))
 
   bridge⇒ : ∀ {n} {L : Locals 0 n} {A : Type} {e t Ψ} {d : L ⊢ e ⇒ A ↝ t} (u : Use⇒ d Ψ)
             {dγ₁ : ⟦ ⟦ ctxOf L ↾ Ψ ⟧ᶜᵗ ⟧ᵛ} {γ} {dγ₂ : ⟦ ⟦ ctxOf L ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
@@ -331,7 +398,7 @@ module _ {δ : DefSem} where
     return∞-R (sym (decode-encode F (roundDec F (signedDecimal sg i f l)) (roundDec-inRange F (signedDecimal sg i f l))))
     where F = TargetNum.float-format fmt
   bridge⇒ (u-unit) r re er = return∞-R tt
-  bridge⇒ (u-unit-g) r re er = return∞-R tt
+  bridge⇒ (u-const {c = Gn.k-unit}) r re er = return∞-R tt
   -- Annotation switches to check mode.
   bridge⇒ {A = Aₓ} (u-annot d) r re er =
     ≡ˡ {A = Aₓ} (Comb.arm {δ = δ} (typ⇐ d) r)
@@ -458,29 +525,29 @@ module _ {δ : DefSem} where
       D₀ = ⊢pair (typ⇒ d₁) (typ⇒ d₂)
       E₀ = pair (realize⇒ (shape-of _) d₁) (realize⇒ (shape-of _) d₂)
   -- `toFloat`: the conversion, a generator.
-  bridge⇒ {L = L} u-toFloat {γ = γ} {dγ₂ = dγ₂} r re er = toFloat-R {Δ′ = Δ} {Γ = ctxOf L} {δ = δ} {γ = γ} {dγ₂ = dγ₂}
+  bridge⇒ {L = L} (u-const {c = Gn.k-toFloat}) {γ = γ} {dγ₂ = dγ₂} r re er = toFloat-R {Δ′ = Δ} {Γ = ctxOf L} {δ = δ} {γ = γ} {dγ₂ = dγ₂}
   -- Polymorphic-builtin applications — RHS is `morph-app <ir> …`; each `evalᴰ <ir>`
   -- reduces to the same pure post-op the LHS applies (modulo the `++ []` bookkeeping).
-  bridge⇒ {L = L} {A = A} (u-id-app {T = T} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
+  bridge⇒ {L = L} {A = A} (u-app-spine d (u-map {mo = Gn.m-id {T = T}})) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
     ≡ˡ {A = A} (trans (sym (>>=ᵖ-idʳ _)) (Comb.appC-sem {δ = δ} {A = T} {B = T} (λ v → v) (⊢idᶜ ⊑-pure) (λ y → refl) (typ⇒ d) _ (Comb.arm {δ = δ} (typ⇒ d)) r))
        (≡ʳ (cong ((SD.⟦ realize⇒ (shape-of _) d ⟧ˢ fmt σ) (resᵐ {Γ = ctxOf L} dγ₂) >>=∞_) (liftFn-id {0} {A}))
        (fmapʳ-R (λ r → r) (bridgeᶠ⇒ d (reᵐ re) er)))
-  bridge⇒ {L = L} {A = Aₓ} (u-fst-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
+  bridge⇒ {L = L} {A = Aₓ} (u-app-spine d (u-map {mo = Gn.m-fst {A = A} {B = B}})) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
     ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} {A = A * B} {B = A} _ (⊢fstᶜ ⊑-pure) (λ y → refl) (typ⇒ d) _ (Comb.arm {δ = δ} (typ⇒ d)) r)
        (RelGᵖ-bind {A = A * B} {B = A} {g = liftFn fmt (calls σ) {A * B} {A} IR.fst} (bridgeᶠ⇒ d (reᵐ re) er)
                (λ {a} {b} rv → ≡ʳ (cong-app (liftFn-fst {0} {A} {B}) b) (return∞-R (proj₁ rv))))
-  bridge⇒ {L = L} {A = Aₓ} (u-snd-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
+  bridge⇒ {L = L} {A = Aₓ} (u-app-spine d (u-map {mo = Gn.m-snd {A = A} {B = B}})) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
     ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} {A = A * B} {B = B} _ (⊢sndᶜ ⊑-pure) (λ y → refl) (typ⇒ d) _ (Comb.arm {δ = δ} (typ⇒ d)) r)
        (RelGᵖ-bind {A = A * B} {B = B} {g = liftFn fmt (calls σ) {A * B} {B} IR.snd} (bridgeᶠ⇒ d (reᵐ re) er)
                (λ {a} {b} rv → ≡ʳ (cong-app (liftFn-snd {0} {A} {B}) b) (return∞-R (proj₂ rv))))
-  bridge⇒ {A = Aₓ} (u-Out-app {F = F} {w = wfF} d) r re er =
-    ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} {A = Once.Spec.Type.ν F pureᶠ} {B = ⟦ F ⟧F (Once.Spec.Type.ν F pureᶠ)} _ (⊢outᶜ wfF) (λ y → refl) (typ⇒ d) _ (Comb.arm {δ = δ} (typ⇒ d)) r)
+  bridge⇒ {A = Aₓ} (u-app-spine d (u-map {mo = Gn.m-Out {F = F} {f = pureᶠ} wfF})) r re er =
+    ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} {A = Once.Spec.Type.ν F pureᶠ} {B = ⟦ F ⟧F (Once.Spec.Type.ν F pureᶠ)} _ (⊢outᶜ ⊑-pure wfF) (λ y → refl) (typ⇒ d) _ (Comb.arm {δ = δ} (typ⇒ d)) r)
        (RelGᵖ-bind {A = ν F pureᶠ} {B = ⟦ F ⟧F (ν F pureᶠ)}
               (bridgeᶠ⇒ d (reᵐ re) er) (λ rv → out-app-bridge {π = pureᶠ} {wfF = wfF} rv))
   -- D233: at an EFFECTFUL stream both sides evaluate the stream, then return the
   -- suspension of the force (`curry (Out ∘ fst)` on the IR side).
-  bridge⇒ {L = L} {A = Aₓ} (u-Out-act-app {F = F} {w = wfF} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
-    ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} {A = Once.Spec.Type.ν F actᶠ} {B = Once.Spec.Type.Unit ⇒[ mk-kind Many act ] ⟦ F ⟧F (Once.Spec.Type.ν F actᶠ)} _ (⊢outActᶜ wfF) (λ y → refl) (typ⇒ d) _ (Comb.arm {δ = δ} (typ⇒ d)) r)
+  bridge⇒ {L = L} {A = Aₓ} (u-app-spine d (u-map {mo = Gn.m-Out {F = F} {f = actᶠ} wfF})) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
+    ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} {A = Once.Spec.Type.ν F actᶠ} {B = Once.Spec.Type.Unit ⇒[ mk-kind Many act ] ⟦ F ⟧F (Once.Spec.Type.ν F actᶠ)} _ (⊢outActᶜ ⊑-pure wfF) (λ y → refl) (typ⇒ d) _ (Comb.arm {δ = δ} (typ⇒ d)) r)
        (RelGᵖ-bind {A = ν F actᶠ} {B = Unit ⇒[ mk-kind Many act ] ⟦ F ⟧F (ν F actᶠ)}
                {g = liftFn fmt (calls σ) {ν F actᶠ} {Unit ⇒[ mk-kind Many act ] ⟦ F ⟧F (ν F actᶠ)} (IR.curry (Out-ir wfF IR.∘ IR.fst))}
       (bridgeᶠ⇒ d (reᵐ re) er)
@@ -494,12 +561,12 @@ module _ {δ : DefSem} where
               → force (liftFn fmt (calls σ) {ν F actᶠ * Unit} {⟦ F ⟧F (ν F actᶠ)} (Out-ir wfF IR.∘ IR.fst) (v , u))
                 ≡ force (liftFn fmt (calls σ) {ν F actᶠ} {⟦ F ⟧F (ν F actᶠ)} (Out-ir wfF) v)
       out-fst v u = force-∘ {0} {ν F actᶠ} {⟦ F ⟧F (ν F actᶠ)} {ν F actᶠ * Unit} {Out-ir wfF} {IR.fst} (now-fst {0} {ν F actᶠ} {Unit} (v , u))
-  bridge⇒ {L = L} {A = Aₓ} (u-terminal-app {T = T} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
+  bridge⇒ {L = L} {A = Aₓ} (u-app-spine d (u-map {mo = Gn.m-terminal {A = T}})) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
     ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} {A = T} {B = Once.Spec.Type.Unit} _ (⊢terminalᶜ ⊑-pure) (λ y → refl) (typ⇒ d) _ (Comb.arm {δ = δ} (typ⇒ d)) r)
        (RelGᵖ-bind {A = T} {B = Unit {0}} {g = liftFn fmt (calls σ) {T} {Unit} IR.terminal} (bridgeᶠ⇒ d (reᵐ re) er)
                (λ {a} {b} rv → ≡ʳ (cong-app (liftFn-terminal {0} {T}) b) (return∞-R tt)))
-  bridge⇒ {L = L} {A = Aₓ} (u-apply-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
-    ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} (λ fa → proj₁ fa (proj₂ fa)) (⊢applyᶜ {Γ = ctxOf L} {A = A} {B = B})
+  bridge⇒ {L = L} {A = Aₓ} (u-app-spine d (u-map {mo = Gn.m-apply {A = A} {B = B} {ρ = pure}})) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
+    ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} (λ fa → proj₁ fa (proj₂ fa)) (⊢applyᶜ {Γ = ctxOf L} {A = A} {B = B} ⊑-pure)
                   (λ y → ⟦⟧-substΨ (z+qz {Δ = Δ} Many) _ δ y) (typ⇒ d) _ (Comb.arm {δ = δ} (typ⇒ d)) r)
        (RelGᵖ-bind {A = (A ⇒[ mk-kind Many pure ] B) * A} {B = B} {g = liftFn fmt (calls σ) {(A ⇒[ mk-kind Many pure ] B) * A} {B} IR.apply}
                (bridgeᶠ⇒ d (reᵐ re) er)
@@ -507,39 +574,57 @@ module _ {δ : DefSem} where
   -- D222 / plan 0.95 A′: `apply` at an EFF closure yields a SUSPENSION; the IR
   -- side is the thunk-builder `curry (apply ∘ fst)`. The pair is still evaluated
   -- EAGERLY.
-  bridge⇒ {L = L} {A = Aₓ} (u-apply-eff-app {A = A} {B = B} {π = π} {g = g} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
+  bridge⇒ {L = L} {A = Aₓ} (u-app-spine d (u-map {mo = Gn.m-apply {A = A} {B = B} {ρ = act}})) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
     ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} (λ fa → returnᵖ (λ _ → proj₁ fa (proj₂ fa)))
-                  (⊢applyEffᶜ {Γ = ctxOf L} {π = π} {A = A} {B = B})
+                  (⊢applyEffᶜ {Γ = ctxOf L} {π = act} {A = A} {B = B} ⊑-pure)
                   (λ y → ⟦⟧-substΨ (z+qz {Δ = Δ} Many) _ δ y) (typ⇒ d) _ (Comb.arm {δ = δ} (typ⇒ d)) r)
-       (RelGᵖ-bind {A = AB * A} {B = Unit ⇒[ mk-kind Many π ] B}
-               {g = liftFn fmt (calls σ) {AB * A} {Unit ⇒[ mk-kind Many π ] B} (IR.curry (IR.apply IR.∘ IR.fst))}
+       (RelGᵖ-bind {A = AB * A} {B = Unit ⇒[ mk-kind Many act ] B}
+               {g = liftFn fmt (calls σ) {AB * A} {Unit ⇒[ mk-kind Many act ] B} (IR.curry (IR.apply IR.∘ IR.fst))}
       (bridgeᶠ⇒ d (reᵐ re) er)
       (λ {p} {p′} rv →
-         ≡ʳ (cong-app (liftFn-curry {0} {AB * A} {Unit} {B} {π} (IR.apply IR.∘ IR.fst)) p′)
+         ≡ʳ (cong-app (liftFn-curry {0} {AB * A} {Unit} {B} {act} (IR.apply IR.∘ IR.fst)) p′)
             (return∞-R ((λ {u} {u′} _ → retargetʳ-R (app-fst p′ u′) (proj₁ (proj₁ rv) (proj₂ rv)))
                       , (λ {u} {u′} _ → retargetˡ (app-fst p′ u) (retargetʳ (app-fst p′ u′)
                                           (proj₂ (proj₁ rv) (right-self A (proj₂ rv)))))))))
     where
-      AB = A ⇒[ mk-kind Many π ] B
+      AB = A ⇒[ mk-kind Many act ] B
       app-fst : ∀ (q : ⟦ AB * A ⟧ᴰ) (u : ⟦ Unit {0} ⟧ᴰ)
               → force (liftFn fmt (calls σ) {(AB * A) * Unit} {B} (IR.apply IR.∘ IR.fst) (q , u)) ≡ force (proj₁ q (proj₂ q))
       app-fst q u = trans (force-∘ {0} {AB * A} {B} {(AB * A) * Unit} {IR.apply} {IR.fst} (now-fst {0} {AB * A} {Unit} (q , u)))
-                          (cong force (cong-app (liftFn-apply {0} {A} {B} {π}) q))
+                          (cong force (cong-app (liftFn-apply {0} {A} {B} {act}) q))
+  bridge⇒ {L = L} {A = Aₓ} (u-app-spine d (u-map {mo = Gn.m-apply {A = A} {B = B} {ρ = eff}})) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
+    ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} (λ fa → returnᵖ (λ _ → proj₁ fa (proj₂ fa)))
+                  (⊢applyEffᶜ {Γ = ctxOf L} {π = eff} {A = A} {B = B} ⊑-pure)
+                  (λ y → ⟦⟧-substΨ (z+qz {Δ = Δ} Many) _ δ y) (typ⇒ d) _ (Comb.arm {δ = δ} (typ⇒ d)) r)
+       (RelGᵖ-bind {A = AB * A} {B = Unit ⇒[ mk-kind Many eff ] B}
+               {g = liftFn fmt (calls σ) {AB * A} {Unit ⇒[ mk-kind Many eff ] B} (IR.curry (IR.apply IR.∘ IR.fst))}
+      (bridgeᶠ⇒ d (reᵐ re) er)
+      (λ {p} {p′} rv →
+         ≡ʳ (cong-app (liftFn-curry {0} {AB * A} {Unit} {B} {eff} (IR.apply IR.∘ IR.fst)) p′)
+            (return∞-R ((λ {u} {u′} _ → retargetʳ-R (app-fst p′ u′) (proj₁ (proj₁ rv) (proj₂ rv)))
+                      , (λ {u} {u′} _ → retargetˡ (app-fst p′ u) (retargetʳ (app-fst p′ u′)
+                                          (proj₂ (proj₁ rv) (right-self A (proj₂ rv)))))))))
+    where
+      AB = A ⇒[ mk-kind Many eff ] B
+      app-fst : ∀ (q : ⟦ AB * A ⟧ᴰ) (u : ⟦ Unit {0} ⟧ᴰ)
+              → force (liftFn fmt (calls σ) {(AB * A) * Unit} {B} (IR.apply IR.∘ IR.fst) (q , u)) ≡ force (proj₁ q (proj₂ q))
+      app-fst q u = trans (force-∘ {0} {AB * A} {B} {(AB * A) * Unit} {IR.apply} {IR.fst} (now-fst {0} {AB * A} {Unit} (q , u)))
+                          (cong force (cong-app (liftFn-apply {0} {A} {B} {eff}) q))
   -- Application — infer the head, check the argument, apply the related closures.
   -- D143: at an ERASED arrow the argument derivation is not run at all, and the
   -- arrow's `RelGV` takes no related value — it IS the body relation at `tt`.
   -- D179: `RelGᵖ-bind` throughout — the argument runs at what the head left, and
   -- the closure at what both left.
-  bridge⇒ {L = L} {A = Aₓ} (u-app {A = A} {B = B} {q = Zero} df dx) r re er =
+  bridge⇒ {L = L} {A = Aₓ} (u-app {A = A} {B = B} {q = Zero} {π = pure} df dx) r re er =
     ≡ˡ {A = Aₓ} (trans (>>=ᵖ-β _ _) (cong (λ f → f tt) (Comb.arm {δ = δ} (typ⇒ df) (split-R′ {Γ = ctxOf L} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))))
        (RelGᵖ-bind {A = A ⇒[ mk-kind Zero pure ] B} {B = B} (bridgeᶠ⇒ df (reˡ re) er) (λ rf → proj₁ rf))
-  bridge⇒ {L = L} {A = Aₓ} (u-app {A = A} {B = B} {q = One} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} df dx) r re er =
+  bridge⇒ {L = L} {A = Aₓ} (u-app {A = A} {B = B} {q = One} {π = pure} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} df dx) r re er =
     ≡ˡ {A = Aₓ} (appC (Comb.arm {δ = δ} (typ⇒ df) (split-R′ {Γ = ctxOf L} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
          (Comb.arm {δ = δ} (typ⇐ dx) (split-R′ {Γ = ctxOf L} _ _ (λ y → env*One σ₀ Ψ₂ (envʳ σ₀ Ψ₁ (One *ᵘ Ψ₂) y))
                                      (env*One-envʳ-restrict σ₀ Ψ₁ Ψ₂) r)))
        (RelGᵖ-bind {A = A ⇒[ mk-kind One pure ] B} {B = B} (bridgeᶠ⇒ df (reˡ re) er)
               (λ rf → RelGᵖ-bind {A = A} {B = B} (bridgeᶠ⇐ dx (re¹ re) er) (λ rx → proj₁ rf rx)))
-  bridge⇒ {L = L} {A = Aₓ} (u-app {A = A} {B = B} {q = Many} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} df dx) r re er =
+  bridge⇒ {L = L} {A = Aₓ} (u-app {A = A} {B = B} {q = Many} {π = pure} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} df dx) r re er =
     ≡ˡ {A = Aₓ} (appC (Comb.arm {δ = δ} (typ⇒ df) (split-R′ {Γ = ctxOf L} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
          (Comb.arm {δ = δ} (typ⇐ dx) (split-R′ {Γ = ctxOf L} _ _ (λ y → env*Many σ₀ Ψ₂ (envʳ σ₀ Ψ₁ (Many *ᵘ Ψ₂) y))
                                      (env*Many-envʳ-restrict σ₀ Ψ₁ Ψ₂) r)))
@@ -547,45 +632,136 @@ module _ {δ : DefSem} where
               (λ rf → RelGᵖ-bind {A = A} {B = B} (bridgeᶠ⇐ dx (reᵐ re) er) (λ rx → proj₁ rf rx)))
   -- Effectful application — a suspended thunk; the value is the (arg-ignoring)
   -- closure, related pointwise via the same application reasoning.
-  bridge⇒ {A = Aₓ} d@(u-effApp {A = A} {B = B} {π = π} df dx) r re er =
+  bridge⇒ {A = Aₓ} d@(u-app {A = A} {B = B} {q = Zero} {π = act} df dx) r re er =
+    ≡ˡ {A = Aₓ} (Comb.effApp-sem₀ {δ = δ} (typ⇒ df) (typ⇐ dx) _ (Comb.arm {δ = δ} (typ⇒ df)) r)
+       (return∞-R
+    ( (λ {a} {b} _ →
+         RelGᵖᵉ-bind {A = A ⇒[ mk-kind Zero act ] B} {B = B} {P = RelGM act B} (bridgeᶠ⇒ df (reˡ re) er)
+           (λ rf → proj₁ rf)
+           (λ e h → retargetʳ-R e h))
+    , ret-inv (SD-rel σ-self (realize⇒ (shape-of _) d) (self↾ re)) ))
+  bridge⇒ {A = Aₓ} d@(u-app {A = A} {B = B} {q = One} {π = act} df dx) r re er =
+    ≡ˡ {A = Aₓ} (Comb.effApp-sem₁ {δ = δ} (typ⇒ df) (typ⇐ dx) _ _ (Comb.arm {δ = δ} (typ⇒ df)) (Comb.arm {δ = δ} (typ⇐ dx)) r)
+       (return∞-R
+    ( (λ {a} {b} _ →
+         RelGᵖᵉ-bind {A = A ⇒[ mk-kind One act ] B} {B = B} {P = RelGM act B} (bridgeᶠ⇒ df (reˡ re) er)
+           (λ rf → RelGᵖᵉ-bind {A = A} {B = B} {P = RelGM act B} (bridgeᶠ⇐ dx (re¹ re) er) (λ rx → proj₁ rf rx) (λ e h → retargetʳ-R e h))
+           (λ e h → retargetʳ-R e h))
+    , ret-inv (SD-rel σ-self (realize⇒ (shape-of _) d) (self↾ re)) ))
+  bridge⇒ {A = Aₓ} d@(u-app {A = A} {B = B} {q = Many} {π = act} df dx) r re er =
     ≡ˡ {A = Aₓ} (Comb.effApp-sem {δ = δ} (typ⇒ df) (typ⇐ dx) _ _ (Comb.arm {δ = δ} (typ⇒ df)) (Comb.arm {δ = δ} (typ⇐ dx)) r)
        (return∞-R
     ( (λ {a} {b} _ →
-         RelGᵖᵉ-bind {A = A ⇒[ mk-kind Many π ] B} {B = B} {P = RelGM π B} (bridgeᶠ⇒ df (reˡ re) er)
-           (λ rf → RelGᵖᵉ-bind {A = A} {B = B} {P = RelGM π B} (bridgeᶠ⇐ dx (reᵐ re) er) (λ rx → proj₁ rf rx) (λ e h → retargetʳ-R e h))
+         RelGᵖᵉ-bind {A = A ⇒[ mk-kind Many act ] B} {B = B} {P = RelGM act B} (bridgeᶠ⇒ df (reˡ re) er)
+           (λ rf → RelGᵖᵉ-bind {A = A} {B = B} {P = RelGM act B} (bridgeᶠ⇐ dx (reᵐ re) er) (λ rx → proj₁ rf rx) (λ e h → retargetʳ-R e h))
+           (λ e h → retargetʳ-R e h))
+    , ret-inv (SD-rel σ-self (realize⇒ (shape-of _) d) (self↾ re)) ))
+  bridge⇒ {A = Aₓ} d@(u-app {A = A} {B = B} {q = Zero} {π = eff} df dx) r re er =
+    ≡ˡ {A = Aₓ} (Comb.effApp-sem₀ {δ = δ} (typ⇒ df) (typ⇐ dx) _ (Comb.arm {δ = δ} (typ⇒ df)) r)
+       (return∞-R
+    ( (λ {a} {b} _ →
+         RelGᵖᵉ-bind {A = A ⇒[ mk-kind Zero eff ] B} {B = B} {P = RelGM eff B} (bridgeᶠ⇒ df (reˡ re) er)
+           (λ rf → proj₁ rf)
+           (λ e h → retargetʳ-R e h))
+    , ret-inv (SD-rel σ-self (realize⇒ (shape-of _) d) (self↾ re)) ))
+  bridge⇒ {A = Aₓ} d@(u-app {A = A} {B = B} {q = One} {π = eff} df dx) r re er =
+    ≡ˡ {A = Aₓ} (Comb.effApp-sem₁ {δ = δ} (typ⇒ df) (typ⇐ dx) _ _ (Comb.arm {δ = δ} (typ⇒ df)) (Comb.arm {δ = δ} (typ⇐ dx)) r)
+       (return∞-R
+    ( (λ {a} {b} _ →
+         RelGᵖᵉ-bind {A = A ⇒[ mk-kind One eff ] B} {B = B} {P = RelGM eff B} (bridgeᶠ⇒ df (reˡ re) er)
+           (λ rf → RelGᵖᵉ-bind {A = A} {B = B} {P = RelGM eff B} (bridgeᶠ⇐ dx (re¹ re) er) (λ rx → proj₁ rf rx) (λ e h → retargetʳ-R e h))
+           (λ e h → retargetʳ-R e h))
+    , ret-inv (SD-rel σ-self (realize⇒ (shape-of _) d) (self↾ re)) ))
+  bridge⇒ {A = Aₓ} d@(u-app {A = A} {B = B} {q = Many} {π = eff} df dx) r re er =
+    ≡ˡ {A = Aₓ} (Comb.effApp-sem {δ = δ} (typ⇒ df) (typ⇐ dx) _ _ (Comb.arm {δ = δ} (typ⇒ df)) (Comb.arm {δ = δ} (typ⇐ dx)) r)
+       (return∞-R
+    ( (λ {a} {b} _ →
+         RelGᵖᵉ-bind {A = A ⇒[ mk-kind Many eff ] B} {B = B} {P = RelGM eff B} (bridgeᶠ⇒ df (reˡ re) er)
+           (λ rf → RelGᵖᵉ-bind {A = A} {B = B} {P = RelGM eff B} (bridgeᶠ⇐ dx (reᵐ re) er) (λ rx → proj₁ rf rx) (λ e h → retargetʳ-R e h))
            (λ e h → retargetʳ-R e h))
     , ret-inv (SD-rel σ-self (realize⇒ (shape-of _) d) (self↾ re)) ))
   -- D230: the spine — the head's domain-given meaning, applied to the argument's.
-  bridge⇒ {L = L} {A = Aₓ} (u-app-spine {X = X} {T = T} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} darg df) r re er =
+  bridge⇒ {L = L} {A = Aₓ} (u-app-spine {X = X} {T = T} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} darg df@(u-infer _)) r re er =
     ≡ˡ {A = Aₓ} (appC (Comb.arm {δ = δ} (typ↦ df) (split-R′ {Γ = ctxOf L} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
          (Comb.arm {δ = δ} (typ⇒ darg) (split-R′ {Γ = ctxOf L} _ _ (λ y → env*Many σ₀ _ (envʳ σ₀ _ (Many *ᵘ _) y))
                                      (env*Many-envʳ-restrict σ₀ _ _) r)))
        (RelGᵖ-bind {A = X ⇒[ mk-kind Many pure ] T} {B = T}
               (bridgeᶠ↦ df (reˡ re) er)
               (λ rf → RelGᵖ-bind {A = X} {B = T} (bridgeᶠ⇒ darg (reᵐ re) er) (λ rx → proj₁ rf rx)))
+  bridge⇒ {L = L} {A = Aₓ} (u-app-spine {X = X} {T = T} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} darg df@u-poly) r re er =
+    ≡ˡ {A = Aₓ} (appC (Comb.arm {δ = δ} (typ↦ df) (split-R′ {Γ = ctxOf L} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
+         (Comb.arm {δ = δ} (typ⇒ darg) (split-R′ {Γ = ctxOf L} _ _ (λ y → env*Many σ₀ _ (envʳ σ₀ _ (Many *ᵘ _) y))
+                                     (env*Many-envʳ-restrict σ₀ _ _) r)))
+       (RelGᵖ-bind {A = X ⇒[ mk-kind Many pure ] T} {B = T}
+              (bridgeᶠ↦ df (reˡ re) er)
+              (λ rf → RelGᵖ-bind {A = X} {B = T} (bridgeᶠ⇒ darg (reᵐ re) er) (λ rx → proj₁ rf rx)))
+  bridge⇒ {L = L} {A = Aₓ} (u-app-spine {X = X} {T = T} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} darg df@(u-lam _)) r re er =
+    ≡ˡ {A = Aₓ} (appC (Comb.arm {δ = δ} (typ↦ df) (split-R′ {Γ = ctxOf L} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
+         (Comb.arm {δ = δ} (typ⇒ darg) (split-R′ {Γ = ctxOf L} _ _ (λ y → env*Many σ₀ _ (envʳ σ₀ _ (Many *ᵘ _) y))
+                                     (env*Many-envʳ-restrict σ₀ _ _) r)))
+       (RelGᵖ-bind {A = X ⇒[ mk-kind Many pure ] T} {B = T}
+              (bridgeᶠ↦ df (reˡ re) er)
+              (λ rf → RelGᵖ-bind {A = X} {B = T} (bridgeᶠ⇒ darg (reᵐ re) er) (λ rx → proj₁ rf rx)))
+  bridge⇒ {L = L} {A = Aₓ} (u-app-spine {X = X} {T = T} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} darg df@(u-compose _ _)) r re er =
+    ≡ˡ {A = Aₓ} (appC (Comb.arm {δ = δ} (typ↦ df) (split-R′ {Γ = ctxOf L} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
+         (Comb.arm {δ = δ} (typ⇒ darg) (split-R′ {Γ = ctxOf L} _ _ (λ y → env*Many σ₀ _ (envʳ σ₀ _ (Many *ᵘ _) y))
+                                     (env*Many-envʳ-restrict σ₀ _ _) r)))
+       (RelGᵖ-bind {A = X ⇒[ mk-kind Many pure ] T} {B = T}
+              (bridgeᶠ↦ df (reˡ re) er)
+              (λ rf → RelGᵖ-bind {A = X} {B = T} (bridgeᶠ⇒ darg (reᵐ re) er) (λ rx → proj₁ rf rx)))
+  bridge⇒ {L = L} {A = Aₓ} (u-app-spine {X = X} {T = T} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} darg df@(u-case _ _)) r re er =
+    ≡ˡ {A = Aₓ} (appC (Comb.arm {δ = δ} (typ↦ df) (split-R′ {Γ = ctxOf L} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
+         (Comb.arm {δ = δ} (typ⇒ darg) (split-R′ {Γ = ctxOf L} _ _ (λ y → env*Many σ₀ _ (envʳ σ₀ _ (Many *ᵘ _) y))
+                                     (env*Many-envʳ-restrict σ₀ _ _) r)))
+       (RelGᵖ-bind {A = X ⇒[ mk-kind Many pure ] T} {B = T}
+              (bridgeᶠ↦ df (reˡ re) er)
+              (λ rf → RelGᵖ-bind {A = X} {B = T} (bridgeᶠ⇒ darg (reᵐ re) er) (λ rx → proj₁ rf rx)))
+  bridge⇒ {L = L} {A = Aₓ} (u-app-spine {X = X} {T = T} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} darg df@(u-pair _ _)) r re er =
+    ≡ˡ {A = Aₓ} (appC (Comb.arm {δ = δ} (typ↦ df) (split-R′ {Γ = ctxOf L} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
+         (Comb.arm {δ = δ} (typ⇒ darg) (split-R′ {Γ = ctxOf L} _ _ (λ y → env*Many σ₀ _ (envʳ σ₀ _ (Many *ᵘ _) y))
+                                     (env*Many-envʳ-restrict σ₀ _ _) r)))
+       (RelGᵖ-bind {A = X ⇒[ mk-kind Many pure ] T} {B = T}
+              (bridgeᶠ↦ df (reˡ re) er)
+              (λ rf → RelGᵖ-bind {A = X} {B = T} (bridgeᶠ⇒ darg (reᵐ re) er) (λ rx → proj₁ rf rx)))
+  bridge⇒ {L = L} {A = Aₓ} (u-app-spine {X = X} {T = T} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} darg df@(u-cata _)) r re er =
+    ≡ˡ {A = Aₓ} (appC (Comb.arm {δ = δ} (typ↦ df) (split-R′ {Γ = ctxOf L} _ _ (envˡ σ₀ _ _) (envˡ-restrict σ₀ _ _) r))
+         (Comb.arm {δ = δ} (typ⇒ darg) (split-R′ {Γ = ctxOf L} _ _ (λ y → env*Many σ₀ _ (envʳ σ₀ _ (Many *ᵘ _) y))
+                                     (env*Many-envʳ-restrict σ₀ _ _) r)))
+       (RelGᵖ-bind {A = X ⇒[ mk-kind Many pure ] T} {B = T}
+              (bridgeᶠ↦ df (reˡ re) er)
+              (λ rf → RelGᵖ-bind {A = X} {B = T} (bridgeᶠ⇒ darg (reᵐ re) er) (λ rx → proj₁ rf rx)))
+  bridge⇒ {L = L} {A = A} (u-app-spine d (u-map {mo = Gn.m-initial {A = T}})) r re er =
+    ≡ˡ {A = A} (Comb.appC-sem {δ = δ} {A = Once.Spec.Type.Void} {B = T} (λ w → ⊥-elim w) (⊢initialᶜ ⊑-pure) (λ y → refl) (typ⇒ d) _ (Comb.arm {δ = δ} (typ⇒ d)) r)
+       (RelGᵖ-bind {A = Once.Spec.Type.Void} {B = A} (bridgeᶠ⇒ d (reᵐ re) er) (λ {a} _ → ⊥-elim a))
+  bridge⇒ (u-app-spine d (u-map {fd = ()} {mo = Gn.m-inl})) r re er
+  bridge⇒ (u-app-spine d (u-map {fd = ()} {mo = Gn.m-inr})) r re er
+  bridge⇒ (u-app-spine d (u-map {fd = ()} {mo = Gn.m-In _})) r re er
   -- D127: the POINT-FREE LEAVES. `realize` sends each to `lift-morphism` of the
   -- plain categorical generator, so these are the OLD `bridge-m` bodies verbatim,
   -- re-aimed at `⊢ᶜ` — the `subst` moves `liftFn`'s funext-reduction out of the
   -- way exactly as `wrapM` used to.
-  bridge⇐ (u-id {T = T} {π = π}) r re er =
+  bridge⇐ (u-map {mo = Gn.m-id {T = T} {π = π}}) r re er =
     return∞-R (subst (RelGV (T ⇒[ mk-kind Many π ] T) (λ a → returnM (pure-⊑ π) a))
                  (sym (liftFn-id {0} {T})) ((λ rv → RelGM-return (pure-⊑ π) {A = T} rv) , (λ ra → relS-ret ra)))
-  bridge⇐ (u-fst {A = A} {B = B} {π = π}) r re er =
+  bridge⇐ (u-map {mo = Gn.m-fst {A = A} {B = B} {π = π}}) r re er =
     return∞-R (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] A) (λ ab → returnM (pure-⊑ π) (proj₁ ab)))
                  (sym (liftFn-fst {0} {A} {B})) ((λ rv → RelGM-return (pure-⊑ π) {A = A} (proj₁ rv)) , (λ ra → relS-ret (proj₁ ra))))
-  bridge⇐ (u-snd {A = A} {B = B} {π = π}) r re er =
+  bridge⇐ (u-map {mo = Gn.m-snd {A = A} {B = B} {π = π}}) r re er =
     return∞-R (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnM (pure-⊑ π) (proj₂ ab)))
                  (sym (liftFn-snd {0} {A} {B})) ((λ rv → RelGM-return (pure-⊑ π) {A = B} (proj₂ rv)) , (λ ra → relS-ret (proj₂ ra))))
-  bridge⇐ (u-terminal {A = A} {π = π}) r re er =
+  bridge⇐ (u-map {mo = Gn.m-terminal {A = A} {π = π}}) r re er =
     return∞-R (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Spec.Type.Unit) (λ _ → returnM (pure-⊑ π) tt))
                  (sym (liftFn-terminal {0} {A})) ((λ _ → RelGM-return (pure-⊑ π) {A = Once.Spec.Type.Unit {0}} tt) , (λ _ → relS-ret tt)))
-  bridge⇐ (u-initial {π = π}) r re er =
+  bridge⇐ (u-map {mo = Gn.m-initial {π = π}}) r re er =
     return∞-R ((λ { {a = ()} }) , (λ { {()} }))
+  bridge⇐ {L = L} (u-map {mo = Gn.m-apply {A = A} {B = B} {ρ = ρ} {π = π}}) {γ = γ} {dγ₂ = dγ₂} r re er = bare-apply {Γ = ctxOf L} {γ = γ} {dγ₂ = dγ₂} A B ρ π
+  bridge⇐ {L = L} (u-map {mo = Gn.m-In {F = F} {π = π} wfF}) {γ = γ} {dγ₂ = dγ₂} r re er = bare-In {Γ = ctxOf L} {γ = γ} {dγ₂ = dγ₂} wfF π
+  bridge⇐ {L = L} (u-map {mo = Gn.m-Out {F = F} {f = f} {π = π} wfF}) {γ = γ} {dγ₂ = dγ₂} r re er = bare-Out {Γ = ctxOf L} {γ = γ} {dγ₂ = dγ₂} wfF f π
   -- D313: a generator at its guard — the generic effect on both sides.
-  bridge⇐ (u-inl {A = A} {B = B} {π = π}) r re er =
+  bridge⇐ (u-map {mo = Gn.m-inl {A = A} {B = B} {π = π}}) r re er =
     return∞-R (subst (RelGV (A ⇒[ mk-kind Many π ] (A + B)) (λ a → returnM (pure-⊑ π) (inj₁ a)))
                  (sym (liftFn-inl {0} {A} {B})) ((λ rv → RelGM-return (pure-⊑ π) {A = A + B} rv) , (λ ra → relS-ret ra)))
-  bridge⇐ (u-inr {A = A} {B = B} {π = π}) r re er =
+  bridge⇐ (u-map {mo = Gn.m-inr {A = A} {B = B} {π = π}}) r re er =
     return∞-R (subst (RelGV (B ⇒[ mk-kind Many π ] (A + B)) (λ b → returnM (pure-⊑ π) (inj₂ b)))
                  (sym (liftFn-inr {0} {B} {A})) ((λ rv → RelGM-return (pure-⊑ π) {A = A + B} rv) , (λ ra → relS-ret ra)))
   -- D127: the COMBINATORS. Both sides now bind their arms and then build the
@@ -658,7 +834,7 @@ module _ {δ : DefSem} where
   -- what `RelGV` asks for there) comes from coalgebraic extensionality.
   -- (`RelGT-bind` at `returnT`, not `RelGᵖ-bind`: the Spec clause applies its
   -- continuation directly rather than through the opaque `>>=ᵖ`.)
-  bridge⇐ {A = Aₓ} (u-ana {F = F} {A = A} {π₀ = π₀} {f = π} {w = wfF} dcoalg) r re er =
+  bridge⇐ {A = Aₓ} (u-ana {A = A} {π₀ = π₀} {fi = Gn.final-ν {F = F} {f = π} le wfF} dcoalg) r re er =
     ≡ˡ {A = Aₓ} (Comb.ana-sem″ {δ = δ} (pure-⊑ π₀) wfF (typ⇐ dcoalg) _ (Comb.arm {δ = δ} (typ⇐ dcoalg)) r)
        (RelGᵖ-app {A = A ⇒[ mk-kind Many (fin π) ] ⟦ F ⟧F A}
               {B = A ⇒[ mk-kind Many π₀ ] ν F π}
@@ -668,7 +844,7 @@ module _ {δ : DefSem} where
   -- THE LOOP: the round's own bridge, then the graded loop over finite rounds
   -- against SD's iteration (`RelS-loop`); the source side is self-related
   -- (`RelS-iter∞` over the round's own self-relation).
-  bridge⇐ {A = Aₓ} (u-loop {A = A} {B = B} dround) r re er =
+  bridge⇐ {A = Aₓ} (u-ana {A = A} {X = B} {fi = Gn.final-T∞} dround) r re er =
     ≡ˡ {A = Aₓ} (Comb.loop-sem {δ = δ} (typ⇐ dround) _ (Comb.arm {δ = δ} (typ⇐ dround)) r)
        (RelGᵖ-app {A = A ⇒[ mk-kind Many act ] (B + A)} {B = A ⇒[ mk-kind Many eff ] B}
               (bridgeᶠ⇐ dround (rel-restrict (⊑ᵘ-*Many _) re) er) (λ {c₁} {c₂} rc →
@@ -703,22 +879,25 @@ module _ {δ : DefSem} where
        (RelGᵖ-bind {A = A} {B = A * B} (bridgeᶠ⇐ da (reˡ re) er)
               (λ ra → RelGᵖ-bind {A = B} {B = A * B} (bridgeᶠ⇐ db (reʳ re) er)
                                  (λ rb → return∞-R (ra , rb))))
-  bridge⇐ {A = Aₓ} (u-In-app {F = F} {w = wfF} d) r re er =
-    ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} {A = ⟦ F ⟧F (Once.Spec.Type.μ F)} {B = Once.Spec.Type.μ F} _ (⊢inᶜ wfF) (λ y → refl) (typ⇐ d) _ (Comb.arm {δ = δ} (typ⇐ d)) r)
+  bridge⇐ {A = Aₓ} (u-map-app {mo = Gn.m-In {F = F} wfF} d) r re er =
+    ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} {A = ⟦ F ⟧F (Once.Spec.Type.μ F)} {B = Once.Spec.Type.μ F} _ (⊢inᶜ ⊑-pure wfF) (λ y → refl) (typ⇐ d) _ (Comb.arm {δ = δ} (typ⇐ d)) r)
        (RelGᵖ-bind {A = ⟦ F ⟧F (μ F)} {B = μ F}
               (bridgeᶠ⇐ d (reᵐ re) er) (λ rv → in-app-bridge {wfF = wfF} rv))
-  bridge⇐ {L = L} {A = Aₓ} (u-apply-app {A = A} {B = B} dp) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
-    ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} (λ fa → proj₁ fa (proj₂ fa)) (⊢applyᶜ {Γ = ctxOf L} {A = A} {B = B})
-                  (λ y → ⟦⟧-substΨ (z+qz {Δ = Δ} Many) _ δ y) (typ⇒ dp) _ (Comb.arm {δ = δ} (typ⇒ dp)) r)
-       (RelGᵖ-bind {A = (A ⇒[ mk-kind Many pure ] B) * A} {B = B} {g = liftFn fmt (calls σ) {(A ⇒[ mk-kind Many pure ] B) * A} {B} IR.apply}
-               (bridgeᶠ⇒ dp (reᵐ re) er)
-               (λ {p} {p′} rv → ≡ʳ (cong-app (liftFn-apply {0} {A} {B} {pure}) p′) (proj₁ (proj₁ rv) (proj₂ rv))))
-  bridge⇐ {L = L} {A = Aₓ} (u-inl-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
+  bridge⇐ {L = L} {A = A} (u-map-app {mo = Gn.m-id {T = T}} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
+    ≡ˡ {A = A} (trans (sym (>>=ᵖ-idʳ _)) (Comb.appC-sem {δ = δ} {A = T} {B = T} (λ v → v) (⊢idᶜ ⊑-pure) (λ y → refl) (typ⇐ d) _ (Comb.arm {δ = δ} (typ⇐ d)) r))
+       (≡ʳ (cong ((SD.⟦ realize⇐ (shape-of _) d ⟧ˢ fmt σ) (resᵐ {Γ = ctxOf L} dγ₂) >>=∞_) (liftFn-id {0} {A}))
+       (fmapʳ-R (λ r → r) (bridgeᶠ⇐ d (reᵐ re) er)))
+  bridge⇐ (u-map-app {fc = ()} {mo = Gn.m-fst} d) r re er
+  bridge⇐ (u-map-app {fc = ()} {mo = Gn.m-snd} d) r re er
+  bridge⇐ (u-map-app {fc = ()} {mo = Gn.m-terminal} d) r re er
+  bridge⇐ (u-map-app {fc = ()} {mo = Gn.m-apply} d) r re er
+  bridge⇐ (u-map-app {fc = ()} {mo = Gn.m-Out _} d) r re er
+  bridge⇐ {L = L} {A = Aₓ} (u-map-app {mo = Gn.m-inl {A = A} {B = B}} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
     ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} {A = A} {B = A + B} _ (⊢inlᶜ ⊑-pure) (λ y → refl) (typ⇐ d) _ (Comb.arm {δ = δ} (typ⇐ d)) r)
        (RelGᵖ-bind {A = A} {B = A + B} {k = λ a → inj₁ a} {g = liftFn fmt (calls σ) {A} {A + B} IR.inl}
                (bridgeᶠ⇐ d (reᵐ re) er)
                (λ {a} {b} rv → ≡ʳ (cong-app (liftFn-inl {0} {A} {B}) b) (return∞-R {x = inj₁ a} {y = inj₁ b} rv)))
-  bridge⇐ {L = L} {A = Aₓ} (u-inr-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
+  bridge⇐ {L = L} {A = Aₓ} (u-map-app {mo = Gn.m-inr {A = A} {B = B}} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} r re er =
     ≡ˡ {A = Aₓ} (Comb.appC-sem {δ = δ} {A = B} {B = A + B} _ (⊢inrᶜ ⊑-pure) (λ y → refl) (typ⇐ d) _ (Comb.arm {δ = δ} (typ⇐ d)) r)
        (RelGᵖ-bind {A = B} {B = A + B} {k = λ b → inj₂ b} {g = liftFn fmt (calls σ) {B} {A + B} IR.inr}
                (bridgeᶠ⇐ d (reᵐ re) er)
@@ -727,7 +906,7 @@ module _ {δ : DefSem} where
   -- inhabits ⊥ — but it may STOP first, and then there is nothing to eliminate.
   -- The old clause read that value unconditionally; `RelGᵖ-bind` puts the ⊥ where
   -- it is actually bound, and the stopped branch closes on its own.
-  bridge⇐ {L = L} {A = A} (u-initial-app {T = T} d) r re er =
+  bridge⇐ {L = L} {A = A} (u-map-app {mo = Gn.m-initial {A = T}} d) r re er =
     ≡ˡ {A = A} (Comb.appC-sem {δ = δ} {A = Once.Spec.Type.Void} {B = T} (λ w → ⊥-elim w) (⊢initialᶜ ⊑-pure) (λ y → refl) (typ⇐ d) _ (Comb.arm {δ = δ} (typ⇐ d)) r)
        (RelGᵖ-bind {A = Once.Spec.Type.Void} {B = A} (bridgeᶠ⇐ d (reᵐ re) er) (λ {a} _ → ⊥-elim a))
   -- A polymorphic entry, at a kinded instance.
@@ -750,20 +929,25 @@ module _ {δ : DefSem} where
               (bridgeᶠ↦ dg (reᵐ re) er) (λ {g₁} {g₂} rg →
     return∞-R {x = λ a → bindM π (g₁ a) f₁} {y = λ a → g₂ a >>=∞ f₂}
              ((λ rv → RelGM-bind π {M} {B} (proj₁ rg rv) (proj₁ rf)) , (λ ra → RelS-bind (proj₂ rg ra) (proj₂ rf))))))
-  bridge↦ (u-id {A = T} {π = π}) r re er =
+  bridge↦ (u-map {mo = Gn.m-id {T = T} {π = π}}) r re er =
     return∞-R (subst (RelGV (T ⇒[ mk-kind Many π ] T) (λ a → returnM (pure-⊑ π) a))
                  (sym (liftFn-id {0} {T})) ((λ rv → RelGM-return (pure-⊑ π) {A = T} rv) , (λ ra → relS-ret ra)))
-  bridge↦ (u-fst {A = A} {B = B} {π = π}) r re er =
+  bridge↦ (u-map {mo = Gn.m-fst {A = A} {B = B} {π = π}}) r re er =
     return∞-R (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] A) (λ ab → returnM (pure-⊑ π) (proj₁ ab)))
                  (sym (liftFn-fst {0} {A} {B})) ((λ rv → RelGM-return (pure-⊑ π) {A = A} (proj₁ rv)) , (λ ra → relS-ret (proj₁ ra))))
-  bridge↦ (u-snd {A = A} {B = B} {π = π}) r re er =
+  bridge↦ (u-map {mo = Gn.m-snd {A = A} {B = B} {π = π}}) r re er =
     return∞-R (subst (RelGV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnM (pure-⊑ π) (proj₂ ab)))
                  (sym (liftFn-snd {0} {A} {B})) ((λ rv → RelGM-return (pure-⊑ π) {A = B} (proj₂ rv)) , (λ ra → relS-ret (proj₂ ra))))
-  bridge↦ (u-terminal {A = A} {π = π}) r re er =
+  bridge↦ (u-map {mo = Gn.m-terminal {A = A} {π = π}}) r re er =
     return∞-R (subst (RelGV (A ⇒[ mk-kind Many π ] Once.Spec.Type.Unit) (λ _ → returnM (pure-⊑ π) tt))
                  (sym (liftFn-terminal {0} {A})) ((λ _ → RelGM-return (pure-⊑ π) {A = Once.Spec.Type.Unit {0}} tt) , (λ _ → relS-ret tt)))
-  bridge↦ (u-initial {π = π}) r re er =
+  bridge↦ (u-map {mo = Gn.m-initial {π = π}}) r re er =
     return∞-R ((λ { {a = ()} }) , (λ { {()} }))
+  bridge↦ {L = L} (u-map {mo = Gn.m-apply {A = A} {B = B} {ρ = ρ} {π = π}}) {γ = γ} {dγ₂ = dγ₂} r re er = bare-apply {Γ = ctxOf L} {γ = γ} {dγ₂ = dγ₂} A B ρ π
+  bridge↦ {L = L} (u-map {mo = Gn.m-Out {F = F} {f = f} {π = π} wfF}) {γ = γ} {dγ₂ = dγ₂} r re er = bare-Out {Γ = ctxOf L} {γ = γ} {dγ₂ = dγ₂} wfF f π
+  bridge↦ (u-map {fd = ()} {mo = Gn.m-inl}) r re er
+  bridge↦ (u-map {fd = ()} {mo = Gn.m-inr}) r re er
+  bridge↦ (u-map {fd = ()} {mo = Gn.m-In _}) r re er
   -- D322: each arm converted into the join first.
   bridge↦ {A = Aₓ} {B = Bₓ} {π = πₓ} (u-case {A = A} {B = B} {C = C} {π = π} {j = J} df dg) r re er =
     ≡ˡ {A = Aₓ ⇒[ mk-kind Many πₓ ] Bₓ} (Comb.case-sem {δ = δ} (⊢coerce pf (typ↦ df)) (⊢coerce pg (typ↦ dg)) _ _
@@ -789,15 +973,16 @@ module _ {δ : DefSem} where
              {y = λ a → f₂ a >>=∞ λ b → fmap∞ (λ c → (b , c)) (g₂ a)}
              ((λ rv → RelGM-bind π {B} {B * C} (proj₁ rf rv) (λ {b₁} {b₂} rb → RelGM-fmap π {C} {B * C} (proj₁ rg rv) (λ rc → rb , rc)))
              , (λ ra → RelS-bind (proj₂ rf ra) λ rb → RelS-fmap (proj₂ rg ra) (λ rc → rb , rc))))))
-  bridge↦ {A = Aₓ} {B = Bₓ} {π = πₓ} (u-cata {F = F} {A = A} {π = π} {w = wfF} dalg) r re er =
-    ≡ˡ {A = Aₓ ⇒[ mk-kind Many πₓ ] Bₓ} (Comb.cata-sem′ {δ = δ} (pure-⊑ π) wfF (typ⇒ dalg) _ (Comb.arm {δ = δ} (typ⇒ dalg)) r)
+  bridge↦ {A = Aₓ} {B = Bₓ} {π = πₓ} (u-cata {F = F} {A₁ = A₁} {A = A} {π′ = π′} {π = π} {w = wfF} {p = p} {o = o} dalg) r re er =
+    ≡ˡ {A = Aₓ ⇒[ mk-kind Many πₓ ] Bₓ} (Comb.cata-sem′ {δ = δ} (pure-⊑ π) wfF (⊢coerce sp (typ⇒ dalg)) _
+                                         (λ e → cong ⟦ sp ⟧<:ᵛ (Comb.arm {δ = δ} (typ⇒ dalg) e)) r)
        (RelGᵖ-bind {A = ⟦ F ⟧F A ⇒[ mk-kind Many π ] A}
               {B = μ F ⇒[ mk-kind Many π ] A}
-              (bridgeᶠ⇒ dalg (rel-restrict (⊑ᵘ-*Many _) re) er) (λ {c₁} {c₂} ralg →
+              (RelGT-sub sp (bridgeᶠ⇒ dalg (rel-restrict (⊑ᵘ-*Many _) re) er)) (λ {c₁} {c₂} ralg →
     return∞-R {x = λ v → cata-semᵛ (pure-⊑ π) wfF c₁ v} {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {C = A} {F = F} wfF (return∞ c₂)) x}
              ((λ {a} {b} rv → cata-bridgeᵍ (pure-⊑ π) {wfF = wfF} c₁ (λ z → return∞ c₂ >>=∞ λ k → k z) (λ r → retargetʳ-R refl (proj₁ ralg r)) rv)
              , cata-clo-rel {A = A} {F = F} {π = π} wfF (proj₂ ralg))))
-
+    where sp = sub-arr {q = Many} p (<:-refl A) o
   -- …and as an arrow given its domain, converted to the given grade.
   bridge↦ {L = L} (u-poly {d = d} {A = A} {B = B} {ty = ty} {τ = τ} {r = rk} {ea = ea} {eb = eb} {o = o} {ok = ok}) {γ = γ} {dγ₂ = dγ₂} r re er =
     RelGT-sub (sub-arr {q = Many} (<:-refl A) (<:-refl B) o) (at (poly-inst d τ ty ea eb))

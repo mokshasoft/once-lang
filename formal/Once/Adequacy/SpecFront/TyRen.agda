@@ -25,7 +25,7 @@ module Once.Adequacy.SpecFront.TyRen (Σ : Signature) {s : ℕ} (S : Defs s) (nm
 open import Data.Fin using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst₂)
 
-open import Once.Spec.Grade using (Purity; mk-kind; Many; pure)
+open import Once.Spec.Grade using (Purity; mk-kind; Many; pure; act; eff; pureᶠ; actᶠ)
 open import Once.Metatheory.Types using (⊑π-refl)
 open import Once.Spec.Type
 open import Once.Spec.Type.Substitution using (respects-∘; ⟨⟩-∘)
@@ -135,8 +135,76 @@ module _ {m k : ℕ} (σ : TySub m k) where
   ⟪effApp⟫ : ∀ {n} π (f x : Tm S m n) → (effAppᶜ π f x) ⟪ σ ⟫ₜ ≡ effAppᶜ π (f ⟪ σ ⟫ₜ) (x ⟪ σ ⟫ₜ)
   ⟪effApp⟫ π f x = cong₂ (λ a b → lam _ _ _ (app a b)) (wk-⟪⟫ σ f) (wk-⟪⟫ σ x)
 
-  ⟪in⟫ : ∀ {n} F → (inᶜ {S = S} {n = n} F) ⟪ σ ⟫ₜ ≡ inᶜ (F ⟨ σ ⟩F)
-  ⟪in⟫ F = cong (λ X → lam X Many pure (roll (F ⟨ σ ⟩F) (var zero))) (⟦⟧F-⟨⟩ σ F (μ F))
+  ⟪in⟫ : ∀ {n} F π → (inᶜ {S = S} {n = n} F π) ⟪ σ ⟫ₜ ≡ inᶜ (F ⟨ σ ⟩F) π
+  ⟪in⟫ F π = cong (λ X → lam X Many π (roll (F ⟨ σ ⟩F) (var zero))) (⟦⟧F-⟨⟩ σ F (μ F))
+
+  ⟪appᵀ⟫ : ∀ {n} π (f x : Tm S m n) → (appᵀ π f x) ⟪ σ ⟫ₜ ≡ appᵀ π (f ⟪ σ ⟫ₜ) (x ⟪ σ ⟫ₜ)
+  ⟪appᵀ⟫ pure f x = refl
+  ⟪appᵀ⟫ act  f x = ⟪effApp⟫ act f x
+  ⟪appᵀ⟫ eff  f x = ⟪effApp⟫ eff f x
+
+  𝕋-⟨⟩ : ∀ π (B : Ty m) → (𝕋 π B) ⟨ σ ⟩ ≡ 𝕋 π (B ⟨ σ ⟩)
+  𝕋-⟨⟩ pure B = refl
+  𝕋-⟨⟩ act  B = refl
+  𝕋-⟨⟩ eff  B = refl
+
+------------------------------------------------------------------------
+-- The table's rows, at an instance that keeps the kinds
+------------------------------------------------------------------------
+
+module _ {m k : ℕ} (σ : TySub m k) {Δ : KCtx m} {Δ′ : KCtx k} (rσ : Respects Δ Δ′ σ) where
+  open import Once.Spec.Surface.Generators
+
+  const-ren : ∀ {n g c T t} → Constant {S = S} Δ {n = n} g c T t → Constant {S = S} Δ′ {n = n} g c (T ⟨ σ ⟩) (t ⟪ σ ⟫ₜ)
+  const-ren k-unit    = k-unit
+  const-ren k-toFloat = k-toFloat
+
+  -- (a row, retyped along equations of its domain, codomain and term)
+  mo≡ : ∀ {n g c A A′ π B B′} {t t′ : Tm S k n} → A ≡ A′ → B ≡ B′ → t ≡ t′
+      → Morphism {S = S} Δ′ {n = n} g c A π B t → Morphism {S = S} Δ′ {n = n} g c A′ π B′ t′
+  mo≡ refl refl refl mo = mo
+
+  morph-ren : ∀ {n g c A π B t} → Morphism {S = S} Δ {n = n} g c A π B t
+            → Morphism {S = S} Δ′ {n = n} g c (A ⟨ σ ⟩) π (B ⟨ σ ⟩) (t ⟪ σ ⟫ₜ)
+  morph-ren m-id       = m-id
+  morph-ren m-fst      = m-fst
+  morph-ren m-snd      = m-snd
+  morph-ren m-terminal = m-terminal
+  morph-ren m-inl      = m-inl
+  morph-ren m-inr      = m-inr
+  morph-ren m-initial  = m-initial
+  morph-ren (m-apply {ρ = pure}) = m-apply
+  morph-ren (m-apply {ρ = act})  = m-apply
+  morph-ren (m-apply {ρ = eff})  = m-apply
+  morph-ren (m-In {F = F} {π = π} w) =
+    mo≡ (sym (⟦⟧F-⟨⟩ σ F (μ F))) refl (sym (⟪in⟫ σ F π)) (m-In (wf-⟨⟩ σ rσ w))
+  morph-ren (m-Out {F = F} {f = pureᶠ} w) = mo≡ refl (sym (⟦⟧F-⟨⟩ σ F _)) refl (m-Out (wf-⟨⟩ σ rσ w))
+  morph-ren (m-Out {F = F} {f = actᶠ} w)  =
+    mo≡ refl (cong (λ X → _ ⇒[ _ ] X) (sym (⟦⟧F-⟨⟩ σ F _))) refl (m-Out (wf-⟨⟩ σ rσ w))
+
+  private
+    void-least : ∀ {a} {B : Ty a} → B <:ᶜ Void → B ≡ Void
+    void-least subᶜ-void = refl
+
+  -- A structure map's least codomain stays least at any instance: a row's
+  -- codomain is a function of its domain (`initial`'s least is `Void`).
+  least-⟨⟩ : ∀ {n g c A π B t} → FromDomain (kind g) → Morphism {S = S} Δ {n = n} g c A π B t
+           → (∀ {c′ B′} {t′ : Tm S m n} → Morphism {S = S} Δ {n = n} g c′ A π B′ t′ → B <:ᶜ B′)
+           → (∀ {c′ B′} {t′ : Tm S k n} → Morphism {S = S} Δ′ {n = n} g c′ (A ⟨ σ ⟩) π B′ t′ → B ⟨ σ ⟩ <:ᶜ B′)
+  least-⟨⟩ fd m-id       least m-id       = <:ᶜ-refl _
+  least-⟨⟩ fd m-fst      least m-fst      = <:ᶜ-refl _
+  least-⟨⟩ fd m-snd      least m-snd      = <:ᶜ-refl _
+  least-⟨⟩ fd m-terminal least m-terminal = subᶜ-unit
+  least-⟨⟩ fd m-initial  least m-initial with void-least (least (m-initial {A = Void}))
+  ... | refl = subᶜ-void
+  least-⟨⟩ fd (m-apply {ρ = pure}) least m-apply = <:ᶜ-refl _
+  least-⟨⟩ fd (m-apply {ρ = act})  least m-apply = <:ᶜ-refl _
+  least-⟨⟩ fd (m-apply {ρ = eff})  least m-apply = <:ᶜ-refl _
+  least-⟨⟩ fd (m-Out {F = F} {f = pureᶠ} w) least (m-Out _) =
+    subst (_<:ᶜ ⟦ F ⟨ σ ⟩F ⟧F (ν (F ⟨ σ ⟩F) pureᶠ)) (sym (⟦⟧F-⟨⟩ σ F (ν F pureᶠ))) (<:ᶜ-refl _)
+  least-⟨⟩ fd (m-Out {F = F} {f = actᶠ} w)  least (m-Out _) =
+    subst (_<:ᶜ (Unit ⇒[ mk-kind Many act ] ⟦ F ⟨ σ ⟩F ⟧F (ν (F ⟨ σ ⟩F) actᶠ)))
+          (cong (λ X → Unit ⇒[ mk-kind Many act ] X) (sym (⟦⟧F-⟨⟩ σ F (ν F actᶠ)))) (<:ᶜ-refl _)
 
 ------------------------------------------------------------------------
 -- A renumbering of the type variables
@@ -200,13 +268,15 @@ module Bij {m k : ℕ} (σ : Fin m → Fin k) (σ⁻ : Fin k → Fin m)
   dom : ∀ {n} {L : U.Locals m n} {e A π B t} → U._⊢_⇐_⇒[_]↦_↝_ Δ L e A π B t
       → U._⊢_⇐_⇒[_]↦_↝_ Δ′ (lt L) e (A ⟨ sv ⟩) π (B ⟨ sv ⟩) (t ⟪ sv ⟫ₜ)
 
+  open import Once.Spec.Surface.Generators using (final-ν; final-T∞)
+
+
   syn (U.s-int i)                 = U.s-int i
-  syn (U.s-float sg i f l)     = U.s-float sg i f l
+  syn (U.s-float sg i f l)        = U.s-float sg i f l
   syn U.s-unit                    = U.s-unit
-  syn U.s-unit-g                  = U.s-unit-g
-  syn U.s-toFloat                 = U.s-toFloat
+  syn (U.s-const c)               = U.s-const (const-ren sv rσ c)
   syn (U.s-var v)                 = U.s-var (lv v)
-  syn (U.s-sigop {t = t} g M)     = s≡ (sym (⌜⌝ᵈ-⟨⟩ sv t)) refl (U.s-sigop g M)
+  syn (U.s-sigop {t = t} M)       = s≡ (sym (⌜⌝ᵈ-⟨⟩ sv t)) refl (U.s-sigop M)
   syn (U.s-def d e τ z)           = s≡ (sym (⟨⟩-∘′ (type (S !! d)) τ)) refl (U.s-def d e _ z)
   syn (U.s-annot {T = T} D)       = s≡ (sym (↑-ren T)) refl (U.s-annot (c≡ (↑-ren T) refl (chk D)))
   syn (U.s-pair D E)              = U.s-pair (syn D) (syn E)
@@ -216,31 +286,16 @@ module Bij {m k : ℕ} (σ : Fin m → Fin k) (σ⁻ : Fin k → Fin m)
   syn (U.s-case ql qr D E F j)    = U.s-case ql qr (syn D) (syn E) (syn F) (⊔-ren j)
   syn (U.s-binop {op = op} {A = int}   h D E) = s≡ (sym (symCod-⟨⟩ sv int (shape (binSym op)))) refl (U.s-binop h (syn D) (syn E))
   syn (U.s-binop {op = op} {A = float} h D E) = s≡ (sym (symCod-⟨⟩ sv float (shape (binSym op)))) refl (U.s-binop h (syn D) (syn E))
-  syn (U.s-id-app D)              = U.s-id-app (syn D)
-  syn (U.s-fst-app D)             = U.s-fst-app (syn D)
-  syn (U.s-snd-app D)             = U.s-snd-app (syn D)
-  syn (U.s-terminal-app D)        = U.s-terminal-app (syn D)
-  syn (U.s-apply-app D)           = U.s-apply-app (syn D)
-  syn (U.s-apply-eff-app g D)     = U.s-apply-eff-app g (syn D)
-  syn (U.s-Out-app {F = F} w D)   = s≡ (sym (⟦⟧F-⟨⟩ sv F _)) refl (U.s-Out-app (wf-⟨⟩ sv rσ w) (syn D))
-  syn (U.s-Out-act-app {F = F} w D) =
-    s≡ (cong (λ X → _ ⇒[ _ ] X) (sym (⟦⟧F-⟨⟩ sv F _))) refl (U.s-Out-act-app (wf-⟨⟩ sv rσ w) (syn D))
-  syn (U.s-app h D E)             = U.s-app h (syn D) (chk E)
-  syn (U.s-effApp {π = π} {tf = tf} {tx = tx} h g D E) =
-    s≡ refl (sym (⟪effApp⟫ sv π tf tx)) (U.s-effApp h g (syn D) (chk E))
-  syn (U.s-app-spine h D E)       = U.s-app-spine h (syn D) (dom E)
+  syn (U.s-app {B = B} {π = π} {tf = tf} {tx = tx} pc ch D E) =
+    s≡ (sym (𝕋-⟨⟩ sv π B)) (sym (⟪appᵀ⟫ sv π tf tx)) (U.s-app pc ch (syn D) (chk E))
+  syn (U.s-app-spine ch D E)      = U.s-app-spine ch (syn D) (dom E)
 
-  chk U.c-id                      = U.c-id
-  chk U.c-fst                     = U.c-fst
-  chk U.c-snd                     = U.c-snd
-  chk U.c-terminal                = U.c-terminal
-  chk U.c-initial                 = U.c-initial
-  chk U.c-inl                     = U.c-inl
-  chk U.c-inr                     = U.c-inr
-  chk (U.c-compose-g {A = A} {π = π} {tf = tf} {tg = tg} D E) =
-    c≡ refl (sym (⟪compose⟫ sv A π tf tg)) (U.c-compose-g (dom D) (chk E))
-  chk (U.c-compose-f {A = A} {B = B} {C = C} {C′ = C′} {π = π} {π′ = π′} {tf = tf} {tg = tg} D s E) =
-    c≡ refl (sym (⟪compose⟫ sv A π (coerce (B U.⇒⟨ π′ ⟩ C′) (B U.⇒⟨ π ⟩ C) tf) tg)) (U.c-compose-f (syn D) (<:-⟨⟩ sv s) (chk E))
+  chk (U.c-map mo)                = U.c-map (morph-ren sv rσ mo)
+  chk (U.c-map-app fc mo D)       = U.c-map-app fc (morph-ren sv rσ mo) (chk D)
+  chk (U.c-compose-g {A = A} {π = π} {tf = tf} {tg = tg} df D E) =
+    c≡ refl (sym (⟪compose⟫ sv A π tf tg)) (U.c-compose-g df (dom D) (chk E))
+  chk (U.c-compose-f {A = A} {B = B} {C = C} {C′ = C′} {π = π} {π′ = π′} {tf = tf} {tg = tg} ndf D s E) =
+    c≡ refl (sym (⟪compose⟫ sv A π (coerce (B U.⇒⟨ π′ ⟩ C′) (B U.⇒⟨ π ⟩ C) tf) tg)) (U.c-compose-f ndf (syn D) (<:-⟨⟩ sv s) (chk E))
   chk (U.c-case {A = A} {B = B} {π = π} {tf = tf} {tg = tg} D E) =
     c≡ refl (sym (⟪case⟫ sv A B π tf tg)) (U.c-case (chk D) (chk E))
   chk (U.c-pair {A = A} {π = π} {tf = tf} {tg = tg} D E) =
@@ -248,20 +303,13 @@ module Bij {m k : ℕ} (σ : Fin m → Fin k) (σ⁻ : Fin k → Fin m)
   chk (U.c-curry D)               = U.c-curry (chk D)
   chk (U.c-cata {F = F} {A = A} w D) =
     U.c-cata (wf-⟨⟩ sv rσ w) (c≡ (cong (λ X → X ⇒[ _ ] _) (⟦⟧F-⟨⟩ sv F A)) refl (chk D))
-  chk (U.c-ana {F = F} {A = A} {π₀ = π₀} {t = t} le w D) =
+  chk (U.c-ana {A = A} {π₀ = π₀} {t = t} (final-ν {F = F} le w) D) =
     c≡ refl (sym (⟪ana⟫ sv F A π₀ t))
-       (U.c-ana le (wf-⟨⟩ sv rσ w) (c≡ (cong (λ X → _ ⇒[ _ ] X) (⟦⟧F-⟨⟩ sv F A)) refl (chk D)))
-  chk (U.c-loop D)                = U.c-loop (chk D)
-  chk (U.c-sub D s)               = U.c-sub (syn D) (<:-⟨⟩ sv s)
+       (U.c-ana (final-ν le (wf-⟨⟩ sv rσ w)) (c≡ (cong (λ X → _ ⇒[ _ ] X) (⟦⟧F-⟨⟩ sv F A)) refl (chk D)))
+  chk (U.c-ana final-T∞ D)        = U.c-ana final-T∞ (chk D)
+  chk (U.c-sub noc D s)           = U.c-sub noc (syn D) (<:-⟨⟩ sv s)
   chk (U.c-lam D)                 = U.c-lam (chk D)
   chk (U.c-pair-lit D E)          = U.c-pair-lit (chk D) (chk E)
-  chk (U.c-In-app {F = F} {t = t} w D) =
-    c≡ refl (cong (λ x → app x (t ⟪ sv ⟫ₜ)) (sym (⟪in⟫ sv F)))
-       (U.c-In-app (wf-⟨⟩ sv rσ w) (c≡ (⟦⟧F-⟨⟩ sv F (μ F)) refl (chk D)))
-  chk (U.c-apply-app D)           = U.c-apply-app (syn D)
-  chk (U.c-inl-app D)             = U.c-inl-app (chk D)
-  chk (U.c-inr-app D)             = U.c-inr-app (chk D)
-  chk (U.c-initial-app D)         = U.c-initial-app (chk D)
   chk (U.c-poly d e p τ r)        = c≡ (sym (⟨⟩-∘′ (type (S !! d)) τ)) refl (U.c-poly d e p _ (respects-∘ r rσ))
 
   dom (U.d-infer D s g)           = U.d-infer (syn D) (<:-⟨⟩ sv s) g
@@ -269,16 +317,14 @@ module Bij {m k : ℕ} (σ : Fin m → Fin k) (σ⁻ : Fin k → Fin m)
     U.d-poly d e p eq occ _ (respects-∘ r rσ) (trans (sym (⟨⟩-∘′ sd τ)) (cong (_⟨ sv ⟩) ea))
              (trans (sym (⟨⟩-∘′ sc τ)) (cong (_⟨ sv ⟩) eb)) g
   dom (U.d-lam D)                 = U.d-lam (syn D)
+  dom (U.d-map fd mo least)       = U.d-map fd (morph-ren sv rσ mo) (least-⟨⟩ sv rσ fd mo least)
   dom (U.d-compose {A = A} {π = π} {tf = tf} {tg = tg} D E) =
     d≡ refl (sym (⟪compose⟫ sv A π tf tg)) (U.d-compose (dom D) (dom E))
-  dom U.d-id                      = U.d-id
-  dom U.d-fst                     = U.d-fst
-  dom U.d-snd                     = U.d-snd
-  dom U.d-terminal                = U.d-terminal
-  dom U.d-initial                 = U.d-initial
   dom (U.d-case {A = A} {B = B} {Cf = Cf} {Cg = Cg} {C = C} {π = π} {tf = tf} {tg = tg} D E j) =
     d≡ refl (sym (⟪case⟫ sv A B π (coerce (A U.⇒⟨ π ⟩ Cf) (A U.⇒⟨ π ⟩ C) tf) (coerce (B U.⇒⟨ π ⟩ Cg) (B U.⇒⟨ π ⟩ C) tg))) (U.d-case (dom D) (dom E) (⊔-ren j))
   dom (U.d-pair {A = A} {π = π} {tf = tf} {tg = tg} D E) =
     d≡ refl (sym (⟪pair⟫ sv A π tf tg)) (U.d-pair (dom D) (dom E))
-  dom (U.d-cata {F = F} {A = A} w D) =
-    U.d-cata (wf-⟨⟩ sv rσ w) (s≡ (cong (λ X → X ⇒[ _ ] _) (⟦⟧F-⟨⟩ sv F A)) refl (syn D))
+  dom (U.d-cata {F = F} {A₁ = A₁} {A = A} {π′ = π′} {π = π} {t = t} w D p o) =
+    d≡ refl (cong (λ X → cataᶜ (F ⟨ sv ⟩F) π (coerce (A₁ ⟨ sv ⟩ ⇒[ mk-kind Many π′ ] A ⟨ sv ⟩) (X ⇒[ mk-kind Many π ] A ⟨ sv ⟩) (t ⟪ sv ⟫ₜ)))
+                   (sym (⟦⟧F-⟨⟩ sv F A)))
+       (U.d-cata (wf-⟨⟩ sv rσ w) (syn D) (subst (_<: A₁ ⟨ sv ⟩) (⟦⟧F-⟨⟩ sv F A) (<:-⟨⟩ sv p)) o)

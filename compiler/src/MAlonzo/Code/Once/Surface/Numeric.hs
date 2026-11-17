@@ -59,7 +59,7 @@ du_numBin_22 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_10
 du_numBin_22 v0 v1 v2 v3 v4 v5 v6
   = coe
-      MAlonzo.Code.Once.Surface.Syntax.C_num_216 v3
+      MAlonzo.Code.Once.Surface.Syntax.C_num_218 v3
       (MAlonzo.Code.Once.Spec.Surface.Operator.d_theory_60
          (coe MAlonzo.Code.Once.Spec.Surface.Operator.d_binSym_68 (coe v2)))
       (MAlonzo.Code.Once.Spec.Surface.Operator.d_shape_62
@@ -67,4 +67,4 @@ du_numBin_22 v0 v1 v2 v3 v4 v5 v6
       v4
       (MAlonzo.Code.Once.Spec.Surface.Operator.d_symbol_64
          (coe MAlonzo.Code.Once.Spec.Surface.Operator.d_binSym_68 (coe v2)))
-      (coe MAlonzo.Code.Once.Surface.Syntax.C_pair_86 v0 v1 v5 v6)
+      (coe MAlonzo.Code.Once.Surface.Syntax.C_pair_88 v0 v1 v5 v6)

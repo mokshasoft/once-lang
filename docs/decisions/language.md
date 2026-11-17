@@ -232,7 +232,8 @@ entry updates the rule it changes here, in the same commit.
   round any `Act A (B + A)` — a finite block that ends with a `B` or the next
   state (core `iter`, its own former only because `B` need not be
   first-order). No guard, no request functor, no new type; against `ν F f`
-  the same `ana` builds a stream. A round never contains a loop. (D318 ← D317)
+  the same `ana` builds a stream. A round never contains a loop. The Spec
+  names it `iterate` (`iterate-unroll`, `silentServer`). (D416, D318 ← D317)
 - **A silent loop is correct and useless**: a round may perform no event; a
   loop of such rounds is never observed doing anything (it waits for nothing,
   so it is not busy-waiting). The compiler warns when it emits one. (D317)
@@ -323,6 +324,18 @@ entry updates the rule it changes here, in the same commit.
   ordinary terms of arrow type in the ambient context and may capture. A
   value → arrow lift is always written (`\_ -> e`), never inserted. (D127 ←
   D126, D063, D056, D018)
+- **One rule per form and mode**: the generators are a table (a constant, a
+  structure map with the side that fixes it, or a combinator), every
+  structure map exists at every grade, and the combinators' rules are their
+  universal properties. Which rule types an expression is read from its form
+  and mode alone, and the Spec claims it (`one-rule⇒/⇐/↦`). (D413 ← D316)
+- **`compose`'s middle object comes from `g`'s form**: `g`'s least codomain
+  from the domain when `g` has a domain-given form, `f`'s synthesized domain
+  otherwise — `case`'s answer (least codomains, no inference across arms)
+  applied to `compose`. A domain-given `cata` is at its algebra's least
+  codomain, the algebra coerced. (D414 ← D407, D230)
+- **A generator is syntax, not a name**: resolution gives the generator
+  itself; it is in no module's namespace (`x@Generators` is rejected). (D415)
 - **The spine mode**: argument-driven application is an inference; a head
   whose output its input does not determine needs an annotation. (D230)
 - **`let` and a top-level definition are interderivable**; a defined name

@@ -23,6 +23,7 @@ import qualified MAlonzo.Code.Once.Spec.Float.Decimal
 import qualified MAlonzo.Code.Once.Spec.Float.Value
 import qualified MAlonzo.Code.Once.Spec.Grade
 import qualified MAlonzo.Code.Once.Spec.Name
+import qualified MAlonzo.Code.Once.Spec.Surface.Generators
 import qualified MAlonzo.Code.Once.Spec.Surface.Operator
 import qualified MAlonzo.Code.Once.Spec.Type
 
@@ -51,28 +52,29 @@ data T_Expr_44
     C_RQualified_48 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_RResolved_50 MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 |
-    C_RApp_52 T_Expr_44 T_Expr_44 |
-    C_RLam_54 MAlonzo.Code.Agda.Builtin.String.T_String_6 T_Expr_44 |
-    C_RLet_56 MAlonzo.Code.Agda.Builtin.String.T_String_6 T_Expr_44
+    C_RGen_52 MAlonzo.Code.Once.Spec.Surface.Generators.T_Gen_8 |
+    C_RApp_54 T_Expr_44 T_Expr_44 |
+    C_RLam_56 MAlonzo.Code.Agda.Builtin.String.T_String_6 T_Expr_44 |
+    C_RLet_58 MAlonzo.Code.Agda.Builtin.String.T_String_6 T_Expr_44
               T_Expr_44 |
-    C_RPair_58 T_Expr_44 T_Expr_44 |
-    C_RDestruct_60 T_Expr_44
+    C_RPair_60 T_Expr_44 T_Expr_44 |
+    C_RDestruct_62 T_Expr_44
                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_Expr_44
                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_Expr_44 |
-    C_RUnit_62 | C_RInt_64 Integer |
-    C_RFloat_66 MAlonzo.Code.Once.Spec.Float.Value.T_Sign_8 Integer
+    C_RUnit_64 | C_RInt_66 Integer |
+    C_RFloat_68 MAlonzo.Code.Once.Spec.Float.Value.T_Sign_8 Integer
                 Integer Integer |
-    C_RAnnot_68 T_Expr_44 MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
-    C_RBinOp_70 MAlonzo.Code.Once.Spec.Surface.Operator.T_BinOp_36
+    C_RAnnot_70 T_Expr_44 MAlonzo.Code.Once.Spec.Type.T_Ty_8 |
+    C_RBinOp_72 MAlonzo.Code.Once.Spec.Surface.Operator.T_BinOp_36
                 T_Expr_44 T_Expr_44 |
-    C_RNeg_72 T_Expr_44
+    C_RNeg_74 T_Expr_44
 -- Once.Spec.Surface.Syntax.signedDecimal
-d_signedDecimal_74 ::
+d_signedDecimal_76 ::
   MAlonzo.Code.Once.Spec.Float.Value.T_Sign_8 ->
   Integer ->
   Integer ->
   Integer -> MAlonzo.Code.Once.Spec.Float.Decimal.T_Decimal_8
-d_signedDecimal_74 v0 v1 v2 v3
+d_signedDecimal_76 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Once.Spec.Float.Decimal.C_'10216'_'10217'_'47'10'94'__22
       (coe v0)
@@ -86,42 +88,42 @@ d_signedDecimal_74 v0 v1 v2 v3
          (coe v2))
       (coe v3)
 -- Once.Spec.Surface.Syntax.Import
-d_Import_84 = ()
-data T_Import_84
-  = C_mkImport_94 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_Import_86 = ()
+data T_Import_86
+  = C_mkImport_96 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
                   (Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6)
 -- Once.Spec.Surface.Syntax.Import.path
-d_path_90 ::
-  T_Import_84 -> [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-d_path_90 v0
+d_path_92 ::
+  T_Import_86 -> [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_path_92 v0
   = case coe v0 of
-      C_mkImport_94 v1 v2 -> coe v1
+      C_mkImport_96 v1 v2 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Surface.Syntax.Import.alias
-d_alias_92 ::
-  T_Import_84 -> Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_alias_92 v0
+d_alias_94 ::
+  T_Import_86 -> Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_alias_94 v0
   = case coe v0 of
-      C_mkImport_94 v1 v2 -> coe v2
+      C_mkImport_96 v1 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Spec.Surface.Syntax.Decl
-d_Decl_96 = ()
-data T_Decl_96
-  = C_DTypeSig_98 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                  T_PolyType_10 |
-    C_DFunDef_100 MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_Decl_98 = ()
+data T_Decl_98
+  = C_DTypeSig_100 MAlonzo.Code.Agda.Builtin.String.T_String_6
+                   T_PolyType_10 |
+    C_DFunDef_102 MAlonzo.Code.Agda.Builtin.String.T_String_6
                   T_Expr_44 |
-    C_DSignature_102 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_DSignature_104 MAlonzo.Code.Agda.Builtin.String.T_String_6
                      T_PolyType_10 |
-    C_DTypeAlias_104 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_DTypeAlias_106 MAlonzo.Code.Agda.Builtin.String.T_String_6
                      [MAlonzo.Code.Agda.Builtin.String.T_String_6] T_PolyType_10 |
-    C_DImport_106 T_Import_84
+    C_DImport_108 T_Import_86
 -- Once.Spec.Surface.Syntax.Module
-d_Module_108 = ()
-newtype T_Module_108 = C_mkModule_114 [T_Decl_96]
+d_Module_110 = ()
+newtype T_Module_110 = C_mkModule_116 [T_Decl_98]
 -- Once.Spec.Surface.Syntax.Module.decls
-d_decls_112 :: T_Module_108 -> [T_Decl_96]
-d_decls_112 v0
+d_decls_114 :: T_Module_110 -> [T_Decl_98]
+d_decls_114 v0
   = case coe v0 of
-      C_mkModule_114 v1 -> coe v1
+      C_mkModule_116 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError

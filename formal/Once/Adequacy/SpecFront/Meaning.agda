@@ -35,7 +35,7 @@ open import Once.Adequacy.SpecFront.SigFacts using (sig-in)
 open import Once.Adequacy.SpecFront.Words using (key-word)
 open import Once.Adequacy.SpecFront.Denote fmt using (Denoted)
 
-module _ {mm′ ds′ es} {mt : ModTele emptyScope es} {mi : MainIn mt} (D : Denoted mm′ ds′ mt mi) where
+module _ {mm′ ds′ es dist} {mt : ModTele emptyScope es} {mi : MainIn mt} (D : Denoted mm′ ds′ dist mt mi) where
   open Denoted D
 
   -- the Spec program the module denotes
@@ -47,7 +47,7 @@ module _ {mm′ ds′ es} {mt : ModTele emptyScope es} {mi : MainIn mt} (D : Den
   view = λ m → sig-in Σₛ (key-word keysW) (subst (_ ∈_) sig-eq m)
 
   -- The compiler's run of its core program has the Spec's trace.
-  same-trace : ∀ J → CB.coreTr fmt Σₛ (MP.toProgram₀ Σₛ mt mi view) J ≈ᵗ⟨ _≡_ ⟩ CoreProgram.behaviour Σₛ fmt progS J
+  same-trace : ∀ J → CB.coreTr fmt Σₛ (MP.toProgram₀ Σₛ dist mt mi view) J ≈ᵗ⟨ _≡_ ⟩ CoreProgram.behaviour Σₛ fmt progS J
   same-trace J =
     subst (λ P → CB.coreTr fmt Σₛ P J ≈ᵗ⟨ _≡_ ⟩ CoreProgram.behaviour Σₛ fmt progS J)
           (sym built)

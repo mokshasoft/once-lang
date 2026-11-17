@@ -28,13 +28,14 @@ open import Data.List using (List; []; _∷_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
-open import Once.Spec.Name using (CanonicalName; canonical; NotGenerator)
+open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 open import Once.Spec.Type using (Type; KCtx)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Core.Decl using (declS)
 import Once.Spec.Core.Syntax as SC
+import Once.Spec.Surface.Generators as Gn
 
 module Once.Adequacy.SpecFront.Annotate
   (Σ : Signature) {s : ℕ} (S : SC.Defs s) (nm : Fin s → CanonicalName)
@@ -43,7 +44,7 @@ module Once.Adequacy.SpecFront.Annotate
   (ok-def : ∀ {c} (d : Fin s) → nm d ≡ c → c ≢ canonical ("main" ∷ []) → Ok d)
   -- a declaration of Σ is an honest, concrete FFI declaration of the checker's signature
   -- (its declaration, at the type the Spec reads)
-  (ok-sig : ∀ {c t} → NotGenerator c → (c ∶ t) ∈ Σ
+  (ok-sig : ∀ {c t} → (c ∶ t) ∈ Σ
           → Σ[ T ∈ Type ] ((c ∶ declS T) ∈ Σ) × (⌜ t ⌝ᵈ ≡ ⌜ declS T ⌝ᵈ) × OkS c T × IsConcrete T × HonestFFI T)
   where
 
@@ -64,7 +65,7 @@ open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Core.Typing Σ S using (_⊩_⊢[_]_∷_!_)
 import Once.Spec.Surface.Typing Σ S nm as SU
 open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
-open import Once.Adequacy.SpecFront.Expr using (RX; x-local; x-res; x-lam; x-let; x-destruct; x-int; x-float; x-unit;
+open import Once.Adequacy.SpecFront.Expr using (RX; x-local; x-res; x-gen; x-lam; x-let; x-destruct; x-int; x-float; x-unit;
   x-annot; x-pair; x-neg; x-binop; x-app)
 open import Once.Adequacy.SpecFront.CoreInv Σ S {Δ = Δ}
 open import Once.Adequacy.SpecFront.GenInv Σ S {Δ = Δ}
@@ -204,11 +205,33 @@ private
 private
   module _ {n} {L : SU.Locals m n} where
 
-    sigop-at : ∀ {c t Φ} (ng : NotGenerator c)
+    sigop-at : ∀ {c t Φ}
              → Σ[ T ∈ Type ] ((c ∶ declS T) ∈ Σ) × (⌜ t ⌝ᵈ ≡ ⌜ declS T ⌝ᵈ) × OkS c T × IsConcrete T × HonestFFI T
              → A⇒ L (Once.Spec.Surface.Syntax.RResolved c) ⌜ t ⌝ᵈ Φ
-    sigop-at {c} {Φ = Φ} ng (T , mem , e , ok , k , h) =
-      subst (λ Z → A⇒ L (Once.Spec.Surface.Syntax.RResolved c) Z Φ) (sym e) (a⇒ (SU.s-sigop ng mem) (u-sigop {ok = ok} k h) (z⊑ Φ))
+    sigop-at {c} {Φ = Φ} (T , mem , e , ok , k , h) =
+      subst (λ Z → A⇒ L (Once.Spec.Surface.Syntax.RResolved c) Z Φ) (sym e) (a⇒ (SU.s-sigop mem) (u-sigop {ok = ok} k h) (z⊑ Φ))
+
+  -- a structure map's core typing is the table's arrow
+  morph-ty : ∀ {n} {Γ : SCx.Ctx m n} {Φ X π₀ g k A π B t} → Gn.Morphism Δ g k A π B t
+           → Δ ⊩ Γ ⊢[ Φ ] t ∷ X ! π₀ → X ≡ A ⇒⟨ π ⟩ B
+  morph-ty Gn.m-id d       = idᶜ-ty d
+  morph-ty Gn.m-fst d      = fstᶜ-ty d
+  morph-ty Gn.m-snd d      = sndᶜ-ty d
+  morph-ty Gn.m-terminal d = terminalᶜ-ty d
+  morph-ty Gn.m-inl d      = inlᶜ-ty d
+  morph-ty Gn.m-inr d      = inrᶜ-ty d
+  morph-ty Gn.m-initial d  = initialᶜ-ty d
+  morph-ty (Gn.m-apply {ρ = pure}) d = applyᶜ-ty d
+  morph-ty (Gn.m-apply {ρ = act})  d = applyEffᶜ-ty d
+  morph-ty (Gn.m-apply {ρ = eff})  d = applyEffᶜ-ty d
+  morph-ty (Gn.m-In w) d   = inᶜ-ty d
+  morph-ty (Gn.m-Out {f = Once.Spec.Grade.pureᶠ} w) d = outᶜ-ty d
+  morph-ty (Gn.m-Out {f = Once.Spec.Grade.actᶠ} w)  d = outActᶜ-ty d
+
+  const-ty : ∀ {n} {Γ : SCx.Ctx m n} {Φ X π₀ g k T t} → Gn.Constant Δ g k T t
+           → Δ ⊩ Γ ⊢[ Φ ] t ∷ X ! π₀ → X ≡ T
+  const-ty Gn.k-unit d    = inv-unit d
+  const-ty Gn.k-toFloat d = toFloatᶜ-ty d
 
 ------------------------------------------------------------------------
 -- The annotation
@@ -232,10 +255,10 @@ mutual
   ann⇒ (SU.s-int i) x-int {Φ} T = inv-lit-int T , a⇒ (SU.s-int i) u-int (z⊑ Φ)
   ann⇒ (SU.s-float sg i f l) x-float {Φ} T = inv-lit-float T , a⇒ (SU.s-float sg i f l) u-float (z⊑ Φ)
   ann⇒ SU.s-unit x-unit {Φ} T = inv-unit T , a⇒ SU.s-unit u-unit (z⊑ Φ)
-  ann⇒ SU.s-unit-g (x-res _) {Φ} T = inv-unit T , a⇒ SU.s-unit-g u-unit-g (z⊑ Φ)
+  ann⇒ (SU.s-const c) x-gen {Φ} T = const-ty c T , a⇒ (SU.s-const c) u-const (z⊑ Φ)
   ann⇒ (SU.s-var v) (x-local _) T =
     trans (proj₁ (inv-var T)) (lookup-at v) , a⇒ (SU.s-var v) u-var (proj₂ (inv-var T))
-  ann⇒ (SU.s-sigop {t = t} ng mem) (x-res _) T = inv-sigop T , sigop-at {t = t} ng (ok-sig ng mem)
+  ann⇒ (SU.s-sigop {t = t} mem) (x-res _) T = inv-sigop T , sigop-at {t = t} (ok-sig mem)
   ann⇒ (SU.s-def d e τ ar) (x-res nm′) {Φ} T = inv-ref T , a⇒ (SU.s-def d e τ ar) (u-def {ok = ok-def d e nm′}) (z⊑ Φ)
   ann⇒ (SU.s-annot d) (x-annot x) T =
     let (eq , a⇐ der u w) = ann⇐ d x T in eq , a⇒ (SU.s-annot der) (u-annot u) w
@@ -246,7 +269,6 @@ mutual
   ann⇒ (SU.s-neg h d) (x-neg x) T =
     let r = inv-prim T ; (_ , a⇒ der u w) = ann⇒ d x (IPrim.dt r)
     in IPrim.ty r , a⇒ (SU.s-neg h der) (u-neg u) (⊑ᵘ-trans w (IPrim.use r))
-  ann⇒ SU.s-toFloat (x-res _) {Φ} T = toFloatᶜ-ty T , a⇒ SU.s-toFloat u-toFloat (z⊑ Φ)
   -- the binder takes the quantity its body uses
   ann⇒ (SU.s-let q d₁ d₂) (x-let x₁ x₂) T =
     let r = inv-let T ; (e₁ , a⇒ D₁ u₁ w₁) = ann⇒ d₁ x₁ (ILet.de r)
@@ -280,89 +302,68 @@ mutual
         (_ , a⇒ D₁ u₁ w₁) = ann⇒ d₁ x₁ (IPair.da p) ; (_ , a⇒ D₂ u₂ w₂) = ann⇒ d₂ x₂ (IPair.db p)
     in IPrim.ty r
        , a⇒ (SU.s-binop h D₁ D₂) (u-binop u₁ u₂) (⊑ᵘ-trans (⊑ᵘ-+ w₁ w₂) (⊑ᵘ-trans (IPair.use p) (IPrim.use r)))
-  ann⇒ (SU.s-id-app d) (x-app (x-res _) x) T =
-    let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (idᶜ-ty (IApp.df a)) ; (_ , a⇒ D u w) = ann⇒ d x (IApp.dx a)
-    in eX , a⇒ (SU.s-id-app D) (u-id-app u) (gen⊑ w eq (IApp.use a))
-  ann⇒ (SU.s-fst-app d) (x-app (x-res _) x) T =
-    let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (fstᶜ-ty (IApp.df a)) ; (_ , a⇒ D u w) = ann⇒ d x (IApp.dx a)
-    in eX , a⇒ (SU.s-fst-app D) (u-fst-app u) (gen⊑ w eq (IApp.use a))
-  ann⇒ (SU.s-snd-app d) (x-app (x-res _) x) T =
-    let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (sndᶜ-ty (IApp.df a)) ; (_ , a⇒ D u w) = ann⇒ d x (IApp.dx a)
-    in eX , a⇒ (SU.s-snd-app D) (u-snd-app u) (gen⊑ w eq (IApp.use a))
-  ann⇒ (SU.s-terminal-app d) (x-app (x-res _) x) T =
-    let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (terminalᶜ-ty (IApp.df a)) ; (_ , a⇒ D u w) = ann⇒ d x (IApp.dx a)
-    in eX , a⇒ (SU.s-terminal-app D) (u-terminal-app u) (gen⊑ w eq (IApp.use a))
-  ann⇒ (SU.s-apply-app d) (x-app (x-res _) x) T =
-    let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (applyᶜ-ty (IApp.df a)) ; (_ , a⇒ D u w) = ann⇒ d x (IApp.dx a)
-    in eX , a⇒ (SU.s-apply-app D) (u-apply-app u) (gen⊑ w eq (IApp.use a))
-  ann⇒ (SU.s-apply-eff-app g d) (x-app (x-res _) x) T =
-    let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (applyEffᶜ-ty (IApp.df a)) ; (_ , a⇒ D u w) = ann⇒ d x (IApp.dx a)
-    in eX , a⇒ (SU.s-apply-eff-app g D) (u-apply-eff-app u) (gen⊑ w eq (IApp.use a))
-  ann⇒ (SU.s-Out-app wf d) (x-app (x-res _) x) T =
-    let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (outᶜ-ty (IApp.df a)) ; (_ , a⇒ D u w) = ann⇒ d x (IApp.dx a)
-    in eX , a⇒ (SU.s-Out-app wf D) (u-Out-app u) (gen⊑ w eq (IApp.use a))
-  ann⇒ (SU.s-Out-act-app wf d) (x-app (x-res _) x) T =
-    let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (outActᶜ-ty (IApp.df a)) ; (_ , a⇒ D u w) = ann⇒ d x (IApp.dx a)
-    in eX , a⇒ (SU.s-Out-act-app wf D) (u-Out-act-app u) (gen⊑ w eq (IApp.use a))
-  ann⇒ (SU.s-app ns df dx) (x-app xf xx) T =
+  -- an application, at the arrow's grade: an application or a suspension
+  ann⇒ (SU.s-app {π = pure} pc ch df dx) (x-app xf xx) T =
     let a = inv-app T ; (ef , a⇒ DF uF wF) = ann⇒ df xf (IApp.df a) ; (_ , eq , _ , eX) = arr-inj ef
         (_ , a⇐ DX uX wX) = ann⇐ dx xx (IApp.dx a)
-    in eX , a⇒ (SU.s-app ns DF DX) (u-app uF uX) (⊑ᵘ-trans (app⊑ wF wX (≤q-≡ (sym eq))) (IApp.use a))
-  ann⇒ (SU.s-effApp ns g df dx) (x-app xf xx) T =
+    in eX , a⇒ (SU.s-app pc ch DF DX) (u-app uF uX) (⊑ᵘ-trans (app⊑ wF wX (≤q-≡ (sym eq))) (IApp.use a))
+  ann⇒ (SU.s-app {π = act} pc ch df dx) (x-app xf xx) T =
     let (A₁ , q , πa , B₀ , πf , πx , Φf , Φx , dF , dX , use , eX) = effApp-inv T
         (ef , a⇒ DF uF wF) = ann⇒ df xf dF ; (_ , eq , _ , eB) = arr-inj ef
         (_ , a⇐ DX uX wX) = ann⇐ dx xx dX
-    in trans eX (cod-cong eB) , a⇒ (SU.s-effApp ns g DF DX) (u-effApp uF uX) (⊑ᵘ-trans (app⊑ wF wX (≤q-≡ (sym eq))) use)
-  ann⇒ (SU.s-app-spine ns dx df) (x-app xf xx) T =
+    in trans eX (cod-cong eB) , a⇒ (SU.s-app pc ch DF DX) (u-app uF uX) (⊑ᵘ-trans (app⊑ wF wX (≤q-≡ (sym eq))) use)
+  ann⇒ (SU.s-app {π = eff} pc ch df dx) (x-app xf xx) T =
+    let (A₁ , q , πa , B₀ , πf , πx , Φf , Φx , dF , dX , use , eX) = effApp-inv T
+        (ef , a⇒ DF uF wF) = ann⇒ df xf dF ; (_ , eq , _ , eB) = arr-inj ef
+        (_ , a⇐ DX uX wX) = ann⇐ dx xx dX
+    in trans eX (cod-cong eB) , a⇒ (SU.s-app pc ch DF DX) (u-app uF uX) (⊑ᵘ-trans (app⊑ wF wX (≤q-≡ (sym eq))) use)
+  ann⇒ (SU.s-app-spine ch dx df) (x-app xf xx) T =
     let a = inv-app T ; (_ , a⇒ DX uX wX) = ann⇒ dx xx (IApp.dx a)
         (ef , a↦ DF uF wF) = ann↦ df xf (IApp.df a) ; (_ , eq , _ , eT) = arr-inj ef
-    in eT , a⇒ (SU.s-app-spine ns DX DF) (u-app-spine uX uF) (⊑ᵘ-trans (app⊑ wF wX (≤q-≡ (sym eq))) (IApp.use a))
+    in eT , a⇒ (SU.s-app-spine ch DX DF) (u-app-spine uX uF) (⊑ᵘ-trans (app⊑ wF wX (≤q-≡ (sym eq))) (IApp.use a))
 
   ----------------------------------------------------------------------
   -- Checking
   ----------------------------------------------------------------------
 
-  ann⇐ SU.c-id (x-res _) {Φ} T = idᶜ-ty T , a⇐ SU.c-id u-id (z⊑ Φ)
-  ann⇐ SU.c-fst (x-res _) {Φ} T = fstᶜ-ty T , a⇐ SU.c-fst u-fst (z⊑ Φ)
-  ann⇐ SU.c-snd (x-res _) {Φ} T = sndᶜ-ty T , a⇐ SU.c-snd u-snd (z⊑ Φ)
-  ann⇐ SU.c-terminal (x-res _) {Φ} T = terminalᶜ-ty T , a⇐ SU.c-terminal u-terminal (z⊑ Φ)
-  ann⇐ SU.c-initial (x-res _) {Φ} T = initialᶜ-ty T , a⇐ SU.c-initial u-initial (z⊑ Φ)
-  ann⇐ SU.c-inl (x-res _) {Φ} T = inlᶜ-ty T , a⇐ SU.c-inl u-inl (z⊑ Φ)
-  ann⇐ SU.c-inr (x-res _) {Φ} T = inrᶜ-ty T , a⇐ SU.c-inr u-inr (z⊑ Φ)
-  ann⇐ (SU.c-compose-g dg df) (x-app (x-app (x-res _) xf) xg) T =
+  ann⇐ (SU.c-map mo) x-gen {Φ} T = morph-ty mo T , a⇐ (SU.c-map mo) u-map (z⊑ Φ)
+  ann⇐ (SU.c-map-app fc mo d) (x-app x-gen x) T =
+    let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (morph-ty mo (IApp.df a)) ; (_ , a⇐ D u w) = ann⇐ d x (IApp.dx a)
+    in eX , a⇐ (SU.c-map-app fc mo D) (u-map-app u) (gen⊑ w eq (IApp.use a))
+  ann⇐ (SU.c-compose-g dfg dg df) (x-app (x-app x-gen xf) xg) T =
     let (r , M , q , πa , C₀ , eF , eX) = compose-inv T
         (_ , a↦ DG uG wG) = ann↦ dg xg (Two.dg r) ; (ef , a⇐ DF uF wF) = ann⇐ df xf (Two.df r)
     in trans eX (cod-cong (cod-eq eF ef))
-       , a⇐ (SU.c-compose-g DG DF) (u-compose-g uG uF) (⊑ᵘ-trans (app⊑ wF wG ω≤ω) (Two.use r))
-  ann⇐ (SU.c-compose-f df sub dg) (x-app (x-app (x-res _) xf) xg) T =
+       , a⇐ (SU.c-compose-g dfg DG DF) (u-compose-g uG uF) (⊑ᵘ-trans (app⊑ wF wG ω≤ω) (Two.use r))
+  ann⇐ (SU.c-compose-f ndf df sub dg) (x-app (x-app x-gen xf) xg) T =
     let (r , M , q , πa , C₀ , eF , eX) = compose-inv T ; cf = inv-coerce (Two.df r)
         (_ , a⇒ DF uF wF) = ann⇒ df xf (ICoerce.dt cf) ; (_ , a⇐ DG uG wG) = ann⇐ dg xg (Two.dg r)
     in trans eX (cod-cong (cod-eq eF (ICoerce.ty cf)))
-       , a⇐ (SU.c-compose-f DF sub DG) (u-compose-f uF uG) (⊑ᵘ-trans (app⊑ (⊑ᵘ-trans wF (ICoerce.use cf)) wG ω≤ω) (Two.use r))
-  ann⇐ (SU.c-case df dg) (x-app (x-app (x-res _) xf) xg) T =
+       , a⇐ (SU.c-compose-f ndf DF sub DG) (u-compose-f uF uG) (⊑ᵘ-trans (app⊑ (⊑ᵘ-trans wF (ICoerce.use cf)) wG ω≤ω) (Two.use r))
+  ann⇐ (SU.c-case df dg) (x-app (x-app x-gen xf) xg) T =
     let (r , C₀ , (_ , _ , _ , eF) , _ , eX) = case-inv T
         (ef , a⇐ DF uF wF) = ann⇐ df xf (Two.df r) ; (_ , a⇐ DG uG wG) = ann⇐ dg xg (Two.dg r)
     in trans eX (cod-cong (cod-eq eF ef)) , a⇐ (SU.c-case DF DG) (u-case uF uG) (one⊑ wF wG (Two.use r))
-  ann⇐ (SU.c-pair df dg) (x-app (x-app (x-res _) xf) xg) T =
+  ann⇐ (SU.c-pair df dg) (x-app (x-app x-gen xf) xg) T =
     let (r , B₀ , C₀ , (_ , _ , _ , eF) , (_ , _ , _ , eG) , eX) = pair-inv T
         (ef , a⇐ DF uF wF) = ann⇐ df xf (Two.df r) ; (eg , a⇐ DG uG wG) = ann⇐ dg xg (Two.dg r)
     in trans eX (cod-cong (cong₂ _*_ (cod-eq eF ef) (cod-eq eG eg)))
        , a⇐ (SU.c-pair DF DG) (u-pair uF uG) (one⊑ wF wG (Two.use r))
-  ann⇐ (SU.c-curry df) (x-app (x-res _) xf) T =
+  ann⇐ (SU.c-curry df) (x-app x-gen xf) T =
     let (r , M , q , πa , C₀ , eF , eX) = curry-inv T ; (ef , a⇐ DF uF wF) = ann⇐ df xf (One′.df r)
     in trans eX (cod-cong (cod-cong (cod-eq eF ef))) , a⇐ (SU.c-curry DF) (u-curry uF) (one⊑′ wF (One′.use r))
-  ann⇐ (SU.c-cata wf dalg) (x-app (x-res _) xa) T =
+  ann⇐ (SU.c-cata wf dalg) (x-app x-gen xa) T =
     let (r , A₀ , π₁ , eF , eX) = cata-inv T ; (ef , a⇐ DA uA wA) = ann⇐ dalg xa (One′.df r)
     in trans eX (cod-cong (cod-eq eF ef)) , a⇐ (SU.c-cata wf DA) (u-cata uA) (many⊑ wA (One′.use r))
-  ann⇐ (SU.c-ana le wf dc) (x-app (x-res _) xc) T =
+  ann⇐ (SU.c-ana fi@(Gn.final-ν le wf) dc) (x-app x-gen xc) T =
     let (f₀ , A₁ , πc , Φc , dc′ , use , eX) = ana-inv T ; (ec , a⇐ DC uC wC) = ann⇐ dc xc dc′
-    in trans eX (cong (λ g → _ ⇒⟨ _ ⟩ ν _ g) (fin-inj (grd-eq ec))) , a⇐ (SU.c-ana le wf DC) (u-ana uC) (many⊑ wC use)
-  ann⇐ (SU.c-loop dc) (x-app (x-res _) xc) T =
+    in trans eX (cong (λ g → _ ⇒⟨ _ ⟩ ν _ g) (fin-inj (grd-eq ec))) , a⇐ (SU.c-ana fi DC) (u-ana uC) (many⊑ wC use)
+  ann⇐ (SU.c-ana Gn.final-T∞ dc) (x-app x-gen xc) T =
     let (r , A₁ , B₀ , eF , eX) = loop-inv T ; (ef , a⇐ DC uC wC) = ann⇐ dc xc (One′.df r)
-    in trans eX (cod-cong (proj₁ (sum-inj (cod-eq eF ef)))) , a⇐ (SU.c-loop DC) (u-loop uC) (many⊑ wC (One′.use r))
-  ann⇐ (SU.c-sub ds sub) x T =
+    in trans eX (cod-cong (proj₁ (sum-inj (cod-eq eF ef)))) , a⇐ (SU.c-ana Gn.final-T∞ DC) (u-ana uC) (many⊑ wC (One′.use r))
+  ann⇐ (SU.c-sub noc ds sub) x T =
     let c = inv-coerce T ; (_ , a⇒ D u w) = ann⇒ ds x (ICoerce.dt c)
-    in ICoerce.ty c , a⇐ (SU.c-sub D sub) (u-sub u) (⊑ᵘ-trans w (ICoerce.use c))
+    in ICoerce.ty c , a⇐ (SU.c-sub noc D sub) (u-sub u) (⊑ᵘ-trans w (ICoerce.use c))
   ann⇐ (SU.c-lam {q = q} db) (x-lam xb) T =
     let l = inv-lam T in lam-go l (ann⇐ db xb (ILam.body l))
     where
@@ -376,21 +377,6 @@ mutual
     let p = inv-pair T
         (ea , a⇐ DA uA wA) = ann⇐ da xa (IPair.da p) ; (eb , a⇐ DB uB wB) = ann⇐ db xb (IPair.db p)
     in trans (IPair.ty p) (cong₂ _*_ ea eb) , a⇐ (SU.c-pair-lit DA DB) (u-pair-lit uA uB) (⊑ᵘ-trans (⊑ᵘ-+ wA wB) (IPair.use p))
-  ann⇐ (SU.c-In-app wf d) (x-app (x-res _) x) T =
-    let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (inᶜ-ty (IApp.df a)) ; (_ , a⇐ D u w) = ann⇐ d x (IApp.dx a)
-    in eX , a⇐ (SU.c-In-app wf D) (u-In-app u) (gen⊑ w eq (IApp.use a))
-  ann⇐ (SU.c-apply-app d) (x-app (x-res _) x) T =
-    let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (applyᶜ-ty (IApp.df a)) ; (_ , a⇒ D u w) = ann⇒ d x (IApp.dx a)
-    in eX , a⇐ (SU.c-apply-app D) (u-apply-app u) (gen⊑ w eq (IApp.use a))
-  ann⇐ (SU.c-inl-app d) (x-app (x-res _) x) T =
-    let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (inlᶜ-ty (IApp.df a)) ; (_ , a⇐ D u w) = ann⇐ d x (IApp.dx a)
-    in eX , a⇐ (SU.c-inl-app D) (u-inl-app u) (gen⊑ w eq (IApp.use a))
-  ann⇐ (SU.c-inr-app d) (x-app (x-res _) x) T =
-    let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (inrᶜ-ty (IApp.df a)) ; (_ , a⇐ D u w) = ann⇐ d x (IApp.dx a)
-    in eX , a⇐ (SU.c-inr-app D) (u-inr-app u) (gen⊑ w eq (IApp.use a))
-  ann⇐ (SU.c-initial-app d) (x-app (x-res _) x) T =
-    let a = inv-app T ; (_ , eq , _ , eX) = arr-inj (initialᶜ-ty (IApp.df a)) ; (_ , a⇐ D u w) = ann⇐ d x (IApp.dx a)
-    in eX , a⇐ (SU.c-initial-app D) (u-initial-app u) (gen⊑ w eq (IApp.use a))
   ann⇐ (SU.c-poly d e pos τ resp) (x-res nm′) {Φ} T =
     inv-ref T , a⇐ (SU.c-poly d e pos τ resp) (u-poly {ok = ok-def d e nm′}) (z⊑ Φ)
 
@@ -411,27 +397,23 @@ mutual
              → (X ≡ A ⇒⟨ π ⟩ B) × A↦ L (Once.Spec.Surface.Syntax.RLam x body) A π B Φ
       lam-go l (eB , a⇒ D {q₀ ∷ Ψ₀} u w) =
         trans (ILam.ty l) (cod-cong eB) , a↦ (SU.d-lam D) (u-lam u) (⊑ᵘ-trans (⊑-tail w) (ILam.use l))
-  ann↦ (SU.d-compose dg df) (x-app (x-app (x-res _) xf) xg) T =
+  ann↦ (SU.d-compose dg df) (x-app (x-app x-gen xf) xg) T =
     let (r , M , q , πa , C₀ , eF , eX) = compose-inv T
         (_ , a↦ DG uG wG) = ann↦ dg xg (Two.dg r) ; (ef , a↦ DF uF wF) = ann↦ df xf (Two.df r)
     in trans eX (cod-cong (cod-eq eF ef))
        , a↦ (SU.d-compose DG DF) (u-compose uG uF) (⊑ᵘ-trans (app⊑ wF wG ω≤ω) (Two.use r))
-  ann↦ SU.d-id (x-res _) {Φ} T = idᶜ-ty T , a↦ SU.d-id u-id (z⊑ Φ)
-  ann↦ SU.d-fst (x-res _) {Φ} T = fstᶜ-ty T , a↦ SU.d-fst u-fst (z⊑ Φ)
-  ann↦ SU.d-snd (x-res _) {Φ} T = sndᶜ-ty T , a↦ SU.d-snd u-snd (z⊑ Φ)
-  ann↦ SU.d-terminal (x-res _) {Φ} T = terminalᶜ-ty T , a↦ SU.d-terminal u-terminal (z⊑ Φ)
-  ann↦ SU.d-initial (x-res _) {Φ} T = initialᶜ-ty T , a↦ SU.d-initial u-initial (z⊑ Φ)
-  ann↦ (SU.d-case df dg J) (x-app (x-app (x-res _) xf) xg) T =
+  ann↦ (SU.d-map fd mo least) x-gen {Φ} T = morph-ty mo T , a↦ (SU.d-map fd mo least) u-map (z⊑ Φ)
+  ann↦ (SU.d-case df dg J) (x-app (x-app x-gen xf) xg) T =
     let (r , C₀ , (_ , _ , _ , eF) , _ , eX) = case-inv T
         cf = inv-coerce (Two.df r) ; cg = inv-coerce (Two.dg r)
         (_ , a↦ DF uF wF) = ann↦ df xf (ICoerce.dt cf) ; (_ , a↦ DG uG wG) = ann↦ dg xg (ICoerce.dt cg)
     in trans eX (cod-cong (cod-eq eF (ICoerce.ty cf)))
        , a↦ (SU.d-case DF DG J) (u-case uF uG) (one⊑ (⊑ᵘ-trans wF (ICoerce.use cf)) (⊑ᵘ-trans wG (ICoerce.use cg)) (Two.use r))
-  ann↦ (SU.d-pair df dg) (x-app (x-app (x-res _) xf) xg) T =
+  ann↦ (SU.d-pair df dg) (x-app (x-app x-gen xf) xg) T =
     let (r , B₀ , C₀ , (_ , _ , _ , eF) , (_ , _ , _ , eG) , eX) = pair-inv T
         (ef , a↦ DF uF wF) = ann↦ df xf (Two.df r) ; (eg , a↦ DG uG wG) = ann↦ dg xg (Two.dg r)
     in trans eX (cod-cong (cong₂ _*_ (cod-eq eF ef) (cod-eq eG eg)))
        , a↦ (SU.d-pair DF DG) (u-pair uF uG) (one⊑ wF wG (Two.use r))
-  ann↦ (SU.d-cata wf da) (x-app (x-res _) xa) T =
-    let (r , A₀ , π₁ , eF , eX) = cata-inv T ; (ef , a⇒ DA uA wA) = ann⇒ da xa (One′.df r)
-    in trans eX (cod-cong (cod-eq eF ef)) , a↦ (SU.d-cata wf DA) (u-cata uA) (many⊑ wA (One′.use r))
+  ann↦ (SU.d-cata wf da p o) (x-app x-gen xa) T =
+    let (r , A₀ , π₁ , eF , eX) = cata-inv T ; c = inv-coerce (One′.df r) ; (_ , a⇒ DA uA wA) = ann⇒ da xa (ICoerce.dt c)
+    in trans eX (cod-cong (cod-eq eF (ICoerce.ty c))) , a↦ (SU.d-cata wf DA p o) (u-cata uA) (many⊑ (⊑ᵘ-trans wA (ICoerce.use c)) (One′.use r))

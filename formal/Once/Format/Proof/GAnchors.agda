@@ -263,7 +263,7 @@ private
 ------------------------------------------------------------------------
 
 open import Once.Spec.Surface.Lexing using (TAt; TDot; TComma; TColon; TLambda; TEquals; TLBrace; TRBrace; TSemicolon; TBang)
-open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct;
+open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct;
   RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Name using (canonical)
 open import Once.Spec.Surface.Grammar using (ParsesExpr; ParsesCompTail; ParsesCmp; ParsesAdd; ParsesAddTail;
@@ -275,6 +275,7 @@ open import Once.Spec.Surface.Grammar using (ParsesExpr; ParsesCompTail; ParsesC
   oc-op; oc-dot; oc-pipe; oc-amp; oc-at)
 open import Once.Spec.Surface.Lexing using (TOp; TOpD)
 open import Once.Spec.Surface.Operator using (‹_›)
+import Once.Spec.Surface.Generators
 open import Once.Format.Print using (isOperator)
 
 -- | The anchors of an expression, as written.
@@ -282,6 +283,7 @@ cE : Expr → ℕ
 cE (RVar x)                 = if isOperator x then 0 else wc x
 cE (RQualified x a)         = wc x + wc a
 cE (RResolved (canonical xs)) = foldr (λ x n → wc x + n) 0 xs
+cE (RGen g)                 = wc (Once.Spec.Surface.Generators.word g)
 cE (RApp f a)               = cE f + cE a
 cE (RLam x e)               = wc x + cE e
 cE (RLet x v b)             = 2 + (wc x + (cE v + cE b))

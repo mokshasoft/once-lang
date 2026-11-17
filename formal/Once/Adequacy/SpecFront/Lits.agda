@@ -22,7 +22,7 @@ import Data.List.Relation.Unary.All
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Surface.OpNames
 open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.Spec.Surface.Syntax using (Expr)
@@ -41,13 +41,14 @@ open import Once.Target.Arch using (Arch; arch-numerics)
 private
   var-lits : ∀ {bound um x e} → LR.ResolvesVar bound um x e → rawIntLits e ≡ []
   var-lits (LR.rv-binder _)          = refl
-  var-lits (LR.rv-gen _ _)           = refl
+  var-lits (LR.rv-gen _ _ _)         = refl
   var-lits (LR.rv-import _ _ _ _)    = refl
   var-lits (LR.rv-own _ _ _)         = refl
 
 mutual
   res-lits : ∀ {um am bound e e′} → LR.ResolvesExpr um am bound e e′ → rawIntLits e′ ≡ rawIntLits e
   res-lits (LR.re-var rv) = var-lits rv
+  res-lits LR.re-gen = refl
   res-lits LR.re-this = refl
   res-lits (LR.re-qual _ _ _) = refl
   res-lits (LR.re-qual-path _ _) = refl
@@ -87,6 +88,7 @@ mutual
   emb-lits (RVar _) = refl
   emb-lits (RQualified _ _) = refl
   emb-lits (RResolved _) = refl
+  emb-lits (RGen _) = refl
   emb-lits (RApp f a) = cong₂ _++_ (emb-lits f) (emb-lits a)
   emb-lits (RLam _ b) = emb-lits b
   emb-lits (RLet _ e b) = cong₂ _++_ (emb-lits e) (emb-lits b)

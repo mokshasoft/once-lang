@@ -33,9 +33,11 @@ import Once.Spec.Context
 open import Once.Context using (_⊔ᵘ_)
 open import Once.Type.Grade using (_≤qᵇ_)
 import Once.Spec.Surface.Typing Σ S nm as SU
+open import Once.Spec.Surface.Generators using (Constant; Morphism; Final)
+open import Once.Spec.Sub using (_<:ᶜ_)
 open SU hiding (_⊢_⇒_↝_; _⊢_⇐_↝_; _⊢_⇐_⇒[_]↦_↝_)
 open import Once.Spec.Type using (Ty)
-open import Once.Spec.Grade using (Purity)
+open import Once.Spec.Grade using (Purity; pure)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Spec.Core.Syntax using (Tm)
 open import Once.Spec.Type using (Type)
@@ -91,13 +93,13 @@ data Use⇒ {n} {L} where
   u-int      : ∀ {i} → Use⇒ (s-int i) zeroUsage
   u-float    : ∀ {sg i f l} → Use⇒ (s-float sg i f l) zeroUsage
   u-unit     : Use⇒ s-unit zeroUsage
-  u-toFloat  : Use⇒ s-toFloat zeroUsage
-  u-unit-g   : Use⇒ s-unit-g zeroUsage
+  -- A constant of the table is closed.
+  u-const    : ∀ {g k T t} {c : Constant Δ g k T t} → Use⇒ (s-const c) zeroUsage
   -- A local is used once.
   u-var      : ∀ {x A i} {v : L ∋ x ⦂ A at i} → Use⇒ (s-var v) (singleUse i One)
   -- A declaration of the signature, read at the ground type it declares.
   -- (an honest one: the checker's sigops are the module's FFI declarations)
-  u-sigop    : ∀ {c ng} {T : Type} {mem : (c ∶ declS T) ∈ Σ} {ok : OkS c T} → IsConcrete T → HonestFFI T → Use⇒ (s-sigop {c = c} {t = declS T} ng mem) zeroUsage
+  u-sigop    : ∀ {c} {T : Type} {mem : (c ∶ declS T) ∈ Σ} {ok : OkS c T} → IsConcrete T → HonestFFI T → Use⇒ (s-sigop {c = c} {t = declS T} mem) zeroUsage
   u-def      : ∀ {c d e τ a} {ok : Ok d} → Use⇒ (s-def {c = c} d e τ a) zeroUsage
   u-annot    : ∀ {e T t} {d : L ⊢ e ⇐ _ ↝ t} {Ψ} → Use⇐ d Ψ → Use⇒ (s-annot {T = T} d) Ψ
   u-pair     : ∀ {a b A B ta tb} {da : L ⊢ a ⇒ A ↝ ta} {db : L ⊢ b ⇒ B ↝ tb} {Ψ₁ Ψ₂}
@@ -114,38 +116,25 @@ data Use⇒ {n} {L} where
              → Use⇒ (s-case {C = C} ql qr ds dl dr j) (Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ))
   u-binop    : ∀ {op e₁ e₂ A t₁ t₂} {h} {d₁ : L ⊢ e₁ ⇒ _ ↝ t₁} {d₂ : L ⊢ e₂ ⇒ _ ↝ t₂} {Ψ₁ Ψ₂}
              → Use⇒ d₁ Ψ₁ → Use⇒ d₂ Ψ₂ → Use⇒ (s-binop {op = op} {A = A} h d₁ d₂) (Ψ₁ +ᵘ Ψ₂)
-  -- A generator applied: its argument, in an application.
-  u-id-app       : ∀ {e T t} {d : L ⊢ e ⇒ T ↝ t} {Ψ} → Use⇒ d Ψ → Use⇒ (s-id-app d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  u-fst-app      : ∀ {e A B t} {d : L ⊢ e ⇒ _ ↝ t} {Ψ} → Use⇒ d Ψ → Use⇒ (s-fst-app {A = A} {B = B} d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  u-snd-app      : ∀ {e A B t} {d : L ⊢ e ⇒ _ ↝ t} {Ψ} → Use⇒ d Ψ → Use⇒ (s-snd-app {A = A} {B = B} d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  u-terminal-app : ∀ {e T t} {d : L ⊢ e ⇒ T ↝ t} {Ψ} → Use⇒ d Ψ → Use⇒ (s-terminal-app d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  u-apply-app    : ∀ {e A B t} {d : L ⊢ e ⇒ _ ↝ t} {Ψ} → Use⇒ d Ψ → Use⇒ (s-apply-app {A = A} {B = B} d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  u-apply-eff-app : ∀ {e A B π t g} {d : L ⊢ e ⇒ _ ↝ t} {Ψ} → Use⇒ d Ψ
-                  → Use⇒ (s-apply-eff-app {A = A} {B = B} {π = π} g d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  u-Out-app      : ∀ {e F t w} {d : L ⊢ e ⇒ _ ↝ t} {Ψ} → Use⇒ d Ψ → Use⇒ (s-Out-app {F = F} w d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  u-Out-act-app  : ∀ {e F t w} {d : L ⊢ e ⇒ _ ↝ t} {Ψ} → Use⇒ d Ψ → Use⇒ (s-Out-act-app {F = F} w d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  -- An application uses its argument as often as the arrow's quantity says.
-  u-app      : ∀ {f x A B q tf tx ns} {df : L ⊢ f ⇒ _ ↝ tf} {dx : L ⊢ x ⇐ A ↝ tx} {Ψ₁ Ψ₂}
-             → Use⇒ df Ψ₁ → Use⇐ dx Ψ₂ → Use⇒ (s-app {B = B} {q = q} ns df dx) (Ψ₁ +ᵘ (q *ᵘ Ψ₂))
-  u-effApp   : ∀ {f x A B π tf tx ns g} {df : L ⊢ f ⇒ _ ↝ tf} {dx : L ⊢ x ⇐ A ↝ tx} {Ψ₁ Ψ₂}
-             → Use⇒ df Ψ₁ → Use⇐ dx Ψ₂ → Use⇒ (s-effApp {B = B} {π = π} ns g df dx) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
-  u-app-spine : ∀ {f x X T tf tx ns} {dx : L ⊢ x ⇒ X ↝ tx} {df : L ⊢ f ⇐ X ⇒[ _ ]↦ T ↝ tf} {Ψ₁ Ψ₂}
-              → Use⇒ dx Ψ₂ → Use↦ df Ψ₁ → Use⇒ (s-app-spine ns dx df) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
+  -- An application uses its argument as often as the arrow's quantity says,
+  -- at every grade (an effectful one suspends the same call).
+  u-app      : ∀ {f x A B q π tf tx pc ch} {df : L ⊢ f ⇒ _ ↝ tf} {dx : L ⊢ x ⇐ A ↝ tx} {Ψ₁ Ψ₂}
+             → Use⇒ df Ψ₁ → Use⇐ dx Ψ₂ → Use⇒ (s-app {B = B} {q = q} {π = π} pc ch df dx) (Ψ₁ +ᵘ (q *ᵘ Ψ₂))
+  u-app-spine : ∀ {f x X T tf tx ch} {dx : L ⊢ x ⇒ X ↝ tx} {df : L ⊢ f ⇐ X ⇒[ _ ]↦ T ↝ tf} {Ψ₁ Ψ₂}
+              → Use⇒ dx Ψ₂ → Use↦ df Ψ₁ → Use⇒ (s-app-spine ch dx df) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
 
 data Use⇐ {n} {L} where
-  u-id       : ∀ {T π} → Use⇐ (c-id {T = T} {π = π}) zeroUsage
-  u-fst      : ∀ {A B π} → Use⇐ (c-fst {A = A} {B = B} {π = π}) zeroUsage
-  u-snd      : ∀ {A B π} → Use⇐ (c-snd {A = A} {B = B} {π = π}) zeroUsage
-  u-terminal : ∀ {A π} → Use⇐ (c-terminal {A = A} {π = π}) zeroUsage
-  u-initial  : ∀ {A π} → Use⇐ (c-initial {A = A} {π = π}) zeroUsage
-  u-inl      : ∀ {A B π} → Use⇐ (c-inl {A = A} {B = B} {π = π}) zeroUsage
-  u-inr      : ∀ {A B π} → Use⇐ (c-inr {A = A} {B = B} {π = π}) zeroUsage
+  -- A structure map is closed.
+  u-map      : ∀ {g k A π B t} {mo : Morphism Δ g k A π B t} → Use⇐ (c-map mo) zeroUsage
+  -- … and applied, it uses its argument in an application.
+  u-map-app  : ∀ {g k e A B tg t fc} {mo : Morphism Δ g k A pure B tg} {d : L ⊢ e ⇐ A ↝ t} {Ψ}
+             → Use⇐ d Ψ → Use⇐ (c-map-app fc mo d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
   -- A composition runs `g` once per use of the composite.
-  u-compose-g : ∀ {f g A B C π tf tg} {dg : L ⊢ g ⇐ A ⇒[ π ]↦ B ↝ tg} {df : L ⊢ f ⇐ _ ↝ tf} {Ψ₁ Ψ₂}
-              → Use↦ dg Ψ₂ → Use⇐ df Ψ₁ → Use⇐ (c-compose-g {C = C} dg df) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
-  u-compose-f : ∀ {f g A B C C′ π π′ tf tg} {df : L ⊢ f ⇒ _ ↝ tf} {p} {dg : L ⊢ g ⇐ _ ↝ tg} {Ψ₁ Ψ₂}
+  u-compose-g : ∀ {f g A B C π tf tg df′} {dg : L ⊢ g ⇐ A ⇒[ π ]↦ B ↝ tg} {df : L ⊢ f ⇐ _ ↝ tf} {Ψ₁ Ψ₂}
+              → Use↦ dg Ψ₂ → Use⇐ df Ψ₁ → Use⇐ (c-compose-g {C = C} df′ dg df) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
+  u-compose-f : ∀ {f g A B C C′ π π′ tf tg ndf} {df : L ⊢ f ⇒ _ ↝ tf} {p} {dg : L ⊢ g ⇐ _ ↝ tg} {Ψ₁ Ψ₂}
               → Use⇒ df Ψ₁ → Use⇐ dg Ψ₂
-              → Use⇐ (c-compose-f {A = A} {B = B} {C = C} {C′ = C′} {π = π} {π′ = π′} df p dg) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
+              → Use⇐ (c-compose-f {A = A} {B = B} {C = C} {C′ = C′} {π = π} {π′ = π′} ndf df p dg) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
   u-case     : ∀ {f g A B C π tf tg} {df : L ⊢ f ⇐ _ ↝ tf} {dg : L ⊢ g ⇐ _ ↝ tg} {Ψ₁ Ψ₂}
              → Use⇐ df Ψ₁ → Use⇐ dg Ψ₂ → Use⇐ (c-case {A = A} {B = B} {C = C} {π = π} df dg) (Ψ₁ +ᵘ Ψ₂)
   u-pair     : ∀ {f g A B C π tf tg} {df : L ⊢ f ⇐ _ ↝ tf} {dg : L ⊢ g ⇐ _ ↝ tg} {Ψ₁ Ψ₂}
@@ -153,19 +142,14 @@ data Use⇐ {n} {L} where
   u-curry    : ∀ {f A B C π₀ π t} {d : L ⊢ f ⇐ _ ↝ t} {Ψ} → Use⇐ d Ψ → Use⇐ (c-curry {A = A} {B = B} {C = C} {π₀ = π₀} {π = π} d) Ψ
   -- The recursion formers run their arm once per layer.
   u-cata     : ∀ {alg F A π t w} {d : L ⊢ alg ⇐ _ ↝ t} {Ψ} → Use⇐ d Ψ → Use⇐ (c-cata {F = F} {A = A} {π = π} w d) (Many *ᵘ Ψ)
-  u-ana      : ∀ {c F A π₀ f t g w} {d : L ⊢ c ⇐ _ ↝ t} {Ψ} → Use⇐ d Ψ → Use⇐ (c-ana {F = F} {A = A} {π₀ = π₀} {f = f} g w d) (Many *ᵘ Ψ)
-  u-loop     : ∀ {c A B t} {d : L ⊢ c ⇐ _ ↝ t} {Ψ} → Use⇐ d Ψ → Use⇐ (c-loop {A = A} {B = B} d) (Many *ᵘ Ψ)
-  u-sub      : ∀ {e A B t} {d : L ⊢ e ⇒ A ↝ t} {p} {Ψ} → Use⇒ d Ψ → Use⇐ (c-sub {B = B} d p) Ψ
+  u-ana      : ∀ {c A π₀ X G ρ k t} {fi : Final Δ A π₀ X G ρ k} {d : L ⊢ c ⇐ _ ↝ t} {Ψ}
+             → Use⇐ d Ψ → Use⇐ (c-ana fi d) (Many *ᵘ Ψ)
+  u-sub      : ∀ {e A B t noc} {d : L ⊢ e ⇒ A ↝ t} {p} {Ψ} → Use⇒ d Ψ → Use⇐ (c-sub {B = B} noc d p) Ψ
   -- A lambda binds a variable its body uses at most as often as the arrow allows.
   u-lam      : ∀ {x body A B q π t} {d : (L ▹ x ∶ A) ⊢ body ⇐ B ↝ t} {q′ Ψ}
              → (q′ ≤qᵇ q) ≡ true → Use⇐ d (q′ ∷ Ψ) → Use⇐ (c-lam {q = q} {π = π} d) Ψ
   u-pair-lit : ∀ {a b A B ta tb} {da : L ⊢ a ⇐ A ↝ ta} {db : L ⊢ b ⇐ B ↝ tb} {Ψ₁ Ψ₂}
              → Use⇐ da Ψ₁ → Use⇐ db Ψ₂ → Use⇐ (c-pair-lit da db) (Ψ₁ +ᵘ Ψ₂)
-  u-In-app   : ∀ {e F t w} {d : L ⊢ e ⇐ _ ↝ t} {Ψ} → Use⇐ d Ψ → Use⇐ (c-In-app {F = F} w d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  u-apply-app : ∀ {e A B t} {d : L ⊢ e ⇒ _ ↝ t} {Ψ} → Use⇒ d Ψ → Use⇐ (c-apply-app {A = A} {B = B} d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  u-inl-app  : ∀ {e A B t} {d : L ⊢ e ⇐ A ↝ t} {Ψ} → Use⇐ d Ψ → Use⇐ (c-inl-app {B = B} d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  u-inr-app  : ∀ {e A B t} {d : L ⊢ e ⇐ B ↝ t} {Ψ} → Use⇐ d Ψ → Use⇐ (c-inr-app {A = A} d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  u-initial-app : ∀ {e T t} {d : L ⊢ e ⇐ _ ↝ t} {Ψ} → Use⇐ d Ψ → Use⇐ (c-initial-app {T = T} d) (zeroUsage +ᵘ (Many *ᵘ Ψ))
   u-poly     : ∀ {c d e a τ r} {ok : Ok d} → Use⇐ (c-poly {c = c} d e a τ r) zeroUsage
 
 data Use↦ {n} {L} where
@@ -175,15 +159,13 @@ data Use↦ {n} {L} where
              → Use↦ (d-poly {c = c} d e a {sd = sd} {sc = sc} {π′ = π′} {A = A} {B = B} {π = π} ty oc τ r ea eb o) zeroUsage
   u-lam      : ∀ {x body A B π t} {d : (L ▹ x ∶ A) ⊢ body ⇒ B ↝ t} {q′ Ψ}
              → Use⇒ d (q′ ∷ Ψ) → Use↦ (d-lam {π = π} d) Ψ
+  u-map      : ∀ {g k A π B t fd} {mo : Morphism Δ g k A π B t}
+               {least : ∀ {k′ B′} {t′ : Tm S m n} → Morphism Δ g k′ A π B′ t′ → B <:ᶜ B′} → Use↦ (d-map fd mo least) zeroUsage
   u-compose  : ∀ {f g A M B π tf tg} {dg : L ⊢ g ⇐ A ⇒[ π ]↦ M ↝ tg} {df : L ⊢ f ⇐ M ⇒[ π ]↦ B ↝ tf} {Ψ₁ Ψ₂}
              → Use↦ dg Ψ₂ → Use↦ df Ψ₁ → Use↦ (d-compose dg df) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
-  u-id       : ∀ {A π} → Use↦ (d-id {A = A} {π = π}) zeroUsage
-  u-fst      : ∀ {A B π} → Use↦ (d-fst {A = A} {B = B} {π = π}) zeroUsage
-  u-snd      : ∀ {A B π} → Use↦ (d-snd {A = A} {B = B} {π = π}) zeroUsage
-  u-terminal : ∀ {A π} → Use↦ (d-terminal {A = A} {π = π}) zeroUsage
-  u-initial  : ∀ {π} → Use↦ (d-initial {π = π}) zeroUsage
   u-case     : ∀ {f g A B Cf Cg C π tf tg} {df : L ⊢ f ⇐ A ⇒[ π ]↦ Cf ↝ tf} {dg : L ⊢ g ⇐ B ⇒[ π ]↦ Cg ↝ tg} {j} {Ψ₁ Ψ₂}
              → Use↦ df Ψ₁ → Use↦ dg Ψ₂ → Use↦ (d-case {C = C} df dg j) (Ψ₁ +ᵘ Ψ₂)
   u-pair     : ∀ {f g A B C π tf tg} {df : L ⊢ f ⇐ A ⇒[ π ]↦ B ↝ tf} {dg : L ⊢ g ⇐ A ⇒[ π ]↦ C ↝ tg} {Ψ₁ Ψ₂}
              → Use↦ df Ψ₁ → Use↦ dg Ψ₂ → Use↦ (d-pair df dg) (Ψ₁ +ᵘ Ψ₂)
-  u-cata     : ∀ {alg F A π t w} {d : L ⊢ alg ⇒ _ ↝ t} {Ψ} → Use⇒ d Ψ → Use↦ (d-cata {F = F} {A = A} {π = π} w d) (Many *ᵘ Ψ)
+  u-cata     : ∀ {alg F A₁ A π′ π t w p o} {d : L ⊢ alg ⇒ _ ↝ t} {Ψ}
+             → Use⇒ d Ψ → Use↦ (d-cata {F = F} {A₁ = A₁} {A = A} {π′ = π′} {π = π} w d p o) (Many *ᵘ Ψ)

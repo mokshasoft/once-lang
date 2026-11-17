@@ -33,11 +33,11 @@ import qualified MAlonzo.Code.Once.Spec.Surface.Syntax
 -- Once.Parser.Module.Core.Resolved
 d_Resolved_8 = ()
 data T_Resolved_8
-  = C_resolved_18 MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_108
+  = C_resolved_18 MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110
                   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 -- Once.Parser.Module.Core.Resolved.rmodule
 d_rmodule_14 ::
-  T_Resolved_8 -> MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_108
+  T_Resolved_8 -> MAlonzo.Code.Once.Spec.Surface.Syntax.T_Module_110
 d_rmodule_14 v0
   = case coe v0 of
       C_resolved_18 v1 v2 -> coe v1

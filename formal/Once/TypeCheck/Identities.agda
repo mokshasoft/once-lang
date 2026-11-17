@@ -9,9 +9,6 @@
 -- as theorems and bundled into `VerifiedTypeChecker`.
 --
 -- Identities landed here:
---   * `classifyAppHead`-determinism: classifying the same Expr
---     twice yields the same result (trivially `refl`, but stated as
---     a citable theorem).
 --   * `decideLeq` returns `just _` exactly when `q' ≤qᵇ q ≡ true`
 --     (both directions).
 --   * `GType ↔ Type` round-trip is injective.
@@ -42,20 +39,10 @@ open import Once.Spec.Surface.Operator using (BinOp; binSym; BinSym)
 open BinSym using (shape)
 open import Once.TypeCheck.NumTable using (Binary; binary?)
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.Spec.Name using (gen)
 open import Once.TypeCheck.Elaborate
   using (decideLeq)
-open import Once.TypeCheck.Scope using (classifyAppHead; pba-id; pba-fst; pba-snd; pba-terminal; pba-inl; pba-inr; pba-initial; NamedCtx; extendNamedCtx)
+open import Once.TypeCheck.Scope using (NamedCtx; extendNamedCtx)
 import Once.TypeCheck.Scope as Classify
-
-------------------------------------------------------------------------
--- classifyAppHead determinism
-------------------------------------------------------------------------
-
--- Calling the classifier twice on the same Expr gives the same
--- answer (trivially refl; stated for downstream use).
-classifyAppHead-deterministic : ∀ (e : Expr) → classifyAppHead e ≡ classifyAppHead e
-classifyAppHead-deterministic _ = refl
 
 ------------------------------------------------------------------------
 -- decideLeq correctness: just/nothing iff Bool decision is true/false
@@ -124,39 +111,6 @@ decideLeq-correct-nothing Many Many ()
 
 binop-binary : ∀ (op : BinOp) → Binary (shape (binSym op))
 binop-binary = binary?
-
-------------------------------------------------------------------------
--- `classifyAppHead`: structural identities on the GENERATORS (D136: a
--- generator is a canonical name, never a bare one)
-------------------------------------------------------------------------
-
-classifyAppHead-id :
-  classifyAppHead (RResolved (gen "id")) ≡ just pba-id
-classifyAppHead-id = refl
-
-classifyAppHead-fst :
-  classifyAppHead (RResolved (gen "fst")) ≡ just pba-fst
-classifyAppHead-fst = refl
-
-classifyAppHead-snd :
-  classifyAppHead (RResolved (gen "snd")) ≡ just pba-snd
-classifyAppHead-snd = refl
-
-classifyAppHead-terminal :
-  classifyAppHead (RResolved (gen "terminal")) ≡ just pba-terminal
-classifyAppHead-terminal = refl
-
-classifyAppHead-inl :
-  classifyAppHead (RResolved (gen "inl")) ≡ just pba-inl
-classifyAppHead-inl = refl
-
-classifyAppHead-inr :
-  classifyAppHead (RResolved (gen "inr")) ≡ just pba-inr
-classifyAppHead-inr = refl
-
-classifyAppHead-initial :
-  classifyAppHead (RResolved (gen "initial")) ≡ just pba-initial
-classifyAppHead-initial = refl
 
 ------------------------------------------------------------------------
 -- QTT quantity order: reflexivity and transitivity

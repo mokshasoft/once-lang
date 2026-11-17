@@ -176,7 +176,7 @@ d_warn'45'exact_116 v0 v1 v2 v3 v4 v5 v6
                         (coe
                            MAlonzo.Code.Once.Float.Word.d_round_58 (coe v4)
                            (coe
-                              MAlonzo.Code.Once.Spec.Surface.Syntax.d_signedDecimal_74
+                              MAlonzo.Code.Once.Spec.Surface.Syntax.d_signedDecimal_76
                               (coe MAlonzo.Code.Once.Spec.Float.Value.C_pos_10) (coe v0) (coe v1)
                               (coe v2)))
                         (coe v5) (coe v6)) in
@@ -284,7 +284,7 @@ d_floatWarning_214 v0 v1 v2 v3 v4
       (coe
          MAlonzo.Code.Once.Spec.Float.Decimal.d_roundDec_28 (coe v0)
          (coe
-            MAlonzo.Code.Once.Spec.Surface.Syntax.d_signedDecimal_74
+            MAlonzo.Code.Once.Spec.Surface.Syntax.d_signedDecimal_76
             (coe MAlonzo.Code.Once.Spec.Float.Value.C_pos_10) (coe v1) (coe v2)
             (coe v3)))
 -- Once.Warnings.tokenFloatLits

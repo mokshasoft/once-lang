@@ -178,7 +178,11 @@ module _ {σ σ′ : DefsSem} (rσ : RelDefs σ σ′) where
     RelS-bind (SD-rel f (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (SD-rel x (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
   SD-rel (app {Γ = Γ} {q = Many} f x) r =
     RelS-bind (SD-rel f (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (SD-rel x (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
-  SD-rel (effApp {Γ = Γ} f x) r =
+  SD-rel (effApp {Γ = Γ} {q = Zero} f x) r =
+    relS-ret λ _ → RelS-bind (SD-rel f (restrict-rel {Γ = Γ} _ r)) (λ rf → rf)
+  SD-rel (effApp {Γ = Γ} {q = One} f x) r =
+    relS-ret λ _ → RelS-bind (SD-rel f (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (SD-rel x (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
+  SD-rel (effApp {Γ = Γ} {q = Many} f x) r =
     relS-ret λ _ → RelS-bind (SD-rel f (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (SD-rel x (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
   SD-rel (pair {Γ = Γ} a b) r =
     RelS-bind (SD-rel a (restrict-rel {Γ = Γ} _ r)) λ ra → RelS-bind (SD-rel b (restrict-rel {Γ = Γ} _ r)) λ rb → relS-ret (ra , rb)

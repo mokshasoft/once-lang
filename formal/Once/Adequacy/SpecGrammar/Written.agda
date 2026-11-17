@@ -21,11 +21,12 @@ open import Data.Unit using (⊤; tt)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Surface.Grammar as G
 
--- An expression as written: no resolved name.
+-- An expression as written: no resolved name, no resolved generator.
 Written : Expr → Set
 Written (RVar _)              = ⊤
 Written (RQualified _ _)      = ⊤
 Written (RResolved _)         = ⊥
+Written (RGen _)              = ⊥
 Written (RApp f a)            = Written f × Written a
 Written (RLam _ b)            = Written b
 Written (RLet _ e b)          = Written e × Written b

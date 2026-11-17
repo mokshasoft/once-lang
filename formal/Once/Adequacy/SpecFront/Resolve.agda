@@ -26,21 +26,21 @@ open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong)
 
-open import Once.Spec.Name using (CanonicalName; canonical; gen)
+open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
 open import Once.Parser.Relation.Resolution as LR
   using (UnaliasedMap; AliasMap; ResolvesVar; rv-binder; rv-gen; rv-import; rv-own;
-         ResolvesExpr; re-var; re-this; re-qual; re-qual-path; re-res; re-app; re-lam; re-let; re-pair; re-destruct; re-annot;
+         ResolvesExpr; re-var; re-gen; re-this; re-qual; re-qual-path; re-res; re-app; re-lam; re-let; re-pair; re-destruct; re-annot;
          re-binop; re-unop; re-unit; re-int; re-float)
 open import Once.Spec.Surface.Resolution as SR
   using (Env; env; Resolves; ResolvesName; rn-gen; rn-import; rn-own;
-         r-local; r-name; r-this; r-qual; r-qual-path; r-res; r-app; r-lam; r-let; r-pair; r-destruct; r-unit; r-int; r-float;
+         r-local; r-name; r-gen; r-this; r-qual; r-qual-path; r-res; r-app; r-lam; r-let; r-pair; r-destruct; r-unit; r-int; r-float;
          r-annot; r-binop; r-neg; Expands; fa-here; fa-there)
 import Once.Spec.Surface.Resolution
 open import Once.ResolvedRefs using (GoodName; GoodRefs)
 open import Once.Adequacy.SpecFront.Expr
-  using (RX; x-local; x-res; x-app; x-lam; x-let; x-pair; x-destruct; x-unit; x-int; x-float; x-annot; x-binop; x-neg)
+  using (RX; x-local; x-res; x-gen; x-app; x-lam; x-let; x-pair; x-destruct; x-unit; x-int; x-float; x-annot; x-binop; x-neg)
 
 ------------------------------------------------------------------------
 -- The tables
@@ -50,10 +50,6 @@ private
   -- a good name is not `main`
   good-main : ∀ {c} → GoodName c → c ≢ canonical ("main" ∷ [])
   good-main g e = g e refl
-
-  -- a generator is a good name
-  gen-good : ∀ x → GoodName (gen x)
-  gen-good x ()
 
   x-good : ∀ {bound c} → GoodName c → RX bound (O.RResolved c) (S.RResolved c)
   x-good g = x-res (good-main g)
@@ -65,7 +61,8 @@ private
 res-expr : ∀ {um am bound eU eC} → ResolvesExpr um am bound eU eC → GoodRefs eC
          → Σ[ eS ∈ S.Expr ] Resolves (env um am) bound eU eS × RX bound eC eS
 res-expr (re-var (rv-binder m)) g = _ , r-local m , x-local m
-res-expr (re-var (rv-gen nb gw)) g = _ , r-name nb (rn-gen gw) , x-good (gen-good _)
+res-expr (re-var (rv-gen g′ nb gw)) g = _ , r-name nb (rn-gen g′ gw) , x-gen
+res-expr re-gen g = _ , r-gen , x-gen
 res-expr (re-var (rv-import nb ngw fa ex)) g = _ , r-name nb (rn-import ngw fa ex) , x-good g
 res-expr (re-var (rv-own {x = x} nb ngw ab)) g = _ , r-name nb (rn-own ngw ab (g refl)) , x-good g
 res-expr re-this g = _ , r-this (g refl) , x-good g

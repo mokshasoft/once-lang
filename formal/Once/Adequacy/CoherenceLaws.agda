@@ -61,7 +61,6 @@ open import Once.Spec.Word using (Carrier)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.IR.Semantics.FunctorMeaning using (translateF)
 open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_)
-open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
 open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; ⟦_⟧ᴰ)
 open import Once.Arith.SigOp.Builders using (numInfo)
 open import Once.Spec.Theory using (Has; Sym; symDom; unary; binary; compare) renaming (int to nint; float to nfloat)
@@ -144,9 +143,13 @@ module _ {m n} {Γ : Ctx m n} where
   app-congˢ {q = Many} ef ex σ rσ r =
     RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (ex σ rσ (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
 
-  effApp-congˢ : ∀ {Ψ₁ Ψ₂ A B π} {g : Once.Spec.Grade.EffGrade π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)} {x x′ : Expr Γ Ψ₂ A}
+  effApp-congˢ : ∀ {Ψ₁ Ψ₂ A B q π} {g : Once.Spec.Grade.EffGrade π} {f f′ : Expr Γ Ψ₁ (A ⇒[ mk-kind q π ] B)} {x x′ : Expr Γ Ψ₂ A}
               → f ≈ˢ f′ → x ≈ˢ x′ → effApp {g = g} f x ≈ˢ effApp {g = g} f′ x′
-  effApp-congˢ ef ex σ rσ r =
+  effApp-congˢ {q = Zero} ef ex σ rσ r =
+    relS-ret λ _ → RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → rf
+  effApp-congˢ {q = One} ef ex σ rσ r =
+    relS-ret λ _ → RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (ex σ rσ (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
+  effApp-congˢ {q = Many} ef ex σ rσ r =
     relS-ret λ _ → RelS-bind (ef σ rσ (restrict-rel {Γ = Γ} _ r)) λ rf → RelS-bind (ex σ rσ (restrict-rel {Γ = Γ} _ r)) λ rx → rf rx
 
   comp-congˢ : ∀ {Ψ₁ Ψ₂ A B C π} {f f′ : Expr Γ Ψ₁ (B ⇒[ mk-kind Many π ] C)} {g g′ : Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] B)}
@@ -313,115 +316,6 @@ module _ {m n} {Γ : Ctx m n} where
                  → coerce (sub-arr sub-void sub-void r) (lift-morphism {Γ = Γ} {A = Void} {B = Void} {π = π} IR.initial)
                    ≈ˢ lift-morphism {Γ = Γ} {A = Void} {B = A} {π = π} IR.initial
   initial-coerceˢ r σ rσ re = retargetˡ refl (relS-ret λ { {()} })
-
-------------------------------------------------------------------------
--- `cata` fuses with a conversion of its carrier.
---
--- The algebra `alg : ⟦F⟧A ⇒ A`, converted to `⟦F⟧A′ ⇒ A′` (domain `d`,
--- codomain `p`), folds to the conversion of `alg`'s fold. The relational fold
--- (`cataS-rel`) carries, for each subtree, the converted fold related to the
--- original fold mapped by `⟦ p ⟧<:` — and the original fold related to itself,
--- which the layer step needs (`d` after `p` converts a type to ITSELF, and that
--- conversion relates a self-related value to itself).
-------------------------------------------------------------------------
-
--- The functor-lifted relation on `⟦ F ⟧F`.
-RelF : ∀ {m} (F : Fun m) {X₁ X₂ : Set} (R : X₁ → X₂ → Set) → ⟦ F ⟧F X₁ → ⟦ F ⟧F X₂ → Set
-RelF (K A)   R x y = x ≡ y
-RelF Id      R x y = R x y
-RelF (F ⊕ G) R (inj₁ x) (inj₁ y) = RelF F R x y
-RelF (F ⊕ G) R (inj₂ x) (inj₂ y) = RelF G R x y
-RelF (F ⊕ G) R (inj₁ _) (inj₂ _) = ⊥
-RelF (F ⊕ G) R (inj₂ _) (inj₁ _) = ⊥
-RelF (F ⊗ G) R (x₁ , y₁) (x₂ , y₂) = RelF F R x₁ x₂ × RelF G R y₁ y₂
-
-out-rel : ∀ {m} {Δ : KCtx m} {F : Fun m} (wf : WFFun Δ F) {X₁ X₂ : Set} (R : X₁ → X₂ → Set) {y₁ y₂}
-        → RelSF (translateF Carrier Carrier F) R y₁ y₂
-        → RelF F R (coerce-μ-out wf X₁ y₁) (coerce-μ-out wf X₂ y₂)
-out-rel (wf-K pA) R refl = refl
-out-rel wf-Id R r = r
-out-rel (wf-⊕ wfF wfG) R {inj₁ _} {inj₁ _} r = out-rel wfF R r
-out-rel (wf-⊕ wfF wfG) R {inj₂ _} {inj₂ _} r = out-rel wfG R r
-out-rel (wf-⊕ wfF wfG) R {inj₁ _} {inj₂ _} ()
-out-rel (wf-⊕ wfF wfG) R {inj₂ _} {inj₁ _} ()
-out-rel (wf-⊗ wfF wfG) R {_ , _} {_ , _} (r₁ , r₂) = out-rel wfF R r₁ , out-rel wfG R r₂
-
-module _ {m : ℕ} {A A′ : Ty m} (p : A <: A′) where
-  -- The carrier relation: converted fold against the original fold mapped,
-  -- and the original fold related to itself.
-  Rc : T∞ ⟦ A′ ⟧ᴰ → T∞ ⟦ A ⟧ᴰ → Set
-  Rc t₁ t₂ = RelS (RelD A′) t₁ (fmap∞ ⟦ p ⟧<: t₂) × RelS (RelD A) t₂ t₂
-
-  -- …and on a sequenced layer.
-  Rl : ∀ (F : Fun m) → ⟦ F ⟧F ⟦ A′ ⟧ᴰ → ⟦ F ⟧F ⟦ A ⟧ᴰ → Set
-  Rl F = RelF F (λ a b → RelD A′ a (⟦ p ⟧<: b) × RelD A b b)
-
-  seq-rel : ∀ (F : Fun m) {fc₁ : ⟦ F ⟧F (T∞ ⟦ A′ ⟧ᴰ)} {fc₂ : ⟦ F ⟧F (T∞ ⟦ A ⟧ᴰ)}
-          → RelF F Rc fc₁ fc₂ → RelS (Rl F) (seqF∞ F fc₁) (seqF∞ F fc₂)
-  seq-rel (K B) e = relS-ret e
-  seq-rel Id (r , s) = RelS-pairʳ (RelS-unfmapʳ r) s
-  seq-rel (F ⊕ G) {inj₁ _} {inj₁ _} r = RelS-fmap {f = inj₁} {g = inj₁} (seq-rel F r) (λ z → z)
-  seq-rel (F ⊕ G) {inj₂ _} {inj₂ _} r = RelS-fmap {f = inj₂} {g = inj₂} (seq-rel G r) (λ z → z)
-  seq-rel (F ⊕ G) {inj₁ _} {inj₂ _} ()
-  seq-rel (F ⊕ G) {inj₂ _} {inj₁ _} ()
-  seq-rel (F ⊗ G) {_ , _} {_ , _} (r₁ , r₂) =
-    RelS-bind (seq-rel F r₁) λ ru → RelS-bind (seq-rel G r₂) λ rv → relS-ret (ru , rv)
-
-  -- The original layer's own relation, read off the paired one.
-  seq-self : ∀ (F : Fun m) {fc₁ : ⟦ F ⟧F (T∞ ⟦ A′ ⟧ᴰ)} {fc₂ : ⟦ F ⟧F (T∞ ⟦ A ⟧ᴰ)} → RelF F Rc fc₁ fc₂ → FRel (RelS (RelD A)) F fc₂ fc₂
-  seq-self (K B) e = fr-K
-  seq-self Id (r , s) = fr-Id s
-  seq-self (F ⊕ G) {inj₁ _} {inj₁ _} r = fr-inl (seq-self F r)
-  seq-self (F ⊕ G) {inj₂ _} {inj₂ _} r = fr-inr (seq-self G r)
-  seq-self (F ⊕ G) {inj₁ _} {inj₂ _} ()
-  seq-self (F ⊕ G) {inj₂ _} {inj₁ _} ()
-  seq-self (F ⊗ G) {_ , _} {_ , _} (r₁ , r₂) = fr-pair (seq-self F r₁) (seq-self G r₂)
-
--- A layer converted up by `p` and back down by `d` relates to the layer.
-layer-rel : ∀ {m} {Δ : KCtx m} {F : Fun m} (wf : WFFun Δ F) {A A′ : Ty m} (d : SpT.⟦ F ⟧F A′ <: SpT.⟦ F ⟧F A) (p : A <: A′)
-              {l₁ : ⟦ F ⟧F ⟦ A′ ⟧ᴰ} {l₂ : ⟦ F ⟧F ⟦ A ⟧ᴰ}
-          → Rl p F l₁ l₂ → RelD (SpT.⟦ F ⟧F A) (⟦ d ⟧<: (coerce-functor⁻¹-D wf A′ l₁)) (coerce-functor⁻¹-D wf A l₂)
-layer-rel {F = K B} (wf-K b) d p {l₁} refl rewrite <:-unique d (<:-refl B) = <:-refl-rel B (base-refl b _)
-layer-rel wf-Id {A} d p {l₁} {l₂} (ra , rb) = RelD-trans A (<:-rel d ra) back
-  where
-    back : RelD A (⟦ d ⟧<: (⟦ p ⟧<: l₂)) l₂
-    back with <:-trans-rel p d rb
-    ... | t rewrite <:-unique (<:-trans p d) (<:-refl A) = RelD-trans A t (<:-refl-rel A rb)
-layer-rel (wf-⊕ w₁ w₂) (Once.Spec.Sub.sub-+ d₁ d₂) p {inj₁ _} {inj₁ _} r = layer-rel w₁ d₁ p r
-layer-rel (wf-⊕ w₁ w₂) (Once.Spec.Sub.sub-+ d₁ d₂) p {inj₂ _} {inj₂ _} r = layer-rel w₂ d₂ p r
-layer-rel (wf-⊕ w₁ w₂) (Once.Spec.Sub.sub-+ d₁ d₂) p {inj₁ _} {inj₂ _} ()
-layer-rel (wf-⊕ w₁ w₂) (Once.Spec.Sub.sub-+ d₁ d₂) p {inj₂ _} {inj₁ _} ()
-layer-rel (wf-⊗ w₁ w₂) (sub-* d₁ d₂) p {_ , _} {_ , _} (r₁ , r₂) = layer-rel w₁ d₁ p r₁ , layer-rel w₂ d₂ p r₂
-
-cata-core : ∀ {m} {Δ : KCtx m} {F : Fun m} (wf : WFFun Δ F) {A A′ : Ty m} {π π′ : Purity}
-              (d : SpT.⟦ F ⟧F A′ <: SpT.⟦ F ⟧F A) (p : A <: A′) (g : π ⊑π π′)
-              {valg valg′ : ⟦ SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A ⟧ᴰ}
-          → RelD (SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A) valg valg′
-          → ∀ (x : ⟦μ⟧ F)
-          → Rc p (sem-cata wf (cata-ev-algˢ {C = A′} {F = F} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg))) x)
-                 (sem-cata wf (cata-ev-algˢ {C = A} {F = F} wf (return∞ valg′)) x)
-cata-core {F = F} wf {A} {A′} {π} d p g {valg} {valg′} ralg x =
-  cataS-rel {translateF Carrier Carrier F} (Rc p) algR x
-  where
-    self′ = RelD-rightself (SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A) ralg
-    algR : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) (Rc p) y₁ y₂
-         → Rc p (cata-ev-algˢ {C = A′} {F = F} wf (return∞ (⟦ sub-arr {q = Many} d p g ⟧<: valg)) (coerce-μ-out wf _ y₁))
-                (cata-ev-algˢ {C = A} {F = F} wf (return∞ valg′) (coerce-μ-out wf _ y₂))
-    algR {y₁} {y₂} r =
-      RelS-assocʳ (seq-rel p F (out-rel wf _ r))
-        (λ rl → retargetˡ refl (retargetʳ refl (RelS-fmap (ralg (layer-rel wf d p rl)) (<:-rel p))))
-      , RelS-bind (seqF∞-rel F (seq-self p F (out-rel wf _ r)))
-          (λ fl → retargetˡ refl (retargetʳ refl (self′ (cfD⁻¹-rel wf A fl))))
-
-module _ {m n} {Γ : Ctx m n} where
-
-  cata-coerceˢ : ∀ {Δₖ : KCtx m} {A A′ : Ty m} {F : Fun m} {Ψ π} (wf : WFFun Δₖ F) (d : SpT.⟦ F ⟧F A′ <: SpT.⟦ F ⟧F A) (p : A <: A′) (g : π ⊑π π)
-                  (alg : Expr Γ Ψ (SpT.⟦ F ⟧F A ⇒[ mk-kind Many π ] A))
-              → cata {Γ = Γ} wf (coerce (sub-arr {q = Many} d p g) alg)
-                ≈ˢ coerce (sub-arr (<:-refl (μ F)) p (⊑π-refl π)) (cata {Γ = Γ} wf alg)
-  cata-coerceˢ wf d p g alg σ rσ re =
-    RelS-assoc₂ (SD-rel rσ alg (restrict-rel {Γ = Γ} _ re)) λ ralg →
-      retargetˡ refl (retargetʳ refl (relS-ret λ { {x} refl → proj₁ (cata-core wf d p g ralg x) }))
 
 -- The same laws at `_≈_` live in `CoherenceLawsWrap` (split for the 30 s
 -- per-module check budget).

@@ -41,7 +41,8 @@ open import Relation.Nullary using (does)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Finite; pureᶠ; actᶠ; Purity; fin; eff; mk-kind)
 open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; Int; Float; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 import Once.Spec.Type as T
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_; Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; Import; mkImport; Module; mkModule)
+import Once.Spec.Surface.Generators
+open import Once.Spec.Surface.Syntax using (RGen; PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_; Expr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; Import; mkImport; Module; mkModule)
 open import Once.Surface.OpNames
 open import Once.Spec.Surface.Operator using (BinOp; Dottable; ‹_›; o+; o-; o*; o/; o<; o>;
   Level; comparison; additive; multiplicative; level)
@@ -533,6 +534,7 @@ mutual
   pex l wh (RVar x)           = name x
   pex l wh (RQualified x a)   = word x ⊕ᵈ t S.TAt ⊕ᵈ word a
   pex l wh (RResolved (canonical xs)) = dotted xs
+  pex l wh (RGen g)           = word (Once.Spec.Surface.Generators.word g)
   pex l wh (RPair a b)        =
     (t S.TLParen ⊕ᵈ pex 0 true a ⊕ᵈ t S.TComma ⊕ᵈ pure′ line ⊕ᵈ pex 0 true b ⊕ᵈ t S.TRParen)
       >>=′ λ d → pure′ (group (nest indent d))

@@ -211,7 +211,7 @@ module Back {mm : ModuleMap} {dsU : List Decl} {Σ : Signature} {l : CoreProgram
     ukeys = keys-distinct fs (ap-pre (map Parser.entryNameOf fs) (subst (AllPairs _≢_) (map-++ Parser.entryNameOf fs es′) guard))
     sg = entrySig fs ʳ++ []
     ps = polyNames es′
-    h-sig = λ {m} {c} {t} (_ : Once.Spec.Name.NotGenerator c) (M : (c ∶ t) Data.List.Membership.Propositional.∈ Σ)
+    h-sig = λ {m} {c} {t} (M : (c ∶ t) Data.List.Membership.Propositional.∈ Σ)
             → h-sig-of Σ fs tf ukeys (Extracted.facts X) {m} M
     h-own = λ {x} {t} (x∈ : x ∈ ps) M → not-sig Σ fs es′ tf guard {x} {t} (poly-names es′ x∈) M
     h-psig = λ {x} (x∈ : x ∈ ps) → All.lookup (nosig-rest fs es′ guard) (poly-names es′ x∈)
@@ -226,7 +226,8 @@ module Back {mm : ModuleMap} {dsU : List Decl} {Σ : Signature} {l : CoreProgram
     rel₀ : W.Rel SC.[] SC.[]
     rel₀ = record { ρ⇒ = λ () ; ren⇒ = λ () ; ρ⇐ = λ () ; ren⇐ = λ () }
     align = Al.align-of Σ dr (dr-adj Σ dr (walk-adj walk)) (Extracted.defs X)
-    w← = W.walk← (CoreProgram.Tele.[] {Σ = Σ}) ss Once.Core.Translate.ImpSig.[] Once.Core.Translate.TeleSig.[] (Once.Adequacy.ModuleProgram.names₀ Σ) rel₀ walk align
+    w← = W.walk← (CoreProgram.Tele.[] {Σ = Σ}) ss Once.Core.Translate.ImpSig.[] Once.Core.Translate.TeleSig.[] (Once.Adequacy.ModuleProgram.names₀ Σ)
+                 (Once.Adequacy.ModuleProgram.fresh₀ᵃᵗ Σ guard′ (nosig-rest fs es′ guard)) rel₀ walk align
                  (WS.winv-empty Σ ps) eok
     pf = prefix← {sc = emptyScope} fs (Extracted.facts X) (proj₁ w←)
     ms = proj₁ (proj₂ pf) (proj₁ (proj₂ w←) (WM.walk-mains Σ walk mains))

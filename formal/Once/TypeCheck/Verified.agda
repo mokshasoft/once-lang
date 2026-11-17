@@ -78,7 +78,7 @@ import Data.Empty
 import Once.TypeCheck.Determinism  as Det
 import Once.TypeCheck.Totality     as Tot
 import Once.TypeCheck.Completeness as CS
-import Once.TypeCheck.Completeness.Rules as CmpR
+import Once.TypeCheck.Completeness.Refs as CmpR
 import Once.TypeCheck.ErrorProofs  as EP
 import Once.TypeCheck.Identities   as Id
 import Once.Laws.Grade as Grade
@@ -92,13 +92,16 @@ import Relation.Binary.Structures
 open import Once.TypeCheck.SpecWitness using (Pack; WI; WC)
 open import Once.TypeCheck.ElaborateSound using (inferElabV; checkElabV; VerifiedInferResult; VerifiedCheckResult)
 open import Data.Product using (proj₁)
-open import Relation.Binary.PropositionalEquality using (refl)
+open import Relation.Binary.PropositionalEquality using (refl; cong)
+import Once.Spec.Surface.Typing as SUT
+open import Once.Spec.Core.Derived using (𝕋)
 open import Once.TypeCheck.Error using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UsageViolation; BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Surface.Syntax as Raw using (RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RNeg; RBinOp; RLam; RApp)
 open import Once.Spec.Surface.Operator using (BinOp)
-open import Once.Spec.Name using (gen; GenWord)
+
 import Once.Grammar.Convert       as Conv
+import Once.Spec.Surface.Generators as G
 open import Once.Grammar using (GType)
 open Conv using (typeToGType; gtypeToType)
 open Tot  using (IsInferSuccess; IsInferFailure;
@@ -195,15 +198,17 @@ record VerifiedTypeChecker {m} : Set₁ where
       → err ≡ LambdaInInferMode
 
     tc-err-inl-infer : ∀ (ctx : NamedCtx m) (arg : Syn.Expr) {err : TypeError}
-      → tcInfer ctx (RApp (RResolved (gen "inl")) arg) ≡ failure err
+      → tcInfer ctx (RApp (Syn.RGen G.inl) arg) ≡ failure err
       → err ≡ InlInInferMode
 
     tc-err-inr-infer : ∀ (ctx : NamedCtx m) (arg : Syn.Expr) {err : TypeError}
-      → tcInfer ctx (RApp (RResolved (gen "inr")) arg) ≡ failure err
+      → tcInfer ctx (RApp (Syn.RGen G.inr) arg) ≡ failure err
       → err ≡ InrInInferMode
 
-    tc-err-initial-infer : ∀ (ctx : NamedCtx m) (arg : Syn.Expr) {err : TypeError}
-      → tcInfer ctx (RApp (RResolved (gen "initial")) arg) ≡ failure err
+    -- `initial` synthesizes from `Void` only (its least codomain there).
+    tc-err-initial-infer : ∀ (ctx : NamedCtx m) (arg : Syn.Expr) {T : Ty m} {Ψ' eE' d' f' err}
+      → tcInfer ctx arg ≡ success T Ψ' eE' d' f' → ¬ (T ≡ Once.Spec.Type.Void)
+      → tcInfer ctx (RApp (Syn.RGen G.initial) arg) ≡ failure err
       → err ≡ InitialInInferMode
 
     tc-err-qualified-unbound : ∀ (ctx : NamedCtx m) (name alias : String) {err : TypeError}
@@ -214,13 +219,13 @@ record VerifiedTypeChecker {m} : Set₁ where
     tc-err-fst-non-pair-Unit : ∀ (ctx : NamedCtx m) (arg : Syn.Expr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Spec.Type.Unit Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
+      → tcInfer ctx (RApp (Syn.RGen G.fst) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
     tc-err-fst-non-pair-Int : ∀ (ctx : NamedCtx m) (arg : Syn.Expr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Spec.Type.Int Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
+      → tcInfer ctx (RApp (Syn.RGen G.fst) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
     -- Negation with non-Int argument → TypeMismatch Int <type>
@@ -232,7 +237,7 @@ record VerifiedTypeChecker {m} : Set₁ where
 
 
     -- D136: a bare name not in local/import scope. No `unit` exception any
-    -- more — `unit` is `RResolved (gen "unit")`, so a bare `unit` is an
+    -- more — `unit` is `RGen G.unit`, so a bare `unit` is an
     -- ordinary variable and CAN be unbound.
     tc-err-var-unbound : ∀ (ctx : NamedCtx m) (x : String) {err : TypeError}
       → lookupLocal ctx x ≡ nothing
@@ -243,13 +248,13 @@ record VerifiedTypeChecker {m} : Set₁ where
     tc-err-snd-non-pair-Unit : ∀ (ctx : NamedCtx m) (arg : Syn.Expr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Spec.Type.Unit Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
+      → tcInfer ctx (RApp (Syn.RGen G.snd) arg) ≡ failure err
       → err ≡ SndNeedsPair
 
     tc-err-snd-non-pair-Int : ∀ (ctx : NamedCtx m) (arg : Syn.Expr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Spec.Type.Int Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
+      → tcInfer ctx (RApp (Syn.RGen G.snd) arg) ≡ failure err
       → err ≡ SndNeedsPair
 
     -- Case scrutinee non-sum → CaseScrutineeNotSum
@@ -345,12 +350,12 @@ record VerifiedTypeChecker {m} : Set₁ where
     -- Exhaustive per-Type G4 wiring (Float, Buffer, Sum, Product, Fun).
     tc-err-fst-non-pair-Float : ∀ (ctx : NamedCtx m) (arg : Syn.Expr) {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Spec.Type.Float Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
+      → tcInfer ctx (RApp (Syn.RGen G.fst) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
     tc-err-snd-non-pair-Float : ∀ (ctx : NamedCtx m) (arg : Syn.Expr) {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Spec.Type.Float Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
+      → tcInfer ctx (RApp (Syn.RGen G.snd) arg) ≡ failure err
       → err ≡ SndNeedsPair
 
     tc-err-case-scrut-Float : ∀ (ctx : NamedCtx m) (scrut : Syn.Expr) (xL : String) (eL : Syn.Expr)
@@ -377,7 +382,7 @@ record VerifiedTypeChecker {m} : Set₁ where
 
     tcInfer-complete-RVar-unit : ∀ (ctx : NamedCtx m)
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RResolved (gen "unit")) ≡ success Once.Spec.Type.Unit Surface.zeroUsage eE d f
+          tcInfer ctx (Syn.RGen G.unit) ≡ success Once.Spec.Type.Unit Surface.zeroUsage eE d f
 
     -- RPair: both subs infer → outer succeeds.
     tcInfer-complete-RPair : ∀ (ctx : NamedCtx m) (a b : Syn.Expr) {A B : Ty m}
@@ -430,7 +435,7 @@ record VerifiedTypeChecker {m} : Set₁ where
         {d' f' : _}
       → tcInfer ctx arg ≡ success T Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RApp (RResolved (gen "id")) arg)
+          tcInfer ctx (RApp (Syn.RGen G.id) arg)
             ≡ success T (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d f
 
     tcInfer-complete-RApp-fst : ∀ (ctx : NamedCtx m) (arg : Syn.Expr) {A B : Ty m}
@@ -439,7 +444,7 @@ record VerifiedTypeChecker {m} : Set₁ where
         {d' f' : _}
       → tcInfer ctx arg ≡ success (A Once.Spec.Type.* B) Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RApp (RResolved (gen "fst")) arg)
+          tcInfer ctx (RApp (Syn.RGen G.fst) arg)
             ≡ success A (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d f
 
     tcInfer-complete-RApp-snd : ∀ (ctx : NamedCtx m) (arg : Syn.Expr) {A B : Ty m}
@@ -448,7 +453,7 @@ record VerifiedTypeChecker {m} : Set₁ where
         {d' f' : _}
       → tcInfer ctx arg ≡ success (A Once.Spec.Type.* B) Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RApp (RResolved (gen "snd")) arg)
+          tcInfer ctx (RApp (Syn.RGen G.snd) arg)
             ≡ success B (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d f
 
     tcInfer-complete-RApp-terminal : ∀ (ctx : NamedCtx m) (arg : Syn.Expr) {T : Ty m}
@@ -457,7 +462,7 @@ record VerifiedTypeChecker {m} : Set₁ where
         {d' f' : _}
       → tcInfer ctx arg ≡ success T Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RApp (RResolved (gen "terminal")) arg)
+          tcInfer ctx (RApp (Syn.RGen G.terminal) arg)
             ≡ success Once.Spec.Type.Unit (Surface.zeroUsage Surface.+ᵘ (Once.Spec.Grade.Many Surface.*ᵘ Ψ)) eE d f
 
     -- RVar local and import
@@ -506,21 +511,23 @@ record VerifiedTypeChecker {m} : Set₁ where
           tcInfer ctx (Raw.RDestruct scrut xL eL xR eR)
             ≡ success C (Ψs Surface.+ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ)) eE d f
 
-    -- Generic RApp.
-    -- Plan 0.4 T1, change 1: x premise is now `tcCheck ctx x A`
-    -- (matches the bidirectional inferElab rule).
-    tcInfer-complete-RApp-generic : ∀ (ctx : NamedCtx m) (f x : Syn.Expr) (A : Ty m) {B : Ty m} {q : _}
+    -- Generic RApp (`s-app`): a head that synthesizes, at any grade, at a
+    -- scope's Pack (the head's form decides the route, `FormSound`).
+    tcInfer-complete-RApp-generic : ∀ {ctx : NamedCtx m} (P : Pack ctx) (f x : Syn.Expr) {A B : Ty m} {q π tf}
         {Ψf : Surface.Usage (Classify.NamedCtx.size ctx)}
-        {fE : SExpr (Classify.NamedCtx.debruijn ctx) Ψf (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q Once.Spec.Grade.pure ] B)}
+        {fE : SExpr (Classify.NamedCtx.debruijn ctx) Ψf (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q π ] B)}
         {df ff : _}
         {Ψx : Surface.Usage (Classify.NamedCtx.size ctx)}
         {xE : SExpr (Classify.NamedCtx.debruijn ctx) Ψx A}
         {dx fx : _}
-      → Classify.classifyAppHead f ≡ nothing
-      → tcInfer ctx f ≡ success (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q Once.Spec.Grade.pure ] B) Ψf fE df ff
+      → CS.Syn P f (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q π ] B) tf
+      → ¬ SUT.PartialCombinator (Pack.Sg P) (Pack.S P) (Pack.nm P) f
+      → ¬ SUT.CheckHead (Pack.Sg P) (Pack.S P) (Pack.nm P) f
+      → (∀ {c} → f ≡ RResolved c → Once.TypeCheck.Elaborate.polyKind ctx c ≡ Once.TypeCheck.Elaborate.not-poly)
+      → tcInfer ctx f ≡ success (A Once.Spec.Type.⇒[ Once.Spec.Grade.mk-kind q π ] B) Ψf fE df ff
       → tcCheck ctx x A ≡ success Ψx xE dx fx
       → ∃[ eE ] ∃[ d ] ∃[ f' ]
-          tcInfer ctx (RApp f x) ≡ success B (Ψf Surface.+ᵘ (q Surface.*ᵘ Ψx)) eE d f'
+          tcInfer ctx (RApp f x) ≡ success (𝕋 π B) (Ψf Surface.+ᵘ (q Surface.*ᵘ Ψx)) eE d f'
 
     -- Check-mode RLam
     tcCheck-complete-RLam : ∀ (ctx : NamedCtx m) (x : String) (body : Syn.Expr)
@@ -530,7 +537,6 @@ record VerifiedTypeChecker {m} : Set₁ where
                      (q' SCx.∷ Ψ') B}
         {d' f' : _} {π : Once.Spec.Grade.Purity}
       → (q' Once.Type.Grade.≤qᵇ q) ≡ Data.Bool.true
-      → Once.Spec.Grade._⊑π_ Once.Spec.Grade.pure π
       → tcCheck (extendNamedCtx ctx x A) body B
           ≡ success (q' SCx.∷ Ψ') eE' d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
@@ -679,21 +685,21 @@ verifiedTypeChecker = record
   ; tc-err-case-branch-mismatch   = EP.case-branch-mismatch-is-CaseBranchMismatch
   ; tc-err-check-RInt-type-mismatch  = EP.check-RInt-type-mismatch
   ; tc-err-check-RUnit-type-mismatch = EP.check-RUnit-type-mismatch
-  ; tcInfer-complete-RInt         = λ ctx n → CmpR.infer-complete-RInt {ctx = ctx} n
-  ; tcInfer-complete-RUnit        = λ ctx → CmpR.infer-complete-RUnit {ctx = ctx}
-  ; tcInfer-complete-RVar-unit    = λ ctx → CmpR.infer-complete-RVar-unit {ctx = ctx}
+  ; tcInfer-complete-RInt         = λ ctx n → _ , _ , _ , refl
+  ; tcInfer-complete-RUnit        = λ ctx → _ , _ , _ , refl
+  ; tcInfer-complete-RVar-unit    = λ ctx → _ , _ , _ , refl
   ; tcInfer-complete-RPair        = λ ctx → CmpR.infer-complete-RPair
   ; tcInfer-complete-RNeg = λ ctx → CmpR.infer-complete-RNeg
   ; tcInfer-complete-RAnnot       = λ ctx → CmpR.infer-complete-RAnnot
   ; tcInfer-complete-RLet         = λ ctx → CmpR.infer-complete-RLet
-  ; tcInfer-complete-RApp-id      = λ ctx → CmpR.infer-complete-RApp-id
-  ; tcInfer-complete-RApp-fst     = λ ctx → CmpR.infer-complete-RApp-fst
-  ; tcInfer-complete-RApp-snd     = λ ctx → CmpR.infer-complete-RApp-snd
-  ; tcInfer-complete-RApp-terminal = λ ctx → CmpR.infer-complete-RApp-terminal
+  ; tcInfer-complete-RApp-id      = λ ctx arg eq → _ , _ , _ , cong (Once.TypeCheck.Elaborate.inferMapSpine ctx G.id) eq
+  ; tcInfer-complete-RApp-fst     = λ ctx arg eq → _ , _ , _ , cong (Once.TypeCheck.Elaborate.inferMapSpine ctx G.fst) eq
+  ; tcInfer-complete-RApp-snd     = λ ctx arg eq → _ , _ , _ , cong (Once.TypeCheck.Elaborate.inferMapSpine ctx G.snd) eq
+  ; tcInfer-complete-RApp-terminal = λ ctx arg eq → _ , _ , _ , cong (Once.TypeCheck.Elaborate.inferMapSpine ctx G.terminal) eq
   ; tcInfer-complete-RVar-local   = λ ctx → CmpR.infer-complete-RVar-local {ctx = ctx}
   ; tcInfer-complete-RBinOp      = λ ctx → CmpR.infer-complete-RBinOp
   ; tcInfer-complete-RDestruct    = λ ctx → CmpR.infer-complete-RDestruct
-  ; tcInfer-complete-RApp-generic = λ ctx → CmpR.infer-complete-RApp-generic
+  ; tcInfer-complete-RApp-generic = λ P f x df pc ch hr eqF eqX → CS.app-step P df pc ch hr eqF eqX
   ; tcCheck-complete-RLam         = CmpR.check-complete-RLam
   ; id-decideLeq-iff              = λ q' q → Id.decideLeq-correct-true q' q , Id.decideLeq-correct-just q' q
   ; id-binop-binary = Id.binop-binary

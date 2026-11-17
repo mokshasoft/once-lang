@@ -325,7 +325,13 @@ module _ {σ : ISig} (tbl : List IRFun) where
   elaborate-linked′ m {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} f x) (rf , rx) =
     tt , ((elaborate-linked′ m f rf , rE {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)))
          , (elaborate-linked′ m x rx , rE {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂)))))
-  elaborate-linked′ m {Γ = Γ} (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) (rf , rx) =
+  elaborate-linked′ m {Γ = Γ} (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} f x) (rf , rx) =
+    Linked-subst (λ Φ → ⌊ ⟦ Γ ↾ Φ ⟧ᶜ ⌋) _ (sym (Once.Surface.Properties.erase-arg-usage Ψ₁ Ψ₂))
+                 (IR.curry ((IR.apply IR.∘ IR.⟨ elaborate m f , IR.terminal ⟩) IR.∘ IR.fst)) ((tt , (elaborate-linked′ m f rf , tt)) , tt)
+  elaborate-linked′ m {Γ = Γ} (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} f x) (rf , rx) =
+    (tt , ((elaborate-linked′ m f rf , rE {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)))
+          , (elaborate-linked′ m x rx , rE {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂)))))) , tt
+  elaborate-linked′ m {Γ = Γ} (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} f x) (rf , rx) =
     (tt , ((elaborate-linked′ m f rf , cf (envˡ {Γ = Γ} m Ψ₁ (Many *ᵘ Ψ₂)) (restrictEnv-cf {Γ = Γ} m _))
           , (elaborate-linked′ m x rx , cf (envʳω {Γ = Γ} m Ψ₁ Ψ₂) (restrictEnv-cf {Γ = Γ} m _)))) , tt
   elaborate-linked′ m {Γ = Γ} (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) (ra , rb) =

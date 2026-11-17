@@ -378,12 +378,12 @@ module Comb {Δ : KCtx 0} {δ : DefSem} {n} {Γ : Ctx 0 n} where
   loop-sem : ∀ {Ψ : Usage n} {A B : Ty 0} {c}
     (dc : Δ ⊩ Γ ⊢[ Ψ ] c ∷ A ⇒[ mk-kind Many act ] (B + A) ! pure)
     (R : EA.Env Γ Ψ → ⟦ A ⇒[ mk-kind Many act ] (B + A) ⟧ᵛ) → Arm R (⟦ dc ⟧ₛ δ)
-    → Arm {Many *ᵘ Ψ} (λ x → λ a → loop (R (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x)) a) (⟦ ⊢loopᶜ dc ⟧ₛ δ)
+    → Arm {Many *ᵘ Ψ} (λ x → λ a → loop (R (restrictᵛ {Γ = Γ} (⊑ᵘ-*Many Ψ) x)) a) (⟦ ⊢anaEffᶜ dc ⟧ₛ δ)
   loop-sem {Ψ = Ψ} dc R hR {γ = γ} r =
     trans (cong (λ C → λ a → loop C a)
-                (hR (split-R {Γ = Γ} (loop-use {Δ = Δ} Ψ) (⊑ᵘ-*Many Ψ) _ (λ y → env*Many σ₀ Ψ (envʳ σ₀ _ (Many *ᵘ Ψ) y))
+                (hR (split-R {Γ = Γ} (anaEff-use {Δ = Δ} Ψ) (⊑ᵘ-*Many Ψ) _ (λ y → env*Many σ₀ Ψ (envʳ σ₀ _ (Many *ᵘ Ψ) y))
                              (env*Many-envʳ-restrict σ₀ _ Ψ) r)))
-          (sym (⟦⟧-substΨ (loop-use {Δ = Δ} Ψ) _ δ γ))
+          (sym (⟦⟧-substΨ (anaEff-use {Δ = Δ} Ψ) _ δ γ))
 
   effApp-sem : ∀ {Ψ₁ Ψ₂ : Usage n} {π} {A B : Ty 0} {f t}
     (df : Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Many π ] B ! pure) (dx : Δ ⊩ Γ ⊢[ Ψ₂ ] t ∷ A ! pure)
@@ -397,3 +397,31 @@ module Comb {Δ : KCtx 0} {δ : DefSem} {n} {Γ : Ctx 0 n} where
     extensionality λ _ →
       trans (appC (hF (envˡ-R {Γ = Γ} Ψ₁ (Many *ᵘ Ψ₂) r)) (hX (env*Many-envʳ-R {Γ = Γ} Ψ₁ Ψ₂ r)))
             (sym (cong₂ (λ f a → f a) (RS.wk-sem σ₀ δ noResp Once.Spec.Type.Unit df _) (RS.wk-sem σ₀ δ noResp Once.Spec.Type.Unit dx _)))
+
+  -- …at a linear arrow
+  effApp-sem₁ : ∀ {Ψ₁ Ψ₂ : Usage n} {π} {A B : Ty 0} {f t}
+    (df : Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind One π ] B ! pure) (dx : Δ ⊩ Γ ⊢[ Ψ₂ ] t ∷ A ! pure)
+    (F : EA.Env Γ Ψ₁ → ⟦ A ⇒[ mk-kind One π ] B ⟧ᵛ) (X : EA.Env Γ Ψ₂ → ⟦ A ⟧ᵛ)
+    → Arm F (⟦ df ⟧ₛ δ) → Arm X (⟦ dx ⟧ₛ δ)
+    → Arm {Ψ₁ +ᵘ One *ᵘ Ψ₂}
+          (λ x → returnᵖ (λ _ → F (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)) x) >>=ᵖ λ vf →
+                                X (restrictᵛ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) x) >>=ᵖ λ vx → vf vx))
+          (⟦ ⊢effAppᶜ df dx ⟧ₛ δ)
+  effApp-sem₁ {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} df dx F X hF hX r =
+    extensionality λ _ →
+      trans (appC (hF (envˡ-R {Γ = Γ} Ψ₁ (One *ᵘ Ψ₂) r)) (hX (env*One-envʳ-R {Γ = Γ} Ψ₁ Ψ₂ r)))
+            (sym (cong₂ (λ f a → f a) (RS.wk-sem σ₀ δ noResp Once.Spec.Type.Unit df _) (RS.wk-sem σ₀ δ noResp Once.Spec.Type.Unit dx _)))
+
+  -- …at an erased argument: the arrow at `tt`
+  effApp-sem₀ : ∀ {Ψ₁ Ψ₂ : Usage n} {π} {A B : Ty 0} {f t}
+    (df : Δ ⊩ Γ ⊢[ Ψ₁ ] f ∷ A ⇒[ mk-kind Zero π ] B ! pure) (dx : Δ ⊩ Γ ⊢[ Ψ₂ ] t ∷ A ! pure)
+    (F : EA.Env Γ Ψ₁ → ⟦ A ⇒[ mk-kind Zero π ] B ⟧ᵛ)
+    → Arm F (⟦ df ⟧ₛ δ)
+    → Arm {Ψ₁ +ᵘ Zero *ᵘ Ψ₂}
+          (λ x → returnᵖ (λ _ → F (restrictᵛ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂)) x) >>=ᵖ λ vf → vf tt))
+          (⟦ ⊢effAppᶜ df dx ⟧ₛ δ)
+  effApp-sem₀ {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} df dx F hF r =
+    extensionality λ _ →
+      trans (>>=ᵖ-β _ (λ vf → vf tt))
+            (trans (cong (λ f → f tt) (hF (envˡ-R {Γ = Γ} Ψ₁ (Zero *ᵘ Ψ₂) r)))
+                   (sym (cong (λ f → f tt) (RS.wk-sem σ₀ δ noResp Once.Spec.Type.Unit df _))))

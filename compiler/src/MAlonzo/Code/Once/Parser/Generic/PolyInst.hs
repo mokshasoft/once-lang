@@ -573,7 +573,7 @@ d_sound'45'type_398 ::
 d_sound'45'type_398 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.Parser.Generic.Sound.du_sound'45'type_392
-      (coe d_PolyAlg_118) v0 v2 v3
+      (coe d_PolyAlg_118) v0
 -- Once.Parser.Generic.PolyInst._.sound-prod
 d_sound'45'prod_400 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->

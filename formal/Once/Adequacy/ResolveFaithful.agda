@@ -295,6 +295,23 @@ unop-faithful {Γ = Γ} polys imps userFns fresh a le g dγ ih =
     g g
     ih (λ v → refl)
 
+-- | The SUSPENDED unary shape (`effApp` at an erased argument): `unop-faithful`
+--   under the thunk, its function arguments pinned as in `thunk-binop-faithful`.
+thunk-unop-faithful : ∀ {m} {n} {Γ : Srf.Ctx m n} {Ψ Ψ' : Usage n} {A C : Ty m}
+    (polys : PolyCtx) (imps : String → TopCtx) (userFns : Imports) (fresh : ℕ)
+    (a : Expr Γ Ψ A) (le : Ψ Srf.⊑ᵘ Ψ') (g : ⟦ A ⟧ᴰ → T∞ ⟦ C ⟧ᴰ)
+    (dγ : ⟦ ⟦ Γ Srf.↾ Ψ' ⟧ᶜ ⟧ᴰ)
+    (ih : SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} le dγ)
+                  ≡ SD.⟦ a ⟧ˢ fmt (σR polys imps userFns fresh) (restrictᴰ {Γ = Γ} le dγ))
+  → return∞ (λ (_ : Data.Unit.⊤) → SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} le dγ) >>=∞ g)
+      ≡ return∞ (λ (_ : Data.Unit.⊤) → SD.⟦ a ⟧ˢ fmt (σR polys imps userFns fresh) (restrictᴰ {Γ = Γ} le dγ) >>=∞ g)
+thunk-unop-faithful {Γ = Γ} {C = C} polys imps userFns fresh a le g dγ ih =
+  cong return∞ (extensionality (λ _ → inner))
+  where
+    inner : (SD.⟦ resolveExpr polys imps userFns fresh a ⟧ˢ fmt σ₀ (restrictᴰ {Γ = Γ} le dγ) >>=∞ g)
+              ≡ (SD.⟦ a ⟧ˢ fmt (σR polys imps userFns fresh) (restrictᴰ {Γ = Γ} le dγ) >>=∞ g)
+    inner = unop-faithful {C = C} polys imps userFns fresh a le g dγ ih
+
 ------------------------------------------------------------------------
 -- The faithfulness theorem.
 ------------------------------------------------------------------------
@@ -504,7 +521,16 @@ resolveExpr-faithful polys imps userFns fresh
     Eᵣ = restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) Eall
 
 resolveExpr-faithful polys imps userFns fresh
-    (Srf.effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} f x) dγ =
+    (Srf.effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {q = Zero} f x) dγ =
+  thunk-unop-faithful {C = B} polys imps userFns fresh f (Srf.⊑ᵘ-+ˡ Ψ₁ (Zero Srf.*ᵘ Ψ₂)) (λ vf → vf tt) dγ
+    (resolveExpr-faithful polys imps userFns fresh f (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ (Zero Srf.*ᵘ Ψ₂)) dγ))
+resolveExpr-faithful polys imps userFns fresh
+    (Srf.effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {q = One} f x) dγ =
+  thunk-binop-faithful {C = B} polys imps userFns fresh f x (Srf.⊑ᵘ-+ˡ Ψ₁ (One Srf.*ᵘ Ψ₂)) (Srf.⊑ᵘ-trans (Srf.⊑ᵘ-*One Ψ₂) (Srf.⊑ᵘ-+ʳ Ψ₁ (One Srf.*ᵘ Ψ₂))) (λ vf vx → vf vx) dγ
+    (resolveExpr-faithful polys imps userFns fresh f (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ (One Srf.*ᵘ Ψ₂)) dγ))
+    (resolveExpr-faithful polys imps userFns fresh x (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-trans (Srf.⊑ᵘ-*One Ψ₂) (Srf.⊑ᵘ-+ʳ Ψ₁ (One Srf.*ᵘ Ψ₂))) dγ))
+resolveExpr-faithful polys imps userFns fresh
+    (Srf.effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {q = Many} f x) dγ =
   thunk-binop-faithful {C = B} polys imps userFns fresh f x (Srf.⊑ᵘ-+ˡ Ψ₁ (Many Srf.*ᵘ Ψ₂)) (Srf.⊑ᵘ-trans (Srf.⊑ᵘ-*Many Ψ₂) (Srf.⊑ᵘ-+ʳ Ψ₁ (Many Srf.*ᵘ Ψ₂))) (λ vf vx → vf vx) dγ
     (resolveExpr-faithful polys imps userFns fresh f (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-+ˡ Ψ₁ (Many Srf.*ᵘ Ψ₂)) dγ))
     (resolveExpr-faithful polys imps userFns fresh x (restrictᴰ {Γ = Γ} (Srf.⊑ᵘ-trans (Srf.⊑ᵘ-*Many Ψ₂) (Srf.⊑ᵘ-+ʳ Ψ₁ (Many Srf.*ᵘ Ψ₂))) dγ))

@@ -96,7 +96,7 @@ d_pdb'45'fb'45'sig'45'go_36 v0 v1 v2 v3 v4 v5
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe
-                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeSig_98 (coe v0)
+                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_DTypeSig_100 (coe v0)
                    (coe v2))
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v3)
@@ -579,7 +579,7 @@ d_parseModule'45'pd_374 v0 v1
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkModule_114 (coe v3))
+                       (coe MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkModule_116 (coe v3))
                        (coe v4))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -588,7 +588,7 @@ d_parseModule'45'pd_374 v0 v1
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe
-                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkModule_114
+                   MAlonzo.Code.Once.Spec.Surface.Syntax.C_mkModule_116
                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
                 (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError

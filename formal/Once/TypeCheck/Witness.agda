@@ -34,7 +34,7 @@ open import Once.Spec.Grade using (Quantity; Many; One; Purity; pure; act; eff; 
 open import Once.Spec.Type using (Ty; Type; TySub; Respects; WFFun; Occurs; _⟨_⟩; _⇒[_]_; _*_; _+_; Unit; Void; Int; Float; μ; ν; ⟦_⟧F)
 open import Once.Spec.Sub using (_<:_; _⊔_≔_)
 open import Once.Spec.Signature using (_∶_; ⌜_⌝ᵈ)
-open import Once.Spec.Name using (gen; NotGenerator)
+open import Once.Spec.Surface.Generators using (Gen; kind; IsConstant; IsMap; FromDomain; FromCodomain; Constant; Morphism; Final)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Core.Syntax
   using (Tm; lit; lit-int; lit-float; unit; var; sigop; ref; pair; prim; num; p-i2f; let′; case; coerce; app; lam;
@@ -47,7 +47,8 @@ open import Once.Type.Core using (wk₀)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Grade using (_≤qᵇ_)
 import Once.Spec.Surface.Typing Σ S nm as SU
-open SU using (Locals; _▹_∶_; _∋_⦂_at_; SpecialHead; _⇒⟨_⟩_; ↑)
+open SU using (Locals; _▹_∶_; _∋_⦂_at_; PartialCombinator; CheckHead; OwnCheck; DomainForm; _⇒⟨_⟩_; ↑)
+open import Once.Spec.Sub using (_<:ᶜ_)
 open import Once.Spec.Surface.Operator using (binSym; BinSym; _∶_∶_)
 open BinSym using (theory; shape; symbol)
 open import Once.Spec.Theory using (Has; Neg; Rounded; float; float-rounded; ⌜_⌝ⁿ; symCod; ‵neg)
@@ -84,18 +85,15 @@ module _ {n} {L : Locals m n} where
   w-unit : W⇒ L RUnit Unit unit zeroUsage
   w-unit = SU.s-unit , u-unit
 
-  w-toFloat : W⇒ L (RResolved (gen "toFloat")) (Int ⇒[ mk-kind Many pure ] Float) toFloatᶜ zeroUsage
-  w-toFloat = SU.s-toFloat , u-toFloat
-
-  w-unit-g : W⇒ L (RResolved (gen "unit")) Unit unit zeroUsage
-  w-unit-g = SU.s-unit-g , u-unit-g
+  w-const : ∀ {g k T t} → Constant Δ g k T t → W⇒ L (RGen g) T t zeroUsage
+  w-const c = SU.s-const c , u-const
 
   w-var : ∀ {x A i} → L ∋ x ⦂ A at i → W⇒ L (RVar x) A (var i) (singleUse i One)
   w-var v = SU.s-var v , u-var
 
-  w-sigop : ∀ {c} {T : Type} {ok : OkS c T} → NotGenerator c → (mem : (c ∶ declS T) ∈ Σ) → IsConcrete T → HonestFFI T
+  w-sigop : ∀ {c} {T : Type} {ok : OkS c T} → (mem : (c ∶ declS T) ∈ Σ) → IsConcrete T → HonestFFI T
           → W⇒ L (RResolved c) ⌜ declS T ⌝ᵈ (sigop c (declS T)) zeroUsage
-  w-sigop {ok = ok} ng mem k h = SU.s-sigop ng mem , u-sigop {ok = ok} k h
+  w-sigop {ok = ok} mem k h = SU.s-sigop mem , u-sigop {ok = ok} k h
 
   w-def : ∀ {c} (d : Fin s) {ok : Ok d} → nm d ≡ c → (τ : TySub (arity (S !! d)) m) → arity (S !! d) ≡ 0
         → W⇒ L (RResolved c) (type (S !! d) ⟨ τ ⟩) (ref d τ) zeroUsage
@@ -125,107 +123,57 @@ module _ {n} {L : Locals m n} where
   w-binop h (d₁ , u₁) (d₂ , u₂) = SU.s-binop h d₁ d₂ , u-binop u₁ u₂
 
 
-  w-id-app : ∀ {e T t Ψ} → W⇒ L e T t Ψ → W⇒ L (RApp (RResolved (gen "id")) e) T (app (idᶜ T pure) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  w-id-app (d , u) = SU.s-id-app d , u-id-app u
+  w-app : ∀ {f x A B q π tf tx Ψ₁ Ψ₂} → ¬ PartialCombinator f → ¬ CheckHead f
+        → W⇒ L f (A ⇒[ mk-kind q π ] B) tf Ψ₁ → W⇐ L x A tx Ψ₂ → W⇒ L (RApp f x) (𝕋 π B) (appᵀ π tf tx) (Ψ₁ +ᵘ (q *ᵘ Ψ₂))
+  w-app pc ch (df , uf) (dx , ux) = SU.s-app pc ch df dx , u-app uf ux
 
-  w-fst-app : ∀ {e A B t Ψ} → W⇒ L e (A * B) t Ψ → W⇒ L (RApp (RResolved (gen "fst")) e) A (app (fstᶜ A B pure) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  w-fst-app (d , u) = SU.s-fst-app d , u-fst-app u
-
-  w-snd-app : ∀ {e A B t Ψ} → W⇒ L e (A * B) t Ψ → W⇒ L (RApp (RResolved (gen "snd")) e) B (app (sndᶜ A B pure) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  w-snd-app (d , u) = SU.s-snd-app d , u-snd-app u
-
-  w-terminal-app : ∀ {e T t Ψ} → W⇒ L e T t Ψ → W⇒ L (RApp (RResolved (gen "terminal")) e) Unit (app (terminalᶜ T pure) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  w-terminal-app (d , u) = SU.s-terminal-app d , u-terminal-app u
-
-  w-apply-app : ∀ {e A B t Ψ} → W⇒ L e ((A ⇒⟨ pure ⟩ B) * A) t Ψ
-              → W⇒ L (RApp (RResolved (gen "apply")) e) B (app (applyᶜ A B) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  w-apply-app (d , u) = SU.s-apply-app d , u-apply-app u
-
-  w-apply-eff-app : ∀ {e A B π t Ψ} → EffGrade π → W⇒ L e ((A ⇒⟨ π ⟩ B) * A) t Ψ
-                  → W⇒ L (RApp (RResolved (gen "apply")) e) (Unit ⇒⟨ π ⟩ B) (app (applyEffᶜ π A B) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  w-apply-eff-app g (d , u) = SU.s-apply-eff-app g d , u-apply-eff-app u
-
-  w-Out-app : ∀ {e F t Ψ} → WFFun Δ F → W⇒ L e (ν F pureᶠ) t Ψ
-            → W⇒ L (RApp (RResolved (gen "Out")) e) (⟦ F ⟧F (ν F pureᶠ)) (app (outᶜ F) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  w-Out-app w (d , u) = SU.s-Out-app w d , u-Out-app u
-
-  w-Out-act-app : ∀ {e F t Ψ} → WFFun Δ F → W⇒ L e (ν F actᶠ) t Ψ
-                → W⇒ L (RApp (RResolved (gen "Out")) e) (Unit ⇒⟨ act ⟩ ⟦ F ⟧F (ν F actᶠ)) (app (outActᶜ F) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  w-Out-act-app w (d , u) = SU.s-Out-act-app w d , u-Out-act-app u
-
-  w-app : ∀ {f x A B q tf tx Ψ₁ Ψ₂} → ¬ SpecialHead f
-        → W⇒ L f (A ⇒[ mk-kind q pure ] B) tf Ψ₁ → W⇐ L x A tx Ψ₂ → W⇒ L (RApp f x) B (app tf tx) (Ψ₁ +ᵘ (q *ᵘ Ψ₂))
-  w-app ns (df , uf) (dx , ux) = SU.s-app ns df dx , u-app uf ux
-
-  w-effApp : ∀ {f x A B π tf tx Ψ₁ Ψ₂} → ¬ SpecialHead f → EffGrade π
-           → W⇒ L f (A ⇒⟨ π ⟩ B) tf Ψ₁ → W⇐ L x A tx Ψ₂ → W⇒ L (RApp f x) (Unit ⇒⟨ π ⟩ B) (effAppᶜ π tf tx) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
-  w-effApp ns g (df , uf) (dx , ux) = SU.s-effApp ns g df dx , u-effApp uf ux
-
-  w-app-spine : ∀ {f x X T tf tx Ψ₁ Ψ₂} → ¬ SpecialHead f
+  w-app-spine : ∀ {f x X T tf tx Ψ₁ Ψ₂} → CheckHead f
               → W⇒ L x X tx Ψ₂ → W↦ L f X pure T tf Ψ₁ → W⇒ L (RApp f x) T (app tf tx) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
-  w-app-spine ns (dx , ux) (df , uf) = SU.s-app-spine ns dx df , u-app-spine ux uf
+  w-app-spine ch (dx , ux) (df , uf) = SU.s-app-spine ch dx df , u-app-spine ux uf
 
   ------------------------------------------------------------------
   -- Checking
   ------------------------------------------------------------------
 
-  w-id : ∀ {T π} → W⇐ L (RResolved (gen "id")) (T ⇒⟨ π ⟩ T) (idᶜ T π) zeroUsage
-  w-id = SU.c-id , u-id
+  w-map : ∀ {g k A π B t} → Morphism Δ g k A π B t → W⇐ L (RGen g) (A ⇒⟨ π ⟩ B) t zeroUsage
+  w-map mo = SU.c-map mo , u-map
 
-  w-fst : ∀ {A B π} → W⇐ L (RResolved (gen "fst")) ((A * B) ⇒⟨ π ⟩ A) (fstᶜ A B π) zeroUsage
-  w-fst = SU.c-fst , u-fst
+  w-map-app : ∀ {g k e A B tg t Ψ} → FromCodomain (kind g) → Morphism Δ g k A pure B tg → W⇐ L e A t Ψ
+            → W⇐ L (RApp (RGen g) e) B (app tg t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
+  w-map-app fc mo (d , u) = SU.c-map-app fc mo d , u-map-app u
 
-  w-snd : ∀ {A B π} → W⇐ L (RResolved (gen "snd")) ((A * B) ⇒⟨ π ⟩ B) (sndᶜ A B π) zeroUsage
-  w-snd = SU.c-snd , u-snd
+  w-compose-g : ∀ {f g A B C π tf tg Ψ₁ Ψ₂} → DomainForm g → W↦ L g A π B tg Ψ₂ → W⇐ L f (B ⇒⟨ π ⟩ C) tf Ψ₁
+              → W⇐ L (RApp (RApp (RGen Gen.compose) f) g) (A ⇒⟨ π ⟩ C) (composeᶜ A π tf tg) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
+  w-compose-g df′ (dg , ug) (df , uf) = SU.c-compose-g df′ dg df , u-compose-g ug uf
 
-  w-terminal : ∀ {A π} → W⇐ L (RResolved (gen "terminal")) (A ⇒⟨ π ⟩ Unit) (terminalᶜ A π) zeroUsage
-  w-terminal = SU.c-terminal , u-terminal
-
-  w-initial : ∀ {A π} → W⇐ L (RResolved (gen "initial")) (Void ⇒⟨ π ⟩ A) (initialᶜ A π) zeroUsage
-  w-initial = SU.c-initial , u-initial
-
-  w-inl : ∀ {A B π} → W⇐ L (RResolved (gen "inl")) (A ⇒⟨ π ⟩ (A + B)) (inlᶜ A B π) zeroUsage
-  w-inl = SU.c-inl , u-inl
-
-  w-inr : ∀ {A B π} → W⇐ L (RResolved (gen "inr")) (B ⇒⟨ π ⟩ (A + B)) (inrᶜ A B π) zeroUsage
-  w-inr = SU.c-inr , u-inr
-
-  w-compose-g : ∀ {f g A B C π tf tg Ψ₁ Ψ₂} → W↦ L g A π B tg Ψ₂ → W⇐ L f (B ⇒⟨ π ⟩ C) tf Ψ₁
-              → W⇐ L (RApp (RApp (RResolved (gen "compose")) f) g) (A ⇒⟨ π ⟩ C) (composeᶜ A π tf tg) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
-  w-compose-g (dg , ug) (df , uf) = SU.c-compose-g dg df , u-compose-g ug uf
-
-  w-compose-f : ∀ {f g A B C C′ π π′ tf tg Ψ₁ Ψ₂}
+  w-compose-f : ∀ {f g A B C C′ π π′ tf tg Ψ₁ Ψ₂} → ¬ DomainForm g
               → W⇒ L f (B ⇒⟨ π′ ⟩ C′) tf Ψ₁ → (B ⇒⟨ π′ ⟩ C′) <: (B ⇒⟨ π ⟩ C) → W⇐ L g (A ⇒⟨ π ⟩ B) tg Ψ₂
-              → W⇐ L (RApp (RApp (RResolved (gen "compose")) f) g) (A ⇒⟨ π ⟩ C)
+              → W⇐ L (RApp (RApp (RGen Gen.compose) f) g) (A ⇒⟨ π ⟩ C)
                    (composeᶜ A π (coerce (B ⇒⟨ π′ ⟩ C′) (B ⇒⟨ π ⟩ C) tf) tg) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
-  w-compose-f (df , uf) p (dg , ug) = SU.c-compose-f df p dg , u-compose-f uf ug
+  w-compose-f ndf (df , uf) p (dg , ug) = SU.c-compose-f ndf df p dg , u-compose-f uf ug
 
   w-case′ : ∀ {f g A B C π tf tg Ψ₁ Ψ₂} → W⇐ L f (A ⇒⟨ π ⟩ C) tf Ψ₁ → W⇐ L g (B ⇒⟨ π ⟩ C) tg Ψ₂
-          → W⇐ L (RApp (RApp (RResolved (gen "case")) f) g) ((A + B) ⇒⟨ π ⟩ C) (caseᶜ A B π tf tg) (Ψ₁ +ᵘ Ψ₂)
+          → W⇐ L (RApp (RApp (RGen Gen.case) f) g) ((A + B) ⇒⟨ π ⟩ C) (caseᶜ A B π tf tg) (Ψ₁ +ᵘ Ψ₂)
   w-case′ (df , uf) (dg , ug) = SU.c-case df dg , u-case uf ug
 
   w-pair′ : ∀ {f g A B C π tf tg Ψ₁ Ψ₂} → W⇐ L f (A ⇒⟨ π ⟩ B) tf Ψ₁ → W⇐ L g (A ⇒⟨ π ⟩ C) tg Ψ₂
-          → W⇐ L (RApp (RApp (RResolved (gen "pair")) f) g) (A ⇒⟨ π ⟩ (B * C)) (pairᶜ A π tf tg) (Ψ₁ +ᵘ Ψ₂)
+          → W⇐ L (RApp (RApp (RGen Gen.pair) f) g) (A ⇒⟨ π ⟩ (B * C)) (pairᶜ A π tf tg) (Ψ₁ +ᵘ Ψ₂)
   w-pair′ (df , uf) (dg , ug) = SU.c-pair df dg , u-pair uf ug
 
   w-curry : ∀ {f A B C π₀ π t Ψ} → W⇐ L f ((A * B) ⇒⟨ π ⟩ C) t Ψ
-          → W⇐ L (RApp (RResolved (gen "curry")) f) (A ⇒⟨ π₀ ⟩ (B ⇒⟨ π ⟩ C)) (curryᶜ A B π₀ π t) Ψ
+          → W⇐ L (RApp (RGen Gen.curry) f) (A ⇒⟨ π₀ ⟩ (B ⇒⟨ π ⟩ C)) (curryᶜ A B π₀ π t) Ψ
   w-curry (d , u) = SU.c-curry d , u-curry u
 
   w-cata : ∀ {alg F A π t Ψ} → WFFun Δ F → W⇐ L alg (⟦ F ⟧F A ⇒⟨ π ⟩ A) t Ψ
-         → W⇐ L (RApp (RResolved (gen "cata")) alg) (μ F ⇒⟨ π ⟩ A) (cataᶜ F π t) (Many *ᵘ Ψ)
+         → W⇐ L (RApp (RGen Gen.cata) alg) (μ F ⇒⟨ π ⟩ A) (cataᶜ F π t) (Many *ᵘ Ψ)
   w-cata w (d , u) = SU.c-cata w d , u-cata u
 
-  w-ana : ∀ {c F A π₀ f t Ψ} → π₀ ⊑π act → WFFun Δ F → W⇐ L c (A ⇒⟨ fin f ⟩ ⟦ F ⟧F A) t Ψ
-        → W⇐ L (RApp (RResolved (gen "ana")) c) (A ⇒⟨ π₀ ⟩ ν F f) (anaᶜ F A π₀ t) (Many *ᵘ Ψ)
-  w-ana g w (d , u) = SU.c-ana g w d , u-ana u
+  w-ana : ∀ {c A π₀ X G ρ k t Ψ} → Final Δ A π₀ X G ρ k → W⇐ L c (A ⇒⟨ ρ ⟩ G A) t Ψ
+        → W⇐ L (RApp (RGen Gen.ana) c) (A ⇒⟨ π₀ ⟩ X) (k t) (Many *ᵘ Ψ)
+  w-ana fi (d , u) = SU.c-ana fi d , u-ana u
 
-  w-loop : ∀ {c A B t Ψ} → W⇐ L c (A ⇒⟨ act ⟩ (B + A)) t Ψ
-         → W⇐ L (RApp (RResolved (gen "ana")) c) (A ⇒⟨ eff ⟩ B) (loopᶜ A t) (Many *ᵘ Ψ)
-  w-loop (d , u) = SU.c-loop d , u-loop u
-
-  w-sub : ∀ {e A B t Ψ} → W⇒ L e A t Ψ → A <: B → W⇐ L e B (coerce A B t) Ψ
-  w-sub (d , u) p = SU.c-sub d p , u-sub u
+  w-sub : ∀ {e A B t Ψ} → ¬ OwnCheck e → W⇒ L e A t Ψ → A <: B → W⇐ L e B (coerce A B t) Ψ
+  w-sub noc (d , u) p = SU.c-sub noc d p , u-sub u
 
   w-lam : ∀ {x body A B q q′ π t Ψ} → (q′ ≤qᵇ q) ≡ true → W⇐ (L ▹ x ∶ A) body B t (q′ ∷ Ψ)
         → W⇐ L (RLam x body) (A ⇒[ mk-kind q π ] B) (lam A q π t) Ψ
@@ -233,24 +181,6 @@ module _ {n} {L : Locals m n} where
 
   w-pair-lit : ∀ {a b A B ta tb Ψ₁ Ψ₂} → W⇐ L a A ta Ψ₁ → W⇐ L b B tb Ψ₂ → W⇐ L (RPair a b) (A * B) (pair ta tb) (Ψ₁ +ᵘ Ψ₂)
   w-pair-lit (da , ua) (db , ub) = SU.c-pair-lit da db , u-pair-lit ua ub
-
-  w-In-app : ∀ {e F t Ψ} → WFFun Δ F → W⇐ L e (⟦ F ⟧F (μ F)) t Ψ
-           → W⇐ L (RApp (RResolved (gen "In")) e) (μ F) (app (inᶜ F) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  w-In-app w (d , u) = SU.c-In-app w d , u-In-app u
-
-  w-apply-app′ : ∀ {e A B t Ψ} → W⇒ L e ((A ⇒⟨ pure ⟩ B) * A) t Ψ
-               → W⇐ L (RApp (RResolved (gen "apply")) e) B (app (applyᶜ A B) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  w-apply-app′ (d , u) = SU.c-apply-app d , u-apply-app u
-
-  w-inl-app : ∀ {e A B t Ψ} → W⇐ L e A t Ψ → W⇐ L (RApp (RResolved (gen "inl")) e) (A + B) (app (inlᶜ A B pure) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  w-inl-app (d , u) = SU.c-inl-app d , u-inl-app u
-
-  w-inr-app : ∀ {e A B t Ψ} → W⇐ L e B t Ψ → W⇐ L (RApp (RResolved (gen "inr")) e) (A + B) (app (inrᶜ A B pure) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  w-inr-app (d , u) = SU.c-inr-app d , u-inr-app u
-
-  w-initial-app : ∀ {e T t Ψ} → W⇐ L e Void t Ψ
-                → W⇐ L (RApp (RResolved (gen "initial")) e) T (app (initialᶜ T pure) t) (zeroUsage +ᵘ (Many *ᵘ Ψ))
-  w-initial-app (d , u) = SU.c-initial-app d , u-initial-app u
 
   w-poly : ∀ {c} (d : Fin s) {ok : Ok d} → nm d ≡ c → 0 < arity (S !! d) → (τ : TySub (arity (S !! d)) m) → Respects (kinds (S !! d)) Δ τ
          → W⇐ L (RResolved c) (type (S !! d) ⟨ τ ⟩) (ref d τ) zeroUsage
@@ -275,33 +205,24 @@ module _ {n} {L : Locals m n} where
   w-lam↦ (d , u) = SU.d-lam d , u-lam u
 
   w-compose↦ : ∀ {f g A M B π tf tg Ψ₁ Ψ₂} → W↦ L g A π M tg Ψ₂ → W↦ L f M π B tf Ψ₁
-             → W↦ L (RApp (RApp (RResolved (gen "compose")) f) g) A π B (composeᶜ A π tf tg) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
+             → W↦ L (RApp (RApp (RGen Gen.compose) f) g) A π B (composeᶜ A π tf tg) (Ψ₁ +ᵘ (Many *ᵘ Ψ₂))
   w-compose↦ (dg , ug) (df , uf) = SU.d-compose dg df , u-compose ug uf
 
-  w-id↦ : ∀ {A π} → W↦ L (RResolved (gen "id")) A π A (idᶜ A π) zeroUsage
-  w-id↦ = SU.d-id , u-id
-
-  w-fst↦ : ∀ {A B π} → W↦ L (RResolved (gen "fst")) (A * B) π A (fstᶜ A B π) zeroUsage
-  w-fst↦ = SU.d-fst , u-fst
-
-  w-snd↦ : ∀ {A B π} → W↦ L (RResolved (gen "snd")) (A * B) π B (sndᶜ A B π) zeroUsage
-  w-snd↦ = SU.d-snd , u-snd
-
-  w-terminal↦ : ∀ {A π} → W↦ L (RResolved (gen "terminal")) A π Unit (terminalᶜ A π) zeroUsage
-  w-terminal↦ = SU.d-terminal , u-terminal
-
-  w-initial↦ : ∀ {π} → W↦ L (RResolved (gen "initial")) Void π Void (initialᶜ Void π) zeroUsage
-  w-initial↦ = SU.d-initial , u-initial
+  w-map↦ : ∀ {g k A π B t} → FromDomain (kind g) → (mo : Morphism Δ g k A π B t)
+         → (∀ {k′ B′} {t′ : Tm S m n} → Morphism Δ g k′ A π B′ t′ → B <:ᶜ B′)
+         → W↦ L (RGen g) A π B t zeroUsage
+  w-map↦ fd mo least = SU.d-map fd mo least , u-map
 
   w-case↦ : ∀ {f g A B Cf Cg C π tf tg Ψ₁ Ψ₂} → W↦ L f A π Cf tf Ψ₁ → W↦ L g B π Cg tg Ψ₂ → Cf ⊔ Cg ≔ C
-          → W↦ L (RApp (RApp (RResolved (gen "case")) f) g) (A + B) π C
+          → W↦ L (RApp (RApp (RGen Gen.case) f) g) (A + B) π C
                (caseᶜ A B π (coerce (A ⇒⟨ π ⟩ Cf) (A ⇒⟨ π ⟩ C) tf) (coerce (B ⇒⟨ π ⟩ Cg) (B ⇒⟨ π ⟩ C) tg)) (Ψ₁ +ᵘ Ψ₂)
   w-case↦ (df , uf) (dg , ug) j = SU.d-case df dg j , u-case uf ug
 
   w-pair↦ : ∀ {f g A B C π tf tg Ψ₁ Ψ₂} → W↦ L f A π B tf Ψ₁ → W↦ L g A π C tg Ψ₂
-          → W↦ L (RApp (RApp (RResolved (gen "pair")) f) g) A π (B * C) (pairᶜ A π tf tg) (Ψ₁ +ᵘ Ψ₂)
+          → W↦ L (RApp (RApp (RGen Gen.pair) f) g) A π (B * C) (pairᶜ A π tf tg) (Ψ₁ +ᵘ Ψ₂)
   w-pair↦ (df , uf) (dg , ug) = SU.d-pair df dg , u-pair uf ug
 
-  w-cata↦ : ∀ {alg F A π t Ψ} → WFFun Δ F → W⇒ L alg (⟦ F ⟧F A ⇒⟨ π ⟩ A) t Ψ
-          → W↦ L (RApp (RResolved (gen "cata")) alg) (μ F) π A (cataᶜ F π t) (Many *ᵘ Ψ)
-  w-cata↦ w (d , u) = SU.d-cata w d , u-cata u
+  w-cata↦ : ∀ {alg F A₁ A π′ π t Ψ} → WFFun Δ F → W⇒ L alg (A₁ ⇒⟨ π′ ⟩ A) t Ψ → ⟦ F ⟧F A <: A₁ → π′ ⊑π π
+          → W↦ L (RApp (RGen Gen.cata) alg) (μ F) π A
+               (cataᶜ F π (coerce (A₁ ⇒⟨ π′ ⟩ A) (⟦ F ⟧F A ⇒⟨ π ⟩ A) t)) (Many *ᵘ Ψ)
+  w-cata↦ w (d , u) p o = SU.d-cata w d p o , u-cata u

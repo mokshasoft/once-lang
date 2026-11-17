@@ -367,6 +367,7 @@ PE : Expr → Set
 PE (RVar x)                = isOperator x ≡ false → Pw x
 PE (RQualified x q)        = Pw x × Pw q
 PE (RResolved _)           = ⊥
+PE (RGen _)                = ⊥
 PE (RApp f a)              = PE f × PE a
 PE (RLam x e)              = Pw x × PE e
 PE (RLet x v b)            = Pw x × PE v × PE b
