@@ -25,9 +25,8 @@ open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Type using (fits-int)
-open import Once.Arith.SigOp.Compare using (cmp-block-info)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-block-info)
 import Once.Spec.Type as ST
 open import Once.SigOp.Info using (module SigOpInfo)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -113,7 +112,7 @@ module Agree {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                        × SlotsAt (LocState.stackMem (AbstractExec.sigop-store {FS} (info s) (argD s fs d dst wx))
                                    (AllocState.current-frame (falloc fs))) dst wy
 
-  OpValM : (s : Sig) → Maybe CmpOp → MV ⌜ sdom s ⌝ → MV ⌜ scod s ⌝ → List SigOpEvent → FlatState → Set
+  OpValM : (s : Sig) → Maybe (CmpAt (sA s)) → MV ⌜ sdom s ⌝ → MV ⌜ scod s ⌝ → List SigOpEvent → FlatState → Set
   OpValM s nothing x y E fs = OpValN (inMem (SigOpInfo.conB (info s))) s x y E fs
   OpValM s (just o) x y E fs = ∀ d (wx : List W) → VW (LocState.heapMem (floc fs)) x wx → SlotsAt (slot fs) d wx
                  → (exec-sigop-halts (cmp-block-info o) (arg s fs d wx) ≡ false)

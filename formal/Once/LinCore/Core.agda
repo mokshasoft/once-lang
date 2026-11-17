@@ -66,7 +66,7 @@ import Once.LinCore.Flat
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Word
-import Once.Spec.Float.Decimal
+import Once.Float.Word
 import Once.Spec.Numerics
 open import Once.Spec.Type using (Type; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; ∅ₖ)
 import Once.Spec.Type as ST
@@ -80,7 +80,7 @@ open Once.LinCore.Flat public using (FTy; funit; fvoid; fw; _f*_; _f+_; ⟦_⟧F
 -- ★ D433: a literal materialized at the target's format (D113: FromIR's function, now the meaning's)
 lit : ∀ {b} → Lit b → ⟦ b ⟧b
 lit {int}   z = Once.Spec.Word.Width.fromℤ (Once.Spec.Numerics.TargetNum.int-bits fmt) z
-lit {float} d = Once.Spec.Float.Decimal.round (Once.Spec.Numerics.TargetNum.float-format fmt) d
+lit {float} d = Once.Float.Word.round (Once.Spec.Numerics.TargetNum.float-format fmt) d
 
 open import Once.IR.Semantics.Trace using (T; ret; call; halt; CallOp; HaltOp) public
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; bindBlock; fmap∞; iterRun; iterBlock; iter∞) public

@@ -215,5 +215,7 @@ module _ (tn : TargetNum) where
   semM-of-leaves ans n (primV p-fdiv) x ()
   semM-of-leaves ans n (primV p-i2f)  x ()
   semM-of-leaves ans n (primV (p-cmp o)) x _ = unit-sum-leaves IM (M.eraseᵍ (primSem (p-cmp o) tn x))
+  semM-of-leaves ans n (primV p-fneg) x ()
+  semM-of-leaves ans n (primV (p-fcmp h o)) x _ = unit-sum-leaves IM (M.eraseᵍ (primSem (p-fcmp h o) tn x))
   semM-of-leaves {A} {B} ans n ffiV   x _ = map-leaves B (ans n A B x)
   semM-of-leaves {A} {B} ans n callsV x _ = map-leaves B (ans n A B x)

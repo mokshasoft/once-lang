@@ -39,11 +39,10 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (subst; subst₂; sym)
 open import Once.IRTy using (_≟IRTy_; fits-int; fits-float)
 import Once.IR as M
-open import Once.Spec.Name using (CanonicalName; gen)
+open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.Spec.Numerics using (module TargetNum)
 open TargetNum using (int-bits; float-format)
-open import Once.Spec.Float.Decimal using (round)
 import Once.Spec.Word as OnceWord
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo; mk-info'; haltsV)
 open import Once.Denotation.Program using (IRFun; module IRFun)
@@ -179,9 +178,9 @@ record Hit (Γ : Cx) (A B : LTy) : Set where
 Resolver : Cx → Set
 Resolver Γ = CanonicalName → (A B : IRTy) → Maybe (Hit Γ ⟪ A ⟫ ⟪ B ⟫)
 
--- `unlinkedT`: the op that halts as `gen "unlinked"` on `tt`
+-- `unlinkedT`: the op that halts as master's `unlinkedOp` (`Generators.unlinked`) on `tt`
 unlinked-i : SigOpInfo ST.Unit ST.Void
-unlinked-i = mk-info' (gen "unlinked") (haltsV refl) ST.b-Unit ST.b-Void
+unlinked-i = mk-info' (canonical ("Generators" ∷ "unlinked" ∷ [])) (haltsV refl) ST.b-Unit ST.b-Void
 
 unlinked : ∀ {Γ A B} → P.IR Γ ⟪ A ⟫ ⟪ B ⟫
 unlinked = P.initial P.∘ (P.SigOp (sig unlinked-i) P.∘ P.terminal)

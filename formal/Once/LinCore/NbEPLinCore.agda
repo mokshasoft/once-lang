@@ -26,7 +26,6 @@ import Once.LinCore.Flat
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Word
-import Once.Spec.Float.Decimal
 import Once.Spec.Numerics
 open import Once.Spec.Type using (Type; b-Unit; b-Void; b-Int; b-Float; b-*; b-+; ∅ₖ)
 import Once.Spec.Type as ST

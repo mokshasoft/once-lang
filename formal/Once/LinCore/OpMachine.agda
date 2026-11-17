@@ -306,7 +306,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
 
   open import Once.Res using (Res; stopped; mapRes)
   open import Once.SigOp.Info using (blockV; primV; ffiV)
-  open import Once.Arith.Prim using (ArithPrim; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp)
+  open import Once.Arith.Prim using (ArithPrim; p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp; p-fneg; p-fcmp)
   open import Once.Arith.Type using (NInt; NFloat)
 
   OpValAt : ∀ {A B} n (c : SigOpSem A B) (bA : ST.Base ST.∅ₖ A) (bB : ST.Base ST.∅ₖ B) → Set
@@ -324,7 +324,9 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
   -- ★ a compare (D428): its code runs the compare's block, whose 0/1 word, read as a tag, is the
   -- primitive's truth (true = inr, D263)
   open import Once.Arith.SigOp.Compare using (cmp-block-info)
-  open import Once.Arith.CmpOp using (cmp-word)
+  open import Once.Arith.CmpOp using (cmp-word; fcmp-word-at)
+  open import Once.Spec.Theory using (Has; Sym; compare; module Models; ⟦_⟧ₛ)
+  open import Once.Spec.Float.Encoding using (decode)
   open import Once.Spec.Numerics using (module TargetNum)
   open import Data.Bool using (Bool; true; false; if_then_else_)
 
@@ -338,8 +340,17 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
   op-cmp : ∀ n o → OpValAt n (primV (p-cmp o)) (ST.b-* ST.b-Int ST.b-Int) (ST.b-+ ST.b-Unit ST.b-Unit)
   op-cmp n o {x = mpair (mbase i) (mbase j)} p-ret w fs lg d wx px sx =
     cong unread? (arg-dec (ST.b-* ST.b-Int ST.b-Int) fs d (argV (ST.b-* ST.b-Int ST.b-Int) fs d wx) px sx) , refl , _ ,
-    arg-in (cmp-block-info o) fits-int fs d wx px sx ,
+    arg-in (cmp-block-info (Once.Arith.SigOp.Compare.int-c o)) fits-int fs d wx px sx ,
     tag (cmp-word (TargetNum.int-bits fmt) o i j)
+
+  -- a `Float` compare: the block's 0/1 word is the format's truth on the decoded operands
+  op-fcmp : ∀ n {U} (h : Has Once.Spec.Theory.float U) (o : Sym U compare)
+          → OpValAt n (primV (p-fcmp h o)) (ST.b-* ST.b-Float ST.b-Float) (ST.b-+ ST.b-Unit ST.b-Unit)
+  op-fcmp n h o {x = mpair (mbase a) (mbase b)} p-ret w fs lg d wx px sx =
+    cong unread? (arg-dec (ST.b-* ST.b-Float ST.b-Float) fs d (argV (ST.b-* ST.b-Float ST.b-Float) fs d wx) px sx) , refl , _ ,
+    trans (arg-in (cmp-block-info (Once.Arith.SigOp.Compare.flt-c (Once.Arith.CmpOp.fcmp h o))) fits-int fs d wx px sx)
+          (cong (λ t → SV-Lit {Mach} fits-int (if t then 1 else 0)) (fcmp-word-at h o fmt a b)) ,
+    tag (⟦ o ⟧ₛ (Models.structure fmt h) (decode (TargetNum.float-format fmt) a , decode (TargetNum.float-format fmt) b))
 
   private
     res-ret : ∀ {X Z : Set} (r : Res X) {k : X → Z} {tp y₀} → OpPath (fmapT k (TM.resT r)) tp (inj₁ y₀)
@@ -395,6 +406,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
     val-at : ∀ {A B} n (c : SigOpSem A B) bA bB → OpValAt n c bA bB
     val-at n (blockV e refl refl) bA bB = pure-at n (blockV e refl refl) bA bB refl refl (λ _ → _ , refl , refl)
     val-at n (primV (p-cmp o)) (ST.b-* ST.b-Int ST.b-Int) (ST.b-+ ST.b-Unit ST.b-Unit) = op-cmp n o
+    val-at n (primV (p-fcmp h o)) (ST.b-* ST.b-Float ST.b-Float) (ST.b-+ ST.b-Unit ST.b-Unit) = op-fcmp n h o
     val-at n (primV p-add) bA bB = prim-at n p-add bA bB refl
     val-at n (primV p-sub) bA bB = prim-at n p-sub bA bB refl
     val-at n (primV p-mul) bA bB = prim-at n p-mul bA bB refl
@@ -406,6 +418,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
     val-at n (primV p-fmul) bA bB = prim-at n p-fmul bA bB refl
     val-at n (primV p-fdiv) bA bB = prim-at n p-fdiv bA bB refl
     val-at n (primV p-i2f) bA bB = prim-at n p-i2f bA bB refl
+    val-at n (primV p-fneg) bA bB = prim-at n p-fneg bA bB refl
     val-at {A} {B} n ffiV bA bB = pure-at n ffiV bA bB refl refl λ p →
       let (w , e) = res-ret (mapRes (Once.IR.Semantics.Boundary.atTarget fmt B) (ans n A B _)) p
       in w , e , cong TM.resT e

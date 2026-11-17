@@ -31,10 +31,7 @@ open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-block-info; cmp-of)
-open import Once.SigOp.Info using (SigOpSem; blockV; ffiV; callsV; emitsV; haltsV; primV)
-open import Once.Arith.Prim using (p-add; p-sub; p-mul; p-div; p-mod; p-neg; p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp)
+open import Once.Arith.SigOp.Compare using (CmpAt; int-c; flt-c; cmp-block-info)
 open import Once.Type using (fits-int)
 import Once.Spec.Type as ST
 open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo; mk-info')
@@ -137,36 +134,12 @@ module OpSim {FS : FrameSemantics} (U : Univ)
     arg-range {A} (ST.b-* _ _) fs d wx le = frame-range (falloc fs) d (tsize A) le
     arg-range {A} (ST.b-+ _ _) fs d wx le = frame-range (falloc fs) d (tsize A) le
 
-    -- a compare's argument is a pair of `Int`s, its block's two words
-    cmp-pair : ∀ {A B} (c : SigOpSem A B) {o} → cmp-of c ≡ just o → A ≡ ST.Int ST.* ST.Int
-    cmp-pair (primV (p-cmp _)) refl = refl
-    cmp-pair (primV p-add)  ()
-    cmp-pair (primV p-sub)  ()
-    cmp-pair (primV p-mul)  ()
-    cmp-pair (primV p-div)  ()
-    cmp-pair (primV p-mod)  ()
-    cmp-pair (primV p-neg)  ()
-    cmp-pair (primV p-fadd) ()
-    cmp-pair (primV p-fsub) ()
-    cmp-pair (primV p-fmul) ()
-    cmp-pair (primV p-fdiv) ()
-    cmp-pair (primV p-i2f)  ()
-    cmp-pair (blockV _ _ _) ()
-    cmp-pair ffiV           ()
-    cmp-pair callsV         ()
-    cmp-pair (emitsV _)     ()
-    cmp-pair (haltsV _)     ()
-
-    cmp-range : ∀ {A} (b : ST.Base ST.∅ₖ A) (fs : FlatState) d wx → A ≡ ST.Int ST.* ST.Int
+    -- a compare's argument is a pair (of `Int`s or of `Float`s, its `CmpAt`), its block's two words
+    cmp-range : ∀ {A} (b : ST.Base ST.∅ₖ A) (fs : FlatState) d wx (o : CmpAt A)
               → d + 2 ≤ AllocState.frame-slots (falloc fs)
-              → range-ok (live-frames (falloc fs)) 2 (argV b fs d wx) ≡ true
-    cmp-range (ST.b-var {i = ()} _) fs d wx e le
-    cmp-range ST.b-Unit    fs d wx () le
-    cmp-range ST.b-Void    fs d wx () le
-    cmp-range ST.b-Int     fs d wx () le
-    cmp-range ST.b-Float   fs d wx () le
-    cmp-range (ST.b-* _ _) fs d wx e  le = frame-range (falloc fs) d 2 le
-    cmp-range (ST.b-+ _ _) fs d wx () le
+              → range-ok (live-frames (falloc fs)) (arg-words (SigOpInfo.baseA (cmp-block-info o))) (argV b fs d wx) ≡ true
+    cmp-range (ST.b-* _ _) fs d wx (int-c _) le = frame-range (falloc fs) d 2 le
+    cmp-range (ST.b-* _ _) fs d wx (flt-c _) le = frame-range (falloc fs) d 2 le
 
     -- an answer not in memory has no buffer to check
     inmem-false : ∀ {B} (b : ST.Base ST.∅ₖ B) → inMem b ≡ false → in-memory? B ≡ false
@@ -332,7 +305,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
 
   -- ★ D428: a compare: its block's sigop (an `Int`), its truth as a tag (`out-nz`), stored
   lop-cmp : ∀ prog (fs : FlatState) (φ : Frame) (s : Sig) {Es S} {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝} {y : MV ⌜ scod s ⌝} {E}
-            (o : CmpOp) → cmpOf s ≡ just o
+            (o : CmpAt (sA s)) → cmpOf s ≡ just o
           → OpValM s (just o) x y E fs
           → Seg prog (fpc fs) (lowOp s (just o) (budget φ ∸ ws S))
           → fhalted (floc fs) ≡ false
@@ -358,7 +331,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           a-step = arg-step (SigOpInfo.baseA (info s)) prog fs bot px sx₀
           gt : sigop-gate (falloc fs) (cmp-block-info o) (at-arg fs v₀) ≡ true
           gt = cong₂ _∧_
-                 (cmp-range (SigOpInfo.baseA (info s)) fs d₀ wx (cmp-pair (SigOpInfo.sem (info s)) eo)
+                 (cmp-range (SigOpInfo.baseA (info s)) fs d₀ wx o
                     (cmp-bnd φ S (wsz ⌜ sdom s ⌝) _ fb))
                  refl
           fin : (exec-sigop-halts (cmp-block-info o) (at-arg fs v₀) ≡ false)
@@ -496,7 +469,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
 
   -- ★ an op, by the sigop its code runs (D428)
   lop-sim : ∀ prog (fs : FlatState) (φ : Frame) (s : Sig) {Es S} {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝} {y : MV ⌜ scod s ⌝} {E}
-            (m : Maybe CmpOp) → cmpOf s ≡ m
+            (m : Maybe (CmpAt (sA s))) → cmpOf s ≡ m
           → OpValM s m x y E fs
           → Seg prog (fpc fs) (lowOp s m (budget φ ∸ ws S))
           → fhalted (floc fs) ≡ false
@@ -549,7 +522,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
                   (arg-bnd φ S (wsz ⌜ sdom s ⌝) _ (≤-trans (c-sfit C) (m≤n+m (OP φ) (EP φ))) fb)))
             (no-buffer _ _ v₀ (inmem-false (SigOpInfo.conB (info s)) nb))
           gate-m (just o) e = cong₂ _∧_
-            (cmp-range (SigOpInfo.baseA (info s)) fs d₀ wx (cmp-pair (SigOpInfo.sem (info s)) e) (cmp-bnd φ S (wsz ⌜ sdom s ⌝) _ fb))
+            (cmp-range (SigOpInfo.baseA (info s)) fs d₀ wx o (cmp-bnd φ S (wsz ⌜ sdom s ⌝) _ fb))
             refl
           gt : sigop-gate (falloc fs) (info (opSig s (cmpOf s))) st ≡ true
           gt = gate-m (cmpOf s) refl

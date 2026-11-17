@@ -43,8 +43,7 @@ open import Once.CCC.Machine.SMCore
         ; c-call-fn; c-start; c-leave; load-from-slot; store-at-slot; lea-slot; restore-input; mov-to-input
         ; mov-to-output; load-at; store-at; addr-at; instr-alloc-heap; instr-free-heap; instr-load-tag-lit
         ; instr-load-code-addr; instr-save-closure-reg; instr-call-closure; instr-sigop; instr-reg-op; out-nz )
-open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
+open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of; cmp-block-info)
 
 module Once.LinCore.Lower
   (fmt : TargetNum)
@@ -58,10 +57,10 @@ open import Once.LinCore.Keys fmt bw
 open import Once.LinCore.Layout fmt bw
 
 -- ★ D428: the sigop an op's code runs: its own, or a compare's block
-cmpOf : Sig → Maybe CmpOp
+cmpOf : (s : Sig) → Maybe (CmpAt (sA s))
 cmpOf s = cmp-of (Once.SigOp.Info.SigOpInfo.sem (info s))
 
-opSig : Sig → Maybe CmpOp → Sig
+opSig : (s : Sig) → Maybe (CmpAt (sA s)) → Sig
 opSig s nothing  = s
 opSig s (just o) = sig (cmp-block-info o)
 
@@ -178,7 +177,7 @@ module Lowering (U : Univ)
   -- ★ D428/D432: an op's code: its argument, a structured answer's address, then the sigop the
   -- machine runs — the op's own, or a compare's block (master's `cmp-trace`) — then a scalar
   -- answer stored, or a compare's truth as its tag (`out-nz`)
-  lowOp : Sig → Maybe CmpOp → ℕ → AbstractTrace
+  lowOp : (s : Sig) → Maybe (CmpAt (sA s)) → ℕ → AbstractTrace
   lowOp s nothing  bot = argIn (Once.SigOp.Info.SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ mov-to-input
                          ∷ ansDst (Once.SigOp.Info.SigOpInfo.conB (info s)) bot (wsz ⌜ scod s ⌝)
                          ++ instr-sigop (info s) ∷ answer (Once.SigOp.Info.SigOpInfo.conB (info s)) bot
