@@ -39,7 +39,7 @@ open import Once.Spec.Context using (Ctx; Usage; []; _∷_; _+ᵘ_; _*ᵘ_; _⊑
 open import Once.Context using (⟦_⟧ᶜ; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.IRTy using (⌊_⌋)
 import Once.IR as M
-open import Once.Surface.Elaborate using (restrictEnv; projUsed; bindEnv; elaborate; numIR; sigOpIR)
+open import Once.Surface.Elaborate using (restrictEnv; projUsed; bindEnv; elaborate; numIR; sigOpIR; distribute; distribIR)
 open import Once.Arith.SigOp.Builders using (numInfo; value-info; arrow-info)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 import Once.Spec.Theory as Th
@@ -58,7 +58,8 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 
 open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo; callM; refL; mapT; layerEq)
+open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo; callM; refL; mapT; layerEq; dist)
+open import Once.Context using (_⊔ᵘ_; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ)
 open import Once.Surface.Map using (mp-id; mp-fst; mp-snd; mp-terminal; mp-inl; mp-inr; mp-initial; mp-apply; mp-In; mp-Out; mp-toFloat)
 open import Once.TypeCheck.Table using (mapIR)
 open import Once.IRTy using (⌊⟧T-commute; WellFormedFI; ⟦_⟧TI; μ-type; ν-type)
@@ -783,15 +784,111 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   ok-mapp : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (mp : Map A B) (x : Expr Γ Ψ A) → Goal x → Goal (morph-app mp x)
   ok-mapp {Γ = Γ} {Ψ} mp x rx = rel-∘ (rel-map mp) (rel-∘ rx (rel-weak am {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ SC.zeroUsage (G.Many *ᵘ Ψ)))))
 
+  -- ★ DISTRIBUTIVITY: the core's one-shot closures against master's curried injections
+  dv : ∀ {X A B : IRTy} → ⟦ ⟪ X ⟫ ⊗t (⟪ A ⟫ ⊕t ⟪ B ⟫) ⟧ → ⟦ (⟪ X ⟫ ⊗t ⟪ A ⟫) ⊕t (⟪ X ⟫ ⊗t ⟪ B ⟫) ⟧
+  dv (x , inj₁ a) = inj₁ (x , a)
+  dv (x , inj₂ b) = inj₂ (x , b)
+
+  dv′ : ∀ {X A B : IRTy} → ⟦ X I.* (A I.+ B) ⟧ᴰᴵ → ⟦ (X I.* A) I.+ (X I.* B) ⟧ᴰᴵ
+  dv′ (x , inj₁ a) = inj₁ (x , a)
+  dv′ (x , inj₂ b) = inj₂ (x , b)
+
+  dist-pure : ∀ {X A B : IRTy} → Pure δ (dist {L} {One} {⟪ X ⟫} {⟪ A ⟫} {⟪ B ⟫}) (dv {X} {A} {B})
+  dist-pure {X} {A} {B} e (x , inj₁ a) =
+    ≈-trans (bind-pure (≈-trans ret-bind (≈-trans ret-bind ret-bind)))
+            (≈-trans (≈-sym (blk-coh δ (k-∘ (k-inl {A = ⟪ X ⟫ ⊗t ⟪ A ⟫} {B = ⟪ X ⟫ ⊗t ⟪ B ⟫} {E = One}) (k-swap {A = ⟪ A ⟫} {B = ⟪ X ⟫} {E = One})) tt (a , x))) ret-bind)
+  dist-pure {X} {A} {B} e (x , inj₂ b) =
+    ≈-trans (bind-pure (≈-trans ret-bind (≈-trans ret-bind ret-bind)))
+            (≈-trans (≈-sym (blk-coh δ (k-∘ (k-inr {A = ⟪ X ⟫ ⊗t ⟪ A ⟫} {B = ⟪ X ⟫ ⊗t ⟪ B ⟫} {E = One}) (k-swap {A = ⟪ B ⟫} {B = ⟪ X ⟫} {E = One})) tt (b , x))) ret-bind)
+
+  distribute-pure : ∀ {X A B : IRTy} → PureI ρ (distribute {X} {A} {B} am) (dv′ {X} {A} {B})
+  distribute-pure (x , inj₁ a) =
+    ≈-trans (bind-pure (≈-trans ret-bind ret-bind))
+      (≈-trans (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (bind-pure (≈-trans ret-bind ret-bind)))
+  distribute-pure (x , inj₂ b) =
+    ≈-trans (bind-pure (≈-trans ret-bind ret-bind))
+      (≈-trans (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (bind-pure (≈-trans ret-bind ret-bind)))
+
+  rel-dist : ∀ {X A B : IRTy} → Rel (dist {L} {One} {⟪ X ⟫} {⟪ A ⟫} {⟪ B ⟫}) (distribute {X} {A} {B} am)
+  rel-dist {X} {A} {B} = rel-pure (dist-pure {X} {A} {B}) (distribute-pure {X} {A} {B}) dW
+    where
+      dW : ∀ {x x′} → W (X I.* (A I.+ B)) x x′ → W ((X I.* A) I.+ (X I.* B)) (dv {X} {A} {B} x) (dv′ {X} {A} {B} x′)
+      dW {_ , inj₁ _} {_ , inj₁ _} (wx , Data.Sum.Relation.Binary.Pointwise.inj₁ wa) = Data.Sum.Relation.Binary.Pointwise.inj₁ (wx , wa)
+      dW {_ , inj₂ _} {_ , inj₂ _} (wx , Data.Sum.Relation.Binary.Pointwise.inj₂ wb) = Data.Sum.Relation.Binary.Pointwise.inj₂ (wx , wb)
+
+  -- a case against `case`
+  rel-lcase : ∀ {A B C : IRTy} {f : LTm L ⟪ A ⟫ ⟪ C ⟫} {f′ : M.IR A C} {g : LTm L ⟪ B ⟫ ⟪ C ⟫} {g′ : M.IR B C}
+            → Rel f f′ → Rel g g′ → Rel (lcase f g) (M.case f′ g′)
+  rel-lcase rf rg = mkRel λ { (Data.Sum.Relation.Binary.Pointwise.inj₁ w) → rel rf w ; (Data.Sum.Relation.Binary.Pointwise.inj₂ w) → rel rg w }
+
+  -- the scrutinee's share split off, the arms' share beside its value
+  rel-swapPair : ∀ {m n} (Γ : Ctx m n) (Ψs Φ : Usage n) {S : IRTy} {s : LTm L (Co Γ Ψs) ⟪ S ⟫} {s′ : M.IR ⌊ ⟦ Γ ↾ Ψs ⟧ᶜ ⌋ S}
+               → Rel s s′
+               → Rel ((lid ⊗l s) ∘l lswap ∘l split Γ Ψs Φ)
+                     M.⟨ restrictEnv {Γ = Γ} am (⊑ᵘ-+ʳ Ψs Φ) , s′ M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-+ˡ Ψs Φ) ⟩
+  rel-swapPair Γ Ψs Φ rs′ = mkRel λ {x} {x′} w → let sw = split-W Γ Ψs Φ w in
+    ≈-≈R (≈-trans (bind-pure (bind-pure (split-pure δ Γ Ψs Φ tt x))) ret-bind)
+      (≈R-≈ (>>=-congR (rel rs′ (proj₁ sw)) (λ r → ret≈R (proj₂ sw , r)))
+            (≈-sym (≈-trans (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ʳ Ψs Φ) x′))
+                            (>>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ˡ Ψs Φ) x′)) (λ _ → ≈-refl)))))
+
+  -- an arm's share, beside the bound value
+  rel-arm : ∀ {m n} {Γ : Ctx m n} {Ψ Ψ′ : Usage n} {A : IRTy} (p : Ψ ⊑ᵘ Ψ′)
+          → Rel (weak {Γ = Γ} p ⊗l lid {A = ⟪ A ⟫}) M.⟨ restrictEnv {Γ = Γ} am p M.∘ M.fst , M.snd ⟩
+  rel-arm {Γ = Γ} p = mkRel λ { {x , a} {x′ , a′} (w , wa) →
+    ≈-≈R (≈-trans (bind-pure (weak-pure δ {E = One} {Γ = Γ} p tt x)) ret-bind)
+      (≈R-≈ (ret≈R (weak-W {Γ = Γ} p w , wa))
+            (≈-sym (≈-trans (bind-pure (≈-trans ret-bind (restrict-pure ρ am {Γ = Γ} p x′))) ret-bind))) }
+
+  -- ★ A CASE: the scrutinee's share split off, the arms' share distributed,
+  -- each arm on its share and the bound value
+  ok-case : ∀ {m n} {Γ : Ctx m n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : G.Quantity} {A B C : Ty m}
+              (s : Expr Γ Ψs (A + B)) (l : Expr (Γ SC.▸ A) (qℓ ∷ Ψₗ) C) (r : Expr (Γ SC.▸ B) (qr ∷ Ψᵣ) C)
+            → Goal s → Goal l → Goal r → Goal (case' s l r)
+  ok-case {Γ = Γ} {Ψs} {Ψₗ} {Ψᵣ} {qℓ} {qr} {A} {B} s l r rs′ rl rr =
+    rel-∘ (rel-lcase (rel-∘ rl (rel-∘ (rel-bind {Γ = Γ} {A = A} qℓ) (rel-arm {Γ = Γ} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ))))
+                     (rel-∘ rr (rel-∘ (rel-bind {Γ = Γ} {A = B} qr) (rel-arm {Γ = Γ} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)))))
+          (rel-∘ rel-dist (rel-swapPair Γ Ψs (Ψₗ ⊔ᵘ Ψᵣ) rs′))
+
+  -- the combinators' distribution (`distribIR`), the same values
+  distribIR-pure : ∀ {X A B : IRTy} → PureI ρ (distribIR {X} {A} {B} am) (dv′ {X} {A} {B})
+  distribIR-pure (x , inj₁ a) =
+    ≈-trans (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (bind-pure (≈-trans ret-bind ret-bind))
+  distribIR-pure (x , inj₂ b) =
+    ≈-trans (bind-pure (≈-trans (bind-pure ret-bind) ret-bind)) (bind-pure (≈-trans ret-bind ret-bind))
+
+  rel-distIR : ∀ {X A B : IRTy} → Rel (dist {L} {One} {⟪ X ⟫} {⟪ A ⟫} {⟪ B ⟫}) (distribIR {X} {A} {B} am)
+  rel-distIR {X} {A} {B} = rel-pure (dist-pure {X} {A} {B}) (distribIR-pure {X} {A} {B}) dW
+    where
+      dW : ∀ {x x′} → W (X I.* (A I.+ B)) x x′ → W ((X I.* A) I.+ (X I.* B)) (dv {X} {A} {B} x) (dv′ {X} {A} {B} x′)
+      dW {_ , inj₁ _} {_ , inj₁ _} (wx , Data.Sum.Relation.Binary.Pointwise.inj₁ wa) = Data.Sum.Relation.Binary.Pointwise.inj₁ (wx , wa)
+      dW {_ , inj₂ _} {_ , inj₂ _} (wx , Data.Sum.Relation.Binary.Pointwise.inj₂ wb) = Data.Sum.Relation.Binary.Pointwise.inj₂ (wx , wb)
+
+  -- ★ the copairing's body: distributed, each arm one closure, the other dropped
+  copairB : ∀ {π} {A B C : IRTy}
+          → Rel (lcase (apω {g = grade π} {⟪ A ⟫} {⟪ C ⟫} ∘l ((ρl ∘l (lid ⊗l drop)) ⊗l lid))
+                       (apω {g = grade π} {⟪ B ⟫} {⟪ C ⟫} ∘l (Once.LinCore.PassTr.dropl fmt ⊗l lid)) ∘l dist)
+                (M.case (M.apply {A} {C} {π} M.∘ M.⟨ M.fst M.∘ M.fst , M.snd ⟩) (M.apply {B} {C} {π} M.∘ M.⟨ M.snd M.∘ M.fst , M.snd ⟩)
+                 M.∘ distribIR am)
+  copairB {π} {A} {B} {C} =
+    rel-∘ (rel-lcase (rel-∘ (rel-apω {π = π})
+                       (mkRel λ { {(f , g) , a} {(f′ , g′) , a′} ((wf , wg) , wa) →
+                         ≈-≈R (≈-trans (bind-pure (bind-pure (≈-trans ret-bind ret-bind))) ret-bind)
+                              (≈R-≈ (ret≈R (wf , wa)) (≈-sym (≈-trans (bind-pure ret-bind) ret-bind))) }))
+                     (rel-∘ (rel-apω {π = π})
+                       (mkRel λ { {(f , g) , b} {(f′ , g′) , b′} ((wf , wg) , wb) →
+                         ≈-≈R (≈-trans (bind-pure (bind-pure (≈-trans ret-bind ret-bind))) ret-bind)
+                              (≈R-≈ (ret≈R (wg , wb)) (≈-sym (≈-trans (bind-pure ret-bind) ret-bind))) })))
+          rel-distIR
+
+  ok-copair : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
+                (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many π ] C)) (g : Expr Γ Ψ₂ (B ⇒[ G.mk-kind G.Many π ] C))
+              → Goal f → Goal g → Goal (copair' f g)
+  ok-copair {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} f g rf rg = rel-∘ (rel-cloG π _ copairB) (rel-pair am Γ Ψ₁ Ψ₂ rf rg)
+
   record Owed : Set where
     field
-      o-case    : ∀ {m n} {Γ : Ctx m n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : G.Quantity} {A B C : Ty m}
-                    (s : Expr Γ Ψs (A + B)) (l : Expr (Γ SC.▸ A) (qℓ ∷ Ψₗ) C) (r : Expr (Γ SC.▸ B) (qr ∷ Ψᵣ) C)
-                  → Goal s → Goal l → Goal r → Goal (case' s l r)
       o-coerce  : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (p : A <: B) (f : Expr Γ Ψ A) → Goal f → Goal (coerce p f)
-      o-copair  : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
-                    (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many π ] C)) (g : Expr Γ Ψ₂ (B ⇒[ G.mk-kind G.Many π ] C))
-                  → Goal f → Goal g → Goal (copair' f g)
       o-cata    : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π}
                     (wf : WFFun Δₖ F) (alg : Expr Γ Ψ (ST.⟦ F ⟧F A ⇒[ G.mk-kind G.Many π ] A)) → Goal alg → Goal (cata wf alg)
       o-ana     : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π₀} {φ : G.Finite}
@@ -823,7 +920,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
     Lq-ok (snd' p) = rel-∘ rel-snd (Lq-ok p)
     Lq-ok (inl' a) = rel-∘ rel-inl (Lq-ok a)
     Lq-ok (inr' b) = rel-∘ rel-inr (Lq-ok b)
-    Lq-ok (case' s l r) = o-case s l r (Lq-ok s) (Lq-ok l) (Lq-ok r)
+    Lq-ok (case' s l r) = ok-case s l r (Lq-ok s) (Lq-ok l) (Lq-ok r)
     Lq-ok unit = rel-drop
     Lq-ok (absurd v) = rel-∘ rel-zero (Lq-ok v)
     Lq-ok (let' {q = G.Zero} e1 e2) = ok-let0 e1 e2 (Lq-ok e2)
@@ -842,7 +939,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
     Lq-ok {Γ = Γ} (lift-morphism mp) = ok-lift {Γ = Γ} mp
     Lq-ok (morph-app mp x) = ok-mapp mp x (Lq-ok x)
     Lq-ok (comp' f g) = ok-comp f g (Lq-ok f) (Lq-ok g)
-    Lq-ok (copair' f g) = o-copair f g (Lq-ok f) (Lq-ok g)
+    Lq-ok (copair' f g) = ok-copair f g (Lq-ok f) (Lq-ok g)
     Lq-ok (fork' f g) = ok-fork f g (Lq-ok f) (Lq-ok g)
     Lq-ok (curry' f) = ok-curry f (Lq-ok f)
     Lq-ok (cata wf alg) = o-cata wf alg (Lq-ok alg)
