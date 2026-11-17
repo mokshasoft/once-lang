@@ -338,3 +338,110 @@ module Walk (σ : ISig) where
       packed : P ty
       packed = subst P (inj₂-injective (trans (sym rf) er))
                      (rest-b , proj₁ (proj₂ ci) , tinv-entry (funName fi) ty′ s (proj₁ br) (proj₂ br) inv)
+
+------------------------------------------------------------------------
+-- 4. ★ THE PROGRAM: with the table's names distinct, every hit of the
+-- resolver is the one definition of its name, at that definition's grade.
+------------------------------------------------------------------------
+
+import Data.List.Relation.Unary.AllPairs as AP
+import Data.List.Relation.Unary.AllPairs.Properties as APP
+import Data.List.Relation.Unary.All as All
+open import Data.Nat using (ℕ)
+open import Data.Empty using (⊥)
+open import Once.Spec.Name using (CanonicalName)
+open import Once.CanonicalName using (_≟ᶜ_)
+open import Once.IRTy using (_≟IRTy_)
+import Once.IRTy as I
+open import Once.Spec.Sub using (_<:_; sub-arr; sub-unit; sub-void)
+open import Once.Compile using (EffUU; mainEntry; findMain; findMain-here; moduleToIR; moduleToIR-aux; moduleTable; tableOf; tableOfResult;
+                                CompiledFun; compileResolvedModule; compileResolvedModule-aux)
+open import Once.Type.SubDecide using (_<:?_)
+open import Once.CompileSrc using (toCF; mapCF; srcModule; srcModule-aux; module-src)
+open import Once.Denotation.Program using (NamesDistinct; IRFun)
+open import Once.LinCore.FromExpr fmt using (Rs)
+open import Once.LinCore.Core fmt using (Cx)
+import Once.Parser.Module.Core as P
+open import Once.Module using (ModuleTyped-ef; moduleSig; moduleSig-ef)
+open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
+open import Once.Adequacy.ModuleSig using (sigOf; sig-in)
+open import Once.Adequacy.TelePosition using (entries-distinct; none-in-empty)
+import Once.Spec.Core.Syntax
+
+-- a definition of the name, at the grade
+Named : CanonicalName → Gr → CompiledSrc → Set
+Named f g c = (csName c ≡ f) × (ET.dcGr (csType c) ≡ g)
+
+NamesOK : List CompiledSrc → Set
+NamesOK = AP.AllPairs (λ c c′ → csName c ≢ csName c′)
+
+private
+  map-just : ∀ {X Y : Set} {f : X → Y} (r : Maybe X) {h : Y} → Data.Maybe.map f r ≡ just h → Σ X (λ h′ → r ≡ just h′)
+  map-just (just x) _ = x , refl
+  map-just nothing  ()
+    where import Data.Maybe
+
+-- ★ the resolver hits only a definition of the name at the grade
+hit : ∀ (cs : List CompiledSrc) {f A B g h} → ET.ETProg.rs (ET.exprTable cs) f A B g ≡ just h → Any (Named f g) cs
+hit-at : ∀ (c : CompiledSrc) (cs : List CompiledSrc) {f A B g} dn dd dc dg {h}
+       → ET.extendR-at (ET.ETProg.rs (ET.exprTable cs)) c f A B g dn dd dc dg ≡ just h → Any (Named f g) (c ∷ cs)
+
+hit []       ()
+hit (c ∷ cs) {f} {A} {B} {g} e =
+  hit-at c cs (csName c ≟ᶜ f) (⌊ ET.dcDom (csType c) ⌋ ≟IRTy A) (⌊ ET.dcCod (csType c) ⌋ ≟IRTy B) (ET.dcGr (csType c) ET.≟Gr g) e
+
+hit-at c cs (yes n) (yes _) (yes _) (yes r) e = here (n , r)
+hit-at c cs (yes _) (yes _) (yes _) (no _)  ()
+hit-at c cs (yes _) (yes _) (no _)  _       e = there (hit cs (proj₂ (map-just _ e)))
+hit-at c cs (yes _) (no _)  _       _       e = there (hit cs (proj₂ (map-just _ e)))
+hit-at c cs (no _)  _       _       _       e = there (hit cs (proj₂ (map-just _ e)))
+
+-- two definitions of a name in a table of distinct names are one
+private
+  none : ∀ {nm : CanonicalName} {f g} {cs : List CompiledSrc} → All.All (λ c′ → nm ≢ csName c′) cs → nm ≡ f → Any (Named f g) cs → ⊥
+  none (ne All.∷ _)  n (here (n′ , _)) = ne (trans n (sym n′))
+  none (_ All.∷ nes) n (there a)       = none nes n a
+
+uniq : ∀ {f g g′} (cs : List CompiledSrc) → NamesOK cs → Any (Named f g) cs → Any (Named f g′) cs → g ≡ g′
+uniq (c ∷ cs) (_  AP.∷ _)  (here (_ , r)) (here (_ , r′)) = trans (sym r) r′
+uniq (c ∷ cs) (ne AP.∷ _)  (here (n , _)) (there a′)      = ⊥-elim (none ne n a′)
+uniq (c ∷ cs) (ne AP.∷ _)  (there a)      (here (n , _))  = ⊥-elim (none ne n a)
+uniq (c ∷ cs) (_  AP.∷ nd) (there a)      (there a′)      = uniq cs nd a a′
+
+-- ★ so a key whose name is defined at the grade is graded
+graded : ∀ (cs : List CompiledSrc) → NamesOK cs → ∀ {f g} → Any (Named f g) cs → ∀ {A B} → ET.Graded (ET.ETProg.rs (ET.exprTable cs)) f A B g
+graded cs nd a g′ e = uniq cs nd (hit cs e) a
+
+graded-ref : ∀ {L : Cx} (rs : Rs L) (x : String) {m} (A : Ty m) → (∀ {D C} → ET.Graded rs (bare x) D C (refGr A)) → ET.GradedRef rs x A
+graded-ref rs x (A ⇒[ G.mk-kind G.Zero π ] B) k = k
+graded-ref rs x (A ⇒[ G.mk-kind G.One π ] B)  k = k
+graded-ref rs x (A ⇒[ G.mk-kind G.Many π ] B) k = k
+graded-ref rs x ST.Unit       k = k
+graded-ref rs x ST.Void       k = k
+graded-ref rs x (X ST.* Y)    k = k
+graded-ref rs x (X ST.+ Y)    k = k
+graded-ref rs x (ST.μ F)      k = k
+graded-ref rs x (ST.ν F f)    k = k
+graded-ref rs x ST.Int        k = k
+graded-ref rs x ST.Float      k = k
+graded-ref rs x (ST.var i)    k = k
+
+main-graded : ∀ {L : Cx} (rs : Rs L) {T : Type} (pm : T <: EffUU) → (∀ {D C} → ET.Graded rs (bare "main") D C (ET.dcGr T)) → ET.MainGraded rs pm
+main-graded rs (sub-arr a sub-unit g) k = k
+main-graded rs (sub-arr a sub-void g) k = k
+main-graded rs sub-void               k = k
+
+-- ★ the walk's bodies are the bridge's premises
+module Prog (σ : ISig) where
+  open Walk σ using (Bodies)
+
+  bodies-graded : ∀ (tl : List CompiledSrc) → NamesOK tl → Bodies tl → ET.GradedBodies tl × ET.SrcsDecl σ tl
+  bodies-graded []       _            _           = tt , tt
+  bodies-graded (c ∷ cs) (_ AP.∷ nd) (b , o , r) =
+    (proj₁ rest , o ,
+     Refs-map (λ _ → tt)
+              (λ {A} {x} g → graded-ref (ET.ETProg.rs (ET.exprTable cs)) x A (graded cs nd g))
+              (λ {A} {x} g → graded-ref (ET.ETProg.rs (ET.exprTable cs)) x A (graded cs nd g))
+              (Src.expr (csSrc c)) r) ,
+    (Refs-map (λ d → d) (λ _ → tt) (λ _ → tt) (Src.expr (csSrc c)) r , proj₂ rest)
+    where rest = bodies-graded cs nd b
