@@ -48,7 +48,16 @@ open import Once.LinCore.FromIR fmt using (⟪_⟫)
 open import Once.LinCore.Bridge fmt ans using (W)
 open import Once.LinCore.Bisim fmt ans using (_≈_; ≈-refl; ≈-trans; ≈-sym; ret≈R; ≈-≈R; ≈R-≈; >>=-congR; >>=-cong)
 open import Once.LinCore.FromExprOk fmt ans using (Pure; PureI; bind-pure; ret-bind; module Rel; module Main)
-open import Once.LinCore.FromExpr fmt using (Rs; Lq)
+open import Once.LinCore.FromExpr fmt using (Rs; Lq; Lq-blk)
+open import Once.CompileSrc using (CompiledSrc; csName; csType; csSrc)
+open import Once.IRTy using (_≟IRTy_)
+open import Once.CanonicalName using (_≟ᶜ_)
+open import Data.Maybe using (Maybe; just; nothing)
+import Data.Maybe
+open import Data.Nat using (ℕ)
+open import Data.List using (List; []; _∷_)
+open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Binary.PropositionalEquality using (subst₂)
 open import Once.CompileSrc using (Src; src; srcIR; expr; am)
 open import Once.Denotation.SurfaceRefs using (Refs)
 open import Once.Denotation.DenotTrace using (callEnv)
@@ -275,3 +284,56 @@ module ValRel {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : I
           → Rel.Rel δ (callEnv cs ans) (val rs s) (srcIR s)
   rel-val (src {Γ = Γ} {Ψ = Ψ} δ₀ m Data.Bool.false e) refl refs =
     rel-dom′ (cong ⌊_⌋ δ₀) (Rel.rel-∘ δ (callEnv cs ans) (Main.Lq-ok rs δ cs m e refs) (Erase.rel-erase δ (callEnv cs ans) m Γ Ψ))
+
+------------------------------------------------------------------------
+-- 4. THE TABLE: the definitions, oldest first (the list's last), each body
+-- over the labels before it; the resolver keyed with the grade (D457).
+------------------------------------------------------------------------
+
+k-val : ∀ {L T} (rs : Rs L) (s : Src T) → Blk (val rs s)
+k-val rs (src {Γ = Γ} {Ψ = Ψ} δ₀ m opt e) = k-cast (cong ⟪_⟫ (cong ⌊_⌋ δ₀)) refl (k-∘ (Lq-blk rs e) (k-eraseL Γ Ψ))
+
+-- a definition's label
+sgOf : CompiledSrc → Sg
+sgOf c = sg once (dcGr (csType c)) One (ty (dcDom (csType c))) (ty (dcCod (csType c)))
+
+bodyOf : ∀ {L} (rs : Rs L) (c : CompiledSrc) → Body L (sgOf c)
+bodyOf rs c = b1 (dc (csType c) (val rs (csSrc c)) ∘l lul) (dcGd (csType c) (k-val rs (csSrc c)))
+
+_≟Gr_ : (g g′ : Gr) → Dec (g ≡ g′)
+act ≟Gr act = yes refl
+act ≟Gr eff = no λ ()
+eff ≟Gr act = no λ ()
+eff ≟Gr eff = yes refl
+
+-- a resolution, one label further down
+weakR : ∀ {L σ g A B} → Maybe (Σ ℕ λ l → L ∋[ l ] sg once g One A B) → Maybe (Σ ℕ λ l → (L ▸ σ) ∋[ l ] sg once g One A B)
+weakR = Data.Maybe.map λ { (l , p) → l , there p }
+
+-- one more definition: its label answers its name, its call types and its grade
+extendR-at : ∀ {L} (rs : Rs L) (c : CompiledSrc) f A B g
+           → Dec (csName c ≡ f) → Dec (⌊ dcDom (csType c) ⌋ ≡ A) → Dec (⌊ dcCod (csType c) ⌋ ≡ B) → Dec (dcGr (csType c) ≡ g)
+           → Maybe (Σ ℕ λ l → (L ▸ sgOf c) ∋[ l ] sg once g One ⟪ A ⟫ ⟪ B ⟫)
+extendR-at {L} rs c f A B g (yes _) (yes p) (yes q) (yes r) =
+  just (len L , subst₂ (λ X Y → (L ▸ sgOf c) ∋[ len L ] sg once g One ⟪ X ⟫ ⟪ Y ⟫) p q
+                       (subst (λ g′ → (L ▸ sgOf c) ∋[ len L ] sg once g′ One (ty (dcDom (csType c))) (ty (dcCod (csType c)))) r here))
+extendR-at rs c f A B g (yes _) (yes _) (yes _) (no _) = weakR (rs f A B g)
+extendR-at rs c f A B g (yes _) (yes _) (no _)  _      = weakR (rs f A B g)
+extendR-at rs c f A B g (yes _) (no _)  _       _      = weakR (rs f A B g)
+extendR-at rs c f A B g (no _)  _       _       _      = weakR (rs f A B g)
+
+extendR : ∀ {L} (rs : Rs L) (c : CompiledSrc) → Rs (L ▸ sgOf c)
+extendR rs c f A B g = extendR-at rs c f A B g (csName c ≟ᶜ f) (⌊ dcDom (csType c) ⌋ ≟IRTy A) (⌊ dcCod (csType c) ⌋ ≟IRTy B) (dcGr (csType c) ≟Gr g)
+
+record ETProg : Set where
+  constructor etProg
+  field
+    {L}  : Cx
+    defs : Defs L
+    rs   : Rs L
+open ETProg public
+
+-- ★ the table, as `FromIR.trTable` builds its own: the earliest definition the list's last
+exprTable : List CompiledSrc → ETProg
+exprTable []       = etProg ε (λ _ _ _ _ → nothing)
+exprTable (c ∷ cs) = etProg (defs (exprTable cs) ▸ bodyOf (rs (exprTable cs)) c) (extendR (rs (exprTable cs)) c)
