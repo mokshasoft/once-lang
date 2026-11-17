@@ -933,10 +933,59 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   ok-coerce : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (p : A <: B) (f : Expr Γ Ψ A) → Goal f → Goal (coerce p f)
   ok-coerce p f rf = rel-coeR p (voidFree? p) rf
 
+  -- ★ THE FOLD. A fold's congruence, for pointwise-equal algebras
+  mutual
+    cataC-≡ : ∀ F {X : Set} {a₁ a₂ : FS F X → T∞ X} → (∀ y → a₁ y ≡ a₂ y) → ∀ x → cataC δ F a₁ x ≈ cataC δ F a₂ x
+    cataC-≡ F {a₁ = a₁} h (inμ w) = >>=-cong (travC-≡ F F h w) (λ y → subst (λ m → a₁ y ≈ m) (h y) ≈-refl)
+
+    travC-≡ : ∀ F G {X : Set} {a₁ a₂ : FS F X → T∞ X} → (∀ y → a₁ y ≡ a₂ y) → ∀ w → travC δ F G a₁ w ≈ travC δ F G a₂ w
+    travC-≡ F Idf      h y        = cataC-≡ F h y
+    travC-≡ F Kone     h y        = ≈-refl
+    travC-≡ F Kzero    h ()
+    travC-≡ F (Kb _)   h y        = ≈-refl
+    travC-≡ F (Kμ _)   h y        = ≈-refl
+    travC-≡ F (G ⊕f H) h (inj₁ y) = >>=-cong (travC-≡ F G h y) (λ _ → ≈-refl)
+    travC-≡ F (G ⊕f H) h (inj₂ z) = >>=-cong (travC-≡ F H h z) (λ _ → ≈-refl)
+    travC-≡ F (G ⊗f H) h (y , z)  = >>=-cong (travC-≡ F G h y) (λ _ → >>=-cong (travC-≡ F H h z) (λ _ → ≈-refl))
+
+  -- the core's lent algebra is the pass's `apply`, moved along the same type equation
+  alg-eq : ∀ {g} {X₀ Z B : LTy} (p : X₀ ≡ Z) (f : ⟦ Fn many g X₀ B ⟧) (z : ⟦ Z ⟧)
+         → Lᶜ δ (cast {L} {Fn many g X₀ B} p refl (bev {g = g} {X₀} {B})) f z
+           ≡ ev δ (subst (λ X → P.IR L (Fn many g X₀ B ⊗t X) B) p (P.apply {g = g})) (f , z)
+  alg-eq refl f z = refl
+
+  subst-trans′ : ∀ {E B X Y Z : LTy} (p : X ≡ Y) (q : Y ≡ Z) (c : P.IR L (E ⊗t X) B)
+               → subst (λ W′ → P.IR L (E ⊗t W′) B) q (subst (λ W′ → P.IR L (E ⊗t W′) B) p c)
+                 ≡ subst (λ W′ → P.IR L (E ⊗t W′) B) (trans p q) c
+  subst-trans′ refl refl c = refl
+
+  -- the pass's algebra against master's, moved along the Spec's layer
+  fold-ih : ∀ {X Y B : IRTy} {π} (c : X ≡ Y) {x x′} → W ((X I.⇛[ π ] B) I.* Y) x x′
+          → ev δ (subst (λ Z → P.IR L (Fn many (grade π) ⟪ X ⟫ ⟪ B ⟫ ⊗t Z) ⟪ B ⟫) (cong ⟪_⟫ c) (P.apply {g = grade π})) x
+            ≈[ W B ] evalᴰ fmt ρ (subst (λ o → M.IR ((X I.⇛[ π ] B) I.* o) B) c (M.apply M.∘ M.⟨ M.fst , M.snd ⟩)) x′
+  fold-ih refl {f , y} {f′ , y′} (wf , wy) = ≈R-≈ (wf wy) (≈-sym (bind-pure (≈-trans ret-bind ret-bind)))
+
+  rel-fold : ∀ {m} {Δ : KCtx m} (F : Fun m) (wf : WFFun Δ F) (A : Ty m) {π}
+           → Rel (Once.LinCore.PassTr.dropl fmt ∘l lend (lcata (lf (I.eraseF F)) (bsnd (cast (layerEq F wf A) refl (bev {g = grade π} {ty (ST.⟦ F ⟧F A)} {ty A})))))
+                 (M.Cata (wf-⌊⌋ wf) (subst (λ o → M.IR ((⌊ ST.⟦ F ⟧F A ⌋ I.⇛[ π ] ⌊ A ⌋) I.* o) ⌊ A ⌋) (⌊⟧T-commute F A) (M.apply M.∘ M.⟨ M.fst , M.snd ⟩)))
+  rel-fold F wf A {π} = mkRel λ { {e , x} {e′ , x′} (we , wx) →
+    ≈-≈R (≈-trans (pair-drop (e ,_) (Lᶜ δ (Once.LinCore.PassTr.dropl fmt {Γ = L} {E = One} {A = Fn many (grade π) (ty (ST.⟦ F ⟧F A)) (ty A)} {B = ty A}) tt) (λ _ → refl))
+                  (cataC-≡ (lf (I.eraseF F))
+                     (λ y → trans (alg-eq (layerEq F wf A) e (coh⁻¹ (lf (I.eraseF F)) _ y))
+                                  (cong (λ c → ev δ c (e , coh⁻¹ (lf (I.eraseF F)) _ y))
+                                        (sym (subst-trans′ (cong ⟪_⟫ (⌊⟧T-commute F A)) (⟪⟫-TI (wf-⌊⌋ wf) ⌊ A ⌋) P.apply))))
+                     x))
+         (BP.Casts.cata≈ (casts δ cs) (wf-⌊⌋ wf)
+            (subst (λ o → M.IR ((⌊ ST.⟦ F ⟧F A ⌋ I.⇛[ π ] ⌊ A ⌋) I.* o) ⌊ A ⌋) (⌊⟧T-commute F A) (M.apply M.∘ M.⟨ M.fst , M.snd ⟩))
+            (subst (λ Z → P.IR L (Fn many (grade π) (ty (ST.⟦ F ⟧F A)) (ty A) ⊗t Z) (ty A)) (cong ⟪_⟫ (⌊⟧T-commute F A)) (P.apply {g = grade π}))
+            (fold-ih (⌊⟧T-commute F A)) (we , wx)) }
+
+  ok-cata : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π}
+              (wf : WFFun Δₖ F) (alg : Expr Γ Ψ (ST.⟦ F ⟧F A ⇒[ G.mk-kind G.Many π ] A)) → Goal alg → Goal (cata wf alg)
+  ok-cata {Γ = Γ} {Ψ} {F} {A = A} {π} wf alg ra = rel-∘ (rel-cloG π _ (rel-fold F wf A {π})) (rel-∘ ra (rel-weak am {Γ = Γ} (⊑ᵘ-*Many Ψ)))
+
   record Owed : Set where
     field
-      o-cata    : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π}
-                    (wf : WFFun Δₖ F) (alg : Expr Γ Ψ (ST.⟦ F ⟧F A ⇒[ G.mk-kind G.Many π ] A)) → Goal alg → Goal (cata wf alg)
       o-ana     : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π₀} {φ : G.Finite}
                     (wf : WFFun Δₖ F) (c : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many (G.fin φ) ] ST.⟦ F ⟧F A))
                   → Goal c → Goal (ana {π₀ = π₀} wf c)
@@ -986,6 +1035,6 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
     Lq-ok (copair' f g) = ok-copair f g (Lq-ok f) (Lq-ok g)
     Lq-ok (fork' f g) = ok-fork f g (Lq-ok f) (Lq-ok g)
     Lq-ok (curry' f) = ok-curry f (Lq-ok f)
-    Lq-ok (cata wf alg) = o-cata wf alg (Lq-ok alg)
+    Lq-ok (cata wf alg) = ok-cata wf alg (Lq-ok alg)
     Lq-ok (ana wf c) = o-ana wf c (Lq-ok c)
     Lq-ok (loop r) = ok-loop r (Lq-ok r)
