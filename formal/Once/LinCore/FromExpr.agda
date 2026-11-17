@@ -466,7 +466,7 @@ module _ {L : Cx} (rs : Rs L) where
           (gdB π (λ { refl → k-∘ (k-∘ k-apω (k-∘ (k-⊗ (Lq-blk f) (k-∘ (Lq-blk x) (k-weak {Γ = Γ} (⊑ᵘ-*Many Ψ₂))))
                                                     (k-split Γ Ψ₁ (G.Many *ᵘ Ψ₂)))) k-ρ }))
   Lq {Γ = Γ} (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) = (Lq a ⊗l Lq b) ∘l split Γ Ψ₁ Ψ₂
-  Lq (fst' p) = ρl ∘l (lid ⊗l drop) ∘l Lq p
+  Lq (fst' p) = (ρl ∘l (lid ⊗l drop)) ∘l Lq p
   Lq (snd' p) = dropl ∘l Lq p
   Lq (inl' a) = linl ∘l Lq a
   Lq (inr' b) = linr ∘l Lq b
@@ -544,7 +544,7 @@ module _ {L : Cx} (rs : Rs L) where
   Lq-blk (effApp {q = G.One} f x) = k-lamω
   Lq-blk (effApp {q = G.Many} f x) = k-lamω
   Lq-blk {Γ = Γ} (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) = k-∘ (k-⊗ (Lq-blk a) (Lq-blk b)) (k-split Γ Ψ₁ Ψ₂)
-  Lq-blk (fst' p) = k-∘ k-ρ (k-∘ (k-⊗ k-id k-drop) (Lq-blk p))
+  Lq-blk (fst' p) = k-∘ (k-∘ k-ρ (k-⊗ k-id k-drop)) (Lq-blk p)
   Lq-blk (snd' p) = k-∘ k-dropl (Lq-blk p)
   Lq-blk (inl' a) = k-∘ k-inl (Lq-blk a)
   Lq-blk (inr' b) = k-∘ k-inr (Lq-blk b)

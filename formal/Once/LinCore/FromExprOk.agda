@@ -32,20 +32,28 @@ open import Data.Unit using (⊤; tt)
 import Data.Sum.Relation.Binary.Pointwise
 
 import Once.Spec.Grade as G
-open import Once.Spec.Type using (Ty)
+open import Once.Spec.Type using (Ty; Type; _⇒[_]_; _+_; μ; ν; WFFun; KCtx; Fun)
+import Once.Spec.Type as ST
 import Once.Spec.Context as SC
-open import Once.Spec.Context using (Ctx; Usage; []; _∷_; _+ᵘ_; _⊑ᵘ_; _⊑∷_; singleUse)
-open import Once.Context using (⟦_⟧ᶜ; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
+open import Once.Spec.Context using (Ctx; Usage; []; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_; singleUse)
+open import Once.Context using (⟦_⟧ᶜ; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.IRTy using (⌊_⌋)
 import Once.IR as M
-open import Once.Surface.Elaborate using (restrictEnv; projUsed; bindEnv)
+open import Once.Surface.Elaborate using (restrictEnv; projUsed; bindEnv; elaborate)
+open import Once.Surface.Syntax
+open import Once.Surface.Map using (Map)
+open import Once.Spec.Sub using (_<:_)
+open import Once.Spec.Theory using (Has; Sym; symDom)
+open import Once.Type.Concrete using (IsConcrete)
+open import Once.Spec.Name using (CanonicalName)
+open import Data.String using (String)
 import Data.Fin
 open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 
 open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL)
+open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq)
 open import Once.LinCore.FromIR fmt using (⟪_⟫; grade)
 import Once.LinCore.PassTr
 open import Once.LinCore.PassTr fmt using (copyIn)
@@ -420,3 +428,115 @@ module RelClo {L : Cx} (δ : Env L) (ρ : CallEnv) where
     ret≈R (λ {a} {a′} wa → ≈-≈R (≈-trans (≈-sym (blk-coh δ γ x a)) (copyIn-≈ b x a)) (rel rb (w , wa)))
   rel-cloG G.eff {b = b} γ rb = mkRel λ {x} {x′} w →
     ret≈R (λ {a} {a′} wa → ≈-≈R (copyIn-≈ b x a) (rel rb (w , wa)))
+
+------------------------------------------------------------------------
+-- 10. ★★ THE BRIDGE'S MEANING, by induction on the expression. The clauses
+-- not yet proved are named premises (`Owed`), discharged one by one.
+------------------------------------------------------------------------
+
+module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) where
+  open Rel δ ρ
+  open RelApp δ ρ am
+  open RelGen δ ρ am
+  open RelClo δ ρ
+
+  -- the theorem's statement at one expression
+  Goal : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} → Expr Γ Ψ A → Set
+  Goal e = Rel (Lq rs e) (elaborate am e)
+
+  -- a binding: the body's share kept, the bound term's relabelled
+  rel-let : ∀ {m n} (Γ : Ctx m n) (Ψ₂ Ψ₁ Φ : Usage n) (p : Ψ₁ ⊑ᵘ Φ) {A : IRTy}
+              {x : LTm L (Co Γ Ψ₁) ⟪ A ⟫} {x′ : M.IR ⌊ ⟦ Γ ↾ Ψ₁ ⟧ᶜ ⌋ A}
+          → Rel x x′
+          → Rel ((lid ⊗l (x ∘l weak {Γ = Γ} p)) ∘l split Γ Ψ₂ Φ)
+                M.⟨ restrictEnv {Γ = Γ} am (⊑ᵘ-+ˡ Ψ₂ Φ) , x′ M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-trans p (⊑ᵘ-+ʳ Ψ₂ Φ)) ⟩
+  rel-let Γ Ψ₂ Ψ₁ Φ p {A} {x′ = x′} rx =
+    rel-≈ʳ (rel-pair am Γ Ψ₂ Φ rel-id (rel-∘ rx (rel-weak am {Γ = Γ} p)))
+      (λ v → >>=-cong (≈-trans (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ Φ) v)) (≈-sym (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ Φ) v)))
+                      (λ _ → >>=-cong (restrict-assoc ρ am {Γ = Γ} {B = A} x′ p (⊑ᵘ-+ʳ Ψ₂ Φ) v) (λ _ → ≈-refl)))
+
+  record Owed : Set where
+    field
+      o-app0    : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m}
+                    (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Zero G.pure ] B)) (x : Expr Γ Ψ₂ A) → Goal f → Goal (app f x)
+      o-effApp  : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} {q π g}
+                    (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind q π ] B)) (x : Expr Γ Ψ₂ A) → Goal f → Goal x → Goal (effApp {g = g} f x)
+      o-case    : ∀ {m n} {Γ : Ctx m n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : G.Quantity} {A B C : Ty m}
+                    (s : Expr Γ Ψs (A + B)) (l : Expr (Γ SC.▸ A) (qℓ ∷ Ψₗ) C) (r : Expr (Γ SC.▸ B) (qr ∷ Ψᵣ) C)
+                  → Goal s → Goal l → Goal r → Goal (case' s l r)
+      o-let0    : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m}
+                    (e1 : Expr Γ Ψ₁ A) (e2 : Expr (Γ SC.▸ A) (G.Zero ∷ Ψ₂) B) → Goal e2 → Goal (let' e1 e2)
+      o-num     : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A U k} (h : Has A U) (o : Sym U k) (e : Expr Γ Ψ (symDom {m} A k))
+                  → Goal e → Goal (num h o e)
+      o-coerce  : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (p : A <: B) (f : Expr Γ Ψ A) → Goal f → Goal (coerce p f)
+      o-sigOp   : ∀ {m n} {Γ : Ctx m n} {A : Type} (name : CanonicalName) (c : IsConcrete A) → Goal (sigOp {Γ = Γ} name c)
+      o-closure : ∀ {m n} {Γ : Ctx m n} {A : Ty m} (name : String) → Goal (closure {Γ = Γ} {A = A} name)
+      o-poly    : ∀ {m n} {Γ : Ctx m n} (name : String) (T : Ty m) → Goal (poly {Γ = Γ} name T)
+      o-lift    : ∀ {m n} {Γ : Ctx m n} {A B : Ty m} {π} (mp : Map A B) → Goal (lift-morphism {Γ = Γ} {π = π} mp)
+      o-mapp    : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (mp : Map A B) (x : Expr Γ Ψ A) → Goal x → Goal (morph-app mp x)
+      o-comp    : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
+                    (f : Expr Γ Ψ₁ (B ⇒[ G.mk-kind G.Many π ] C)) (g : Expr Γ Ψ₂ (A ⇒[ G.mk-kind G.Many π ] B))
+                  → Goal f → Goal g → Goal (comp' f g)
+      o-copair  : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
+                    (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many π ] C)) (g : Expr Γ Ψ₂ (B ⇒[ G.mk-kind G.Many π ] C))
+                  → Goal f → Goal g → Goal (copair' f g)
+      o-fork    : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
+                    (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many π ] B)) (g : Expr Γ Ψ₂ (A ⇒[ G.mk-kind G.Many π ] C))
+                  → Goal f → Goal g → Goal (fork' f g)
+      o-curry   : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B C : Ty m} {π₀ π}
+                    (f : Expr Γ Ψ ((A Once.Spec.Type.* B) ⇒[ G.mk-kind G.Many π ] C)) → Goal f → Goal (curry' {π₀ = π₀} f)
+      o-cata    : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π}
+                    (wf : WFFun Δₖ F) (alg : Expr Γ Ψ (ST.⟦ F ⟧F A ⇒[ G.mk-kind G.Many π ] A)) → Goal alg → Goal (cata wf alg)
+      o-ana     : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π₀} {φ : G.Finite}
+                    (wf : WFFun Δₖ F) (c : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many (G.fin φ) ] ST.⟦ F ⟧F A))
+                  → Goal c → Goal (ana {π₀ = π₀} wf c)
+      o-loop    : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m}
+                    (r : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many G.act ] (B + A))) → Goal r → Goal (loop r)
+
+  module _ (ow : Owed) where
+    open Owed ow
+
+    Lq-ok : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) → Goal e
+    Lq-ok {Γ = Γ} (var i) = rel-var {Γ = Γ} i
+    Lq-ok (lam {q' = G.Zero} {π = π} G.Zero _ e) = rel-cloG π _ (rel-∘ (Lq-ok e) rel-fst)
+    Lq-ok (lam {q' = G.Zero} {π = π} G.One  _ e) = rel-cloG π _ (rel-∘ (Lq-ok e) rel-fst)
+    Lq-ok (lam {q' = G.Zero} {π = π} G.Many _ e) = rel-cloG π _ (rel-∘ (Lq-ok e) rel-fst)
+    Lq-ok (lam {q' = G.One}  {π = π} G.One  _ e) = rel-cloG π _ (Lq-ok e)
+    Lq-ok (lam {q' = G.One}  {π = π} G.Many _ e) = rel-cloG π _ (Lq-ok e)
+    Lq-ok (lam {q' = G.Many} {π = π} G.Many _ e) = rel-cloG π _ (Lq-ok e)
+    Lq-ok (app {q = G.Zero} f x) = o-app0 f x (Lq-ok f)
+    Lq-ok {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) =
+      rel-app Γ Ψ₁ Ψ₂ (G.One *ᵘ Ψ₂) (⊑ᵘ-*One Ψ₂) (Lq-ok f) (Lq-ok x)
+    Lq-ok {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) =
+      rel-app Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) (Lq-ok f) (Lq-ok x)
+    Lq-ok (effApp f x) = o-effApp f x (Lq-ok f) (Lq-ok x)
+    Lq-ok {Γ = Γ} (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) = rel-pair am Γ Ψ₁ Ψ₂ (Lq-ok a) (Lq-ok b)
+    Lq-ok (fst' p) = rel-∘ rel-fst (Lq-ok p)
+    Lq-ok (snd' p) = rel-∘ rel-snd (Lq-ok p)
+    Lq-ok (inl' a) = rel-∘ rel-inl (Lq-ok a)
+    Lq-ok (inr' b) = rel-∘ rel-inr (Lq-ok b)
+    Lq-ok (case' s l r) = o-case s l r (Lq-ok s) (Lq-ok l) (Lq-ok r)
+    Lq-ok unit = rel-drop
+    Lq-ok (absurd v) = rel-∘ rel-zero (Lq-ok v)
+    Lq-ok (let' {q = G.Zero} e1 e2) = o-let0 e1 e2 (Lq-ok e2)
+    Lq-ok {Γ = Γ} (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} {A = A} e1 e2) =
+      rel-∘ (Lq-ok e2) (rel-∘ (rel-bind {Γ = Γ} {A = A} G.One) (rel-let Γ Ψ₂ Ψ₁ (G.One *ᵘ Ψ₁) (⊑ᵘ-*One Ψ₁) (Lq-ok e1)))
+    Lq-ok {Γ = Γ} (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} {A = A} e1 e2) =
+      rel-∘ (Lq-ok e2) (rel-∘ (rel-bind {Γ = Γ} {A = A} G.Many) (rel-let Γ Ψ₂ Ψ₁ (G.Many *ᵘ Ψ₁) (⊑ᵘ-*Many Ψ₁) (Lq-ok e1)))
+    Lq-ok (int n) = rel-∘ (mkRel λ _ → ret≈R refl) rel-drop
+    Lq-ok (float d) = rel-∘ (mkRel λ _ → ret≈R refl) rel-drop
+    Lq-ok (num h o e) = o-num h o e (Lq-ok e)
+    Lq-ok (coerce p f) = o-coerce p f (Lq-ok f)
+    Lq-ok {Γ = Γ} (sigOp name c) = o-sigOp {Γ = Γ} name c
+    Lq-ok {Γ = Γ} (closure name) = o-closure {Γ = Γ} name
+    Lq-ok {Γ = Γ} (poly name T) = o-poly {Γ = Γ} name T
+    Lq-ok (closed e) = rel-∘ (Lq-ok e) rel-drop
+    Lq-ok {Γ = Γ} (lift-morphism mp) = o-lift {Γ = Γ} mp
+    Lq-ok (morph-app mp x) = o-mapp mp x (Lq-ok x)
+    Lq-ok (comp' f g) = o-comp f g (Lq-ok f) (Lq-ok g)
+    Lq-ok (copair' f g) = o-copair f g (Lq-ok f) (Lq-ok g)
+    Lq-ok (fork' f g) = o-fork f g (Lq-ok f) (Lq-ok g)
+    Lq-ok (curry' f) = o-curry f (Lq-ok f)
+    Lq-ok (cata wf alg) = o-cata wf alg (Lq-ok alg)
+    Lq-ok (ana wf c) = o-ana wf c (Lq-ok c)
+    Lq-ok (loop r) = o-loop r (Lq-ok r)
