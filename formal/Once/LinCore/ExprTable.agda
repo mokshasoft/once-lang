@@ -25,7 +25,8 @@ open import Data.Unit using (tt)
 import Data.Unit
 import Data.Bool
 open import Data.Product using (Σ)
-open import Once.Compile using (directCallIR)
+open import Once.Compile using (directCallIR; irFunOf; tableOf-go; tableOf; CompiledFun)
+open import Once.CompileSrc using (toCF)
 
 import Once.Spec.Grade as G
 open import Once.Spec.Type using (Ty; Type; _⇒[_]_)
@@ -535,3 +536,27 @@ bodies-ok (c ∷ cs) (gs , opt≡ , refs) =
            (λ {A} {x} g → RefRel.rel-ref′ (exprTable cs) (tblOf cs) (table-ok cs (bodies-ok cs gs)) (am (csSrc c)) A x g)
            (λ {A} {x} g → RefRel.rel-ref′ (exprTable cs) (tblOf cs) (table-ok cs (bodies-ok cs gs)) (am (csSrc c)) A x g)
            (expr (csSrc c)) refs
+
+------------------------------------------------------------------------
+-- 8. MASTER'S TABLE is the sources', in `Compile.tableOf`'s order.
+------------------------------------------------------------------------
+
+-- `tableOf`'s order: the last compiled definition first
+srcOrder : List CompiledSrc → List CompiledSrc → List CompiledSrc
+srcOrder []       sofar = sofar
+srcOrder (c ∷ cs) sofar = srcOrder cs (c ∷ sofar)
+
+irFunOf-irE : ∀ c → irFunOf (toCF c) ≡ irE c
+irFunOf-irE c = cong (λ d → irFun (csName c) ⌊ proj₁ d ⌋ ⌊ proj₁ (proj₂ d) ⌋ (proj₂ (proj₂ d))) (dc-eq (csType c) (srcIR (csSrc c)))
+
+tableOf-go-src : ∀ (cs sofar : List CompiledSrc)
+               → tableOf-go (Data.List.map toCF cs) (tblOf sofar) ≡ tblOf (srcOrder cs sofar)
+tableOf-go-src []       sofar = refl
+tableOf-go-src (c ∷ cs) sofar =
+  Relation.Binary.PropositionalEquality.trans
+    (cong (λ e → tableOf-go (Data.List.map toCF cs) (e ∷ tblOf sofar)) (irFunOf-irE c))
+    (tableOf-go-src cs (c ∷ sofar))
+
+-- ★ master's table of a module's compiled definitions is its sources'
+tableOf-src : ∀ (cs : List CompiledSrc) → tableOf (Data.List.map toCF cs) ≡ tblOf (srcOrder cs [])
+tableOf-src cs = tableOf-go-src cs []
