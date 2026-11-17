@@ -23974,3 +23974,34 @@ Master's image already sees no interpretation (`program-image : CanonicalName �
 (a). Each module takes the parameters it uses; a module that mixes syntax and proof is split into its
 syntax module (`fmt`) and its proof module (`fmt ans`). No re-export (`public`): importers name the
 module that defines what they use.
+
+## D441 — THE LINEAR CORE IS COMPILED FROM THE SPEC'S GRADED DERIVATION (2026-11-17)
+
+**Decided** (the user, 2026-11-17). **Applies**: plan 0.146 B1.7 step 2; GOAL.md (every gap proved);
+OCP-0009's "architecture bug" (`plan-ref` `bootstrap/poc/OCP0009/ARCHITECTURE.md` §3).
+
+### The problem
+The new image is built from `FromIR`'s translation of master's IR, and that IR records no grades: the
+translation re-derives them (`FromIR.blk?`: an act closure, an unfold's coalgebra, a loop's round must be a
+block) and is partial. `compile` is certified total (`MainBuilds.main⇒built`), so a program the elaborator
+accepts but `blk?` rejects is a gap. The grades exist in the Spec's derivation (`Γ ⊢[ρ] A`) and are erased
+by `elaborate` before the core sees them.
+
+### Options
+* (a) The core from the derivation: one clause per surface rule (plan 0.151's syntax-directed rules), the
+  usage indexing the target (`Lq⟦_⟧ : Γ ⊢[ρ] A → LTm`, the POC bridge): context addition is the tensor's
+  split, a copy only at ω. Total by construction.
+* (b) D413's route: `blk?` stays a checker; a completeness lemma per elaborator rule (after 0.151) proves it
+  accepts every elaborated program; an owed premise meanwhile.
+* (c) The grades in the IR's constructors (master's IR graded).
+
+### Decision
+(a), after plan 0.151 merges (the bridge is written against its rules, not against the rules it replaces).
+It keeps usage in the compiled program, which the later linear optimizations need (no copy at 1, reuse in
+place, free at last use, erasure at 0); (b) and (c) keep the cartesian IR in between and re-derive or
+re-carry what the derivation already has. The IR optimizer's passes move to the linear core as they are
+needed. Until 0.151 merges, B1.7 step 2's other parts (the library image, the arith blocks, `ldConst`)
+proceed; the translation's source is switched last.
+
+### Alternatives
+(b), (c) above.
