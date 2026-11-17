@@ -445,3 +445,104 @@ module Prog (σ : ISig) where
               (Src.expr (csSrc c)) r) ,
     (Refs-map (λ d → d) (λ _ → tt) (λ _ → tt) (Src.expr (csSrc c)) r , proj₂ rest)
     where rest = bodies-graded cs nd b
+
+------------------------------------------------------------------------
+-- 5. ★★ FROM THE COMPILE PIPELINE: a compiled program's sources, with the
+-- bridge's premises (`FlatTop.ExprTop`'s `gb`, `gm`, `srcs`).
+------------------------------------------------------------------------
+
+-- main, found among the sources (`Compile.findMain`)
+record MainOf (srcs : List CompiledSrc) (ir : IR ⌊ ST.Unit {0} ⌋ ⌊ ST.Unit {0} ⌋) : Set where
+  field
+    mty : Type
+    mpm : mty <: EffUU
+    mir : ir ≡ mainEntry mpm
+    min : Any (Named (bare "main") (ET.dcGr mty)) srcs
+
+find-main : ∀ (srcs : List CompiledSrc) {ir} → findMain (Data.List.map toCF srcs) ≡ just ir → MainOf srcs ir
+find-main []       ()
+find-main (c ∷ cs) {ir} e = at (csName c ≟ᶜ bare "main") (csType c <:? EffUU) e
+  where
+    there-main : MainOf cs ir → MainOf (c ∷ cs) ir
+    there-main mo = record { mty = MainOf.mty mo ; mpm = MainOf.mpm mo ; mir = MainOf.mir mo ; min = there (MainOf.min mo) }
+    at : ∀ dn dt → findMain-here (toCF c) dn dt (findMain (Data.List.map toCF cs)) ≡ just ir → MainOf (c ∷ cs) ir
+    at (yes n) (yes p) e′ = record { mty = csType c ; mpm = p ; mir = sym (just-injective e′) ; min = here (n , refl) }
+    at (yes _) (no _)  e′ = there-main (find-main cs e′)
+    at (no _)  _       e′ = there-main (find-main cs e′)
+
+-- the table's order keeps what is in it
+any-srcOrder : ∀ {P : CompiledSrc → Set} (cs sofar : List CompiledSrc) → Any P cs ⊎ Any P sofar → Any P (ET.srcOrder cs sofar)
+any-srcOrder []       sofar (inj₁ ())
+any-srcOrder []       sofar (inj₂ a)         = a
+any-srcOrder (c ∷ cs) sofar (inj₁ (here p))  = any-srcOrder cs (c ∷ sofar) (inj₂ (here p))
+any-srcOrder (c ∷ cs) sofar (inj₁ (there a)) = any-srcOrder cs (c ∷ sofar) (inj₁ a)
+any-srcOrder (c ∷ cs) sofar (inj₂ a)         = any-srcOrder cs (c ∷ sofar) (inj₂ (there a))
+
+private
+  srcs-of : ∀ (r : String ⊎ List CompiledSrc) {cfs : List CompiledFun} → mapCF r ≡ inj₂ cfs
+          → Σ (List CompiledSrc) (λ srcs → (r ≡ inj₂ srcs) × (Data.List.map toCF srcs ≡ cfs))
+  srcs-of (inj₁ _)    ()
+  srcs-of (inj₂ srcs) refl = srcs , refl , refl
+
+  typed-ef : ∀ (m : P.Resolved) (ef : _) → ModuleTyped-ef m ef → ∀ {es} → ef ≡ inj₂ es → ModTele (AS.scopeOf C.emptyCScope) es
+  typed-ef m .(inj₂ _) mt refl = mt
+
+  -- the walk's start: the empty scope
+  tinv₀ : ∀ {σ : ISig} → Walk.TInv σ C.emptyCScope []
+  tinv₀ = record { iself = All.[] ; imp-ok = λ () ; tel-ok = λ _ _ {x} {A} pr _ → ⊥-elim (no-poly {x} {A} pr) ; bod-ok = tt ; sig-ok = λ () }
+    where no-poly : ∀ {x} {A : Type} → PolyRef [] ∅ₖ x A → ⊥
+          no-poly (_ , () , _)
+
+record ExprProgram (m : P.Resolved) (ir : IR ⌊ ST.Unit {0} ⌋ ⌊ ST.Unit {0} ⌋) : Set where
+  field
+    srcs   : List CompiledSrc
+    src-eq : srcModule Heap false m ≡ inj₂ srcs
+    -- master's table is the sources' (`ExprTable.tableOf-src`)
+    tbl-eq : moduleTable m ≡ ET.tblOf (ET.srcOrder srcs [])
+    gb     : ET.GradedBodies (ET.srcOrder srcs [])
+    sd     : ET.SrcsDecl (moduleSig m) (ET.srcOrder srcs [])
+    mty    : Type
+    mpm    : mty <: EffUU
+    mir    : ir ≡ mainEntry mpm
+    mg     : ET.MainGraded (ET.ETProg.rs (ET.exprTable (ET.srcOrder srcs []))) mpm
+
+-- ★★ a compiled program (`moduleToProgram-linked`'s premises) is the bridge's
+expr-program : ∀ (m : P.Resolved) (ir : IR ⌊ ST.Unit {0} ⌋ ⌊ ST.Unit {0} ⌋)
+             → moduleToIR m ≡ just ir → NamesDistinct (moduleTable m) → ExprProgram m ir
+expr-program m ir mi nd = record
+  { srcs   = srcs
+  ; src-eq = proj₁ (proj₂ so)
+  ; tbl-eq = tbl-eq
+  ; gb     = proj₁ bg
+  ; sd     = proj₂ bg
+  ; mty    = MainOf.mty mo
+  ; mpm    = MainOf.mpm mo
+  ; mir    = MainOf.mir mo
+  ; mg     = main-graded (ET.ETProg.rs (ET.exprTable tl)) (MainOf.mpm mo)
+                         (graded tl names (any-srcOrder srcs [] (inj₁ (MainOf.min mo))))
+  }
+  where
+    node = FB.program-node m ir mi
+    es   = proj₁ node
+    ef   = proj₁ (proj₂ node)
+    b    = proj₁ (proj₂ (proj₂ node))
+    ceq  = proj₂ (proj₂ (proj₂ node))
+    so   = srcs-of (srcModule Heap false m) (trans (sym (module-src Heap false m)) ceq)
+    srcs = proj₁ so
+    tl   = ET.srcOrder srcs []
+    tbl-eq : moduleTable m ≡ ET.tblOf tl
+    tbl-eq = trans (cong tableOfResult ceq) (trans (cong tableOf (sym (proj₂ (proj₂ so)))) (ET.tableOf-src srcs))
+    names : NamesOK tl
+    names = APP.map⁻ (subst NamesDistinct tbl-eq nd)
+    mt₀ = typed-ef m _ (AS.moduleToIR-typed m mi) ef
+    u : ∀ {d} → d ∈ teleSig mt₀ → d ∈ moduleSig m
+    u {d} k = subst (d ∈_) (trans (teleSig≡entrySig mt₀) (sym (cong moduleSig-ef ef))) k
+    hyp : srcEntries Heap false C.emptyCScope es ≡ inj₂ srcs
+    hyp = trans (sym (cong (srcModule-aux Heap false m) ef)) (proj₁ (proj₂ so))
+    bodies = Walk.walk (moduleSig m) mt₀ b {S = Once.Spec.Core.Syntax.[]} TR.[] TR.[] TR.[] (MP.names₀ (sigOf (teleSig mt₀)))
+                       (MP.fresh₀ (sigOf (teleSig mt₀)) (entries-distinct m ef)) [] tinv₀
+                       (entries-distinct m ef , none-in-empty _) u (sig-in mt₀) hyp
+    bg = Prog.bodies-graded (moduleSig m) tl names bodies
+    fm : findMain (Data.List.map toCF srcs) ≡ just ir
+    fm = trans (cong findMain (proj₂ (proj₂ so))) (trans (sym (cong moduleToIR-aux ceq)) mi)
+    mo = find-main srcs fm
