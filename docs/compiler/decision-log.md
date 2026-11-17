@@ -24044,3 +24044,28 @@ IR built by the table (`TypeCheck.Table.mapAt?`), and terms carry no purity.
 ### Alternatives
 The checker computing the Spec's core derivation as data (the witness is a proof today; a second checker
 output). Purity as an index of `Expr` (not needed: `Expr`'s discipline already makes every term a block).
+
+## D457 — THE BRIDGE'S LINKING INCLUDES GRADES: A REFERENCE NAMES ITS DEFINITION AT ITS DECLARED TYPE (2026-11-17)
+
+**Made unattended** (keep-going mode, for the user's review). **Applies**: D456, plan 0.146 B1.7 step 2c.
+
+### The problem
+Master's table finds a definition by its name and its call's two IR types (`tableCalls`); an arrow's grade
+is not among them. The bridge compiles a reference to a definition as a closure whose body calls the
+definition's label, and at grade `act` that body must be a finite block (`Blk`), so the label must be
+`act`. A reference typed `A ⇒[ act ] B` to a definition of type `A ⇒[ eff ] B` would therefore be
+unlinked in the core (it halts) while master calls the definition (it may run forever): the bridge
+cannot mean what master means there, and no hypothesis on the table alone (`CallsOK`) can hold for
+every key.
+
+### Decision
+The bridge's theorem (`FromExprOk.Main.Lq-ok`) is stated for an expression whose references are related
+(`SurfaceRefs.Refs` with `RefOK`: each reference's core term against `refIR`); the program level
+discharges it from the table (`Calls.rel-ref`, under `CallsOK`) and from linking with grades: a
+reference names its definition at its declared type, which the checker's `closure x : A` carries (the
+type of `x` in scope). This is master's own premise that the program is linked (`LinkedProgram`),
+extended to the arrow's grade.
+
+### Alternatives
+The table's key carrying the grade on master's side too (a change to the IR's linking); a reference at a
+mismatched grade compiled as master's (not a block, so not expressible at `act`).
