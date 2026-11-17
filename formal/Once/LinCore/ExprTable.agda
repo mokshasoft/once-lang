@@ -46,9 +46,12 @@ open import Once.LinCore.FromIR fmt using (grade)
 open import Relation.Binary.PropositionalEquality using (cong; subst)
 open import Once.LinCore.FromIR fmt using (⟪_⟫)
 open import Once.LinCore.Bridge fmt ans using (W)
-open import Once.LinCore.Bisim fmt ans using (_≈_; _≈[_]_; ≈-refl; ≈-trans; ≈-sym; ret≈R; ≈-≈R; ≈R-≈; >>=-congR; >>=-cong)
-open import Once.LinCore.FromExprOk fmt ans using (Pure; PureI; bind-pure; ret-bind; module Rel; module Main)
-open import Once.LinCore.FromExpr fmt using (Rs; Lq; Lq-blk)
+open import Once.LinCore.Bisim fmt ans using (_≈_; _≈[_]_; ≈-refl; ≈-trans; ≈-sym; ret≈R; ≈-≈R; ≈R-≈; >>=-congR; >>=-cong; blockR; ≈haltR)
+open import Once.LinCore.FromExprOk fmt ans using (Pure; PureI; bind-pure; ret-bind; module Rel; module Main; module RelClo; module RelGen)
+open import Once.LinCore.FromExpr fmt using (Rs; Lq; Lq-blk; callM; refL)
+open import Once.IR.Ref using (refIR)
+open import Once.Spec.Name using (bare)
+open import Data.String using (String)
 open import Once.CompileSrc using (CompiledSrc; csName; csType; csSrc)
 open import Once.IRTy using (_≟IRTy_)
 open import Once.CanonicalName using (_≟ᶜ_)
@@ -444,3 +447,71 @@ module Entry (cs : List CompiledSrc) (ok : TableOK (exprTable cs) (tblOf cs)) (c
 table-ok : ∀ (srcs : List CompiledSrc) → BodiesOK srcs → TableOK (exprTable srcs) (tblOf srcs)
 table-ok []       _ = record { hit≈ = λ () ; miss≡ = λ _ _ → refl }
 table-ok (c ∷ cs) (bs , opt≡ , refs) = Entry.entry-ok cs (table-ok cs bs) c opt≡ refs
+
+------------------------------------------------------------------------
+-- 6. ★ A REFERENCE, related: its key graded (any hit for its name and call
+-- types at its grade, D457), against a table whose meanings are related.
+------------------------------------------------------------------------
+
+Graded : ∀ {L} → Rs L → CanonicalName → IRTy → IRTy → Gr → Set
+Graded rs f A B g = ∀ g′ {h} → rs f A B g′ ≡ just h → g′ ≡ g
+
+-- a reference's key (`refL`'s, case for case)
+GradedRef : ∀ {L} → Rs L → ∀ {m} → String → Ty m → Set
+GradedRef rs x (A ⇒[ G.mk-kind G.Zero π ] B) = Graded rs (bare x) Once.IRTy.Unit ⌊ B ⌋ (grade π)
+GradedRef rs x (A ⇒[ G.mk-kind G.One π ] B)  = Graded rs (bare x) ⌊ A ⌋ ⌊ B ⌋ (grade π)
+GradedRef rs x (A ⇒[ G.mk-kind G.Many π ] B) = Graded rs (bare x) ⌊ A ⌋ ⌊ B ⌋ (grade π)
+GradedRef rs x T@ST.Unit = Graded rs (bare x) Once.IRTy.Unit ⌊ T ⌋ act
+GradedRef rs x T@ST.Void = Graded rs (bare x) Once.IRTy.Unit ⌊ T ⌋ act
+GradedRef rs x T@(X ST.* Y) = Graded rs (bare x) Once.IRTy.Unit ⌊ T ⌋ act
+GradedRef rs x T@(X ST.+ Y) = Graded rs (bare x) Once.IRTy.Unit ⌊ T ⌋ act
+GradedRef rs x T@(ST.μ F) = Graded rs (bare x) Once.IRTy.Unit ⌊ T ⌋ act
+GradedRef rs x T@(ST.ν F f) = Graded rs (bare x) Once.IRTy.Unit ⌊ T ⌋ act
+GradedRef rs x T@ST.Int = Graded rs (bare x) Once.IRTy.Unit ⌊ T ⌋ act
+GradedRef rs x T@ST.Float = Graded rs (bare x) Once.IRTy.Unit ⌊ T ⌋ act
+GradedRef rs x T@(ST.var _) = Graded rs (bare x) Once.IRTy.Unit ⌊ T ⌋ act
+
+module RefRel (t : ETProg) (tbl : List IRFun) (ok : TableOK t tbl) (am₀ : M.AllocMode) where
+  open TableOK ok
+  δ = ⟦ defs t ⟧D
+  open Rel δ (callEnv (tableCalls fmt ans tbl) ans)
+
+  private
+    clash : ∀ {f A B g g′} {h : Σ ℕ λ l → L t ∋[ l ] sg once g′ One ⟪ A ⟫ ⟪ B ⟫} → g′ ≡ g
+          → rs t f A B g′ ≡ just h → rs t f A B g ≡ nothing → ⊥
+    clash refl e′ e = just≢nothing (Relation.Binary.PropositionalEquality.trans (Relation.Binary.PropositionalEquality.sym e′) e)
+
+    all-miss : ∀ {f A B g} → Graded (rs t) f A B g → rs t f A B g ≡ nothing → ∀ g′ → rs t f A B g′ ≡ nothing
+    all-miss {f} {A} {B} gr e g′ = go (rs t f A B g′) refl
+      where
+        go : (m : Maybe (Σ ℕ λ l → L t ∋[ l ] sg once g′ One ⟪ A ⟫ ⟪ B ⟫)) → rs t f A B g′ ≡ m → rs t f A B g′ ≡ nothing
+        go (just h) e′ = ⊥-elim (clash (gr g′ e′) e′ e)
+        go nothing  e′ = e′
+
+  callM-rel′ : ∀ {f A B g} (r : Maybe (Σ ℕ λ l → L t ∋[ l ] sg once g One ⟪ A ⟫ ⟪ B ⟫)) → rs t f A B g ≡ r → Graded (rs t) f A B g
+             → Rel (callM r) (M.Call {A} {B} f)
+  callM-rel′ (just (l , p)) e gr = mkRel λ w → ≈-≈R (bind-pure (≈-trans ret-bind (≈-trans ret-bind ret-bind))) (hit≈ e w)
+  callM-rel′ {f} {A} {B} {g} nothing e gr = mkRel λ {a} {a′} w →
+    subst (λ m → Lᶜ δ (callM {L t} {g} {⟪ A ⟫} {⟪ B ⟫} nothing) tt a ≈[ W B ] m) (sym (miss≡ (all-miss gr e) a′)) (unl {g} {A} {B} {a})
+    where
+      sym = Relation.Binary.PropositionalEquality.sym
+      unl : ∀ {g} {A B : IRTy} {a} → Lᶜ δ (callM {L t} {g} {⟪ A ⟫} {⟪ B ⟫} nothing) tt a ≈[ W B ] embed unlinkedT
+      blockR unl = ≈haltR
+
+  rel-call′ : ∀ f (A B : IRTy) g → Graded (rs t) f A B g → Rel (callM (rs t f A B g)) (M.Call {A} {B} f)
+  rel-call′ f A B g gr = callM-rel′ (rs t f A B g) refl gr
+
+  -- ★ a reference, case for case `refIR`
+  rel-ref′ : ∀ {m} (T : Ty m) (x : String) → GradedRef (rs t) x T → Main.RefOK (rs t) δ (tableCalls fmt ans tbl) am₀ x T
+  rel-ref′ (A ⇒[ G.mk-kind G.Zero π ] B) x gr = RelClo.rel-cloG δ _ π _ (rel-∘ (rel-call′ (bare x) Once.IRTy.Unit ⌊ B ⌋ (grade π) gr) (RelGen.rel-snd δ _ am₀))
+  rel-ref′ (A ⇒[ G.mk-kind G.One π ] B) x gr  = RelClo.rel-cloG δ _ π _ (rel-∘ (rel-call′ (bare x) ⌊ A ⌋ ⌊ B ⌋ (grade π) gr) (RelGen.rel-snd δ _ am₀))
+  rel-ref′ (A ⇒[ G.mk-kind G.Many π ] B) x gr = RelClo.rel-cloG δ _ π _ (rel-∘ (rel-call′ (bare x) ⌊ A ⌋ ⌊ B ⌋ (grade π) gr) (RelGen.rel-snd δ _ am₀))
+  rel-ref′ T@ST.Unit x gr = rel-∘ (rel-call′ (bare x) Once.IRTy.Unit ⌊ T ⌋ act gr) (RelGen.rel-drop δ _ am₀)
+  rel-ref′ T@ST.Void x gr = rel-∘ (rel-call′ (bare x) Once.IRTy.Unit ⌊ T ⌋ act gr) (RelGen.rel-drop δ _ am₀)
+  rel-ref′ T@(X ST.* Y) x gr = rel-∘ (rel-call′ (bare x) Once.IRTy.Unit ⌊ T ⌋ act gr) (RelGen.rel-drop δ _ am₀)
+  rel-ref′ T@(X ST.+ Y) x gr = rel-∘ (rel-call′ (bare x) Once.IRTy.Unit ⌊ T ⌋ act gr) (RelGen.rel-drop δ _ am₀)
+  rel-ref′ T@(ST.μ F) x gr = rel-∘ (rel-call′ (bare x) Once.IRTy.Unit ⌊ T ⌋ act gr) (RelGen.rel-drop δ _ am₀)
+  rel-ref′ T@(ST.ν F f) x gr = rel-∘ (rel-call′ (bare x) Once.IRTy.Unit ⌊ T ⌋ act gr) (RelGen.rel-drop δ _ am₀)
+  rel-ref′ T@ST.Int x gr = rel-∘ (rel-call′ (bare x) Once.IRTy.Unit ⌊ T ⌋ act gr) (RelGen.rel-drop δ _ am₀)
+  rel-ref′ T@ST.Float x gr = rel-∘ (rel-call′ (bare x) Once.IRTy.Unit ⌊ T ⌋ act gr) (RelGen.rel-drop δ _ am₀)
+  rel-ref′ T@(ST.var _) x gr = rel-∘ (rel-call′ (bare x) Once.IRTy.Unit ⌊ T ⌋ act gr) (RelGen.rel-drop δ _ am₀)
