@@ -121,7 +121,8 @@ module _ (D : Sig → Set) where
 open import Relation.Binary.PropositionalEquality using (subst; subst₂)
 open import Once.Contract using (ISig)
 open import Once.Denotation.Program using (Declared; Leaves)
-open import Once.SigOp.Info using (SigOpInfo)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open import Once.LinCore.FromIR fmt using (⟪⌊⌋⟫-flat)
 import Once.IR as M
 open import Once.IRTy using (IRTy)
 import Once.Spec.Context as SC
@@ -169,3 +170,48 @@ module Ops (Σι : ISig) where
   ok-bind G.Zero = _
   ok-bind G.One  = tt
   ok-bind G.Many = tt
+
+  open import Once.LinCore.FromExpr fmt
+    using (Rs; Lq; castΦ; opL; numL; sigL; mapT; callM; refL; coeL; coeR; clo; wrap; wrap₀; layerEq)
+  open import Once.Surface.Elaborate using (elaborate; numIR; sigOpIR)
+  open import Once.TypeCheck.Table using (mapIR)
+  open import Once.Surface.Map
+    using (Map; mp-id; mp-fst; mp-snd; mp-terminal; mp-inl; mp-inr; mp-initial; mp-apply; mp-In; mp-Out; mp-toFloat)
+  open import Once.Surface.CoerceIR using (coeIR)
+  open import Once.Spec.Sub using (_<:_; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-*; sub-+; sub-μ; sub-ν)
+  open import Once.Spec.Type using (Ty; Type; _⇒[_]_)
+  import Once.Spec.Type as ST
+  import Once.Spec.Theory as Th
+  open import Once.Spec.Theory using (Has; Sym)
+  open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
+  open import Once.Arith.SigOp.Builders using (numInfo; value-info; arrow-info)
+  open import Once.Spec.Name using (CanonicalName)
+  open import Data.Maybe using (Maybe; just; nothing)
+  open import Data.Product using (Σ)
+
+  ok-opL : ∀ {L E A B} (si : SigOpInfo A B) → Declared Σι si → OK Dc (opL {L} {E} si)
+  ok-opL {L} {E} si d = ok-cast {L} {E} (Relation.Binary.PropositionalEquality.sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si)))
+                                   (Relation.Binary.PropositionalEquality.sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si)))
+                                   {t = lop (sig si)} d
+
+  ok-apω : ∀ {L E g A B} → OK Dc (apω {L} {E} {g} {A} {B})
+  ok-apω = _
+
+  ok-dist : ∀ {L E X A B} → OK Dc (dist {L} {E} {X} {A} {B})
+  ok-dist = _
+
+  ok-callM : ∀ {L g A B} (r : Maybe (Σ ℕ λ l → L ∋[ l ] sg once g One A B)) → OK Dc (callM r)
+  ok-callM (just (l , p)) = _
+  ok-callM nothing        = _
+
+  module _ {I : Set} {C : I → CanonicalName → IRTy → IRTy → Set} {i : I} where
+    Lv : ∀ {A B} → M.IR A B → Set
+    Lv = Leaves C i (Declared Σι)
+
+    ok-numL : ∀ {L E m A U k} (h : Has A U) (o : Sym U k) → Lv (numIR {m} h o) → OK Dc (numL {L} {E} {m} h o)
+    ok-numL {L} {E} {A = Th.int} {k = Th.unary} h o d = ok-opL {L} {E} (numInfo h o) d
+    ok-numL {L} {E} {A = Th.int} {k = Th.binary} h o d = ok-opL {L} {E} (numInfo h o) d
+    ok-numL {L} {E} {A = Th.int} {k = Th.compare} h o d = ok-opL {L} {E} (numInfo h o) d
+    ok-numL {L} {E} {A = Th.float} {k = Th.unary} h o d = ok-opL {L} {E} (numInfo h o) d
+    ok-numL {L} {E} {A = Th.float} {k = Th.binary} h o d = ok-opL {L} {E} (numInfo h o) d
+    ok-numL {L} {E} {A = Th.float} {k = Th.compare} h o d = ok-opL {L} {E} (numInfo h o) d
