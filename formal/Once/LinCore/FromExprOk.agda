@@ -26,7 +26,7 @@ module Once.LinCore.FromExprOk (fmt : TargetNum) (ans : FFIAnswers) where
 
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (cong; subst; sym)
-open import Agda.Builtin.Sigma using (_,_; fst; snd)
+open import Agda.Builtin.Sigma using (Σ; _,_; fst; snd)
 open import Data.Product using (_×_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
 import Data.Sum.Relation.Binary.Pointwise
@@ -58,7 +58,13 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 
 open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo)
+open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo; callM; refL)
+open import Once.IR.Semantics.Trace using (unlinkedT)
+open import Once.IR.Semantics.Iterative using (embed)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Nat using (ℕ)
+open import Once.IR.Ref using (refIR)
+open import Once.Spec.Name using (bare)
 open import Once.LinCore.FromIR fmt using (⟪⌊⌋⟫-flat)
 open import Once.LinCore.Pass fmt ans using (ev)
 open import Once.LinCore.Casts fmt ans using (casts)
@@ -72,7 +78,7 @@ open import Once.LinCore.Grade fmt ans using (blk-coh)
 open import Once.IRTy using (IRTy; _⇛[_]_)
 import Once.IRTy as I
 open import Once.LinCore.Bridge fmt ans using (W)
-open import Once.LinCore.Bisim fmt ans using (_≈_; block≈; Bl; Bl-refl; ≈step; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop)
+open import Once.LinCore.Bisim fmt ans using (_≈_; block≈; Bl; Bl-refl; ≈step; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop; blockR; ≈haltR)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 ------------------------------------------------------------------------
@@ -649,14 +655,59 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
   ok-sigOp : ∀ {m n} {Γ : Ctx m n} {A : Type} (name : CanonicalName) (c : IsConcrete A) → Goal (sigOp {Γ = Γ} name c)
   ok-sigOp {A = A} name c = rel-cod (sym (⌊wk₀⌋ A)) (rel-sig A name c)
 
+  -- ★ THE TABLE'S TWO MEANINGS, related (a hypothesis on the program's table,
+  -- discharged by its construction, as `BridgeProof.EnvOK`): a resolved call
+  -- against the table's, an unlinked one master's `unlinkedT`
+  record CallsOK : Set where
+    field
+      hit≈  : ∀ {f A B g l} {p : L ∋[ l ] sg once g One ⟪ A ⟫ ⟪ B ⟫} → rs f A B g ≡ just (l , p)
+            → ∀ {a a′} → W A a a′ → up g (lookup δ p tt a) ≈[ W B ] cs f A B a′
+      miss≡ : ∀ {f A B g} → rs f A B g ≡ nothing → ∀ a′ → cs f A B a′ ≡ embed unlinkedT
+
+  module Calls (ck : CallsOK) where
+    open CallsOK ck
+
+    -- the unlinked op halts as master's `unlinkedT`
+    unlinked≈ : ∀ {g} {A B : IRTy} {a} → Lᶜ δ (callM {L} {g} {⟪ A ⟫} {⟪ B ⟫} nothing) tt a ≈[ W B ] embed unlinkedT
+    blockR unlinked≈ = ≈haltR
+
+    callM-rel : ∀ {f A B g} (r : Maybe (Σ ℕ λ l → L ∋[ l ] sg once g One ⟪ A ⟫ ⟪ B ⟫)) → rs f A B g ≡ r
+              → Rel (callM r) (M.Call {A} {B} f)
+    callM-rel (just (l , p)) e = mkRel λ w → ≈-≈R (bind-pure (≈-trans ret-bind (≈-trans ret-bind ret-bind))) (hit≈ e w)
+    callM-rel {f} {A} {B} {g} nothing e = mkRel λ {a} {a′} w →
+      subst (λ m → Lᶜ δ (callM {L} {g} {⟪ A ⟫} {⟪ B ⟫} nothing) tt a ≈[ W B ] m) (sym (miss≡ {f} {A} {B} {g} e a′)) (unlinked≈ {g} {A} {B} {a})
+
+    -- ★ a call of a definition
+    rel-call : ∀ f (A B : IRTy) g → Rel (callM (rs f A B g)) (M.Call {A} {B} f)
+    rel-call f A B g = callM-rel (rs f A B g) refl
+
+    -- ★ a reference to a definition, case for case `refIR`
+    rel-ref : ∀ {m} (T : Ty m) (f : CanonicalName) → Rel (refL rs T f) (refIR T f)
+    rel-ref (A ⇒[ G.mk-kind G.Zero π ] B) f = rel-cloG π _ (rel-∘ (rel-call f I.Unit ⌊ B ⌋ (grade π)) rel-snd)
+    rel-ref (A ⇒[ G.mk-kind G.One π ] B) f  = rel-cloG π _ (rel-∘ (rel-call f ⌊ A ⌋ ⌊ B ⌋ (grade π)) rel-snd)
+    rel-ref (A ⇒[ G.mk-kind G.Many π ] B) f = rel-cloG π _ (rel-∘ (rel-call f ⌊ A ⌋ ⌊ B ⌋ (grade π)) rel-snd)
+    rel-ref T@ST.Unit      f = rel-∘ (rel-call f I.Unit ⌊ T ⌋ act) rel-drop
+    rel-ref T@ST.Void      f = rel-∘ (rel-call f I.Unit ⌊ T ⌋ act) rel-drop
+    rel-ref T@(_ ST.* _)   f = rel-∘ (rel-call f I.Unit ⌊ T ⌋ act) rel-drop
+    rel-ref T@(_ ST.+ _)   f = rel-∘ (rel-call f I.Unit ⌊ T ⌋ act) rel-drop
+    rel-ref T@(ST.μ _)     f = rel-∘ (rel-call f I.Unit ⌊ T ⌋ act) rel-drop
+    rel-ref T@(ST.ν _ _)   f = rel-∘ (rel-call f I.Unit ⌊ T ⌋ act) rel-drop
+    rel-ref T@ST.Int       f = rel-∘ (rel-call f I.Unit ⌊ T ⌋ act) rel-drop
+    rel-ref T@ST.Float     f = rel-∘ (rel-call f I.Unit ⌊ T ⌋ act) rel-drop
+    rel-ref T@(ST.var _)   f = rel-∘ (rel-call f I.Unit ⌊ T ⌋ act) rel-drop
+
+    ok-closure : ∀ {m n} {Γ : Ctx m n} {A : Ty m} (name : String) → Goal (closure {Γ = Γ} {A = A} name)
+    ok-closure {A = A} name = rel-∘ (rel-ref A (bare name)) rel-drop
+
+    ok-poly : ∀ {m n} {Γ : Ctx m n} (name : String) (T : Ty m) → Goal (poly {Γ = Γ} name T)
+    ok-poly name T = rel-∘ (rel-ref T (bare name)) rel-drop
+
   record Owed : Set where
     field
       o-case    : ∀ {m n} {Γ : Ctx m n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : G.Quantity} {A B C : Ty m}
                     (s : Expr Γ Ψs (A + B)) (l : Expr (Γ SC.▸ A) (qℓ ∷ Ψₗ) C) (r : Expr (Γ SC.▸ B) (qr ∷ Ψᵣ) C)
                   → Goal s → Goal l → Goal r → Goal (case' s l r)
       o-coerce  : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (p : A <: B) (f : Expr Γ Ψ A) → Goal f → Goal (coerce p f)
-      o-closure : ∀ {m n} {Γ : Ctx m n} {A : Ty m} (name : String) → Goal (closure {Γ = Γ} {A = A} name)
-      o-poly    : ∀ {m n} {Γ : Ctx m n} (name : String) (T : Ty m) → Goal (poly {Γ = Γ} name T)
       o-lift    : ∀ {m n} {Γ : Ctx m n} {A B : Ty m} {π} (mp : Map A B) → Goal (lift-morphism {Γ = Γ} {π = π} mp)
       o-mapp    : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (mp : Map A B) (x : Expr Γ Ψ A) → Goal x → Goal (morph-app mp x)
       o-copair  : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
@@ -670,8 +721,9 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
       o-loop    : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m}
                     (r : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many G.act ] (B + A))) → Goal r → Goal (loop r)
 
-  module _ (ow : Owed) where
+  module _ (ck : CallsOK) (ow : Owed) where
     open Owed ow
+    open Calls ck
 
     Lq-ok : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A : Ty m} (e : Expr Γ Ψ A) → Goal e
     Lq-ok {Γ = Γ} (var i) = rel-var {Γ = Γ} i
@@ -705,8 +757,8 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
     Lq-ok (num h o e) = ok-num h o e (Lq-ok e)
     Lq-ok (coerce p f) = o-coerce p f (Lq-ok f)
     Lq-ok {Γ = Γ} (sigOp name c) = ok-sigOp {Γ = Γ} name c
-    Lq-ok {Γ = Γ} (closure name) = o-closure {Γ = Γ} name
-    Lq-ok {Γ = Γ} (poly name T) = o-poly {Γ = Γ} name T
+    Lq-ok {Γ = Γ} (closure name) = ok-closure {Γ = Γ} name
+    Lq-ok {Γ = Γ} (poly name T) = ok-poly {Γ = Γ} name T
     Lq-ok (closed e) = rel-∘ (Lq-ok e) rel-drop
     Lq-ok {Γ = Γ} (lift-morphism mp) = o-lift {Γ = Γ} mp
     Lq-ok (morph-app mp x) = o-mapp mp x (Lq-ok x)
