@@ -279,27 +279,36 @@ private
             → All (λ e′ → Linked σ (e ∷ pre) (fbody e′)) (e ∷ pre)
   ents-cons e pre lb ok = linked-mono (linkedAt-cons e pre) (fbody e) lb ∷ All.map (λ {e′} → linked-mono (linkedAt-cons e pre) (fbody e′)) ok
 
-  imp-cons : ∀ {imps : Imports} {pre : List IRFun} (x : String) (ty : Type) (e : IRFun)
-           → RefLinked σ (e ∷ pre) x ty → (∀ {y} {A : Type} → lookupImport imps y ≡ just A → RefLinked σ pre y A)
-           → ∀ {y} {A : Type} → lookupImport ((x , ty) ∷ imps) y ≡ just A → RefLinked σ (e ∷ pre) y A
-  imp-cons {σ = σ} {pre = pre} x ty e hr old {y} {A} lk with x Str.≟ y
-  ... | yes refl = subst (RefLinked σ (e ∷ pre) x) (just-injective lk) hr
-  ... | no _     = RefLinked-mono (linkedAt-cons e pre) {x = y} {A} (old lk)
+-- (plan 0.146 B1.7: generic in the predicate the scope's imports satisfy,
+-- `R` before the definition and `R′` after, `mv` from one to the other)
+imp-consR : ∀ {imps : Imports} {R R′ : String → Type → Set} (x : String) (ty : Type)
+          → R′ x ty → (∀ {y} {A : Type} → R y A → R′ y A) → (∀ {y} {A : Type} → lookupImport imps y ≡ just A → R y A)
+          → ∀ {y} {A : Type} → lookupImport ((x , ty) ∷ imps) y ≡ just A → R′ y A
+imp-consR {R′ = R′} x ty hr mv old {y} {A} lk with x Str.≟ y
+... | yes refl = subst (R′ x) (just-injective lk) hr
+... | no _     = mv (old lk)
 
-  -- D324: a definition named `main` does not enter the context (`C.extendDefs`);
-  -- the table still grows by its compiled form.
+-- D324: a definition named `main` does not enter the context (`C.extendDefs`);
+-- the table still grows by its compiled form.
+imp-defsR : ∀ (b : Bool) {imps : Imports} {R R′ : String → Type → Set} (x : String) (ty : Type)
+          → R′ x ty → (∀ {y} {A : Type} → R y A → R′ y A) → (∀ {y} {A : Type} → lookupImport imps y ≡ just A → R y A)
+          → ∀ {y} {A : Type} → lookupImport (C.extendDefs-at b imps x ty) y ≡ just A → R′ y A
+imp-defsR true  x ty hr mv old lk = mv (old lk)
+imp-defsR false x ty hr mv old lk = imp-consR x ty hr mv old lk
+
+private
   imp-defs : ∀ (b : Bool) {imps : Imports} {pre : List IRFun} (x : String) (ty : Type) (e : IRFun)
            → RefLinked σ (e ∷ pre) x ty → (∀ {y} {A : Type} → lookupImport imps y ≡ just A → RefLinked σ pre y A)
            → ∀ {y} {A : Type} → lookupImport (C.extendDefs-at b imps x ty) y ≡ just A → RefLinked σ (e ∷ pre) y A
-  imp-defs true  {pre = pre} x ty e hr old {y} {A} lk = RefLinked-mono (linkedAt-cons e pre) {x = y} {A} (old lk)
-  imp-defs false x ty e hr old lk = imp-cons x ty e hr old lk
+  imp-defs {σ = σ} b {pre = pre} x ty e hr old =
+    imp-defsR b {R = RefLinked σ pre} {R′ = RefLinked σ (e ∷ pre)} x ty hr (λ {y} {A} → RefLinked-mono (linkedAt-cons e pre) {x = y} {A}) old
 
-  sig-cons : ∀ {sg : Imports} (x : String) (ty : Type) → (x , ty) ∈ σ
-           → (∀ {y} {A : Type} → lookupImport sg y ≡ just A → (y , A) ∈ σ)
-           → ∀ {y} {A : Type} → lookupImport ((x , ty) ∷ sg) y ≡ just A → (y , A) ∈ σ
-  sig-cons {σ = σ} x ty new old {y} {A} lk with x Str.≟ y
-  ... | yes refl = subst (λ B → (x , B) ∈ σ) (just-injective lk) new
-  ... | no _     = old lk
+sig-cons : ∀ {sg : Imports} (x : String) (ty : Type) → (x , ty) ∈ σ
+         → (∀ {y} {A : Type} → lookupImport sg y ≡ just A → (y , A) ∈ σ)
+         → ∀ {y} {A : Type} → lookupImport ((x , ty) ∷ sg) y ≡ just A → (y , A) ∈ σ
+sig-cons {σ = σ} x ty new old {y} {A} lk with x Str.≟ y
+... | yes refl = subst (λ B → (x , B) ∈ σ) (just-injective lk) new
+... | no _     = old lk
 
 -- D274: an FFI declaration joins Σ — no table entry.
 linv-sig : ∀ {csc pre} (x : String) (ty : Type) → (x , ty) ∈ σ
