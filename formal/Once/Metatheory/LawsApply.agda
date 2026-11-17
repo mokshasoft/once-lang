@@ -28,7 +28,7 @@ open import Once.Spec.Float.Value using (fv-zero; pos)
 
 open import Once.Spec.Grade using (Purity; pure; eff; pureᶠ; Zero; One; Many; mk-kind; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Type
-  using (Ty; Fun; KCtx; ∅ₖ; any; TySub; var; K; Unit; Void; _+_; _*_; _⇒[_]_; μ; ν; wf-K; b-Unit; WFFun)
+  using (Ty; Fun; KCtx; ∅ₖ; any; TySub; var; K; Unit; Void; Int; Float; _+_; _*_; _⇒[_]_; μ; ν; wf-K; b-Unit; WFFun)
 open import Once.Spec.Context using (Ctx; ∅; _▸_; []; _∷_; _⊑∷_)
 open import Once.Spec.Core.Syntax
   using (Defs; []; _▷_; Schema; schema; Tm; var; lam; app; let′; unit; pair; fst; snd; inl; inr; absurd; lit; lit-int; ref)
@@ -36,7 +36,7 @@ open import Once.Spec.Core.Derived using (idᶜ; terminalᶜ; anaᶜ; mapᶜ)
 open import Once.Spec.Polynomial using (SK; inS)
 open import Once.Spec.Equivalence using (relSub)
 open import Once.Spec.Metatheory using (LawsApply; noOps; noDefs; StrictlyPositive; sp-var)
-open import Once.Spec.Examples using (silentLoop)
+open import Once.Spec.Examples using (silentServer)
 import Once.Spec.Core.Typing as CoreTyping
 import Once.Spec.Equivalence as Equivalence
 import Once.Spec.Core.Meaning as Meaning
@@ -48,6 +48,11 @@ open import Once.Metatheory.Freyd noOps using (freyd; ≈→≃)
 open import Once.Metatheory.Bisim noOps using (idˡ; ≈-refl)
 open import Once.Metatheory.Recursion noOps using (recursion)
 import Once.Spec.Metatheory as SM
+import Once.Spec.Surface.Syntax as SX
+import Once.Spec.Surface.Typing as SUT
+import Once.Spec.Surface.Generators as Gn
+open import Once.Type.Sub using (<:-refl)
+open import Once.Spec.Grade using (⊑-pure)
 
 open CoreTyping noOps noDefs
 open Meaning noOps fmt noDefs using (DefSem)
@@ -262,7 +267,7 @@ lawsApply = record
               , record { left = ⊢let {q = One} (⊢case (⊢inl ⊢unit) (⊢var zero) (⊢var zero)) (⊢var zero)
                        ; right = ⊢case (⊢inl ⊢unit) (⊢let {q = One} (⊢var zero) (⊢var zero)) (⊢let {q = One} (⊢var zero) (⊢var zero))
                        ; differ = λ () }
-  ; absurd-η  = Void , One , eff , silentLoop , var zero
+  ; absurd-η  = Void , One , eff , silentServer , var zero
               , record { left = ⊢let {q = One} silent-typed (⊢var zero) ; right = ⊢absurd silent-typed ; differ = λ () }
   ; fold-roll = K U , U , pure , _ , unit , (_ , ⊢id)
               , record { left = ⊢fold wfU ⊢id (⊢roll wfU ⊢unit) ; right = ⊢app ⊢id (⊢app (⊢layer (⊢cata ⊢id)) ⊢unit)
@@ -296,5 +301,12 @@ lawsApply = record
   -- Numbers: `0` at `Int` (the modulus is positive), `+0` at `Float` (a zero
   -- fits every format)
   ; numbers₀ = λ { int → 0 , ℕP.m^n>0 2 (TargetNum.int-bits fmt) ; float → fv-zero pos , refl }
+
+  -- Surface: `()` synthesizes and is checked by its conversion; `toFloat` is
+  -- given its domain through its synthesis
+  ; surface-synth₀  = SX.RUnit , Unit , _ , SUT.s-unit
+  ; surface-check₀  = SX.RUnit , Unit , _ , SUT.c-sub (λ ()) SUT.s-unit (<:-refl Unit)
+  ; surface-domain₀ = SX.RGen Gn.toFloat , Int , pure , Float , Int ⇒ Float , _ , _
+                    , SUT.d-infer (SUT.s-const Gn.k-toFloat) (<:-refl Int) ⊑-pure , SUT.s-const Gn.k-toFloat
   }
   where open SM using (Freyd; Recursion)

@@ -183,7 +183,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
 
   curry-βᶜ : ∀ {n} {Γ : Ctx m n} {Ψ A B C π₀ f}
            → Pure Σ fmt S Δ Γ f ((A * B) ⇒[ mk-kind Many pure ] C)
-           → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (A * B) pure (applyᶜ B C)
+           → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (A * B) pure (applyᶜ B C pure)
                                  (pairᶜ (A * B) pure (composeᶜ (A * B) pure (curryᶜ A B pure pure f) (fstᶜ A B pure))
                                                      (sndᶜ A B pure))
                                 ∷ (A * B) ⇒[ mk-kind Many pure ] C ! π₀)
@@ -202,7 +202,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
       sndv = ⟦ sndD′ {Γ = Γ} A B pure ⟧ δ σ r e₀
       apv  = ⟦ applyD {Γ = Γ} B C ⟧ δ σ r (restrict σ (zero⊑ω Ψ) γ)
       rA = resR base (zero⊑ω Ψ)
-      goA : AV.Arms d (applyᶜ B C) (pairᶜ (A * B) pure (composeᶜ (A * B) pure (curryᶜ A B pure pure f) (fstᶜ A B pure)) (sndᶜ A B pure)) → GOAL
+      goA : AV.Arms d (applyᶜ B C pure) (pairᶜ (A * B) pure (composeᶜ (A * B) pure (curryᶜ A B pure pure f) (fstᶜ A B pure)) (sndᶜ A B pure)) → GOAL
       goA (AV.arms _ dpr _ Ppr) = goB (AV.armsLL (inj₁ refl) dpr)
         where
           rpr = resR base Ppr
@@ -256,7 +256,7 @@ module _ {m : ℕ} {Δ : KCtx m} where
   curry-ηᶜ : ∀ {n} {Γ : Ctx m n} {Ψ A B C π₀ h}
            → Pure Σ fmt S Δ Γ h (A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C))
            → (d : Δ ⊩ Γ ⊢[ Ψ ] curryᶜ A B pure pure
-                                 (composeᶜ (A * B) pure (applyᶜ B C)
+                                 (composeᶜ (A * B) pure (applyᶜ B C pure)
                                    (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure)))
                                 ∷ A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C) ! π₀)
              (d′ : Δ ⊩ Γ ⊢[ Ψ ] h ∷ A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C) ! π₀) → _≅_ Σ fmt S d d′
@@ -274,11 +274,11 @@ module _ {m : ℕ} {Δ : KCtx m} where
       sndv = ⟦ sndD′ {Γ = Γ} A B pure ⟧ δ σ r e₀
       apv  = ⟦ applyD {Γ = Γ} B C ⟧ δ σ r (restrict σ (zero⊑ω Ψ) γ)
       rA = resR base (zero⊑ω Ψ)
-      goA : AV.Arm1 d (composeᶜ (A * B) pure (applyᶜ B C) (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure))) → GOAL
+      goA : AV.Arm1 d (composeᶜ (A * B) pure (applyᶜ B C pure) (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure))) → GOAL
       goA (AV.arm1 dce Pce) = goB (AV.armsLL (inj₂ refl) dce)
         where
           rce = resR base Pce
-          goB : AV.Arms dce (applyᶜ B C) (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure)) → GOAL
+          goB : AV.Arms dce (applyᶜ B C pure) (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure)) → GOAL
           goB (AV.arms _ dpr _ Ppr) = goC (AV.armsLL (inj₁ refl) dpr)
             where
               rpr = resR rce Ppr

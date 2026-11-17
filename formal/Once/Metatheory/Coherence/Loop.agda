@@ -197,15 +197,15 @@ module _ {A A′ B B′ : Set} (RA : A → A′ → Set) (RB : B → B′ → Se
               e′ , contLoop t′₀ (noCalls {h₀} {t′₀} {n₀} {dpre} r′) (at {h₀ = h₀} {dpre} {h} {n₀} {suc n} eh en q) , er
     nextCase eh en r (just (returned (inj₁ _)) , r′ , end≈ (returned≈ ()))
 
-  loopSim : ∀ {a a′} → RA a a′ → Sim RB (loop f a) (loop f′ a′)
+  loopSim : ∀ {a a′} → RA a a′ → Sim RB (iterate f a) (iterate f′ a′)
   loopSim {a} {a′} s w h n (run r) = fin (Go.loopB w {t′₀ = f′ a′} {dpre = []} (f a) (Go.start w s h n) (++-identityʳ h) refl r)
-    where fin : ∀ {d e} → Go.Out w h (f′ a′) n ([] ++ d) e → ∃[ e′ ] (Run w h (loop f′ a′) n d e′ × MaybeEnd RB e e′)
+    where fin : ∀ {d e} → Go.Out w h (f′ a′) n ([] ++ d) e → ∃[ e′ ] (Run w h (iterate f′ a′) n d e′ × MaybeEnd RB e e′)
           fin (e′ , r′ , er) = e′ , run r′ , er
 
 -- Both ways round.
 loopRel : ∀ {A A′ B B′ : Set} (RA : A → A′ → Set) (RB : B → B′ → Set) (f : A → T (B ⊎ A)) (f′ : A′ → T (B′ ⊎ A′))
         → (∀ {a a′} → RA a a′ → Related (SumR RB RA) (embed (f a)) (embed (f′ a′)))
-        → ∀ {a a′} → RA a a′ → Related RB (loop f a) (loop f′ a′)
+        → ∀ {a a′} → RA a a′ → Related RB (iterate f a) (iterate f′ a′)
 loopRel RA RB f f′ hf s =
   related (loopSim RA RB f f′ (λ r → fwd (hf r)) s)
           (loopSim (flip RA) (flip RB) f′ f (λ r → fwd (Related-mono (λ {x} {y} q → turn {x} {y} q) (Related-flip (hf r)))) s)
@@ -219,7 +219,7 @@ loopRel RA RB f f′ hf s =
 -- At a type: rounds that are the same at `B + A` from states the same at `A`.
 loopSame : ∀ (A B : Type) (f f′ : ⟦ A ⟧ᵛ → T (⟦ B ⟧ᵛ ⊎ ⟦ A ⟧ᵛ))
          → (∀ {a a′} → Same A a a′ → Related (Same (B + A)) (embed (f a)) (embed (f′ a′)))
-         → ∀ {a a′} → Same A a a′ → Related (Same B) (loop f a) (loop f′ a′)
+         → ∀ {a a′} → Same A a a′ → Related (Same B) (iterate f a) (iterate f′ a′)
 loopSame A B f f′ hf = loopRel (Same A) (Same B) f f′ λ s → Related-mono (λ {x} {y} q → split {x} {y} q) (hf s)
   where
     split : ∀ {x y} → Same (B + A) x y → SumR (Same B) (Same A) x y

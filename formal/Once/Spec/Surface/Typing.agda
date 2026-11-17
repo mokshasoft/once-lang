@@ -8,15 +8,23 @@
 --
 -- Bidirectional (D316, amended): an expression SYNTHESIZES its type
 -- (`L ⊢ e ⇒ A ↝ t`), is CHECKED against a given type (`L ⊢ e ⇐ A ↝ t`), or
--- checks as an arrow out of a given domain, its codomain synthesized
+-- checks as an arrow out of a given domain, its least codomain synthesized
 -- (`L ⊢ e ⇐ A ⇒[ π ]↦ B ↝ t`). The modes say where a type comes from: a
 -- λ only checks, an annotation turns checking into synthesis, and a
 -- synthesized type may be used where a supertype is expected. Each rule names
 -- the CORE TERM the expression means (`Spec.Core`); usage (linearity) is the
 -- core term's, checked by the core judgment (`Spec.Surface.Program`).
 --
--- The categorical generators (`id`, `fst`, `compose`, `cata`, …) are their
--- definitions in the core (`Spec.Core.Derived`).
+-- ONE RULE PER FORM AND MODE (plan 0.151): which rule types an expression is
+-- decided by its form, read through the classes below (`CheckHead`,
+-- `DomainForm`, …), never by whether another rule fails (`Spec.Metatheory`).
+-- A rejected expression breaks the one rule for its form, or its form has no
+-- rule in that mode.
+--
+-- The generators are a table (`Spec.Surface.Generators`): the structure maps
+-- are typed by three rules over it, one per mode; each combinator has its
+-- universal property as its rule. Each generator means its definition in the
+-- core (`Spec.Core.Derived`).
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
@@ -29,30 +37,28 @@ module Once.Spec.Surface.Typing (Σ : Signature) {s : ℕ} (S : Defs s) (defName
 
 open import Data.Fin using (zero; suc)
 open import Data.Integer using (ℤ)
-open import Data.List using (List; []; _∷_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Nat using (suc; _<_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Grade using (Quantity; Many; Finite; pureᶠ; actᶠ; fin; Purity; pure; act; eff; mk-kind; _⊑π_; EffGrade)
-open import Once.Spec.Name using (gen; NotGenerator)
+open import Once.Spec.Grade using (Quantity; Many; Finite; fin; Purity; pure; act; eff; mk-kind; _⊑π_)
 open import Once.Spec.Type
-  using (Ty; Type; Fun; KCtx; TySub; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F; K; Id; _⊕_; _⊗_;
-         WFFun; Respects; _⟨_⟩; _⟨_⟩F; Occurs)
-open import Once.Spec.Sub using (_<:_; _⊔_≔_)
-open import Once.Spec.Signature using (_∶_; ⌜_⌝; ⌜_⌝ᵈ)
-open import Once.Spec.Float.Value using (Sign; pos; neg)
-open import Once.Spec.Theory
-  using (NumTy; int; float; ⌜_⌝ⁿ; Theory; Neg; Ring; Division; Order; Equality; Rounded;
-         Shape; unary; binary; compare; Sym; ‵neg; ‵+; ‵-; ‵*; ‵/; ‵%; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=;
-         ‵+ᵈ; ‵-ᵈ; ‵*ᵈ; ‵/ᵈ; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; symCod; Has; float-rounded)
+  using (Ty; Type; Fun; KCtx; TySub; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F;
+         WFFun; Respects; _⟨_⟩; Occurs)
+open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_)
+open import Once.Spec.Signature using (_∶_; ⌜_⌝ᵈ)
+open import Once.Spec.Theory using (⌜_⌝ⁿ; Neg; Has; symCod; ‵neg)
 open import Once.Spec.Surface.Syntax
-open import Once.Spec.Surface.Operator using (BinOp; BinSym; _∶_∶_; binSym)
+open import Once.Spec.Surface.Operator using (BinOp; BinSym; binSym)
 open BinSym
+open import Once.Spec.Surface.Generators
+  using (Gen; kind; IsConstant; IsMap; FromDomain; FromCodomain; IsCombinator;
+         Constant; Morphism; Final)
+open Gen
 open import Once.Spec.Core.Syntax
-  using (Tm; var; lam; app; let′; unit; pair; inl; inr; case; lit; lit-int; lit-float; prim; Prim;
-         num; p-i2f; coerce; sigop; ref; _!!_; module Schema)
+  using (Tm; var; lam; app; let′; pair; case; lit; lit-int; lit-float; prim; num; coerce; sigop; ref;
+         _!!_; module Schema)
 open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Derived
 
@@ -79,26 +85,68 @@ A ⇒⟨ π ⟩ B = A ⇒[ mk-kind Many π ] B
 infixr 30 _⇒⟨_⟩_
 
 ------------------------------------------------------------------------
--- The operators, and the heads with rules of their own
+-- The classes of forms that decide the rule
 ------------------------------------------------------------------------
 
--- Each binary operator is a symbol of one theory: `Spec.Surface.Operator.binSym`.
+-- A name of a definition with type variables: checked at an instance, never
+-- synthesized.
+data PolyName (c : CanonicalName) : Set where
+  poly : (d : Fin s) → defName d ≡ c → 0 < arity (S !! d) → PolyName c
 
--- A float literal's value, its sign beside the digits:
--- `Spec.Surface.Syntax.signedDecimal`.
+-- ... whose codomain's variables all occur in its domain: the domain
+-- determines the instance.
+data PolyFromDomain (c : CanonicalName) : Set where
+  poly-dom : (d : Fin s) → defName d ≡ c → 0 < arity (S !! d)
+           → ∀ {sd sc π′} → type (S !! d) ≡ sd ⇒⟨ π′ ⟩ sc → (∀ i → Occurs i sc → Occurs i sd)
+           → PolyFromDomain c
 
--- The generators applied by rules of their own.
-specialGenerators : List String
-specialGenerators = "id" ∷ "fst" ∷ "snd" ∷ "terminal" ∷ "inl" ∷ "inr" ∷ "initial"
-                  ∷ "curry" ∷ "apply" ∷ "In" ∷ "cata" ∷ "ana" ∷ "Out" ∷ []
+-- A combinator given fewer arms than it takes: its application is the
+-- combinator's own form, not an application.
+data PartialCombinator : Expr → Set where
+  pc-bare : ∀ {g k} → IsCombinator k (kind g) → PartialCombinator (RGen g)
+  pc-one  : ∀ {g a} → IsCombinator 2 (kind g) → PartialCombinator (RApp (RGen g) a)
 
--- An application whose head is a generator with rules of its own; every
--- other application is typed by the general rules.
-data SpecialHead : Expr → Set where
-  sh-gen     : ∀ {g} → g ∈ specialGenerators → SpecialHead (RResolved (gen g))
-  sh-pair    : ∀ {f} → SpecialHead (RApp (RResolved (gen "pair")) f)
-  sh-compose : ∀ {f} → SpecialHead (RApp (RResolved (gen "compose")) f)
-  sh-case    : ∀ {f} → SpecialHead (RApp (RResolved (gen "case")) f)
+-- A head that never synthesizes: applied by the argument's type.
+data CheckHead : Expr → Set where
+  ch-lam   : ∀ {x b} → CheckHead (RLam x b)
+  ch-poly  : ∀ {c} → PolyName c → CheckHead (RResolved c)
+  ch-map   : ∀ {g} → IsMap (kind g) → CheckHead (RGen g)
+  ch-comb₁ : ∀ {g a} → IsCombinator 1 (kind g) → CheckHead (RApp (RGen g) a)
+  ch-comb₂ : ∀ {g a b} → IsCombinator 2 (kind g) → CheckHead (RApp (RApp (RGen g) a) b)
+
+-- A form that synthesizes and also has a checking rule of its own, which is
+-- the one used when it is checked.
+data OwnCheck : Expr → Set where
+  oc-pair : ∀ {a b} → OwnCheck (RPair a b)
+  oc-map  : ∀ {g e} → FromCodomain (kind g) → OwnCheck (RApp (RGen g) e)
+
+-- A form that is checked only through its synthesized type (or, a pair, by
+-- its parts): if it checks, it synthesizes.
+data SynthForm : Expr → Set where
+  sf-int     : ∀ {i} → SynthForm (RInt i)
+  sf-float   : ∀ {sg i f l} → SynthForm (RFloat sg i f l)
+  sf-unit    : SynthForm RUnit
+  sf-var     : ∀ {x} → SynthForm (RVar x)
+  sf-name    : ∀ {c} → ¬ PolyName c → SynthForm (RResolved c)
+  sf-const   : ∀ {g} → IsConstant (kind g) → SynthForm (RGen g)
+  sf-annot   : ∀ {e T} → SynthForm (RAnnot e T)
+  sf-pair    : ∀ {a b} → SynthForm a → SynthForm b → SynthForm (RPair a b)
+  sf-neg     : ∀ {e} → SynthForm (RNeg e)
+  sf-binop   : ∀ {op a b} → SynthForm (RBinOp op a b)
+  sf-let     : ∀ {x a b} → SynthForm (RLet x a b)
+  sf-destruct : ∀ {e xl el xr er} → SynthForm (RDestruct e xl el xr er)
+  sf-app     : ∀ {f x} → ¬ PartialCombinator f → ¬ OwnCheck (RApp f x) → SynthForm (RApp f x)
+
+-- A form with a domain-given rule.
+data DomainForm : Expr → Set where
+  df-synth   : ∀ {e} → SynthForm e → DomainForm e
+  df-lam     : ∀ {x b} → SynthForm b → DomainForm (RLam x b)
+  df-poly    : ∀ {c} → PolyFromDomain c → DomainForm (RResolved c)
+  df-map     : ∀ {g} → FromDomain (kind g) → DomainForm (RGen g)
+  df-compose : ∀ {f g} → DomainForm f → DomainForm g → DomainForm (RApp (RApp (RGen compose) f) g)
+  df-case    : ∀ {f g} → DomainForm f → DomainForm g → DomainForm (RApp (RApp (RGen case) f) g)
+  df-pair    : ∀ {f g} → DomainForm f → DomainForm g → DomainForm (RApp (RApp (RGen pair) f) g)
+  df-cata    : ∀ {a} → SynthForm a → DomainForm (RApp (RGen cata) a)
 
 ------------------------------------------------------------------------
 -- The judgment
@@ -116,17 +164,17 @@ module _ {m : ℕ} (Δ : KCtx m) where
 
   data _⊢_⇒_↝_ {n} L where
     s-int    : ∀ (i : ℤ) → L ⊢ RInt i ⇒ Int ↝ lit (lit-int i)
-    s-float  : ∀ s i f l → L ⊢ RFloat s i f l ⇒ Float ↝ lit (lit-float (signedDecimal s i f l))
-    s-unit   : L ⊢ RUnit ⇒ Unit ↝ unit
-    s-unit-g : L ⊢ RResolved (gen "unit") ⇒ Unit ↝ unit
-    -- `Int` → `Float`, correctly rounded (IEEE's `convertFromInt`; D408).
-    s-toFloat : L ⊢ RResolved (gen "toFloat") ⇒ Int ⇒[ mk-kind Many pure ] Float ↝ toFloatᶜ
+    s-float  : ∀ sg i f l → L ⊢ RFloat sg i f l ⇒ Float ↝ lit (lit-float (signedDecimal sg i f l))
+    s-unit   : L ⊢ RUnit ⇒ Unit ↝ Once.Spec.Core.Syntax.unit
+
+    -- A constant of the table.
+    s-const : ∀ {g k T t} → Constant Δ g k T t → L ⊢ RGen g ⇒ T ↝ t
 
     -- A local variable.
     s-var : ∀ {x A i} → L ∋ x ⦂ A at i → L ⊢ RVar x ⇒ A ↝ var i
 
     -- A declaration of the signature, at its declared type.
-    s-sigop : ∀ {c t} → NotGenerator c → (c ∶ t) ∈ Σ → L ⊢ RResolved c ⇒ ⌜ t ⌝ᵈ ↝ sigop c t
+    s-sigop : ∀ {c t} → (c ∶ t) ∈ Σ → L ⊢ RResolved c ⇒ ⌜ t ⌝ᵈ ↝ sigop c t
 
     -- An earlier definition with no type variables.
     s-def : ∀ {c} (d : Fin s) → defName d ≡ c → (τ : TySub (arity (S !! d)) m) → arity (S !! d) ≡ 0
@@ -162,30 +210,14 @@ module _ {m : ℕ} (Δ : KCtx m) where
     -- Operands of different number types have no rule: an `Int` meets `Float`
     -- arithmetic through `toFloat` (D408).
 
-    -- Generators applied to a synthesizing argument.
-    s-id-app       : ∀ {e T t} → L ⊢ e ⇒ T ↝ t → L ⊢ RApp (RResolved (gen "id")) e ⇒ T ↝ app (idᶜ T pure) t
-    s-fst-app      : ∀ {e A B t} → L ⊢ e ⇒ A * B ↝ t → L ⊢ RApp (RResolved (gen "fst")) e ⇒ A ↝ app (fstᶜ A B pure) t
-    s-snd-app      : ∀ {e A B t} → L ⊢ e ⇒ A * B ↝ t → L ⊢ RApp (RResolved (gen "snd")) e ⇒ B ↝ app (sndᶜ A B pure) t
-    s-terminal-app : ∀ {e T t} → L ⊢ e ⇒ T ↝ t → L ⊢ RApp (RResolved (gen "terminal")) e ⇒ Unit ↝ app (terminalᶜ T pure) t
-    s-apply-app    : ∀ {e A B t} → L ⊢ e ⇒ (A ⇒⟨ pure ⟩ B) * A ↝ t
-                   → L ⊢ RApp (RResolved (gen "apply")) e ⇒ B ↝ app (applyᶜ A B) t
-    -- Applying an effectful arrow builds the suspension `Unit ⇒[ π ] B`.
-    s-apply-eff-app : ∀ {e A B π t} → EffGrade π → L ⊢ e ⇒ (A ⇒⟨ π ⟩ B) * A ↝ t
-                    → L ⊢ RApp (RResolved (gen "apply")) e ⇒ Unit ⇒⟨ π ⟩ B ↝ app (applyEffᶜ π A B) t
-    s-Out-app : ∀ {e F t} → WFFun Δ F → L ⊢ e ⇒ ν F pureᶠ ↝ t
-              → L ⊢ RApp (RResolved (gen "Out")) e ⇒ ⟦ F ⟧F (ν F pureᶠ) ↝ app (outᶜ F) t
-    s-Out-act-app : ∀ {e F t} → WFFun Δ F → L ⊢ e ⇒ ν F actᶠ ↝ t
-                  → L ⊢ RApp (RResolved (gen "Out")) e ⇒ Unit ⇒⟨ act ⟩ ⟦ F ⟧F (ν F actᶠ) ↝ app (outActᶜ F) t
-
-    -- Application: the head's type synthesized, the argument checked; or the
-    -- argument's type synthesized and the head checked from that domain.
-    s-app : ∀ {f x A B q tf tx} → ¬ SpecialHead f
-          → L ⊢ f ⇒ A ⇒[ mk-kind q pure ] B ↝ tf → L ⊢ x ⇐ A ↝ tx
-          → L ⊢ RApp f x ⇒ B ↝ app tf tx
-    s-effApp : ∀ {f x A B π tf tx} → ¬ SpecialHead f → EffGrade π
-             → L ⊢ f ⇒ A ⇒⟨ π ⟩ B ↝ tf → L ⊢ x ⇐ A ↝ tx
-             → L ⊢ RApp f x ⇒ Unit ⇒⟨ π ⟩ B ↝ effAppᶜ π tf tx
-    s-app-spine : ∀ {f x X T tf tx} → ¬ SpecialHead f
+    -- Application of a head that synthesizes: the argument checked at its
+    -- domain; running an arrow of grade `π` gives `𝕋 π` of its codomain.
+    s-app : ∀ {f x A B q π tf tx} → ¬ PartialCombinator f → ¬ CheckHead f
+          → L ⊢ f ⇒ A ⇒[ mk-kind q π ] B ↝ tf → L ⊢ x ⇐ A ↝ tx
+          → L ⊢ RApp f x ⇒ 𝕋 π B ↝ appᵀ π tf tx
+    -- Application of a head that never synthesizes: the argument's type
+    -- synthesized, and the head checked as a pure arrow out of it.
+    s-app-spine : ∀ {f x X T tf tx} → CheckHead f
                 → L ⊢ x ⇒ X ↝ tx → L ⊢ f ⇐ X ⇒[ pure ]↦ T ↝ tf
                 → L ⊢ RApp f x ⇒ T ↝ app tf tx
 
@@ -194,61 +226,47 @@ module _ {m : ℕ} (Δ : KCtx m) where
   ------------------------------------------------------------------
 
   data _⊢_⇐_↝_ {n} L where
-    -- The generators as morphisms, at any grade.
-    c-id       : ∀ {T π} → L ⊢ RResolved (gen "id") ⇐ T ⇒⟨ π ⟩ T ↝ idᶜ T π
-    c-fst      : ∀ {A B π} → L ⊢ RResolved (gen "fst") ⇐ (A * B) ⇒⟨ π ⟩ A ↝ fstᶜ A B π
-    c-snd      : ∀ {A B π} → L ⊢ RResolved (gen "snd") ⇐ (A * B) ⇒⟨ π ⟩ B ↝ sndᶜ A B π
-    c-terminal : ∀ {A π} → L ⊢ RResolved (gen "terminal") ⇐ A ⇒⟨ π ⟩ Unit ↝ terminalᶜ A π
-    c-initial  : ∀ {A π} → L ⊢ RResolved (gen "initial") ⇐ Void ⇒⟨ π ⟩ A ↝ initialᶜ A π
-    c-inl      : ∀ {A B π} → L ⊢ RResolved (gen "inl") ⇐ A ⇒⟨ π ⟩ (A + B) ↝ inlᶜ A B π
-    c-inr      : ∀ {A B π} → L ⊢ RResolved (gen "inr") ⇐ B ⇒⟨ π ⟩ (A + B) ↝ inrᶜ A B π
+    -- A structure map, at an instance of the table.
+    c-map : ∀ {g k A π B t} → Morphism Δ g k A π B t → L ⊢ RGen g ⇐ A ⇒⟨ π ⟩ B ↝ t
+    -- A structure map whose codomain fixes its instance, applied: the
+    -- argument checked at the domain.
+    c-map-app : ∀ {g k e A B tg t} → FromCodomain (kind g) → Morphism Δ g k A pure B tg
+              → L ⊢ e ⇐ A ↝ t → L ⊢ RApp (RGen g) e ⇐ B ↝ app tg t
 
-    -- `compose f g`: `g`'s codomain from its domain, or `f`'s type synthesized.
-    c-compose-g : ∀ {f g A B C π tf tg}
+    -- `compose f g`: the middle object is `g`'s codomain from the domain when
+    -- `g` has a domain-given form, `f`'s synthesized domain otherwise.
+    c-compose-g : ∀ {f g A B C π tf tg} → DomainForm g
                 → L ⊢ g ⇐ A ⇒[ π ]↦ B ↝ tg → L ⊢ f ⇐ B ⇒⟨ π ⟩ C ↝ tf
-                → L ⊢ RApp (RApp (RResolved (gen "compose")) f) g ⇐ A ⇒⟨ π ⟩ C ↝ composeᶜ A π tf tg
-    c-compose-f : ∀ {f g A B C C′ π π′ tf tg}
+                → L ⊢ RApp (RApp (RGen compose) f) g ⇐ A ⇒⟨ π ⟩ C ↝ composeᶜ A π tf tg
+    c-compose-f : ∀ {f g A B C C′ π π′ tf tg} → ¬ DomainForm g
                 → L ⊢ f ⇒ B ⇒⟨ π′ ⟩ C′ ↝ tf → (B ⇒⟨ π′ ⟩ C′) <: (B ⇒⟨ π ⟩ C)
                 → L ⊢ g ⇐ A ⇒⟨ π ⟩ B ↝ tg
-                → L ⊢ RApp (RApp (RResolved (gen "compose")) f) g ⇐ A ⇒⟨ π ⟩ C
+                → L ⊢ RApp (RApp (RGen compose) f) g ⇐ A ⇒⟨ π ⟩ C
                     ↝ composeᶜ A π (coerce (B ⇒⟨ π′ ⟩ C′) (B ⇒⟨ π ⟩ C) tf) tg
+    -- The mediating morphisms.
     c-case : ∀ {f g A B C π tf tg}
            → L ⊢ f ⇐ A ⇒⟨ π ⟩ C ↝ tf → L ⊢ g ⇐ B ⇒⟨ π ⟩ C ↝ tg
-           → L ⊢ RApp (RApp (RResolved (gen "case")) f) g ⇐ (A + B) ⇒⟨ π ⟩ C ↝ caseᶜ A B π tf tg
+           → L ⊢ RApp (RApp (RGen case) f) g ⇐ (A + B) ⇒⟨ π ⟩ C ↝ caseᶜ A B π tf tg
     c-pair : ∀ {f g A B C π tf tg}
            → L ⊢ f ⇐ A ⇒⟨ π ⟩ B ↝ tf → L ⊢ g ⇐ A ⇒⟨ π ⟩ C ↝ tg
-           → L ⊢ RApp (RApp (RResolved (gen "pair")) f) g ⇐ A ⇒⟨ π ⟩ (B * C) ↝ pairᶜ A π tf tg
+           → L ⊢ RApp (RApp (RGen pair) f) g ⇐ A ⇒⟨ π ⟩ (B * C) ↝ pairᶜ A π tf tg
     c-curry : ∀ {f A B C π₀ π t} → L ⊢ f ⇐ (A * B) ⇒⟨ π ⟩ C ↝ t
-            → L ⊢ RApp (RResolved (gen "curry")) f ⇐ A ⇒⟨ π₀ ⟩ (B ⇒⟨ π ⟩ C) ↝ curryᶜ A B π₀ π t
+            → L ⊢ RApp (RGen curry) f ⇐ A ⇒⟨ π₀ ⟩ (B ⇒⟨ π ⟩ C) ↝ curryᶜ A B π₀ π t
     c-cata : ∀ {alg F A π t} → WFFun Δ F
            → L ⊢ alg ⇐ ⟦ F ⟧F A ⇒⟨ π ⟩ A ↝ t
-           → L ⊢ RApp (RResolved (gen "cata")) alg ⇐ μ F ⇒⟨ π ⟩ A ↝ cataᶜ F π t
-    -- `ana` into a stream: a coalgebra at a finite grade, into `ν F f`,
-    -- built by an arrow that runs nothing more (D317).
-    c-ana : ∀ {c F A π₀ f t} → π₀ ⊑π act → WFFun Δ F
-          → L ⊢ c ⇐ A ⇒⟨ fin f ⟩ ⟦ F ⟧F A ↝ t
-          → L ⊢ RApp (RResolved (gen "ana")) c ⇐ A ⇒⟨ π₀ ⟩ ν F f ↝ anaᶜ F A π₀ t
-    -- `ana` into `Eff`: THE LOOP. Its round is a finite block that ends with
-    -- a `B` or the next state; `T∞ B` is the final coalgebra of `T (B + −)`
-    -- (D317).
-    c-loop : ∀ {c A B t}
-           → L ⊢ c ⇐ A ⇒⟨ act ⟩ (B + A) ↝ t
-           → L ⊢ RApp (RResolved (gen "ana")) c ⇐ A ⇒⟨ eff ⟩ B ↝ loopᶜ A t
+           → L ⊢ RApp (RGen cata) alg ⇐ μ F ⇒⟨ π ⟩ A ↝ cataᶜ F π t
+    -- `ana c`: into the final coalgebra `X` of `G` (a stream, or `T∞ B` at
+    -- `eff`), from a coalgebra of `G` (D317).
+    c-ana : ∀ {c A π₀ X G ρ k t} → Final Δ A π₀ X G ρ k
+          → L ⊢ c ⇐ A ⇒⟨ ρ ⟩ G A ↝ t
+          → L ⊢ RApp (RGen ana) c ⇐ A ⇒⟨ π₀ ⟩ X ↝ k t
 
     -- A synthesized type where a supertype is expected: its conversion.
-    c-sub : ∀ {e A B t} → L ⊢ e ⇒ A ↝ t → A <: B → L ⊢ e ⇐ B ↝ coerce A B t
+    c-sub : ∀ {e A B t} → ¬ OwnCheck e → L ⊢ e ⇒ A ↝ t → A <: B → L ⊢ e ⇐ B ↝ coerce A B t
 
     c-lam : ∀ {x body A B q π t} → (L ▹ x ∶ A) ⊢ body ⇐ B ↝ t
           → L ⊢ RLam x body ⇐ A ⇒[ mk-kind q π ] B ↝ lam A q π t
     c-pair-lit : ∀ {a b A B ta tb} → L ⊢ a ⇐ A ↝ ta → L ⊢ b ⇐ B ↝ tb → L ⊢ RPair a b ⇐ A * B ↝ pair ta tb
-
-    c-In-app : ∀ {e F t} → WFFun Δ F → L ⊢ e ⇐ ⟦ F ⟧F (μ F) ↝ t
-             → L ⊢ RApp (RResolved (gen "In")) e ⇐ μ F ↝ app (inᶜ F) t
-    c-apply-app : ∀ {e A B t} → L ⊢ e ⇒ (A ⇒⟨ pure ⟩ B) * A ↝ t
-                → L ⊢ RApp (RResolved (gen "apply")) e ⇐ B ↝ app (applyᶜ A B) t
-    c-inl-app : ∀ {e A B t} → L ⊢ e ⇐ A ↝ t → L ⊢ RApp (RResolved (gen "inl")) e ⇐ A + B ↝ app (inlᶜ A B pure) t
-    c-inr-app : ∀ {e A B t} → L ⊢ e ⇐ B ↝ t → L ⊢ RApp (RResolved (gen "inr")) e ⇐ A + B ↝ app (inrᶜ A B pure) t
-    c-initial-app : ∀ {e T t} → L ⊢ e ⇐ Void ↝ t → L ⊢ RApp (RResolved (gen "initial")) e ⇐ T ↝ app (initialᶜ T pure) t
 
     -- A polymorphic definition, at an instance that respects its kinds.
     c-poly : ∀ {c} (d : Fin s) → defName d ≡ c → 0 < arity (S !! d)
@@ -256,7 +274,7 @@ module _ {m : ℕ} (Δ : KCtx m) where
            → L ⊢ RResolved c ⇐ type (S !! d) ⟨ τ ⟩ ↝ ref d τ
 
   ------------------------------------------------------------------
-  -- An arrow out of a given domain, its codomain synthesized
+  -- An arrow out of a given domain, its least codomain synthesized
   ------------------------------------------------------------------
 
   data _⊢_⇐_⇒[_]↦_↝_ {n} L where
@@ -273,23 +291,86 @@ module _ {m : ℕ} (Δ : KCtx m) where
            → L ⊢ RResolved c ⇐ A ⇒[ π ]↦ B ↝ coerce (A ⇒⟨ π′ ⟩ B) (A ⇒⟨ π ⟩ B) (ref d τ)
     d-lam : ∀ {x body A B π t} → (L ▹ x ∶ A) ⊢ body ⇒ B ↝ t
           → L ⊢ RLam x body ⇐ A ⇒[ π ]↦ B ↝ lam A Many π t
+    -- A structure map whose domain fixes its instance, at its least codomain.
+    d-map : ∀ {g k A π B t} → FromDomain (kind g) → Morphism Δ g k A π B t
+          → (∀ {k′ B′} {t′ : Tm S m n} → Morphism Δ g k′ A π B′ t′ → B <:ᶜ B′)
+          → L ⊢ RGen g ⇐ A ⇒[ π ]↦ B ↝ t
     d-compose : ∀ {f g A M B π tf tg}
               → L ⊢ g ⇐ A ⇒[ π ]↦ M ↝ tg → L ⊢ f ⇐ M ⇒[ π ]↦ B ↝ tf
-              → L ⊢ RApp (RApp (RResolved (gen "compose")) f) g ⇐ A ⇒[ π ]↦ B ↝ composeᶜ A π tf tg
-    d-id       : ∀ {A π} → L ⊢ RResolved (gen "id") ⇐ A ⇒[ π ]↦ A ↝ idᶜ A π
-    d-fst      : ∀ {A B π} → L ⊢ RResolved (gen "fst") ⇐ (A * B) ⇒[ π ]↦ A ↝ fstᶜ A B π
-    d-snd      : ∀ {A B π} → L ⊢ RResolved (gen "snd") ⇐ (A * B) ⇒[ π ]↦ B ↝ sndᶜ A B π
-    d-terminal : ∀ {A π} → L ⊢ RResolved (gen "terminal") ⇐ A ⇒[ π ]↦ Unit ↝ terminalᶜ A π
-    d-initial  : ∀ {π} → L ⊢ RResolved (gen "initial") ⇐ Void ⇒[ π ]↦ Void ↝ initialᶜ Void π
+              → L ⊢ RApp (RApp (RGen compose) f) g ⇐ A ⇒[ π ]↦ B ↝ composeᶜ A π tf tg
     -- The copairing's codomain is the join of the branches' codomains, each
     -- branch composed with its conversion.
     d-case : ∀ {f g A B Cf Cg C π tf tg}
            → L ⊢ f ⇐ A ⇒[ π ]↦ Cf ↝ tf → L ⊢ g ⇐ B ⇒[ π ]↦ Cg ↝ tg → Cf ⊔ Cg ≔ C
-           → L ⊢ RApp (RApp (RResolved (gen "case")) f) g ⇐ (A + B) ⇒[ π ]↦ C
+           → L ⊢ RApp (RApp (RGen case) f) g ⇐ (A + B) ⇒[ π ]↦ C
                ↝ caseᶜ A B π (coerce (A ⇒⟨ π ⟩ Cf) (A ⇒⟨ π ⟩ C) tf) (coerce (B ⇒⟨ π ⟩ Cg) (B ⇒⟨ π ⟩ C) tg)
     d-pair : ∀ {f g A B C π tf tg}
            → L ⊢ f ⇐ A ⇒[ π ]↦ B ↝ tf → L ⊢ g ⇐ A ⇒[ π ]↦ C ↝ tg
-           → L ⊢ RApp (RApp (RResolved (gen "pair")) f) g ⇐ A ⇒[ π ]↦ (B * C) ↝ pairᶜ A π tf tg
-    d-cata : ∀ {alg F A π t} → WFFun Δ F
-           → L ⊢ alg ⇒ ⟦ F ⟧F A ⇒⟨ π ⟩ A ↝ t
-           → L ⊢ RApp (RResolved (gen "cata")) alg ⇐ μ F ⇒[ π ]↦ A ↝ cataᶜ F π t
+           → L ⊢ RApp (RApp (RGen pair) f) g ⇐ A ⇒[ π ]↦ (B * C) ↝ pairᶜ A π tf tg
+    -- The fold's codomain is the algebra's: the least `A` it is an algebra on.
+    d-cata : ∀ {alg F A₁ A π′ π t} → WFFun Δ F
+           → L ⊢ alg ⇒ A₁ ⇒⟨ π′ ⟩ A ↝ t → ⟦ F ⟧F A <: A₁ → π′ ⊑π π
+           → L ⊢ RApp (RGen cata) alg ⇐ μ F ⇒[ π ]↦ A
+               ↝ cataᶜ F π (coerce (A₁ ⇒⟨ π′ ⟩ A) (⟦ F ⟧F A ⇒⟨ π ⟩ A) t)
+
+------------------------------------------------------------------------
+-- The rule a derivation ends with
+------------------------------------------------------------------------
+
+-- The rules by name, per mode: what a rejection names (plan 0.149), and what
+-- `Spec.Metatheory` claims is decided by the form (`one-rule`).
+module Rule where
+  data Synth : Set where
+    s-int s-float s-unit s-const s-var s-sigop s-def s-annot s-pair s-neg s-let s-case s-binop
+      s-app s-app-spine : Synth
+
+  data Check : Set where
+    c-map c-map-app c-compose-g c-compose-f c-case c-pair c-curry c-cata c-ana c-sub c-lam c-pair-lit
+      c-poly : Check
+
+  data Domain : Set where
+    d-infer d-poly d-lam d-map d-compose d-case d-pair d-cata : Domain
+
+module _ {m : ℕ} {Δ : KCtx m} {n} {L : Locals m n} where
+
+  ruleOf⇒ : ∀ {e A t} → _⊢_⇒_↝_ Δ L e A t → Rule.Synth
+  ruleOf⇒ (s-int _)             = Rule.s-int
+  ruleOf⇒ (s-float _ _ _ _)     = Rule.s-float
+  ruleOf⇒ s-unit                = Rule.s-unit
+  ruleOf⇒ (s-const _)           = Rule.s-const
+  ruleOf⇒ (s-var _)             = Rule.s-var
+  ruleOf⇒ (s-sigop _)           = Rule.s-sigop
+  ruleOf⇒ (s-def _ _ _ _)       = Rule.s-def
+  ruleOf⇒ (s-annot _)           = Rule.s-annot
+  ruleOf⇒ (s-pair _ _)          = Rule.s-pair
+  ruleOf⇒ (s-neg _ _)           = Rule.s-neg
+  ruleOf⇒ (s-let _ _ _)         = Rule.s-let
+  ruleOf⇒ (s-case _ _ _ _ _ _)  = Rule.s-case
+  ruleOf⇒ (s-binop _ _ _)       = Rule.s-binop
+  ruleOf⇒ (s-app _ _ _ _)       = Rule.s-app
+  ruleOf⇒ (s-app-spine _ _ _)   = Rule.s-app-spine
+
+  ruleOf⇐ : ∀ {e A t} → _⊢_⇐_↝_ Δ L e A t → Rule.Check
+  ruleOf⇐ (c-map _)                 = Rule.c-map
+  ruleOf⇐ (c-map-app _ _ _)         = Rule.c-map-app
+  ruleOf⇐ (c-compose-g _ _ _)       = Rule.c-compose-g
+  ruleOf⇐ (c-compose-f _ _ _ _)     = Rule.c-compose-f
+  ruleOf⇐ (c-case _ _)              = Rule.c-case
+  ruleOf⇐ (c-pair _ _)              = Rule.c-pair
+  ruleOf⇐ (c-curry _)               = Rule.c-curry
+  ruleOf⇐ (c-cata _ _)              = Rule.c-cata
+  ruleOf⇐ (c-ana _ _)               = Rule.c-ana
+  ruleOf⇐ (c-sub _ _ _)             = Rule.c-sub
+  ruleOf⇐ (c-lam _)                 = Rule.c-lam
+  ruleOf⇐ (c-pair-lit _ _)          = Rule.c-pair-lit
+  ruleOf⇐ (c-poly _ _ _ _ _)        = Rule.c-poly
+
+  ruleOf↦ : ∀ {e A π B t} → _⊢_⇐_⇒[_]↦_↝_ Δ L e A π B t → Rule.Domain
+  ruleOf↦ (d-infer _ _ _)                     = Rule.d-infer
+  ruleOf↦ (d-poly _ _ _ _ _ _ _ _ _ _)        = Rule.d-poly
+  ruleOf↦ (d-lam _)                           = Rule.d-lam
+  ruleOf↦ (d-map _ _ _)                       = Rule.d-map
+  ruleOf↦ (d-compose _ _)                     = Rule.d-compose
+  ruleOf↦ (d-case _ _ _)                      = Rule.d-case
+  ruleOf↦ (d-pair _ _)                        = Rule.d-pair
+  ruleOf↦ (d-cata _ _ _ _)                    = Rule.d-cata

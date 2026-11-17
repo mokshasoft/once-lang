@@ -103,7 +103,7 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → Ctx m n → Usage n → 
 
   -- ν F f: the final coalgebra of `M f ∘ F` and its unfold. Building it
   -- evaluates the coalgebra term and the seed; each forced layer runs the
-  -- coalgebra function, at the finite grade `f`: a layer never runs a loop
+  -- coalgebra function, at the finite grade `f`: a layer never iterates
   -- (structured recursion, D317).
   ⊢unfold : ∀ {n} {Γ : Ctx m n} {Ψc Ψs} {f : Finite} {π₁ π₂} {F A c a}
           → WFFun Δ F
@@ -115,8 +115,8 @@ data _⊩_⊢[_]_∷_!_ {m} (Δ : KCtx m) : ∀ {n} → Ctx m n → Usage n → 
        → Δ ⊩ Γ ⊢[ Ψ ] t ∷ ν F f ! π₁
        → Δ ⊩ Γ ⊢[ Ψ ] out t ∷ ⟦ F ⟧F (ν F f) ! π₁ ·p fin f
 
-  -- THE LOOP: a SERVER. A round is a finite block (`act`) that ends with a
-  -- `B` or with the next state; the loop runs rounds until one ends with a
+  -- ITERATION: a SERVER. A round is a finite block (`act`) that ends with a
+  -- `B` or with the next state; `iter` runs rounds until one ends with a
   -- `B`, and may run forever (`eff`) — the unfold into `T∞ B`, the stream of
   -- blocks `ν (K B ⊕ Id) act` (D317). It is a former of its own because `B`
   -- need not be first-order. As `fold`'s algebra, the round is evaluated once

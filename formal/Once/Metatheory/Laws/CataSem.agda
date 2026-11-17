@@ -105,7 +105,7 @@ module CataV {m : ℕ} {Δ : KCtx m} (δ : DefSem) (sd : SameDefs Σ fmt S δ) (
                                         (λ p → rel (fromObserved (sg₀ _ _ (Fn.fromL-same wf A p)))) w))
 
   inSem : ∀ {n} {Γ : Ctx m n} {Ψ} (γ : Env σ Γ Ψ) (sγ : SameEnv Σ fmt S σ Γ Ψ γ) {F Ψa π₀}
-            (d : Δ ⊩ Γ ⊢[ Ψa ] inᶜ {S = S} F ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] μ F ! π₀) {γa}
+            (d : Δ ⊩ Γ ⊢[ Ψa ] inᶜ {S = S} F pure ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] μ F ! π₀) {γa}
         → Views.Res δ sd σ r γ sγ γa
         → Related (Same ((⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] μ F) ⟨ σ ⟩)) (toT∞ π₀ (⟦ d ⟧ δ σ r γa))
             (return∞ (λ l → inS (toL σ F (μ F) l)))

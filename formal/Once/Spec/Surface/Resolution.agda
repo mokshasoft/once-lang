@@ -32,7 +32,8 @@ open import Data.Product using (_×_; _,_; proj₁)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Name using (CanonicalName; canonical; gen; GenWord)
+open import Once.Spec.Name using (CanonicalName; canonical)
+open import Once.Spec.Surface.Generators using (Gen; word; GenWord)
 open import Once.Spec.Surface.Syntax
 
 ------------------------------------------------------------------------
@@ -107,7 +108,7 @@ record Env : Set where
 
 -- A written name, not bound locally.
 data ResolvesName (E : Env) : String → Expr → Set where
-  rn-gen    : ∀ {x} → GenWord x → ResolvesName E x (RResolved (gen x))
+  rn-gen    : ∀ {x} (g : Gen) → word g ≡ x → ResolvesName E x (RGen g)
   rn-import : ∀ {x p p′} → ¬ GenWord x → FirstAt x p (Env.unaliased E) → Expands p p′
             → ResolvesName E x (RResolved (canonical (p′ ++ (x ∷ []))))
   rn-own    : ∀ {x} → ¬ GenWord x → Absent x (Env.unaliased E) → x ≢ "main"
@@ -124,6 +125,7 @@ data Resolves (E : Env) (bound : List String) : Expr → Expr → Set where
   r-qual-path : ∀ {x a} → a ≢ "this" → Absent a (Env.aliased E)
               → Resolves E bound (RQualified x a) (RResolved (canonical (a ∷ x ∷ [])))
   r-res   : ∀ {c} → Resolves E bound (RResolved c) (RResolved c)
+  r-gen   : ∀ {g} → Resolves E bound (RGen g) (RGen g)
   r-app   : ∀ {f f′ a a′} → Resolves E bound f f′ → Resolves E bound a a′
           → Resolves E bound (RApp f a) (RApp f′ a′)
   r-lam   : ∀ {x b b′} → Resolves E (x ∷ bound) b b′ → Resolves E bound (RLam x b) (RLam x b′)

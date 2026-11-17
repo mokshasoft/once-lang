@@ -14,7 +14,8 @@
 --                   a join, where it exists, is unique);
 --   * surface     — the surface judgment's modes agree: a synthesized type is
 --                   unique, the domain-given mode is exact and agrees with
---                   synthesis;
+--                   synthesis; and the rule that types an expression is
+--                   decided by its form (one rule per form and mode);
 --   * effects     — each grade's monad is a monad (up to bisimilarity); the
 --                   morphisms along the chain and into `T∞` are monad
 --                   morphisms and compose (one lift per pair, P7); a trace
@@ -37,11 +38,11 @@
 --                   dropped;
 --   * recursion   — the fold is the unique algebra morphism, with fusion; the
 --                   unfold is the unique coalgebra morphism into the stream
---                   (the loop is the unfold at `K B ⊕ Id`), and the loop is
---                   observed as its unrolling;
+--                   (iteration is the unfold at `K B ⊕ Id`), and an
+--                   iteration is observed as its unrolling;
 --   * totality    — a definition cannot name itself or a later one; a stream
 --                   and a server are typed, the server runs forever, a
---                   silent loop is never observed doing anything, and no
+--                   silent server is never observed doing anything, and no
 --                   run of the meaning ever runs out.
 --   * laws apply  — every law, and every claim with premises, has an
 --                   instance: a closed program meeting all its premises,
@@ -66,7 +67,7 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Grade using (Quantity; Purity; Finite; fin; pureᶠ; actᶠ; pure; act; eff; Many; mk-kind; _⊑π_; _·p_; positionGrade; Zero; One)
-open import Once.Spec.Name using (CanonicalName; NotGenerator)
+open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Type using (Ty; Type; Fun; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩; var; Unit; Void; Int; Float; K; Id; _⊕_; _⊗_; μ; ν; _+_; _*_; _⇒[_]_; ⟦_⟧F; at₀; Occurs)
 open import Once.Spec.Delay using (_⇓_)
@@ -117,13 +118,13 @@ record Types : Set where
 
 -- The names a reference may resolve to are distinct (D249, as a program's
 -- `Denotes` requires): each entry of Σ is declared once, definitions have
--- their own names, and none is named as an operation or a generator.
+-- their own names, and none is named as an operation. (A generator is not a
+-- name: it resolves to itself, `Spec.Surface.Generators`.)
 record Distinct (Σ : Signature) {s} (nm : Fin s → CanonicalName) : Set where
   field
     one-name    : OneName Σ
     def-inj     : ∀ {d d′} → nm d ≡ nm d′ → d ≡ d′
     def-not-sig : ∀ d {t} → ¬ ((nm d ∶ t) ∈ Σ)
-    def-not-gen : ∀ d → NotGenerator (nm d)
 
 record Surface (Σ : Signature) {s} (S : Defs s) (nm : Fin s → CanonicalName) : Set where
   open SurfaceTyping Σ S nm
@@ -135,6 +136,17 @@ record Surface (Σ : Signature) {s} (S : Defs s) (nm : Fin s → CanonicalName) 
     domain-agrees-synth : ∀ {m} {Δ : KCtx m} {n} {L : Locals m n} {e A B T π t t′}
                         → _⊢_⇐_⇒[_]↦_↝_ Δ L e A π B t → _⊢_⇒_↝_ Δ L e T t′
                         → Σ[ A′ ∈ Ty m ] Σ[ π′ ∈ Purity ] (T ≡ A′ ⇒[ mk-kind Many π′ ] B) × π′ ⊑π π
+    -- One rule per form and mode: two derivations of one expression in one
+    -- mode end with the same rule, whatever types they are at. Which rule
+    -- applies is read from the form alone, never from the type or from
+    -- another rule failing, so a rejected expression breaks one named rule.
+    one-rule⇒ : ∀ {m} {Δ : KCtx m} {n} {L : Locals m n} {e A A′ t t′}
+              (d : _⊢_⇒_↝_ Δ L e A t) (d′ : _⊢_⇒_↝_ Δ L e A′ t′) → ruleOf⇒ d ≡ ruleOf⇒ d′
+    one-rule⇐ : ∀ {m} {Δ : KCtx m} {n} {L : Locals m n} {e A A′ t t′}
+              (d : _⊢_⇐_↝_ Δ L e A t) (d′ : _⊢_⇐_↝_ Δ L e A′ t′) → ruleOf⇐ d ≡ ruleOf⇐ d′
+    one-rule↦ : ∀ {m} {Δ : KCtx m} {n} {L : Locals m n} {e A A′ B B′ π π′ t t′}
+              (d : _⊢_⇐_⇒[_]↦_↝_ Δ L e A π B t) (d′ : _⊢_⇐_⇒[_]↦_↝_ Δ L e A′ π′ B′ t′)
+              → ruleOf↦ d ≡ ruleOf↦ d′
 
 ------------------------------------------------------------------------
 -- Effects
@@ -390,7 +402,7 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
       -- apply ∘ ⟨ curry f ∘ fst , snd ⟩ = f, and the closure of `h`'s calls is `h`.
       curry-βᶜ      : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π₀ f}
                     → Pure Δ Γ f ((A * B) ⇒[ mk-kind Many pure ] C)
-                    → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (A * B) pure (applyᶜ B C)
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (A * B) pure (applyᶜ B C pure)
                                           (pairᶜ (A * B) pure (composeᶜ (A * B) pure (curryᶜ A B pure pure f) (fstᶜ A B pure))
                                                               (sndᶜ A B pure))
                                          ∷ (A * B) ⇒[ mk-kind Many pure ] C ! π₀)
@@ -398,7 +410,7 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
       curry-ηᶜ      : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ A B C π₀ h}
                     → Pure Δ Γ h (A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C))
                     → (d : Δ ⊩ Γ ⊢[ Ψ ] curryᶜ A B pure pure
-                                          (composeᶜ (A * B) pure (applyᶜ B C)
+                                          (composeᶜ (A * B) pure (applyᶜ B C pure)
                                             (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure)))
                                          ∷ A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C) ! π₀)
                       (d′ : Δ ⊩ Γ ⊢[ Ψ ] h ∷ A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C) ! π₀) → d ≅ d′
@@ -416,7 +428,7 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
       -- `μ F` is the initial F-algebra: `cata alg` is an algebra map from `in` (β) …
       cata-βᶜ       : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ F A π₀ alg}
                     → Pure Δ Γ alg (⟦ F ⟧F A ⇒[ mk-kind Many pure ] A)
-                    → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure (cataᶜ F pure alg) (inᶜ F)
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure (cataᶜ F pure alg) (inᶜ F pure)
                                          ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π₀)
                       (d′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure alg (layerᶜ F (μ F) A (cataᶜ F pure alg))
                                          ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π₀)
@@ -425,7 +437,7 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
       -- context entry no environment can fill would make it hold vacuously).
       cata-uniqueᶜ  : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ F A π₀ π′ alg h}
                     → Pure Δ Γ alg (⟦ F ⟧F A ⇒[ mk-kind Many pure ] A) → Pure Δ Γ h (μ F ⇒[ mk-kind Many pure ] A)
-                    → (e : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure h (inᶜ F) ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π′)
+                    → (e : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure h (inᶜ F pure) ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π′)
                       (e′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ (⟦ F ⟧F (μ F)) pure alg (layerᶜ F (μ F) A h)
                                           ∷ ⟦ F ⟧F (μ F) ⇒[ mk-kind Many pure ] A ! π′)
                     → e ≅ e′
@@ -435,7 +447,7 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
       -- `ν F` (layers effect-free) is the final F-coalgebra: `ana c` is a coalgebra map to `out` (β) …
       ana-βᶜ        : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ F A π₀ c}
                     → Pure Δ Γ c (A ⇒[ mk-kind Many pure ] ⟦ F ⟧F A)
-                    → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (outᶜ F) (anaᶜ F A pure c)
+                    → (d : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (outᶜ F pure) (anaᶜ F A pure c)
                                          ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π₀)
                       (d′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (layerᶜ F A (ν F pureᶠ) (anaᶜ F A pure c)) c
                                          ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π₀)
@@ -443,7 +455,7 @@ module _ (Σ : Signature) (fmt : TargetNum) {s} (S : Defs s) where
       -- … and the only one.
       ana-uniqueᶜ   : ∀ {m n} {Δ : KCtx m} {Γ : Ctx m n} {Ψ F A π₀ π′ c h}
                     → Pure Δ Γ c (A ⇒[ mk-kind Many pure ] ⟦ F ⟧F A) → Pure Δ Γ h (A ⇒[ mk-kind Many pure ] ν F pureᶠ)
-                    → (e : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (outᶜ F) h ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π′)
+                    → (e : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (outᶜ F pure) h ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π′)
                       (e′ : Δ ⊩ Γ ⊢[ Ψ ] composeᶜ A pure (layerᶜ F A (ν F pureᶠ) h) c
                                           ∷ A ⇒[ mk-kind Many pure ] ⟦ F ⟧F (ν F pureᶠ) ! π′)
                     → e ≅ e′
@@ -699,14 +711,14 @@ module _ (Σ : Signature) where
                   → EqM (fin f) (νM.outν (ana f G c x)) (fmap (fin f) (sfmap G (ana f G c)) (c x))
       -- … and it is the only map that does: `νM f G` is the final coalgebra
       -- of `M f ∘ G` (so `T∞ B`, the stream `ν (K B ⊕ Id) act`, is the final
-      -- coalgebra of `T (B + −)`, and the loop its anamorphism)
+      -- coalgebra of `T (B + −)`, and iteration its anamorphism)
       unfold-unique : ∀ (f : Finite) (G : SFunctor) {X : Set} (c : X → Mᶠ f (⟦ G ⟧SF X)) (g : X → νM f G)
                     → (∀ x → EqLayer f (LayerEq G _≈ν_) (νM.outν (g x)) (fmap (fin f) (sfmap G g) (c x)))
                     → ∀ x → g x ≈ν ana f G c x
-      -- where one round ends and the next begins is not observed: the loop
-      -- is its unrolling (P12)
-      loop-unroll : ∀ {A B : Set} (c : A → T (B ⊎ A)) (a : A)
-                  → loop c a ≃ (embed (c a) >>=∞ [ return∞ , loop c ]′)
+      -- where one round ends and the next begins is not observed: an
+      -- iteration is its unrolling (P12)
+      iterate-unroll : ∀ {A B : Set} (c : A → T (B ⊎ A)) (a : A)
+                     → iterate c a ≃ (embed (c a) >>=∞ [ return∞ , iterate c ]′)
 
 ------------------------------------------------------------------------
 -- Total and productive
@@ -737,9 +749,9 @@ record Totality : Set₁ where
     server-runs  : ∀ fmt (δ : Meaning.DefSem echoΣ fmt []) (w : World echoΣ) n
                  → ∃[ vs ] (length vs ≡ n
                             × Calls (trace echoΣ w [] (Meaning.⟦_⟧ echoΣ fmt [] server-typed δ noVars noResp tt)) vs)
-    -- a silent loop is typed, and is never observed doing anything: nothing
+    -- a silent server is typed, and is never observed doing anything: nothing
     -- of its trace ever arrives (D317)
-    silent-typed : CoreTyping._⊩_⊢[_]_∷_!_ [] [] ∅ₖ ∅ [] silentLoop Void eff
+    silent-typed : CoreTyping._⊩_⊢[_]_∷_!_ [] [] ∅ₖ ∅ [] silentServer Void eff
     silent-never : ∀ fmt (δ : Meaning.DefSem [] fmt []) (w : World []) o
                  → ¬ (Tr.next (trace [] w [] (Meaning.⟦_⟧ [] fmt [] silent-typed δ noVars noResp tt)) ⇓ o)
     -- a source run never runs out: the meaning has unlimited memory, so the
@@ -809,6 +821,10 @@ module _ (fmt : TargetNum) where
     -- the same judgment, both sides, with no requirement that they differ
     Both : Tm noDefs 0 0 → Tm noDefs 0 0 → Ty 0 → Purity → Set
     Both t t′ A π = (∅ₖ ⊩ ∅ ⊢[ [] ] t ∷ A ! π) × (∅ₖ ⊩ ∅ ⊢[ [] ] t′ ∷ A ! π)
+    -- the surface judgment over no operations and no definitions
+    noNames : Fin 0 → CanonicalName
+    noNames ()
+    module Surface₀ = SurfaceTyping Σ₀ noDefs noNames
 
   record LawsApply : Set₁ where
     field
@@ -845,13 +861,13 @@ module _ (fmt : TargetNum) where
                       Pure₀ h (Void ⇒[ mk-kind Many π ] A) × Sides₀ h (initialᶜ A π) (Void ⇒[ mk-kind Many π ] A) π₀
       curry-βᶜ      : ∃[ A ] ∃[ B ] ∃[ C ] ∃[ π₀ ] ∃[ f ]
                       Pure₀ f ((A * B) ⇒ C)
-                      × Sides₀ (composeᶜ (A * B) pure (applyᶜ B C)
+                      × Sides₀ (composeᶜ (A * B) pure (applyᶜ B C pure)
                                  (pairᶜ (A * B) pure (composeᶜ (A * B) pure (curryᶜ A B pure pure f) (fstᶜ A B pure))
                                                      (sndᶜ A B pure)))
                                f ((A * B) ⇒ C) π₀
       curry-ηᶜ      : ∃[ A ] ∃[ B ] ∃[ C ] ∃[ π₀ ] ∃[ h ]
                       Pure₀ h (A ⇒ (B ⇒ C))
-                      × Sides₀ (curryᶜ A B pure pure (composeᶜ (A * B) pure (applyᶜ B C)
+                      × Sides₀ (curryᶜ A B pure pure (composeᶜ (A * B) pure (applyᶜ B C pure)
                                  (pairᶜ (A * B) pure (composeᶜ (A * B) pure h (fstᶜ A B pure)) (sndᶜ A B pure))))
                                h (A ⇒ (B ⇒ C)) π₀
       map-idᶜ       : ∃[ T ] ∃[ A ] ∃[ π₀ ]
@@ -861,25 +877,25 @@ module _ (fmt : TargetNum) where
                              (T ⟨ at₀ A ⟩ ⇒ T ⟨ at₀ C ⟩) π₀
       cata-βᶜ       : ∃[ F ] ∃[ A ] ∃[ π₀ ] ∃[ alg ]
                       Pure₀ alg (⟦ F ⟧F A ⇒ A)
-                      × Sides₀ (composeᶜ (⟦ F ⟧F (μ F)) pure (cataᶜ F pure alg) (inᶜ F))
+                      × Sides₀ (composeᶜ (⟦ F ⟧F (μ F)) pure (cataᶜ F pure alg) (inᶜ F pure))
                                (composeᶜ (⟦ F ⟧F (μ F)) pure alg (layerᶜ F (μ F) A (cataᶜ F pure alg)))
                                (⟦ F ⟧F (μ F) ⇒ A) π₀
       -- (the hypothesis `e ≅ e′` holds, at the empty context)
       cata-uniqueᶜ  : ∃[ F ] ∃[ A ] ∃[ π₀ ] ∃[ π′ ] ∃[ alg ] ∃[ h ]
                       Pure₀ alg (⟦ F ⟧F A ⇒ A) × Pure₀ h (μ F ⇒ A)
-                      × (Σ[ ee ∈ Both (composeᶜ (⟦ F ⟧F (μ F)) pure h (inᶜ F))
+                      × (Σ[ ee ∈ Both (composeᶜ (⟦ F ⟧F (μ F)) pure h (inᶜ F pure))
                                        (composeᶜ (⟦ F ⟧F (μ F)) pure alg (layerᶜ F (μ F) A h))
                                        (⟦ F ⟧F (μ F) ⇒ A) π′ ]
                            _≅_ Σ₀ fmt noDefs (proj₁ ee) (proj₂ ee))
                       × Sides₀ h (cataᶜ F pure alg) (μ F ⇒ A) π₀
       ana-βᶜ        : ∃[ F ] ∃[ A ] ∃[ π₀ ] ∃[ c ]
                       Pure₀ c (A ⇒ ⟦ F ⟧F A)
-                      × Sides₀ (composeᶜ A pure (outᶜ F) (anaᶜ F A pure c))
+                      × Sides₀ (composeᶜ A pure (outᶜ F pure) (anaᶜ F A pure c))
                                (composeᶜ A pure (layerᶜ F A (ν F pureᶠ) (anaᶜ F A pure c)) c)
                                (A ⇒ ⟦ F ⟧F (ν F pureᶠ)) π₀
       ana-uniqueᶜ   : ∃[ F ] ∃[ A ] ∃[ π₀ ] ∃[ π′ ] ∃[ c ] ∃[ h ]
                       Pure₀ c (A ⇒ ⟦ F ⟧F A) × Pure₀ h (A ⇒ ν F pureᶠ)
-                      × (Σ[ ee ∈ Both (composeᶜ A pure (outᶜ F) h)
+                      × (Σ[ ee ∈ Both (composeᶜ A pure (outᶜ F pure) h)
                                        (composeᶜ A pure (layerᶜ F A (ν F pureᶠ) h) c)
                                        (A ⇒ ⟦ F ⟧F (ν F pureᶠ)) π′ ]
                            _≅_ Σ₀ fmt noDefs (proj₁ ee) (proj₂ ee))
@@ -968,6 +984,16 @@ module _ (fmt : TargetNum) where
       -- Numbers: each number type has a value meeting the premise of every law
       -- of its rows (`Numbers`, below).
       numbers₀     : ∀ (A : NumTy) → Σ[ x ∈ Val A ] Valid A x
+
+      -- Surface: closed expressions meeting the premises of the `Surface`
+      -- claims: one that synthesizes; one that is checked; and one typed out
+      -- of a domain that also synthesizes (both premises of
+      -- `domain-agrees-synth`).
+      surface-synth₀  : ∃[ e ] ∃[ A ] ∃[ t ] Surface₀._⊢_⇒_↝_ ∅ₖ Surface₀.∅ e A t
+      surface-check₀  : ∃[ e ] ∃[ A ] ∃[ t ] Surface₀._⊢_⇐_↝_ ∅ₖ Surface₀.∅ e A t
+      surface-domain₀ : ∃[ e ] ∃[ A ] ∃[ π ] ∃[ B ] ∃[ T ] ∃[ t ] ∃[ t′ ]
+                          Surface₀._⊢_⇐_⇒[_]↦_↝_ ∅ₖ Surface₀.∅ e A π B t
+                          × Surface₀._⊢_⇒_↝_ ∅ₖ Surface₀.∅ e T t′
 
 ------------------------------------------------------------------------
 -- Numbers: every row of the table has its theory's laws

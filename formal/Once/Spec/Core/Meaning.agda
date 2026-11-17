@@ -52,7 +52,7 @@ import Once.Spec.Float.Arith as FA
 open import Once.Spec.Theory using (int; float; unary; binary; compare; ⟦_⟧ₛ; module Models)
 open Models fmt using (structure)
 open import Once.Spec.Bool using (truth)
-open import Once.Spec.Effect Σ using (M; bind; fmap; bindᵍ; sub; T; T∞; returnT; return∞; loop; performT; ana; module νM)
+open import Once.Spec.Effect Σ using (M; bind; fmap; bindᵍ; sub; T; T∞; returnT; return∞; iterate; performT; ana; module νM)
 open νM using (outν)
 open import Once.Spec.Observation Σ using (Model; module Model)
 open Model using (constantᵐ; valueᵐ)
@@ -248,12 +248,12 @@ module _ {m : ℕ} (σ : TySub m 0) where
 ⟦ ⊢out {f = f} {π₁} {F} wf d ⟧ ρ σ r γ =
   bindᵍ π₁ (fin f) (⟦ d ⟧ ρ σ r γ) λ v → fmap (fin f) (fromL σ F (ν F f)) (outν v)
 
--- The server: the round is evaluated once, then the seed; the loop is the
--- anamorphism over the round.
+-- The server: the round is evaluated once, then the seed; the iteration is
+-- the anamorphism over the round.
 ⟦ ⊢iter {Ψf = Ψf} {Ψs} {π₁} {π₂} d ds ⟧ ρ σ r γ =
   bindᵍ π₁ _ (⟦ d ⟧ ρ σ r (env*Many σ Ψf (envˡ σ (Many *ᵘ Ψf) Ψs γ))) λ f →
   bindᵍ π₂ eff (⟦ ds ⟧ ρ σ r (envʳ σ (Many *ᵘ Ψf) Ψs γ)) λ a →
-  loop f a
+  iterate f a
 
 ⟦ ⊢coerce {π = π} p d ⟧ ρ σ r γ = fmap π (conv σ p) (⟦ d ⟧ ρ σ r γ)
 

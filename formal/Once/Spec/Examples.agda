@@ -10,9 +10,9 @@
 --     definition: there is no general recursion, so neither is a program;
 --   * a stream that calls an operation in every layer, forever: the shape of
 --     every effectful stream;
---   * an echo server: a loop whose every round reads a value and writes it
---     back; it never finishes;
---   * a silent loop: a loop whose round calls nothing — a correct program
+--   * an echo server: an iteration whose every round reads a value and
+--     writes it back; it never finishes;
+--   * a silent server: an iteration whose round calls nothing — a correct program
 --     that is never observed doing anything (D317).
 ------------------------------------------------------------------------
 
@@ -77,11 +77,11 @@ echoServer : Tm [] 0 0
 echoServer = iter echoRound unit
 
 ------------------------------------------------------------------------
--- A silent loop: `iter (λ _ → inr ()) ()`, over no operation
+-- A silent server: `iter (λ _ → inr ()) ()`, over no operation
 ------------------------------------------------------------------------
 
 silentRound : Tm [] 0 0
 silentRound = lam Unit Many act (inr Void unit)
 
-silentLoop : Tm [] 0 0
-silentLoop = iter silentRound unit
+silentServer : Tm [] 0 0
+silentServer = iter silentRound unit

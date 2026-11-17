@@ -37,7 +37,8 @@ open import Data.Maybe using (nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_; yes; no)
 open import Once.Spec.Grade using (0≤q; ⊑-pa; ⊑-act)
-open import Once.Spec.Name using (CanonicalName; canonical; GenWord; genWords)
+open import Once.Spec.Name using (CanonicalName; canonical)
+open import Once.Spec.Surface.Generators using (Gen; word; GenWord)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Type using (TySub; Respects; ∅ₖ)
 open import Once.Spec.Signature using (Signature; call)
@@ -72,16 +73,36 @@ module Unreachable (Σ : Signature) (empty : Σ ≡ []) (nm : Fin 0 → Canonica
     noMem refl ()
 
   noSynth : ∀ {m Δ n} {L : Locals m n} {x A t} → ¬ _⊢_⇒_↝_ Δ L (RResolved (canonical (x ∷ []))) A t
-  noSynth (s-sigop _ mem) = noMem empty mem
+  noSynth (s-sigop mem) = noMem empty mem
   noSynth (s-def () _ _ _)
 
   noCheck : ∀ {m Δ n} {L : Locals m n} {x A t} → ¬ _⊢_⇐_↝_ Δ L (RResolved (canonical (x ∷ []))) A t
-  noCheck (c-sub s _)        = noSynth s
+  noCheck (c-sub _ s _)      = noSynth s
   noCheck (c-poly () _ _ _ _)
 
 private
   notGenF : ¬ GenWord "f"
-  notGenF = toWitnessFalse {a? = any? ("f" ≟_) genWords} tt
+  notGenF (g , e) = no-f g e
+    where
+      no-f : ∀ g → word g ≡ "f" → ⊥
+      no-f Gen.id ()
+      no-f Gen.compose ()
+      no-f Gen.fst ()
+      no-f Gen.snd ()
+      no-f Gen.terminal ()
+      no-f Gen.pair ()
+      no-f Gen.inl ()
+      no-f Gen.inr ()
+      no-f Gen.initial ()
+      no-f Gen.case ()
+      no-f Gen.apply ()
+      no-f Gen.curry ()
+      no-f Gen.In ()
+      no-f Gen.cata ()
+      no-f Gen.Out ()
+      no-f Gen.ana ()
+      no-f Gen.unit ()
+      no-f Gen.toFloat ()
 
   noFirst : ∀ {K V : Set} {x : K} {v : V} → ¬ FirstAt x v []
   noFirst ()
@@ -89,7 +110,7 @@ private
   -- With no imports, `f` resolves to the module's own entry.
   resolvesOwn : ∀ {e} → Resolves (env [] []) [] (RVar "f") e → e ≡ RResolved (canonical ("f" ∷ []))
   resolvesOwn (r-local ())
-  resolvesOwn (r-name _ (rn-gen g))         = ⊥-elim (notGenF g)
+  resolvesOwn (r-name _ (rn-gen g e))       = ⊥-elim (notGenF (g , e))
   resolvesOwn (r-name _ (rn-import _ fa _)) = ⊥-elim (noFirst fa)
   resolvesOwn (r-name _ (rn-own _ _ _))     = refl
 
@@ -173,7 +194,7 @@ server-typed =
                        (EchoTyping.⊢app (EchoTyping.⊢sigop (here refl)) EchoTyping.⊢unit))))
     EchoTyping.⊢unit
 
-silent-typed : SilentTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ Once.Spec.Context.[] silentLoop Once.Spec.Type.Void Once.Spec.Grade.eff
+silent-typed : SilentTyping._⊩_⊢[_]_∷_!_ ∅ₖ Once.Spec.Context.∅ Once.Spec.Context.[] silentServer Once.Spec.Type.Void Once.Spec.Grade.eff
 silent-typed =
   SilentTyping.⊢iter (SilentTyping.⊢lam 0≤q (SilentTyping.⊢sub-eff ⊑-pa (SilentTyping.⊢inr SilentTyping.⊢unit))) SilentTyping.⊢unit
 

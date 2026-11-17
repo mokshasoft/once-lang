@@ -4,9 +4,9 @@
 
 ------------------------------------------------------------------------
 -- Once.Metatheory.Surface.Basics — the surface metatheory's lemmas that need
--- no assumption on names: the generators' names, type injectivity and
--- substitution read back at its variables, and the rules no expression
--- form can share (`Metatheory.Surface` adds the ones distinct names give).
+-- no assumption on names: the generator table's kinds, type injectivity and
+-- substitution read back at its variables, and the forms that never
+-- synthesize (`Metatheory.Surface` adds the ones distinct names give).
 ------------------------------------------------------------------------
 
 open import Data.Fin using (Fin)
@@ -29,7 +29,9 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Grade using (Purity; pure; act; Finite; pureᶠ; actᶠ; fin; Many; mk-kind; ArrowKind; _⊑π_; ⊑-pure; EffGrade; eg-act; eg-eff)
-open import Once.Spec.Name using (gen; NotGenerator; genNames)
+open import Once.Spec.Surface.Generators
+  using (Gen; kind; IsConstant; IsMap; IsCombinator; FromDomain; FromCodomain; Constant; Morphism;
+         is-constant; is-map; is-combinator; fd-domain; fd-both; fc-codomain; fc-both; k-unit; k-toFloat)
 open import Once.Spec.Type
   using (Ty; KCtx; TySub; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; _⟨_⟩; _⟨_⟩F; Occurs; OccursF;
          o-var; o-*ˡ; o-*ʳ; o-+ˡ; o-+ʳ; o-⇒ˡ; o-⇒ʳ; o-μ; o-ν; o-K; o-⊕ˡ; o-⊕ʳ; o-⊗ˡ; o-⊗ʳ;
@@ -51,42 +53,25 @@ open import Once.Spec.Sub using (_⊔_≔_)
 ------------------------------------------------------------------------
 
 module _ where
-  notGen : ∀ {w} → w ∈ genNames → ¬ NotGenerator (gen w)
-  notGen m n = All.lookup n m refl
+  -- The kinds are disjoint classes.
+  const-map : ∀ {k} → IsConstant k → IsMap k → ⊥
+  const-map is-constant ()
 
-  -- The nine generators that are names, and where they are listed.
-  id∈       : "id" ∈ genNames
-  fst∈      : "fst" ∈ genNames
-  snd∈      : "snd" ∈ genNames
-  terminal∈ : "terminal" ∈ genNames
-  initial∈  : "initial" ∈ genNames
-  unit∈     : "unit" ∈ genNames
-  toFloat∈  : "toFloat" ∈ genNames
-  id∈       = here refl
-  fst∈      = there (here refl)
-  snd∈      = there (there (here refl))
-  terminal∈ = there (there (there (here refl)))
-  initial∈  = there (there (there (there (here refl))))
-  unit∈     = there (there (there (there (there (there (there (here refl)))))))
-  toFloat∈  = there (there (there (there (there (there (there (there (here refl))))))))
+  map-comb : ∀ {k n} → IsMap k → IsCombinator n k → ⊥
+  map-comb is-map ()
 
-  -- The special heads.
-  sid       : "id" ∈ specialGenerators
-  sfst      : "fst" ∈ specialGenerators
-  ssnd      : "snd" ∈ specialGenerators
-  sterminal : "terminal" ∈ specialGenerators
-  sapply    : "apply" ∈ specialGenerators
-  scata     : "cata" ∈ specialGenerators
-  sOut      : "Out" ∈ specialGenerators
-  sid       = here refl
-  sfst      = there (here refl)
-  ssnd      = there (there (here refl))
-  sterminal = there (there (there (here refl)))
-  sapply    = there (there (there (there (there (there (there (there (here refl))))))))
-  scata     = there (there (there (there (there (there (there (there (there (there (here refl))))))))))
-  sOut      = there (there (there (there (there (there (there (there (there (there (there (there (here refl))))))))))))
+  comb-12 : ∀ {k} → IsCombinator 1 k → IsCombinator 2 k → ⊥
+  comb-12 is-combinator ()
 
-  -- No definition is named as a generator, or as an operation.
+  fd-map : ∀ {k} → FromDomain k → IsMap k
+  fd-map fd-domain = is-map
+  fd-map fd-both   = is-map
+
+  fc-map : ∀ {k} → FromCodomain k → IsMap k
+  fc-map fc-codomain = is-map
+  fc-map fc-both     = is-map
+
+  -- Arity facts.
   fin0 : ∀ {n} → n ≡ 0 → Fin n → ⊥
   fin0 refl ()
 
@@ -176,26 +161,24 @@ module Modes {m} (Δ : KCtx m) where
     ∋-unique (there ne _) here         = ⊥-elim (ne refl)
     ∋-unique (there _ p)  (there _ q)  = ∋-unique p q
 
-    -- Forms that never synthesize.
-    noSyn-compose : ∀ {n} {L : Locals m n} {f g T t} → ¬ Syn L (RApp (RApp (RResolved (gen "compose")) f) g) T t
-    noSyn-compose (s-app h _ _)        = h sh-compose
-    noSyn-compose (s-effApp h _ _ _)   = h sh-compose
-    noSyn-compose (s-app-spine h _ _)  = h sh-compose
+    -- A constant of the table has one type.
+    const-unique : ∀ {n′} {g k k′ T T′} {t t′ : Once.Spec.Core.Syntax.Tm S m n′}
+                 → Constant Δ g k T t → Constant Δ g k′ T′ t′ → T ≡ T′
+    const-unique k-unit    k-unit    = refl
+    const-unique k-toFloat k-toFloat = refl
 
-    noSyn-case : ∀ {n} {L : Locals m n} {f g T t} → ¬ Syn L (RApp (RApp (RResolved (gen "case")) f) g) T t
-    noSyn-case (s-app h _ _)        = h sh-case
-    noSyn-case (s-effApp h _ _ _)   = h sh-case
-    noSyn-case (s-app-spine h _ _)  = h sh-case
+    -- Forms that never synthesize: a structure map, and a combinator given
+    -- its arms.
+    noSyn-map : ∀ {n} {L : Locals m n} {g T t} → IsMap (kind g) → ¬ Syn L (RGen g) T t
+    noSyn-map im (s-const {k = k} _) = const-map k im
 
-    noSyn-pair : ∀ {n} {L : Locals m n} {f g T t} → ¬ Syn L (RApp (RApp (RResolved (gen "pair")) f) g) T t
-    noSyn-pair (s-app h _ _)        = h sh-pair
-    noSyn-pair (s-effApp h _ _ _)   = h sh-pair
-    noSyn-pair (s-app-spine h _ _)  = h sh-pair
+    noSyn-comb₁ : ∀ {n} {L : Locals m n} {g a T t} → IsCombinator 1 (kind g) → ¬ Syn L (RApp (RGen g) a) T t
+    noSyn-comb₁ ic (s-app pc _ _ _)              = pc (pc-bare ic)
+    noSyn-comb₁ ic (s-app-spine (ch-map im) _ _) = map-comb im ic
 
-    noSyn-cata : ∀ {n} {L : Locals m n} {a T t} → ¬ Syn L (RApp (RResolved (gen "cata")) a) T t
-    noSyn-cata (s-app h _ _)        = h (sh-gen scata)
-    noSyn-cata (s-effApp h _ _ _)   = h (sh-gen scata)
-    noSyn-cata (s-app-spine h _ _)  = h (sh-gen scata)
+    noSyn-comb₂ : ∀ {n} {L : Locals m n} {g f h T t} → IsCombinator 2 (kind g) → ¬ Syn L (RApp (RApp (RGen g) f) h) T t
+    noSyn-comb₂ ic (s-app pc _ _ _)                 = pc (pc-one ic)
+    noSyn-comb₂ ic (s-app-spine (ch-comb₁ ic₁) _ _) = comb-12 ic₁ ic
 
     effPure : ∀ {π} → EffGrade π → π ≡ pure → ⊥
     effPure eg-act ()
