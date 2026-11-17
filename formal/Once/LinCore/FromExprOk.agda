@@ -492,13 +492,22 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) 
               (e1 : Expr Γ Ψ₁ A) (e2 : Expr (Γ SC.▸ A) (G.Zero ∷ Ψ₂) B) → Goal e2 → Goal (let' e1 e2)
   ok-let0 {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} e1 e2 g = rel-castΦ {Γ = Γ} {B = B} (sym (erase-arg-usage Ψ₂ Ψ₁)) g
 
+  -- the function on `tt`, at any grade
+  rel-app0 : ∀ {π} {X B : IRTy} {f : LTm L ⟪ X ⟫ ⟪ I.Unit ⇛[ π ] B ⟫} {f′ : M.IR X (I.Unit ⇛[ π ] B)}
+           → Rel f f′ → Rel (apω {g = grade π} ∘l (f ⊗l lid) ∘l ρl⁻) (M.apply {I.Unit} {B} {π} M.∘ M.⟨ f′ , M.terminal ⟩)
+  rel-app0 {π} g =
+    rel-∘ (rel-apω {π = π})
+      (mkRel λ w → ≈-≈R ret-bind (>>=-congR (rel g w) (λ r → ≈-≈R ret-bind (≈R-≈ (ret≈R (r , tt)) (≈-sym ret-bind)))))
+
+  -- dropping the unit argument
+  rel-ρ : ∀ {X : IRTy} → Rel (ρl {A = ⟪ X ⟫}) (M.fst {X} {I.Unit})
+  rel-ρ = mkRel λ { {x , tt} (w , _) → ret≈R w }
+
   -- ★ an erased argument: the function on `tt`
   ok-app0 : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m}
               (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Zero G.pure ] B)) (x : Expr Γ Ψ₂ A) → Goal f → Goal (app f x)
   ok-app0 {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} f x g =
-    rel-castΦ {Γ = Γ} {B = B} (sym (erase-arg-usage Ψ₁ Ψ₂))
-      (rel-∘ (rel-apω {π = G.pure})
-        (mkRel λ w → ≈-≈R ret-bind (>>=-congR (rel g w) (λ r → ≈-≈R ret-bind (≈R-≈ (ret≈R (r , tt)) (≈-sym ret-bind))))))
+    rel-castΦ {Γ = Γ} {B = B} (sym (erase-arg-usage Ψ₁ Ψ₂)) (rel-app0 g)
 
   -- applying owned is applying
   apω-≈ : ∀ {g A B} (f : ⟦ Fn many g A B ⟧) (a : ⟦ A ⟧) → Lᶜ δ (apω {L} {One} {g = g} {A} {B}) tt (f , a) ≈ up g (f a)
@@ -552,10 +561,19 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) 
                (f : Expr Γ Ψ ((A Once.Spec.Type.* B) ⇒[ G.mk-kind G.Many π ] C)) → Goal f → Goal (curry' {π₀ = π₀} f)
   ok-curry {π₀ = π₀} {π} f rf = rel-∘ (rel-cloG π₀ _ (rel-cloG π _ curryB)) rf
 
+  -- ★ an effectful application, suspended: a closure on `tt` whose body applies
+  ok-effApp : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} {q π g}
+                (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind q π ] B)) (x : Expr Γ Ψ₂ A) → Goal f → Goal x → Goal (effApp {g = g} f x)
+  ok-effApp {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} {q = G.Zero} {π} f x rf rx =
+    rel-castΦ {Γ = Γ} {B = Once.Spec.Type.Unit Once.Spec.Type.⇒[ G.mk-kind G.Many π ] B} (sym (erase-arg-usage Ψ₁ Ψ₂))
+      (rel-cloG π _ (rel-∘ (rel-app0 rf) rel-ρ))
+  ok-effApp {Γ = Γ} {Ψ₁} {Ψ₂} {q = G.One} {π} f x rf rx =
+    rel-cloG π _ (rel-∘ (rel-app Γ Ψ₁ Ψ₂ (G.One *ᵘ Ψ₂) (⊑ᵘ-*One Ψ₂) rf rx) rel-ρ)
+  ok-effApp {Γ = Γ} {Ψ₁} {Ψ₂} {q = G.Many} {π} f x rf rx =
+    rel-cloG π _ (rel-∘ (rel-app Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) rf rx) rel-ρ)
+
   record Owed : Set where
     field
-      o-effApp  : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} {q π g}
-                    (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind q π ] B)) (x : Expr Γ Ψ₂ A) → Goal f → Goal x → Goal (effApp {g = g} f x)
       o-case    : ∀ {m n} {Γ : Ctx m n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : G.Quantity} {A B C : Ty m}
                     (s : Expr Γ Ψs (A + B)) (l : Expr (Γ SC.▸ A) (qℓ ∷ Ψₗ) C) (r : Expr (Γ SC.▸ B) (qr ∷ Ψᵣ) C)
                   → Goal s → Goal l → Goal r → Goal (case' s l r)
@@ -594,7 +612,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) 
       rel-app Γ Ψ₁ Ψ₂ (G.One *ᵘ Ψ₂) (⊑ᵘ-*One Ψ₂) (Lq-ok f) (Lq-ok x)
     Lq-ok {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) =
       rel-app Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) (Lq-ok f) (Lq-ok x)
-    Lq-ok (effApp f x) = o-effApp f x (Lq-ok f) (Lq-ok x)
+    Lq-ok (effApp f x) = ok-effApp f x (Lq-ok f) (Lq-ok x)
     Lq-ok {Γ = Γ} (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) = rel-pair am Γ Ψ₁ Ψ₂ (Lq-ok a) (Lq-ok b)
     Lq-ok (fst' p) = rel-∘ rel-fst (Lq-ok p)
     Lq-ok (snd' p) = rel-∘ rel-snd (Lq-ok p)
