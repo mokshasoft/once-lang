@@ -257,7 +257,7 @@ Rules that go with the gates:
 
 ```
 ./run-ast-dumps.sh                              # master and the branch
-HEAP=6G COMPACT=-c20 ./run-ast-dumps.sh <ref>   # if a module runs out of memory
+HEAP=16G COMPACT=-c10 ./run-ast-dumps.sh <ref>  # if a module runs out of memory
 ```
 
 This needs the Agda fork with `--write-ast` (see the script header). It takes tens of minutes

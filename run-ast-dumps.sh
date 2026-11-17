@@ -15,7 +15,7 @@
 #
 #   ./run-ast-dumps.sh              # master and the current branch
 #   ./run-ast-dumps.sh master       # one ref
-#   HEAP=3G ./run-ast-dumps.sh      # tighter heap cap on a smaller machine
+#   HEAP=16G ./run-ast-dumps.sh     # more heap if a module still does not fit
 #   PROGRESS=30 ./run-ast-dumps.sh  # a progress line every 30 s (default 60; 0 = off)
 #
 # Used by MERGE.md §6 (reachability) and plan 0.92/D277 (apex-live scope).
@@ -74,13 +74,15 @@ RUNS_SLUG="${RUNS_SLUG:-runs}"
 # it is nowhere near 5G of actual data. Compacting sooner (a lower N) trades
 # speed for a markedly lower peak.
 #
-# Known offender: Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim reproducibly
-# reaches ~2.64G residency and exhausts a 5G/-c40 heap. For that one:
+# Known offenders: Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (~2.64G
+# residency; exhausts 5G/-c40) and, since plan 0.151 (2026-11-17),
+# Once.Metatheory.Laws.Combinators, which exhausts 6G/-c20 on its own: the dump
+# holds every interface of the closure in one process. The default is therefore
+# 12G with -c20. On a machine with less RAM than that the cap is reached through
+# swap: slower, but the run completes instead of giving up.
 #
-#     HEAP=6G COMPACT=-c20 ./run-ast-dumps.sh master
-#
-HEAP="${HEAP:-5G}"
-COMPACT="${COMPACT:--c40}"
+HEAP="${HEAP:-12G}"
+COMPACT="${COMPACT:--c20}"
 ALLOC="${ALLOC:-16m}"
 RTS_OPTS=(-M"$HEAP" "$COMPACT" -A"$ALLOC" -s)
 
@@ -272,7 +274,7 @@ run_ref() {
         if [ -n "$culprit" ]; then
           say "  giving up: $culprit does not fit in $HEAP with $COMPACT."
           say "  retry that ref alone with more headroom, e.g.:"
-          say "    HEAP=6G COMPACT=-c20 $0 $REF_LABEL"
+          say "    HEAP=16G COMPACT=-c10 $0 $REF_LABEL"
         else
           say "  giving up; last lines of $log:"
           tail -20 "$log" | sed 's/^/    /'
