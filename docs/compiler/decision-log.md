@@ -23911,3 +23911,41 @@ proof, not the program, and follows D434/D435.
   frame bound to its no-fault proof, and that code is deleted in B1.7. With the old lowering gone the gate
   is the smaller step (the run fact's one provider is the new image's simulation either way).
 * (a), above.
+
+## D439 — THE RUN'S FACTS ARE MACHINE GATES; B1.7 BEFORE THEM (2026-11-17)
+
+**Decided** (the user, 2026-11-17). **Applies**: D435 (check at the access), D438 (the arch layer reads the
+run's facts; its slot gate deferred), plan 0.146 B1.6/B1.7.
+
+### The problem
+D438 left four run facts for the new image to prove (`Emitted.em-slots`, `em-call-site`, `em-ret-owes`,
+`em-ret-budget`), by the route "from FlatTop's simulation: a reached state is related". Two things block
+that route. `Related` holds at image-step boundaries only, while the facts are about the flat states
+INSIDE a step's chain (the epilogue's `c-ret`, the dispatch's `instr-call-closure`), so every `Global*`
+step lemma would have to carry a predicate along its chain. And `Reachable` starts at ANY `EntryLike` sound
+state, while FlatTop runs from one `start-fs` (`EntryLike` leaves the log, the heap counter, `fclosure`,
+`faulted` and `left` free). Master's image does not prove three of the four either: they are postulates
+(`RunWF.call-site-shapeᴼ`, `ret-site-owesᴼ`, `ret-budget-matchesᴼ`). Today the flat machine checks none of
+them: `do-ret []` halts, `c-ret b` ignores `b`, `instr-call-closure` reads `fclosure` unchecked, and slot
+accesses are unbounded.
+
+### Options
+* (a) Thread a per-state predicate through every step chain, and pin `EntryLike` to master's entry.
+* (b) A static owner map (each pc's block fixes `frame-slots` and a pending return), by induction on
+  `Reachable`: a positional invariant again (what D438 left), and `em-call-site` (a data fact) still open.
+* (c) Machine gates, as D435: `c-ret b` faults unless a return is pending and `b ≡ frame-slots`;
+  `instr-call-closure` faults unless `fclosure` points at a cell whose code word names a body; a slot access
+  faults unless `slot < frame-slots`. The four facts then follow from `Sound`, which `Reachable` carries,
+  from any start.
+
+### Decision
+(c), and ORDERED after B1.7. The gates' one extra cost is that every simulation of the old lowering
+(`IRObsCorrect/**`, `OldSeg`) must prove they pass, and B1.7 deletes that code; it also discharges
+`o-table` (the compiled image is the new one) and master's three run postulates go with the old image.
+Between B1.7 and the gates the apex is `conc-trᴺ` with the four run facts as named `Owed` premises: the
+same gaps as today's postulates, stated in the apex's type instead of hidden in a `postulate` block.
+Each new-image step lemma proves its gate at the access (the frame's reservation `h-slots`, the pending
+return `RetOK`, the closure's cell are in hand there); `o-sound` then yields the facts.
+
+### Alternatives
+(a) and (b) above. (c) before B1.7: the gates' obligations on about a hundred modules about to be deleted.
