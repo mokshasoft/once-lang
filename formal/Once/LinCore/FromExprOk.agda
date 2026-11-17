@@ -58,7 +58,13 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 
 open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo; callM; refL)
+open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo; callM; refL; mapT; layerEq)
+open import Once.Surface.Map using (mp-id; mp-fst; mp-snd; mp-terminal; mp-inl; mp-inr; mp-initial; mp-apply; mp-In; mp-Out; mp-toFloat)
+open import Once.TypeCheck.Table using (mapIR)
+open import Once.IRTy using (⌊⟧T-commute; WellFormedFI; ⟦_⟧TI; μ-type; ν-type)
+open import Once.IRTy.WF using (wf-⌊⌋)
+open import Once.LinCore.FromIR fmt using (lf; ⟪⟫-TI)
+open import Once.Arith.SigOp.Builders using (i2f-info)
 open import Once.IR.Semantics.Trace using (unlinkedT)
 open import Once.IR.Semantics.Iterative using (embed)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -69,7 +75,7 @@ open import Once.LinCore.FromIR fmt using (⟪⌊⌋⟫-flat)
 open import Once.LinCore.Pass fmt ans using (ev)
 open import Once.LinCore.Casts fmt ans using (casts)
 import Once.LinCore.BridgeProof
-open import Relation.Binary.PropositionalEquality using (subst₂)
+open import Relation.Binary.PropositionalEquality using (subst₂; trans)
 open import Once.Surface.Properties using (erase-arg-usage)
 open import Once.LinCore.FromIR fmt using (⟪_⟫; grade)
 import Once.LinCore.PassTr
@@ -702,14 +708,87 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
     ok-poly : ∀ {m n} {Γ : Ctx m n} (name : String) (T : Ty m) → Goal (poly {Γ = Γ} name T)
     ok-poly name T = rel-∘ (rel-ref T (bare name)) rel-drop
 
+  -- (K: two proofs of one equation are one)
+  uip : ∀ {X : Set} {x y : X} (p q : x ≡ y) → p ≡ q
+  uip refl refl = refl
+
+  -- two casts of the input, as one
+  cast-fuse : ∀ {X Y Z B} (p : X ≡ Y) (q : Y ≡ Z) (t : LTm L X B) → cast q refl (cast p refl t) ≡ cast (trans p q) refl t
+  cast-fuse refl refl t = refl
+
+  cast-fuseᶜ : ∀ {A X Y Z} (p : X ≡ Y) (q : Y ≡ Z) (t : LTm L A X) → cast refl q (cast refl p t) ≡ cast refl (trans p q) t
+  cast-fuseᶜ refl refl t = refl
+
+  -- a relation moved along a term's equality
+  rel-≡ : ∀ {A B} {t u : LTm L ⟪ A ⟫ ⟪ B ⟫} {t′ : M.IR A B} → t ≡ u → Rel t t′ → Rel u t′
+  rel-≡ refl r = r
+
+  -- an input moved along equal types, on both sides
+  rel-dom : ∀ {X Y B : IRTy} (e : X ≡ Y) {t : LTm L ⟪ Y ⟫ ⟪ B ⟫} {t′ : M.IR Y B}
+          → Rel t t′ → Rel (cast (cong ⟪_⟫ (sym e)) refl t) (subst (λ o → M.IR o B) (sym e) t′)
+  rel-dom refl r = r
+
+  -- the core's term and the pass's, moved along the same input or result
+  subst-ev₁ : ∀ {X X′ Y} (p : X ≡ X′) {t : LTm L X Y} {c : P.IR L X Y}
+            → (∀ y → Lᶜ δ t tt y ≡ ev δ c y) → ∀ x → Lᶜ δ (cast p refl t) tt x ≡ ev δ (subst (λ Z → P.IR L Z Y) p c) x
+  subst-ev₁ refl h x = h x
+
+  subst-ev₂ : ∀ {X Y Y′} (q : Y ≡ Y′) {t : LTm L X Y} {c : P.IR L X Y}
+            → (∀ y → Lᶜ δ t tt y ≡ ev δ c y) → ∀ x → Lᶜ δ (cast refl q t) tt x ≡ ev δ (subst (λ Z → P.IR L X Z) q c) x
+  subst-ev₂ refl h x = h x
+
+  -- ★ the initial algebra's constructor and the ν's observation, from the pass's casts
+  rel-In₀ : ∀ {F} (wf : WellFormedFI F) → Rel (cast (sym (⟪⟫-TI wf (μ-type F))) refl (lIn {F = lf F})) (M.In wf)
+  rel-In₀ {F} wf = mkRel λ {x} w →
+    subst (λ m → m ≈[ W (μ-type F) ] _) (sym (subst-ev₁ (sym (⟪⟫-TI wf (μ-type F))) (λ y → refl) x)) (BP.Casts.In≈ (casts δ cs) wf w)
+
+  rel-Out₀ : ∀ {F} (wf : WellFormedFI F) → Rel (cast refl (sym (⟪⟫-TI wf (ν-type F))) (lout {F = lf F})) (M.Out wf)
+  rel-Out₀ {F} wf = mkRel λ {x} w →
+    subst (λ m → m ≈[ W (⟦ F ⟧TI (ν-type F)) ] _) (sym (subst-ev₂ (sym (⟪⟫-TI wf (ν-type F))) (λ y → refl) x)) (BP.Casts.Out≈ (casts δ cs) wf w)
+
+  -- the Spec's functor's layer, the IR's, the core's code: one cast
+  rel-In : ∀ {m} {Δ : KCtx m} (F : Fun m) (w : WFFun Δ F) → Rel (mapT {L} (mp-In F w)) (mapIR (mp-In F w))
+  rel-In F w =
+    rel-≡ (trans (cast-fuse (sym (⟪⟫-TI (wf-⌊⌋ w) (μ-type (I.eraseF F)))) (cong ⟪_⟫ (sym (⌊⟧T-commute F (μ F)))) lIn)
+                 (cong (λ e → cast e refl lIn) (uip _ _)))
+          (rel-dom (⌊⟧T-commute F (μ F)) (rel-In₀ (wf-⌊⌋ w)))
+
+  rel-Out : ∀ {m} {Δ : KCtx m} (F : Fun m) (f : G.Finite) (w : WFFun Δ F)
+          → Rel (cast refl (sym (layerEq F w (ν F f))) (lout {L} {lf (I.eraseF F)})) (Once.TypeCheck.Table.outIR F f w)
+  rel-Out F f w =
+    rel-≡ (trans (cast-fuseᶜ (sym (⟪⟫-TI (wf-⌊⌋ w) (ν-type (I.eraseF F)))) (cong ⟪_⟫ (sym (⌊⟧T-commute F (ν F f)))) lout)
+                 (cong (λ e → cast refl e lout) (uip _ _)))
+          (rel-cod (sym (⌊⟧T-commute F (ν F f))) (rel-Out₀ (wf-⌊⌋ w)))
+
+  -- ★ a structure map, entry for entry
+  rel-map : ∀ {m} {A B : Ty m} (mp : Map A B) → Rel (mapT {L} mp) (mapIR mp)
+  rel-map mp-id                         = rel-id
+  rel-map mp-fst                        = rel-fst
+  rel-map mp-snd                        = rel-snd
+  rel-map mp-terminal                   = rel-drop
+  rel-map mp-inl                        = rel-inl
+  rel-map mp-inr                        = rel-inr
+  rel-map mp-initial                    = rel-zero
+  rel-map (mp-apply A B (G.fin G.pureᶠ)) = rel-apω {π = G.pure}
+  rel-map (mp-apply A B (G.fin G.actᶠ))  = rel-cloG G.act _ (rel-∘ (rel-apω {π = G.act}) rel-ρ)
+  rel-map (mp-apply A B G.eff)          = rel-cloG G.eff _ (rel-∘ (rel-apω {π = G.eff}) rel-ρ)
+  rel-map (mp-In F w)                   = rel-In F w
+  rel-map (mp-Out F G.pureᶠ w)          = rel-Out F G.pureᶠ w
+  rel-map (mp-Out F G.actᶠ w)           = rel-cloG G.act _ (rel-∘ (rel-Out F G.actᶠ w) rel-ρ)
+  rel-map mp-toFloat                    = rel-op i2f-info
+
+  ok-lift : ∀ {m n} {Γ : Ctx m n} {A B : Ty m} {π} (mp : Map A B) → Goal (lift-morphism {Γ = Γ} {π = π} mp)
+  ok-lift {π = π} mp = rel-cloG π _ (rel-∘ (rel-map mp) rel-snd)
+
+  ok-mapp : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (mp : Map A B) (x : Expr Γ Ψ A) → Goal x → Goal (morph-app mp x)
+  ok-mapp {Γ = Γ} {Ψ} mp x rx = rel-∘ (rel-map mp) (rel-∘ rx (rel-weak am {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ SC.zeroUsage (G.Many *ᵘ Ψ)))))
+
   record Owed : Set where
     field
       o-case    : ∀ {m n} {Γ : Ctx m n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : G.Quantity} {A B C : Ty m}
                     (s : Expr Γ Ψs (A + B)) (l : Expr (Γ SC.▸ A) (qℓ ∷ Ψₗ) C) (r : Expr (Γ SC.▸ B) (qr ∷ Ψᵣ) C)
                   → Goal s → Goal l → Goal r → Goal (case' s l r)
       o-coerce  : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (p : A <: B) (f : Expr Γ Ψ A) → Goal f → Goal (coerce p f)
-      o-lift    : ∀ {m n} {Γ : Ctx m n} {A B : Ty m} {π} (mp : Map A B) → Goal (lift-morphism {Γ = Γ} {π = π} mp)
-      o-mapp    : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (mp : Map A B) (x : Expr Γ Ψ A) → Goal x → Goal (morph-app mp x)
       o-copair  : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B C : Ty m} {π}
                     (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Many π ] C)) (g : Expr Γ Ψ₂ (B ⇒[ G.mk-kind G.Many π ] C))
                   → Goal f → Goal g → Goal (copair' f g)
@@ -760,8 +839,8 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
     Lq-ok {Γ = Γ} (closure name) = ok-closure {Γ = Γ} name
     Lq-ok {Γ = Γ} (poly name T) = ok-poly {Γ = Γ} name T
     Lq-ok (closed e) = rel-∘ (Lq-ok e) rel-drop
-    Lq-ok {Γ = Γ} (lift-morphism mp) = o-lift {Γ = Γ} mp
-    Lq-ok (morph-app mp x) = o-mapp mp x (Lq-ok x)
+    Lq-ok {Γ = Γ} (lift-morphism mp) = ok-lift {Γ = Γ} mp
+    Lq-ok (morph-app mp x) = ok-mapp mp x (Lq-ok x)
     Lq-ok (comp' f g) = ok-comp f g (Lq-ok f) (Lq-ok g)
     Lq-ok (copair' f g) = o-copair f g (Lq-ok f) (Lq-ok g)
     Lq-ok (fork' f g) = ok-fork f g (Lq-ok f) (Lq-ok g)
