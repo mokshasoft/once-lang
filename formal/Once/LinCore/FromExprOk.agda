@@ -85,7 +85,7 @@ open import Once.LinCore.Grade fmt ans using (blk-coh)
 open import Once.IRTy using (IRTy; _⇛[_]_)
 import Once.IRTy as I
 open import Once.LinCore.Bridge fmt ans using (W)
-open import Once.LinCore.Bisim fmt ans using (_≈_; block≈; Bl; Bl-refl; ≈step; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop; blockR; ≈haltR)
+open import Once.LinCore.Bisim fmt ans using (_≈_; block≈; Bl; Bl-refl; ≈step; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop; blockR; ≈haltR; iter-congR)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 ------------------------------------------------------------------------
@@ -886,6 +886,19 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
               → Goal f → Goal g → Goal (copair' f g)
   ok-copair {Γ = Γ} {Ψ₁} {Ψ₂} {π = π} f g rf rg = rel-∘ (rel-cloG π _ copairB) (rel-pair am Γ Ψ₁ Ψ₂ rf rg)
 
+  -- ★ THE LOOP: the round lent to every round, against master's `Iter` of `apply`
+  loopB : ∀ {A B : IRTy}
+        → Rel (Once.LinCore.PassTr.dropl fmt ∘l lend (liter (bsnd (bev {g = act} {⟪ A ⟫} {⟪ B ⟫ ⊕t ⟪ A ⟫})) (k-snd k-bev)))
+              (M.Iter (M.apply {A} {B I.+ A} {G.act} M.∘ M.⟨ M.fst , M.snd ⟩))
+  loopB {A} {B} = mkRel λ { {F , a} {F′ , a′} (wF , wa) →
+    ≈-≈R (pair-drop (F ,_) (Lᶜ δ (Once.LinCore.PassTr.dropl fmt {Γ = L} {E = One} {A = Fn many act ⟪ A ⟫ (⟪ B ⟫ ⊕t ⟪ A ⟫)} {B = ⟪ B ⟫}) tt) (λ _ → refl))
+         (iter-congR (λ r → ≈R-≈ (wF r) (≈-sym (bind-pure (≈-trans ret-bind ret-bind))))
+                     (≈R-≈ (wF wa) (≈-sym (bind-pure (≈-trans ret-bind ret-bind))))) }
+
+  ok-loop : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m}
+              (r : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many G.act ] (B + A))) → Goal r → Goal (loop r)
+  ok-loop {Γ = Γ} {Ψ} r rr = rel-∘ (rel-cloG G.eff tt loopB) (rel-∘ rr (rel-weak am {Γ = Γ} (⊑ᵘ-*Many Ψ)))
+
   record Owed : Set where
     field
       o-coerce  : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (p : A <: B) (f : Expr Γ Ψ A) → Goal f → Goal (coerce p f)
@@ -894,8 +907,6 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
       o-ana     : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {F : Fun m} {Δₖ : KCtx m} {A : Ty m} {π₀} {φ : G.Finite}
                     (wf : WFFun Δₖ F) (c : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many (G.fin φ) ] ST.⟦ F ⟧F A))
                   → Goal c → Goal (ana {π₀ = π₀} wf c)
-      o-loop    : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m}
-                    (r : Expr Γ Ψ (A ⇒[ G.mk-kind G.Many G.act ] (B + A))) → Goal r → Goal (loop r)
 
   module _ (ck : CallsOK) (ow : Owed) where
     open Owed ow
@@ -944,4 +955,4 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
     Lq-ok (curry' f) = ok-curry f (Lq-ok f)
     Lq-ok (cata wf alg) = o-cata wf alg (Lq-ok alg)
     Lq-ok (ana wf c) = o-ana wf c (Lq-ok c)
-    Lq-ok (loop r) = o-loop r (Lq-ok r)
+    Lq-ok (loop r) = ok-loop r (Lq-ok r)
