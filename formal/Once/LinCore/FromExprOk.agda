@@ -25,7 +25,7 @@ open import Once.IR.Semantics.Trace using (FFIAnswers)
 module Once.LinCore.FromExprOk (fmt : TargetNum) (ans : FFIAnswers) where
 
 open import Agda.Builtin.Equality using (_≡_; refl)
-open import Relation.Binary.PropositionalEquality using (cong; subst)
+open import Relation.Binary.PropositionalEquality using (cong; subst; sym)
 open import Agda.Builtin.Sigma using (_,_; fst; snd)
 open import Data.Product using (_×_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
@@ -53,7 +53,8 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 
 open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq)
+open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ)
+open import Once.Surface.Properties using (erase-arg-usage)
 open import Once.LinCore.FromIR fmt using (⟪_⟫; grade)
 import Once.LinCore.PassTr
 open import Once.LinCore.PassTr fmt using (copyIn)
@@ -455,17 +456,32 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) 
       (λ v → >>=-cong (≈-trans (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ Φ) v)) (≈-sym (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ˡ Ψ₂ Φ) v)))
                       (λ _ → >>=-cong (restrict-assoc ρ am {Γ = Γ} {B = A} x′ p (⊑ᵘ-+ʳ Ψ₂ Φ) v) (λ _ → ≈-refl)))
 
+  -- a usage relabelled by the same equation on both sides
+  rel-castΦ : ∀ {m n} {Γ : Ctx m n} {Φ Φ′ : Usage n} {B : Ty m} (e : Φ ≡ Φ′)
+                {t : LTm L (Co Γ Φ) (ty B)} {t′ : M.IR ⌊ ⟦ Γ ↾ Φ ⟧ᶜ ⌋ ⌊ B ⌋}
+            → Rel t t′ → Rel (castΦ rs {Γ = Γ} e t) (subst (λ Ψ → M.IR ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ ⌊ B ⌋) e t′)
+  rel-castΦ refl r = r
+
+  -- ★ an erased binding: the body alone
+  ok-let0 : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m}
+              (e1 : Expr Γ Ψ₁ A) (e2 : Expr (Γ SC.▸ A) (G.Zero ∷ Ψ₂) B) → Goal e2 → Goal (let' e1 e2)
+  ok-let0 {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} e1 e2 g = rel-castΦ {Γ = Γ} {B = B} (sym (erase-arg-usage Ψ₂ Ψ₁)) g
+
+  -- ★ an erased argument: the function on `tt`
+  ok-app0 : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m}
+              (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Zero G.pure ] B)) (x : Expr Γ Ψ₂ A) → Goal f → Goal (app f x)
+  ok-app0 {Γ = Γ} {Ψ₁} {Ψ₂} {A} {B} f x g =
+    rel-castΦ {Γ = Γ} {B = B} (sym (erase-arg-usage Ψ₁ Ψ₂))
+      (rel-∘ (rel-apω {π = G.pure})
+        (mkRel λ w → ≈-≈R ret-bind (>>=-congR (rel g w) (λ r → ≈-≈R ret-bind (≈R-≈ (ret≈R (r , tt)) (≈-sym ret-bind))))))
+
   record Owed : Set where
     field
-      o-app0    : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m}
-                    (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind G.Zero G.pure ] B)) (x : Expr Γ Ψ₂ A) → Goal f → Goal (app f x)
       o-effApp  : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m} {q π g}
                     (f : Expr Γ Ψ₁ (A ⇒[ G.mk-kind q π ] B)) (x : Expr Γ Ψ₂ A) → Goal f → Goal x → Goal (effApp {g = g} f x)
       o-case    : ∀ {m n} {Γ : Ctx m n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : G.Quantity} {A B C : Ty m}
                     (s : Expr Γ Ψs (A + B)) (l : Expr (Γ SC.▸ A) (qℓ ∷ Ψₗ) C) (r : Expr (Γ SC.▸ B) (qr ∷ Ψᵣ) C)
                   → Goal s → Goal l → Goal r → Goal (case' s l r)
-      o-let0    : ∀ {m n} {Γ : Ctx m n} {Ψ₁ Ψ₂ : Usage n} {A B : Ty m}
-                    (e1 : Expr Γ Ψ₁ A) (e2 : Expr (Γ SC.▸ A) (G.Zero ∷ Ψ₂) B) → Goal e2 → Goal (let' e1 e2)
       o-num     : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A U k} (h : Has A U) (o : Sym U k) (e : Expr Γ Ψ (symDom {m} A k))
                   → Goal e → Goal (num h o e)
       o-coerce  : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (p : A <: B) (f : Expr Γ Ψ A) → Goal f → Goal (coerce p f)
@@ -504,7 +520,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) 
     Lq-ok (lam {q' = G.One}  {π = π} G.One  _ e) = rel-cloG π _ (Lq-ok e)
     Lq-ok (lam {q' = G.One}  {π = π} G.Many _ e) = rel-cloG π _ (Lq-ok e)
     Lq-ok (lam {q' = G.Many} {π = π} G.Many _ e) = rel-cloG π _ (Lq-ok e)
-    Lq-ok (app {q = G.Zero} f x) = o-app0 f x (Lq-ok f)
+    Lq-ok (app {q = G.Zero} f x) = ok-app0 f x (Lq-ok f)
     Lq-ok {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} f x) =
       rel-app Γ Ψ₁ Ψ₂ (G.One *ᵘ Ψ₂) (⊑ᵘ-*One Ψ₂) (Lq-ok f) (Lq-ok x)
     Lq-ok {Γ = Γ} (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} f x) =
@@ -518,7 +534,7 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) 
     Lq-ok (case' s l r) = o-case s l r (Lq-ok s) (Lq-ok l) (Lq-ok r)
     Lq-ok unit = rel-drop
     Lq-ok (absurd v) = rel-∘ rel-zero (Lq-ok v)
-    Lq-ok (let' {q = G.Zero} e1 e2) = o-let0 e1 e2 (Lq-ok e2)
+    Lq-ok (let' {q = G.Zero} e1 e2) = ok-let0 e1 e2 (Lq-ok e2)
     Lq-ok {Γ = Γ} (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.One} {A = A} e1 e2) =
       rel-∘ (Lq-ok e2) (rel-∘ (rel-bind {Γ = Γ} {A = A} G.One) (rel-let Γ Ψ₂ Ψ₁ (G.One *ᵘ Ψ₁) (⊑ᵘ-*One Ψ₁) (Lq-ok e1)))
     Lq-ok {Γ = Γ} (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = G.Many} {A = A} e1 e2) =
