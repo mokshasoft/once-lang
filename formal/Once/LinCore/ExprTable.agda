@@ -46,7 +46,7 @@ open import Once.LinCore.FromIR fmt using (grade)
 open import Relation.Binary.PropositionalEquality using (cong; subst)
 open import Once.LinCore.FromIR fmt using (⟪_⟫)
 open import Once.LinCore.Bridge fmt ans using (W)
-open import Once.LinCore.Bisim fmt ans using (_≈_; ≈-refl; ≈-trans; ≈-sym; ret≈R; ≈-≈R; ≈R-≈; >>=-congR; >>=-cong)
+open import Once.LinCore.Bisim fmt ans using (_≈_; _≈[_]_; ≈-refl; ≈-trans; ≈-sym; ret≈R; ≈-≈R; ≈R-≈; >>=-congR; >>=-cong)
 open import Once.LinCore.FromExprOk fmt ans using (Pure; PureI; bind-pure; ret-bind; module Rel; module Main)
 open import Once.LinCore.FromExpr fmt using (Rs; Lq; Lq-blk)
 open import Once.CompileSrc using (CompiledSrc; csName; csType; csSrc)
@@ -61,6 +61,12 @@ open import Relation.Binary.PropositionalEquality using (subst₂)
 open import Once.CompileSrc using (Src; src; srcIR; expr; am)
 open import Once.Denotation.SurfaceRefs using (Refs)
 open import Once.Denotation.DenotTrace using (callEnv)
+open import Once.Denotation.Program using (IRFun; irFun; tableCalls; tableEnv-at)
+open import Once.IR.Semantics.Trace using (unlinkedT)
+open import Once.IR.Semantics.Iterative using (embed)
+open import Once.LinCore.Grade fmt ans using (blk-coh)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Product using (_×_)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.IRTy using (IRTy)
 
@@ -338,3 +344,103 @@ open ETProg public
 exprTable : List CompiledSrc → ETProg
 exprTable []       = etProg ε (λ _ _ _ _ → nothing)
 exprTable (c ∷ cs) = etProg (defs (exprTable cs) ▸ bodyOf (rs (exprTable cs)) c) (extendR (rs (exprTable cs)) c)
+
+------------------------------------------------------------------------
+-- 5. ★ THE TABLE'S TWO MEANINGS: a resolved call is master's lookup, a key
+-- missing at every grade is master's `unlinkedT`. By induction on the table,
+-- each entry deciding as both lookups do (`Table.env-ok`'s shape).
+------------------------------------------------------------------------
+
+-- the entry master's table has for a source (`Compile.irFunOf` by `dc-eq`)
+irE : CompiledSrc → IRFun
+irE c = irFun (csName c) ⌊ dcDom (csType c) ⌋ ⌊ dcCod (csType c) ⌋ (dcIR (csType c) (srcIR (csSrc c)))
+
+tblOf : List CompiledSrc → List IRFun
+tblOf = Data.List.map irE
+
+record TableOK (t : ETProg) (tbl : List IRFun) : Set where
+  field
+    hit≈  : ∀ {f A B g l} {p : L t ∋[ l ] sg once g One ⟪ A ⟫ ⟪ B ⟫} → rs t f A B g ≡ just (l , p)
+          → ∀ {a a′} → W A a a′ → up g (lookup ⟦ defs t ⟧D p tt a) ≈[ W B ] tableCalls fmt ans tbl f A B a′
+    miss≡ : ∀ {f A B} → (∀ g → rs t f A B g ≡ nothing) → ∀ a′ → tableCalls fmt ans tbl f A B a′ ≡ embed unlinkedT
+
+-- each body's references related at the table before it, unoptimized (the program's obligation)
+BodiesOK : List CompiledSrc → Set
+BodiesOK []       = Data.Unit.⊤
+BodiesOK (c ∷ cs) = BodiesOK cs × (Src.opt (csSrc c) ≡ Data.Bool.false)
+                  × Refs (λ _ _ → Data.Unit.⊤) (Main.RefOK (rs (exprTable cs)) ⟦ defs (exprTable cs) ⟧D (tableCalls fmt ans (tblOf cs)) (am (csSrc c)))
+                         (Main.RefOK (rs (exprTable cs)) ⟦ defs (exprTable cs) ⟧D (tableCalls fmt ans (tblOf cs)) (am (csSrc c)))
+                         (expr (csSrc c))
+
+private
+  ≟Gr-refl : ∀ g → (g ≟Gr g) ≡ yes refl
+  ≟Gr-refl act = refl
+  ≟Gr-refl eff = refl
+
+  just≢nothing : ∀ {X : Set} {x : X} → just x ≡ nothing → ⊥
+  just≢nothing ()
+
+  map-nothing′ : ∀ {X Y : Set} {f : X → Y} (m : Maybe X) → Data.Maybe.map f m ≡ nothing → m ≡ nothing
+  map-nothing′ nothing refl = refl
+
+  -- a body at its grade, as its computation
+  up-Lg : ∀ {L} (δ : Env L) g {X A B} (b : LTm L (X ⊗t A) B) (γ : Gd g b) x a → up g (Lg δ g b γ tt (x , a)) ≈ Lᶜ δ b tt (x , a)
+  up-Lg δ act b γ x a = ≈-sym (blk-coh δ γ tt (x , a))
+  up-Lg δ eff b γ x a = ≈-refl
+
+module Entry (cs : List CompiledSrc) (ok : TableOK (exprTable cs) (tblOf cs)) (c : CompiledSrc)
+             (opt≡ : Src.opt (csSrc c) ≡ Data.Bool.false)
+             (refs : Refs (λ _ _ → Data.Unit.⊤) (Main.RefOK (rs (exprTable cs)) ⟦ defs (exprTable cs) ⟧D (tableCalls fmt ans (tblOf cs)) (am (csSrc c)))
+                          (Main.RefOK (rs (exprTable cs)) ⟦ defs (exprTable cs) ⟧D (tableCalls fmt ans (tblOf cs)) (am (csSrc c)))
+                          (expr (csSrc c))) where
+  t = exprTable cs
+  δ = ⟦ defs t ⟧D
+  Tc = csType c
+  δ′ = ⟦ defs t ▸ bodyOf (rs t) c ⟧D
+  open TableOK ok
+
+  -- ★ the entry's body against master's
+  body≈ : ∀ {a a′} → W ⌊ dcDom Tc ⌋ a a′
+        → up (dcGr Tc) (lookup δ′ here tt a) ≈[ W ⌊ dcCod Tc ⌋ ] Once.Denotation.DenotTrace.evalᴰ fmt (callEnv (tableCalls fmt ans (tblOf cs)) ans) (dcIR Tc (srcIR (csSrc c))) a′
+  body≈ {a} w =
+    ≈-≈R (≈-trans (up-Lg δ (dcGr Tc) (dc Tc (val (rs t) (csSrc c)) ∘l lul) (dcGd Tc (k-val (rs t) (csSrc c))) tt a) ret-bind)
+         (Rel.rel (DefRel.rel-dc δ (callEnv (tableCalls fmt ans (tblOf cs)) ans) Tc (ValRel.rel-val (rs t) δ (tableCalls fmt ans (tblOf cs)) (csSrc c) opt≡ refs)) w)
+
+  hit-yes : ∀ {f A B g l} {p′ : (L t ▸ sgOf c) ∋[ l ] sg once g One ⟪ A ⟫ ⟪ B ⟫} (n : csName c ≡ f) (p : ⌊ dcDom Tc ⌋ ≡ A) (q : ⌊ dcCod Tc ⌋ ≡ B) (r : dcGr Tc ≡ g)
+          → extendR-at (rs t) c f A B g (yes n) (yes p) (yes q) (yes r) ≡ just (l , p′) → ∀ {a a′} → W A a a′
+          → up g (lookup δ′ p′ tt a) ≈[ W B ] tableEnv-at fmt ans (irE c) (tblOf cs) f A B (yes n) (yes p) (yes q) a′
+  hit-yes n refl refl refl refl w = body≈ w
+
+  weak-hit : ∀ {f A B g l} {p′ : (L t ▸ sgOf c) ∋[ l ] sg once g One ⟪ A ⟫ ⟪ B ⟫} (m : Maybe (Σ ℕ λ l → L t ∋[ l ] sg once g One ⟪ A ⟫ ⟪ B ⟫))
+           → rs t f A B g ≡ m → weakR m ≡ just (l , p′) → ∀ {a a′} → W A a a′
+           → up g (lookup δ′ p′ tt a) ≈[ W B ] tableCalls fmt ans (tblOf cs) f A B a′
+  weak-hit (just (l₀ , p₀)) e refl w = hit≈ e w
+
+  hit-at : ∀ {f A B g l} {p′ : (L t ▸ sgOf c) ∋[ l ] sg once g One ⟪ A ⟫ ⟪ B ⟫}
+             d₁ d₂ d₃ (d₄ : Dec (dcGr Tc ≡ g))
+         → extendR-at (rs t) c f A B g d₁ d₂ d₃ d₄ ≡ just (l , p′) → ∀ {a a′} → W A a a′
+         → up g (lookup δ′ p′ tt a) ≈[ W B ] tableEnv-at fmt ans (irE c) (tblOf cs) f A B d₁ d₂ d₃ a′
+  hit-at (yes n) (yes p) (yes q) (yes r) eq w = hit-yes n p q r eq w
+  hit-at (yes n) (yes p) (yes q) (no _)  ()
+  hit-at {f} {A} {B} {g} (yes _) (yes _) (no _) _ eq w = weak-hit (rs t f A B g) refl eq w
+  hit-at {f} {A} {B} {g} (yes _) (no _)  _      _ eq w = weak-hit (rs t f A B g) refl eq w
+  hit-at {f} {A} {B} {g} (no _)  _       _      _ eq w = weak-hit (rs t f A B g) refl eq w
+
+  miss-at : ∀ {f A B} d₁ d₂ d₃ → (∀ g → extendR-at (rs t) c f A B g d₁ d₂ d₃ (dcGr Tc ≟Gr g) ≡ nothing)
+          → ∀ a′ → tableEnv-at fmt ans (irE c) (tblOf cs) f A B d₁ d₂ d₃ a′ ≡ embed unlinkedT
+  miss-at (yes n) (yes p) (yes q) h a′ =
+    ⊥-elim (just≢nothing (subst (λ d → extendR-at (rs t) c _ _ _ (dcGr Tc) (yes n) (yes p) (yes q) d ≡ nothing) (≟Gr-refl (dcGr Tc)) (h (dcGr Tc))))
+  miss-at {f} {A} {B} (yes _) (yes _) (no _) h a′ = miss≡ (λ g → map-nothing′ (rs t f A B g) (h g)) a′
+  miss-at {f} {A} {B} (yes _) (no _)  _      h a′ = miss≡ (λ g → map-nothing′ (rs t f A B g) (h g)) a′
+  miss-at {f} {A} {B} (no _)  _       _      h a′ = miss≡ (λ g → map-nothing′ (rs t f A B g) (h g)) a′
+
+  entry-ok : TableOK (exprTable (c ∷ cs)) (tblOf (c ∷ cs))
+  entry-ok = record
+    { hit≈  = λ {f} {A} {B} {g} eq w → hit-at (csName c ≟ᶜ f) (⌊ dcDom Tc ⌋ ≟IRTy A) (⌊ dcCod Tc ⌋ ≟IRTy B) (dcGr Tc ≟Gr g) eq w
+    ; miss≡ = λ {f} {A} {B} h a′ → miss-at (csName c ≟ᶜ f) (⌊ dcDom Tc ⌋ ≟IRTy A) (⌊ dcCod Tc ⌋ ≟IRTy B) h a′
+    }
+
+-- ★ THE TABLE: its labels against master's lookup
+table-ok : ∀ (srcs : List CompiledSrc) → BodiesOK srcs → TableOK (exprTable srcs) (tblOf srcs)
+table-ok []       _ = record { hit≈ = λ () ; miss≡ = λ _ _ → refl }
+table-ok (c ∷ cs) (bs , opt≡ , refs) = Entry.entry-ok cs (table-ok cs bs) c opt≡ refs
