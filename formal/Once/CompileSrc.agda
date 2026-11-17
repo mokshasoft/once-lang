@@ -48,7 +48,24 @@ open import Once.Compile
   using ( validateMain
         ; compileFunBody-aux; compileFunBody; compileFun-main-aux; compileFun-aux; compileFun
         ; compileFunBodyI-at; compileFunBodyI-aux; compileFunBodyI; compileFunI-main-aux; compileFunI-aux; compileFunI
-        ; compileFunM )
+        ; compileFunM
+        ; CScope; ctop; cpolys; extendSig; extendScope; addEntry; declImps; firstChecking; resolveFunType; checkOK
+        ; CompiledFun; mkCompiledFun; consCF; compileEntries; emptyCScope; compileResolvedModule-aux; compileResolvedModule
+        ; ce-fun; ce-prim; ce-prim-conc; ce-mono; ce-mono-p; ce-mono-ir; ce-poly-p; ce-poly; ce-poly-main )
+open import Once.Parser using (FunInfo; PolyFunInfo; Entry; e-fun; e-poly; module FunInfo; module PolyFunInfo; extractFunctions)
+open import Once.Parser.Module.Core using (Resolved)
+open import Once.TypeCheck.Classify using (ctxAt)
+open import Once.Type.Instance using (rigidOf; kindsOf; arityOf)
+open import Once.Principal using (below)
+open import Once.Functor.Decide using (isConcrete?)
+open import Once.Type.Honest using (HonestFFI; honest?)
+open import Once.Type.Concrete using (IsConcrete)
+open import Once.Spec.Type using (Ty)
+open import Once.Spec.Name using (bare)
+import Data.String.Properties as SProp
+open import Data.List using (List; [])
+import Data.List
+open import Relation.Binary.PropositionalEquality using (trans)
 
 ------------------------------------------------------------------------
 -- 1. A DEFINITION'S SOURCE, and its IR.
@@ -203,3 +220,158 @@ compileFunM-src : ∀ mt m doOpt ctx polys impsOf name ty expr
                 → compileFunM mt m doOpt ctx polys impsOf name ty expr ≡ mapSrc (srcM mt m doOpt ctx polys impsOf name ty expr)
 compileFunM-src (just _) = fun-src
 compileFunM-src nothing  = funI-src
+
+------------------------------------------------------------------------
+-- 4. A MODULE'S DEFINITIONS, with their sources (clause for clause
+-- `compileEntries`), and `Compile`'s list their IR.
+------------------------------------------------------------------------
+
+record CompiledSrc : Set where
+  constructor mkCompiledSrc
+  field
+    csName : CanonicalName
+    csType : Type
+    csSrc  : Src csType
+open CompiledSrc public
+
+toCF : CompiledSrc → CompiledFun
+toCF c = mkCompiledFun (csName c) (csType c) (srcIR (csSrc c))
+
+consCS : CompiledSrc → String ⊎ List CompiledSrc → String ⊎ List CompiledSrc
+consCS c (inj₁ err) = inj₁ err
+consCS c (inj₂ cs)  = inj₂ (c ∷ cs)
+
+mapCF : String ⊎ List CompiledSrc → String ⊎ List CompiledFun
+mapCF = Data.Sum.map₂ (Data.List.map toCF)
+
+srcEntries   : AllocMode → Bool → CScope → List Entry → String ⊎ List CompiledSrc
+se-fun       : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → Bool → String ⊎ List CompiledSrc
+se-prim      : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → Maybe Type → String ⊎ List CompiledSrc
+se-prim-conc : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → (ty : Type)
+             → Maybe (IsConcrete ty) → Maybe (HonestFFI ty) → String ⊎ List CompiledSrc
+se-mono      : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → String ⊎ Type → String ⊎ List CompiledSrc
+se-mono-p    : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → (ty : Type) → Maybe Type → String ⊎ List CompiledSrc
+se-mono-src  : AllocMode → Bool → CScope → (fi : FunInfo) → List Entry → (ty : Type) → String ⊎ Src ty → String ⊎ List CompiledSrc
+se-poly-p    : AllocMode → Bool → CScope → (pfi : PolyFunInfo) → List Entry → Maybe (Ty (arityOf (PolyFunInfo.pfunType pfi))) → String ⊎ List CompiledSrc
+se-poly      : AllocMode → Bool → CScope → (pfi : PolyFunInfo) → List Entry → String ⊎ ⊤ → String ⊎ List CompiledSrc
+se-poly-main : AllocMode → Bool → CScope → (pfi : PolyFunInfo) → List Entry → Dec (PolyFunInfo.pfunName pfi ≡ "main") → String ⊎ List CompiledSrc
+
+srcEntries m doOpt sc []                = inj₂ []
+srcEntries m doOpt sc (e-fun fi ∷ es)   = se-fun m doOpt sc fi es (FunInfo.funIsPrimitive fi)
+srcEntries m doOpt sc (e-poly pfi ∷ es) = se-poly-main m doOpt sc pfi es (PolyFunInfo.pfunName pfi SProp.≟ "main")
+
+se-poly-main m doOpt sc pfi es (yes _) =
+  inj₁ "main must be usable as Eff Unit Unit (its type below it), but its type is polymorphic or not concrete"
+se-poly-main m doOpt sc pfi es (no _) =
+  se-poly-p m doOpt sc pfi es
+    (firstChecking (ctxAt (kindsOf (PolyFunInfo.pfunType pfi)) (ctop sc) (cpolys sc)) (PolyFunInfo.pfunBody pfi) (below (rigidOf (PolyFunInfo.pfunType pfi))))
+
+se-fun m doOpt sc fi es true  = se-prim m doOpt sc fi es (FunInfo.funType fi)
+se-fun m doOpt sc fi es false =
+  se-mono m doOpt sc fi es (resolveFunType (ctop sc) (cpolys sc) (FunInfo.funType fi) (FunInfo.funBody fi))
+
+se-prim m doOpt sc fi es nothing   = inj₁ ("FFI signature without a type: " ++ FunInfo.funName fi)
+se-prim m doOpt sc fi es (just ty) = se-prim-conc m doOpt sc fi es ty (isConcrete? ty) (honest? ty)
+se-prim-conc m doOpt sc fi es ty nothing _ =
+  inj₁ ("FFI signature `" ++ FunInfo.funName fi ++ "` is not concrete: " ++ showType ty)
+se-prim-conc m doOpt sc fi es ty (just _) nothing =
+  inj₁ ("FFI signature `" ++ FunInfo.funName fi ++ "` hides an effect: " ++ showType ty)
+se-prim-conc m doOpt sc fi es ty (just conc) (just _) =
+  srcEntries m doOpt (extendSig sc (FunInfo.funName fi) ty) es
+
+se-mono m doOpt sc fi es (inj₁ err) = inj₁ err
+se-mono m doOpt sc fi es (inj₂ ty)  =
+  se-mono-p m doOpt sc fi es ty (firstChecking (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (FunInfo.funBody fi) (below ty))
+se-mono-p m doOpt sc fi es ty (just X) =
+  inj₁ ("`" ++ FunInfo.funName fi ++ "` is more precise than its signature " ++ showType ty ++ ": the body also checks at "
+        ++ showType X ++ ". A signature states the body's own type: write the more precise one, or give the body"
+        ++ " the wider type with an annotation, " ++ FunInfo.funName fi ++ " = (... : " ++ showType ty ++ ")")
+se-mono-p m doOpt sc fi es ty nothing =
+  se-mono-src m doOpt sc fi es ty
+    (srcM (FunInfo.funType fi) m doOpt (ctop sc) (cpolys sc) (declImps (CScope.ctele sc)) (FunInfo.funName fi) ty (FunInfo.funBody fi))
+se-mono-src m doOpt sc fi es ty (inj₁ err) = inj₁ err
+se-mono-src m doOpt sc fi es ty (inj₂ s)   =
+  consCS (mkCompiledSrc (bare (FunInfo.funName fi)) ty s)
+         (srcEntries m doOpt (extendScope sc (FunInfo.funName fi) ty) es)
+
+se-poly-p m doOpt sc pfi es (just X) =
+  inj₁ ("`" ++ PolyFunInfo.pfunName pfi ++ "` is more precise than its schema: the body also checks at " ++ showType X
+        ++ ". A signature states the body's own type: write the more precise one")
+se-poly-p m doOpt sc pfi es nothing =
+  se-poly m doOpt sc pfi es
+    (checkOK (TE.checkElab (ctxAt (kindsOf (PolyFunInfo.pfunType pfi)) (ctop sc) (cpolys sc)) (PolyFunInfo.pfunBody pfi) (rigidOf (PolyFunInfo.pfunType pfi))))
+se-poly m doOpt sc pfi es (inj₁ err) = inj₁ ("Type error in " ++ PolyFunInfo.pfunName pfi ++ ": " ++ err)
+se-poly m doOpt sc pfi es (inj₂ _)   = srcEntries m doOpt (addEntry sc pfi) es
+
+-- ★ `Compile`'s definitions are the sources' IR, clause for clause
+consCS-cf : ∀ c r → consCF (toCF c) (mapCF r) ≡ mapCF (consCS c r)
+consCS-cf c (inj₁ err) = refl
+consCS-cf c (inj₂ cs)  = refl
+
+entries-src   : ∀ m doOpt sc es → compileEntries m doOpt sc es ≡ mapCF (srcEntries m doOpt sc es)
+fun-e-src     : ∀ m doOpt sc fi es b → ce-fun m doOpt sc fi es b ≡ mapCF (se-fun m doOpt sc fi es b)
+prim-e-src    : ∀ m doOpt sc fi es mt → ce-prim m doOpt sc fi es mt ≡ mapCF (se-prim m doOpt sc fi es mt)
+conc-e-src    : ∀ m doOpt sc fi es ty c h → ce-prim-conc m doOpt sc fi es ty c h ≡ mapCF (se-prim-conc m doOpt sc fi es ty c h)
+mono-e-src    : ∀ m doOpt sc fi es r → ce-mono m doOpt sc fi es r ≡ mapCF (se-mono m doOpt sc fi es r)
+mono-p-e-src  : ∀ m doOpt sc fi es ty x → ce-mono-p m doOpt sc fi es ty x ≡ mapCF (se-mono-p m doOpt sc fi es ty x)
+mono-ir-e-src : ∀ m doOpt sc fi es ty r → ce-mono-ir m doOpt sc fi es ty (mapSrc r) ≡ mapCF (se-mono-src m doOpt sc fi es ty r)
+poly-p-e-src  : ∀ m doOpt sc pfi es x → ce-poly-p m doOpt sc pfi es x ≡ mapCF (se-poly-p m doOpt sc pfi es x)
+poly-e-src    : ∀ m doOpt sc pfi es r → ce-poly m doOpt sc pfi es r ≡ mapCF (se-poly m doOpt sc pfi es r)
+main-e-src    : ∀ m doOpt sc pfi es d → ce-poly-main m doOpt sc pfi es d ≡ mapCF (se-poly-main m doOpt sc pfi es d)
+
+entries-src m doOpt sc []                = refl
+entries-src m doOpt sc (e-fun fi ∷ es)   = fun-e-src m doOpt sc fi es (FunInfo.funIsPrimitive fi)
+entries-src m doOpt sc (e-poly pfi ∷ es) = main-e-src m doOpt sc pfi es (PolyFunInfo.pfunName pfi SProp.≟ "main")
+
+main-e-src m doOpt sc pfi es (yes _) = refl
+main-e-src m doOpt sc pfi es (no _)  =
+  poly-p-e-src m doOpt sc pfi es
+    (firstChecking (ctxAt (kindsOf (PolyFunInfo.pfunType pfi)) (ctop sc) (cpolys sc)) (PolyFunInfo.pfunBody pfi) (below (rigidOf (PolyFunInfo.pfunType pfi))))
+
+fun-e-src m doOpt sc fi es true  = prim-e-src m doOpt sc fi es (FunInfo.funType fi)
+fun-e-src m doOpt sc fi es false =
+  mono-e-src m doOpt sc fi es (resolveFunType (ctop sc) (cpolys sc) (FunInfo.funType fi) (FunInfo.funBody fi))
+
+prim-e-src m doOpt sc fi es nothing   = refl
+prim-e-src m doOpt sc fi es (just ty) = conc-e-src m doOpt sc fi es ty (isConcrete? ty) (honest? ty)
+conc-e-src m doOpt sc fi es ty nothing _ = refl
+conc-e-src m doOpt sc fi es ty (just _) nothing = refl
+conc-e-src m doOpt sc fi es ty (just conc) (just _) = entries-src m doOpt (extendSig sc (FunInfo.funName fi) ty) es
+
+mono-e-src m doOpt sc fi es (inj₁ err) = refl
+mono-e-src m doOpt sc fi es (inj₂ ty)  =
+  mono-p-e-src m doOpt sc fi es ty (firstChecking (ctxWithImportsAndPolys (ctop sc) (cpolys sc)) (FunInfo.funBody fi) (below ty))
+mono-p-e-src m doOpt sc fi es ty (just X) = refl
+mono-p-e-src m doOpt sc fi es ty nothing =
+  trans (cong (ce-mono-ir m doOpt sc fi es ty)
+              (compileFunM-src (FunInfo.funType fi) m doOpt (ctop sc) (cpolys sc) (declImps (CScope.ctele sc)) (FunInfo.funName fi) ty (FunInfo.funBody fi)))
+        (mono-ir-e-src m doOpt sc fi es ty
+              (srcM (FunInfo.funType fi) m doOpt (ctop sc) (cpolys sc) (declImps (CScope.ctele sc)) (FunInfo.funName fi) ty (FunInfo.funBody fi)))
+mono-ir-e-src m doOpt sc fi es ty (inj₁ err) = refl
+mono-ir-e-src m doOpt sc fi es ty (inj₂ s)   =
+  trans (cong (consCF (mkCompiledFun (bare (FunInfo.funName fi)) ty (srcIR s)))
+              (entries-src m doOpt (extendScope sc (FunInfo.funName fi) ty) es))
+        (consCS-cf (mkCompiledSrc (bare (FunInfo.funName fi)) ty s) (srcEntries m doOpt (extendScope sc (FunInfo.funName fi) ty) es))
+
+poly-p-e-src m doOpt sc pfi es (just X) = refl
+poly-p-e-src m doOpt sc pfi es nothing =
+  poly-e-src m doOpt sc pfi es
+    (checkOK (TE.checkElab (ctxAt (kindsOf (PolyFunInfo.pfunType pfi)) (ctop sc) (cpolys sc)) (PolyFunInfo.pfunBody pfi) (rigidOf (PolyFunInfo.pfunType pfi))))
+poly-e-src m doOpt sc pfi es (inj₁ err) = refl
+poly-e-src m doOpt sc pfi es (inj₂ _)   = entries-src m doOpt (addEntry sc pfi) es
+
+-- a module's definitions, with their sources (`compileResolvedModule`)
+srcModule-aux : AllocMode → Bool → Resolved → String ⊎ List Entry → String ⊎ List CompiledSrc
+srcModule-aux m doOpt mod (inj₁ err) = inj₁ err
+srcModule-aux m doOpt mod (inj₂ es)  = srcEntries m doOpt emptyCScope es
+
+srcModule : AllocMode → Bool → Resolved → String ⊎ List CompiledSrc
+srcModule m doOpt mod = srcModule-aux m doOpt mod (extractFunctions mod)
+
+module-aux-src : ∀ m doOpt mod r → compileResolvedModule-aux m doOpt mod r ≡ mapCF (srcModule-aux m doOpt mod r)
+module-aux-src m doOpt mod (inj₁ err) = refl
+module-aux-src m doOpt mod (inj₂ es)  = entries-src m doOpt emptyCScope es
+
+-- ★ a module's compiled definitions are its sources' IR
+module-src : ∀ m doOpt mod → compileResolvedModule m doOpt mod ≡ mapCF (srcModule m doOpt mod)
+module-src m doOpt mod = module-aux-src m doOpt mod (extractFunctions mod)
