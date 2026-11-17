@@ -317,7 +317,8 @@ extendR-at : ∀ {L} (rs : Rs L) (c : CompiledSrc) f A B g
 extendR-at {L} rs c f A B g (yes _) (yes p) (yes q) (yes r) =
   just (len L , subst₂ (λ X Y → (L ▸ sgOf c) ∋[ len L ] sg once g One ⟪ X ⟫ ⟪ Y ⟫) p q
                        (subst (λ g′ → (L ▸ sgOf c) ∋[ len L ] sg once g′ One (ty (dcDom (csType c))) (ty (dcCod (csType c)))) r here))
-extendR-at rs c f A B g (yes _) (yes _) (yes _) (no _) = weakR (rs f A B g)
+-- (the name and the types are this definition's, which master's lookup stops at: another grade misses)
+extendR-at rs c f A B g (yes _) (yes _) (yes _) (no _) = nothing
 extendR-at rs c f A B g (yes _) (yes _) (no _)  _      = weakR (rs f A B g)
 extendR-at rs c f A B g (yes _) (no _)  _       _      = weakR (rs f A B g)
 extendR-at rs c f A B g (no _)  _       _       _      = weakR (rs f A B g)
