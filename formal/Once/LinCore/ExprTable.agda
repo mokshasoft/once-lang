@@ -63,6 +63,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (subst₂)
 open import Once.CompileSrc using (Src; src; srcIR; expr; am)
 open import Once.Denotation.SurfaceRefs using (Refs)
+open import Once.Adequacy.ElaborateLinked using (Refs-map)
 open import Once.Denotation.DenotTrace using (callEnv)
 open import Once.Denotation.Program using (IRFun; irFun; tableCalls; tableEnv-at)
 open import Once.IR.Semantics.Trace using (unlinkedT)
@@ -515,3 +516,22 @@ module RefRel (t : ETProg) (tbl : List IRFun) (ok : TableOK t tbl) (am₀ : M.Al
   rel-ref′ T@ST.Int x gr = rel-∘ (rel-call′ (bare x) Once.IRTy.Unit ⌊ T ⌋ act gr) (RelGen.rel-drop δ _ am₀)
   rel-ref′ T@ST.Float x gr = rel-∘ (rel-call′ (bare x) Once.IRTy.Unit ⌊ T ⌋ act gr) (RelGen.rel-drop δ _ am₀)
   rel-ref′ T@(ST.var _) x gr = rel-∘ (rel-call′ (bare x) Once.IRTy.Unit ⌊ T ⌋ act gr) (RelGen.rel-drop δ _ am₀)
+
+------------------------------------------------------------------------
+-- 7. ★ THE PROGRAM'S OBLIGATION: each body unoptimized, its references
+-- graded at the table before it (D457); from it, `BodiesOK`.
+------------------------------------------------------------------------
+
+GradedBodies : List CompiledSrc → Set
+GradedBodies []       = Data.Unit.⊤
+GradedBodies (c ∷ cs) = GradedBodies cs × (Src.opt (csSrc c) ≡ Data.Bool.false)
+                      × Refs (λ _ _ → Data.Unit.⊤) (GradedRef (rs (exprTable cs))) (GradedRef (rs (exprTable cs))) (expr (csSrc c))
+
+bodies-ok : ∀ (srcs : List CompiledSrc) → GradedBodies srcs → BodiesOK srcs
+bodies-ok []       _                  = Data.Unit.tt
+bodies-ok (c ∷ cs) (gs , opt≡ , refs) =
+  bodies-ok cs gs , opt≡ ,
+  Refs-map (λ h → h)
+           (λ {A} {x} g → RefRel.rel-ref′ (exprTable cs) (tblOf cs) (table-ok cs (bodies-ok cs gs)) (am (csSrc c)) A x g)
+           (λ {A} {x} g → RefRel.rel-ref′ (exprTable cs) (tblOf cs) (table-ok cs (bodies-ok cs gs)) (am (csSrc c)) A x g)
+           (expr (csSrc c)) refs
