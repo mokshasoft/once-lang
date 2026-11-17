@@ -152,6 +152,30 @@ Every entry that sets or changes a rule also updates the decision state in the s
 — so the state, read with `GOAL.md`, is the one place the current intent is found. An entry that
 contradicts `GOAL.md` changes `GOAL.md` openly or is wrong.
 
+**The analysis document.** Steps 1–2 are presented as one document, written for a reader who has
+not followed the branch. It opens with a summary that can be read on its own, before any detail:
+
+1. *Facts*, as a list of `key: value` lines, one fact per line, with commit hashes:
+   - base: `master` and its hash;
+   - branch: its name, its head hash, and its number of commits on the base;
+   - uncommitted work, if any, and where it is;
+   - plans: each one the branch touches, and whether it is finished or open;
+   - the Spec: changed or unchanged, and its size in files and lines;
+   - gates: each one run, with its result and the commit it ran on; a gate not run yet says so;
+   - asked of the reader: each approval or decision wanted, as one line each.
+2. *What the branch does*, in plain language, in one short paragraph: the problem, the change, and
+   why it is the right one. Name no rule, module or constructor. Write it so someone who knows the
+   language but not its proofs can follow it.
+3. *What changes for a programmer*, as a short list: programs newly accepted, newly rejected, or
+   with a different meaning or cost. If nothing changes, say so in one line.
+4. *Verdict*: the number of shims (normally none), and anything left open.
+
+The detail follows in the order of §1: the Spec hunk by hunk, the tests, top-level modules, trust
+base, islands, extracted cone, cost, and plans. Use tables and short lists rather than prose
+paragraphs. Every number in the summary also appears in the detail with its source. A finding that
+has been fixed is removed from the open findings, or listed as fixed with its fix; the document
+always describes the branch as it is now, not how it got there.
+
 **Steps 1–2 are presented for approval. Nothing below runs on an unapproved branch.**
 
 ## 3. Rebase on a fresh master
