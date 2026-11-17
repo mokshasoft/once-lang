@@ -1,0 +1,43 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Plan 0.151: `apply`, `In` and `Out` are structure maps of the table, usable
+-- bare like `fst` or `inl` (`c-map`), and `apply`/`Out` from a given domain at
+-- their least codomain (`d-map`). Before 0.151 they had rules only applied to
+-- an argument.
+--
+--   run (inc, 4)  = (4 + 1) * 2       = 10
+--   hd (nats 3)   = fst (Out (nats 3)) = 3
+--   total (wrap (inr (5, wrap (inl unit)))) = 5
+--   10 + 3 + 5 = 18
+--
+-- Expected: exit code 18.
+
+import I.Linux.Syscalls as S
+
+inc : Int -> Int
+inc x = x + 1
+
+-- `apply` from the domain `(Int -> Int) * Int`.
+run : (Int -> Int) * Int -> Int
+run = (\y -> y * 2) . apply
+
+nats : Int -> Nu (K Int * Id)
+nats = ana (\s -> (s, s + 1))
+
+-- `Out` from the domain `Nu (K Int * Id)`.
+hd : Nu (K Int * Id) -> Int
+hd = fst . Out
+
+-- Bare `In`.
+wrap : Unit + Int * Mu (K Unit + K Int * Id) -> Mu (K Unit + K Int * Id)
+wrap = In
+
+sumAlg : Unit + Int * Int -> Int
+sumAlg = case (\_ -> 0) (\p -> fst p + snd p)
+
+total : Mu (K Unit + K Int * Id) -> Int
+total = cata sumAlg
+
+main : Act Unit Void
+main = exit@S (run (inc, 4) + hd (nats 3) + total (wrap (inr (5, wrap (inl unit)))))

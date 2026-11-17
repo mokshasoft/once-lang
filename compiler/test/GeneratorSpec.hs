@@ -28,6 +28,7 @@ generatorTests = testGroup "Generators & inference"
   [ generatorTypingTests
   , inferenceTests
   , inferenceLimitTests
+  , syntaxDirectedTests
   , fixtureTests
   ]
 
@@ -101,6 +102,73 @@ inferenceLimitTests = testGroup "no signature: the synthesized type (D323)"
   , accepts "an applied generator synthesizes"              [ "f = id 7" ]
   , accepts "with a signature, a lambda is accepted"        [ "f : Int -> Int", "f x = x + 1" ]
   ]
+
+------------------------------------------------------------------------
+-- Plan 0.151: one rule per form. What the table-driven rules accept that the
+-- per-generator rules did not, and the two texts they reject.
+------------------------------------------------------------------------
+
+syntaxDirectedTests :: TestTree
+syntaxDirectedTests = testGroup "plan 0.151: one rule per form"
+  [ accepts "bare `apply` is a morphism (c-map)"
+      [ "f : ((Int -> Int) * Int) -> Int", "f = apply" ]
+  , accepts "bare `apply` checked at grade eff (c-map, every grade)"
+      [ "useE : Eff ((Int -> Int) * Int) Int -> Eff ((Int -> Int) * Int) Int"
+      , "useE k = k"
+      , "f : Eff ((Int -> Int) * Int) Int"
+      , "f = useE apply"
+      ]
+  , accepts "bare `apply` on an effectful arrow: its codomain is the suspension"
+      [ "f : ((Act Int Unit) * Int) -> Act Unit Unit", "f = apply" ]
+  , accepts "`apply` from a given domain (d-map)"
+      [ "f : ((Int -> Int) * Int) -> Int", "f = (\\y -> y * 2) . apply" ]
+  , accepts "bare `In` is a morphism (c-map)"
+      [ "f : (Unit + Int * Mu (K Unit + K Int * Id)) -> Mu (K Unit + K Int * Id)", "f = In" ]
+  , accepts "bare `In` checked at grade act (c-map, every grade)"
+      [ "useA : Act (Unit + Int * Mu (K Unit + K Int * Id)) (Mu (K Unit + K Int * Id)) -> Act (Unit + Int * Mu (K Unit + K Int * Id)) (Mu (K Unit + K Int * Id))"
+      , "useA k = k"
+      , "f : Act (Unit + Int * Mu (K Unit + K Int * Id)) (Mu (K Unit + K Int * Id))"
+      , "f = useA In"
+      ]
+  , accepts "bare `Out` is a morphism (c-map)"
+      [ "f : Nu (K Int * Id) -> Int * Nu (K Int * Id)", "f = Out" ]
+  , accepts "`Out` from a given domain (d-map)"
+      [ "f : Nu (K Int * Id) -> Int", "f = fst . Out" ]
+  , accepts "`initial e` synthesizes `Void` (s-app-spine)"
+      [ "f : Void -> Void", "f v = let y = initial v in y" ]
+  , accepts "checked `id e` checks `e` (c-map-app)"
+      [ "pick : (Int + Unit) -> Int", "pick = case (\\x -> x) (\\_ -> 0)", "r = pick (id (inl 5))" ]
+  , accepts "domain-given `cata` with a pure algebra in an effectful fold (d-cata)"
+      [ "import I.Test.Emit as E"
+      , "alg : (Unit + Int * Int) -> Int"
+      , "alg = case (\\_ -> 0) (\\p -> fst p + snd p)"
+      , "f : Act (Mu (K Unit + K Int * Id)) Unit"
+      , "f = emit@E . cata alg"
+      ]
+  , accepts "domain-given `cata` with an algebra on a larger domain (d-cata)"
+      [ "alg : (Unit + Int) -> Int"
+      , "alg = case (\\_ -> 3) (\\x -> x)"
+      , "f : Mu (K Unit + K Void) -> Int"
+      , "f = (\\x -> x + 1) . cata alg"
+      ]
+  , rejects "`h . case f1 g1` whose branches have no join (c-compose-g, d-case)" "Type mismatch"
+      composeCaseNoJoin
+  , accepts "... and the same text with `case f1 g1` annotated"
+      (init composeCaseNoJoin ++ [ "r = h . (case f1 g1 : (Unit + Unit) -> (Int + Void) -> Int)" ])
+  , rejects "`x@Generators`: a generator is not in a module namespace" "Generators"
+      [ "f : Int -> Int", "f = id@Generators" ]
+  ]
+  where
+    composeCaseNoJoin =
+      [ "f1 : Unit -> (Int + Void) -> Int"
+      , "f1 _ = case (\\x -> x) initial"
+      , "g1 : Unit -> (Int + Int) -> Int"
+      , "g1 _ = case (\\x -> x) (\\y -> y)"
+      , "h : ((Int + Void) -> Int) -> Int"
+      , "h k = k (inl 7)"
+      , "r : (Unit + Unit) -> Int"
+      , "r = h . case f1 g1"
+      ]
 
 ------------------------------------------------------------------------
 -- Previously-orphaned fixtures that should type-check
