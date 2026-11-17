@@ -39,7 +39,12 @@ open import Once.Spec.Context using (Ctx; Usage; []; _∷_; _+ᵘ_; _*ᵘ_; _⊑
 open import Once.Context using (⟦_⟧ᶜ; _↾_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m)
 open import Once.IRTy using (⌊_⌋)
 import Once.IR as M
-open import Once.Surface.Elaborate using (restrictEnv; projUsed; bindEnv; elaborate)
+open import Once.Surface.Elaborate using (restrictEnv; projUsed; bindEnv; elaborate; numIR; sigOpIR)
+open import Once.Arith.SigOp.Builders using (numInfo; value-info; arrow-info)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+import Once.Spec.Theory as Th
+open import Once.IRTy using (⌊wk₀⌋)
+open import Once.Type.Concrete using (con-base; con-fun)
 open import Once.Surface.Syntax
 open import Once.Surface.Map using (Map)
 open import Once.Spec.Sub using (_<:_)
@@ -48,12 +53,17 @@ open import Once.Type.Concrete using (IsConcrete)
 open import Once.Spec.Name using (CanonicalName)
 open import Data.String using (String)
 import Data.Fin
-open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv)
+open import Once.Denotation.DenotTrace using (evalᴰ; CallEnv; callEnv)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 
 open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ)
+open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω; var-at; bindL; Rs; Lq; castΦ; opL; numL; sigL; cast; clo)
+open import Once.LinCore.FromIR fmt using (⟪⌊⌋⟫-flat)
+open import Once.LinCore.Pass fmt ans using (ev)
+open import Once.LinCore.Casts fmt ans using (casts)
+import Once.LinCore.BridgeProof
+open import Relation.Binary.PropositionalEquality using (subst₂)
 open import Once.Surface.Properties using (erase-arg-usage)
 open import Once.LinCore.FromIR fmt using (⟪_⟫; grade)
 import Once.LinCore.PassTr
@@ -460,7 +470,10 @@ module RelClo {L : Cx} (δ : Env L) (ρ : CallEnv) where
 -- not yet proved are named premises (`Owed`), discharged one by one.
 ------------------------------------------------------------------------
 
-module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) where
+module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) (am : M.AllocMode) where
+  ρ : CallEnv
+  ρ = callEnv cs ans
+
   open Rel δ ρ
   open RelApp δ ρ am
   open RelGen δ ρ am
@@ -572,15 +585,76 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) 
   ok-effApp {Γ = Γ} {Ψ₁} {Ψ₂} {q = G.Many} {π} f x rf rx =
     rel-cloG π _ (rel-∘ (rel-app Γ Ψ₁ Ψ₂ (G.Many *ᵘ Ψ₂) (⊑ᵘ-*Many Ψ₂) rf rx) rel-ρ)
 
+  module P = Once.LinCore.PassTr fmt
+  module BP = Once.LinCore.BridgeProof fmt ans
+
+  -- the core's term and the pass's, moved along the same equal types
+  subst₂-ev : ∀ {X X′ Y Y′} (p : X ≡ X′) (q : Y ≡ Y′) {t : LTm L X Y} {c : P.IR L X Y}
+            → (∀ y → Lᶜ δ t tt y ≡ ev δ c y) → ∀ x → Lᶜ δ (subst₂ (Tm L One) p q t) tt x ≡ ev δ (subst₂ (P.IR L) p q c) x
+  subst₂-ev refl refl h x = h x
+
+  -- ★ A SIGOP: the pass's cast (`Casts.op≈`), the core's op being the pass's op
+  rel-op : ∀ {A B} (si : SigOpInfo A B) → Rel (opL si) (M.SigOp si)
+  rel-op {A} {B} si = mkRel λ {x} w →
+    subst (λ m → m ≈[ W ⌊ B ⌋ ] _)
+          (sym (subst₂-ev (sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si))) (sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si))) (λ y → refl) x))
+          (BP.Casts.op≈ (casts δ cs) si w)
+
+  -- a numeric operation, case for case `numIR`
+  rel-num : ∀ {m A U k} (h : Has A U) (o : Sym U k) → Rel (numL {L} {One} {m} h o) (numIR {m} h o)
+  rel-num {A = Th.int}   {k = Th.unary}   h o = rel-op (numInfo h o)
+  rel-num {A = Th.int}   {k = Th.binary}  h o = rel-op (numInfo h o)
+  rel-num {A = Th.int}   {k = Th.compare} h o = rel-op (numInfo h o)
+  rel-num {A = Th.float} {k = Th.unary}   h o = rel-op (numInfo h o)
+  rel-num {A = Th.float} {k = Th.binary}  h o = rel-op (numInfo h o)
+  rel-num {A = Th.float} {k = Th.compare} h o = rel-op (numInfo h o)
+
+  ok-num : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A U k} (h : Has A U) (o : Sym U k) (e : Expr Γ Ψ (symDom {m} A k))
+         → Goal e → Goal (num h o e)
+  ok-num h o e re = rel-∘ (rel-num h o) re
+
+  -- a result moved along equal types, on both sides
+  rel-cod : ∀ {X B B′ : IRTy} (e : B ≡ B′) {t : LTm L ⟪ X ⟫ ⟪ B ⟫} {t′ : M.IR X B}
+          → Rel t t′ → Rel (cast refl (cong ⟪_⟫ e) t) (subst (M.IR X) e t′)
+  rel-cod refl r = r
+
+  -- ★ a closure built after dropping the environment, against one that
+  -- ignores it (`elaborate`'s `curry (… ∘ snd)`)
+  rel-cloD : ∀ (π : G.Purity) {X A B : IRTy} {bc : LTm L ⟪ A ⟫ ⟪ B ⟫} {b″ : M.IR A B}
+               (γ : Gd (grade π) (copyIn (bc ∘l Once.LinCore.PassTr.dropl fmt {E = One} {A = One})))
+           → Rel bc b″ → Rel (llamω (copyIn (bc ∘l Once.LinCore.PassTr.dropl fmt)) γ ∘l drop {A = ⟪ X ⟫}) (M.curry {X} {A} {B} {π} (b″ M.∘ M.snd))
+  rel-cloD (G.fin φ) {bc = bc} γ rb = mkRel λ {x} {x′} w → ≈-≈R ret-bind (ret≈R (λ {a} {a′} wa →
+    ≈-≈R (≈-trans (≈-sym (blk-coh δ γ tt a)) (≈-trans (copyIn-≈ (bc ∘l Once.LinCore.PassTr.dropl fmt {E = One} {A = One}) tt a) (bind-pure (bind-pure (≈-trans ret-bind ret-bind)))))
+         (≈R-≈ (rel rb wa) (≈-sym ret-bind))))
+  rel-cloD G.eff {bc = bc} γ rb = mkRel λ {x} {x′} w → ≈-≈R ret-bind (ret≈R (λ {a} {a′} wa →
+    ≈-≈R (≈-trans (copyIn-≈ (bc ∘l Once.LinCore.PassTr.dropl fmt {E = One} {A = One}) tt a) (bind-pure (bind-pure (≈-trans ret-bind ret-bind))))
+         (≈R-≈ (rel rb wa) (≈-sym ret-bind))))
+
+  -- ★ a SigOp named in the source, against `sigOpIR`, case for case
+  rel-sig : ∀ {X : IRTy} (A : Type) (name : CanonicalName) (c : IsConcrete A)
+          → Rel (sigL A name c ∘l drop {A = ⟪ X ⟫}) (sigOpIR {X} A name c)
+  rel-sig (Dom ⇒[ G.mk-kind G.Zero (G.fin G.pureᶠ) ] Cod) name (con-fun bDom cCod) = rel-cloD G.pure _ (rel-op _)
+  rel-sig (Dom ⇒[ G.mk-kind G.Zero G.eff ] Cod) name (con-fun bDom cCod) = rel-cloD G.eff _ (rel-op _)
+  rel-sig (Dom ⇒[ G.mk-kind G.Zero (G.fin G.actᶠ) ] Cod) name (con-fun bDom cCod) = rel-cloD G.act _ (rel-op _)
+  rel-sig (Dom ⇒[ G.mk-kind G.One π ] Cod) name (con-fun bDom cCod) = rel-cloD π _ (rel-op _)
+  rel-sig (Dom ⇒[ G.mk-kind G.Many π ] Cod) name (con-fun bDom cCod) = rel-cloD π _ (rel-op _)
+  rel-sig _ name (con-base (ST.b-var {i = ()} _))
+  rel-sig _ name (con-base ib@ST.b-Unit)    = rel-≈ʳ (rel-∘ (rel-∘ (rel-op (value-info name ST.b-Unit ib)) rel-drop) rel-drop) (λ _ → ret-bind)
+  rel-sig _ name (con-base ib@ST.b-Void)    = rel-≈ʳ (rel-∘ (rel-∘ (rel-op (value-info name ST.b-Unit ib)) rel-drop) rel-drop) (λ _ → ret-bind)
+  rel-sig _ name (con-base ib@ST.b-Int)     = rel-≈ʳ (rel-∘ (rel-∘ (rel-op (value-info name ST.b-Unit ib)) rel-drop) rel-drop) (λ _ → ret-bind)
+  rel-sig _ name (con-base ib@ST.b-Float)   = rel-≈ʳ (rel-∘ (rel-∘ (rel-op (value-info name ST.b-Unit ib)) rel-drop) rel-drop) (λ _ → ret-bind)
+  rel-sig _ name (con-base ib@(ST.b-* a b)) = rel-≈ʳ (rel-∘ (rel-∘ (rel-op (value-info name ST.b-Unit ib)) rel-drop) rel-drop) (λ _ → ret-bind)
+  rel-sig _ name (con-base ib@(ST.b-+ a b)) = rel-≈ʳ (rel-∘ (rel-∘ (rel-op (value-info name ST.b-Unit ib)) rel-drop) rel-drop) (λ _ → ret-bind)
+
+  ok-sigOp : ∀ {m n} {Γ : Ctx m n} {A : Type} (name : CanonicalName) (c : IsConcrete A) → Goal (sigOp {Γ = Γ} name c)
+  ok-sigOp {A = A} name c = rel-cod (sym (⌊wk₀⌋ A)) (rel-sig A name c)
+
   record Owed : Set where
     field
       o-case    : ∀ {m n} {Γ : Ctx m n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : G.Quantity} {A B C : Ty m}
                     (s : Expr Γ Ψs (A + B)) (l : Expr (Γ SC.▸ A) (qℓ ∷ Ψₗ) C) (r : Expr (Γ SC.▸ B) (qr ∷ Ψᵣ) C)
                   → Goal s → Goal l → Goal r → Goal (case' s l r)
-      o-num     : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A U k} (h : Has A U) (o : Sym U k) (e : Expr Γ Ψ (symDom {m} A k))
-                  → Goal e → Goal (num h o e)
       o-coerce  : ∀ {m n} {Γ : Ctx m n} {Ψ : Usage n} {A B : Ty m} (p : A <: B) (f : Expr Γ Ψ A) → Goal f → Goal (coerce p f)
-      o-sigOp   : ∀ {m n} {Γ : Ctx m n} {A : Type} (name : CanonicalName) (c : IsConcrete A) → Goal (sigOp {Γ = Γ} name c)
       o-closure : ∀ {m n} {Γ : Ctx m n} {A : Ty m} (name : String) → Goal (closure {Γ = Γ} {A = A} name)
       o-poly    : ∀ {m n} {Γ : Ctx m n} (name : String) (T : Ty m) → Goal (poly {Γ = Γ} name T)
       o-lift    : ∀ {m n} {Γ : Ctx m n} {A B : Ty m} {π} (mp : Map A B) → Goal (lift-morphism {Γ = Γ} {π = π} mp)
@@ -628,9 +702,9 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (ρ : CallEnv) (am : M.AllocMode) 
       rel-∘ (Lq-ok e2) (rel-∘ (rel-bind {Γ = Γ} {A = A} G.Many) (rel-let Γ Ψ₂ Ψ₁ (G.Many *ᵘ Ψ₁) (⊑ᵘ-*Many Ψ₁) (Lq-ok e1)))
     Lq-ok (int n) = rel-∘ (mkRel λ _ → ret≈R refl) rel-drop
     Lq-ok (float d) = rel-∘ (mkRel λ _ → ret≈R refl) rel-drop
-    Lq-ok (num h o e) = o-num h o e (Lq-ok e)
+    Lq-ok (num h o e) = ok-num h o e (Lq-ok e)
     Lq-ok (coerce p f) = o-coerce p f (Lq-ok f)
-    Lq-ok {Γ = Γ} (sigOp name c) = o-sigOp {Γ = Γ} name c
+    Lq-ok {Γ = Γ} (sigOp name c) = ok-sigOp {Γ = Γ} name c
     Lq-ok {Γ = Γ} (closure name) = o-closure {Γ = Γ} name
     Lq-ok {Γ = Γ} (poly name T) = o-poly {Γ = Γ} name T
     Lq-ok (closed e) = rel-∘ (Lq-ok e) rel-drop
