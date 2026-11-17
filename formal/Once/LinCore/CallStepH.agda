@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.CallStepH — plan 0.146 B1.4b (D425): ★ A MANY-USE BODY'S
+-- Once.LinCore.CallStepH — plan 0.146 B1.4b (D439): ★ A MANY-USE BODY'S
 -- CALL, from its trampoline (beside `CallStep`).
 --
 -- The trampoline hands its dispatcher's area through (its one save slot,
@@ -188,7 +188,7 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                ; dh-log    = trans (k-log (r-keep Rn)) (ch-log CH) }
 
   -- ★ from a many-use trampoline's frame (below the area's, `cf`): its save slot 0
-  -- the area's pointer, the contents' address in `Output` (D425)
+  -- the area's pointer, the contents' address in `Output` (D439)
   call-core-h : ∀ {X A B} {κ : Key (bsig (just X) A B)} (p : (bsig (just X) A B , κ) ∈ allK U)
                   (cf : FrameSemantics.Frame FS) (area o₀ : ℕ) (i : Id) {x : MV X} {a : MV A} {fs} (wx wa : List W)
               → Seg image (fpc fs) (restore-input 0 ∷ instr-ctrl (c-call-fn (nameOf (idx p))) ∷ [])

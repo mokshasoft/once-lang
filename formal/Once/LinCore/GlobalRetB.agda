@@ -143,7 +143,7 @@ module RetB {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            → FreshR r (AllocState.next-heap-ref (falloc fs))
            → RetOK R fin r cfc rets′ sv′ fs
            → RetOK R fin r (AllocState.current-frame (falloc fs′)) (fret fs′) (AllocState.saved-frames (falloc fs′)) fs′
-      -- a return writes only frames: the heap's words and blocks stand (D424)
+      -- a return writes only frames: the heap's words and blocks stand (D438)
       co-inb : ∀ {fs fs′ cfc af a src o nb pc rets′ sv′ sl} → CallOutA fs fs′ cfc af a src o nb pc rets′ sv′ sl → InBlk fs → InBlk fs′
       co-inb {fs} {fs′} CO = inb-pt {fs} {fs′} (λ hl → co-rest CO (AtDynamic hl) (λ k k< ())) (co-next CO) (co-size CO)
 
@@ -176,7 +176,7 @@ module RetB {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         → ArrivesAt k r (es ∥ b ∷ˢ os) n fs
 
     module _ where
-      -- a trampoline's inner return (D421): by the generic `tr-back′` over the site's own key (no second
+      -- a trampoline's inner return (D435): by the generic `tr-back′` over the site's own key (no second
       -- spelling of it: a key compared across spellings unfolds the block's labels and frame)
       area0 : ∀ (fs : FlatState) {x cfc z}
             → LocState.stackMem (floc fs) (AllocState.current-frame (falloc fs)) x ≡ just (SV-Ptr (AtStack cfc z)) → z ≡ 0
@@ -185,7 +185,7 @@ module RetB {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
 
     module _ where
-      -- ★ a free's trampoline's way out (D417): a bare return, the result One
+      -- ★ a free's trampoline's way out (D431): a bare return, the result One
       -- (no words), the caller's frame as it was
       one-cfg : ∀ {fs fs′ cfc pc rets′ sv′ sl} {φ : Frame} {Es S} {es : Slots Es} {os : Stk S} (w : MV One)
               → CallOut fs fs′ cfc 0 0 0 0 pc rets′ sv′ sl

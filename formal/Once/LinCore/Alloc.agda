@@ -2,9 +2,9 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.Alloc — plan 0.146 A17 (D411): ONE SIZE CLASS'S POOL.
+-- Once.LinCore.Alloc — plan 0.146 A17 (D425): ONE SIZE CLASS'S POOL.
 --
--- A pool of size `k` (free lists per size, D403) numbers its blocks from 0;
+-- A pool of size `k` (free lists per size, D417) numbers its blocks from 0;
 -- the pool holds blocks `0 … top-1`, and where each lies in the one region
 -- is `Once.LinCore.Region`'s (`addr k j`: the region gives a growing pool the next
 -- `k` words at its top). The pool follows the run's events of its size: a
@@ -27,7 +27,7 @@
 -- so "a run runs out only when its live data does not fit" is false for
 -- them; no allocator that never moves a block can promise it (Robson 1974),
 -- and moving blocks is a collector (GOAL.md excludes it). The claim is per
--- size's peak (D411 part 2, decided: `Once.LinCore.Region`).
+-- size's peak (D425 part 2, decided: `Once.LinCore.Region`).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --guardedness #-}

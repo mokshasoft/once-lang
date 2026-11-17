@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.WordStep — plan 0.146 B1.4b (D417 step 3, D420): ★★ THE STEP THEOREM: every covered image step is matched by flat steps that keep the relation
+-- Once.LinCore.WordStep — plan 0.146 B1.4b (D431 step 3, D434): ★★ THE STEP THEOREM: every covered image step is matched by flat steps that keep the relation
 -- (split from `Global` for its build time; over `Global.Relate`).
 ------------------------------------------------------------------------
 
@@ -154,9 +154,9 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   -- 8. ★★ THE STEP THEOREM: every covered image step is matched by flat
   -- steps that keep the relation. Covered: the one-shot and the observation
   -- dispatches (`icall`, `iobs`, `icallω`, `cfree`, `nfree`) and their trampolines
-  -- (`open1`, `nopen`, `openω`, `fopen`, the inner call, the way out; D421, D423,
-  -- D417, D425), and the copy's (`ccopy`, `ncopy`, `copen`, `reclose`; D417); an op
-  -- (`lop`), relative to the machine's world (D426: `Agrees`), a halting op landing in a
+  -- (`open1`, `nopen`, `openω`, `fopen`, the inner call, the way out; D435, D437,
+  -- D431, D439), and the copy's (`ccopy`, `ncopy`, `copen`, `reclose`; D431); an op
+  -- (`lop`), relative to the machine's world (D440: `Agrees`), a halting op landing in a
   -- halted machine (`Lands`).
   ----------------------------------------------------------------------
 
@@ -168,13 +168,13 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     open GRet using (gret)
     open Related
     -- where a step lands: related, or (the image halted) a halted machine
-    -- (D429: and a running state on the way, after which the halting op left `left` as it was)
+    -- (D443: and a running state on the way, after which the halting op left `left` as it was)
     HaltC : ∀ {sh U′} → Codeᴵ sh U′ → FlatState → FlatState → Set
     HaltC c fs fs′ = (c ≡ halted) × (LocState.halted (floc fs′) ≡ Data.Bool.true)
                      × Σ FlatState λ fs₀ → Σ ℕ λ M → FlatSteps image M fs fs₀ × LocState.halted (floc fs₀) ≡ Data.Bool.false
                          × ending (floc fs′) ≡ ending (floc fs₀)
 
-    -- (D427: the machine's log grown by the events the step shows the world)
+    -- (D441: the machine's log grown by the events the step shows the world)
     Lands : ∀ {T sh U′} → List SigOpEvent → Codeᴵ sh U′ → Ret U′ T → Cfg sh → ℕ → FlatState → Set
     Lands E c r m n fs = Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′ × (Related c r m n fs′ ⊎ HaltC c fs fs′)
                            × LocState.ev-log (floc fs′) ≡ LocState.ev-log (floc fs) ++ E
@@ -183,7 +183,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     lift : ∀ {T sh U′} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n fs E} → E ≡ [] → ArrivesAt c r m n fs → Lands E c r m n fs
     lift {fs = fs} refl (N , fs′ , st , G , lg) = N , fs′ , st , inj₁ G , trans lg (sym (++-identityʳ (LocState.ev-log (floc fs))))
 
-    -- what a step owes: from a related state, in the machine's world (D426), where it lands
+    -- what a step owes: from a related state, in the machine's world (D440), where it lands
     Owes : ∀ {T} → Motive {Level.zero} {T}
     Owes {c = c} {r = r} {m = m} {n = n} {t = t} {c′ = c′} {r′ = r′} {m′ = m′} {n′ = n′} st =
       ∀ {h fs} → InvI m r n h → Related c r m n fs → Agrees st fs

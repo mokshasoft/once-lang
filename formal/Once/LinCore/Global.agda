@@ -2,13 +2,13 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.Global — plan 0.146 B1.4b (D417 step 3, D420): ★ THE WORD
+-- Once.LinCore.Global — plan 0.146 B1.4b (D431 step 3, D434): ★ THE WORD
 -- LAYER'S RELATION between the image's run and the flat run.
 --
 -- An image state `(c , r , m , n)` and a flat state `fs` are related by a
 -- point `P : Pnt c` the flat pc is at (`HereP`: the configuration in the
 -- point's frame), the flat heap counter `n`, and the return stack related
--- by the point's ROOT and WAY OUT (`RetOK`, D420): the start's `leave`; a
+-- by the point's ROOT and WAY OUT (`RetOK`, D434): the start's `leave`; a
 -- loop body's `jmp Ld`, the dispatch at `Ld` pushed; a block's way out, a
 -- call site, the caller's frame saved above with its configuration's words.
 ------------------------------------------------------------------------
@@ -104,14 +104,14 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   rootOf (p-tramp p _) = rtramp p
   rootOf p-halt        = rstart
 
-  -- ★ A TRAMPOLINE (D421): its frame, the address at a depth
+  -- ★ A TRAMPOLINE (D435): its frame, the address at a depth
   open TrImg {FS} ds f ldConst ld-nl using (image-tr)
   open Tr U ncty ldConst using (trAt)
   open Rel {FS} U wordOf using (CfgW; VW; vpair; vfn; SlotsAt; cellPtr; cellLoc; vw-frame)
   open FlatMachine {FS} using (fpc)
   open import Once.LinCore.Moves {FS} using (slot; InBlk)
 
-  -- a frame-0 trampoline's (D421) region `M`, and the caller's area's size `Mc`
+  -- a frame-0 trampoline's (D435) region `M`, and the caller's area's size `Mc`
   trM trMc : ∀ {σ} → Key σ → ℕ
   trM (ktr1 {X = X} {A = A} {B = B} ds′ b γ) = (wsz X + wsz A) ⊔ wsz B
   trM (ktro ds′ F S) = wsz (cty (F , S)) ⊔ wsz (LF∙ F (Nu F))
@@ -146,7 +146,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       f-pc  : fpc fs ≡ q
       f-run : LocState.halted (floc fs) ≡ false
       f-cfg : CfgW (LocState.heapMem (floc fs)) (slot fs) φ m
-      -- the trampoline's reservation (D435's window)
+      -- the trampoline's reservation (D449's window)
       f-slots : AllocState.frame-slots (falloc fs) ≡ b
 
   -- ★ a one-shot trampoline before its cell part: the cell in `Input1` and
@@ -169,10 +169,10 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       t-sM   : slot fs (suc M) ≡ just (SV-Ptr (AtStack t-cfc t-area))
       t-ne   : ¬ t-cfc ≡ AllocState.current-frame (falloc fs)
       t-arg  : SlotsAt (LocState.stackMem (floc fs) t-cfc) ((Mc ∸ wsz A) + t-area) t-wa
-      -- D435: the argument's words, read through the area pointer, in a live window
+      -- D449: the argument's words, read through the area pointer, in a live window
       t-win  : ∀ k → k Data.Nat.< wsz A → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} (falloc fs)) t-cfc ((k + (Mc ∸ wsz A)) + t-area) ≡ true
 
-  -- ★ an observation's trampoline before its cell part (D421): as `Tr0`, no
+  -- ★ an observation's trampoline before its cell part (D435): as `Tr0`, no
   -- argument (the ν's coalgebra and seed are all in the cell)
   record TrO0 {X} (M q : ℕ) (i : Id) (x : MV X) (fs : FlatState) : Set where
     field
@@ -189,7 +189,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       o-sM   : slot fs (suc M) ≡ just (SV-Ptr (AtStack o-cfc o-area))
       o-ne   : ¬ o-cfc ≡ AllocState.current-frame (falloc fs)
 
-  -- ★ a free's trampoline before its cell part (D417): the cell in its one
+  -- ★ a free's trampoline before its cell part (D431): the cell in its one
   -- save slot `M`, its contents' words in the heap; no area (the result is One)
   record TrF0 {X} (M q : ℕ) (i : Id) (x : MV X) (fs : FlatState) : Set where
     field
@@ -201,7 +201,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       f0-at  : Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i hdr f0-wx
       f0-M   : slot fs M ≡ just (cellPtr i)
 
-  -- ★ a many-use body's trampoline (D417, D425): no copy of the argument or
+  -- ★ a many-use body's trampoline (D431, D439): no copy of the argument or
   -- the result through its frame; its one save slot (0) holds the
   -- dispatcher's area (`M` its size), the cell stays in the heap
   -- before its cell part: the cell in `Input1`, the argument's words in the area
@@ -262,7 +262,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       w2-s0   : slot fs 0 ≡ just (SV-Ptr (AtStack w2-af w2-area))
       w2-res  : SlotsAt (LocState.stackMem (floc fs) w2-af) ((M ∸ wsz B) + w2-area) w2-wb
 
-  -- ★ a copy's trampoline (D417): its frame's first `w` slots the copy, its
+  -- ★ a copy's trampoline (D431): its frame's first `w` slots the copy, its
   -- save slots `w` the caller's destination, `suc w` the viewed cell,
   -- `suc (suc w)` the contents' address (then the new cell)
   -- before its cell part (`copen`): the cell's value `cv` its word in slot `suc w`
@@ -416,13 +416,13 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → Sub main (call κ ⨾ k) → Site κ k
     s-block : ∀ {t A B Es S V} {κ : Key (bsig t A B)} {k : Codeᴵ (t ⊳ Es ∣ B ∷ S) V}
                 {σ′} {κ′ : Key σ′} (p′ : (σ′ , κ′) ∈ allK U) → Sub (blockᴵ κ′) (call κ ⨾ k) → Site κ k
-    -- a one-shot trampoline's inner call (D421); its callee named through `under` (one constructor copy, TrampAt's: no unfolding of the block's code and labels in conversion)
+    -- a one-shot trampoline's inner call (D435); its callee named through `under` (one constructor copy, TrampAt's: no unfolding of the block's code and labels in conversion)
     s-tramp : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b} (p : under (ktr1 ds′ b γ) ∈ allK U)
             → Site {t = nothing} {Es = []} {S = []} (proj₂ (under (ktr1 ds′ b γ))) (end {sh = [] ∣ B ∷ []})
-    -- an observation's trampoline's inner call (D421)
+    -- an observation's trampoline's inner call (D435)
     s-trampo : ∀ {Γ′} {ds′ : Defs Γ′} {F S′} (p : under (ktro ds′ F S′) ∈ allK U)
              → Site {t = nothing} {Es = []} {S = []} (proj₂ (under (ktro ds′ F S′))) (end {sh = [] ∣ LF∙ F (Nu F) ∷ []})
-    -- a free's trampoline's inner call (D417): its contents' free
+    -- a free's trampoline's inner call (D431): its contents' free
     s-trampf : ∀ {X C} (p : under (ktrf X C) ∈ allK U)
              → Site {t = nothing} {Es = []} {S = []} (proj₂ (under (ktrf X C))) (end {sh = [] ∣ One ∷ []})
 
@@ -495,7 +495,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   site-elim C (s-trampf {X = X} {C′} p) = SiteCases.on-trampf C {X} {C′} p
 
   -- ★ a dispatch site: a dispatch through a cell's code word (`icall`,
-  -- `iobs`) in the start's code or a block's (D421)
+  -- `iobs`) in the start's code or a block's (D435)
   data DSite : ∀ {Es D B S V} → Insᴵ (Es ∣ D ∷ S) (Es ∣ B ∷ S) → Codeᴵ (Es ∣ B ∷ S) V → Set where
     d-start : ∀ {Es D B S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ B ∷ S)} {k : Codeᴵ (Es ∣ B ∷ S) V} → Sub main (i ⨾ k) → DSite i k
     d-block : ∀ {Es D B S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ B ∷ S)} {k : Codeᴵ (Es ∣ B ∷ S) V} {σ′} {κ′ : Key σ′}
@@ -519,7 +519,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     dsiteFin (d-start s)    = SA.lfin (S.lowAt s)
     dsiteFin (d-block p′ s) = KA.lfin {p = p′} (K.lowAt p′ s)
 
-  -- a frame-0 trampoline with a way out through the caller's area (D421):
+  -- a frame-0 trampoline with a way out through the caller's area (D435):
   -- a one-shot body's, an observation's (not a free's: its way out is bare)
   data TrM : ∀ {σ} → Key σ → Set where
     tm-1 : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b} → TrM (ktr1 ds′ b γ)
@@ -547,7 +547,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) (siteφ st) os
             → RetOK (siteRoot st) (siteFin st) r cfc rets′ sv′ fs
             → RetOK R fin (frm {t = t} {Es = Es} k es os r) cur rets sv fs
-    -- ★ in a one-shot trampoline (D421): the dispatch's caller saved above,
+    -- ★ in a one-shot trampoline (D435): the dispatch's caller saved above,
     -- its area in the trampoline frame's second save slot (`suc M`)
     ok-tramp : ∀ {σ} {κ : Key σ} {Es D B S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ B ∷ S)} {k : Codeᴵ (Es ∣ B ∷ S) V}
                  {es : Slots Es} {os : Stk S} {r : Ret V T} {R fin cur rets sv fs}
@@ -562,7 +562,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) (dsiteφ d) os
              → RetOK (dsiteRoot d) (dsiteFin d) r cfc rets′ sv′ fs
              → RetOK R fin (frm {t = nothing} {Es = Es} k es os r) cur rets sv fs
-    -- ★ in a free's trampoline (D417): the dispatch's caller saved above; no
+    -- ★ in a free's trampoline (D431): the dispatch's caller saved above; no
     -- area (the result is One, no words)
     ok-trampf : ∀ {X C} {Es D S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ One ∷ S)} {k : Codeᴵ (Es ∣ One ∷ S) V}
                   {es : Slots Es} {os : Stk S} {r : Ret V T} {R fin cur rets sv fs}
@@ -574,7 +574,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) (dsiteφ d) os
               → RetOK (dsiteRoot d) (dsiteFin d) r cfc rets′ sv′ fs
               → RetOK R fin (frm {t = nothing} {Es = Es} k es os r) cur rets sv fs
-    -- ★ in a many-use body's trampoline (D425): the dispatch's caller saved
+    -- ★ in a many-use body's trampoline (D439): the dispatch's caller saved
     -- above, its area in the trampoline frame's one save slot (0)
     ok-trampω : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b} {Es S V}
                   {i : Insᴵ (Fn many g A B ∷ Es ∣ A ∷ S) (Fn many g A B ∷ Es ∣ B ∷ S)} {k : Codeᴵ (Fn many g A B ∷ Es ∣ B ∷ S) V}
@@ -590,7 +590,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               → StkW (LocState.heapMem (floc fs)) (LocState.stackMem (floc fs) cfc) (dsiteφ d) os
               → RetOK (dsiteRoot d) (dsiteFin d) r cfc rets′ sv′ fs
               → RetOK R fin (frm {t = just (Fn many g A B)} {Es = Es} k es os r) cur rets sv fs
-    -- ★ in a many-use body called by its trampoline (D425): the trampoline
+    -- ★ in a many-use body called by its trampoline (D439): the trampoline
     -- saved above; the body's area pointer is the trampoline's (the dispatcher's area)
     ok-callω : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b}
                  {es₁ : Slots (X ∷ Fn many g A B ∷ [])} {r₁ : Ret (Fn many g A B ∷ [] ∣ B ∷ []) T} {R fin cur rets sv fs}
@@ -603,7 +603,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              → RetOK (rtramp {κ = ktrω ds′ b γ} p) (trFin (idx p) (ktrω ds′ b γ)) r₁ cfc rets′ sv′ fs
              → RetOK R fin (frm {t = just X} {Es = Fn many g A B ∷ []} {S = []} (epop ⨾ end) es₁ []ˢ r₁) cur rets sv fs
 
-    -- ★ in a copy's trampoline (D417): the dispatch's caller saved above, its
+    -- ★ in a copy's trampoline (D431): the dispatch's caller saved above, its
     -- destination (the top operand's slot) in the trampoline frame's save slot `w`
     ok-trampc : ∀ {X C} {Es S V} {i : Insᴵ (C ∷ Es ∣ One ∷ S) (C ∷ Es ∣ C ∷ S)} {k : Codeᴵ (C ∷ Es ∣ C ∷ S) V}
                   {es : Slots (C ∷ Es)} {os : Stk S} {r : Ret V T} {R fin cur rets sv fs}
@@ -640,7 +640,7 @@ module Relate {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       g-next : AllocState.next-heap-ref (falloc fs) ≡ n
       g-ret  : RetOK (rootOf g-pt) (ptFin g-pt) r (AllocState.current-frame (falloc fs)) (fret fs)
                      (AllocState.saved-frames (falloc fs)) fs
-      -- D424: every written heap word in its block (for an address formed inside a cell)
+      -- D438: every written heap word in its block (for an address formed inside a cell)
       g-blk  : InBlk fs
 
   ----------------------------------------------------------------------

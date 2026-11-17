@@ -786,7 +786,7 @@ data Instr (FS : FrameSemantics) : Set where
 -- Execution
 ------------------------------------------------------------------------
 
--- D435: a live frame named `f` counts when it reserves the slot
+-- D449: a live frame named `f` counts when it reserves the slot
 win-pick : ∀ {A : Set} → Dec A → Bool → Bool → Bool
 win-pick (yes _) here later = here ∨ later
 win-pick (no _)  here later = later
@@ -862,7 +862,7 @@ module ExecFinal {FS : FrameSemantics} where
   exec-addr-at-resolved bs k (just loc) s = exec-addr-in-block (in-block? bs (offsetLoc loc k)) (offsetLoc loc k) s
   exec-addr-at-resolved bs k nothing    s = record s { halted = true ; faulted = true }
 
-  -- D435: an offset access through a STACK pointer reaches a slot of a LIVE
+  -- D449: an offset access through a STACK pointer reaches a slot of a LIVE
   -- frame (the current one or a saved one), inside its window; anything else
   -- faults (the resolution is `nothing`). A heap location passes unchanged.
   live-frames : AllocState {FS} → List (FrameSemantics.Frame FS × ℕ)
@@ -881,8 +881,8 @@ module ExecFinal {FS : FrameSemantics} where
   frame-gate al k (just (AtDynamic hl)) = just (AtDynamic hl)
   frame-gate al k nothing               = nothing
 
-  -- D435: an offset ADDRESS is formed inside a heap block only; a stack
-  -- address comes from `lea-slot` alone (D434)
+  -- D449: an offset ADDRESS is formed inside a heap block only; a stack
+  -- address comes from `lea-slot` alone (D448)
   heap-gate : Maybe (ValueLocation FS) → Maybe (ValueLocation FS)
   heap-gate (just (AtDynamic hl)) = just (AtDynamic hl)
   heap-gate (just (AtStack _ _))  = nothing
@@ -903,7 +903,7 @@ module ExecFinal {FS : FrameSemantics} where
   gate-or al k (AtStack f j)  = stack-gate-or (in-window (live-frames al) f (k + j)) (AtStack f j)
   gate-or al k (AtDynamic hl) = inj₁ refl
 
-  -- D435 (d): a value of `n` words passed BY ADDRESS (a SigOp's argument, its
+  -- D449 (d): a value of `n` words passed BY ADDRESS (a SigOp's argument, its
   -- answer's buffer) is inside a live frame's window when the address is a
   -- stack one: its last word is (a window is a prefix of its frame, so every
   -- word below is too). A heap address, a word that is no address, and a value
@@ -1546,7 +1546,7 @@ treeToRunnableWithInit wl t = worklist-init wl ∷ treeToRunnable wl t
 -- This is the specification that x86 refinement must preserve.
 ------------------------------------------------------------------------
 
--- D432 (top level: no machine in it)
+-- D446 (top level: no machine in it)
 -- the answers that are in memory: a product's, a sum's (a static fact of the
 -- codomain, so a sigop at any other writes no memory)
 in-memory? : Type → Bool
@@ -1771,7 +1771,7 @@ module AbstractExec {FS : FrameSemantics} where
   {-# CATCHALL #-}
   readTyped _       loc s = nothing
 
-  -- D432: THE FLAT WRITER, `readTyped`'s mirror. A base value written in place,
+  -- D446: THE FLAT WRITER, `readTyped`'s mirror. A base value written in place,
   -- its words from the address up: a product's second component after the
   -- first's words, a sum's tag then its payload, then its padding to the larger
   -- alternative (`Spec.ABI`: any words; zero words here, so every word of the
@@ -1838,8 +1838,8 @@ module AbstractExec {FS : FrameSemantics} where
   -- at this layer — we return `unit-storedvalue` as a canonical
   -- sentinel. The per-arch concrete machine's actual primitive value
   -- is established by the Simulation lemma. For non-FitsInReg
-  -- codomains the answer is in memory (D432, below).
-  -- D432: a SigOp whose codomain is not a register value (a product, a sum,
+  -- codomains the answer is in memory (D446, below).
+  -- D446: a SigOp whose codomain is not a register value (a product, a sum,
   -- Unit) answers IN PLACE: it writes the answer's words at the address
   -- `Output` holds (`sigop-store`, the caller's buffer of `Spec.ABI.answer`),
   -- and `Output` keeps that address (was a postulate, D061).
@@ -1905,7 +1905,7 @@ module AbstractExec {FS : FrameSemantics} where
 
   call-sigop-val : ∀ {A B} → SigOpInfo A B → LocState FS → Maybe (FitsInReg B) → StoredValue FS
   call-sigop-val si s (just fitB) = call-sigop-ans si s fitB (call-sigop-dec si)
-  -- D432: a structured answer is in memory; `Output` keeps the buffer's address
+  -- D446: a structured answer is in memory; `Output` keeps the buffer's address
   call-sigop-val si s nothing = readReg (regs s) Output
 
   call-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS → StoredValue FS
@@ -2018,7 +2018,7 @@ module AbstractExec {FS : FrameSemantics} where
   exec-sigop-halts : ∀ {A B} → SigOpInfo A B → LocState FS → Bool
   exec-sigop-halts si s = exec-sigop-halts-of (effect si) si s
 
-  -- | D432: A STRUCTURED ANSWER IS WRITTEN IN PLACE. The answer's value: a
+  -- | D446: A STRUCTURED ANSWER IS WRITTEN IN PLACE. The answer's value: a
   -- pure SigOp's semantics or the interpretation's answer, at the argument
   -- decoded from `Input1` (as the events); none when it halts, emits, or the
   -- argument does not decode. Aux-style, so a consumer's `rewrite` reduces it.
@@ -2056,9 +2056,9 @@ module AbstractExec {FS : FrameSemantics} where
   sigop-store-at         true  (just loc) nothing  s = s
   sigop-store-at         true  nothing    _        s = s
 
-  -- D435 (d): the words a SigOp reaches through a pointer register — its
-  -- argument (D428: a compound one by address, `decode-at`) and its answer's
-  -- buffer (D432, `sigop-store`) — are inside a live frame's window when they
+  -- D449 (d): the words a SigOp reaches through a pointer register — its
+  -- argument (D442: a compound one by address, `decode-at`) and its answer's
+  -- buffer (D446, `sigop-store`) — are inside a live frame's window when they
   -- are on the stack (`range-ok`); else the step faults, as `load-at` does.
   -- (the argument's words reached through `Input1`: a compound's, `decode-at`'s
   -- pointer cases; a scalar is its register, D398)
@@ -2294,7 +2294,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- s alloc = s , alloc` is the Plan-0.11 task-A move that surfaces
   -- the silent wildcard-payload leak as named, audit-visible
   -- postulates.
-  -- D432: a structured answer's words are stored (`sigop-store`: the memory
+  -- D446: a structured answer's words are stored (`sigop-store`: the memory
   -- only; every other field is the state's own).
   exec-abstract (instr-sigop si) s alloc =
     record s { regs     = writeReg (regs s) Output (exec-sigop-output si s)

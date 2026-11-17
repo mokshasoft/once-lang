@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.LabelsC — plan 0.146 B1.4b (D417, step 3): the image's jump
+-- Once.LinCore.LabelsC — plan 0.146 B1.4b (D431, step 3): the image's jump
 -- labels, part 2: a lowered code's labels.
 --
 -- `lowC φ j m fin c` from label counter `m` to `n` defines exactly labels

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.OpStep — plan 0.146 B1.4b (D426): AN OP'S STEP. The
+-- Once.LinCore.OpStep — plan 0.146 B1.4b (D440): AN OP'S STEP. The
 -- argument's address into `Input1`, the sigop, its answer (none, or the
 -- Output word) stored in the argument's place. Relative to the machine's
 -- world (`StepOp.Agree.OpVal`): the machine does not halt and answers the
@@ -104,7 +104,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
     new-top : ∀ B a s → (B ∸ s) ∸ a ≡ B ∸ (a + s)
     new-top B a s = trans (Data.Nat.Properties.∸-+-assoc B s a) (cong (B ∸_) (+-comm s a))
 
-    -- D435 (d): THE SIGOP'S WINDOW CHECK PASSES in the new image: the argument
+    -- D449 (d): THE SIGOP'S WINDOW CHECK PASSES in the new image: the argument
     -- and the answer's buffer are words of the current frame, below its
     -- reservation (`fbudget φ`, `Here.h-slots`)
     tb : ∀ b → Data.Bool.T b → b ≡ true
@@ -174,7 +174,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           → (exec-sigop-halts si st ∨ not (sigop-gate al si st)) ≡ false
     gated si al st gt hf = trans (cong (λ g → exec-sigop-halts si st ∨ not g) gt) (trans (∨-identityʳ _) hf)
 
-  -- ★ D428: the argument's step, by its base: a scalar loaded, any other its address
+  -- ★ D442: the argument's step, by its base: a scalar loaded, any other its address
   arg-step : ∀ {A} (b : ST.Base ST.∅ₖ A) prog (fs : FlatState) bot {x : MV ⌜ flatB b ⌝} {wx : List W}
            → VW (heapMem (floc fs)) x wx → SlotsAt (slot fs) (bot ∸ wsz ⌜ flatB b ⌝) wx
            → FlatMachine.flat-exec-instr {FS} (argIn b bot (wsz ⌜ flatB b ⌝)) prog fs
@@ -303,7 +303,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
           go (suc (suc n)) eC _ (hf , ee , .(out ∷ []) , pw , inj₂ refl) =
             ⊥-elim (Data.Nat.Properties.0≢1+n (Data.Nat.Properties.suc-injective (trans (vw-len pw) eC)))
 
-  -- ★ D428: a compare: its block's sigop (an `Int`), its truth as a tag (`out-nz`), stored
+  -- ★ D442: a compare: its block's sigop (an `Int`), its truth as a tag (`out-nz`), stored
   lop-cmp : ∀ prog (fs : FlatState) (φ : Frame) (s : Sig) {Es S} {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝} {y : MV ⌜ scod s ⌝} {E}
             (o : CmpAt (sA s)) → cmpOf s ≡ just o
           → OpValM s (just o) x y E fs
@@ -382,7 +382,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
               pos : budget φ ∸ ws (⌜ scod s ⌝ ∷ S) ≡ dst
               pos = trans (cong (λ z → budget φ ∸ (z + ws S)) eC) (sym (new-top (budget φ) 1 (ws S)))
 
-  -- ★ D432: an op whose answer is in memory (a product, a sum): the argument, the answer's
+  -- ★ D446: an op whose answer is in memory (a product, a sum): the argument, the answer's
   -- address into `Output` (the result's slots), the sigop, which writes the answer there
   open Keep {FS} using (st-heap; st-frame; st-out)
   open import Once.LinCore.Moves {FS} using (inb-same)
@@ -467,7 +467,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
                    ; or-top = λ z le → keep z (inj₂ (subst (_≤ z) (sym dst+)
                                          (≤-trans (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) le))) }
 
-  -- ★ an op, by the sigop its code runs (D428)
+  -- ★ an op, by the sigop its code runs (D442)
   lop-sim : ∀ prog (fs : FlatState) (φ : Frame) (s : Sig) {Es S} {es : Slots Es} {os : Stk S} {x : MV ⌜ sdom s ⌝} {y : MV ⌜ scod s ⌝} {E}
             (m : Maybe (CmpAt (sA s))) → cmpOf s ≡ m
           → OpValM s m x y E fs
@@ -594,7 +594,7 @@ module OpR {FS : FrameSemantics} (U : Univ)
                        (Data.Nat.Properties.≤-reflexive (sym (Here.h-slots H))))
     where
       bot = budget φ ∸ ws S
-      -- D432: a halting op's answer is not in memory, so its code has no destination
+      -- D446: a halting op's answer is not in memory, so its code has no destination
       dst-none : ∀ {B} (b : ST.Base ST.∅ₖ B) w → inMem b ≡ false → ansDst b bot w ≡ []
       dst-none (ST.b-var {i = ()} _) w e
       dst-none ST.b-Unit    w e = refl

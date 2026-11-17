@@ -5,7 +5,7 @@
 -- Once.LinCore.LowerSim — plan 0.146 B1.4b, `LowerSim` layer (4): each
 -- image step against its lowered code.
 --
--- Here first: the steps whose lowering is EMPTY (D416: a pair on the stack
+-- Here first: the steps whose lowering is EMPTY (D430: a pair on the stack
 -- is its components in place; a tag is no word; a unit and a lifted view
 -- are no words): the flat machine does not move, and the same slots hold
 -- the image's next configuration.
@@ -1173,7 +1173,7 @@ module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
       f₄ = subst (λ z → fetch prog z ≡ just mov-to-output) pcEq (proj₁ rest′)
       f₅ : fetch prog (fpc fs₄) ≡ just (store-at-slot (bot ∸ 1))
       f₅ = subst (λ z → fetch prog (suc z) ≡ just (store-at-slot (bot ∸ 1))) pcEq (proj₁ (proj₂ rest′))
-      -- the fresh block below the counter, its words inside it (D424)
+      -- the fresh block below the counter, its words inside it (D438)
       lt₂ : r < AllocState.next-heap-ref (falloc fs₂)
       lt₂ = Data.Nat.Properties.n<1+n r
       bnd₂ : ∀ k → k < wL → (k + 0) < AllocState.block-size (falloc fs₂) r

@@ -335,7 +335,7 @@ module _ (N : ℕ) where
 -- block's frame (`call-frame`, D394): the return address at `sp − 8`, the
 -- stack pointer `8n` below it. Each typed leaf of the input is either the input
 -- register (a scalar, D396/D398) or the word at `rdi + 8k` (D391) below that
--- frame — or, D435 (d), at or above the stack pointer (the caller's stack, a
+-- frame — or, D449 (d), at or above the stack pointer (the caller's stack, a
 -- live frame's window, with the block's frame below it); then the Core's
 -- `R-input` and `WF` hold at the entry state.
 ------------------------------------------------------------------------

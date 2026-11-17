@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.Labels — plan 0.146 B1.4b (D417, step 3): the image's jump
+-- Once.LinCore.Labels — plan 0.146 B1.4b (D431, step 3): the image's jump
 -- labels, part 1: the code that has none.
 --
 -- Only a `case`, an `ecase` and a loop emit labels (`c-label`); every other
@@ -113,7 +113,7 @@ module NoLabels {FS : FrameSemantics} where
     header-nl : ∀ w jb jc jf → NoLab (header w jb jc jf)
     header-nl w jb jc jf = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
 
-    -- D428: the argument's instruction, by its base
+    -- D442: the argument's instruction, by its base
     argIn-nl : ∀ {A} (b : ST.Base ST.∅ₖ A) bot w → mark (argIn b bot w) ≡ nothing
     argIn-nl (ST.b-var {i = ()} _) bot w
     argIn-nl ST.b-Unit    bot w = refl
@@ -123,7 +123,7 @@ module NoLabels {FS : FrameSemantics} where
     argIn-nl (ST.b-* _ _) bot w = refl
     argIn-nl (ST.b-+ _ _) bot w = refl
 
-    -- D432: the answer's store and destination, by its base
+    -- D446: the answer's store and destination, by its base
     answer-nl : ∀ {B} (b : ST.Base ST.∅ₖ B) bot → NoLab (answer b bot)
     answer-nl (ST.b-var {i = ()} _) bot
     answer-nl ST.b-Unit    bot = []
@@ -142,7 +142,7 @@ module NoLabels {FS : FrameSemantics} where
     ansDst-nl (ST.b-* _ _) bot w = refl ∷ []
     ansDst-nl (ST.b-+ _ _) bot w = refl ∷ []
 
-    -- D428: an op's code, by the sigop it runs
+    -- D442: an op's code, by the sigop it runs
     lowOp-nl : ∀ s m bot → NoLab (lowOp s m bot)
     lowOp-nl s nothing  bot =
       argIn-nl (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ refl

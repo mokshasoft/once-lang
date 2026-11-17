@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.AgreeRun — plan 0.146 B1.5 (D426, D429): THE MACHINE AGREES
+-- Once.LinCore.AgreeRun — plan 0.146 B1.5 (D440, D443): THE MACHINE AGREES
 -- WITH AN IMAGE RUN THE WORLD ANSWERED. An image run whose calls the
 -- interpretation's world answered (`Total.WTr`, from the history `L`)
 -- meets the machine's world at every op step (`RunWord.AgreesAll`), given

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalTrView — plan 0.146 B1.4b (D417): A TRAMPOLINE'S CELL PART'S POINT, by its
+-- Once.LinCore.GlobalTrView — plan 0.146 B1.4b (D431): A TRAMPOLINE'S CELL PART'S POINT, by its
 -- instruction. A trampoline point at `open1`/`nopen`/`fopen`/`openω` is its trampoline's depth 0;
 -- the split that rules out every other point lives here, in a module with a small context (in a
 -- step's module it unifies each point's code with the instruction's, at tens of seconds).

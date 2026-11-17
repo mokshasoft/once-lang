@@ -22346,7 +22346,7 @@ iteration, or `ana` into `Eff`. Outside the Spec the word changes where code is 
 
 ### What programs see
 Nothing: names in the Spec only.
-## D403 — THE LINEAR CORE'S SHAPE: CELLS AND FRAMES, A LENDING CONTEXT, MANY-USE CLOSURES, EFFECTS ABOVE, REUSE AS A RULE (2026-11-08)
+## D417 — THE LINEAR CORE'S SHAPE: CELLS AND FRAMES, A LENDING CONTEXT, MANY-USE CLOSURES, EFFECTS ABOVE, REUSE AS A RULE (2026-11-08)
 
 **Decided** by the user 2026-11-12, after the review of the spike (every point, as amended below;
 point 3 with its decision). Was proposed (plan 0.146 §4 A, for the user's review before §4 B, the migration, starts). Worked out
@@ -22422,7 +22422,7 @@ once). **Starts from**: `NbEPLinCore` (OCP-0009, `origin/plan-ref`).
   of every shape-preserving rebuild.
 * **Decided (the user, 2026-11-12): `dup` stays a deep copy; cheaper forms come later as proved
   refinements.** A copy is needed only where BOTH sides own the value. Where one side only reads, the
-  pass lends instead (`lend`, no copy, no run-time bookkeeping); that is a refinement of D409 part 1's
+  pass lends instead (`lend`, no copy, no run-time bookkeeping); that is a refinement of D423 part 1's
   faithful translation. Sharing between two owners without counts needs a static proof of which owner
   frees (plan 0.145). Practical programs are mostly linear, so the copy is rare.
 * **Findings, open**: (1) `Ana` with an environment and a BRANCHING functor copies the environment once
@@ -22472,17 +22472,17 @@ once). **Starts from**: `NbEPLinCore` (OCP-0009, `origin/plan-ref`).
   plus temporaries.
 * **Termination of the run relation (finding 4) is a gate.** The memory theorems assume a run exists and
   `NoLeak` covers every image, so every program must have one (D213, D360: a claim over an empty set).
-* **Stack or cell.** D403's split stands: words, pairs and sums in frames, μ/ν nodes and closures in cells,
+* **Stack or cell.** D417's split stands: words, pairs and sums in frames, μ/ν nodes and closures in cells,
   free lists per size. Stack regions for nodes that stay inside a frame are a later optimization. A closure
   with an empty environment gets no cell, decided with sizes (plan 0.146 A12).
 * **Order.** The spike continues until every question mark it can resolve is gone (plan 0.146 A10–A17); only
   then does the integration (§4 B) start.
 
-## D404 — THE LINEAR CORE'S DECORATIONS: SIZED BLOCK NAMES, THE ABI LAYOUT, FLAT SIGOPS, NO CELL FOR AN EMPTY ENVIRONMENT (2026-11-11)
+## D418 — THE LINEAR CORE'S DECORATIONS: SIZED BLOCK NAMES, THE ABI LAYOUT, FLAT SIGOPS, NO CELL FOR AN EMPTY ENVIRONMENT (2026-11-11)
 
 **Decided** by the user 2026-11-12 (the spike's review; `lhalt` as its own generator accepted, the pass
 maps a `void`-answering operation to it). Was proposed (plan 0.146 A12, made unattended per the standing rule).
-**Applies**: D403 (amended: decorations decided by the type, the theorems unchanged), D402 (free lists
+**Applies**: D417 (amended: decorations decided by the type, the theorems unchanged), D402 (free lists
 per size), `Spec.ABI` (the layout of a base value), `Spec.Signature` (`BTy`, an operation answering `void`
 halts), plan 0.123 D6 (no run-time ownership information). Worked out in `Spikes/LinCore/` (`--safe`, no
 postulates); `exchange`, `noleak`, `lifetimes` and `lifetimes-exit` are stated as before.
@@ -22514,15 +22514,15 @@ postulates); `exchange`, `noleak`, `lifetimes` and `lifetimes-exit` are stated a
 * Not done, the same pattern: a ν suspension whose seed has no words could also be a static block; a μ
   node whose layer has no words still gets a cell. Neither occurs in the corpus's servers.
 
-## D405 — NOTHING KNOWN AT COMPILE TIME IS KEPT AT RUN TIME: CLOSURES DEFUNCTIONALISED BY LABEL, A STRATIFIED TABLE (2026-11-11)
+## D419 — NOTHING KNOWN AT COMPILE TIME IS KEPT AT RUN TIME: CLOSURES DEFUNCTIONALISED BY LABEL, A STRATIFIED TABLE (2026-11-11)
 
 **Accepted** (the user, 2026-11-11: the principle, and option 2 over option 1). **Applies**: `GOAL.md`
-("Nothing known at compile time is kept at run time"), D404 (amended: no code word, no closure cell),
-D403 point 5 (the two closure types, superseded), D131 (many-use closures, kept as a label kind), plan
+("Nothing known at compile time is kept at run time"), D418 (amended: no code word, no closure cell),
+D417 point 5 (the two closure types, superseded), D131 (many-use closures, kept as a label kind), plan
 0.123 D6 (subsumed). Worked out in `Spikes/LinCore/` (plan 0.146 A12, step 1).
 
 ### The principle
-A compiled program stores and tests only what the compiler cannot know. D404 put a code word in every
+A compiled program stores and tests only what the compiler cannot know. D418 put a code word in every
 closure and ν cell; the code is not run-time information when only one function can arrive, and when
 several can, what is unknown is WHICH OF THEM, a sum's tag, not a code address.
 
@@ -22558,11 +22558,11 @@ several can, what is unknown is WHICH OF THEM, a sum's tag, not a code address.
 * Whole-program: the table is the program's. Only flat values cross the boundary (`Spec.ABI`), so a
   closure never leaves it.
 
-## D406 — A ν IS A CLOSURE: ITS COALGEBRA A LABEL, ITS VALUE ITS SEED (2026-11-11)
+## D420 — A ν IS A CLOSURE: ITS COALGEBRA A LABEL, ITS VALUE ITS SEED (2026-11-11)
 
-**Superseded** by D409 part 3 (ν), decided 2026-11-12; kept only as the representation where one
-coalgebra reaches a site. Was proposed (made unattended under D405's "ν the same way"). **Applies**: D405
-(step 2), D404 (amended: no ν cell, no ν code word). Worked out in `Spikes/LinCore/` (plan 0.146 A12′).
+**Superseded** by D423 part 3 (ν), decided 2026-11-12; kept only as the representation where one
+coalgebra reaches a site. Was proposed (made unattended under D419's "ν the same way"). **Applies**: D419
+(step 2), D418 (amended: no ν cell, no ν code word). Worked out in `Spikes/LinCore/` (plan 0.146 A12′).
 
 ### Decision
 * **No ν type in the core.** A coalgebra of `F` on seeds `S` is a one-shot LABEL of argument `One`,
@@ -22571,10 +22571,10 @@ coalgebra reaches a site. Was proposed (made unattended under D405's "ν the sam
 * **`ana` is tagging the seed** (`lana = lclo Idf`): no event.
 * **Observing is a call** (`lobs F p = lclo F p ∘l lapp p ∘l ρl⁻`): the coalgebra runs on the seed, and
   the seeds of the layer it returns are tagged with the same label. The one generator change: `lclo F`
-  tags every environment at the `Idf` positions of a layer (`lclo Idf` is D405's `lclo`). No event
+  tags every environment at the `Idf` positions of a layer (`lclo Idf` is D419's `lclo`). No event
   beyond what the body does: no cell freed, none allocated, no code word read.
 * **`in-ν` (a ν built from a layer) is another label**, whose body returns that layer; where it meets an
-  unfolded ν the type is a sum (D405). The pass's job (A15), not a generator.
+  unfolded ν the type is a sum (D419). The pass's job (A15), not a generator.
 * **No ν inside a functor code** (`Kν` removed): the Spec's functor constants are base types (`WFFun`,
   `wf-K : Base Δ A`), so no IR type holds a ν inside data.
 * **No coinductive type in the meaning**: `Nu`, `unfoldNu` and the `Coalg` package go; the meaning stays a
@@ -22588,9 +22588,9 @@ coalgebra reaches a site. Was proposed (made unattended under D405's "ν the sam
 * Open for the review: the coalgebra's kind is one-shot (it owns its seed). A many-use coalgebra (one that
   reads its seed lent and returns copies) is not needed by any IR constructor seen so far.
 
-## D407 — TEMPORARIES: A DECORATION OF THE RUN, COUNTED BY SIZE, WITHOUT IDS (2026-11-11)
+## D421 — TEMPORARIES: A DECORATION OF THE RUN, COUNTED BY SIZE, WITHOUT IDS (2026-11-11)
 
-**Decided** by the user 2026-11-12 (the spike's review). Was proposed (made unattended, under plan 0.146 §3 "local temporaries are allowed" and D404's
+**Decided** by the user 2026-11-12 (the spike's review). Was proposed (made unattended, under plan 0.146 §3 "local temporaries are allowed" and D418's
 amendment; for the user's review). Worked out in `Spikes/LinCore/` (plan 0.146 A13: `Events`, `Temps`).
 
 ### Decision
@@ -22598,7 +22598,7 @@ amendment; for the user's review). Worked out in `Spikes/LinCore/` (plan 0.146 A
   lowering allocates (a fold's work stack, a deep copy's), with NO id. It is not a value, so nothing in a
   result can point into it, by construction. The cell heap (`step`, `OK`), the world's view (`ios`) and
   the lifetimes (`on`) ignore it, so every theorem of the run holds unchanged.
-* **A choice on a term** (as in-place reuse, D404): the rule `r-tmp` decorates a run of any term with its
+* **A choice on a term** (as in-place reuse, D418): the rule `r-tmp` decorates a run of any term with its
   own temporaries, WOVEN into its events. If the run gives a value they are BALANCED (each freed, by
   size, before the term finishes); if it stopped, only LEGAL (the exit exception).
 * **The structure** (the user, 2026-11-11: proper structures, proved, not invented lemmas): traces are
@@ -22619,7 +22619,7 @@ amendment; for the user's review). Worked out in `Spikes/LinCore/` (plan 0.146 A
   frees, unmatched allocations). Not needed by any proof so far; the ledger action is what the weave
   needs.
 
-## D408 — EVERY PROGRAM HAS A RUN: AN EVALUATOR THAT BUILDS IT; A WORLD MAY NOT ANSWER (2026-11-11)
+## D422 — EVERY PROGRAM HAS A RUN: AN EVALUATOR THAT BUILDS IT; A WORLD MAY NOT ANSWER (2026-11-11)
 
 **Decided** by the user 2026-11-12 (the spike's review; an unanswered call ends `exhausted`, accepted).
 Worked out in `Spikes/LinCore/Total.agda` (plan
@@ -22629,7 +22629,7 @@ Worked out in `Spikes/LinCore/Total.agda` (plan
 * **Totality by construction.** `exec` builds a `Run` of every term, from every lent value, input,
   counter and world state, given FUEL: a number of loop rounds. A run that uses its fuel ends
   `exhausted` after the rounds it ran (D374: a server's run is cut a round at a time).
-* **No relation on the type is needed** (D405 pays off). Applying a closure runs a body over a strictly
+* **No relation on the type is needed** (D419 pays off). Applying a closure runs a body over a strictly
   shorter prefix of the table, so the table's runners are built in order (`runners`, as `⟦_⟧D`); a fold
   recurses on the value; the term shrinks everywhere else. Termination: fuel, then term, then value.
 * **A world is any machine answering SigOps** (a state and an answer function: every history-dependent
@@ -22644,7 +22644,7 @@ Worked out in `Spikes/LinCore/Total.agda` (plan
 * Step 2 DONE: `Ran.cause` — a run found `exhausted` ran out of fuel at a loop or met a call the world
   refused (`unanswered`, with the equation); `fuel-only`: a world that always answers cuts only at a loop.
 
-## D409 — THE PASS, FIRST-ORDER, PROVED; THE HIGHER-ORDER PASS NEEDS A LABELLING DECISION (2026-11-11)
+## D423 — THE PASS, FIRST-ORDER, PROVED; THE HIGHER-ORDER PASS NEEDS A LABELLING DECISION (2026-11-11)
 
 **Part 1 Decided** by the user 2026-11-12 (the spike's review). **Part 2 and part 3 decided below**;
 part 3's unattended entries (the ν, the pass) accepted 2026-11-12. Worked
@@ -22665,15 +22665,15 @@ out in `Spikes/LinCore/Pass.agda`, `Whole.agda` (plan 0.146 A15).
 
 ### Part 2, open: labelling the higher-order IR
 The pass must give every lambda (`curry`) and coalgebra (`Ana`) a label, and every arrow and ν type a sum of
-labels (D405, D406). D405 said "start coarse: one sum per arrow type". That is NOT expressible:
+labels (D419, D420). D419 said "start coarse: one sum per arrow type". That is NOT expressible:
 * The coarse sum of `Int ⇛ Int` contains the closure of `compose f g`, whose environment holds two
   `Int ⇛ Int` closures: the sum type is RECURSIVE. The core's only recursive types are `μ` codes, which
   hold base data and other codes, never closures (`LF`, by design: positivity).
 * Its apply would call itself (applying `f` inside `compose`'s body): the label table is stratified, so a
-  body cannot call its own label (D405).
+  body cannot call its own label (D419).
 
 The choices, each principled, with different costs:
-1. **Closures as data, apply as an interpreter loop** (Reynolds' defunctionalisation, D405's "chain as
+1. **Closures as data, apply as an interpreter loop** (Reynolds' defunctionalisation, D419's "chain as
    data" made general): every arrow type is a `μ` code of its lambdas' environments; `apply` is a `liter`
    with an explicit stack. Total coverage; every higher-order call goes through the loop, and closures with
    cells for every node; the proof is a simulation through the loop.
@@ -22684,7 +22684,7 @@ The choices, each principled, with different costs:
    rejects programs the IR accepts today.
 
 `Call` (named definitions) is the same question: a call graph without cycles inlines or becomes labels;
-a cycle needs 1. `in-ν` and a ν's observation are labels too (D406).
+a cycle needs 1. `in-ν` and a ν's observation are labels too (D420).
 
 ### Part 2, decided by the user (2026-11-11): per-lambda labels, closures as data only where data decides
 Checked against GOAL.md and the Spec, not only against the log. The log's later entries override its
@@ -22696,7 +22696,7 @@ earlier ones, and GOAL.md overrides both.
   * A definition refers only to earlier ones (`Core.Syntax`, GOAL.md "no definition that refers to
     itself"), so `Call` never cycles. Each call becomes a label or is inlined, which needs no decision.
 * **Option 3 is rejected.** It rejects programs that the Spec types.
-* **D405's "start coarse" is withdrawn.** One sum per arrow type keeps a tag where the compiler knows the
+* **D419's "start coarse" is withdrawn.** One sum per arrow type keeps a tag where the compiler knows the
   lambda, which GOAL.md forbids ("no code pointer where the compiler knows which function is meant").
 * **Decision: option 2, with option 1 confined.**
   * Flow analysis gives each application site the lambdas that reach it. Where one lambda reaches a site,
@@ -22708,11 +22708,11 @@ earlier ones, and GOAL.md overrides both.
 * **Order.** Build option 1 first (the general pass, proved like `pass-ok`), then option 2 as a refinement
   proved against it.
 
-### Part 3, OPEN (2026-11-11): how a data-decided apply recurses, after D412
+### Part 3, OPEN (2026-11-11): how a data-decided apply recurses, after D426
 Found before building option 1; the user's decision.
-* **Option 1 as written makes `apply` a `liter`.** D412 (decided later) makes a round, a fold's algebra
+* **Option 1 as written makes `apply` a `liter`.** D426 (decided later) makes a round, a fold's algebra
   and a coalgebra finite BLOCKS, and a loop is not a block. So any of them that applies a closure nested
-  through data would no longer type: the pass could not produce what D412 requires.
+  through data would no longer type: the pass could not produce what D426 requires.
 * **No structural measure covers it.** Applying a closure calls closures from its environment
   (structurally smaller), from its argument (of a smaller type), and closures RETURNED by those calls
   (neither). Termination is the simply typed calculus's normalization (Tait), not a fold over the closure
@@ -22737,8 +22737,8 @@ Found before building option 1; the user's decision.
   machine already runs a first-order fold. The open part: a server whose state is a closure, and
   closures that calls return. Part 2's per-lambda labels (option 2) stand where one lambda reaches a site.
 
-### D409 part 3, decided by the user (2026-11-12): the exponential restored, with the Spec's graded meaning
-**The deviation, named.** D405 took the arrow out of the core: `Ct l X` names one lambda in its type,
+### D423 part 3, decided by the user (2026-11-12): the exponential restored, with the Spec's graded meaning
+**The deviation, named.** D419 took the arrow out of the core: `Ct l X` names one lambda in its type,
 over a stratified label table. That is Reynolds' defunctionalisation, a compilation technique, written
 into the core's types. The Spec has graded exponentials (`⊢lam`/`⊢app` at `A ⇒[ mk-kind q π ] B`), and
 `⊢fold`/`⊢iter` take arrow carriers and state. Master's IR has `curry`/`apply`. So the core could not type
@@ -22778,14 +22778,14 @@ exponential back, the Spec's fold into an arrow is `lcata` at an arrow carrier.
   * **Example §21**: the list [7, 5] folded into `Int → Int` (each layer's closure holds the one before),
     applied to 0. It emits 7, then 5. Its events (`fn-events`) show every node and closure cell freed;
     `noleak`, and `machine-noleak` on the machine.
-* **Kept**: `Ct l X` and the label table, as the representation where one lambda reaches a site (D409
+* **Kept**: `Ct l X` and the label table, as the representation where one lambda reaches a site (D423
   part 2's flow analysis). It is a refinement of `Fn`, never the only closure.
-* **Still to align (next)**: ν (D406 makes a ν a label and its seed, so a ν whose coalgebra is decided
+* **Still to align (next)**: ν (D420 makes a ν a label and its seed, so a ν whose coalgebra is decided
   by data has no type, the same gap as the arrows had), the pass of the IR's `curry`/`apply` (A15), and
   the Spec's quantity `Zero` and its grade `pure` (the core has once/many and act/eff).
 
-### D409 part 3, ν (2026-11-12, made unattended, for the user's review): the Spec's ν restored
-The same deviation as the arrow's: D406's ν is `Ct l S`, so its type names its coalgebra, while the
+### D423 part 3, ν (2026-11-12, made unattended, for the user's review): the Spec's ν restored
+The same deviation as the arrow's: D420's ν is `Ct l S`, so its type names its coalgebra, while the
 Spec's `ν F` does not (`⊢unfold` takes any coalgebra term of arrow type). So a `case` choosing between two
 unfolds, or a fold whose carrier is a ν, had no type. Done in `Spikes/LinCore/`:
 * **Core**: `Nu F`, meaning `Nuᵐ F`, the Spec's `νM act` (a coinductive record, `outν : T (F (Nuᵐ F))`),
@@ -22806,17 +22806,17 @@ unfolds, or a fold whose carrier is a ν, had no type. Done in `Spikes/LinCore/`
 * **Example §22**: a `case` picks one of two coalgebras (count up, stand still), both unfolding into
   `Nu NatsF`. The stream from 3 is observed twice (3, then 4), then dropped, and every cell is freed, on
   the machine too (`nu-events`).
-* **Kept**: D406's labelled ν (`lana`/`lobs`, `Ct l S`) as the representation where one coalgebra reaches
+* **Kept**: D420's labelled ν (`lana`/`lobs`, `Ct l S`) as the representation where one coalgebra reaches
   a site, as `Ct` is for closures.
 * **For review**: copying the coalgebra per position, then dropping the original, costs one copy and
   one free per observation of a stream. Moving it into the one recursive position would cost nothing, but
   needs a case analysis on the layer. That is a refinement of `obsT`, like in-place reuse (A8).
 
-### D409 part 3, the pass (2026-11-12, made unattended, for the user's review): the IR's arrows and ν's
+### D423 part 3, the pass (2026-11-12, made unattended, for the user's review): the IR's arrows and ν's
 Plan 0.146 A15 part 2. Master's IR has `curry`/`apply` (real exponentials) and `Ana`/`Out`/`in-ν`, and no
-recursion; with D409 part 3 the core has the same, so the pass translates them directly. Done in
+recursion; with D423 part 3 the core has the same, so the pass translates them directly. Done in
 `Spikes/LinCore/`:
-* **The IR copy, graded as the Spec** (as `Iter` already was, D412): `curry g f γ` takes its body at the
+* **The IR copy, graded as the Spec** (as `Iter` already was, D426): `curry g f γ` takes its body at the
   arrow's grade (`GdIR`: a block at `act`), into `Fn many g` (the IR's arrows are many-use, D131);
   `Ana` takes a block coalgebra (`⊢unfold`). Its meaning: `ev` in `T∞` as master's `evalᴰ`, and a block's
   in `T` (`evB`), as an `act` arrow means; `ev-coh` proves they agree (as `Grade.blk-coh` does for the
@@ -22845,7 +22845,7 @@ recursion; with D409 part 3 the core has the same, so the pass translates them d
 * **Example §23**: an IR program with a closure, an unfold and `in-ν`, compiled, run, sound against the
   IR's meaning (`whole-sound`), and leak-free. Its machine instance is not spelled out (normalising it
   exceeds the type-checker's heap); `machine-noleak` covers it as every run.
-* **`Call` is a LABEL** (D409 part 2 allowed a label or inlining; the label is master's D064 direct call,
+* **`Call` is a LABEL** (D423 part 2 allowed a label or inlining; the label is master's D064 direct call,
   `call once_f`, and inlining would copy code). The IR copy is indexed by the program's earlier
   definitions (`IR Γ A B`, `Γ` the core's own `Cx`); a program is a table `Prog Γ`, each definition over
   the ones before (the Spec's `Program`: no recursion). A definition is a one-shot label with nothing in
@@ -22857,7 +22857,7 @@ recursion; with D409 part 3 the core has the same, so the pass translates them d
   on the machine too.
 * **With this, every constructor of master's IR is in the pass.**
 
-## D410 — A MODEL MACHINE: CODE, FRAMES IN HEAP BLOCKS, A SIMULATION BY THE RUN (2026-11-11)
+## D424 — A MODEL MACHINE: CODE, FRAMES IN HEAP BLOCKS, A SIMULATION BY THE RUN (2026-11-11)
 
 **Decided** by the user 2026-11-12 (the spike's review). Worked out in `Spikes/LinCore/Machine.agda` (plan
 0.146 A16).
@@ -22870,7 +22870,7 @@ recursion; with D409 part 3 the core has the same, so the pass translates them d
 * **The lowering is continuation-passing** (`comp`): a term is compiled in front of the code after it; a
   branch carries the code after it on both sides (no jumps yet: the real labels are B's).
 * **A fold and a closure's body run in a frame**, and a frame is a heap block: `enter`/`leave` are a
-  temporary's birth and death (A13, D407). A fold expands node by node (`fold` → the node freed, then in a
+  temporary's birth and death (A13, D421). A fold expands node by node (`fold` → the node freed, then in a
   frame its children re-entering the fold, then the algebra), so the work stack is in the heap.
 * **The simulation** (`sim`), by induction on the run: the machine on the compiled code reaches the code
   after it with the run's result; its events are the run's (temporaries erased) with BALANCED
@@ -22885,13 +22885,13 @@ recursion; with D409 part 3 the core has the same, so the pass translates them d
 * Values on the machine's stack are the run's values: cells are still the run's, by id. Addresses, and an
   allocator that reuses them, are A17.
 
-## D411 — THE ALLOCATOR PER SIZE; THE SPACE CLAIM PER SIZE'S PEAK, IN ONE SHARED REGION (2026-11-11)
+## D425 — THE ALLOCATOR PER SIZE; THE SPACE CLAIM PER SIZE'S PEAK, IN ONE SHARED REGION (2026-11-11)
 
 **Part 1 Decided** by the user 2026-11-12 (the spike's review). **Part 2 DECIDED by the user, 2026-11-11** (plan
 0.146 §3, "the space claim", open since 2026-11-08). Worked out in `Spikes/LinCore/Alloc.agda` (A17).
 
 ### Part 1: the allocator, proved
-* One size class (free lists per size, D403). Block `j` of size `k` is the words `[base k + j·k, …)`;
+* One size class (free lists per size, D417). Block `j` of size `k` is the words `[base k + j·k, …)`;
   the region holds blocks `0 … top-1`. A cell born takes the LOWEST FREE block below the top, else the top
   grows by one; a cell freed frees its block; a temporary (a frame) likewise, newest first.
 * Every block has one owner (`who`: free, a cell by serial, a temporary by name). So addresses are reused,
@@ -22919,7 +22919,7 @@ The choices:
   a temporary freed is on the stack): the invariant's form says how; the proof is the relation between the
   heap and `Live`, event by event.
 
-### D410, amended (2026-11-11): the whole core lowered; stopped runs; master's `LeakFree` form
+### D424, amended (2026-11-11): the whole core lowered; stopped runs; master's `LeakFree` form
 * The machine lowers EVERY generator but in-place reuse: an environment stack of lent views (`lend`,
   `blift`, `bfst`, `bsnd`, `bcaseE`, `bout` with its read, `bcopy`, `bapp`), the loop as a round-by-round
   expansion, `ehalt`. `sim` covers EVERY outcome: a stopped run (halted, or cut, a server after its last
@@ -22934,7 +22934,7 @@ The choices:
   server could be "at every round boundary, the live cells are exactly the state's" (a per-round
   `exchange`, `loop-exchange` already proves it of the run).
 
-### D410 amended, decided by the user (2026-11-11): no leak is a SAFETY claim, at every step
+### D424 amended, decided by the user (2026-11-11): no leak is a SAFETY claim, at every step
 Checked against GOAL.md and the Spec.
 * **The Spec says nothing about memory**, so the claim is the implementation's. GOAL.md asks for memory
   "managed by the compiler from the program's structure", and a server's meaning is an infinite sequence
@@ -22963,13 +22963,13 @@ Checked against GOAL.md and the Spec.
   * B replaces `LeakFree.freed` in `formal/Once/Implementation.agda` by the per-step form. That file is
     the apex but not a Spec module: no `spec-freeze` approval is needed, the user decided the form here.
 
-### D411, amended (2026-11-11): the legal-run link, done
+### D425, amended (2026-11-11): the legal-run link, done
 * `AllocRun.never-fails`: a legal run (cell heap `OK`, temporaries `TLeg`) never makes any size class's
   allocator fail, its invariant holding along the run. The link, kept event by event: a cell of size `k`
   is live in the pool exactly when the heap holds it; the pool's stack of temporaries is as long as the
   ledger counts. Example: the list server's events, the new list taking the old blocks.
 
-### D411 part 2, decided by the user (2026-11-11): the claim per size's peak, over one shared region
+### D425 part 2, decided by the user (2026-11-11): the claim per size's peak, over one shared region
 Checked against GOAL.md and the Spec.
 * **The Spec leaves the space claim to the implementation.** The source has unlimited memory
   (`never-exhausted`), and a compiled run may end `exhausted` anywhere (`⊑`, D374).
@@ -22993,7 +22993,7 @@ Checked against GOAL.md and the Spec.
 * **The claim (plan B2):** a run ends `exhausted` only when `Σ k · peakₖ`, over the program's sizes, does
   not fit the region.
 
-## D412 — THE SPIKE CARRIES THE SPEC'S GRADES: A ROUND AND A COALGEBRA ARE FINITE BLOCKS (2026-11-11)
+## D426 — THE SPIKE CARRIES THE SPEC'S GRADES: A ROUND AND A COALGEBRA ARE FINITE BLOCKS (2026-11-11)
 
 **Decided by the user, 2026-11-11** ("first fix the spike so that it aligns with GOAL.md and the Spec regarding the
 iter problem"). **Amends**: A11's choice (plan 0.146 §3, "the effect index ... set aside"), which was made
@@ -23030,15 +23030,15 @@ for review. Worked out in `Spikes/LinCore/NbEPLinCore.agda`, `Grade.agda`, `Pass
 Every theorem is unchanged: the run relation, the machine and the evaluator take the judgment along. The
 examples' rounds and bodies carry their judgments.
 
-## D413 — THE IR'S ARROW CARRIES THE SPEC'S PURITY (2026-11-12)
+## D427 — THE IR'S ARROW CARRIES THE SPEC'S PURITY (2026-11-12)
 
 **Proposed** (made unattended, plan 0.146 B1, for the user's review). **Amends**: plan 0.52 M2 (the IR's
-exponential ungraded, "one exponential per `(A, B)`"). **Applies**: D412 (a round and a coalgebra are finite
+exponential ungraded, "one exponential per `(A, B)`"). **Applies**: D426 (a round and a coalgebra are finite
 blocks), plan 0.146 §3 ("owed for B: the pass must carry the grade from the typing into the IR").
 
 ### Context
 * The core needs every arrow's grade: `Fn k g A B` means `⟦A⟧ → Mg g ⟦B⟧`, and `liter` takes a round that is
-  a BLOCK (D412). Master's IR erases the grade (`IRTy._⇛_`), so the pass cannot tell an `act` closure from
+  a BLOCK (D426). Master's IR erases the grade (`IRTy._⇛_`), so the pass cannot tell an `act` closure from
   an `eff` one.
 * It is needed for every server: the elaborator compiles the Spec's `iter` as
   `loopM = curry (Iter (apply ∘ ⟨ fst , snd ⟩))`, a round that APPLIES the round closure. With ungraded
@@ -23065,11 +23065,11 @@ blocks), plan 0.146 §3 ("owed for B: the pass must carry the grade from the typ
 * **A second, graded IR beside master's**: two elaborations, two optimizers, or a proof that the optimizer
   preserves a separate grading.
 
-## D414 — THE CORE IS MASTER'S: ITS MONAD, ITS VALUES, ITS SIGOPS (2026-11-12)
+## D428 — THE CORE IS MASTER'S: ITS MONAD, ITS VALUES, ITS SIGOPS (2026-11-12)
 
-**Proposed** (made unattended, plan 0.146 B1.2, for the user's review). **Applies**: D403 amended ("the
+**Proposed** (made unattended, plan 0.146 B1.2, for the user's review). **Applies**: D417 amended ("the
 model is the backbone, decorated": what the compiler needs attaches as parameters decided by the type),
-D404 (SigOps take and answer flat values), D408 (an unanswered call ends the run `exhausted`).
+D418 (SigOps take and answer flat values), D422 (an unanswered call ends the run `exhausted`).
 
 ### Decision
 * **One meaning monad.** The core's `T`/`T∞` are master's (`Once.IR.Semantics.Trace`/`.Iterative`), no
@@ -23082,7 +23082,7 @@ D404 (SigOps take and answer flat values), D408 (an unanswered call ends the run
   FFI) returns with no event; an emitting or answering op is a call; a halting op halts. Its run follows
   that block (`OpPath`): each call an event with the world's answer, then a value, a halt, or a cut where
   the world gave no answer (`r-op`, `r-opend`). Machine: `s-opend`, the machine stops there.
-* **`lhalt` is gone.** D404 kept it as a generator of its own while the Spec halts by an operation's
+* **`lhalt` is gone.** D418 kept it as a generator of its own while the Spec halts by an operation's
   contract; now the core halts the way the Spec does.
 * **`--safe` is dropped from the core's modules**, as from every `formal/` module: master's are not
   `--safe`, and `make pragma-gate` is how `formal/` rules out check-disabling pragmas.
@@ -23093,10 +23093,10 @@ D404 (SigOps take and answer flat values), D408 (an unanswered call ends the run
 * `Examples` instantiates the core at x86-64's numerics; its world answers master's calls. An answered
   `Int` is normalised to the target's width (`atTarget`), as `evalᴰ` reads it.
 
-## D415 — THE IMAGE'S CALL OPENS A FRAME OF ITS OWN: BLOCKS AT A CLOSED SHAPE (2026-11-12)
+## D429 — THE IMAGE'S CALL OPENS A FRAME OF ITS OWN: BLOCKS AT A CLOSED SHAPE (2026-11-12)
 
-**Proposed** (made unattended, plan 0.146 B1.4b, for the user's review). **Applies**: D410 ("a model
-machine: code, frames"), D407 (a frame is a temporary), D147 (a result goes to the caller's destination),
+**Proposed** (made unattended, plan 0.146 B1.4b, for the user's review). **Applies**: D424 ("a model
+machine: code, frames"), D421 (a frame is a temporary), D147 (a result goes to the caller's destination),
 D386 (a closure node `[env-word, code]`).
 
 ### Context
@@ -23122,11 +23122,11 @@ indexed stacks, and every block's code would have to be shown the same at every 
 * `ImageRun` (`Ret`'s call entry, `i-call`, `i-ret`), `ImageSim` (the call combinators), `HeldI` and
   `KeysRun` follow. No theorem changes its statement.
 
-## D416 — THE IMAGE'S WORDS: ABI VALUES IN FRAMES, CELLS `[contents-word, code, copy, free, contents]` (2026-11-12)
+## D430 — THE IMAGE'S WORDS: ABI VALUES IN FRAMES, CELLS `[contents-word, code, copy, free, contents]` (2026-11-12)
 
 **Proposed** (made unattended, plan 0.146 B1.4b, for the user's review). **Applies**: D379/D380 (values
 whose type fixes their size live in frames), D381 (flat values are their `Spec.ABI` words), D386/D390 (a
-closure node `[env-word, code]`, code at word 1), D147, D415.
+closure node `[env-word, code]`, code at word 1), D147, D429.
 
 ### Decision
 * **A value is words.** A flat value is its `Spec.ABI` words (`words`: `Unit` none, a scalar one, a pair
@@ -23142,7 +23142,7 @@ closure node `[env-word, code]`, code at word 1), D147, D415.
   address — no code reads it, a trampoline reads the contents at `hdr` from the cell's pointer; an address
   past a zero-word contents would be outside the block, which the flat machine faults on.)
   The copy and free codes are the contents' type's (`kcopy`/`kfree`): a copy or a free of a closure or a ν
-  is deep (D403) and its contents' type is known only to the cell, so the cell names them, as it names its
+  is deep (D417) and its contents' type is known only to the cell, so the cell names them, as it names its
   body. One block per cell, as the run has one `alloc` per cell.
 * **A ν's code word names its observation block**, as a closure's names its body: `kobs` at the table
   where the ν was built (a `lunf` site's table is an observer's too, and so is the empty table, where a
@@ -23153,10 +23153,10 @@ closure node `[env-word, code]`, code at word 1), D147, D415.
 * Calls pass the argument's (and result's) address in `Input1` and the top view's in `Output` (both
   survive a call); the callee copies its argument in and its result out (D147).
 
-## D417 — THE IMAGE'S CONTROL IS THE FLAT MACHINE'S: TRAMPOLINES ARE BLOCKS, POINTS BEFORE WORDS (2026-11-12)
+## D431 — THE IMAGE'S CONTROL IS THE FLAT MACHINE'S: TRAMPOLINES ARE BLOCKS, POINTS BEFORE WORDS (2026-11-12)
 
-**Decided by the user** (2026-11-12, plan 0.146 B1.4b). **Applies**: D415 (a call opens a frame of its
-own), D416 (cells name their code), GOAL.md (proved correct; no runtime added).
+**Decided by the user** (2026-11-12, plan 0.146 B1.4b). **Applies**: D429 (a call opens a frame of its
+own), D430 (cells name their code), GOAL.md (proved correct; no runtime added).
 
 ### Decision
 * **A dispatch through a cell calls a trampoline BLOCK.** `Key` gains a trampoline key per cell kind; the
@@ -23181,10 +23181,10 @@ the whole-run relation one case.
 * `ImageRun`, `Keys`/`KeysRun`, `HeldI` and `ImageSim` are updated for the trampoline keys (symbolic).
 * New module `ImagePt` (points, the lock-step), then the word layer's relation and step theorem.
 
-## D418 — THE WORD LAYER'S RELATION: POINTS CARRY THEIR LOWERING'S MEMBERSHIP, FRAME FACTS COME FROM THE RUN, TRAMPOLINE POINTS PER KEY (2026-11-13)
+## D432 — THE WORD LAYER'S RELATION: POINTS CARRY THEIR LOWERING'S MEMBERSHIP, FRAME FACTS COME FROM THE RUN, TRAMPOLINE POINTS PER KEY (2026-11-13)
 
-**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Applies**: D417 (refines
-its "one relation"), D416. Proof structure only: the flat code is unchanged, no run-time cost.
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D431 step 3). **Applies**: D431 (refines
+its "one relation"), D430. Proof structure only: the flat code is unchanged, no run-time cost.
 
 ### Decision
 * **A point carries the membership its lowering was made with** (`PointAt.Pnt`): a block point its
@@ -23201,7 +23201,7 @@ its "one relation"), D416. Proof structure only: the flat code is unchanged, no 
 
 ### Why
 `ImagePt.Placed` has no memberships, and `KeysRun`'s `CIn` is local evidence, not the root's (a key may be
-listed twice), so the code at a point must be the root's. D417's single relation assumed the image's
+listed twice), so the code at a point must be the root's. D431's single relation assumed the image's
 trampoline frame holds what the flat one does; it does not, for the operand, until the cell part runs.
 A store through a pointer (`mvSP`, `store-at`) may write another frame (`call-out` writes the caller's
 area), so "other frames unchanged" is a fact about the run, which the move records already state.
@@ -23211,9 +23211,9 @@ area), so "other frames unchanged" is a fact about the run, which the move recor
   `c-jmp Ld` resolves to its dispatch point, `image-label`; `frm`: a saved flat frame, its return pc the
   continuation's point, the root's save slot the caller's area); the trampoline relation; the step theorem.
 
-## D419 — A RUN'S HEAP FACT: THE BLOCKS BELOW ITS START COUNTER STAND (2026-11-13)
+## D433 — A RUN'S HEAP FACT: THE BLOCKS BELOW ITS START COUNTER STAND (2026-11-13)
 
-**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Applies**: D418, D411
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D431 step 3). **Applies**: D432, D425
 (the allocator), plan step B1.6. Proof structure only: the flat code is unchanged.
 
 ### Decision
@@ -23235,17 +23235,17 @@ the heap only in blocks it has just allocated. This is the weakest fact the retu
 every lemma already has it (`m-heap`, `h-other`, `w-rest`).
 
 ### Consequences
-* B1.6 (blocks reused, D411's allocator) breaks it: a freed block is reallocated below the counter. Then
+* B1.6 (blocks reused, D425's allocator) breaks it: a freed block is reallocated below the counter. Then
   `r-old` becomes "the cells no saved frame holds" (`HeldI`: the live cells are exactly the held ones, so a
   freed cell is held by no frame), stated per run the same way.
 
-## D420 — THE WORD LAYER'S GLOBAL RELATION: A POINT, ITS FRAME, AND THE RETURN STACK BY ROOT AND WAY OUT (2026-11-13)
+## D434 — THE WORD LAYER'S GLOBAL RELATION: A POINT, ITS FRAME, AND THE RETURN STACK BY ROOT AND WAY OUT (2026-11-13)
 
-**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Applies**: D417, D418,
-D419. Proof structure only.
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D431 step 3). **Applies**: D431, D432,
+D433. Proof structure only.
 
 ### Decision
-* **The image's state `(c , r , m , n)` relates to a flat state `fs`** by: a point `P : Pnt c` (D418) with
+* **The image's state `(c , r , m , n)` relates to a flat state `fs`** by: a point `P : Pnt c` (D432) with
   `HereP P m fs` (a path of the start or a block: the root's `Loc.Here`; a loop's dispatch: `HereQ` at
   its address; a trampoline point: owed, per key; stopped: owed with `lop`), `n` the flat heap counter,
   and `RetOK (rootOf P) (ptFin P) r ctx fs` over the frame context `ctx` = the current frame, the return
@@ -23266,11 +23266,11 @@ out (`jmp Ld`) and the loop's, exactly what `∷ⁱ` records.
 
 ### Consequences
 * `Global` (next): `HereP`, `RetOK`, the relation, and the step theorem from `local-step`, `LoopStep`,
-  `CallStep.call-n`/`call-v`/`return`. Trampolines (per key, D418) and `lop` stay owed.
+  `CallStep.call-n`/`call-v`/`return`. Trampolines (per key, D432) and `lop` stay owed.
 
-## D421 — A TRAMPOLINE'S FRAME IS A BLOCK FRAME `frame 0 M` ONCE ITS CELL PART HAS RUN (2026-11-13)
+## D435 — A TRAMPOLINE'S FRAME IS A BLOCK FRAME `frame 0 M` ONCE ITS CELL PART HAS RUN (2026-11-13)
 
-**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Refines**: D418 (the
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D431 step 3). **Refines**: D432 (the
 per-key relation of trampoline points). Proof structure only: the flat code is unchanged.
 
 ### Decision
@@ -23278,10 +23278,10 @@ per-key relation of trampoline points). Proof structure only: the flat code is u
   (no environment region; `M` = `tramp`'s `M`): its entry's budget `suc (suc M)` is that frame's
   `fbudget`, its two saves (`M`, `suc M`) are its `sv₁`, `sv₂`, and the cell part leaves the operand's
   words (`mpair x a`, the coalgebra and seed) at the region's top. So from the cell part on, the
-  trampoline's points relate by the uniform `CfgW` (D420's `HereP`), its inner call is a call from a
+  trampoline's points relate by the uniform `CfgW` (D434's `HereP`), its inner call is a call from a
   third kind of root (a `Site` in a trampoline), and its way out is `leave` at its second save slot.
 * **Only the point before the cell part has a relation of its own**: the cell in the first save slot
-  and in the heap, the operand's other part in the caller's area (D418).
+  and in the heap, the operand's other part in the caller's area (D432).
 * The many-use body's (`ktrω`, view by pointer into the cell), the copy's and the free's trampolines
   keep per-key relations at every depth (they do not copy into the frame).
 
@@ -23294,9 +23294,9 @@ result lands at `M ∸ wB`. Reusing the block relation avoids a second proof of 
 * `leave` generalised to any save slot; `Site` gains `s-tramp`; `RetOK` a constructor for a trampoline
   frame (its way out at `sv₂`, the caller's area `Mc`-sized); the cell parts' lemmas (`open1`, `nopen`).
 
-## D422 — A ROOT'S CODE HAS NO TRAMPOLINE CELL PART: A CELL PART AT A ROOT'S PATH IS ABSURD (2026-11-13)
+## D436 — A ROOT'S CODE HAS NO TRAMPOLINE CELL PART: A CELL PART AT A ROOT'S PATH IS ABSURD (2026-11-13)
 
-**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Refines**: D417 (the
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D431 step 3). **Refines**: D431 (the
 cell-part instructions `open1 openω nopen copen reclose fopen`). Proof structure only: the flat code is
 unchanged.
 
@@ -23306,7 +23306,7 @@ unchanged.
   every block of a non-trampoline key; every key of a program's universe is one (`allK-nt`, through
   `tmGot`/`defsGot`/`key1`/`keyω` as `blocks-in`); a path keeps it (`sub-nc`).
 * So a cell-part step at a path of the start's or a block's code is refuted; only the trampoline points
-  (D418, D421) relate a cell part.
+  (D432, D435) relate a cell part.
 * **Not chosen: `Keys.IIn` of a cell part `⊥`.** `CIn` is also the image run's universe invariant
   (`KeysRun.keep`), which holds of a trampoline's block too (`i-icall` enters it); the lowering's
   evidence and the run's invariant are one predicate, so it cannot exclude cell parts.
@@ -23320,19 +23320,19 @@ construction of the compiled code, and `NoCell` states it.
 ### Consequences
 * The step theorem covers `open1` (at a trampoline's depth 0, by `tr-open1`; elsewhere absurd).
 
-## D423 — A ν IS OBSERVED AT THE EMPTY TABLE: ONE OBSERVATION BLOCK PER (F , S) (2026-11-13)
+## D437 — A ν IS OBSERVED AT THE EMPTY TABLE: ONE OBSERVATION BLOCK PER (F , S) (2026-11-13)
 
-**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Refines**: D416 (a ν's
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D431 step 3). **Refines**: D430 (a ν's
 code word names `kobs` at the table where the ν was built). **Status** (implemented 2026-11-13): `Keys`
 gathers `(_ , ε)` for `lunf`/`lout`, `Words.vnu` names `kobs ε F S`, `ImageRun.i-iobs` enters `ktro ε F S`;
 `ObsTable` proves `obsT` table-free (`run-tf`, `obs-tbl`) and `ImageSim.simTF` simulates its run at `ε`
 (structurally, by the run). The word layer's dispatch `i-iobs` (`giobs`) is the next step.
 
 ### The problem
-A ν's code word names `kobs d F S` for the table `d` where the ν was built (D416); the image's `iobs ds`
+A ν's code word names `kobs d F S` for the table `d` where the ν was built (D430); the image's `iobs ds`
 enters `ktro ds F S` at the OBSERVER's table `ds`. When the two differ (a ν built in a body, observed in
 the start's code), the flat run jumps to one trampoline and the image runs another: their flat codes are
-the same (D416: `obsT` names no label), but they sit at different places in the image and the image codes
+the same (D430: `obsT` names no label), but they sit at different places in the image and the image codes
 differ syntactically (`compᴵ ds (obsT F S)` carries `ds` in its `prim ds …`), so the word layer's point
 (`p-tramp`, a membership and a path into one key's block) cannot relate them.
 
@@ -23350,11 +23350,11 @@ differ syntactically (`compᴵ ds (obsT F S)` carries `ds` in its `prim ds …`)
 * A cross-table point (the image in one key's block, the flat pc in another's of the same code): a second
   point kind, a path translation between two syntactically different codes — larger and less clear.
 
-## D424 — THE WORD LAYER KNOWS EVERY CELL'S BLOCK: A FLAT BLOCK INVARIANT (2026-11-13)
+## D438 — THE WORD LAYER KNOWS EVERY CELL'S BLOCK: A FLAT BLOCK INVARIANT (2026-11-13)
 
-**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D417 step 3). **Applies**: D385/D386 (an
+**Proposed** (unattended, for the user's review; plan 0.146 B1.4b, D431 step 3). **Applies**: D385/D386 (an
 embedded value records that its address is a live cell of its block; block sizes stay with the
-allocator), D416 (a cell is one heap block). **Status**: in progress — `Moves.InBlk` is carried by
+allocator), D430 (a cell is one heap block). **Status**: in progress — `Moves.InBlk` is carried by
 `Keep` (`k-inb`; so by every `Ran`, `r-inb`), by the call records (`Called.cd-inb`; from `CallIn`'s
 `ci-size`, `ClosIn`'s `cl-size`, `CallOut`'s `co-size` by `inb-pt`) and by the relation
 (`Related.g-blk`): every step of the step theorem keeps it. Not yet used: the `ktrf`/`ktrc`/`ktrω`
@@ -23385,10 +23385,10 @@ proved.
 * Block sizes inside `VW` (as D386's `cell-flat`): every `VW`, `EnvW`, `StkW` and every simulation over
   them gains the block map — the same facts, everywhere.
 
-## D425 — A MANY-USE TRAMPOLINE'S BODY WRITES INTO ITS DISPATCHER'S AREA: THE AREA'S FRAME APART FROM THE RETURN'S (2026-11-14)
+## D439 — A MANY-USE TRAMPOLINE'S BODY WRITES INTO ITS DISPATCHER'S AREA: THE AREA'S FRAME APART FROM THE RETURN'S (2026-11-14)
 
 **Accepted** (2026-11-14, by the user: keep the generated code, runtime performance first; plan 0.146
-B1.4b, D417 step 3, D418). **Applies**: D417 (trampolines), D421 (frame-0 trampolines copy through their
+B1.4b, D431 step 3, D432). **Applies**: D431 (trampolines), D435 (frame-0 trampolines copy through their
 frame). **Status**: accepted; implemented (the step theorem covers `icallω` and the `ktrω` trampoline).
 
 ### The problem
@@ -23411,15 +23411,15 @@ writes the result into `cfc` and returns into `cfc`; `Called.cd-area` is in the 
   through the pointer), shared with the copy trampoline (`ktrc`'s inner call reads the contents the same way).
 
 ### Alternatives
-* Copy the argument and result through the trampoline's frame (as D421's frame-0 trampolines): one
+* Copy the argument and result through the trampoline's frame (as D435's frame-0 trampolines): one
   record shape, but two extra moves per many-use call — a cost in the generated code for the proof's
   convenience.
 
-## D426 — THE STEP THEOREM'S SIGOP CASE IS RELATIVE TO THE MACHINE'S WORLD; A HALT LANDS IN A HALTED MACHINE (2026-11-14)
+## D440 — THE STEP THEOREM'S SIGOP CASE IS RELATIVE TO THE MACHINE'S WORLD; A HALT LANDS IN A HALTED MACHINE (2026-11-14)
 
 **Proposed** (unattended, for the user's review; plan 0.146 B1.4b, the last case: `lop`). **Applies**:
-D408 (a world answers any way it likes, or not at all), D414 (an op follows its contract's block,
-`OpPath`; the image stops at a halting op, `i-opend`), D420 (the word layer's global relation).
+D422 (a world answers any way it likes, or not at all), D428 (an op follows its contract's block,
+`OpPath`; the image stops at a halting op, `i-opend`), D434 (the word layer's global relation).
 
 ### The problem
 The image's op step (`i-prim` at `lop s`, its `Run` an `r-op`) takes the world's answer `y` to each call
@@ -23444,13 +23444,13 @@ claim the machine gives every answer: false for answering ops. And `i-opend` lan
 ### Alternatives
 * A theorem parameter that the machine answers as any path says (as `ld` for constants): unsatisfiable
   for answering ops, so the theorem would hold vacuously for every program with a call.
-* Fix the image's world to the machine's interpretation inside `Run`: changes D408's run (every world),
+* Fix the image's world to the machine's interpretation inside `Run`: changes D422's run (every world),
   which `sound`/`exchange` use.
 
-## D427 — THE WORD LAYER TRACKS THE MACHINE'S LOG: EVERY STEP BUT AN OP'S KEEPS IT, AN OP APPENDS ITS EVENTS (2026-11-14)
+## D441 — THE WORD LAYER TRACKS THE MACHINE'S LOG: EVERY STEP BUT AN OP'S KEEPS IT, AN OP APPENDS ITS EVENTS (2026-11-14)
 
-**Proposed** (unattended, for the user's review; plan 0.146 B1.5). **Applies**: D426 (the op step relative to
-the machine's world), D424 (the pattern: a flat invariant threaded through the step records).
+**Proposed** (unattended, for the user's review; plan 0.146 B1.5). **Applies**: D440 (the op step relative to
+the machine's world), D438 (the pattern: a flat invariant threaded through the step records).
 
 ### The problem
 B1.5's theorem is about events (the role of `FlatFromObs.flat-ends`): the flat machine's log against the
@@ -23479,7 +23479,7 @@ discharged where the log is the run's history.
 * **The observable part is `ios`** (the trace's `io`/`stp` events, `Events.ios`), shown to the log by
   `StepOp.ioEvent` (`io-call o a _ ↦ Trace.callEvent o a`, `io-halt o a ↦ Trace.haltEvent o a`):
   `evsOf t = map ioEvent (ios t)`. A step lands at `evsOf t`.
-* **An op's events are part of the world's agreement** (D426): `OpVal s x y E` and `OpHalt s x E` add
+* **An op's events are part of the world's agreement** (D440): `OpVal s x y E` and `OpHalt s x E` add
   `sigop-events (info s) (at-arg fs d) ≡ E`, and `Agrees` takes `E = evsOf t` of the op's trace.
 * **Every other covered step shows nothing**: its trace is a cell's or a temporary's events (`refl`),
   or, for a local `prim`, the run of an atomic primitive (`StepIos.prim-ios`, by `PrimIn`, which the
@@ -23487,14 +23487,14 @@ discharged where the log is the run's history.
 * The whole run: `RunWord.from-start` lands at `ev-log (floc start-fs) ++ evsOf t` (`start-fs`'s log
   is `[]`).
 
-## D428 — AN OP'S LOWERING FOLLOWS THE MACHINE'S SIGOP ABI: A SCALAR ARGUMENT IN ITS REGISTER, A COMPARE BY ITS BLOCK (2026-11-14)
+## D442 — AN OP'S LOWERING FOLLOWS THE MACHINE'S SIGOP ABI: A SCALAR ARGUMENT IN ITS REGISTER, A COMPARE BY ITS BLOCK (2026-11-14)
 
 **Proposed** (unattended, for the user's review; plan 0.146 B1.5). **Applies**: D398 (a scalar sigop
 argument is its register), D389 (a scalar has no memory residence), D381 (a base value is its words in
 place), master's compare lowering (`IRToTrace.cmp-trace`, `Compare.cmp-of`).
 
 ### The problem
-Found while stating what discharges `AgreesAll` (D426): the machine's sigop decodes its argument from
+Found while stating what discharges `AgreesAll` (D440): the machine's sigop decodes its argument from
 `Input1` by `decode-at` — a scalar (`Int`, `Float`) is the register's literal, a compound base is a pointer
 read by `readTyped`. The new lowering of `lop` (`Lower.lowP`) always passes the argument's slot ADDRESS
 (`lea-slot ∷ mov-to-input`). At a scalar argument the machine then decodes nothing: an emitting or
@@ -23510,16 +23510,16 @@ unknowable. Master lowers a compare to its Int-returning block (`cmp-block-info`
   (`readTyped`, D381's layout, the same as the image's words: `wsz`/`tsize`).
 * **A compare** (`cmp-of (sem (info s)) ≡ just o`) is lowered as master's: its block's sigop (an `Int`),
   then `out-nz` (the tag) stored in the result's one word (in place: a `Unit + Unit` is its tag).
-* `OpVal`/`OpHalt` (D426) are restated at the state the new code leaves (`at-arg` by the base).
+* `OpVal`/`OpHalt` (D440) are restated at the state the new code leaves (`at-arg` by the base).
 
 ### Alternatives
 * Change the machine (decode a scalar through a pointer): reverses D398, and the arch layer's arith
   blocks read a scalar input as the register (D396).
 
-## D429 — B1.5 TOP-DOWN: THE WORLD'S RUN, AND THE FLAT THEOREM STATED AT THE APEX'S SHAPE FIRST (2026-11-14)
+## D443 — B1.5 TOP-DOWN: THE WORLD'S RUN, AND THE FLAT THEOREM STATED AT THE APEX'S SHAPE FIRST (2026-11-14)
 
 **Decided** with the user ("lets go with your proposal, but … connecting this at the top-level first … so we
-don't build proof islands"). **Applies**: D426 (relative to the machine's world), D427 (the log), the
+don't build proof islands"). **Applies**: D440 (relative to the machine's world), D441 (the log), the
 memory rule "top-down, no islands".
 
 ### Decision
@@ -23533,7 +23533,7 @@ memory rule "top-down, no islands".
   each missing link a named field of an explicit hypothesis record (no postulate). The fields are the work
   list; each is discharged in place, so every lemma is reachable from the statement.
 
-## D430 — THE CORE'S EVALUATOR SPENDS ONE GLOBAL ROUND BUDGET, AS MASTER'S `approx` (2026-11-14)
+## D444 — THE CORE'S EVALUATOR SPENDS ONE GLOBAL ROUND BUDGET, AS MASTER'S `approx` (2026-11-14)
 
 **Proposed** (unattended, for the user's review; plan 0.146 B1.5, found top-down stating `FlatTop.o-run`).
 **Applies**: plan 0.119 D5 (master's budget: `approx k` counts a loop's continuing rounds along the whole
@@ -23551,13 +23551,13 @@ after the other, no fuel cuts the core's run where `approx k` cuts the meaning: 
   continuing round with none left ends the run `exhausted` (as `approxBlock zero (ret (inj₂ _)) = ret cut`);
   the first round is free. Termination by the term, then the remaining budget (well-founded).
 * A budgeted soundness lemma replaces the cut-anywhere path (`RB`) for the flat theorem: at budget `k` in
-  the world `Wι` (D429), the run's events and end are `Trace.run ι [] (approx k meaning)`'s.
+  the world `Wι` (D443), the run's events and end are `Trace.run ι [] (approx k meaning)`'s.
 
 ### Alternatives
 * Weaken the apex's per-budget fact (some fuel shows a prefix): changes master's trust-relevant top
   statement (`BudgetApex`), for a property the core can simply match.
 
-### D429 refinement (2026-11-14): the image's halt is a halt
+### D443 refinement (2026-11-14): the image's halt is a halt
 The core's op may end where the world gave no answer (`OpPath.p-cut`: a run `exhausted`), which the image
 modelled as a halt (`i-opend` to `halted`). The flat machine does not halt there (an answering sigop never
 halts; it reads a sentinel answer), and master's run halts with the `unlinkedOp` event: the image's halt
@@ -23565,12 +23565,12 @@ was not the machine's. Now `i-opend` takes only a HALTED path, and such runs are
 (`Machine.Plain (r-opend {w = exhausted})` is `⊥`, beside the in-place fold): a linked program's runs never
 meet an unanswered call (`Spends.UnCut`, owed at the top from linkedness). `spends-plain` takes it.
 
-## D431 — LINKEDNESS AT THE CORE: A PROGRAM'S OPS ARE IN ITS UNIVERSE (2026-11-14)
+## D445 — LINKEDNESS AT THE CORE: A PROGRAM'S OPS ARE IN ITS UNIVERSE (2026-11-14)
 
 **Proposed** (unattended, for the user's review; plan 0.146 B1.5, found top-down discharging
 `FlatTop.o-uncut` and `OpMachine.OwedOp.oo-unlinked`).
 **Applies**: D244/D245 (a linked program: `Denotation.Program.LinkedProgram`, master's apex premise
-`LinkedImage`), D429 (the world's run; an unanswered call is a cut), B1.4b (`Keys`: a program's finite
+`LinkedImage`), D443 (the world's run; an unanswered call is a cut), B1.4b (`Keys`: a program's finite
 universe, `KeysRun.inside`).
 
 ### The problem
@@ -23596,7 +23596,7 @@ blocks. What is needed is that every op a run (or the image) executes is one of 
   closure bookkeeping.
 * Restrict the core's `Sig` to declared ops by construction: makes the core depend on the interpretation.
 
-### D430 refinement (2026-11-15): the budget is read in loop entries and control steps
+### D444 refinement (2026-11-15): the budget is read in loop entries and control steps
 Found discharging `FlatTop.o-cut`/`o-sound` (master's `flat-cut`, `start-sound`). A cut run must show the
 machine has taken a control step per unit of the budget. The image simulation now counts loop entries
 (`ImageSim.OutI`/`PausedI` at least `j`, `simI` at the run's `Spends.rounds`, a round started at each
@@ -23608,12 +23608,12 @@ the flat machine takes a control step at each loop entry (its label: `GlobalLoca
 state the start reaches is the world's run's end at a budget past it (determinism), whose halting step
 keeps the machine's ending (an op's halt is not a fault: `StepOp.OpHalt`).
 
-## D432 — A SIGOP'S ANSWER IS ITS ABI WORDS AT THE RESULT'S SLOTS, AS EVERY OTHER VALUE'S (2026-11-15)
+## D446 — A SIGOP'S ANSWER IS ITS ABI WORDS AT THE RESULT'S SLOTS, AS EVERY OTHER VALUE'S (2026-11-15)
 
 **Decided** (the user, 2026-11-15; plan 0.146 B1.5, found top-down: the last owed link of the flat
 theorem, `OpMachine.OwedOp`, an FFI value op or answering call whose answer is a product or a non-compare
 sum). **Applies**: D379/D380 (values in frames are their `Spec.ABI` words), D381 (`readTyped`: a base value
-read in place), D382 (`Spec.ABI.answer`: an answer in the return registers or the caller's buffer), D398/D428
+read in place), D382 (`Spec.ABI.answer`: an answer in the return registers or the caller's buffer), D398/D442
 (an op's argument: a scalar its register, any other its address), D061 (master's
 `structured-pure-sigop-output` postulate, the same gap).
 
@@ -23629,7 +23629,7 @@ much part of the IRs as they are, so it should not be handled differently for th
   word, as today; `Unit` is no words. Any other base answer (a product, a sum) is written by the sigop, in
   place (`writeTyped`, the mirror of `readTyped`: a product's words after each other, a sum's tag then its
   payload, the padding left as it is), at the address `Output` holds when the sigop runs — the hidden
-  buffer of `Spec.ABI`'s `argument`/`answer`. The answer side mirrors the argument side (D428): scalar or
+  buffer of `Spec.ABI`'s `argument`/`answer`. The answer side mirrors the argument side (D442): scalar or
   address.
 * **The lowering**: an op with a structured answer takes the result's address (`lea-slot` at the result's
   slots) into `Output` after `mov-to-input`, before the sigop; nothing is stored after it. The answer may
@@ -23661,7 +23661,7 @@ much part of the IRs as they are, so it should not be handled differently for th
 * The flat theorem (`FlatTop.IRTop`) owes nothing now; master's `obs-correct-sigop-rest` (the old
   lowering's structured case) goes with the old lowering in B1.7.
 
-## D433 — THE CORE'S CONSTANTS ARE LITERAL PAYLOADS, MATERIALIZED BY THEIR MEANING AND BY THE MACHINE (2026-11-15)
+## D447 — THE CORE'S CONSTANTS ARE LITERAL PAYLOADS, MATERIALIZED BY THEIR MEANING AND BY THE MACHINE (2026-11-15)
 
 **Proposed** (unattended, for the user's review; plan 0.146 B1.6, found stating the new image's arch apex:
 the image's constant load `ldConst` has to be a machine instruction). **Applies**: D113 (a literal reaches
@@ -23685,11 +23685,11 @@ that gives it back. So the new image could not load a core constant.
 * Encode the core's bits back to a payload: impossible for a rounded `Float` with no decimal preimage.
 * A machine instruction loading a raw word: a second literal path, against D113's one place.
 
-## D434 — STACK POINTERS LIVE ON THE STACK, POINTING AT LIVE FRAMES; THE HEAP NEVER POINTS AT THE STACK (2026-11-15)
+## D448 — STACK POINTERS LIVE ON THE STACK, POINTING AT LIVE FRAMES; THE HEAP NEVER POINTS AT THE STACK (2026-11-15)
 
 **Decided** (the user, 2026-11-15; plan 0.146 B1.6 item 2, found top-down: `Owed.o-em`'s `em-image`, the
 arch layer's stack-pointer invariant at the new image). **Applies**: D380 (stack pointers live on all three
-arches), D407 (frames are the core's temporaries), D428/D432 (an argument or structured answer by address).
+arches), D421 (frames are the core's temporaries), D442/D446 (an argument or structured answer by address).
 
 ### The problem
 Master's `FlatStackPtr` holds that every stack pointer addresses the CURRENT frame; it is true only because
@@ -23714,13 +23714,13 @@ memory and point at older frames.
   call, but a new addressing form and layout on three arches; possible later as an optimization under this
   invariant.
 
-## D435 — AN ACCESS THROUGH A STACK POINTER IS CHECKED AGAINST A LIVE FRAME'S WINDOW (2026-11-15)
+## D449 — AN ACCESS THROUGH A STACK POINTER IS CHECKED AGAINST A LIVE FRAME'S WINDOW (2026-11-15)
 
-**Proposed** (unattended, for the user's review; plan 0.146 B1.6 item 2, D434's machine side). **Applies**:
-D385 (an offset store writes a cell of its block, or faults), D434, D367 (a reached state never faults).
+**Proposed** (unattended, for the user's review; plan 0.146 B1.6 item 2, D448's machine side). **Applies**:
+D385 (an offset store writes a cell of its block, or faults), D448, D367 (a reached state never faults).
 
 ### The problem
-D434 lets frames hold stack pointers at older frames. The arch correspondence relates a frame's slots to
+D448 lets frames hold stack pointers at older frames. The arch correspondence relates a frame's slots to
 memory only inside its window (`Window`: slots below its reservation), and frames lie next to each other, so
 a load or store through a stack pointer past its frame's window, or into a popped frame, would be a
 different cell on the hardware than in the machine. The machine does not check stack locations
@@ -23731,18 +23731,18 @@ different cell on the hardware than in the machine. The machine does not check s
   (the current one or a saved one, `live-frames`) and `k + j` is inside its window; else they fault (the
   resolution is `nothing`, the existing fault). A heap location passes the gate unchanged, so D385 and every
   heap proof stand as they are.
-* The image's no-fault theorem (FlatTop) is then the proof that it keeps D434's "a stack pointer points at
+* The image's no-fault theorem (FlatTop) is then the proof that it keeps D448's "a stack pointer points at
   live data"; the arch layer needs no stack-pointer invariant (master's `FlatStackPtr`, "no stack pointer
   anywhere", retires), only the gate's outcome at each access. Nothing is emitted for the check.
-* D434's "the heap never points at the stack" is a property of the lowering (stack addresses come only from
+* D448's "the heap never points at the stack" is a property of the lowering (stack addresses come only from
   `lea-slot` and reach only registers and frame slots); the arch correspondence does not depend on it.
 * `addr-at k` forms an address at an offset of a HEAP block only (D385); through a stack pointer it faults:
-  `lea-slot` is the one producer of stack addresses (D434). (Found doing it, 2026-11-15: an offset address
+  `lea-slot` is the one producer of stack addresses (D448). (Found doing it, 2026-11-15: an offset address
   into a frame is never emitted, and on riscv64 it would need a no-wrap bound of its own.)
 * A branch on a tag reads a tag or a heap pointer (a node, nonzero); a STACK pointer has no tag, so the
   test faults on one (`tag-test`): its address is no data, and the frame model gives no base a lower bound.
 * A SigOp reaches words through pointer registers too: a compound argument through `Input1` (`decode-at`,
-  D428) and an in-memory answer's buffer through `Output` (`sigop-store`, D432). Its step checks the whole
+  D442) and an in-memory answer's buffer through `Output` (`sigop-store`, D446). Its step checks the whole
   range before anything else is trusted (`sigop-gate`): when the address is a stack one, the value's LAST
   word must be inside a live window (`range-ok`; a window is a prefix of its frame, so every word below is
   too). A scalar argument is its register (D398) and is not checked. A failed check faults and halts the
@@ -23756,10 +23756,10 @@ different cell on the hardware than in the machine. The machine does not check s
 * A preserved invariant (master's `FlatStackPtr` generalized): must survive every call and return, and a
   dead register still pointing into a popped frame breaks it although it is never used.
 
-## D436 — μ/ν NODES STAY CELLS; LAYERS ARE BUILT AND READ IN PLACE; FRAME-LOCAL NODES GO TO FRAMES (2026-11-16)
+## D450 — μ/ν NODES STAY CELLS; LAYERS ARE BUILT AND READ IN PLACE; FRAME-LOCAL NODES GO TO FRAMES (2026-11-16)
 
-**Decided** (the user, 2026-11-16, in a discussion of D434's cost). **Applies**: D403 (cells and frames:
-μ/ν nodes and closures are cells), D434 (the heap never points at the stack), plan 0.146 §3 ("Local
+**Decided** (the user, 2026-11-16, in a discussion of D448's cost). **Applies**: D417 (cells and frames:
+μ/ν nodes and closures are cells), D448 (the heap never points at the stack), plan 0.146 §3 ("Local
 temporaries are allowed", "Stack or cell"), A9 (stack regions), `loop-exchange` (a server's memory is its
 state, round after round).
 
@@ -23787,7 +23787,7 @@ stack, its intermediates on the heap — and the same for coinductive values?
     a list rebuilt by a fold each round (`loop-forever-list.once`) stays in place. A branching functor
     builds the left result while the right input is live, so the output goes to a SECOND stack and the
     next fold reads it from there (toggling); two stacks growing toward each other share one region
-    (D411 part 2).
+    (D425 part 2).
   - What does not: (1) KEEPING a sub-value. In `b, nil, c₂, a, c₁` (the list `[a, b]`, top at the
     right), a fold that keeps `a` (filter, reverse, partition over a list of structures) must move it
     out of the way before `c₂` can be popped: a deep copy, or everything below pinned. A cell moves it by
@@ -23802,20 +23802,20 @@ stack, its intermediates on the heap — and the same for coinductive values?
     consumer cannot pop as it goes; more stacks do not help (the inversion recurs at every depth); it
     can only read in place and free each subtree after its sibling, holding up to the whole input. A
     pure algebra's order is the compiler's, so it visits the top first and pops. (4) A μ value stored in a cell (a closure's
-    environment, a ν's seed) must be copied to the heap whole (D434).
+    environment, a ν's seed) must be copied to the heap whole (D448).
 * Coinductive values are the same, with an easier special case. The server loop (`c-loop`/`iter`) uses no
   cell already: its state is rewritten in place in the loop's frame. A first-class ν has a STATIC
   footprint (its seed and coalgebra); it is a cell only because it may outlive its frame.
 
 ### Decision
-* **μ/ν nodes and closures stay cells** (D403 stands; no dynamic or secondary stack for values).
+* **μ/ν nodes and closures stay cells** (D417 stands; no dynamic or secondary stack for values).
 * **Layers in place** (plan 0.146, B1.8): `lIn` allocates the cell and writes the layer's fields into
   it directly (destination passing); `lOutμ` / an observation reads fields from the cell where it can,
   rather than moving the whole layer into the frame first. The values' meaning and the events are
   unchanged (one alloc, one free per node), only the moves go.
 * **Frame-local nodes in frames** (A9, after the integration): a μ node or a ν whose whole lifetime is
   inside one frame (built and consumed there, not returned, not stored in a cell) gets frame slots,
-  decided statically from the term. It needs no change to D434. A secondary-stack extension (a callee's
+  decided statically from the term. It needs no change to D448. A secondary-stack extension (a callee's
   result kept on a second stack until the caller's scope ends) is the case of A9 across one call: it
   applies only where the lifetimes nest, and it needs no stored word beyond a saved stack mark.
 
@@ -23833,11 +23833,11 @@ stack, its intermediates on the heap — and the same for coinductive values?
 * Keep the moves: the simplest image, but every node costs two layer moves that GOAL.md's "memory is
   managed by the compiler from the program's structure" does not require.
 
-## D437 — NOTHING FALLS INTO AN ENTRY: THE GUARD ADMITS `c-leave`; HALTED CODE ENDS IN `c-leave` (2026-11-16)
+## D451 — NOTHING FALLS INTO AN ENTRY: THE GUARD ADMITS `c-leave`; HALTED CODE ENDS IN `c-leave` (2026-11-16)
 
 **Proposed** (unattended, for the user's review; plan 0.146 B1.6, `Emitted.em-guard` for the new image).
 **Applies**: D094/D245 (the emitter's guard: what precedes an entry does not fall through), D320 (`c-leave`,
-the Host's leave, halts where it stands), D417 (the image's blocks and trampolines).
+the Host's leave, halts where it stands), D431 (the image's blocks and trampolines).
 
 ### The problem
 `em-guard` says the instruction before an entry is a `c-jmp` or a `c-ret`; `RunWF.run-seg-wf` uses it to
@@ -23867,11 +23867,11 @@ function entry follows `main`'s `c-leave` whenever `main` has no linked block.
 * A `c-ret`/`c-jmp` as the dead terminator: a `c-ret` is what `em-ret-owes`/`em-ret-budget` quantify over,
   and a halted state does not owe a return.
 
-## D438 — THE ARCH LAYER READS THE RUN'S FACTS, NOT MASTER'S POSITIONAL SCAN (2026-11-16)
+## D452 — THE ARCH LAYER READS THE RUN'S FACTS, NOT MASTER'S POSITIONAL SCAN (2026-11-16)
 
 **Decided** (the user, 2026-11-16: option (b) of the B1.6 fork). **Applies**: D092/D094 (the frame and
-return stacks move together; a return lands one past a call), D434/D435 (check at the access, not by a
-positional invariant), D437 (the guard before an entry), plan 0.146 B1.6 (`RunContext.Emitted`).
+return stacks move together; a return lands one past a call), D448/D449 (check at the access, not by a
+positional invariant), D451 (the guard before an entry), plan 0.146 B1.6 (`RunContext.Emitted`).
 
 ### The problem
 `Emitted.em-slots` (a slot an instruction addresses is below the segment in force) and `em-jump` (a jump
@@ -23889,13 +23889,13 @@ are false of it as stated.
 
 ### Decision
 (b). Both are principled (neither keeps at run time what is known at compile time); (b) changes the
-proof, not the program, and follows D434/D435.
+proof, not the program, and follows D448/D449.
 * **`em-slots` is a run fact**: at a reached state, a slot the fetched instruction addresses is below the
   current frame's reservation (`slot < frame-slots`). `em-jump` is gone.
 * **The shared invariant reads no scan** (`RunWF.FrameWF`): the frame and return stacks are paired and
   every return address is one past a call (`RetMatch`), and an entry is reached with an empty
   reservation, a live link and a pending return (`fw-entry`). Its induction reads two facts of the code:
-  what each instruction is (`ImageI`) and the guard before each entry (`GuardAt`, D437).
+  what each instruction is (`ImageI`) and the guard before each entry (`GuardAt`, D451).
 * **Master's scan stays master's proof** (`FlatCore.OldSeg`): the reservation in force at each pc
   (`SegCur`) and a saved frame's at its return pc (`RetSeg`), from the scan's static facts (`ScanFacts`:
   the slots below the segment, label scoping); `scan-slots` proves `em-slots` for master's image, and
@@ -23905,20 +23905,20 @@ proof, not the program, and follows D434/D435.
   `em-ret-owes`, `em-ret-budget`.
 
 ### Alternatives
-* A machine gate on slot accesses (`slot < frame-slots`, else fault), as D435's for pointer accesses, with
+* A machine gate on slot accesses (`slot < frame-slots`, else fault), as D449's for pointer accesses, with
   FlatTop's no-fault proof as the new image's discharge. Deferred to after B1.7: every simulation of the
   old lowering (`IRObsCorrect/**`, about a hundred modules over slot instructions) would have to carry the
   frame bound to its no-fault proof, and that code is deleted in B1.7. With the old lowering gone the gate
   is the smaller step (the run fact's one provider is the new image's simulation either way).
 * (a), above.
 
-## D439 — THE RUN'S FACTS ARE MACHINE GATES; B1.7 BEFORE THEM (2026-11-17)
+## D453 — THE RUN'S FACTS ARE MACHINE GATES; B1.7 BEFORE THEM (2026-11-17)
 
-**Decided** (the user, 2026-11-17). **Applies**: D435 (check at the access), D438 (the arch layer reads the
+**Decided** (the user, 2026-11-17). **Applies**: D449 (check at the access), D452 (the arch layer reads the
 run's facts; its slot gate deferred), plan 0.146 B1.6/B1.7.
 
 ### The problem
-D438 left four run facts for the new image to prove (`Emitted.em-slots`, `em-call-site`, `em-ret-owes`,
+D452 left four run facts for the new image to prove (`Emitted.em-slots`, `em-call-site`, `em-ret-owes`,
 `em-ret-budget`), by the route "from FlatTop's simulation: a reached state is related". Two things block
 that route. `Related` holds at image-step boundaries only, while the facts are about the flat states
 INSIDE a step's chain (the epilogue's `c-ret`, the dispatch's `instr-call-closure`), so every `Global*`
@@ -23932,8 +23932,8 @@ accesses are unbounded.
 ### Options
 * (a) Thread a per-state predicate through every step chain, and pin `EntryLike` to master's entry.
 * (b) A static owner map (each pc's block fixes `frame-slots` and a pending return), by induction on
-  `Reachable`: a positional invariant again (what D438 left), and `em-call-site` (a data fact) still open.
-* (c) Machine gates, as D435: `c-ret b` faults unless a return is pending and `b ≡ frame-slots`;
+  `Reachable`: a positional invariant again (what D452 left), and `em-call-site` (a data fact) still open.
+* (c) Machine gates, as D449: `c-ret b` faults unless a return is pending and `b ≡ frame-slots`;
   `instr-call-closure` faults unless `fclosure` points at a cell whose code word names a body; a slot access
   faults unless `slot < frame-slots`. The four facts then follow from `Sound`, which `Reachable` carries,
   from any start.
@@ -23950,7 +23950,7 @@ return `RetOK`, the closure's cell are in hand there); `o-sound` then yields the
 ### Alternatives
 (a) and (b) above. (c) before B1.7: the gates' obligations on about a hundred modules about to be deleted.
 
-## D440 — WHAT IS COMPILED SEES NO INTERPRETATION: THE CORE'S SYNTAX AND LOWERING TAKE `fmt` ONLY (2026-11-17)
+## D454 — WHAT IS COMPILED SEES NO INTERPRETATION: THE CORE'S SYNTAX AND LOWERING TAKE `fmt` ONLY (2026-11-17)
 
 **Decided** (the user, 2026-11-17). **Applies**: GOAL.md "three times" (items 2 and 3: no particular
 Interpretation is in sight when Once is built or a program compiled), plan 0.146 B1.7 step 2.
@@ -23975,7 +23975,7 @@ Master's image already sees no interpretation (`program-image : CanonicalName �
 syntax module (`fmt`) and its proof module (`fmt ans`). No re-export (`public`): importers name the
 module that defines what they use.
 
-## D441 — THE LINEAR CORE IS COMPILED FROM THE SPEC'S GRADED DERIVATION (2026-11-17)
+## D455 — THE LINEAR CORE IS COMPILED FROM THE SPEC'S GRADED DERIVATION (2026-11-17)
 
 **Decided** (the user, 2026-11-17). **Applies**: plan 0.146 B1.7 step 2; GOAL.md (every gap proved);
 OCP-0009's "architecture bug" (`plan-ref` `bootstrap/poc/OCP0009/ARCHITECTURE.md` §3).
@@ -23991,7 +23991,7 @@ by `elaborate` before the core sees them.
 * (a) The core from the derivation: one clause per surface rule (plan 0.151's syntax-directed rules), the
   usage indexing the target (`Lq⟦_⟧ : Γ ⊢[ρ] A → LTm`, the POC bridge): context addition is the tensor's
   split, a copy only at ω. Total by construction.
-* (b) D413's route: `blk?` stays a checker; a completeness lemma per elaborator rule (after 0.151) proves it
+* (b) D427's route: `blk?` stays a checker; a completeness lemma per elaborator rule (after 0.151) proves it
   accepts every elaborated program; an owed premise meanwhile.
 * (c) The grades in the IR's constructors (master's IR graded).
 

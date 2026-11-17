@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalDispatch — plan 0.146 B1.4b (D417 step 3, D421, D422): A DISPATCH THROUGH A ONE-SHOT CELL'S CODE WORD, AND ITS TRAMPOLINE'S CELL PART
+-- Once.LinCore.GlobalDispatch — plan 0.146 B1.4b (D431 step 3, D435, D436): A DISPATCH THROUGH A ONE-SHOT CELL'S CODE WORD, AND ITS TRAMPOLINE'S CELL PART
 -- (over `Global.Relate` and `GlobalTramp`).
 ------------------------------------------------------------------------
 
@@ -138,7 +138,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     nat-r0 {suc a} ()
 
   -- ★ the dispatch's caller, as the new top of the return stack: the
-  -- trampoline's frame `frame 0 M` (D421), the caller's area in `suc M`
+  -- trampoline's frame `frame 0 M` (D435), the caller's area in `suc M`
   mk-tramp : ∀ {T σ} {κ : Key σ} {Es D B S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ B ∷ S)} {k : Codeᴵ (Es ∣ B ∷ S) V}
                {es : Slots Es} {os : Stk S} {r : Ret V T} {v : MV D} {fs fs′}
                (p : under κ ∈ allK U) (o : TrM κ) (d : DSite i k)
@@ -275,7 +275,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I } , k-log (r-keep Rn)
 
   -- ★ A ONE-SHOT TRAMPOLINE'S CELL PART (i-open1): at its depth 0; at a root's
-  -- path it is absurd (D422: a root's code has no cell part)
+  -- path it is absurd (D436: a root's code has no cell part)
   gopen1 : ∀ {T Es g X A B S V} {k : Codeᴵ (Es ∣ (X ⊗t A) ∷ S) V} {r : Ret V T} {es : Slots Es} {i}
              {lam : Lam once g X A B} {x : MV X} {a : MV A} {os : Stk S} {n h fs} (P : Pnt (open1 {g = g} {X = X} {B = B} ⨾ k))
          → InvI (es ∥ mpair (mfn i lam x) a ∷ˢ os) r n h → HereP P (es ∥ mpair (mfn i lam x) a ∷ˢ os) fs
@@ -288,7 +288,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   gopen1 (p-tramp p pt) inv (tp , T0) nx ok I = gopen1-t (open1-v tp) inv T0 nx ok I
 
   -- ★ AN OBSERVATION'S TRAMPOLINE'S CELL PART (i-nopen): at its depth 0; at a
-  -- root's path it is absurd (D422)
+  -- root's path it is absurd (D436)
   gnopen : ∀ {T Es F S S′ V} {k : Codeᴵ (Es ∣ (Coalg F S ⊗t S) ∷ S′) V} {r : Ret V T} {es : Slots Es} {i}
              {x : MV (Coalg F S ⊗t S)} {os : Stk S′} {n h fs} (P : Pnt (nopen {F = F} {S = S} ⨾ k))
          → InvI (es ∥ mnu i x ∷ˢ os) r n h → HereP P (es ∥ mnu i x ∷ˢ os) fs
@@ -301,7 +301,7 @@ module DispR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   gnopen (p-tramp p pt) inv (tp , T0) nx ok I = gnopen-t (nopen-v tp) inv T0 nx ok I
 
   -- ★ an observation's dispatch from the start's code: into the trampoline
-  -- of the ν's observation block (`ktro ε`, D423), at its depth 0 (TrO0)
+  -- of the ν's observation block (`ktro ε`, D437), at its depth 0 (TrO0)
   giobs-start : ∀ {T Γ} {ds : Defs Γ} {F S Es S′ V} {k : Codeᴵ (Es ∣ LF∙ F (Nu F) ∷ S′) V}
                   {r : Ret V T} {es : Slots Es} {i} {x : MV (Coalg F S ⊗t S)} {os : Stk S′} {n h fs}
                   (s : Sub main (iobs ds {F = F} {S = S′} ⨾ k))

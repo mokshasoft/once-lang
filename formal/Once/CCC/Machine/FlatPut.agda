@@ -76,7 +76,7 @@ src-tr keep (src-flat fl lv v) =
   src-flat fl lv (validityWF-heap-transport (Live _) (λ _ b → b) keep (λ _ b → b) (λ _ _ ib → ib) _ _ lv v)
 src-tr keep src-unit = src-unit
 
--- D435: a live location (a heap cell) passes the frame gate
+-- D449: a live location (a heap cell) passes the frame gate
 live-gate-c : ∀ {a : AllocState {FS}} (alloc : AllocState {FS}) (k : ℕ) (l : ValueLocation FS) → Live a l
             → ExecFinal.frame-gate {FS} alloc k (just l) ≡ just l
 live-gate-c alloc k (AtDynamic hl) _ = refl

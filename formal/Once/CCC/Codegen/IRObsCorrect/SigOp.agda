@@ -171,7 +171,7 @@ module SigOpC {FS : FrameSemantics} where
   arg-agree (b-* _ _) x s (in-unit ())
   arg-agree (b-+ _ _)  x s (in-unit ())
 
-  -- D435 (d): THE SIGOP'S WINDOW CHECK PASSES here — its input is a heap cell
+  -- D449 (d): THE SIGOP'S WINDOW CHECK PASSES here — its input is a heap cell
   -- (`Live`), a register literal, or a unit (no words), and its answer is a
   -- register value or a unit (no buffer).
   range-heap : ∀ fr n (hl : _) → range-ok fr n (SV-Ptr (AtDynamic hl)) ≡ true
@@ -223,7 +223,7 @@ module SigOpC {FS : FrameSemantics} where
   -- single instruction; what differs is what it logs, whether it halts and
   -- where its result is — so those are the builder's arguments.
   ------------------------------------------------------------------------
-  -- D432: a register answer is not in memory
+  -- D446: a register answer is not in memory
   fits-mem : ∀ {B} → FitsInReg B → SMCore.in-memory? B ≡ false
   fits-mem fits-intˢ   = refl
   fits-mem fits-floatˢ = refl

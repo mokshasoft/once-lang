@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalDispatchW — plan 0.146 B1.4b (D417, D425): A MANY-USE DISPATCH (icallω), ITS TRAMPOLINE'S
+-- Once.LinCore.GlobalDispatchW — plan 0.146 B1.4b (D431, D439): A MANY-USE DISPATCH (icallω), ITS TRAMPOLINE'S
 -- CELL PART (openω) (beside `GlobalDispatchF`, for its build time).
 ------------------------------------------------------------------------
 
@@ -143,7 +143,7 @@ module DispW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     nat-r0 {suc a} ()
 
 
-  -- ★ a many-use dispatch's caller, as the new top of the return stack (D425): the trampoline's
+  -- ★ a many-use dispatch's caller, as the new top of the return stack (D439): the trampoline's
   -- frame with its one save slot (the caller's area), the caller under it
   mk-trampω : ∀ {T Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b} {Es S V}
                 {i : Insᴵ (Fn many g A B ∷ Es ∣ A ∷ S) (Fn many g A B ∷ Es ∣ B ∷ S)} {k : Codeᴵ (Fn many g A B ∷ Es ∣ B ∷ S) V}
@@ -276,7 +276,7 @@ module DispW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok
                                ; g-blk = r-inb Rn I } , k-log (r-keep Rn)
 
-  -- ★ A MANY-USE TRAMPOLINE'S CELL PART (i-openω): at its depth 0; at a root's path it is absurd (D422)
+  -- ★ A MANY-USE TRAMPOLINE'S CELL PART (i-openω): at its depth 0; at a root's path it is absurd (D436)
   gopenω : ∀ {T Es g X A B S V} {k : Codeᴵ (X ∷ Fn many g A B ∷ Es ∣ S) V} {r : Ret V T}
              {lam : Lam many g X A B} {i x} {es : Slots (Fn many g A B ∷ Es)} {os : Stk S} {n h fs}
              (P : Pnt (openω {Es = Es} {g = g} {X = X} {A = A} {B = B} {S = S} ⨾ k)) → see es ≡ mfn i lam x

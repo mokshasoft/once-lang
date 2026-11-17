@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalRet — plan 0.146 B1.4b (D417 step 3, D420, D421): A RETURN: the caller's frame back, the result on its stack
+-- Once.LinCore.GlobalRet — plan 0.146 B1.4b (D431 step 3, D434, D435): A RETURN: the caller's frame back, the result on its stack
 -- (split from `GlobalCall` for its build time; over `Global.Relate`).
 ------------------------------------------------------------------------
 

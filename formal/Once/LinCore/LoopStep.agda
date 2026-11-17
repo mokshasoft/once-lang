@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.LoopStep — plan 0.146 B1.4b (D417, step 3): THE LOOP'S
+-- Once.LinCore.LoopStep — plan 0.146 B1.4b (D431, step 3): THE LOOP'S
 -- STEPS against its lowering.
 --
 -- A loop `loop b ⨾ k` at a path `s` lowers to its head label `Lh`, the body

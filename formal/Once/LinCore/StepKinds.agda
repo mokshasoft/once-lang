@@ -100,7 +100,7 @@ straight-local (ecase _ _) l = l
 ------------------------------------------------------------------------
 
 CoveredI : ∀ {sh sh′} → Insᴵ sh sh′ → Set
--- a primitive: an op (D426: relative to the machine's world), or a local one
+-- a primitive: an op (D440: relative to the machine's world), or a local one
 data PrimCov {Γ} : ∀ {A B} → LTm Γ A B → Set where
   pc-op  : ∀ {s : Sig} → PrimCov (lop s)
   pc-loc : ∀ {A B} {g : LTm Γ A B} → NotOp g → PrimCov g
@@ -108,20 +108,20 @@ data PrimCov {Γ} : ∀ {A B} → LTm Γ A B → Set where
 CoveredI (loop _) = ⊤
 CoveredI (prim _ g) = PrimCov g
 CoveredI (call _) = ⊤
--- a dispatch through a one-shot cell's code word, and its trampoline's cell part (D421)
+-- a dispatch through a one-shot cell's code word, and its trampoline's cell part (D435)
 CoveredI icall    = ⊤
 CoveredI open1    = ⊤
--- an observation's dispatch (at the empty table, D423) and its trampoline's cell part
+-- an observation's dispatch (at the empty table, D437) and its trampoline's cell part
 CoveredI (iobs _) = ⊤
 CoveredI nopen    = ⊤
--- a free's dispatch (a closure's, a ν's) and its trampoline's cell part (D417)
+-- a free's dispatch (a closure's, a ν's) and its trampoline's cell part (D431)
 CoveredI cfree    = ⊤
 CoveredI nfree    = ⊤
 CoveredI fopen    = ⊤
--- a many-use dispatch and its trampoline's cell part (D425)
+-- a many-use dispatch and its trampoline's cell part (D439)
 CoveredI icallω   = ⊤
 CoveredI openω    = ⊤
--- a copy's dispatch (a closure's, a ν's) and its trampoline's cell part and fresh cell (D417)
+-- a copy's dispatch (a closure's, a ν's) and its trampoline's cell part and fresh cell (D431)
 CoveredI ccopy    = ⊤
 CoveredI ncopy    = ⊤
 CoveredI copen    = ⊤

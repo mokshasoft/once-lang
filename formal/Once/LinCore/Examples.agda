@@ -17,7 +17,7 @@
 --     afterwards holds exactly the new list (`loop-exchange`).
 --   * Closures, lending, in-place reuse, and (A11) SigOps inside a fold and a
 --     closure, a halt with a block live, a loop that ends, a server that runs
---     out; (D406) a ν, defunctionalised; (A13) a fold's work stack, a
+--     out; (D420) a ν, defunctionalised; (A13) a fold's work stack, a
 --     temporary block.
 ------------------------------------------------------------------------
 
@@ -250,7 +250,7 @@ list-sized : Sized {Zero ⊕t IntList} (minr (new-list 5))
 list-sized = sized (list-step 5) tt (sized build-run tt tt)
 
 ------------------------------------------------------------------------
--- 3. ★ D405: THE PROGRAM'S LABELS. Five lambdas, oldest first; each body is
+-- 3. ★ D419: THE PROGRAM'S LABELS. Five lambdas, oldest first; each body is
 --    typed over the labels before it.
 --
 --      0  a fold's algebra over an Int (many-use: applied lent, D131)
@@ -308,7 +308,7 @@ meet-words = refl
 ------------------------------------------------------------------------
 -- 3½. D131: a fold whose algebra is a CLOSURE, obtained once and applied at
 --     every layer. The closure is a many-use one (label 0); the fold borrows
---     it (`lend`, `bapp` at each layer). ★ D405: it is its environment, an
+--     it (`lend`, `bapp` at each layer). ★ D419: it is its environment, an
 --     Int in place: building, lending, applying and dropping it are no events.
 ------------------------------------------------------------------------
 
@@ -329,7 +329,7 @@ closure-fold-run =
            (go-on (r-⊗ r-drop (go-on (fm-gives r-id)))))
       (go-on r-λ)
 
--- ★ by evaluation: only the list's own events. (Under D404 the closure was a
+-- ★ by evaluation: only the list's own events. (Under D418 the closure was a
 -- block of a code word and the Int: allocated, read once per layer, freed.)
 closure-fold-events : trace-of-run closure-fold-run ≡ free (3 , 1) ∷ free (3 , 0) ∷ alloc (3 , 2) ∷ alloc (3 , 3) ∷ []
 closure-fold-events = refl
@@ -419,7 +419,7 @@ emit-closure-events : trace-of-run emit-closure-run ≡ io emitO 5 tt ∷ []
 emit-closure-events = refl
 
 ------------------------------------------------------------------------
--- 8½. ★ D405: a COMPOSITION. Label 4's environment is the two closures it
+-- 8½. ★ D419: a COMPOSITION. Label 4's environment is the two closures it
 --     composes; its body applies them by their labels, over its own prefix.
 --     Three closures, no words, no events: only the SigOps.
 ------------------------------------------------------------------------
@@ -495,7 +495,7 @@ ran-out-sound : RB (block (Lᶜ ε (liter emit-round emit-blk) tt 0))
 ran-out-sound = sound ran-out
 
 ------------------------------------------------------------------------
--- 11. ★ D406: a ν, DEFUNCTIONALISED. The naturals from a seed: the
+-- 11. ★ D420: a ν, DEFUNCTIONALISED. The naturals from a seed: the
 --     coalgebra is label 0 (the head is the seed, the next seed its
 --     successor), the stream is its seed, tagged: ONE word, no cell. Two
 --     observations: the two successor calls are the only events.
@@ -545,7 +545,7 @@ nats-two-sound : RB (block (Lᶜ ⟦ defsν ⟧D nats-two tt 5)) (io-call succO 
 nats-two-sound = sound nats-two-run
 
 ------------------------------------------------------------------------
--- 12. ★ A13 (D407): a fold's WORK STACK. §2's round again, its fold lowered
+-- 12. ★ A13 (D421): a fold's WORK STACK. §2's round again, its fold lowered
 --     with a work stack in one temporary block of 4 words: allocated before
 --     the fold descends, freed after the list is rebuilt. The temporary is
 --     the fold's own: woven into its events, freed before it finishes.
@@ -695,7 +695,7 @@ list-blocks : Data.Maybe.map (λ p → Al.own p 2 , Al.own p 3 , Al.top p)
 list-blocks = refl
 
 ------------------------------------------------------------------------
--- 19. ★ D411: ONE REGION FOR EVERY SIZE. §18's events in the region: the
+-- 19. ★ D425: ONE REGION FOR EVERY SIZE. §18's events in the region: the
 --     list's two blocks take words 0–2 and 3–5, and the round's new nil and
 --     cons take them again: six words, the peak of size 3 (two nodes) times
 --     three. Then two sizes sharing the region: a 3-word block, a 2-word
@@ -715,7 +715,7 @@ two-sizes : Data.Maybe.map (λ r → Rg.wtop r , Rg.addr r 3 0 , Rg.addr r 2 0 ,
 two-sizes = refl
 
 ------------------------------------------------------------------------
--- 20. ★ D410 amended: NO LEAK AT EVERY STEP, a server's state included.
+-- 20. ★ D424 amended: NO LEAK AT EVERY STEP, a server's state included.
 --     §2's list server as a closed program (the list [5] built, then rounds
 --     forever), compiled, run on the machine and cut after two rounds. Where
 --     the machine stands, the live cells are exactly those of the values it
@@ -741,7 +741,7 @@ list-held : (Owned (Σ.fst (Σ.snd stands)) (3 , 0) ≡ 0) × (Owned (Σ.fst (Σ
 list-held = (refl , refl , refl , refl)
 
 ------------------------------------------------------------------------
--- 21. ★ D409 part 3: A FOLD INTO AN ARROW (the Spec's `⊢fold` at a function
+-- 21. ★ D423 part 3: A FOLD INTO AN ARROW (the Spec's `⊢fold` at a function
 --     carrier). Folding the list [7, 5] builds a closure per node, each
 --     holding the one built before it: which body runs at each call is
 --     decided by the list, at run time, and no label table could name the

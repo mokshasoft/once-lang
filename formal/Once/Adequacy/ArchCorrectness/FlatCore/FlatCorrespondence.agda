@@ -2648,7 +2648,7 @@ ret-spill xoff {am} mem LK LK' stk r f b v ((f₀ , b₀) ∷ fr) (x ∷ rs) sw 
                    (m<m+n (frame-base f + slots b) slot-size>0)
 
 ------------------------------------------------------------------------
--- D435: AN ACCESS THROUGH A STACK POINTER, IN ANY LIVE WINDOW.
+-- D449: AN ACCESS THROUGH A STACK POINTER, IN ANY LIVE WINDOW.
 --
 -- The frame gate passes a stack location only inside a live frame's window
 -- (`in-window` over `live-frames`, which is `frames-of`). `StackWindows`
@@ -2849,7 +2849,7 @@ sim-store-at-stack {hv} k f j fs s s' corr i-eq g sm =
       ; lo-le = mkeep-lo-le corr sm
       ; stack-eq = windows-store-in (floc fs) (lo hv) (frames-of (falloc fs)) f (k + j) v win sm-base (stack-eq corr) }
 
--- D435: A STORE INTO ANY LIVE WINDOW MISSES EVERY PENDING RETURN. Into the
+-- D449: A STORE INTO ANY LIVE WINDOW MISSES EVERY PENDING RETURN. Into the
 -- target frame's window it is `ret-write-in-frame`; a younger frame's return
 -- cell is its window END, one slot below the next frame's base (`GapNext`), so
 -- strictly below the target frame and the store.
@@ -2925,7 +2925,7 @@ ret-write-past xoff {am} mem LK LK' nothing stk v fl g b ((g′ , b′) ∷ fr) 
                (≤-trans (head-floor (frame-base g + slots b) g′ b′ fr f j w rest) (m≤m+n (frame-base f) (slot-to-disp j)))
 
 ------------------------------------------------------------------------
--- D435 (d): A SIGOP'S COMPOUND ARGUMENT AT A STACK ADDRESS. Its step's check
+-- D449 (d): A SIGOP'S COMPOUND ARGUMENT AT A STACK ADDRESS. Its step's check
 -- (`sigop-gate`) passed at the value's last word; a window is a prefix of its
 -- frame, so every word of the value is in it, and reads its encoding at or
 -- above the stack pointer (every live frame is).

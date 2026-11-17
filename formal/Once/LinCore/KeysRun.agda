@@ -204,7 +204,7 @@ module Keep (U : Univ) where
     keep i-ret    _ (ck , E , os , R) (_ , b , _) = ck , R , E , b , os
     keep i-reti   _ (ck , R) M                  = ck , R , M
     keep i-loop   (cb , ck) R M                 = cb , ((ck , cb , ck) , R) , M
-    -- ★ a dispatch: the trampoline the cell names (D417) calls a block the
+    -- ★ a dispatch: the trampoline the cell names (D431) calls a block the
     -- cell's values name
     keep (i-icall {lam = c1 ds b γ}) (_ , ck) R (E , ((l , x) , a) , os) =
       (tt , proj₁ l , tt) , (ck , E , os , R) , tt , ((l , x) , a) , tt

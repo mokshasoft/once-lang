@@ -2,10 +2,10 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.NbEPLinCore — THE LINEAR CORE'S MEANING (plan 0.146; D403).
+-- Once.LinCore.NbEPLinCore — THE LINEAR CORE'S MEANING (plan 0.146; D417).
 --
 -- The core itself (its types, values and terms) is `Once.LinCore.Core`, at the
--- target's numerics alone (D440: what is compiled sees no Interpretation).
+-- target's numerics alone (D454: what is compiled sees no Interpretation).
 -- Here, at the pure FFI answers too: a SigOp means its contract's block
 -- (`opF`/`opB`, `DenotTrace.sigOpT`), a term its computation in `T∞` (`Lᶜ`,
 -- `Sem`), and a program's table the functions its bodies mean (`⟦_⟧D`).
@@ -36,7 +36,7 @@ open import Once.Denotation.DenotTrace using (sigOpT)
 
 module Once.LinCore.NbEPLinCore (fmt : TargetNum) (ans : FFIAnswers) where
 
--- D440: the core's syntax and values (`Core`) take the numerics only
+-- D454: the core's syntax and values (`Core`) take the numerics only
 open import Once.LinCore.Core fmt
 
 -- ★ B1.2: a SigOp means its contract's BLOCK (`DenotTrace.sigOpT`, as
@@ -54,9 +54,9 @@ opB s x = fmapT (fromF (scod s)) (opF s (toF (sdom s) x))
 -- 6. ★ THE MEANING, mutual with the recursion operators (`evalᴰ`'s shape).
 --
 -- `cataC`/`travC` descend a shrinking `Mu`, children left to right, then the
--- algebra. ★ D406: nothing corecurses: a ν is observed by a call.
+-- algebra. ★ D420: nothing corecurses: a ν is observed by a call.
 --
--- ★ D405: at the meaning `ρ` of the labels in scope. A label means a function
+-- ★ D419: at the meaning `ρ` of the labels in scope. A label means a function
 -- of its environment and its argument; applying a closure looks it up. The
 -- recursion is structural: a body is met only when the table is built
 -- (`⟦_⟧D`), over the labels before it.
@@ -97,7 +97,7 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
     Lᶜ (bout {F} f)   e         a              = Lᶜ f (coh⁻¹ F (μt F) (outμ e)) a
     Lᶜ bcopy          e         a              = return∞ e
     Lᶜ (bapp {g = g} p) x       a              = up g (lookup ρ p x a)
-    -- ★ D409 part 3: a closure means a function of its argument, its body's
+    -- ★ D423 part 3: a closure means a function of its argument, its body's
     -- meaning at its grade (`Lg`) at the environment it holds; applying it is
     -- applying that function. Structural: the body is a subterm.
     Lᶜ (llam {g = g} b γ) e     x              = return∞ (λ a → Lg g b γ tt (x , a))
@@ -188,7 +188,7 @@ module Sem {Γ : Cx} (ρ : Env Γ) where
 open Sem public
 
 ------------------------------------------------------------------------
--- 7. ★ D405: THE TABLE'S MEANING, built in order: each body means a function
+-- 7. ★ D419: THE TABLE'S MEANING, built in order: each body means a function
 -- over the labels before it.
 ------------------------------------------------------------------------
 

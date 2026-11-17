@@ -107,7 +107,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                       (trans (cong (((k + hdr) + 0) Data.Nat.<ᵇ_) (size-with-same (hdr + wc) r (AllocState.block-size (falloc fs))))
                         (<ᵇ-true (subst (_< hdr + wc) (sym (trans (Data.Nat.Properties.+-identityʳ (k + hdr)) (+-comm k hdr)))
                                     (Data.Nat.Properties.+-monoʳ-< hdr k<))))
-          -- the fresh block below the counter, its words inside it (D424)
+          -- the fresh block below the counter, its words inside it (D438)
           lt₁ : r < AllocState.next-heap-ref (falloc fs₁)
           lt₁ = subst (r <_) (sym (cong AllocState.next-heap-ref (h-alloc H))) (Data.Nat.Properties.n<1+n r)
           bnd₁ : ∀ k → k < wc → (k + hdr) < AllocState.block-size (falloc fs₁) r
@@ -332,7 +332,7 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                 b-next Bd , ran-hi (Data.Nat.Properties.m∸n≤m (budget φ) (ws S)) (subst (λ z → Ran (10 + (nsteps z + 2)) 1 (AllocState.next-heap-ref (falloc fs)) bot fs fs′) (vw-len px) (b-ran Bd))
 
   -- ★ `lunf`: a ν's cell, its code word its observation block at the empty
-  -- table (D423), its copy and free its cell type's
+  -- table (D437), its copy and free its cell type's
   lunf-sim : ∀ prog (fs : FlatState) (φ : Frame) {F S₀ Es S}
                {es : Slots Es} {os : Stk S} {p : MV (Coalg F S₀ ⊗t S₀)}
            → (n : (F , S₀) ∈ nus U) (o : (_ , ε) ∈ obs U) (ct : cty (F , S₀) ∈ tys U)

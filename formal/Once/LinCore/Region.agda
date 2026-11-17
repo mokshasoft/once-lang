@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.Region — plan 0.146 A17 (D411 part 2, decided): ONE REGION,
+-- Once.LinCore.Region — plan 0.146 A17 (D425 part 2, decided): ONE REGION,
 -- SHARED BY EVERY SIZE.
 --
 -- The Host supplies one region; the compiler does not split it between
@@ -11,7 +11,7 @@
 -- (`Once.LinCore.Alloc`: a free list, lowest free block first); a pool that must
 -- grow takes the next `k` words at the top of the region (`place`). Block `j`
 -- of size `k` is the words `[addr k j, addr k j + k)`. Nothing is stored at
--- run time that the compiler knows: a block's size is its type's (D404).
+-- run time that the compiler knows: a block's size is its type's (D418).
 --
 --   * ★ DISJOINT: blocks below their pools' tops never overlap, whatever
 --     their sizes, and all lie below `wtop` (`RInv`, `rinv`);

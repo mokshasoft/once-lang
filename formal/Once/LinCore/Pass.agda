@@ -2,14 +2,14 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.Pass — plan 0.146 A15 (D409): THE PASS.
+-- Once.LinCore.Pass — plan 0.146 A15 (D423): THE PASS.
 --
 -- A copy of `Once.IR`'s constructors, their meaning shaped as master's
 -- `evalᴰ` (`Once.Denotation.DenotTrace`: a computation in `T∞`), the
 -- translation into the linear core, and the theorem: the translation MEANS
 -- THE SAME, up to bisimilarity (`Once.LinCore.Bisim`).
 --
--- Part 1: the first-order constructors. Part 2 (D409 part 3): `Call`, a
+-- Part 1: the first-order constructors. Part 2 (D423 part 3): `Call`, a
 -- direct call of an earlier definition of the program (a label of the core;
 -- a program is a table, `Prog`, as the Spec's `Program`); the
 -- EXPONENTIAL (`curry`/`apply`) and the FINAL COALGEBRA (`Ana`/`Out`/`in-ν`),

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalRecloseC — plan 0.146 B1.4b (D417): A COPY'S TRAMPOLINE'S `reclose` (a fresh cell, the
+-- Once.LinCore.GlobalRecloseC — plan 0.146 B1.4b (D431): A COPY'S TRAMPOLINE'S `reclose` (a fresh cell, the
 -- viewed cell's code words, the copy) (beside `GlobalOpenC`).
 ------------------------------------------------------------------------
 
@@ -180,7 +180,7 @@ module RecloseC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         by (inj₂ (er , _)) = ⊥-elim (Data.Nat.Properties.<-irrefl er lt)
 
   -- ★ A COPY'S `reclose` (i-reclose, i-recloseν): at its trampoline's depth 3 (its point by
-  -- `GlobalTrView`'s view); the fresh cell's id the counter; at a root's path it is absurd (D422)
+  -- `GlobalTrView`'s view); the fresh cell's id the counter; at a root's path it is absurd (D436)
   greclose-t : ∀ {T Es kd g X A B S V} {k : Codeᴵ (Fn kd g A B ∷ Es ∣ Fn kd g A B ∷ S) V} {r : Ret V T}
                  {lam : Lam kd g X A B} {i x} {x′ : MV X} {n h fs} {σ} {κ : Key σ} {p : under κ ∈ allK U}
                  {pt : Pt (blockᴵ κ) (reclose {X = X} {C = Fn kd g A B} ⨾ k)} {tp : TrPt p pt}

@@ -341,7 +341,7 @@ offset-inj (AtDynamic (heap-loc r o)) e = Data.Nat.Properties.+-cancelʳ-≡ o _
         at (AtStack _ _)  = 0
         at (AtDynamic (heap-loc _ off)) = off
 
--- D435: a slot inside a live frame's window passes the frame gate
+-- D449: a slot inside a live frame's window passes the frame gate
 ltᵇ : ∀ {m n} → m < n → (m <ᵇ n) ≡ true
 ltᵇ {zero}  {suc n} _        = refl
 ltᵇ {suc m} {suc n} (s≤s lt) = ltᵇ lt
@@ -656,7 +656,7 @@ addr-step fs o {loc} e₁ g e₂ =
     (trans (cong (λ m → record fs { floc = exec-addr-at-resolved (block-size (falloc fs)) o m (floc fs) ; fpc = suc (fpc fs) }) g)
         (cong (λ q → record fs { floc = exec-addr-in-block q (offsetLoc loc o) (floc fs) ; fpc = suc (fpc fs) }) e₂))
 
--- ★ D424: every written heap word lies in its block, below the counter
+-- ★ D438: every written heap word lies in its block, below the counter
 -- (so an address inside a cell the relation knows the words of is in it)
 InBlk : FlatState → Set
 InBlk fs = ∀ (hl : HeapLocation) {v} → heapMem (floc fs) hl ≡ just v
@@ -748,7 +748,7 @@ inb-write {fs} {fs′} {a} {o} {n} r M lt bnd I hl e =
     by-ref (no ne)  = old (λ k k< eq → ne (cong refOf eq))
 
 ------------------------------------------------------------------------
--- ★ WHAT A RUN LEAVES ALONE (D418): the frame, its slots' count, the saved
+-- ★ WHAT A RUN LEAVES ALONE (D432): the frame, its slots' count, the saved
 -- frames, the return pcs, and every other frame's slots. A move says so in
 -- its record; a run of moves composes them.
 ------------------------------------------------------------------------
@@ -852,7 +852,7 @@ record Ran (n a lo hi : ℕ) (fs fs′ : FlatState) : Set where
     r-top  : ∀ x → hi Data.Nat.≤ x → slot fs′ x ≡ slot fs x
 open Ran public
 
--- a run keeps every word in its block (D424; by its `Keep`)
+-- a run keeps every word in its block (D438; by its `Keep`)
 r-inb : ∀ {n a lo hi fs fs′} → Ran n a lo hi fs fs′ → InBlk fs → InBlk fs′
 r-inb R = k-inb (r-keep R)
 

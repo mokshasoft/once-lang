@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.MachineLit — plan 0.146 B1.6 (D433): THE CORE'S CONSTANTS ON A
+-- Once.LinCore.MachineLit — plan 0.146 B1.6 (D447): THE CORE'S CONSTANTS ON A
 -- MACHINE. A constant's payload is loaded by the machine's own literal load
 -- (`instr-load-const`), which materializes it at the machine's format — the
 -- core's `lit` at `fs-numerics`, the same function: so a base value's word is

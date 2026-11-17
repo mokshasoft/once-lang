@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.LinCore.Lower — plan 0.146 B1.4b, part 2: the image to the flat
--- machine (`AbstractTrace`), D415/D416.
+-- machine (`AbstractTrace`), D429/D430.
 --
 -- * Block `j` (the `j`-th key of the program's universe, `allK`) is an
 --   `e-fn` entry named by `j`, in a frame of `EP + OP + 2` slots: its two
@@ -56,7 +56,7 @@ open import Once.LinCore.Image fmt bw
 open import Once.LinCore.Keys fmt bw
 open import Once.LinCore.Layout fmt bw
 
--- ★ D428: the sigop an op's code runs: its own, or a compare's block
+-- ★ D442: the sigop an op's code runs: its own, or a compare's block
 cmpOf : (s : Sig) → Maybe (CmpAt (sA s))
 cmpOf s = cmp-of (Once.SigOp.Info.SigOpInfo.sem (info s))
 
@@ -64,7 +64,7 @@ opSig : (s : Sig) → Maybe (CmpAt (sA s)) → Sig
 opSig s nothing  = s
 opSig s (just o) = sig (cmp-block-info o)
 
--- ★ D432: an answer in memory: a product's, a sum's (the machine's `in-memory?`)
+-- ★ D446: an answer in memory: a product's, a sum's (the machine's `in-memory?`)
 inMem : ∀ {B} → ST.Base ST.∅ₖ B → Bool
 inMem (ST.b-* _ _) = true
 inMem (ST.b-+ _ _) = true
@@ -147,7 +147,7 @@ module Lowering (U : Univ)
     ∷ instr-load-code-addr (tl jb) ∷ store-at 1 ∷ instr-load-code-addr (tl jc) ∷ store-at 2
     ∷ instr-load-code-addr (tl jf) ∷ store-at 3 ∷ []
 
-  -- ★ D432: a SigOp's answer, by its base, as its argument (D428): a scalar is
+  -- ★ D446: a SigOp's answer, by its base, as its argument (D442): a scalar is
   -- the sigop's `Output` word, stored; any other is written by the sigop in
   -- place, at the address put in `Output` before it (`ansDst`); Unit has no words
   answer : ∀ {B} → ST.Base ST.∅ₖ B → ℕ → AbstractTrace
@@ -162,7 +162,7 @@ module Lowering (U : Univ)
   {-# CATCHALL #-}
   ansDst _            bot w = []
 
-  -- ★ D428: a SigOp's argument as the machine decodes it (D398): a scalar is its
+  -- ★ D442: a SigOp's argument as the machine decodes it (D398): a scalar is its
   -- register (loaded from its slot), any other base value its address (read in
   -- place, D381)
   argIn : ∀ {A} → ST.Base ST.∅ₖ A → ℕ → ℕ → AbstractInstr
@@ -174,7 +174,7 @@ module Lowering (U : Univ)
   argIn (ST.b-* _ _) bot w = lea-slot (bot ∸ w)
   argIn (ST.b-+ _ _) bot w = lea-slot (bot ∸ w)
 
-  -- ★ D428/D432: an op's code: its argument, a structured answer's address, then the sigop the
+  -- ★ D442/D446: an op's code: its argument, a structured answer's address, then the sigop the
   -- machine runs — the op's own, or a compare's block (master's `cmp-trace`) — then a scalar
   -- answer stored, or a compare's truth as its tag (`out-nz`)
   lowOp : (s : Sig) → Maybe (CmpAt (sA s)) → ℕ → AbstractTrace
@@ -302,7 +302,7 @@ module Lowering (U : Univ)
     let c = Tp φ S ∸ 1
     in restore-input c ∷ addr-at 2 ∷ mov-to-input ∷ instr-save-closure-reg
        ∷ restore-input c ∷ mov-to-output ∷ instr-call-closure ∷ [] , m
-  -- a trampoline's cell part (D417): only in a trampoline's block, which is
+  -- a trampoline's cell part (D431): only in a trampoline's block, which is
   -- never lowered here — a trampoline's flat code is `tramp`, below
   lowI φ j m open1 ev   = [] , m
   lowI φ j m openω ev   = [] , m
@@ -322,7 +322,7 @@ module Lowering (U : Univ)
        , proj₂ body
 
   lowC φ j m fin end ev = fin , m
-  -- (D437: halted code ends where the program leaves — a halting op has
+  -- (D451: halted code ends where the program leaves — a halting op has
   -- stopped the run, so it is never reached, but nothing falls past it)
   lowC φ j m fin halted ev = instr-ctrl c-leave ∷ [] , m
   lowC φ j m fin (i ⨾ c) (ei , ec) =
@@ -411,7 +411,7 @@ module Lowering (U : Univ)
        ∷ lea-slot 0 ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf j)) ∷ instr-ctrl (c-ret (suc w)) ∷ []
   -- a fold is never called through a cell
   tramp j (kfold ds F alg) = []
-  -- the image's trampoline keys (D417) are not in the universe: their
+  -- the image's trampoline keys (D431) are not in the universe: their
   -- blocks' flat code is the code above, at their block's key
   tramp j (ktr1 ds b γ) = []
   tramp j (ktrω ds b γ) = []

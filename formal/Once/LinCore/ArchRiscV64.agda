@@ -6,7 +6,7 @@
 -- IN MASTER'S APEX SHAPE (`ArchCorrectness.RiscV64.conc-tr`), as on x86-64
 -- (`LinCore.ArchX86-64`): the flat theorem (`FlatTop.IRTop`), the arch
 -- simulation (`events-agree-boot`), the boot's room check, and what the new
--- image still owes the arch layer as `Owed` (D439: the run facts until the
+-- image still owes the arch layer as `Owed` (D453: the run facts until the
 -- machine gates; the arith table until `compile` emits the new image).
 ------------------------------------------------------------------------
 
@@ -110,11 +110,11 @@ module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
   module IA = Once.LinCore.ImageAll.Img (fs-numerics rv64-frame-semantics) (fs-ffi rv64-frame-semantics) bw o
                 IT.TP.ds IT.TP.f₀ ML.ldConst ld-is
   module IAF = IA.Fetch {rv64-frame-semantics}
-  -- nothing falls into an entry (`ImageGuard`, D437)
+  -- nothing falls into an entry (`ImageGuard`, D451)
   module IG = Once.LinCore.ImageGuard.G.Img (fs-numerics rv64-frame-semantics) (fs-ffi rv64-frame-semantics) bw
                 {rv64-frame-semantics} IT.TP.ds IT.TP.f₀ ML.ldConst ML.ld-nl
 
-  -- ★ WHAT THE NEW IMAGE OWES THE ARCH LAYER (as on x86-64): the run facts (D439:
+  -- ★ WHAT THE NEW IMAGE OWES THE ARCH LAYER (as on x86-64): the run facts (D453:
   -- the machine gates, B1.7b) and the arith blocks (B1.7: the compiled image is the new one)
   record Owed : Set where
     field

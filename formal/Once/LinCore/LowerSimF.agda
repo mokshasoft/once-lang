@@ -255,7 +255,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       M≤ : M ≤ Bg ∸ s
       M≤ = ≤∸ M s Bg fit
 
-  -- D435: a word of an answer moved into the area at the caller's operand top
+  -- D449: a word of an answer moved into the area at the caller's operand top
   -- lies below the caller's frame budget
   area-bnd : ∀ Bg s M wB k → k < wB → wB ≤ M → M + s ≤ Bg → (k + (M ∸ wB)) + ((Bg ∸ s) ∸ M) < Bg
   area-bnd Bg s M wB k k< le fit =
@@ -342,7 +342,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
 
   ----------------------------------------------------------------------
   -- ★ A CELL'S WORDS, read into the frame (moved from LowerSimH; shared by
-  -- the trampolines' cell parts and a heap-sourced view's entry, D425).
+  -- the trampolines' cell parts and a heap-sourced view's entry, D439).
   ----------------------------------------------------------------------
 
   -- words of a cell, from an offset, at the destination
@@ -382,7 +382,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
     ; p-rest = p-rest M ; p-frame = p-frame M }
     where import Data.Nat.Properties
 
-  -- ★ A BLOCK'S ENTRY WITH A HEAP-SOURCED VIEW (D425): the argument from the
+  -- ★ A BLOCK'S ENTRY WITH A HEAP-SOURCED VIEW (D439): the argument from the
   -- caller's area, the environment's words from a cell's contents (through
   -- the pointer in the second save slot, at offset `o₀`: a cell's contents start at word 4,
   -- `Lower.hdr`; an empty environment's pointer is the cell's own, offset 0)

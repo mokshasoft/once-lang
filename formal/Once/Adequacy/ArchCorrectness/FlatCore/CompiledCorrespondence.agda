@@ -294,7 +294,7 @@ record BlockSteps : Set₁ where
       → fetch prog (fpc fs) ≡ just (instr-reclaim-to n)
       → BlockStep hv prog fs s (instr-reclaim-to n)
     -- a free: no code on any arch, and a no-op in the machine (the bump
-    -- allocator does not reuse the block; D411's reuse is plan 0.146 B1.6)
+    -- allocator does not reuse the block; D425's reuse is plan 0.146 B1.6)
     bs-free-heap :
       ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
@@ -529,7 +529,7 @@ record BlockSteps : Set₁ where
       → in-block? (block-size (falloc fs)) (AtDynamic (offsetHL hl k)) ≡ true
       → CRL.RunLow prog fs
       → BlockStep hv prog fs s (addr-at k)
-    -- D435: a load and a store through a STACK pointer — a slot inside a live
+    -- D449: a load and a store through a STACK pointer — a slot inside a live
     -- frame's window, the gate's outcome (the instruction is the heap's; an
     -- offset ADDRESS is a heap block's only)
     bs-load-at-stack :

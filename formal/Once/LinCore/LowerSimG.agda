@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.LinCore.LowerSimG — plan 0.146 B1.4b, `LowerSim` layer (4),
--- continued: A DISPATCH THROUGH A CELL'S CODE WORD (D417). The cell's
+-- continued: A DISPATCH THROUGH A CELL'S CODE WORD (D431). The cell's
 -- address into `Input1` from its slot, the caller's area into `Output`, the
 -- cell saved as the closure, the call through the cell's code word (word 1:
 -- `do-call` reads `sucHL` of the closure); then the trampoline's entry, and
@@ -103,7 +103,7 @@ closure-in prog fs x y hl ℓ e q b s₁ s₂ s≢ sx code (g₁ , g₂ , g₃ ,
     fs₈ = record fs₇ { floc = MemOps.writeLoc {FS} (floc fs₇) (AtStack cf′ s₁) cell ; fpc = suc (fpc fs₇) }
 
 ------------------------------------------------------------------------
--- ★ A MANY-USE DISPATCH (D417, D425, `icallω`): as `closure-in`, into a
+-- ★ A MANY-USE DISPATCH (D431, D439, `icallω`): as `closure-in`, into a
 -- trampoline that saves only the caller's area (its one save slot); the
 -- cell stays in `Input1`.
 ------------------------------------------------------------------------
@@ -155,10 +155,10 @@ closure-inω prog fs x y hl ℓ e q b s sx code (g₁ , g₂ , g₃ , g₄ , _) 
     fs₆ = record fs₅ { floc = MemOps.writeLoc {FS} (floc fs₅) (AtStack cf′ s) area ; fpc = suc (fpc fs₅) }
 
 ------------------------------------------------------------------------
--- ★ A FREE'S DISPATCH (D417, `cfree`/`nfree`): the cell's word-2 address
+-- ★ A FREE'S DISPATCH (D431, `cfree`/`nfree`): the cell's word-2 address
 -- the closure (so `do-call` reads word 3, the free trampoline's code), the
 -- cell in `Output`; the trampoline's entry with one save slot, the cell.
--- `addr-at 2` is in the cell's block (D424: a written word there).
+-- `addr-at 2` is in the cell's block (D438: a written word there).
 ------------------------------------------------------------------------
 
 record FreeIn (fs fs′ : FlatState) (cell : StoredValue FS) (b s q : ℕ) : Set where
@@ -215,7 +215,7 @@ free-in prog fs c hl ℓ e q b s sx ib code (g₁ , g₂ , g₃ , g₄ , g₅ , 
     fs₉ = record fs₈ { floc = MemOps.writeLoc {FS} (floc fs₈) (AtStack cf′ s) cell ; fpc = suc (fpc fs₈) }
 
 ------------------------------------------------------------------------
--- ★ A COPY'S DISPATCH (D417, `ccopy`/`ncopy`): the cell's word-1 address
+-- ★ A COPY'S DISPATCH (D431, `ccopy`/`ncopy`): the cell's word-1 address
 -- the closure (so `do-call` reads word 2, the copy trampoline's code), the
 -- caller's destination slot in `Input1`, the cell in `Output`; the
 -- trampoline's entry with its saves: the cell, then the destination.

@@ -1137,7 +1137,7 @@ block-step-store-at {hv} prog fs s k hl cc h ft i-eq live ib guard =
     pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (store-at k) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (store-at k) ft))
 
--- D435: a load and a store through a STACK pointer — the same instruction,
+-- D449: a load and a store through a STACK pointer — the same instruction,
 -- the slot of a live frame's window (the gate's outcome) in place of a cell
 block-step-load-at-stack : ∀ {hv : HeapView} prog fs s k f q w → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false

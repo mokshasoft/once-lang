@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalOpenC — plan 0.146 B1.4b (D417): A COPY'S TRAMPOLINE'S CELL PART (copen), its
+-- Once.LinCore.GlobalOpenC — plan 0.146 B1.4b (D431): A COPY'S TRAMPOLINE'S CELL PART (copen), its
 -- level of the return stack kept over a step that writes its save slot (beside `GlobalDispatchC`).
 ------------------------------------------------------------------------
 
@@ -254,7 +254,7 @@ module OpenC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (λ hl _ → cong (λ h′ → h′ hl) (S3W.s3-heap W)) fr)
 
   -- ★ A COPY'S CELL PART (i-copen, i-copenν): at its trampoline's depth 0 (its point by `GlobalTrView`'s view);
-  -- at a root's path it is absurd (D422)
+  -- at a root's path it is absurd (D436)
   gcopen-t : ∀ {T Es kd g X A B S V} {k : Codeᴵ (X ∷ Fn kd g A B ∷ Es ∣ S) V} {r : Ret V T}
                {lam : Lam kd g X A B} {i x} {n h fs} {σ} {κ : Key σ} {p : under κ ∈ allK U}
                {pt : Pt (blockᴵ κ) (copen {X = X} {C = Fn kd g A B} ⨾ k)} {tp : TrPt p pt}

@@ -5,7 +5,7 @@
 -- Once.LinCore.RunWord — plan 0.146 B1.5: A WHOLE IMAGE RUN, on the flat
 -- machine. From a related state, every image run (`StepsI`) is matched by
 -- flat steps that land related, or (the image halted) in a halted machine —
--- relative to the machine's world at each op step (D426: `AgreesAll`). From
+-- relative to the machine's world at each op step (D440: `AgreesAll`). From
 -- the start (`Start.start-related`): the image's whole run from main's
 -- first point, from the flat machine's first state.
 ------------------------------------------------------------------------
@@ -84,7 +84,7 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open StepR {FS} ds f ldConst ld-nl wordOf using (module Theorem)
 
   -- the machine's world agrees at every step of a run, from a related state whose log is the
-  -- run's events so far (D429: an answer depends on the history)
+  -- run's events so far (D443: an answer depends on the history)
   AgreesAll : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′}
             → List SigOpEvent → StepsI c r m n t c′ r′ m′ n′ → Set
   AgreesAll L done = ⊤
@@ -128,7 +128,7 @@ module RunW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         go (N₁ , fs₁ , st₁ , inj₂ (e , hlt , pre) , lg₁) =
           N₁ , fs₁ , st₁ , inj₂ (proj₁ (rest-halt rest e) , hlt , pre) , log-halt t₁ lg₁ (proj₂ (rest-halt rest e))
 
-    -- ★ …with a control step for every loop entry (D430: master's budget is read in control steps)
+    -- ★ …with a control step for every loop entry (D444: master's budget is read in control steps)
     wholeC : ∀ {T sh U′ sh′ U″} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T} {m′ n′ h fs L}
            → (run : StepsI c r m n t c′ r′ m′ n′) → InvI m r n h → AgreesAll L run → Related c r m n fs
            → LocState.ev-log (floc fs) ≡ L

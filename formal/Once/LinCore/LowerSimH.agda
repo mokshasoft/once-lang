@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.LinCore.LowerSimH — plan 0.146 B1.4b, `LowerSim` layer (4),
--- continued: A ONE-SHOT TRAMPOLINE'S CELL PART (`open1`, D421). With the
+-- continued: A ONE-SHOT TRAMPOLINE'S CELL PART (`open1`, D435). With the
 -- cell in `Input1` and its first save slot `M`, the caller's area in its
 -- second `suc M`: the cell's contents to the top of the frame `frame 0 M`,
 -- the caller's argument after them, the cell freed. Then the operand's
@@ -180,7 +180,7 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               both : SlotsAt (slot fs₃) a′ (wx ++ wa)
               both = slots-join wx wa sx (subst (λ z → SlotsAt (slot fs₃) z wa) (trans (+-comm a′ wX) (cong (_+ a′) (sym (vw-len px)))) sa₃)
 
-  -- ★ AN OBSERVATION'S CELL PART (`nopen`, D421): the contents to the top of
+  -- ★ AN OBSERVATION'S CELL PART (`nopen`, D435): the contents to the top of
   -- the frame `frame 0 M`, the cell freed (no argument from the caller)
   open0-sim : ∀ prog (fs : FlatState) (M o fr : ℕ) {X} {x : MV X} (i : Id) (wx : List W)
             → wsz X ≤ M
@@ -236,7 +236,7 @@ module SimH {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
           sx : SlotsAt (slot fs₁) a′ wx
           sx = cell-slots-at wx (subst (MovedP fs fs₁ (AtDynamic (cellLoc i 0)) o a′) (sym (vw-len px)) M₁) ax
 
-  -- ★ a free trampoline's cell part (D417, `fopen`): the cell from its save
+  -- ★ a free trampoline's cell part (D431, `fopen`): the cell from its save
   -- slot `M`, its contents into the frame's slots below `M`, the cell freed
   fopen-sim : ∀ prog (fs : FlatState) (M o fr : ℕ) {X} {x : MV X} (i : Id) (wx : List W)
             → wsz X ≤ M

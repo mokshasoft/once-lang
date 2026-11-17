@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.Held — plan 0.146 A16 (D410 amended): NO LEAK AS A SAFETY CLAIM.
+-- Once.LinCore.Held — plan 0.146 A16 (D424 amended): NO LEAK AS A SAFETY CLAIM.
 --
 -- What a configuration of the machine HOLDS: its operands, and the value each
 -- lend's slot keeps until it hands it back (`ln`). The other slots are views,
@@ -226,7 +226,7 @@ inv-step {m = es ∥ mmu j v ∷ˢ os} {h = h} s-fold inv =
     fr = free-step j (cnt v) h (λ i → own es i + held os i) (i-le1 inv)
            (λ i → ≤-reflexive (sym (trans (i-exact inv i) (r₁ (own es i) (δ j i) (cnt v i) (held os i)))))
 inv-step s-loop inv = (tt , inv)
--- ★ D409 part 3: the indirect call frees the closure's cell; its environment
+-- ★ D423 part 3: the indirect call frees the closure's cell; its environment
 -- and the argument stay held, as the body's input
 inv-step {m = es ∥ mpair (mfn j _ x) a ∷ˢ os} {h = h} s-apply inv =
   ( (fst fr , tt)
@@ -285,7 +285,7 @@ start-inv : Inv start 0 (λ _ → 0)
 start-inv = record { i-le1 = λ _ → z≤n ; i-above = λ _ _ → refl ; i-exact = λ _ → refl
                    ; i-sees = ((λ i ()) , tt) }
 
--- ★ D410 amended: at every configuration a closed program's machine reaches,
+-- ★ D424 amended: at every configuration a closed program's machine reaches,
 -- whatever its code, every event so far was legal and the live cells are
 -- exactly the cells of the values it holds
 held-always : ∀ {T sh} {c : Code (One ∷ [] ∣ One ∷ []) T} {c′ : Code sh T} {m′ n′ mt}

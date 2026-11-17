@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalTrampF — plan 0.146 B1.4b (D417, D424): A FREE'S TRAMPOLINE (ktrf), step by step
+-- Once.LinCore.GlobalTrampF — plan 0.146 B1.4b (D431, D438): A FREE'S TRAMPOLINE (ktrf), step by step
 -- (beside `GlobalTrampO`; over `Global.Relate` and `GlobalTramp.TrampR`).
 ------------------------------------------------------------------------
 
@@ -108,7 +108,7 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Called
   open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next)
   ----------------------------------------------------------------------
-  -- 9. ★ A ONE-SHOT TRAMPOLINE (D421), step by step.
+  -- 9. ★ A ONE-SHOT TRAMPOLINE (D435), step by step.
   ----------------------------------------------------------------------
 
   open import Once.LinCore.LowerSimH fmt ans bw using (module SimH)
@@ -138,7 +138,7 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     four+ q = Data.Nat.Properties.+-comm q 4
       where import Data.Nat.Properties
 
-  -- ★ a free's trampoline's code, by its parts (D417)
+  -- ★ a free's trampoline's code, by its parts (D431)
   private
     tFCELL : LTy → AbstractTrace
     tFCELL X = restore-input (wsz X) ∷ mvPS hdr 0 (wsz X) ++ instr-free-heap (hdr + wsz X) ∷ []
@@ -232,8 +232,8 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tf-end {X} {C} p {fs} cfc pc rest sv sl epc run hret hsv =
     ret-out image fs cfc (suc (wsz X)) pc rest sv sl hret hsv (tF-seg2 {X} {C} p epc) run
 
-  -- ★ a free's dispatch (D417, `cfree`/`nfree`): into the free trampoline its cell's word 3 names,
-  -- at its depth 0 (TrF0); the address of word 2 is in the cell's block, the word written (D424)
+  -- ★ a free's dispatch (D431, `cfree`/`nfree`): into the free trampoline its cell's word 3 names,
+  -- at its depth 0 (TrF0); the address of word 2 is in the cell's block, the word written (D438)
   tf-disp : ∀ {X C} (c : ℕ) {i} {x : MV X} {wx : List (StoredValue FS)} {w₁ w₂ wf : StoredValue FS} {fs}
           → Seg image (fpc fs) (restore-input c ∷ addr-at 2 ∷ mov-to-input ∷ instr-save-closure-reg
                                 ∷ restore-input c ∷ mov-to-output ∷ instr-call-closure ∷ [])

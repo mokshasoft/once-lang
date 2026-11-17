@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.StepOp — plan 0.146 B1.4b (D426): AN OP STEP AGREES WITH THE
+-- Once.LinCore.StepOp — plan 0.146 B1.4b (D440): AN OP STEP AGREES WITH THE
 -- MACHINE. The image's op takes the world's answer as given; the flat
 -- machine answers by its effect class and interpretation. The step theorem
 -- is relative to the machine's world: at an op step, the machine's sigop
@@ -52,7 +52,7 @@ open import Once.LinCore.Keys fmt bw using (Univ)
 open import Once.LinCore.Lower fmt bw using (cmpOf; opSig; inMem)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
 
--- ★ D427: what a trace shows the machine's log: its calls and halts, each the
+-- ★ D441: what a trace shows the machine's log: its calls and halts, each the
 -- sigop event of the op, its argument (the answer is the world's)
 ioEvent : Io → SigOpEvent
 ioEvent (io-call o a _) = callEvent o a
@@ -76,7 +76,7 @@ module Agree {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   at-arg : FlatState → StoredValue FS → LocState FS
   at-arg fs v = record (floc fs) { regs = writeReg (writeReg (LocState.regs (floc fs)) Output v) Input1 v }
 
-  -- ★ D428: the argument's word, by its base (D398): a scalar its one word, any other its address
+  -- ★ D442: the argument's word, by its base (D398): a scalar its one word, any other its address
   argV : ∀ {A} → ST.Base ST.∅ₖ A → FlatState → ℕ → List W → StoredValue FS
   argV (ST.b-var {i = ()} _) fs d wx
   argV ST.b-Unit    fs d wx = SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) d)
@@ -90,9 +90,9 @@ module Agree {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   arg : Sig → FlatState → ℕ → List W → LocState FS
   arg s fs d wx = at-arg fs (argV (SigOpInfo.baseA (info s)) fs d wx)
 
-  -- an op's answer, by the sigop its code runs (D428): the machine does not halt; the answer's
+  -- an op's answer, by the sigop its code runs (D442): the machine does not halt; the answer's
   -- words are none or its Output word, or (a compare) its Output's truth as a tag
-  -- ★ D432: the sigop's state for an answer in memory: `Output` its destination's address
+  -- ★ D446: the sigop's state for an answer in memory: `Output` its destination's address
   argD : Sig → FlatState → ℕ → ℕ → List W → LocState FS
   argD s fs d dst wx = record (arg s fs d wx)
     { regs = writeReg (LocState.regs (arg s fs d wx)) Output (SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) dst)) }

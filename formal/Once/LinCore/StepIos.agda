@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.StepIos — plan 0.146 B1.5 (D427): A STEP OTHER THAN AN OP
+-- Once.LinCore.StepIos — plan 0.146 B1.5 (D441): A STEP OTHER THAN AN OP
 -- SHOWS THE WORLD NOTHING. A local step's trace has no call and no halt
 -- (`ios t ≡ []`): its events are a cell's birth, death or read, or a
 -- temporary's; a primitive of the image is atomic (`PrimIn`, read off the

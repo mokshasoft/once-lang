@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalCallW — plan 0.146 B1.4b (D417, D425): A MANY-USE BODY'S TRAMPOLINE'S INNER CALL
+-- Once.LinCore.GlobalCallW — plan 0.146 B1.4b (D431, D439): A MANY-USE BODY'S TRAMPOLINE'S INNER CALL
 -- (beside `GlobalDispatchW`, for its build time).
 ------------------------------------------------------------------------
 
@@ -142,7 +142,7 @@ module CallW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
 
   -- ★ ITS INNER CALL (i-call at its depth 1): the body, the trampoline saved above it; the body's
-  -- area pointer the trampoline's (the dispatcher's area, D425)
+  -- area pointer the trampoline's (the dispatcher's area, D439)
   gcallω : ∀ {T Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b} {r : Ret (Fn many g A B ∷ [] ∣ B ∷ []) T}
              {es : Slots (X ∷ Fn many g A B ∷ [])} {a : MV A} {os : Stk []} {n h fs} (p : under (ktrω ds′ b γ) ∈ allK U)
          → InvI (es ∥ a ∷ˢ os) r n h → HereTr (tw1 p) (es ∥ a ∷ˢ os) fs

@@ -12,7 +12,7 @@
 -- Only the loop may run forever: it is given FUEL, a number of rounds, and a
 -- run that uses it up ends `exhausted` after the rounds it ran (D374: a
 -- server's run is cut a round at a time). Everything else terminates, and
--- why is the simply typed calculus's normalization (★ D409 part 3):
+-- why is the simply typed calculus's normalization (★ D423 part 3):
 -- applying a closure VALUE runs a body that is not structurally smaller than
 -- anything at hand (it came from the data). So, by TAIT'S METHOD, a value is
 -- `Good` at its type: a closure is good when its code, run on any argument
@@ -20,7 +20,7 @@
 -- inputs to good outcomes; building a closure proves it good by running its
 -- body, a subterm; applying one uses that proof, and calls nothing. Every
 -- value is good (`allGood`, by induction on the value), so `exec` needs no
--- hypothesis. Labels (D405) are run in table order, as before.
+-- hypothesis. Labels (D419) are run in table order, as before.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --guardedness #-}
@@ -117,7 +117,7 @@ copy-~ (mnu i p) n with copy p n | copy-~ p n
 -- ★ a WORLD: any machine that answers SigOps (its state may be the whole
 -- history, so this is every strategy). It may give NO answer — it must, for
 -- an op whose answer type is empty (`void`: an exit called by `lop`), and
--- may, for any other — and then the run is cut at that call (D408).
+-- may, for any other — and then the run is cut at that call (D422).
 record World : Set₁ where
   field
     WSt : Set
@@ -141,7 +141,7 @@ module _ (W : World) where
   Cause (gives _ _) = ⊤
   Cause (stop y)    = Because y
 
-  -- ★ why an op's path was cut: at a call the world did not answer (D431)
+  -- ★ why an op's path was cut: at a call the world did not answer (D445)
   data CutAt {X : Set} : (b : T X) → ∀ {t} → OpPath b t (inj₂ exhausted) → Set where
     c-here : ∀ {o a k} σ → answer σ o a ≡ nothing → CutAt (call o a k) p-cut
     c-call : ∀ {o a k y t} {p : OpPath (k y) t (inj₂ exhausted)} → CutAt (k y) p → CutAt (call o a k) (p-call p)
@@ -168,7 +168,7 @@ module _ (W : World) where
   call-cause {r = inj₂ halted} p c = tt
   call-cause {r = inj₂ exhausted} p c = c-call c
 
-  -- ★ the world answered the trace's calls, from `σ` to `σ′` (D429): each call as the world's answer
+  -- ★ the world answered the trace's calls, from `σ` to `σ′` (D443): each call as the world's answer
   -- at its state; every other event leaves the world as it is
   WTr : WSt → Trace → WSt → Set
   WTr σ []              σ′ = σ′ ≡ σ
@@ -199,7 +199,7 @@ module _ (W : World) where
   wtr-quiet (tmp _ ∷ t)      q = wtr-quiet t q
 
   -- a run, found at a budget of loop rounds: its outcome, its events, the derivation, the world
-  -- after it, the cause if it ran out, and the budget left (D430: one budget, spent along the run)
+  -- after it, the cause if it ran out, and the budget left (D444: one budget, spent along the run)
   record Ran {Γ} (ds : Defs Γ) {E A B} (f : Tm Γ E A B) (e : MV E) (v : MV A) (n : ℕ) (k : ℕ) (σ₀ : WSt) : Set where
     constructor ran
     field
@@ -511,7 +511,7 @@ module _ (W : World) where
       (layerGood {F} {S} G w g₁ n , layerGood {F} {S} H w′ g₂ (snd (mapV G w n)))
 
   ----------------------------------------------------------------------
-  -- 2. The label table's runners (D405): each takes good inputs to a good
+  -- 2. The label table's runners (D419): each takes good inputs to a good
   -- outcome.
   ----------------------------------------------------------------------
 
@@ -607,7 +607,7 @@ module _ (W : World) where
       go k (bapp p) (mct x) a n σ gx ga = case find ρ p of λ where
         (found {b = bω b _} q r) → case r k x a n σ gx ga of λ where
           (ran o t rb σ₁ c l s sp wo , gw) → (ran o t (r-bapp q rb) σ₁ c l s sp wo , gw)
-      -- ★ D409 part 3: a closure is good: its body, run on a good environment
+      -- ★ D423 part 3: a closure is good: its body, run on a good environment
       -- and argument, has a good run (by this evaluator, on a subterm)
       go k (llam b γ) e x n σ ge gx =
         (ran _ _ r-lam σ tt k ≤-refl refl refl , λ x′ p k′ a n′ σ′ ga → go k′ b mone (mpair x′ a) n′ σ′ tt (good-~ p gx , ga))
@@ -630,7 +630,7 @@ module _ (W : World) where
         (opran t (inj₂ exhausted) p σ₁ c ow) → (ran _ _ (r-opend p) σ₁ (cut-spent c) k ≤-refl (c , refl) ow , tt)
       go k (liter f φ) e a n σ ge ga = loop k (<-wellFounded k) f φ e a n σ ge ga
 
-      -- ★ the loop (D430): a round on the budget; a continuing round spends a unit of it, and
+      -- ★ the loop (D444): a round on the budget; a continuing round spends a unit of it, and
       -- with none left the run ends `exhausted` (as master's `approx`: a step per continuing
       -- round, counted along the whole run). The measure: the term, then the budget.
       loop : ∀ {E A B} (k : ℕ) → Acc _<_ k → (f : Tm Γ E A (B ⊕t A)) (φ : Blk f) (e : MV E) (a : MV A) (n : ℕ) (σ : WSt)

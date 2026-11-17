@@ -456,7 +456,7 @@ data InstrNoHeapWrite : AbstractInstr → Set where
   nhw-worklist-pop       : ∀ {slot} → InstrNoHeapWrite (worklist-pop slot)
   nhw-worklist-check     : ∀ {slot} → InstrNoHeapWrite (worklist-check slot)
   -- Plan 0.10 Phase B
-  -- D432: a sigop whose answer is not in memory (`in-memory?`)
+  -- D446: a sigop whose answer is not in memory (`in-memory?`)
   nhw-instr-sigop        : ∀ {A B} {si : SigOpInfo A B} → in-memory? B ≡ false → InstrNoHeapWrite (instr-sigop si)
   -- Plan 0.11: const literal load only writes Output register
   nhw-instr-load-const   : ∀ {A} {p : FitsInReg A} {v} →
@@ -571,7 +571,7 @@ instr-effect load-indirect           = eff-heap-indirect
 instr-effect load-indirect-suc       = eff-heap-indirect
 instr-effect store-indirect          = eff-heap-indirect
 instr-effect store-indirect-suc      = eff-heap-indirect
-instr-effect (load-at _)             = eff-heap-checked    -- D435: checked against the live frames
+instr-effect (load-at _)             = eff-heap-checked    -- D449: checked against the live frames
 instr-effect (store-at _)            = eff-heap-checked
 instr-effect (addr-at _)             = eff-heap-checked    -- D385: checked against the block sizes
 instr-effect (instr-alloc-stack _)   = eff-stack-frontier
@@ -580,7 +580,7 @@ instr-effect (instr-reclaim-to _)    = eff-stack-frontier
 instr-effect (instr-push-frame _)    = eff-frame-op
 instr-effect instr-pop-frame         = eff-frame-op
 instr-effect instr-call-closure      = eff-control
-instr-effect (instr-sigop _)         = eff-heap-checked   -- D435 (d): its pointer words checked against the live frames
+instr-effect (instr-sigop _)         = eff-heap-checked   -- D449 (d): its pointer words checked against the live frames
 instr-effect (instr-load-const _ _)  = eff-reg-only
 instr-effect (instr-load-tag-lit _)  = eff-reg-only
 instr-effect (instr-load-code-addr _) = eff-reg-only
@@ -935,7 +935,7 @@ module InstrPrimitives {FS : FrameSemantics} where
 
 
   -- (E) HEAP PRESERVATION
-  -- an offset load or address, at any resolved location (D435: behind the frame gate)
+  -- an offset load or address, at any resolved location (D449: behind the frame gate)
   load-val-heap : ∀ (mv : Maybe (StoredValue FS)) (s : LocState FS) → heapMem (ExecFinal.exec-load-with-value Output mv s) ≡ heapMem s
   load-val-heap (just _) s = refl
   load-val-heap nothing  s = refl

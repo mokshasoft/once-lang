@@ -282,7 +282,7 @@ sigop-decodes prog fs si r h f pe =
     (λ g → ∃ (λ a → decode-at (baseA si) (readReg (LocState.regs (floc g)) Input1) (floc g) ≡ just a))
     (λ src fs₀ r′ h′ f′ → RW.sigop-decodes src fs₀ si r′ h′ f′ pe) (λ _ _ _ c → c) prog fs r h f
 
--- D435 (d): a non-faulting SigOp passed its window check
+-- D449 (d): a non-faulting SigOp passed its window check
 sigop-gated : ∀ prog (fs : FlatState) {A B} (si : SigOpInfo A B) → RunLow prog fs → LocState.halted (floc fs) ≡ false
             → fetch prog (fpc fs) ≡ just (instr-sigop si)
             → sigop-gate (falloc fs) si (floc fs) ≡ true
@@ -306,7 +306,7 @@ store-at-target-ptr : ∀ prog (fs : FlatState) (k : ℕ) → RunLow prog fs →
 store-at-target-ptr prog fs k =
   lift-site (store-at k) (λ _ ()) _ (λ src fs₀ → RW.store-at-target-ptr src fs₀ k) (λ _ _ _ c → c) prog fs
 
--- D435's site facts, lifted
+-- D449's site facts, lifted
 load-at-gate : ∀ prog (fs : FlatState) (k : ℕ) (loc : ValueLocation FS) → RunLow prog fs → LocState.halted (floc fs) ≡ false
              → fetch prog (fpc fs) ≡ just (load-at k) → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr loc
              → ExecFinal.frame-gate {FS} (falloc fs) k (just loc) ≡ just loc

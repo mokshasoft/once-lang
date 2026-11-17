@@ -2,18 +2,18 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.HeldI — plan 0.146 B1.4a: D410 amended, on the image.
+-- Once.LinCore.HeldI — plan 0.146 B1.4a: D424 amended, on the image.
 --
 -- A16's `Held.held-always` for the finite-code image: at every configuration
 -- a closed program's image reaches, whatever its code, every event so far
 -- was legal and the live cells are exactly the cells of the values it holds:
--- the current frame's and every saved frame's (D415: a call opens a frame of
+-- the current frame's and every saved frame's (D429: a call opens a frame of
 -- its own, the caller's configuration saved on the return stack).
 --
 -- A16's invariant (`Held.Inv`), spanning the frames (`InvI`): a view sees
 -- cells owned by the slots below it, in its frame or in its callers' (a
 -- callee's top view is its caller's). Each new step is one of four kinds: a
--- call, or a dispatch into a cell's trampoline (D417), saves the caller's
+-- call, or a dispatch into a cell's trampoline (D431), saves the caller's
 -- configuration below its top view and operand (`enter-inv`); a return puts
 -- the result back on it; a loop's turn moves nothing; a trampoline's cell
 -- part opens a view owned below (as `eapply`), frees the cell and holds what
@@ -294,7 +294,7 @@ inv-stepI i-reti inv =
   (tt , record { i-le1 = i-le1 inv ; i-above = i-above inv ; i-exact = i-exact inv ; i-sees = i-sees inv ; i-seesR = i-seesR inv })
 inv-stepI i-loop inv =
   (tt , record { i-le1 = i-le1 inv ; i-above = i-above inv ; i-exact = i-exact inv ; i-sees = i-sees inv ; i-seesR = i-seesR inv })
--- ★ through a cell's code word: a frame opened on its trampoline (D417)
+-- ★ through a cell's code word: a frame opened on its trampoline (D431)
 inv-stepI (i-icall {es = es} {i = j} {x = x} {a} {os}) inv = enter-inv nothing es _ os inv
 inv-stepI (i-icallω {es = es} {a = a} {os} eq) inv = enter-inv (just _) es a os inv
 inv-stepI (i-iobs {es = es} {os = os}) inv = enter-inv nothing es _ os inv
@@ -346,7 +346,7 @@ start-invI : ∀ {T n} → InvI start ([]ʳ {T = T}) n (λ _ → 0)
 start-invI = record { i-le1 = λ _ → z≤n ; i-above = λ _ _ → refl ; i-exact = λ _ → refl
                     ; i-sees = ((λ i ()) , tt) ; i-seesR = tt }
 
--- ★ D410 amended, on the image: at every configuration a closed program's
+-- ★ D424 amended, on the image: at every configuration a closed program's
 -- image reaches, whatever its code, every event so far was legal and the
 -- live cells are exactly the cells of the values it holds, in every frame
 held-alwaysI : ∀ {T sh U} {c : Codeᴵ (One ∷ [] ∣ One ∷ []) T} {c′ : Codeᴵ sh U} {r′ : Ret U T} {m′ n′ mt}

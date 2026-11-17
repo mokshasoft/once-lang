@@ -92,12 +92,12 @@ module GetC {FS : FrameSemantics} where
   out-mem : ∀ (fs : FlatState) (w : StoredValue FS) l → readLoc (floc (setOut fs w)) l ≡ readLoc (floc fs) l
   out-mem fs w l = readLoc-stack-heap-eq (floc (setOut fs w)) (floc fs) l refl refl
 
-  -- D435: a live location (a heap cell) passes the frame gate
+  -- D449: a live location (a heap cell) passes the frame gate
   live-gate : ∀ {a : AllocState {FS}} (alloc : AllocState {FS}) (k : ℕ) (loc : ValueLocation FS) → Live a loc
             → ExecFinal.frame-gate {FS} alloc k (just loc) ≡ just loc
   live-gate alloc k (AtDynamic hl) _ = refl
 
-  -- …and the heap gate of an offset address (D435: a heap block only)
+  -- …and the heap gate of an offset address (D449: a heap block only)
   live-heap-gate : ∀ {a : AllocState {FS}} (loc : ValueLocation FS) → Live a loc → ExecFinal.heap-gate {FS} (just loc) ≡ just loc
   live-heap-gate (AtDynamic hl) _ = refl
 

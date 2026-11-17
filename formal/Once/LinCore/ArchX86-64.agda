@@ -112,7 +112,7 @@ module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
   module IA = Once.LinCore.ImageAll.Img (fs-numerics x86-64-frame-semantics) (fs-ffi x86-64-frame-semantics) bw o
                 IT.TP.ds IT.TP.f₀ ML.ldConst ld-is
   module IAF = IA.Fetch {x86-64-frame-semantics}
-  -- nothing falls into an entry (`ImageGuard`, D437)
+  -- nothing falls into an entry (`ImageGuard`, D451)
   module IG = Once.LinCore.ImageGuard.G.Img (fs-numerics x86-64-frame-semantics) (fs-ffi x86-64-frame-semantics) bw
                 {x86-64-frame-semantics} IT.TP.ds IT.TP.f₀ ML.ldConst ML.ld-nl
 
@@ -120,7 +120,7 @@ module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
   -- (the image's shape, then the run's facts), and the arith blocks
   record Owed : Set where
     field
-      -- D438: a slot the run addresses is inside the current frame
+      -- D452: a slot the run addresses is inside the current frame
       o-slots  : ∀ fs (i : AbstractInstr) (slot : Slot) → Reachable image 0 fs
                → fetch image (fpc fs) ≡ just i → slot-of i ≡ just slot
                → slot < AllocState.frame-slots (falloc fs)

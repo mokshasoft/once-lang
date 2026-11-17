@@ -14,7 +14,7 @@
 -- when the heap holds it, and the pool's stack of temporaries is as long as
 -- the ledger counts.
 --
--- ★ §4 (D411 part 2): every size at once, in ONE region (`Once.LinCore.Region`):
+-- ★ §4 (D425 part 2): every size at once, in ONE region (`Once.LinCore.Region`):
 -- a legal run drives the region from empty without a failed step, its blocks
 -- of every size lie apart, and the words it uses are at most `Σ k · peakₖ`
 -- over the program's sizes (`in-one-region`).
@@ -260,7 +260,7 @@ never-fails : ∀ t → OK t (λ _ → 0) → TLeg t → ∀ k → Σ A.Pool λ 
 never-fails t ok tl k = along k t ok tl A.inv-empty (link₀ k)
 
 ------------------------------------------------------------------------
--- 4. ★ ONE REGION FOR EVERY SIZE (D411 part 2, `Once.LinCore.Region`).
+-- 4. ★ ONE REGION FOR EVERY SIZE (D425 part 2, `Once.LinCore.Region`).
 ------------------------------------------------------------------------
 
 -- the run's events, as operations on the region: each on its own size

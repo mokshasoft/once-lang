@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.LinCore.ImageGuard — plan 0.146 B1.6: ★ NOTHING FALLS INTO AN ENTRY
--- (`Emitted.em-guard`, D437).
+-- (`Emitted.em-guard`, D451).
 --
 -- An entry of the image (a block's, a trampoline's) is preceded by an
 -- instruction that does not fall through: a jump, a return, or the
@@ -12,7 +12,7 @@
 -- (`LabelsC`'s `Ok.ne`), so it is linked whatever its order; what precedes a
 -- block is the code before it, which ENDS in a guard: a code ends in its
 -- `fin` (a block's `c-ret`, the start's `c-leave`) or, halted, in `c-leave`
--- (D437, `Lower.lowC`); a block in its own code's end; a trampoline in its
+-- (D451, `Lower.lowC`); a block in its own code's end; a trampoline in its
 -- `c-ret`.
 ------------------------------------------------------------------------
 

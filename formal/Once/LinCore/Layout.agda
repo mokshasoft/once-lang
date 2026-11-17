@@ -2,13 +2,13 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.Layout — plan 0.146 B1.4b, part 2: the image's words (D416).
+-- Once.LinCore.Layout — plan 0.146 B1.4b, part 2: the image's words (D430).
 --
 -- * A value is words: a flat value its `Spec.ABI` words (`wsz`: `Unit` none,
 --   a scalar one, a pair its two in order, a sum its tag and its payload
 --   padded to the larger side); a tagged closure its environment's; a μ
 --   node, a closure, a ν one word, the address of its cell.
--- * A block's frame (D415: one per call, at the block's closed shape) has two
+-- * A block's frame (D429: one per call, at the block's closed shape) has two
 --   regions at fixed offsets. The ENVIRONMENT's: each slot a buffer holding
 --   the words of what it sees (a view's are a copy: it reads, never owns; a
 --   lend's are the lent pair's), stacked upward from slot 0. The OPERAND
@@ -39,7 +39,7 @@ open import Once.LinCore.Image fmt bw
 -- 1. WORDS.
 ------------------------------------------------------------------------
 
--- a value's words (D416; `Spec.ABI.words` on the flat types)
+-- a value's words (D430; `Spec.ABI.words` on the flat types)
 wsz : LTy → ℕ
 wsz One          = 0
 wsz Zero         = 0

@@ -71,7 +71,7 @@ ResWord : ℕ → ∀ {B} → FitsInReg B → Res M.⟦ B ⟧ → Set
 ResWord m f (returns v) = LitWord m f v
 ResWord m f stopped     = ⊤
 
--- D432: a base value's EVERY `Int` leaf is below `m` — a sum's by its
+-- D446: a base value's EVERY `Int` leaf is below `m` — a sum's by its
 -- alternative (`Words` leaves a sum free). What a value written in place
 -- (`writeTyped`) needs of its words.
 Leaves : ℕ → (A : Type) → M.⟦ A ⟧ → Set
@@ -178,7 +178,7 @@ module _ (tn : TargetNum) where
   ... | returns v = atTarget-word f v
   ... | stopped   = tt
 
-  -- D432: the world's value, read at the target, has every leaf a word
+  -- D446: the world's value, read at the target, has every leaf a word
   atTarget-leaves : ∀ (B : Type) (v : M.⟦ B ⟧) → Leaves IM B (atTarget tn B v)
   atTarget-leaves Int          v        = m%n<n v IM
   atTarget-leaves Float        v        = tt
@@ -196,7 +196,7 @@ module _ (tn : TargetNum) where
   map-leaves B (returns v) = atTarget-leaves B v
   map-leaves B stopped     = tt
 
-  -- D432: a SigOp's value at a codomain that is not a register value has every leaf a word
+  -- D446: a SigOp's value at a codomain that is not a register value has every leaf a word
   semM-of-leaves : ∀ {A B} ans n (s : SigOpSem A B) (x : M.⟦ A ⟧)
                  → fits-in-reg? B ≡ nothing → ResLeaves IM B (semM-of ans n s tn x)
   semM-of-leaves ans n (blockV {n = NInt}   e refl refl) x ()

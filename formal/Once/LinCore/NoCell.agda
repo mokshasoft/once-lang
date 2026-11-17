@@ -2,10 +2,10 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.NoCell — plan 0.146 B1.4b (D422): ★ A ROOT'S CODE HAS NO
+-- Once.LinCore.NoCell — plan 0.146 B1.4b (D436): ★ A ROOT'S CODE HAS NO
 -- TRAMPOLINE CELL PART.
 --
--- A trampoline's cell part (`open1 openω nopen copen reclose fopen`, D417)
+-- A trampoline's cell part (`open1 openω nopen copen reclose fopen`, D431)
 -- occurs only in a trampoline's block, whose flat code is `tramp`, never a
 -- lowering of that block. The roots the word layer lowers — the start's
 -- code and the blocks of the universe's keys — are compiled terms, a fold's

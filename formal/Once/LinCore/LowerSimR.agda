@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.LowerSimR — plan 0.146 B1.4b (D417), `LowerSim` layer (4),
+-- Once.LinCore.LowerSimR — plan 0.146 B1.4b (D431), `LowerSim` layer (4),
 -- continued: A COPY TRAMPOLINE'S `reclose`. A fresh block; the viewed
 -- cell's three code words copied into it (its save slot `s₂` the old cell,
 -- `s₃` the new); its first word its own address; the copy's words (the
@@ -118,7 +118,7 @@ module SimR {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
         go (yes e) = ⊥-elim (ne e)
         go (no _)  = refl
 
-  -- ★ every written word still in its block, the fresh block's below its size (D424)
+  -- ★ every written word still in its block, the fresh block's below its size (D438)
   inb-fresh : ∀ {fs fs′ : FlatState} (r n : ℕ)
             → AllocState.next-heap-ref (falloc fs) ≡ r → AllocState.next-heap-ref (falloc fs′) ≡ suc r
             → AllocState.block-size (falloc fs′) ≡ size-with n r (AllocState.block-size (falloc fs))

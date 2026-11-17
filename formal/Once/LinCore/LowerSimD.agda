@@ -145,7 +145,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
       where M< : wsz A ⊔ wsz B < budget φ ∸ ws S
             M< = ≤∸ (suc (wsz A ⊔ wsz B)) (ws S) (budget φ) (≤-trans fit (m≤n+m (OP φ) (EP φ)))
 
-  -- D435: the branch reads its tag through a current-frame slot inside the window
+  -- D449: the branch reads its tag through a current-frame slot inside the window
   tag-thru : ∀ (fs : FlatState) (t : ℕ)
            → readReg (LocState.regs (floc fs)) Input1 ≡ SV-Ptr (AtStack (AllocState.current-frame (falloc fs)) t)
            → Data.Nat._<_ t (AllocState.frame-slots (falloc fs))

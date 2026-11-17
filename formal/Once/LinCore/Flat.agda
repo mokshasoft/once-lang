@@ -47,7 +47,7 @@ data Base : Set where
 ⟦ int ⟧b   = Carrier
 ⟦ float ⟧b = Carrier
 
--- ★ D433: a literal's PAYLOAD, source syntax (D113, master's `LitPayload`): it becomes bits only at a format
+-- ★ D447: a literal's PAYLOAD, source syntax (D113, master's `LitPayload`): it becomes bits only at a format
 Lit : Base → Set
 Lit int   = ℤ
 Lit float = Decimal

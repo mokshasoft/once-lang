@@ -51,7 +51,7 @@ open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots
 open import Once.LinCore.Spends fmt ans bw using (rounds; roundsM)
 open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw
--- a ν is observed at the empty table (D423)
+-- a ν is observed at the empty table (D437)
 open import Once.LinCore.ObsTable fmt ans bw using (TF; tf-id; tf-∘; tf-⊗; tf-case; tf-inl; tf-inr; tf-lul; tf-lul⁻; tf-drop; tf-lend; tf-bsnd; tf-bcopy; tf-bev; tf-unf; rt; obsT-tf; rt-obsT)
 
 ------------------------------------------------------------------------
@@ -73,7 +73,7 @@ stepsI-++ done st₂ = st₂
 stepsI-++ {c = c} {r} {c″ = c″} {r″} {m = m} {m″ = m″} {n = n} {n″ = n″} {t₂ = t₂} (_⟫_ {t₁ = u₁} {t₂ = u₂} x st₁) st₂ =
   subst (λ z → StepsI c r m n z c″ r″ m″ n″) (sym (++-assoc u₁ u₂ t₂)) (x ⟫ stepsI-++ st₁ st₂)
 
--- ★ how many times a stretch entered a loop (a round started: master's budget counts rounds, D430)
+-- ★ how many times a stretch entered a loop (a round started: master's budget counts rounds, D444)
 -- (read off the code: only a loop's code enters one, by `i-loop`)
 loopI : ∀ {sh sh′} → Insᴵ sh sh′ → ℕ
 loopI (loop _) = 1
@@ -137,7 +137,7 @@ lp-post {j = j} st₁ st₂ h = subst (_≤ _) (+-identityʳ j) (lp-++ st₁ st�
 
 -- to a configuration: the events are a run's (erased) with balanced
 -- temporaries woven in
--- (D430: `j` loop entries at least — a round of the budget each)
+-- (D444: `j` loop entries at least — a round of the budget each)
 record OutI {T sh U sh′ U′} (c : Codeᴵ sh U) (r : Ret U T) (m : Cfg sh) (n : ℕ) (t : Trace)
             (c′ : Codeᴵ sh′ U′) (r′ : Ret U′ T) (m′ : Cfg sh′) (n′ : ℕ) (j : ℕ) : Set where
   constructor out
@@ -168,8 +168,8 @@ record PausedI {T sh U} (c : Codeᴵ sh U) (r : Ret U T) (m : Cfg sh) (n : ℕ) 
     leg   : TLeg (tmps ts)
     lp    : j ≤ loops steps
 
--- ★ D429: a run that HALTED pauses the image at `halted`, having made exactly the run's events; one the
--- budget cut, somewhere, having made exactly them (D430: the cut is at a loop, `r-exh`)
+-- ★ D443: a run that HALTED pauses the image at `halted`, having made exactly the run's events; one the
+-- budget cut, somewhere, having made exactly them (D444: the cut is at a loop, `r-exh`)
 HaltIf : ∀ {T sh U} {c : Codeᴵ sh U} {r : Ret U T} {m n t j} → Why → PausedI c r m n t j → Set
 HaltIf {t = t} exhausted p = PausedI.t₀ p ≡ erase t
 HaltIf {t = t} halted    p = (PausedI.c′ p ≡ halted) × (PausedI.t₀ p ≡ erase t)
@@ -236,7 +236,7 @@ preR : ∀ {T sh U sh′ U′ Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r : 
 preR (gives _ _) x s = pre x s
 preR (stop y)    x s = preH y x s
 
--- ★ a loop entered: a round started (D430)
+-- ★ a loop entered: a round started (D444)
 module _ {T E Es A B S V} {body : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V}
          {r : Ret V T} {m n} where
   preL : ∀ {sh″ U″} {c″ : Codeᴵ sh″ U″} {r″ : Ret U″ T} {m″ n″ t j}
@@ -298,11 +298,11 @@ thenR : ∀ {T sh U sh′ U′ Es B S V} (o : Outcome B) {c : Codeᴵ sh U} {r :
 thenR (gives _ _) a s = then a s
 thenR (stop y)    a s = thenH y a s
 
--- ★ A CALL: the block run to its end in a frame of its own (D415: the
+-- ★ A CALL: the block run to its end in a frame of its own (D429: the
 -- caller's top view and the argument), the caller's configuration saved
 -- below; then the return puts the result back on it (A16's `enter … leave`)
 -- ★ ENTERED by a step that opens the frame: a call, or a dispatch through a
--- cell's code word into its trampoline (D417)
+-- cell's code word into its trampoline (D431)
 Enters : ∀ {T} t {Es A B S U} → Codeᴵ (t ⊳ Es ∣ A ∷ S) U → Codeᴵ (t ⊳ [] ∣ A ∷ []) (t ⊳ [] ∣ B ∷ [])
        → Codeᴵ (t ⊳ Es ∣ B ∷ S) U → Ret U T → Slots (t ⊳ Es) → MV A → Stk S → ℕ → Set
 Enters t c₀ blk k r es a os n =
@@ -410,7 +410,7 @@ mutual
   ... | (v′ , n₁ , t₁) | cv = pre (i-eoutq e) (then (after cv i-epop) (leaf (i-prim r-In) (k-alloc ∷ [])))
   copyB (mct x) e n with copy x n | copyS x refl []ˢ n
   ... | (x′ , n₁ , t₁) | cx = pre (i-eapp e) (after (after cx i-epop) i-tag₁)
-  -- ★ a cell: its trampoline (D417) views the contents, copies them, and
+  -- ★ a cell: its trampoline (D431) views the contents, copies them, and
   -- builds a cell with the same code words
   copyB (mfn i lam x) e n with copy x n | copyS x refl []ˢ n
   ... | (x′ , n₁ , t₁) | cx =
@@ -441,7 +441,7 @@ mutual
   freeB (minr b) n = pre i-case₂ (freeS b []ˢ n)
   freeB (mmu i v) n = then (leaf (i-prim r-Outμ) (k-free ∷ [])) (freeS v []ˢ n)
   freeB (mct x) n = pre i-untag₁ (freeS x []ˢ n)
-  -- ★ a cell: its trampoline (D417) frees it, then frees what it held
+  -- ★ a cell: its trampoline (D431) frees it, then frees what it held
   freeB (mfn i lam x) n = called′ i-cfree (then (leaf i-fopen (k-free ∷ [])) (freeS x []ˢ n)) doneO
   freeB (mnu i p) n = called′ i-nfree (then (leaf i-fopenν (k-free ∷ [])) (freeS p []ˢ n)) doneO
 
@@ -602,7 +602,7 @@ mutual
   simI r-lam   fr es eq os k ρ = leaf (i-prim r-lam) (k-alloc ∷ [])
   simI r-lamω  fr es eq os k ρ = leaf (i-prim r-lamω) (k-alloc ∷ [])
   simI r-unf   fr es eq os k ρ = leaf (i-prim r-unf) (k-alloc ∷ [])
-  -- ★ through a cell's code word: its trampoline (D417), which does the
+  -- ★ through a cell's code word: its trampoline (D431), which does the
   -- cell's part and calls the block
   simI (r-nout {F = F} {S} {o = o} r) p es eq os k ρ =
     calledR′ o i-iobs (thenR o (leaf i-nopen (k-free ∷ []))
@@ -637,7 +637,7 @@ mutual
   simI (r-cut r q) () es eq os k ρ
   simI (r-tmp {o = o} r w p) fr es eq os k ρ = tmpR o w (simI r fr es eq os k ρ)
 
-  -- ★ a TABLE-FREE term's run, on its code at the empty table (D423): as
+  -- ★ a TABLE-FREE term's run, on its code at the empty table (D437): as
   -- `simI`, by the run (the observation's block is `kobs ε`)
   simTF : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v o n t}
         → (r : Run ds f e v n o t) (w : TF f) → Plain r
@@ -703,7 +703,7 @@ ios-erase (tmp _ ∷ t)    = ios-erase t
 
 -- ★ a finished run of a closed program: the image on its compiled code is
 -- legal on the cell heap, leaves it empty, closes every frame it opened, and
--- shows the world what the run does (D429)
+-- shows the world what the run does (D443)
 image-noleak : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {n′ t}
              → (run : Run ds f mone mone 1 (gives mone n′) t) → Plain run
              → Σ Trace λ mt → StepsI (compᴵ ds f end) ([]ʳ {T = One ∷ [] ∣ One ∷ []}) start 1 mt end []ʳ start n′
@@ -716,7 +716,7 @@ image-noleak {t = t} run fr with simI run fr (vw mone []ᵉ) refl []ˢ end []ʳ 
   , weave-post (gives mone 0) w (NoT-Bal (erase t) (erase-clean t)) b
   , trans (ios-weave w) (ios-erase t) )
 
--- ★ A HALTING run of a closed program (D429): the image reaches `halted`, showing the world what the
+-- ★ A HALTING run of a closed program (D443): the image reaches `halted`, showing the world what the
 -- run does
 image-halts : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {t}
             → (run : Run ds f mone mone 1 (stop halted) t) → Plain run
@@ -746,7 +746,7 @@ image-legal {t = t} run fr with simI run fr (vw mone []ᵉ) refl []ˢ end []ʳ
   , TOK-≼ q (weave-post (stop {One} exhausted) w (fst (NoT-Bal t₀ cl)) l)
   , mt , q , sh′ , U′ , c′ , r′ , m′ , n′ , st )
 
--- ★ A RUN THE BUDGET CUT (D430): the image pauses, having shown the world exactly what the run did, and
+-- ★ A RUN THE BUDGET CUT (D444): the image pauses, having shown the world exactly what the run did, and
 -- having entered a loop once for every round the run started
 image-cut : ∀ {Γ} {ds : Defs Γ} {f : LTm Γ One One} {t}
           → (run : Run ds f mone mone 1 (stop exhausted) t) → Plain run

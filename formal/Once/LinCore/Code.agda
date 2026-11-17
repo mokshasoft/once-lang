@@ -2,8 +2,8 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.Code — plan 0.146 A16 (D410): the model machine's SHAPES,
--- CONFIGURATIONS and CODE, and the lowering of a term to it (`comp`). D440:
+-- Once.LinCore.Code — plan 0.146 A16 (D424): the model machine's SHAPES,
+-- CONFIGURATIONS and CODE, and the lowering of a term to it (`comp`). D454:
 -- at the target's numerics alone; how the machine steps and the simulation
 -- are `Machine`'s.
 ------------------------------------------------------------------------
@@ -57,7 +57,7 @@ data Stk : List LTy → Set where
   []ˢ  : Stk []
   _∷ˢ_ : ∀ {A S} → MV A → Stk S → Stk (A ∷ S)
 
--- the environment's slots (D410 amended): a VIEW, or a LEND's slot, whose
+-- the environment's slots (D424 amended): a VIEW, or a LEND's slot, whose
 -- view is the pair of what was lent and the value `x` lent beside it, which
 -- the slot owns until `eunlend` hands it back. Which slots are lends is the
 -- lowering's (each `elend` is matched by an `eunlend` in the code); the tag is
@@ -98,7 +98,7 @@ data Ins : Sh → Sh → Set where
   eapp    : ∀ {l X Es S} → Ins (Ct l X ∷ Es ∣ S) (X ∷ Ct l X ∷ Es ∣ S)
   epop    : ∀ {E Es S} → Ins (E ∷ Es ∣ S) (Es ∣ S)
   ecopy   : ∀ {E Es S} → Ins (E ∷ Es ∣ One ∷ S) (E ∷ Es ∣ E ∷ S)
-  -- ★ D409 part 3, AN INDIRECT CALL: apply the closure on the operands (one
+  -- ★ D423 part 3, AN INDIRECT CALL: apply the closure on the operands (one
   -- shot: free its cell), or the one the top view sees (many-use: read its
   -- cell); its code word says which body runs, decided by the data
   apply   : ∀ {Es g A B S} → Ins (Es ∣ (Fn once g A B ⊗t A) ∷ S) (Es ∣ B ∷ S)

@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.LinCore.StepCov — plan 0.146 B1.5: EVERY IMAGE STEP IS COVERED by the
 -- word layer's step theorem (`StepKinds.CoveredC` of its code); a primitive
--- an op (D426) or a local one, by its term's head. Its split on a step lives
+-- an op (D440) or a local one, by its term's head. Its split on a step lives
 -- here, in a module of its own.
 ------------------------------------------------------------------------
 

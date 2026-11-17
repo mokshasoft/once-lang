@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.PointAt — plan 0.146 B1.4b (D417, step 3): the word layer's
+-- Once.LinCore.PointAt — plan 0.146 B1.4b (D431, step 3): the word layer's
 -- CONTROL half — a point of the image's run, with the membership its
 -- lowering was made with, and the flat code there.
 --

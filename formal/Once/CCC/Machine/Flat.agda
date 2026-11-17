@@ -132,7 +132,7 @@ module FlatMachine {FS : FrameSemantics} where
   tag-test (just (SV-Tag zero))    = just true
   tag-test (just (SV-Tag (suc _))) = just false
   tag-test (just (SV-Ptr (AtDynamic _))) = just false
-  -- D435: a stack pointer has no tag
+  -- D449: a stack pointer has no tag
   tag-test (just (SV-Ptr (AtStack _ _)))  = nothing
   tag-test (just (SV-Lit _ _))     = nothing
   tag-test (just (SV-Code _))      = nothing
@@ -143,7 +143,7 @@ module FlatMachine {FS : FrameSemantics} where
   flat-read-at s (just loc) = readLoc s loc
   flat-read-at s nothing    = nothing
 
-  -- D435: through the frame gate, as every access through a pointer register
+  -- D449: through the frame gate, as every access through a pointer register
   flat-read-tag : AllocState {FS} → LocState FS → Maybe (StoredValue FS)
   flat-read-tag al s = flat-read-at s (ExecFinal.frame-gate {FS} al 0 (sv-as-loc (readReg (regs s) Input1)))
 

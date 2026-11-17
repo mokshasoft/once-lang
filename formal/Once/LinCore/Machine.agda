@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.Machine — plan 0.146 A16 (D410): A MODEL MACHINE, AND THE
+-- Once.LinCore.Machine — plan 0.146 A16 (D424): A MODEL MACHINE, AND THE
 -- SIMULATION.
 --
 -- A stack machine with CODE: instructions over two stacks — the OPERANDS
@@ -123,7 +123,7 @@ data Step {T : Sh} : ∀ {sh sh′} → Code sh T → Cfg sh → ℕ → Trace �
                   (enter ⨾ trav ds F alg F (comp ds alg (leave ⨾ k))) (es ∥ v ∷ˢ os) n
   s-loop   : ∀ {Γ} {ds : Defs Γ} {E A B Es S} {f : Tm Γ E A (B ⊕t A)} {k : Code (E ∷ Es ∣ B ∷ S) T} {m n}
            → Step (loop ds f ⨾ k) m n [] (comp ds f (case k (loop ds f ⨾ k))) m n
-  -- ★ D409 part 3: the indirect call, to the code the closure's code word
+  -- ★ D423 part 3: the indirect call, to the code the closure's code word
   -- names, compiled as a label's body is (in a frame, nothing lent)
   s-apply  : ∀ {Es g X A B S} {k : Code (Es ∣ B ∷ S) T} {Δ} {ds′ : Defs Δ} {b : Tm Δ One (X ⊗t A) B} {γ : Gd g b}
                {es i x a os n}
@@ -333,7 +333,7 @@ done∅ = out [] [] done w-[] bal∅
 -- ★ THE RUNS THIS LOWERING FOLLOWS: every fold plain. A fold that rebuilds in
 -- place (A8, `r-cata-reuse`) is the compiler's other choice, which this
 -- lowering does not make. Stated of the run, not the term: a closure's body
--- comes from the data (D409 part 3), and its run is part of the run.
+-- comes from the data (D423 part 3), and its run is part of the run.
 mutual
   Plain : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n o t} → Run ds f e v n o t → Set
   Plain (r-∘ rg (go-on rf))             = Plain rg × Plain rf
@@ -362,10 +362,10 @@ mutual
   Plain (r-iter r (go-on done))         = Plain r
   Plain (r-iter r (go-on (again rn)))   = Plain r × Plain rn
   Plain (r-iter r stopped)              = Plain r
-  -- D430: a cut is the budget's, at a loop (`r-exh`); a cut anywhere (`r-cut`) is not the lowering's
+  -- D444: a cut is the budget's, at a loop (`r-exh`); a cut anywhere (`r-cut`) is not the lowering's
   Plain (r-cut r q)                     = ⊥
   Plain (r-tmp r w p)                   = Plain r
-  -- (D429) a call the world left unanswered: not the lowering's run (a linked program's)
+  -- (D443) a call the world left unanswered: not the lowering's run (a linked program's)
   Plain (r-opend {w = exhausted} p)     = ⊥
   -- every other rule has no sub-run, or none that holds a fold
   {-# CATCHALL #-}
@@ -462,7 +462,7 @@ sim (r-copy {n = n}) fr es refl os k = leaf s-ecopy (NoT-copy (see es) n)
 sim (r-bapp {x = x} {o = o} q r) fr es eq os k
   rewrite look-bodyω q {Es = _ ∷ _} (leave ⨾ epop ⨾ k) =
   around o (s-eapp eq) (framedR o (sim r fr (vw x es) refl os _))
--- ★ D409 part 3: building a closure is one step; applying one is the
+-- ★ D423 part 3: building a closure is one step; applying one is the
 -- indirect call into its body, in a frame, as a label's
 sim r-lam   fr es eq os k = leaf (s-prim r-lam) (k-alloc ∷ [])
 sim r-lamω  fr es eq os k = leaf (s-prim r-lamω) (k-alloc ∷ [])

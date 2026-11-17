@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.LinkedCore — plan 0.146 B1.5 (D431): MASTER'S LINKEDNESS AT
+-- Once.LinCore.LinkedCore — plan 0.146 B1.5 (D445): MASTER'S LINKEDNESS AT
 -- THE CORE. A linked IR program (`Denotation.Program.LinkedProgram`: every
 -- SigOp leaf `Declared` by the interpretation) translates (`FromIR`, then
 -- `Pass.tr`) to a core program whose universe's ops (`Keys.ops`) are all

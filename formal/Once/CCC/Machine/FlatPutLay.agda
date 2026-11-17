@@ -50,7 +50,7 @@ open import Data.List using (_++_)
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
 open import Once.CCC.Machine.SMCore using (restore-input; load-from-slot; store-at)
 
--- D435: a live location (a heap cell) passes the frame gate
+-- D449: a live location (a heap cell) passes the frame gate
 live-gate-c : ∀ {a : AllocState {FS}} (alloc : AllocState {FS}) (k : ℕ) (l : ValueLocation FS) → Live a l
             → ExecFinal.frame-gate {FS} alloc k (just l) ≡ just l
 live-gate-c alloc k (AtDynamic hl) _ = refl

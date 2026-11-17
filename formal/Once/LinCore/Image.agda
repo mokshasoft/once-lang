@@ -11,13 +11,13 @@
 --   * a closure's body (the `Lam` the run's closure value holds is its code
 --     word), a fold of an algebra, an observation of a ν, and the copy and
 --     the free of a type;
---   * a block's code is a FUNCTION of its key, at a closed shape (D415):
+--   * a block's code is a FUNCTION of its key, at a closed shape (D429):
 --     compiled once, called from anywhere, in a frame of its own (A16's
 --     `enter … leave`): a configuration holding the caller's top view and the
 --     argument; a fold's block calls itself on each child;
 --   * the values are the run's (`Events.MV`): a cell's code word is its
 --     `Lam`, so applying, copying or freeing a closure or a ν dispatches on
---     what its cell holds: a call of the cell's TRAMPOLINE (D417), a block
+--     what its cell holds: a call of the cell's TRAMPOLINE (D431), a block
 --     that does the cell's part and calls the block above, as the flat run
 --     does (`Lower.tramp`), frame for frame;
 --   * the loop is a structured instruction over its round's finite code.
@@ -73,11 +73,11 @@ data Key : BSig → Set where
   kfold  : ∀ {Γ} → Defs Γ → ∀ F {E A} → Tm Γ E (LF∙ F A) A → Key (bsig (just E) (μt F) A)
   -- a ν's observation: `obsT` on its coalgebra and seed
   kobs   : ∀ {Γ} → Defs Γ → ∀ F S → Key (bsig nothing (Coalg F S ⊗t S) (LF∙ F (Nu F)))
-  -- a COPY of the value the top view sees (`dup`'s, D403: deep), and the
+  -- a COPY of the value the top view sees (`dup`'s, D417: deep), and the
   -- FREE of every cell of the operand (`drop`'s)
   kcopy  : ∀ A → Key (bsig (just A) One A)
   kfree  : ∀ A → Key (bsig nothing A One)
-  -- ★ D417: a TRAMPOLINE, the block a cell's code word names: the cell's
+  -- ★ D431: a TRAMPOLINE, the block a cell's code word names: the cell's
   -- part (its contents out, the cell freed or kept), then the block above,
   -- in a frame of its own — the flat run's (`Lower.tramp`), frame for frame.
   -- A copy's and a free's are per contents type `X` (the cell's type `C`
@@ -128,7 +128,7 @@ data Insᴵ : Sh → Sh → Set where
   eword   : ∀ {b Es S} → Insᴵ (Bt b ∷ Es ∣ One ∷ S) (Bt b ∷ Es ∣ Bt b ∷ S)
   -- ★ a CALL: a block, in a frame of its own, on the caller's environment
   call    : ∀ {σ Es S} → Key σ → Insᴵ (top σ ⊳ Es ∣ dom σ ∷ S) (top σ ⊳ Es ∣ cod σ ∷ S)
-  -- ★ THROUGH A CELL'S CODE WORD (D417): a call of the trampoline the cell
+  -- ★ THROUGH A CELL'S CODE WORD (D431): a call of the trampoline the cell
   -- names — apply a one-shot closure, a lent many-use one, observe a ν; copy
   -- a viewed closure or ν; free one
   icall   : ∀ {Es g A B S} → Insᴵ (Es ∣ (Fn once g A B ⊗t A) ∷ S) (Es ∣ B ∷ S)
@@ -138,7 +138,7 @@ data Insᴵ : Sh → Sh → Set where
   ncopy   : ∀ {Es F S} → Insᴵ (Nu F ∷ Es ∣ One ∷ S) (Nu F ∷ Es ∣ Nu F ∷ S)
   cfree   : ∀ {Es k g A B S} → Insᴵ (Es ∣ Fn k g A B ∷ S) (Es ∣ One ∷ S)
   nfree   : ∀ {Es F S} → Insᴵ (Es ∣ Nu F ∷ S) (Es ∣ One ∷ S)
-  -- ★ a trampoline's cell part (D417): a one-shot closure's environment out
+  -- ★ a trampoline's cell part (D431): a one-shot closure's environment out
   -- (the cell freed), a many-use one's viewed, a ν's coalgebra and seed out
   -- (freed); a cell's contents viewed (a copy's), a fresh cell with the
   -- viewed cell's code words (a copy's), a cell's contents out (freed)
@@ -161,7 +161,7 @@ data Codeᴵ where
          → Codeᴵ ((E₁ ⊕t E₂) ∷ Es ∣ S) T
   halted : ∀ {sh T} → Codeᴵ sh T
 
--- ★ a block: its signature's code, at a CLOSED shape (D415): a call runs it
+-- ★ a block: its signature's code, at a CLOSED shape (D429): a call runs it
 -- in a configuration of its own, the caller's top view and the argument
 Block : BSig → Set
 Block σ = Codeᴵ (top σ ⊳ [] ∣ dom σ ∷ []) (top σ ⊳ [] ∣ cod σ ∷ [])
@@ -269,7 +269,7 @@ blockᴵ (kfold ds F alg) = prim ds lOutμ ⨾ travᴵ ds F alg F (compᴵ ds al
 blockᴵ (kobs ds F S)    = elift ⨾ compᴵ ds (obsT F S) (epop ⨾ end)
 blockᴵ (kcopy A)        = copyᴵ A
 blockᴵ (kfree A)        = freeᴵ A
--- ★ the trampolines (D417): the cell's part, the block, what is left
+-- ★ the trampolines (D431): the cell's part, the block, what is left
 blockᴵ (ktr1 {X = X} ds b γ) = open1 {X = X} ⨾ call (kbody1 ds b γ) ⨾ end
 blockᴵ (ktrω {X = X} ds b γ) = openω {X = X} ⨾ call (kbodyω ds b γ) ⨾ epop ⨾ end
 blockᴵ (ktro ds F S)         = nopen {S = S} ⨾ call (kobs ds F S) ⨾ end

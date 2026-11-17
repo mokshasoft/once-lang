@@ -9,7 +9,7 @@
 -- blocks carry their grade judgments), which `Pass.tr` compiles into the core
 -- and `Pass.pass-ok` proves. This module is the first half: the types.
 --
---   * `⟪_⟫ : IRTy → LTy`. An arrow keeps its purity as the core's grade (D413:
+--   * `⟪_⟫ : IRTy → LTy`. An arrow keeps its purity as the core's grade (D427:
 --     `pure` and `act` are both a finite block); the IR's arrows are many-use.
 --   * `lf : IRFunctor → LF`. A constant of a base type is a code built from
 --     `Kone`, `Kzero`, `Kb` (`K (A * B)` is `K A ⊗ K B`), so `⟪ ⟦ F ⟧ X ⟫` is
@@ -58,7 +58,7 @@ module P = Once.LinCore.PassTr fmt
 -- 1. THE TYPES.
 ------------------------------------------------------------------------
 
--- an arrow's purity, as far as the core tells grades apart (D412: the Spec's
+-- an arrow's purity, as far as the core tells grades apart (D426: the Spec's
 -- `pure` is the block with no event)
 grade : Purity → Gr
 grade (fin _) = act
@@ -127,7 +127,7 @@ mutual
 
 ------------------------------------------------------------------------
 -- 3. THE GRADE JUDGMENT, DECIDED on the resolved IR: an `act` arrow's body,
--- a coalgebra and a round must be blocks (D412). The Spec types them at
+-- a coalgebra and a round must be blocks (D426). The Spec types them at
 -- `act`; a program the elaborator emits is owed to pass.
 ------------------------------------------------------------------------
 
@@ -219,7 +219,7 @@ module _ {Γ : Cx} (rs : Resolver Γ) where
     let c″ = subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′
     in blk? c″ >>= λ φ → just (P.Ana (lf F) c″ φ)
   trI (M.Iter b)          = trI b >>= λ b′ → blk? b′ >>= λ φ → just (P.Iter b′ φ)
-  -- D433: the payload, materialized by the core's meaning (`lit`), as master's by its machine
+  -- D447: the payload, materialized by the core's meaning (`lit`), as master's by its machine
   trI (M.const fits-int v)   = just (P.const {b = int} v)
   trI (M.const fits-float v) = just (P.const {b = float} v)
   trI (M.SigOp {A} {B} si)   =

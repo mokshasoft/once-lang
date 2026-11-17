@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalRetT — plan 0.146 B1.4b (D421, D417): A TRAMPOLINE'S RETURNS (the inner block's into it, its way out)
+-- Once.LinCore.GlobalRetT — plan 0.146 B1.4b (D435, D431): A TRAMPOLINE'S RETURNS (the inner block's into it, its way out)
 -- (split from `GlobalRet` for its build time).
 ------------------------------------------------------------------------
 
@@ -136,7 +136,7 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     open GRetB
 
     -- ★ a one-shot trampoline's way out (and an observation's): the result into the dispatch's
-    -- caller, at the path after its dispatch (D421)
+    -- caller, at the path after its dispatch (D435)
     module _ where
       gret-out : ∀ {T Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b} {Es D S V}
                    {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ B ∷ S)} {k : Codeᴵ (Es ∣ B ∷ S) V}

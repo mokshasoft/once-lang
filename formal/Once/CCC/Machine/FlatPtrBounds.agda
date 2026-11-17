@@ -380,7 +380,7 @@ pb-reg-op bs ls out-nz             wf =
 -- `structured-pure-sigop-output` itself (D061), and the same shape as
 -- `FlatStoreWF.structured-pure-sigop-below` / `FlatStackPtr`'s `-no-stack`.
 ------------------------------------------------------------------------
--- (D432: a structured answer is in memory; `Output` keeps its address, which
+-- (D446: a structured answer is in memory; `Output` keeps its address, which
 -- the invariant covers, so the companion axiom is gone.)
 
 -- plan 0.98: `res-sv` dispatches on the `Res`, so a Pure SigOp's output is
@@ -420,7 +420,7 @@ sigop-output-pb bs {A} {B} si ls wf = go (effect si)
                 ans (no _)  = tt
         cv nothing  = pb-regs wf Output
 
--- D432: a structured answer's words, written in place, are no pointers
+-- D446: a structured answer's words, written in place, are no pointers
 pb-plain : ∀ (bs : ℕ → ℕ) {w} → PlainWord w → PtrB bs w
 pb-plain bs pw-lit = tt
 pb-plain bs pw-tag = tt

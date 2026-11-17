@@ -338,7 +338,7 @@ module FaultPres {FS : FrameSemantics} where
   restore-fault nothing  s alloc ()
 
   -- D392: a Pure SigOp faults exactly when it halts, so one that does not halt
-  -- does not fault either; D435 (d): nor does its window check (`g`), which
+  -- does not fault either; D449 (d): nor does its window check (`g`), which
   -- halts it when it fails
   or-fault : ∀ (u g f : Bool) → (u ∨ not g) ≡ false → (u ∨ (not g ∨ f)) ≡ f
   or-fault false true  f _ = refl

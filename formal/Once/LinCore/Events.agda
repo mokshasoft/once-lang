@@ -10,14 +10,14 @@
 -- events it causes:
 --
 --   * FLAT (no cell; a frame slot or registers): `One`, `⊗t`, `⊕t`, base
---     words, and (D405) a closure, which is its environment — (D406) a ν
+--     words, and (D419) a closure, which is its environment — (D420) a ν
 --     among them, which is its seed.
---   * CELLS (the cell heap, one id each): a μ node; ★ (D409 part 3) a closure
+--   * CELLS (the cell heap, one id each): a μ node; ★ (D423 part 3) a closure
 --     of an arrow type: its code word and its environment.
 --
 -- `dup` copies every cell of its value (fresh ids); `drop` frees every cell of
 -- its value; `lIn` allocates one cell; `lOutμ` frees one. Nothing else touches
--- the heap: moving data is not copying it. ★ A13 (D407): the lowering's own
+-- the heap: moving data is not copying it. ★ A13 (D421): the lowering's own
 -- TEMPORARIES (`r-tmp`) are events beside the cells, counted by size, not
 -- cells of the run; `Temps` proves them freed and erasable.
 --
@@ -76,13 +76,13 @@ open import Once.LinCore.Bisim fmt ans using (Bl; ≈ret; ≈step; ≈call; ≈h
 open import Once.LinCore.Grade fmt ans using (blk-coh; obs-coh)
 open import Once.LinCore.Values fmt bw
 
--- ★ D405: every statement is over the program's label table `ds`
+-- ★ D419: every statement is over the program's label table `ds`
 variable
   Γ  : Cx
   ds : Defs Γ
 
 ------------------------------------------------------------------------
--- 1. WHAT A MACHINE VALUE MEANS (D440: the values are `Values`').
+-- 1. WHAT A MACHINE VALUE MEANS (D454: the values are `Values`').
 ------------------------------------------------------------------------
 
 -- what a code means: the Spec's `⟦ A ⟧ → M π ⟦ B ⟧`, at an environment
@@ -184,7 +184,7 @@ data Run {Γ} ds where
   r-In    : ∀ {E F} {e : MV E} {v : MV (LF∙ F (μt F))} {n}
           → Run ds (lIn {F = F}) e v n (gives (mmu (szμ F , n) v) (suc n)) (alloc (szμ F , n) ∷ [])
   r-Outμ  : ∀ {E F} {e : MV E} {v : MV (LF∙ F (μt F))} {i n} → Run ds (lOutμ {F = F}) e (mmu i v) n (gives v n) (free i ∷ [])
-  -- ★ D405: building a closure is tagging its environment: no event (D406:
+  -- ★ D419: building a closure is tagging its environment: no event (D420:
   -- likewise the seeds of a layer, which is building a ν, or observing one)
   r-clo   : ∀ {E F l k g X A B} {p : Γ ∋[ l ] sg k g X A B} {e : MV E} {x : MV (LF∙ F X)} {n}
           → Run ds (lclo F p) e x n (gives (tag F x) n) []
@@ -228,7 +228,7 @@ data Run {Γ} ds where
   -- applying a lent many-use closure lends its environment on to its body
   r-bapp  : ∀ {l g X A B Δ} {p : Γ ∋[ l ] sg many g X A B} {ds′ : Defs Δ} {b : Tm Δ X A B} {γ : Gd g b} {x a o n t}
           → Look ds p ds′ (bω b γ) → Run ds′ b x a n o t → Run ds (bapp p) (mct x) a n o t
-  -- ★ D409 part 3, THE EXPONENTIAL: building a closure moves its environment
+  -- ★ D423 part 3, THE EXPONENTIAL: building a closure moves its environment
   -- into a fresh cell beside its code; applying a one-shot one frees the
   -- cell and runs the code on the environment and the argument (the body owns
   -- both); applying a lent many-use one reads the cell and lends the
@@ -268,7 +268,7 @@ data Run {Γ} ds where
   r-exh   : ∀ {E A B} {f : Tm Γ E A B} {e v n} → Run ds f e v n (stop exhausted) []
   r-cut   : ∀ {E A B} {f : Tm Γ E A B} {e v o n t t′}
           → Run ds f e v n o t → t′ ≼ t → Run ds f e v n (stop exhausted) t′
-  -- ★ A13 (D407): the lowering of `f` may use temporaries of its own, woven
+  -- ★ A13 (D421): the lowering of `f` may use temporaries of its own, woven
   -- into its events: all freed before it finishes, if it gives a value
   r-tmp   : ∀ {E A B} {f : Tm Γ E A B} {e v o n t ts t′}
           → Run ds f e v n o t → Weave tmp t ts t′ → TPost o (tmps ts) → Run ds f e v n o t′
@@ -504,7 +504,7 @@ coh⁻¹∘coh (F ⊕f G) X (inj₁ x) = cong inj₁ (coh⁻¹∘coh F X x)
 coh⁻¹∘coh (F ⊕f G) X (inj₂ y) = cong inj₂ (coh⁻¹∘coh G X y)
 coh⁻¹∘coh (F ⊗f G) X (x , y)  = cong₂ _,_ (coh⁻¹∘coh F X x) (coh⁻¹∘coh G X y)
 
--- ★ D406: tagging the seeds of a layer means retyping them, nothing else
+-- ★ D420: tagging the seeds of a layer means retyping them, nothing else
 tag-er : ∀ {l X} F (x : MV (LF∙ F X)) → er (tag {l} F x) ≡ coh⁻¹ F (Ct l X) (coh F X (er x))
 tag-er Idf      x            = refl
 tag-er Kone     x            = refl
@@ -1097,7 +1097,7 @@ free-ok (mct x) h r le sb = free-ok x h r le sb
 free-ok (mfn j c x) h r le sb = free-cell j (cnt x) (freeAll x) h r le sb (λ h′ le′ sb′ → free-ok x h′ r le′ sb′)
 free-ok (mnu j p) h r le sb = free-cell j (cnt p) (freeAll p) h r le sb (λ h′ le′ sb′ → free-ok p h′ r le′ sb′)
 
--- ★ D405/D406: a tagged layer holds exactly the cells it held
+-- ★ D419/D420: a tagged layer holds exactly the cells it held
 cnt-tag : ∀ {l X} F (x : MV (LF∙ F X)) i → cnt (tag {l} F x) i ≡ cnt x i
 cnt-tag Idf      x            i = refl
 cnt-tag Kone     x            i = refl
@@ -1407,9 +1407,9 @@ exchange (r-Outμ {v = v} {i = j}) {h} {r} pre lent with free-step j (cnt v) h r
 ... | (hj , _ , _ , back) = ((hj , tt) , λ i → trans (r5 (step (free j) h i) (δ j i) (cnt v i)) (cong (_+ cnt v i) (back i)))
   where r5 : ∀ P D V → P + (D + V) ≡ (P + D) + V
         r5 = solve-∀
--- ★ D405: a closure is its environment: building one is no event, and
+-- ★ D419: a closure is its environment: building one is no event, and
 -- applying one is running its body on the environment and the argument.
--- D406: so is a ν, built (`lana`) or observed (`lobs`): no event of its own
+-- D420: so is a ν, built (`lana`) or observed (`lobs`): no event of its own
 exchange (r-clo {F = F} {x = x}) {h} pre lent = (tt , λ i → cong (h i +_) (sym (cnt-tag F x i)))
 exchange (r-app q r) pre lent =
   exchange r record { le1 = le1 pre ; above = above pre ; sub = sub pre } lent₀
@@ -1482,9 +1482,9 @@ exchange (r-out {i = i} {v} {a} {o} {t = t} r) {h} pre lent with exchange r pre 
 ... | (ok , eq) = ((peek-live {a = a} {e = mmu i v} pre lent i (subst (λ x → 1 ≤ x + cnt v i) (sym (δ-same i)) (s≤s z≤n)) , ok) , peekP o i t h (cnt a) eq)
 exchange (r-copy {e = e} {n}) {h} pre lent with copy-ok e n h (above pre)
 ... | (ok , eq) = (ok , λ i → trans (+0 _) (eq i))
--- ★ D405: a lent closure is its lent environment, lent on to the body
+-- ★ D419: a lent closure is its lent environment, lent on to the body
 exchange (r-bapp q r) pre lent = exchange r pre lent
--- ★ D409 part 3: building a closure allocates its cell, holding the environment
+-- ★ D423 part 3: building a closure allocates its cell, holding the environment
 exchange (r-lam {X = X} {x = x}) pre lent = alloc1 (szc X) (cnt x) pre
 exchange (r-lamω {X = X} {x = x}) pre lent = alloc1 (szc X) (cnt x) pre
 -- applying a one-shot closure frees its cell; the body takes the environment

@@ -78,7 +78,7 @@ data VoidFree {m} : ∀ {A B : Ty m} → A <: B → Set where
   vf-int    : VoidFree sub-int
   vf-float  : VoidFree sub-float
   vf-var    : ∀ {i} → VoidFree (sub-var {i = i})
-  -- D413: an arrow's purity is in its IR type, so only a coercion that keeps
+  -- D427: an arrow's purity is in its IR type, so only a coercion that keeps
   -- it is the identity; one that raises it is `coeIR`'s eta-expanded closure.
   vf-arr    : ∀ {A A′ B B′ q π} {a : A′ <: A} {b : B <: B′} {g : π ⊑π π}
             → VoidFree a → VoidFree b → VoidFree (sub-arr {q = q} {π = π} {π′ = π} a b g)

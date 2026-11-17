@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.RunOps — plan 0.146 B1.5 (D431): A RUN'S OPS ARE ITS
+-- Once.LinCore.RunOps — plan 0.146 B1.5 (D445): A RUN'S OPS ARE ITS
 -- PROGRAM'S. A run of a term whose ops (and whose table's) all satisfy `D`,
 -- on values whose closures' bodies are such terms, cuts only at a `D` op
 -- (`Spends.CutsIn D`), and gives such values. By recursion on the run: the

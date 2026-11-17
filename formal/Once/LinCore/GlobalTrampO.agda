@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalTrampO — plan 0.146 B1.4b (D421, D423): AN OBSERVATION'S TRAMPOLINE (ktro), step by step
+-- Once.LinCore.GlobalTrampO — plan 0.146 B1.4b (D435, D437): AN OBSERVATION'S TRAMPOLINE (ktro), step by step
 -- (split from `GlobalTramp` for its build time; over `Global.Relate` and `GlobalTramp.TrampR`).
 ------------------------------------------------------------------------
 
@@ -108,7 +108,7 @@ module TrampO {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Called
   open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next)
   ----------------------------------------------------------------------
-  -- 9. ★ A ONE-SHOT TRAMPOLINE (D421), step by step.
+  -- 9. ★ A ONE-SHOT TRAMPOLINE (D435), step by step.
   ----------------------------------------------------------------------
 
   open import Once.LinCore.LowerSimH fmt ans bw using (module SimH)
@@ -137,7 +137,7 @@ module TrampO {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     four+ q = Data.Nat.Properties.+-comm q 4
       where import Data.Nat.Properties
 
-  -- ★ an observation's trampoline's code, by its parts (D421)
+  -- ★ an observation's trampoline's code, by its parts (D435)
   tOM : LF → LTy → ℕ
   tOM F S = wsz (cty (F , S)) ⊔ wsz (LF∙ F (Nu F))
 
@@ -277,7 +277,7 @@ module TrampO {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               (subst (λ z → Seg image z E) (sym (HereF.f-pc H)) (in-seg (image-tr (ktro ds′ F S) p 2)))
 
   -- ★ an observation's dispatch: a ν observed through its cell's code word,
-  -- into its trampoline at depth 0 (D421; the code word names `kobs ε`, D423)
+  -- into its trampoline at depth 0 (D435; the code word names `kobs ε`, D437)
   to-dispatch : ∀ {F S} (φ : Frame) {Es S′} {es : Slots Es} {os : Stk S′} {i} {x : MV (cty (F , S))} {fs}
               → Seg image (fpc fs) (restore-input (Tp φ S′ ∸ 1) ∷ lea-slot (Tp φ S′ ∸ (1 ⊔ wsz (LF∙ F (Nu F))))
                                     ∷ instr-save-closure-reg ∷ instr-call-closure ∷ [])

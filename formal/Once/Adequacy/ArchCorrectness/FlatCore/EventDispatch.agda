@@ -736,7 +736,7 @@ module Dispatch (sup : Supply) where
           rd-heap = trans (cong (memory s) addr-val)
                           (CFC.heap-eq dc hl r-eq)
       -- STACK: the tag cell is a slot of a live window (the gate's outcome),
-      -- read there (D435)
+      -- read there (D449)
       go-loc (AtStack f k') v i-eq r-eq tc g =
         on-cell (AtStack f k') v i-eq g r-eq tc
           (subst (PtrB? (block-size (falloc fs))) r-eq (pb-stack pbwf f k'))
@@ -914,7 +914,7 @@ module Dispatch (sup : Supply) where
                  → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                        (event-of (load-at k) fs ▹ flat-events n prog (flat-exec-instr (load-at k) prog fs)) (ctrl-of (load-at k) + flat-ctrls n prog (flat-exec-instr (load-at k) prog fs)) M)
           go-loc (AtDynamic hl) i-eq = go-mem hl i-eq (heapMem (floc fs) (offsetHL hl k)) refl
-          -- D435: a STACK pointer — the slot of a live window, written
+          -- D449: a STACK pointer — the slot of a live window, written
           go-loc (AtStack f j)  i-eq = go-stk f j i-eq (load-at-gate prog fs k (AtStack f j) (inv-run wf) h ftq i-eq)
                                                (LocState.stackMem (floc fs) f (k + j)) refl
           go-stk f j i-eq g (just w) h-eq =
@@ -948,7 +948,7 @@ module Dispatch (sup : Supply) where
             where ib = addr-at-in-block prog fs k hl (inv-run wf) h ftq i-eq
                   hpost : halted (floc (flat-exec-instr (addr-at k) prog fs)) ≡ false
                   hpost rewrite i-eq | ib = h
-          -- D435: an offset ADDRESS is a heap block's only
+          -- D449: an offset ADDRESS is a heap block's only
           go-loc (AtStack f j)  i-eq =
             ⊥-elim (addr-at-not-stack prog fs k f j (inv-run wf) h ftq i-eq)
 
@@ -974,7 +974,7 @@ module Dispatch (sup : Supply) where
             where ib = store-at-in-block prog fs k hl (inv-run wf) h ftq i-eq
                   hpost : halted (floc (flat-exec-instr (store-at k) prog fs)) ≡ false
                   hpost rewrite i-eq | ib = trans (writeLoc-halted (floc fs) (AtDynamic (offsetHL hl k)) (readReg (regs (floc fs)) Output)) h
-          -- D435: a STACK pointer — the slot of a live window
+          -- D449: a STACK pointer — the slot of a live window
           go-loc (AtStack f j)  i-eq =
             ccc-step-bs {hv} n IH ev env prog fs s (store-at k)
               (bs-store-at-stack bss prog fs s k f j cc h ftq i-eq g)

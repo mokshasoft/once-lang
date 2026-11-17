@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.AnsWrite — plan 0.146 B1.5 (D432): A SIGOP'S ANSWER IN MEMORY
+-- Once.LinCore.AnsWrite — plan 0.146 B1.5 (D446): A SIGOP'S ANSWER IN MEMORY
 -- IS THE IMAGE'S. `ArgDecode`'s mirror: the machine's in-place writer
 -- (`writeTyped`, a sigop whose answer is a product or a sum) at a slot of a
 -- frame writes the answer's words there — the image's (`VW`), a sum's padding

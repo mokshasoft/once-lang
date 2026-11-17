@@ -9,7 +9,7 @@
 -- in `Input1`, so in `ecx` (D398, `in1-eq`); a compound is a pointer whose typed leaves are written cells at their flat
 -- offsets (`FlatLeaf.leaf-at`), so the words at `ecx + 4k` (`heap-eq`,
 -- `haddr-offset`), below the frontier and so below the block's frame (the
--- room check, D393) — or, at a stack pointer (D435 (d)), the words of the live
+-- room check, D393) — or, at a stack pointer (D449 (d)), the words of the live
 -- window the SigOp's check passed, above the block's frame. That is the block's `R-input` at its entry state; its
 -- `Int` leaves are words (the store invariant, D397). The Core then gives the
 -- out register: the block's meaning, which is the SigOp's output.
@@ -153,7 +153,7 @@ module _ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : X.State)
     mem-leaf hl in1 dT (go-fst P) = mem-leaf′ hl in1 dT (go-fst P)
     mem-leaf hl in1 dT (go-snd P) = mem-leaf′ hl in1 dT (go-snd P)
 
-    -- D435 (d): a compound input at a stack address: its leaves the words of the
+    -- D449 (d): a compound input at a stack address: its leaves the words of the
     -- window the SigOp's check passed, above the block's frame
     stack-leaf′ : ∀ {l r′ m} f j {a} → readReg (regs ls) Input1 ≡ SV-Ptr (AtStack f j)
                 → range-ok (live-frames (falloc fs)) (tsize (shape-as-type (shape-pair l r′))) (SV-Ptr (AtStack f j)) ≡ true

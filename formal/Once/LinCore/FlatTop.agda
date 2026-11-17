@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.FlatTop — plan 0.146 B1.5 (D429): ★ THE FLAT THEOREM FOR THE
+-- Once.LinCore.FlatTop — plan 0.146 B1.5 (D443): ★ THE FLAT THEOREM FOR THE
 -- NEW IMAGE, IN THE SHAPE THE APEX CONSUMES (master's `FlatFromObs.flat-ends`).
 --
 -- Top-down: the statement first, composed from what is proved — the world's
@@ -10,7 +10,7 @@
 -- interpretation is, its state the log), the image on it (`ImageSim`), the
 -- flat machine on the image (`End.ends`). Every link was first owed as a named
 -- field and discharged in place, so every lemma below is reachable from this
--- statement; none is owed now (D432 discharged the last, structured answers).
+-- statement; none is owed now (D446 discharged the last, structured answers).
 --
 -- For a budget `k`: some fuel at which the flat run's events and its end are
 -- the meaning's at that budget (master's `eventsAt`/`endAp` of `⟪ m ⟫ k`, from
@@ -108,7 +108,7 @@ module LinkedCore = Once.LinCore.LinkedCore fmt ans bw
 module RunOps = Once.LinCore.RunOps fmt ans bw
 
 -- ★ the world the machine's interpretation is: its state the log so far, its answer the
--- interpretation's given that history (D429)
+-- interpretation's given that history (D443)
 Wι : World
 Wι = BudgetSound.W.Wι ι
 
@@ -143,14 +143,14 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
   obs : ℕ → TM.Run (Once.Denotation.Approx.Ap Data.Unit.⊤)
   obs k = TM.run ι [] (approx k (ev ⟦ P ⟧P f tt))
 
-  -- the compiled program's run in the world, at a budget (D430)
+  -- the compiled program's run in the world, at a budget (D444)
   R : (K : ℕ) → Ran Wι ds f₀ mone mone 1 K []
   R K = exec Wι ds K f₀ mone mone 1 []
 
   module _ (ld : ∀ {b} (v : Lit b) (fs : FlatState)
                  → FlatMachine.flat-exec-instr {Mach} (ldConst v) image fs
                    ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = suc (fpc fs) })
-              -- ★ LINKED (D431): the program's ops are declared by the interpretation the machine runs against
+              -- ★ LINKED (D445): the program's ops are declared by the interpretation the machine runs against
               (decl : ∀ {s} → s ∈ ops (Program.U ds f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))) where
     open EndR {Mach} ds f₀ ldConst ld-nl wordOf using (ends)
     open RunW {Mach} ds f₀ ldConst ld-nl wordOf using (from-startC)
@@ -166,7 +166,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
     o-cutsin k = proj₁ (RunOps.run-ok (λ s → s ∈ ops (Program.U ds f₀)) (Ran.run (R k))
                          ((λ m → ∈-++⁺ʳ (ps (defsGot ds)) m) , (λ m → ∈-++⁺ˡ m)) tt tt)
 
-    -- ★ LINKED (D431): the world's run meets no call the interpretation leaves unanswered — it cuts only at
+    -- ★ LINKED (D445): the world's run meets no call the interpretation leaves unanswered — it cuts only at
     -- the program's ops, each declared, whose calls the world answers (`OpMachine.Linked.no-cut`)
     o-uncut : ∀ k → UnCut (Ran.run (R k))
     o-uncut k = spends-uncut (λ {s} {x} {t} {p} → OM.Linked.no-cut decl {s} {x} {t} {p}) (Ran.run (R k)) (Ran.spends (R k)) (o-cutsin k)
@@ -194,7 +194,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
       end-out (stop Once.LinCore.Events.halted)    l = refl
       end-out (stop Once.LinCore.Events.exhausted) l = refl
 
-    -- ★ THE WORLD'S RUN SHOWS THE MEANING at its budget (D429, D430): the budgeted soundness on the
+    -- ★ THE WORLD'S RUN SHOWS THE MEANING at its budget (D443, D444): the budgeted soundness on the
     -- evaluator's own run (`BudgetSound.soundₖ`: its spends and the world's answers), the core's meaning
     -- the pass's (`Pass.pass-okᶠ`, bisimilar computations run alike)
     run-shows : ∀ k → (evsOf (Ran.trace (R k)) ≡ proj₁ (obs k)) × (endO (Ran.out (R k)) ≡ endAp (proj₂ (obs k)))
@@ -253,7 +253,7 @@ module Top {Γ} (P : Prog Γ) (f : IR Γ One One)
                             (cong₂ _,_ (trans lg (trans (cong (map ioEvent) eio) ee))
                                        (trans (cong (λ b → just (end-of-left b)) (trans (cong proj₁ l₀) (o-running st₀ r₀))) eo)) ,
               λ e → ⊥-elim (just≢nothing (trans eo e))
-        -- ★ the budget's cut (D430): the image pauses with exactly the run's events, a loop entry for each
+        -- ★ the budget's cut (D444): the image pauses with exactly the run's events, a loop entry for each
         -- round the run started, at least one per unit of the budget (`image-cut`, `spent-rounds`)
         by {stop Once.LinCore.Events.exhausted} {t} run eq pl ag ee eo kr = case image-cut run pl of λ where
           (mt , sh , U′ , c′ , r′ , m′ , n′ , st , eio , rl) →
@@ -370,7 +370,7 @@ module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
              (linked : LinkedProgram (TM.Interp.sig ι) (irProgram tbl ir)) where
   module TP = Top (FromIR.TrProg.prog tp) f ldConst ld-nl wordOf w-int w-float entry-frame entry-regs
 
-  -- ★ LINKED AT THE CORE (D431): the core program's ops are its IR's, each declared
+  -- ★ LINKED AT THE CORE (D445): the core program's ops are its IR's, each declared
   decl : ∀ {s} → s ∈ ops (Program.U TP.ds TP.f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))
   decl = LinkedCore.univ-ps (LinkedCore.FromLinked.Dc (TM.Interp.sig ι)) (FromIR.TrProg.prog tp) f
            (LinkedCore.FromLinked.table-ok (TM.Interp.sig ι) tbl etp (proj₁ (proj₂ (proj₂ linked))))

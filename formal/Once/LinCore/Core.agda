@@ -2,8 +2,8 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.Core — THE LINEAR CORE (plan 0.146; D403): its types, values and
--- terms, at the target's numerics alone (D440: what is compiled sees no
+-- Once.LinCore.Core — THE LINEAR CORE (plan 0.146; D417): its types, values and
+-- terms, at the target's numerics alone (D454: what is compiled sees no
 -- Interpretation; the meaning, at the pure FFI answers too, is `NbEPLinCore`).
 --
 -- Started as OCP-0009's `NbEPLinCore` (`origin/plan-ref`), and now the one
@@ -12,12 +12,12 @@
 --   * `LF` — polynomial functor codes, kept OBJECT-LANGUAGE-INDEPENDENT. A
 --     constant is `Kone`, an inert leaf `Kb`, or a CODE (`Kμ`), never an
 --     arbitrary `LTy`: that is what makes `Mu` strictly positive with no pragma.
---   * `LTy` — with base leaves from the start. ★ D409 part 3: the EXPONENTIAL
+--   * `LTy` — with base leaves from the start. ★ D423 part 3: the EXPONENTIAL
 --     `Fn k g A B`, the Spec's `A ⇒[ mk-kind q π ] B`, meaning
 --     `⟦ A ⟧ → M π ⟦ B ⟧`; a closure whose lambda one site alone receives may
---     instead be `Ct l X`, its environment tagged with its label (D405), and
+--     instead be `Ct l X`, its environment tagged with its label (D419), and
 --     a ν is such a closure: its label is its coalgebra, its environment its
---     seed (D406).
+--     seed (D420).
 --   * `Cx`, `Defs` — the program's labels and their bodies, each typed over
 --     the labels before it (one-shot or many-use, D131).
 --   * `Tm E A B` — every generator: symmetric monoidal over `⊗t`, additive
@@ -27,7 +27,7 @@
 --
 -- NO GENERAL FIXPOINT. `Mu` is the initial algebra of a polynomial code; the
 -- recursion generators are `lcata` (structural) and `liter` (the loop, which
--- may run forever). ★ D406: a ν is DEFUNCTIONALISED (its coalgebra is a
+-- may run forever). ★ D420: a ν is DEFUNCTIONALISED (its coalgebra is a
 -- label, its value its seed), so its meaning needs no coinductive type:
 -- observing it is a call (`lobs`).
 --
@@ -37,7 +37,7 @@
 -- forever (D317, `Once.IR.Semantics.Iterative`, copied below). A term's
 -- effects are visible in its run's events.
 --
--- ★ THE SPEC'S GRADES (D412): a term's grade is a judgment on it, as the
+-- ★ THE SPEC'S GRADES (D426): a term's grade is a judgment on it, as the
 -- Spec's `⊢ t ∷ A ! π` is on its raw terms. `Blk t` is grade `act` (a finite
 -- block); a label carries its arrow's grade; the loop's round is a `Blk`
 -- (`⊢iter`), so is a coalgebra (`⊢unfold`). `Once.LinCore.Grade` proves that a
@@ -77,7 +77,7 @@ module Once.LinCore.Core (fmt : TargetNum) where
 
 open Once.LinCore.Flat public using (FTy; funit; fvoid; fw; _f*_; _f+_; ⟦_⟧F; Base; int; float; ⟦_⟧b; Lit)
 
--- ★ D433: a literal materialized at the target's format (D113: FromIR's function, now the meaning's)
+-- ★ D447: a literal materialized at the target's format (D113: FromIR's function, now the meaning's)
 lit : ∀ {b} → Lit b → ⟦ b ⟧b
 lit {int}   z = Once.Spec.Word.Width.fromℤ (Once.Spec.Numerics.TargetNum.int-bits fmt) z
 lit {float} d = Once.Float.Word.round (Once.Spec.Numerics.TargetNum.float-format fmt) d
@@ -126,7 +126,7 @@ block (emb b) = embB b
 -- object type.  That restriction is the reason `Mu` below is strictly positive
 -- with no pragma. It is also the honest reading of what a functor code is FOR:
 -- codes store sub-codes and leaves; a function type is never a functor
--- position. ★ D406: nor is a ν (the Spec's functor constants are base types,
+-- position. ★ D420: nor is a ν (the Spec's functor constants are base types,
 -- `WFFun`): a ν is a closure, and its label is not a code.
 ------------------------------------------------------------------------
 
@@ -175,19 +175,19 @@ data LTy : Set where
   Zero : LTy
   _⊗t_ : LTy → LTy → LTy
   _⊕t_ : LTy → LTy → LTy
-  -- ★ D405: a CLOSURE is its environment `X`, tagged with its code: the label
+  -- ★ D419: a CLOSURE is its environment `X`, tagged with its code: the label
   -- `l` of one lambda of the program (`Cx`). Its type names the code, so
   -- nothing at run time does: no code word, no cell. Where lambdas meet, the
   -- type is a sum of these, and the sum's tag is the run-time choice.
-  -- ★ D406: a ν is one of these: its coalgebra's label and its seed.
+  -- ★ D420: a ν is one of these: its coalgebra's label and its seed.
   Ct   : ℕ → LTy → LTy
-  -- ★ D409 part 3: THE EXPONENTIAL, the Spec's `A ⇒[ mk-kind q π ] B`: a
+  -- ★ D423 part 3: THE EXPONENTIAL, the Spec's `A ⇒[ mk-kind q π ] B`: a
   -- closure whose lambda need not be known at compile time (it may be decided
   -- by data: nested through a fold's carrier or a server's state). `Ct` is
   -- its representation where one lambda reaches a site.
   Fn   : Kd → Gr → LTy → LTy → LTy
   -- ★ the Spec's `ν F`, observed in finite blocks: a value of it may come
-  -- from any coalgebra, which data may decide (D406's `Ct l S` is its
+  -- from any coalgebra, which data may decide (D420's `Ct l S` is its
   -- representation where one coalgebra reaches a site)
   Nu   : LF → LTy
   μt   : LF → LTy
@@ -208,7 +208,7 @@ LF∙ (F ⊗f G)  X = LF∙ F X ⊗t LF∙ G X
 --
 -- `Mu` and `FS` in one mutual block: the payoff of §1's restriction on `LF`:
 -- neither mentions `⟦_⟧`, so no object type can taint `Mu`'s positivity.
--- ★ D406: no `Nu`: a ν means its seed (it is a closure, §5).
+-- ★ D420: no `Nu`: a ν means its seed (it is a closure, §5).
 ------------------------------------------------------------------------
 
 mutual
@@ -370,7 +370,7 @@ scod s = flat (SigOpInfo.conB (info s))
 infixr 9 _∘l_
 infixr 7 _⊗l_
 
--- ★ D405: THE LABELS. A label's signature: its kind, environment, domain and
+-- ★ D419: THE LABELS. A label's signature: its kind, environment, domain and
 -- codomain (`Kd`, `Gr`: §2). A ONE-SHOT body owns its environment; a MANY-USE
 -- one (D131) reads it lent, so it can be applied while lent, at every layer of
 -- a fold.
@@ -405,7 +405,7 @@ data _∋[_]_ : Cx → ℕ → Sg → Set where
 -- closure's environment or a ν's seed: those bodies are closed over `One`.
 -- Every generator exists at every `E`; a term with nothing lent is `LTm`.
 -- `E` comes last among the implicits so that `lIn {F}`, `linl {A} {B}` still read.
--- ★ D405: `Γ`, the labels in scope, is a parameter: a body is not a term's
+-- ★ D419: `Γ`, the labels in scope, is a parameter: a body is not a term's
 -- part but a table entry (`Defs`), so every generator is at the same `Γ`.
 data Tm (Γ : Cx) : LTy → LTy → LTy → Set
 data Blk {Γ : Cx} : ∀ {E A B} → Tm Γ E A B → Set
@@ -438,10 +438,10 @@ data Tm Γ where
   lIn     : ∀ {F E} → Tm Γ E (LF∙ F (μt F)) (μt F)
   lOutμ   : ∀ {F E} → Tm Γ E (μt F) (LF∙ F (μt F))
   lcata   : ∀ F {A E} → Tm Γ E (LF∙ F A) A → Tm Γ E (μt F) A
-  -- ★ D405, closed structure, defunctionalised: a closure of label `l` is its
+  -- ★ D419, closed structure, defunctionalised: a closure of label `l` is its
   -- environment, tagged (no event); applying it calls `l`'s body directly.
   -- A one-shot closure is applied owned, a many-use one (D131) lent.
-  -- ★ D406: `lclo F` tags every environment at the `Idf` positions of a layer
+  -- ★ D420: `lclo F` tags every environment at the `Idf` positions of a layer
   -- (`lclo Idf` tags one): what observing a ν does to the seeds its
   -- coalgebra returns. The final coalgebra is `lobs` below, no generator.
   lclo    : ∀ F {l k g X A B E} → Γ ∋[ l ] sg k g X A B → Tm Γ E (LF∙ F X) (LF∙ F (Ct l X))
@@ -461,7 +461,7 @@ data Tm Γ where
   -- applying a LENT many-use closure (D131: a fold's algebra, obtained once,
   -- applied at every layer): its environment is lent on to its body
   bapp    : ∀ {l g X A B} → Γ ∋[ l ] sg many g X A B → Tm Γ (Ct l X) A B
-  -- ★ D409 part 3: THE EXPONENTIAL (the Spec's `⊢lam`/`⊢app`). The body is a
+  -- ★ D423 part 3: THE EXPONENTIAL (the Spec's `⊢lam`/`⊢app`). The body is a
   -- SUBTERM, over the same labels, so no table and no stratification is
   -- needed and the meaning stays structural. A one-shot closure owns its
   -- environment `X` (its body closed over `One`: a borrow never escapes into
@@ -570,7 +570,7 @@ obsT F S = mapNu F F S ∘l lul ∘l (drop ⊗l lid) ∘l lend (strL F F S) ∘l
 cohc : ∀ F S → ⟦ Coalg F S ⟧ → ⟦ S ⟧ → T (FS F ⟦ S ⟧)
 cohc F S c s = fmapT (coh F S) (c s)
 
--- ★ D406: THE FINAL COALGEBRA, DEFUNCTIONALISED. A coalgebra of `F` on seeds
+-- ★ D420: THE FINAL COALGEBRA, DEFUNCTIONALISED. A coalgebra of `F` on seeds
 -- `S` is a one-shot label of argument `One`, whose body (over the labels
 -- before it, as every body) returns a layer of seeds. A ν of it is a closure
 -- `Ct l S`: its seed, tagged — so `ana` is `lclo Idf`, no cell. Observing it
@@ -593,13 +593,13 @@ k-obs F = k-∘ k-clo (k-∘ k-app k-ρ⁻)
 Gd act t = Blk t
 Gd eff t = ⊤
 
--- ★ D405: a label's body, by its kind: a one-shot body owns its environment,
+-- ★ D419: a label's body, by its kind: a one-shot body owns its environment,
 -- a many-use body reads it lent; at its label's grade
 data Body (Γ : Cx) : Sg → Set where
   b1 : ∀ {g X A B} (b : LTm Γ (X ⊗t A) B) → Gd g b → Body Γ (sg once g X A B)
   bω : ∀ {g X A B} (b : Tm Γ X A B) → Gd g b → Body Γ (sg many g X A B)
 
--- ★ D405: the program's table, each body over the labels before it
+-- ★ D419: the program's table, each body over the labels before it
 data Defs : Cx → Set where
   ε   : Defs ε
   _▸_ : ∀ {Γ σ} → Defs Γ → Body Γ σ → Defs (Γ ▸ σ)

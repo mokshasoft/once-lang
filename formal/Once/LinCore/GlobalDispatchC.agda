@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalDispatchC — plan 0.146 B1.4b (D417): A COPY'S DISPATCH (ccopy, ncopy)
+-- Once.LinCore.GlobalDispatchC — plan 0.146 B1.4b (D431): A COPY'S DISPATCH (ccopy, ncopy)
 -- (beside `GlobalDispatchW`, for its build time).
 ------------------------------------------------------------------------
 

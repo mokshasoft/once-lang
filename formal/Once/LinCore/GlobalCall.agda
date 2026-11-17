@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalCall — plan 0.146 B1.4b (D417 step 3, D420): A CALL: the callee's frame opened, the caller's saved
+-- Once.LinCore.GlobalCall — plan 0.146 B1.4b (D431 step 3, D434): A CALL: the callee's frame opened, the caller's saved
 -- (split from `Global` for its build time; over `Global.Relate`).
 ------------------------------------------------------------------------
 
@@ -249,9 +249,9 @@ module CallR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                            (HereF.f-cfg H)
                                            (λ i le → fresh-cfg inv i (subst (_≤ serial i) nx le))
                                            (subst (FreshR r) (sym nx) (fresh-ret inv)) ok (HereF.f-slots H) ; g-blk = cd-inb CD I } , cd-log CD
-    -- a many-use body's trampoline's inner call (D425)
+    -- a many-use body's trampoline's inner call (D439)
     gcall (p-tramp p _) inv (tw1 _ , H) nx ok I = gcallω p inv H nx ok I
-    -- a copy's trampoline's inner call (D417)
+    -- a copy's trampoline's inner call (D431)
     gcall (p-tramp p _) inv (tc1 {X = X} {C} _ , H) nx ok I = gcallc {X = X} {C} p inv H nx ok I
     gcall {r = r} {fs = fs} (p-tramp p _) inv (tf1 {X = X} {C} _ , H) nx ok I = case tf-call {X} {C} p H of λ where
       (N , fs′ , run , H′ , CD) →

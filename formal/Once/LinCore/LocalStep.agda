@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.LocalStep — plan 0.146 B1.4b (D417, step 3): ★ THE LOCAL
+-- Once.LinCore.LocalStep — plan 0.146 B1.4b (D431, step 3): ★ THE LOCAL
 -- STEP THEOREM.
 --
 -- Every image step that stays in its root's code (`Local`: not a call, a

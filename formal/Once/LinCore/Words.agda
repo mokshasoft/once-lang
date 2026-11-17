@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.LinCore.Words — plan 0.146 B1.4b, `LowerSim` layer (2): a value's
--- words on the flat machine (D416).
+-- words on the flat machine (D430).
 --
 -- `VW rd v ws`: the image's value `v` is the words `ws`, and every cell it
 -- holds is in the heap `rd` reads: a cell `i` is the block whose reference

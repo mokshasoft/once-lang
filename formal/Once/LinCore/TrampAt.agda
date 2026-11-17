@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.TrampAt — plan 0.146 B1.4b (D417, step 3): the flat code AT
+-- Once.LinCore.TrampAt — plan 0.146 B1.4b (D431, step 3): the flat code AT
 -- a trampoline's points.
 --
 -- A trampoline key (`ktr1`, `ktrω`, `ktro`, `ktrc`, `ktrf`) is not lowered:

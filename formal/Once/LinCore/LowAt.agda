@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.LowAt — plan 0.146 B1.4b (D417, step 3): the flat code AT
+-- Once.LinCore.LowAt — plan 0.146 B1.4b (D431, step 3): the flat code AT
 -- A POINT.
 --
 -- A root's code (the start code, a block's) is lowered once, by `lowC`, at

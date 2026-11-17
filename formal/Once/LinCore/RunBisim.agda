@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.RunBisim — plan 0.146 B1.5 (D429): BISIMILAR COMPUTATIONS SHOW
+-- Once.LinCore.RunBisim — plan 0.146 B1.5 (D443): BISIMILAR COMPUTATIONS SHOW
 -- THE SAME. Two computations of no information (`⊤`) related by `_≈[_]_`
 -- have, at every budget, the same run against an interpretation from any
 -- history: the same calls with the same answers, the same end. What lets the

@@ -155,7 +155,7 @@ data Reachable (prog : AbstractTrace) (B : ℕ) : FlatState → Set where
 -- runs on the arch layer. Each field is what a site lemma of `RunWF` read off
 -- the old image; the last three are about the program's RUN (reachable states).
 -- an entry is guarded: what precedes it does not fall through (a jump, a
--- return, or the program's leave, which halts where it stands: D437)
+-- return, or the program's leave, which halts where it stands: D451)
 GuardAt : AbstractTrace → Set
 GuardAt prog = ∀ p (ℓ : EntryId) (bb : ℕ) → fetch prog p ≡ just (instr-ctrl (c-entry ℓ bb))
              → Σ ℕ (λ q → (p ≡ suc q)
@@ -174,11 +174,11 @@ record Emitted (prog : AbstractTrace) : Set where
     em-alloc  : All AllocMinI prog
     -- a call names an entry; a code address names a body; an entry is guarded:
     -- what precedes it does not fall through (a jump, a return, or the
-    -- program's leave, which halts where it stands: D437)
+    -- program's leave, which halts where it stands: D451)
     em-calls  : ∀ k f → fetch prog k ≡ just (instr-ctrl (c-call-fn f)) → Σ ℕ (λ j → find-fn prog f ≡ just j)
     em-code   : ∀ p (ℓ : LabelId) → fetch prog p ≡ just (instr-load-code-addr ℓ) → Σ ℕ (λ j → find-thunk prog ℓ ≡ just j)
     em-guard  : GuardAt prog
-    -- D438: a slot an instruction of the run addresses is inside the current
+    -- D452: a slot an instruction of the run addresses is inside the current
     -- frame (the run's fact; master's image proves it by its positional scan,
     -- `OldSeg`, the new image from its simulation)
     em-slots  : ∀ fs (i : AbstractInstr) (slot : Slot) → Reachable prog 0 fs

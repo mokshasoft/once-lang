@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalTramp — plan 0.146 B1.4b (D417 step 3, D420): A ONE-SHOT TRAMPOLINE (D421), step by step
+-- Once.LinCore.GlobalTramp — plan 0.146 B1.4b (D431 step 3, D434): A ONE-SHOT TRAMPOLINE (D435), step by step
 -- (split from `Global` for its build time; over `Global.Relate`).
 ------------------------------------------------------------------------
 
@@ -106,7 +106,7 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Called
   open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next)
   ----------------------------------------------------------------------
-  -- 9. ★ A ONE-SHOT TRAMPOLINE (D421), step by step.
+  -- 9. ★ A ONE-SHOT TRAMPOLINE (D435), step by step.
   ----------------------------------------------------------------------
 
   open import Once.LinCore.LowerSimH fmt ans bw using (module SimH)
@@ -240,7 +240,7 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open import Once.LinCore.LowerSimE {FS} using (co-pc; co-halt; co-slots; caller-win)
   module KA′ {σ} {κ : Key σ} (p : (σ , κ) ∈ allK U) = At U ncty ldConst (frameOf (blockᴵ κ)) (idx p) using (lfin)
 
-  -- ★ a body's return into a frame-0 trampoline (D421), by the body's key:
+  -- ★ a body's return into a frame-0 trampoline (D435), by the body's key:
   -- its result at the frame's top
   tr-back′ : ∀ {V B} {κb : Key (bsig nothing V B)} (p : (_ , κb) ∈ allK U)
              → (e : Sub (blockᴵ κb) (end {sh = [] ∣ B ∷ []}))

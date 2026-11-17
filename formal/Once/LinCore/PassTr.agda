@@ -2,10 +2,10 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.PassTr — plan 0.146 A15 (D409): THE PASS'S SYNTAX. A copy of
+-- Once.LinCore.PassTr — plan 0.146 A15 (D423): THE PASS'S SYNTAX. A copy of
 -- `Once.IR`'s constructors over the core's types (`IR`, their grades `BlkIR`,
 -- `GdIR`), a program of them (`Prog`), and the translation into the core
--- (`tr`, `trP`). D440: at the target's numerics alone; what they mean and the
+-- (`tr`, `trP`). D454: at the target's numerics alone; what they mean and the
 -- theorem that the translation means the same are `Pass`'.
 ------------------------------------------------------------------------
 

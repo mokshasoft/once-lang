@@ -50,7 +50,7 @@ FrameFreeI instr-pop-frame           = ⊥
 -- STACK-MODE clauses of `ir-to-trace'` (`⟨_,_⟩ Stack`, `curry _ Stack`,
 -- `inl/inr Stack`), so a HEAP-MODED trace contains none — which is why the
 -- walk below (`FrameFreeTrace`) is now conditional on `HeapModed`.
--- (plan 0.146, D434/D435: the new image takes stack addresses; `lea-slot`
+-- (plan 0.146, D448/D449: the new image takes stack addresses; `lea-slot`
 -- moves no frame, so it is frame-free, and every access through the pointer
 -- it makes is checked against a live frame's window)
 -- The two closure markers are NOT fossils — they are the opposite,
@@ -111,8 +111,8 @@ EmittableI (instr-alloc-stack _)     = ⊥
 EmittableI (instr-dealloc-stack _)   = ⊥
 EmittableI (instr-push-frame _)      = ⊥
 EmittableI instr-pop-frame           = ⊥
--- D434: the new image takes stack addresses (an area, a structured argument
--- or answer by address); D435 checks every access through one
+-- D448: the new image takes stack addresses (an area, a structured argument
+-- or answer by address); D449 checks every access through one
 -- plan 0.107: the program's START is not in any unit — it is the image's
 -- header (`ProgramImage.program-image`), at pc 0 only.
 EmittableI (instr-ctrl (c-start _))  = ⊥
@@ -370,7 +370,7 @@ module _ {FS : FrameSemantics} where
   restore-input-alloc-full (just _) s alloc k = refl
   restore-input-alloc-full nothing  s alloc k = refl
 
-  -- D435: the frame gate reads the live frames, not `next-slot`
+  -- D449: the frame gate reads the live frames, not `next-slot`
   gate-nsi : ∀ (al : AllocState {FS}) (k n : ℕ) (ml : Maybe (ValueLocation FS))
            → ExecFinal.frame-gate {FS} al n ml ≡ ExecFinal.frame-gate {FS} (record al { next-slot = k }) n ml
   gate-nsi al k n (just (AtStack f j))  = refl

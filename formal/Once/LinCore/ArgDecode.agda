@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.ArgDecode — plan 0.146 B1.5 (D428): THE MACHINE DECODES AN
+-- Once.LinCore.ArgDecode — plan 0.146 B1.5 (D442): THE MACHINE DECODES AN
 -- OP'S ARGUMENT AS THE IMAGE HOLDS IT. At the sigop's state (`StepOp.arg`)
 -- the machine's `decode-at` reads back the argument's value: a scalar from
 -- the register its word was loaded into, a compound base value through its
@@ -99,7 +99,7 @@ module Dec {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
                                      (LocState.stackMem s cf (suc d))) e)
           (cong (Data.Maybe.map inj₂) (read-in b s cf (suc d) pb (proj₁ (slots-++ wb pad sx))))
 
-  -- ★ the machine's argument at the sigop's state is the image's (D428)
+  -- ★ the machine's argument at the sigop's state is the image's (D442)
   arg-dec : ∀ {A} (b : ST.Base ST.∅ₖ A) (fs : FlatState) d (v : StoredValue FS) {h} {x : MV ⌜ flatB b ⌝} {wx : List W}
           → VW h x wx → SlotsAt (LocState.stackMem (floc fs) (AllocState.current-frame (falloc fs))) d wx
           → decode-at b (argV b fs d wx) (at-arg fs v) ≡ just (toV b (toF (flatB b) (er x)))
@@ -111,7 +111,7 @@ module Dec {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   arg-dec (ST.b-* a b) fs d v p sx = read-in (ST.b-* a b) (at-arg fs v) (AllocState.current-frame (falloc fs)) d p sx
   arg-dec (ST.b-+ a b) fs d v p sx = read-in (ST.b-+ a b) (at-arg fs v) (AllocState.current-frame (falloc fs)) d p sx
 
-  -- ★ D432: the same at the sigop's state for an answer in memory (`Output` its destination)
+  -- ★ D446: the same at the sigop's state for an answer in memory (`Output` its destination)
   arg-decD : ∀ {A} (b : ST.Base ST.∅ₖ A) (fs : FlatState) d (v p : StoredValue FS) {h} {x : MV ⌜ flatB b ⌝} {wx : List W}
            → VW h x wx → SlotsAt (LocState.stackMem (floc fs) (AllocState.current-frame (falloc fs))) d wx
            → decode-at b (argV b fs d wx) (record (at-arg fs v) { regs = writeReg (LocState.regs (at-arg fs v)) Output p })

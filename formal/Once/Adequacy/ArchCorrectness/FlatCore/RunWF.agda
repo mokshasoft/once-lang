@@ -263,7 +263,7 @@ postulate
   -- precedes an entry is a `c-jmp` (an inlined body's guard) or a `c-ret` (a
   -- unit's terminator, or the block before it: a function entry follows the
   -- previous unit, and a linked block the one before it). Either way it is an
-  -- instruction that does not fall through. D437: …or `main`'s `c-leave`
+  -- instruction that does not fall through. D451: …or `main`'s `c-leave`
   -- (which halts where it stands), what the first function entry follows when
   -- `main` has no linked block (the two-way form was false there).
   emitted-thunk-guarded : ∀ (tbl : List IRFun) (ir : IR Unit Unit) (p : ℕ) (ℓ : EntryId) (bb : ℕ)
@@ -445,7 +445,7 @@ fetch-zero prog em = em-zero em
 -- return pc; `c-ret` pops both. So they have the same length, and each return
 -- address is one past a call.
 --
--- D438: the invariant is the RUN's, read off no scan of the code. Master's
+-- D452: the invariant is the RUN's, read off no scan of the code. Master's
 -- positional segments (the reservation in force at each pc, a saved frame's
 -- at its return pc) are master's proof of the slot fact, and live with its
 -- image (`OldSeg`); the slot fact itself is `Emitted.em-slots`.
@@ -648,7 +648,7 @@ pcView (instr-alloc-heap _)                   _ = pv-suc tt tt (λ _ _ → refl)
 pcView (instr-reg-op out-nz)                  _ = pv-suc tt tt (λ _ fs → nz-pc (readReg (regs (floc fs)) Output) fs)
 
 -- THE RUN INVARIANT is the run's own: an induction on `Reachable` whose steps
--- read two facts of the code and nothing else (D438): what each instruction
+-- read two facts of the code and nothing else (D452): what each instruction
 -- is (`ImageI`, the emitter's fence) and the guard before each entry
 -- (`GuardAt`). Taken as arguments rather than from `RunAt`, so a provider of
 -- `Emitted` (master's scan, `OldSeg`) can use the invariant while building it.
@@ -663,7 +663,7 @@ run-frame-wf prog img grd = go
     just-injI : ∀ {a b : AbstractInstr} → just a ≡ just b → a ≡ b
     just-injI refl = refl
     -- the emitter's guard, at THIS program (D245: a `c-jmp` or a `c-ret`;
-    -- D437: or a `c-leave`, which halts where it stands)
+    -- D451: or a `c-leave`, which halts where it stands)
     Guard : ℕ → Set
     Guard q = (Σ LabelId (λ m → fetch prog q ≡ just (instr-ctrl (c-jmp m))))
               ⊎ (Σ ℕ (λ b → fetch prog q ≡ just (instr-ctrl (c-ret b))))
@@ -695,7 +695,7 @@ run-frame-wf prog img grd = go
         -- puts a `c-jmp` immediately before one, and the instruction actually
         -- fetched here is not a `c-jmp` — whoever calls this says so.
         -- D245: …or a `c-ret` — so the instruction here must be neither.
-        -- D437: …or a `c-leave`, which a step that falls through is not.
+        -- D451: …or a `c-leave`, which a step that falls through is not.
         no-fallthrough : ∀ (p : ℕ) (ℓ : EntryId) (bb : ℕ) (i' : AbstractInstr)
                        → (∀ m → i' ≡ instr-ctrl (c-jmp m) → ⊥) → (∀ b → i' ≡ instr-ctrl (c-ret b) → ⊥)
                        → (i' ≡ instr-ctrl c-leave → ⊥)
@@ -937,7 +937,7 @@ thunk-entry-ret prog fs ℓ bb r ftq = proj₂ (proj₂ (fw-entry (run-frame-wf-
 -- (`run-stack-slot` — "the window is the whole trace's budget" — is GONE with
 -- the flip. It is FALSE inside a closure body, whose window is the body's own
 -- reservation. Its consumer wants the slot inside the CURRENT frame, which is
--- `Emitted.em-slots`, D438.)
+-- `Emitted.em-slots`, D452.)
 
 ------------------------------------------------------------------------
 -- (`run-no-ret` STOOD HERE and is now DELETED — on purpose, and it is the
@@ -1054,7 +1054,7 @@ run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run
 slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunAt prog fs
                    → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
                    → slot < frame-slots (falloc fs)
--- D438: the run's own fact, from the program's bundle (master's image proves it
+-- D452: the run's own fact, from the program's bundle (master's image proves it
 -- by its positional scan, `OldSeg.scan-slots`)
 slot-read-in-frame prog fs slot i r ftq soq = em-slots (run-em r) fs i slot (run-reach r) ftq soq
 
@@ -1327,7 +1327,7 @@ sigop-decodes prog fs si r h ftq pe =
   read-of _ (subst (λ e → exec-sigop-faults-of e si (floc fs) ≡ false) pe
               (∨-false-l _ _ (step-ok prog fs (instr-sigop si) r h ftq)))
 
--- D435 (d): A SIGOP'S WINDOW CHECK PASSED, at a non-faulting step — its
+-- D449 (d): A SIGOP'S WINDOW CHECK PASSED, at a non-faulting step — its
 -- argument's and its answer's words, when on the stack, are in a live window.
 private
   ∨-false-r : ∀ a b → (a ∨ b) ≡ false → b ≡ false
@@ -1379,7 +1379,7 @@ store-at-in-block prog fs k hl r h ftq i-eq = ib _ refl
       (at (λ b → LocState.faulted (exec-store-in-block b (AtDynamic (offsetHL hl k))
                                      (readReg (regs (floc fs)) Output) (floc fs))) e ok))
 
--- D435: AT A NON-FAULTING OFFSET LOAD OR STORE, THE GATE PASSED ITS LOCATION
+-- D449: AT A NON-FAULTING OFFSET LOAD OR STORE, THE GATE PASSED ITS LOCATION
 -- (a stack location is a slot of a live window); a stack slot read is written;
 -- an `addr-at` never sees a stack pointer (a heap block's address only).
 load-at-gate-wf : ∀ prog (fs : FlatState) (k : ℕ) (loc : ValueLocation FS) → RunAt prog fs → halted (floc fs) ≡ false
@@ -1531,7 +1531,7 @@ branch-tag-scrutinee-wf prog fs m r h ftq = go-in1 (readReg (regs (floc fs)) Inp
     -- the fault flag of the branch, as a function of what it reads
     flt : Maybe (StoredValue FS) → Bool
     flt mv = LocState.faulted (floc (do-branch-test (tag-test mv) m prog fs))
-    -- through the frame gate (D435): it passes the location, or the branch faults
+    -- through the frame gate (D449): it passes the location, or the branch faults
     rd : StoredValue FS → Bool
     rd v = flt (flat-read-at (floc fs) (frame-gate (falloc fs) 0 (sv-as-loc v)))
     go-cell : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
@@ -1542,7 +1542,7 @@ branch-tag-scrutinee-wf prog fs m r h ftq = go-in1 (readReg (regs (floc fs)) Inp
                 × (readLoc (floc fs) loc ≡ just v) × TagCell v × (frame-gate (falloc fs) 0 (just loc) ≡ just loc)))
     go-cell loc ie g (just (SV-Tag k))              re = loc , SV-Tag k , ie , re , tc-tag k , g
     go-cell loc ie g (just (SV-Ptr (AtDynamic hl))) re = loc , _ , ie , re , tc-ptr hl , g
-    -- D435: a stack pointer has no tag (`tag-test` faults)
+    -- D449: a stack pointer has no tag (`tag-test` faults)
     go-cell loc ie g (just (SV-Ptr (AtStack f k)))  re =
       ⊥-elim (true≢false (at flt re (at (λ z → flt (flat-read-at (floc fs) z)) g (at rd ie ok))))
     go-cell loc ie g (just (SV-Lit _ _))            re =

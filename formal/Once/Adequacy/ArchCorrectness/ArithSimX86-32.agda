@@ -496,7 +496,7 @@ module _ (N : ℕ) where
 -- block's frame (`call-frame`, D394): the return address and the four borrowed
 -- registers pushed below `esp`, then `4n` of scratch. Each typed leaf of the
 -- input is the input register `ecx` (a scalar, D396/D398) or the word at
--- `ecx + 4k` (D391) below that frame — or, D435 (d), at or above `esp` (the
+-- `ecx + 4k` (D391) below that frame — or, D449 (d), at or above `esp` (the
 -- caller's stack, a live frame's window).
 ------------------------------------------------------------------------
 open import Once.Arith.Backend.X86-32.Dispatch using (call-frame; dispatch-arith)

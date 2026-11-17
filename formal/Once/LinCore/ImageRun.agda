@@ -6,13 +6,13 @@
 --
 -- A16's steps, with a RETURN STACK in place of the inlined continuation:
 --
---   * `call κ` opens a frame (a temporary, D407, as A16's `enter`) and runs
+--   * `call κ` opens a frame (a temporary, D421, as A16's `enter`) and runs
 --     κ's block, its continuation pushed; reaching `end` returns (the frame
 --     closed, as A16's `leave`);
 --   * a loop's round runs with its continuation pushed silently (no frame:
 --     A16 expands it inline);
 --   * the code-word instructions dispatch on the cell's `Lam` (or its ν's
---     contents): each calls the trampoline the cell names (D417), which
+--     contents): each calls the trampoline the cell names (D431), which
 --     does the cell's part and calls the block, as the flat run does.
 ------------------------------------------------------------------------
 
@@ -47,7 +47,7 @@ open import Once.LinCore.Image fmt bw
 infixr 5 _∷ⁱ_
 data Ret : Sh → Sh → Set where
   []ʳ  : ∀ {T} → Ret T T
-  -- ★ a call's (D415): the caller's continuation and its configuration below
+  -- ★ a call's (D429): the caller's continuation and its configuration below
   -- the argument; the callee's frame closes when it is resumed
   frm  : ∀ {t Es B S U T} → Codeᴵ (t ⊳ Es ∣ B ∷ S) U → Slots (t ⊳ Es) → Stk S → Ret U T
        → Ret (t ⊳ [] ∣ B ∷ []) T
@@ -70,7 +70,7 @@ data StepI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg
            → StepI (unit ⨾ k) r (es ∥ os) n [] k r (es ∥ mone ∷ˢ os) n
   i-prim   : ∀ {Γ} {ds : Defs Γ} {Es A B S U} {g : LTm Γ A B} {k : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es v w os n n′ t}
            → Run ds g mone v n (gives w n′) t → StepI (prim ds g ⨾ k) r (es ∥ v ∷ˢ os) n t k r (es ∥ w ∷ˢ os) n′
-  -- an op whose block HALTS: the image stops there (D429: a call left unanswered is not a halt)
+  -- an op whose block HALTS: the image stops there (D443: a call left unanswered is not a halt)
   i-opend  : ∀ {Γ} {ds : Defs Γ} {Es} {s : Sig} {S U} {k : Codeᴵ (Es ∣ ⌜ scod s ⌝ ∷ S) U} {r : Ret U T} {es}
                {x : MV ⌜ sdom s ⌝} {os n t}
            → OpPath (opF s (toF (sdom s) (er x))) t (inj₂ halted)
@@ -112,7 +112,7 @@ data StepI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg
            → StepI (epop ⨾ k) r (vw e es ∥ os) n [] k r (es ∥ os) n
   i-eword  : ∀ {b Es S U} {k : Codeᴵ (Bt b ∷ Es ∣ Bt b ∷ S) U} {r : Ret U T} {x} {es : Slots (Bt b ∷ Es)} {os n}
            → see es ≡ mbase x → StepI (eword ⨾ k) r (es ∥ mone ∷ˢ os) n [] k r (es ∥ mbase x ∷ˢ os) n
-  -- ★ a call opens a frame of its own (D415): the caller's top view and the
+  -- ★ a call opens a frame of its own (D429): the caller's top view and the
   -- argument; reaching the end of a block returns its result to the caller
   i-call   : ∀ {σ Es S U} {κ : Key σ} {k : Codeᴵ (top σ ⊳ Es ∣ cod σ ∷ S) U} {r : Ret U T}
                {es : Slots (top σ ⊳ Es)} {a : MV (dom σ)} {os : Stk S} {n}
@@ -127,7 +127,7 @@ data StepI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg
   i-loop   : ∀ {E Es A B S U} {body : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)}
                {k : Codeᴵ (E ∷ Es ∣ B ∷ S) U} {r : Ret U T} {m n}
            → StepI (loop body ⨾ k) r m n [] body (case k (loop body ⨾ k) ∷ⁱ r) m n
-  -- ★ THROUGH A CELL'S CODE WORD (D417): a call of the trampoline the cell
+  -- ★ THROUGH A CELL'S CODE WORD (D431): a call of the trampoline the cell
   -- names, in a frame of its own, as `i-call` (the flat run's
   -- `instr-call-closure`): the caller's top view (a copy's) and the operand
   i-icall  : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ B ∷ S) U} {r : Ret U T} {es : Slots Es} {i}
@@ -161,7 +161,7 @@ data StepI {T : Sh} : ∀ {sh U sh′ U′} → Codeᴵ sh U → Ret U T → Cfg
                {p : MV (Coalg F S ⊗t S)} {os : Stk S′} {n}
            → StepI (nfree ⨾ c) r (es ∥ mnu i p ∷ˢ os) n (tmp (tnew fsz) ∷ [])
                    (blockᴵ (ktrf (Coalg F S ⊗t S) (Nu F))) (frm {t = nothing} c es os r) ([]ᵉ ∥ mnu i p ∷ˢ []ˢ) n
-  -- ★ a trampoline's cell part (D417)
+  -- ★ a trampoline's cell part (D431)
   -- a one-shot closure: its environment beside the argument, the cell freed
   i-open1  : ∀ {Es g X A B S U} {k : Codeᴵ (Es ∣ (X ⊗t A) ∷ S) U} {r : Ret U T} {es i}
                {lam : Lam once g X A B} {x a os n}

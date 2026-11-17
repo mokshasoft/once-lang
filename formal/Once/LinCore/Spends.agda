@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.Spends — plan 0.146 B1.5 (D430): WHAT A RUN SPENDS of a
+-- Once.LinCore.Spends — plan 0.146 B1.5 (D444): WHAT A RUN SPENDS of a
 -- budget of loop rounds, as master's `approx` counts it: a loop's continuing
 -- round (`again`) spends a unit; continuing with none left is the run's cut
 -- (`r-exh`, and only there); everything else spends nothing. By recursion on
@@ -86,7 +86,7 @@ mutual
   {-# CATCHALL #-}
   UnCutM _                                  = ⊤
 
--- ★ a run's loop entries (each round started), as the image takes them (`ImageSim.loops`, D430)
+-- ★ a run's loop entries (each round started), as the image takes them (`ImageSim.loops`, D444)
 mutual
   rounds : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n o t} → Run ds f e v n o t → ℕ
   rounds (r-∘ rg (go-on rf))             = rounds rg + rounds rf
@@ -132,7 +132,7 @@ mutual
   {-# CATCHALL #-}
   roundsM _                                  = 0
 
--- ★ a run whose cut ops are all P's (D431: the program's)
+-- ★ a run whose cut ops are all P's (D445: the program's)
 module _ (P : Sig → Set) where
   mutual
     CutsIn : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n o t} → Run ds f e v n o t → Set
@@ -181,7 +181,7 @@ module _ (P : Sig → Set) where
     {-# CATCHALL #-}
     CutsInM _                                  = ⊤
 
--- ★ the budget, given why an op's path may be cut (`Cut`: the evaluator's world gave no answer, D431)
+-- ★ the budget, given why an op's path may be cut (`Cut`: the evaluator's world gave no answer, D445)
 module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s (toF (sdom s) (er x))) t (inj₂ exhausted) → Set) where
   mutual
     Spends : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n o t} → Run ds f e v n o t → ℕ → ℕ → Set
@@ -315,7 +315,7 @@ module Budget (Cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} → OpPath (opF s
     spends-plainM m-b s u = tt
     spends-plainM m-μ s u = tt
 
-  -- ★ a run cut only at P's ops, where no P op can be cut, met no cut (D431)
+  -- ★ a run cut only at P's ops, where no P op can be cut, met no cut (D445)
   module _ {P : Sig → Set} (no-cut : ∀ {s : Sig} {x : MV ⌜ sdom s ⌝} {t} {p : OpPath (opF s (toF (sdom s) (er x))) t (inj₂ exhausted)} → Cut {s = s} {x = x} p → P s → ⊥) where
     mutual
         spends-uncut : ∀ {Γ} {ds : Defs Γ} {E A B} {f : Tm Γ E A B} {e v n o t} (r : Run ds f e v n o t) {k l} → Spends r k l → CutsIn P r → UnCut r

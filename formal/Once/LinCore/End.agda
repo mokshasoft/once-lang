@@ -9,7 +9,7 @@
 -- and left, its log kept. A related state is never at `halted` (no root's
 -- code holds it: `NoCell`). So the whole run: from the flat machine's first
 -- state, flat steps to a halted machine whose log is the run's observable
--- events (D427), relative to the machine's world at each op (D426).
+-- events (D441), relative to the machine's world at each op (D440).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --guardedness #-}
@@ -107,7 +107,7 @@ module EndR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       go p-halt ()
 
   -- ★★ THE WHOLE RUN: from the flat machine's first state to a halted machine whose log is the run's
-  -- observable events, relative to the machine's world at each op (D426)
+  -- observable events, relative to the machine's world at each op (D440)
   module _ (ld : ∀ {b} (v : Lit b) (fs : FlatState)
                  → FlatMachine.flat-exec-instr {FS} (ldConst v) image fs
                    ≡ record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (wordOf (lit v)) } ; fpc = Data.Nat.suc (fpc fs) })

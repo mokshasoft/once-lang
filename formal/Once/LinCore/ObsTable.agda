@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.ObsTable — plan 0.146 B1.4b (D423): ★ OBSERVING A ν DOES
+-- Once.LinCore.ObsTable — plan 0.146 B1.4b (D437): ★ OBSERVING A ν DOES
 -- NOT DEPEND ON THE TABLE.
 --
 -- `obsT F S` is built from formers whose runs never consult the table
@@ -156,7 +156,7 @@ rt-mapNu F (G ⊗f H) S = cong₂ _⊗l_ (rt-mapNu F G S) (rt-mapNu F H S)
 rt-obsT : ∀ {Γ Δ} F S → rt {Γ} {Δ} (obsT-tf {Γ} F S) ≡ obsT {Δ} F S
 rt-obsT F S = cong₂ (λ m s → m ∘l lul ∘l (drop ⊗l lid) ∘l lend s ∘l lend (bsnd bev)) (rt-mapNu F F S) (rt-strL F F S)
 
--- ★ D423: observing a ν at one table is observing it at any other
+-- ★ D437: observing a ν at one table is observing it at any other
 obs-tbl : ∀ {Γ Δ} {ds : Defs Γ} {ds′ : Defs Δ} {F S} {p : MV (Coalg F S ⊗t S)} {n o t}
         → Run ds (obsT {Γ} F S) mone p n o t → Run ds′ (obsT {Δ} F S) mone p n o t
 obs-tbl {Γ} {Δ} {ds} {ds′} {F} {S} {p} {n} {o} {t} r =

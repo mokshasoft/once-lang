@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.StepLocal — plan 0.146 B1.4b (D417, step 3): the LOCAL step
+-- Once.LinCore.StepLocal — plan 0.146 B1.4b (D431, step 3): the LOCAL step
 -- theorem — an image step that stays in its root's code, against the flat
 -- code at its point.
 --
@@ -169,11 +169,11 @@ module Loc {FS : FrameSemantics} (U : Univ)
       h-pc  : fpc fs ≡ pos s
       h-run : LocState.halted (floc fs) ≡ false
       h-cfg : CfgW (heapMem (floc fs)) (slot fs) φ m
-      -- the frame's reservation is its budget (D435's window; `Emitted.em-ret-budget`)
+      -- the frame's reservation is its budget (D449's window; `Emitted.em-ret-budget`)
       h-slots : AllocState.frame-slots (falloc fs) ≡ fbudget φ
   open Here
 
-  -- D435: every slot below the budget is inside the frame's window
+  -- D449: every slot below the budget is inside the frame's window
   slots< : ∀ {fs : FlatState} → AllocState.frame-slots (falloc fs) ≡ fbudget φ → Data.Nat._<_ (budget φ) (AllocState.frame-slots (falloc fs))
   slots< e = subst (Data.Nat._<_ (budget φ)) (sym e) (Data.Nat.Properties.m<n⇒m<1+n (Data.Nat.Properties.n<1+n (budget φ)))
 

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.BudgetSound — plan 0.146 B1.5 (D429, D430): ★ A RUN IN THE
+-- Once.LinCore.BudgetSound — plan 0.146 B1.5 (D443, D444): ★ A RUN IN THE
 -- INTERPRETATION'S WORLD SHOWS WHAT THE MEANING SHOWS AT ITS BUDGET.
 --
 -- `Events.sound` (a run is a path through the term's meaning, cut anywhere)

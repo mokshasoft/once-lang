@@ -61,8 +61,8 @@ mutual
     Void   : IRTy                      -- Initial object
     _*_    : IRTy → IRTy → IRTy        -- Product
     _+_    : IRTy → IRTy → IRTy        -- Coproduct (sum)
-    -- D413: the exponential carries the Spec's PURITY (the linear core needs it:
-    -- an `act` arrow is a finite block, D412); the quantity stays erased.
+    -- D427: the exponential carries the Spec's PURITY (the linear core needs it:
+    -- an `act` arrow is a finite block, D426); the quantity stays erased.
     _⇛[_]_ : IRTy → Purity → IRTy → IRTy
     μ-type : IRFunctor → IRTy          -- Initial algebra
     ν-type : IRFunctor → IRTy          -- Final coalgebra
@@ -94,7 +94,7 @@ infixr 50 _*_
 -- direction, which has no canonical inhabitant when only one side forgets.
 
 -- | The arrow's runtime shape, decided by its QUANTITY.
--- (D413: and keeps its PURITY.)
+-- (D427: and keeps its PURITY.)
 eraseArrow : Quantity → Purity → IRTy → IRTy → IRTy
 eraseArrow Zero π a b = Unit ⇛[ π ] b
 eraseArrow One  π a b = a ⇛[ π ] b
@@ -278,7 +278,7 @@ data FitsInRegI : IRTy → Set where
 -- denotation REUSE the surface value domain: `⟦_⟧ᴵ A := ⟦ ⌈ A ⌉ ⟧`
 -- (in `Once.Semantics.Value`), no fixpoint machinery re-built. Since the
 -- value domain is grade-blind, the choice of grade is denotationally
--- irrelevant. (D413: the IR's arrow now keeps its purity, which the
+-- irrelevant. (D427: the IR's arrow now keeps its purity, which the
 -- meaning still ignores, so `⌈_⌉` is no longer a section of `⌊_⌋`.)
 
 mutual

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalCallC — plan 0.146 B1.4b (D417): A COPY'S TRAMPOLINE'S INNER CALL (the copy's block)
+-- Once.LinCore.GlobalCallC — plan 0.146 B1.4b (D431): A COPY'S TRAMPOLINE'S INNER CALL (the copy's block)
 -- (beside `GlobalCallW`).
 ------------------------------------------------------------------------
 

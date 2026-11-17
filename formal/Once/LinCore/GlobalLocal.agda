@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalLocal — plan 0.146 B1.4b (D417 step 3, D420): THE STEPS THAT STAY IN THEIR ROOT: a local step, a `case` (a loop's dispatch), a loop's turn, a body's end
+-- Once.LinCore.GlobalLocal — plan 0.146 B1.4b (D431 step 3, D434): THE STEPS THAT STAY IN THEIR ROOT: a local step, a `case` (a loop's dispatch), a loop's turn, a body's end
 -- (split from `Global` for its build time; over `Global.Relate`).
 ------------------------------------------------------------------------
 
@@ -176,7 +176,7 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       (N , fs′ , run , H′ , nx′ , ok′ , I′ , lg) → N , fs′ , run , record { g-pt = p-block p (at (AK.LS.succ p st l s)) ; g-here = H′ ; g-next = nx′ ; g-ret = ok′ ; g-blk = I′ } , lg
 
     -- ★ the one step that stays at a trampoline's point: a many-use body's
-    -- `epop` (D425), no flat step (its code is the way out's: one address)
+    -- `epop` (D439), no flat step (its code is the way out's: one address)
     gtr-local : ∀ {T σ sh U′ sh′ U″} {κ : Key σ} {c : Codeᴵ sh U′} {r : Ret U′ T} {m n t} {c′ : Codeᴵ sh′ U″} {r′ : Ret U″ T}
                   {m′ n′ fs} {p : under κ ∈ allK U} {pt : Pt (blockᴵ κ) c}
                 (tp : TrPt p pt) (st : StepI c r m n t c′ r′ m′ n′) → LocalC c
@@ -285,7 +285,7 @@ module LocalR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                ; g-ret = ok-loop (p-block p (disp s)) (refl , refl) (ret-step K old tp (fresh-at {r = r} {fs = fs} inv nx) ok) ; g-blk = k-inb K I } , k-log K
     gloop (p-tramp _ _) inv () nx ok I
 
-    -- ★ a loop's entry takes a control step (its label: master's budget is read in control steps, D430)
+    -- ★ a loop's entry takes a control step (its label: master's budget is read in control steps, D444)
     gloop-ctrl : ∀ {T E Es A B S V} {b : Codeᴵ (E ∷ Es ∣ A ∷ S) (E ∷ Es ∣ (B ⊕t A) ∷ S)} {k : Codeᴵ (E ∷ Es ∣ B ∷ S) V}
                    {r : Ret V T} {m n h fs} (P : Pnt (loop b ⨾ k))
                → (inv : InvI m r n h) (H : HereP P m fs) (nx : AllocState.next-heap-ref (falloc fs) ≡ n)

@@ -463,7 +463,7 @@ module _ (N : ℕ) where
 -- block's frame (`call-frame`, D394): `ra` linked, `sp` lowered by `8n`, no
 -- memory written. Each typed leaf of the input is the input register `t0` (a
 -- scalar, D396/D398) or the word at `t0 + 8k` (D391) below that frame — or,
--- D435 (d), at or above `sp` (the caller's stack, a live frame's window).
+-- D449 (d), at or above `sp` (the caller's stack, a live frame's window).
 ------------------------------------------------------------------------
 open import Once.Arith.Backend.RiscV64.Dispatch using (call-frame; dispatch-arith)
 open import Once.Arith.Machine.Shape using (⟦_⟧S; IntsBelow)

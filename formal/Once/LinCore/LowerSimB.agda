@@ -135,7 +135,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
               × (heapMem (floc fs′) (heap-loc (mkHeapRef (AllocState.next-heap-ref (falloc fs))) 3) ≡ just (SV-Code lf))
       h-other : ∀ (hl : HeapLocation) → ¬ HeapLocation.heap-ref hl ≡ mkHeapRef (AllocState.next-heap-ref (falloc fs))
               → heapMem (floc fs′) hl ≡ heapMem (floc fs) hl
-      -- D424: the words written are inside the fresh block
+      -- D438: the words written are inside the fresh block
       h-inb   : InBlk fs → InBlk fs′
   open Header public
 
@@ -237,7 +237,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                     → rf < suc r × ExecFinal.in-block? {FS} (size-with (hdr + w) r (AllocState.block-size (falloc fs))) (AtDynamic hl) ≡ Data.Bool.true
               after (lt , ib′) = Data.Nat.Properties.m<n⇒m<1+n lt , trans (cong (off Data.Nat.<ᵇ_) (size-with-old′ ne)) ib′
 
-  -- a header leaves the frames alone (D418)
+  -- a header leaves the frames alone (D432)
   keepH : ∀ {fs fs′ w lb lc lf} → Header fs fs′ w lb lc lf → Keep fs fs′
   keepH H = record { k-frame = cong AllocState.current-frame (h-alloc H) ; k-slots = cong AllocState.frame-slots (h-alloc H)
                    ; k-saved = cong AllocState.saved-frames (h-alloc H) ; k-ret = h-ret H

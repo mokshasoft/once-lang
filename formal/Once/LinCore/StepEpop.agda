@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.StepEpop — plan 0.146 B1.4b (D425): AN `epop`'s STEP,
+-- Once.LinCore.StepEpop — plan 0.146 B1.4b (D439): AN `epop`'s STEP,
 -- inverted. A many-use body's trampoline takes one step that stays at a
 -- trampoline's point (its `epop`); the split on the step lives here, in a
 -- module of its own (a split of `StepI` unifies its indices for each of its

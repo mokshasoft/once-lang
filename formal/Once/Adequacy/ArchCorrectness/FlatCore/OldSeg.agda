@@ -5,7 +5,7 @@
 -- Once.Adequacy.ArchCorrectness.FlatCore.OldSeg
 --
 -- MASTER'S POSITIONAL SCAN, and the old image's `Emitted` bundle built on it
--- (D438, plan 0.146 B1.6).
+-- (D452, plan 0.146 B1.6).
 --
 -- The arch layer reads one slot fact: a slot an instruction of the run
 -- addresses is inside the current frame (`Emitted.em-slots`). Master's image

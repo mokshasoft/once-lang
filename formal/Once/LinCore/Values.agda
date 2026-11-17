@@ -6,7 +6,7 @@
 -- their EVENTS, at the target's numerics and the words a base value takes:
 -- the layout a type decides (`words`), a value as it sits in memory (`MV`),
 -- what a run does to memory (`Ev`, `copy`, `freeAll`, `tag`) and the ledger of
--- the lowering's temporaries (`TL`). D440: no Interpretation here; what a value
+-- the lowering's temporaries (`TL`). D454: no Interpretation here; what a value
 -- means and how a term runs (`er`, `Run`) are `Events`'.
 ------------------------------------------------------------------------
 
@@ -50,8 +50,8 @@ open import Once.LinCore.Core fmt
 --
 -- A flat value takes `words` words, as `Spec.ABI` lays a base value out at the
 -- boundary: `One`/`Zero` none, a pair both halves, a sum a tag word and the
--- larger alternative. ★ D405: a closure is laid out as its environment (its
--- type names its code: no code word, no cell); (D406) so is a ν, as its seed.
+-- larger alternative. ★ D419: a closure is laid out as its environment (its
+-- type names its code: no code word, no cell); (D420) so is a ν, as its seed.
 -- A μ is a pointer to its cell: one word. A μ node's size is its layer's.
 ------------------------------------------------------------------------
 
@@ -69,7 +69,7 @@ words (Bt b)    = bw b
 szμ : LF → ℕ                -- a μ node of `F`
 szμ F = words (LF∙ F (μt F))
 
--- ★ D409 part 3: a closure of an arrow type, its environment `X`: a code word
+-- ★ D423 part 3: a closure of an arrow type, its environment `X`: a code word
 -- and the environment. The arrow's type does not fix which lambda (data
 -- decides it, GOAL.md's case for a tag), nor so the environment's size.
 szc : LTy → ℕ
@@ -101,7 +101,7 @@ _≟ᵢ_ : (i j : Id) → Dec (i ≡ j)
 ...   | yes refl = yes refl
 ...   | no ne    = no (λ e → ne (cong fst e))
 
--- ★ D409 part 3: a closure's CODE: its lambda's body, over the table it was
+-- ★ D423 part 3: a closure's CODE: its lambda's body, over the table it was
 -- built at, at its arrow's grade (one-shot: it owns its environment;
 -- many-use: it reads it lent)
 data Lam : Kd → Gr → LTy → LTy → LTy → Set where
@@ -117,10 +117,10 @@ data MV : LTy → Set where
   mbase : ∀ {b} → ⟦ b ⟧b → MV (Bt b)
   -- a μ node: one cell holding its layer
   mmu   : ∀ {F} → Id → MV (LF∙ F (μt F)) → MV (μt F)
-  -- ★ D405: a closure is its environment, where it is (its label is its type);
-  -- D406: a ν is its seed
+  -- ★ D419: a closure is its environment, where it is (its label is its type);
+  -- D420: a ν is its seed
   mct   : ∀ {l X} → MV X → MV (Ct l X)
-  -- ★ D409 part 3: a closure of an arrow type: one cell, its code and its
+  -- ★ D423 part 3: a closure of an arrow type: one cell, its code and its
   -- environment
   mfn   : ∀ {k g X A B} → Id → Lam k g X A B → MV X → MV (Fn k g A B)
   -- ★ a ν: one cell, holding its coalgebra and its seed
@@ -140,7 +140,7 @@ mvF (a f+ b) (inj₂ y) = minr (mvF b y)
 -- 2. EVENTS.
 ------------------------------------------------------------------------
 
--- ★ A13 (D407): a TEMPORARY block of the lowering (a fold's work stack, …),
+-- ★ A13 (D421): a TEMPORARY block of the lowering (a fold's work stack, …),
 -- of a size: no id, for it is not a value — nothing can point into it
 data TEv : Set where
   tnew : ℕ → TEv
@@ -192,7 +192,7 @@ freeAll (mct x)      = freeAll x
 freeAll (mfn i c x)  = free i ∷ freeAll x
 freeAll (mnu i p)    = free i ∷ freeAll p
 
--- ★ D405/D406: `lclo F`: each environment at an `Idf` position of the layer
+-- ★ D419/D420: `lclo F`: each environment at an `Idf` position of the layer
 -- becomes a closure, where it is (observing a ν tags the seeds its
 -- coalgebra returned): no cell, no event, no counter
 tag : ∀ {l X} F → MV (LF∙ F X) → MV (LF∙ F (Ct l X))
@@ -206,7 +206,7 @@ tag (G ⊕f H) (minr x)     = minr (tag H x)
 tag (G ⊗f H) (mpair x x′) = mpair (tag G x) (tag H x′)
 
 ------------------------------------------------------------------------
--- 2½. ★ A13 (D407): TEMPORARIES. The lowering may allocate heap blocks the
+-- 2½. ★ A13 (D421): TEMPORARIES. The lowering may allocate heap blocks the
 -- run does not have (a fold's work stack), if the same generator frees them
 -- before it finishes (the user, 2026-11-10). They are counted by size: how
 -- many of each size are live. A halt or `exhausted` in between is the exit

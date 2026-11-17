@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalTrampW — plan 0.146 B1.4b (D417, D425): A MANY-USE BODY'S TRAMPOLINE (ktrω), step by
+-- Once.LinCore.GlobalTrampW — plan 0.146 B1.4b (D431, D439): A MANY-USE BODY'S TRAMPOLINE (ktrω), step by
 -- step (beside `GlobalTrampF`; over `Global.Relate` and `GlobalTramp.TrampR`): its dispatch
 -- (`icallω`), its cell part (`openω`: the contents' address), its inner call (the area and
 -- the view by pointer), its bare way out.
@@ -111,7 +111,7 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Called
   open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next)
   ----------------------------------------------------------------------
-  -- 9. ★ A ONE-SHOT TRAMPOLINE (D421), step by step.
+  -- 9. ★ A ONE-SHOT TRAMPOLINE (D435), step by step.
   ----------------------------------------------------------------------
 
   open import Once.LinCore.LowAt fmt ans bw using (in-trans; in-r)
@@ -175,7 +175,7 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             → pc ≡ trPos (ktrω ds′ b γ) p 2 → Seg image pc (instr-ctrl (c-ret 1) ∷ [])
     tW-seg2 {ds′ = ds′} {b} {γ} p {pc} e = subst (λ z → Seg image z (trAt (idx p) (ktrω ds′ b γ) 2)) (sym e) (in-seg (image-tr (ktrω ds′ b γ) p 2))
 
-    -- the contents' address (`contentsAddr`): past the header, in the cell's block (D424: its first
+    -- the contents' address (`contentsAddr`): past the header, in the cell's block (D438: its first
     -- word written); no words, the cell's own
     ca-step : ∀ (n : ℕ) (fs : FlatState) (i : Id) (wx : List (StoredValue FS)) → length wx ≡ n
             → readReg (LocState.regs (floc fs)) Input1 ≡ cellPtr i → Rel.At {FS} U wordOf (LocState.heapMem (floc fs)) i hdr wx → InBlk fs
@@ -209,7 +209,7 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       fs′ = record fs { floc = record (floc fs) { regs = writeReg (LocState.regs (floc fs)) Output (SV-Ptr (AtDynamic (cellLoc i (cOff (wsz X))))) }
                       ; fpc = suc (fpc fs) }
 
-  -- ★ its inner call: the area's pointer from its save slot, the view's in `Output` (D425)
+  -- ★ its inner call: the area's pointer from its save slot, the view's in `Output` (D439)
   tw-call : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b} (p : under (ktrω ds′ b γ) ∈ allK U) {i} {x : MV X} {a : MV A} {fs}
           → (T : TrW1 (wsz A ⊔ wsz B) (trPos (ktrω ds′ b γ) p 1) i x a fs)
           → Σ ℕ λ N → Σ FlatState λ fs′ → FlatSteps image N fs fs′
@@ -277,7 +277,7 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                ; w0-win = λ k k< → win-push (falloc fs) (falloc fs′) cf _ (cw-saved CL) (win k k<) } ,
         q , CL
 
-  -- ★ the body's way out (D425): its result's words into the dispatcher's area (two frames up),
+  -- ★ the body's way out (D439): its result's words into the dispatcher's area (two frames up),
   -- the return into the trampoline (the area's pointer still in its save slot)
   open import Once.LinCore.LowerSimE {FS} using (CallOutA; call-outA; co-moved)
   open SimF {FS} U wordOf using (slots-copied)

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalRetW — plan 0.146 B1.4b (D417, D425): A MANY-USE BODY'S TRAMPOLINE'S RETURNS: the body's
+-- Once.LinCore.GlobalRetW — plan 0.146 B1.4b (D431, D439): A MANY-USE BODY'S TRAMPOLINE'S RETURNS: the body's
 -- (its result into the dispatcher's area, two frames up; back into the trampoline) and the trampoline's
 -- bare way out (beside `GlobalRetT`, for its build time).
 ------------------------------------------------------------------------
@@ -269,7 +269,7 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
             kept x side = co-rest CO (AtStack af x)
                             (λ k′ k< e″ → off-area φ M (wsz B) (ws S) (ws (Fn many g A B ∷ Es)) x (m≤n⊔m (wsz A) (wsz B)) fit efit side k′ k< (slot-eq e″))
 
-    -- ★ the body's return (D425): its result's words into the dispatcher's area, back at the
+    -- ★ the body's return (D439): its result's words into the dispatcher's area, back at the
     -- trampoline's depth 2 (TrW2); the trampoline's level of the return stack kept, its
     -- dispatcher's frame changed in the area only
     gret-cω : ∀ {T Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b}
@@ -293,7 +293,7 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gret-cω (p-block p (at e)) _ cfc sl sv′ rets′ refl eF H eRets eSv eSl abv ap fr rest nx I =
       gret-cω′ p e cfc sl sv′ rets′ eF H eRets eSv eSl abv ap fr (tail-ω rest) nx I
 
-    -- ★ the trampoline's way out (D425): a bare return; the result's words already in the
+    -- ★ the trampoline's way out (D439): a bare return; the result's words already in the
     -- dispatcher's area, so its configuration back in its frame with the result on top
     private
       res-cfg : ∀ {fs fs′ cfc pc rets′ sv′ sl} {φ : Frame} {Es B S} {es : Slots Es} {os : Stk S} {w : MV B} (M : ℕ) (wb : List W)

@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.CallStep — plan 0.146 B1.4b (D417, step 3): ★ A CALL, in
+-- Once.LinCore.CallStep — plan 0.146 B1.4b (D431, step 3): ★ A CALL, in
 -- the image.
 --
 -- At a path `s` of a root, `call κ ⨾ k` lowers to the caller's argument
@@ -149,7 +149,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         M≤ : wA ⊔ wB ≤ B ∸ s
         M≤ = Data.Nat.Properties.⊔-lub (≤∸ wA s B le₁) (≤∸ wB s B le₂)
 
-    -- D435: the argument's words, read through the area pointer, lie in the
+    -- D449: the argument's words, read through the area pointer, lie in the
     -- caller's window (its frame saved under the callee's, its reservation
     -- covering its budget)
     arg-win : ∀ (fs fs₁ : FlatState) (Bg s wA o area : ℕ)
@@ -261,7 +261,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   -- ★ THE CALL'S CORE, from any frame: the caller's configuration in its
   -- frame `φ`, the call's code at the pc, its area where the argument's words
-  -- are its `M ∸ wsz A` words in (a trampoline calls with these, D421)
+  -- are its `M ∸ wsz A` words in (a trampoline calls with these, D435)
   call-core : ∀ {A B Es S} {κ : Key (bsig nothing A B)} (p : (bsig nothing A B , κ) ∈ allK U) (φ : Frame) (area : ℕ)
                 {es : Slots Es} {a : MV A} {os : Stk S} {fs}
             → Seg image (fpc fs) (lea-slot area ∷ mov-to-input ∷ instr-ctrl (c-call-fn (nameOf (idx p))) ∷ [])
@@ -438,7 +438,7 @@ module Calls {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
         fitsB = ≤-trans (Rel.CfgW.c-sfit (h-cfg H)) (m≤n+m (OP C.φ) (EP C.φ))
         fitsB′ : ws (B ∷ S) ≤ budget C.φ
         fitsB′ = ≤-trans (proj₂ (C.shape-fits (next s))) (m≤n+m (OP C.φ) (EP C.φ))
-        -- D435: the view's words, below the environment's top
+        -- D449: the view's words, below the environment's top
         view-lt : ∀ k → k Data.Nat.< wsz E → (k + 0) + ws Es Data.Nat.< budget C.φ
         view-lt k k< = Data.Nat.Properties.<-≤-trans
                          (Data.Nat.Properties.+-monoˡ-< (ws Es) (subst (Data.Nat._< wsz E) (sym (Data.Nat.Properties.+-identityʳ k)) k<))

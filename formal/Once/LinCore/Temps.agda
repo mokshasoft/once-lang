@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.Temps — plan 0.146 A13 (D407): TEMPORARIES.
+-- Once.LinCore.Temps — plan 0.146 A13 (D421): TEMPORARIES.
 --
 -- The lowering may allocate heap blocks the run does not have (a fold's work
 -- stack), if the same generator frees them before it finishes and nothing in

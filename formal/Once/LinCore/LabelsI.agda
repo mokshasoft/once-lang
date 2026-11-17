@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.LabelsI — plan 0.146 B1.4b (D417, step 3): the image's jump
+-- Once.LinCore.LabelsI — plan 0.146 B1.4b (D431, step 3): the image's jump
 -- labels, part 3: image-wide.
 --
 -- Block `j`'s labels are `jl j k` (owner `nameOf j`), the start's

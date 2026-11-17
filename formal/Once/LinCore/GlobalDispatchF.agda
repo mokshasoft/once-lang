@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalDispatchF — plan 0.146 B1.4b (D417, D424): A FREE'S DISPATCH (cfree, nfree) AND ITS TRAMPOLINE'S CELL PART (fopen)
+-- Once.LinCore.GlobalDispatchF — plan 0.146 B1.4b (D431, D438): A FREE'S DISPATCH (cfree, nfree) AND ITS TRAMPOLINE'S CELL PART (fopen)
 -- (beside `GlobalDispatch`, for its build time).
 ------------------------------------------------------------------------
 
@@ -140,7 +140,7 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     nat-r0 {zero} e = e
     nat-r0 {suc a} ()
 
-  -- ★ a free's dispatch caller, as the new top of the return stack (D417):
+  -- ★ a free's dispatch caller, as the new top of the return stack (D431):
   -- the trampoline's frame `frame 0 w` with one save slot, the caller under
   -- it; no area (the result One)
   mk-trampf : ∀ {T X C} {Es D S V} {i : Insᴵ (Es ∣ D ∷ S) (Es ∣ One ∷ S)} {k : Codeᴵ (Es ∣ One ∷ S) V}
@@ -317,7 +317,7 @@ module DispF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                ; g-ret = ret-step (r-keep Rn) (r-old Rn) (r-top Rn) (subst (FreshR r) (sym nx) (fresh-ret inv)) ok ; g-blk = r-inb Rn I } , k-log (r-keep Rn)
 
   -- ★ A FREE'S TRAMPOLINE'S CELL PART (i-fopen, i-fopenν): at its depth 0; at a
-  -- root's path it is absurd (D422)
+  -- root's path it is absurd (D436)
   gfopen : ∀ {T Es kd g X A B S V} {k : Codeᴵ (Es ∣ X ∷ S) V} {r : Ret V T} {es : Slots Es} {i}
              {lam : Lam kd g X A B} {x : MV X} {os : Stk S} {n h fs} (P : Pnt (fopen {X = X} {C = Fn kd g A B} ⨾ k))
          → InvI (es ∥ mfn i lam x ∷ˢ os) r n h → HereP P (es ∥ mfn i lam x ∷ˢ os) fs

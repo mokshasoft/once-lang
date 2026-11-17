@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalTrampC — plan 0.146 B1.4b (D417): A COPY'S TRAMPOLINE (ktrc), step by step
+-- Once.LinCore.GlobalTrampC — plan 0.146 B1.4b (D431): A COPY'S TRAMPOLINE (ktrc), step by step
 -- (beside `GlobalTrampW`): its dispatch (`ccopy`/`ncopy`), its cell part (`copen`: the contents'
 -- address), its inner call (the copy's block, the view by pointer), `reclose` (a fresh cell),
 -- its way out (the new cell's word into the caller's destination).
@@ -110,7 +110,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Called
   open import Once.LinCore.LowerSimE {FS} using (callee-frame; callee-below; callee-≢; CallOut; co-frame; co-ret; co-saved; co-rest; co-next)
   ----------------------------------------------------------------------
-  -- 9. ★ A ONE-SHOT TRAMPOLINE (D421), step by step.
+  -- 9. ★ A ONE-SHOT TRAMPOLINE (D435), step by step.
   ----------------------------------------------------------------------
 
   open import Once.LinCore.LowAt fmt ans bw using (in-trans; in-r)
@@ -184,7 +184,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     tC-seg {X} {C} p d {pc} e = subst (λ z → Seg image z (trAt (idx p) (ktrc X C) d)) (sym e) (in-seg (image-tr (ktrc X C) p d))
 
   -- ★ its dispatch (`ccopy`/`ncopy`): into the trampoline the cell's word 2 names, at depth 0 (TrC0);
-  -- word 1's address is in the cell's block (D424: a written word)
+  -- word 1's address is in the cell's block (D438: a written word)
   tc-disp : ∀ {X C} (c d : ℕ) {i} {cv : MV C} {wx : List (StoredValue FS)} {w₁ w₂ wf : StoredValue FS} {fs}
           → Seg image (fpc fs) (restore-input c ∷ addr-at 1 ∷ mov-to-input ∷ instr-save-closure-reg
                                 ∷ lea-slot d ∷ mov-to-input ∷ load-from-slot c ∷ instr-call-closure ∷ [])

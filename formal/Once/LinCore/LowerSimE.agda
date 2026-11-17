@@ -193,7 +193,7 @@ open import Data.List using (length; _++_)
 open import Data.Nat.Properties using (+-comm)
 open FlatStepsAPI {FS} using (FlatSteps-++)
 
--- the return frame `cfc`, the area's frame `af` (D425: a many-use body's
+-- the return frame `cfc`, the area's frame `af` (D439: a many-use body's
 -- area is its trampoline's dispatcher's, two frames up; else `af = cfc`)
 record CallOutA (fs fs′ : FlatState) (cfc af : Frame) (a src o n pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ) : Set where
   field
@@ -264,14 +264,14 @@ call-outA prog fs cfc af a s₁ src o n b pc rest sv sl hret hsv ne ep def win (
           where proj₁′ : ∀ {A : Set} {B : Set} → A × B → A
                 proj₁′ (x , _) = x
 
--- D435: a slot below the caller's reservation is inside a live window
+-- D449: a slot below the caller's reservation is inside a live window
 caller-win : ∀ (al : AllocState {FS}) (cfc : Frame) sl sv j → saved-frames al ≡ (cfc , sl) ∷ sv → j < sl
            → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} al) cfc j ≡ true
 caller-win al cfc sl sv j hsv lt =
   win-there (current-frame al) cfc (frame-slots al) (saved-frames al) j
     (subst (λ L → ExecFinal.in-window {FS} L cfc j ≡ true) (sym hsv) (win-here cfc sl sv j lt))
 
--- …and below the reservation of the frame saved under it (D425: a many-use
+-- …and below the reservation of the frame saved under it (D439: a many-use
 -- body's area is its trampoline's dispatcher's, two frames up)
 anc-win : ∀ (al : AllocState {FS}) (g af : Frame) sl₁ sl₂ sv j → saved-frames al ≡ (g , sl₁) ∷ (af , sl₂) ∷ sv → j < sl₂
         → ExecFinal.in-window {FS} (ExecFinal.live-frames {FS} al) af j ≡ true
@@ -292,7 +292,7 @@ call-out : ∀ prog (fs : FlatState) (cfc : Frame) (a s₁ src o n b pc : ℕ) (
 call-out prog fs cfc a s₁ src o n b pc rest sv sl hret hsv ne ep def bnd =
   call-outA prog fs cfc cfc a s₁ src o n b pc rest sv sl hret hsv ne ep def (λ k k< → caller-win (falloc fs) cfc sl sv ((k + o) + a) hsv (bnd k k<))
 
--- ★ a bare return (a free's trampoline, D417: its result One, no words to move)
+-- ★ a bare return (a free's trampoline, D431: its result One, no words to move)
 ret-out : ∀ prog (fs : FlatState) (cfc : Frame) (b pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ)
         → fret fs ≡ pc ∷ rest → saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
         → Seg prog (fpc fs) (instr-ctrl (c-ret b) ∷ [])
@@ -314,7 +314,7 @@ ret-out prog fs cfc b pc rest sv sl hret hsv (g , _) h =
     fs₁ = record fs { falloc = leave-frame (falloc fs) ; fpc = pc ; fret = rest }
 
 ------------------------------------------------------------------------
--- ★ A TRAMPOLINE'S INNER CALL WITH ITS AREA AND VIEW BY POINTER (D425: a
+-- ★ A TRAMPOLINE'S INNER CALL WITH ITS AREA AND VIEW BY POINTER (D439: a
 -- many-use body's): the area's pointer from a save slot into `Input1`, the
 -- view's pointer already in `Output`; the callee's entry saves both.
 ------------------------------------------------------------------------
@@ -366,7 +366,7 @@ call-in-h prog fs s ap vp f e q b s₁ s₂ s≢ sa ov (g₁ , g₂ , _) ff (h�
     fs₆ = record fs₅ { floc = record (floc fs₅) { regs = writeReg (LocState.regs (floc fs₅)) Output ap } ; fpc = suc (fpc fs₅) }
     fs₇ = record fs₆ { floc = MemOps.writeLoc {FS} (floc fs₆) (AtStack cf′ s₁) ap ; fpc = suc (fpc fs₆) }
 
--- ★ a copy trampoline's inner call (D417): the area its own frame's bottom
+-- ★ a copy trampoline's inner call (D431): the area its own frame's bottom
 -- (`lea-slot 0`), the view's pointer from a save slot into `Output`
 call-in-c : ∀ prog (fs : FlatState) (s : ℕ) (vp : StoredValue FS) (f : CanonicalName) (e : EntryId) (q b s₁ s₂ : ℕ) → ¬ s₁ ≡ s₂
           → slot fs s ≡ just vp

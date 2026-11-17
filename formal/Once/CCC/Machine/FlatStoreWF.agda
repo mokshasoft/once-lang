@@ -123,7 +123,7 @@ sv-as-loc-below n (SV-Tag _)              _ = tt
 sv-as-loc-below n (SV-Lit _ _)            _ = tt
 sv-as-loc-below n (SV-Code _)             _ = tt
 
--- D435: the frame gate passes a location or faults
+-- D449: the frame gate passes a location or faults
 stack-gate-below : ∀ (n : ℕ) (ok : Bool) (loc : ValueLocation FS) → loc-below n loc → mloc-below n (stack-gate ok loc)
 stack-gate-below n true  loc b = b
 stack-gate-below n false loc b = tt
@@ -366,7 +366,7 @@ wf-slot-load = wf-load-value
 -- non-register-fittable case, which gets the companion axiom below — the same
 -- trusted base as `structured-pure-sigop-output` itself (D061).
 ------------------------------------------------------------------------
--- (D432: a structured answer is in memory; `Output` keeps its address, so
+-- (D446: a structured answer is in memory; `Output` keeps its address, so
 -- the companion axiom is gone.)
 
 -- plan 0.98: a Pure SigOp's output is `res-sv fitB (semM …)`, and `res-sv`
@@ -472,7 +472,7 @@ sigop-output-below n {A} {B} si ls wf = go (effect si)
         call-below nothing  = wf-regs wf Output
 
 ------------------------------------------------------------------------
--- D432: A STRUCTURED ANSWER WRITTEN IN PLACE keeps the store well formed:
+-- D446: A STRUCTURED ANSWER WRITTEN IN PLACE keeps the store well formed:
 -- its words are its leaves (an `Int` a word, a tag none), at a location below.
 ------------------------------------------------------------------------
 wf-zeros : ∀ {n ls} (k : ℕ) (loc : ValueLocation FS) → loc-below n loc

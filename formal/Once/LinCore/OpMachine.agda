@@ -2,14 +2,14 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.OpMachine — plan 0.146 B1.5 (D426, D428, D429): ★ AN OP AT
+-- Once.LinCore.OpMachine — plan 0.146 B1.5 (D440, D442, D443): ★ AN OP AT
 -- THE MACHINE. An op's contract path (`OpPath` over `opF`), its calls
 -- answered by the interpretation's world from a history, is what the
 -- machine's sigop computes at a state whose log is that history
 -- (`StepOp.OpVal`/`OpHalt`): the same events (the call at the decoded
 -- argument, `ArgDecode`), the same halting, and the same answer: a scalar
 -- the Output's word, a product or a sum its words written in place at the
--- result's slots (D432, `AnsWrite`), Unit none. By the contract class
+-- result's slots (D446, `AnsWrite`), Unit none. By the contract class
 -- (`SigOp.Info.SigOpSem`), as master's `IRObsCorrect.SigOp`: every class,
 -- for every base answer (`Dispatch`).
 ------------------------------------------------------------------------
@@ -236,8 +236,8 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
   -- ★ the per-op facts, by the op's contract. What stays owed, narrowed: an answer of a
   -- structured type (a product, or a sum that is not a compare's) has no machine
   -- semantics yet (master owes it too: `structured-pure-sigop-output`). An undeclared FFI
-  -- op stops where the machine goes on: excluded by linkedness (D431, `Dispatch.decl`).
-  -- ★ D432: AN ANSWER IN MEMORY (a product, a sum), as every other value's: the sigop writes
+  -- op stops where the machine goes on: excluded by linkedness (D445, `Dispatch.decl`).
+  -- ★ D446: AN ANSWER IN MEMORY (a product, a sum), as every other value's: the sigop writes
   -- its words at the destination `Output` holds (`sigop-store`), the image's (`AnsWrite`)
   open Agree {Mach} U wordOf using (OpValN; argD)
   open Once.LinCore.ArgDecode.Dec fmt ans bw {Mach} U wordOf w-int w-float using (arg-decD)
@@ -321,7 +321,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
     → WTr Wι L tp L′ → ∀ fs → LocState.ev-log (floc fs) ≡ L
     → OpHalt (sig (mk-info' n c bA bB)) x (evsOf tp) fs
 
-  -- ★ a compare (D428): its code runs the compare's block, whose 0/1 word, read as a tag, is the
+  -- ★ a compare (D442): its code runs the compare's block, whose 0/1 word, read as a tag, is the
   -- primitive's truth (true = inr, D263)
   open import Once.Arith.SigOp.Compare using (cmp-block-info)
   open import Once.Arith.CmpOp using (cmp-word; fcmp-word-at)
@@ -447,7 +447,7 @@ module OM (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
             → OpHalt s x (evsOf tp) fs
     o-opend {sig (mk-info' n c bA bB)} m = halt-at n c bA bB (decl m)
 
-  -- ★ LINKED (D431): the world answers a declared op's call, so the run never cuts at a program's op
+  -- ★ LINKED (D445): the world answers a declared op's call, so the run never cuts at a program's op
   module Linked (decl : ∀ {s} → s ∈ ops U → Declared-at Σι (info s) (SigOpInfo.sem (info s))) where
     private
       answered-at : ∀ {h o a} {X : Set} {f : _ → X} (u : Dec (TM.CallOp.ccod o ≡ ST.Unit)) (dk : Dec (TM.callKey o ∈ TM.calls ι))

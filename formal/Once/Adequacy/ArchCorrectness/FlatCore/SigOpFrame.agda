@@ -125,7 +125,7 @@ private
 ------------------------------------------------------------------------
 -- THE FRAME LEMMA.
 ------------------------------------------------------------------------
--- D432: the sigop's step at a memory `x` (its own store, or none)
+-- D446: the sigop's step at a memory `x` (its own store, or none)
 private
   sigop-at : ∀ (fs : FlatState) {A B} (si : SigOpInfo A B) → LocState FS → FlatState
   sigop-at fs si x = record fs
@@ -196,7 +196,7 @@ sigop-arith-corr₀ {hv} prog fs s s′ si {W} {v} cc room lk ar val hl pc′ = 
 -- abstract side, the run supplies: no link is pending there (it is not an
 -- entry), and its Pure argument decoded (D392), so it does not halt.
 ------------------------------------------------------------------------
--- D432: a sigop whose answer is not in memory stores none (`sigop-store-id`)
+-- D446: a sigop whose answer is not in memory stores none (`sigop-store-id`)
 sigop-arith-corr : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s s′ : State)
                      {A B} (si : SigOpInfo A B) {W v : ℕ}
                  → in-memory? B ≡ false

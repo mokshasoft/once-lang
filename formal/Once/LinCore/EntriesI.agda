@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.EntriesI — plan 0.146 B1.4b (D417, step 3): the image's
+-- Once.LinCore.EntriesI — plan 0.146 B1.4b (D431, step 3): the image's
 -- callable entries and its block layout.
 --
 -- Block `j` is entered by name (`e-fn (nameOf j)`, its first instruction),

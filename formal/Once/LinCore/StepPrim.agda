@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.StepPrim — plan 0.146 B1.4b (D417, step 3): the local step
+-- Once.LinCore.StepPrim — plan 0.146 B1.4b (D431, step 3): the local step
 -- theorem's PRIMITIVES (`prim ds g ⨾ k`).
 --
 -- The primitives with no code (ρ, λ, α and their inverses, `drop`, a

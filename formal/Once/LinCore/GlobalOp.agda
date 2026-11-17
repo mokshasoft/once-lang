@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalOp — plan 0.146 B1.4b (D426): AN OP'S STEP with the whole relation, relative to the
+-- Once.LinCore.GlobalOp — plan 0.146 B1.4b (D440): AN OP'S STEP with the whole relation, relative to the
 -- machine's world: an answered op to the next path, a halting op to a halted machine.
 ------------------------------------------------------------------------
 

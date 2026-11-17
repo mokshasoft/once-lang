@@ -91,7 +91,7 @@ data BlockOf {X Y} (si : SigOpInfo X Y) : ArithBlock → Set where
   is-block : ∀ {sh n} (e : MArithIR sh n) (eA : X ≡ shape-as-type sh) (eB : Y ≡ numtype-as-type n)
            → sem si ≡ blockV e eA eB → BlockOf si (mk-block sh n e)
 
--- D432: a block's answer is a register word, never in memory
+-- D446: a block's answer is a register word, never in memory
 block-not-in-memory : ∀ {X Y} {si : SigOpInfo X Y} {b} → BlockOf si b → SMCore.in-memory? Y ≡ false
 block-not-in-memory (is-block {n = NInt}   e eA refl _) = refl
 block-not-in-memory (is-block {n = NFloat} e eA refl _) = refl

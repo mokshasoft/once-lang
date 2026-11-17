@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.FreshI — plan 0.146 B1.4b (D417, step 3): NO CELL PAST THE
+-- Once.LinCore.FreshI — plan 0.146 B1.4b (D431, step 3): NO CELL PAST THE
 -- COUNTER, from the image's invariant.
 --
 -- `HeldI.InvI`: the live cells are exactly those the frames hold, and no
@@ -10,7 +10,7 @@
 -- below it. So no slot, view or operand of the current frame or of a saved
 -- one mentions a cell at or past `n` — the freshness an allocation's lemma
 -- asks (`StepPrim.Fresh`) and what keeps a saved frame's words standing
--- while the heap grows (D419).
+-- while the heap grows (D433).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --guardedness #-}

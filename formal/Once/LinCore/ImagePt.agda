@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.ImagePt — plan 0.146 B1.4b (D417): the image's CONTROL, at
+-- Once.LinCore.ImagePt — plan 0.146 B1.4b (D431): the image's CONTROL, at
 -- program points.
 --
 -- The image runs on code terms; the flat run on addresses. Every code the
@@ -183,7 +183,7 @@ module Places {sh₀ U₀} (c₀ : Codeᴵ sh₀ U₀) where
   place i-reti        P (K , R) = K , R
   -- ★ the loop: its body, its dispatch pushed
   place i-loop        P R = bdy P , dsp P , R
-  -- ★ a dispatch: the trampoline's start (D417)
+  -- ★ a dispatch: the trampoline's start (D431)
   place (i-icall {lam = lam})   P R = entry (tr1 lam) , nxt P , R
   place (i-icallω {lam = lam} _) P R = entry (trω lam) , nxt P , R
   place (i-iobs {F = F} {S = S}) P R = entry (ktro ε F S) , nxt P , R

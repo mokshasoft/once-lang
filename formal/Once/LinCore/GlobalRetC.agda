@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.LinCore.GlobalRetC — plan 0.146 B1.4b (D417): A COPY'S TRAMPOLINE'S RETURNS: the copy's block's (its
+-- Once.LinCore.GlobalRetC — plan 0.146 B1.4b (D431): A COPY'S TRAMPOLINE'S RETURNS: the copy's block's (its
 -- result into the trampoline frame's first slots) and the trampoline's way out (the new cell's word into
 -- the caller's destination) (beside `GlobalRetW`).
 ------------------------------------------------------------------------
@@ -155,7 +155,7 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           dummy : ℕ
           dummy = 0
 
-    -- ★ the copy's block's return (D417): its result's words into the trampoline frame's first slots,
+    -- ★ the copy's block's return (D431): its result's words into the trampoline frame's first slots,
     -- back at the trampoline's depth 2 (TrC2); the trampoline's level kept (its save slots untouched)
     gret-cc′ : ∀ {T X C} {x : MV X} {cv : MV C} {r₁ : Ret (C ∷ [] ∣ C ∷ []) T} {e′ : Slots (X ∷ [])} {w : MV X} {n fs}
                  (p : under (ktrc X C) ∈ allK U) (e : Sub (blockᴵ (kcopy X)) (end {sh = X ∷ [] ∣ X ∷ []}))
@@ -223,7 +223,7 @@ module RetC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gret-cc {X = X} {C} (p-block p (at e)) _ cfc sl sv′ rets′ ci refl eF H eRets eSv eSl abv ap s₂ pcv fr rest nx I =
       gret-cc′ p e cfc sl sv′ rets′ ci eF H eRets eSv eSl abv ap s₂ pcv fr (tail-c {X = X} {C} rest) nx I
 
-    -- ★ the copy trampoline's way out (D417): the new cell's word into the caller's destination (its
+    -- ★ the copy trampoline's way out (D431): the new cell's word into the caller's destination (its
     -- top operand's slot); the caller's configuration back in its frame
     private
       tp-top : ∀ (φ : Frame) S → budget φ ∸ suc (ws S) ≡ Tp φ S ∸ 1
