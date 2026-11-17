@@ -42,9 +42,13 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 
 open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL)
+open import Once.LinCore.FromExpr fmt using (ty; Co; weak; split; carryL; mixL; apω)
+open import Once.LinCore.FromIR fmt using (⟪_⟫; grade)
+import Once.LinCore.PassTr
+open import Once.IRTy using (IRTy; _⇛[_]_)
+import Once.IRTy as I
 open import Once.LinCore.Bridge fmt ans using (W)
-open import Once.LinCore.Bisim fmt ans using (_≈_; block≈; Bl-refl; ≈-refl; ≈-trans; ≈-sym; >>=-cong)
+open import Once.LinCore.Bisim fmt ans using (_≈_; block≈; Bl-refl; ≈-refl; ≈-trans; ≈-sym; >>=-cong; _≈[_]_; ret≈R; >>=-congR; ≈-≈R; ≈R-≈; pair-drop)
 
 ------------------------------------------------------------------------
 -- 1. THE MONAD: a bind of a return is its continuation, by `block`'s
@@ -241,3 +245,45 @@ split-W (Γ SC.▸ A) (G.One  ∷ Ψ₁) (G.One  ∷ Ψ₂) (w , wa) = (proj₁ 
 split-W (Γ SC.▸ A) (G.One  ∷ Ψ₁) (G.Many ∷ Ψ₂) (w , wa) = (proj₁ (split-W Γ Ψ₁ Ψ₂ w) , wa) , (proj₂ (split-W Γ Ψ₁ Ψ₂ w) , wa)
 split-W (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.One  ∷ Ψ₂) (w , wa) = (proj₁ (split-W Γ Ψ₁ Ψ₂ w) , wa) , (proj₂ (split-W Γ Ψ₁ Ψ₂ w) , wa)
 split-W (Γ SC.▸ A) (G.Many ∷ Ψ₁) (G.Many ∷ Ψ₂) (w , wa) = (proj₁ (split-W Γ Ψ₁ Ψ₂ w) , wa) , (proj₂ (split-W Γ Ψ₁ Ψ₂ w) , wa)
+
+------------------------------------------------------------------------
+-- 6. ★ RELATED TERMS: a core term and an IR term mean related
+-- computations on related inputs.
+------------------------------------------------------------------------
+
+module Rel {L : Cx} (δ : Env L) (ρ : CallEnv) where
+
+  Rel : ∀ {A B : IRTy} → LTm L ⟪ A ⟫ ⟪ B ⟫ → M.IR A B → Set
+  Rel {A} {B} t t′ = ∀ {x x′} → W A x x′ → Lᶜ δ t tt x ≈[ W B ] evalᴰ fmt ρ t′ x′
+
+  rel-∘ : ∀ {A B C} {f : LTm L ⟪ B ⟫ ⟪ C ⟫} {f′ : M.IR B C} {g : LTm L ⟪ A ⟫ ⟪ B ⟫} {g′ : M.IR A B}
+        → Rel f f′ → Rel g g′ → Rel (f ∘l g) (f′ M.∘ g′)
+  rel-∘ rf rg w = >>=-congR (rg w) rf
+
+  -- pure on both sides, with related values
+  rel-pure : ∀ {A B} {t : LTm L ⟪ A ⟫ ⟪ B ⟫} {t′ : M.IR A B} {v v′}
+           → Pure δ t v → PureI ρ t′ v′ → (∀ {x x′} → W A x x′ → W B (v x) (v′ x′)) → Rel t t′
+  rel-pure p q r {x} {x′} w = ≈-≈R (p tt x) (≈R-≈ (ret≈R (r w)) (≈-sym (q x′)))
+
+  rel-weak : ∀ (am : M.AllocMode) {m n} {Γ : Ctx m n} {Ψ Ψ′ : Usage n} (p : Ψ ⊑ᵘ Ψ′)
+           → Rel (weak {Γ = Γ} p) (restrictEnv {Γ = Γ} am p)
+  rel-weak am {Γ = Γ} p = rel-pure {t = weak {Γ = Γ} p} {t′ = restrictEnv {Γ = Γ} am p} (weak-pure δ {E = One} {Γ = Γ} p) (restrict-pure ρ am {Γ = Γ} p) (weak-W {Γ = Γ} p)
+
+  -- ★ the application: a closure applied owned, against `apply`
+  rel-apω : ∀ {π A B} → Rel (apω {g = grade π} {⟪ A ⟫} {⟪ B ⟫}) (M.apply {A} {B} {π})
+  rel-apω {π} {A} {B} {x = f , a} {x′ = f′ , a′} (wf , wa) =
+    ≈-≈R (pair-drop (f ,_) (Lᶜ δ (Once.LinCore.PassTr.dropl fmt {Γ = L} {E = One} {A = Fn many (grade π) ⟪ A ⟫ ⟪ B ⟫} {B = ⟪ B ⟫}) tt) (λ _ → refl)) (wf wa)
+
+  -- ★ THE SPLIT against the IR's copy into two restrictions
+  rel-pair : ∀ (am : M.AllocMode) {m n} (Γ : Ctx m n) (Ψ₁ Ψ₂ : Usage n) {A B : IRTy}
+             {a : LTm L (Co Γ Ψ₁) ⟪ A ⟫} {a′ : M.IR ⌊ ⟦ Γ ↾ Ψ₁ ⟧ᶜ ⌋ A}
+             {b : LTm L (Co Γ Ψ₂) ⟪ B ⟫} {b′ : M.IR ⌊ ⟦ Γ ↾ Ψ₂ ⟧ᶜ ⌋ B}
+           → Rel a a′ → Rel b b′
+           → Rel ((a ⊗l b) ∘l split Γ Ψ₁ Ψ₂)
+                 M.⟨ a′ M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-+ˡ Ψ₁ Ψ₂) , b′ M.∘ restrictEnv {Γ = Γ} am (⊑ᵘ-+ʳ Ψ₁ Ψ₂) ⟩
+  rel-pair am Γ Ψ₁ Ψ₂ ra rb {x} {x′} w =
+    ≈-≈R (bind-pure (split-pure δ Γ Ψ₁ Ψ₂ tt x))
+      (≈R-≈ (>>=-congR (ra (proj₁ sw)) (λ r → >>=-congR (rb (proj₂ sw)) (λ r′ → ret≈R (r , r′))))
+            (≈-sym (>>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) x′))
+                             (λ _ → >>=-cong (bind-pure (restrict-pure ρ am {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) x′)) (λ _ → ≈-refl)))))
+    where sw = split-W Γ Ψ₁ Ψ₂ w
