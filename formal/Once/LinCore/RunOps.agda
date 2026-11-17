@@ -29,9 +29,11 @@ open import Once.LinCore.Flat using (Base)
 
 module Once.LinCore.RunOps (fmt : TargetNum) (ans : FFIAnswers) (bw : Base → ℕ) where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Keys fmt ans bw using (Got; _⊹_; k!; t!; ps; tmGot; defsGot)
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Keys fmt bw using (Got; _⊹_; k!; t!; ps; tmGot; defsGot)
 open import Once.LinCore.Spends fmt ans bw using (CutsIn; CutsInM)
 open import Once.LinCore.Total fmt ans bw using (_~_; ~one; ~pair; ~inl; ~inr; ~base; ~mu; ~ct; ~fn; ~nu; copy-~)
 

@@ -40,14 +40,16 @@ module Once.LinCore.WordStep
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
-open import Once.LinCore.Image fmt ans bw
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; see; Cfg; _∥_)
+open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
-open import Once.LinCore.Keys fmt ans bw
-open import Once.LinCore.Layout fmt ans bw using (Frame; frame; frameOf; budget; wsz; ws; EP; OP)
-open import Once.LinCore.Lower fmt ans bw
+open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Layout fmt bw using (Frame; frame; frameOf; budget; wsz; ws; EP; OP)
+open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; next; body; whole)
 open import Once.LinCore.LowAt fmt ans bw using (module At)
@@ -93,7 +95,7 @@ module StepR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   open Program ds f using (U)
   open Agree {FS} U wordOf using (Agrees)
   open IosG {FS} ds f ldConst ld-nl wordOf using (straight-ios)
-  open ProgramRun ds f using (ncty)
+  open Program ds f using (ncty)
   open Program′ ds f ldConst using (image; j₀)
   open Lowering U ncty ldConst
   open Calls {FS} ds f ldConst ld-nl wordOf using (blockR; module K; module From; call-core)

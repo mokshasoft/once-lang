@@ -50,8 +50,10 @@ module Once.LinCore.Total
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Spends fmt ans bw using (module Budget)
 
 ------------------------------------------------------------------------

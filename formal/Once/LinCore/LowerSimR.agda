@@ -37,12 +37,13 @@ module Once.LinCore.LowerSimR
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (Id; serial)
-open import Once.LinCore.Keys fmt ans bw using (Univ)
+open import Once.LinCore.Values fmt bw using (Id; serial)
+open import Once.LinCore.Keys fmt bw using (Univ)
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw using (module Sim)
-open import Once.LinCore.Lower fmt ans bw using (hdr)
+open import Once.LinCore.Lower fmt bw using (hdr)
 open import Once.LinCore.MoveCode using (mvSP)
 import Once.LinCore.Moves
 

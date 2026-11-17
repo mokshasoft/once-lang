@@ -32,7 +32,6 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
 import Once.Spec.Type as ST
 import Once.SigOp.Info
@@ -48,15 +47,15 @@ open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (cmp-of; cmp-block-info)
 
 module Once.LinCore.Lower
-  (fmt : TargetNum) (ans : FFIAnswers)
+  (fmt : TargetNum)
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_)
-open import Once.LinCore.Image fmt ans bw
-open import Once.LinCore.Keys fmt ans bw
-open import Once.LinCore.Layout fmt ans bw
+open import Once.LinCore.Core fmt
+open import Once.LinCore.Code fmt bw using (Sh; _∣_)
+open import Once.LinCore.Image fmt bw
+open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Layout fmt bw
 
 -- ★ D428: the sigop an op's code runs: its own, or a compare's block
 cmpOf : Sig → Maybe CmpOp
@@ -432,9 +431,7 @@ module Lowering (U : Univ)
     where open import Relation.Binary.PropositionalEquality using (refl)
 
 module Program′ {Γ} (ds : Defs Γ) (f : LTm Γ One One) (ldConst : ∀ {b} → Lit b → AbstractInstr) where
-  open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
-  open Program ds f using (U; blocks-in; start-in)
-  open ProgramRun ds f using (ncty)
+  open Program ds f using (U; blocks-in; start-in; ncty)
   open Lowering U ncty ldConst public
 
   -- ★ the program's image: its start (the main term, ending in the Host's

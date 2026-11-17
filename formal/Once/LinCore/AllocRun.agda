@@ -45,8 +45,10 @@ module Once.LinCore.AllocRun
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Values fmt bw
 
 ------------------------------------------------------------------------
 -- 1. A size class's operations, from the run's events.

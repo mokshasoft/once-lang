@@ -58,8 +58,10 @@ import Once.LinCore.BridgeProof
 
 module Once.LinCore.Casts (fmt : TargetNum) (ans : FFIAnswers) where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open Once.LinCore.FromIR fmt ans
+open Once.LinCore.FromIR fmt
+open import Once.LinCore.Pass fmt ans using (ev; ev-coh; inν; evB)
 open Once.LinCore.Bridge fmt ans
 module BP = Once.LinCore.BridgeProof fmt ans
 open Once.LinCore.Bisim fmt ans using (_≈[_]_; module _≈[_]_; BlR; ≈retR; ≈stepR; ≈callR; ≈haltR; ret≈R; >>=-congR; fmap-congR; ≈-≈R; ≈-sym)
@@ -70,7 +72,7 @@ open Once.LinCore.Bisim fmt ans using (_≈[_]_; module _≈[_]_; BlR; ≈retR; 
 
 -- a term moved along equal types means its meaning, moved
 ev-subst₂ : ∀ {Γ} (δ : Env Γ) {X X′ Y Y′} (e₁ : X′ ≡ X) (e₂ : Y′ ≡ Y) (c : P.IR Γ X Y) (a : ⟦ X′ ⟧)
-          → P.ev δ (subst₂ (P.IR Γ) (sym e₁) (sym e₂) c) a ≡ subst (λ Z → T∞ ⟦ Z ⟧) (sym e₂) (P.ev δ c (subst ⟦_⟧ e₁ a))
+          → ev δ (subst₂ (P.IR Γ) (sym e₁) (sym e₂) c) a ≡ subst (λ Z → T∞ ⟦ Z ⟧) (sym e₂) (ev δ c (subst ⟦_⟧ e₁ a))
 ev-subst₂ δ refl refl c a = refl
 
 -- a relation on a transported computation is one on the computation
@@ -189,7 +191,7 @@ module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A 
 
   -- ★ a SigOp against master's: the same contract block, on the same argument
   op≈ : ∀ {A B} (si : SigOpInfo A B) {a a′} → W ⌊ A ⌋ a a′ →
-        P.ev δ (subst₂ (P.IR Γ) (sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si))) (sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si)))
+        ev δ (subst₂ (P.IR Γ) (sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si))) (sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si)))
                                 (P.SigOp (sig si))) a
           ≈[ W ⌊ B ⌋ ] evalᴰ fmt (callEnv cs ans) (M.SigOp si) a′
   op≈ {A} {B} si {a} {a′} w
@@ -255,14 +257,14 @@ In-layer {F} {G ⊗ᴵ H} (wf-Prod f g) {a = x , y} {a′ = x′ , y′} (w₁ ,
 
 -- a term moved along equal domains
 ev-subst-dom : ∀ {Γ} (δ : Env Γ) {X X′ Y} (e : X′ ≡ X) (c : P.IR Γ X Y) (a : ⟦ X′ ⟧)
-             → P.ev δ (subst (λ Z → P.IR Γ Z Y) (sym e) c) a ≡ P.ev δ c (subst ⟦_⟧ e a)
+             → ev δ (subst (λ Z → P.IR Γ Z Y) (sym e) c) a ≡ ev δ c (subst ⟦_⟧ e a)
 ev-subst-dom δ refl c a = refl
 
 module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) where
 
   -- ★ `In` against master's
   In≈ : ∀ {F} (wf : WellFormedFI F) {a a′} → W (⟦ F ⟧TI (μ-type F)) a a′ →
-        P.ev δ (subst (λ X → P.IR Γ X ⟪ μ-type F ⟫) (sym (⟪⟫-TI wf (μ-type F))) (P.In (lf F))) a
+        ev δ (subst (λ X → P.IR Γ X ⟪ μ-type F ⟫) (sym (⟪⟫-TI wf (μ-type F))) (P.In (lf F))) a
           ≈[ W (μ-type F) ] evalᴰ fmt (callEnv cs ans) (M.In wf) a′
   In≈ {F} wf {a} w rewrite ev-subst-dom δ (⟪⟫-TI wf (μ-type F)) (P.In (lf F)) a = ret≈R (wmu (In-layer wf w))
 
@@ -339,14 +341,14 @@ Out-layer {F} {G ⊗ᴵ H} (wf-Prod f g) {w = x , y} {w′ = x′ , y′} (r₁ 
 
 -- a term moved along equal codomains
 ev-subst-cod : ∀ {Γ} (δ : Env Γ) {X Y Y′} (e : Y′ ≡ Y) (c : P.IR Γ X Y) (a : ⟦ X ⟧)
-             → P.ev δ (subst (λ Z → P.IR Γ X Z) (sym e) c) a ≡ subst (λ Z → T∞ ⟦ Z ⟧) (sym e) (P.ev δ c a)
+             → ev δ (subst (λ Z → P.IR Γ X Z) (sym e) c) a ≡ subst (λ Z → T∞ ⟦ Z ⟧) (sym e) (ev δ c a)
 ev-subst-cod δ refl c a = refl
 
 module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) where
 
   -- ★ `out-μ` against master's
   out≈ : ∀ {F} (wf : WellFormedFI F) {a a′} → W (μ-type F) a a′ →
-         P.ev δ (subst (λ X → P.IR Γ ⟪ μ-type F ⟫ X) (sym (⟪⟫-TI wf (μ-type F))) (P.out-μ (lf F))) a
+         ev δ (subst (λ X → P.IR Γ ⟪ μ-type F ⟫ X) (sym (⟪⟫-TI wf (μ-type F))) (P.out-μ (lf F))) a
            ≈[ W (⟦ F ⟧TI (μ-type F)) ] evalᴰ fmt (callEnv cs ans) (M.out-μ wf) a′
   out≈ {F} wf {inμ w} (wmu r) rewrite ev-subst-cod δ (⟪⟫-TI wf (μ-type F)) (P.out-μ (lf F)) (inμ w) =
     ≈-subst (sym (⟪⟫-TI wf (μ-type F))) (ret≈R (Out-layer wf r))
@@ -411,21 +413,21 @@ _≈[_]_.blockR (embfmap≈ {S = S} {R} {f} {g} m {m′} p r) = go m (_≈[_]_.b
   go (halt o a)   ≈haltR     = ≈haltR
 
 -- a ν built from a layer: its one observation is the layer
-inν-W : ∀ {F l l′} → WLν F F l l′ → WNu F (P.inν l) (in-νᴵ l′)
+inν-W : ∀ {F l l′} → WLν F F l l′ → WNu F (inν l) (in-νᴵ l′)
 _≈[_]_.blockR (wout (inν-W r)) = ≈retR r
 
 module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) where
 
   -- ★ `Out` against master's
   Out≈ : ∀ {F} (wf : WellFormedFI F) {a a′} → W (ν-type F) a a′ →
-         P.ev δ (subst (λ X → P.IR Γ ⟪ ν-type F ⟫ X) (sym (⟪⟫-TI wf (ν-type F))) (P.Out (lf F))) a
+         ev δ (subst (λ X → P.IR Γ ⟪ ν-type F ⟫ X) (sym (⟪⟫-TI wf (ν-type F))) (P.Out (lf F))) a
            ≈[ W (⟦ F ⟧TI (ν-type F)) ] evalᴰ fmt (callEnv cs ans) (M.Out wf) a′
   Out≈ {F} wf {v} w rewrite ev-subst-cod δ (⟪⟫-TI wf (ν-type F)) (P.Out (lf F)) v =
     ≈-subst (sym (⟪⟫-TI wf (ν-type F))) (embfmap≈ (outν v) (wout w) (Outν-layer wf))
 
   -- ★ `in-ν` against master's
   inν≈ : ∀ {F} (wf : WellFormedFI F) {a a′} → W (⟦ F ⟧TI (ν-type F)) a a′ →
-         P.ev δ (subst (λ X → P.IR Γ X ⟪ ν-type F ⟫) (sym (⟪⟫-TI wf (ν-type F))) (P.in-ν (lf F))) a
+         ev δ (subst (λ X → P.IR Γ X ⟪ ν-type F ⟫) (sym (⟪⟫-TI wf (ν-type F))) (P.in-ν (lf F))) a
            ≈[ W (ν-type F) ] evalᴰ fmt (callEnv cs ans) (M.in-ν wf) a′
   inν≈ {F} wf {a} w rewrite ev-subst-dom δ (⟪⟫-TI wf (ν-type F)) (P.in-ν (lf F)) a = ret≈R (inν-W (Inν-layer wf w))
 
@@ -513,20 +515,20 @@ A-back {A} {G ⊗ᴵ H} (wf-Prod f g) {u = x , y} {u′ = x′ , y′} (r₁ , r
 
 -- the algebra's term moved along its layer's types
 ev-subst-alg : ∀ {Γ} (δ : Env Γ) {E X X′ A} (e : X ≡ X′) (c : P.IR Γ (E ⊗t X) A) (x : ⟦ E ⟧) (y : ⟦ X′ ⟧)
-             → P.ev δ (subst (λ Z → P.IR Γ (E ⊗t Z) A) e c) (x , y) ≡ P.ev δ c (x , subst ⟦_⟧ (sym e) y)
+             → ev δ (subst (λ Z → P.IR Γ (E ⊗t Z) A) e c) (x , y) ≡ ev δ c (x , subst ⟦_⟧ (sym e) y)
 ev-subst-alg δ refl c x y = refl
 
 module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) where
 
   module Fold {F} (wf : WellFormedFI F) {E A} (alg : M.IR (E * ⟦ F ⟧TI A) A) (a′ : P.IR Γ (⟪ E ⟫ ⊗t ⟪ ⟦ F ⟧TI A ⟫) ⟪ A ⟫)
-              (ih : ∀ {x x′} → W (E * ⟦ F ⟧TI A) x x′ → P.ev δ a′ x ≈[ W A ] evalᴰ fmt (callEnv cs ans) alg x′)
+              (ih : ∀ {x x′} → W (E * ⟦ F ⟧TI A) x x′ → ev δ a′ x ≈[ W A ] evalᴰ fmt (callEnv cs ans) alg x′)
               (e : ⟦ ⟪ E ⟫ ⟧) (e′ : ⟦ E ⟧ᴰᴵ) (we : W E e e′) where
 
     a″ : P.IR Γ (⟪ E ⟫ ⊗t LF∙ (lf F) ⟪ A ⟫) ⟪ A ⟫
     a″ = subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t X) ⟪ A ⟫) (⟪⟫-TI wf A) a′
 
     algC : FS (lf F) ⟦ ⟪ A ⟫ ⟧ → T∞ ⟦ ⟪ A ⟫ ⟧
-    algC y = P.ev δ a″ (e , coh⁻¹ (lf F) _ y)
+    algC y = ev δ a″ (e , coh⁻¹ (lf F) _ y)
 
     algM : Val.⟦ ⌈ F ⌉F ⟧F (T∞ ⟦ ⌈ A ⌉ ⟧ᴰ) → T∞ ⟦ ⌈ A ⌉ ⟧ᴰ
     algM = cata-ev-algᴰ fmt (callEnv cs ans) wf alg e′
@@ -571,9 +573,9 @@ module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A 
 
   -- ★ `Cata` against master's
   cata≈ : ∀ {F} (wf : WellFormedFI F) {E A} (alg : M.IR (E * ⟦ F ⟧TI A) A) a′ →
-          (∀ {x x′} → W (E * ⟦ F ⟧TI A) x x′ → P.ev δ a′ x ≈[ W A ] evalᴰ fmt (callEnv cs ans) alg x′) →
+          (∀ {x x′} → W (E * ⟦ F ⟧TI A) x x′ → ev δ a′ x ≈[ W A ] evalᴰ fmt (callEnv cs ans) alg x′) →
           ∀ {a b} → W (E * μ-type F) a b →
-          P.ev δ (P.Cata (lf F) (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t X) ⟪ A ⟫) (⟪⟫-TI wf A) a′)) a
+          ev δ (P.Cata (lf F) (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t X) ⟪ A ⟫) (⟪⟫-TI wf A) a′)) a
             ≈[ W A ] evalᴰ fmt (callEnv cs ans) (M.Cata wf alg) b
   cata≈ wf alg a′ ih {e , x} {e′ , x′} (we , wx) = Fold.cata-rel wf alg a′ ih e e′ we wx
 
@@ -641,14 +643,14 @@ subst-sym-subst refl x = refl
 
 -- a term moved forward along equal codomains
 ev-subst-cod⁺ : ∀ {Γ} (δ : Env Γ) {X Y Y′} (e : Y ≡ Y′) (c : P.IR Γ X Y) (a : ⟦ X ⟧)
-              → P.ev δ (subst (λ Z → P.IR Γ X Z) e c) a ≡ subst (λ Z → T∞ ⟦ Z ⟧) e (P.ev δ c a)
+              → ev δ (subst (λ Z → P.IR Γ X Z) e c) a ≡ subst (λ Z → T∞ ⟦ Z ⟧) e (ev δ c a)
 ev-subst-cod⁺ δ refl c a = refl
 
 module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A ⟧ᴰᴵ → T∞ ⟦ B ⟧ᴰᴵ) where
 
   module Unfold {F} (wf : WellFormedFI F) {E A} (c : M.IR (E * A) (⟦ F ⟧TI A)) (c′ : P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) ⟪ ⟦ F ⟧TI A ⟫)
                 (φ : P.BlkIR Γ (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′))
-                (ih : ∀ {x x′} → W (E * A) x x′ → P.ev δ c′ x ≈[ W (⟦ F ⟧TI A) ] evalᴰ fmt (callEnv cs ans) c x′)
+                (ih : ∀ {x x′} → W (E * A) x x′ → ev δ c′ x ≈[ W (⟦ F ⟧TI A) ] evalᴰ fmt (callEnv cs ans) c x′)
                 (e : ⟦ ⟪ E ⟫ ⟧) (e′ : ⟦ E ⟧ᴰᴵ) (we : W E e e′) where
 
     c″ : P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) (LF∙ (lf F) ⟪ A ⟫)
@@ -656,7 +658,7 @@ module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A 
 
     -- the two coalgebras, per seed
     cC : ⟦ ⟪ A ⟫ ⟧ → T (FS (lf F) ⟦ ⟪ A ⟫ ⟧)
-    cC a = fmapT (coh (lf F) ⟪ A ⟫) (P.evB δ φ (e , a))
+    cC a = fmapT (coh (lf F) ⟪ A ⟫) (evB δ φ (e , a))
 
     cM : ⟦ ⌈ A ⌉ ⟧ᴰ → T∞ (⟦ SF F ⟧SF ⟦ ⌈ A ⌉ ⟧ᴰ)
     cM a′ = fmap∞ (Val.coerce-μ-in ⌈ F ⌉F ⟦ ⌈ A ⌉ ⟧ᴰ)
@@ -666,8 +668,8 @@ module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A 
     -- a seed's coalgebra, against master's
     seed≈ : ∀ {a a′} → W A a a′ → emb (cC a) ≈[ WLS A F ] cM a′
     seed≈ {a} {a′} w =
-      fmapʳ (embfmap≈ (P.evB δ φ (e , a))
-               (≈-≈R (≈-sym (P.ev-coh δ φ (e , a)))
+      fmapʳ (embfmap≈ (evB δ φ (e , a))
+               (≈-≈R (≈-sym (ev-coh δ φ (e , a)))
                      (subst (λ m → m ≈[ _ ] evalᴰ fmt (callEnv cs ans) c (e′ , a′))
                             (sym (ev-subst-cod⁺ δ (⟪⟫-TI wf A) c′ (e , a)))
                             (≈-transport (⟪⟫-TI wf A) (ih (we , w)))))
@@ -695,9 +697,9 @@ module _ {Γ : Cx} (δ : Env Γ) (cs : CanonicalName → (A B : IRTy) → ⟦ A 
 
   -- ★ `Ana` against master's
   ana≈ : ∀ {F} (wf : WellFormedFI F) {E A} (c : M.IR (E * A) (⟦ F ⟧TI A)) c′ φ →
-         (∀ {x x′} → W (E * A) x x′ → P.ev δ c′ x ≈[ W (⟦ F ⟧TI A) ] evalᴰ fmt (callEnv cs ans) c x′) →
+         (∀ {x x′} → W (E * A) x x′ → ev δ c′ x ≈[ W (⟦ F ⟧TI A) ] evalᴰ fmt (callEnv cs ans) c x′) →
          ∀ {a b} → W (E * A) a b →
-         P.ev δ (P.Ana (lf F) (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′) φ) a
+         ev δ (P.Ana (lf F) (subst (λ X → P.IR Γ (⟪ E ⟫ ⊗t ⟪ A ⟫) X) (⟪⟫-TI wf A) c′) φ) a
            ≈[ W (ν-type F) ] evalᴰ fmt (callEnv cs ans) (M.Ana wf c) b
   ana≈ wf c c′ φ ih {e , a} {e′ , a′} (we , wa) = ret≈R (Unfold.ana-W wf c c′ φ ih e e′ we wa)
 

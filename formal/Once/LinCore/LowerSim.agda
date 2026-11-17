@@ -36,12 +36,14 @@ module Once.LinCore.LowerSim
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
-open import Once.LinCore.Image fmt ans bw
-open import Once.LinCore.Keys fmt ans bw
-open import Once.LinCore.Layout fmt ans bw
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
+open import Once.LinCore.Image fmt bw
+open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Words fmt ans bw
 
 module Sim {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where

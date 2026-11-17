@@ -31,10 +31,12 @@ module Once.LinCore.ImagePt
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Cfg)
-open import Once.LinCore.Image fmt ans bw
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Code fmt bw using (Sh; _∣_; Cfg)
+open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; _⟫_)
 

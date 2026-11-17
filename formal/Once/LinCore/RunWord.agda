@@ -37,16 +37,18 @@ module Once.LinCore.RunWord
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (MV; mone; Trace; ios; ios-++)
-open import Once.LinCore.Machine fmt ans bw using (Sh; Cfg; vw; []ᵉ; _∷ˢ_; []ˢ; _∥_)
-open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
+open import Once.LinCore.Events fmt ans bw using (ios; ios-++)
+open import Once.LinCore.Values fmt bw using (MV; mone; Trace)
+open import Once.LinCore.Code fmt bw using (Sh; Cfg; vw; []ᵉ; _∷ˢ_; []ˢ; _∥_)
+open import Once.LinCore.Image fmt bw using (Codeᴵ; halted)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; StepI)
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; _⟫_; start; loops; isLoop)
 open import Once.LinCore.HeldI fmt ans bw using (InvI; inv-stepI; start-invI)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
-open import Once.LinCore.Keys fmt ans bw
-open import Once.LinCore.Lower fmt ans bw
+open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.PointAt fmt ans bw using (module Ctl)
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 open import Once.LinCore.WordStep fmt ans bw using (module StepR)

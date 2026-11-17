@@ -27,13 +27,14 @@ open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
-import Once.LinCore.Pass
+import Once.LinCore.PassTr
 
 module Once.LinCore.LinkedCore (fmt : TargetNum) (ans : FFIAnswers) (bw : Base → ℕ) where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-module P = Once.LinCore.Pass fmt ans
-open import Once.LinCore.Keys fmt ans bw using (Got; ps; tmGot; defsGot; ops; univ)
+module P = Once.LinCore.PassTr fmt
+open import Once.LinCore.Keys fmt bw using (Got; ps; tmGot; defsGot; ops; univ)
 
 ------------------------------------------------------------------------
 -- 1. THE PASS IR'S OPS, and the core's are among them
@@ -131,7 +132,7 @@ open import Once.Contract using (ISig)
 open import Once.Denotation.Program using (Declared; Leaves; TeleLinked; IRFun; module IRFun)
 import Once.IR as M
 import Once.LinCore.FromIR
-module FromIR = Once.LinCore.FromIR fmt ans
+module FromIR = Once.LinCore.FromIR fmt
 
 module FromLinked (Σι : ISig) where
   Dc : Sig → Set

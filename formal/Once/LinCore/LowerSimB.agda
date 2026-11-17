@@ -26,11 +26,12 @@ module Once.LinCore.LowerSimB
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (MV; mpair)
-open import Once.LinCore.Machine fmt ans bw using (Stk; _∷ˢ_; Slots; _∥_)
-open import Once.LinCore.Keys fmt ans bw using (Univ)
-open import Once.LinCore.Layout fmt ans bw
+open import Once.LinCore.Values fmt bw using (MV; mpair)
+open import Once.LinCore.Code fmt bw using (Stk; _∷ˢ_; Slots; _∥_)
+open import Once.LinCore.Keys fmt bw using (Univ)
+open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
 
@@ -89,7 +90,7 @@ module SimB {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   -- and its three code words; `Input1` its address.
   ----------------------------------------------------------------------
 
-  open import Once.LinCore.Lower fmt ans bw using (tl; hdr)
+  open import Once.LinCore.Lower fmt bw using (tl; hdr)
   open import Once.CCC.Label using (LabelId)
   open import Once.CCC.Machine.Locations using (AtDynamic; AtStack)
   open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; HeapRef; module HeapLocation)

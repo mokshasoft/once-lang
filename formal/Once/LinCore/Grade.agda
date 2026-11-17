@@ -35,6 +35,7 @@ module Once.LinCore.Grade
   (fmt : TargetNum) (ans : FFIAnswers)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Bisim fmt ans
   using (_≈_; block≈; Bl; ≈ret; ≈call; ≈halt; ≈-refl; ≈-trans; ≈-blk; Bl-refl; >>=-cong; iter-cong)

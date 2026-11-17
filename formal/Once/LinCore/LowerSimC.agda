@@ -33,14 +33,15 @@ module Once.LinCore.LowerSimC
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (Id; serial)
-open import Once.LinCore.Keys fmt ans bw using (Univ)
-open import Once.LinCore.Layout fmt ans bw
+open import Once.LinCore.Values fmt bw using (Id; serial)
+open import Once.LinCore.Keys fmt bw using (Univ)
+open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
 open import Once.LinCore.LowerSimB fmt ans bw
-open import Once.LinCore.Lower fmt ans bw using (hdr)
+open import Once.LinCore.Lower fmt bw using (hdr)
 open import Once.LinCore.MoveCode using (mvSP)
 
 module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
@@ -181,8 +182,9 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   -- (every held cell is older than the fresh block), the pointer the top.
   ----------------------------------------------------------------------
 
-  open import Once.LinCore.Machine fmt ans bw using (Stk; _∷ˢ_; Slots; _∥_)
-  open import Once.LinCore.Events fmt ans bw using (MV; cnt)
+  open import Once.LinCore.Code fmt bw using (Stk; _∷ˢ_; Slots; _∥_)
+  open import Once.LinCore.Events fmt ans bw using (cnt)
+  open import Once.LinCore.Values fmt bw using (MV)
   open CfgW
   open import Data.Sum using (inj₁; inj₂)
 
@@ -231,11 +233,11 @@ module SimC {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
   -- the stack in its contents' place.
   ----------------------------------------------------------------------
 
-  open import Once.LinCore.Keys fmt ans bw using (module In; allK; tys; nus; obs; kc; kf; cty; DS)
+  open import Once.LinCore.Keys fmt bw using (module In; allK; tys; nus; obs; kc; kf; cty; DS)
   open In U using (inC; inF; inO)
-  open import Once.LinCore.Lower fmt ans bw using (tl; idx)
-  open import Once.LinCore.Image fmt ans bw using (kbody1; kbodyω; kobs; key-of; bsig)
-  open import Once.LinCore.Events fmt ans bw using (mfn; mnu; c1; cω; szc; szν)
+  open import Once.LinCore.Lower fmt bw using (tl; idx)
+  open import Once.LinCore.Image fmt bw using (kbody1; kbodyω; kobs; key-of; bsig)
+  open import Once.LinCore.Values fmt bw using (mfn; mnu; c1; cω; szc; szν)
   open import Data.List.Membership.Propositional using (_∈_)
 
   llam-sim : ∀ prog (fs : FlatState) (φ : Frame) {Γ} {ds : Defs Γ} {g X A B Es S} {b : Tm Γ One (X ⊗t A) B} {γ : Gd g b}

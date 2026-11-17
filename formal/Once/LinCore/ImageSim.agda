@@ -41,12 +41,15 @@ module Once.LinCore.ImageSim
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Temps fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_; fsz; Plain; PlainM; op-NoT)
+open import Once.LinCore.Machine fmt ans bw using (Plain; PlainM; op-NoT)
+open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_; fsz)
 open import Once.LinCore.Spends fmt ans bw using (rounds; roundsM)
-open import Once.LinCore.Image fmt ans bw
+open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw
 -- a ν is observed at the empty table (D423)
 open import Once.LinCore.ObsTable fmt ans bw using (TF; tf-id; tf-∘; tf-⊗; tf-case; tf-inl; tf-inr; tf-lul; tf-lul⁻; tf-drop; tf-lend; tf-bsnd; tf-bcopy; tf-bev; tf-unf; rt; obsT-tf; rt-obsT)

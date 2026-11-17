@@ -25,8 +25,10 @@ module Once.LinCore.ObsTable
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Machine fmt ans bw using (Plain)
 open import Data.Unit using (tt)
 open import Data.Product using (_,_)

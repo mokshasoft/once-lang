@@ -39,12 +39,13 @@ module Once.LinCore.PointAt
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_)
-open import Once.LinCore.Image fmt ans bw
-open import Once.LinCore.Keys fmt ans bw
-open import Once.LinCore.Layout fmt ans bw
-open import Once.LinCore.Lower fmt ans bw
+open import Once.LinCore.Code fmt bw using (Sh; _∣_)
+open import Once.LinCore.Image fmt bw
+open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Layout fmt bw
+open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp)
 open import Once.LinCore.LowAt fmt ans bw using (Inside; in-trans; in-l; in-r; in-∷; module At)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
@@ -77,7 +78,7 @@ module Ctl {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
            (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing) where
   open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
   open Program ds f using (U; blocks-in; start-in)
-  open ProgramRun ds f using (ncty)
+  open Program ds f using (ncty)
   open In U
   open Program′ ds f ldConst using (image; j₀)
   open Lowering U ncty ldConst

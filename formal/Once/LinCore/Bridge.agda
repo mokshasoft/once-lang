@@ -41,8 +41,9 @@ import Once.LinCore.Bisim
 
 module Once.LinCore.Bridge (fmt : TargetNum) (ans : FFIAnswers) where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open Once.LinCore.FromIR fmt ans using (⟪_⟫; lf; lfK; grade)
+open Once.LinCore.FromIR fmt using (⟪_⟫; lf; lfK; grade)
 open Once.LinCore.Bisim fmt ans using (_≈[_]_)
 
 -- master's polynomial of an IR functor

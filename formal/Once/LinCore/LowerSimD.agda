@@ -35,11 +35,12 @@ module Once.LinCore.LowerSimD
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (MV; minl; minr)
-open import Once.LinCore.Machine fmt ans bw using (Stk; _∷ˢ_; Slots; _∥_)
-open import Once.LinCore.Keys fmt ans bw using (Univ)
-open import Once.LinCore.Layout fmt ans bw
+open import Once.LinCore.Values fmt bw using (MV; minl; minr)
+open import Once.LinCore.Code fmt bw using (Stk; _∷ˢ_; Slots; _∥_)
+open import Once.LinCore.Keys fmt bw using (Univ)
+open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
 open import Once.LinCore.MoveCode using (mvSSd)
@@ -235,7 +236,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
                     (step-at fs₃ (h , f₃) (flat-tag-branch-not prog fs₂ L₁ (trans (tag-thru fs₂ _ refl lt) (cong tag-test e1))) st)) ,
             C′ , pc , keep-trans k₃ K , nx , hp , tp
 
-  open import Once.LinCore.Machine fmt ans bw using (see; vw)
+  open import Once.LinCore.Code fmt bw using (see; vw)
   open import Once.LinCore.Moves {FS} using (MovedS; m-pc; m-alloc; m-heap)
   open import Once.LinCore.MoveCode using (mvSS)
 
@@ -350,7 +351,7 @@ module SimD {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
 
   open import Once.CCC.Machine.SMCore using (AbstractInstr; store-at-slot)
   open import Once.LinCore.Moves {FS} using (store-step; store-same; store-other)
-  open import Once.LinCore.Events fmt ans bw using (mone; mbase)
+  open import Once.LinCore.Values fmt bw using (mone; mbase)
 
   lconst-sim : ∀ prog (fs : FlatState) (φ : Frame) {b Es S} {es : Slots Es} {os : Stk S} (v : ⟦ b ⟧b) (ld : AbstractInstr)
              → FlatMachine.flat-exec-instr {FS} ld prog fs

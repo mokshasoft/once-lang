@@ -38,15 +38,16 @@ module Once.LinCore.End
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Machine fmt ans bw using (Sh; Cfg; _∣_)
-open import Once.LinCore.Image fmt ans bw using (Codeᴵ; end; halted)
+open import Once.LinCore.Code fmt bw using (Sh; Cfg; _∣_)
+open import Once.LinCore.Image fmt bw using (Codeᴵ; end; halted)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ)
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; start)
 open import Once.LinCore.ImagePt fmt ans bw using (at)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
-open import Once.LinCore.Keys fmt ans bw using (module Program)
-open import Once.LinCore.Lower fmt ans bw using (module Program′)
+open import Once.LinCore.Keys fmt bw using (module Program)
+open import Once.LinCore.Lower fmt bw using (module Program′)
 open import Once.LinCore.PointAt fmt ans bw using (module Ctl)
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 open import Once.LinCore.NoCell fmt ans bw using (sub-nc; comp-nc; block-nc; allK-nt)

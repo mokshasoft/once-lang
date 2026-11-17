@@ -36,12 +36,14 @@ module Once.LinCore.Words
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Image fmt ans bw
-open import Once.LinCore.Keys fmt ans bw
-open import Once.LinCore.Layout fmt ans bw
-open import Once.LinCore.Lower fmt ans bw using (tl; idx; hdr)
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Image fmt bw
+open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Layout fmt bw
+open import Once.LinCore.Lower fmt bw using (tl; idx; hdr)
 
 module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
 
@@ -137,7 +139,7 @@ module Rel {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b →
   -- LAYER (3): A CONFIGURATION IN A FRAME. `sm` the frame's slots.
   ----------------------------------------------------------------------
 
-  open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
+  open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
   open import Data.Nat using (_≤_; _∸_)
 
   -- words at consecutive slots

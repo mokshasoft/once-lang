@@ -36,12 +36,14 @@ module Once.LinCore.ArgDecode
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (MV; er; mone; mpair; minl; minr; mbase)
-open import Once.LinCore.Keys fmt ans bw using (Univ)
-open import Once.LinCore.Layout fmt ans bw using (wsz)
+open import Once.LinCore.Events fmt ans bw using (er)
+open import Once.LinCore.Values fmt bw using (MV; mone; mpair; minl; minr; mbase)
+open import Once.LinCore.Keys fmt bw using (Univ)
+open import Once.LinCore.Layout fmt bw using (wsz)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
-open import Once.LinCore.Lower fmt ans bw using (flatB)
+open import Once.LinCore.Lower fmt bw using (flatB)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree)
 
 -- a base value's words: the machine's count is the image's

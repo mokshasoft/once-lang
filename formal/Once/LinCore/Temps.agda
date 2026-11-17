@@ -55,8 +55,10 @@ module Once.LinCore.Temps
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Values fmt bw
 
 ------------------------------------------------------------------------
 -- 1. ERASURE: a run without its temporaries is a run.

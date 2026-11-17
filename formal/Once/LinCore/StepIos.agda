@@ -29,12 +29,14 @@ module Once.LinCore.StepIos
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Cfg; _∣_)
-open import Once.LinCore.Image fmt ans bw using (Codeᴵ; _⨾_; prim)
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Code fmt bw using (Cfg; _∣_)
+open import Once.LinCore.Image fmt bw using (Codeᴵ; _⨾_; prim)
 open import Once.LinCore.ImageRun fmt ans bw
-open import Once.LinCore.Keys fmt ans bw using (Univ; module In; module Program)
+open import Once.LinCore.Keys fmt bw using (Univ; module In; module Program)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open import Once.LinCore.PointAt fmt ans bw using (module Ctl)
 open import Once.LinCore.StepKinds fmt ans bw using (NotOp; StraightC)

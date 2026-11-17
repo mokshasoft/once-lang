@@ -41,13 +41,15 @@ module Once.LinCore.CallStepH
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; Cfg; _∥_)
-open import Once.LinCore.Image fmt ans bw
-open import Once.LinCore.Keys fmt ans bw
-open import Once.LinCore.Layout fmt ans bw
-open import Once.LinCore.Lower fmt ans bw
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; Cfg; _∥_)
+open import Once.LinCore.Image fmt bw
+open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Layout fmt bw
+open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSimF fmt ans bw using (module SimF)
 open import Once.LinCore.ImagePt fmt ans bw using (whole)
@@ -90,7 +92,7 @@ module CallsH {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing)
               (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue FS) where
   open Program ds f using (U)
-  open ProgramRun ds f using (ncty)
+  open Program ds f using (ncty)
   open Program′ ds f ldConst using (image)
   open Lowering U ncty ldConst
   open ImgE {FS} ds f ldConst ld-nl using (image-fn)

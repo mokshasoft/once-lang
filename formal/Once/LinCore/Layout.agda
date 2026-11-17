@@ -24,17 +24,16 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_)
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
 
 module Once.LinCore.Layout
-  (fmt : TargetNum) (ans : FFIAnswers)
+  (fmt : TargetNum)
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_)
-open import Once.LinCore.Image fmt ans bw
+open import Once.LinCore.Core fmt
+open import Once.LinCore.Code fmt bw using (Sh; _∣_)
+open import Once.LinCore.Image fmt bw
 
 ------------------------------------------------------------------------
 -- 1. WORDS.

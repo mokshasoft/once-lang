@@ -63,19 +63,23 @@ private
   ans = fs-ffi Mach
   ι   = FrameSemantics.fs-interp Mach
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (MV; mone; Run; Trace; ios; Outcome; gives; stop; OpPath; er; mvF)
+open import Once.LinCore.Events fmt ans bw using (Run; ios; Outcome; gives; stop; OpPath; er)
+open import Once.LinCore.Values fmt bw using (MV; mone; Trace; mvF)
 import Once.LinCore.Events
-open import Once.LinCore.Machine fmt ans bw using (Plain; _∣_; Sh; Cfg)
+open import Once.LinCore.Machine fmt ans bw using (Plain)
+open import Once.LinCore.Code fmt bw using (_∣_; Sh; Cfg)
 open import Once.LinCore.Total fmt ans bw using (World; exec; Ran; module Ran)
-open import Once.LinCore.Pass fmt ans using (Prog; IR; ⟦_⟧P; ev; trP; tr; pass-okᶠ; pass-okP)
+open import Once.LinCore.Pass fmt ans using (⟦_⟧P; ev; pass-okᶠ; pass-okP)
+open import Once.LinCore.PassTr fmt using (Prog; IR; trP; tr)
 import Once.LinCore.BudgetSound
 import Once.LinCore.AgreeRun
 import Once.LinCore.OpMachine
 module AgreeRun = Once.LinCore.AgreeRun fmt ans bw
 open import Once.LinCore.Total fmt ans bw using (WTr)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree)
-open import Once.LinCore.Keys fmt ans bw using (module Program; ops; ps; defsGot)
+open import Once.LinCore.Keys fmt bw using (module Program; ops; ps; defsGot)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Denotation.Program using (Declared-at)
@@ -83,11 +87,11 @@ open import Once.SigOp.Info using (module SigOpInfo)
 open import Once.LinCore.Spends fmt ans bw using (module Budget; UnCut; CutsIn; rounds)
 open import Once.LinCore.Total fmt ans bw using (CutOp)
 module BudgetSound = Once.LinCore.BudgetSound fmt ans bw
-open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
+open import Once.LinCore.Image fmt bw using (Codeᴵ; halted)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ)
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; start; image-noleak; image-halts; image-cut; loops)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
-open import Once.LinCore.Lower fmt ans bw using (module Program′)
+open import Once.LinCore.Lower fmt bw using (module Program′)
 open import Once.LinCore.PointAt fmt ans bw using (module Ctl)
 open import Once.LinCore.StepOp fmt ans bw using (evsOf; ioEvent)
 open import Once.LinCore.RunWord fmt ans bw using (module RunW)
@@ -99,7 +103,7 @@ module BP = Once.LinCore.BridgeProof fmt ans
 open import Once.LinCore.Casts fmt ans using (casts)
 open import Once.LinCore.Table fmt ans using (env-ok)
 open import Once.LinCore.RunBisim fmt ans using (run-≈)
-module FromIR = Once.LinCore.FromIR fmt ans
+module FromIR = Once.LinCore.FromIR fmt
 module LinkedCore = Once.LinCore.LinkedCore fmt ans bw
 module RunOps = Once.LinCore.RunOps fmt ans bw
 

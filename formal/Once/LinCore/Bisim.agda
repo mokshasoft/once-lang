@@ -31,6 +31,7 @@ module Once.LinCore.Bisim
   (fmt : TargetNum) (ans : FFIAnswers)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 
 ------------------------------------------------------------------------

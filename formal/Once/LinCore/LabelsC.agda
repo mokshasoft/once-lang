@@ -39,12 +39,13 @@ module Once.LinCore.LabelsC
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_)
-open import Once.LinCore.Image fmt ans bw
-open import Once.LinCore.Keys fmt ans bw
-open import Once.LinCore.Layout fmt ans bw
-open import Once.LinCore.Lower fmt ans bw
+open import Once.LinCore.Code fmt bw using (Sh; _∣_)
+open import Once.LinCore.Image fmt bw
+open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Layout fmt bw
+open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Labels fmt ans bw
 
 module LabsC {FS : FrameSemantics} where

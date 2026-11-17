@@ -34,11 +34,12 @@ module Once.LinCore.TrampAt
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Image fmt ans bw
-open import Once.LinCore.Keys fmt ans bw
-open import Once.LinCore.Layout fmt ans bw
-open import Once.LinCore.Lower fmt ans bw
+open import Once.LinCore.Image fmt bw
+open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Layout fmt bw
+open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; Pt; at; disp; whole; next; left; right; eleft; eright; body)
 open import Once.LinCore.LowAt fmt ans bw using (Inside; in-trans; in-r; in-∷)
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
@@ -208,7 +209,7 @@ module TrImg {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing) where
   open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
   open Program ds f using (U; blocks-in)
-  open ProgramRun ds f using (ncty)
+  open Program ds f using (ncty)
   open Program′ ds f ldConst using (image)
   open Lowering U ncty ldConst using (lowBlock; tramp)
   open ImgE {FS} ds f ldConst ld-nl using (image-at)

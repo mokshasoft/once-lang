@@ -26,6 +26,7 @@ private
   fmt = fs-numerics Mach
   ans = fs-ffi Mach
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open FlatMachine {Mach} using (FlatState; floc; fpc; flat-exec-instr)

@@ -42,11 +42,14 @@ module Once.LinCore.HeldI
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_; op-NoT; fsz)
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Machine fmt ans bw using (op-NoT)
+open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_; fsz)
 open import Once.LinCore.Held fmt ans bw using (own; held; Owned; Within)
-open import Once.LinCore.Image fmt ans bw
+open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; _⟫_; start)
 

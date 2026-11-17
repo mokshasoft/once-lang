@@ -36,18 +36,17 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
 
 module Once.LinCore.Keys
-  (fmt : TargetNum) (ans : FFIAnswers)
+  (fmt : TargetNum)
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_)
-open import Once.LinCore.Image fmt ans bw
+open import Once.LinCore.Core fmt
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Code fmt bw using (Sh; _∣_)
+open import Once.LinCore.Image fmt bw
 
 ------------------------------------------------------------------------
 -- 0. Lists.
@@ -608,6 +607,10 @@ module Program {Γ} (ds : Defs Γ) (f : LTm Γ One One) where
   -- a ν's coalgebra type is among them
   ns-coalg : ∀ {F S} → (F , S) ∈ nus U → Coalg F S ∈ tys U
   ns-coalg n = ∈-++⁺ʳ (cmap subs (ts g₀)) (∈-cmap⁺ (ns g₀) n (there (here refl)))
+
+  -- …and so is its cell's (the coalgebra and the seed: what the lowering lays out)
+  ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U
+  ncty n = ∈-++⁺ʳ (cmap subs (ts g₀)) (∈-cmap⁺ (ns g₀) n (here refl))
 
   -- ★ EVERY BLOCK OF THE UNIVERSE IS INSIDE IT
   blocks-in : ∀ {κ} → κ ∈ allK U → BIn κ

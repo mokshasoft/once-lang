@@ -23,9 +23,9 @@ module Once.LinCore.StepEpop
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.Events fmt ans bw using (MV)
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; Slots; Cfg; _∥_; vw)
-open import Once.LinCore.Image fmt ans bw using (Codeᴵ; _⨾_; epop)
+open import Once.LinCore.Values fmt bw using (MV)
+open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; Slots; Cfg; _∥_; vw)
+open import Once.LinCore.Image fmt bw using (Codeᴵ; _⨾_; epop)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; StepI; i-epop)
 
 module _ {ℓ : Level} {T : Sh} where

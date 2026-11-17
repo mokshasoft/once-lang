@@ -47,11 +47,12 @@ module Once.LinCore.ImageGuard
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Image fmt ans bw
-open import Once.LinCore.Keys fmt ans bw
-open import Once.LinCore.Layout fmt ans bw
-open import Once.LinCore.Lower fmt ans bw
+open import Once.LinCore.Image fmt bw
+open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Layout fmt bw
+open import Once.LinCore.Lower fmt bw
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open import Once.LinCore.LabelsC fmt ans bw using (module LabsC)
 
@@ -227,7 +228,7 @@ module G {FS : FrameSemantics} where
              (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {FS} (ldConst v) ≡ nothing) where
     open import Once.LinCore.KeysRun fmt ans bw using (module ProgramRun)
     open Program ds f using (U; blocks-in; start-in)
-    open ProgramRun ds f using (ncty)
+    open Program ds f using (ncty)
     open Program′ ds f ldConst
     open L U ncty ldConst ld-nl
 

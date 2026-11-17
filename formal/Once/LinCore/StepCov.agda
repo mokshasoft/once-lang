@@ -21,9 +21,10 @@ module Once.LinCore.StepCov
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Machine fmt ans bw using (Sh)
-open import Once.LinCore.Image fmt ans bw using (Codeᴵ)
+open import Once.LinCore.Code fmt bw using (Sh)
+open import Once.LinCore.Image fmt bw using (Codeᴵ)
 open import Once.LinCore.ImageRun fmt ans bw
 open import Once.LinCore.StepKinds fmt ans bw using (CoveredC; PrimCov; pc-op; pc-loc)
 

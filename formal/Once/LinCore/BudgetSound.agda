@@ -43,8 +43,10 @@ module Once.LinCore.BudgetSound
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Bisim fmt ans using (_≈_; Bl; block≈; ≈ret; ≈step; ≈call; ≈halt)
 open import Once.LinCore.Total fmt ans bw using (World; WTr)
 open import Once.LinCore.Spends fmt ans bw using (UnCut; UnCutM)

@@ -40,12 +40,13 @@ module Once.LinCore.AnsWrite
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (MV; mvF)
-open import Once.LinCore.Keys fmt ans bw using (Univ)
-open import Once.LinCore.Layout fmt ans bw using (wsz)
+open import Once.LinCore.Values fmt bw using (MV; mvF)
+open import Once.LinCore.Keys fmt bw using (Univ)
+open import Once.LinCore.Layout fmt bw using (wsz)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
-open import Once.LinCore.Lower fmt ans bw using (flatB)
+open import Once.LinCore.Lower fmt bw using (flatB)
 open import Once.LinCore.ArgDecode fmt ans bw using (tsize-wsz)
 
 -- writing a value in place touches nothing else (no image words needed)

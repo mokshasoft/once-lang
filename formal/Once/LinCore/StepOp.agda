@@ -40,15 +40,17 @@ module Once.LinCore.StepOp
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (MV; Trace; Io; io-call; io-halt; ios)
+open import Once.LinCore.Events fmt ans bw using (Io; io-call; io-halt; ios)
+open import Once.LinCore.Values fmt bw using (MV; Trace)
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.IR.Semantics.Trace using (callEvent; haltEvent)
-open import Once.LinCore.Machine fmt ans bw using (Sh)
-open import Once.LinCore.Image fmt ans bw using (Codeᴵ)
+open import Once.LinCore.Code fmt bw using (Sh)
+open import Once.LinCore.Image fmt bw using (Codeᴵ)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; StepI; i-prim; i-opend)
-open import Once.LinCore.Keys fmt ans bw using (Univ)
-open import Once.LinCore.Lower fmt ans bw using (cmpOf; opSig; inMem)
+open import Once.LinCore.Keys fmt bw using (Univ)
+open import Once.LinCore.Lower fmt bw using (cmpOf; opSig; inMem)
 open import Once.LinCore.Words fmt ans bw using (module Rel)
 
 -- ★ D427: what a trace shows the machine's log: its calls and halts, each the

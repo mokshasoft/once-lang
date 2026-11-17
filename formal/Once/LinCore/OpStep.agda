@@ -47,14 +47,15 @@ module Once.LinCore.OpStep
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw using (MV)
-open import Once.LinCore.Machine fmt ans bw using (Stk; _∷ˢ_; Slots; _∥_; _∣_)
-open import Once.LinCore.Keys fmt ans bw using (Univ; nus; tys; cty)
-open import Once.LinCore.Layout fmt ans bw
+open import Once.LinCore.Values fmt bw using (MV)
+open import Once.LinCore.Code fmt bw using (Stk; _∷ˢ_; Slots; _∥_; _∣_)
+open import Once.LinCore.Keys fmt bw using (Univ; nus; tys; cty)
+open import Once.LinCore.Layout fmt bw
 open import Once.LinCore.Words fmt ans bw
 open import Once.LinCore.LowerSim fmt ans bw
-open import Once.LinCore.Lower fmt ans bw using (module Lowering; flatB; cmpOf; opSig; inMem)
+open import Once.LinCore.Lower fmt bw using (module Lowering; flatB; cmpOf; opSig; inMem)
 open import Once.LinCore.AnsWrite fmt ans bw using (module Keep)
 open import Once.LinCore.ArgDecode fmt ans bw using (tsize-wsz)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -564,7 +565,7 @@ module OpSim {FS : FrameSemantics} (U : Univ)
 -- ★ AT A ROOT'S PATH.
 ------------------------------------------------------------------------
 
-open import Once.LinCore.Image fmt ans bw using (Codeᴵ; _⨾_; prim)
+open import Once.LinCore.Image fmt bw using (Codeᴵ; _⨾_; prim)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; next)
 open import Once.LinCore.LowAt fmt ans bw using (Inside; module At)
 open import Once.LinCore.StepLocal fmt ans bw using (module Loc)

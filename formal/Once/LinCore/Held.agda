@@ -44,9 +44,12 @@ module Once.LinCore.Held
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Machine fmt ans bw
+open import Once.LinCore.Code fmt bw
 
 ------------------------------------------------------------------------
 -- 1. WHAT A CONFIGURATION HOLDS.

@@ -35,13 +35,15 @@ module Once.LinCore.LocalStep
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; _∷ˢ_; Slots; Cfg; _∥_)
-open import Once.LinCore.Image fmt ans bw
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; _∷ˢ_; Slots; Cfg; _∥_)
+open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw
-open import Once.LinCore.Keys fmt ans bw
-open import Once.LinCore.Layout fmt ans bw using (Frame; frameOf; budget)
+open import Once.LinCore.Keys fmt bw
+open import Once.LinCore.Layout fmt bw using (Frame; frameOf; budget)
 open import Once.LinCore.ImagePt fmt ans bw using (Sub; next; left; right; eleft; eright)
 open import Once.LinCore.LowAt fmt ans bw using (Inside; module At)
 open import Once.LinCore.StepLocal fmt ans bw using (module Loc)

@@ -39,8 +39,10 @@ import Once.LinCore.Bisim
 
 module Once.LinCore.Table (fmt : TargetNum) (ans : FFIAnswers) where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
-open Once.LinCore.FromIR fmt ans
+open Once.LinCore.FromIR fmt
+open import Once.LinCore.Pass fmt ans using (ev-coh; ⟦_⟧P; evG; pass-ok; pass-okP)
 open Once.LinCore.Bridge fmt ans using (W)
 module BP = Once.LinCore.BridgeProof fmt ans
 open Once.LinCore.Casts fmt ans using (casts)
@@ -59,22 +61,22 @@ private
 
 -- the entry's body, at its grade, against master's
 body≈ : ∀ {Γ} (P : P.Prog Γ) (rs : Resolver Γ) (es : List IRFun)
-        (ok : BP.EnvOK P.⟦ P ⟧P (tableCalls fmt ans es) rs)
+        (ok : BP.EnvOK ⟦ P ⟧P (tableCalls fmt ans es) rs)
         (e : IRFun) {b : P.IR Γ ⟪ fdom e ⟫ ⟪ fcod e ⟫} → Tr rs (fbody e) b
       → ∀ g (γ : P.GdIR Γ g b) {a a′} → W (fdom e) a a′
-      → up g (P.evG P.⟦ P ⟧P g b γ a) ≈[ W (fcod e) ] evalᴰ fmt (callEnv (tableCalls fmt ans es) ans) (fbody e) a′
+      → up g (evG ⟦ P ⟧P g b γ a) ≈[ W (fcod e) ] evalᴰ fmt (callEnv (tableCalls fmt ans es) ans) (fbody e) a′
 body≈ P rs es ok e t act γ {a} w =
-  ≈-≈R (≈-sym (P.ev-coh P.⟦ P ⟧P γ a)) (BP.bridge P.⟦ P ⟧P (tableCalls fmt ans es) (casts P.⟦ P ⟧P (tableCalls fmt ans es)) ok t w)
-body≈ P rs es ok e t eff γ w = BP.bridge P.⟦ P ⟧P (tableCalls fmt ans es) (casts P.⟦ P ⟧P (tableCalls fmt ans es)) ok t w
+  ≈-≈R (≈-sym (ev-coh ⟦ P ⟧P γ a)) (BP.bridge ⟦ P ⟧P (tableCalls fmt ans es) (casts ⟦ P ⟧P (tableCalls fmt ans es)) ok t w)
+body≈ P rs es ok e t eff γ w = BP.bridge ⟦ P ⟧P (tableCalls fmt ans es) (casts ⟦ P ⟧P (tableCalls fmt ans es)) ok t w
 
 -- ★ one more entry: its label against master's lookup at it
 module _ {Γ} (P : P.Prog Γ) (rs : Resolver Γ) (es : List IRFun)
-         (ok : BP.EnvOK P.⟦ P ⟧P (tableCalls fmt ans es) rs)
+         (ok : BP.EnvOK ⟦ P ⟧P (tableCalls fmt ans es) rs)
          (e : IRFun) {b : P.IR Γ ⟪ fdom e ⟫ ⟪ fcod e ⟫} (t : Tr rs (fbody e) b) (g : Gr) (γ : P.GdIR Γ g b) where
 
   private
     δ′ : Env (Γ ▸ sg once g One ⟪ fdom e ⟫ ⟪ fcod e ⟫)
-    δ′ = P.⟦ P P.▹ b ∣ γ ⟧P
+    δ′ = ⟦ P P.▹ b ∣ γ ⟧P
 
     weak-hit : ∀ {f A B g′ l} {p′ : (Γ ▸ sg once g One ⟪ fdom e ⟫ ⟪ fcod e ⟫) ∋[ l ] sg once g′ One ⟪ A ⟫ ⟪ B ⟫}
              → Data.Maybe.map weaken (rs f A B) ≡ just (hit g′ p′) → ∀ {a a′} → W A a a′
@@ -116,7 +118,7 @@ module _ {Γ} (P : P.Prog Γ) (rs : Resolver Γ) (es : List IRFun)
 
 -- ★ THE TABLE: its translation's labels against master's lookup
 EnvOKT : TrProg → List IRFun → Set
-EnvOKT t tbl = BP.EnvOK P.⟦ prog t ⟧P (tableCalls fmt ans tbl) (rs t)
+EnvOKT t tbl = BP.EnvOK ⟦ prog t ⟧P (tableCalls fmt ans tbl) (rs t)
 
 env-ok : ∀ (tbl : List IRFun) {t} → trTable tbl ≡ just t → EnvOKT t tbl
 env-ok [] refl = record { hit≈ = λ () ; miss≡ = λ _ _ → refl }
@@ -137,6 +139,6 @@ env-ok (e ∷ es) eq with bind-just {m = trTable es} eq
 compile-ok : ∀ (tbl : List IRFun) (main : M.IR Unit Unit) {t c} → trTable tbl ≡ just t → trI (rs t) main ≡ just c
            → Lᶜ ⟦ P.trP (prog t) ⟧D (P.tr c) tt tt ≈[ _ ] evalᴰ fmt (callEnv (tableCalls fmt ans tbl) ans) main tt
 compile-ok tbl main {t} {c} et ec =
-  ≈R-∘ (P.pass-ok (P.pass-okP (prog t)) c {tt} {tt} tt)
-       (BP.bridge P.⟦ prog t ⟧P (tableCalls fmt ans tbl) (casts P.⟦ prog t ⟧P (tableCalls fmt ans tbl))
+  ≈R-∘ (pass-ok (pass-okP (prog t)) c {tt} {tt} tt)
+       (BP.bridge ⟦ prog t ⟧P (tableCalls fmt ans tbl) (casts ⟦ prog t ⟧P (tableCalls fmt ans tbl))
                   (env-ok tbl et) (trI-Tr (rs t) main ec) tt)

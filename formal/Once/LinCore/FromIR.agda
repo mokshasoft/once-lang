@@ -21,7 +21,6 @@
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Relation.Binary.PropositionalEquality using (cong; cong₂)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.Spec.Grade using (Purity; fin; eff)
 open import Once.IRTy
   using (IRTy; IRFunctor; K; Id; Unit; Void; _*_; _+_; _⇛[_]_; μ-type; ν-type; Int; Float;
@@ -49,12 +48,12 @@ import Once.Spec.Word as OnceWord
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo; mk-info'; haltsV)
 open import Once.Denotation.Program using (IRFun; module IRFun)
 open IRFun using (fname; fdom; fcod; fbody)
-import Once.LinCore.Pass
+import Once.LinCore.PassTr
 
-module Once.LinCore.FromIR (fmt : TargetNum) (ans : FFIAnswers) where
+module Once.LinCore.FromIR (fmt : TargetNum) where
 
-open import Once.LinCore.NbEPLinCore fmt ans
-module P = Once.LinCore.Pass fmt ans
+open import Once.LinCore.Core fmt
+module P = Once.LinCore.PassTr fmt
 
 ------------------------------------------------------------------------
 -- 1. THE TYPES.

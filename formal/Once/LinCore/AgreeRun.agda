@@ -39,15 +39,17 @@ module Once.LinCore.AgreeRun
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; Cfg)
-open import Once.LinCore.Image fmt ans bw using (Codeᴵ; halted)
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Code fmt bw using (Sh; Cfg)
+open import Once.LinCore.Image fmt bw using (Codeᴵ; halted)
 open import Once.LinCore.ImageRun fmt ans bw
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; _⟫_)
 open import Once.LinCore.Total fmt ans bw using (World; WTr)
 open import Once.LinCore.StepOp fmt ans bw using (module Agree; evsOf; ioEvent)
-open import Once.LinCore.Keys fmt ans bw using (Univ; ops)
+open import Once.LinCore.Keys fmt bw using (Univ; ops)
 open import Once.LinCore.StepIos fmt ans bw using (module IosG)
 open import Once.LinCore.Global fmt ans bw using (module Relate)
 import Once.LinCore.BudgetSound
@@ -139,7 +141,7 @@ mutual
 ------------------------------------------------------------------------
 
 open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
-open import Once.LinCore.Keys fmt ans bw using (module Program)
+open import Once.LinCore.Keys fmt bw using (module Program)
 open import Once.LinCore.RunWord fmt ans bw using (module RunW)
 open import Function using (case_of_)
 

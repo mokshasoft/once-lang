@@ -31,10 +31,12 @@ module Once.LinCore.FreshI
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; Cfg; _∥_)
-open import Once.LinCore.Keys fmt ans bw using (Univ)
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Code fmt bw using (Sh; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; Cfg; _∥_)
+open import Once.LinCore.Keys fmt bw using (Univ)
 open import Once.LinCore.Held fmt ans bw using (own; held; Owned; Within)
 open import Once.LinCore.ImageRun fmt ans bw using (Ret; []ʳ; frm; _∷ⁱ_)
 open import Once.LinCore.HeldI fmt ans bw using (InvI; OwnR; EnvR; Sees′; SeesR; envR≤)

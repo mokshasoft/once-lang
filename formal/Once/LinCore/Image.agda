@@ -33,17 +33,16 @@ open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; Σ; _,_)
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
 
 module Once.LinCore.Image
-  (fmt : TargetNum) (ans : FFIAnswers)
+  (fmt : TargetNum)
   (bw : Base → ℕ)
   where
 
-open import Once.LinCore.NbEPLinCore fmt ans
-open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
+open import Once.LinCore.Core fmt
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
 
 ------------------------------------------------------------------------
 -- 1. BLOCKS, NAMED BY WHAT THEY RUN.

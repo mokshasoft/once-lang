@@ -36,13 +36,15 @@ module Once.LinCore.KeysRun
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
-open import Once.LinCore.Machine fmt ans bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
-open import Once.LinCore.Image fmt ans bw
+open import Once.LinCore.Values fmt bw
+open import Once.LinCore.Code fmt bw using (Sh; _∣_; Stk; []ˢ; _∷ˢ_; Slots; []ᵉ; vw; ln; see; Cfg; _∥_)
+open import Once.LinCore.Image fmt bw
 open import Once.LinCore.ImageRun fmt ans bw
 open import Once.LinCore.ImageSim fmt ans bw using (StepsI; done; _⟫_; start)
-open import Once.LinCore.Keys fmt ans bw
+open import Once.LinCore.Keys fmt bw
 
 module Keep (U : Univ) where
   open In U
@@ -240,9 +242,6 @@ module Keep (U : Univ) where
 module ProgramRun {Γ} (ds : Defs Γ) (f : LTm Γ One One) where
   open Program ds f
   open Keep U public
-
-  ncty : ∀ {F S} → (F , S) ∈ nus U → cty (F , S) ∈ tys U
-  ncty n = ∈-++⁺ʳ (cmap subs (ts g₀)) (∈-cmap⁺ (ns g₀) n (here refl))
 
   open Steps blocks-in ncty public
 

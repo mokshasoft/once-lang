@@ -31,10 +31,13 @@ module Once.LinCore.Whole
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Values fmt bw
 open import Once.LinCore.Total fmt ans bw
 open import Once.LinCore.Pass fmt ans
+open import Once.LinCore.PassTr fmt
 open import Once.LinCore.Bisim fmt ans using (block≈)
 
 module _ (W : World) where

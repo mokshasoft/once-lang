@@ -27,7 +27,7 @@ open import Once.Denotation.Approx using (Ap; approx; approxBlock)
 module Once.LinCore.RunBisim (fmt : TargetNum) (ans : FFIAnswers) where
 
 open import Once.LinCore.Bisim fmt ans using (_≈[_]_; BlR; blockR; ≈retR; ≈stepR; ≈callR; ≈haltR)
-open import Once.LinCore.NbEPLinCore fmt ans using (block)
+open import Once.LinCore.Core fmt using (block)
 
 module _ (ι : Interp) where
   private

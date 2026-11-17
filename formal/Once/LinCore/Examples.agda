@@ -76,14 +76,18 @@ bw : Fl.Base → ℕ
 bw Fl.int   = 1
 bw Fl.float = 1
 
+open import Once.LinCore.Core fmt₀
 open import Once.LinCore.NbEPLinCore fmt₀ ans₀
 open import Once.LinCore.Events fmt₀ ans₀ bw
+open import Once.LinCore.Values fmt₀ bw
 open import Once.LinCore.Act fmt₀ ans₀ bw
 open import Once.LinCore.Temps fmt₀ ans₀ bw
 open import Once.LinCore.Total fmt₀ ans₀ bw
-open import Once.LinCore.Pass fmt₀ ans₀ renaming (Out to Outν)
+open import Once.LinCore.PassTr fmt₀ renaming (Out to Outν)
+open import Once.LinCore.Pass fmt₀ ans₀
 open import Once.LinCore.Whole fmt₀ ans₀ bw
 open import Once.LinCore.Machine fmt₀ ans₀ bw
+open import Once.LinCore.Code fmt₀ bw
 open import Once.LinCore.Held fmt₀ ans₀ bw
 module AR = Once.LinCore.AllocRun fmt₀ ans₀ bw
 

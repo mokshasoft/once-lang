@@ -38,8 +38,10 @@ module Once.LinCore.Act
   (bw : Base → ℕ)
   where
 
+open import Once.LinCore.Core fmt
 open import Once.LinCore.NbEPLinCore fmt ans
 open import Once.LinCore.Events fmt ans bw
+open import Once.LinCore.Values fmt bw
 
 
 data Loop {Γ : Cx} (ds : Defs Γ) {E A B : LTy} (round : Tm Γ E A (B ⊕t A)) (e : MV E)
