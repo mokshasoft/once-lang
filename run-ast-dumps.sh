@@ -15,7 +15,7 @@
 #
 #   ./run-ast-dumps.sh              # master and the current branch
 #   ./run-ast-dumps.sh master       # one ref
-#   HEAP=16G ./run-ast-dumps.sh     # more heap if a module still does not fit
+#   HEAP=8G ./run-ast-dumps.sh      # more heap if a module still does not fit
 #   PROGRESS=30 ./run-ast-dumps.sh  # a progress line every 30 s (default 60; 0 = off)
 #
 # Used by MERGE.md §6 (reachability) and plan 0.92/D277 (apex-live scope).
@@ -67,22 +67,15 @@ RUNS_SLUG="${RUNS_SLUG:-runs}"
 # inviting the kernel OOM killer to take the whole session down -- that is what
 # happened on the first attempt at this run.
 #
-# COMPACT switches the old generation to a compacting collector once live data
-# passes N% of the cap. This matters more than the cap itself: the default
-# copying collector needs roughly twice the live set during a collection, so a
-# module with 2.6G live wants ~5.3G of headroom and blows a 5G cap even though
-# it is nowhere near 5G of actual data. Compacting sooner (a lower N) trades
-# speed for a markedly lower peak.
+# COMPACT picks the old generation's collector. The default copying collector
+# needs room for a second copy of the live data during a major collection; `-c`
+# compacts in place instead. Plan 0.152 (2026-11-17) measured the dump's live
+# data at ~3 GB whatever the number of modules checked in the process, and
+# Once.Metatheory.Laws.Combinators stale: 6G/-c20 runs out of heap with 3.9 GB
+# in use, 6G/-c passes in the same time (275 s). Hence 6G with -c.
 #
-# Known offenders: Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (~2.64G
-# residency; exhausts 5G/-c40) and, since plan 0.151 (2026-11-17),
-# Once.Metatheory.Laws.Combinators, which exhausts 6G/-c20 on its own: the dump
-# holds every interface of the closure in one process. The default is therefore
-# 12G with -c20. On a machine with less RAM than that the cap is reached through
-# swap: slower, but the run completes instead of giving up.
-#
-HEAP="${HEAP:-12G}"
-COMPACT="${COMPACT:--c20}"
+HEAP="${HEAP:-6G}"
+COMPACT="${COMPACT:--c}"
 ALLOC="${ALLOC:-16m}"
 RTS_OPTS=(-M"$HEAP" "$COMPACT" -A"$ALLOC" -s)
 
@@ -274,7 +267,7 @@ run_ref() {
         if [ -n "$culprit" ]; then
           say "  giving up: $culprit does not fit in $HEAP with $COMPACT."
           say "  retry that ref alone with more headroom, e.g.:"
-          say "    HEAP=16G COMPACT=-c10 $0 $REF_LABEL"
+          say "    HEAP=8G $0 $REF_LABEL"
         else
           say "  giving up; last lines of $log:"
           tail -20 "$log" | sed 's/^/    /'
