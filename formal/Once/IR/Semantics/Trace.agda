@@ -31,19 +31,16 @@
 
 module Once.IR.Semantics.Trace where
 
-open import Data.Nat using (ℕ; zero; suc; _∸_; _≤_; _<_; z≤n; s≤s)
+open import Data.Nat using (ℕ; suc; _≤_; _<_)
 open import Once.Spec.Type using (Base; b-Unit; ∅ₖ)
-open import Data.Nat.Properties using (0∸n≡0)
 open import Data.List using (List; []; _∷_; _++_; length; take; [_])
-open import Data.List.Properties using (++-assoc; ++-identityʳ)
-open import Data.Bool using (Bool)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
-open import Once.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stopped; rel-returns)
+open import Once.Res using (Res; stopped; returns)
 open import Once.Spec.Type using (Type)
 open import Once.Type.Core using (isUnit?)
 import Once.Type.Core as SpecTy

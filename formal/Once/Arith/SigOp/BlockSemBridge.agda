@@ -24,7 +24,6 @@ module Once.Arith.SigOp.BlockSemBridge where
 open import Data.Unit using (tt)
 open import Data.Product using (_,_)
 open import Data.List using ([]; _∷_)
-open import Data.Maybe using () renaming (map to mapMaybe)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym)
 
 open import Once.Arith.Machine.Shape

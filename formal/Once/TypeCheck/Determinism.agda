@@ -26,7 +26,6 @@ module Once.TypeCheck.Determinism where
 open import Once.Spec.Type using (Ty)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
-open import Once.Spec.Type using (Type)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult)

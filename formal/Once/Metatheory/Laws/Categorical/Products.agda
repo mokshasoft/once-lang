@@ -15,36 +15,31 @@ open import Once.Spec.Core.Syntax using (Defs)
 module Once.Metatheory.Laws.Categorical.Products (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
 
-open import Data.Fin using (zero; suc)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; mk-kind; Purity; pure; 0≤q; 1≤ω)
-open import Once.Spec.Type using (Ty; KCtx; TySub; _⟨_⟩; _⇒[_]_)
-open import Once.Spec.Context using (Ctx; ∅; _▸_; _∷_; []; Usage; zeroUsage; _⊑ᵘ_; _⊑∷_; _+ᵘ_; _*ᵘ_)
-open import Once.Spec.Core.Syntax
-open import Once.Spec.Core.Derived using (idᶜ; composeᶜ)
+open import Relation.Binary.PropositionalEquality using (refl)
+open import Once.Spec.Grade using (Many; mk-kind; pure)
+open import Once.Spec.Type using (Ty; KCtx; _⟨_⟩; _⇒[_]_)
+open import Once.Spec.Context using (Ctx)
+open import Once.Spec.Core.Derived using (composeᶜ)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
-open import Once.Spec.Effect Σ using (M; bind; sub; T∞; _>>=∞_; return∞; _≈_; toT∞)
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
+open import Once.Spec.Effect Σ using (return∞)
 open import Once.Spec.Equivalence Σ using (Same; SameM)
 open import Once.Spec.Metatheory using (_≅_)
-open import Once.Metatheory.Erase Σ using (toT∞-bind; toT∞-sub)
 open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ; idʳ; assoc)
-open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
-open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; appMany; relPure⁻)
+open import Once.Metatheory.Coherence.Relation Σ using (≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
+open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; relPure⁻)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
 open import Once.Metatheory.Laws.Views Σ u fmt S
-open import Once.Metatheory.Laws.Strengthen Σ S using (pure⊑)
 open import Once.Metatheory.Laws.Compose Σ u fmt S using (compᵛ; module CompV)
 open import Once.Metatheory.Laws.Combinators Σ u fmt S using (pairᵛ; module CombV)
-open import Once.Metatheory.Laws.Canon Σ S using (terminalD; initialD; inlD; inrD; fstD′; sndD′; applyD; composeD; pairD; curryD; caseD)
-open import Once.Spec.Core.Derived using (terminalᶜ; initialᶜ; inlᶜ; inrᶜ; fstᶜ; sndᶜ; applyᶜ; pairᶜ; caseᶜ; curryᶜ)
-open import Once.Spec.Type using (Unit; Void; _*_; _+_)
+open import Once.Metatheory.Laws.Canon Σ S using (fstD′; sndD′; applyD; composeD; pairD; curryD)
+open import Once.Spec.Core.Derived using (fstᶜ; sndᶜ; applyᶜ; pairᶜ; curryᶜ)
+open import Once.Spec.Type using (_*_)
 open import Once.Spec.Metatheory using (Pure)
-open import Data.Sum using (inj₁; inj₂; [_,_]′)
+open import Data.Sum using (inj₁; inj₂)
 open import Once.Metatheory.Laws.Categorical.Tools Σ u fmt S
 
 module _ {m : ℕ} {Δ : KCtx m} where

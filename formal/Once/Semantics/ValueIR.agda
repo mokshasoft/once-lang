@@ -28,13 +28,8 @@ open import Data.Sum using (_⊎_)
 
 open import Once.Res using (Res)
 open import Once.Spec.Grade
-open import Once.Type.Grade
-open import Once.Type.Core
 open import Once.Spec.Type using (μ; ν)
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Type.Poly
-open import Once.Type
+open import Once.Spec.Type using (Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
 open import Once.IRTy using (IRTy; IRFunctor; ⌈_⌉; ⌈_⌉F; ⌊_⌋; eraseF)
 open import Once.IR.Semantics.FunctorMeaning using (⟦_,_⟧-base; translateF)
 open import Once.IR.Semantics.Polynomial using (νS)

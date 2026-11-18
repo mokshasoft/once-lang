@@ -332,13 +332,13 @@ adefs-unique t dc df =
 ------------------------------------------------------------------------
 
 open import Data.Nat using (suc; _≤_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; n≤1+n)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n)
 open import Once.Denotation.Program using (IRFun; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fname)
 open import Once.CCC.Codegen.ProgramImage using (fns-image; fn-image; fn-next; program-image)
 open import Once.CCC.Codegen.RoomChecksFacts using (fold-room)
-open import Once.CCC.Codegen.LabelDefs using (Win; dst-++; dj-win; win-weaken; fresh-above; clabs-++; nf)
+open import Once.CCC.Codegen.LabelDefs using (Win; dst-++; dj-win; win-weaken; clabs-++; nf)
 import Once.CCC.Codegen.CLabelsUnique as CLU
 import Once.CCC.Codegen.IRToTrace as IT
 import Once.CCC.Codegen.LabelRange as LR
@@ -442,7 +442,7 @@ open import Data.List.Relation.Unary.Any using (here; there)
 import Data.List.Relation.Unary.Any.Properties
 open import Once.Parser using (extractFunctions-go; funsOf; emittedNames)
 open import Once.Parser.Module.Core using (Resolved; resolved)
-open import Once.Spec.Surface.Syntax using (Module; mkModule)
+open import Once.Spec.Surface.Syntax using (mkModule)
 open import Once.Target.Symbol using (once-symbol-own)
 open import Once.Target.SymbolInjective using (ValidName)
 open import Once.Adequacy.NameClash using (guard-true; namesDistinct-sound; allValidNameB-sound; map-allpairs-own; ce-syms; ∧-elimˡ; ∧-elimʳ)
@@ -509,12 +509,11 @@ ap-reverse {x ∷ xs} (px ∷ pxs) =
 -- and the arith blocks.
 ------------------------------------------------------------------------
 
-open import Data.Char using (Char; isDigit)
+open import Data.Char using (Char)
 open import Data.String using (toList) renaming (_++_ to _++ˢ_)
 open import Once.Postulates using (toList-++)
 import Data.String.Properties as Str
 open import Data.Nat.Show using (charsInBase)
-open import Data.Digit using (toDigits)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no)
 open import Data.Product using (Σ-syntax)

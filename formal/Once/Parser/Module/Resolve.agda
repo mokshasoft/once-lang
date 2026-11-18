@@ -29,18 +29,16 @@
 
 module Once.Parser.Module.Resolve where
 
-open import Data.Bool using (Bool; true; false; not; T)
+open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_; map) renaming (_++_ to _++L_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _≟_; _++_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Nullary using (Dec; yes; no; ¬_; does)
+open import Relation.Nullary using (Dec; yes; no; does)
 open import Data.List.Membership.DecPropositional _≟_ using (_∈?_)
-open import Relation.Nullary.Decidable using (toWitness; toWitnessFalse; isYes)
 open import Data.Unit using (tt)
-open import Data.Empty using (⊥-elim)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Parser.Module.Core
 open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; Module; mkModule)
@@ -48,9 +46,6 @@ open import Once.Spec.Surface.Syntax using (Import; mkImport; PolyType)
 open import Once.Spec.Surface.Syntax using (RLam)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.ResolvedRefs using (GoodRefs; goodRefs?)
-open import Once.Type.Poly using (extractGround)
-open import Once.Type using (isGround)
-open import Once.Functor.Decide using (isConcrete?)
 -- D072 M3: the oracle's sig-less schema criterion (shared with Parser).
 open import Once.Spec.Name using (canonical)
 open import Once.Spec.Surface.Generators using (Gen)

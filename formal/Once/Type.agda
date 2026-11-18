@@ -13,22 +13,18 @@
 module Once.Type where
 
 
-open import Relation.Binary.Definitions using (DecidableEquality)
 
-open import Data.Nat using (ℕ)
 import Data.Nat
 import Data.Nat.Show
 import Data.Fin
 open import Data.String using (String; _++_)
-open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (refl)
 open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; ArrowKind; mk-kind; pureᶠ; actᶠ)
 open import Once.Spec.Type using (Ty; Fun; var; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Type using (Fun; μ; ν)
+open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Type.Poly using (Ground; GroundF)
 

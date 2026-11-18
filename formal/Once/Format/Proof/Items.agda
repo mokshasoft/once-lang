@@ -17,12 +17,12 @@
 
 module Once.Format.Proof.Items where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true; false)
 open import Data.Char using (Char; isDigit)
 open import Data.Integer using (+_)
 open import Data.List using (List; []; _∷_; length; map)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; suc; _<_; s≤s)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (_<_; s≤s)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; m≤n⇒m≤1+n; <⇒≤)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.String using (String; fromList)

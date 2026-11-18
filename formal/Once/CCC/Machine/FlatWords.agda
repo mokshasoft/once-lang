@@ -17,15 +17,15 @@ open import Once.CCC.Machine.SMCore using (AbstractTrace)
 
 module Once.CCC.Machine.FlatWords {FS : FrameSemantics} {prog : AbstractTrace} where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_; _⊔_; _∸_; z≤n; s≤s; _<?_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_; _∸_; z≤n; s≤s; _<?_)
 open import Data.Nat.Properties using (+-assoc; +-comm; m≤m⊔n; m≤n⊔m; m+[n∸m]≡n; ≮⇒≥; ∸-monoˡ-<)
-open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Product using (_,_)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Memory.HeapAddress using (heap-loc)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap; AbstractTrace)
-open import Once.IR using (AllocMode; Stack; Heap)
+open import Once.IR using (Stack; Heap)
 open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float; FitsInRegI; fits-int; fits-float)
   renaming (_+_ to _+ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
@@ -33,7 +33,6 @@ open import Once.CCC.Machine.ValueRel
 open ClosureWellFormedBase {FS}
 open ClosureWellFormedDef {FS} {prog} using (ValidAtWF; CellAt; fo→valid)
 open import Once.IRTy using (IRFunctor; WellFormedFI; ⟦_⟧TI; wf-K; wf-Id; wf-Sum; wf-Prod)
-open MemOps {FS} using (readLoc)
 
 ------------------------------------------------------------------------
 -- Offsets.

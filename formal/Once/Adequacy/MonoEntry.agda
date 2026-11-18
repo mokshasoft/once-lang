@@ -24,7 +24,6 @@ open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 open import Once.Spec.Grade using (pure)
-open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Type using (Ty; KCtx; TySub; Respects)
 open import Once.Spec.Context using (∅; [])
 open import Once.Spec.Core.Typing Σ S

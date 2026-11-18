@@ -19,7 +19,6 @@
 
 module Once.Denotation.DefEnv where
 
-open import Once.Spec.Type using (Ty)
 open import Data.List using ([]; _∷_)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_)

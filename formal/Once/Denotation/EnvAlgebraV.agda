@@ -14,13 +14,12 @@ open import Once.Spec.Type using (TySub)
 module Once.Denotation.EnvAlgebraV (Σ : Signature) (σ : TySub 0 0) where
 
 open import Data.Product using (_,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 
 open import Once.Spec.Grade using (Quantity; Zero; One; Many)
 open import Once.Spec.Type using (Type)
 open import Once.Context using (_↾_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; ⊑ᵘ-trans; ⊑ᵘ-unique) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Spec.Context using (Ctx; ∅; Usage; _⊑ᵘ_; [])
-open import Once.Spec.Grade using (_≤q_)
 open import Once.Spec.Context using (_∷_; _⊑∷_; _▸_)
 open import Once.Denotation.SpecDomain Σ σ using (⟦_⟧ᵛ; restrictᵛ; bindᵛ)
 

@@ -22,7 +22,7 @@
 
 module Once.Adequacy.SpecInterp where
 
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Data.List using (List; []; _∷_; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
@@ -37,7 +37,7 @@ open import Once.Metatheory.Float.Range using (fitV-inRange; fitV-idem)
 open import Once.Spec.Boundary using (readAt)
 open import Once.IR.Semantics.Boundary using (atTarget)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; cong; cong₂)
 open import Relation.Nullary using (Dec; yes; no)
@@ -49,9 +49,8 @@ import Once.Spec.Type as T
 import Once.Spec.Grade as G
 open import Once.Name using (showCanonical)
 open import Once.Core.Decl using (toISig)
-open import Once.Spec.Name using (CanonicalName)
 open import Once.Contract
-  using (Key; key; kdom; kcod; ISig; Contract; answers; effect; contract-eff; contractOf;
+  using (Key; key; kdom; kcod; Contract; answers; effect; contract-eff; contractOf;
          value-step; answer-step; valueKeys; answerKeys; Impl)
 import Once.Contract as C
 open import Once.IR.Semantics.Event using (SigOpEvent; toEvent)

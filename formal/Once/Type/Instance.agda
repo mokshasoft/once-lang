@@ -20,15 +20,15 @@
 module Once.Type.Instance where
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Once.Spec.Type using (Base; ∅ₖ)
+open import Once.Spec.Type using (Base)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product using (Σ-syntax; _×_; _,_)
+open import Data.Product using (Σ-syntax; _×_)
 open import Data.String using (String; _≟_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (yes; no)
-open import Once.Spec.Type using (Ty; Type; var; Unit; KCtx; Base)
+open import Once.Spec.Type using (Ty; var; Unit; KCtx)
 import Data.List as List
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Maybe using (Maybe; just; nothing; maybe′)

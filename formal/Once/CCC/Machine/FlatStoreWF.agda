@@ -24,7 +24,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi)
 
 module Once.CCC.Machine.FlatStoreWF (FS : FrameSemantics) where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≟_)
+open import Data.Nat using (ℕ; suc; _<_; _≤_; _≟_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; <-irrefl; n≤1+n)
 open import Data.Bool using (Bool; true; false)
 open import Data.Bool using () renaming (_∨_ to _∨_)

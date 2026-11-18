@@ -19,31 +19,29 @@ module Once.Adequacy.SpecFront.ResolveBack where
 
 import Once.Spec.Surface.Syntax as O
 
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Maybe using (just; nothing)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Maybe using (just)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₂)
 open import Data.String using (String)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂)
 
-open import Once.Spec.Name using (CanonicalName; canonical)
+open import Once.Spec.Name using (canonical)
 open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
 import Once.Parser.Relation.Resolution as LR
 import Once.Spec.Surface.Resolution as SR
 open import Once.Parser.Relation.Resolution
-  using (UnaliasedMap; AliasMap; ResolvesExpr; re-var; re-this; re-qual; re-qual-path; re-res; re-app; re-lam; re-let;
+  using (ResolvesExpr; re-var; re-this; re-qual; re-qual-path; re-app; re-lam; re-let;
          re-pair; re-destruct; re-annot; re-binop; re-unop; re-unit; re-int; re-float; rv-binder; rv-gen; rv-import; rv-own)
 open import Once.Spec.Surface.Resolution
-  using (Env; env; Resolves; rn-gen; rn-import; rn-own; r-local; r-name; r-this; r-qual; r-qual-path; r-res; r-app; r-lam;
+  using (env; Resolves; rn-gen; rn-import; rn-own; r-local; r-name; r-this; r-qual; r-qual-path; r-res; r-app; r-lam;
          r-let; r-pair; r-destruct; r-unit; r-int; r-float; r-annot; r-binop; r-neg)
 open import Once.ResolvedRefs using (GoodName; GoodRefs)
-open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
-open import Once.Spec.Surface.Syntax using (mkImport)
-open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; lookupModule)
+open import Once.Spec.Surface.Syntax using (mkModule; Decl)
+open import Once.Parser.Module.Resolve using (collectUnaliased; lookupModule)
 open import Once.Adequacy.ResolveBridge using (lookupMod-complete)
 open import Once.Adequacy.SpecGrammar.Written using (Written)
 open import Once.Adequacy.SpecFront.Expr
@@ -148,7 +146,6 @@ res-expr← nu na r-float w = _ , re-float , x-float , tt
 ------------------------------------------------------------------------
 
 open import Once.Spec.Signature using (Signature)
-open import Once.Spec.Surface.Syntax using (Import)
 open import Once.Adequacy.SpecGrammar.Written using (DeclWritten)
 import Once.Spec.Surface.Program as SPr
 import Once.Adequacy.SpecFront.Resolve

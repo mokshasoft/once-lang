@@ -28,7 +28,7 @@ open import Data.List.Relation.Binary.Subset.Propositional using (_⊆_)
 open import Data.List.Properties using (length-++; ∷-injectiveˡ)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc; _≤_; _+_)
+open import Data.Nat using (zero; suc; _≤_)
 open import Data.Nat.Properties using (m≤m+n; m≤n+m; ≤-trans; +-comm; n≮n)
 open import Data.Product using (Σ-syntax; ∃-syntax; _,_; _×_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -49,7 +49,7 @@ import Once.Metatheory.Run as RunM
 import Once.Metatheory.RunLaws as RunLaws
 import Once.Metatheory.Trace as Trace
 import Once.Metatheory.Coherence.Relation as Relation
-open import Once.Spec.Metatheory using (Freyd; Central; Commute; pairK; lift; liftBlock; liftOp)
+open import Once.Spec.Metatheory using (Freyd; Central; Commute; pairK; lift; liftBlock)
 
 open Effect Σ
 open Observation Σ using (World)
@@ -61,8 +61,6 @@ open RunLaws Σ using (run-det; run-det-calls; module Seq)
 open Trace using (MaybeEnd; cut≈; end≈)
 open Relation Σ
 
-open νM using (outν)
-open _≈ν_ using (force≈)
 
 ------------------------------------------------------------------------
 -- Bisimilar computations are observed the same

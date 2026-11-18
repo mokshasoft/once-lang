@@ -15,19 +15,19 @@
 
 module Once.Format.Proof.GAnchors where
 
-open import Data.Bool using (Bool; true; false; not; if_then_else_; T)
+open import Data.Bool using (true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; _++_; reverse; foldr)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All.Properties as AllP
-open import Data.Nat using (ℕ; zero; suc; _+_)
+open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ; ∃-syntax)
+open import Data.Product using (_×_; _,_; Σ; ∃-syntax)
 open import Data.String using (String)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Grade using (Quantity; Finite; pureᶠ; actᶠ)
+open import Once.Spec.Grade using (pureᶠ; actᶠ)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TNewline; TLParen; TRParen; TArrow; TCaret0; TCaret1; TCaretW)
 open import Once.Adequacy.SpecTokNames
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_;
@@ -262,7 +262,7 @@ private
 -- Expressions
 ------------------------------------------------------------------------
 
-open import Once.Spec.Surface.Lexing using (TAt; TDot; TComma; TColon; TLambda; TEquals; TLBrace; TRBrace; TSemicolon; TBang)
+open import Once.Spec.Surface.Lexing using (TAt; TDot; TComma; TColon; TLambda; TEquals; TLBrace; TRBrace; TSemicolon)
 open import Once.Spec.Surface.Syntax using (Expr; RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct;
   RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Name using (canonical)
@@ -343,7 +343,6 @@ open import Data.Char using (Char)
 open import Data.List using (_∷ʳ_)
 open import Data.List.Properties using (unfold-reverse)
 open import Data.Nat.Properties using (+-suc)
-open import Data.String using (fromList; toList)
 open import Once.Postulates using (toList∘fromList)
 open import Once.Format.Proof.ExprBase using (OpName; op-isOperator)
 
@@ -484,7 +483,7 @@ mutual
 ------------------------------------------------------------------------
 
 open import Data.Maybe using (Maybe; just; nothing)
-open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; Import; mkImport)
+open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkImport)
 open import Once.Spec.Surface.Grammar using (ParsesDecl; ParsesDecls; SkipNewlines; ParsesOpAfter; ParsesFunDef;
   ParsesParams; ParsesTypeAlias; ParsesImport; ParsesModulePath; wrapLams;
   decl-import; decl-alias; decl-signature; decl-typesig; decl-fundef; decl-op; skip-nl; skip-done;

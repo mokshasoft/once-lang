@@ -17,7 +17,6 @@ open import Data.Unit using (⊤; tt)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.IRTy using (IRTy)
 open import Once.SigOp.Info using (SigOpInfo)
-open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (CmpAt; cmp-block-info)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; instr-ctrl; c-call-fn; instr-sigop)
 

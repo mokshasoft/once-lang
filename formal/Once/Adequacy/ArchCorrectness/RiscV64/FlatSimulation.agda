@@ -54,7 +54,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
   (fmt-eq : FrameSemantics.float-format FS ≡ binary64)
   where
 
-open import Data.Nat using (ℕ; suc; _+_; zero; _∸_; _<_; s≤s; z≤n; _≤_; _≡ᵇ_; _<ᵇ_; _*_)
+open import Data.Nat using (ℕ; suc; _+_; zero; _∸_; _<_; s≤s; z≤n; _≤_; _<ᵇ_; _*_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (Σ)
 open import Once.Target.SymbolFresh using (host-exhausted-symbol)
@@ -69,7 +69,7 @@ open import Once.CCC.Machine.SMCore
 open AllocState using (frame-slots; current-frame; saved-frames; next-heap-ref)
 open LocState using (halted; stackMem; regs; heapMem)
 open import Once.CCC.Machine.Locations using (Slot; AtDynamic; AtStack)
-open import Once.Memory.HeapAddress using (module HeapLocation; module HeapRef; offsetHL)
+open import Once.Memory.HeapAddress using (module HeapLocation; module HeapRef)
 open ExecFinal {FS} using (in-block?)
 open AllocState using (block-size)
 open HeapLocation using (heap-ref)
@@ -77,7 +77,7 @@ open HeapRef using (ref-id)
 open import Data.Unit using (tt)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open import Once.CCC.Machine.Flat
-open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; fclosure; flat-exec-instr; flat-step-straight; do-nz; tag-test; fetch; find-label; flat-read-tag; flat-read-at; sv-is-zero; flink-do-ret; leave-frame; do-ret-pc-∷; do-ret-fret-∷; do-ret-alloc; enter-call; do-call-sv; do-call-code; do-call-at)
+open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; fclosure; flat-exec-instr; flat-step-straight; do-nz; tag-test; fetch; find-label; flat-read-tag; flat-read-at; flink-do-ret; leave-frame; do-ret-pc-∷; do-ret-fret-∷; do-ret-alloc; enter-call; do-call-sv; do-call-code; do-call-at)
 open import Once.CCC.Label using (once; thunk; callee)
 
 import Once.CCC.Target.RiscV64.Semantics as R
@@ -87,8 +87,8 @@ open C using (HeapView; haddr; HDom)
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS
   using (blk-off; blk-len; blk-off-suc; fetch-block-head; fetch-block-2nd; fetch-block-3rd; fetch-block-nth; find-label-corr; find-thunk-corr)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
-  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-sltu; step-lla; step-lla-sym; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr; step-jal-found; step-add; step-sub; step-bgeu-taken; step-bgeu-not; step-local-1; find-local-1-past-call)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; sltu; lla; lla-sym; beq; j; ret; jalr; jal; a0; t0; t1; t2; s1; s2; sp; ra; zero; slots; add; sub; call-sym; bgeu-fwd; local-1)
+  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-sltu; step-lla; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr; step-jal-found; step-sub; step-bgeu-taken; step-bgeu-not; step-local-1; find-local-1-past-call)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; sltu; lla; beq; j; ret; jalr; jal; a0; t0; t1; t2; s1; s2; sp; ra; zero; slots; sub; call-sym; bgeu-fwd; local-1)
 import Data.Integer as ℤ
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64

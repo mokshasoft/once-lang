@@ -31,19 +31,14 @@ open import Data.List using (List; []; _∷_)
 import Data.List as DL
 import Data.Bool.ListAction as BLA
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ; _×_; _,_; ∃-syntax; proj₁; proj₂)
+open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String; _++_; _==_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Function using (case_of_)
 
 -- Re-export types
 open import Once.Spec.Grade
-open import Once.Type.Grade
-open import Once.Type.Core
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Type.Poly
+open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
 open import Once.Type
 
 -- Re-export Core IR
@@ -101,18 +96,15 @@ open import Once.CanonicalName using () renaming (_≟ᶜ_ to _≟cn_)
 
 -- Re-export Parser (for module loading)
 open import Once.Parser
-open import Once.Parser.Module
-open import Once.Parser.Module.Core using (Resolved; resolved)
+open import Once.Parser.Module.Core using (Resolved)
 open import Once.Spec.Surface.Syntax using (Module)
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.Spec.Type using (Type)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (no; yes)
 open FunInfo
 open PolyFunInfo
 
 -- Type checking / elaboration
-open import Once.TypeCheck.Elaborate using (checkElab)
 import Once.TypeCheck.Error as Error
 open import Once.TypeCheck.Link using (resolveExpr)
 open import Once.TypeCheck.Elaborate as TE using ()
@@ -138,7 +130,7 @@ open import Once.Surface.LoopWarn using (Here; silentLoops; floatIdentityEqs)
 open import Once.Principal using (below)
 open import Once.Spec.Sub using (_<:_; sub-arr; sub-unit; sub-void)
 open import Once.Type.SubDecide using (_<:?_)
-open import Data.Nat using (ℕ; _<ᵇ_)
+open import Data.Nat using (_<ᵇ_)
 
 ------------------------------------------------------------------------
 -- Main function validation

@@ -20,7 +20,7 @@ open import Once.Spec.Numerics using (TargetNum)
 module Once.Adequacy.SpecCore.Env (Σ : Signature) {s : ℕ} (S : Defs s) (fmt : TargetNum) where
 
 open import Data.Unit using (⊤; tt)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_)
 open import Data.Fin using (Fin; zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 

@@ -31,9 +31,9 @@ module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldText (o : CanonicalName) (tbl : 
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
-open import Once.CCC.Codegen.IRObsCorrect.CataBr.Text o tbl using (module CataBrTextC; init-rows)
+open import Once.CCC.Codegen.IRObsCorrect.CataBr.Text o tbl using (module CataBrTextC)
 open import Once.CCC.Codegen.IRToTrace o
-  using (cata-call-setup; cata-call; cata-body; cata-br-I₂; push2; visit-walk; rebuild-walk; fsize; lsize)
+  using (push2; rebuild-walk; lsize)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (visit-ls; rebuild-ls; push2-ls; cata-call-from-ls; labels-in)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Call o tbl using (module CataCallC)
@@ -42,20 +42,19 @@ open import Once.CCC.Codegen.LabelSeg using (LabelsIn; li-none; li-lab)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-jmp; c-label; c-branch-tag-zero; c-thunk; c-ret; load-from-slot; store-at-slot
+  using (AbstractTrace; instr-ctrl; c-jmp; c-label; c-branch-tag-zero; c-thunk; c-ret; load-from-slot; store-at-slot
         ; mov-to-input; mov-to-output; load-at; instr-call-closure; instr-save-closure-reg; block-layout)
 open import Once.CCC.Codegen.FlatLayout using (kind; lkind; lsz)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Label using (ℓ; LabelId; module LabelId)
 open LabelId using (idx)
-open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F)
+open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI)
 import Once.IRTy as IRTy′
-open import Once.Spec.Type using (Fun)
 open import Data.Nat using (s≤s; z≤n)
 open import Data.Nat.Properties using (+-monoʳ-<; +-monoʳ-≤)
 open import Relation.Nullary using (¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.List.Relation.Unary.All using (All) renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
+open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
 
@@ -126,8 +125,7 @@ module CataFoldTextC {FS : FrameSemantics} where
 
     module T = Text wf alg n l
     open T using (G; l1; bb; at; tailTxt; R; text′; L; callTxt)
-    open T.Pc using (cslot; bodyL; pre37; flatTxt; headTxt; pushTxt; reloadTxt; visitTxt; exitTxt; foldTxt
-                    ; setupTxt; initTxt; rootTxt)
+    open T.Pc using (cslot; bodyL; pre37; flatTxt; headTxt; pushTxt; reloadTxt; visitTxt; exitTxt)
     module TA = T.At prog base span la
 
     ------------------------------------------------------------------

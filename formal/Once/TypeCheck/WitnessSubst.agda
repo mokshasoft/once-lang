@@ -15,7 +15,6 @@
 -- instance with the substitution.
 ------------------------------------------------------------------------
 
-open import Data.Bool using (Bool)
 open import Data.Fin using (Fin)
 open import Data.Nat using (ℕ)
 open import Once.Spec.Name using (CanonicalName)
@@ -28,10 +27,10 @@ module Once.TypeCheck.WitnessSubst (Σ : Signature) {s : ℕ} (S : Defs s) (nm :
   {m k : ℕ} (Δ : KCtx m) (Δ′ : KCtx k) (σ : TySub m k) (rσ : Respects Δ Δ′ σ) where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
-open import Once.Spec.Type using (Ty; _⟨_⟩; _⟨_⟩F; _⇒[_]_; ⟦_⟧F; μ; ν; Unit; var; Void; Int; Float; _*_; _+_; K; Id; _⊕_; _⊗_; Fun)
+open import Once.Spec.Type using (Ty; _⟨_⟩; _⟨_⟩F; _⇒[_]_; Unit; var; _*_; _+_)
 open import Once.Spec.Type.Substitution using (⟨⟩-∘; respects-∘)
-open import Once.Spec.Grade using (mk-kind; Many; pure; act; pureᶠ; actᶠ)
-open import Once.Spec.Signature using (DeclType; constant; value; operation; ⌜_⌝ᵈ; ⌜_⌝; BTy)
+open import Once.Spec.Grade using (mk-kind; Many; pure; act)
+open import Once.Spec.Signature using (DeclType; constant; value; operation; ⌜_⌝ᵈ; ⌜_⌝)
 module BT = Once.Spec.Signature.BTy
 open import Once.Type.Closed using (sub0)
 import Once.Spec.Core.Derived
@@ -127,7 +126,7 @@ module _ where
 private
   module DV = Once.Spec.Core.Derived
 open import Once.Core.TySubstRen Σ S using (⟪⟫-wk)
-open import Once.Spec.Core.Syntax using (wk; let′; lam; app; unfold; var; roll)
+open import Once.Spec.Core.Syntax using (let′; lam; app; unfold; var)
 open import Data.Fin using (zero)
 open import Once.Spec.Grade using (One)
 

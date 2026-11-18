@@ -37,7 +37,6 @@ open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo; SigOpSem; mk-inf
 open SigOpInfo using (name; sem; baseA; conB)
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Type using (Base; ∅ₖ)
-open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of; cmp-block)
 
 open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair)

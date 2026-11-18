@@ -110,7 +110,6 @@ record HeapAddr : Set where
     haddr : Addr
     in-heap : InHeap haddr
 
-open HeapAddr
 
 -- | Alias for backward compatibility
 HeapPointer : Set

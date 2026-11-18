@@ -39,35 +39,33 @@ module Once.Format.Proof.Inside
   (Tkd : List Once.Format.Print.Note)   -- what the walk found before the declaration
   where
 
-open import Data.Bool using (Bool; true; false; _∨_; _∧_; not; if_then_else_; T)
-open import Data.Char using (Char)
+open import Data.Bool using (Bool; true; false; _∨_; _∧_; if_then_else_; T)
 open import Data.Empty using (⊥-elim)
-open import Data.List using ([]; _∷_; _++_; map; concatMap; reverse; foldl)
+open import Data.List using ([]; _∷_; _++_; map; concatMap)
 open import Data.List.Properties using (++-identityʳ; ++-assoc)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All.Properties as AllP
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (zero; suc; _+_; _∸_; _<ᵇ_; s≤s; z≤n)
+open import Data.Nat using (zero; suc; _+_; _∸_; _<ᵇ_; s≤s)
 open import Data.Nat.Properties using (+-identityʳ; +-suc; ≤-refl; ≤-trans; m≤m+n; <-irrefl; m≤n⇒m<n∨m≡n;
-  n≤1+n; m≤n⇒m≤1+n; +-comm)
+  n≤1+n)
 open import Data.Product using (_,_; proj₁; proj₂; ∃-syntax; Σ)
-open import Data.String using (String; toList; fromList)
+open import Data.String using (String; toList)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst; _≢_)
 open import Relation.Nullary using (yes; no)
 
-open import Once.Format.Doc using (Doc; empty; tk; sp; cmt; para; newline; blank; eol; line; _<>_; nest; group; Lexeme; lt; lsp; lnl; lind; lcm;
-  St; st; put; space; token; joined; trim; brk; comment; layout; fits; flatWidth; column; apart)
+open import Once.Format.Doc using (empty; tk; sp; cmt; para; newline; blank; eol; line; _<>_; nest; group; Lexeme; lt; lsp; lnl; lind; lcm;
+  St; st; space; token; joined; trim; brk; layout; fits; flatWidth; column; apart)
 open import Once.Format.Comment using (eolText)
-open import Once.Format.Print using (W; walker; line-code; line-empty; line-text; noNotes; addTo; addAfter;
-  stepComment; afterCode; stepTok; lineEnd)
-open import Once.Format.Proof.Walk using (stepL; walkL; frozen-after; frozen-ti; AFrozen; Look; lookup-addTo;
-  lookup-addTo-same; lookup-addTo-keeps; ti)
-open import Once.Format.Proof.Lockstep using (Φ; Φ-cons; waits; Reach; reach-refl; reach-trans; reach-cons; SpOK;
+open import Once.Format.Print using (W; walker; line-code; line-empty; line-text; addTo; addAfter;
+  stepComment; stepTok)
+open import Once.Format.Proof.Walk using (stepL; frozen-after; frozen-ti; AFrozen; Look; lookup-addTo;
+  lookup-addTo-same; lookup-addTo-keeps)
+open import Once.Format.Proof.Lockstep using (Φ; Φ-cons; waits; Reach; reach-trans; SpOK;
   trim-Φ; LI; li; layout-reach; brk-ok)
 open import Once.Format.Proof.Rerender using (readBack; eol-fix; EolC; eolText-eol)
-open import Once.Format.Proof.Sources using (NotesSrc)
 open import Once.Spec.Surface.Lexing using (Token)
 open import Once.Format.Proof.Skeleton using (anchorTok; lineEndTok; plain; anchorDoc; sk-width)
 import Once.Format.Proof.Skeleton as Sk
@@ -482,11 +480,9 @@ leaf-sim (eol _) () i f σ₁ σ₂ kb n 1≤i kd≤ r w l fu
 -- Comment lines on lines of their own
 ------------------------------------------------------------------------
 
-open import Once.Format.Comment using (commentLinesDoc; commentRun; commentLines; lineDoc; classify; CLine; prose;
-  verbatim)
-open import Once.Format.Proof.Rerender using (renderK; renderLine; rendered; rendered-fix; rendered-RL; Src; rendered-ne)
-open import Once.Format.Proof.Lockstep using (linesOut; colOf; zero-col; linesOut-++; lines-layout)
-open import Once.Format.Doc using (paragraph; dashed; fill; lineComment)
+open import Once.Format.Comment using (commentRun; commentLines)
+open import Once.Format.Proof.Rerender using (rendered; rendered-fix; rendered-RL; Src; rendered-ne)
+open import Once.Format.Proof.Lockstep using (linesOut; zero-col; lines-layout)
 open import Once.Format.Print using (Held; held-comment; settleAt; addInner; notes)
 
 private

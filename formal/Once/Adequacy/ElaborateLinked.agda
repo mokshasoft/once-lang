@@ -14,8 +14,8 @@ module Once.Adequacy.ElaborateLinked where
 
 open import Once.Spec.Type using (Ty)
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.Product using (_×_; _,_; Σ)
-open import Data.Unit using (⊤; tt)
+open import Data.Product using (_,_)
+open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
 open import Data.String using (String)
 open import Data.Fin using (Fin)
@@ -25,12 +25,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind)
 open import Once.Spec.Type using (Type)
-open import Once.Type.Sub
 open import Once.Spec.Sub using (sub-*; sub-+; sub-var)
-open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
-open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Once.Type.SubDecide
-open import Once.Laws.Sub
+open import Once.Spec.Sub using (_<:_; sub-void; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.Name using (showCanonical)
 open import Once.CanonicalName using (_≟ᶜ_)
@@ -42,9 +38,8 @@ open import Once.IR.Ref using (refIR)
 open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
 open import Once.Spec.Type using (b-*; b-+; b-Float; b-Int; b-Unit; b-Void)
 open import Once.Context hiding (_,_)
-open import Once.Spec.Context using (Ctx; Usage; []; _*ᵘ_; _⊑ᵘ_; lookup; zeroUsage; ∅)
-open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
-open import Once.Surface.Context
+open import Once.Spec.Context using (Ctx; Usage; []; _*ᵘ_; _⊑ᵘ_; zeroUsage; ∅)
+open import Once.Spec.Context using (_∷_; _⊑∷_; _▸_)
 open import Once.Surface.Syntax
 open import Once.Spec.Theory using (unary; binary; compare) renaming (int to nint; float to nfloat)
 open import Once.Denotation.SurfaceRefs using (Refs)

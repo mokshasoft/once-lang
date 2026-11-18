@@ -28,7 +28,7 @@ open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; cong₂; subst; subst₂)
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
 open import Once.Spec.Type
-  using (Ty; Type; Fun; TySub; _⟨_⟩; _⟨_⟩F; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
+  using (Ty; Fun; TySub; _⟨_⟩; _⟨_⟩F; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Effect Σ using (toT∞)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Equivalence Σ

@@ -16,7 +16,7 @@
 -- plus `def`/`side-off`. The concrete `Memory = ℕ → Maybe ℕ` is shared.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; _+_)
+open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe)
 open import Relation.Binary.PropositionalEquality using (_≡_; cong; refl)
 open import Data.List using ([]; _∷_)

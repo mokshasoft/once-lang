@@ -72,7 +72,7 @@ import Once.Denotation.ValueDomain as ValueDomain
 import Once.IR.Semantics.Trace as TM
 open import Once.Denotation.Approx using (Ap; done; NotCut; thenAp; run-approx-bind)
 open import Once.IR.Semantics.Iterative using (T∞; _>>=∞_; return∞)
-open import Once.Res using (Res; returns; is-stopped)
+open import Once.Res using (Res; returns)
 
 module PairProofC {FS : FrameSemantics} where
 

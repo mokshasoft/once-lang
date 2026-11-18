@@ -28,9 +28,8 @@ open import Once.Spec.Numerics using (TargetNum)
 -- relative to an implementation of the signatures it is compiled against.
 module Once.Adequacy.CoreBridge where
 
-open import Data.Nat using (ℕ)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Product using (_,_; proj₁)
+open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.IR using (IR)

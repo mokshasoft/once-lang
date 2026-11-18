@@ -16,22 +16,22 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Metatheory.Laws.LetAssoc (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-open import Data.Fin using (zero; suc)
-open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Fin using (suc)
+open import Data.Product using (_,_)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; positionGrade; pure)
-open import Once.Spec.Type using (Ty; KCtx; _⟨_⟩)
+open import Relation.Binary.PropositionalEquality using (refl)
+open import Once.Spec.Grade using (Zero; One; Many; positionGrade)
+open import Once.Spec.Type using (KCtx; _⟨_⟩)
 open import Once.Spec.Context using (Ctx; _▸_; _∷_)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
-open import Once.Spec.Effect Σ using (T∞; _>>=∞_; return∞; _≈_; toT∞)
+open import Once.Spec.Effect Σ using (T∞; _>>=∞_; toT∞)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Metatheory using (_≅_)
-open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ; idʳ; assoc)
-open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel)
+open import Once.Metatheory.Bisim Σ using (≈-sym; idˡ; assoc)
+open import Once.Metatheory.Coherence.Relation Σ using (≈-Relatedˡ; bindRel)
 open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; relPure⁻)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym)
 open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree)

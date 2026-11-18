@@ -35,7 +35,7 @@ import Data.Nat as ℕ
 open import Data.List using ([]; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤n⇒m≤1+n; m≤m+n; +-suc; +-identityʳ; ≤-reflexive; n≤1+n; +-monoʳ-≤)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤n⇒m≤1+n; m≤m+n; +-suc; +-identityʳ; ≤-reflexive; +-monoʳ-≤)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
@@ -56,10 +56,9 @@ open import Once.Spec.Type using (K; Id; _⊕_; _⊗_)
 open import Once.Spec.Type using (Fun)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
-open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
-open import Once.CCC.Codegen.IRToTrace o using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call; cata-call-box; in-trace; with-copy; two-cell; out-trace; cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; push2; pop2; wrap-sum; resuspend-layer;
+open import Once.CCC.Codegen.IRToTrace o using (sigop-code; ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; strat-const; strat-box; strat-branching; lsize; fsize; cata-body; cata-call-setup; in-trace; with-copy; two-cell; out-trace; cata-br-I₁; cata-br-I₂; visit-walk; rebuild-walk; push2; pop2; wrap-sum; resuspend-layer;
   cata-call-from; inj-trace; env-entry; getμ)
 open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; kind; lkind; lsz;
   put-All; put-k-All; get-All; get-k-All; fill; fill-All)

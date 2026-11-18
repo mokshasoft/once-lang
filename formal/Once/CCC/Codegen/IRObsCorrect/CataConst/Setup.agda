@@ -39,7 +39,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; sucHL; module HeapLocation; module HeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; sucHL; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Once.IRTy using (IRTy)
@@ -69,7 +69,7 @@ module CataSetupC {FS : FrameSemantics} where
   open FlatEventTrace {FS} using (chain-events-subst)
   open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; get-len)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame; block-size)
+  open AllocState using (next-heap-ref; current-frame; block-size)
   module SR = StraightRunAPI {FS}
 
   private

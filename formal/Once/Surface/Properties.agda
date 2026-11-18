@@ -14,16 +14,9 @@ import Once.Laws.Grade as G
 
 open import Once.Spec.Grade
 open import Once.Type.Grade
-open import Once.Type.Core
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Type.Poly
-open import Once.Type
-open import Once.Context
 open import Once.Spec.Context using (Ctx; Usage; _*ᵘ_; _+ᵘ_; zeroUsage; ∅)
-open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
+open import Once.Spec.Context using ([]; _∷_; _▸_)
 open import Once.Surface.Context
-open import Once.Surface.Syntax
 
 open import Data.Nat using (ℕ)
 open import Data.Bool using (true; _∧_)

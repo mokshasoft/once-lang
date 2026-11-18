@@ -41,7 +41,7 @@ open import Once.Spec.Name using (bare)
 open import Once.CanonicalName using (_≟ᶜ_)
 import Data.String.Properties
 open import Relation.Nullary using (yes; no; Dec)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Function using (case_of_)
 
 open import Once.IR using (IR)

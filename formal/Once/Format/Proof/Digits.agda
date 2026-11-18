@@ -18,7 +18,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (length-++)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All.Properties as AllP
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _^_; _<_; _≤_; _<ᵇ_; _/_; _%_; z≤n; s≤s; NonZero)
+open import Data.Nat using (zero; suc; _+_; _*_; _^_; _<_; _≤_; _<ᵇ_; _/_; _%_; z≤n; s≤s)
 open import Data.Nat.DivMod using (m≡m%n+[m/n]*n; m%n<n; m/n<m; m<n*o⇒m/o<n)
 open import Data.Nat.Properties using (+-comm; *-comm; <ᵇ⇒<; <⇒<ᵇ; ≮⇒≥; <-≤-trans; ≤-refl; ≤-pred)
 open import Data.Product using (_×_; _,_; ∃-syntax)

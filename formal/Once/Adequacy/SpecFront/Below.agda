@@ -12,18 +12,17 @@
 
 module Once.Adequacy.SpecFront.Below where
 
-open import Data.Empty using (⊥-elim)
-open import Data.List using (List; []; _∷_; _++_; map; cartesianProductWith)
+open import Data.List using ([]; _∷_; cartesianProductWith)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁻; ∈-map⁻; ∈-cartesianProductWith⁻)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Product using (Σ-syntax; ∃₂; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl)
 
 open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; fin)
 import Once.Spec.Grade as G
-open import Once.Spec.Type using (Ty; Fun; var; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
+open import Once.Spec.Type using (Ty; Fun; var; Unit; _*_; _+_; _⇒[_]_; Int; Float)
 open import Once.Spec.Type using (μ; ν)
 open import Once.Spec.Sub using (_<:ᶜ_; subᶜ-void; subᶜ-arr; subᶜ-ν)
 open import Once.Type.Sub using (<:ᶜ-refl)

@@ -14,18 +14,17 @@
 
 module Once.Metatheory.Float.Scale where
 
-open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _^_; _<_; _≤_; s≤s; z≤n)
+open import Data.Nat as ℕ using (ℕ; suc; _+_; _*_; _^_; _<_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties as ℕP
-  using (≤-trans; <-≤-trans; ≤-<-trans; ≤-reflexive; *-comm; *-identityʳ
-        ; *-monoˡ-≤; *-monoʳ-≤; *-monoˡ-<; ^-distribˡ-+-*; m^n≢0; m≤m*n; ≰⇒>)
+  using (≤-trans; <-≤-trans; ≤-<-trans; ≤-reflexive; *-comm; *-identityʳ; *-monoʳ-≤; *-monoˡ-<; ^-distribˡ-+-*; m^n≢0; m≤m*n; ≰⇒>)
 import Data.Integer as ℤ
 open import Data.Integer using (ℤ; +_; -[1+_])
 import Data.Integer.Properties as ℤP
-open import Data.Bool using (Bool; true; false; T)
+open import Data.Bool using (true; false; T)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; sym; trans; cong; cong₂; subst)
+  using (_≡_; refl; sym; trans; cong; subst)
 
-open import Once.Spec.Float.Dyadic using (FloatFormat; bitLen)
+open import Once.Spec.Float.Dyadic using (bitLen)
 open Once.Spec.Float.Dyadic.FloatFormat using (sig-bits)
 open import Once.Spec.Float.Value using (atLeast; lgAt; lg; scaleRHE; quantum; qmin)
 open import Once.Metatheory.Float.Nat using (bitLen-upper; bitLen-lower; divRHE-≤)

@@ -33,16 +33,15 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldPop o tbl using (module Cat
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldInv o tbl using (module CataFoldInvC)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; sv-as-loc; load-from-slot; load-at; mov-to-input; instr-ctrl; c-jmp; c-label; writeReg-same; offsetLoc)
+        ; SV-Ptr; load-from-slot; load-at; mov-to-input; instr-ctrl; c-jmp; c-label; writeReg-same; offsetLoc)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC)
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 import Once.CCC.Machine.FlatPut as FlatPut
 open import Data.List.Properties using (++-identityʳ)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Label using (ℓ)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
-open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; μ-type)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
+open import Once.Memory.HeapAddress using (HeapLocation)
+open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI)
 import Once.IRTy as IRTy′
 open import Data.Product using (Σ)
 open import Data.Unit using (⊤)
@@ -50,7 +49,6 @@ open import Data.Unit using (⊤)
 module CataFoldExitC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open ResuspBaseC {FS} hiding (X)
   open CataStackC {FS}
   open CataWalkC {FS}
@@ -61,7 +59,7 @@ module CataFoldExitC {FS : FrameSemantics} where
   open CataVisitC {FS} using (bk-id; load-bk; kp-set)
   open GetC {FS} using (setOut; out-mem; offset-zero; load-at-step)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (current-frame)
 
   -- a valid word in `Output` is a result place, at the word's own mode
   word→place′ : ∀ {prog a B v s w} → FlatPut.Src {FS} {prog} a s B v w → readReg (regs s) Output ≡ w
@@ -82,7 +80,7 @@ module CataFoldExitC {FS : FrameSemantics} where
               (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
-    open FA using (X; Y; Z; span-hd; exit-label; exitL; endL; fetch-exit; fetch-ld; fetch-mti2; fetch-li; fetch-jmp-end; end-label; fetch-end)
+    open FA using (X; Z; span-hd; exit-label; exitL; endL; fetch-exit; fetch-ld; fetch-mti2; fetch-li; fetch-jmp-end; end-label; fetch-end)
 
     c bodyL l1 : ℕ
     c = FA.T.Pc.cslot

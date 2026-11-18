@@ -32,23 +32,21 @@ open import Once.IRTy using (IRTy)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; readReg; Output)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.Locations using (AtStack)
 open import Once.CCC.Machine.FlatLog using (LogFree)
 open import Once.Memory.HeapAddress using (HeapLocation)
-open import Data.Product using (Σ)
 open import Once.CCC.Machine.FrameFree using (FrameFreeI)
 open import Once.CCC.Machine.SMPrimitives using (EffectPreservesNextHeapRef; instr-effect)
 
 module CataWalkC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open ResuspBaseC {FS} using (St; SegA; Seg; SRun; s-at; s-nil; segA-∘; seg-rebase; segA-pc; Kp; sl-keep; live-from)
   open CataStepsC {FS} using (s-++; seg-q)
   open CataStackC {FS}
   open GetC {FS} using (GetOut; module GetOut; setOut; out-mem)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (current-frame)
 
   -- the slot reads a walk keeps, at the frame of its start
   SlotsKept : (ℕ → Set) → FlatState → FlatState → Set

@@ -27,13 +27,12 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Relation.Unary.All using (All; []; _∷_; head) renaming (map to All-map)
 open import Data.List.Relation.Unary.All.Properties using (++⁻ʳ) renaming (++⁺ to All-++⁺)
-open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
+open import Data.List.Relation.Unary.AllPairs using ([]; _∷_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing; map)
 open import Data.Bool using (Bool; true; false)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 open import Once.IR using (IR)
@@ -42,13 +41,13 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (LabelId; module LabelId; EntryId; e-thunk; e-fn; _≡ᵇᴱ_; ≡ᵇᴱ-refl; ≡ᵇᴱ-true)
 open LabelId using (idx)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-entry; c-thunk; c-ret; c-start; block-layout; blocks-layout; link-top)
+  using (AbstractTrace; AbstractInstr; instr-ctrl; c-entry; c-ret; c-start; block-layout; blocks-layout; link-top)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Codegen.BlockLayout using (module Layout)
 import Once.CCC.Codegen.BlockLabels as BLs
-open import Once.CCC.Codegen.LabelDefs using (Dst; dst-split; clab-of; cl-at; clabs; clabs-++; fdef-of; fdefs; NoFn; nf)
-open import Once.Denotation.Program using (IRFun; IRProgram; irProgram; NamesDistinct)
+open import Once.CCC.Codegen.LabelDefs using (Dst; dst-split; clab-of; cl-at; clabs; clabs-++; fdef-of; fdefs; nf)
+open import Once.Denotation.Program using (IRFun; irProgram; NamesDistinct)
 open Once.Denotation.Program.IRFun using (fname; fbody)
 open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-image; fn-next)
 import Once.CCC.Codegen.IRToTrace as IT
@@ -62,13 +61,13 @@ open import Once.Adequacy.ArchCorrectness.FnRuns using (module FnRunsC)
 module FnLayoutC {FS : FrameSemantics} where
 
   open FlatMachine {FS}
-    using (fetch; fetch-++-left; find-label; find-thunk; find-fn; ft-go; ft-at; ft-match; entry-of?; entry-of?-sound;
-           thunk-of?; label-of?; fl-go-++-miss; ft-go-++-miss; ft-go-prefix)
+    using (fetch-++-left; find-label; find-thunk; ft-go; ft-at; ft-match; entry-of?; entry-of?-sound;
+           thunk-of?; fl-go-++-miss; ft-go-++-miss; ft-go-prefix)
   open FlatStepsAPI {FS} using (fl-go-prefix; fl-go-shift)
-  open Layout {FS} using (Span; fetch-skip; span-head; span-shift; MissBefore; blocks-at; NoThunk; NoThunks; missBefore-from)
-  open BLs.Labels o {FS} using (BodyLabels; labels-all; found-clab; clabs-miss; cl-head; cl-tail; just-inj; clab-fetch)
+  open Layout {FS} using (Span; span-head; span-shift; MissBefore; blocks-at; NoThunk; NoThunks; missBefore-from)
+  open BLs.Labels o {FS} using (BodyLabels; labels-all; found-clab; clabs-miss; just-inj; clab-fetch)
   open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
-  open Resolve {FS} using (NoLabel; no-label-miss)
+  open Resolve {FS} using (no-label-miss)
   open FnRunsC {FS} using (EntryAt)
 
   ------------------------------------------------------------------------

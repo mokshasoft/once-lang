@@ -24,7 +24,7 @@ module Once.Adequacy.ModuleProgram (Σ : Signature) where
 open import Data.Bool using (Bool; true; false)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Nat using (_<_; suc)
 import Once.Spec.Core.Typing
@@ -67,7 +67,6 @@ import Once.Parser as Parser
 open import Once.Module using (Scope; ModTele; []; ffi; mono; poly; MainIn; EffUU; ctxOf; ctxOfAt; addImp; MonoWit; CheckRun)
 import Once.TypeCheck.Scope
 import Once.Surface.Syntax as SS
-open import Once.TypeCheck.SpecWitness using (WC)
 open import Once.Type.Instance using (kindsOf; rigidOf)
 open import Once.Core.Translate Σ
   using (SigSig; ImpSig; TeleSig; []; s-ffi; i-def; t-def; wkI; wkT; impDefs; viewOf; impAt; telFind; monoSchema; u0;

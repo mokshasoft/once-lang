@@ -29,7 +29,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-room)
-open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; checks; room-checks; max-entry)
+open import Once.CCC.Codegen.RoomChecks using (boundary?; stretch; room-checks; max-entry)
 open import Once.CCC.Codegen.RoomChecksFacts using (ψ; φ; bump; module RoomFacts)
 
 module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
@@ -230,7 +230,6 @@ module RoomSim {FS : FrameSemantics} (t : AbstractTrace) where
   open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
   open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; Sound; sound-step)
   open import Data.Maybe.Properties using (just-injective)
-  open import Data.Product using (proj₁; proj₂)
 
   sound-lift : ∀ {n : ℕ} (fs : FlatState) (p : ℕ) {g : FlatState} → PcRel (fpc fs) p → Sound t fs
              → FlatSteps P′ n (lift fs p) g → LocState.faulted (floc g) ≡ false

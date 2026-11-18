@@ -40,7 +40,7 @@ module Once.CCC.Machine.FlatStackPtr (FS : FrameSemantics) where
 
 open import Once.CCC.Label using (LabelId)
 
-open import Data.Nat using (ℕ; zero; suc; _≟_)
+open import Data.Nat using (ℕ; _≟_)
 import Data.Nat.Properties
 open import Data.Bool using (Bool; true; false)
 open import Data.Bool using () renaming (_∨_ to _∨_)

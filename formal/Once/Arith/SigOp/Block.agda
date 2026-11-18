@@ -34,14 +34,12 @@ open import Data.Nat using (suc)
 open import Once.Target.Symbol using () renaming (showNat to showℕ)
 open import Data.List using ([]; _∷_)
 open import Data.String using (String; _++_)
-open import Data.Product using (_,_)
-open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; blockV)
 open import Relation.Binary.PropositionalEquality using (refl)
 open import Once.Spec.Name using (bare)
 
-open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
+open import Once.Arith.Machine.Shape using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; afcmp; numtype-as-type; shape-as-type)
 

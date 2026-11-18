@@ -15,14 +15,11 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Metatheory.Laws.Sums (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-open import Data.Empty using (⊥-elim)
 open import Data.Fin using (zero)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Data.Unit using (tt)
-open import Function using (flip)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many)
 open import Once.Spec.Type using (Ty; KCtx; _⟨_⟩; _+_)
 open import Once.Spec.Context using (Ctx; _▸_; _∷_)
 open import Once.Spec.Core.Syntax
@@ -33,9 +30,8 @@ open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Metatheory using (_≅_)
 open import Once.Metatheory.Bisim Σ using (≈-refl; ≈-sym; ≈-trans; ≈-bind; idˡ; idʳ; assoc)
-open import Once.Metatheory.Coherence.Relation Σ using (Related; Related-flip; Related-mono; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel)
+open import Once.Metatheory.Coherence.Relation Σ using (≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel)
 open import Once.Metatheory.Coherence.Layer Σ using (rel; runs)
-open import Once.Metatheory.Coherence.PER Σ using (Same-sym)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
 open import Once.Metatheory.Laws.Views Σ u fmt S

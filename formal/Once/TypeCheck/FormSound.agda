@@ -16,19 +16,18 @@
 
 module Once.TypeCheck.FormSound where
 
-open import Data.Bool using (Bool; true; false; _∧_; _∨_; not)
+open import Data.Bool using (true; false; _∧_; _∨_; not)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using ([]; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (_<_)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.String using (String)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 
-open import Once.Spec.Name using (CanonicalName; canonical; own)
+open import Once.Spec.Name using (canonical; own)
 import Once.Spec.Surface.Syntax as Raw
 import Once.Spec.Surface.Generators as G
 import Once.Spec.Surface.Typing as SUT
@@ -39,12 +38,11 @@ import Once.Type
 open import Once.Type.Determined using (arrowSchema?; codVarsInDom?)
 open import Once.Generators using (fromDomain?; fromCodomain?)
 open import Once.TypeCheck.Scope
-  using (NamedCtx; lookupImport; lookupPolyPrefix; Head; hv-gen; hv-gen₁; hv-gen₂; hv-lam; hv-other; headView;
-         GenKindView; gk-map; gk-const; gk-comb₁; gk-comb₂; genKindView)
+  using (NamedCtx; lookupImport; lookupPolyPrefix; headView; gk-map; gk-const; gk-comb₁; gk-comb₂; genKindView)
 open NamedCtx
 open import Once.TypeCheck.Elaborate
-  using (PolyKind; not-poly; poly-other; polyKind; polyKind-own; polyKind-g; polyKind-a; polyKind-c;
-         synthForm?; domainForm?; synthApp?; domainApp?; domainGen?; synthGenB; notComb₂B; constB; isYesB;
+  using (not-poly; poly-other; polyKind; polyKind-own; polyKind-a;
+         synthForm?; domainForm?; synthApp?; domainApp?; constB; isYesB;
          notPolyB; domPolyB; isGround-inj₂→¬Ground)
 import Once.TypeCheck.Elaborate as E
 open import Once.TypeCheck.SpecWitness using (Pack; module At; OkOf; OkSOf)

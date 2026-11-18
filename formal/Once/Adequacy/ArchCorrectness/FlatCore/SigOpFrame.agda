@@ -23,7 +23,7 @@ open import Data.Maybe using (Maybe)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
-open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles; role-sp; role-clos; role-heap; role-out; role-in1)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (Label)
 open import Once.Spec.Name using (CanonicalName)
@@ -56,23 +56,23 @@ open import Data.Nat.Properties using (≤-trans; <-≤-trans; m≤m+n; m+n≤o�
 open import Data.Maybe using (just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥)
 open import Data.List using (List; []; _∷_)
 open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; subst)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open FlatMachine {FS} using (FlatState; fpc; fret; falloc; fclosure; flink; floc; flat-exec-instr; fetch)
+open FlatMachine {FS} using (FlatState; fpc; fret; falloc; flink; floc; flat-exec-instr; fetch)
 open AbstractExec {FS} using (exec-sigop-output; exec-sigop-halts; decode-at)
 open AllocState using (current-frame; frame-slots; saved-frames)
 open LocState using (regs; halted; heapMem; stackMem)
 open FrameSemantics FS using (Frame; frame-base)
-open RegRoles roles using (reg-of; sp-reg; clos-reg; heap-reg; out-reg; in1-reg)
+open RegRoles roles using (reg-of; sp-reg; out-reg)
 
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence as CC
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
-open import Once.SigOp.Info using (effect; Pure; Internal; internal-pure; module SigOpInfo)
+open import Once.SigOp.Info using (effect; Pure; Internal; internal-pure)
 open SigOpInfo using (baseA; sem)
 open import Data.Bool using (false)
 open import Data.Product using (∃)
@@ -80,10 +80,10 @@ private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
   module CCC = CC o FS slot-size word-eq Reg roles State rreg memory xhalted link-claim
                  xpc Program compile-trace find-label blk-off blk-len exec modulus
-open CFC using (HeapView; FlatCorr; Memory; readMem; StackWindows; RetAddrs; GapNext; frames-of
-               ; hfront; lo; amap; haddr; dom-below; front-lo; enc-sv; slots
+open CFC using (HeapView; Memory; readMem; StackWindows; RetAddrs; frames-of
+               ; hfront; lo; amap; haddr; dom-below; enc-sv; slots
                ; windows-above; windows-reanchor; windows-lower)
-open CCC using (CompiledCorr; dataCorr; pc-off; ret-eq; code-eq)
+open CCC using (CompiledCorr; dataCorr; ret-eq; code-eq)
 
 ------------------------------------------------------------------------
 -- The concrete run, as seen from the correspondence. `W` is the frame's size

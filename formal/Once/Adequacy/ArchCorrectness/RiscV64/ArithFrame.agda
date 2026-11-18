@@ -15,25 +15,22 @@
 
 module Once.Adequacy.ArchCorrectness.RiscV64.ArithFrame where
 
-open import Data.Bool using (Bool)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Data.List using (List; []; _∷_; map)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (map⁺)
-open import Data.Maybe using (Maybe)
-open import Data.Nat using (ℕ; suc; _+_; _*_; _∸_; _≤_; _<_)
+open import Data.Nat using (ℕ; _+_; _*_; _∸_; _≤_; _<_)
 open import Data.Nat.Properties
-  using (≤-trans; <-≤-trans; ≤-<-trans; <⇒≢; <-irrefl; m≤m+n; +-monoʳ-<; *-monoʳ-<; ∸-monoʳ-≤; ∸-+-assoc
-        ; m∸n+n≡m; m∸n≤m; n≤1+n; ≤-reflexive; +-comm; m+n∸n≡m)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+  using (≤-trans; <-≤-trans; <-irrefl; m≤m+n; +-monoʳ-<; *-monoʳ-<; ∸-monoʳ-≤
+        ; m∸n+n≡m)
+open import Data.Product using (_×_; _,_; proj₁)
 import Data.Nat.Properties
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
-open import Relation.Nullary using (¬_)
 
-open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XR0; XR1; XScratch; mk-scratch)
+open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XR0; XR1; XScratch)
 open import Once.Target.RiscV64.PhysReg using (Reg; zero; ra; sp; fp; a0; a1; a2; a3; a4; a5; a6; a7; s1; s2; s3; s4; t0; t1; t2; t3; t4)
-open import Once.CCC.Target.RiscV64.Semantics using (State; mkstate; RegFile; readReg; writeReg; readMem; writeMem; Word)
+open import Once.CCC.Target.RiscV64.Semantics using (State; readReg; writeReg; readMem; Word)
 open State
 open import Once.Arith.Backend.RiscV64.Emit using (arith-reg)
 open import Once.Arith.Backend.RiscV64.Confine using (writes)

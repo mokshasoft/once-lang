@@ -17,16 +17,16 @@
 open import Once.Spec.Name using (CanonicalName)
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldBind (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldInv o tbl using (module CataFoldInvC)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue)
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.Locations using (AtDynamic)
 open import Once.Res using (Res; returns; stopped; is-stopped)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenAp; run-approx-bind)
@@ -37,10 +37,8 @@ open import Once.IR.Semantics.Event using (SigOpEvent)
 module CataFoldBindC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
-  open CataFoldInvC {FS} using (module Inv; RoundRun; Same)
+  open CataFoldInvC {FS} using (RoundRun; Same)
   open LocState using (halted)
-  open AllocState using (next-slot)
 
   private
     done-inj : ∀ {V : Set} {v v′ : V} {r r′ : ℕ} → _≡_ {A = Res (Ap V)} (returns (done v r)) (returns (done v′ r′)) → v ≡ v′

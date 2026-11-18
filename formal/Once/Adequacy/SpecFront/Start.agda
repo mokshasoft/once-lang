@@ -21,7 +21,7 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All as All
 import Data.List.Relation.Unary.All.Properties as AllP
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
-open import Data.Maybe using (just; nothing)
+open import Data.Maybe using (nothing)
 open import Data.Product using (_×_; _,_; proj₁)
 open import Data.Empty using (⊥-elim)
 open import Data.String using (String)

@@ -29,29 +29,26 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; LocState; AllocState; module LocState; module AllocState; module MemOps; module AbstractExec;
-         readReg; writeReg; writeReg-same; Input1; Output; SV-Ptr; SV-Tag; StoredValue; sucLoc; offsetLoc;
-         mov-to-output; mov-to-input; store-at-slot; load-from-slot; instr-alloc-heap; instr-load-tag-lit; store-at;
-         restore-input; load-at)
+  using (AbstractTrace; LocState; AllocState; module LocState; module AllocState; module MemOps; module AbstractExec;
+         readReg; writeReg; Input1; Output; SV-Ptr; SV-Tag; StoredValue; sucLoc;
+         mov-to-output; mov-to-input; store-at-slot; load-from-slot; instr-alloc-heap; instr-load-tag-lit; store-at)
 open LocState using (regs; halted)
-open AllocState using (current-frame; next-slot; next-heap-ref)
-open import Once.Memory.HeapAddress using (HeapRef; HeapLocation; heap-loc; offsetHL; mkHeapRef)
-open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float; FitsInRegI)
+open AllocState using (current-frame)
+open import Once.Memory.HeapAddress using (heap-loc)
+open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float)
   renaming (_+_ to _+ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (fill; put; put-All; fill-All)
 open import Once.CCC.Codegen.IRToTrace o using (inj-trace)
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
-open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 open import Once.CCC.Machine.SMPrimitives using (module MemoryOps)
 import Once.CCC.Machine.SMPrimitives
 
 open import Data.Nat using (_⊔_; z≤n; s≤s)
-open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n; +-monoʳ-<; m+[n∸m]≡n; +-cancelˡ-≡)
+open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n; +-monoʳ-<; m+[n∸m]≡n)
 open import Data.List.Relation.Unary.All using ([]; _∷_)
-open import Data.Product using (Σ)
 open import Data.Sum using (inj₁; inj₂)
 
 module InjC {FS : FrameSemantics} where

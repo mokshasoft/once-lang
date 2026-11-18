@@ -29,24 +29,21 @@ module Once.Denotation.RealizeS (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fi
 
 open import Data.Bool using (true; false)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
-open import Once.Spec.Grade using (Many; Purity; mk-kind; pureᶠ; actᶠ; act; pure; eff; eg-act; eg-eff)
-open import Once.Spec.Type using (Ty; _⇒[_]_; _⟨_⟩; μ; ν; Unit)
-open import Once.Spec.Core.Derived using (𝕋)
+open import Once.Spec.Grade using (Many; mk-kind; pure)
+open import Once.Spec.Type using (Ty; _⇒[_]_; _⟨_⟩)
 open import Once.Spec.Surface.Generators using (Constant; Final; k-unit; k-toFloat; final-ν; final-T∞)
 open import Once.TypeCheck.Table using (morphIR)
 open import Once.Spec.Sub using (sub-arr; _⊔_≔_)
 open _⊔_≔_ using (left; right)
 open import Once.Spec.Core.Syntax using (module Schema; _!!_)
 open Schema using (type)
-open import Once.Spec.Context using (Usage)
+import Once.Spec.Context
 open import Once.Name using (showCanonical)
 open import Once.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open import Once.Type.Grade using (≤q-Many)
-open import Once.IR as IR using (IR)
-open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
-open import Once.IRTy.WF using (wf-⌊⌋)
+open import Once.IR as IR using ()
 open import Once.Surface.Syntax
-  using (Expr; var; lam; app; effApp; appT; pair; num; let'; case'; int; float; unit; sigOp; closure; poly; lift-morphism;
+  using (Expr; var; lam; app; appT; pair; num; let'; case'; int; float; unit; sigOp; closure; poly; lift-morphism;
          morph-app; coerce; cata; ana; loop; comp'; copair'; fork'; curry')
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals)

@@ -34,7 +34,6 @@ module Once.Adequacy.Compile where
 
 open import Once.Module using (ModuleTyped; moduleSig)
 open import Data.Bool using (Bool; false; true)
-open import Data.Nat using (ℕ)
 open import Data.List using (List)
 import Data.List
 open import Once.Name using (showCanonical)
@@ -47,11 +46,10 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Spec.Type using (Unit)
 
-open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior)
+open import Once.Denotation.Behavior using (Source)
 -- D320: what a program does is its TRACE (`Spec.Trace.Tr ⊤`): its calls and how
 -- the run ended; two are the same when weakly bisimilar.
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_; _⊑ᵗ⟨_⟩_)
-open import Once.Denotation.TraceTr using (trT∞)
 open import Once.Metatheory.Trace using (⊑≈-trans; WB-trans)
 import Once.Core.Telescope as TL
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
@@ -60,20 +58,15 @@ import Once.Spec.Observation as Obs
 open import Once.Adequacy.SpecInterp using (toInterp)
 open import Once.Core.Decl using (toISig)
 import Data.Unit
-open import Once.IR.Semantics.Trace using (PrefixFamily)
-open Once.IR.Semantics.Trace.PrefixFamily using (bnd; sat; coh)
 
-open Once.Denotation.Behavior.Behavior using (at)
-open import Once.Core.Telescope using (Program; program)
-open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ; srcToModule; srcToModule-just; srcToModule-inv; rewrite-program-linked)
+open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ; srcToModule; srcToModule-just; srcToModule-inv)
 open import Once.Compile using (moduleToIR; moduleToProgram; moduleTable; programAt; rewrite-program)
 open import Once.Adequacy.OptimizedModule using (moduleToIR-opt)
 open import Once.Adequacy.OptimizedTable using (optimized-trace)
 import Once.IR as IR
 import Once.Parser as Parser
 open import Once.Adequacy.RewritePreserves using (rewrite-program-trace)
-open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
-open import Once.Denotation.Program using (IRProgram; irProgram; LinkedProgram)
+open import Once.Denotation.Program using (IRProgram; irProgram)
 
 -- Plan 0.49 (route 3): the INDEPENDENT surface denotation `SD.⟦_⟧ˢ` (over the
 -- intrinsically-typed `Expr`, NOT through the compiler's `evalᴰ ∘ moduleToIR`),
@@ -81,10 +74,9 @@ open import Once.Denotation.Program using (IRProgram; irProgram; LinkedProgram)
 -- proven `faithful`. The main `Expr` is recovered from a `⊢ᶜ` derivation by
 -- `check-complete` (the proven typechecker-completeness witness).
 import Once.Denotation.SourceDenote as SD
-open import Once.IR.Semantics.Trace using (Interp; interp; module Interp)
+open import Once.IR.Semantics.Trace using (Interp; module Interp)
 open Interp using (sig)
-open import Once.Contract using (ISig; Impl)
-open import Once.IR.Semantics.Event using (SigOpEvent)
+open import Once.Contract using (ISig)
 -- Plan 0.49 Phase 1 (row-1b): the declarative valid-main predicate + BOTH
 -- lifts. `moduleToIR-complete` (forces `check-complete`) discharges
 -- completeness; `moduleToIR-sound` produces the predicate for soundness.

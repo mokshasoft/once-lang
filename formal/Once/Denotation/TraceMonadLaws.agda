@@ -8,38 +8,24 @@
 
 module Once.Denotation.TraceMonadLaws where
 
-open import Data.Nat using (ℕ; zero; suc; _∸_; _≤_; _<_; z≤n; s≤s)
-open import Once.Spec.Type using (Base; b-Unit; ∅ₖ)
-open import Data.Nat.Properties using (0∸n≡0)
+open import Data.Nat using (zero; suc; _≤_; _<_; z≤n; s≤s)
 open import Data.List using (List; []; _∷_; _++_; length; take; [_])
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
-open import Data.Bool using (Bool)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Empty using (⊥)
-open import Data.Unit using (⊤; tt)
-open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
+open import Data.Unit using (tt)
+open import Data.Product using (∃-syntax; _,_; proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym)
 open import Once.Postulates using (extensionality)
-open import Once.Res using (Res; stopped; returns; is-stopped; Res-rel; rel-stopped; rel-returns)
-open import Once.Spec.Type using (Type)
-open import Once.Type.Core using (isUnit?)
+open import Once.Res using (Res; stopped; returns)
 import Once.Type.Core as SpecTy
 import Once.Spec.Type as SpecTy
 import Once.Type as Ty
-open import Once.Spec.Name using (CanonicalName)
-open import Once.Name using (showCanonical)
-open import Relation.Nullary using (Dec; yes; no)
 import Data.List.Membership.DecPropositional as DecMem
-open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Word using (Carrier)
 import Once.IR.Semantics.Value Carrier Carrier as M
-open import Once.IR.Semantics.Event using (SigOpEvent; mk-event)
-open import Once.IR.Semantics.Trace using (FFIAnswers)
-open import Once.Contract using (Key; key; kdom; kcod; _∈K?_; ISig; valueKeys; answerKeys; Impl; answerI; pureI)
+open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.IR.Semantics.Trace
 open CallOp
-open HaltOp
-open Interp
 
 >>=T-identityˡ : ∀ {X Y : Set} (x : X) (f : X → T Y) → (returnT x >>=T f) ≡ f x
 

@@ -30,11 +30,11 @@ module Once.CCC.Codegen.IRObsCorrect.CataConst.Layout (o : CanonicalName) (tbl :
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRToTrace o
-  using (rec-count; cata-strategy; CataStrategy; strat-const; strat-box; cata-dispatch; cata-call-setup; cata-call; cata-call-from; cata-body;
+  using (rec-count; cata-strategy; cata-dispatch; cata-call-setup; cata-call-from; cata-body;
          const-strategy; box-fun)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (Head; h-mov; h-box; head-instr; head-strat)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Call o tbl using (module CataCallC)
-open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; kind; lkind; lsz; skind; ssize; kind-skind; size-ssize; get; get-All; put; put-All)
+open import Once.CCC.Codegen.FlatLayout using (Kind; word; kind; lkind; lsz; kind-skind; size-ssize; get; get-All; put-All)
 open import Once.CCC.Codegen.Size using (size)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Type using (Fun)

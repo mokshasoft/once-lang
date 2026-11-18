@@ -17,8 +17,8 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Core.TySubstZero (Σ : Signature) {s : ℕ} (S : Defs s) where
 
-open import Data.Fin using (Fin; zero; suc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
+open import Data.Fin using (Fin)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; cong₂)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
 open import Once.Spec.Grade using (Many; mk-kind; positionGrade; act; fin)
 open import Once.Spec.Type using (Ty; Fun; KCtx; TySub; Respects; WFFun; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F;

@@ -31,7 +31,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_; inj₂)
 open import Data.Unit using (tt)
-open import Data.Bool using (Bool; false)
+open import Data.Bool using (Bool)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Target.Arch using (Arch; x86-64; x86-32; riscv64)

@@ -48,16 +48,13 @@ open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module Resusp
 open import Once.CCC.Codegen.IRToTrace o using (push2; pop2)
 import Once.CCC.Machine.SMCore as SMCore
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; module MemOps; module AbstractExec
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; module MemOps; module AbstractExec
         ; StoredValue; readReg; writeReg; Output; Input1; SV-Ptr; SV-Tag; sv-as-loc; offsetLoc
         ; store-at-slot; load-from-slot; mov-to-input; instr-alloc-heap; store-at; load-at)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; sucHL; offsetHL; module HeapLocation; module HeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; sucHL; offsetHL; module HeapLocation)
 open import Once.IRTy using (IRTy; IRFunctor; μ-type)
-open HeapLocation using (heap-ref)
-open HeapRef using (ref-id)
-open import Data.Bool using (Bool)
 open import Data.List using (null)
 open import Data.List.Properties using (++-identityʳ)
 open import Data.List.Relation.Unary.All using ([]; _∷_)
@@ -73,7 +70,7 @@ module CataStackC {FS : FrameSemantics} where
   open Mach {FS}
   open ResuspBaseC {FS}
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame; block-size)
+  open AllocState using (next-heap-ref; current-frame; block-size)
   open MemOps {FS} using (writeLoc; writeLoc-preserves-other; writeLoc-read-same-stack; writeLoc-regs; writeLoc-halted)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
   open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)

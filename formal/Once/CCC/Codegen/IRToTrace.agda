@@ -82,7 +82,6 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open SigOpInfo using (sem)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of; cmp-block-info)
 open import Once.CCC.Label using (LabelId; ℓ)
 
@@ -100,7 +99,7 @@ open import Data.Bool using (Bool; true; false)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; AbstractTrace; CompUnit; unit; link; mov-to-output; mov-to-input; load-from-slot; store-at-slot; restore-input; instr-alloc-heap; instr-call-closure; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-ctrl; c-label; c-jmp; c-thunk; c-call-fn; c-ret; c-branch-tag-zero; out-nz; store-at; load-at; addr-at)
+  using (AbstractInstr; AbstractTrace; CompUnit; unit; link; mov-to-output; mov-to-input; load-from-slot; store-at-slot; restore-input; instr-alloc-heap; instr-call-closure; instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit; instr-reg-op; instr-ctrl; c-label; c-jmp; c-thunk; c-call-fn; c-ret; c-branch-tag-zero; out-nz; store-at; load-at)
 
 ------------------------------------------------------------------------
 -- IR → AbstractTrace, state-passing

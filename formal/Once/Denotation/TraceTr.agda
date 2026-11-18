@@ -25,7 +25,7 @@ open import Data.List using (List; []; _∷_; _++_; [_]; map)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Spec.Word using (Carrier)
 import Once.IR.Semantics.Value Carrier Carrier as V
@@ -105,7 +105,7 @@ open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s)
 open import Data.Nat.Properties using (m≤n⇒m≤1+n)
 open import Data.Product using (Σ-syntax)
 open import Once.IR.Semantics.Trace using (Run)
-open import Once.Denotation.Approx using (Ap; done; cut; approx; approxBlock; endAp)
+open import Once.Denotation.Approx using (Ap; approx; approxBlock; endAp)
 open import Once.Adequacy.FuelTrace using (Obs; module Fuel)
 
 obsAp : ∀ {X} → Run (Ap X) → Obs

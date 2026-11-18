@@ -49,7 +49,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; restore-input; readReg; Output; module LocState; module AllocState)
-open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
+open AllocState using (next-slot; next-heap-ref; current-frame)
 open LocState using (halted; regs)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Chain    o tbl

@@ -24,22 +24,22 @@ open import Once.Spec.Signature using (Signature)
 module Once.Metatheory.Parametricity.Graph (Σ : Signature) where
 
 open import Data.Empty using (⊥-elim)
-open import Data.Fin using (Fin; zero; suc)
+open import Data.Fin using (zero; suc)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
 open import Relation.Nullary using (¬_)
 open import Once.Spec.Grade using (Finite; fin; Purity; mk-kind; Zero; One; Many)
 open import Once.Spec.Type
   using (Ty; Type; Fun; KCtx; TySub; _⟨_⟩; _⟨_⟩F; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_;
          at₀; shiftᵗ; Occurs; OccursF; o-var; o-*ˡ; o-*ʳ; o-+ˡ; o-+ʳ; o-⇒ˡ; o-⇒ʳ; o-μ; o-ν; o-K; o-⊕ˡ; o-⊕ʳ; o-⊗ˡ; o-⊗ʳ)
 open import Once.Spec.Type.Substitution using (⟨⟩-∘; ⟨⟩F-∘)
-open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF; μS; inS; sfmap)
-open import Once.Spec.Effect Σ using (M; T∞; toT∞; fmap; _>>=∞_; return∞; _≈_; SRel; rK; rId; _r⊕_; _r⊗_; LayerRel; νM; ana)
+open import Once.Spec.Polynomial using (⟦_⟧SF; inS; sfmap)
+open import Once.Spec.Effect Σ using (M; toT∞; fmap; _>>=∞_; return∞; _≈_; SRel; rK; rId; _r⊕_; _r⊗_; LayerRel; νM; ana)
 open νM using (outν)
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code)
+open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Equivalence Σ
 open import Once.Spec.Metatheory
   using (StrictlyPositive; StrictlyPositiveF; sp-var; sp-Unit; sp-Void; sp-Int; sp-Float; sp-*; sp-+; sp-⇒; sp-μ; sp-ν;
@@ -47,7 +47,7 @@ open import Once.Spec.Metatheory
 open import Once.Metatheory.Bisim Σ using (idʳ; idˡ; assoc; ≈-bind; ≈-refl; ≈-sym; ≈-trans)
 open import Once.Metatheory.Erase Σ using (toT∞-fmap)
 open import Once.Metatheory.Unfold Σ using (module Unfold)
-open import Once.Metatheory.Coherence.Relation Σ using (Related; fromObserved; toObserved; bindRel; returnRel; ≈-Relatedˡ; ≈-Relatedʳ)
+open import Once.Metatheory.Coherence.Relation Σ using (fromObserved; toObserved; bindRel; returnRel; ≈-Relatedˡ; ≈-Relatedʳ)
 open import Once.Metatheory.Laws.MapSem Σ
   using (module MapAt; Occ; OccF; p-var; p-*ˡ; p-*ʳ; p-+ˡ; p-+ʳ; p-⇒ʳ; p-μ; p-ν; p-K; p-⊕ˡ; p-⊕ʳ; p-⊗ˡ; p-⊗ʳ)
 open import Once.Metatheory.Parametricity.Identity Σ using (rel-same; same-rel; Observed-mono)

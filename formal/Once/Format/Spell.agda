@@ -23,7 +23,6 @@ open import Data.String using (String; fromList) renaming (_++_ to _++ˢ_)
 
 open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand; TBang; TNewline; TEOF; TOp; TOpD)
 open import Once.Spec.Surface.Operator using (Dottable; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
-open import Once.Adequacy.SpecTokNames
 
 -- A decimal digit.
 digit : ℕ → Char

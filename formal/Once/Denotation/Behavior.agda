@@ -77,12 +77,10 @@
 
 module Once.Denotation.Behavior where
 
-open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; z≤n; s≤s)
-open import Data.Nat.Properties using (m≤n⇒m<n∨m≡n)
-open import Data.List using (List; []; _∷_; _++_; length; take)
-open import Data.Product using (∃-syntax; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
+open import Data.Nat using (ℕ; suc; _≤_; _<_; z≤n)
+open import Data.List using (List; []; _++_; length)
+open import Data.Product using (∃-syntax; _,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.IR.Semantics.Event using (SigOpEvent)
 import Once.Grammar as G

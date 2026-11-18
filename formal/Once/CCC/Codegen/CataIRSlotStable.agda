@@ -49,14 +49,13 @@ open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr
 open import Data.Maybe using (Maybe; just; nothing)
 open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo)
 open SigOpInfo using (sem)
-open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep)
 open import Once.CCC.Codegen.IRToTrace o
-  using (sigop-code; ir-to-trace; ir-to-trace-lab; ir-to-unit; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer; CataStrategy; strat-const; strat-box; strat-branching; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; with-copy; two-cell; out-trace; visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂; -- D099 / C1: the called-algebra blocks.
-         cata-body; cata-call-setup; cata-call; cata-trace-const; fsize;
+  using (sigop-code; ir-to-trace; ir-to-trace-lab; ir-to-unit; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer; CataStrategy; strat-const; strat-box; strat-branching; cata-trace-branching; cata-trace-box; in-trace; with-copy; two-cell; out-trace; visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂; -- D099 / C1: the called-algebra blocks.
+         cata-body; cata-call-setup; cata-trace-const; fsize;
          cata-call-from; inj-trace; env-entry; getμ; wrap-sum; push2)
-open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; get-k; kind; lkind; lsz;
+open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; put; put-k; get; kind; lkind; lsz;
   put-All; put-k-All; get-All; get-k-All; fill; fill-All)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ν-type) renaming (_+_ to _+ᵀ_)

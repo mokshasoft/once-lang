@@ -22,7 +22,6 @@ open import Once.Spec.Surface.Syntax using (Expr)
 open import Data.Nat.Properties using (<-≤-trans; m≤n⇒m≤1+n; ≤-refl)
 open import Data.Nat using (_≤_)
 open import Data.List using (List; []; _∷_; length)
-open import Once.Parser.Module.FunDef.Params
 -- a definition's parameters wrap its body as the Spec's grammar wraps them
 open import Once.Spec.Surface.Grammar using (wrapLams)
 

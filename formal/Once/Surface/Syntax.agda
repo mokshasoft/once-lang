@@ -14,15 +14,11 @@ open import Once.Spec.Grade
 open import Once.Type.Grade
 open import Once.Type.Core
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
-open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Type.Poly
-open import Once.Type
+open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
 open import Once.Spec.Sub using (_<:_)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type.Concrete using (IsConcrete)
-open import Once.Spec.Type using (WFFun; ∅ₖ)
 
 open import Data.Fin using (Fin)
 open import Data.Bool using (true)
@@ -45,8 +41,7 @@ import Once.Spec.Core.Derived
 -- typing judgment / direct denotation can use it without `Once.IR`.
 open import Once.Context
 open import Once.Spec.Context using (Ctx; Usage; _*ᵘ_; _+ᵘ_; lookup; singleUse; zeroUsage; ∅)
-open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
-open import Once.Surface.Context
+open import Once.Spec.Context using ([]; _∷_)
 
 -- | Surface expressions (well-typed AND well-used by construction)
 --

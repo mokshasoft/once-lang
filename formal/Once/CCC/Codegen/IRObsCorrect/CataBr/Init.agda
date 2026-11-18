@@ -39,7 +39,7 @@ open import Once.CCC.Machine.SMCore
         ; SV-Ptr; SV-Tag; sv-as-loc; store-at-slot; load-from-slot; store-at; mov-to-input; mov-to-output; module MemOps; module AbstractExec
         ; instr-alloc-heap; instr-load-tag-lit)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
 open import Once.IRTy using (IRTy; IRFunctor; μ-type)
@@ -51,13 +51,12 @@ import Once.CCC.Machine.SMPrimitives
 module CataInitC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open ResuspBaseC {FS}
   open CataStepsC {FS}
   open CataStackC {FS}
   open CataWalkC {FS}
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (next-heap-ref; current-frame)
   open MemOps {FS} using (writeLoc; writeLoc-preserves-other)
   open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
 

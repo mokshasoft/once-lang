@@ -146,7 +146,6 @@ record LocStateWithAlloc {FS : FrameSemantics} : Set where
     machine-state : LocState FS
     alloc-state : AllocState {FS}
 
-open LocStateWithAlloc
 
 ------------------------------------------------------------------------
 -- Memory Write Operations

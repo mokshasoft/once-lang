@@ -14,25 +14,22 @@
 
 module Once.Adequacy.ArchCorrectness.X86-64.ArithFrame where
 
-open import Data.Bool using (Bool)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Data.List using (List; []; _∷_; map)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (map⁺)
-open import Data.Maybe using (Maybe)
 open import Data.Nat using (ℕ; suc; _+_; _*_; _∸_; _≤_; _<_)
 open import Data.Nat.Properties
-  using (≤-trans; <-≤-trans; ≤-<-trans; <⇒≢; <-irrefl; m≤m+n; +-monoʳ-<; *-monoʳ-<; ∸-monoʳ-≤; ∸-+-assoc
-        ; m∸n+n≡m; m∸n≤m; n≤1+n; ≤-reflexive; +-comm; m+n∸n≡m)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+  using (≤-trans; <-≤-trans; <-irrefl; m≤m+n; +-monoʳ-<; *-monoʳ-<; ∸-monoʳ-≤; ∸-+-assoc
+        ; m∸n+n≡m; m∸n≤m; +-comm)
+open import Data.Product using (_×_; _,_; proj₁)
 import Data.Nat.Properties
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
-open import Relation.Nullary using (¬_)
 
-open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XR0; XR1; XScratch; mk-scratch)
+open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XR0; XR1; XScratch)
 open import Once.Target.X86-64.PhysReg using (Reg; rax; rbx; rcx; rdx; rsi; rdi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15)
-open import Once.CCC.Target.X86-64.Semantics using (State; mkstate; RegFile; readReg; writeReg; readMem; writeMem; Word)
+open import Once.CCC.Target.X86-64.Semantics using (State; readReg; writeReg; readMem; Word)
 open State
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
 open import Once.Arith.Backend.X86-64.Confine using (writes)

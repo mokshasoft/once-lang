@@ -19,22 +19,22 @@ module Once.Metatheory.Laws.CataLaws (Σ : Signature) (u : OneName Σ) (fmt : Ta
 open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.Sum using (inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
-open import Once.Spec.Grade using (Quantity; Many; mk-kind; Purity; pure; _⊑π_; ⊑-pure)
-open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; TySub; Respects; ∅ₖ; _⟨_⟩; _⟨_⟩F; _⇒[_]_; μ; ⟦_⟧F; at₀)
+open import Once.Spec.Grade using (Many; mk-kind; pure; _⊑π_; ⊑-pure)
+open import Once.Spec.Type using (Ty; KCtx; WFFun; TySub; Respects; ∅ₖ; _⟨_⟩; _⇒[_]_; μ; ⟦_⟧F; at₀)
 open import Once.Spec.Context using (Ctx)
 open import Once.Spec.Core.Syntax
-open import Once.Spec.Core.Derived using (composeᶜ; cataᶜ; inᶜ; layerᶜ; mapᶜ)
+open import Once.Spec.Core.Derived using (composeᶜ; cataᶜ; inᶜ; layerᶜ)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
 open import Once.Spec.Effect Σ using (M; sub; T∞; _>>=∞_; return∞; toT∞)
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM)
+open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; toL; fromL)
 open import Once.Spec.Polynomial using (inS)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (_≅_; Pure)
 open import Once.Metatheory.Bisim Σ using (≈-sym; ≈-trans; ≈-bind; ≈-refl; idˡ; idʳ)
-open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
+open import Once.Metatheory.Coherence.Relation Σ using (Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved)
 open import Once.Metatheory.Coherence.Layer Σ using (rel; runs)
-open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans)
+open import Once.Metatheory.Coherence.PER Σ using (Same-sym)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
 open import Once.Metatheory.Laws.Views Σ u fmt S
@@ -42,7 +42,7 @@ open import Once.Metatheory.Laws.Categorical.Tools Σ u fmt S using (toSameP; fr
 open import Once.Metatheory.Laws.ComposeShape Σ u fmt S using (Shape; shape; compShape)
 open import Once.Metatheory.Laws.ComposeG Σ u fmt S using (liftᵛ; module CompGV)
 open import Once.Metatheory.Laws.Compose Σ u fmt S using (compᵛ)
-open import Once.Metatheory.Laws.MapCov Σ S using (letInv; lamInv; foldInv; cod≡)
+open import Once.Metatheory.Laws.MapCov Σ S using (letInv; lamInv; foldInv)
 open import Once.Metatheory.Laws.MapSem Σ using (module MapAt)
 open import Once.Metatheory.Laws.MapLaws Σ using (module MapResp)
 open import Once.Metatheory.Laws.Assoc Σ u fmt S using (compCong)

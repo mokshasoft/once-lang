@@ -22,7 +22,7 @@ module Once.CCC.Codegen.IRObsCorrect.CataConst.Steps (o : CanonicalName) (tbl : 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractInstr; AllocState; module AllocState; readReg; Output; Input1; store-at-slot; store-indirect; store-indirect-suc; instr-alloc-heap; mov-to-output; load-indirect; load-at; offsetLoc; sv-as-loc; writeReg-same; StoredValue; SV-Ptr; AbstractTrace)
+  using (LocState; module LocState; AbstractInstr; AllocState; module AllocState; readReg; Output; Input1; store-at-slot; store-indirect; store-indirect-suc; instr-alloc-heap; mov-to-output; load-at; offsetLoc; sv-as-loc; writeReg-same; StoredValue; SV-Ptr; AbstractTrace)
 open import Once.CCC.Codegen.IRToTrace o using (CataStrategy; strat-const; strat-box)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.FlatLog using (LogFree)
@@ -54,7 +54,7 @@ module CataStepsC {FS : FrameSemantics} where
   open Mach {FS}
   open ResuspBaseC {FS} using (St; X; SegA; SRun)
   open LocState using (regs; halted)
-  open AllocState using (current-frame; next-slot; next-heap-ref)
+  open AllocState using (current-frame; next-heap-ref)
 
   -- a step that writes no memory and allocates nothing
   seg-q : ∀ {a₀ : AllocState {FS}} {n : ℕ} (i : AbstractInstr) (t : FlatState)

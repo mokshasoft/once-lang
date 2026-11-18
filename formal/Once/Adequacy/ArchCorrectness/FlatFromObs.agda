@@ -68,7 +68,7 @@ module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName) (tbl : List
   where
 
 open import Data.Bool using (false)
-open import Data.List using (List; []; take)
+open import Data.List using (List; [])
 open import Data.Maybe using (just; nothing)
 import Data.Maybe
 open import Data.Product using (proj₁)
@@ -77,9 +77,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.IR using (IR; Stack)
 open import Once.IRTy using (Unit)
-open import Once.Denotation.Behavior using (Behavior)
-open Once.Denotation.Behavior.Behavior using (at)
-open import Once.IR.Semantics.Event using (SigOpEvent)
+import Once.Denotation.Behavior
 open import Once.CCC.Codegen.ProgramImage using (program-image; fns-image; fn-next)
 import Once.CCC.Codegen.CataIRSlotStable as CIS
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
@@ -93,26 +91,25 @@ open import Once.CCC.Codegen.IRObsCorrectFlat o tbl using (module IRObsCorrectFl
 import Once.Adequacy.ArchCorrectness.FnRuns as FnR
 open import Once.Adequacy.ImageUnique using (image-cl)
 import Once.Adequacy.ArchCorrectness.FnLayout o as FnL
-open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget; ir-next-label)
+open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget; ir-next-label)
 open import Once.CCC.Codegen.BlockLayout using (module Layout)
 open import Once.CCC.Codegen.LabelsUnique o using (module Unique)
 import Once.CCC.Codegen.BlockLabels o as BL
-open Layout {FS} using (NoThunks; missBefore-from; blocks-at)
+open Layout {FS} using (missBefore-from; blocks-at)
 open import Data.List using (_++_; _∷_)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; c-start; c-label; c-jmp; blocks-layout; block-layout; AbstractTrace; e-thunk; AllocState; mkAllocState; module AllocState; c-leave)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-start; blocks-layout; block-layout; AbstractTrace; e-thunk; AllocState; mkAllocState; module AllocState; c-leave)
 open AllocState using (next-slot)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Properties using (++-identityʳ)
 open import Once.IR.Semantics.Out using (_▹_)
-open import Once.Denotation.TraceTr using (endOf)
 open import Data.List using (length)
-open import Data.Unit using (⊤; tt)
-open import Data.Bool using (true; false)
+open import Data.Unit using (tt)
+open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (cong₂)
 open import Once.Res using (Res; returns; stopped; is-stopped)
 open import Once.Denotation.Approx using (Ap; done; cut; budgetLeft; endAp)
 open import Data.Nat.Properties using (≤-trans; ≤-reflexive; m≤m+n; n≤1+n)
-open import Once.Spec.Trace using (End; returned) renaming (halted to halted-end)
+open import Once.Spec.Trace using (returned) renaming (halted to halted-end)
 -- D158: the entry instance supplies the PLACEMENT — the whole program is the
 -- fragment, at offset 0.
 open import Data.Nat.Properties using (+-identityʳ; +-comm)
@@ -133,12 +130,12 @@ import Once.Parser.Module.Core as P
 -- pairwise distinct. Consumed by `AsmTraceCorrect` below.
 
 open IRObsCorrectFlatness {FS} using (IRObsCorrectF; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; LabelsAt; emitted; BlocksAt; blocks; eventsAt; resultAt; evalᴰ; ⟪_⟫_; chain-ctrls)
-open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left; fetch-++-right; fpc; find-label; ft-go-prefix; find-thunk; FlatState; flat-exec-instr; floc; falloc)
+open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left; fetch-++-right; fpc; ft-go-prefix; find-thunk; FlatState; flat-exec-instr; floc; falloc)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open FlatStepsAPI {FS} using (fl-go-prefix; fl-go-shift; FlatSteps; []; _∷_; chains-meet; Sound)
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
 open CataNextSlot {FS} using (AllSlotStable)
-open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps; flat-ctrls; flat-ctrls-steps; chain-left; chain-ctrls-≤)
+open FlatEventTrace {FS} using (flat-events; flat-events-steps; flat-ctrls; flat-ctrls-steps; chain-left; chain-ctrls-≤)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Bool using (Bool)

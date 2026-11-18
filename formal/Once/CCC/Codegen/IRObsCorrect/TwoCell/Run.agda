@@ -28,9 +28,9 @@ open import Once.CCC.Machine.SMCore
   using (AllocState; AbstractTrace; mov-to-output; store-at-slot; instr-alloc-heap; mov-to-input; load-from-slot;
          store-at; instr-load-code-addr; LocState; StoredValue; readReg; writeReg; Output; sv-as-loc; Input1;
          SV-Ptr; SV-Code; sucLoc; module LocState; module AllocState; module ExecFinal)
-open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames; block-size)
+open AllocState using (next-slot; current-frame; block-size)
 open LocState using (halted; regs)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc)
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
 open import Data.Nat using (z≤n; s≤s)
@@ -51,7 +51,6 @@ module TwoCellRunC {FS : FrameSemantics} where
   open Core {FS}
   open SMCore.AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
   open SMCore.MemOps {FS} using (writeLoc; writeLoc-halted; writeLoc-regs; writeLoc-preserves-other; writeLoc-read-same-stack)
-  open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
   open FlatEventTrace {FS} using (chain-events-subst)
   module SR = StraightRunAPI {FS}
 

@@ -17,15 +17,15 @@ open import Once.Spec.Signature using (Signature; call)
 
 module Once.Metatheory.RunLaws (Σ : Signature) where
 
-open import Data.List using (List; []; _∷_; _++_; [_]; length)
+open import Data.List using ([]; _∷_; _++_; [_]; length)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _∸_)
-open import Data.Product using (∃-syntax; _×_; _,_)
+open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; subst)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.Spec.Signature using (Op; module Op; arg; ⟦_⟧ᵇ; NotEmpty; notEmpty?; eventOf)
+open import Once.Spec.Signature using (Op; module Op; NotEmpty; notEmpty?; eventOf)
 open Op using (ans)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Observation Σ using (World; module World; History)
@@ -109,7 +109,6 @@ data Stops {X Y : Set} : Maybe (End X) → Maybe (End Y) → Set where
   cuts  : Stops nothing nothing
 
 module Seq (w : World) {X Y : Set} (f : X → T∞ Y) where
-  open World w using (answer)
 
   private
     snoc : ∀ (h : History) v d → (h ++ [ v ]) ++ d ≡ h ++ (v ∷ d)

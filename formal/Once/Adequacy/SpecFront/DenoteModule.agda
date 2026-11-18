@@ -30,13 +30,13 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.Product using (Σ-syntax; _×_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Maybe using (just; nothing)
+open import Data.Maybe using (nothing)
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥-elim)
+import Data.Empty
 open import Data.Bool using (true; false)
 open import Data.String using (String)
 open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst)
 
 open import Once.Spec.Name using (CanonicalName; canonical)
 open import Once.Spec.Signature using (WellFormed)
@@ -47,13 +47,13 @@ import Once.Spec.Core.Program as CoreProgram
 import Once.Spec.Core.Syntax as SC
 import Once.Core.Telescope as TL
 import Once.Parser as Parser
-open import Once.Spec.Surface.Syntax using (Decl; mkModule)
+open import Once.Spec.Surface.Syntax using (mkModule)
 import Once.Parser.Module.Core as Core
-open import Once.Parser.Module.Resolve using (ModuleMap; collectUnaliased; collectAliases; importedOf)
+open import Once.Parser.Module.Resolve using (collectUnaliased; collectAliases; importedOf)
 import Once.Parser.Relation.Resolution as LR
-open import Once.Module using (ModTele; MainIn; MainsEffUU; emptyScope; entrySig)
+open import Once.Module using (ModTele; MainsEffUU; emptyScope; entrySig)
 open import Once.Core.Translate using ([])
-open import Once.Adequacy.ModuleProgram using (toProgram; names₀; fresh₀; Names)
+open import Once.Adequacy.ModuleProgram using (names₀; fresh₀; Names)
 import Data.Empty
 open import Once.Postulates using (extensionality)
 import Once.Spec.Core.Syntax
@@ -71,15 +71,15 @@ open import Once.Adequacy.SpecFront.SigFacts using (keys; rname; keys-distinct; 
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Data.List using (map)
 open import Once.Adequacy.SpecFront.SigWF using (wf-of)
-open import Once.Adequacy.SpecFront.Prefix using (Past; past; prefix; ffi-facts; main-entry)
+open import Once.Adequacy.SpecFront.Prefix using (Past; prefix; ffi-facts)
 open import Once.Adequacy.SpecFront.Start using (names; distinct-rest; nosig-rest; fresh-start; not-sig)
-open import Once.Adequacy.SpecFront.Polys using (Adj; adj-of; polyNames; poly-names; kinds-of; defs-of; poly-not-fun)
+open import Once.Adequacy.SpecFront.Polys using (Adj; adj-of; polyNames; poly-names; kinds-of; defs-of)
 import Once.Adequacy.SpecFront.Align as Al
 import Once.Adequacy.SpecFront.WalkState as WS
 import Once.Adequacy.SpecFront.Walk as Wk
 import Once.Adequacy.SpecFront.End as En
 import Once.Adequacy.SpecFront.EndNames as EN
-open import Once.Adequacy.SpecFront.Words using (DeclW; ModsW; KeysW; signature-words; key-word)
+open import Once.Adequacy.SpecFront.Words using (DeclW; ModsW; signature-words; key-word)
 
 ------------------------------------------------------------------------
 -- The extractor's result, taken apart

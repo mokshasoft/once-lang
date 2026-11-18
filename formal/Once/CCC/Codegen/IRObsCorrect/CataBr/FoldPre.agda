@@ -49,7 +49,7 @@ open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Output; Input1
         ; SV-Ptr; SV-Code; mov-to-input)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
@@ -64,7 +64,6 @@ open import Data.Unit using (⊤)
 module CataFoldPreC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open ResuspBaseC {FS} hiding (X)
   open CataStepsC {FS}
   open CataStackC {FS}
@@ -78,7 +77,7 @@ module CataFoldPreC {FS : FrameSemantics} where
   open CataFoldPopC {FS} using (module FoldHead; KH)
   open CataFoldInvC {FS} using (module Inv)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
+  open AllocState using (next-slot; next-heap-ref; current-frame)
 
   -- WHAT THE ROUND HAS AT ITS CALL, as an opaque bundle.
   record PreOut (prog : AbstractTrace) (F : IRFunctor) (E C : IRTy) (n c bodyL CK Y : ℕ) (sn hc : HeapLocation)
@@ -116,7 +115,7 @@ module CataFoldPreC {FS : FrameSemantics} where
              (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
-    open FA using (X; Y; Z; CK; KK; len-KK; RL; lr; rbTxt; span-hd; span-rb; rb-labels; fetch-mti; span-call; span-KK; fetch-cc; exit-label)
+    open FA using (X; Y; Z; CK; KK; RL; lr; rbTxt; span-hd; span-rb; rb-labels; fetch-mti; span-KK; exit-label)
 
     c bodyL l1 : ℕ
     c = FA.T.Pc.cslot

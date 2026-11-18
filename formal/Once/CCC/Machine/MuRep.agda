@@ -32,7 +32,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 open import Once.IRTy
-  using (IRTy; IRFunctor; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; _*_; _+_; _⇛_; μ-type; ν-type;
+  using (IRFunctor; K; Id; _⊕_; _⊗_; Unit; Void; Int; Float; _*_; _+_; _⇛_; μ-type; ν-type;
          FitsInRegI; fits-int; fits-float; ⟦_⟧TI)
 
 data MuRep : Set where

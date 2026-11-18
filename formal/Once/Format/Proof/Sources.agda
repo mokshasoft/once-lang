@@ -15,18 +15,18 @@
 
 module Once.Format.Proof.Sources where
 
-open import Data.Bool using (Bool; true; false; if_then_else_; T)
+open import Data.Bool using (true; false; if_then_else_)
 open import Data.Char using (Char; isDigit)
 import Data.Char as Ch
 open import Data.List using (List; []; _∷_; _++_; reverse; length; take; map)
-open import Data.List.Properties using (++-assoc; unfold-reverse; reverse-++; length-++)
+open import Data.List.Properties using (unfold-reverse; reverse-++; length-++)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All.Properties as AllP
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _∸_; _+_)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (suc; _<_)
 open import Data.Nat.Properties using (+-∸-assoc; m+n∸n≡m)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
-open import Data.String using (String; toList; fromList)
+open import Data.String using (toList; fromList)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Induction.WellFounded using (Acc; acc)
@@ -46,7 +46,7 @@ open import Once.Parser.Lexer using (headK; hkWS; hkNL; hkCaret; hkDash; hkLBrac
 open import Once.Adequacy.SpecLexing using (line-sound)
 open import Once.Format.Lex using (Item; tok; comment; cont; consumed; items-WF; it-head; it-str; it-gen; it-num;
   it-nl; it-dot; it-cmp; it-eqop; it-lbrace; it-minus; it-caret; lexItems)
-open import Once.Format.Proof.Rerender using (NoNl; NoTrail; LineC; Src; src-line; src-block; is-true)
+open import Once.Format.Proof.Rerender using (NoNl; NoTrail; Src; src-line; src-block; is-true)
 
 ------------------------------------------------------------------------
 -- The lexer's comments
@@ -189,9 +189,9 @@ items-raw cs = ok-WF cs 0 _
 open import Once.Format.Comment using (blankish)
 open import Once.Format.Print using (W; walker; Line; line-empty; line-code; line-text; Note; note-comment; note-blank;
   Notes; notes; noNotes; Trivia; lookupNotes; addTo; addTop; addInner; addAfter; Held; held-comment; held-blank;
-  settleAt; settle; blankBefore; lineEnd; pending; stepTok; stepComment; afterCode; step;
-  walkItems; finish; trivia; trimEnd; dropLead)
-open import Once.Format.Proof.Rerender using (dropLead-keep; all-rev; all-revA; notrail-++)
+  settleAt; settle; blankBefore; lineEnd; pending; stepTok; stepComment; step;
+  walkItems; trivia; trimEnd; dropLead)
+open import Once.Format.Proof.Rerender using (dropLead-keep; all-rev; notrail-++)
 import Once.Format.Proof.Walk
 
 private

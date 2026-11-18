@@ -29,7 +29,6 @@ open import Once.Denotation.Program using (IRFun; tableEnv; tableCalls; LinkedAt
 module Once.CCC.Codegen.IRObsCorrect.Interface (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Prelude o tbl public
-open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
 import Once.CCC.Machine.SMCore as SMCore
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
@@ -38,14 +37,13 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; LocState; AbstractInstr; module AbstractExec; module MemOps; AbstractTrace; StoredValue; block-layout; readReg; Input1; SV-Ptr; sucLoc; SV-Code; module LocState; module AllocState)
+open import Once.CCC.Machine.SMCore using (AllocState; LocState; AbstractInstr; module AbstractExec; module MemOps; AbstractTrace; StoredValue; block-layout; module LocState; module AllocState)
 open import Once.CCC.Machine.SMCore using (ending)
 open AllocState using (next-slot; current-frame; saved-frames)
-open LocState using (halted; regs)
+open LocState using (halted)
 open import Once.CCC.Machine.SMPrimitives using (module TracePrimitives; module InstrPrimitives; module RecSchemeSemantics)
 open import Once.CCC.Machine.Validity using (module ReadLocEq)
-open import Once.IR.Semantics.Event using (SigOpEvent)
-open import Once.IRTy using (WellFormedFI-irrelevant; WellFormedFI; μ-type; ⟦_⟧TI; IRTy; Unit; ν-type; _*_)
+open import Once.IRTy using (WellFormedFI; μ-type; ⟦_⟧TI; IRTy)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.CCC.Machine.MuRep using (Unboxed)
 import Once.CCC.FrameSemantics as FrameSemantics′
@@ -64,9 +62,9 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.ValueDomain as ValueDomain
 import Once.IR.Semantics.Trace as TM
-open import Once.Res using (Res; returns; stopped; is-stopped)
+open import Once.Res using (Res; returns; stopped)
 open import Once.IR.Semantics.Iterative using (T∞; Now; valueNow)
-open import Once.Denotation.Approx using (Ap; done; cut; approx; NotCut; budgetLeft)
+open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
 open import Data.Nat.Properties using (+-monoʳ-≤; +-monoˡ-≤)
 open import Data.Nat using (z≤n)
 open import Data.Bool using (Bool)

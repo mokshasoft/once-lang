@@ -48,45 +48,34 @@ module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (tbl : List IRF
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using ([]; map)
+open import Data.List using ([])
 open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_)
-open import Once.Adequacy.MachineTrace using (listTr; module Machine)
+open import Once.Adequacy.MachineTrace using (module Machine)
 import Once.Target.Arch
 open import Once.Adequacy.BudgetApex (Once.Target.Arch.arch-numerics Once.Target.Arch.riscv64) using (budget-apex-⊑; BudgetFact⊑; budget-fact-of)
 open import Once.Denotation.Program using (runIR)
 open import Once.IR.Semantics.Trace using (pureHalf)
 import Once.IR.Semantics.Trace as LT
-open import Once.Denotation.Approx using (approx)
-open import Once.Denotation.TraceTr using (obsAp)
-open import Once.Adequacy.FuelTrace using (module Fuel)
-open import Data.Product using (Σ-syntax)
-open import Data.Nat using (suc; _≤_)
-open import Once.IR.Semantics.Event using (toEvent)
-open import Once.Denotation.TraceTr using (endOf)
-open import Data.Bool using (Bool; false)
-open import Data.Product using (proj₁; proj₂; _,_; _×_)
-open import Data.List using (take)
+open import Data.Bool using (Bool)
+open import Data.Product using (proj₁; proj₂; _,_)
 open import Once.Adequacy.CPU.RiscV64 using (call-at-riscv64; ev-riscv64; block-env; run-trace-riscv64)
 import Once.CCC.Target.RiscV64.File as RF
 import Data.Maybe
 open import Data.Sum using (inj₂)
-open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.Adequacy.EmitFile using (file-is-emit-at)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)
 import Once.Arith.Backend.RiscV64.RunTrace as RTr
 open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget)
-open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.IR using (IR)
 open import Once.IRTy using (Unit)  -- Plan 0.52 M2: IRTy Unit
-open import Once.Denotation.Behavior using (Behavior)
-open Once.Denotation.Behavior.Behavior using (at)
+import Once.Denotation.Behavior
 open import Once.Adequacy.CPU using (arch-semantics)
 open import Once.Target.Arch using (riscv64)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
-open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
+open import Once.Compile using (rewrite-program)
 import Once.IR as IR
 open import Once.Denotation.Program using (irProgram; LinkedProgram; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
@@ -108,8 +97,8 @@ open AllocState using (current-frame)
 open FrameSemantics using (frame-base)
 open import Data.Empty using (⊥)
 open import Data.Unit using (tt)
-open import Data.Nat using (suc; _+_; _*_; z≤n; s≤s)
-open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; ≤-trans; m≤m+n)
+open import Data.Nat using (_+_; _*_; z≤n; s≤s)
+open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; m≤m+n)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 -- D100: the assembler's precondition (distinct emitted local labels), threaded
@@ -129,7 +118,7 @@ open import Once.Memory.StackSlots using (stack-addr)
 -- not exist yet (that was the false `entry-size`). The premise and the whole
 -- telescope are deleted; this `open` takes no bound.
 open IRObsCorrectFlatness {rv64-frame-semantics}
-  using (ir-obs-correct; module MachineRefinesObsF; module ValueRealized; eventsAt; resultAt; evalᴰ; floc)
+  using (ir-obs-correct)
 
 ------------------------------------------------------------------------
 -- THE ENTRY FRAME — CONSTRUCTED (plan 0.65 G3, 2026-08-17).
@@ -174,13 +163,11 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   (RBr.AddrNoWrap.ret-no-wrap riscv64-addr-no-wrap)
   (RBr.LitFits.tag-fits riscv64-lit-fits) (RBr.LitFits.lit-fits riscv64-lit-fits)
   (RBr.float-fits o ι) (RBr.LitFits.room-fits riscv64-lit-fits)
-  using (events-agree-start; events-agree-boot; AgreeAt; CompiledCorr; EntryLike; reach-start)
+  using (events-agree-boot; AgreeAt; CompiledCorr; EntryLike; reach-start)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o rv64-frame-semantics slot-size refl using (mkRunAt)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o rv64-frame-semantics slot-size refl using (RunLow; low-start)
 
 open FlatMachine {rv64-frame-semantics} using (mkFlat)
-open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
-open FlatEventTrace {rv64-frame-semantics} using (flat-events)
 open import Once.CCC.Machine.FlatStoreWF rv64-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.SMCore using
   (AbstractReg; AbstractTrace; Input1; Output; readReg; SV-Ptr; SV-Lit; module LocState)

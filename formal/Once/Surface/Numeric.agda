@@ -13,11 +13,11 @@
 
 module Once.Surface.Numeric where
 
-open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
+open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Spec.Type using (Int; Float)
 open import Once.Spec.Context using (Ctx; Usage; _+ᵘ_)
-open import Once.Spec.Theory using (NumTy; int; float; ⌜_⌝ⁿ; Has; Rounded; Sym; symCod; float-rounded)
-open import Once.Spec.Surface.Operator using (BinOp; BinSym; binSym; _∶_∶_)
+open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; symCod)
+open import Once.Spec.Surface.Operator using (BinSym; binSym)
 open BinSym
 open import Once.Surface.Syntax using (Expr; num; pair)
 open import Once.IR using (IR; SigOp)

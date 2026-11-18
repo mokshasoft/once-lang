@@ -35,7 +35,7 @@ open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelSeg using (LabelsIn; LabelIn; li-none; li-lab)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; store-at-slot; restore-input;
+  using (AbstractTrace; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; store-at-slot; restore-input;
          instr-alloc-heap; mov-to-input; instr-load-tag-lit; store-at; load-from-slot)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ; LabelId; module LabelId)
@@ -44,7 +44,7 @@ open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; wf-Sum; ⟦_⟧TI; �
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (get; get-All; put; put-All; fill; fill-All)
 open import Relation.Nullary using (¬_)
-open import Data.Nat using (_⊔_; z≤n; s≤s)
+open import Data.Nat using (_⊔_)
 open import Data.Nat.Properties using (1+n≰n)
 open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Data.Nat.Solver using (module +-*-Solver)

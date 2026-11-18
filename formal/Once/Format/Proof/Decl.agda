@@ -15,13 +15,13 @@
 
 module Once.Format.Proof.Decl where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true; false)
 open import Data.Empty using (⊥)
-open import Data.List using (List; []; _∷_; _++_; reverse; reverseAcc)
+open import Data.List using ([]; _∷_; _++_; reverse; reverseAcc)
 open import Data.List.Properties using (++-assoc; reverse-involutive)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.String using (String; toList; _==_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -29,19 +29,19 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
 
-open import Once.Spec.Surface.Lexing using (Token; TWord; TLParen; TRParen; TColon; TEquals; TDot; TNewline; TEOF)
-open import Once.Spec.Surface.Syntax using (Expr; RLam; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport;
-  mkImport; Module; mkModule; RVar; RQualified; RResolved; RGen; RApp; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot;
+open import Once.Spec.Surface.Lexing using (TWord; TColon; TEquals; TDot; TNewline; TEOF)
+open import Once.Spec.Surface.Syntax using (RLam; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport;
+  mkImport; RVar; RQualified; RResolved; RGen; RApp; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot;
   RBinOp; RNeg)
 open import Once.Spec.Surface.Grammar
-open import Once.Format.Doc using (Doc; toks; empty; tk; _<>_)
+open import Once.Format.Doc using (toks; tk; _<>_)
 open import Once.Format.Print
 open import Once.Format.Proof.Tokens using (word-toks)
 open import Once.Format.Proof.ExprBase using (WF; OpName; op-isOperator; word-notOperator; stops-newline)
 open import Once.Format.Proof.Expr using (wholeL; opName-parses)
 open import Once.Format.Proof.TypeAlgs using (sig-id; alias-id)
 import Once.Format.Proof.TypeAlgs as TA
-open import Once.Format.Proof.Layout using (Lead; lead-tk; lead-l; lead-r; Silent; s-empty; toks-++; nls)
+open import Once.Format.Proof.Layout using (Lead; lead-tk; lead-l; lead-r; s-empty; toks-++; nls)
 open import Once.Format.Proof.Printable using (PD; pr-body; run)
 open import Once.Format.Proof.Module using (DeclOK; DS; ds-end; ds-cons)
 

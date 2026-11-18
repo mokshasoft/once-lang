@@ -15,19 +15,19 @@ module Once.Metatheory.Numbers.Rounded (F : FloatFormat) where
 
 import Data.Nat
 import Data.Nat.DivMod
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (zero; suc)
 import Data.Integer
-open import Data.Integer using (ℤ)
-open import Data.Bool using (Bool; true; false)
+import Data.Integer
+open import Data.Bool using (true; false)
 import Data.Maybe as Maybe
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
 
 open import Once.Spec.Float.Value
-  using (Sign; pos; neg; flip; FloatVal; fv-zero; fv-num; fv-inf; fv-nan; negV; odd
-        ; canon; canonAt; finish; finishAt; roundAt; roundQ; overflows; fitV; Fits
+  using (pos; neg; flip; FloatVal; fv-zero; fv-num; fv-inf; fv-nan; negV; odd
+        ; canon; canonAt; finish; finishAt; roundQ; overflows; fitV; Fits
         ; scaleRHE; quantum; lg)
 import Once.Spec.Float.Arith as FA
-open import Once.Spec.Theory using (RoundedOps; NegOps; module Laws)
+open import Once.Spec.Theory using (RoundedOps; module Laws)
 open import Once.Metatheory.Float.Range using (inRange-fits; round-inRange)
 
 V : FloatVal → Set

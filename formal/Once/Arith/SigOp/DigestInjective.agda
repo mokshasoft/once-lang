@@ -29,7 +29,7 @@ open import Data.Nat using (ℕ; suc)
 open import Data.Nat.Show.Properties using (charsInBase-injective)
 open import Data.Nat.Show using (charsInBase)
 open import Data.List using (length)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ; _×_; _,_; proj₂)
 open import Data.String using (String; toList) renaming (_++_ to _++ˢ_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
@@ -41,7 +41,7 @@ open import Once.Arith.CmpOp using (CmpOp; FCmpOp; fcmp; c-lt; c-le; c-gt; c-ge;
 open import Once.Spec.Theory using (float-rounded; float-order; float-equality; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=)
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.Shape
-  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Side; Fst; Snd
+  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; InputPath; Fst; Snd
         ; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f; acmp; afcmp)

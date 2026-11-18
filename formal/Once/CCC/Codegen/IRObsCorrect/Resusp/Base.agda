@@ -51,7 +51,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (Σ)
 open import Data.List.Properties using (++-identityʳ)
 open import Once.CCC.Machine.FlatLog using (LogFree)
-open import Once.CCC.Machine.SMPrimitives using (module RecSchemeSemantics; nhw-store-at-slot; nhw-restore-input)
+open import Once.CCC.Machine.SMPrimitives using (module RecSchemeSemantics)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 import Once.CCC.Machine.FlatPut as FlatPut
@@ -71,7 +71,7 @@ module ResuspBaseC {FS : FrameSemantics} where
   open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
   open NuForceC {FS} using (module AnaDen)
   open RecSchemeSemantics {FS} using (exec-abstract-restore-input-sets-input)
-  open CWF.ClosureWellFormedBase {FS} using (CellAtP; fo-base; fo-unit; unit-wf)
+  open CWF.ClosureWellFormedBase {FS} using (fo-unit; unit-wf)
   private module IC = InjC {FS}
 
   ------------------------------------------------------------------------

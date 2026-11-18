@@ -18,7 +18,7 @@ open import Data.List.Relation.Unary.Any using (Any; here; there; any?; satisfie
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ)
 import Data.Nat as ℕ
-open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Product using (_,_)
 open import Data.String using (String)
 import Data.String as Str
 open import Relation.Binary using (DecidableEquality)

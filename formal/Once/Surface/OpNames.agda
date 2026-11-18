@@ -9,7 +9,7 @@
 
 module Once.Surface.OpNames where
 
-open import Once.Spec.Surface.Operator using (BinOp; plain; dotted; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
+open import Once.Spec.Surface.Operator using (plain; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 
 pattern OpAdd = plain ‹ o+ ›
 pattern OpSub = plain ‹ o- ›

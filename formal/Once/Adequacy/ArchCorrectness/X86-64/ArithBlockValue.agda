@@ -31,15 +31,14 @@ module Once.Adequacy.ArchCorrectness.X86-64.ArithBlockValue
 
 open import Data.Nat using (ℕ; _+_; _*_; _∸_; _<_; _≤_)
 open import Data.Nat.Properties
-  using (≤-irrelevant; <-≤-trans; ≤-trans; *-comm; ∸-+-assoc; m+n≤o⇒m≤o∸n; +-monoʳ-≤)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃)
+  using (≤-irrelevant; <-≤-trans; *-comm; ∸-+-assoc; m+n≤o⇒m≤o∸n)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (just)
 open import Data.Empty using (⊥-elim)
 open import Data.Bool using (false)
 
 open import Once.CCC.Machine.SMCore
 open AbstractExec {FS} using (decode-at; exec-sigop-output; readTyped)
-open MemOps {FS} using (readLoc)
 open LocState using (regs; heapMem)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Machine.Flat
@@ -48,7 +47,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 
 open import Once.Spec.Type using (Int; Float; Base; ∅ₖ; b-Int; b-Float; b-*)
 open import Once.Type using (fits-int; fits-float)
-open import Once.Spec.Numerics using (TargetNum; mkTargetNum)
+open import Once.Spec.Numerics using (mkTargetNum)
 open import Once.Target.Arch using (x86-64; arch-numerics)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo; blockV; Internal; internal-pure)
 open SigOpInfo using (sem; baseA)
@@ -57,7 +56,7 @@ open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR using (MArithIR; shape-as-type; numtype-as-type)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.Arith.Machine.Shape
-  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ; flat-off)
+  using (shape-unit; shape-int; shape-float; shape-pair; Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ; flat-off)
 open import Once.Arith.Machine.Compile using (compile-abs; normalize; required-scratch)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.SigOp.BlockSem using (block-semM)
@@ -71,7 +70,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation o FS word-eq fmt
 open C using (HeapView; hfront; haddr; FlatCorr; enc-sv)
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
 open RL o FS slot-size word-eq using (RunLow; sigop-decodes; run-flat-wf; run-stack-ptr)
-open import Once.CCC.Machine.FlatStackPtr FS using (StackPtrWF; StackPtrOK; module SPInv)
+open import Once.CCC.Machine.FlatStackPtr FS using (StackPtrOK; module SPInv)
 import Once.Adequacy.ArchCorrectness.FlatCore.ArithOutput FS as AO
 open import Once.CCC.Machine.FlatStoreWF FS using (IMfs)
 

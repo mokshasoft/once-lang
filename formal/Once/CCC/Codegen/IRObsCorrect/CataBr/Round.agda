@@ -42,18 +42,18 @@ open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
 import Once.CCC.Machine.FlatPut as FlatPut
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Layer o using (kidsI; pushAllV)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Text o tbl using (module Pieces; module SlotArith; module OffArith)
-open import Once.CCC.Codegen.IRToTrace o using (push2; visit-walk; fsize)
+open import Once.CCC.Codegen.IRToTrace o using (fsize)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; SV-Tag; sv-as-loc; store-at-slot; load-from-slot; load-at; mov-to-input; writeReg-same; offsetLoc
+        ; SV-Ptr; store-at-slot; load-from-slot; mov-to-input; writeReg-same; offsetLoc
         ; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; writeReg-preserves)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot)
 open import Once.CCC.Label using (ℓ)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
-open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
+open import Once.IRTy using (IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤)
 open import Data.Nat using (s≤s; z≤n; _*_)
@@ -69,7 +69,6 @@ private
 module CataRoundC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open ResuspBaseC {FS}
   open CataStepsC {FS}
   open CataStackC {FS}
@@ -79,7 +78,7 @@ module CataRoundC {FS : FrameSemantics} where
   open import Once.CCC.Machine.FlatWords {FS} using (offset-1)
   open FlatStepsAPI {FS} using (flat-tag-branch-yes; flat-tag-branch-not)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (current-frame)
 
   -- the slots the loop keeps: the value stack's, and the call slots on
   KL : ℕ → ℕ → ℕ → Set

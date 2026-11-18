@@ -45,7 +45,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _≤_; _<_; _⊓_; 
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; _++_)
-open import Once.IR.Semantics.Out using (Out; cut; stop; ended; end-of-left; _▹_; ▹-assoc; RanOutOf; ▹-ran)
+open import Once.IR.Semantics.Out using (Out; stop; ended; end-of-left; _▹_; RanOutOf; ▹-ran)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
@@ -118,11 +118,11 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 -- …and the data correspondence itself, which `CompiledCorrespondence` keeps
 -- private (an instance re-opened publicly would clash with the `C` every arch
 -- already binds). Same application, hence the same types.
-open CFC using (HeapView; slots; haddr)
+open CFC using (HeapView; slots)
 -- plan 0.123 A.4 step 5: THE BUDGET the room checks re-arm, carried beside the
 -- correspondence; it is where every spending instruction's room comes from.
 open import Once.Adequacy.ArchCorrectness.FlatCore.Budget o FS slot-size word-eq Reg roles State rreg memory xhalted
-  using (Budget; fbase-shift; straight-frame; need-room; room-of; call-room-of; bg-view; bg-land; bg-plain; bg-str; bg-spent-str; bg-alloc; bg-start
+  using (Budget; fbase-shift; straight-frame; room-of; call-room-of; bg-view; bg-plain; bg-str; bg-spent-str; bg-alloc; bg-start
         ; bg-call; bg-room; bg-boundary; bg-label; bg-ret)
 
 ------------------------------------------------------------------------
@@ -139,7 +139,7 @@ open import Once.CCC.Machine.SMCore hiding (Instr)
 open AllocState using (saved-frames; current-frame; block-size; frame-slots; next-heap-ref)
 open LocState using (halted; heapMem; regs; stackMem)
 open import Once.CCC.Machine.Locations using (AtDynamic; ValueLocation; AtStack)
-open import Once.Memory.HeapAddress using (HeapLocation; offsetHL; module HeapRef; module HeapLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; module HeapRef; module HeapLocation)
 open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -174,11 +174,10 @@ open FrameSemantics FS using (Frame)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunWF o FS slot-size word-eq
   hiding (slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok; load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
-  using (load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds; slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; step-ok; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
+  using (load-at-target-ptr; heap-load-at-written; store-at-target-ptr; store-at-in-block; store-at-inbounds; addr-at-target-ptr; addr-at-in-block; addr-at-inbounds; slot-read-written; load-indirect-target-wf; load-indirect-suc-target-wf; heap-load-written; heap-load-suc-written; out-nz-output-word; store-nonptr-absurd; store-suc-nonptr-absurd; branch-tag-scrutinee-wf; store-indirect-inbounds; store-indirect-suc-inbounds; entry-empty; entry-link; entry-ret; ret-site-owes; ret-budget-matches; run-link-nothing; frame-op-absurd; slot-read-in-frame; run-stack-ptr; run-ptr-bounds; stack-ptr-current; stack-ptr-current-suc; emitted-call-fn-resolves; call-site-shape; start-behind; ret-saved; code-addr-has-body; low-step-image; low-step)
   renaming (RunLow to RunAt)
-open SegWF using (seg-stack)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
-open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of; ctrl-≤1)
+open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of)
 
 ------------------------------------------------------------------------
 -- NO UNSPILLED RETURN AT A CALL OR A RETURN (plan 0.65 G2, 2026-08-16).

@@ -29,7 +29,6 @@ module Once.CCC.Codegen.IRObsCorrect.CataBr.Flatten (o : CanonicalName) (tbl : D
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Machine.MuRep using (Unboxed)
-open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Meaning o using (μ-layer-val)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Meaning using (module PO)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
@@ -43,7 +42,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack)
 open import Once.CCC.Label using (ℓ)
 open import Once.Memory.HeapAddress using (HeapLocation)
-open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⌈_⌉F; μ-type)
+open import Once.IRTy using (IRFunctor; WellFormedFI; ⌈_⌉F; μ-type)
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Once.Spec.Word using (Carrier)
 open import Once.IR.Semantics.Value Carrier Carrier using (⟦_⟧F)
@@ -54,8 +53,6 @@ open import Data.Nat.Properties using (suc-injective)
 module CataFlattenC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
-  open ResuspBaseC {FS} using (Kp)
   open CataStackC {FS}
   open CataWalkC {FS}
   open CataRoundC {FS}

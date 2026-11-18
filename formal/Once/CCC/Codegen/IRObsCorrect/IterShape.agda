@@ -29,13 +29,11 @@ open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (labels-in)
-open import Once.CCC.Codegen.LabelRange o using (label-mono)
 open import Once.CCC.Label using (module LabelId; ℓ; LabelId)
 open LabelId using (idx)
 open import Once.CCC.Machine.SMCore
-  using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AbstractTrace; AbstractInstr;
-         load-indirect; load-indirect-suc; store-at-slot; instr-alloc-heap; mov-to-input;
-         load-from-slot; store-indirect; store-indirect-suc)
+  using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AbstractTrace; store-at-slot; instr-alloc-heap; mov-to-input;
+         load-from-slot)
 open import Data.Nat.Properties using (1+n≰n)
 open import Relation.Nullary using (¬_)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
@@ -50,7 +48,6 @@ open import Data.Nat using (_⊔_)
 module IterShapeC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel; fl-hit)
 

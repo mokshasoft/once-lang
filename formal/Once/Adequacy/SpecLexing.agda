@@ -29,7 +29,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _<_)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.String using (String; toList; fromList)
+open import Data.String using (fromList)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
@@ -45,7 +45,7 @@ open import Once.Parser.Lexer
          hkLParen; hkRParen; hkRBrace; hkColon; hkLambda; hkComma; hkSemi; hkAt;
          hkPipe; hkPlus; hkStar; hkSlash; hkPct; hkAmp; hkDot; hkStr; hkGen; headK;
          Dash3; d-comment; d-arrow; d-minus; Caret4; c-1; c-0; c-w; c-gen;
-         nlIndent; isEqHead; isDotHead; isDashHead; dashClass; caretClass; drop1; adv;
+         nlIndent; isEqHead; isDotHead; isDashHead; dashClass; caretClass; drop1;
          collectDigitsB; collectIdentB; collectFracB; frac-dot; frac-digit;
          collectStringB; str-char; str-cons; str-esc; str-esc′; escChar;
          skipLineB; skip-nl; skipBlockB; skipBlockB-WF; tokenizeString)

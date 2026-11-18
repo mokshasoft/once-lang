@@ -9,7 +9,7 @@
 
 module Once.Metatheory.Laws.LayerTy where
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (suc)
 open import Data.Fin using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Once.Spec.Type using (Ty; Fun; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_;

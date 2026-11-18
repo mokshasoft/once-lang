@@ -35,7 +35,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
-open import Once.Spec.Type using (Type; _⇒[_]_; _+_; _*_; Unit)
+open import Once.Spec.Type using (_⇒[_]_; _+_; _*_; Unit)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
@@ -261,7 +261,7 @@ liftFn-case-inj₂ {A = A} {B = B} {C = C} f g b =
 
 open import Data.Sum using () renaming (inj₁ to left)
 open import Once.IR.Semantics.Trace using (ret)
-open import Once.IR.Semantics.Iterative using (T∞; bindBlock)
+open import Once.IR.Semantics.Iterative using (bindBlock)
 open T∞ using (force)
 
 Now : ∀ {X : Set} → T∞ X → X → Set

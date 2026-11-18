@@ -19,7 +19,7 @@ module Once.Metatheory.Laws.MapSem (Σ : Signature) where
 
 open import Data.Nat using (ℕ; suc)
 open import Data.Fin using (zero; suc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₁)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
@@ -27,7 +27,7 @@ open import Once.Spec.Grade using (Zero; One; Many; mk-kind; fin)
 open import Once.Spec.Type using (Ty; Fun; KCtx; Base; ⟦_⟧F; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_;
                                   TySub; _⟨_⟩; _⟨_⟩F; at₀)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF; μS; inS)
-open import Once.Spec.Effect Σ using (M; fmap; νM; ana)
+open import Once.Spec.Effect Σ using (fmap; νM; ana)
 open νM using (outν)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code)
 

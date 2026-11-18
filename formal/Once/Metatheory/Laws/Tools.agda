@@ -22,29 +22,26 @@ module Once.Metatheory.Laws.Tools (Σ : Signature) (u : OneName Σ) (fmt : Targe
 
 open import Data.Empty using (⊥)
 open import Data.Fin using (zero)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_,_)
 open import Data.Unit using (⊤; tt)
-open import Function using (flip)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; _·p_; _⊑π_; ⊑-pure; 1≤1; 1≤ω)
-open import Once.Spec.Type using (Ty; Type; KCtx; ∅ₖ; TySub; Respects; _⟨_⟩)
-open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _⊑ᵘ_; _⊑∷_; _+ᵘ_; _*ᵘ_; singleUse)
-open import Once.Spec.Core.Syntax using (Tm; var)
+open import Once.Spec.Type using (Ty; Type; KCtx; TySub; _⟨_⟩)
+open import Once.Spec.Context using (Ctx; ∅; _▸_; Usage; []; _∷_; _⊑ᵘ_; _⊑∷_; singleUse)
+open import Once.Spec.Core.Syntax using (var)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
-open import Once.Spec.Effect Σ using (M; toT∞; T∞; _≈_)
+open import Once.Spec.Effect Σ using (M; toT∞; _≈_)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Equivalence Σ using (Same; SameM)
-open import Once.Spec.Metatheory using (SameDefs; SameEnv)
+open import Once.Spec.Metatheory using (SameEnv)
 open import Once.Metatheory.Coherence.Relation Σ
-  using (Related; Related-trans; Related-flip; Related-mono; toObserved; ≈-Relatedˡ; ≈-Relatedʳ)
+  using (Related-trans; Related-flip; Related-mono; toObserved; ≈-Relatedˡ; ≈-Relatedʳ)
 open import Once.Metatheory.Coherence.Layer Σ using (Rel; rel; runs)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans)
 open import Once.Metatheory.Coherence.Env Σ fmt S
-  using (SlotAgree; Agree; restrictˡ; restrictʳ; selfAgree;
-         envˡ-restrict; envʳ-restrict; env*One-restrict; env*Many-restrict; restrict-∘)
-open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-refl; ⊑ᵘ-trans; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-*One; ⊑ᵘ-*Many)
-open import Once.Metatheory.Coherence.Fundamental Σ u fmt S using (module FL)
+  using (SlotAgree; Agree)
+open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-refl; ⊑ᵘ-trans)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.Types using (⊑π-refl; ⊑π-trans)
 

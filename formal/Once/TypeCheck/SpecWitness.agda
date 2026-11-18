@@ -19,7 +19,7 @@ module Once.TypeCheck.SpecWitness where
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Fin using (Fin)
-open import Data.List using (List; []; _∷_; map)
+open import Data.List using ([]; _∷_)
 open import Data.Maybe using (just; nothing)
 import Data.Maybe
 import Data.Maybe.Properties
@@ -42,7 +42,7 @@ import Once.Spec.Context as SCx
 import Once.Spec.Surface.Syntax as SX
 import Once.TypeCheck.View as TView
 import Once.Type.Poly as TP
-open import Once.TypeCheck.Scope using (NamedCtx; Binding; Imports; PolyCtx; lookupImport; lookupPolyPrefix; extendNamedCtx)
+open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupPolyPrefix; extendNamedCtx)
 open NamedCtx
 import Once.Spec.Surface.Typing as SUT
 import Once.TypeCheck.Scoped as Sc
@@ -211,9 +211,6 @@ WD ctx e A π B Ψ eE = InScope ctx eE × ((P : Pack ctx)
 ------------------------------------------------------------------------
 
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Relation.Unary.Any using (here; there)
-open import Data.Maybe using (nothing)
 open import Data.Integer using (ℤ)
 open import Relation.Binary.PropositionalEquality using (trans; cong; cong₂; _≢_)
 open import Once.Spec.Name using (own)
@@ -221,7 +218,7 @@ open import Once.Spec.Sub using (_<:_; _⊔_≔_; sub-arr)
 open _⊔_≔_ using (left; right)
 open import Once.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open import Once.IR as IR using (IR)
-open import Once.IRTy using (IRTy; ⌊_⌋; ⌊⟧T-commute)
+open import Once.IRTy using (IRTy; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Type.Grade using (≤q-Many)
 open import Once.Name using (showCanonical; WordName)
@@ -235,12 +232,12 @@ open import Once.Core.Decl using (⌜declS⌝)
 open import Once.Type.Grade using (_≤qᵇ_)
 open import Once.Type.Rigid using (ground-kinded)
 open import Once.Spec.Surface.Syntax using (signedDecimal)
-open import Once.Spec.Surface.Operator using (BinOp; binSym; BinSym)
-open BinSym using (theory; shape; symbol)
+open import Once.Spec.Surface.Operator using (binSym; BinSym)
+open BinSym using (theory; shape)
 open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; symCod; ‵neg)
 open import Once.TypeCheck.NumTable using (binDom)
 open import Once.Surface.Numeric using (numBin; toFloatIR)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 
 -- The compiler's weakening is the Spec's `↑`.
 open import Once.Type.Closed using (sub0)

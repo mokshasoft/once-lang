@@ -41,7 +41,6 @@ import Once.Compile as C
 import Once.IR as IR
 import Once.Parser as Parser
 import Once.Context as Srf
-open import Once.Spec.Context using (zeroUsage)
 import Once.Spec.Context as Srf
 import Once.Surface.Syntax as Srf
 import Once.TypeCheck.Elaborate as TE
@@ -58,7 +57,6 @@ open import Once.Type.Concrete using (IsConcrete)
 open import Once.Functor.Decide using (isConcrete?)
 open import Once.Type.Honest using (HonestFFI; honest?)
 import Once.Surface.Context
-open import Data.Maybe using (Maybe; nothing)
 open import Once.Compile using (moduleToIR)
 open import Once.Adequacy.MainBuilds using (moduleToIR-inj₂)
 import Once.Parser.Module.Core as P

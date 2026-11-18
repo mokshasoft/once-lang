@@ -16,9 +16,9 @@
 module Once.Metatheory.TermModel.Usage where
 
 open import Data.Fin using (Fin; zero; suc)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; _+q_; _*q_; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
+open import Once.Spec.Grade using (Zero; One; Many; _+q_; _*q_; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
 open import Once.Spec.Context
   using (Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_)
 

@@ -21,9 +21,8 @@
 
 module Once.Adequacy.SpecFront.SchemaOf where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; s≤s; z≤n)
-open import Data.Fin using (Fin; zero; suc; toℕ; fromℕ<)
-open import Data.Fin.Properties using (toℕ-fromℕ<; toℕ-injective)
+open import Data.Nat using (zero; suc; _<_; s≤s; z≤n)
+open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _∷_; _++_; length; lookup)
 open import Data.List.Properties using (++-conicalˡ; ++-conicalʳ)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -33,7 +32,7 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All as All
 open import Data.List.Relation.Unary.AllPairs using ([]; _∷_)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
-open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Bool using (true; false; if_then_else_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
@@ -45,14 +44,14 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 import Once.Type.Core as LT
 import Once.Spec.Type as LT
-open import Once.Spec.Grade using (mk-kind; Many; pure; act; eff)
+open import Once.Spec.Grade using (mk-kind; Many)
 import Once.Type.Poly as TP
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
 open import Once.Type.Poly using (substPoly; substPolyF; ftv; ftvF; Ground; GroundF; ArrowSchema; as-pure; as-eff; as-act; CodVarsInDom)
 open import Once.Type.Instance using (params; nubFrom; arityOf; kindOf; kindsOf; positionOf; memberB; rigidSubst; rigidOf; ftvK; ftvKF)
 open import Once.Type.Schema using (schemaOf; ∈-params; positionOf-∈; memberB-sound; memberB-complete; lookup-∈)
 import Once.Spec.Core.Syntax as SC
-open import Data.Maybe using (Maybe; just; nothing; maybe′)
+open import Data.Maybe using (Maybe; just; maybe′)
 import Data.Maybe as Maybe
 open import Data.Maybe.Properties using (just-injective)
 import Once.Spec.Type as ST

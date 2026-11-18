@@ -8,12 +8,12 @@
 -- are proved once for all of them.
 ------------------------------------------------------------------------
 
-open import Once.Spec.Signature using (Signature; call)
+open import Once.Spec.Signature using (Signature)
 
 module Once.Metatheory.Lawful (Σ : Signature) where
 
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Grade using (Purity; pure; act; eff)
+open import Relation.Binary.PropositionalEquality using (refl)
+open import Once.Spec.Grade using (Purity)
 open import Once.Spec.Effect Σ
 open import Once.Metatheory.Bisim Σ
 open import Once.Metatheory.Erase Σ using (toT∞-bind)

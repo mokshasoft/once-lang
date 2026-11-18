@@ -20,7 +20,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; instr-save-closure-reg; load-indirect; load-at; mov-to-input; readReg; Input1; SV-Ptr; writeReg-same; Output; sucLoc; SV-Code; instr-call-closure; sv-as-loc; module LocState)
+open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; instr-save-closure-reg; load-at; mov-to-input; readReg; Input1; SV-Ptr; writeReg-same; Output; sucLoc; SV-Code; instr-call-closure; module LocState)
 open LocState using (regs; halted)
 open import Once.IRTy using (WellFormedFI; ν-type; ⟦_⟧TI)
 

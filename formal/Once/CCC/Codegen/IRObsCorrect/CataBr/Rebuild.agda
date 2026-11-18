@@ -37,7 +37,6 @@ module Once.CCC.Codegen.IRObsCorrect.CataBr.Rebuild (o : CanonicalName) (tbl : D
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC)
-open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (lsz-eq)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC; su-l; su-r)
@@ -46,32 +45,30 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.Layer o
   using (fillI; fill-K; fill-Id; fill-inl; fill-inr; fill-pair; module FillPair)
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Once.CCC.Codegen.IRObsCorrect.CaseShape o tbl using (module ShapeC)
-open import Once.CCC.Codegen.IRToTrace o using (rebuild-walk; lsize; pop2; wrap-sum; fsize; getμ)
-open import Once.CCC.Codegen.FlatLayout using (Kind; kind; lkind; lsz; get; get-k; get-i; get-one; put-k; kind-skind; size-ssize)
+open import Once.CCC.Codegen.IRToTrace o using (rebuild-walk; lsize; wrap-sum; fsize; getμ)
+open import Once.CCC.Codegen.FlatLayout using (Kind; kind; lsz; get-k; get-i; get-one; put-k)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.LabelScope o using (rebuild-ls; wrap-sum-ls; put-k-ls)
 open import Once.CCC.Codegen.LabelSeg using (LabelsIn; li-lab; li-none; ls-weaken)
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; SV-Tag; sv-as-loc; sucLoc; offsetLoc; store-at-slot; restore-input; load-from-slot; mov-to-input; mov-to-output
+  using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; readReg; Output; Input1
+        ; SV-Ptr; offsetLoc; store-at-slot; restore-input; load-from-slot; mov-to-input; mov-to-output
         ; instr-alloc-heap; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; writeReg-preserves)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot; nhw-restore-input)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
+open import Once.CCC.Machine.SMPrimitives using (nhw-restore-input)
 open import Once.CCC.Label using (ℓ; LabelId; module LabelId)
 open LabelId using (idx)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as I
-open import Data.Product using (Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
 open import Data.Nat using (s≤s; z≤n; _*_; _⊔_)
 open import Data.Nat.Properties using (+-cancelˡ-≡; +-monoʳ-<)
-open import Relation.Nullary using (¬_)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; _:*_; con; _:=_)
 
@@ -87,7 +84,6 @@ sum-end-r = solve 5 (λ wl vl wr vr b → con 1 :+ (wl :+ (vl :+ (con 4 :+ (wr :
 module CataRebuildC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open ResuspBaseC {FS}
   open CataStepsC {FS}
   open CataStackC {FS}
@@ -97,10 +93,10 @@ module CataRebuildC {FS : FrameSemantics} where
                              ; get-fetch; ngi; lgi)
   open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; offset-zero)
   open ShapeC {FS} using (tag-inl; tag-inr; payload-l; payload-r)
-  open Resolve {FS} using (NoLabel; fl-hit; noLabel-outside; found-in-window)
+  open Resolve {FS} using (fl-hit; noLabel-outside; found-in-window)
   open FlatStepsAPI {FS} using (flat-tag-branch-yes; flat-tag-branch-not)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (current-frame)
 
   ------------------------------------------------------------------------
   -- THE WALK.

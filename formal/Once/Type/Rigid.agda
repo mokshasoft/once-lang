@@ -11,24 +11,19 @@
 
 module Once.Type.Rigid where
 
-open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Once.Spec.Type using (Base; ∅ₖ)
-open import Data.List using (List; []; _∷_; _++_; length)
-open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product using (Σ-syntax; _×_; _,_)
-open import Data.String using (String; _≟_)
+open import Once.Spec.Type using (Base)
+open import Data.List using (List; []; _∷_; _++_)
+open import Data.Product using (_,_)
+open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (yes; no)
 open import Data.List.Membership.Propositional using (_∈_)
 
 open import Once.Spec.Grade
-open import Once.Type.Grade
-open import Once.Type.Core
-open import Once.Spec.Type using (Fun; μ; ν)
-open import Once.Spec.Type using (Ty; KCtx; Base; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Type using (μ; ν)
+open import Once.Spec.Type using (Ty; KCtx; Unit; _*_; _+_; _⇒[_]_; K; _⊕_; _⊗_)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
 open import Once.Type.Poly
-open import Once.Type
 open import Once.Type.Instance
 
 ------------------------------------------------------------------------
@@ -123,12 +118,12 @@ ground-kinded A g = (λ _ → Unit) , subst-ground _ A g , λ m → ⊥-elim (ft
 open import Relation.Nullary using (Dec)
 open import Relation.Binary.PropositionalEquality using (sym; trans; subst)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just; nothing)
 open import Data.Product using (proj₂)
 open import Once.Type.Match using (instantiate)
 open import Once.Type.MatchCorrect using (instantiate-sound; instantiate-complete)
 open import Once.Type.Determined using (agree-from)
-open import Once.Functor.Decide using (base?; base?-complete; isBaseType?; isBaseType?-complete)
+open import Once.Functor.Decide using (base?; base?-complete)
 
 -- The base-kinded variables are variables.
 mutual

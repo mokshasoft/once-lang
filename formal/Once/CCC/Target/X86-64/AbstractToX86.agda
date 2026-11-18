@@ -13,7 +13,7 @@
 
 module Once.CCC.Target.X86-64.AbstractToX86 where
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ)
 import Data.Nat as ℕ
 open import Data.List using ([]; _∷_; _++_)
 
@@ -27,14 +27,13 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 -- Import X86 syntax
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rdi; rbp; rsp; r11; r12; r15; base; base+disp; rip+label; rip+sym; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; call-sym; ret; jmp; je; label; jbe-fwd; local-1; Program; slot-size; slots)
+  using (rax; rdi; rbp; rsp; r11; r12; r15; base; base+disp; rip+label; reg; mem; imm; mov; lea; add; sub; sbb; cmp; push; pop; call; call-l; call-sym; ret; jmp; je; label; jbe-fwd; local-1; Program; slot-size; slots)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Locations using (Slot)
 open import Data.List.Relation.Unary.All using ([]; _∷_)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
 open import Once.CCC.Label using (once; callee)

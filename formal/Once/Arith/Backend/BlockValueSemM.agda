@@ -27,7 +27,6 @@ open import Once.Arith.Machine.Shape using (⟦_⟧S)
 -- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
 -- no lowering here yet; saying so in the type means the gate sees the gap
 -- instead of a float tree silently taking the integer path.
-open import Once.Arith.Type using (NInt)
 open import Once.Arith.Machine.IR using (MArithIR)
 open import Once.Arith.Machine.AbsState using (init; output-of)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)

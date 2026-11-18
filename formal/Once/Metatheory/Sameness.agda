@@ -20,9 +20,7 @@ open import Once.Spec.Signature using (Signature)
 module Once.Metatheory.Sameness (Σ : Signature) where
 
 open import Once.Spec.Metatheory using (Sameness)
-open import Once.Spec.Effect Σ using (toT∞)
 open import Once.Metatheory.Erase Σ using (toT∞-bindᵍ)
-open import Once.Metatheory.Bisim Σ using (≈-sym)
 open import Once.Metatheory.Coherence.Relation Σ using (≈-Relatedˡ; ≈-Relatedʳ; bindRel; fromObserved; toObserved)
 import Once.Metatheory.Coherence.PER as PER
 import Once.Metatheory.Coherence.StreamSame as StreamSame

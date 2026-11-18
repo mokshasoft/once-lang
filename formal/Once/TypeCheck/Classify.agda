@@ -10,46 +10,34 @@
 
 module Once.TypeCheck.Classify where
 
-open import Once.Spec.Type using (KCtx; ∅ₖ; Ty; base)
+open import Once.Spec.Type using (KCtx; ∅ₖ; base)
 open import Once.TypeCheck.Scope
 
-open import Data.String using (String; _++_)
-open import Data.String.Properties as StrProp using (_≟_)
-open import Agda.Builtin.Equality.Erase using (primEraseEquality)
-open import Relation.Nullary.Decidable using (map′)
-open import Relation.Binary.Definitions using (DecidableEquality)
+open import Data.String using (String)
+open import Data.String.Properties as StrProp using ()
 import Data.String
-open import Data.Nat using (ℕ; zero; suc; _<_; s≤s)
+open import Data.Nat using (zero; suc; _<_; s≤s)
 open import Data.Nat.Properties using (≤-refl; m≤n⇒m≤1+n)
-open import Data.Nat.Show renaming (show to showℕ)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_; length)
-open import Relation.Nullary using (yes; no; ¬_)
-open import Data.Product using (_×_; _,_; ∃-syntax; Σ)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
+open import Data.List using ([]; _∷_; length)
+open import Relation.Nullary using (yes; no)
+open import Data.Product using (_×_; _,_; Σ)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Grade
-open import Once.Type.Grade
-open import Once.Type.Core
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Type.Poly
-open import Once.Type
+open import Once.Spec.Type using (Type)
+open import Once.Spec.Surface.Syntax using (PolyType)
 open import Once.Spec.Surface.Syntax using (Expr)
-open import Once.Spec.Surface.Syntax as Raw using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
-open import Once.Spec.Surface.Syntax using (Expr)
+open import Once.Spec.Surface.Syntax as Raw using ()
 open import Once.TypeCheck.Raw as Raw
-open import Once.Spec.Name using (CanonicalName; canonical)
-open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
-open import Once.TypeCheck.Scope using (Ctx)
 open import Once.TypeCheck.Context using (∅)
 open Once.TypeCheck.Scope.Binding using (name)
 -- Plan 0.58 (OCP-0006): import the IR-FREE `Once.Surface.Context` (not
 -- `Surface.Syntax`, which carries `Once.IR` via `Expr`). `lookupLocal` now
 -- returns the de-Bruijn `Fin` index (not a `var i` `SExpr`), so `Classify` —
 -- and hence `NamedCtx`/the typing judgment — is IR-free.
-open import Once.Context as Surface using () renaming (_,_ to _S,_)
+open import Once.Context as Surface using ()
 open import Once.Spec.Context using () renaming (Ctx to SCtx; ∅ to S∅)
 open import Once.Spec.Context using (_▸_)
 

@@ -18,7 +18,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.String using (String)
 
-open import Once.Spec.Name using (CanonicalName; canonical)
+open import Once.Spec.Name using (canonical)
 open import Once.Spec.Surface.Syntax using (RVar; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S

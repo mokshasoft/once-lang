@@ -32,7 +32,7 @@ open import Data.Unit using (tt)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 
-open import Once.Spec.Type using (Type; Unit; _*_)
+open import Once.Spec.Type using (Unit; _*_)
 
 open import Once.Spec.Name using (CanonicalName)
 open import Once.IR
@@ -66,7 +66,7 @@ open import Once.Semantics.Machine
   using (sem-cata; sem-In; sem-Out; ⟦_⟧F; coerce-ν-out; coerce-ν-in)
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
-open import Once.IR.Semantics.Trace using (T; ret; call; halt; callOp; haltOp; returnT; _>>=T_; fmapT; resT)
+open import Once.IR.Semantics.Trace using (T; ret; call; halt; callOp; haltOp; fmapT; resT)
 open import Once.IR.Semantics.Boundary using (atTarget)
 open import Once.Res using (mapRes)
 
@@ -74,9 +74,7 @@ open import Once.Res using (mapRes)
 -- `emit-D` moved to `Once.Denotation.ValueDomain` and re-exported here
 -- (consumers unchanged), so the reference meaning `⟦_⟧ᵈ` can land in `⟦_⟧ᴰ`
 -- without `Once.IR` (IR enters only at `evalᴰ` below).
-open import Once.IR.Semantics.Stream
 open import Once.Denotation.ValueDomain
-open νᵈ using (forceᵈ)
 open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed; seqF∞; iter∞)
 open import Once.IR.Semantics.StreamInf using (νᴵ; module νᴵ; in-νᴵ; anaFᴵ)
 open νᴵ using (forceᴵ)

@@ -48,7 +48,7 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataS
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Layer o using (kidsI; pushAllV; pushAllV-++)
 open import Once.CCC.Codegen.IRToTrace o using (visit-walk; lsize; push2; fsize; getμ)
-open import Once.CCC.Codegen.FlatLayout using (get; get-k; get-i; get-one; lsz; lkind; kind)
+open import Once.CCC.Codegen.FlatLayout using (get; get-k; get-i; get-one; lsz)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (lkind-eq; lsz-eq)
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Build o tbl using (module PairBuildC)
@@ -61,21 +61,20 @@ open import Once.CCC.Codegen.LabelSeg using (LabelsIn; LabelIn; li-lab; li-none;
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; SV-Tag; sv-as-loc; sucLoc; store-at-slot; restore-input; load-from-slot; load-indirect; load-indirect-suc; mov-to-input; mov-to-output
+        ; SV-Ptr; store-at-slot; restore-input; load-from-slot; mov-to-input; mov-to-output
         ; instr-ctrl; c-branch-tag-zero; c-jmp; c-label; writeReg-preserves; offsetLoc)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMPrimitives using (nhw-store-at-slot; nhw-restore-input)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
+open import Once.CCC.Machine.SMPrimitives using (nhw-restore-input)
 open import Once.CCC.Label using (ℓ; LabelId; module LabelId)
 open LabelId using (idx)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.SumShape o tbl using (module ResuspSumShapeC)
 import Data.List.Relation.Unary.All as AllM
 open import Relation.Nullary using (¬_)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as I
-open import Data.Product using (Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
@@ -115,17 +114,15 @@ su-lt s k u p = <-≤-trans (subst (λ z → s < z) (sym (su-eqₛ s k)) (s≤s 
 module CataVisitC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open ResuspBaseC {FS}
   open CataStepsC {FS}
   open CataStackC {FS}
   open CataWalkC {FS}
-  open Resolve {FS} using (NoLabel; fl-hit; noLabel-outside; found-in-window)
+  open Resolve {FS} using (fl-hit; noLabel-outside; found-in-window)
   open FlatStepsAPI {FS} using (flat-tag-branch-yes; flat-tag-branch-not)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
-  open ClosureWellFormedBase {FS} using (SumTag)
-  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; offset-zero; get-len)
+  open AllocState using (current-frame)
+  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; offset-zero)
   open ShapeC {FS} using (tag-inl; tag-inr; payload-l; payload-r)
   open GetC {FS} using (live-any)
   open ResuspSumShapeC {FS} using (nolab-get; li-get)

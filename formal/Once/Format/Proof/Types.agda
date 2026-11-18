@@ -14,21 +14,20 @@
 
 module Once.Format.Proof.Types where
 
-open import Data.Bool using (Bool; true; false; _∨_; not)
-open import Data.List using (List; []; _∷_)
-open import Data.Nat using (ℕ)
+open import Data.Bool using (Bool; true; false; _∨_)
+open import Data.List using (List; _∷_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
+open import Relation.Binary.PropositionalEquality using (refl; sym; subst)
 open import Relation.Nullary using (¬_)
 
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; Finite; pureᶠ; actᶠ)
+open import Once.Spec.Grade using (Zero; One; Many; pureᶠ; actᶠ)
 open import Once.Spec.Surface.Lexing using (Token; TWord; TLParen; TRParen; TArrow; TCaret0; TCaret1; TCaretW)
 open import Once.Adequacy.SpecTokNames
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_;
   PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_)
-open import Once.Spec.Surface.Grammar using (Starts; starts; GradeToken; g0; g1; gw; TypeAlg; module Types)
+open import Once.Spec.Surface.Grammar using (Starts; g0; g1; TypeAlg; module Types)
 open import Once.Format.Doc using (toks)
 open import Once.Format.Print using (pty; pfun; pfunArg)
 open import Once.Format.Proof.Tokens using (word-toks)

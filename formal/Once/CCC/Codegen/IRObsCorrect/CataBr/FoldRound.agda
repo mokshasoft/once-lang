@@ -52,10 +52,8 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldInv o tbl using (module Cat
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldPre o tbl using (module CataFoldPreC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldBack o tbl using (module CataFoldBackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Visit o tbl using (module CataVisitC)
-open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Output; Input1
-        ; SV-Ptr; instr-call-closure)
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; instr-call-closure)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
@@ -77,8 +75,7 @@ import Once.IR.Semantics.Trace as TM
 module CataFoldRoundC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
-  open ResuspBaseC {FS} using (SRun; SegA; Kp; bf-step; seg-bf; live-from)
+  open ResuspBaseC {FS} using (SegA; Kp; bf-step; seg-bf; live-from)
   open CataVisitC {FS} using (place→word)
   open ApplyC {FS} using (call-at)
   module BC = BlockCallC {FS}
@@ -86,11 +83,11 @@ module CataFoldRoundC {FS : FrameSemantics} where
   open CataWalkC {FS}
   open CataBrTextC {FS} using (module Text)
   open CataFoldTextC {FS} using (module FoldAt)
-  open CataFoldInvC {FS} using (module Inv; RoundRun; Same)
+  open CataFoldInvC {FS} using (module Inv; RoundRun)
   open CataFoldPreC {FS} using (module Pre; PreOut)
   open CataFoldBackC {FS} using (module Back)
-  open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
+  open LocState using (halted)
+  open AllocState using (next-slot; next-heap-ref; current-frame)
 
 
   -- a heap cell below one frontier, read at a stack bound

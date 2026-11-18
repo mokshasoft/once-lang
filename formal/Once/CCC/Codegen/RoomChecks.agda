@@ -31,8 +31,8 @@
 module Once.CCC.Codegen.RoomChecks where
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.List using (List; []; _∷_)
-open import Data.Nat using (ℕ; zero; suc; _+_; _⊔_)
+open import Data.List using ([]; _∷_)
+open import Data.Nat using (ℕ; suc; _+_; _⊔_)
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; instr-ctrl; instr-room; instr-alloc-heap; instr-call-closure; instr-sigop
         ; c-label; c-entry; c-start; c-call-fn)

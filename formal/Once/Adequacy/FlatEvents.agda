@@ -61,9 +61,9 @@ open import Once.CCC.Machine.FlatLeft using (LeftFree)
 import Once.CCC.Machine.FlatLeft
 import Once.CCC.Machine.FlatLog
 import Once.CCC.Machine.SMCore as SMC
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Product using (_×_; proj₁)
+open import Data.Product using (proj₁)
 open import Once.IR.Semantics.Out using (Out; cut; stop; ended; end-of-left; _▹_; ▹-assoc)
 
 module FlatEventTrace {FS : FrameSemantics} where

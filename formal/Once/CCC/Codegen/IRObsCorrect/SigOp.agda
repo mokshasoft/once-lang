@@ -34,8 +34,8 @@ module Once.CCC.Codegen.IRObsCorrect.SigOp (o : CanonicalName) (tbl : DL.List IR
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.CCC.Machine.SMCore using (AllocState; module AbstractExec; LocState; SV-Ptr; readReg; Input1; AbstractTrace; StoredValue; instr-sigop; SV-Lit; sv-as-loc; writeReg-same; Output; module LocState)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
+open import Once.CCC.Machine.SMCore using (AllocState; module AbstractExec; LocState; readReg; Input1; AbstractTrace; StoredValue; instr-sigop; SV-Lit; sv-as-loc; writeReg-same; Output; module LocState)
 open LocState using (regs; halted)
 import Once.Type.Core as SpecTy
 import Once.Spec.Type as SpecTy

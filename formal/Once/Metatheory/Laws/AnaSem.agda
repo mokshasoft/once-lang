@@ -17,25 +17,23 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Metatheory.Laws.AnaSem (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-open import Data.Fin using () renaming (zero to fz; suc to fs)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Relation.Binary.PropositionalEquality using (refl; cong)
 open import Once.Spec.Grade using (Many; mk-kind; pure; pureᶠ)
 open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; TySub; Respects; ∅ₖ; _⟨_⟩; _⟨_⟩F; _⇒[_]_; ν; ⟦_⟧F)
 open import Once.Spec.Context using (Ctx; _▸_; _∷_)
-open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived using (anaᶜ; outᶜ)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
-open import Once.Spec.Effect Σ using (T∞; _>>=∞_; return∞; toT∞; LayerEq; νM; ana; anaP; mapP)
+open import Once.Spec.Effect Σ using (_>>=∞_; return∞; toT∞; LayerEq; νM; ana; mapP)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL)
-open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; sfmap)
+open import Once.Spec.Polynomial using (SK; SId; _S⊕_; _S⊗_; sfmap)
 open import Once.Spec.Equivalence Σ using (Same)
-open import Once.Spec.Metatheory using (SameDefs; SameEnv; Pure)
+open import Once.Spec.Metatheory using (SameDefs; SameEnv)
 open import Once.Metatheory.Bisim Σ using (≈-sym; ≈-trans; idˡ)
 open import Once.Metatheory.Coherence.Relation Σ using (LayerEq-mono; Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
-open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; module Functor; module Ana; relatedFmap; outRel; LayerEq-∀)
+open import Once.Metatheory.Coherence.Layer Σ using (runs; module Functor; module Ana; relatedFmap; outRel; LayerEq-∀)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)
 open import Once.Metatheory.Laws.Tools Σ u fmt S
 open import Once.Metatheory.Laws.Views Σ u fmt S

@@ -44,28 +44,24 @@ open import Once.CanonicalName using (_≟ᶜ_)
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
-open import Once.Spec.Type using (Unit)
 open import Once.IR using (IR)
-open import Once.IRTy using (⌊_⌋)
 import Once.Compile as C
 -- plan 0.107: the program is the COMPILER's (one walk) — defined in
 -- `Once.Compile` beside the emitter, and read from there.
-open import Once.Compile using (moduleToIR; moduleToProgram; rewrite-fun; rewrite-table; rewrite-program)
+open import Once.Compile using (rewrite-fun; rewrite-table; rewrite-program)
 import Once.Parser.Module.Core as P
 import Once.Spec.Surface.Syntax as Syn
 -- D165: the arith-block lifting the BACKEND runs before codegen. Imported here
 -- so the IR the emitter actually compiles can be NAMED (`moduleToIR-emitted`).
-open import Once.Arith.Machine.Rewrite using (rewrite-ir)
 -- plan 0.103: the arith pass adds no call (proved).
 open import Once.Adequacy.RewriteLinked using (rewrite-ir-linked)
-open import Data.Product using (proj₁)
 -- Plan 0.52: pull the LEXER+PARSER into the verified front-end — `srcToModule`
 -- runs the executable `parseStrict` on the source TEXT (a front-end bug reds the
 -- apex via `Once.Adequacy.FrontEndBridge`). Plan 0.51: and then the resolver, so
 -- `moduleToIR` compiles the SAME (resolved) module the binary runs.
 open import Once.Parser using (parseStrict)
 open import Once.Parser.Module.Resolve using (resolveImports; ModuleMap)
-open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior; silent)
+open import Once.Denotation.Behavior using (Source)
 open import Once.Spec.Trace using (Tr)
 open import Once.Denotation.TraceTr using (trT∞)
 open import Once.Adequacy.MachineTrace using (silentTr)
@@ -75,11 +71,9 @@ open import Data.Unit using (⊤)
 -- recursive and a parameterised module stops reducing at a variable instance.
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.IR.Semantics.Trace
-  using (projTrace; PrefixFamily; Interp; pureHalf)
-open import Once.Denotation.TraceMonadLaws using (projTrace-pf)
-open Once.IR.Semantics.Trace.PrefixFamily using (bnd; coh; sat)
+  using (Interp; pureHalf)
 open import Once.Denotation.Program using (IRFun; IRProgram; runIR; LinkedAt; LinkedAt-at; Linked; LinkedProgram; TeleLinked; NamesDistinct)
-open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
+open import Data.List.Relation.Unary.AllPairs using ([]; _∷_)
 open import Relation.Binary.PropositionalEquality using (_≢_)
 open Once.Denotation.Program.IRProgram using (main; table)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)

@@ -53,23 +53,15 @@ module Once.Semantics.Value (IntRep : Set) (FloatRep : Set) where
 
 import Once.Spec.Type as SpT
 open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
-open import Once.Spec.Type using (Ty; Fun; KCtx; Base; b-var)
+open import Once.Spec.Type using (Ty; Fun; KCtx; b-var)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
+open import Data.Sum using (inj₁; inj₂)
+open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
 open import Function using (_∘_)
 
-open import Once.Spec.Grade
-open import Once.Type.Grade
-open import Once.Type.Core
-open import Once.Spec.Type using (Fun)
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Type.Poly
-open import Once.Type
-open import Once.Res using (Res; stopped; returns; mapRes)
+open import Once.Spec.Type using (_*_; _+_; K; Id; _⊕_; _⊗_)
+open import Once.Res using (Res; returns)
 
 
 -- OCP-0003: ⟦Fix⟧ wrapper removed. μ/ν come from Once.Semantics.Functor.
@@ -97,12 +89,11 @@ open import Once.Res using (Res; stopped; returns; mapRes)
 -- interpretation equals the full interpretation.
 ------------------------------------------------------------------------
 
-open import Once.IR.Semantics.FunctorMeaning using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base)
+open import Once.IR.Semantics.FunctorMeaning using (translateF; ⟦_,_⟧-base)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.IR.Semantics.Polynomial
-open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; inS; sfmap; μS; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; inS; sfmap; ⟦_⟧SF)
 open import Once.Semantics.Functor using (cataS-cong; fuseNatS; fuseNatW; cataS-computation)
-open Once.IR.Semantics.Polynomial.νS using (unfoldS)
 -- D062/0.47: the bisimulation machinery (⟦_⟧SF-rel, _∼S_, bisimS-to-eq, …) and
 -- the axiom-using identity laws moved to `Once.Semantics.Functor.Laws` /
 -- `Once.Semantics.Value.Laws`, so this module holds definitions only.

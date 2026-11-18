@@ -35,7 +35,6 @@ open import Data.Sum using (_⊎_)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
-open import Once.Spec.Type using (Int)
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 import Once.Spec.Word as Word
 open import Once.Spec.Bool using (truth)

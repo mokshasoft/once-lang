@@ -29,12 +29,9 @@ open import Once.Spec.Grade as T using (Zero; One; Many)
 import Once.Type.Core as T
 import Once.Spec.Type as T
 import Once.Spec.Type as T
-open import Once.Type.Sub
 open import Once.Spec.Sub using (sub-*; sub-+)
-open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
-open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Once.Type.SubDecide
-open import Once.Laws.Sub
+open import Once.Spec.Sub using (_<:_; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
+open import Once.Spec.Grade using (_⊑π_)
 open import Once.IR
 open import Once.IRTy using (_⇛_; Unit; ⌊_⌋; _*_; _+_)
 

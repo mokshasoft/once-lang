@@ -28,7 +28,7 @@ open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Output
         ; SV-Ptr; SV-Code; instr-ctrl; c-jmp)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.Locations using (AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
@@ -40,7 +40,6 @@ open import Data.Nat using (_*_)
 module CataFoldBackC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open ResuspBaseC {FS} hiding (X)
   open CataStackC {FS}
   open CataWalkC {FS}
@@ -57,7 +56,7 @@ module CataFoldBackC {FS : FrameSemantics} where
               (sn hc : HeapLocation) (e : ⟦ E ⟧) (env-sv : StoredValue FS) where
 
     module FA = FoldAt wf alg n l prog base span la
-    open FA using (X; Y; Z; span-push; fetch-jmp-head; head-label; headL)
+    open FA using (X; Z; span-push; fetch-jmp-head; head-label; headL)
 
     c bodyL : ℕ
     c = FA.T.Pc.cslot

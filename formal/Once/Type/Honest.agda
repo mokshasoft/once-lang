@@ -23,12 +23,8 @@ open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Spec.Grade
-open import Once.Type.Grade
-open import Once.Type.Core
 open import Once.Spec.Type using (μ; ν)
-open import Once.Spec.Type using (var; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Type.Poly
+open import Once.Spec.Type using (var; Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
 
 -- Plan 0.113 B2: HALTING and EMITTING are properties UP TO ISOMORPHISM — a codomain
 -- that is EMPTY halts (initial object), one that is a SINGLETON owes no answer

@@ -11,19 +11,17 @@
 module Once.Adequacy.SpecGrammar.DeclHeads where
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Char using (Char)
 open import Data.Empty using (⊥-elim)
 open import Data.List using (List; []; _∷_; map)
 open import Data.Maybe using (just; nothing)
-open import Data.Product using (Σ-syntax; _×_; _,_)
-open import Data.String using (String)
+open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (¬_)
 
 open import Once.Spec.Surface.Lexing using (Token)
 open Token
 open import Once.Spec.Surface.Grammar
-  using (Starts; starts; StartsWord; starts-word; OpChar; oc-dot; oc-op; oc-pipe; oc-amp; oc-at; Trailing; trail-nl; trail-eof; SkipNewlines; skip-nl; skip-done)
+  using (Starts; starts; StartsWord; OpChar; oc-dot; oc-op; oc-pipe; oc-amp; oc-at; Trailing; trail-nl; trail-eof)
 import Once.Parser.Token as P
 open import Once.Parser.Core using (skipNewlines)
 open import Once.Parser.Module.Core using (wordHead)
@@ -34,7 +32,6 @@ open import Once.Parser.Module.FunDef.Params using (SepK; skEq; skWord; skStop; 
 open import Once.Parser.Module.OpName using (OpTok; otClose; otChar; otDotted; otNone; opTokClass)
 open import Once.Parser using (allTrailing)
 open import Once.Parser.Module using (parseDeclB)
-open import Once.Adequacy.SpecTokNames
 open import Once.Spec.Surface.Lexing using (Glyph; g+; g-; g*; g/; g%; g<; g>)
 open import Once.Spec.Surface.Operator using (‹_›; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 open import Once.Adequacy.SpecLexing using (forget)

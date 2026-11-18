@@ -18,11 +18,11 @@
 
 module Once.TypeCheck.Completeness where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true; false)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Fin using (Fin; zero; suc)
+open import Data.Fin using (Fin)
 open import Data.List using ([]; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just; nothing)
 open import Data.Nat using (ℕ; _<_)
 open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String; _≟_)
@@ -30,17 +30,17 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (yes; no; ¬_; Dec)
-open import Once.Spec.Name using (CanonicalName; canonical; own)
+open import Once.Spec.Name using (canonical; own)
 import Once.Spec.Grade as LG
 import Once.Spec.Type as ST
 import Once.Spec.Context as SCx
 import Once.Spec.Surface.Syntax as Raw
 import Once.Spec.Surface.Typing as SUT
 import Once.Spec.Surface.Generators as G
-open import Once.Spec.Sub using (_<:_; sub-*)
+open import Once.Spec.Sub using (_<:_)
 open import Once.Spec.Core.Syntax using (Tm; Schema; schema; _!!_)
 open Schema using (arity; kinds; type)
-open import Once.TypeCheck.Scope using (NamedCtx; Binding; lookupLocal; lookupLocal-go; lookupImport; lookupPolyPrefix;
+open import Once.TypeCheck.Scope using (NamedCtx; Binding; lookupLocal-go; lookupImport; lookupPolyPrefix;
                                         GenKindView; gk-map; gk-const; gk-comb₁; gk-comb₂; genKindView)
 open Binding using (name)
 open NamedCtx
@@ -61,7 +61,6 @@ open import Once.Generators using (fromCodomain?; fromDomain?)
 open import Once.Type.SubDecide using (_<:?_; _⊑π?_)
 open import Once.Spec.Sub using (_<:ᶜ_)
 open import Once.Spec.Core.Derived using (𝕋)
-open import Once.Type.Grade using (≤q-Many)
 open import Once.Type.Join using (join?-complete)
 open import Once.TypeCheck.DeciderComplete using (wfFun?-complete-at; isGround-complete-at; ¬Ground-isGround-inj₂)
 open import Once.Core.Decl using (⌜declS⌝)
@@ -85,7 +84,7 @@ import Once.Name
 
 module _ {Σ} {s : ℕ} {S} {nm : Fin s → _} {m : ℕ} where
   open Sc.Locals Σ S nm {m}
-  open SUT Σ S nm using (Locals; _∋_⦂_at_; here; there)
+  open SUT Σ S nm using (_∋_⦂_at_; here; there)
 
   finds : ∀ {n x A i} {Γn} {Γd : SCx.Ctx m n} {L} → LocalsOf Γn Γd L → L ∋ x ⦂ A at i
         → lookupLocal-go x Γn Γd ≡ just (SCx.lookup Γd i , SCx.singleUse i LG.One , svar i)
@@ -100,7 +99,6 @@ module _ {Σ} {s : ℕ} {S} {nm : Fin s → _} {m : ℕ} where
 -- The judgments at a Pack
 ------------------------------------------------------------------------
 
-open import Once.Spec.Core.Syntax using (Tm)
 open UMod hiding (_⊢_⇒_↝_; _⊢_⇐_↝_; _⊢_⇐_⇒[_]↦_↝_)
 
 module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
@@ -126,23 +124,9 @@ module _ {m} {ctx : NamedCtx m} (P : Pack ctx) where
 -- References: the entry a name's lookups found, at the checker's type
 ------------------------------------------------------------------------
 
-open import Once.Type.Closed using (sub0; sub0≡)
-open import Once.Type.Core using (wk₀; none)
-open import Once.Type.Instance using (KindedInstance; rigidOf)
-open import Once.Type.Schema using (schemaOf; kinded-instance)
 import Once.Type.Poly as TP
 import Once.Type
-open import Once.Spec.Core.Syntax using (Schema; schema; _!!_)
-open Schema using (arity; kinds; type)
-open import Once.TypeCheck.Scope using (lookupImport; lookupPolyPrefix)
-open import Once.TypeCheck.Classify using (lookupPolyPrefix⇒lookupPoly)
-open import Once.TypeCheck.DeciderComplete using (isGround-complete-at; ¬Ground-isGround-inj₂)
-open import Once.TypeCheck.Elaborate using (isGround-inj₂→¬Ground)
-open import Once.Type.Rigid using (ground-kinded)
-open import Once.Adequacy.SpecFront.SchemaOf using (ground-arity; open-arity; ki-of)
-open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Data.Nat using (_<_)
 
 -- the answer, at an equal type
 at-type : ∀ {m} (ctx : NamedCtx m) (e : Raw.Expr) {A A′ : ST.Ty m} {Ψ}
@@ -201,7 +185,6 @@ at-nameC ctx refl r = r
 ↑≡wk₀ T = sub0 T _ _
 
 -- the Spec's operator classes are the checker's
-open import Once.Spec.Surface.Operator using (BinOp)
 
 -- an answer at an equal usage
 at-usage : ∀ {m n} {Γ : SCx.Ctx m n} {A : ST.Ty m} {r : E.CheckElabResult Γ A} {Ψ Ψ′}

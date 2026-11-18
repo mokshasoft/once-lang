@@ -17,22 +17,22 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Metatheory.TermModel.Val (Σ : Signature) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_,_)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω; _+q_; _*q_)
-open import Once.Spec.Type using (Ty; TySub; _⟨_⟩)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; subst)
+open import Once.Spec.Grade using (Quantity; Zero; One; Many; _≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω)
+open import Once.Spec.Type using (TySub; _⟨_⟩)
 open import Once.Spec.Context
-  using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; singleUse; zeroUsage; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_)
+  using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; singleUse; _*ᵘ_; _⊑ᵘ_; _⊑∷_)
 open import Once.Spec.Core.Meaning Σ fmt S using (Env; Slot; restrict; lookupᵛ)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (SameEnv)
 open import Once.Metatheory.Coherence.Env Σ fmt S using (SlotAgree)
 open import Once.Metatheory.TermModel.Usage
-open import Once.Metatheory.TermModel.Subst Σ S using (Thin; idθ; _θ*_; CThin; cid; ckeep; cskip; cdone)
+open import Once.Metatheory.TermModel.Subst Σ S using (cid)
 open import Once.Metatheory.TermModel.Ren Σ fmt S using (ThinAgree)
 
 -- The usage at a variable, and whether it holds one.

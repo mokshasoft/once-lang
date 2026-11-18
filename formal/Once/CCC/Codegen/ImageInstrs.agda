@@ -17,7 +17,7 @@ open import Once.SigOp.Info using (SigOpInfo)
 module Once.CCC.Codegen.ImageInstrs {I : Set}
   (C : I → CanonicalName → IRTy → IRTy → Set) (i : I) (Q : ∀ {A B} → SigOpInfo A B → Set) where
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ)
 open import Data.Unit using (tt)
 open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)

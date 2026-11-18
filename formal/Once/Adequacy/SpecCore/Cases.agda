@@ -27,7 +27,6 @@ import Once.Spec.Grade
 module Once.Adequacy.SpecCore.Cases (Σ : Signature) {s : ℕ} (S : Defs s) (fmt : TargetNum) where
 
 open import Data.Unit using (tt)
-open import Data.Fin using (Fin; zero; suc)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst; cong)
 
@@ -35,7 +34,7 @@ import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
 import Once.Spec.Signature as SSig
 import Once.Spec.Type as ST
-open ST using (Ty; Type; Fun; KCtx; ∅ₖ; TySub; Respects; WFFun; _⟨_⟩; _⟨_⟩F; _⇒[_]_; _+_; μ; ν; ⟦_⟧F)
+open ST using (Fun; KCtx; ∅ₖ; TySub; Respects; WFFun; _⟨_⟩; _⟨_⟩F; _⇒[_]_; _+_; μ; ν; ⟦_⟧F)
 import Once.Spec.Type.Substitution as STS
 import Once.Spec.Core.Syntax as SC
 open SC using (Prim; primDom; primCod; Schema; _!!_)

@@ -46,7 +46,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Surface.OpNames
-open import Once.Spec.Surface.Operator using (BinOp; dotted; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
+open import Once.Spec.Surface.Operator using (dotted; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 open import Once.Spec.Float.Value using (pos; neg)
 import Data.Integer as ℤ
 open import Once.Spec.Surface.Syntax using (Expr)

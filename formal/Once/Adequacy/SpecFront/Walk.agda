@@ -21,16 +21,15 @@
 -- the checker built (`ModuleProgram`).
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.Product using (Σ-syntax; _×_; _,_)
+open import Data.Product using (Σ-syntax; _×_)
 open import Data.Maybe using (just; nothing)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
 open import Once.Name using (showCanonical; WordName)
-open import Once.Spec.Name using (CanonicalName; canonical)
+open import Once.Spec.Name using (canonical)
 open import Once.Spec.Signature using (Signature; _∶_; ⌜_⌝ᵈ)
 import Once.Type.Concrete as LW
 import Once.Spec.Type as ST
@@ -50,15 +49,15 @@ module Once.Adequacy.SpecFront.Walk
   (h-word : ∀ {c t} → (c ∶ t) ∈ Σ → WordName c)
   where
 
-open import Data.Nat using (zero; suc; _<_)
-open import Data.Fin using (Fin; zero; suc)
+open import Data.Nat using (zero)
+open import Data.Fin using (zero)
 open import Data.List using (_++_; map)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.Bool using (Bool; true; false)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Data.Product using (proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; subst)
 
 import Once.Type.Poly as TP
 import Once.Spec.Core.Syntax as SC
@@ -70,22 +69,22 @@ import Once.Spec.Surface.Typing
 import Data.String
 import Once.Compile as C
 import Once.Parser as Parser
-open Parser.FunInfo using (funName; funType; funBody; funIsPrimitive)
-open Parser.PolyFunInfo using (pfunName; pfunType; pfunBody)
-open import Once.Module using (Scope; scope; ModTele; []; ffi; mono; poly; addImp; addPoly; ctxOf)
+open Parser.FunInfo using (funName)
+open Parser.PolyFunInfo using (pfunName)
+open import Once.Module using (Scope; scope; ModTele; []; ffi; mono; poly; addImp; addPoly)
 open import Once.Type.Schema using (schemaOf)
 open import Once.Type.Instance using (kindsOf; rigidOf)
 open import Once.Core.Translate Σ
-  using (SigSig; ImpSig; TeleSig; i-def; t-def; wkI; wkT; impDefs; monoSchema; viewOf; telFind; u0)
+  using (SigSig; ImpSig; TeleSig; t-def; wkI; wkT; impDefs; monoSchema)
 import Once.Adequacy.ModuleProgram Σ as MP
 open import Once.Adequacy.ModuleProgram Σ using (Names; names-monoF; names-polyF; fresh-mono; fresh-poly; monoDef; polyDef; polyBody; polyCheck; monoBody; monoCheck; monoSynth)
-open import Once.Adequacy.SpecFront.Expr using (RX; rx-≡)
+open import Once.Adequacy.SpecFront.Expr using (rx-≡)
 import Once.Adequacy.SpecFront.ScopeNames as SN
 open import Once.Adequacy.SpecFront.WalkState Σ ps
-open import Once.Adequacy.SpecFront.End Σ ps using (EntryKind; End; end; endOf; no-ffi; all-tail)
+open import Once.Adequacy.SpecFront.End Σ ps using (EntryKind; End; endOf; no-ffi; all-tail)
 open import Once.Adequacy.SpecFront.Align Σ using (Align; al-nil; al-skip; al-mono; al-nosig; al-poly)
 
-open SPr using (Body; Principal; Walk; w-end; w-skip; w-sig; w-nosig)
+open SPr using (Body; Walk; w-end; w-skip; w-sig; w-nosig)
 
 ------------------------------------------------------------------------
 -- The bridges at a walk state

@@ -27,118 +27,69 @@ open import Once.Adequacy.SourceRefl using (RelDefs)
 module Once.Adequacy.MeaningBridgeS (fmt : TargetNum) (Σ : Signature) {s : ℕ} (S : Defs s) (nm : Fin s → CanonicalName) (Ok : Fin s → Set) (OkS : CanonicalName → Type → Set)
   (inline : Fin s → Bool) (σ₀ : TySub 0 0) (σ : DefsSem) (σ-self : RelDefs fmt σ σ) (Δ : KCtx 0) where
 
-open DefsSem using (calls; refs)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Nat using (ℕ)
-open import Once.Spec.Core.Syntax using (Defs)
-open import Data.Sum using (inj₁; inj₂; [_,_]′; _⊎_)
-open import Data.Unit using (⊤; tt)
-open import Data.Fin using (Fin; zero; suc)
-open import Data.Maybe using (just)
+open DefsSem using (calls)
+open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Sum using (inj₁; inj₂; [_,_]′)
+open import Data.Unit using (tt)
+open import Data.Fin using (Fin)
 open import Data.Empty using (⊥-elim)
-open import Data.List using ([]; _∷_)
-open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; cong-app; trans; sym; subst)
-open import Once.Weaken using (T∞-wk₀)
+open import Data.List using (_∷_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong-app; trans; sym; subst)
 
-open import Once.Spec.Grade using (Purity; Quantity; mk-kind; Zero; One; Many; pure; act; eff; Finite; fin; pureᶠ; actᶠ)
-open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; relS-ret; RelS-bind; RelS-embed; RelS-≈ˡ; embed-bind; RelS-loop; RelS-iter∞)
-open RelS using (forceS)
-open import Once.Denotation.ValueRel using (RelD; base-eq; base-refl; RelS-fmap; RelS-fmapˡ; RelS-fmapʳ; retargetˡ; retargetʳ)
+open import Once.Spec.Grade using (Purity; mk-kind; Zero; One; Many; pure; act; eff; Finite; fin; pureᶠ; actᶠ)
+open import Once.Denotation.TraceMonadInfLaws using (relS-ret; RelS-bind; RelS-iter∞)
+open import Once.Denotation.ValueRel using (RelD; RelS-fmap; retargetˡ; retargetʳ)
 open import Once.Denotation.EvalRel using (liftFn-rel)
-open import Once.Adequacy.SourceRefl fmt using (SD-rel; <:-rel; cata-clo-rel; ana-clo-rel; sigOp-rel)
+open import Once.Adequacy.SourceRefl fmt using (SD-rel; cata-clo-rel; ana-clo-rel; sigOp-rel)
 open import Once.Adequacy.CataErased fmt (calls σ) using (liftFn-SigOp)
 open import Once.Spec.Type using (Type; _⇒[_]_; _+_; _*_; Int; Float; Unit)
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
-open import Once.Spec.Type using (wf-K; wf-Id)
-open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
-open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; b-Void; wf-⊕; wf-⊗; ∅ₖ)
-open import Once.Semantics.Machine using (sem-In; sem-cata)
-open import Once.IRTy using (IRTy)
-open import Once.Adequacy.InErased fmt (calls σ) using (In-ir; liftFn-In)
-open import Once.Context using (svar; _↾_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
-open import Once.Spec.Context using (Ctx; ∅; lookup; singleUse; zeroUsage; _⊑ᵘ_; []; _+ᵘ_; _*ᵘ_)
-open import Once.Spec.Context using (Usage)
-open import Once.Spec.Context using ([]; _∷_; _⊑∷_; _▸_)
-open import Once.Surface.Syntax using (sigOp)
+open import Once.Type.Concrete using (IsConcrete)
+open import Once.Spec.Type using (Base; WFFun; b-+; b-Unit; ∅ₖ)
+open import Once.Semantics.Machine using (sem-cata)
+open import Once.Adequacy.InErased fmt (calls σ) using (In-ir)
+open import Once.Context using (_↾_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Spec.Context using (Ctx; _+ᵘ_; _*ᵘ_)
+open import Once.Spec.Context using (_∷_; _▸_)
 import Once.Surface.Syntax as Surface
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 import Once.IR.Semantics.Stream
-open import Once.IR.Semantics.Trace using (T; ret; returnT; _>>=T_; fmapT; rel-ret; Interp; pures; pureHalf; pureHalf-at; resT; module Interp)
-open import Once.Denotation.TraceMonadLaws using (RelT′-fmap; RelT′-refl)
-open Interp using (impl; sig)
 import Once.IR.Semantics.Trace as TM
-open import Once.Contract using (key; valueOf-at; _∈K?_)
-open import Once.ContractLaws using (value-∈)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Relation.Nullary using (Dec; yes; no)
-open import Once.Denotation.DenotTrace using (evalᴰ; liftFn; sigOpT; sigOpSemT; module CallEnv)
-open CallEnv using (ffiE)
-open import Once.TypeCheck.Scope using (NamedCtx; PolyCtx; lookupPolyPrefix; Imports; lookupImport)
-open import Once.Denotation.DefEnv using (defAt; tailAt; defAt-found; tailAt-found; impAt; impAt-found)
-open import Once.IR.Ref using (refIR)
-open import Once.Type.Instance using (KindedInstance)
-open import Once.Type.Rigid using (ground-kinded)
-open import Once.Type.Poly using (extractGround)
+open import Once.Denotation.DenotTrace using (liftFn)
 import Data.String.Properties as StrProp
 open import Once.Type.Sub
-open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
-open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Once.Type.SubDecide
-open import Once.Laws.Sub
-open import Once.Denotation.Sub using (⟦_⟧<:)
+open import Once.Spec.Sub using (_⊔_≔_; sub-arr)
+open import Once.Spec.Grade using (⊑-pure)
 open import Once.Spec.Surface.Syntax using ()
-open import Once.Surface.OpNames
-open import Once.Spec.Surface.Operator using (BinOp)
-open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
-open import Once.Denotation.PureBind using (_>>=ᵖ_)
+open import Once.Denotation.Phase using (restrictᴰ; bindᴰ)
 open import Once.Denotation.SpecDomain Σ σ₀
-  using (⟦_⟧ᵛ; M; returnM; bindM; subM; fmapM; in-valueᵛ; out-semᵛ; ⟦_⟧<:ᵛ; cata-semᵛ; lookupᵛUsed; restrictᵛ; bindᵛ; bindᵛ0)
+  using (⟦_⟧ᵛ; M; returnM; bindM; fmapM; ⟦_⟧<:ᵛ; cata-semᵛ; restrictᵛ; bindᵛ)
 import Once.Spec.Effect Σ as SE
 import Once.Spec.Domain Σ as SDom
 import Once.Denotation.RefMeanings Σ σ₀ as RM
-open RM using (DefMeanings; DefFamily; ImpMeanings; MeaningsOf)
-open RM.Meanings using (sigs; defs; entries)
 open import Once.Adequacy.LiftFnReduce fmt (calls σ) using
-  (liftFn-id; liftFn-fst; liftFn-snd; liftFn-terminal; liftFn-inl; liftFn-inr; liftFn-apply; liftFn-curry; liftFn-∘;
-   Now; now-fst; force-∘)
+  (liftFn-id; liftFn-fst; liftFn-snd; liftFn-terminal; liftFn-inl; liftFn-inr; liftFn-apply; liftFn-curry; now-fst; force-∘)
 import Once.IR as IR
-open import Once.Arith.SigOp.Builders using (value-info;
-  add-info; sub-info; mul-info; div-info; mod-info; neg-info;
-  fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
-  lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
+open import Once.Arith.SigOp.Builders using (i2f-info)
 import Data.List as L
-open import Once.Spec.Name using (CanonicalName; bare)
-open import Once.Name using (showCanonical; WordName)
 import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.GradedRelation Σ σ₀ fmt
-  using (RelGV; RelGT; RelGM; RelM; RelM-fmap; RelGT-return; RelGT-bind; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret;
-         RelGM-fmap; embνᵃ-∼; right-self; GM-D; RelGᵖ-app; RelGM-wk₀; LayerR; μR; inR; _∼ᵖᵈ_; _∼ᵈ_)
-open _∼ᵖᵈ_ using (force-∼ᵖᵈ)
-open _∼ᵈ_ using (force-∼)
-open import Once.Adequacy.SpecRun Σ fmt using (≡ʳ-R; retargetʳ-R; retargetˡ-R; fmapʳ-R; loop-iter-R; RunR; BlockR; ret; left; return∞-R)
-open RunR using (forceR)
-open import Once.Semantics.Machine using (coerce-ν-out)
-open import Once.Denotation.ValueDomain using (coerce-functor⁻¹-D; coerce-functor-D; forgetᵇ; injectᵇ)
-open import Once.IR.Semantics.FunctorMeaning using (translateF)
-open import Once.Spec.Word using (Carrier)
-open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
-open import Once.Spec.Polynomial using (⟦_⟧SF)
-open import Once.SigOp.Info using (semP; int-prim; mk-info')
-open import Once.IR.Semantics.Trace using (FFIAnswers)
-open import Once.Arith.SigOp.Builders using (arrow-sem-eff)
-open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞; embed)
+  using (RelGV; RelGM; RelGᵖ-bind; RelGᵖᵉ-bind; RelGM-bind; RelGM-return; RelGM-ret;
+         RelGM-fmap; right-self; RelGᵖ-app)
+open import Once.Adequacy.SpecRun Σ fmt using (retargetʳ-R; fmapʳ-R; loop-iter-R; return∞-R)
+open import Once.Denotation.ValueDomain using (injectᵇ)
+open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
 open T∞ using (force)
-open import Once.Type.Core using (isVoid?; isUnit?; wk₀)
+open import Once.Type.Core using (wk₀)
 import Once.Semantics.Machine as Val
-open import Once.Arith.SigOp.Builders using (arrow-info)
-open import Once.Adequacy.SpecRecursion Σ σ₀ fmt using (cata-bridgeᵍ; ana-bridgeᵍ; toL-rel; outL-rel; fromL-rel)
-open import Once.Adequacy.OutErased fmt (calls σ) using (Out-ir; liftFn-Out)
+open import Once.Adequacy.SpecRecursion Σ σ₀ fmt using (cata-bridgeᵍ; ana-bridgeᵍ)
+open import Once.Adequacy.OutErased fmt (calls σ) using (Out-ir)
 
 ------------------------------------------------------------------------
 open import Once.Adequacy.MeaningBridge fmt Σ σ₀ σ
 open RelEnv↾ using (un↾)
-open import Once.Adequacy.CoreMeaningBridge fmt Σ S σ₀ using (⟦_⟧ₛ; module Comb; binK; fmapC; appC; ⟦⟧-substΨ; returnᵖ; refSemAt)
+open import Once.Adequacy.CoreMeaningBridge fmt Σ S σ₀ using (⟦_⟧ₛ; module Comb; binK; appC; ⟦⟧-substΨ; returnᵖ; refSemAt)
 open import Once.Spec.Core.Meaning Σ fmt S using (DefSem; module DefSem; envˡ; envʳ; env*One; env*Many; restrict; slot; sigopᵛ)
 import Once.Spec.Core.Meaning Σ fmt S as SM
 open import Once.Metatheory.Coherence.Env Σ fmt S
@@ -149,14 +100,12 @@ import Once.Denotation.EnvAlgebraV Σ σ₀ as EA
 open import Once.Core.DerivedTyping Σ S
   using (⊢applyᶜ; ⊢applyEffᶜ; ⊢applyᵀ; ⊢outᵀ; ⊢fstᶜ; ⊢idᶜ; ⊢inᶜ; ⊢initialᶜ; ⊢inlᶜ; ⊢inrᶜ; ⊢outActᶜ; ⊢outᶜ; ⊢sndᶜ; ⊢terminalᶜ; ⊑ᵘ-keep; z+qz)
 open import Once.Denotation.PureBind using (>>=ᵖ-β; >>=ᵖ-idʳ)
-open import Once.Postulates using (extensionality)
 open import Once.Spec.Core.Typing Σ S using (_⊩_⊢[_]_∷_!_; ⊢coerce; ⊢ref; ⊢var; ⊢prim; ⊢pair)
 open _⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
-open import Once.Spec.Signature using (_∶_; ⌜_⌝ᵈ)
+open import Once.Spec.Signature using (_∶_)
 open import Once.Spec.Core.Syntax using (module Schema; _!!_)
 open Schema using (arity; kinds; type)
 open import Once.Spec.Type using (Respects; _⟨_⟩)
-open import Once.Type.Sub using (pure-⊑)
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals)
 import Once.Spec.Theory as Th
@@ -165,7 +114,7 @@ import Once.Spec.Core.Syntax as SC
 open import Once.Spec.Surface.Operator using (binSym; BinSym)
 open BinSym using (symbol)
 open import Once.TypeCheck.NumTable using (binDom)
-open import Once.Arith.SigOp.Builders using (numInfo; i2f-info)
+open import Once.Arith.SigOp.Builders using (numInfo)
 open import Once.Surface.Numeric using (toFloatIR)
 open import Once.Adequacy.NumAgree using (num-agree; i2f-agree)
 open import Once.Float.EncodingLaws using (decode-encode)
@@ -178,9 +127,7 @@ open import Once.Type.Honest using (HonestFFI)
 open import Once.Core.Decl using (declS; ⌜declS⌝)
 open import Once.TypeCheck.UseCore Σ S nm Ok OkS Δ
 open import Once.Denotation.RealizeS Σ S nm Ok OkS inline Δ
-open import Once.Type.Core using (noResp)
 import Once.Spec.Core.Syntax
-open import Once.Spec.Grade using (One)
 open import Once.Weaken using (⟦wk₀⟧ᴰ)
 open import Once.Surface.Syntax using (Expr; var; num; pair; lift-morphism)
 import Once.Spec.Context

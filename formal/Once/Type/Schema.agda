@@ -16,29 +16,29 @@
 
 module Once.Type.Schema where
 
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (zero; suc)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _∷_; length; lookup)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Membership.Propositional.Properties using (∈-++⁺ˡ; ∈-++⁺ʳ)
 open import Data.List.Relation.Unary.Any using (here; there)
-open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Bool using (true; false; if_then_else_)
 open import Data.Empty using (⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (Σ-syntax; _×_; _,_)
-open import Data.Maybe using (Maybe; just; nothing; maybe′)
+open import Data.Maybe using (Maybe; just; maybe′)
 import Data.Maybe as Maybe
 open import Data.String using (String; _≟_)
 open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; cong₂)
 
 open import Once.Spec.Grade using (mk-kind; Many; act; eff; pure)
-open import Once.Spec.Type using (Ty; Fun; KCtx; Base; TySub; Respects; _⟨_⟩; _⟨_⟩F; var; Unit; Void; Int; Float;
-  _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_; base; any)
+open import Once.Spec.Type using (Ty; KCtx; TySub; Respects; _⟨_⟩; _⟨_⟩F; var; Unit;
+  _*_; _+_; _⇒[_]_; μ; ν; K; _⊕_; _⊗_; base; any)
 open import Once.Spec.Core.Syntax using (Schema; schema)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PK; PId; _P⊕_; _P⊗_)
 open import Once.Type.Poly using (substPoly; substPolyF; ftv; ftvF)
-open import Once.Type.Instance using (params; nubFrom; arityOf; kindOf; kindsOf; memberB; positionOf;
+open import Once.Type.Instance using (params; nubFrom; arityOf; kindsOf; memberB; positionOf;
   rigidSubst; rigidOf; ftvK; KindedInstance; RespectsKinds)
 
 ------------------------------------------------------------------------

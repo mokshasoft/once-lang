@@ -21,7 +21,7 @@ open import Once.SigOp.Info using (SigOpInfo)
 module Once.CCC.Codegen.CallsLinked (o : CanonicalName) {I : Set}
   (C : I → CanonicalName → IRTy → IRTy → Set) (i : I) (Q : ∀ {A B} → SigOpInfo A B → Set) where
 
-open import Data.Nat using (ℕ; suc; _+_; _*_; _⊔_; _∸_)
+open import Data.Nat using (ℕ; suc; _+_; _*_; _∸_)
 open import Data.Unit using (tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
@@ -40,12 +40,11 @@ import Once.CCC.Machine.SMCore as SM
 open import Once.SigOp.Info using (module SigOpInfo)
 open SigOpInfo using (sem)
 open import Once.Denotation.Program using (Leaves)
-open import Once.Arith.CmpOp using (CmpOp)
 open import Once.Arith.SigOp.Compare using (CmpAt; cmp-of)
 open import Once.CCC.Codegen.FlatLayout
-  using (Kind; word; flat; kind; put; put-k; get; get-k; fill; put-All; put-k-All; get-All; get-k-All; fill-All; lkind; lsz)
+  using (word; flat; kind; put; put-k; get; get-k; fill; put-All; put-k-All; get-All; get-k-All; fill-All; lkind; lsz)
 open import Once.CCC.Codegen.IRToTrace o using
-  (sigop-code; ir-to-trace'; ir-to-trace; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; cata-call-box; in-trace; with-copy; two-cell; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call; cata-call-from; cata-trace-const; fsize; resuspend-layer; env-entry; env-prologue; inj-trace)
+  (sigop-code; ir-to-trace'; ir-to-trace-lab; ir-to-unit; strat-const; strat-box; strat-branching; cata-strategy; cata-dispatch; cata-trace-branching; cata-trace-box; in-trace; with-copy; two-cell; out-trace; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize; cata-body; cata-call-setup; cata-call-from; cata-trace-const; fsize; resuspend-layer; env-entry; inj-trace)
 open import Once.CCC.Codegen.FrameFreeTrace o using (trace-of; cata-trace-of)
 import Once.CCC.Codegen.Size
 

@@ -17,15 +17,15 @@ open import Once.Spec.Core.Syntax using (Defs)
 module Once.Metatheory.Laws.Strengthen (Σ : Signature) {s : ℕ} (S : Defs s) where
 
 open import Data.Fin using (Fin; zero; suc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; Purity; pure; act; eff; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; _≤q_; _*q_)
-open import Once.Spec.Type using (Ty; KCtx)
-open import Once.Spec.Context using (Ctx; ∅; _▸_; lookup; Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Once.Spec.Grade using (Zero; One; Many; pure; act; eff; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe)
+open import Once.Spec.Type using (KCtx)
+open import Once.Spec.Context using (Ctx; _▸_; lookup; Usage; []; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_; _⊑ᵘ_; _⊑∷_)
 open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Typing Σ S
 open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-refl; ⊑ᵘ-trans; ⊑ᵘ-≡)
 open import Once.Metatheory.TermModel.Subst Σ S
-  using (Thin; done; keep; skip; ⟦_⟧θ; idθ; idθ-id; CThin; cdone; ckeep; cskip; cid; cthin-lookup; ext-hρ; cast; retype)
+  using (Thin; done; keep; skip; ⟦_⟧θ; idθ; idθ-id; CThin; ckeep; cskip; cid; cthin-lookup; ext-hρ; cast; retype)
 
 -- The usage of the variables a thinning keeps.
 back : ∀ {n n′} → Thin n n′ → Usage n′ → Usage n

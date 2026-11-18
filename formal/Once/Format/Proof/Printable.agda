@@ -21,37 +21,34 @@ open import Data.Bool using (Bool; true; false; not; _∧_; _∨_; if_then_else_
 open import Data.Char using (Char; isDigit)
 import Data.Char as Ch
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Integer using (ℤ; +_; -[1+_])
+open import Data.Integer using (+_; -[1+_])
 open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.Nat using (ℕ; zero; suc; _<_; _^_; _<ᵇ_; _≡ᵇ_)
+open import Data.Nat using (suc; _<_; _^_; _<ᵇ_; _≡ᵇ_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.String using (String; toList)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
-open import Relation.Nullary using (¬_; does)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
+open import Relation.Nullary using (does)
 
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; Special; isIdentStart; isIdentContinue;
-  TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon;
-  TAt; TPipe; TDot; TAmpersand; TBang; TOp; TOpD)
-open import Once.Adequacy.SpecTokNames
+open import Once.Spec.Surface.Lexing using (Token; TWord; Special; isIdentStart; isIdentContinue; TOp; TOpD)
 import Once.Spec.Surface.Operator as Op
 open import Once.Spec.Surface.Operator using (‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 open import Once.Spec.Float.Value using (pos; neg)
 open import Once.Spec.Surface.Lexing using (sp-space; sp-tab; sp-cr; sp-nl; sp-backslash; sp-caret; sp-dash; sp-lbrace;
   sp-lt; sp-gt; sp-eq; sp-bang; sp-lparen; sp-rparen; sp-rbrace; sp-colon; sp-comma; sp-semi; sp-at; sp-pipe; sp-plus;
   sp-star; sp-slash; sp-pct; sp-amp; sp-dot; sp-quote)
-open import Once.Spec.Grade using (Quantity; Zero; One; Many; pureᶠ; actᶠ; fin; eff; mk-kind)
-open import Once.Spec.Type using (Ty; Fun; Unit; Void; Int; Float; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Grade using (Zero; One; Many; pureᶠ; actᶠ; fin; eff; mk-kind)
+open import Once.Spec.Type using (Unit; Void; Int; Float; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 import Once.Spec.Type as T
 open import Once.Spec.Surface.Syntax
 open import Once.Format.Doc using (Doc; toks; indent)
 open import Once.Format.Print
 open import Once.Format.Proof.Lexing using (Printable; p-word; p-int; p-float; p-sym; Sym; s-lparen; s-rparen;
-  s-lbrace; s-rbrace; s-colon; s-equals; s-arrow; s-caret1; s-caret0; s-caretw; s-lambda; s-comma; s-semicolon; s-at;
-  s-pipe; s-dot; s-plus; s-minus; s-star; s-slash; s-percent; s-ampersand; s-lt; s-le; s-gt; s-ge; s-eqeq; s-neq; s-bang;
+  s-lbrace; s-rbrace; s-colon; s-equals; s-arrow; s-caret1; s-caret0; s-lambda; s-comma; s-semicolon; s-at;
+  s-pipe; s-dot; s-plus; s-minus; s-star; s-slash; s-percent; s-ampersand; s-lt; s-le; s-gt; s-ge; s-eqeq; s-neq;
   s-plusd; s-minusd; s-stard; s-slashd; s-ltd; s-led; s-gtd; s-ged; s-eqeqd; s-neqd)
 open import Once.Format.Proof.Tokens using (word-toks; anchor-toks)
 open import Once.Format.Proof.ExprBase using (dot-token)

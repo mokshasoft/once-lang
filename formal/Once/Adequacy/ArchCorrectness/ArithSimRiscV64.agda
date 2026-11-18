@@ -43,7 +43,7 @@ open import Once.Arith.CmpOp using (cmp-bit; fcmp-bit)
 open import Once.Float.Word using (round)
 open import Once.Spec.Float.Dyadic using (binary64)
 open XI using (XR0; XR1)
-open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd; ⌊_⌋ᴾ; flat-off; flat-addr; InputShape; Path)
+open import Once.Arith.Machine.Shape using (InputPath; ⌊_⌋ᴾ; flat-off; flat-addr; InputShape; Path)
 open import Once.Target.RiscV64.PhysReg using (Reg; a0; sp; t0)
 open import Once.Arith.Backend.RiscV64.Emit using (arith-reg)
 import Once.CCC.Target.RiscV64.Semantics as RV
@@ -91,7 +91,7 @@ open import Once.Adequacy.ArchCorrectness.ArithSimPathLoad State memory def word
 open import Once.CCC.Target.RiscV64.Layout using (InStack; InHeap; stackAddr-write-preserves-heap)
 open import Once.Adequacy.ArchCorrectness.ArithSimPathLoadRegion
   InStack InHeap stackAddr-write-preserves-heap def word-bytes
-  using (plg; HeapChase; plg-stack-write-invisible; heapchase-agree)
+  using (plg)
 
 open import Data.Product using (_×_; _,_)
 

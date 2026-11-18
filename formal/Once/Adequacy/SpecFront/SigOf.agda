@@ -26,11 +26,11 @@ open import Data.List using ([]; _∷_; _++_)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All.Properties as AllP
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.Sum using (inj₁; inj₂)
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Bool using (true; false)
+open import Data.Maybe using (just)
+open import Data.Product using (Σ-syntax; _×_; _,_)
+open import Data.Sum using (inj₂)
+open import Data.Empty using (⊥-elim)
+open import Data.Bool using (true)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 import Data.String.Properties as StrProp
@@ -40,10 +40,9 @@ import Once.Type.Core as LT
 import Once.Spec.Type as LT
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
-open import Once.Contract using (ISig)
 open import Once.Spec.Name using (canonical)
 open import Once.Name using (showCanonical)
-open import Once.Spec.Signature using (Signature; _∶_)
+open import Once.Spec.Signature using (Signature)
 import Once.Spec.Surface.Syntax as S
 open import Once.Spec.Surface.Program using (SignatureOf; SignaturesOf; so-nil; so-sig; so-other; ns-tsig; ns-def; ns-alias; ns-import;
   Imported; im-nil; im-import; im-other; ni-sig; ni-tsig; ni-def; ni-alias)
@@ -51,8 +50,7 @@ import Once.Spec.Surface.Resolution as SR
 import Once.Parser as Parser
 import Once.Adequacy.SpecGrammar.Conv
 import Once.Spec.Surface.Program
-open Parser.FunInfo using (funType)
-open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Spec.Surface.Syntax using (DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
 open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.Resolve using (sigsOf; importedAt; importedOf; expandPath)
 open import Once.Adequacy.ResolveBridge using (lookupMod-complete)

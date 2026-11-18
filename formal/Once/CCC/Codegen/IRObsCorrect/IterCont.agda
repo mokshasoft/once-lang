@@ -31,14 +31,10 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore
-  using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AllocState; AbstractTrace; AbstractInstr;
-         load-indirect-suc; mov-to-input; store-at-slot; instr-alloc-heap; load-from-slot;
-         store-indirect; store-indirect-suc; LocState; StoredValue; readReg; Input1; Output; SV-Ptr;
-         sv-as-loc; writeReg-same; module LocState; module AllocState)
+  using (instr-ctrl; c-branch-tag-zero; c-jmp; AllocState; AbstractTrace; AbstractInstr; mov-to-input; LocState; readReg; Input1; Output; SV-Ptr; writeReg-same; module LocState; module AllocState)
 open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
 open LocState using (halted; regs)
-open import Data.Product using (Σ)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (inj₂)
 open import Data.Nat using (s≤s; z≤n)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
@@ -52,10 +48,8 @@ open import Once.CCC.Codegen.IRObsCorrect.IterInv o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterExit o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Pair.Build o tbl using (module PairBuildC)
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
-open import Once.CCC.Codegen.FlatLayout using (get)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Codegen.StraightRun
-open import Once.CCC.Machine.Locations using (AtDynamic)
 open import Data.List.Properties using (++-identityʳ)
 
 module IterContC {FS : FrameSemantics} where

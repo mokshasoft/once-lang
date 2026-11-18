@@ -16,9 +16,9 @@ open import Once.Spec.Signature using (Signature; call)
 
 module Once.Metatheory.Effects (Σ : Signature) where
 
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-open import Once.Spec.Grade using (Purity; pure; act; eff; _·p_; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; ⊑-act; ⊑-ae; ⊑-eff)
+open import Data.Sum using (inj₁)
+open import Relation.Binary.PropositionalEquality using (refl)
+open import Once.Spec.Grade using (pure; act; eff; _⊑π_; ⊑-pure; ⊑-pa; ⊑-pe; ⊑-act; ⊑-ae; ⊑-eff)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Metatheory using (Effects)
 open import Once.Metatheory.Bisim Σ

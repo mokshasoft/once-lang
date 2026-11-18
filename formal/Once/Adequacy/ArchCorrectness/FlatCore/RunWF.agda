@@ -72,7 +72,6 @@ open HeapLocation using (heap-offset; heap-ref)
 open HeapRef using (ref-id)
 open MemOps {FS} using (readLoc)
 open ExecFinal {FS} using (exec-load-with-value; exec-load-via-resolved; exec-load-suc-via-resolved; exec-store-via-resolved; exec-store-suc-via-resolved; exec-load-at-resolved; exec-store-at-resolved; exec-store-in-block; in-block?; exec-addr-at-resolved; exec-addr-in-block)
-open import Once.Memory.HeapAddress using (offsetHL)
 open import Data.Bool using (T)
 open import Data.Nat.Properties using (<ᵇ⇒<)
 open AbstractExec {FS} using (exec-load-from-slot-with-value; exec-restore-input-with-value; unread?; exec-sigop-faults-of; decode-at)
@@ -83,7 +82,7 @@ open import Once.CCC.Machine.FlatStoreWF FS
 open import Data.Product using (Σ; ∃; _,_; _×_; proj₁; proj₂)
 open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget; ir-to-unit)
 open import Once.CCC.Machine.FrameFree
-open import Data.List.Relation.Unary.All using () renaming (All to AllL; [] to allL-[]; _∷_ to _allL∷_)
+open import Data.List.Relation.Unary.All using () renaming (All to AllL)
 open import Once.CCC.Machine.InstrSlot
 open import Once.CCC.Machine.FlatStackSlot FS
 open SameFrames using (sf-slots; sf-saved; sf-ret)
@@ -107,13 +106,12 @@ open SigOpInfo using (baseA)
 open import Once.Arith.SigOp.Compare using (cmp-of)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Relation.Unary.Any.Properties using () renaming (++⁺ˡ to Any++⁺ˡ; ++⁺ʳ to Any++⁺ʳ)
-open import Once.CCC.Label using (_≡ᵇᴱ_; _≟ᴱ_; ≡ᵇᴱ-refl)
+open import Once.CCC.Label using (_≡ᵇᴱ_; ≡ᵇᴱ-refl)
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.IRTy using (_≟IRTy_; Unit)
 open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedAt; LinkedAt-at; LinkedProgram; Leaves; leaves-map)
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Once.Contract using (ISig)
-open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free; body-frame-free; image-alloc-min; image-slots; image-jump-in-segment)
 open import Once.IR using (IR)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -129,7 +127,7 @@ open import Once.Type using (fits-int; fits-float)
 -- arch wrapper, and two public routes to one definition is a clash.
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open FlatStepsAPI {FS} using (FlatSteps; []; _∷_)
+open FlatStepsAPI {FS} using ([]; _∷_)
 
 ------------------------------------------------------------------------
 -- THE ARCH-GENERIC RESIDUALS (Plan 0.65 G1d step 2, 2026-08-12).

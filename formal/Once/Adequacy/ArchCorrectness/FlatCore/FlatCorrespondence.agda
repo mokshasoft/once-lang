@@ -100,7 +100,7 @@ slot-size>0 = nz⇒pos slot-size
 open import Data.Nat using (zero; suc; _+_; _∸_; _*_; _≡ᵇ_; _≟_; _<_; _≤_; z≤n)
 open import Once.Memory.Memory using (≡ᵇ-refl; ≢⇒≡ᵇfalse)
 open import Data.Nat.Properties using (+-comm; +-assoc; +-cancelˡ-≡; *-cancelʳ-≡; m≤m+n; <-irrefl; ≤-<-trans; <-≤-trans; +-monoʳ-<; *-monoˡ-<; ≤-refl; ≤-trans; m<n⇒m<1+n; <⇒≢; m∸n+n≡m; ≤-reflexive; m<m+n; +-identityʳ; m∸n≤m; *-identityˡ; <⇒≤)
-open import Data.Bool using (true; false; if_then_else_)
+open import Data.Bool using (true; if_then_else_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (yes; no; Dec; ¬_)
@@ -798,7 +798,6 @@ record SetsRoleMem (s s' : State) (ρ : Role) (v : Word) (a : ℕ) (mv : Word) :
     rm-off-addr : ∀ a' → ¬ (a' ≡ a)
                 → readMem (memory s') a' ≡ readMem (memory s) a'
     rm-halt     : xhalted s' ≡ xhalted s
-open SetsRoleMem
 
 record Sets2Roles (s s' : State) (ρ₁ ρ₂ : Role) (v₁ v₂ : Word) : Set where
   field

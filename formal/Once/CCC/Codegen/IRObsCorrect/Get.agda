@@ -31,7 +31,7 @@ open import Once.CCC.Machine.SMCore using (load-at; addr-at; mov-to-output; offs
 open LocState using (regs; halted)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc)
-open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; kind; get; get-k)
+open import Once.CCC.Codegen.FlatLayout using (word; flat; kind; get; get-k)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.IRTy using (IRTy; Unit; Void; _*_; _⇛_; μ-type; ν-type; Int; Float)
   renaming (_+_ to _+ᵀ_)
@@ -39,7 +39,6 @@ open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 
 module GetC {FS : FrameSemantics} where
   open Core {FS}
-  open Mach {FS}
 
   ------------------------------------------------------------------------
   -- The text: `get` is one instruction, decided by the component's kind.

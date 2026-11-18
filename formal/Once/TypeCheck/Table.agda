@@ -17,13 +17,12 @@
 module Once.TypeCheck.Table where
 
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ)
 open import Data.Product using (Σ-syntax; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Spec.Grade using (Purity; pure; act; eff; Finite; fin; pureᶠ; actᶠ; Many; mk-kind)
-open import Once.Spec.Type using (Ty; KCtx; Fun; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F; WFFun)
+open import Once.Spec.Type using (Ty; KCtx; Fun; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F; WFFun)
 open import Once.Spec.Core.Syntax using (Defs; Tm)
 open import Once.Spec.Core.Derived using (𝕋)
 open import Once.Spec.Surface.Generators

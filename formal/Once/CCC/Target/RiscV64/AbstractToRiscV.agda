@@ -48,9 +48,8 @@ open import Once.Float.Word using (round)
 import Once.Spec.Word as OnceWord
 module IntW = OnceWord.Width 64
 open import Once.CCC.Target.RiscV64.Syntax
-  using (zero; ra; sp; fp; a0; s1; s2; t0; t1; t2; ld; sd; add; sub; sltu; addi; li; lla; lla-sym; mv; beq; jal; jalr; j; ret; call-sym; bgeu-fwd; local-1; label; once; callee; e-fn; Program; slot-size; slots)
+  using (zero; ra; sp; fp; a0; s1; s2; t0; t1; t2; ld; sd; sub; sltu; addi; li; lla; mv; beq; jal; jalr; j; ret; call-sym; bgeu-fwd; local-1; label; once; callee; e-fn; Program; slot-size; slots)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (fits-int; fits-float)
 

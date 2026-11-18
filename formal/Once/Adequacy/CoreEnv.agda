@@ -24,7 +24,6 @@ open import Once.Spec.Type using (TySub)
 module Once.Adequacy.CoreEnv (fmt : TargetNum) (Σ : Signature) {s : ℕ} (S : Defs s) (σ₀ : TySub 0 0) where
 
 open import Data.List using (_∷_)
-open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (just)
 open import Data.Product using (_,_; proj₁; proj₂)
 import Data.String.Properties as StrProp
@@ -32,30 +31,24 @@ open import Data.Unit using (tt)
 open import Function using (id)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; subst-sym-subst)
-open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
+open import Relation.Binary.HeterogeneousEquality as H using ()
 
 import Once.Compile as C
 import Once.Parser as Parser
 open Parser.PolyFunInfo using (pfunType)
 open import Once.Spec.Type using (Type; KCtx; ∅ₖ)
-open import Once.Spec.Signature using (⌜_⌝ᵈ)
-open import Once.Spec.Name using (CanonicalName)
 open import Once.Name using (showCanonical; WordName)
-open import Once.Contract using (ISig)
-open import Once.Type.Core using (wk₀; none)
+open import Once.Type.Core using (none)
 open import Once.Type.Instance using (KindedInstance)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.TypeCheck.Scope using (lookupImport; lookupPolyPrefix)
-open import Once.Core.Decl using (toISig; ∈-toISig; ⌜⌝ᵈ-concrete; declS; ⌜declS⌝)
-open import Once.Core.TySubstZero Σ S using (⟨⟩-0)
-open import Once.Functor.Translate using (IsConcrete-irrelevant)
 open import Once.Denotation.DefEnv using (defAt; impAt)
 open import Once.Denotation.RefMeanings Σ σ₀ using (DefMeanings; ImpMeanings; Meanings; meanings)
 open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ; ⟦wk₀⟧ᵛ)
 import Once.Spec.Core.Meaning Σ fmt S as SM
 import Once.Core.Translate Σ as TR
 open TR using (SigSig; ImpSig; TeleSig; viewOf; telFind; sigAt) renaming (impAt to impView)
-open import Once.TypeCheck.View Σ S using (Declared; def)
+open import Once.TypeCheck.View Σ S using (def)
 open import Once.Adequacy.CoreMeaningBridge fmt Σ S σ₀ using (refSemAt-Δ; entrySem; impSem; sigSem; Agree)
 
 ------------------------------------------------------------------------

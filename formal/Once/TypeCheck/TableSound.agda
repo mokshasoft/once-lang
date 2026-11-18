@@ -13,13 +13,13 @@
 
 module Once.TypeCheck.TableSound where
 
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
+open import Data.Product using (Σ-syntax; _,_; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 open import Relation.Nullary using (yes; no)
 
-open import Once.Spec.Grade using (Purity; pure; act; eff; Finite; fin; pureᶠ; actᶠ; Many; mk-kind; _⊑π_)
+open import Once.Spec.Grade using (Purity; pure; fin; Many; mk-kind)
 open import Once.Spec.Type using (Ty; KCtx; Fun; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F; WFFun)
 open import Once.Spec.Sub using (_<:ᶜ_; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-*; subᶜ-+; subᶜ-μ; subᶜ-ν)
 open import Once.Spec.Core.Syntax using (Defs; Tm)

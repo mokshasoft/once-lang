@@ -23,20 +23,19 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.AnaForce (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Codegen.IRObsCorrect.BlockCall o tbl
 open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl
 open import Once.CCC.Codegen.IRToTrace o using (resuspend-layer)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; StoredValue; readReg; Input1; Output; writeReg-same; writeReg-preserves; SV-Code; SV-Ptr; sucLoc
+  using (LocState; module LocState; AbstractTrace; AllocState; readReg; Input1; Output; writeReg-same; writeReg-preserves; SV-Code; SV-Ptr; sucLoc
         ; mov-to-output; store-at-slot; block-layout; e-thunk)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Label using (ℓ)
-open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; _⊕_; _⊗_; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; wf-K; wf-Id; wf-Sum; wf-Prod)
 import Once.IRTy as IRTy′
-open import Once.IR.Semantics.Iterative using (T∞; fmap∞)
+open import Once.IR.Semantics.Iterative using (fmap∞)
 open import Data.Unit using (⊤)
 import Data.Maybe as DM
 open import Once.CCC.Codegen.LabelScope o using (labels-in; resuspend-labels-in)
@@ -63,7 +62,7 @@ module AnaForceC {FS : FrameSemantics} where
   open Resolve {FS} using (found-in-window; noLabel-outside)
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
+  open AllocState using (next-slot; current-frame)
   open NuForceC {FS}
   open CWF.ClosureWellFormedBase {FS} using (CellAtP; fo-base; pair-wf; inl-wf; inr-wf; inl-reg-wf; inr-reg-wf; inl-flat-wf; inr-flat-wf)
 

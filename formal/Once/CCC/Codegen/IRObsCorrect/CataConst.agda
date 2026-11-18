@@ -38,15 +38,14 @@ open import Once.Spec.Name using (CanonicalName)
 import Once.CCC.Machine.SMCore as SMCore
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataConst (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
-open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (module CataLayoutC; head-box; strat-box-fun; unboxed-of; boxed-of)
+open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (module CataLayoutC; strat-box-fun; unboxed-of; boxed-of)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Steps o tbl using (module CataStepsC; Head; h-mov; h-box; head-strat; head-instr)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Meaning o using (μ-layer-val)
-open import Once.CCC.Codegen.IRToTrace o using (box-fun)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Setup o tbl using (module CataSetupC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Call o tbl using (module CataCallC)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Run o tbl using (module CataRunC)
@@ -55,30 +54,23 @@ open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
 import Once.CCC.Machine.FlatPut as FlatPut
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Machine.MuRep using (box-fit)
-open import Once.CCC.Codegen.IRToTrace o using (cata-strategy; strat-const)
+open import Once.CCC.Codegen.IRToTrace o using (cata-strategy)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; SV-Ptr; instr-call-closure; instr-ctrl; c-jmp; c-label)
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; SV-Ptr)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as IRTy′
 import Once.Denotation.ValueDomain as ValueDomain
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
-open HeapLocation using (heap-ref)
-open HeapRef using (ref-id)
-open import Once.Res using (Res; returns; stopped; is-stopped)
-open import Once.IR.Semantics.Iterative using (T∞)
-open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
-open import Data.List.Properties using (++-identityʳ)
+open import Once.Memory.HeapAddress using (HeapLocation; module HeapLocation)
 import Once.CCC.FrameSemantics
 import Once.IR.Semantics.Trace as TM
 
 module CataConstC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
-  open ResuspBaseC {FS} using (loc-ref; at-cf; module SegA; live-from; SRun)
+  open ResuspBaseC {FS} using (live-from; SRun)
   open CataLayoutC {FS} using (module Text)
   open CataSetupC {FS} using (module Setup; SetupOut)
   open CataCallC {FS} using (module Call; CallOut)
@@ -88,7 +80,7 @@ module CataConstC {FS : FrameSemantics} where
   module InjC′ = InjC {FS}
   open CataStepsC {FS} using (HeadOK; mov-head; box-head)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (next-slot; next-heap-ref)
 
   ------------------------------------------------------------------------
   -- THE ROWS BEFORE THE CALL, for one input (the flat pair at `pl`, its

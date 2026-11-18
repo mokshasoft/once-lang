@@ -54,7 +54,6 @@ open import Once.IR using (IR; AllocMode; Stack; Heap; Cata; SigOp; Call; out-μ
   id; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply;
   In; Out; in-ν; Ana; Iter; const) public
 open import Once.IRTy using (FitsInRegI; ⌊_⌋; fits-int; fits-float) public
-open import Once.IRTy using (⟦_,_⟧-baseI)
 open import Data.Unit using (tt) public
 
 -- Surface `FitsInReg B` ⇒ erased `FitsInRegI ⌊B⌋`: `⌊Int⌋=Int`, `⌊Float⌋=Float`
@@ -66,25 +65,7 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 open import Data.Nat.Properties using (≤-<-trans; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n; +-identityʳ; +-assoc; +-suc; +-comm; <-irrefl; <-trans) public
 open import Function using (case_of_) public
 import Once.Semantics.Machine as EvV
-open import Once.CCC.Machine.SMCore
-  using (LocState; SV-Ptr; sv-as-loc; readReg; Input1; Output;
-         instr-sigop; mov-to-output; mov-to-input; instr-load-const; SV-Lit; writeReg; writeReg-same; AbstractTrace;
-         -- D155: the closure register's type — the entry state's one open
-         -- component (see `entry-flat`).
-         StoredValue; AbstractInstr; module AbstractExec; module MemOps;
-         -- D171: the store instruction and the location vocabulary its
-         -- read-back needs.
-         store-at-slot; restore-input;
-         -- D174: the rest of `inl`/`inr`'s heap build — the first discharge in
-         -- this file that ALLOCATES, so these are new to its vocabulary.
-         instr-alloc-heap; instr-load-tag-lit; instr-load-code-addr; SV-Code;
-         instr-call-closure; instr-save-closure-reg; store-indirect; store-indirect-suc;
-         load-from-slot; load-indirect; load-indirect-suc; sucLoc; SV-Tag; writeReg-preserves;
-         -- plan 0.91 S2: how a block is LAID OUT, so `BlocksAt` can say where
-         -- it lives without restating `c-thunk … ∷ t ++ c-ret … ∷ []`.
-         block-layout)
 open import Once.CCC.Machine.ValidAtWFHalted o tbl using (validAtWF-set-halted) public
-open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-to-trace') public
 open import Once.CCC.Codegen.SlotBudget o using (frontier-mono; budget-of) public
 open import Once.CCC.Machine.ValueRel

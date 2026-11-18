@@ -24,21 +24,17 @@ module Once.TypeCheck.Scope where
 
 import Data.String
 import Data.String.Properties as StrProp
-open import Agda.Builtin.Equality.Erase using (primEraseEquality)
 open import Data.Fin using (zero; suc)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; suc)
 open import Data.Product using (_×_; _,_; ∃-syntax)
-open import Data.String using (String; _≟_)
-open import Relation.Binary.Definitions using (DecidableEquality)
+open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Nullary.Decidable using (map′)
 open import Once.Spec.Grade using (Quantity; Many)
 open import Once.Spec.Type using (Ty; Type; KCtx)
 open import Once.Spec.Surface.Syntax using (PolyType)
-open import Once.Spec.Name using (canonical)
 import Once.Spec.Surface.Generators as G
 open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as Raw

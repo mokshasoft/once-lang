@@ -24,14 +24,14 @@ module Once.Adequacy.SpecObserve (Σ : Signature) (fmt : TargetNum) where
 
 open import Data.Empty using (⊥-elim)
 import Data.Empty
-open import Data.List using (List; []; _∷_; _++_; [_]; map)
+open import Data.List using ([]; _++_; [_]; map)
 open import Data.List.Properties using (map-++)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just; nothing)
 open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (¬_; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
 open import Once.Spec.Word using (Carrier)
 import Once.IR.Semantics.Value Carrier Carrier as V
@@ -43,14 +43,14 @@ ev : SigOpEvent → Once.Spec.Signature.Event
 ev = toEvent (TargetNum.float-format fmt)
 import Once.IR.Semantics.Trace as LTr
 import Once.IR.Semantics.Iterative as LI
-open import Once.Denotation.TraceTr using (trT∞; δ∞; Conf)
+open import Once.Denotation.TraceTr using (trT∞; δ∞)
 import Once.Denotation.TraceTr as TT
 open import Once.Adequacy.MachineTrace using (module Machine; listTr)
-open import Once.Spec.Signature using (Op; module Op; arg; NotEmpty; notEmpty?; Event; eventOf; ⟦_⟧ᵇ; call)
+open import Once.Spec.Signature using (Op; module Op; NotEmpty; notEmpty?; Event; eventOf; call)
 open Op using (ans)
-open import Once.Spec.Delay using (Delay; module Delay; now; _⇓_; now⇓; later⇓; _≈⟨_⟩_)
+open import Once.Spec.Delay using (Delay; module Delay; now; _⇓_; now⇓; later⇓)
 open Delay using (step)
-open import Once.Spec.Trace using (Tr; module Tr; End; returned; halted; EndRel; returned≈; halted≈; StepRel; _≈ᵗ⟨_⟩_; module _≈ᵗ⟨_⟩_)
+open import Once.Spec.Trace using (Tr; module Tr; End; halted; EndRel; returned≈; halted≈; StepRel; _≈ᵗ⟨_⟩_; module _≈ᵗ⟨_⟩_)
 open Tr using (next)
 open _≈ᵗ⟨_⟩_ using (same)
 open import Once.Spec.Observation Σ using (World; module World; trace; blockD; after)

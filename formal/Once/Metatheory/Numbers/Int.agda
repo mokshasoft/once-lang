@@ -8,25 +8,24 @@
 -- (bit identity).
 ------------------------------------------------------------------------
 
-open import Data.Nat as ℕ using (ℕ; zero; suc; _∸_; _^_; _≤_; _<_)
+open import Data.Nat as ℕ using (ℕ; _∸_; _≤_; _<_)
 
 module Once.Metatheory.Numbers.Int (bits : ℕ) where
 
 open import Data.Nat.DivMod using (_%_; n%n≡0; %-distribˡ-*; m%n%n≡m%n; [m+kn]%n≡m%n; m*n%n≡0)
 import Data.Nat.Properties as ℕP
-open import Data.Integer as ℤ using (ℤ; +_; -[1+_])
+open import Data.Integer as ℤ using (ℤ; +_)
 import Data.Integer.Properties as ℤP
 open import Data.Bool using (Bool; true; false; T; if_then_else_)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Relation.Nullary using (does; yes; no)
-open import Relation.Nullary.Decidable using (True; toWitness; fromWitness)
+open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; sym; trans; cong; cong₂; subst)
+  using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Spec.Word using (module Width)
-open import Once.Spec.Theory using (NegOps; RingOps; OrderOps; EqualityOps; module Laws)
+open import Once.Spec.Theory using (RingOps; module Laws)
 open Width bits
 open import Once.Word using (module WidthLaws)
 open WidthLaws bits using (⊕-normʳ; norm-+ˡ; norm-id; ⊝-invol-norm; norm-range)

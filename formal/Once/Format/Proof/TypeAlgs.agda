@@ -16,12 +16,11 @@ module Once.Format.Proof.TypeAlgs where
 open import Data.Bool using (true)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
-open import Data.String using (String)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
-open import Once.Spec.Grade using (Quantity; Many; Finite; pureᶠ; actᶠ; fin; eff; mk-kind)
-open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Grade using (Many; pureᶠ; actᶠ; fin; eff; mk-kind)
+open import Once.Spec.Type using (Fun; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_;
   PAct; PEff; Pμ; Pν; PTVar; PK; PId; _P⊕_; _P⊗_)
 open import Once.Spec.Surface.Grammar using (TypeAlg; TypeVar; tvar; NoExtra; lowerWord)

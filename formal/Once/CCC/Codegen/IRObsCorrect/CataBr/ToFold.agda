@@ -49,7 +49,7 @@ import Once.CCC.Machine.FlatPut as FlatPut
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (ℓ)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
@@ -73,7 +73,6 @@ private
 module CataToFoldC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open ResuspBaseC {FS} using (SRun; SegA; Seg; seg-rebase; Kp)
   open CataSetupC {FS} using (module Setup; SetupOut)
 
@@ -84,7 +83,7 @@ module CataToFoldC {FS : FrameSemantics} where
   open CataRoundC {FS} using (KL)
   open CataFlattenC {FS} using (module Flatten; module Keep)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (next-heap-ref; current-frame)
 
   ------------------------------------------------------------------------
   -- WHAT THE FOLD LOOP STARTS FROM, as an opaque bundle.

@@ -15,23 +15,23 @@
 
 module Once.Format.Proof.Written where
 
-open import Data.Bool using (Bool; true; false; _∨_; if_then_else_)
+open import Data.Bool using (true; false)
 open import Data.Char using (Char)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; _++_; reverse; concatMap; map; length)
 open import Data.List.Properties using (++-assoc; ++-identityʳ; unfold-reverse; reverse-++; reverse-involutive)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (zero; suc)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Product using (_×_; _,_; ∃-syntax)
 open import Data.String using (String; fromList; toList)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Postulates using (toList∘fromList)
 import Once.Format.Doc as D
-open import Once.Format.Doc using (Doc; Lexeme; lt; lsp; lnl; lind; lcm; St; st; put; space; token; trim; brk;
-  blankLine; paragraph; fill; layout; lexemes; render; chars; joined; dashed; lineComment; apart; column; fits; flatWidth;
+open import Once.Format.Doc using (Lexeme; lt; lsp; lnl; lind; lcm; St; st; put; space; token; trim; brk;
+  blankLine; paragraph; fill; layout; lexemes; render; chars; joined; dashed; apart; column; fits; flatWidth;
   empty; tk; sp; cmt; para; line; newline; blank; eol; _<>_; nest; group)
 open import Once.Format.Comment using (blankish)
 open import Once.Format.Spell using (spell)

@@ -22,30 +22,23 @@ open import Once.Spec.Metatheory using (Distinct)
 module Once.Metatheory.Surface (Σ : Signature) {s} (S : Defs s) (nm : Fin s → CanonicalName)
                                (dist : Distinct Σ nm) where
 
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.List using (List; []; _∷_)
+open import Data.Empty using (⊥-elim)
 open import Data.List.Membership.Propositional using (_∈_)
-open import Data.List.Relation.Unary.All using (All)
 import Data.List.Relation.Unary.All as All
-open import Data.List.Relation.Unary.Any using (here; there)
-open import Data.Nat using (ℕ; _<_)
+open import Data.Nat using (_<_)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Grade using (Purity; pure; act; Finite; pureᶠ; actᶠ; fin; Many; mk-kind; ArrowKind; _⊑π_; ⊑-pure; EffGrade; eg-act; eg-eff)
+open import Once.Spec.Grade using (Purity; Many; mk-kind; _⊑π_)
 open import Once.Spec.Surface.Generators
-  using (Gen; kind; IsConstant; IsMap; IsCombinator; FromDomain; FromCodomain; Constant; Morphism; Final;
-         is-constant; is-map; is-combinator)
+  using (is-combinator)
 open import Once.Spec.Core.Derived using (𝕋)
 open import Once.Metatheory.Types using (<:-antisym; <:ᶜ⇒<:)
 open import Once.Spec.Type
-  using (Ty; KCtx; TySub; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν; _⟨_⟩; _⟨_⟩F; Occurs; OccursF;
-         o-var; o-*ˡ; o-*ʳ; o-+ˡ; o-+ʳ; o-⇒ˡ; o-⇒ʳ; o-μ; o-ν; o-K; o-⊕ˡ; o-⊕ʳ; o-⊗ˡ; o-⊗ʳ;
-         Fun; K; Id; _⊕_; _⊗_; ⟦_⟧F)
+  using (Ty; KCtx; _*_; _⇒[_]_)
 open import Once.Spec.Signature using (_∶_; ⌜_⌝ᵈ)
 open import Once.Spec.Core.Syntax using (_!!_; module Schema)
-open Schema using (arity; kinds; type)
+open Schema using (arity)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Surface.Typing Σ S nm
 open import Once.Spec.Metatheory using (Surface)

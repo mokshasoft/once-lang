@@ -50,12 +50,12 @@ open LocState using (regs; halted)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
-open import Once.CCC.Machine.MuRep using (MuRep; mu-box; mu-unit; mu-ptr; mu-rep; Unboxed; box-fit; fit-not-unit)
+open import Once.CCC.Machine.MuRep using (mu-box; mu-rep; Unboxed; box-fit; fit-not-unit)
 open import Once.CCC.Codegen.IRToTrace o using (in-box-trace; node-copy-trace)
 open import Once.CCC.Codegen.IRObsCorrect.NodeCopy o tbl using (module NodeCopyC)
 open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
-open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type; ⌈_⌉; ⌈_⌉F; ⌈⟧TI-commute; wf-K; wf-Id; wf-Sum; wf-Prod;
+open import Once.IRTy using (WellFormedFI; ⟦_⟧TI; μ-type; ⌈_⌉; ⌈⟧TI-commute; wf-K; wf-Id; wf-Sum; wf-Prod;
                              base-Int; base-Float; base-Unit; base-Void; base-Prod; base-Sum; Unit)
 import Once.IRTy as IRTy′
 open import Once.IRTy.WF using (wf-⌈⌉)

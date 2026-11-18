@@ -16,10 +16,10 @@
 module Once.Adequacy.SpecFront.SigBack where
 
 open import Data.Empty using (⊥-elim)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Product using (_,_; proj₂)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong; subst)
 
 import Once.Type.Core as LT
 
@@ -28,18 +28,16 @@ import Once.Type.Concrete as LW
 import Once.Spec.Type as LW
 import Once.Type.Honest as LH
 import Once.Spec.Grade as LG
-open import Data.List using ([])
 open import Once.Spec.Surface.Syntax using (PolyType; PTVar; PUnit; PVoid; PInt; PFloat; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν)
 open import Once.Type.Poly using (Ground; extractGround)
 import Once.Spec.Grade as SG
 import Once.Spec.Signature as S
-open import Once.Spec.Signature using (DeclType; constant; value; operation; WellFormedDecl)
+open import Once.Spec.Signature using (constant; WellFormedDecl)
 open import Once.Spec.Surface.Program using (BaseType; bt-unit; bt-void; bt-int; bt-float; bt-*; bt-+; DeclTypeOf; dt-const; dt-pure; dt-act)
 open import Once.Adequacy.SpecGrammar.Conv using (toPoly)
 open import Once.Adequacy.SpecInterp using (⌞_⌟; declTy)
 open import Once.Adequacy.SpecFront.SigTypes using (decl-eq)
 open import Once.Parser using (projectSig)
-open import Once.Type using (isGround)
 open import Once.Type.HonestComplete using (honest?-complete)
 open import Once.TypeCheck.DeciderComplete using (isGround-complete-at)
 

@@ -29,7 +29,7 @@ open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 open import Once.Spec.Signature using (Event)
-open import Once.Spec.Delay using (Delay; module Delay; now; _⇓_; now⇓; later⇓)
+open import Once.Spec.Delay using (Delay; module Delay; _⇓_; now⇓; later⇓)
 open import Once.Spec.Trace using (End; returned; halted; exhausted; Tr; module Tr; EndRel; returned≈; halted≈; exhausted≈; StepRel; _≈ᵗ⟨_⟩_; module _≈ᵗ⟨_⟩_)
 open import Once.Metatheory.Trace using (⇓-det)
 

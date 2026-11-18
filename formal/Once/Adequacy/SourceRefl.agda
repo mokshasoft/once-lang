@@ -17,7 +17,7 @@
 import Once.Spec.Type as SpT
 
 open import Once.Weaken using (RelS-wk₀)
-open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
+open import Once.Spec.Type using (Ty; Fun; KCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
 module Once.Adequacy.SourceRefl (fmt : TargetNum) where
@@ -27,13 +27,13 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.Spec.Grade using (Zero; One; Many; mk-kind; pure; eff; act; fin)
 open import Once.Spec.Type using (Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_)
 open import Once.Spec.Type using (μ; ν)
 open import Once.Type.Concrete using (con-base; con-fun)
-open import Once.Spec.Type using (WFFun; b-Unit; ∅ₖ)
+open import Once.Spec.Type using (WFFun; b-Unit)
 open import Once.Semantics.Machine using (sem-cata)
 open import Once.IR.Semantics.StreamInf using (anaFᴵ)
 open import Once.Denotation.ValueDomain using (coerce-functor-D)
@@ -42,12 +42,8 @@ open import Once.Spec.Context using (Ctx; Usage)
 open import Once.Surface.Syntax using (Expr)
 open import Once.Type.Sub
 open import Once.Spec.Sub using (sub-*; sub-+)
-open import Once.Spec.Sub using (_<:_; _<:ᶜ_; _⊔_≔_; sub-*; sub-+; subᶜ-*; subᶜ-+; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν; subᶜ-void; subᶜ-var; subᶜ-unit; subᶜ-int; subᶜ-float; subᶜ-arr; subᶜ-μ; subᶜ-ν)
-open import Once.Spec.Grade using (_⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
-open import Once.Type.SubDecide
-open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_; fmap∞)
-open import Once.Denotation.DenotTrace using (CallEnv; module CallEnv)
-open CallEnv using (ffiE)
+open import Once.Spec.Sub using (_<:_; sub-void; sub-var; sub-unit; sub-int; sub-float; sub-arr; sub-μ; sub-ν)
+open import Once.IR.Semantics.Iterative using (return∞; fmap∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.Sub using (⟦_⟧<:; <:-refl-rel)
 open import Once.Denotation.ValueRelPER using (RelD-sym)

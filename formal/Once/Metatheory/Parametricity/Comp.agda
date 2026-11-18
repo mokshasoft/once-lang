@@ -21,11 +21,11 @@ module Once.Metatheory.Parametricity.Comp (Σ : Signature) where
 
 open import Data.Empty using (⊥-elim)
 open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Once.Spec.Grade using (Finite; fin; Purity; pure; _·p_; _⊑π_)
-open import Once.Spec.Polynomial using (SFunctor; _S⊕_; _S⊗_; ⟦_⟧SF; μS; inS; sfmap)
+open import Once.Spec.Polynomial using (SFunctor; _S⊕_; _S⊗_; ⟦_⟧SF; inS; sfmap)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ using (foldM; layerM)
 open import Once.Spec.Equivalence Σ using (Observed; RelMu; inR; RelNu)

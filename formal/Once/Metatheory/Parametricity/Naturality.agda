@@ -23,13 +23,13 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Metatheory.Parametricity.Naturality (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-open import Data.Fin using (Fin; zero; suc)
+open import Data.Fin using (Fin; suc)
 open import Data.Nat using (suc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
 open import Once.Spec.Grade using (Quantity; Purity; pure; mk-kind; Zero; One; Many)
 open import Once.Spec.Type using (Ty; KCtx; TySub; _⟨_⟩; _⇒[_]_; at₀)
-open import Once.Spec.Effect Σ using (M; toT∞; fmap)
+open import Once.Spec.Effect Σ using (toT∞; fmap)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Equivalence Σ using (Same; Rel; Observed)
 open import Once.Spec.Metatheory using (StrictlyPositive)
@@ -99,7 +99,7 @@ module Core {m : ℕ} (Δ : KCtx m) (σ : TySub m 0) (A B : Ty m) {q′ : Quanti
 ------------------------------------------------------------------------
 
 open import Data.Sum using (inj₂)
-open import Once.Spec.Type using (Respects; ∅ₖ)
+open import Once.Spec.Type using (Respects)
 open import Once.Spec.Type.Substitution using (⟨⟩-∘; respects-∘)
 open import Once.Spec.Context using (Ctx; zeroUsage; _⊑ᵘ_)
 open import Once.Spec.Core.Syntax using (_!!_; ref; module Schema)
@@ -109,7 +109,7 @@ open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
 open import Once.Spec.Effect Σ using (_>>=∞_; return∞; _≈_)
 open import Once.Spec.Equivalence Σ using (RelSub; sameSub)
-open import Once.Spec.Metatheory using (ParamDefs; SameDefs; _≅ₚ_)
+open import Once.Spec.Metatheory using (SameDefs; _≅ₚ_)
 open import Once.Metatheory.Bisim Σ using (idˡ; assoc; ≈-bind; ≈-refl; ≈-sym; ≈-trans)
 open import Once.Metatheory.Erase Σ using (toT∞-bind; toT∞-sub; toT∞-fmap)
 open import Once.Metatheory.Coherence.Relation Σ using (Related; bindRel; returnRel; ≈-Relatedˡ; ≈-Relatedʳ; toObserved; fromObserved)
@@ -123,7 +123,7 @@ open import Once.Metatheory.Laws.Compose Σ u fmt S using (compᵛ)
 open import Once.Metatheory.Laws.Assoc Σ u fmt S using (compCong)
 open import Once.Metatheory.Laws.MapTop Σ u fmt S using (module MapTopV)
 open import Once.Metatheory.Parametricity.Subst Σ using (rel-sub→; ρ∘τ; E)
-open import Once.Metatheory.Parametricity.Graph Σ using (Rel-≡; coe-irr)
+open import Once.Metatheory.Parametricity.Graph Σ using (coe-irr)
 
 private
   -- A derivation along an equality of its type; what it returns, carried along.

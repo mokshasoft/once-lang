@@ -27,7 +27,6 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Resusp.SumArm (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
@@ -38,7 +37,7 @@ open import Once.CCC.Machine.SMCore
          readReg; writeReg; Output; Input1; SV-Ptr; SV-Code; SV-Tag; StoredValue; sucLoc; offsetLoc;
          store-at-slot; load-from-slot; instr-alloc-heap; restore-input; mov-to-input; instr-load-tag-lit; store-at)
 open LocState using (regs; halted)
-open AllocState using (current-frame; next-slot; next-heap-ref; saved-frames)
+open AllocState using (current-frame; next-slot; next-heap-ref)
 open import Once.Memory.HeapAddress using (heap-loc)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type)
 import Once.IRTy as IRTy′
@@ -51,7 +50,6 @@ import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.SMPrimitives
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.Get o tbl using (module GetC)
-open import Data.List.Properties using (++-identityʳ)
 open import Data.Nat using (_⊔_; z≤n; s≤s)
 open import Data.Nat.Properties using (m≤n⊔m; m≤m⊔n)
 open import Data.List.Relation.Unary.All using ([]; _∷_)

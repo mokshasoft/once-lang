@@ -60,11 +60,10 @@ open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 import Data.Integer as ℤ
 open import Once.Spec.Float.Value using (pos; neg)
-open import Once.Spec.Surface.Operator using (Dottable; dotted; ‹_›; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=; Level; level; comparison; additive; multiplicative)
+open import Once.Spec.Surface.Operator using (Dottable; dotted; ‹_›; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=; level; comparison; additive; multiplicative)
 
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
 open import Once.Surface.OpNames
-open import Once.Spec.Surface.Operator using (BinOp)
 open import Once.Spec.Surface.Syntax using (Expr)
 open import Once.Parser.Token
 open import Once.Parser.TypeRelation using (ParsesType; ParsesType-shrinks)

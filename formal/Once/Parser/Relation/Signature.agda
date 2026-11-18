@@ -14,7 +14,6 @@ module Once.Parser.Relation.Signature where
 
 open import Data.Bool using (true)
 open import Data.List using (List; _∷_)
-open import Data.Maybe using (nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Parser.Token

@@ -44,7 +44,7 @@ module Once.CCC.Codegen.IRObsCorrect.CataBr.Text (o : CanonicalName) (tbl : DL.L
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRToTrace o
-  using (rec-count; cata-strategy; CataStrategy; strat-const; strat-branching; cata-dispatch; cata-trace-branching; const-strategy; box-fun
+  using (rec-count; cata-strategy; strat-branching; cata-dispatch; cata-trace-branching; const-strategy; box-fun
         ; cata-call-setup; cata-call; cata-body; cata-br-I₁; cata-br-I₂; push2; visit-walk; rebuild-walk; fsize; lsize)
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Call o tbl using (module CataCallC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Build o tbl using (lkind-gen; lsz-gen)

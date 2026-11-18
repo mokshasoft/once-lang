@@ -16,21 +16,19 @@
 
 module Once.Format.Proof.Words where
 
-open import Data.Bool using (Bool; true; false; not; _∧_; _∨_; if_then_else_)
+open import Data.Bool using (Bool; true; false; _∧_; _∨_; if_then_else_)
 open import Data.Char using (Char)
 import Data.Char as Ch
-open import Data.List using (List; []; _∷_; _++_; reverse; concatMap; map; replicate; _∷ʳ_)
+open import Data.List using (List; []; _∷_; _++_; reverse; concatMap; map)
 open import Data.List.Properties using (++-assoc; ++-identityʳ; unfold-reverse; reverse-involutive; reverse-++)
-open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product using (_×_; _,_; ∃-syntax)
-open import Data.String using (String; fromList; toList)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Data.String using (String; toList)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Relation.Nullary using (does)
 import Relation.Nullary
 
 open import Once.Postulates using (toList∘fromList)
 open import Once.Format.Comment using (is; blankish; words; wordsGo; emitW; dropBlanks; strip; linesGo; linesOf;
-  inside; isBlock; asLine; dropEmpty; trimLines; atLeastOne; commentLines; CLine; prose; verbatim; afterBlank;
+  inside; isBlock; asLine; dropEmpty; trimLines; atLeastOne; commentLines; afterBlank;
   afterDashes; allDash; listItem; dashLine; classifyChars; classify; lineDoc; commentLinesDoc; commentRun;
   eolAfter; eolChars; eolText)
 open import Once.Format.Doc using (oneLine; body; lineComment; joined; dashed; fill; width)

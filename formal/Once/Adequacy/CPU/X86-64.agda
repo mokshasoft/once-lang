@@ -68,7 +68,7 @@ open import Once.Float.Word using (round)
 open import Once.Spec.Float.Dyadic using (binary64)
 open import Once.Target.X86-64.PhysReg using (Reg; rsp; rdi)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
-open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd; flat-addr)
+open import Once.Arith.Machine.Shape using (InputPath; flat-addr)
 import Once.Arith.Backend.X86-64.RunTrace as RT
 open X64 using (State; readReg; readMem)
 open X64.State using (regs; memory)

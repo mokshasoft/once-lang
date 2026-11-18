@@ -13,7 +13,7 @@
 module Once.Adequacy.SpecGrammar.GroundTypes where
 
 open import Data.Empty using (⊥-elim)
-open import Data.List using (List; []; _∷_; map)
+open import Data.List using (List; _∷_; map)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (¬_)
@@ -28,7 +28,6 @@ import Once.Spec.Type as ST
 import Once.Spec.Surface.Syntax as SS
 import Once.Parser.Token as P
 open import Once.Parser.TypeRelation
-open import Once.Adequacy.SpecTokNames
 open import Once.Adequacy.SpecLexing using (forget)
 open import Once.Adequacy.SpecGrammar.Tokens using (step; peel)
 open import Once.Adequacy.SpecGrammar.TypeHeads

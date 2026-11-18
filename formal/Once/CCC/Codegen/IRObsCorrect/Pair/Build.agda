@@ -26,22 +26,21 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; LocState; AllocState; module LocState; module AllocState; module MemOps; module AbstractExec;
-         readReg; writeReg; Output; SV-Ptr; StoredValue; sucLoc; offsetLoc;
-         store-at-slot; load-from-slot; instr-alloc-heap; restore-input; load-at; store-at)
+         readReg; writeReg; Output; SV-Ptr; StoredValue; offsetLoc;
+         store-at-slot; load-from-slot; instr-alloc-heap)
 open LocState using (regs; halted)
-open AllocState using (current-frame; next-slot; next-heap-ref; saved-frames)
+open AllocState using (current-frame; saved-frames)
 open import Once.Memory.HeapAddress using (heap-loc)
 open import Once.IRTy using (IRTy) renaming (_*_ to _*ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.Codegen.FlatLayout using (put; put-All)
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
-open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 import Once.CCC.Machine.SMPrimitives
 open import Once.CCC.Codegen.IRObsCorrect.Inj o tbl using (module InjC)
 
-open import Data.Nat using (_⊔_; z≤n; s≤s)
+open import Data.Nat using (_⊔_)
 open import Data.Nat.Properties using (m≤n⊔m)
 open import Data.List.Relation.Unary.All using ([]; _∷_)
 
@@ -49,7 +48,7 @@ module PairBuildC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open MemOps {FS} using (writeLoc; writeLoc-preserves-other; writeLoc-read-same-stack)
+  open MemOps {FS} using (writeLoc-preserves-other; writeLoc-read-same-stack)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
   open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
   open FlatEventTrace {FS} using (chain-events-subst)
@@ -94,7 +93,7 @@ module PairBuildC {FS : FrameSemantics} where
               (rsB : readLoc (floc gs) (AtStack (current-frame (falloc gs)) (suc n)) ≡ just wB)
               (srcC : FlatPut.Src {FS} {prog} (falloc gs) (floc gs) C vC (readReg (regs (floc gs)) Output))
     where
-    open FlatPut {FS} {prog} using (Src; src-tr; put-run; PutOut; dst)
+    open FlatPut {FS} {prog} using (src-tr; put-run; PutOut; dst)
 
     s  = floc gs
     a  = falloc gs

@@ -28,10 +28,10 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Spec.Name using (bare)
-open import Once.Spec.Type using (Type; Base; ∅ₖ)
+open import Once.Spec.Type using (Base; ∅ₖ)
 open import Once.IR
 import Once.IRTy as II
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; SigOpSem; Internal;
@@ -39,9 +39,8 @@ open import Once.SigOp.Info using (SigOpInfo; mk-info'; SigOpSem; Internal;
 open SigOpInfo using (name; sem; baseA; conB)
 open import Once.Arith.Prim using (ArithPrim; p-add; p-sub; p-mul; p-div; p-mod; p-neg;
                                    p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp; p-fneg; p-fcmp)
-open import Once.Arith.CmpOp using (CmpOp)
-open import Once.Arith.SigOp.Compare using (CmpAt; int-c; flt-c; cmp-of; cmp-block; cmp-block-info; cmp-body)
-open import Once.Arith.SigOp.Block using (block-info; block-name)
+open import Once.Arith.SigOp.Compare using (CmpAt; int-c; flt-c; cmp-of; cmp-block; cmp-body)
+open import Once.Arith.SigOp.Block using (block-name)
 open import Once.Arith.Machine.IR using (ArithBlock; mk-block; module ArithBlock; shape-as-type; numtype-as-type; MArithIR)
 open import Once.Arith.Type using (NInt; NFloat)
 open ArithBlock using (block-body)

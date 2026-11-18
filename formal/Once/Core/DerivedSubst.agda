@@ -16,11 +16,11 @@ open import Once.Spec.Type using (TySub; KCtx; Respects)
 module Once.Core.DerivedSubst (Σ : Signature) {s : ℕ} (S : Defs s)
   {m k : ℕ} (σ : TySub m k) {Δ : KCtx m} {Δ′ : KCtx k} (rσ : Respects Δ Δ′ σ) where
 
-open import Data.Fin using (Fin; zero; suc)
+open import Data.Fin using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
-open import Once.Spec.Grade using (1≤ω; Quantity; Zero; One; Many; Purity; pure; act; eff; Finite; fin; pureᶠ; actᶠ; mk-kind; _⊑π_; _·p_)
-open import Once.Spec.Type using (Ty; Fun; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F; WFFun; _⟨_⟩; _⟨_⟩F)
+open import Once.Spec.Grade using (1≤ω; Zero; One; Many; pure; act; fin; pureᶠ; actᶠ; mk-kind; _⊑π_; _·p_)
+open import Once.Spec.Type using (_*_; _+_; _⇒[_]_; μ; ν; ⟦_⟧F; WFFun; _⟨_⟩; _⟨_⟩F)
 open import Once.Spec.Context using (Ctx; _▸_; _⟨_⟩ᶜ; Usage; _∷_; _*ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-identityʳ)
 open import Once.Spec.Core.Syntax

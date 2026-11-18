@@ -37,7 +37,7 @@ open import Once.Spec.Type using (Ty; Type)
 open import Once.Type using (showQuantity; showType; showPolyType)
 open import Once.Spec.Surface.Syntax using (PolyType)
 open import Once.Spec.Theory using (NumTy; int; float)
-open import Once.Spec.Surface.Operator using (BinOp; Op; Dottable; plain; dotted; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
+open import Once.Spec.Surface.Operator using (BinOp; Dottable; plain; dotted; ‹_›; o%; o+; o-; o*; o/; o<; o<=; o>; o>=; o==; o!=)
 
 -- | An operator as written.
 dottableText : Dottable → String

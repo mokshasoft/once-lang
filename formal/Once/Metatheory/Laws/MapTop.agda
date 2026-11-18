@@ -15,18 +15,17 @@ open import Once.Spec.Core.Syntax using (Defs)
 
 module Once.Metatheory.Laws.MapTop (Σ : Signature) (u : OneName Σ) (fmt : TargetNum) {s : ℕ} (S : Defs s) where
 
-open import Data.Fin using () renaming (zero to fz; suc to fs)
+open import Data.Fin using () renaming (zero to fz)
 open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; subst)
 open import Data.Product using (Σ-syntax)
 open import Once.Spec.Grade using (Quantity; Many; mk-kind; pure; Purity)
 open import Once.Spec.Type using (Ty; KCtx; TySub; Respects; ∅ₖ; _⟨_⟩; _⇒[_]_; at₀)
 open import Once.Spec.Context using (Ctx; _▸_; _∷_)
-open import Once.Spec.Core.Syntax
 open import Once.Spec.Core.Derived using (mapᶜ)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
-open import Once.Spec.Effect Σ using (T∞; _>>=∞_; return∞; toT∞)
+open import Once.Spec.Effect Σ using (_>>=∞_; return∞; toT∞)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (SameDefs; SameEnv)
@@ -37,7 +36,7 @@ open import Once.Metatheory.Laws.Tools Σ u fmt S
 open import Once.Metatheory.Laws.Views Σ u fmt S
 open import Once.Metatheory.Laws.Compose Σ u fmt S using (valAt0; valAt▸; ≡→≈)
 import Once.Metatheory.Laws.Strengthen
-open import Once.Metatheory.Laws.MapSem Σ using (module MapAt; Occ; OccF; p-var; p-*ˡ; p-*ʳ; p-+ˡ; p-+ʳ; p-⇒ʳ; p-μ; p-ν; p-K; p-⊕ˡ; p-⊕ʳ; p-⊗ˡ; p-⊗ʳ)
+open import Once.Metatheory.Laws.MapSem Σ using (module MapAt; Occ)
 open import Once.Metatheory.Laws.MapCov Σ S using (letInv; lamInv; cod≡; module Covs)
 open import Once.Metatheory.Laws.ComposeG Σ u fmt S using (callRel)
 

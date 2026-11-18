@@ -19,20 +19,16 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Data.Integer using (ℤ)
 import Data.Product
 import Data.List.Relation.Unary.All
-open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.Spec.Surface.Syntax using (RVar; RQualified; RResolved; RGen; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
-open import Once.Surface.OpNames
-open import Once.Spec.Surface.Operator using (BinOp)
-open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
 import Once.Spec.Source as SP
 open import Once.Denotation.Admissible using (rawIntLits; declIntLits; moduleIntLits; AdmissibleM)
 open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; mkModule)
 import Once.Parser.Relation.Resolution as LR
 import Once.Spec.Surface.Program
-open import Once.Target.Arch using (Arch; arch-numerics)
+open import Once.Target.Arch using (Arch)
 
 ------------------------------------------------------------------------
 -- Resolution keeps the literals

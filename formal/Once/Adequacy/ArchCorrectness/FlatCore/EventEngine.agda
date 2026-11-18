@@ -35,7 +35,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; NonZero)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _++_; drop)
-open import Once.IR.Semantics.Out using (Out; cut; stop; _▹_)
+open import Once.IR.Semantics.Out using (stop; _▹_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
@@ -113,7 +113,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size wor
   hiding (RunAt; module RunAt; mkRunAt; run-tbl; run-ir; run-emit; run-linked; run-reach; run-sound; run-emitted)
   public
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
-  using (module RunLow; mkRunLow; low-step-past; low-start; low-sound)
+  using (module RunLow; low-step-past)
   renaming (RunLow to RunAt)
 
 -- …and the data correspondence itself, which `CompiledCorrespondence` keeps
@@ -121,7 +121,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o FS slot-size word-eq
 -- already binds). Same application, hence the same types.
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
-open CFC using (HeapView; HDom; slots)
+open CFC using (HeapView; slots)
 
 ------------------------------------------------------------------------
 -- THE TRACE LOOP. `RT.run-events` here IS the arch's `run-events`: both are
@@ -138,8 +138,7 @@ module RT = Core.RunTrace State (List Instr) Instr Payload
 -- module's `Instr` is the CONCRETE one.)
 open import Once.CCC.Machine.SMCore hiding (Instr)
 open AllocState using (next-heap-ref)
-open LocState using (halted; regs; heapMem)
-open import Once.CCC.Machine.Locations using (AtDynamic)
+open LocState using (halted; regs)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; falloc; floc; fclosure; fetch; flat-exec-instr)
 open MemOps {FS} using (readLoc)
@@ -269,7 +268,7 @@ block-run-exec ev env h (suc L) rest cprog s {s'} eq hs' = go-h (xhalted s) refl
 -- THE PROGRAM-END BOUNDARY, and the two SIGOP REDUCTIONS.
 ------------------------------------------------------------------------
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
-open FlatEventTrace {FS} using (flat-events; event-of; flat-events-halted; flat-ctrls; flat-ctrls-step; flat-ctrls-fetch; ctrl-of; ctrl-≤1)
+open FlatEventTrace {FS} using (flat-events; event-of; flat-ctrls; ctrl-of; ctrl-≤1)
 open import Data.Nat.Properties using (≤-trans; ≤-reflexive; +-identityʳ)
 open import Once.CCC.Codegen.RoomChecks using (spend; max-entry)
 open import Data.Nat using (s≤s; z≤n)

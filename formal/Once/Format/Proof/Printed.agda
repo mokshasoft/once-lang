@@ -13,17 +13,16 @@
 
 module Once.Format.Proof.Printed where
 
-open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Bool using (true; false)
 open import Data.Char using (Char)
 open import Data.List using (List; []; _∷_; _++_; concatMap)
 open import Data.List.Properties using (++-assoc; ++-identityʳ)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just; nothing)
 open import Data.Nat using (ℕ; suc; _+_)
-open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Product using (proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 
-open import Once.Spec.Surface.Syntax using (Decl; Module; mkModule)
-open import Once.Format.Doc using (empty; blank; _<>_)
+open import Once.Spec.Surface.Syntax using (Decl; mkModule)
 open import Once.Format.Print using (Note; note-comment; note-blank; Trivia; hoist; topList; runs; topDoc; hasComment;
   blankIf; blankLast; lead; ending; gap; gapEnd; together; pdecl; pdecls; pmodule)
 open import Once.Format.Proof.Words using (DocC; Mn; commentRun-DW; cm-++; ifcase)

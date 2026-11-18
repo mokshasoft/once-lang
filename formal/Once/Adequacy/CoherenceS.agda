@@ -40,33 +40,29 @@ module Once.Adequacy.CoherenceS (fmt : TargetNum) (Σ : Signature) {s : ℕ} (S 
 
 open import Data.Empty using (⊥-elim)
 open import Data.Fin using (suc)
-open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans; cong; cong₂; subst)
+open import Data.Product using (Σ-syntax; _,_; proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
 open import Data.Nat using (_<_)
-open import Relation.Nullary using (¬_)
-open import Once.Spec.Grade using (Many; One; Purity; mk-kind; pure; act; eff; pureᶠ; actᶠ; _⊑π_; ⊑-pure; EffGrade; eg-act; eg-eff)
-open import Once.Spec.Type using (Fun; Ty; TySub; Occurs; WFFun; ⟦_⟧F; Int; Float; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; _⟨_⟩)
-open import Once.Spec.Sub using (_<:_; sub-arr; sub-*; sub-void; _⊔_≔_)
-open _⊔_≔_ using (left; right)
+open import Once.Spec.Grade using (Many; One; Purity; mk-kind; pure; act; eff; pureᶠ; actᶠ; _⊑π_)
+open import Once.Spec.Type using (Fun; Ty; WFFun; ⟦_⟧F; _+_; _⇒[_]_)
+open import Once.Spec.Sub using (_<:_; sub-arr; _⊔_≔_)
 open import Once.Spec.Core.Syntax using (_!!_; module Schema)
 open Schema using (type; arity)
 open import Once.Spec.Context using (lookup; singleUse; zeroUsage; _∷_)
 import Once.Spec.Surface.Syntax as R
 import Once.Spec.Surface.Generators as Gn
-open Gn using (is-map; is-combinator)
+open Gn using (is-combinator)
 open import Once.TypeCheck.Table using (morphIR)
 open import Once.Type.Join using (<:ᶜ-antisym)
 open import Once.Surface.Syntax using (lift-morphism; morph-app; appT; cata)
-open import Once.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
-open import Once.Laws.Sub using (<:-trans)
+open import Once.Type.Sub using (<:-refl)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Honest using (HonestFFI)
-open import Once.Core.Decl using (declS; ⌜declS⌝)
+open import Once.Core.Decl using (⌜declS⌝)
 open import Once.Functor.Translate using (IsConcrete-irrelevant; WFFun-irrelevant)
 open import Once.Type.Grade using (≤q-Many)
-open import Once.Surface.Syntax using (Expr; var; sigOp; coerce; app; effApp; comp'; num)
+open import Once.Surface.Syntax using (Expr; var; sigOp; coerce; num)
 open import Once.Surface.Numeric using (numBin)
 open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; ‵neg)
 open import Once.Spec.Surface.Operator using (binSym; BinSym)
@@ -80,9 +76,9 @@ open import Once.Denotation.RealizeS Σ S nm Ok OkS inline Δ
 open import Once.Adequacy.CoherenceLaws fmt
 open import Once.Adequacy.CoherenceLawsWrap fmt
 open import Once.Adequacy.CoherenceHet fmt
-  using (_≅_; ≅i; ≅-refl; ≅-sym; ≅-of; pair-h; num-h; let-h; app-h; effApp-h; comp-h; copair-h; fork-h; curry-h; coerce-h;
-         lam-h; lamd-h; cata-h; ana-h; loop-h; catad-h; spine-h; gf-h; pairc-h; twice-h; lamc-h; cg-h; cf-h; casec-h;
-         casej-h; copairj-h; forkc-h; di-h)
+  using (_≅_; ≅i; ≅-refl; ≅-of; pair-h; num-h; let-h; app-h; effApp-h; comp-h; copair-h; fork-h; curry-h; coerce-h;
+         lam-h; lamd-h; cata-h; ana-h; loop-h; catad-h;
+         casej-h; copairj-h; di-h)
 open _≅_ using (≅-ty)
 open import Once.Metatheory.Surface.Basics Σ S nm hiding (module Modes)
 open import Once.Metatheory.Surface.Basics Σ S nm using (module Modes)

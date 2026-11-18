@@ -37,12 +37,12 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Label using (LabelId)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; sucHL; module HeapLocation; module HeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; sucHL; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Once.IRTy using (IRTy) renaming (_*_ to _*ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
-open import Once.CCC.Codegen.FlatLayout using (Kind; kind; put; put-k; put-All)
+open import Once.CCC.Codegen.FlatLayout using (Kind; kind; put; put-All)
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
@@ -57,14 +57,14 @@ module CataCallC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open ResuspBaseC {FS} using (SegA; SRun; segA-∘; span-take; span-drop)
+  open ResuspBaseC {FS} using (SegA; SRun; span-take; span-drop)
   open CataStepsC {FS} using (HeadOK; module HeadOK)
   open MemOps {FS} using (writeLoc-preserves-other; writeLoc-read-same-stack)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
   open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
   open FlatEventTrace {FS} using (chain-events-subst)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (next-heap-ref; current-frame)
   module SR = StraightRunAPI {FS}
 
   private

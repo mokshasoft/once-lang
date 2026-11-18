@@ -23,10 +23,9 @@
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open FrameSemantics using (frame-word)
-open import Once.CCC.Machine.SMCore using (AbstractInstr; CallI)
-open import Once.CCC.Label using (once; EntryId)
+open import Once.CCC.Label using (once)
 open import Once.CCC.Target.X86-32.Syntax using
-  (slot-size; slots; Reg; reg; imm; mem; base; base+disp; esp; eax; ecx; edx; edi; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; label; mov-code; jmp-l; call-l; jbe-fwd; local-1)
+  (slot-size; slots; Reg; imm; mem; base; esp; eax; ecx; mov; lea; add; sub; sbb; cmp; test; jmp; je; jne; call; call-sym; ret; push; pop; nop; ud2; label; mov-code; jmp-l; call-l; jbe-fwd; local-1)
 open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -42,7 +41,7 @@ open import Once.Spec.Float.Dyadic using (binary32)
 open import Once.Spec.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-reg-op; instr-load-tag-lit; instr-load-const; instr-room)
+  using (AbstractTrace; instr-ctrl; c-ret; instr-load-tag-lit; instr-load-const; instr-room)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.CCC.Target.X86-32.Semantics as X
 import Once.Adequacy.ArchCorrectness.X86-32.FlatCorrespondence as FC
@@ -56,8 +55,6 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 open import Once.Spec.Name using (CanonicalName)
 
-open import Data.Sum using (_⊎_)
-open import Data.Product using (Σ)
 module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   (FS : FrameSemantics)
   (word-eq : frame-word FS ≡ slot-size)
@@ -141,8 +138,7 @@ open import Data.Bool using (true; false)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
 
 open import Once.CCC.Machine.SMCore
-open LocState using (halted; regs; heapMem)
-open import Once.CCC.Machine.Locations using (AtDynamic)
+open LocState using (halted; regs)
 open MemOps {FS} using (readLoc)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
@@ -157,7 +153,7 @@ open import Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation o FS word-eq fmt
 open import Once.CCC.Machine.FlatStoreWF FS using
   ()
 open C using (HeapView; haddr; HDom; hfront; lo) public
-open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂; uncurry)
+open import Data.Product using (Σ; _,_; _×_; uncurry)
 open import Once.Adequacy.ArchCorrectness.X86-32.FlatComposition FS
   using (blk-off; blk-len; blk-off-suc; fetch-block-head; find-label-none-corr; fetch-block-2nd; is-label?; skip-law; label-hit; label-miss; headView)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace; compile-abstract)
@@ -184,11 +180,10 @@ open import Once.Arith.Machine.IR using (mk-block)
 open import Once.Arith.Type using (NInt; NFloat)
 open import Once.CCC.Codegen.RoomChecks using (sigop-scratch)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (role-sp; role-clos; role-heap; role-in1; role-out)
-open import Data.Nat.Properties using (*-distribʳ-+; *-comm; m≤n+m; m+n≤o⇒n≤o; ≤-reflexive; ≤-trans; +-monoʳ-≤)
+open import Data.Nat.Properties using (*-distribʳ-+; *-comm; m+n≤o⇒n≤o; ≤-reflexive; ≤-trans; +-monoʳ-≤)
 open import Data.Nat using (_*_)
 open import Data.Empty using (⊥-elim)
 open import Once.Arith.Machine.IR using (ArithBlock)
-open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Data.String using (String)
 open import Once.Denotation.Program using (IRProgram)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
@@ -351,7 +346,6 @@ import Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch as Dispatch
 import Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface as EI
 import Once.CCC.Target.X86-32.Syntax as XS
 open import Data.List using (List)
-open import Once.Adequacy.ArchCorrectness.X86-32.RegRoles using (x86-32-roles)
 -- x86-32 filling `EngineInterface`'s three records. What was a 49-argument
 -- module application is three values now, for the memory reason recorded in
 -- `EngineInterface`; the contents are identical.
@@ -359,7 +353,6 @@ open import Once.Adequacy.ArchCorrectness.X86-32.RegRoles using (x86-32-roles)
 -- plan 0.119 D5: every control lowering is non-empty.
 open import Data.List using (length)
 open import Data.Nat using (s≤s; z≤n)
-open import Once.CCC.Machine.SMCore using (FlatCtrl; instr-ctrl; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret; c-call-fn; c-start; c-leave)
 ctrl-len-arch : ∀ (c : FlatCtrl) → 1 ≤ length (compile-abstract (instr-ctrl c))
 ctrl-len-arch (c-label _) = s≤s z≤n
 ctrl-len-arch (c-jmp _) = s≤s z≤n

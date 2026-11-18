@@ -25,17 +25,16 @@ open import Data.Bool.Properties using (∨-zeroʳ)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.List using (List; []; _∷_; map; reverse)
 open import Data.Maybe using (just; nothing)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Data.String using (String; toList)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₂)
+open import Data.String using (toList)
 open import Data.String.Properties using (_≟_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_; yes; no)
 
-open import Once.Spec.Surface.Syntax using (Expr)
 import Once.Spec.Surface.Syntax as S
-open import Once.Spec.Surface.Lexing using (Token; TString; TWord; TLParen; TRParen; TColon; TEquals; TDot; TNewline; TEOF; Lexes)
+open import Once.Spec.Surface.Lexing using (Token; TString; TWord; TColon; TEquals; TDot; TNewline)
 open import Once.Spec.Surface.Grammar as G
-  using (Starts; starts; StartsWord; starts-word; NotKeyword; not-keyword; OpChar;
+  using (Starts; starts; StartsWord; starts-word; NotKeyword; not-keyword;
          oc-dot; oc-op; op-dotted; oc-pipe; oc-amp; oc-at;
          op-close; op-char; op-sig; op-def; fundef; params-eq; params-cons; params-stop; params-none;
          path-cons; path-dotstop; path-end; import-as; import-plain; alias-eq; alias-param;
@@ -44,11 +43,11 @@ open import Once.Spec.Surface.Grammar as G
 import Once.Parser.Token as P
 open import Once.Parser.Core using (skipNewlines)
 open import Once.Parser.Module.Core using (wordHead)
-open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+open import Once.Spec.Surface.Syntax using (Decl; DImport)
 open import Once.Spec.Surface.Syntax using (mkImport)
 open import Once.Parser.Module.DeclTail using (colonHead)
 open import Once.Parser.Module.OpName using (opTokClass)
-open import Once.Parser.Module.FunDef.Body using (eqHead)
+import Once.Parser.Module.FunDef.Body
 import Once.Parser.Module.FunDef.Params as LPar
 import Once.Parser.Relation.Decl as LD
 import Once.Parser.Relation.Import as LI
@@ -67,7 +66,6 @@ import Once.Parser.Module.OpName
 import Once.Parser.TypeRelation
 import Once.Parser.ExprRelation
 import Once.Parser.Generic.PolyInst
-open import Once.Adequacy.SpecTokNames
 open import Once.Spec.Surface.Lexing using (g+; g-; g*; g/; g%; g<; g>)
 open import Once.Spec.Surface.Operator using (o+; o-; o*; o/; o<; o>)
 open import Once.Adequacy.SpecLexing using (toNew; toOld; forget; isEOF; ended)

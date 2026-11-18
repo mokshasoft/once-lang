@@ -34,11 +34,9 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 -- Plan 0.105: the machine runs against an interpretation, so these facts about
 -- its states are stated at one.
-open import Data.Sum using (_⊎_)
-open import Data.Product using (Σ)
 module Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds (o : CanonicalName) (ι : Interp) where
 
-open import Data.Nat using (ℕ; suc; _+_; _≤_)
+open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -48,8 +46,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RLr
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; lea-slot; instr-load-tag-lit; instr-load-const; instr-room; AbstractInstr; CallI)
-open import Once.CCC.Label using (EntryId)
+  using (AbstractTrace; instr-ctrl; c-ret; lea-slot; instr-load-tag-lit; instr-load-const; instr-room)
 open import Once.CCC.Target.RiscV64.Syntax using (slots; slot-size; sp; Reg)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
 open import Data.Nat using (_<_)

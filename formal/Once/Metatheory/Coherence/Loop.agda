@@ -18,7 +18,7 @@ open import Once.Spec.Signature using (Signature; call)
 module Once.Metatheory.Coherence.Loop (Σ : Signature) where
 
 open import Data.Empty using (⊥)
-open import Data.List using (List; []; _∷_; _++_; [_]; length)
+open import Data.List using ([]; _∷_; _++_; [_]; length)
 open import Data.List.Properties using (++-assoc; ++-identityʳ; length-++)
 open import Data.Nat using (ℕ; zero; suc; _∸_)
 open import Data.Nat.Properties using (∸-+-assoc)
@@ -27,20 +27,19 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function using (flip)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Nullary using (Dec; yes; no)
-open import Once.Spec.Signature using (eventOf; Op; module Op; arg; ⟦_⟧ᵇ; NotEmpty; notEmpty?)
+open import Once.Spec.Signature using (eventOf; Op; module Op; ⟦_⟧ᵇ)
 open Op using (ans)
 open import Once.Spec.Polynomial using (SK; SId; _S⊕_)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Observation Σ using (World; module World; History)
-open import Once.Spec.Trace using (End; returned; halted; EndRel; returned≈; halted≈)
+open import Once.Spec.Trace using (End; returned; halted; returned≈; halted≈)
 open import Once.Spec.Type using (Type; _+_)
 open import Once.Spec.Domain Σ using (⟦_⟧ᵛ)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Metatheory.Trace using (MaybeEnd; cut≈; end≈)
 open import Once.Metatheory.Run Σ
 open import Once.Metatheory.RunLaws Σ using (Stops; halts; cuts)
-open import Once.Metatheory.Coherence.Relation Σ using (Sim; Related; related; fwd; bwd; Related-flip; Related-mono)
+open import Once.Metatheory.Coherence.Relation Σ using (Sim; Related; related; fwd; Related-flip; Related-mono)
 
 -- The loop's block for a round's block: the stream unfold's, at `K B ⊕ Id`.
 loopBlock : ∀ {A B : Set} → (A → T (B ⊎ A)) → T (B ⊎ A) → T (B ⊎ T∞ B)
@@ -59,7 +58,6 @@ SumR RB RA (inj₂ _) (inj₁ _)  = ⊥
 ------------------------------------------------------------------------
 
 module Rounds (w : World) {A B : Set} (c : A → T (B ⊎ A)) where
-  open World w using (answer)
 
   private
     snoc : ∀ (h : History) v d → (h ++ [ v ]) ++ d ≡ h ++ (v ∷ d)
@@ -113,7 +111,6 @@ module _ {A A′ B B′ : Set} (RA : A → A′ → Set) (RB : B → B′ → Se
          (hf : ∀ {a a′} → RA a a′ → Sim (SumR RB RA) (embed (f a)) (embed (f′ a′))) where
 
   module Go (w : World) where
-    open World w using (answer)
     open Rounds w f′ using (retLoop; stopLoop; contLoop)
 
     -- What the round `t` has left to do, matched against the whole round

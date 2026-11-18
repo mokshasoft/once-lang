@@ -20,7 +20,6 @@
 --     (`SpecWitness`), at the type the Spec's principality rules out.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _∷_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (Σ-syntax; ∃-syntax; _×_; _,_)
@@ -48,7 +47,7 @@ module Once.Adequacy.SpecFront.Def
 open import Data.Fin using (Fin)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (proj₁; proj₂)
-open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≢_; refl; sym; trans; cong; subst)
 open import Data.List.Membership.DecPropositional Data.String._≟_ using (_∈?_)
 

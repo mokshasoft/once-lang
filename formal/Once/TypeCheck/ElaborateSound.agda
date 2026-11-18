@@ -20,27 +20,23 @@ module Once.TypeCheck.ElaborateSound where
 import Once.Spec.Context
 open import Once.Type.Core using (wk₀)
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
-open import Once.Spec.Type using (var; Ty; KCtx; Base)
-open import Data.String using (String; _++_)
+open import Once.Spec.Type using (var; Ty; Base)
+open import Data.String using (String)
 open import Data.String.Properties as StrProp using ()
-open import Data.Integer using (ℤ; -_)
-open import Data.Nat using (ℕ; zero; suc; _⊔_; _<_)
+open import Data.Nat using (ℕ; _⊔_; _<_)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc)
-open import Data.Fin using (zero; suc)
 open import Data.Bool using (Bool; true; false; T)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_; length)
+open import Data.List using ([]; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; subst; sym; trans)
 
 open import Once.Spec.Grade
-open import Once.Type.Grade
-open import Once.Type.Core
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
+open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
+open import Once.Spec.Surface.Syntax using (PolyType)
 open import Once.Type.Poly
 open import Once.Type
 -- Plan 0.52 M2: IR re-exports the ungraded IRTy, whose Unit/K/μ-type/… clash
@@ -48,9 +44,8 @@ open import Once.Type
 -- from the unqualified open (they stay available as `IR.*`); the surface-type
 -- names resolve unambiguously to `Once.Type`.
 open import Once.IR as IR
-open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
-open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.Spec.Name using (CanonicalName; canonical; own; bare)
+open import Once.IRTy using (⌊_⌋)
+open import Once.Spec.Name using (CanonicalName; canonical; own)
 import Once.Spec.Surface.Generators as G
 import Once.Spec.Surface.Typing as SUT
 open import Once.Generators using (fromCodomain?; fromDomain?)
@@ -60,24 +55,15 @@ open import Once.Name using (showCanonical; WordName; wordNameB)
 import Once.Spec.Surface.Syntax as Syn
 open import Once.Spec.Surface.Operator using (BinOp; binSym; BinSym)
 open BinSym using (theory)
-open import Once.Spec.Surface.Syntax as Raw using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
+open import Once.Spec.Surface.Syntax as Raw using ()
 open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg)
 open import Once.TypeCheck.NumTable using (NumView; is-num; not-num; numView; _≟ⁿ_; has?)
 open import Once.Spec.Float.Value using (Sign)
 open import Once.TypeCheck.Raw as Raw
-open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined;
-  LambdaInInferMode; LambdaRequiresFunctionType;
-  InlInInferMode; InrInInferMode; InitialInInferMode;
-  InlNeedsSumType; InrNeedsSumType;
-  FstNeedsPair; SndNeedsPair;
-  CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; NotFunction;
-  UsageViolation; BuiltinTypeMismatch;
-  BinOpLeftError; BinOpRightError;
-  UnboundVariable; UnboundQualified; NonConcreteSigOpType)
+open import Once.TypeCheck.Error using (TypeError)
 import Once.TypeCheck.Context
 open import Once.Context as Surface using ()
 import Once.Spec.Context as Surface
-open import Once.Spec.Context using () renaming (Ctx to SCtx; ∅ to S∅)
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 open import Once.Spec.Context using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Surface.Elaborate as Elab using ()
@@ -86,31 +72,25 @@ open import Once.TypeCheck.Scope
 open import Once.TypeCheck.SpecWitness
 open import Once.TypeCheck.Classify
 import Once.Type.Concrete
-open import Once.Spec.Type using (Base; ∅ₖ)
+open import Once.Spec.Type using (∅ₖ)
 import Once.Spec.Type
 open import Once.Type.Concrete using (IsConcrete; con-fun)
-open import Once.Functor.Decide using (wellFormedF?; wfFun?; isConcrete?; isBaseType?)
+open import Once.Functor.Decide using (wfFun?; isConcrete?; isBaseType?)
 import Once.Spec.Float.Decimal as Decimal
-open import Once.Spec.Sub using (_<:_; sub-arr)
-open import Once.Spec.Grade using (_⊑π_)
+open import Once.Spec.Sub using (_<:_)
 open import Once.Type.SubDecide using (_<:?_; _⊑π?_)
-open import Once.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
-open import Once.Type.DecEq using (_≟T_)
 open import Once.Type.Join using (Join?; joined; apart; join?; sound)
-open Once.Spec.Sub._⊔_≔_ using () renaming (left to ⊔-left; right to ⊔-right)
 open import Once.Type.Match using (Subst; instantiate)
 open import Once.Type.MatchCorrect using (instantiate-sound)
 open import Once.Type.Instance using (KindedInstance)
 open import Once.Type.Rigid using (kindedInstance?)
 open import Once.Type.Determined using (ArrowView; arrowSchema?; codVarsInDom?)
-open import Once.TypeCheck.DeciderComplete using (isGround-complete-at)
 open import Once.TypeCheck.TargetView
 
 open import Once.TypeCheck.Elaborate
 import Once.TypeCheck.Elaborate as E
-open import Once.TypeCheck.SpecWitness
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥)
 
 -- What a result owes: a success, the Spec's derivation; a failure, nothing.
 soundOf : ∀ {m} → (ctx : NamedCtx m) (e : Syn.Expr)

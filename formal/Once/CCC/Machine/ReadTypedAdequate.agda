@@ -26,7 +26,6 @@ open import Once.Spec.Name using (CanonicalName)
 
 open import Data.List using (List)
 open import Once.Denotation.Program using (IRFun)
-open import Once.CCC.Machine.SMCore using (AbstractTrace)
 module Once.CCC.Machine.ReadTypedAdequate (o : CanonicalName) (tbl : List IRFun)
   {FS : FrameSemantics} where
 
@@ -49,7 +48,7 @@ open import Once.CCC.Machine.ValueRel
 open ClosureWellFormedDef {FS}
   using (ValidAtWF; CellAt)
 open ClosureWellFormedBase {FS}
-  using (SumTag; cell-ptr; cell-inline; cell-flat; InlineRep; rep-prim; inline-sv; IsNode; wrap)
+  using (SumTag; cell-ptr; cell-inline; cell-flat; rep-prim; IsNode; wrap)
 open import Once.CCC.Codegen.Size using (size)
 open import Data.Empty using (⊥; ⊥-elim)
 import Data.Nat

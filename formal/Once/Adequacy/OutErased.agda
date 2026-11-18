@@ -20,9 +20,9 @@
 ------------------------------------------------------------------------
 
 import Once.Spec.Type as SpT
-open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; wf-⊕; wf-⊗; ∅ₖ)
+open import Once.Spec.Type using (Base; WFFun; b-*; b-+; b-Float; b-Int; b-Unit; wf-⊕; wf-⊗)
 
-open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; Base)
+open import Once.Spec.Type using (Ty; Fun; KCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Denotation.DenotTrace using (CallEnv)
@@ -35,8 +35,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 
 open import Once.Spec.Word using (Carrier)
-open import Once.Spec.Grade using (Purity; Finite)
-open import Once.Spec.Type using (Type)
+open import Once.Spec.Grade using (Finite)
 open import Once.Spec.Type using (ν)
 open import Once.Spec.Type using (wf-K; wf-Id)
 open import Once.IR.Semantics.FunctorMeaning using (translateF)

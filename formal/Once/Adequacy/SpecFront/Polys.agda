@@ -13,27 +13,22 @@
 
 module Once.Adequacy.SpecFront.Polys where
 
-open import Data.List using (List; []; _∷_; _++_; map)
+open import Data.List using (List; []; _∷_; map)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just; nothing)
 open import Data.Product using (_×_; _,_)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Bool using (true; false)
-open import Data.Unit using (⊤; tt)
-open import Function using (_∋_)
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Sum using (inj₂)
+open import Data.Bool using (false)
+open import Data.Unit using (tt)
+open import Data.Empty using (⊥-elim)
 open import Data.String using (String; _≟_)
 open import Relation.Nullary using (¬_; Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym)
 
-open import Once.Type.Poly using (extractGround)
-open import Once.Type using (isGround)
-open import Once.Functor.Decide using (isConcrete?)
 open import Once.Spec.Surface.Syntax using (Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
-open import Once.Spec.Surface.Syntax using (mkImport)
 import Once.Parser as Parser
 open Parser.FunInfo using (funName; funIsPrimitive)
 open Parser.PolyFunInfo using (pfunName)
@@ -41,8 +36,7 @@ import Once.Parser.Relation.Resolution as LR
 import Data.List.Relation.Unary.All as All
 open import Data.Product using (Σ-syntax)
 open import Once.Adequacy.SpecFront.Extract
-  using (IsSig; is-sig; XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig; pa-alias; pa-import;
-         SigReading; sr-mono; sr-open; sr-nonc)
+  using (IsSig; is-sig; XAlign; xa-nil; xa-pass; xa-mono; xa-poly; xa-nosig; xa-sig)
 
 -- The telescope entries' names.
 polyNames : List Parser.Entry → List String

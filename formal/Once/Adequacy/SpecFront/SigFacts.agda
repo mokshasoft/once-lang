@@ -17,7 +17,6 @@
 
 module Once.Adequacy.SpecFront.SigFacts where
 
-open import Data.Nat using (ℕ)
 import Once.Type.Core
 open import Data.List using (List; []; _∷_; map; _ʳ++_)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -25,9 +24,9 @@ open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs; []; _∷_)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just; nothing)
 open import Data.Bool using (true; false)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _×_; _,_; proj₁)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.String using (String)
@@ -45,7 +44,7 @@ open import Once.Spec.Signature using (Signature; Decl; _∶_; OneName; ⌜_⌝�
 import Once.Spec.Type as ST
 import Once.Parser as Parser
 open import Once.Module using (entrySig)
-open import Once.TypeCheck.Scope using (Imports; lookupImport)
+open import Once.TypeCheck.Scope using (lookupImport)
 open import Once.Adequacy.SpecInterp using (declTy)
 open import Once.Core.Decl using (toISig; declS; declS-⌜⌝ᵈ; ⌜declS⌝)
 open import Once.Adequacy.SpecFront.Render using (render-inj)

@@ -29,12 +29,10 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.SMCore
-  using (instr-ctrl; c-branch-tag-zero; c-label; AllocState; AbstractTrace; AbstractInstr;
-         load-indirect-suc; mov-to-input; LocState; StoredValue; readReg; Input1; Output; SV-Ptr;
-         sv-as-loc; sucLoc; writeReg-same; module LocState)
+  using (AbstractTrace; AbstractInstr; mov-to-input; LocState; readReg; Input1; Output; SV-Ptr; writeReg-same; module LocState)
 open LocState using (halted; regs)
 open import Data.Product using (Σ)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (inj₁)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
 

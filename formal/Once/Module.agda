@@ -39,7 +39,7 @@ open import Data.String using (String)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; subst)
 open import Once.Contract using (ISig)
 
 open import Once.Spec.Grade using (mk-kind; Many; eff)

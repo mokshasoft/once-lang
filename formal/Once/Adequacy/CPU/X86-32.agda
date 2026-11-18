@@ -14,7 +14,6 @@ module Once.Adequacy.CPU.X86-32 where
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
-open import Data.Nat using (ℕ)
 open import Data.Product using (_×_)
 
 open import Data.Unit using (⊤)
@@ -38,7 +37,7 @@ open import Data.String using (_≟_)
 open import Relation.Nullary using (Dec; yes; no; isYes)
 open import Relation.Binary.PropositionalEquality using (refl)
 open import Data.String using (_==_)
-open import Data.Product using (_,_; proj₁)
+open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 -- Plan 0.54 Phase B / Option 2: the emit-and-continue trace over the REAL
@@ -46,7 +45,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 -- DERIVES `run-trace` from `X32.run`'s step semantics, replacing the old opaque
 -- observable postulate with the real machine + three small named sub-gaps.
 import Once.Arith.Backend.X86-32.RunTrace as RT
-open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
 open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32)
 
 ------------------------------------------------------------------------

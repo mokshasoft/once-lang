@@ -24,17 +24,16 @@ module Once.TypeCheck.Elaborate where
 import Once.Spec.Context
 open import Once.Type.Core using (wk₀)
 open import Once.Spec.Type using (μ; ν; ⟦_⟧F)
-open import Once.Spec.Type using (var; Ty; KCtx; Base)
-open import Data.String using (String; _++_)
+open import Once.Spec.Type using (var; Ty; Base)
+open import Data.String using (String)
 open import Data.String.Properties as StrProp using ()
-open import Data.Integer using (ℤ; -_)
-open import Data.Nat using (ℕ; zero; suc; _⊔_; _<_)
+open import Data.Nat using (ℕ; suc; _⊔_; _<_)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc)
-open import Data.Fin using (zero; suc)
+open import Data.Fin using (suc)
 open import Data.Bool using (Bool; true; false; T; _∧_; _∨_; not)
-open import Data.Maybe using (Maybe; just; nothing; fromMaybe)
-open import Data.List using (List; []; _∷_; length)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.List using ([]; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -43,9 +42,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym
 
 open import Once.Spec.Grade
 open import Once.Type.Grade
-open import Once.Type.Core
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
+open import Once.Spec.Type using (Type; Unit; Void; _⇒[_]_; Int; Float)
+open import Once.Spec.Surface.Syntax using (PolyType; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PTVar)
 open import Once.Type.Poly
 open import Once.Type
 -- Plan 0.52 M2: IR re-exports the ungraded IRTy, whose Unit/K/μ-type/… clash
@@ -53,25 +51,23 @@ open import Once.Type
 -- from the unqualified open (they stay available as `IR.*`); the surface-type
 -- names resolve unambiguously to `Once.Type`.
 open import Once.IR as IR
-open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
-open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.Spec.Name using (CanonicalName; canonical; own; bare)
+open import Once.IRTy using (⌊_⌋)
+open import Once.Spec.Name using (CanonicalName; canonical; own)
 import Once.Spec.Surface.Generators as G
 open import Once.Generators using (fromDomain?; fromCodomain?)
 open import Once.TypeCheck.Table using (mapAt?; mapFrom?; mapTo?; MuV; muV; mu-at; mu-other; SumV; sumV; sum-at; sum-other)
 open import Once.Name using (showCanonical; WordName; wordNameB)
 import Once.Spec.Surface.Syntax as Syn
 open import Once.Spec.Surface.Operator using (BinOp)
-open import Once.Spec.Surface.Syntax as Raw using (RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RAnnot; RBinOp; RNeg)
-open import Once.Spec.Float.Value using (Sign; pos; neg)
-open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; Rounded; Sym; symDom; symCod; ‵neg; float-rounded)
-  renaming (int to nint; float to nfloat)
+open import Once.Spec.Surface.Syntax as Raw using ()
+open import Once.Spec.Float.Value using (Sign)
+open import Once.Spec.Theory using (NumTy; ⌜_⌝ⁿ; Has; Neg; symCod; ‵neg)
+  renaming (int to nint)
 open import Once.TypeCheck.NumTable
-  using (NumView; is-num; not-num; numView; _≟ⁿ_; has?; binDom;
-         pairDom; binary?)
+  using (NumView; is-num; not-num; numView; _≟ⁿ_; has?)
 open import Once.Surface.Numeric using (numBin; toFloatIR)
 open import Once.Spec.Surface.Operator using (binSym; BinSym)
-open BinSym using (theory; shape; symbol)
+open BinSym using (theory; shape)
 open import Once.Spec.Surface.Syntax using (signedDecimal)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined;
@@ -87,7 +83,7 @@ open import Once.TypeCheck.Error using (TypeError; ComposeMiddleUndetermined;
 import Once.TypeCheck.Context
 open import Once.Context as Surface using ()
 import Once.Spec.Context as Surface
-open import Once.Spec.Context using () renaming (Ctx to SCtx; ∅ to S∅)
+open import Once.Spec.Context using () renaming (Ctx to SCtx)
 open import Once.Surface.Syntax as Surface using () renaming (Expr to SExpr)
 open import Once.Spec.Context using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Surface.Elaborate as Elab using ()
@@ -95,13 +91,12 @@ open import Once.Surface.Elaborate as Elab using ()
 open import Once.TypeCheck.Scope
 open import Once.TypeCheck.Classify
 import Once.Type.Concrete
-open import Once.Spec.Type using (Base; ∅ₖ)
+open import Once.Spec.Type using (∅ₖ)
 import Once.Spec.Type
 open import Once.Type.Concrete using (IsConcrete; con-fun)
-open import Once.Functor.Decide using (wellFormedF?; wfFun?; isConcrete?; isBaseType?)
+open import Once.Functor.Decide using (wfFun?; isConcrete?; isBaseType?)
 import Once.Spec.Float.Decimal as Decimal
 open import Once.Spec.Sub using (_<:_; sub-arr)
-open import Once.Spec.Grade using (_⊑π_)
 open import Once.Type.SubDecide using (_<:?_; _⊑π?_)
 open import Once.Type.Sub using (<:-refl; ⊑π-refl; <:ᶜ⇒<:)
 open import Once.Type.DecEq using (_≟T_)

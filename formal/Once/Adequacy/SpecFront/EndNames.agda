@@ -18,7 +18,6 @@ open import Once.Spec.Signature using (Signature)
 
 module Once.Adequacy.SpecFront.EndNames (Σ : Signature) (ps : List String) where
 
-open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using ([]; _∷_; map)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -36,7 +35,6 @@ import Once.Spec.Core.Syntax as SC
 import Once.Spec.Core.Program Σ as SP
 import Once.Parser as Parser
 open Parser.FunInfo using (funName)
-open Parser.PolyFunInfo using (pfunName)
 open import Once.Spec.Name using (CanonicalName; canonical)
 import Once.Spec.Name
 open import Once.Module using (Scope; ModTele; []; ffi; mono; poly; MainsEffUU)

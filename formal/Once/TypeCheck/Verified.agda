@@ -39,13 +39,13 @@ open import Once.TypeCheck.NumTable using (Binary)
 import Once.Spec.Context as SCx
 open import Once.Type.Core using (wk₀)
 open import Once.Spec.Type using (Ty)
-open import Once.Type.Grade using (_≤qᵇ_)
+import Once.Type.Grade
 import Once.Spec.Grade
 module Once.TypeCheck.Verified where
 
 
 import Once.Context as Surface
-open import Once.Spec.Context using (Ctx)
+import Once.Spec.Context
 import Once.Spec.Context as Surface
 
 open import Data.Maybe using (just; nothing)
@@ -54,7 +54,6 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Spec.Type using (Type)
-open import Once.Type.Concrete using (IsConcrete)
 import Once.Type.Sub
 import Once.Spec.Sub
 import Once.Type.Join
@@ -66,7 +65,7 @@ import Once.Spec.Surface.Syntax as Syn
 open import Once.TypeCheck.ElaborateSound
 open import Once.TypeCheck.Elaborate
   using (inferElab; checkElab; InferElabResult; CheckElabResult; success; failure)
-open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupLocal; extendNamedCtx)
+open import Once.TypeCheck.Scope using (NamedCtx; lookupLocal; extendNamedCtx)
 import Once.TypeCheck.Scope as Classify
 
 open import Data.Integer using (ℤ)
@@ -90,14 +89,13 @@ import Algebra.Structures
 import Algebra.Module.Structures
 import Relation.Binary.Structures
 open import Once.TypeCheck.SpecWitness using (Pack; WI; WC)
-open import Once.TypeCheck.ElaborateSound using (inferElabV; checkElabV; VerifiedInferResult; VerifiedCheckResult)
 open import Data.Product using (proj₁)
 open import Relation.Binary.PropositionalEquality using (refl; cong)
 import Once.Spec.Surface.Typing as SUT
 open import Once.Spec.Core.Derived using (𝕋)
 open import Once.TypeCheck.Error using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UsageViolation; BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Surface.Syntax as Raw using (RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RNeg; RBinOp; RLam; RApp)
+open import Once.Spec.Surface.Syntax as Raw using (RInt; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RNeg; RBinOp; RLam; RApp)
 open import Once.Spec.Surface.Operator using (BinOp)
 
 import Once.Grammar.Convert       as Conv

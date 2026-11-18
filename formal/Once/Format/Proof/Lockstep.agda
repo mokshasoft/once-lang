@@ -18,18 +18,17 @@
 module Once.Format.Proof.Lockstep where
 
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.List using (List; []; _∷_; _++_; reverse; foldl)
+open import Data.List using (List; []; _∷_; _++_; reverse)
 open import Data.List.Properties using (unfold-reverse; foldl-++)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just; nothing)
 open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
-open import Data.String using (String)
+open import Data.Product using (_×_; _,_; proj₂; ∃-syntax)
+import Data.String
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
-open import Once.Spec.Surface.Lexing using (Token)
-open import Once.Format.Doc using (Doc; empty; tk; sp; cmt; para; line; newline; blank; eol; _<>_; nest; group;
+open import Once.Format.Doc using (empty; tk; sp; cmt; para; line; newline; blank; eol; _<>_; nest; group;
   Lexeme; lt; lsp; lnl; lind; lcm; St; st; put; space; token; joined; trim; brk; comment; blankLine; fill;
-  dashed; paragraph; fits; flatWidth; column; layout; apart)
+  dashed; paragraph; column; layout; apart)
 open import Once.Format.Proof.Walk using (WL; stepL; walkL; w₀)
 
 ------------------------------------------------------------------------
@@ -199,12 +198,10 @@ layout-reach i false (group d) σ l = layout-reach i _ d σ l
 ------------------------------------------------------------------------
 
 open import Data.List using (map; concatMap)
-open import Data.Product using (∃-syntax)
 open import Data.Nat using (_+_)
-open import Once.Format.Doc using (paragraph; dashed; fill)
 open import Data.Char using (Char)
 open import Data.String using (toList; fromList)
-open import Once.Format.Comment using (commentLinesDoc; lineDoc; classify; CLine; prose; verbatim)
+open import Once.Format.Comment using (commentLinesDoc; lineDoc; classify; prose; verbatim)
 open import Once.Format.Proof.Rerender using (renderK; renderLine)
 open import Once.Format.Doc using (lineComment)
 open import Relation.Binary.PropositionalEquality using (cong₂)

@@ -23,17 +23,14 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore
-  using (instr-ctrl; c-label; AllocState; AbstractTrace; LocState; StoredValue; readReg; Input1; Output; SV-Ptr;
-         sv-as-loc; load-indirect; store-at-slot; module LocState; module AllocState)
-open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
+  using (instr-ctrl; c-label; AllocState; AbstractTrace; LocState; StoredValue; readReg; Input1; Output; SV-Ptr; store-at-slot; module LocState; module AllocState)
+open AllocState using (next-slot; current-frame)
 open LocState using (halted; regs)
-open import Data.Product using (Σ)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
 open import Once.Res using (is-stopped)
 open import Once.Denotation.Approx using (NotCut; budgetLeft)
 
-open import Once.CCC.Codegen.IRObsCorrect.IterShape o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterRun o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterInv o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterRounds o tbl
@@ -43,7 +40,6 @@ module IterProofC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open IterShapeC {FS}
   open IterRunC {FS}
   open IterInvC {FS}
   open IterRoundsC {FS}
@@ -63,7 +59,6 @@ module IterProofC {FS : FrameSemantics} where
     (k : ℕ)
     where
 
-    open IterShape body n l
     open IterRun body n l prog base span
     open Loop body n l base
 

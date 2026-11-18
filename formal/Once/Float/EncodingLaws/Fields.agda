@@ -10,17 +10,17 @@
 module Once.Float.EncodingLaws.Fields where
 
 open import Data.Nat as ℕ
-  using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _<_; _≤_; s≤s; z≤n; NonZero)
+  using (ℕ; suc; _+_; _*_; _∸_; _^_; _<_; s≤s; z≤n; NonZero)
 open import Data.Nat.Properties as ℕP
-  using (≤-trans; <-≤-trans; ≤-reflexive; *-monoˡ-≤; +-monoˡ-<; m^n≢0; ^-distribˡ-+-*; +-identityʳ)
+  using (<-≤-trans; *-monoˡ-≤; +-monoˡ-<; m^n≢0; ^-distribˡ-+-*; +-identityʳ)
 open import Data.Nat.DivMod
   using (_/_; _%_; m<n⇒m%n≡m; m<n⇒m/n≡0; [m+kn]%n≡m%n; +-distrib-/; m*n/n≡m; m*n%n≡0)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Float.Dyadic using (FloatFormat; modPow)
+open import Once.Spec.Float.Dyadic using (modPow)
 open Once.Spec.Float.Dyadic.FloatFormat using (exp-bits; sig-bits)
-open import Once.Spec.Float.Value using (Sign; pos; neg; FloatVal)
+open import Once.Spec.Float.Value using (pos; neg)
 open import Once.Spec.Float.Encoding
   using (signBitOf; signWeight; signOf; decodeAt; decode)
 open import Once.Float.DyadicLaws using (combine-bound)

@@ -34,13 +34,12 @@ module Once.CCC.Codegen.IRObsCorrect.BlockCall (o : CanonicalName) (tbl : DL.Lis
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; instr-ctrl; c-ret; c-thunk; c-entry; EntryId; e-thunk; block-layout; StackMem; module MemOps)
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; instr-ctrl; c-ret; c-entry; EntryId; e-thunk; block-layout; StackMem; module MemOps)
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
 open import Once.CCC.Label using (LabelId)
 open import Data.Nat using (s≤s; z≤n)
 open import Data.List.Properties using (++-identityʳ)
-open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
 import Once.Denotation.ValueDomain as ValueDomain
 open import Data.Unit using (⊤)
 open import Once.IRTy using (IRTy)
@@ -48,19 +47,17 @@ open import Once.IR.Semantics.Iterative using (T∞)
 open import Once.CCC.Machine.SMCore using (StoredValue)
 open import Once.Denotation.Approx using (budgetLeft)
 import Once.CCC.Machine.Allocation as Alloc
-open import Relation.Nullary using (yes; no)
 open import Once.Res using (Res; returns; stopped; is-stopped)
 open import Once.Denotation.Approx using (Ap; done; cut; NotCut)
 
 module BlockCallC {FS : FrameSemantics} where
 
   open Core {FS}
-  open FrameSemantics FS using (Frame; shift-frame; _≺_; ≺-trans; ≺-irrefl; shift-≺; shift-below; _≟F_)
-  open AllocState using (current-frame; saved-frames; next-slot; next-heap-ref; frame-slots)
-  open LocState using (halted; stackMem; heapMem)
+  open FrameSemantics FS using (Frame; _≺_; ≺-trans; ≺-irrefl; shift-≺; shift-below; _≟F_)
+  open AllocState using (current-frame; saved-frames; next-slot; frame-slots)
+  open LocState using (halted; stackMem)
   open Alloc.FrontierInvariant {FS} using (src-origin)
   open MemOps {FS} using (clear-frame)
-  open FlatStepsAPI {FS} using (flat-step1)
 
   ----------------------------------------------------------------------
   -- The callee frame and the state the marker leaves.

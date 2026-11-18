@@ -39,7 +39,7 @@ open import Once.Arith.CmpOp using (cmp-bit; fcmp-bit)
 open import Once.Float.Word using (round)
 open import Once.Spec.Float.Dyadic using (binary32)
 open XI using (XR0; XR1)
-open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd; ⌊_⌋ᴾ; flat-off; flat-addr; InputShape; Path)
+open import Once.Arith.Machine.Shape using (InputPath; ⌊_⌋ᴾ; flat-off; flat-addr; InputShape; Path)
 open import Once.Target.X86-32.PhysReg using (Reg; eax; ecx; esp)
 open import Once.Arith.Backend.X86-32.Emit using (arith-reg)
 import Once.CCC.Target.X86-32.Semantics as X32
@@ -352,7 +352,7 @@ pl-inv-ns i s p k meq =
 open import Once.CCC.Target.X86-32.Layout using (InStack; InHeap; stackAddr-write-preserves-heap)
 open import Once.Adequacy.ArchCorrectness.ArithSimPathLoadRegion
   InStack InHeap stackAddr-write-preserves-heap def word-bytes
-  using (plg; HeapChase; plg-stack-write-invisible; heapchase-agree)
+  using (plg)
 open import Data.Product using (_×_; _,_)
 
 
@@ -559,7 +559,6 @@ import Once.Arith.Machine.CompileCorrect as CC
 open import Once.Spec.Numerics using (module TargetNum)
 open import Once.SigOp.Words using (IM)
 open import Data.Nat.Properties using (*-monoʳ-<)
-open import Once.Target.Arch using (x86-32)
 
 private
   tn = arch-numerics x86-32

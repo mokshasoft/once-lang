@@ -13,10 +13,9 @@ module Once.Arith.Backend.RiscV64.Dispatch where
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
-open import Data.Nat using (ℕ; suc; _+_; _*_; _∸_)
+open import Data.Nat using (ℕ; suc; _*_; _∸_)
 open import Data.Product using (_×_; _,_)
 open import Data.List using (List)
-open import Data.List.Relation.Unary.All using (All)
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (refl)
 

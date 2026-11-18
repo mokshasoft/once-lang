@@ -21,7 +21,7 @@
 open import Once.Spec.Name using (CanonicalName)
 
 import Data.List as DL
-open import Once.Denotation.Program using (IRFun; tableEnv)
+open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.FoldLoop (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
@@ -34,19 +34,15 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldText o tbl using (module Ca
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldRound o tbl using (module CataFoldRoundC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldBind o tbl using (module CataFoldBindC)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue)
+  using (AbstractTrace; StoredValue)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as IRTy′
 open import Once.IRTy.WF using (wf-⌈⌉)
-open import Once.Res using (Res; returns; stopped; is-stopped)
-open import Once.IR.Semantics.Iterative using (T∞; return∞; _>>=∞_)
-open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenAp; run-approx-bind)
-open import Data.List.Properties using (++-identityʳ)
+open import Once.IR.Semantics.Iterative using (T∞)
+open import Once.Denotation.Approx using (NotCut)
 import Once.IR.Semantics.Trace as TM
-open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.Spec.Word using (Carrier)
 open import Once.IR.Semantics.Value Carrier Carrier using (sem-Out; ⟦_⟧F)
 open import Data.Product using (Σ)
@@ -54,14 +50,11 @@ open import Data.Product using (Σ)
 module CataFoldLoopC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open CataBrTextC {FS} using (module Text)
-  open CataFoldInvC {FS} using (module Inv; RoundRun; Same)
+  open CataFoldInvC {FS} using (module Inv; RoundRun)
   open CataFoldTextC {FS} using (module FoldAt)
   open CataFoldRoundC {FS} using (module Round)
   open CataFoldBindC {FS} using (bind-rr; pure-rr)
-  open LocState using (halted)
-  open AllocState using (next-slot)
 
   ------------------------------------------------------------------------
   -- THE FOLD LOOP.

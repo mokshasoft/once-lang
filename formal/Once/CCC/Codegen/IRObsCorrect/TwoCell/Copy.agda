@@ -25,21 +25,20 @@ module Once.CCC.Codegen.IRObsCorrect.TwoCell.Copy (o : CanonicalName) (tbl : DL.
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; ValueLocation)
+open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.SMCore
-  using (AllocState; AbstractTrace; LocState; StoredValue; sucLoc; readReg; writeReg; writeReg-same; Input1; Output;
+  using (AllocState; AbstractTrace; LocState; StoredValue; readReg; writeReg-same; Input1; Output;
          SV-Ptr; mov-to-input; module LocState; module AllocState)
 open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
 open LocState using (halted; regs)
 import Once.IRTy as IT
 open import Once.IRTy using (IRTy)
 
-open import Once.CCC.Codegen.FlatLayout using (Kind; word; flat; kind)
+open import Once.CCC.Codegen.FlatLayout using (flat; kind)
 open import Once.CCC.Codegen.IRToTrace o using (node-copy-trace)
 open import Once.CCC.Codegen.IRObsCorrect.NodeCopy o tbl using (module NodeCopyC)
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Run o tbl
 open import Once.CCC.Codegen.IRObsCorrect.TwoCell.Build o tbl
-open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 open import Data.List.Relation.Unary.All using ([]; _∷_)
@@ -69,7 +68,6 @@ module KindFacts {FS : FrameSemantics} where
 module CopyTwoCellC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open TwoCellRunC {FS}
   open TwoCellBuildC {FS}
   open KindFacts {FS}

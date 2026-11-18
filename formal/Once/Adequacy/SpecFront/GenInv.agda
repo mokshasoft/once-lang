@@ -127,7 +127,7 @@ module _ {n : ℕ} {Γ : Ctx m n} {Φ : Usage n} {X : Ty m} {π₀ : Purity} whe
 -- The combinators: their arguments, and their types
 ------------------------------------------------------------------------
 
-open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-refl; ⊑ᵘ-+; ⊑ᵘ-*ʳ; ⊑ᵘ-≡; +ᵘ-comm; One*ᵘ)
+open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-+; ⊑ᵘ-≡; +ᵘ-comm; One*ᵘ)
 open import Once.Spec.Grade using (_≤q_; 0≤q; 1≤1; 1≤ω; ω≤ω; _+q_)
 
 private

@@ -28,10 +28,10 @@ open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.Codegen.IRObsCorrect.NuForce o tbl
 open import Once.CCC.Codegen.IRToTrace o using (resuspend-layer)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Output
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; readReg; Output
         ; SV-Code; SV-Ptr; sucLoc)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
+open import Once.CCC.Machine.Locations using (ValueLocation; AtStack)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Label using (ℓ)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; IsBaseTypeI; wf-K; wf-Id; wf-Sum; wf-Prod)
@@ -40,7 +40,6 @@ open import Once.CCC.Codegen.IRObsCorrect.Resusp.Id o tbl using (module ResuspId
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Prod o tbl using (module ResuspProdC)
 open import Once.CCC.Codegen.IRObsCorrect.Resusp.Sum o tbl using (module ResuspSumC)
 import Once.CCC.Machine.ValueRel as CWF
-open import Data.Sum using (inj₁)
 import Once.IRTy as IRTy′
 import Once.Denotation.ValueDomain as ValueDomain
 

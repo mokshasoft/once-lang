@@ -10,7 +10,6 @@
 
 import Once.TypeCheck.ElaborateSound
 import Once.Spec.Context as SCx
-open import Once.Spec.Type using (Ty)
 open import Once.TypeCheck.Classify using (TopCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
@@ -71,11 +70,10 @@ import Once.Context as Ctx
 import Once.Spec.Context as Ctx
 import Once.Surface.Syntax as Srf
 open import Once.TypeCheck.Scope using (Imports)
-open import Once.Type.Instance using (rigidOf)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.Program using (IRFun)
 open Once.Denotation.Program.IRFun using (fname)
-open import Once.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; ctxOfAt; MonoWit)
+open import Once.Module using (ModTele; []; ffi; mono; poly; MainIn; ctxOf; MonoWit)
 open import Once.Adequacy.ModuleProgram Σ using (Names; monoDef; monoBody; packOf; packOfAt; polyDef; PolyWit)
 open import Once.TypeCheck.SpecWitness using (Pack; OkOf; OkSOf; ok-sig; ok-inj; oks-fun)
 import Once.Adequacy.ScopeRefs as SR
@@ -115,7 +113,7 @@ import Once.TypeCheck.View as TView
 open import Once.Type.Core using (none; noResp)
 open import Once.Type.Schema using (kinded-instance)
 open import Once.Postulates using (extensionality)
-open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
+open import Relation.Binary.HeterogeneousEquality as H using ()
 open import Function using (id)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 
@@ -133,7 +131,6 @@ open import Once.Adequacy.GradedRelation Σ σ₀ fmt using (RelGM; GM-D; RelGM-
 open import Once.IR.Semantics.Iterative using (T∞)
 open import Once.Denotation.TraceMonadInfLaws using (RelS)
 open import Once.Denotation.ValueRel using (RelD)
-open import Once.Denotation.ValueRelPER using (RelS-trans; RelD-trans)
 open import Once.Denotation.EvalRel using (table-self; coh-runs)
 open import Once.Adequacy.TeleEnvLemmas fmt φ Σ σ₀ using (σW; σW-self; callSD-later; refs-skip; refs-head; spliceClosed; RefsAgree; envrel-transport;
   imprel-transport; calls-same)

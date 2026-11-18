@@ -20,8 +20,8 @@ import Once.Spec.Grade
 module Once.Adequacy.SpecCore.Monad (Σ : Signature) where
 
 
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Sum using (_⊎_; inj₁)
+open import Relation.Binary.PropositionalEquality using (refl)
 
 import Once.Spec.Grade as SG
 import Once.Spec.Effect Σ as SE

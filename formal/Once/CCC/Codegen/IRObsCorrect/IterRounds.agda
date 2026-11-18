@@ -26,40 +26,27 @@ module Once.CCC.Codegen.IRObsCorrect.IterRounds (o : CanonicalName) (tbl : DL.Li
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.CCC.Machine.SMCore
-  using (AllocState; AbstractTrace; LocState; StoredValue; module LocState; module AllocState)
-open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
-open LocState using (halted; regs)
+  using (AbstractTrace)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Nat using (s≤s; z≤n)
-open import Data.Nat.Properties using (+-monoˡ-≤; +-monoʳ-≤; ≤-pred)
-open import Data.Nat.Solver using (module +-*-Solver)
-open +-*-Solver using (solve; _:+_; con; _:=_)
+open import Data.Nat.Properties using (≤-pred)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
 open import Once.Res using (Res; stopped; returns; is-stopped)
-open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenIter; run-approx-iter; done-≤; done-value)
+open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft; thenIter; run-approx-iter; done-value)
 import Once.IR.Semantics.Trace as TM
 import Data.List.Properties as DLP
 
-open import Once.CCC.Codegen.IRObsCorrect.IterShape o tbl
-open import Once.CCC.Codegen.IRObsCorrect.IterRun o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterInv o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterExit o tbl
-open import Once.CCC.Codegen.IRObsCorrect.IterCont o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterBody o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterRoundsCont o tbl
 
 module IterRoundsC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
-  open IterShapeC {FS}
-  open IterRunC {FS}
   open IterInvC {FS}
   open IterExitC {FS}
-  open IterContC {FS}
   open IterBodyC {FS}
   open IterRoundsContC {FS} using (module ContRun)
 
@@ -73,8 +60,6 @@ module IterRoundsC {FS : FrameSemantics} where
     (Z : Loop.Anchor body n l base prog)
     where
 
-    open IterShape body n l
-    open IterRun body n l prog base span
     open Loop body n l base
     open Anchor Z
     module VR = ValueRealized

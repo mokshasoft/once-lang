@@ -49,13 +49,11 @@ open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldLoop o tbl using (module Ca
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.FoldExit o tbl using (module CataFoldExitC)
 open import Once.CCC.Codegen.IRToTrace o using (cata-strategy; strat-branching)
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; Output; SV-Ptr; offsetLoc)
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; SV-Ptr; offsetLoc)
 open import Once.CCC.Codegen.Size using (size)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; module HeapLocation; module HeapRef)
-open HeapLocation using (heap-ref)
-open HeapRef using (ref-id)
+open import Once.Memory.HeapAddress using (HeapLocation; module HeapLocation)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ⌈_⌉F; μ-type)
 import Once.IRTy as IRTy′
 open import Once.IRTy.WF using (wf-⌈⌉)
@@ -74,7 +72,6 @@ import Once.IR.Semantics.Trace as TM
 module CataBranchC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open ResuspBaseC {FS} using (SegA; seg-bf; live-from)
   open GetC {FS} using (offset-zero)
 
@@ -87,7 +84,7 @@ module CataBranchC {FS : FrameSemantics} where
   open CataFoldLoopC {FS} using (module Loop)
   open CataFoldExitC {FS} using (module Exit; word→place)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
+  open AllocState using (next-slot; next-heap-ref)
 
   private
     done-inj : ∀ {V : Set} {v v′ : V} {r r′ : ℕ} → _≡_ {A = Res (Ap V)} (returns (done v r)) (returns (done v′ r′)) → v ≡ v′

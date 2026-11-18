@@ -12,15 +12,14 @@ open import Once.Spec.Signature using (Signature)
 
 module Once.Metatheory.Laws.LayerSem (Σ : Signature) where
 
-open import Data.Nat using (ℕ; suc)
-open import Data.Fin using () renaming (zero to fz; suc to fs)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Nat using (ℕ)
+open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂)
 open import Once.Spec.Grade using (pure)
 
 open import Once.Spec.Type using (Ty; Fun; KCtx; ∅ₖ; Respects; Base; b-var; b-Unit; b-Void; b-Int; b-Float; b-*; b-+;
-                                  WFFun; wf-K; wf-Id; wf-⊕; wf-⊗; var; _*_; _+_; μ; K; Id; _⊕_; _⊗_;
+                                  WFFun; wf-K; wf-⊕; wf-⊗; _*_; _+_; μ; K; Id; _⊕_; _⊗_;
                                   ⟦_⟧F; TySub; _⟨_⟩; _⟨_⟩F; at₀; shiftᵗ)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; sfmap; μS; inS)
 open import Once.Spec.Effect Σ using (LayerEq)

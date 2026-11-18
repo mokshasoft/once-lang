@@ -39,13 +39,12 @@ open LocState using (halted; regs)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
 open import Once.IR.Semantics.Iterative using (T∞; iterRun)
-open import Once.Res using (Res; stopped; returns)
-open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
+open import Once.Res using (returns)
+open import Once.Denotation.Approx using (done; NotCut; budgetLeft)
 
 module IterInvC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
 
   module Loop {E A B : IRTy} (body : IR (E IRT.* A) (B IRT.+ A)) (n l : ℕ) (base : ℕ) where
 

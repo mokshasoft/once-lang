@@ -44,12 +44,11 @@ open import Once.CCC.Label using (module LabelId; ℓ; LabelId)
 open LabelId using (idx)
 open import Once.CCC.Codegen.FlatLayout using (get-i; get-one; get-i-P)
 open import Once.CCC.Machine.SMCore using (offsetLoc)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AllocState; AbstractTrace; load-indirect-suc; mov-to-input; LocState; SV-Tag; readReg; Input1; SV-Ptr; sv-as-loc; StoredValue; sucLoc; Output; writeReg-same; module LocState)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AllocState; AbstractTrace; mov-to-input; LocState; SV-Tag; readReg; Input1; SV-Ptr; sucLoc; Output; module LocState)
 open LocState using (regs)
 open import Data.Nat.Properties using (1+n≰n)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
 open import Data.Sum using (inj₁; inj₂)
-open import Data.Product using (Σ)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
 open import Data.Nat using (s≤s)
@@ -114,10 +113,9 @@ shuffle-end = solve 3 (λ a b c →
 module ShapeC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel; fl-hit)
-  open ClosureWellFormedBase {FS} using (SumTag; rep-prim)
+  open ClosureWellFormedBase {FS} using (SumTag)
   open import Once.CCC.Machine.FlatWords {FS} using (offset-1)
 
   ----------------------------------------------------------------------

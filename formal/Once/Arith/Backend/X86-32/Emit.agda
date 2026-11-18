@@ -38,7 +38,7 @@ open import Once.Arith.CmpOp using (CmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne; F
 open import Once.Spec.Theory
   using (float-rounded; float-order; float-equality; ‵==ᵈ; ‵!=ᵈ; ‵<ᵈ; ‵<=ᵈ; ‵>ᵈ; ‵>=ᵈ; ‵<; ‵<=; ‵>; ‵>=; ‵==; ‵!=)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
-open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
+open import Once.Arith.Machine.Shape using (InputPath)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
 open import Once.Arith.Type using (NInt; NFloat)
 open import Once.Arith.Machine.IR using (ArithBlock; mk-block)

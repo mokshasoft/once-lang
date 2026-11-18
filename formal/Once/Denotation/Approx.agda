@@ -17,7 +17,7 @@
 module Once.Denotation.Approx where
 
 open import Data.Nat using (ℕ; zero; suc)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Once.IR.Semantics.Trace using (T; ret; call; halt)
@@ -69,13 +69,11 @@ budgetLeft r (returns cut)        = 0
 open import Data.List using (List; _++_; [_])
 open import Data.Product using (proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (false)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Once.Res using (mapRes; is-stopped)
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.IR.Semantics.Iterative using (embed; embedBlock)
-open import Once.IR.Semantics.Trace using (Interp; Run; run; run-call; consE; callAnswer; callEvent; haltEvent; unlinkedOp; CallOp)
-open import Once.IR.Semantics.Trace using (module CallOp)
+open import Once.IR.Semantics.Trace using (Interp; Run; run; run-call; consE; callAnswer; callEvent; CallOp)
 open CallOp using (cdom; ccod)
 import Once.Semantics.Machine as M
 

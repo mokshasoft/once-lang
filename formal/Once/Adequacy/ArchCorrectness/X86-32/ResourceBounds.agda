@@ -28,11 +28,9 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 -- Plan 0.105: the machine runs against an interpretation, so these facts about
 -- its states are stated at one.
-open import Data.Sum using (_⊎_)
-open import Data.Product using (Σ)
 module Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds (o : CanonicalName) (ι : Interp) where
 
-open import Data.Nat using (ℕ; suc; _+_; _≤_; _<_)
+open import Data.Nat using (ℕ; suc; _+_; _<_)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -46,8 +44,7 @@ import Once.Word as W32L
 module W = W32.Width 32
 module WL = W32L.WidthLaws 32
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-entry; c-start; c-ret; instr-load-tag-lit; instr-load-const; instr-room; AbstractInstr; CallI)
-open import Once.CCC.Label using (EntryId)
+  using (AbstractTrace; instr-ctrl; c-ret; instr-load-tag-lit; instr-load-const; instr-room)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Spec.Float.Dyadic using (binary32)
 open import Once.Spec.Float.Decimal using (Decimal)

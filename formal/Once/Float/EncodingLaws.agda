@@ -21,41 +21,33 @@
 module Once.Float.EncodingLaws where
 
 open import Data.Nat as ℕ
-  using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _<_; _≤_; s≤s; z≤n; s≤s⁻¹)
+  using (zero; suc; _+_; _*_; _∸_; _^_; _<_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties as ℕP
-  using ( ≤-refl; ≤-trans; <-≤-trans; ≤-<-trans; ≤-reflexive; <⇒≢; +-identityʳ; +-comm
-        ; *-identityʳ; *-monoˡ-≤; *-monoˡ-<; *-cancelˡ-≤; ^-distribˡ-+-*; ^-monoʳ-≤
-        ; ^-monoʳ-<; m^n>0; m^n≢0; m+[n∸m]≡n; m∸n≤m; ∸-monoˡ-≤; suc-injective)
-open import Data.Nat.DivMod using (_/_; _%_; n/1≡n; n%1≡0)
+  using ( ≤-refl; ≤-trans; ≤-<-trans; ≤-reflexive; <⇒≢; +-identityʳ; +-comm; ^-distribˡ-+-*; ^-monoʳ-≤
+        ; ^-monoʳ-<; m^n>0; m∸n≤m)
 import Data.Integer as ℤ
 open import Data.Integer using (ℤ; +_; -[1+_])
 import Data.Integer.Properties as ℤP
-open import Data.Bool using (Bool; true; false; T)
-open import Data.Product using (Σ; _×_; _,_)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥-elim)
-open import Relation.Nullary using (¬_)
+open import Data.Bool using (false)
+open import Data.Product using (_,_)
+open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
+  using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Spec.Float.Dyadic using (FloatFormat; bias; bitLen; binary32; binary64)
+open import Once.Spec.Float.Dyadic using (bias; bitLen)
 open Once.Spec.Float.Dyadic.FloatFormat using (exp-bits; sig-bits)
 open import Once.Spec.Float.Value
-  using ( Sign; pos; neg; FloatVal; fv-zero; fv-num; fv-inf; fv-nan; odd
-        ; qmin; quantum; overflows; canon; finish; finishAt; roundAt; roundQ
-        ; roundHalfEven; divRHE; lg; lgAt; atLeast; scaleRHE; fitV; Fits)
-open import Once.Spec.Float.Decimal using (Decimal; roundDec)
+  using ( pos; fv-zero; fv-num; fv-inf; fv-nan; odd
+        ; qmin; canon)
+open import Once.Spec.Float.Decimal using (roundDec)
 open import Once.Spec.Float.Encoding
-  using ( signBitOf; signWeight; maxExpField; zeroW; infW; nanW; normalW; subnormalW
+  using ( signBitOf; signWeight; maxExpField; infW; nanW; subnormalW
         ; numAt; encode; decodeMax; decodeAt; decode)
 import Once.Float.Word as Word
 import Once.Spec.Float.Arith as FA
 
 open import Once.Float.DyadicLaws using (combine-bound)
-open import Once.Metatheory.Float.Nat
-  using (bitLen-upper; bitLen-lower; bitLen-≤; bitLen-pos; bitLen-shift; odd-pow-<)
-open import Once.Metatheory.Float.Canon using (canon-spec; canon-odd)
-open import Once.Metatheory.Float.Scale using (scaled-≤)
+open import Once.Metatheory.Float.Canon using (canon-odd)
 open import Once.Float.EncodingLaws.Fields using (decode-fields)
 
 open import Once.Metatheory.Float.Range

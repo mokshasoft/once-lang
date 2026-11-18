@@ -24,19 +24,18 @@ open import Once.Spec.Signature using (Signature; call)
 
 module Once.Metatheory.Recursion (Σ : Signature) where
 
-open import Data.List using (List; []; _∷_; _++_; [_])
+open import Data.List using ([]; _++_; [_])
 open import Data.Product using (∃-syntax; _×_; _,_)
-open import Data.Empty using (⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.Spec.Grade using (Finite; pureᶠ; actᶠ; fin; Purity; pure; act; eff)
+open import Once.Spec.Grade using (Finite; pureᶠ; actᶠ; fin; Purity)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; inS; sfmap)
 open import Once.Spec.Effect Σ
 open import Once.Spec.Domain Σ using (foldM; layerM; traverseM)
 open import Once.Spec.Signature using (⟦_⟧ᵇ; Op; module Op; arg; NotEmpty; notEmpty?; Event; eventOf)
 open import Once.Spec.Observation Σ using (World; module World; History; trace; blockD; after)
-open import Once.Spec.Trace using (End; returned; halted; Tr; module Tr; EndRel; halted≈; StepRel; _≈ᵗ⟨_⟩_; module _≈ᵗ⟨_⟩_)
+open import Once.Spec.Trace using (End; Tr; module Tr; halted≈; StepRel; _≈ᵗ⟨_⟩_; module _≈ᵗ⟨_⟩_)
 open import Once.Spec.Delay using (Delay; module Delay; _⇓_; now⇓; later⇓)
 open import Once.Spec.Metatheory using (Recursion)
 open import Once.Metatheory.Bisim Σ
@@ -198,8 +197,6 @@ module Final (G : SFunctor) {X : Set} where
 
 module Unroll {A B : Set} (c : A → T (B ⊎ A)) (w : World) where
   open World w using (answer)
-  open Delay using (step)
-  open Tr using (next)
   open _≈ᵗ⟨_⟩_ using (same)
 
   private

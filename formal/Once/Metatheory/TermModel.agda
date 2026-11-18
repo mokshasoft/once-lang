@@ -17,7 +17,7 @@ open import Once.Spec.Signature using (OneName)
 
 module Once.Metatheory.TermModel (Σ : Signature) (u : OneName Σ) where
 
-open import Data.Fin using (Fin; zero; suc)
+open import Data.Fin using (zero; suc)
 open import Data.Nat using (ℕ)
 open import Data.Product using (_,_)
 open import Data.Unit using (tt)
@@ -26,19 +26,19 @@ open import Once.Spec.Grade using (Zero; One; Many; pure)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Type using (KCtx; TySub; Respects; ∅ₖ; _⟨_⟩)
 open import Once.Spec.Context using (Ctx; _▸_; lookup; singleUse; _∷_; _+ᵘ_; _*ᵘ_; _⊑ᵘ_)
-open import Once.Spec.Core.Syntax using (Defs; let′; _[_])
+open import Once.Spec.Core.Syntax using (Defs; let′)
 open import Once.Spec.Equivalence Σ using (Same)
 import Once.Spec.Equivalence
 open import Once.Spec.Metatheory using (TermModel; SameDefs; SameEnv)
 open import Once.Metatheory.Coherence.Relation Σ using (Related-trans; toObserved)
-open import Once.Metatheory.Coherence.Layer Σ using (Rel; rel; runs; relPure⁻)
+open import Once.Metatheory.Coherence.Layer Σ using (Rel; runs; relPure⁻)
 open import Once.Metatheory.Coherence.PER Σ using (Same-trans)
 open import Once.Metatheory.TermModel.Usage using (⊑ᵘ-≡; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
 
 module _ (fmt : TargetNum) {s : ℕ} (S : Defs s) where
   open import Once.Spec.Core.Typing Σ S
   open import Once.Spec.Core.Meaning Σ fmt S
-  open import Once.Metatheory.TermModel.Subst Σ S using (subst-⊢; sub-⊢; single; cast; single-usage; single-term; module TSub)
+  open import Once.Metatheory.TermModel.Subst Σ S using (subst-⊢; sub-⊢; single; cast; single-usage; single-term)
   open import Once.Metatheory.TermModel.TySubst Σ S using (ty-subst-⊢)
   open import Once.Metatheory.TermModel.Val Σ fmt S
   open import Once.Metatheory.TermModel.SubSem Σ u fmt S using (module SubSem)

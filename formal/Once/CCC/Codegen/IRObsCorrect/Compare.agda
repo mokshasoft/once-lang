@@ -32,7 +32,7 @@ module Once.CCC.Codegen.IRObsCorrect.Compare (o : CanonicalName) (tbl : DL.List 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (AtStack; AtDynamic; ValueLocation)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; module HeapRef; module HeapLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; module HeapRef; module HeapLocation)
 open import Once.CCC.Machine.SMCore using (store-at; AbstractTrace; writeReg)
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
@@ -53,14 +53,14 @@ open import Once.Arith.Prim using (p-add; p-sub; p-mul; p-div; p-mod; p-neg;
                                    p-fadd; p-fsub; p-fmul; p-fdiv; p-i2f; p-cmp; p-fneg; p-fcmp; bool; ArithPrim)
 open import Data.Bool using (Bool; if_then_else_)
 import Data.Nat as ℕ
-open import Once.Arith.CmpOp using (CmpOp; cmp-word; fcmp; fcmp-word-at)
+open import Once.Arith.CmpOp using (cmp-word; fcmp; fcmp-word-at)
 open import Once.Spec.Theory using (module Models; ⟦_⟧ₛ)
 open import Once.Spec.Float.Encoding using (decode)
 open import Once.Arith.SigOp.Compare using (CmpAt; int-c; flt-c; cmp-of; cmp-block-info)
 open import Once.CCC.Codegen.IRToTrace o using (sigop-code; cmp-trace)
 open import Once.Spec.Numerics using (module TargetNum)
 open TargetNum using (int-bits; float-format)
-open import Once.CCC.Machine.SMCore using (instr-reg-op; out-nz; sv-nz; module AbstractExec; instr-sigop; load-from-slot; instr-load-tag-lit; readReg; Output; SV-Lit; writeReg-same; StoredValue; SV-Tag; mov-to-input; instr-alloc-heap; store-at-slot; sv-as-loc; Input1; store-indirect; store-indirect-suc; sucLoc; SV-Ptr; module LocState; module AllocState)
+open import Once.CCC.Machine.SMCore using (instr-reg-op; out-nz; sv-nz; module AbstractExec; instr-sigop; load-from-slot; readReg; Output; SV-Lit; writeReg-same; StoredValue; SV-Tag; mov-to-input; instr-alloc-heap; store-at-slot; sucLoc; SV-Ptr; module LocState; module AllocState)
 open AllocState using (next-heap-ref; current-frame; saved-frames)
 open LocState using (regs; halted)
 

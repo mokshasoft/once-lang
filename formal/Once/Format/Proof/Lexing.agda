@@ -21,14 +21,13 @@ module Once.Format.Proof.Lexing where
 
 open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.Char using (Char; isDigit)
-open import Data.Empty using (⊥)
 open import Data.Integer using (+_)
 open import Data.List using (List; []; _∷_; _++_; replicate; concatMap; length)
 open import Data.List.Properties using (++-assoc)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Nat using (ℕ; zero; suc; _<_; _^_)
+open import Data.Nat using (zero; suc; _<_; _^_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.String using (String; toList; fromList)
+open import Data.String using (toList; fromList)
 open import Data.Sum using (inj₁)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
@@ -38,7 +37,7 @@ open import Agda.Builtin.String.Properties using (primStringToListInjective)
 open import Once.Postulates using (toList∘fromList)
 open import Once.Spec.Surface.Lexing
 open import Once.Adequacy.SpecTokNames
-open import Once.Format.Spell using (spell; decimal; fixed)
+open import Once.Format.Spell using (decimal; fixed)
 open import Once.Format.Doc using (Lexeme; lt; lsp; lnl; lind; lcm; chars; apart; continues; number; dashes;
   greater; equals; dots)
 open import Once.Format.Proof.Digits using (decimal-val; decimal-digits; decimal-nonempty; fixed-val;

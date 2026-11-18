@@ -39,7 +39,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.Locations using (ValueLocation)
 open import Once.IRTy using (IRTy)
-open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AllocState; AbstractTrace; AbstractInstr; load-indirect-suc; mov-to-input; LocState; StoredValue; readReg; Input1; Output; writeReg-same; module LocState)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AllocState; AbstractTrace; AbstractInstr; mov-to-input; LocState; StoredValue; readReg; Input1; Output; writeReg-same; module LocState)
 open LocState using (halted; regs)
 
 import Once.CCC.FrameSemantics

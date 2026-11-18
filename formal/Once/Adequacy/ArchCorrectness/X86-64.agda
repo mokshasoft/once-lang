@@ -45,28 +45,20 @@ module Once.Adequacy.ArchCorrectness.X86-64
   -- in range BY CONSTRUCTION; this is the frontend's range, not yet threaded.
   (x86-64-lit-fits : RB.LitFits o ι) where
 
-open import Data.Nat using (ℕ; _+_; z≤n; s≤s; suc)
+open import Data.Nat using (ℕ; _+_; z≤n; s≤s)
 open import Data.Unit using (tt)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.String using (String)
-open import Data.List using ([]; take; map)
+open import Data.List using ([])
 open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_)
-open import Once.Adequacy.MachineTrace using (listTr; module Machine)
+open import Once.Adequacy.MachineTrace using (module Machine)
 import Once.Target.Arch
 open import Once.Adequacy.BudgetApex (Once.Target.Arch.arch-numerics Once.Target.Arch.x86-64) using (budget-apex-⊑; BudgetFact⊑; budget-fact-of)
 open import Once.Denotation.Program using (runIR)
 open import Once.IR.Semantics.Trace using (pureHalf)
 import Once.IR.Semantics.Trace as LT
-open import Once.Denotation.Approx using (approx)
-open import Once.Denotation.TraceTr using (obsAp)
-open import Once.Adequacy.FuelTrace using (module Fuel)
-open import Data.Product using (Σ-syntax)
-open import Data.Nat using (suc; _≤_)
-open import Once.IR.Semantics.Event using (toEvent)
-open import Once.Denotation.TraceTr using (endOf)
-open import Data.Bool using (Bool; false)
-open import Data.Product using (proj₁; proj₂; _,_; _×_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; subst₂)
+open import Data.Bool using (Bool)
+open import Data.Product using (proj₁; proj₂; _,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; module HeapLocation)
 open HeapLocation using (heap-offset)
 open import Once.CCC.Machine.SMCore using (module AllocState)
@@ -78,12 +70,11 @@ open import Once.CCC.Target.X86-64.Syntax using (slot-size)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (_*_)
-open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; ≤-trans; m≤m+n)
+open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; m≤m+n)
 open import Once.Adequacy.CPU.X86-64 using (call-at-x86-64; ev-x86-64; block-env; run-trace-x86-64; val-x86-64)
 import Once.CCC.Target.X86-64.File as RF
 import Data.Maybe
 open import Data.Sum using (inj₂)
-open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.Adequacy.EmitFile using (file-is-emit-at)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
 import Once.Arith.Backend.X86-64.RunTrace as RTx
@@ -92,13 +83,12 @@ import Once.CCC.Target.X86-64.Syntax as XS
 open import Once.CCC.Label using (LabelId; thunk)
 open import Once.IR using (IR)
 open import Once.IRTy using (Unit)  -- Plan 0.52 M2: IRTy Unit
-open import Once.Denotation.Behavior using (Behavior)
-open Once.Denotation.Behavior.Behavior using (at)
+import Once.Denotation.Behavior
 open import Once.Adequacy.CPU using (arch-semantics)
 open import Once.Target.Arch using (x86-64)
 open import Once.Arith.Backend.CallAnswer using (answer-at)
 open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
-open import Once.Compile using (moduleToIR; moduleTable; rewrite-program)
+open import Once.Compile using (rewrite-program)
 import Once.IR as IR
 open import Once.Denotation.Program using (irProgram; LinkedProgram; IRProgram)
 open Once.Denotation.Program.IRProgram using (main; table)
@@ -129,7 +119,7 @@ open import Once.Adequacy.RoomChecksEvents using (module RoomEvents)
 -- apex could not discharge `ir-size ir < program-bound` for an `ir` that does
 -- not exist yet (that was the false `entry-size`). The premise and the whole
 -- telescope are deleted; this `open` takes no bound.
-open IRObsCorrectFlatness {x86-64-frame-semantics} using (ir-obs-correct; MachineRefinesObsF; ValueRealized; eventsAt; resultAt; evalᴰ; floc)
+open IRObsCorrectFlatness {x86-64-frame-semantics} using (ir-obs-correct)
 
 -- The FlatFromObs bundle at the x86-64 params (concrete machine now VISIBLE).
 ------------------------------------------------------------------------
@@ -183,8 +173,6 @@ as64 = arch-semantics x86-64
 -- The apex node `conc-flat-sim-just` is DEFINED via `events-agree`; every gap it
 -- rests on is a NAMED obligation on THIS path (deleting it fails the typecheck).
 open FlatMachine {x86-64-frame-semantics} using (mkFlat)
-open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
-open FlatEventTrace {x86-64-frame-semantics} using (flat-events)
 
 -- THE MEMORY BOUND, now supplied HERE rather than postulated inside the
 -- correspondence (2026-08-05): a statement that a finite resource does not
@@ -201,7 +189,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
   x86-64-reg-range
   (RB.AddrNoWrap.ret-no-wrap x86-64-addr-no-wrap)
   (RB.LitFits.tag-fits x86-64-lit-fits) (RB.LitFits.lit-fits x86-64-lit-fits) (RB.float-fits o ι)
-  using (events-agree-start; events-agree-boot; AgreeAt; CompiledCorr; HeapView; EntryLike; reach-start; RunAt; mkRunAt)
+  using (events-agree-boot; AgreeAt; CompiledCorr; HeapView; EntryLike; reach-start; mkRunAt)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o x86-64-frame-semantics slot-size refl using (RunLow; low-start)
 open import Once.CCC.Machine.FlatStoreWF x86-64-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.SMCore using (AbstractReg; AbstractTrace; Input1; Output; readReg; SV-Ptr; SV-Lit; module LocState)

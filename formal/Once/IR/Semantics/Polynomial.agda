@@ -16,8 +16,8 @@ module Once.IR.Semantics.Polynomial where
 
 import Once.Spec.Type
 
-open import Data.Product using (_×_; _,_)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Product using (_,_)
+open import Data.Sum using (inj₁; inj₂)
 open import Once.Res using (Res; stopped; returns)
 open import Once.Spec.Polynomial using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; inS)
 

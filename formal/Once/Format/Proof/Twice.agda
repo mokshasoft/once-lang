@@ -17,22 +17,20 @@
 
 module Once.Format.Proof.Twice where
 
-open import Data.Bool using (Bool; true; false; if_then_else_; T)
+open import Data.Bool using (true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.List.Properties using (++-identityʳ; ++-assoc)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≤_; _<_; _≡ᵇ_; s≤s; z≤n)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; <-irrefl; m≤m+n; ≡ᵇ⇒≡; +-identityʳ)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax; Σ)
-open import Data.String using (String)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≤_; _<_; s≤s; z≤n)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; <-irrefl; m≤m+n; +-identityʳ)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 
-open import Once.Format.Print using (Trivia; Notes; notes; noNotes; lookupNotes; hoist; tops; topList; Note;
+open import Once.Format.Print using (Trivia; Notes; lookupNotes; hoist; tops; topList;
   note-comment; note-blank)
 open import Once.Format.Proof.Sources using (NotesSrc; NoteSrc)
 open import Once.Format.Proof.Walk using (up; hoist-at; hoist-other; hoist-after)
@@ -74,16 +72,15 @@ tops-src tv j (suc n) src = all-++ _ _ (proj₁ (src j)) (tops-src tv (suc j) n 
 -- How a declaration starts
 ------------------------------------------------------------------------
 
-open import Once.Format.Doc using (Doc; empty; blank; _<>_; Lexeme; lt; lsp; lnl; lind; lcm; St; st; brk; layout)
-open import Once.Format.Print using (W; walker; line-code; line-empty; line-text; Held; held-blank; held-comment;
-  stepTok; lineEnd; settleAt; lead; runs; topDoc; hasComment; blankLast; blankIf)
+open import Once.Format.Doc using (empty; blank; _<>_; Lexeme; lt; lnl; lind; lcm; St; st; brk; layout)
+open import Once.Format.Print using (walker; line-code; Held; held-blank;
+  stepTok; settleAt; lead; runs; topDoc; blankLast; blankIf)
 open import Once.Format.Proof.Walk using (WL; stepL; w₀; hoistAt-id)
 open import Once.Format.Proof.Rerender using (readBack)
-open import Once.Format.Proof.Lockstep using (Φ; Φ-cons; waits)
+open import Once.Format.Proof.Lockstep using (Φ; Φ-cons)
 open import Once.Format.Proof.Skeleton using (anchorTok; lineEndTok)
 open import Once.Format.Proof.Groups using (groups; gOut; mid; Entry; runs-walk; heldOf; hcT;
   runs-layout; layoutG-out; groups-ne-all; layoutG; notNull; has-of; gOut-lnl; NE; TbIs; tbOf)
-open import Once.Spec.Surface.Lexing using (Token)
 
 -- | Where the walk stands before the comments above a declaration, and
 -- what the declaration's first token settles if there are none.
@@ -232,9 +229,9 @@ lead-facts nothing ns₁ og c k H₀ T ni en p₀ = go (groups ns₁ [] false) r
 ------------------------------------------------------------------------
 
 open import Once.Spec.Surface.Syntax using (Decl)
-open import Once.Format.Print using (pdecls; pdecl; pbody; ending; gap; gapEnd; together)
+open import Once.Format.Print using (pdecls; pbody; ending; gap; together)
 open import Once.Format.Proof.Walk using (fin; frozen-ti; ti; Look; settleAt-after; lookup-settleAt)
-open import Once.Format.Proof.Lockstep using (LI; li; layout-reach; brk-ok; Reach; reach-trans; reach-refl)
+open import Once.Format.Proof.Lockstep using (LI; li; layout-reach; brk-ok; Reach; reach-trans)
 open import Once.Format.Proof.Groups using (rsOf; groups-pass2; notesOf; notesOf-++; settle-tops; settle-tops-inner;
   lead-eq; ending-eq; BlankEq; blank-pass2)
 
@@ -673,11 +670,10 @@ decls-sim ωF (d ∷ ds) prev k tvc₁ tvc₂ σ T b hy fe =
   decl-step ωF prev d ds k tvc₁ tvc₂ σ T b hy fe (λ k′ tv₁′ tv₂′ σ′ T′ → decls-sim ωF ds (just d) k′ tv₁′ tv₂′ σ′ T′)
 
 open import Data.String using (toList)
-open import Data.List.Relation.Unary.All using () renaming (map to all-map)
-open import Once.Spec.Surface.Syntax using (Module; mkModule)
-open import Once.Format.Doc using (lexemes; render; chars)
+open import Once.Spec.Surface.Syntax using (mkModule)
+open import Once.Format.Doc using (render; chars)
 open import Once.Format.Lex using (lexItems)
-open import Once.Format.Print using (format; pmodule; trivia)
+open import Once.Format.Print using (format; trivia)
 open import Once.Format.Proof.Walk using (formatted-trivia)
 open import Once.Format.Proof.Lockstep using (sp-[])
 open import Once.Format.Proof.Sources using (trivia-src; lookup-src)
@@ -710,7 +706,6 @@ module-twice ds cs pds =
     h₀ : Hyps (fin ωF) tv₁ (fin ωF) 0
     h₀ = hyps (λ j → lookup-src j tv₁ (trivia-src cs)) (λ _ _ → refl) (λ _ _ → refl) (λ _ _ → refl) refl
 
-open import Data.Sum using (inj₂)
 open import Once.Parser using (parseStrict)
 open import Once.Format using (formatSource; formatParsed)
 open import Once.Format.Proof.WF using (parsed-wf)

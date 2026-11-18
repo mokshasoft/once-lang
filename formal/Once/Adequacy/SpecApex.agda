@@ -35,22 +35,20 @@ module Once.Adequacy.SpecApex
   (arch-correct : ∀ (ι : Interp) (arch : Arch) → Compile.ArchCorrect arch ι) where
 
 open import Data.Bool using (Bool)
-open import Data.List using (List; []; _∷_; map)
+open import Data.List using (List; map)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
 open import Once.Adequacy.SpecFront.SigFacts using (rname)
-open import Data.Maybe using (Maybe; just; nothing; _>>=_)
+open import Data.Maybe using (Maybe; just; _>>=_)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (inj₂)
 open import Data.Unit using (⊤)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Adequacy.CPU.Interface using (Byte)
 open import Once.Target.Arch using (arch-numerics)
 import Once.Denotation.Behavior as B
-open import Once.IR.Semantics.Trace using (interp)
-open import Once.Contract using (Impl)
 open import Once.Spec.Trace using (Tr; _≈ᵗ⟨_⟩_; _⊑ᵗ⟨_⟩_)
 open import Once.Metatheory.Trace using (⊑≈-trans)
 open import Once.Adequacy.MachineTrace using (silentTr)
@@ -61,13 +59,11 @@ import Once.Spec.Core.Program as CoreProgram
 import Once.Spec.Source as SP
 open SP using (Source; Typed; _⊢_; behaviour; Admissible)
 open SP.Typed using (signature; program)
-open import Once.Adequacy.SpecInterp using (toInterp; toImpl; wellFormed?)
+open import Once.Adequacy.SpecInterp using (toInterp; wellFormed?)
 open import Once.Core.Decl using (toISig)
 open import Once.Adequacy.ModuleLaws using (teleSig≡entrySig)
 open import Once.Adequacy.SpecSource using (parseModules; toSource)
 open import Data.Sum using (_⊎_)
-open import Once.Denotation.TraceTr using (trT∞)
-open import Once.Contract using (ISig)
 import Once.Core.Telescope as TL
 import Once.Parser as Parser
 import Once.Parser.Module.Core as PM

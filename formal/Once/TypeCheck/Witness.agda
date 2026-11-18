@@ -26,35 +26,33 @@ open import Data.Bool using (true)
 open import Data.Integer using (ℤ)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Product using (Σ-syntax; _,_)
-open import Data.String using (String)
 open import Data.Nat using (_<_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Relation.Nullary using (¬_)
-open import Once.Spec.Grade using (Quantity; Many; One; Purity; pure; act; eff; Finite; fin; pureᶠ; actᶠ; mk-kind; _⊑π_; EffGrade)
-open import Once.Spec.Type using (Ty; Type; TySub; Respects; WFFun; Occurs; _⟨_⟩; _⇒[_]_; _*_; _+_; Unit; Void; Int; Float; μ; ν; ⟦_⟧F)
+open import Once.Spec.Grade using (Quantity; Many; One; Purity; pure; mk-kind; _⊑π_)
+open import Once.Spec.Type using (Ty; Type; TySub; Respects; WFFun; Occurs; _⟨_⟩; _⇒[_]_; _*_; _+_; Unit; Int; Float; μ; ⟦_⟧F)
 open import Once.Spec.Sub using (_<:_; _⊔_≔_)
 open import Once.Spec.Signature using (_∶_; ⌜_⌝ᵈ)
-open import Once.Spec.Surface.Generators using (Gen; kind; IsConstant; IsMap; FromDomain; FromCodomain; Constant; Morphism; Final)
+open import Once.Spec.Surface.Generators using (Gen; kind; FromDomain; FromCodomain; Constant; Morphism; Final)
 open import Once.Spec.Surface.Syntax
 open import Once.Spec.Core.Syntax
-  using (Tm; lit; lit-int; lit-float; unit; var; sigop; ref; pair; prim; num; p-i2f; let′; case; coerce; app; lam;
+  using (Tm; lit; lit-int; lit-float; unit; var; sigop; ref; pair; prim; num; let′; case; coerce; app; lam;
          _!!_; module Schema)
 open Schema using (arity; kinds; type)
 open import Once.Spec.Core.Derived
 open import Once.Spec.Context using (Usage; _∷_; zeroUsage; singleUse; _+ᵘ_; _*ᵘ_)
 open import Once.Context using (_⊔ᵘ_)
-open import Once.Type.Core using (wk₀)
 open import Once.Type.Concrete using (IsConcrete)
 open import Once.Type.Grade using (_≤qᵇ_)
 import Once.Spec.Surface.Typing Σ S nm as SU
 open SU using (Locals; _▹_∶_; _∋_⦂_at_; PartialCombinator; CheckHead; OwnCheck; DomainForm; _⇒⟨_⟩_; ↑)
 open import Once.Spec.Sub using (_<:ᶜ_)
-open import Once.Spec.Surface.Operator using (binSym; BinSym; _∶_∶_)
+open import Once.Spec.Surface.Operator using (binSym; BinSym)
 open BinSym using (theory; shape; symbol)
-open import Once.Spec.Theory using (Has; Neg; Rounded; float; float-rounded; ⌜_⌝ⁿ; symCod; ‵neg)
+open import Once.Spec.Theory using (Has; Neg; ⌜_⌝ⁿ; symCod; ‵neg)
 open import Once.TypeCheck.Use Σ S nm Ok OkS Δ
 open import Once.Type.Honest using (HonestFFI)
-open import Once.Core.Decl using (declS; ⌜declS⌝)
+open import Once.Core.Decl using (declS)
 
 ------------------------------------------------------------------------
 -- The witnesses

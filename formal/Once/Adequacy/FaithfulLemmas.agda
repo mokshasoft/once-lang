@@ -19,9 +19,9 @@
 ------------------------------------------------------------------------
 
 import Once.Spec.Type as SpT
-open import Once.Spec.Type using (WFFun; ∅ₖ)
+open import Once.Spec.Type using (WFFun)
 
-open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun)
+open import Once.Spec.Type using (Ty; Fun; KCtx)
 open import Once.Spec.Numerics using (TargetNum)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
@@ -31,11 +31,11 @@ open import Once.Denotation.DenotTrace using (CallEnv)
 module Once.Adequacy.FaithfulLemmas (fmt : TargetNum) (ρ : CallEnv) where
 
 open import Data.Unit using (tt)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; cong-app; trans; sym; subst; subst-sym-subst; subst-subst-sym; subst-∘)
 
 open import Once.Spec.Grade using (Purity; mk-kind; Many; Finite; fin; act; eff)
-open import Once.Spec.Type using (Type; _⇒[_]_)
+open import Once.Spec.Type using (_⇒[_]_)
 open import Once.Spec.Type using (μ; ν)
 import Once.Type.Core as TT
 import Once.Spec.Type as TT
@@ -45,7 +45,7 @@ import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
 open import Once.Adequacy.CataErased fmt ρ using (cata-erased-rel; pairᴰ-subst⁻)
 open import Once.Adequacy.LiftFnReduce fmt ρ using (liftFn-apply; liftFn-∘; liftFn-pair; liftFn-fst; liftFn-snd)
-open import Once.Adequacy.AnaErased fmt ρ using (VE0ᴰ; coerce-νin-erase-D)
+open import Once.Adequacy.AnaErased fmt ρ using (coerce-νin-erase-D)
 open import Once.Semantics.Machine using (coerce-ν-in; tF-coh; ⟦_⟧F)
 open import Once.Spec.Polynomial using (SFunctor; ⟦_⟧SF)
 open import Once.IR.Semantics.StreamInf using (νᴵ; anaᴵ; anaFᴵ)
@@ -67,7 +67,6 @@ open import Once.IR.Semantics.FunctorMeaning using (translateF)
 open import Once.Spec.Word using (Carrier)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 import Once.Denotation.SourceDenote as SD
-open import Once.Postulates using (extensionality)
 
 open Once.Surface.Syntax.Expr
 

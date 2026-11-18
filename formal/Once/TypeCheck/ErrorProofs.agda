@@ -27,16 +27,16 @@ module Once.TypeCheck.ErrorProofs where
 import Once.Spec.Context as SCx
 import Once.Context as Surface
 
-open import Once.Spec.Type using (var; Ty; Fun)
-open import Data.String using (String; _++_)
+open import Once.Spec.Type using (Ty; Fun)
+open import Data.String using (String)
 open import Data.String.Properties as StrProp using ()
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (¬_; yes; no)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (∃-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (∃-syntax; _×_; _,_; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
-open import Once.Spec.Type using (Type; Unit; Void; Int)
+open import Once.Spec.Type using (Unit; Void; Int)
 import Once.Spec.Grade as T
 import Once.Type.Core as T
 import Once.Spec.Type as T
@@ -53,12 +53,10 @@ open import Once.Type.Join using (UB; join?-apart)
 open import Once.Spec.Sub using (sub-int; sub-unit)
 open import Once.Type.SubDecide using (_<:?_)
 open import Once.TypeCheck.Elaborate
-  using (inferElab; checkElab; InferElabResult; success; failure; inferElabV-RNeg-aux; inferMapSpine; inferElabV-RDestruct-aux; notNumeric; asInt; isInt; numErr; inferElabV-RVar-poly-lookup-aux; inferElabV-RVar-poly-ground-aux)
-open import Once.TypeCheck.Scope using (NamedCtx; lookupImport; lookupLocal)
-open import Once.TypeCheck.Classify using (lookupPoly)
+  using (inferElab; checkElab; InferElabResult; success; failure; inferElabV-RNeg-aux; inferMapSpine; inferElabV-RDestruct-aux; notNumeric; asInt; isInt; numErr)
+open import Once.TypeCheck.Scope using (NamedCtx; lookupLocal)
 import Once.TypeCheck.Scope as Classify
-open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Once.TypeCheck.Error
   using (TypeError; LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode; InlNeedsSumType; FstNeedsPair; SndNeedsPair; CaseScrutineeNotSum; CaseBranchMismatch; TypeMismatch; UnboundVariable; UnboundQualified)
 import Once.Context

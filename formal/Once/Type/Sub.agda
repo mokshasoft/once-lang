@@ -34,7 +34,7 @@
 
 module Once.Type.Sub where
 
-open import Once.Spec.Grade using (Purity; pure; act; eff; mk-kind; _·p_; fin; _⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
+open import Once.Spec.Grade using (pure; act; eff; mk-kind; _·p_; fin; _⊑π_; ⊑-pure; ⊑-eff; ⊑-pe; ⊑-act; ⊑-pa; ⊑-ae)
 open import Once.Spec.Type using (Ty; var; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; μ; ν)
 open import Once.Spec.Sub
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)

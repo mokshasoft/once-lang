@@ -36,7 +36,7 @@ open import Once.CCC.Codegen.IRObsCorrect.CataConst.Layout o tbl using (module C
 open import Once.CCC.Codegen.IRObsCorrect.CataConst.Call o tbl using (module CataCallC)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
-open import Once.CCC.Codegen.IRToTrace o using (cata-strategy; strat-const)
+open import Once.CCC.Codegen.IRToTrace o using (cata-strategy)
 open import Once.CCC.Machine.SMCore
   using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; StoredValue; readReg; Input1; SV-Ptr; SV-Code; instr-call-closure; instr-ctrl; c-jmp; c-label)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -56,8 +56,7 @@ import Once.IR.Semantics.Trace as TM
 module CataRunC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
-  open ResuspBaseC {FS} using (SRun; SegA; segA-∘; bf-step; live-from; loc-ref; at-cf)
+  open ResuspBaseC {FS} using (SRun; SegA; segA-∘; bf-step; live-from)
   open CataLayoutC {FS} using (module Text)
   open NuForceC {FS} using (crun-retarget)
   open ApplyC {FS} using (call-at)
@@ -65,7 +64,7 @@ module CataRunC {FS : FrameSemantics} where
   open CataStepsC {FS} using (s-++)
   open CataCallC {FS} using (callK)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame; saved-frames)
+  open AllocState using (next-slot; next-heap-ref)
 
 
   -- a validity moved along a type equation

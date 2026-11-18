@@ -28,7 +28,6 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Resusp.Id (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
@@ -39,13 +38,13 @@ open import Once.CCC.Machine.SMCore
          readReg; writeReg; Output; Input1; SV-Ptr; SV-Code; StoredValue; sucLoc; offsetLoc; sv-as-loc;
          store-at-slot; load-from-slot; instr-alloc-heap; restore-input; store-at; mov-to-input; instr-load-code-addr)
 open LocState using (regs; halted)
-open AllocState using (current-frame; next-slot; next-heap-ref; saved-frames; block-size)
-open import Once.Memory.HeapAddress using (heap-loc; HeapLocation)
+open AllocState using (current-frame; next-heap-ref; block-size)
+open import Once.Memory.HeapAddress using (heap-loc)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; wf-Id) renaming (_*_ to _*ᵀ_)
 import Once.IRTy as IRTy′
 import Once.Denotation.ValueDomain as ValueDomain
 open import Once.CCC.Codegen.Size using (size)
-open import Once.CCC.Codegen.FlatLayout using (put; put-All; get; get-one)
+open import Once.CCC.Codegen.FlatLayout using (put; put-All; get)
 open import Once.CCC.Codegen.StraightRun using (module StraightRunAPI)
 import Once.CCC.Machine.FlatPut as FlatPut
 import Once.CCC.Machine.FlatAlloc as FlatAlloc
@@ -69,7 +68,7 @@ module ResuspIdC {FS : FrameSemantics} where
   open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
   open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
   open FlatEventTrace {FS} using (chain-events-subst)
-  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; out-mem; offset-zero; get-len)
+  open GetC {FS} using (GetOut; module GetOut; get-run; setOut; offset-zero; get-len)
   open ResuspBaseC {FS}
   module SR = StraightRunAPI {FS}
 

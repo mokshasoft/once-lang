@@ -24,7 +24,6 @@
 ------------------------------------------------------------------------
 
 import Once.Spec.Context as SCx
-open import Once.Spec.Type using (Ty)
 open import Once.Spec.Numerics using (TargetNum)
 
 open import Once.Spec.Signature using (Signature; WellFormed; Decl)
@@ -38,7 +37,6 @@ import Once.Spec.Observation as Obs
 module Once.Adequacy.TeleWalk (fmt : TargetNum) (Σ : Signature) (wf : WellFormed Σ) (J : Obs.Interp Σ)
   (uniq : Unique (map (λ d → showCanonical (Decl.name d)) Σ)) where
 
-open import Data.Nat using (ℕ)
 open import Data.Fin using (zero; suc)
 open import Data.List using (List; []; _∷_; _++_; map)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
@@ -54,10 +52,9 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥-elim)
 open import Data.Bool using (false)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; subst₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst; subst₂)
 
-open import Once.Spec.Type using (Type; _⟨_⟩)
-open import Once.Type.DecEq using (_≟T_)
+open import Once.Spec.Type using (_⟨_⟩)
 open import Once.Spec.Name using (bare)
 import Once.Compile as C
 import Once.IR as IR
@@ -82,7 +79,7 @@ open import Once.Type.SubDecide using (_<:?_)
 import Once.Spec.Domain Σ as SDm
 import Once.Spec.Effect Σ as SE
 import Once.Core.TySubstZero as TZ
-open import Relation.Binary.HeterogeneousEquality as H using (_≅_)
+open import Relation.Binary.HeterogeneousEquality as H using ()
 open import Once.CanonicalName using (_≟ᶜ_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥)
@@ -90,7 +87,7 @@ open import Once.Denotation.ValueDomain using (cohᴰ)
 open import Once.IR.Semantics.Iterative using (_>>=∞_)
 open import Once.IR.Semantics.Iterative using (T∞)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Core.Translate Σ using (impDefs; SigSig; s-ffi; ImpSig; TeleSig; i-def; t-def; wkI; wkT; SigIn; monoSchema)
+open import Once.Core.Translate Σ using (impDefs; SigSig; s-ffi; ImpSig; TeleSig; t-def; wkI; wkT; SigIn)
 open import Once.Adequacy.ModuleProgram Σ using (Names; monoDef; polyDef; toProgram; toProgramFrom; monoHere; names-ffi; names-monoF; names-polyF)
   renaming (Fresh to NFresh; fresh-ffi to nfresh-ffi; fresh-mono to nfresh-mono; fresh-poly to nfresh-poly)
 import Once.Adequacy.ModuleProgram Σ as MP
@@ -110,12 +107,12 @@ open import Once.Adequacy.GradedRelation Σ σ₀ fmt using (RelGV; RelGM; GM-D)
 open import Once.Denotation.SpecDomain Σ σ₀ using (⟦_⟧ᵛ)
 open import Once.Adequacy.SpecRun Σ fmt using (RunR; BlockR; SumR; ret; left; fmapˡ-R; embed-mapˡ-R; bind∞-R; embed-bind-R)
 open RunR using (forceR)
-open import Once.IR.Semantics.Iterative using (T∞; return∞)
+open import Once.IR.Semantics.Iterative using (return∞)
 open T∞ using (force)
 open import Once.Denotation.ValueRel using (retargetˡ)
 open import Once.Denotation.EvalRel using (eval-rel; table-self)
 open import Once.Spec.Grade using (eff)
-open import Once.IR.Semantics.Trace using (projTrace)
+import Once.IR.Semantics.Trace
 
 import Once.Adequacy.SourceFaithful as SF
 import Once.Adequacy.ResolveFaithful as RF
@@ -123,14 +120,11 @@ import Once.TypeCheck.Elaborate
 open import Once.Denotation.DenotTrace using (evalᴰ)
 open import Once.Denotation.Program using (tableEnv)
 open import Once.Adequacy.TableCall fmt φ using (tableEnv-skip; tableEnv-hit; uncurry-app; abiT)
-open import Once.IR.Semantics.Event using (SigOpEvent)
 import Data.Fin
 import Relation.Nullary
 open import Once.Adequacy.TelePosition
 open import Once.IR.Semantics.Trace using ()
-open import Once.Denotation.TraceMonadLaws using (RelT′-events)
 open import Once.Denotation.Program using (tableCalls)
-open import Data.List using (take)
 
 ------------------------------------------------------------------------
 -- `main` (D253): an entry like any other. The compiled program runs the CALL

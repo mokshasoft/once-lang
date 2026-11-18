@@ -27,9 +27,7 @@ open import Once.Spec.Surface.Syntax using (PolyType)
 open import Once.Type.Core using (wk₀)
 open import Once.Type.Instance using (KindedInstance)
 open import Once.TypeCheck.Scope using (NamedCtx; Imports; PolyCtx; lookupImport; lookupPolyPrefix)
-open import Once.Context hiding (_,_)
 open import Once.Spec.Context using (Ctx; Usage)
-open import Once.Surface.Context
 open import Once.Surface.Syntax
 open import Once.Denotation.Program using (Linked)
 

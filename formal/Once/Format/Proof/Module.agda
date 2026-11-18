@@ -14,24 +14,23 @@
 
 module Once.Format.Proof.Module where
 
-open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Bool using (true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; _++_; reverse; concatMap)
-open import Data.List.Properties using (++-assoc; ++-identityʳ)
+open import Data.List.Properties using (++-assoc)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Nat using (ℕ; zero; suc; _+_; _≡ᵇ_)
+open import Data.Maybe using (just; nothing)
+open import Data.Nat using (zero; suc; _+_; _≡ᵇ_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
-open import Data.String using (String; toList; fromList)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Postulates using (toList∘fromList)
 open import Once.Spec.Surface.Lexing using (Token; TNewline; TEOF; Lexes)
-open import Once.Spec.Surface.Syntax using (Decl; Module; mkModule)
+open import Once.Spec.Surface.Syntax using (Decl; mkModule)
 open import Once.Format.Doc
 import Once.Format.Comment
 open import Once.Format.Comment using (commentRun; commentLinesDoc; classify; prose; verbatim)
 open import Once.Format.Print
-open import Once.Format.Proof.Lexing using (Printable; lexes; last-nl; nl?; run; WS; ws-[])
+open import Once.Format.Proof.Lexing using (Printable; lexes; last-nl; run; WS; ws-[])
 open import Once.Format.Proof.Layout
 
 ------------------------------------------------------------------------

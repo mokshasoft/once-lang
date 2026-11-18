@@ -21,7 +21,7 @@ open import Data.Product using (Σ; _×_; _,_)
 open import Data.String using (String)
 open import Data.Unit using (⊤)
 open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Once.Spec.Grade using (Quantity; Many; Purity; Finite; pure; act; eff; mk-kind)
+open import Once.Spec.Grade using (Quantity; Many; Purity; pure; act; eff; mk-kind)
 open import Once.Spec.Type using (Ty; Fun; Type; Unit; Void; Int; Float; _*_; _+_; _⇒[_]_; K; Id; _⊕_; _⊗_; var)
 open import Once.Spec.Type using (μ; ν)
 

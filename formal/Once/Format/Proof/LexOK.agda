@@ -17,17 +17,16 @@
 
 module Once.Format.Proof.LexOK where
 
-open import Data.Char using (Char; isDigit)
+open import Data.Char using (isDigit)
 import Data.Char as Ch
-open import Data.List using (List; []; _∷_; length)
+open import Data.List using ([]; _∷_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _<_; _≤_; s≤s; z≤n)
-open import Data.Nat.Properties using (+-mono-≤; *-mono-≤; ≤-refl; ≤-trans; <-≤-trans; *-identityʳ; *-assoc; *-comm;
-  +-comm; n<1+n; *-monoˡ-≤; +-monoʳ-<; ≤-reflexive)
+open import Data.Nat using (suc; _+_; _*_; _∸_; _^_; _<_; _≤_)
+open import Data.Nat.Properties using (+-mono-≤; ≤-refl; ≤-trans; <-≤-trans; *-identityʳ; *-assoc;
+  +-comm; n<1+n; *-monoˡ-≤; ≤-reflexive)
 open import Data.Product using (_×_; _,_; ∃-syntax)
-open import Data.String using (String; fromList)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; subst)
 import Relation.Binary.PropositionalEquality as Eq
 
 open import Once.Postulates using (toList∘fromList; isDigit-value)

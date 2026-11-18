@@ -40,14 +40,13 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (Maybe; just; nothing; map)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
-open import Relation.Nullary using (¬_)
 
 open import Once.CCC.Label using (LabelId; module LabelId)
 open LabelId using (idx)
 open import Once.IR using (IR)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; AbstractInstr; instr-ctrl; c-label; c-ret; c-start; c-leave; c-thunk;
+  using (AbstractTrace; AbstractInstr; instr-ctrl; c-label; c-ret; c-start; c-leave;
          block-layout; blocks-layout)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)

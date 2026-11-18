@@ -15,7 +15,7 @@
 
 module Once.Adequacy.ArchCorrectness.X86-32.ArithFrame where
 
-open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Empty using (⊥-elim)
 open import Data.List using (List; []; _∷_; map)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
 open import Data.List.Relation.Unary.All.Properties using (map⁺)
@@ -28,7 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XR0; XR1; XScratch)
 open import Once.Target.X86-32.PhysReg using (Reg; eax; ebx; ecx; edx; esi; edi; ebp; esp)
-open import Once.CCC.Target.X86-32.Semantics using (State; RegFile; readReg; writeReg; readMem; writeMem; Word)
+open import Once.CCC.Target.X86-32.Semantics using (State; readReg; writeReg; readMem; writeMem; Word)
 open State
 open import Once.Arith.Backend.X86-32.Emit using (arith-reg)
 import Once.Arith.Backend.X86-32.ExecArith as EA

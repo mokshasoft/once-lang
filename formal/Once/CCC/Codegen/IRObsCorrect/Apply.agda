@@ -32,7 +32,7 @@ open import Once.CCC.Machine.SMCore
          readReg; writeReg; Input1; Output; AllocState; module AllocState; module ExecFinal;
          store-at-slot; load-from-slot; load-at; store-at; mov-to-input; instr-alloc-heap; instr-save-closure-reg)
 open LocState using (halted; regs)
-open AllocState using (current-frame; next-slot; saved-frames)
+open AllocState using (current-frame)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Machine.Locations using (AtDynamic; AtStack; ValueLocation)
@@ -67,7 +67,7 @@ module ApplyC {FS : FrameSemantics} where
   open Core {FS}
   open Mach {FS}
   open SMCore.AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
-  open SMCore.MemOps {FS} using (writeLoc; writeLoc-halted; writeLoc-regs; writeLoc-preserves-other; writeLoc-read-same-stack)
+  open SMCore.MemOps {FS} using (writeLoc; writeLoc-halted; writeLoc-preserves-other; writeLoc-read-same-stack)
   open Once.CCC.Machine.SMPrimitives.MemoryOps {FS} using (readLoc-writeLoc-same)
   open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
   open FlatEventTrace {FS} using (chain-events-subst)

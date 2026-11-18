@@ -14,11 +14,11 @@
 
 module Once.Adequacy.SpecFront.SigWF where
 
-open import Data.List using (List; []; _∷_)
+open import Data.List using ([]; _∷_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.List.Relation.Unary.All using (All)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_,_; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
@@ -27,7 +27,7 @@ import Once.Type.Honest as LH
 open LH using (HonestFFI)
 import Once.Spec.Grade as SG
 import Once.Spec.Signature as S
-open S using (Signature; _∶_; DeclType; constant; value; operation; WellFormed; WellFormedDecl; []; _∷_)
+open S using (Signature; _∶_; constant; value; operation; WellFormed; WellFormedDecl; []; _∷_)
 import Once.Parser as Parser
 open import Once.Module using (entrySig)
 open import Once.Adequacy.SpecInterp using (declTy; ⌞_⌟)

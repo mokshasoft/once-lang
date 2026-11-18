@@ -20,21 +20,20 @@ module Once.Adequacy.SpecFront.WalkMain (Σ : Signature) where
 
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.List using (List; []; _∷_)
+open import Data.List using ([]; _∷_)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.Any using (here; there)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.String using (String; _≟_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 
-open import Once.Spec.Name using (CanonicalName; canonical)
+open import Once.Spec.Name using (canonical)
 import Once.Spec.Type as ST
 import Once.Spec.Sub as SS
 import Once.Spec.Core.Syntax as SC
-open SC.Schema using (arity; kinds; type)
 import Once.Spec.Surface.Program as SPr
 open import Once.Spec.Core.Program Σ using (Entry; entry; EffUU)
 open import Once.Adequacy.SpecFront.GuardBack using (defNamesS)

@@ -33,7 +33,6 @@ import Once.IRTy
 import Once.IR
 open import Once.Res using (is-stopped)
 open import Once.Denotation.Approx using (NotCut; budgetLeft)
-open import Data.Nat.Properties using (+-monoʳ-≤)
 open import Once.Denotation.Program using (tableCalls)
 import Once.Denotation.DenotTrace as DT
 import Once.IR.Semantics.Trace as TM

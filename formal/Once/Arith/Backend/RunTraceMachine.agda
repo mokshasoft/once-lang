@@ -27,7 +27,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Data.String using (_≟_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
@@ -35,11 +35,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.IR.Semantics.Event using (SigOpEvent; toEvent)
 open import Once.Spec.Float.Dyadic using (FloatFormat)
-open import Once.IR.Semantics.Out using (Out; _▹_)
-open import Once.Spec.Trace using (End)
+open import Once.IR.Semantics.Out using (Out)
 import Once.Spec.Trace as ST
 import Once.Arith.Backend.RunTraceCore as Core
-open import Once.Adequacy.MachineTrace using (Step; silent; emit; stop; stuck; module Machine)
+open import Once.Adequacy.MachineTrace using (Step; silent; emit; stop; module Machine)
 
 module RunMachine
   (F       : FloatFormat)   -- the target's float format: an event's floats are read at it

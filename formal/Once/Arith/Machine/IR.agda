@@ -17,11 +17,10 @@
 
 module Once.Arith.Machine.IR where
 
-open import Data.Integer using (ℤ; +_; ∣_∣; sign; _◃_)
+open import Data.Integer using (ℤ)
 import Data.Integer as ℤ
-open import Once.Arith.CmpOp using (CmpOp; FCmpOp; c-lt; c-le; c-gt; c-ge; c-eq; c-ne)
-open import Data.Bool using (Bool; not; _∧_; if_then_else_)
-open import Data.Nat using (ℕ; zero; suc)
+open import Once.Arith.CmpOp using (CmpOp; FCmpOp)
+open import Data.Nat using (ℕ)
 import Data.Nat as ℕ
 import Data.Sign as Sign
 
@@ -32,7 +31,7 @@ import Once.Type.Core as T
 import Once.Spec.Type as T
 import Once.Type as T
 open import Once.Arith.Machine.Shape
-  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; Path; readLeaf)
+  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; Path)
 
 ------------------------------------------------------------------------
 -- MArithIR: machine-level arith expression tree

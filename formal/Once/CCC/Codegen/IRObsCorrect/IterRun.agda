@@ -20,9 +20,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Label using (ℓ)
 open import Once.CCC.Machine.SMCore
-  using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AbstractTrace; AbstractInstr;
-         load-indirect; load-indirect-suc; store-at-slot; instr-alloc-heap; mov-to-input;
-         load-from-slot; store-indirect; store-indirect-suc)
+  using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label; AbstractTrace; AbstractInstr; store-at-slot; mov-to-input)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
 
@@ -32,7 +30,6 @@ open import Once.CCC.Codegen.FlatLayout using (get; get-one)
 module IterRunC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open IterShapeC {FS}
 
   module IterRun {E A B : IRTy} (body : IR (E IRT.* A) (B IRT.+ A))

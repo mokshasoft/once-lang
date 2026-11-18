@@ -19,31 +19,25 @@
 
 module Once.Format.Proof.Walk where
 
-open import Data.Bool using (Bool; true; false; not; _∨_; if_then_else_; T)
-open import Data.Char using (Char)
-open import Data.List using (List; []; _∷_; _++_; map; foldl; reverse)
-open import Data.List.Properties using (foldl-++)
-open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; s≤s; z≤n)
-open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; <-irrefl; ≤-refl; n<1+n; <-trans; m≤n⇒m≤1+n; ≤-trans; <⇒≤)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
+open import Data.Bool using (Bool; true; false; if_then_else_; T)
+open import Data.List using (List; []; _∷_; _++_; map; foldl)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; s≤s)
+open import Data.Nat.Properties using (≡ᵇ⇒≡; <-irrefl; ≤-refl; m≤n⇒m≤1+n; ≤-trans)
+open import Data.Product using (_×_; _,_; proj₁)
 open import Data.String using (String; fromList; toList)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Empty using (⊥; ⊥-elim)
-open import Induction.WellFounded using (Acc)
+open import Data.Empty using (⊥-elim)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.List using (length)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
-open import Data.List.Properties using (reverse-++)
 
 open import Once.Postulates using (toList∘fromList)
 import Once.Parser.Token as P
-open import Once.Spec.Surface.Lexing using (Token; TWord; TInt; TFloat; TString; TLParen; TRParen; TLBrace; TRBrace; TColon; TEquals; TArrow; TCaret1; TCaret0; TCaretW; TLambda; TComma; TSemicolon; TAt; TPipe; TDot; TAmpersand; TBang; TNewline; TEOF)
-open import Once.Adequacy.SpecTokNames
 open import Once.Adequacy.SpecLexing using (forget)
-open import Once.Format.Doc using (Doc; Lexeme; lt; lsp; lnl; lind; lcm; chars; lexemes; render)
-open import Once.Format.Lex using (Item; tok; comment; cont; lexItems)
-open import Once.Format.Print using (W; walker; Line; line-empty; line-code; line-text; Notes; noNotes; Trivia;
-  lookupNotes; addTo; settleAt; settle; lineEnd; stepTok; stepComment; afterCode; step; walkItems; finish; trivia;
+open import Once.Format.Doc using (Lexeme; lt; lsp; lnl; lind; lcm; chars; lexemes; render)
+open import Once.Format.Lex using (tok; comment; cont; lexItems)
+open import Once.Format.Print using (W; walker; line-empty; line-code; line-text; Notes; noNotes; Trivia;
+  lookupNotes; addTo; settleAt; settle; lineEnd; stepTok; stepComment; step; walkItems; finish; trivia;
   isAnchor; isLineEnd; trimEnd; pending; blankBefore; addAfter)
 open import Once.Format.Proof.Items using (EItem; etok; ecomment; econt; erase; items-complete)
 open import Once.Format.Proof.ItemsLex using (itemsL; items-ws)
@@ -194,7 +188,7 @@ formatted-trivia d ws
 -- Where the walker writes
 ------------------------------------------------------------------------
 
-open import Once.Format.Print using (Note; Held; held-comment; held-blank; notes; addTop; addInner)
+open import Once.Format.Print using (Note; held-comment; held-blank; notes)
 
 -- What stands before an anchor: its top and inner notes.
 ti : Notes → List Note × List String
@@ -248,7 +242,7 @@ lookup-settleAt j k false (held-comment h ∷ hs) t ne = trans (lookup-settleAt 
 lookup-settleAt j k true  (held-blank ∷ hs)     t ne = trans (lookup-settleAt j k true hs _ ne) (lookup-addTo j k _ t ne)
 lookup-settleAt j k false (held-blank ∷ hs)     t ne = lookup-settleAt j k false hs t ne
 
-open import Once.Format.Print using (hoist; hoistAt; note-comment; notes)
+open import Once.Format.Print using (hoist; hoistAt; note-comment)
 open import Relation.Nullary using (yes; no)
 open import Data.Unit using (tt)
 

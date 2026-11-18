@@ -72,7 +72,7 @@ module RoomFacts {FS : FrameSemantics} where
   -- find on the image without. (Jumps and calls are by NAME, which is why one
   -- index map serves the whole control flow.)
   ------------------------------------------------------------------------
-  open FlatMachine {FS} using (fl-go; fl-at; fl-label-match; ft-go; ft-at; ft-match; find-label; find-entry; label-of?; entry-of?)
+  open FlatMachine {FS} using (fl-go; fl-label-match; ft-go; ft-match; find-label; find-entry; label-of?; entry-of?)
   open import Data.Maybe using () renaming (map to mmap)
   open import Data.Nat using (_+_)
   open import Data.Nat.Properties using (+-suc; +-identityʳ)
@@ -329,7 +329,7 @@ module _ {X : Set} {P : X → Set} (F : AbstractTrace → List X) (f : AbstractI
 -- code spends after it up to the next check, and an ordinary instruction's
 -- measure is its own spend plus its successor's.
 ------------------------------------------------------------------------
-open import Once.CCC.Codegen.RoomChecks using (room?; till-check; need; spend; entry-frame)
+open import Once.CCC.Codegen.RoomChecks using (room?; till-check; spend; entry-frame)
 open import Data.List using (drop)
 open import Data.Nat using (_⊔_; _+_)
 
@@ -361,7 +361,7 @@ till-checks E (x ∷ t) (nr ∷ a) rewrite nr =
 
 module CheckK {FS : FrameSemantics} where
   open FlatMachine {FS} using (fetch)
-  open import Relation.Binary.PropositionalEquality using (trans; cong; sym)
+  open import Relation.Binary.PropositionalEquality using (sym)
   open import Data.Maybe.Properties using (just-injective)
   open import Data.Empty using (⊥; ⊥-elim)
 
@@ -470,7 +470,7 @@ image-noroom (i ∷ t) (p ∷ a) = imageI-noroom i p ∷ image-noroom t a
 module NeedFacts {FS : FrameSemantics} where
   open FlatMachine {FS} using (fetch)
   open import Data.Product using (Σ; _,_)
-  open import Data.Nat using (_≤_; _⊔_)
+  open import Data.Nat using (_≤_)
   open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m; ≤-trans)
   open import Once.CCC.Machine.SMCore using (instr-ctrl; c-entry; EntryId)
   open import Once.CCC.Codegen.RoomChecks using (entry-frame)

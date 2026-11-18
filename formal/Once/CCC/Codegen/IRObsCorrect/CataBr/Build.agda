@@ -28,18 +28,17 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CataBr.Build (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module ResuspBaseC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Stack o tbl using (module CataStackC)
 open import Once.CCC.Codegen.IRObsCorrect.CataBr.Walk o tbl using (module CataWalkC)
 open import Once.CCC.Codegen.IRToTrace o using (wrap-sum)
 import Once.CCC.Machine.SMCore as SMCore
 open import Once.CCC.Machine.SMCore
-  using (LocState; module LocState; AbstractTrace; AbstractInstr; AllocState; module AllocState; module MemOps; module AbstractExec
-        ; StoredValue; readReg; writeReg; Output; Input1; SV-Ptr; SV-Tag; sv-as-loc; sucLoc; offsetLoc
+  using (LocState; module LocState; AbstractTrace; AllocState; module AllocState; module MemOps; module AbstractExec
+        ; StoredValue; readReg; writeReg; Output; Input1; SV-Ptr; SV-Tag; sucLoc; offsetLoc
         ; store-at-slot; load-from-slot; mov-to-input; instr-alloc-heap; instr-load-tag-lit; store-at)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc)
+open import Once.Memory.HeapAddress using (heap-loc)
 open import Once.IRTy using (IRTy; IRFunctor; ⟦_⟧TI; ⌈_⌉F) renaming (_*_ to _*ᵀ_; _+_ to _+ᵀ_)
 import Once.IRTy as I
 open import Once.CCC.Codegen.Size using (size)
@@ -89,11 +88,10 @@ module CataBuildC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open ResuspBaseC {FS}
   open CataStackC {FS} using (WordAt)
-  open CataWalkC {FS} using (Walk; SlotsKept)
+  open CataWalkC {FS} using (Walk)
   open LocState using (regs; halted)
-  open AllocState using (next-slot; next-heap-ref; current-frame)
+  open AllocState using (current-frame)
   open MemOps {FS} using (writeLoc; writeLoc-preserves-other; writeLoc-read-same-stack; writeLoc-regs; writeLoc-halted)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
   open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
@@ -136,7 +134,7 @@ module CataBuildC {FS : FrameSemantics} where
                    (srcC : FlatPut.Src {FS} {prog} (falloc σ) (floc σ) C vC wC)
                    (rsC : readLoc (floc σ) (AtStack (current-frame (falloc σ)) k₂) ≡ just wC)
     where
-    open FlatPut {FS} {prog} using (Src; src-tr; src-flat; put-run; PutOut; dst)
+    open FlatPut {FS} {prog} using (src-tr; src-flat; put-run; PutOut; dst)
 
     s  = floc σ
     a  = falloc σ
@@ -314,7 +312,7 @@ module CataBuildC {FS : FrameSemantics} where
                   {x : ⟦ arm-ty r A B ⟧}
                   (src : FlatPut.Src {FS} {prog} (falloc σ) (floc σ) (arm-ty r A B) x (readReg (regs (floc σ)) Output))
     where
-    open FlatPut {FS} {prog} using (Src; src-tr; src-flat; put-run; PutOut; fill-exec; FillOut; dst)
+    open FlatPut {FS} {prog} using (src-tr; src-flat; put-run; PutOut; fill-exec; FillOut; dst)
 
     P = arm-ty r A B
     S = A +ᵀ B

@@ -15,24 +15,21 @@
 module Once.Denotation.ValueRelPER where
 
 open import Once.Spec.Type using (var; Ty)
-open import Data.Empty using (⊥)
-open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans)
 
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
+open import Once.Spec.Type using (Unit; Void; _*_; _+_; _⇒[_]_; Int; Float)
 open import Once.Spec.Type using (μ; ν)
-open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
+open import Once.Spec.Polynomial using (SFunctor; SId; SK; _S⊕_; _S⊗_)
 open import Once.IR.Semantics.Iterative using (T∞)
-open T∞ using (force)
 open import Once.IR.Semantics.StreamInf using (νᴵ; module νᴵ)
-open νᴵ using (forceᴵ)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelSB; module RelS; s-ret; s-next; s-call; s-halt)
 open RelS using (forceS)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Denotation.ValueRel using (RelD; StreamRel; LayerRel; RelS-mono)
+open import Once.Denotation.ValueRel using (RelD; StreamRel; LayerRel)
 open StreamRel using (forceR)
 
 ------------------------------------------------------------------------

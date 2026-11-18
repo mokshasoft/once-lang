@@ -21,12 +21,10 @@ module Once.CCC.Codegen.IRObsCorrect.Machine (o : CanonicalName) (tbl : DL.List 
 
 open import Once.CCC.Codegen.IRObsCorrect.Interface o tbl public
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Label using (LabelId)
-open import Once.CCC.Machine.FrameFree using (exec-abstract-preserves-next-slot)
 open import Once.CCC.Machine.Locations using (AtStack; ValueLocation; AtDynamic)
 open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; store-at-slot; readReg; Output; LocState; sv-as-loc; Input1; store-indirect; StoredValue; sucLoc; load-indirect-suc; load-indirect; load-from-slot; writeReg-preserves; SV-Ptr; SV-Tag; SV-Lit; SV-Code; store-indirect-suc; writeReg-same; AbstractInstr; instr-alloc-heap; mov-to-input; mov-to-output; module LocState; module AllocState)
-open AllocState using (current-frame; saved-frames; next-slot; next-heap-ref)
-open LocState using (regs; halted)
+open AllocState using (current-frame; next-slot; next-heap-ref)
+open LocState using (regs)
 open import Once.Memory.HeapAddress using (_≟HL_; HeapLocation; sucHL; heap-loc; mkHeapRef; module HeapLocation; module HeapRef)
 open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)

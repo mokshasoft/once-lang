@@ -38,7 +38,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 import Data.Maybe
 import Once.CCC.Target.RiscV64.File as RF
 open import Data.String using (String)
-open import Data.Nat using (ℕ)
 open import Data.Product using (_×_)
 
 open import Data.Unit using (⊤)

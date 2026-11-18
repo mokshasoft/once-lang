@@ -16,7 +16,7 @@ module Once.Adequacy.OptimizeLinked where
 
 open import Data.Bool using (true; false)
 open import Data.List using (List)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)

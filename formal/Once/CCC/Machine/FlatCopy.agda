@@ -26,15 +26,13 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 module Once.CCC.Machine.FlatCopy {FS : FrameSemantics} where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; z≤n; s≤s)
-open import Data.List using ([]; _∷_)
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (true; false)
 open import Data.Nat.Properties using (+-suc; +-identityʳ; +-cancelʳ-≡; +-cancelˡ-≡; 0≢1+n)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (just)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
-open import Data.Empty using (⊥)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
-open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; offsetHL; module HeapLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; offsetHL; module HeapLocation)
 open HeapLocation using (heap-ref)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore

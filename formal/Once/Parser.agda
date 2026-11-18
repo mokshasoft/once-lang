@@ -15,8 +15,6 @@ open import Once.Type.Honest using (HonestFFI; honest?)
 open import Data.Bool using (Bool; true; false; not; _∧_; _∨_)
 open import Data.Bool.ListAction using (any)
 open import Data.List using (List; []; _∷_; map) renaming (_++_ to _++ₗ_)
-open import Once.Spec.Name using (canonical)
-open import Once.Name using (showCanonical)
 open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
@@ -28,8 +26,7 @@ open import Relation.Nullary.Decidable using (¬?)
 open import Data.List.Relation.Unary.AllPairs using (allPairs?)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Spec.Grade using (mk-kind; Many; eff)
-open import Once.Spec.Type using (Type; Unit; _⇒[_]_)
+open import Once.Spec.Type using (Type)
 open import Once.Spec.Surface.Syntax using (PolyType)
 open import Once.Type.Poly using (extractGround)
 open import Once.Type using (isGround; showPolyType)
@@ -42,7 +39,7 @@ open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContin
 open import Once.Parser.Type using (isUpperWord)
 open import Once.Parser.Module
 open import Once.Parser.Module.Core using (Resolved; resolved)
-open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeAlias; DTypeSig; DFunDef; DSignature)
+open import Once.Spec.Surface.Syntax using (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature)
 
 
 ------------------------------------------------------------------------

@@ -20,9 +20,8 @@ module Once.CCC.Codegen.IRObsCorrect.Pair.Pres (o : CanonicalName) (tbl : DL.Lis
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtDynamic; AtStack)
-open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; mov-to-output; store-at-slot; restore-input; load-from-slot; store-indirect-suc; store-indirect; mov-to-input; instr-alloc-heap; sv-as-loc; readReg; Input1; module LocState; module AllocState)
+open import Once.CCC.Machine.SMCore using (AllocState; AbstractTrace; LocState; StoredValue; mov-to-output; store-at-slot; restore-input; module LocState; module AllocState)
 open AllocState using (current-frame; saved-frames; next-heap-ref)
-open LocState using (regs)
 open import Once.IRTy using (IRTy)
 open import Once.Memory.HeapAddress using (HeapLocation)
 

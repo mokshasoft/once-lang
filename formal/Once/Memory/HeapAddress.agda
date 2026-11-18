@@ -40,7 +40,6 @@ record HeapRef : Set where
   field
     ref-id : ℕ
 
-open HeapRef
 
 _≟H_ : DecidableEquality HeapRef
 mkHeapRef n₁ ≟H mkHeapRef n₂ with n₁ ≟ n₂

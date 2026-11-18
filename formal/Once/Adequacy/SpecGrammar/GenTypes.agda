@@ -15,7 +15,7 @@
 
 module Once.Adequacy.SpecGrammar.GenTypes where
 
-open import Data.List using (List; []; _∷_; map)
+open import Data.List using (List; _∷_; map)
 open import Data.Product using (Σ-syntax; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (¬_)
@@ -23,11 +23,10 @@ open import Data.Empty using (⊥-elim)
 
 import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
-open import Once.Spec.Surface.Lexing using (Token; TWord; TLParen; TRParen; TArrow; TCaret0; TCaret1; TCaretW)
-open import Once.Adequacy.SpecTokNames
-open import Once.Spec.Surface.Grammar using (TypeAlg; module Types; Starts; starts; GradeToken; g0; g1; gw)
+open import Once.Spec.Surface.Lexing using (Token; TRParen; TArrow; TCaret0; TCaret1; TCaretW)
+open import Once.Spec.Surface.Grammar using (TypeAlg; module Types; Starts; starts; g0; g1; gw)
 import Once.Parser.Token as P
-open import Once.Parser.Generic.Relation using (TyAlg; module Gen; adG; adA; adD; ArrowDir; arrowDir; drop1; drop2)
+open import Once.Parser.Generic.Relation using (TyAlg; module Gen; adG; adA; adD; arrowDir; drop1; drop2)
 open import Once.Adequacy.SpecLexing using (forget)
 open import Once.Adequacy.SpecGrammar.Tokens using (step; peel)
 open import Once.Adequacy.SpecGrammar.TypeHeads

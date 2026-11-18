@@ -25,10 +25,10 @@ open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.AllPairs using ([]; _∷_)
 open import Data.Maybe using (just)
-open import Data.Product using (_,_; proj₁; proj₂)
+open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Spec.Grade using (mk-kind; Zero; One; Many)
@@ -47,7 +47,6 @@ import Once.Parser.Module.Core as P
 open import Once.Adequacy.OptimizeLinked using (optimize-linked)
 open import Once.Adequacy.OptimizedModule using (optCF; optCFs; optRes; crm-opt; moduleToIR-opt)
 open import Once.Adequacy.ProgramLinked using (moduleToProgram-linked)
-open import Once.Contract using () renaming (ISig to Sig)
 
 -- | Two entries with the same name and types, the first's body linked
 -- wherever the second's is (against tables that link the same calls).

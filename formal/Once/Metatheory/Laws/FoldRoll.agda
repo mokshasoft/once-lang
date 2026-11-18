@@ -10,7 +10,7 @@
 -- runs once on each side, its effects included.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ)
 open import Once.Spec.Signature using (Signature; OneName)
 open import Once.Spec.Numerics using (TargetNum)
 open import Once.Spec.Core.Syntax using (Defs)
@@ -20,21 +20,21 @@ module Once.Metatheory.Laws.FoldRoll (Σ : Signature) (u : OneName Σ) (fmt : Ta
 open import Data.Product using (_×_; _,_; Σ-syntax)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong; cong₂)
-open import Once.Spec.Grade using (Quantity; Many; mk-kind; Purity; pure; pureᶠ; Finite; fin; _⊑π_; ⊑-pure)
-open import Once.Spec.Type using (Ty; Fun; KCtx; WFFun; TySub; Respects; ∅ₖ; _⟨_⟩; _⟨_⟩F; _⇒[_]_; μ; ν; ⟦_⟧F; at₀; K; Id; _⊕_; _⊗_)
+open import Once.Spec.Grade using (Many; mk-kind; Purity; pure; pureᶠ; Finite; fin)
+open import Once.Spec.Type using (Ty; Fun; KCtx; _⟨_⟩; _⟨_⟩F; _⇒[_]_; μ; ν; ⟦_⟧F; at₀; K; Id; _⊕_; _⊗_)
 open import Once.Spec.Context using (Ctx; Usage; _∷_)
 open import Once.Spec.Core.Syntax
-open import Once.Spec.Core.Derived using (cataᶜ; anaᶜ; layerᶜ; mapᶜ)
+open import Once.Spec.Core.Derived using (cataᶜ; anaᶜ; layerᶜ)
 open import Once.Spec.Core.Typing Σ S
 open import Once.Spec.Core.Meaning Σ fmt S
-open import Once.Spec.Effect Σ using (M; sub; T∞; _>>=∞_; return∞; toT∞; νM)
-open import Once.Spec.Domain Σ using (⟦_⟧ᵛ; code; toL; fromL; foldM)
+open import Once.Spec.Effect Σ using (_>>=∞_; return∞; toT∞; νM)
+open import Once.Spec.Domain Σ using (code; toL; fromL)
 open import Once.Spec.Polynomial using (inS; sfmap)
 open import Once.Spec.Equivalence Σ using (Same)
 open import Once.Spec.Metatheory using (_≅_; Pure)
-open import Once.Metatheory.Bisim Σ using (≈-sym; ≈-trans; ≈-bind; ≈-refl; idˡ; idʳ; assoc)
+open import Once.Metatheory.Bisim Σ using (≈-sym; ≈-trans; ≈-bind; ≈-refl; idˡ; assoc)
 open import Once.Metatheory.Laws.Compose Σ u fmt S using (≡→≈)
-open import Once.Metatheory.Coherence.Relation Σ using (LayerEq-mono; Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻; toObserved; fromObserved)
+open import Once.Metatheory.Coherence.Relation Σ using (LayerEq-mono; Related; ≈-Relatedˡ; ≈-Relatedʳ; bindRel; returnRel; returnRel⁻)
 open import Once.Metatheory.Coherence.Layer Σ using (rel; runs; module Functor)
 open import Once.Metatheory.Coherence.PER Σ using (Same-sym; Same-trans)
 open import Once.Metatheory.Coherence.Uniqueness Σ S using (ty-unique)

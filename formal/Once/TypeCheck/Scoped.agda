@@ -14,22 +14,20 @@ module Once.TypeCheck.Scoped where
 
 open import Data.Empty using (⊥)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.List using (List; []; _∷_; map)
-open import Data.List.Membership.Propositional using (_∈_)
+open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.Any using (here; there)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Nat using (ℕ)
-open import Data.Product using (Σ-syntax; _,_; proj₂)
-open import Data.String using (String; _≟_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong; subst)
+open import Data.Product using (Σ-syntax; _,_)
+open import Data.String using (_≟_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; subst)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.Spec.Name using (CanonicalName; canonical)
+open import Once.Spec.Name using (CanonicalName)
 open import Once.Spec.Signature using (Signature)
 open import Once.Spec.Core.Syntax using (Defs)
 import Once.Spec.Grade as LG
 import Once.Spec.Context as SCx
-open import Once.Spec.Surface.Syntax
 open import Once.Context using (svar; SVar)
 open import Once.TypeCheck.Scope using (Binding; lookupLocal-go; lookupLocal-at; lookupLocal-next)
 open Binding using (name)

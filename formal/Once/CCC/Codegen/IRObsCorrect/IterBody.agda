@@ -22,15 +22,14 @@ open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.SMCore
-  using (AllocState; AbstractTrace; LocState; StoredValue; module LocState; module AllocState)
+  using (AllocState; AbstractTrace; LocState; module LocState; module AllocState)
 open AllocState using (next-slot; current-frame; saved-frames; next-heap-ref)
-open LocState using (halted; regs)
-open import Data.Sum using (inj₁; inj₂)
+open LocState using (halted)
 open import Data.Nat using (s≤s)
 open import Once.IRTy using (IRTy)
 import Once.IRTy as IRT
-open import Once.Res using (Res; stopped; returns; is-stopped)
-open import Once.Denotation.Approx using (Ap; done; cut; NotCut; budgetLeft)
+open import Once.Res using (Res; returns)
+open import Once.Denotation.Approx using (Ap; done; NotCut)
 
 open import Once.CCC.Codegen.IRObsCorrect.IterShape o tbl
 open import Once.CCC.Codegen.IRObsCorrect.IterRun o tbl
@@ -40,7 +39,6 @@ open import Once.CCC.Codegen.IRObsCorrect.Pair.Proof o tbl using (module PairPro
 module IterBodyC {FS : FrameSemantics} where
 
   open Core {FS}
-  open Mach {FS}
   open IterShapeC {FS}
   open IterRunC {FS}
   open IterInvC {FS}

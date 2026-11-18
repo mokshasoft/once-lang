@@ -25,27 +25,18 @@
 
 module Once.Optimize where
 
-open import Once.Spec.Type using (var; Ty)
-open import Relation.Binary.Definitions using (DecidableEquality)
 
-open import Once.Spec.Grade
-open import Once.Type.Grade
-open import Once.Type.Core
-open import Once.Spec.Type using (μ; ν)
-open import Once.Spec.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Int; Float; K; Id; _⊕_; _⊗_)
-open import Once.Spec.Surface.Syntax using (PolyType; PolyFunctor; PK; PId; _P⊕_; _P⊗_; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; PAct; Pμ; Pν; PInt; PFloat; PTVar)
-open import Once.Type.Poly
-open import Once.Type
+open import Once.Spec.Type using (Unit; Void; _*_; _+_)
 open import Once.IR
-open import Once.IRTy using (Unit; Void; _*_; _+_; _⇛_; Int; Float; IRTy; _≟IRTy_)
+open import Once.IRTy using (Unit; Void; _*_; _+_; _⇛_; IRTy; _≟IRTy_)
 import Once.IRTy as II
 
-open import Data.Bool using (Bool; true; false; _∨_; _∧_; not)
+open import Data.Bool using (Bool; true; false; _∨_; not)
 open import Data.Nat using (ℕ; zero; suc)
 import Data.Nat.Properties
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Nullary.Decidable using (isYes)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 
 ------------------------------------------------------------------------
 -- Equality decision (needed for eta laws)

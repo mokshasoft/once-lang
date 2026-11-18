@@ -38,8 +38,8 @@ module Once.CCC.Machine.FlatPtrBounds (FS : FrameSemantics) where
 
 open import Once.CCC.Label using (LabelId)
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≟_; s≤s; z≤n)
-open import Data.Nat.Properties using (≤-trans; n≤1+n; <⇒≢; <ᵇ⇒<)
+open import Data.Nat using (ℕ; _<_; _≤_; _≟_; s≤s; z≤n)
+open import Data.Nat.Properties using (≤-trans; <⇒≢; <ᵇ⇒<)
 open import Data.Bool using (Bool; true; false; T)
 open import Data.Bool using () renaming (_∨_ to _∨_)
 open import Data.Empty using (⊥-elim)

@@ -9,13 +9,12 @@
 
 module Once.Adequacy.SpecGrammar.SigTypes where
 
-open import Data.Bool using (true)
 open import Data.List using (List; []; _∷_; map)
 open import Data.Product using (Σ-syntax; _×_; _,_)
-open import Data.String using (String; toList)
+open import Data.String using (toList)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym)
 
-open import Once.Spec.Surface.Lexing using (Token; TWord)
+open import Once.Spec.Surface.Lexing using (Token)
 open import Once.Spec.Surface.Grammar using (TypeAlg; module SigType; TypeVar; tvar; lowerWord)
 import Once.Spec.Surface.Syntax as SS
 import Once.Parser.Token as P

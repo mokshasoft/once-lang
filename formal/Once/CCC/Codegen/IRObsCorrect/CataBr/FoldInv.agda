@@ -46,8 +46,8 @@ open HeapLocation using (heap-ref)
 open HeapRef using (ref-id)
 open import Once.IRTy using (IRTy; IRFunctor; μ-type)
 open import Once.IR.Semantics.Iterative using (T∞)
-open import Once.Res using (Res; returns)
-open import Once.Denotation.Approx using (Ap; done; NotCut; budgetLeft)
+open import Once.Res using (returns)
+open import Once.Denotation.Approx using (done; NotCut; budgetLeft)
 
 module CataFoldInvC {FS : FrameSemantics} where
 

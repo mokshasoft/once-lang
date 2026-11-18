@@ -25,7 +25,6 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.CurryPro (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Codegen.IRToTrace o using (env-prologue)
@@ -35,7 +34,7 @@ open import Once.CCC.Machine.SMCore
          readReg; writeReg; Output; Input1; SV-Ptr; StoredValue; sucLoc; offsetLoc; sv-as-loc;
          store-at-slot; load-from-slot; restore-input; mov-to-input; mov-to-output; load-at)
 open LocState using (regs; halted)
-open AllocState using (current-frame; next-slot; next-heap-ref; saved-frames)
+open AllocState using (current-frame; next-slot)
 open import Once.Memory.HeapAddress using (heap-loc)
 open import Once.IRTy using (IRTy) renaming (_*_ to _*ᵀ_)
 open import Once.CCC.Codegen.Size using (size)
@@ -50,7 +49,7 @@ open import Once.CCC.Codegen.IRObsCorrect.Resusp.Base o tbl using (module Resusp
 open import Once.CCC.Codegen.FlatLayout using (get-All; put-All)
 open import Data.List.Properties using (++-identityʳ)
 open import Data.List.Relation.Unary.All using ([]; _∷_)
-open import Data.Nat using (z≤n; s≤s)
+open import Data.Nat using (z≤n)
 open import Data.Product using (Σ)
 open import Once.Denotation.Approx using (NotCut; budgetLeft)
 open import Once.Res using (is-stopped)

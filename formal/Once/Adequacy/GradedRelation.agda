@@ -60,7 +60,7 @@ open import Once.Type.Core using (wk₀)
 open import Once.Weaken using (wk₀-id; ⟦wk₀⟧ᴰ)
 open import Once.Denotation.SpecDomain Σ σ using (⟦wk₀⟧ᵛ)
 open import Once.Adequacy.SpecRun Σ fmt
-  using (RunR; BlockR; ret; call; halt; SumR; left; right; return∞-R; bind∞-R; embed-R; embed-bind-R; bindT-R; mapT-R; BlockR-mono; RunR-mono; CallR; cr)
+  using (RunR; BlockR; ret; call; halt; SumR; left; right; return∞-R; bind∞-R; embed-bind-R; RunR-mono; cr)
 open RunR using (forceR)
 import Once.Adequacy.SpecInterp as SI
 

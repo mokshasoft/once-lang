@@ -26,7 +26,6 @@ open import Once.Denotation.Program using (IRFun)
 module Once.CCC.Codegen.IRObsCorrect.Resusp.Prod (o : CanonicalName) (tbl : DL.List IRFun) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o tbl
-open import Once.CCC.Machine.SMCore using (ending)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Locations using (ValueLocation; AtStack; AtDynamic)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
@@ -34,10 +33,10 @@ open import Once.CCC.Label using (ℓ)
 import Once.CCC.Machine.SMCore as SMCore
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; LocState; AllocState; module LocState; module AllocState; module MemOps; module AbstractExec;
-         readReg; writeReg; Output; Input1; SV-Ptr; SV-Code; StoredValue; sucLoc; offsetLoc;
+         readReg; writeReg; Output; SV-Ptr; SV-Code; StoredValue; sucLoc; offsetLoc;
          store-at-slot; load-from-slot; instr-alloc-heap; restore-input)
 open LocState using (regs; halted)
-open AllocState using (current-frame; next-slot; next-heap-ref; saved-frames)
+open AllocState using (current-frame; next-heap-ref)
 open import Once.Memory.HeapAddress using (heap-loc)
 open import Once.IRTy using (IRTy; IRFunctor; WellFormedFI; ⟦_⟧TI; ν-type; wf-Prod; _⊗_) renaming (_*_ to _*ᵀ_)
 import Once.IRTy as IRTy′
@@ -69,7 +68,7 @@ module ResuspProdC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open MemOps {FS} using (writeLoc; writeLoc-preserves-other; writeLoc-read-same-stack)
+  open MemOps {FS} using (writeLoc-preserves-other; writeLoc-read-same-stack)
   open AbstractExec {FS} using (exec-trace; exec-trace-cons; exec-load-from-slot-with-value)
   open Once.CCC.Machine.SMPrimitives.TraceComposition {FS} using (exec-trace-append)
   open FlatEventTrace {FS} using (chain-events-subst)

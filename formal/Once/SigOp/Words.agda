@@ -24,7 +24,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
-open import Once.Spec.Type using (Type; Ty; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float)
+open import Once.Spec.Type using (Type; var; Unit; Void; _*_; _+_; _⇒[_]_; μ; ν; Int; Float)
 open import Once.Spec.Word using (Carrier)
 import Once.Spec.Word as SW
 import Once.IR.Semantics.Value Carrier Carrier as M

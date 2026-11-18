@@ -23,7 +23,7 @@
 
 open import Data.List using (List; map)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
-open import Once.Name using (showCanonical; WordName)
+open import Once.Name using (showCanonical)
 open import Once.Spec.Numerics using (TargetNum; module TargetNum)
 open import Once.Spec.Float.Value using (fitV)
 open import Once.Float.EncodingLaws using (decode-encode)
@@ -49,10 +49,10 @@ open import Data.List.Relation.Unary.AllPairs using (_∷_)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.String using (String)
-open import Data.Unit using (⊤; tt)
+open import Data.Unit using (tt)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
-open import Relation.Nullary using (Dec; yes; no; ¬_)
+open import Relation.Nullary using (Dec; yes; no)
 open import Once.Spec.Word using (Carrier)
 import Once.IR.Semantics.Value Carrier Carrier as M
 import Once.Type.Core as T
@@ -62,26 +62,26 @@ import Once.Type.Concrete as LW
 import Once.Spec.Type as LW
 import Once.IR.Semantics.Trace as LTr
 open import Once.IR.Semantics.Event using (SigOpEvent; toEvent; baseOf; valOf)
-open import Once.Contract using (Key; key; kname; kdom; kcod; valueKeys; answerKeys; value-step; answer-step; valueOf; valueOf-at; _∈K?_; Impl)
+open import Once.Contract using (Key; key; kname; kdom; kcod; valueKeys; answerKeys; value-step; answer-step; valueOf-at; _∈K?_; Impl)
 open import Once.ContractLaws using (value-∈; base-contract)
 import Once.Spec.Grade as SG
 import Once.Spec.Type as ST
 import Once.Spec.Signature as S
-open S using (DeclType; constant; value; operation; _∶_; argAt; NotEmpty; notEmpty?; op; Op; ⌜_⌝ᵈ)
+open S using (constant; value; operation; _∶_; argAt; NotEmpty; notEmpty?; op; ⌜_⌝ᵈ)
 import Once.Spec.Domain Σ as SD
 import Once.Spec.Effect Σ as SE
 import Once.Spec.Core.Syntax as SC
 import Once.Spec.Core.Meaning as SM
 open Obs Σ using (Model; World; module Model; module World)
 import Once.Adequacy.SpecInterp as SI
-open SI using (declTy; ⌞_⌟; qL; toImpl; toInterp)
+open SI using (declTy; ⌞_⌟; toImpl; toInterp)
 open import Once.Core.Decl using (toISig; ∈-toISig; ⌜⌝ᵈ-concrete; ⌜⌝-base; declS; ⌜declS⌝)
 open import Once.Type.Honest using (HonestFFI)
 open import Once.Weaken using (wk₀-id)
 open import Once.Functor.Translate using (IsConcrete-irrelevant)
 open import Once.Denotation.SpecDomain Σ σ₀ using (⟦wk₀⟧ᵛ)
 open import Relation.Binary.PropositionalEquality using (subst-∘; subst-subst)
-open import Once.Adequacy.SpecRun Σ fmt using (CallR; cr; HaltR; hr; argR; ansR; RunR; BlockR; ret; call; halt; SumR; left; right; return∞-R)
+open import Once.Adequacy.SpecRun Σ fmt using (cr; hr; RunR; ret; call; halt; left; return∞-R)
 open RunR using (forceR)
 open import Once.Adequacy.SpecObserve Σ fmt using (Agree)
 open import Once.Adequacy.GradedRelation Σ σ₀ fmt using (RelGV; RelGM)
@@ -89,10 +89,10 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; injectᵇ; forgetᵇ)
 open import Once.Denotation.ValueRel using (RelD; base-eq; base-refl)
 open import Once.Denotation.TraceMonadInfLaws using (RelS; RelS-embed)
 open import Once.Denotation.TraceMonadLaws using (RelT′-refl)
-open import Once.IR.Semantics.Iterative using (embed; return∞)
+open import Once.IR.Semantics.Iterative using (embed)
 import Once.Denotation.SourceDenote as SDn
 open import Once.Denotation.DenotTrace using (sigOpT; module CallEnv)
-open import Once.Arith.SigOp.Builders using (value-info; arrow-info; arrow-sem-eff)
+open import Once.Arith.SigOp.Builders using (arrow-info; arrow-sem-eff)
 open import Once.SigOp.Info using (mk-info')
 
 private

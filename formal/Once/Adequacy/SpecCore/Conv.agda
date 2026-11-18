@@ -27,7 +27,7 @@ module Once.Adequacy.SpecCore.Conv (Σ : Signature) {s : ℕ} (S : Defs s) where
 open import Data.Unit using (tt)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (refl)
 
 import Once.Spec.Grade as LG
 import Once.Spec.Grade as SG
