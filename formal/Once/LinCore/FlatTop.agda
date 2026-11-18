@@ -27,6 +27,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 import Data.Maybe
 import Data.Bool
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+open import Once.Arith.SigOp.AsBlock using (Canonical)
 open import Data.Unit using (tt)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 import Data.Maybe.Properties
@@ -442,6 +443,11 @@ module ExprTop (tl : List Once.CompileSrc.CompiledSrc) (gb : Once.LinCore.ExprBu
   o-bridge : ∀ k → TP.obs k ≡ obsᴰ k
   o-bridge k = run-≈ ι k (ET.rel-main-at tl gb pm gm) []
 
+  -- the bridge's program's ops are canonical (D459): a block named by its
+  -- digest, a primitive a comparison (`ExprOps`, beside `decl`)
+  canon : Once.LinCore.ExprBuild.SrcsDecl fmt (TM.Interp.sig ι) tl → ∀ {s} → s ∈ ops (Program.U ds f₀) → Canonical (info s)
+  canon srcs m = proj₂ (Once.LinCore.ExprOps.Table.decl-ok fmt bw (TM.Interp.sig ι) tl srcs pm m)
+
   module _ (ld : ∀ {b} (v : Lit b) (fs : FlatMachine.FlatState {Mach})
                  → FlatMachine.flat-exec-instr {Mach} (ldConst v) TP.image fs
                    ≡ record fs { floc = record (FlatMachine.floc fs) { regs = writeReg (LocState.regs (FlatMachine.floc fs)) Output (wordOf (lit v)) }
@@ -453,7 +459,7 @@ module ExprTop (tl : List Once.CompileSrc.CompiledSrc) (gb : Once.LinCore.ExprBu
 
     -- ★ LINKED AT THE CORE (D445): the bridge's program's ops are declared (`ExprOps`)
     decl : ∀ {s} → s ∈ ops (Program.U ds f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))
-    decl = Once.LinCore.ExprOps.Table.decl-ok fmt bw (TM.Interp.sig ι) tl srcs pm
+    decl m = proj₁ (Once.LinCore.ExprOps.Table.decl-ok fmt bw (TM.Interp.sig ι) tl srcs pm m)
 
     -- ★★ THE FLAT THEOREM AT MASTER'S MEANING, for the bridge's program
     flat-ir : ∀ k → Σ ℕ λ N → (flat-events (suc N) TP.image TP.start-fs ≡ (proj₁ (obsᴰ k) , endAp (proj₂ (obsᴰ k))))
@@ -485,6 +491,10 @@ module ExprApex (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   module XT = ExprTop BF.tl BF.gb BF.mpm BF.mg ldConst ld-nl wordOf w-int w-float entry-frame entry-regs
   ds = XT.ds
   f₀ = XT.f₀
+
+  -- its ops are canonical (D459)
+  canon : ∀ {s} → s ∈ ops (Program.U ds f₀) → Canonical (info s)
+  canon = XT.canon BF.sd
 
   -- master's meaning of its program, at a budget from the empty log
   obsᴹ : ℕ → TM.Run (Once.Denotation.Approx.Ap Data.Unit.⊤)

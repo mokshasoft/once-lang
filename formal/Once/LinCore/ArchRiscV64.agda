@@ -68,7 +68,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunLow o rv64-frame-semantics
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o rv64-frame-semantics slot-size refl using (Emitted; Reachable; mkRunAt)
 open import Once.CCC.FrameSemantics using (fs-numerics; fs-ffi)
 open import Once.CCC.Machine.SMCore
-  using (AbstractInstr; instr-ctrl; c-ret; instr-call-closure; SV-Ptr; SV-Code; module LocState; module AllocState)
+  using (AbstractInstr; instr-ctrl; c-ret; instr-call-closure; instr-sigop; SV-Ptr; SV-Code; module LocState; module AllocState)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {rv64-frame-semantics} using (fetch; find-thunk; fpc; floc; fclosure; fret; falloc)
 open import Once.CCC.Machine.Locations using (Slot; AtDynamic)
@@ -87,6 +87,17 @@ import Once.LinCore.FlatTop
 import Once.LinCore.ExprBuild
 import Once.LinCore.ImageAll
 import Once.LinCore.ImageGuard
+import Once.LinCore.ImageOwned
+import Once.LinCore.ImageBlocks
+import Once.LinCore.Keys
+import Once.Adequacy.BlockTable as BT
+import Once.Arith.Backend.RiscV64.Emit as AE
+import Data.List.Relation.Unary.All
+open import Data.List.Membership.Propositional using (_∈_)
+open import Once.SigOp.Info using (SigOpInfo; External; module SigOpInfo)
+open import Once.Target.Symbol using (once-symbol-path)
+open import Relation.Binary.PropositionalEquality using (subst)
+open import Data.Sum using (inj₂)
 
 -- a constant's loader is an `instr-load-const`
 ld-is : Once.LinCore.ImageAll.LoadConst (fs-numerics rv64-frame-semantics) (fs-ffi rv64-frame-semantics) bw ML.ldConst
@@ -106,7 +117,9 @@ module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
   P′ : AbstractTrace
   P′ = room-checks image
 
-  env = block-env (C.blocks-riscv64 p)
+  -- ★ the file's table: the image's own blocks (D459: `ImageOwned.imageBlocks`, as `Emit.blocksOf`)
+  bs = Once.LinCore.ImageBlocks.imageBlocks (fs-numerics rv64-frame-semantics) bw (Once.LinCore.Keys.Program.U (fs-numerics rv64-frame-semantics) bw IT.ds IT.f₀)
+  env = block-env (BT.file-table AE.arith-block-symbol AE.block-payload bs)
 
   -- the image's pointwise facts and its start (`ImageAll`)
   module IA = Once.LinCore.ImageAll.Img (fs-numerics rv64-frame-semantics) (fs-ffi rv64-frame-semantics) bw o
@@ -132,7 +145,19 @@ module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
                   → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
       o-ret-budget : ∀ fs (b : ℕ) → Reachable image 0 fs → fetch image (fpc fs) ≡ just (instr-ctrl (c-ret b))
                    → b ≡ AllocState.frame-slots (falloc fs)
-      o-table : riscv64-arith-table P′ env
+      -- an external op's symbol is not a block's (what master's `external-sigop-contract`
+      -- assumes of its file: compiler symbols apart from the source's names)
+      o-ext-miss : ∀ {A B} (si : SigOpInfo A B) k → External (SigOpInfo.sem si) → fetch P′ k ≡ just (instr-sigop si)
+                 → env (once-symbol-path (SigOpInfo.name si)) ≡ nothing
+
+  -- ★ THE ARITH TABLE (D459): every op call of the image names one of its blocks (as on x86-64)
+  named : Data.List.Relation.Unary.All.All (BT.SigNamed bs) P′
+  named = Data.List.Relation.Unary.All.tabulate λ {i} m {A} {B} si e →
+    Once.LinCore.ImageOwned.named-call (fs-numerics rv64-frame-semantics) bw (Once.LinCore.Keys.Program.U (fs-numerics rv64-frame-semantics) bw IT.ds IT.f₀)
+      IT.canon si (IA.sigops si (subst (λ j → j ∈ P′) e m))
+
+  o-table : Owed → riscv64-arith-table P′ env
+  o-table O = inj₂ (bs , named , refl , Owed.o-ext-miss O)
 
   -- ★ the image facts the arch layer reads: the proved ones and the owed ones
   emitted : Owed → Emitted image
@@ -166,7 +191,7 @@ module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
           let open RoomEvents {rv64-frame-semantics} image using (ev-boot)
               boot = ev-boot N FFOr.start-flat 0 refl _ refl
               agree₀ = events-agree-boot (proj₁ boot) ev-riscv64 env P′ FFOr.start-flat X.initState _ _ (entry-corr P′)
-                         (entry-wf 0) tt refl (Owed.o-table O) run₀ refl refl refl refl refl refl
+                         (entry-wf 0) tt refl (o-table O) run₀ refl refl refl refl refl refl
               agree = retarget (proj₁ (proj₂ boot)) (proj₂ (proj₂ boot)) agree₀
           in budget-fact-of δc ([] , X.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) (irProgram tbl ir)) k (proj₁ agree) _
                -- (the run's events named, so they are matched, not computed)

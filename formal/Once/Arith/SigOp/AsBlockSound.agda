@@ -44,7 +44,7 @@ private
   ev-at : ∀ (fmt : TargetNum) (ρ : CallEnv) {A B} nm (s : SigOpSem A B) bA cB a
         → evalᴰ fmt ρ (SigOp (as-block (mk-info' nm s bA cB))) a ≡ evalᴰ fmt ρ (SigOp (mk-info' nm s bA cB)) a
   ev-at fmt ρ nm (primV p)        bA cB a = ev-prim fmt ρ nm p bA cB a
-  ev-at fmt ρ nm (blockV e eA eB) bA cB a = refl
+  ev-at fmt ρ nm (blockV e refl refl) bA cB a = refl
   ev-at fmt ρ nm ffiV             bA cB a = refl
   ev-at fmt ρ nm callsV           bA cB a = refl
   ev-at fmt ρ nm (emitsV e)       bA cB a = refl

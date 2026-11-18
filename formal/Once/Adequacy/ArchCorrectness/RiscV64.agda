@@ -69,7 +69,7 @@ open import Data.List using (take)
 open import Once.Adequacy.CPU.RiscV64 using (call-at-riscv64; ev-riscv64; block-env; run-trace-riscv64)
 import Once.CCC.Target.RiscV64.File as RF
 import Data.Maybe
-open import Data.Sum using (inj₂)
+open import Data.Sum using (inj₁; inj₂)
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.Adequacy.EmitFile using (file-is-emit-at)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
@@ -327,7 +327,7 @@ conc-tr p ir lk img =
         agree₀ = events-agree-boot (proj₁ boot)
                    ev-riscv64 (block-env (C.blocks-riscv64 p))
                    P′ FFOr.start-flat RS.initState (ir-stack-budget ir) _ (entry-corr P′)
-                   (entry-wf 0) tt refl (p , img , refl) run₀
+                   (entry-wf 0) tt refl (inj₁ (p , img , refl)) run₀
                    refl refl refl refl refl refl
         retarget : ∀ {A : ℕ → _} {o o′ c c′} → o ≡ o′ → c ≡ c′
                  → Data.Product.Σ ℕ (λ M → AgreeAt (A M) o c M) → Data.Product.Σ ℕ (λ M → AgreeAt (A M) o′ c′ M)

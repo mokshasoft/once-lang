@@ -17,7 +17,7 @@
 module Once.LinCore.Emit where
 
 open import Data.Bool using (Bool; false)
-open import Data.List using (List; []; _∷_; _++_; map; concatMap)
+open import Data.List using (List; []; _∷_; map)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ)
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
@@ -55,12 +55,9 @@ import Once.CCC.Target.RiscV64.AbstractToRiscV as RVL
 import Once.Arith.Backend.X86-64.Emit as X64A
 import Once.Arith.Backend.X86-32.Emit as X32A
 import Once.Arith.Backend.RiscV64.Emit as RVA
-import Once.LinCore.Core
+import Once.LinCore.ImageBlocks
 import Once.LinCore.Keys
-open import Once.Arith.Machine.IR using (ArithBlock; mk-block)
-open import Once.Arith.Machine.Rewrite using (sigop-blocks)
-open import Once.Arith.SigOp.Compare using (cmp-of)
-open import Once.SigOp.Info using (SigOpSem; blockV; primV; ffiV; callsV; emitsV; haltsV; module SigOpInfo)
+open import Once.Arith.Machine.IR using (ArithBlock)
 
 -- a base value is one word on every arch (`Spec.ABI`; the apexes' `bw`)
 bw : Base → ℕ
@@ -86,30 +83,18 @@ mainOf (c ∷ cs) = at (csName c ≟ᶜ bare "main") (csType c <:? EffUU)
 module At (fmt : TargetNum) where
   open Once.LinCore.ExprBuild fmt using (ETProg; exprTable; mainCore; srcOrder)
   open Once.LinCore.Lower fmt bw using (module Program′)
-  open Once.LinCore.Core fmt using (Sig; info)
-  open Once.LinCore.Keys fmt bw using (ops; univ)
+  open Once.LinCore.ImageBlocks fmt bw using (imageBlocks)
+  open Once.LinCore.Keys fmt bw using (univ)
 
   imageOf : List CompiledSrc → ∀ {T : Type} → T <: EffUU → AbstractTrace
   imageOf srcs pm = room-checks (Program′.image (ETProg.defs t) (mainCore (ETProg.rs t) pm) ldConst)
     where t = exprTable (srcOrder srcs [])
 
-  -- ★ an op's arith blocks: its own, when it is a block (the bridge's ops are
-  -- blocks, D459: `AsBlock`; named by `block-symbol`, as master's
-  -- `bare-sigop`, which `instr-sigop` calls), and a compare's (`sigop-blocks`)
-  opBlocks : Sig → List (String × ArithBlock)
-  opBlocks s = map (λ b → block-symbol b , b) (own (SigOpInfo.sem (info s)) ++ sigop-blocks (cmp-of (SigOpInfo.sem (info s))))
-    where
-      own : ∀ {A B} → SigOpSem A B → List ArithBlock
-      own (blockV {sh} {n} e _ _) = mk-block sh n e ∷ []
-      own (primV _)               = []
-      own ffiV                    = []
-      own callsV                  = []
-      own (emitsV _)              = []
-      own (haltsV _)              = []
-
-  -- the image's blocks: its ops', once each
+  -- ★ the image's blocks (`ImageBlocks.imageBlocks`: its ops' own and their
+  -- comparisons', D459), by symbol (`block-symbol`, which `instr-sigop` calls),
+  -- once each: master's table form (`Compile.blocks-<arch>`)
   blocksOf : List CompiledSrc → ∀ {T : Type} → T <: EffUU → List (String × ArithBlock)
-  blocksOf srcs pm = dedup-blocks (concatMap opBlocks (ops (univ (ETProg.defs t) (mainCore (ETProg.rs t) pm))))
+  blocksOf srcs pm = dedup-blocks (map (λ b → block-symbol b , b) (imageBlocks (univ (ETProg.defs t) (mainCore (ETProg.rs t) pm))))
     where t = exprTable (srcOrder srcs [])
 
 emitCore : (arch : Arch) → List CompiledSrc → ∀ {T : Type} → T <: EffUU → IRProgram → FileOf arch

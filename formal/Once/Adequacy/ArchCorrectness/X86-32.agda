@@ -88,7 +88,7 @@ open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive; ≤-tran
 open import Once.Adequacy.CPU.X86-32 using (call-at-x86-32; ev-x86-32; block-env; run-trace-x86-32)
 import Once.CCC.Target.X86-32.File as RF
 import Data.Maybe
-open import Data.Sum using (inj₂)
+open import Data.Sum using (inj₁; inj₂)
 open import Once.IR.Semantics.Event using (SigOpEvent)
 open import Once.Adequacy.EmitFile using (file-is-emit-at)
 open import Once.CCC.Codegen.ProgramImage using (program-image)
@@ -399,7 +399,7 @@ conc-tr p ir lk img =
         agree₀ = events-agree-boot (proj₁ boot)
                    ev-x86-32 (block-env (C.blocks-x86-32 p))
                    P′ FFOx.start-flat X.initState (ir-stack-budget ir) _ (entry-corr P′)
-                   (entry-wf 0) tt refl (p , img , refl) run₀
+                   (entry-wf 0) tt refl (inj₁ (p , img , refl)) run₀
                    refl refl refl refl refl refl
         retarget : ∀ {A : ℕ → _} {o o′ c c′} → o ≡ o′ → c ≡ c′
                  → Data.Product.Σ ℕ (λ M → AgreeAt (A M) o c M) → Data.Product.Σ ℕ (λ M → AgreeAt (A M) o′ c′ M)

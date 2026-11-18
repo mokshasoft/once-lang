@@ -56,7 +56,8 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunLow as RL
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 open import Once.Spec.Name using (CanonicalName)
 
-open import Data.Sum using (_⊎_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+import Data.List.Relation.Unary.All
 open import Data.Product using (Σ)
 module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   (FS : FrameSemantics)
@@ -402,6 +403,11 @@ x86-32-machine = record
 x86-32-arith-table : AbstractTrace → (String → Maybe (List XInstr × ℕ)) → Set
 x86-32-arith-table prog env =
   Σ IRProgram (λ p → (prog ≡ Cmp.image-of p) × (env ≡ block-env (Cmp.blocks-x86-32 p)))
+  -- D459: …or the table of a block list the program's calls name (as on x86-64)
+  ⊎ Σ (List ArithBlock) (λ bs → Data.List.Relation.Unary.All.All (BT.SigNamed bs) prog
+                                × (env ≡ block-env (BT.file-table AE.arith-block-symbol AE.block-payload bs))
+                                × (∀ {A B} (si : SigOpInfo A B) k → External (sem si) → fetch prog k ≡ just (instr-sigop si)
+                                     → env (once-symbol-path (SigOpInfo.name si)) ≡ nothing))
 
 x86-32-traceloop : EI.TraceLoop FS Reg x86-32-emitter x86-32-machine
 -- THE ARITH PAYLOAD is the block and its scratch words, as on the other two
@@ -657,11 +663,15 @@ postulate
 arith-sigop-lookup : ∀ (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.FrameSemantics.fs-numerics FS) (Once.CCC.FrameSemantics.FrameSemantics.fs-interp FS) call-at-x86-32)) prog fs {A B} (si : SigOpInfo A B)
                    → x86-32-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
                    → Σ (List XInstr × ℕ) (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl)
-arith-sigop-lookup .(block-env (Cmp.blocks-x86-32 p)) .(Cmp.image-of p) fs si (p , refl , refl) int ftq
+arith-sigop-lookup .(block-env (Cmp.blocks-x86-32 p)) .(Cmp.image-of p) fs si (inj₁ (p , refl , refl)) int ftq
   with fetch-All {k = fpc fs} (BT.image-owned p) ftq int
 ... | b , m , e , _ =
   subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (Cmp.blocks-x86-32 p) (once-symbol-path n) ≡ just pl)) (sym e)
         (block-env-hit (Cmp.blocks-x86-32 p) _ (BT.table-has AE.arith-block-symbol AE.block-payload (Cmp.program-blocks p) m))
+arith-sigop-lookup .(block-env (BT.file-table AE.arith-block-symbol AE.block-payload bs)) prog fs si (inj₂ (bs , nm , refl , _)) int ftq =
+  let (b , m , e , _) = fetch-All {P = BT.SigNamed bs} {k = fpc fs} nm ftq si refl int
+  in subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (BT.file-table AE.arith-block-symbol AE.block-payload bs) (once-symbol-path n) ≡ just pl)) (sym e)
+           (block-env-hit (BT.file-table AE.arith-block-symbol AE.block-payload bs) _ (BT.table-has AE.arith-block-symbol AE.block-payload bs m))
 
 -- plan 0.123 α′ (f1): …and what it finds is the SigOp's OWN block — the
 -- table entry under its symbol is a program block with that symbol, and one
@@ -670,10 +680,15 @@ arith-sigop-block : ∀ (env : RTx.ArithEnv val-x86-32 (answer-at (Once.CCC.Fram
                   → x86-32-arith-table prog env → Internal (sem si) → fetch prog (fpc fs) ≡ just (instr-sigop si)
                   → ∀ (pl : List XInstr × ℕ) → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
                   → Σ ArithBlock (λ b → BlockOf si b × pl ≡ AE.block-payload b)
-arith-sigop-block .(block-env (Cmp.blocks-x86-32 p)) .(Cmp.image-of p) fs si (p , refl , refl) int ftq pl hit =
+arith-sigop-block .(block-env (Cmp.blocks-x86-32 p)) .(Cmp.image-of p) fs si (inj₁ (p , refl , refl)) int ftq pl hit =
   let (b , _ , bo , e) = BT.which-block AE.block-payload (Cmp.program-blocks p) si
                            (fetch-All {k = fpc fs} (BT.image-owned p) ftq int)
                            (block-env-sound (Cmp.blocks-x86-32 p) _ hit)
+  in b , bo , e
+arith-sigop-block .(block-env (BT.file-table AE.arith-block-symbol AE.block-payload bs)) prog fs si (inj₂ (bs , nm , refl , _)) int ftq pl hit =
+  let (b , _ , bo , e) = BT.which-block AE.block-payload bs si
+                           (fetch-All {P = BT.SigNamed bs} {k = fpc fs} nm ftq si refl int)
+                           (block-env-sound (BT.file-table AE.arith-block-symbol AE.block-payload bs) _ hit)
   in b , bo , e
 
 ------------------------------------------------------------------------

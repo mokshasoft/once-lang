@@ -68,6 +68,7 @@ library
       MAlonzo.Code.Once.LinCore.FromExpr
       MAlonzo.Code.Once.LinCore.FromIR
       MAlonzo.Code.Once.LinCore.Image
+      MAlonzo.Code.Once.LinCore.ImageBlocks
       MAlonzo.Code.Once.LinCore.Keys
       MAlonzo.Code.Once.LinCore.Layout
       MAlonzo.Code.Once.LinCore.Lower

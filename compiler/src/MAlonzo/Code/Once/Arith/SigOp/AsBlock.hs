@@ -19,6 +19,7 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
+import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Once.Arith.Machine.IR
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 import qualified MAlonzo.Code.Once.Arith.Prim
@@ -291,7 +292,9 @@ du_block'45'of_60 ::
 du_block'45'of_60 v0
   = case coe v0 of
       MAlonzo.Code.Once.SigOp.Info.C_blockV_86 v1 v2 v3
-        -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+        -> coe
+             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+             (coe C_lifted_38 v1 v2 v3)
       MAlonzo.Code.Once.SigOp.Info.C_ffiV_88
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       MAlonzo.Code.Once.SigOp.Info.C_callsV_90
@@ -372,3 +375,53 @@ du_as'45'block_110 v0
             (coe MAlonzo.Code.Once.SigOp.Info.d_sem_118 (coe v0))))
       (coe MAlonzo.Code.Once.SigOp.Info.d_baseA_120 (coe v0))
       (coe MAlonzo.Code.Once.SigOp.Info.d_conB_122 (coe v0))
+-- Once.Arith.SigOp.AsBlock.CanonicalAt
+d_CanonicalAt_118 ::
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_74 -> ()
+d_CanonicalAt_118 = erased
+-- Once.Arith.SigOp.AsBlock.Canonical
+d_Canonical_148 ::
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 -> ()
+d_Canonical_148 = erased
+-- Once.Arith.SigOp.AsBlock.canon-prim
+d_canon'45'prim_160 ::
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.Arith.Prim.T_ArithPrim_228 -> AgdaAny
+d_canon'45'prim_160 = erased
+-- Once.Arith.SigOp.AsBlock.canon-at
+d_canon'45'at_204 ::
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Name.T_CanonicalName_6 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpSem_74 -> AgdaAny
+d_canon'45'at_204 v0 v1 v2 v3
+  = case coe v3 of
+      MAlonzo.Code.Once.SigOp.Info.C_blockV_86 v4 v5 v6 -> erased
+      MAlonzo.Code.Once.SigOp.Info.C_ffiV_88
+        -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
+      MAlonzo.Code.Once.SigOp.Info.C_callsV_90
+        -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
+      MAlonzo.Code.Once.SigOp.Info.C_emitsV_92
+        -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
+      MAlonzo.Code.Once.SigOp.Info.C_haltsV_94
+        -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
+      MAlonzo.Code.Once.SigOp.Info.C_primV_96 v4
+        -> coe d_canon'45'prim_160 v0 v1 v2 v4
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Arith.SigOp.AsBlock.as-block-canonical
+d_as'45'block'45'canonical_236 ::
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.Spec.Type.T_Ty_8 ->
+  MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_102 -> AgdaAny
+d_as'45'block'45'canonical_236 v0 v1 v2
+  = coe
+      d_canon'45'at_204 (coe v0) (coe v1)
+      (coe MAlonzo.Code.Once.SigOp.Info.d_name_116 (coe v2))
+      (coe MAlonzo.Code.Once.SigOp.Info.d_sem_118 (coe v2))

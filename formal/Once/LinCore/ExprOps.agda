@@ -122,7 +122,7 @@ open import Relation.Binary.PropositionalEquality using (subst; subst₂)
 open import Once.Contract using (ISig)
 open import Once.Denotation.Program using (Declared; Leaves)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
-open import Once.Arith.SigOp.AsBlock using (as-block)
+open import Once.Arith.SigOp.AsBlock using (as-block; Canonical; as-block-canonical)
 open import Once.Arith.SigOp.AsBlockSound using (as-block-declared)
 open import Once.LinCore.FromIR fmt using (⟪⌊⌋⟫-flat)
 import Once.IR as M
@@ -137,8 +137,10 @@ open import Once.LinCore.FromExpr fmt
 open import Once.LinCore.PassTr fmt using (copyIn)
 
 module Ops (Σι : ISig) where
+  -- declared (D445), and canonical: a block named by its digest, a
+  -- primitive a comparison (D459: the image's arith table)
   Dc : Sig → Set
-  Dc s = Declared Σι (info s)
+  Dc s = Declared Σι (info s) × Canonical (info s)
 
   ok-cast : ∀ {L E A A′ B B′} (p : A ≡ A′) (q : B ≡ B′) {t : Tm L E A B} → OK Dc t → OK Dc (cast p q t)
   ok-cast refl refl o = o
@@ -212,7 +214,7 @@ module Ops (Σι : ISig) where
   ok-opL : ∀ {L E A B} (si : SigOpInfo A B) → Declared Σι si → OK Dc (opL {L} {E} si)
   ok-opL {L} {E} si d = ok-cast {L} {E} (Relation.Binary.PropositionalEquality.sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si)))
                                    (Relation.Binary.PropositionalEquality.sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si)))
-                                   {t = lop (sig (as-block si))} (as-block-declared Σι si d)
+                                   {t = lop (sig (as-block si))} (as-block-declared Σι si d , as-block-canonical si)
 
   ok-apω : ∀ {L E g A B} → OK Dc (apω {L} {E} {g} {A} {B})
   ok-apω = _
@@ -459,7 +461,7 @@ module Table (Σι : ISig) where
   ok-main rs (sub-arr {π = π} a sub-void g) = tt , ok-callM (rs (bare "main") I.Unit I.Void (grade π))
   ok-main rs sub-void                      = tt , ok-callM (rs (bare "main") I.Unit I.Void act)
 
-  -- ★★ the bridge's program's ops are declared
+  -- ★★ the bridge's program's ops are declared and canonical
   decl-ok : ∀ cs → ET.SrcsDecl Σι cs → ∀ {T : Type} (pm : T <: EffUU)
           → ∀ {s} → s ∈ ops (univ (ET.ETProg.defs (ET.exprTable cs)) (ET.mainCore (ET.ETProg.rs (ET.exprTable cs)) pm)) → Dc s
   decl-ok cs ok pm = univ-ok Dc (ET.ETProg.defs (ET.exprTable cs)) (ET.mainCore (ET.ETProg.rs (ET.exprTable cs)) pm)

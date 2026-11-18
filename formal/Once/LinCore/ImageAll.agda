@@ -34,7 +34,7 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥-elim)
 import Data.List.Relation.Unary.All
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Label using (e-thunk)
@@ -45,7 +45,9 @@ open import Once.Spec.Name using (CanonicalName)
 open import Once.IR.Semantics.Trace using (FFIAnswers)
 open import Once.LinCore.Flat using (Base)
 import Once.Spec.Type as ST
-open import Once.SigOp.Info using (module SigOpInfo)
+open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open import Once.CCC.Codegen.RoomChecks using (room-checks)
+open import Once.CCC.Codegen.RoomChecksFacts using (All-room)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI; emittable-image)
 import Once.CCC.Codegen.AllocMin
@@ -86,6 +88,9 @@ module Ok (nm : CanonicalName) (U : Univ)
   Ref : AbstractInstr → Set
   Ref (instr-ctrl (c-call-fn f))  = Σ AKey λ a → Σ (a ∈ allK U) λ p → f ≡ nameOf (idx p)
   Ref (instr-load-code-addr ℓ)    = Σ AKey λ a → Σ (a ∈ allK U) λ p → ℓ ≡ tl (idx p) × TrEntry (idx p) (proj₂ a)
+  -- (D459) an op's call is what an op of the universe lowers to (itself, or a
+  -- comparison's block: `opSig`), so its block is the image's (`ImageOwned`)
+  Ref (instr-sigop si)            = Σ Sig λ s → s ∈ ops U × sig si ≡ opSig s (cmpOf s)
   {-# CATCHALL #-}
   Ref _                           = ⊤
 
@@ -180,11 +185,13 @@ module Ok (nm : CanonicalName) (U : Univ)
     ansDst-ok (ST.b-* _ _) bot w = ✓ ∷ []
     ansDst-ok (ST.b-+ _ _) bot w = ✓ ∷ []
 
-    lowOp-ok : ∀ s c bot → All OK (lowOp s c bot)
-    lowOp-ok s nothing  bot =
+    lowOp-ok : ∀ s (p : s ∈ ops U) c (e : cmpOf s ≡ c) bot → All OK (lowOp s c bot)
+    lowOp-ok s p nothing e bot =
       argIn-ok (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ ✓
-      ∷ ++⁺ (ansDst-ok (SigOpInfo.conB (info s)) bot (wsz ⌜ scod s ⌝)) (✓ ∷ answer-ok (SigOpInfo.conB (info s)) bot)
-    lowOp-ok s (just c) bot = argIn-ok (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ ✓ ∷ ✓ ∷ ✓ ∷ ✓ ∷ []
+      ∷ ++⁺ (ansDst-ok (SigOpInfo.conB (info s)) bot (wsz ⌜ scod s ⌝))
+            ((tt , tt , s , p , sym (cong (opSig s) e)) ∷ answer-ok (SigOpInfo.conB (info s)) bot)
+    lowOp-ok s p (just c) e bot =
+      argIn-ok (SigOpInfo.baseA (info s)) bot (wsz ⌜ sdom s ⌝) ∷ ✓ ∷ (tt , tt , s , p , sym (cong (opSig s) e)) ∷ ✓ ∷ ✓ ∷ []
 
     -- a cell's build: its header (its code words the keys' trampolines), its contents, its address
     cell-ok : ∀ w {ab ac af} (pb : ab ∈ allK U) (pc : ac ∈ allK U) (pf : af ∈ allK U)
@@ -239,7 +246,7 @@ module Ok (nm : CanonicalName) (U : Univ)
               (Tp φ S ∸ wsz (cty (F , S₀))) hdr (Tp φ S ∸ 1)
     lowP-ok ds lout φ S p         = []
     lowP-ok ds (lconst v) φ S p   = ld-ok v ∷ ✓ ∷ []
-    lowP-ok ds (lop s) φ S p      = lowOp-ok s (cmpOf s) (Tp φ S)
+    lowP-ok ds (lop s) φ S p      = lowOp-ok s p (cmpOf s) refl (Tp φ S)
     lowP-ok ds (liter _ _) φ S p  = []
 
     mutual
@@ -392,6 +399,19 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
 
   em-alloc : All (Once.CCC.Codegen.AllocMin.AllocMinI nm) image
   em-alloc = tt ∷ Data.List.Relation.Unary.All.map (λ p → proj₁ (proj₂ p)) tail-ok
+
+  -- ★ (D459) every op call of the image, room-checked, is what an op of the
+  -- universe lowers to (`Ref`'s `instr-sigop` case): its block is the image's
+  SigIn : AbstractInstr → Set
+  SigIn i = ∀ {A B} (si : SigOpInfo A B) → i ≡ instr-sigop si → Σ Sig λ s → s ∈ ops U × sig si ≡ opSig s (cmpOf s)
+
+  private
+    sig-in : ∀ i → OK i → SigIn i
+    sig-in .(instr-sigop si) o si refl = proj₂ (proj₂ o)
+
+  sigops : ∀ {A B} (si : SigOpInfo A B) → instr-sigop si ∈ room-checks image → Σ Sig λ s → s ∈ ops U × sig si ≡ opSig s (cmpOf s)
+  sigops {A} {B} si m = Data.List.Relation.Unary.All.lookup {P = SigIn}
+                  (All-room {P = SigIn} image (λ k {A} {B} si ()) ((λ {A} {B} si ()) ∷ Data.List.Relation.Unary.All.map (λ {i} o {A} {B} → sig-in i o {A} {B}) tail-ok)) m {A} {B} si refl
 
   -- ★ the start: at pc 0, at the main term's budget, and nowhere else
   -- (`EmittableI` refutes it in the tail)
