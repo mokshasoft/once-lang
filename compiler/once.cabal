@@ -183,7 +183,6 @@ library
       MAlonzo.Code.Once.Parser.Module
       MAlonzo.Code.Once.Parser.Module.Core
       MAlonzo.Code.Once.Parser.Module.DeclTail
-      MAlonzo.Code.Once.Parser.Module.FunDef
       MAlonzo.Code.Once.Parser.Module.FunDef.Body
       MAlonzo.Code.Once.Parser.Module.FunDef.Def
       MAlonzo.Code.Once.Parser.Module.FunDef.OpDecl
