@@ -21,7 +21,8 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 import Data.List.Relation.Unary.All
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.List.Relation.Unary.Unique.Propositional using (Unique)
-open import Data.Maybe using (just)
+open import Data.Maybe using (just; nothing)
+open import Data.List.Relation.Unary.AllPairs using ([])
 open import Data.Nat using (ℕ; s≤s; z≤n)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.String using (String)
@@ -58,6 +59,10 @@ module X8664 where
   open import Once.CCC.Target.X86-64.FileSymbols using (defs-lower; refs-lower)
 
   -- ★ x86-64's file of a room-checked image (it starts with its check)
+  -- a library's file: no code, no entry, nothing to define or resolve (D462)
+  empty-wf : F.AsmWF (F.mkImage [] nothing [] [])
+  empty-wf = record { defined-once = [] ; resolved = [] ; entry-in = tt ; defs-valid = [] ; externs-valid = [] }
+
   core-wf : ∀ k (t′ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
           → ImageWF (instr-room k ∷ t′) bs ex
           → F.AsmWF (F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-room k ∷ t′))) (just 0) (file-table A.block-payload bs) ex)
@@ -87,6 +92,10 @@ module X8632 where
   import Once.Arith.Backend.X86-32.Emit as A
   open import Once.CCC.Target.X86-32.FileSymbols using (defs-lower; refs-lower)
 
+  -- a library's file: no code, no entry, nothing to define or resolve (D462)
+  empty-wf : F.AsmWF (F.mkImage [] nothing [] [])
+  empty-wf = record { defined-once = [] ; resolved = [] ; entry-in = tt ; defs-valid = [] ; externs-valid = [] }
+
   core-wf : ∀ k (t′ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
           → ImageWF (instr-room k ∷ t′) bs ex
           → F.AsmWF (F.mkImage (proj₂ (L.compile-trace-cnt C.entry-owner 0 (instr-room k ∷ t′))) (just 0) (file-table A.block-payload bs) ex)
@@ -115,6 +124,10 @@ module RiscV64 where
   import Once.CCC.Target.RiscV64.AbstractToRiscV as L
   import Once.Arith.Backend.RiscV64.Emit as A
   open import Once.CCC.Target.RiscV64.FileSymbols using (defs-lower; refs-lower)
+
+  -- a library's file: no code, no entry, nothing to define or resolve (D462)
+  empty-wf : F.AsmWF (F.mkImage [] nothing [] [])
+  empty-wf = record { defined-once = [] ; resolved = [] ; entry-in = tt ; defs-valid = [] ; externs-valid = [] }
 
   core-wf : ∀ k (t′ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
           → ImageWF (instr-room k ∷ t′) bs ex

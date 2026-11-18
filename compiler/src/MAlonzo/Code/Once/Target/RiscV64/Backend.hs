@@ -17,6 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit
@@ -28,7 +29,7 @@ import qualified MAlonzo.Code.Once.Target.Backend
 d_backend_8 :: MAlonzo.Code.Once.Target.Backend.T_Backend_6
 d_backend_8
   = coe
-      MAlonzo.Code.Once.Target.Backend.C_constructor_32
+      MAlonzo.Code.Once.Target.Backend.C_constructor_36
       MAlonzo.Code.Once.CCC.Target.RiscV64.File.d_print_82
       MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_block'45'payload_324
       (\ v0 v1 v2 ->
@@ -42,3 +43,9 @@ d_backend_8
            (coe
               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe (0 :: Integer)))
            (coe v1) (coe v2))
+      (coe
+         MAlonzo.Code.Once.CCC.Target.RiscV64.File.C_mkImage_30
+         (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
+         (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+         (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
+         (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))

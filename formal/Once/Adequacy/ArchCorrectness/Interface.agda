@@ -122,6 +122,8 @@ record ArchSim (o : CanonicalName) (B : Backend) : Set₁ where
     file-wf : ∀ k (t′ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
             → ImageWF (instr-room k ∷ t′) bs ex
             → Backend.AsmWF B (Backend.file B (instr-room k ∷ t′) (file-table (Backend.payload B) bs) ex)
+    -- …and so is a library's (empty) file (D462)
+    empty-wf : Backend.AsmWF B (Backend.empty B)
 
   start : FlatMachine.FlatState {FS}
   start = start-at FS entry-frame entry-regs

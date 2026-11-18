@@ -109,10 +109,10 @@ d_coreAt_64 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
   Maybe MAlonzo.Code.Once.IR.T_IR_16 ->
-  AgdaAny -> MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_coreAt_64 v0 v1 v2 v3
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30
+d_coreAt_64 v0 v1 v2
   = case coe v2 of
-      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
         -> coe
              d_srcsAt_52 (coe v0)
              (coe
@@ -120,41 +120,47 @@ d_coreAt_64 v0 v1 v2 v3
                 (coe MAlonzo.Code.Once.IR.C_Heap_8)
                 (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v1))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-        -> coe MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 (coe v3)
+        -> coe
+             MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
+             (coe
+                d_toFileOf_24 (coe v0)
+                (coe
+                   MAlonzo.Code.Once.Target.Backend.d_empty_32
+                   (coe MAlonzo.Code.Once.Target.Backends.d_backend_6 (coe v0))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.Emit.coreAfter
-d_coreAfter_80 ::
+d_coreAfter_76 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_coreAfter_80 v0 v1 v2
+d_coreAfter_76 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v3 -> coe v2
       MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v3
         -> coe
              d_coreAt_64 (coe v0) (coe v1)
-             (coe MAlonzo.Code.Once.Compile.d_moduleToIR_1304 (coe v1)) (coe v3)
+             (coe MAlonzo.Code.Once.Compile.d_moduleToIR_1304 (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.Emit.coreFileOf
-d_coreFileOf_96 ::
+d_coreFileOf_90 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   Bool ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_coreFileOf_96 v0 v1 v2
+d_coreFileOf_90 v0 v1 v2
   = coe
-      d_coreAfter_80 (coe v0) (coe v2)
+      d_coreAfter_76 (coe v0) (coe v2)
       (coe
-         MAlonzo.Code.Once.Compile.d_compileFileFromModule_1606
+         MAlonzo.Code.Once.Compile.d_checkModule_1502
          (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v1) (coe v0) (coe v2))
 -- Once.LinCore.Emit.assemblyCore
-d_assemblyCore_104 ::
+d_assemblyCore_98 ::
   Bool ->
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_assemblyCore_104 v0 v1 v2
+d_assemblyCore_98 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Compile.d_printResult_1618 (coe v1)
-      (coe d_coreFileOf_96 (coe v1) (coe v0) (coe v2))
+      MAlonzo.Code.Once.Compile.d_printResult_1514 (coe v1)
+      (coe d_coreFileOf_90 (coe v1) (coe v0) (coe v2))

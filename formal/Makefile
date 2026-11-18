@@ -263,7 +263,7 @@ malonzo:
 .PHONY: dead-code-ccc-x86-64
 dead-code-ccc-x86-64:
 	@echo "Running dead code analysis on X86-64 (Adequacy apex)..."
-	@./run-dead-code.sh Once.Adequacy.ArchCorrectness.X86-64.x86-64-correct Once/Adequacy/ArchCorrectness/X86-64.agda
+	@./run-dead-code.sh Once.Adequacy.ArchCorrectness.X86-64.Sim.x86-64-sim Once/Adequacy/ArchCorrectness/X86-64/Sim.agda
 
 #-----------------------------------------------------------------------------
 # Postulate Detection

@@ -19,12 +19,16 @@
 -- the flat machine's runs of the program image the compiler emits, the last
 -- level where an allocation and a free are instructions (in the bytes a
 -- pop-heap free is the frontier register moving down, like any arithmetic).
+-- Plan 0.146 (D462): the image is the linear core's, of the module's sources
+-- at their `main`, room-checked (`LinCore.ExprImage.imageAt`, what
+-- `LinCore.Emit` writes); it was master's (`ProgramImage.program-image`).
 --
 -- A BLOCK IS AN ALLOCATION EVENT. The abstract allocator is a counter
 -- (`next-heap-ref`), so the block step k allocates is named by the counter at
 -- k: the n-th allocation of the run, unique and never reused.
 --
--- THE CLAIM, for every run from an entry state of every linked program image:
+-- THE CLAIM, for every run from an entry state of every program image the
+-- compiler emits:
 --   * every free hits a live block (allocated, not freed since), so a block
 --     is never freed twice;
 --   * every block live at some point is freed later in the run, or the run
@@ -58,11 +62,19 @@ open import Once.CCC.Machine.Locations using (AtDynamic)
 open import Once.CCC.Machine.Flat
 open import Once.Memory.HeapAddress using (HeapLocation; HeapRef; module HeapRef; hl-ref)
 open HeapRef using (ref-id)
-open import Once.IR using (IR)
-open import Once.IRTy using (Unit)
-open import Once.CCC.Codegen.ProgramImage using (program-image)
-open import Once.Denotation.Program using (IRFun; irProgram)
-open import Once.Compile using (entry-owner)
+open import Data.List using ([])
+open import Data.Product using (_,_)
+open import Data.Sum using (inj₂)
+open import Once.IR using (Heap)
+open import Once.Spec.Type using (Type)
+open import Once.Spec.Sub using (_<:_)
+open import Once.CCC.FrameSemantics using (fs-numerics)
+open import Once.CCC.Codegen.RoomChecks using (room-checks)
+open import Once.Parser.Module.Core using (Resolved)
+open import Once.CompileSrc using (CompiledSrc; srcModule; mainOf)
+open import Once.Compile using (entry-owner; EffUU)
+import Once.LinCore.ExprBuild
+import Once.LinCore.ExprImage
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RunContext
 
 ------------------------------------------------------------------------
@@ -114,15 +126,20 @@ module Run (FS : FrameSemantics) (prog : AbstractTrace) where
                  → (∃[ j ] (k ≤ j × Frees fs₀ j r)) ⊎ (∃[ j ] (k ≤ j × StoppedAt fs₀ j))
 
 ------------------------------------------------------------------------
--- The claim: every run of every linked program image the compiler emits
+-- The claim: every run of every program image the compiler emits
 ------------------------------------------------------------------------
+
+-- the image the compiler emits for a module whose sources compile, at their `main`
+-- (`LinCore.Emit.fileOf`'s, before the arch lowers it)
+EmittedImage : FrameSemantics → (srcs : List CompiledSrc) → ∀ {T : Type} → T <: EffUU → AbstractTrace
+EmittedImage FS srcs pm =
+  room-checks (Once.LinCore.ExprImage.imageAt (fs-numerics FS) (Once.LinCore.ExprBuild.srcOrder (fs-numerics FS) srcs []) pm)
 
 NoLeak : Set₁
 NoLeak =
-  ∀ (FS : FrameSemantics) (tbl : List IRFun) (ir : IR Unit Unit)
+  ∀ (FS : FrameSemantics) (m : Resolved) (srcs : List CompiledSrc) → srcModule Heap false m ≡ inj₂ srcs
+  → ∀ {T : Type} (pm : T <: EffUU) → mainOf srcs ≡ just (T , pm)
   → let module RC = RunContext entry-owner FS (frame-word FS) refl
-        prog      = program-image entry-owner (irProgram tbl ir)
-    in RC.LinkedImage tbl ir
-  → ∀ (fs₀ : FlatMachine.FlatState {FS})
+    in ∀ (fs₀ : FlatMachine.FlatState {FS})
   → RC.EntryLike fs₀ → frame-slots (FlatMachine.falloc {FS} fs₀) ≡ 0
-  → Run.LeakFree FS prog fs₀
+  → Run.LeakFree FS (EmittedImage FS srcs pm) fs₀

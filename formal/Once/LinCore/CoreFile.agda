@@ -6,7 +6,7 @@
 -- FILE IS (`Emit.coreFileOf`).
 --
 -- Master's gates first: where they refuse, so does the compiler, with their
--- error (`core-err`); a library is master's file (`core-lib`). A program (a
+-- error (`core-err`); a library is the empty file (`core-lib`, D462). A program (a
 -- `main`, `moduleToIR m ≡ just ir`) is the new image's file of its sources
 -- at their main (`core-is`: the front end's, `ExprLinked.ExprProgram`), and
 -- it is built whenever master's is (`core-built`, from `main⇒built`).
@@ -18,6 +18,8 @@ module Once.LinCore.CoreFile where
 
 open import Data.Bool using (Bool; false)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.List using (List)
+open import Once.Target.Backend using (module Backend)
 open import Data.Product using (Σ; _,_; proj₁; proj₂)
 open import Data.String using (String)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -30,7 +32,7 @@ open import Once.Spec.Type using (Unit)
 open import Once.Target.Arch using (Arch; arch-numerics)
 open import Once.Target.Backends using (backend)
 open import Once.Parser.Module.Core using (Resolved; module Resolved)
-open import Once.Compile using (FileOf; compileFileFromModule; moduleToIR)
+open import Once.Compile using (FileOf; checkModule; moduleToIR; CompiledFun)
 open import Once.CompileSrc using (srcModule; mainOf)
 open import Once.Denotation.Admissible using (AdmissibleM)
 open import Once.Adequacy.MainBuilds using (main⇒built)
@@ -39,21 +41,22 @@ open import Once.LinCore.Emit using (coreFileOf; coreAfter; coreAt; srcsAt; main
 import Once.LinCore.ExprLinked
 
 -- ★ the gates' error is the compiler's
-core-err : ∀ (arch : Arch) (mod : Resolved) {e : String} (X : String ⊎ FileOf arch) → X ≡ inj₁ e → coreAfter arch mod X ≡ inj₁ e
+core-err : ∀ (arch : Arch) (mod : Resolved) {e : String} (X : String ⊎ List CompiledFun) → X ≡ inj₁ e → coreAfter arch mod X ≡ inj₁ e
 core-err arch mod .(inj₁ _) refl = refl
 
--- ★ a library's file is master's
-core-lib : ∀ (arch : Arch) (mod : Resolved) → moduleToIR mod ≡ nothing → ∀ F → coreAfter arch mod (inj₂ F) ≡ inj₂ F
-core-lib arch mod mi F = subst (λ r → coreAt arch mod r F ≡ inj₂ F) (sym mi) refl
+-- ★ a library's file is the empty one (D462)
+core-lib : ∀ (arch : Arch) (mod : Resolved) → moduleToIR mod ≡ nothing → ∀ funs
+         → coreAfter arch mod (inj₂ funs) ≡ inj₂ (toFileOf arch (Backend.empty (backend arch)))
+core-lib arch mod mi funs = subst (λ r → coreAt arch mod r ≡ inj₂ (toFileOf arch (Backend.empty (backend arch)))) (sym mi) refl
 
 -- the compiler's file comes after master's gates passed
 core-gated : ∀ (arch : Arch) (doOpt : Bool) (mod : Resolved) {F}
-           → coreFileOf arch doOpt mod ≡ inj₂ F → Σ (FileOf arch) λ F₀ → compileFileFromModule Heap doOpt arch mod ≡ inj₂ F₀
-core-gated arch doOpt mod {F} e = go (compileFileFromModule Heap doOpt arch mod) refl
+           → coreFileOf arch doOpt mod ≡ inj₂ F → Σ (List CompiledFun) λ c → checkModule Heap doOpt arch mod ≡ inj₂ c
+core-gated arch doOpt mod {F} e = go (checkModule Heap doOpt arch mod) refl
   where
-    go : ∀ X → compileFileFromModule Heap doOpt arch mod ≡ X → Σ (FileOf arch) λ F₀ → compileFileFromModule Heap doOpt arch mod ≡ inj₂ F₀
+    go : ∀ X → checkModule Heap doOpt arch mod ≡ X → Σ (List CompiledFun) λ c → checkModule Heap doOpt arch mod ≡ inj₂ c
     go (inj₁ e′) x = case trans (sym e) (cong (coreAfter arch mod) x) of λ ()
-    go (inj₂ F₀) x = F₀ , x
+    go (inj₂ c) x = c , x
 
 -- ★ A PROGRAM'S FILE: the new image of its sources at their main
 module Prog (arch : Arch) (mod : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0} ⌋) (mi : moduleToIR mod ≡ just ir) where
@@ -63,9 +66,9 @@ module Prog (arch : Arch) (mod : Resolved) (ir : IR ⌊ Unit {0} ⌋ ⌊ Unit {0
   newF : FileOf arch
   newF = toFileOf arch (fileOf (backend arch) (arch-numerics arch) EPm.srcs EPm.mpm)
 
-  core-prog : ∀ F → coreAfter arch mod (inj₂ F) ≡ inj₂ newF
-  core-prog F =
-    subst (λ r → coreAt arch mod r F ≡ inj₂ newF) (sym mi)
+  core-prog : ∀ c → coreAfter arch mod (inj₂ c) ≡ inj₂ newF
+  core-prog c =
+    subst (λ r → coreAt arch mod r ≡ inj₂ newF) (sym mi)
       (subst (λ r → srcsAt arch r ≡ inj₂ newF) (sym EPm.src-eq)
         (subst (λ r → mainAt arch EPm.srcs r ≡ inj₂ newF) (sym EPm.main-eq) refl))
 

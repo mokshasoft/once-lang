@@ -10,7 +10,8 @@
 
 module Once.Target.X86-32.Backend where
 
-open import Data.Maybe using (just)
+open import Data.Maybe using (just; nothing)
+open import Data.List using ([])
 open import Data.Product using (proj₂)
 open import Once.Target.Backend using (Backend)
 open import Once.Compile using (entry-owner)
@@ -23,5 +24,6 @@ backend = record
   { File = F.Image ; print = F.print
   ; Payload = F.Payload ; payload = A.block-payload
   ; file = λ t bs ex → F.mkImage (proj₂ (L.compile-trace-cnt entry-owner 0 t)) (just 0) bs ex
+  ; empty = F.mkImage [] nothing [] []
   ; AsmWF = F.AsmWF
   }

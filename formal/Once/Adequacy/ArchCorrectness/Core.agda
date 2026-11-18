@@ -9,7 +9,7 @@
 -- image's (`LinCore.CoreFile.Prog.core-is`), so on each arch (its `ArchSim`,
 -- `ArchCorrectness.<Arch>.Sim`):
 --   * it is what the assembler demands (`LinCore.Top.Program.file-wf★`; a
---     library's is master's file, `FileWF`);
+--     library's is the empty file, `ArchSim.empty-wf`, D462);
 --   * running it follows the program's trace (`LinCore.Top.Program.file★`),
 --     at the meaning of the program the module compiles to, unoptimized.
 -- What the new image still owes is `CoreOwed`'s.
@@ -40,7 +40,7 @@ open import Once.LinCore.Emit using (coreFileOf; coreAfter)
 open import Once.LinCore.CoreFile using (core-gated; core-lib; module Prog)
 import Once.IR
 import Once.IRTy
-import Once.Adequacy.FileWF as FileWF
+open import Once.Adequacy.ArchCorrectness.Interface using (module ArchSim)
 import Once.LinCore.Top
 import Once.Adequacy.ArchCorrectness.CoreOwed as CO
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB64
@@ -74,9 +74,9 @@ module X86-64 (ι : Interp) (r : RB64.RegRange entry-owner ι) (a : RB64.AddrNoW
     where
       by : ∀ mir → moduleToIR m ≡ mir → AsmWF-of x86-64 F
       by nothing mi =
-        let (F₀ , x) = core-gated x86-64 doOpt m e
-        in subst (AsmWF-of x86-64) (inj₂-injective (trans (sym (trans (cong (coreAfter x86-64 m) x) (core-lib x86-64 m mi F₀))) e))
-                 (FileWF.file-wf x86-64 doOpt m F₀ x)
+        let (c , x) = core-gated x86-64 doOpt m e
+        in subst (AsmWF-of x86-64) (inj₂-injective (trans (sym (trans (cong (coreAfter x86-64 m) x) (core-lib x86-64 m mi c))) e))
+                 (ArchSim.empty-wf (At.A (moduleTable m)))
       by (just ir) mi =
         subst (AsmWF-of x86-64) (sym (P.core-is doOpt F e)) (T.file-wf★ P.EPm.srcs P.EPm.src-eq P.EPm.mpm P.EPm.main-eq)
         where
@@ -110,9 +110,9 @@ module X86-32 (ι : Interp) (r : RB32.RegRange entry-owner ι) (a : RB32.AddrNoW
     where
       by : ∀ mir → moduleToIR m ≡ mir → AsmWF-of x86-32 F
       by nothing mi =
-        let (F₀ , x) = core-gated x86-32 doOpt m e
-        in subst (AsmWF-of x86-32) (inj₂-injective (trans (sym (trans (cong (coreAfter x86-32 m) x) (core-lib x86-32 m mi F₀))) e))
-                 (FileWF.file-wf x86-32 doOpt m F₀ x)
+        let (c , x) = core-gated x86-32 doOpt m e
+        in subst (AsmWF-of x86-32) (inj₂-injective (trans (sym (trans (cong (coreAfter x86-32 m) x) (core-lib x86-32 m mi c))) e))
+                 (ArchSim.empty-wf (At.A (moduleTable m)))
       by (just ir) mi =
         subst (AsmWF-of x86-32) (sym (P.core-is doOpt F e)) (T.file-wf★ P.EPm.srcs P.EPm.src-eq P.EPm.mpm P.EPm.main-eq)
         where
@@ -147,9 +147,9 @@ module RiscV64 (ι : Interp) (r : RBrv.RegRange entry-owner ι) (s : RBrv.SlotAd
     where
       by : ∀ mir → moduleToIR m ≡ mir → AsmWF-of riscv64 F
       by nothing mi =
-        let (F₀ , x) = core-gated riscv64 doOpt m e
-        in subst (AsmWF-of riscv64) (inj₂-injective (trans (sym (trans (cong (coreAfter riscv64 m) x) (core-lib riscv64 m mi F₀))) e))
-                 (FileWF.file-wf riscv64 doOpt m F₀ x)
+        let (c , x) = core-gated riscv64 doOpt m e
+        in subst (AsmWF-of riscv64) (inj₂-injective (trans (sym (trans (cong (coreAfter riscv64 m) x) (core-lib riscv64 m mi c))) e))
+                 (ArchSim.empty-wf (At.A (moduleTable m)))
       by (just ir) mi =
         subst (AsmWF-of riscv64) (sym (P.core-is doOpt F e)) (T.file-wf★ P.EPm.srcs P.EPm.src-eq P.EPm.mpm P.EPm.main-eq)
         where

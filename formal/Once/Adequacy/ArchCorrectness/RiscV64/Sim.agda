@@ -58,8 +58,8 @@ import Once.Adequacy.CoreFileWF
 import Once.Target.RiscV64.Backend
 
 -- master's riscv64 apex: its machine, its entry, its arch simulation
-open import Once.Adequacy.ArchCorrectness.RiscV64 o tbl ι riscv64-reg-range riscv64-slot-addr-no-wrap riscv64-addr-no-wrap riscv64-lit-fits
-  using (rv64-frame-semantics; entry-frame-riscv64; module FFOr; entry-corr; entry-wf; entry-like)
+open import Once.Adequacy.ArchCorrectness.RiscV64.Entry o ι riscv64-reg-range riscv64-slot-addr-no-wrap riscv64-addr-no-wrap riscv64-lit-fits
+  using (rv64-frame-semantics; entry-frame-riscv64; entry-regs; start-flat; entry-corr; entry-wf; entry-like)
 open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   rv64-frame-semantics refl refl riscv64-slot-addr-no-wrap
   riscv64-reg-range
@@ -81,16 +81,17 @@ private
 riscv64-sim : ArchSim o Once.Target.RiscV64.Backend.backend
 riscv64-sim = record
   { FS = rv64-frame-semantics ; slot-size = slot-size ; word-eq = refl
-  ; entry-frame = entry-frame-riscv64 ; entry-regs = FFOr.entry-regs
+  ; entry-frame = entry-frame-riscv64 ; entry-regs = entry-regs
   ; block-env = block-env
   ; ArithTable = riscv64-arith-table
-  ; table = λ prog bs nm em → inj₂ (bs , nm , refl , em)
+  ; table = λ prog bs nm em → bs , nm , refl , em
   ; Code = _ ; compile = compile-trace
   ; S = _ ; δ = run-of ; init = [] , X.initState
   ; run-file = λ F → ArchSemantics.run-trace (arch-semantics riscv64) ι F (ArchSemantics.initialState (arch-semantics riscv64) F)
   ; file-runs = λ t bs ex → cong (λ cd → Machine.trace (run-of (block-env (file-table (Backend.payload Once.Target.RiscV64.Backend.backend) bs)) cd) ([] , X.initState))
                                  (cong proj₂ (compile-trace-cnt-agrees entry-owner 0 t))
   ; file-wf = Once.Adequacy.CoreFileWF.RiscV64.core-wf
+  ; empty-wf = Once.Adequacy.CoreFileWF.RiscV64.empty-wf
   ; sim = sim
   }
   where
@@ -100,13 +101,13 @@ riscv64-sim = record
       where
         image = instr-ctrl (c-start b) ∷ tail
         P′ = room-checks image
-        run₀ : RunLow P′ FFOr.start-flat
-        run₀ = low-start image FFOr.start-flat (mkRunAt em (reach-start FFOr.start-flat (entry-like 0) refl snd)) refl
+        run₀ : RunLow P′ start-flat
+        run₀ = low-start image start-flat (mkRunAt em (reach-start start-flat (entry-like 0) refl snd)) refl
         fact = λ k → case fl k of λ where
           (N , e , c) →
             let open RoomEvents {rv64-frame-semantics} image using (ev-boot)
-                boot = ev-boot N FFOr.start-flat 0 refl _ refl
-                agree₀ = events-agree-boot (proj₁ boot) ev-riscv64 env P′ FFOr.start-flat X.initState _ _ (entry-corr P′)
+                boot = ev-boot N start-flat 0 refl _ refl
+                agree₀ = events-agree-boot (proj₁ boot) ev-riscv64 env P′ start-flat X.initState _ _ (entry-corr P′)
                            (entry-wf 0) tt refl tb run₀ refl refl refl refl refl refl
                 agree = retarget (proj₁ (proj₂ boot)) (proj₂ (proj₂ boot)) agree₀
             in budget-fact-of (run-of env (compile-trace P′)) ([] , X.initState) ι (runIR (arch-numerics riscv64) (pureHalf ι) q) k (proj₁ agree) _

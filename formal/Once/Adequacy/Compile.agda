@@ -7,7 +7,7 @@
 -- The compile pipeline is a composition of named stages:
 --
 --   GModule  ──gmoduleToModule──▶  Module
---   Module   ──compileFileFromModule──▶  FileOf arch (or the error)
+--   Module   ──coreFileOf (D461)    ──▶  FileOf arch (or the error)
 --   file     ──file-bytes─────────▶  bytes
 --   bytes    ──exec arch──────────▶  Tr ⊤                (CPU semantics, D320)
 --
@@ -121,7 +121,7 @@ import Once.Adequacy.CPU as CPU
 
 -- `Arch` (here, via `Once.Adequacy.CPU.Interface`) and `C.Arch` (via
 -- `Once.Compile`) are now the SAME type — both re-export `Once.Target.Arch`
--- — so `compileFileFromModule` takes `arch` directly; no coercion needed.
+-- — so `coreFileOf` takes `arch` directly; no coercion needed.
 
 ------------------------------------------------------------------------
 -- Per-stage adapters and trust postulates.
@@ -318,28 +318,21 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   -- module were admissible we would have a contradiction with `¬adm`. That is
   -- what makes this the compiler's refusal rather than a coincidence about
   -- some other path returning `nothing`.
-  -- plan 0.146 (D461): the compiler's file comes after master's gates (`E.coreAfter`): an
-  -- error there is the compiler's, and the compiler's file needs master's to pass
-  core-nothing : ∀ (arch : Arch) (m : P.Resolved) (X : String ⊎ C.FileOf arch)
-               → compile-fe arch X ≡ nothing → compile-fe arch (E.coreAfter arch m X) ≡ nothing
-  core-nothing arch m (inj₁ e) _  = refl
-  core-nothing arch m (inj₂ F) ()
-
-  core-just : ∀ (arch : Arch) (m : P.Resolved) (X : String ⊎ C.FileOf arch) {bytes : List Byte}
-            → compile-fe arch (E.coreAfter arch m X) ≡ just bytes → Σ-syntax (List Byte) (λ b → compile-fe arch X ≡ just b)
-  core-just arch m (inj₁ e) ()
-  core-just arch m (inj₂ F) _ = _ , refl
+  -- plan 0.146 (D461, D462): the bytes of a gate's result — the compiler's file, written after
+  -- master's gates (`C.checkModule`, `E.coreAfter`)
+  compile-ck : (arch : Arch) → P.Resolved → String ⊎ List C.CompiledFun → Maybe (List Byte)
+  compile-ck arch m X = compile-fe arch (E.coreAfter arch m X)
 
   refuse-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
                    (es : List Parser.Entry)
                    (d : Dec (AdmissibleM arch (P.Resolved.rmodule m))) → ¬ AdmissibleM arch (P.Resolved.rmodule m)
-               → compile-fe arch (C.cfm-file-gated IR.Heap doOpt arch m es d) ≡ nothing
+               → compile-ck arch m (C.checkGated IR.Heap doOpt arch m es d) ≡ nothing
   refuse-gated arch doOpt m es (yes p) ¬adm = ⊥-elim (¬adm p)
   refuse-gated arch doOpt m es (no  _) ¬adm = refl
 
   refuse-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
                 (ef : String ⊎ List Parser.Entry) → ¬ AdmissibleM arch (P.Resolved.rmodule m)
-            → compile-fe arch (C.cfm-file-ef IR.Heap doOpt arch m ef) ≡ nothing
+            → compile-ck arch m (C.checkEf IR.Heap doOpt arch m ef) ≡ nothing
   refuse-ef arch doOpt m (inj₁ err)            ¬adm = refl
   refuse-ef arch doOpt m (inj₂ es) ¬adm =
     refuse-gated arch doOpt m es (admissibleM? arch (P.Resolved.rmodule m)) ¬adm
@@ -349,8 +342,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
              → compile-mir arch doOpt m mir ≡ nothing
   refuse-mir arch doOpt m nothing   ¬adm = refl
   refuse-mir arch doOpt m (just ir) ¬adm =
-    core-nothing arch m (C.cfm-file-ef IR.Heap doOpt arch m (Parser.extractFunctions m))
-      (refuse-ef arch doOpt m (Parser.extractFunctions m) ¬adm)
+    refuse-ef arch doOpt m (Parser.extractFunctions m) ¬adm
 
   refuse-gm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) → ¬ AdmissibleM arch (P.Resolved.rmodule m)
             → compile-gm arch doOpt (just m) ≡ nothing
@@ -364,14 +356,14 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
   accept-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
                    (es : List Parser.Entry)
                    (d : Dec (AdmissibleM arch (P.Resolved.rmodule m))) {bytes : List Byte}
-               → compile-fe arch (C.cfm-file-gated IR.Heap doOpt arch m es d) ≡ just bytes
+               → compile-ck arch m (C.checkGated IR.Heap doOpt arch m es d) ≡ just bytes
                → AdmissibleM arch (P.Resolved.rmodule m)
   accept-gated arch doOpt m es (yes p) eq = p
   accept-gated arch doOpt m es (no  _) ()
 
   accept-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved)
                 (ef : String ⊎ List Parser.Entry) {bytes : List Byte}
-            → compile-fe arch (C.cfm-file-ef IR.Heap doOpt arch m ef) ≡ just bytes
+            → compile-ck arch m (C.checkEf IR.Heap doOpt arch m ef) ≡ just bytes
             → AdmissibleM arch (P.Resolved.rmodule m)
   accept-ef arch doOpt m (inj₁ err)            ()
   accept-ef arch doOpt m (inj₂ es) eq =
@@ -382,8 +374,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
              → compile-mir arch doOpt m mir ≡ just bytes → AdmissibleM arch (P.Resolved.rmodule m)
   accept-mir arch doOpt m nothing   ()
   accept-mir arch doOpt m (just ir) eq =
-    let (b , e) = core-just arch m (C.cfm-file-ef IR.Heap doOpt arch m (Parser.extractFunctions m)) eq
-    in accept-ef arch doOpt m (Parser.extractFunctions m) e
+    accept-ef arch doOpt m (Parser.extractFunctions m) eq
 
   accept-gm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Resolved) {bytes : List Byte}
             → compile-gm arch doOpt (just m) ≡ just bytes → AdmissibleM arch (P.Resolved.rmodule m)
@@ -671,7 +662,7 @@ module WithCPU (arch-correct : ∀ (ι : Interp) (arch : Arch) → ArchCorrect a
       correct-gm-adm arch doOpt m (admissibleM? arch (P.Resolved.rmodule m)) (λ ir mi → tw m refl ir mi)
 
     -- THE unconditional claim (Plan 0.48), COMPOSED from three layers. They
-    -- walk `gmoduleToModule → moduleToIR → compileFileFromModule` on explicit
+    -- walk `gmoduleToModule → moduleToIR → coreFileOf` on explicit
     -- arguments (no `with`); only the Built-case trace differs by `doOpt`:
     -- `false` is the PROVEN codegen chain, `true` is `opt-trace` (proven, plan 0.39).
     -- plan 0.105: in a world that declares the signatures of the module `src`

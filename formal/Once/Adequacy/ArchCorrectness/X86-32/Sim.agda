@@ -57,8 +57,8 @@ import Once.Adequacy.CoreFileWF
 import Once.Target.X86-32.Backend
 
 -- master's x86-32 apex: its machine, its entry, its arch simulation
-open import Once.Adequacy.ArchCorrectness.X86-32 o tbl ι x86-32-reg-range x86-32-addr-no-wrap x86-32-lit-fits
-  using (x86-32-frame-semantics; entry-frame-x86-32; module FFOx; entry-corr; entry-wf; entry-like)
+open import Once.Adequacy.ArchCorrectness.X86-32.Entry o ι x86-32-reg-range x86-32-addr-no-wrap x86-32-lit-fits
+  using (x86-32-frame-semantics; entry-frame-x86-32; entry-regs; start-flat; entry-corr; entry-wf; entry-like)
 open import Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim o
   x86-32-frame-semantics refl refl
   x86-32-reg-range
@@ -80,16 +80,17 @@ private
 x86-32-sim : ArchSim o Once.Target.X86-32.Backend.backend
 x86-32-sim = record
   { FS = x86-32-frame-semantics ; slot-size = slot-size ; word-eq = refl
-  ; entry-frame = entry-frame-x86-32 ; entry-regs = FFOx.entry-regs
+  ; entry-frame = entry-frame-x86-32 ; entry-regs = entry-regs
   ; block-env = block-env
   ; ArithTable = x86-32-arith-table
-  ; table = λ prog bs nm em → inj₂ (bs , nm , refl , em)
+  ; table = λ prog bs nm em → bs , nm , refl , em
   ; Code = _ ; compile = compile-trace
   ; S = _ ; δ = run-of ; init = [] , X.initState
   ; run-file = λ F → ArchSemantics.run-trace (arch-semantics x86-32) ι F (ArchSemantics.initialState (arch-semantics x86-32) F)
   ; file-runs = λ t bs ex → cong (λ cd → Machine.trace (run-of (block-env (file-table (Backend.payload Once.Target.X86-32.Backend.backend) bs)) cd) ([] , X.initState))
                                  (cong proj₂ (compile-trace-cnt-agrees entry-owner 0 t))
   ; file-wf = Once.Adequacy.CoreFileWF.X8632.core-wf
+  ; empty-wf = Once.Adequacy.CoreFileWF.X8632.empty-wf
   ; sim = sim
   }
   where
@@ -99,13 +100,13 @@ x86-32-sim = record
       where
         image = instr-ctrl (c-start b) ∷ tail
         P′ = room-checks image
-        run₀ : RunLow P′ FFOx.start-flat
-        run₀ = low-start image FFOx.start-flat (mkRunAt em (reach-start FFOx.start-flat (entry-like 0) refl snd)) refl
+        run₀ : RunLow P′ start-flat
+        run₀ = low-start image start-flat (mkRunAt em (reach-start start-flat (entry-like 0) refl snd)) refl
         fact = λ k → case fl k of λ where
           (N , e , c) →
             let open RoomEvents {x86-32-frame-semantics} image using (ev-boot)
-                boot = ev-boot N FFOx.start-flat 0 refl _ refl
-                agree₀ = events-agree-boot (proj₁ boot) ev-x86-32 env P′ FFOx.start-flat X.initState _ _ (entry-corr P′)
+                boot = ev-boot N start-flat 0 refl _ refl
+                agree₀ = events-agree-boot (proj₁ boot) ev-x86-32 env P′ start-flat X.initState _ _ (entry-corr P′)
                            (entry-wf 0) tt refl tb run₀ refl refl refl refl refl refl
                 agree = retarget (proj₁ (proj₂ boot)) (proj₂ (proj₂ boot)) agree₀
             in budget-fact-of (run-of env (compile-trace P′)) ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) q) k (proj₁ agree) _

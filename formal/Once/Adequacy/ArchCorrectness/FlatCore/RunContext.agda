@@ -72,7 +72,6 @@ open FlatStepsAPI {FS} using (Sound; sound-step)
 open FlatMachine {FS}
 open import Once.IR using (IR)
 open import Once.IRTy using (Unit)
-open import Once.CCC.Codegen.ProgramImage using (program-image)
 open import Once.Denotation.Program using (IRFun; irProgram; LinkedProgram)
 open import Data.List using (List)
 

@@ -24198,3 +24198,36 @@ demands), the meaning it is stated at, and what the image still owes (`Owed`).
 Stating `file-tr` at master's meaning (`rewrite-program`, the optimizer) and relating the two programs'
 traces (`RewritePreserves`, `OptimizedTable`): proofs about a program the file does not run. Discharging
 `Owed` before switching: B1.7b is planned after step 4 (D453), which needs the switch.
+
+## D462 — MASTER'S LOWERING GOES: A LIBRARY'S FILE IS EMPTY, NOLEAK IS OVER THE NEW IMAGE (2026-11-18)
+
+**Proposed** (unattended, plan 0.146 B1.7 step 4; for review). **Applies**: plan 0.146; `Compile`,
+`LinCore.Emit`, `Implementation.NoLeak`, the CLI's `build --lib`.
+
+### The problem
+Step 4 deletes the old lowering (`IRToTrace`, `ProgramImage`, `IRObsCorrect/**`, master's arch apexes)
+now that `Certified` is over the new file (D461). Three things still use it: the gates run master's
+emission (`compileFileFromModule` builds master's file before the new image replaces it); a library
+(no `main`) is master's library file; and `NoLeak` is stated over master's image.
+
+### Decision
+1. **The gates** are a check (`Compile.checkModule`: the functions extract, the literals fit, the
+   definitions compile; the compiled functions or the error), and the file is written after it
+   (`Emit.coreFileOf`). Nothing builds master's image.
+2. **A library's file is empty** (`Backend.empty`: no code, no entry; `ArchSim.empty-wf`). The linear
+   core compiles a whole program from its sources, imports included, and nothing links a Once library
+   into a program; a library build runs the gates (types, literals, the definitions' compilation), which
+   is what `build --lib` is used for. A library image of the new path (definitions as entry points, for
+   linking from outside) waits for a use.
+3. **`NoLeak` is stated over the image the compiler emits** (`Implementation`): every run of the
+   room-checked new image of a module's sources (`ExprImage.imageAt`, at their `main`), as it was over
+   master's image. Same claim, same `LeakFree`; the premise "a linked program" becomes "the module's
+   sources compile" (`srcModule`, `mainOf`). Still stated and owed (§5 item 2).
+4. **The inspector** (`Certified.inspector`, D352): a built program's file is the image of exactly the
+   sources whose functions `once elaborate` prints (`Inspect.Proof.build-factors`). The build does not
+   run the optimizer (D456), so `once optimize` now shows an IR no file is built from, until the core
+   has its own optimizations. `once stats` measures the new image (`Measure`).
+
+### Alternatives
+Keeping master's lowering for libraries (the old lowering stays, and its proofs with it); a library
+image of the new path now (a design for exported entry points with no consumer).

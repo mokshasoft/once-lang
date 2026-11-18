@@ -11,8 +11,8 @@
 -- arith blocks its ops' (`ImageBlocks`, D459), its externs read off it (D461);
 -- written by the arch's backend (`Target.Backends.backend`, D460: nothing
 -- here names an arch). Master's gates run first (type
--- errors, literal ranges, `main`'s type: `Compile.compileFileFromModule`); a
--- library (no `main`) is master's file until the new image has one (D458).
+-- errors, literal ranges, `main`'s type: `Compile.checkModule`); a library (no
+-- `main`) is the empty file (D462).
 ------------------------------------------------------------------------
 
 module Once.LinCore.Emit where
@@ -44,7 +44,7 @@ open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.LinCore.Flat using (Base; int; float; Lit)
 open import Once.LinCore.Loader using (bw; ldConst)
 open import Once.Compile
-  using (EffUU; FileOf; printFile; printResult; compileFileFromModule; moduleToIR)
+  using (EffUU; FileOf; printFile; printResult; checkModule; moduleToIR; CompiledFun)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Target.Arch using (x86-64; x86-32; riscv64)
@@ -80,20 +80,20 @@ srcsAt : (arch : Arch) → String ⊎ List CompiledSrc → String ⊎ FileOf arc
 srcsAt arch (inj₁ e)    = inj₁ e
 srcsAt arch (inj₂ srcs) = mainAt arch srcs (mainOf srcs)
 
--- a library (no `main`) is master's file until the new image has one (D458)
-coreAt : (arch : Arch) → Resolved → Maybe (IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ Once.Spec.Type.Unit {0} ⌋) → FileOf arch → String ⊎ FileOf arch
-coreAt arch mod nothing  F = inj₂ F
-coreAt arch mod (just _) F = srcsAt arch (srcModule Heap false mod)
+-- a library (no `main`) is the empty file (D462: nothing links a Once library; its gates ran)
+coreAt : (arch : Arch) → Resolved → Maybe (IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ Once.Spec.Type.Unit {0} ⌋) → String ⊎ FileOf arch
+coreAt arch mod nothing  = inj₂ (toFileOf arch (Backend.empty (backend arch)))
+coreAt arch mod (just _) = srcsAt arch (srcModule Heap false mod)
 
-coreAfter : (arch : Arch) → Resolved → String ⊎ FileOf arch → String ⊎ FileOf arch
+coreAfter : (arch : Arch) → Resolved → String ⊎ List CompiledFun → String ⊎ FileOf arch
 coreAfter arch mod (inj₁ e) = inj₁ e
-coreAfter arch mod (inj₂ F) = coreAt arch mod (moduleToIR mod) F
+coreAfter arch mod (inj₂ _) = coreAt arch mod (moduleToIR mod)
 
--- ★★ THE COMPILER'S FILE (D461): master's gates (type errors, literal ranges, `main`'s type:
--- `Compile.compileFileFromModule`), then a program's new image. The optimizer does not run on
--- the new image (it takes the sources, D456): `doOpt` reaches only the gates.
+-- ★★ THE COMPILER'S FILE (D461, D462): master's gates (type errors, literal ranges, `main`'s type:
+-- `Compile.checkModule`), then a program's new image, a library's empty file. The optimizer does
+-- not run on the new image (it takes the sources, D456): `doOpt` reaches only the gates.
 coreFileOf : (arch : Arch) → Bool → Resolved → String ⊎ FileOf arch
-coreFileOf arch doOpt mod = coreAfter arch mod (compileFileFromModule Heap doOpt arch mod)
+coreFileOf arch doOpt mod = coreAfter arch mod (checkModule Heap doOpt arch mod)
 
 -- the assembly text the CLI writes
 assemblyCore : Bool → Arch → Resolved → String ⊎ String

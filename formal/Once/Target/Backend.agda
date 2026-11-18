@@ -34,6 +34,8 @@ record Backend : Set₁ where
     payload : ArithBlock → Payload
     -- ★ the file of an image: its code, its blocks' table (by symbol), its externs
     file : AbstractTrace → List (String × Payload) → List String → File
+    -- the file of a library: no code, no entry (D462: the linear core compiles whole programs)
+    empty : File
     -- what the assembler demands of a file (every symbol defined once, every reference
     -- resolved, every symbol one it reads: `CPU.Interface.ArchSemantics.AsmWF`)
     AsmWF : File → Set
