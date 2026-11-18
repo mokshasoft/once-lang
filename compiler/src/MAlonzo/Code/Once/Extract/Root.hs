@@ -238,4 +238,4 @@ d_runs_66
       (coe MAlonzo.Code.Once.Inspect.d_dumpIR_68)
       (coe MAlonzo.Code.Once.Measure.d_statsOf_4)
       (coe MAlonzo.Code.Once.Format.d_formatSource_14)
-      (coe MAlonzo.Code.Once.LinCore.Emit.d_assemblyCore_204)
+      (coe MAlonzo.Code.Once.LinCore.Emit.d_assemblyCore_104)

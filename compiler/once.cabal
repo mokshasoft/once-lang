@@ -63,6 +63,7 @@ library
       MAlonzo.Code.Once.LinCore.Core
       MAlonzo.Code.Once.LinCore.Emit
       MAlonzo.Code.Once.LinCore.ExprBuild
+      MAlonzo.Code.Once.LinCore.ExprImage
       MAlonzo.Code.Once.LinCore.Flat
       MAlonzo.Code.Once.LinCore.Free
       MAlonzo.Code.Once.LinCore.FromExpr

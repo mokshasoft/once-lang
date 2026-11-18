@@ -20,14 +20,15 @@ open import Once.Target.Backend using (Backend; module Backend; file-table)
 open import Data.Nat using (ℕ)
 open import Once.LinCore.Flat using (Base; int; float)
 
-module Once.LinCore.Apex (o : CanonicalName) {B : Backend} (A : ArchSim o B) (bw : Base → ℕ) where
+module Once.LinCore.Apex (o : CanonicalName) {B : Backend} (A : ArchSim o B) where
 
 open import Data.List using (List; []; _∷_)
+open import Once.LinCore.Loader using (bw)
 open import Data.String using (String)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_)
 open import Data.Nat using (_<_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; subst₂; sym)
 import Data.List.Relation.Unary.All
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_)
@@ -57,26 +58,24 @@ import Once.LinCore.ImageGuard
 import Once.LinCore.ImageOwned
 import Once.LinCore.ImageBlocks
 import Once.LinCore.Keys
+import Once.LinCore.ExprImage
 
 open ArchSim A
 open FlatMachine {FS} using (fetch; find-thunk; fpc; floc; fclosure; fret; falloc)
 open Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq using (Emitted; Reachable)
 
-private
-  fmt = fs-numerics FS
-  ι   = FrameSemantics.fs-interp FS
 
 module ML = Once.LinCore.MachineLit FS bw
 
 -- a constant's loader is an `instr-load-const`
-ld-is : Once.LinCore.ImageAll.LoadConst fmt (fs-ffi FS) bw ML.ldConst
+ld-is : Once.LinCore.ImageAll.LoadConst (fs-numerics FS) (fs-ffi FS) bw ML.ldConst
 ld-is {int}   v = _ , _ , v , refl
 ld-is {float} v = _ , _ , v , refl
 
 -- ★ the compiled program (D455–D457): the bridge's facts of `ir` over `tbl`
 -- (`ExprBuild.Bridged`; the compile pipeline's: `ExprLinked.bridged`)
 module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
-  (bf : Once.LinCore.ExprBuild.Bridged fmt (Interp.sig ι) tbl ir) where
+  (bf : Once.LinCore.ExprBuild.Bridged (fs-numerics FS) (Interp.sig (FrameSemantics.fs-interp FS)) tbl ir) where
   module IT = Once.LinCore.FlatTop.ExprApex FS bw tbl ir bf
                 ML.ldConst ML.ld-nl ML.wordOf ML.w-int ML.w-float entry-frame entry-regs
 
@@ -87,15 +86,15 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   P′ = room-checks image
 
   -- ★ the file's table: the image's own blocks (D459: `ImageBlocks.imageBlocks`, as `Emit.blocksOf`)
-  U = Once.LinCore.Keys.Program.U fmt bw IT.ds IT.f₀
-  bs = Once.LinCore.ImageBlocks.imageBlocks fmt bw U
+  U = Once.LinCore.Keys.Program.U (fs-numerics FS) bw IT.ds IT.f₀
+  bs = Once.LinCore.ImageBlocks.imageBlocks (fs-numerics FS) bw U
   env = block-env (file-table (Backend.payload B) bs)
 
   -- the image's pointwise facts and its start (`ImageAll`)
-  module IA = Once.LinCore.ImageAll.Img fmt (fs-ffi FS) bw o IT.ds IT.f₀ ML.ldConst ld-is
+  module IA = Once.LinCore.ImageAll.Img (fs-numerics FS) (fs-ffi FS) bw o IT.ds IT.f₀ ML.ldConst ld-is
   module IAF = IA.Fetch {FS}
   -- nothing falls into an entry (`ImageGuard`, D451)
-  module IG = Once.LinCore.ImageGuard.G.Img fmt (fs-ffi FS) bw {FS} IT.ds IT.f₀ ML.ldConst ML.ld-nl
+  module IG = Once.LinCore.ImageGuard.G.Img (fs-numerics FS) (fs-ffi FS) bw {FS} IT.ds IT.f₀ ML.ldConst ML.ld-nl
 
   -- ★ WHAT THE NEW IMAGE OWES THE ARCH LAYER: `RunContext.Emitted`'s fields not yet proved
   -- (the run's facts: the machine gates, B1.7b), and that its externals miss its table
@@ -123,7 +122,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   -- `Named` (`ImageOwned.named-call`)
   named : Data.List.Relation.Unary.All.All (BT.SigNamed bs) P′
   named = Data.List.Relation.Unary.All.tabulate λ {i} m {A} {B} si e →
-    Once.LinCore.ImageOwned.named-call fmt bw U IT.canon si (IA.sigops si (subst (λ j → j ∈ P′) e m))
+    Once.LinCore.ImageOwned.named-call (fs-numerics FS) bw U IT.canon si (IA.sigops si (subst (λ j → j ∈ P′) e m))
 
   o-table : Owed → ArithTable P′ env
   o-table O = table P′ bs named (Owed.o-ext-miss O)
@@ -140,12 +139,26 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
 
   -- ★★ THE NEW IMAGE ON THE ARCH: its run has the trace of the program (master's `conc-tr`)
   conc-trᴺ : Owed
-           → Machine.trace (δ env (compile P′)) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ fmt ι
+           → Machine.trace (δ env (compile P′)) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
   conc-trᴺ O = sim (irProgram tbl ir) _ _ env (emitted O) (o-table O)
                    (IT.flat-sound (λ {b} v → ML.ld {b} v image)) (IT.flat-ir (λ {b} v → ML.ld {b} v image))
 
   -- ★★ THE FILE: what the backend writes for the image (its code, its blocks' table, the
   -- externs `ex`; `Emit.emitCore`) runs with the program's trace
   file-trᴺ : (ex : List String) → Owed
-           → run-file (Backend.file B P′ (file-table (Backend.payload B) bs) ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ fmt ι
-  file-trᴺ ex O = subst (λ T → T ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ fmt ι) (sym (file-runs P′ bs ex)) (conc-trᴺ O)
+           → run-file (Backend.file B P′ (file-table (Backend.payload B) bs) ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+  file-trᴺ ex O = subst (λ T → T ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)) (sym (file-runs P′ bs ex)) (conc-trᴺ O)
+
+  -- ★ the image and its blocks are the compiler's (`ExprImage`: what `Emit` writes), over the
+  -- bridge's sources and main
+  image-eq : image ≡ Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm
+  image-eq = refl
+
+  blocks-eq : bs ≡ Once.LinCore.ExprImage.blocksAt (fs-numerics FS) IT.BF.tl IT.BF.mpm
+  blocks-eq = refl
+
+  -- ★★ THE FILE THE COMPILER WRITES (`ExprImage.fileAt`) runs with the program's trace
+  file-at : (ex : List String) → Owed
+          → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
+  file-at ex O = subst₂ (λ P bs′ → run-file (Backend.file B (room-checks P) (file-table (Backend.payload B) bs′) ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS))
+                        image-eq blocks-eq (file-trᴺ ex O)

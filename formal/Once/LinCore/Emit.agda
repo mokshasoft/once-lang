@@ -49,30 +49,16 @@ open import Once.Compile
 open import Once.CompileSrc using (CompiledSrc; module CompiledSrc; srcModule; mainOf)
 open CompiledSrc using (csName; csType)
 import Once.LinCore.ExprBuild
+import Once.LinCore.ExprImage
 import Once.LinCore.Lower
 import Once.LinCore.ImageBlocks
 import Once.LinCore.Keys
 open import Once.Arith.Machine.IR using (ArithBlock)
 
--- ★ the new image: the bridge's program, lowered, with its room checks
-module At (fmt : TargetNum) where
-  open Once.LinCore.ExprBuild fmt using (ETProg; exprTable; mainCore; srcOrder)
-  open Once.LinCore.Lower fmt bw using (module Program′)
-  open Once.LinCore.ImageBlocks fmt bw using (imageBlocks)
-  open Once.LinCore.Keys fmt bw using (univ)
-
-  imageOf : List CompiledSrc → ∀ {T : Type} → T <: EffUU → AbstractTrace
-  imageOf srcs pm = room-checks (Program′.image (ETProg.defs t) (mainCore (ETProg.rs t) pm) ldConst)
-    where t = exprTable (srcOrder srcs [])
-
-  -- ★ the image's blocks: its ops' own and their comparisons' (D459)
-  blocksOf : List CompiledSrc → ∀ {T : Type} → T <: EffUU → List ArithBlock
-  blocksOf srcs pm = imageBlocks (univ (ETProg.defs t) (mainCore (ETProg.rs t) pm))
-    where t = exprTable (srcOrder srcs [])
-
--- ★ the new image's file, by a backend at its numerics: the image, its blocks' table, the externs
+-- ★ the new image's file, by a backend at its numerics (`ExprImage.fileAt`: the image the
+-- proof is about, over the sources in the table's order)
 fileOf : (B : Backend) (fmt : TargetNum) → List CompiledSrc → ∀ {T : Type} → T <: EffUU → List String → Backend.File B
-fileOf B fmt srcs pm ex = Backend.file B (At.imageOf fmt srcs pm) (file-table (Backend.payload B) (At.blocksOf fmt srcs pm)) ex
+fileOf B fmt srcs pm ex = Once.LinCore.ExprImage.fileAt fmt B (Once.LinCore.ExprBuild.srcOrder fmt srcs []) pm ex
 
 emitCore : Arch → List CompiledSrc → ∀ {T : Type} → T <: EffUU → IRProgram → String
 emitCore arch srcs pm p = Backend.print (backend arch) (fileOf (backend arch) (arch-numerics arch) srcs pm (prog-externs p))

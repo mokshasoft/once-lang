@@ -529,9 +529,16 @@ opaque
   seal a = a
 
 -- ★★ a compiled program (`moduleToProgram-linked`'s premises) is the bridge's
+-- (sealed whole: `expr-program` unfolds to `seal (expr-program′ …)`, a short stuck term, so two
+-- uses of it are equal without comparing its fields)
+expr-program′ : ∀ (m : P.Resolved) (ir : IR ⌊ ST.Unit {0} ⌋ ⌊ ST.Unit {0} ⌋)
+              → moduleToIR m ≡ just ir → NamesDistinct (moduleTable m) → ExprProgram m ir
+
 expr-program : ∀ (m : P.Resolved) (ir : IR ⌊ ST.Unit {0} ⌋ ⌊ ST.Unit {0} ⌋)
              → moduleToIR m ≡ just ir → NamesDistinct (moduleTable m) → ExprProgram m ir
-expr-program m ir mi nd = seal record
+expr-program m ir mi nd = seal (expr-program′ m ir mi nd)
+
+expr-program′ m ir mi nd = record
   { srcs   = srcs
   ; src-eq = proj₁ (proj₂ so)
   ; tbl-eq = tbl-eq
