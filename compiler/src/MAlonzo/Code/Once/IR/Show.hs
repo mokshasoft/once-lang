@@ -26,6 +26,7 @@ import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Name
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Float.Decimal
+import qualified MAlonzo.Code.Once.Spec.Float.Value
 
 -- Once.IR.Show.showDecimal
 d_showDecimal_6 ::
@@ -34,31 +35,53 @@ d_showDecimal_6 ::
 d_showDecimal_6 v0
   = coe
       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-      (MAlonzo.Code.Data.Integer.Show.d_show_6
-         (coe MAlonzo.Code.Once.Spec.Float.Decimal.d_sig_14 (coe v0)))
+      (coe
+         du_sgn_14
+         (coe MAlonzo.Code.Once.Spec.Float.Decimal.d_sign_16 (coe v0)))
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
-         ("e-" :: Data.Text.Text)
          (coe
             MAlonzo.Code.Data.Nat.Show.d_show_56
-            (MAlonzo.Code.Once.Spec.Float.Decimal.d_exp10_16 (coe v0))))
+            (MAlonzo.Code.Once.Spec.Float.Decimal.d_sig_18 (coe v0)))
+         (coe
+            MAlonzo.Code.Data.String.Base.d__'43''43'__20
+            ("e-" :: Data.Text.Text)
+            (coe
+               MAlonzo.Code.Data.Nat.Show.d_show_56
+               (MAlonzo.Code.Once.Spec.Float.Decimal.d_exp10_20 (coe v0)))))
+-- Once.IR.Show._.sgn
+d_sgn_14 ::
+  MAlonzo.Code.Once.Spec.Float.Decimal.T_Decimal_8 ->
+  MAlonzo.Code.Once.Spec.Float.Value.T_Sign_8 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_sgn_14 ~v0 v1 = du_sgn_14 v1
+du_sgn_14 ::
+  MAlonzo.Code.Once.Spec.Float.Value.T_Sign_8 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+du_sgn_14 v0
+  = case coe v0 of
+      MAlonzo.Code.Once.Spec.Float.Value.C_pos_10
+        -> coe ("" :: Data.Text.Text)
+      MAlonzo.Code.Once.Spec.Float.Value.C_neg_12
+        -> coe ("-" :: Data.Text.Text)
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.IR.Show.showIR
-d_showIR_14 ::
+d_showIR_20 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showIR_14 v0 v1 v2
+d_showIR_20 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Once.IR.C_id_20 -> coe ("id" :: Data.Text.Text)
       MAlonzo.Code.Once.IR.C__'8728'__28 v4 v6 v7
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             (d_showArg_20 (coe v4) (coe v1) (coe v6))
+             (d_showArg_26 (coe v4) (coe v1) (coe v6))
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
                 (" . " :: Data.Text.Text)
-                (d_showArg_20 (coe v0) (coe v4) (coe v7)))
+                (d_showArg_26 (coe v0) (coe v4) (coe v7)))
       MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_36 v6 v7
         -> case coe v1 of
              MAlonzo.Code.Once.IRTy.C__'42'__20 v8 v9
@@ -67,13 +90,13 @@ d_showIR_14 v0 v1 v2
                     ("<" :: Data.Text.Text)
                     (coe
                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                       (d_showIR_14 (coe v0) (coe v8) (coe v6))
+                       (d_showIR_20 (coe v0) (coe v8) (coe v6))
                        (coe
                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
                           (", " :: Data.Text.Text)
                           (coe
                              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                             (d_showIR_14 (coe v0) (coe v9) (coe v7)) (">" :: Data.Text.Text))))
+                             (d_showIR_20 (coe v0) (coe v9) (coe v7)) (">" :: Data.Text.Text))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_fst_42 -> coe ("fst" :: Data.Text.Text)
       MAlonzo.Code.Once.IR.C_snd_48 -> coe ("snd" :: Data.Text.Text)
@@ -87,13 +110,13 @@ d_showIR_14 v0 v1 v2
                     ("[" :: Data.Text.Text)
                     (coe
                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                       (d_showIR_14 (coe v8) (coe v1) (coe v6))
+                       (d_showIR_20 (coe v8) (coe v1) (coe v6))
                        (coe
                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
                           (", " :: Data.Text.Text)
                           (coe
                              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                             (d_showIR_14 (coe v9) (coe v1) (coe v7)) ("]" :: Data.Text.Text))))
+                             (d_showIR_20 (coe v9) (coe v1) (coe v7)) ("]" :: Data.Text.Text))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_terminal_72
         -> coe ("terminal" :: Data.Text.Text)
@@ -107,7 +130,7 @@ d_showIR_14 v0 v1 v2
                     ("curry(" :: Data.Text.Text)
                     (coe
                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                       (d_showIR_14
+                       (d_showIR_20
                           (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v0) (coe v8))
                           (coe v10) (coe v7))
                        (")" :: Data.Text.Text))
@@ -126,7 +149,7 @@ d_showIR_14 v0 v1 v2
                            ("cata(" :: Data.Text.Text)
                            (coe
                               MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                              (d_showIR_14
+                              (d_showIR_20
                                  (coe
                                     MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v8)
                                     (coe
@@ -149,7 +172,7 @@ d_showIR_14 v0 v1 v2
                            ("ana(" :: Data.Text.Text)
                            (coe
                               MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                              (d_showIR_14
+                              (d_showIR_20
                                  (coe v0)
                                  (coe
                                     MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_90 (coe v10)
@@ -166,7 +189,7 @@ d_showIR_14 v0 v1 v2
                     ("iter(" :: Data.Text.Text)
                     (coe
                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                       (d_showIR_14
+                       (d_showIR_20
                           (coe v0) (coe MAlonzo.Code.Once.IRTy.C__'43'__22 (coe v1) (coe v8))
                           (coe v6))
                        (")" :: Data.Text.Text))
@@ -191,13 +214,13 @@ d_showIR_14 v0 v1 v2
              (MAlonzo.Code.Once.Name.d_showCanonical_4 (coe v5))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.IR.Show.showArg
-d_showArg_20 ::
+d_showArg_26 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showArg_20 v0 v1 v2
-  = let v3 = d_showIR_14 (coe v0) (coe v1) (coe v2) in
+d_showArg_26 v0 v1 v2
+  = let v3 = d_showIR_20 (coe v0) (coe v1) (coe v2) in
     coe
       (case coe v2 of
          MAlonzo.Code.Once.IR.C__'8728'__28 v5 v7 v8
@@ -206,7 +229,7 @@ d_showArg_20 v0 v1 v2
                 ("(" :: Data.Text.Text)
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                   (d_showIR_14
+                   (d_showIR_20
                       (coe v0) (coe v1)
                       (coe MAlonzo.Code.Once.IR.C__'8728'__28 v5 v7 v8))
                    (")" :: Data.Text.Text))

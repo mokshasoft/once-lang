@@ -24069,3 +24069,27 @@ extended to the arrow's grade.
 ### Alternatives
 The table's key carrying the grade on master's side too (a change to the IR's linking); a reference at a
 mismatched grade compiled as master's (not a block, so not expressible at `act`).
+
+## D458 — THE NEW IMAGE IS EMITTED BESIDE MASTER'S UNTIL THE APEX TOP IS ITS OWN (2026-11-18)
+
+**Made unattended** (keep-going mode, for the user's review). **Applies**: D455–D457, plan 0.146 B1.7
+step 2d.
+
+### The problem
+The compiler can now build the image the arch apexes prove (`LinCore.Emit`: the bridge's program from the
+sources, lowered, with its room checks). Master's verified compiler is `Certified`'s statement about
+`Compile.assemblyFromModule`, whose image is master's lowering; the new image's apexes (`conc-trᴺ`) are
+proved, but the top that composes them with the front end (B1.7 step 3) is not yet. Switching `build` now
+would leave the shipped compiler outside the theorem until then.
+
+### Decision
+The CLI emits the new image under a flag (`build --core`, `Runs.assembly-core = Emit.assemblyCore`), so
+the codegen tests can run on it; the default stays master's until step 3 makes the new image's apex the
+top, when the flag becomes the default and master's lowering goes (step 4). The new path runs master's
+gates first (type errors, literal ranges, `main`'s type: `compileFileFromModule`), takes the sources
+unoptimized (D456: the bridge's facts hold at `opt ≡ false`), and leaves a library (no `main`) to master's
+file until the new image has a library form.
+
+### Alternatives
+Switching `build` at once (the shipped compiler unverified until step 3); a separate executable for the new
+path (two front ends to keep in step).

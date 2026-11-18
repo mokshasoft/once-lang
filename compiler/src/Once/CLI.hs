@@ -144,6 +144,8 @@ data BuildOptions = BuildOptions
   -- | D320: the Host the executable runs under (`Strata/Hosts/<host>/Host.<arch>`,
   -- which defines `once_leave`). The compiled code never depends on it.
   , buildHost      :: String
+  -- | plan 0.146 B1.7 (D458): emit the linear core's image (`--core`, or `ONCE_CORE` set)
+  , buildCore      :: Bool
   } deriving (Eq, Show)
 
 -- | Options for the check command
@@ -334,11 +336,21 @@ runBuild opts = do
 emitWarnings :: Bridge.Arch -> T.Text -> Bridge.Resolved -> IO ()
 emitWarnings arch src m = mapM_ (hPutStrLn stderr . T.unpack) (Bridge.moduleWarnings arch src m)
 
+-- | The assembly of a resolved module: master's image, or (D458) the linear
+-- core's under `--core` or with `ONCE_CORE` set.
+assemblyOf :: BuildOptions -> Bridge.Arch -> Bridge.Resolved -> IO (Either T.Text T.Text)
+assemblyOf opts arch mod_ = do
+  env <- lookupEnv "ONCE_CORE"
+  pure $ if buildCore opts || maybe False (not . null) env
+    then Bridge.assemblyCore arch mod_
+    else Bridge.assemblyFromModule (buildOptimize opts) arch mod_
+
 runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> T.Text -> Bridge.Resolved
                  -> FilePath -> [[T.Text]] -> IO ()
 runVerifiedBuild opts outputBase arch source mod_ strataDir importPaths = do
   emitWarnings arch source mod_
-  case Bridge.assemblyFromModule (buildOptimize opts) arch mod_ of
+  asm <- assemblyOf opts arch mod_
+  case asm of
     Right asmText -> do
       let asmPath = outputBase ++ ".s"
           objPath = outputBase ++ ".o"
@@ -437,8 +449,8 @@ runImageBuild opts = do
     unless (Bridge.isProgram mod_) $
       orDie "Error" (Left (input ++ " defines no `main`, so it cannot be a program of an image"))
     emitWarnings arch source mod_
-    asmText <- orDie "Compilation error"
-                 (either (Left . T.unpack) Right (Bridge.assemblyFromModule (buildOptimize opts) arch mod_))
+    asm <- assemblyOf opts arch mod_
+    asmText <- orDie "Compilation error" (either (Left . T.unpack) Right asm)
     let base    = outputBase ++ ".p" ++ show n
         asmPath = base ++ ".s"
         objPath = base ++ ".o"

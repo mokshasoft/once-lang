@@ -787,7 +787,7 @@ du_recognise'45'prim'45'float_670 v0 v1 v2 v3
                        (coe
                           d_recognise'45'body'45'float_652 (coe v0) (coe v1)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_50 (coe (0 :: Integer))
+                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_56 (coe (0 :: Integer))
                              (coe MAlonzo.Code.Once.Spec.Type.C_Float_34))
                           (coe v3))
                 _ -> coe v4

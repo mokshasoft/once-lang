@@ -55,6 +55,26 @@ library
       MAlonzo.RTE
   other-modules:
       MAlonzo.Code.Once.ResolvedRefs
+      MAlonzo.Code.Once.Adequacy.ElaborateLinked
+      MAlonzo.Code.Once.CompileSrc
+      MAlonzo.Code.Once.ContractLaws
+      MAlonzo.Code.Once.Denotation.SurfaceRefs
+      MAlonzo.Code.Once.LinCore.Code
+      MAlonzo.Code.Once.LinCore.Core
+      MAlonzo.Code.Once.LinCore.Emit
+      MAlonzo.Code.Once.LinCore.ExprBuild
+      MAlonzo.Code.Once.LinCore.Flat
+      MAlonzo.Code.Once.LinCore.Free
+      MAlonzo.Code.Once.LinCore.FromExpr
+      MAlonzo.Code.Once.LinCore.FromIR
+      MAlonzo.Code.Once.LinCore.Image
+      MAlonzo.Code.Once.LinCore.Keys
+      MAlonzo.Code.Once.LinCore.Layout
+      MAlonzo.Code.Once.LinCore.Lower
+      MAlonzo.Code.Once.LinCore.MoveCode
+      MAlonzo.Code.Once.LinCore.PassTr
+      MAlonzo.Code.Once.LinCore.Values
+      MAlonzo.Code.Once.Surface.Map
       MAlonzo.Code.Once.Adequacy.SpecTokNames
       MAlonzo.Code.Once.Float.Word
       MAlonzo.Code.Once.Spec.Float.Encoding

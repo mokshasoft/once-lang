@@ -29,7 +29,7 @@ import qualified MAlonzo.Code.Once.Surface.Syntax
 d_toFloatIR_6 :: MAlonzo.Code.Once.IR.T_IR_16
 d_toFloatIR_6
   = coe
-      MAlonzo.Code.Once.IR.C_SigOp_140
+      MAlonzo.Code.Once.IR.C_SigOp_144
       (coe MAlonzo.Code.Once.Spec.Type.C_Int_32)
       (coe MAlonzo.Code.Once.Spec.Type.C_Float_34)
       (coe MAlonzo.Code.Once.Arith.SigOp.Builders.d_i2f'45'info_136)
