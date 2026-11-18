@@ -102,6 +102,7 @@ library
       MAlonzo.Code.Once.Arith.Machine.Rewrite
       MAlonzo.Code.Once.Arith.Machine.Shape
       MAlonzo.Code.Once.Arith.Prim
+      MAlonzo.Code.Once.Arith.SigOp.AsBlock
       MAlonzo.Code.Once.Arith.SigOp.Block
       MAlonzo.Code.Once.Arith.SigOp.BlockSem
       MAlonzo.Code.Once.Arith.SigOp.Builders

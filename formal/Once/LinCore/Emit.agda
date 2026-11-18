@@ -55,14 +55,12 @@ import Once.CCC.Target.RiscV64.AbstractToRiscV as RVL
 import Once.Arith.Backend.X86-64.Emit as X64A
 import Once.Arith.Backend.X86-32.Emit as X32A
 import Once.Arith.Backend.RiscV64.Emit as RVA
-import Once.IR as IR
 import Once.LinCore.Core
 import Once.LinCore.Keys
-open import Once.Arith.Machine.IR using (ArithBlock)
-open import Once.Arith.Machine.Rewrite using (try-lift; bare-at; sigop-blocks)
+open import Once.Arith.Machine.IR using (ArithBlock; mk-block)
+open import Once.Arith.Machine.Rewrite using (sigop-blocks)
 open import Once.Arith.SigOp.Compare using (cmp-of)
-open import Once.SigOp.Info using (module SigOpInfo)
-open import Once.Target.Symbol using (once-symbol-path)
+open import Once.SigOp.Info using (SigOpSem; blockV; primV; ffiV; callsV; emitsV; haltsV; module SigOpInfo)
 
 -- a base value is one word on every arch (`Spec.ABI`; the apexes' `bw`)
 bw : Base → ℕ
@@ -95,18 +93,19 @@ module At (fmt : TargetNum) where
   imageOf srcs pm = room-checks (Program′.image (ETProg.defs t) (mainCore (ETProg.rs t) pm) ldConst)
     where t = exprTable (srcOrder srcs [])
 
-  -- ★ an op's arith blocks: the block its call names (a primitive lifted as a
-  -- block over its own input, `Rewrite.try-lift`, under the op's own symbol,
-  -- which `instr-sigop` calls), and the blocks master mints for it
-  -- (`Rewrite.bare-at`, a compare's `sigop-blocks`)
+  -- ★ an op's arith blocks: its own, when it is a block (the bridge's ops are
+  -- blocks, D459: `AsBlock`; named by `block-symbol`, as master's
+  -- `bare-sigop`, which `instr-sigop` calls), and a compare's (`sigop-blocks`)
   opBlocks : Sig → List (String × ArithBlock)
-  opBlocks s = alias (try-lift (IR.SigOp (info s) IR.∘ IR.id))
-               ++ map (λ b → block-symbol b , b)
-                      (proj₂ (bare-at (info s) (try-lift (IR.SigOp (info s) IR.∘ IR.id))) ++ sigop-blocks (cmp-of (SigOpInfo.sem (info s))))
+  opBlocks s = map (λ b → block-symbol b , b) (own (SigOpInfo.sem (info s)) ++ sigop-blocks (cmp-of (SigOpInfo.sem (info s))))
     where
-      alias : Maybe _ → List (String × ArithBlock)
-      alias (just (_ , b)) = (once-symbol-path (SigOpInfo.name (info s)) , b) ∷ []
-      alias nothing        = []
+      own : ∀ {A B} → SigOpSem A B → List ArithBlock
+      own (blockV {sh} {n} e _ _) = mk-block sh n e ∷ []
+      own (primV _)               = []
+      own ffiV                    = []
+      own callsV                  = []
+      own (emitsV _)              = []
+      own (haltsV _)              = []
 
   -- the image's blocks: its ops', once each
   blocksOf : List CompiledSrc → ∀ {T : Type} → T <: EffUU → List (String × ArithBlock)

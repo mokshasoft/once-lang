@@ -22,6 +22,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.Fin.Base
+import qualified MAlonzo.Code.Once.Arith.SigOp.AsBlock
 import qualified MAlonzo.Code.Once.Arith.SigOp.Builders
 import qualified MAlonzo.Code.Once.Context
 import qualified MAlonzo.Code.Once.IRTy
@@ -2469,7 +2470,8 @@ du_opL_1284 v0 v1 v2
       MAlonzo.Code.Once.LinCore.Core.C_lop_1096
       (coe
          MAlonzo.Code.Once.LinCore.Core.C_sig_690 (coe v0) (coe v1)
-         (coe v2))
+         (coe
+            MAlonzo.Code.Once.Arith.SigOp.AsBlock.du_as'45'block_110 (coe v2)))
 -- Once.LinCore.FromExpr._.k-opL
 d_k'45'opL_1294 ::
   MAlonzo.Code.Once.Spec.Numerics.T_TargetNum_6 ->

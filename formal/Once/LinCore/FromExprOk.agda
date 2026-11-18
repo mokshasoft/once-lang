@@ -42,6 +42,8 @@ import Once.IR as M
 open import Once.Surface.Elaborate using (restrictEnv; projUsed; bindEnv; elaborate; numIR; sigOpIR; distribute; distribIR)
 open import Once.Arith.SigOp.Builders using (numInfo; value-info; arrow-info)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open import Once.Arith.SigOp.AsBlock using (as-block)
+open import Once.Arith.SigOp.AsBlockSound using (as-block-ev)
 import Once.Spec.Theory as Th
 open import Once.IRTy using (⌊wk₀⌋)
 open import Once.Type.Concrete using (con-base; con-fun)
@@ -619,10 +621,12 @@ module Main {L : Cx} (rs : Rs L) (δ : Env L) (cs : CanonicalName → (A B : IRT
 
   -- ★ A SIGOP: the pass's cast (`Casts.op≈`), the core's op being the pass's op
   rel-op : ∀ {A B} (si : SigOpInfo A B) → Rel (opL si) (M.SigOp si)
-  rel-op {A} {B} si = mkRel λ {x} w →
-    subst (λ m → m ≈[ W ⌊ B ⌋ ] _)
-          (sym (subst₂-ev (sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si))) (sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si))) (λ y → refl) x))
-          (BP.Casts.op≈ (casts δ cs) si w)
+  -- (the core runs the op as its block, D459: master's op means the same, `as-block-ev`)
+  rel-op {A} {B} si = mkRel λ {x} {x′} w →
+    subst (λ m → Lᶜ δ (opL {L} {One} si) tt x ≈[ W ⌊ B ⌋ ] m) (as-block-ev fmt ρ si x′)
+      (subst (λ m → m ≈[ W ⌊ B ⌋ ] _)
+             (sym (subst₂-ev (sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si))) (sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si))) (λ y → refl) x))
+             (BP.Casts.op≈ (casts δ cs) (as-block si) w))
 
   -- a numeric operation, case for case `numIR`
   rel-num : ∀ {m A U k} (h : Has A U) (o : Sym U k) → Rel (numL {L} {One} {m} h o) (numIR {m} h o)

@@ -59,6 +59,7 @@ open import Once.Surface.Syntax
 open import Once.Type.Concrete using (IsConcrete; con-base; con-fun)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
 open import Once.Arith.SigOp.Builders using (numInfo; i2f-info; value-info; arrow-info)
+open import Once.Arith.SigOp.AsBlock using (as-block)
 open import Once.Spec.Theory using (Has; Sym)
 import Once.Spec.Theory as Th
 import Data.Fin
@@ -207,9 +208,10 @@ module _ {L : Cx} {E : LTy} where
   k-cast : ∀ {A A′ B B′} (p : A ≡ A′) (q : B ≡ B′) {t : Tm L E A B} → Blk t → Blk (cast p q t)
   k-cast refl refl β = β
 
-  -- ★ a SigOp, at the IR's types of its base values
+  -- ★ a SigOp, at the IR's types of its base values; an arithmetic primitive
+  -- as its block (D459: the arch layer runs blocks)
   opL : ∀ {A B} (si : SigOpInfo A B) → Tm L E (ty A) (ty B)
-  opL si = cast (sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si))) (sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si))) (lop (sig si))
+  opL si = cast (sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si))) (sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si))) (lop (sig (as-block si)))
 
   k-opL : ∀ {A B} (si : SigOpInfo A B) → Blk (opL si)
   k-opL si = k-cast (sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si))) (sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si))) k-op
@@ -284,15 +286,15 @@ module _ {L : Cx} where
   -- arrow is a closure whose body runs the op, a base value the op on `tt`
   sigL : (A : ST.Type) → CanonicalName → IsConcrete A → LTm L One (ty A)
   sigL (Dom ⇒[ G.mk-kind G.Zero (G.fin G.pureᶠ) ] Cod) name (con-fun bDom cCod) =
-    clo G.pure (opL (value-info name ST.b-Unit cCod) ∘l dropl) (k-∘ (k-opL _) k-dropl)
+    clo G.pure (opL (value-info name ST.b-Unit cCod) ∘l dropl) (k-∘ (k-opL (value-info name ST.b-Unit cCod)) k-dropl)
   sigL (Dom ⇒[ G.mk-kind G.Zero G.eff ] Cod) name (con-fun bDom cCod) =
-    clo G.eff (opL (arrow-info (G.mk-kind G.Zero G.eff) name ST.b-Unit cCod) ∘l dropl) (k-∘ (k-opL _) k-dropl)
+    clo G.eff (opL (arrow-info (G.mk-kind G.Zero G.eff) name ST.b-Unit cCod) ∘l dropl) (k-∘ (k-opL (arrow-info (G.mk-kind G.Zero G.eff) name ST.b-Unit cCod)) k-dropl)
   sigL (Dom ⇒[ G.mk-kind G.Zero (G.fin G.actᶠ) ] Cod) name (con-fun bDom cCod) =
-    clo G.act (opL (arrow-info (G.mk-kind G.Zero G.act) name ST.b-Unit cCod) ∘l dropl) (k-∘ (k-opL _) k-dropl)
+    clo G.act (opL (arrow-info (G.mk-kind G.Zero G.act) name ST.b-Unit cCod) ∘l dropl) (k-∘ (k-opL (arrow-info (G.mk-kind G.Zero G.act) name ST.b-Unit cCod)) k-dropl)
   sigL (Dom ⇒[ G.mk-kind G.One π ] Cod) name (con-fun bDom cCod) =
-    clo π (opL (arrow-info (G.mk-kind G.One π) name bDom cCod) ∘l dropl) (k-∘ (k-opL _) k-dropl)
+    clo π (opL (arrow-info (G.mk-kind G.One π) name bDom cCod) ∘l dropl) (k-∘ (k-opL (arrow-info (G.mk-kind G.One π) name bDom cCod)) k-dropl)
   sigL (Dom ⇒[ G.mk-kind G.Many π ] Cod) name (con-fun bDom cCod) =
-    clo π (opL (arrow-info (G.mk-kind G.Many π) name bDom cCod) ∘l dropl) (k-∘ (k-opL _) k-dropl)
+    clo π (opL (arrow-info (G.mk-kind G.Many π) name bDom cCod) ∘l dropl) (k-∘ (k-opL (arrow-info (G.mk-kind G.Many π) name bDom cCod)) k-dropl)
   {-# CATCHALL #-}
   sigL _ name (con-base ib) = opL (value-info name ST.b-Unit ib) ∘l drop
 

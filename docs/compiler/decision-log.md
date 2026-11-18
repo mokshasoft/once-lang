@@ -24109,10 +24109,14 @@ program runs, but the arch proofs do not cover it. An `ArithBlock` is an out-of-
 lifted subtree (`a*b + c`) is one call.
 
 ### Decision
-A pass over the linear core, before lowering, turns each arithmetic primitive op into the op of its
-lifted block (`block-info` of `try-lift (SigOp si ∘ id)`, as master's `bare-at`; a compare stays a
-primitive call with its compare block, as master's `bare-sigop`), with its meaning lemma at the core's
-semantics (master's lifting lemma, op by op). The arch interface stays as it is: the arch layer knows
+Before lowering, each arithmetic primitive op of the core is the op of its block (a compare stays a
+primitive call with its compare block, as master's `bare-sigop`), with its meaning lemma. **As built
+(2026-11-18):** at the bridge's op leaf (`FromExpr.opL` emits `lop (sig (as-block si))`), not as a
+separate pass over the core: the core then never holds a primitive, and the lemma is op-local
+(`Arith.SigOp.AsBlock`: the primitive's block at the same types and base derivations, named by its
+digest as master's `block-info`; `AsBlockSound.as-block-ev`: master's op means the same, case for case
+`refl`; `FromExprOk.rel-op` composes it with the op's cast). A separate core pass would need a
+simulation over the whole core machine for a change at its leaves. The arch interface stays as it is: the arch layer knows
 blocks only, and turning a block into machine code is its one job; choosing what becomes a block is a
 target-independent rewrite of the program, so it belongs in the core. A second step fuses maximal
 arithmetic subtrees into one block (master's `rewrite-ir` on the core: a subtree's free base variables

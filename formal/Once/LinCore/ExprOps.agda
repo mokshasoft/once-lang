@@ -122,6 +122,8 @@ open import Relation.Binary.PropositionalEquality using (subst; subst₂)
 open import Once.Contract using (ISig)
 open import Once.Denotation.Program using (Declared; Leaves)
 open import Once.SigOp.Info using (SigOpInfo; module SigOpInfo)
+open import Once.Arith.SigOp.AsBlock using (as-block)
+open import Once.Arith.SigOp.AsBlockSound using (as-block-declared)
 open import Once.LinCore.FromIR fmt using (⟪⌊⌋⟫-flat)
 import Once.IR as M
 open import Once.IRTy using (IRTy)
@@ -210,7 +212,7 @@ module Ops (Σι : ISig) where
   ok-opL : ∀ {L E A B} (si : SigOpInfo A B) → Declared Σι si → OK Dc (opL {L} {E} si)
   ok-opL {L} {E} si d = ok-cast {L} {E} (Relation.Binary.PropositionalEquality.sym (⟪⌊⌋⟫-flat (SigOpInfo.baseA si)))
                                    (Relation.Binary.PropositionalEquality.sym (⟪⌊⌋⟫-flat (SigOpInfo.conB si)))
-                                   {t = lop (sig si)} d
+                                   {t = lop (sig (as-block si))} (as-block-declared Σι si d)
 
   ok-apω : ∀ {L E g A B} → OK Dc (apω {L} {E} {g} {A} {B})
   ok-apω = _
