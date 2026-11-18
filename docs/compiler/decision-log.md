@@ -24093,3 +24093,55 @@ file until the new image has a library form.
 ### Alternatives
 Switching `build` at once (the shipped compiler unverified until step 3); a separate executable for the new
 path (two front ends to keep in step).
+
+## D459 — THE CORE'S ARITHMETIC PRIMITIVES BECOME ARITH BLOCKS BEFORE LOWERING (2026-11-18)
+
+**Decided by the user** (2026-11-18, option 1 of the `o-table` question). **Applies**: D455–D458, plan
+0.146 B1.7 step 3.
+
+### The problem
+The arch layer's arith table (`ArithTable`, used by `arith-sigop-lookup`/`-block` in `ConcFlatSim`) gives
+every internal sigop at the pc a `BlockOf si b`: only a `blockV` op has one. Master's image never runs an
+arithmetic primitive, because `Rewrite.rewrite-ir` lifts each into a block. The new image runs them
+(`instr-sigop` of `arith.mul.int`); the file defines a one-op block under the primitive's symbol, so the
+program runs, but the arch proofs do not cover it. An `ArithBlock` is an out-of-line assembly subroutine
+(its own label in `.text`, called), so a primitive per block is also one call per operation, where master's
+lifted subtree (`a*b + c`) is one call.
+
+### Decision
+A pass over the linear core, before lowering, turns each arithmetic primitive op into the op of its
+lifted block (`block-info` of `try-lift (SigOp si ∘ id)`, as master's `bare-at`; a compare stays a
+primitive call with its compare block, as master's `bare-sigop`), with its meaning lemma at the core's
+semantics (master's lifting lemma, op by op). The arch interface stays as it is: the arch layer knows
+blocks only, and turning a block into machine code is its one job; choosing what becomes a block is a
+target-independent rewrite of the program, so it belongs in the core. A second step fuses maximal
+arithmetic subtrees into one block (master's `rewrite-ir` on the core: a subtree's free base variables
+gathered into the block's input), with its own lemma, so the new image's code is no dearer than master's.
+
+### Alternatives
+The arch layer admits a primitive through its lifted block (`ArithTable`/`BlockOf` widened, the lifting
+lemma proved at the arch level): a target-independent fact proved in the arch layer, a second kind of op
+in its interface, and one call per operation for good.
+
+## D460 — ONE ARCH INTERFACE: THE ARCH-NEUTRAL LAYERS HAVE NO PER-ARCH MODULES (2026-11-18)
+
+**Decided by the user** (2026-11-18). **Applies**: plan 0.146 (the new image's apexes and emitter).
+
+### The problem
+The linear core's arch apexes are three near-identical modules (`LinCore.Arch<arch>`, about 175 lines
+each, differing only in which arch's modules they import), with three more for the tops
+(`LinCore.Top<arch>`), and the emitter cases on the arch (`LinCore.Emit.emitCore`). Arch-specific code is
+spread across `LinCore/`, `Adequacy/`, `CCC/Target/`, `Arith/Backend/` and `Target/`, so what a new arch
+must provide is not written down anywhere.
+
+### Decision
+An arch is one record (built on master's `Adequacy/CPU/Interface.ArchSemantics` where it fits): its machine
+and frame semantics, its lowering of the abstract trace (`compile-trace`), its block payloads and file
+(`block-payload`, `mkImage`), its literal loader, its resource-bound premises, and its simulation theorem
+(`events-agree-boot`, the entry facts, the arith table). Each arch builds its record inside its own
+directories; the linear core's apex, top and emitter are each one module over the record. Implementing a
+new arch is implementing that record.
+
+### Alternatives
+Keeping the per-arch copies (the drift grows with every arch-level fact); merging only the tops (the apexes
+stay three copies).
