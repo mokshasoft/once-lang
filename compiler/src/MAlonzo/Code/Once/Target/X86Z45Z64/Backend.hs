@@ -28,7 +28,7 @@ import qualified MAlonzo.Code.Once.Target.Backend
 d_backend_8 :: MAlonzo.Code.Once.Target.Backend.T_Backend_6
 d_backend_8
   = coe
-      MAlonzo.Code.Once.Target.Backend.C_constructor_28
+      MAlonzo.Code.Once.Target.Backend.C_constructor_32
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.File.d_print_82
       MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Emit.d_block'45'payload_300
       (\ v0 v1 v2 ->

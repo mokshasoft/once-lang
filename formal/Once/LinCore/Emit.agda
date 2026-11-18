@@ -8,7 +8,7 @@
 -- The image the apex proves (`LinCore.Apex.NewImage`): the bridge's program
 -- (`ExprBuild`: the sources' table, `main`'s call at its grade), lowered
 -- (`Lower.Program′.image`, the literal loader), with its room checks; its
--- arith blocks its ops' (`ImageBlocks`, D459), the externs the program's;
+-- arith blocks its ops' (`ImageBlocks`, D459), its externs read off it (D461);
 -- written by the arch's backend (`Target.Backends.backend`, D460: nothing
 -- here names an arch). Master's gates run first (type
 -- errors, literal ranges, `main`'s type: `Compile.compileFileFromModule`); a
@@ -44,8 +44,11 @@ open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.LinCore.Flat using (Base; int; float; Lit)
 open import Once.LinCore.Loader using (bw; ldConst)
 open import Once.Compile
-  using (EffUU; FileOf; printFile; compileFileFromModule; compileResolvedModule; CompiledFun; findMain; tableOf;
-         prog-externs)
+  using (EffUU; FileOf; printFile; printResult; compileFileFromModule; moduleToIR)
+open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
+open import Once.Target.Arch using (x86-64; x86-32; riscv64)
+open import Once.CCC.Codegen.ImageExterns using (image-externs)
 open import Once.CompileSrc using (CompiledSrc; module CompiledSrc; srcModule; mainOf)
 open CompiledSrc using (csName; csType)
 import Once.LinCore.ExprBuild
@@ -56,31 +59,42 @@ import Once.LinCore.Keys
 open import Once.Arith.Machine.IR using (ArithBlock)
 
 -- ★ the new image's file, by a backend at its numerics (`ExprImage.fileAt`: the image the
--- proof is about, over the sources in the table's order)
-fileOf : (B : Backend) (fmt : TargetNum) → List CompiledSrc → ∀ {T : Type} → T <: EffUU → List String → Backend.File B
-fileOf B fmt srcs pm ex = Once.LinCore.ExprImage.fileAt fmt B (Once.LinCore.ExprBuild.srcOrder fmt srcs []) pm ex
+-- proof is about, over the sources in the table's order; its externs, the image's: D461)
+fileOf : (B : Backend) (fmt : TargetNum) → List CompiledSrc → ∀ {T : Type} → T <: EffUU → Backend.File B
+fileOf B fmt srcs pm =
+  Once.LinCore.ExprImage.fileAt fmt B (Once.LinCore.ExprBuild.srcOrder fmt srcs []) pm
+    (image-externs (Once.LinCore.ExprImage.imageAt fmt (Once.LinCore.ExprBuild.srcOrder fmt srcs []) pm))
 
-emitCore : Arch → List CompiledSrc → ∀ {T : Type} → T <: EffUU → IRProgram → String
-emitCore arch srcs pm p = Backend.print (backend arch) (fileOf (backend arch) (arch-numerics arch) srcs pm (prog-externs p))
+-- the backend's file is the arch's (`Compile.FileOf`, what the CPU model decodes)
+toFileOf : (arch : Arch) → Backend.File (backend arch) → FileOf arch
+toFileOf x86-64  F = F
+toFileOf x86-32  F = F
+toFileOf riscv64 F = F
 
--- ★ the file: master's gates, then the new image of a program
-fileCore : (arch : Arch) → Resolved → String ⊎ String
-fileCore arch mod = after (compileFileFromModule Heap false arch mod)
-  where
-    at : List CompiledSrc → List CompiledFun → Maybe (Σ Type (λ T → T <: EffUU)) → Maybe _ → FileOf arch → String ⊎ String
-    at srcs funs (just (T , pm)) (just ir) F = inj₂ (emitCore arch srcs pm (irProgram (tableOf funs) ir))
-    at srcs funs nothing         nothing   F = inj₂ (printFile arch F)
-    at srcs funs (just _)        nothing   F = inj₁ "internal error: the sources' main is not the program's"
-    at srcs funs nothing         (just _)  F = inj₁ "internal error: the sources' main is not the program's"
+-- ★ a program's file: the new image of its sources, at their main
+mainAt : (arch : Arch) → List CompiledSrc → Maybe (Σ Type (λ T → T <: EffUU)) → String ⊎ FileOf arch
+mainAt arch srcs (just (T , pm)) = inj₂ (toFileOf arch (fileOf (backend arch) (arch-numerics arch) srcs pm))
+mainAt arch srcs nothing         = inj₁ "internal error: the sources have no main the program has"
 
-    core : String ⊎ List CompiledSrc → String ⊎ List CompiledFun → FileOf arch → String ⊎ String
-    core (inj₂ srcs) (inj₂ funs) F = at srcs funs (mainOf srcs) (findMain funs) F
-    core (inj₂ _)    (inj₁ e)    F = inj₁ e
-    core (inj₁ e)    _           F = inj₁ e
+srcsAt : (arch : Arch) → String ⊎ List CompiledSrc → String ⊎ FileOf arch
+srcsAt arch (inj₁ e)    = inj₁ e
+srcsAt arch (inj₂ srcs) = mainAt arch srcs (mainOf srcs)
 
-    after : String ⊎ FileOf arch → String ⊎ String
-    after (inj₁ e) = inj₁ e
-    after (inj₂ F) = core (srcModule Heap false mod) (compileResolvedModule Heap false mod) F
+-- a library (no `main`) is master's file until the new image has one (D458)
+coreAt : (arch : Arch) → Resolved → Maybe (IR ⌊ Once.Spec.Type.Unit {0} ⌋ ⌊ Once.Spec.Type.Unit {0} ⌋) → FileOf arch → String ⊎ FileOf arch
+coreAt arch mod nothing  F = inj₂ F
+coreAt arch mod (just _) F = srcsAt arch (srcModule Heap false mod)
 
-assemblyCore : Arch → Resolved → String ⊎ String
-assemblyCore arch mod = fileCore arch mod
+coreAfter : (arch : Arch) → Resolved → String ⊎ FileOf arch → String ⊎ FileOf arch
+coreAfter arch mod (inj₁ e) = inj₁ e
+coreAfter arch mod (inj₂ F) = coreAt arch mod (moduleToIR mod) F
+
+-- ★★ THE COMPILER'S FILE (D461): master's gates (type errors, literal ranges, `main`'s type:
+-- `Compile.compileFileFromModule`), then a program's new image. The optimizer does not run on
+-- the new image (it takes the sources, D456): `doOpt` reaches only the gates.
+coreFileOf : (arch : Arch) → Bool → Resolved → String ⊎ FileOf arch
+coreFileOf arch doOpt mod = coreAfter arch mod (compileFileFromModule Heap doOpt arch mod)
+
+-- the assembly text the CLI writes
+assemblyCore : Bool → Arch → Resolved → String ⊎ String
+assemblyCore doOpt arch mod = printResult arch (coreFileOf arch doOpt mod)

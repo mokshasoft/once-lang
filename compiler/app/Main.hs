@@ -75,7 +75,6 @@ data BuildConfig = BuildConfig
   , bcInterp    :: Maybe String
   , bcExplicit  :: [(InterpType, String)]
   , bcHost      :: String
-  , bcCore      :: Bool
   , bcInput     :: Maybe String
   , bcPrograms  :: [String]
   }
@@ -91,7 +90,6 @@ defaultBuildConfig = BuildConfig
   , bcInterp    = Nothing
   , bcExplicit  = []
   , bcHost      = "Linux"
-  , bcCore      = False
   , bcInput     = Nothing
   , bcPrograms  = []
   }
@@ -115,7 +113,6 @@ parseBuild args = go args defaultBuildConfig
         , buildInterp    = bcInterp cfg
         , buildExplicitInterps = bcExplicit cfg
         , buildHost      = bcHost cfg
-        , buildCore      = bcCore cfg
         }
     go ("-o" : out : rest) cfg = go rest cfg { bcOutput = Just out }
     go ("--lib" : rest) cfg = go rest cfg { bcMode = Library }
@@ -128,8 +125,6 @@ parseBuild args = go args defaultBuildConfig
     go ("--strata" : s : rest) cfg = go rest cfg { bcStrata = Just s }
     go ("--interp" : i : rest) cfg = go rest cfg { bcInterp = Just i }
     go ("--host" : h : rest) cfg = go rest cfg { bcHost = h }
-    -- plan 0.146 B1.7 (D458): the linear core's image
-    go ("--core" : rest) cfg = go rest cfg { bcCore = True }
     -- Parse -I:TYPE MODULE (explicit interpretation with type)
     go (x : modPath : rest) cfg
       | "-I:" `isPrefixOf` x =

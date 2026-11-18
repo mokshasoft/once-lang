@@ -34,6 +34,7 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _∷_; _++_; map; concatMap; length)
 open import Data.List.Properties using (∷-injective; ++-assoc; ++-conicalˡ)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
+import Data.List.Relation.Unary.All
 open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡)
 open import Data.Nat.Show using (charsInBase)
@@ -346,9 +347,14 @@ private
 mangL : List Char → List Char
 mangL cs = charsInBase 10 (length (zencL cs)) ++ zencL cs
 
+-- A component whose z-encoding is a cons cell with a non-digit head: what the
+-- length-prefix argument needs of it (every lexer name is one, `zencL-vic`; so is a
+-- compiler name led by a letter, plan 0.146 D461).
+Peel : List Char → Set
+Peel cs = Σ[ h ∈ Char ] Σ[ t ∈ List Char ] (zencL cs ≡ h ∷ t) × (isDigit h ≡ false)
+
 -- z-encoding of a valid identifier: a cons cell with a non-digit head.
-zencL-vic : ∀ {cs} → NameChars cs
-  → Σ[ h ∈ Char ] Σ[ t ∈ List Char ] (zencL cs ≡ h ∷ t) × (isDigit h ≡ false)
+zencL-vic : ∀ {cs} → NameChars cs → Peel cs
 zencL-vic {[]} (inj₁ ())
 zencL-vic {[]} (inj₂ ())
 zencL-vic {c0 ∷ cs'} n = go (zec-class c0)
@@ -363,18 +369,18 @@ zencL-vic {c0 ∷ cs'} n = go (zec-class c0)
     go (inj₂ (inj₂ (ex , _))) = c0 , zencL cs'        , cong (_++ zencL cs') ex , head¬digit n
 
 zencL-suffix-headND : ∀ {cs} (suffix : List Char)
-                    → NameChars cs → HeadNotDigit (zencL cs ++ suffix)
+                    → Peel cs → HeadNotDigit (zencL cs ++ suffix)
 zencL-suffix-headND {cs} suffix vic =
-  let (h , t , zceq , hnd) = zencL-vic vic
+  let (h , t , zceq , hnd) = vic
   in subst (λ z → HeadNotDigit (z ++ suffix)) (sym zceq) hnd
 
 ++-cons-≢[] : ∀ (A : List Char) {h : Char} {rest : List Char} → ¬ (A ++ (h ∷ rest) ≡ [])
 ++-cons-≢[] [] ()
 ++-cons-≢[] (a ∷ A') ()
 
-mangL-nonempty : ∀ {d} → NameChars d → ¬ (mangL d ≡ [])
+mangL-nonempty : ∀ {d} → Peel d → ¬ (mangL d ≡ [])
 mangL-nonempty {d} vic eq =
-  let (h , t , zceq , _) = zencL-vic vic
+  let (h , t , zceq , _) = vic
   in ++-cons-≢[] (charsInBase 10 (length (zencL d)))
        (subst (λ z → charsInBase 10 (length (zencL d)) ++ z ≡ []) zceq eq)
 
@@ -387,7 +393,7 @@ withSep (x ∷ xs) = '_' ∷ (x ++ withSep xs)
 
 -- Peel one mangled component (+ its arbitrary suffix) off both sides.
 peel : ∀ {c d} (wc wd : List Char)
-  → NameChars c → NameChars d
+  → Peel c → Peel d
   → mangL c ++ wc ≡ mangL d ++ wd
   → (c ≡ d) × (wc ≡ wd)
 peel {c} {d} wc wd vc vd eq =
@@ -398,32 +404,32 @@ peel {c} {d} wc wd vc vd eq =
       pu = digit-prefix-unique A B (zencL c ++ wc) (zencL d ++ wd)
              (charsInBase-all-digits (length (zencL c)))
              (charsInBase-all-digits (length (zencL d)))
-             (zencL-suffix-headND wc vc) (zencL-suffix-headND wd vd) eq'
+             (zencL-suffix-headND {c} wc vc) (zencL-suffix-headND {d} wd vd) eq'
       lenEq = charsInBase-injective 10 (length (zencL c)) (length (zencL d)) (proj₁ pu)
       lpc = len-prefix-cancel (zencL c) (zencL d) wc wd lenEq (proj₂ pu)
   in zencL-inj c d (proj₁ lpc) , proj₂ lpc
 
 withSep-inj : ∀ (css dss : List (List Char))
   → withSep (map mangL css) ≡ withSep (map mangL dss)
-  → All NameChars css → All NameChars dss → css ≡ dss
+  → All Peel css → All Peel dss → css ≡ dss
 withSep-inj [] [] eq vc vd = refl
 withSep-inj [] (d ∷ dss') eq vc vd = ⊥-elim (cons≢[] (sym eq))
 withSep-inj (c ∷ css') [] eq vc vd = ⊥-elim (cons≢[] eq)
 withSep-inj (c ∷ css') (d ∷ dss') eq (vc0 ∷ vcs) (vd0 ∷ vds) =
-  let (c≡d , wEq) = peel (withSep (map mangL css')) (withSep (map mangL dss'))
+  let (c≡d , wEq) = peel {c} {d} (withSep (map mangL css')) (withSep (map mangL dss'))
                          vc0 vd0 (proj₂ (∷-injective eq))
   in cong₂ _∷_ c≡d (withSep-inj css' dss' wEq vcs vds)
 
 joinL-inj : ∀ (css dss : List (List Char))
   → joinUsL' (map mangL css) ≡ joinUsL' (map mangL dss)
-  → All NameChars css → All NameChars dss → css ≡ dss
+  → All Peel css → All Peel dss → css ≡ dss
 joinL-inj [] [] eq vc vd = refl
 joinL-inj [] (d ∷ dss') eq vc (vd0 ∷ _) =
-  ⊥-elim (mangL-nonempty vd0 (++-conicalˡ (mangL d) (withSep (map mangL dss')) (sym eq)))
+  ⊥-elim (mangL-nonempty {d} vd0 (++-conicalˡ (mangL d) (withSep (map mangL dss')) (sym eq)))
 joinL-inj (c ∷ css') [] eq (vc0 ∷ _) vd =
-  ⊥-elim (mangL-nonempty vc0 (++-conicalˡ (mangL c) (withSep (map mangL css')) eq))
+  ⊥-elim (mangL-nonempty {c} vc0 (++-conicalˡ (mangL c) (withSep (map mangL css')) eq))
 joinL-inj (c ∷ css') (d ∷ dss') eq (vc0 ∷ vcs) (vd0 ∷ vds) =
-  let (c≡d , wEq) = peel (withSep (map mangL css')) (withSep (map mangL dss')) vc0 vd0 eq
+  let (c≡d , wEq) = peel {c} {d} (withSep (map mangL css')) (withSep (map mangL dss')) vc0 vd0 eq
   in cong₂ _∷_ c≡d (withSep-inj css' dss' wEq vcs vds)
 
 ------------------------------------------------------------------------
@@ -468,11 +474,15 @@ toList-joinUs (x ∷ y ∷ xs) =
 body-rel : ∀ (p : List String) → map toList (map mangle-component p) ≡ map mangL (map toList p)
 body-rel p = trans (sym (map-∘ p)) (trans (map-cong toList-mangle p) (map-∘ p))
 
-once-symbol-path-injective :
+-- a component string the length-prefix argument reads back (`Peel`)
+PeelS : String → Set
+PeelS s = Peel (toList s)
+
+once-symbol-path-injective-peel :
   ∀ (cn₁ cn₂ : CanonicalName)
-  → All ValidName (parts cn₁) → All ValidName (parts cn₂)
+  → All PeelS (parts cn₁) → All PeelS (parts cn₂)
   → once-symbol-path cn₁ ≡ once-symbol-path cn₂ → cn₁ ≡ cn₂
-once-symbol-path-injective cn₁ cn₂ v1 v2 eq =
+once-symbol-path-injective-peel cn₁ cn₂ v1 v2 eq =
   cong canonical
     (mapL-injective (λ {a} {b} → toList-injective a b)
       (joinL-inj (map toList (parts cn₁)) (map toList (parts cn₂))
@@ -493,6 +503,13 @@ once-symbol-path-injective cn₁ cn₂ v1 v2 eq =
             (trans teq
                    (trans (toList-joinUs (map mangle-component (parts cn₂)))
                           (cong joinUsL' (body-rel (parts cn₂)))))
+
+once-symbol-path-injective :
+  ∀ (cn₁ cn₂ : CanonicalName)
+  → All ValidName (parts cn₁) → All ValidName (parts cn₂)
+  → once-symbol-path cn₁ ≡ once-symbol-path cn₂ → cn₁ ≡ cn₂
+once-symbol-path-injective cn₁ cn₂ v1 v2 =
+  once-symbol-path-injective-peel cn₁ cn₂ (Data.List.Relation.Unary.All.map (λ {s} v → zencL-vic {toList s} v) v1) (Data.List.Relation.Unary.All.map (λ {s} v → zencL-vic {toList s} v) v2)
 
 ------------------------------------------------------------------------
 -- Plan 0.50 — the BARE-name corollary. `once-symbol-own` (the symbol of a

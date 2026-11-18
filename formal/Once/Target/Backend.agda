@@ -34,6 +34,9 @@ record Backend : Set₁ where
     payload : ArithBlock → Payload
     -- ★ the file of an image: its code, its blocks' table (by symbol), its externs
     file : AbstractTrace → List (String × Payload) → List String → File
+    -- what the assembler demands of a file (every symbol defined once, every reference
+    -- resolved, every symbol one it reads: `CPU.Interface.ArchSemantics.AsmWF`)
+    AsmWF : File → Set
 
 -- a block list's table: by symbol, once each (master's `Compile.blocks-<arch>`)
 file-table : ∀ {P : Set} → (ArithBlock → P) → List ArithBlock → List (String × P)

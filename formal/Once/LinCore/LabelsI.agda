@@ -17,6 +17,7 @@
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _⊔_; _≤_; _<_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n; suc-injective; <-irrefl; +-suc; m<m+n)
 open import Data.Nat.Show.Properties using (charsInBase-injective)
+open import Data.Nat.Show using (charsInBase)
 open import Data.List using (List; []; _∷_; _++_; map; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_; tabulate) renaming (map to All-map; head to All-head)
 open import Data.List.Relation.Unary.All.Properties using (++⁻ʳ) renaming (++⁺ to All-++⁺; map⁺ to All-map⁺)
@@ -29,6 +30,7 @@ open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.String using (String)
+open import Data.Char using (Char)
 open import Data.Unit using (tt)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
@@ -72,7 +74,10 @@ opaque
   unfolding nameOf
 
   nameOf-inj : ∀ {i j} → nameOf i ≡ nameOf j → i ≡ j
-  nameOf-inj {i} {j} e = charsInBase-injective 10 i j (primStringFromListInjective _ _ (cong part₂ e))
+  nameOf-inj {i} {j} e = charsInBase-injective 10 i j (cong tail′ (primStringFromListInjective ('b' ∷ charsInBase 10 i) ('b' ∷ charsInBase 10 j) (cong part₂ e)))
+    where tail′ : List Char → List Char
+          tail′ []       = []
+          tail′ (_ ∷ cs) = cs
 
 jl-inj : ∀ {j j′ m m′} → jl j m ≡ jl j′ m′ → j ≡ j′ × m ≡ m′
 jl-inj e = nameOf-inj (cong LabelId.owner e) , suc-injective (cong LabelId.idx e)

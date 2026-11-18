@@ -23,4 +23,5 @@ backend = record
   { File = F.Image ; print = F.print
   ; Payload = F.Payload ; payload = A.block-payload
   ; file = λ t bs ex → F.mkImage (proj₂ (L.compile-trace-cnt entry-owner 0 t)) (just 0) bs ex
+  ; AsmWF = F.AsmWF
   }

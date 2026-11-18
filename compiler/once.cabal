@@ -62,6 +62,9 @@ library
       MAlonzo.Code.Once.LinCore.Code
       MAlonzo.Code.Once.LinCore.Core
       MAlonzo.Code.Once.LinCore.Emit
+      MAlonzo.Code.Once.CCC.Codegen.ImageExterns
+      MAlonzo.Code.Once.CCC.Codegen.ImageSymbols
+      MAlonzo.Code.Once.Target.SymbolValid
       MAlonzo.Code.Once.LinCore.ExprBuild
       MAlonzo.Code.Once.LinCore.ExprImage
       MAlonzo.Code.Once.LinCore.Flat

@@ -16,7 +16,7 @@
 
 open import Once.Spec.Name using (CanonicalName)
 open import Once.Adequacy.ArchCorrectness.Interface using (ArchSim; module ArchSim)
-open import Once.Target.Backend using (Backend)
+open import Once.Target.Backend using (Backend; module Backend)
 
 module Once.LinCore.Top (o : CanonicalName) {B : Backend} (A : ArchSim o B) where
 
@@ -38,6 +38,7 @@ open import Once.IR using (Heap)
 open import Once.Compile using (EffUU)
 open import Once.CompileSrc using (CompiledSrc; srcModule; mainOf)
 open import Once.LinCore.Emit using (fileOf)
+open import Once.CCC.Codegen.ImageExterns using (image-externs)
 open import Once.Denotation.Program using (IRFun; NamesDistinct)
 open import Once.IR.Semantics.Trace using (module Interp)
 open import Once.CCC.FrameSemantics using (fs-numerics; module FrameSemantics)
@@ -76,13 +77,15 @@ module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit
   -- (`ExprProgram.src-eq`), its main theirs (`main-eq`), so the file is `Apex.file-at`'s
   module EPm = Once.LinCore.ExprLinked.ExprProgram (Once.LinCore.ExprLinked.expr-program (fs-numerics (ArchSim.FS A)) m ir mi nd)
 
-  FileAt : List CompiledSrc → Σ Type (λ T → T <: EffUU) → List String → Set
-  FileAt tl (T , pm) ex = ArchSim.run-file A (Once.LinCore.ExprImage.fileAt (fs-numerics (ArchSim.FS A)) B tl pm ex)
-                          ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics (ArchSim.FS A)) (FrameSemantics.fs-interp (ArchSim.FS A))
+  FileAt : List CompiledSrc → Σ Type (λ T → T <: EffUU) → Set
+  FileAt tl (T , pm) =
+    ArchSim.run-file A (Once.LinCore.ExprImage.fileAt (fs-numerics (ArchSim.FS A)) B tl pm
+                         (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics (ArchSim.FS A)) tl pm)))
+    ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics (ArchSim.FS A)) (FrameSemantics.fs-interp (ArchSim.FS A))
 
-  FileTr : List CompiledSrc → Σ Type (λ T → T <: EffUU) → List String → Set
-  FileTr s (T , pm) ex = ArchSim.run-file A (fileOf B (fs-numerics (ArchSim.FS A)) s pm ex)
-                         ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics (ArchSim.FS A)) (FrameSemantics.fs-interp (ArchSim.FS A))
+  FileTr : List CompiledSrc → Σ Type (λ T → T <: EffUU) → Set
+  FileTr s (T , pm) = ArchSim.run-file A (fileOf B (fs-numerics (ArchSim.FS A)) s pm)
+                      ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics (ArchSim.FS A)) (FrameSemantics.fs-interp (ArchSim.FS A))
 
   private
     -- the bridge's sources and main are the front end's
@@ -91,14 +94,36 @@ module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit
     main-eq : _≡_ {A = Σ Type (λ T → T <: EffUU)} (N.IT.BF.mty , N.IT.BF.mpm) (EPm.mty , EPm.mpm)
     main-eq = refl
 
-    -- …so the file at them is the compiler's of them
-    at-front : ∀ ex → N.Owed → FileTr EPm.srcs (EPm.mty , EPm.mpm) ex
-    at-front ex O = subst₂ (λ tl x → FileAt tl x ex) tl-eq main-eq (N.file-at ex O)
+    -- …so the file at them is the compiler's of them (its externs, the image's)
+    at-front : N.Owed → FileTr EPm.srcs (EPm.mty , EPm.mpm)
+    at-front O = subst₂ FileAt tl-eq main-eq
+                   (N.file-at (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics (ArchSim.FS A)) N.IT.BF.tl N.IT.BF.mpm)) O)
 
-    move : ∀ {s s′} → s ≡ s′ → ∀ {x y} → mainOf s ≡ just x → mainOf s′ ≡ just y → ∀ ex → FileTr s x ex → FileTr s′ y ex
-    move {s} refl e e′ ex t = subst (λ z → FileTr s z ex) (just-injective (trans (sym e) e′)) t
+    move : ∀ {s s′} → s ≡ s′ → ∀ {x y} → mainOf s ≡ just x → mainOf s′ ≡ just y → FileTr s x → FileTr s′ y
+    move {s} refl e e′ t = subst (λ z → FileTr s z) (just-injective (trans (sym e) e′)) t
 
   file★ : N.Owed → ∀ srcs → srcModule Heap false m ≡ inj₂ srcs → ∀ {T} (pm : T <: EffUU) → mainOf srcs ≡ just (T , pm)
-        → ∀ ex → FileTr srcs (T , pm) ex
-  file★ O srcs se {T} pm mo ex =
-    move {EPm.srcs} {srcs} (inj₂-injective (trans (sym EPm.src-eq) se)) {EPm.mty , EPm.mpm} {T , pm} EPm.main-eq mo ex (at-front ex O)
+        → FileTr srcs (T , pm)
+  file★ O srcs se {T} pm mo =
+    move {EPm.srcs} {srcs} (inj₂-injective (trans (sym EPm.src-eq) se)) {EPm.mty , EPm.mpm} {T , pm} EPm.main-eq mo (at-front O)
+
+  -- ★★ THE FILE THE COMPILER WRITES IS WHAT THE ASSEMBLER DEMANDS (D461)
+  FileWfAt : List CompiledSrc → Σ Type (λ T → T <: EffUU) → Set
+  FileWfAt tl (T , pm) =
+    Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics (ArchSim.FS A)) B tl pm
+                      (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics (ArchSim.FS A)) tl pm)))
+
+  FileWf : List CompiledSrc → Σ Type (λ T → T <: EffUU) → Set
+  FileWf s (T , pm) = Backend.AsmWF B (fileOf B (fs-numerics (ArchSim.FS A)) s pm)
+
+  private
+    wf-front : FileWf EPm.srcs (EPm.mty , EPm.mpm)
+    wf-front = subst₂ FileWfAt tl-eq main-eq N.file-wf-at
+
+    move-wf : ∀ {s s′} → s ≡ s′ → ∀ {x y} → mainOf s ≡ just x → mainOf s′ ≡ just y → FileWf s x → FileWf s′ y
+    move-wf {s} refl e e′ w = subst (λ z → FileWf s z) (just-injective (trans (sym e) e′)) w
+
+  file-wf★ : ∀ srcs → srcModule Heap false m ≡ inj₂ srcs → ∀ {T} (pm : T <: EffUU) → mainOf srcs ≡ just (T , pm)
+           → FileWf srcs (T , pm)
+  file-wf★ srcs se {T} pm mo =
+    move-wf {EPm.srcs} {srcs} (inj₂-injective (trans (sym EPm.src-eq) se)) {EPm.mty , EPm.mpm} {T , pm} EPm.main-eq mo wf-front

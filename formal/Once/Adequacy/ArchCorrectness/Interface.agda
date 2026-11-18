@@ -17,7 +17,8 @@
 --     list the program's calls name (`table`);
 --   * its machine: the code of an abstract trace (`compile`), its step on
 --     that code under a block table (`δ`), and its loader's state (`init`);
---     the backend's file runs as that machine (`run-file`, `file-runs`);
+--     the backend's file runs as that machine (`run-file`, `file-runs`), and
+--     is what the assembler demands when its image's symbols are (`file-wf`);
 --   * ★ one theorem (`sim`): an image whose shape facts hold (`Emitted`), at a
 --     table it names, whose flat run is sound and shows a program's meaning at
 --     every budget (the flat theorem, as `FlatTop` proves it of the linear
@@ -52,6 +53,7 @@ open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Adequacy.BlockTable using (SigNamed)
 open import Once.Target.Backend using (Backend; module Backend; file-table)
+open import Once.CCC.Codegen.ImageExterns using (ImageWF)
 open import Once.SigOp.Info using (SigOpInfo; External; module SigOpInfo)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.Denotation.Program using (IRProgram; runIR)
@@ -114,6 +116,12 @@ record ArchSim (o : CanonicalName) (B : Backend) : Set₁ where
     file-runs : ∀ t (bs : List ArithBlock) (ex : List String)
               → run-file (Backend.file B t (file-table (Backend.payload B) bs) ex)
                 ≡ Machine.trace (δ (block-env (file-table (Backend.payload B) bs)) (compile t)) init
+
+    -- ★ the backend's file of a room-checked image (it starts with its check) is what the
+    -- assembler demands when the image's symbols are (`ImageWF`: defined once, resolved, valid)
+    file-wf : ∀ k (t′ : AbstractTrace) (bs : List ArithBlock) (ex : List String)
+            → ImageWF (instr-room k ∷ t′) bs ex
+            → Backend.AsmWF B (Backend.file B (instr-room k ∷ t′) (file-table (Backend.payload B) bs) ex)
 
   start : FlatMachine.FlatState {FS}
   start = start-at FS entry-frame entry-regs

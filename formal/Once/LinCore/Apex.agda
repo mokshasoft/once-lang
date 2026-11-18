@@ -59,6 +59,8 @@ import Once.LinCore.ImageOwned
 import Once.LinCore.ImageBlocks
 import Once.LinCore.Keys
 import Once.LinCore.ExprImage
+import Once.LinCore.ImageSyms
+open import Once.CCC.Codegen.ImageExterns using (image-externs)
 
 open ArchSim A
 open FlatMachine {FS} using (fetch; find-thunk; fpc; floc; fclosure; fret; falloc)
@@ -97,8 +99,8 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   module IG = Once.LinCore.ImageGuard.G.Img (fs-numerics FS) (fs-ffi FS) bw {FS} IT.ds IT.f₀ ML.ldConst ML.ld-nl
 
   -- ★ WHAT THE NEW IMAGE OWES THE ARCH LAYER: `RunContext.Emitted`'s fields not yet proved
-  -- (the run's facts: the machine gates, B1.7b), and that its externals miss its table
-  record Owed : Set where
+  -- (the run's facts: the machine gates, B1.7b)…
+  record OwedRun : Set where
     field
       -- D452: a slot the run addresses is inside the current frame
       o-slots  : ∀ fs (i : AbstractInstr) (slot : Slot) → Reachable image 0 fs
@@ -113,8 +115,12 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
                   → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
       o-ret-budget : ∀ fs (b : ℕ) → Reachable image 0 fs → fetch image (fpc fs) ≡ just (instr-ctrl (c-ret b))
                    → b ≡ AllocState.frame-slots (falloc fs)
-      -- an external op's symbol is not a block's (what master's `external-sigop-contract`
-      -- assumes of its file: compiler symbols apart from the source's names)
+
+  -- …and that its externals miss its table (what master's `external-sigop-contract`
+  -- assumes of its file: compiler symbols apart from the source's names)
+  record Owed : Set where
+    field
+      o-run      : OwedRun
       o-ext-miss : ExtMiss FS env P′
 
   -- ★ THE ARITH TABLE (D459): every op call of the image names one of its blocks — an op of the
@@ -133,9 +139,10 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
     { em-budget = IA.em-budget ; em-zero = IAF.em-zero ; em-start = IAF.em-start
     ; em-image = IA.em-image ; em-alloc = IA.em-alloc
     ; em-calls = IAF.em-calls ; em-code = IAF.em-code
-    ; em-slots = Owed.o-slots O
+    ; em-slots = OwedRun.o-slots (Owed.o-run O)
     ; em-guard = IG.em-guard
-    ; em-call-site = Owed.o-call-site O ; em-ret-owes = Owed.o-ret-owes O ; em-ret-budget = Owed.o-ret-budget O }
+    ; em-call-site = OwedRun.o-call-site (Owed.o-run O) ; em-ret-owes = OwedRun.o-ret-owes (Owed.o-run O)
+    ; em-ret-budget = OwedRun.o-ret-budget (Owed.o-run O) }
 
   -- ★★ THE NEW IMAGE ON THE ARCH: its run has the trace of the program (master's `conc-tr`)
   conc-trᴺ : Owed
@@ -162,3 +169,16 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
           → run-file (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B IT.BF.tl IT.BF.mpm ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS)
   file-at ex O = subst₂ (λ P bs′ → run-file (Backend.file B (room-checks P) (file-table (Backend.payload B) bs′) ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ (fs-numerics FS) (FrameSemantics.fs-interp FS))
                         image-eq blocks-eq (file-trᴺ ex O)
+
+  -- ★★ THE FILE IS WHAT THE ASSEMBLER DEMANDS (D461): the image's symbols are well-formed
+  -- (`ImageSyms.image-wf`), so the backend's file of it is (`ArchSim.file-wf`)
+  module IS = Once.LinCore.ImageSyms.Img (fs-numerics FS) (fs-ffi FS) bw o IT.ds IT.f₀ ML.ldConst ld-is IT.canon {FS}
+
+  file-wfᴺ : Backend.AsmWF B (Backend.file B P′ (file-table (Backend.payload B) bs) (image-externs image))
+  file-wfᴺ = file-wf _ _ bs (image-externs image) IS.image-wf
+
+  -- …the file the compiler writes (`ExprImage.fileAt`, its externs the image's)
+  file-wf-at : Backend.AsmWF B (Once.LinCore.ExprImage.fileAt (fs-numerics FS) B IT.BF.tl IT.BF.mpm
+                                  (image-externs (Once.LinCore.ExprImage.imageAt (fs-numerics FS) IT.BF.tl IT.BF.mpm)))
+  file-wf-at = subst₂ (λ P bs′ → Backend.AsmWF B (Backend.file B (room-checks P) (file-table (Backend.payload B) bs′) (image-externs P)))
+                      image-eq blocks-eq file-wfᴺ

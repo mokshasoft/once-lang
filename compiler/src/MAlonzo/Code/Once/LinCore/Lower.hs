@@ -22,10 +22,12 @@ import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Nat
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
+import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
 import qualified MAlonzo.Code.Data.Nat.Base
+import qualified MAlonzo.Code.Data.Nat.Show
 import qualified MAlonzo.Code.Once.Arith.SigOp.Compare
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
@@ -40,7 +42,6 @@ import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Spec.Name
 import qualified MAlonzo.Code.Once.Spec.Numerics
 import qualified MAlonzo.Code.Once.Spec.Type
-import qualified MAlonzo.Code.Once.Target.Symbol
 
 -- Once.LinCore.Lower._.Defs
 d_Defs_44 a0 a1 a2 = ()
@@ -288,7 +289,13 @@ du_nameOf_1376 v0
          (coe ("once-lincore" :: Data.Text.Text))
          (coe
             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-            (coe MAlonzo.Code.Once.Target.Symbol.d_showNat_6 v0)
+            (coe
+               MAlonzo.Code.Agda.Builtin.String.d_primStringFromList_14
+               (coe
+                  MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe 'b')
+                  (coe
+                     MAlonzo.Code.Data.Nat.Show.du_charsInBase_64 (coe (10 :: Integer))
+                     (coe v0))))
             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
 -- Once.LinCore.Lower.jl
 d_jl_1380 ::

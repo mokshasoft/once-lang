@@ -24,7 +24,6 @@ module Once.Compile.Bridge
   , moduleWarnings
   , resolveImports
   , assemblyFromModule
-  , assemblyCore
   ) where
 
 import Data.Maybe (isJust)
@@ -92,7 +91,7 @@ toMArch RiscV64 = MTA.C_riscv64_12
 -- rather than silently producing a module with missing decls.
 parseSource :: Text -> Either Text Module
 parseSource source =
-  case MR.d_parse'45'source_36 runs (textToAgda source) of
+  case MR.d_parse'45'source_34 runs (textToAgda source) of
     MSum.C_inj'8321'_38 err -> Left (agdaToText err)
     MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))
 
@@ -104,9 +103,9 @@ parseSource source =
 -- checked by nobody.
 moduleImports :: Module -> [ImportRef]
 moduleImports (Module m) =
-  [ ImportRef (map agdaToText (MR.d_import'45'path_40 runs pr))
-              (fmap agdaToText (MR.d_import'45'alias_42 runs pr))
-  | pr <- MR.d_module'45'imports_38 runs m
+  [ ImportRef (map agdaToText (MR.d_import'45'path_38 runs pr))
+              (fmap agdaToText (MR.d_import'45'alias_40 runs pr))
+  | pr <- MR.d_module'45'imports_36 runs m
   ]
 
 -- | Is the module a program (it has a `main` the compiler compiles), or a
@@ -114,7 +113,7 @@ moduleImports (Module m) =
 -- on (`Adequacy.Compile.compile-mir`): `build` links an executable exactly when
 -- the theorem says there are bytes to run (D354).
 isProgram :: Resolved -> Bool
-isProgram (Resolved r) = isJust (MR.d_main'45'ir_44 runs r)
+isProgram (Resolved r) = isJust (MR.d_main'45'ir_42 runs r)
 
 -- | D123/D116: the rounding warnings this module has AT THIS TARGET, rendered.
 --
@@ -127,7 +126,7 @@ isProgram (Resolved r) = isJust (MR.d_main'45'ir_44 runs r)
 -- was only half true — the refusal was gone and the replacement unreachable.
 moduleWarnings :: Arch -> Text -> Resolved -> [Text]
 moduleWarnings arch src (Resolved m) =
-  map agdaToText (MR.d_warnings_48 runs (toMArch arch) (textToAgda src) (unsafeCoerce m))
+  map agdaToText (MR.d_warnings_46 runs (toMArch arch) (textToAgda src) (unsafeCoerce m))
 
 -- | Resolve the user's module against the module map: its references are
 -- resolved, and the signatures of the modules it imports are read from the
@@ -142,7 +141,7 @@ resolveImports
   -> Either Text Resolved
 resolveImports modMap (Module userMod) =
   let agdaMap = map mapEntry modMap
-      agdaResult = MR.d_resolve'45'imports_46 runs (unsafeCoerce agdaMap) (unsafeCoerce userMod)
+      agdaResult = MR.d_resolve'45'imports_44 runs (unsafeCoerce agdaMap) (unsafeCoerce userMod)
   in case agdaResult of
        MSum.C_inj'8321'_38 err -> Left (agdaToText err)
        MSum.C_inj'8322'_42 r   -> Right (Resolved (unsafeCoerce r))
@@ -153,14 +152,9 @@ resolveImports modMap (Module userMod) =
 
 -- | The assembly text of a resolved module, built for `arch` with or without
 -- the optimizer, or the compiler's error: the print of the file the verified
--- compiler emits (`Once.Compile.assemblyFromModule`), in allocation mode `Heap`,
--- the mode the apex covers (D352).
+-- compiler emits (`Once.LinCore.Emit.assemblyCore`, plan 0.146 D461: a
+-- program's linear core image), the file the apex covers (D352, D353).
 assemblyFromModule :: Bool -> Arch -> Resolved -> Either Text Text
 assemblyFromModule doOpt arch (Resolved mod_) =
-  eitherText (MR.d_assembly_50 runs doOpt (toMArch arch) (unsafeCoerce mod_))
+  eitherText (MR.d_assembly_48 runs doOpt (toMArch arch) (unsafeCoerce mod_))
 
--- | plan 0.146 B1.7 (D458): the assembly of the linear core's image
--- (`Once.LinCore.Emit.assemblyCore`), beside master's until its apex is the top.
-assemblyCore :: Arch -> Resolved -> Either Text Text
-assemblyCore arch (Resolved mod_) =
-  eitherText (MR.d_assembly'45'core_62 runs (toMArch arch) (unsafeCoerce mod_))

@@ -50,7 +50,7 @@ open import Once.Adequacy.ArchCorrectness
        riscv64-reg-range riscv64-slot-addr-no-wrap
        riscv64-addr-no-wrap riscv64-lit-fits
        x86-32-reg-range x86-32-addr-no-wrap x86-32-lit-fits
-       using (arch-correctness)
+       using (arch-correctness; core-built)
 -- plan 0.92, and an honest note on its cost: `public` here is NOT convenience.
 -- `Once.Certified` builds its apex from `arch-correctness`, and to name it one
 -- level up it must be re-exported here. That propagation is exactly the

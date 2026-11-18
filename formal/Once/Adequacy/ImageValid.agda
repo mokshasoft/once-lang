@@ -135,9 +135,8 @@ block-syms-asm bs = fst-all {AsmSym} (dedup-blocks (map tag bs)) (dedup-all {Asm
 -- THE THEOREMS
 ------------------------------------------------------------------------
 
-private
-  entry-asm : AsmSym entry-symbol
-  entry-asm = tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+entry-asm : AsmSym entry-symbol
+entry-asm = tt , tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 prog-defs-valid : ∀ (p : IRProgram) → All AsmSym (prog-defs p)
 prog-defs-valid p = entry-asm ∷ ++⁺ (adefs-asm (image-of p)) (block-syms-asm (program-blocks p))

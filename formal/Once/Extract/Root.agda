@@ -76,7 +76,6 @@ record Runs : Set₁ where
     stats           : Bool → Resolved → String ⊎ String
     format          : String → String ⊎ String
     -- plan 0.146 B1.7 (D458): the linear core's image, beside master's until its apex is the top
-    assembly-core   : Arch → Resolved → String ⊎ String
 
 runs : Runs
 runs = record
@@ -87,11 +86,10 @@ runs = record
   ; main-ir         = Compile.moduleToIR
   ; resolve-imports = Resolve.resolveImports
   ; warnings        = Warnings.warningsFor
-  ; assembly        = Compile.assemblyFromModule
+  ; assembly        = Emit.assemblyCore
   ; signatures      = Inspect.signatures
   ; check           = Inspect.check
   ; dump-ir         = Inspect.dumpIR
   ; stats           = Measure.statsOf
   ; format          = Format.formatSource
-  ; assembly-core   = Emit.assemblyCore
   }

@@ -52,6 +52,7 @@ open import Once.CCC.Machine.SMCore using (instr-ctrl; c-start)
 open import Once.Adequacy.RoomChecksEvents using (module RoomEvents)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.Adequacy.ArchCorrectness.Interface using (ArchSim)
+import Once.Adequacy.CoreFileWF
 import Once.Target.X86-64.Backend
 
 -- master's x86-64 apex: its machine, its entry, its arch simulation
@@ -86,6 +87,7 @@ x86-64-sim = record
   ; run-file = λ F → ArchSemantics.run-trace (arch-semantics x86-64) ι F (ArchSemantics.initialState (arch-semantics x86-64) F)
   ; file-runs = λ t bs ex → cong (λ cd → Machine.trace (run-of (block-env (file-table (Backend.payload Once.Target.X86-64.Backend.backend) bs)) cd) ([] , X.initState))
                                  (cong proj₂ (compile-trace-cnt-agrees entry-owner 0 t))
+  ; file-wf = Once.Adequacy.CoreFileWF.X8664.core-wf
   ; sim = sim
   }
   where

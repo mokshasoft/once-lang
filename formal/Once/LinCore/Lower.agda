@@ -36,7 +36,8 @@ open import Once.LinCore.Flat using (Base)
 import Once.Spec.Type as ST
 import Once.SigOp.Info
 open import Once.Spec.Name using (CanonicalName; canonical)
-open import Once.Target.Symbol using (showNat)
+open import Data.Nat.Show using (charsInBase)
+import Data.String
 open import Once.CCC.Label using (LabelId; mkLabelId; e-fn; e-thunk)
 open import Once.CCC.Machine.SMCore
   using ( AbstractInstr; AbstractTrace; instr-ctrl; c-label; c-jmp; c-branch-tag-zero; c-entry; c-ret
@@ -86,11 +87,14 @@ open import Once.LinCore.MoveCode public
 ------------------------------------------------------------------------
 
 -- opaque: a name is compared by its index, never by its digits (only `LabelsI.nameOf-inj`
--- unfolds it); a transparent `showNat` is normalised (well-founded digit recursion) whenever a
--- conversion meets two copies of a key's constructors above a name
+-- and `ImageSyms` unfold it); transparent digits are normalised (well-founded digit recursion)
+-- whenever a conversion meets two copies of a key's constructors above a name.
+-- D461: `once-lincore.b<j>`: each part led by a letter, so the symbol reads its parts back
+-- (`SymbolInjective.once-symbol-path-injective-peel`), and `once-lincore` is no source name
+-- (an identifier holds no `-`, an operator no letter)
 opaque
   nameOf : ℕ → CanonicalName
-  nameOf j = canonical ("once-lincore" ∷ showNat j ∷ [])
+  nameOf j = canonical ("once-lincore" ∷ Data.String.fromList ('b' ∷ charsInBase 10 j) ∷ [])
 
 jl : ℕ → ℕ → LabelId
 jl j m = mkLabelId (nameOf j) [] (suc m)

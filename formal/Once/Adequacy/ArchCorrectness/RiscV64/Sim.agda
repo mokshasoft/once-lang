@@ -54,6 +54,7 @@ open import Once.CCC.Machine.SMCore using (instr-ctrl; c-start)
 open import Once.Adequacy.RoomChecksEvents using (module RoomEvents)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.Adequacy.ArchCorrectness.Interface using (ArchSim)
+import Once.Adequacy.CoreFileWF
 import Once.Target.RiscV64.Backend
 
 -- master's riscv64 apex: its machine, its entry, its arch simulation
@@ -89,6 +90,7 @@ riscv64-sim = record
   ; run-file = λ F → ArchSemantics.run-trace (arch-semantics riscv64) ι F (ArchSemantics.initialState (arch-semantics riscv64) F)
   ; file-runs = λ t bs ex → cong (λ cd → Machine.trace (run-of (block-env (file-table (Backend.payload Once.Target.RiscV64.Backend.backend) bs)) cd) ([] , X.initState))
                                  (cong proj₂ (compile-trace-cnt-agrees entry-owner 0 t))
+  ; file-wf = Once.Adequacy.CoreFileWF.RiscV64.core-wf
   ; sim = sim
   }
   where

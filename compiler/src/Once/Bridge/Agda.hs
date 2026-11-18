@@ -25,7 +25,7 @@ textToAgda = unsafeCoerce
 -- Agda side through this record's fields, so a function the CLI runs is one of
 -- them, and `run-ast-dumps.sh` sees it.
 runs :: MR.T_Runs_6
-runs = MR.d_runs_66
+runs = MR.d_runs_62
 
 -- | An Agda `String ⊎ String`: the error, or the output.
 eitherText :: MSum.T__'8846'__30 -> Either Text Text

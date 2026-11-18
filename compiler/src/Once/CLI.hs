@@ -144,8 +144,6 @@ data BuildOptions = BuildOptions
   -- | D320: the Host the executable runs under (`Strata/Hosts/<host>/Host.<arch>`,
   -- which defines `once_leave`). The compiled code never depends on it.
   , buildHost      :: String
-  -- | plan 0.146 B1.7 (D458): emit the linear core's image (`--core`, or `ONCE_CORE` set)
-  , buildCore      :: Bool
   } deriving (Eq, Show)
 
 -- | Options for the check command
@@ -336,14 +334,10 @@ runBuild opts = do
 emitWarnings :: Bridge.Arch -> T.Text -> Bridge.Resolved -> IO ()
 emitWarnings arch src m = mapM_ (hPutStrLn stderr . T.unpack) (Bridge.moduleWarnings arch src m)
 
--- | The assembly of a resolved module: master's image, or (D458) the linear
--- core's under `--core` or with `ONCE_CORE` set.
+-- | The assembly of a resolved module: the verified compiler's file (plan 0.146
+-- D461: the linear core's image of a program, `Once.LinCore.Emit.assemblyCore`).
 assemblyOf :: BuildOptions -> Bridge.Arch -> Bridge.Resolved -> IO (Either T.Text T.Text)
-assemblyOf opts arch mod_ = do
-  env <- lookupEnv "ONCE_CORE"
-  pure $ if buildCore opts || maybe False (not . null) env
-    then Bridge.assemblyCore arch mod_
-    else Bridge.assemblyFromModule (buildOptimize opts) arch mod_
+assemblyOf opts arch mod_ = pure (Bridge.assemblyFromModule (buildOptimize opts) arch mod_)
 
 runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> T.Text -> Bridge.Resolved
                  -> FilePath -> [[T.Text]] -> IO ()

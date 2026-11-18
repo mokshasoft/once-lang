@@ -24158,3 +24158,43 @@ block symbol is not in the interface: it is arch-neutral (`Compile.block-symbol`
 ### Alternatives
 Keeping the per-arch copies (the drift grows with every arch-level fact); merging only the tops (the apexes
 stay three copies).
+
+## D461 — CERTIFIED IS OVER THE LINEAR CORE'S FILE (2026-11-18)
+
+**Proposed** (unattended, plan 0.146 B1.7 step 3; for review). **Applies**: plan 0.146; `Adequacy.Compile`
+(`ArchCorrect`), the CLI's `build`.
+
+### The problem
+`Certified`'s statement (`Adequacy.Compile.ArchCorrect`) is over master's file
+(`Compile.compileFileFromModule`) at master's meaning (`rewrite-program` of the program, the optimizer at
+`--opt`). The new image's file has the program's trace on every arch (`LinCore.Top.Program.file★`), but
+three things stood between it and the statement: the file's well-formedness (`file-wf`, what `as`
+demands), the meaning it is stated at, and what the image still owes (`Owed`).
+
+### Decision
+1. **The compiler's file** is `LinCore.Emit.coreFileOf arch doOpt m`: master's gates first (type errors,
+   literal ranges, `main`'s type; their error is the compiler's), then a program's new image of its
+   sources; a library keeps master's file until the new image has one. The CLI builds it
+   (`assemblyCore`, `Extract.Root.runs.assembly`); D353 holds (the theorem is about the CLI's function).
+2. **The meaning**: `ArchCorrect.file-tr` is stated at the program the module compiles to,
+   `irProgram (moduleTable m) ir` with `moduleToIR m ≡ just ir`, at either build. The new image is the
+   sources', unoptimized (D456), so neither `rewrite-program-trace` nor `opt-trace` is between them;
+   `--opt` reaches only the gates until the core has its optimizations (D459's fusion).
+   `ArchCorrect.file-wf` takes the world's premise (`moduleSig m ≡ sig ι`) as `file-tr` does: the image is
+   built from the bridge's facts in that world.
+3. **Well-formedness**, proved: the image's symbols (`ImageExterns.ImageWF`) — its labels and entries are
+   distinct and each is a block's, so their symbols are (`LabelSymInj.sym-inj`, the owner read back from
+   the symbol); every jump names a label the image defines (`Jumps`); a call, a code word and an op name an
+   entry or a block of the image's; the file's externs are read off the image (`image-externs`). A block's
+   name is `once-lincore.b<j>` (was `once-lincore.<j>`): each part led by a letter, so its symbol reads its
+   parts back (`SymbolInjective.once-symbol-path-injective-peel`), and no source name has its form. Each
+   arch shows its file of such an image is `AsmWF` (`ArchSim.file-wf`, `CoreFileWF`; `Backend.AsmWF`).
+4. **What is owed**, named in one module (`ArchCorrectness.CoreOwed`): the image's four run facts
+   (`OwedRun`, B1.7b's machine gates; master postulates the same of its image) and, per arch, that an
+   external op's symbol is no block's (`ExtMiss`; master's `external-sigop-contract` assumes it of its
+   file). Master's run postulates go with the old lowering (step 4).
+
+### Alternatives
+Stating `file-tr` at master's meaning (`rewrite-program`, the optimizer) and relating the two programs'
+traces (`RewritePreserves`, `OptimizedTable`): proofs about a program the file does not run. Discharging
+`Owed` before switching: B1.7b is planned after step 4 (D453), which needs the switch.

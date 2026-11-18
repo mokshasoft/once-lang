@@ -107,11 +107,11 @@ d_fileAt_28 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] -> AgdaAny
 d_fileAt_28 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.Target.Backend.d_file_26 v1
+      MAlonzo.Code.Once.Target.Backend.d_file_28 v1
       (MAlonzo.Code.Once.CCC.Codegen.RoomChecks.d_room'45'checks_84
          (coe d_imageAt_10 (coe v0) (coe v2) (coe v3) (coe v4)))
       (coe
-         MAlonzo.Code.Once.Target.Backend.du_file'45'table_32
-         (coe MAlonzo.Code.Once.Target.Backend.d_payload_24 (coe v1))
+         MAlonzo.Code.Once.Target.Backend.du_file'45'table_36
+         (coe MAlonzo.Code.Once.Target.Backend.d_payload_26 (coe v1))
          (coe d_blocksAt_18 (coe v0) (coe v2) (coe v3) (coe v4)))
       v5
