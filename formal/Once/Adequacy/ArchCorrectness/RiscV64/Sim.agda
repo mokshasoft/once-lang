@@ -43,7 +43,12 @@ open import Once.Adequacy.ArchCorrectness.ArithSimRiscV64 using (val-riscv64)
 import Once.Arith.Backend.RiscV64.RunTrace as RTx
 import Once.CCC.Target.RiscV64.Semantics as X
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size)
-open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace)
+open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace; compile-trace-cnt-agrees)
+open import Once.Compile using (entry-owner)
+open import Once.Adequacy.CPU.Interface using (module ArchSemantics)
+open import Once.Adequacy.CPU using (arch-semantics)
+open import Once.Adequacy.MachineTrace using (module Machine)
+open import Once.Target.Backend using (file-table; module Backend)
 open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-start)
 open import Once.Adequacy.RoomChecksEvents using (module RoomEvents)
@@ -81,6 +86,9 @@ riscv64-sim = record
   ; table = λ prog bs nm em → inj₂ (bs , nm , refl , em)
   ; Code = _ ; compile = compile-trace
   ; S = _ ; δ = run-of ; init = [] , X.initState
+  ; run-file = λ F → ArchSemantics.run-trace (arch-semantics riscv64) ι F (ArchSemantics.initialState (arch-semantics riscv64) F)
+  ; file-runs = λ t bs ex → cong (λ cd → Machine.trace (run-of (block-env (file-table (Backend.payload Once.Target.RiscV64.Backend.backend) bs)) cd) ([] , X.initState))
+                                 (cong proj₂ (compile-trace-cnt-agrees entry-owner 0 t))
   ; sim = sim
   }
   where

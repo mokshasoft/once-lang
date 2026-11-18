@@ -46,5 +46,7 @@ module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit
 
   module N = Once.LinCore.Apex.NewImage o A bw tbl ir bf
 
-  -- ★★ the compiled program's new image on the arch has the trace of the program
+  -- ★★ the compiled program's new image on the arch has the trace of the program, and so
+  -- does the file the backend writes for it
   conc-tr★ = N.conc-trᴺ
+  file-tr★ = N.file-trᴺ

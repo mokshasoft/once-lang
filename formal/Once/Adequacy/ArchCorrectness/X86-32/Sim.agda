@@ -42,7 +42,12 @@ open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32)
 import Once.Arith.Backend.X86-32.RunTrace as RTx
 import Once.CCC.Target.X86-32.Semantics as X
 open import Once.CCC.Target.X86-32.Syntax using (slot-size)
-open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace)
+open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace; compile-trace-cnt-agrees)
+open import Once.Compile using (entry-owner)
+open import Once.Adequacy.CPU.Interface using (module ArchSemantics)
+open import Once.Adequacy.CPU using (arch-semantics)
+open import Once.Adequacy.MachineTrace using (module Machine)
+open import Once.Target.Backend using (file-table; module Backend)
 open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-start)
 open import Once.Adequacy.RoomChecksEvents using (module RoomEvents)
@@ -80,6 +85,9 @@ x86-32-sim = record
   ; table = λ prog bs nm em → inj₂ (bs , nm , refl , em)
   ; Code = _ ; compile = compile-trace
   ; S = _ ; δ = run-of ; init = [] , X.initState
+  ; run-file = λ F → ArchSemantics.run-trace (arch-semantics x86-32) ι F (ArchSemantics.initialState (arch-semantics x86-32) F)
+  ; file-runs = λ t bs ex → cong (λ cd → Machine.trace (run-of (block-env (file-table (Backend.payload Once.Target.X86-32.Backend.backend) bs)) cd) ([] , X.initState))
+                                 (cong proj₂ (compile-trace-cnt-agrees entry-owner 0 t))
   ; sim = sim
   }
   where

@@ -17,6 +17,7 @@
 --     list the program's calls name (`table`);
 --   * its machine: the code of an abstract trace (`compile`), its step on
 --     that code under a block table (`δ`), and its loader's state (`init`);
+--     the backend's file runs as that machine (`run-file`, `file-runs`);
 --   * ★ one theorem (`sim`): an image whose shape facts hold (`Emitted`), at a
 --     table it names, whose flat run is sound and shows a program's meaning at
 --     every budget (the flat theorem, as `FlatTop` proves it of the linear
@@ -39,7 +40,7 @@ open import Data.Bool using (false)
 import Data.List.Relation.Unary.All
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Spec.Name using (CanonicalName)
-open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_)
+open import Once.Spec.Trace using (Tr; _⊑ᵗ⟨_⟩_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi; module FrameSemantics)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -106,6 +107,13 @@ record ArchSim (o : CanonicalName) (B : Backend) : Set₁ where
     S       : Set
     δ       : (String → Maybe (Backend.Payload B)) → Code → S → Step S
     init    : S
+
+    -- ★ the file the backend writes runs as the machine on the trace's code (`run-file`: the
+    -- CPU's run of the file from its entry, master's `Compile.run-file`)
+    run-file  : Backend.File B → Tr ⊤
+    file-runs : ∀ t (bs : List ArithBlock) (ex : List String)
+              → run-file (Backend.file B t (file-table (Backend.payload B) bs) ex)
+                ≡ Machine.trace (δ (block-env (file-table (Backend.payload B) bs)) (compile t)) init
 
   start : FlatMachine.FlatState {FS}
   start = start-at FS entry-frame entry-regs

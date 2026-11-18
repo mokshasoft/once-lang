@@ -23,10 +23,11 @@ open import Once.LinCore.Flat using (Base; int; float)
 module Once.LinCore.Apex (o : CanonicalName) {B : Backend} (A : ArchSim o B) (bw : Base → ℕ) where
 
 open import Data.List using (List; []; _∷_)
+open import Data.String using (String)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_)
 open import Data.Nat using (_<_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 import Data.List.Relation.Unary.All
 open import Data.List.Membership.Propositional using (_∈_)
 open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_)
@@ -142,3 +143,9 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
            → Machine.trace (δ env (compile P′)) init ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ fmt ι
   conc-trᴺ O = sim (irProgram tbl ir) _ _ env (emitted O) (o-table O)
                    (IT.flat-sound (λ {b} v → ML.ld {b} v image)) (IT.flat-ir (λ {b} v → ML.ld {b} v image))
+
+  -- ★★ THE FILE: what the backend writes for the image (its code, its blocks' table, the
+  -- externs `ex`; `Emit.emitCore`) runs with the program's trace
+  file-trᴺ : (ex : List String) → Owed
+           → run-file (Backend.file B P′ (file-table (Backend.payload B) bs) ex) ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ fmt ι
+  file-trᴺ ex O = subst (λ T → T ⊑ᵗ⟨ _≡_ ⟩ ⟦ just (irProgram tbl ir) ⟧IRᵗ fmt ι) (sym (file-runs P′ bs ex)) (conc-trᴺ O)
