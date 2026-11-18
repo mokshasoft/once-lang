@@ -140,7 +140,7 @@ d_coreAfter_76 v0 v1 v2
       MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v3
         -> coe
              d_coreAt_64 (coe v0) (coe v1)
-             (coe MAlonzo.Code.Once.Compile.d_moduleToIR_1304 (coe v1))
+             (coe MAlonzo.Code.Once.Compile.d_moduleToIR_1298 (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.LinCore.Emit.coreFileOf
 d_coreFileOf_90 ::
@@ -152,7 +152,7 @@ d_coreFileOf_90 v0 v1 v2
   = coe
       d_coreAfter_76 (coe v0) (coe v2)
       (coe
-         MAlonzo.Code.Once.Compile.d_checkModule_1502
+         MAlonzo.Code.Once.Compile.d_checkModule_1472
          (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v1) (coe v0) (coe v2))
 -- Once.LinCore.Emit.assemblyCore
 d_assemblyCore_98 ::
@@ -162,5 +162,5 @@ d_assemblyCore_98 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_assemblyCore_98 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Compile.d_printResult_1514 (coe v1)
+      MAlonzo.Code.Once.Compile.d_printResult_1484 (coe v1)
       (coe d_coreFileOf_90 (coe v1) (coe v0) (coe v2))

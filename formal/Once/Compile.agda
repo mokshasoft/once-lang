@@ -51,11 +51,6 @@ open import Once.IR
 open import Once.IRTy using (Unit; ⌊_⌋)
 open import Once.Spec.Name using (CanonicalName; bare)
 open import Once.Target.Symbol using (once-symbol-path; once-symbol-own)
-open import Once.Target.SymbolFresh using (host-leave-symbol; host-exhausted-symbol)
-open import Once.CCC.Codegen.NodesOK using (leaf-syms)
-open import Data.List.Membership.DecPropositional Data.String._≟_ using () renaming (_∈?_ to _∈ˢ?_; _∈_ to _∈ˢ_)
-open import Relation.Nullary.Decidable.Core using (¬?)
-open import Relation.Nullary.Negation.Core using (¬_)
 
 -- Re-export Surface IR
 
@@ -698,25 +693,6 @@ block-symbol b = once-symbol-own (block-name (block-body b))
 -- The file's block table, by symbol, once each (`blocks-<arch>`).
 block-syms : List ArithBlock → List String
 block-syms bs = DL.map proj₁ (dedup-blocks (DL.map (λ b → block-symbol b , b) bs))
-
--- The symbols the program's SigOps call (`NodesOK.leaf-syms`, leaf by leaf).
-calls-of : IRProgram → List String
-calls-of p = leaf-syms (main p) DL.++ DL.concatMap (λ e → leaf-syms (fbody e)) (table p)
-
--- plan 0.107 §9 2D / D274: the interpretation symbols the file calls and `ld`
--- resolves are EXACTLY the SigOp symbols the (rewritten) program calls that are
--- not its own arith blocks — the names the code actually calls, never a
--- declaration's spelling. A call to anything else is defined in the file.
-is-extern? : (p : IRProgram) (s : String) → Dec (¬ (s ∈ˢ block-syms (program-blocks p)))
-is-extern? p s = ¬? (s ∈ˢ? block-syms (program-blocks p))
-
-externs-of : IRProgram → List String
-externs-of p = DL.filter (is-extern? p) (calls-of (rewrite-program p))
-
--- D320: a PROGRAM also calls the Host's `leave` (`c-leave`); a library does not.
--- D377: …and its `exhausted` (every room check calls it when there is no room).
-prog-externs : IRProgram → List String
-prog-externs p = host-leave-symbol ∷ host-exhausted-symbol ∷ externs-of p
 
 -- The entry unit's owner: a name no definition can have (an identifier cannot
 -- start with a digit), so its labels and symbol cannot clash.

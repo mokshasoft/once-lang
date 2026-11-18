@@ -215,7 +215,7 @@ d_runs_62
       (coe MAlonzo.Code.Once.Extract.Names.d_module'45'imports_20)
       (coe MAlonzo.Code.Once.Extract.Names.d_import'45'path_24)
       (coe MAlonzo.Code.Once.Extract.Names.d_import'45'alias_28)
-      (coe MAlonzo.Code.Once.Compile.d_moduleToIR_1304)
+      (coe MAlonzo.Code.Once.Compile.d_moduleToIR_1298)
       (coe MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveImports_884)
       (coe MAlonzo.Code.Once.Warnings.d_warningsFor_380)
       (coe MAlonzo.Code.Once.LinCore.Emit.d_assemblyCore_98)

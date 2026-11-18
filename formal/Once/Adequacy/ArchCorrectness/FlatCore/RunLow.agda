@@ -590,6 +590,5 @@ check-need .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r
     open import Once.CCC.Codegen.RoomChecks using (till-check; max-entry)
     open import Once.CCC.Codegen.RoomChecksFacts using (module CheckK; image-noroom; max-entry-room; NoRoom)
     open CheckK {FS} using (check-k)
-    open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free)
     noroom : NoRoom src
     noroom = image-noroom src (em-image (RunAt.run-em r))

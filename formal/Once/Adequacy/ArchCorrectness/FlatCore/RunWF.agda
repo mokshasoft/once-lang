@@ -81,24 +81,18 @@ open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open import Once.CCC.Machine.FlatStoreWF FS
 open import Data.Product using (Σ; ∃; _,_; _×_; proj₁; proj₂)
-open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget; ir-to-unit)
 open import Once.CCC.Machine.FrameFree
 open import Data.List.Relation.Unary.All using () renaming (All to AllL; [] to allL-[]; _∷_ to _allL∷_)
 open import Once.CCC.Machine.InstrSlot
 open import Once.CCC.Machine.FlatStackSlot FS
 open SameFrames using (sf-slots; sf-saved; sf-ret)
 open import Once.CCC.Machine.FlatPtrBounds FS
-open import Once.CCC.Codegen.AllocMin o
+open import Once.CCC.Machine.AllocMin using (AllocMinI)
 open import Once.CCC.Codegen.LabelSeg
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.CCC.Codegen.SlotSeg
 open SegState using (cur; saved)
 open SlotBelow using (below)
-import Once.CCC.Codegen.SlotBudget as SB
-import Once.CCC.Codegen.FrameFreeTrace as FFT
-import Once.CCC.Codegen.AllocMin as AM
-open import Once.CCC.Codegen.ProgramImage using (program-image; image-body; fns-image; fn-image; fn-next)
-import Once.CCC.Codegen.ImageInstrs as IIn
 open import Data.List.Relation.Unary.All using () renaming (map to All-mapL)
 open import Once.CCC.Codegen.CallOK using (InstrOK; Calls; calls-⊤)
 open import Once.SigOp.Info using (module SigOpInfo; SigOpInfo; effect; Pure)
@@ -113,7 +107,6 @@ open import Once.Denotation.Program using (IRFun; irProgram; Linked; LinkedAt; L
 open Once.Denotation.Program.IRFun using (fbody; fcod; fdom; fname)
 open import Once.Contract using (ISig)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
-open import Once.CCC.Codegen.ProgramImageFacts o using (image-frame-free; body-frame-free; image-alloc-min; image-slots; image-jump-in-segment)
 open import Once.IR using (IR)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
@@ -149,150 +142,10 @@ open FlatStepsAPI {FS} using (FlatSteps; []; _∷_)
 -- The two that stayed behind are `arith-sigop-run` (D351) and
 -- `external-sigop-contract`: both quantify over `HeapView` and the x86-64
 -- arith runtime, so they are genuinely x86-64's.
-------------------------------------------------------------------------
--- D245: A DIRECT CALL IN A LINKED IMAGE FINDS ITS CALLEE — PROVED (plan 0.103
--- 6a‴). The emitter writes `c-call-fn f` for a `Call f` and nowhere else, so in
--- a linked image every direct call names an entry of the table
--- (`CallsLinked`); the image holds every entry under its `e-fn` marker
--- (`fn-image`); and the entry scan finds any marker that is there.
-------------------------------------------------------------------------
-
-private
-  -- a direct call names a table entry; a SigOp call is unconstrained here
-  CallOKI : List IRFun → AbstractInstr → Set
-  CallOKI tbl = InstrOK (LinkedAt tbl) (λ _ → ⊤)
-
-  linked-calls : ∀ {σ : ISig} (tbl : List IRFun) {A B} (ir : IR A B) → Linked σ tbl ir
-               → Leaves LinkedAt tbl (λ si → Calls (λ _ → ⊤) si (cmp-of (SigOpInfo.sem si))) ir
-  linked-calls tbl = leaves-map (λ _ _ _ c → c) (λ si _ → calls-⊤ si (cmp-of (SigOpInfo.sem si)))
-
-  image-calls : ∀ {σ : ISig} (tbl : List IRFun) (ir : IR Unit Unit) → LinkedProgram σ (irProgram tbl ir)
-              → AllL (CallOKI tbl) (program-image o (irProgram tbl ir))
-  image-calls tbl ir (lm , les , _) =
-    IIn.image-ok LinkedAt tbl (λ _ → ⊤) o (irProgram tbl ir) (linked-calls tbl ir lm) (All-mapL (λ {e} → linked-calls tbl (fbody e)) les)
-
-  -- a linked call names an entry
-  linked-any : ∀ (tbl : List IRFun) {f A B} → LinkedAt tbl f A B → Any (λ e → fname e ≡ f) tbl
-  linked-any []       ()
-  linked-any (e ∷ es) {f} {A} {B} lk = go (fname e ≟ᶜ f) (fdom e ≟IRTy A) (fcod e ≟IRTy B) lk
-    where
-      go : ∀ d₁ d₂ d₃ → LinkedAt-at e es f A B d₁ d₂ d₃ → Any (λ e′ → fname e′ ≡ f) (e ∷ es)
-      go (yes p) (yes _) (yes _) _  = here p
-      go (yes _) (yes _) (no _)  lk = there (linked-any es lk)
-      go (yes _) (no _)  _       lk = there (linked-any es lk)
-      go (no _)  _       _       lk = there (linked-any es lk)
-
-  -- every entry of the table has its marker in the image
-  entries-in : ∀ (l : ℕ) (es : List IRFun) (f : CanonicalName) → Any (λ e → fname e ≡ f) es
-             → Any (λ x → entry-of? x ≡ just (e-fn f)) (fns-image l es)
-  entries-in l (e ∷ es) f (here p)  = Any++⁺ˡ {xs = fn-image l e} {ys = fns-image (fn-next l e) es} (here (cong (λ g → just (e-fn g)) p))
-  entries-in l (e ∷ es) f (there a) = Any++⁺ʳ (fn-image l e) (entries-in (fn-next l e) es f a)
-
-  -- the scan finds a marker that is there
-  ft-at-complete : ∀ (m : Maybe EntryId) (is : AbstractTrace) (tg : EntryId) (i : ℕ)
-                 → (∀ i′ → Σ ℕ (λ j → ft-go is tg i′ ≡ just j)) → Σ ℕ (λ j → ft-at m is tg i ≡ just j)
-  ft-at-complete nothing  is tg i ih = ih (suc i)
-  ft-at-complete (just m) is tg i ih = match (m ≡ᵇᴱ tg)
-    where
-      match : ∀ (b : Bool) → Σ ℕ (λ j → ft-match b is tg i ≡ just j)
-      match true  = i , refl
-      match false = ih (suc i)
-
-  ft-go-complete : ∀ (prog : AbstractTrace) (tg : EntryId) (i : ℕ)
-                 → Any (λ x → entry-of? x ≡ just tg) prog → Σ ℕ (λ j → ft-go prog tg i ≡ just j)
-  ft-go-complete (x ∷ is) tg i (here e) =
-    i , subst (λ m → ft-at m is tg i ≡ just i) (sym e) (subst (λ b → ft-match b is tg i ≡ just i) (sym (≡ᵇᴱ-refl tg)) refl)
-  ft-go-complete (x ∷ is) tg i (there a) =
-    ft-at-complete (entry-of? x) is tg i (λ i′ → ft-go-complete is tg i′ a)
-
--- the old image's calls resolve (it is linked)
-old-calls : ∀ (tbl : List IRFun) (ir : IR Unit Unit) → LinkedImage tbl ir → ∀ k (f : CanonicalName)
-          → fetch (program-image o (irProgram tbl ir)) k ≡ just (instr-ctrl (c-call-fn f))
-          → Σ ℕ (λ j → find-fn (program-image o (irProgram tbl ir)) f ≡ just j)
-old-calls tbl ir lk k f ftq =
-  ft-go-complete (program-image o (irProgram tbl ir)) (e-fn f) 0
-    (Any++⁺ʳ (instr-ctrl (c-start (ir-stack-budget ir)) ∷ link-top (ir-to-unit ir)) (entries-in _ tbl f (linked-any tbl (proj₂ (proj₂ ok)))))
-  where
-    ok : CallOKI tbl (instr-ctrl (c-call-fn f))
-    ok = fetch-All {prog = program-image o (irProgram tbl ir)} {k = k} (image-calls tbl ir lk) ftq
-
 emitted-call-fn-resolves : ∀ prog (fs : FlatState) (f : CanonicalName) → RunAt prog fs
                          → fetch prog (fpc fs) ≡ just (instr-ctrl (c-call-fn f))
                          → Σ ℕ (λ j → find-fn prog f ≡ just j)
 emitted-call-fn-resolves prog fs f r ftq = em-calls (run-em r) (fpc fs) f ftq
-
-------------------------------------------------------------------------
--- plan 0.146 B1.6: these are the OLD image's (`program-image`), and its run's; any image
--- meets them as its `Emitted` bundle's fields (`call-site-shape` and the rest below)
-postulate
-  call-site-shapeᴼ : ∀ (tbl : List IRFun) (ir : IR Unit Unit) (fs : FlatState)
-                   → Reachable (program-image o (irProgram tbl ir)) 0 fs
-                   → fetch (program-image o (irProgram tbl ir)) (fpc fs) ≡ just instr-call-closure
-                   → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
-                       (fclosure fs ≡ SV-Ptr (AtDynamic hl))
-                       × (heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
-                       × (find-thunk (program-image o (irProgram tbl ir)) ℓ ≡ just j))))
-
-  -- (`events-running-thunk` LIVED HERE. It is now a THEOREM — `thunk-step`
-  -- below.)
-  --
-  -- THE RETURN'S TWO INPUTS (D095). `events-running-ret` is GONE — the
-  -- correspondence for `c-ret` is now the theorem `ret-step` below, built on
-  -- the proven `block-step-c-ret`. What is left are two facts about the
-  -- ABSTRACT machine running an EMITTED program; neither mentions `X.State`,
-  -- so neither is a correspondence gap.
-  --
-  -- (1) A REACHABLE RETURN OWES A RETURN. A `c-ret` sits inside a closure body,
-  -- and a body is entered only by a CALL, which pushes. (This is `ret-site-owes`
-  -- from D091 — the same statement, but now TRUE-and-provable rather than
-  -- colliding with `run-no-ret`: the call is modelled.) Route: the static
-  -- segment stack and the dynamic `fret` have the same depth (with the same
-  -- one-instant exception `SegCur` already names), and `SlotBudget`'s
-  -- neutrality says an emitted body is a matched `c-thunk`/`c-ret` bracket —
-  -- so at a `c-ret` the static stack is non-empty, hence so is `fret`.
-  ret-site-owesᴼ : ∀ (tbl : List IRFun) (ir : IR Unit Unit) (fs : FlatState) (b : ℕ)
-                 → Reachable (program-image o (irProgram tbl ir)) 0 fs
-                 → fetch (program-image o (irProgram tbl ir)) (fpc fs) ≡ just (instr-ctrl (c-ret b))
-                 → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
-
-  -- THE EMITTER'S GUARD (D094): in an emitted trace a `c-thunk` is at `suc q`
-  -- with a `c-jmp` at `q` — the jump that stops the parent falling into the
-  -- body. CODEGEN-class (only `ir-to-trace` in the type). Discharge: the
-  -- structural induction over `ir-to-trace'`, shape written up in D094.
-  -- D245: stated over the PROGRAM IMAGE and for every callable ENTRY. What
-  -- precedes an entry is a `c-jmp` (an inlined body's guard) or a `c-ret` (a
-  -- unit's terminator, or the block before it: a function entry follows the
-  -- previous unit, and a linked block the one before it). Either way it is an
-  -- instruction that does not fall through. D451: …or `main`'s `c-leave`
-  -- (which halts where it stands), what the first function entry follows when
-  -- `main` has no linked block (the two-way form was false there).
-  emitted-thunk-guarded : ∀ (tbl : List IRFun) (ir : IR Unit Unit) (p : ℕ) (ℓ : EntryId) (bb : ℕ)
-                        → fetch (program-image o (irProgram tbl ir)) p ≡ just (instr-ctrl (c-entry ℓ bb))
-                        → Σ ℕ (λ q → (p ≡ suc q)
-                              × ((Σ LabelId (λ m → fetch (program-image o (irProgram tbl ir)) q
-                                                    ≡ just (instr-ctrl (c-jmp m))))
-                                 ⊎ (Σ ℕ (λ b → fetch (program-image o (irProgram tbl ir)) q
-                                                 ≡ just (instr-ctrl (c-ret b))))
-                                 ⊎ (fetch (program-image o (irProgram tbl ir)) q ≡ just (instr-ctrl c-leave))))
-
-  -- …and its sibling (D096): an emitted code address names a body that EXISTS.
-  -- `ir-to-trace'`'s `curry` clause emits `instr-load-code-addr (ℓ o this)` and
-  -- `c-thunk (ℓ o this)` together, so the scan cannot miss. CODEGEN-class, and
-  -- it belongs in the same induction as the two above.
-  -- D245: over the program image. A closure's label is owned by the definition
-  -- that minted it (D089), so the scan finds its body in that definition's unit.
-  emitted-code-addr-has-body : ∀ (tbl : List IRFun) (ir : IR Unit Unit) (p : ℕ) (ℓ : LabelId)
-                             → fetch (program-image o (irProgram tbl ir)) p ≡ just (instr-load-code-addr ℓ)
-                             → Σ ℕ (λ j → find-thunk (program-image o (irProgram tbl ir)) ℓ ≡ just j)
-
-  -- (2) THE BRACKET: the budget a return RELEASES is the reservation in force.
-  -- `ir-to-trace'` emits `c-thunk ℓ bb … c-ret bb` — one `bb`, written twice —
-  -- so this is the emitter's own bracket, and it belongs with
-  -- `emitted-thunk-guarded` in the same induction over `ir-to-trace'`.
-  ret-budget-matchesᴼ : ∀ (tbl : List IRFun) (ir : IR Unit Unit) (fs : FlatState) (b : ℕ)
-                      → Reachable (program-image o (irProgram tbl ir)) 0 fs
-                      → fetch (program-image o (irProgram tbl ir)) (fpc fs) ≡ just (instr-ctrl (c-ret b))
-                      → b ≡ frame-slots (falloc fs)
 
 -- the run's facts, from the program's bundle
 call-site-shape : ∀ prog (fs : FlatState) → RunAt prog fs
@@ -425,13 +278,6 @@ frame-op-absurd prog fs i em ftq = fetch-All {prog = prog} {k = fpc fs} (em-imag
 start-at-zero : ∀ prog (k b : ℕ) → Emitted prog
               → fetch prog k ≡ just (instr-ctrl (c-start b)) → k ≡ 0
 start-at-zero prog k b em ftq = em-start em k b ftq
-
--- the old image's start
-old-start : ∀ (tbl : List IRFun) (ir : IR Unit Unit) k b
-          → fetch (program-image o (irProgram tbl ir)) k ≡ just (instr-ctrl (c-start b)) → k ≡ 0
-old-start tbl ir zero    b _   = refl
-old-start tbl ir (suc k) b ftq =
-  ⊥-elim (fetch-All {prog = image-body o (irProgram tbl ir)} {k = k} (body-frame-free tbl ir) ftq)
 
 -- …and pc 0 holds it.
 fetch-zero : ∀ prog → (em : Emitted prog)

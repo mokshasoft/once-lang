@@ -50,7 +50,7 @@ open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.CCC.Codegen.RoomChecksFacts using (All-room)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.FrameFree using (EmittableI; ImageI; emittable-image)
-import Once.CCC.Codegen.AllocMin
+import Once.CCC.Machine.AllocMin
 
 module Once.LinCore.ImageAll
   (fmt : TargetNum) (ans : FFIAnswers)
@@ -95,7 +95,7 @@ module Ok (nm : CanonicalName) (U : Univ)
   Ref _                           = ⊤
 
   OK : AbstractInstr → Set
-  OK i = EmittableI i × Once.CCC.Codegen.AllocMin.AllocMinI nm i × Ref i
+  OK i = EmittableI i × Once.CCC.Machine.AllocMin.AllocMinI i × Ref i
 
   -- an instruction the three predicates reduce to `⊤` on
   pattern ✓ = tt , tt , tt
@@ -397,7 +397,7 @@ module Img (nm : CanonicalName) {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   em-image : All ImageI image
   em-image = tt ∷ Data.List.Relation.Unary.All.map (λ {i} p → emittable-image i (proj₁ p)) tail-ok
 
-  em-alloc : All (Once.CCC.Codegen.AllocMin.AllocMinI nm) image
+  em-alloc : All (Once.CCC.Machine.AllocMin.AllocMinI) image
   em-alloc = tt ∷ Data.List.Relation.Unary.All.map (λ p → proj₁ (proj₂ p)) tail-ok
 
   -- ★ (D459) every op call of the image, room-checked, is what an op of the

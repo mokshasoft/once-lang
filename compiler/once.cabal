@@ -114,7 +114,6 @@ library
       MAlonzo.Code.Once.Arith.SigOp.Builders
       MAlonzo.Code.Once.Arith.SigOp.Compare
       MAlonzo.Code.Once.Arith.Type
-      MAlonzo.Code.Once.CCC.Codegen.NodesOK
       MAlonzo.Code.Once.CCC.Codegen.RoomChecks
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.CCC.Label

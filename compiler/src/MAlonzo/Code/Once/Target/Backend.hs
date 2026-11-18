@@ -96,13 +96,13 @@ du_file'45'table_40 v0 v1
               (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v2))
               (coe v0 (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v2)))))
       (coe
-         MAlonzo.Code.Once.Compile.d_dedup'45'blocks_1390
+         MAlonzo.Code.Once.Compile.d_dedup'45'blocks_1384
          (coe
             MAlonzo.Code.Data.List.Base.du_map_22
             (coe
                (\ v2 ->
                   coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                    (coe MAlonzo.Code.Once.Compile.d_block'45'symbol_1392 (coe v2))
+                    (coe MAlonzo.Code.Once.Compile.d_block'45'symbol_1386 (coe v2))
                     (coe v2)))
             (coe v1)))
