@@ -154,6 +154,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas using (execInstr-ld
 open import Once.Adequacy.CPU.RiscV64 using (ev-riscv64; block-env; call-at-riscv64)
 import Once.Compile as Cmp
 import Once.Adequacy.BlockTable as BT
+open import Once.Target.Backend using (file-table)
 import Once.Arith.Backend.RiscV64.Emit as AE
 open import Once.Adequacy.CPU.RiscV64 using (block-env-hit; block-env-sound)
 open import Once.Adequacy.RewriteOwned using (BlockOf; is-block; block-not-in-memory)
@@ -317,7 +318,7 @@ riscv64-arith-table prog env =
   Σ IRProgram (λ p → (prog ≡ Cmp.image-of p) × (env ≡ block-env (Cmp.blocks-riscv64 p)))
   -- D459: …or the table of a block list the program's calls name (as on x86-64)
   ⊎ Σ (List ArithBlock) (λ bs → Data.List.Relation.Unary.All.All (BT.SigNamed bs) prog
-                                × (env ≡ block-env (BT.file-table AE.arith-block-symbol AE.block-payload bs))
+                                × (env ≡ block-env (file-table AE.block-payload bs))
                                 × (∀ {A B} (si : SigOpInfo A B) k → External (sem si) → FlatMachine.fetch {FS} prog k ≡ just (AbstractInstr.instr-sigop si)
                                      → env (once-symbol-path (SigOpInfo.name si)) ≡ nothing))
 
@@ -627,10 +628,10 @@ arith-sigop-lookup .(block-env (Cmp.blocks-riscv64 p)) .(Cmp.image-of p) fs si (
 ... | b , m , e , _ =
   subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (Cmp.blocks-riscv64 p) (once-symbol-path n) ≡ just pl)) (sym e)
         (block-env-hit (Cmp.blocks-riscv64 p) _ (BT.table-has AE.arith-block-symbol AE.block-payload (Cmp.program-blocks p) m))
-arith-sigop-lookup .(block-env (BT.file-table AE.arith-block-symbol AE.block-payload bs)) prog fs si (inj₂ (bs , nm , refl , _)) int ftq =
+arith-sigop-lookup .(block-env (file-table AE.block-payload bs)) prog fs si (inj₂ (bs , nm , refl , _)) int ftq =
   let (b , m , e , _) = FlatMachine.fetch-All {FS} {P = BT.SigNamed bs} {k = fpc fs} nm ftq si refl int
-  in subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (BT.file-table AE.arith-block-symbol AE.block-payload bs) (once-symbol-path n) ≡ just pl)) (sym e)
-           (block-env-hit (BT.file-table AE.arith-block-symbol AE.block-payload bs) _ (BT.table-has AE.arith-block-symbol AE.block-payload bs m))
+  in subst (λ n → Σ (List XInstr × ℕ) (λ pl → block-env (file-table AE.block-payload bs) (once-symbol-path n) ≡ just pl)) (sym e)
+           (block-env-hit (file-table AE.block-payload bs) _ (BT.table-has Cmp.block-symbol AE.block-payload bs m))
 
 -- plan 0.123 α′ (f1): …and what it finds is the SigOp's OWN block — the
 -- table entry under its symbol is a program block with that symbol, and one
@@ -644,10 +645,10 @@ arith-sigop-block .(block-env (Cmp.blocks-riscv64 p)) .(Cmp.image-of p) fs si (i
                            (FlatMachine.fetch-All {FS} {k = fpc fs} (BT.image-owned p) ftq int)
                            (block-env-sound (Cmp.blocks-riscv64 p) _ hit)
   in b , bo , e
-arith-sigop-block .(block-env (BT.file-table AE.arith-block-symbol AE.block-payload bs)) prog fs si (inj₂ (bs , nm , refl , _)) int ftq pl hit =
+arith-sigop-block .(block-env (file-table AE.block-payload bs)) prog fs si (inj₂ (bs , nm , refl , _)) int ftq pl hit =
   let (b , _ , bo , e) = BT.which-block AE.block-payload bs si
                            (FlatMachine.fetch-All {FS} {P = BT.SigNamed bs} {k = fpc fs} nm ftq si refl int)
-                           (block-env-sound (BT.file-table AE.arith-block-symbol AE.block-payload bs) _ hit)
+                           (block-env-sound (file-table AE.block-payload bs) _ hit)
   in b , bo , e
 
 ------------------------------------------------------------------------

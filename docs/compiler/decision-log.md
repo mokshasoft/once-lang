@@ -24146,6 +24146,15 @@ and frame semantics, its lowering of the abstract trace (`compile-trace`), its b
 directories; the linear core's apex, top and emitter are each one module over the record. Implementing a
 new arch is implementing that record.
 
+**As built (2026-11-18):** two records, so the code generator and its proof are separate interfaces
+over one backend. `Target.Backend` (codegen: `File`, `print`, `Payload`, `payload`, `file`), one per
+arch in `Target.<Arch>.Backend`, the only case split on the arch in `Target.Backends.backend`; and
+`Adequacy.ArchCorrectness.Interface.ArchSim o B` (proof, over the backend `B`: the flat machine, slot
+size and entry, the machine's table `block-env`, `ArithTable` and its constructor `table`, the machine
+`compile`/`δ`/`init`, and the one theorem `sim`), one per arch in `ArchCorrectness.<Arch>.Sim`. The
+block symbol is not in the interface: it is arch-neutral (`Compile.block-symbol`). The bytes level
+(decode, assemble, the CPU) stays master's `CPU.Interface.ArchSemantics`.
+
 ### Alternatives
 Keeping the per-arch copies (the drift grows with every arch-level fact); merging only the tops (the apexes
 stay three copies).

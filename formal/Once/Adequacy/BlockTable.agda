@@ -152,7 +152,8 @@ which-block pay bs si nd a
 -- linear core's image has its own blocks (`LinCore.ImageOwned`). What the
 -- arch layer reads of either is the same: every `instr-sigop si` of the
 -- program names a block of `bs` (`SigNamed`), and the file's table is `bs`'s,
--- by symbol, once each (`file-table`, master's `Compile.blocks-<arch>`).
+-- by symbol, once each (`Target.Backend.file-table`, master's
+-- `Compile.blocks-<arch>`).
 ------------------------------------------------------------------------
 
 open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-sigop)
@@ -161,10 +162,6 @@ import Data.List.Relation.Unary.All as All
 -- an instruction that calls an op names a block of `bs`
 SigNamed : List ArithBlock → AbstractInstr → Set
 SigNamed bs i = ∀ {A B} (si : SigOpInfo A B) → i ≡ instr-sigop si → Named bs si
-
--- the file's table of `bs`, at an arch's symbol and payload
-file-table : ∀ {P : Set} (symb : ArithBlock → String) (pay : ArithBlock → P) → List ArithBlock → List (String × P)
-file-table symb pay bs = map (λ sb → proj₁ sb , pay (proj₂ sb)) (dedup-blocks (map (λ b → symb b , b) bs))
 
 -- master's image: its calls name its program's blocks (`image-owned`)
 private
