@@ -22,14 +22,29 @@ module Once.LinCore.Top (o : CanonicalName) {B : Backend} (A : ArchSim o B) wher
 
 open import Data.List using (List)
 open import Data.Maybe using (just)
-open import Relation.Binary.PropositionalEquality using (_≡_; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym; trans)
+open import Data.Bool using (false)
+open import Data.Product using (Σ; _,_)
+open import Data.Sum using (inj₂)
+open import Data.Sum.Properties using (inj₂-injective)
+open import Data.Maybe.Properties using (just-injective)
+open import Data.String using (String)
+open import Once.Spec.Type using (Type)
+open import Once.Spec.Sub using (_<:_)
+open import Once.Spec.Trace using (_⊑ᵗ⟨_⟩_)
+open import Once.Adequacy.SourceTrace using (⟦_⟧IRᵗ)
+open import Once.Denotation.Program using (irProgram)
+open import Once.IR using (Heap)
+open import Once.Compile using (EffUU)
+open import Once.CompileSrc using (CompiledSrc; srcModule; mainOf)
+open import Once.LinCore.Emit using (fileOf)
 open import Once.Denotation.Program using (IRFun; NamesDistinct)
 open import Once.IR.Semantics.Trace using (module Interp)
 open import Once.CCC.FrameSemantics using (fs-numerics; module FrameSemantics)
 open import Once.Parser.Module.Core using (Resolved)
 open import Once.Compile using (moduleToIR; moduleTable)
 open import Once.Module using (moduleSig)
-open import Once.LinCore.Emit using (bw)
+open import Once.LinCore.Loader using (bw)
 import Once.IR
 import Once.IRTy
 import Once.LinCore.ExprBuild
@@ -41,8 +56,12 @@ module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit
   (ls : moduleSig m ≡ Interp.sig (FrameSemantics.fs-interp (ArchSim.FS A))) where
 
   -- the bridge's facts, from the compile pipeline, in the interpretation's signatures
-  bf = subst (λ σ → Once.LinCore.ExprBuild.Bridged (fs-numerics (ArchSim.FS A)) σ tbl ir) ls
-             (Once.LinCore.ExprLinked.bridged (fs-numerics (ArchSim.FS A)) m ir mi nd te)
+  -- (only the declarations' fact depends on the signatures: moved alone, so the others stay the
+  -- front end's, `ExprLinked.bridged`'s)
+  module B₀ = Once.LinCore.ExprBuild.Bridged (Once.LinCore.ExprLinked.bridged (fs-numerics (ArchSim.FS A)) m ir mi nd te)
+  bf : Once.LinCore.ExprBuild.Bridged (fs-numerics (ArchSim.FS A)) (Interp.sig (FrameSemantics.fs-interp (ArchSim.FS A))) tbl ir
+  bf = record { tl = B₀.tl ; gb = B₀.gb ; mty = B₀.mty ; mpm = B₀.mpm ; mg = B₀.mg ; tbl-eq = B₀.tbl-eq ; mir = B₀.mir
+              ; sd = subst (λ σ → Once.LinCore.ExprBuild.SrcsDecl (fs-numerics (ArchSim.FS A)) σ B₀.tl) ls B₀.sd }
 
   module N = Once.LinCore.Apex.NewImage o A bw tbl ir bf
 
@@ -50,3 +69,4 @@ module Program (m : Resolved) (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit
   -- does the file the backend writes for it
   conc-tr★ = N.conc-trᴺ
   file-tr★ = N.file-trᴺ
+

@@ -42,36 +42,17 @@ open import Once.Denotation.Program using (IRProgram; irProgram)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-load-const)
 open import Once.CCC.Codegen.RoomChecks using (room-checks)
 open import Once.LinCore.Flat using (Base; int; float; Lit)
+open import Once.LinCore.Loader using (bw; ldConst)
 open import Once.Compile
   using (EffUU; FileOf; printFile; compileFileFromModule; compileResolvedModule; CompiledFun; findMain; tableOf;
          prog-externs)
-open import Once.CompileSrc using (CompiledSrc; module CompiledSrc; srcModule)
+open import Once.CompileSrc using (CompiledSrc; module CompiledSrc; srcModule; mainOf)
 open CompiledSrc using (csName; csType)
 import Once.LinCore.ExprBuild
 import Once.LinCore.Lower
 import Once.LinCore.ImageBlocks
 import Once.LinCore.Keys
 open import Once.Arith.Machine.IR using (ArithBlock)
-
--- a base value is one word on every arch (`Spec.ABI`; the apexes' `bw`)
-bw : Base → ℕ
-bw int   = 1
-bw float = 1
-
--- a literal's loader (`MachineLit.ldConst`)
-ldConst : ∀ {b} → Lit b → AbstractInstr
-ldConst {int}   z = instr-load-const fits-int z
-ldConst {float} d = instr-load-const fits-float d
-
--- main, among the sources (`Compile.findMain`'s: the first of the name, at a type below `Eff Unit Unit`)
-mainOf : List CompiledSrc → Maybe (Σ Type (λ T → T <: EffUU))
-mainOf []       = nothing
-mainOf (c ∷ cs) = at (csName c ≟ᶜ bare "main") (csType c <:? EffUU)
-  where
-    at : _ → _ → Maybe (Σ Type (λ T → T <: EffUU))
-    at (yes _) (yes p) = just (csType c , p)
-    at (yes _) (no _)  = mainOf cs
-    at (no _)  _       = mainOf cs
 
 -- ★ the new image: the bridge's program, lowered, with its room checks
 module At (fmt : TargetNum) where
@@ -89,12 +70,12 @@ module At (fmt : TargetNum) where
   blocksOf srcs pm = imageBlocks (univ (ETProg.defs t) (mainCore (ETProg.rs t) pm))
     where t = exprTable (srcOrder srcs [])
 
--- ★ the new image's file, by the arch's backend: the image, its blocks' table, the externs
+-- ★ the new image's file, by a backend at its numerics: the image, its blocks' table, the externs
+fileOf : (B : Backend) (fmt : TargetNum) → List CompiledSrc → ∀ {T : Type} → T <: EffUU → List String → Backend.File B
+fileOf B fmt srcs pm ex = Backend.file B (At.imageOf fmt srcs pm) (file-table (Backend.payload B) (At.blocksOf fmt srcs pm)) ex
+
 emitCore : Arch → List CompiledSrc → ∀ {T : Type} → T <: EffUU → IRProgram → String
-emitCore arch srcs pm p =
-  Backend.print B (Backend.file B (At.imageOf (arch-numerics arch) srcs pm)
-                                  (file-table (Backend.payload B) (At.blocksOf (arch-numerics arch) srcs pm)) (prog-externs p))
-  where B = backend arch
+emitCore arch srcs pm p = Backend.print (backend arch) (fileOf (backend arch) (arch-numerics arch) srcs pm (prog-externs p))
 
 -- ★ the file: master's gates, then the new image of a program
 fileCore : (arch : Arch) → Resolved → String ⊎ String

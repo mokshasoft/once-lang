@@ -27,6 +27,7 @@ import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
+import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Context
 import qualified MAlonzo.Code.Once.Functor.Decide
@@ -47,11 +48,13 @@ import qualified MAlonzo.Code.Once.Type.Concrete
 import qualified MAlonzo.Code.Once.Type.DecEq
 import qualified MAlonzo.Code.Once.Type.Honest
 import qualified MAlonzo.Code.Once.Type.Instance
+import qualified MAlonzo.Code.Once.Type.SubDecide
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Elaborate
 import qualified MAlonzo.Code.Once.TypeCheck.Error
 import qualified MAlonzo.Code.Once.TypeCheck.Link
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
+import qualified MAlonzo.Code.Relation.Nullary.Reflects
 
 -- Once.CompileSrc.Src
 d_Src_6 a0 = ()
@@ -1259,3 +1262,52 @@ d_module'45'src_1800 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Resolved_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_module'45'src_1800 = erased
+-- Once.CompileSrc.mainOf
+d_mainOf_1810 ::
+  [T_CompiledSrc_1012] ->
+  Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_mainOf_1810 v0
+  = case coe v0 of
+      [] -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+      (:) v1 v2
+        -> coe
+             d_mainOf'45'at_1816 (coe v1) (coe v2)
+             (coe
+                MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__4
+                (coe d_csName_1020 (coe v1))
+                (coe
+                   MAlonzo.Code.Once.Spec.Name.d_bare_14
+                   (coe ("main" :: Data.Text.Text))))
+             (coe
+                MAlonzo.Code.Once.Type.SubDecide.d__'60''58''63'__170
+                (coe (0 :: Integer)) (coe d_csType_1022 (coe v1))
+                (coe MAlonzo.Code.Once.Compile.du_EffUU_1262))
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.CompileSrc.mainOf-at
+d_mainOf'45'at_1816 ::
+  T_CompiledSrc_1012 ->
+  [T_CompiledSrc_1012] ->
+  MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
+  MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
+  Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_mainOf'45'at_1816 v0 v1 v2 v3
+  = case coe v2 of
+      MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v4 v5
+        -> if coe v4
+             then coe
+                    seq (coe v5)
+                    (case coe v3 of
+                       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v6 v7
+                         -> if coe v6
+                              then case coe v7 of
+                                     MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22 v8
+                                       -> coe
+                                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                            (coe
+                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                               (coe d_csType_1022 (coe v0)) (coe v8))
+                                     _ -> MAlonzo.RTE.mazUnreachableError
+                              else coe seq (coe v7) (coe d_mainOf_1810 (coe v1))
+                       _ -> MAlonzo.RTE.mazUnreachableError)
+             else coe seq (coe v5) (coe d_mainOf_1810 (coe v1))
+      _ -> MAlonzo.RTE.mazUnreachableError

@@ -19,6 +19,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics; fs-ffi)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.LinCore.Flat using (Base)
+import Once.LinCore.Loader
 
 module Once.LinCore.MachineLit (Mach : FrameSemantics) (bw : Base → ℕ) where
 
@@ -32,9 +33,9 @@ open import Once.LinCore.Labels fmt ans bw using (module NoLabels)
 open FlatMachine {Mach} using (FlatState; floc; fpc; flat-exec-instr)
 
 -- the load: the machine's literal load at the payload
+-- (the compiler's: `Loader`)
 ldConst : ∀ {b} → Lit b → AbstractInstr
-ldConst {int}   z = instr-load-const fits-int z
-ldConst {float} d = instr-load-const fits-float d
+ldConst = Once.LinCore.Loader.ldConst
 
 ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {Mach} (ldConst v) ≡ nothing
 ld-nl {int}   z = refl

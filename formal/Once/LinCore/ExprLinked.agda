@@ -356,7 +356,7 @@ open import Once.Spec.Sub using (_<:_; sub-arr; sub-unit; sub-void)
 open import Once.Compile using (EffUU; mainEntry; findMain; findMain-here; moduleToIR; moduleToIR-aux; moduleTable; tableOf; tableOfResult;
                                 CompiledFun; compileResolvedModule; compileResolvedModule-aux)
 open import Once.Type.SubDecide using (_<:?_)
-open import Once.CompileSrc using (toCF; mapCF; srcModule; srcModule-aux; module-src)
+open import Once.CompileSrc using (toCF; mapCF; srcModule; srcModule-aux; module-src; mainOf; mainOf-at)
 open import Once.Denotation.Program using (NamesDistinct; IRFun)
 open import Once.LinCore.FromExpr fmt using (Rs)
 open import Once.LinCore.Core fmt using (Cx)
@@ -458,16 +458,31 @@ record MainOf (srcs : List CompiledSrc) (ir : IR ⌊ ST.Unit {0} ⌋ ⌊ ST.Unit
     mir : ir ≡ mainEntry mpm
     min : Any (Named (bare "main") (ET.dcGr mty)) srcs
 
-find-main : ∀ (srcs : List CompiledSrc) {ir} → findMain (Data.List.map toCF srcs) ≡ just ir → MainOf srcs ir
+find-main    : ∀ (srcs : List CompiledSrc) {ir} → findMain (Data.List.map toCF srcs) ≡ just ir → MainOf srcs ir
+find-main-at : ∀ (c : CompiledSrc) (cs : List CompiledSrc) {ir} dn dt
+             → findMain-here (toCF c) dn dt (findMain (Data.List.map toCF cs)) ≡ just ir → MainOf (c ∷ cs) ir
 find-main []       ()
-find-main (c ∷ cs) {ir} e = at (csName c ≟ᶜ bare "main") (csType c <:? EffUU) e
-  where
-    there-main : MainOf cs ir → MainOf (c ∷ cs) ir
-    there-main mo = record { mty = MainOf.mty mo ; mpm = MainOf.mpm mo ; mir = MainOf.mir mo ; min = there (MainOf.min mo) }
-    at : ∀ dn dt → findMain-here (toCF c) dn dt (findMain (Data.List.map toCF cs)) ≡ just ir → MainOf (c ∷ cs) ir
-    at (yes n) (yes p) e′ = record { mty = csType c ; mpm = p ; mir = sym (just-injective e′) ; min = here (n , refl) }
-    at (yes _) (no _)  e′ = there-main (find-main cs e′)
-    at (no _)  _       e′ = there-main (find-main cs e′)
+find-main (c ∷ cs) e = find-main-at c cs (csName c ≟ᶜ bare "main") (csType c <:? EffUU) e
+
+private
+  there-main : ∀ {c cs ir} → MainOf cs ir → MainOf (c ∷ cs) ir
+  there-main mo = record { mty = MainOf.mty mo ; mpm = MainOf.mpm mo ; mir = MainOf.mir mo ; min = there (MainOf.min mo) }
+
+find-main-at c cs (yes n) (yes p) e′ = record { mty = csType c ; mpm = p ; mir = sym (just-injective e′) ; min = here (n , refl) }
+find-main-at c cs (yes _) (no _)  e′ = there-main (find-main cs e′)
+find-main-at c cs (no _)  _       e′ = there-main (find-main cs e′)
+
+-- ★ …and it is the one the sources' `mainOf` finds (what `Emit` writes the image of)
+main-of    : ∀ (srcs : List CompiledSrc) {ir} (e : findMain (Data.List.map toCF srcs) ≡ just ir)
+           → mainOf srcs ≡ just (MainOf.mty (find-main srcs e) , MainOf.mpm (find-main srcs e))
+main-of-at : ∀ (c : CompiledSrc) (cs : List CompiledSrc) {ir} dn dt
+             (e : findMain-here (toCF c) dn dt (findMain (Data.List.map toCF cs)) ≡ just ir)
+           → mainOf-at c cs dn dt ≡ just (MainOf.mty (find-main-at c cs dn dt e) , MainOf.mpm (find-main-at c cs dn dt e))
+main-of []       ()
+main-of (c ∷ cs) e = main-of-at c cs (csName c ≟ᶜ bare "main") (csType c <:? EffUU) e
+main-of-at c cs (yes n) (yes p) e′ = refl
+main-of-at c cs (yes _) (no _)  e′ = main-of cs e′
+main-of-at c cs (no _)  _       e′ = main-of cs e′
 
 -- the table's order keeps what is in it
 any-srcOrder : ∀ {P : CompiledSrc → Set} (cs sofar : List CompiledSrc) → Any P cs ⊎ Any P sofar → Any P (ET.srcOrder cs sofar)
@@ -504,6 +519,8 @@ record ExprProgram (m : P.Resolved) (ir : IR ⌊ ST.Unit {0} ⌋ ⌊ ST.Unit {0}
     mpm    : mty <: EffUU
     mir    : ir ≡ mainEntry mpm
     mg     : ET.MainGraded (ET.ETProg.rs (ET.exprTable (ET.srcOrder srcs []))) mpm
+    -- the sources' main is it (`CompileSrc.mainOf`: what `Emit` writes the image of)
+    main-eq : mainOf srcs ≡ just (mty , mpm)
 
 -- the program's facts are used by their types: sealed, so their walk never
 -- unfolds where they are used
@@ -525,6 +542,7 @@ expr-program m ir mi nd = seal record
   ; mir    = MainOf.mir mo
   ; mg     = main-graded (ET.ETProg.rs (ET.exprTable tl)) (MainOf.mpm mo)
                          (graded tl names (any-srcOrder srcs [] (inj₁ (MainOf.min mo))))
+  ; main-eq = main-of srcs fm
   }
   where
     node = FB.program-node m ir mi

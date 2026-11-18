@@ -22,8 +22,8 @@ open import Data.String using (String; _++_; _==_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 import Data.Sum
 open import Data.Unit using (⊤)
-open import Data.Product using (_,_)
-open import Data.List using (_∷_)
+open import Data.Product using (Σ; _,_)
+open import Data.List using (List; []; _∷_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong)
 open import Relation.Nullary using (Dec; yes; no)
 
@@ -51,7 +51,11 @@ open import Once.Compile
         ; compileFunM
         ; CScope; ctop; cpolys; extendSig; extendScope; addEntry; declImps; firstChecking; resolveFunType; checkOK
         ; CompiledFun; mkCompiledFun; consCF; compileEntries; emptyCScope; compileResolvedModule-aux; compileResolvedModule
-        ; ce-fun; ce-prim; ce-prim-conc; ce-mono; ce-mono-p; ce-mono-ir; ce-poly-p; ce-poly; ce-poly-main )
+        ; ce-fun; ce-prim; ce-prim-conc; ce-mono; ce-mono-p; ce-mono-ir; ce-poly-p; ce-poly; ce-poly-main
+        ; EffUU )
+open import Once.Spec.Sub using (_<:_)
+open import Once.Type.SubDecide using (_<:?_)
+open import Once.CanonicalName using (_≟ᶜ_)
 open import Once.Parser using (FunInfo; PolyFunInfo; Entry; e-fun; e-poly; module FunInfo; module PolyFunInfo; extractFunctions)
 open import Once.Parser.Module.Core using (Resolved)
 open import Once.TypeCheck.Classify using (ctxAt)
@@ -375,3 +379,20 @@ module-aux-src m doOpt mod (inj₂ es)  = entries-src m doOpt emptyCScope es
 -- ★ a module's compiled definitions are its sources' IR
 module-src : ∀ m doOpt mod → compileResolvedModule m doOpt mod ≡ mapCF (srcModule m doOpt mod)
 module-src m doOpt mod = module-aux-src m doOpt mod (extractFunctions mod)
+
+------------------------------------------------------------------------
+-- 5. `main`, AMONG THE SOURCES (plan 0.146, D458): the first of the name, at
+-- a type below `Eff Unit Unit` — `Compile.findMain`'s choice, on the sources
+-- (`LinCore.Emit` writes its image; `LinCore.ExprLinked.main-of` shows it is
+-- the one master's `moduleToIR` finds). Its decisions are arguments, so a
+-- proof that follows `findMain` follows this too.
+------------------------------------------------------------------------
+
+mainOf    : List CompiledSrc → Maybe (Σ Type (λ T → T <: EffUU))
+mainOf-at : (c : CompiledSrc) → List CompiledSrc → Dec (csName c ≡ bare "main") → Dec (csType c <: EffUU)
+          → Maybe (Σ Type (λ T → T <: EffUU))
+mainOf []       = nothing
+mainOf (c ∷ cs) = mainOf-at c cs (csName c ≟ᶜ bare "main") (csType c <:? EffUU)
+mainOf-at c cs (yes _) (yes p) = just (csType c , p)
+mainOf-at c cs (yes _) (no _)  = mainOf cs
+mainOf-at c cs (no _)  _       = mainOf cs
