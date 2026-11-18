@@ -60,6 +60,7 @@ import Once.Compile
 import Once.Spec.Type
 import Once.Spec.Sub
 import Once.LinCore.ExprTable
+import Once.LinCore.ExprBuild
 import Once.LinCore.ExprOps
 
 module Once.LinCore.FlatTop (Mach : FrameSemantics) (bw : Base → ℕ) where
@@ -415,9 +416,9 @@ module IRTop (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
 -- (`Compile.mainEntry`'s, at main's grade), against master's meaning.
 ------------------------------------------------------------------------
 
-module ExprTop (tl : List Once.CompileSrc.CompiledSrc) (gb : Once.LinCore.ExprTable.GradedBodies fmt ans tl)
+module ExprTop (tl : List Once.CompileSrc.CompiledSrc) (gb : Once.LinCore.ExprBuild.GradedBodies fmt tl)
                {ty : Once.Spec.Type.Type} (pm : ty Once.Spec.Sub.<: Once.Compile.EffUU)
-               (gm : Once.LinCore.ExprTable.MainGraded fmt ans (Once.LinCore.ExprTable.ETProg.rs (Once.LinCore.ExprTable.exprTable fmt ans tl)) pm)
+               (gm : Once.LinCore.ExprBuild.MainGraded fmt (Once.LinCore.ExprBuild.ETProg.rs (Once.LinCore.ExprBuild.exprTable fmt tl)) pm)
                (ldConst : ∀ {b} → Lit b → AbstractInstr)
                (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {Mach} (ldConst v) ≡ nothing)
                (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
@@ -425,10 +426,11 @@ module ExprTop (tl : List Once.CompileSrc.CompiledSrc) (gb : Once.LinCore.ExprTa
                (w-float : ∀ (n : ⟦ float ⟧b) → wordOf {float} n ≡ SV-Lit fits-float n)
                (entry-frame : FrameSemantics.Frame Mach) (entry-regs : Registers Mach) where
   module ET = Once.LinCore.ExprTable fmt ans
-  t = ET.exprTable tl
-  ds = ET.ETProg.defs t
-  f₀ = ET.mainCore (ET.ETProg.rs t) pm
-  tbl = ET.tblOf tl
+  module EB = Once.LinCore.ExprBuild fmt
+  t = EB.exprTable tl
+  ds = EB.ETProg.defs t
+  f₀ = EB.mainCore (EB.ETProg.rs t) pm
+  tbl = EB.tblOf tl
   module TP = Top ds f₀ ldConst ld-nl wordOf w-int w-float entry-frame entry-regs
 
   -- master's meaning, and what it shows at a budget from the empty log
@@ -446,12 +448,12 @@ module ExprTop (tl : List Once.CompileSrc.CompiledSrc) (gb : Once.LinCore.ExprTa
                                ; fpc = suc (FlatMachine.fpc fs) })
            -- ★ master's premise at the sources: every definition's FFI references are declared
            -- (`ElaborateLinked`'s `Refs (DeclIn σ)`)
-           (srcs : Once.LinCore.ExprTable.SrcsDecl fmt ans (TM.Interp.sig ι) tl) where
+           (srcs : Once.LinCore.ExprBuild.SrcsDecl fmt (TM.Interp.sig ι) tl) where
     open FlatEventTrace {Mach} using (flat-events; flat-ctrls)
 
     -- ★ LINKED AT THE CORE (D445): the bridge's program's ops are declared (`ExprOps`)
     decl : ∀ {s} → s ∈ ops (Program.U ds f₀) → Declared-at (TM.Interp.sig ι) (info s) (SigOpInfo.sem (info s))
-    decl = Once.LinCore.ExprOps.Table.decl-ok fmt bw (TM.Interp.sig ι) ans tl srcs pm
+    decl = Once.LinCore.ExprOps.Table.decl-ok fmt bw (TM.Interp.sig ι) tl srcs pm
 
     -- ★★ THE FLAT THEOREM AT MASTER'S MEANING, for the bridge's program
     flat-ir : ∀ k → Σ ℕ λ N → (flat-events (suc N) TP.image TP.start-fs ≡ (proj₁ (obsᴰ k) , endAp (proj₂ (obsᴰ k))))
@@ -465,21 +467,21 @@ module ExprTop (tl : List Once.CompileSrc.CompiledSrc) (gb : Once.LinCore.ExprTa
 
 ------------------------------------------------------------------------
 -- ★★ THE COMPILED PROGRAM'S (D455–D457): a program `ir` over `tbl` with the
--- bridge's facts (`ExprTable.Bridged`, which the compile pipeline gives:
+-- bridge's facts (`ExprBuild.Bridged`, which the compile pipeline gives:
 -- `ExprLinked.bridged`) has the flat theorem at master's meaning of it
 -- (`ExprTop`). (The facts are a premise, so the apexes do not load the
 -- front end's walk.)
 ------------------------------------------------------------------------
 
 module ExprApex (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
-                (bf : Once.LinCore.ExprTable.Bridged fmt ans (TM.Interp.sig ι) tbl ir)
+                (bf : Once.LinCore.ExprBuild.Bridged fmt (TM.Interp.sig ι) tbl ir)
                 (ldConst : ∀ {b} → Lit b → AbstractInstr)
                 (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {Mach} (ldConst v) ≡ nothing)
                 (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
                 (w-int   : ∀ (n : ⟦ int ⟧b)   → wordOf {int} n ≡ SV-Lit fits-int n)
                 (w-float : ∀ (n : ⟦ float ⟧b) → wordOf {float} n ≡ SV-Lit fits-float n)
                 (entry-frame : FrameSemantics.Frame Mach) (entry-regs : Registers Mach) where
-  module BF = Once.LinCore.ExprTable.Bridged bf
+  module BF = Once.LinCore.ExprBuild.Bridged bf
   module XT = ExprTop BF.tl BF.gb BF.mpm BF.mg ldConst ld-nl wordOf w-int w-float entry-frame entry-regs
   ds = XT.ds
   f₀ = XT.f₀

@@ -394,19 +394,18 @@ module Ops (Σι : ISig) where
       ok-copyIn _ , (ok-Lq round r , ok-weak {Γ = Γ} (⊑ᵘ-*Many Ψ))
 
 ------------------------------------------------------------------------
--- 3. ★ THE BRIDGE'S PROGRAM (`ExprTable`): its table and its `main` run
+-- 3. ★ THE BRIDGE'S PROGRAM (`ExprBuild`): its table and its `main` run
 -- only declared ops, so its universe's ops are declared (`FlatTop.ExprTop`'s
 -- `decl`), when every definition's FFI references are.
 ------------------------------------------------------------------------
 
-open import Once.IR.Semantics.Trace using (FFIAnswers)
-import Once.LinCore.ExprTable
+import Once.LinCore.ExprBuild
 open import Once.CompileSrc using (CompiledSrc; module CompiledSrc; Src; src; module Src)
 open import Once.Compile using (EffUU)
 
-module Table (Σι : ISig) (ans : FFIAnswers) where
+module Table (Σι : ISig) where
   open Ops Σι
-  module ET = Once.LinCore.ExprTable fmt ans
+  module ET = Once.LinCore.ExprBuild fmt
   open import Once.Spec.Sub using (_<:_; sub-arr; sub-unit; sub-void)
   open import Once.Spec.Type using (Type; _⇒[_]_)
   import Once.Spec.Type as ST

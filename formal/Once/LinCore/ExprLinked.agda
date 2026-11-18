@@ -8,17 +8,16 @@
 -- Each definition's source (`CompileSrc.srcEntries`) refers only to earlier
 -- definitions, each at its declared type, so at its definition's grade
 -- (`GradeIn`); with the table's names distinct, the bridge's resolver finds
--- a reference at no other grade (`ExprTable.GradedBodies`, `MainGraded`), and
--- the sources' FFI references are declared (`ExprOps.Table.SrcsOK`).
+-- a reference at no other grade (`ExprBuild.GradedBodies`, `MainGraded`), and
+-- the sources' FFI references are declared (`ExprBuild.SrcsDecl`).
 --
 -- The walk is `ProgramLinked`'s, in lockstep with master's bundle, over the
 -- sources' table; its splice step is `ProgramLinked.poly-tel` at `GradeIn`.
 ------------------------------------------------------------------------
 
 open import Once.Spec.Numerics using (TargetNum)
-open import Once.IR.Semantics.Trace using (FFIAnswers)
 
-module Once.LinCore.ExprLinked (fmt : TargetNum) (ans : FFIAnswers) where
+module Once.LinCore.ExprLinked (fmt : TargetNum) where
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -111,7 +110,7 @@ module SrcForm (ctx : TopCtx) (polys : PolyCtx) (impsOf : String → TopCtx) (x 
 
 ------------------------------------------------------------------------
 -- 2. ★ A REFERENCE AT ITS DEFINITION'S GRADE: an earlier definition of the
--- name, whose grade is the reference's key grade (`ExprTable.GradedRef`'s).
+-- name, whose grade is the reference's key grade (`ExprBuild.GradedRef`'s).
 ------------------------------------------------------------------------
 
 open import Data.List.Relation.Unary.Any using (Any; here; there)
@@ -126,8 +125,8 @@ import Once.Spec.Type as ST
 open import Once.Spec.Type using (_⇒[_]_; ∅ₖ)
 open import Once.LinCore.Core fmt using (Gr; act)
 open import Once.LinCore.FromIR fmt using (grade)
-import Once.LinCore.ExprTable
-module ET = Once.LinCore.ExprTable fmt ans
+import Once.LinCore.ExprBuild
+module ET = Once.LinCore.ExprBuild fmt
 open import Once.Contract using (ISig)
 open import Once.TypeCheck.Scope using (Imports; lookupImport)
 open import Once.TypeCheck.Classify using (ctxAt; baseKinds)
@@ -497,7 +496,7 @@ record ExprProgram (m : P.Resolved) (ir : IR ⌊ ST.Unit {0} ⌋ ⌊ ST.Unit {0}
   field
     srcs   : List CompiledSrc
     src-eq : srcModule Heap false m ≡ inj₂ srcs
-    -- master's table is the sources' (`ExprTable.tableOf-src`)
+    -- master's table is the sources' (`ExprBuild.tableOf-src`)
     tbl-eq : moduleTable m ≡ ET.tblOf (ET.srcOrder srcs [])
     gb     : ET.GradedBodies (ET.srcOrder srcs [])
     sd     : ET.SrcsDecl (moduleSig m) (ET.srcOrder srcs [])
@@ -553,7 +552,7 @@ expr-program m ir mi nd = seal record
     fm = trans (cong findMain (proj₂ (proj₂ so))) (trans (sym (cong moduleToIR-aux ceq)) mi)
     mo = find-main srcs fm
 
--- ★★ …as the arch apexes take it (`ExprTable.Bridged`), over any table equal to master's
+-- ★★ …as the arch apexes take it (`ExprBuild.Bridged`), over any table equal to master's
 bridged : ∀ (m : P.Resolved) (ir : IR ⌊ ST.Unit {0} ⌋ ⌊ ST.Unit {0} ⌋) {tbl : List IRFun}
         → moduleToIR m ≡ just ir → NamesDistinct (moduleTable m) → moduleTable m ≡ tbl
         → ET.Bridged (moduleSig m) tbl ir

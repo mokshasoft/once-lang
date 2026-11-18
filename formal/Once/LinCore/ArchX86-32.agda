@@ -83,7 +83,7 @@ bw float = 1
 import Once.LinCore.MachineLit
 module ML = Once.LinCore.MachineLit x86-32-frame-semantics bw
 import Once.LinCore.FlatTop
-import Once.LinCore.ExprTable
+import Once.LinCore.ExprBuild
 import Once.LinCore.ImageAll
 import Once.LinCore.ImageGuard
 
@@ -93,9 +93,9 @@ ld-is {int}   v = _ , _ , v , refl
 ld-is {float} v = _ , _ , v , refl
 
 -- ★ the compiled program (D455–D457): the bridge's facts of `ir` over `tbl`
--- (`ExprTable.Bridged`; the compile pipeline's: `ExprLinked.bridged`)
+-- (`ExprBuild.Bridged`; the compile pipeline's: `ExprLinked.bridged`)
 module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
-  (bf : Once.LinCore.ExprTable.Bridged (fs-numerics x86-32-frame-semantics) (fs-ffi x86-32-frame-semantics) (Interp.sig ι) tbl ir) where
+  (bf : Once.LinCore.ExprBuild.Bridged (fs-numerics x86-32-frame-semantics) (Interp.sig ι) tbl ir) where
   module IT = Once.LinCore.FlatTop.ExprApex x86-32-frame-semantics bw tbl ir bf
                 ML.ldConst ML.ld-nl ML.wordOf ML.w-int ML.w-float entry-frame-x86-32 FFOx.entry-regs
 
