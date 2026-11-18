@@ -714,12 +714,10 @@ wf-nz (SV-Code _)           fs wf = wf-fault wf
 -- FRONTIER and quantifies over all frames — only the frontier term has to
 -- be transported through `leave-frame`, exactly as the dealloc-stack
 -- clause below does.
-wf-ret : ∀ (r : List ℕ) (fs : FlatState) → FlatWF fs → FlatWF (do-ret r fs)
-wf-ret []           fs wf =
-  subst (λ n → StoreWF n (record (floc fs) { halted = true }))
-        (sym (leave-frame-heap-ref (falloc fs))) (wf-halt wf)
-wf-ret (pc' ∷ rest) fs wf =
-  subst (λ n → StoreWF n (floc fs)) (sym (leave-frame-heap-ref (falloc fs))) wf
+wf-ret : ∀ (b : ℕ) (r : List ℕ) (fs : FlatState) → FlatWF fs → FlatWF (do-ret b r fs)
+wf-ret b r fs wf =
+  do-ret-keeps FlatWF b r fs (wf-fault wf)
+    (λ _ _ _ _ → subst (λ n → StoreWF n (floc fs)) (sym (leave-frame-heap-ref (falloc fs))) wf)
 
 -- `grow-frame` is a plain record update on the frame fields, so the frontier is
 -- unchanged definitionally. Plan 0.54 rung D: `do-thunk` now also CLEARS the
@@ -749,13 +747,13 @@ wf-thunk b fs wf = record
 wf-call : ∀ (prog : AbstractTrace) (fs : FlatState) → FlatWF fs → FlatWF (do-call prog fs)
 wf-call prog fs wf = go (callView prog fs)
   where go : CallPost prog fs → FlatWF (do-call prog fs)
-        go (cp-halt    e) rewrite e = wf-halt wf
-        go (cp-enter ℓ j fq e) rewrite e = wf
+        go (cp-fault e) rewrite e = wf-fault wf
+        go (cp-enter ℓ j hl ce he fq e) rewrite e = wf
 
 -- D245: a DIRECT call is the same transfer with the target named statically.
 wf-call-at : ∀ (mj : Maybe ℕ) (fs : FlatState) → FlatWF fs → FlatWF (do-call-at mj fs)
 wf-call-at (just j) fs wf = wf
-wf-call-at nothing  fs wf = wf-halt wf
+wf-call-at nothing  fs wf = wf-fault wf
 
 -- D097: THE CLOSURE REGISTER STAYS BELOW THE FRONTIER. `fclosure` is a
 -- `FlatState` field, so `StoreWF` (indexed by the `LocState`) says nothing
@@ -791,13 +789,12 @@ cl-nz (SV-Tag _)            fs wf b = b
 cl-nz (SV-Ptr _)            fs wf b = b
 cl-nz (SV-Code _)           fs wf b = b
 
-cl-ret : ∀ (r : List ℕ) (fs : FlatState)
+cl-ret : ∀ (bb : ℕ) (r : List ℕ) (fs : FlatState)
        → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
-       → sv-below (next-heap-ref (falloc (do-ret r fs))) (fclosure (do-ret r fs))
-cl-ret []           fs b = subst (λ n → sv-below n (fclosure fs))
-                                 (sym (leave-frame-heap-ref (falloc fs))) b
-cl-ret (pc' ∷ rest) fs b = subst (λ n → sv-below n (fclosure fs))
-                                 (sym (leave-frame-heap-ref (falloc fs))) b
+       → sv-below (next-heap-ref (falloc (do-ret bb r fs))) (fclosure (do-ret bb r fs))
+cl-ret bb r fs b =
+  do-ret-keeps (λ s → sv-below (next-heap-ref (falloc s)) (fclosure s)) bb r fs b
+    (λ _ _ _ _ → subst (λ n → sv-below n (fclosure fs)) (sym (leave-frame-heap-ref (falloc fs))) b)
 
 cl-call : ∀ (prog : AbstractTrace) (fs : FlatState)
         → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
@@ -805,8 +802,8 @@ cl-call : ∀ (prog : AbstractTrace) (fs : FlatState)
 cl-call prog fs b = go (callView prog fs)
   where go : CallPost prog fs
            → sv-below (next-heap-ref (falloc (do-call prog fs))) (fclosure (do-call prog fs))
-        go (cp-halt    e) rewrite e = b
-        go (cp-enter ℓ j fq e) rewrite e = b
+        go (cp-fault e) rewrite e = b
+        go (cp-enter ℓ j hl ce he fq e) rewrite e = b
 
 cl-call-at : ∀ (mj : Maybe ℕ) (fs : FlatState)
            → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
@@ -823,7 +820,7 @@ cl-step (instr-ctrl (c-entry m bb))            prog fs wf b = b
 cl-step (instr-ctrl (c-start bb))            prog fs wf b = b
 cl-step (instr-ctrl c-leave)                  prog fs wf b = b
 cl-step (instr-ctrl (c-call-fn f))             prog fs wf b = cl-call-at (find-fn prog f) fs b
-cl-step (instr-ctrl (c-ret bb))                prog fs wf b = cl-ret (fret fs) fs b
+cl-step (instr-ctrl (c-ret bb))                prog fs wf b = cl-ret bb (fret fs) fs b
 cl-step (instr-ctrl (c-jmp m))                 prog fs wf b = cl-jump (find-label prog m) fs b
 cl-step (instr-ctrl (c-branch-tag-zero m))     prog fs wf b =
   cl-test (tag-test (flat-read-tag (falloc fs) (floc fs))) m prog fs b
@@ -878,7 +875,7 @@ flat-wf-step (instr-ctrl (c-entry m b))             prog fs wf = wf-thunk b fs w
 flat-wf-step (instr-ctrl (c-start b))             prog fs wf = wf-thunk b fs wf
 flat-wf-step (instr-ctrl c-leave)                   prog fs wf = wf-leave wf
 flat-wf-step (instr-ctrl (c-call-fn f))             prog fs wf = wf-call-at (find-fn prog f) fs wf
-flat-wf-step (instr-ctrl (c-ret b))                 prog fs wf = wf-ret (fret fs) fs wf
+flat-wf-step (instr-ctrl (c-ret b))                 prog fs wf = wf-ret b (fret fs) fs wf
 flat-wf-step (instr-ctrl (c-jmp m))                 prog fs wf = wf-jump (find-label prog m) fs wf
 flat-wf-step (instr-ctrl (c-branch-tag-zero m))     prog fs wf =
   wf-test (tag-test (flat-read-tag (falloc fs) (floc fs))) m prog fs wf

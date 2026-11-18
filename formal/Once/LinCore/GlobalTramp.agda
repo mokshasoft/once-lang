@@ -277,7 +277,7 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       with-res : StkW (LocState.heapMem (floc fs)) (slot fs) φ′ (w ∷ˢ []ˢ) → _
       with-res ((wb , pb , sb) , _) =
         fin (leave image fs (frame 0 M) φ′ cfc (budget φ′) (M ∸ M) M (fbudget φ′) pc rest sv sl
-               {es = []ᵉ} {os = []ˢ} {b = w} wb hret hsv bsl ne ep′ pb sb Data.Unit.tt Data.Unit.tt refl
+               {es = []ᵉ} {os = []ˢ} {b = w} wb hret (sym (K.Here.h-slots {p = p} H)) hsv bsl ne ep′ pb sb Data.Unit.tt Data.Unit.tt refl
                le fitM Data.Nat.z≤n fitB seg (K.Here.h-run {p = p} H))
         where
           import Data.Unit
@@ -319,7 +319,7 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
           → Seg image (fpc fs) (restore-input (suc M) ∷ mvSP (M ∸ ws (B ∷ [])) (Mc ∸ wsz B) (wsz B) ++ instr-ctrl (c-ret (suc (suc M))) ∷ [])
           → LocState.halted (floc fs) ≡ false
           → CfgW (LocState.heapMem (floc fs)) (slot fs) (frame 0 M) ([]ᵉ ∥ w ∷ˢ []ˢ)
-          → fret fs ≡ pc ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+          → fret fs ≡ pc ∷ rest → suc (suc M) ≡ AllocState.frame-slots (falloc fs) → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
           → budget φ ≤ sl
           → ¬ cfc ≡ AllocState.current-frame (falloc fs)
           → slot fs (suc M) ≡ just (SV-Ptr (AtStack cfc ((budget φ ∸ ws S) ∸ Mc)))
@@ -330,13 +330,13 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
               × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ (es ∥ w ∷ˢ os)
               × CallOut fs fs′ cfc ((budget φ ∸ ws S) ∸ Mc) (M ∸ ws (B ∷ [])) (Mc ∸ wsz B) (wsz B) pc rest sv sl
               × (∀ x → budget φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
-  tr-end′ M Mc {w} {fs} φ {Es} {S} {es} {os} cfc pc rest sv sl le seg h C hret hsv bsl ne ep ev st fitM fitE fitB =
+  tr-end′ M Mc {w} {fs} φ {Es} {S} {es} {os} cfc pc rest sv sl le seg h C hret bslots hsv bsl ne ep ev st fitM fitE fitB =
     with-res (Rel.CfgW.c-stk C)
     where
       with-res : StkW (LocState.heapMem (floc fs)) (slot fs) (frame 0 M) (w ∷ˢ []ˢ) → _
       with-res ((wb , pb , sb) , _) =
         case leave image fs φ (frame 0 M) cfc (suc M) ((budget φ ∸ ws S) ∸ Mc) Mc (suc (suc M)) pc rest sv sl
-          {es = es} {os = os} {b = w} wb hret hsv bsl ne ep pb sb ev st refl le fitM fitE fitB seg h of λ where
+          {es = es} {os = os} {b = w} wb hret bslots hsv bsl ne ep pb sb ev st refl le fitM fitE fitB seg h of λ where
           (fs′ , run , C′ , CO , tk) → _ , fs′ , run , C′ , CO , tk
 
   tr-end : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ One (X ⊗t A) B} {γ : Gd g b}
@@ -357,7 +357,7 @@ module TrampR {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              × (∀ x → budget φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
   tr-end {X = X} {A} {B} {ds′} {b} {γ} p {w} {fs} φ {Es} {S} {es} {os} cfc pc rest sv sl H hret hsv bsl ne ep ev st fitM fitE fitB =
     tr-end′ M Mc φ cfc pc rest sv sl (Data.Nat.Properties.m≤n⊔m (suc (wsz A)) (wsz B)) seg (HereF.f-run H) (HereF.f-cfg H)
-      hret hsv bsl ne ep ev st fitM fitE fitB
+      hret (sym (HereF.f-slots H)) hsv bsl ne ep ev st fitM fitE fitB
     where
       import Data.Nat.Properties
       M = (wsz X + wsz A) ⊔ wsz B ; Mc = suc (wsz A) ⊔ wsz B

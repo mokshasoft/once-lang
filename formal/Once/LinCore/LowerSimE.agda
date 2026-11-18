@@ -38,10 +38,11 @@ entry-step : ∀ prog (fs : FlatState) (e : EntryId) b → flat-exec-instr (inst
 entry-step prog fs e b = refl
 
 -- ★ a return: the frame and the return pc popped
-ret-step : ∀ prog (fs : FlatState) b {pc rest} → fret fs ≡ pc ∷ rest
+-- (B1.7b: the machine's gate, passed: the return is owed, at the reservation in force)
+ret-step : ∀ prog (fs : FlatState) b {pc rest} → fret fs ≡ pc ∷ rest → b ≡ Once.CCC.Machine.SMCore.AllocState.frame-slots (falloc fs)
          → flat-exec-instr (instr-ctrl (c-ret b)) prog fs
            ≡ record fs { falloc = leave-frame (falloc fs) ; fpc = pc ; fret = rest }
-ret-step prog fs b e = cong (λ r → do-ret r fs) e
+ret-step prog fs b {pc} {rest} e be = ret-pass b fs pc rest e be
 
 ------------------------------------------------------------------------
 -- ★ The callee's frame is not the caller's (nor any frame above it), and
@@ -221,7 +222,7 @@ len-mvSP x y zero    = refl
 len-mvSP x y (suc m) = cong (λ z → suc (suc z)) (len-mvSP (suc x) (suc y) m)
 
 call-outA : ∀ prog (fs : FlatState) (cfc af : Frame) (a s₁ src o n b pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ)
-          → fret fs ≡ pc ∷ rest → saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+          → fret fs ≡ pc ∷ rest → b ≡ frame-slots (falloc fs) → saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
           → ¬ af ≡ current-frame (falloc fs)
           → slot fs s₁ ≡ just (SV-Ptr (AtStack af a))
           → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (k + src) ≡ just v)
@@ -229,7 +230,7 @@ call-outA : ∀ prog (fs : FlatState) (cfc af : Frame) (a s₁ src o n b pc : �
           → Seg prog (fpc fs) (restore-input s₁ ∷ mvSP src o n ++ instr-ctrl (c-ret b) ∷ [])
           → fhalted (floc fs) ≡ false
           → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOutA fs fs′ cfc af a src o n pc rest sv sl
-call-outA prog fs cfc af a s₁ src o n b pc rest sv sl hret hsv ne ep def win (g₁ , s) h =
+call-outA prog fs cfc af a s₁ src o n b pc rest sv sl hret bslots hsv ne ep def win (g₁ , s) h =
   fin (mvSP-run prog fs₁ (AtStack af a) src o n (Seg-++ˡ prog (suc (fpc fs)) (mvSP src o n) _ s) h refl def
          (λ k k< → gate-stack (falloc fs) (k + o) af a (win k k<)) (λ k _ → refl)
          (λ k k′ _ _ e → ne (frame-of-eq e)))
@@ -241,7 +242,7 @@ call-outA prog fs cfc af a s₁ src o n b pc rest sv sl hret hsv ne ep def win (
         → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOutA fs fs′ cfc af a src o n pc rest sv sl
     fin (fs₂ , st₂ , W) =
       fs₃ ,
-      step-at fs₁ (h , g₁) (restore-step fs s₁ ep) (FlatSteps-++ st₂ (step-at fs₃ (trans (wm-halt W) h , fret′) (ret-step prog fs₂ b eqR) done)) ,
+      step-at fs₁ (h , g₁) (restore-step fs s₁ ep) (FlatSteps-++ st₂ (step-at fs₃ (trans (wm-halt W) h , fret′) (ret-step prog fs₂ b eqR (trans bslots (sym (cong frame-slots (w-alloc W))))) done)) ,
       record { co-frame = cong (λ L → current-frame (leave-frame-aux L (falloc fs₂))) eqL
              ; co-slots = cong (λ L → frame-slots (leave-frame-aux L (falloc fs₂))) eqL
              ; co-saved = cong (λ L → saved-frames (leave-frame-aux L (falloc fs₂))) eqL
@@ -281,7 +282,7 @@ anc-win al g af sl₁ sl₂ sv j hsv lt =
       (win-there g af sl₁ ((af , sl₂) ∷ sv) j (win-here af sl₂ sv j lt)))
 
 call-out : ∀ prog (fs : FlatState) (cfc : Frame) (a s₁ src o n b pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ)
-         → fret fs ≡ pc ∷ rest → saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+         → fret fs ≡ pc ∷ rest → b ≡ frame-slots (falloc fs) → saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
          → ¬ cfc ≡ current-frame (falloc fs)
          → slot fs s₁ ≡ just (SV-Ptr (AtStack cfc a))
          → (∀ k → k < n → Σ (StoredValue FS) λ v → slot fs (k + src) ≡ just v)
@@ -289,18 +290,18 @@ call-out : ∀ prog (fs : FlatState) (cfc : Frame) (a s₁ src o n b pc : ℕ) (
          → Seg prog (fpc fs) (restore-input s₁ ∷ mvSP src o n ++ instr-ctrl (c-ret b) ∷ [])
          → fhalted (floc fs) ≡ false
          → Σ FlatState λ fs′ → FlatSteps prog (suc (nsteps n + 1)) fs fs′ × CallOut fs fs′ cfc a src o n pc rest sv sl
-call-out prog fs cfc a s₁ src o n b pc rest sv sl hret hsv ne ep def bnd =
-  call-outA prog fs cfc cfc a s₁ src o n b pc rest sv sl hret hsv ne ep def (λ k k< → caller-win (falloc fs) cfc sl sv ((k + o) + a) hsv (bnd k k<))
+call-out prog fs cfc a s₁ src o n b pc rest sv sl hret bslots hsv ne ep def bnd =
+  call-outA prog fs cfc cfc a s₁ src o n b pc rest sv sl hret bslots hsv ne ep def (λ k k< → caller-win (falloc fs) cfc sl sv ((k + o) + a) hsv (bnd k k<))
 
 -- ★ a bare return (a free's trampoline, D431: its result One, no words to move)
 ret-out : ∀ prog (fs : FlatState) (cfc : Frame) (b pc : ℕ) (rest : List ℕ) (sv : List (Frame × ℕ)) (sl : ℕ)
-        → fret fs ≡ pc ∷ rest → saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+        → fret fs ≡ pc ∷ rest → b ≡ frame-slots (falloc fs) → saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
         → Seg prog (fpc fs) (instr-ctrl (c-ret b) ∷ [])
         → fhalted (floc fs) ≡ false
         → Σ FlatState λ fs′ → FlatSteps prog 1 fs fs′ × CallOut fs fs′ cfc 0 0 0 0 pc rest sv sl
-ret-out prog fs cfc b pc rest sv sl hret hsv (g , _) h =
+ret-out prog fs cfc b pc rest sv sl hret bslots hsv (g , _) h =
   fs₁ ,
-  step-at fs₁ (h , g) (ret-step prog fs b hret) done ,
+  step-at fs₁ (h , g) (ret-step prog fs b hret bslots) done ,
   record { co-frame = cong (λ L → current-frame (leave-frame-aux L (falloc fs))) hsv
          ; co-slots = cong (λ L → frame-slots (leave-frame-aux L (falloc fs))) hsv
          ; co-saved = cong (λ L → saved-frames (leave-frame-aux L (falloc fs))) hsv

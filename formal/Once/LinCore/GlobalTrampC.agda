@@ -327,7 +327,7 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       with-res : StkW (LocState.heapMem (floc fs)) (slot fs) φ′ (v ∷ˢ []ˢ) → _
       with-res ((wb , pb , sb) , _) =
         fin (call-out image fs cfc 0 (budget φ′) (budget φ′ ∸ ws (X ∷ [])) (wsz X ∸ wsz X) (wsz X) (fbudget φ′)
-               (trPos (ktrc X C) p 2) rest sv sl hret hsv ne ep
+               (trPos (ktrc X C) p 2) rest sv sl hret (sym (K.Here.h-slots {p = p} H)) hsv ne ep
                (λ k k< → slots-def wb sb k (subst (k Data.Nat.<_) (sym (vw-len pb)) k<))
                (λ k k< → subst (λ z → (k + (wsz X ∸ wsz X)) + 0 Data.Nat.< z) (sym esl)
                            (subst (Data.Nat._< suc (suc (suc (wsz X))))
@@ -388,5 +388,5 @@ module TrampC {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
          → Σ FlatState λ fs′ → FlatSteps image _ fs fs′
              × CallOut fs fs′ (TrC4.c4-af T) (TrC4.c4-d T) (suc (suc (wsz X))) 0 1 pc rest sv sl
   tc-end {X} {C} p {fs = fs} pc rest sv sl T hret hsv ne dlt =
-    call-out image fs (TrC4.c4-af T) (TrC4.c4-d T) (wsz X) (suc (suc (wsz X))) 0 1 (suc (suc (suc (wsz X)))) pc rest sv sl hret hsv ne
+    call-out image fs (TrC4.c4-af T) (TrC4.c4-d T) (wsz X) (suc (suc (wsz X))) 0 1 (suc (suc (suc (wsz X)))) pc rest sv sl hret (sym (TrC4.c4-slots T)) hsv ne
       (TrC4.c4-s₁ T) (λ { zero _ → _ , TrC4.c4-s₃ T ; (suc k) (Data.Nat.s≤s ()) }) (λ { zero _ → dlt ; (suc k) (Data.Nat.s≤s ()) }) (tC-seg {X} {C} p 4 (TrC4.c4-pc T)) (TrC4.c4-run T)

@@ -552,13 +552,11 @@ pb-jump nothing    fs wf = pb-halt _ (floc fs) true wf
 -- POINTER moves — so this is `wf` or its halt transport, modulo that one
 -- transport. Stated (rather than routed through `()`) because it is true
 -- independently of the producer question, so step 2c inherits it.
-pb-ret : ∀ (r : List ℕ) (fs : FlatState)
-       → PtrBoundsWF fs → PtrBoundsWF (do-ret r fs)
-pb-ret []           fs wf =
-  subst (λ bs → PBInv bs (record (floc fs) { halted = true }))
-        (sym (leave-frame-block-size (falloc fs))) (pb-halt _ (floc fs) true wf)
-pb-ret (pc' ∷ rest) fs wf =
-  subst (λ bs → PBInv bs (floc fs)) (sym (leave-frame-block-size (falloc fs))) wf
+pb-ret : ∀ (b : ℕ) (r : List ℕ) (fs : FlatState)
+       → PtrBoundsWF fs → PtrBoundsWF (do-ret b r fs)
+pb-ret b r fs wf =
+  do-ret-keeps PtrBoundsWF b r fs (pb-fault _ (floc fs) wf)
+    (λ _ _ _ _ → subst (λ bs → PBInv bs (floc fs)) (sym (leave-frame-block-size (falloc fs))) wf)
 
 -- Plan 0.54 rung D: a body ENTRY grows the frame — which `grow-frame` does by
 -- a record update on the frame fields alone, so `block-size` is unchanged
@@ -602,15 +600,15 @@ pb-call : ∀ (prog : AbstractTrace) (fs : FlatState)
         → PtrBoundsWF fs → PtrBoundsWF (do-call prog fs)
 pb-call prog fs wf = go (callView prog fs)
   where go : CallPost prog fs → PtrBoundsWF (do-call prog fs)
-        go (cp-halt    e) rewrite e = pb-halt _ (floc fs) true wf
-        go (cp-enter ℓ j fq e) rewrite e = wf
+        go (cp-fault e) rewrite e = pb-fault _ (floc fs) wf
+        go (cp-enter ℓ j hl ce he fq e) rewrite e = wf
 
 
 -- D245: a direct call, likewise — control only.
 pb-call-at : ∀ (mj : Maybe ℕ) (fs : FlatState)
            → PtrBoundsWF fs → PtrBoundsWF (do-call-at mj fs)
 pb-call-at (just j) fs wf = wf
-pb-call-at nothing  fs wf = pb-halt _ (floc fs) true wf
+pb-call-at nothing  fs wf = pb-fault _ (floc fs) wf
 
 flat-ptr-bounds : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
                 → ImageI i
@@ -627,7 +625,7 @@ flat-ptr-bounds (instr-ctrl c-leave)                   prog fs ff am wfS wf =
 flat-ptr-bounds (instr-ctrl (c-call-fn f))             prog fs ff am wfS wf =
   pb-call-at (find-fn prog f) fs wf
 flat-ptr-bounds (instr-ctrl (c-ret b))                 prog fs ff am wfS wf =
-  pb-ret (fret fs) fs wf
+  pb-ret b (fret fs) fs wf
 flat-ptr-bounds (instr-ctrl (c-jmp m))                 prog fs ff am wfS wf =
   pb-jump (find-label prog m) fs wf
 flat-ptr-bounds (instr-ctrl (c-branch-tag-zero m))     prog fs ff am wfS wf =

@@ -227,10 +227,10 @@ module TrampF {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tf-end : ∀ {X C} (p : under (ktrf X C) ∈ allK U) {fs} (cfc : FrameSemantics.Frame FS) (pc : ℕ) (rest : List ℕ)
              (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ)
          → fpc fs ≡ trPos (ktrf X C) p 2 → LocState.halted (floc fs) ≡ false
-         → fret fs ≡ pc ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+         → fret fs ≡ pc ∷ rest → AllocState.frame-slots (falloc fs) ≡ suc (wsz X) → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
          → Σ FlatState λ fs′ → FlatSteps image 1 fs fs′ × CallOut fs fs′ cfc 0 0 0 0 pc rest sv sl
-  tf-end {X} {C} p {fs} cfc pc rest sv sl epc run hret hsv =
-    ret-out image fs cfc (suc (wsz X)) pc rest sv sl hret hsv (tF-seg2 {X} {C} p epc) run
+  tf-end {X} {C} p {fs} cfc pc rest sv sl epc run hret bs hsv =
+    ret-out image fs cfc (suc (wsz X)) pc rest sv sl hret (sym bs) hsv (tF-seg2 {X} {C} p epc) run
 
   -- ★ a free's dispatch (D431, `cfree`/`nfree`): into the free trampoline its cell's word 3 names,
   -- at its depth 0 (TrF0); the address of word 2 is in the cell's block, the word written (D438)

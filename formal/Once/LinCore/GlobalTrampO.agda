@@ -265,7 +265,7 @@ module TrampO {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
              × (∀ x → budget φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
   to-end {ds′ = ds′} {F} {S} p {w} {fs} φ cfc pc rest sv sl H hret hsv bsl ne ep ev st fitM fitE fitB =
     tr-end′ M Mc φ cfc pc rest sv sl (Data.Nat.Properties.m≤n⊔m 1 wL) seg (HereF.f-run H) (HereF.f-cfg H)
-      hret hsv bsl ne ep ev st fitM fitE fitB
+      hret (sym (HereF.f-slots H)) hsv bsl ne ep ev st fitM fitE fitB
     where
       import Data.Nat.Properties
       wL = wsz (LF∙ F (Nu F))

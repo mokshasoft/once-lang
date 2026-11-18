@@ -98,23 +98,15 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
   -- nothing falls into an entry (`ImageGuard`, D451)
   module IG = Once.LinCore.ImageGuard.G.Img (fs-numerics FS) (fs-ffi FS) bw {FS} IT.ds IT.f₀ ML.ldConst ML.ld-nl
 
-  -- ★ WHAT THE NEW IMAGE OWES THE ARCH LAYER: `RunContext.Emitted`'s fields not yet proved
-  -- (the run's facts: the machine gates, B1.7b)…
+  -- ★ WHAT THE NEW IMAGE OWES THE ARCH LAYER: `RunContext.Emitted`'s field not yet proved
+  -- (the run's slot fact: the machine's slot gate, B1.7b)…
   record OwedRun : Set where
     field
       -- D452: a slot the run addresses is inside the current frame
       o-slots  : ∀ fs (i : AbstractInstr) (slot : Slot) → Reachable image 0 fs
                → fetch image (fpc fs) ≡ just i → slot-of i ≡ just slot
                → slot < AllocState.frame-slots (falloc fs)
-      o-call-site : ∀ fs → Reachable image 0 fs → fetch image (fpc fs) ≡ just instr-call-closure
-                  → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
-                      (fclosure fs ≡ SV-Ptr (AtDynamic hl))
-                      × (LocState.heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
-                      × (find-thunk image ℓ ≡ just j))))
-      o-ret-owes  : ∀ fs (b : ℕ) → Reachable image 0 fs → fetch image (fpc fs) ≡ just (instr-ctrl (c-ret b))
-                  → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
-      o-ret-budget : ∀ fs (b : ℕ) → Reachable image 0 fs → fetch image (fpc fs) ≡ just (instr-ctrl (c-ret b))
-                   → b ≡ AllocState.frame-slots (falloc fs)
+      -- (B1.7b: a closure call's cell, a return owed and its budget are the machine's gates now)
 
   -- …and that its externals miss its table (what master's `external-sigop-contract`
   -- assumes of its file: compiler symbols apart from the source's names)
@@ -140,9 +132,7 @@ module NewImage (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Uni
     ; em-image = IA.em-image ; em-alloc = IA.em-alloc
     ; em-calls = IAF.em-calls ; em-code = IAF.em-code
     ; em-slots = OwedRun.o-slots (Owed.o-run O)
-    ; em-guard = IG.em-guard
-    ; em-call-site = OwedRun.o-call-site (Owed.o-run O) ; em-ret-owes = OwedRun.o-ret-owes (Owed.o-run O)
-    ; em-ret-budget = OwedRun.o-ret-budget (Owed.o-run O) }
+    ; em-guard = IG.em-guard }
 
   -- ★★ THE NEW IMAGE ON THE ARCH: its run has the trace of the program (master's `conc-tr`)
   conc-trᴺ : Owed

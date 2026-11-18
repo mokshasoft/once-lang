@@ -2321,14 +2321,14 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req bslots feq 
              ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
     restores = trans (cong (_+ slot-size) addr-eq) (trans gap (sym (base-leave feq)))
     dataPost : C.FlatCorr hv (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) post-ret
-    dataPost = C.sim-ret b rpc rest fs post-ld post-ret dc-ld req restores
+    dataPost = C.sim-ret b rpc rest fs post-ld post-ret dc-ld req bslots restores
                  (C.sets-role-riscv64 post-ld role-sp _ _)
     pco' : R.State.pc post-ret ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
-    pco' = cong (blk-off prog) (sym (do-ret-pc-∷ fs rpc rest req))
+    pco' = cong (blk-off prog) (sym (do-ret-pc-∷ b fs rpc rest req bslots))
     -- THE TAIL IS THE POST-STATE'S COMPONENT. Memory never moved; only `ra` and
     -- `sp` did, and the rows below the head are memory reads.
     lk-post : flink (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) ≡ nothing
-    lk-post = trans (flink-do-ret (fret fs) fs) no-link
+    lk-post = trans (flink-do-ret b (fret fs) fs) no-link
     frames-leave : saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
                  → C.frames-of (leave-frame (falloc fs)) ≡ saved-frames (falloc fs)
     frames-leave e rewrite e = refl
@@ -2343,8 +2343,8 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req bslots feq 
                     (sym lk-post)
                     (subst₂ (C.RetAddrs (blk-off prog) (R.State.memory s)
                                (riscv64-link-claim post-ret) nothing)
-                            (sym (trans (cong C.frames-of (do-ret-alloc fs)) (frames-leave feq)))
-                            (sym (do-ret-fret-∷ fs rpc rest req))
+                            (sym (trans (cong C.frames-of (do-ret-alloc b fs rpc rest req bslots)) (frames-leave feq)))
+                            (sym (do-ret-fret-∷ b fs rpc rest req bslots))
                             -- `ra` changed, so the CLAIM changed — but at a
                             -- `nothing`-headed component it is never read.
                             (C.ret-agree-nothing (blk-off prog)

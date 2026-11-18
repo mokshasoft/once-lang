@@ -147,7 +147,7 @@ open FlatMachine {FS} using
   -- `find-label` is RENAMED: this module's own `find-label` parameter is the
   -- CONCRETE program's scan, and the flat machine's is the abstract one. Two
   -- different functions over two different types — see `bs-c-jmp`'s comment.
-  (fpc; falloc; floc; fclosure; fetch; flat-exec-instr; find-thunk; find-fn; enter-call; do-call-sv; do-call-code; do-call-at; fret
+  (fpc; falloc; floc; fclosure; fetch; flat-exec-instr; find-thunk; find-fn; enter-call; do-call-sv; do-call-code; do-call-at; ret-pass; do-ret-pc-∷; fret
   ; find-thunk-sound; find-entry-sound)
   renaming (find-label to flat-find-label)
 open MemOps {FS} using (readLoc; writeLoc-halted)
@@ -426,7 +426,7 @@ module Dispatch (sup : Supply) where
            → Σ ℕ (λ M → AgreeAt (RT.run-events ev env (LocState.ev-log (floc fs)) M (compile-trace prog) s)
                  (event-of (instr-ctrl (c-ret b)) fs
                    ▹ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) (ctrl-of (instr-ctrl (c-ret b)) + flat-ctrls n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) M)
-  ret-step {hv} n IH ev env prog fs s b cc bg wf h ftq = go (ret-site-owes prog fs b (inv-run wf) ftq)
+  ret-step {hv} n IH ev env prog fs s b cc bg wf h ftq = go (ret-site-owes prog fs b (inv-run wf) h ftq)
     where
       -- `RetMatch` pairs the two stacks, so a cons `fret` forces a cons frame
       -- stack — J-style, because the pairing is data.
@@ -449,16 +449,18 @@ module Dispatch (sup : Supply) where
           go-sv (f₀ , b₀ , frs , feq) =
             ccc-step-bs n IH ev env prog fs s (instr-ctrl (c-ret b))
               (bs-c-ret bss prog fs s b rpc rest f₀ b₀ frs cc h ftq req
-                 (ret-budget-matches prog fs b (inv-run wf) ftq) feq
+                 (ret-budget-matches prog fs b (inv-run wf) h ftq) feq
                  (ret-no-wrap prog fs s b (inv-run wf) cc ftq)
                  (run-link-nothing prog fs (inv-run wf) ftq (λ _ ())
                     (λ ℓ bb teq → ret≢thunk (trans (sym ftq) teq))))
               -- one past a call, a check is there
               (λ cc′ → bg-ret (inv-run wf) req pc′ (dataCorr cc′)) wf ftq h refl tt tt hpost
-            where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) ≡ false
-                  hpost rewrite req = h
+            where be : b ≡ frame-slots (falloc fs)
+                  be = ret-budget-matches prog fs b (inv-run wf) h ftq
+                  hpost : halted (floc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) ≡ false
+                  hpost = subst (λ t → halted (floc t) ≡ false) (sym (ret-pass b fs rpc rest req be)) h
                   pc′ : fpc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) ≡ rpc
-                  pc′ rewrite req = refl
+                  pc′ = do-ret-pc-∷ b fs rpc rest req be
 
   -- THE CALL — A THEOREM (D098), and the last of them.
   --
@@ -479,7 +481,7 @@ module Dispatch (sup : Supply) where
                   (event-of instr-call-closure fs
                     ▹ flat-events n prog (flat-exec-instr instr-call-closure prog fs)) (ctrl-of instr-call-closure + flat-ctrls n prog (flat-exec-instr instr-call-closure prog fs)) M)
   call-step {hv} n IH ev env prog fs s cc bg wf h ftq =
-    go (call-site-shape prog fs (inv-run wf) ftq)
+    go (call-site-shape prog fs (inv-run wf) h ftq)
     where
       go : Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
              (fclosure fs ≡ SV-Ptr (AtDynamic hl))

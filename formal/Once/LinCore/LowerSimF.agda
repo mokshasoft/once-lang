@@ -272,7 +272,7 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
 
   leave : ∀ prog (fs : FlatState) (φ φ′ : Frame) (cfc : FrameSemantics.Frame FS) (s₀ area M bb pc : ℕ) (rest : List ℕ)
             (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ) {Es B S} {es : Slots Es} {os : Stk S} {b : MV B} (wb : List W)
-        → fret fs ≡ pc ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+        → fret fs ≡ pc ∷ rest → bb ≡ AllocState.frame-slots (falloc fs) → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
         → budget φ ≤ sl
         → ¬ cfc ≡ AllocState.current-frame (falloc fs)
         → slot fs s₀ ≡ just (SV-Ptr (AtStack cfc area))
@@ -286,8 +286,8 @@ module SimF {FS : FrameSemantics} (U : Univ) (wordOf : ∀ {b} → ⟦ b ⟧b �
             × CfgW (LocState.heapMem (floc fs′)) (slot fs′) φ (es ∥ b ∷ˢ os)
             × CallOut fs fs′ cfc area (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) pc rest sv sl
             × (∀ x → budget φ ≤ x → LocState.stackMem (floc fs′) cfc x ≡ LocState.stackMem (floc fs) cfc x)
-  leave prog fs φ φ′ cfc s₀ area M bb pc rest sv sl {Es} {B} {S} {es} {os} {b} wb hret hsv esl ne ep pb sb ev st refl le fitM fitE fitB seg h
-    = fin (call-out prog fs cfc area s₀ (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) bb pc rest sv sl hret hsv ne ep
+  leave prog fs φ φ′ cfc s₀ area M bb pc rest sv sl {Es} {B} {S} {es} {os} {b} wb hret bslots hsv esl ne ep pb sb ev st refl le fitM fitE fitB seg h
+    = fin (call-out prog fs cfc area s₀ (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) bb pc rest sv sl hret bslots hsv ne ep
              (λ k k< → slots-def wb sb k (subst (k <_) (sym (vw-len pb)) k<))
              (λ k k< → Data.Nat.Properties.<-≤-trans
                            (area-bnd (budget φ) (ws S) M (wsz B) k k< le

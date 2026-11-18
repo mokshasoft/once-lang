@@ -147,24 +147,39 @@ emitted-call-fn-resolves : ∀ prog (fs : FlatState) (f : CanonicalName) → Run
                          → Σ ℕ (λ j → find-fn prog f ≡ just j)
 emitted-call-fn-resolves prog fs f r ftq = em-calls (run-em r) (fpc fs) f ftq
 
--- the run's facts, from the program's bundle
-call-site-shape : ∀ prog (fs : FlatState) → RunAt prog fs
+-- B1.7b (D453): THE RUN'S FACTS ARE THE MACHINE'S GATES. A reached step does
+-- not fault (its run is sound, `run-sound`), and the machine faults a call
+-- that names no body and a return that is not owed or not at the reservation
+-- in force (`Flat.do-call`, `do-ret`); so at a reached call or return the gate
+-- passed. They were the image's (`Emitted.em-call-site`, `em-ret-owes`,
+-- `em-ret-budget`), owed by the linear core's.
+step-sound : ∀ prog (fs : FlatState) {i : AbstractInstr} → RunAt prog fs → halted (floc fs) ≡ false
+           → fetch prog (fpc fs) ≡ just i → LocState.faulted (floc (flat-exec-instr i prog fs)) ≡ false
+step-sound prog fs r h ftq = run-sound r ((h , ftq) ∷ [])
+
+call-site-shape : ∀ prog (fs : FlatState) → RunAt prog fs → halted (floc fs) ≡ false
                 → fetch prog (fpc fs) ≡ just instr-call-closure
                 → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
                     (fclosure fs ≡ SV-Ptr (AtDynamic hl))
                     × (heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
                     × (find-thunk prog ℓ ≡ just j))))
-call-site-shape prog fs r ftq = em-call-site (run-em r) fs (run-reach r) ftq
+call-site-shape prog fs r h ftq = call-ok prog fs (step-sound prog fs r h ftq)
 
-ret-site-owes : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs
+private
+  ret-gate : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
+           → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+           → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest)) × (b ≡ frame-slots (falloc fs))
+  ret-gate prog fs b r h ftq = ret-ok b fs (step-sound prog fs r h ftq)
+
+ret-site-owes : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
               → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
               → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
-ret-site-owes prog fs b r ftq = em-ret-owes (run-em r) fs b (run-reach r) ftq
+ret-site-owes prog fs b r h ftq = proj₁ (ret-gate prog fs b r h ftq)
 
-ret-budget-matches : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs
+ret-budget-matches : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs → halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
                    → b ≡ frame-slots (falloc fs)
-ret-budget-matches prog fs b r ftq = em-ret-budget (run-em r) fs b (run-reach r) ftq
+ret-budget-matches prog fs b r h ftq = proj₂ (ret-gate prog fs b r h ftq)
 
   -- D367: the two shape-check obligations of plan 0.62 (M2b, the emitter's
   -- shape check, and M3, run consistency) STOOD HERE as postulates, and M2b was
@@ -661,41 +676,29 @@ run-frame-wf prog img grd = go
               where go-c : instr-ctrl (c-ret bb) ≡ instr-ctrl (c-entry ℓ bb') → ⊥
                     go-c ()
             ret-step : i ≡ instr-ctrl (c-ret bb) → FrameWF prog (flat-exec-instr i prog fs'')
-            ret-step refl = go-rm (fret fs'') (saved-frames (falloc fs'')) refl refl (fw-stack ih)
+            ret-step refl = rgo (retView bb fs'')
               where
-                -- J-style on BOTH stacks at once: `RetMatch` pairs them, so
-                -- the length-mismatch rows are absurd.
-                go-rm : ∀ (rs : List ℕ) (frs : List (Frame × ℕ))
-                      → fret fs'' ≡ rs → saved-frames (falloc fs'') ≡ frs
-                      → RetMatch prog frs rs
-                      → FrameWF prog (flat-exec-instr (instr-ctrl (c-ret bb)) prog fs'')
-                -- an empty return stack HALTS with the pc unmoved
-                go-rm [] [] req feq rm-[] =
-                  mkFrameWF (subst₂ (RetMatch prog)
-                                    (sym (trans (cong saved-frames (do-ret-alloc fs''))
-                                                (leave-frame-saved-[] (falloc fs'') feq)))
-                                    (sym (do-ret-fret-[] fs'' req)) rm-[])
-                            (λ ℓ bb H → ⊥-elim (ret-clash ieq ℓ bb
-                                          (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb)))
-                                                 (do-ret-pc-[] fs'' req) H)))
+                rgo : RetPost bb fs'' → FrameWF prog (do-ret bb (fret fs'') fs'')
+                -- B1.7b: a return that fails FAULTS: no stack moves, the pc stays
+                rgo (rp-fault e) rewrite e =
+                  mkFrameWF (fw-stack ih) (λ ℓ bb′ H → ⊥-elim (ret-clash ieq ℓ bb′ H))
                 -- …and a real return lands at `rpc`, one past a CALL
                 -- (`RetMatch`'s provenance), which is not a guard.
-                go-rm (rpc ∷ rs) ((f , b) ∷ frs) req feq (rm-∷ prov rest) =
-                  mkFrameWF (subst₂ (RetMatch prog)
-                                    (sym (trans (cong saved-frames (do-ret-alloc fs''))
-                                                (leave-frame-saved-∷ (falloc fs'') f b frs feq)))
-                                    (sym (do-ret-fret-∷ fs'' rpc rs req)) rest)
-                            (λ ℓ bb H → ⊥-elim
-                              (no-fallthrough (proj₁ prov) ℓ bb (proj₁ (proj₂ (proj₂ prov)))
-                                (call-not-jmp (proj₁ (proj₂ (proj₂ prov))) (proj₂ (proj₂ (proj₂ (proj₂ prov)))))
-                                (call-not-ret (proj₁ (proj₂ (proj₂ prov))) (proj₂ (proj₂ (proj₂ (proj₂ prov)))))
-                                (λ e → subst CallI e (proj₂ (proj₂ (proj₂ (proj₂ prov)))))
-                                (proj₁ (proj₂ (proj₂ (proj₂ prov))))
-                                (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb)))
-                                       (trans (do-ret-pc-∷ fs'' rpc rs req) (proj₁ (proj₂ prov)))
-                                       H)))
-                go-rm [] ((f , b) ∷ frs) req feq ()
-                go-rm (rpc ∷ rs) [] req feq ()
+                rgo (rp-ret rpc rs req be e) rewrite e =
+                  land (saved-frames (falloc fs'')) refl (subst (RetMatch prog (saved-frames (falloc fs''))) req (fw-stack ih))
+                  where
+                    land : ∀ (frs : List (Frame × ℕ)) → saved-frames (falloc fs'') ≡ frs → RetMatch prog frs (rpc ∷ rs)
+                         → FrameWF prog (record fs'' { falloc = leave-frame (falloc fs'') ; fpc = rpc ; fret = rs })
+                    land ((f , b) ∷ frs) feq (rm-∷ prov rest) =
+                      mkFrameWF (subst (λ x → RetMatch prog x rs) (sym (leave-frame-saved-∷ (falloc fs'') f b frs feq)) rest)
+                                (λ ℓ bb′ H → ⊥-elim
+                                  (no-fallthrough (proj₁ prov) ℓ bb′ (proj₁ (proj₂ (proj₂ prov)))
+                                    (call-not-jmp (proj₁ (proj₂ (proj₂ prov))) (proj₂ (proj₂ (proj₂ (proj₂ prov)))))
+                                    (call-not-ret (proj₁ (proj₂ (proj₂ prov))) (proj₂ (proj₂ (proj₂ (proj₂ prov)))))
+                                    (λ e′ → subst CallI e′ (proj₂ (proj₂ (proj₂ (proj₂ prov)))))
+                                    (proj₁ (proj₂ (proj₂ (proj₂ prov))))
+                                    (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-entry ℓ bb′)))
+                                           (proj₁ (proj₂ prov)) H)))
         -- THE CALL (D092): it PUSHES both stacks and lands on a body entry,
         -- with a frame that reserves nothing (D086) and a live link.
         step (pv-call ieq) = call-go ieq
@@ -706,11 +709,11 @@ run-frame-wf prog img grd = go
                 call-clash : ∀ {ℓ' bb'} → instr-call-closure ≡ instr-ctrl (c-entry ℓ' bb') → ⊥
                 call-clash ()
                 cgo : CallPost prog fs'' → FrameWF prog (do-call prog fs'')
-                -- a malformed call HALTS: no stack moves
-                cgo (cp-halt e) rewrite e =
+                -- B1.7b: a malformed call FAULTS: no stack moves
+                cgo (cp-fault e) rewrite e =
                   mkFrameWF (fw-stack ih)
                             (λ ℓ bb H → ⊥-elim (call-clash (just-injI (trans (sym ftq) H))))
-                cgo (cp-enter ℓ j fteq e) rewrite e =
+                cgo (cp-enter ℓ j hl ce he fteq e) rewrite e =
                   mkFrameWF (rm-∷ (fpc fs'' , refl , instr-call-closure , ftq , tt) (fw-stack ih))
                             (λ _ _ _ → refl , (suc (fpc fs'') , refl)
                                              , suc (fpc fs'') , fret fs'' , refl)
@@ -868,24 +871,26 @@ run-step-pc-pos prog fs i r ftq = step (pcView i (frame-op-absurd prog fs i (run
     step (pv-thunk ℓ bb refl) z = z≢s z
     step (pv-start bb refl)   z = z≢s z
     step (pv-leave refl)      z = unmoved (λ b ()) refl z
-    step (pv-ret bb refl) z = go (fret fs) refl (fw-stack (run-frame-wf-at prog fs r))
+    step (pv-ret bb refl) z = rgo (retView bb fs)
       where
         ret≢start : ∀ b → instr-ctrl (c-ret bb) ≡ instr-ctrl (c-start b) → ⊥
         ret≢start b ()
-        go : ∀ (rs : List ℕ) → fret fs ≡ rs → RetMatch prog (saved-frames (falloc fs)) (fret fs) → ⊥
-        go []         e _  = unmoved ret≢start (do-ret-pc-[] fs e) z
-        go (rpc ∷ rs) e rm = prov-go (subst (RetMatch prog (saved-frames (falloc fs))) e rm)
+        rgo : RetPost bb fs → ⊥
+        -- B1.7b: a failing return faults, the pc stays
+        rgo (rp-fault e) = unmoved ret≢start (cong fpc e) z
+        rgo (rp-ret rpc rs e be eq) =
+          prov-go (subst (RetMatch prog (saved-frames (falloc fs))) e (fw-stack (run-frame-wf-at prog fs r)))
           where
             prov-go : RetMatch prog (saved-frames (falloc fs)) (rpc ∷ rs) → ⊥
             prov-go (rm-∷ (q , rq , _) _) =
-              z≢s (trans (sym rq) (trans (sym (do-ret-pc-∷ fs rpc rs e)) z))
+              z≢s (trans (sym rq) (trans (sym (cong fpc eq)) z))
     step (pv-call refl) z = cgo (callView prog fs)
       where
         cl≢start : ∀ b → instr-call-closure ≡ instr-ctrl (c-start b) → ⊥
         cl≢start b ()
         cgo : CallPost prog fs → ⊥
-        cgo (cp-halt heq)         = unmoved cl≢start (cong fpc heq) z
-        cgo (cp-enter ℓ j feq eeq) =
+        cgo (cp-fault heq)        = unmoved cl≢start (cong fpc heq) z
+        cgo (cp-enter ℓ j hl ce he feq eeq) =
           ent≢start (at-zero j _ (proj₂ (find-thunk-sound prog ℓ j feq)) (trans (sym (cong fpc eeq)) z))
     step (pv-call-fn f refl) z = fgo (find-fn prog f) refl
       where
@@ -1522,7 +1527,7 @@ run-link-at-thunk prog fs (mkRunAt em reach) = go fs reach
             -- a HALTING call writes no link, so the link was already live and
             -- the IH says the pc held a body marker — but `ftq` says it held
             -- the call.
-            call-step (cp-halt heq) =
+            call-step (cp-fault heq) =
               ⊥-elim (thunk≢call (proj₂ (proj₂ (ih-thunk pre))))
               where
                 pre : flink fs'' ≡ just r
@@ -1532,7 +1537,7 @@ run-link-at-thunk prog fs (mkRunAt em reach) = go fs reach
                 ... | ()
             -- and an ENTERING call is the theorem: its pc IS the resolved
             -- body index, and `find-thunk-sound` says what sits there.
-            call-step (cp-enter ℓ j feq eeq) =
+            call-step (cp-enter ℓ j hl ce he feq eeq) =
               e-thunk ℓ , proj₁ fts ,
               subst (λ z → fetch prog z ≡ just (instr-ctrl (c-thunk ℓ (proj₁ fts))))
                     (sym (cong fpc (trans red eeq))) (proj₂ fts)

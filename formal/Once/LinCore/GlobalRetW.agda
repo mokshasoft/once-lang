@@ -340,7 +340,7 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
     gret-tω (p-start (at _)) _ d cfc sl sv′ rets′ () H eRets eSv eSl area fit ev sk fr rest nx I
     gret-tω (p-block _ (at _)) _ d cfc sl sv′ rets′ () H eRets eSv eSl area fit ev sk fr rest nx I
     gret-tω {A = A} {B} {S = S} {fs = fs} (p-tramp _ _) _ (d-start s) cfc sl sv′ rets′ refl (tw3 p , T) eRets eSv eSl area fit ev sk fr rest nx I =
-      case tw-end p cfc (S.pos (next s)) rets′ sv′ sl (TrW2.w2-pc T) (TrW2.w2-run T) eRets eSv of λ where
+      case tw-end p cfc (S.pos (next s)) rets′ sv′ sl (TrW2.w2-pc T) (TrW2.w2-run T) eRets (TrW2.w2-slots T) eSv of λ where
         (fs′ , run , CO) →
           1 , fs′ , run , record { g-pt = p-start (at (next s))
                                  ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (TrW2.w2-run T)
@@ -351,7 +351,7 @@ module RetW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                  ; g-next = trans (co-next CO) nx
                                  ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I } , co-log CO
     gret-tω {A = A} {B} {S = S} {fs = fs} (p-tramp _ _) _ (d-block p′ s) cfc sl sv′ rets′ refl (tw3 p , T) eRets eSv eSl area fit ev sk fr rest nx I =
-      case tw-end p cfc (K.pos p′ (next s)) rets′ sv′ sl (TrW2.w2-pc T) (TrW2.w2-run T) eRets eSv of λ where
+      case tw-end p cfc (K.pos p′ (next s)) rets′ sv′ sl (TrW2.w2-pc T) (TrW2.w2-run T) eRets (TrW2.w2-slots T) eSv of λ where
         (fs′ , run , CO) →
           1 , fs′ , run , record { g-pt = p-block p′ (at (next s))
                                  ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (TrW2.w2-run T)

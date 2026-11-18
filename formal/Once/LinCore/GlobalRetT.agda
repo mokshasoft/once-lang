@@ -222,7 +222,7 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                 → InBlk fs
                 → ArrivesAt k r (es ∥ w ∷ˢ os) n fs
       gret-outf {X = X} {C} {w = w} p (d-start s) cfc sl sv′ rets′ H eRets eSv eSl abv ev sk fr rest nx I =
-        case tf-end {X} {C} p cfc (S.pos (next s)) rets′ sv′ sl (HereF.f-pc H) (HereF.f-run H) eRets eSv of λ where
+        case tf-end {X} {C} p cfc (S.pos (next s)) rets′ sv′ sl (HereF.f-pc H) (HereF.f-run H) eRets (HereF.f-slots H) eSv of λ where
           (fs′ , run , CO) →
             1 , fs′ , run , record { g-pt = p-start (at (next s))
                                    ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (HereF.f-run H)
@@ -230,7 +230,7 @@ module RetT {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
                                    ; g-next = trans (co-next CO) nx
                                    ; g-ret = back CO (λ x _ → co-rest CO (AtStack cfc x) (λ k ())) fr rest ; g-blk = co-inb CO I } , co-log CO
       gret-outf {X = X} {C} {w = w} p (d-block {κ′ = κ′} p′ s) cfc sl sv′ rets′ H eRets eSv eSl abv ev sk fr rest nx I =
-        case tf-end {X} {C} p cfc (K.pos p′ (next s)) rets′ sv′ sl (HereF.f-pc H) (HereF.f-run H) eRets eSv of λ where
+        case tf-end {X} {C} p cfc (K.pos p′ (next s)) rets′ sv′ sl (HereF.f-pc H) (HereF.f-run H) eRets (HereF.f-slots H) eSv of λ where
           (fs′ , run , CO) →
             1 , fs′ , run , record { g-pt = p-block p′ (at (next s))
                                    ; g-here = record { h-pc = co-pc CO ; h-run = trans (co-halt CO) (HereF.f-run H)

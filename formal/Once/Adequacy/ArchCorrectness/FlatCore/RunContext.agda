@@ -183,16 +183,9 @@ record Emitted (prog : AbstractTrace) : Set where
     em-slots  : ∀ fs (i : AbstractInstr) (slot : Slot) → Reachable prog 0 fs
               → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
               → slot < frame-slots (falloc fs)
-    -- the run: a closure call's register, a return owed, its budget the reservation in force
-    em-call-site : ∀ fs → Reachable prog 0 fs → fetch prog (fpc fs) ≡ just instr-call-closure
-                 → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
-                     (fclosure fs ≡ SV-Ptr (AtDynamic hl))
-                     × (heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
-                     × (find-thunk prog ℓ ≡ just j))))
-    em-ret-owes  : ∀ fs (b : ℕ) → Reachable prog 0 fs → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
-                 → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
-    em-ret-budget : ∀ fs (b : ℕ) → Reachable prog 0 fs → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
-                  → b ≡ frame-slots (falloc fs)
+    -- (B1.7b, D453: a closure call's cell, a return owed and its budget were run fields here;
+    -- they are the machine's gates now, read off a sound run: `RunWF.call-site-shape`,
+    -- `ret-site-owes`, `ret-budget-matches`)
 open Emitted public
 
 -- (`CallI`, the two calls, lives beside the instruction set: `SMCore`.)

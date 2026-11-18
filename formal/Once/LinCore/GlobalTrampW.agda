@@ -225,10 +225,10 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
   tw-end : ∀ {Γ′ g X A B} {ds′ : Defs Γ′} {b : Tm Γ′ X A B} {γ : Gd g b} (p : under (ktrω ds′ b γ) ∈ allK U) {fs}
              (cfc : FrameSemantics.Frame FS) (pc : ℕ) (rest : List ℕ) (sv : List (FrameSemantics.Frame FS × ℕ)) (sl : ℕ)
          → fpc fs ≡ trPos (ktrω ds′ b γ) p 2 → LocState.halted (floc fs) ≡ false
-         → fret fs ≡ pc ∷ rest → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
+         → fret fs ≡ pc ∷ rest → AllocState.frame-slots (falloc fs) ≡ 1 → AllocState.saved-frames (falloc fs) ≡ (cfc , sl) ∷ sv
          → Σ FlatState λ fs′ → FlatSteps image 1 fs fs′ × CallOut fs fs′ cfc 0 0 0 0 pc rest sv sl
-  tw-end p {fs} cfc pc rest sv sl epc run hret hsv =
-    ret-out image fs cfc 1 pc rest sv sl hret hsv (tW-seg2 p epc) run
+  tw-end p {fs} cfc pc rest sv sl epc run hret bs hsv =
+    ret-out image fs cfc 1 pc rest sv sl hret (sym bs) hsv (tW-seg2 p epc) run
 
   -- ★ a many-use dispatch (`icallω`): into the trampoline its cell's word 1 names, at its depth 0
   -- (TrW0): the area saved, the cell in `Input1`
@@ -313,7 +313,7 @@ module TrampW {FS : FrameSemantics} {Γ} (ds : Defs Γ) (f : LTm Γ One One)
       with-res : StkW (LocState.heapMem (floc fs)) (slot fs) φ′ (w ∷ˢ []ˢ) → _
       with-res ((wb , pb , sb) , _) =
         fin (call-outA image fs cfc af area (budget φ′) (budget φ′ ∸ ws (B ∷ [])) (M ∸ wsz B) (wsz B) (fbudget φ′)
-               (trPos (ktrω ds′ b γ) p 2) rest sv sl hret hsv ne ep
+               (trPos (ktrω ds′ b γ) p 2) rest sv sl hret (sym (K.Here.h-slots {p = p} H)) hsv ne ep
                (λ k k< → slots-def wb sb k (subst (k Data.Nat.<_) (sym (vw-len pb)) k<)) win seg (K.Here.h-run {p = p} H))
         where
           fin : Σ FlatState (λ fs′ → FlatSteps image (suc (Once.LinCore.Moves.ln {FS} (wsz B) + 1)) fs fs′

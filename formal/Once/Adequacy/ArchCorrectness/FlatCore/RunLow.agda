@@ -404,21 +404,16 @@ entry-ret prog fs ℓ bb =
     (λ src fs₀ p (rpc , rest , e) → L.ret-map src rpc , map (L.ret-map src) rest , cong (map (L.ret-map src)) e)
     prog fs
 
-ret-site-owes : ∀ prog (fs : FlatState) (b : ℕ) → RunLow prog fs
+-- B1.7b (D453): a reached return passed the machine's gate (`Flat.ret-ok`, the run sound)
+ret-site-owes : ∀ prog (fs : FlatState) (b : ℕ) → RunLow prog fs → LocState.halted (floc fs) ≡ false
               → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
               → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
-ret-site-owes prog fs b =
-  lift-site′ (instr-ctrl (c-ret b)) (λ _ ()) (λ g → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret g ≡ rpc ∷ rest)))
-    (λ src fs₀ r f → RW.ret-site-owes src fs₀ b r f)
-    (λ src fs₀ p (rpc , rest , e) → L.ret-map src rpc , map (L.ret-map src) rest , cong (map (L.ret-map src)) e)
-    prog fs
+ret-site-owes prog fs b r h f = proj₁ (ret-ok b fs (step-ok prog fs _ r h f))
 
-ret-budget-matches : ∀ prog (fs : FlatState) (b : ℕ) → RunLow prog fs
+ret-budget-matches : ∀ prog (fs : FlatState) (b : ℕ) → RunLow prog fs → LocState.halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
                    → b ≡ frame-slots (falloc fs)
-ret-budget-matches prog fs b =
-  lift-site′ (instr-ctrl (c-ret b)) (λ _ ()) (λ g → b ≡ frame-slots (falloc g))
-    (λ src fs₀ r f → RW.ret-budget-matches src fs₀ b r f) (λ _ _ _ c → c) prog fs
+ret-budget-matches prog fs b r h f = proj₂ (ret-ok b fs (step-ok prog fs _ r h f))
 
 -- a pending link means a call just happened, and the base run says so at every
 -- instruction that is not an entry; a check is never one either
@@ -487,18 +482,14 @@ emitted-call-fn-resolves .(room-checks src) .(L.lift src fs₀ p) f (mkRunLow sr
 ... | at-image _ fi with RW.emitted-call-fn-resolves src fs₀ f r fi
 ...   | j , e = φ src j , trans (find-entry-room src (e-fn f)) (cong (mmap (φ src)) e)
 
--- …and a closure call's shape (the base run's; its scan commutes too)
-call-site-shape : ∀ prog (fs : FlatState) → RunLow prog fs
+-- …and a closure call's shape: the machine's gate too (`Flat.call-ok`)
+call-site-shape : ∀ prog (fs : FlatState) → RunLow prog fs → LocState.halted (floc fs) ≡ false
                 → fetch prog (fpc fs) ≡ just instr-call-closure
                 → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
                     (fclosure fs ≡ SV-Ptr (AtDynamic hl))
                     × (LocState.heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
                     × (find-thunk prog ℓ ≡ just j))))
-call-site-shape .(room-checks src) .(L.lift src fs₀ p) (mkRunLow src fs₀ p refl r refl pc) ft
-  with low-view src fs₀ p pc ft
-... | at-check k () _
-... | at-image _ fi with RW.call-site-shape src fs₀ r fi
-...   | hl , ℓ , j , ce , he , fe = hl , ℓ , φ src j , ce , he , trans (find-entry-room src (e-thunk ℓ)) (cong (mmap (φ src)) fe)
+call-site-shape prog fs r h f = call-ok prog fs (step-ok prog fs _ r h f)
 
 -- THE START IS BEHIND US: the base run past its pc 0 never fetches the start
 start-behind : ∀ prog (fs : FlatState) (b : ℕ) (r : RunLow prog fs) → (fpc (run-at r) ≡ 0 → ⊥)

@@ -1358,9 +1358,9 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq no-
              ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
     restores = trans (cong (_+ slot-size) addr-eq) (trans gap (sym (base-leave feq)))
     dataPost : C.FlatCorr hv (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) post-ret
-    dataPost = C.sim-ret b rpc rest fs s _ dc req restores (C.sets-role-x86 s role-sp _ _ _)
+    dataPost = C.sim-ret b rpc rest fs s _ dc req beq restores (C.sets-role-x86 s role-sp _ _ _)
     pco' : X.State.pc post-ret ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
-    pco' = cong (blk-off prog) (sym (do-ret-pc-∷ fs rpc rest req))
+    pco' = cong (blk-off prog) (sym (do-ret-pc-∷ b fs rpc rest req beq))
     retPost : C.RetAddrs (blk-off prog) (X.State.memory post-ret) (x86-64-link-claim post-ret)
                          (flink (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
                          (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
@@ -1370,15 +1370,15 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq no-
                               (fret (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
                     (sym lk-post)
                     (subst₂ (C.RetAddrs (blk-off prog) (X.State.memory s) (x86-64-link-claim s) nothing)
-                            (sym (trans (cong C.frames-of (do-ret-alloc fs)) (frames-leave feq)))
-                            (sym (do-ret-fret-∷ fs rpc rest req))
+                            (sym (trans (cong C.frames-of (do-ret-alloc b fs rpc rest req beq)) (frames-leave feq)))
+                            (sym (do-ret-fret-∷ b fs rpc rest req beq))
                             (proj₂ (proj₂ comp)))
       where frames-leave : saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
                          → C.frames-of (leave-frame (falloc fs)) ≡ saved-frames (falloc fs)
             frames-leave e rewrite e = refl
             -- a RETURN threads the link (`flinkView`), and it was `nothing`
             lk-post : flink (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) ≡ nothing
-            lk-post = trans (flink-do-ret (fret fs) fs) no-link
+            lk-post = trans (flink-do-ret b (fret fs) fs) no-link
 
 -- dealloc-stack: free n slots ↔ `add rsp, n*8`. At a full-frame exit
 -- (frame-slots ≡ n), sim-dealloc-stack's post bound is vacuous. Uses step-add-ri.

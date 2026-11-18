@@ -1911,11 +1911,12 @@ sim-dealloc-stack {hv} n fs s s' corr restores st = record
 sim-ret : {hv : HeapView} (b rpc : ℕ) (rest : List ℕ)
           (fs : FlatState) (s s' : State) → FlatCorr hv fs s
         → fret fs ≡ rpc ∷ rest
+        → b ≡ frame-slots (falloc fs)
         → rreg s sp-reg + slots b + slot-size
             ≡ frame-base (current-frame (leave-frame (falloc fs)))
         → SetsRole s s' role-sp (rreg s sp-reg + slots b + slot-size)
-        → FlatCorr hv (do-ret (fret fs) fs) s'
-sim-ret {hv} b rpc rest fs s s' corr req restores st rewrite req = record
+        → FlatCorr hv (do-ret b (fret fs) fs) s'
+sim-ret {hv} b rpc rest fs s s' corr req beq restores st rewrite ret-pass b fs rpc rest req beq = record
   { in1-eq = keep-in1 corr st (λ ()) ; out-eq = keep-out corr st (λ ())
   ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = trans (at-role st) restores ; frontier-eq = keep-heap-reg corr st (λ ())
   -- `%rsp` only RISES, so the high-water mark stays below it and the freed
