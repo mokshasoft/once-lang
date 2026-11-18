@@ -506,10 +506,16 @@ record ExprProgram (m : P.Resolved) (ir : IR ⌊ ST.Unit {0} ⌋ ⌊ ST.Unit {0}
     mir    : ir ≡ mainEntry mpm
     mg     : ET.MainGraded (ET.ETProg.rs (ET.exprTable (ET.srcOrder srcs []))) mpm
 
+-- the program's facts are used by their types: sealed, so their walk never
+-- unfolds where they are used
+opaque
+  seal : ∀ {A : Set} → A → A
+  seal a = a
+
 -- ★★ a compiled program (`moduleToProgram-linked`'s premises) is the bridge's
 expr-program : ∀ (m : P.Resolved) (ir : IR ⌊ ST.Unit {0} ⌋ ⌊ ST.Unit {0} ⌋)
              → moduleToIR m ≡ just ir → NamesDistinct (moduleTable m) → ExprProgram m ir
-expr-program m ir mi nd = record
+expr-program m ir mi nd = seal record
   { srcs   = srcs
   ; src-eq = proj₁ (proj₂ so)
   ; tbl-eq = tbl-eq
@@ -546,3 +552,12 @@ expr-program m ir mi nd = record
     fm : findMain (Data.List.map toCF srcs) ≡ just ir
     fm = trans (cong findMain (proj₂ (proj₂ so))) (trans (sym (cong moduleToIR-aux ceq)) mi)
     mo = find-main srcs fm
+
+-- ★★ …as the arch apexes take it (`ExprTable.Bridged`), over any table equal to master's
+bridged : ∀ (m : P.Resolved) (ir : IR ⌊ ST.Unit {0} ⌋ ⌊ ST.Unit {0} ⌋) {tbl : List IRFun}
+        → moduleToIR m ≡ just ir → NamesDistinct (moduleTable m) → moduleTable m ≡ tbl
+        → ET.Bridged (moduleSig m) tbl ir
+bridged m ir mi nd te = record
+  { tl = ET.srcOrder EPm.srcs [] ; gb = EPm.gb ; sd = EPm.sd ; mty = EPm.mty ; mpm = EPm.mpm ; mg = EPm.mg
+  ; tbl-eq = trans (sym EPm.tbl-eq) te ; mir = EPm.mir }
+  where module EPm = ExprProgram (expr-program m ir mi nd)

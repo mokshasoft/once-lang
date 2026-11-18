@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.LinCore.ArchX86-32 — plan 0.146 B1.7 step 1: ★ THE NEW IMAGE ON x86-32,
 -- IN MASTER'S APEX SHAPE (`ArchCorrectness.X86-32.conc-tr`), as on x86-64
--- (`LinCore.ArchX86-64`): the flat theorem (`FlatTop.IRTop`), the arch
+-- (`LinCore.ArchX86-64`): the flat theorem (`FlatTop.ExprApex`, the bridge D455–D457), the arch
 -- simulation (`events-agree-boot`), the boot's room check, and what the new
 -- image still owes the arch layer as `Owed` (D453: the run facts until the
 -- machine gates; the arith table until `compile` emits the new image).
@@ -83,6 +83,7 @@ bw float = 1
 import Once.LinCore.MachineLit
 module ML = Once.LinCore.MachineLit x86-32-frame-semantics bw
 import Once.LinCore.FlatTop
+import Once.LinCore.ExprTable
 import Once.LinCore.ImageAll
 import Once.LinCore.ImageGuard
 
@@ -91,14 +92,15 @@ ld-is : Once.LinCore.ImageAll.LoadConst (fs-numerics x86-32-frame-semantics) (fs
 ld-is {int}   v = _ , _ , v , refl
 ld-is {float} v = _ , _ , v , refl
 
+-- ★ the compiled program (D455–D457): the bridge's facts of `ir` over `tbl`
+-- (`ExprTable.Bridged`; the compile pipeline's: `ExprLinked.bridged`)
 module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
-  (tp : _) (etp : _) (f : _) (ef : _)
-  (lk : LinkedProgram (Interp.sig ι) (irProgram tbl ir)) where
-  module IT = Once.LinCore.FlatTop.IRTop x86-32-frame-semantics bw tbl ir tp etp f ef
-                ML.ldConst ML.ld-nl ML.wordOf ML.w-int ML.w-float entry-frame-x86-32 FFOx.entry-regs lk
+  (bf : Once.LinCore.ExprTable.Bridged (fs-numerics x86-32-frame-semantics) (fs-ffi x86-32-frame-semantics) (Interp.sig ι) tbl ir) where
+  module IT = Once.LinCore.FlatTop.ExprApex x86-32-frame-semantics bw tbl ir bf
+                ML.ldConst ML.ld-nl ML.wordOf ML.w-int ML.w-float entry-frame-x86-32 FFOx.entry-regs
 
   image : AbstractTrace
-  image = IT.TP.image
+  image = IT.XT.TP.image
 
   P′ : AbstractTrace
   P′ = room-checks image
@@ -155,17 +157,19 @@ module NewImage (p : IRProgram) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
     where
       run₀ : RunLow P′ FFOx.start-flat
       run₀ = low-start image FFOx.start-flat
-               (mkRunAt (emitted O) (reach-start FFOx.start-flat (entry-like 0) refl (IT.flat-sound (λ {b} v → ML.ld {b} v IT.TP.image))))
+               (mkRunAt (emitted O) (reach-start FFOx.start-flat (entry-like 0) refl (IT.flat-sound (λ {b} v → ML.ld {b} v IT.XT.TP.image))))
                refl
       fact : BudgetFact⊑ δc ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir))
-      fact k = case IT.flat-ir (λ {b} v → ML.ld {b} v IT.TP.image) k of λ where
+      fact k = case IT.flat-ir (λ {b} v → ML.ld {b} v IT.XT.TP.image) k of λ where
         (N , e , c) →
           let open RoomEvents {x86-32-frame-semantics} image using (ev-boot)
               boot = ev-boot N FFOx.start-flat 0 refl _ refl
               agree₀ = events-agree-boot (proj₁ boot) ev-x86-32 env P′ FFOx.start-flat X.initState _ _ (entry-corr P′)
                          (entry-wf 0) tt refl (Owed.o-table O) run₀ refl refl refl refl refl refl
               agree = retarget (proj₁ (proj₂ boot)) (proj₂ (proj₂ boot)) agree₀
-          in budget-fact-of δc ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir)) k (proj₁ agree) _ _ _
+          in budget-fact-of δc ([] , X.initState) ι (runIR (arch-numerics x86-32) (pureHalf ι) (irProgram tbl ir)) k (proj₁ agree) _
+               -- (the run's events named, so they are matched, not computed)
+               (RTx.run-events val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 env [] (proj₁ agree) (compile-trace P′) X.initState) _
                (RTx.Run.runN-events val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 env (compile-trace P′) (proj₁ agree) [] X.initState)
                (cong (RTx.Run.outObs val-x86-32 (answer-at (arch-numerics x86-32) ι call-at-x86-32) ev-x86-32 env (compile-trace P′)) e)
                c (proj₂ agree)

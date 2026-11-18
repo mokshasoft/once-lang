@@ -600,3 +600,21 @@ rel-main-at tl gb (sub-arr {π = π} a sub-void g) gm =
 rel-main-at tl gb sub-void gm =
   RelM.relOf _ _ (RelM.rel-∘ _ _ (RelGen.rel-zero _ _ M.Heap)
             (RefRel.rel-call′ (exprTable tl) (tblOf tl) (table-ok tl (bodies-ok tl gb)) M.Heap (bare "main") Once.IRTy.Unit Once.IRTy.Void act gm)) tt
+
+------------------------------------------------------------------------
+-- 10. ★ THE BRIDGE'S FACTS of a program `ir` over `tbl`: the definitions'
+-- sources, their obligation (D457), master's table as theirs and its entry
+-- as main's call; what the arch apex takes (`FlatTop.ExprApex`), and the
+-- compile pipeline gives (`ExprLinked.bridged`).
+------------------------------------------------------------------------
+
+record Bridged (σ : ISig) (tbl : List IRFun) (ir : M.IR Once.IRTy.Unit Once.IRTy.Unit) : Set where
+  field
+    tl     : List CompiledSrc
+    gb     : GradedBodies tl
+    sd     : SrcsDecl σ tl
+    mty    : Type
+    mpm    : mty <: EffUU
+    mg     : MainGraded (rs (exprTable tl)) mpm
+    tbl-eq : tblOf tl ≡ tbl
+    mir    : ir ≡ mainEntry mpm

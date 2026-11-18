@@ -462,3 +462,48 @@ module ExprTop (tl : List Once.CompileSrc.CompiledSrc) (gb : Once.LinCore.ExprTa
 
     flat-sound : FlatStepsAPI.Sound {Mach} TP.image TP.start-fs
     flat-sound = TP.o-sound ld decl
+
+------------------------------------------------------------------------
+-- ★★ THE COMPILED PROGRAM'S (D455–D457): a program `ir` over `tbl` with the
+-- bridge's facts (`ExprTable.Bridged`, which the compile pipeline gives:
+-- `ExprLinked.bridged`) has the flat theorem at master's meaning of it
+-- (`ExprTop`). (The facts are a premise, so the apexes do not load the
+-- front end's walk.)
+------------------------------------------------------------------------
+
+module ExprApex (tbl : List IRFun) (ir : Once.IR.IR Once.IRTy.Unit Once.IRTy.Unit)
+                (bf : Once.LinCore.ExprTable.Bridged fmt ans (TM.Interp.sig ι) tbl ir)
+                (ldConst : ∀ {b} → Lit b → AbstractInstr)
+                (ld-nl : ∀ {b} (v : Lit b) → NoLabels.mark {Mach} (ldConst v) ≡ nothing)
+                (wordOf : ∀ {b} → ⟦ b ⟧b → StoredValue Mach)
+                (w-int   : ∀ (n : ⟦ int ⟧b)   → wordOf {int} n ≡ SV-Lit fits-int n)
+                (w-float : ∀ (n : ⟦ float ⟧b) → wordOf {float} n ≡ SV-Lit fits-float n)
+                (entry-frame : FrameSemantics.Frame Mach) (entry-regs : Registers Mach) where
+  module BF = Once.LinCore.ExprTable.Bridged bf
+  module XT = ExprTop BF.tl BF.gb BF.mpm BF.mg ldConst ld-nl wordOf w-int w-float entry-frame entry-regs
+  ds = XT.ds
+  f₀ = XT.f₀
+
+  -- master's meaning of its program, at a budget from the empty log
+  obsᴹ : ℕ → TM.Run (Once.Denotation.Approx.Ap Data.Unit.⊤)
+  obsᴹ k = TM.run ι [] (approx k (DT.evalᴰ fmt (tableEnv fmt ans tbl) ir tt))
+
+  -- the bridge's table is master's, its main master's entry
+  obs-eq : ∀ k → XT.obsᴰ k ≡ obsᴹ k
+  obs-eq k = cong₂ (λ t i → TM.run ι [] (approx k (DT.evalᴰ fmt (tableEnv fmt ans t) i tt))) BF.tbl-eq (sym BF.mir)
+
+  module _ (ld : ∀ {b} (v : Lit b) (fs : FlatMachine.FlatState {Mach})
+                 → FlatMachine.flat-exec-instr {Mach} (ldConst v) XT.TP.image fs
+                   ≡ record fs { floc = record (FlatMachine.floc fs) { regs = writeReg (LocState.regs (FlatMachine.floc fs)) Output (wordOf (lit v)) }
+                               ; fpc = suc (FlatMachine.fpc fs) }) where
+    open FlatEventTrace {Mach} using (flat-events; flat-ctrls)
+
+    -- ★★ THE FLAT THEOREM AT MASTER'S MEANING, for the compiled program
+    flat-ir : ∀ k → Σ ℕ λ N → (flat-events (suc N) XT.TP.image XT.TP.start-fs ≡ (proj₁ (obsᴹ k) , endAp (proj₂ (obsᴹ k))))
+                                     × (endAp (proj₂ (obsᴹ k)) ≡ nothing → k ≤ flat-ctrls (suc N) XT.TP.image XT.TP.start-fs)
+    flat-ir k = case XT.flat-ir ld BF.sd k of λ where
+      (N , e , c) → N , trans e (cong (λ r → (proj₁ r , endAp (proj₂ r))) (obs-eq k))
+                      , λ z → c (trans (cong (λ r → endAp (proj₂ r)) (obs-eq k)) z)
+
+    flat-sound : FlatStepsAPI.Sound {Mach} XT.TP.image XT.TP.start-fs
+    flat-sound = XT.flat-sound ld BF.sd
